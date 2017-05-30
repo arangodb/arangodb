@@ -595,18 +595,10 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
       result.add("part", VPackValue("dependent"));
     }
 
-    result.add("options", VPackValue(VPackValueType::Object));
-    result.add("optimizer", VPackValue(VPackValueType::Object));
-    result.add("rules", VPackValue(VPackValueType::Array));
-    result.add(VPackValue("-all"));
-    result.close(); // options.optimizer.rules
-    result.close(); // options.optimizer
-    double tracing = query->getNumericOption<double>("tracing", 0.0);
-    result.add("tracing", VPackValue(tracing));
-    double satelliteSyncWait = query->getNumericOption<double>("satelliteSyncWait", 60.0);
-    result.add("satelliteSyncWait", VPackValue(satelliteSyncWait));
-    result.close(); // options
-
+    result.add(VPackValue("options"));
+    // the toVelocyPack will open & close the "options" object
+    query->queryOptions().toVelocyPack(result, true);
+    
     result.close();
 
     TRI_ASSERT(result.isClosed());
@@ -1239,7 +1231,7 @@ ExecutionEngine* ExecutionEngine::instantiateFromPlan(
       auto inst =
           std::make_unique<CoordinatorInstanciator>(query, queryRegistry);
       // optionally restrict query to certain shards
-      inst->includedShards(query->includedShards());
+      inst->includedShards(query->queryOptions().shardIds);
 
       try {
         plan->root()->walk(inst.get());  // if this throws, we need to

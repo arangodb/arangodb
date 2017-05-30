@@ -27,8 +27,9 @@
 #include "Basics/Common.h"
 
 #include "StorageEngine/TransactionState.h"
-#include "Transaction/Methods.h"
 #include "Transaction/Context.h"
+#include "Transaction/Methods.h"
+#include "Transaction/Options.h"
 
 namespace arangodb {
 namespace transaction {
@@ -40,9 +41,8 @@ class UserTransaction final : public transaction::Methods {
                       std::vector<std::string> const& readCollections,
                       std::vector<std::string> const& writeCollections,
                       std::vector<std::string> const& exclusiveCollections,
-                      double lockTimeout, bool waitForSync,
-                      bool allowImplicitCollections)
-      : transaction::Methods(transactionContext) {
+                      transaction::Options const& options)
+      : transaction::Methods(transactionContext, options) {
     addHint(transaction::Hints::Hint::LOCK_ENTIRELY);
 
     for (auto const& it : exclusiveCollections) {
@@ -56,10 +56,6 @@ class UserTransaction final : public transaction::Methods {
     for (auto const& it : readCollections) {
       addCollection(it, AccessMode::Type::READ);
     }
-
-    _state->timeout(lockTimeout);
-    _state->waitForSync(waitForSync);
-    _state->allowImplicitCollections(allowImplicitCollections);
   }
 
 };

@@ -263,8 +263,8 @@ transaction::ContextData* MMFilesEngine::createTransactionContextData() {
 }
 
 TransactionState* MMFilesEngine::createTransactionState(
-    TRI_vocbase_t* vocbase) {
-  return new MMFilesTransactionState(vocbase);
+    TRI_vocbase_t* vocbase, transaction::Options const& options) {
+  return new MMFilesTransactionState(vocbase, options);
 }
 
 TransactionCollection* MMFilesEngine::createTransactionCollection(

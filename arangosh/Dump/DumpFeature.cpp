@@ -1024,9 +1024,9 @@ void DumpFeature::start() {
 
   std::string dbName = client->databaseName();
 
-  _httpClient->setLocationRewriter(static_cast<void*>(client),
+  _httpClient->params().setLocationRewriter(static_cast<void*>(client),
                                    &rewriteLocation);
-  _httpClient->setUserNamePassword("/", client->username(), client->password());
+  _httpClient->params().setUserNamePassword("/", client->username(), client->password());
 
   std::string const versionString = _httpClient->getServerVersion();
 

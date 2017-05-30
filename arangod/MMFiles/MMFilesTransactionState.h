@@ -45,13 +45,14 @@ struct MMFilesDocumentOperation;
 class MMFilesWalMarker;
 namespace transaction {
 class Methods;
+struct Options;
 }
 class TransactionCollection;
 
 /// @brief transaction type
 class MMFilesTransactionState final : public TransactionState {
  public:
-  explicit MMFilesTransactionState(TRI_vocbase_t* vocbase);
+  MMFilesTransactionState(TRI_vocbase_t* vocbase, transaction::Options const&);
   ~MMFilesTransactionState();
 
   /// @brief begin a transaction

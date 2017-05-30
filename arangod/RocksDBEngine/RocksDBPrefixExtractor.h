@@ -47,6 +47,7 @@ class RocksDBPrefixExtractor final : public rocksdb::SliceTransform {
   bool InRange(rocksdb::Slice const& dst) const;
 
   static size_t getPrefixLength(RocksDBEntryType type);
+  static constexpr size_t getIndexPrefixLength() { return 9; }
 
  private:
   const std::string _name;

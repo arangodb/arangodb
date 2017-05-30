@@ -99,14 +99,14 @@ typedef struct {
 /* only used for a leaf pot.                           */
 /* =================================================== */
 typedef struct {
-  int LorLeaf;
-  int RorPoints;
+  int32_t LorLeaf;
+  int32_t RorPoints;
   GeoString middle;
   GeoFix maxdist[GeoIndexFIXEDPOINTS];
   GeoString start;
   GeoString end;
-  int level;
-  int points[GeoIndexPOTSIZE];
+  int32_t level;
+  int32_t points[GeoIndexPOTSIZE];
 } GeoPot;
 /* =================================================== */
 /*                 GeoIx structure                     */
@@ -266,8 +266,76 @@ typedef struct {
 #include <StorageEngine/EngineSelectorFeature.h>
 
 namespace arangodb { namespace rocksdbengine {
-  
-  
+
+static GeoCoordinate& fromPersistent(char const* in, GeoCoordinate& out){
+  const char* start = in;
+
+  //convert latituide and longitute to uint64 for network transfer / storage
+  uint64_t fromStorage = rocksutils::fromPersistent<uint64_t>(start);
+  out.latitude = rocksutils::intToDouble(fromStorage);
+
+  fromStorage = rocksutils::fromPersistent<uint64_t>(start);
+  out.longitude = rocksutils::intToDouble(fromStorage);
+
+  out.data = rocksutils::fromPersistent<uint64_t>(start);
+
+  return out;
+}
+
+static void toPersistent(GeoCoordinate& in, char* out){
+  char* start = out;
+
+  uint64_t toStorage = rocksutils::doubleToInt(in.latitude);
+  rocksutils::toPersistent(toStorage, start);
+
+  toStorage = rocksutils::doubleToInt(in.longitude);
+  rocksutils::toPersistent(toStorage, start);
+
+  rocksutils::toPersistent(in.data, start);
+}
+
+static GeoPot& fromPersistent(char const* in, GeoPot& out){
+  const char* start = in;
+
+  out.LorLeaf = rocksutils::fromPersistent<int32_t>(start);
+  out.RorPoints = rocksutils::fromPersistent<int32_t>(start);
+  out.middle = rocksutils::fromPersistent<GeoString>(start);
+
+  for(std::size_t i = 0; i < GeoIndexFIXEDPOINTS; i++){
+    out.maxdist[i] = rocksutils::fromPersistent<GeoFix>(start);
+  }
+
+  out.start = rocksutils::fromPersistent<GeoString>(start);
+  out.end = rocksutils::fromPersistent<GeoString>(start);
+  out.level = rocksutils::fromPersistent<int32_t>(start);
+
+  for(std::size_t i = 0; i < GeoIndexFIXEDPOINTS; i++){
+    out.points[i] = rocksutils::fromPersistent<int32_t>(start);
+  }
+
+  return out;
+}
+
+static void toPersistent(GeoPot const& in, char* out){
+  char* start = out;
+
+  rocksutils::toPersistent(in.LorLeaf, start);
+  rocksutils::toPersistent(in.RorPoints, start);
+  rocksutils::toPersistent(in.middle, start);
+
+  for(std::size_t i = 0; i< GeoIndexFIXEDPOINTS; i++){
+    rocksutils::toPersistent(in.maxdist[i], start);
+  }
+
+  rocksutils::toPersistent(in.start, start);
+  rocksutils::toPersistent(in.end, start);
+  rocksutils::toPersistent(in.level, start);
+
+  for(std::size_t i = 0; i< GeoIndexFIXEDPOINTS; i++){
+    rocksutils::toPersistent(in.points[i], start);
+  }
+}
+
 /* CRUD interface */
 
 void GeoIndex_setRocksMethods(GeoIdx* gi, RocksDBMethods* trx) {
@@ -279,14 +347,14 @@ void GeoIndex_clearRocks(GeoIdx* gi) {
   GeoIx* gix = (GeoIx*)gi;
   gix->rocksMethods = nullptr;
 }
-  
+
 inline void RocksRead(GeoIx * gix, RocksDBKey const& key, std::string *val) {
-  arangodb::Result r = gix->rocksMethods->Get(key, val);
+  arangodb::Result r = gix->rocksMethods->Get(RocksDBColumnFamily::geo(), key, val);
   if (!r.ok()) {
     THROW_ARANGO_EXCEPTION_MESSAGE(r.errorNumber(), r.errorMessage());
   }
 }
-  
+
 inline void RocksWrite(GeoIx * gix,
                        RocksDBKey const& key,
                        rocksdb::Slice const& slice) {
@@ -294,13 +362,15 @@ inline void RocksWrite(GeoIx * gix,
   if (gix->rocksMethods == nullptr) {
     rocksdb::TransactionDB *db = rocksutils::globalRocksDB();
     rocksdb::WriteOptions wo;
-    rocksdb::Status s = db->Put(wo, key.string(), slice);
+    wo.sync = true;
+    rocksdb::Status s = db->Put(wo, RocksDBColumnFamily::geo(), key.string(), slice);
     if (!s.ok()) {
       arangodb::Result r = rocksutils::convertStatus(s, rocksutils::index);
       THROW_ARANGO_EXCEPTION_MESSAGE(r.errorNumber(), r.errorMessage());
     }
   } else {
-    arangodb::Result r = gix->rocksMethods->Put(key, slice, rocksutils::index);
+    arangodb::Result r = gix->rocksMethods->Put(RocksDBColumnFamily::geo(),
+                                                key, slice, rocksutils::index);
     if (!r.ok()) {
       THROW_ARANGO_EXCEPTION_MESSAGE(r.errorNumber(), r.errorMessage());
     }
@@ -308,7 +378,8 @@ inline void RocksWrite(GeoIx * gix,
 }
   
 inline void RocksDelete(GeoIx* gix, RocksDBKey const& key) {
-  arangodb::Result r = gix->rocksMethods->Delete(key);
+  arangodb::Result r = gix->rocksMethods->Delete(RocksDBColumnFamily::geo(),
+                                                 key);
   if (!r.ok()) {
     THROW_ARANGO_EXCEPTION_MESSAGE(r.errorNumber(), r.errorMessage());
   }
@@ -319,13 +390,17 @@ void SlotRead(GeoIx * gix, int slot, GeoCoordinate * gc /*out param*/)
   RocksDBKey key = RocksDBKey::GeoIndexValue(gix->objectId, slot, true);
   std::string slotValue;
   RocksRead(gix, key, &slotValue);
-  memcpy(gc, slotValue.data(), slotValue.size());
+  fromPersistent(slotValue.data(),*gc);
 }
 void SlotWrite(GeoIx * gix,int slot, GeoCoordinate * gc)
 {
   RocksDBKey key = RocksDBKey::GeoIndexValue(gix->objectId, slot, true);
-  RocksWrite(gix, key, rocksdb::Slice((char*)gc,
-                                      sizeof(GeoCoordinate)));
+  char data[sizeof (GeoCoordinate)];
+  toPersistent(*gc, &data[0]);
+  RocksWrite(gix, key, rocksdb::Slice(&data[0], sizeof(GeoCoordinate)));
+
+  GeoCoordinate test;
+  fromPersistent(&data[0],test);
 }
 
 void PotRead(GeoIx * gix, int pot, GeoPot * gp)
@@ -333,12 +408,15 @@ void PotRead(GeoIx * gix, int pot, GeoPot * gp)
   RocksDBKey key = RocksDBKey::GeoIndexValue(gix->objectId, pot, false);
   std::string potValue;
   RocksRead(gix, key, &potValue);
-  memcpy(gp, potValue.data(), potValue.size());
+  TRI_ASSERT(potValue.size() == sizeof(GeoPot));
+  fromPersistent(potValue.data(), *gp);
 }
-  
+
 void PotWrite(GeoIx * gix, int pot, GeoPot * gp) {
   RocksDBKey key = RocksDBKey::GeoIndexValue(gix->objectId, pot, false);
-  RocksWrite(gix, key, rocksdb::Slice((char*)gp, sizeof(GeoPot)));
+  char data[sizeof (GeoPot)];
+  toPersistent(*gp, &data[0]);
+  RocksWrite(gix, key, rocksdb::Slice(&data[0], sizeof(GeoPot)));
 }
 
 /* =================================================== */
@@ -561,7 +639,7 @@ GeoIdx* GeoIndex_new(uint64_t objectId,
     gp.end = 0x1FFFFFFFFFFFFFll;
     gp.level = 1;
     for (i = 0; i < GeoIndexFIXEDPOINTS; i++) gp.maxdist[i] = 0;
-    PotWrite(gix, 1, &gp);
+    PotWrite(gix, 1, &gp);// pot 1 is root
   } else {
     gix->nextFreePot = numPots + 1;
     gix->nextFreeSlot = numSlots + 1;

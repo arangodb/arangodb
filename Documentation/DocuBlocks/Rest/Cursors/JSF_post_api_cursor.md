@@ -62,6 +62,19 @@ actually used in the query.
 @RESTSTRUCT{maxPlans,JSF_post_api_cursor_opts,integer,optional,int64}
 Limits the maximum number of plans that are created by the AQL query optimizer.
 
+@RESTSTRUCT{maxWarningCount,JSF_post_api_cursor_opts,integer,optional,int64}
+Limits the maximum number of warnings a query will return. The number of warnings
+a query will return is limited to 10 by default, but that number can be increased
+or decreased by setting this attribute.
+
+@RESTSTRUCT{failOnWarning,JSF_post_api_cursor_opts,boolean,optional,}
+When set to *true*, the query will throw an exception and abort instead of producing
+a warning. This option should be used during development to catch potential issues
+early. When the attribute is set to *false*, warnings will not be propagated to 
+exceptions and will be returned with the query result.
+There is also a server configuration option `--query.fail-on-warning` for setting the
+default value for *failOnWarning* so it does not need to be set on a per-query level.
+
 @RESTSTRUCT{optimizer.rules,JSF_post_api_cursor_opts,array,optional,string}
 A list of to-be-included or to-be-excluded optimizer rules
 can be put into this attribute, telling the optimizer to include or exclude

@@ -42,7 +42,7 @@ using namespace arangodb::cache;
 
 Finding PlainCache::find(void const* key, uint32_t keySize) {
   TRI_ASSERT(key != nullptr);
-  Finding result(nullptr);
+  Finding result;
   uint32_t hash = hashKey(key, keySize);
 
   bool ok;
@@ -51,7 +51,7 @@ Finding PlainCache::find(void const* key, uint32_t keySize) {
   std::tie(ok, bucket, source) = getBucket(hash, Cache::triesFast);
 
   if (ok) {
-    result.reset(bucket->find(hash, key, keySize));
+    result.set(bucket->find(hash, key, keySize));
     recordStat(result.found() ? Stat::findHit : Stat::findMiss);
     bucket->unlock();
     endOperation();
@@ -96,8 +96,10 @@ bool PlainCache::insert(CachedValue* value) {
         bool eviction = false;
         if (candidate != nullptr) {
           bucket->evict(candidate, true);
+          if (!candidate->sameKey(value->key(), value->keySize)) {
+            eviction = true;
+          }
           freeValue(candidate);
-          eviction = true;
         }
         bucket->insert(hash, value);
         inserted = true;

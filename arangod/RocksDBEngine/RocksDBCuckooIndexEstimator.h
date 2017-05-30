@@ -301,10 +301,18 @@ class RocksDBCuckooIndexEstimator {
       // If we do not have any documents we have a rather constant estimate.
       return 1;
     }
-    // _nrUsed; These are known to be distinct values
-    // _nrCuckood; These are eventually distinct documents with unknown state
-    return (double)(_nrUsed + ((double)_nrCuckood * 3 * _nrUsed / _nrTotal)) /
-           _nrTotal;
+
+    double total = 0;
+    for (uint32_t b = 0; b < _size; ++b) {
+      for (size_t i = 0; i < SlotsPerBucket; ++i) {
+        uint32_t* c = findCounter(b, i);
+        total += *c;
+      }
+    }
+    if (total == 0) {
+      return 1;
+    }
+    return _nrUsed / total;
   }
 
   bool lookup(Key const& k) const {

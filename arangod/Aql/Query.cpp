@@ -88,7 +88,6 @@ Query::Query(bool contextOwnedByExterior, TRI_vocbase_t* vocbase,
       _collections(vocbase),
       _state(QueryExecutionState::ValueType::INVALID_STATE),
       _trx(nullptr),
-      _maxWarningCount(10),
       _warnings(),
       _startTime(TRI_microtime()),
       _queryRegistry(application_features::ApplicationServer::getFeature<arangodb::QueryRegistryFeature>("QueryRegistry")),
@@ -101,10 +100,16 @@ Query::Query(bool contextOwnedByExterior, TRI_vocbase_t* vocbase,
   if (aql == nullptr) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_SHUTTING_DOWN);
   }
+  
+  // populate query options
+  if (_options != nullptr) {
+    _queryOptions.fromVelocyPack(_options->slice());
+  }
+
 
   // std::cout << TRI_CurrentThreadId() << ", QUERY " << this << " CTOR: " <<
   // queryString << "\n";
-  double tracing = getNumericOption("tracing", 0);
+  int64_t tracing = _queryOptions.tracing;
   if (tracing > 0) {
     LOG_TOPIC(INFO, Logger::QUERIES)
       << TRI_microtime() - _startTime << " "
@@ -137,7 +142,7 @@ Query::Query(bool contextOwnedByExterior, TRI_vocbase_t* vocbase,
   }
   TRI_ASSERT(_vocbase != nullptr);
         
-  _resourceMonitor.setMemoryLimit(memoryLimit());
+  _resourceMonitor.setMemoryLimit(_queryOptions.memoryLimit);
 }
 
 /// @brief creates a query from VelocyPack
@@ -155,7 +160,6 @@ Query::Query(bool contextOwnedByExterior, TRI_vocbase_t* vocbase,
       _collections(vocbase),
       _state(QueryExecutionState::ValueType::INVALID_STATE),
       _trx(nullptr),
-      _maxWarningCount(10),
       _warnings(),
       _startTime(TRI_microtime()),
       _queryRegistry(application_features::ApplicationServer::getFeature<arangodb::QueryRegistryFeature>("QueryRegistry")),
@@ -163,10 +167,15 @@ Query::Query(bool contextOwnedByExterior, TRI_vocbase_t* vocbase,
       _contextOwnedByExterior(contextOwnedByExterior),
       _killed(false),
       _isModificationQuery(false) {
-
+  
   AqlFeature* aql = AqlFeature::lease();
   if (aql == nullptr) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_SHUTTING_DOWN);
+  }
+  
+  // populate query options
+  if (_options != nullptr) {
+    _queryOptions.fromVelocyPack(_options->slice());
   }
 
   LOG_TOPIC(DEBUG, Logger::QUERIES)
@@ -179,19 +188,12 @@ Query::Query(bool contextOwnedByExterior, TRI_vocbase_t* vocbase,
   }
   TRI_ASSERT(_vocbase != nullptr);
   
-  _resourceMonitor.setMemoryLimit(memoryLimit());
+  _resourceMonitor.setMemoryLimit(_queryOptions.memoryLimit);
 }
 
 /// @brief destroys a query
 Query::~Query() {
-  double tracing = 0.0;
-  try {
-    // may throw
-    tracing = getNumericOption("tracing", 0);
-  } catch (...) {
-  }
-
-  if (tracing > 0) {
+  if (_queryOptions.tracing > 0) {
     LOG_TOPIC(INFO, Logger::QUERIES)
       << TRI_microtime() - _startTime << " "
       << "Query::~Query queryString: "
@@ -296,7 +298,7 @@ void Query::registerErrorCustom(int code, char const* details) {
 void Query::registerWarning(int code, char const* details) {
   TRI_ASSERT(code != TRI_ERROR_NO_ERROR);
 
-  if (_queryRegistry->failOnWarning()) {
+  if (_queryOptions.failOnWarning) {
     // make an error from each warning if requested
     if (details == nullptr) {
       THROW_ARANGO_EXCEPTION(code);
@@ -304,7 +306,7 @@ void Query::registerWarning(int code, char const* details) {
     THROW_ARANGO_EXCEPTION_MESSAGE(code, details);
   }
 
-  if (_warnings.size() > _maxWarningCount) {
+  if (_warnings.size() >= _queryOptions.maxWarningCount) {
     return;
   }
 
@@ -458,10 +460,10 @@ ExecutionPlan* Query::prepare() {
 
     // Run the query optimizer:
     enterState(QueryExecutionState::ValueType::PLAN_OPTIMIZATION);
-    arangodb::aql::Optimizer opt(maxNumberOfPlans());
+    arangodb::aql::Optimizer opt(_queryOptions.maxNumberOfPlans);
     // get enabled/disabled rules
-    opt.createPlans(plan.release(), getRulesFromOptions(),
-                    inspectSimplePlans());
+    opt.createPlans(plan.release(), _queryOptions.optimizerRules,
+                    _queryOptions.inspectSimplePlans);
     // Now plan and all derived plans belong to the optimizer
     plan.reset(opt.stealBest());  // Now we own the best one again
   } else {  // no queryString, we are instantiating from _queryBuilder
@@ -655,7 +657,7 @@ QueryResult Query::execute(QueryRegistry* registry) {
     result.result = resultBuilder;
     result.stats = stats;
 
-    if (_profile != nullptr && profiling()) {
+    if (_profile != nullptr && _queryOptions.profile) {
       result.profile = _profile->toVelocyPack();
     }
 
@@ -789,12 +791,10 @@ QueryResultV8 Query::executeV8(v8::Isolate* isolate, QueryRegistry* registry) {
         }
       } else {
         // iterate over result and return it
-        bool suppressResult = silent();
-
         uint32_t j = 0;
         while (nullptr != (value = _engine->getSome(
                                1, ExecutionBlock::DefaultBatchSize()))) {
-          if (!suppressResult) {
+          if (!_queryOptions.silent) {
             size_t const n = value->size();
 
             for (size_t i = 0; i < n; ++i) {
@@ -843,7 +843,7 @@ QueryResultV8 Query::executeV8(v8::Isolate* isolate, QueryRegistry* registry) {
     result.warnings = warningsToVelocyPack();
     result.stats = stats;
 
-    if (_profile != nullptr && profiling()) {
+    if (_profile != nullptr && _queryOptions.profile) {
       result.profile = _profile->toVelocyPack();
     }
     
@@ -938,15 +938,15 @@ QueryResult Query::explain() {
 
     // Run the query optimizer:
     enterState(QueryExecutionState::ValueType::PLAN_OPTIMIZATION);
-    arangodb::aql::Optimizer opt(maxNumberOfPlans());
+    arangodb::aql::Optimizer opt(_queryOptions.maxNumberOfPlans);
     // get enabled/disabled rules
-    opt.createPlans(plan, getRulesFromOptions(), inspectSimplePlans());
+    opt.createPlans(plan, _queryOptions.optimizerRules, _queryOptions.inspectSimplePlans);
 
     enterState(QueryExecutionState::ValueType::FINALIZATION);
 
     QueryResult result(TRI_ERROR_NO_ERROR);
 
-    if (allPlans()) {
+    if (_queryOptions.allPlans) {
       result.result = std::make_shared<VPackBuilder>();
       {
         VPackArrayBuilder guard(result.result.get());
@@ -957,7 +957,7 @@ QueryResult Query::explain() {
 
           it->findVarUsage();
           it->planRegisters();
-          it->toVelocyPack(*result.result.get(), parser.ast(), verbosePlans());
+          it->toVelocyPack(*result.result.get(), parser.ast(), _queryOptions.verbosePlans);
         }
       }
       // cacheability not available here
@@ -971,7 +971,7 @@ QueryResult Query::explain() {
       bestPlan->findVarUsage();
       bestPlan->planRegisters();
 
-      result.result = bestPlan->toVelocyPack(parser.ast(), verbosePlans());
+      result.result = bestPlan->toVelocyPack(parser.ast(), _queryOptions.verbosePlans);
 
       // cacheability
       result.cached = (!_queryString.empty() &&
@@ -1008,7 +1008,7 @@ void Query::engine(ExecutionEngine* engine) {
 Executor* Query::executor() {
   if (_executor == nullptr) {
     // the executor is a singleton per query
-    _executor.reset(new Executor(literalSizeThreshold()));
+    _executor.reset(new Executor(_queryOptions.literalSizeThreshold));
   }
 
   TRI_ASSERT(_executor != nullptr);
@@ -1069,55 +1069,6 @@ void Query::getStats(VPackBuilder& builder) {
   } else {
     ExecutionStats::toVelocyPackStatic(builder);
   }
-}
-
-/// @brief fetch a boolean value from the options
-bool Query::getBooleanOption(char const* option, bool defaultValue) const {
-  if (_options == nullptr) {
-    return defaultValue;
-  }
-
-  VPackSlice options = _options->slice();
-  if (!options.isObject()) {
-    return defaultValue;
-  }
-
-  VPackSlice value = options.get(option);
-  if (!value.isBoolean()) {
-    return defaultValue;
-  }
-
-  return value.getBool();
-}
-
-/// @brief return the included shards from the options
-std::unordered_set<std::string> Query::includedShards() const {
-  std::unordered_set<std::string> result;
-
-  if (_options == nullptr) {
-    return result;
-  }
-
-  VPackSlice options = _options->slice();
-  if (!options.isObject()) {
-    return result;
-  }
-
-  VPackSlice value = options.get("shardIds");
-  if (!value.isArray()) {
-    return result;
-  }
-
-  VPackArrayIterator it(value);
-  while (it.valid()) {
-    VPackSlice value = it.value();
-    if (value.isString()) {
-      result.emplace(value.copyString());
-    }
-    it.next();
-  }
-
-  return result;
 }
 
 /// @brief convert the list of warnings to VelocyPack.
@@ -1197,14 +1148,14 @@ uint64_t Query::hash() {
 
   // handle "fullCount" option. if this option is set, the query result will
   // be different to when it is not set!
-  if (getBooleanOption("fullcount", false)) {
+  if (_queryOptions.fullCount) {
     hash = fasthash64(TRI_CHAR_LENGTH_PAIR("fullcount:true"), hash);
   } else {
     hash = fasthash64(TRI_CHAR_LENGTH_PAIR("fullcount:false"), hash);
   }
 
   // handle "count" option
-  if (getBooleanOption("count", false)) {
+  if (_queryOptions.count) {
     hash = fasthash64(TRI_CHAR_LENGTH_PAIR("count:true"), hash);
   } else {
     hash = fasthash64(TRI_CHAR_LENGTH_PAIR("count:false"), hash);
@@ -1230,17 +1181,11 @@ bool Query::canUseQueryCache() const {
 
   auto queryCacheMode = QueryCache::instance()->mode();
 
-  if (queryCacheMode == CACHE_ALWAYS_ON && getBooleanOption("cache", true)) {
-    // cache mode is set to always on... query can still be excluded from cache
-    // by
-    // setting `cache` attribute to false.
-
-    // cannot use query cache on a coordinator at the moment
-    return !arangodb::ServerState::instance()->isRunningInCluster();
-  } else if (queryCacheMode == CACHE_ON_DEMAND &&
-             getBooleanOption("cache", false)) {
-    // cache mode is set to demand... query will only be cached if `cache`
-    // attribute is set to false
+  if (_queryOptions.cache && 
+      (queryCacheMode == CACHE_ALWAYS_ON ||
+       queryCacheMode == CACHE_ON_DEMAND)) {
+    // cache mode is set to always on or on-demand... 
+    // query will only be cached if `cache` attribute is not set to false
 
     // cannot use query cache on a coordinator at the moment
     return !arangodb::ServerState::instance()->isRunningInCluster();
@@ -1253,69 +1198,13 @@ bool Query::canUseQueryCache() const {
 std::string Query::buildErrorMessage(int errorCode) const {
   std::string err(TRI_errno_string(errorCode));
 
-  if (!_queryString.empty() && verboseErrors()) {
+  if (!_queryString.empty() && _queryOptions.verboseErrors) {
     err += "\nwhile executing:\n";
     _queryString.append(err);
     err += "\n";
   }
 
   return err;
-}
-
-/// @brief read the "optimizer.inspectSimplePlans" section from the options
-bool Query::inspectSimplePlans() const {
-  if (_options == nullptr) {
-    return true;
-  }
-
-  VPackSlice options = _options->slice();
-  if (!options.isObject()) {
-    return true;  // default
-  }
-
-  VPackSlice opt = options.get("optimizer");
-
-  if (!opt.isObject()) {
-    return true;  // default
-  }
-
-  return arangodb::basics::VelocyPackHelper::getBooleanValue(
-      opt, "inspectSimplePlans", true);
-}
-
-/// @brief read the "optimizer.rules" section from the options
-std::vector<std::string> Query::getRulesFromOptions() const {
-  std::vector<std::string> rules;
-
-  if (_options == nullptr) {
-    return rules;
-  }
-
-  VPackSlice options = _options->slice();
-
-  if (!options.isObject()) {
-    return rules;
-  }
-
-  VPackSlice opt = options.get("optimizer");
-
-  if (!opt.isObject()) {
-    return rules;
-  }
-
-  VPackSlice rulesList = opt.get("rules");
-
-  if (!rulesList.isArray()) {
-    return rules;
-  }
-
-  for (auto const& rule : VPackArrayIterator(rulesList)) {
-    if (rule.isString()) {
-      rules.emplace_back(rule.copyString());
-    }
-  }
-
-  return rules;
 }
 
 /// @brief enter a new state
@@ -1387,15 +1276,6 @@ Graph const* Query::lookupGraphByName(std::string const& name) {
   return g.release();
 }
 
-size_t Query::memoryLimit() const {
-  uint64_t globalLimit = _queryRegistry->queryMemoryLimit();
-  uint64_t value = getNumericOption<uint64_t>("memoryLimit", globalLimit);
-  if (value > 0) {
-    return static_cast<size_t>(value);
-  }
-  return 0;
-}
-  
 /// @brief returns the next query id
 TRI_voc_tick_t Query::NextId() {
   return NextQueryId.fetch_add(1, std::memory_order_seq_cst);

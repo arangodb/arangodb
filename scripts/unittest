@@ -1,5 +1,6 @@
 #!/bin/bash
 export PID=$$
+export GLIBCXX_FORCE_NEW=1
 
 if test -n "$ORIGINAL_PATH"; then
     # running in cygwin...
@@ -11,6 +12,12 @@ else
 fi;
 
 export PORT=`expr 1024 + $RANDOM`
+
+NUMA=""
+
+if `which numactl > /dev/null`; then
+    NUMA="numactl --interleave=all"
+fi
 
 if [ -z "${ARANGOSH}" ];  then
     if [ -x build/bin/arangosh ];  then
@@ -26,7 +33,7 @@ if [ -z "${ARANGOSH}" ];  then
 fi
 
 #
-exec $ARANGOSH \
+exec $NUMA $ARANGOSH \
      -c etc${PS}relative${PS}arangosh.conf \
      --log.level warning \
      --server.endpoint tcp://127.0.0.1:${PORT} \

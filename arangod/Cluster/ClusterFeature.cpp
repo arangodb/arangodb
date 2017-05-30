@@ -99,10 +99,10 @@ void ClusterFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
   options->addHiddenOption("--cluster.agency-prefix", "agency prefix",
                      new StringParameter(&_agencyPrefix));
 
-  options->addOption("--cluster.my-local-info", "this server's local info",
+  options->addHiddenOption("--cluster.my-local-info", "this server's local info",
                      new StringParameter(&_myLocalInfo));
 
-  options->addOption("--cluster.my-id", "this server's id",
+  options->addHiddenOption("--cluster.my-id", "this server's id",
                      new StringParameter(&_myId));
 
   options->addOption("--cluster.my-role", "this server's role",

@@ -116,6 +116,35 @@ startup option *--query.memory-limit* will be used for restricting the maximum a
 of memory the query can use. A memory limit value of *0* means that the maximum
 amount of memory for the query is not restricted. 
 
+#### Setting options
+
+There are further options that can be passed in the *options* attribute of the *_query* method:
+
+- *failOnWarning*: when set to *true*, this will make the query throw an exception and
+  abort in case a warning occurs. This option should be used in development to catch
+  errors early. If set to *false*, warnings will not be propagated to exceptions and
+  will be returned with the query results. There is also a server configuration option 
+  `--query.fail-on-warning` for setting the default value for *failOnWarning* so it does
+  not need to be set on a per-query level.
+
+- *cache*: if set to *true*, this will put the query result into the query result cache
+  if the query result is eligible for caching and the query cache is running in demand 
+  mode. If set to *false*, the query result will not be inserted into the query result
+  cache. Note that query results will never be inserted into the query result cache if
+  the query result cache is disabled, and that they will be automatically inserted into
+  the query result cache when it is active in non-demand mode.
+
+- *profile*: if set to *true*, returns extra timing information for the query. The timing
+  information is accessible via the *getExtra* method of the query result.
+
+- *maxWarningCount*: limits the number of warnings that are returned by the query if
+  *failOnWarning* is not set to *true*. The default value is *10*.
+
+- *maxNumberOfPlans*: limits the number of query execution plans the optimizer will
+  create at most. Reducing the number of query execution plans may speed up query plan
+  creation and optimization for complex queries, but normally there is no need to adjust
+  this value.
+
 ### with _createStatement (ArangoStatement)
 
 The *_query* method is a shorthand for creating an ArangoStatement object,

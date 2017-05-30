@@ -22,14 +22,18 @@ else ()
 endif ()
 
 # snappy settings
-set(USE_SNAPPY_DEFAULT 1 CACHE BOOL "enable snappy")
+set(SNAPPY_HOME ${CMAKE_SOURCE_DIR}/3rdParty/snappy/google-snappy-d53de18/)
 
-set(SNAPPY_HOME ${CMAKE_SOURCE_DIR}/3rdParty/snappy/google-snappy-d53de18/ )
-
-set(SNAPPY_INCLUDE ${SNAPPY_HOME} CACHE PATH "include path")
-# list(APPEND SNAPPY_INCLUDE ${CMAKE_BINARY_DIR}/3rdParty/snappy/google-snappy-d53de18/)
-set(SNAPPY_LIB_DEBUG snappystatic CACHE FILEPATH "debug library")
-set(SNAPPY_LIB_RELEASE snappystatic CACHE FILEPATH "release library")
+if (WIN32)
+  set(SNAPPY 1 CACHE BOOL "enable snappy")
+  set(SNAPPY_INCLUDE ${SNAPPY_HOME};${CMAKE_BINARY_DIR}/3rdParty/snappy/google-snappy-d53de18/)
+  set(SNAPPY_LIB_DEBUG snappystatic)
+  set(SNAPPY_LIB_RELEASE snappystatic)
+else ()
+  set(WITH_SNAPPY ON CACHE BOOL "enable snappy")
+  set(SNAPPY_INCLUDE_DIR ${SNAPPY_HOME};${CMAKE_BINARY_DIR}/3rdParty/snappy/google-snappy-d53de18/)
+  set(SNAPPY_LIBRARIES ${CMAKE_BINARY_DIR}/3rdParty/snappy/google-snappy-d53de18/libsnappystatic.a)
+endif ()
 
 add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/v5.1.4)
 

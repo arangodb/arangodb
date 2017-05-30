@@ -414,11 +414,14 @@ std::unique_ptr<transaction::Methods>
 RocksDBReplicationContext::createTransaction(TRI_vocbase_t* vocbase) {
   _guard.reset(new DatabaseGuard(vocbase));
 
-  double lockTimeout = transaction::Methods::DefaultLockTimeout;
+  transaction::Options transactionOptions;
+  transactionOptions.waitForSync = false;
+  transactionOptions.allowImplicitCollections = true;
+
   std::shared_ptr<transaction::StandaloneContext> ctx =
       transaction::StandaloneContext::Create(vocbase);
   std::unique_ptr<transaction::Methods> trx(new transaction::UserTransaction(
-      ctx, {}, {}, {}, lockTimeout, false, true));
+      ctx, {}, {}, {}, transactionOptions));
   Result res = trx->begin();
   if (!res.ok()) {
     _guard.reset();

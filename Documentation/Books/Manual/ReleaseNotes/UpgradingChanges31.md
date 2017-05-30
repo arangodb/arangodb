@@ -47,6 +47,8 @@ The behavior of the AQL array comparison operators has changed for empty arrays:
   * `[1, 2] NONE == 1` will return `false`
   * `[2, 2] NONE == 1` will return `true`
 
+* `WITH` in cluster traversals is now mandatory in order to avoid deadlocks.
+
 Data format changes
 -------------------
 

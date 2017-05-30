@@ -1,6 +1,16 @@
 devel
 -----
 
+* added server startup option `--query.fail-on-warning`
+
+  setting this option to `true` will abort any AQL query with an exception if
+  it causes a warning at runtime. The value can be overridden per query by
+  setting the `failOnWarning` attribute in a query's options.
+
+* added --rocksdb.num-uncompressed-levels to adjust number of non-compressed levels
+
+* added checks for memory managment and warn (i. e. if hugepages are enabled)
+
 * set default SSL cipher suite string to "HIGH:!EXPORT:!aNULL@STRENGTH"
 
 * fixed issue #2469: Authentication = true does not protect foxx-routes
@@ -22,6 +32,8 @@ devel
 
 * added distinction between hasUser and authorized within Foxx
   (cluster internal requests are authorized requests but don't have a user)
+
+* arangoimp now has a `--threads` option to enable parallel imports of data
 
 
 v3.2.alpha4 (2017-04-25)
@@ -836,6 +848,20 @@ v3.1.1 (2016-11-15)
 
 v3.1.0 (2016-10-29)
 -------------------
+
+* AQL breaking change in cluster:
+
+  from ArangoDB 3.1 onwards `WITH` is required for traversals in a
+  clustered environment in order to avoid deadlocks.
+
+  Note that for queries that access only a single collection or that have all
+  collection names specified somewhere else in the query string, there is no
+  need to use *WITH*. *WITH* is only useful when the AQL query parser cannot
+  automatically figure out which collections are going to be used by the query.
+  *WITH* is only useful for queries that dynamically access collections, e.g.
+  via traversals, shortest path operations or the *DOCUMENT()* function.
+
+  more info can be found [here](https://github.com/arangodb/arangodb/blob/devel/Documentation/Books/AQL/Operations/With.md)
 
 * added AQL function `DISTANCE` to calculate the distance between two arbitrary
   coordinates (haversine formula)

@@ -1396,3 +1396,15 @@ ArangoCollection.prototype.removeByKeys = function (keys) {
     ignored: requestResult.ignored
   };
 };
+
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief warmup indexes of a collection
+// //////////////////////////////////////////////////////////////////////////////
+
+ArangoCollection.prototype.warmup = function () {
+  this._status = null;
+  var requestResult = this._database._connection.PUT(this._baseurl('warmup'), '');
+  this._status = null;
+
+  arangosh.checkRequestResult(requestResult);
+};

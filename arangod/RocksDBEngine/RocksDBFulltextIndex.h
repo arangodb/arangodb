@@ -141,7 +141,7 @@ class RocksDBFulltextIndex final : public RocksDBIndex {
 
   arangodb::Result applyQueryToken(transaction::Methods* trx,
                                    FulltextQueryToken const&,
-                                   std::set<std::string>& resultSet);
+                                   std::set<TRI_voc_rid_t>& resultSet);
 };
 }  // namespace arangodb
 

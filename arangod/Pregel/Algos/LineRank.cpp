@@ -60,8 +60,6 @@ struct LRComputation : public VertexComputation<float, float, float> {
     LRWorkerContext const* ctx = static_cast<LRWorkerContext const*>(context());
 
     float* vertexValue = mutableVertexData();
-    RangeIterator<Edge<float>> edges = getEdges();
-
     if (*vertexValue < 0.0f) {
       *vertexValue = ctx->startAtNodeProb;
       aggregate<bool>(kMoreIterations, true);
@@ -73,13 +71,13 @@ struct LRComputation : public VertexComputation<float, float, float> {
 
       bool const* moreIterations = getAggregatedValue<bool>(kMoreIterations);
       if (*moreIterations == false) {
-        *vertexValue = *vertexValue * edges.size() + newScore;
+        *vertexValue = *vertexValue * getEdgeCount() + newScore;
         voteHalt();
       } else {
-        if (edges.size() == 0) {
+        if (getEdgeCount() == 0) {
           newScore = 0;
         } else {
-          newScore /= edges.size();
+          newScore /= getEdgeCount();
           newScore = ctx->startAtNodeProb * RESTART_PROB +
                      newScore * (1.0f - RESTART_PROB);
         }

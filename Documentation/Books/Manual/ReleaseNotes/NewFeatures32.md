@@ -86,40 +86,6 @@ Unlike in MySQL, the storage engine selection in ArangoDB is for an entire clust
 an entire single-server instance. All databases and collections will use the same storage 
 engine. 
 
-### RocksDB storage engine: known issues
-
-The RocksDB storage engine in this release has a few known issues and missing features.
-These will be resolved in the following releases:
-
-* the number of documents reported for collections (`db.<collection>.count()`) may be
-  slightly wrong during transactions
-
-* transactions are de facto limited in size, but no size restriction is currently
-  enforced. These restrictions will be implemented in a future release
-
-* the engine is not yet performance-optimized and well configured
-
-* the datafile debugger (arango-dfdb) cannot be used with this storage engine
-
-* APIs that return collection properties or figures will return slightly different
-  attributes for the RocksDB engine than for the MMFiles engine. For example, the
-  attributes `journalSize`, `doCompact`, `indexBuckets` and `isVolatile` are present
-  in the MMFiles engine but not in the RocksDB engine. The memory usage figures reported 
-  for collections in the RocksDB engine are estimate values, whereas they are
-  exact in the MMFiles engine.
-
-* the RocksDB engine does not support some operations which only make sense in the
-  context of the MMFiles engine. These are:
-
-  - the `rotate` method on collections
-  - the `flush` method for WAL files 
-
-* the `any` operation to provide a random document from a collection is supported
-  by the RocksDB engine but the operation has much higher complexity than in the 
-  MMFiles engine. It is therefore discouraged to call it for cases other than manual
-  inspection of a few documents in a collection.
-
-
 ### RocksDB storage engine: supported index types
 
 The existing indexes in the RocksDB engine are all persistent. The following indexes are
@@ -250,9 +216,18 @@ Foxx
   uploaded file will be used as the service's main entry point.
 
 
-Pregel
+Distributed Graph Processing
 ------
 
+* We added support for executing distributed graph algorithms aka `Pregel`. 
+* Users can run arbitrary algorithms on an entire graph, including in cluster mode.
+* We implemented a number of algorithms for various well-known graph measures:
+  * Connected Components
+  * PageRank
+  * Shortest Paths
+  * Centrality Measures (Centrality and Betweeness)
+  * Community Detection (via Label Propagation, Speakers-Listeners Label Propagation or DMID)
+* Users can contribute their own algorithms
 
 AQL
 ---
@@ -286,6 +261,15 @@ AQL
 
 
 ### Miscellaneous improvements
+
+* added new startup option `--query.fail-on-warning` to make AQL queries
+  abort instead of continuing with warnings. 
+
+  When set to *true*, this will make an AQL query throw an exception and
+  abort in case a warning occurs. This option should be used in development to catch
+  errors early. If set to *false*, warnings will not be propagated to exceptions and
+  will be returned with the query results. The startup option can also be overriden
+  on a per query-level.
 
 * the slow query list now contains the values of bind variables used in the
   slow queries. Bind variables are also provided for the currently running 
@@ -334,6 +318,8 @@ Client tools
       arangoimp --type csv --file data.csv --translate "id=_key" --translate "from=_from" --translate "to=_to"
 
   `--translate` works for CSV and TSV inputs only.
+
+* added `--threads` option to arangoimp to specify the number of parallel import threads 
 
 * changed default value for client tools option `--server.max-packet-size` from 128 MB 
   to 256 MB. this allows transferring bigger result sets from the server without the

@@ -47,6 +47,7 @@
 #include "StorageEngine/TransactionState.h"
 #include "Transaction/Context.h"
 #include "Transaction/Helpers.h"
+#include "Transaction/Options.h"
 #include "Utils/CollectionNameResolver.h"
 #include "Utils/Events.h"
 #include "Utils/OperationCursor.h"
@@ -541,7 +542,8 @@ bool transaction::Methods::findIndexHandleForAndNode(
 }
 
 transaction::Methods::Methods(
-    std::shared_ptr<transaction::Context> const& transactionContext)
+    std::shared_ptr<transaction::Context> const& transactionContext,
+    transaction::Options const& options)
     : _state(nullptr),
       _transactionContext(transactionContext),
       _transactionContextPtr(transactionContext.get()) {
@@ -560,7 +562,7 @@ transaction::Methods::Methods(
     setupEmbedded(vocbase);
   } else {
     // non-embedded
-    setupToplevel(vocbase);
+    setupToplevel(vocbase, options);
   }
 
   TRI_ASSERT(_state != nullptr);
@@ -2866,10 +2868,10 @@ void transaction::Methods::setupEmbedded(TRI_vocbase_t*) {
 }
 
 /// @brief set up a top-level transaction
-void transaction::Methods::setupToplevel(TRI_vocbase_t* vocbase) {
+void transaction::Methods::setupToplevel(TRI_vocbase_t* vocbase, transaction::Options const& options) {
   // we are not embedded. now start our own transaction
   StorageEngine* engine = EngineSelectorFeature::ENGINE;
-  _state = engine->createTransactionState(vocbase);
+  _state = engine->createTransactionState(vocbase, options);
 
   TRI_ASSERT(_state != nullptr);
 

@@ -36,7 +36,7 @@ const querystring = require('querystring');
 const qs = require('qs');
 const url = require('url');
 
-class Response {
+class IncomingResponse {
   throw (msg) {
     if (this.status >= 400) {
       throw Object.assign(
@@ -60,6 +60,32 @@ class Response {
         }
       }
     }
+  }
+  toString () {
+    return this._PRINT({output: ''}).output;
+  }
+  _PRINT (ctx) {
+    const MAX_BYTES = 100;
+    ctx.output += `[${this.constructor.name} ${this.status} ${this.message} `;
+    if (!this.body || !this.body.length) {
+      ctx.output += 'empty';
+    } else {
+      ctx.output += `${this.body.length} bytes `;
+      if (typeof this.body !== 'string') {
+        ctx.output += '<binary>';
+      } else if (this.body.length <= MAX_BYTES) {
+        ctx.output += `"${this.body}"`;
+      } else {
+        const offset = (this.body.length - MAX_BYTES) / 2;
+        ctx.output += `"…${
+          this.body.slice(offset, offset + MAX_BYTES)
+          .replace('\n', '\\n')
+          .replace('\r', '\\r')
+          .replace('\t', '\\t')
+        }…"`;
+      }
+    }
+    ctx.output += ']';
   }
 }
 
@@ -173,12 +199,12 @@ function request (req) {
   }
   let result = internal.download(path, body, options);
 
-  return new Response(result, req.encoding, req.json);
+  return new IncomingResponse(result, req.encoding, req.json);
 }
 
 module.exports = request;
 request.request = request;
-request.Response = Response;
+request.Response = IncomingResponse;
 
 for (const method of ['DELETE', 'GET', 'HEAD', 'PATCH', 'POST', 'PUT']) {
   request[method.toLowerCase()] = function (url, options) {

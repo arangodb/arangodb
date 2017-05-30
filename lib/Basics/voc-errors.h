@@ -85,6 +85,8 @@
 ///   Will be raised when a precondition for an HTTP request is not met.
 /// - 500: @LIT{internal server error}
 ///   Will be raised when an internal server is encountered.
+/// - 503: @LIT{service unavailable}
+///   Will be raised when a service is temporarily unavailable.
 /// - 600: @LIT{invalid JSON object}
 ///   Will be raised when a string representation of a JSON object is corrupt.
 /// - 601: @LIT{superfluous URL suffices}
@@ -649,6 +651,10 @@
 ///   The service manifest file is not well-formed JSON.
 /// - 3001: @LIT{manifest file is invalid}
 ///   The service manifest contains invalid values.
+/// - 3002: @LIT{service files missing}
+///   The service folder or bundle does not exist on this server.
+/// - 3003: @LIT{service files outdated}
+///   The local service bundle does not match the checksum in the database.
 /// - 3004: @LIT{service options are invalid}
 ///   The service options contain invalid values.
 /// - 3007: @LIT{invalid mountpath}
@@ -1095,6 +1101,16 @@ void TRI_InitializeErrorMessages ();
 ////////////////////////////////////////////////////////////////////////////////
 
 #define TRI_ERROR_HTTP_SERVER_ERROR                                       (500)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 503: ERROR_HTTP_SERVICE_UNAVAILABLE
+///
+/// service unavailable
+///
+/// Will be raised when a service is temporarily unavailable.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_HTTP_SERVICE_UNAVAILABLE                                (503)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 600: ERROR_HTTP_CORRUPTED_JSON
@@ -3475,6 +3491,26 @@ void TRI_InitializeErrorMessages ();
 ////////////////////////////////////////////////////////////////////////////////
 
 #define TRI_ERROR_INVALID_SERVICE_MANIFEST                                (3001)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 3002: ERROR_SERVICE_FILES_MISSING
+///
+/// service files missing
+///
+/// The service folder or bundle does not exist on this server.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_SERVICE_FILES_MISSING                                   (3002)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 3003: ERROR_SERVICE_FILES_OUTDATED
+///
+/// service files outdated
+///
+/// The local service bundle does not match the checksum in the database.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_SERVICE_FILES_OUTDATED                                  (3003)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 3004: ERROR_INVALID_FOXX_OPTIONS

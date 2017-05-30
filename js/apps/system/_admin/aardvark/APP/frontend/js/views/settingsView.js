@@ -77,6 +77,12 @@
       window.modalView.hide();
     },
 
+    warmupCollection: function () {
+      this.model.warmupCollection();
+      $('.modal-delete-confirmation').hide();
+      window.modalView.hide();
+    },
+
     deleteCollection: function () {
       this.model.destroy(
         {
@@ -237,6 +243,12 @@
               window.modalView.createDeleteButton(
                 'Truncate',
                 this.truncateCollection.bind(this)
+              )
+            );
+            buttons.push(
+              window.modalView.createNotificationButton(
+                'Warmup',
+                this.warmupCollection.bind(this)
               )
             );
             if (collectionIsLoaded) {

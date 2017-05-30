@@ -119,9 +119,16 @@ GeneralArrayCursor.prototype._PRINT = function (context) {
 
   if (this.hasOwnProperty('_extra') &&
     this._extra.hasOwnProperty('warnings')) {
+    text += ', warning(s): ';
+    var last = null;
     for (var j = 0; j < this._extra.warnings.length; j++) {
-      text += ', WARNING: ' + this._extra.warnings[j].code +
-      ' - ' + this._extra.warnings[j].message;
+      if (this._extra.warnings[j].code !== last) {
+        if (last !== null) {
+          text += ', ';
+        }
+        text += '"' + this._extra.warnings[j].code + ' ' + this._extra.warnings[j].message + '"';
+        last = this._extra.warnings[j].code;
+      }
     }
   }
   text += '])';

@@ -345,6 +345,17 @@ option value for individual queries when running an AQL query.
 The default value is *0*, meaning that there is no memory limit.
 
 
+### Turning AQL warnings into errors
+
+`--query.fail-on-warning value`
+
+When set to *true*, AQL queries that produce warnings will instantly abort and
+throw an exception. This option can be set to catch obvious issues with AQL 
+queries early. When set to *false*, AQL queries that produce warnings will not
+abort and return the warnings along with the query results.
+The option can also be overridden for each individual AQL query.
+
+
 ### Enable/disable AQL query tracking
 
 `--query.tracking flag`

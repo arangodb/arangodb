@@ -5,6 +5,7 @@
   window.ClusterCoordinator = Backbone.Model.extend({
     defaults: {
       'name': '',
+      'id': '',
       'status': 'ok',
       'address': '',
       'protocol': ''

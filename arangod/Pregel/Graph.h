@@ -105,6 +105,7 @@ class VertexEntry {
 
   inline size_t getVertexDataOffset() const { return _vertexDataOffset; }
   inline size_t getEdgeDataOffset() const { return _edgeDataOffset; }
+  inline size_t getEdgeCount() const { return _edgeCount; }
   // inline size_t getSize() { return sizeof(VertexEntry) + _vertexIDSize; }
   inline size_t getSize() { return sizeof(VertexEntry); }
   inline bool active() const { return _active; }

@@ -134,9 +134,7 @@ static void JS_Transaction(v8::FunctionCallbackInfo<v8::Value> const& args) {
   v8::Handle<v8::Object> object = v8::Handle<v8::Object>::Cast(args[0]);
 
   // extract the properties from the object
-
-  // "lockTimeout"
-  double lockTimeout = transaction::Methods::DefaultLockTimeout;
+  transaction::Options trxOptions;
 
   if (object->Has(TRI_V8_ASCII_STRING("lockTimeout"))) {
     static std::string const timeoutError =
@@ -146,17 +144,15 @@ static void JS_Transaction(v8::FunctionCallbackInfo<v8::Value> const& args) {
       TRI_V8_THROW_EXCEPTION_PARAMETER(timeoutError);
     }
 
-    lockTimeout =
+    trxOptions.lockTimeout =
         TRI_ObjectToDouble(object->Get(TRI_V8_ASCII_STRING("lockTimeout")));
 
-    if (lockTimeout < 0.0) {
+    if (trxOptions.lockTimeout < 0.0) {
       TRI_V8_THROW_EXCEPTION_PARAMETER(timeoutError);
     }
   }
 
   // "waitForSync"
-  bool waitForSync = false;
-
   TRI_GET_GLOBALS();
   TRI_GET_GLOBAL_STRING(WaitForSyncKey);
   if (object->Has(WaitForSyncKey)) {
@@ -165,7 +161,7 @@ static void JS_Transaction(v8::FunctionCallbackInfo<v8::Value> const& args) {
       TRI_V8_THROW_EXCEPTION_PARAMETER("<waitForSync> must be a boolean value");
     }
 
-    waitForSync = TRI_ObjectToBoolean(WaitForSyncKey);
+    trxOptions.waitForSync = TRI_ObjectToBoolean(WaitForSyncKey);
   }
 
   // "collections"
@@ -185,86 +181,61 @@ static void JS_Transaction(v8::FunctionCallbackInfo<v8::Value> const& args) {
     TRI_V8_THROW_EXCEPTION_PARAMETER(collectionError);
   }
 
-  bool isValid = true;
   std::vector<std::string> readCollections;
   std::vector<std::string> writeCollections;
   std::vector<std::string> exclusiveCollections;
 
-  bool allowImplicitCollections = true;
   if (collections->Has(TRI_V8_ASCII_STRING("allowImplicit"))) {
-    allowImplicitCollections = TRI_ObjectToBoolean(
+    trxOptions.allowImplicitCollections = TRI_ObjectToBoolean(
         collections->Get(TRI_V8_ASCII_STRING("allowImplicit")));
   }
+  
+  if (object->Has(TRI_V8_ASCII_STRING("maxTransactionSize"))) {
+    trxOptions.maxTransactionSize = TRI_ObjectToUInt64(
+        object->Get(TRI_V8_ASCII_STRING("maxTransactionSize")), true);
+  }
+  if (object->Has(TRI_V8_ASCII_STRING("intermediateCommitSize"))) {
+    trxOptions.intermediateCommitSize = TRI_ObjectToUInt64(
+        object->Get(TRI_V8_ASCII_STRING("intermediateCommitSize")), true);
+  }
+  if (object->Has(TRI_V8_ASCII_STRING("intermediateCommitCount"))) {
+    trxOptions.intermediateCommitCount = TRI_ObjectToUInt64(
+        object->Get(TRI_V8_ASCII_STRING("intermediateCommitCount")), true);
+  }
+
+  auto getCollections = [&isolate](v8::Handle<v8::Object> obj,
+                                   std::vector<std::string>& collections,
+                                   char const* attributeName) -> bool {
+    if (obj->Has(TRI_V8_ASCII_STRING(attributeName))) {
+      if (obj->Get(TRI_V8_ASCII_STRING(attributeName))->IsArray()) {
+        v8::Handle<v8::Array> names = v8::Handle<v8::Array>::Cast(
+            obj->Get(TRI_V8_ASCII_STRING(attributeName)));
+
+        for (uint32_t i = 0; i < names->Length(); ++i) {
+          v8::Handle<v8::Value> collection = names->Get(i);
+          if (!collection->IsString()) {
+            return false;
+          }
+
+          collections.emplace_back(TRI_ObjectToString(collection));
+        }
+      } else if (obj->Get(TRI_V8_ASCII_STRING(attributeName))->IsString()) {
+        collections.emplace_back(
+          TRI_ObjectToString(obj->Get(TRI_V8_ASCII_STRING(attributeName))));
+      } else {
+        return false;
+      }
+      // fallthrough intentional
+    }
+    return true;
+  };
 
   // collections.read
-  if (collections->Has(TRI_V8_ASCII_STRING("read"))) {
-    if (collections->Get(TRI_V8_ASCII_STRING("read"))->IsArray()) {
-      v8::Handle<v8::Array> names = v8::Handle<v8::Array>::Cast(
-          collections->Get(TRI_V8_ASCII_STRING("read")));
-
-      for (uint32_t i = 0; i < names->Length(); ++i) {
-        v8::Handle<v8::Value> collection = names->Get(i);
-        if (!collection->IsString()) {
-          isValid = false;
-          break;
-        }
-
-        readCollections.emplace_back(TRI_ObjectToString(collection));
-      }
-    } else if (collections->Get(TRI_V8_ASCII_STRING("read"))->IsString()) {
-      readCollections.emplace_back(
-          TRI_ObjectToString(collections->Get(TRI_V8_ASCII_STRING("read"))));
-    } else {
-      isValid = false;
-    }
-  }
-
-  // collections.write
-  if (collections->Has(TRI_V8_ASCII_STRING("write"))) {
-    if (collections->Get(TRI_V8_ASCII_STRING("write"))->IsArray()) {
-      v8::Handle<v8::Array> names = v8::Handle<v8::Array>::Cast(
-          collections->Get(TRI_V8_ASCII_STRING("write")));
-
-      for (uint32_t i = 0; i < names->Length(); ++i) {
-        v8::Handle<v8::Value> collection = names->Get(i);
-        if (!collection->IsString()) {
-          isValid = false;
-          break;
-        }
-
-        writeCollections.emplace_back(TRI_ObjectToString(collection));
-      }
-    } else if (collections->Get(TRI_V8_ASCII_STRING("write"))->IsString()) {
-      writeCollections.emplace_back(
-          TRI_ObjectToString(collections->Get(TRI_V8_ASCII_STRING("write"))));
-    } else {
-      isValid = false;
-    }
-  }
+  bool isValid = 
+    (getCollections(collections, readCollections, "read") &&
+     getCollections(collections, writeCollections, "write") &&
+     getCollections(collections, exclusiveCollections, "exclusive"));
   
-  // collections.exclusive
-  if (collections->Has(TRI_V8_ASCII_STRING("exclusive"))) {
-    if (collections->Get(TRI_V8_ASCII_STRING("exclusive"))->IsArray()) {
-      v8::Handle<v8::Array> names = v8::Handle<v8::Array>::Cast(
-          collections->Get(TRI_V8_ASCII_STRING("exclusive")));
-
-      for (uint32_t i = 0; i < names->Length(); ++i) {
-        v8::Handle<v8::Value> collection = names->Get(i);
-        if (!collection->IsString()) {
-          isValid = false;
-          break;
-        }
-
-        exclusiveCollections.emplace_back(TRI_ObjectToString(collection));
-      }
-    } else if (collections->Get(TRI_V8_ASCII_STRING("exclusive"))->IsString()) {
-      exclusiveCollections.emplace_back(
-          TRI_ObjectToString(collections->Get(TRI_V8_ASCII_STRING("exclusive"))));
-    } else {
-      isValid = false;
-    }
-  }
-
   if (!isValid) {
     TRI_V8_THROW_EXCEPTION_PARAMETER(collectionError);
   }
@@ -346,7 +317,7 @@ static void JS_Transaction(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   // start actual transaction
   transaction::UserTransaction trx(transactionContext, readCollections, writeCollections, exclusiveCollections,
-                          lockTimeout, waitForSync, allowImplicitCollections);
+                          trxOptions);
 
   Result res = trx.begin();
 
@@ -895,7 +866,7 @@ static void JS_ExplainAql(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   v8::Handle<v8::Object> result = v8::Object::New(isolate);
   if (queryResult.result != nullptr) {
-    if (query.allPlans()) {
+    if (query.queryOptions().allPlans) {
       result->Set(TRI_V8_ASCII_STRING("plans"),
                   TRI_VPackToV8(isolate, queryResult.result->slice()));
     } else {

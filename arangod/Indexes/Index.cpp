@@ -836,6 +836,11 @@ void Index::expandInSearchValues(VPackSlice const base,
   }
 }
 
+void Index::warmup(arangodb::transaction::Methods*) {
+  // Do nothing. If an index needs some warmup
+  // it has to explicitly implement it.
+}
+
 /// @brief append the index description to an output stream
 std::ostream& operator<<(std::ostream& stream, arangodb::Index const* index) {
   stream << index->context();

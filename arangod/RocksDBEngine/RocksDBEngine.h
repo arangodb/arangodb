@@ -53,6 +53,7 @@ class RestHandlerFactory;
 
 namespace transaction {
 class ContextData;
+struct Options;
 }
 
 class RocksDBEngine final : public StorageEngine {
@@ -80,7 +81,7 @@ class RocksDBEngine final : public StorageEngine {
 
   TransactionManager* createTransactionManager() override;
   transaction::ContextData* createTransactionContextData() override;
-  TransactionState* createTransactionState(TRI_vocbase_t*) override;
+  TransactionState* createTransactionState(TRI_vocbase_t*, transaction::Options const&) override;
   TransactionCollection* createTransactionCollection(
       TransactionState* state, TRI_voc_cid_t cid, AccessMode::Type accessType,
       int nestingLevel) override;
@@ -125,11 +126,14 @@ class RocksDBEngine final : public StorageEngine {
                      std::string const& keysId, std::string const& cid,
                      std::string const& collectionName, TRI_voc_tick_t maxTick,
                      std::string& errorMsg) override;
-  Result createLoggerState(TRI_vocbase_t* vocbase, VPackBuilder& builder) override;
+  Result createLoggerState(TRI_vocbase_t* vocbase,
+                           VPackBuilder& builder) override;
   Result createTickRanges(VPackBuilder& builder) override;
   Result firstTick(uint64_t& tick) override;
-  Result lastLogger(TRI_vocbase_t* vocbase, std::shared_ptr<transaction::Context>
-                   ,uint64_t tickStart, uint64_t tickEnd,  std::shared_ptr<VPackBuilder>& builderSPtr) override;
+  Result lastLogger(TRI_vocbase_t* vocbase,
+                    std::shared_ptr<transaction::Context>, uint64_t tickStart,
+                    uint64_t tickEnd,
+                    std::shared_ptr<VPackBuilder>& builderSPtr) override;
   // database, collection and index management
   // -----------------------------------------
 
@@ -208,14 +212,13 @@ class RocksDBEngine final : public StorageEngine {
 
   rocksdb::TransactionDB* db() const { return _db; }
 
-  RocksDBComparator* cmp() const { return _cmp.get(); }
-
   int writeCreateCollectionMarker(TRI_voc_tick_t databaseId, TRI_voc_cid_t id,
                                   VPackSlice const& slice,
                                   RocksDBLogValue&& logValue);
 
   void addCollectionMapping(uint64_t, TRI_voc_tick_t, TRI_voc_cid_t);
-  std::pair<TRI_voc_tick_t, TRI_voc_cid_t> mapObjectToCollection(uint64_t) const;
+  std::pair<TRI_voc_tick_t, TRI_voc_cid_t> mapObjectToCollection(
+      uint64_t) const;
 
   void determinePrunableWalFiles(TRI_voc_tick_t minTickToKeep);
   void pruneWalFiles();
@@ -244,7 +247,7 @@ class RocksDBEngine final : public StorageEngine {
   /// default read options
   rocksdb::Options _options;
   /// arangodb comparator - requried because of vpack in keys
-  std::unique_ptr<RocksDBComparator> _cmp;
+  std::unique_ptr<RocksDBComparator> _vpackCmp;
   /// path used by rocksdb (inside _basePath)
   std::string _path;
   /// path to arangodb data dir
@@ -257,14 +260,11 @@ class RocksDBEngine final : public StorageEngine {
   /// Background thread handling garbage collection etc
   std::unique_ptr<RocksDBBackgroundThread> _backgroundThread;
   uint64_t _maxTransactionSize;  // maximum allowed size for a transaction
-  uint64_t _intermediateTransactionCommitSize;   // maximum size for a
-                                                 // transaction before a
-                                                 // intermediate commit will be
-                                                 // tried
-  uint64_t _intermediateTransactionCommitCount;  // limit of transaction count
-                                                 // for intermediate commit
-  bool _intermediateTransactionCommitEnabled;    // allow usage of intermediate
-                                                 // commits
+  uint64_t _intermediateCommitSize;   // maximum size for a
+                                      // transaction before an
+                                      // intermediate commit is performed
+  uint64_t _intermediateCommitCount;  // limit of transaction count
+                                      // for intermediate commit
 
   mutable basics::ReadWriteLock _collectionMapLock;
   std::unordered_map<uint64_t, std::pair<TRI_voc_tick_t, TRI_voc_cid_t>>
@@ -274,7 +274,7 @@ class RocksDBEngine final : public StorageEngine {
   std::unordered_map<std::string, double> _prunableWalFiles;
 
   // number of seconds to wait before an obsolete WAL file is actually pruned
-  double _pruneWaitTime; 
+  double _pruneWaitTime;
 };
 }  // namespace arangodb
 #endif

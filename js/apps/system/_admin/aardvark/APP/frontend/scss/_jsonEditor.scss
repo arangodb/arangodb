@@ -3,7 +3,7 @@
   background-color: $c-white !important;
   border: 0 solid $c-semi-transp !important;
 
-  .menu {
+  .jsoneditor-menu {
     background-color: $c-white !important;
     border-bottom: 1px solid $c-c2grey !important;
     border-left: 0 !important;
@@ -12,20 +12,83 @@
 
     button {
       border: 0 !important;
+      color: $c-black;
+      opacity: .4 !important;
+
+      &:hover {
+        background-color: $c-positive;
+        color: $c-white !important;
+        cursor: pointer;
+        opacity: 1 !important;
+      }
+
+      &.jsoneditor-selected {
+        background-color: $c-positive !important;
+        color: $c-white !important;
+        opacity: 1 !important;
+      }
+
+      &.jsoneditor-undo,
+      &.jsoneditor-redo {
+        opacity: 1 !important;
+      }
+
+      &.jsoneditor-format,
+      &.jsoneditor-expand-all,
+      &.jsoneditor-collapse-all,
+      &.jsoneditor-compact {
+        background-color: $c-black !important;
+        filter: invert(100%);
+
+        &:hover {
+          background-color: $c-positive !important;
+          color: $c-white !important;
+          filter: invert(0%);
+        }
+      }
     }
 
-    button:hover {
-      background-color: $c-positive;
-      color: $c-white;
-    }
+    .jsoneditor-modes {
+      button {
+        border: 0 !important;
+        color: $c-black;
+        opacity: .4 !important;
 
+        &:hover {
+          background-color: $c-positive;
+          color: $c-white !important;
+          cursor: pointer;
+          opacity: 1 !important;
+        }
+
+        &.jsoneditor-selected {
+          background-color: $c-positive !important;
+          color: $c-white !important;
+          opacity: 1 !important;
+        }
+      }
+    }
   }
 
-  .search {
-
-    .frame {
+  .jsoneditor-search {
+    .jsoneditor-frame {
       border: 0 !important;
-      margin: 3px !important;
+      margin-top: -1px !important;
+
+      button {
+        border-radius: 2px;
+
+        &.jsoneditor-refresh {
+          background-position: -96px -72px;
+          margin-right: -10px;
+          margin-top: 1px;
+          width: 25px;
+        }
+
+        &.jsoneditor-next {
+          margin-left: -10px;
+        }
+      }
 
       .refresh {
         background-position: -96px -73px;
@@ -38,8 +101,11 @@
         margin-left: 15px;
         margin-right: 15px;
         margin-top: 0;
-      }
 
+        &:focus {
+          border: 2px solid $c-positive !important;
+        }
+      }
     }
 
     .results {

@@ -45,6 +45,7 @@ class StaticStrings {
   static std::string const IndexGt;
 
   // system attribute names
+  static std::string const AttachmentString;
   static std::string const IdString;
   static std::string const KeyString;
   static std::string const RevString;

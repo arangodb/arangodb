@@ -52,6 +52,7 @@ class RocksDBOptionFeature final
   uint64_t _delayedWriteRate;
   uint64_t _minWriteBufferNumberToMerge;
   uint64_t _numLevels;
+  uint64_t _numUncompressedLevels;
   uint64_t _maxBytesForLevelBase;
   double _maxBytesForLevelMultiplier;
   uint64_t _baseBackgroundCompactions;

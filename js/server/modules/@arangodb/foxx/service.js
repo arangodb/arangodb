@@ -107,7 +107,7 @@ module.exports =
       return manifest;
     }
 
-    static validateServiceFiles (mount, manifest) {
+    static validateServiceFiles (mount, manifest, rev) {
       const servicePath = FoxxService.basePath(mount);
       if (manifest.main) {
         parseFile(servicePath, manifest.main);
@@ -140,6 +140,7 @@ module.exports =
     }
 
     constructor (definition, manifest) {
+      this._rev = definition._rev;
       this.mount = definition.mount;
       this.checksum = definition.checksum;
       this.basePath = definition.basePath || FoxxService.basePath(this.mount);
@@ -642,11 +643,19 @@ module.exports =
     }
 
     static rootPath (mount) {
-      if (mount.charAt(1) === '_') {
+      if (mount && mount.charAt(1) === '_') {
         return FoxxService._systemAppPath;
       }
       return FoxxService._appPath;
     }
+
+    static rootBundlePath (mount) {
+      return path.resolve(
+        FoxxService.rootPath(mount),
+        '_appbundles'
+      );
+    }
+
 
     static basePath (mount) {
       return path.resolve(
@@ -661,7 +670,7 @@ module.exports =
         mount = '/' + mount;
       }
       const bundleName = mount.substr(1).replace(/[-.:/]/g, '_');
-      return path.join(FoxxService.rootPath(mount), bundleName + '.zip');
+      return path.join(FoxxService.rootBundlePath(mount), bundleName + '.zip');
     }
 
     static get _startupPath () {
