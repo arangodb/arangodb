@@ -38,6 +38,12 @@ in-memory buffer allowed and we allow more than 3 buffers. Default: 16MiB/s.
 
 The number of levels for the database in the LSM tree. Default: 7.
 
+`--rocksdb.num-uncompressed-levels`
+
+The number of levels that do not use compression. The default value is 2.
+Levels above this number will use Snappy compression to reduce the disk
+space requirements for storing data in these levels.
+
 `--rocksdb.max-bytes-for-level-base` (Hidden)
 
 The maximum total data size in bytes in level-1 of the LSM tree. Default:
