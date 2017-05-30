@@ -75,7 +75,7 @@ if (cluster.isCluster()) {
   router.get('/Coordinators', function(req, res) {
     const list = global.ArangoClusterInfo.getCoordinators();
     res.json(list.map(n => { 
-      var r = { "name": n, "role": "coordinator" };
+      var r = { "id": n, "role": "coordinator" };
       r.status = "ok";
       const endpoint = global.ArangoClusterInfo.getServerEndpoint(n);
       const proto = endpoint.substr(0, 6);
