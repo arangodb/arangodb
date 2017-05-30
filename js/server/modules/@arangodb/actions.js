@@ -979,34 +979,37 @@ function flattenRoutingTree (tree) {
 //
 
 function foxxRouting (req, res, options, next) {
-  // console.infoLines(require('util').inspect(req));
   var mount = options.mount;
 
   try {
-    var service = FoxxManager.lookupService(mount);
-    var devel = service.isDevelopment;
-
-    if (devel || !options.routing) {
+    const service = FoxxManager.lookupService(mount);
+    if (service.isDevelopment || !options.routing) {
       delete options.error;
 
-      if (devel) {
-        service = FoxxManager.reloadInstalledService(mount, true);
+      if (service.isDevelopment) {
+        FoxxManager.reloadInstalledService(mount, true);
       }
 
       options.routing = flattenRoutingTree(buildRoutingTree([
         FoxxManager.ensureRouted(mount).routes
       ]));
     }
-  } catch (err1) {
+  } catch (e) {
     options.error = {
-      code: exports.HTTP_SERVER_ERROR,
-      num: arangodb.ERROR_HTTP_SERVER_ERROR,
-      msg: "failed to load Foxx service mounted at '" + mount + "'",
-      info: { exception: String(err1) }
+      code: exports.HTTP_SERVICE_UNAVAILABLE,
+      num: arangodb.ERROR_HTTP_SERVICE_UNAVAILABLE,
+      msg: `Failed to load Foxx service mounted at "${mount}"`,
+      info: { exception: String(e) }
     };
 
-    if (err1.stack) {
-      options.error.info.stacktrace = String(err1.stack).split('\n');
+    if (e.stack) {
+      let stack = String(e.stack);
+      let error = e;
+      while (error.cause) {
+        stack += 'via ' + error.cause.stack;
+        error = error.cause;
+      }
+      options.error.info.stacktrace = stack.split('\n');
     }
   }
 
