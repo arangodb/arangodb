@@ -17,7 +17,7 @@
       if (window.App.isCluster) {
         this.coordinators = options.coordinators;
         this.dbServers = options.dbServers;
-        this.coordname = options.coordname;
+        this.coordid = options.coordid;
         this.updateServerTime();
 
         // start polling with interval
@@ -39,7 +39,7 @@
 
       var callback = function () {
         this.continueRender();
-        this.breadcrumb(arangoHelper.getCoordinatorShortName(this.coordname));
+        this.breadcrumb(arangoHelper.getCoordinatorShortName(this.coordid));
         // window.arangoHelper.buildNodeSubNav(this.coordname, 'Dashboard', 'Logs')
         $(window).trigger('resize');
       }.bind(this);
@@ -51,8 +51,8 @@
       if (!this.initDBDone) {
         this.waitForDBServers(callback);
       } else {
-        this.coordname = window.location.hash.split('/')[1];
-        this.coordinator = this.coordinators.findWhere({name: this.coordname});
+        this.coordid = window.location.hash.split('/')[1];
+        this.coordinator = this.coordinators.findWhere({id: this.coordid});
         callback();
       }
     },
@@ -60,6 +60,9 @@
     continueRender: function () {
       var self = this;
 
+      if (!this.coordinator) {
+        this.coordinator = this.coordinators.findWhere({id: this.coordid});
+      }
       this.dashboards[this.coordinator.get('name')] = new window.DashboardView({
         dygraphConfig: window.dygraphConfig,
         database: window.App.arangoDatabase,
@@ -67,7 +70,7 @@
           raw: this.coordinator.get('address'),
           isDBServer: false,
           endpoint: this.coordinator.get('protocol') + '://' + this.coordinator.get('address'),
-          target: this.coordinator.get('name')
+          target: this.coordinator.get('id')
         }
       });
       this.dashboards[this.coordinator.get('name')].render();
@@ -83,7 +86,7 @@
         if (self.coordinators.length === 0) {
           self.waitForCoordinators(callback);
         } else {
-          self.coordinator = self.coordinators.findWhere({name: self.coordname});
+          self.coordinator = self.coordinators.findWhere({name: self.coordid});
           self.initCoordDone = true;
           if (callback) {
             callback();
