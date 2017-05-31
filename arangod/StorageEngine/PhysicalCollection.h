@@ -116,9 +116,9 @@ class PhysicalCollection {
   virtual bool dropIndex(TRI_idx_iid_t iid) = 0;
 
   virtual std::unique_ptr<IndexIterator> getAllIterator(
-      transaction::Methods* trx, ManagedDocumentResult* mdr, bool reverse) = 0;
+      transaction::Methods* trx, ManagedDocumentResult* mdr, bool reverse) const = 0;
   virtual std::unique_ptr<IndexIterator> getAnyIterator(
-      transaction::Methods* trx, ManagedDocumentResult* mdr) = 0;
+      transaction::Methods* trx, ManagedDocumentResult* mdr) const = 0;
   virtual void invokeOnAllElements(
       transaction::Methods* trx,
       std::function<bool(DocumentIdentifierToken const&)> callback) = 0;

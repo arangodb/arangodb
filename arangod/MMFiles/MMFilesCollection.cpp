@@ -2332,13 +2332,13 @@ int MMFilesCollection::cleanupIndexes() {
 }
 
 std::unique_ptr<IndexIterator> MMFilesCollection::getAllIterator(
-    transaction::Methods* trx, ManagedDocumentResult* mdr, bool reverse) {
+    transaction::Methods* trx, ManagedDocumentResult* mdr, bool reverse) const {
   return std::unique_ptr<IndexIterator>(
       primaryIndex()->allIterator(trx, mdr, reverse));
 }
 
 std::unique_ptr<IndexIterator> MMFilesCollection::getAnyIterator(
-    transaction::Methods* trx, ManagedDocumentResult* mdr) {
+    transaction::Methods* trx, ManagedDocumentResult* mdr) const {
   return std::unique_ptr<IndexIterator>(primaryIndex()->anyIterator(trx, mdr));
 }
 

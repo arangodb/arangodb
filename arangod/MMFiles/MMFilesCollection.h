@@ -279,9 +279,9 @@ class MMFilesCollection final : public PhysicalCollection {
 
   std::unique_ptr<IndexIterator> getAllIterator(transaction::Methods* trx,
                                                 ManagedDocumentResult* mdr,
-                                                bool reverse) override;
+                                                bool reverse) const override;
   std::unique_ptr<IndexIterator> getAnyIterator(
-      transaction::Methods* trx, ManagedDocumentResult* mdr) override;
+      transaction::Methods* trx, ManagedDocumentResult* mdr) const override;
   void invokeOnAllElements(
       transaction::Methods* trx,
       std::function<bool(DocumentIdentifierToken const&)> callback) override;

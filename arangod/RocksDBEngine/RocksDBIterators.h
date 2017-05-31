@@ -61,7 +61,6 @@ class RocksDBAllIndexIterator final : public IndexIterator {
   bool nextDocument(DocumentCallback const& cb, size_t limit) override;
 
   void reset() override;
-  void seek(StringRef const& key);
 
  private:
   bool outOfRange() const;
@@ -70,7 +69,6 @@ class RocksDBAllIndexIterator final : public IndexIterator {
   RocksDBKeyBounds const _bounds;
   std::unique_ptr<rocksdb::Iterator> _iterator;
   rocksdb::Comparator const* _cmp;
-  RocksDBPrimaryIndex const* _index;
 };
 
 class RocksDBAnyIndexIterator final : public IndexIterator {
@@ -99,6 +97,38 @@ class RocksDBAnyIndexIterator final : public IndexIterator {
   RocksDBKeyBounds const _bounds;
   uint64_t _total;
   uint64_t _returned;
+};
+
+class RocksDBSortedAllIterator final : public IndexIterator {
+ public:
+  typedef std::function<void(DocumentIdentifierToken const& token,
+                             StringRef const& key)>
+      TokenKeyCallback;
+  RocksDBSortedAllIterator(LogicalCollection* collection,
+                           transaction::Methods* trx,
+                           ManagedDocumentResult* mmdr,
+                           RocksDBPrimaryIndex const* index);
+
+  ~RocksDBSortedAllIterator() {}
+
+  char const* typeName() const override { return "sorted-all-index-iterator"; }
+
+  bool next(TokenCallback const& cb, size_t limit) override;
+  void reset() override;
+
+  // engine specific optimizations
+  bool nextWithKey(TokenKeyCallback const& cb, size_t limit);
+  void seek(StringRef const& key);
+
+ private:
+  bool outOfRange() const;
+
+  RocksDBKeyBounds const _bounds;
+  std::unique_ptr<rocksdb::Iterator> _iterator;
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  RocksDBPrimaryIndex const* _index;
+#endif
+  rocksdb::Comparator const* _cmp;
 };
 }
 

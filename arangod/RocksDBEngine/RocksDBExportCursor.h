@@ -25,10 +25,10 @@
 #define ARANGOD_ROCKSDB_ROCKSDB_EXPORT_CURSOR_H 1
 
 #include "Basics/Common.h"
-#include "Utils/Cursor.h"
 #include "Utils/CollectionExport.h"
 #include "Utils/CollectionGuard.h"
 #include "Utils/CollectionNameResolver.h"
+#include "Utils/Cursor.h"
 #include "VocBase/ManagedDocumentResult.h"
 #include "VocBase/voc-types.h"
 #include "VocBase/vocbase.h"
@@ -38,7 +38,7 @@ namespace velocypack {
 class Slice;
 }
 namespace transaction {
-  class Methods;
+class Methods;
 }
 
 class IndexIterator;
@@ -46,8 +46,8 @@ class IndexIterator;
 class RocksDBExportCursor final : public Cursor {
  public:
   RocksDBExportCursor(TRI_vocbase_t*, std::string const&,
-                      CollectionExport::Restrictions const&, CursorId, size_t, size_t,
-                      double, bool);
+                      CollectionExport::Restrictions const&, CursorId, size_t,
+                      size_t, double, bool);
 
   ~RocksDBExportCursor();
 

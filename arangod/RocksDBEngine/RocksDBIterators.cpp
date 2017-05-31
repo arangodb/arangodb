@@ -40,8 +40,7 @@ RocksDBAllIndexIterator::RocksDBAllIndexIterator(
       _bounds(RocksDBKeyBounds::CollectionDocuments(
           static_cast<RocksDBCollection*>(col->getPhysical())->objectId())),
       _iterator(),
-      _cmp(RocksDBColumnFamily::documents()->GetComparator()),
-      _index(index) {
+      _cmp(RocksDBColumnFamily::documents()->GetComparator()) {
   // acquire rocksdb transaction
   RocksDBMethods* mthds = rocksutils::toRocksMethods(trx);
   rocksdb::ColumnFamilyHandle* cf = RocksDBColumnFamily::documents();
@@ -138,25 +137,6 @@ bool RocksDBAllIndexIterator::nextDocument(
   }
 
   return true;
-}
-
-void RocksDBAllIndexIterator::seek(StringRef const& key) {
-  TRI_ASSERT(_trx->state()->isRunning());
-
-  RocksDBToken token = _index->lookupKey(_trx, key);
-  if (!token.revisionId()) {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND);
-  }
-  // don't want to get the index pointer just for this
-  uint64_t objectId = _bounds.objectId();
-  RocksDBKey val = RocksDBKey::Document(objectId, token.revisionId());
-  if (_reverse) {
-    _iterator->SeekForPrev(val.string());
-  } else {
-    _iterator->Seek(val.string());
-    TRI_ASSERT(_iterator->Valid());
-    TRI_ASSERT(RocksDBKey::revisionId(_iterator->key()) == token.revisionId());
-  }
 }
 
 void RocksDBAllIndexIterator::reset() {
@@ -273,4 +253,106 @@ void RocksDBAnyIndexIterator::reset() { _iterator->Seek(_bounds.start()); }
 
 bool RocksDBAnyIndexIterator::outOfRange() const {
   return _cmp->Compare(_iterator->key(), _bounds.end()) > 0;
+}
+
+// ================ Sorted All Iterator ==================
+
+RocksDBSortedAllIterator::RocksDBSortedAllIterator(
+    LogicalCollection* collection, transaction::Methods* trx,
+    ManagedDocumentResult* mmdr, RocksDBPrimaryIndex const* index)
+    : IndexIterator(collection, trx, mmdr, index),
+      _bounds(RocksDBKeyBounds::PrimaryIndex(index->objectId())),
+      _iterator(),
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+      _index(index),
+#endif
+      _cmp(index->comparator()) {
+
+  // acquire rocksdb transaction
+  RocksDBTransactionState* state = rocksutils::toRocksTransactionState(trx);
+  TRI_ASSERT(state != nullptr);
+
+  RocksDBMethods* mthds = rocksutils::toRocksMethods(trx);
+
+  // intentional copy of the read options
+  auto options = mthds->readOptions();
+  TRI_ASSERT(options.snapshot != nullptr);
+  TRI_ASSERT(options.prefix_same_as_start);
+  options.verify_checksums = false;
+  _iterator = mthds->NewIterator(options, index->columnFamily());
+
+  _iterator->Seek(_bounds.start());
+}
+
+bool RocksDBSortedAllIterator::outOfRange() const {
+  TRI_ASSERT(_trx->state()->isRunning());
+  return _cmp->Compare(_iterator->key(), _bounds.end()) > 0;
+}
+
+bool RocksDBSortedAllIterator::next(TokenCallback const& cb, size_t limit) {
+  TRI_ASSERT(_trx->state()->isRunning());
+
+  if (limit == 0 || !_iterator->Valid() || outOfRange()) {
+    // No limit no data, or we are actually done. The last call should have
+    // returned false
+    TRI_ASSERT(limit > 0);  // Someone called with limit == 0. Api broken
+    return false;
+  }
+
+  while (limit > 0) {
+    RocksDBToken token(RocksDBValue::revisionId(_iterator->value()));
+    cb(token);
+
+    --limit;
+
+    _iterator->Next();
+    if (!_iterator->Valid() || outOfRange()) {
+      return false;
+    }
+  }
+
+  return true;
+}
+
+/// special method to expose the document key for incremental replication
+bool RocksDBSortedAllIterator::nextWithKey(TokenKeyCallback const& cb,
+                                           size_t limit) {
+  TRI_ASSERT(_trx->state()->isRunning());
+
+  if (limit == 0 || !_iterator->Valid() || outOfRange()) {
+    // No limit no data, or we are actually done. The last call should have
+    // returned false
+    TRI_ASSERT(limit > 0);  // Someone called with limit == 0. Api broken
+    return false;
+  }
+
+  while (limit > 0) {
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+    TRI_ASSERT(_index->objectId() == RocksDBKey::objectId(_iterator->key()));
+#endif
+    RocksDBToken token(RocksDBValue::revisionId(_iterator->value()));
+    StringRef key = RocksDBKey::primaryKey(_iterator->key());
+    cb(token, key);
+    --limit;
+
+    _iterator->Next();
+    if (!_iterator->Valid() || outOfRange()) {
+      return false;
+    }
+  }
+  return true;
+}
+
+void RocksDBSortedAllIterator::seek(StringRef const& key) {
+  TRI_ASSERT(_trx->state()->isRunning());
+  // don't want to get the index pointer just for this
+  uint64_t objectId = _bounds.objectId();
+  RocksDBKey val = RocksDBKey::PrimaryIndexValue(objectId, key);
+  _iterator->Seek(val.string());
+  TRI_ASSERT(_iterator->Valid());
+}
+
+void RocksDBSortedAllIterator::reset() {
+  TRI_ASSERT(_trx->state()->isRunning());
+  _iterator->Seek(_bounds.start());
 }
