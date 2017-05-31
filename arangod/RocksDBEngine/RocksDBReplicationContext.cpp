@@ -238,12 +238,15 @@ arangodb::Result RocksDBReplicationContext::dumpKeyChunks(VPackBuilder& b,
       b.add("high", VPackValue(highKey.copyString()));
       b.add("hash", VPackValue(std::to_string(hash)));
       b.close();
-      lowKey = "";
+      lowKey.clear();// reset string
     } catch (std::exception const&) {
       return Result(TRI_ERROR_INTERNAL);
     }
   }
   b.close();
+  // we will not call this method twice
+  _iter->reset();
+  _lastIteratorOffset = 0;
 
   return Result();
 }
@@ -259,22 +262,24 @@ arangodb::Result RocksDBReplicationContext::dumpKeys(
 
   // Position the iterator correctly
   size_t from = chunk * chunkSize;
-  if (from != _lastIteratorOffset && !lowKey.empty()) {
-    primary->seek(StringRef(lowKey));
-    _lastIteratorOffset = from;
-  } else {  // no low key supplied, we can not use seek
-    if (from == 0 || !_hasMore || from < _lastIteratorOffset) {
-      _iter->reset();
-      _lastIteratorOffset = 0;
+  if (from != _lastIteratorOffset) {
+    if (!lowKey.empty()) {
+      primary->seek(StringRef(lowKey));
+      _lastIteratorOffset = from;
+    } else {  // no low key supplied, we can not use seek
+      if (from == 0 || !_hasMore || from < _lastIteratorOffset) {
+        _iter->reset();
+        _lastIteratorOffset = 0;
+      }
+      if (from > _lastIteratorOffset) {
+        TRI_ASSERT(from >= chunkSize);
+        uint64_t diff = from - _lastIteratorOffset;
+        uint64_t to = 0;  // = (chunk + 1) * chunkSize;
+        _iter->skip(diff, to);
+        _lastIteratorOffset += to;
+      }
+      TRI_ASSERT(_lastIteratorOffset == from);
     }
-    if (from > _lastIteratorOffset) {
-      TRI_ASSERT(from >= chunkSize);
-      uint64_t diff = from - _lastIteratorOffset;
-      uint64_t to = 0;  // = (chunk + 1) * chunkSize;
-      _iter->skip(diff, to);
-      _lastIteratorOffset += to;
-    }
-    TRI_ASSERT(_lastIteratorOffset == from);
   }
 
   auto cb = [&](ManagedDocumentResult const& mdr) {
@@ -312,23 +317,25 @@ arangodb::Result RocksDBReplicationContext::dumpDocuments(
   // Position the iterator must be reset to the beginning
   // after calls to dumpKeys moved it forwards
   size_t from = chunk * chunkSize;
-  if (from != _lastIteratorOffset && !lowKey.empty()) {
+  if (from != _lastIteratorOffset) {
+    if (!lowKey.empty()) {
     primary->seek(StringRef(lowKey));
     _lastIteratorOffset = from;
-  } else {  // no low key supplied, we can not use seek
-    if (from == 0 || !_hasMore || from < _lastIteratorOffset) {
-      _iter->reset();
-      _lastIteratorOffset = 0;
+    } else {  // no low key supplied, we can not use seek
+      if (from == 0 || !_hasMore || from < _lastIteratorOffset) {
+        _iter->reset();
+        _lastIteratorOffset = 0;
+      }
+      if (from > _lastIteratorOffset) {
+        TRI_ASSERT(from >= chunkSize);
+        uint64_t diff = from - _lastIteratorOffset;
+        uint64_t to = 0;  // = (chunk + 1) * chunkSize;
+        _iter->skip(diff, to);
+        _lastIteratorOffset += to;
+        TRI_ASSERT(to == diff);
+      }
+      TRI_ASSERT(_lastIteratorOffset == from);
     }
-    if (from > _lastIteratorOffset) {
-      TRI_ASSERT(from >= chunkSize);
-      uint64_t diff = from - _lastIteratorOffset;
-      uint64_t to = 0;  // = (chunk + 1) * chunkSize;
-      _iter->skip(diff, to);
-      _lastIteratorOffset += to;
-      TRI_ASSERT(to == diff);
-    }
-    TRI_ASSERT(_lastIteratorOffset == from);
   }
 
   auto cb = [&](DocumentIdentifierToken const& token) {

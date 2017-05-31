@@ -154,7 +154,6 @@ void RocksDBAllIndexIterator::seek(StringRef const& key) {
     _iterator->SeekForPrev(val.string());
   } else {
     _iterator->Seek(val.string());
-
     TRI_ASSERT(_iterator->Valid());
     TRI_ASSERT(RocksDBKey::revisionId(_iterator->key()) == token.revisionId());
   }
