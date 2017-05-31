@@ -1333,6 +1333,11 @@ RocksDBOperationResult RocksDBCollection::insertDocument(
     res.keySize(key.string().size());
     return res;
   }
+  
+  /*LOG_TOPIC(ERR, Logger::FIXME) << "PUT rev: " << revisionId << " trx: " << trx->state()->id()
+  << " seq: " <<  mthd->readOptions().snapshot->GetSequenceNumber()
+  << " objectID " << _objectId
+  << " name: " << _logicalCollection->name();*/
 
   RocksDBOperationResult innerRes;
   READ_LOCKER(guard, _indexesLock);
@@ -1391,6 +1396,11 @@ RocksDBOperationResult RocksDBCollection::removeDocument(
   }
   //}
 
+  /*LOG_TOPIC(ERR, Logger::FIXME) << "Delete rev: " << revisionId << " trx: " << trx->state()->id()
+  << " seq: " <<  mthd->readOptions().snapshot->GetSequenceNumber()
+  << " objectID " << _objectId
+  << " name: " << _logicalCollection->name();*/
+  
   RocksDBOperationResult resInner;
   READ_LOCKER(guard, _indexesLock);
   for (std::shared_ptr<Index> const& idx : _indexes) {
@@ -1517,10 +1527,10 @@ arangodb::Result RocksDBCollection::lookupRevisionVPack(
 
     mdr.setManaged(std::move(value), revisionId);
   } else {
-    /*LOG_TOPIC(ERR, Logger::FIXME) << "NOT FOUND rev: " << revisionId << " trx: " << trx->state()->id()
+    LOG_TOPIC(ERR, Logger::FIXME) << "NOT FOUND rev: " << revisionId << " trx: " << trx->state()->id()
                                   << " seq: " <<  mthd->readOptions().snapshot->GetSequenceNumber()
                                   << " objectID " << _objectId
-    << " name: " << _logicalCollection->name();*/
+    << " name: " << _logicalCollection->name();
     mdr.reset();
   }
   return res;

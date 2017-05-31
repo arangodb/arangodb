@@ -213,9 +213,14 @@ arangodb::Result RocksDBReplicationContext::dumpKeyChunks(VPackBuilder& b,
   VPackSlice highKey;  // FIXME: no good keeping this
 
   uint64_t hash = 0x012345678;
-  auto cb = [&](ManagedDocumentResult const& mdr) {
-
-    VPackSlice doc(mdr.vpack());
+  auto cb = [&](DocumentIdentifierToken const& token) {
+    bool ok = _collection->readDocument(_trx.get(), token, _mdr);
+    if (!ok) {
+      // TODO: do something here?
+      return;
+    }
+    
+    VPackSlice doc(_mdr.vpack());
     highKey = doc.get(StaticStrings::KeyString);
     // set type
     if (lowKey.empty()) {
@@ -231,7 +236,7 @@ arangodb::Result RocksDBReplicationContext::dumpKeyChunks(VPackBuilder& b,
   b.openArray();
   while (_hasMore) {
     try {
-      _hasMore = primary->nextDocument(cb, chunkSize);
+      _hasMore = primary->next(cb, chunkSize);
 
       b.add(VPackValue(VPackValueType::Object));
       b.add("low", VPackValue(lowKey));
@@ -282,20 +287,26 @@ arangodb::Result RocksDBReplicationContext::dumpKeys(
     }
   }
 
-  auto cb = [&](ManagedDocumentResult const& mdr) {
-    VPackSlice doc(mdr.vpack());
+  auto cb = [&](DocumentIdentifierToken const& token) {
+    bool ok = _collection->readDocument(_trx.get(), token, _mdr);
+    if (!ok) {
+      // TODO: do something here?
+      return;
+    }
+    
+    VPackSlice doc(_mdr.vpack());
     VPackSlice key = doc.get(StaticStrings::KeyString);
 
     b.openArray();
     b.add(key);
-    b.add(VPackValue(std::to_string(mdr.lastRevisionId())));
+    b.add(VPackValue(std::to_string(_mdr.lastRevisionId())));
     b.close();
   };
 
   b.openArray();
   // chunkSize is going to be ignored here
   try {
-    _hasMore = primary->nextDocument(cb, chunkSize);
+    _hasMore = primary->next(cb, chunkSize);
     _lastIteratorOffset++;
   } catch (std::exception const&) {
     return Result(TRI_ERROR_INTERNAL);
