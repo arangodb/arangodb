@@ -997,7 +997,7 @@ function foxxRouting (req, res, options, next) {
   } catch (e) {
     options.error = {
       code: exports.HTTP_SERVICE_UNAVAILABLE,
-      num: arangodb.ERROR_HTTP_SERVICE_UNAVAILABLE,
+      num: e.errorNum || arangodb.ERROR_HTTP_SERVICE_UNAVAILABLE,
       msg: `Failed to load Foxx service mounted at "${mount}"`,
       info: { exception: String(e) }
     };
