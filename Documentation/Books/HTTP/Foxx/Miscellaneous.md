@@ -16,3 +16,5 @@ Foxx Service Miscellaneous
 @startDocuBlock api_foxx_swagger
 
 @startDocuBlock api_foxx_bundle
+
+@startDocuBlock api_foxx_commit

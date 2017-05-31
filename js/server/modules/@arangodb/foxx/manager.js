@@ -293,6 +293,9 @@ function startup () {
       db._useDatabase(dbName);
     }
   }
+  if (global.ArangoServerState.role() === 'SINGLE') {
+    commitLocalState(true);
+  }
   selfHealAll(true);
 }
 
@@ -310,6 +313,62 @@ function upsertSystemServices () {
     REPLACE item[1]
     IN ${utils.getStorage()}
   `);
+}
+
+function commitLocalState (replace) {
+  let modified = false;
+  const rootPath = FoxxService.rootPath();
+  const collection = utils.getStorage();
+  const bundleCollection = utils.getBundleStorage();
+  for (const relPath of fs.listTree(rootPath)) {
+    if (!relPath) {
+      continue;
+    }
+    const basename = path.basename(relPath);
+    if (basename.toUpperCase() !== 'APP') {
+      continue;
+    }
+    const mount = '/' + path.dirname(relPath).split(path.sep).join('/');
+    const basePath = FoxxService.basePath(mount);
+    if (!fs.list(basePath).length) {
+      continue;
+    }
+    const bundlePath = FoxxService.bundlePath(mount);
+    if (!fs.exists(bundlePath)) {
+      createServiceBundle(mount, bundlePath);
+    }
+    const serviceDefinition = db._query(aql`
+      FOR service IN ${collection}
+      FILTER service.mount == ${mount}
+      RETURN service
+    `).next();
+    if (!serviceDefinition) {
+      const service = FoxxService.create({mount});
+      service.updateChecksum();
+      if (!bundleCollection.exists(service.checksum)) {
+        bundleCollection._binaryInsert({_key: service.checksum}, bundlePath);
+      }
+      collection.save(service.toJSON());
+      modified = true;
+    } else {
+      const checksum = safeChecksum(mount);
+      if (!serviceDefinition.checksum || (replace && serviceDefinition.checksum !== checksum)) {
+        if (!bundleCollection.exists(checksum)) {
+          bundleCollection._binaryInsert({_key: checksum}, bundlePath);
+        }
+        collection.update(serviceDefinition._key, {checksum});
+        modified = true;
+      } else if (serviceDefinition.checksum === checksum) {
+        if (!bundleCollection.exists(checksum)) {
+          bundleCollection._binaryInsert({_key: checksum}, bundlePath);
+          modified = true;
+        }
+      }
+    }
+  }
+  if (modified) {
+    propagateSelfHeal();
+  }
 }
 
 // Change propagation
@@ -850,6 +909,7 @@ exports.ensureFoxxInitialized = ensureFoxxInitialized;
 exports._startup = startup;
 exports.heal = triggerSelfHeal;
 exports.healAll = selfHealAll;
+exports.commitLocalState = commitLocalState;
 exports._createServiceBundle = createServiceBundle;
 exports._resetCache = () => GLOBAL_SERVICE_MAP.clear();
 exports._mountPoints = getMountPoints;
