@@ -38,6 +38,7 @@ devel
 
 * arangoimp now has a `--threads` option to enable parallel imports of data
 
+* PR #2514: Foxx services that can't be fixed by self-healing now serve a 503 error
 
 v3.2.alpha4 (2017-04-25)
 ------------------------

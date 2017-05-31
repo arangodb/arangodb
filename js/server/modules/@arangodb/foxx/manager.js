@@ -339,14 +339,10 @@ function initLocalServiceMap () {
   }
   for (const serviceDefinition of utils.getStorage().all()) {
     try {
-      const service = FoxxService.create(serviceDefinition);
-      localServiceMap.set(service.mount, service);
+      const service = loadInstalledService(serviceDefinition);
+      localServiceMap.set(serviceDefinition.mount, service);
     } catch (e) {
-      if (fs.exists(FoxxService.basePath(serviceDefinition.mount))) {
-        console.errorStack(e, `Failed to load service ${serviceDefinition.mount}`);
-      } else {
-        console.warn(`Could not find local service ${serviceDefinition.mount}`);
-      }
+      localServiceMap.set(serviceDefinition.mount, {error: e});
     }
   }
   GLOBAL_SERVICE_MAP.set(db._name(), localServiceMap);
@@ -366,10 +362,25 @@ function ensureServiceLoaded (mount) {
 function getServiceInstance (mount) {
   ensureFoxxInitialized();
   const localServiceMap = GLOBAL_SERVICE_MAP.get(db._name());
+  let service;
   if (localServiceMap.has(mount)) {
-    return localServiceMap.get(mount);
+    service = localServiceMap.get(mount);
+  } else {
+    service = reloadInstalledService(mount);
   }
-  return reloadInstalledService(mount);
+  if (!service) {
+    throw new ArangoError({
+      errorNum: errors.ERROR_SERVICE_NOT_FOUND.code,
+      errorMessage: dd`
+        ${errors.ERROR_SERVICE_NOT_FOUND.message}
+        Mount path: "${mount}".
+      `
+    });
+  }
+  if (service.error) {
+    throw service.error;
+  }
+  return service;
 }
 
 function reloadInstalledService (mount, runSetup) {
@@ -383,12 +394,41 @@ function reloadInstalledService (mount, runSetup) {
       `
     });
   }
-  const service = FoxxService.create(serviceDefinition);
+  const service = loadInstalledService(serviceDefinition);
   if (runSetup) {
     service.executeScript('setup');
   }
-  GLOBAL_SERVICE_MAP.get(db._name()).set(mount, service);
+  GLOBAL_SERVICE_MAP.get(db._name()).set(service.mount, service);
   return service;
+}
+
+function loadInstalledService (serviceDefinition) {
+  const mount = serviceDefinition.mount;
+  if (!mount.startsWith('/_')) {
+    if (
+      !fs.exists(FoxxService.bundlePath(mount)) ||
+      !fs.exists(FoxxService.basePath(mount))
+    ) {
+      throw new ArangoError({
+        errorNum: errors.ERROR_SERVICE_FILES_MISSING.code,
+        errorMessage: dd`
+          ${errors.ERROR_SERVICE_FILES_MISSING.message}
+          Mount: ${mount}
+        `
+      });
+    }
+    const checksum = serviceDefinition.checksum;
+    if (checksum && checksum !== safeChecksum(mount)) {
+      throw new ArangoError({
+        errorNum: errors.ERROR_SERVICE_FILES_OUTDATED.code,
+        errorMessage: dd`
+          ${errors.ERROR_SERVICE_FILES_OUTDATED.message}
+          Mount: ${mount}
+        `
+      });
+    }
+  }
+  return FoxxService.create(serviceDefinition);
 }
 
 // Misc?
@@ -721,8 +761,7 @@ function replace (serviceInfo, mount, options = {}) {
 
 function upgrade (serviceInfo, mount, options = {}) {
   ensureFoxxInitialized();
-  const oldService = getServiceInstance(mount);
-  const serviceOptions = oldService.toJSON().options;
+  const serviceOptions = utils.getServiceDefinition(mount).options;
   Object.assign(serviceOptions.configuration, options.configuration);
   Object.assign(serviceOptions.dependencies, options.dependencies);
   serviceOptions.development = options.development;
@@ -741,6 +780,9 @@ function upgrade (serviceInfo, mount, options = {}) {
 
 function runScript (scriptName, mount, options) {
   let service = getServiceInstance(mount);
+  if (service.error) {
+    throw service.error;
+  }
   if (service.isDevelopment) {
     const runSetup = scriptName !== 'setup';
     service = reloadInstalledService(mount, runSetup);
@@ -752,6 +794,9 @@ function runScript (scriptName, mount, options) {
 
 function runTests (mount, options = {}) {
   let service = getServiceInstance(mount);
+  if (service.error) {
+    throw service.error;
+  }
   if (service.isDevelopment) {
     service = reloadInstalledService(mount, true);
   }
@@ -761,6 +806,9 @@ function runTests (mount, options = {}) {
 
 function enableDevelopmentMode (mount) {
   const service = getServiceInstance(mount);
+  if (service.error) {
+    throw service.error;
+  }
   service.development(true);
   utils.updateService(mount, service.toJSON());
   propagateSelfHeal();
@@ -769,6 +817,9 @@ function enableDevelopmentMode (mount) {
 
 function disableDevelopmentMode (mount) {
   const service = getServiceInstance(mount);
+  if (service.error) {
+    throw service.error;
+  }
   service.development(false);
   createServiceBundle(mount);
   service.updateChecksum();
@@ -781,6 +832,9 @@ function disableDevelopmentMode (mount) {
 
 function setConfiguration (mount, options = {}) {
   const service = getServiceInstance(mount);
+  if (service.error) {
+    throw service.error;
+  }
   const warnings = service.applyConfiguration(options.configuration, options.replace);
   utils.updateService(mount, service.toJSON());
   propagateSelfHeal();
@@ -789,6 +843,9 @@ function setConfiguration (mount, options = {}) {
 
 function setDependencies (mount, options = {}) {
   const service = getServiceInstance(mount);
+  if (service.error) {
+    throw service.error;
+  }
   const warnings = service.applyDependencies(options.dependencies, options.replace);
   utils.updateService(mount, service.toJSON());
   propagateSelfHeal();
@@ -800,6 +857,10 @@ function setDependencies (mount, options = {}) {
 function requireService (mount) {
   mount = '/' + mount.replace(/^\/+|\/+$/g, '');
   const service = getServiceInstance(mount);
+  if (service.error) {
+    // TODO Bad requires should probably always blow up
+    return {};
+  }
   return ensureServiceExecuted(service, true).exports;
 }
 
@@ -810,7 +871,7 @@ function getMountPoints () {
 
 function installedServices () {
   ensureFoxxInitialized();
-  return Array.from(GLOBAL_SERVICE_MAP.get(db._name()).values());
+  return Array.from(GLOBAL_SERVICE_MAP.get(db._name()).values()).filter(service => !service.error);
 }
 
 function safeChecksum (mount) {

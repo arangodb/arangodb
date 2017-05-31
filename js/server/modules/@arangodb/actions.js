@@ -979,35 +979,28 @@ function flattenRoutingTree (tree) {
 //
 
 function foxxRouting (req, res, options, next) {
-  // console.infoLines(require('util').inspect(req));
   var mount = options.mount;
 
   try {
-    var service = FoxxManager.lookupService(mount);
-    var devel = service.isDevelopment;
-
-    if (devel || !options.routing) {
+    const service = FoxxManager.lookupService(mount);
+    if (service.isDevelopment || !options.routing) {
       delete options.error;
 
-      if (devel) {
-        service = FoxxManager.reloadInstalledService(mount, true);
+      if (service.isDevelopment) {
+        FoxxManager.reloadInstalledService(mount, true);
       }
 
       options.routing = flattenRoutingTree(buildRoutingTree([
         FoxxManager.ensureRouted(mount).routes
       ]));
     }
-  } catch (err1) {
+  } catch (e) {
+    console.errorStack(e, `Failed to load Foxx service mounted at "${mount}"`);
     options.error = {
-      code: exports.HTTP_SERVER_ERROR,
-      num: arangodb.ERROR_HTTP_SERVER_ERROR,
-      msg: "failed to load Foxx service mounted at '" + mount + "'",
-      info: { exception: String(err1) }
+      code: exports.HTTP_SERVICE_UNAVAILABLE,
+      num: e.errorNum || arangodb.ERROR_HTTP_SERVICE_UNAVAILABLE,
+      msg: `Failed to load Foxx service mounted at "${mount}"`
     };
-
-    if (err1.stack) {
-      options.error.info.stacktrace = String(err1.stack).split('\n');
-    }
   }
 
   if (options.error) {
@@ -1858,11 +1851,7 @@ function resultException (req, res, err, headers, verbose) {
   var info = {};
 
   if (verbose !== false) {
-    info.exception = String(err);
-    if (err.stack) {
-      err.stack = err.stack.replace(/\n+$/, '');
-      info.stacktrace = err.stack.split('\n');
-    }
+    console.errorStack(err);
     if (typeof verbose === 'string') {
       msg = verbose;
     }
