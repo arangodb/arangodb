@@ -46,10 +46,14 @@ class Query;
 class TraversalNode;
 }
 
+namespace graph {
+class EdgeUniquenessChecker;
+class TraverserCache;
+}
+
 namespace traverser {
 
 class ClusterTraverser;
-class TraverserCache;
 
 struct TraverserOptions : public graph::BaseOptions {
   friend class arangodb::aql::TraversalNode;
@@ -58,9 +62,13 @@ struct TraverserOptions : public graph::BaseOptions {
   enum UniquenessLevel { NONE, PATH, GLOBAL };
 
  protected:
+
   std::unordered_map<uint64_t, std::vector<LookupInfo>> _depthLookupInfo;
+
   std::unordered_map<uint64_t, aql::Expression*> _vertexExpressions;
+
   aql::Expression* _baseVertexExpression;
+
   arangodb::traverser::ClusterTraverser* _traverser;
 
  public:

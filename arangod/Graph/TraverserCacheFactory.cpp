@@ -24,15 +24,15 @@
 
 #include "Cluster/ServerState.h"
 #include "Graph/ClusterTraverserCache.h"
+#include "Graph/TraverserCache.h"
+#include "Graph/TraverserDocumentCache.h"
 #include "Logger/Logger.h"
 #include "Transaction/Methods.h"
-#include "VocBase/TraverserCache.h"
-#include "VocBase/TraverserDocumentCache.h"
 
 using namespace arangodb;
 using namespace arangodb::graph;
 using namespace arangodb::traverser;
-using namespace arangodb::traverser::cacheFactory;
+using namespace arangodb::graph::cacheFactory;
 
 TraverserCache* cacheFactory::CreateCache(
     arangodb::transaction::Methods* trx, bool activateDocumentCache,

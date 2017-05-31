@@ -36,21 +36,24 @@ class Slice;
 
 namespace graph {
 
+struct EdgeDocumentToken;
+
 /// @brief Abstract class used in the traversals
 /// to abstract away access to indexes / DBServers.
 /// Returns edges as VelocyPack.
+
 class EdgeCursor {
  public:
   EdgeCursor() {}
   virtual ~EdgeCursor() {}
 
-  virtual bool next(std::function<void(arangodb::StringRef const&,
+  virtual bool next(std::function<void(std::unique_ptr<EdgeDocumentToken>&&,
                                        arangodb::velocypack::Slice, size_t)>
                         callback) = 0;
 
   virtual void readAll(
-      std::function<void(arangodb::StringRef const&,
-                         arangodb::velocypack::Slice, size_t&)>) = 0;
+      std::function<void(std::unique_ptr<EdgeDocumentToken>&&,
+                         arangodb::velocypack::Slice, size_t)>) = 0;
 };
 
 }  // namespace graph

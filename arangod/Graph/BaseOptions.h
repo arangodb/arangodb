@@ -39,10 +39,6 @@ class Expression;
 class Query;
 }
 
-namespace traverser {
-class TraverserCache;
-}
-
 namespace velocypack {
 class Builder;
 class Slice;
@@ -51,6 +47,7 @@ class Slice;
 namespace graph {
 
 class EdgeCursor;
+class TraverserCache;
 
 struct BaseOptions {
  protected:
@@ -112,7 +109,7 @@ struct BaseOptions {
 
   transaction::Methods* trx() const;
 
-  traverser::TraverserCache* cache() const;
+  TraverserCache* cache() const;
 
   /// @brief Build a velocypack for cloning in the plan.
   virtual void toVelocyPack(arangodb::velocypack::Builder&) const = 0;
@@ -124,7 +121,7 @@ struct BaseOptions {
   /// @brief Estimate the total cost for this operation
   virtual double estimateCost(size_t& nrItems) const = 0;
 
-  traverser::TraverserCache* cache();
+  TraverserCache* cache();
 
   void activateCache(
       bool enableDocumentCache,
@@ -172,7 +169,7 @@ struct BaseOptions {
   bool const _isCoordinator;
 
   /// @brief the traverser cache
-  std::unique_ptr<traverser::TraverserCache> _cache;
+  std::unique_ptr<TraverserCache> _cache;
 };
 
 }  // namespace graph

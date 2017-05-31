@@ -26,11 +26,12 @@
 #include "Basics/Exceptions.h"
 #include "Basics/StringRef.h"
 #include "Graph/EdgeCursor.h"
+#include "Graph/EdgeDocumentToken.h"
 #include "Graph/ShortestPathOptions.h"
 #include "Graph/ShortestPathResult.h"
+#include "Graph/TraverserCache.h"
 #include "Transaction/Helpers.h"
 #include "VocBase/ManagedDocumentResult.h"
-#include "VocBase/TraverserCache.h"
 
 #include <velocypack/Slice.h>
 #include <velocypack/velocypack-aliases.h>
@@ -38,10 +39,21 @@
 using namespace arangodb;
 using namespace arangodb::graph;
 
+AttributeWeightShortestPathFinder::Step::Step()
+    : _weight(0.0), _edge(nullptr), _done(false) {}
+
+AttributeWeightShortestPathFinder::Step::Step(
+    arangodb::StringRef const& vert, arangodb::StringRef const& pred,
+    double weig, std::unique_ptr<EdgeDocumentToken>&& edge)
+    : _weight(weig),
+      _vertex(vert),
+      _predecessor(pred),
+      _edge(edge.release()),
+      _done(false) {}
+
 AttributeWeightShortestPathFinder::Searcher::Searcher(
     AttributeWeightShortestPathFinder* pathFinder, ThreadInfo& myInfo,
-    ThreadInfo& peerInfo, arangodb::StringRef const& start,
-    bool isBackward)
+    ThreadInfo& peerInfo, arangodb::StringRef const& start, bool isBackward)
     : _pathFinder(pathFinder),
       _myInfo(myInfo),
       _peerInfo(peerInfo),
@@ -60,7 +72,7 @@ void AttributeWeightShortestPathFinder::Searcher::insertNeighbor(
   }
   if (!s->_done && s->weight() > newWeight) {
     s->_predecessor = step->_predecessor;
-    s->_edge = step->_edge;
+    s->_edge.swap(step->_edge);
     _myInfo._pq.lowerWeight(s->_vertex, newWeight);
   }
   delete step;
@@ -172,13 +184,12 @@ bool AttributeWeightShortestPathFinder::shortestPath(
 
   // Forward with initialization:
   arangodb::StringRef emptyVertex;
-  arangodb::StringRef emptyEdge;
   ThreadInfo forward;
-  forward._pq.insert(start, new Step(start, emptyVertex, 0, emptyEdge));
+  forward._pq.insert(start, new Step(start, emptyVertex, 0, nullptr));
 
   // backward with initialization:
   ThreadInfo backward;
-  backward._pq.insert(target, new Step(target, emptyVertex, 0, emptyEdge));
+  backward._pq.insert(target, new Step(target, emptyVertex, 0, nullptr));
 
   // Now the searcher threads:
   Searcher forwardSearcher(this, forward, backward, start, false);
@@ -219,8 +230,7 @@ bool AttributeWeightShortestPathFinder::shortestPath(
   // Insert all vertices and edges at front of vector
   // Do NOT! insert the intermediate vertex
   while (!s->_predecessor.empty()) {
-    // TODO FIXME
-    result._edges.push_front(StringRef(s->_edge));
+    result._edges.push_front(s->_edge.get());
     result._vertices.push_front(StringRef(s->_predecessor));
     s = forward._pq.find(s->_predecessor);
   }
@@ -230,7 +240,7 @@ bool AttributeWeightShortestPathFinder::shortestPath(
   // Also insert the intermediate vertex
   s = backward._pq.find(_intermediate);
   while (!s->_predecessor.empty()) {
-    result._edges.emplace_back(StringRef(s->_edge));
+    result._edges.emplace_back(s->_edge.get());
     result._vertices.emplace_back(StringRef(s->_predecessor));
     s = backward._pq.find(s->_predecessor);
   }
@@ -245,13 +255,12 @@ bool AttributeWeightShortestPathFinder::shortestPath(
 
 void AttributeWeightShortestPathFinder::inserter(
     std::unordered_map<StringRef, size_t>& candidates,
-    std::vector<Step*>& result, StringRef const& s,
-    StringRef const& t, double currentWeight, StringRef edge) {
+    std::vector<Step*>& result, StringRef const& s, StringRef const& t,
+    double currentWeight, std::unique_ptr<EdgeDocumentToken>&& edge) {
   auto cand = candidates.find(t);
   if (cand == candidates.end()) {
     // Add weight
-    auto step =
-        std::make_unique<Step>(t, s, currentWeight, edge);
+    auto step = std::make_unique<Step>(t, s, currentWeight, std::move(edge));
     result.emplace_back(step.release());
     candidates.emplace(t, result.size() - 1);
   } else {
@@ -261,14 +270,13 @@ void AttributeWeightShortestPathFinder::inserter(
     if (currentWeight < oldWeight) {
       old->setWeight(currentWeight);
       old->_predecessor = s;
-      old->_edge = edge;
+      old->_edge.swap(edge);
     }
   }
 }
 
 void AttributeWeightShortestPathFinder::expandVertex(
-    bool isBackward,
-    arangodb::StringRef const& vertex,
+    bool isBackward, arangodb::StringRef const& vertex,
     std::vector<Step*>& result) {
   std::unique_ptr<EdgeCursor> edgeCursor;
   if (isBackward) {
@@ -278,16 +286,17 @@ void AttributeWeightShortestPathFinder::expandVertex(
   }
 
   std::unordered_map<StringRef, size_t> candidates;
-  auto callback = [&] (arangodb::StringRef const& eid, VPackSlice edge, size_t cursorIdx) -> void {
+  auto callback = [&](std::unique_ptr<EdgeDocumentToken>&& eid, VPackSlice edge,
+                      size_t cursorIdx) -> void {
     StringRef fromTmp(transaction::helpers::extractFromFromDocument(edge));
     StringRef toTmp(transaction::helpers::extractToFromDocument(edge));
     StringRef from = _options->cache()->persistString(fromTmp);
     StringRef to = _options->cache()->persistString(toTmp);
     double currentWeight = _options->weightEdge(edge);
     if (from == vertex) {
-      inserter(candidates, result, from, to, currentWeight, eid);
+      inserter(candidates, result, from, to, currentWeight, std::move(eid));
     } else {
-      inserter(candidates, result, to, from, currentWeight, eid);
+      inserter(candidates, result, to, from, currentWeight, std::move(eid));
     }
   };
 
@@ -432,10 +441,6 @@ void AttributeWeightShortestPathFinder::SearcherTwoThreads::join() {
   _thread.join();
 }
 */
-
-
-
-
 
 /* Here is a proof for the correctness of this algorithm:
  *

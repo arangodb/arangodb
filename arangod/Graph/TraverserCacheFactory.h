@@ -20,8 +20,8 @@
 /// @author Michael Hackstein
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_VOC_BASE_TRAVERSER_CACHE_FACTORY_H
-#define ARANGOD_VOC_BASE_TRAVERSER_CACHE_FACTORY_H 1
+#ifndef ARANGOD_GRAPH_TRAVERSER_CACHE_FACTORY_H
+#define ARANGOD_GRAPH_TRAVERSER_CACHE_FACTORY_H 1
 
 #include "Basics/Common.h"
 #include "Cluster/ClusterInfo.h"
@@ -31,7 +31,7 @@ namespace arangodb {
 namespace transaction {
 class Methods;
 }
-namespace traverser {
+namespace graph {
 class TraverserCache;
 
 namespace cacheFactory {

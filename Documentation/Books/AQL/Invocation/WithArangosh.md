@@ -145,6 +145,17 @@ There are further options that can be passed in the *options* attribute of the *
   creation and optimization for complex queries, but normally there is no need to adjust
   this value.
 
+The following additional attributes can be passed to queries in the RocksDB storage engine:
+ 
+- *maxTransactionSize*: transaction size limit in bytes
+
+- *intermediateCommitSize*: maximum total size of operations after which an intermediate
+  commit is performed automatically
+
+- *intermediateCommitCount*: maximum number of operations after which an intermediate
+  commit is performed automatically
+
+
 ### with _createStatement (ArangoStatement)
 
 The *_query* method is a shorthand for creating an ArangoStatement object,

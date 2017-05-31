@@ -20,10 +20,10 @@
 /// @author Michael Hackstein
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_VOC_BASE_TRAVERSER_DOCUMENT_CACHE_H
-#define ARANGOD_VOC_BASE_TRAVERSER_DOCUMENT_CACHE_H 1
+#ifndef ARANGOD_GRAPH_TRAVERSER_DOCUMENT_CACHE_H
+#define ARANGOD_GRAPH_TRAVERSER_DOCUMENT_CACHE_H 1
 
-#include "VocBase/TraverserCache.h"
+#include "Graph/TraverserCache.h"
 
 namespace arangodb {
 
@@ -32,7 +32,7 @@ class Cache;
 class Finding;
 }
 
-namespace traverser {
+namespace graph {
 
 class TraverserDocumentCache : public TraverserCache {
 
@@ -52,6 +52,9 @@ class TraverserDocumentCache : public TraverserCache {
    void insertIntoResult(StringRef idString,
                          arangodb::velocypack::Builder& builder) override;
 
+   void insertIntoResult(EdgeDocumentToken const* etkn,
+                         arangodb::velocypack::Builder& builder) override;
+
    //////////////////////////////////////////////////////////////////////////////
    /// @brief Return AQL value containing the result
    ///        The document will be taken from the hash-cache.
@@ -59,6 +62,8 @@ class TraverserDocumentCache : public TraverserCache {
    //////////////////////////////////////////////////////////////////////////////
   
    aql::AqlValue fetchAqlResult(StringRef idString) override;
+
+   aql::AqlValue fetchAqlResult(arangodb::graph::EdgeDocumentToken const*) override;
 
    //////////////////////////////////////////////////////////////////////////////
    /// @brief Insert value into store

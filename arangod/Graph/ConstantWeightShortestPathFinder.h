@@ -43,19 +43,21 @@ class Slice;
 
 namespace graph {
 
+struct EdgeDocumentToken;
 struct ShortestPathOptions;
 
 class ConstantWeightShortestPathFinder : public ShortestPathFinder {
-
  private:
   struct PathSnippet {
     arangodb::StringRef const _pred;
-    arangodb::StringRef const _path;
+    std::unique_ptr<graph::EdgeDocumentToken> _path;
 
     PathSnippet(arangodb::StringRef& pred,
-                arangodb::StringRef& path)
-        : _pred(pred), _path(path) {}
+                std::unique_ptr<graph::EdgeDocumentToken>&& path);
   };
+
+  typedef std::deque<arangodb::StringRef> Closure;
+  typedef std::unordered_map<arangodb::StringRef, PathSnippet*> Snippets;
 
  public:
   explicit ConstantWeightShortestPathFinder(ShortestPathOptions* options);
@@ -68,18 +70,28 @@ class ConstantWeightShortestPathFinder : public ShortestPathFinder {
                     std::function<void()> const& callback) override;
 
  private:
-  void expandVertex(bool backward, arangodb::StringRef vertex,
-                    std::vector<arangodb::StringRef>& edges,
-                    std::vector<arangodb::StringRef>& neighbors);
+  void expandVertex(bool backward, arangodb::StringRef vertex);
 
   void clearVisited();
 
- private:
-  std::unordered_map<arangodb::StringRef, PathSnippet*> _leftFound;
-  std::deque<arangodb::StringRef> _leftClosure;
+  bool expandClosure(Closure& sourceClosure, Snippets& sourceSnippets,
+                     Snippets& targetSnippets, bool direction,
+                     StringRef& result);
 
-  std::unordered_map<arangodb::StringRef, PathSnippet*> _rightFound;
-  std::deque<arangodb::StringRef> _rightClosure;
+  void fillResult(arangodb::StringRef& n,
+                  arangodb::graph::ShortestPathResult& result);
+
+ private:
+  Snippets _leftFound;
+  Closure _leftClosure;
+
+  Snippets _rightFound;
+  Closure _rightClosure;
+
+  Closure _nextClosure;
+
+  std::vector<arangodb::StringRef> _neighbors;
+  std::vector<std::unique_ptr<graph::EdgeDocumentToken>> _edges;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief The options to modify this shortest path computation
@@ -91,7 +103,6 @@ class ConstantWeightShortestPathFinder : public ShortestPathFinder {
   ///        responsibility for one document.
   //////////////////////////////////////////////////////////////////////////////
   std::unique_ptr<ManagedDocumentResult> _mmdr;
-
 };
 
 }  // namespace graph

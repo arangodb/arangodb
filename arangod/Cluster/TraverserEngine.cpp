@@ -29,10 +29,10 @@
 #include "Basics/Exceptions.h"
 #include "Graph/EdgeCursor.h"
 #include "Graph/ShortestPathOptions.h"
+#include "Graph/TraverserCache.h"
 #include "Transaction/Context.h"
 #include "Utils/CollectionNameResolver.h"
 #include "VocBase/ManagedDocumentResult.h"
-#include "VocBase/TraverserCache.h"
 #include "VocBase/TraverserOptions.h"
 
 #include <velocypack/Iterator.h>
@@ -232,7 +232,7 @@ void BaseTraverserEngine::getEdges(VPackSlice vertex, size_t depth,
           _opts->nextCursor(&mmdr, vertexId, depth));
 
       edgeCursor->readAll(
-          [&](StringRef const& documentId, VPackSlice edge, size_t cursorId) {
+          [&](std::unique_ptr<EdgeDocumentToken>&&, VPackSlice edge, size_t cursorId) {
             if (_opts->evaluateEdgeExpression(edge, StringRef(v), depth,
                                               cursorId)) {
               builder.add(edge);
@@ -244,7 +244,7 @@ void BaseTraverserEngine::getEdges(VPackSlice vertex, size_t depth,
     std::unique_ptr<arangodb::graph::EdgeCursor> edgeCursor(
         _opts->nextCursor(&mmdr, StringRef(vertex), depth));
     edgeCursor->readAll(
-        [&](StringRef const& documentId, VPackSlice edge, size_t cursorId) {
+        [&](std::unique_ptr<EdgeDocumentToken>&&, VPackSlice edge, size_t cursorId) {
           if (_opts->evaluateEdgeExpression(edge, StringRef(vertex), depth,
                                             cursorId)) {
             builder.add(edge);
@@ -374,7 +374,7 @@ void ShortestPathEngine::getEdges(VPackSlice vertex, bool backward,
         edgeCursor.reset(_opts->nextCursor(&mmdr, vertexId));
       }
 
-      edgeCursor->readAll([&](StringRef const& documentId, VPackSlice edge,
+      edgeCursor->readAll([&](std::unique_ptr<EdgeDocumentToken>&&, VPackSlice edge,
                               size_t cursorId) { builder.add(edge); });
       // Result now contains all valid edges, probably multiples.
     }
@@ -385,7 +385,7 @@ void ShortestPathEngine::getEdges(VPackSlice vertex, bool backward,
     } else {
       edgeCursor.reset(_opts->nextCursor(&mmdr, vertexId));
     }
-    edgeCursor->readAll([&](StringRef const& documentId, VPackSlice edge,
+    edgeCursor->readAll([&](std::unique_ptr<EdgeDocumentToken>&&, VPackSlice edge,
                             size_t cursorId) { builder.add(edge); });
     // Result now contains all valid edges, probably multiples.
   } else {

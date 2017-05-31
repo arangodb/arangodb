@@ -25,6 +25,7 @@
 #include "Aql/AqlValue.h"
 #include "Basics/StringRef.h"
 #include "Basics/VelocyPackHelper.h"
+#include "Graph/EdgeDocumentToken.h"
 #include "Transaction/Methods.h"
 
 #include <velocypack/Builder.h>
@@ -42,6 +43,13 @@ ClusterTraverserCache::ClusterTraverserCache(
     : TraverserCache(trx), _engines(engines) {}
 
 ClusterTraverserCache::~ClusterTraverserCache() {}
+
+aql::AqlValue ClusterTraverserCache::fetchAqlResult(EdgeDocumentToken const* idToken) {
+  // This cast is save because the Coordinator can only create those tokens
+  auto tkn = static_cast<ClusterEdgeDocumentToken const*>(idToken);
+  TRI_ASSERT(tkn != nullptr);
+  return fetchAqlResult(tkn->id());
+}
 
 aql::AqlValue ClusterTraverserCache::fetchAqlResult(StringRef id) {
   auto it = _edges.find(id);
@@ -61,6 +69,15 @@ void ClusterTraverserCache::insertIntoResult(StringRef id,
   }
   result.add(_edges[id]);
 }
+
+void ClusterTraverserCache::insertIntoResult(EdgeDocumentToken const* idToken,
+                                             VPackBuilder& result) {
+  // This cast is save because the Coordinator can only create those tokens
+  auto tkn = static_cast<ClusterEdgeDocumentToken const*>(idToken);
+  TRI_ASSERT(tkn != nullptr);
+  insertIntoResult(tkn->id(), result);
+}
+
 
 std::unordered_map<StringRef, arangodb::velocypack::Slice>&
 ClusterTraverserCache::edges() {
