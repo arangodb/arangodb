@@ -63,7 +63,7 @@ function RocksDBTransactionsInvocationsSuite () {
     },
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief max transaction size
+/// @brief transactions
 ////////////////////////////////////////////////////////////////////////////////
     
     testSmallMaxTransactionSize : function () {
@@ -256,7 +256,79 @@ function RocksDBTransactionsInvocationsSuite () {
 
       assertTrue(failed);
       assertEqual(6533, db._collection(cn).count());
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief aql queries
+////////////////////////////////////////////////////////////////////////////////
+    
+    testAqlSmallMaxTransactionSize : function () {
+      try {
+        db._query({ query: "FOR i IN 1..10000 INSERT {} INTO " + cn, options: { maxTransactionSize: 1000 } });
+        fail();
+      } catch (err) {
+        assertEqual(ERRORS.ERROR_RESOURCE_LIMIT.code, err.errorNum);
+      }
+      
+      assertEqual(0, db._collection(cn).count());
+    },
+
+    testAqlBigMaxTransactionSize : function () {
+      db._query({ query: "FOR i IN 1..10000 INSERT {} INTO " + cn, options: { maxTransactionSize: 10 * 1000 * 1000 } });
+      assertEqual(10000, db._collection(cn).count());
+    },
+    
+    testAqlIntermediateCommitCountVerySmall : function () {
+      db._query({ query: "FOR i IN 1..10000 INSERT {} INTO " + cn, options: { intermediateCommitCount: 1 } });
+      assertEqual(10000, db._collection(cn).count());
+    },
+
+    testAqlIntermediateCommitCountBigger : function () {
+      db._query({ query: "FOR i IN 1..10000 INSERT {} INTO " + cn, options: { intermediateCommitCount: 1000 } });
+      assertEqual(10000, db._collection(cn).count());
+    },
+    
+    testAqlIntermediateCommitCountWithFail : function () {
+      var failed = false;
+
+      try {
+        db._query({ query: "FOR i IN 1..10000 LET x = NOOPT(i == 8533 ? FAIL('peng!') : i) INSERT { value: x } INTO " + cn, options: { intermediateCommitCount: 1000 } });
+      } catch (err) {
+        failed = true;
+      }
+
+      assertTrue(failed);
+      assertEqual(8000, db._collection(cn).count());
+    },
+
+    testAqlIntermediateCommitSizeVerySmall : function () {
+      db._query({ query: "FOR i IN 1..10000 INSERT { someValue: i } INTO " + cn, options: { intermediateCommitSize: 1000 } });
+      assertEqual(10000, db._collection(cn).count());
+    },
+    
+    testAqlIntermediateCommitSizeBigger : function () {
+      db._query({ query: "FOR i IN 1..10000 INSERT { someValue: i } INTO " + cn, options: { intermediateCommitSize: 10000 } });
+      assertEqual(10000, db._collection(cn).count());
+    },
+    
+    testAqlIntermediateCommitSizeWithFailInTheMiddle : function () {
+      var failed = false;
+
+      try {
+        db._query({ query: "FOR i IN 1..10000 LET x = NOOPT(i == 8533 ? FAIL('peng!') : i) INSERT { value: x } INTO " + cn, options: { intermediateCommitSize: 10 } });
+      } catch (err) {
+        failed = true;
+      }
+
+      assertTrue(failed);
+      // not 8533 as expected, because the CalculationBlock will
+      // execute 1000 expressions at a time, and when done, the
+      // INSERTs will be applied as a whole. However, the CalcBlock
+      // will now fail somewhere in a batch of 1000, and no inserts
+      // will be done for this batch
+      assertEqual(8000, db._collection(cn).count());
     }
+
   };
 }
 
