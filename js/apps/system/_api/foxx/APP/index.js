@@ -390,6 +390,10 @@ instanceRouter.get('/swagger', (req, res) => {
 })
 .response(200, joi.object());
 
+router.post('/commit', (req, res) => {
+  FoxxManager.commitLocalState(req.queryParams.replace);
+});
+
 const localRouter = createRouter();
 router.use('/_local', localRouter);
 
