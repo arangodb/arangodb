@@ -23,18 +23,19 @@
 
 #include "Traverser.h"
 #include "Basics/VelocyPackHelper.h"
+#include "Graph/TraverserCache.h"
 #include "Transaction/Helpers.h"
 #include "Transaction/Methods.h"
 #include "Transaction/Context.h"
 #include "VocBase/KeyGenerator.h"
 #include "VocBase/TraverserOptions.h"
-#include "VocBase/TraverserCache.h"
 
 #include <velocypack/Iterator.h> 
 #include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb;
 using namespace arangodb::traverser;
+using namespace arangodb::graph;
 
 bool Traverser::VertexGetter::getVertex(VPackSlice edge, std::vector<StringRef>& result) {
   VPackSlice res = transaction::helpers::extractFromFromDocument(edge);

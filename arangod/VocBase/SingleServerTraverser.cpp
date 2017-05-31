@@ -27,9 +27,9 @@
 #include "Aql/AqlValue.h"
 #include "Graph/BreadthFirstEnumerator.h"
 #include "Graph/NeighborsEnumerator.h"
+#include "Graph/TraverserCache.h"
 #include "Transaction/Methods.h"
 #include "VocBase/ManagedDocumentResult.h"
-#include "VocBase/TraverserCache.h"
 
 using namespace arangodb;
 using namespace arangodb::traverser;
@@ -46,18 +46,9 @@ aql::AqlValue SingleServerTraverser::fetchVertexData(StringRef vid) {
   return _opts->cache()->fetchAqlResult(vid);
 }
 
-aql::AqlValue SingleServerTraverser::fetchEdgeData(StringRef edge) {  
-  return _opts->cache()->fetchAqlResult(edge);
-}
-
 void SingleServerTraverser::addVertexToVelocyPack(StringRef vid,
                                                   VPackBuilder& result) {
   _opts->cache()->insertIntoResult(vid, result);
-}
-
-void SingleServerTraverser::addEdgeToVelocyPack(StringRef edge,
-    VPackBuilder& result) {
-  _opts->cache()->insertIntoResult(edge, result);
 }
 
 void SingleServerTraverser::setStartVertex(std::string const& vid) {

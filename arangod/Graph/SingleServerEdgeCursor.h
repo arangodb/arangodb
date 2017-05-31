@@ -64,13 +64,13 @@ class SingleServerEdgeCursor : public EdgeCursor {
 
   ~SingleServerEdgeCursor();
 
-  bool next(std::function<void(arangodb::StringRef const&,
+  bool next(std::function<void(std::unique_ptr<EdgeDocumentToken>&&,
                                arangodb::velocypack::Slice, size_t)>
                 callback) override;
 
   void readAll(
-      std::function<void(arangodb::StringRef const&,
-                         arangodb::velocypack::Slice, size_t&)>) override;
+      std::function<void(std::unique_ptr<EdgeDocumentToken>&&,
+                         arangodb::velocypack::Slice, size_t)>) override;
 
   std::vector<std::vector<OperationCursor*>>& getCursors() { return _cursors; }
 };

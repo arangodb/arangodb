@@ -39,6 +39,7 @@ class ManagedDocumentResult;
 
 namespace graph {
 
+struct EdgeDocumentToken;
 struct ShortestPathOptions;
 
 class AttributeWeightShortestPathFinder : public ShortestPathFinder {
@@ -54,19 +55,14 @@ class AttributeWeightShortestPathFinder : public ShortestPathFinder {
    public:
     arangodb::StringRef _vertex;
     arangodb::StringRef _predecessor;
-    arangodb::StringRef _edge;
+    std::unique_ptr<arangodb::graph::EdgeDocumentToken> _edge;
     bool _done;
 
-    Step() : _weight(0.0), _done(false) {}
+    Step();
 
     Step(arangodb::StringRef const& vert,
          arangodb::StringRef const& pred, double weig,
-         arangodb::StringRef const& edge)
-        : _weight(weig),
-          _vertex(vert),
-          _predecessor(pred),
-          _edge(edge),
-          _done(false) {}
+         std::unique_ptr<EdgeDocumentToken>&& edge);
 
     double weight() const { return _weight; }
 
@@ -227,7 +223,7 @@ class AttributeWeightShortestPathFinder : public ShortestPathFinder {
   void inserter(std::unordered_map<arangodb::StringRef, size_t>& candidates,
                 std::vector<Step*>& result, arangodb::StringRef const& s,
                 arangodb::StringRef const& t, double currentWeight,
-                arangodb::StringRef edge);
+                std::unique_ptr<EdgeDocumentToken>&& edge);
 
   void expandVertex(bool isBackward, arangodb::StringRef const& source,
                     std::vector<Step*>& result);

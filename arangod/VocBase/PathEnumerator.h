@@ -25,6 +25,7 @@
 #define ARANGODB_VOCBASE_PATHENUMERATOR_H 1
 
 #include "Basics/Common.h"
+#include "Graph/EdgeDocumentToken.h"
 #include "VocBase/Traverser.h"
 #include "VocBase/TraverserOptions.h"
 #include <velocypack/Slice.h>
@@ -48,7 +49,7 @@ class Traverser;
 struct TraverserOptions;
 
 struct EnumeratedPath {
-  std::vector<arangodb::StringRef> edges;
+  std::vector<std::unique_ptr<graph::EdgeDocumentToken>> edges;
   std::vector<arangodb::StringRef> vertices;
   EnumeratedPath() {}
 };
@@ -83,9 +84,6 @@ class PathEnumerator {
   //////////////////////////////////////////////////////////////////////////////
 
   EnumeratedPath _enumeratedPath;
-
-  /// @brief List which edges have been visited already.
-  std::unordered_set<arangodb::StringRef> _returnedEdges;
 
  public:
   PathEnumerator(Traverser* traverser, std::string const& startVertex,

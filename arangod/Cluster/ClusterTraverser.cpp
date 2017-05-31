@@ -27,8 +27,8 @@
 #include "Cluster/ClusterMethods.h"
 #include "Graph/BreadthFirstEnumerator.h"
 #include "Graph/ClusterTraverserCache.h"
+#include "Graph/TraverserCache.h"
 #include "Transaction/Helpers.h"
-#include "VocBase/TraverserCache.h"
 
 #include <velocypack/Iterator.h>
 #include <velocypack/velocypack-aliases.h>
@@ -131,10 +131,6 @@ aql::AqlValue ClusterTraverser::fetchVertexData(StringRef idString) {
   return aql::AqlValue((*cached).second->data());
 }
 
-aql::AqlValue ClusterTraverser::fetchEdgeData(StringRef eid) {
-  return traverserCache()->fetchAqlResult(eid);
-}
-
 //////////////////////////////////////////////////////////////////////////////
 /// @brief Function to add the real data of a vertex into a velocypack builder
 //////////////////////////////////////////////////////////////////////////////
@@ -151,13 +147,4 @@ void ClusterTraverser::addVertexToVelocyPack(StringRef vid,
   // Now all vertices are cached!!
   TRI_ASSERT(cached != _vertices.end());
   result.add(VPackSlice((*cached).second->data()));
-}
-
-//////////////////////////////////////////////////////////////////////////////
-/// @brief Function to add the real data of an edge into a velocypack builder
-//////////////////////////////////////////////////////////////////////////////
-
-void ClusterTraverser::addEdgeToVelocyPack(StringRef eid,
-                         arangodb::velocypack::Builder& result) {
-  traverserCache()->insertIntoResult(eid, result);
 }

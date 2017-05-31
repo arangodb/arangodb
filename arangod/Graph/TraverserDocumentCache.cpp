@@ -31,13 +31,15 @@
 #include "Cache/Cache.h"
 #include "Cache/CacheManagerFeature.h"
 #include "Cache/Finding.h"
+#include "Cluster/ServerState.h"
+#include "Graph/EdgeDocumentToken.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/Slice.h>
 #include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb;
-using namespace arangodb::traverser;
+using namespace arangodb::graph;
 
 TraverserDocumentCache::TraverserDocumentCache(transaction::Methods* trx)
     : TraverserCache(trx), _cache(nullptr) {
@@ -88,6 +90,18 @@ VPackSlice TraverserDocumentCache::lookupAndCache(StringRef id) {
     }
   }
   return result;
+}
+
+// These two do not use the cache.
+void TraverserDocumentCache::insertIntoResult(EdgeDocumentToken const* idToken,
+                                              VPackBuilder& builder) {
+  TRI_ASSERT(!ServerState::instance()->isCoordinator());
+  builder.add(lookupInCollection(static_cast<SingleServerEdgeDocumentToken const*>(idToken)));
+}
+
+aql::AqlValue TraverserDocumentCache::fetchAqlResult(EdgeDocumentToken const* idToken) {
+  TRI_ASSERT(!ServerState::instance()->isCoordinator());
+  return aql::AqlValue(lookupInCollection(static_cast<SingleServerEdgeDocumentToken const*>(idToken)));
 }
 
 void TraverserDocumentCache::insertIntoResult(StringRef idString,

@@ -40,10 +40,6 @@ namespace transaction {
 class Methods;
 }
 
-namespace traverser {
-class TraverserCache;
-}
-
 namespace velocypack {
 class Builder;
 }
@@ -52,6 +48,8 @@ namespace graph {
 
 class AttributeWeightShortestPathFinder;
 class ConstantWeightShortestPathFinder;
+class EdgeDocumentToken;
+class TraverserCache;
 
 class ShortestPathResult {
   friend class arangodb::graph::AttributeWeightShortestPathFinder;
@@ -74,13 +72,13 @@ class ShortestPathResult {
   /// AqlValue
   //////////////////////////////////////////////////////////////////////////////
 
-  aql::AqlValue edgeToAqlValue(traverser::TraverserCache* cache, size_t depth) const;
+  aql::AqlValue edgeToAqlValue(TraverserCache* cache, size_t depth) const;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Builds only the vertex at position as AqlValue
   //////////////////////////////////////////////////////////////////////////////
 
-  aql::AqlValue vertexToAqlValue(traverser::TraverserCache* cache, size_t depth) const;
+  aql::AqlValue vertexToAqlValue(TraverserCache* cache, size_t depth) const;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Gets the amount of read documents
@@ -103,7 +101,7 @@ class ShortestPathResult {
   std::deque<arangodb::StringRef> _vertices;
 
   /// @brief edges
-  std::deque<arangodb::StringRef> _edges;
+  std::deque<arangodb::graph::EdgeDocumentToken*> _edges;
 };
 
 

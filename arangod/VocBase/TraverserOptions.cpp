@@ -110,13 +110,11 @@ arangodb::traverser::TraverserOptions::TraverserOptions(
       useBreadthFirst(false),
       uniqueVertices(UniquenessLevel::NONE),
       uniqueEdges(UniquenessLevel::PATH) {
-
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   VPackSlice type = info.get("type");
   TRI_ASSERT(type.isString());
   TRI_ASSERT(type.isEqualString("traversal"));
 #endif
-
 
   // NOTE collections is an array of arrays of strings
   VPackSlice read = info.get("minDepth");
@@ -173,9 +171,6 @@ arangodb::traverser::TraverserOptions::TraverserOptions(
       break;
     case 1:
       uniqueEdges = UniquenessLevel::PATH;
-      break;
-    case 2:
-      uniqueEdges = UniquenessLevel::GLOBAL;
       break;
     default:
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,

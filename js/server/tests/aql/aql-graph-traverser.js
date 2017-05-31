@@ -1805,7 +1805,7 @@ function complexFilteringSuite () {
         assertEqual(stats.scannedIndex, 2);
       }
       else {
-        assertEqual(stats.scannedIndex, 1);
+        assertEqual(stats.scannedIndex, 2);
       }
       assertEqual(stats.filtered, 1);
     },
@@ -1903,7 +1903,7 @@ function complexFilteringSuite () {
         // assertEqual(stats.scannedIndex, 9);
         
         // Without traverser-read-cache
-        assertEqual(stats.scannedIndex, 18);
+        assertEqual(stats.scannedIndex, 17);
       }
       // 1 Filter On D
       assertEqual(stats.filtered, 1);
@@ -1984,7 +1984,7 @@ function complexFilteringSuite () {
         // assertEqual(stats.scannedIndex, 9);
         
         // Without traverser-read-cache
-        assertEqual(stats.scannedIndex, 8);
+        assertEqual(stats.scannedIndex, 11);
       }
       // 2 Filter (B, D) too short
       // 2 Filter (E, G)
@@ -2011,7 +2011,7 @@ function complexFilteringSuite () {
         // 1 Primary (B)
         // 2 Edge
         // 2 Primary (C,F)
-        assertEqual(stats.scannedIndex, 7);
+        assertEqual(stats.scannedIndex, 8);
       }
       else {
         // 2 Edge Lookups (A)
@@ -2023,7 +2023,7 @@ function complexFilteringSuite () {
         // assertEqual(stats.scannedIndex, 8);
         
         // Without traverser-read-cache
-        assertEqual(stats.scannedIndex, 16);
+        assertEqual(stats.scannedIndex, 15);
       }
       // 1 Filter (A->D)
       assertEqual(stats.filtered, 1);
@@ -2052,7 +2052,7 @@ function complexFilteringSuite () {
         // they may be inserted in the vertexToFetch list, which
         // lazy loads all vertices in it.
         if (stats.scannedIndex !== 8) {
-          assertEqual(stats.scannedIndex, 9);
+          assertEqual(stats.scannedIndex, 11);
         }
       }
       else {
@@ -2122,7 +2122,7 @@ function complexFilteringSuite () {
           // assertEqual(stats.scannedIndex, 9);
           
           // Without traverser-read-cache
-          assertEqual(stats.scannedIndex, 18);
+          assertEqual(stats.scannedIndex, 17);
         }
         // 1 Filter On D
         assertEqual(stats.filtered, 1);
@@ -2178,7 +2178,7 @@ function complexFilteringSuite () {
           // assertEqual(stats.scannedIndex, 9);
           
           // Without traverser-read-cache
-          assertEqual(stats.scannedIndex, 18);
+          assertEqual(stats.scannedIndex, 17);
         }
         // 1 Filter On D
         assertEqual(stats.filtered, 1);
@@ -2842,7 +2842,7 @@ function optimizeQuantifierSuite() {
         // Without traverser-read-cache
         // TODO Check for Optimization
         // assertEqual(stats.scannedIndex, 23);
-        assertEqual(stats.scannedIndex, 27);
+        assertEqual(stats.scannedIndex, 22);
       }
       assertEqual(stats.filtered, 1);
 
@@ -2884,7 +2884,7 @@ function optimizeQuantifierSuite() {
         // TODO Check for Optimization
         // Without traverser-read-cache
         // assertEqual(stats.scannedIndex, 18);
-        assertEqual(stats.scannedIndex, 22);
+        assertEqual(stats.scannedIndex, 17);
       }
       assertEqual(stats.filtered, 2);
 
@@ -2909,7 +2909,7 @@ function optimizeQuantifierSuite() {
 
         // Without traverser-read-cache
         // assertEqual(stats.scannedIndex, 18);
-        assertEqual(stats.scannedIndex, 22);
+        assertEqual(stats.scannedIndex, 17);
       }
       assertEqual(stats.filtered, 2);
     },
@@ -2937,7 +2937,7 @@ function optimizeQuantifierSuite() {
         // Without traverser-read-cache
         // TODO Check for Optimization
         // assertEqual(stats.scannedIndex, 23);
-        assertEqual(stats.scannedIndex, 27);
+        assertEqual(stats.scannedIndex, 22);
       }
       assertEqual(stats.filtered, 1);
 
@@ -2978,7 +2978,7 @@ function optimizeQuantifierSuite() {
 
         // Without traverser-read-cache
         // assertEqual(stats.scannedIndex, 18);
-        assertEqual(stats.scannedIndex, 22);
+        assertEqual(stats.scannedIndex, 17);
       }
       assertEqual(stats.filtered, 1);
 
@@ -3004,7 +3004,7 @@ function optimizeQuantifierSuite() {
         // Without traverser-read-cache
         // TODO Check for Optimization
         //assertEqual(stats.scannedIndex, 18);
-        assertEqual(stats.scannedIndex, 22);
+        assertEqual(stats.scannedIndex, 17);
       }
       assertEqual(stats.filtered, 1);
     },
@@ -3032,7 +3032,7 @@ function optimizeQuantifierSuite() {
 
         // Without traverser-read-cache
         // assertEqual(stats.scannedIndex, 17);
-        assertEqual(stats.scannedIndex, 21);
+        assertEqual(stats.scannedIndex, 18);
       }
       assertEqual(stats.filtered, 2);
     },
@@ -3060,7 +3060,7 @@ function optimizeQuantifierSuite() {
 
         // Without traverser-read-cache
         // assertEqual(stats.scannedIndex, 12);
-        assertEqual(stats.scannedIndex, 16);
+        assertEqual(stats.scannedIndex, 13);
       }
       assertEqual(stats.filtered, 3);
     },
@@ -3089,7 +3089,7 @@ function optimizeQuantifierSuite() {
         // Without traverser-read-cache
         // TODO Check for Optimization
         // assertEqual(stats.scannedIndex, 17);
-        assertEqual(stats.scannedIndex, 21);
+        assertEqual(stats.scannedIndex, 18);
       }
       assertEqual(stats.filtered, 2);
     },
@@ -3118,7 +3118,7 @@ function optimizeQuantifierSuite() {
         // Without traverser-read-cache
         // TODO Check for Optimization
         // assertEqual(stats.scannedIndex, 12);
-        assertEqual(stats.scannedIndex, 16);
+        assertEqual(stats.scannedIndex, 13);
       }
       assertEqual(stats.filtered, 3);
     },
@@ -3147,7 +3147,7 @@ function optimizeQuantifierSuite() {
         // Without traverser-read-cache
         // TODO Check for Optimization
         // assertEqual(stats.scannedIndex, 17);
-        assertEqual(stats.scannedIndex, 21);
+        assertEqual(stats.scannedIndex, 18);
       }
       assertEqual(stats.filtered, 4);
     },
@@ -3176,7 +3176,7 @@ function optimizeQuantifierSuite() {
         // Without traverser-read-cache
         // TODO Check for Optimization
         // assertEqual(stats.scannedIndex, 12);
-        assertEqual(stats.scannedIndex, 16);
+        assertEqual(stats.scannedIndex, 13);
       }
       assertEqual(stats.filtered, 4);
     }
@@ -3321,7 +3321,6 @@ function optimizeNonVertexCentricIndexesSuite () {
   };
 };
 
-/*
 jsunity.run(nestedSuite);
 jsunity.run(namedGraphSuite);
 jsunity.run(multiCollectionGraphSuite);
@@ -3334,7 +3333,6 @@ jsunity.run(brokenGraphSuite);
 jsunity.run(multiEdgeDirectionSuite);
 jsunity.run(subQuerySuite);
 jsunity.run(optionsSuite);
-*/
 jsunity.run(optimizeQuantifierSuite);
 if (!isCluster) {
   jsunity.run(optimizeNonVertexCentricIndexesSuite);

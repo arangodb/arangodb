@@ -357,7 +357,7 @@ void RocksDBEdgeIndexIterator::lookupInRocksDB(StringRef fromTo) {
         static_cast<uint64_t>(_builder.slice().byteSize()));
     bool cached = _cache->insert(entry);
     if (!cached) {
-      LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "Failed to cache: "
+      LOG_TOPIC(DEBUG, arangodb::Logger::CACHE) << "Failed to cache: "
                                               << fromTo.toString();
       delete entry;
     }
