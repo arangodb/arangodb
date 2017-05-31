@@ -995,22 +995,12 @@ function foxxRouting (req, res, options, next) {
       ]));
     }
   } catch (e) {
+    console.errorStack(e, `Failed to load Foxx service mounted at "${mount}"`);
     options.error = {
       code: exports.HTTP_SERVICE_UNAVAILABLE,
       num: e.errorNum || arangodb.ERROR_HTTP_SERVICE_UNAVAILABLE,
-      msg: `Failed to load Foxx service mounted at "${mount}"`,
-      info: { exception: String(e) }
+      msg: `Failed to load Foxx service mounted at "${mount}"`
     };
-
-    if (e.stack) {
-      let stack = String(e.stack);
-      let error = e;
-      while (error.cause) {
-        stack += 'via ' + error.cause.stack;
-        error = error.cause;
-      }
-      options.error.info.stacktrace = stack.split('\n');
-    }
   }
 
   if (options.error) {
@@ -1861,11 +1851,7 @@ function resultException (req, res, err, headers, verbose) {
   var info = {};
 
   if (verbose !== false) {
-    info.exception = String(err);
-    if (err.stack) {
-      err.stack = err.stack.replace(/\n+$/, '');
-      info.stacktrace = err.stack.split('\n');
-    }
+    console.errorStack(err);
     if (typeof verbose === 'string') {
       msg = verbose;
     }
