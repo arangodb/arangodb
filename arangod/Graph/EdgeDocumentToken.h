@@ -84,7 +84,7 @@ struct ClusterEdgeDocumentToken : public EdgeDocumentToken {
 
   ClusterEdgeDocumentToken();
 
-  ClusterEdgeDocumentToken(StringRef const id);
+  explicit ClusterEdgeDocumentToken(StringRef const id);
 
   ~ClusterEdgeDocumentToken();
 
