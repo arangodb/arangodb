@@ -172,6 +172,9 @@ void QueryOptions::fromVelocyPack(VPackSlice const& slice) {
       it.next();
     }
   }
+
+  // also handle transaction options
+  transactionOptions.fromVelocyPack(slice);
 }
 
 void QueryOptions::toVelocyPack(VPackBuilder& builder, bool disableOptimizerRules) const {
@@ -216,6 +219,9 @@ void QueryOptions::toVelocyPack(VPackBuilder& builder, bool disableOptimizerRule
     }
     builder.close(); // shardIds
   }
+  
+  // also handle transaction options
+  transactionOptions.toVelocyPack(builder);
 
   builder.close();
 }

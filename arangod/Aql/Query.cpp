@@ -342,6 +342,7 @@ void Query::prepare(QueryRegistry* registry, uint64_t queryHash) {
       // create the transaction object, but do not start it yet
       AqlTransaction* trx = new AqlTransaction(
         createTransactionContext(), _collections.collections(),
+        _queryOptions.transactionOptions,
         _part == PART_MAIN);
       _trx = trx;
 
@@ -429,8 +430,8 @@ ExecutionPlan* Query::prepare() {
 
   // create the transaction object, but do not start it yet
   AqlTransaction* trx = new AqlTransaction(
-      createTransactionContext(), _collections.collections(),
-      _part == PART_MAIN);
+      createTransactionContext(), _collections.collections(), 
+      _queryOptions.transactionOptions, _part == PART_MAIN);
   _trx = trx;
     
   // As soon as we start du instantiate the plan we have to clean it
@@ -919,7 +920,8 @@ QueryResult Query::explain() {
 
     // create the transaction object, but do not start it yet
     _trx = new AqlTransaction(createTransactionContext(),
-                              _collections.collections(), true);
+                              _collections.collections(), 
+                              _queryOptions.transactionOptions, true);
 
     // we have an AST
     Result res = _trx->begin();

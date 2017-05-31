@@ -25,6 +25,7 @@
 #define ARANGOD_AQL_QUERY_OPTIONS_H 1
 
 #include "Basics/Common.h"
+#include "Transaction/Options.h"
 
 namespace arangodb {
 namespace velocypack {
@@ -58,6 +59,8 @@ struct QueryOptions {
   bool inspectSimplePlans;
   std::vector<std::string> optimizerRules;
   std::unordered_set<std::string> shardIds;
+
+  transaction::Options transactionOptions;
 };
 
 }
