@@ -703,7 +703,7 @@ struct DMIDMasterContext : public MasterContext {
          * RESTART Cascading Behavior with lower profitability threshold
          */
 
-        float newThreshold = 1.05 - (PROFTIABILITY_DELTA * (restartCount + 1));
+        float newThreshold = 1.05f - (PROFTIABILITY_DELTA * (restartCount + 1));
         newThreshold = std::max(0.05f, std::min(newThreshold, 0.95f));
         setAggregatedValue<int64_t>(RESTART_COUNTER_AGG, restartCount + 1);
         setAggregatedValue<float>(PROFITABILITY_AGG, newThreshold);
@@ -801,7 +801,7 @@ IAggregator* DMID::aggregator(std::string const& name) const {
   } else if (name == ITERATION_AGG) {
     return new MaxAggregator<int64_t>(0, true);  // perm
   } else if (name == PROFITABILITY_AGG) {
-    return new MaxAggregator<float>(0.95, true);  // perm
+    return new MaxAggregator<float>(0.95f, true);  // perm
   } else if (name == RESTART_COUNTER_AGG) {
     return new MaxAggregator<int64_t>(1, true);  // perm
   }

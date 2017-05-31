@@ -31,196 +31,17 @@
 #include <velocypack/Iterator.h>
 #include <velocypack/velocypack-aliases.h>
 
-#include "Cluster/AgencyCallbackRegistry.h"
 #include "Agency/AgencyComm.h"
 #include "Basics/Mutex.h"
 #include "Basics/ReadWriteLock.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/VelocyPackHelper.h"
-#include "VocBase/voc-types.h"
-#include "VocBase/vocbase.h"
+#include "Cluster/AgencyCallbackRegistry.h"
+#include "Cluster/ClusterInfoInterface.h"
 
 namespace arangodb {
-namespace velocypack {
-class Slice;
-}
-class ClusterInfo;
-class LogicalCollection;
 
-typedef std::string ServerID;      // ID of a server
-typedef std::string DatabaseID;    // ID/name of a database
-typedef std::string CollectionID;  // ID of a collection
-typedef std::string ShardID;       // ID of a shard
-
-class CollectionInfoCurrent {
-  friend class ClusterInfo;
-
- public:
-  CollectionInfoCurrent();
-
-  CollectionInfoCurrent(ShardID const&, VPackSlice);
-
-  CollectionInfoCurrent(CollectionInfoCurrent const&);
-
-  CollectionInfoCurrent(CollectionInfoCurrent&&);
-
-  CollectionInfoCurrent& operator=(CollectionInfoCurrent const&);
-
-  CollectionInfoCurrent& operator=(CollectionInfoCurrent&&);
-
-  ~CollectionInfoCurrent();
-
- private:
-  void copyAllVPacks();
-
- public:
-  bool add(ShardID const& shardID, VPackSlice slice) {
-    auto it = _vpacks.find(shardID);
-    if (it == _vpacks.end()) {
-      auto builder = std::make_shared<VPackBuilder>();
-      builder->add(slice);
-      _vpacks.insert(std::make_pair(shardID, builder));
-      return true;
-    }
-    return false;
-  }
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief returns the indexes
-  //////////////////////////////////////////////////////////////////////////////
-
-  VPackSlice const getIndexes(ShardID const& shardID) const {
-    auto it = _vpacks.find(shardID);
-    if (it != _vpacks.end()) {
-      VPackSlice slice = it->second->slice();
-      return slice.get("indexes");
-    }
-    return VPackSlice::noneSlice();
-  }
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief returns the error flag for a shardID
-  //////////////////////////////////////////////////////////////////////////////
-
-  bool error(ShardID const& shardID) const { return getFlag("error", shardID); }
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief returns the error flag for all shardIDs
-  //////////////////////////////////////////////////////////////////////////////
-
-  std::unordered_map<ShardID, bool> error() const { return getFlag("error"); }
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief returns the errorNum for one shardID
-  //////////////////////////////////////////////////////////////////////////////
-
-  int errorNum(ShardID const& shardID) const {
-    auto it = _vpacks.find(shardID);
-    if (it != _vpacks.end()) {
-      VPackSlice slice = it->second->slice();
-      return arangodb::basics::VelocyPackHelper::getNumericValue<int>(slice,
-                                                                "errorNum", 0);
-    }
-    return 0;
-  }
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief returns the errorNum for all shardIDs
-  //////////////////////////////////////////////////////////////////////////////
-
-  std::unordered_map<ShardID, int> errorNum() const {
-    std::unordered_map<ShardID, int> m;
-    TRI_voc_size_t s;
-
-    for (auto const& it: _vpacks) {
-      s = arangodb::basics::VelocyPackHelper::getNumericValue<int>(it.second->slice(), "errorNum",
-                                                             0);
-      m.insert(std::make_pair(it.first, s));
-    }
-    return m;
-  }
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief returns the current leader and followers for a shard
-  //////////////////////////////////////////////////////////////////////////////
-
-  std::vector<ServerID> servers(ShardID const& shardID) const {
-    std::vector<ServerID> v;
-
-    auto it = _vpacks.find(shardID);
-    if (it != _vpacks.end()) {
-      VPackSlice slice = it->second->slice();
-
-      VPackSlice servers = slice.get("servers");
-      if (servers.isArray()) {
-        for (auto const& server: VPackArrayIterator(servers)) {
-          if (server.isString()) {
-            v.push_back(server.copyString());
-          }
-        }
-      }
-    }
-    return v;
-  }
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief returns the errorMessage entry for one shardID
-  //////////////////////////////////////////////////////////////////////////////
-
-  std::string errorMessage(ShardID const& shardID) const {
-    auto it = _vpacks.find(shardID);
-    if (it != _vpacks.end()) {
-      VPackSlice slice = it->second->slice();
-      if (slice.isObject() && slice.hasKey("errorMessage")) {
-        return slice.get("errorMessage").copyString();
-      }
-    }
-    return std::string();
-  }
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief local helper to return boolean flags
-  //////////////////////////////////////////////////////////////////////////////
-
- private:
-  bool getFlag(char const* name, ShardID const& shardID) const {
-    auto it = _vpacks.find(shardID);
-    if (it != _vpacks.end()) {
-      return arangodb::basics::VelocyPackHelper::getBooleanValue(it->second->slice(), name, false);
-    }
-    return false;
-  }
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief local helper to return a map to boolean
-  //////////////////////////////////////////////////////////////////////////////
-
-  std::unordered_map<ShardID, bool> getFlag(char const* name) const {
-    std::unordered_map<ShardID, bool> m;
-    for (auto const& it: _vpacks) {
-      auto vpack = it.second;
-      bool b = arangodb::basics::VelocyPackHelper::getBooleanValue(vpack->slice(), name, false);
-      m.insert(std::make_pair(it.first, b));
-    }
-    return m;
-  }
-
- private:
-  std::unordered_map<ShardID, std::shared_ptr<VPackBuilder>> _vpacks;
-};
-
-class ClusterInfo {
- private:
-
-  typedef std::unordered_map<CollectionID, std::shared_ptr<LogicalCollection>>
-      DatabaseCollections;
-  typedef std::unordered_map<DatabaseID, DatabaseCollections> AllCollections;
-  typedef std::unordered_map<CollectionID,
-                             std::shared_ptr<CollectionInfoCurrent>>
-      DatabaseCollectionsCurrent;
-  typedef std::unordered_map<DatabaseID, DatabaseCollectionsCurrent>
-      AllCollectionsCurrent;
-
+class ClusterInfo: public ClusterInfoInterface {
  private:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief initializes library
@@ -243,9 +64,263 @@ class ClusterInfo {
   //////////////////////////////////////////////////////////////////////////////
 
   ~ClusterInfo();
+ 
+ public:
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief get a number of cluster-wide unique IDs, returns the first
+  /// one and guarantees that <number> are reserved for the caller.
+  //////////////////////////////////////////////////////////////////////////////
+
+  uint64_t uniqid(uint64_t = 1) override;
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief flush the caches (used for testing only)
+  //////////////////////////////////////////////////////////////////////////////
+
+  void flush() override;;
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief ask whether a cluster database exists
+  //////////////////////////////////////////////////////////////////////////////
+
+  bool doesDatabaseExist(DatabaseID const&, bool = false) override;
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief get list of databases in the cluster
+  //////////////////////////////////////////////////////////////////////////////
+
+  std::vector<DatabaseID> databases(bool = false) override;
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief (re-)load the information about our plan
+  /// Usually one does not have to call this directly.
+  //////////////////////////////////////////////////////////////////////////////
+
+  void loadPlan() override;
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief (re-)load the information about current state
+  /// Usually one does not have to call this directly.
+  //////////////////////////////////////////////////////////////////////////////
+
+  void loadCurrent() override;
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief ask about a collection
+  /// If it is not found in the cache, the cache is reloaded once. The second
+  /// argument can be a collection ID or a collection name (both cluster-wide).
+  //////////////////////////////////////////////////////////////////////////////
+
+  std::shared_ptr<LogicalCollection> getCollection(DatabaseID const&,
+                                                   CollectionID const&) override;
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief ask about all collections
+  //////////////////////////////////////////////////////////////////////////////
+
+  std::vector<std::shared_ptr<LogicalCollection>> const getCollections(
+      DatabaseID const&) override;
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief ask about a collection in current. This returns information about
+  /// all shards in the collection.
+  /// If it is not found in the cache, the cache is reloaded once.
+  //////////////////////////////////////////////////////////////////////////////
+
+  std::shared_ptr<CollectionInfoCurrent> getCollectionCurrent(
+      DatabaseID const&, CollectionID const&) override;
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief create database in coordinator
+  //////////////////////////////////////////////////////////////////////////////
+
+  int createDatabaseCoordinator(std::string const&,
+                                arangodb::velocypack::Slice const&,
+                                std::string&, double) override;
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief drop database in coordinator
+  //////////////////////////////////////////////////////////////////////////////
+
+  int dropDatabaseCoordinator(std::string const& name, std::string& errorMsg,
+                              double timeout) override;
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief create collection in coordinator
+  //////////////////////////////////////////////////////////////////////////////
+
+  int createCollectionCoordinator(std::string const& databaseName,
+                                  std::string const& collectionID,
+                                  uint64_t numberOfShards,
+                                  uint64_t replicationFactor,
+                                  bool waitForReplication,
+                                  arangodb::velocypack::Slice const& json,
+                                  std::string& errorMsg, double timeout) override;
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief drop collection in coordinator
+  //////////////////////////////////////////////////////////////////////////////
+
+  int dropCollectionCoordinator(std::string const& databaseName,
+                                std::string const& collectionID,
+                                std::string& errorMsg, double timeout) override;
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief set collection properties in coordinator
+  //////////////////////////////////////////////////////////////////////////////
+
+  int setCollectionPropertiesCoordinator(std::string const& databaseName,
+                                         std::string const& collectionID,
+                                         LogicalCollection const*) override;
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief set collection status in coordinator
+  //////////////////////////////////////////////////////////////////////////////
+
+  int setCollectionStatusCoordinator(std::string const& databaseName,
+                                     std::string const& collectionID,
+                                     TRI_vocbase_col_status_e status) override;
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief ensure an index in coordinator.
+  //////////////////////////////////////////////////////////////////////////////
+
+  int ensureIndexCoordinator(
+      std::string const& databaseName, std::string const& collectionID,
+      arangodb::velocypack::Slice const& slice, bool create,
+      bool (*compare)(arangodb::velocypack::Slice const&,
+                      arangodb::velocypack::Slice const&),
+      arangodb::velocypack::Builder& resultBuilder, std::string& errorMsg, double timeout) override;
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief drop an index in coordinator.
+  //////////////////////////////////////////////////////////////////////////////
+
+  int dropIndexCoordinator(std::string const& databaseName,
+                           std::string const& collectionID, TRI_idx_iid_t iid,
+                           std::string& errorMsg, double timeout) override;
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief (re-)load the information about servers from the agency
+  /// Usually one does not have to call this directly.
+  //////////////////////////////////////////////////////////////////////////////
+
+  void loadServers() override;;
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief find the endpoint of a server from its ID.
+  /// If it is not found in the cache, the cache is reloaded once, if
+  /// it is still not there an empty string is returned as an error.
+  //////////////////////////////////////////////////////////////////////////////
+
+  std::string getServerEndpoint(ServerID const&) override;
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief find the server ID for an endpoint.
+  /// If it is not found in the cache, the cache is reloaded once, if
+  /// it is still not there an empty string is returned as an error.
+  //////////////////////////////////////////////////////////////////////////////
+
+  std::string getServerName(std::string const& endpoint) override;
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief (re-)load the information about all coordinators from the agency
+  /// Usually one does not have to call this directly.
+  //////////////////////////////////////////////////////////////////////////////
+
+  void loadCurrentCoordinators() override;
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief (re-)load the information about all DBservers from the agency
+  /// Usually one does not have to call this directly.
+  //////////////////////////////////////////////////////////////////////////////
+
+  void loadCurrentDBServers() override;
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief return a list of all DBServers in the cluster that have
+  /// currently registered
+  //////////////////////////////////////////////////////////////////////////////
+
+  std::vector<ServerID> getCurrentDBServers() override;
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief find the servers who are responsible for a shard (one leader
+  /// and possibly multiple followers).
+  /// If it is not found in the cache, the cache is reloaded once, if
+  /// it is still not there a pointer to an empty vector is returned as
+  /// an error.
+  //////////////////////////////////////////////////////////////////////////////
+
+  std::shared_ptr<std::vector<ServerID>> getResponsibleServer(ShardID const&) override;
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief find the shard list of a collection, sorted numerically
+  //////////////////////////////////////////////////////////////////////////////
+
+  std::shared_ptr<std::vector<ShardID>> getShardList(CollectionID const&) override;
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief find the shard that is responsible for a document
+  //////////////////////////////////////////////////////////////////////////////
+
+  int getResponsibleShard(LogicalCollection*, arangodb::velocypack::Slice,
+                          bool docComplete, ShardID& shardID,
+                          bool& usesDefaultShardingAttributes,
+                          std::string const& key = "") override;
+
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief return the list of coordinator server names
+  //////////////////////////////////////////////////////////////////////////////
+
+  std::vector<ServerID> getCurrentCoordinators() override;
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief invalidate planned
+  //////////////////////////////////////////////////////////////////////////////
+
+  void invalidatePlan() override;
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief invalidate current
+  //////////////////////////////////////////////////////////////////////////////
+
+  void invalidateCurrent() override;
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief invalidate current coordinators
+  //////////////////////////////////////////////////////////////////////////////
+
+  void invalidateCurrentCoordinators() override;
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief get current "Plan" structure
+  //////////////////////////////////////////////////////////////////////////////
+
+  std::shared_ptr<VPackBuilder> getPlan() override;
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief get current "Current" structure
+  //////////////////////////////////////////////////////////////////////////////
+
+  std::shared_ptr<VPackBuilder> getCurrent() override;
+
+  std::vector<std::string> const& getFailedServers() override;
+  void setFailedServers(std::vector<std::string> const& failedServers) override;
+
+  std::unordered_map<ServerID, std::string> getServerAliases() override;
+
+  void clean() override;
+
+  TRI_voc_cid_t getCid(std::string const& databaseName, std::string const& collectionName) override;
+  bool hasDistributeShardsLike(std::string const& databaseName, std::string const& cidString) override;
+  std::shared_ptr<ShardMap> getShardMap(std::string const& databaseName, std::string const& cidString) override;
+
 
  public:
   static void createInstance(AgencyCallbackRegistry*);
+  static void setInstance(ClusterInfo*);
   //////////////////////////////////////////////////////////////////////////////
   /// @brief get the unique instance
   //////////////////////////////////////////////////////////////////////////////
@@ -258,261 +333,6 @@ class ClusterInfo {
 
   static void cleanup();
 
- public:
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief get a number of cluster-wide unique IDs, returns the first
-  /// one and guarantees that <number> are reserved for the caller.
-  //////////////////////////////////////////////////////////////////////////////
-
-  uint64_t uniqid(uint64_t = 1);
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief flush the caches (used for testing only)
-  //////////////////////////////////////////////////////////////////////////////
-
-  void flush();
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief ask whether a cluster database exists
-  //////////////////////////////////////////////////////////////////////////////
-
-  bool doesDatabaseExist(DatabaseID const&, bool = false);
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief get list of databases in the cluster
-  //////////////////////////////////////////////////////////////////////////////
-
-  std::vector<DatabaseID> databases(bool = false);
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief (re-)load the information about our plan
-  /// Usually one does not have to call this directly.
-  //////////////////////////////////////////////////////////////////////////////
-
-  void loadPlan();
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief (re-)load the information about current state
-  /// Usually one does not have to call this directly.
-  //////////////////////////////////////////////////////////////////////////////
-
-  void loadCurrent();
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief ask about a collection
-  /// If it is not found in the cache, the cache is reloaded once. The second
-  /// argument can be a collection ID or a collection name (both cluster-wide).
-  //////////////////////////////////////////////////////////////////////////////
-
-  std::shared_ptr<LogicalCollection> getCollection(DatabaseID const&,
-                                                   CollectionID const&);
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief ask about all collections
-  //////////////////////////////////////////////////////////////////////////////
-
-  std::vector<std::shared_ptr<LogicalCollection>> const getCollections(
-      DatabaseID const&);
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief (re-)load the information about current collections from the agency
-  /// Usually one does not have to call this directly. Note that this is
-  /// necessarily complicated, since here we have to consider information
-  /// about all shards of a collection.
-  //////////////////////////////////////////////////////////////////////////////
-
-  void loadCurrentCollections();
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief ask about a collection in current. This returns information about
-  /// all shards in the collection.
-  /// If it is not found in the cache, the cache is reloaded once.
-  //////////////////////////////////////////////////////////////////////////////
-
-  std::shared_ptr<CollectionInfoCurrent> getCollectionCurrent(
-      DatabaseID const&, CollectionID const&);
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief create database in coordinator
-  //////////////////////////////////////////////////////////////////////////////
-
-  int createDatabaseCoordinator(std::string const&,
-                                arangodb::velocypack::Slice const&,
-                                std::string&, double);
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief drop database in coordinator
-  //////////////////////////////////////////////////////////////////////////////
-
-  int dropDatabaseCoordinator(std::string const& name, std::string& errorMsg,
-                              double timeout);
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief create collection in coordinator
-  //////////////////////////////////////////////////////////////////////////////
-
-  int createCollectionCoordinator(std::string const& databaseName,
-                                  std::string const& collectionID,
-                                  uint64_t numberOfShards,
-                                  uint64_t replicationFactor,
-                                  bool waitForReplication,
-                                  arangodb::velocypack::Slice const& json,
-                                  std::string& errorMsg, double timeout);
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief drop collection in coordinator
-  //////////////////////////////////////////////////////////////////////////////
-
-  int dropCollectionCoordinator(std::string const& databaseName,
-                                std::string const& collectionID,
-                                std::string& errorMsg, double timeout);
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief set collection properties in coordinator
-  //////////////////////////////////////////////////////////////////////////////
-
-  int setCollectionPropertiesCoordinator(std::string const& databaseName,
-                                         std::string const& collectionID,
-                                         LogicalCollection const*);
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief set collection status in coordinator
-  //////////////////////////////////////////////////////////////////////////////
-
-  int setCollectionStatusCoordinator(std::string const& databaseName,
-                                     std::string const& collectionID,
-                                     TRI_vocbase_col_status_e status);
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief ensure an index in coordinator.
-  //////////////////////////////////////////////////////////////////////////////
-
-  int ensureIndexCoordinator(
-      std::string const& databaseName, std::string const& collectionID,
-      arangodb::velocypack::Slice const& slice, bool create,
-      bool (*compare)(arangodb::velocypack::Slice const&,
-                      arangodb::velocypack::Slice const&),
-      arangodb::velocypack::Builder& resultBuilder, std::string& errorMsg, double timeout);
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief drop an index in coordinator.
-  //////////////////////////////////////////////////////////////////////////////
-
-  int dropIndexCoordinator(std::string const& databaseName,
-                           std::string const& collectionID, TRI_idx_iid_t iid,
-                           std::string& errorMsg, double timeout);
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief (re-)load the information about servers from the agency
-  /// Usually one does not have to call this directly.
-  //////////////////////////////////////////////////////////////////////////////
-
-  void loadServers();
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief find the endpoint of a server from its ID.
-  /// If it is not found in the cache, the cache is reloaded once, if
-  /// it is still not there an empty string is returned as an error.
-  //////////////////////////////////////////////////////////////////////////////
-
-  std::string getServerEndpoint(ServerID const&);
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief find the server ID for an endpoint.
-  /// If it is not found in the cache, the cache is reloaded once, if
-  /// it is still not there an empty string is returned as an error.
-  //////////////////////////////////////////////////////////////////////////////
-
-  std::string getServerName(std::string const& endpoint);
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief (re-)load the information about all coordinators from the agency
-  /// Usually one does not have to call this directly.
-  //////////////////////////////////////////////////////////////////////////////
-
-  void loadCurrentCoordinators();
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief (re-)load the information about all DBservers from the agency
-  /// Usually one does not have to call this directly.
-  //////////////////////////////////////////////////////////////////////////////
-
-  void loadCurrentDBServers();
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief return a list of all DBServers in the cluster that have
-  /// currently registered
-  //////////////////////////////////////////////////////////////////////////////
-
-  std::vector<ServerID> getCurrentDBServers();
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief find the servers who are responsible for a shard (one leader
-  /// and possibly multiple followers).
-  /// If it is not found in the cache, the cache is reloaded once, if
-  /// it is still not there a pointer to an empty vector is returned as
-  /// an error.
-  //////////////////////////////////////////////////////////////////////////////
-
-  std::shared_ptr<std::vector<ServerID>> getResponsibleServer(ShardID const&);
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief find the shard list of a collection, sorted numerically
-  //////////////////////////////////////////////////////////////////////////////
-
-  std::shared_ptr<std::vector<ShardID>> getShardList(CollectionID const&);
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief find the shard that is responsible for a document
-  //////////////////////////////////////////////////////////////////////////////
-
-  int getResponsibleShard(LogicalCollection*, arangodb::velocypack::Slice,
-                          bool docComplete, ShardID& shardID,
-                          bool& usesDefaultShardingAttributes,
-                          std::string const& key = "");
-
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief return the list of coordinator server names
-  //////////////////////////////////////////////////////////////////////////////
-
-  std::vector<ServerID> getCurrentCoordinators();
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief invalidate planned
-  //////////////////////////////////////////////////////////////////////////////
-
-  void invalidatePlan();
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief invalidate current
-  //////////////////////////////////////////////////////////////////////////////
-
-  void invalidateCurrent();
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief invalidate current coordinators
-  //////////////////////////////////////////////////////////////////////////////
-
-  void invalidateCurrentCoordinators();
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief get current "Plan" structure
-  //////////////////////////////////////////////////////////////////////////////
-
-  std::shared_ptr<VPackBuilder> getPlan();
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief get current "Current" structure
-  //////////////////////////////////////////////////////////////////////////////
-
-  std::shared_ptr<VPackBuilder> getCurrent();
-
-  std::vector<std::string> const& getFailedServers() { MUTEX_LOCKER(guard, _failedServersMutex); return _failedServers; }
-  void setFailedServers(std::vector<std::string> const& failedServers) { MUTEX_LOCKER(guard, _failedServersMutex); _failedServers = failedServers; }
-
-  std::unordered_map<ServerID, std::string> getServerAliases();
-  
  private:
 
   //////////////////////////////////////////////////////////////////////////////

@@ -79,7 +79,7 @@ class ManagedDocumentResult {
   void setManaged(std::string&& str, TRI_voc_rid_t revisionId);
 
   inline TRI_voc_rid_t lastRevisionId() const { return _lastRevisionId; }
-
+  
   void reset() noexcept;
   
   inline uint8_t const* vpack() const {

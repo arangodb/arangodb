@@ -418,7 +418,7 @@ bool IndexBlock::skipIndex(size_t atMost) {
 // this is called every time we need to fetch data from the indexes
 bool IndexBlock::readIndex(
     size_t atMost,
-    IndexIterator::TokenCallback const& callback) {
+    IndexIterator::DocumentCallback const& callback) {
   DEBUG_BEGIN_BLOCK();
   // this is called every time we want to read the index.
   // For the primary key index, this only reads the index once, and never
@@ -452,7 +452,7 @@ bool IndexBlock::readIndex(
 
     TRI_ASSERT(atMost >= _returned);
   
-    if (_cursor->next(callback, atMost - _returned)) {
+    if (_cursor->nextDocument(callback, atMost - _returned)) {
       // We have returned enough.
       // And this index could return more.
       // We are good.
@@ -499,57 +499,49 @@ AqlItemBlock* IndexBlock::getSome(size_t atLeast, size_t atMost) {
 
   std::unique_ptr<AqlItemBlock> res;
 
-  IndexIterator::TokenCallback callback;
+  IndexIterator::DocumentCallback callback;
   if (_indexes.size() > 1) {
     // Activate uniqueness checks
-    callback = [&](DocumentIdentifierToken const& token) {
+    callback = [&](ManagedDocumentResult const& mdr) {
       TRI_ASSERT(res.get() != nullptr);
       if (!_isLastIndex) {
         // insert & check for duplicates in one go
-        if (!_alreadyReturned.emplace(token).second) {
+        if (!_alreadyReturned.emplace(mdr.lastRevisionId()).second) {
           // Document already in list. Skip this
           return;
         }
       } else {
         // only check for duplicates
-        if (_alreadyReturned.find(token) != _alreadyReturned.end()) {
+        if (_alreadyReturned.find(mdr.lastRevisionId()) != _alreadyReturned.end()) {
           // Document found, skip
           return;
         }
       }
-      if (_cursor->collection()->readDocument(_trx, token, *_mmdr)) {
-        res->setValue(_returned,
-                      static_cast<arangodb::aql::RegisterId>(curRegs),
-                      _mmdr->createAqlValue());
+      res->setValue(_returned,
+                    static_cast<arangodb::aql::RegisterId>(curRegs),
+                    mdr.createAqlValue());
 
-        if (_returned > 0) {
-          // re-use already copied AqlValues
-          res->copyValuesFromFirstRow(_returned,
-                                      static_cast<RegisterId>(curRegs));
-        }
-        ++_returned;
+      if (_returned > 0) {
+        // re-use already copied AqlValues
+        res->copyValuesFromFirstRow(_returned,
+                                    static_cast<RegisterId>(curRegs));
       }
-      // What happens in else case?
-      // Index has stored a document the primary store does not know
+      ++_returned;
     };
   } else {
     // No uniqueness checks
-    callback = [&](DocumentIdentifierToken const& token) {
+    callback = [&](ManagedDocumentResult const& mdr) {
       TRI_ASSERT(res.get() != nullptr);
-      if (_cursor->collection()->readDocument(_trx, token, *_mmdr)) {
-        res->setValue(_returned,
-                      static_cast<arangodb::aql::RegisterId>(curRegs),
-                      _mmdr->createAqlValue());
+      res->setValue(_returned,
+                    static_cast<arangodb::aql::RegisterId>(curRegs),
+                    mdr.createAqlValue());
 
-        if (_returned > 0) {
-          // re-use already copied AqlValues
-          res->copyValuesFromFirstRow(_returned,
-                                      static_cast<RegisterId>(curRegs));
-        }
-        ++_returned;
+      if (_returned > 0) {
+        // re-use already copied AqlValues
+        res->copyValuesFromFirstRow(_returned,
+                                    static_cast<RegisterId>(curRegs));
       }
-      // What happens in else case?
-      // Index has stored a document the primary store does not know
+      ++_returned;
     };
   }
 

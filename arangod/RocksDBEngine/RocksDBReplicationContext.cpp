@@ -28,7 +28,7 @@
 #include "Basics/VPackStringBufferAdapter.h"
 #include "RocksDBEngine/RocksDBCollection.h"
 #include "RocksDBEngine/RocksDBCommon.h"
-#include "RocksDBEngine/RocksDBPrimaryIndex.h"
+#include "RocksDBEngine/RocksDBIterators.h"
 #include "RocksDBEngine/RocksDBTransactionState.h"
 #include "Transaction/Helpers.h"
 #include "Transaction/StandaloneContext.h"
@@ -213,16 +213,10 @@ arangodb::Result RocksDBReplicationContext::dumpKeyChunks(VPackBuilder& b,
   VPackSlice highKey;  // FIXME: no good keeping this
 
   uint64_t hash = 0x012345678;
-  auto cb = [&](DocumentIdentifierToken const& token) {
-    bool ok = _collection->readDocument(_trx.get(), token, _mdr);
-    if (!ok) {
-      // TODO: do something here?
-      return;
-    }
+  auto cb = [&](ManagedDocumentResult const& mdr) {
 
-    // current document
-    VPackSlice current(_mdr.vpack());
-    highKey = current.get(StaticStrings::KeyString);
+    VPackSlice doc(mdr.vpack());
+    highKey = doc.get(StaticStrings::KeyString);
     // set type
     if (lowKey.empty()) {
       lowKey = highKey.copyString();
@@ -230,14 +224,14 @@ arangodb::Result RocksDBReplicationContext::dumpKeyChunks(VPackBuilder& b,
 
     // we can get away with the fast hash function here, as key values are
     // restricted to strings
-    hash ^= transaction::helpers::extractKeyFromDocument(current).hashString();
-    hash ^= transaction::helpers::extractRevSliceFromDocument(current).hash();
+    hash ^= transaction::helpers::extractKeyFromDocument(doc).hashString();
+    hash ^= transaction::helpers::extractRevSliceFromDocument(doc).hash();
   };
 
   b.openArray();
   while (_hasMore) {
     try {
-      _hasMore = primary->next(cb, chunkSize);
+      _hasMore = primary->nextDocument(cb, chunkSize);
 
       b.add(VPackValue(VPackValueType::Object));
       b.add("low", VPackValue(lowKey));
@@ -283,19 +277,20 @@ arangodb::Result RocksDBReplicationContext::dumpKeys(
     TRI_ASSERT(_lastIteratorOffset == from);
   }
 
-  auto cb = [&](DocumentIdentifierToken const& token, StringRef const& key) {
-    RocksDBToken const& rt = static_cast<RocksDBToken const&>(token);
+  auto cb = [&](ManagedDocumentResult const& mdr) {
+    VPackSlice doc(mdr.vpack());
+    VPackSlice key = doc.get(StaticStrings::KeyString);
 
     b.openArray();
-    b.add(VPackValuePair(key.data(), key.size(), VPackValueType::String));
-    b.add(VPackValue(std::to_string(rt.revisionId())));
+    b.add(key);
+    b.add(VPackValue(std::to_string(mdr.lastRevisionId())));
     b.close();
   };
 
   b.openArray();
   // chunkSize is going to be ignored here
   try {
-    _hasMore = primary->nextWithKey(cb, chunkSize);
+    _hasMore = primary->nextDocument(cb, chunkSize);
     _lastIteratorOffset++;
   } catch (std::exception const&) {
     return Result(TRI_ERROR_INTERNAL);

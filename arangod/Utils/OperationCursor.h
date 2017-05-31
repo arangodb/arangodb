@@ -102,6 +102,9 @@ struct OperationCursor {
   bool nextWithExtra(IndexIterator::ExtraCallback const& callback,
       uint64_t batchSize);
 
+  bool nextDocument(IndexIterator::DocumentCallback const& callback,
+                    uint64_t batchSize);
+  
 /// @brief convenience function to retrieve all results
   void all(IndexIterator::TokenCallback const& callback) {
     while (next(callback, 1000)) {}
@@ -110,6 +113,11 @@ struct OperationCursor {
 /// @brief convenience function to retrieve all results with extra
   void allWithExtra(IndexIterator::ExtraCallback const& callback) {
     while (nextWithExtra(callback, 1000)) {}
+  }
+  
+  /// @brief convenience function to retrieve all results
+  void allDocuments(IndexIterator::DocumentCallback const& callback) {
+    while (nextDocument(callback, 1000)) {}
   }
 
 /// @brief Skip the next toSkip many elements.

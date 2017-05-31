@@ -1401,7 +1401,7 @@ void TRI_InitV8Actions(v8::Isolate* isolate, v8::Handle<v8::Context> context) {
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifdef ARANGODB_ENABLE_FAILURE_TESTS
-static bool clusterSendToAllServers(
+static int clusterSendToAllServers(
     std::string const& dbname,
     std::string const& path,  // Note: Has to be properly encoded!
     arangodb::rest::RequestType const& method, std::string const& body) {

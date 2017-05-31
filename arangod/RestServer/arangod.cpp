@@ -247,13 +247,13 @@ static void WINAPI ServiceMain(DWORD dwArgc, LPSTR* lpszArgv) {
       RegisterServiceCtrlHandlerA(lpszArgv[0], (LPHANDLER_FUNCTION)ServiceCtrl);
 
   // set start pending
-  SetServiceStatus(SERVICE_START_PENDING, 0, 1, 10000);
+  SetServiceStatus(SERVICE_START_PENDING, 0, 1, 10000, 0);
 
   ArangoGlobalContext context(ARGC, ARGV, SBIN_DIRECTORY);
   runServer(ARGC, ARGV, context);
 
   // service has stopped
-  SetServiceStatus(SERVICE_STOPPED, NO_ERROR, 0, 0);
+  SetServiceStatus(SERVICE_STOPPED, NO_ERROR, 0, 0, 0);
   TRI_CloseWindowsEventlog();
 }
 

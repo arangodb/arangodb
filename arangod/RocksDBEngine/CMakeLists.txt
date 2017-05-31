@@ -17,6 +17,7 @@ set(ROCKSDB_SOURCES
   RocksDBEngine/RocksDBHashIndex.cpp
   RocksDBEngine/RocksDBIndex.cpp
   RocksDBEngine/RocksDBIndexFactory.cpp
+  RocksDBEngine/RocksDBIterators.cpp
   RocksDBEngine/RocksDBKey.cpp
   RocksDBEngine/RocksDBKeyBounds.cpp
   RocksDBEngine/RocksDBLogValue.cpp
