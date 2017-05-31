@@ -831,6 +831,10 @@ function disableDevelopmentMode (mount) {
   service.development(false);
   createServiceBundle(mount);
   service.updateChecksum();
+  const bundleCollection = utils.getBundleStorage();
+  if (!bundleCollection.exists(service.checksum)) {
+    bundleCollection._binaryInsert({_key: service.checksum}, service.bundlePath);
+  }
   utils.updateService(mount, service.toJSON());
   // Make sure setup changes from devmode are respected
   service.executeScript('setup');
