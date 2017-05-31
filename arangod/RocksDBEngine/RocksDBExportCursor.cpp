@@ -75,7 +75,7 @@ RocksDBExportCursor::RocksDBExportCursor(
   }
 
   auto rocksCollection =
-      reinterpret_cast<RocksDBCollection*>(_collection->getPhysical());
+      static_cast<RocksDBCollection*>(_collection->getPhysical());
   _iter = rocksCollection->getAllIterator(_trx.get(), &_mdr, false);
 
   _size = _collection->numberDocuments(_trx.get());
