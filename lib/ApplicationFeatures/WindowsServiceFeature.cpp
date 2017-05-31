@@ -368,7 +368,7 @@ void DeleteService (bool force) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void SetServiceStatus(DWORD dwCurrentState, DWORD dwWin32ExitCode,
-                      DWORD dwCheckPoint, DWORD dwWaitHint) {
+                      DWORD dwCheckPoint, DWORD dwWaitHint, DWORD exitCode) {
   // disable control requests until the service is started
   SERVICE_STATUS ss;
 
@@ -381,9 +381,11 @@ void SetServiceStatus(DWORD dwCurrentState, DWORD dwWin32ExitCode,
 
   // initialize ss structure
   ss.dwServiceType = SERVICE_WIN32_OWN_PROCESS;
-  ss.dwServiceSpecificExitCode = 0;
   ss.dwCurrentState = dwCurrentState;
+
   ss.dwWin32ExitCode = dwWin32ExitCode;
+  ss.dwServiceSpecificExitCode = exitCode;
+
   ss.dwCheckPoint = dwCheckPoint;
   ss.dwWaitHint = dwWaitHint;
 
@@ -407,7 +409,7 @@ void SetServiceStatus(DWORD dwCurrentState, DWORD dwWin32ExitCode,
 ///        really up and running.
 //////////////////////////////////////////////////////////////////////////////
 void WindowsServiceFeature::startupProgress () {
-  SetServiceStatus(SERVICE_START_PENDING, NO_ERROR, _progress++, 20000);
+  SetServiceStatus(SERVICE_START_PENDING, NO_ERROR, _progress++, 20000, 0);
 }
 
 //////////////////////////////////////////////////////////////////////////////
@@ -416,7 +418,7 @@ void WindowsServiceFeature::startupProgress () {
 //////////////////////////////////////////////////////////////////////////////
 void WindowsServiceFeature::startupFinished () {
   // startup finished - signalize we're running.
-  SetServiceStatus(SERVICE_RUNNING, NO_ERROR, 0, 0);
+  SetServiceStatus(SERVICE_RUNNING, NO_ERROR, 0, 0, 0);
 }
 
 //////////////////////////////////////////////////////////////////////////////
@@ -425,7 +427,7 @@ void WindowsServiceFeature::startupFinished () {
 //////////////////////////////////////////////////////////////////////////////
 void WindowsServiceFeature::shutDownBegins () {
   // startup finished - signalize we're running.
-  SetServiceStatus(SERVICE_STOP_PENDING, NO_ERROR, 0, 0);
+  SetServiceStatus(SERVICE_STOP_PENDING, NO_ERROR, 0, 0, 0);
 }
 
 
@@ -435,7 +437,7 @@ void WindowsServiceFeature::shutDownBegins () {
 //////////////////////////////////////////////////////////////////////////////
 void WindowsServiceFeature::shutDownComplete () {
   // startup finished - signalize we're running.
-  SetServiceStatus(SERVICE_STOPPED, NO_ERROR, 0, 0);
+  SetServiceStatus(SERVICE_STOPPED, NO_ERROR, 0, 0, 0);
 }
 
 //////////////////////////////////////////////////////////////////////////////
@@ -444,7 +446,16 @@ void WindowsServiceFeature::shutDownComplete () {
 //////////////////////////////////////////////////////////////////////////////
 void WindowsServiceFeature::shutDownFailure () {
   // startup finished - signalize we're running.
-  SetServiceStatus(SERVICE_STOP, ERROR_FAIL_RESTART, 0, 0);
+  SetServiceStatus(SERVICE_STOP, ERROR_SERVICE_SPECIFIC_ERROR, 0, 0, 1);
+}
+
+//////////////////////////////////////////////////////////////////////////////
+/// @brief wrap ArangoDB server so we can properly emmit a status on shutdown
+///        starting
+//////////////////////////////////////////////////////////////////////////////
+void WindowsServiceFeature::abortFailure () {
+  // startup finished - signalize we're running.
+  SetServiceStatus(SERVICE_STOP, ERROR_SERVICE_SPECIFIC_ERROR, 0, 0, 2);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -470,7 +481,7 @@ void WINAPI ServiceCtrl(DWORD dwCtrlCode) {
   // stop service
   if (dwCtrlCode == SERVICE_CONTROL_STOP ||
       dwCtrlCode == SERVICE_CONTROL_SHUTDOWN) {
-    SetServiceStatus(SERVICE_STOP_PENDING, NO_ERROR, 0, 0);
+    SetServiceStatus(SERVICE_STOP_PENDING, NO_ERROR, 0, 0, 0);
 
     if (ArangoInstance != nullptr && ArangoInstance->_server != nullptr) {
       ArangoInstance->_server->beginShutdown();
@@ -480,27 +491,9 @@ void WINAPI ServiceCtrl(DWORD dwCtrlCode) {
       }
     }
   } else {
-    SetServiceStatus(dwState, NO_ERROR, 0, 0);
+    SetServiceStatus(dwState, NO_ERROR, 0, 0, 0);
   }
 }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief parse windows specific commandline options
-////////////////////////////////////////////////////////////////////////////////
-/*
-bool TRI_ParseMoreArgs(int argc, char* argv[]) {
-  SetUnhandledExceptionFilter(unhandledExceptionHandler);
-
-    } else if (TRI_EqualString(argv[1], "--uninstall-service")) {
-      bool force = ((argc > 2) && !strcmp(argv[2], "--force"));
-      DeleteService(argc, argv, force);
-      exit(EXIT_SUCCESS);
-    }
-  }
-  return false;
-}
-*/
-
 
 WindowsServiceFeature::WindowsServiceFeature(application_features::ApplicationServer* server)
   : ApplicationFeature(server, "WindowsService"),
@@ -556,6 +549,14 @@ void WindowsServiceFeature::collectOptions(std::shared_ptr<ProgramOptions> optio
                            new BooleanParameter(&_stopWaitService));
 }
 
+void WindowsServiceFeature::abortService() {
+  if (ArangoInstance != nullptr) {
+    ArangoInstance->_server = nullptr;
+    ArangoInstance->abortFailure();
+  }
+  exit(EXIT_FAILURE);
+}
+
 void WindowsServiceFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
   if (!TRI_InitWindowsEventLog()) {
     exit(EXIT_FAILURE);
@@ -570,6 +571,8 @@ void WindowsServiceFeature::validateOptions(std::shared_ptr<ProgramOptions> opti
   else if (_forceUninstall) {
   }
   else if (_startAsService) {
+    TRI_SetWindowsServiceAbortFunction(abortService);
+    
     ProgressHandler reporter{
       [this](ServerState state) {
         switch (state) {
@@ -584,6 +587,9 @@ void WindowsServiceFeature::validateOptions(std::shared_ptr<ProgramOptions> opti
         case ServerState::IN_PREPARE:
         case ServerState::IN_START:
           this->startupProgress();
+          break;
+        case ServerState::ABORT:
+          this->shutDownFailure();
           break;
         case ServerState::UNINITIALIZED:
         case ServerState::STOPPED:

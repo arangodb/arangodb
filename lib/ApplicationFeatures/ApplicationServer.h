@@ -36,6 +36,7 @@ class ProgramOptions;
 namespace application_features {
 class ApplicationFeature;
 
+// handled i.e. in WindowsServiceFeature.cpp
 enum class ServerState {
   UNINITIALIZED,
   IN_COLLECT_OPTIONS,
