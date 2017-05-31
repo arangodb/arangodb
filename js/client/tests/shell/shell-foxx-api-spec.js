@@ -18,16 +18,14 @@ describe('FoxxApi commit', function () {
   beforeEach(function () {
     try {
       FoxxManager.uninstall(mount, {force: true});
-    } catch (err) {
-    }
+    } catch (e) {}
     FoxxManager.install(basePath, mount);
   });
 
   afterEach(function () {
     try {
       FoxxManager.uninstall(mount, {force: true});
-    } catch (err) {
-    }
+    } catch (e) {}
   });
 
   it('should fix missing service definition', function () {
