@@ -438,8 +438,6 @@ RocksDBOperationResult RocksDBTransactionState::addOperation(
   // "transaction size" counters have reached their limit
   if (_options.intermediateCommitCount <= numOperations ||
       _options.intermediateCommitSize <= newSize) {
-
-    LOG_TOPIC(ERR, Logger::FIXME) << "INTERMEDIATE COMMIT!";
       internalCommit();
       _numInserts = 0;
       _numUpdates = 0;

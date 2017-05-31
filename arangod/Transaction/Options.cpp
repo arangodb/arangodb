@@ -23,6 +23,10 @@
 
 #include "Options.h"
 
+#include <velocypack/Builder.h>
+#include <velocypack/Slice.h>
+#include <velocypack/velocypack-aliases.h>
+
 using namespace arangodb::transaction;
   
 uint64_t Options::defaultMaxTransactionSize = UINT64_MAX;
@@ -41,4 +45,45 @@ void Options::setLimits(uint64_t maxTransactionSize, uint64_t intermediateCommit
   defaultMaxTransactionSize = maxTransactionSize;
   defaultIntermediateCommitSize = intermediateCommitSize;
   defaultIntermediateCommitCount = intermediateCommitCount;
+}
+
+void Options::fromVelocyPack(arangodb::velocypack::Slice const& slice) {
+  VPackSlice value;
+  
+  value = slice.get("lockTimeout");
+  if (value.isNumber()) {
+    lockTimeout = value.getNumber<double>();
+  }
+  value = slice.get("maxTransactionSize");
+  if (value.isNumber()) {
+    maxTransactionSize = value.getNumber<uint64_t>();
+  }
+  value = slice.get("intermediateCommitSize");
+  if (value.isNumber()) {
+    intermediateCommitSize = value.getNumber<uint64_t>();
+  }
+  value = slice.get("intermediateCommitCount");
+  if (value.isNumber()) {
+    intermediateCommitCount = value.getNumber<uint64_t>();
+  }
+  value = slice.get("allowImplicitCollections");
+  if (value.isBool()) {
+    allowImplicitCollections = value.getBool();
+  }
+  value = slice.get("waitForSync");
+  if (value.isBool()) {
+    waitForSync = value.getBool();
+  }
+}
+ 
+/// @brief add the options to an opened vpack builder 
+void Options::toVelocyPack(arangodb::velocypack::Builder& builder) const {
+  TRI_ASSERT(builder.isOpenObject());
+
+  builder.add("lockTimeout", VPackValue(lockTimeout));
+  builder.add("maxTransactionSize", VPackValue(maxTransactionSize));
+  builder.add("intermediateCommitSize", VPackValue(intermediateCommitSize));
+  builder.add("intermediateCommitCount", VPackValue(intermediateCommitCount));
+  builder.add("allowImplicitCollections", VPackValue(allowImplicitCollections));
+  builder.add("waitForSync", VPackValue(waitForSync));
 }

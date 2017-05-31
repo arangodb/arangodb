@@ -29,6 +29,7 @@
 #include "Aql/Collection.h"
 #include "Transaction/StandaloneContext.h"
 #include "Transaction/Methods.h"
+#include "Transaction/Options.h"
 #include "VocBase/vocbase.h"
 
 namespace arangodb {
@@ -41,9 +42,11 @@ class AqlTransaction final : public transaction::Methods {
   AqlTransaction(
       std::shared_ptr<transaction::Context> const& transactionContext, 
       std::map<std::string, aql::Collection*> const* collections,
+      transaction::Options const& options,
       bool isMainTransaction)
-      : transaction::Methods(transactionContext),
-        _collections(*collections) {
+      : transaction::Methods(transactionContext, options),
+        _collections(*collections),
+        _options(options) {
     if (!isMainTransaction) {
       addHint(transaction::Hints::Hint::LOCK_NEVER);
     } else {
@@ -91,7 +94,7 @@ class AqlTransaction final : public transaction::Methods {
   /// AQL query running on the coordinator
   transaction::Methods* clone() const override {
     return new AqlTransaction(transaction::StandaloneContext::Create(vocbase()),
-        &_collections, false);
+        &_collections, _options, false);
   }
 
   /// @brief lockCollections, this is needed in a corner case in AQL: we need
@@ -106,6 +109,7 @@ class AqlTransaction final : public transaction::Methods {
   /// operation
  private:
   std::map<std::string, aql::Collection*> _collections;
+  transaction::Options _options;
 };
 
 }

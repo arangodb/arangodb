@@ -197,7 +197,7 @@ std::pair<bool, int32_t> RocksDBKey::geoValues(rocksdb::Slice const& slice) {
   uint64_t val =
       uint64FromPersistent(slice.data() + sizeof(char) + sizeof(uint64_t));
   bool isSlot = ((val & 0xFFULL) > 0);  // lowest byte is 0xFF if true
-  return std::pair<bool, int32_t>(isSlot, (val >> 32));
+  return std::pair<bool, int32_t>(isSlot, static_cast<int32_t>(val >> 32));
 }
 
 std::string const& RocksDBKey::string() const { return _buffer; }

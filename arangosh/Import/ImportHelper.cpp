@@ -816,7 +816,7 @@ void ImportHelper::sendJsonBuffer(char const* str, size_t len, bool isObject) {
 
 SenderThread* ImportHelper::findSender() {
   while (!_senderThreads.empty()) {
-    for (std::unique_ptr<SenderThread>& t : _senderThreads) {
+    for (auto const& t : _senderThreads) {
       if (t->hasError()) {
         _hasError = true;
         _errorMessage = t->errorMessage();
@@ -825,7 +825,7 @@ SenderThread* ImportHelper::findSender() {
         return t.get();
       }
     }
-    usleep(500000);
+    usleep(100000);
   }
   return nullptr;
 }
@@ -833,7 +833,7 @@ SenderThread* ImportHelper::findSender() {
 void ImportHelper::waitForSenders() {
   while (!_senderThreads.empty()) {
     uint32_t numIdle = 0;
-    for (std::unique_ptr<SenderThread>& t : _senderThreads) {
+    for (auto const& t : _senderThreads) {
       if (t->idle() || t->hasError()) {
         numIdle++;
       }

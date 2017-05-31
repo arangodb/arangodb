@@ -594,7 +594,7 @@ void ApplicationServer::start() {
           }
         }
       }
-      
+      shutdownFatalError();
       // throw exception so the startup aborts
       THROW_ARANGO_EXCEPTION_MESSAGE(res, std::string("startup aborted: ") + TRI_errno_string(res));
     }
