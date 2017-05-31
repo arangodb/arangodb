@@ -1222,10 +1222,10 @@ arangodb::Result RocksDBCollection::fillIndexes(
   RocksDBBatchedMethods batched(state, &batch);
 
   int res = TRI_ERROR_NO_ERROR;
-  auto cb = [&](DocumentIdentifierToken token) {
-    if (res == TRI_ERROR_NO_ERROR && this->readDocumentNoCache(trx, token, mmdr)) {
-      res = ridx->insertRaw(&batched, mmdr.lastRevisionId(),
-                            VPackSlice(mmdr.vpack()));
+  auto cb = [&](ManagedDocumentResult const& mdr) {
+    if (res == TRI_ERROR_NO_ERROR) {
+      res = ridx->insertRaw(&batched, mdr.lastRevisionId(),
+                            VPackSlice(mdr.vpack()));
       if (res == TRI_ERROR_NO_ERROR) {
         numDocsWritten++;
       }
@@ -1236,7 +1236,7 @@ arangodb::Result RocksDBCollection::fillIndexes(
   Result r;
   bool hasMore = true;
   while (hasMore) {
-    hasMore = it->next(cb, 250);
+    hasMore = it->nextDocument(cb, 250);
     if (_logicalCollection->status() == TRI_VOC_COL_STATUS_DELETED ||
         _logicalCollection->deleted()) {
       res = TRI_ERROR_INTERNAL;
@@ -1517,10 +1517,10 @@ arangodb::Result RocksDBCollection::lookupRevisionVPack(
 
     mdr.setManaged(std::move(value), revisionId);
   } else {
-    LOG_TOPIC(ERR, Logger::FIXME) << "NOT FOUND rev: " << revisionId << " trx: " << trx->state()->id()
+    /*LOG_TOPIC(ERR, Logger::FIXME) << "NOT FOUND rev: " << revisionId << " trx: " << trx->state()->id()
                                   << " seq: " <<  mthd->readOptions().snapshot->GetSequenceNumber()
                                   << " objectID " << _objectId
-    << " name: " << _logicalCollection->name();
+    << " name: " << _logicalCollection->name();*/
     mdr.reset();
   }
   return res;

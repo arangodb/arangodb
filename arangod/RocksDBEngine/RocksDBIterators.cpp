@@ -41,8 +41,7 @@ RocksDBAllIndexIterator::RocksDBAllIndexIterator(
           static_cast<RocksDBCollection*>(col->getPhysical())->objectId())),
       _iterator(),
       _cmp(RocksDBColumnFamily::documents()->GetComparator()),
-      _index(index)
-{
+      _index(index) {
   // acquire rocksdb transaction
   RocksDBMethods* mthds = rocksutils::toRocksMethods(trx);
   rocksdb::ColumnFamilyHandle* cf = RocksDBColumnFamily::documents();
@@ -53,7 +52,7 @@ RocksDBAllIndexIterator::RocksDBAllIndexIterator(
   TRI_ASSERT(options.prefix_same_as_start);
   options.fill_cache = true;
   options.verify_checksums = false;  // TODO evaluate
-  //options.readahead_size = 4 * 1024 * 1024;
+  // options.readahead_size = 4 * 1024 * 1024;
   _iterator = mthds->NewIterator(options, cf);
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   rocksdb::ColumnFamilyDescriptor desc;
@@ -143,8 +142,11 @@ bool RocksDBAllIndexIterator::nextDocument(
 
 void RocksDBAllIndexIterator::seek(StringRef const& key) {
   TRI_ASSERT(_trx->state()->isRunning());
-  
+
   RocksDBToken token = _index->lookupKey(_trx, key);
+  if (!token.revisionId()) {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND);
+  }
   // don't want to get the index pointer just for this
   uint64_t objectId = _bounds.objectId();
   RocksDBKey val = RocksDBKey::Document(objectId, token.revisionId());
@@ -152,6 +154,9 @@ void RocksDBAllIndexIterator::seek(StringRef const& key) {
     _iterator->SeekForPrev(val.string());
   } else {
     _iterator->Seek(val.string());
+
+    TRI_ASSERT(_iterator->Valid());
+    TRI_ASSERT(RocksDBKey::revisionId(_iterator->key()) == token.revisionId());
   }
 }
 
