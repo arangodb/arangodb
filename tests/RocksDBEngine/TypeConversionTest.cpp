@@ -52,6 +52,8 @@ void doFromToTest(T num){
   char* p2 = p1;
   toPersistent(x,p1);
   y = fromPersistent<T>(p2);
+  CAPTURE(x);
+  CAPTURE(y);
   CHECK((x == y));
 }
 
