@@ -427,14 +427,14 @@ TRI_voc_rid_t RocksDBKey::revisionId(char const* data, size_t size) {
   RocksDBEntryType type = static_cast<RocksDBEntryType>(data[0]);
   switch (type) {
     case RocksDBEntryType::Document: {
-      TRI_ASSERT(size >= (sizeof(char) + (2 * sizeof(uint64_t))));
+      TRI_ASSERT(size == (sizeof(char) + (2 * sizeof(uint64_t))));
       return uint64FromPersistent(data + sizeof(char) + sizeof(uint64_t));
     }
     case RocksDBEntryType::EdgeIndexValue:
     case RocksDBEntryType::IndexValue:
     case RocksDBEntryType::FulltextIndexValue: {
       TRI_ASSERT(size >= (sizeof(char) + (2 * sizeof(uint64_t))));
-      // last 8 bytes should by revision
+      // last 8 bytes should be the revision
       return uint64FromPersistent(data + size - sizeof(uint64_t));
     }
 

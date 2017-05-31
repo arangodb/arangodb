@@ -96,10 +96,9 @@ bool RocksDBPrimaryIndexIterator::next(TokenCallback const& cb, size_t limit) {
     return false;
   }
 
-  ManagedDocumentResult result;
   while (limit > 0) {
     // TODO: prevent copying of the value into result, as we don't need it here!
-    RocksDBToken token = _index->lookupKey(_trx, *_iterator, result);
+    RocksDBToken token = _index->lookupKey(_trx, StringRef(*_iterator));
     cb(token);
 
     --limit;
@@ -113,217 +112,6 @@ bool RocksDBPrimaryIndexIterator::next(TokenCallback const& cb, size_t limit) {
 
 void RocksDBPrimaryIndexIterator::reset() { _iterator.reset(); }
 
-// ================ All Iterator ==================
-
-RocksDBAllIndexIterator::RocksDBAllIndexIterator(
-    LogicalCollection* collection, transaction::Methods* trx,
-    ManagedDocumentResult* mmdr, RocksDBPrimaryIndex const* index, bool reverse)
-    : IndexIterator(collection, trx, mmdr, index),
-      _reverse(reverse),
-      _bounds(RocksDBKeyBounds::PrimaryIndex(index->objectId())),
-      _iterator(),
-      _cmp(index->comparator())
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-      , _index(index)
-#endif
-{
-  // acquire rocksdb transaction
-  RocksDBMethods* mthds = rocksutils::toRocksMethods(trx);
-
-  // intentional copy of the read options 
-  auto options = mthds->readOptions();
-  TRI_ASSERT(options.snapshot != nullptr);
-  TRI_ASSERT(options.prefix_same_as_start);
-  options.fill_cache = true;
-  _iterator = mthds->NewIterator(options, index->columnFamily());
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-  rocksdb::ColumnFamilyDescriptor desc;
-  index->columnFamily()->GetDescriptor(&desc);
-  TRI_ASSERT(desc.options.prefix_extractor);
-#endif
-  
-  if (reverse) {
-    _iterator->SeekForPrev(_bounds.end());
-  } else {
-    _iterator->Seek(_bounds.start());
-  }
-}
-
-bool RocksDBAllIndexIterator::outOfRange() const {
-  TRI_ASSERT(_trx->state()->isRunning());
-  if (_reverse) {
-    return _cmp->Compare(_iterator->key(), _bounds.start()) < 0;
-  } else {
-    return _cmp->Compare(_iterator->key(), _bounds.end()) > 0;
-  }
-}
-
-bool RocksDBAllIndexIterator::next(TokenCallback const& cb, size_t limit) {
-  TRI_ASSERT(_trx->state()->isRunning());
-
-  if (limit == 0 || !_iterator->Valid() || outOfRange()) {
-    // No limit no data, or we are actually done. The last call should have
-    // returned false
-    TRI_ASSERT(limit > 0);  // Someone called with limit == 0. Api broken
-    return false;
-  }
-
-  while (limit > 0) {
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-    TRI_ASSERT(_index->objectId() == RocksDBKey::objectId(_iterator->key()));
-#endif
-    RocksDBToken token(RocksDBValue::revisionId(_iterator->value()));
-    cb(token);
-
-    --limit;
-
-    if (_reverse) {
-      _iterator->Prev();
-    } else {
-      _iterator->Next();
-    }
-
-    if (!_iterator->Valid() || outOfRange()) {
-      return false;
-    }
-  }
-
-  return true;
-}
-
-/// special method to expose the document key for incremental replication
-bool RocksDBAllIndexIterator::nextWithKey(TokenKeyCallback const& cb,
-                                          size_t limit) {
-  TRI_ASSERT(_trx->state()->isRunning());
-
-  if (limit == 0 || !_iterator->Valid() || outOfRange()) {
-    // No limit no data, or we are actually done. The last call should have
-    // returned false
-    TRI_ASSERT(limit > 0);  // Someone called with limit == 0. Api broken
-    return false;
-  }
-
-  while (limit > 0) {
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-    TRI_ASSERT(_index->objectId() == RocksDBKey::objectId(_iterator->key()));
-#endif
-    RocksDBToken token(RocksDBValue::revisionId(_iterator->value()));
-    StringRef key = RocksDBKey::primaryKey(_iterator->key());
-    cb(token, key);
-    --limit;
-
-    if (_reverse) {
-      _iterator->Prev();
-    } else {
-      _iterator->Next();
-    }
-    if (!_iterator->Valid() || outOfRange()) {
-      return false;
-    }
-  }
-  return true;
-}
-
-void RocksDBAllIndexIterator::seek(StringRef const& key) {
-  TRI_ASSERT(_trx->state()->isRunning());
-  // don't want to get the index pointer just for this
-  uint64_t objectId = _bounds.objectId();
-  RocksDBKey val = RocksDBKey::PrimaryIndexValue(objectId, key);
-  if (_reverse) {
-    _iterator->SeekForPrev(val.string());
-  } else {
-    _iterator->Seek(val.string());
-  }
-}
-
-void RocksDBAllIndexIterator::reset() {
-  TRI_ASSERT(_trx->state()->isRunning());
-
-  if (_reverse) {
-    _iterator->SeekForPrev(_bounds.end());
-  } else {
-    _iterator->Seek(_bounds.start());
-  }
-}
-
-// ================ Any Iterator ================
-
-RocksDBAnyIndexIterator::RocksDBAnyIndexIterator(
-    LogicalCollection* collection, transaction::Methods* trx,
-    ManagedDocumentResult* mmdr, RocksDBPrimaryIndex const* index)
-    : IndexIterator(collection, trx, mmdr, index),
-      _cmp(index->comparator()),
-      _iterator(),
-      _bounds(RocksDBKeyBounds::PrimaryIndex(index->objectId())),
-      _total(0),
-      _returned(0) {
-  // acquire rocksdb transaction
-  RocksDBTransactionState* state = rocksutils::toRocksTransactionState(trx);
-  TRI_ASSERT(state != nullptr);
-     
-  // intentional copy of the read options 
-  RocksDBMethods* mthds = rocksutils::toRocksMethods(trx);
-  auto options = mthds->readOptions();
-  TRI_ASSERT(options.snapshot != nullptr);
-  TRI_ASSERT(options.prefix_same_as_start);
-  options.fill_cache = false;
-  _iterator = mthds->NewIterator(options, index->columnFamily());
-  
-  _total = collection->numberDocuments(trx);
-  uint64_t off = RandomGenerator::interval(_total - 1);
-  if (_total > 0) {
-    if (off <= _total / 2) {
-      _iterator->Seek(_bounds.start());
-      while (_iterator->Valid() && off-- > 0) {
-        _iterator->Next();
-      }
-    } else {
-      off = _total - (off + 1);
-      _iterator->SeekForPrev(_bounds.end());
-      while (_iterator->Valid() && off-- > 0) {
-        _iterator->Prev();
-      }
-    }
-    if (!_iterator->Valid() || outOfRange()) {
-      _iterator->Seek(_bounds.start());
-    }
-  }
-}
-
-bool RocksDBAnyIndexIterator::next(TokenCallback const& cb, size_t limit) {
-  TRI_ASSERT(_trx->state()->isRunning());
-
-  if (limit == 0 || !_iterator->Valid() || outOfRange()) {
-    // No limit no data, or we are actually done. The last call should have
-    // returned false
-    TRI_ASSERT(limit > 0);  // Someone called with limit == 0. Api broken
-    return false;
-  }
-
-  while (limit > 0) {
-    RocksDBToken token(RocksDBValue::revisionId(_iterator->value()));
-    cb(token);
-
-    --limit;
-    _returned++;
-    _iterator->Next();
-    if (!_iterator->Valid() || outOfRange()) {
-      if (_returned < _total) {
-        _iterator->Seek(_bounds.start());
-        continue;
-      }
-      return false;
-    }
-  }
-  return true;
-}
-
-void RocksDBAnyIndexIterator::reset() { _iterator->Seek(_bounds.start()); }
-
-bool RocksDBAnyIndexIterator::outOfRange() const {
-  return _cmp->Compare(_iterator->key(), _bounds.end()) > 0;
-}
-
 // ================ PrimaryIndex ================
 
 RocksDBPrimaryIndex::RocksDBPrimaryIndex(
@@ -335,7 +123,7 @@ RocksDBPrimaryIndex::RocksDBPrimaryIndex(
                    true, false, RocksDBColumnFamily::primary(),
                    basics::VelocyPackHelper::stringUInt64(info, "objectId"),
                    false) {
-                   // !ServerState::instance()->isCoordinator() /*useCache*/) {
+  // !ServerState::instance()->isCoordinator() /*useCache*/) {
   TRI_ASSERT(_objectId != 0);
 }
 
@@ -419,13 +207,6 @@ RocksDBToken RocksDBPrimaryIndex::lookupKey(transaction::Methods* trx,
   return RocksDBToken(RocksDBValue::revisionId(value));
 }
 
-// TODO: remove this method?
-RocksDBToken RocksDBPrimaryIndex::lookupKey(
-    transaction::Methods* trx, VPackSlice slice,
-    ManagedDocumentResult& result) const {
-  return lookupKey(trx, StringRef(slice));
-}
-
 int RocksDBPrimaryIndex::insert(transaction::Methods* trx,
                                 TRI_voc_rid_t revisionId,
                                 VPackSlice const& slice, bool) {
@@ -462,7 +243,7 @@ int RocksDBPrimaryIndex::remove(transaction::Methods* trx,
   // acquire rocksdb transaction
   RocksDBMethods* mthds = rocksutils::toRocksMethods(trx);
   Result r = mthds->Delete(_cf, key);
-      //rocksutils::convertStatus(status, rocksutils::StatusHint::index);
+  // rocksutils::convertStatus(status, rocksutils::StatusHint::index);
   return r.errorNumber();
 }
 
@@ -536,35 +317,6 @@ arangodb::aql::AstNode* RocksDBPrimaryIndex::specializeCondition(
     arangodb::aql::Variable const* reference) const {
   SimpleAttributeEqualityMatcher matcher(IndexAttributes);
   return matcher.specializeOne(this, node, reference);
-}
-
-/// @brief request an iterator over all elements in the index in
-///        a sequential order.
-IndexIterator* RocksDBPrimaryIndex::allIterator(transaction::Methods* trx,
-                                                ManagedDocumentResult* mmdr,
-                                                bool reverse) const {
-  return new RocksDBAllIndexIterator(_collection, trx, mmdr, this, reverse);
-}
-
-/// @brief request an iterator over all elements in the index in
-///        a sequential order.
-IndexIterator* RocksDBPrimaryIndex::anyIterator(
-    transaction::Methods* trx, ManagedDocumentResult* mmdr) const {
-  return new RocksDBAnyIndexIterator(_collection, trx, mmdr, this);
-}
-
-void RocksDBPrimaryIndex::invokeOnAllElements(
-    transaction::Methods* trx,
-    std::function<bool(DocumentIdentifierToken const&)> callback) const {
-  ManagedDocumentResult mmdr;
-  std::unique_ptr<IndexIterator> cursor(allIterator(trx, &mmdr, false));
-  bool cnt = true;
-  auto cb = [&](DocumentIdentifierToken token) {
-    if (cnt) {
-      cnt = callback(token);
-    }
-  };
-  while (cursor->next(cb, 1000) && cnt) {}
 }
 
 Result RocksDBPrimaryIndex::postprocessRemove(transaction::Methods* trx,

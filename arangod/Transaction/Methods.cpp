@@ -842,16 +842,12 @@ OperationResult transaction::Methods::anyLocal(
   resultBuilder.openArray();
 
   ManagedDocumentResult mmdr;
-
   std::unique_ptr<OperationCursor> cursor =
       indexScan(collectionName, transaction::Methods::CursorType::ANY, &mmdr,
                 skip, limit, 1000, false);
 
-  LogicalCollection* collection = cursor->collection();
-  cursor->all([&](DocumentIdentifierToken const& token) {
-    if (collection->readDocument(this, token, mmdr)) {
-      mmdr.addToBuilder(resultBuilder, false);
-    }
+  cursor->allDocuments([&resultBuilder](ManagedDocumentResult const& mdr) {
+    mdr.addToBuilder(resultBuilder, false);
   });
 
   resultBuilder.close();
@@ -2142,7 +2138,6 @@ OperationResult transaction::Methods::allLocal(
   resultBuilder.openArray();
 
   ManagedDocumentResult mmdr;
-
   std::unique_ptr<OperationCursor> cursor =
       indexScan(collectionName, transaction::Methods::CursorType::ALL, &mmdr,
                 skip, limit, 1000, false);
@@ -2151,15 +2146,11 @@ OperationResult transaction::Methods::allLocal(
     return OperationResult(cursor->code);
   }
 
-  LogicalCollection* collection = cursor->collection();
-  auto cb = [&](DocumentIdentifierToken const& token) {
-    if (collection->readDocument(this, token, mmdr)) {
-      uint8_t const* vpack = mmdr.vpack();
-      resultBuilder.add(VPackSlice(vpack));
-    }
+  auto cb = [&resultBuilder](ManagedDocumentResult const& mdr) {
+    uint8_t const* vpack = mdr.vpack();
+    resultBuilder.add(VPackSlice(vpack));
   };
-
-  cursor->all(cb);
+  cursor->allDocuments(cb);
 
   resultBuilder.close();
 

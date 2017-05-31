@@ -62,9 +62,9 @@ class Methods;
 class IndexIterator {
  public:
   typedef std::function<void(DocumentIdentifierToken const& token)> TokenCallback;
+  typedef std::function<void(ManagedDocumentResult const& mdr)> DocumentCallback;
   typedef std::function<void(DocumentIdentifierToken const& token,
-                             arangodb::velocypack::Slice extra)>
-      ExtraCallback;
+                             velocypack::Slice extra)> ExtraCallback;
 
  public:
   IndexIterator(IndexIterator const&) = delete;
@@ -83,6 +83,7 @@ class IndexIterator {
   virtual bool hasExtra() const;
 
   virtual bool next(TokenCallback const& callback, size_t limit) = 0;
+  virtual bool nextDocument(DocumentCallback const& callback, size_t limit);
   virtual bool nextExtra(ExtraCallback const& callback, size_t limit);
 
   virtual void reset();

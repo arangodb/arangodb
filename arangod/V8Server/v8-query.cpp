@@ -256,10 +256,8 @@ static void JS_AllQuery(v8::FunctionCallbackInfo<v8::Value> const& args) {
   VPackBuilder resultBuilder;
   resultBuilder.openArray();
   
-  opCursor->all([&resultBuilder, &mmdr, &trx, &collection](DocumentIdentifierToken const& tkn) {
-   if (collection->readDocument(&trx, tkn, mmdr)) {
-      resultBuilder.add(VPackSlice(mmdr.vpack()));
-    }
+  opCursor->allDocuments([&resultBuilder](ManagedDocumentResult const& mdr) {
+    resultBuilder.add(VPackSlice(mdr.vpack()));
   });
 
   resultBuilder.close();
