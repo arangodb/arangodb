@@ -39,7 +39,7 @@
 #include "MMFiles/MMFilesDatafileHelper.h"
 #include "MMFiles/MMFilesEngine.h"
 #include "MMFiles/MMFilesIndexFactory.h"
-#include "MMFiles/MMFilesInitialSync.h"
+#include "MMFiles/MMFilesIncrementalSync.h"
 #include "MMFiles/MMFilesLogfileManager.h"
 #include "MMFiles/MMFilesOptimizerRules.h"
 #include "MMFiles/MMFilesPersistentIndex.h"
