@@ -2326,10 +2326,11 @@ std::unique_ptr<LogicalCollection>
 ClusterMethods::persistCollectionInAgency(
   LogicalCollection* col, bool ignoreDistributeShardsLikeErrors, bool waitForSyncReplication) {
   std::string distributeShardsLike = col->distributeShardsLike();
-  std::vector<std::string> dbServers;
   std::vector<std::string> avoid = col->avoidServers();
+  size_t replicationFactor = col->replicationFactor();
 
   ClusterInfo* ci = ClusterInfo::instance();
+  std::vector<std::string> dbServers = ci->getCurrentDBServers();
   if (!distributeShardsLike.empty()) {
     CollectionNameResolver resolver(col->vocbase());
     TRI_voc_cid_t otherCid =
@@ -2370,10 +2371,7 @@ ClusterMethods::persistCollectionInAgency(
         THROW_ARANGO_EXCEPTION(TRI_ERROR_CLUSTER_UNKNOWN_DISTRIBUTESHARDSLIKE);
       }
     }
-    
   } else if (!avoid.empty()) {
-    size_t replicationFactor = col->replicationFactor();
-    dbServers = ci->getCurrentDBServers();
     if (dbServers.size() - avoid.size() >= replicationFactor) {
       dbServers.erase(
         std::remove_if(
@@ -2382,6 +2380,15 @@ ClusterMethods::persistCollectionInAgency(
           }), dbServers.end());
     }
     std::random_shuffle(dbServers.begin(), dbServers.end());
+  }
+
+  // cluster system replicationFactor is 1...allow startup with 1 DBServer.
+  // an addFollower job will be spawned right away and ensure proper
+  // resilience as soon as another DBServer is available :S
+  // the default behaviour however is to bail out and inform the user
+  // that the requested replicationFactor is not possible right now
+  if (dbServers.size() < replicationFactor && !col->isSystem()) {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_CLUSTER_INSUFFICIENT_DBSERVERS);
   }
 
   // If the list dbServers is still empty, it will be filled in

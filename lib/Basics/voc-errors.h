@@ -85,6 +85,8 @@
 ///   Will be raised when a precondition for an HTTP request is not met.
 /// - 500: @LIT{internal server error}
 ///   Will be raised when an internal server is encountered.
+/// - 503: @LIT{service unavailable}
+///   Will be raised when a service is temporarily unavailable.
 /// - 600: @LIT{invalid JSON object}
 ///   Will be raised when a string representation of a JSON object is corrupt.
 /// - 601: @LIT{superfluous URL suffices}
@@ -395,6 +397,9 @@
 /// - 1486: @LIT{must not have a distributeShardsLike attribute pointing to an unknown collection}
 ///   Will be raised if one tries to create a collection which points to an
 ///   unknown collection in its distributeShardsLike attribute.
+/// - 1487: @LIT{the number of current dbservers is lower than the requested replicationFactor}
+///   Will be raised if one tries to create a collection with a
+///   replicationFactor greater than the available number of DBServers.
 /// - 1500: @LIT{query killed}
 ///   Will be raised when a running query is killed by an explicit admin
 ///   command.
@@ -646,6 +651,10 @@
 ///   The service manifest file is not well-formed JSON.
 /// - 3001: @LIT{manifest file is invalid}
 ///   The service manifest contains invalid values.
+/// - 3002: @LIT{service files missing}
+///   The service folder or bundle does not exist on this server.
+/// - 3003: @LIT{service files outdated}
+///   The local service bundle does not match the checksum in the database.
 /// - 3004: @LIT{service options are invalid}
 ///   The service options contain invalid values.
 /// - 3007: @LIT{invalid mountpath}
@@ -1092,6 +1101,16 @@ void TRI_InitializeErrorMessages ();
 ////////////////////////////////////////////////////////////////////////////////
 
 #define TRI_ERROR_HTTP_SERVER_ERROR                                       (500)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 503: ERROR_HTTP_SERVICE_UNAVAILABLE
+///
+/// service unavailable
+///
+/// Will be raised when a service is temporarily unavailable.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_HTTP_SERVICE_UNAVAILABLE                                (503)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 600: ERROR_HTTP_CORRUPTED_JSON
@@ -2337,6 +2356,18 @@ void TRI_InitializeErrorMessages ();
 #define TRI_ERROR_CLUSTER_UNKNOWN_DISTRIBUTESHARDSLIKE                    (1486)
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief 1487: ERROR_CLUSTER_INSUFFICIENT_DBSERVERS
+///
+/// the number of current dbservers is lower than the requested
+/// replicationFactor
+///
+/// Will be raised if one tries to create a collection with a replicationFactor
+/// greater than the available number of DBServers.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_CLUSTER_INSUFFICIENT_DBSERVERS                          (1487)
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief 1500: ERROR_QUERY_KILLED
 ///
 /// query killed
@@ -3460,6 +3491,26 @@ void TRI_InitializeErrorMessages ();
 ////////////////////////////////////////////////////////////////////////////////
 
 #define TRI_ERROR_INVALID_SERVICE_MANIFEST                                (3001)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 3002: ERROR_SERVICE_FILES_MISSING
+///
+/// service files missing
+///
+/// The service folder or bundle does not exist on this server.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_SERVICE_FILES_MISSING                                   (3002)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 3003: ERROR_SERVICE_FILES_OUTDATED
+///
+/// service files outdated
+///
+/// The local service bundle does not match the checksum in the database.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_SERVICE_FILES_OUTDATED                                  (3003)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 3004: ERROR_INVALID_FOXX_OPTIONS

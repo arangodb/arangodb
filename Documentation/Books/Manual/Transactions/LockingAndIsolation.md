@@ -1,6 +1,38 @@
 Locking and Isolation
 =====================
 
+Transactions need to specify from which collections they will read data and which
+collections they intend do modify. This can be done by setting the *read*, *write*,
+or *exclusive* attributes in the *collections* attribute of the transaction:
+
+```js
+db._executeTransaction({
+  collections: { 
+    read: "users",
+    write: ["test", "log"]
+  },
+  action: function () {
+    const db = require("@arangodb").db;
+    db.users.toArray().forEach(function(doc) {
+      db.log.insert({ value: "removed user: " + doc.name });
+      db.test.remove(doc._key);
+    });
+  }
+});
+```
+
+*write* here means write access to the collection, and also includes any read accesses. 
+*exclusive* is a synonym for *write* in the MMFiles engine, because both *exclusive* and
+*write* will acquire collection-level locks in this engine. In the RocksDB engine,
+*exclusive* means exclusive write access to the collection, and *write* means (shared)
+write access to the collection, which can be interleaved with write accesses by other
+concurrent transactions.
+
+### MMFiles engine
+
+The *MMFiles engine* uses the following locking mechanisms to serialize transactions
+on the same data:
+
 All collections specified in the *collections* attribute are locked in the
 requested mode (read or write) at transaction start. Locking of multiple collections
 is performed in alphabetical order.
@@ -18,6 +50,26 @@ other transactions. Additionally, reads inside a transaction are repeatable.
 
 Note that the above is true only for all collections that are declared in the 
 *collections* attribute of the transaction.
+
+### RocksDB engine
+
+The *RocksDB* engine does not lock any collections participating in a transaction
+for read. Read operations can run in parallel to other read or write operations on the
+same collections.
+
+For all collections that are used in write mode, the RocksDB engine will internally
+acquire a (shared) read lock. This means that many writers can modify data in the same
+collection in parallel (and also run in parallel to ongoing reads). However, if two
+concurrent transactions attempt to modify the same document or index entry, there will
+be a write-write conflict, and one of the transactions will abort with error 1200
+("conflict"). It is then up to client applications to retry the failed transaction or 
+accept the failure.
+
+In order to guard long-running or complex transactions against concurrent operations
+on the same data, the RocksDB engine allows to access collections in exclusive mode.
+Exclusive accesses will internally acquire a write-lock on the collections, so they 
+are not executed in parallel with any other write operations. Read operations can still
+be carried out by other concurrent transactions.
 
 ### Lazily adding collections
 
@@ -185,3 +237,7 @@ In case this is not possible because collections are added dynamically inside th
 transaction, deadlocks may occur and the deadlock detection may kick in and abort
 the transaction. 
 
+The *RocksDB* engine uses document-level locks and therefore will not have a deadlock
+problem on collection level. If two concurrent transactions however modify the same
+documents or index entries, the RocksDB engine will signal a write-write conflict
+and abort one of the transactions with error 1200 ("conflict") automatically.

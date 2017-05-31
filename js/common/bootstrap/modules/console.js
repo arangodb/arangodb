@@ -104,6 +104,7 @@ global.DEFINE_MODULE('console', (function () {
           arg = String(arg);
         } else if (Object.prototype.isPrototypeOf(arg) || Array.isArray(arg)) {
           arg = inspect(arg, {
+            customInspect: true,
             prettyPrint: false
           });
         }

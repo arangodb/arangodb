@@ -61,9 +61,9 @@ std::string slurp(std::string const& filename);
 void slurp(std::string const& filename, StringBuffer&);
 
 // creates file and writes string to it
-void spit(std::string const& filename, char const* ptr, size_t len);
-void spit(std::string const& filename, std::string const& content);
-void spit(std::string const& filename, StringBuffer const& content);
+void spit(std::string const& filename, char const* ptr, size_t len, bool sync = false);
+void spit(std::string const& filename, std::string const& content, bool sync = false);
+void spit(std::string const& filename, StringBuffer const& content, bool sync = false);
 
 // returns true if a file could be removed
 bool remove(std::string const& fileName, int* errorNumber = 0);

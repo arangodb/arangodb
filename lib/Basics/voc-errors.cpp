@@ -43,6 +43,7 @@ void TRI_InitializeErrorMessages () {
   REG_ERROR(ERROR_HTTP_METHOD_NOT_ALLOWED, "method not supported");
   REG_ERROR(ERROR_HTTP_PRECONDITION_FAILED, "precondition failed");
   REG_ERROR(ERROR_HTTP_SERVER_ERROR, "internal server error");
+  REG_ERROR(ERROR_HTTP_SERVICE_UNAVAILABLE, "service unavailable");
   REG_ERROR(ERROR_HTTP_CORRUPTED_JSON, "invalid JSON object");
   REG_ERROR(ERROR_HTTP_SUPERFLUOUS_SUFFICES, "superfluous URL suffices");
   REG_ERROR(ERROR_ARANGO_ILLEGAL_STATE, "illegal state");
@@ -160,6 +161,7 @@ void TRI_InitializeErrorMessages () {
   REG_ERROR(ERROR_CLUSTER_CHAIN_OF_DISTRIBUTESHARDSLIKE, "chain of distributeShardsLike references");
   REG_ERROR(ERROR_CLUSTER_MUST_NOT_DROP_COLL_OTHER_DISTRIBUTESHARDSLIKE, "must not drop collection while another has a distributeShardsLike attribute pointing to it");
   REG_ERROR(ERROR_CLUSTER_UNKNOWN_DISTRIBUTESHARDSLIKE, "must not have a distributeShardsLike attribute pointing to an unknown collection");
+  REG_ERROR(ERROR_CLUSTER_INSUFFICIENT_DBSERVERS, "the number of current dbservers is lower than the requested replicationFactor");
   REG_ERROR(ERROR_QUERY_KILLED, "query killed");
   REG_ERROR(ERROR_QUERY_PARSE, "%s");
   REG_ERROR(ERROR_QUERY_EMPTY, "query is empty");
@@ -270,6 +272,8 @@ void TRI_InitializeErrorMessages () {
   REG_ERROR(COMMUNICATOR_REQUEST_ABORTED, "Request aborted");
   REG_ERROR(ERROR_MALFORMED_MANIFEST_FILE, "failed to parse manifest file");
   REG_ERROR(ERROR_INVALID_SERVICE_MANIFEST, "manifest file is invalid");
+  REG_ERROR(ERROR_SERVICE_FILES_MISSING, "service files missing");
+  REG_ERROR(ERROR_SERVICE_FILES_OUTDATED, "service files outdated");
   REG_ERROR(ERROR_INVALID_FOXX_OPTIONS, "service options are invalid");
   REG_ERROR(ERROR_INVALID_MOUNTPOINT, "invalid mountpath");
   REG_ERROR(ERROR_SERVICE_NOT_FOUND, "service not found");

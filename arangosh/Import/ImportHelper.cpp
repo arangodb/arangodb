@@ -675,6 +675,10 @@ bool ImportHelper::checkCreateCollection() {
     return true;
   }
 
+  if (!_firstChunk) {
+    return true;
+  }
+
   std::string const url("/_api/collection");
 
   VPackBuilder builder;

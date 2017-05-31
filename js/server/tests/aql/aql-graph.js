@@ -1104,11 +1104,11 @@ function ahuacatlQueryShortestpathErrorsSuite () {
       vertexCollection = db._create(vn, {numberOfShards: 4});
       edgeCollection = db._createEdgeCollection(en, {numberOfShards: 4});
 
-      [ "A", "B", "C", "D" ].forEach(function (item) {
+      [ "A", "B", "C", "D", "E"].forEach(function (item) {
         vertexCollection.save({ _key: item, name: item });
       });
 
-      [ [ "A", "B" ], [ "B", "C" ], [ "A", "D" ], [ "D", "C" ], [ "C", "A" ] ].forEach(function (item) {
+      [ [ "A", "B" ], [ "B", "C" ], [ "A", "D" ], [ "D", "E" ], [ "E", "C"], [ "C", "A" ] ].forEach(function (item) {
         var l = item[0];
         var r = item[1];
         edgeCollection.save(vn + "/" + l, vn + "/" + r, { _key: l + r, what : l + "->" + r });

@@ -36,8 +36,9 @@ transaction.
 
 Some operations are not allowed inside transactions in general:
 
-- creation and deletion of collections (`db._create()`, `db._drop()`, `db._rename()`)
-- creation and deletion of indexes (`db.ensure...Index()`, `db.dropIndex()`)
+- creation and deletion of databases (`db._createDatabase()`, `db._dropDatabase()`)
+- creation and deletion of collections (`db._create()`, `db._drop()`, `db.<collection>.rename()`)
+- creation and deletion of indexes (`db.<collection>.ensureIndex()`, `db.<collection>.dropIndex()`)
 
 If an attempt is made to carry out any of these operations during a transaction,
 ArangoDB will abort the transaction with error code *1653 (disallowed operation inside
@@ -65,3 +66,38 @@ equally the case with competing database systems. Transactions in a cluster
 will be supported in a future version of ArangoDB and make these operations
 fully ACID as well. Note that for non-sharded collections in a cluster, the
 transactional properties of a single server apply (fully ACID).
+
+
+Transactions in the RocksDB storage engine
+------------------------------------------
+
+Data of ongoing transactions is stored in RAM. Transactions that get too big 
+(in terms of number of operations involved or the total size of data created or
+modified by the transaction) will be committed automatically. Effectively this 
+means that big user transactions are split into multiple smaller RocksDB 
+transactions that are committed individually. The entire user transaction will 
+not necessarily have ACID properties in this case.
+ 
+The following global options can be used to control the RAM usage and automatic 
+intermediate commits for the RocksDB engine: 
+
+`--rocksdb.max-transaction-size`
+
+Transaction size limit (in bytes). Transactions store all keys and values in
+RAM, so large transactions run the risk of causing out-of-memory sitations.
+This setting allows you to ensure that does not happen by limiting the size of
+any individual transaction. Transactions whose operations would consume more
+RAM than this threshold value will abort automatically with error 32 ("resource
+limit exceeded").
+
+`--rocksdb.intermediate-commit-size`
+
+If the size of all operations in a transaction reaches this threshold, the transaction 
+is committed automatically and a new transaction is started. The value is specified in bytes.
+  
+`--rocksdb.intermediate-commit-count`
+
+If the number of operations in a transaction reaches this value, the transaction is 
+committed automatically and a new transaction is started.
+
+The above values can also be adjusted per transaction.
