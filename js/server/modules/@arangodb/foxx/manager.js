@@ -405,16 +405,6 @@ function reloadInstalledService (mount, runSetup) {
 function loadInstalledService (serviceDefinition) {
   const mount = serviceDefinition.mount;
   if (!mount.startsWith('/_')) {
-    const checksum = serviceDefinition.checksum;
-    if (checksum && checksum !== safeChecksum(mount)) {
-      throw new ArangoError({
-        errorNum: errors.ERROR_SERVICE_FILES_OUTDATED.code,
-        errorMessage: dd`
-          ${errors.ERROR_SERVICE_FILES_OUTDATED.message}
-          Mount: ${mount}
-        `
-      });
-    }
     if (
       !fs.exists(FoxxService.bundlePath(mount)) ||
       !fs.exists(FoxxService.basePath(mount))
@@ -423,6 +413,16 @@ function loadInstalledService (serviceDefinition) {
         errorNum: errors.ERROR_SERVICE_FILES_MISSING.code,
         errorMessage: dd`
           ${errors.ERROR_SERVICE_FILES_MISSING.message}
+          Mount: ${mount}
+        `
+      });
+    }
+    const checksum = serviceDefinition.checksum;
+    if (checksum && checksum !== safeChecksum(mount)) {
+      throw new ArangoError({
+        errorNum: errors.ERROR_SERVICE_FILES_OUTDATED.code,
+        errorMessage: dd`
+          ${errors.ERROR_SERVICE_FILES_OUTDATED.message}
           Mount: ${mount}
         `
       });
