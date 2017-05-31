@@ -100,4 +100,11 @@ is committed automatically and a new transaction is started. The value is specif
 If the number of operations in a transaction reaches this value, the transaction is 
 committed automatically and a new transaction is started.
 
-The above values can also be adjusted per transaction.
+The above values can also be adjusted per transaction, by setting the following
+attributes in the call to *db._executeTransaction()*:
+
+- *maxTransactionSize*: transaction size limit in bytes
+- *intermediateCommitSize*: maximum total size of operations after which an intermediate
+  commit is performed automatically
+- *intermediateCommitCount*: maximum number of operations after which an intermediate
+  commit is performed automatically

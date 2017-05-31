@@ -1121,13 +1121,11 @@ global.DEFINE_MODULE('internal', (function () {
     var keys;
 
     try {
+      keys = Object.keys(object);
       // try to detect an ES6 class. note that this won't work 100% correct
-      if (object.constructor && object.constructor.name !== 'Object') { 
+      if (object.constructor && object.constructor !== Object) {
         // probably an object of an ES6 class
-        keys = Object.getOwnPropertyNames(Object.getPrototypeOf(object));
-      } else {
-        // other object
-        keys = Object.keys(object);
+        context.output += `[${object.constructor.name}]`;
       }
     } catch (err) {
       // ES6 proxy objects don't support key enumeration
@@ -1141,7 +1139,7 @@ global.DEFINE_MODULE('internal', (function () {
         // hide ctor
         continue;
       }
-              
+
       if (useColor) {
         context.output += colors.COLOR_PUNCTUATION;
       }
@@ -1544,17 +1542,13 @@ global.DEFINE_MODULE('internal', (function () {
       limitString: false,
       names: [],
       output: '',
-      prettyPrint: true,
+      prettyPrint: !options || options.prettyPrint !== false,
       path: '~',
       seen: [],
       showFunction: true,
       useColor: false,
       useToString: false
     };
-
-    if (options && options.hasOwnProperty('prettyPrint')) {
-      context.prettyPrint = options.prettyPrint;
-    }
 
     printRecursive(object, context);
 

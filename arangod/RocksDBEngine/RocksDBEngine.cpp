@@ -233,15 +233,15 @@ void RocksDBEngine::start() {
   // level-0 compaction will not be triggered by number of files at all.
   //
   // Default: 4
-  _options.level0_file_num_compaction_trigger = -1;
+  // _options.level0_file_num_compaction_trigger = -1;
 
   // Soft limit on number of level-0 files. We start slowing down writes at this
   // point. A value <0 means that no writing slow down will be triggered by
   // number of files in level-0.
-  _options.level0_slowdown_writes_trigger = -1;
+  // _options.level0_slowdown_writes_trigger = -1;
 
   // Maximum number of level-0 files.  We stop writes at this point.
-  _options.level0_stop_writes_trigger = 256;
+  // _options.level0_stop_writes_trigger = 256;
 
   _options.recycle_log_file_num = static_cast<size_t>(opts->_recycleLogFileNum);
   _options.compaction_readahead_size =
