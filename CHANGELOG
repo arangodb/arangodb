@@ -1,6 +1,9 @@
 devel
 -----
 
+* the rocksdb storage format was changed, users of the previous alpha versions
+  must delete the database directory and reimport their data
+
 * added server startup option `--query.fail-on-warning`
 
   setting this option to `true` will abort any AQL query with an exception if

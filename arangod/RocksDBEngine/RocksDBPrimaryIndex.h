@@ -27,7 +27,6 @@
 #include "Basics/Common.h"
 #include "Indexes/Index.h"
 #include "Indexes/IndexIterator.h"
-#include "Random/RandomGenerator.h"
 #include "RocksDBEngine/RocksDBIndex.h"
 #include "RocksDBEngine/RocksDBKeyBounds.h"
 #include "RocksDBEngine/RocksDBToken.h"
@@ -72,66 +71,6 @@ class RocksDBPrimaryIndexIterator final : public IndexIterator {
   arangodb::velocypack::ArrayIterator _iterator;
 };
 
-class RocksDBAllIndexIterator final : public IndexIterator {
- public:
-  typedef std::function<void(DocumentIdentifierToken const& token,
-                             StringRef const& key)>
-      TokenKeyCallback;
-  RocksDBAllIndexIterator(LogicalCollection* collection,
-                          transaction::Methods* trx,
-                          ManagedDocumentResult* mmdr,
-                          RocksDBPrimaryIndex const* index, bool reverse);
-
-  ~RocksDBAllIndexIterator() {}
-
-  char const* typeName() const override { return "all-index-iterator"; }
-
-  bool next(TokenCallback const& cb, size_t limit) override;
-  void reset() override;
-
-  // engine specific optimizations
-  bool nextWithKey(TokenKeyCallback const& cb, size_t limit);
-  void seek(StringRef const& key);
-
- private:
-  bool outOfRange() const;
-  
-  bool const _reverse;
-  RocksDBKeyBounds const _bounds;
-  std::unique_ptr<rocksdb::Iterator> _iterator;
-  rocksdb::Comparator const* _cmp;
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-  RocksDBPrimaryIndex const* _index;
-#endif
-};
-
-class RocksDBAnyIndexIterator final : public IndexIterator {
- public:
-  RocksDBAnyIndexIterator(LogicalCollection* collection,
-                          transaction::Methods* trx,
-                          ManagedDocumentResult* mmdr,
-                          RocksDBPrimaryIndex const* index);
-
-  ~RocksDBAnyIndexIterator() {}
-
-  char const* typeName() const override { return "any-index-iterator"; }
-
-  bool next(TokenCallback const& cb, size_t limit) override;
-
-  void reset() override;
-
- private:
-  bool outOfRange() const;
-  static uint64_t newOffset(LogicalCollection* collection,
-                            transaction::Methods* trx);
-
-  rocksdb::Comparator const* _cmp;
-  std::unique_ptr<rocksdb::Iterator> _iterator;
-  RocksDBKeyBounds const _bounds;
-  uint64_t _total;
-  uint64_t _returned;
-};
-
 class RocksDBPrimaryIndex final : public RocksDBIndex {
   friend class RocksDBPrimaryIndexIterator;
   friend class RocksDBAllIndexIterator;
@@ -171,9 +110,6 @@ class RocksDBPrimaryIndex final : public RocksDBIndex {
 
   RocksDBToken lookupKey(transaction::Methods* trx,
                          arangodb::StringRef key) const;
-  RocksDBToken lookupKey(transaction::Methods* trx,
-                         arangodb::velocypack::Slice key,
-                         ManagedDocumentResult& result) const;
 
   int insert(transaction::Methods*, TRI_voc_rid_t,
              arangodb::velocypack::Slice const&, bool isRollback) override;
@@ -202,14 +138,6 @@ class RocksDBPrimaryIndex final : public RocksDBIndex {
 
   arangodb::aql::AstNode* specializeCondition(
       arangodb::aql::AstNode*, arangodb::aql::Variable const*) const override;
-
-  /// @brief request an iterator over all elements in the index in
-  ///        a sequential order.
-  IndexIterator* allIterator(transaction::Methods*, ManagedDocumentResult*,
-                             bool reverse) const;
-
-  IndexIterator* anyIterator(transaction::Methods* trx,
-                             ManagedDocumentResult* mmdr) const;
 
   void invokeOnAllElements(
       transaction::Methods* trx,

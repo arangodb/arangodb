@@ -428,55 +428,52 @@ void GraphStore<V, E>::_loadEdges(transaction::Methods* trx,
                                   documentID.c_str(), edgeShard.c_str());
   }
 
-  LogicalCollection* collection = cursor->collection();
-  auto cb = [&](DocumentIdentifierToken const& token) {
-    if (collection->readDocument(trx, token, mmdr)) {
-      VPackSlice document(mmdr.vpack());
-      if (document.isExternal()) {
-        document = document.resolveExternal();
+  auto cb = [&](ManagedDocumentResult const& mdr) {
+    VPackSlice document(mdr.vpack());
+    if (document.isExternal()) {
+      document = document.resolveExternal();
+    }
+
+    std::string toValue = document.get(StaticStrings::ToString).copyString();
+    std::size_t pos = toValue.find('/');
+    std::string collectionName = toValue.substr(0, pos);
+
+    // If this is called from loadDocument we didn't preallocate the vector
+    if (_edges->size() <= offset) {
+      if (!_config->lazyLoading()) {
+        LOG_TOPIC(ERR, Logger::PREGEL) << "WTF";
+        THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
       }
+      // lazy loading always uses vector backed storage
+      ((VectorTypedBuffer<Edge<E>>*)_edges)->appendEmptyElement();
+    }
 
-      std::string toValue = document.get(StaticStrings::ToString).copyString();
-      std::size_t pos = toValue.find('/');
-      std::string collectionName = toValue.substr(0, pos);
+    Edge<E>* edge = _edges->data() + offset;
+    edge->_toKey = toValue.substr(pos + 1, toValue.length() - pos - 1);
 
-      // If this is called from loadDocument we didn't preallocate the vector
-      if (_edges->size() <= offset) {
-        if (!_config->lazyLoading()) {
-          LOG_TOPIC(ERR, Logger::PREGEL) << "WTF";
-          THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
-        }
-        // lazy loading always uses vector backed storage
-        ((VectorTypedBuffer<Edge<E>>*)_edges)->appendEmptyElement();
-      }
+    // resolve the shard of the target vertex.
+    ShardID responsibleShard;
+    int res =
+        Utils::resolveShard(_config, collectionName, StaticStrings::KeyString,
+                            edge->_toKey, responsibleShard);
 
-      Edge<E>* edge = _edges->data() + offset;
-      edge->_toKey = toValue.substr(pos + 1, toValue.length() - pos - 1);
-
-      // resolve the shard of the target vertex.
-      ShardID responsibleShard;
-      int res =
-          Utils::resolveShard(_config, collectionName, StaticStrings::KeyString,
-                              edge->_toKey, responsibleShard);
-
-      if (res == TRI_ERROR_NO_ERROR) {
-        // PregelShard sourceShard = (PregelShard)_config->shardId(edgeShard);
-        edge->_targetShard = (PregelShard)_config->shardId(responsibleShard);
-        _graphFormat->copyEdgeData(document, edge->data(), sizeof(E));
-        if (edge->_targetShard != (PregelShard)-1) {
-          added++;
-          offset++;
-        } else {
-          LOG_TOPIC(ERR, Logger::PREGEL)
-              << "Could not resolve target shard of edge";
-        }
+    if (res == TRI_ERROR_NO_ERROR) {
+      // PregelShard sourceShard = (PregelShard)_config->shardId(edgeShard);
+      edge->_targetShard = (PregelShard)_config->shardId(responsibleShard);
+      _graphFormat->copyEdgeData(document, edge->data(), sizeof(E));
+      if (edge->_targetShard != (PregelShard)-1) {
+        added++;
+        offset++;
       } else {
         LOG_TOPIC(ERR, Logger::PREGEL)
             << "Could not resolve target shard of edge";
       }
+    } else {
+      LOG_TOPIC(ERR, Logger::PREGEL)
+          << "Could not resolve target shard of edge";
     }
   };
-  cursor->all(cb);
+  cursor->allDocuments(cb);
 
   // Add up all added elements
   vertexEntry._edgeCount += added;

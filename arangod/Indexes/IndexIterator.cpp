@@ -55,6 +55,14 @@ bool IndexIterator::hasExtra() const {
   return false;
 }
 
+bool IndexIterator::nextDocument(DocumentCallback const& cb, size_t limit) {
+  return next([this, &cb](DocumentIdentifierToken const& token) {
+    if (_collection->readDocument(_trx, token, *_mmdr)) {
+      cb(*_mmdr);
+    }
+  }, limit);
+}
+
 /// @brief default implementation for next
 bool IndexIterator::nextExtra(ExtraCallback const&, size_t) {
   TRI_ASSERT(!hasExtra());
