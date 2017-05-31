@@ -53,7 +53,7 @@ RocksDBAllIndexIterator::RocksDBAllIndexIterator(
   TRI_ASSERT(options.prefix_same_as_start);
   options.fill_cache = true;
   options.verify_checksums = false;  // TODO evaluate
-  options.readahead_size = 4 * 1024 * 1024;
+  //options.readahead_size = 4 * 1024 * 1024;
   _iterator = mthds->NewIterator(options, cf);
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   rocksdb::ColumnFamilyDescriptor desc;
