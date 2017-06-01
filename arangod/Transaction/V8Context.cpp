@@ -115,15 +115,21 @@ bool transaction::V8Context::isGlobal() const {
   return _sharedTransactionContext == this;
 }
 
-/// @brief check whether the transaction is embedded
-bool transaction::V8Context::IsEmbedded() {
+/// @brief return parent transaction state or none
+TransactionState* transaction::V8Context::getParentState() {
   TRI_v8_global_t* v8g = static_cast<TRI_v8_global_t*>(
       v8::Isolate::GetCurrent()->GetData(V8PlatformFeature::V8_DATA_SLOT));
-  if (v8g->_transactionContext == nullptr) {
-    return false;
+  if (v8g == nullptr ||
+      v8g->_transactionContext == nullptr) {
+    return nullptr;
   }
   return static_cast<transaction::V8Context*>(v8g->_transactionContext)
-             ->_currentTransaction != nullptr;
+             ->_currentTransaction;
+}
+
+/// @brief check whether the transaction is embedded
+bool transaction::V8Context::isEmbedded() {
+  return (getParentState() != nullptr);
 }
 
 /// @brief create a context, returned in a shared ptr

@@ -438,15 +438,16 @@ RocksDBOperationResult RocksDBTransactionState::addOperation(
   // "transaction size" counters have reached their limit
   if (_options.intermediateCommitCount <= numOperations ||
       _options.intermediateCommitSize <= newSize) {
-      internalCommit();
-      _numInserts = 0;
-      _numUpdates = 0;
-      _numRemoves = 0;
+    // LOG_TOPIC(ERR, Logger::FIXME) << "INTERMEDIATE COMMIT!";
+    internalCommit();
+    _numInserts = 0;
+    _numUpdates = 0;
+    _numRemoves = 0;
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-      _numLogdata = 0;
+    _numLogdata = 0;
 #endif
-      createTransaction();
-    }
+    createTransaction();
+  }
 
   return res;
 }

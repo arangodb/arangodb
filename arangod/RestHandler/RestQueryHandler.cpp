@@ -306,10 +306,10 @@ bool RestQueryHandler::parseQuery() {
                   "expecting a JSON object as body");
   };
 
-  std::string const&& queryString =
+  std::string const queryString =
       VelocyPackHelper::checkAndGetStringValue(body, "query");
 
-  Query query(true, _vocbase, QueryString(queryString),
+  Query query(false, _vocbase, QueryString(queryString),
               nullptr, nullptr, PART_MAIN);
 
   auto parseResult = query.parse();

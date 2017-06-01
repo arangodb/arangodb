@@ -68,6 +68,8 @@ class TransactionState {
   bool isDBServer() const { return ServerState::isDBServer(_serverRole); }
   bool isCoordinator() const { return ServerState::isCoordinator(_serverRole); }
 
+  transaction::Options& options() { return _options; }
+  transaction::Options const& options() const { return _options; }
   TRI_vocbase_t* vocbase() const { return _vocbase; }
   TRI_voc_tid_t id() const { return _id; }
   transaction::Status status() const { return _status; }

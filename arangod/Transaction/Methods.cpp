@@ -2701,14 +2701,12 @@ std::vector<std::shared_ptr<Index>> transaction::Methods::indexesForCollection(
 }
 
 /// @brief Lock all collections. Only works for selected sub-classes
-
 int transaction::Methods::lockCollections() {
   THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
 }
 
 /// @brief Clone this transaction. Only works for selected sub-classes
-
-transaction::Methods* transaction::Methods::clone() const {
+transaction::Methods* transaction::Methods::clone(transaction::Options const&) const {
   THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
 }
 

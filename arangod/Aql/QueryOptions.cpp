@@ -68,7 +68,7 @@ QueryOptions::QueryOptions() :
   auto queryCacheMode = QueryCache::instance()->mode();
   cache = (queryCacheMode == CACHE_ALWAYS_ON);
 }
-
+  
 void QueryOptions::fromVelocyPack(VPackSlice const& slice) {
   if (!slice.isObject()) {
     return;

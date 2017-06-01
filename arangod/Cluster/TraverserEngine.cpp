@@ -106,7 +106,7 @@ BaseEngine::BaseEngine(TRI_vocbase_t* vocbase, VPackSlice info)
   // created transaction is considered a "MAIN" part and will not switch
   // off collection locking completely!
   _query =
-      new aql::Query(true, vocbase, aql::QueryString(), params, opts, aql::PART_DEPENDENT);
+      new aql::Query(false, vocbase, aql::QueryString(), params, opts, aql::PART_DEPENDENT);
   _query->injectTransaction(_trx);
 
   VPackSlice variablesSlice = info.get(VARIABLES);

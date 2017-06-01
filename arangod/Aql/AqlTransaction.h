@@ -45,8 +45,7 @@ class AqlTransaction final : public transaction::Methods {
       transaction::Options const& options,
       bool isMainTransaction)
       : transaction::Methods(transactionContext, options),
-        _collections(*collections),
-        _options(options) {
+        _collections(*collections) {
     if (!isMainTransaction) {
       addHint(transaction::Hints::Hint::LOCK_NEVER);
     } else {
@@ -90,12 +89,8 @@ class AqlTransaction final : public transaction::Methods {
   LogicalCollection* documentCollection(TRI_voc_cid_t cid);
 
   /// @brief clone, used to make daughter transactions for parts of a
-  /// distributed
-  /// AQL query running on the coordinator
-  transaction::Methods* clone() const override {
-    return new AqlTransaction(transaction::StandaloneContext::Create(vocbase()),
-        &_collections, _options, false);
-  }
+  /// distributed AQL query running on the coordinator
+  transaction::Methods* clone(transaction::Options const&) const override;
 
   /// @brief lockCollections, this is needed in a corner case in AQL: we need
   /// to lock all shards in a controlled way when we set up a distributed
@@ -109,7 +104,6 @@ class AqlTransaction final : public transaction::Methods {
   /// operation
  private:
   std::map<std::string, aql::Collection*> _collections;
-  transaction::Options _options;
 };
 
 }

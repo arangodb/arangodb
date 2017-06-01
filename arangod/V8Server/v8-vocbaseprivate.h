@@ -36,7 +36,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #define PREVENT_EMBEDDED_TRANSACTION()                                  \
-  if (arangodb::transaction::V8Context::IsEmbedded()) {                   \
+  if (arangodb::transaction::V8Context::isEmbedded()) {                 \
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_TRANSACTION_DISALLOWED_OPERATION); \
   }
 
