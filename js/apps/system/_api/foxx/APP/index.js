@@ -142,24 +142,25 @@ router.post(prepareServiceRequestBody, (req, res) => {
 .queryParam('legacy', schemas.flag.default(false))
 .response(201, schemas.fullInfo);
 
-const instanceRouter = createRouter();
-instanceRouter.use((req, res, next) => {
-  const mount = req.queryParams.mount;
+const serviceRouter = createRouter();
+serviceRouter.use((req, res, next) => {
   try {
-    req.service = FoxxManager.lookupService(mount);
+    next();
   } catch (e) {
-    res.throw(400, `No service installed at mount path "${mount}".`, e);
+    if (e.errorNum === errors.ERROR_SERVICE_NOT_FOUND.code) {
+      const mount = req.queryParams.mount;
+      res.throw(400, `No service installed at mount path "${mount}".`, e);
+    }
+    throw e;
   }
-  next();
 })
 .queryParam('mount', schemas.mount);
-router.use(instanceRouter);
-
-const serviceRouter = createRouter();
-instanceRouter.use('/service', serviceRouter);
+router.use('/service', serviceRouter);
 
 serviceRouter.get((req, res) => {
-  res.json(serviceToJson(req.service));
+  const mount = req.queryParams.mount;
+  const service = FoxxManager.lookupService(mount);
+  res.json(serviceToJson(service));
 })
 .response(200, schemas.fullInfo)
 .summary('Service description')
@@ -224,6 +225,19 @@ serviceRouter.delete((req, res) => {
 })
 .queryParam('teardown', schemas.flag.default(true))
 .response(204, null);
+
+const instanceRouter = createRouter();
+instanceRouter.use((req, res, next) => {
+  const mount = req.queryParams.mount;
+  try {
+    req.service = FoxxManager.lookupService(mount);
+  } catch (e) {
+    res.throw(400, `No service installed at mount path "${mount}".`, e);
+  }
+  next();
+})
+.queryParam('mount', schemas.mount);
+router.use(instanceRouter);
 
 const configRouter = createRouter();
 instanceRouter.use('/configuration', configRouter)
