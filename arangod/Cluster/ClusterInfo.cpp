@@ -188,11 +188,7 @@ void CollectionInfoCurrent::copyAllVPacks() {
 
 void ClusterInfo::createInstance(
     AgencyCallbackRegistry* agencyCallbackRegistry) {
-  setInstance(new ClusterInfo(agencyCallbackRegistry));
-}
-
-void ClusterInfo::setInstance(ClusterInfo* instance) {
-  _instance.reset(instance);
+  _instance.reset(new ClusterInfo(agencyCallbackRegistry));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -213,13 +209,11 @@ ClusterInfo::ClusterInfo(AgencyCallbackRegistry* agencyCallbackRegistry)
   // Actual loading into caches is postponed until necessary
 }
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief destroys a cluster info object
 ////////////////////////////////////////////////////////////////////////////////
 
-ClusterInfo::~ClusterInfo() {
-}
+ClusterInfo::~ClusterInfo() {}
   
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief cleanup method which frees cluster-internal shared ptrs on shutdown
@@ -231,7 +225,11 @@ void ClusterInfo::cleanup() {
     return;
   }
 
-  theInstance->clean();
+  theInstance->_plannedCollections.clear();
+  theInstance->_shards.clear();
+  theInstance->_shardKeys.clear();
+  theInstance->_shardIds.clear();
+  theInstance->_currentCollections.clear();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1278,6 +1276,7 @@ int ClusterInfo::createCollectionCoordinator(std::string const& databaseName,
 
     while (true) {
       errorMsg = *errMsg;
+
       if (*dbServerResult >= 0) {
         loadCurrent();
         events::CreateCollection(name, *dbServerResult);
@@ -2840,49 +2839,4 @@ std::unordered_map<ServerID, std::string> ClusterInfo::getServerAliases() {
     ret.emplace(i.second,i.first);
   }
   return ret;
-}
-
-std::vector<std::string> const& ClusterInfo::getFailedServers() {
-  MUTEX_LOCKER(guard, _failedServersMutex); return _failedServers;
-}
-
-void ClusterInfo::setFailedServers(std::vector<std::string> const& failedServers) {
-  MUTEX_LOCKER(guard, _failedServersMutex); _failedServers = failedServers;
-}
-
-void ClusterInfo::clean() {
-  _plannedCollections.clear();
-  _shards.clear();
-  _shardKeys.clear();
-  _shardIds.clear();
-  _currentCollections.clear();
-}
-
-TRI_voc_cid_t ClusterInfo::getCid(std::string const& databaseName, std::string const& collectionName) {
-  auto cinfo = getCollection(databaseName, collectionName);
-  TRI_ASSERT(cinfo != nullptr);
-  return cinfo->cid();
-}
-
-bool ClusterInfo::hasDistributeShardsLike(std::string const& databaseName, std::string const& cidString) {
-  std::shared_ptr<LogicalCollection> collInfo =
-    getCollection(databaseName, cidString);
-  
-  return !collInfo->distributeShardsLike().empty();
-}
-
-std::vector<ShardServers> ClusterInfo::getShardServerList(std::string const& databaseName, std::string const& cidString) {
-  std::shared_ptr<LogicalCollection> collInfo =
-    getCollection(databaseName, cidString);
-
-  auto shardMap = collInfo->shardIds();
-  std::vector<ShardServers> shardServerList;
-  for (auto shardId: *(getShardList(cidString).get())) {
-    try {
-      shardServerList.push_back({shardId, shardMap->at(shardId)});  
-    } catch (std::out_of_range const&) {
-      LOG_TOPIC(WARN, Logger::CLUSTER) << "ShardId " << shardId << " is not in ShardMap of collection " << cidString;
-    }
-  }
-  return shardServerList;
 }
