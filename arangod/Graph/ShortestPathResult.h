@@ -101,7 +101,7 @@ class ShortestPathResult {
   std::deque<arangodb::StringRef> _vertices;
 
   /// @brief edges
-  std::deque<arangodb::graph::EdgeDocumentToken*> _edges;
+  std::deque<std::unique_ptr<arangodb::graph::EdgeDocumentToken>> _edges;
 };
 
 

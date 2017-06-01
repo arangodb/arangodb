@@ -26,6 +26,7 @@
 #include "Aql/AqlValue.h"
 #include "Basics/StringRef.h"
 #include "Basics/VelocyPackHelper.h"
+#include "Graph/EdgeDocumentToken.h"
 #include "Graph/TraverserCache.h"
 #include "Transaction/Helpers.h"
 #include "Transaction/Methods.h"
@@ -55,7 +56,7 @@ AqlValue ShortestPathResult::edgeToAqlValue(TraverserCache* cache, size_t positi
     return AqlValue(arangodb::basics::VelocyPackHelper::NullValue());
   }
   TRI_ASSERT(position - 1 < _edges.size());
-  return cache->fetchAqlResult(_edges[position - 1]);
+  return cache->fetchAqlResult(_edges[position - 1].get());
 }
 
 AqlValue ShortestPathResult::vertexToAqlValue(TraverserCache* cache, size_t position) const {

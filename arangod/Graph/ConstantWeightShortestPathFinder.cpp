@@ -148,7 +148,7 @@ void ConstantWeightShortestPathFinder::fillResult(
   while (it != _leftFound.end() && it->second != nullptr) {
     next = it->second->_pred;
     result._vertices.push_front(next);
-    result._edges.push_front(it->second->_path.get());
+    result._edges.push_front(std::move(it->second->_path));
     it = _leftFound.find(next);
   }
   it = _rightFound.find(n);
@@ -156,7 +156,7 @@ void ConstantWeightShortestPathFinder::fillResult(
   while (it != _rightFound.end() && it->second != nullptr) {
     next = it->second->_pred;
     result._vertices.emplace_back(next);
-    result._edges.emplace_back(it->second->_path.get());
+    result._edges.emplace_back(std::move(it->second->_path));
     it = _rightFound.find(next);
   }
 
@@ -164,6 +164,7 @@ void ConstantWeightShortestPathFinder::fillResult(
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
   }
   _options->fetchVerticesCoordinator(result._vertices);
+  clearVisited();
 }
 
 void ConstantWeightShortestPathFinder::expandVertex(bool backward,
