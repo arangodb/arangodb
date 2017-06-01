@@ -67,7 +67,7 @@ RocksDBOptionFeature::RocksDBOptionFeature(
         ? static_cast<uint64_t>(((TRI_PhysicalMemory - (static_cast<uint64_t>(2) << 30)) * 0.3))
         : (256 << 20)),
       _blockCacheShardBits(0),
-      _tableBlockSize(rocksDBTableOptionsDefaults.block_size),
+      _tableBlockSize(std::max(rocksDBTableOptionsDefaults.block_size, static_cast<decltype(rocksDBTableOptionsDefaults.block_size)>(16 * 1024))),
       _recycleLogFileNum(rocksDBDefaults.recycle_log_file_num),
       _compactionReadaheadSize(rocksDBDefaults.compaction_readahead_size),
       _verifyChecksumsInCompaction(
