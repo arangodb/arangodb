@@ -331,6 +331,73 @@ function ahuacatlStringFunctionsTestSuite () {
     },
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief test REGEX_REPLACE, invalid arguments
+////////////////////////////////////////////////////////////////////////////////
+
+    testRegexReplaceInvalid : function () {
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN REGEX_REPLACE()");
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN REGEX_REPLACE(\"test\")");
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN REGEX_TEST(\"test\", \"meow\", \"woof\", \"foo\", \"bar\")");
+
+      assertQueryWarningAndFalse(errors.ERROR_QUERY_INVALID_REGEX.code, "RETURN REGEX_REPLACE(\"test\", \"?\", \"hello\")");
+      assertQueryWarningAndFalse(errors.ERROR_QUERY_INVALID_REGEX.code, "RETURN REGEX_REPLACE(\"test\", \"*\", \"hello\")");
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test REGEX_REPLACE
+////////////////////////////////////////////////////////////////////////////////
+
+    testRegexReplace : function () {
+      var values = [
+        // whole words
+        [["the quick brown fox", "the", "A"], "A quick brown fox"],
+        [["the quick brown fox", "quick", "slow"], "the slow brown fox"],
+        [["the quick brown fox", "quicK", "slow"], "the quick brown fox"],
+        [["the quick brown fox", "brown ", "white"], "the quick whitefox"],
+        [["the quick brown fox", "fox", "dog"], "the quick brown dog"],
+        [["the quick brown fox", "hasi", "fasi"], "the quick brown fox"],
+
+        // anchored
+        [["the quick brown fox", "^the", "A"], "A quick brown fox"],
+        [["the quick brown fox", "^the$", "A"], "the quick brown fox"],
+        [["the quick brown fox", "^the quick brown fo", "fa"], "fax"],
+
+        // // partials
+        [["the quick brown fox", "ö", "i"], "the quick brown fox"],
+        [["the quick brown fox", "o", "i"], "the quick briwn fix"],
+        [["the quick brown fox", " ", "-"], "the-quick-brown-fox"],
+        [["the quick brown fox", "  ", "-"], "the quick brown fox"],
+        [["the quick brown fox", " ", ""], "thequickbrownfox"],
+        [["the quick brown fox", "", "x"], "xtxhxex xqxuxixcxkx xbxrxoxwxnx xfxoxxx"],
+
+        // // wildcards
+        [["the quick brown fox", "the.*fox", "jumped over"], "jumped over"],
+        [["the quick brown fox", "^the.*fox$", "jumped over"], "jumped over"],
+        [["the quick brown fox", "^the.*dog$", "jumped over"], "the quick brown fox"],
+        [["the quick brown fox", "the (quick|slow) (red|green|brown) (dog|cat|fox)", "jumped over"], "jumped over"],
+        [["the quick brown fox", "the .*(red|green|brown) (dog|cat|fox)", "jumped over"], "jumped over"],
+        [["the quick brown fox", "the (slow|lazy) brown (fox|wolf)", "jumped over"], "the quick brown fox"],
+        [["the quick brown fox", "the (slow|quick) brown (fox|wolf)", "jumped over"], "jumped over"],
+        
+        // // line breaks
+        [["the quick\nbrown\nfox", "the(.|\n)*fox", "jumped over"], "jumped over"],
+        [["the quick\nbrown\nfox", "^the.*fox$", "jumped over"], "the quick\nbrown\nfox"],
+      ];
+
+      values.forEach(function(v) {
+        var query;
+        query = "RETURN REGEX_REPLACE(@what, @re, @with)";
+        assertEqual(v[1], getQueryResults(query, { what: v[0][0], re: v[0][1], with: v[0][2] })[0], v);
+
+        query = "RETURN NOOPT(REGEX_REPLACE(@what, @re, @with))";
+        assertEqual(v[1], getQueryResults(query, { what: v[0][0], re: v[0][1], with: v[0][2] })[0], v);
+
+        query = "RETURN NOOPT(V8(REGEX_REPLACE(@what, @re, @with)))";
+        assertEqual(v[1], getQueryResults(query, { what: v[0][0], re: v[0][1], with: v[0][2] })[0], v);
+      });
+    },
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief test like function, invalid arguments
 ////////////////////////////////////////////////////////////////////////////////
     
