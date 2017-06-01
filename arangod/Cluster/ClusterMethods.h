@@ -246,10 +246,7 @@ int flushWalOnAllDBServers(bool, bool);
 /// are performed before the list is taken. Thus modifies the list.
 ////////////////////////////////////////////////////////////////////////////////
 
-std::unordered_map<std::string, std::vector<std::string>> distributeShards(
-    uint64_t numberOfShards,
-    uint64_t replicationFactor,
-    std::vector<std::string>& dbServers);
+
 
 class ClusterMethods {
  public:
@@ -267,8 +264,6 @@ class ClusterMethods {
       arangodb::velocypack::Slice parameters,
       bool ignoreDistributeShardsLikeErrors,
       bool waitForSyncReplication);
-
- private:
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Persist collection in Agency and trigger shard creation process
