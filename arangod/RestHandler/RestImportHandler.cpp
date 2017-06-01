@@ -201,7 +201,7 @@ int RestImportHandler::handleSingleDocument(SingleCollectionTransaction& trx,
 
 
   // document ok, now import it
-  VPackBuilder newBuilder;
+  transaction::BuilderLeaser newBuilder(&trx);
 
   // add prefixes to _from and _to
   if (!_fromPrefix.empty() || !_toPrefix.empty()) {
@@ -239,9 +239,8 @@ int RestImportHandler::handleSingleDocument(SingleCollectionTransaction& trx,
     tempBuilder->close();
 
     if (tempBuilder->slice().length() > 0) {
-      newBuilder =
-          VPackCollection::merge(slice, tempBuilder->slice(), false, false);
-      slice = newBuilder.slice();
+      VPackCollection::merge(*(newBuilder.builder()), slice, tempBuilder->slice(), false, false);
+      slice = newBuilder->slice();
     }
   }
 

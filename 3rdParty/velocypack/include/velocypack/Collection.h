@@ -199,6 +199,7 @@ class Collection {
                        bool mergeValues, bool nullMeansRemove = false) {
     return merge(*left, *right, mergeValues, nullMeansRemove);
   }
+  static Builder& merge(Builder& builder, Slice const& left, Slice const& right, bool mergeValues, bool nullMeansRemove = false);
 
   static void visitRecursive(
       Slice const& slice, VisitationOrder order,
