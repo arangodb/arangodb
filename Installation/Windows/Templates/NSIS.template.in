@@ -131,13 +131,11 @@ FunctionEnd
 
 Function check_previous_install
   StrCpy $UpgradeInstall "0"
-  MessageBox MB_OK "Upgrade: IfFileExists $DATADIR\@INC_CPACK_ARANGO_DATA_DIR@/SERVER OldFound  IfFileExists $DATADIR\@INC_CPACK_ARANGO_DATA_DIR@/ENGINE"
   
   IfFileExists "$DATADIR\@INC_CPACK_ARANGO_DATA_DIR@\SERVER" OldFound
   IfFileExists "$DATADIR\@INC_CPACK_ARANGO_DATA_DIR@\ENGINE" OldFound
   return
 OldFound:
-  MessageBox MB_OK "Found old Installation!"
   StrCpy $UpgradeInstall "1"
 FunctionEnd
 
@@ -277,6 +275,11 @@ Var AR_RegFlags
 !macroend
 ;--- End of Add/Remove macros ---
 
+;--------------------------------
+;Interface Settings
+
+  !define MUI_HEADERIMAGE "@CPACK_NSIS_MUI_ICON@"
+  !define MUI_ABORTWARNING
 
 
 !verbose 3
@@ -312,11 +315,6 @@ Var AR_RegFlags
 
 ;--------------------------------
 ;Pages
-;--------------------------------
-;Interface Settings
-
-  !define MUI_HEADERIMAGE "@CPACK_NSIS_MUI_ICON@"
-  !define MUI_ABORTWARNING
   !define MUI_PAGE_CUSTOMFUNCTION_PRE skip_page
   !insertmacro MUI_PAGE_WELCOME
 
@@ -1038,7 +1036,7 @@ Function .onInit
   ${GetOptions} $R0 "/CURPATH="        $ADD_TO_PATH_CURRENT_USER
   IfErrors 0 +2
   StrCpy $ADD_TO_PATH_CURRENT_USER "0"
-
+  
   noService:
   IfSilent 0 dontValidatePathOption
   StrCpy $allPathOpts "0"
@@ -1070,6 +1068,7 @@ Function .onInit
   ClearErrors
   ${GetOptions} $R0 "/INSTALLTYPE=" $TRI_INSTALL_TYPE
 
+  
   StrLen $0 "$INSTDIR"
   ${If} $0 < 3
     MessageBox MB_OK 'Refusing to install flat on drive "$INSTDIR"'
@@ -1145,6 +1144,7 @@ inst:
       StrCpy $INSTDIR "@CPACK_NSIS_INSTALL_ROOT@\@CPACK_PACKAGE_INSTALL_DIRECTORY@"
 
   StrCmp "@CPACK_NSIS_MODIFY_PATH@" "ON" 0 noOptionsPage
+  ; !insertmacro INSTALLOPTIONS_EXTRACT "NSIS.InstallOptions.ini"
 
   noOptionsPage:
 FunctionEnd
