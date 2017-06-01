@@ -44,26 +44,14 @@
   internal.loadStartup('server/bootstrap/routing.js').startup();
 
   if (internal.threadNumber === 0) {
-    global.KEYSPACE_CREATE('foxx', 1, true);
-    global.KEY_SET('foxx', 'ready', false);
-    const isFoxxmaster = global.ArangoServerState.isFoxxmaster();
-    require('@arangodb/foxx/manager')._startup(isFoxxmaster);
+    require('@arangodb/foxx/manager')._startup();
     require('@arangodb/tasks').register({
       id: 'self-heal',
       isSystem: true,
-      period: 0.1, // secs
+      period: 5 * 60, // secs
       command: function () {
         const FoxxManager = require('@arangodb/foxx/manager');
-        const isReady = FoxxManager._isClusterReady();
-        if (!isReady) {
-          return;
-        }
-        require('@arangodb/tasks').unregister('self-heal');
-        const isFoxxmaster = global.ArangoServerState.isFoxxmaster();
-        const foxxmasterIsReady = FoxxManager._selfHeal(isFoxxmaster);
-        if (foxxmasterIsReady) {
-          global.KEY_SET('foxx', 'ready', true);
-        }
+        FoxxManager.healAll();
       }
     });
     // start the queue manager once

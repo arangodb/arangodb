@@ -26,9 +26,9 @@
 #include "Aql/AqlValue.h"
 #include "Basics/StringRef.h"
 #include "Basics/VelocyPackHelper.h"
+#include "Graph/TraverserCache.h"
 #include "Transaction/Helpers.h"
 #include "Transaction/Methods.h"
-#include "VocBase/TraverserCache.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/velocypack-aliases.h>

@@ -51,8 +51,8 @@ static inline MMFilesLogfileManager* GetMMFilesLogfileManager() {
 }
 
 /// @brief transaction type
-MMFilesTransactionState::MMFilesTransactionState(TRI_vocbase_t* vocbase)
-    : TransactionState(vocbase),
+MMFilesTransactionState::MMFilesTransactionState(TRI_vocbase_t* vocbase, transaction::Options const& options)
+    : TransactionState(vocbase, options),
       _rocksTransaction(nullptr),
       _beginWritten(false),
       _hasOperations(false) {}
@@ -230,7 +230,7 @@ int MMFilesTransactionState::addOperation(TRI_voc_rid_t revisionId,
   }
 
   if (waitForSync) {
-    _waitForSync = true;
+    _options.waitForSync = true;
   }
 
   TRI_IF_FAILURE("TransactionOperationNoSlot") { return TRI_ERROR_DEBUG; }
@@ -467,7 +467,7 @@ int MMFilesTransactionState::writeCommitMarker() {
 
   try {
     MMFilesTransactionMarker marker(TRI_DF_MARKER_VPACK_COMMIT_TRANSACTION, _vocbase->id(), _id);
-    res = GetMMFilesLogfileManager()->allocateAndWrite(marker, _waitForSync).errorCode;
+    res = GetMMFilesLogfileManager()->allocateAndWrite(marker, _options.waitForSync).errorCode;
     
     TRI_IF_FAILURE("TransactionWriteCommitMarkerSegfault") { 
       TRI_SegfaultDebugging("crashing on commit");
@@ -475,7 +475,7 @@ int MMFilesTransactionState::writeCommitMarker() {
 
     TRI_IF_FAILURE("TransactionWriteCommitMarkerNoRocksSync") { return TRI_ERROR_NO_ERROR; }
 
-    if (_waitForSync) {
+    if (_options.waitForSync) {
       // also sync RocksDB WAL
       MMFilesPersistentIndexFeature::syncWal();
     }

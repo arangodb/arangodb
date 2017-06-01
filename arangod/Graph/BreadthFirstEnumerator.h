@@ -36,26 +36,27 @@ struct TraverserOptions;
 
 namespace graph {
 
-class BreadthFirstEnumerator final : public arangodb::traverser::PathEnumerator {
+class BreadthFirstEnumerator final
+    : public arangodb::traverser::PathEnumerator {
  private:
-
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief One entry in the schreier vector 
+  /// @brief One entry in the schreier vector
   //////////////////////////////////////////////////////////////////////////////
 
   struct PathStep {
     size_t sourceIdx;
-    arangodb::StringRef const edge;
+    std::unique_ptr<graph::EdgeDocumentToken> edge;
     arangodb::StringRef const vertex;
-
-   private:
-    PathStep() {}
 
    public:
     explicit PathStep(arangodb::StringRef const vertex);
 
-    PathStep(size_t sourceIdx, arangodb::StringRef const edge,
+    PathStep(size_t sourceIdx, std::unique_ptr<graph::EdgeDocumentToken>&& edge,
              arangodb::StringRef const vertex);
+
+    ~PathStep();
+
+    PathStep(PathStep& other);
   };
 
   //////////////////////////////////////////////////////////////////////////////
@@ -70,15 +71,14 @@ class BreadthFirstEnumerator final : public arangodb::traverser::PathEnumerator 
     NextStep() = delete;
 
    public:
-    explicit NextStep(size_t sourceIdx)
-        : sourceIdx(sourceIdx) {}
+    explicit NextStep(size_t sourceIdx) : sourceIdx(sourceIdx) {}
   };
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief schreier vector to store the visited vertices
   //////////////////////////////////////////////////////////////////////////////
-  
-   std::vector<PathStep> _schreier;
+
+  std::vector<std::unique_ptr<PathStep>> _schreier;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Next free index in schreier vector.
@@ -96,39 +96,39 @@ class BreadthFirstEnumerator final : public arangodb::traverser::PathEnumerator 
   /// @brief Vector to store where to continue search on next depth
   //////////////////////////////////////////////////////////////////////////////
 
-   std::vector<NextStep> _nextDepth;
+  std::vector<NextStep> _nextDepth;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Vector storing the position at current search depth
   //////////////////////////////////////////////////////////////////////////////
 
-   std::vector<NextStep> _toSearch;
+  std::vector<NextStep> _toSearch;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Vector storing the position at current search depth
   //////////////////////////////////////////////////////////////////////////////
 
-   std::unordered_set<arangodb::velocypack::Slice> _tmpEdges;
+  std::unordered_set<arangodb::velocypack::Slice> _tmpEdges;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Marker for the search depth. Used to abort searching.
   //////////////////////////////////////////////////////////////////////////////
 
-   uint64_t _currentDepth;
+  uint64_t _currentDepth;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief position in _toSearch. If this is >= _toSearch.size() we are done
   ///        with this depth.
   //////////////////////////////////////////////////////////////////////////////
 
-   size_t _toSearchPos;
+  size_t _toSearchPos;
 
  public:
   BreadthFirstEnumerator(arangodb::traverser::Traverser* traverser,
                          arangodb::velocypack::Slice startVertex,
                          arangodb::traverser::TraverserOptions* opts);
 
-  ~BreadthFirstEnumerator() {}
+  ~BreadthFirstEnumerator();
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Get the next Path element from the traversal.
@@ -143,12 +143,11 @@ class BreadthFirstEnumerator final : public arangodb::traverser::PathEnumerator 
   aql::AqlValue pathToAqlValue(arangodb::velocypack::Builder& result) override;
 
  private:
-
   inline size_t getDepth(size_t index) const {
     size_t depth = 0;
     while (index != 0) {
       ++depth;
-      index = _schreier[index].sourceIdx;
+      index = _schreier[index]->sourceIdx;
     }
     return depth;
   }

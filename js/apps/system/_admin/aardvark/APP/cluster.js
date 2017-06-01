@@ -55,7 +55,7 @@ if (cluster.isCluster()) {
     res.json(list.map(n => { 
       var r = { "id": n.serverId, "name": n.serverName, "role": "primary" };
       r.status = "ok";
-      const endpoint = global.ArangoClusterInfo.getServerEndpoint(n);
+      const endpoint = global.ArangoClusterInfo.getServerEndpoint(r.id);
       const proto = endpoint.substr(0, 6);
       if (proto === "tcp://") {
         r.protocol = "http";
@@ -75,7 +75,7 @@ if (cluster.isCluster()) {
   router.get('/Coordinators', function(req, res) {
     const list = global.ArangoClusterInfo.getCoordinators();
     res.json(list.map(n => { 
-      var r = { "name": n, "role": "coordinator" };
+      var r = { "id": n, "role": "coordinator" };
       r.status = "ok";
       const endpoint = global.ArangoClusterInfo.getServerEndpoint(n);
       const proto = endpoint.substr(0, 6);

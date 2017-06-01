@@ -68,7 +68,7 @@ QueryOptions::QueryOptions() :
   auto queryCacheMode = QueryCache::instance()->mode();
   cache = (queryCacheMode == CACHE_ALWAYS_ON);
 }
-
+  
 void QueryOptions::fromVelocyPack(VPackSlice const& slice) {
   if (!slice.isObject()) {
     return;
@@ -167,12 +167,61 @@ void QueryOptions::fromVelocyPack(VPackSlice const& slice) {
     while (it.valid()) {
       VPackSlice value = it.value();
       if (value.isString()) {
-        includedShards.emplace(value.copyString());
+        shardIds.emplace(value.copyString());
       }
       it.next();
     }
   }
+
+  // also handle transaction options
+  transactionOptions.fromVelocyPack(slice);
 }
 
-void QueryOptions::toVelocyPack(VPackBuilder& builder) {
+void QueryOptions::toVelocyPack(VPackBuilder& builder, bool disableOptimizerRules) const {
+  builder.openObject();
+
+  builder.add("memoryLimit", VPackValue(memoryLimit));
+  builder.add("maxNumberOfPlans", VPackValue(maxNumberOfPlans));
+  builder.add("maxWarningCount", VPackValue(maxWarningCount));
+  builder.add("literalSizeThreshold", VPackValue(literalSizeThreshold));
+  builder.add("tracing", VPackValue(tracing));
+  builder.add("satelliteSyncWait", VPackValue(satelliteSyncWait));
+  builder.add("profile", VPackValue(profile));
+  builder.add("allPlans", VPackValue(allPlans));
+  builder.add("verbosePlans", VPackValue(verbosePlans));
+  builder.add("silent", VPackValue(silent));
+  builder.add("failOnWarning", VPackValue(failOnWarning));
+  builder.add("cache", VPackValue(cache));
+  builder.add("fullCount", VPackValue(fullCount));
+  builder.add("count", VPackValue(count));
+  builder.add("verboseErrors", VPackValue(verboseErrors));
+  
+  builder.add("optimizer", VPackValue(VPackValueType::Object));
+  builder.add("inspectSimplePlans", VPackValue(inspectSimplePlans));
+  if (!optimizerRules.empty() || disableOptimizerRules) {
+    builder.add("rules", VPackValue(VPackValueType::Array));
+    if (disableOptimizerRules) {
+      // turn off all optimizer rules
+      builder.add(VPackValue("-all"));
+    } else {
+      for (auto const& it : optimizerRules) {
+        builder.add(VPackValue(it));
+      }
+    }
+    builder.close(); // optimizer.rules
+  }
+  builder.close(); // optimizer
+
+  if (!shardIds.empty()) {
+    builder.add("shardIds", VPackValue(VPackValueType::Array));
+    for (auto const& it : shardIds) {
+      builder.add(VPackValue(it));
+    }
+    builder.close(); // shardIds
+  }
+  
+  // also handle transaction options
+  transactionOptions.toVelocyPack(builder);
+
+  builder.close();
 }

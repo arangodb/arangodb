@@ -16,6 +16,13 @@ Whats New
 - [Whats New in 2.2](NewFeatures22.md)
 - [Whats New in 2.1](NewFeatures21.md)
 
+
+Known Issues
+------------
+
+- [Known Issues in 3.2](KnownIssues32.md)
+
+
 Incompatible changes
 --------------------
 

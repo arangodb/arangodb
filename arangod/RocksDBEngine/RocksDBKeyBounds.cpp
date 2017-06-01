@@ -231,6 +231,7 @@ RocksDBKeyBounds::RocksDBKeyBounds(RocksDBEntryType type)
   }
 }
 
+/// bounds to iterate over entire index
 RocksDBKeyBounds::RocksDBKeyBounds(RocksDBEntryType type, uint64_t first)
     : _type(type) {
   switch (_type) {
@@ -270,7 +271,6 @@ RocksDBKeyBounds::RocksDBKeyBounds(RocksDBEntryType type, uint64_t first)
       _internals.reserve(length);
       _internals.push_back(static_cast<char>(_type));
       uint64ToPersistent(_internals.buffer(), first);
-      uint64ToPersistent(_internals.buffer(), 0);
       
       _internals.separate();
 
@@ -301,6 +301,7 @@ RocksDBKeyBounds::RocksDBKeyBounds(RocksDBEntryType type, uint64_t first)
   }
 }
 
+/// bounds to iterate over specified word or edge
 RocksDBKeyBounds::RocksDBKeyBounds(RocksDBEntryType type, uint64_t first,
                                    arangodb::StringRef const& second)
     : _type(type) {
@@ -320,7 +321,8 @@ RocksDBKeyBounds::RocksDBKeyBounds(RocksDBEntryType type, uint64_t first,
       uint64ToPersistent(_internals.buffer(), first);
       _internals.buffer().append(second.data(), second.length());
       _internals.push_back(_stringSeparator);
-      _internals.push_back(0xFFU);
+      uint64ToPersistent(_internals.buffer(), UINT64_MAX);
+
       break;
     }
 
@@ -329,6 +331,7 @@ RocksDBKeyBounds::RocksDBKeyBounds(RocksDBEntryType type, uint64_t first,
   }
 }
 
+/// iterate over the specified bounds of the velocypack index
 RocksDBKeyBounds::RocksDBKeyBounds(RocksDBEntryType type, uint64_t first,
                                    VPackSlice const& second,
                                    VPackSlice const& third)
@@ -347,7 +350,6 @@ RocksDBKeyBounds::RocksDBKeyBounds(RocksDBEntryType type, uint64_t first,
       uint64ToPersistent(_internals.buffer(), first);
       _internals.buffer().append(reinterpret_cast<char const*>(second.begin()),
                           static_cast<size_t>(second.byteSize()));
-      _internals.push_back(_stringSeparator);
 
       _internals.separate();
 
@@ -355,8 +357,7 @@ RocksDBKeyBounds::RocksDBKeyBounds(RocksDBEntryType type, uint64_t first,
       uint64ToPersistent(_internals.buffer(), first);
       _internals.buffer().append(reinterpret_cast<char const*>(third.begin()),
                         static_cast<size_t>(third.byteSize()));
-      _internals.push_back(_stringSeparator + 1); // compare greater than
-                                                  // actual key
+      uint64ToPersistent(_internals.buffer(), UINT64_MAX);
       break;
     }
 

@@ -47,6 +47,7 @@
 #include "StorageEngine/TransactionState.h"
 #include "Transaction/Context.h"
 #include "Transaction/Helpers.h"
+#include "Transaction/Options.h"
 #include "Utils/CollectionNameResolver.h"
 #include "Utils/Events.h"
 #include "Utils/OperationCursor.h"
@@ -541,7 +542,8 @@ bool transaction::Methods::findIndexHandleForAndNode(
 }
 
 transaction::Methods::Methods(
-    std::shared_ptr<transaction::Context> const& transactionContext)
+    std::shared_ptr<transaction::Context> const& transactionContext,
+    transaction::Options const& options)
     : _state(nullptr),
       _transactionContext(transactionContext),
       _transactionContextPtr(transactionContext.get()) {
@@ -560,7 +562,7 @@ transaction::Methods::Methods(
     setupEmbedded(vocbase);
   } else {
     // non-embedded
-    setupToplevel(vocbase);
+    setupToplevel(vocbase, options);
   }
 
   TRI_ASSERT(_state != nullptr);
@@ -840,16 +842,12 @@ OperationResult transaction::Methods::anyLocal(
   resultBuilder.openArray();
 
   ManagedDocumentResult mmdr;
-
   std::unique_ptr<OperationCursor> cursor =
       indexScan(collectionName, transaction::Methods::CursorType::ANY, &mmdr,
                 skip, limit, 1000, false);
 
-  LogicalCollection* collection = cursor->collection();
-  cursor->all([&](DocumentIdentifierToken const& token) {
-    if (collection->readDocument(this, token, mmdr)) {
-      mmdr.addToBuilder(resultBuilder, false);
-    }
+  cursor->allDocuments([&resultBuilder](ManagedDocumentResult const& mdr) {
+    mdr.addToBuilder(resultBuilder, false);
   });
 
   resultBuilder.close();
@@ -2140,7 +2138,6 @@ OperationResult transaction::Methods::allLocal(
   resultBuilder.openArray();
 
   ManagedDocumentResult mmdr;
-
   std::unique_ptr<OperationCursor> cursor =
       indexScan(collectionName, transaction::Methods::CursorType::ALL, &mmdr,
                 skip, limit, 1000, false);
@@ -2149,15 +2146,11 @@ OperationResult transaction::Methods::allLocal(
     return OperationResult(cursor->code);
   }
 
-  LogicalCollection* collection = cursor->collection();
-  auto cb = [&](DocumentIdentifierToken const& token) {
-    if (collection->readDocument(this, token, mmdr)) {
-      uint8_t const* vpack = mmdr.vpack();
-      resultBuilder.add(VPackSlice(vpack));
-    }
+  auto cb = [&resultBuilder](ManagedDocumentResult const& mdr) {
+    uint8_t const* vpack = mdr.vpack();
+    resultBuilder.add(VPackSlice(vpack));
   };
-
-  cursor->all(cb);
+  cursor->allDocuments(cb);
 
   resultBuilder.close();
 
@@ -2708,14 +2701,12 @@ std::vector<std::shared_ptr<Index>> transaction::Methods::indexesForCollection(
 }
 
 /// @brief Lock all collections. Only works for selected sub-classes
-
 int transaction::Methods::lockCollections() {
   THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
 }
 
 /// @brief Clone this transaction. Only works for selected sub-classes
-
-transaction::Methods* transaction::Methods::clone() const {
+transaction::Methods* transaction::Methods::clone(transaction::Options const&) const {
   THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
 }
 
@@ -2866,10 +2857,10 @@ void transaction::Methods::setupEmbedded(TRI_vocbase_t*) {
 }
 
 /// @brief set up a top-level transaction
-void transaction::Methods::setupToplevel(TRI_vocbase_t* vocbase) {
+void transaction::Methods::setupToplevel(TRI_vocbase_t* vocbase, transaction::Options const& options) {
   // we are not embedded. now start our own transaction
   StorageEngine* engine = EngineSelectorFeature::ENGINE;
-  _state = engine->createTransactionState(vocbase);
+  _state = engine->createTransactionState(vocbase, options);
 
   TRI_ASSERT(_state != nullptr);
 

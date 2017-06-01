@@ -27,8 +27,11 @@
 #include "Basics/VelocyPackHelper.h"
 
 #include "Aql/AqlValue.h"
+#include "Cluster/ServerState.h"
+#include "Graph/EdgeDocumentToken.h"
 #include "Logger/Logger.h"
 #include "Transaction/Methods.h"
+#include "VocBase/LogicalCollection.h"
 #include "VocBase/ManagedDocumentResult.h"
 
 #include <velocypack/Builder.h>
@@ -36,7 +39,7 @@
 #include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb;
-using namespace arangodb::traverser;
+using namespace arangodb::graph;
 
 TraverserCache::TraverserCache(transaction::Methods* trx)
     : _mmdr(new ManagedDocumentResult{}),
@@ -74,6 +77,23 @@ VPackSlice TraverserCache::lookupInCollection(StringRef id) {
   return result;
 }
 
+VPackSlice TraverserCache::lookupInCollection(SingleServerEdgeDocumentToken const* idToken) {
+  auto col = _trx->vocbase()->lookupCollection(idToken->cid());
+  if (!col->readDocument(_trx, idToken->token(), *_mmdr.get())) {
+    TRI_ASSERT(false);
+    // We already had this token, inconsistent state. Return NULL in Production
+    LOG_TOPIC(ERR, arangodb::Logger::GRAPHS) << "Could not extract indexed Edge Document, return 'null' instead. This is most likely a caching issue. Try: '" << col->name() <<".unload(); " << col->name() << ".load()' in arangosh to fix this."; 
+    return basics::VelocyPackHelper::NullValue();
+  }
+  return VPackSlice(_mmdr->vpack());
+}
+
+void TraverserCache::insertIntoResult(EdgeDocumentToken const* idToken,
+                                      VPackBuilder& builder) {
+  TRI_ASSERT(!ServerState::instance()->isCoordinator());
+  builder.add(lookupInCollection(static_cast<SingleServerEdgeDocumentToken const*>(idToken)));
+}
+
 void TraverserCache::insertIntoResult(StringRef idString,
                                       VPackBuilder& builder) {
   builder.add(lookupInCollection(idString));
@@ -81,6 +101,11 @@ void TraverserCache::insertIntoResult(StringRef idString,
 
 aql::AqlValue TraverserCache::fetchAqlResult(StringRef idString) {
   return aql::AqlValue(lookupInCollection(idString));
+}
+
+aql::AqlValue TraverserCache::fetchAqlResult(EdgeDocumentToken const* idToken) {
+  TRI_ASSERT(!ServerState::instance()->isCoordinator());
+  return aql::AqlValue(lookupInCollection(static_cast<SingleServerEdgeDocumentToken const*>(idToken)));
 }
 
 void TraverserCache::insertDocument(StringRef idString, arangodb::velocypack::Slice const& document) {

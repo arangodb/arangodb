@@ -26,9 +26,9 @@
 #include "Cluster/ClusterMethods.h"
 #include "Cluster/ClusterTraverser.h"
 #include "Graph/ClusterTraverserCache.h"
+#include "Graph/TraverserCache.h"
 #include "Transaction/Helpers.h"
 #include "Transaction/Methods.h"
-#include "VocBase/TraverserCache.h"
 
 #include <velocypack/Slice.h>
 #include <velocypack/velocypack-aliases.h>
@@ -79,13 +79,13 @@ ClusterEdgeCursor::ClusterEdgeCursor(StringRef vertexId, bool backward,
 }
 
 bool ClusterEdgeCursor::next(
-    std::function<void(StringRef const&, VPackSlice, size_t)> callback) {
+    std::function<void(std::unique_ptr<EdgeDocumentToken>&&, VPackSlice, size_t)> callback) {
   if (_position < _edgeList.size()) {
     VPackSlice edge = _edgeList[_position];
     std::string eid =
         transaction::helpers::extractIdString(_resolver, edge, VPackSlice());
     StringRef persId = _cache->persistString(StringRef(eid));
-    callback(persId, edge, _position);
+    callback(std::make_unique<ClusterEdgeDocumentToken>(persId), edge, _position);
     ++_position;
     return true;
   }
@@ -93,11 +93,11 @@ bool ClusterEdgeCursor::next(
 }
 
 void ClusterEdgeCursor::readAll(
-    std::function<void(StringRef const&, VPackSlice, size_t&)> callback) {
+    std::function<void(std::unique_ptr<EdgeDocumentToken>&&, VPackSlice, size_t)> callback) {
   for (auto const& edge : _edgeList) {
     std::string eid =
         transaction::helpers::extractIdString(_resolver, edge, VPackSlice());
     StringRef persId = _cache->persistString(StringRef(eid));
-    callback(persId, edge, _position);
+    callback(std::make_unique<ClusterEdgeDocumentToken>(persId), edge, _position);
   }
 }

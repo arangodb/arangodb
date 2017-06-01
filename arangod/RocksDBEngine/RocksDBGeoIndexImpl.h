@@ -37,7 +37,7 @@ namespace rocksdbengine {
 /* first the things that a user might want to change */
 
 /* a GeoString - a signed type of at least 64 bits   */
-typedef std::uint_fast64_t GeoString;
+typedef std::uint64_t GeoString;
 
 /* percentage growth of slot or slotslot tables     */
 #define GeoIndexGROW 50

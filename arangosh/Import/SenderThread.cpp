@@ -68,8 +68,8 @@ void SenderThread::sendData(std::string const& url,
   _data.swap(data);
 
   // wake up the thread that may be waiting in run()
-  _idle = false;
   CONDITION_LOCKER(guard, _condition);
+  _idle = false;
   guard.broadcast();
 }
 
@@ -80,6 +80,8 @@ void SenderThread::run() {
       guard.wait();
     }
     if (isStopping()) {
+      CONDITION_LOCKER(guard, _condition);
+      _idle = true;
       return;
     }
     try {
@@ -96,8 +98,10 @@ void SenderThread::run() {
         _url.clear();
         _data.reset();
       }
+      CONDITION_LOCKER(guard, _condition);
       _idle = true;
     } catch (...) {
+      CONDITION_LOCKER(guard, _condition);
       _hasError = true;
       _idle = true;
     }

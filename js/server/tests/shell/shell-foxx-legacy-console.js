@@ -28,29 +28,16 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 var jsunity = require('jsunity');
-const expect = require('chai').expect;
+var expect = require('chai').expect;
 var util = require('util');
 var Console = require('@arangodb/foxx/legacy/console').Console;
 var db = require('@arangodb').db;
 var qb = require('aqb');
+var internal = require('internal');
 var AssertionError = require('assert').AssertionError;
-
 var mountPath = '##TEST##';
 
-function ls() {
-  'use strict';
-  if (!db._foxxlog) {
-    return [];
-  }
-  return db._query(
-    qb.for('entry').in('_foxxlog')
-    .filter(qb.eq('entry.mount', qb.str(mountPath)))
-    .sort('entry.time', 'ASC')
-    .return('entry')
-  ).toArray();
-}
-
-function rmrf() {
+function clear () {
   'use strict';
   if (!db._foxxlog) {
     return [];
@@ -68,7 +55,7 @@ function rmrf() {
 
 function ConsoleTestSuite () {
   'use strict';
-  var console;
+  let console;
 
   return {
 
@@ -78,7 +65,7 @@ function ConsoleTestSuite () {
 
     setUp: function () {
       console = new Console(mountPath);
-      rmrf();
+      clear();
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -86,7 +73,7 @@ function ConsoleTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     tearDown: function () {
-      rmrf();
+      clear();
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -94,9 +81,9 @@ function ConsoleTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testConsoleLogLogsMessage: function () {
-      rmrf();
+      clear();
       console.log('hi');
-      var logs = ls();
+      const logs = console.logs.list();
       expect(logs.length).to.be.equal(1);
       expect(logs[0]).to.have.property('level', 'INFO');
       expect(logs[0]).to.have.property('levelNum', console._logLevels.INFO);
@@ -104,40 +91,38 @@ function ConsoleTestSuite () {
     },
 
     testConsoleLogUsesFormat: function () {
-      rmrf();
-      console.log('%s prevails', 'the goddess');
+      clear();
       console.log('%s plus', 1, 2);
-      var logs = ls();
-      expect(logs[0]).to.have.property('message', 'the goddess prevails');
-      expect(logs[1]).to.have.property('message', '1 plus 2');
+      const logs = console.logs.list();
+      expect(logs[0]).to.have.property('message', '1 plus 2'); // FIXME
     },
 
     testConsoleLogLogsTime: function () {
-      rmrf();
-      var min = Date.now();
+      clear();
+      const min = Date.now();
       console.log('hi');
-      var max = Date.now();
-      var logs = ls();
+      const max = Date.now();
+      const logs = console.logs.list();
       expect(logs[0]).to.have.property('time');
       expect(logs[0].time).to.be.a('number');
       expect(logs[0].time).not.to.be.lessThan(min);
       expect(logs[0].time).not.to.be.greaterThan(max);
     },
     testConsoleTimeLogsDuration: function () {
-      rmrf();
-      var start = Date.now();
+      clear();
+      const start = Date.now();
       console.time('hi');
-      var min = Date.now();
-      while (Date.now() - start < 3) {var a = true; a=false;} // make sure a measurable amount of time passes
-      var max = Date.now();
+      const min = Date.now();
+      internal.sleep(0.5);
+      const max = Date.now();
       console.timeEnd('hi');
-      var end = Date.now();
+      const end = Date.now();
       expect(max).to.be.greaterThan(min); // sanity checking
-      var logs = ls();
-      var match = logs[0].message.match(/^([^:]+):\s+(\d+)ms$/);
+      const logs = console.logs.list();
+      const match = logs[0].message.match(/^([^:]+):\s+(\d+)ms$/);
       expect(match).to.be.ok;
       expect(match[1]).to.equal('hi');
-      var elapsed = Number(match[2]);
+      const elapsed = Number(match[2]);
       expect(elapsed).not.to.be.lessThan(max - min);
       expect(elapsed).not.to.be.greaterThan(end - start);
     },
@@ -148,27 +133,25 @@ function ConsoleTestSuite () {
     },
 
     testConsoleDirUsesInspect: function () {
-      var args = [
+      const args = [
         'lol',
         {_PRINT: function (ctx) {ctx.output += 'hello';}}
       ];
-      rmrf();
       args.forEach(function (arg) {
+        clear();
         console.dir(arg);
-      });
-      var logs = ls();
-      args.forEach(function (arg, i) {
-        expect(logs[i]).to.have.property('message', util.inspect(arg));
+        const log = console.logs.list()[0];
+        expect(log).to.have.property('message', util.inspect(arg));
       });
     },
 
     testConsoleAssertDoesNotThrow: function () {
-      rmrf();
+      clear();
       console.setAssertThrows(false);
       expect(function () {
         console.assert(false, 'potato');
       }).not.to.throw(Error);
-      var logs = ls();
+      const logs = console.logs.list();
       expect(logs.length).to.equal(1);
       expect(logs[0]).to.have.property('level', 'ERROR');
       expect(logs[0]).to.have.property('levelNum', console._logLevels.ERROR);
@@ -176,47 +159,51 @@ function ConsoleTestSuite () {
     },
 
     testConsoleAssertThrows: function () {
-      rmrf();
+      clear();
       console.setAssertThrows(true);
       expect(function () {
         console.assert(false, 'potato');
       }).to.throw(AssertionError).with.property('message', 'potato');
-      var logs = ls();
+      const logs = console.logs.list();
       expect(logs.length).to.equal(1);
       expect(logs[0].message).to.match(/AssertionError: potato/);
     },
 
     testConsoleLogLevelPreventsLogging: function () {
-      rmrf();
+      clear();
       console._logLevels.POTATO = -999;
       console.setLogLevel(-2);
       console.log.level = 'POTATO';
       console.log('potato');
       console.log.level = 'INFO';
       delete console._logLevels.POTATO;
-      var logs = ls();
+      const logs = console.logs.list();
       expect(logs).to.be.empty;
     },
     testConsoleTracingAddsInfo: function () {
-      rmrf();
+      clear();
       console.setTracing(false);
       console.log('without tracing');
+      let logs = console.logs.list();
+      expect(logs.length).to.equal(1);
+      expect(logs[0]).not.to.have.property('stack');
+      clear();
       console.setTracing(true);
       console.log('with tracing');
       console.setTracing(false);
-      var logs = ls();
-      expect(logs[0]).not.to.have.property('stack');
-      expect(logs[1]).to.have.property('stack');
-      expect(logs[1].stack).to.be.an('array');
-      expect(logs[1].stack[0]).to.have.property('fileName');
-      expect(logs[1].stack[0]).to.have.property('lineNumber');
-      expect(logs[1].stack[0]).to.have.property('columnNumber');
+      logs = console.logs.list();
+      expect(logs.length).to.equal(1);
+      expect(logs[0]).to.have.property('stack');
+      expect(logs[0].stack).to.be.an('array');
+      expect(logs[0].stack[0]).to.have.property('fileName');
+      expect(logs[0].stack[0]).to.have.property('lineNumber');
+      expect(logs[0].stack[0]).to.have.property('columnNumber');
     },
     testCustomLogLevels: function () {
-      rmrf();
-      var log = console.custom('BATMAN', 9000);
+      clear();
+      const log = console.custom('BATMAN', 9000);
       log('potato');
-      var logs = ls();
+      const logs = console.logs.list();
       expect(logs.length).to.equal(1);
       expect(logs[0]).to.have.property('level', 'BATMAN');
       expect(logs[0]).to.have.property('levelNum', 9000);
@@ -224,56 +211,18 @@ function ConsoleTestSuite () {
     },
 
     testTrace: function () {
-      rmrf();
+      clear();
       console.trace('wat');
-      var logs = ls();
+      const logs = console.logs.list();
       expect(logs.length).to.equal(1);
       expect(logs[0]).to.have.property('level', 'TRACE');
       expect(logs[0]).to.have.property('levelNum', console._logLevels.TRACE);
       expect(logs[0].message).to.match(/^Trace: wat\n\s+at/);
     },
 
-    testLogsListWithDefaults: function () {
-      rmrf();
-      console.log('sup');
-      console.log('banana');
-      var logs = console.logs.list();
-      expect(logs.length).to.be.equal(2);
-      expect(logs[0]).to.have.property('message', 'sup');
-      expect(logs[1]).to.have.property('message', 'banana');
-    },
-
-    testLogsListWithSortDESC: function () {
-      rmrf();
-      console.log('sup');
-      console.log('banana');
-      var logs = console.logs.list({sort: 'DESC'});
-      expect(logs.length).to.be.equal(2);
-      expect(logs[0]).to.have.property('message', 'banana');
-      expect(logs[1]).to.have.property('message', 'sup');
-    },
-
-    testLogsListWithLimit: function () {
-      rmrf();
-      console.log('sup');
-      console.log('banana');
-      var logs = console.logs.list({limit: 1});
-      expect(logs.length).to.be.equal(1);
-      expect(logs[0]).to.have.property('message', 'sup');
-    },
-
-    testLogsListWithLimitAndOffset: function () {
-      rmrf();
-      console.log('sup');
-      console.log('banana');
-      var logs = console.logs.list({limit: 1, offset: 1});
-      expect(logs.length).to.be.equal(1);
-      expect(logs[0]).to.have.property('message', 'banana');
-    },
-
     testLogsListWithMinLevel: function () {
-      rmrf();
-      var logs;
+      clear();
+      let logs;
       console.debug('lol');
       console.error('hey');
       logs = console.logs.list({minLevel: 'DEBUG'});
@@ -286,8 +235,8 @@ function ConsoleTestSuite () {
     },
 
     testLogsListWithLevel: function () {
-      rmrf();
-      var logs;
+      clear();
+      let logs;
       console.debug('lol');
       console.error('hey');
       logs = console.logs.list({level: 'DEBUG'});
@@ -303,7 +252,7 @@ function ConsoleTestSuite () {
     },
 
     testLogsSearchByFileName: function () {
-      rmrf();
+      clear();
       console.setTracing(true);
       db._foxxlog.save({
         mount: mountPath,
@@ -319,7 +268,7 @@ function ConsoleTestSuite () {
     },
 
     testLogsSearchByMessage: function () {
-      rmrf();
+      clear();
       console.log('abcdef');
       expect(console.logs.searchByMessage('bcd')).to.have.property('length', 1);
       expect(console.logs.searchByMessage('ab')).to.have.property('length', 1);

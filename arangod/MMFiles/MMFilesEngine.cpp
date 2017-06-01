@@ -39,7 +39,7 @@
 #include "MMFiles/MMFilesDatafileHelper.h"
 #include "MMFiles/MMFilesEngine.h"
 #include "MMFiles/MMFilesIndexFactory.h"
-#include "MMFiles/MMFilesInitialSync.h"
+#include "MMFiles/MMFilesIncrementalSync.h"
 #include "MMFiles/MMFilesLogfileManager.h"
 #include "MMFiles/MMFilesOptimizerRules.h"
 #include "MMFiles/MMFilesPersistentIndex.h"
@@ -263,8 +263,8 @@ transaction::ContextData* MMFilesEngine::createTransactionContextData() {
 }
 
 TransactionState* MMFilesEngine::createTransactionState(
-    TRI_vocbase_t* vocbase) {
-  return new MMFilesTransactionState(vocbase);
+    TRI_vocbase_t* vocbase, transaction::Options const& options) {
+  return new MMFilesTransactionState(vocbase, options);
 }
 
 TransactionCollection* MMFilesEngine::createTransactionCollection(

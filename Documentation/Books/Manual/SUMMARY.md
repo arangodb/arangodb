@@ -179,6 +179,7 @@
 #    * [Authentication](Administration/Sharding/Authentication.md)
 #    * [Firewall setup](Administration/Sharding/FirewallSetup.md)
   * [Upgrading](Administration/Upgrading/README.md)
+    * [Upgrading to 3.2](Administration/Upgrading/Upgrading32.md)
     * [Upgrading to 3.1](Administration/Upgrading/Upgrading31.md)
     * [Upgrading to 3.0](Administration/Upgrading/Upgrading30.md)
     * [Upgrading to 2.8](Administration/Upgrading/Upgrading28.md)
@@ -204,6 +205,7 @@
 #
 * [Release notes](ReleaseNotes/README.md)
   * [Whats New in 3.2](ReleaseNotes/NewFeatures32.md)
+  * [Known Issues in 3.2](ReleaseNotes/KnownIssues32.md)
   * [Incompatible changes in 3.2](ReleaseNotes/UpgradingChanges32.md)
   * [Whats New in 3.1](ReleaseNotes/NewFeatures31.md)
   * [Incompatible changes in 3.1](ReleaseNotes/UpgradingChanges31.md)

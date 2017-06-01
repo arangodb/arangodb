@@ -44,6 +44,7 @@ ERROR_HTTP_NOT_FOUND,404,"not found","Will be raised when an URI is unknown."
 ERROR_HTTP_METHOD_NOT_ALLOWED,405,"method not supported","Will be raised when an unsupported HTTP method is used for an operation."
 ERROR_HTTP_PRECONDITION_FAILED,412,"precondition failed","Will be raised when a precondition for an HTTP request is not met."
 ERROR_HTTP_SERVER_ERROR,500,"internal server error","Will be raised when an internal server is encountered."
+ERROR_HTTP_SERVICE_UNAVAILABLE,503,"service unavailable","Will be raised when a service is temporarily unavailable."
 
 ################################################################################
 ## HTTP processing errors
@@ -200,6 +201,7 @@ ERROR_CLUSTER_COULD_NOT_DROP_INDEX_IN_PLAN,1483,"could not drop index in plan","
 ERROR_CLUSTER_CHAIN_OF_DISTRIBUTESHARDSLIKE,1484,"chain of distributeShardsLike references","Will be raised if one tries to create a collection with a distributeShardsLike attribute which points to another collection that also has one."
 ERROR_CLUSTER_MUST_NOT_DROP_COLL_OTHER_DISTRIBUTESHARDSLIKE,1485,"must not drop collection while another has a distributeShardsLike attribute pointing to it","Will be raised if one tries to drop a collection to which another collection points with its distributeShardsLike attribute."
 ERROR_CLUSTER_UNKNOWN_DISTRIBUTESHARDSLIKE,1486,"must not have a distributeShardsLike attribute pointing to an unknown collection","Will be raised if one tries to create a collection which points to an unknown collection in its distributeShardsLike attribute."
+ERROR_CLUSTER_INSUFFICIENT_DBSERVERS,1487,"the number of current dbservers is lower than the requested replicationFactor","Will be raised if one tries to create a collection with a replicationFactor greater than the available number of DBServers."
 
 
 ################################################################################
@@ -382,6 +384,8 @@ COMMUNICATOR_REQUEST_ABORTED,2100,"Request aborted","Request was aborted."
 
 ERROR_MALFORMED_MANIFEST_FILE,3000,"failed to parse manifest file","The service manifest file is not well-formed JSON."
 ERROR_INVALID_SERVICE_MANIFEST,3001,"manifest file is invalid","The service manifest contains invalid values."
+ERROR_SERVICE_FILES_MISSING,3002,"service files missing","The service folder or bundle does not exist on this server."
+ERROR_SERVICE_FILES_OUTDATED,3003,"service files outdated","The local service bundle does not match the checksum in the database."
 ERROR_INVALID_FOXX_OPTIONS,3004,"service options are invalid","The service options contain invalid values."
 ERROR_INVALID_MOUNTPOINT,3007,"invalid mountpath","The service mountpath contains invalid characters."
 ERROR_SERVICE_NOT_FOUND,3009,"service not found","No service found at the given mountpath."

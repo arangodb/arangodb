@@ -309,7 +309,7 @@ void ImportFeature::start() {
   if (_typeImport == "csv" || _typeImport == "tsv") {
     std::cout << "separator:              " << _separator << std::endl;
   }
-  std::cout << "threads:              " << _threadCount << std::endl;
+  std::cout << "threads:                " << _threadCount << std::endl;
 
   std::cout << "connect timeout:        " << client->connectionTimeout()
             << std::endl;

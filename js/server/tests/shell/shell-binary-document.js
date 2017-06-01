@@ -36,6 +36,7 @@ let ERRORS = arangodb.errors;
 let db = arangodb.db;
 let internal = require("internal");
 let fs = require("fs");
+let path = require("path");
 let wait = internal.wait;
 
 function CollectionBinaryDocumentSuite () {
@@ -59,12 +60,10 @@ function CollectionBinaryDocumentSuite () {
     },
 
     testBinaryDocument : function () {
-      let text = "HALLO";
-      let filename1 = fs.getTempFile('binary', false);
+      const filename1 = path.resolve('js/apps/system/_admin/aardvark/APP/frontend/img/arangodb_logo_letter.png'.split('/').join(path.sep));
+      const content = fs.readFileSync(filename1);
 
-      fs.write(filename1, text);
-
-      let d1 = collection._binaryInsert({_key: "test", meta: "hallo"}, filename1);
+      const d1 = collection._binaryInsert({_key: "test", meta: "hallo"}, filename1);
 
       assertTypeOf("string", d1._id);
       assertTypeOf("string", d1._key);
@@ -72,7 +71,7 @@ function CollectionBinaryDocumentSuite () {
       assertEqual("UnitTestsCollectionBinary/test", d1._id);
       assertEqual("test", d1._key);
 
-      let d3 = collection.document("test");
+      const d3 = collection.document("test");
 
       assertTypeOf("string", d3._id);
       assertTypeOf("string", d3._key);
@@ -80,10 +79,10 @@ function CollectionBinaryDocumentSuite () {
       assertTypeOf("string", d3._attachment);
       assertTypeOf("string", d3.meta);
       assertEqual("hallo", d3.meta);
-      assertEqual("SEFMTE8=", d3._attachment);
+      assertEqual(content.toString('base64'), d3._attachment);
 
-      let filename2 = fs.getTempFile('binary', false);
-      let d2 = collection._binaryDocument("test", filename2);
+      const filename2 = fs.getTempFile('binary', false);
+      const d2 = collection._binaryDocument("test", filename2);
 
       assertTypeOf("string", d2._id);
       assertTypeOf("string", d2._key);
@@ -91,8 +90,8 @@ function CollectionBinaryDocumentSuite () {
       assertTypeOf("string", d2.meta);
       assertEqual("hallo", d2.meta);
 
-      let s = fs.read(filename2);
-      assertEqual(text, s);
+      const s = fs.readFileSync(filename2);
+      assertEqual(content, s);
     }
   };
 }

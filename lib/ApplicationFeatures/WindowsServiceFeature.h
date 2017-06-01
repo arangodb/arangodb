@@ -28,7 +28,7 @@
 extern SERVICE_STATUS_HANDLE ServiceStatus;
 
 void SetServiceStatus(DWORD dwCurrentState, DWORD dwWin32ExitCode,
-                      DWORD dwCheckPoint, DWORD dwWaitHint);
+                      DWORD dwCheckPoint, DWORD dwWaitHint, DWORD exitCode);
 
 void WINAPI ServiceCtrl(DWORD dwCtrlCode);
 
@@ -51,7 +51,8 @@ class WindowsServiceFeature final : public application_features::ApplicationFeat
   void shutDownBegins ();
   void shutDownComplete ();
   void shutDownFailure ();
-
+  void abortFailure();
+  static void abortService();
  public:
   bool _installService = false;
   bool _unInstallService = false;

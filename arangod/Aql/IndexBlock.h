@@ -102,7 +102,7 @@ class IndexBlock final : public ExecutionBlock {
   bool skipIndex(size_t atMost);
 
   /// @brief continue fetching of documents
-  bool readIndex(size_t atMost, IndexIterator::TokenCallback const&);
+  bool readIndex(size_t atMost, IndexIterator::DocumentCallback const&);
 
   /// @brief frees the memory for all non-constant expressions
   void cleanupNonConstExpressions();
@@ -145,7 +145,7 @@ class IndexBlock final : public ExecutionBlock {
   AstNode const* _condition;
 
   /// @brief set of already returned documents. Used to make the result distinct
-  std::unordered_set<DocumentIdentifierToken> _alreadyReturned;
+  std::unordered_set<TRI_voc_rid_t> _alreadyReturned;
 
   /// @brief whether or not at least one expression uses v8
   bool _hasV8Expression;

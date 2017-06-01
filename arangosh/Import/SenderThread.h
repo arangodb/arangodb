@@ -57,11 +57,11 @@ class SenderThread : public arangodb::Thread {
 
   void sendData(std::string const& url, basics::StringBuffer* sender);
 
-  bool idle() { return _idle; }
+  bool idle() const { return _idle; }
 
-  bool hasError() { return _hasError; }
+  bool hasError() const { return _hasError; }
 
-  std::string const& errorMessage() { return _errorMessage; }
+  std::string const& errorMessage() const { return _errorMessage; }
 
   void beginShutdown() override;
 

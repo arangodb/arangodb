@@ -2745,7 +2745,9 @@ int ClusterInfo::getResponsibleShard(LogicalCollection* collInfo,
 std::vector<ServerID> ClusterInfo::getCurrentCoordinators() {
   std::vector<ServerID> result;
 
-  loadCurrentCoordinators();
+  if (!_coordinatorsProt.isValid) {
+    loadCurrentCoordinators();
+  }
 
   // return a consistent state of servers
   READ_LOCKER(readLocker, _coordinatorsProt.lock);

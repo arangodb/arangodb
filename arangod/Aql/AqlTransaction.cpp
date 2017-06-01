@@ -31,6 +31,13 @@
 using namespace arangodb;
 using namespace arangodb::aql;
 
+/// @brief clone, used to make daughter transactions for parts of a
+/// distributed AQL query running on the coordinator
+transaction::Methods* AqlTransaction::clone(transaction::Options const& options) const {
+  return new AqlTransaction(transaction::StandaloneContext::Create(vocbase()),
+      &_collections, options, false);
+}
+
 /// @brief add a collection to the transaction
 Result AqlTransaction::processCollection(aql::Collection* collection) {
   if (ServerState::instance()->isCoordinator()) {

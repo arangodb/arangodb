@@ -60,7 +60,7 @@ unsigned long RandomDevice::seed() {
   auto now = std::chrono::duration_cast<std::chrono::nanoseconds>(
     std::chrono::high_resolution_clock::now().time_since_epoch()).count();
 
-  return dev + tid + now;
+  return (unsigned long)(dev + tid + now);
   
 }
 
@@ -362,7 +362,7 @@ class RandomDeviceCombined : public RandomDevice {
 class RandomDeviceMersenne : public RandomDevice {
  public:
   RandomDeviceMersenne()
-      : engine(RandomDevice::seed()) {}
+      : engine((uint_fast32_t)RandomDevice::seed()) {}
 
   uint32_t random() { return engine(); }
   void seed(uint64_t seed) { engine.seed(static_cast<decltype(engine)::result_type>(seed)); }

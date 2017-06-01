@@ -24,12 +24,13 @@
 #include "SingleServerEdgeCursor.h"
 
 #include "Graph/BaseOptions.h"
+#include "Graph/EdgeDocumentToken.h"
+#include "Graph/TraverserCache.h"
 #include "StorageEngine/DocumentIdentifierToken.h"
 #include "Transaction/Methods.h"
 #include "Utils/OperationCursor.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/ManagedDocumentResult.h"
-#include "VocBase/TraverserCache.h"
 
 using namespace arangodb;
 using namespace arangodb::graph;
@@ -69,24 +70,24 @@ SingleServerEdgeCursor::~SingleServerEdgeCursor() {
 }
 
 bool SingleServerEdgeCursor::next(
-    std::function<void(StringRef const&, VPackSlice, size_t)> callback) {
+    std::function<void(std::unique_ptr<EdgeDocumentToken>&&, VPackSlice, size_t)> callback) {
   if (_currentCursor == _cursors.size()) {
     return false;
   }
   if (_cachePos < _cache.size()) {
     LogicalCollection* collection =
         _cursors[_currentCursor][_currentSubCursor]->collection();
-    if (collection->readDocument(_trx, _cache[_cachePos++], *_mmdr)) {
+    auto etkn = std::make_unique<SingleServerEdgeDocumentToken>(collection->cid(), _cache[_cachePos++]);
+
+    if (collection->readDocument(_trx, etkn->token(), *_mmdr)) {
       VPackSlice edgeDocument(_mmdr->vpack());
-      std::string eid = _trx->extractIdString(edgeDocument);
-      StringRef persId = _opts->cache()->persistString(StringRef(eid));
-      _opts->cache()->insertDocument(persId, edgeDocument);
+      _opts->cache()->increaseCounter();
       if (_internalCursorMapping != nullptr) {
         TRI_ASSERT(_currentCursor < _internalCursorMapping->size());
-        callback(persId, edgeDocument,
+        callback(std::move(etkn), edgeDocument,
                  _internalCursorMapping->at(_currentCursor));
       } else {
-        callback(persId, edgeDocument, _currentCursor);
+        callback(std::move(etkn), edgeDocument, _currentCursor);
       }
     }
 
@@ -135,25 +136,23 @@ bool SingleServerEdgeCursor::next(
 
   TRI_ASSERT(_cachePos < _cache.size());
   LogicalCollection* collection = cursor->collection();
-  if (collection->readDocument(_trx, _cache[_cachePos++], *_mmdr)) {
+  auto etkn = std::make_unique<SingleServerEdgeDocumentToken>(collection->cid(), _cache[_cachePos++]);
+  if (collection->readDocument(_trx, etkn->token(), *_mmdr)) {
     VPackSlice edgeDocument(_mmdr->vpack());
-    std::string eid = _trx->extractIdString(edgeDocument);
-    StringRef persId = _opts->cache()->persistString(StringRef(eid));
-    _opts->cache()->insertDocument(persId, edgeDocument);
+    _opts->cache()->increaseCounter();
     if (_internalCursorMapping != nullptr) {
       TRI_ASSERT(_currentCursor < _internalCursorMapping->size());
-      callback(persId, edgeDocument,
+      callback(std::move(etkn), edgeDocument,
                _internalCursorMapping->at(_currentCursor));
     } else {
-      callback(persId, edgeDocument, _currentCursor);
+      callback(std::move(etkn), edgeDocument, _currentCursor);
     }
   }
   return true;
 }
 
 void SingleServerEdgeCursor::readAll(
-    std::function<void(StringRef const&, arangodb::velocypack::Slice, size_t&)>
-        callback) {
+    std::function<void(std::unique_ptr<EdgeDocumentToken>&&, VPackSlice, size_t)> callback) {
   size_t cursorId = 0;
   for (_currentCursor = 0; _currentCursor < _cursors.size(); ++_currentCursor) {
     if (_internalCursorMapping != nullptr) {
@@ -165,22 +164,19 @@ void SingleServerEdgeCursor::readAll(
     auto& cursorSet = _cursors[_currentCursor];
     for (auto& cursor : cursorSet) {
       LogicalCollection* collection = cursor->collection();
+      auto cid = collection->cid();
       if (cursor->hasExtra()) {
         auto cb = [&](DocumentIdentifierToken const& token, VPackSlice doc) {
-          std::string tmpId = _trx->extractIdString(doc);
-          StringRef edgeId = _opts->cache()->persistString(StringRef(tmpId));
-          _opts->cache()->insertDocument(edgeId, doc);
-          callback(edgeId, doc, cursorId);
+          _opts->cache()->increaseCounter();
+          callback(std::make_unique<SingleServerEdgeDocumentToken>(cid, token), doc, cursorId);
         };
         cursor->allWithExtra(cb);
       } else {
         auto cb = [&](DocumentIdentifierToken const& token) {
           if (collection->readDocument(_trx, token, *_mmdr)) {
+            _opts->cache()->increaseCounter();
             VPackSlice doc(_mmdr->vpack());
-            std::string tmpId = _trx->extractIdString(doc);
-            StringRef edgeId = _opts->cache()->persistString(StringRef(tmpId));
-            _opts->cache()->insertDocument(edgeId, doc);
-            callback(edgeId, doc, cursorId);
+            callback(std::make_unique<SingleServerEdgeDocumentToken>(cid, token), doc, cursorId);
           }
         };
         cursor->all(cb);

@@ -131,8 +131,8 @@ class Cache : public std::enable_shared_from_this<Cache> {
   bool isShutdown();
 
  protected:
-  static constexpr int64_t triesFast = 200000;
-  static constexpr int64_t triesSlow = 10000000;
+  static constexpr int64_t triesFast = 10000;
+  static constexpr int64_t triesSlow = 100000;
   static constexpr int64_t triesGuarantee = -1;
 
  protected:

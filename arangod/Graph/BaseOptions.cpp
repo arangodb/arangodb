@@ -27,9 +27,9 @@
 #include "Aql/Query.h"
 #include "Graph/SingleServerEdgeCursor.h"
 #include "Graph/ShortestPathOptions.h"
+#include "Graph/TraverserCache.h"
+#include "Graph/TraverserCacheFactory.h"
 #include "Indexes/Index.h"
-#include "VocBase/TraverserCache.h"
-#include "VocBase/TraverserCacheFactory.h"
 #include "VocBase/TraverserOptions.h"
 
 #include <velocypack/Builder.h>
@@ -299,7 +299,7 @@ void BaseOptions::serializeVariables(VPackBuilder& builder) const {
 
 arangodb::transaction::Methods* BaseOptions::trx() const { return _trx; }
 
-arangodb::traverser::TraverserCache* BaseOptions::cache() const {
+arangodb::graph::TraverserCache* BaseOptions::cache() const {
   return _cache.get();
 }
 

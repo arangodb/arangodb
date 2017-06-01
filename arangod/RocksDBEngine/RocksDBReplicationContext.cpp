@@ -28,7 +28,7 @@
 #include "Basics/VPackStringBufferAdapter.h"
 #include "RocksDBEngine/RocksDBCollection.h"
 #include "RocksDBEngine/RocksDBCommon.h"
-#include "RocksDBEngine/RocksDBPrimaryIndex.h"
+#include "RocksDBEngine/RocksDBIterators.h"
 #include "RocksDBEngine/RocksDBTransactionState.h"
 #include "Transaction/Helpers.h"
 #include "Transaction/StandaloneContext.h"
@@ -98,8 +98,9 @@ int RocksDBReplicationContext::bindCollection(
     }
 
     _trx->addCollectionAtRuntime(collectionName);
-    _iter = _collection->getAllIterator(_trx.get(), &_mdr,
-                                        false);  //_mdr is not used nor updated
+    _iter = static_cast<RocksDBCollection*>(_collection->getPhysical())
+                ->getSortedAllIterator(_trx.get(),
+                                       &_mdr);  //_mdr is not used nor updated
     _currentTick = 1;
     _hasMore = true;
   }
@@ -205,13 +206,9 @@ arangodb::Result RocksDBReplicationContext::dumpKeyChunks(VPackBuilder& b,
                                                           uint64_t chunkSize) {
   TRI_ASSERT(_trx);
   TRI_ASSERT(_iter);
-
-  RocksDBAllIndexIterator* primary =
-      static_cast<RocksDBAllIndexIterator*>(_iter.get());
-
+  
   std::string lowKey;
   VPackSlice highKey;  // FIXME: no good keeping this
-
   uint64_t hash = 0x012345678;
   auto cb = [&](DocumentIdentifierToken const& token) {
     bool ok = _collection->readDocument(_trx.get(), token, _mdr);
@@ -220,9 +217,8 @@ arangodb::Result RocksDBReplicationContext::dumpKeyChunks(VPackBuilder& b,
       return;
     }
 
-    // current document
-    VPackSlice current(_mdr.vpack());
-    highKey = current.get(StaticStrings::KeyString);
+    VPackSlice doc(_mdr.vpack());
+    highKey = doc.get(StaticStrings::KeyString);
     // set type
     if (lowKey.empty()) {
       lowKey = highKey.copyString();
@@ -230,26 +226,29 @@ arangodb::Result RocksDBReplicationContext::dumpKeyChunks(VPackBuilder& b,
 
     // we can get away with the fast hash function here, as key values are
     // restricted to strings
-    hash ^= transaction::helpers::extractKeyFromDocument(current).hashString();
-    hash ^= transaction::helpers::extractRevSliceFromDocument(current).hash();
+    hash ^= transaction::helpers::extractKeyFromDocument(doc).hashString();
+    hash ^= transaction::helpers::extractRevSliceFromDocument(doc).hash();
   };
 
   b.openArray();
   while (_hasMore) {
     try {
-      _hasMore = primary->next(cb, chunkSize);
+      _hasMore = _iter->next(cb, chunkSize);
 
       b.add(VPackValue(VPackValueType::Object));
       b.add("low", VPackValue(lowKey));
       b.add("high", VPackValue(highKey.copyString()));
       b.add("hash", VPackValue(std::to_string(hash)));
       b.close();
-      lowKey = "";
+      lowKey.clear();  // reset string
     } catch (std::exception const&) {
       return Result(TRI_ERROR_INTERNAL);
     }
   }
   b.close();
+  // we will not call this method twice
+  _iter->reset();
+  _lastIteratorOffset = 0;
 
   return Result();
 }
@@ -260,27 +259,29 @@ arangodb::Result RocksDBReplicationContext::dumpKeys(
     std::string const& lowKey) {
   TRI_ASSERT(_trx);
   TRI_ASSERT(_iter);
-  RocksDBAllIndexIterator* primary =
-      static_cast<RocksDBAllIndexIterator*>(_iter.get());
+  RocksDBSortedAllIterator* primary =
+      static_cast<RocksDBSortedAllIterator*>(_iter.get());
 
   // Position the iterator correctly
   size_t from = chunk * chunkSize;
-  if (from != _lastIteratorOffset && !lowKey.empty()) {
-    primary->seek(StringRef(lowKey));
-    _lastIteratorOffset = from;
-  } else {  // no low key supplied, we can not use seek
-    if (from == 0 || !_hasMore || from < _lastIteratorOffset) {
-      _iter->reset();
-      _lastIteratorOffset = 0;
+  if (from != _lastIteratorOffset) {
+    if (!lowKey.empty()) {
+      primary->seek(StringRef(lowKey));
+      _lastIteratorOffset = from;
+    } else {  // no low key supplied, we can not use seek
+      if (from == 0 || !_hasMore || from < _lastIteratorOffset) {
+        _iter->reset();
+        _lastIteratorOffset = 0;
+      }
+      if (from > _lastIteratorOffset) {
+        TRI_ASSERT(from >= chunkSize);
+        uint64_t diff = from - _lastIteratorOffset;
+        uint64_t to = 0;  // = (chunk + 1) * chunkSize;
+        _iter->skip(diff, to);
+        _lastIteratorOffset += to;
+      }
+      TRI_ASSERT(_lastIteratorOffset == from);
     }
-    if (from > _lastIteratorOffset) {
-      TRI_ASSERT(from >= chunkSize);
-      uint64_t diff = from - _lastIteratorOffset;
-      uint64_t to = 0;  // = (chunk + 1) * chunkSize;
-      _iter->skip(diff, to);
-      _lastIteratorOffset += to;
-    }
-    TRI_ASSERT(_lastIteratorOffset == from);
   }
 
   auto cb = [&](DocumentIdentifierToken const& token, StringRef const& key) {
@@ -311,29 +312,31 @@ arangodb::Result RocksDBReplicationContext::dumpDocuments(
     VPackSlice const& ids) {
   TRI_ASSERT(_trx);
   TRI_ASSERT(_iter);
-  RocksDBAllIndexIterator* primary =
-      static_cast<RocksDBAllIndexIterator*>(_iter.get());
+  RocksDBSortedAllIterator* primary =
+      static_cast<RocksDBSortedAllIterator*>(_iter.get());
 
   // Position the iterator must be reset to the beginning
   // after calls to dumpKeys moved it forwards
   size_t from = chunk * chunkSize;
-  if (from != _lastIteratorOffset && !lowKey.empty()) {
-    primary->seek(StringRef(lowKey));
-    _lastIteratorOffset = from;
-  } else {  // no low key supplied, we can not use seek
-    if (from == 0 || !_hasMore || from < _lastIteratorOffset) {
-      _iter->reset();
-      _lastIteratorOffset = 0;
+  if (from != _lastIteratorOffset) {
+    if (!lowKey.empty()) {
+      primary->seek(StringRef(lowKey));
+      _lastIteratorOffset = from;
+    } else {  // no low key supplied, we can not use seek
+      if (from == 0 || !_hasMore || from < _lastIteratorOffset) {
+        _iter->reset();
+        _lastIteratorOffset = 0;
+      }
+      if (from > _lastIteratorOffset) {
+        TRI_ASSERT(from >= chunkSize);
+        uint64_t diff = from - _lastIteratorOffset;
+        uint64_t to = 0;  // = (chunk + 1) * chunkSize;
+        _iter->skip(diff, to);
+        _lastIteratorOffset += to;
+        TRI_ASSERT(to == diff);
+      }
+      TRI_ASSERT(_lastIteratorOffset == from);
     }
-    if (from > _lastIteratorOffset) {
-      TRI_ASSERT(from >= chunkSize);
-      uint64_t diff = from - _lastIteratorOffset;
-      uint64_t to = 0;  // = (chunk + 1) * chunkSize;
-      _iter->skip(diff, to);
-      _lastIteratorOffset += to;
-      TRI_ASSERT(to == diff);
-    }
-    TRI_ASSERT(_lastIteratorOffset == from);
   }
 
   auto cb = [&](DocumentIdentifierToken const& token) {
@@ -414,11 +417,14 @@ std::unique_ptr<transaction::Methods>
 RocksDBReplicationContext::createTransaction(TRI_vocbase_t* vocbase) {
   _guard.reset(new DatabaseGuard(vocbase));
 
-  double lockTimeout = transaction::Methods::DefaultLockTimeout;
+  transaction::Options transactionOptions;
+  transactionOptions.waitForSync = false;
+  transactionOptions.allowImplicitCollections = true;
+
   std::shared_ptr<transaction::StandaloneContext> ctx =
       transaction::StandaloneContext::Create(vocbase);
-  std::unique_ptr<transaction::Methods> trx(new transaction::UserTransaction(
-      ctx, {}, {}, {}, lockTimeout, false, true));
+  std::unique_ptr<transaction::Methods> trx(
+      new transaction::UserTransaction(ctx, {}, {}, {}, transactionOptions));
   Result res = trx->begin();
   if (!res.ok()) {
     _guard.reset();

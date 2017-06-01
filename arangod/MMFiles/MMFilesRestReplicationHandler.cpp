@@ -3465,6 +3465,7 @@ void MMFilesRestReplicationHandler::handleCommandHoldReadLockCollection() {
   double now = TRI_microtime();
   double startTime = now;
   double endTime = startTime + ttl;
+  bool stopping = false;
 
   {
     CONDITION_LOCKER(locker, _condVar);
@@ -3474,12 +3475,21 @@ void MMFilesRestReplicationHandler::handleCommandHoldReadLockCollection() {
       if (it == _holdReadLockJobs.end()) {
         break;
       }
+      if (application_features::ApplicationServer::isStopping()) {
+        stopping = true;
+        break;
+      }
       now = TRI_microtime();
     }
     auto it = _holdReadLockJobs.find(id);
     if (it != _holdReadLockJobs.end()) {
       _holdReadLockJobs.erase(it);
     }
+  }
+  
+  if (stopping) {
+    generateError(rest::ResponseCode::SERVER_ERROR, TRI_ERROR_SHUTTING_DOWN);
+    return;
   }
 
   VPackBuilder b;

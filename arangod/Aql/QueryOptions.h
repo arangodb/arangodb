@@ -25,6 +25,7 @@
 #define ARANGOD_AQL_QUERY_OPTIONS_H 1
 
 #include "Basics/Common.h"
+#include "Transaction/Options.h"
 
 namespace arangodb {
 namespace velocypack {
@@ -38,7 +39,7 @@ struct QueryOptions {
   QueryOptions();
 
   void fromVelocyPack(arangodb::velocypack::Slice const&);
-  void toVelocyPack(arangodb::velocypack::Builder&);
+  void toVelocyPack(arangodb::velocypack::Builder&, bool disableOptimizerRules) const;
 
   size_t memoryLimit;
   size_t maxNumberOfPlans;
@@ -57,7 +58,9 @@ struct QueryOptions {
   bool verboseErrors;
   bool inspectSimplePlans;
   std::vector<std::string> optimizerRules;
-  std::unordered_set<std::string> includedShards;
+  std::unordered_set<std::string> shardIds;
+
+  transaction::Options transactionOptions;
 };
 
 }

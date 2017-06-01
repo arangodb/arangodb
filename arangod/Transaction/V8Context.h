@@ -69,8 +69,11 @@ class V8Context final : public Context {
   /// @brief whether or not the transaction context is a global one
   bool isGlobal() const;
 
+  /// @brief return parent transaction state or none
+  static TransactionState* getParentState();
+
   /// @brief check whether the transaction is embedded
-  static bool IsEmbedded();
+  static bool isEmbedded();
   
   /// @brief create a context, returned in a shared ptr
   static std::shared_ptr<transaction::V8Context> Create(TRI_vocbase_t*, bool);

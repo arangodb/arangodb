@@ -47,7 +47,7 @@ uint64_t AqlValue::hash(transaction::Methods* trx, uint64_t seed) const {
     case VPACK_INLINE:
     case VPACK_MANAGED: {
       // we must use the slow hash function here, because a value may have
-      // different representations in case its an array/object/number
+      // different representations in case it's an array/object/number
       return slice().normalizedHash(seed);
     }
     case DOCVEC:

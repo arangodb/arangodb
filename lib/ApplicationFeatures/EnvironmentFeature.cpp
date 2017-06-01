@@ -55,8 +55,7 @@ void EnvironmentFeature::prepare() {
     // environment variable not set
     LOG_TOPIC(WARN, arangodb::Logger::MEMORY)
         << "environment variable GLIBCXX_FORCE_NEW' is not set. "
-        << "it is recommended to set it to some value to avoid memory pooling "
-           "in glibc++";
+        << "it is recommended to set it to some value to avoid unnecessary memory pooling in glibc++";
     LOG_TOPIC(WARN, arangodb::Logger::MEMORY)
         << "execute 'export GLIBCXX_FORCE_NEW=1'";
   }

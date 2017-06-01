@@ -192,12 +192,22 @@ struct SLPAGraphFormat : public GraphFormat<SLPAValue, int8_t> {
       } else if (vec.size() == 1 || maxCommunities == 1) {
         b.add(resField, VPackValue(vec[0].first));
       } else {
-        b.add(resField, VPackValue(VPackValueType::Object));
-        for (unsigned c = 0; c < vec.size() && c < maxCommunities; c++) {
-          b.add(arangodb::basics::StringUtils::itoa(vec[c].first),
-                VPackValue(vec[c].second));
+        // output for use with the DMID/Metrics code
+        b.add(resField, VPackValue(VPackValueType::Array));
+        for (unsigned c = 0; c < vec.size() && c < maxCommunities;
+             c++) {
+          b.openArray();
+          b.add(VPackValue(vec[c].first));
+          b.add(VPackValue(vec[c].second));
+          b.close();
         }
         b.close();
+        /*b.add(resField, VPackValue(VPackValueType::Object));
+         for (unsigned c = 0; c < vec.size() && c < maxCommunities; c++) {
+         b.add(arangodb::basics::StringUtils::itoa(vec[c].first),
+         VPackValue(vec[c].second));
+         }
+         b.close();*/
       }
     }
     return true;

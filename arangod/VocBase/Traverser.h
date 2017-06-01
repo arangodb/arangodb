@@ -59,13 +59,13 @@ class Query;
 namespace graph {
 class BreadthFirstEnumerator;
 class NeighborsEnumerator;
+class TraverserCache;
 }
 
 namespace traverser {
 
 class PathEnumerator;
 struct TraverserOptions;
-class TraverserCache;
 
 class TraversalPath {
  public:
@@ -213,7 +213,7 @@ class Traverser {
   /// @brief Get the next possible path in the graph.
   bool next();
 
-  TraverserCache* traverserCache();
+  graph::TraverserCache* traverserCache();
 
  protected:
 
@@ -317,16 +317,9 @@ class Traverser {
   /// @brief Function to fetch the real data of a vertex into an AQLValue
   virtual aql::AqlValue fetchVertexData(StringRef vid) = 0;
 
-  /// @brief Function to fetch the real data of an edge into an AQLValue
-  virtual aql::AqlValue fetchEdgeData(StringRef eid) = 0;
-
   /// @brief Function to add the real data of a vertex into a velocypack builder
   virtual void addVertexToVelocyPack(StringRef vid,
                                      arangodb::velocypack::Builder&) = 0;
-
-  /// @brief Function to add the real data of an edge into a velocypack builder
-  virtual void addEdgeToVelocyPack(StringRef eid,
-                                   arangodb::velocypack::Builder&) = 0;
  
 };
 }  // traverser

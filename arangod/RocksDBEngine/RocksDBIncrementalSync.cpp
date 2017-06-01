@@ -1,15 +1,38 @@
-#include "Replication/InitialSyncer.h"
+////////////////////////////////////////////////////////////////////////////////
+/// DISCLAIMER
+///
+/// Copyright 2017 ArangoDB GmbH, Cologne, Germany
+///
+/// Licensed under the Apache License, Version 2.0 (the "License");
+/// you may not use this file except in compliance with the License.
+/// You may obtain a copy of the License at
+///
+///     http://www.apache.org/licenses/LICENSE-2.0
+///
+/// Unless required by applicable law or agreed to in writing, software
+/// distributed under the License is distributed on an "AS IS" BASIS,
+/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+/// See the License for the specific language governing permissions and
+/// limitations under the License.
+///
+/// Copyright holder is ArangoDB GmbH, Cologne, Germany
+///
+/// @author Simon Grätzer
+////////////////////////////////////////////////////////////////////////////////
 
+#include "RocksDBIncrementalSync.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/StringUtils.h"
 #include "Indexes/IndexIterator.h"
 #include "SimpleHttpClient/SimpleHttpClient.h"
 #include "SimpleHttpClient/SimpleHttpResult.h"
+#include "Replication/InitialSyncer.h"
+#include "RocksDBEngine/RocksDBCollection.h"
+#include "StorageEngine/PhysicalCollection.h"
 #include "Transaction/Helpers.h"
 #include "Utils/OperationOptions.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/ManagedDocumentResult.h"
-#include "StorageEngine/PhysicalCollection.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/Iterator.h>
@@ -46,8 +69,9 @@ int syncChunkRocksDB(InitialSyncer& syncer, SingleCollectionTransaction* trx,
       syncer._client->retryRequest(rest::RequestType::PUT, url, nullptr, 0));
 
   if (response == nullptr || !response->isComplete()) {
-    errorMsg = "could not connect to master at " + syncer._masterInfo._endpoint +
-               ": " + syncer._client->getErrorMessage();
+    errorMsg = "could not connect to master at " +
+               syncer._masterInfo._endpoint + ": " +
+               syncer._client->getErrorMessage();
 
     return TRI_ERROR_REPLICATION_NO_RESPONSE;
   }
@@ -55,9 +79,10 @@ int syncChunkRocksDB(InitialSyncer& syncer, SingleCollectionTransaction* trx,
   TRI_ASSERT(response != nullptr);
 
   if (response->wasHttpError()) {
-    errorMsg = "got invalid response from master at " + syncer._masterInfo._endpoint +
-               ": HTTP " + basics::StringUtils::itoa(response->getHttpReturnCode()) +
-               ": " + response->getHttpReturnMessage();
+    errorMsg = "got invalid response from master at " +
+               syncer._masterInfo._endpoint + ": HTTP " +
+               basics::StringUtils::itoa(response->getHttpReturnCode()) + ": " +
+               response->getHttpReturnMessage();
 
     return TRI_ERROR_REPLICATION_MASTER_ERROR;
   }
@@ -66,16 +91,16 @@ int syncChunkRocksDB(InitialSyncer& syncer, SingleCollectionTransaction* trx,
   int res = syncer.parseResponse(builder, response.get());
 
   if (res != TRI_ERROR_NO_ERROR) {
-    errorMsg = "got invalid response from master at " + syncer._masterInfo._endpoint +
-               ": response is no array";
+    errorMsg = "got invalid response from master at " +
+               syncer._masterInfo._endpoint + ": response is no array";
 
     return TRI_ERROR_REPLICATION_INVALID_RESPONSE;
   }
 
   VPackSlice const responseBody = builder->slice();
   if (!responseBody.isArray()) {
-    errorMsg = "got invalid response from master at " + syncer._masterInfo._endpoint +
-               ": response is no array";
+    errorMsg = "got invalid response from master at " +
+               syncer._masterInfo._endpoint + ": response is no array";
 
     return TRI_ERROR_REPLICATION_INVALID_RESPONSE;
   }
@@ -104,7 +129,8 @@ int syncChunkRocksDB(InitialSyncer& syncer, SingleCollectionTransaction* trx,
 
   size_t const numKeys = static_cast<size_t>(responseBody.length());
   if (numKeys == 0) {
-    errorMsg = "got invalid response from master at " + syncer._masterInfo._endpoint +
+    errorMsg = "got invalid response from master at " +
+               syncer._masterInfo._endpoint +
                ": response contains an empty chunk. Collection: " +
                collectionName + " Chunk: " + std::to_string(chunkId);
     return TRI_ERROR_REPLICATION_INVALID_RESPONSE;
@@ -204,7 +230,7 @@ int syncChunkRocksDB(InitialSyncer& syncer, SingleCollectionTransaction* trx,
 
     std::string url = baseUrl + "/" + keysId + "?type=docs&chunk=" +
                       std::to_string(chunkId) + "&chunkSize=" +
-                      std::to_string(chunkSize) + "&low=" + lowString ;
+                      std::to_string(chunkSize) + "&low=" + lowString;
 
     progress = "fetching documents chunk " + std::to_string(chunkId) +
                " for collection '" + collectionName + "' from " + url;
@@ -214,11 +240,13 @@ int syncChunkRocksDB(InitialSyncer& syncer, SingleCollectionTransaction* trx,
 
     std::unique_ptr<httpclient::SimpleHttpResult> response(
         syncer._client->retryRequest(rest::RequestType::PUT, url,
-                              keyJsonString.c_str(), keyJsonString.size()));
+                                     keyJsonString.c_str(),
+                                     keyJsonString.size()));
 
     if (response == nullptr || !response->isComplete()) {
-      errorMsg = "could not connect to master at " + syncer._masterInfo._endpoint +
-                 ": " + syncer._client->getErrorMessage();
+      errorMsg = "could not connect to master at " +
+                 syncer._masterInfo._endpoint + ": " +
+                 syncer._client->getErrorMessage();
 
       return TRI_ERROR_REPLICATION_NO_RESPONSE;
     }
@@ -228,8 +256,8 @@ int syncChunkRocksDB(InitialSyncer& syncer, SingleCollectionTransaction* trx,
     if (response->wasHttpError()) {
       errorMsg = "got invalid response from master at " +
                  syncer._masterInfo._endpoint + ": HTTP " +
-                 basics::StringUtils::itoa(response->getHttpReturnCode()) + ": " +
-                 response->getHttpReturnMessage();
+                 basics::StringUtils::itoa(response->getHttpReturnCode()) +
+                 ": " + response->getHttpReturnMessage();
 
       return TRI_ERROR_REPLICATION_MASTER_ERROR;
     }
@@ -239,7 +267,8 @@ int syncChunkRocksDB(InitialSyncer& syncer, SingleCollectionTransaction* trx,
 
     if (res != TRI_ERROR_NO_ERROR) {
       errorMsg = "got invalid response from master at " +
-                 std::string(syncer._masterInfo._endpoint) + ": response is no array";
+                 std::string(syncer._masterInfo._endpoint) +
+                 ": response is no array";
 
       return TRI_ERROR_REPLICATION_INVALID_RESPONSE;
     }
@@ -273,7 +302,8 @@ int syncChunkRocksDB(InitialSyncer& syncer, SingleCollectionTransaction* trx,
 
       if (!revSlice.isString()) {
         errorMsg = "got invalid response from master at " +
-                   syncer._masterInfo._endpoint + ": document revision is invalid";
+                   syncer._masterInfo._endpoint +
+                   ": document revision is invalid";
 
         return TRI_ERROR_REPLICATION_INVALID_RESPONSE;
       }
@@ -407,8 +437,9 @@ int handleSyncKeysRocksDB(InitialSyncer& syncer,
     std::string const highKey(highSlice.copyString());
 
     LogicalCollection* coll = trx.documentCollection();
+    auto ph = static_cast<RocksDBCollection*>(coll->getPhysical());
     std::unique_ptr<IndexIterator> iterator =
-        coll->getAllIterator(&trx, &mmdr, false);
+        ph->getSortedAllIterator(&trx, &mmdr);
     iterator->next(
         [&](DocumentIdentifierToken const& token) {
           if (coll->readDocument(&trx, token, mmdr) == false) {
@@ -541,8 +572,8 @@ int handleSyncKeysRocksDB(InitialSyncer& syncer,
       TRI_ASSERT(!rangeUnequal || nextChunk);  // A => B
       if (nextChunk) {  // we are out of range, see next chunk
         if (rangeUnequal && currentChunkId < numChunks) {
-          int res = syncChunkRocksDB(syncer, &trx, keysId, currentChunkId, lowKey,
-                                     highKey, markers, errorMsg);
+          int res = syncChunkRocksDB(syncer, &trx, keysId, currentChunkId,
+                                     lowKey, highKey, markers, errorMsg);
           if (res != TRI_ERROR_NO_ERROR) {
             THROW_ARANGO_EXCEPTION(res);
           }
@@ -558,8 +589,9 @@ int handleSyncKeysRocksDB(InitialSyncer& syncer,
       }
     };
 
+    auto ph = static_cast<RocksDBCollection*>(col->getPhysical());
     std::unique_ptr<IndexIterator> iterator =
-        col->getAllIterator(&trx, &mmdr, false);
+        ph->getSortedAllIterator(&trx, &mmdr);
     iterator->next(
         [&](DocumentIdentifierToken const& token) {
           if (col->readDocument(&trx, token, mmdr) == false) {
@@ -573,8 +605,8 @@ int handleSyncKeysRocksDB(InitialSyncer& syncer,
 
     // we might have missed chunks, if the keys don't exist at all locally
     while (currentChunkId < numChunks) {
-      int res = syncChunkRocksDB(syncer, &trx, keysId, currentChunkId, lowKey, highKey,
-                                 markers, errorMsg);
+      int res = syncChunkRocksDB(syncer, &trx, keysId, currentChunkId, lowKey,
+                                 highKey, markers, errorMsg);
       if (res != TRI_ERROR_NO_ERROR) {
         THROW_ARANGO_EXCEPTION(res);
       }

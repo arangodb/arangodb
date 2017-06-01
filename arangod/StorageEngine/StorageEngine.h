@@ -58,6 +58,7 @@ class RestHandlerFactory;
 namespace transaction {
 class Context;
 class ContextData;
+struct Options;
 }
 
 class StorageEngine : public application_features::ApplicationFeature {
@@ -93,7 +94,7 @@ class StorageEngine : public application_features::ApplicationFeature {
 
   virtual TransactionManager* createTransactionManager() = 0;
   virtual transaction::ContextData* createTransactionContextData() = 0;
-  virtual TransactionState* createTransactionState(TRI_vocbase_t*) = 0;
+  virtual TransactionState* createTransactionState(TRI_vocbase_t*, transaction::Options const&) = 0;
   virtual TransactionCollection* createTransactionCollection(TransactionState*, TRI_voc_cid_t, AccessMode::Type, int nestingLevel) = 0;
 
   // when a new collection is created, this method is called to augment the collection

@@ -20,8 +20,8 @@
 /// @author Michael Hackstein
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_VOC_BASE_TRAVERSER_CACHE_H
-#define ARANGOD_VOC_BASE_TRAVERSER_CACHE_H 1
+#ifndef ARANGOD_GRAPH_TRAVERSER_CACHE_H
+#define ARANGOD_GRAPH_TRAVERSER_CACHE_H 1
 
 #include "Basics/Common.h"
 #include "Basics/StringRef.h"
@@ -43,7 +43,11 @@ namespace aql {
   struct AqlValue;
 }
   
-namespace traverser {
+namespace graph {
+
+struct EdgeDocumentToken;
+struct SingleServerEdgeDocumentToken;
+
 class TraverserCache {
 
   public:
@@ -59,6 +63,16 @@ class TraverserCache {
 
    virtual void insertIntoResult(StringRef idString,
                                  arangodb::velocypack::Builder& builder);
+
+   virtual void insertIntoResult(EdgeDocumentToken const* etkn,
+                                 arangodb::velocypack::Builder& builder);
+
+   //////////////////////////////////////////////////////////////////////////////
+   /// @brief Return AQL value containing the result
+   ///        The document will be looked up in the StorageEngine
+   //////////////////////////////////////////////////////////////////////////////
+
+   virtual aql::AqlValue fetchAqlResult(arangodb::graph::EdgeDocumentToken const*);
 
    //////////////////////////////////////////////////////////////////////////////
    /// @brief Return AQL value containing the result
@@ -105,6 +119,10 @@ class TraverserCache {
      _filteredDocuments++;
    }
 
+   void increaseCounter() {
+     _insertedDocuments++;
+   }
+
   protected:
 
    //////////////////////////////////////////////////////////////////////////////
@@ -115,6 +133,9 @@ class TraverserCache {
 
    arangodb::velocypack::Slice lookupInCollection(
        StringRef idString);
+
+   arangodb::velocypack::Slice lookupInCollection(
+       SingleServerEdgeDocumentToken const* idToken);
 
   protected:
 

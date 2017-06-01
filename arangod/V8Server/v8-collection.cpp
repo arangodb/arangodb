@@ -2712,13 +2712,19 @@ static void JS_TruncateVocbaseCol(
   if (collection == nullptr) {
     TRI_V8_THROW_EXCEPTION_INTERNAL("cannot extract collection");
   }
+  
+  // optionally specify non trx remove
+  bool unsafeTruncate = false;
+  if (args.Length() > 0) {
+    unsafeTruncate = TRI_ObjectToBoolean(args[0]);
+  }
 
+  auto t = unsafeTruncate ? AccessMode::Type::EXCLUSIVE : AccessMode::Type::WRITE;
   SingleCollectionTransaction trx(
       transaction::V8Context::Create(collection->vocbase(), true),
-      collection->cid(), AccessMode::Type::WRITE);
-
+                                  collection->cid(), t);
+  
   Result res = trx.begin();
-
   if (!res.ok()) {
     TRI_V8_THROW_EXCEPTION(res);
   }

@@ -25,7 +25,7 @@
 
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/TraverserEngineRegistry.h"
-#include "VocBase/TraverserCache.h"
+#include "Graph/TraverserCache.h"
 
 namespace arangodb {
 
@@ -46,7 +46,7 @@ class Slice;
 
 namespace graph {
 
-class ClusterTraverserCache : public traverser::TraverserCache {
+class ClusterTraverserCache : public TraverserCache {
  public:
   ClusterTraverserCache(
       transaction::Methods* trx,
@@ -64,12 +64,17 @@ class ClusterTraverserCache : public traverser::TraverserCache {
   void insertIntoResult(StringRef idString,
                         arangodb::velocypack::Builder& builder) override;
 
+  void insertIntoResult(graph::EdgeDocumentToken const* idToken,
+                        arangodb::velocypack::Builder& builder) override;
+
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Return AQL value containing the result
   ///        The document will be looked up in the Datalake
   //////////////////////////////////////////////////////////////////////////////
 
   aql::AqlValue fetchAqlResult(StringRef idString) override;
+
+  aql::AqlValue fetchAqlResult(graph::EdgeDocumentToken const* idToken) override;
 
   std::unordered_map<ServerID, traverser::TraverserEngineID> const* engines();
 

@@ -29,6 +29,7 @@
 #include "Aql/Collection.h"
 #include "Transaction/StandaloneContext.h"
 #include "Transaction/Methods.h"
+#include "Transaction/Options.h"
 #include "VocBase/vocbase.h"
 
 namespace arangodb {
@@ -41,8 +42,9 @@ class AqlTransaction final : public transaction::Methods {
   AqlTransaction(
       std::shared_ptr<transaction::Context> const& transactionContext, 
       std::map<std::string, aql::Collection*> const* collections,
+      transaction::Options const& options,
       bool isMainTransaction)
-      : transaction::Methods(transactionContext),
+      : transaction::Methods(transactionContext, options),
         _collections(*collections) {
     if (!isMainTransaction) {
       addHint(transaction::Hints::Hint::LOCK_NEVER);
@@ -87,12 +89,8 @@ class AqlTransaction final : public transaction::Methods {
   LogicalCollection* documentCollection(TRI_voc_cid_t cid);
 
   /// @brief clone, used to make daughter transactions for parts of a
-  /// distributed
-  /// AQL query running on the coordinator
-  transaction::Methods* clone() const override {
-    return new AqlTransaction(transaction::StandaloneContext::Create(vocbase()),
-        &_collections, false);
-  }
+  /// distributed AQL query running on the coordinator
+  transaction::Methods* clone(transaction::Options const&) const override;
 
   /// @brief lockCollections, this is needed in a corner case in AQL: we need
   /// to lock all shards in a controlled way when we set up a distributed

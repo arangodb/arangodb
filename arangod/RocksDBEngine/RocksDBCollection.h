@@ -38,7 +38,7 @@ class Transaction;
 
 namespace arangodb {
 namespace cache {
-  class Cache;
+class Cache;
 }
 class LogicalCollection;
 class ManagedDocumentResult;
@@ -106,9 +106,12 @@ class RocksDBCollection final : public PhysicalCollection {
   bool dropIndex(TRI_idx_iid_t iid) override;
   std::unique_ptr<IndexIterator> getAllIterator(transaction::Methods* trx,
                                                 ManagedDocumentResult* mdr,
-                                                bool reverse) override;
+                                                bool reverse) const override;
   std::unique_ptr<IndexIterator> getAnyIterator(
-      transaction::Methods* trx, ManagedDocumentResult* mdr) override;
+      transaction::Methods* trx, ManagedDocumentResult* mdr) const override;
+
+  std::unique_ptr<IndexIterator> getSortedAllIterator(
+      transaction::Methods* trx, ManagedDocumentResult* mdr) const;
 
   void invokeOnAllElements(
       transaction::Methods* trx,
@@ -134,10 +137,10 @@ class RocksDBCollection final : public PhysicalCollection {
   bool readDocument(transaction::Methods* trx,
                     DocumentIdentifierToken const& token,
                     ManagedDocumentResult& result) override;
-  
+
   bool readDocumentNoCache(transaction::Methods* trx,
-                    DocumentIdentifierToken const& token,
-                    ManagedDocumentResult& result);
+                           DocumentIdentifierToken const& token,
+                           ManagedDocumentResult& result);
 
   int insert(arangodb::transaction::Methods* trx,
              arangodb::velocypack::Slice const newSlice,
@@ -219,7 +222,8 @@ class RocksDBCollection final : public PhysicalCollection {
 
   arangodb::RocksDBOperationResult removeDocument(
       arangodb::transaction::Methods* trx, TRI_voc_rid_t revisionId,
-      arangodb::velocypack::Slice const& doc, bool isUpdate, bool& waitForSync) const;
+      arangodb::velocypack::Slice const& doc, bool isUpdate,
+      bool& waitForSync) const;
 
   arangodb::RocksDBOperationResult lookupDocument(
       transaction::Methods* trx, arangodb::velocypack::Slice key,

@@ -75,7 +75,7 @@ RocksDBExportCursor::RocksDBExportCursor(
   }
 
   auto rocksCollection =
-      reinterpret_cast<RocksDBCollection*>(_collection->getPhysical());
+      static_cast<RocksDBCollection*>(_collection->getPhysical());
   _iter = rocksCollection->getAllIterator(_trx.get(), &_mdr, false);
 
   _size = _collection->numberDocuments(_trx.get());
@@ -129,38 +129,36 @@ void RocksDBExportCursor::dump(VPackBuilder& builder) {
     builder.add("result", VPackValue(VPackValueType::Array));
     size_t const n = batchSize();
 
-    auto cb = [&, this](DocumentIdentifierToken const& token) {
+    auto cb = [&, this](ManagedDocumentResult const& mdr) {
       if (_position == _size) {
         return false;
       }
-      if (_collection->readDocument(_trx.get(), token, _mdr)) {
-        builder.openObject();
-        VPackSlice const slice(_mdr.vpack());
-        // Copy over shaped values
-        for (auto const& entry : VPackObjectIterator(slice)) {
-          std::string key(entry.key.copyString());
+      builder.openObject();
+      VPackSlice const slice(mdr.vpack());
+      // Copy over shaped values
+      for (auto const& entry : VPackObjectIterator(slice)) {
+        std::string key(entry.key.copyString());
 
-          if (!CollectionExport::IncludeAttribute(restrictionType,
-                                                  _restrictions.fields, key)) {
-            // Ignore everything that should be excluded or not included
-            continue;
-          }
-          // If we get here we need this entry in the final result
-          if (entry.value.isCustom()) {
-            builder.add(key,
-                        VPackValue(builder.options->customTypeHandler->toString(
-                            entry.value, builder.options, slice)));
-          } else {
-            builder.add(key, entry.value);
-          }
+        if (!CollectionExport::IncludeAttribute(restrictionType,
+                                                _restrictions.fields, key)) {
+          // Ignore everything that should be excluded or not included
+          continue;
         }
-        builder.close();
-        _position++;
+        // If we get here we need this entry in the final result
+        if (entry.value.isCustom()) {
+          builder.add(key,
+                      VPackValue(builder.options->customTypeHandler->toString(
+                          entry.value, builder.options, slice)));
+        } else {
+          builder.add(key, entry.value);
+        }
       }
+      builder.close();
+      _position++;
       return true;
     };
 
-    _iter->next(cb, n);
+    _iter->nextDocument(cb, n);
 
     builder.close();  // close Array
 

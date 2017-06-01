@@ -94,6 +94,45 @@ bool OperationCursor::next(IndexIterator::TokenCallback const& callback, uint64_
   return _hasMore;
 }
 
+bool OperationCursor::nextDocument(IndexIterator::DocumentCallback const& callback,
+                  uint64_t batchSize) {
+  if (!hasMore()) {
+    return false;
+  }
+  
+  if (batchSize == UINT64_MAX) {
+    batchSize = _batchSize;
+  }
+  
+  size_t atMost = static_cast<size_t>(batchSize > _limit ? _limit : batchSize);
+  
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  // We add wrapper around Callback that validates that
+  // the callback has been called at least once.
+  bool called = false;
+  auto cb = [&](ManagedDocumentResult const& mdr) {
+    called = true;
+    callback(mdr);
+  };
+  _hasMore = _indexIterator->nextDocument(cb, atMost);
+  if (_hasMore) {
+    // If the index says it has more elements than it need
+    // to call callback at least once.
+    // Otherweise progress is not guaranteed.
+    TRI_ASSERT(called);
+  }
+#else
+  _hasMore = _indexIterator->nextDocument(callback, atMost);
+#endif
+  
+  if (_hasMore) {
+    // We got atMost many callbacks
+    TRI_ASSERT(_limit >= atMost);
+    _limit -= atMost;
+  }
+  return _hasMore;
+}
+
 //////////////////////////////////////////////////////////////////////////////
 /// @brief Calls cb for the next batchSize many elements
 ///        Uses the getExtra feature of indexes. Can only be called on those
