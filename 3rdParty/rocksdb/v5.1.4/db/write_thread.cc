@@ -24,7 +24,7 @@ uint8_t WriteThread::BlockingAwaitState(Writer* w, uint8_t goal_mask) {
   // STATE_LOCKED_WAITING state.  The waker won't try to touch the mutex
   // or the condvar unless they CAS away the STATE_LOCKED_WAITING that
   // we install below.
-  w->CreateMutex();
+  // w->CreateMutex();
 
   auto state = w->state.load(std::memory_order_acquire);
   assert(state != STATE_LOCKED_WAITING);
@@ -189,11 +189,13 @@ void WriteThread::LinkOne(Writer* w, bool* linked_as_leader) {
     Writer* writers = newest_writer_.load(std::memory_order_relaxed);
     w->link_older = writers;
     if (newest_writer_.compare_exchange_strong(writers, w)) {
+      /*
       if (writers == nullptr) {
         // this isn't part of the WriteThread machinery, but helps with
         // debugging and is checked by an assert in WriteImpl
         w->state.store(STATE_GROUP_LEADER, std::memory_order_relaxed);
       }
+      */
       *linked_as_leader = (writers == nullptr);
       return;
     }
@@ -218,6 +220,9 @@ void WriteThread::JoinBatchGroup(Writer* w) {
   assert(w->batch != nullptr);
   bool linked_as_leader;
   LinkOne(w, &linked_as_leader);
+  if (linked_as_leader) {
+    SetState(w, STATE_GROUP_LEADER);
+  }
 
   TEST_SYNC_POINT_CALLBACK("WriteThread::JoinBatchGroup:Wait", w);
 
@@ -435,6 +440,8 @@ void WriteThread::EnterUnbatched(Writer* w, InstrumentedMutex* mu) {
     TEST_SYNC_POINT("WriteThread::EnterUnbatched:Wait");
     AwaitState(w, STATE_GROUP_LEADER, &ctx);
     mu->Lock();
+  } else {
+    SetState(w, STATE_GROUP_LEADER);
   }
 }
 

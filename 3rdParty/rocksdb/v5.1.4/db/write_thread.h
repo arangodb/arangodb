@@ -111,7 +111,10 @@ class WriteThread {
           state(STATE_INIT),
           parallel_group(nullptr),
           link_older(nullptr),
-          link_newer(nullptr) {}
+          link_newer(nullptr) {
+      
+      CreateMutex();
+    }
 
     ~Writer() {
       if (made_waitable) {
