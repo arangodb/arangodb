@@ -49,7 +49,7 @@ class RocksDBValue {
   static RocksDBValue Collection(VPackSlice const& data);
   static RocksDBValue Document(VPackSlice const& data);
   static RocksDBValue PrimaryIndexValue(TRI_voc_rid_t revisionId);
-  static RocksDBValue EdgeIndexValue();
+  static RocksDBValue EdgeIndexValue(arangodb::StringRef const& vertexId);
   static RocksDBValue IndexValue();
   static RocksDBValue UniqueIndexValue(TRI_voc_rid_t revisionId);
   static RocksDBValue View(VPackSlice const& data);
@@ -72,14 +72,12 @@ class RocksDBValue {
   static TRI_voc_rid_t revisionId(std::string const&);
 
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief Extracts the primary key (`_key`) from a value
+  /// @brief Extracts the vertex _to or _from ID (`_key`) from a value
   ///
-  /// May be called only on UniqueIndexValue values. Other types will throw.
+  /// May be called only on EdgeIndexValue values. Other types will throw.
   //////////////////////////////////////////////////////////////////////////////
-  static StringRef primaryKey(RocksDBValue const&);
-  static StringRef primaryKey(rocksdb::Slice const&);
-  static StringRef primaryKey(std::string const&);
-
+  static StringRef vertexId(rocksdb::Slice const&);
+  
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Extracts the VelocyPack data from a value
   ///
@@ -111,11 +109,12 @@ class RocksDBValue {
   explicit RocksDBValue(RocksDBEntryType type);
   RocksDBValue(RocksDBEntryType type, uint64_t data);
   RocksDBValue(RocksDBEntryType type, VPackSlice const& data);
+  RocksDBValue(RocksDBEntryType type, arangodb::StringRef const& data);
 
  private:
   static RocksDBEntryType type(char const* data, size_t size);
   static TRI_voc_rid_t revisionId(char const* data, uint64_t size);
-  static StringRef primaryKey(char const* data, size_t size);
+  static StringRef vertexId(char const* data, size_t size);
   static VPackSlice data(char const* data, size_t size);
 
  private:

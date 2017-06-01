@@ -387,6 +387,7 @@ RocksDBEdgeIndex::RocksDBEdgeIndex(TRI_idx_iid_t iid,
                    !ServerState::instance()->isCoordinator() /*useCache*/
                    ),
       _directionAttr(attr),
+      _isFromIndex(attr == StaticStrings::FromString),
       _estimator(nullptr) {
   if (!ServerState::instance()->isCoordinator()) {
     // We activate the estimator only on DBServers
@@ -450,12 +451,16 @@ int RocksDBEdgeIndex::insert(transaction::Methods* trx,
   TRI_ASSERT(fromTo.isString());
   auto fromToRef = StringRef(fromTo);
   RocksDBKey key = RocksDBKey::EdgeIndexValue(_objectId, fromToRef, revisionId);
+  VPackSlice toFrom = _isFromIndex ? doc.get(StaticStrings::ToString) : doc.get(StaticStrings::FromString);
+  TRI_ASSERT(toFrom.isString());
+  RocksDBValue value = RocksDBValue::EdgeIndexValue(StringRef(toFrom));
+  
   // blacklist key in cache
   blackListKey(fromToRef);
-
+  
   // acquire rocksdb transaction
   RocksDBMethods* mthd = rocksutils::toRocksMethods(trx);
-  Result r = mthd->Put(_cf, rocksdb::Slice(key.string()), rocksdb::Slice(),
+  Result r = mthd->Put(_cf, rocksdb::Slice(key.string()), value.string(),
                        rocksutils::index);
   if (r.ok()) {
     std::hash<StringRef> hasher;
@@ -480,6 +485,9 @@ int RocksDBEdgeIndex::remove(transaction::Methods* trx,
   auto fromToRef = StringRef(fromTo);
   TRI_ASSERT(fromTo.isString());
   RocksDBKey key = RocksDBKey::EdgeIndexValue(_objectId, fromToRef, revisionId);
+  VPackSlice toFrom = _isFromIndex ? doc.get(StaticStrings::ToString) : doc.get(StaticStrings::FromString);
+  TRI_ASSERT(toFrom.isString());
+  RocksDBValue value = RocksDBValue::EdgeIndexValue(StringRef(toFrom));
 
   // blacklist key in cache
   blackListKey(fromToRef);

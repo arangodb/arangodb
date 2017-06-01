@@ -45,8 +45,8 @@ RocksDBValue RocksDBValue::PrimaryIndexValue(TRI_voc_rid_t revisionId) {
   return RocksDBValue(RocksDBEntryType::PrimaryIndexValue, revisionId);
 }
 
-RocksDBValue RocksDBValue::EdgeIndexValue() {
-  return RocksDBValue(RocksDBEntryType::EdgeIndexValue);
+RocksDBValue RocksDBValue::EdgeIndexValue(arangodb::StringRef const& vertexId) {
+  return RocksDBValue(RocksDBEntryType::EdgeIndexValue, vertexId);
 }
 
 RocksDBValue RocksDBValue::IndexValue() {
@@ -81,16 +81,8 @@ TRI_voc_rid_t RocksDBValue::revisionId(std::string const& s) {
   return revisionId(s.data(), s.size());
 }
 
-StringRef RocksDBValue::primaryKey(RocksDBValue const& value) {
-  return primaryKey(value._buffer.data(), value._buffer.size());
-}
-
-StringRef RocksDBValue::primaryKey(rocksdb::Slice const& slice) {
-  return primaryKey(slice.data(), slice.size());
-}
-
-StringRef RocksDBValue::primaryKey(std::string const& s) {
-  return primaryKey(s.data(), s.size());
+StringRef RocksDBValue::vertexId(rocksdb::Slice const& s) {
+  return vertexId(s.data(), s.size());
 }
 
 VPackSlice RocksDBValue::data(RocksDBValue const& value) {
@@ -141,12 +133,26 @@ RocksDBValue::RocksDBValue(RocksDBEntryType type, VPackSlice const& data)
   }
 }
 
+RocksDBValue::RocksDBValue(RocksDBEntryType type, StringRef const& data)
+: _type(type), _buffer() {
+  switch (_type) {
+    case RocksDBEntryType::EdgeIndexValue: {
+      _buffer.reserve(static_cast<size_t>(data.size()));
+      _buffer.append(data.data(), data.size());
+      break;
+    }
+      
+    default:
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_BAD_PARAMETER);
+  }
+}
+
 TRI_voc_rid_t RocksDBValue::revisionId(char const* data, uint64_t size) {
   TRI_ASSERT(data != nullptr && size >= sizeof(uint64_t));
   return uint64FromPersistent(data);
 }
 
-StringRef RocksDBValue::primaryKey(char const* data, size_t size) {
+StringRef RocksDBValue::vertexId(char const* data, size_t size) {
   TRI_ASSERT(data != nullptr);
   TRI_ASSERT(size >= sizeof(char));
   return StringRef(data, size);
