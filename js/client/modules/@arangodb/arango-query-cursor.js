@@ -89,7 +89,8 @@ ArangoQueryCursor.prototype.toString = function () {
   result += ', hasMore: ' + (this.hasNext() ? 'true' : 'false');
 
   if (this.data.hasOwnProperty('extra') &&
-    this.data.extra.hasOwnProperty('warnings')) {
+    this.data.extra.hasOwnProperty('warnings') &&
+    this.data.extra.warnings.length > 0) {
     result += ', warning(s): ';
     var last = null;
     for (var j = 0; j < this.data.extra.warnings.length; j++) {
