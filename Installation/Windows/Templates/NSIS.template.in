@@ -496,7 +496,22 @@ System::Call 'Kernel32::SetEnvironmentVariable(t, t)i ("ARANGODB_DEFAULT_ROOT_PA
      Pop $0
      DetailPrint "Status: $0"
      ${If} $0 != "0"
-       MessageBox MB_OK "Waited 40 seconds for the ArangoDB service to come up; $\r$\nPlease look at $\r$\n`sc status ${TRI_SVC_NAME}` $\r$\n and the Windows Eventlog for eventual errors!"
+       Call QueryServiceStatus
+       Pop $0
+       Pop $1
+       Pop $2
+       !define SC_WAITED "Waited 40 seconds for the ArangoDB service to come up;"
+       !define SC_SV "Please look at $\r$\n`sc query ${TRI_SVC_NAME}`"
+       !define SC_EVLOG "the Windows Eventlog for eventual errors!"
+
+       
+       ${If} $2 == "1"
+         MessageBox MB_OK "${SC_WAITED}$\r$\nbut it exited with an error; $\r$\n${SC_SV}$\r$\n${SC_EVLOG}"
+       ${ElseIf} $2 == "2"
+         MessageBox MB_OK "${SC_WAITED}$\r$\nbut it exited with a fatal error; $\r$\n${SC_SV}$\r$\n${SC_EVLOG}"
+       ${Else}
+         MessageBox MB_OK "${SC_WAITED}$\r$\n${SC_SV}$\r$\n${SC_EVLOG}"
+       ${EndIf}
        Abort
      ${EndIf}
    nothing:
