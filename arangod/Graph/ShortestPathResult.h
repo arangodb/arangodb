@@ -48,7 +48,7 @@ namespace graph {
 
 class AttributeWeightShortestPathFinder;
 class ConstantWeightShortestPathFinder;
-class EdgeDocumentToken;
+struct EdgeDocumentToken;
 class TraverserCache;
 
 class ShortestPathResult {

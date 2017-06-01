@@ -619,7 +619,14 @@ function _install (mount, options = {}) {
   });
   GLOBAL_SERVICE_MAP.get(db._name()).set(mount, service);
   if (options.setup !== false) {
-    service.executeScript('setup');
+    try {
+      service.executeScript('setup');
+    } catch (e) {
+      if (!options.force) {
+        throw e;
+      }
+      console.warnStack(e);
+    }
   }
   service.updateChecksum();
   const bundleCollection = utils.getBundleStorage();
@@ -635,7 +642,14 @@ function _install (mount, options = {}) {
     RETURN NEW
   `).next();
   service._rev = meta._rev;
-  ensureServiceExecuted(service, true);
+  try {
+    ensureServiceExecuted(service, true);
+  } catch (e) {
+    if (!options.force) {
+      throw e;
+    }
+    console.warnStack(e);
+  }
   return service;
 }
 
@@ -643,6 +657,11 @@ function _uninstall (mount, options = {}) {
   let service;
   try {
     service = getServiceInstance(mount);
+    if (service.error) {
+      const error = service.error;
+      service = null;
+      throw error;
+    }
   } catch (e) {
     if (!options.force) {
       throw e;
@@ -671,8 +690,9 @@ function _uninstall (mount, options = {}) {
       FILTER service.checksum == ${serviceDefinition.checksum}
       RETURN 1
     `).toArray();
-    if (!checksumRefs.length) {
-      utils.getBundleStorage().remove(serviceDefinition.checksum);
+    const bundleCollection = utils.getBundleStorage();
+    if (!checksumRefs.length && bundleCollection.exists(serviceDefinition.checksum)) {
+      bundleCollection.remove(serviceDefinition.checksum);
     }
   }
   GLOBAL_SERVICE_MAP.get(db._name()).delete(mount);
