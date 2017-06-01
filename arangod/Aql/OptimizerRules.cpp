@@ -3128,8 +3128,9 @@ struct CommonNodeFinder {
 /// @brief auxilliary struct for the OR-to-IN conversion
 struct OrSimplifier {
   Ast* ast;
+  ExecutionPlan* plan;
 
-  explicit OrSimplifier(Ast* ast) : ast(ast) {}
+  OrSimplifier(Ast* ast, ExecutionPlan* plan) : ast(ast), plan(plan) {}
 
   std::string stringifyNode(AstNode const* node) const {
     try {
@@ -3251,6 +3252,27 @@ struct OrSimplifier {
           if (detect(lhsNew, i >= 2, leftName, leftAttr, leftValue) &&
               detect(rhsNew, i % 2 == 0, rightName, rightAttr, rightValue) &&
               leftName == rightName) {
+            std::pair<Variable const*, std::vector<arangodb::basics::AttributeName>> tmp1;
+
+            if (leftValue->isAttributeAccessForVariable(tmp1)) {
+              bool qualifies = false;
+              auto setter = plan->getVarSetBy(tmp1.first->id);
+              if (setter != nullptr && setter->getType() == EN::ENUMERATE_COLLECTION) {
+                qualifies = true;
+              }
+            
+              std::pair<Variable const*, std::vector<arangodb::basics::AttributeName>> tmp2;
+             
+              if (qualifies && rightValue->isAttributeAccessForVariable(tmp2)) {
+                auto setter = plan->getVarSetBy(tmp2.first->id);
+                if (setter != nullptr && setter->getType() == EN::ENUMERATE_COLLECTION) {
+                  if (tmp1.first != tmp2.first || tmp1.second != tmp2.second) {
+                    continue;
+                  }
+                }
+              }
+            }
+
             return buildValues(leftAttr, leftValue,
                                lhsNew->type == NODE_TYPE_OPERATOR_BINARY_IN,
                                rightValue,
@@ -3317,7 +3339,7 @@ void arangodb::aql::replaceOrWithInRule(Optimizer* opt,
 
     auto root = cn->expression()->node();
 
-    OrSimplifier simplifier(plan->getAst());
+    OrSimplifier simplifier(plan->getAst(), plan.get());
     auto newRoot = simplifier.simplify(root);
 
     if (newRoot != root) {
