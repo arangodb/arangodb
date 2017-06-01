@@ -619,7 +619,14 @@ function _install (mount, options = {}) {
   });
   GLOBAL_SERVICE_MAP.get(db._name()).set(mount, service);
   if (options.setup !== false) {
-    service.executeScript('setup');
+    try {
+      service.executeScript('setup');
+    } catch (e) {
+      if (!options.force) {
+        throw e;
+      }
+      console.warnStack(e);
+    }
   }
   service.updateChecksum();
   const bundleCollection = utils.getBundleStorage();
@@ -635,7 +642,14 @@ function _install (mount, options = {}) {
     RETURN NEW
   `).next();
   service._rev = meta._rev;
-  ensureServiceExecuted(service, true);
+  try {
+    ensureServiceExecuted(service, true);
+  } catch (e) {
+    if (!options.force) {
+      throw e;
+    }
+    console.warnStack(e);
+  }
   return service;
 }
 
