@@ -46,6 +46,7 @@ TransactionState::TransactionState(TRI_vocbase_t* vocbase, transaction::Options 
       _arena(),
       _collections{_arena}, // assign arena to vector 
       _serverRole(ServerState::instance()->getRole()),
+      _resolver(new CollectionNameResolver(vocbase)),
       _hints(),
       _nestingLevel(0), 
       _options(options) {}
@@ -60,8 +61,10 @@ TransactionState::~TransactionState() {
   for (auto it = _collections.rbegin(); it != _collections.rend(); ++it) {
     delete (*it);
   }
+
+  delete _resolver;
 }
-  
+
 std::vector<std::string> TransactionState::collectionNames() const {
   std::vector<std::string> result;
   result.reserve(_collections.size());
@@ -110,13 +113,7 @@ int TransactionState::addCollection(TRI_voc_cid_t cid,
     else if (accessType == AccessMode::Type::EXCLUSIVE)
       std::cout << "AccessMode::Type::EXCLUSIVE\n";
 
-    auto const *logCol = _vocbase->lookupCollection(cid);
-    if (logCol == nullptr) {
-      LOG_TOPIC(INFO, arangodb::Logger::FIXME) << "logical collection is nullptr";
-      return TRI_ERROR_INTERNAL;
-    }
-
-    std::string colName = logCol->name();
+    std::string colName = _resolver->getCollectionNameCluster(cid);
     std::cout << "collection is " << colName <<  "\n";
     AuthLevel level = ExecContext::CURRENT_EXECCONTEXT->authContext()->collectionAuthLevel(colName);
 

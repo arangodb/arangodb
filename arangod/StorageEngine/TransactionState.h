@@ -31,6 +31,7 @@
 #include "Transaction/Hints.h"
 #include "Transaction/Options.h"
 #include "Transaction/Status.h"
+#include "Utils/CollectionNameResolver.h"
 #include "VocBase/AccessMode.h"
 #include "VocBase/voc-types.h"
 
@@ -171,6 +172,8 @@ class TransactionState {
   SmallVector<TransactionCollection*> _collections; // list of participating collections
   
   ServerState::RoleEnum const _serverRole;  // role of the server
+
+  CollectionNameResolver* _resolver;
 
   transaction::Hints _hints;          // hints;
   int _nestingLevel;
