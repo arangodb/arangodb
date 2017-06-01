@@ -67,6 +67,7 @@ FunctionEnd
 
 
 ;--------------------------------
+; by Anders http://forums.winamp.com/member.php?u=70852
 !macro QueryServiceStatus un
 Function ${un}QueryServiceStatus
   StrCpy $0 0

@@ -502,7 +502,7 @@ System::Call 'Kernel32::SetEnvironmentVariable(t, t)i ("ARANGODB_DEFAULT_ROOT_PA
        Pop $2
        !define SC_WAITED "Waited 40 seconds for the ArangoDB service to come up;"
        !define SC_SV "Please look at $\r$\n`sc query ${TRI_SVC_NAME}`"
-       !define SC_EVLOG "the Windows Eventlog for eventual errors!"
+       !define SC_EVLOG "and the Windows Eventlog for eventual errors!"
 
        
        ${If} $2 == "1"
