@@ -369,6 +369,31 @@ REGEX_TEST("the quick brown fox", "^(a|the)\s+(quick|slow).*f.x$") // true
 REGEX_TEST("the\nquick\nbrown\nfox", "^the(\n[a-w]+)+\nfox$") // true
 ```
 
+### REGEX_REPLACE()
+
+`REGEX_REPLACE(text, search, replacement, caseInsensitive) → string`
+
+Replace the pattern *search* with the string *replacement* in the string
+*text*, using regular expression matching.
+
+- **text** (string): the string to search in
+- **search** (string): a regular expression search pattern
+- **replacement** (string): the string to replace the *search* pattern with
+- returns **string** (string): the string *text* with the *search* regex
+  pattern replaced with the *replacement* string wherever the pattern exists
+  in *text*
+
+For more details about the rules for characters and sequences refer
+[REGEX_TEST()](#regex_test).
+ 
+If the regular expression in *search* is invalid, a warning will be raised
+and the function will return *false*.
+
+```js
+REGEX_REPLACE("the quick brown fox", "the.*fox", "jumped over") // jumped over
+REGEX_REPLACE("the quick brown fox", "o", "i") // the quick briwn fix
+```
+
 ### REVERSE()
 
 `REVERSE(value) → reversedString`
