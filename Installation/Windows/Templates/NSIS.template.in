@@ -472,18 +472,18 @@ Section "-Core installation"
   Delete "$newCfgValuesFile"
 
   ${If} $UpgradeInstall == "1"
-    Goto done ; database directory already present - skip.
+    Goto doneSetPassword ; database directory already present - skip.
   ${EndIf}
-System::Call 'Kernel32::SetEnvironmentVariable(t, t)i ("ARANGODB_DEFAULT_ROOT_PASSWORD", "$PASSWORD").r0'
+  System::Call 'Kernel32::SetEnvironmentVariable(t, t)i ("ARANGODB_DEFAULT_ROOT_PASSWORD", "$PASSWORD").r0'
   StrCmp $0 0 error
   ExecWait "$INSTDIR\${SBIN_DIR}\arangod.exe --database.init-database --server.rest-server false --server.statistics false --foxx.queues false" $0
   ${If} $0 == 0
-    Goto done
+    Goto doneSetPassword
   ${EndIf}
   error:
     MessageBox MB_OK "Failed to initialize database password."
     Abort
-  done:
+  doneSetPassword:
   StrCmp $TRI_INSTALL_TYPE  'Service' 0 nothing
      DetailPrint "Installing service ${TRI_SVC_NAME}: "
      SimpleSC::InstallService '${TRI_SVC_NAME}' ''  '16'  '2'  '"$INSTDIR\${SBIN_DIR}\arangod.exe" --start-service' '' '' ''
@@ -492,25 +492,28 @@ System::Call 'Kernel32::SetEnvironmentVariable(t, t)i ("ARANGODB_DEFAULT_ROOT_PA
      SimpleSC::SetServiceDescription '${TRI_SVC_NAME}' '${TRI_FRIENDLY_SVC_NAME}'
      Pop $0
      DetailPrint "Status: $0; Starting Service"
-     SimpleSC::StartService '${TRI_SVC_NAME}' '' 40
+     SimpleSC::StartService '${TRI_SVC_NAME}' '' 45
      Pop $0
      DetailPrint "Status: $0"
      ${If} $0 != "0"
        Call QueryServiceStatus
-       Pop $0
-       Pop $1
        Pop $2
+       Pop $1
+       Pop $0
        !define SC_WAITED "Waited 40 seconds for the ArangoDB service to come up;"
        !define SC_SV "Please look at $\r$\n`sc query ${TRI_SVC_NAME}`"
        !define SC_EVLOG "and the Windows Eventlog for eventual errors!"
-
-       
-       ${If} $2 == "1"
-         MessageBox MB_OK "${SC_WAITED}$\r$\nbut it exited with an error; $\r$\n${SC_SV}$\r$\n${SC_EVLOG}"
-       ${ElseIf} $2 == "2"
-         MessageBox MB_OK "${SC_WAITED}$\r$\nbut it exited with a fatal error; $\r$\n${SC_SV}$\r$\n${SC_EVLOG}"
-       ${Else}
-         MessageBox MB_OK "${SC_WAITED}$\r$\n${SC_SV}$\r$\n${SC_EVLOG}"
+       ${If} $1 == "1066" 
+         ${If} $2 == "1"
+           MessageBox MB_OK "${SC_WAITED}$\r$\nbut it exited with an error; $\r$\n${SC_SV}$\r$\n${SC_EVLOG}"
+           Abort
+         ${ElseIf} $2 == "2"
+           MessageBox MB_OK "${SC_WAITED}$\r$\nbut it exited with a fatal error; $\r$\n${SC_SV}$\r$\n${SC_EVLOG}"
+           Abort
+         ${EndIf}
+       ${ElseIf} $1 != "0"
+         MessageBox MB_OK "${SC_WAITED}$\r$\n${SC_SV}$\r$\n${SC_EVLOG} $0 $1 $2"
+         Abort
        ${EndIf}
        Abort
      ${EndIf}
@@ -1020,8 +1023,16 @@ Function .onInit
   ${GetParameters} $R0        
   ClearErrors
   ${GetOptions} $R0 "/INSTDIR="        $CMDINSTDIR
-  IfErrors +2 0
+  IfErrors +3 0
   StrCpy $INSTDIR "$CMDINSTDIR"
+  StrCpy $DATADIR "$INSTDIR\var\lib\arangodb3"
+
+  # we only want to manipulate INSTDIR here if /INSTDIR is realy set!
+  ${GetParameters} $R0        
+  ClearErrors
+  ${GetOptions} $R0 "/DATABASEDIR="        $CMDINSTDIR
+  IfErrors +2 0
+  StrCpy $DATADIR "$CMDINSTDIR"
 
   ${GetParameters} $R0
   ClearErrors
