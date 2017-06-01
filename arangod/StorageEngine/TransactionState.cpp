@@ -112,6 +112,7 @@ int TransactionState::addCollection(TRI_voc_cid_t cid,
 
     auto const *logCol = _vocbase->lookupCollection(cid);
     if (logCol == nullptr) {
+      LOG_TOPIC(INFO, arangodb::Logger::FIXME) << "logical collection is nullptr";
       return TRI_ERROR_INTERNAL;
     }
 
