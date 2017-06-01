@@ -2,7 +2,6 @@
 !addplugindir  '@CPACK_PLUGIN_PATH@/NSIS_Simple_Service_Plugin_1.30'
 !addplugindir  '@CPACK_PLUGIN_PATH@/UAC-plug-in-NSIS/Ansi'
 !addplugindir  '@CPACK_PLUGIN_PATH@/AccessControl/Plugins'
-!addplugindir  '@CPACK_PLUGIN_PATH@/SharedMemory/Plugins'
 !addincludedir '@CPACK_PLUGIN_PATH@/UAC-plug-in-NSIS'
 !addincludedir '@CPACK_PLUGIN_PATH@/'
 !include "OpenLink.nsh"
@@ -11,10 +10,9 @@
 ; Include LogicLib for more readable code
   !include "LogicLib.nsh"
   !include "UAC.nsh"
-  !include nsDialogs.nsh
-  !include WinMessages.nsh
-  !include InstallOptions.nsh
-  !include MUI2.nsh
+  !include "nsDialogs.nsh"
+  !include "WinMessages.nsh"
+  !include "MUI2.nsh"
 ;--------------------------------
 ; get commandline parameters
 !include FileFunc.nsh
@@ -55,23 +53,37 @@ Var DO_NOT_ADD_TO_PATH        ; x bool
 Var ADD_TO_PATH_ALL_USERS     ; x bool
 Var ADD_TO_PATH_CURRENT_USER  ; x bool
 
+Var AllowGlobalInstall
+
 ; Variables for definition of instdir
 ; posible values: SingleUser | AllUsers | Service
-VAR TRI_INSTALL_TYPE          ; x 
+VAR TRI_INSTALL_TYPE          ; x
+VAR TRI_INSTALL_SCOPE
 Var newCfgValues              ; keep new config file values
 Var newCfgValuesFile          ; write them to a temporary file...
 Var ServiceUp                 ; did the service start?
 !define TEMP1 $R0 ;Temp variable
 
 Var DATADIR
+Var UpgradeInstall
+;----------------------------------------
+; The first dialog page
+Var Dlg1_Dialog
+Var Dlg1_CB_as_service
+Var Dlg1_RB_no_path
+Var Dlg1_RB_all_users
+Var Dlg1_RB_cur_user
+Var Dlg1_CB_DesktopIcon
+;----------------------------------------
+; The second dialog page
+Var Dlg2_Dialog
+Var Dlg2_PW_1
+Var Dlg2_PW_2
+Var DLG2_droplist
+
 ;--------------------------------
-;Include Modern UI
-
-!include "MUI.nsh"
-
 ;Default installation folder
 InstallDir "@CPACK_NSIS_INSTALL_ROOT@\@CPACK_PACKAGE_INSTALL_DIRECTORY@"
-
 
 ;--------------------------------
 ;General
@@ -92,6 +104,43 @@ RequestExecutionLevel highest
 !include "WaitForService.nsh"
 !include "ReadINIFileKeys.nsh"
 
+Function determine_install_scope
+; Now that we know the install scope, calculate directories:
+  StrCmp $TRI_INSTALL_TYPE  'Service' 0 noService
+      SetShellVarContext all
+      StrCpy $DATADIR "$APPDATA\ArangoDB"
+  noService:
+  ${Switch} $TRI_INSTALL_SCOPE
+    ${Case} 'none'
+      SetShellVarContext current
+      StrCpy $INSTDIR "$LOCALAPPDATA\@CPACK_PACKAGE_INSTALL_DIRECTORY@"
+      StrCpy $DATADIR "$APPDATA\ArangoDB"
+      ${Break}
+    ${Case} 'ThisUser'
+      SetShellVarContext current
+      StrCpy $INSTDIR "$LOCALAPPDATA\@CPACK_PACKAGE_INSTALL_DIRECTORY@"
+      StrCpy $DATADIR "$LOCALAPPDATA\ArangoDB"
+      ${Break}
+    ${Case} 'AllUsers'
+      SetShellVarContext all
+      StrCpy $INSTDIR "$DOCUMENTS\@CPACK_PACKAGE_INSTALL_DIRECTORY@"
+      StrCpy $DATADIR "$DOCUMENTS\ArangoDB"
+      ${Break}
+   ${EndSwitch}
+FunctionEnd
+
+Function check_previous_install
+  StrCpy $UpgradeInstall "0"
+  MessageBox MB_OK "Upgrade: IfFileExists $DATADIR\@INC_CPACK_ARANGO_DATA_DIR@/SERVER OldFound  IfFileExists $DATADIR\@INC_CPACK_ARANGO_DATA_DIR@/ENGINE"
+  
+  IfFileExists "$DATADIR\@INC_CPACK_ARANGO_DATA_DIR@\SERVER" OldFound
+  IfFileExists "$DATADIR\@INC_CPACK_ARANGO_DATA_DIR@\ENGINE" OldFound
+  return
+OldFound:
+  MessageBox MB_OK "Found old Installation!"
+  StrCpy $UpgradeInstall "1"
+FunctionEnd
+
 Function disableBackButton
      GetDlgItem $0 $HWNDParent 3
      EnableWindow $0 0
@@ -103,64 +152,6 @@ Function stop_old_service
      Call WaitForServiceDown
      SimpleSC::RemoveService  '${TRI_SVC_NAME}'
 noServiceToStop:
-FunctionEnd
-
-Function Tri_ChangePrivileges
-  ${IfNot} ${UAC_IsInnerInstance}
-     Call disableBackButton
-     GetDlgItem $0 $HWNDParent 2
-     EnableWindow $0 0
-     GetDlgItem $0 $HWNDParent 1
-     EnableWindow $0 0
-  ${EndIf}
-    uac_tryagain:
-    !insertmacro UAC_RunElevated
-    ${Switch} $0
-    ${Case} 0
-	${IfThen} $1 = 1 ${|} Quit ${|} ;we are the outer process, the inner process has done its work, we are done
-	${IfThen} $3 <> 0 ${|} ${Break} ${|} ;we are admin, let the show go on
-	${If} $1 = 3 ;RunAs completed successfully, but with a non-admin user
-		MessageBox mb_YesNo|mb_IconExclamation|mb_TopMost|mb_SetForeground "Administrator privileges required, plesae try again" /SD IDNO IDYES uac_tryagain IDNO 0
-	${EndIf}
-	;fall-through and die
-    ${Case} 1223
-	MessageBox mb_IconStop|mb_TopMost|mb_SetForeground "Administrator privileges required, aborting!"
-	Quit
-    ${Case} 1062
-	MessageBox mb_IconStop|mb_TopMost|mb_SetForeground "Logon service not running, aborting!"
-	Quit
-    ${Default}
-	MessageBox mb_IconStop|mb_TopMost|mb_SetForeground "Unable to elevate, error $0"
-	Quit
-    ${EndSwitch}
-
-  SetShellVarContext all
-FunctionEnd
-
-; same aagin for uninstall - NSIS requires the function name have to have 'un.' - prefix
-Function un.Tri_ChangePrivileges
-uac_tryagain:
-!insertmacro UAC_RunElevated
-${Switch} $0
-${Case} 0
-	${IfThen} $1 = 1 ${|} Quit ${|} ;we are the outer process, the inner process has done its work, we are done
-	${IfThen} $3 <> 0 ${|} ${Break} ${|} ;we are admin, let the show go on
-	${If} $1 = 3 ;RunAs completed successfully, but with a non-admin user
-		MessageBox mb_YesNo|mb_IconExclamation|mb_TopMost|mb_SetForeground "Administrator privileges required, plesae try again" /SD IDNO IDYES uac_tryagain IDNO 0
-	${EndIf}
-	;fall-through and die
-${Case} 1223
-	MessageBox mb_IconStop|mb_TopMost|mb_SetForeground "Administrator privileges required, aborting!"
-	Quit
-${Case} 1062
-	MessageBox mb_IconStop|mb_TopMost|mb_SetForeground "Logon service not running, aborting!"
-	Quit
-${Default}
-	MessageBox mb_IconStop|mb_TopMost|mb_SetForeground "Unable to elevate, error $0"
-	Quit
-${EndSwitch}
-
-SetShellVarContext all
 FunctionEnd
 
 Var mycheckbox ; You could just store the HWND in $1 etc if you don't want this extra variable
@@ -286,11 +277,6 @@ Var AR_RegFlags
 !macroend
 ;--- End of Add/Remove macros ---
 
-;--------------------------------
-;Interface Settings
-
-  !define MUI_HEADERIMAGE
-  !define MUI_ABORTWARNING
 
 
 !verbose 3
@@ -326,15 +312,21 @@ Var AR_RegFlags
 
 ;--------------------------------
 ;Pages
+;--------------------------------
+;Interface Settings
+
+  !define MUI_HEADERIMAGE "@CPACK_NSIS_MUI_ICON@"
+  !define MUI_ABORTWARNING
   !define MUI_PAGE_CUSTOMFUNCTION_PRE skip_page
   !insertmacro MUI_PAGE_WELCOME
 
   !define MUI_PAGE_CUSTOMFUNCTION_PRE skip_page
   !insertmacro MUI_PAGE_LICENSE "@CPACK_RESOURCE_FILE_LICENSE@"
 
-  Page custom InstallOptionsPage skip_page
+  Page custom InstallOptionsPage1 InstallOptionsPage1_results
 
-  !define MUI_PAGE_CUSTOMFUNCTION_PRE default_installation_directory
+  Page custom InstallOptionsPage2 InstallOptionsPage2_results
+
   !define MUI_PAGE_CUSTOMFUNCTION_LEAVE check_installation_directory
   !insertmacro MUI_PAGE_DIRECTORY
 
@@ -413,16 +405,6 @@ Var AR_RegFlags
   !insertmacro MUI_LANGUAGE "Ukrainian"
   !insertmacro MUI_LANGUAGE "Welsh"
 
-
-;--------------------------------
-;Reserve Files
-
-  ;These files should be inserted before other files in the data block
-  ;Keep these lines before any File command
-  ;Only for solid compression (by default, solid compression is enabled for BZIP2 and LZMA)
-
-  ReserveFile "NSIS.InstallOptions.ini"
-
 ;--------------------------------
 ;Installer Sections
 
@@ -432,8 +414,6 @@ Section "-Core installation"
   SetOutPath "$INSTDIR"
   ; SetRegView controlls where die regkeys are written to
   ; SetRegView 32 writes the keys into Wow6432
-  ; this variable was defined by eld and included in NSIS.template.in
-  ; we probably need this for the install/uninstall software list.
   SetRegView ${BITS}
   
   @CPACK_NSIS_FULL_INSTALL@
@@ -493,27 +473,40 @@ Section "-Core installation"
   call ReadINIFileKeys
   Delete "$newCfgValuesFile"
 
+  ${If} $UpgradeInstall == "1"
+    Goto done ; database directory already present - skip.
+  ${EndIf}
 System::Call 'Kernel32::SetEnvironmentVariable(t, t)i ("ARANGODB_DEFAULT_ROOT_PASSWORD", "$PASSWORD").r0'
   StrCmp $0 0 error
-    ExecWait "$INSTDIR\${SBIN_DIR}\arangod.exe --database.init-database --server.rest-server false --server.statistics false --foxx.queues false"
+  ExecWait "$INSTDIR\${SBIN_DIR}\arangod.exe --database.init-database --server.rest-server false --server.statistics false --foxx.queues false" $0
+  ${If} $0 == 0
     Goto done
+  ${EndIf}
   error:
     MessageBox MB_OK "Failed to initialize database password."
+    Abort
   done:
-@CPACK_NSIS_EXTRA_INSTALL_COMMANDS@
-   StrCmp $TRI_INSTALL_TYPE  'Service' 0 nothing
-     SimpleSC::InstallService '${TRI_SVC_NAME}' '${TRI_SVC_NAME}'  '16'  '2'  '"$INSTDIR\${SBIN_DIR}\arangod.exe" --start-service' '' '' ''
+  StrCmp $TRI_INSTALL_TYPE  'Service' 0 nothing
+     DetailPrint "Installing service ${TRI_SVC_NAME}: "
+     SimpleSC::InstallService '${TRI_SVC_NAME}' ''  '16'  '2'  '"$INSTDIR\${SBIN_DIR}\arangod.exe" --start-service' '' '' ''
+     Pop $0
+     DetailPrint "Status: $0; Setting Description: ${TRI_FRIENDLY_SVC_NAME}"
      SimpleSC::SetServiceDescription '${TRI_SVC_NAME}' '${TRI_FRIENDLY_SVC_NAME}'
-     SimpleSC::StartService '${TRI_SVC_NAME}' '' 30
-     Call WaitForServiceUp
-     pop $ServiceUp
+     Pop $0
+     DetailPrint "Status: $0; Starting Service"
+     SimpleSC::StartService '${TRI_SVC_NAME}' '' 40
+     Pop $0
+     DetailPrint "Status: $0"
+     ${If} $0 != "0"
+       MessageBox MB_OK "Waited 40 seconds for the ArangoDB service to come up; $\r$\nPlease look at $\r$\n`sc status ${TRI_SVC_NAME}` $\r$\n and the Windows Eventlog for eventual errors!"
+       Abort
+     ${EndIf}
    nothing:
 SectionEnd
 
 Function .onInstSuccess
   IfSilent 0 continueUI
   Call insert_registration_keys
-  StrCmp "@CPACK_NSIS_MODIFY_PATH@" "ON" 0 doNotAddToPath
   StrCmp $DO_NOT_ADD_TO_PATH "1" doNotAddToPath 0
   !insertmacro AddToPath "$INSTDIR/${BIN_DIR}" $ADD_TO_PATH_ALL_USERS
   doNotAddToPath:
@@ -531,116 +524,182 @@ Section "-Add to path"
   Push "$INSTDIR/${BIN_DIR}"
   StrCmp "@CPACK_NSIS_MODIFY_PATH@" "ON" 0 doNotAddToPath
   StrCmp $DO_NOT_ADD_TO_PATH "1" doNotAddToPath 0
-    Call AddToPath
+  !insertmacro AddToPath "$INSTDIR/${BIN_DIR}" $ADD_TO_PATH_ALL_USERS
   doNotAddToPath:
 SectionEnd
 
 ;--------------------------------
 ; Create custom pages
-Function InstallOptionsPage
-   IfSilent 0 continueUI
-   Return
+Function InstallOptionsPage1
+  IfSilent 0 continueUI
+  Call determine_install_scope
+  Return
 
 continueUI:
-   Push ${TEMP1}
+  Push ${TEMP1}
 displayAgain:
 
   !insertmacro MUI_HEADER_TEXT "Install Options" "Choose options for installing @CPACK_NSIS_PACKAGE_NAME@"
-  !insertmacro INSTALLOPTIONS_READ $INSTALL_DESKTOP "NSIS.InstallOptions.ini" "Field 5" "State"
-  !insertmacro INSTALLOPTIONS_DISPLAY "NSIS.InstallOptions.ini"
-  !insertmacro INSTALLOPTIONS_READ $PASSWORD "NSIS.InstallOptions.ini" "Field 6" "State"
-  !insertmacro INSTALLOPTIONS_READ $PASSWORD_AGAIN "NSIS.InstallOptions.ini" "Field 7" "State"
-  !insertmacro INSTALLOPTIONS_READ $DO_NOT_ADD_TO_PATH "NSIS.InstallOptions.ini" "Field 2" "State"
-  !insertmacro INSTALLOPTIONS_READ $ADD_TO_PATH_ALL_USERS "NSIS.InstallOptions.ini" "Field 3" "State"
-  !insertmacro INSTALLOPTIONS_READ $ADD_TO_PATH_CURRENT_USER "NSIS.InstallOptions.ini" "Field 4" "State"
-  !insertmacro INSTALLOPTIONS_READ $STORAGE_ENGINE "NSIS.InstallOptions.ini" "Field 11" "State"
 
-  StrCmp $PASSWORD $PASSWORD_AGAIN +3 0
-    MessageBox MB_OK|MB_ICONSTOP "Passwords don't match, try again"
-    Goto displayAgain
-  done:
-    Pop ${TEMP1}
+  nsDialogs::Create 1018
+  Pop $Dlg1_Dialog
 
-    Return  
+  ${If} $Dlg1_Dialog == error
+    Abort
+  ${EndIf}
+  ${NSD_CreateLabel} "Install @CPACK_PACKAGE_NAME@"
+  Pop $0 ; Don't care...
+
+  
+  ${NSD_CreateLabel} 0 10 100% 6% "Choose whether @CPACK_PACKAGE_INSTALL_DIRECTORY@ should be added to a Path:"
+  Pop $0 ; Don't care...
+
+  ${NSD_CreateRadioButton} 5 30 60% 6% "don't add @CPACK_PACKAGE_NAME@ to the Path"
+  Pop $Dlg1_RB_no_path
+  ${NSD_AddStyle} $Dlg1_RB_no_path ${WS_GROUP}
+  
+  ${NSD_CreateRadioButton} 5 45 40% 6% "for all users"
+  Pop $Dlg1_RB_all_users
+  ${NSD_SetState} $Dlg1_RB_all_users ${BST_CHECKED}
+  
+  ${NSD_CreateRadioButton} 5 60 50% 6% "for the current user"
+  Pop $Dlg1_RB_cur_user
+
+  
+  ${NSD_CreateCheckBox} 0 -40 100% 6% "Start @CPACK_PACKAGE_NAME@ as system service"
+  Pop $Dlg1_CB_as_service
+  
+  ${NSD_CreateCheckBox} 0 -20 100% 6% "Create @CPACK_PACKAGE_NAME@ Desktop Icon"
+  Pop $Dlg1_CB_DesktopIcon
+  ${NSD_SetState} $Dlg1_CB_DesktopIcon ${BST_CHECKED}
+
+  ${If} $AllowGlobalInstall == "0"
+    EnableWindow $Dlg1_RB_all_users 0
+    EnableWindow $Dlg1_CB_as_service 0    
+  ${Else}
+    ${NSD_SetState} $Dlg1_CB_as_service ${BST_CHECKED}
+
+  ${EndIf}
+  
+  nsDialogs::Show
+  Return  
 FunctionEnd
+
+;--------------------------------
+Function InstallOptionsPage1_results
+  Push $R0
+  Push $R1
+  Push $R2
+  ${NSD_GetState} $Dlg1_CB_DesktopIcon $R0
+  ${If} $R0 = ${BST_CHECKED}
+    StrCpy $INSTALL_DESKTOP "1"
+  ${Else}
+    StrCpy $INSTALL_DESKTOP "0"
+  ${EndIf}
+  
+
+  ${NSD_GetState} $Dlg1_RB_no_path $R0
+  ${NSD_GetState} $Dlg1_RB_all_users $R1
+  ${NSD_GetState} $Dlg1_RB_cur_user $R2
+  
+  ${If} $R0 = ${BST_CHECKED}
+    StrCpy $TRI_INSTALL_SCOPE "none"    
+    StrCpy $DO_NOT_ADD_TO_PATH '1'
+  ${ElseIf} $R1 = ${BST_CHECKED}
+    StrCpy $TRI_INSTALL_SCOPE "ThisUsers"
+    StrCpy $ADD_TO_PATH_ALL_USERS '1'
+  ${ElseIf} $R2 = ${BST_CHECKED}
+    StrCpy $TRI_INSTALL_SCOPE "AllUsers"
+    StrCpy $ADD_TO_PATH_CURRENT_USER '1'
+  ${Else}
+    ; WHUT?
+    Abort
+  ${EndIf}
+
+  ${NSD_GetState} $Dlg1_CB_as_service $R0
+  ${If} $R0 = ${BST_CHECKED}
+    StrCpy $TRI_INSTALL_TYPE "Service"
+  ${Else}
+    StrCpy $TRI_INSTALL_TYPE "Manual"
+  ${EndIf}
+  Call determine_install_scope
+  Call check_previous_install
+  Pop $R2
+  Pop $R1
+  Pop $R0
+FunctionEnd
+
+Function InstallOptionsPage2
+   IfSilent 0 continueUI
+   Return
+continueUI:
+  ${If} $UpgradeInstall == "1"
+    StrCpy $STORAGE_ENGINE "auto"
+    Return  
+  ${EndIf}
+  nsDialogs::Create 1018
+  Pop $Dlg2_Dialog
+
+  ${If} $Dlg2_Dialog == error
+    Abort
+  ${EndIf}
+
+  !insertmacro MUI_HEADER_TEXT "Configure @CPACK_PACKAGE_NAME@" "Choose configuration options for @CPACK_NSIS_PACKAGE_NAME@"
+  
+  ${NSD_CreateLabel} 0, 0, 100% 6% "Type password for the ArangoDB root user:"
+  Pop $0 ; Don't care...
+  ${NSD_CreatePassword} 5u 30 30% 6% ""
+  Pop $Dlg2_PW_1
+  ${NSD_CreateLabel} 35% 30 40% 6% "Password"
+  Pop $0 ; Don't care...
+  ${NSD_CreatePassword} 5u 50 30% 6% ""
+  Pop $Dlg2_PW_2
+  ${NSD_CreateLabel} 35% 50 40% 6% "Password (Again)"
+  Pop $0 ; Don't care...
+
+  ${NSD_CreateLabel} 0, 90, 100% 6% "Choose the stogare engine to use for this ArangoDB Installation"
+  Pop $0 ; Don't care...
+
+  ${NSD_CreateDropList} 5, 110, 30% 6% ""
+  Pop $DLG2_droplist
+  ${NSD_CB_AddString} $DLG2_droplist "auto"
+  ${NSD_CB_AddString} $DLG2_droplist "mmfiles"
+  ${NSD_CB_AddString} $DLG2_droplist "rocksdb"
+
+  ${NSD_CB_SelectString} $DLG2_droplist "auto"
+  nsDialogs::Show
+
+  Return  
+FunctionEnd
+
+;--------------------------------
+Function InstallOptionsPage2_results
+  ${If} $UpgradeInstall == "1"
+    Return  
+  ${EndIf}
+  Push $R0
+  Push $R1
+  Push $R2
+  ${NSD_GetText} $DLG2_droplist $STORAGE_ENGINE
+  
+  ${NSD_GetText} $Dlg2_PW_2 $PASSWORD_AGAIN
+  ${NSD_GetText} $Dlg2_PW_1 $PASSWORD
+  StrCmp $PASSWORD $PASSWORD_AGAIN done 0
+  MessageBox MB_OK|MB_ICONSTOP "Passwords don't match, try again"
+  Abort
+  done:
+
+  Pop $R2
+  Pop $R1
+  Pop $R0
+  return
+FunctionEnd
+
 
 ;--------------------------------
 Function skip_page
-  ${If} ${UAC_IsInnerInstance}
-    Abort
-  ${EndIf}
 FunctionEnd
 
-; when I am a child proces
-; I read the state (from shared memory) of the install options page
-; these informations has to be written by the father process
-Function read_options
-  ${If} ${UAC_IsInnerInstance}
-     sharedmem::ReadIntoSharedMem
-     pop $0
-     pop $1
-     ${If} $0 == 0
-        StrCpy  $TRI_INSTALL_TYPE $1
-      ${Else}
-; when something is wrong arango is installed as Service
-        StrCpy  $TRI_INSTALL_TYPE 'Service'
-     ${EndIf}
-  ${EndIf}
-FunctionEnd
-;--------------------------------
-Function default_installation_directory
-; Read variables which defines if arango should be installed as Service
-
-  ${If} ${UAC_IsInnerInstance}
-     Call disableBackButton
-  ${EndIf}
-  ${IfNot} ${UAC_IsInnerInstance}
-    !insertmacro INSTALLOPTIONS_READ $R2 "NSIS.InstallOptions.ini" "Field 2" "State"
-    !insertmacro INSTALLOPTIONS_READ $R3 "NSIS.InstallOptions.ini" "Field 3" "State"
-    !insertmacro INSTALLOPTIONS_READ $R4 "NSIS.InstallOptions.ini" "Field 4" "State"
-
-     ${If} $R2 == '1'
-       StrCpy $TRI_INSTALL_TYPE 'Service'
-     ${EndIf}
-
-     ${If} $R3 == '1'
-       StrCpy $TRI_INSTALL_TYPE 'AllUsers'
-     ${EndIf}
-
-     ${If} $R4 == '1'
-       StrCpy $TRI_INSTALL_TYPE 'SingleUser'
-     ${EndIf}
-     sharedmem::WriteIntoSharedMem  $TRI_INSTALL_TYPE
-     pop $0
-     ; $0 should be '0'
-     ; this value is read by child process
-   ${Else}
-     Call read_options
-   ${EndIf}
-
-  ${Switch} $TRI_INSTALL_TYPE
-    ${Case} 'Service'
-      Call Tri_ChangePrivileges
-      SetShellVarContext all
-      ;MessageBox MB_OK "Service : $INSTDIR"
-      StrCpy $DATADIR "$APPDATA\ArangoDB"
-      ${Break}
-    ${Case} 'SingleUser'
-      SetShellVarContext current
-      StrCpy $INSTDIR "$LOCALAPPDATA\@CPACK_PACKAGE_INSTALL_DIRECTORY@"
-      ;MessageBox MB_OK "SingleUser : $INSTDIR"
-      StrCpy $DATADIR "$LOCALAPPDATA\ArangoDB"
-      ${Break}
-    ${Case} 'AllUsers'
-      Call Tri_ChangePrivileges
-      SetShellVarContext all
-      StrCpy $INSTDIR "$DOCUMENTS\@CPACK_PACKAGE_INSTALL_DIRECTORY@"
-      StrCpy $DATADIR "$DOCUMENTS\ArangoDB"
-      ;MessageBox MB_OK "AllUsers : $INSTDIR"
-      ${Break}
-   ${EndSwitch}
-   Return
-FunctionEnd
 
 Function assign_proper_access_rights
     StrCpy $0 "0"
@@ -710,34 +769,17 @@ MessageBox MB_OK "There was an error during adding the installation keys to the 
 
 FunctionEnd
 
-!macro triagens_init
-  ${If} ${UAC_IsInnerInstance}
-  ; memory segment is created by father process
-  ; nothing to do
-SendMessage $HWNDPARENT ${WM_SETTEXT} 0 "STR:Hallo"
-    return
-  ${EndIf}
-  sharedmem::ExistsSharedMem
-  pop $0
-  ${If} $0 == '1'
-    MessageBox MB_OK "Installer is already running"
-    Quit
-  ${EndIf}
-  sharedmem::CreateSharedMemory
-  pop $0
-  ${Switch} $0
-  ${Case} 0
-  ; shared memory was created
-   ; return
-  ${Case} 5
-  ; what is to do, memory segment could no be created ?
-  ${EndSwitch}
-; SetShellVarContext all
-!macroend
-
 ;--------------------------------
 ; determine admin versus local install
 Function un.onInit
+  UserInfo::GetAccountType
+  pop $0
+  ${If} $0 == "admin"
+    StrCpy $AllowGlobalInstall "1"
+  ${Else}
+    StrCpy $AllowGlobalInstall "0"
+  ${EndIf}
+
 ; arango may be installed on diferent places
 ; determine if the arango was installed for a local user
   ${GetParameters} $R0        
@@ -751,23 +793,13 @@ Function un.onInit
   ${If}  ${UAC_IsAdmin}
     ReadRegStr $0 HKCC "Software\@CPACK_NSIS_PACKAGE_NAME@" "type"
   ${Else}
-; see function default_installation_directory
     ReadRegStr $0 HKCU "Software\@CPACK_NSIS_PACKAGE_NAME@" "type"
     ${If}  $0 == "SingleUser"
       StrCpy $R0 "user"
     ${EndIf}
   ${EndIf}
 
-  ${If} $R0 == "admin"
-    Call un.Tri_ChangePrivileges
-  ${EndIf}
- ; are we a child process?
- ; when yes, we have administrator privileges
-  ${If} ${UAC_IsInnerInstance}
-    SetShellVarContext all
-  ${Else}
-    SetShellVarContext current
-  ${EndIf}
+ SetShellVarContext current
 
 FunctionEnd
 
@@ -804,13 +836,11 @@ Section "Uninstall"
   ReadRegStr $TRI_INSTALL_TYPE         HKCC "Software\@CPACK_NSIS_PACKAGE_NAME@" "type" 
   ;MessageBox MB_OK "Type: $TRI_INSTALL_TYPE"
   ${If} $TRI_INSTALL_TYPE == 'Service'
-    Call un.Tri_ChangePrivileges
     SetShellVarContext all
     ;MessageBox MB_OK "Service : $INSTDIR"
   ${EndIf}
 
-  ${If} $TRI_INSTALL_TYPE == 'AllUsers'
-    Call un.Tri_ChangePrivileges
+  ${If} $TRI_INSTALL_SCOPE == 'AllUsers'
     SetShellVarContext all
     StrCpy $INSTDIR "$DOCUMENTS\@CPACK_PACKAGE_INSTALL_DIRECTORY@"
     ;MessageBox MB_OK "AllUsers : $INSTDIR"
@@ -947,7 +977,7 @@ Section "Uninstall"
   ${EndIf}
   DeleteRegKey HKLM "${TRI_UNINSTALL_REG_PATH}"
 
-  StrCmp $DO_NOT_ADD_TO_PATH_ "1" doNotRemoveFromPath 0
+  StrCmp $DO_NOT_ADD_TO_PATH "1" doNotRemoveFromPath 0
   !InsertMacro un.RemoveFromPath "$INSTDIR/${BIN_DIR}"
   doNotRemoveFromPath:
 SectionEnd
@@ -1009,21 +1039,37 @@ Function .onInit
   IfErrors 0 +2
   StrCpy $ADD_TO_PATH_CURRENT_USER "0"
 
+  noService:
   IfSilent 0 dontValidatePathOption
   StrCpy $allPathOpts "0"
   IntOp $allPathOpts $allPathOpts + $DO_NOT_ADD_TO_PATH
   IntOp $allPathOpts $allPathOpts + $ADD_TO_PATH_ALL_USERS
   IntOp $allPathOpts $allPathOpts + $ADD_TO_PATH_CURRENT_USER
   ${If} $allPathOpts != 1
+    Goto PathWrong
+  ${EndIf}
+
+  ${If} $DO_NOT_ADD_TO_PATH == "1"
+  ${ElseIf} $ADD_TO_PATH_ALL_USERS == "1"
+    StrCpy $TRI_INSTALL_SCOPE "global"
+  ${ElseIf} $ADD_TO_PATH_CURRENT_USER  == "1"
+    StrCpy $TRI_INSTALL_SCOPE "ThisUsers"
+  ${Else}
+    Goto PathWrong
+  ${EndIf}
+  
+  Goto dontValidatePathOption
+  PathWrong:
       MessageBox MB_OK "You have to exactly set one of /NOPATH=$DO_NOT_ADD_TO_PATH, /ALLPATH=$ADD_TO_PATH_ALL_USERS or /CURPATH=$ADD_TO_PATH_CURRENT_USER to 1!"
       Abort
-  ${EndIf}
-dontValidatePathOption:
+
+  dontValidatePathOption:
 
   IfSilent 0 dontFetchPath
   ${GetParameters} $R0
   ClearErrors
   ${GetOptions} $R0 "/INSTALLTYPE=" $TRI_INSTALL_TYPE
+
   StrLen $0 "$INSTDIR"
   ${If} $0 < 3
     MessageBox MB_OK 'Refusing to install flat on drive "$INSTDIR"'
@@ -1054,7 +1100,6 @@ uninst_failed:
 
 
 inst:
-  !insertmacro triagens_init
   ; Reads components status for registry
   !insertmacro SectionList "InitSection"
 
@@ -1100,7 +1145,6 @@ inst:
       StrCpy $INSTDIR "@CPACK_NSIS_INSTALL_ROOT@\@CPACK_PACKAGE_INSTALL_DIRECTORY@"
 
   StrCmp "@CPACK_NSIS_MODIFY_PATH@" "ON" 0 noOptionsPage
-    !insertmacro INSTALLOPTIONS_EXTRACT "NSIS.InstallOptions.ini"
 
   noOptionsPage:
 FunctionEnd
