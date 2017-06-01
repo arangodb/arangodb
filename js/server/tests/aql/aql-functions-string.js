@@ -385,13 +385,14 @@ function ahuacatlStringFunctionsTestSuite () {
       ];
 
       values.forEach(function(v) {
-        var query = "RETURN REGEX_REPLACE(@what, @re, @with)";
+        var query;
+        query = "RETURN REGEX_REPLACE(@what, @re, @with)";
         assertEqual(v[1], getQueryResults(query, { what: v[0][0], re: v[0][1], with: v[0][2] })[0], v);
 
-        var query = "RETURN NOOPT(REGEX_REPLACE(@what, @re, @with))";
+        query = "RETURN NOOPT(REGEX_REPLACE(@what, @re, @with))";
         assertEqual(v[1], getQueryResults(query, { what: v[0][0], re: v[0][1], with: v[0][2] })[0], v);
 
-        var query = "RETURN NOOPT(V8(REGEX_REPLACE(@what, @re, @with)))";
+        query = "RETURN NOOPT(V8(REGEX_REPLACE(@what, @re, @with)))";
         assertEqual(v[1], getQueryResults(query, { what: v[0][0], re: v[0][1], with: v[0][2] })[0], v);
       });
     },
