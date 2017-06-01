@@ -155,7 +155,7 @@ void RocksDBEngine::collectOptions(
 }
 
 // validate the storage engine's specific options
-void RocksDBEngine::validateOptions(std::shared_ptr<options::ProgramOptions>) {
+void RocksDBEngine::validateOptions(std::shared_ptr<options::ProgramOptions> options) {
   transaction::Options::setLimits(_maxTransactionSize, _intermediateCommitSize, _intermediateCommitCount);
 #ifdef USE_ENTERPRISE 
    validateEnterpriseOptions(options);
