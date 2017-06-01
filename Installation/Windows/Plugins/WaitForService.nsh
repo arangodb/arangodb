@@ -64,3 +64,40 @@ FunctionEnd
 
 !insertmacro WaitForServiceDown ""
 !insertmacro WaitForServiceDown "un."
+
+
+;--------------------------------
+; by Anders http://forums.winamp.com/member.php?u=70852
+!macro QueryServiceStatus un
+Function ${un}QueryServiceStatus
+  StrCpy $0 0
+  push $0
+  push $0
+  push $0
+  !define /ifndef SERVICE_QUERY_STATUS 4
+  System::Call 'ADVAPI32::OpenSCManager(p0, p0, i1)p.r1'
+  ${If} $1 P<> 0
+    System::Call 'ADVAPI32::OpenService(pr1, t"${TRI_SVC_NAME}", i${SERVICE_QUERY_STATUS})p.r2'
+    System::Call 'ADVAPI32::CloseServiceHandle(pr1)'
+    ${If} $2 P<> 0
+      System::Call 'ADVAPI32::QueryServiceStatus(pr2, @r3)i.r0' ; Note: NSIS 3+ syntax to "allocate" a SERVICE_STATUS
+      
+      ${If} $0 <> 0
+        System::Call '*$3(i,i.r4,i,i.r5,i.r6)'
+        pop $0
+        pop $0
+        pop $0
+        push $4
+        push $5
+        push $6
+        DetailPrint "CurrentState=$4 Win32ExitCode=$5 ServiceSpecificExitCode=$6"
+      ${EndIf}
+      System::Call 'ADVAPI32::CloseServiceHandle(pr2)'
+    ${EndIf}
+  ${EndIf}
+FunctionEnd
+!macroend
+
+!insertmacro QueryServiceStatus ""
+!insertmacro QueryServiceStatus "un."
+

@@ -127,7 +127,10 @@ bool SingleServerEdgeCursor::next(
     } else {
       _cache.clear();
       auto cb = [&](DocumentIdentifierToken const& token) {
-        _cache.emplace_back(token);
+        if (token._data != 0) {
+          // Document not found
+          _cache.emplace_back(token);
+        }
       };
       bool tmp = cursor->next(cb, 1000);
       TRI_ASSERT(tmp == cursor->hasMore());

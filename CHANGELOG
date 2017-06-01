@@ -1,6 +1,8 @@
 devel
 -----
 
+* issue #2515: The replace-or-with-in optimization rule might prevent use of indexes
+
 * added `REGEX_REPLACE` AQL function
 
 * the RocksDB storage format was changed, users of the previous alpha versions

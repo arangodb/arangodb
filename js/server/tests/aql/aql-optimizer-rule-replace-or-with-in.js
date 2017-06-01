@@ -351,7 +351,7 @@ function NewAqlReplaceORWithINTestSuite () {
        + " FILTER x.value == y.bb || x.value == y.cc" 
        + " FILTER x.value != null SORT x.value RETURN x.value";
      
-      isRuleUsed(query, {});
+      ruleIsNotUsed(query, {});
 
       var expected = [ 1, 1, 2, 2, 3, 3, 4, 4, 5, 6, 6, 7, 7, 8, 8, 9, 9, 10  ]; 
       var actual = getQueryResults(query, {}); 
@@ -434,7 +434,7 @@ function NewAqlReplaceORWithINTestSuite () {
       var query = "LET x = NOOPT({a:1}) FOR v IN " + replace.name() 
         + " FILTER x.a == v.value || x.a == v._key RETURN v._key";
 
-      isRuleUsed(query, {});
+      ruleIsNotUsed(query, {});
     },
 
     testDudAlwaysTrue: function () {
