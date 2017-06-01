@@ -103,8 +103,8 @@ class MMFilesWalSlots {
                       TRI_voc_cid_t collectionId, uint32_t size);
 
   /// @brief return a used slot, allowing its synchronization
-  void returnUsed(MMFilesWalSlotInfo&, bool wakeUpSynchronizer,
-                  bool waitForSyncRequested, bool waitUntilSyncDone);
+  int returnUsed(MMFilesWalSlotInfo&, bool wakeUpSynchronizer,
+                 bool waitForSyncRequested, bool waitUntilSyncDone);
 
   /// @brief get the next synchronizable region
   MMFilesWalSyncRegion getSyncRegion();

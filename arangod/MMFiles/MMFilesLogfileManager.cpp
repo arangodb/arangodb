@@ -762,11 +762,19 @@ MMFilesWalSlotInfoCopy MMFilesLogfileManager::writeSlot(MMFilesWalSlotInfo& slot
     // internals of slotInfo.slot to 0 again
     MMFilesWalSlotInfoCopy copy(slotInfo.slot);
 
-    _slots->returnUsed(slotInfo, wakeUpSynchronizer, waitForSyncRequested, waitUntilSyncDone);
-    return copy;
+    int res = _slots->returnUsed(slotInfo, wakeUpSynchronizer, waitForSyncRequested, waitUntilSyncDone);
+
+    if (res == TRI_ERROR_NO_ERROR) {
+      return copy;
+    }
+    return MMFilesWalSlotInfoCopy(res);
   } catch (...) {
     // if we don't return the slot we'll run into serious problems later
-    _slots->returnUsed(slotInfo, false, false, false);
+    int res = _slots->returnUsed(slotInfo, false, false, false);
+    
+    if (res != TRI_ERROR_NO_ERROR) {
+      return MMFilesWalSlotInfoCopy(res);
+    }
 
     return MMFilesWalSlotInfoCopy(TRI_ERROR_INTERNAL);
   }

@@ -22,6 +22,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "MMFilesWalSlots.h"
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/ConditionLocker.h"
 #include "Basics/MutexLocker.h"
 #include "Basics/encoding.h"
@@ -300,8 +301,8 @@ MMFilesWalSlotInfo MMFilesWalSlots::nextUnused(TRI_voc_tick_t databaseId, TRI_vo
 }
 
 /// @brief return a used slot, allowing its synchronization
-void MMFilesWalSlots::returnUsed(MMFilesWalSlotInfo& slotInfo, bool wakeUpSynchronizer,
-                       bool waitForSyncRequested, bool waitUntilSyncDone) {
+int MMFilesWalSlots::returnUsed(MMFilesWalSlotInfo& slotInfo, bool wakeUpSynchronizer,
+                                bool waitForSyncRequested, bool waitUntilSyncDone) {
   TRI_ASSERT(slotInfo.slot != nullptr);
   // waitUntilSyncDone does not make sense without waitForSyncRequested
   TRI_ASSERT(!waitUntilSyncDone || waitForSyncRequested);
@@ -328,8 +329,15 @@ void MMFilesWalSlots::returnUsed(MMFilesWalSlotInfo& slotInfo, bool wakeUpSynchr
   }
   
   if (waitUntilSyncDone) {
+    // on shutdown, return early
+    if (application_features::ApplicationServer::isStopping()) {
+      return TRI_ERROR_SHUTTING_DOWN;
+    }
+
     waitForTick(tick);
   }
+
+  return TRI_ERROR_NO_ERROR;
 }
 
 /// @brief get the next synchronisable region
