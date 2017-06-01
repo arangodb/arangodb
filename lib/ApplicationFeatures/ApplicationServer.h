@@ -163,8 +163,8 @@ class ApplicationServer {
   static void forceDisableFeatures(std::vector<std::string> const&);
 
  public:
-  explicit ApplicationServer(std::shared_ptr<options::ProgramOptions>,
-                             char const* binaryPath);
+  ApplicationServer(std::shared_ptr<options::ProgramOptions>,
+                    char const* binaryPath);
 
   ~ApplicationServer();
 
