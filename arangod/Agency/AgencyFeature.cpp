@@ -48,8 +48,8 @@ AgencyFeature::AgencyFeature(application_features::ApplicationServer* server)
       _supervision(false),
       _waitForSync(true),
       _supervisionFrequency(1.0),
-      _compactionStepSize(1000000),
-      _compactionKeepSize(1000000),
+      _compactionStepSize(100000000),
+      _compactionKeepSize(100000000),
       _supervisionGracePeriod(10.0),
       _cmdLineTimings(false)
 {
@@ -108,6 +108,13 @@ void AgencyFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
       "supervision time, after which a server is considered to have failed [s]",
       new DoubleParameter(&_supervisionGracePeriod));
 
+  options->addHiddenOption("--agency.compaction-step-size",
+                           "step size between state machine compactions",
+                           new UInt64Parameter(&_compactionStepSize));
+
+  options->addOption("--agency.compaction-keep-size",
+                     "keep as many indices before compaction point",
+                     new UInt64Parameter(&_compactionKeepSize));
 
   options->addHiddenOption("--agency.wait-for-sync",
                            "wait for hard disk syncs on every persistence call "
@@ -236,8 +243,7 @@ void AgencyFeature::start() {
   _agent.reset(new consensus::Agent(consensus::config_t(
       _size, _poolSize, _minElectionTimeout, _maxElectionTimeout, endpoint,
       _agencyEndpoints, _supervision, _waitForSync, _supervisionFrequency,
-      _compactionStepSize, _compactionKeepSize, _supervisionGracePeriod,
-      _cmdLineTimings)));
+      100000000, 100000000, _supervisionGracePeriod, _cmdLineTimings)));
 
   LOG_TOPIC(DEBUG, Logger::AGENCY) << "Starting agency personality";
   _agent->start();
