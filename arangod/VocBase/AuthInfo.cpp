@@ -111,22 +111,41 @@ static AuthEntry CreateAuthEntry(VPackSlice const& slice, AuthSource source) {
 
       if (obj.value.isObject()) {
         std::unordered_map<std::string, AuthLevel> collections;
+        AuthLevel databaseAuth = AuthLevel::NONE;
 
-        for (auto const& collection : VPackObjectIterator(obj.value)) {
-          std::string const collectionName = collection.key.copyString();
+        if (obj.value.hasKey("permissions") && obj.value.get("permissions").isObject()) {
+          auto const permissionsSlice = obj.value.get("permissions");
 
-          AuthLevel level = AuthLevel::NONE;
-          ValueLength length;
-          char const* value = collection.value.getString(length);
-
-          if (TRI_CaseEqualString(value, "rw", 2)) {
-            level = AuthLevel::RW;
-          } else if (TRI_CaseEqualString(value, "ro", 2)) {
-            level = AuthLevel::RO;
+          if (permissionsSlice.hasKey("read") && permissionsSlice.get("read").isTrue() ) {
+            databaseAuth = AuthLevel::RO;
           }
-          collections.emplace(collectionName, level);
-        } // for
-        authContexts.emplace(obj.key.copyString(), std::make_shared<AuthContext>(AuthLevel::RW, std::move(collections)));
+
+          if (permissionsSlice.hasKey("write") && permissionsSlice.get("write").isTrue() ) {
+            databaseAuth = AuthLevel::RW;
+          }
+        }
+
+        if (obj.value.hasKey("collections") && obj.value.get("collections").isObject()) {
+          for (auto const& collection : VPackObjectIterator(obj.value.get("collections"))) {
+
+            if (collection.value.hasKey("permissions") && collection.value.get("permissions").isObject()) {
+              auto const permissionsSlice = obj.value.get("permissions");
+              std::string const collectionName = collection.key.copyString();
+              AuthLevel collectionAuth = AuthLevel::NONE;
+
+              if (permissionsSlice.hasKey("read") && permissionsSlice.get("read").isTrue() ) {
+                collectionAuth = AuthLevel::RO;
+              }
+
+              if (permissionsSlice.hasKey("write") && permissionsSlice.get("write").isTrue() ) {
+                collectionAuth = AuthLevel::RW;
+              }
+              collections.emplace(collectionName, collectionAuth);
+            } // if
+          } // for
+        } // if
+
+        authContexts.emplace(obj.key.copyString(), std::make_shared<AuthContext>(databaseAuth, std::move(collections)));
 
       } else {
         LOG_TOPIC(INFO, arangodb::Logger::CONFIG) << "Deprecation Warning: Update access rights for user '" << userSlice.copyString() << "'";
@@ -138,12 +157,15 @@ static AuthEntry CreateAuthEntry(VPackSlice const& slice, AuthSource source) {
                                                    std::unordered_map<std::string, AuthLevel>({{"*", AuthLevel::RW}}) ));
 
         } else if (TRI_CaseEqualString(value, "ro", 2)) {
-          authContexts.emplace(obj.key.copyString(), std::make_shared<AuthContext>(AuthLevel::RW,
+          authContexts.emplace(obj.key.copyString(), std::make_shared<AuthContext>(AuthLevel::RO,
                                                    std::unordered_map<std::string, AuthLevel>({{"*", AuthLevel::RO}}) ));
         }
       }
     } // for
   } // if
+
+
+  // TODO -> add _system rights to all AuthContexts
 
 
   for (auto const& ctx : authContexts) {
