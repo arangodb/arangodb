@@ -292,6 +292,7 @@ void Communicator::createRequestInProgress(NewRequest const& newRequest) {
   curl_easy_setopt(handle, CURLOPT_HEADER, 0L);
   curl_easy_setopt(handle, CURLOPT_URL, url.c_str());
   curl_easy_setopt(handle, CURLOPT_VERBOSE, 1L);
+  curl_easy_setopt(handle, CURLOPT_PROXY, "");
   curl_easy_setopt(handle, CURLOPT_WRITEFUNCTION, Communicator::readBody);
   curl_easy_setopt(handle, CURLOPT_WRITEDATA, handleInProgress->_rip.get());
   curl_easy_setopt(handle, CURLOPT_HEADERFUNCTION, Communicator::readHeaders);
