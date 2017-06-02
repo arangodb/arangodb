@@ -92,6 +92,7 @@ class RestImportHandler : public RestVocbaseBaseHandler {
   //////////////////////////////////////////////////////////////////////////////
 
   int handleSingleDocument(SingleCollectionTransaction& trx,
+                           VPackBuilder& lineBuilder,
                            RestImportResult& result,
                            arangodb::velocypack::Builder& babies,
                            arangodb::velocypack::Slice slice,
@@ -140,20 +141,19 @@ class RestImportHandler : public RestVocbaseBaseHandler {
   /// @brief parses a string
   //////////////////////////////////////////////////////////////////////////////
 
-  std::shared_ptr<VPackBuilder> parseVelocyPackLine(std::string const&, bool&);
+  void parseVelocyPackLine(VPackBuilder&, std::string const&, bool&);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief parses a string
   //////////////////////////////////////////////////////////////////////////////
 
-  std::shared_ptr<VPackBuilder> parseVelocyPackLine(char const*, char const*,
-                                                    bool&);
+  void parseVelocyPackLine(VPackBuilder&, char const*, char const*, bool&);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief builds a VPackBuilder object from a key and value list
   //////////////////////////////////////////////////////////////////////////////
 
-  std::shared_ptr<arangodb::velocypack::Builder> createVelocyPackObject(
+  void createVelocyPackObject(VPackBuilder&,
       arangodb::velocypack::Slice const&, arangodb::velocypack::Slice const&,
       std::string&, size_t);
 

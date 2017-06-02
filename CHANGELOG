@@ -1,7 +1,10 @@
 devel
 -----
 
-* issue #2515: The replace-or-with-in optimization rule might prevent use of indexes
+* arangod now validates several OS/environment settings on startup and warns if
+  the settings are non-ideal. Most of the checks are executed on Linux systems only.
+
+* fixed issue #2515: The replace-or-with-in optimization rule might prevent use of indexes
 
 * added `REGEX_REPLACE` AQL function
 

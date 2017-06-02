@@ -47,8 +47,49 @@ void EnvironmentFeature::prepare() {
   }
 
 #ifdef __linux__
+  // test local ipv4 port range
+  try {
+    std::string value =
+        basics::FileUtils::slurp("/proc/sys/net/ipv4/ip_local_port_range");
+
+    std::vector<std::string> parts = basics::StringUtils::split(value, '\t');
+    if (parts.size() == 2) {
+      uint64_t lower = basics::StringUtils::uint64(parts[0]);
+      uint64_t upper = basics::StringUtils::uint64(parts[1]);
+
+      if (lower > upper || (upper - lower) < 16384) {
+        LOG_TOPIC(WARN, arangodb::Logger::COMMUNICATION) 
+            << "local port range for ipv4/ipv6 ports is " << lower << " - " << upper 
+            << ", which does not look right. it is recommended to make at least 16K ports available";
+        LOG_TOPIC(WARN, Logger::MEMORY) << "execute 'sudo bash -c \"echo -e \\\"32768\\t60999\\\" > "
+                                           "/proc/sys/net/ipv4/ip_local_port_range\"' or use an even bigger port range";
+      }
+    }
+  } catch (...) {
+    // file not found or values not convertible into integers
+  }
+  
+  // test value tcp_tw_recycle
+  // https://vincent.bernat.im/en/blog/2014-tcp-time-wait-state-linux
+  // https://stackoverflow.com/questions/8893888/dropping-of-connections-with-tcp-tw-recycle
+  try {
+    std::string value =
+        basics::FileUtils::slurp("/proc/sys/net/ipv4/tcp_tw_recycle");
+    uint64_t v = basics::StringUtils::uint64(value);
+    if (v != 0) {
+      LOG_TOPIC(WARN, Logger::COMMUNICATION)
+          << "/proc/sys/net/ipv4/tcp_tw_recycle is enabled (" << v << ")"
+          << "'. This can lead to all sorts of \"random\" network problems. "
+          << "It is advised to leave it disabled (should be kernel default)";
+      LOG_TOPIC(WARN, Logger::COMMUNICATION) << "execute 'sudo bash -c \"echo 0 > "
+                                         "/proc/sys/net/ipv4/tcp_tw_recycle\"'";
+    }
+  } catch (...) {
+    // file not found or value not convertible into integer
+  }
 
 #ifdef __GLIBC__
+  // test presence of environment variable GLIBCXX_FORCE_NEW
   char const* v = getenv("GLIBCXX_FORCE_NEW");
 
   if (v == nullptr) {
@@ -84,22 +125,6 @@ void EnvironmentFeature::prepare() {
     // file not found or value not convertible into integer
   }
   
-  try {
-    std::string value =
-        basics::FileUtils::slurp("/proc/sys/net/ipv4/tcp_tw_recycle");
-    uint64_t v = basics::StringUtils::uint64(value);
-    if (v != 0) {
-      LOG_TOPIC(WARN, Logger::COMMUNICATION)
-          << "/proc/sys/net/ipv4/tcp_tw_recycle is enabled (" << v << ")"
-          << "'. This can lead to all sorts of \"random\" network problems. "
-          << "It is advised to leave it disabled (should be kernel default)";
-      LOG_TOPIC(WARN, Logger::COMMUNICATION) << "execute 'sudo bash -c \"echo 0 > "
-                                         "/proc/sys/net/ipv4/tcp_tw_recycle\"'";
-    }
-  } catch (...) {
-    // file not found or value not convertible into integer
-  }
-
   try {
     std::string value =
         basics::FileUtils::slurp("/proc/sys/vm/zone_reclaim_mode");
