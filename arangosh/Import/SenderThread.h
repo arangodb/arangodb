@@ -57,9 +57,10 @@ class SenderThread : public arangodb::Thread {
 
   void sendData(std::string const& url, basics::StringBuffer* sender);
 
-  bool idle() const { return _idle; }
-
-  bool hasError() const { return _hasError; }
+  bool hasError();
+  bool isReady();
+  bool isIdle();
+  bool isDone();
 
   std::string const& errorMessage() const { return _errorMessage; }
 
@@ -73,8 +74,9 @@ class SenderThread : public arangodb::Thread {
   httpclient::SimpleHttpClient* _client;
   std::string _url;
   basics::StringBuffer _data;
-  bool _hasError = false;
-  bool _idle = true;
+  bool _hasError;
+  bool _idle;
+  bool _ready;
 
   ImportStatistics* _stats;
   std::string _errorMessage;
