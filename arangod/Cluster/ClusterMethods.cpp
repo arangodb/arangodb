@@ -2382,6 +2382,8 @@ ClusterMethods::persistCollectionInAgency(
           }), dbServers.end());
     }
     std::random_shuffle(dbServers.begin(), dbServers.end());
+  } else {
+    dbServers = ci->getCurrentDBServers();
   }
 
   // cluster system replicationFactor is 1...allow startup with 1 DBServer.
