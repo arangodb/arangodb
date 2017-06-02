@@ -706,6 +706,9 @@
 ///   The inform message in the agency must contain an object 'pool'.
 /// - 20020: @LIT{Inquiry failed}
 ///   Inquiry by clientId failed
+/// - 20021: @LIT{Cannot rebuild readDB and spearHead}
+///   Will be raised if the readDB or the spearHead cannot be rebuilt from the
+///   replicated log.
 /// - 20501: @LIT{general supervision failure}
 ///   General supervision failure.
 /// - 21001: @LIT{dispatcher stopped}
@@ -3754,6 +3757,17 @@ void TRI_InitializeErrorMessages ();
 ////////////////////////////////////////////////////////////////////////////////
 
 #define TRI_ERROR_AGENCY_INQUIRE_CLIENT_ID_MUST_BE_STRING                 (20020)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 20021: ERROR_AGENCY_CANNOT_REBUILD_DBS
+///
+/// Cannot rebuild readDB and spearHead
+///
+/// Will be raised if the readDB or the spearHead cannot be rebuilt from the
+/// replicated log.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_AGENCY_CANNOT_REBUILD_DBS                               (20021)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 20501: ERROR_SUPERVISION_GENERAL_FAILURE

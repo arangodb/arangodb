@@ -91,13 +91,15 @@ class Agent : public arangodb::Thread,
   bool prepareLead();
 
   /// @brief Load persistent state
-  bool load();
+  void load();
 
   /// @brief Unpersisted key-value-store
   trans_ret_t transient(query_t const&) override;
 
   /// @brief Attempt write
-  write_ret_t write(query_t const&) override;
+  ///        Startup flag should NEVER be discarded solely for purpose of
+  ///        persisting the agency configuration
+  write_ret_t write(query_t const&, bool discardStartup = false) override;
 
   /// @brief Read from agency
   read_ret_t read(query_t const&);
@@ -121,7 +123,7 @@ class Agent : public arangodb::Thread,
   ///        also used as heartbeat ($5.2).
   bool recvAppendEntriesRPC(term_t term, std::string const& leaderId,
                             index_t prevIndex, term_t prevTerm,
-                            index_t lastCommitIndex, query_t const& queries);
+                            index_t leaderCommitIndex, query_t const& queries);
 
   /// @brief Invoked by leader to replicate log entries ($5.3);
   ///        also used as heartbeat ($5.2).
@@ -206,7 +208,7 @@ class Agent : public arangodb::Thread,
   /// @brief Am I active agent
   bool active() const;
 
-  /// @brief Am I active agent
+  /// @brief Become active agent
   query_t activate(query_t const&);
 
   /// @brief Report measured round trips to inception
@@ -282,19 +284,18 @@ class Agent : public arangodb::Thread,
   /// @brief Configuration of command line options
   config_t _config;
 
-  /// @brief Last commit index (raft)
-  index_t _lastCommitIndex;
-
-  /// @brief Last index of the log that has been applied to the readDB
-  index_t _lastAppliedIndex;
-
-  /// @brief Last index up to which we have performed log compaction
-  index_t _lastCompactionIndex;
-
-  /// @brief Last index that is "committed" in the sense that the leader
+  /// @brief
+  /// Leader: Last index that is "committed" in the sense that the leader
   /// has convinced itself that an absolute majority (including the leader)
-  /// have written the entry into their log
-  index_t _leaderCommitIndex;
+  /// have written the entry into their log, this variable is only maintained
+  /// on the leader.
+  /// Follower: this is only kept on followers and indicates what the leader
+  /// told them it has last "committed" in the above sense.
+  index_t _commitIndex;
+
+  /// @brief Index of highest log entry applied to state achine (initialized
+  /// to 0, increases monotonically)
+  index_t _lastApplied;
 
   /// @brief Spearhead (write) kv-store
   Store _spearhead;
@@ -304,9 +305,6 @@ class Agent : public arangodb::Thread,
 
   /// @brief Committed (read) kv-store for transient data
   Store _transient;
-
-  /// @brief Last compacted store
-  Store _compacted;
 
   /// @brief Condition variable for appendEntries
   arangodb::basics::ConditionVariable _appendCV;
@@ -353,6 +351,7 @@ class Agent : public arangodb::Thread,
   /// @brief Agent is ready for RAFT
   std::atomic<bool> _ready;
   std::atomic<bool> _preparing;
+  std::atomic<bool> _startup;
 
   /// @brief Keep track of when I last took on leadership
   TimePoint _leaderSince;

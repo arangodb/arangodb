@@ -63,6 +63,20 @@ function agencyTestSuite () {
   var agencyLeader = agencyServers[0];
   var request = require("@arangodb/request");
 
+  function findAgencyCompactionIntervals() {
+    let res = request({url: agencyLeader + "/_api/agency/config",
+                       method: "GET", followRedirect: true});
+    assertEqual(res.statusCode, 200);
+    res.bodyParsed = JSON.parse(res.body);
+    return {
+      compactionStepSize: res.bodyParsed.configuration["compaction step size"],
+      compactionKeepSize: res.bodyParsed.configuration["compaction keep size"]
+    };
+  }
+
+  var compactionConfig = findAgencyCompactionIntervals();
+  require("console").warn("Agency compaction configuration: ", compactionConfig);
+
   function accessAgency(api, list) {
     // We simply try all agency servers in turn until one gives us an HTTP
     // response:
@@ -79,14 +93,18 @@ function agencyTestSuite () {
           l = agencyLeader.indexOf('/', l+1);
         }
         agencyLeader = agencyLeader.substring(0,l);
-        require('internal').print('Redirected to ' + agencyLeader);
+        require('console').warn('Redirected to ' + agencyLeader);
       } else if (res.statusCode !== 503) {
         break;
       } else {
-        require('internal').print('Waiting for leader ... ');
+        require('console').warn('Waiting for leader ... ');
       }
     }
-    res.bodyParsed = JSON.parse(res.body);
+    try {
+      res.bodyParsed = JSON.parse(res.body);
+    } catch(e) {
+      require("console").error("Exception in body parse:", res.body, JSON.stringify(e), api, list);
+    }
     return res;
   }
 
@@ -864,8 +882,98 @@ function agencyTestSuite () {
     testHiddenAgencyWriteDeep: function() {
       var res = accessAgency("write",[[{"/.agency/hans": {"op":"set","new":"fallera"}}]]);
       assertEqual(res.statusCode, 200);
-    } 
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Compaction
+////////////////////////////////////////////////////////////////////////////////    
     
+    testLogNoCompaction: function() {
+      let i;
+      // Find current log index and erase all data:
+      let cur = accessAgency("write",[[{"/": {"op":"delete"}}]]).
+          bodyParsed.results[0];
+
+      // All tests so far have not really written many log entries in 
+      // comparison to the compaction interval (with the default settings),
+      let count = compactionConfig.compactionStepSize - 100 - cur;
+      require("console").warn("Avoiding log compaction for now with", count,
+        "keys, from log entry", cur, "on.");
+      for (i = 0; i < count; ++i) {
+        let key = "/key"+i;
+        let trx = [{}];
+        trx[0][key] = "value" + i;
+        let res = accessAgency("write", [trx]);
+        assertEqual(200, res.statusCode);
+      }
+      for (i = 0; i < count; ++i) {
+        let res = accessAgency("read", [["/key"+i]]);
+        assertEqual(200, res.statusCode);
+        let key = "key"+i;
+        let correct = [{}];
+        correct[0][key] = "value" + i;
+        assertEqual(correct, res.bodyParsed);
+      }
+
+    },
+
+    testLogCompaction: function() {
+      let i;
+      // Find current log index and erase all data:
+      let cur = accessAgency("write",[[{"/": {"op":"delete"}}]]).
+          bodyParsed.results[0];
+
+      // All tests so far have not really written many log entries in 
+      // comparison to the compaction interval (with the default settings),
+      let count = compactionConfig.compactionStepSize + 100 - cur;
+      require("console").warn("Provoking log compaction for now with", count,
+        "keys, from log entry", cur, "on.");
+      for (i = 0; i < count; ++i) {
+        let key = "/key"+i;
+        let trx = [{}];
+        trx[0][key] = "value" + i;
+        let res = accessAgency("write", [trx]);
+        assertEqual(200, res.statusCode);
+      }
+      for (i = 0; i < count; ++i) {
+        let res = accessAgency("read", [["/key"+i]]);
+        assertEqual(200, res.statusCode);
+        let key = "key"+i;
+        let correct = [{}];
+        correct[0][key] = "value" + i;
+        assertEqual(correct, res.bodyParsed);
+      }
+    },
+
+    testLogSecondCompaction: function() {
+      let i;
+      // Find current log index and erase all data:
+      let cur = accessAgency("write",[[{"/": {"op":"delete"}}]]).
+          bodyParsed.results[0];
+
+      // All tests so far have not really written many log entries in 
+      // comparison to the compaction interval (with the default settings),
+      let count = compactionConfig.compactionStepSize + 100 - cur;
+      require("console").warn("Provoking second log compaction for now with", 
+        count, "keys, from log entry", cur, "on.");
+      for (i = 0; i < count; ++i) {
+        let key = "/key"+i;
+        let trx = [{}];
+        trx[0][key] = "value" + i;
+        let res = accessAgency("write", [trx]);
+        assertEqual(200, res.statusCode);
+      }
+      for (i = 0; i < count; ++i) {
+        let res = accessAgency("read", [["/key"+i]]);
+        assertEqual(200, res.statusCode);
+        let key = "key"+i;
+        let correct = [{}];
+        correct[0][key] = "value" + i;
+        assertEqual(correct, res.bodyParsed);
+      }
+
+    }
+
   };
 }
 

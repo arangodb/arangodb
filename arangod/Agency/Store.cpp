@@ -157,9 +157,9 @@ Store::~Store() {
   }
 }
 
-/// Apply array of queries multiple queries to store
+/// Apply array of transactions multiple queries to store
 /// Return vector of according success
-std::vector<bool> Store::apply(query_t const& query, bool verbose) {
+std::vector<bool> Store::applyTransactions(query_t const& query) {
   std::vector<bool> success;
 
   if (query->slice().isArray()) {
@@ -206,8 +206,8 @@ std::vector<bool> Store::apply(query_t const& query, bool verbose) {
 }
 
 
-/// Apply single query
-check_ret_t Store::apply(Slice const& query, bool verbose) {
+/// Apply single transaction
+check_ret_t Store::applyTransaction(Slice const& query) {
 
   check_ret_t ret(true);
 
@@ -269,8 +269,8 @@ struct notify_t {
 
 
 /// Apply (from logs)
-std::vector<bool> Store::apply(
-  std::vector<VPackSlice> const& queries, index_t lastCommitIndex,
+std::vector<bool> Store::applyLogEntries(
+  std::vector<VPackSlice> const& queries, index_t index,
   term_t term, bool inform) {
   std::vector<bool> applied;
 
@@ -282,7 +282,7 @@ std::vector<bool> Store::apply(
     }
   }
 
-  if (_agent->leading()) {
+  if (inform && _agent->leading()) {
     // Find possibly affected callbacks
     std::multimap<std::string, std::shared_ptr<notify_t>> in;
     for (auto const& i : queries) {
@@ -329,7 +329,7 @@ std::vector<bool> Store::apply(
       Builder body;  // host
       { VPackObjectBuilder b(&body);
         body.add("term", VPackValue(term));
-        body.add("index", VPackValue(lastCommitIndex));
+        body.add("index", VPackValue(index));
         auto ret = in.equal_range(url);
         std::string currentKey;
         for (auto it = ret.first; it != ret.second; ++it) {

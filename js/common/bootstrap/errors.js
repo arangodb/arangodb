@@ -302,6 +302,7 @@
     "ERROR_AGENCY_INFORM_MUST_CONTAIN_ACTIVE" : { "code" : 20014, "message" : "Inform message must contain array 'active'" },
     "ERROR_AGENCY_INFORM_MUST_CONTAIN_POOL" : { "code" : 20015, "message" : "Inform message must contain object 'pool'" },
     "ERROR_AGENCY_INQUIRE_CLIENT_ID_MUST_BE_STRING" : { "code" : 20020, "message" : "Inquiry failed" },
+    "ERROR_AGENCY_CANNOT_REBUILD_DBS" : { "code" : 20021, "message" : "Cannot rebuild readDB and spearHead" },
     "ERROR_SUPERVISION_GENERAL_FAILURE" : { "code" : 20501, "message" : "general supervision failure" },
     "ERROR_DISPATCHER_IS_STOPPING" : { "code" : 21001, "message" : "dispatcher stopped" },
     "ERROR_QUEUE_UNKNOWN"          : { "code" : 21002, "message" : "named queue does not exist" },

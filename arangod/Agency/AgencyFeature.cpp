@@ -48,8 +48,8 @@ AgencyFeature::AgencyFeature(application_features::ApplicationServer* server)
       _supervision(false),
       _waitForSync(true),
       _supervisionFrequency(1.0),
-      _compactionStepSize(200000),
-      _compactionKeepSize(500),
+      _compactionStepSize(20000),
+      _compactionKeepSize(10000),
       _supervisionGracePeriod(10.0),
       _cmdLineTimings(false)
 {
@@ -186,6 +186,12 @@ void AgencyFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
     LOG_TOPIC(WARN, Logger::AGENCY)
         << "agency.election-timeout-max should probably be chosen longer!"
         << " " << __FILE__ << __LINE__;
+  }
+
+  if (_compactionKeepSize == 0) {
+    LOG_TOPIC(WARN, Logger::AGENCY)
+        << "agency.compaction-keep-size must not be 0, set to 1000";
+    _compactionKeepSize = 1000;
   }
 
   if (!_agencyMyAddress.empty()) {

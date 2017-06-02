@@ -34,7 +34,7 @@ class AgentInterface {
   enum raft_commit_t {OK, UNKNOWN, TIMEOUT};
  
   /// @brief Attempt write
-  virtual write_ret_t write(query_t const&) = 0;
+  virtual write_ret_t write(query_t const&, bool discardStartup = false) = 0;
 
   /// @brief Attempt write
   virtual trans_ret_t transient(query_t const&) = 0;
