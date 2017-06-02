@@ -9,6 +9,8 @@ v3.1.22 (2017-xx-xx)
 
 * avoid agency compaction bug
 
+* fixed issue #2283: disabled proxy communication internally
+
 
 v3.1.21 (2017-05-22)
 --------------------
