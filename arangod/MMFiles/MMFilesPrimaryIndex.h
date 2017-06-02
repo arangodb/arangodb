@@ -157,7 +157,7 @@ class MMFilesPrimaryIndex final : public Index {
   int remove(transaction::Methods*, TRI_voc_rid_t,
              arangodb::velocypack::Slice const&, bool isRollback) override;
 
-  int load() override {}
+  int load() override { return 0; }
   int unload() override;
 
   MMFilesSimpleIndexElement lookupKey(transaction::Methods*,
