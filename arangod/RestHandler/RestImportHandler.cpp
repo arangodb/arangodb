@@ -246,9 +246,9 @@ int RestImportHandler::handleSingleDocument(SingleCollectionTransaction& trx,
   }
 
   try {
-    arangodb::basics::VelocyPackHelper::checkAndGetStringValue(
+    arangodb::basics::VelocyPackHelper::ensureStringValue(
         slice, StaticStrings::FromString);
-    arangodb::basics::VelocyPackHelper::checkAndGetStringValue(
+    arangodb::basics::VelocyPackHelper::ensureStringValue(
         slice, StaticStrings::ToString);
   } catch (arangodb::basics::Exception const&) {
     std::string part = VPackDumper::toString(slice);
@@ -429,20 +429,18 @@ bool RestImportHandler::createFromJson(std::string const& type) {
         continue;
       }
 
+      TRI_ASSERT(ptr != nullptr);
+      oldPtr = ptr;
+
       tmpBuilder.clear();
       if (pos != nullptr) {
         // non-empty line
         *(const_cast<char*>(pos)) = '\0';
-        TRI_ASSERT(ptr != nullptr);
-        oldPtr = ptr;
         parseVelocyPackLine(tmpBuilder, ptr, pos, success);
         ptr = pos + 1;
       } else {
         // last-line, non-empty
-        TRI_ASSERT(pos == nullptr);
-        TRI_ASSERT(ptr != nullptr);
-        oldPtr = ptr;
-        parseVelocyPackLine(tmpBuilder, ptr, success);
+        parseVelocyPackLine(tmpBuilder, ptr, end, success);
         ptr = end;
       }
 
@@ -492,13 +490,12 @@ bool RestImportHandler::createFromJson(std::string const& type) {
       return false;
     }
 
-    VPackValueLength const n = documents.length();
     VPackBuilder lineBuilder;
-    for (VPackValueLength i = 0; i < n; ++i) {
-      VPackSlice const slice = documents.at(i);
+    VPackArrayIterator it(documents);
 
-      res = handleSingleDocument(trx, lineBuilder, result, babies, slice, isEdgeCollection,
-                                 static_cast<size_t>(i + 1));
+    while (it.valid()) {
+      res = handleSingleDocument(trx, lineBuilder, result, babies, it.value(), isEdgeCollection,
+                                 static_cast<size_t>(it.index() + 1));
 
       if (res.fail()) {
         if (complete) {
@@ -508,6 +505,8 @@ bool RestImportHandler::createFromJson(std::string const& type) {
 
         res = TRI_ERROR_NO_ERROR;
       }
+
+      it.next();
     }
   }
 
@@ -597,14 +596,12 @@ bool RestImportHandler::createFromVPack(std::string const& type) {
     return false;
   }
 
-  VPackValueLength const n = documents.length();
-
   VPackBuilder lineBuilder;
-  for (VPackValueLength i = 0; i < n; ++i) {
-    VPackSlice const slice = documents.at(i);
 
-    res = handleSingleDocument(trx, lineBuilder, result, babies, slice, isEdgeCollection,
-                               static_cast<size_t>(i + 1));
+  VPackArrayIterator it(documents);
+  while (it.valid()) {
+    res = handleSingleDocument(trx, lineBuilder, result, babies, it.value(), isEdgeCollection,
+                               static_cast<size_t>(it.index() + 1));
 
     if (res.fail()) {
       if (complete) {
@@ -614,6 +611,8 @@ bool RestImportHandler::createFromVPack(std::string const& type) {
 
       res = TRI_ERROR_NO_ERROR;
     }
+
+    it.next();
   }
 
   babies.close();
@@ -1042,28 +1041,12 @@ void RestImportHandler::generateDocumentsCreated(
 /// @brief parse a single document line
 ////////////////////////////////////////////////////////////////////////////////
 
-void RestImportHandler::parseVelocyPackLine(
-    VPackBuilder& builder,
-    std::string const& line, bool& success) {
-  try {
-    success = true;
-    VPackParser parser(builder);
-    parser.parse(line);
-  } catch (VPackException const&) {
-    success = false;
-  }
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief parse a single document line
-////////////////////////////////////////////////////////////////////////////////
-
 void RestImportHandler::parseVelocyPackLine(VPackBuilder& builder,
     char const* start, char const* end, bool& success) {
   try {
     success = true;
     VPackParser parser(builder);
-    parser.parse(start,std::distance(start, end));
+    parser.parse(start, std::distance(start, end));
   } catch (std::exception const&) {
     // The line is invalid and could not be transformed into a string
     success = false;
