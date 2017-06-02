@@ -48,8 +48,8 @@ AgencyFeature::AgencyFeature(application_features::ApplicationServer* server)
       _supervision(false),
       _waitForSync(true),
       _supervisionFrequency(1.0),
-      _compactionStepSize(200000),
-      _compactionKeepSize(500),
+      _compactionStepSize(1000000),
+      _compactionKeepSize(1000000),
       _supervisionGracePeriod(10.0),
       _cmdLineTimings(false)
 {
@@ -108,13 +108,6 @@ void AgencyFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
       "supervision time, after which a server is considered to have failed [s]",
       new DoubleParameter(&_supervisionGracePeriod));
 
-  options->addHiddenOption("--agency.compaction-step-size",
-                           "step size between state machine compactions",
-                           new UInt64Parameter(&_compactionStepSize));
-
-  options->addOption("--agency.compaction-keep-size",
-                     "keep as many indices before compaction point",
-                     new UInt64Parameter(&_compactionKeepSize));
 
   options->addHiddenOption("--agency.wait-for-sync",
                            "wait for hard disk syncs on every persistence call "
