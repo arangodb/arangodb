@@ -35,6 +35,22 @@ test_tools(){
         echo "apt-get install calibre-bin"
         exit 1
     fi
+    ARANGODB_VERSION_MAJOR=`grep 'set(ARANGODB_VERSION_MAJOR' CMakeLists.txt | sed 's;.*"\(.*\)".*;\1;'`
+    ARANGODB_VERSION_MINOR=`grep 'set(ARANGODB_VERSION_MINOR' CMakeLists.txt | sed 's;.*"\(.*\)".*;\1;'`
+    ARANGODB_VERSION_REVISION=`grep 'set(ARANGODB_VERSION_REVISION' CMakeLists.txt | sed 's;.*"\(.*\)".*;\1;'`
+
+    if test "${ARANGODB_VERSION_REVISION}" == "devel"; then
+        export NODE_MODULES_DIR="/tmp/devel/node_modules"
+    else
+        export NODE_MODULES_DIR="/tmp/${ARANGODB_VERSION_MAJOR}.${ARANGODB_VERSION_MINOR}"
+    fi
+
+    if test ! -d ${NODE_MODULES_DIR}; then
+        echo "Your docker container doesn't contain the needed modules to build the documentation: ${NODE_MODULES_DIR}"
+        echo "Please delete the old arangodb/documentation-builder container, and re-run this script so it will pull "
+        echo "the latest version."
+        exit 1
+    fi
 }
 
 main(){
@@ -53,11 +69,13 @@ main(){
         ./utils/generateExamples.sh
     fi
     ./utils/generateSwagger.sh
+
     cd Documentation/Books
+
     if test -z "$TARGET"; then
-        make build-dist-books OUTPUT_DIR=/build/build-docu NODE_MODLUES_DIR=/tmp/1/node_modules
+        make build-dist-books OUTPUT_DIR=/build/build-docu NODE_MODULES_DIR=${NODE_MODULES_DIR}
     else
-        make build-book NAME=$TARGET OUTPUT_DIR=/build/build-docu NODE_MODLUES_DIR=/tmp/1/node_modules $@
+        make build-book NAME=$TARGET OUTPUT_DIR=/build/build-docu NODE_MODULES_DIR=${NODE_MODULES_DIR} $@
     fi
 }
 
