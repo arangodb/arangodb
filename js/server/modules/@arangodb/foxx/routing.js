@@ -24,16 +24,20 @@
 // / @author Alan Plum
 // //////////////////////////////////////////////////////////////////////////////
 
-const _ = require('lodash');
-const fs = require('fs');
 const ansiHtml = require('ansi-html');
 const dd = require('@arangodb/util').dedent;
 const arangodb = require('@arangodb');
+const accepts = require('accepts');
+const fs = require('fs');
+const path = require('path');
 const ArangoError = arangodb.ArangoError;
 const errors = arangodb.errors;
 const actions = require('@arangodb/actions');
-const routeLegacyService = require('@arangodb/foxx/legacy/routing').routeService;
 const codeFrame = require('@arangodb/util').codeFrame;
+const mimeTypes = require('mime-types');
+const routeLegacyService = require('@arangodb/foxx/legacy/routing').routeService;
+
+const MIME_DEFAULT = 'text/plain; charset=utf-8';
 
 function solarize (ansiText) {
   try {
@@ -62,74 +66,69 @@ function escapeHtml (raw) {
     .replace(/</g, '&lt;');
 }
 
-function createErrorRoute (service, body, title) {
-  return {
-    urlPrefix: '',
-    name: `foxx("${service.mount}")`,
-    routes: [{
-      internal: true,
-      url: {
-        match: '/*',
-        methods: actions.ALL_METHODS
-      },
-      action: {
-        callback (req, res) {
-          res.responseCode = actions.HTTP_SERVICE_UNAVAILABLE;
-          res.contentType = 'text/html; charset=utf-8';
-          res.body = dd`
-            <!doctype html>
-            <html>
-              <head>
-                <meta charset="utf-8">
-                <title>${escapeHtml(title || 'Service Unavailable')}</title>
-                <style>
-                  body {
-                    box-sizing: border-box;
-                    margin: 0 auto;
-                    padding: 0 2em;
-                    max-width: 1200px;
-                    font-family: sans-serif;
-                    font-size: 14pt;
-                    font-weight: 200;
-                    line-height: 1.5;
-                    background-color: #eff0f3;
-                    color: #333;
-                  }
-                  h1 {
-                    font-size: 31.5px;
-                  }
-                  h2 {
-                    font-size: 24.5px;
-                  }
-                  h1, h2, p, pre {
-                    margin: 1em 0;
-                  }
-                  * + h1, * + h2 {
-                    margin-top: 2em;
-                  }
-                </style>
-              </head>
-              <body>
-                ${body}
-              </body>
-            </html>
-          `;
-        }
-      }
-    }],
-    middleware: [],
-    context: {},
-    models: {},
-    foxx: true
+function createErrorHandler (service, error, body, title = 'Service Unavailable') {
+  console.errorStack(error);
+  return function (req, res) {
+    const xrw = req.headers['x-requested-with'];
+    const isXhr = xrw && xrw.toLowerCase() === 'xmlhttprequest';
+    res.responseCode = actions.HTTP_SERVICE_UNAVAILABLE;
+    if (isXhr || accepts(req).types('html', 'json') === 'html') {
+      res.contentType = 'text/html; charset=utf-8';
+      res.body = dd`
+        <!doctype html>
+        <html>
+          <head>
+            <meta charset="utf-8">
+            <title>${escapeHtml(title.replace(/\n/g, ' '))}</title>
+            <style>
+              body {
+                box-sizing: border-box;
+                margin: 0 auto;
+                padding: 0 2em;
+                max-width: 1200px;
+                font-family: sans-serif;
+                font-size: 14pt;
+                font-weight: 200;
+                line-height: 1.5;
+                background-color: #eff0f3;
+                color: #333;
+              }
+              h1 {
+                font-size: 31.5px;
+              }
+              h2 {
+                font-size: 24.5px;
+              }
+              h1, h2, p, pre {
+                margin: 1em 0;
+              }
+              * + h1, * + h2 {
+                margin-top: 2em;
+              }
+            </style>
+          </head>
+          <body>
+            ${body}
+          </body>
+        </html>
+      `;
+    } else {
+      actions.resultError(
+        req,
+        res,
+        actions.HTTP_SERVICE_UNAVAILABLE,
+        error.errorNum,
+        title
+      );
+    }
   };
 }
 
-// //////////////////////////////////////////////////////////////////////////////
-// / @brief routes a default Configuration Required service
-// //////////////////////////////////////////////////////////////////////////////
-
-function createServiceNeedsConfigurationRoute (service) {
-  return createErrorRoute(service, dd`
+exports.createServiceNeedsConfigurationHandler = function (service) {
+  return createErrorHandler(service, new ArangoError({
+    errorNum: errors.ERROR_SERVICE_NEEDS_CONFIGURATION.code,
+    errorMessage: errors.ERROR_SERVICE_NEEDS_CONFIGURATION.message
+  }), dd`
     <h1>Service needs to be configured</h1>
     <p>
       This service requires configuration
@@ -137,17 +136,13 @@ function createServiceNeedsConfigurationRoute (service) {
       or is missing some of its dependencies.
     </p>
   `);
-}
+};
 
-// //////////////////////////////////////////////////////////////////////////////
-// / @brief routes this service if the original is broken service
-// //////////////////////////////////////////////////////////////////////////////
-
-function createBrokenServiceRoute (service, err) {
+exports.createBrokenServiceHandler = function (service, error) {
   if (service.isDevelopment) {
-    const title = String(err).replace(/\n/g, ' ');
-    const frame = codeFrame(err.cause || err, service.basePath, true);
-    let stacktrace = err.stack;
+    const title = String(error);
+    let stacktrace = error.stack;
+    let err = error;
     while (err.cause) {
       err = err.cause;
       stacktrace += `\nvia ${err.stack}`;
@@ -183,9 +178,9 @@ function createBrokenServiceRoute (service, err) {
           }
         </style>
       `,
-      frame ? dd`
+      error.frame ? dd`
         <pre>
-        ${solarize(escapeHtml(frame))}
+        ${solarize(escapeHtml(error.frame))}
         </pre>
       ` : '',
       dd`
@@ -195,114 +190,48 @@ function createBrokenServiceRoute (service, err) {
         </pre>
       `
     ].filter(Boolean).join('\n');
-    return createErrorRoute(service, body, title);
+    return createErrorHandler(service, error, body, title);
   }
-  return createErrorRoute(service, dd`
+  return createErrorHandler(service, error, dd`
     <h1>Failed to mount service</h1>
     <p>
       An error occured while mounting the service.<br>
       Please check the log file for errors.
     </p>
   `);
-}
+};
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                  public functions
-// -----------------------------------------------------------------------------
+exports.routeLegacyService = routeLegacyService;
 
-// //////////////////////////////////////////////////////////////////////////////
-// / @brief computes the routes and exports of an service
-// //////////////////////////////////////////////////////////////////////////////
-
-exports.routeService = function (service, throwOnErrors) {
-  if (service.main.loaded && !service.isDevelopment) {
-    return {
-      exports: service.main.exports,
-      routes: service.routes,
-      docs: service.legacy ? null : service.docs
-    };
-  }
-
-  if (service.needsConfiguration()) {
-    return {
-      get exports () {
-        if (!throwOnErrors) {
-          return service.main.exports;
-        }
-        throw new ArangoError({
-          errorNum: errors.ERROR_SERVICE_NEEDS_CONFIGURATION.code,
-          errorMessage: errors.ERROR_SERVICE_NEEDS_CONFIGURATION.message
-        });
-      },
-      routes: createServiceNeedsConfigurationRoute(service),
-      docs: null
-    };
-  }
-
-  service._reset();
-
-  const defaultDocument = service.manifest.defaultDocument;
-  if (defaultDocument) {
-    service.routes.routes.push({
-      url: {match: '/'},
-      action: {
-        do: '@arangodb/actions/redirectRequest',
-        options: {
-          permanently: false,
-          destination: defaultDocument,
-          relative: true
-        }
-      }
-    });
-  }
-
-  let error = null;
-  if (service.legacy) {
-    error = routeLegacyService(service, throwOnErrors);
-  } else {
-    if (service.manifest.main) {
-      try {
-        service.main.exports = service.run(service.manifest.main);
-      } catch (e) {
-        e.codeFrame = codeFrame(e.cause || e, service.basePath);
-        console.errorStack(
-          e,
-          `Service "${service.mount}" encountered an error while being mounted`
-        );
-        if (throwOnErrors) {
-          throw e;
-        }
-      }
+exports.serveStatic = function (req, res, service) {
+  for (const [key, file] of service.files) {
+    const mount = key.replace(/\/+$/, '');
+    const url = req.plainSuffix.replace(/\/+$/, '') || '/';
+    if (url !== mount && !url.startsWith(mount + '/')) {
+      continue;
     }
-    service.buildRoutes();
+    const suffix = url.slice(mount.length);
+    const fileRootPath = path.join(service.root, service.path, file.path);
+    let fullPath = fileRootPath;
+    if (suffix && fs.isDirectory(fileRootPath)) {
+      fullPath = path.join(fileRootPath, path.normalize(
+        ['', ...suffix.split('/')].join(path.sep)
+      ));
+    }
+    if (
+      file.gzip &&
+      fs.isFile(fullPath + '.gz') &&
+      accepts(req).encoding('gzip') === 'gzip'
+    ) {
+      res.headers['content-encoding'] = 'gzip';
+      res.bodyFromFile = fullPath + '.gz';
+    } else if (fs.isFile(fullPath)) {
+      res.bodyFromFile = fullPath;
+    } else {
+      continue;
+    }
+    res.contentType = file.type || mimeTypes.lookup(fullPath) || MIME_DEFAULT;
+    return true;
   }
-
-  if (service.manifest.files) {
-    const files = service.manifest.files;
-    _.each(files, function (file, path) {
-      const directory = file.path || file;
-      const normalized = arangodb.normalizeURL(`/${path}`);
-      const route = {
-        url: {match: `${normalized}/*`},
-        action: {
-          do: '@arangodb/actions/pathHandler',
-          options: {
-            root: service.root,
-            path: fs.join(service.path, directory),
-            type: file.type,
-            gzip: Boolean(file.gzip)
-          }
-        }
-      };
-      service.routes.routes.push(route);
-    });
-  }
-
-  service.main.loaded = true;
-
-  return {
-    exports: service.main.exports,
-    routes: error ? createBrokenServiceRoute(service, error) : service.routes,
-    docs: service.legacy ? null : service.docs
-  };
+  return false;
 };

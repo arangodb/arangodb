@@ -50,8 +50,8 @@
   // in this case we do not (and should not) initialize and start Foxx
   var options = internal.options();
   var restServer = true;
-  if (options.hasOwnProperty("server.rest-server")) {
-   restServer = options["server.rest-server"];
+  if (options.hasOwnProperty('server.rest-server')) {
+    restServer = options['server.rest-server'];
   }
 
   // autoload all modules

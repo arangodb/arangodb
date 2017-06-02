@@ -36,10 +36,12 @@ const errors = require('@arangodb').errors;
 const defaultTypes = require('@arangodb/foxx/types');
 const FoxxContext = require('@arangodb/foxx/context');
 const Manifest = require('@arangodb/foxx/manifest');
-const getReadableName = require('@arangodb/foxx/manager-utils').getReadableName;
+const fmu = require('@arangodb/foxx/manager-utils');
+const getReadableName = fmu.getReadableName;
 const Router = require('@arangodb/foxx/router/router');
 const Tree = require('@arangodb/foxx/router/tree');
 const codeFrame = require('@arangodb/util').codeFrame;
+const routing = require('@arangodb/foxx/routing');
 
 const $_MODULE_ROOT = Symbol.for('@arangodb/module.root');
 const $_MODULE_CONTEXT = Symbol.for('@arangodb/module.context');
@@ -90,6 +92,8 @@ function parseFile (servicePath, filename) {
     throw e;
   }
 }
+
+
 
 module.exports =
   class FoxxService {
@@ -188,10 +192,7 @@ module.exports =
       this._reset();
     }
 
-    applyConfiguration (config, replace) {
-      if (!config) {
-        config = {};
-      }
+    applyConfiguration (config = {}, replace = false) {
       const definitions = this.manifest.configuration;
       const configNames = Object.keys(config);
       const knownNames = Object.keys(definitions);
@@ -246,10 +247,7 @@ module.exports =
       return Object.keys(warnings).length ? warnings : undefined;
     }
 
-    applyDependencies (deps, replace) {
-      if (!deps) {
-        deps = {};
-      }
+    applyDependencies (deps = {}, replace = false) {
       const definitions = this.manifest.dependencies;
       const depsNames = Object.keys(deps);
       const knownNames = Object.keys(definitions);
@@ -309,11 +307,47 @@ module.exports =
       return Object.keys(warnings).length ? warnings : undefined;
     }
 
-    buildRoutes () {
-      this.tree = new Tree(this.main.context, this.router);
-      let paths = [];
+    load () {
+      this._reset();
+      this.loaded = true;
+
+      if (this.needsConfiguration()) {
+        this.handler = routing.createServiceNeedsConfigurationHandler(this);
+        return;
+      }
+
       try {
-        paths = this.tree.buildSwaggerPaths();
+        if (this.legacy) {
+          routing.routeLegacyService(this);
+          return;
+        }
+        if (this.manifest.main) {
+          this.main.exports = this.run(this.manifest.main);
+        }
+      } catch (e) {
+        e.frame = codeFrame(e.cause || e, this.basePath, true);
+        this.handler = routing.createBrokenServiceHandler(this, e);
+        this.error = e;
+        return;
+      }
+
+      this.tree = new Tree(this.main.context, this.router);
+
+      try {
+        const paths = this.tree.buildSwaggerPaths();
+        this.docs = {
+          swagger: '2.0',
+          basePath: this.main.context.baseUrl,
+          paths: paths,
+          info: {
+            title: this.manifest.name,
+            description: this.manifest.description,
+            version: this.manifest.version,
+            license: {
+              name: this.manifest.license
+            }
+          }
+        };
       } catch (e) {
         if (this.isDevelopment) {
           e.codeFrame = codeFrame(e, this.basePath);
@@ -324,111 +358,131 @@ module.exports =
           Check the route methods you are using to document your API.
         `);
       }
-      this.docs = {
-        swagger: '2.0',
-        basePath: this.main.context.baseUrl,
-        paths: paths,
-        info: {
-          title: this.manifest.name,
-          description: this.manifest.description,
-          version: this.manifest.version,
-          license: {
-            name: this.manifest.license
+
+      this.files = new Map(
+        Object.keys(this.manifest.files).sort((a, b) => b.length - a.length)
+        .map(key => [key, this.manifest.files[key]])
+      );
+
+      this.handler = (req, res) => {
+        let handled = true;
+
+        try {
+          console.log('dispatch', req.url, req.suffix);
+          handled = this.tree.dispatch(req, res);
+        } catch (e) {
+          const logLevel = (
+            !e.statusCode
+            ? 'error' // Unhandled
+            : (
+              e.statusCode >= 500
+              ? 'warn' // Internal
+              : (
+                this.isDevelopment
+                ? 'info' // Debug
+                : undefined
+              )
+            )
+          );
+
+          let error = e;
+          if (!e.statusCode) {
+            error = new InternalServerError();
+            error.cause = e;
           }
-        }
-      };
-      this.routes.routes.push({
-        url: {match: '/*'},
-        action: {
-          callback: (req, res, opts, next) => {
-            let handled = true;
 
-            try {
-              handled = this.tree.dispatch(req, res);
-            } catch (e) {
-              const logLevel = (
-                !e.statusCode
-                ? 'error' // Unhandled
-                : (
-                  e.statusCode >= 500
-                  ? 'warn' // Internal
-                  : (
-                    this.isDevelopment
-                    ? 'info' // Debug
-                    : undefined
-                  )
-                )
-              );
-
-              let error = e;
-              if (!e.statusCode) {
-                error = new InternalServerError();
-                error.cause = e;
-              }
-
-              if (logLevel) {
-                if (this.isDevelopment) {
-                  e.codeFrame = codeFrame(e.cause || e, this.basePath);
-                }
-                console[`${logLevel}Stack`](e, `Service "${
-                  this.mount
-                }" encountered error ${
-                  e.statusCode || 500
-                } while handling ${
-                  req.requestType
-                } ${
-                  req.absoluteUrl()
-                }`);
-              }
-
-              const body = {
-                error: true,
-                errorNum: error.errorNum || error.statusCode,
-                errorMessage: error.message,
-                code: error.statusCode
-              };
-
-              if (error.statusCode === 405 && error.methods) {
-                if (!res.headers) {
-                  res.headers = {};
-                }
-                res.headers.allow = error.methods.join(', ');
-              }
-              if (this.isDevelopment) {
-                const err = e.cause || e;
-                body.exception = String(err);
-                if (!err.stack) {
-                  body.stacktrace = 'no stacktrace available';
-                } else {
-                  body.stacktrace = err.stack.replace(/\n+$/, '').split('\n');
-                }
-              }
-              if (error.extra) {
-                Object.keys(error.extra).forEach(function (key) {
-                  body[key] = error.extra[key];
-                });
-              }
-              res.responseCode = error.statusCode;
-              res.contentType = 'application/json';
-              res.body = JSON.stringify(body);
+          if (logLevel) {
+            if (this.isDevelopment) {
+              e.codeFrame = codeFrame(e.cause || e, this.basePath);
             }
+            console[`${logLevel}Stack`](e, `Service "${
+              this.mount
+            }" encountered error ${
+              e.statusCode || 500
+            } while handling ${
+              req.requestType
+            } ${
+              req.absoluteUrl()
+            }`);
+          }
 
-            if (handled) {
-              // provide default CORS headers
-              if (req.headers.origin) {
-                if (!res.headers) {
-                  res.headers = {};
-                }
-                if (!res.headers['access-control-expose-headers']) {
-                  res.headers['access-control-expose-headers'] = Object.keys(res.headers).concat('server', 'content-length').sort().join(', ');
-                }
-              }
+          const body = {
+            error: true,
+            errorNum: error.errorNum || error.statusCode,
+            errorMessage: error.message,
+            code: error.statusCode
+          };
+
+          if (error.statusCode === 405 && error.methods) {
+            if (!res.headers) {
+              res.headers = {};
+            }
+            res.headers.allow = error.methods.join(', ');
+          }
+          if (this.isDevelopment) {
+            const err = e.cause || e;
+            body.exception = String(err);
+            if (!err.stack) {
+              body.stacktrace = 'no stacktrace available';
             } else {
-              next();
+              body.stacktrace = err.stack.replace(/\n+$/, '').split('\n');
+            }
+          }
+          if (error.extra) {
+            Object.keys(error.extra).forEach(function (key) {
+              body[key] = error.extra[key];
+            });
+          }
+          res.responseCode = error.statusCode;
+          res.contentType = 'application/json';
+          res.body = JSON.stringify(body);
+        }
+
+        if (handled) {
+          // provide default CORS headers
+          if (req.headers.origin) {
+            if (!res.headers) {
+              res.headers = {};
+            }
+            if (!res.headers['access-control-expose-headers']) {
+              res.headers['access-control-expose-headers'] = Object.keys(res.headers).concat('server', 'content-length').sort().join(', ');
             }
           }
         }
-      });
+
+        return handled;
+      };
+    }
+
+    dispatch (req, res) {
+      if (!this.loaded) {
+        this.load();
+      }
+
+      if (this.manifest.defaultDocument && !req.plainSuffix.replace(/\/+$/, '')) {
+        res.responseCode = 307;
+        res.headers.location = this.manifest.defaultDocument.replace(/^\/+/, '');
+        if (!req.pathname.endsWith('/')) {
+          res.headers.location = `${
+            req.slice(req.pathname.lastIndexOf('/') + 1)
+          }/${
+            res.headers.location
+          }`;
+        }
+        return true;
+      }
+
+      let handled = false;
+
+      if (this.handler) {
+        handled = this.handler(req, res);
+      }
+
+      if (!handled && this.files) {
+        handled = routing.serveStatic(req, res, this);
+      }
+
+      return handled;
     }
 
     _PRINT (context) {
@@ -567,10 +621,10 @@ module.exports =
       this.main.context = new FoxxContext(this);
       this.router = new Router();
       this.types = new Map(defaultTypes);
-      this.routes = {
-        name: `foxx("${this.mount}")`,
-        routes: []
-      };
+      this.files = null;
+      this.docs = null;
+      this.docs = null;
+      this.loaded = false;
 
       if (this.legacy) {
         this.main.context.path = this.main.context.fileName;
@@ -605,6 +659,15 @@ module.exports =
     }
 
     get exports () {
+      if (this.needsConfiguration()) {
+        throw new ArangoError({
+          errorNum: errors.ERROR_SERVICE_NEEDS_CONFIGURATION.code,
+          errorMessage: errors.ERROR_SERVICE_NEEDS_CONFIGURATION.message
+        });
+      }
+      if (this.error) {
+        throw this.error;
+      }
       return this.main.exports;
     }
 
@@ -655,7 +718,6 @@ module.exports =
         '_appbundles'
       );
     }
-
 
     static basePath (mount) {
       return path.resolve(
@@ -720,10 +782,10 @@ function createDependencies (definitions, options) {
     Object.defineProperty(deps, name, {
       enumerable: true,
       get () {
-        const fm = require('@arangodb/foxx/manager');
+        const FoxxManager = require('@arangodb/foxx/manager');
         const value = options[name];
         if (!dfn.multiple) {
-          return value ? fm.requireService(value) : null;
+          return value ? FoxxManager.requireService(value) : null;
         }
         const multi = [];
         if (value) {
@@ -731,7 +793,7 @@ function createDependencies (definitions, options) {
             const item = value[i];
             Object.defineProperty(multi, String(i), {
               enumerable: true,
-              get: () => item ? fm.requireService(item) : null
+              get: () => item ? FoxxManager.requireService(item) : null
             });
           }
         }

@@ -86,7 +86,7 @@ module.exports = function createSwaggerRouteHandler (foxxMount, opts) {
       } else if (typeof swaggerJsonHandler === 'function') {
         let foxx;
         try {
-          foxx = FoxxManager.ensureRouted(mount);
+          foxx = FoxxManager._ensureRouted(mount);
         } catch (e) {
           if (e.isArangoError && e.errorNum === NOT_FOUND) {
             throw new NotFound(e.message);

@@ -28,7 +28,7 @@ var db = require('@arangodb').db;
 var flatten = require('internal').flatten;
 var console = require('console');
 var queues = require('@arangodb/foxx/queues');
-var fm = require('@arangodb/foxx/manager');
+var FoxxManager = require('@arangodb/foxx/manager');
 var util = require('util');
 var internal = require('internal');
 
@@ -123,7 +123,7 @@ exports.work = function (job) {
 
   try {
     // assign output to "result" variable
-    result = fm.runScript(job.type.name, job.type.mount, [].concat(job.data, job._id));
+    result = FoxxManager.runScript(job.type.name, job.type.mount, [].concat(job.data, job._id));
   } catch (e) {
     console.errorLines('Job %s failed:\n%s', job._key, e.stack || String(e));
     job.runFailures += 1;

@@ -31,11 +31,12 @@
 'use strict';
 
 var FoxxManager = require('@arangodb/foxx/manager');
+var FoxxStore = require('@arangodb/foxx/store');
 const expect = require('chai').expect;
 
-FoxxManager.update();
+FoxxStore.update();
 
-var list = FoxxManager.availableJson(false);
+var list = FoxxStore.availableJson(false);
 expect(list).not.to.be.empty;
 
 describe('Foxx Manager', function () {

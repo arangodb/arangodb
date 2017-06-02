@@ -103,7 +103,7 @@ function swaggerPath (path, basePath) {
 
 function resolveFoxx (req, res, appPath) {
   try {
-    return FoxxManager.ensureRouted(appPath);
+    return FoxxManager._ensureRouted(appPath);
   } catch (e) {
     if (e instanceof ArangoError && e.errorNum === errors.ERROR_SERVICE_NOT_FOUND.code) {
       resultNotFound(req, res, 404, e.errorMessage);

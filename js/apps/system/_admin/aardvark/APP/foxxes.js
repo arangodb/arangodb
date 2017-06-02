@@ -33,6 +33,7 @@ const marked = require('marked');
 const highlightAuto = require('highlightjs').highlightAuto;
 const errors = require('@arangodb').errors;
 const FoxxManager = require('@arangodb/foxx/manager');
+const FoxxStore = require('@arangodb/foxx/store');
 const FoxxGenerator = require('./generator');
 const fmu = require('@arangodb/foxx/manager-utils');
 const createRouter = require('@arangodb/foxx/router');
@@ -215,7 +216,10 @@ foxxRouter.delete('/', function (req, res) {
 `);
 
 router.get('/', function (req, res) {
-  res.json(FoxxManager.installedServices().map(service => ({
+  res.json(FoxxManager.installedServices().map(service => service.error ? {
+    mount: service.mount,
+    error: service.error.message
+  } : {
     mount: service.mount,
     name: service.manifest.name,
     description: service.manifest.description,
@@ -232,7 +236,7 @@ router.get('/', function (req, res) {
     readme: service.readme && marked(service.readme, {
       highlight: (code) => highlightAuto(code).value
     })
-  })));
+  }));
 })
 .summary('List all Foxxes')
 .description(dd`
@@ -351,11 +355,11 @@ foxxRouter.patch('/devel', function (req, res) {
 
 router.get('/fishbowl', function (req, res) {
   try {
-    FoxxManager.update();
+    FoxxStore.update();
   } catch (e) {
     console.warnLines(`Failed to update Foxx store: ${e.stack}`);
   }
-  res.json(FoxxManager.availableJson());
+  res.json(FoxxStore.availableJson());
 })
 .summary('List of all foxx services submitted to the Foxx store.')
 .description(dd`

@@ -262,6 +262,17 @@ function checkManifest (filename, inputManifest, mount, complainAboutVersionMism
     }
   }
 
+  if (manifest.files) {
+    const files = manifest.files;
+    for (const key of Object.keys(manifest.files)) {
+      if (typeof manifest.files[key] === 'string') {
+        files[key] = {path: files[key]};
+      }
+    }
+  } else {
+    manifest.files = {};
+  }
+
   if (errors.length) {
     for (const error of errors) {
       console.errorLines(error);

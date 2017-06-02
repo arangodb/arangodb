@@ -352,13 +352,13 @@ instanceRouter.post('/download', (req, res) => {
   if (!service.isDevelopment && fs.isFile(service.bundlePath)) {
     res.sendFile(service.bundlePath);
   } else {
-    const tempFile = fs.getTempFile('bundles', false);
-    FoxxManager._createServiceBundle(service.mount, tempFile);
-    res.sendFile(tempFile);
+    const tempBundlePath = fs.getTempFile('bundles', false);
+    FoxxManager.createServiceBundle(service.mount, tempBundlePath);
+    res.sendFile(tempBundlePath);
     try {
-      fs.remove(tempFile);
+      fs.remove(tempBundlePath);
     } catch (e) {
-      console.warnStack(e, `Failed to remove temporary Foxx download bundle: ${tempFile}`);
+      console.warnStack(e, `Failed to remove temporary Foxx download bundle: ${tempBundlePath}`);
     }
   }
 })
