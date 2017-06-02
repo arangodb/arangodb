@@ -882,7 +882,7 @@ function agencyTestSuite () {
     testHiddenAgencyWriteDeep: function() {
       var res = accessAgency("write",[[{"/.agency/hans": {"op":"set","new":"fallera"}}]]);
       assertEqual(res.statusCode, 200);
-    },
+    }/*,
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Compaction
@@ -973,7 +973,7 @@ function agencyTestSuite () {
       }
 
     }
-
+*/
   };
 }
 
