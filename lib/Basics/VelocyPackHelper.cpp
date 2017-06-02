@@ -488,6 +488,20 @@ std::string VelocyPackHelper::checkAndGetStringValue(VPackSlice const& slice,
   return sub.copyString();
 }
 
+void VelocyPackHelper::ensureStringValue(VPackSlice const& slice,
+                                         std::string const& name) {
+  TRI_ASSERT(slice.isObject());
+  if (!slice.hasKey(name)) {
+    std::string msg = "The attribute '" + name + "' was not found.";
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER, msg);
+  }
+  VPackSlice const sub = slice.get(name);
+  if (!sub.isString()) {
+    std::string msg = "The attribute '" + name + "' is not a string.";
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER, msg);
+  }
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns a string value, or the default value if it is not a string
 ////////////////////////////////////////////////////////////////////////////////
