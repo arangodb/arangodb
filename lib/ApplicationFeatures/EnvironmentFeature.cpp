@@ -83,6 +83,22 @@ void EnvironmentFeature::prepare() {
   } catch (...) {
     // file not found or value not convertible into integer
   }
+  
+  try {
+    std::string value =
+        basics::FileUtils::slurp("/proc/sys/net/ipv4/tcp_tw_recycle");
+    uint64_t v = basics::StringUtils::uint64(value);
+    if (v != 0) {
+      LOG_TOPIC(WARN, Logger::COMMUNICATION)
+          << "/proc/sys/net/ipv4/tcp_tw_recycle is enabled (" << v << ")"
+          << "'. This can lead to all sorts of \"random\" network problems. "
+          << "It is advised to leave it disabled (should be kernel default)";
+      LOG_TOPIC(WARN, Logger::COMMUNICATION) << "execute 'sudo bash -c \"echo 0 > "
+                                         "/proc/sys/net/ipv4/tcp_tw_recycle\"'";
+    }
+  } catch (...) {
+    // file not found or value not convertible into integer
+  }
 
   try {
     std::string value =
