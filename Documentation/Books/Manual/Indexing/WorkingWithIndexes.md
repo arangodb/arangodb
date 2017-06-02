@@ -139,6 +139,21 @@ Same as above. Instead of an index an index handle can be given.
     @endDocuBlock col_dropIndex
 
 
+### Warmup index caches
+<!-- arangod/V8Server/v8-vocindex.cpp -->
+
+
+warms up index caches of a collection's indexes.
+`collection.warumup()`
+
+Warms up indexes caches of a collection.
+Iterates over all indexes of a collection and
+reads data into index caches to speed up retrival.
+Index types that do not support the operation are
+silently ignored.
+
+supported index types: Edge Index (RocksDB)
+
 
 Database Methods
 ----------------

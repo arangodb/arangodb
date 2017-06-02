@@ -8,6 +8,9 @@ Modifying a Collection
 @startDocuBlock JSF_put_api_collection_unload
 
 <!-- js/actions/api-collection.js -->
+@startDocuBlock JSF_put_api_collection_warmup
+
+<!-- js/actions/api-collection.js -->
 @startDocuBlock JSF_put_api_collection_properties
 
 <!-- js/actions/api-collection.js -->
