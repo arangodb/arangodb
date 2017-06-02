@@ -7,6 +7,9 @@ v3.1.22 (2017-xx-xx)
 
 * fixed ui glitch in aardvark
 
+* avoid agency compaction bug
+
+
 v3.1.21 (2017-05-22)
 --------------------
 
