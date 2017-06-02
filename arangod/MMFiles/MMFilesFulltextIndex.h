@@ -71,6 +71,7 @@ class MMFilesFulltextIndex final : public Index {
   int remove(transaction::Methods*, TRI_voc_rid_t,
              arangodb::velocypack::Slice const&, bool isRollback) override;
 
+  int load() override { return 0; }
   int unload() override;
 
   int cleanup() override;

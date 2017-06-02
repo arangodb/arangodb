@@ -113,6 +113,7 @@ class MMFilesEdgeIndex final : public Index {
                    std::vector<std::pair<TRI_voc_rid_t, VPackSlice>> const&,
                    std::shared_ptr<arangodb::basics::LocalTaskQueue>) override;
 
+  int load() override { return 0; }
   int unload() override;
 
   int sizeHint(transaction::Methods*, size_t) override;
