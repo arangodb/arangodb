@@ -27,6 +27,5 @@ using namespace arangodb;
 
 std::string TransactionCollection::collectionName() const {
   TRI_ASSERT(_collection != nullptr);
-  if (_collection == nullptr) return "nullptr";
   return _collection->name();
 }
