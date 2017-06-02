@@ -126,6 +126,31 @@ function agencyTestSuite () {
     return res.bodyParsed;
   }
   
+  function doCountTransactions(count, start) {
+    let i;
+    let trxs = [];
+    for (i = start; i < start + count; ++i) {
+      let key = "/key"+i;
+      let trx = [{}];
+      trx[0][key] = "value" + i;
+      trxs.push(trx);
+    }
+    let res = accessAgency("write", trxs);
+    assertEqual(200, res.statusCode);
+    trxs = [];
+    for (i = 0; i < start + count; ++i) {
+      trxs.push(["/key"+i]);
+    }
+    res = accessAgency("read", trxs);
+    assertEqual(200, res.statusCode);
+    for (i = 0; i < start + count; ++i) {
+      let key = "key"+i;
+      let correct = {};
+      correct[key] = "value" + i;
+      assertEqual(correct, res.bodyParsed[i]);
+    }
+  }
+
   return {
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -882,98 +907,37 @@ function agencyTestSuite () {
     testHiddenAgencyWriteDeep: function() {
       var res = accessAgency("write",[[{"/.agency/hans": {"op":"set","new":"fallera"}}]]);
       assertEqual(res.statusCode, 200);
-    }/*,
+    },
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Compaction
 ////////////////////////////////////////////////////////////////////////////////    
     
-    testLogNoCompaction: function() {
-      let i;
+    testLogCompaction: function() {
       // Find current log index and erase all data:
       let cur = accessAgency("write",[[{"/": {"op":"delete"}}]]).
           bodyParsed.results[0];
 
-      // All tests so far have not really written many log entries in 
-      // comparison to the compaction interval (with the default settings),
       let count = compactionConfig.compactionStepSize - 100 - cur;
       require("console").warn("Avoiding log compaction for now with", count,
         "keys, from log entry", cur, "on.");
-      for (i = 0; i < count; ++i) {
-        let key = "/key"+i;
-        let trx = [{}];
-        trx[0][key] = "value" + i;
-        let res = accessAgency("write", [trx]);
-        assertEqual(200, res.statusCode);
-      }
-      for (i = 0; i < count; ++i) {
-        let res = accessAgency("read", [["/key"+i]]);
-        assertEqual(200, res.statusCode);
-        let key = "key"+i;
-        let correct = [{}];
-        correct[0][key] = "value" + i;
-        assertEqual(correct, res.bodyParsed);
-      }
+      doCountTransactions(count, 0);
 
-    },
-
-    testLogCompaction: function() {
-      let i;
-      // Find current log index and erase all data:
-      let cur = accessAgency("write",[[{"/": {"op":"delete"}}]]).
-          bodyParsed.results[0];
+      // Now trigger one log compaction and check all keys:
+      let count2 = compactionConfig.compactionStepSize + 100 - (cur + count);
+      require("console").warn("Provoking log compaction for now with", count2,
+        "keys, from log entry", cur + count, "on.");
+      doCountTransactions(count2, count);
 
       // All tests so far have not really written many log entries in 
       // comparison to the compaction interval (with the default settings),
-      let count = compactionConfig.compactionStepSize + 100 - cur;
-      require("console").warn("Provoking log compaction for now with", count,
-        "keys, from log entry", cur, "on.");
-      for (i = 0; i < count; ++i) {
-        let key = "/key"+i;
-        let trx = [{}];
-        trx[0][key] = "value" + i;
-        let res = accessAgency("write", [trx]);
-        assertEqual(200, res.statusCode);
-      }
-      for (i = 0; i < count; ++i) {
-        let res = accessAgency("read", [["/key"+i]]);
-        assertEqual(200, res.statusCode);
-        let key = "key"+i;
-        let correct = [{}];
-        correct[0][key] = "value" + i;
-        assertEqual(correct, res.bodyParsed);
-      }
-    },
-
-    testLogSecondCompaction: function() {
-      let i;
-      // Find current log index and erase all data:
-      let cur = accessAgency("write",[[{"/": {"op":"delete"}}]]).
-          bodyParsed.results[0];
-
-      // All tests so far have not really written many log entries in 
-      // comparison to the compaction interval (with the default settings),
-      let count = compactionConfig.compactionStepSize + 100 - cur;
+      let count3 = 2 * compactionConfig.compactionStepSize + 100 
+        - (cur + count + count2);
       require("console").warn("Provoking second log compaction for now with", 
-        count, "keys, from log entry", cur, "on.");
-      for (i = 0; i < count; ++i) {
-        let key = "/key"+i;
-        let trx = [{}];
-        trx[0][key] = "value" + i;
-        let res = accessAgency("write", [trx]);
-        assertEqual(200, res.statusCode);
-      }
-      for (i = 0; i < count; ++i) {
-        let res = accessAgency("read", [["/key"+i]]);
-        assertEqual(200, res.statusCode);
-        let key = "key"+i;
-        let correct = [{}];
-        correct[0][key] = "value" + i;
-        assertEqual(correct, res.bodyParsed);
-      }
-
+        count3, "keys, from log entry", cur + count + count2, "on.");
+      doCountTransactions(count3, count + count2);
     }
-*/
+
   };
 }
 
