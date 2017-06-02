@@ -201,6 +201,27 @@ the iterations are bound by the diameter (the longest shortest path) of your gra
   pregel.start("sssp", "graphname", {source:"vertices/1337"})
 ```
 
+
+#### Connected Components
+
+There are two algorithms to find connected components in a graph. To find weakly connected components (WCC)
+you can use the algorithm named "connectedcomponents", to find strongly connected components (SCC) you can use the algorithm
+named "scc". Both algorithm will assign a component ID to each vertex.
+
+A weakly connected components means that there exist a path from every vertex pair in that component.
+WCC is a very simple and fast algorithm, which will only work correctly on undirected graphs. Your results on directed graphs may vary, depending on how connected your components are.
+
+In the case of SCC a component means every vertex is reachable from any other vertex in the same component. The algorithm is more complex than the WCC algorithm and requires more RAM, because each vertex needs to store much more state. 
+Consider using WCC if you think your data may be suitable for it.
+
+```javascript
+  var pregel = require("@arangodb/pregel");
+  // weakly connected components
+  pregel.start("connectedcomponents", "graphname")
+  // strongly connected components
+  pregel.start("scc", "graphname")
+```
+
 #### Hyperlink-Induced Topic Search (HITS)
 
 HITS is a link analysis algorithm that rates Web pages, developed by Jon Kleinberg (The algorithm is also known as hubs and authorities).
@@ -284,8 +305,13 @@ The algorithm is from the paper *Centralities in Large Networks: Algorithms and 
 ```
 
 
-#### Community Detection: Label Propagation 
+#### Community Detection
 
+Graphs based on real world networks often have a community structure. This means it is possible to find groups of vertices such that each each vertex group is internally more densely connected than outside the group.
+This has many applications when you want to analyze your networks, for example
+Social networks include community groups (the origin of the term, in fact) based on common location, interests, occupation, etc.
+
+##### Label Propagation 
 
 *Label Propagation* can be used to implement community detection on large graphs. The idea is that each
 vertex should be in the community that most of his neighbours are in. We iteratively detemine this by first
