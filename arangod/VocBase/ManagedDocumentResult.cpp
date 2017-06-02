@@ -80,7 +80,7 @@ void ManagedDocumentResult::setManaged(std::string&& str, TRI_voc_rid_t revision
 
 void ManagedDocumentResult::reset() noexcept {
   if(_managed) {
-    delete _vpack;
+    delete[] _vpack;
   }
   _managed = false;
   _length = 0;
