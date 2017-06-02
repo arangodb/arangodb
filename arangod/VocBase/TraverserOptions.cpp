@@ -414,6 +414,26 @@ bool TraverserOptions::vertexHasFilter(uint64_t depth) const {
   return _vertexExpressions.find(depth) != _vertexExpressions.end();
 }
 
+bool TraverserOptions::hasEdgeFilter(int64_t depth, size_t cursorId) const {
+  if (_isCoordinator) {
+    // The Coordinator never checks conditions. The DBServer is responsible!
+    return false;
+  }
+  arangodb::aql::Expression* expression = nullptr;
+  
+  auto specific = _depthLookupInfo.find(depth);
+  
+  if (specific != _depthLookupInfo.end()) {
+    TRI_ASSERT(!specific->second.empty());
+    TRI_ASSERT(specific->second.size() > cursorId);
+    expression = specific->second[cursorId].expression;
+  } else {
+    expression = getEdgeExpression(cursorId);
+  }
+  return expression != nullptr;
+}
+
+
 bool TraverserOptions::evaluateEdgeExpression(arangodb::velocypack::Slice edge,
                                               StringRef vertexId,
                                               uint64_t depth,

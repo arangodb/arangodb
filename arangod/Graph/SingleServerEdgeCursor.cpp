@@ -169,9 +169,9 @@ void SingleServerEdgeCursor::readAll(
       LogicalCollection* collection = cursor->collection();
       auto cid = collection->cid();
       if (cursor->hasExtra()) {
-        auto cb = [&](DocumentIdentifierToken const& token, VPackSlice doc) {
+        auto cb = [&](DocumentIdentifierToken const& token, VPackSlice edge) {
           _opts->cache()->increaseCounter();
-          callback(std::make_unique<SingleServerEdgeDocumentToken>(cid, token), doc, cursorId);
+          callback(std::make_unique<SingleServerEdgeDocumentToken>(cid, token), edge, cursorId);
         };
         cursor->allWithExtra(cb);
       } else {
@@ -187,3 +187,4 @@ void SingleServerEdgeCursor::readAll(
     }
   }
 }
+

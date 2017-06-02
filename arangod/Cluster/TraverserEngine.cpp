@@ -232,7 +232,10 @@ void BaseTraverserEngine::getEdges(VPackSlice vertex, size_t depth,
           _opts->nextCursor(&mmdr, vertexId, depth));
 
       edgeCursor->readAll(
-          [&](std::unique_ptr<EdgeDocumentToken>&&, VPackSlice edge, size_t cursorId) {
+          [&](std::unique_ptr<EdgeDocumentToken>&& eid, VPackSlice edge, size_t cursorId) {
+            if (edge.isString()) {
+              edge = _opts->cache()->lookupToken(eid.get());
+            }
             if (_opts->evaluateEdgeExpression(edge, StringRef(v), depth,
                                               cursorId)) {
               builder.add(edge);
@@ -244,7 +247,10 @@ void BaseTraverserEngine::getEdges(VPackSlice vertex, size_t depth,
     std::unique_ptr<arangodb::graph::EdgeCursor> edgeCursor(
         _opts->nextCursor(&mmdr, StringRef(vertex), depth));
     edgeCursor->readAll(
-        [&](std::unique_ptr<EdgeDocumentToken>&&, VPackSlice edge, size_t cursorId) {
+        [&](std::unique_ptr<EdgeDocumentToken>&& eid, VPackSlice edge, size_t cursorId) {
+          if (edge.isString()) {
+            edge = _opts->cache()->lookupToken(eid.get());
+          }
           if (_opts->evaluateEdgeExpression(edge, StringRef(vertex), depth,
                                             cursorId)) {
             builder.add(edge);
@@ -374,8 +380,13 @@ void ShortestPathEngine::getEdges(VPackSlice vertex, bool backward,
         edgeCursor.reset(_opts->nextCursor(&mmdr, vertexId));
       }
 
-      edgeCursor->readAll([&](std::unique_ptr<EdgeDocumentToken>&&, VPackSlice edge,
-                              size_t cursorId) { builder.add(edge); });
+      edgeCursor->readAll([&](std::unique_ptr<EdgeDocumentToken>&& eid, VPackSlice edge,
+                              size_t cursorId) {
+        if (edge.isString()) {
+          edge = _opts->cache()->lookupToken(eid.get());
+        }
+        builder.add(edge);
+      });
       // Result now contains all valid edges, probably multiples.
     }
   } else if (vertex.isString()) {
@@ -385,8 +396,13 @@ void ShortestPathEngine::getEdges(VPackSlice vertex, bool backward,
     } else {
       edgeCursor.reset(_opts->nextCursor(&mmdr, vertexId));
     }
-    edgeCursor->readAll([&](std::unique_ptr<EdgeDocumentToken>&&, VPackSlice edge,
-                            size_t cursorId) { builder.add(edge); });
+    edgeCursor->readAll([&](std::unique_ptr<EdgeDocumentToken>&& eid, VPackSlice edge,
+                            size_t cursorId) {
+      if (edge.isString()) {
+        edge = _opts->cache()->lookupToken(eid.get());
+      }
+      builder.add(edge);
+    });
     // Result now contains all valid edges, probably multiples.
   } else {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_BAD_PARAMETER);

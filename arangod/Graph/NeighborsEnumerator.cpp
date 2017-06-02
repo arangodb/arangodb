@@ -61,15 +61,15 @@ bool NeighborsEnumerator::next() {
 
       _lastDepth.swap(_currentDepth);
       _currentDepth.clear();
-      StringRef v;
       for (auto const& nextVertex : _lastDepth) {
-        auto callback = [&](std::unique_ptr<EdgeDocumentToken>&&, VPackSlice e, size_t cursorId) {
+        auto callback = [&](std::unique_ptr<EdgeDocumentToken>&&,
+                            VPackSlice other, size_t cursorId) {
           // Counting should be done in readAll
-          if (_traverser->getSingleVertex(e, nextVertex, _searchDepth, v)) {
-            StringRef otherId = _traverser->traverserCache()->persistString(v);
-            if (_allFound.find(otherId) == _allFound.end()) {
-              _currentDepth.emplace(otherId);
-              _allFound.emplace(otherId);
+          StringRef v;
+          if (_traverser->getSingleVertex(other, nextVertex, _searchDepth, v)) {
+            if (_allFound.find(v) == _allFound.end()) {
+              _currentDepth.emplace(v);
+              _allFound.emplace(v);
             }
           }
         };
