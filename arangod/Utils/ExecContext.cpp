@@ -27,6 +27,11 @@ using namespace arangodb;
 
 thread_local ExecContext* ExecContext::CURRENT_EXECCONTEXT = nullptr;
 
+AuthContext::AuthContext(AuthLevel authLevel, std::unordered_map<std::string, AuthLevel>&& collectionAccess)
+  : _databaseAccess(authLevel),
+    _systemAuthLevel(AuthLevel::NONE),
+    _collectionAccess(std::move(collectionAccess)) {}
+
 AuthLevel AuthContext::collectionAuthLevel(std::string const& collectionName) {
   for(const auto& collection : std::vector<std::string>({collectionName, "*"})) {
     auto const& it = _collectionAccess.find(collection);

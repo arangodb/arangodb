@@ -209,6 +209,7 @@ class AuthInfo {
   std::atomic<bool> _outdated;
 
   std::unordered_map<std::string, arangodb::AuthEntry> _authInfo;
+  std::shared_ptr<AuthContext> _noneAuthContext;
   std::unordered_map<std::string, arangodb::AuthResult> _authBasicCache;
   arangodb::basics::LruCache<std::string, arangodb::AuthJwtResult> _authJwtCache;
   std::string _jwtSecret;

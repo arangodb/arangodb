@@ -164,12 +164,15 @@ static AuthEntry CreateAuthEntry(VPackSlice const& slice, AuthSource source) {
     } // for
   } // if
 
-
-  // TODO -> add _system rights to all AuthContexts
-
+  AuthLevel systemDatabaseLevel = AuthLevel::RO;
+  auto const& it = authContexts.find("_system");
+  if (it != authContexts.end()) {
+    systemDatabaseLevel = it->second->databaseAuthLevel();
+  }
 
   for (auto const& ctx : authContexts) {
     LOG_TOPIC(INFO, arangodb::Logger::FIXME) << userSlice.copyString() << " Database " << ctx.first;
+    ctx.second->systemAuthLevel(systemDatabaseLevel);
     ctx.second->dump();
   }
 
@@ -201,7 +204,8 @@ AuthInfo::AuthInfo()
     : _outdated(true),
     _authJwtCache(16384),
     _jwtSecret(""),
-    _queryRegistry(nullptr) {}
+    _queryRegistry(nullptr),
+    _noneAuthContext(std::make_shared<AuthContext>(AuthLevel::NONE, std::unordered_map<std::string, AuthLevel>({{"*", AuthLevel::NONE}}))) {}
 
 void AuthInfo::setJwtSecret(std::string const& jwtSecret) {
   WRITE_LOCKER(writeLocker, _authJwtLock);
@@ -892,7 +896,7 @@ std::shared_ptr<AuthContext> AuthInfo::getAuthContext(std::string const& usernam
   auto it = _authInfo.find(username);
 
   if (it == _authInfo.end()) {
-    return std::make_shared<AuthContext>(AuthLevel::NONE, std::unordered_map<std::string, AuthLevel>({{"*", AuthLevel::NONE}}));
+    return _noneAuthContext;
   }
 
   // AuthEntry const& entry =

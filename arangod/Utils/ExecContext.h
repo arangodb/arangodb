@@ -31,16 +31,16 @@ enum class AuthLevel;
 
 class AuthContext {
   public:
-    AuthContext(AuthLevel authLevel, std::unordered_map<std::string, AuthLevel>&& collectionAccess)
-     : _databaseAccess(authLevel),
-       _collectionAccess(std::move(collectionAccess))  {}
+    AuthContext(AuthLevel authLevel, std::unordered_map<std::string, AuthLevel>&& collectionAccess);
     AuthLevel databaseAuthLevel() { return _databaseAccess; }
+    void systemAuthLevel(AuthLevel level) { _systemAuthLevel = level; }
     AuthLevel collectionAuthLevel(std::string const& collectionName);
 
     void dump();
 
   protected:
     AuthLevel _databaseAccess;
+    AuthLevel _systemAuthLevel;
     std::unordered_map<std::string, AuthLevel> _collectionAccess;
 };
 

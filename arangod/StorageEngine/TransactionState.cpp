@@ -32,7 +32,6 @@
 #include "Transaction/Options.h"
 #include "Utils/ExecContext.h"
 #include "VocBase/ticks.h"
-#include "VocBase/LogicalCollection.h"
 #include <iostream>
 
 using namespace arangodb;
@@ -116,6 +115,8 @@ int TransactionState::addCollection(TRI_voc_cid_t cid,
     std::string colName = _resolver->getCollectionNameCluster(cid);
     std::cout << "collection is " << colName <<  "\n";
     AuthLevel level = ExecContext::CURRENT_EXECCONTEXT->authContext()->collectionAuthLevel(colName);
+
+    if (colName == "_users") level = AuthLevel::RW; // <--- TODO: THIS IS A HACK! REMOVE IN PRODUCTION --->
 
     if (level == AuthLevel::NONE) {
       std::cout << "collection AuthLevel::NONE\n";
