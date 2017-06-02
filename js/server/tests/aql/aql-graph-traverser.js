@@ -129,7 +129,7 @@ function nestedSuite () {
       assertEqual([ ], result);
       
       result = AQL_EXECUTE(query, { start1: tags.name() + "/land", start2: tags.name() + "/fast", "@tagged": tagged.name() }).json;
-      assertEqual([ "car", "train" ], result);
+      assertEqual([ "car", "train" ], result.sort());
       
       result = AQL_EXECUTE(query, { start1: tags.name() + "/land", start2: tags.name() + "/private", "@tagged": tagged.name() }).json;
       assertEqual([ "bicycle", "car" ], result.sort());
