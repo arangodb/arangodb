@@ -336,18 +336,7 @@ void RocksDBEdgeIndexIterator::lookupInRocksDB(StringRef fromTo) {
     _builder.add(VPackValue(token.revisionId()));
     StringRef vertexId = RocksDBValue::vertexId(_iterator->value());
     _builder.add(VPackValuePair(vertexId.data(), vertexId.size(), VPackValueType::String));
-    
-    /*ManagedDocumentResult mmdr;
-    if (rocksColl->readDocument(_trx, token, mmdr)) {
-      _builder.add(VPackValue(token.revisionId()));
-      VPackSlice doc(mmdr.vpack());
-      TRI_ASSERT(doc.isObject());
-      _builder.add(doc);
-    } else {
-      // Data Inconsistency.
-      // We have a revision id without a document...
-      TRI_ASSERT(false);
-    }*/
+
     _iterator->Next();
   }
   _builder.close();
