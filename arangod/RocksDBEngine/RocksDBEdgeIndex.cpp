@@ -242,7 +242,7 @@ bool RocksDBEdgeIndexIterator::nextExtra(ExtraCallback const& cb,
       _builderIterator.next();
       TRI_ASSERT(_builderIterator.valid());
       // For now we store complete edges.
-      TRI_ASSERT(_builderIterator.value().isObject());
+      TRI_ASSERT(_builderIterator.value().isString());
 
       cb(tkn, _builderIterator.value());
 
@@ -287,7 +287,7 @@ bool RocksDBEdgeIndexIterator::nextExtra(ExtraCallback const& cb,
                 _builderIterator.value().getNumericValue<uint64_t>()};
             _builderIterator.next();
             TRI_ASSERT(_builderIterator.valid());
-            TRI_ASSERT(_builderIterator.value().isObject());
+            TRI_ASSERT(_builderIterator.value().isString());
 
             cb(tkn, _builderIterator.value());
 
@@ -324,7 +324,6 @@ void RocksDBEdgeIndexIterator::lookupInRocksDB(StringRef fromTo) {
   _bounds = RocksDBKeyBounds::EdgeIndexVertex(_index->_objectId, fromTo);
   _iterator->Seek(_bounds.start());
   resetInplaceMemory();
-  RocksDBCollection* rocksColl = toRocksDBCollection(_collection);
   rocksdb::Comparator const* cmp = _index->comparator();
 
   _builder.openArray();
@@ -332,18 +331,12 @@ void RocksDBEdgeIndexIterator::lookupInRocksDB(StringRef fromTo) {
   while (_iterator->Valid() && (cmp->Compare(_iterator->key(), end) < 0)) {
     TRI_voc_rid_t revisionId = RocksDBKey::revisionId(_iterator->key());
     RocksDBToken token(revisionId);
+    
+    // adding revision ID and _from or _to value
+    _builder.add(VPackValue(token.revisionId()));
+    StringRef vertexId = RocksDBValue::vertexId(_iterator->value());
+    _builder.add(VPackValuePair(vertexId.data(), vertexId.size(), VPackValueType::String));
 
-    ManagedDocumentResult mmdr;
-    if (rocksColl->readDocument(_trx, token, mmdr)) {
-      _builder.add(VPackValue(token.revisionId()));
-      VPackSlice doc(mmdr.vpack());
-      TRI_ASSERT(doc.isObject());
-      _builder.add(doc);
-    } else {
-      // Data Inconsistency.
-      // We have a revision id without a document...
-      TRI_ASSERT(false);
-    }
     _iterator->Next();
   }
   _builder.close();
@@ -451,7 +444,7 @@ int RocksDBEdgeIndex::insert(transaction::Methods* trx,
   TRI_ASSERT(fromTo.isString());
   auto fromToRef = StringRef(fromTo);
   RocksDBKey key = RocksDBKey::EdgeIndexValue(_objectId, fromToRef, revisionId);
-  VPackSlice toFrom = _isFromIndex ? doc.get(StaticStrings::ToString) : doc.get(StaticStrings::FromString);
+  VPackSlice toFrom = _isFromIndex ? transaction::helpers::extractToFromDocument(doc) : transaction::helpers::extractFromFromDocument(doc);
   TRI_ASSERT(toFrom.isString());
   RocksDBValue value = RocksDBValue::EdgeIndexValue(StringRef(toFrom));
   
@@ -485,7 +478,7 @@ int RocksDBEdgeIndex::remove(transaction::Methods* trx,
   auto fromToRef = StringRef(fromTo);
   TRI_ASSERT(fromTo.isString());
   RocksDBKey key = RocksDBKey::EdgeIndexValue(_objectId, fromToRef, revisionId);
-  VPackSlice toFrom = _isFromIndex ? doc.get(StaticStrings::ToString) : doc.get(StaticStrings::FromString);
+  VPackSlice toFrom = _isFromIndex ? transaction::helpers::extractToFromDocument(doc) : transaction::helpers::extractFromFromDocument(doc);
   TRI_ASSERT(toFrom.isString());
   RocksDBValue value = RocksDBValue::EdgeIndexValue(StringRef(toFrom));
 

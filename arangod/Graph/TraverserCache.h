@@ -122,6 +122,9 @@ class TraverserCache {
    void increaseCounter() {
      _insertedDocuments++;
    }
+  
+  /// Only valid until the next call to this class
+  virtual arangodb::velocypack::Slice lookupToken(EdgeDocumentToken const* token);
 
   protected:
 

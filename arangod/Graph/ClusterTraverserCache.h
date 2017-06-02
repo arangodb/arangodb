@@ -85,6 +85,8 @@ class ClusterTraverserCache : public TraverserCache {
   size_t& insertedDocuments();
 
   size_t& filteredDocuments();
+  
+  arangodb::velocypack::Slice lookupToken(EdgeDocumentToken const* token) override;
 
  private:
   std::unordered_map<StringRef, arangodb::velocypack::Slice> _edges;

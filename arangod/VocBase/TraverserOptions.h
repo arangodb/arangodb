@@ -112,6 +112,8 @@ struct TraverserOptions : public graph::BaseOptions {
 
   bool vertexHasFilter(uint64_t) const;
 
+  bool hasEdgeFilter(int64_t, size_t) const;
+  
   bool evaluateEdgeExpression(arangodb::velocypack::Slice, StringRef vertexId,
                               uint64_t, size_t) const;
 

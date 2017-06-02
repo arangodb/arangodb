@@ -50,6 +50,11 @@ TraverserCache::TraverserCache(transaction::Methods* trx)
 
 TraverserCache::~TraverserCache() {}
 
+arangodb::velocypack::Slice TraverserCache::lookupToken(EdgeDocumentToken const* token) {
+  return lookupInCollection(static_cast<SingleServerEdgeDocumentToken const*>(token));
+}
+
+
 VPackSlice TraverserCache::lookupInCollection(StringRef id) {
   size_t pos = id.find('/');
   if (pos == std::string::npos) {

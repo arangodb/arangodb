@@ -44,6 +44,10 @@ ClusterTraverserCache::ClusterTraverserCache(
 
 ClusterTraverserCache::~ClusterTraverserCache() {}
 
+arangodb::velocypack::Slice ClusterTraverserCache::lookupToken(EdgeDocumentToken const* token) {
+  return lookupInCollection(static_cast<ClusterEdgeDocumentToken const*>(token)->id());
+}
+
 aql::AqlValue ClusterTraverserCache::fetchAqlResult(EdgeDocumentToken const* idToken) {
   // This cast is save because the Coordinator can only create those tokens
   auto tkn = static_cast<ClusterEdgeDocumentToken const*>(idToken);
