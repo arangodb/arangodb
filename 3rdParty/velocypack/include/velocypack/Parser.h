@@ -112,7 +112,7 @@ class Parser {
     }
   }
 
-  // This method produces a
+  // This method produces a parser that does not own the builder
   explicit Parser(Builder& builder,
                   Options const* options = &Options::Defaults)
       : _start(nullptr), _size(0), _pos(0), _nesting(0),
