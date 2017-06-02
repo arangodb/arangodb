@@ -81,15 +81,6 @@ function isFoxxmaster () {
   return global.ArangoServerState.isFoxxmaster();
 }
 
-function isClusterReadyForBusiness () {
-  const coordIds = getPeerCoordinatorIds();
-  return parallelClusterRequests(function * () {
-    for (const coordId of coordIds) {
-      yield [coordId, 'GET', '/_api/version'];
-    }
-  }()).every(response => response.statusCode === 200);
-}
-
 function parallelClusterRequests (requests) {
   let pending = 0;
   let options;
@@ -1010,7 +1001,6 @@ exports.commitLocalState = commitLocalState;
 exports._createServiceBundle = createServiceBundle;
 exports._resetCache = () => GLOBAL_SERVICE_MAP.clear();
 exports._mountPoints = getMountPoints;
-exports._isClusterReady = isClusterReadyForBusiness;
 
 // -------------------------------------------------
 // Exports from foxx utils module
