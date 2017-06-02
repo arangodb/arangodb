@@ -2330,7 +2330,7 @@ ClusterMethods::persistCollectionInAgency(
   size_t replicationFactor = col->replicationFactor();
 
   ClusterInfo* ci = ClusterInfo::instance();
-  std::vector<std::string> dbServers = ci->getCurrentDBServers();
+  std::vector<std::string> dbServers;
   if (!distributeShardsLike.empty()) {
     CollectionNameResolver resolver(col->vocbase());
     TRI_voc_cid_t otherCid =
@@ -2365,6 +2365,7 @@ ClusterMethods::persistCollectionInAgency(
       }
       col->distributeShardsLike(otherCidString);
     } else {
+      dbServers = ci->getCurrentDBServers();
       if (ignoreDistributeShardsLikeErrors) {
         col->distributeShardsLike(std::string());
       } else {
@@ -2372,6 +2373,7 @@ ClusterMethods::persistCollectionInAgency(
       }
     }
   } else if (!avoid.empty()) {
+    dbServers = ci->getCurrentDBServers();
     if (dbServers.size() - avoid.size() >= replicationFactor) {
       dbServers.erase(
         std::remove_if(
