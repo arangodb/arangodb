@@ -55,7 +55,6 @@ function DistributeShardsLikeSuite() {
         fail();
       }
       catch (err) {
-        require("internal").print("FUXX:", JSON.stringify(err));
         assertEqual(errors.ERROR_CLUSTER_UNKNOWN_DISTRIBUTESHARDSLIKE.code,
                     err.errorNum);
       }
