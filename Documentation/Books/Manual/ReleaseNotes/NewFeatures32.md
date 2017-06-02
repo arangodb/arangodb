@@ -217,7 +217,7 @@ Foxx
 
 
 Distributed Graph Processing
-------
+----------------------------
 
 * We added support for executing distributed graph algorithms aka `Pregel`. 
 * Users can run arbitrary algorithms on an entire graph, including in cluster mode.
@@ -352,3 +352,14 @@ Foxx
 * it's now possible to provide your own version of the `graphql-sync` module when using the [GraphQL extensions for Foxx](../Foxx/GraphQL.md) by passing a copy of the module using the new _graphql_ option.
 
 * custom API endpoints can now be tagged using the [tag method](../Foxx/Router/Endpoints.md#tag) to generate a cleaner Swagger documentation.
+
+
+Miscellaneous Changes
+---------------------
+
+* arangod now validates several OS/environment settings on startup and warns if
+  the settings are non-ideal. It additionally will print out ways to remedy the
+  options.
+  
+  Most of the checks are executed on Linux systems only.
+
