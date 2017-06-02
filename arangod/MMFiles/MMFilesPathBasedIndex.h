@@ -61,6 +61,7 @@ class MMFilesPathBasedIndex : public Index {
   }
 
   bool implicitlyUnique() const override;
+  int load() override {}
 
  protected:
   /// @brief helper function to insert a document into any index type

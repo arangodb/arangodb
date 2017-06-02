@@ -63,7 +63,7 @@ using namespace arangodb::basics;
 RocksDBEdgeIndexIterator::RocksDBEdgeIndexIterator(
     LogicalCollection* collection, transaction::Methods* trx,
     ManagedDocumentResult* mmdr, arangodb::RocksDBEdgeIndex const* index,
-    std::unique_ptr<VPackBuilder>& keys, cache::Cache* cache)
+    std::unique_ptr<VPackBuilder>& keys, std::shared_ptr<cache::Cache> cache)
     : IndexIterator(collection, trx, mmdr, index),
       _keys(keys.get()),
       _keysIterator(_keys->slice()),
@@ -173,7 +173,7 @@ bool RocksDBEdgeIndexIterator::next(TokenCallback const& cb, size_t limit) {
     StringRef fromTo(fromToSlice);
 
     bool needRocksLookup = true;
-    if (_cache != nullptr) {
+    if (_cache) {
       // Try to read from cache
       auto finding = _cache->find(fromTo.data(), (uint32_t)fromTo.size());
       if (finding.found()) {
@@ -270,7 +270,7 @@ bool RocksDBEdgeIndexIterator::nextExtra(ExtraCallback const& cb,
     StringRef fromTo(fromToSlice);
 
     bool needRocksLookup = true;
-    if (_cache != nullptr) {
+    if (_cache) {
       // Try to read from cache
       auto finding = _cache->find(fromTo.data(), (uint32_t)fromTo.size());
       if (finding.found()) {
@@ -326,6 +326,7 @@ void RocksDBEdgeIndexIterator::lookupInRocksDB(StringRef fromTo) {
   resetInplaceMemory();
   rocksdb::Comparator const* cmp = _index->comparator();
 
+  cache::Cache *cc = _cache.get();
   _builder.openArray();
   auto end = _bounds.end();
   while (_iterator->Valid() && (cmp->Compare(_iterator->key(), end) < 0)) {
@@ -340,7 +341,7 @@ void RocksDBEdgeIndexIterator::lookupInRocksDB(StringRef fromTo) {
     _iterator->Next();
   }
   _builder.close();
-  if (_cache != nullptr) {
+  if (cc != nullptr) {
     // TODO Add cache retry on next call
     // Now we have something in _inplaceMemory.
     // It may be an empty array or a filled one, never mind, we cache both
@@ -348,7 +349,7 @@ void RocksDBEdgeIndexIterator::lookupInRocksDB(StringRef fromTo) {
         fromTo.data(), static_cast<uint32_t>(fromTo.size()),
         _builder.slice().start(),
         static_cast<uint64_t>(_builder.slice().byteSize()));
-    bool cached = _cache->insert(entry);
+    bool cached = cc->insert(entry);
     if (!cached) {
       LOG_TOPIC(DEBUG, arangodb::Logger::CACHE) << "Failed to cache: "
                                               << fromTo.toString();
@@ -633,7 +634,7 @@ void RocksDBEdgeIndex::expandInSearchValues(VPackSlice const slice,
 }
 
 void RocksDBEdgeIndex::warmup(arangodb::transaction::Methods* trx) {
-  if (_cache == nullptr) {
+  if (!_useCache || !_cache) {
     return;
   }
   auto rocksColl = toRocksDBCollection(_collection);
@@ -649,6 +650,7 @@ void RocksDBEdgeIndex::warmup(arangodb::transaction::Methods* trx) {
   ManagedDocumentResult mmdr;
   bool needsInsert = false;
 
+  cache::Cache* cc = _cache.get();
   rocksutils::iterateBounds(
       bounds,
       [&](rocksdb::Iterator* it) {
@@ -659,7 +661,7 @@ void RocksDBEdgeIndex::warmup(arangodb::transaction::Methods* trx) {
           builder.clear();
           previous = v.toString();
           auto finding =
-              _cache->find(previous.data(), (uint32_t)previous.size());
+              cc->find(previous.data(), (uint32_t)previous.size());
           if (finding.found()) {
             needsInsert = false;
           } else {
@@ -674,7 +676,7 @@ void RocksDBEdgeIndex::warmup(arangodb::transaction::Methods* trx) {
             // Store what we have.
             builder.close();
 
-            while (_cache->isResizing() || _cache->isMigrating()) {
+            while (cc->isResizing() || cc->isMigrating()) {
               // We should wait here, the cache will reject
               // any inserts anyways.
               usleep(10000);
@@ -684,7 +686,7 @@ void RocksDBEdgeIndex::warmup(arangodb::transaction::Methods* trx) {
                 previous.data(), static_cast<uint32_t>(previous.size()),
                 builder.slice().start(),
                 static_cast<uint64_t>(builder.slice().byteSize()));
-            if (!_cache->insert(entry)) {
+            if (!cc->insert(entry)) {
               delete entry;
             }
             builder.clear();
@@ -692,7 +694,7 @@ void RocksDBEdgeIndex::warmup(arangodb::transaction::Methods* trx) {
           // Need to store
           previous = v.toString();
           auto finding =
-              _cache->find(previous.data(), (uint32_t)previous.size());
+              cc->find(previous.data(), (uint32_t)previous.size());
           if (finding.found()) {
             needsInsert = false;
           } else {
@@ -727,7 +729,7 @@ void RocksDBEdgeIndex::warmup(arangodb::transaction::Methods* trx) {
         previous.data(), static_cast<uint32_t>(previous.size()),
         builder.slice().start(),
         static_cast<uint64_t>(builder.slice().byteSize()));
-    if (!_cache->insert(entry)) {
+    if (!cc->insert(entry)) {
       delete entry;
     }
   }
@@ -752,7 +754,7 @@ IndexIterator* RocksDBEdgeIndex::createEqIterator(
   keys->close();
 
   return new RocksDBEdgeIndexIterator(_collection, trx, mmdr, this, keys,
-                                      _cache.get());
+                                      _cache);
 }
 
 /// @brief create the iterator
@@ -779,7 +781,7 @@ IndexIterator* RocksDBEdgeIndex::createInIterator(
   keys->close();
 
   return new RocksDBEdgeIndexIterator(_collection, trx, mmdr, this, keys,
-                                      _cache.get());
+                                      _cache);
 }
 
 /// @brief add a single value node to the iterator's keys

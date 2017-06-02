@@ -74,6 +74,7 @@ class RocksDBIndex : public Index {
 
   int drop() override;
 
+  int load() override;
   int unload() override;
 
   virtual void truncate(transaction::Methods*);

@@ -75,6 +75,8 @@ class PhysicalCollection {
   void figures(std::shared_ptr<arangodb::velocypack::Builder>& builder);
 
   virtual int close() = 0;
+  virtual void load() = 0;
+  virtual void unload() = 0;
 
   // @brief Return the number of documents in this collection
   virtual uint64_t numberDocuments(transaction::Methods* trx) const = 0;

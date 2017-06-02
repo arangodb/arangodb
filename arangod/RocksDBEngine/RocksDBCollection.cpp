@@ -170,6 +170,20 @@ int RocksDBCollection::close() {
   return TRI_ERROR_NO_ERROR;
 }
 
+void RocksDBCollection::load() {
+  READ_LOCKER(guard, _indexesLock);
+  for (auto it : _indexes) {
+    it->load();
+  }
+}
+
+void RocksDBCollection::unload() {
+  READ_LOCKER(guard, _indexesLock);
+  for (auto it : _indexes) {
+    it->unload();
+  }
+}
+
 TRI_voc_rid_t RocksDBCollection::revision() const { return _revisionId; }
 
 TRI_voc_rid_t RocksDBCollection::revision(transaction::Methods* trx) const {

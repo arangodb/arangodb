@@ -52,7 +52,8 @@ class RocksDBEdgeIndexIterator final : public IndexIterator {
                            transaction::Methods* trx,
                            ManagedDocumentResult* mmdr,
                            arangodb::RocksDBEdgeIndex const* index,
-                           std::unique_ptr<VPackBuilder>& keys, cache::Cache*);
+                           std::unique_ptr<VPackBuilder>& keys,
+                           std::shared_ptr<cache::Cache>);
   ~RocksDBEdgeIndexIterator();
   char const* typeName() const override { return "edge-index-iterator"; }
   bool hasExtra() const override { return true; }
@@ -76,7 +77,7 @@ class RocksDBEdgeIndexIterator final : public IndexIterator {
   // the following 2 values are required for correct batch handling
   std::unique_ptr<rocksdb::Iterator> _iterator;  // iterator position in rocksdb
   RocksDBKeyBounds _bounds;
-  cache::Cache* _cache;
+  std::shared_ptr<cache::Cache> _cache;
   arangodb::velocypack::ArrayIterator _builderIterator;
   arangodb::velocypack::Builder _builder;
   size_t _copyCounter;

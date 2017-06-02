@@ -204,6 +204,7 @@ class LogicalCollection {
 
   // SECTION: Modification Functions
   int rename(std::string const&);
+  void load();
   void unload();
   virtual void drop();
 

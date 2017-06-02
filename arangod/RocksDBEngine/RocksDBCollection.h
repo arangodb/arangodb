@@ -77,7 +77,9 @@ class RocksDBCollection final : public PhysicalCollection {
 
   /// @brief closes an open collection
   int close() override;
-
+  void load() override;
+  void unload() override;
+  
   TRI_voc_rid_t revision() const;
   TRI_voc_rid_t revision(arangodb::transaction::Methods* trx) const override;
   uint64_t numberDocuments() const;

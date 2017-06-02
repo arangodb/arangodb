@@ -402,8 +402,51 @@ function CollectionSuite () {
 
       // unload is allowed
       c.unload();
-    }
+    },
 
+    testEdgeCacheBehaviour : function() {
+
+      var checkIndexes = function (idx) {
+
+      }
+
+      var cn = "UnitLoadBehaviour123";
+      db._drop(cn);
+      var c = db._createEdgeCollection(cn);
+      c.load();
+      for(i=0;i<10000;i++) {
+        c.insert({_from:"c/v"+i, _to:"c/v"+i});
+      }
+
+      // check if edge cache is present
+      var idxs = db.test.getIndexes(true);
+      assertEqual("edge", idxs[1].type, idxs);
+
+      var inital = [];
+      for (idx in idxs) {
+        if (idx.figures.cacheInUse) {
+          inital.push(idx.figures.cacheSize);
+        } else {
+          inital.push(0);
+        }
+      }
+
+      c.warmup();
+      // checking if edge cach grew
+      idxs = db.test.getIndexes(true);
+      var i = 0;
+      for (idx in idxs) {
+        assertTrue(idx.figures.cacheSize > inital[i], idx);
+        i++;
+      }
+
+      c.unload();
+      idxs = db.test.getIndexes(true);
+      for (idx in idxs) {
+        assertEqual(idx.figures.cacheSize, 0, idx);
+      }
+      db._drop(cn);
+    }
   };
 }
 

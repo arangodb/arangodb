@@ -715,7 +715,13 @@ int LogicalCollection::close() {
   return getPhysical()->close();
 }
 
-void LogicalCollection::unload() {}
+void LogicalCollection::load() {
+  _physical->load();
+}
+
+void LogicalCollection::unload() {
+  _physical->unload();
+}
 
 void LogicalCollection::drop() {
   // make sure collection has been closed

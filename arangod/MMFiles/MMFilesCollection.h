@@ -164,6 +164,8 @@ class MMFilesCollection final : public PhysicalCollection {
 
   /// @brief closes an open collection
   int close() override;
+  void load() override {}
+  void unload() override {}
 
   /// @brief rotate the active journal - will do nothing if there is no journal
   int rotateActiveJournal();

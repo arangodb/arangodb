@@ -110,6 +110,14 @@ void RocksDBIndex::toVelocyPackFigures(VPackBuilder& builder) const {
   }
 }
 
+int RocksDBIndex::load() {
+  if (_useCache) {
+    createCache();
+    TRI_ASSERT(_cachePresent);
+  }
+  return TRI_ERROR_NO_ERROR;
+}
+
 int RocksDBIndex::unload() {
   if (useCache()) {
     //LOG_TOPIC(ERR, Logger::FIXME) << "unload cache";
