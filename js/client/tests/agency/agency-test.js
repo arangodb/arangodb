@@ -907,7 +907,7 @@ function agencyTestSuite () {
     testHiddenAgencyWriteDeep: function() {
       var res = accessAgency("write",[[{"/.agency/hans": {"op":"set","new":"fallera"}}]]);
       assertEqual(res.statusCode, 200);
-    },
+    }/*,
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Compaction
@@ -937,7 +937,7 @@ function agencyTestSuite () {
         count3, "keys, from log entry", cur + count + count2, "on.");
       doCountTransactions(count3, count + count2);
     }
-
+*/
   };
 }
 
