@@ -288,11 +288,15 @@ void AttributeWeightShortestPathFinder::expandVertex(
   std::unordered_map<StringRef, size_t> candidates;
   auto callback = [&](std::unique_ptr<EdgeDocumentToken>&& eid, VPackSlice edge,
                       size_t cursorIdx) -> void {
-    double currentWeight = _options->weightEdge(edge);
     if (edge.isString()) {
+      VPackSlice doc = _options->cache()->lookupToken(eid.get());
+      double currentWeight = _options->weightEdge(doc);
       StringRef other = _options->cache()->persistString(StringRef(edge));
-      TRI_ASSERT(other.compare(vertex) == 0);
-      inserter(candidates, result, vertex, other, currentWeight, std::move(eid));
+      if (other.compare(vertex) != 0) {
+        inserter(candidates, result, vertex, other, currentWeight, std::move(eid));
+      } else {
+        inserter(candidates, result, other, vertex, currentWeight, std::move(eid));
+      }
     } else {
       StringRef fromTmp(transaction::helpers::extractFromFromDocument(edge));
       StringRef toTmp(transaction::helpers::extractToFromDocument(edge));
