@@ -66,6 +66,10 @@ int linenoiseInstallWindowChangeHandler(void);
 /* returns type of key pressed: 1 = CTRL-C, 2 = CTRL-D, 0 = other */ 
 int linenoiseKeyType(void);
 
+// enable reading without line buffering
+int linenoiseEnableRawMode(void);
+void linenoiseDisableRawMode(void);
+
 #ifdef __cplusplus
 }
 #endif

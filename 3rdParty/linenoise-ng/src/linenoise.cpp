@@ -980,7 +980,7 @@ void linenoiseHistoryFree(void) {
   }
 }
 
-static int enableRawMode(void) {
+int linenoiseEnableRawMode() {
 #ifdef _WIN32
   if (!console_in) {
     console_in = GetStdHandle(STD_INPUT_HANDLE);
@@ -1031,7 +1031,7 @@ fatal:
 #endif
 }
 
-static void disableRawMode(void) {
+void linenoiseDisableRawMode() {
 #ifdef _WIN32
   SetConsoleMode(console_in, oldMode);
   console_in = 0;
@@ -1042,7 +1042,7 @@ static void disableRawMode(void) {
 }
 
 // At exit we'll try to fix the terminal to the initial conditions
-static void linenoiseAtExit(void) { disableRawMode(); }
+static void linenoiseAtExit(void) { linenoiseDisableRawMode(); }
 
 static int getScreenColumns(void) {
   int cols;
@@ -2333,10 +2333,10 @@ int InputBuffer::incrementalHistorySearch(PromptBase& pi, int startChar) {
 // job control is its own thing
 #ifndef _WIN32
       case ctrlChar('Z'):  // ctrl-Z, job control
-        disableRawMode();  // Returning to Linux (whatever) shell, leave raw
+        linenoiseDisableRawMode(); // Returning to Linux shell, leave raw
                            // mode
         raise(SIGSTOP);    // Break out in mid-line
-        enableRawMode();   // Back from Linux shell, re-enter raw mode
+        linenoiseEnableRawMode(); // Back from Linux shell, re-enter raw mode
         {
           bufferSize = historyLineLength + 1;
           unique_ptr<char32_t[]> tempUnicode(new char32_t[bufferSize]);
@@ -3001,10 +3001,10 @@ int InputBuffer::getInputLine(PromptBase& pi) {
 
 #ifndef _WIN32
       case ctrlChar('Z'):  // ctrl-Z, job control
-        disableRawMode();  // Returning to Linux (whatever) shell, leave raw
+        linenoiseDisableRawMode();  // Returning to Linux shell, leave raw
                            // mode
         raise(SIGSTOP);    // Break out in mid-line
-        enableRawMode();   // Back from Linux shell, re-enter raw mode
+        linenoiseEnableRawMode(); // Back from Linux shell, re-enter raw mode
         if (!pi.write()) break;  // Redraw prompt
         refreshLine(pi);         // Refresh the line
         break;
@@ -3208,7 +3208,7 @@ char* linenoise(const char* prompt) {
         return buf8;  // caller must free buffer
       }
     } else {
-      if (enableRawMode() == -1) {
+      if (linenoiseEnableRawMode() == -1) {
         return NULL;
       }
       InputBuffer ib(buf32, charWidths, LINENOISE_MAX_LINE);
@@ -3217,7 +3217,7 @@ char* linenoise(const char* prompt) {
         preloadedBufferContents.clear();
       }
       int count = ib.getInputLine(pi);
-      disableRawMode();
+      linenoiseDisableRawMode();
       printf("\n");
       if (count == -1) {
         return NULL;
@@ -3394,7 +3394,7 @@ void linenoisePrintKeyCodes(void) {
   printf(
       "Linenoise key codes debugging mode.\n"
       "Press keys to see scan codes. Type 'quit' at any time to exit.\n");
-  if (enableRawMode() == -1) return;
+  if (linenoiseEnableRawMode() == -1) return;
   memset(quit, ' ', 4);
   while (1) {
     char c;
@@ -3415,7 +3415,7 @@ void linenoisePrintKeyCodes(void) {
     printf("\r"); /* Go left edge manually, we are in raw mode. */
     fflush(stdout);
   }
-  disableRawMode();
+  linenoiseDisableRawMode();
 }
 
 #ifndef _WIN32

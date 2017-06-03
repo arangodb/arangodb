@@ -43,7 +43,6 @@ ProgramOptions::ProgramOptions(char const* progname, std::string const& usage,
     : _progname(progname),
       _usage(usage),
       _more(more),
-      _terminalWidth(TRI_ColumnsWidth),
       _similarity(TRI_Levenshtein),
       _processingResult(),
       _sealed(false),
@@ -78,7 +77,8 @@ void ProgramOptions::printHelp(std::string const& search) const {
   bool const colors = (isatty(STDOUT_FILENO) != 0);
   printUsage();
 
-  size_t const tw = _terminalWidth();
+  TRI_TerminalSize ts = TRI_DefaultTerminalSize();
+  size_t const tw = ts.columns;
   size_t const ow = optionsWidth();
 
   for (auto const& it : _sections) {
