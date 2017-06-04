@@ -368,7 +368,6 @@ module.exports =
         let handled = true;
 
         try {
-          console.log('dispatch', req.url, req.suffix);
           handled = this.tree.dispatch(req, res);
         } catch (e) {
           const logLevel = (
