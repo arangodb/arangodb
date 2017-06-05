@@ -770,7 +770,7 @@ static void JS_StopOutputPager(
 /// @brief start the invasion
 ////////////////////////////////////////////////////////////////////////////////
 
-static void JS_Invasion(v8::FunctionCallbackInfo<v8::Value> const& args) {
+static void JS_StartFlux(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
   
@@ -957,9 +957,9 @@ void V8ShellFeature::initGlobals() {
   
   v8::Local<v8::Value> shell = v8::External::New(_isolate, this);
   TRI_AddGlobalVariableVocbase(
-                               _isolate, TRI_V8_ASCII_STRING2(_isolate, "SYS_INVASION"),
-                               v8::FunctionTemplate::New(_isolate, JS_Invasion, shell)
-                               ->GetFunction());
+       _isolate, TRI_V8_ASCII_STRING2(_isolate, "SYS_START_FLUX"),
+       v8::FunctionTemplate::New(_isolate, JS_StartFlux, shell)
+       ->GetFunction());
 }
 
 void V8ShellFeature::initMode(ShellFeature::RunMode runMode,

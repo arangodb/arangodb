@@ -1888,9 +1888,9 @@ global.DEFINE_MODULE('internal', (function () {
     delete global.SYS_TERMINAL_SIZE;
   }
 
-  if (global.SYS_INVASION) {
-    exports.invasion = global.SYS_INVASION;
-    delete global.SYS_INVASION;
+  if (global.SYS_START_FLUX) {
+    exports.startFlux = global.SYS_START_FLUX;
+    delete global.SYS_START_FLUX;
   }
 
   return exports;
