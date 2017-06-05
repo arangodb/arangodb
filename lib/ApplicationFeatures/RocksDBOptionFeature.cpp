@@ -279,7 +279,7 @@ void RocksDBOptionFeature::start() {
     _numThreadsHigh = rocksDBDefaults.max_background_flushes;
   }
 
-  if (_numThreadsLow) {
+  if (_numThreadsLow == 0) {
     _numThreadsLow = rocksDBDefaults.max_background_compactions;
   }
 
