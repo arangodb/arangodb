@@ -64,7 +64,7 @@ void* LanguageFeature::prepareIcu(std::string const& binaryPath, std::string con
 
   std::string fn("icudtl.dat");
   if (icuDataEnv != nullptr) {
-    path = icuDataEnv + fn;
+    path = std::string(icuDataEnv) + TRI_DIR_SEPARATOR_STR + fn;
   }
 
   if (path.empty() || !TRI_IsRegularFile(path.c_str())) {

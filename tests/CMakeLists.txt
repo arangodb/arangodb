@@ -2,6 +2,24 @@ foreach (LINK_DIR ${V8_LINK_DIRECTORIES})
   link_directories("${LINK_DIR}")
 endforeach()
 
+################################################################################
+## IResearch
+################################################################################
+
+if (USE_IRESEARCH)
+  set(IRESEARCH_TESTS_SOURCES
+    IResearch/Containers-test.cpp
+    IResearch/IResearchLink-test.cpp
+    IResearch/IResearchLinkMeta-test.cpp
+    IResearch/IResearchView-test.cpp
+    IResearch/IResearchViewMeta-test.cpp
+    IResearch/IResearchDocument-test.cpp
+    IResearch/IResearchFilter-test.cpp
+    IResearch/StorageEngineMock.cpp
+    IResearch/VelocyPackHelper-test.cpp
+  )
+endif ()
+
 # linking is a dark art...workmonitordummy is somehow necessary
 add_executable(
   arangodbtests
@@ -56,6 +74,7 @@ add_executable(
   Pregel/typedbuffer.cpp
   RocksDBEngine/IndexEstimatorTest.cpp
   RocksDBEngine/TypeConversionTest.cpp
+  ${IRESEARCH_TESTS_SOURCES}
   main.cpp
 )
 
@@ -74,3 +93,21 @@ target_include_directories(arangodbtests SYSTEM PRIVATE
   ${CMAKE_SOURCE_DIR}/3rdParty/catch
   ${CMAKE_SOURCE_DIR}/3rdParty/fakeit
 )
+
+if (USE_IRESEARCH)
+  find_package(OpenSSL REQUIRED)
+  list(APPEND IRESEARCH_LIB_RESOURCES
+    "${LIB_EAY_DEBUG_DLL}"
+    "${SSL_EAY_DEBUG_DLL}"
+    "${LIB_EAY_RELEASE_DLL}"
+    "${SSL_EAY_RELEASE_DLL}"
+  )
+
+  foreach(ELEMENT ${IRESEARCH_LIB_RESOURCES})
+    add_custom_command(
+      TARGET arangodbtests POST_BUILD
+      COMMAND ${CMAKE_COMMAND} -E echo "copying library resource:" "${ELEMENT}" " -> " "$<TARGET_FILE_DIR:arangodbtests>"
+      COMMAND cp -lf ${ELEMENT} $<TARGET_FILE_DIR:arangodbtests> || ${CMAKE_COMMAND} -E copy ${ELEMENT} $<TARGET_FILE_DIR:arangodbtests>
+    )
+  endforeach()
+endif()

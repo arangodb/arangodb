@@ -1,0 +1,133 @@
+version: 1.0.{build}
+
+branches:
+  only:
+    - master
+  
+image:
+#  - Visual Studio 2013
+  - Visual Studio 2015
+
+platform: x64
+
+build:
+  verbosity: normal
+
+configuration: 
+  - Debug
+  - Release
+
+environment:
+  BOOST_VERSION: default
+  CMAKE_OPTIONS: -DCMAKE_BUILD_TYPE=%CONFIGURATION%
+  CMAKE_BUILD_OPTIONS: --config %CONFIGURATION%
+  matrix:
+  - BUILD_SUFFIX: -shared    
+    TEST_OPTIONS: --gtest_filter=*type_utils*
+  - BUILD_SUFFIX: -static    
+    EXECUTABLE_SUFFIX: -s
+    TEST_OPTIONS: --gtest_filter=*type_utils*
+    
+install:  
+  ############################################################################
+  # Setup bison
+  ############################################################################
+  - set PATH=%PATH%;C:\cygwin64\bin
+  - bison --version
+  
+  ############################################################################
+  # All the dependencies are installed in %APPVEYOR_BUILD_FOLDER%\deps
+  ############################################################################
+  - set DEPS_DIR=%APPVEYOR_BUILD_FOLDER%\deps
+  - mkdir %DEPS_DIR%
+  
+  ############################################################################
+  # Install snowball
+  ############################################################################
+  - set SNOWBALL_DIR=%DEPS_DIR%\snowball
+  - set SNOWBALL_URL="https://github.com/snowballstem/snowball.git"
+  - cd %DEPS_DIR%
+  - appveyor-retry git clone --quiet %SNOWBALL_URL% %SNOWBALL_DIR%
+  - cd %SNOWBALL_DIR%
+  - git reset --hard 9e0a8340d58c70f91e8a0233b985242dc69c6fb8
+  - mkdir build && cd build
+  - set PATH=%PATH%;%SNOWBALL_DIR%\build\%CONFIGURATION%
+  - cmake %CMAKE_OPTIONS% -DENABLE_STATIC=OFF -DNO_SHARED=ON -g %APPVEYOR_BUILD_WORKER_IMAGE% -Ax64 ..  
+  - cmake --build . %CMAKE_BUILD_OPTIONS%
+  - cmake %CMAKE_OPTIONS% -DENABLE_STATIC=OFF -DNO_SHARED=OFF -g %APPVEYOR_BUILD_WORKER_IMAGE% -Ax64 ..  
+  - cmake --build . %CMAKE_BUILD_OPTIONS%
+  - set SNOWBALL_ROOT=%SNOWBALL_DIR%   
+  
+  ############################################################################
+  # Install gtest
+  ############################################################################
+  - set GTEST_DIR=%DEPS_DIR%\gtest
+  - set GTEST_URL="https://github.com/google/googletest.git" 
+  - cd %DEPS_DIR%
+  - appveyor-retry git clone --depth 1 --recursive --quiet %GTEST_URL% %GTEST_DIR% || exit 1        
+  - cd %GTEST_DIR%
+  - mkdir build && cd build
+  - cmake -g %APPVEYOR_BUILD_WORKER_IMAGE% -Ax64 -Dgtest_force_shared_crt=ON -DBUILD_GTEST=ON -DBUILD_GMOCK=OFF  ..
+  - cmake --build . %CMAKE_BUILD_OPTIONS%
+  - cmake --install .
+  - mkdir ..\googletest\lib  
+  - move /Y googletest\%CONFIGURATION%\* ..\googletest\lib
+  - set GTEST_ROOT=%GTEST_DIR%\googletest
+  
+  ############################################################################
+  # Install ICU
+  ############################################################################
+  - set ICU_DIR=%DEPS_DIR%\icu
+  - mkdir %ICU_DIR% && cd %ICU_DIR%
+  - set ICU_URL="http://download.icu-project.org/files/icu4c/57.1/icu4c-57_1-Win64-msvc10.zip"
+  - appveyor DownloadFile %ICU_URL% -FileName icu4c-57_1-win64-msvc10.zip
+  - 7z x icu4c-57_1-win64-msvc10.zip -o. > nul
+  - set ICU_ROOT=%ICU_DIR%\icu
+  - set PATH=%PATH%;%ICU_ROOT%\bin64
+
+  ############################################################################
+  # Install Boost
+  ############################################################################
+  - set BOOST_DIR=C:/Libraries/boost_1_58_0
+  - cd %BOOST_DIR%
+  - bootstrap.bat  
+  - b2 --build-dir=%BOOST_DIR%\build --build-type=complete stage address-model=64 --with-filesystem --with-program_options --with-locale --with-system --with-thread
+  - set BOOST_ROOT=%BOOST_DIR%
+ 
+  ############################################################################
+  # Install Lz4
+  ############################################################################
+  - set LZ4_DIR=%DEPS_DIR%\lz4
+  - set LZ4_URL="https://github.com/lz4/lz4.git"
+  - cd %DEPS_DIR%
+  - appveyor-retry git clone --depth 1 --recursive --quiet %LZ4_URL% %LZ4_DIR%
+  - cd %LZ4_DIR%
+  - mkdir build && cd build
+  - cmake -DCMAKE_INSTALL_PREFIX=%LZ4_ROOT%\build -DBUILD_STATIC_LIBS=on -g %APPVEYOR_BUILD_WORKER_IMAGE% -Ax64 ../contrib/cmake_unofficial
+  - cmake --build . %CMAKE_BUILD_OPTIONS%
+  - cmake --build . --target install
+  - set LZ4_ROOT=%LZ4_ROOT%\build
+
+before_build:
+  - call "C:\Program Files (x86)\Microsoft Visual Studio 14.0\VC\vcvarsall.bat" amd64
+
+build_script:
+  - cd %APPVEYOR_BUILD_FOLDER%
+  - mkdir build
+  - cd build
+  - cmake -g %APPVEYOR_BUILD_WORKER_IMAGE% -Ax64 %CMAKE_OPTIONS% ..      
+  - cmake --build . %CMAKE_BUILD_OPTIONS% --target iresearch-tests-static
+  - cmake --build . %CMAKE_BUILD_OPTIONS% --target iresearch-benchmarks-index
+  - cmake --build . %CMAKE_BUILD_OPTIONS% --target iresearch-benchmarks-search  
+   
+test_script:
+  ############################################################################
+  # Execute tests
+  ############################################################################
+  - cmd: bin\%CONFIGURATION%\iresearch-tests-s.exe --gtest_output=xml:test_results.xml %TEST_OPTIONS%
+
+on_finish:
+  ############################################################################
+  # Publish tests results
+  ############################################################################
+  - ps: (new-object net.webclient).UploadFile("https://ci.appveyor.com/api/testresults/junit/$($env:APPVEYOR_JOB_ID)", (Resolve-Path .\test_results.xml))

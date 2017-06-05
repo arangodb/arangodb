@@ -39,6 +39,49 @@ if (USE_MAINTAINER_MODE AND NOT MSVC)
 endif ()
 
 ################################################################################
+## IResearch
+################################################################################
+
+if (USE_IRESEARCH)
+  find_package(IResearch REQUIRED)
+
+  add_library(${LIB_ARANGO_IRESEARCH}
+    IResearch/Containers.cpp IResearch/Containers.h
+    IResearch/IResearchLink.cpp IResearch/IResearchLink.h
+    IResearch/IResearchLinkMeta.cpp IResearch/IResearchLinkMeta.h
+    IResearch/IResearchView.cpp IResearch/IResearchView.h
+    IResearch/IResearchViewMeta.cpp IResearch/IResearchViewMeta.h
+    IResearch/IResearchFeature.cpp IResearch/IResearchFeature.h
+    IResearch/IResearchDocument.cpp IResearch/IResearchDocument.h
+    IResearch/VelocyPackHelper.cpp IResearch/VelocyPackHelper.h
+  )
+
+  target_include_directories(${LIB_ARANGO_IRESEARCH}
+    PUBLIC ${Boost_INCLUDE_DIR} # for boost/lockfree/queue.hpp from WorkMonitor.h
+    PUBLIC ${IRESEARCH_INCLUDE}
+  )
+
+  if(MSVC)
+    set(IRESEARCH_TARGET_DEPENDENCY iresearch-static-scrt) # use static + staticCRT to match ArangoDB
+  else()
+    set(IRESEARCH_TARGET_DEPENDENCY iresearch-static) # use static to match ArangoDB
+  endif()
+
+  target_link_libraries(${LIB_ARANGO_IRESEARCH}
+    ${IRESEARCH_TARGET_DEPENDENCY}
+    boost_filesystem # required by iResearch
+    boost_locale # required by iResearch
+  )
+
+  add_dependencies(${LIB_ARANGO_IRESEARCH}
+    ${IRESEARCH_TARGET_DEPENDENCY}
+    v8_build # for ICU required by iResearch
+  )
+else()
+  set(LIB_ARANGO_IRESEARCH "")
+endif ()
+
+################################################################################
 ## arangod
 ################################################################################
 
@@ -395,6 +438,7 @@ include(MMFiles/CMakeLists.txt)
 
 add_library(arangoserver STATIC ${ARANGOD_SOURCES} ${MMFILES_SOURCES} ${ROCKSDB_SOURCES})
 
+
 if (USE_SSL)
   target_compile_definitions(${BIN_ARANGOD} PUBLIC "ARANGODB_SSL_ENABLED=1")
 endif()
@@ -407,6 +451,7 @@ target_link_libraries(arangoserver
   ${MSVC_LIBS}
   ${V8_LIBS}
   ${ROCKSDB_LIBS}
+  ${LIB_ARANGO_IRESEARCH}
   boost_boost
   boost_system
   ${SYSTEM_LIBRARIES}
@@ -443,9 +488,9 @@ install(
 install_config(arangod)
 
 if (NOT USE_PRECOMPILED_V8)
-  add_dependencies(arangod zlibstatic v8_build)
+  add_dependencies(arangod zlibstatic v8_build ${LIB_ARANGO_IRESEARCH})
 else ()
-  add_dependencies(arangod zlibstatic)
+  add_dependencies(arangod zlibstatic ${LIB_ARANGO_IRESEARCH})
 endif ()
 
 ################################################################################

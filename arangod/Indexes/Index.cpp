@@ -179,6 +179,11 @@ Index::IndexType Index::type(char const* type) {
   if (::strcmp(type, "geo2") == 0) {
     return TRI_IDX_TYPE_GEO2_INDEX;
   }
+#ifdef USE_IRESEARCH
+  if (::strcmp(type, "iresearch") == 0) {
+    return TRI_IDX_TYPE_IRESEARCH_LINK;
+  }
+#endif
 
   return TRI_IDX_TYPE_UNKNOWN;
 }
@@ -206,6 +211,10 @@ char const* Index::oldtypeName(Index::IndexType type) {
       return "geo1";
     case TRI_IDX_TYPE_GEO2_INDEX:
       return "geo2";
+#ifdef USE_IRESEARCH
+    case TRI_IDX_TYPE_IRESEARCH_LINK:
+      return "iresearch";
+#endif
     case TRI_IDX_TYPE_UNKNOWN: {
     }
   }

@@ -94,6 +94,10 @@
 #include "Enterprise/RestServer/arangodEE.h"
 #endif
 
+#ifdef USE_IRESEARCH
+#include "IResearch/IResearchFeature.h"
+#endif
+
 // storage engines
 #include "MMFiles/MMFilesEngine.h"
 #include "RocksDBEngine/RocksDBEngine.h"
@@ -197,6 +201,10 @@ static int runServer(int argc, char** argv, ArangoGlobalContext &context) {
     setupServerEE(&server);
 #else
     server.addFeature(new SslServerFeature(&server));
+#endif
+
+#ifdef USE_IRESEARCH
+    server.addFeature(new iresearch::IResearchFeature(&server));
 #endif
 
     // storage engines

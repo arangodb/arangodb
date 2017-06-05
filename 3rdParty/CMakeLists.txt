@@ -76,6 +76,38 @@ else ()
 endif ()
 
 ################################################################################
+## IResearch
+################################################################################
+
+if (USE_IRESEARCH)
+  unset(ICU_STATIC_LIBS)
+
+  foreach(ELEMENT ${ICU_LIBS})
+    get_filename_component(ELEMENT_DIRECTORY "${ELEMENT}" DIRECTORY)
+    get_filename_component(ELEMENT_FILENAME "${ELEMENT}" NAME)
+    get_filename_component(ELEMENT_FILENAME_WE "${ELEMENT}" NAME_WE)
+    unset(TMP_LIBRARY CACHE)
+    find_library(TMP_LIBRARY
+      NAMES "${ELEMENT}" "${ELEMENT_FILENAME}" "${ELEMENT_FILENAME_WE}"
+      PATHS ${LINK_DIRECTORIES} "${ELEMENT_DIRECTORY}"
+      NO_DEFAULT_PATH
+    )
+
+    if(TMP_LIBRARY)
+      list(APPEND ICU_STATIC_LIBS "${TMP_LIBRARY}")
+    endif()
+  endforeach()
+
+  if (MSVC)
+    set(IRESEARCH_EXCLUDE_STATIC_THIRD_PARTY_LIBS TRUE) # disable linking in of 3rd party libraries automatically
+  endif()
+
+  find_package(IResearch REQUIRED) # set IRESEARCH_BUILD_DIR
+  list(APPEND CMAKE_MODULE_PATH "${IRESEARCH_ROOT}/cmake") # to find iResearch dependencies
+  add_subdirectory("${IRESEARCH_ROOT}" "${IRESEARCH_BUILD_DIR}" EXCLUDE_FROM_ALL) # do not build unused targets
+endif()
+
+################################################################################
 ## ZLIB
 ################################################################################
 
