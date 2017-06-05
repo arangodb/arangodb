@@ -355,7 +355,6 @@ void Agent::sendAppendEntriesRPC() {
       }
 
       std::vector<log_t> unconfirmed = _state.get(last_confirmed);
-
       index_t highest = unconfirmed.back().index;
 
       // _lastSent, _lastHighest: local and single threaded access
