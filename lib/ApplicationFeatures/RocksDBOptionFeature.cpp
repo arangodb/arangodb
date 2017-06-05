@@ -61,8 +61,8 @@ RocksDBOptionFeature::RocksDBOptionFeature(
       _baseBackgroundCompactions(rocksDBDefaults.base_background_compactions),
       _maxBackgroundCompactions(rocksDBDefaults.max_background_compactions),
       _maxFlushes(rocksDBDefaults.max_background_flushes),
-      _numThreadsHigh(rocksDBDefaults.max_background_flushes),
-      _numThreadsLow(rocksDBDefaults.max_background_compactions),
+      _numThreadsHigh(0),
+      _numThreadsLow(0),
       _blockCacheSize((TRI_PhysicalMemory >= (static_cast<uint64_t>(4) << 30))
         ? static_cast<uint64_t>(((TRI_PhysicalMemory - (static_cast<uint64_t>(2) << 30)) * 0.3))
         : (256 << 20)),
@@ -85,12 +85,8 @@ RocksDBOptionFeature::RocksDBOptionFeature(
 
   setOptional(true);
   requiresElevatedPrivileges(false);
+  startsAfter("Daemon");
   startsAfter("DatabasePath");
-
-  // increase parallelism and re-fetch the number of threads
-  rocksDBDefaults.IncreaseParallelism(std::thread::hardware_concurrency());
-  _numThreadsHigh = rocksDBDefaults.max_background_flushes;
-  _numThreadsLow = rocksDBDefaults.max_background_compactions;
 }
 
 void RocksDBOptionFeature::collectOptions(
@@ -257,12 +253,12 @@ void RocksDBOptionFeature::validateOptions(
         << "invalid value for '--rocksdb.max-background-flushes'";
     FATAL_ERROR_EXIT();
   }
-  if (_numThreadsHigh < 1 || _numThreadsHigh > 64) {
+  if (_numThreadsHigh > 64) {
     LOG_TOPIC(FATAL, arangodb::Logger::FIXME)
         << "invalid value for '--rocksdb.num-threads-priority-high'";
     FATAL_ERROR_EXIT();
   }
-  if (_numThreadsLow < 1 || _numThreadsLow > 256) {
+  if ( _numThreadsLow > 256) {
     LOG_TOPIC(FATAL, arangodb::Logger::FIXME)
         << "invalid value for '--rocksdb.num-threads-priority-low'";
     FATAL_ERROR_EXIT();
@@ -275,6 +271,18 @@ void RocksDBOptionFeature::validateOptions(
 }
 
 void RocksDBOptionFeature::start() {
+
+  // increase parallelism and re-fetch the number of threads
+  rocksDBDefaults.IncreaseParallelism(std::thread::hardware_concurrency());
+
+  if (_numThreadsHigh == 0) {
+    _numThreadsHigh = rocksDBDefaults.max_background_flushes;
+  }
+
+  if (_numThreadsLow) {
+    _numThreadsLow = rocksDBDefaults.max_background_compactions;
+  }
+
   LOG_TOPIC(TRACE, Logger::FIXME) << "using RocksDB options:"
                                   << " write_buffer_size: " << _writeBufferSize
                                   << " max_write_buffer_number: " << _maxWriteBufferNumber
