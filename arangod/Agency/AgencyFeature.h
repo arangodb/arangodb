@@ -55,6 +55,7 @@ class AgencyFeature : virtual public application_features::ApplicationFeature {
   double _supervisionFrequency;
   uint64_t _compactionStepSize;
   uint64_t _compactionKeepSize;
+  uint64_t _maxAppendSize;
   double _supervisionGracePeriod;
   std::string _agencyMyAddress;
   std::vector<std::string> _agencyEndpoints;
