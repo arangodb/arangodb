@@ -1887,7 +1887,7 @@ Result MMFilesCollection::read(transaction::Methods* trx, VPackSlice const key,
                                ManagedDocumentResult& result, bool lock) {
   TRI_IF_FAILURE("ReadDocumentNoLock") {
     // test what happens if no lock can be acquired
-    return TRI_ERROR_DEBUG;
+    return Result(TRI_ERROR_DEBUG);
   }
 
   TRI_IF_FAILURE("ReadDocumentNoLockExcept") {
@@ -2959,7 +2959,7 @@ Result MMFilesCollection::insertSecondaryIndexes(
     VPackSlice const& doc, bool isRollback) {
   // Coordinator doesn't know index internals
   TRI_ASSERT(!ServerState::instance()->isCoordinator());
-  TRI_IF_FAILURE("InsertSecondaryIndexes") { return TRI_ERROR_DEBUG; }
+  TRI_IF_FAILURE("InsertSecondaryIndexes") { return Result(TRI_ERROR_DEBUG); }
 
   bool const useSecondary = useSecondaryIndexes();
   if (!useSecondary && _persistentIndexes == 0) {
@@ -2985,9 +2985,9 @@ Result MMFilesCollection::insertSecondaryIndexes(
     if (res.errorNumber() == TRI_ERROR_OUT_OF_MEMORY) {
       return res;
     }
-    if (res.errorNumber() != TRI_ERROR_NO_ERROR) {
+    if (!res.ok()) {
       if (res.errorNumber() == TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED ||
-          !result.ok()) {
+          result.ok()) {
         // "prefer" unique constraint violated
         result = res;
       }
@@ -3009,7 +3009,7 @@ Result MMFilesCollection::deleteSecondaryIndexes(
     return Result(TRI_ERROR_NO_ERROR);
   }
 
-  TRI_IF_FAILURE("DeleteSecondaryIndexes") { return TRI_ERROR_DEBUG; }
+  TRI_IF_FAILURE("DeleteSecondaryIndexes") { return Result(TRI_ERROR_DEBUG); }
 
   Result result = Result(TRI_ERROR_NO_ERROR);
 
@@ -3098,7 +3098,7 @@ Result MMFilesCollection::insertDocument(arangodb::transaction::Methods* trx,
   }
   operation.indexed();
 
-  TRI_IF_FAILURE("InsertDocumentNoOperation") { return TRI_ERROR_DEBUG; }
+  TRI_IF_FAILURE("InsertDocumentNoOperation") { return Result(TRI_ERROR_DEBUG); }
 
   TRI_IF_FAILURE("InsertDocumentNoOperationExcept") {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
@@ -3116,7 +3116,7 @@ Result MMFilesCollection::update(
     VPackSlice const key) {
   bool const isEdgeCollection =
       (_logicalCollection->type() == TRI_COL_TYPE_EDGE);
-  TRI_IF_FAILURE("UpdateDocumentNoLock") { return TRI_ERROR_DEBUG; }
+  TRI_IF_FAILURE("UpdateDocumentNoLock") { return Result(TRI_ERROR_DEBUG); }
 
   bool const useDeadlockDetector =
       (lock && !trx->isSingleOperationTransaction() && !trx->state()->hasHint(transaction::Hints::Hint::NO_DLD));
@@ -3248,7 +3248,7 @@ Result MMFilesCollection::replace(
     VPackSlice const fromSlice, VPackSlice const toSlice) {
   bool const isEdgeCollection =
       (_logicalCollection->type() == TRI_COL_TYPE_EDGE);
-  TRI_IF_FAILURE("ReplaceDocumentNoLock") { return TRI_ERROR_DEBUG; }
+  TRI_IF_FAILURE("ReplaceDocumentNoLock") { return Result(TRI_ERROR_DEBUG); }
 
   // get the previous revision
   VPackSlice key = newSlice.get(StaticStrings::KeyString);
@@ -3583,7 +3583,7 @@ Result MMFilesCollection::removeFastPath(arangodb::transaction::Methods* trx,
                                          VPackSlice const toRemove) {
   TRI_IF_FAILURE("RemoveDocumentNoMarker") {
     // test what happens when no marker can be created
-    return TRI_ERROR_DEBUG;
+    return Result(TRI_ERROR_DEBUG);
   }
 
   TRI_IF_FAILURE("RemoveDocumentNoMarkerExcept") {
@@ -3601,7 +3601,7 @@ Result MMFilesCollection::removeFastPath(arangodb::transaction::Methods* trx,
 
   TRI_IF_FAILURE("RemoveDocumentNoLock") {
     // test what happens if no lock can be acquired
-    return TRI_ERROR_DEBUG;
+    return Result(TRI_ERROR_DEBUG);
   }
 
   VPackSlice key =
