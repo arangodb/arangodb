@@ -37,6 +37,7 @@
 #include "Transaction/Helpers.h"
 #include "Transaction/Hints.h"
 #include "Transaction/V8Context.h"
+#include "Utils/CollectionNameResolver.h"
 #include "Utils/Events.h"
 #include "Utils/SingleCollectionTransaction.h"
 #include "V8/v8-conv.h"
@@ -237,6 +238,14 @@ static void EnsureIndex(v8::FunctionCallbackInfo<v8::Value> const& args,
   v8::Isolate* isolate = args.GetIsolate();
   v8::HandleScope scope(isolate);
 
+  if (ExecContext::CURRENT_EXECCONTEXT != nullptr) {
+    AuthLevel level = ExecContext::CURRENT_EXECCONTEXT->authContext()->databaseAuthLevel();
+
+    if (level != AuthLevel::RW) {
+      TRI_V8_THROW_EXCEPTION(TRI_ERROR_FORBIDDEN);
+    }
+  }
+
   arangodb::LogicalCollection* collection =
       TRI_UnwrapClass<arangodb::LogicalCollection>(args.Holder(),
                                                    WRP_VOCBASE_COL_TYPE);
@@ -245,11 +254,13 @@ static void EnsureIndex(v8::FunctionCallbackInfo<v8::Value> const& args,
     TRI_V8_THROW_EXCEPTION_INTERNAL("cannot extract collection");
   }
 
+
   if (args.Length() != 1 || !args[0]->IsObject()) {
     std::string name(functionName);
     name.append("(<description>)");
     TRI_V8_THROW_EXCEPTION_USAGE(name.c_str());
   }
+
 
   VPackBuilder builder;
   int res = EnhanceIndexJson(args, builder, create);
@@ -258,6 +269,7 @@ static void EnsureIndex(v8::FunctionCallbackInfo<v8::Value> const& args,
     TRI_V8_THROW_EXCEPTION(res);
   }
 
+
   VPackSlice slice = builder.slice();
   if (res == TRI_ERROR_NO_ERROR && ServerState::instance()->isCoordinator()) {
     TRI_ASSERT(slice.isObject());
@@ -265,6 +277,7 @@ static void EnsureIndex(v8::FunctionCallbackInfo<v8::Value> const& args,
     std::string const dbname(collection->dbName());
     std::string const collname(collection->name());
     auto c = ClusterInfo::instance()->getCollection(dbname, collname);
+
 
     // check if there is an attempt to create a unique index on non-shard keys
     if (create) {
@@ -400,6 +413,14 @@ static void JS_DropIndexVocbaseCol(
     v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
+
+  if (ExecContext::CURRENT_EXECCONTEXT != nullptr) {
+    AuthLevel level = ExecContext::CURRENT_EXECCONTEXT->authContext()->databaseAuthLevel();
+
+    if (level != AuthLevel::RW) {
+      TRI_V8_THROW_EXCEPTION(TRI_ERROR_FORBIDDEN);
+    }
+  }
 
   PREVENT_EMBEDDED_TRANSACTION();
 
@@ -661,8 +682,17 @@ std::shared_ptr<arangodb::Index> TRI_LookupIndexByHandle(
 
 static void CreateVocBase(v8::FunctionCallbackInfo<v8::Value> const& args,
                           TRI_col_type_e collectionType) {
+
   v8::Isolate* isolate = args.GetIsolate();
   v8::HandleScope scope(isolate);
+
+  if (ExecContext::CURRENT_EXECCONTEXT != nullptr) {
+    AuthLevel level = ExecContext::CURRENT_EXECCONTEXT->authContext()->databaseAuthLevel();
+
+    if (level != AuthLevel::RW) {
+      TRI_V8_THROW_EXCEPTION(TRI_ERROR_FORBIDDEN);
+    }
+  }
 
   TRI_vocbase_t* vocbase = GetContextVocBase(isolate);
 

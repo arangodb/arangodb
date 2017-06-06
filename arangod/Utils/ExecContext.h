@@ -34,6 +34,7 @@ class AuthContext {
     AuthContext(AuthLevel authLevel, std::unordered_map<std::string, AuthLevel>&& collectionAccess);
     AuthLevel databaseAuthLevel() { return _databaseAccess; }
     void systemAuthLevel(AuthLevel level) { _systemAuthLevel = level; }
+    AuthLevel systemAuthLevel() { return _systemAuthLevel; }
     AuthLevel collectionAuthLevel(std::string const& collectionName);
 
     void dump();
