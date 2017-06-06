@@ -134,7 +134,7 @@ function agencyTestSuite () {
       let trx = [{}];
       trx[0][key] = "value" + i;
       trxs.push(trx);
-      if (trxs.length >= 200 || i === start + count - 1) {
+      if (trxs.length >= 200000 || i === start + count - 1) {
         res = accessAgency("write", trxs);
         assertEqual(200, res.statusCode);
         trxs = [];
