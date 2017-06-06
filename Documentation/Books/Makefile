@@ -264,6 +264,7 @@ build-book:
 	else \
 		if ! test -f ppbooks/$(NAME)/book.json ; then cat $(NAME)/book.json |sed "s;/devel;/${RELEASE_DIRECTORY};" > ppbooks/$(NAME)/book.json ; fi; \
 	fi
+	ls -l $(NAME)/SUMMARY.md
 	cd ppbooks/$(NAME); cp -a ../../$(NAME)/styles/* styles/
 	WD=`pwd`; \
 	for pic in `find $(NAME) -name \*.png`; do \
@@ -272,13 +273,22 @@ build-book:
 		echo cp $${WD}/$${pic} $${pic}; \
 		cp $${WD}/$${pic} $${pic}; \
 	done
+	ls -l $(NAME)/SUMMARY.md
 	python ../Scripts/generateMdFiles.py $(NAME) ppbooks/ ../../js/apps/system/_admin/aardvark/APP/api-docs.json $(FILTER)
+	ls -l $(NAME)/SUMMARY.md
 
-	cd ppbooks/$(NAME) && sed -i -e 's/VERSION_NUMBER/v$(newVersionNumber)/g' styles/header.js
-	cd ppbooks/$(NAME) && sed -i -e 's/VERSION_NUMBER/v$(newVersionNumber)/g' HEADER.html
-	cd ppbooks/$(NAME) && sed -i -e 's/VERSION_NUMBER/v$(newVersionNumber)/g' README.md
-	cd ppbooks/$(NAME) && sed -i -e 's/VERSION_NUMBER/v$(newVersionNumber)/g' book.json
+	if echo $(newVersionNumber) | grep devel; then \
+		export VERSION="$(newVersionNumber) `date +' %d. %b %Y '`"; \
+	else \
+		export VERSION="$(newVersionNumber)"; \
+	fi; \
+	ls -l $(NAME)/SUMMARY.md
+	(cd ppbooks/$(NAME) && sed -i -e "s/VERSION_NUMBER/v$${VERSION}/g" styles/header.js); \
+	(cd ppbooks/$(NAME) && sed -i -e "s/VERSION_NUMBER/v$${VERSION}/g" HEADER.html); \
+	(cd ppbooks/$(NAME) && sed -i -e "s/VERSION_NUMBER/v$${VERSION}/g" README.md); \
+	(cd ppbooks/$(NAME) && sed -i -e "s/VERSION_NUMBER/v$${VERSION}/g" book.json)
 
+	ls -l $(NAME)/SUMMARY.md
 	test -d books/$(NAME) || mkdir -p books/$(NAME)
 
 	make check-summary
@@ -288,7 +298,11 @@ build-book:
 	make ppbook-check-directory-link
 	make book-check-images-referenced
 
-	cd ppbooks/$(NAME) && gitbook install
+	if test -n "$(NODE_MODULES_DIR)"; then \
+		cp -a $(NODE_MODULES_DIR) ppbooks/$(NAME); \
+	else \
+		cd ppbooks/$(NAME); gitbook install -g ; \
+	fi
 	cd ppbooks/$(NAME) && gitbook build ./ ./../../books/$(NAME)
 	rm -f ./books/$(NAME)/HEADER.html
 	rm -f ./books/$(NAME)/FOOTER.html
@@ -395,7 +409,7 @@ clean: clean-intermediate
 build-books-keep-md:
 	@test -d books || mkdir books
 	python ../Scripts/codeBlockReader.py
-	make build-book NAME=$(NAME)
+	make build-book NAME=$(NAME) NODE_MODULES_DIR=${NODE_MODULES_DIR}
 
 build-books:
 	rm -rf /tmp/tags
@@ -404,7 +418,7 @@ build-books:
 	done
 
 	set -e; for book in $(ALLBOOKS); do \
-		make build-books-keep-md NAME=$${book}; \
+		make build-books-keep-md NAME=$${book} NODE_MODULES_DIR=${NODE_MODULES_DIR}; \
 	done
 
 	set -e; for book in $(ALLBOOKS); do \
@@ -427,7 +441,7 @@ build-dist-books:
 	else \
 		DISPL="$${DISPLAY}"; \
 	fi; \
-	make build-books DISPLAY="$${DISP}"; \
+	make build-books DISPLAY="$${DISP}" NODE_MODULES_DIR=${NODE_MODULES_DIR}; \
 	mkdir -p ${OUTPUT_DIR} ; \
 	( \
 		mv books ArangoDB-${newVersionNumber} ; pwd; \
