@@ -251,27 +251,29 @@ class LogicalCollection {
 
   // SECTION: Index access (local only)
 
-  int read(transaction::Methods*, std::string const&,
-           ManagedDocumentResult& result, bool);
-  int read(transaction::Methods*, StringRef const&,
-           ManagedDocumentResult& result, bool);
+  Result read(transaction::Methods*, std::string const&,
+              ManagedDocumentResult& result, bool);
+  Result read(transaction::Methods*, StringRef const&,
+              ManagedDocumentResult& result, bool);
 
   /// @brief processes a truncate operation
   /// NOTE: This function throws on error
   void truncate(transaction::Methods* trx, OperationOptions&);
 
-  int insert(transaction::Methods*, velocypack::Slice const,
-             ManagedDocumentResult& result, OperationOptions&, TRI_voc_tick_t&,
-             bool);
-  int update(transaction::Methods*, velocypack::Slice const,
-             ManagedDocumentResult& result, OperationOptions&, TRI_voc_tick_t&,
-             bool, TRI_voc_rid_t& prevRev, ManagedDocumentResult& previous);
-  int replace(transaction::Methods*, velocypack::Slice const,
-              ManagedDocumentResult& result, OperationOptions&, TRI_voc_tick_t&,
-              bool, TRI_voc_rid_t& prevRev, ManagedDocumentResult& previous);
-  int remove(transaction::Methods*, velocypack::Slice const, OperationOptions&,
-             TRI_voc_tick_t&, bool, TRI_voc_rid_t& prevRev,
-             ManagedDocumentResult& previous);
+  Result insert(transaction::Methods*, velocypack::Slice const,
+                ManagedDocumentResult& result, OperationOptions&,
+                TRI_voc_tick_t&, bool);
+  Result update(transaction::Methods*, velocypack::Slice const,
+                ManagedDocumentResult& result, OperationOptions&,
+                TRI_voc_tick_t&, bool, TRI_voc_rid_t& prevRev,
+                ManagedDocumentResult& previous);
+  Result replace(transaction::Methods*, velocypack::Slice const,
+                 ManagedDocumentResult& result, OperationOptions&,
+                 TRI_voc_tick_t&, bool, TRI_voc_rid_t& prevRev,
+                 ManagedDocumentResult& previous);
+  Result remove(transaction::Methods*, velocypack::Slice const,
+                OperationOptions&, TRI_voc_tick_t&, bool,
+                TRI_voc_rid_t& prevRev, ManagedDocumentResult& previous);
 
   bool readDocument(transaction::Methods* trx,
                     DocumentIdentifierToken const& token,

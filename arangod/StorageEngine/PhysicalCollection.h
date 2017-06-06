@@ -138,43 +138,47 @@ class PhysicalCollection {
   virtual DocumentIdentifierToken lookupKey(
       transaction::Methods*, arangodb::velocypack::Slice const&) = 0;
 
-  virtual int read(transaction::Methods*, arangodb::velocypack::Slice const key,
-                   ManagedDocumentResult& result, bool) = 0;
+  virtual Result read(transaction::Methods*,
+                      arangodb::velocypack::Slice const key,
+                      ManagedDocumentResult& result, bool) = 0;
 
   virtual bool readDocument(transaction::Methods* trx,
                             DocumentIdentifierToken const& token,
                             ManagedDocumentResult& result) = 0;
 
-  virtual int insert(arangodb::transaction::Methods* trx,
-                     arangodb::velocypack::Slice const newSlice,
-                     arangodb::ManagedDocumentResult& result,
-                     OperationOptions& options,
-                     TRI_voc_tick_t& resultMarkerTick, bool lock) = 0;
+  virtual Result insert(arangodb::transaction::Methods* trx,
+                        arangodb::velocypack::Slice const newSlice,
+                        arangodb::ManagedDocumentResult& result,
+                        OperationOptions& options,
+                        TRI_voc_tick_t& resultMarkerTick, bool lock) = 0;
 
-  virtual int update(arangodb::transaction::Methods* trx,
-                     arangodb::velocypack::Slice const newSlice,
-                     ManagedDocumentResult& result, OperationOptions& options,
-                     TRI_voc_tick_t& resultMarkerTick, bool lock,
-                     TRI_voc_rid_t& prevRev, ManagedDocumentResult& previous,
-                     TRI_voc_rid_t const& revisionId,
-                     arangodb::velocypack::Slice const key) = 0;
+  virtual Result update(arangodb::transaction::Methods* trx,
+                        arangodb::velocypack::Slice const newSlice,
+                        ManagedDocumentResult& result,
+                        OperationOptions& options,
+                        TRI_voc_tick_t& resultMarkerTick, bool lock,
+                        TRI_voc_rid_t& prevRev, ManagedDocumentResult& previous,
+                        TRI_voc_rid_t const& revisionId,
+                        arangodb::velocypack::Slice const key) = 0;
 
-  virtual int replace(transaction::Methods* trx,
-                      arangodb::velocypack::Slice const newSlice,
-                      ManagedDocumentResult& result, OperationOptions& options,
-                      TRI_voc_tick_t& resultMarkerTick, bool lock,
-                      TRI_voc_rid_t& prevRev, ManagedDocumentResult& previous,
-                      TRI_voc_rid_t const revisionId,
-                      arangodb::velocypack::Slice const fromSlice,
-                      arangodb::velocypack::Slice const toSlice) = 0;
+  virtual Result replace(transaction::Methods* trx,
+                         arangodb::velocypack::Slice const newSlice,
+                         ManagedDocumentResult& result,
+                         OperationOptions& options,
+                         TRI_voc_tick_t& resultMarkerTick, bool lock,
+                         TRI_voc_rid_t& prevRev,
+                         ManagedDocumentResult& previous,
+                         TRI_voc_rid_t const revisionId,
+                         arangodb::velocypack::Slice const fromSlice,
+                         arangodb::velocypack::Slice const toSlice) = 0;
 
-  virtual int remove(arangodb::transaction::Methods* trx,
-                     arangodb::velocypack::Slice const slice,
-                     arangodb::ManagedDocumentResult& previous,
-                     OperationOptions& options,
-                     TRI_voc_tick_t& resultMarkerTick, bool lock,
-                     TRI_voc_rid_t const& revisionId,
-                     TRI_voc_rid_t& prevRev) = 0;
+  virtual Result remove(arangodb::transaction::Methods* trx,
+                        arangodb::velocypack::Slice const slice,
+                        arangodb::ManagedDocumentResult& previous,
+                        OperationOptions& options,
+                        TRI_voc_tick_t& resultMarkerTick, bool lock,
+                        TRI_voc_rid_t const& revisionId,
+                        TRI_voc_rid_t& prevRev) = 0;
 
   /// @brief Defer a callback to be executed when the collection
   ///        can be dropped. The callback is supposed to drop

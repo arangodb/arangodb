@@ -726,9 +726,9 @@ DocumentIdentifierToken RocksDBCollection::lookupKey(transaction::Methods* trx,
   return primaryIndex()->lookupKey(trx, StringRef(key));
 }
 
-int RocksDBCollection::read(transaction::Methods* trx,
-                            arangodb::velocypack::Slice const key,
-                            ManagedDocumentResult& result, bool) {
+Result RocksDBCollection::read(transaction::Methods* trx,
+                               arangodb::velocypack::Slice const key,
+                               ManagedDocumentResult& result, bool) {
   TRI_ASSERT(key.isString());
   RocksDBToken token = primaryIndex()->lookupKey(trx, StringRef(key));
 
@@ -768,11 +768,12 @@ bool RocksDBCollection::readDocumentNoCache(
   return res.ok();
 }
 
-int RocksDBCollection::insert(arangodb::transaction::Methods* trx,
-                              arangodb::velocypack::Slice const slice,
-                              arangodb::ManagedDocumentResult& mdr,
-                              OperationOptions& options,
-                              TRI_voc_tick_t& resultMarkerTick, bool /*lock*/) {
+Result RocksDBCollection::insert(arangodb::transaction::Methods* trx,
+                                 arangodb::velocypack::Slice const slice,
+                                 arangodb::ManagedDocumentResult& mdr,
+                                 OperationOptions& options,
+                                 TRI_voc_tick_t& resultMarkerTick,
+                                 bool /*lock*/) {
   // store the tick that was used for writing the document
   // note that we don't need it for this engine
   resultMarkerTick = 0;
@@ -817,7 +818,7 @@ int RocksDBCollection::insert(arangodb::transaction::Methods* trx,
   res.reset(newObjectForInsert(trx, slice, fromSlice, toSlice, isEdgeCollection,
                                *builder.get(), options.isRestore));
   if (res.fail()) {
-    return res.errorNumber();
+    return res;
   }
   VPackSlice newSlice = builder->slice();
 
@@ -838,7 +839,7 @@ int RocksDBCollection::insert(arangodb::transaction::Methods* trx,
     Result lookupResult = lookupRevisionVPack(revisionId, trx, mdr, false);
 
     if (lookupResult.fail()) {
-      return lookupResult.errorNumber();
+      return lookupResult;
     }
 
     // report document and key size
@@ -854,18 +855,18 @@ int RocksDBCollection::insert(arangodb::transaction::Methods* trx,
     guard.commit();
   }
 
-  return res.errorNumber();
+  return res;
 }
 
-int RocksDBCollection::update(arangodb::transaction::Methods* trx,
-                              arangodb::velocypack::Slice const newSlice,
-                              arangodb::ManagedDocumentResult& mdr,
-                              OperationOptions& options,
-                              TRI_voc_tick_t& resultMarkerTick, bool /*lock*/,
-                              TRI_voc_rid_t& prevRev,
-                              ManagedDocumentResult& previous,
-                              TRI_voc_rid_t const& revisionId,
-                              arangodb::velocypack::Slice const key) {
+Result RocksDBCollection::update(arangodb::transaction::Methods* trx,
+                                 arangodb::velocypack::Slice const newSlice,
+                                 arangodb::ManagedDocumentResult& mdr,
+                                 OperationOptions& options,
+                                 TRI_voc_tick_t& resultMarkerTick,
+                                 bool /*lock*/, TRI_voc_rid_t& prevRev,
+                                 ManagedDocumentResult& previous,
+                                 TRI_voc_rid_t const& revisionId,
+                                 arangodb::velocypack::Slice const key) {
   resultMarkerTick = 0;
 
   bool const isEdgeCollection =
@@ -873,7 +874,7 @@ int RocksDBCollection::update(arangodb::transaction::Methods* trx,
   RocksDBOperationResult res = lookupDocument(trx, key, previous);
 
   if (res.fail()) {
-    return res.errorNumber();
+    return res;
   }
 
   TRI_ASSERT(!previous.empty());
@@ -953,10 +954,10 @@ int RocksDBCollection::update(arangodb::transaction::Methods* trx,
     guard.commit();
   }
 
-  return res.errorNumber();
+  return res;
 }
 
-int RocksDBCollection::replace(
+Result RocksDBCollection::replace(
     transaction::Methods* trx, arangodb::velocypack::Slice const newSlice,
     ManagedDocumentResult& mdr, OperationOptions& options,
     TRI_voc_tick_t& resultMarkerTick, bool /*lock*/, TRI_voc_rid_t& prevRev,
@@ -978,7 +979,7 @@ int RocksDBCollection::replace(
   Result res = lookupDocument(trx, key, previous).errorNumber();
 
   if (res.fail()) {
-    return res.errorNumber();
+    return res;
   }
 
   TRI_ASSERT(!previous.empty());
@@ -1047,16 +1048,16 @@ int RocksDBCollection::replace(
     guard.commit();
   }
 
-  return opResult.errorNumber();
+  return opResult;
 }
 
-int RocksDBCollection::remove(arangodb::transaction::Methods* trx,
-                              arangodb::velocypack::Slice const slice,
-                              arangodb::ManagedDocumentResult& previous,
-                              OperationOptions& options,
-                              TRI_voc_tick_t& resultMarkerTick, bool /*lock*/,
-                              TRI_voc_rid_t const& revisionId,
-                              TRI_voc_rid_t& prevRev) {
+Result RocksDBCollection::remove(arangodb::transaction::Methods* trx,
+                                 arangodb::velocypack::Slice const slice,
+                                 arangodb::ManagedDocumentResult& previous,
+                                 OperationOptions& options,
+                                 TRI_voc_tick_t& resultMarkerTick,
+                                 bool /*lock*/, TRI_voc_rid_t const& revisionId,
+                                 TRI_voc_rid_t& prevRev) {
   // store the tick that was used for writing the document
   // note that we don't need it for this engine
   resultMarkerTick = 0;
@@ -1119,7 +1120,7 @@ int RocksDBCollection::remove(arangodb::transaction::Methods* trx,
     guard.commit();
   }
 
-  return res.errorNumber();
+  return res;
 }
 
 void RocksDBCollection::deferDropCollection(
@@ -1428,7 +1429,7 @@ RocksDBOperationResult RocksDBCollection::removeDocument(
   RocksDBOperationResult resInner;
   READ_LOCKER(guard, _indexesLock);
   for (std::shared_ptr<Index> const& idx : _indexes) {
-    int tmpres = idx->remove(trx, revisionId, doc, false);
+    Result tmpres = idx->remove(trx, revisionId, doc, false);
     resInner.reset(tmpres);
 
     // in case of no-memory, return immediately

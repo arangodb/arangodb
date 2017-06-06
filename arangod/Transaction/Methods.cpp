@@ -116,18 +116,18 @@ static OperationResult dbServerResponseBad(
 /// @brief Insert an error reported instead of the new document
 static void createBabiesError(VPackBuilder& builder,
                               std::unordered_map<int, size_t>& countErrorCodes,
-                              int errorCode, bool silent) {
+                              Result error, bool silent) {
   if (!silent) {
     builder.openObject();
     builder.add("error", VPackValue(true));
-    builder.add("errorNum", VPackValue(errorCode));
-    builder.add("errorMessage", VPackValue(TRI_errno_string(errorCode)));
+    builder.add("errorNum", VPackValue(error.errorNumber()));
+    builder.add("errorMessage", VPackValue(error.errorMessage()));
     builder.close();
   }
 
-  auto it = countErrorCodes.find(errorCode);
+  auto it = countErrorCodes.find(error.errorNumber());
   if (it == countErrorCodes.end()) {
-    countErrorCodes.emplace(errorCode, 1);
+    countErrorCodes.emplace(error.errorNumber(), 1);
   } else {
     it->second++;
   }
@@ -793,6 +793,20 @@ Result transaction::Methods::finish(int errorNum) {
   return errorNum;
 }
 
+/// @brief finish a transaction (commit or abort), based on the previous state
+Result transaction::Methods::finish(Result const& res) {
+  if (res.ok()) {
+    // there was no previous error, so we'll commit
+    return this->commit();
+  }
+
+  // there was a previous error, so we'll abort
+  this->abort();
+
+  // return original error
+  return res;
+}
+
 std::string transaction::Methods::name(TRI_voc_cid_t cid) const {
   auto c = trxCollection(cid);
   TRI_ASSERT(c != nullptr);
@@ -991,7 +1005,7 @@ Result transaction::Methods::documentFastPath(std::string const& collectionName,
       return opRes.code;
     }
     result.add(opRes.slice());
-    return TRI_ERROR_NO_ERROR;
+    return Result(TRI_ERROR_NO_ERROR);
   }
 
   TRI_voc_cid_t cid = addCollectionAtRuntime(collectionName);
@@ -1001,7 +1015,7 @@ Result transaction::Methods::documentFastPath(std::string const& collectionName,
 
   StringRef key(transaction::helpers::extractKeyPart(value));
   if (key.empty()) {
-    return TRI_ERROR_ARANGO_DOCUMENT_HANDLE_BAD;
+    return Result(TRI_ERROR_ARANGO_DOCUMENT_HANDLE_BAD);
   }
 
   std::unique_ptr<ManagedDocumentResult> tmp;
@@ -1012,18 +1026,18 @@ Result transaction::Methods::documentFastPath(std::string const& collectionName,
 
   TRI_ASSERT(mmdr != nullptr);
 
-  int res = collection->read(
+  Result res = collection->read(
       this, key, *mmdr,
       shouldLock && !isLocked(collection, AccessMode::Type::READ));
 
-  if (res != TRI_ERROR_NO_ERROR) {
+  if (res.fail()) {
     return res;
   }
 
   TRI_ASSERT(isPinned(cid));
 
   mmdr->addToBuilder(result, true);
-  return TRI_ERROR_NO_ERROR;
+  return Result(TRI_ERROR_NO_ERROR);
 }
 
 /// @brief return one document from a collection, fast path
@@ -1047,10 +1061,10 @@ Result transaction::Methods::documentFastPathLocal(
     return TRI_ERROR_ARANGO_DOCUMENT_HANDLE_BAD;
   }
 
-  int res = collection->read(this, key, result,
-                             !isLocked(collection, AccessMode::Type::READ));
+  Result res = collection->read(this, key, result,
+                                !isLocked(collection, AccessMode::Type::READ));
 
-  if (res != TRI_ERROR_NO_ERROR) {
+  if (res.fail()) {
     return res;
   }
 
@@ -1216,7 +1230,7 @@ OperationResult transaction::Methods::documentLocal(
   VPackBuilder resultBuilder;
 
   auto workForOneDocument = [&](VPackSlice const value,
-                                bool isMultiple) -> int {
+                                bool isMultiple) -> Result {
     StringRef key(transaction::helpers::extractKeyPart(value));
     if (key.empty()) {
       return TRI_ERROR_ARANGO_DOCUMENT_HANDLE_BAD;
@@ -1228,10 +1242,10 @@ OperationResult transaction::Methods::documentLocal(
     }
 
     ManagedDocumentResult result;
-    int res = collection->read(this, key, result,
-                               !isLocked(collection, AccessMode::Type::READ));
+    Result res = collection->read(
+      this, key, result, !isLocked(collection, AccessMode::Type::READ));
 
-    if (res != TRI_ERROR_NO_ERROR) {
+    if (res.fail()) {
       return res;
     }
 
@@ -1260,7 +1274,7 @@ OperationResult transaction::Methods::documentLocal(
     return TRI_ERROR_NO_ERROR;
   };
 
-  int res = TRI_ERROR_NO_ERROR;
+  Result res(TRI_ERROR_NO_ERROR);
   std::unordered_map<int, size_t> countErrorCodes;
   if (!value.isArray()) {
     res = workForOneDocument(value, false);
@@ -1268,7 +1282,7 @@ OperationResult transaction::Methods::documentLocal(
     VPackArrayBuilder guard(&resultBuilder);
     for (auto const& s : VPackArrayIterator(value)) {
       res = workForOneDocument(s, true);
-      if (res != TRI_ERROR_NO_ERROR) {
+      if (res.fail()) {
         createBabiesError(resultBuilder, countErrorCodes, res, options.silent);
       }
     }
@@ -1276,8 +1290,9 @@ OperationResult transaction::Methods::documentLocal(
   }
 
   return OperationResult(resultBuilder.steal(),
-                         _transactionContextPtr->orderCustomTypeHandler(), "",
-                         res, options.waitForSync, countErrorCodes);
+                         _transactionContextPtr->orderCustomTypeHandler(),
+                         res.errorMessage(), res.errorNumber(),
+                         options.waitForSync, countErrorCodes);
 }
 
 /// @brief create one or multiple documents in a collection
@@ -1376,7 +1391,7 @@ OperationResult transaction::Methods::insertLocal(
   VPackBuilder resultBuilder;
   TRI_voc_tick_t maxTick = 0;
 
-  auto workForOneDocument = [&](VPackSlice const value) -> int {
+  auto workForOneDocument = [&](VPackSlice const value) -> Result {
     if (!value.isObject()) {
       return TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID;
     }
@@ -1384,7 +1399,7 @@ OperationResult transaction::Methods::insertLocal(
     ManagedDocumentResult result;
     TRI_voc_tick_t resultMarkerTick = 0;
 
-    int res =
+    Result res =
         collection->insert(this, value, result, options, resultMarkerTick,
                            !isLocked(collection, AccessMode::Type::WRITE));
 
@@ -1392,7 +1407,7 @@ OperationResult transaction::Methods::insertLocal(
       maxTick = resultMarkerTick;
     }
 
-    if (res != TRI_ERROR_NO_ERROR) {
+    if (!res.ok()) {
       // Error reporting in the babies case is done outside of here,
       // in the single document case no body needs to be created at all.
       return res;
@@ -1411,25 +1426,25 @@ OperationResult transaction::Methods::insertLocal(
     return TRI_ERROR_NO_ERROR;
   };
 
-  int res = TRI_ERROR_NO_ERROR;
+  Result res = TRI_ERROR_NO_ERROR;
   bool const multiCase = value.isArray();
   std::unordered_map<int, size_t> countErrorCodes;
   if (multiCase) {
     VPackArrayBuilder b(&resultBuilder);
     for (auto const& s : VPackArrayIterator(value)) {
       res = workForOneDocument(s);
-      if (res != TRI_ERROR_NO_ERROR) {
+      if (res.fail()) {
         createBabiesError(resultBuilder, countErrorCodes, res, options.silent);
       }
     }
     // With babies the reporting is handled in the body of the result
-    res = TRI_ERROR_NO_ERROR;
+    res = Result(TRI_ERROR_NO_ERROR);
   } else {
     res = workForOneDocument(value);
   }
 
   // wait for operation(s) to be synced to disk here. On rocksdb maxTick == 0
-  if (res == TRI_ERROR_NO_ERROR && options.waitForSync && maxTick > 0 &&
+  if (res.ok() && options.waitForSync && maxTick > 0 &&
       isSingleOperationTransaction()) {
     EngineSelectorFeature::ENGINE->waitForSync(maxTick);
   }
@@ -1444,7 +1459,7 @@ OperationResult transaction::Methods::insertLocal(
     doingSynchronousReplication = followers->size() > 0;
   }
 
-  if (doingSynchronousReplication && res == TRI_ERROR_NO_ERROR) {
+  if (doingSynchronousReplication && res.ok()) {
     // In the multi babies case res is always TRI_ERROR_NO_ERROR if we
     // get here, in the single document case, we do not try to replicate
     // in case of an error.
@@ -1535,8 +1550,9 @@ OperationResult transaction::Methods::insertLocal(
     resultBuilder.clear();
   }
 
-  return OperationResult(resultBuilder.steal(), nullptr, "", res,
-                         options.waitForSync, countErrorCodes);
+  return OperationResult(resultBuilder.steal(), nullptr, res.errorMessage(),
+                         res.errorNumber(), options.waitForSync,
+                         countErrorCodes);
 }
 
 /// @brief update/patch one or multiple documents in a collection
@@ -1917,7 +1933,7 @@ OperationResult transaction::Methods::removeLocal(
   VPackBuilder resultBuilder;
   TRI_voc_tick_t maxTick = 0;
 
-  auto workForOneDocument = [&](VPackSlice value, bool isBabies) -> int {
+  auto workForOneDocument = [&](VPackSlice value, bool isBabies) -> Result {
     TRI_voc_rid_t actualRevision = 0;
     ManagedDocumentResult previous;
     transaction::BuilderLeaser builder(this);
@@ -1934,16 +1950,16 @@ OperationResult transaction::Methods::removeLocal(
     } else if (value.isObject()) {
       VPackSlice keySlice = value.get(StaticStrings::KeyString);
       if (!keySlice.isString()) {
-        return TRI_ERROR_ARANGO_DOCUMENT_HANDLE_BAD;
+        return Result(TRI_ERROR_ARANGO_DOCUMENT_HANDLE_BAD);
       }
       key = keySlice;
     } else {
-      return TRI_ERROR_ARANGO_DOCUMENT_HANDLE_BAD;
+      return Result(TRI_ERROR_ARANGO_DOCUMENT_HANDLE_BAD);
     }
 
     TRI_voc_tick_t resultMarkerTick = 0;
 
-    int res = collection->remove(this, value, options, resultMarkerTick,
+    Result res = collection->remove(this, value, options, resultMarkerTick,
                                  !isLocked(collection, AccessMode::Type::WRITE),
                                  actualRevision, previous);
 
@@ -1951,8 +1967,8 @@ OperationResult transaction::Methods::removeLocal(
       maxTick = resultMarkerTick;
     }
 
-    if (res != TRI_ERROR_NO_ERROR) {
-      if (res == TRI_ERROR_ARANGO_CONFLICT && !isBabies) {
+    if (!res.ok()) {
+      if (res.errorNumber() == TRI_ERROR_ARANGO_CONFLICT && !isBabies) {
         buildDocumentIdentity(collection, resultBuilder, cid, key,
                               actualRevision, 0,
                               options.returnOld ? &previous : nullptr, nullptr);
@@ -1964,28 +1980,28 @@ OperationResult transaction::Methods::removeLocal(
     buildDocumentIdentity(collection, resultBuilder, cid, key, actualRevision,
                           0, options.returnOld ? &previous : nullptr, nullptr);
 
-    return TRI_ERROR_NO_ERROR;
+    return Result(TRI_ERROR_NO_ERROR);
   };
 
-  int res = TRI_ERROR_NO_ERROR;
+  Result res(TRI_ERROR_NO_ERROR);
   bool multiCase = value.isArray();
   std::unordered_map<int, size_t> countErrorCodes;
   if (multiCase) {
     VPackArrayBuilder guard(&resultBuilder);
     for (auto const& s : VPackArrayIterator(value)) {
       res = workForOneDocument(s, true);
-      if (res != TRI_ERROR_NO_ERROR) {
+      if (!res.ok()) {
         createBabiesError(resultBuilder, countErrorCodes, res, options.silent);
       }
     }
     // With babies the reporting is handled somewhere else.
-    res = TRI_ERROR_NO_ERROR;
+    res = Result(TRI_ERROR_NO_ERROR);
   } else {
     res = workForOneDocument(value, false);
   }
 
   // wait for operation(s) to be synced to disk here. On rocksdb maxTick == 0
-  if (res == TRI_ERROR_NO_ERROR && options.waitForSync && maxTick > 0 &&
+  if (res.ok() && options.waitForSync && maxTick > 0 &&
       isSingleOperationTransaction()) {
     EngineSelectorFeature::ENGINE->waitForSync(maxTick);
   }
@@ -2000,7 +2016,7 @@ OperationResult transaction::Methods::removeLocal(
     doingSynchronousReplication = followers->size() > 0;
   }
 
-  if (doingSynchronousReplication && res == TRI_ERROR_NO_ERROR) {
+  if (doingSynchronousReplication && res.ok()) {
     // In the multi babies case res is always TRI_ERROR_NO_ERROR if we
     // get here, in the single document case, we do not try to replicate
     // in case of an error.
@@ -2094,8 +2110,9 @@ OperationResult transaction::Methods::removeLocal(
     resultBuilder.clear();
   }
 
-  return OperationResult(resultBuilder.steal(), nullptr, "", res,
-                         options.waitForSync, countErrorCodes);
+  return OperationResult(resultBuilder.steal(), nullptr, res.errorMessage(),
+                         res.errorNumber(), options.waitForSync,
+                         countErrorCodes);
 }
 
 /// @brief fetches all documents in a collection

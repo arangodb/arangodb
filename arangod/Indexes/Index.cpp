@@ -516,9 +516,9 @@ void Index::batchInsert(
         documents,
     std::shared_ptr<arangodb::basics::LocalTaskQueue> queue) {
   for (auto const& it : documents) {
-    int status = insert(trx, it.first, it.second, false);
-    if (status != TRI_ERROR_NO_ERROR) {
-      queue->setStatus(status);
+    Result status = insert(trx, it.first, it.second, false);
+    if (status.errorNumber() != TRI_ERROR_NO_ERROR) {
+      queue->setStatus(status.errorNumber());
       break;
     }
   }
@@ -770,10 +770,10 @@ void Index::expandInSearchValues(VPackSlice const base,
           result.openArray();
           return;
         }
-        
+
         TRI_ASSERT(inList.isArray());
         VPackValueLength nList = inList.length();
-        
+
         if (nList == 0) {
           // Empty Array. short circuit, no matches possible
           result.clear();

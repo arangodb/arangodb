@@ -57,7 +57,7 @@ struct Variable;
 }
 
 namespace rest {
-enum class ResponseCode; 
+enum class ResponseCode;
 }
 
 namespace traverser {
@@ -89,7 +89,7 @@ class Methods {
  public:
   class IndexHandle {
     friend class transaction::Methods;
-    
+
     std::shared_ptr<arangodb::Index> _index;
    public:
     IndexHandle() = default;
@@ -110,7 +110,7 @@ class Methods {
 
   using VPackBuilder = arangodb::velocypack::Builder;
   using VPackSlice = arangodb::velocypack::Slice;
-  
+
   double const TRX_FOLLOWER_TIMEOUT = 3.0;
 
   /// @brief transaction::Methods
@@ -149,18 +149,18 @@ class Methods {
 
   /// @brief return internals of transaction
   inline TransactionState* state() const { return _state; }
-  
-  Result resolveId(char const* handle, size_t length, TRI_voc_cid_t& cid, char const*& key, size_t& outLength); 
-  
+
+  Result resolveId(char const* handle, size_t length, TRI_voc_cid_t& cid, char const*& key, size_t& outLength);
+
   /// @brief return a pointer to the transaction context
   std::shared_ptr<transaction::Context> transactionContext() const {
     return _transactionContext;
   }
-  
+
   inline transaction::Context* transactionContextPtr() const {
     return _transactionContextPtr;
   }
-  
+
   /// @brief add a transaction hint
   void addHint(transaction::Hints::Hint hint) { _localHints.set(hint); }
 
@@ -169,7 +169,7 @@ class Methods {
 
   /// @brief get the status of the transaction
   Status status() const;
-  
+
   /// @brief get the status of the transaction, as a string
   char const* statusString() const { return transaction::statusString(status()); }
 
@@ -184,18 +184,18 @@ class Methods {
 
   /// @brief finish a transaction (commit or abort), based on the previous state
   Result finish(int errorNum);
-  Result finish(Result const& res) { return finish(res.errorNumber()); };
+  Result finish(Result const& res);
 
   /// @brief return a collection name
   std::string name(TRI_voc_cid_t cid) const;
 
   /// @brief order a ditch for a collection
   void pinData(TRI_voc_cid_t);
-  
+
   /// @brief whether or not a ditch has been created for the collection
   bool isPinned(TRI_voc_cid_t cid) const;
 
-  /// @brief extract the _id attribute from a slice, and convert it into a 
+  /// @brief extract the _id attribute from a slice, and convert it into a
   /// string
   std::string extractIdString(VPackSlice);
 
@@ -208,10 +208,10 @@ class Methods {
   OperationResult any(std::string const&, uint64_t, uint64_t);
 
   /// @brief add a collection to the transaction for read, at runtime
-  TRI_voc_cid_t addCollectionAtRuntime(TRI_voc_cid_t cid, 
+  TRI_voc_cid_t addCollectionAtRuntime(TRI_voc_cid_t cid,
                                        std::string const& collectionName,
                                        AccessMode::Type type = AccessMode::Type::READ);
-  
+
   /// @brief add a collection to the transaction for read, at runtime
   virtual TRI_voc_cid_t addCollectionAtRuntime(std::string const& collectionName);
 
@@ -221,8 +221,8 @@ class Methods {
   TRI_col_type_e getCollectionType(std::string const& collectionName);
 
   /// @brief return the name of a collection
-  std::string collectionName(TRI_voc_cid_t cid); 
-  
+  std::string collectionName(TRI_voc_cid_t cid);
+
   /// @brief Iterate over all elements of the collection.
   void invokeOnAllElements(std::string const& collectionName,
                            std::function<bool(arangodb::DocumentIdentifierToken const&)>);
@@ -240,7 +240,7 @@ class Methods {
                        arangodb::velocypack::Slice const value,
                        arangodb::velocypack::Builder& result,
                        bool shouldLock);
-  
+
   /// @brief return one  document from a collection, fast path
   ///        If everything went well the result will contain the found document
   ///        (as an external on single_server)  and this function will return TRI_ERROR_NO_ERROR.
@@ -250,48 +250,48 @@ class Methods {
   Result documentFastPathLocal(std::string const& collectionName,
                             std::string const& key,
                             ManagedDocumentResult& result);
- 
+
   /// @brief return one or multiple documents from a collection
   OperationResult document(std::string const& collectionName,
                            VPackSlice const value,
                            OperationOptions& options);
-  
+
   /// @brief create one or multiple documents in a collection
   /// the single-document variant of this operation will either succeed or,
   /// if it fails, clean up after itself
   OperationResult insert(std::string const& collectionName,
                          VPackSlice const value,
                          OperationOptions const& options);
-  
+
   /// @brief update/patch one or multiple documents in a collecti  Result/// the single-document variant of this operation will either succeed or,
   /// if it fails, clean up after itself
   OperationResult update(std::string const& collectionName,
                          VPackSlice const updateValue,
                          OperationOptions const& options);
-  
+
   /// @brief replace one or multiple documents in a collection
   /// the single-document variant of this operation will either succeed or,
   /// if it fails, clean up after itself
   OperationResult replace(std::string const& collectionName,
                           VPackSlice const updateValue,
                           OperationOptions const& options);
-  
+
   /// @brief remove one or multiple documents in a collection
   /// the single-document variant of this operation will either succeed or,
   /// if it fails, clean up after itself
   OperationResult remove(std::string const& collectionName,
                          VPackSlice const value,
                          OperationOptions const& options);
-  
+
   /// @brief fetches all documents in a collection
   OperationResult all(std::string const& collectionName,
                       uint64_t skip, uint64_t limit,
                       OperationOptions const& options);
-  
+
   /// @brief remove all documents in a collection
   OperationResult truncate(std::string const& collectionName,
                            OperationOptions const& options);
-  
+
   /// @brief count the number of documents in a collection
   OperationResult count(std::string const& collectionName, bool aggregate);
 
@@ -359,12 +359,12 @@ class Methods {
   bool isLocked(arangodb::LogicalCollection*, AccessMode::Type);
 
   arangodb::LogicalCollection* documentCollection(TRI_voc_cid_t) const;
-  
+
 /// @brief get the index by it's identifier. Will either throw or
 ///        return a valid index. nullptr is impossible.
   IndexHandle getIndexByIdentifier(
     std::string const& collectionName, std::string const& indexHandle);
-  
+
 /// @brief get all indexes for a collection name
   std::vector<std::shared_ptr<arangodb::Index>> indexesForCollection(
       std::string const&);
@@ -374,12 +374,12 @@ class Methods {
 
   /// @brief Clone this transaction. Only works for selected sub-classes
   virtual transaction::Methods* clone(transaction::Options const&) const;
-  
+
   /// @brief return the collection name resolver
   CollectionNameResolver const* resolver() const;
 
  private:
-  
+
   /// @brief build a VPack object with _id, _key and _rev and possibly
   /// oldRef (if given), the result is added to the builder in the
   /// argument as a single object.
@@ -405,7 +405,7 @@ class Methods {
   OperationResult insertLocal(std::string const& collectionName,
                               VPackSlice const value,
                               OperationOptions& options);
-  
+
   OperationResult updateCoordinator(std::string const& collectionName,
                                     VPackSlice const newValue,
                                     OperationOptions& options);
@@ -418,23 +418,23 @@ class Methods {
                               VPackSlice const newValue,
                               OperationOptions& options,
                               TRI_voc_document_operation_e operation);
-  
+
   OperationResult removeCoordinator(std::string const& collectionName,
                                     VPackSlice const value,
                                     OperationOptions& options);
-  
+
   OperationResult removeLocal(std::string const& collectionName,
                               VPackSlice const value,
                               OperationOptions& options);
-  
+
   OperationResult allCoordinator(std::string const& collectionName,
                                  uint64_t skip, uint64_t limit,
                                  OperationOptions& options);
-  
+
   OperationResult allLocal(std::string const& collectionName,
                            uint64_t skip, uint64_t limit,
                            OperationOptions& options);
-  
+
   OperationResult anyCoordinator(std::string const& collectionName,
                                  uint64_t skip, uint64_t limit);
 
@@ -443,13 +443,13 @@ class Methods {
 
   OperationResult truncateCoordinator(std::string const& collectionName,
                                       OperationOptions& options);
-  
+
   OperationResult truncateLocal(std::string const& collectionName,
                                 OperationOptions& options);
-  
+
   OperationResult countCoordinator(std::string const& collectionName, bool aggregate);
   OperationResult countLocal(std::string const& collectionName);
-  
+
  protected:
   /// @brief return the transaction collection for a document collection
   TransactionCollection* trxCollection(TRI_voc_cid_t cid) const;
@@ -457,7 +457,7 @@ class Methods {
   /// @brief return the collection
   arangodb::LogicalCollection* documentCollection(
       TransactionCollection const*) const;
-  
+
   /// @brief add a collection by id, with the name supplied
   Result addCollection(TRI_voc_cid_t, char const*, AccessMode::Type);
 
@@ -466,7 +466,7 @@ class Methods {
 
   /// @brief add a collection by id
   Result addCollection(TRI_voc_cid_t, AccessMode::Type);
-  
+
   /// @brief add a collection by name
   Result addCollection(std::string const&, AccessMode::Type);
 
@@ -548,15 +548,15 @@ class Methods {
   void setupToplevel(TRI_vocbase_t*, transaction::Options const&);
 
  protected:
-  /// @brief the state 
+  /// @brief the state
   TransactionState* _state;
 
   /// @brief the transaction context
   std::shared_ptr<transaction::Context> _transactionContext;
-  
+
   /// @brief pointer to transaction context (faster than shared ptr)
   transaction::Context* const _transactionContextPtr;
- 
+
  private:
   /// @brief transaction hints
   transaction::Hints _localHints;
@@ -567,7 +567,7 @@ class Methods {
     std::string name;
   }
   _collectionCache;
-  
+
   /// @brief optional callback function that will be called on transaction
   /// commit or abort
   std::function<void(arangodb::transaction::Methods* trx)> _onFinish;

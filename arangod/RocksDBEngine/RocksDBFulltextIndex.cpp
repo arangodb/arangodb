@@ -27,6 +27,7 @@
 #include "Basics/Utf8Helper.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/tri-strings.h"
+#include "Indexes/IndexResult.h"
 #include "Logger/Logger.h"
 #include "RocksDBEngine/RocksDBCollection.h"
 #include "RocksDBEngine/RocksDBCommon.h"
@@ -190,9 +191,9 @@ bool RocksDBFulltextIndex::matchesDefinition(VPackSlice const& info) const {
   return true;
 }
 
-int RocksDBFulltextIndex::insert(transaction::Methods* trx,
-                                 TRI_voc_rid_t revisionId,
-                                 VPackSlice const& doc, bool isRollback) {
+Result RocksDBFulltextIndex::insert(transaction::Methods* trx,
+                                    TRI_voc_rid_t revisionId,
+                                    VPackSlice const& doc, bool isRollback) {
   std::set<std::string> words = wordlist(doc);
   if (words.empty()) {
     return TRI_ERROR_NO_ERROR;
@@ -224,7 +225,7 @@ int RocksDBFulltextIndex::insert(transaction::Methods* trx,
       rtrx->Delete(key.string());
     }
   }*/
-  return res;
+  return IndexResult(res, this);
 }
 
 int RocksDBFulltextIndex::insertRaw(RocksDBMethods* batch,
@@ -249,14 +250,14 @@ int RocksDBFulltextIndex::insertRaw(RocksDBMethods* batch,
   return TRI_ERROR_NO_ERROR;
 }
 
-int RocksDBFulltextIndex::remove(transaction::Methods* trx,
-                                 TRI_voc_rid_t revisionId,
-                                 VPackSlice const& doc, bool isRollback) {
+Result RocksDBFulltextIndex::remove(transaction::Methods* trx,
+                                    TRI_voc_rid_t revisionId,
+                                    VPackSlice const& doc, bool isRollback) {
   std::set<std::string> words = wordlist(doc);
   if (words.empty()) {
     // TODO: distinguish the cases "empty wordlist" and "out of memory"
     // LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "could not build wordlist";
-    return TRI_ERROR_OUT_OF_MEMORY;
+    return IndexResult(TRI_ERROR_OUT_OF_MEMORY);
   }
 
   RocksDBMethods* mthd = rocksutils::toRocksMethods(trx);
@@ -273,7 +274,7 @@ int RocksDBFulltextIndex::remove(transaction::Methods* trx,
       break;
     }
   }
-  return res;
+  return IndexResult(res, this);
 }
 
 int RocksDBFulltextIndex::removeRaw(RocksDBMethods* batch,
