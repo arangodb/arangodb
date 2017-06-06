@@ -11,6 +11,10 @@ v3.1.22 (2017-xx-xx)
 
 * fixed issue #2283: disabled proxy communication internally
 
+* agency no longer responds prematurely when started from persistence
+
+* agency handles huge arrays of transactions
+
 
 v3.1.21 (2017-05-22)
 --------------------
