@@ -50,6 +50,7 @@ AgencyFeature::AgencyFeature(application_features::ApplicationServer* server)
       _supervisionFrequency(1.0),
       _compactionStepSize(20000),
       _compactionKeepSize(10000),
+      _maxAppendSize(250),
       _supervisionGracePeriod(10.0),
       _cmdLineTimings(false)
 {
@@ -121,6 +122,11 @@ void AgencyFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
                            "wait for hard disk syncs on every persistence call "
                            "(required in production)",
                            new BooleanParameter(&_waitForSync));
+
+  options->addHiddenOption("--agency.max-append-size",
+                           "maximum size of appendEntries document (# log entries)",
+                           new UInt64Parameter(&_maxAppendSize));
+
 }
 
 void AgencyFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
@@ -253,7 +259,7 @@ void AgencyFeature::start() {
       _size, _poolSize, _minElectionTimeout, _maxElectionTimeout, endpoint,
       _agencyEndpoints, _supervision, _waitForSync, _supervisionFrequency,
       _compactionStepSize, _compactionKeepSize, _supervisionGracePeriod,
-      _cmdLineTimings)));
+      _cmdLineTimings, _maxAppendSize)));
 
   LOG_TOPIC(DEBUG, Logger::AGENCY) << "Starting agency personality";
   _agent->start();

@@ -420,7 +420,8 @@ void Agent::sendAppendEntriesRPC() {
         commitIndex = _commitIndex;
       }
 
-      std::vector<log_t> unconfirmed = _state.get(lastConfirmed);
+      std::vector<log_t> unconfirmed =
+        _state.get(lastConfirmed, lastConfirmed + _config.maxAppendSize());
 
       // Note that dispite compaction this vector can never be empty, since
       // any compaction keeps at least one active log entry!
