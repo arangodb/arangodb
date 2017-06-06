@@ -127,16 +127,19 @@ function agencyTestSuite () {
   }
   
   function doCountTransactions(count, start) {
-    let i;
+    let i, res;
     let trxs = [];
     for (i = start; i < start + count; ++i) {
       let key = "/key"+i;
       let trx = [{}];
       trx[0][key] = "value" + i;
       trxs.push(trx);
+      if (trxs.length >= 200000 || i === start + count - 1) {
+        res = accessAgency("write", trxs);
+        assertEqual(200, res.statusCode);
+        trxs = [];
+      }
     }
-    let res = accessAgency("write", trxs);
-    assertEqual(200, res.statusCode);
     trxs = [];
     for (i = 0; i < start + count; ++i) {
       trxs.push(["/key"+i]);
@@ -907,7 +910,7 @@ function agencyTestSuite () {
     testHiddenAgencyWriteDeep: function() {
       var res = accessAgency("write",[[{"/.agency/hans": {"op":"set","new":"fallera"}}]]);
       assertEqual(res.statusCode, 200);
-    }/*,
+    },
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Compaction
@@ -937,7 +940,7 @@ function agencyTestSuite () {
         count3, "keys, from log entry", cur + count + count2, "on.");
       doCountTransactions(count3, count + count2);
     }
-*/
+
   };
 }
 

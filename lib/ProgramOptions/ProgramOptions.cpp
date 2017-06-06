@@ -352,6 +352,12 @@ bool ProgramOptions::fail(std::string const& message) {
   std::cerr << "Error while processing " << _context << ":" << std::endl;
   failNotice(message);
   std::cerr << std::endl;
+#ifdef _WIN32
+  // additionally log these errors to the debug output window in MSVC so
+  // we can see them during development
+  OutputDebugString(message.c_str());
+  OutputDebugString("\r\n");
+#endif
   return false;
 }
 

@@ -237,6 +237,7 @@ void Logger::log(char const* function, char const* file, long int line,
     // additionally log these errors to the debug output window in MSVC so
     // we can see them during development
     OutputDebugString(message.c_str());
+    OutputDebugString("\r\n");
   }
 #endif
 
