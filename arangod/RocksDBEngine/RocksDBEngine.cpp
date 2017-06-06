@@ -305,7 +305,7 @@ void RocksDBEngine::start() {
   columFamilies.emplace_back("IndexValue", cfOptions2); // 6
   columFamilies.emplace_back("UniqueIndexValue", cfOptions2);// 7
   // DO NOT FORGET TO DESTROY THE CFs ON CLOSE
- 
+
   std::vector<rocksdb::ColumnFamilyHandle*> cfHandles;
   size_t const numberOfColumnFamilies = RocksDBColumnFamily::numberOfColumnFamilies;
   {
@@ -1414,6 +1414,13 @@ void RocksDBEngine::getStatistics(VPackBuilder& builder) const {
   c1(rocksdb::DB::Properties::kIsFileDeletionsEnabled);
   c1(rocksdb::DB::Properties::kBaseLevel);
   c1(rocksdb::DB::Properties::kTotalSstFilesSize);
+
+  if (_options.table_factory) {
+    void* options = _options.table_factory->GetOptions();
+    if (options != nullptr) {
+      builder.add("rocksdb.block-cache-used", VPackValue(static_cast<rocksdb::BlockBasedTableOptions*>(options)->block_cache->GetUsage()));
+    }
+  }
 
   builder.close();
 }
