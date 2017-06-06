@@ -129,6 +129,7 @@ build-book:
 	fi
 	cd ppbooks/$(NAME); if ! test -L SUMMARY.md; then ln -s ../../$(NAME)/SUMMARY.md . ; fi
 	cd ppbooks/$(NAME); if ! test -f book.json ; then cp ../../$(NAME)/book.json . ; fi
+	cd ppbooks/$(NAME); if ! test -f FOOTER.html ; then cp ../../$(NAME)/FOOTER.html . ; fi
 	cd ppbooks/$(NAME); cp -a ../../$(NAME)/styles/* styles/
 	WD=`pwd`; \
 	for pic in `find $(NAME) -name \*.png`; do \
@@ -154,6 +155,7 @@ build-book:
 
 	cd ppbooks/$(NAME) && gitbook install
 	cd ppbooks/$(NAME) && gitbook build ./ ./../../books/$(NAME)
+	rm -f ./books/$(NAME)/FOOTER.html
 	python ../Scripts/deprecated.py
 
 	make book-check-markdown-leftovers
