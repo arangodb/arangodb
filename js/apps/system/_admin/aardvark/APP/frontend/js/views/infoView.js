@@ -40,7 +40,6 @@
           var buttons = [];
           // analyse figures in cluster
           if (frontendConfig.isCluster) {
-            console.log(figures);
             if (figures.figures.alive.size === 0 &&
               figures.figures.alive.count === 0 &&
               figures.figures.datafiles.count === 0 &&

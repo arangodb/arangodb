@@ -22,7 +22,6 @@
         success: function () {
           window.modalView.hide();
           self.reload();
-          console.log(result);
           arangoHelper.arangoNotification('Services', 'Service ' + result.name + ' installed.');
         }
       });

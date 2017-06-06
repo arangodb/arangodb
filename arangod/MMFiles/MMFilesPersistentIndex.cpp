@@ -29,6 +29,7 @@
 #include "Basics/StaticStrings.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Indexes/IndexLookupContext.h"
+#include "Indexes/IndexResult.h"
 #include "MMFiles/MMFilesCollection.h"
 #include "MMFiles/MMFilesIndexElement.h"
 #include "MMFiles/MMFilesPersistentIndexFeature.h"
@@ -234,9 +235,9 @@ void MMFilesPersistentIndex::toVelocyPackFigures(VPackBuilder& builder) const {
 }
 
 /// @brief inserts a document into the index
-int MMFilesPersistentIndex::insert(transaction::Methods* trx,
-                                   TRI_voc_rid_t revisionId,
-                                   VPackSlice const& doc, bool isRollback) {
+Result MMFilesPersistentIndex::insert(transaction::Methods* trx,
+                                      TRI_voc_rid_t revisionId,
+                                      VPackSlice const& doc, bool isRollback) {
   auto comparator = MMFilesPersistentIndexFeature::instance()->comparator();
   std::vector<MMFilesSkiplistIndexElement*> elements;
 
@@ -257,7 +258,7 @@ int MMFilesPersistentIndex::insert(transaction::Methods* trx,
   TRI_DEFER(cleanup());
 
   if (res != TRI_ERROR_NO_ERROR) {
-    return res;
+    return IndexResult(res, this);
   }
 
   ManagedDocumentResult result;
@@ -391,13 +392,13 @@ int MMFilesPersistentIndex::insert(transaction::Methods* trx,
     }
   }
 
-  return res;
+  return IndexResult(res, this);
 }
 
 /// @brief removes a document from the index
-int MMFilesPersistentIndex::remove(transaction::Methods* trx,
-                                   TRI_voc_rid_t revisionId,
-                                   VPackSlice const& doc, bool isRollback) {
+Result MMFilesPersistentIndex::remove(transaction::Methods* trx,
+                                      TRI_voc_rid_t revisionId,
+                                      VPackSlice const& doc, bool isRollback) {
   std::vector<MMFilesSkiplistIndexElement*> elements;
 
   int res;
@@ -417,7 +418,7 @@ int MMFilesPersistentIndex::remove(transaction::Methods* trx,
   TRI_DEFER(cleanup());
 
   if (res != TRI_ERROR_NO_ERROR) {
-    return res;
+    return IndexResult(res, this);
   }
 
   ManagedDocumentResult result;
@@ -461,7 +462,7 @@ int MMFilesPersistentIndex::remove(transaction::Methods* trx,
     }
   }
 
-  return res;
+  return IndexResult(res, this);
 }
 
 int MMFilesPersistentIndex::unload() {

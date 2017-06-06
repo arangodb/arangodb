@@ -28,6 +28,7 @@
 #include "Basics/AttributeNameParser.h"
 #include "Basics/Common.h"
 #include "Basics/Exceptions.h"
+#include "Basics/Result.h"
 #include "VocBase/voc-types.h"
 #include "VocBase/vocbase.h"
 
@@ -242,9 +243,9 @@ class Index {
   virtual void toVelocyPackFigures(arangodb::velocypack::Builder&) const;
   std::shared_ptr<arangodb::velocypack::Builder> toVelocyPackFigures() const;
 
-  virtual int insert(transaction::Methods*, TRI_voc_rid_t revisionId,
+  virtual Result insert(transaction::Methods*, TRI_voc_rid_t revisionId,
                      arangodb::velocypack::Slice const&, bool isRollback) = 0;
-  virtual int remove(transaction::Methods*, TRI_voc_rid_t revisionId,
+  virtual Result remove(transaction::Methods*, TRI_voc_rid_t revisionId,
                      arangodb::velocypack::Slice const&, bool isRollback) = 0;
 
   virtual void batchInsert(

@@ -953,6 +953,29 @@
       } catch (ignore) {}
     },
 
+    downloadLocalBlob: function (obj, type) {
+      var dlType;
+      if (type === 'csv') {
+        dlType = 'text/csv; charset=utf-8';
+      }
+
+      if (dlType) {
+        var blob = new Blob([obj], {type: dlType});
+        var blobUrl = window.URL.createObjectURL(blob);
+        var a = document.createElement('a');
+        document.body.appendChild(a);
+        a.style = 'display: none';
+        a.href = blobUrl;
+        a.download = 'results-' + window.frontendConfig.db + '.' + type;
+        a.click();
+
+        window.setTimeout(function () {
+          window.URL.revokeObjectURL(blobUrl);
+          document.body.removeChild(a);
+        }, 500);
+      }
+    },
+
     download: function (url, callback) {
       $.ajax(url)
         .success(function (result, dummy, request) {

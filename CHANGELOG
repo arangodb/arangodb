@@ -1,6 +1,8 @@
 devel
 -----
 
+* provide more context for index errors (addresses issue #342)
+
 * arangod now validates several OS/environment settings on startup and warns if
   the settings are non-ideal. Most of the checks are executed on Linux systems only.
 
@@ -54,7 +56,7 @@ v3.2.alpha4 (2017-04-25)
 
 * fixed issue #2448: ArangoDB Web UI takes no action when Delete button is clicked
 
-* fixed issue #2442: Frontend shows already deleted databases during login 
+* fixed issue #2442: Frontend shows already deleted databases during login
 
 * added 'x-content-type-options: nosniff' to avoid MSIE bug
 
@@ -62,10 +64,10 @@ v3.2.alpha4 (2017-04-25)
 
 * AQL breaking change in cluster:
   The SHORTEST_PATH statement using edge-collection names instead
-  of a graph name now requires to explicitly name the vertex-collection names 
+  of a graph name now requires to explicitly name the vertex-collection names
   within the AQL query in the cluster. It can be done by adding `WITH <name>`
   at the beginning of the query.
-  
+
   Example:
   ```
   FOR v,e IN OUTBOUND SHORTEST_PATH @start TO @target edges [...]
@@ -88,15 +90,15 @@ v3.2.alpha4 (2017-04-25)
   following AQL (provided there is a geo index present on the `doc.latitude`
   and `doc.longitude` attributes):
 
-      FOR doc in geoSort 
-        SORT DISTANCE(doc.latitude, doc.longitude, 0, 0) 
-        LIMIT 5 
+      FOR doc in geoSort
+        SORT DISTANCE(doc.latitude, doc.longitude, 0, 0)
+        LIMIT 5
         RETURN doc
 
   `WITHIN` can be substituted with the following AQL:
 
-      FOR doc in geoFilter 
-        FILTER DISTANCE(doc.latitude, doc.longitude, 0, 0) < 2000 
+      FOR doc in geoFilter
+        FILTER DISTANCE(doc.latitude, doc.longitude, 0, 0) < 2000
         RETURN doc
 
   Compared to using the special purpose AQL functions this approach has the
@@ -122,7 +124,7 @@ v3.2.alpha4 (2017-04-25)
 
 * removed internal build option `USE_DEV_TIMERS`
 
-  Enabling this option activated some proprietary timers for only selected 
+  Enabling this option activated some proprietary timers for only selected
   events in arangod. Instead better use `perf` to gather timings.
 
 
@@ -145,27 +147,27 @@ v3.2.alpha3 (2017-03-22)
   Whenever a V8 context is needed by a Foxx action or some other operation and
   there is no usable V8 context, a new one will be created dynamically now.
 
-  Up to `--javascript.v8-contexts` V8 contexts will be created, so this option 
-  will change its meaning. Previously as many V8 contexts as specified by this 
+  Up to `--javascript.v8-contexts` V8 contexts will be created, so this option
+  will change its meaning. Previously as many V8 contexts as specified by this
   option were created at server start, and the number of V8 contexts did not
-  change at runtime. Now up to this number of V8 contexts will be in use at the 
+  change at runtime. Now up to this number of V8 contexts will be in use at the
   same time, but the actual number of V8 contexts is dynamic.
 
-  The garbage collector thread will automatically delete unused V8 contexts after 
-  a while. The number of spare contexts will go down to as few as configured in 
-  the new option `--javascript.v8-contexts-minimum`. Actually that many V8 contexts 
+  The garbage collector thread will automatically delete unused V8 contexts after
+  a while. The number of spare contexts will go down to as few as configured in
+  the new option `--javascript.v8-contexts-minimum`. Actually that many V8 contexts
   are also created at server start.
 
-  The first few requests in new V8 contexts will take longer than in contexts 
+  The first few requests in new V8 contexts will take longer than in contexts
   that have been there already. Performance may therefore suffer a bit for the
   initial requests sent to ArangoDB or when there are only few but performance-
-  critical situations in which new V8 contexts will be created. If this is a 
+  critical situations in which new V8 contexts will be created. If this is a
   concern, it can easily be fixed by setting `--javascipt.v8-contexts-minimum`
   and `--javascript.v8-contexts` to a relatively high value, which will guarantee
   that many number of V8 contexts to be created at startup and kept around even
   when unused.
 
-  Waiting for an unused V8 context will now also abort if no V8 context can be 
+  Waiting for an unused V8 context will now also abort if no V8 context can be
   acquired/created after 120 seconds.
 
 * improved diagnostic messages written to logfiles by supervisor process
@@ -178,7 +180,7 @@ v3.2.alpha3 (2017-03-22)
 
 * upgraded version of bundled zlib library from 1.2.8 to 1.2.11
 
-* added input file type `auto` for arangoimp so it can automatically detect the 
+* added input file type `auto` for arangoimp so it can automatically detect the
   type of the input file from the filename extension
 
 * fixed variables parsing in GraphQL
@@ -631,10 +633,10 @@ v3.1.10 (2017-02-02)
 * added option -D to define a configuration file environment key=value
 
 * changed encoding behavior for URLs encoded in the C++ code of ArangoDB:
-  previously the special characters `-`, `_`, `~` and `.` were returned as-is 
-  after URL-encoding, now `.` will be encoded to be `%2e`. 
+  previously the special characters `-`, `_`, `~` and `.` were returned as-is
+  after URL-encoding, now `.` will be encoded to be `%2e`.
   This also changes the behavior of how incoming URIs are processed: previously
-  occurrences of `..` in incoming request URIs were collapsed (e.g. `a/../b/` was 
+  occurrences of `..` in incoming request URIs were collapsed (e.g. `a/../b/` was
   collapsed to a plain `b/`). Now `..` in incoming request URIs are not collapsed.
 
 * Foxx request URL suffix is no longer unescaped

@@ -999,13 +999,14 @@ void LogicalCollection::deferDropCollection(
 }
 
 /// @brief reads an element from the document collection
-int LogicalCollection::read(transaction::Methods* trx, std::string const& key,
-                            ManagedDocumentResult& result, bool lock) {
+Result LogicalCollection::read(transaction::Methods* trx,
+                               std::string const& key,
+                               ManagedDocumentResult& result, bool lock) {
   return read(trx, StringRef(key.c_str(), key.size()), result, lock);
 }
 
-int LogicalCollection::read(transaction::Methods* trx, StringRef const& key,
-                            ManagedDocumentResult& result, bool lock) {
+Result LogicalCollection::read(transaction::Methods* trx, StringRef const& key,
+                               ManagedDocumentResult& result, bool lock) {
   transaction::BuilderLeaser builder(trx);
   builder->add(VPackValuePair(key.data(), key.size(), VPackValueType::String));
   return getPhysical()->read(trx, builder->slice(), result, lock);
@@ -1025,27 +1026,28 @@ void LogicalCollection::truncate(transaction::Methods* trx,
 /// @brief inserts a document or edge into the collection
 ////////////////////////////////////////////////////////////////////////////////
 
-int LogicalCollection::insert(transaction::Methods* trx, VPackSlice const slice,
-                              ManagedDocumentResult& result,
-                              OperationOptions& options,
-                              TRI_voc_tick_t& resultMarkerTick, bool lock) {
+Result LogicalCollection::insert(transaction::Methods* trx,
+                                 VPackSlice const slice,
+                                 ManagedDocumentResult& result,
+                                 OperationOptions& options,
+                                 TRI_voc_tick_t& resultMarkerTick, bool lock) {
   resultMarkerTick = 0;
   return getPhysical()->insert(trx, slice, result, options, resultMarkerTick,
                                lock);
 }
 
 /// @brief updates a document or edge in a collection
-int LogicalCollection::update(transaction::Methods* trx,
-                              VPackSlice const newSlice,
-                              ManagedDocumentResult& result,
-                              OperationOptions& options,
-                              TRI_voc_tick_t& resultMarkerTick, bool lock,
-                              TRI_voc_rid_t& prevRev,
-                              ManagedDocumentResult& previous) {
+Result LogicalCollection::update(transaction::Methods* trx,
+                                 VPackSlice const newSlice,
+                                 ManagedDocumentResult& result,
+                                 OperationOptions& options,
+                                 TRI_voc_tick_t& resultMarkerTick, bool lock,
+                                 TRI_voc_rid_t& prevRev,
+                                 ManagedDocumentResult& previous) {
   resultMarkerTick = 0;
 
   if (!newSlice.isObject()) {
-    return TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID;
+    return Result(TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID);
   }
 
   prevRev = 0;
@@ -1054,7 +1056,7 @@ int LogicalCollection::update(transaction::Methods* trx,
   if (options.isRestore) {
     VPackSlice oldRev = TRI_ExtractRevisionIdAsSlice(newSlice);
     if (!oldRev.isString()) {
-      return TRI_ERROR_ARANGO_DOCUMENT_REV_BAD;
+      return Result(TRI_ERROR_ARANGO_DOCUMENT_REV_BAD);
     }
     bool isOld;
     VPackValueLength l;
@@ -1070,7 +1072,7 @@ int LogicalCollection::update(transaction::Methods* trx,
 
   VPackSlice key = newSlice.get(StaticStrings::KeyString);
   if (key.isNone()) {
-    return TRI_ERROR_ARANGO_DOCUMENT_HANDLE_BAD;
+    return Result(TRI_ERROR_ARANGO_DOCUMENT_HANDLE_BAD);
   }
 
   return getPhysical()->update(trx, newSlice, result, options, resultMarkerTick,
@@ -1078,17 +1080,17 @@ int LogicalCollection::update(transaction::Methods* trx,
 }
 
 /// @brief replaces a document or edge in a collection
-int LogicalCollection::replace(transaction::Methods* trx,
-                               VPackSlice const newSlice,
-                               ManagedDocumentResult& result,
-                               OperationOptions& options,
-                               TRI_voc_tick_t& resultMarkerTick, bool lock,
-                               TRI_voc_rid_t& prevRev,
-                               ManagedDocumentResult& previous) {
+Result LogicalCollection::replace(transaction::Methods* trx,
+                                  VPackSlice const newSlice,
+                                  ManagedDocumentResult& result,
+                                  OperationOptions& options,
+                                  TRI_voc_tick_t& resultMarkerTick, bool lock,
+                                  TRI_voc_rid_t& prevRev,
+                                  ManagedDocumentResult& previous) {
   resultMarkerTick = 0;
 
   if (!newSlice.isObject()) {
-    return TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID;
+    return Result(TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID);
   }
 
   prevRev = 0;
@@ -1098,11 +1100,11 @@ int LogicalCollection::replace(transaction::Methods* trx,
   if (type() == TRI_COL_TYPE_EDGE) {
     fromSlice = newSlice.get(StaticStrings::FromString);
     if (!fromSlice.isString()) {
-      return TRI_ERROR_ARANGO_INVALID_EDGE_ATTRIBUTE;
+      return Result(TRI_ERROR_ARANGO_INVALID_EDGE_ATTRIBUTE);
     }
     toSlice = newSlice.get(StaticStrings::ToString);
     if (!toSlice.isString()) {
-      return TRI_ERROR_ARANGO_INVALID_EDGE_ATTRIBUTE;
+      return Result(TRI_ERROR_ARANGO_INVALID_EDGE_ATTRIBUTE);
     }
   }
 
@@ -1110,7 +1112,7 @@ int LogicalCollection::replace(transaction::Methods* trx,
   if (options.isRestore) {
     VPackSlice oldRev = TRI_ExtractRevisionIdAsSlice(newSlice);
     if (!oldRev.isString()) {
-      return TRI_ERROR_ARANGO_DOCUMENT_REV_BAD;
+      return Result(TRI_ERROR_ARANGO_DOCUMENT_REV_BAD);
     }
     bool isOld;
     VPackValueLength l;
@@ -1130,11 +1132,12 @@ int LogicalCollection::replace(transaction::Methods* trx,
 }
 
 /// @brief removes a document or edge
-int LogicalCollection::remove(transaction::Methods* trx, VPackSlice const slice,
-                              OperationOptions& options,
-                              TRI_voc_tick_t& resultMarkerTick, bool lock,
-                              TRI_voc_rid_t& prevRev,
-                              ManagedDocumentResult& previous) {
+Result LogicalCollection::remove(transaction::Methods* trx,
+                                 VPackSlice const slice,
+                                 OperationOptions& options,
+                                 TRI_voc_tick_t& resultMarkerTick, bool lock,
+                                 TRI_voc_rid_t& prevRev,
+                                 ManagedDocumentResult& previous) {
   resultMarkerTick = 0;
 
   TRI_voc_rid_t revisionId = 0;

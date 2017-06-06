@@ -9,6 +9,11 @@ Which collections are used within a named graph is defined via *edge definitions
 A named graph can contain more than one *edge definition*, at least one is needed.
 Graphs allow you to structure your models in line with your domain and group them logically in collections and giving you the power to query them in the same graph queries.
 
+{% hint 'info' %}
+New to graphs? [**Take our free graph course for freshers**](https://www.arangodb.com/arangodb-graph-course/)
+and get from zero knowledge to advanced query techniques.
+{% endhint %}
+
 ### Coming from a relational background - what's a graph?
 
 In SQL you commonly have the construct of a relation table to store *n:m* relations between two data tables.

@@ -29,6 +29,7 @@
 #include "Cache/CachedValue.h"
 #include "Cache/TransactionalCache.h"
 #include "Cluster/ServerState.h"
+#include "Indexes/IndexResult.h"
 #include "Indexes/SimpleAttributeEqualityMatcher.h"
 #include "Logger/Logger.h"
 #include "RocksDBEngine/RocksDBCollection.h"
@@ -207,9 +208,9 @@ RocksDBToken RocksDBPrimaryIndex::lookupKey(transaction::Methods* trx,
   return RocksDBToken(RocksDBValue::revisionId(value));
 }
 
-int RocksDBPrimaryIndex::insert(transaction::Methods* trx,
-                                TRI_voc_rid_t revisionId,
-                                VPackSlice const& slice, bool) {
+Result RocksDBPrimaryIndex::insert(transaction::Methods* trx,
+                                   TRI_voc_rid_t revisionId,
+                                   VPackSlice const& slice, bool) {
   auto key = RocksDBKey::PrimaryIndexValue(
       _objectId, StringRef(slice.get(StaticStrings::KeyString)));
   auto value = RocksDBValue::PrimaryIndexValue(revisionId);
@@ -223,7 +224,7 @@ int RocksDBPrimaryIndex::insert(transaction::Methods* trx,
   blackListKey(key.string().data(), static_cast<uint32_t>(key.string().size()));
 
   Result status = mthd->Put(_cf, key, value.string(), rocksutils::index);
-  return status.errorNumber();
+  return IndexResult(status.errorNumber(), this);
 }
 
 int RocksDBPrimaryIndex::insertRaw(RocksDBMethods*, TRI_voc_rid_t,
@@ -231,9 +232,9 @@ int RocksDBPrimaryIndex::insertRaw(RocksDBMethods*, TRI_voc_rid_t,
   THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
 }
 
-int RocksDBPrimaryIndex::remove(transaction::Methods* trx,
-                                TRI_voc_rid_t revisionId,
-                                VPackSlice const& slice, bool) {
+Result RocksDBPrimaryIndex::remove(transaction::Methods* trx,
+                                   TRI_voc_rid_t revisionId,
+                                   VPackSlice const& slice, bool) {
   // TODO: deal with matching revisions?
   auto key = RocksDBKey::PrimaryIndexValue(
       _objectId, StringRef(slice.get(StaticStrings::KeyString)));
@@ -244,7 +245,7 @@ int RocksDBPrimaryIndex::remove(transaction::Methods* trx,
   RocksDBMethods* mthds = rocksutils::toRocksMethods(trx);
   Result r = mthds->Delete(_cf, key);
   // rocksutils::convertStatus(status, rocksutils::StatusHint::index);
-  return r.errorNumber();
+  return IndexResult(r.errorNumber(), this);
 }
 
 /// optimization for truncateNoTrx, never called in fillIndex

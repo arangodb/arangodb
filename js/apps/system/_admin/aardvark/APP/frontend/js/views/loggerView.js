@@ -45,14 +45,6 @@
           success: function (data) {
             self.logTopics = data;
 
-            /*
-            _.each(self.logTopics, function (topic, name) {
-              if (self.logLevels.indexOf(topic.toLowerCase()) === -1) {
-                self.logLevels.push(topic.toLowerCase());
-                console.log(topic);
-              }
-            });
-            */
             _.each(['fatal', 'error', 'warning', 'info', 'debug'], function (level) {
               self.logLevels.push(level);
             });
@@ -112,7 +104,6 @@
     },
 
     logTopicCallbackFunction: function (options) {
-      console.log(options);
       this.logTopicOptions = options;
       this.applyFilter();
     },

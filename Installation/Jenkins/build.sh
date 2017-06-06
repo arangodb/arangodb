@@ -706,16 +706,18 @@ set -e
 
 if [ -n "${CPACK}" ] && [ -n "${TARGET_DIR}" ];  then
     ${PACKAGE_MAKE} clean_packages || exit 1
-    while test "${RETRY_N_TIMES}" -gt 0; do
-          ${PACKAGE_MAKE} packages || break
-          RETRY_N_TIMES=$((RETRY_N_TIMES - 1))
-          echo "failed to build packages - waiting 5 mins maybe the situation gets better?"
-          sleep 600
-    done
-    if test "${RETRY_N_TIMES}" -eq 0; then
-        echo "building packages failed terminally"
-        exit 1
-    fi
+#    while test "${RETRY_N_TIMES}" -gt 0; do
+    ${PACKAGE_MAKE} packages
+    echo "Package built status: $?"
+    #&& break
+    #RETRY_N_TIMES=$((RETRY_N_TIMES - 1))
+    #echo "failed to build packages - waiting 5 mins maybe the situation gets better?"
+    #sleep 600
+    #done
+    #if test "${RETRY_N_TIMES}" -eq 0; then
+    #echo "building packages failed terminally"
+    #exit 1
+    #fi
 fi
 # and install
 

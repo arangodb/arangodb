@@ -203,8 +203,8 @@ std::shared_ptr<AuthContext> AuthEntry::getAuthContext(std::string const& dbname
 AuthInfo::AuthInfo()
     : _outdated(true),
     _authJwtCache(16384),
-    _jwtSecret(""),
     _noneAuthContext(std::make_shared<AuthContext>(AuthLevel::NONE, std::unordered_map<std::string, AuthLevel>({{"*", AuthLevel::NONE}}))),
+    _jwtSecret(""),
     _queryRegistry(nullptr) {}
 
 void AuthInfo::setJwtSecret(std::string const& jwtSecret) {

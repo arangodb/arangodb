@@ -25,6 +25,7 @@
 #include "Basics/StringRef.h"
 #include "Basics/Utf8Helper.h"
 #include "Basics/VelocyPackHelper.h"
+#include "Indexes/IndexResult.h"
 #include "Logger/Logger.h"
 #include "MMFiles/MMFilesToken.h"
 #include "MMFiles/mmfiles-fulltext-index.h"
@@ -213,8 +214,9 @@ bool MMFilesFulltextIndex::matchesDefinition(VPackSlice const& info) const {
   return true;
 }
 
-int MMFilesFulltextIndex::insert(transaction::Methods*, TRI_voc_rid_t revisionId,
-                          VPackSlice const& doc, bool isRollback) {
+Result MMFilesFulltextIndex::insert(transaction::Methods*,
+                                    TRI_voc_rid_t revisionId,
+                                    VPackSlice const& doc, bool isRollback) {
   int res = TRI_ERROR_NO_ERROR;
 
   std::set<std::string> words = wordlist(doc);
@@ -222,7 +224,7 @@ int MMFilesFulltextIndex::insert(transaction::Methods*, TRI_voc_rid_t revisionId
   if (words.empty()) {
     // TODO: distinguish the cases "empty wordlist" and "out of memory"
     // LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "could not build wordlist";
-    return res;
+    return IndexResult(res, this);
   }
 
   // TODO: use status codes
@@ -230,14 +232,15 @@ int MMFilesFulltextIndex::insert(transaction::Methods*, TRI_voc_rid_t revisionId
     LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "adding document to fulltext index failed";
     res = TRI_ERROR_INTERNAL;
   }
-  return res;
+  return IndexResult(res, this);
 }
 
-int MMFilesFulltextIndex::remove(transaction::Methods*, TRI_voc_rid_t revisionId,
-                          VPackSlice const& doc, bool isRollback) {
+Result MMFilesFulltextIndex::remove(transaction::Methods*,
+                                    TRI_voc_rid_t revisionId,
+                                    VPackSlice const& doc, bool isRollback) {
   TRI_DeleteDocumentMMFilesFulltextIndex(_fulltextIndex, revisionId);
 
-  return TRI_ERROR_NO_ERROR;
+  return Result(TRI_ERROR_NO_ERROR);
 }
 
 int MMFilesFulltextIndex::unload() {
