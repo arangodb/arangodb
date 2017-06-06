@@ -323,7 +323,6 @@
         processData: false,
         success: function (data) {
           self.engine = data;
-          console.log(self.engine);
           self.createNewCollectionModal(data);
         },
         error: function () {
