@@ -25,6 +25,7 @@
 
 #ifdef _WIN32
 #include "Basics/win-utils.h"
+#include <conio.h>
 #endif
 
 #include <signal.h>
