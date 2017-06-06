@@ -678,7 +678,7 @@ ${MAKE_CMD_PREFIX} ${MAKE} ${MAKE_PARAMS}
 if [ -n "$CPACK"  -a -n "${TARGET_DIR}" ];  then
     ${PACKAGE_MAKE} clean_packages || exit 1
     while test "${RETRY_N_TIMES}" -gt 0; do
-          ${PACKAGE_MAKE} packages || break
+          ${PACKAGE_MAKE} packages && break
           RETRY_N_TIMES=$((RETRY_N_TIMES - 1))
           echo "failed to build packages - waiting 5 mins maybe the situation gets better?"
           sleep 600
