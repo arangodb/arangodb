@@ -4,7 +4,7 @@
   "author": "ArangoDB GmbH",
   "description": "Official AQL manual for ArangoDB - the native multi-model NoSQL database",
   "language": "en",
-  "plugins":["-search", "-lunr", "-sharing", "toggle-chapters", "addcssjs", "anchorjs", "sitemap-general", "ga", "callouts@git+https://github.com/Simran-B/gitbook-plugin-callouts.git", "localized-footer"],
+  "plugins":["-search", "-lunr", "-sharing", "toggle-chapters", "addcssjs", "anchorjs", "sitemap-general", "ga", "callouts@git+https://github.com/Simran-B/gitbook-plugin-callouts.git", "localized-footer", "edit-link@git+https://github.com/Simran-B/gitbook-plugin-edit-link.git"],
   "pdf": {
     "fontSize": 12,
     "toc": true,
@@ -31,6 +31,11 @@
     },
     "localized-footer": {
       "filename": "FOOTER.html"
+    },
+    "edit-link": {
+      "base": "https://github.com/arangodb/arangodb/edit/3.1/Documentation/Books/AQL",
+      "label": "Edit Page",
+      "extension": ".mdpp"
     }
   }
 }
