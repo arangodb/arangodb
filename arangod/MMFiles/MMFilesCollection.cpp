@@ -2778,8 +2778,6 @@ int MMFilesCollection::insert(transaction::Methods* trx, VPackSlice const slice,
     bool const useDeadlockDetector =
       (lock && !trx->isSingleOperationTransaction() && !trx->state()->hasHint(transaction::Hints::Hint::NO_DLD));
     try {
-      // TODO Do we use the CollectionLocker on LogicalCollections
-      // or do we use it on the SE specific one?
       arangodb::MMFilesCollectionWriteLocker collectionLocker(
           this, useDeadlockDetector, lock);
 

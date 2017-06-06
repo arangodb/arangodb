@@ -26,6 +26,7 @@
 
 #include "Basics/Common.h"
 #include "Basics/ReadWriteLock.h"
+#include "Indexes/Index.h"
 #include "VocBase/voc-types.h"
 
 #include <velocypack/Builder.h>
@@ -94,6 +95,8 @@ class PhysicalCollection {
   ///////////////////////////////////
 
   virtual void prepareIndexes(arangodb::velocypack::Slice indexesSlice) = 0;
+  
+  bool hasIndexOfType(arangodb::Index::IndexType type) const;
 
   /// @brief Find index by definition
   virtual std::shared_ptr<Index> lookupIndex(

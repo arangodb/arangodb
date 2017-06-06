@@ -42,7 +42,7 @@ test_tools(){
     if test "${ARANGODB_VERSION_REVISION}" == "devel"; then
         export NODE_MODULES_DIR="/tmp/devel/node_modules"
     else
-        export NODE_MODULES_DIR="/tmp/${ARANGODB_VERSION_MAJOR}.${ARANGODB_VERSION_MINOR}"
+        export NODE_MODULES_DIR="/tmp/${ARANGODB_VERSION_MAJOR}.${ARANGODB_VERSION_MINOR}/node_modules"
     fi
 
     if test ! -d ${NODE_MODULES_DIR}; then

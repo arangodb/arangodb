@@ -286,8 +286,8 @@ build-book:
 	make ppbook-check-directory-link
 	make book-check-images-referenced
 
-	if test -n "$(NODE_MODLUES_DIR)"; then \
-		cp -a $(NODE_MODLUES_DIR) ppbooks/$(NAME); \
+	if test -n "$(NODE_MODULES_DIR)"; then \
+		cp -a $(NODE_MODULES_DIR) ppbooks/$(NAME); \
 	else \
 		cd ppbooks/$(NAME); gitbook install -g ; \
 	fi
@@ -397,7 +397,7 @@ clean: clean-intermediate
 build-books-keep-md:
 	@test -d books || mkdir books
 	python ../Scripts/codeBlockReader.py
-	make build-book NAME=$(NAME)
+	make build-book NAME=$(NAME) NODE_MODULES_DIR=${NODE_MODULES_DIR}
 
 build-books:
 	rm -rf /tmp/tags
@@ -406,7 +406,7 @@ build-books:
 	done
 
 	set -e; for book in $(ALLBOOKS); do \
-		make build-books-keep-md NAME=$${book}; \
+		make build-books-keep-md NAME=$${book} NODE_MODULES_DIR=${NODE_MODULES_DIR}; \
 	done
 
 	set -e; for book in $(ALLBOOKS); do \
@@ -429,7 +429,7 @@ build-dist-books:
 	else \
 		DISPL="$${DISPLAY}"; \
 	fi; \
-	make build-books DISPLAY="$${DISP}"; \
+	make build-books DISPLAY="$${DISP}" NODE_MODULES_DIR=${NODE_MODULES_DIR}; \
 	mkdir -p ${OUTPUT_DIR} ; \
 	( \
 		mv books ArangoDB-${newVersionNumber} ; pwd; \

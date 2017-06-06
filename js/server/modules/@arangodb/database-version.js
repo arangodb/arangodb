@@ -128,7 +128,7 @@ exports.databaseVersion = function () {
   }
 
   // path to the VERSION file
-  var versionFile = db._path() + '/VERSION';
+  let versionFile = db._versionFilename();
   var lastVersion = null;
 
   // VERSION file exists, read its contents

@@ -199,6 +199,7 @@ void RocksDBEngine::start() {
   _options.min_write_buffer_number_to_merge =
       static_cast<int>(opts->_minWriteBufferNumberToMerge);
   _options.num_levels = static_cast<int>(opts->_numLevels);
+  _options.level_compaction_dynamic_level_bytes = opts->_dynamicLevelBytes;
   _options.max_bytes_for_level_base = opts->_maxBytesForLevelBase;
   _options.max_bytes_for_level_multiplier =
       static_cast<int>(opts->_maxBytesForLevelMultiplier);
@@ -217,6 +218,8 @@ void RocksDBEngine::start() {
       static_cast<int>(opts->_baseBackgroundCompactions);
   _options.max_background_compactions =
       static_cast<int>(opts->_maxBackgroundCompactions);
+  _options.max_subcompactions =
+      static_cast<int>(opts->_maxSubcompactions);
   _options.max_background_flushes = static_cast<int>(opts->_maxFlushes);
   _options.use_fsync = opts->_useFSync;
 
@@ -228,20 +231,20 @@ void RocksDBEngine::start() {
                                                  : rocksdb::kNoCompression);
   }
 
-  // TODO: try out the effects of these options 
+  // TODO: try out the effects of these options
   // Number of files to trigger level-0 compaction. A value <0 means that
   // level-0 compaction will not be triggered by number of files at all.
   //
   // Default: 4
-  // _options.level0_file_num_compaction_trigger = -1;
+  _options.level0_file_num_compaction_trigger = opts->_level0CompactionTrigger;
 
   // Soft limit on number of level-0 files. We start slowing down writes at this
   // point. A value <0 means that no writing slow down will be triggered by
   // number of files in level-0.
-  // _options.level0_slowdown_writes_trigger = -1;
+  _options.level0_slowdown_writes_trigger = opts->_level0SlowdownTrigger;
 
   // Maximum number of level-0 files.  We stop writes at this point.
-  // _options.level0_stop_writes_trigger = 256;
+  _options.level0_stop_writes_trigger = opts->_level0StopTrigger;
 
   _options.recycle_log_file_num = static_cast<size_t>(opts->_recycleLogFileNum);
   _options.compaction_readahead_size =
@@ -305,11 +308,11 @@ void RocksDBEngine::start() {
   columFamilies.emplace_back("IndexValue", cfOptions2); // 6
   columFamilies.emplace_back("UniqueIndexValue", cfOptions2);// 7
   // DO NOT FORGET TO DESTROY THE CFs ON CLOSE
- 
+
   std::vector<rocksdb::ColumnFamilyHandle*> cfHandles;
   size_t const numberOfColumnFamilies = RocksDBColumnFamily::numberOfColumnFamilies;
   {
-    rocksdb::Options testOptions; 
+    rocksdb::Options testOptions;
     testOptions.create_if_missing = false;
     testOptions.create_missing_column_families = false;
     std::vector<std::string> existingColumnFamilies;
@@ -335,14 +338,14 @@ void RocksDBEngine::start() {
         }
         names.append(it);
       }
-      
+
       LOG_TOPIC(DEBUG, arangodb::Logger::STARTUP) << "found existing column families: " << names;
 
       if (existingColumnFamilies.size() < numberOfColumnFamilies) {
-        LOG_TOPIC(FATAL, arangodb::Logger::STARTUP) 
-            << "unexpected number of column families found in database (" << cfHandles.size() << "). " 
+        LOG_TOPIC(FATAL, arangodb::Logger::STARTUP)
+            << "unexpected number of column families found in database (" << cfHandles.size() << "). "
             << "expecting at least " << numberOfColumnFamilies
-            << ". if you are upgrading from an alpha version of ArangoDB 3.2, " 
+            << ". if you are upgrading from an alpha version of ArangoDB 3.2, "
             << "it is required to restart with a new database directory and re-import data";
         FATAL_ERROR_EXIT();
       }
@@ -364,8 +367,8 @@ void RocksDBEngine::start() {
   }
 
   if (cfHandles.size() < numberOfColumnFamilies) {
-    LOG_TOPIC(FATAL, arangodb::Logger::STARTUP) 
-        << "unexpected number of column families found in database. " 
+    LOG_TOPIC(FATAL, arangodb::Logger::STARTUP)
+        << "unexpected number of column families found in database. "
         << "got " << cfHandles.size() << ", expecting at least " << numberOfColumnFamilies;
     FATAL_ERROR_EXIT();
   }
@@ -1414,6 +1417,13 @@ void RocksDBEngine::getStatistics(VPackBuilder& builder) const {
   c1(rocksdb::DB::Properties::kIsFileDeletionsEnabled);
   c1(rocksdb::DB::Properties::kBaseLevel);
   c1(rocksdb::DB::Properties::kTotalSstFilesSize);
+
+  if (_options.table_factory) {
+    void* options = _options.table_factory->GetOptions();
+    if (options != nullptr) {
+      builder.add("rocksdb.block-cache-used", VPackValue(static_cast<rocksdb::BlockBasedTableOptions*>(options)->block_cache->GetUsage()));
+    }
+  }
 
   builder.close();
 }

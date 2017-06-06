@@ -145,6 +145,12 @@
       </div>
 
         <% if (figuresData.figures.alive && figuresData.figures.dead) { %>
+          <% if (window.frontendConfig.isCluster) { %>
+            <div class="infoBox">
+              <h4>Figures</h4>
+              <p>The following information does not contain data stored in the write-ahead log. It can be inaccurate, until the write-ahead log has been completely flushed.</p>
+            </div>
+          <% } %>
           <table class="figures1 arango-table">
             <tr class="figuresHeader">
               <th>Type</th>
@@ -155,9 +161,17 @@
             </tr>
             <tr>
               <th class="modal-text">Alive</th>
-              <th class="modal-text"><%=numeral(figuresData.figures.alive.count).format('0,0')%></th>
+              <% if (figuresData.walMessage) { %> 
+                <th class="modal-text"><%=figuresData.walMessage%></th>
+              <% } else { %>
+                <th class="modal-text"><%=numeral(figuresData.figures.alive.count).format('0,0')%></th>
+              <% } %>
               <th class="modal-text">
-              <%=prettyBytes(figuresData.figures.alive.size)%>
+                <% if (figuresData.walMessage) { %>
+                  <%=figuresData.walMessage%>
+                <% } else { %>
+                  <%=prettyBytes(figuresData.figures.alive.size)%>
+                <% } %>
               </th>
               <th class="modal-text"> -</th>
               <th class="tooltipInfoTh">
@@ -167,11 +181,27 @@
             </tr>
             <tr>
               <th class="modal-text">Dead</th>
-              <th class="modal-text"><%=numeral(figuresData.figures.dead.count).format('0,0')%></th>
               <th class="modal-text">
-              <%=prettyBytes(figuresData.figures.dead.size)%>
+                <% if (figuresData.walMessage) { %>
+                  <%=figuresData.walMessage%>
+                <% } else { %>
+                  <%=numeral(figuresData.figures.dead.count).format('0,0')%>
+                <% } %>
               </th>
-              <th class="modal-text"><%=figuresData.figures.dead.deletion%></th>
+              <th class="modal-text">
+                <% if (figuresData.walMessage) { %>
+                  <%=figuresData.walMessage%>
+                <% } else { %>
+                  <%=prettyBytes(figuresData.figures.dead.size)%>
+                <% } %>
+              </th>
+              <th class="modal-text">
+                <% if (figuresData.walMessage) { %>
+                  <%=figuresData.walMessage%>
+                <% } else { %>
+                  <%=figuresData.figures.dead.deletion%>
+                <% } %>
+              </th>
 
               <th class="tooltipInfoTh">
                 <div>
@@ -196,9 +226,19 @@
             </tr>
             <tr>
               <th class="modal-text">Datafiles</th>
-              <th class="modal-text"><%=numeral(figuresData.figures.datafiles.count).format('0,0')%></th>
               <th class="modal-text">
-                <%= prettyBytes(figuresData.figures.datafiles.fileSize) %>
+                <% if (figuresData.walMessage) { %>
+                  <%=figuresData.walMessage%>
+                <% } else { %>
+                  <%=numeral(figuresData.figures.datafiles.count).format('0,0')%>
+                <% } %>
+              </th>
+              <th class="modal-text">
+                <% if (figuresData.walMessage) { %>
+                  <%=figuresData.walMessage%>
+                <% } else { %>
+                  <%= prettyBytes(figuresData.figures.datafiles.fileSize) %>
+                <% } %>
               </th>
               <th class="modal-text">&nbsp;</th>
               <th class="tooltipInfoTh">
@@ -210,9 +250,19 @@
             </tr>
             <tr>
               <th class="modal-text">Journals</th>
-              <th class="modal-text"><%=numeral(figuresData.figures.journals.count).format('0,0')%></th>
               <th class="modal-text">
-              <%=prettyBytes(figuresData.figures.journals.fileSize)%>
+                <% if (figuresData.walMessage) { %>
+                  <%=figuresData.walMessage%>
+                <% } else { %>
+                  <%=numeral(figuresData.figures.journals.count).format('0,0')%>
+                <% } %>
+              </th>
+              <th class="modal-text">
+                <% if (figuresData.walMessage) { %>
+                  <%=figuresData.walMessage%>
+                <% } else { %>
+                  <%=prettyBytes(figuresData.figures.journals.fileSize)%>
+                <% } %>
               </th>
               <th class="modal-text">&nbsp;</th>
               <th class="tooltipInfoTh">
@@ -222,9 +272,19 @@
             </tr>
             <tr>
               <th class="modal-text">Compactors</th>
-              <th class="modal-text"><%=numeral(figuresData.figures.compactors.count).format('0,0')%></th>
               <th class="modal-text">
-              <%=prettyBytes(figuresData.figures.compactors.fileSize)%>
+                <% if (figuresData.walMessage) { %>
+                  <%=figuresData.walMessage%>
+                <% } else { %>
+                  <%=numeral(figuresData.figures.compactors.count).format('0,0')%>
+                <% } %>
+              </th>
+              <th class="modal-text">
+                <% if (figuresData.walMessage) { %>
+                  <%=figuresData.walMessage%>
+                <% } else { %>
+                  <%=prettyBytes(figuresData.figures.compactors.fileSize)%>
+                <% } %>
               </th>
               <th class="modal-text">&nbsp;</th>
               <th class="tooltipInfoTh">
@@ -233,9 +293,11 @@
             </tr>
             <tr>
               <th class="modal-text">Indexes</th>
-              <th class="modal-text"><%=numeral(figuresData.figures.indexes.count).format('0,0')%></th>
               <th class="modal-text">
-              <%=prettyBytes(figuresData.figures.indexes.size)%>
+                <%=numeral(figuresData.figures.indexes.count).format('0,0')%>
+              </th>
+              <th class="modal-text">
+                <%=prettyBytes(figuresData.figures.indexes.size)%>
               </th>
               <th class="modal-text">&nbsp;</th>
               <th class="tooltipInfoTh">

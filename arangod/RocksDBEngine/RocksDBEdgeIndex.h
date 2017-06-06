@@ -62,9 +62,6 @@ class RocksDBEdgeIndexIterator final : public IndexIterator {
   void reset() override;
 
  private:
-  void resizeMemory();
-  void reserveInplaceMemory(uint64_t count);
-  uint64_t valueLength() const;
   void resetInplaceMemory();
   arangodb::StringRef getFromToFromIterator(
       arangodb::velocypack::ArrayIterator const&);

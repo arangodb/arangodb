@@ -545,3 +545,16 @@
   margin-left: -320px;
   width: 640px;
 }
+
+.infoBox {
+  border: 1px solid $c-content-border;
+  border-left-color: $c-info-blue;
+  border-left-width: 5px;
+  border-radius: 3px;
+  margin: 20px;
+  padding: 20px;
+
+  h4 {
+    color: $c-info-blue;
+  }
+}

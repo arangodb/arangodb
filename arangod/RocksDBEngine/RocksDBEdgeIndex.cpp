@@ -86,37 +86,6 @@ RocksDBEdgeIndexIterator::~RocksDBEdgeIndexIterator() {
   }
 }
 
-void RocksDBEdgeIndexIterator::resizeMemory() {
-  /*
-  // Increase size by factor of two.
-  // TODO Adjust this has potential to kill memory...
-  uint64_t* tmp = new uint64_t[_memSize * 2];
-  std::memcpy(tmp, _inplaceMemory, _memSize * sizeof(uint64_t));
-  _memSize *= 2;
-  delete[] _inplaceMemory;
-  _inplaceMemory = tmp;
-  */
-}
-
-void RocksDBEdgeIndexIterator::reserveInplaceMemory(uint64_t count) {
-  /*
-  // NOTE: count the number of cached edges, 1 is the size
-  if (count + 1 > _memSize) {
-    // In this case the current memory is too small.
-    // Reserve more
-    delete[] _inplaceMemory;
-    _inplaceMemory = new uint64_t[count + 1];
-    _memSize = count + 1;
-  }
-  // else NOOP, we have enough memory to write to
-  */
-}
-
-uint64_t RocksDBEdgeIndexIterator::valueLength() const {
-  return 0;
-  // return *_inplaceMemory;
-}
-
 void RocksDBEdgeIndexIterator::resetInplaceMemory() { _builder.clear(); }
 
 void RocksDBEdgeIndexIterator::reset() {

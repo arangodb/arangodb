@@ -187,6 +187,11 @@
       });
     },
 
+    removeInputEditors: function () {
+      this.closeAceResults(null, $('#aqlEditor'));
+      this.closeAceResults(null, $('#bindParamAceEditor'));
+    },
+
     getCustomQueryParameterByName: function (qName) {
       return this.collection.findWhere({name: qName}).get('parameter');
     },
@@ -641,7 +646,11 @@
 
     closeAceResults: function (counter, target) {
       var self = this;
-      ace.edit('outputEditor' + counter).destroy();
+      if (counter) {
+        ace.edit('outputEditor' + counter).destroy();
+      } else {
+        ace.edit($(target).attr('id')).destroy();
+      }
       $('#outputEditorWrapper' + this.outputCounter).hide();
 
       var cleanup = function (target) {
