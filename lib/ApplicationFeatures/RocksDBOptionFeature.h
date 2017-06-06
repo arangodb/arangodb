@@ -57,6 +57,7 @@ class RocksDBOptionFeature final
   double _maxBytesForLevelMultiplier;
   uint64_t _baseBackgroundCompactions;
   uint64_t _maxBackgroundCompactions;
+  uint64_t _maxSubcompactions;
   uint64_t _maxFlushes;
   uint64_t _numThreadsHigh;
   uint64_t _numThreadsLow;
@@ -65,12 +66,16 @@ class RocksDBOptionFeature final
   uint64_t _tableBlockSize;
   uint64_t _recycleLogFileNum;
   uint64_t _compactionReadaheadSize;
+  uint64_t _level0CompactionTrigger;
+  uint64_t _level0SlowdownTrigger;
+  uint64_t _level0StopTrigger;
   bool _verifyChecksumsInCompaction;
   bool _optimizeFiltersForHits;
   bool _useDirectReads;
   bool _useDirectWrites;
   bool _useFSync;
   bool _skipCorrupted;
+  bool _dynamicLevelBytes;
 };
 
 }  // namespace arangodb

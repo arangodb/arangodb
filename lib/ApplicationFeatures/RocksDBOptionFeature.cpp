@@ -60,6 +60,7 @@ RocksDBOptionFeature::RocksDBOptionFeature(
           rocksDBDefaults.max_bytes_for_level_multiplier),
       _baseBackgroundCompactions(rocksDBDefaults.base_background_compactions),
       _maxBackgroundCompactions(rocksDBDefaults.max_background_compactions),
+      _maxSubcompactions(rocksDBDefaults.max_subcompactions),
       _maxFlushes(rocksDBDefaults.max_background_flushes),
       _numThreadsHigh(0),
       _numThreadsLow(0),
@@ -70,13 +71,17 @@ RocksDBOptionFeature::RocksDBOptionFeature(
       _tableBlockSize(std::max(rocksDBTableOptionsDefaults.block_size, static_cast<decltype(rocksDBTableOptionsDefaults.block_size)>(16 * 1024))),
       _recycleLogFileNum(rocksDBDefaults.recycle_log_file_num),
       _compactionReadaheadSize(rocksDBDefaults.compaction_readahead_size),
+      _level0CompactionTrigger(2),
+      _level0SlowdownTrigger(rocksDBDefaults.level0_slowdown_writes_trigger),
+      _level0StopTrigger(rocksDBDefaults.level0_stop_writes_trigger),
       _verifyChecksumsInCompaction(
           rocksDBDefaults.verify_checksums_in_compaction),
       _optimizeFiltersForHits(rocksDBDefaults.optimize_filters_for_hits),
       _useDirectReads(rocksDBDefaults.use_direct_reads),
       _useDirectWrites(rocksDBDefaults.use_direct_writes),
       _useFSync(rocksDBDefaults.use_fsync),
-      _skipCorrupted(false) {
+      _skipCorrupted(false),
+      _dynamicLevelBytes(true) {
   uint64_t testSize = _blockCacheSize >> 19;
   while (testSize > 0) {
     _blockCacheShardBits++;
@@ -111,8 +116,9 @@ void RocksDBOptionFeature::collectOptions(
   options->addHiddenOption(
       "--rocksdb.delayed_write_rate",
       "limited write rate to DB (in bytes per second) if we are writing to the "
-      "last "
-      "mem table allowed and we allow more than 3 mem tables",
+      "last mem-table allowed and we allow more than 3 mem-tables, or if we "
+      "have surpassed a certain number of level-0 files and need to slowdown "
+      "writes",
       new UInt64Parameter(&_delayedWriteRate));
 
   options->addOption("--rocksdb.min-write-buffer-number-to-merge",
@@ -129,13 +135,20 @@ void RocksDBOptionFeature::collectOptions(
                      "number of uncompressed levels for the database",
                      new UInt64Parameter(&_numUncompressedLevels));
 
-  options->addHiddenOption("--rocksdb.max-bytes-for-level-base",
-                           "control maximum total data size for level-1",
-                           new UInt64Parameter(&_maxBytesForLevelBase));
+  options->addOption("--rocksdb.dynamic-level-bytes",
+                     "if true, determine the number of bytes for each level "
+                     "dynamically to minimize space amplification",
+                     new BooleanParameter(&_dynamicLevelBytes));
+
+  options->addOption("--rocksdb.max-bytes-for-level-base",
+                     "if not using dynamic level sizes, this controls the "
+                     "maximum total data size for level-1",
+                     new UInt64Parameter(&_maxBytesForLevelBase));
 
   options->addOption("--rocksdb.max-bytes-for-level-multiplier",
-                     "maximum number of bytes for level L can be calculated as "
-                     "max-bytes-for-level-base * "
+                     "if not using dynamic level sizes, the maximum number of "
+                     "bytes for level L can be calculated as "
+                     " max-bytes-for-level-base * "
                      "(max-bytes-for-level-multiplier ^ (L-1))",
                      new DoubleParameter(&_maxBytesForLevelMultiplier));
 
@@ -149,11 +162,9 @@ void RocksDBOptionFeature::collectOptions(
       "--rocksdb.optimize-filters-for-hits",
       "this flag specifies that the implementation should optimize the filters "
       "mainly for cases where keys are found rather than also optimize for "
-      "keys "
-      "missed. This would be used in cases where the application knows that "
-      "there are very few misses or the performance in the case of misses is "
-      "not "
-      "important",
+      "keys missed. This would be used in cases where the application knows "
+      "that there are very few misses or the performance in the case of "
+      "misses is not important",
       new BooleanParameter(&_optimizeFiltersForHits));
 
 #ifdef __linux__
@@ -180,9 +191,26 @@ void RocksDBOptionFeature::collectOptions(
                      "maximum number of concurrent background compaction jobs",
                      new UInt64Parameter(&_maxBackgroundCompactions));
 
+  options->addOption("--rocksdb.max-subcompactions",
+                     "maximum number of concurrent subjobs for a background "
+                     "compaction",
+                     new UInt64Parameter(&_maxSubcompactions));
+
   options->addOption("--rocksdb.max-background-flushes",
                      "maximum number of concurrent flush operations",
                      new UInt64Parameter(&_maxFlushes));
+
+  options->addOption("--rocksdb.level0-compaction-trigger",
+                     "number of level-0 files that triggers a compaction",
+                     new UInt64Parameter(&_level0CompactionTrigger));
+
+  options->addOption("--rocksdb.level0-slowdown-trigger",
+                     "number of level-0 files that triggers a write slowdown",
+                     new UInt64Parameter(&_level0SlowdownTrigger));
+
+  options->addOption("--rocksdb.level0-stop-trigger",
+                     "number of level-0 files that triggers a full write stall",
+                     new UInt64Parameter(&_level0StopTrigger));
 
   options->addOption(
       "--rocksdb.num-threads-priority-high",
@@ -201,7 +229,7 @@ void RocksDBOptionFeature::collectOptions(
   options->addOption("--rocksdb.block-cache-shard-bits",
                      "number of shard bits to use for block cache",
                      new UInt64Parameter(&_blockCacheShardBits));
-  
+
   options->addOption("--rocksdb.table-block-size",
                      "approximate size (in bytes) of user data packed per block",
                      new UInt64Parameter(&_tableBlockSize));
@@ -262,6 +290,9 @@ void RocksDBOptionFeature::validateOptions(
     LOG_TOPIC(FATAL, arangodb::Logger::FIXME)
         << "invalid value for '--rocksdb.num-threads-priority-low'";
     FATAL_ERROR_EXIT();
+  }
+  if (_maxSubcompactions > _numThreadsLow) {
+    _maxSubcompactions = _numThreadsLow;
   }
   if (_blockCacheShardBits > 32) {
     LOG_TOPIC(FATAL, arangodb::Logger::FIXME)

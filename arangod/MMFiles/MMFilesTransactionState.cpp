@@ -282,7 +282,9 @@ int MMFilesTransactionState::addOperation(TRI_voc_rid_t revisionId,
     }
     if (localWaitForSync) {
       // also sync RocksDB WAL
-      MMFilesPersistentIndexFeature::syncWal();
+      if (collection->getPhysical()->hasIndexOfType(arangodb::Index::TRI_IDX_TYPE_PERSISTENT_INDEX)) {
+        MMFilesPersistentIndexFeature::syncWal();
+      }
     }
     operation.setTick(slotInfo.tick);
     fid = slotInfo.logfileId;

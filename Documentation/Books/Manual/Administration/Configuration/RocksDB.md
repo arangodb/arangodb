@@ -12,7 +12,7 @@ underlying RocksDB instance, and we change very few of their default settings.
 `--rocksdb.write-buffer-size`
 
 The amount of data to build up in each in-memory buffer (backed by a log file)
-before closing the buffer and queueing it to be flushed into standard storage.
+before closing the buffer and queuing it to be flushed into standard storage.
 Default: 64MiB. Larger values may improve performance, especially for bulk
 loads.
 
@@ -44,16 +44,40 @@ The number of levels that do not use compression. The default value is 2.
 Levels above this number will use Snappy compression to reduce the disk
 space requirements for storing data in these levels.
 
-`--rocksdb.max-bytes-for-level-base` (Hidden)
+`--rocksdb.dynamic-level-bytes`
 
-The maximum total data size in bytes in level-1 of the LSM tree. Default:
-256MiB.
+If true, the amount of data in each level of the LSM tree is determined
+dynamically so as to minimize the space amplification; otherwise, the level
+sizes are fixed. The dynamic sizing allows RocksDB to maintain a well-structured
+LSM tree regardless of total data size. Default: true.
+
+`--rocksdb.max-bytes-for-level-base`
+
+The maximum total data size in bytes in level-1 of the LSM tree. Only effective
+if `--rocksdb.dynamic-level-bytes` is false. Default: 256MiB.
 
 `--rocksdb.max-bytes-for-level-multiplier`
 
 The maximum total data size in bytes for level L of the LSM tree can be
 calculated as `max-bytes-for-level-base * (max-bytes-for-level-multiplier ^
-(L-1))`. Default: 10.
+(L-1))`. Only effective if `--rocksdb.dynamic-level-bytes` is false. Default:
+10.
+
+`--rocksdb.level0-compaction-trigger`
+
+Compaction of level-0 to level-1 is triggered when this many files exist in
+level-0. Setting this to a higher number may help bulk writes at the expense of
+slowing down reads. Default: 2.
+
+`--rocksdb.level0-slowdown-trigger`
+
+When this many files accumulate in level-0, writes will be slowed down to
+`--rocksdb.delayed-write-rate` to allow compaction to catch up. Default: 20.
+
+`--rocksdb.level0-stop-trigger`
+
+When this many files accumulate in level-0, writes will be stopped to allow
+compaction to catch up. Default: 36.
 
 ### File I/O
 
@@ -119,7 +143,7 @@ The number of bits used to shard the block cache to allow concurrent operations.
 To keep individual shards at a reasonable size (i.e. at least 512KB), keep this
 value to at most `block-cache-shard-bits / 512KB`. Default: `block-cache-size /
 2^19`.
-  
+
 `--rocksdb.table-block-size`
 
 Approximate size of user data (in bytes) packed per block for uncompressed data.
@@ -153,15 +177,15 @@ If true, skip corrupted records in WAL recovery. Default: false.
 
 Timeout after which unused WAL files are deleted (in seconds). Default: 10.0s.
 
-Data of ongoing transactions is stored in RAM. Transactions that get too big 
+Data of ongoing transactions is stored in RAM. Transactions that get too big
 (in terms of number of operations involved or the total size of data created or
-modified by the transaction) will be committed automatically. Effectively this 
-means that big user transactions are split into multiple smaller RocksDB 
-transactions that are committed individually. The entire user transaction will 
+modified by the transaction) will be committed automatically. Effectively this
+means that big user transactions are split into multiple smaller RocksDB
+transactions that are committed individually. The entire user transaction will
 not necessarily have ACID properties in this case.
- 
-The following options can be used to control the RAM usage and automatic 
-intermediate commits for the RocksDB engine: 
+
+The following options can be used to control the RAM usage and automatic
+intermediate commits for the RocksDB engine:
 
 `--rocksdb.max-transaction-size`
 
@@ -174,10 +198,11 @@ limit exceeded").
 
 `--rocksdb.intermediate-commit-size`
 
-If the size of all operations in a transaction reaches this threshold, the transaction 
-is committed automatically and a new transaction is started. The value is specified in bytes.
-  
+If the size of all operations in a transaction reaches this threshold, the
+transaction is committed automatically and a new transaction is started. The
+value is specified in bytes.
+
 `--rocksdb.intermediate-commit-count`
 
-If the number of operations in a transaction reaches this value, the transaction is 
-committed automatically and a new transaction is started.
+If the number of operations in a transaction reaches this value, the transaction
+is committed automatically and a new transaction is started.
