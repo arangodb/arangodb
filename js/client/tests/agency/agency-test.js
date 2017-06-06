@@ -108,34 +108,6 @@ function agencyTestSuite () {
     return res.bodyParsed;
   }
   
-  function doCountTransactions(count, start) {
-    let i, res;
-    let trxs = [];
-    for (i = start; i < start + count; ++i) {
-      let key = "/key"+i;
-      let trx = [{}];
-      trx[0][key] = "value" + i;
-      trxs.push(trx);
-      if (trxs.length >= 200000 || i === start + count - 1) {
-        res = accessAgency("write", trxs);
-        assertEqual(200, res.statusCode);
-        trxs = [];
-      }
-    }
-    trxs = [];
-    for (i = 0; i < start + count; ++i) {
-      trxs.push(["/key"+i]);
-    }
-    res = accessAgency("read", trxs);
-    assertEqual(200, res.statusCode);
-    for (i = 0; i < start + count; ++i) {
-      let key = "key"+i;
-      let correct = {};
-      correct[key] = "value" + i;
-      assertEqual(correct, res.bodyParsed[i]);
-    }
-  }
-
   return {
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -526,12 +498,12 @@ function agencyTestSuite () {
       assertEqual(readAndCheck([["a/z"]]), [{"a":{"z":12}}]);
       writeAndCheck([[{"a/y":{"op":"set","new":12, "ttl": 1}}]]);
       assertEqual(readAndCheck([["a/y"]]), [{"a":{"y":12}}]);
-      wait(1.0);
+      wait(3.0);
       assertEqual(readAndCheck([["a/y"]]), [{a:{}}]);
       writeAndCheck([[{"a/y":{"op":"set","new":12, "ttl": 1}}]]);
       writeAndCheck([[{"a/y":{"op":"set","new":12}}]]);
       assertEqual(readAndCheck([["a/y"]]), [{"a":{"y":12}}]);
-      wait(1.0);
+      wait(3.0);
       assertEqual(readAndCheck([["a/y"]]), [{"a":{"y":12}}]);
       writeAndCheck([[{"foo/bar":{"op":"set","new":{"baz":12}}}]]);
       assertEqual(readAndCheck([["/foo/bar/baz"]]),
@@ -539,7 +511,7 @@ function agencyTestSuite () {
       assertEqual(readAndCheck([["/foo/bar"]]), [{"foo":{"bar":{"baz":12}}}]);
       assertEqual(readAndCheck([["/foo"]]), [{"foo":{"bar":{"baz":12}}}]);
       writeAndCheck([[{"foo/bar":{"op":"set","new":{"baz":12},"ttl":1}}]]);
-      wait(1.0);
+      wait(3.0);
       assertEqual(readAndCheck([["/foo"]]), [{"foo":{}}]);
       assertEqual(readAndCheck([["/foo/bar"]]), [{"foo":{}}]);
       assertEqual(readAndCheck([["/foo/bar/baz"]]), [{"foo":{}}]);
@@ -868,9 +840,19 @@ function agencyTestSuite () {
     testHiddenAgencyWriteDeep: function() {
       var res = accessAgency("write",[[{"/.agency/hans": {"op":"set","new":"fallera"}}]]);
       assertEqual(res.statusCode, 200);
-    } 
+    },
+
+    testHugeTransactionPackage : function() {
+      var huge = [];
+      for (var i = 0; i < 20000; ++i) {
+        huge.push([{"a":{"op":"increment"}}]);
+      }
+      writeAndCheck(huge);
+      assertEqual(readAndCheck([["a"]]), [{"a":20000}]);
+    }
     
   };
+
 }
 
 
