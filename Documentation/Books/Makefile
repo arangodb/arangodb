@@ -406,7 +406,7 @@ build-books:
 	done
 
 	set -e; for book in $(ALLBOOKS); do \
-		make build-books-keep-md NAME=$${book}; NODE_MODULES_DIR=${NODE_MODULES_DIR}\
+		make build-books-keep-md NAME=$${book}; NODE_MODULES_DIR=${NODE_MODULES_DIR} \
 	done
 
 	set -e; for book in $(ALLBOOKS); do \
