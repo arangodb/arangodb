@@ -2078,8 +2078,6 @@ static std::string TRI_ApplicationName = "arangodb";
 
 void TRI_SetApplicationName(char const* name) {
   TRI_ASSERT(name != nullptr);
-  TRI_ASSERT(strlen(name) <= 13);
-
   TRI_ApplicationName = name;
 }
 
