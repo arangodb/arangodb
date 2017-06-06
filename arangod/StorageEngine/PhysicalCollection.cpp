@@ -66,6 +66,16 @@ void PhysicalCollection::drop() {
   }
 }
 
+bool PhysicalCollection::hasIndexOfType(arangodb::Index::IndexType type) const {
+  READ_LOCKER(guard, _indexesLock);
+  for (auto const& idx : _indexes) {
+    if (idx->type() == type) {
+      return true;
+    }
+  }
+  return false;
+}
+
 std::shared_ptr<Index> PhysicalCollection::lookupIndex(
     TRI_idx_iid_t idxId) const {
   READ_LOCKER(guard, _indexesLock);
