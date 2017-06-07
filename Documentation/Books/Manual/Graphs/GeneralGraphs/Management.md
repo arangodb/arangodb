@@ -858,7 +858,7 @@ If this edge is used as a vertex by another edge, the other edge will be removed
 
 Get all connecting edges between 2 groups of vertices defined by the examples
 
-`graph._connectingEdges(vertexExample, vertexExample2, options)`
+`graph._getConnectingEdges(vertexExample, vertexExample2, options)`
 
 The function accepts an id, an example, a list of examples or even an empty
 example as parameter for vertexExample.
