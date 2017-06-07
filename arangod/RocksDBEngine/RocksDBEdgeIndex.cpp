@@ -255,10 +255,11 @@ bool RocksDBEdgeIndexIterator::nextExtra(ExtraCallback const& cb,
             TRI_ASSERT(_builderIterator.value().isNumber());
             RocksDBToken tkn{
                 _builderIterator.value().getNumericValue<uint64_t>()};
+            
             _builderIterator.next();
+            
             TRI_ASSERT(_builderIterator.valid());
             TRI_ASSERT(_builderIterator.value().isString());
-
             cb(tkn, _builderIterator.value());
 
             _builderIterator.next();
@@ -676,9 +677,11 @@ void RocksDBEdgeIndex::warmup(arangodb::transaction::Methods* trx) {
           RocksDBToken token(revisionId);
           if (rocksColl->readDocument(trx, token, mmdr)) {
             builder.add(VPackValue(token.revisionId()));
+            
             VPackSlice doc(mmdr.vpack());
-            TRI_ASSERT(doc.isObject());
-            builder.add(doc);
+            VPackSlice toFrom = _isFromIndex ? transaction::helpers::extractToFromDocument(doc) : transaction::helpers::extractFromFromDocument(doc);
+            TRI_ASSERT(toFrom.isString());
+            builder.add(toFrom);
 #ifdef USE_MAINTAINER_MODE
           } else {
             // Data Inconsistency.
