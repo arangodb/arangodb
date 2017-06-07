@@ -37,7 +37,7 @@ fi
 
 SFRE=1.0
 COMP=2000
-KEEP=0
+KEEP=1000
 AG_BASE=$(( $PORT_OFFSET + 4001 ))
 CO_BASE=$(( $PORT_OFFSET + 8530 ))
 DB_BASE=$(( $PORT_OFFSET + 8629 ))
@@ -107,8 +107,7 @@ for aid in `seq 0 $(( $NRAGENTS - 1 ))`; do
         --server.threads 16 \
         --log.file cluster/$port.log \
         --log.force-direct true \
-        --log.level agency=$LOG_LEVEL_AGENCY \
-        --log.level supervision=$LOG_LEVEL_SUPERVISION \
+        --log.level $LOG_LEVEL_AGENCY \
         $STORAGE_ENGINE \
         $AUTHENTICATION \
         $SSLKEYFILE \
@@ -148,9 +147,7 @@ start() {
         --javascript.module-directory ./enterprise/js \
         --javascript.app-path cluster/apps$PORT \
         --log.force-direct true \
-        --log.level cluster=$LOG_LEVEL_CLUSTER \
-        --log.level communication=$LOG_LEVEL_CLUSTER \
-        --log.level heartbeat=$LOG_LEVEL_CLUSTER \
+        --log.level $LOG_LEVEL_CLUSTER \
         $STORAGE_ENGINE \
         $AUTHENTICATION \
         $SSLKEYFILE \
