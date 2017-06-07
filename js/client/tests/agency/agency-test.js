@@ -71,7 +71,9 @@ function agencyTestSuite () {
       res = request({url: agencyLeader + "/_api/agency/" + api,
                      method: "POST", followRedirect: false,
                      body: JSON.stringify(list),
-                     headers: {"Content-Type": "application/json"}});
+                     headers: {"Content-Type": "application/json",
+                     timeout: 120 /* essentially for the CI running ASAN and
+                                     the huge trx package test */ }});
       if(res.statusCode === 307) {
         agencyLeader = res.headers.location;
         var l = 0;
