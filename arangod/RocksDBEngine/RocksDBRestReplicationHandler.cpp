@@ -439,15 +439,7 @@ void RocksDBRestReplicationHandler::handleCommandBatch() {
 
     _vocbase->updateReplicationClient(serverId, ctx->lastTick());
 
-    // now extend the blocker
-    // StorageEngine* engine = EngineSelectorFeature::ENGINE;
-    // res = engine->extendCompactionBlocker(_vocbase, id, expires);
-
-    if (res == TRI_ERROR_NO_ERROR) {
-      resetResponse(rest::ResponseCode::NO_CONTENT);
-    } else {
-      generateError(GeneralResponse::responseCode(res), res);
-    }
+    resetResponse(rest::ResponseCode::NO_CONTENT);
     return;
   }
 
