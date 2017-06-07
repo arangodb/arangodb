@@ -1,5 +1,5 @@
-devel
------
+v3.2.alpha6 (2017-06-06)
+------------------------
 
 * provide more context for index errors (addresses issue #342)
 
