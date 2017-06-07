@@ -385,7 +385,11 @@ int TRI_Adler32(char const* filename, uint32_t& checksum) {
   TRI_DEFER(TRI_CLOSE(fd));
 
   struct TRI_STAT statbuf;
-  TRI_FSTAT(fd, &statbuf);
+  int res = TRI_FSTAT(fd, &statbuf);
+  if (res < 0) {
+    TRI_SYSTEM_ERROR();
+    return TRI_set_errno(TRI_ERROR_SYS_ERROR);
+  }
 
   ssize_t chunkRemain = static_cast<TRI_read_t>(statbuf.st_size);
   char* buf =
