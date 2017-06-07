@@ -267,7 +267,6 @@ bool RocksDBEdgeIndexIterator::nextExtra(ExtraCallback const& cb,
           _builderIterator = VPackArrayIterator(
               arangodb::basics::VelocyPackHelper::EmptyArrayValue());
         } else {
-          _copyCounter++;
           // We need to copy it.
           // And then we just get back to beginning of the loop
           _builder.clear();

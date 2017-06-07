@@ -422,8 +422,16 @@ void Agent::sendAppendEntriesRPC() {
 
       std::vector<log_t> unconfirmed = _state.get(lastConfirmed);
 
-      // Note that dispite compaction this vector can never be empty, since
+      // Note that despite compaction this vector can never be empty, since
       // any compaction keeps at least one active log entry!
+
+      if (unconfirmed.empty()) {
+        LOG_TOPIC(ERR, Logger::AGENCY) << "Unexpected empty unconfirmed: "
+          << "lastConfirmed=" << lastConfirmed << " commitIndex="
+          << commitIndex;
+      }
+
+      TRI_ASSERT(!unconfirmed.empty());
 
       index_t highest = unconfirmed.back().index;
 

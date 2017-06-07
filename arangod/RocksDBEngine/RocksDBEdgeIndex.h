@@ -77,8 +77,6 @@ class RocksDBEdgeIndexIterator final : public IndexIterator {
   std::shared_ptr<cache::Cache> _cache;
   arangodb::velocypack::ArrayIterator _builderIterator;
   arangodb::velocypack::Builder _builder;
-  size_t _copyCounter;
-  size_t _lookupCounter;
 };
 
 class RocksDBEdgeIndex final : public RocksDBIndex {

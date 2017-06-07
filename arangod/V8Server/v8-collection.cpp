@@ -3187,6 +3187,10 @@ static void JS_WarmupVocbaseCol(
   arangodb::LogicalCollection* collection =
       TRI_UnwrapClass<arangodb::LogicalCollection>(args.Holder(),
                                                    WRP_VOCBASE_COL_TYPE);
+  
+  if (collection == nullptr) {
+    TRI_V8_THROW_EXCEPTION_INTERNAL("cannot extract collection");
+  }
 
   if (ServerState::instance()->isCoordinator()) {
     std::string const databaseName(collection->dbName());
@@ -3197,10 +3201,6 @@ static void JS_WarmupVocbaseCol(
     }
 
     TRI_V8_RETURN_UNDEFINED();
-  }
-
-  if (collection == nullptr) {
-    TRI_V8_THROW_EXCEPTION_INTERNAL("cannot extract collection");
   }
 
   SingleCollectionTransaction trx(

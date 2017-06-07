@@ -1102,11 +1102,7 @@ static inline size_t CommonPrefixLength(std::string const& left,
 TRI_fts_index_t* TRI_CreateFtsIndex(uint32_t handleChunkSize,
                                     uint32_t nodeChunkSize,
                                     uint32_t initialNodeHandles) {
-  index__t* idx = new index__t();
-
-  if (idx == nullptr) {
-    return nullptr;
-  }
+  auto idx = std::make_unique<index__t>();
 
   idx->_memoryAllocated = sizeof(index__t);
 #if TRI_FULLTEXT_DEBUG
@@ -1121,10 +1117,9 @@ TRI_fts_index_t* TRI_CreateFtsIndex(uint32_t handleChunkSize,
   idx->_initialNodeHandles = initialNodeHandles;
 
   // create the root node
-  idx->_root = CreateNode(idx);
+  idx->_root = CreateNode(idx.get());
   if (idx->_root == nullptr) {
     // out of memory
-    TRI_Free(TRI_UNKNOWN_MEM_ZONE, idx);
     return nullptr;
   }
 
@@ -1133,7 +1128,6 @@ TRI_fts_index_t* TRI_CreateFtsIndex(uint32_t handleChunkSize,
   if (idx->_handles == nullptr) {
     // out of memory
     TRI_Free(TRI_UNKNOWN_MEM_ZONE, idx->_root);
-    TRI_Free(TRI_UNKNOWN_MEM_ZONE, idx);
     return nullptr;
   }
 
@@ -1142,7 +1136,7 @@ TRI_fts_index_t* TRI_CreateFtsIndex(uint32_t handleChunkSize,
   idx->_memoryBase += sizeof(TRI_fulltext_handles_t);
 #endif
 
-  return (TRI_fts_index_t*)idx;
+  return (TRI_fts_index_t*)idx.release();
 }
 
 /// @brief free the fulltext index
