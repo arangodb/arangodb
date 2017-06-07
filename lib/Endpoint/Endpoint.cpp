@@ -219,7 +219,6 @@ Endpoint* Endpoint::factory(const Endpoint::EndpointType type,
   TransportType protocol = TransportType::HTTP;
 
   if (StringUtils::isPrefix(copy, "http+")) {
-    protocol = TransportType::HTTP;
     copy = copy.substr(5);
   } else {
     // invalid protocol
@@ -228,12 +227,8 @@ Endpoint* Endpoint::factory(const Endpoint::EndpointType type,
 
   EncryptionType encryption = EncryptionType::NONE;
 
-  if (StringUtils::isPrefix(copy, "unix://")) {
+  if(StringUtils::isPrefix(copy, "unix://")) {
 #if ARANGODB_HAVE_DOMAIN_SOCKETS
-    if (protocol != TransportType::HTTP) {
-      return nullptr;
-    }
-
     return new EndpointUnixDomain(type, listenBacklog, copy.substr(7));
 #else
     // no unix socket for windows
@@ -243,10 +238,6 @@ Endpoint* Endpoint::factory(const Endpoint::EndpointType type,
 
   if (StringUtils::isPrefix(copy, "srv://")) {
     if (type != EndpointType::CLIENT) {
-      return nullptr;
-    }
-
-    if (protocol != TransportType::HTTP) {
       return nullptr;
     }
 
@@ -266,10 +257,7 @@ Endpoint* Endpoint::factory(const Endpoint::EndpointType type,
 
   // tcp or ssl
   copy = copy.substr(6);
-  uint16_t defaultPort = (protocol == TransportType::HTTP)
-                             ? EndpointIp::_defaultPortHttp
-                             : EndpointIp::_defaultPortVst;
-
+  uint16_t defaultPort = EndpointIp::_defaultPortHttp;
   size_t found;
 
   if (copy[0] == '[') {
