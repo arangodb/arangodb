@@ -296,7 +296,7 @@ void RocksDBEdgeIndexIterator::lookupInRocksDB(StringRef fromTo) {
   rocksdb::Comparator const* cmp = _index->comparator();
 
   cache::Cache *cc = _cache.get();
-  _builder.openArray();
+  _builder.openArray(true);
   auto end = _bounds.end();
   while (_iterator->Valid() && (cmp->Compare(_iterator->key(), end) < 0)) {
     TRI_voc_rid_t revisionId = RocksDBKey::revisionId(_iterator->key());
@@ -635,7 +635,7 @@ void RocksDBEdgeIndex::warmup(arangodb::transaction::Methods* trx) {
             needsInsert = false;
           } else {
             needsInsert = true;
-            builder.openArray();
+            builder.openArray(true);
           }
         }
 
@@ -668,7 +668,7 @@ void RocksDBEdgeIndex::warmup(arangodb::transaction::Methods* trx) {
             needsInsert = false;
           } else {
             needsInsert = true;
-            builder.openArray();
+            builder.openArray(true);
           }
         }
         if (needsInsert) {
