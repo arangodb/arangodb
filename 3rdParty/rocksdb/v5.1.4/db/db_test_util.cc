@@ -43,13 +43,12 @@ SpecialEnv::SpecialEnv(Env* base)
   table_write_callback_ = nullptr;
 }
 
-const char *DBTestBase_IV = "1234567890abcdef";
 ROT13BlockCipher rot13Cipher_(16);
 
 DBTestBase::DBTestBase(const std::string path)
     : option_config_(kDefault),
       mem_env_(!getenv("MEM_ENV") ? nullptr : new MockEnv(Env::Default())),
-      encrypted_env_(!getenv("ENCRYPTED_ENV") ? nullptr : NewEncryptedEnv(mem_env_ ? mem_env_ : Env::Default(), new CTREncryptionProvider(rot13Cipher_, DBTestBase_IV))),
+      encrypted_env_(!getenv("ENCRYPTED_ENV") ? nullptr : NewEncryptedEnv(mem_env_ ? mem_env_ : Env::Default(), new CTREncryptionProvider(rot13Cipher_))),
       env_(new SpecialEnv(encrypted_env_ ? encrypted_env_ : (mem_env_ ? mem_env_ : Env::Default()))) {
   env_->SetBackgroundThreads(1, Env::LOW);
   env_->SetBackgroundThreads(1, Env::HIGH);
