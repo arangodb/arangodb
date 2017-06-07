@@ -34,11 +34,11 @@ var fs = require('fs');
 // / @brief errors
 // //////////////////////////////////////////////////////////////////////////////
 
-Object.keys(internal.errors).forEach(function (key) {
+Object.keys(internal.errors).forEach(function(key) {
   exports[key] = internal.errors[key].code;
 });
 
-exports.aql = function (strings, ...args) {
+exports.aql = function(strings, ...args) {
   const bindVars = {};
   const bindVals = [];
   let query = strings[0];
@@ -67,6 +67,8 @@ exports.aql = function (strings, ...args) {
 
 exports.errors = internal.errors;
 
+exports.time = internal.time;
+
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief ArangoError
 // //////////////////////////////////////////////////////////////////////////////
@@ -77,7 +79,7 @@ exports.ArangoError = internal.ArangoError;
 // / @brief defines a module
 // //////////////////////////////////////////////////////////////////////////////
 
-exports.defineModule = function (path, file) {
+exports.defineModule = function(path, file) {
   var content;
   var m;
   var mc;
@@ -87,16 +89,16 @@ exports.defineModule = function (path, file) {
   mc = internal.db._collection('_modules');
 
   if (mc === null) {
-    mc = internal.db._create('_modules', { isSystem: true });
+    mc = internal.db._create('_modules', {isSystem: true});
   }
 
   path = module.normalize(path);
-  m = mc.firstExample({ path: path });
+  m = mc.firstExample({path: path});
 
   if (m === null) {
-    mc.save({ path: path, content: content });
-  }else {
-    mc.replace(m, { path: path, content: content });
+    mc.save({path: path, content: content});
+  } else {
+    mc.replace(m, {path: path, content: content});
   }
 };
 
@@ -111,7 +113,7 @@ exports.defineModule = function (path, file) {
 // / If @FA{path} is empty, the url `./` will be returned.
 // //////////////////////////////////////////////////////////////////////////////
 
-exports.normalizeURL = function (path) {
+exports.normalizeURL = function(path) {
   var i;
   var n;
   var p;
@@ -130,17 +132,13 @@ exports.normalizeURL = function (path) {
     r = p[0] + '/';
     p.shift();
     q = p;
-  }
-
-  // absolute path
-  else if (p[0] === '') {
+  } else if (p[0] === '') {
+    // absolute path
     r = '/';
     p.shift();
     q = p;
-  }
-
-  // assume that the path is relative
-  else {
+  } else {
+    // assume that the path is relative
     r = './';
     q = p;
   }
@@ -148,27 +146,24 @@ exports.normalizeURL = function (path) {
   // normalize path
   n = [];
 
-  for (i = 0;  i < q.length;  ++i) {
+  for (i = 0; i < q.length; ++i) {
     x = q[i];
 
     if (x === '..') {
       if (n.length === 0) {
         if (r === '../') {
           n.push(x);
-        }
-        else if (r === './') {
+        } else if (r === './') {
           r = '../';
-        }else {
+        } else {
           throw "cannot use '..' to escape top-level-directory";
         }
-      }
-      else if (n[n.length - 1] === '..') {
+      } else if (n[n.length - 1] === '..') {
         n.push(x);
-      }else {
+      } else {
         n.pop();
       }
-    }
-    else if (x !== '' && x !== '.') {
+    } else if (x !== '' && x !== '.') {
       n.push(x);
     }
   }
@@ -189,7 +184,7 @@ exports.inspect = internal.inspect;
 // / function here.
 // //////////////////////////////////////////////////////////////////////////////
 
-exports.output = function () {
+exports.output = function() {
   internal.output.apply(internal.output, arguments);
 };
 
@@ -221,8 +216,8 @@ exports.printObject = internal.printObject;
 // / @brief 2D ASCII table printing
 // //////////////////////////////////////////////////////////////////////////////
 
-exports.printTable = function (list, columns, options) {
-  options = options || { };
+exports.printTable = function(list, columns, options) {
+  options = options || {};
   if (options.totalString === undefined) {
     options.totalString = '%s document(s)\n';
   }
@@ -232,20 +227,19 @@ exports.printTable = function (list, columns, options) {
 
   if (columns === undefined) {
     what = list[0];
-  }
-  else if (Array.isArray(columns)) {
-    what = { };
+  } else if (Array.isArray(columns)) {
+    what = {};
 
-    columns.forEach(function (col) {
+    columns.forEach(function(col) {
       what[col] = null;
     });
-  }else {
+  } else {
     what = columns;
   }
 
   j = 0;
   descriptions = [];
-  matrix = [ [] ];
+  matrix = [[]];
 
   for (col in what) {
     if (what.hasOwnProperty(col)) {
@@ -268,7 +262,7 @@ exports.printTable = function (list, columns, options) {
       descriptions.push({
         id: col,
         fixedLength: fixedLength,
-        length: fixedLength || name.length
+        length: fixedLength || name.length,
       });
 
       matrix[0][j++] = name;
@@ -276,32 +270,32 @@ exports.printTable = function (list, columns, options) {
   }
 
   // determine values & max widths
-  list.forEach(function (row, i) {
+  list.forEach(function(row, i) {
     matrix[i + 1] = [];
-    descriptions.forEach(function (col) {
+    descriptions.forEach(function(col) {
       if (row.hasOwnProperty(col.id)) {
         var value;
         if (options.prettyStrings && typeof row[col.id] === 'string') {
           value = row[col.id];
-        }else {
+        } else {
           value = JSON.stringify(row[col.id]) || '';
         }
 
         matrix[i + 1].push(value);
 
-        if (value.length > col.length && ! col.fixedLength) {
+        if (value.length > col.length && !col.fixedLength) {
           col.length = Math.min(value.length, 100);
         }
-      }else {
+      } else {
         // undefined
         matrix[i + 1].push('');
       }
     });
   });
 
-  var divider = function () {
+  var divider = function() {
     var parts = [];
-    descriptions.forEach(function (desc) {
+    descriptions.forEach(function(desc) {
       parts.push(exports.stringPadding('', desc.length, '-', 'r'));
     });
 
@@ -312,17 +306,18 @@ exports.printTable = function (list, columns, options) {
     return parts.join('   ') + '\n';
   };
 
-  var compose = function () {
+  var compose = function() {
     var result = '';
 
     if (options.framed) {
       result += divider();
     }
-    matrix.forEach(function (row, i) {
+    matrix.forEach(function(row, i) {
       var parts = [];
 
-      row.forEach(function (col, j) {
-        var len = descriptions[j].length, value = row[j];
+      row.forEach(function(col, j) {
+        var len = descriptions[j].length,
+          value = row[j];
         if (value.length > len) {
           value = value.substr(0, len - pad.length) + pad;
         }
@@ -331,7 +326,7 @@ exports.printTable = function (list, columns, options) {
 
       if (options.framed) {
         result += '| ' + parts.join(' | ') + ' |\n';
-      }else {
+      } else {
         result += parts.join('   ') + '\n';
       }
 
@@ -342,20 +337,20 @@ exports.printTable = function (list, columns, options) {
 
     result += divider();
 
-    if (! options.hideTotal) {
+    if (!options.hideTotal) {
       result += internal.sprintf(options.totalString, String(list.length));
     }
     return result;
   };
 
-  if (! Array.isArray(list)) {
+  if (!Array.isArray(list)) {
     // not an array
     return;
   }
 
   if (list.length === 0) {
     exports.print(options.emptyString || 'no document(s)');
-  }else {
+  } else {
     exports.print(compose());
   }
 };
@@ -364,26 +359,26 @@ exports.printTable = function (list, columns, options) {
 // / @brief stringPadding
 // //////////////////////////////////////////////////////////////////////////////
 
-exports.stringPadding = function (str, len, pad, dir) {
+exports.stringPadding = function(str, len, pad, dir) {
   // yes, this is more code than new Array(length).join(chr), but it makes jslint happy
-  function fill (length, chr) {
-    var result = '', i;
+  function fill(length, chr) {
+    var result = '',
+      i;
     for (i = 0; i < length; ++i) {
       result += chr;
     }
     return result;
   }
 
-  if (typeof (len) === 'undefined') {
+  if (typeof len === 'undefined') {
     len = 0;
   }
-  if (typeof (pad) === 'undefined') {
+  if (typeof pad === 'undefined') {
     pad = ' ';
   }
 
   if (len + 1 >= str.length) {
     switch (dir || 'r') {
-
       // LEFT
       case 'l':
         str = fill(len + 1 - str.length, pad) + str;
@@ -410,10 +405,11 @@ exports.stringPadding = function (str, len, pad, dir) {
 // / @brief throws an error in case of missing file
 // //////////////////////////////////////////////////////////////////////////////
 
-exports.throwFileNotFound = function (msg) {
+exports.throwFileNotFound = function(msg) {
   throw new exports.ArangoError({
     errorNum: exports.errors.ERROR_FILE_NOT_FOUND.code,
-    errorMessage: exports.errors.ERROR_FILE_NOT_FOUND.message + ': ' + String(msg)
+    errorMessage:
+      exports.errors.ERROR_FILE_NOT_FOUND.message + ': ' + String(msg),
   });
 };
 
@@ -421,10 +417,11 @@ exports.throwFileNotFound = function (msg) {
 // / @brief throws an error in case of a bad parameter
 // //////////////////////////////////////////////////////////////////////////////
 
-exports.throwBadParameter = function (msg) {
+exports.throwBadParameter = function(msg) {
   throw new exports.ArangoError({
     errorNum: exports.errors.ERROR_BAD_PARAMETER.code,
-    errorMessage: exports.errors.ERROR_BAD_PARAMETER.message + ': ' + String(msg)
+    errorMessage:
+      exports.errors.ERROR_BAD_PARAMETER.message + ': ' + String(msg),
   });
 };
 
@@ -432,10 +429,10 @@ exports.throwBadParameter = function (msg) {
 // / @brief checks parameter, throws an error if missing
 // //////////////////////////////////////////////////////////////////////////////
 
-exports.checkParameter = function (usage, descs, vars) {
+exports.checkParameter = function(usage, descs, vars) {
   var i;
 
-  for (i = 0;  i < descs.length;  ++i) {
+  for (i = 0; i < descs.length; ++i) {
     var desc = descs[i];
 
     if (typeof vars[i] === 'undefined') {
@@ -443,8 +440,15 @@ exports.checkParameter = function (usage, descs, vars) {
     }
 
     if (typeof vars[i] !== desc[1]) {
-      exports.throwBadParameter(desc[0] + " should be a '" + desc[1] + "', "
-        + "not '" + (typeof vars[i]) + "'");
+      exports.throwBadParameter(
+        desc[0] +
+          " should be a '" +
+          desc[1] +
+          "', " +
+          "not '" +
+          typeof vars[i] +
+          "'"
+      );
     }
   }
 };
@@ -453,13 +457,13 @@ exports.checkParameter = function (usage, descs, vars) {
 // / @brief generate info message for newer version(s) available
 // //////////////////////////////////////////////////////////////////////////////
 
-exports.checkAvailableVersions = function (version) {
+exports.checkAvailableVersions = function(version) {
   var console = require('console');
   var log;
 
   if (require('@arangodb').isServer) {
     log = console.info;
-  }else {
+  } else {
     log = internal.print;
   }
 
@@ -468,26 +472,45 @@ exports.checkAvailableVersions = function (version) {
   }
 
   if (version.match(/beta|alpha|preview|milestone|devel/) !== null) {
-    log("You are using a milestone/alpha/beta/preview version ('" + version + "') of ArangoDB");
+    log(
+      "You are using a milestone/alpha/beta/preview version ('" +
+        version +
+        "') of ArangoDB"
+    );
     return;
   }
 
   try {
-    var u = 'https://www.arangodb.com/repositories/versions.php?version=' + version +
-    '&os=' + internal.platform;
+    var u =
+      'https://www.arangodb.com/repositories/versions.php?version=' +
+      version +
+      '&os=' +
+      internal.platform;
     var d = internal.download(u, '', {timeout: 5});
     var v = JSON.parse(d.body);
 
     if (v.hasOwnProperty('bugfix')) {
-      log("Please note that a new bugfix version '" + v.bugfix.version + "' is available");
+      log(
+        "Please note that a new bugfix version '" +
+          v.bugfix.version +
+          "' is available"
+      );
     }
 
     if (v.hasOwnProperty('minor')) {
-      log("Please note that a new minor version '" + v.minor.version + "' is available");
+      log(
+        "Please note that a new minor version '" +
+          v.minor.version +
+          "' is available"
+      );
     }
 
     if (v.hasOwnProperty('major')) {
-      log("Please note that a new major version '" + v.major.version + "' is available");
+      log(
+        "Please note that a new major version '" +
+          v.major.version +
+          "' is available"
+      );
     }
   } catch (err) {
     if (console && console.debug) {

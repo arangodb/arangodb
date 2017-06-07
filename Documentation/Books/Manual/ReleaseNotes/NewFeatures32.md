@@ -203,6 +203,10 @@ JavaScript
   for debugging. This change is mostly useful when using the ArangoShell (arangosh).
 
 
+* the `@arangodb` module now provides a `time` function which returns the current time
+  in seconds as a floating point value with microsecond precision.
+
+
 Foxx
 ----
 
