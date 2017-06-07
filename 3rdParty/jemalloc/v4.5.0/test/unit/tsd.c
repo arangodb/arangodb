@@ -1,6 +1,6 @@
 #include "test/jemalloc_test.h"
 
-#define THREAD_DATA 0x72b65c10
+#define	THREAD_DATA 0x72b65c10
 
 typedef unsigned int data_t;
 
@@ -10,7 +10,8 @@ malloc_tsd_types(data_, data_t)
 malloc_tsd_protos(, data_, data_t)
 
 void
-data_cleanup(void *arg) {
+data_cleanup(void *arg)
+{
 	data_t *data = (data_t *)arg;
 
 	if (!data_cleanup_executed) {
@@ -47,12 +48,13 @@ data_cleanup(void *arg) {
 }
 
 malloc_tsd_externs(data_, data_t)
-#define DATA_INIT 0x12345678
+#define	DATA_INIT 0x12345678
 malloc_tsd_data(, data_, data_t, DATA_INIT)
 malloc_tsd_funcs(, data_, data_t, DATA_INIT, data_cleanup)
 
 static void *
-thd_start(void *arg) {
+thd_start(void *arg)
+{
 	data_t d = (data_t)(uintptr_t)arg;
 	void *p;
 
@@ -71,15 +73,18 @@ thd_start(void *arg) {
 	    "Resetting local data should have no effect on tsd");
 
 	free(p);
-	return NULL;
+	return (NULL);
 }
 
-TEST_BEGIN(test_tsd_main_thread) {
+TEST_BEGIN(test_tsd_main_thread)
+{
+
 	thd_start((void *)(uintptr_t)0xa5f3e329);
 }
 TEST_END
 
-TEST_BEGIN(test_tsd_sub_thread) {
+TEST_BEGIN(test_tsd_sub_thread)
+{
 	thd_t thd;
 
 	data_cleanup_executed = false;
@@ -91,15 +96,17 @@ TEST_BEGIN(test_tsd_sub_thread) {
 TEST_END
 
 int
-main(void) {
+main(void)
+{
+
 	/* Core tsd bootstrapping must happen prior to data_tsd_boot(). */
 	if (nallocx(1, 0) == 0) {
 		malloc_printf("Initialization error");
-		return test_status_fail;
+		return (test_status_fail);
 	}
 	data_tsd_boot();
 
-	return test(
+	return (test(
 	    test_tsd_main_thread,
-	    test_tsd_sub_thread);
+	    test_tsd_sub_thread));
 }

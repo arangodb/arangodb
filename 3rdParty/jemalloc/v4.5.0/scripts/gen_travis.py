@@ -12,8 +12,7 @@ matrix:
 before_script:
   - autoconf
   - ./configure ${COMPILER_FLAGS:+ \
-      CC="$CC $COMPILER_FLAGS" \
-      CXX="$CXX $COMPILER_FLAGS" } \
+      CC="$CC $COMPILER_FLAGS" } \
       $CONFIGURE_FLAGS
   - make -j3
   - make -j3 tests
@@ -34,8 +33,8 @@ MAX_UNUSUAL_OPTIONS = 2
 os_default = 'linux'
 os_unusual = 'osx'
 
-compilers_default = 'CC=gcc CXX=g++'
-compilers_unusual = 'CC=clang CXX=clang++'
+compilers_default = 'CC=gcc'
+compilers_unusual = 'CC=clang'
 
 compiler_flag_unusuals = ['-m32']
 

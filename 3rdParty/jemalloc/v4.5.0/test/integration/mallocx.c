@@ -1,11 +1,8 @@
 #include "test/jemalloc_test.h"
 
-#ifdef JEMALLOC_FILL
-const char *malloc_conf = "junk:false";
-#endif
-
 static unsigned
-get_nsizes_impl(const char *cmd) {
+get_nsizes_impl(const char *cmd)
+{
 	unsigned ret;
 	size_t z;
 
@@ -13,16 +10,19 @@ get_nsizes_impl(const char *cmd) {
 	assert_d_eq(mallctl(cmd, (void *)&ret, &z, NULL, 0), 0,
 	    "Unexpected mallctl(\"%s\", ...) failure", cmd);
 
-	return ret;
+	return (ret);
 }
 
 static unsigned
-get_nlarge(void) {
-	return get_nsizes_impl("arenas.nlextents");
+get_nhuge(void)
+{
+
+	return (get_nsizes_impl("arenas.nhchunks"));
 }
 
 static size_t
-get_size_impl(const char *cmd, size_t ind) {
+get_size_impl(const char *cmd, size_t ind)
+{
 	size_t ret;
 	size_t z;
 	size_t mib[4];
@@ -36,12 +36,14 @@ get_size_impl(const char *cmd, size_t ind) {
 	assert_d_eq(mallctlbymib(mib, miblen, (void *)&ret, &z, NULL, 0),
 	    0, "Unexpected mallctlbymib([\"%s\", %zu], ...) failure", cmd, ind);
 
-	return ret;
+	return (ret);
 }
 
 static size_t
-get_large_size(size_t ind) {
-	return get_size_impl("arenas.lextent.0.size", ind);
+get_huge_size(size_t ind)
+{
+
+	return (get_size_impl("arenas.hchunk.0.size", ind));
 }
 
 /*
@@ -50,18 +52,21 @@ get_large_size(size_t ind) {
  * potential OOM on e.g. 32-bit Windows.
  */
 static void
-purge(void) {
+purge(void)
+{
+
 	assert_d_eq(mallctl("arena.0.purge", NULL, NULL, NULL, 0), 0,
 	    "Unexpected mallctl error");
 }
 
-TEST_BEGIN(test_overflow) {
-	size_t largemax;
+TEST_BEGIN(test_overflow)
+{
+	size_t hugemax;
 
-	largemax = get_large_size(get_nlarge()-1);
+	hugemax = get_huge_size(get_nhuge()-1);
 
-	assert_ptr_null(mallocx(largemax+1, 0),
-	    "Expected OOM for mallocx(size=%#zx, 0)", largemax+1);
+	assert_ptr_null(mallocx(hugemax+1, 0),
+	    "Expected OOM for mallocx(size=%#zx, 0)", hugemax+1);
 
 	assert_ptr_null(mallocx(ZU(PTRDIFF_MAX)+1, 0),
 	    "Expected OOM for mallocx(size=%#zx, 0)", ZU(PTRDIFF_MAX)+1);
@@ -75,8 +80,9 @@ TEST_BEGIN(test_overflow) {
 }
 TEST_END
 
-TEST_BEGIN(test_oom) {
-	size_t largemax;
+TEST_BEGIN(test_oom)
+{
+	size_t hugemax;
 	bool oom;
 	void *ptrs[3];
 	unsigned i;
@@ -85,21 +91,19 @@ TEST_BEGIN(test_oom) {
 	 * It should be impossible to allocate three objects that each consume
 	 * nearly half the virtual address space.
 	 */
-	largemax = get_large_size(get_nlarge()-1);
+	hugemax = get_huge_size(get_nhuge()-1);
 	oom = false;
 	for (i = 0; i < sizeof(ptrs) / sizeof(void *); i++) {
-		ptrs[i] = mallocx(largemax, 0);
-		if (ptrs[i] == NULL) {
+		ptrs[i] = mallocx(hugemax, 0);
+		if (ptrs[i] == NULL)
 			oom = true;
-		}
 	}
 	assert_true(oom,
 	    "Expected OOM during series of calls to mallocx(size=%zu, 0)",
-	    largemax);
+	    hugemax);
 	for (i = 0; i < sizeof(ptrs) / sizeof(void *); i++) {
-		if (ptrs[i] != NULL) {
+		if (ptrs[i] != NULL)
 			dallocx(ptrs[i], 0);
-		}
 	}
 	purge();
 
@@ -117,8 +121,9 @@ TEST_BEGIN(test_oom) {
 }
 TEST_END
 
-TEST_BEGIN(test_basic) {
-#define MAXSZ (((size_t)1) << 23)
+TEST_BEGIN(test_basic)
+{
+#define	MAXSZ (((size_t)1) << 23)
 	size_t sz;
 
 	for (sz = 1; sz < MAXSZ; sz = nallocx(sz, 0) + 1) {
@@ -154,16 +159,16 @@ TEST_BEGIN(test_basic) {
 }
 TEST_END
 
-TEST_BEGIN(test_alignment_and_size) {
-#define MAXALIGN (((size_t)1) << 23)
-#define NITER 4
+TEST_BEGIN(test_alignment_and_size)
+{
+#define	MAXALIGN (((size_t)1) << 23)
+#define	NITER 4
 	size_t nsz, rsz, sz, alignment, total;
 	unsigned i;
 	void *ps[NITER];
 
-	for (i = 0; i < NITER; i++) {
+	for (i = 0; i < NITER; i++)
 		ps[i] = NULL;
-	}
 
 	for (alignment = 8;
 	    alignment <= MAXALIGN;
@@ -196,9 +201,8 @@ TEST_BEGIN(test_alignment_and_size) {
 				    " alignment=%zu, size=%zu", ps[i],
 				    alignment, sz);
 				total += rsz;
-				if (total >= (MAXALIGN << 1)) {
+				if (total >= (MAXALIGN << 1))
 					break;
-				}
 			}
 			for (i = 0; i < NITER; i++) {
 				if (ps[i] != NULL) {
@@ -215,10 +219,12 @@ TEST_BEGIN(test_alignment_and_size) {
 TEST_END
 
 int
-main(void) {
-	return test(
+main(void)
+{
+
+	return (test(
 	    test_overflow,
 	    test_oom,
 	    test_basic,
-	    test_alignment_and_size);
+	    test_alignment_and_size));
 }

@@ -91,10 +91,10 @@ any of the following arguments (not a definitive list) to 'configure':
 --with-malloc-conf=<malloc_conf>
     Embed <malloc_conf> as a run-time options string that is processed prior to
     the malloc_conf global variable, the /etc/malloc.conf symlink, and the
-    MALLOC_CONF environment variable.  For example, to change the default decay
-    time to 30 seconds:
+    MALLOC_CONF environment variable.  For example, to change the default chunk
+    size to 256 KiB:
 
-      --with-malloc-conf=decay_time:30
+      --with-malloc-conf=lg_chunk:18
 
 --disable-cc-silence
     Disable code that silences non-useful compiler warnings.  This is mainly
@@ -124,10 +124,9 @@ any of the following arguments (not a definitive list) to 'configure':
     option documentation for usage details.
 
 --enable-ivsalloc
-    Enable validation code for malloc_usable_size() and sallocx(), which
-    verifies that pointers reside within jemalloc-owned extents before
-    dereferencing metadata.  This incurs a minor performance hit, and causes
-    the functions to return 0 for failed lookups.
+    Enable validation code, which verifies that pointers reside within
+    jemalloc-owned chunks before dereferencing them.  This incurs a minor
+    performance hit.
 
 --enable-prof
     Enable heap profiling and leak detection functionality.  See the "opt.prof"
@@ -158,6 +157,13 @@ any of the following arguments (not a definitive list) to 'configure':
     released in bulk, thus reducing the total number of mutex operations.  See
     the "opt.tcache" option for usage details.
 
+--disable-thp
+    Disable transparent huge page (THP) integration.  On systems with THP
+    support, THPs are explicitly disabled as a side effect of unused dirty page
+    purging for chunks that back small and/or large allocations, because such
+    chunks typically comprise active, unused dirty, and untouched clean
+    pages.
+
 --disable-munmap
     Disable virtual memory deallocation via munmap(2); instead keep track of
     the virtual memory for later use.  munmap() is disabled by default (i.e.
@@ -166,8 +172,12 @@ any of the following arguments (not a definitive list) to 'configure':
     normal jemalloc operation.
 
 --disable-fill
-    Disable support for junk/zero filling of memory.  See the "opt.junk" and
-    "opt.zero" option documentation for usage details.
+    Disable support for junk/zero filling of memory, quarantine, and redzones.
+    See the "opt.junk", "opt.zero", "opt.quarantine", and "opt.redzone" option
+    documentation for usage details.
+
+--disable-valgrind
+    Disable support for Valgrind.
 
 --disable-zone-allocator
     Disable zone allocator for Darwin.  This means jemalloc won't be hooked as
@@ -208,10 +218,6 @@ any of the following arguments (not a definitive list) to 'configure':
     intended as a workaround for systems that place security limitations on
     syscall(2).
 
---disable-cxx
-    Disable C++ integration.  This will cause new and delete operator
-    implementations to be omitted.
-
 --with-xslroot=<path>
     Specify where to find DocBook XSL stylesheets when building the
     documentation.
@@ -226,11 +232,6 @@ any of the following arguments (not a definitive list) to 'configure':
     option may be useful when cross-compiling in combination with
     --with-lg-page, but its primary use case is for integration with FreeBSD's
     libc, wherein jemalloc is embedded.
-
---with-lg-hugepage=<lg-hugepage>
-    Specify the base 2 log of the system huge page size.  This option is useful
-    when cross compiling, or when overriding the default for systems that do
-    not explicitly support huge pages.
 
 --with-lg-size-class-group=<lg-size-class-group>
     Specify the base 2 log of how many size classes to use for each doubling in
@@ -312,18 +313,16 @@ The following environment variables (not a definitive list) impact configure's
 behavior:
 
 CFLAGS="?"
-CXXFLAGS="?"
-    Pass these flags to the C/C++ compiler.  Any flags set by the configure
-    script are prepended, which means explicitly set flags generally take
-    precedence.  Take care when specifying flags such as -Werror, because
-    configure tests may be affected in undesirable ways.
+    Pass these flags to the C compiler.  Any flags set by the configure script
+    are prepended, which means explicitly set flags generally take precedence.
+    Take care when specifying flags such as -Werror, because configure tests may
+    be affected in undesirable ways.
 
 EXTRA_CFLAGS="?"
-EXTRA_CXXFLAGS="?"
-    Append these flags to CFLAGS/CXXFLAGS, without passing them to the
-    compiler(s) during configuration.  This makes it possible to add flags such
-    as -Werror, while allowing the configure script to determine what other
-    flags are appropriate for the specified configuration.
+    Append these flags to CFLAGS, without passing them to the compiler during
+    configuration.  This makes it possible to add flags such as -Werror, while
+    allowing the configure script to determine what other flags are appropriate
+    for the specified configuration.
 
 CPPFLAGS="?"
     Pass these flags to the C preprocessor.  Note that CFLAGS is not passed to

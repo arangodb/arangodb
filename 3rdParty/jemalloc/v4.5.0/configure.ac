@@ -66,29 +66,6 @@ CONFIGURE_CFLAGS="${SAVED_CONFIGURE_CFLAGS}"
 JE_CONCAT_VVV(CFLAGS, CONFIGURE_CFLAGS, SPECIFIED_CFLAGS)
 )
 
-CONFIGURE_CXXFLAGS=
-SPECIFIED_CXXFLAGS="${CXXFLAGS}"
-dnl JE_CXXFLAGS_ADD(cxxflag)
-AC_DEFUN([JE_CXXFLAGS_ADD],
-[
-AC_MSG_CHECKING([whether compiler supports $1])
-T_CONFIGURE_CXXFLAGS="${CONFIGURE_CXXFLAGS}"
-JE_APPEND_VS(CONFIGURE_CXXFLAGS, $1)
-JE_CONCAT_VVV(CXXFLAGS, CONFIGURE_CXXFLAGS, SPECIFIED_CXXFLAGS)
-AC_COMPILE_IFELSE([AC_LANG_PROGRAM(
-[[
-]], [[
-    return 0;
-]])],
-              [je_cv_cxxflags_added=$1]
-              AC_MSG_RESULT([yes]),
-              [je_cv_cxxflags_added=]
-              AC_MSG_RESULT([no])
-              [CONFIGURE_CXXFLAGS="${T_CONFIGURE_CXXFLAGS}"]
-)
-JE_CONCAT_VVV(CXXFLAGS, CONFIGURE_CXXFLAGS, SPECIFIED_CXXFLAGS)
-])
-
 dnl JE_COMPILABLE(label, hcode, mcode, rvar)
 dnl 
 dnl Use AC_LINK_IFELSE() rather than AC_COMPILE_IFELSE() so that linker errors
@@ -239,6 +216,7 @@ if test "x$GCC" = "xyes" ; then
     fi
   fi
   JE_CFLAGS_ADD([-Wall])
+  JE_CFLAGS_ADD([-Werror=declaration-after-statement])
   JE_CFLAGS_ADD([-Wshorten-64-to-32])
   JE_CFLAGS_ADD([-Wsign-compare])
   JE_CFLAGS_ADD([-pipe])
@@ -268,46 +246,6 @@ AC_SUBST([CONFIGURE_CFLAGS])
 AC_SUBST([SPECIFIED_CFLAGS])
 AC_SUBST([EXTRA_CFLAGS])
 AC_PROG_CPP
-
-AC_ARG_ENABLE([cxx],
-  [AS_HELP_STRING([--disable-cxx], [Disable C++ integration])],
-if test "x$enable_cxx" = "xno" ; then
-  enable_cxx="0"
-else
-  enable_cxx="1"
-fi
-,
-enable_cxx="1"
-)
-if test "x$enable_cxx" = "x1" ; then
-  dnl Require at least c++14, which is the first version to support sized
-  dnl deallocation.  C++ support is not compiled otherwise.
-  m4_include([m4/ax_cxx_compile_stdcxx.m4])
-  AX_CXX_COMPILE_STDCXX([14], [noext], [optional])
-  if test "x${HAVE_CXX14}" = "x1" ; then
-    JE_CXXFLAGS_ADD([-Wall])
-    JE_CXXFLAGS_ADD([-g3])
-
-    SAVED_LIBS="${LIBS}"
-    JE_APPEND_VS(LIBS, -lstdc++)
-    JE_COMPILABLE([libstdc++ linkage], [
-#include <stdlib.h>
-], [[
-	int *arr = (int *)malloc(sizeof(int) * 42);
-	if (arr == NULL)
-		return 1;
-]], [je_cv_libstdcxx])
-    if test "x${je_cv_libstdcxx}" = "xno" ; then
-      LIBS="${SAVED_LIBS}"
-    fi
-  else
-    enable_cxx="0"
-  fi
-fi
-AC_SUBST([enable_cxx])
-AC_SUBST([CONFIGURE_CXXFLAGS])
-AC_SUBST([SPECIFIED_CXXFLAGS])
-AC_SUBST([EXTRA_CXXFLAGS])
 
 AC_C_BIGENDIAN([ac_cv_big_endian=1], [ac_cv_big_endian=0])
 if test "x${ac_cv_big_endian}" = "x1" ; then
@@ -405,74 +343,6 @@ case "${host_cpu}" in
 	;;
 esac
 AC_DEFINE_UNQUOTED([CPU_SPINWAIT], [$CPU_SPINWAIT])
-
-case "${host_cpu}" in
-  aarch64)
-    AC_MSG_CHECKING([number of significant virtual address bits])
-    LG_VADDR=48
-    AC_MSG_RESULT([$LG_VADDR])
-    ;;
-  x86_64)
-    AC_CACHE_CHECK([number of significant virtual address bits],
-                   [je_cv_lg_vaddr],
-                   AC_RUN_IFELSE([AC_LANG_PROGRAM(
-[[
-#include <stdio.h>
-#ifdef _WIN32
-#include <limits.h>
-#include <intrin.h>
-typedef unsigned __int32 uint32_t;
-#else
-#include <stdint.h>
-#endif
-]], [[
-	uint32_t r[[4]];
-	uint32_t eax_in = 0x80000008U;
-#ifdef _WIN32
-	__cpuid((int *)r, (int)eax_in);
-#else
-	asm volatile ("cpuid"
-	    : "=a" (r[[0]]), "=b" (r[[1]]), "=c" (r[[2]]), "=d" (r[[3]])
-	    : "a" (eax_in), "c" (0)
-	);
-#endif
-	uint32_t eax_out = r[[0]];
-	uint32_t vaddr = ((eax_out & 0x0000ff00U) >> 8);
-	FILE *f = fopen("conftest.out", "w");
-	if (f == NULL) {
-		return 1;
-	}
-	fprintf(f, "%u", vaddr);
-	fclose(f);
-	return 0;
-]])],
-                   [je_cv_lg_vaddr=`cat conftest.out`],
-                   [je_cv_lg_vaddr=error],
-                   [je_cv_lg_vaddr=57]))
-    if test "x${je_cv_lg_vaddr}" != "x" ; then
-      LG_VADDR="${je_cv_lg_vaddr}"
-    fi
-    if test "x${LG_VADDR}" != "xerror" ; then
-      AC_DEFINE_UNQUOTED([LG_VADDR], [$LG_VADDR])
-    else
-      AC_MSG_ERROR([cannot determine number of significant virtual address bits])
-    fi
-    ;;
-  *)
-    AC_MSG_CHECKING([number of significant virtual address bits])
-    if test "x${LG_SIZEOF_PTR}" = "x3" ; then
-      LG_VADDR=64
-    elif test "x${LG_SIZEOF_PTR}" = "x2" ; then
-      LG_VADDR=32
-    elif test "x${LG_SIZEOF_PTR}" = "xLG_SIZEOF_PTR_WIN" ; then
-      LG_VADDR="(1U << (LG_SIZEOF_PTR_WIN+3))"
-    else
-      AC_MSG_ERROR([Unsupported lg(pointer size): ${LG_SIZEOF_PTR}])
-    fi
-    AC_MSG_RESULT([$LG_VADDR])
-    ;;
-esac
-AC_DEFINE_UNQUOTED([LG_VADDR], [$LG_VADDR])
 
 LD_PRELOAD_VAR="LD_PRELOAD"
 so="so"
@@ -681,7 +551,6 @@ if test "x${je_cv_attribute}" = "xyes" ; then
   AC_DEFINE([JEMALLOC_HAVE_ATTR], [ ])
   if test "x${GCC}" = "xyes" -a "x${abi}" = "xelf"; then
     JE_CFLAGS_ADD([-fvisibility=hidden])
-    JE_CXXFLAGS_ADD([-fvisibility=hidden])
   fi
 fi
 dnl Check for tls_model attribute support (clang 3.0 still lacks support).
@@ -986,14 +855,11 @@ dnl Only optimize if not debugging.
 if test "x$enable_debug" = "x0" ; then
   if test "x$GCC" = "xyes" ; then
     JE_CFLAGS_ADD([-O3])
-    JE_CXXFLAGS_ADD([-O3])
     JE_CFLAGS_ADD([-funroll-loops])
   elif test "x$je_cv_msvc" = "xyes" ; then
     JE_CFLAGS_ADD([-O2])
-    JE_CXXFLAGS_ADD([-O2])
   else
     JE_CFLAGS_ADD([-O])
-    JE_CXXFLAGS_ADD([-O])
   fi
 fi
 
@@ -1082,9 +948,7 @@ fi
 if test "x$backtrace_method" = "x" -a "x$enable_prof_libgcc" = "x1" \
      -a "x$GCC" = "xyes" ; then
   AC_CHECK_HEADERS([unwind.h], , [enable_prof_libgcc="0"])
-  if test "x${enable_prof_libgcc}" = "x1" ; then
-    AC_CHECK_LIB([gcc], [_Unwind_Backtrace], [JE_APPEND_VS(LIBS, -lgcc)], [enable_prof_libgcc="0"])
-  fi
+  AC_CHECK_LIB([gcc], [_Unwind_Backtrace], [JE_APPEND_VS(LIBS, -lgcc)], [enable_prof_libgcc="0"])
   if test "x${enable_prof_libgcc}" = "x1" ; then
     backtrace_method="libgcc"
     AC_DEFINE([JEMALLOC_PROF_LIBGCC], [ ])
@@ -1184,7 +1048,8 @@ fi
 
 dnl Support the junk/zero filling option by default.
 AC_ARG_ENABLE([fill],
-  [AS_HELP_STRING([--disable-fill], [Disable support for junk/zero filling])],
+  [AS_HELP_STRING([--disable-fill],
+                  [Disable support for junk/zero filling, quarantine, and redzones])],
 [if test "x$enable_fill" = "xno" ; then
   enable_fill="0"
 else
@@ -1225,6 +1090,35 @@ if test "x$enable_utrace" = "x1" ; then
   AC_DEFINE([JEMALLOC_UTRACE], [ ])
 fi
 AC_SUBST([enable_utrace])
+
+dnl Support Valgrind by default.
+AC_ARG_ENABLE([valgrind],
+  [AS_HELP_STRING([--disable-valgrind], [Disable support for Valgrind])],
+[if test "x$enable_valgrind" = "xno" ; then
+  enable_valgrind="0"
+else
+  enable_valgrind="1"
+fi
+],
+[enable_valgrind="1"]
+)
+if test "x$enable_valgrind" = "x1" ; then
+  JE_COMPILABLE([valgrind], [
+#include <valgrind/valgrind.h>
+#include <valgrind/memcheck.h>
+
+#if !defined(VALGRIND_RESIZEINPLACE_BLOCK)
+#  error "Incompatible Valgrind version"
+#endif
+], [], [je_cv_valgrind])
+  if test "x${je_cv_valgrind}" = "xno" ; then
+    enable_valgrind="0"
+  fi
+  if test "x$enable_valgrind" = "x1" ; then
+    AC_DEFINE([JEMALLOC_VALGRIND], [ ])
+  fi
+fi
+AC_SUBST([enable_valgrind])
 
 dnl Do not support the xmalloc option by default.
 AC_ARG_ENABLE([xmalloc],
@@ -1386,36 +1280,6 @@ else
    AC_MSG_ERROR([cannot determine value for LG_PAGE])
 fi
 
-AC_ARG_WITH([lg_hugepage],
-  [AS_HELP_STRING([--with-lg-hugepage=<lg-hugepage>],
-   [Base 2 log of sytem huge page size])],
-  [je_cv_lg_hugepage="${with_lg_hugepage}"],
-  [je_cv_lg_hugepage=""])
-if test "x${je_cv_lg_hugepage}" = "x" ; then
-  dnl Look in /proc/meminfo (Linux-specific) for information on the default huge
-  dnl page size, if any.  The relevant line looks like:
-  dnl
-  dnl   Hugepagesize:       2048 kB
-  if test -e "/proc/meminfo" ; then
-    hpsk=[`cat /proc/meminfo 2>/dev/null | \
-          grep -e '^Hugepagesize:[[:space:]]\+[0-9]\+[[:space:]]kB$' | \
-          awk '{print $2}'`]
-    if test "x${hpsk}" != "x" ; then
-      je_cv_lg_hugepage=10
-      while test "${hpsk}" -gt 1 ; do
-        hpsk="$((hpsk / 2))"
-        je_cv_lg_hugepage="$((je_cv_lg_hugepage + 1))"
-      done
-    fi
-  fi
-
-  dnl Set default if unable to automatically configure.
-  if test "x${je_cv_lg_hugepage}" = "x" ; then
-    je_cv_lg_hugepage=21
-  fi
-fi
-AC_DEFINE_UNQUOTED([LG_HUGEPAGE], [${je_cv_lg_hugepage}])
-
 AC_ARG_WITH([lg_page_sizes],
   [AS_HELP_STRING([--with-lg-page-sizes=<lg-page-sizes>],
    [Base 2 logs of system page sizes to support])],
@@ -1503,7 +1367,7 @@ if test "x$abi" != "xpecoff" ; then
   fi
 fi
 
-JE_APPEND_VS(CFLAGS, -D_REENTRANT)
+JE_APPEND_VS(CPPFLAGS, -D_REENTRANT)
 
 dnl Check whether clock_gettime(2) is in libc or librt.
 AC_SEARCH_LIBS([clock_gettime], [rt])
@@ -1729,7 +1593,7 @@ JE_COMPILABLE([C11 atomics], [
     uint64_t x = 1;
     volatile atomic_uint_least64_t *a = (volatile atomic_uint_least64_t *)p;
     uint64_t r = atomic_fetch_add(a, x) + x;
-    return r == 0;
+    return (r == 0);
 ], [je_cv_c11atomics])
 if test "x${je_cv_c11atomics}" = "xyes" ; then
   AC_DEFINE([JEMALLOC_C11ATOMICS])
@@ -1819,9 +1683,30 @@ if test "x${je_cv_madvise}" = "xyes" ; then
 	madvise((void *)0, 0, MADV_NOHUGEPAGE);
 ], [je_cv_thp])
   if test "x${je_cv_thp}" = "xyes" ; then
-    AC_DEFINE([JEMALLOC_THP], [ ])
+    AC_DEFINE([JEMALLOC_HAVE_MADVISE_HUGE], [ ])
   fi
 fi
+
+dnl Enable transparent huge page support by default.
+AC_ARG_ENABLE([thp],
+  [AS_HELP_STRING([--disable-thp],
+                  [Disable transparent huge page supprot])],
+[if test "x$enable_thp" = "xno" -o "x${je_cv_thp}" != "xyes" ; then
+  enable_thp="0"
+else
+  enable_thp="1"
+fi
+],
+[if test "x${je_cv_thp}" = "xyes" ; then
+  enable_thp="1"
+else
+  enable_thp="0"
+fi
+])
+if test "x$enable_thp" = "x1" ; then
+  AC_DEFINE([JEMALLOC_THP], [ ])
+fi
+AC_SUBST([enable_thp])
 
 dnl ============================================================================
 dnl Check whether __sync_{add,sub}_and_fetch() are available despite
@@ -2115,13 +2000,8 @@ AC_MSG_RESULT([CONFIGURE_CFLAGS   : ${CONFIGURE_CFLAGS}])
 AC_MSG_RESULT([SPECIFIED_CFLAGS   : ${SPECIFIED_CFLAGS}])
 AC_MSG_RESULT([EXTRA_CFLAGS       : ${EXTRA_CFLAGS}])
 AC_MSG_RESULT([CPPFLAGS           : ${CPPFLAGS}])
-AC_MSG_RESULT([CXX                : ${CXX}])
-AC_MSG_RESULT([CONFIGURE_CXXFLAGS : ${CONFIGURE_CXXFLAGS}])
-AC_MSG_RESULT([SPECIFIED_CXXFLAGS : ${SPECIFIED_CXXFLAGS}])
-AC_MSG_RESULT([EXTRA_CXXFLAGS     : ${EXTRA_CXXFLAGS}])
 AC_MSG_RESULT([LDFLAGS            : ${LDFLAGS}])
 AC_MSG_RESULT([EXTRA_LDFLAGS      : ${EXTRA_LDFLAGS}])
-AC_MSG_RESULT([DSO_LDFLAGS        : ${DSO_LDFLAGS}])
 AC_MSG_RESULT([LIBS               : ${LIBS}])
 AC_MSG_RESULT([RPATH_EXTRA        : ${RPATH_EXTRA}])
 AC_MSG_RESULT([])
@@ -2155,12 +2035,13 @@ AC_MSG_RESULT([prof-libunwind     : ${enable_prof_libunwind}])
 AC_MSG_RESULT([prof-libgcc        : ${enable_prof_libgcc}])
 AC_MSG_RESULT([prof-gcc           : ${enable_prof_gcc}])
 AC_MSG_RESULT([tcache             : ${enable_tcache}])
+AC_MSG_RESULT([thp                : ${enable_thp}])
 AC_MSG_RESULT([fill               : ${enable_fill}])
 AC_MSG_RESULT([utrace             : ${enable_utrace}])
+AC_MSG_RESULT([valgrind           : ${enable_valgrind}])
 AC_MSG_RESULT([xmalloc            : ${enable_xmalloc}])
 AC_MSG_RESULT([munmap             : ${enable_munmap}])
 AC_MSG_RESULT([lazy_lock          : ${enable_lazy_lock}])
 AC_MSG_RESULT([tls                : ${enable_tls}])
 AC_MSG_RESULT([cache-oblivious    : ${enable_cache_oblivious}])
-AC_MSG_RESULT([cxx                : ${enable_cxx}])
 AC_MSG_RESULT([===============================================================================])

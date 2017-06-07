@@ -54,13 +54,6 @@ test/include/test/jemalloc_test_defs.h
 /test/integration/*.gcno
 /test/integration/*.out
 
-/test/integration/cpp/[A-Za-z]*
-!/test/integration/cpp/[A-Za-z]*.*
-/test/integration/cpp/*.[od]
-/test/integration/cpp/*.gcda
-/test/integration/cpp/*.gcno
-/test/integration/cpp/*.out
-
 /test/src/*.[od]
 /test/src/*.gcda
 /test/src/*.gcno
