@@ -42,6 +42,9 @@ AG_BASE=$(( $PORT_OFFSET + 4001 ))
 CO_BASE=$(( $PORT_OFFSET + 8530 ))
 DB_BASE=$(( $PORT_OFFSET + 8629 ))
 NATH=$(( $NRDBSERVERS + $NRCOORDINATORS + $NRAGENTS ))
+ENDPOINT=[::]
+ADDRESS=[::1]
+
 
 rm -rf cluster
 if [ -d cluster-init ];then
@@ -83,14 +86,14 @@ fi
 echo Starting agency ... 
 for aid in `seq 0 $(( $NRAGENTS - 1 ))`; do
     port=$(( $AG_BASE + $aid ))
-    AGENCY_ENDPOINTS+="--cluster.agency-endpoint $TRANSPORT://[::1]:$port "
+    AGENCY_ENDPOINTS+="--cluster.agency-endpoint $TRANSPORT://$ADDRESS:$port "
     $ARANGOD \
         -c none \
         --agency.activate true \
         --agency.compaction-step-size $COMP \
         --agency.compaction-keep-size $KEEP \
-        --agency.endpoint $TRANSPORT://[::1]:$AG_BASE \
-        --agency.my-address $TRANSPORT://[::1]:$port \
+        --agency.endpoint $TRANSPORT://$ENDPOINT:$AG_BASE \
+        --agency.my-address $TRANSPORT://$ADDRESS:$port \
         --agency.pool-size $NRAGENTS \
         --agency.size $NRAGENTS \
         --agency.supervision true \
@@ -102,7 +105,7 @@ for aid in `seq 0 $(( $NRAGENTS - 1 ))`; do
         --javascript.startup-directory ./js \
         --javascript.module-directory ./enterprise/js \
         --javascript.v8-contexts 1 \
-        --server.endpoint $TRANSPORT://[::]:$port \
+        --server.endpoint $TRANSPORT://$ENDPOINT:$port \
         --server.statistics false \
         --server.threads 16 \
         --log.file cluster/$port.log \
@@ -135,9 +138,9 @@ start() {
     $CMD \
         -c none \
         --database.directory cluster/data$PORT \
-        --cluster.agency-endpoint $TRANSPORT://[::1]:$AG_BASE \
-        --cluster.my-address $TRANSPORT://[::1]:$PORT \
-        --server.endpoint $TRANSPORT://[::]:$PORT \
+        --cluster.agency-endpoint $TRANSPORT://$ENDPOINT:$AG_BASE \
+        --cluster.my-address $TRANSPORT://$ADDRESS:$PORT \
+        --server.endpoint $TRANSPORT://$ENDPOINT:$PORT \
         --cluster.my-role $ROLE \
         --log.file cluster/$PORT.log \
         --log.level $LOG_LEVEL \
@@ -168,9 +171,9 @@ testServer() {
     PORT=$1
     while true ; do
         if [ -z "$AUTHORIZATION_HEADER" ]; then
-          ${CURL}//[::1]:$PORT/_api/version > /dev/null 2>&1
+          ${CURL}//$ADDRESS:$PORT/_api/version > /dev/null 2>&1
         else
-          ${CURL}//[::1]:$PORT/_api/version -H "$AUTHORIZATION_HEADER" > /dev/null 2>&1
+          ${CURL}//$ADDRESS:$PORT/_api/version -H "$AUTHORIZATION_HEADER" > /dev/null 2>&1
         fi
         if [ "$?" != "0" ] ; then
             echo Server on port $PORT does not answer yet.
@@ -198,14 +201,14 @@ if [ "$SECONDARIES" == "1" ] ; then
         CLUSTER_ID="Secondary$index"
         
         echo Registering secondary $CLUSTER_ID for "DBServer$index"
-        curl -f -X PUT --data "{\"primary\": \"DBServer$index\", \"oldSecondary\": \"none\", \"newSecondary\": \"$CLUSTER_ID\"}" -H "Content-Type: application/json" [::1]:$CO_BASE/_admin/cluster/replaceSecondary
+        curl -f -X PUT --data "{\"primary\": \"DBServer$index\", \"oldSecondary\": \"none\", \"newSecondary\": \"$CLUSTER_ID\"}" -H "Content-Type: application/json" $ADDRESS:$CO_BASE/_admin/cluster/replaceSecondary
         echo Starting Secondary $CLUSTER_ID on port $PORT
         ${BUILD}/bin/arangod \
             -c none \
             --database.directory cluster/data$PORT \
-            --cluster.agency-endpoint $TRANSPORT://[::1]:$AG_BASE \
-            --cluster.my-address $TRANSPORT://[::1]:$PORT \
-            --server.endpoint $TRANSPORT://[::]:$PORT \
+            --cluster.agency-endpoint $TRANSPORT://$ADDRESS:$AG_BASE \
+            --cluster.my-address $TRANSPORT://$ADDRESS:$PORT \
+            --server.endpoint $TRANSPORT://$ENDPOINT:$PORT \
             --cluster.my-id $CLUSTER_ID \
             --log.file cluster/$PORT.log \
             --server.statistics true \
