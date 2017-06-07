@@ -131,14 +131,14 @@ class RocksDBVPackIndex : public RocksDBIndex {
 
   static constexpr size_t minimalPrefixSize() { return sizeof(TRI_voc_tick_t); }
 
-  int insert(transaction::Methods*, TRI_voc_rid_t,
-             arangodb::velocypack::Slice const&, bool isRollback) override;
+  Result insert(transaction::Methods*, TRI_voc_rid_t,
+                arangodb::velocypack::Slice const&, bool isRollback) override;
 
   int insertRaw(RocksDBMethods*, TRI_voc_rid_t,
                 arangodb::velocypack::Slice const&) override;
 
-  int remove(transaction::Methods*, TRI_voc_rid_t,
-             arangodb::velocypack::Slice const&, bool isRollback) override;
+  Result remove(transaction::Methods*, TRI_voc_rid_t,
+                arangodb::velocypack::Slice const&, bool isRollback) override;
 
   int removeRaw(RocksDBMethods*, TRI_voc_rid_t,
                 arangodb::velocypack::Slice const&) override;

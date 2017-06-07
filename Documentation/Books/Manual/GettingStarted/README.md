@@ -34,6 +34,10 @@ For more in-depth information on how to install ArangoDB, as well as available
 startup parameters, installation in a cluster and so on, see
 [Installing](Installing/README.md).
 
+{% hint 'info' %}
+Want help? Read more about [**consulting, training and developer support**](https://www.arangodb.com/subscriptions/)
+{% endhint %}
+
 ### Securing the installation
 
 The default installation contains one database *_system* and a user

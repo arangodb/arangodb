@@ -33,6 +33,7 @@
 #include "Cache/CachedValue.h"
 #include "Cache/TransactionalCache.h"
 #include "Indexes/SimpleAttributeEqualityMatcher.h"
+#include "Indexes/IndexResult.h"
 #include "Transaction/Context.h"
 #include "Transaction/Helpers.h"
 #include "Transaction/Methods.h"
@@ -301,7 +302,7 @@ void RocksDBEdgeIndexIterator::lookupInRocksDB(StringRef fromTo) {
   while (_iterator->Valid() && (cmp->Compare(_iterator->key(), end) < 0)) {
     TRI_voc_rid_t revisionId = RocksDBKey::revisionId(_iterator->key());
     RocksDBToken token(revisionId);
-    
+
     // adding revision ID and _from or _to value
     _builder.add(VPackValue(token.revisionId()));
     StringRef vertexId = RocksDBValue::vertexId(_iterator->value());
@@ -407,7 +408,7 @@ void RocksDBEdgeIndex::toVelocyPack(VPackBuilder& builder, bool withFigures,
   builder.close();
 }
 
-int RocksDBEdgeIndex::insert(transaction::Methods* trx,
+Result RocksDBEdgeIndex::insert(transaction::Methods* trx,
                              TRI_voc_rid_t revisionId, VPackSlice const& doc,
                              bool isRollback) {
   VPackSlice fromTo = doc.get(_directionAttr);
@@ -417,10 +418,10 @@ int RocksDBEdgeIndex::insert(transaction::Methods* trx,
   VPackSlice toFrom = _isFromIndex ? transaction::helpers::extractToFromDocument(doc) : transaction::helpers::extractFromFromDocument(doc);
   TRI_ASSERT(toFrom.isString());
   RocksDBValue value = RocksDBValue::EdgeIndexValue(StringRef(toFrom));
-  
+
   // blacklist key in cache
   blackListKey(fromToRef);
-  
+
   // acquire rocksdb transaction
   RocksDBMethods* mthd = rocksutils::toRocksMethods(trx);
   Result r = mthd->Put(_cf, rocksdb::Slice(key.string()), value.string(),
@@ -429,9 +430,9 @@ int RocksDBEdgeIndex::insert(transaction::Methods* trx,
     std::hash<StringRef> hasher;
     uint64_t hash = static_cast<uint64_t>(hasher(fromToRef));
     _estimator->insert(hash);
-    return TRI_ERROR_NO_ERROR;
+    return IndexResult(TRI_ERROR_NO_ERROR);
   } else {
-    return r.errorNumber();
+    return IndexResult(r.errorNumber(), this);
   }
 }
 
@@ -440,7 +441,7 @@ int RocksDBEdgeIndex::insertRaw(RocksDBMethods*, TRI_voc_rid_t,
   THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
 }
 
-int RocksDBEdgeIndex::remove(transaction::Methods* trx,
+Result RocksDBEdgeIndex::remove(transaction::Methods* trx,
                              TRI_voc_rid_t revisionId, VPackSlice const& doc,
                              bool isRollback) {
   // VPackSlice primaryKey = doc.get(StaticStrings::KeyString);
@@ -462,9 +463,9 @@ int RocksDBEdgeIndex::remove(transaction::Methods* trx,
     std::hash<StringRef> hasher;
     uint64_t hash = static_cast<uint64_t>(hasher(fromToRef));
     _estimator->remove(hash);
-    return TRI_ERROR_NO_ERROR;
+    return IndexResult(TRI_ERROR_NO_ERROR);
   } else {
-    return res.errorNumber();
+    return IndexResult(res.errorNumber(), this);
   }
 }
 

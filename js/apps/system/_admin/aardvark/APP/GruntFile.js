@@ -74,6 +74,7 @@
             "frontend/js/lib/sigma.plugins.fullScreen.js",
             "frontend/js/lib/sigma.plugins.filter.js",
             "frontend/js/lib/sigma.plugins.lasso.js",
+            "frontend/js/lib/jquery.csv.min.js",
             "frontend/js/lib/worker.js",
             "frontend/js/lib/supervisor.js",
             // END SIGMA LIBRARIES

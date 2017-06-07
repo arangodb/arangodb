@@ -151,11 +151,11 @@ class MMFilesPrimaryIndex final : public Index {
   void toVelocyPack(VPackBuilder&, bool, bool) const override;
   void toVelocyPackFigures(VPackBuilder&) const override;
 
-  int insert(transaction::Methods*, TRI_voc_rid_t,
-             arangodb::velocypack::Slice const&, bool isRollback) override;
+  Result insert(transaction::Methods*, TRI_voc_rid_t,
+                arangodb::velocypack::Slice const&, bool isRollback) override;
 
-  int remove(transaction::Methods*, TRI_voc_rid_t,
-             arangodb::velocypack::Slice const&, bool isRollback) override;
+  Result remove(transaction::Methods*, TRI_voc_rid_t,
+                arangodb::velocypack::Slice const&, bool isRollback) override;
 
   int load() override { return 0; }
   int unload() override;
@@ -198,15 +198,15 @@ class MMFilesPrimaryIndex final : public Index {
   MMFilesSimpleIndexElement lookupSequentialReverse(
       transaction::Methods*, arangodb::basics::BucketPosition& position);
 
-  int insertKey(transaction::Methods*, TRI_voc_rid_t revisionId,
-                arangodb::velocypack::Slice const&);
-  int insertKey(transaction::Methods*, TRI_voc_rid_t revisionId,
-                arangodb::velocypack::Slice const&, ManagedDocumentResult&);
+  Result insertKey(transaction::Methods*, TRI_voc_rid_t revisionId,
+                   arangodb::velocypack::Slice const&);
+  Result insertKey(transaction::Methods*, TRI_voc_rid_t revisionId,
+                   arangodb::velocypack::Slice const&, ManagedDocumentResult&);
 
-  int removeKey(transaction::Methods*, TRI_voc_rid_t revisionId,
-                arangodb::velocypack::Slice const&);
-  int removeKey(transaction::Methods*, TRI_voc_rid_t revisionId,
-                arangodb::velocypack::Slice const&, ManagedDocumentResult&);
+  Result removeKey(transaction::Methods*, TRI_voc_rid_t revisionId,
+                   arangodb::velocypack::Slice const&);
+  Result removeKey(transaction::Methods*, TRI_voc_rid_t revisionId,
+                   arangodb::velocypack::Slice const&, ManagedDocumentResult&);
 
   int resize(transaction::Methods*, size_t);
 

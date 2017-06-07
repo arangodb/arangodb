@@ -73,6 +73,7 @@
       'click #explainQuery': 'explainQuery',
       'click #clearQuery': 'clearQuery',
       'click .outputEditorWrapper #downloadQueryResult': 'downloadQueryResult',
+      'click .outputEditorWrapper #downloadCsvResult': 'downloadCsvResult',
       'click .outputEditorWrapper .switchAce span': 'switchAce',
       'click .outputEditorWrapper .closeResult': 'closeResult',
       'click #toggleQueries1': 'toggleQueries',
@@ -1741,6 +1742,7 @@
 
     renderQueryResult: function (data, counter, cached, queryID) {
       var self = this;
+      var result;
 
       if (window.location.hash === '#queries') {
         var outputEditor = ace.edit('outputEditor' + counter);
@@ -1750,7 +1752,7 @@
         // handle explain query case
         if (!data.msg) {
           // handle usual query
-          var result = self.analyseQuery(data.result);
+          result = self.analyseQuery(data.result);
           if (result.defaultType === 'table') {
             $('#outputEditorWrapper' + counter + ' .arangoToolbarTop').after(
               '<div id="outputTable' + counter + '" class="outputTable"></div>'
@@ -1891,6 +1893,11 @@
         if (data.msg) {
           $('#outputEditorWrapper' + counter + ' .toolbarType').html('Explain');
           outputEditor.setValue(data.msg, 1);
+        }
+
+        if (result.defaultType === 'table') {
+          // show csv download button
+          self.checkCSV(counter);
         }
       } else {
         // if result comes in when view is not active
@@ -2504,6 +2511,67 @@
           }
         }
       });
+    },
+
+    checkCSV: function (counter) {
+      var outputEditor = ace.edit('outputEditor' + counter);
+      var val = outputEditor.getValue();
+      var status = false;
+
+      var tmp;
+      // method: do not parse nested values
+      try {
+        val = JSON.parse(val);
+        status = true;
+        _.each(val, function (row, key1) {
+          _.each(row, function (entry, key2) {
+            // if nested array or object found, do not offer csv download
+            try {
+              tmp = JSON.parse(entry);
+              // if parse succes -> arr or obj found
+              if (typeof tmp === 'object') {
+                status = false;
+              }
+            } catch (ignore) {
+            }
+          });
+        });
+      } catch (ignore) {
+      }
+
+      if (status) {
+        $('#outputEditorWrapper' + counter + ' #downloadCsvResult').show();
+      }
+    },
+
+    doCSV: function (json) {
+      var inArray = this.arrayFrom(json);
+      var outArray = [];
+      for (var row in inArray) {
+        outArray[outArray.length] = this.parse_object(inArray[row]);
+      }
+
+      return $.csv.fromObjects(outArray);
+    },
+
+    downloadCsvResult: function (e) {
+      var counter = $(e.currentTarget).attr('counter');
+
+      var csv;
+      var outputEditor = ace.edit('outputEditor' + counter);
+      var val = outputEditor.getValue();
+      val = JSON.parse(val);
+
+      csv = $.csv.fromObjects(val, {
+        justArrays: true
+      });
+
+      if (csv.length > 0) {
+        arangoHelper.downloadLocalBlob(csv, 'csv');
+      } else {
+        arangoHelper.arangoError('Query error', 'Could not download the result.');
+      }
     }
+
   });
 }());

@@ -79,7 +79,7 @@ class RocksDBCollection final : public PhysicalCollection {
   int close() override;
   void load() override;
   void unload() override;
-  
+
   TRI_voc_rid_t revision() const;
   TRI_voc_rid_t revision(arangodb::transaction::Methods* trx) const override;
   uint64_t numberDocuments() const;
@@ -133,8 +133,8 @@ class RocksDBCollection final : public PhysicalCollection {
       transaction::Methods* trx,
       arangodb::velocypack::Slice const& key) override;
 
-  int read(transaction::Methods*, arangodb::velocypack::Slice const key,
-           ManagedDocumentResult& result, bool) override;
+  Result read(transaction::Methods*, arangodb::velocypack::Slice const key,
+              ManagedDocumentResult& result, bool) override;
 
   bool readDocument(transaction::Methods* trx,
                     DocumentIdentifierToken const& token,
@@ -144,34 +144,36 @@ class RocksDBCollection final : public PhysicalCollection {
                            DocumentIdentifierToken const& token,
                            ManagedDocumentResult& result);
 
-  int insert(arangodb::transaction::Methods* trx,
-             arangodb::velocypack::Slice const newSlice,
-             arangodb::ManagedDocumentResult& result, OperationOptions& options,
-             TRI_voc_tick_t& resultMarkerTick, bool lock) override;
+  Result insert(arangodb::transaction::Methods* trx,
+                arangodb::velocypack::Slice const newSlice,
+                arangodb::ManagedDocumentResult& result,
+                OperationOptions& options, TRI_voc_tick_t& resultMarkerTick,
+                bool lock) override;
 
-  int update(arangodb::transaction::Methods* trx,
-             arangodb::velocypack::Slice const newSlice,
-             arangodb::ManagedDocumentResult& result, OperationOptions& options,
-             TRI_voc_tick_t& resultMarkerTick, bool lock,
-             TRI_voc_rid_t& prevRev, ManagedDocumentResult& previous,
-             TRI_voc_rid_t const& revisionId,
-             arangodb::velocypack::Slice const key) override;
+  Result update(arangodb::transaction::Methods* trx,
+                arangodb::velocypack::Slice const newSlice,
+                arangodb::ManagedDocumentResult& result,
+                OperationOptions& options, TRI_voc_tick_t& resultMarkerTick,
+                bool lock, TRI_voc_rid_t& prevRev,
+                ManagedDocumentResult& previous,
+                TRI_voc_rid_t const& revisionId,
+                arangodb::velocypack::Slice const key) override;
 
-  int replace(transaction::Methods* trx,
-              arangodb::velocypack::Slice const newSlice,
-              ManagedDocumentResult& result, OperationOptions& options,
-              TRI_voc_tick_t& resultMarkerTick, bool lock,
-              TRI_voc_rid_t& prevRev, ManagedDocumentResult& previous,
-              TRI_voc_rid_t const revisionId,
-              arangodb::velocypack::Slice const fromSlice,
-              arangodb::velocypack::Slice const toSlice) override;
+  Result replace(transaction::Methods* trx,
+                 arangodb::velocypack::Slice const newSlice,
+                 ManagedDocumentResult& result, OperationOptions& options,
+                 TRI_voc_tick_t& resultMarkerTick, bool lock,
+                 TRI_voc_rid_t& prevRev, ManagedDocumentResult& previous,
+                 TRI_voc_rid_t const revisionId,
+                 arangodb::velocypack::Slice const fromSlice,
+                 arangodb::velocypack::Slice const toSlice) override;
 
-  int remove(arangodb::transaction::Methods* trx,
-             arangodb::velocypack::Slice const slice,
-             arangodb::ManagedDocumentResult& previous,
-             OperationOptions& options, TRI_voc_tick_t& resultMarkerTick,
-             bool lock, TRI_voc_rid_t const& revisionId,
-             TRI_voc_rid_t& prevRev) override;
+  Result remove(arangodb::transaction::Methods* trx,
+                arangodb::velocypack::Slice const slice,
+                arangodb::ManagedDocumentResult& previous,
+                OperationOptions& options, TRI_voc_tick_t& resultMarkerTick,
+                bool lock, TRI_voc_rid_t const& revisionId,
+                TRI_voc_rid_t& prevRev) override;
 
   void deferDropCollection(
       std::function<bool(LogicalCollection*)> callback) override;

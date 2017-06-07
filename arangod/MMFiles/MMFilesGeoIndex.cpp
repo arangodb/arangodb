@@ -28,6 +28,7 @@
 #include "Aql/SortCondition.h"
 #include "Basics/StringRef.h"
 #include "Basics/VelocyPackHelper.h"
+#include "Indexes/IndexResult.h"
 #include "Logger/Logger.h"
 #include "MMFiles/MMFilesToken.h"
 #include "StorageEngine/TransactionState.h"
@@ -384,8 +385,8 @@ bool MMFilesGeoIndex::matchesDefinition(VPackSlice const& info) const {
   return true;
 }
 
-int MMFilesGeoIndex::insert(transaction::Methods*, TRI_voc_rid_t revisionId,
-                            VPackSlice const& doc, bool isRollback) {
+Result MMFilesGeoIndex::insert(transaction::Methods*, TRI_voc_rid_t revisionId,
+                               VPackSlice const& doc, bool isRollback) {
   double latitude;
   double longitude;
 
@@ -393,13 +394,13 @@ int MMFilesGeoIndex::insert(transaction::Methods*, TRI_voc_rid_t revisionId,
     VPackSlice lat = doc.get(_latitude);
     if (!lat.isNumber()) {
       // Invalid, no insert. Index is sparse
-      return TRI_ERROR_NO_ERROR;
+      return Result(TRI_ERROR_NO_ERROR);
     }
 
     VPackSlice lon = doc.get(_longitude);
     if (!lon.isNumber()) {
       // Invalid, no insert. Index is sparse
-      return TRI_ERROR_NO_ERROR;
+      return Result(TRI_ERROR_NO_ERROR);
     }
     latitude = lat.getNumericValue<double>();
     longitude = lon.getNumericValue<double>();
@@ -407,17 +408,17 @@ int MMFilesGeoIndex::insert(transaction::Methods*, TRI_voc_rid_t revisionId,
     VPackSlice loc = doc.get(_location);
     if (!loc.isArray() || loc.length() < 2) {
       // Invalid, no insert. Index is sparse
-      return TRI_ERROR_NO_ERROR;
+      return Result(TRI_ERROR_NO_ERROR);
     }
     VPackSlice first = loc.at(0);
     if (!first.isNumber()) {
       // Invalid, no insert. Index is sparse
-      return TRI_ERROR_NO_ERROR;
+      return Result(TRI_ERROR_NO_ERROR);
     }
     VPackSlice second = loc.at(1);
     if (!second.isNumber()) {
       // Invalid, no insert. Index is sparse
-      return TRI_ERROR_NO_ERROR;
+      return Result(TRI_ERROR_NO_ERROR);
     }
     if (_geoJson) {
       longitude = first.getNumericValue<double>();
@@ -439,22 +440,22 @@ int MMFilesGeoIndex::insert(transaction::Methods*, TRI_voc_rid_t revisionId,
   if (res == -1) {
     LOG_TOPIC(WARN, arangodb::Logger::FIXME)
         << "found duplicate entry in geo-index, should not happen";
-    return TRI_set_errno(TRI_ERROR_INTERNAL);
+    return IndexResult(TRI_set_errno(TRI_ERROR_INTERNAL), this);
   } else if (res == -2) {
-    return TRI_set_errno(TRI_ERROR_OUT_OF_MEMORY);
+    return IndexResult(TRI_set_errno(TRI_ERROR_OUT_OF_MEMORY), this);
   } else if (res == -3) {
     LOG_TOPIC(DEBUG, arangodb::Logger::FIXME)
         << "illegal geo-coordinates, ignoring entry";
-    return TRI_ERROR_NO_ERROR;
+    return Result(TRI_ERROR_NO_ERROR);
   } else if (res < 0) {
-    return TRI_set_errno(TRI_ERROR_INTERNAL);
+    return IndexResult(TRI_set_errno(TRI_ERROR_INTERNAL), this);
   }
 
-  return TRI_ERROR_NO_ERROR;
+  return Result(TRI_ERROR_NO_ERROR);
 }
 
-int MMFilesGeoIndex::remove(transaction::Methods*, TRI_voc_rid_t revisionId,
-                            VPackSlice const& doc, bool isRollback) {
+Result MMFilesGeoIndex::remove(transaction::Methods*, TRI_voc_rid_t revisionId,
+                               VPackSlice const& doc, bool isRollback) {
   double latitude = 0.0;
   double longitude = 0.0;
   bool ok = true;
@@ -498,7 +499,7 @@ int MMFilesGeoIndex::remove(transaction::Methods*, TRI_voc_rid_t revisionId,
   }
 
   if (!ok) {
-    return TRI_ERROR_NO_ERROR;
+    return Result(TRI_ERROR_NO_ERROR);
   }
 
   GeoCoordinate gc;
@@ -509,7 +510,7 @@ int MMFilesGeoIndex::remove(transaction::Methods*, TRI_voc_rid_t revisionId,
   // ignore non-existing elements in geo-index
   GeoIndex_remove(_geoIndex, &gc);
 
-  return TRI_ERROR_NO_ERROR;
+  return Result(TRI_ERROR_NO_ERROR);
 }
 
 int MMFilesGeoIndex::unload() {

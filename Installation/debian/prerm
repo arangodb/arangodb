@@ -7,3 +7,9 @@ if [ -x "/etc/init.d/arangodb3" ]; then
 fi
 # End automatically added section
 
+set -e
+# Automatically added by dh_systemd_start
+if [ -d /run/systemd/system ] && [ "$1" = remove ]; then
+        deb-systemd-invoke stop arangodb3.service >/dev/null
+fi
+# End automatically added section

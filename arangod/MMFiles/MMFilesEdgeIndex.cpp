@@ -31,6 +31,7 @@
 #include "Basics/fasthash.h"
 #include "Basics/hashes.h"
 #include "Indexes/IndexLookupContext.h"
+#include "Indexes/IndexResult.h"
 #include "Indexes/SimpleAttributeEqualityMatcher.h"
 #include "MMFiles/MMFilesCollection.h"
 #include "MMFiles/MMFilesToken.h"
@@ -284,9 +285,9 @@ void MMFilesEdgeIndex::toVelocyPackFigures(VPackBuilder& builder) const {
   // builder.add("buckets", VPackValue(_numBuckets));
 }
 
-int MMFilesEdgeIndex::insert(transaction::Methods* trx,
-                             TRI_voc_rid_t revisionId, VPackSlice const& doc,
-                             bool isRollback) {
+Result MMFilesEdgeIndex::insert(transaction::Methods* trx,
+                                TRI_voc_rid_t revisionId, VPackSlice const& doc,
+                                bool isRollback) {
   MMFilesSimpleIndexElement fromElement(buildFromElement(revisionId, doc));
   MMFilesSimpleIndexElement toElement(buildToElement(revisionId, doc));
 
@@ -299,15 +300,15 @@ int MMFilesEdgeIndex::insert(transaction::Methods* trx,
   } catch (...) {
     // roll back partial insert
     _edgesFrom->remove(&context, fromElement);
-    return TRI_ERROR_OUT_OF_MEMORY;
+    return IndexResult(TRI_ERROR_OUT_OF_MEMORY, this);
   }
 
-  return TRI_ERROR_NO_ERROR;
+  return Result(TRI_ERROR_NO_ERROR);
 }
 
-int MMFilesEdgeIndex::remove(transaction::Methods* trx,
-                             TRI_voc_rid_t revisionId, VPackSlice const& doc,
-                             bool isRollback) {
+Result MMFilesEdgeIndex::remove(transaction::Methods* trx,
+                                TRI_voc_rid_t revisionId, VPackSlice const& doc,
+                                bool isRollback) {
   MMFilesSimpleIndexElement fromElement(buildFromElement(revisionId, doc));
   MMFilesSimpleIndexElement toElement(buildToElement(revisionId, doc));
 
@@ -317,12 +318,12 @@ int MMFilesEdgeIndex::remove(transaction::Methods* trx,
   try {
     _edgesFrom->remove(&context, fromElement);
     _edgesTo->remove(&context, toElement);
-    return TRI_ERROR_NO_ERROR;
+    return Result(TRI_ERROR_NO_ERROR);
   } catch (...) {
     if (isRollback) {
-      return TRI_ERROR_NO_ERROR;
+      return Result(TRI_ERROR_NO_ERROR);
     }
-    return TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND;
+    return IndexResult(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND, this);
   }
 }
 
