@@ -2225,15 +2225,8 @@ static void JS_PregelStatus(v8::FunctionCallbackInfo<v8::Value> const& args) {
     TRI_V8_THROW_EXCEPTION_USAGE("Execution number is invalid");
   }
 
-  VPackBuilder result;
-  result.openObject();
-  result.add("state", VPackValue(pregel::ExecutionStateNames[c->getState()]));
-  result.add("gss", VPackValue(c->globalSuperstep()));
-  result.add("totalRuntime", VPackValue(c->totalRuntimeSecs()));
-  c->aggregators()->serializeValues(result);
-  c->workerStats().serializeValues(result);
-  result.close();
-  TRI_V8_RETURN(TRI_VPackToV8(isolate, result.slice()));
+  VPackBuilder builder = c->toVelocyPack();
+  TRI_V8_RETURN(TRI_VPackToV8(isolate, builder.slice()));
   TRI_V8_TRY_CATCH_END
 }
 
