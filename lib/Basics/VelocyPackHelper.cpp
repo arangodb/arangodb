@@ -372,8 +372,8 @@ int VelocyPackHelper::compareNumberValues(VPackValueType lhsType,
     // both types are equal
     if (lhsType == VPackValueType::Int || lhsType == VPackValueType::SmallInt) {
       // use exact comparisons. no need to cast to double
-      int64_t l = lhs.getInt();
-      int64_t r = rhs.getInt();
+      int64_t l = lhs.getIntUnchecked();
+      int64_t r = rhs.getIntUnchecked();
       if (l == r) {
         return 0;
       }
@@ -382,8 +382,8 @@ int VelocyPackHelper::compareNumberValues(VPackValueType lhsType,
 
     if (lhsType == VPackValueType::UInt) {
       // use exact comparisons. no need to cast to double
-      uint64_t l = lhs.getUInt();
-      uint64_t r = rhs.getUInt();
+      uint64_t l = lhs.getUIntUnchecked();
+      uint64_t r = rhs.getUIntUnchecked();
       if (l == r) {
         return 0;
       }
@@ -784,12 +784,12 @@ int VelocyPackHelper::compare(VPackSlice lhs, VPackSlice rhs, bool useUTF8,
                                        "Could not extract custom attribute.");
       }
       std::string lhsString(options->customTypeHandler->toString(lhs, options, *lhsBase));
-      char const* left = lhsString.c_str();
+      char const* left = lhsString.data();
       VPackValueLength nl = lhsString.size();
       TRI_ASSERT(left != nullptr);
 
       std::string rhsString(options->customTypeHandler->toString(rhs, options, *rhsBase));
-      char const* right = rhsString.c_str();
+      char const* right = rhsString.data();
       VPackValueLength nr = rhsString.size();
       TRI_ASSERT(right != nullptr);
 
@@ -1052,7 +1052,9 @@ void VelocyPackHelper::sanitizeNonClientTypes(VPackSlice input,
   } else if (input.isObject()) {
     output.openObject();
     for (auto const& it : VPackObjectIterator(input)) {
-      output.add(VPackValue(it.key.copyString()));
+      VPackValueLength l;
+      char const* p = it.key.getString(l);
+      output.add(VPackValuePair(p, l, VPackValueType::String));
       sanitizeNonClientTypes(it.value, input, output, options, sanitizeExternals, sanitizeCustom);
     }
     output.close();
@@ -1076,7 +1078,7 @@ VPackBuffer<uint8_t> VelocyPackHelper::sanitizeNonClientTypesChecked(
     resolveExt = hasNonClientTypes(input, sanitizeExternals, sanitizeCustom);
   }
   if (resolveExt) {  // resolve
-    buffer.reserve(input.byteSize()); // reserve space space already
+    buffer.reserve(input.byteSize()); // reserve space already
     sanitizeNonClientTypes(input, VPackSlice::noneSlice(), builder, options, sanitizeExternals, sanitizeCustom);
   } else {
     builder.add(input);

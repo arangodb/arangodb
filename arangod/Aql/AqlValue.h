@@ -94,7 +94,7 @@ struct AqlValue final {
   enum AqlValueType : uint8_t { 
     VPACK_SLICE_POINTER, // contains a pointer to a vpack document, memory is not managed!
     VPACK_INLINE, // contains vpack data, inline
-    VPACK_MANAGED, // contains vpack, via pointer to a managed buffer
+    VPACK_MANAGED_BUFFER, // contains vpack, via pointer to a managed buffer
     DOCVEC, // a vector of blocks of results coming from a subquery, managed
     RANGE // a pointer to a range remembering lower and upper bound, managed
   };
@@ -109,7 +109,7 @@ struct AqlValue final {
   /// VPACK_INLINE: VPack values with a size less than 16 bytes can be stored 
   /// directly inside the data.internal structure. All data is stored inline, 
   /// so there is no need for memory management.
-  /// VPACK_MANAGED: all values of a larger size will be stored in 
+  /// VPACK_MANAGED_BUFFER: all values of a larger size will be stored in 
   /// _data.external via a managed VPackBuffer object. The Buffer is managed
   /// by the AqlValue.
   /// DOCVEC: a managed vector of AqlItemBlocks, for storing subquery results.
@@ -256,7 +256,7 @@ struct AqlValue final {
       _data.buffer = new arangodb::velocypack::Buffer<uint8_t>(length + 1);
       _data.buffer->push_back(static_cast<char>(0x40 + length));
       _data.buffer->append(value, length);
-      setType(AqlValueType::VPACK_MANAGED);
+      setType(AqlValueType::VPACK_MANAGED_BUFFER);
     } else {
       // long string
       // create a big enough Buffer object
@@ -266,7 +266,7 @@ struct AqlValue final {
       builder.add(VPackValuePair(value, length, VPackValueType::String));
       // steal Buffer. now we have ownership
       _data.buffer = buffer.release();
-      setType(AqlValueType::VPACK_MANAGED);
+      setType(AqlValueType::VPACK_MANAGED_BUFFER);
     }
   }
   
@@ -292,7 +292,7 @@ struct AqlValue final {
       // Use managed buffer, simply reuse the pointer and adjust the original
       // Buffer's deleter
       _data.buffer = buffer;
-      setType(AqlValueType::VPACK_MANAGED);
+      setType(AqlValueType::VPACK_MANAGED_BUFFER);
       shouldDelete = false; // adjust deletion control variable
     }
   }
@@ -301,7 +301,7 @@ struct AqlValue final {
   explicit AqlValue(arangodb::velocypack::Buffer<uint8_t>* buffer) {
     TRI_ASSERT(buffer != nullptr);
     _data.buffer = buffer;
-    setType(AqlValueType::VPACK_MANAGED);
+    setType(AqlValueType::VPACK_MANAGED_BUFFER);
   }
   
   // construct from Builder, copying contents
@@ -468,7 +468,7 @@ struct AqlValue final {
 
   /// @brief return the slice for the value
   /// this will throw if the value type is not VPACK_SLICE_POINTER, VPACK_INLINE or
-  /// VPACK_MANAGED
+  /// VPACK_MANAGED_BUFFER
   arangodb::velocypack::Slice slice() const;
   
   /// @brief clone a value
@@ -490,7 +490,7 @@ struct AqlValue final {
       case VPACK_SLICE_POINTER:
       case VPACK_INLINE:
         return 0;
-      case VPACK_MANAGED:
+      case VPACK_MANAGED_BUFFER:
         return _data.buffer->size();
       case DOCVEC:
         // no need to count the memory usage for the item blocks in docvec.
@@ -541,7 +541,7 @@ struct AqlValue final {
       // Use managed buffer
       _data.buffer = new arangodb::velocypack::Buffer<uint8_t>(length);
       _data.buffer->append(reinterpret_cast<char const*>(slice.begin()), length);
-      setType(AqlValueType::VPACK_MANAGED);
+      setType(AqlValueType::VPACK_MANAGED_BUFFER);
     }
   }
   
@@ -667,7 +667,7 @@ struct hash<arangodb::aql::AqlValue> {
       case arangodb::aql::AqlValue::VPACK_INLINE: {
         return res ^ static_cast<size_t>(arangodb::velocypack::Slice(&x._data.internal[0]).hash());
       }
-      case arangodb::aql::AqlValue::VPACK_MANAGED: {
+      case arangodb::aql::AqlValue::VPACK_MANAGED_BUFFER: {
         return res ^ ptrHash(x._data.buffer);
       }
       case arangodb::aql::AqlValue::DOCVEC: {
@@ -698,7 +698,7 @@ struct equal_to<arangodb::aql::AqlValue> {
       case arangodb::aql::AqlValue::VPACK_INLINE: {
         return arangodb::velocypack::Slice(&a._data.internal[0]).equals(arangodb::velocypack::Slice(&b._data.internal[0]));
       }
-      case arangodb::aql::AqlValue::VPACK_MANAGED: {
+      case arangodb::aql::AqlValue::VPACK_MANAGED_BUFFER: {
         return a._data.buffer == b._data.buffer;
       }
       case arangodb::aql::AqlValue::DOCVEC: {
