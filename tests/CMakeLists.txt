@@ -8,7 +8,6 @@ add_executable(
   main.cpp
   Agency/AddFollowerTest.cpp
   Agency/CleanOutServerTest.cpp
-  Agency/FailedFollowerTest.cpp
   Agency/FailedLeaderTest.cpp
   Agency/FailedServerTest.cpp
   Agency/MoveShardTest.cpp
