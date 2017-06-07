@@ -15,18 +15,18 @@ arangosh&gt; db.ids.save({ <span class="hljs-string">"name"</span> : { <span cla
 { 
   <span class="hljs-string">"_id"</span> : <span class="hljs-string">"ids/15476"</span>, 
   <span class="hljs-string">"_key"</span> : <span class="hljs-string">"15476"</span>, 
-  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_VB_cxOa---"</span> 
+  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_VGFXrEy---"</span> 
 }
 arangosh&gt; db.ids.save({ <span class="hljs-string">"name"</span> : { <span class="hljs-string">"first"</span> : <span class="hljs-string">"jens"</span>, <span class="hljs-string">"last"</span>: <span class="hljs-string">"jensen"</span> }});
 { 
   <span class="hljs-string">"_id"</span> : <span class="hljs-string">"ids/15480"</span>, 
   <span class="hljs-string">"_key"</span> : <span class="hljs-string">"15480"</span>, 
-  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_VB_cxOe---"</span> 
+  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_VGFXrEy--_"</span> 
 }
 arangosh&gt; db.ids.save({ <span class="hljs-string">"name"</span> : { <span class="hljs-string">"first"</span> : <span class="hljs-string">"hans"</span>, <span class="hljs-string">"last"</span>: <span class="hljs-string">"jensen"</span> }});
 { 
   <span class="hljs-string">"_id"</span> : <span class="hljs-string">"ids/15483"</span>, 
   <span class="hljs-string">"_key"</span> : <span class="hljs-string">"15483"</span>, 
-  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_VB_cxOe--_"</span> 
+  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_VGFXrE2---"</span> 
 }
 [ArangoError <span class="hljs-number">1210</span>: cannot create <span class="hljs-built_in">document</span>, unique constraint violated]

@@ -6,7 +6,7 @@ x-content-type-options: nosniff
 location: <span class="hljs-regexp">/_db/</span>_system/_api/collection/products/figures
 
 { 
-  <span class="hljs-string">"id"</span> : <span class="hljs-string">"9478"</span>, 
+  <span class="hljs-string">"id"</span> : <span class="hljs-string">"9479"</span>, 
   <span class="hljs-string">"name"</span> : <span class="hljs-string">"products"</span>, 
   <span class="hljs-string">"isSystem"</span> : <span class="hljs-literal">false</span>, 
   <span class="hljs-string">"doCompact"</span> : <span class="hljs-literal">true</span>, 
@@ -24,11 +24,11 @@ location: <span class="hljs-regexp">/_db/</span>_system/_api/collection/products
       <span class="hljs-string">"count"</span> : <span class="hljs-number">1</span>, 
       <span class="hljs-string">"size"</span> : <span class="hljs-number">32128</span> 
     }, 
-    <span class="hljs-string">"lastTick"</span> : <span class="hljs-number">9483</span>, 
+    <span class="hljs-string">"lastTick"</span> : <span class="hljs-number">9484</span>, 
     <span class="hljs-string">"uncollectedLogfileEntries"</span> : <span class="hljs-number">1</span>, 
     <span class="hljs-string">"compactionStatus"</span> : { 
       <span class="hljs-string">"message"</span> : <span class="hljs-string">"skipped compaction because collection has no datafiles"</span>, 
-      <span class="hljs-string">"time"</span> : <span class="hljs-string">"2017-05-22T13:34:12Z"</span> 
+      <span class="hljs-string">"time"</span> : <span class="hljs-string">"2017-06-07T09:17:42Z"</span> 
     }, 
     <span class="hljs-string">"readCache"</span> : { 
       <span class="hljs-string">"count"</span> : <span class="hljs-number">1</span>, 

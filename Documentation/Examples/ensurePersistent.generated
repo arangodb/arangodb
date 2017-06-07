@@ -1,6 +1,6 @@
 arangosh&gt; db.names.ensureIndex({ <span class="hljs-attr">type</span>: <span class="hljs-string">"persistent"</span>, <span class="hljs-attr">fields</span>: [ <span class="hljs-string">"first"</span> ] });
 { 
-  <span class="hljs-string">"id"</span> : <span class="hljs-string">"names/15342"</span>, 
+  <span class="hljs-string">"id"</span> : <span class="hljs-string">"names/15333"</span>, 
   <span class="hljs-string">"type"</span> : <span class="hljs-string">"persistent"</span>, 
   <span class="hljs-string">"fields"</span> : [ 
     <span class="hljs-string">"first"</span> 
@@ -12,31 +12,31 @@ arangosh&gt; db.names.ensureIndex({ <span class="hljs-attr">type</span>: <span c
 }
 arangosh&gt; db.names.save({ <span class="hljs-string">"first"</span> : <span class="hljs-string">"Tim"</span> });
 { 
-  <span class="hljs-string">"_id"</span> : <span class="hljs-string">"names/15345"</span>, 
-  <span class="hljs-string">"_key"</span> : <span class="hljs-string">"15345"</span>, 
-  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_VB_cvzC---"</span> 
+  <span class="hljs-string">"_id"</span> : <span class="hljs-string">"names/15336"</span>, 
+  <span class="hljs-string">"_key"</span> : <span class="hljs-string">"15336"</span>, 
+  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_VGFXply---"</span> 
+}
+arangosh&gt; db.names.save({ <span class="hljs-string">"first"</span> : <span class="hljs-string">"Tom"</span> });
+{ 
+  <span class="hljs-string">"_id"</span> : <span class="hljs-string">"names/15340"</span>, 
+  <span class="hljs-string">"_key"</span> : <span class="hljs-string">"15340"</span>, 
+  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_VGFXpl2---"</span> 
+}
+arangosh&gt; db.names.save({ <span class="hljs-string">"first"</span> : <span class="hljs-string">"John"</span> });
+{ 
+  <span class="hljs-string">"_id"</span> : <span class="hljs-string">"names/15343"</span>, 
+  <span class="hljs-string">"_key"</span> : <span class="hljs-string">"15343"</span>, 
+  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_VGFXpl6---"</span> 
+}
+arangosh&gt; db.names.save({ <span class="hljs-string">"first"</span> : <span class="hljs-string">"Tim"</span> });
+{ 
+  <span class="hljs-string">"_id"</span> : <span class="hljs-string">"names/15346"</span>, 
+  <span class="hljs-string">"_key"</span> : <span class="hljs-string">"15346"</span>, 
+  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_VGFXpm----"</span> 
 }
 arangosh&gt; db.names.save({ <span class="hljs-string">"first"</span> : <span class="hljs-string">"Tom"</span> });
 { 
   <span class="hljs-string">"_id"</span> : <span class="hljs-string">"names/15349"</span>, 
   <span class="hljs-string">"_key"</span> : <span class="hljs-string">"15349"</span>, 
-  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_VB_cvzG---"</span> 
-}
-arangosh&gt; db.names.save({ <span class="hljs-string">"first"</span> : <span class="hljs-string">"John"</span> });
-{ 
-  <span class="hljs-string">"_id"</span> : <span class="hljs-string">"names/15352"</span>, 
-  <span class="hljs-string">"_key"</span> : <span class="hljs-string">"15352"</span>, 
-  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_VB_cvzK---"</span> 
-}
-arangosh&gt; db.names.save({ <span class="hljs-string">"first"</span> : <span class="hljs-string">"Tim"</span> });
-{ 
-  <span class="hljs-string">"_id"</span> : <span class="hljs-string">"names/15355"</span>, 
-  <span class="hljs-string">"_key"</span> : <span class="hljs-string">"15355"</span>, 
-  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_VB_cvzK--_"</span> 
-}
-arangosh&gt; db.names.save({ <span class="hljs-string">"first"</span> : <span class="hljs-string">"Tom"</span> });
-{ 
-  <span class="hljs-string">"_id"</span> : <span class="hljs-string">"names/15358"</span>, 
-  <span class="hljs-string">"_key"</span> : <span class="hljs-string">"15358"</span>, 
-  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_VB_cvzO---"</span> 
+  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_VGFXpmC---"</span> 
 }
