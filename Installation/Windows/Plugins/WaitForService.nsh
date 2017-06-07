@@ -59,6 +59,7 @@ Function ${un}WaitForServiceDown
     ${EndIf}
     IntOp $R0 $R0 + 1
     Goto try_again
+  Sleep 1000
 FunctionEnd
 !macroend
 
