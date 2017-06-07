@@ -398,9 +398,6 @@ void SlotWrite(GeoIx * gix,int slot, GeoCoordinate * gc)
   char data[sizeof (GeoCoordinate)];
   toPersistent(*gc, &data[0]);
   RocksWrite(gix, key, rocksdb::Slice(&data[0], sizeof(GeoCoordinate)));
-
-  GeoCoordinate test;
-  fromPersistent(&data[0],test);
 }
 
 void PotRead(GeoIx * gix, int pot, GeoPot * gp)
