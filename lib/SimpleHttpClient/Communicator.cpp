@@ -175,6 +175,7 @@ Ticket Communicator::addRequest(Destination destination,
         NewRequest{destination, std::move(request), callbacks, options, id});
   }
 
+  LOG_TOPIC(TRACE, Logger::COMMUNICATION) << "request to " << destination.url() << " has been put onto queue";
   // mop: just send \0 terminated empty string to wake up worker thread
 #ifdef _WIN32
   ssize_t numBytes = send(_socks[1], "", 1, 0);
