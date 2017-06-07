@@ -85,7 +85,9 @@ function agencyTestSuite () {
       res = request({url: agencyLeader + "/_api/agency/" + api,
                      method: "POST", followRedirect: false,
                      body: JSON.stringify(list),
-                     headers: {"Content-Type": "application/json"}});
+                     headers: {"Content-Type": "application/json"},
+                     timeout: 120  /* essentially for the huge trx package
+                                      running under ASAN in the CI */ });
       if(res.statusCode === 307) {
         agencyLeader = res.headers.location;
         var l = 0;
@@ -103,7 +105,7 @@ function agencyTestSuite () {
     try {
       res.bodyParsed = JSON.parse(res.body);
     } catch(e) {
-      require("console").error("Exception in body parse:", res.body, JSON.stringify(e), api, list);
+      require("console").error("Exception in body parse:", res.body, JSON.stringify(e), api, list, JSON.stringify(res));
     }
     return res;
   }
