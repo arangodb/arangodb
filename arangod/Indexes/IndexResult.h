@@ -46,7 +46,7 @@ class IndexResult : public Result {
   IndexResult(int errorNumber, Index const* index) : Result(errorNumber) {
     if (_errorNumber != TRI_ERROR_NO_ERROR && index != nullptr) {
       // now provide more context based on index
-      _errorMessage.append(" -- in index ");
+      _errorMessage.append(" - in index ");
       _errorMessage.append(std::to_string(index->id()));
       _errorMessage.append(" of type ");
       _errorMessage.append(index->typeName());

@@ -37,7 +37,7 @@ using namespace arangodb;
 
 MMFilesTransactionCollection::MMFilesTransactionCollection(TransactionState* trx, TRI_voc_cid_t cid, AccessMode::Type accessType, int nestingLevel)
     : TransactionCollection(trx, cid),
-      _operations(nullptr),
+      _operations{_arena},
       _originalRevision(0), 
       _nestingLevel(nestingLevel), 
       _compactionLocked(false), 
@@ -102,15 +102,11 @@ bool MMFilesTransactionCollection::isLocked() const {
   
 /// @brief whether or not any write operations for the collection happened
 bool MMFilesTransactionCollection::hasOperations() const {
-  return (_operations != nullptr && !_operations->empty());
+  return (!_operations.empty());
 }
 
 void MMFilesTransactionCollection::addOperation(MMFilesDocumentOperation* operation) {
-  if (_operations == nullptr) {
-    _operations = new std::vector<MMFilesDocumentOperation*>;
-    _operations->reserve(16);
-  } 
-  _operations->push_back(operation);
+  _operations.push_back(operation);
 }
   
 void MMFilesTransactionCollection::freeOperations(transaction::Methods* activeTrx, bool mustRollback) {
@@ -120,22 +116,17 @@ void MMFilesTransactionCollection::freeOperations(transaction::Methods* activeTr
   
   bool const isSingleOperationTransaction = _transaction->hasHint(transaction::Hints::Hint::SINGLE_OPERATION);
 
-  if (mustRollback) {
-    // revert all operations
-    for (auto it = _operations->rbegin(); it != _operations->rend(); ++it) {
-      MMFilesDocumentOperation* op = (*it);
+  // revert all operations
+  for (auto it = _operations.rbegin(); it != _operations.rend(); ++it) {
+    MMFilesDocumentOperation* op = (*it);
 
+    if (mustRollback) {
       try {
         op->revert(activeTrx);
       } catch (...) {
       }
-      delete op;
     }
-  } else {
-    // no rollback. simply delete all operations
-    for (auto it = _operations->rbegin(); it != _operations->rend(); ++it) {
-      delete (*it);
-    }
+    delete op;
   }
 
   auto physical = static_cast<MMFilesCollection*>(_collection->getPhysical());
@@ -145,11 +136,10 @@ void MMFilesTransactionCollection::freeOperations(transaction::Methods* activeTr
     physical->setRevision(_originalRevision, true);
   } else if (!physical->isVolatile() && !isSingleOperationTransaction) {
     // only count logfileEntries if the collection is durable
-    physical->increaseUncollectedLogfileEntries(_operations->size());
+    physical->increaseUncollectedLogfileEntries(_operations.size());
   }
 
-  delete _operations;
-  _operations = nullptr;
+  _operations.clear();
 }
 
 bool MMFilesTransactionCollection::canAccess(AccessMode::Type accessType) const {
