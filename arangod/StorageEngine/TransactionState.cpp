@@ -32,7 +32,6 @@
 #include "Transaction/Options.h"
 #include "Utils/ExecContext.h"
 #include "VocBase/ticks.h"
-#include <iostream>
 
 using namespace arangodb;
 
@@ -100,33 +99,34 @@ int TransactionState::addCollection(TRI_voc_cid_t cid,
   LOG_TRX(this, nestingLevel) << "adding collection " << cid;
 
   if (ExecContext::CURRENT_EXECCONTEXT != nullptr) {
-    std::cout << "'" << ExecContext::CURRENT_EXECCONTEXT->user() << "' '" << ExecContext::CURRENT_EXECCONTEXT->database() << "'\n";
-    ExecContext::CURRENT_EXECCONTEXT->authContext()->dump();
+    std::string const colName = _resolver->getCollectionNameCluster(cid);
 
-    if (accessType == AccessMode::Type::NONE)
-      std::cout << "AccessMode::Type::NONE\n";
-    else if (accessType == AccessMode::Type::READ)
-      std::cout << "AccessMode::Type::READ\n";
-    else if (accessType == AccessMode::Type::WRITE)
-      std::cout << "AccessMode::Type::WRITE\n";
-    else if (accessType == AccessMode::Type::EXCLUSIVE)
-      std::cout << "AccessMode::Type::EXCLUSIVE\n";
+    if (Logger::logLevel() >= LogLevel::DEBUG) {
+      LOG_TOPIC(DEBUG, Logger::AUTHORIZATION) << " Rights for user '" << ExecContext::CURRENT_EXECCONTEXT->user() << "' at database '" << ExecContext::CURRENT_EXECCONTEXT->database();
+      ExecContext::CURRENT_EXECCONTEXT->authContext()->dump();
 
-    std::string colName = _resolver->getCollectionNameCluster(cid);
-    std::cout << "collection is " << colName <<  "\n";
+      LOG_TOPIC(DEBUG, Logger::AUTHORIZATION) << "collection: " << colName;
+      if (accessType == AccessMode::Type::NONE)
+        LOG_TOPIC(DEBUG, Logger::AUTHORIZATION) << "AccessMode::Type::NONE";
+      else if (accessType == AccessMode::Type::READ)
+        LOG_TOPIC(DEBUG, Logger::AUTHORIZATION) << "AccessMode::Type::READ";
+      else if (accessType == AccessMode::Type::WRITE)
+        LOG_TOPIC(DEBUG, Logger::AUTHORIZATION) << "AccessMode::Type::WRITE";
+      else if (accessType == AccessMode::Type::EXCLUSIVE)
+        LOG_TOPIC(DEBUG, Logger::AUTHORIZATION) << "AccessMode::Type::EXCLUSIVE";
+    }
+
     AuthLevel level = ExecContext::CURRENT_EXECCONTEXT->authContext()->collectionAuthLevel(colName);
 
-    if (colName == "_users") level = AuthLevel::RW; // <--- TODO: THIS IS A HACK! REMOVE IN PRODUCTION --->
-
     if (level == AuthLevel::NONE) {
-      std::cout << "collection AuthLevel::NONE\n";
+      LOG_TOPIC(DEBUG, Logger::AUTHORIZATION) << "collection AuthLevel::NONE";
       return TRI_ERROR_FORBIDDEN;
-    } // if
+    }
 
     bool collectionWillWrite = (accessType == AccessMode::Type::WRITE || accessType == AccessMode::Type::EXCLUSIVE);
 
     if (level == AuthLevel::RO && collectionWillWrite) {
-      std::cout << "collection will write but no write right\n";
+      LOG_TOPIC(DEBUG, Logger::AUTHORIZATION) << "no write right for collection" << colName;
         return TRI_ERROR_FORBIDDEN;
     }
   }

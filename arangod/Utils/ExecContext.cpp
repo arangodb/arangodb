@@ -28,7 +28,7 @@ using namespace arangodb;
 thread_local ExecContext* ExecContext::CURRENT_EXECCONTEXT = nullptr;
 
 AuthContext::AuthContext(AuthLevel authLevel, std::unordered_map<std::string, AuthLevel>&& collectionAccess)
-  : _databaseAccess(authLevel),
+  : _databaseAuthLevel(authLevel),
     _systemAuthLevel(AuthLevel::NONE),
     _collectionAccess(std::move(collectionAccess)) {}
 
@@ -47,11 +47,18 @@ AuthLevel AuthContext::collectionAuthLevel(std::string const& collectionName) {
 void AuthContext::dump() {
   LOG_TOPIC(INFO, arangodb::Logger::FIXME) << "Dump AuthContext rights";
 
-  if (_databaseAccess == AuthLevel::RO) {
+  if (_databaseAuthLevel == AuthLevel::RO) {
     LOG_TOPIC(INFO, arangodb::Logger::FIXME) << "database level RO";
   }
-  if (_databaseAccess == AuthLevel::RW) {
+  if (_databaseAuthLevel == AuthLevel::RW) {
     LOG_TOPIC(INFO, arangodb::Logger::FIXME) << "database level RW";
+  }
+
+  if (_systemAuthLevel == AuthLevel::RO) {
+    LOG_TOPIC(INFO, arangodb::Logger::FIXME) << "_system level RO";
+  }
+  if (_systemAuthLevel == AuthLevel::RW) {
+    LOG_TOPIC(INFO, arangodb::Logger::FIXME) << "_system level RW";
   }
 
   for (auto const& it : _collectionAccess) {

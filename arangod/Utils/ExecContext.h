@@ -32,7 +32,7 @@ enum class AuthLevel;
 class AuthContext {
   public:
     AuthContext(AuthLevel authLevel, std::unordered_map<std::string, AuthLevel>&& collectionAccess);
-    AuthLevel databaseAuthLevel() { return _databaseAccess; }
+    AuthLevel databaseAuthLevel() { return _databaseAuthLevel; }
     void systemAuthLevel(AuthLevel level) { _systemAuthLevel = level; }
     AuthLevel systemAuthLevel() { return _systemAuthLevel; }
     AuthLevel collectionAuthLevel(std::string const& collectionName);
@@ -40,7 +40,7 @@ class AuthContext {
     void dump();
 
   protected:
-    AuthLevel _databaseAccess;
+    AuthLevel _databaseAuthLevel;
     AuthLevel _systemAuthLevel;
     std::unordered_map<std::string, AuthLevel> _collectionAccess;
 };
