@@ -3,90 +3,90 @@ language: generic
 matrix:
   include:
     - os: linux
-      env: CC=gcc CXX=g++ COMPILER_FLAGS="" CONFIGURE_FLAGS=""
+      env: CC=gcc COMPILER_FLAGS="" CONFIGURE_FLAGS=""
     - os: osx
-      env: CC=gcc CXX=g++ COMPILER_FLAGS="" CONFIGURE_FLAGS=""
+      env: CC=gcc COMPILER_FLAGS="" CONFIGURE_FLAGS=""
     - os: linux
-      env: CC=clang CXX=clang++ COMPILER_FLAGS="" CONFIGURE_FLAGS=""
+      env: CC=clang COMPILER_FLAGS="" CONFIGURE_FLAGS=""
     - os: linux
-      env: CC=gcc CXX=g++ COMPILER_FLAGS="-m32" CONFIGURE_FLAGS=""
+      env: CC=gcc COMPILER_FLAGS="-m32" CONFIGURE_FLAGS=""
       addons:
         apt:
           packages:
             - gcc-multilib
     - os: linux
-      env: CC=gcc CXX=g++ COMPILER_FLAGS="" CONFIGURE_FLAGS="--enable-debug"
+      env: CC=gcc COMPILER_FLAGS="" CONFIGURE_FLAGS="--enable-debug"
     - os: linux
-      env: CC=gcc CXX=g++ COMPILER_FLAGS="" CONFIGURE_FLAGS="--enable-prof"
+      env: CC=gcc COMPILER_FLAGS="" CONFIGURE_FLAGS="--enable-prof"
     - os: linux
-      env: CC=gcc CXX=g++ COMPILER_FLAGS="" CONFIGURE_FLAGS="--disable-stats"
+      env: CC=gcc COMPILER_FLAGS="" CONFIGURE_FLAGS="--disable-stats"
     - os: linux
-      env: CC=gcc CXX=g++ COMPILER_FLAGS="" CONFIGURE_FLAGS="--disable-tcache"
+      env: CC=gcc COMPILER_FLAGS="" CONFIGURE_FLAGS="--disable-tcache"
     - os: osx
-      env: CC=clang CXX=clang++ COMPILER_FLAGS="" CONFIGURE_FLAGS=""
+      env: CC=clang COMPILER_FLAGS="" CONFIGURE_FLAGS=""
     - os: osx
-      env: CC=gcc CXX=g++ COMPILER_FLAGS="-m32" CONFIGURE_FLAGS=""
+      env: CC=gcc COMPILER_FLAGS="-m32" CONFIGURE_FLAGS=""
     - os: osx
-      env: CC=gcc CXX=g++ COMPILER_FLAGS="" CONFIGURE_FLAGS="--enable-debug"
+      env: CC=gcc COMPILER_FLAGS="" CONFIGURE_FLAGS="--enable-debug"
     - os: osx
-      env: CC=gcc CXX=g++ COMPILER_FLAGS="" CONFIGURE_FLAGS="--disable-stats"
+      env: CC=gcc COMPILER_FLAGS="" CONFIGURE_FLAGS="--disable-stats"
     - os: osx
-      env: CC=gcc CXX=g++ COMPILER_FLAGS="" CONFIGURE_FLAGS="--disable-tcache"
+      env: CC=gcc COMPILER_FLAGS="" CONFIGURE_FLAGS="--disable-tcache"
     - os: linux
-      env: CC=clang CXX=clang++ COMPILER_FLAGS="-m32" CONFIGURE_FLAGS=""
+      env: CC=clang COMPILER_FLAGS="-m32" CONFIGURE_FLAGS=""
       addons:
         apt:
           packages:
             - gcc-multilib
     - os: linux
-      env: CC=clang CXX=clang++ COMPILER_FLAGS="" CONFIGURE_FLAGS="--enable-debug"
+      env: CC=clang COMPILER_FLAGS="" CONFIGURE_FLAGS="--enable-debug"
     - os: linux
-      env: CC=clang CXX=clang++ COMPILER_FLAGS="" CONFIGURE_FLAGS="--enable-prof"
+      env: CC=clang COMPILER_FLAGS="" CONFIGURE_FLAGS="--enable-prof"
     - os: linux
-      env: CC=clang CXX=clang++ COMPILER_FLAGS="" CONFIGURE_FLAGS="--disable-stats"
+      env: CC=clang COMPILER_FLAGS="" CONFIGURE_FLAGS="--disable-stats"
     - os: linux
-      env: CC=clang CXX=clang++ COMPILER_FLAGS="" CONFIGURE_FLAGS="--disable-tcache"
+      env: CC=clang COMPILER_FLAGS="" CONFIGURE_FLAGS="--disable-tcache"
     - os: linux
-      env: CC=gcc CXX=g++ COMPILER_FLAGS="-m32" CONFIGURE_FLAGS="--enable-debug"
+      env: CC=gcc COMPILER_FLAGS="-m32" CONFIGURE_FLAGS="--enable-debug"
       addons:
         apt:
           packages:
             - gcc-multilib
     - os: linux
-      env: CC=gcc CXX=g++ COMPILER_FLAGS="-m32" CONFIGURE_FLAGS="--enable-prof"
+      env: CC=gcc COMPILER_FLAGS="-m32" CONFIGURE_FLAGS="--enable-prof"
       addons:
         apt:
           packages:
             - gcc-multilib
     - os: linux
-      env: CC=gcc CXX=g++ COMPILER_FLAGS="-m32" CONFIGURE_FLAGS="--disable-stats"
+      env: CC=gcc COMPILER_FLAGS="-m32" CONFIGURE_FLAGS="--disable-stats"
       addons:
         apt:
           packages:
             - gcc-multilib
     - os: linux
-      env: CC=gcc CXX=g++ COMPILER_FLAGS="-m32" CONFIGURE_FLAGS="--disable-tcache"
+      env: CC=gcc COMPILER_FLAGS="-m32" CONFIGURE_FLAGS="--disable-tcache"
       addons:
         apt:
           packages:
             - gcc-multilib
     - os: linux
-      env: CC=gcc CXX=g++ COMPILER_FLAGS="" CONFIGURE_FLAGS="--enable-debug --enable-prof"
+      env: CC=gcc COMPILER_FLAGS="" CONFIGURE_FLAGS="--enable-debug --enable-prof"
     - os: linux
-      env: CC=gcc CXX=g++ COMPILER_FLAGS="" CONFIGURE_FLAGS="--enable-debug --disable-stats"
+      env: CC=gcc COMPILER_FLAGS="" CONFIGURE_FLAGS="--enable-debug --disable-stats"
     - os: linux
-      env: CC=gcc CXX=g++ COMPILER_FLAGS="" CONFIGURE_FLAGS="--enable-debug --disable-tcache"
+      env: CC=gcc COMPILER_FLAGS="" CONFIGURE_FLAGS="--enable-debug --disable-tcache"
     - os: linux
-      env: CC=gcc CXX=g++ COMPILER_FLAGS="" CONFIGURE_FLAGS="--enable-prof --disable-stats"
+      env: CC=gcc COMPILER_FLAGS="" CONFIGURE_FLAGS="--enable-prof --disable-stats"
     - os: linux
-      env: CC=gcc CXX=g++ COMPILER_FLAGS="" CONFIGURE_FLAGS="--enable-prof --disable-tcache"
+      env: CC=gcc COMPILER_FLAGS="" CONFIGURE_FLAGS="--enable-prof --disable-tcache"
     - os: linux
-      env: CC=gcc CXX=g++ COMPILER_FLAGS="" CONFIGURE_FLAGS="--disable-stats --disable-tcache"
+      env: CC=gcc COMPILER_FLAGS="" CONFIGURE_FLAGS="--disable-stats --disable-tcache"
 
 
 before_script:
   - autoconf
-  - ./configure ${COMPILER_FLAGS:+       CC="$CC $COMPILER_FLAGS"       CXX="$CXX $COMPILER_FLAGS" }       $CONFIGURE_FLAGS
+  - ./configure ${COMPILER_FLAGS:+       CC="$CC $COMPILER_FLAGS" }       $CONFIGURE_FLAGS
   - make -j3
   - make -j3 tests
 

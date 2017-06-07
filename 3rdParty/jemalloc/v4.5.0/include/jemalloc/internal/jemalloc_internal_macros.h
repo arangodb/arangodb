@@ -1,6 +1,3 @@
-#ifndef JEMALLOC_INTERNAL_MACROS_H
-#define JEMALLOC_INTERNAL_MACROS_H
-
 /*
  * JEMALLOC_ALWAYS_INLINE and JEMALLOC_INLINE are used within header files for
  * functions that are static inline functions if inlining is enabled, and
@@ -41,22 +38,20 @@
 #  define UNUSED
 #endif
 
-#define ZU(z)	((size_t)z)
-#define ZI(z)	((ssize_t)z)
-#define QU(q)	((uint64_t)q)
-#define QI(q)	((int64_t)q)
+#define	ZU(z)	((size_t)z)
+#define	ZI(z)	((ssize_t)z)
+#define	QU(q)	((uint64_t)q)
+#define	QI(q)	((int64_t)q)
 
-#define KZU(z)	ZU(z##ULL)
-#define KZI(z)	ZI(z##LL)
-#define KQU(q)	QU(q##ULL)
-#define KQI(q)	QI(q##LL)
+#define	KZU(z)	ZU(z##ULL)
+#define	KZI(z)	ZI(z##LL)
+#define	KQU(q)	QU(q##ULL)
+#define	KQI(q)	QI(q##LL)
 
 #ifndef __DECONST
 #  define	__DECONST(type, var)	((type)(uintptr_t)(const void *)(var))
 #endif
 
-#if !defined(JEMALLOC_HAS_RESTRICT) || defined(__cplusplus)
+#ifndef JEMALLOC_HAS_RESTRICT
 #  define restrict
 #endif
-
-#endif /* JEMALLOC_INTERNAL_MACROS_H */

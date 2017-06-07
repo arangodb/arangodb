@@ -1,6 +1,6 @@
 #include "test/jemalloc_test.h"
 
-#define NTHREADS 10
+#define	NTHREADS 10
 
 static bool have_dss =
 #ifdef JEMALLOC_DSS
@@ -11,15 +11,16 @@ static bool have_dss =
     ;
 
 void *
-thd_start(void *arg) {
+thd_start(void *arg)
+{
 	unsigned thread_ind = (unsigned)(uintptr_t)arg;
 	unsigned arena_ind;
 	void *p;
 	size_t sz;
 
 	sz = sizeof(arena_ind);
-	assert_d_eq(mallctl("arenas.create", (void *)&arena_ind, &sz, NULL, 0),
-	    0, "Error in arenas.create");
+	assert_d_eq(mallctl("arenas.extend", (void *)&arena_ind, &sz, NULL, 0),
+	    0, "Error in arenas.extend");
 
 	if (thread_ind % 4 != 3) {
 		size_t mib[3];
@@ -41,10 +42,11 @@ thd_start(void *arg) {
 	assert_ptr_not_null(p, "Unexpected mallocx() error");
 	dallocx(p, 0);
 
-	return NULL;
+	return (NULL);
 }
 
-TEST_BEGIN(test_MALLOCX_ARENA) {
+TEST_BEGIN(test_MALLOCX_ARENA)
+{
 	thd_t thds[NTHREADS];
 	unsigned i;
 
@@ -53,14 +55,15 @@ TEST_BEGIN(test_MALLOCX_ARENA) {
 		    (void *)(uintptr_t)i);
 	}
 
-	for (i = 0; i < NTHREADS; i++) {
+	for (i = 0; i < NTHREADS; i++)
 		thd_join(thds[i], NULL);
-	}
 }
 TEST_END
 
 int
-main(void) {
-	return test(
-	    test_MALLOCX_ARENA);
+main(void)
+{
+
+	return (test(
+	    test_MALLOCX_ARENA));
 }

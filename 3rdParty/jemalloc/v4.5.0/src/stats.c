@@ -1,12 +1,12 @@
-#define JEMALLOC_STATS_C_
+#define	JEMALLOC_STATS_C_
 #include "jemalloc/internal/jemalloc_internal.h"
 
-#define CTL_GET(n, v, t) do {						\
+#define	CTL_GET(n, v, t) do {						\
 	size_t sz = sizeof(t);						\
 	xmallctl(n, (void *)v, &sz, NULL, 0);				\
 } while (0)
 
-#define CTL_M2_GET(n, i, v, t) do {					\
+#define	CTL_M2_GET(n, i, v, t) do {					\
 	size_t mib[6];							\
 	size_t miblen = sizeof(mib) / sizeof(size_t);			\
 	size_t sz = sizeof(t);						\
@@ -15,7 +15,7 @@
 	xmallctlbymib(mib, miblen, (void *)v, &sz, NULL, 0);		\
 } while (0)
 
-#define CTL_M2_M4_GET(n, i, j, v, t) do {				\
+#define	CTL_M2_M4_GET(n, i, j, v, t) do {				\
 	size_t mib[6];							\
 	size_t miblen = sizeof(mib) / sizeof(size_t);			\
 	size_t sz = sizeof(t);						\
@@ -30,11 +30,14 @@
 
 bool	opt_stats_print = false;
 
+size_t	stats_cactive = 0;
+
 /******************************************************************************/
 
 static void
 stats_arena_bins_print(void (*write_cb)(void *, const char *), void *cbopaque,
-    bool json, bool large, unsigned i) {
+    bool json, bool large, bool huge, unsigned i)
+{
 	size_t page;
 	bool in_gap, in_gap_prev;
 	unsigned nbins, j;
@@ -50,28 +53,28 @@ stats_arena_bins_print(void (*write_cb)(void *, const char *), void *cbopaque,
 			malloc_cprintf(write_cb, cbopaque,
 			    "bins:           size ind    allocated      nmalloc"
 			    "      ndalloc    nrequests      curregs"
-			    "     curslabs regs pgs  util       nfills"
-			    "     nflushes     newslabs      reslabs\n");
+			    "      curruns regs pgs  util       nfills"
+			    "     nflushes      newruns       reruns\n");
 		} else {
 			malloc_cprintf(write_cb, cbopaque,
 			    "bins:           size ind    allocated      nmalloc"
 			    "      ndalloc    nrequests      curregs"
-			    "     curslabs regs pgs  util     newslabs"
-			    "      reslabs\n");
+			    "      curruns regs pgs  util      newruns"
+			    "       reruns\n");
 		}
 	}
 	for (j = 0, in_gap = false; j < nbins; j++) {
-		uint64_t nslabs;
-		size_t reg_size, slab_size, curregs;
-		size_t curslabs;
+		uint64_t nruns;
+		size_t reg_size, run_size, curregs;
+		size_t curruns;
 		uint32_t nregs;
 		uint64_t nmalloc, ndalloc, nrequests, nfills, nflushes;
-		uint64_t nreslabs;
+		uint64_t nreruns;
 
-		CTL_M2_M4_GET("stats.arenas.0.bins.0.nslabs", i, j, &nslabs,
+		CTL_M2_M4_GET("stats.arenas.0.bins.0.nruns", i, j, &nruns,
 		    uint64_t);
 		in_gap_prev = in_gap;
-		in_gap = (nslabs == 0);
+		in_gap = (nruns == 0);
 
 		if (!json && in_gap_prev && !in_gap) {
 			malloc_cprintf(write_cb, cbopaque,
@@ -80,7 +83,7 @@ stats_arena_bins_print(void (*write_cb)(void *, const char *), void *cbopaque,
 
 		CTL_M2_GET("arenas.bin.0.size", j, &reg_size, size_t);
 		CTL_M2_GET("arenas.bin.0.nregs", j, &nregs, uint32_t);
-		CTL_M2_GET("arenas.bin.0.slab_size", j, &slab_size, size_t);
+		CTL_M2_GET("arenas.bin.0.run_size", j, &run_size, size_t);
 
 		CTL_M2_M4_GET("stats.arenas.0.bins.0.nmalloc", i, j, &nmalloc,
 		    uint64_t);
@@ -96,9 +99,9 @@ stats_arena_bins_print(void (*write_cb)(void *, const char *), void *cbopaque,
 			CTL_M2_M4_GET("stats.arenas.0.bins.0.nflushes", i, j,
 			    &nflushes, uint64_t);
 		}
-		CTL_M2_M4_GET("stats.arenas.0.bins.0.nreslabs", i, j, &nreslabs,
+		CTL_M2_M4_GET("stats.arenas.0.bins.0.nreruns", i, j, &nreruns,
 		    uint64_t);
-		CTL_M2_M4_GET("stats.arenas.0.bins.0.curslabs", i, j, &curslabs,
+		CTL_M2_M4_GET("stats.arenas.0.bins.0.curruns", i, j, &curruns,
 		    size_t);
 
 		if (json) {
@@ -120,17 +123,17 @@ stats_arena_bins_print(void (*write_cb)(void *, const char *), void *cbopaque,
 				    nflushes);
 			}
 			malloc_cprintf(write_cb, cbopaque,
-			    "\t\t\t\t\t\t\"nreslabs\": %"FMTu64",\n"
-			    "\t\t\t\t\t\t\"curslabs\": %zu\n"
+			    "\t\t\t\t\t\t\"nreruns\": %"FMTu64",\n"
+			    "\t\t\t\t\t\t\"curruns\": %zu\n"
 			    "\t\t\t\t\t}%s\n",
-			    nreslabs,
-			    curslabs,
+			    nreruns,
+			    curruns,
 			    (j + 1 < nbins) ? "," : "");
 		} else if (!in_gap) {
 			size_t availregs, milli;
 			char util[6]; /* "x.yyy". */
 
-			availregs = nregs * curslabs;
+			availregs = nregs * curruns;
 			milli = (availregs != 0) ? (1000 * curregs) / availregs
 			    : 1000;
 
@@ -163,9 +166,9 @@ stats_arena_bins_print(void (*write_cb)(void *, const char *), void *cbopaque,
 				    " %12zu %4u %3zu %-5s %12"FMTu64
 				    " %12"FMTu64" %12"FMTu64" %12"FMTu64"\n",
 				    reg_size, j, curregs * reg_size, nmalloc,
-				    ndalloc, nrequests, curregs, curslabs,
-				    nregs, slab_size / page, util, nfills,
-				    nflushes, nslabs, nreslabs);
+				    ndalloc, nrequests, curregs, curruns, nregs,
+				    run_size / page, util, nfills, nflushes,
+				    nruns, nreruns);
 			} else {
 				malloc_cprintf(write_cb, cbopaque,
 				    "%20zu %3u %12zu %12"FMTu64
@@ -173,15 +176,14 @@ stats_arena_bins_print(void (*write_cb)(void *, const char *), void *cbopaque,
 				    " %12zu %4u %3zu %-5s %12"FMTu64
 				    " %12"FMTu64"\n",
 				    reg_size, j, curregs * reg_size, nmalloc,
-				    ndalloc, nrequests, curregs, curslabs,
-				    nregs, slab_size / page, util, nslabs,
-				    nreslabs);
+				    ndalloc, nrequests, curregs, curruns, nregs,
+				    run_size / page, util, nruns, nreruns);
 			}
 		}
 	}
 	if (json) {
 		malloc_cprintf(write_cb, cbopaque,
-		    "\t\t\t\t]%s\n", large ? "," : "");
+		    "\t\t\t\t]%s\n", (large || huge) ? "," : "");
 	} else {
 		if (in_gap) {
 			malloc_cprintf(write_cb, cbopaque,
@@ -191,30 +193,31 @@ stats_arena_bins_print(void (*write_cb)(void *, const char *), void *cbopaque,
 }
 
 static void
-stats_arena_lextents_print(void (*write_cb)(void *, const char *),
-    void *cbopaque, bool json, unsigned i) {
-	unsigned nbins, nlextents, j;
+stats_arena_lruns_print(void (*write_cb)(void *, const char *), void *cbopaque,
+    bool json, bool huge, unsigned i)
+{
+	unsigned nbins, nlruns, j;
 	bool in_gap, in_gap_prev;
 
 	CTL_GET("arenas.nbins", &nbins, unsigned);
-	CTL_GET("arenas.nlextents", &nlextents, unsigned);
+	CTL_GET("arenas.nlruns", &nlruns, unsigned);
 	if (json) {
 		malloc_cprintf(write_cb, cbopaque,
-		    "\t\t\t\t\"lextents\": [\n");
+		    "\t\t\t\t\"lruns\": [\n");
 	} else {
 		malloc_cprintf(write_cb, cbopaque,
 		    "large:          size ind    allocated      nmalloc"
-		    "      ndalloc    nrequests  curlextents\n");
+		    "      ndalloc    nrequests      curruns\n");
 	}
-	for (j = 0, in_gap = false; j < nlextents; j++) {
+	for (j = 0, in_gap = false; j < nlruns; j++) {
 		uint64_t nmalloc, ndalloc, nrequests;
-		size_t lextent_size, curlextents;
+		size_t run_size, curruns;
 
-		CTL_M2_M4_GET("stats.arenas.0.lextents.0.nmalloc", i, j,
-		    &nmalloc, uint64_t);
-		CTL_M2_M4_GET("stats.arenas.0.lextents.0.ndalloc", i, j,
-		    &ndalloc, uint64_t);
-		CTL_M2_M4_GET("stats.arenas.0.lextents.0.nrequests", i, j,
+		CTL_M2_M4_GET("stats.arenas.0.lruns.0.nmalloc", i, j, &nmalloc,
+		    uint64_t);
+		CTL_M2_M4_GET("stats.arenas.0.lruns.0.ndalloc", i, j, &ndalloc,
+		    uint64_t);
+		CTL_M2_M4_GET("stats.arenas.0.lruns.0.nrequests", i, j,
 		    &nrequests, uint64_t);
 		in_gap_prev = in_gap;
 		in_gap = (nrequests == 0);
@@ -224,23 +227,88 @@ stats_arena_lextents_print(void (*write_cb)(void *, const char *),
 			    "                     ---\n");
 		}
 
-		CTL_M2_GET("arenas.lextent.0.size", j, &lextent_size, size_t);
-		CTL_M2_M4_GET("stats.arenas.0.lextents.0.curlextents", i, j,
-		    &curlextents, size_t);
+		CTL_M2_GET("arenas.lrun.0.size", j, &run_size, size_t);
+		CTL_M2_M4_GET("stats.arenas.0.lruns.0.curruns", i, j, &curruns,
+		    size_t);
 		if (json) {
 			malloc_cprintf(write_cb, cbopaque,
 			    "\t\t\t\t\t{\n"
-			    "\t\t\t\t\t\t\"curlextents\": %zu\n"
+			    "\t\t\t\t\t\t\"curruns\": %zu\n"
 			    "\t\t\t\t\t}%s\n",
-			    curlextents,
-			    (j + 1 < nlextents) ? "," : "");
+			    curruns,
+			    (j + 1 < nlruns) ? "," : "");
 		} else if (!in_gap) {
 			malloc_cprintf(write_cb, cbopaque,
 			    "%20zu %3u %12zu %12"FMTu64" %12"FMTu64
 			    " %12"FMTu64" %12zu\n",
-			    lextent_size, nbins + j,
-			    curlextents * lextent_size, nmalloc, ndalloc,
-			    nrequests, curlextents);
+			    run_size, nbins + j, curruns * run_size, nmalloc,
+			    ndalloc, nrequests, curruns);
+		}
+	}
+	if (json) {
+		malloc_cprintf(write_cb, cbopaque,
+		    "\t\t\t\t]%s\n", huge ? "," : "");
+	} else {
+		if (in_gap) {
+			malloc_cprintf(write_cb, cbopaque,
+			    "                     ---\n");
+		}
+	}
+}
+
+static void
+stats_arena_hchunks_print(void (*write_cb)(void *, const char *),
+    void *cbopaque, bool json, unsigned i)
+{
+	unsigned nbins, nlruns, nhchunks, j;
+	bool in_gap, in_gap_prev;
+
+	CTL_GET("arenas.nbins", &nbins, unsigned);
+	CTL_GET("arenas.nlruns", &nlruns, unsigned);
+	CTL_GET("arenas.nhchunks", &nhchunks, unsigned);
+	if (json) {
+		malloc_cprintf(write_cb, cbopaque,
+		    "\t\t\t\t\"hchunks\": [\n");
+	} else {
+		malloc_cprintf(write_cb, cbopaque,
+		    "huge:           size ind    allocated      nmalloc"
+		    "      ndalloc    nrequests   curhchunks\n");
+	}
+	for (j = 0, in_gap = false; j < nhchunks; j++) {
+		uint64_t nmalloc, ndalloc, nrequests;
+		size_t hchunk_size, curhchunks;
+
+		CTL_M2_M4_GET("stats.arenas.0.hchunks.0.nmalloc", i, j,
+		    &nmalloc, uint64_t);
+		CTL_M2_M4_GET("stats.arenas.0.hchunks.0.ndalloc", i, j,
+		    &ndalloc, uint64_t);
+		CTL_M2_M4_GET("stats.arenas.0.hchunks.0.nrequests", i, j,
+		    &nrequests, uint64_t);
+		in_gap_prev = in_gap;
+		in_gap = (nrequests == 0);
+
+		if (!json && in_gap_prev && !in_gap) {
+			malloc_cprintf(write_cb, cbopaque,
+			    "                     ---\n");
+		}
+
+		CTL_M2_GET("arenas.hchunk.0.size", j, &hchunk_size, size_t);
+		CTL_M2_M4_GET("stats.arenas.0.hchunks.0.curhchunks", i, j,
+		    &curhchunks, size_t);
+		if (json) {
+			malloc_cprintf(write_cb, cbopaque,
+			    "\t\t\t\t\t{\n"
+			    "\t\t\t\t\t\t\"curhchunks\": %zu\n"
+			    "\t\t\t\t\t}%s\n",
+			    curhchunks,
+			    (j + 1 < nhchunks) ? "," : "");
+		} else if (!in_gap) {
+			malloc_cprintf(write_cb, cbopaque,
+			    "%20zu %3u %12zu %12"FMTu64" %12"FMTu64
+			    " %12"FMTu64" %12zu\n",
+			    hchunk_size, nbins + nlruns + j,
+			    curhchunks * hchunk_size, nmalloc, ndalloc,
+			    nrequests, curhchunks);
 		}
 	}
 	if (json) {
@@ -256,18 +324,20 @@ stats_arena_lextents_print(void (*write_cb)(void *, const char *),
 
 static void
 stats_arena_print(void (*write_cb)(void *, const char *), void *cbopaque,
-    bool json, unsigned i, bool bins, bool large) {
+    bool json, unsigned i, bool bins, bool large, bool huge)
+{
 	unsigned nthreads;
 	const char *dss;
-	ssize_t decay_time;
+	ssize_t lg_dirty_mult, decay_time;
 	size_t page, pactive, pdirty, mapped, retained;
-	size_t base, internal, resident;
+	size_t metadata_mapped, metadata_allocated;
 	uint64_t npurge, nmadvise, purged;
 	size_t small_allocated;
 	uint64_t small_nmalloc, small_ndalloc, small_nrequests;
 	size_t large_allocated;
 	uint64_t large_nmalloc, large_ndalloc, large_nrequests;
-	size_t tcache_bytes;
+	size_t huge_allocated;
+	uint64_t huge_nmalloc, huge_ndalloc, huge_nrequests;
 
 	CTL_GET("arenas.page", &page, size_t);
 
@@ -289,16 +359,36 @@ stats_arena_print(void (*write_cb)(void *, const char *), void *cbopaque,
 		    "dss allocation precedence: %s\n", dss);
 	}
 
+	CTL_M2_GET("stats.arenas.0.lg_dirty_mult", i, &lg_dirty_mult, ssize_t);
+	if (json) {
+		malloc_cprintf(write_cb, cbopaque,
+		    "\t\t\t\t\"lg_dirty_mult\": %zd,\n", lg_dirty_mult);
+	} else {
+		if (opt_purge == purge_mode_ratio) {
+			if (lg_dirty_mult >= 0) {
+				malloc_cprintf(write_cb, cbopaque,
+				    "min active:dirty page ratio: %u:1\n",
+				    (1U << lg_dirty_mult));
+			} else {
+				malloc_cprintf(write_cb, cbopaque,
+				    "min active:dirty page ratio: N/A\n");
+			}
+		}
+	}
+
 	CTL_M2_GET("stats.arenas.0.decay_time", i, &decay_time, ssize_t);
 	if (json) {
 		malloc_cprintf(write_cb, cbopaque,
 		    "\t\t\t\t\"decay_time\": %zd,\n", decay_time);
 	} else {
-		if (decay_time >= 0) {
-			malloc_cprintf(write_cb, cbopaque, "decay time: %zd\n",
-			    decay_time);
-		} else {
-			malloc_cprintf(write_cb, cbopaque, "decay time: N/A\n");
+		if (opt_purge == purge_mode_decay) {
+			if (decay_time >= 0) {
+				malloc_cprintf(write_cb, cbopaque,
+				    "decay time: %zd\n", decay_time);
+			} else {
+				malloc_cprintf(write_cb, cbopaque,
+				    "decay time: N/A\n");
+			}
 		}
 	}
 
@@ -383,12 +473,40 @@ stats_arena_print(void (*write_cb)(void *, const char *), void *cbopaque,
 		    " %12"FMTu64"\n",
 		    large_allocated, large_nmalloc, large_ndalloc,
 		    large_nrequests);
+	}
+
+	CTL_M2_GET("stats.arenas.0.huge.allocated", i, &huge_allocated, size_t);
+	CTL_M2_GET("stats.arenas.0.huge.nmalloc", i, &huge_nmalloc, uint64_t);
+	CTL_M2_GET("stats.arenas.0.huge.ndalloc", i, &huge_ndalloc, uint64_t);
+	CTL_M2_GET("stats.arenas.0.huge.nrequests", i, &huge_nrequests,
+	    uint64_t);
+	if (json) {
+		malloc_cprintf(write_cb, cbopaque,
+		    "\t\t\t\t\"huge\": {\n");
+
+		malloc_cprintf(write_cb, cbopaque,
+		    "\t\t\t\t\t\"allocated\": %zu,\n", huge_allocated);
+		malloc_cprintf(write_cb, cbopaque,
+		    "\t\t\t\t\t\"nmalloc\": %"FMTu64",\n", huge_nmalloc);
+		malloc_cprintf(write_cb, cbopaque,
+		    "\t\t\t\t\t\"ndalloc\": %"FMTu64",\n", huge_ndalloc);
+		malloc_cprintf(write_cb, cbopaque,
+		    "\t\t\t\t\t\"nrequests\": %"FMTu64"\n", huge_nrequests);
+
+		malloc_cprintf(write_cb, cbopaque,
+		    "\t\t\t\t},\n");
+	} else {
+		malloc_cprintf(write_cb, cbopaque,
+		    "huge:                    %12zu %12"FMTu64" %12"FMTu64
+		    " %12"FMTu64"\n",
+		    huge_allocated, huge_nmalloc, huge_ndalloc, huge_nrequests);
 		malloc_cprintf(write_cb, cbopaque,
 		    "total:                   %12zu %12"FMTu64" %12"FMTu64
 		    " %12"FMTu64"\n",
-		    small_allocated + large_allocated, small_nmalloc +
-		    large_nmalloc, small_ndalloc + large_ndalloc,
-		    small_nrequests + large_nrequests);
+		    small_allocated + large_allocated + huge_allocated,
+		    small_nmalloc + large_nmalloc + huge_nmalloc,
+		    small_ndalloc + large_ndalloc + huge_ndalloc,
+		    small_nrequests + large_nrequests + huge_nrequests);
 	}
 	if (!json) {
 		malloc_cprintf(write_cb, cbopaque,
@@ -413,57 +531,41 @@ stats_arena_print(void (*write_cb)(void *, const char *), void *cbopaque,
 		    "retained:                %12zu\n", retained);
 	}
 
-	CTL_M2_GET("stats.arenas.0.base", i, &base, size_t);
+	CTL_M2_GET("stats.arenas.0.metadata.mapped", i, &metadata_mapped,
+	    size_t);
+	CTL_M2_GET("stats.arenas.0.metadata.allocated", i, &metadata_allocated,
+	    size_t);
 	if (json) {
 		malloc_cprintf(write_cb, cbopaque,
-		    "\t\t\t\t\"base\": %zu,\n", base);
+		    "\t\t\t\t\"metadata\": {\n");
+
+		malloc_cprintf(write_cb, cbopaque,
+		    "\t\t\t\t\t\"mapped\": %zu,\n", metadata_mapped);
+		malloc_cprintf(write_cb, cbopaque,
+		    "\t\t\t\t\t\"allocated\": %zu\n", metadata_allocated);
+
+		malloc_cprintf(write_cb, cbopaque,
+		    "\t\t\t\t}%s\n", (bins || large || huge) ? "," : "");
 	} else {
 		malloc_cprintf(write_cb, cbopaque,
-		    "base:                    %12zu\n", base);
-	}
-
-	CTL_M2_GET("stats.arenas.0.internal", i, &internal, size_t);
-	if (json) {
-		malloc_cprintf(write_cb, cbopaque,
-		    "\t\t\t\t\"internal\": %zu,\n", internal);
-	} else {
-		malloc_cprintf(write_cb, cbopaque,
-		    "internal:                %12zu\n", internal);
-	}
-
-	if (config_tcache) {
-		CTL_M2_GET("stats.arenas.0.tcache_bytes", i, &tcache_bytes,
-		    size_t);
-		if (json) {
-			malloc_cprintf(write_cb, cbopaque,
-			    "\t\t\t\t\"tcache\": %zu,\n", tcache_bytes);
-		} else {
-			malloc_cprintf(write_cb, cbopaque,
-			    "tcache:                  %12zu\n", tcache_bytes);
-		}
-	}
-
-	CTL_M2_GET("stats.arenas.0.resident", i, &resident, size_t);
-	if (json) {
-		malloc_cprintf(write_cb, cbopaque,
-		    "\t\t\t\t\"resident\": %zu%s\n", resident, (bins || large) ?
-		    "," : "");
-	} else {
-		malloc_cprintf(write_cb, cbopaque,
-		    "resident:                %12zu\n", resident);
+		    "metadata: mapped: %zu, allocated: %zu\n",
+		    metadata_mapped, metadata_allocated);
 	}
 
 	if (bins) {
-		stats_arena_bins_print(write_cb, cbopaque, json, large, i);
+		stats_arena_bins_print(write_cb, cbopaque, json, large, huge,
+		    i);
 	}
-	if (large) {
-		stats_arena_lextents_print(write_cb, cbopaque, json, i);
-	}
+	if (large)
+		stats_arena_lruns_print(write_cb, cbopaque, json, huge, i);
+	if (huge)
+		stats_arena_hchunks_print(write_cb, cbopaque, json, i);
 }
 
 static void
 stats_general_print(void (*write_cb)(void *, const char *), void *cbopaque,
-    bool json, bool more) {
+    bool json, bool more)
+{
 	const char *cpv;
 	bool bv;
 	unsigned uv;
@@ -482,12 +584,11 @@ stats_general_print(void (*write_cb)(void *, const char *), void *cbopaque,
 	if (json) {
 		malloc_cprintf(write_cb, cbopaque,
 		"\t\t\"version\": \"%s\",\n", cpv);
-	} else {
+	} else
 		malloc_cprintf(write_cb, cbopaque, "Version: %s\n", cpv);
-	}
 
 	/* config. */
-#define CONFIG_WRITE_BOOL_JSON(n, c)					\
+#define	CONFIG_WRITE_BOOL_JSON(n, c)					\
 	if (json) {							\
 		CTL_GET("config."#n, &bv, bool);			\
 		malloc_cprintf(write_cb, cbopaque,			\
@@ -531,6 +632,7 @@ stats_general_print(void (*write_cb)(void *, const char *), void *cbopaque,
 	CONFIG_WRITE_BOOL_JSON(tcache, ",")
 	CONFIG_WRITE_BOOL_JSON(tls, ",")
 	CONFIG_WRITE_BOOL_JSON(utrace, ",")
+	CONFIG_WRITE_BOOL_JSON(valgrind, ",")
 	CONFIG_WRITE_BOOL_JSON(xmalloc, "")
 
 	if (json) {
@@ -540,7 +642,7 @@ stats_general_print(void (*write_cb)(void *, const char *), void *cbopaque,
 #undef CONFIG_WRITE_BOOL_JSON
 
 	/* opt. */
-#define OPT_WRITE_BOOL(n, c)						\
+#define	OPT_WRITE_BOOL(n, c)						\
 	if (je_mallctl("opt."#n, (void *)&bv, &bsz, NULL, 0) == 0) {	\
 		if (json) {						\
 			malloc_cprintf(write_cb, cbopaque,		\
@@ -551,10 +653,10 @@ stats_general_print(void (*write_cb)(void *, const char *), void *cbopaque,
 			    "  opt."#n": %s\n", bv ? "true" : "false");	\
 		}							\
 	}
-#define OPT_WRITE_BOOL_MUTABLE(n, m, c) {				\
+#define	OPT_WRITE_BOOL_MUTABLE(n, m, c) {				\
 	bool bv2;							\
 	if (je_mallctl("opt."#n, (void *)&bv, &bsz, NULL, 0) == 0 &&	\
-	    je_mallctl(#m, (void *)&bv2, &bsz, NULL, 0) == 0) {		\
+	    je_mallctl(#m, &bv2, (void *)&bsz, NULL, 0) == 0) {		\
 		if (json) {						\
 			malloc_cprintf(write_cb, cbopaque,		\
 			    "\t\t\t\""#n"\": %s%s\n", bv ? "true" :	\
@@ -566,7 +668,7 @@ stats_general_print(void (*write_cb)(void *, const char *), void *cbopaque,
 		}							\
 	}								\
 }
-#define OPT_WRITE_UNSIGNED(n, c)					\
+#define	OPT_WRITE_UNSIGNED(n, c)					\
 	if (je_mallctl("opt."#n, (void *)&uv, &usz, NULL, 0) == 0) {	\
 		if (json) {						\
 			malloc_cprintf(write_cb, cbopaque,		\
@@ -576,7 +678,17 @@ stats_general_print(void (*write_cb)(void *, const char *), void *cbopaque,
 			"  opt."#n": %u\n", uv);			\
 		}							\
 	}
-#define OPT_WRITE_SSIZE_T(n, c)						\
+#define	OPT_WRITE_SIZE_T(n, c)						\
+	if (je_mallctl("opt."#n, (void *)&sv, &ssz, NULL, 0) == 0) {	\
+		if (json) {						\
+			malloc_cprintf(write_cb, cbopaque,		\
+			    "\t\t\t\""#n"\": %zu%s\n", sv, (c));	\
+		} else {						\
+			malloc_cprintf(write_cb, cbopaque,		\
+			"  opt."#n": %zu\n", sv);			\
+		}							\
+	}
+#define	OPT_WRITE_SSIZE_T(n, c)						\
 	if (je_mallctl("opt."#n, (void *)&ssv, &sssz, NULL, 0) == 0) {	\
 		if (json) {						\
 			malloc_cprintf(write_cb, cbopaque,		\
@@ -586,7 +698,7 @@ stats_general_print(void (*write_cb)(void *, const char *), void *cbopaque,
 			    "  opt."#n": %zd\n", ssv);			\
 		}							\
 	}
-#define OPT_WRITE_SSIZE_T_MUTABLE(n, m, c) {				\
+#define	OPT_WRITE_SSIZE_T_MUTABLE(n, m, c) {				\
 	ssize_t ssv2;							\
 	if (je_mallctl("opt."#n, (void *)&ssv, &sssz, NULL, 0) == 0 &&	\
 	    je_mallctl(#m, (void *)&ssv2, &sssz, NULL, 0) == 0) {	\
@@ -600,7 +712,7 @@ stats_general_print(void (*write_cb)(void *, const char *), void *cbopaque,
 		}							\
 	}								\
 }
-#define OPT_WRITE_CHAR_P(n, c)						\
+#define	OPT_WRITE_CHAR_P(n, c)						\
 	if (je_mallctl("opt."#n, (void *)&cpv, &cpsz, NULL, 0) == 0) {	\
 		if (json) {						\
 			malloc_cprintf(write_cb, cbopaque,		\
@@ -619,15 +731,26 @@ stats_general_print(void (*write_cb)(void *, const char *), void *cbopaque,
 		    "Run-time option settings:\n");
 	}
 	OPT_WRITE_BOOL(abort, ",")
+	OPT_WRITE_SIZE_T(lg_chunk, ",")
 	OPT_WRITE_CHAR_P(dss, ",")
 	OPT_WRITE_UNSIGNED(narenas, ",")
-	OPT_WRITE_SSIZE_T_MUTABLE(decay_time, arenas.decay_time, ",")
+	OPT_WRITE_CHAR_P(purge, ",")
+	if (json || opt_purge == purge_mode_ratio) {
+		OPT_WRITE_SSIZE_T_MUTABLE(lg_dirty_mult,
+		    arenas.lg_dirty_mult, ",")
+	}
+	if (json || opt_purge == purge_mode_decay) {
+		OPT_WRITE_SSIZE_T_MUTABLE(decay_time, arenas.decay_time, ",")
+	}
 	OPT_WRITE_CHAR_P(junk, ",")
+	OPT_WRITE_SIZE_T(quarantine, ",")
+	OPT_WRITE_BOOL(redzone, ",")
 	OPT_WRITE_BOOL(zero, ",")
 	OPT_WRITE_BOOL(utrace, ",")
 	OPT_WRITE_BOOL(xmalloc, ",")
 	OPT_WRITE_BOOL(tcache, ",")
 	OPT_WRITE_SSIZE_T(lg_tcache_max, ",")
+	OPT_WRITE_BOOL(thp, ",")
 	OPT_WRITE_BOOL(prof, ",")
 	OPT_WRITE_CHAR_P(prof_prefix, ",")
 	OPT_WRITE_BOOL_MUTABLE(prof_active, prof.active, ",")
@@ -652,6 +775,7 @@ stats_general_print(void (*write_cb)(void *, const char *), void *cbopaque,
 
 #undef OPT_WRITE_BOOL
 #undef OPT_WRITE_BOOL_MUTABLE
+#undef OPT_WRITE_SIZE_T
 #undef OPT_WRITE_SSIZE_T
 #undef OPT_WRITE_CHAR_P
 
@@ -665,35 +789,47 @@ stats_general_print(void (*write_cb)(void *, const char *), void *cbopaque,
 	if (json) {
 		malloc_cprintf(write_cb, cbopaque,
 		    "\t\t\t\"narenas\": %u,\n", uv);
-	} else {
+	} else
 		malloc_cprintf(write_cb, cbopaque, "Arenas: %u\n", uv);
-	}
 
+	CTL_GET("arenas.lg_dirty_mult", &ssv, ssize_t);
+	if (json) {
+		malloc_cprintf(write_cb, cbopaque,
+		    "\t\t\t\"lg_dirty_mult\": %zd,\n", ssv);
+	} else if (opt_purge == purge_mode_ratio) {
+		if (ssv >= 0) {
+			malloc_cprintf(write_cb, cbopaque,
+			    "Min active:dirty page ratio per arena: "
+			    "%u:1\n", (1U << ssv));
+		} else {
+			malloc_cprintf(write_cb, cbopaque,
+			    "Min active:dirty page ratio per arena: "
+			    "N/A\n");
+		}
+	}
 	CTL_GET("arenas.decay_time", &ssv, ssize_t);
 	if (json) {
 		malloc_cprintf(write_cb, cbopaque,
 		    "\t\t\t\"decay_time\": %zd,\n", ssv);
-	} else {
+	} else if (opt_purge == purge_mode_decay) {
 		malloc_cprintf(write_cb, cbopaque,
-		    "Unused dirty page decay time: %zd%s\n", ssv, (ssv < 0) ?
-		    " (no decay)" : "");
+		    "Unused dirty page decay time: %zd%s\n",
+		    ssv, (ssv < 0) ? " (no decay)" : "");
 	}
 
 	CTL_GET("arenas.quantum", &sv, size_t);
 	if (json) {
 		malloc_cprintf(write_cb, cbopaque,
 		    "\t\t\t\"quantum\": %zu,\n", sv);
-	} else {
+	} else
 		malloc_cprintf(write_cb, cbopaque, "Quantum size: %zu\n", sv);
-	}
 
 	CTL_GET("arenas.page", &sv, size_t);
 	if (json) {
 		malloc_cprintf(write_cb, cbopaque,
 		    "\t\t\t\"page\": %zu,\n", sv);
-	} else {
+	} else
 		malloc_cprintf(write_cb, cbopaque, "Page size: %zu\n", sv);
-	}
 
 	if (je_mallctl("arenas.tcache_max", (void *)&sv, &ssz, NULL, 0) == 0) {
 		if (json) {
@@ -706,7 +842,7 @@ stats_general_print(void (*write_cb)(void *, const char *), void *cbopaque,
 	}
 
 	if (json) {
-		unsigned nbins, nlextents, i;
+		unsigned nbins, nlruns, nhchunks, i;
 
 		CTL_GET("arenas.nbins", &nbins, unsigned);
 		malloc_cprintf(write_cb, cbopaque,
@@ -732,9 +868,9 @@ stats_general_print(void (*write_cb)(void *, const char *), void *cbopaque,
 			malloc_cprintf(write_cb, cbopaque,
 			    "\t\t\t\t\t\"nregs\": %"FMTu32",\n", u32v);
 
-			CTL_M2_GET("arenas.bin.0.slab_size", i, &sv, size_t);
+			CTL_M2_GET("arenas.bin.0.run_size", i, &sv, size_t);
 			malloc_cprintf(write_cb, cbopaque,
-			    "\t\t\t\t\t\"slab_size\": %zu\n", sv);
+			    "\t\t\t\t\t\"run_size\": %zu\n", sv);
 
 			malloc_cprintf(write_cb, cbopaque,
 			    "\t\t\t\t}%s\n", (i + 1 < nbins) ? "," : "");
@@ -742,22 +878,42 @@ stats_general_print(void (*write_cb)(void *, const char *), void *cbopaque,
 		malloc_cprintf(write_cb, cbopaque,
 		    "\t\t\t],\n");
 
-		CTL_GET("arenas.nlextents", &nlextents, unsigned);
+		CTL_GET("arenas.nlruns", &nlruns, unsigned);
 		malloc_cprintf(write_cb, cbopaque,
-		    "\t\t\t\"nlextents\": %u,\n", nlextents);
+		    "\t\t\t\"nlruns\": %u,\n", nlruns);
 
 		malloc_cprintf(write_cb, cbopaque,
-		    "\t\t\t\"lextent\": [\n");
-		for (i = 0; i < nlextents; i++) {
+		    "\t\t\t\"lrun\": [\n");
+		for (i = 0; i < nlruns; i++) {
 			malloc_cprintf(write_cb, cbopaque,
 			    "\t\t\t\t{\n");
 
-			CTL_M2_GET("arenas.lextent.0.size", i, &sv, size_t);
+			CTL_M2_GET("arenas.lrun.0.size", i, &sv, size_t);
 			malloc_cprintf(write_cb, cbopaque,
 			    "\t\t\t\t\t\"size\": %zu\n", sv);
 
 			malloc_cprintf(write_cb, cbopaque,
-			    "\t\t\t\t}%s\n", (i + 1 < nlextents) ? "," : "");
+			    "\t\t\t\t}%s\n", (i + 1 < nlruns) ? "," : "");
+		}
+		malloc_cprintf(write_cb, cbopaque,
+		    "\t\t\t],\n");
+
+		CTL_GET("arenas.nhchunks", &nhchunks, unsigned);
+		malloc_cprintf(write_cb, cbopaque,
+		    "\t\t\t\"nhchunks\": %u,\n", nhchunks);
+
+		malloc_cprintf(write_cb, cbopaque,
+		    "\t\t\t\"hchunk\": [\n");
+		for (i = 0; i < nhchunks; i++) {
+			malloc_cprintf(write_cb, cbopaque,
+			    "\t\t\t\t{\n");
+
+			CTL_M2_GET("arenas.hchunk.0.size", i, &sv, size_t);
+			malloc_cprintf(write_cb, cbopaque,
+			    "\t\t\t\t\t\"size\": %zu\n", sv);
+
+			malloc_cprintf(write_cb, cbopaque,
+			    "\t\t\t\t}%s\n", (i + 1 < nhchunks) ? "," : "");
 		}
 		malloc_cprintf(write_cb, cbopaque,
 		    "\t\t\t]\n");
@@ -799,10 +955,12 @@ stats_general_print(void (*write_cb)(void *, const char *), void *cbopaque,
 
 static void
 stats_print_helper(void (*write_cb)(void *, const char *), void *cbopaque,
-    bool json, bool merged, bool destroyed, bool unmerged, bool bins,
-    bool large) {
+    bool json, bool merged, bool unmerged, bool bins, bool large, bool huge)
+{
+	size_t *cactive;
 	size_t allocated, active, metadata, resident, mapped, retained;
 
+	CTL_GET("stats.cactive", &cactive, size_t *);
 	CTL_GET("stats.allocated", &allocated, size_t);
 	CTL_GET("stats.active", &active, size_t);
 	CTL_GET("stats.metadata", &metadata, size_t);
@@ -813,6 +971,8 @@ stats_print_helper(void (*write_cb)(void *, const char *), void *cbopaque,
 		malloc_cprintf(write_cb, cbopaque,
 		    "\t\t\"stats\": {\n");
 
+		malloc_cprintf(write_cb, cbopaque,
+		    "\t\t\t\"cactive\": %zu,\n", atomic_read_z(cactive));
 		malloc_cprintf(write_cb, cbopaque,
 		    "\t\t\t\"allocated\": %zu,\n", allocated);
 		malloc_cprintf(write_cb, cbopaque,
@@ -833,9 +993,12 @@ stats_print_helper(void (*write_cb)(void *, const char *), void *cbopaque,
 		    "Allocated: %zu, active: %zu, metadata: %zu,"
 		    " resident: %zu, mapped: %zu, retained: %zu\n",
 		    allocated, active, metadata, resident, mapped, retained);
+		malloc_cprintf(write_cb, cbopaque,
+		    "Current active ceiling: %zu\n",
+		    atomic_read_z(cactive));
 	}
 
-	if (merged || destroyed || unmerged) {
+	if (merged || unmerged) {
 		unsigned narenas;
 
 		if (json) {
@@ -845,27 +1008,17 @@ stats_print_helper(void (*write_cb)(void *, const char *), void *cbopaque,
 
 		CTL_GET("arenas.narenas", &narenas, unsigned);
 		{
-			size_t mib[3];
-			size_t miblen = sizeof(mib) / sizeof(size_t);
-			size_t sz;
 			VARIABLE_ARRAY(bool, initialized, narenas);
-			bool destroyed_initialized;
+			size_t isz;
 			unsigned i, j, ninitialized;
 
-			xmallctlnametomib("arena.0.initialized", mib, &miblen);
+			isz = sizeof(bool) * narenas;
+			xmallctl("arenas.initialized", (void *)initialized,
+			    &isz, NULL, 0);
 			for (i = ninitialized = 0; i < narenas; i++) {
-				mib[1] = i;
-				sz = sizeof(bool);
-				xmallctlbymib(mib, miblen, &initialized[i], &sz,
-				    NULL, 0);
-				if (initialized[i]) {
+				if (initialized[i])
 					ninitialized++;
-				}
 			}
-			mib[1] = MALLCTL_ARENAS_DESTROYED;
-			sz = sizeof(bool);
-			xmallctlbymib(mib, miblen, &destroyed_initialized, &sz,
-			    NULL, 0);
 
 			/* Merged stats. */
 			if (merged && (ninitialized > 1 || !unmerged)) {
@@ -878,28 +1031,7 @@ stats_print_helper(void (*write_cb)(void *, const char *), void *cbopaque,
 					    "\nMerged arenas stats:\n");
 				}
 				stats_arena_print(write_cb, cbopaque, json,
-				    MALLCTL_ARENAS_ALL, bins, large);
-				if (json) {
-					malloc_cprintf(write_cb, cbopaque,
-					    "\t\t\t}%s\n",
-					    ((destroyed_initialized &&
-					    destroyed) || unmerged) ?  "," :
-					    "");
-				}
-			}
-
-			/* Destroyed stats. */
-			if (destroyed_initialized && destroyed) {
-				/* Print destroyed arena stats. */
-				if (json) {
-					malloc_cprintf(write_cb, cbopaque,
-					    "\t\t\t\"destroyed\": {\n");
-				} else {
-					malloc_cprintf(write_cb, cbopaque,
-					    "\nDestroyed arenas stats:\n");
-				}
-				stats_arena_print(write_cb, cbopaque, json,
-				    MALLCTL_ARENAS_DESTROYED, bins, large);
+				    narenas, bins, large, huge);
 				if (json) {
 					malloc_cprintf(write_cb, cbopaque,
 					    "\t\t\t}%s\n", unmerged ?  "," :
@@ -925,7 +1057,7 @@ stats_print_helper(void (*write_cb)(void *, const char *), void *cbopaque,
 						}
 						stats_arena_print(write_cb,
 						    cbopaque, json, i, bins,
-						    large);
+						    large, huge);
 						if (json) {
 							malloc_cprintf(write_cb,
 							    cbopaque,
@@ -947,17 +1079,18 @@ stats_print_helper(void (*write_cb)(void *, const char *), void *cbopaque,
 
 void
 stats_print(void (*write_cb)(void *, const char *), void *cbopaque,
-    const char *opts) {
+    const char *opts)
+{
 	int err;
 	uint64_t epoch;
 	size_t u64sz;
 	bool json = false;
 	bool general = true;
 	bool merged = config_stats;
-	bool destroyed = config_stats;
 	bool unmerged = config_stats;
 	bool bins = true;
 	bool large = true;
+	bool huge = true;
 
 	/*
 	 * Refresh stats, in case mallctl() was called by the application.
@@ -995,9 +1128,6 @@ stats_print(void (*write_cb)(void *, const char *), void *cbopaque,
 			case 'm':
 				merged = false;
 				break;
-			case 'd':
-				destroyed = false;
-				break;
 			case 'a':
 				unmerged = false;
 				break;
@@ -1006,6 +1136,9 @@ stats_print(void (*write_cb)(void *, const char *), void *cbopaque,
 				break;
 			case 'l':
 				large = false;
+				break;
+			case 'h':
+				huge = false;
 				break;
 			default:;
 			}
@@ -1026,10 +1159,9 @@ stats_print(void (*write_cb)(void *, const char *), void *cbopaque,
 		stats_general_print(write_cb, cbopaque, json, more);
 	}
 	if (config_stats) {
-		stats_print_helper(write_cb, cbopaque, json, merged, destroyed,
-		    unmerged, bins, large);
+		stats_print_helper(write_cb, cbopaque, json, merged, unmerged,
+		    bins, large, huge);
 	}
-
 	if (json) {
 		malloc_cprintf(write_cb, cbopaque,
 		    "\t}\n"

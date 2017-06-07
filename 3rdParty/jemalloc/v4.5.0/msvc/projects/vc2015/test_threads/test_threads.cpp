@@ -16,7 +16,8 @@ using std::thread;
 using std::uniform_int_distribution;
 using std::minstd_rand;
 
-int test_threads() {
+int test_threads()
+{
   je_malloc_conf = "narenas:3";
   int narenas = 0;
   size_t sz = sizeof(narenas);

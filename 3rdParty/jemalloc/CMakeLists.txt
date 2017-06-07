@@ -4,8 +4,8 @@ project(jemalloc C)
 include(ExternalProject)
 
 # set version and paths
-# set(JEMALLOC_VERSION "4.5.0")
-set(JEMALLOC_VERSION "3.6.0")
+set(JEMALLOC_VERSION "4.5.0")
+# set(JEMALLOC_VERSION "3.6.0")
 set(JEMALLOC_SOURCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/v${JEMALLOC_VERSION}")
 set(JEMALLOC_BINARY_DIR "${CMAKE_CURRENT_BINARY_DIR}/v${JEMALLOC_VERSION}")
 
@@ -58,6 +58,7 @@ if (LINUX OR DARWIN)
                   CXX=${JEMALLOC_CXX_TMP}
                   CFLAGS=${JEMALLOC_CFLAGS_TMP}
                   CXXFLAGS=${JEMALLOC_CXXFLAGS_TMP}
+                  --enable-munmap
                   --prefix=${CMAKE_CURRENT_BINARY_DIR}
                   --with-version=${JEMALLOC_VERSION}-0-g0
     BUILD_COMMAND

@@ -12,17 +12,23 @@ static bool saw_depth_error;
 
 static void
 witness_lock_error_intercept(const witness_list_t *witnesses,
-    const witness_t *witness) {
+    const witness_t *witness)
+{
+
 	saw_lock_error = true;
 }
 
 static void
-witness_owner_error_intercept(const witness_t *witness) {
+witness_owner_error_intercept(const witness_t *witness)
+{
+
 	saw_owner_error = true;
 }
 
 static void
-witness_not_owner_error_intercept(const witness_t *witness) {
+witness_not_owner_error_intercept(const witness_t *witness)
+{
+
 	saw_not_owner_error = true;
 }
 
@@ -33,27 +39,25 @@ witness_depth_error_intercept(const witness_list_t *witnesses,
 }
 
 static int
-witness_comp(const witness_t *a, void *oa, const witness_t *b, void *ob) {
+witness_comp(const witness_t *a, const witness_t *b)
+{
+
 	assert_u_eq(a->rank, b->rank, "Witnesses should have equal rank");
 
-	assert(oa == (void *)a);
-	assert(ob == (void *)b);
-
-	return strcmp(a->name, b->name);
+	return (strcmp(a->name, b->name));
 }
 
 static int
-witness_comp_reverse(const witness_t *a, void *oa, const witness_t *b,
-    void *ob) {
+witness_comp_reverse(const witness_t *a, const witness_t *b)
+{
+
 	assert_u_eq(a->rank, b->rank, "Witnesses should have equal rank");
 
-	assert(oa == (void *)a);
-	assert(ob == (void *)b);
-
-	return -strcmp(a->name, b->name);
+	return (-strcmp(a->name, b->name));
 }
 
-TEST_BEGIN(test_witness) {
+TEST_BEGIN(test_witness)
+{
 	witness_t a, b;
 	tsdn_t *tsdn;
 
@@ -65,7 +69,7 @@ TEST_BEGIN(test_witness) {
 	witness_assert_depth(tsdn, 0);
 	witness_assert_depth_to_rank(tsdn, (witness_rank_t)1U, 0);
 
-	witness_init(&a, "a", 1, NULL, NULL);
+	witness_init(&a, "a", 1, NULL);
 	witness_assert_not_owner(tsdn, &a);
 	witness_lock(tsdn, &a);
 	witness_assert_owner(tsdn, &a);
@@ -73,7 +77,7 @@ TEST_BEGIN(test_witness) {
 	witness_assert_depth_to_rank(tsdn, (witness_rank_t)1U, 1);
 	witness_assert_depth_to_rank(tsdn, (witness_rank_t)2U, 0);
 
-	witness_init(&b, "b", 2, NULL, NULL);
+	witness_init(&b, "b", 2, NULL);
 	witness_assert_not_owner(tsdn, &b);
 	witness_lock(tsdn, &b);
 	witness_assert_owner(tsdn, &b);
@@ -95,7 +99,8 @@ TEST_BEGIN(test_witness) {
 }
 TEST_END
 
-TEST_BEGIN(test_witness_comp) {
+TEST_BEGIN(test_witness_comp)
+{
 	witness_t a, b, c, d;
 	tsdn_t *tsdn;
 
@@ -105,13 +110,13 @@ TEST_BEGIN(test_witness_comp) {
 
 	witness_assert_lockless(tsdn);
 
-	witness_init(&a, "a", 1, witness_comp, &a);
+	witness_init(&a, "a", 1, witness_comp);
 	witness_assert_not_owner(tsdn, &a);
 	witness_lock(tsdn, &a);
 	witness_assert_owner(tsdn, &a);
 	witness_assert_depth(tsdn, 1);
 
-	witness_init(&b, "b", 1, witness_comp, &b);
+	witness_init(&b, "b", 1, witness_comp);
 	witness_assert_not_owner(tsdn, &b);
 	witness_lock(tsdn, &b);
 	witness_assert_owner(tsdn, &b);
@@ -123,7 +128,7 @@ TEST_BEGIN(test_witness_comp) {
 	witness_lock_error = witness_lock_error_intercept;
 	saw_lock_error = false;
 
-	witness_init(&c, "c", 1, witness_comp_reverse, &c);
+	witness_init(&c, "c", 1, witness_comp_reverse);
 	witness_assert_not_owner(tsdn, &c);
 	assert_false(saw_lock_error, "Unexpected witness lock error");
 	witness_lock(tsdn, &c);
@@ -133,7 +138,7 @@ TEST_BEGIN(test_witness_comp) {
 
 	saw_lock_error = false;
 
-	witness_init(&d, "d", 1, NULL, NULL);
+	witness_init(&d, "d", 1, NULL);
 	witness_assert_not_owner(tsdn, &d);
 	assert_false(saw_lock_error, "Unexpected witness lock error");
 	witness_lock(tsdn, &d);
@@ -149,7 +154,8 @@ TEST_BEGIN(test_witness_comp) {
 }
 TEST_END
 
-TEST_BEGIN(test_witness_reversal) {
+TEST_BEGIN(test_witness_reversal)
+{
 	witness_t a, b;
 	tsdn_t *tsdn;
 
@@ -163,8 +169,8 @@ TEST_BEGIN(test_witness_reversal) {
 
 	witness_assert_lockless(tsdn);
 
-	witness_init(&a, "a", 1, NULL, NULL);
-	witness_init(&b, "b", 2, NULL, NULL);
+	witness_init(&a, "a", 1, NULL);
+	witness_init(&b, "b", 2, NULL);
 
 	witness_lock(tsdn, &b);
 	witness_assert_depth(tsdn, 1);
@@ -182,7 +188,8 @@ TEST_BEGIN(test_witness_reversal) {
 }
 TEST_END
 
-TEST_BEGIN(test_witness_recursive) {
+TEST_BEGIN(test_witness_recursive)
+{
 	witness_t a;
 	tsdn_t *tsdn;
 
@@ -200,7 +207,7 @@ TEST_BEGIN(test_witness_recursive) {
 
 	witness_assert_lockless(tsdn);
 
-	witness_init(&a, "a", 1, NULL, NULL);
+	witness_init(&a, "a", 1, NULL);
 
 	witness_lock(tsdn, &a);
 	assert_false(saw_lock_error, "Unexpected witness lock error");
@@ -219,7 +226,8 @@ TEST_BEGIN(test_witness_recursive) {
 }
 TEST_END
 
-TEST_BEGIN(test_witness_unlock_not_owned) {
+TEST_BEGIN(test_witness_unlock_not_owned)
+{
 	witness_t a;
 	tsdn_t *tsdn;
 
@@ -233,7 +241,7 @@ TEST_BEGIN(test_witness_unlock_not_owned) {
 
 	witness_assert_lockless(tsdn);
 
-	witness_init(&a, "a", 1, NULL, NULL);
+	witness_init(&a, "a", 1, NULL);
 
 	assert_false(saw_owner_error, "Unexpected owner error");
 	witness_unlock(tsdn, &a);
@@ -260,7 +268,7 @@ TEST_BEGIN(test_witness_depth) {
 	witness_assert_lockless(tsdn);
 	witness_assert_depth(tsdn, 0);
 
-	witness_init(&a, "a", 1, NULL, NULL);
+	witness_init(&a, "a", 1, NULL);
 
 	assert_false(saw_depth_error, "Unexpected depth error");
 	witness_assert_lockless(tsdn);
@@ -281,7 +289,9 @@ TEST_BEGIN(test_witness_depth) {
 TEST_END
 
 int
-main(void) {
+main(void)
+{
+
 	return test(
 	    test_witness,
 	    test_witness_comp,

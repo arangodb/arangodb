@@ -45,7 +45,7 @@
  *
  * The new BSD License is applied to this software, see LICENSE.txt
  */
-#define SFMT_C_
+#define	SFMT_C_
 #include "test/jemalloc_test.h"
 #include "test/SFMT-params.h"
 

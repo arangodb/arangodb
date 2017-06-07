@@ -1,6 +1,6 @@
 #include "test/jemalloc_test.h"
 
-#define TEST_POW2_CEIL(t, suf, pri) do {				\
+#define	TEST_POW2_CEIL(t, suf, pri) do {				\
 	unsigned i, pow2;						\
 	t x;								\
 									\
@@ -31,22 +31,29 @@
 	}								\
 } while (0)
 
-TEST_BEGIN(test_pow2_ceil_u64) {
+TEST_BEGIN(test_pow2_ceil_u64)
+{
+
 	TEST_POW2_CEIL(uint64_t, u64, FMTu64);
 }
 TEST_END
 
-TEST_BEGIN(test_pow2_ceil_u32) {
+TEST_BEGIN(test_pow2_ceil_u32)
+{
+
 	TEST_POW2_CEIL(uint32_t, u32, FMTu32);
 }
 TEST_END
 
-TEST_BEGIN(test_pow2_ceil_zu) {
+TEST_BEGIN(test_pow2_ceil_zu)
+{
+
 	TEST_POW2_CEIL(size_t, zu, "zu");
 }
 TEST_END
 
-TEST_BEGIN(test_malloc_strtoumax_no_endptr) {
+TEST_BEGIN(test_malloc_strtoumax_no_endptr)
+{
 	int err;
 
 	set_errno(0);
@@ -56,7 +63,8 @@ TEST_BEGIN(test_malloc_strtoumax_no_endptr) {
 }
 TEST_END
 
-TEST_BEGIN(test_malloc_strtoumax) {
+TEST_BEGIN(test_malloc_strtoumax)
+{
 	struct test_s {
 		const char *input;
 		const char *expected_remainder;
@@ -65,9 +73,9 @@ TEST_BEGIN(test_malloc_strtoumax) {
 		const char *expected_errno_name;
 		uintmax_t expected_x;
 	};
-#define ERR(e)		e, #e
-#define KUMAX(x)	((uintmax_t)x##ULL)
-#define KSMAX(x)	((uintmax_t)(intmax_t)x##LL)
+#define	ERR(e)		e, #e
+#define	KUMAX(x)	((uintmax_t)x##ULL)
+#define	KSMAX(x)	((uintmax_t)(intmax_t)x##LL)
 	struct test_s tests[] = {
 		{"0",		"0",	-1,	ERR(EINVAL),	UINTMAX_MAX},
 		{"0",		"0",	1,	ERR(EINVAL),	UINTMAX_MAX},
@@ -150,12 +158,13 @@ TEST_BEGIN(test_malloc_strtoumax) {
 }
 TEST_END
 
-TEST_BEGIN(test_malloc_snprintf_truncated) {
-#define BUFLEN	15
+TEST_BEGIN(test_malloc_snprintf_truncated)
+{
+#define	BUFLEN	15
 	char buf[BUFLEN];
 	size_t result;
 	size_t len;
-#define TEST(expected_str_untruncated, ...) do {			\
+#define	TEST(expected_str_untruncated, ...) do {			\
 	result = malloc_snprintf(buf, len, __VA_ARGS__);		\
 	assert_d_eq(strncmp(buf, expected_str_untruncated, len-1), 0,	\
 	    "Unexpected string inequality (\"%s\" vs \"%s\")",		\
@@ -182,11 +191,12 @@ TEST_BEGIN(test_malloc_snprintf_truncated) {
 }
 TEST_END
 
-TEST_BEGIN(test_malloc_snprintf) {
-#define BUFLEN	128
+TEST_BEGIN(test_malloc_snprintf)
+{
+#define	BUFLEN	128
 	char buf[BUFLEN];
 	size_t result;
-#define TEST(expected_str, ...) do {					\
+#define	TEST(expected_str, ...) do {					\
 	result = malloc_snprintf(buf, sizeof(buf), __VA_ARGS__);	\
 	assert_str_eq(buf, expected_str, "Unexpected output");		\
 	assert_zu_eq(result, strlen(expected_str), "Unexpected result");\
@@ -295,13 +305,15 @@ TEST_BEGIN(test_malloc_snprintf) {
 TEST_END
 
 int
-main(void) {
-	return test(
+main(void)
+{
+
+	return (test(
 	    test_pow2_ceil_u64,
 	    test_pow2_ceil_u32,
 	    test_pow2_ceil_zu,
 	    test_malloc_strtoumax_no_endptr,
 	    test_malloc_strtoumax,
 	    test_malloc_snprintf_truncated,
-	    test_malloc_snprintf);
+	    test_malloc_snprintf));
 }

@@ -9,7 +9,8 @@ static const bool config_tcache =
     ;
 
 void *
-thd_start(void *arg) {
+thd_start(void *arg)
+{
 	int err;
 	size_t sz;
 	bool e0, e1;
@@ -77,18 +78,21 @@ thd_start(void *arg) {
 	assert_false(e0, "tcache should be disabled");
 
 	free(malloc(1));
-	return NULL;
+	return (NULL);
 label_ENOENT:
 	test_skip("\"thread.tcache.enabled\" mallctl not available");
-	return NULL;
+	return (NULL);
 }
 
-TEST_BEGIN(test_main_thread) {
+TEST_BEGIN(test_main_thread)
+{
+
 	thd_start(NULL);
 }
 TEST_END
 
-TEST_BEGIN(test_subthread) {
+TEST_BEGIN(test_subthread)
+{
 	thd_t thd;
 
 	thd_create(&thd, thd_start, NULL);
@@ -97,12 +101,14 @@ TEST_BEGIN(test_subthread) {
 TEST_END
 
 int
-main(void) {
+main(void)
+{
+
 	/* Run tests multiple times to check for bad interactions. */
-	return test(
+	return (test(
 	    test_main_thread,
 	    test_subthread,
 	    test_main_thread,
 	    test_subthread,
-	    test_main_thread);
+	    test_main_thread));
 }

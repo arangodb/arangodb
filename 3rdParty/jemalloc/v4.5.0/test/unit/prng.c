@@ -1,7 +1,8 @@
 #include "test/jemalloc_test.h"
 
 static void
-test_prng_lg_range_u32(bool atomic) {
+test_prng_lg_range_u32(bool atomic)
+{
 	uint32_t sa, sb, ra, rb;
 	unsigned lg_range;
 
@@ -37,7 +38,8 @@ test_prng_lg_range_u32(bool atomic) {
 }
 
 static void
-test_prng_lg_range_u64(void) {
+test_prng_lg_range_u64(void)
+{
 	uint64_t sa, sb, ra, rb;
 	unsigned lg_range;
 
@@ -73,7 +75,8 @@ test_prng_lg_range_u64(void) {
 }
 
 static void
-test_prng_lg_range_zu(bool atomic) {
+test_prng_lg_range_zu(bool atomic)
+{
 	size_t sa, sb, ra, rb;
 	unsigned lg_range;
 
@@ -109,37 +112,48 @@ test_prng_lg_range_zu(bool atomic) {
 	}
 }
 
-TEST_BEGIN(test_prng_lg_range_u32_nonatomic) {
+TEST_BEGIN(test_prng_lg_range_u32_nonatomic)
+{
+
 	test_prng_lg_range_u32(false);
 }
 TEST_END
 
-TEST_BEGIN(test_prng_lg_range_u32_atomic) {
+TEST_BEGIN(test_prng_lg_range_u32_atomic)
+{
+
 	test_prng_lg_range_u32(true);
 }
 TEST_END
 
-TEST_BEGIN(test_prng_lg_range_u64_nonatomic) {
+TEST_BEGIN(test_prng_lg_range_u64_nonatomic)
+{
+
 	test_prng_lg_range_u64();
 }
 TEST_END
 
-TEST_BEGIN(test_prng_lg_range_zu_nonatomic) {
+TEST_BEGIN(test_prng_lg_range_zu_nonatomic)
+{
+
 	test_prng_lg_range_zu(false);
 }
 TEST_END
 
-TEST_BEGIN(test_prng_lg_range_zu_atomic) {
+TEST_BEGIN(test_prng_lg_range_zu_atomic)
+{
+
 	test_prng_lg_range_zu(true);
 }
 TEST_END
 
 static void
-test_prng_range_u32(bool atomic) {
+test_prng_range_u32(bool atomic)
+{
 	uint32_t range;
-#define MAX_RANGE	10000000
-#define RANGE_STEP	97
-#define NREPS		10
+#define	MAX_RANGE	10000000
+#define	RANGE_STEP	97
+#define	NREPS		10
 
 	for (range = 2; range < MAX_RANGE; range += RANGE_STEP) {
 		uint32_t s;
@@ -155,11 +169,12 @@ test_prng_range_u32(bool atomic) {
 }
 
 static void
-test_prng_range_u64(void) {
+test_prng_range_u64(void)
+{
 	uint64_t range;
-#define MAX_RANGE	10000000
-#define RANGE_STEP	97
-#define NREPS		10
+#define	MAX_RANGE	10000000
+#define	RANGE_STEP	97
+#define	NREPS		10
 
 	for (range = 2; range < MAX_RANGE; range += RANGE_STEP) {
 		uint64_t s;
@@ -175,11 +190,12 @@ test_prng_range_u64(void) {
 }
 
 static void
-test_prng_range_zu(bool atomic) {
+test_prng_range_zu(bool atomic)
+{
 	size_t range;
-#define MAX_RANGE	10000000
-#define RANGE_STEP	97
-#define NREPS		10
+#define	MAX_RANGE	10000000
+#define	RANGE_STEP	97
+#define	NREPS		10
 
 	for (range = 2; range < MAX_RANGE; range += RANGE_STEP) {
 		size_t s;
@@ -194,34 +210,46 @@ test_prng_range_zu(bool atomic) {
 	}
 }
 
-TEST_BEGIN(test_prng_range_u32_nonatomic) {
+TEST_BEGIN(test_prng_range_u32_nonatomic)
+{
+
 	test_prng_range_u32(false);
 }
 TEST_END
 
-TEST_BEGIN(test_prng_range_u32_atomic) {
+TEST_BEGIN(test_prng_range_u32_atomic)
+{
+
 	test_prng_range_u32(true);
 }
 TEST_END
 
-TEST_BEGIN(test_prng_range_u64_nonatomic) {
+TEST_BEGIN(test_prng_range_u64_nonatomic)
+{
+
 	test_prng_range_u64();
 }
 TEST_END
 
-TEST_BEGIN(test_prng_range_zu_nonatomic) {
+TEST_BEGIN(test_prng_range_zu_nonatomic)
+{
+
 	test_prng_range_zu(false);
 }
 TEST_END
 
-TEST_BEGIN(test_prng_range_zu_atomic) {
+TEST_BEGIN(test_prng_range_zu_atomic)
+{
+
 	test_prng_range_zu(true);
 }
 TEST_END
 
 int
-main(void) {
-	return test(
+main(void)
+{
+
+	return (test(
 	    test_prng_lg_range_u32_nonatomic,
 	    test_prng_lg_range_u32_atomic,
 	    test_prng_lg_range_u64_nonatomic,
@@ -231,5 +259,5 @@ main(void) {
 	    test_prng_range_u32_atomic,
 	    test_prng_range_u64_nonatomic,
 	    test_prng_range_zu_nonatomic,
-	    test_prng_range_zu_atomic);
+	    test_prng_range_zu_atomic));
 }

@@ -125,7 +125,9 @@ static void	zone_reinit_lock(malloc_zone_t *zone);
  */
 
 static size_t
-zone_size(malloc_zone_t *zone, const void *ptr) {
+zone_size(malloc_zone_t *zone, const void *ptr)
+{
+
 	/*
 	 * There appear to be places within Darwin (such as setenv(3)) that
 	 * cause calls to this function with pointers that *no* zone owns.  If
@@ -133,33 +135,40 @@ zone_size(malloc_zone_t *zone, const void *ptr) {
 	 * our zone into two parts, and use one as the default allocator and
 	 * the other as the default deallocator/reallocator.  Since that will
 	 * not work in practice, we must check all pointers to assure that they
-	 * reside within a mapped extent before determining size.
+	 * reside within a mapped chunk before determining size.
 	 */
-	return ivsalloc(tsdn_fetch(), ptr);
+	return (ivsalloc(tsdn_fetch(), ptr, config_prof));
 }
 
 static void *
-zone_malloc(malloc_zone_t *zone, size_t size) {
-	return je_malloc(size);
+zone_malloc(malloc_zone_t *zone, size_t size)
+{
+
+	return (je_malloc(size));
 }
 
 static void *
-zone_calloc(malloc_zone_t *zone, size_t num, size_t size) {
-	return je_calloc(num, size);
+zone_calloc(malloc_zone_t *zone, size_t num, size_t size)
+{
+
+	return (je_calloc(num, size));
 }
 
 static void *
-zone_valloc(malloc_zone_t *zone, size_t size) {
+zone_valloc(malloc_zone_t *zone, size_t size)
+{
 	void *ret = NULL; /* Assignment avoids useless compiler warning. */
 
 	je_posix_memalign(&ret, PAGE, size);
 
-	return ret;
+	return (ret);
 }
 
 static void
-zone_free(malloc_zone_t *zone, void *ptr) {
-	if (ivsalloc(tsdn_fetch(), ptr) != 0) {
+zone_free(malloc_zone_t *zone, void *ptr)
+{
+
+	if (ivsalloc(tsdn_fetch(), ptr, config_prof) != 0) {
 		je_free(ptr);
 		return;
 	}
@@ -168,28 +177,31 @@ zone_free(malloc_zone_t *zone, void *ptr) {
 }
 
 static void *
-zone_realloc(malloc_zone_t *zone, void *ptr, size_t size) {
-	if (ivsalloc(tsdn_fetch(), ptr) != 0) {
-		return je_realloc(ptr, size);
-	}
+zone_realloc(malloc_zone_t *zone, void *ptr, size_t size)
+{
 
-	return realloc(ptr, size);
+	if (ivsalloc(tsdn_fetch(), ptr, config_prof) != 0)
+		return (je_realloc(ptr, size));
+
+	return (realloc(ptr, size));
 }
 
 static void *
-zone_memalign(malloc_zone_t *zone, size_t alignment, size_t size) {
+zone_memalign(malloc_zone_t *zone, size_t alignment, size_t size)
+{
 	void *ret = NULL; /* Assignment avoids useless compiler warning. */
 
 	je_posix_memalign(&ret, alignment, size);
 
-	return ret;
+	return (ret);
 }
 
 static void
-zone_free_definite_size(malloc_zone_t *zone, void *ptr, size_t size) {
+zone_free_definite_size(malloc_zone_t *zone, void *ptr, size_t size)
+{
 	size_t alloc_size;
 
-	alloc_size = ivsalloc(tsdn_fetch(), ptr);
+	alloc_size = ivsalloc(tsdn_fetch(), ptr, config_prof);
 	if (alloc_size != 0) {
 		assert(alloc_size == size);
 		je_free(ptr);
@@ -200,14 +212,17 @@ zone_free_definite_size(malloc_zone_t *zone, void *ptr, size_t size) {
 }
 
 static void
-zone_destroy(malloc_zone_t *zone) {
+zone_destroy(malloc_zone_t *zone)
+{
+
 	/* This function should never be called. */
 	not_reached();
 }
 
 static unsigned
 zone_batch_malloc(struct _malloc_zone_t *zone, size_t size, void **results,
-    unsigned num_requested) {
+    unsigned num_requested)
+{
 	unsigned i;
 
 	for (i = 0; i < num_requested; i++) {
@@ -221,7 +236,8 @@ zone_batch_malloc(struct _malloc_zone_t *zone, size_t size, void **results,
 
 static void
 zone_batch_free(struct _malloc_zone_t *zone, void **to_be_freed,
-    unsigned num_to_be_freed) {
+    unsigned num_to_be_freed)
+{
 	unsigned i;
 
 	for (i = 0; i < num_to_be_freed; i++) {
@@ -231,47 +247,56 @@ zone_batch_free(struct _malloc_zone_t *zone, void **to_be_freed,
 }
 
 static size_t
-zone_pressure_relief(struct _malloc_zone_t *zone, size_t goal) {
+zone_pressure_relief(struct _malloc_zone_t *zone, size_t goal)
+{
 	return 0;
 }
 
 static size_t
-zone_good_size(malloc_zone_t *zone, size_t size) {
-	if (size == 0) {
+zone_good_size(malloc_zone_t *zone, size_t size)
+{
+
+	if (size == 0)
 		size = 1;
-	}
-	return s2u(size);
+	return (s2u(size));
 }
 
 static kern_return_t
 zone_enumerator(task_t task, void *data, unsigned type_mask,
     vm_address_t zone_address, memory_reader_t reader,
-    vm_range_recorder_t recorder) {
+    vm_range_recorder_t recorder)
+{
 	return KERN_SUCCESS;
 }
 
 static boolean_t
-zone_check(malloc_zone_t *zone) {
+zone_check(malloc_zone_t *zone)
+{
 	return true;
 }
 
 static void
-zone_print(malloc_zone_t *zone, boolean_t verbose) {
+zone_print(malloc_zone_t *zone, boolean_t verbose)
+{
 }
 
 static void
-zone_log(malloc_zone_t *zone, void *address) {
+zone_log(malloc_zone_t *zone, void *address)
+{
 }
 
 static void
-zone_force_lock(malloc_zone_t *zone) {
-	if (isthreaded) {
+zone_force_lock(malloc_zone_t *zone)
+{
+
+	if (isthreaded)
 		jemalloc_prefork();
-	}
 }
 
 static void
-zone_force_unlock(malloc_zone_t *zone) {
+zone_force_unlock(malloc_zone_t *zone)
+{
+
 	/*
 	 * Call jemalloc_postfork_child() rather than
 	 * jemalloc_postfork_parent(), because this function is executed by both
@@ -279,13 +304,13 @@ zone_force_unlock(malloc_zone_t *zone) {
 	 * reinitialized, but the child cannot unlock mutexes that were locked
 	 * by the parent.
 	 */
-	if (isthreaded) {
+	if (isthreaded)
 		jemalloc_postfork_child();
-	}
 }
 
 static void
-zone_statistics(malloc_zone_t *zone, malloc_statistics_t *stats) {
+zone_statistics(malloc_zone_t *zone, malloc_statistics_t *stats)
+{
 	/* We make no effort to actually fill the values */
 	stats->blocks_in_use = 0;
 	stats->size_in_use = 0;
@@ -294,20 +319,24 @@ zone_statistics(malloc_zone_t *zone, malloc_statistics_t *stats) {
 }
 
 static boolean_t
-zone_locked(malloc_zone_t *zone) {
+zone_locked(malloc_zone_t *zone)
+{
 	/* Pretend no lock is being held */
 	return false;
 }
 
 static void
-zone_reinit_lock(malloc_zone_t *zone) {
+zone_reinit_lock(malloc_zone_t *zone)
+{
 	/* As of OSX 10.12, this function is only used when force_unlock would
 	 * be used if the zone version were < 9. So just use force_unlock. */
 	zone_force_unlock(zone);
 }
 
 static void
-zone_init(void) {
+zone_init(void)
+{
+
 	jemalloc_zone.size = zone_size;
 	jemalloc_zone.malloc = zone_malloc;
 	jemalloc_zone.calloc = zone_calloc;
@@ -345,7 +374,8 @@ zone_init(void) {
 }
 
 static malloc_zone_t *
-zone_default_get(void) {
+zone_default_get(void)
+{
 	malloc_zone_t **zones = NULL;
 	unsigned int num_zones = 0;
 
@@ -367,16 +397,16 @@ zone_default_get(void) {
 		num_zones = 0;
 	}
 
-	if (num_zones) {
-		return zones[0];
-	}
+	if (num_zones)
+		return (zones[0]);
 
-	return malloc_default_zone();
+	return (malloc_default_zone());
 }
 
 /* As written, this function can only promote jemalloc_zone. */
 static void
-zone_promote(void) {
+zone_promote(void)
+{
 	malloc_zone_t *zone;
 
 	do {
@@ -413,16 +443,17 @@ zone_promote(void) {
 
 JEMALLOC_ATTR(constructor)
 void
-zone_register(void) {
+zone_register(void)
+{
+
 	/*
 	 * If something else replaced the system default zone allocator, don't
 	 * register jemalloc's.
 	 */
 	default_zone = zone_default_get();
 	if (!default_zone->zone_name || strcmp(default_zone->zone_name,
-	    "DefaultMallocZone") != 0) {
+	    "DefaultMallocZone") != 0)
 		return;
-	}
 
 	/*
 	 * The default purgeable zone is created lazily by OSX's libc.  It uses

@@ -1,15 +1,11 @@
 #include "test/jemalloc_test.h"
 
-#ifdef JEMALLOC_FILL
-const char *malloc_conf =
-    "abort:false,junk:false,zero:true";
-#endif
-
 static void
-test_zero(size_t sz_min, size_t sz_max) {
+test_zero(size_t sz_min, size_t sz_max)
+{
 	uint8_t *s;
 	size_t sz_prev, sz, i;
-#define MAGIC	((uint8_t)0x61)
+#define	MAGIC	((uint8_t)0x61)
 
 	sz_prev = 0;
 	s = (uint8_t *)mallocx(sz_min, 0);
@@ -44,21 +40,36 @@ test_zero(size_t sz_min, size_t sz_max) {
 #undef MAGIC
 }
 
-TEST_BEGIN(test_zero_small) {
+TEST_BEGIN(test_zero_small)
+{
+
 	test_skip_if(!config_fill);
 	test_zero(1, SMALL_MAXCLASS-1);
 }
 TEST_END
 
-TEST_BEGIN(test_zero_large) {
+TEST_BEGIN(test_zero_large)
+{
+
 	test_skip_if(!config_fill);
-	test_zero(SMALL_MAXCLASS+1, (1U << (LG_LARGE_MINCLASS+1)));
+	test_zero(SMALL_MAXCLASS+1, large_maxclass);
+}
+TEST_END
+
+TEST_BEGIN(test_zero_huge)
+{
+
+	test_skip_if(!config_fill);
+	test_zero(large_maxclass+1, chunksize*2);
 }
 TEST_END
 
 int
-main(void) {
-	return test(
+main(void)
+{
+
+	return (test(
 	    test_zero_small,
-	    test_zero_large);
+	    test_zero_large,
+	    test_zero_huge));
 }

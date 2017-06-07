@@ -1,8 +1,9 @@
 #include "test/jemalloc_test.h"
 
-#define BILLION	UINT64_C(1000000000)
+#define	BILLION	UINT64_C(1000000000)
 
-TEST_BEGIN(test_nstime_init) {
+TEST_BEGIN(test_nstime_init)
+{
 	nstime_t nst;
 
 	nstime_init(&nst, 42000000043);
@@ -12,7 +13,8 @@ TEST_BEGIN(test_nstime_init) {
 }
 TEST_END
 
-TEST_BEGIN(test_nstime_init2) {
+TEST_BEGIN(test_nstime_init2)
+{
 	nstime_t nst;
 
 	nstime_init2(&nst, 42, 43);
@@ -21,7 +23,8 @@ TEST_BEGIN(test_nstime_init2) {
 }
 TEST_END
 
-TEST_BEGIN(test_nstime_copy) {
+TEST_BEGIN(test_nstime_copy)
+{
 	nstime_t nsta, nstb;
 
 	nstime_init2(&nsta, 42, 43);
@@ -32,7 +35,8 @@ TEST_BEGIN(test_nstime_copy) {
 }
 TEST_END
 
-TEST_BEGIN(test_nstime_compare) {
+TEST_BEGIN(test_nstime_compare)
+{
 	nstime_t nsta, nstb;
 
 	nstime_init2(&nsta, 42, 43);
@@ -66,7 +70,8 @@ TEST_BEGIN(test_nstime_compare) {
 }
 TEST_END
 
-TEST_BEGIN(test_nstime_add) {
+TEST_BEGIN(test_nstime_add)
+{
 	nstime_t nsta, nstb;
 
 	nstime_init2(&nsta, 42, 43);
@@ -85,7 +90,8 @@ TEST_BEGIN(test_nstime_add) {
 }
 TEST_END
 
-TEST_BEGIN(test_nstime_subtract) {
+TEST_BEGIN(test_nstime_subtract)
+{
 	nstime_t nsta, nstb;
 
 	nstime_init2(&nsta, 42, 43);
@@ -104,7 +110,8 @@ TEST_BEGIN(test_nstime_subtract) {
 }
 TEST_END
 
-TEST_BEGIN(test_nstime_imultiply) {
+TEST_BEGIN(test_nstime_imultiply)
+{
 	nstime_t nsta, nstb;
 
 	nstime_init2(&nsta, 42, 43);
@@ -121,7 +128,8 @@ TEST_BEGIN(test_nstime_imultiply) {
 }
 TEST_END
 
-TEST_BEGIN(test_nstime_idivide) {
+TEST_BEGIN(test_nstime_idivide)
+{
 	nstime_t nsta, nstb;
 
 	nstime_init2(&nsta, 42, 43);
@@ -140,7 +148,8 @@ TEST_BEGIN(test_nstime_idivide) {
 }
 TEST_END
 
-TEST_BEGIN(test_nstime_divide) {
+TEST_BEGIN(test_nstime_divide)
+{
 	nstime_t nsta, nstb, nstc;
 
 	nstime_init2(&nsta, 42, 43);
@@ -167,12 +176,15 @@ TEST_BEGIN(test_nstime_divide) {
 }
 TEST_END
 
-TEST_BEGIN(test_nstime_monotonic) {
+TEST_BEGIN(test_nstime_monotonic)
+{
+
 	nstime_monotonic();
 }
 TEST_END
 
-TEST_BEGIN(test_nstime_update) {
+TEST_BEGIN(test_nstime_update)
+{
 	nstime_t nst;
 
 	nstime_init(&nst, 0);
@@ -197,8 +209,10 @@ TEST_BEGIN(test_nstime_update) {
 TEST_END
 
 int
-main(void) {
-	return test(
+main(void)
+{
+
+	return (test(
 	    test_nstime_init,
 	    test_nstime_init2,
 	    test_nstime_copy,
@@ -209,5 +223,5 @@ main(void) {
 	    test_nstime_idivide,
 	    test_nstime_divide,
 	    test_nstime_monotonic,
-	    test_nstime_update);
+	    test_nstime_update));
 }
