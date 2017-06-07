@@ -91,6 +91,18 @@ function readOnly (options) {
     };
   }
 
+  const res = pu.run.arangoshCmd(options, adbInstance, {}, [
+          '--javascript.execute-string',
+          `
+          const users = require("@arangodb/users");
+          users.save('test', '', true);
+          users.grantDatabase('test', '_system', 'ro');
+          users.reload();
+          `
+        ]);
+
+  print(res);
+
   pu.shutdownInstance(adbInstance, options);
 
 
