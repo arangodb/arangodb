@@ -1757,7 +1757,7 @@ class Graph {
 // / @brief was docuBlock JSF_general_graph_connectingEdges
 // //////////////////////////////////////////////////////////////////////////////
 
-  _connectingEdges (vertexExample1, vertexExample2, options) {
+  _getConnectingEdges (vertexExample1, vertexExample2, options) {
     options = options || {};
     if (options.vertex1CollectionRestriction) {
       if (!Array.isArray(options.vertex1CollectionRestriction)) {
