@@ -85,7 +85,9 @@ function agencyTestSuite () {
       res = request({url: agencyLeader + "/_api/agency/" + api,
                      method: "POST", followRedirect: false,
                      body: JSON.stringify(list),
-                     headers: {"Content-Type": "application/json"}});
+                     headers: {"Content-Type": "application/json"},
+                     timeout: 120  /* essentially for the huge trx package
+                                      running under ASAN in the CI */ });
       if(res.statusCode === 307) {
         agencyLeader = res.headers.location;
         var l = 0;
@@ -103,7 +105,7 @@ function agencyTestSuite () {
     try {
       res.bodyParsed = JSON.parse(res.body);
     } catch(e) {
-      require("console").error("Exception in body parse:", res.body, JSON.stringify(e), api, list);
+      require("console").error("Exception in body parse:", res.body, JSON.stringify(e), api, list, JSON.stringify(res));
     }
     return res;
   }
@@ -134,7 +136,7 @@ function agencyTestSuite () {
       let trx = [{}];
       trx[0][key] = "value" + i;
       trxs.push(trx);
-      if (trxs.length >= 200000 || i === start + count - 1) {
+      if (trxs.length >= 200 || i === start + count - 1) {
         res = accessAgency("write", trxs);
         assertEqual(200, res.statusCode);
         trxs = [];
@@ -939,6 +941,19 @@ function agencyTestSuite () {
       require("console").warn("Provoking second log compaction for now with", 
         count3, "keys, from log entry", cur + count + count2, "on.");
       doCountTransactions(count3, count + count2);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Huge transaction package
+////////////////////////////////////////////////////////////////////////////////
+
+    testHugeTransactionPackage : function() {
+      var huge = [];
+      for (var i = 0; i < 20000; ++i) {
+        huge.push([{"a":{"op":"increment"}}]);
+      }
+      writeAndCheck(huge);
+      assertEqual(readAndCheck([["a"]]), [{"a":20000}]);
     }
 
   };
