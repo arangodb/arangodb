@@ -68,7 +68,8 @@ TraversalBlock::TraversalBlock(ExecutionEngine* engine, TraversalNode const* ep)
     _inRegs.emplace_back(it->second.registerId);
   }
 
-  _opts = ep->options();
+  _opts = static_cast<arangodb::traverser::TraverserOptions*>(ep->options());
+  TRI_ASSERT(_opts != nullptr);
   _mmdr.reset(new ManagedDocumentResult(_trx));
 
   if (arangodb::ServerState::instance()->isCoordinator()) {
@@ -192,25 +193,27 @@ int TraversalBlock::shutdown(int errorCode) {
   // We have to clean up the engines in Coordinator Case.
   if (arangodb::ServerState::instance()->isCoordinator()) {
     auto cc = arangodb::ClusterComm::instance();
-    std::string const url(
-        "/_db/" + arangodb::basics::StringUtils::urlEncode(_trx->vocbase()->name()) +
-        "/_internal/traverser/");
-    for (auto const& it : *_engines) {
-      arangodb::CoordTransactionID coordTransactionID = TRI_NewTickServer();
-      std::unordered_map<std::string, std::string> headers;
-      auto res = cc->syncRequest(
-          "", coordTransactionID, "server:" + it.first, RequestType::DELETE_REQ,
-          url + arangodb::basics::StringUtils::itoa(it.second), "", headers,
-          30.0);
-      if (res->status != CL_COMM_SENT) {
-        // Note If there was an error on server side we do not have CL_COMM_SENT
-        std::string message("Could not destroy all traversal engines");
-        if (!res->errorMessage.empty()) {
-          message += std::string(": ") + res->errorMessage;
-        }
-        LOG(ERR) << message;
-      }
-    }
+	if (cc != nullptr) {
+		std::string const url(
+			"/_db/" + arangodb::basics::StringUtils::urlEncode(_trx->vocbase()->name()) +
+			"/_internal/traverser/");
+		for (auto const& it : *_engines) {
+			arangodb::CoordTransactionID coordTransactionID = TRI_NewTickServer();
+			std::unordered_map<std::string, std::string> headers;
+			auto res = cc->syncRequest(
+				"", coordTransactionID, "server:" + it.first, RequestType::DELETE_REQ,
+				url + arangodb::basics::StringUtils::itoa(it.second), "", headers,
+				30.0);
+			if (res->status != CL_COMM_SENT) {
+				// Note If there was an error on server side we do not have CL_COMM_SENT
+				std::string message("Could not destroy all traversal engines");
+				if (!res->errorMessage.empty()) {
+					message += std::string(": ") + res->errorMessage;
+				}
+				LOG(ERR) << message;
+			}
+		}
+	}
   }
 
   return ExecutionBlock::shutdown(errorCode);
@@ -222,7 +225,7 @@ int TraversalBlock::shutdown(int errorCode) {
 /// @brief read more paths
 bool TraversalBlock::morePaths(size_t hint) {
   DEBUG_BEGIN_BLOCK();
-  
+
   freeCaches();
   _posInPaths = 0;
   if (!_traverser->hasMore()) {
@@ -243,6 +246,7 @@ bool TraversalBlock::morePaths(size_t hint) {
 
   TransactionBuilderLeaser tmp(_trx);
   for (size_t j = 0; j < hint; ++j) {
+
     if (!_traverser->next()) {
       // There are no further paths available.
       break;
@@ -301,11 +305,11 @@ void TraversalBlock::initializePaths(AqlItemBlock const* items, size_t pos) {
     // No Initialization required.
     return;
   }
-        
+
   initializeExpressions(items, pos);
 
-  if (!_useRegister) {
-    if (!_usedConstant) {
+  if (!_useRegister) { // using constants
+    if (!_usedConstant) { // already used (where is it set to false?)
       _usedConstant = true;
       auto pos = _vertexId.find('/');
       if (pos == std::string::npos) {
@@ -317,11 +321,12 @@ void TraversalBlock::initializePaths(AqlItemBlock const* items, size_t pos) {
         _traverser->setStartVertex(_vertexId);
       }
     }
-  } else {
+  } else { // using variables
     AqlValue const& in = items->getValueReference(_pos, _reg);
-    if (in.isObject()) {
+	  if (in.isObject()) {
       try {
-        _traverser->setStartVertex(_trx->extractIdString(in.slice()));
+		    _vertexId = _trx->extractIdString(in.slice());
+        _traverser->setStartVertex(_vertexId);
       }
       catch (...) {
         // _id or _key not present... ignore this error and fall through
@@ -363,6 +368,7 @@ AqlItemBlock* TraversalBlock::getSome(size_t,  // atLeast,
     }
 
     // If we get here, we do have _buffer.front()
+	TRI_ASSERT(!_buffer.empty());
     AqlItemBlock* cur = _buffer.front();
     size_t const curRegs = cur->getNrRegs();
 

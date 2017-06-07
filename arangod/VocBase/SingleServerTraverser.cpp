@@ -59,7 +59,7 @@ SingleServerEdgeCursor::SingleServerEdgeCursor(ManagedDocumentResult* mmdr,
     Transaction* trx,
     size_t nrCursors, std::vector<size_t> const* mapping)
     : _trx(trx),
-      _mmdr(mmdr), 
+      _mmdr(mmdr),
       _cursors(),
       _currentCursor(0),
       _currentSubCursor(0),
@@ -231,6 +231,7 @@ void SingleServerTraverser::addEdgeToVelocyPack(VPackSlice edge,
 }
 
 void SingleServerTraverser::setStartVertex(std::string const& v) {
+  _vertices.clear();
   _startIdBuilder->clear();
   _startIdBuilder->add(VPackValue(v));
   VPackSlice idSlice = _startIdBuilder->slice();
