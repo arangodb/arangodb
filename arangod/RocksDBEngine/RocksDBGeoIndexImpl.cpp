@@ -27,6 +27,7 @@
 #include <cmath>
 #include <cstddef>
 #include <iostream>
+#include <limits>
 
 #include "RocksDBEngine/RocksDBGeoIndexImpl.h"
 #include "RocksDBEngine/RocksDBMethods.h"
@@ -398,9 +399,6 @@ void SlotWrite(GeoIx * gix,int slot, GeoCoordinate * gc)
   char data[sizeof (GeoCoordinate)];
   toPersistent(*gc, &data[0]);
   RocksWrite(gix, key, rocksdb::Slice(&data[0], sizeof(GeoCoordinate)));
-
-  GeoCoordinate test;
-  fromPersistent(&data[0],test);
 }
 
 void PotRead(GeoIx * gix, int pot, GeoPot * gp)
@@ -1673,11 +1671,11 @@ int GeoIndex_insert(GeoIdx* gi, GeoCoordinate* c) {
       gsl[j] = GeoMkHilbert(&Xslot);
     }
     for (i = 0; i < (GeoIndexPOTSIZE / 2); i++) {
-      int jj1=100;
+      int jj1=std::numeric_limits<int>::max();
       mid=0x1FFFFFFFFFFFFFll;
       for(j=0;j<GeoIndexPOTSIZE;j++)
       {
-        
+        // some value has to be less than mid or we will end up in the assert
         if(gsl[j]==0xfffffffffffffffful) continue;
         if(gsl[j]<mid)
         {
@@ -1685,6 +1683,7 @@ int GeoIndex_insert(GeoIdx* gi, GeoCoordinate* c) {
           mid=gsl[j];
         }
       }
+      TRI_ASSERT(jj1 != std::numeric_limits<int>::max()); // jj1 -- must have been set
       gsl[jj1]=0xfffffffffffffffful;
     }
     for (i = 0; i < GeoIndexPOTSIZE; i++) {

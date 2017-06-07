@@ -204,7 +204,7 @@ index_t State::logNonBlocking(
 
   try {
     _log.push_back(log_t(idx, term, buf, clientId));  // log to RAM or die
-  } catch (std::bad_alloc const& e) {                 
+  } catch (std::bad_alloc const&) {
     if (leading) {
       LOG_TOPIC(FATAL, Logger::AGENCY)
         << "RAFT leader fails to allocate volatile log entries!"
