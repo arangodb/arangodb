@@ -134,7 +134,7 @@ function agencyTestSuite () {
       let trx = [{}];
       trx[0][key] = "value" + i;
       trxs.push(trx);
-      if (trxs.length >= 200000 || i === start + count - 1) {
+      if (trxs.length >= 200 || i === start + count - 1) {
         res = accessAgency("write", trxs);
         assertEqual(200, res.statusCode);
         trxs = [];
@@ -939,6 +939,19 @@ function agencyTestSuite () {
       require("console").warn("Provoking second log compaction for now with", 
         count3, "keys, from log entry", cur + count + count2, "on.");
       doCountTransactions(count3, count + count2);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Huge transaction package
+////////////////////////////////////////////////////////////////////////////////
+
+    testHugeTransactionPackage : function() {
+      var huge = [];
+      for (var i = 0; i < 20000; ++i) {
+        huge.push([{"a":{"op":"increment"}}]);
+      }
+      writeAndCheck(huge);
+      assertEqual(readAndCheck([["a"]]), [{"a":20000}]);
     }
 
   };
