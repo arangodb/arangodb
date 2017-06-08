@@ -57,7 +57,7 @@ Agent::Agent(config_t const& config)
     _compactor(this),
     _ready(false),
     _preparing(false),
-    _startup(false) {
+    _startup(true) {
   _state.configure(this);
   _constituent.configure(this);
 }
@@ -702,10 +702,11 @@ void Agent::load() {
   }
 
   if (size() > 1) {
-    _startup = true;
     _inception->start();
   } else {
     activateAgency();
+    rebuildDBs();
+    _startup = false;
   }
 }
 
@@ -919,7 +920,7 @@ write_ret_t Agent::write(query_t const& query, bool discardStartup) {
     return write_ret_t(false, leader);
   }
 
-  if (discardStartup) {
+  if (!discardStartup) {
     CONDITION_LOCKER(guard, _waitForCV);
     while (_startup) {
       _waitForCV.wait(100);
@@ -1463,6 +1464,7 @@ Agent& Agent::operator=(VPackSlice const& compaction) {
   _nextCompactionAfter = _commitIndex + _config.compactionStepSize();
 
   return *this;
+  
 }
 
 /// Are we still starting up?
