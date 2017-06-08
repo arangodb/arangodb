@@ -255,6 +255,10 @@ void AgencyFeature::start() {
   }
   LOG_TOPIC(DEBUG, Logger::AGENCY) << "Agency endpoint " << endpoint;
 
+  if (_waitForSync) {
+    _maxAppendSize /= 10;
+  }
+
   _agent.reset(new consensus::Agent(consensus::config_t(
       _size, _poolSize, _minElectionTimeout, _maxElectionTimeout, endpoint,
       _agencyEndpoints, _supervision, _waitForSync, _supervisionFrequency,
