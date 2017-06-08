@@ -698,34 +698,110 @@ function ReplicationSuite() {
         }
       );
     },
+    
+    ////////////////////////////////////////////////////////////////////////////////
+    /// @brief test transactions
+    ////////////////////////////////////////////////////////////////////////////////
+
+    testTransactionInsert: function() {
+      compare(
+        function(state) {
+          db._create(cn);
+
+          db._executeTransaction({
+            collections: {
+              write: cn
+            },
+            action: function(params) {
+              var c = require("internal").db._collection(params.cn);
+
+              for (var i = 0; i < 1000; ++i) {
+                c.save({
+                  "_key": "test" + i
+                });
+              }
+            },
+            params: { cn }
+          });
+
+          state.checksum = collectionChecksum(cn);
+          state.count = collectionCount(cn);
+          assertEqual(1000, state.count);
+        },
+        function(state) {
+          assertEqual(state.count, collectionCount(cn));
+          assertEqual(state.checksum, collectionChecksum(cn));
+        }
+      );
+    },
 
     ////////////////////////////////////////////////////////////////////////////////
     /// @brief test transactions
     ////////////////////////////////////////////////////////////////////////////////
 
-    testTransaction1: function() {
+    testTransactionInsertFail: function() {
       compare(
         function(state) {
-          var c = db._create(cn),
-            i;
+          var c = db._create(cn);
 
           try {
             db._executeTransaction({
               collections: {
                 write: cn
               },
-              action: function() {
-                for (i = 0; i < 1000; ++i) {
+              action: function(params) {
+                var c = require("@arangodb").db._collection(params.cn);
+                for (var i = 0; i < 1000; ++i) {
                   c.save({
                     "_key": "test" + i
                   });
                 }
 
                 throw "rollback!";
-              }
+              },
+              params: { cn }
             });
             fail();
           } catch (err) {}
+
+          state.checksum = collectionChecksum(cn);
+          state.count = collectionCount(cn);
+          assertEqual(0, state.count);
+        },
+        function(state) {
+          assertEqual(state.count, collectionCount(cn));
+          assertEqual(state.checksum, collectionChecksum(cn));
+        }
+      );
+    },
+    
+    ////////////////////////////////////////////////////////////////////////////////
+    /// @brief test transactions
+    ////////////////////////////////////////////////////////////////////////////////
+
+    testTransactionRemove: function() {
+      compare(
+        function(state) {
+          var c = db._create(cn);
+
+          for (var i = 0; i < 1000; ++i) {
+            c.save({
+              "_key": "test" + i
+            });
+          }
+
+          db._executeTransaction({
+            collections: {
+              write: cn
+            },
+            action: function(params) {
+              var c = require("@arangodb").db._collection(params.cn);
+              for (var i = 0; i < 1000; ++i) {
+                c.remove("test" + i);
+              }
+            },
+            params: { cn }
+          });
 
           state.checksum = collectionChecksum(cn);
           state.count = collectionCount(cn);
@@ -742,13 +818,12 @@ function ReplicationSuite() {
     /// @brief test transactions
     ////////////////////////////////////////////////////////////////////////////////
 
-    testTransaction2: function() {
+    testTransactionRemoveFail: function() {
       compare(
         function(state) {
-          var c = db._create(cn),
-            i;
+          var c = db._create(cn);
 
-          for (i = 0; i < 1000; ++i) {
+          for (var i = 0; i < 1000; ++i) {
             c.save({
               "_key": "test" + i
             });
@@ -759,13 +834,15 @@ function ReplicationSuite() {
               collections: {
                 write: cn
               },
-              action: function() {
-                for (i = 0; i < 1000; ++i) {
+              action: function(params) {
+                var c = require("@arangodb").db._collection(params.cn);
+                for (var i = 0; i < 1000; ++i) {
                   c.remove("test" + i);
                 }
-              }
+                throw "peng!";
+              },
+              params: { cn }
             });
-            fail();
           } catch (err) {
 
           }
@@ -785,46 +862,7 @@ function ReplicationSuite() {
     /// @brief test transactions
     ////////////////////////////////////////////////////////////////////////////////
 
-    testTransaction3: function() {
-      compare(
-        function(state) {
-          db._create(cn);
-
-          db._executeTransaction({
-            collections: {
-              write: cn
-            },
-            action: function(params) {
-              var c = require("internal").db._collection(params.cn),
-                i;
-
-              for (i = 0; i < 1000; ++i) {
-                c.save({
-                  "_key": "test" + i
-                });
-              }
-            },
-            params: {
-              "cn": cn
-            },
-          });
-
-          state.checksum = collectionChecksum(cn);
-          state.count = collectionCount(cn);
-          assertEqual(1000, state.count);
-        },
-        function(state) {
-          assertEqual(state.count, collectionCount(cn));
-          assertEqual(state.checksum, collectionChecksum(cn));
-        }
-      );
-    },
-
-    ////////////////////////////////////////////////////////////////////////////////
-    /// @brief test transactions
-    ////////////////////////////////////////////////////////////////////////////////
-
-    testTransaction4: function() {
+    testTransactionMultiOps: function() {
       compare(
         function(state) {
           db._create(cn);
