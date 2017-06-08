@@ -114,8 +114,6 @@ MMFilesFulltextIndex::MMFilesFulltextIndex(TRI_idx_iid_t iid,
   }
 }
 
-
-
 MMFilesFulltextIndex::~MMFilesFulltextIndex() {
   if (_fulltextIndex != nullptr) {
     LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "destroying fulltext index";

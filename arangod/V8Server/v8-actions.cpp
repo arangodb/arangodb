@@ -48,8 +48,6 @@
 #include "VocBase/ticks.h"
 #include "VocBase/vocbase.h"
 
-#include <iostream>
-
 #include <velocypack/Buffer.h>
 #include <velocypack/Builder.h>
 #include <velocypack/Parser.h>

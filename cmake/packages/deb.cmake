@@ -18,7 +18,11 @@ set(CPACK_DEBIAN_PACKAGE_HOMEPAGE ${ARANGODB_URL_INFO_ABOUT})
 set(CPACK_COMPONENTS_ALL debian-extras)
 set(CPACK_GENERATOR "DEB")
 
-set(CPACK_SYSTEMD_FOUND "${SYSTEMD_FOUND}")
+if (SYSTEMD_FOUND)
+  set(CPACK_SYSTEMD_FOUND "1")
+else()
+  set(CPACK_SYSTEMD_FOUND "0")
+endif()
 
 # substitute the package name so debconf works:
 configure_file (
