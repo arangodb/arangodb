@@ -171,7 +171,7 @@ uint64_t RocksDBVPackIndex::HashForKey(const rocksdb::Slice& key) {
 RocksDBVPackIndex::RocksDBVPackIndex(TRI_idx_iid_t iid,
                                      arangodb::LogicalCollection* collection,
                                      arangodb::velocypack::Slice const& info)
-    : RocksDBIndex(iid, collection, info, RocksDBColumnFamily::index()),
+    : RocksDBIndex(iid, collection, info, RocksDBColumnFamily::index(), false),
       _useExpansion(false),
       _allowPartialIndex(true),
       _estimator(nullptr) {
