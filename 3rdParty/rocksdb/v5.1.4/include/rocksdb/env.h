@@ -675,7 +675,6 @@ class WritableFile {
     }
   }
 
- protected:
   /*
    * Pre-allocate space for a file.
    */
@@ -683,6 +682,7 @@ class WritableFile {
     return Status::OK();
   }
 
+ protected:
   size_t preallocation_block_size() { return preallocation_block_size_; }
 
  private:

@@ -31,6 +31,10 @@
 #include "StorageEngine/StorageEngine.h"
 #include "VocBase/AccessMode.h"
 
+#ifdef USE_ENTERPRISE 
+#include "Enterprise/RocksDBEngine/RocksDBEngineEE.h"
+#endif
+
 #include <rocksdb/db.h>
 #include <rocksdb/utilities/transaction_db.h>
 #include <velocypack/Builder.h>
@@ -233,6 +237,16 @@ class RocksDBEngine final : public StorageEngine {
                                       bool wasCleanShutdown, bool isUpgrade);
 
   std::string getCompressionSupport() const;
+
+#ifdef USE_ENTERPRISE
+  void collectEnterpriseOptions(std::shared_ptr<options::ProgramOptions>);
+  void validateEnterpriseOptions(std::shared_ptr<options::ProgramOptions>);
+  void prepareEnterprise();
+  void startEnterprise();
+  void configureEnterpriseRocksDBOptions(rocksdb::Options& options);
+
+  enterprise::RocksDBEngineEEData _eeData;
+#endif
 
  public:
   static std::string const EngineName;

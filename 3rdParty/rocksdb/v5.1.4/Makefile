@@ -300,6 +300,7 @@ EXPOBJECTS = $(EXP_LIB_SOURCES:.cc=.o) $(LIBOBJECTS) $(TESTUTIL)
 
 TESTS = \
 	db_test \
+	db_encryption_test \
 	db_test2 \
 	db_block_cache_test \
 	db_bloom_filter_test \
@@ -967,6 +968,9 @@ slice_transform_test: util/slice_transform_test.o $(LIBOBJECTS) $(TESTHARNESS)
 	$(AM_LINK)
 
 db_test: db/db_test.o db/db_test_util.o $(LIBOBJECTS) $(TESTHARNESS)
+	$(AM_LINK)
+
+db_encryption_test: db/db_encryption_test.o db/db_test_util.o $(LIBOBJECTS) $(TESTHARNESS)
 	$(AM_LINK)
 
 db_test2: db/db_test2.o db/db_test_util.o $(LIBOBJECTS) $(TESTHARNESS)

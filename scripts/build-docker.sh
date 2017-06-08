@@ -39,7 +39,7 @@ if [ ! -e ${BUILDDIR}/.arangodb-docker ]; then
 fi 
 
 # Build jessie package
-docker run -it \
+docker run -i \
     -e GIT_SSH_COMMAND="ssh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no" \
     -v ${ROOTDIR}:/arangodb \
     -v ${ROOTDIR}/build-tmp:/var/tmp \

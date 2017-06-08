@@ -148,11 +148,18 @@ void RocksDBEngine::collectOptions(
   options->addOption("--rocksdb.wal-file-timeout",
                      "timeout after which unused WAL files are deleted",
                      new DoubleParameter(&_pruneWaitTime));
+
+#ifdef USE_ENTERPRISE 
+   collectEnterpriseOptions(options);
+#endif
 }
 
 // validate the storage engine's specific options
-void RocksDBEngine::validateOptions(std::shared_ptr<options::ProgramOptions>) {
+void RocksDBEngine::validateOptions(std::shared_ptr<options::ProgramOptions> options) {
   transaction::Options::setLimits(_maxTransactionSize, _intermediateCommitSize, _intermediateCommitCount);
+#ifdef USE_ENTERPRISE 
+   validateEnterpriseOptions(options);
+#endif
 }
 
 // preparation phase for storage engine. can be used for internal setup.
@@ -165,6 +172,10 @@ void RocksDBEngine::prepare() {
   _basePath = databasePathFeature->directory();
 
   TRI_ASSERT(!_basePath.empty());
+
+#ifdef USE_ENTERPRISE
+  prepareEnterprise();
+#endif
 }
 
 void RocksDBEngine::start() {
@@ -250,6 +261,11 @@ void RocksDBEngine::start() {
   _options.compaction_readahead_size =
       static_cast<size_t>(opts->_compactionReadaheadSize);
 
+#ifdef USE_ENTERPRISE
+  configureEnterpriseRocksDBOptions(_options);
+  startEnterprise();
+#endif
+
   _options.env->SetBackgroundThreads((int)opts->_numThreadsHigh,
                                      rocksdb::Env::Priority::HIGH);
   _options.env->SetBackgroundThreads((int)opts->_numThreadsLow,
@@ -315,6 +331,7 @@ void RocksDBEngine::start() {
     rocksdb::Options testOptions;
     testOptions.create_if_missing = false;
     testOptions.create_missing_column_families = false;
+    testOptions.env = _options.env;
     std::vector<std::string> existingColumnFamilies;
     rocksdb::Status status = rocksdb::DB::ListColumnFamilies(testOptions, _path, &existingColumnFamilies);
     if (!status.ok()) {
