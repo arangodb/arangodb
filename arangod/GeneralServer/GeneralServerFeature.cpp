@@ -46,6 +46,7 @@
 #include "RestHandler/RestAuthHandler.h"
 #include "RestHandler/RestBatchHandler.h"
 #include "RestHandler/RestCursorHandler.h"
+#include "RestHandler/RestDatabaseHandler.h"
 #include "RestHandler/RestDebugHandler.h"
 #include "RestHandler/RestDemoHandler.h"
 #include "RestHandler/RestDocumentHandler.h"
@@ -348,6 +349,10 @@ void GeneralServerFeature::defineHandlers() {
       RestVocbaseBaseHandler::CURSOR_PATH,
       RestHandlerCreator<RestCursorHandler>::createData<aql::QueryRegistry*>,
       queryRegistry);
+  
+  _handlerFactory->addPrefixHandler(
+      RestVocbaseBaseHandler::DATABASE_PATH,
+      RestHandlerCreator<RestDatabaseHandler>::createNoData);
 
   _handlerFactory->addPrefixHandler(
       RestVocbaseBaseHandler::DOCUMENT_PATH,

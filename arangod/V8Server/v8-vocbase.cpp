@@ -2030,9 +2030,7 @@ static void CreateDatabaseCoordinator(
     std::string const idString(StringUtils::itoa(id));
 
     builder.add("id", VPackValue(idString));
-
-    std::string const valueString(TRI_ObjectToString(args[0]));
-    builder.add("name", VPackValue(valueString));
+    builder.add("name", VPackValue(name));
 
     if (args.Length() > 1) {
       VPackBuilder tmpBuilder;
