@@ -485,6 +485,9 @@ void ClusterFeature::start() {
   }
 }
 
+void ClusterFeature::beginShutdown() {
+  ClusterComm::instance()->disable();
+}
 
 void ClusterFeature::stop() {
 
@@ -537,7 +540,6 @@ void ClusterFeature::unprepare() {
   }
 
   if (!_enableCluster) {
-    ClusterComm::instance()->disable();
     ClusterComm::cleanup();
     return;
   }
