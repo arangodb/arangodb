@@ -543,7 +543,7 @@ void Agent::sendAppendEntriesRPC() {
         std::make_shared<std::string>(builder.toJson()), headerFields,
         std::make_shared<AgentCallback>(
           this, followerId, (toLog) ? highest : 0, toLog),
-        std::max(1.0e-3 * toLog * dt.count(), 0.25 * _config.minPing()), true);
+        std::max(1.0e-3 * toLog * dt.count(), _config.minPing()), true);
 
       // _lastSent, _lastHighest: local and single threaded access
       _lastSent[followerId]        = system_clock::now();
