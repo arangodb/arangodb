@@ -647,6 +647,8 @@
 ///   Will be raised when the client could not read data.
 /// - 2100: @LIT{Request aborted}
 ///   Request was aborted.
+/// - 2101: @LIT{Communication was disabled}
+///   Communication was disabled.
 /// - 3000: @LIT{failed to parse manifest file}
 ///   The service manifest file is not well-formed JSON.
 /// - 3001: @LIT{manifest file is invalid}
@@ -3474,6 +3476,16 @@ void TRI_InitializeErrorMessages ();
 ////////////////////////////////////////////////////////////////////////////////
 
 #define TRI_COMMUNICATOR_REQUEST_ABORTED                                  (2100)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 2101: COMMUNICATOR_DISABLED
+///
+/// Communication was disabled
+///
+/// Communication was disabled.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_COMMUNICATOR_DISABLED                                         (2101)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 3000: ERROR_MALFORMED_MANIFEST_FILE

@@ -537,6 +537,7 @@ void ClusterFeature::unprepare() {
   }
 
   if (!_enableCluster) {
+    ClusterComm::instance()->disable();
     ClusterComm::cleanup();
     return;
   }

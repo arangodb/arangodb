@@ -518,6 +518,12 @@ class ClusterComm {
   void addAuthorization(std::unordered_map<std::string, std::string>* headers);
 
   std::string jwt() { return _jwt; };
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief abort and disable all communication 
+  //////////////////////////////////////////////////////////////////////////////
+
+  void disable();
   
  private:
   size_t performSingleRequest(std::vector<ClusterCommRequest>& requests,
@@ -616,6 +622,7 @@ class ClusterComm {
 
   void cleanupAllQueues();
 
+
   //////////////////////////////////////////////////////////////////////////////
   /// @brief activeServerTickets for a list of servers
   //////////////////////////////////////////////////////////////////////////////
@@ -638,6 +645,7 @@ class ClusterComm {
   bool _authenticationEnabled;
   std::string _jwt;
   std::string _jwtAuthorization;
+
 };
 
 ////////////////////////////////////////////////////////////////////////////////
