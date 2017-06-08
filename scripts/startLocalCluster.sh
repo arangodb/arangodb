@@ -20,19 +20,9 @@ printf " # db servers: %s," "$NRDBSERVERS"
 printf " # coordinators: %s," "$NRCOORDINATORS"
 printf " transport: %s\n" "$TRANSPORT"
 
-if [ ! -d arangod ] || [ ! -d arangosh ] || [ ! -d UnitTests ] ; then
-  echo Must be started in the main ArangoDB source directory.
-  exit 1
-fi
-
 if [[ $(( $NRAGENTS % 2 )) == 0 ]]; then
   echo "**ERROR: Number of agents must be odd! Bailing out."
   exit 1
-fi
-
-if [ ! -d arangod ] || [ ! -d arangosh ] || [ ! -d UnitTests ] ; then
-    echo "Must be started in the main ArangoDB source directory! Bailing out."
-    exit 1
 fi
 
 SFRE=1.0
@@ -44,7 +34,6 @@ DB_BASE=$(( $PORT_OFFSET + 8629 ))
 NATH=$(( $NRDBSERVERS + $NRCOORDINATORS + $NRAGENTS ))
 ENDPOINT=[::]
 ADDRESS=[::1]
-
 
 rm -rf cluster
 if [ -d cluster-init ];then
@@ -101,9 +90,9 @@ for aid in `seq 0 $(( $NRAGENTS - 1 ))`; do
         --agency.supervision-grace-period 5.0 \
         --agency.wait-for-sync false \
         --database.directory cluster/data$port \
-        --javascript.app-path ./js/apps \
-        --javascript.startup-directory ./js \
-        --javascript.module-directory ./enterprise/js \
+        --javascript.app-path $SRC_DIR/js/apps \
+        --javascript.startup-directory $SRC_DIR/js \
+        --javascript.module-directory $SRC_DIR/enterprise/js \
         --javascript.v8-contexts 1 \
         --server.endpoint $TRANSPORT://$ENDPOINT:$port \
         --server.statistics false \
@@ -146,8 +135,8 @@ start() {
         --log.level $LOG_LEVEL \
         --server.statistics true \
         --server.threads 5 \
-        --javascript.startup-directory ./js \
-        --javascript.module-directory ./enterprise/js \
+        --javascript.startup-directory $SRC_DIR/js \
+        --javascript.module-directory $SRC_DIR/enterprise/js \
         --javascript.app-path cluster/apps$PORT \
         --log.force-direct true \
         --log.level $LOG_LEVEL_CLUSTER \
@@ -212,12 +201,12 @@ if [ "$SECONDARIES" == "1" ] ; then
             --cluster.my-id $CLUSTER_ID \
             --log.file cluster/$PORT.log \
             --server.statistics true \
-            --javascript.startup-directory ./js \
-            --javascript.module-directory ./enterprise/js \
+            --javascript.startup-directory $SRC_DIR/js \
+            --javascript.module-directory $SRC_DIR/enterprise/js \
             $STORAGE_ENGINE \
             $AUTHENTICATION \
             $SSLKEYFILE \
-            --javascript.app-path ./js/apps \
+            --javascript.app-path $SRC_DIR/js/apps \
             > cluster/$PORT.stdout 2>&1 &
             
             let index=$index+1
