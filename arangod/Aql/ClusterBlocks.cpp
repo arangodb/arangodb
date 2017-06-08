@@ -1177,7 +1177,6 @@ static bool throwExceptionAfterBadSyncRequest(ClusterCommResult* res,
     std::string errorDetailMessage = std::string("(no valid response)");
     if (res->result != nullptr) {
       errorNum = TRI_ERROR_NO_ERROR;
-    } else {
       arangodb::basics::StringBuffer const& responseBodyBuf(res->result->getBody());
       std::shared_ptr<VPackBuilder> builder = VPackParser::fromJson(
           responseBodyBuf.c_str(), responseBodyBuf.length());
