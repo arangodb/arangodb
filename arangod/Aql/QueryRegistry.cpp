@@ -118,8 +118,7 @@ Query* QueryRegistry::open(TRI_vocbase_t* vocbase, QueryId id) {
 
   auto m = _queries.find(vocbase->name());
   if (m == _queries.end()) {
-    m = _queries.emplace(vocbase->name(),
-                         std::unordered_map<QueryId, QueryInfo*>()).first;
+    return nullptr;
   }
   auto q = m->second.find(id);
   if (q == m->second.end()) {
@@ -290,6 +289,10 @@ void QueryRegistry::destroyAll() {
     }
   }
   for (auto& p : allQueries) {
-    destroy(p.first, p.second, TRI_ERROR_SHUTTING_DOWN);
+    try {
+      destroy(p.first, p.second, TRI_ERROR_SHUTTING_DOWN);
+    } catch (...) {
+      // ignore any errors here
+    }
   }
 }

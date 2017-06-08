@@ -24,6 +24,7 @@
 
 #include "RocksDBKeyBounds.h"
 #include "Basics/Exceptions.h"
+#include "RocksDBEngine/RocksDBColumnFamily.h"
 #include "RocksDBEngine/RocksDBCommon.h"
 #include "RocksDBEngine/RocksDBTypes.h"
 
@@ -196,6 +197,28 @@ uint64_t RocksDBKeyBounds::objectId() const {
 
     default:
       THROW_ARANGO_EXCEPTION(TRI_ERROR_TYPE_ERROR);
+  }
+}
+
+rocksdb::ColumnFamilyHandle* RocksDBKeyBounds::columnFamily() const {
+  RocksDBEntryType type = static_cast<RocksDBEntryType>(_internals._buffer[0]);
+  switch (type) {
+    case RocksDBEntryType::Document:
+      return RocksDBColumnFamily::documents();
+    case RocksDBEntryType::PrimaryIndexValue:
+      return RocksDBColumnFamily::primary();
+    case RocksDBEntryType::EdgeIndexValue:
+      return RocksDBColumnFamily::edge();
+    case RocksDBEntryType::IndexValue:
+      return RocksDBColumnFamily::index();
+    case RocksDBEntryType::UniqueIndexValue:
+      return RocksDBColumnFamily::uniqueIndex();
+    case RocksDBEntryType::FulltextIndexValue:
+      return RocksDBColumnFamily::fulltext();
+    case RocksDBEntryType::GeoIndexValue:
+      return RocksDBColumnFamily::geo();
+    default:
+      return RocksDBColumnFamily::other();
   }
 }
 
