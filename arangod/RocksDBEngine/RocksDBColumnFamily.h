@@ -35,7 +35,8 @@ namespace arangodb {
 struct RocksDBColumnFamily {
   friend class RocksDBEngine;
 
-  static constexpr size_t numberOfColumnFamilies = 8;
+  static constexpr size_t minNumberOfColumnFamilies = 8;
+  static constexpr size_t numberOfColumnFamilies = 9;
   
   static rocksdb::ColumnFamilyHandle* other() { return _other; }
   
@@ -53,6 +54,8 @@ struct RocksDBColumnFamily {
 
   static rocksdb::ColumnFamilyHandle* uniqueIndex() { return _uniqueIndex; }
 
+  static rocksdb::ColumnFamilyHandle* views() { return _views; }
+
  private:
   static rocksdb::ColumnFamilyHandle* _other;
   static rocksdb::ColumnFamilyHandle* _documents;
@@ -62,6 +65,7 @@ struct RocksDBColumnFamily {
   static rocksdb::ColumnFamilyHandle* _fulltext;
   static rocksdb::ColumnFamilyHandle* _index;
   static rocksdb::ColumnFamilyHandle* _uniqueIndex;
+  static rocksdb::ColumnFamilyHandle* _views;
   static std::vector<rocksdb::ColumnFamilyHandle*> _allHandles;
 };
 

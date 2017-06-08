@@ -217,6 +217,8 @@ rocksdb::ColumnFamilyHandle* RocksDBKeyBounds::columnFamily() const {
       return RocksDBColumnFamily::fulltext();
     case RocksDBEntryType::GeoIndexValue:
       return RocksDBColumnFamily::geo();
+    case RocksDBEntryType::View:
+      return RocksDBColumnFamily::views();
     default:
       return RocksDBColumnFamily::other();
   }
