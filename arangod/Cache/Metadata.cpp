@@ -31,8 +31,6 @@
 #include <algorithm>
 #include <atomic>
 
-#include <iostream>  // TODO
-
 using namespace arangodb::cache;
 
 Metadata::Metadata()

@@ -22,7 +22,6 @@
 
 #include "RestEngine.h"
 
-#include <iostream>
 #include "GeneralServer/RestHandler.h"
 #include "Logger/Logger.h"
 
