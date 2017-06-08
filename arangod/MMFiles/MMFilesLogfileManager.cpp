@@ -57,14 +57,15 @@ using namespace arangodb::options;
 // the logfile manager singleton
 MMFilesLogfileManager* MMFilesLogfileManager::Instance = nullptr;
 
+namespace {
 // minimum value for --wal.throttle-when-pending
-static inline uint64_t MinThrottleWhenPending() { return 1024 * 1024; }
+static constexpr uint64_t MinThrottleWhenPending() { return 1024 * 1024; }
 
 // minimum value for --wal.sync-interval
-static inline uint64_t MinSyncInterval() { return 5; }
+static constexpr uint64_t MinSyncInterval() { return 5; }
 
 // minimum value for --wal.logfile-size
-static inline uint32_t MinFileSize() {
+static constexpr uint32_t MinFileSize() {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   // this allows testing with smaller logfile-sizes
   return 1 * 1024 * 1024;
@@ -74,15 +75,16 @@ static inline uint32_t MinFileSize() {
 }
 
 // get the maximum size of a logfile entry
-static inline uint32_t MaxEntrySize() {
+static constexpr uint32_t MaxEntrySize() {
   return 2 << 30;  // 2 GB
 }
 
 // minimum number of slots
-static inline uint32_t MinSlots() { return 1024 * 8; }
+static constexpr uint32_t MinSlots() { return 1024 * 8; }
 
 // maximum number of slots
-static inline uint32_t MaxSlots() { return 1024 * 1024 * 16; }
+static constexpr uint32_t MaxSlots() { return 1024 * 1024 * 16; }
+}
 
 // create the logfile manager
 MMFilesLogfileManager::MMFilesLogfileManager(ApplicationServer* server)
@@ -287,7 +289,7 @@ void MMFilesLogfileManager::start() {
 
   if (_directory.empty()) {
     LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << "no directory specified for WAL logfiles. Please use the "
-                  "--wal.directory option";
+                  "'--wal.directory' option";
     FATAL_ERROR_EXIT();
   }
 
@@ -1535,8 +1537,25 @@ MMFilesLogfileManagerState MMFilesLogfileManager::state() {
   MMFilesLogfileManagerState state;
 
   // now fill the state
-  _slots->statistics(state.lastAssignedTick, state.lastCommittedTick,
-                     state.lastCommittedDataTick, state.numEvents, state.numEventsSync);
+  while (true) {
+    _slots->statistics(state.lastAssignedTick, state.lastCommittedTick,
+                      state.lastCommittedDataTick, state.numEvents, state.numEventsSync);
+
+    // check if lastCommittedTick is still 0. this will be the case directly
+    // after server start. in this case, we need to wait for the server to write
+    // and sync at least one WAL entry so the tick increases beyond 0
+    if (state.lastCommittedTick != 0) {
+      break;
+    }
+
+    // don't hang forever on shutdown
+    if (application_features::ApplicationServer::isStopping()) {
+      break;
+    }
+    usleep(10000);
+  }
+  TRI_ASSERT(state.lastCommittedTick > 0);
+
   state.timeString = utilities::timeString();
 
   return state;
@@ -2121,6 +2140,10 @@ int MMFilesLogfileManager::inspectLogfiles() {
 
   // update the tick with the max tick we found in the WAL
   TRI_UpdateTickServer(_recoverState->lastTick);
+
+  TRI_ASSERT(_slots != nullptr);
+  // set the last ticks we found in existing logfile data
+  _slots->setLastTick(_recoverState->lastTick);
     
   // use maximum revision value found from WAL to adjust HLC value
   // should it be lower
