@@ -1029,7 +1029,7 @@ void Agent::run() {
       sendAppendEntriesRPC();
 
       // Don't panic
-      _appendCV.wait(10);
+      _appendCV.wait(1.0e-1*_config.minPing());
 
       // Detect faulty agent and replace
       // if possible and only if not already activating
