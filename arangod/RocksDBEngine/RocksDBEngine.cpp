@@ -102,6 +102,7 @@ rocksdb::ColumnFamilyHandle* RocksDBColumnFamily::_fulltext(nullptr);
 rocksdb::ColumnFamilyHandle* RocksDBColumnFamily::_other(nullptr);
 rocksdb::ColumnFamilyHandle* RocksDBColumnFamily::_index(nullptr);
 rocksdb::ColumnFamilyHandle* RocksDBColumnFamily::_uniqueIndex(nullptr);
+rocksdb::ColumnFamilyHandle* RocksDBColumnFamily::_views(nullptr);
 std::vector<rocksdb::ColumnFamilyHandle*> RocksDBColumnFamily::_allHandles;
 
 // create the storage engine
@@ -323,10 +324,11 @@ void RocksDBEngine::start() {
   cfOptions2.comparator = _vpackCmp.get();
   columFamilies.emplace_back("IndexValue", cfOptions2); // 6
   columFamilies.emplace_back("UniqueIndexValue", cfOptions2);// 7
+  columFamilies.emplace_back("Views", cfOptions2);// 8
   // DO NOT FORGET TO DESTROY THE CFs ON CLOSE
 
   std::vector<rocksdb::ColumnFamilyHandle*> cfHandles;
-  size_t const numberOfColumnFamilies = RocksDBColumnFamily::numberOfColumnFamilies;
+  size_t const numberOfColumnFamilies = RocksDBColumnFamily::minNumberOfColumnFamilies;
   {
     rocksdb::Options testOptions;
     testOptions.create_if_missing = false;
@@ -401,6 +403,7 @@ void RocksDBEngine::start() {
   RocksDBColumnFamily::_fulltext = cfHandles[5];
   RocksDBColumnFamily::_index = cfHandles[6];
   RocksDBColumnFamily::_uniqueIndex = cfHandles[7];
+  RocksDBColumnFamily::_views = cfHandles[8];
   RocksDBColumnFamily::_allHandles = cfHandles;
   TRI_ASSERT(RocksDBColumnFamily::_other->GetID() == 0);
 
