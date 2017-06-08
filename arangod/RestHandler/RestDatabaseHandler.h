@@ -26,7 +26,7 @@
 #include "RestHandler/RestVocbaseBaseHandler.h"
 
 namespace arangodb {
-  class RestDatabaseHandler : public arangodb::RestVocbaseBaseHandler {
+class RestDatabaseHandler : public arangodb::RestVocbaseBaseHandler {
  public:
   RestDatabaseHandler(GeneralRequest*, GeneralResponse*);
 
@@ -34,8 +34,8 @@ namespace arangodb {
   char const* name() const override final { return "RestDatabaseHandler"; }
   bool isDirect() const override { return true; }
   RestStatus execute() override;
-  
-private:
+
+ private:
   RestStatus getDatabases();
   RestStatus createDatabase();
   RestStatus deleteDatabase();
