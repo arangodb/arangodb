@@ -57,7 +57,7 @@ Agent::Agent(config_t const& config)
     _compactor(this),
     _ready(false),
     _preparing(false),
-    _startup(false) {
+    _startup(true) {
   _state.configure(this);
   _constituent.configure(this);
 }
@@ -702,9 +702,10 @@ void Agent::load() {
   }
 
   if (size() > 1) {
-    _startup = true;
     _inception->start();
   } else {
+    rebuildDBs();
+    _startup = false;
     activateAgency();
   }
 }
@@ -766,6 +767,9 @@ trans_ret_t Agent::transact(query_t const& queries) {
       _waitForCV.wait(100);
       MUTEX_LOCKER(ioLocker, _ioLock);
       _startup = (_commitIndex != _state.lastIndex());
+      if (!_startup) {
+        _spearhead = _readDB;
+      }
     }
   }
   
@@ -829,6 +833,9 @@ trans_ret_t Agent::transient(query_t const& queries) {
       _waitForCV.wait(100);
       MUTEX_LOCKER(ioLocker, _ioLock);
       _startup = (_commitIndex != _state.lastIndex());
+      if (!_startup) {
+        _spearhead = _readDB;
+      }
     }
   }
   
@@ -919,12 +926,15 @@ write_ret_t Agent::write(query_t const& query, bool discardStartup) {
     return write_ret_t(false, leader);
   }
 
-  if (discardStartup) {
+  if (!discardStartup) {
     CONDITION_LOCKER(guard, _waitForCV);
     while (_startup) {
       _waitForCV.wait(100);
       MUTEX_LOCKER(ioLocker, _ioLock);
       _startup = (_commitIndex != _state.lastIndex());
+      if (!_startup) {
+        _spearhead = _readDB;
+      }
     }
   }
 
@@ -993,6 +1003,9 @@ read_ret_t Agent::read(query_t const& query) {
       _waitForCV.wait(100);
       MUTEX_LOCKER(ioLocker, _ioLock);
       _startup = (_commitIndex != _state.lastIndex());
+      if (!_startup) {
+        _spearhead = _readDB;
+      }
     }
   }
 
@@ -1463,6 +1476,7 @@ Agent& Agent::operator=(VPackSlice const& compaction) {
   _nextCompactionAfter = _commitIndex + _config.compactionStepSize();
 
   return *this;
+  
 }
 
 /// Are we still starting up?
