@@ -84,11 +84,16 @@ void AqlFeature::stop() {
     _isStopped = true;  // prevent new AQL queries from being launched
   }
   LOG_TOPIC(DEBUG, Logger::QUERIES) << "AQL feature stopped";
-  QueryRegistryFeature::QUERY_REGISTRY->destroyAll();
-  TraverserEngineRegistryFeature::TRAVERSER_ENGINE_REGISTRY->destroyAll();
 
   // Wait until all AQL queries are done
   while (true) {
+    try {
+      QueryRegistryFeature::QUERY_REGISTRY->destroyAll();
+      TraverserEngineRegistryFeature::TRAVERSER_ENGINE_REGISTRY->destroyAll();
+    } catch (...) {
+      // ignore errors here. if it fails, we'll try again in next round
+    }
+
     size_t m, n, o;
     {
       MUTEX_LOCKER(locker, AqlFeature::_aqlFeatureMutex);
