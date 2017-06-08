@@ -165,6 +165,7 @@
     * [Hash Cache Options](Administration/Configuration/Cache.md)
     * [Asynchronous Tasks](Administration/Configuration/Asynchronous.md)
   * [Durability](Administration/Durability.md)
+  * [Encryption](Administration/Encryption/README.md)
   * [Replication](Administration/Replication/README.md)
     * [Asynchronous Replication](Administration/Replication/Asynchronous/README.md)
       * [Components](Administration/Replication/Asynchronous/Components.md)
