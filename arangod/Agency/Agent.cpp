@@ -919,7 +919,7 @@ write_ret_t Agent::write(query_t const& query, bool discardStartup) {
     return write_ret_t(false, leader);
   }
 
-  if (!discardStartup) {
+  if (discardStartup) {
     CONDITION_LOCKER(guard, _waitForCV);
     while (_startup) {
       _waitForCV.wait(100);
