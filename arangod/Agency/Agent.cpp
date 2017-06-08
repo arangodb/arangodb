@@ -543,7 +543,7 @@ void Agent::sendAppendEntriesRPC() {
         std::make_shared<std::string>(builder.toJson()), headerFields,
         std::make_shared<AgentCallback>(
           this, followerId, (toLog) ? highest : 0, toLog),
-        std::max(1.0e-3 * toLog * dt.count(), 0.25 * _config.minPing()), true);
+        std::max(1.0e-3 * toLog * dt.count(), _config.minPing()), true);
 
       // _lastSent, _lastHighest: local and single threaded access
       _lastSent[followerId]        = system_clock::now();
@@ -1029,7 +1029,7 @@ void Agent::run() {
       sendAppendEntriesRPC();
 
       // Don't panic
-      _appendCV.wait(1.0e-1*_config.minPing());
+      _appendCV.wait(static_cast<uint64_t>(1.0e-1*_config.minPing()));
 
       // Detect faulty agent and replace
       // if possible and only if not already activating
