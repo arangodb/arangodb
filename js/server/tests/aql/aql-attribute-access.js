@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false, maxlen: 700 */
-/*global assertEqual, AQL_EXECUTE */
+/*global assertEqual, AQL_EXECUTE, AQL_EXPLAIN */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief tests for query language, attribute accesses
@@ -29,6 +29,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 var jsunity = require("jsunity");
+var db = require("internal").db;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite
@@ -36,12 +37,12 @@ var jsunity = require("jsunity");
 
 function attributeAccessTestSuite () {
   var values = [
-    { name: "sir alfred", age: 60, loves: [ "lettuce", "flowers" ] }, 
-    { person: { name: "gadgetto", age: 50, loves: "gadgets" } }, 
-    { name: "everybody", loves: "sunshine" }, 
+    { name: "sir alfred", age: 60, loves: [ "lettuce", "flowers" ] },
+    { person: { name: "gadgetto", age: 50, loves: "gadgets" } },
+    { name: "everybody", loves: "sunshine" },
     { name: "judge", loves: [ "order", "policing", "weapons" ] },
     "someone"
-  ]; 
+  ];
 
   return {
 
@@ -144,11 +145,87 @@ function attributeAccessTestSuite () {
   };
 }
 
+
+
+function nestedAttributeAccessTestSuite () {
+  var values = [
+    {'whichOne' : 1, 'foo bar' : 'searchvalue'},
+    {'whichOne' : 2, 'foo.bar' : 'searchvalue'},
+    {'whichOne' : 3, 'foo': {'bar': 'searchvalue'}}
+  ];
+  var cn = "testcol";
+  var c;
+  return {
+
+    ////////////////////////////////////////////////////////////////////////////////
+    /// @brief set up
+    ////////////////////////////////////////////////////////////////////////////////
+
+    setUp : function () {
+      c = db._create(cn);
+      var i;
+      for (i = 0; i < 3 ; i ++) {
+        c.save(values[i]);
+      }
+    },
+
+    ////////////////////////////////////////////////////////////////////////////////
+    /// @brief tear down
+    ////////////////////////////////////////////////////////////////////////////////
+
+    tearDown : function () {
+      db._drop(cn);
+    },
+
+    ////////////////////////////////////////////////////////////////////////////////
+    /// @brief test direct access
+    ////////////////////////////////////////////////////////////////////////////////
+
+    testDirectAccess : function () {
+      var queryRes = [
+        { 'xpRes': 3, 'q': "FOR item IN @@cn FILTER item.foo.bar == 'searchvalue' RETURN item.whichOne" },
+        { 'xpRes': 2, 'q': "FOR item IN @@cn FILTER item.`foo.bar` == 'searchvalue' RETURN item.whichOne" },
+        { 'xpRes': 1, 'q': "FOR item IN @@cn FILTER item.`foo bar` == 'searchvalue' RETURN item.whichOne" }
+
+      ];
+
+      var j;
+      for (j = 0; j < queryRes.length; j ++) {
+        var result = AQL_EXECUTE(queryRes[j].q, {'@cn': cn});
+        assertEqual(queryRes[j].xpRes, result.json[0]);
+      }
+    },
+
+    testDirectAccessIndexed : function () {
+      var queryRes = [
+        { 'xpRes': 3, 'q': "FOR item IN @@cn FILTER item.foo.bar == 'searchvalue' RETURN item.whichOne" },
+        { 'xpRes': 2, 'q': "FOR item IN @@cn FILTER item.`foo.bar` == 'searchvalue' RETURN item.whichOne" },
+        { 'xpRes': 1, 'q': "FOR item IN @@cn FILTER item.`foo bar` == 'searchvalue' RETURN item.whichOne" }
+      ];
+      c.ensureIndex({ type: "hash", fields: [ "foo.bar" ], sparse: true });
+      // TODO: not yet implemented:   c.ensureIndex({ type: "hash", fields: [ "`foo.bar`" ], sparse: true });
+      c.ensureIndex({ type: "hash", fields: [ "foo bar" ], sparse: true });
+
+      var j;
+      for (j = 0; j < queryRes.length; j ++) {
+        var plan = AQL_EXPLAIN(queryRes[j].q, {'@cn': cn});
+        // TODO: not yet implemented for #1:
+        if (j !== 1) {
+          assertEqual(plan.plan.nodes[1].type, 'IndexNode');
+        }
+        var result = AQL_EXECUTE(queryRes[j].q, {'@cn': cn});
+        assertEqual(queryRes[j].xpRes, result.json[0]);
+      }
+    }
+  };
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief executes the test suite
 ////////////////////////////////////////////////////////////////////////////////
 
 jsunity.run(attributeAccessTestSuite);
+jsunity.run(nestedAttributeAccessTestSuite);
 
 return jsunity.done();
 
