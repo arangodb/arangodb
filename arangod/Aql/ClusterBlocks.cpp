@@ -1174,7 +1174,6 @@ static bool throwExceptionAfterBadSyncRequest(ClusterCommResult* res,
 
 
     int errorNum = TRI_ERROR_INTERNAL;
-    std::string errorDetailMessage = std::string("(no valid response)");
     if (res->result != nullptr) {
       errorNum = TRI_ERROR_NO_ERROR;
       arangodb::basics::StringBuffer const& responseBodyBuf(res->result->getBody());
