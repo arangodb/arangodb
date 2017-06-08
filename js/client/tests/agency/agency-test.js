@@ -86,7 +86,7 @@ function agencyTestSuite () {
                      method: "POST", followRedirect: false,
                      body: JSON.stringify(list),
                      headers: {"Content-Type": "application/json"},
-                     timeout: 120  /* essentially for the huge trx package
+                     timeout: 240  /* essentially for the huge trx package
                                       running under ASAN in the CI */ });
       if(res.statusCode === 307) {
         agencyLeader = res.headers.location;

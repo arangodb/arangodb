@@ -55,8 +55,6 @@ namespace velocypack {
 class Builder;
 }
 
-class QueryRegistryFeature;
-
 namespace aql {
 
 struct AstNode;
@@ -341,8 +339,6 @@ class Query {
  
   /// @brief query start time
   double _startTime;
-
-  QueryRegistryFeature const* _queryRegistry;
 
   /// @brief the query part
   QueryPart const _part;

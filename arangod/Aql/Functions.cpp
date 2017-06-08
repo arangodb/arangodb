@@ -28,6 +28,7 @@
 #include <velocypack/Iterator.h>
 #include <velocypack/velocypack-aliases.h>
 
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/Function.h"
 #include "Aql/Query.h"
 #include "Basics/Exceptions.h"
@@ -1758,9 +1759,10 @@ AqlValue Functions::Sleep(arangodb::aql::Query* query,
 
     if (query->killed()) {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_QUERY_KILLED);
+    } else if (application_features::ApplicationServer::isStopping()) {
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_SHUTTING_DOWN);
     }
   }
-
   return AqlValue(arangodb::basics::VelocyPackHelper::NullValue());
 }
 

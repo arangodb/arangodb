@@ -274,6 +274,7 @@
     "SIMPLE_CLIENT_COULD_NOT_WRITE" : { "code" : 2002, "message" : "could not write to server" },
     "SIMPLE_CLIENT_COULD_NOT_READ" : { "code" : 2003, "message" : "could not read from server" },
     "COMMUNICATOR_REQUEST_ABORTED" : { "code" : 2100, "message" : "Request aborted" },
+    "COMMUNICATOR_DISABLED"        : { "code" : 2101, "message" : "Communication was disabled" },
     "ERROR_MALFORMED_MANIFEST_FILE" : { "code" : 3000, "message" : "failed to parse manifest file" },
     "ERROR_INVALID_SERVICE_MANIFEST" : { "code" : 3001, "message" : "manifest file is invalid" },
     "ERROR_SERVICE_FILES_MISSING"  : { "code" : 3002, "message" : "service files missing" },

@@ -202,15 +202,15 @@ void RocksDBOptionFeature::collectOptions(
 
   options->addOption("--rocksdb.level0-compaction-trigger",
                      "number of level-0 files that triggers a compaction",
-                     new UInt64Parameter(&_level0CompactionTrigger));
+                     new Int64Parameter(&_level0CompactionTrigger));
 
   options->addOption("--rocksdb.level0-slowdown-trigger",
                      "number of level-0 files that triggers a write slowdown",
-                     new UInt64Parameter(&_level0SlowdownTrigger));
+                     new Int64Parameter(&_level0SlowdownTrigger));
 
   options->addOption("--rocksdb.level0-stop-trigger",
                      "number of level-0 files that triggers a full write stall",
-                     new UInt64Parameter(&_level0StopTrigger));
+                     new Int64Parameter(&_level0StopTrigger));
 
   options->addOption(
       "--rocksdb.num-threads-priority-high",

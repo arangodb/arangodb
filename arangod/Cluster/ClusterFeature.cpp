@@ -485,6 +485,9 @@ void ClusterFeature::start() {
   }
 }
 
+void ClusterFeature::beginShutdown() {
+  ClusterComm::instance()->disable();
+}
 
 void ClusterFeature::stop() {
 

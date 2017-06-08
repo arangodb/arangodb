@@ -36,6 +36,10 @@
 
 #include <iosfwd>
 
+namespace rocksdb {
+class ColumnFamilyHandle;
+}
+
 namespace arangodb {
 
 class RocksDBKeyBounds {
@@ -169,6 +173,17 @@ class RocksDBKeyBounds {
   rocksdb::Slice end() const {
     return _internals.end();
   }
+
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief Returns the column family from this Bound
+  ///
+  /// All bounds iterators need to iterate over the correct column families
+  /// with this helper function it is made sure that correct column family
+  /// for bound is used.
+  //////////////////////////////////////////////////////////////////////////////
+
+  rocksdb::ColumnFamilyHandle* columnFamily() const;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Returns the object ID for these bounds
