@@ -82,6 +82,20 @@ void MMFilesWalSlots::statistics(MMFilesWalSlot::TickType& lastAssignedTick,
   numEvents = _numEvents;
   numEventsSync = _numEventsSync;
 }
+  
+/// @brief initially set the last ticks on start
+void MMFilesWalSlots::setLastTick(MMFilesWalSlot::TickType const& tick) {
+  MUTEX_LOCKER(mutexLocker, _lock);
+  if (tick > _lastAssignedTick) {
+    _lastAssignedTick = tick;
+  }
+  if (tick > _lastCommittedTick) {
+    _lastCommittedTick = tick;
+  }
+  if (tick > _lastCommittedDataTick) {
+    _lastCommittedDataTick = tick;
+  }
+}
 
 /// @brief execute a flush operation
 int MMFilesWalSlots::flush(bool waitForSync) {
