@@ -30,7 +30,6 @@
 #include "RestServer/QueryRegistryFeature.h"
 #include "RestServer/TraverserEngineRegistryFeature.h"
 
-
 using namespace arangodb;
 using namespace arangodb::application_features;
 
@@ -68,14 +67,13 @@ AqlFeature* AqlFeature::lease() {
 void AqlFeature::unlease() {
   MUTEX_LOCKER(locker, AqlFeature::_aqlFeatureMutex);
   AqlFeature* aql = AqlFeature::_AQL;
-  if (aql == nullptr) {
-    return;
-  }
+  TRI_ASSERT(aql != nullptr);
   --aql->_numberLeases;
 }
 
 void AqlFeature::start() {
   MUTEX_LOCKER(locker, AqlFeature::_aqlFeatureMutex);
+  TRI_ASSERT(_AQL == nullptr);
   _AQL = this;
   LOG_TOPIC(DEBUG, Logger::QUERIES) << "AQL feature started";
 }

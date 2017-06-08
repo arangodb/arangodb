@@ -23,7 +23,6 @@
 
 #include "Query.h"
 
-#include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/AqlItemBlock.h"
 #include "Aql/AqlTransaction.h"
 #include "Aql/ExecutionBlock.h"
@@ -43,7 +42,6 @@
 #include "Cluster/ServerState.h"
 #include "Logger/Logger.h"
 #include "RestServer/AqlFeature.h"
-#include "RestServer/QueryRegistryFeature.h"
 #include "StorageEngine/TransactionState.h"
 #include "Transaction/Methods.h"
 #include "Transaction/StandaloneContext.h"
@@ -90,7 +88,6 @@ Query::Query(bool contextOwnedByExterior, TRI_vocbase_t* vocbase,
       _trx(nullptr),
       _warnings(),
       _startTime(TRI_microtime()),
-      _queryRegistry(application_features::ApplicationServer::getFeature<arangodb::QueryRegistryFeature>("QueryRegistry")),
       _part(part),
       _contextOwnedByExterior(contextOwnedByExterior),
       _killed(false),
@@ -170,7 +167,6 @@ Query::Query(bool contextOwnedByExterior, TRI_vocbase_t* vocbase,
       _trx(nullptr),
       _warnings(),
       _startTime(TRI_microtime()),
-      _queryRegistry(application_features::ApplicationServer::getFeature<arangodb::QueryRegistryFeature>("QueryRegistry")),
       _part(part),
       _contextOwnedByExterior(contextOwnedByExterior),
       _killed(false),
