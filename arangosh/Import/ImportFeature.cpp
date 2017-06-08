@@ -235,20 +235,20 @@ void ImportFeature::start() {
   if (_typeImport == "auto") {
     std::regex re = std::regex(".*?\\.([a-zA-Z]+)", std::regex::ECMAScript);
     std::smatch match;
-    if (!std::regex_match(_filename, match, re)) {
-      LOG_TOPIC(FATAL, arangodb::Logger::FIXME)
-          << "Cannot auto-detect file type from filename '" << _filename << "'";
-      FATAL_ERROR_EXIT();
-    }
-
-    std::string extension = match[1].str();
-    if (extension == "json" || extension == "jsonl" || extension == "csv" ||
-        extension == "tsv") {
-      _typeImport = extension;
+    if (std::regex_match(_filename, match, re)) {
+      std::string extension = StringUtils::tolower(match[1].str());
+      if (extension == "json" || extension == "jsonl" || extension == "csv" ||
+          extension == "tsv") {
+        _typeImport = extension;
+      } else {
+        LOG_TOPIC(FATAL, arangodb::Logger::FIXME)
+            << "Unsupported file extension '" << extension << "'";
+        FATAL_ERROR_EXIT();
+      }
     } else {
-      LOG_TOPIC(FATAL, arangodb::Logger::FIXME)
-          << "Unsupported file extension '" << extension << "'";
-      FATAL_ERROR_EXIT();
+      LOG_TOPIC(WARN, arangodb::Logger::FIXME)
+          << "Unable to auto-detect file type from filename '" << _filename << "'. using filetype 'json'";
+      _typeImport = "json";
     }
   }
 
