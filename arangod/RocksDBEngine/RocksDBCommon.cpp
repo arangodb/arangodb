@@ -214,8 +214,8 @@ std::size_t countKeyRange(rocksdb::DB* db, rocksdb::ReadOptions const& opts,
 Result removeLargeRange(rocksdb::TransactionDB* db,
                         RocksDBKeyBounds const& bounds) {
   LOG_TOPIC(DEBUG, Logger::FIXME) << "removing large range: " << bounds;
+  rocksdb::ColumnFamilyHandle* handle = bounds.columnFamily();
   try {
-    rocksdb::ColumnFamilyHandle* handle = bounds.columnFamily();
     // delete files in range lower..upper
     rocksdb::Slice lower(bounds.start());
     rocksdb::Slice upper(bounds.end());
@@ -232,28 +232,46 @@ Result removeLargeRange(rocksdb::TransactionDB* db,
 
     // go on and delete the remaining keys (delete files in range does not
     // necessarily find them all, just complete files)
-    rocksdb::Comparator const* cmp = db->GetOptions().comparator;
+    rocksdb::Comparator const* cmp = handle->GetComparator();
     rocksdb::WriteBatch batch;
     rocksdb::ReadOptions readOptions;
     readOptions.fill_cache = false;
-    std::unique_ptr<rocksdb::Iterator> it(db->NewIterator(readOptions));
+    std::unique_ptr<rocksdb::Iterator> it(db->NewIterator(readOptions, handle));
 
     // TODO: split this into multiple batches if batches get too big
     it->Seek(lower);
+    size_t counter = 0;
     while (it->Valid() && cmp->Compare(it->key(), upper) < 0) {
+      TRI_ASSERT(cmp->Compare(it->key(), lower) > 0);
+      counter++;
       batch.Delete(it->key());
       it->Next();
+      if (counter == 1000) {
+        LOG_TOPIC(DEBUG, Logger::FIXME) << "Intermediate delete write";
+        // Persist deletes all 1000 documents
+        rocksdb::Status status = db->Write(rocksdb::WriteOptions(), &batch);
+        if (!status.ok()) {
+          LOG_TOPIC(WARN, arangodb::Logger::FIXME)
+              << "RocksDB key deletion failed: " << status.ToString();
+          return TRI_ERROR_INTERNAL;
+        }
+        batch.Clear();
+        counter = 0;
+      }
     }
 
-    // now apply deletion batch
-    rocksdb::Status status = db->Write(rocksdb::WriteOptions(), &batch);
+    if (counter > 0) {
+      LOG_TOPIC(DEBUG, Logger::FIXME) << "Remove large batch from bounds";
+      // We still have sth to write
+      // now apply deletion batch
+      rocksdb::Status status = db->Write(rocksdb::WriteOptions(), &batch);
 
-    if (!status.ok()) {
-      LOG_TOPIC(WARN, arangodb::Logger::FIXME)
-          << "RocksDB key deletion failed: " << status.ToString();
-      return TRI_ERROR_INTERNAL;
+      if (!status.ok()) {
+        LOG_TOPIC(WARN, arangodb::Logger::FIXME)
+            << "RocksDB key deletion failed: " << status.ToString();
+        return TRI_ERROR_INTERNAL;
+      }
     }
-
     return TRI_ERROR_NO_ERROR;
   } catch (arangodb::basics::Exception const& ex) {
     LOG_TOPIC(ERR, arangodb::Logger::FIXME)
