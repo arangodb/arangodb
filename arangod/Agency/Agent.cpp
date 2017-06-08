@@ -704,9 +704,9 @@ void Agent::load() {
   if (size() > 1) {
     _inception->start();
   } else {
-    activateAgency();
     rebuildDBs();
     _startup = false;
+    activateAgency();
   }
 }
 
@@ -767,6 +767,9 @@ trans_ret_t Agent::transact(query_t const& queries) {
       _waitForCV.wait(100);
       MUTEX_LOCKER(ioLocker, _ioLock);
       _startup = (_commitIndex != _state.lastIndex());
+      if (!_startup) {
+        _spearhead = _readDB;
+      }
     }
   }
   
@@ -830,6 +833,9 @@ trans_ret_t Agent::transient(query_t const& queries) {
       _waitForCV.wait(100);
       MUTEX_LOCKER(ioLocker, _ioLock);
       _startup = (_commitIndex != _state.lastIndex());
+      if (!_startup) {
+        _spearhead = _readDB;
+      }
     }
   }
   
@@ -926,6 +932,9 @@ write_ret_t Agent::write(query_t const& query, bool discardStartup) {
       _waitForCV.wait(100);
       MUTEX_LOCKER(ioLocker, _ioLock);
       _startup = (_commitIndex != _state.lastIndex());
+      if (!_startup) {
+        _spearhead = _readDB;
+      }
     }
   }
 
@@ -994,6 +1003,9 @@ read_ret_t Agent::read(query_t const& query) {
       _waitForCV.wait(100);
       MUTEX_LOCKER(ioLocker, _ioLock);
       _startup = (_commitIndex != _state.lastIndex());
+      if (!_startup) {
+        _spearhead = _readDB;
+      }
     }
   }
 
