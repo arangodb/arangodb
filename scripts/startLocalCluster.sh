@@ -35,7 +35,7 @@ NATH=$(( $NRDBSERVERS + $NRCOORDINATORS + $NRAGENTS ))
 ENDPOINT=[::]
 ADDRESS=[::1]
 
-#rm -rf cluster
+rm -rf cluster
 if [ -d cluster-init ];then
   cp -a cluster-init cluster
 fi
