@@ -76,7 +76,7 @@ bool doSslHandshake(T& socket) {
       // check if we have spent more than x seconds handshaking and then abort
       TRI_ASSERT(start != 0.0);
 
-      if (TRI_microtime() - start >= 10000) {
+      if (TRI_microtime() - start >= 3) {
 	ec.assign(boost::asio::error::connection_reset,
 	    boost::system::generic_category());
 	LOG_TOPIC(DEBUG, Logger::COMMUNICATION) << "forcefully shutting down connection after wait time";

@@ -351,7 +351,6 @@ class Agent : public arangodb::Thread,
   /// @brief Agent is ready for RAFT
   std::atomic<bool> _ready;
   std::atomic<bool> _preparing;
-  std::atomic<bool> _startup;
 
   /// @brief Keep track of when I last took on leadership
   TimePoint _leaderSince;

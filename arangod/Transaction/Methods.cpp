@@ -1534,10 +1534,16 @@ OperationResult transaction::Methods::insertLocal(
             }
             if (!replicationWorked) {
               auto const& followerInfo = collection->followers();
-              followerInfo->remove((*followers)[i]);
-              LOG_TOPIC(ERR, Logger::REPLICATION)
-                  << "insertLocal: dropping follower " << (*followers)[i]
-                  << " for shard " << collectionName;
+              if (followerInfo->remove((*followers)[i])) {
+                LOG_TOPIC(WARN, Logger::REPLICATION)
+                    << "insertLocal: dropping follower " << (*followers)[i]
+                    << " for shard " << collectionName;
+              } else {
+                LOG_TOPIC(ERR, Logger::REPLICATION)
+                    << "insertLocal: could not drop follower "
+                    << (*followers)[i] << " for shard " << collectionName;
+                THROW_ARANGO_EXCEPTION(TRI_ERROR_CLUSTER_COULD_NOT_DROP_FOLLOWER);
+              }
             }
           }
         }
@@ -1850,7 +1856,16 @@ OperationResult transaction::Methods::modifyLocal(
             }
             if (!replicationWorked) {
               auto const& followerInfo = collection->followers();
-              followerInfo->remove((*followers)[i]);
+              if (followerInfo->remove((*followers)[i])) {
+                LOG_TOPIC(WARN, Logger::REPLICATION)
+                    << "modifyLocal: dropping follower " << (*followers)[i]
+                    << " for shard " << collectionName;
+              } else {
+                LOG_TOPIC(ERR, Logger::REPLICATION)
+                    << "modifyLocal: could not drop follower "
+                    << (*followers)[i] << " for shard " << collectionName;
+                THROW_ARANGO_EXCEPTION(TRI_ERROR_CLUSTER_COULD_NOT_DROP_FOLLOWER);
+              }
               LOG_TOPIC(ERR, Logger::REPLICATION)
                   << "modifyLocal: dropping follower " << (*followers)[i]
                   << " for shard " << collectionName;
@@ -2094,10 +2109,16 @@ OperationResult transaction::Methods::removeLocal(
             }
             if (!replicationWorked) {
               auto const& followerInfo = collection->followers();
-              followerInfo->remove((*followers)[i]);
-              LOG_TOPIC(ERR, Logger::REPLICATION)
-                  << "removeLocal: dropping follower " << (*followers)[i]
-                  << " for shard " << collectionName;
+              if (followerInfo->remove((*followers)[i])) {
+                LOG_TOPIC(WARN, Logger::REPLICATION)
+                    << "removeLocal: dropping follower " << (*followers)[i]
+                    << " for shard " << collectionName;
+              } else {
+                LOG_TOPIC(ERR, Logger::REPLICATION)
+                    << "removeLocal: could not drop follower "
+                    << (*followers)[i] << " for shard " << collectionName;
+                THROW_ARANGO_EXCEPTION(TRI_ERROR_CLUSTER_COULD_NOT_DROP_FOLLOWER);
+              }
             }
           }
         }
@@ -2270,10 +2291,16 @@ OperationResult transaction::Methods::truncateLocal(
                  requests[i].result.answer_code == rest::ResponseCode::OK);
             if (!replicationWorked) {
               auto const& followerInfo = collection->followers();
-              followerInfo->remove((*followers)[i]);
-              LOG_TOPIC(ERR, Logger::REPLICATION)
-                  << "truncateLocal: dropping follower " << (*followers)[i]
-                  << " for shard " << collectionName;
+              if (followerInfo->remove((*followers)[i])) {
+                LOG_TOPIC(WARN, Logger::REPLICATION)
+                    << "truncateLocal: dropping follower " << (*followers)[i]
+                    << " for shard " << collectionName;
+              } else {
+                LOG_TOPIC(ERR, Logger::REPLICATION)
+                    << "truncateLocal: could not drop follower "
+                    << (*followers)[i] << " for shard " << collectionName;
+                THROW_ARANGO_EXCEPTION(TRI_ERROR_CLUSTER_COULD_NOT_DROP_FOLLOWER);
+              }
             }
           }
         }
