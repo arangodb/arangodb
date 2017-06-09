@@ -19,6 +19,7 @@ function help() {
   echo "  -r/--rocksdb-engine     Use Rocksdb engine  (default: false )"
   echo "  -q/--source-dir         ArangoDB source dir (default: .)"
   echo "  -B/--bin-dir            ArangoDB binary dir (default: ./build)"
+  echo "  -O/--ongoing-ports      Ongoing ports       (default: false)"
   echo ""
   echo "EXAMPLES:"
   echo "  $0"
@@ -112,6 +113,10 @@ while [[ ${1} ]]; do
       ;;
     -B|--build)
       BUILD=${2}
+      shift
+      ;;
+    -O|--ongoing-ports)
+      ONGOING_PORTS=${2}
       shift
       ;;
     *)

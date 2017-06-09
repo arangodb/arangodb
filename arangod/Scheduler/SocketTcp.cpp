@@ -54,19 +54,9 @@ size_t SocketTcp::read(boost::asio::mutable_buffers_1 const& buffer,
   }
 }
 
-void SocketTcp::shutdownReceive() {
+void SocketTcp::shutdownAndClose(boost::system::error_code& ec, bool closeSend, bool closeReceive) {
   MUTEX_LOCKER(guard, _lock);
-  _socket.shutdown(boost::asio::ip::tcp::socket::shutdown_receive);
-}
-
-void SocketTcp::shutdownReceive(boost::system::error_code& ec) {
-  MUTEX_LOCKER(guard, _lock);
-  _socket.shutdown(boost::asio::ip::tcp::socket::shutdown_receive, ec);
-}
-
-void SocketTcp::shutdownSend(boost::system::error_code& ec) {
-  MUTEX_LOCKER(guard, _lock);
-  _socket.shutdown(boost::asio::ip::tcp::socket::shutdown_send, ec);
+  Socket::shutdownAndClose(ec, closeSend, closeReceive);
 }
 
 std::size_t SocketTcp::available(boost::system::error_code& ec) {
@@ -83,3 +73,12 @@ void SocketTcp::asyncRead(boost::asio::mutable_buffers_1 const& buffer,
     return socketcommon::doAsyncRead(_socket, buffer, handler);
   }
 }
+
+void SocketTcp::shutdownReceive(boost::system::error_code& ec) {
+  _socket.shutdown(boost::asio::ip::tcp::socket::shutdown_receive, ec);
+}
+
+void SocketTcp::shutdownSend(boost::system::error_code& ec) {
+  _socket.shutdown(boost::asio::ip::tcp::socket::shutdown_send, ec);
+}
+

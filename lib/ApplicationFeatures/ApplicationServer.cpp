@@ -239,6 +239,8 @@ void ApplicationServer::run(int argc, char* argv[]) {
 void ApplicationServer::beginShutdown() {
   LOG_TOPIC(TRACE, Logger::STARTUP) << "ApplicationServer::beginShutdown";
 
+  _stopping = true;
+
   // fowards the begin shutdown signal to all features
   for (auto it = _orderedFeatures.rbegin(); it != _orderedFeatures.rend();
        ++it) {
@@ -254,7 +256,6 @@ void ApplicationServer::beginShutdown() {
     }
   }
 
-  _stopping = true;
   // TODO: use condition variable for signaling shutdown
   // to run method
 }

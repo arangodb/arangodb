@@ -126,6 +126,13 @@ void SocketTask::addWriteBuffer(WriteBuffer& buffer) {
     return;
   }
 
+  if (application_features::ApplicationServer::isStopping()) {
+    LOG_TOPIC(TRACE, Logger::COMMUNICATION) << "aborting because shutdown is in progress";
+    closeStream();
+    buffer.release();
+    return;
+  }
+
   {
     auto self = shared_from_this();
 
@@ -162,6 +169,10 @@ void SocketTask::writeWriteBuffer() {
   err.clear();
 
   while (true) {
+    if (application_features::ApplicationServer::isStopping()) {
+      break;
+    }
+
     RequestStatistics::SET_WRITE_START(_writeBuffer._statistics);
     written = _peer->write(_writeBuffer._buffer, err);
 
@@ -184,6 +195,12 @@ void SocketTask::writeWriteBuffer() {
     // try to send next buffer
     total = _writeBuffer._buffer->length();
     written = 0;
+  }
+
+  if (application_features::ApplicationServer::isStopping()) {
+    LOG_TOPIC(TRACE, Logger::COMMUNICATION) << "aborting because shutdown is in progress";
+    closeStreamNoLock();
+    return;
   }
 
   // write could have blocked which is the only acceptable error
@@ -210,6 +227,10 @@ void SocketTask::writeWriteBuffer() {
                         LOG_TOPIC(DEBUG, Logger::COMMUNICATION)
                             << "write on stream failed with: " << ec.message();
                         closeStreamNoLock();
+                      } else if (application_features::ApplicationServer::isStopping()) {
+                        LOG_TOPIC(TRACE, Logger::COMMUNICATION) << "aborting because shutdown is in progress";
+                        closeStreamNoLock();
+                        return;
                       } else {
                         if (completedWriteBuffer()) {
                           _loop._scheduler->post([self, this]() {
@@ -240,7 +261,7 @@ bool SocketTask::completedWriteBuffer() {
   return true;
 }
 
-// caller must hold the _writeLock
+// caller must not hold the _writeLock
 void SocketTask::closeStream() {
   MUTEX_LOCKER(locker, _writeLock);
   closeStreamNoLock();
@@ -250,35 +271,13 @@ void SocketTask::closeStream() {
 void SocketTask::closeStreamNoLock() {
   boost::system::error_code err;
 
-  if (!_closedSend) {
-    _peer->shutdownSend(err);
-
-    if (err && err != boost::asio::error::not_connected) {
-      LOG_TOPIC(DEBUG, Logger::COMMUNICATION)
-          << "shutdown send stream failed with: " << err.message();
-    }
-
-    _closedSend = true;
-  }
-
-  if (!_closedReceive) {
-    _peer->shutdownReceive(err);
-
-    if (err && err != boost::asio::error::not_connected) {
-      LOG_TOPIC(DEBUG, Logger::COMMUNICATION)
-          << "shutdown send stream failed with: " << err.message();
-    }
-
-    _closedReceive = true;
-  }
-
-  _peer->close(err);
-
-  if (err && err != boost::asio::error::not_connected) {
-    LOG_TOPIC(DEBUG, Logger::COMMUNICATION)
-        << "shutdown send stream failed with: " << err.message();
-  }
-
+  bool closeSend = !_closedSend;
+  bool closeReceive = !_closedReceive;
+  
+  _peer->shutdownAndClose(err, closeSend, closeReceive);
+  
+  _closedSend = true;
+  _closedReceive = true;
   _closeRequested = false;
   _keepAliveTimer.cancel();
   _keepAliveTimerActive = false;
@@ -430,6 +429,12 @@ void SocketTask::asyncReadSome() {
     size_t n = 0;
 
     while (++n <= MAX_DIRECT_TRIES) {
+      if (application_features::ApplicationServer::isStopping()) {
+        LOG_TOPIC(TRACE, Logger::COMMUNICATION) << "aborting because shutdown is in progress";
+        closeStream();
+        return;
+      }
+      
       if (!reserveMemory()) {
         LOG_TOPIC(TRACE, Logger::COMMUNICATION) << "failed to reserve memory";
         return;
@@ -488,29 +493,19 @@ void SocketTask::asyncReadSome() {
             LOG_TOPIC(DEBUG, Logger::COMMUNICATION)
                 << "read on stream failed with: " << ec.message();
             closeStream();
+          } else if (application_features::ApplicationServer::isStopping()) {
+            LOG_TOPIC(TRACE, Logger::COMMUNICATION) << "aborting because shutdown is in progress";
+            closeStream();
+            return;
           } else {
             _readBuffer.increaseLength(transferred);
 
-            if (processAll()) {
+            if (processAll() && ! application_features::ApplicationServer::isStopping()) {
               _loop._scheduler->post([self, this]() { asyncReadSome(); });
             }
 
             compactify();
           }
         });
-  }
-}
-
-// caller must hold the _writeLock
-void SocketTask::closeReceiveStream() {
-  if (!_closedReceive) {
-    try {
-      _peer->shutdownReceive();
-    } catch (boost::system::system_error& err) {
-      LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "shutdown receive stream "
-                << " failed with: " << err.what();
-    }
-
-    _closedReceive = true;
   }
 }

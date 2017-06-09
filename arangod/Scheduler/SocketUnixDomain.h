@@ -41,10 +41,6 @@ class SocketUnixDomain final : public Socket {
 
     SocketUnixDomain(SocketUnixDomain&& that) = default;
     
-    void close() override { _socket.close(); }
-    
-    void close(boost::system::error_code& ec) override { _socket.close(ec); }
-    
     void setNonBlocking(bool v) override { _socket.non_blocking(v); }
     
     std::string peerAddress() override { return "local"; }
@@ -59,15 +55,14 @@ class SocketUnixDomain final : public Socket {
     
     size_t read(boost::asio::mutable_buffers_1 const& buffer, boost::system::error_code& ec) override;
     
-    void shutdownReceive() override;
-    
-    void shutdownReceive(boost::system::error_code& ec) override;
-    
-    void shutdownSend(boost::system::error_code& ec) override;
-    
     std::size_t available(boost::system::error_code& ec) override;
   
     void asyncRead(boost::asio::mutable_buffers_1 const& buffer, AsyncHandler const& handler) override;
+
+  protected:
+    void shutdownReceive(boost::system::error_code& ec) override;
+    void shutdownSend(boost::system::error_code& ec) override;
+    void close(boost::system::error_code& ec) override { _socket.close(ec); }
 
   public:
     boost::asio::local::stream_protocol::socket _socket;

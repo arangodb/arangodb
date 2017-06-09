@@ -1034,6 +1034,7 @@ bool TRI_fsync(int fd) {
 
 char* TRI_SlurpFile(TRI_memory_zone_t* zone, char const* filename,
                     size_t* length) {
+  TRI_set_errno(TRI_ERROR_NO_ERROR);
   int fd = TRI_TRACKED_OPEN_FILE(filename, O_RDONLY | TRI_O_CLOEXEC);
 
   if (fd == -1) {
@@ -1051,7 +1052,7 @@ char* TRI_SlurpFile(TRI_memory_zone_t* zone, char const* filename,
       TRI_TRACKED_CLOSE_FILE(fd);
       TRI_AnnihilateStringBuffer(&result);
 
-      TRI_set_errno(TRI_ERROR_SYS_ERROR);
+      TRI_set_errno(TRI_ERROR_OUT_OF_MEMORY);
       return nullptr;
     }
 

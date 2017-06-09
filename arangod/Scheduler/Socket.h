@@ -76,7 +76,7 @@ bool doSslHandshake(T& socket) {
       // check if we have spent more than x seconds handshaking and then abort
       TRI_ASSERT(start != 0.0);
 
-      if (TRI_microtime() - start >= 10000) {
+      if (TRI_microtime() - start >= 3) {
 	ec.assign(boost::asio::error::connection_reset,
 	    boost::system::generic_category());
 	LOG_TOPIC(DEBUG, Logger::COMMUNICATION) << "forcefully shutting down connection after wait time";
@@ -128,11 +128,10 @@ class Socket {
       : _ioService(ioService),
         _context(std::move(context)),
         _encrypted(encrypted) {}
+  Socket(Socket const& that) = delete;
   Socket(Socket&& that) = delete;
   virtual ~Socket() {}
 
-  virtual void close() = 0;
-  virtual void close(boost::system::error_code& ec) = 0;
   virtual void setNonBlocking(bool) = 0;
   virtual std::string peerAddress() = 0;
   virtual int peerPort() = 0;
@@ -143,15 +142,39 @@ class Socket {
                           AsyncHandler const& handler) = 0;
   virtual size_t read(boost::asio::mutable_buffers_1 const& buffer,
                       boost::system::error_code& ec) = 0;
-  virtual void shutdownReceive() = 0;
-  virtual void shutdownReceive(boost::system::error_code& ec) = 0;
-  virtual void shutdownSend(boost::system::error_code& ec) = 0;
   virtual std::size_t available(boost::system::error_code& ec) = 0;
   virtual void asyncRead(boost::asio::mutable_buffers_1 const& buffer,
                          AsyncHandler const& handler) = 0;
+  
+  virtual void shutdownAndClose(boost::system::error_code& ec, bool closeSend, bool closeReceive) {
+    if (closeSend) {
+      this->shutdownSend(ec);
+      if (ec && ec != boost::asio::error::not_connected) {
+        LOG_TOPIC(DEBUG, Logger::COMMUNICATION)
+            << "shutdown send stream failed with: " << ec.message();
+      }
+    }
+    
+    if (closeReceive) {
+      this->shutdownReceive(ec);
+      if (ec && ec != boost::asio::error::not_connected) {
+        LOG_TOPIC(DEBUG, Logger::COMMUNICATION)
+            << "shutdown receive stream failed with: " << ec.message();
+      }
+    }
 
+    this->close(ec);
+    if (ec && ec != boost::asio::error::not_connected) {
+      LOG_TOPIC(DEBUG, Logger::COMMUNICATION)
+          << "closing stream failed with: " << ec.message();
+    }
+  }
+ 
  protected:
   virtual bool sslHandshake() = 0;
+  virtual void shutdownReceive(boost::system::error_code& ec) = 0;
+  virtual void shutdownSend(boost::system::error_code& ec) = 0;
+  virtual void close(boost::system::error_code& ec) = 0;
 
  public:
   boost::asio::io_service& _ioService;

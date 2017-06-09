@@ -25,6 +25,7 @@
 #include "Aql/AstNode.h"
 #include "Aql/SortCondition.h"
 #include "Basics/AttributeNameParser.h"
+#include "Basics/Exceptions.h"
 #include "Basics/FixedSizeAllocator.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/VelocyPackHelper.h"
@@ -721,8 +722,12 @@ Result MMFilesSkiplistIndex::insert(transaction::Methods* trx,
   int res;
   try {
     res = fillElement<MMFilesSkiplistIndexElement>(elements, revisionId, doc);
-  } catch (...) {
+  } catch (basics::Exception const& ex) {
+    res = ex.code();
+  } catch (std::bad_alloc const&) {
     res = TRI_ERROR_OUT_OF_MEMORY;
+  } catch (...) {
+    res = TRI_ERROR_INTERNAL;
   }
 
   if (res != TRI_ERROR_NO_ERROR) {
@@ -773,8 +778,12 @@ Result MMFilesSkiplistIndex::remove(transaction::Methods* trx,
   int res;
   try {
     res = fillElement<MMFilesSkiplistIndexElement>(elements, revisionId, doc);
-  } catch (...) {
+  } catch (basics::Exception const& ex) {
+    res = ex.code();
+  } catch (std::bad_alloc const&) {
     res = TRI_ERROR_OUT_OF_MEMORY;
+  } catch (...) {
+    res = TRI_ERROR_INTERNAL;
   }
 
   if (res != TRI_ERROR_NO_ERROR) {
