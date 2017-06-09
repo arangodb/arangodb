@@ -202,7 +202,7 @@ ERROR_CLUSTER_CHAIN_OF_DISTRIBUTESHARDSLIKE,1484,"chain of distributeShardsLike 
 ERROR_CLUSTER_MUST_NOT_DROP_COLL_OTHER_DISTRIBUTESHARDSLIKE,1485,"must not drop collection while another has a distributeShardsLike attribute pointing to it","Will be raised if one tries to drop a collection to which another collection points with its distributeShardsLike attribute."
 ERROR_CLUSTER_UNKNOWN_DISTRIBUTESHARDSLIKE,1486,"must not have a distributeShardsLike attribute pointing to an unknown collection","Will be raised if one tries to create a collection which points to an unknown collection in its distributeShardsLike attribute."
 ERROR_CLUSTER_INSUFFICIENT_DBSERVERS,1487,"the number of current dbservers is lower than the requested replicationFactor","Will be raised if one tries to create a collection with a replicationFactor greater than the available number of DBServers."
-
+ERROR_CLUSTER_COULD_NOT_DROP_FOLLOWER,1488,"a follower could not be dropped in agency","Will be raised if a follower that ought to be dropped could not be dropped in the agency (under Current)."
 
 ################################################################################
 ## ArangoDB query errors

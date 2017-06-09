@@ -68,3 +68,23 @@ try {
   throw new Error('Something went wrong');
 }
 ```
+
+The `time` function
+-------------------
+
+`arangodb.time`
+
+This function provides the current time in seconds as a floating point value with microsecond precisison.
+
+This function can be used instead of `Date.now()` when additional precision is needed.
+
+**Examples**
+
+```js
+const time = require('@arangodb').time;
+
+const start = time();
+db._query(someVerySlowQuery);
+console.log(`Elapsed time: ${time() - start} secs`);
+```
+
