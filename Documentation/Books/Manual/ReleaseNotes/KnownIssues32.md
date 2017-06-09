@@ -73,3 +73,10 @@ The following known issues will be resolved in future releases:
 
 * AQL queries in the cluster still issue an extra locking HTTP request per shard though
   this would not be necessary for the RocksDB engine in most cases.
+
+### Installer
+
+* Upgrading from 3.1 to 3.2 on Windows requires the user to manually copy the database directory
+  to the new location and run an upgrade on the database. Please consult the
+  [Documentation](https://docs.arangodb.com/devel/Manual/GettingStarted/Installing/Windows.html)
+  for detailed instructions.
