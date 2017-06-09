@@ -50,6 +50,44 @@ node('master') {
     }
 }
 
+parallel(
+    'linux': {
+        node('linux') {
+            unstash 'source'
+            sh './Installation/Pipeline/build_enterprise_linux.sh 16'
+            stash includes: binaries, name: 'build-cc-lx'
+        }
+
+        parallel(
+            'community': {
+                node('linux') {
+                    sh './Installation/Pipeline/test_community_linux.sh 8'
+                }
+            },
+
+            'enterprise': {
+                node('linux') {
+                    sh './Installation/Pipeline/test_enterprise_linux.sh 8'
+                }
+            }
+        )
+    },
+
+    'mac': {
+        node('mac') {
+            unstash 'source'
+            sh './Installation/Pipeline/build_ee_mc.sh 16'
+            sh './Installation/Pipeline/test_ss_mm_cc_lx.sh 8'
+        }
+    },
+
+    'windows': {
+        node('windows') {
+            unstash 'source'
+            PowerShell(". .\\Installation\\Pipeline\\build_ee_wi.ps1")
+        }
+    }
+)
 
 /*
 pipeline {
