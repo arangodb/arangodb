@@ -46,24 +46,13 @@ GeneralListenTask::GeneralListenTask(EventLoop loop, GeneralServer* server,
       _server(server),
       _connectionType(connectionType) {
   _keepAliveTimeout = GeneralServerFeature::keepAliveTimeout();
+  
+  TRI_ASSERT(_connectionType == ProtocolType::HTTP || _connectionType == ProtocolType::HTTPS);
 }
 
 void GeneralListenTask::handleConnected(std::unique_ptr<Socket> socket,
                                         ConnectionInfo&& info) {
-  std::shared_ptr<GeneralCommTask> commTask;
-
-  switch (_connectionType) {
-    case ProtocolType::HTTPS:
-    case ProtocolType::HTTP:
-      commTask =
-          std::make_shared<HttpCommTask>(_loop, _server, std::move(socket),
-                                         std::move(info), _keepAliveTimeout);
-      break;
-
-    default:
-      socket->close();
-      return;
-  }
-
+  auto commTask = std::make_shared<HttpCommTask>(_loop, _server, std::move(socket),
+                                                 std::move(info), _keepAliveTimeout);
   commTask->start();
 }

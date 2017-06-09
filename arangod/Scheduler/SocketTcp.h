@@ -40,17 +40,7 @@ class SocketTcp final : public Socket {
 
   SocketTcp(SocketTcp const& that) = delete;
   SocketTcp(SocketTcp&& that) = delete;
-
-  void close() override {
-    MUTEX_LOCKER(guard, _lock);
-    _socket.close();
-  }
-
-  void close(boost::system::error_code& ec) override {
-    MUTEX_LOCKER(guard, _lock);
-    _socket.close(ec);
-  }
-
+  
   void setNonBlocking(bool v) override {
     MUTEX_LOCKER(guard, _lock);
     _socket.non_blocking(v);
@@ -80,17 +70,18 @@ class SocketTcp final : public Socket {
                  AsyncHandler const& handler) override;
 
   // mop: these functions actually only access the underlying socket. The
-  // _sslSocket is
-  // actually just an additional layer around the socket. These low level
-  // functions
-  // access the _socket only and it is ok that they are not implemented for
-  // _sslSocket in
-  // the children
+  // _sslSocket is actually just an additional layer around the socket. These low level
+  // functions access the _socket only and it is ok that they are not implemented for
+  // _sslSocket in the children
 
-  void shutdownReceive() override;
+  void shutdownAndClose(boost::system::error_code& ec, bool closeSend, bool closeReceive) override;
+  std::size_t available(boost::system::error_code& ec) override;
+
+ protected:
   void shutdownReceive(boost::system::error_code& ec) override;
   void shutdownSend(boost::system::error_code& ec) override;
-  std::size_t available(boost::system::error_code& ec) override;
+  void close(boost::system::error_code& ec) override { _socket.close(ec); }
+
 
  public:
   Mutex _lock;
