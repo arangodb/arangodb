@@ -19,6 +19,35 @@ node('master') {
             sleep 300
         }
     }
+
+    try {
+        echo "Trying enterprise branch ${env.BRANCH_NAME}"
+
+        checkout(
+            changelog: false,
+            poll: false,
+            scm: [
+                $class: 'GitSCM',
+                branches: [[name: "* /${env.BRANCH_NAME}"]],
+                doGenerateSubmoduleConfigurations: false,
+                extensions: [[$class: 'RelativeTargetDirectory', relativeTargetDir: 'enterprise']],
+                submoduleCfg: [],
+                userRemoteConfigs: [[credentialsId: credentialsId, url: enterpriseRepo]]])
+    }
+    catch (err) {
+        echo "Failed ${env.BRANCH_NAME}, trying enterprise branch devel"
+
+        checkout(
+            changelog: false,
+            poll: false,
+            scm: [
+                $class: 'GitSCM',
+                branches: [[name: "* /devel"]],
+                doGenerateSubmoduleConfigurations: false,
+                extensions: [[$class: 'RelativeTargetDirectory', relativeTargetDir: 'enterprise']],
+                submoduleCfg: [],
+                userRemoteConfigs: [[credentialsId: credentialsId, url: enterpriseRepo]]])
+    }
 }
 
 
