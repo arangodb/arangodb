@@ -77,5 +77,6 @@ The following known issues will be resolved in future releases:
 ### Installer
 
 * Upgrading from 3.1 to 3.2 on Windows requires the user to manually copy the database directory
-  to the new location and run an upgrade on the database. Please consult Documentation / Getting
-  Started / Installing /Windows for detailed instructions.
+  to the new location and run an upgrade on the database. Please consult the
+  [Documentation](https://docs.arangodb.com/devel/Manual/GettingStarted/Installing/Windows.html)
+  for detailed instructions.
