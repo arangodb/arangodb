@@ -19,7 +19,7 @@ trap "./Installation/Pipeline/port.sh --clean $PORT01 $PORT02 $PORT03" EXIT
 
 # note that: shebang does not work if path contains a '@'
 
-OPTS="--skipNondeterministic true --skipTimeCritical true  --configDir etc/jenkins --skipLogAnalysis true"
+OPTS="--storageEngine mmfiles --skipNondeterministic true --skipTimeCritical true  --configDir etc/jenkins --skipLogAnalysis true"
 
 echo "
 scripts/unittest boost                     --skipCache false 2>&1

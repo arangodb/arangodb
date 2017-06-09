@@ -1,3 +1,3 @@
 #!/bin/bash
 
-utils/jslint.sh
+./utils/jslint.sh

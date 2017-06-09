@@ -64,19 +64,34 @@ stage('build & test') {
             node('linux') {
                 unstash 'source'
                 sh './Installation/Pipeline/build_enterprise_linux.sh 16'
-                stash includes: binaries, name: 'build-cc-lx'
+                stash includes: binaries, name: 'build-enterprise-linux'
             }
 
             parallel(
                 'community': {
                     node('linux') {
-                        sh './Installation/Pipeline/test_community_linux.sh 8'
+                        sh './Installation/Pipeline/test_community_mmfiles_linux.sh 8'
                     }
                 },
 
                 'enterprise': {
                     node('linux') {
-                        sh './Installation/Pipeline/test_enterprise_linux.sh 8'
+                        sh './Installation/Pipeline/test_enterprise_rocksdb_linux.sh 8'
+                    }
+                },
+
+                'jslint': {
+                    node('linux') {
+                        unstash 'build-enterprise-linux'
+
+                        script {
+                            try {
+                                sh './Installation/Pipeline/test-jslint.sh'
+                            }
+                            catch (exc) {
+                                currentBuild.result = 'UNSTABLE'
+                            }
+                        }
                     }
                 }
             )
@@ -85,15 +100,14 @@ stage('build & test') {
         'mac': {
             node('mac') {
                 unstash 'source'
-                sh './Installation/Pipeline/build_ee_mc.sh 16'
-                sh './Installation/Pipeline/test_ss_mm_cc_lx.sh 8'
+                sh './Installation/Pipeline/build_enterprise_mac.sh 16'
             }
         },
 
         'windows': {
             node('windows') {
                 unstash 'source'
-                PowerShell(". .\\Installation\\Pipeline\\build_ee_wi.ps1")
+                PowerShell(". .\\Installation\\Pipeline\\build_enterprise_windows.ps1")
             }
         }
     )
@@ -103,101 +117,6 @@ stage('build & test') {
 pipeline {
     agent any 
 
-    stages {
-        stage('Checkout') {
-            steps { 
-                node('master') {
-                    script {
-                        retry(3) {
-                            try {
-                                checkout scm
-                            }
-                            catch (err) {
-                                echo "GITHUB checkout failed, retrying in 5min"
-                                sleep 300
-                            }
-                        }
-                    }
-
-                    script {
-                        try {
-                            echo "Trying enterprise branch ${env.BRANCH_NAME}"
-
-                            checkout(
-                                changelog: false,
-                                poll: false,
-                                scm: [
-                                    $class: 'GitSCM',
-                                    branches: [[name: "* /${env.BRANCH_NAME}"]],
-                                    doGenerateSubmoduleConfigurations: false,
-                                    extensions: [[$class: 'RelativeTargetDirectory', relativeTargetDir: 'enterprise']],
-                                    submoduleCfg: [],
-                                    userRemoteConfigs: [[credentialsId: credentialsId, url: enterpriseRepo]]])
-                        }
-                        catch (err) {
-                            echo "Failed ${env.BRANCH_NAME}, trying enterprise branch devel"
-
-                            checkout(
-                                changelog: false,
-                                poll: false,
-                                scm: [
-                                    $class: 'GitSCM',
-                                    branches: [[name: "* /devel"]],
-                                    doGenerateSubmoduleConfigurations: false,
-                                    extensions: [[$class: 'RelativeTargetDirectory', relativeTargetDir: 'enterprise']],
-                                    submoduleCfg: [],
-                                    userRemoteConfigs: [[credentialsId: credentialsId, url: enterpriseRepo]]])
-                        }
-                    }
-
-                    sh 'rm -rf build build-jenkins'
-
-                    stash includes: '**', name: 'source'
-                }
-            }
-        }
-
-        stage('Build & Test') { 
-            steps { 
-                parallel(
-                    'linux': {
-                        node('linux') {
-                            unstash 'source'
-                            sh './Installation/Pipeline/build_enterprise_linux.sh 16'
-                            stash includes: binaries, name: 'build-cc-lx'
-                        }
-
-                        parallel(
-                            'community': {
-                                node('linux') {
-                                    sh './Installation/Pipeline/test_community_linux.sh 8'
-                                }
-                            },
-                            'enterprise': {
-                                node('linux') {
-                                    sh './Installation/Pipeline/test_enterprise_linux.sh 8'
-                                }
-                            }
-                        )
-                    },
-
-                    'mac': {
-                        node('mac') {
-                            unstash 'source'
-                            sh './Installation/Pipeline/build_ee_mc.sh 16'
-                            sh './Installation/Pipeline/test_ss_mm_cc_lx.sh 8'
-                        }
-                    },
-
-                    'windows': {
-                        node('windows') {
-                            unstash 'source'
-                            PowerShell(". .\\Installation\\Pipeline\\build_ee_wi.ps1")
-                        }
-                    }
-                )
-            }
-        }
 
         stage('JS Lint') {
             steps {
