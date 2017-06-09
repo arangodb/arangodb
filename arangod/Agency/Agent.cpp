@@ -772,6 +772,10 @@ trans_ret_t Agent::transact(query_t const& queries) {
       }
     }
   }
+
+  while (_preparing) {
+    _waitForCV.wait(100);
+  }
   
   // Apply to spearhead and get indices for log entries
   auto qs = queries->slice();
@@ -837,6 +841,10 @@ trans_ret_t Agent::transient(query_t const& queries) {
         _spearhead = _readDB;
       }
     }
+  }
+  
+  while (_preparing) {
+    _waitForCV.wait(100);
   }
   
   // Apply to spearhead and get indices for log entries
@@ -936,8 +944,11 @@ write_ret_t Agent::write(query_t const& query, bool discardStartup) {
         _spearhead = _readDB;
       }
     }
+    while (_preparing) {
+      _waitForCV.wait(100);
+    }
   }
-
+  
   addTrxsOngoing(query->slice());    // remember that these are ongoing
 
   auto slice = query->slice();
@@ -1009,6 +1020,10 @@ read_ret_t Agent::read(query_t const& query) {
     }
   }
 
+  while (_preparing) {
+    _waitForCV.wait(100);
+  }
+  
   MUTEX_LOCKER(ioLocker, _ioLock);
   // Only leader else redirect
   if (challengeLeadership()) {
