@@ -2285,11 +2285,12 @@ void ClusterInfo::loadServers() {
           try {
             velocypack::Slice serverSlice;
             serverSlice = serversAliases.get(serverId);
-            
-            std::string alias =
-              arangodb::basics::VelocyPackHelper::getStringValue(
-                serverSlice, "ShortName", "");
-            newAliases.emplace(std::make_pair(alias, serverId));
+            if (serverSlice.isObject()) {
+              std::string alias =
+                arangodb::basics::VelocyPackHelper::getStringValue(
+                  serverSlice, "ShortName", "");
+              newAliases.emplace(std::make_pair(alias, serverId));
+            }
           } catch (...) {}
           newServers.emplace(std::make_pair(serverId, server));
         }
