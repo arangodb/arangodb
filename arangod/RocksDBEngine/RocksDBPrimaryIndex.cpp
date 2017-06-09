@@ -61,6 +61,10 @@
 
 using namespace arangodb;
 
+namespace {
+constexpr bool PrimaryIndexFillBlockCache = false;
+}
+
 // ================ Primary Index Iterator ================
 
 /// @brief hard-coded vector of the index attributes
@@ -185,7 +189,8 @@ RocksDBToken RocksDBPrimaryIndex::lookupKey(transaction::Methods* trx,
 
   // acquire rocksdb transaction
   RocksDBMethods* mthds = rocksutils::toRocksMethods(trx);
-  auto& options = mthds->readOptions();
+  auto options = mthds->readOptions(); // intentional copy
+  options.fill_cache = PrimaryIndexFillBlockCache;
   TRI_ASSERT(options.snapshot != nullptr);
 
   arangodb::Result r = mthds->Get(_cf, key, value.buffer());
