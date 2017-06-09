@@ -23,10 +23,12 @@
 
 #include "BaseOptions.h"
 #include "Aql/Ast.h"
+#include "Aql/Condition.h"
+#include "Aql/ExecutionPlan.h"
 #include "Aql/Expression.h"
 #include "Aql/Query.h"
-#include "Graph/SingleServerEdgeCursor.h"
 #include "Graph/ShortestPathOptions.h"
+#include "Graph/SingleServerEdgeCursor.h"
 #include "Graph/TraverserCache.h"
 #include "Graph/TraverserCacheFactory.h"
 #include "Indexes/Index.h"
@@ -91,13 +93,12 @@ BaseOptions::LookupInfo::LookupInfo(arangodb::aql::Query* query,
   }
 
   read = info.get("expression");
-  if (!read.isObject()) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(
-        TRI_ERROR_BAD_PARAMETER,
-        "Each lookup requires expression to be an object");
+  if (read.isObject()) {
+    expression = new aql::Expression(query->ast(), read);
+  } else {
+    expression = nullptr;
   }
 
-  expression = new aql::Expression(query->ast(), read);
 
   read = info.get("condition");
   if (!read.isObject()) {
@@ -114,7 +115,9 @@ BaseOptions::LookupInfo::LookupInfo(LookupInfo const& other)
       indexCondition(other.indexCondition),
       conditionNeedUpdate(other.conditionNeedUpdate),
       conditionMemberToUpdate(other.conditionMemberToUpdate) {
-  expression = other.expression->clone(nullptr);
+  if (other.expression != nullptr) {
+    expression = other.expression->clone(nullptr);
+  }
 }
 
 void BaseOptions::LookupInfo::buildEngineInfo(VPackBuilder& result) const {
@@ -122,15 +125,17 @@ void BaseOptions::LookupInfo::buildEngineInfo(VPackBuilder& result) const {
   result.add(VPackValue("handle"));
   // We only run toVelocyPack on Coordinator.
   TRI_ASSERT(idxHandles.size() == 1);
-  // result.openObject();
+
   idxHandles[0].toVelocyPack(result, false);
-  // result.close();
-  result.add(VPackValue("expression"));
-  result.openObject();  // We need to encapsulate the expression into an
-                        // expression object
-  result.add(VPackValue("expression"));
-  expression->toVelocyPack(result, true);
-  result.close();
+
+  if (expression != nullptr) {
+    result.add(VPackValue("expression"));
+    result.openObject();  // We need to encapsulate the expression into an
+                          // expression object
+    result.add(VPackValue("expression"));
+    expression->toVelocyPack(result, true);
+    result.close();
+  }
   result.add(VPackValue("condition"));
   indexCondition->toVelocyPack(result, true);
   result.add("condNeedUpdate", VPackValue(conditionNeedUpdate));
@@ -152,7 +157,6 @@ double BaseOptions::LookupInfo::estimateCost(size_t& nrItems) const {
   nrItems += 1000;
   return 1000.0;
 }
-
 
 std::unique_ptr<BaseOptions> BaseOptions::createOptionsFromSlice(
     transaction::Methods* trx, VPackSlice const& definition) {
@@ -226,22 +230,21 @@ void BaseOptions::setVariable(aql::Variable const* variable) {
   _tmpVar = variable;
 }
 
-void BaseOptions::addLookupInfo(aql::Ast* ast,
+void BaseOptions::addLookupInfo(aql::ExecutionPlan* plan,
                                 std::string const& collectionName,
                                 std::string const& attributeName,
                                 aql::AstNode* condition) {
-  injectLookupInfoInList(_baseLookupInfos, ast, collectionName, attributeName,
+  injectLookupInfoInList(_baseLookupInfos, plan, collectionName, attributeName,
                          condition);
 }
 
 void BaseOptions::injectLookupInfoInList(std::vector<LookupInfo>& list,
-                                         aql::Ast* ast,
+                                         aql::ExecutionPlan* plan,
                                          std::string const& collectionName,
                                          std::string const& attributeName,
                                          aql::AstNode* condition) {
   LookupInfo info;
-  info.indexCondition = condition;
-  info.expression = new aql::Expression(ast, condition->clone(ast));
+  info.indexCondition = condition->clone(plan->getAst());
   bool res = _trx->getBestIndexHandleForFilterCondition(
       collectionName, info.indexCondition, _tmpVar, 1000, info.idxHandles[0]);
   TRI_ASSERT(res);  // Right now we have an enforced edge index which will
@@ -281,6 +284,23 @@ void BaseOptions::injectLookupInfoInList(std::vector<LookupInfo>& list,
       }
       continue;
     }
+  }
+  std::unordered_set<size_t> toRemove;
+  aql::Condition::CollectOverlappingMembers(plan, _tmpVar, condition, info.indexCondition, toRemove);
+  size_t n = condition->numMembers();
+  if (n == toRemove.size()) {
+    // FastPath, all covered.
+    info.expression = nullptr;
+  } else {
+    // Slow path need to explicitly remove nodes.
+    for (; n > 0; --n) {
+      // Now n is one more than the idx we actually check
+      if (toRemove.find(n - 1) != toRemove.end()) {
+        // This index has to be removed.
+        condition->removeMemberUnchecked(n - 1);
+      }
+    }
+    info.expression = new aql::Expression(plan->getAst(), condition);
   }
   list.emplace_back(std::move(info));
 }
@@ -332,9 +352,10 @@ void BaseOptions::injectEngineInfo(VPackBuilder& result) const {
 }
 
 arangodb::aql::Expression* BaseOptions::getEdgeExpression(
-    size_t cursorId) const {
+    size_t cursorId, bool& needToInjectVertex) const {
   TRI_ASSERT(!_baseLookupInfos.empty());
   TRI_ASSERT(_baseLookupInfos.size() > cursorId);
+  needToInjectVertex = !_baseLookupInfos[cursorId].conditionNeedUpdate;
   return _baseLookupInfos[cursorId].expression;
 }
 
@@ -417,7 +438,9 @@ TraverserCache* BaseOptions::cache() {
   return _cache.get();
 }
 
-void BaseOptions::activateCache(bool enableDocumentCache, std::unordered_map<ServerID, traverser::TraverserEngineID> const* engines) {
+void BaseOptions::activateCache(
+    bool enableDocumentCache,
+    std::unordered_map<ServerID, traverser::TraverserEngineID> const* engines) {
   // Do not call this twice.
   TRI_ASSERT(_cache == nullptr);
   _cache.reset(cacheFactory::CreateCache(_trx, enableDocumentCache, engines));

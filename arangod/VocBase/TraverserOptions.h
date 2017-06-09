@@ -106,7 +106,7 @@ struct TraverserOptions : public graph::BaseOptions {
   void buildEngineInfo(arangodb::velocypack::Builder&) const;
 
   /// @brief Add a lookup info for specific depth
-  void addDepthLookupInfo(aql::Ast* ast, std::string const& collectionName,
+  void addDepthLookupInfo(aql::ExecutionPlan* plan, std::string const& collectionName,
                           std::string const& attributeName,
                           aql::AstNode* condition, uint64_t depth);
 

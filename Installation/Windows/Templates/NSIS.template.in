@@ -13,6 +13,7 @@
   !include "nsDialogs.nsh"
   !include "WinMessages.nsh"
   !include "MUI2.nsh"
+;   !include "GetTime.nsh"
 ;--------------------------------
 ; get commandline parameters
 !include FileFunc.nsh
@@ -40,7 +41,7 @@ Var STARTMENU_FOLDER
 Var SV_ALLUSERS
 Var START_MENU
 
-Var INSTALL_DESKTOP           ; x bool: add desktop icon
+Var ADD_DESKTOP_ICON           ; x bool: add desktop icon
 Var IS_DEFAULT_INSTALLDIR
 
 Var STORAGE_ENGINE            ; x string auto/mmfiles/rocksdb
@@ -49,16 +50,20 @@ Var PASSWORD_AGAIN            ; x string / only for comparison
 
 Var PURGE_DB                  ; x bool ; delete DB on uninstall
 
-Var DO_NOT_ADD_TO_PATH        ; x bool
-Var ADD_TO_PATH_ALL_USERS     ; x bool
-Var ADD_TO_PATH_CURRENT_USER  ; x bool
+Var ADD_TO_PATH               ; x bool
+
+Var AUTOMATIC_UPDATE
+Var AUTOMATIC_BACKUP
 
 Var AllowGlobalInstall
 
-; Variables for definition of instdir
-; posible values: SingleUser | AllUsers | Service
-VAR TRI_INSTALL_TYPE          ; x
-VAR TRI_INSTALL_SCOPE
+Var ChooseInstallPath
+
+Var BackupPath
+
+
+VAR TRI_INSTALL_SERVICE       ; x bool
+VAR TRI_INSTALL_SCOPE_ALL     ; x bool => All / ThisUser
 Var newCfgValues              ; keep new config file values
 Var newCfgValuesFile          ; write them to a temporary file...
 Var ServiceUp                 ; did the service start?
@@ -69,10 +74,15 @@ Var UpgradeInstall
 ;----------------------------------------
 ; The first dialog page
 Var Dlg1_Dialog
-Var Dlg1_CB_as_service
-Var Dlg1_RB_no_path
+
 Var Dlg1_RB_all_users
 Var Dlg1_RB_cur_user
+
+Var Dlg1_CB_custom_path
+Var Dlg1_CB_automatic_update
+Var Dlg1_CB_keep_backup
+Var Dlg1_CB_add_path
+Var Dlg1_CB_as_service
 Var Dlg1_CB_DesktopIcon
 ;----------------------------------------
 ; The second dialog page
@@ -104,30 +114,23 @@ RequestExecutionLevel highest
 !include "WaitForService.nsh"
 !include "ReadINIFileKeys.nsh"
 
-Function determine_install_scope
-; Now that we know the install scope, calculate directories:
-  StrCmp $TRI_INSTALL_TYPE  'Service' 0 noService
+!macro determine_install_scope un
+Function ${un}determine_install_scope
+  ; Now that we know the install scope, calculate directories:
+  ${If} $TRI_INSTALL_SCOPE_ALL == 1
       SetShellVarContext all
+      StrCpy $INSTDIR "@CPACK_NSIS_INSTALL_ROOT@\@CPACK_PACKAGE_INSTALL_DIRECTORY@"
       StrCpy $DATADIR "$APPDATA\ArangoDB"
-  noService:
-  ${Switch} $TRI_INSTALL_SCOPE
-    ${Case} 'none'
-      SetShellVarContext current
-      StrCpy $INSTDIR "$LOCALAPPDATA\@CPACK_PACKAGE_INSTALL_DIRECTORY@"
-      StrCpy $DATADIR "$APPDATA\ArangoDB"
-      ${Break}
-    ${Case} 'ThisUser'
+  ${Else}
       SetShellVarContext current
       StrCpy $INSTDIR "$LOCALAPPDATA\@CPACK_PACKAGE_INSTALL_DIRECTORY@"
       StrCpy $DATADIR "$LOCALAPPDATA\ArangoDB"
-      ${Break}
-    ${Case} 'AllUsers'
-      SetShellVarContext all
-      StrCpy $INSTDIR "$DOCUMENTS\@CPACK_PACKAGE_INSTALL_DIRECTORY@"
-      StrCpy $DATADIR "$DOCUMENTS\ArangoDB"
-      ${Break}
-   ${EndSwitch}
+   ${EndIf}
 FunctionEnd
+!macroend
+!insertmacro determine_install_scope ""
+!insertmacro determine_install_scope "un."
+
 
 Function check_previous_install
   StrCpy $UpgradeInstall "0"
@@ -139,17 +142,22 @@ OldFound:
   StrCpy $UpgradeInstall "1"
 FunctionEnd
 
+Function upgradeDatabase
+  
+
+FunctionEnd
+
 Function disableBackButton
      GetDlgItem $0 $HWNDParent 3
      EnableWindow $0 0
 FunctionEnd
 
 Function stop_old_service
-  StrCmp $TRI_INSTALL_TYPE  'Service' 0 noServiceToStop
+  ${If} $TRI_INSTALL_SERVICE == 1
      SimpleSC::StopService    '${TRI_SVC_NAME}' 0 30
      Call WaitForServiceDown
      SimpleSC::RemoveService  '${TRI_SVC_NAME}'
-noServiceToStop:
+  ${EndIf}
 FunctionEnd
 
 Var mycheckbox ; You could just store the HWND in $1 etc if you don't want this extra variable
@@ -323,8 +331,18 @@ Var AR_RegFlags
 
   Page custom InstallOptionsPage1 InstallOptionsPage1_results
 
+  !define MUI_PAGE_HEADER_TEXT "Choose the database folder for @CPACK_PACKAGE_NAME@"
+  !define MUI_PAGE_HEADER_SUBTEXT ""
+  !define MUI_DIRECTORYPAGE_TEXT_TOP "choose the folder where @CPACK_PACKAGE_NAME@ will create its database files"
+  !define MUI_DIRECTORYPAGE_TEXT_DESTINATION "Database folder"
+  !define MUI_PAGE_CUSTOMFUNCTION_PRE hide_install_directory
+  !define MUI_PAGE_CUSTOMFUNCTION_LEAVE check_database_directory
+  !define MUI_DIRECTORYPAGE_VARIABLE $DATADIR
+  !insertmacro MUI_PAGE_DIRECTORY
+
   Page custom InstallOptionsPage2 InstallOptionsPage2_results
 
+  !define MUI_PAGE_CUSTOMFUNCTION_PRE hide_install_directory
   !define MUI_PAGE_CUSTOMFUNCTION_LEAVE check_installation_directory
   !insertmacro MUI_PAGE_DIRECTORY
 
@@ -404,147 +422,6 @@ Var AR_RegFlags
   !insertmacro MUI_LANGUAGE "Welsh"
 
 ;--------------------------------
-;Installer Sections
-
-Section "-Core installation"
-  ;Use the entire tree produced by the INSTALL target.  Keep the
-  ;list of directories here in sync with the RMDir commands below.
-  SetOutPath "$INSTDIR"
-  ; SetRegView controlls where die regkeys are written to
-  ; SetRegView 32 writes the keys into Wow6432
-  SetRegView ${BITS}
-  
-  @CPACK_NSIS_FULL_INSTALL@
-
-  ;Store installation folder
-  WriteRegStr SHCTX "Software\@CPACK_PACKAGE_VENDOR@\@CPACK_PACKAGE_INSTALL_REGISTRY_KEY@" "" $INSTDIR
-
-  ;Create uninstaller
-  WriteUninstaller "$INSTDIR\Uninstall.exe"
-  !insertmacro AddToRegistry "DisplayName"          "@CPACK_NSIS_DISPLAY_NAME@"
-  !insertmacro AddToRegistry "DisplayVersion"       "@CPACK_PACKAGE_VERSION@"
-  !insertmacro AddToRegistry "Publisher"            "@CPACK_PACKAGE_VENDOR@"
-  !insertmacro AddToRegistry "UninstallString"      "$INSTDIR\Uninstall.exe"
-  !insertmacro AddToRegistry "NoRepair"             "1"
-
-  ; Optional registration
-  !insertmacro AddToRegistry "DisplayIcon"          "$INSTDIR\@CPACK_NSIS_INSTALLED_ICON_NAME@"
-  !insertmacro AddToRegistry "HelpLink"             "@CPACK_NSIS_HELP_LINK@"
-  !insertmacro AddToRegistry "URLInfoAbout"         "@CPACK_NSIS_URL_INFO_ABOUT@"
-  !insertmacro AddToRegistry "Contact"              "@CPACK_NSIS_CONTACT@"
-
-  !insertmacro MUI_STARTMENU_WRITE_BEGIN Application
-
-  ;Create shortcuts
-  CreateDirectory "$SMPROGRAMS\$STARTMENU_FOLDER"
-  CreateShortCut  "$SMPROGRAMS\$STARTMENU_FOLDER\Arango Shell.lnk"  "$INSTDIR\${BIN_DIR}\arangosh.exe"  '' '$INSTDIR\resources\arangodb.ico' '0' SW_SHOWMAXIMIZED
-  CreateShortCut  "$SMPROGRAMS\$STARTMENU_FOLDER\Arango Server.lnk" "$INSTDIR\${SBIN_DIR}\arangod.exe"   '' '$INSTDIR\resources\arangodb.ico' '0' SW_SHOWMAXIMIZED
-  CreateShortCut  "$SMPROGRAMS\$STARTMENU_FOLDER\Uninstall.lnk"     "$INSTDIR\Uninstall.exe"
-
-  ;Read a value from an InstallOptions INI file
-
-  StrCmp "0" "$INSTALL_DESKTOP" noDesktopIcon
-  CreateShortCut  "$DESKTOP\Arango Shell.lnk"  "$INSTDIR\${BIN_DIR}\arangosh.exe"  '' '$INSTDIR\resources\arangodb.ico' '0' SW_SHOWMAXIMIZED
-  CreateShortCut  "$DESKTOP\Arango Management Interface.lnk"  "http://127.0.0.1:8529"  '' '$INSTDIR\resources\arangodb.ico' '0' SW_SHOWMAXIMIZED
-  noDesktopIcon:
-
-  ; Write special uninstall registry entries
-  !insertmacro AddToRegistry "StartMenu"            "$STARTMENU_FOLDER"
-  !insertmacro AddToRegistry "DoNotAddToPath"       "$DO_NOT_ADD_TO_PATH"
-  !insertmacro AddToRegistry "AddToPathAllUsers"    "$ADD_TO_PATH_ALL_USERS"
-  !insertmacro AddToRegistry "AddToPathCurrentUser" "$ADD_TO_PATH_CURRENT_USER"
-  !insertmacro AddToRegistry "InstallToDesktop"     "$INSTALL_DESKTOP"
-
-  !insertmacro MUI_STARTMENU_WRITE_END
-
-  !insertmacro AddToRegistry "DATADIR"        "$DATADIR"
-
-  ; Create a file containing the settings we want to be overwritten:
-  StrCpy $newCfgValues "[database]$\r$\ndirectory = $DATADIR$\r$\n[server]$\r$\nstorage-engine = $STORAGE_ENGINE$\r$\n"
-  StrCpy $newCfgValuesFile "$INSTDIR\etc\arangodb3\newValues.ini"
-  FileOpen $4  "$newCfgValuesFile" w
-  FileWrite $4 "$newCfgValues"
-  FileClose $4
-  ; Alter the shipped file and insert the values from above:
-  push "$newCfgValuesFile"
-  push "$INSTDIR\etc\arangodb3\arangod.conf"
-  call ReadINIFileKeys
-  Delete "$newCfgValuesFile"
-
-  ${If} $UpgradeInstall == "1"
-    Goto doneSetPassword ; database directory already present - skip.
-  ${EndIf}
-  System::Call 'Kernel32::SetEnvironmentVariable(t, t)i ("ARANGODB_DEFAULT_ROOT_PASSWORD", "$PASSWORD").r0'
-  StrCmp $0 0 error
-  ExecWait "$INSTDIR\${SBIN_DIR}\arangod.exe --database.init-database --server.rest-server false --server.statistics false --foxx.queues false" $0
-  ${If} $0 == 0
-    Goto doneSetPassword
-  ${EndIf}
-  error:
-    MessageBox MB_OK "Failed to initialize database password."
-    Abort
-  doneSetPassword:
-  StrCmp $TRI_INSTALL_TYPE  'Service' 0 nothing
-     DetailPrint "Installing service ${TRI_SVC_NAME}: "
-     SimpleSC::InstallService '${TRI_SVC_NAME}' ''  '16'  '2'  '"$INSTDIR\${SBIN_DIR}\arangod.exe" --start-service' '' '' ''
-     Pop $0
-     DetailPrint "Status: $0; Setting Description: ${TRI_FRIENDLY_SVC_NAME}"
-     SimpleSC::SetServiceDescription '${TRI_SVC_NAME}' '${TRI_FRIENDLY_SVC_NAME}'
-     Pop $0
-     DetailPrint "Status: $0; Starting Service"
-     SimpleSC::StartService '${TRI_SVC_NAME}' '' 45
-     Pop $0
-     DetailPrint "Status: $0"
-     ${If} $0 != "0"
-       Call QueryServiceStatus
-       Pop $2
-       Pop $1
-       Pop $0
-       !define SC_WAITED "Waited 40 seconds for the ArangoDB service to come up;"
-       !define SC_SV "Please look at $\r$\n`sc query ${TRI_SVC_NAME}`"
-       !define SC_EVLOG "and the Windows Eventlog for eventual errors!"
-       ${If} $1 == "1066" 
-         ${If} $2 == "1"
-           MessageBox MB_OK "${SC_WAITED}$\r$\nbut it exited with an error; $\r$\n${SC_SV}$\r$\n${SC_EVLOG}"
-           Abort
-         ${ElseIf} $2 == "2"
-           MessageBox MB_OK "${SC_WAITED}$\r$\nbut it exited with a fatal error; $\r$\n${SC_SV}$\r$\n${SC_EVLOG}"
-           Abort
-         ${EndIf}
-       ${ElseIf} $1 != "0"
-         MessageBox MB_OK "${SC_WAITED}$\r$\n${SC_SV}$\r$\n${SC_EVLOG} $0 $1 $2"
-         Abort
-       ${EndIf}
-       Abort
-     ${EndIf}
-   nothing:
-SectionEnd
-
-Function .onInstSuccess
-  IfSilent 0 continueUI
-  Call insert_registration_keys
-  StrCmp $DO_NOT_ADD_TO_PATH "1" doNotAddToPath 0
-  !insertmacro AddToPath "$INSTDIR/${BIN_DIR}" $ADD_TO_PATH_ALL_USERS
-  doNotAddToPath:
-    Return
-
-  continueUI:
-    ifErrors +3
-    ${If} $TRI_INSTALL_TYPE == 'Service'
-    ${AndIf} $ServiceUp == 0
-      ${OpenURL} ${TRI_AARDVARK_URL}
-    ${EndIf}
-FunctionEnd
-
-Section "-Add to path"
-  Push "$INSTDIR/${BIN_DIR}"
-  StrCmp "@CPACK_NSIS_MODIFY_PATH@" "ON" 0 doNotAddToPath
-  StrCmp $DO_NOT_ADD_TO_PATH "1" doNotAddToPath 0
-  !insertmacro AddToPath "$INSTDIR/${BIN_DIR}" $ADD_TO_PATH_ALL_USERS
-  doNotAddToPath:
-SectionEnd
-
-;--------------------------------
 ; Create custom pages
 Function InstallOptionsPage1
   IfSilent 0 continueUI
@@ -563,25 +440,37 @@ displayAgain:
   ${If} $Dlg1_Dialog == error
     Abort
   ${EndIf}
-  ${NSD_CreateLabel} "Install @CPACK_PACKAGE_NAME@"
+  
+  ${NSD_CreateLabel} 0 0 100% 6% "Install @CPACK_PACKAGE_NAME@"
   Pop $0 ; Don't care...
 
   
-  ${NSD_CreateLabel} 0 10 100% 6% "Choose whether @CPACK_PACKAGE_INSTALL_DIRECTORY@ should be added to a Path:"
+  ${NSD_CreateLabel} 0 20 100% 6% "Choose to install @CPACK_PACKAGE_NAME@ for all users or the current user:"
   Pop $0 ; Don't care...
 
-  ${NSD_CreateRadioButton} 5 30 60% 6% "don't add @CPACK_PACKAGE_NAME@ to the Path"
-  Pop $Dlg1_RB_no_path
-  ${NSD_AddStyle} $Dlg1_RB_no_path ${WS_GROUP}
-  
-  ${NSD_CreateRadioButton} 5 45 40% 6% "for all users"
+  ${NSD_CreateRadioButton} 5 40 40% 6% "for all users"
   Pop $Dlg1_RB_all_users
   ${NSD_SetState} $Dlg1_RB_all_users ${BST_CHECKED}
   
   ${NSD_CreateRadioButton} 5 60 50% 6% "for the current user"
   Pop $Dlg1_RB_cur_user
 
-  
+  ; Checkboxes
+  ${NSD_CreateCheckBox} 0 -120 100% 6% "Choose custom install paths for databases and installation"
+  Pop $Dlg1_CB_custom_path
+
+  ${NSD_CreateCheckBox} 0 -100 100% 6% "Automatically update existing ArangoDB database"
+  Pop $Dlg1_CB_automatic_update
+  ${NSD_SetState} $Dlg1_CB_automatic_update ${BST_CHECKED}
+
+  ${NSD_CreateCheckBox} 0 -80 100% 6% "Keep a backup of databases"
+  Pop $Dlg1_CB_keep_backup
+  ${NSD_SetState} $Dlg1_CB_keep_backup ${BST_CHECKED}
+
+  ${NSD_CreateCheckBox} 0 -60 100% 6% "add @CPACK_PACKAGE_NAME@ to the Path"
+  Pop $Dlg1_CB_add_path
+  ${NSD_SetState} $Dlg1_CB_add_path ${BST_CHECKED}
+
   ${NSD_CreateCheckBox} 0 -40 100% 6% "Start @CPACK_PACKAGE_NAME@ as system service"
   Pop $Dlg1_CB_as_service
   
@@ -589,12 +478,12 @@ displayAgain:
   Pop $Dlg1_CB_DesktopIcon
   ${NSD_SetState} $Dlg1_CB_DesktopIcon ${BST_CHECKED}
 
+
   ${If} $AllowGlobalInstall == "0"
     EnableWindow $Dlg1_RB_all_users 0
-    EnableWindow $Dlg1_CB_as_service 0    
+    EnableWindow $Dlg1_CB_as_service 0
   ${Else}
     ${NSD_SetState} $Dlg1_CB_as_service ${BST_CHECKED}
-
   ${EndIf}
   
   nsDialogs::Show
@@ -606,38 +495,59 @@ Function InstallOptionsPage1_results
   Push $R0
   Push $R1
   Push $R2
-  ${NSD_GetState} $Dlg1_CB_DesktopIcon $R0
-  ${If} $R0 = ${BST_CHECKED}
-    StrCpy $INSTALL_DESKTOP "1"
-  ${Else}
-    StrCpy $INSTALL_DESKTOP "0"
-  ${EndIf}
-  
+  ${NSD_GetState} $Dlg1_RB_all_users $R0
+  ${NSD_GetState} $Dlg1_RB_cur_user $R1
 
-  ${NSD_GetState} $Dlg1_RB_no_path $R0
-  ${NSD_GetState} $Dlg1_RB_all_users $R1
-  ${NSD_GetState} $Dlg1_RB_cur_user $R2
-  
   ${If} $R0 = ${BST_CHECKED}
-    StrCpy $TRI_INSTALL_SCOPE "none"    
-    StrCpy $DO_NOT_ADD_TO_PATH '1'
-  ${ElseIf} $R1 = ${BST_CHECKED}
-    StrCpy $TRI_INSTALL_SCOPE "ThisUsers"
-    StrCpy $ADD_TO_PATH_ALL_USERS '1'
-  ${ElseIf} $R2 = ${BST_CHECKED}
-    StrCpy $TRI_INSTALL_SCOPE "AllUsers"
-    StrCpy $ADD_TO_PATH_CURRENT_USER '1'
+    StrCpy $TRI_INSTALL_SCOPE_ALL "1"
   ${Else}
-    ; WHUT?
-    Abort
+    StrCpy $TRI_INSTALL_SCOPE_ALL "0"
+  ${EndIf}
+
+
+  ${NSD_GetState} $Dlg1_CB_custom_path $R0
+  ${If} $R0 = ${BST_CHECKED}
+    StrCpy $ChooseInstallPath "1"
+  ${Else}
+    StrCpy $ChooseInstallPath "0"
+  ${EndIf}
+
+  ${NSD_GetState} $Dlg1_CB_automatic_update $R0
+  ${If} $R0 = ${BST_CHECKED}
+    StrCpy $AUTOMATIC_UPDATE "1"
+  ${Else}
+    StrCpy $AUTOMATIC_UPDATE "0"
+  ${EndIf}
+
+  ${NSD_GetState} $Dlg1_CB_keep_backup $R0
+  ${If} $R0 = ${BST_CHECKED}
+    StrCpy $AUTOMATIC_BACKUP "1"
+  ${Else}
+    StrCpy $AUTOMATIC_BACKUP "0"
+  ${EndIf}
+
+  ${NSD_GetState} $Dlg1_CB_add_path $R0
+  ${If} $R0 = ${BST_CHECKED}
+    StrCpy $ADD_TO_PATH '1'
+  ${Else}
+    StrCpy $ADD_TO_PATH '0'
   ${EndIf}
 
   ${NSD_GetState} $Dlg1_CB_as_service $R0
   ${If} $R0 = ${BST_CHECKED}
-    StrCpy $TRI_INSTALL_TYPE "Service"
+    StrCpy $TRI_INSTALL_SERVICE "1"
   ${Else}
-    StrCpy $TRI_INSTALL_TYPE "Manual"
+    StrCpy $TRI_INSTALL_SERVICE "0"
   ${EndIf}
+
+  ${NSD_GetState} $Dlg1_CB_DesktopIcon $R0
+  ${If} $R0 = ${BST_CHECKED}
+    StrCpy $ADD_DESKTOP_ICON "1"
+  ${Else}
+    StrCpy $ADD_DESKTOP_ICON "0"
+  ${EndIf}
+
+
   Call determine_install_scope
   Call check_previous_install
   Pop $R2
@@ -711,11 +621,175 @@ Function InstallOptionsPage2_results
   return
 FunctionEnd
 
+;--------------------------------
+Function hide_install_directory
+  ${If} $ChooseInstallPath == "0"
+    Abort
+  ${EndIf}
+FunctionEnd
 
 ;--------------------------------
 Function skip_page
 FunctionEnd
 
+Function UpgradeExisting
+  ; Check whether we acutally should upgrade:
+  ExecWait "$INSTDIR\${SBIN_DIR}\arangod.exe --server.rest-server false --log.foreground-tty false --database.check-version" $0
+  ${If} $0 == 1
+  ${AndIf} $AUTOMATIC_UPDATE == "1"
+
+    ${If} $AUTOMATIC_BACKUP == "1"
+      ; We should and we should keep a backup:
+      ${GetTime} "" "L" $0 $1 $2 $3 $4 $5 $6
+      StrCpy $BackupPath "$DATADIR_$2-$1-$0_$4_$5_$6"
+      CreateDirectory "$BackupPath"
+      ClearErrors
+      CopyFiles "$DATADIR" "$BackupPath"
+      IfErrors 0 +2
+      MessageBox MB_ICONEXCLAMATION "The upgrade failed to copy the files $\r$\nfrom '$DATADIR'$\r$\nto '$BackupPath'; please do it manually.$\r$\n$\r$\nClick OK to continue."
+    ${EndIf}
+    ; Now actually do the upgrade
+    ExecWait "$INSTDIR\${SBIN_DIR}\arangod.exe --server.rest-server false  --log.level error --database.auto-upgrade true" $0
+    ${If} $0 == 1
+      MessageBox MB_ICONEXCLAMATION "the Upgrade failed, please do a manual upgrade"
+      Abort
+    ${EndIf}
+  ${EndIf}
+FunctionEnd
+
+;--------------------------------
+;Installer Sections
+
+Section "-Core installation"
+  ;Use the entire tree produced by the INSTALL target.  Keep the
+  ;list of directories here in sync with the RMDir commands below.
+  SetOutPath "$INSTDIR"
+  ; SetRegView controlls where die regkeys are written to
+  ; SetRegView 32 writes the keys into Wow6432
+  SetRegView ${BITS}
+  
+  @CPACK_NSIS_FULL_INSTALL@
+
+  ;Store installation folder
+  WriteRegStr SHCTX "Software\@CPACK_PACKAGE_VENDOR@\@CPACK_PACKAGE_INSTALL_REGISTRY_KEY@" "" $INSTDIR
+
+  ;Create uninstaller
+  WriteUninstaller "$INSTDIR\Uninstall.exe"
+  !insertmacro AddToRegistry "DisplayName"          "@CPACK_NSIS_DISPLAY_NAME@"
+  !insertmacro AddToRegistry "DisplayVersion"       "@CPACK_PACKAGE_VERSION@"
+  !insertmacro AddToRegistry "Publisher"            "@CPACK_PACKAGE_VENDOR@"
+  !insertmacro AddToRegistry "UninstallString"      "$INSTDIR\Uninstall.exe"
+  !insertmacro AddToRegistry "NoRepair"             "1"
+
+  ; Optional registration
+  !insertmacro AddToRegistry "DisplayIcon"          "$INSTDIR\@CPACK_NSIS_INSTALLED_ICON_NAME@"
+  !insertmacro AddToRegistry "HelpLink"             "@CPACK_NSIS_HELP_LINK@"
+  !insertmacro AddToRegistry "URLInfoAbout"         "@CPACK_NSIS_URL_INFO_ABOUT@"
+  !insertmacro AddToRegistry "Contact"              "@CPACK_NSIS_CONTACT@"
+
+  !insertmacro MUI_STARTMENU_WRITE_BEGIN Application
+
+  ;Create shortcuts
+  CreateDirectory "$SMPROGRAMS\$STARTMENU_FOLDER"
+  CreateShortCut  "$SMPROGRAMS\$STARTMENU_FOLDER\Arango Shell.lnk"  "$INSTDIR\${BIN_DIR}\arangosh.exe"  '' '$INSTDIR\resources\arangodb.ico' '0' SW_SHOWMAXIMIZED
+  CreateShortCut  "$SMPROGRAMS\$STARTMENU_FOLDER\Arango Server.lnk" "$INSTDIR\${SBIN_DIR}\arangod.exe"   '' '$INSTDIR\resources\arangodb.ico' '0' SW_SHOWMAXIMIZED
+  CreateShortCut  "$SMPROGRAMS\$STARTMENU_FOLDER\Uninstall.lnk"     "$INSTDIR\Uninstall.exe"
+
+  ;Read a value from an InstallOptions INI file
+
+  StrCmp "0" "$ADD_DESKTOP_ICON" noDesktopIcon
+  CreateShortCut  "$DESKTOP\Arango Shell.lnk"  "$INSTDIR\${BIN_DIR}\arangosh.exe"  '' '$INSTDIR\resources\arangodb.ico' '0' SW_SHOWMAXIMIZED
+  CreateShortCut  "$DESKTOP\Arango Management Interface.lnk"  "http://127.0.0.1:8529"  '' '$INSTDIR\resources\arangodb.ico' '0' SW_SHOWMAXIMIZED
+  noDesktopIcon:
+
+  ; Write special uninstall registry entries
+  !insertmacro AddToRegistry "StartMenu"            "$STARTMENU_FOLDER"
+  !insertmacro AddToRegistry "AddToPath"            "$ADD_TO_PATH"
+  !insertmacro AddToRegistry "InstallToDesktop"     "$ADD_DESKTOP_ICON"
+
+  !insertmacro MUI_STARTMENU_WRITE_END
+
+  !insertmacro AddToRegistry "DATADIR"        "$DATADIR"
+
+  ; Create a file containing the settings we want to be overwritten:
+  StrCpy $newCfgValues "[database]$\r$\ndirectory = $DATADIR$\r$\n[server]$\r$\nstorage-engine = $STORAGE_ENGINE$\r$\n"
+  StrCpy $newCfgValuesFile "$INSTDIR\etc\arangodb3\newValues.ini"
+  FileOpen $4  "$newCfgValuesFile" w
+  FileWrite $4 "$newCfgValues"
+  FileClose $4
+  ; Alter the shipped file and insert the values from above:
+  push "$newCfgValuesFile"
+  push "$INSTDIR\etc\arangodb3\arangod.conf"
+  call ReadINIFileKeys
+  Delete "$newCfgValuesFile"
+
+  ${If} $UpgradeInstall == "1"
+    Call UpgradeExisting
+  ${Else}
+    System::Call 'Kernel32::SetEnvironmentVariable(t, t)i ("ARANGODB_DEFAULT_ROOT_PASSWORD", "$PASSWORD").r0'
+    StrCmp $0 0 error
+    ExecWait "$INSTDIR\${SBIN_DIR}\arangod.exe --database.init-database --server.rest-server false --server.statistics false --foxx.queues false" $0
+    ${If} $0 == 0
+      Goto doneUpgrade
+    ${EndIf}
+    error:
+      MessageBox MB_OK "Failed to initialize database password."
+      Abort
+    doneUpgrade:
+  ${EndIf}
+  ${If} $TRI_INSTALL_SERVICE == "1"
+     DetailPrint "Installing service ${TRI_SVC_NAME}: "
+     SimpleSC::InstallService '${TRI_SVC_NAME}' ''  '16'  '2'  '"$INSTDIR\${SBIN_DIR}\arangod.exe" --start-service' '' '' ''
+     Pop $0
+     DetailPrint "Status: $0; Setting Description: ${TRI_FRIENDLY_SVC_NAME}"
+     SimpleSC::SetServiceDescription '${TRI_SVC_NAME}' '${TRI_FRIENDLY_SVC_NAME}'
+     Pop $0
+     DetailPrint "Status: $0; Starting Service"
+     SimpleSC::StartService '${TRI_SVC_NAME}' '' 45
+     Pop $0
+     DetailPrint "Status: $0"
+     ${If} $0 != "0"
+       Call QueryServiceStatus
+       Pop $2
+       Pop $1
+       Pop $0
+       !define SC_WAITED "Waited 40 seconds for the ArangoDB service to come up;"
+       !define SC_SV "Please look at $\r$\n`sc query ${TRI_SVC_NAME}`"
+       !define SC_EVLOG "and the Windows Eventlog for eventual errors!"
+       ${If} $1 == "1066" 
+         ${If} $2 == "1"
+           MessageBox MB_OK "${SC_WAITED}$\r$\nbut it exited with an error; $\r$\n${SC_SV}$\r$\n${SC_EVLOG}"
+           Abort
+         ${ElseIf} $2 == "2"
+           MessageBox MB_OK "${SC_WAITED}$\r$\nbut it exited with a fatal error; $\r$\n${SC_SV}$\r$\n${SC_EVLOG}"
+           Abort
+         ${EndIf}
+       ${ElseIf} $1 != "0"
+         MessageBox MB_OK "${SC_WAITED}$\r$\n${SC_SV}$\r$\n${SC_EVLOG} $0 $1 $2"
+         Abort
+       ${EndIf}
+       Abort
+     ${Else}
+       StrCpy $ServiceUp "1"
+     ${EndIf}
+  ${EndIf}
+SectionEnd
+
+Function .onInstSuccess
+  Call insert_registration_keys
+  ${If} $ADD_TO_PATH == "1"
+    !insertmacro AddToPath "$INSTDIR/${BIN_DIR}" $TRI_INSTALL_SCOPE_ALL
+  ${EndIf}
+
+  IfSilent 0 continueUI
+    Return
+
+continueUI:
+  ${If} $TRI_INSTALL_SERVICE == '1'
+  ${AndIf} $ServiceUp == 1
+    ${OpenURL} ${TRI_AARDVARK_URL}
+  ${EndIf}
+FunctionEnd
 
 Function assign_proper_access_rights
     StrCpy $0 "0"
@@ -732,10 +806,14 @@ FunctionEnd
 
 Function is_writable
 ; is does not matter if we do some errors here
-   ${If} $TRI_INSTALL_ALL_USERS == '1'
+   ${If} $TRI_INSTALL_SCOPE_ALL == '1'
      CreateDirectory $INSTDIR
      Call assign_proper_access_rights
     ${EndIf}
+FunctionEnd
+
+Function check_database_directory
+  call check_previous_install
 FunctionEnd
 
 Function check_installation_directory
@@ -751,37 +829,14 @@ FunctionEnd
 
 Function insert_registration_keys
   ClearErrors
-  ; MessageBox MB_OK "XXXX insert_registration_keys in HKCC ${BITS}"
-  ${Switch} $TRI_INSTALL_TYPE
-    ${Case} 'Service'
-      WriteRegExpandStr HKCC "Software\@CPACK_NSIS_PACKAGE_NAME@" "type" 'Service'
-       ; MessageBox MB_OK "Sevice in HKCC"
-      IfErrors there_are_erros
-      ${Break}
-
-    ${Case} 'SingleUser'
-      ${If}  ${UAC_IsAdmin}
-        WriteRegExpandStr HKCC "Software\@CPACK_NSIS_PACKAGE_NAME@" "type" 'SingleUser'
-         ; MessageBox MB_OK "SingleUser in HKCC"
-      ${Else}
-        ; normal user has not write rights to HKCC
-        WriteRegExpandStr HKCU "Software\@CPACK_NSIS_PACKAGE_NAME@" "type" 'SingleUser'
-         ; MessageBox MB_OK "SingleUser in HKCU"
-        IfErrors there_are_erros
-      ${EndIf}
-      ${Break}
-
-    ${Case} 'AllUsers'
-      WriteRegExpandStr HKCC "Software\@CPACK_NSIS_PACKAGE_NAME@" "type" 'Service'
-      StrCpy $INSTDIR "$DOCUMENTS\@CPACK_PACKAGE_INSTALL_DIRECTORY@"
-       ; MessageBox MB_OK "AllUsers in HKCC"
-      IfErrors there_are_erros
-      ${Break}
-   ${EndSwitch}
-   Return
-
- there_are_erros: ;nothing
-MessageBox MB_OK "There was an error during adding the installation keys to the registry$\nArango will work fine but there may be trouble during the deinstallation$\nplease contact @CPACK_NSIS_CONTACT@"
+   
+  WriteRegExpandStr HKCC "Software\@CPACK_NSIS_PACKAGE_NAME@" "service" "$TRI_INSTALL_SERVICE"
+  IfErrors there_are_erros
+  WriteRegExpandStr HKCC "Software\@CPACK_NSIS_PACKAGE_NAME@" "scopeAll" "$TRI_INSTALL_SCOPE_ALL"
+  IfErrors there_are_erros
+  Return
+there_are_erros: ;nothing
+  MessageBox MB_OK "There was an error during adding the installation keys to the registry$\nArango will work fine but there may be trouble during the deinstallation$\nplease contact @CPACK_NSIS_CONTACT@"
 
 FunctionEnd
 
@@ -804,19 +859,15 @@ Function un.onInit
   StrCpy $PURGE_DB "0"
 
   Pop $0
-; temporary variable used as flag for decide the change to administration rights
-  StrCpy $R0 "admin"
-  ${If}  ${UAC_IsAdmin}
-    ReadRegStr $0 HKCC "Software\@CPACK_NSIS_PACKAGE_NAME@" "type"
+  SetShellVarContext current
+  ReadRegStr $TRI_INSTALL_SERVICE   HKCC "Software\@CPACK_NSIS_PACKAGE_NAME@" "service"
+  ReadRegStr $TRI_INSTALL_SCOPE_ALL HKCC "Software\@CPACK_NSIS_PACKAGE_NAME@" "scopeAll"
+
+  ${If} $TRI_INSTALL_SCOPE_ALL == 1
+    SetShellVarContext all
   ${Else}
-    ReadRegStr $0 HKCU "Software\@CPACK_NSIS_PACKAGE_NAME@" "type"
-    ${If}  $0 == "SingleUser"
-      StrCpy $R0 "user"
-    ${EndIf}
+    SetShellVarContext current
   ${EndIf}
-
- SetShellVarContext current
-
 FunctionEnd
 
 ;--- Add/Remove callback functions: ---
@@ -848,68 +899,59 @@ Section "Uninstall"
   ; we probably need this for the install/uninstall software list.
   SetRegView ${BITS}
   ; A single user isn''t in HKCC...
-  StrCpy $TRI_INSTALL_TYPE 'SingleUser'
-  ReadRegStr $TRI_INSTALL_TYPE         HKCC "Software\@CPACK_NSIS_PACKAGE_NAME@" "type" 
-  ;MessageBox MB_OK "Type: $TRI_INSTALL_TYPE"
-  ${If} $TRI_INSTALL_TYPE == 'Service'
-    SetShellVarContext all
-    ;MessageBox MB_OK "Service : $INSTDIR"
-  ${EndIf}
+  StrCpy $TRI_INSTALL_SCOPE_ALL '0'
+  ReadRegStr $TRI_INSTALL_SCOPE_ALL HKCC "Software\@CPACK_NSIS_PACKAGE_NAME@" "scopeAll"
+  ReadRegStr $TRI_INSTALL_SERVICE   HKCC "Software\@CPACK_NSIS_PACKAGE_NAME@" "service"
 
-  ${If} $TRI_INSTALL_SCOPE == 'AllUsers'
-    SetShellVarContext all
-    StrCpy $INSTDIR "$DOCUMENTS\@CPACK_PACKAGE_INSTALL_DIRECTORY@"
-    ;MessageBox MB_OK "AllUsers : $INSTDIR"
-  ${EndIf}
+  call un.determine_install_scope
 
   ReadRegStr $START_MENU               SHCTX "${TRI_UNINSTALL_REG_PATH}" "StartMenu"
   ;MessageBox MB_OK "Start menu is in: $START_MENU"
-  ReadRegStr $DO_NOT_ADD_TO_PATH       SHCTX "${TRI_UNINSTALL_REG_PATH}" "DoNotAddToPath"
-  ReadRegStr $ADD_TO_PATH_ALL_USERS    SHCTX "${TRI_UNINSTALL_REG_PATH}" "AddToPathAllUsers"
-  ReadRegStr $ADD_TO_PATH_CURRENT_USER SHCTX "${TRI_UNINSTALL_REG_PATH}" "AddToPathCurrentUser"
-  ;MessageBox MB_OK "Add to path: $DO_NOT_ADD_TO_PATH all users: $ADD_TO_PATH_ALL_USERS"
-  ReadRegStr $INSTALL_DESKTOP          SHCTX "${TRI_UNINSTALL_REG_PATH}" "InstallToDesktop"
+  ReadRegStr $ADD_TO_PATH              SHCTX "${TRI_UNINSTALL_REG_PATH}" "AddToPath"
+
+  ;MessageBox MB_OK "Add to path: $ADD_TO_PATH"
+  ReadRegStr $ADD_DESKTOP_ICON         SHCTX "${TRI_UNINSTALL_REG_PATH}" "InstallToDesktop"
   ReadRegStr $DATADIR                  SHCTX "${TRI_UNINSTALL_REG_PATH}" "DATADIR"
   
-  ;MessageBox MB_OK "Install to desktop: $INSTALL_DESKTOP "
+  ;MessageBox MB_OK "Install to desktop: $ADD_DESKTOP_ICON "
 
-  StrCmp "0" "$INSTALL_DESKTOP" noDesktopIconRemove
+  StrCmp "0" "$ADD_DESKTOP_ICON" noDesktopIconRemove
   Delete  "$DESKTOP\Arango Shell.lnk"
   Delete  "$DESKTOP\Arango Management Interface.lnk"
   noDesktopIconRemove:
 
 
-  ;MessageBox MB_OK "Deleting Directory: $SMPROGRAMS\$START_MENU\ $TRI_INSTALL_TYPE "
+  ;MessageBox MB_OK "Deleting Directory: $SMPROGRAMS\$START_MENU\ $TRI_INSTALL_SERVICE "
   Delete "$SMPROGRAMS\$START_MENU"
 
-  StrCmp $TRI_INSTALL_TYPE  'Service' 0 nothing
-  ;SimpleSC::GetServiceName '${TRI_SVC_NAME}'
-  ;Pop $0 ; returns an errorcode (<>0) otherwise success (0)
-  ;Pop $1 ; returns the binary path of the service
-  ;MessageBox MB_OK "GetServiceName: : $0 $1 "
-  ; First get the installed service command.
-  SimpleSC::GetServiceBinaryPath '${TRI_SVC_NAME}'
-  Pop $0 ; returns an errorcode (<>0) otherwise success (0)
-  Pop $1 ; returns the binary path of the service
-  ; $1 should contain '"$INSTDIR\${SBIN_DIR}\arangod.exe" --start-service' - if $INSTDIR is equal
-  ; to our $INSTDIR uninstall the service - else its another installation and we jump to Done instead.
-  ; MessageBox MB_OK ' current service: $1 ---- "$INSTDIR\${SBIN_DIR}\arangod.exe"'
-  StrCmp $1 '"$INSTDIR\${SBIN_DIR}\arangod.exe" --start-service' '' Done
-  DetailPrint 'Shutting down Service ${TRI_SVC_NAME}'
-  SimpleSC::StopService  '${TRI_SVC_NAME}' 0 30
-  Call un.WaitForServiceDown
-  DetailPrint 'Removing ArangoDB Service'
-  SimpleSC::RemoveService  '${TRI_SVC_NAME}'
-  Pop $0 ; returns an errorcode (<>0) otherwise success (0)
-  IntCmp $0 0 Done +1 +1
-  Push $0
-  SimpleSC::GetErrorMessage
-  Pop $0
-  DetailPrint 'Stopping ArangoDB fails - Reason: $0'
-  MessageBox MB_OK 'Stopping ArangoDB fails - Reason: $0'
+  ${If} $TRI_INSTALL_SERVICE == "1"
+    ;SimpleSC::GetServiceName '${TRI_SVC_NAME}'
+    ;Pop $0 ; returns an errorcode (<>0) otherwise success (0)
+    ;Pop $1 ; returns the binary path of the service
+    ;MessageBox MB_OK "GetServiceName: : $0 $1 "
+    ; First get the installed service command.
+    SimpleSC::GetServiceBinaryPath '${TRI_SVC_NAME}'
+    Pop $0 ; returns an errorcode (<>0) otherwise success (0)
+    Pop $1 ; returns the binary path of the service
+    ; $1 should contain '"$INSTDIR\${SBIN_DIR}\arangod.exe" --start-service' - if $INSTDIR is equal
+    ; to our $INSTDIR uninstall the service - else its another installation and we jump to Done instead.
+    ; MessageBox MB_OK ' current service: $1 ---- "$INSTDIR\${SBIN_DIR}\arangod.exe"'
+    StrCmp $1 '"$INSTDIR\${SBIN_DIR}\arangod.exe" --start-service' '' Done
+    DetailPrint 'Shutting down Service ${TRI_SVC_NAME}'
+    SimpleSC::StopService  '${TRI_SVC_NAME}' 0 30
+    Call un.WaitForServiceDown
+    DetailPrint 'Removing ArangoDB Service'
+    SimpleSC::RemoveService  '${TRI_SVC_NAME}'
+    Pop $0 ; returns an errorcode (<>0) otherwise success (0)
+    IntCmp $0 0 Done
+    Push $0
+    SimpleSC::GetErrorMessage
+    Pop $0
+    DetailPrint 'Stopping ArangoDB fails - Reason: $0'
+    MessageBox MB_OK 'Stopping ArangoDB fails - Reason: $0'
 
-  Done:
-  nothing:
+  ${EndIf}
+Done:
   DetailPrint 'Removing files'
 
   Delete "$INSTDIR\etc\arangodb3\arangod.conf.old"
@@ -921,7 +963,9 @@ Section "Uninstall"
   RMDir    "$INSTDIR\var\lib"
   RMDir /r "$INSTDIR\var\log\arangodb3"
   dontDeleteDatabases:
-  DetailPrint 'Removing programm files:'
+    DetailPrint 'Removing programm files:'
+    DetailPrint "      RMDir $INSTDIR\usr\share\arangodb3\js\node\node_modules\graphql-sync"
+
   ;Remove files we installed.
   ;Keep the list of directories here in sync with the File commands above.
 @CPACK_NSIS_DELETE_FILES@
@@ -993,9 +1037,9 @@ Section "Uninstall"
   ${EndIf}
   DeleteRegKey HKLM "${TRI_UNINSTALL_REG_PATH}"
 
-  StrCmp $DO_NOT_ADD_TO_PATH "1" doNotRemoveFromPath 0
-  !InsertMacro un.RemoveFromPath "$INSTDIR/${BIN_DIR}"
-  doNotRemoveFromPath:
+  ${If} $ADD_TO_PATH == 1
+    !InsertMacro un.RemoveFromPath "$INSTDIR/${BIN_DIR}"
+  ${EndIf}
 SectionEnd
 
 
@@ -1041,60 +1085,29 @@ Function .onInit
   StrCpy $STORAGE_ENGINE "auto"
 
   ${GetParameters} $R0        
-  ${GetOptions} $R0 "/DESKTOPICON="    $INSTALL_DESKTOP
+  ${GetOptions} $R0 "/DESKTOPICON="    $ADD_DESKTOP_ICON
   IfErrors 0 +2
-  StrCpy $INSTALL_DESKTOP "1"
+  StrCpy $ADD_DESKTOP_ICON "1"
         
   ${GetParameters} $R0
   ClearErrors
-  ${GetOptions} $R0 "/NOPATH="         $DO_NOT_ADD_TO_PATH
+  ${GetOptions} $R0 "/PATH="         $ADD_TO_PATH
   IfErrors 0 +2
-  StrCpy $DO_NOT_ADD_TO_PATH "0"
+  StrCpy $ADD_TO_PATH "0"
 
-  ${GetParameters} $R0
-  ClearErrors
-  ${GetOptions} $R0 "/ALLPATH="        $ADD_TO_PATH_ALL_USERS
-  IfErrors 0 +2
-  StrCpy $ADD_TO_PATH_ALL_USERS "0"
-
-  ${GetParameters} $R0
-  ClearErrors
-  ${GetOptions} $R0 "/CURPATH="        $ADD_TO_PATH_CURRENT_USER
-  IfErrors 0 +2
-  StrCpy $ADD_TO_PATH_CURRENT_USER "0"
-  
-  noService:
-  IfSilent 0 dontValidatePathOption
-  StrCpy $allPathOpts "0"
-  IntOp $allPathOpts $allPathOpts + $DO_NOT_ADD_TO_PATH
-  IntOp $allPathOpts $allPathOpts + $ADD_TO_PATH_ALL_USERS
-  IntOp $allPathOpts $allPathOpts + $ADD_TO_PATH_CURRENT_USER
-  ${If} $allPathOpts != 1
-    Goto PathWrong
-  ${EndIf}
-
-  ${If} $DO_NOT_ADD_TO_PATH == "1"
-  ${ElseIf} $ADD_TO_PATH_ALL_USERS == "1"
-    StrCpy $TRI_INSTALL_SCOPE "global"
-  ${ElseIf} $ADD_TO_PATH_CURRENT_USER  == "1"
-    StrCpy $TRI_INSTALL_SCOPE "ThisUsers"
+  ${GetOptions} $R0 "/INSTALL_SCOPE_ALL=" $0
+  ${If} $0 == 1
+    StrCpy $TRI_INSTALL_SCOPE_ALL "1"
   ${Else}
-    Goto PathWrong
+    StrCpy $TRI_INSTALL_SCOPE_ALL "0"
   ${EndIf}
-  
-  Goto dontValidatePathOption
-  PathWrong:
-      MessageBox MB_OK "You have to exactly set one of /NOPATH=$DO_NOT_ADD_TO_PATH, /ALLPATH=$ADD_TO_PATH_ALL_USERS or /CURPATH=$ADD_TO_PATH_CURRENT_USER to 1!"
-      Abort
-
-  dontValidatePathOption:
 
   IfSilent 0 dontFetchPath
   ${GetParameters} $R0
   ClearErrors
-  ${GetOptions} $R0 "/INSTALLTYPE=" $TRI_INSTALL_TYPE
+  StrCpy $TRI_INSTALL_SERVICE "1"
+  ${GetOptions} $R0 "/INSTALL_SERVICE=" $TRI_INSTALL_SERVICE
 
-  
   StrLen $0 "$INSTDIR"
   ${If} $0 < 3
     MessageBox MB_OK 'Refusing to install flat on drive "$INSTDIR"'
