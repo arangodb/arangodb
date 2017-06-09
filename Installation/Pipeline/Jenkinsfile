@@ -1,5 +1,9 @@
 //  -*- mode: groovy-mode
 
+def binaries = 'build/**,etc/**,Installation/Pipeline/**,js/**,scripts/**,tests/**,UnitTests/**,utils/**'
+def enterpriseRepo = 'https://github.com/arangodb/enterprise'
+def credentialsId = '8d893d23-6714-4f35-a239-c847c798e080'
+
 def PowerShell(psCmd) {
     bat "powershell.exe -NonInteractive -ExecutionPolicy Bypass -Command \"\$ErrorActionPreference='Stop';[Console]::OutputEncoding=[System.Text.Encoding]::UTF8;$psCmd;EXIT \$global:LastExitCode\""
 }
@@ -36,8 +40,7 @@ pipeline {
                                     doGenerateSubmoduleConfigurations: false,
                                     extensions: [[$class: 'RelativeTargetDirectory', relativeTargetDir: 'enterprise']],
                                     submoduleCfg: [],
-                                    userRemoteConfigs: [[credentialsId: '8d893d23-6714-4f35-a239-c847c798e080',
-                                                         url: 'https://github.com/arangodb/enterprise']]])
+                                    userRemoteConfigs: [[credentialsId: credentialsId, url: enterpriseRepo]]])
                         }
                         catch (err) {
                             echo "Failed ${env.BRANCH_NAME}, trying enterprise branch devel"
@@ -51,8 +54,7 @@ pipeline {
                                     doGenerateSubmoduleConfigurations: false,
                                     extensions: [[$class: 'RelativeTargetDirectory', relativeTargetDir: 'enterprise']],
                                     submoduleCfg: [],
-                                    userRemoteConfigs: [[credentialsId: '8d893d23-6714-4f35-a239-c847c798e080',
-                                                         url: 'https://github.com/arangodb/enterprise']]])
+                                    userRemoteConfigs: [[credentialsId: credentialsId, url: enterpriseRepo]]])
                         }
                     }
 
@@ -66,19 +68,28 @@ pipeline {
         stage('Build & Test') { 
             steps { 
                 parallel(
-                    'cc-lx': {
+                    'linux': {
                         node('linux') {
                             unstash 'source'
-                            sh './Installation/Pipeline/build_cc_lx.sh 16'
-                            sh './Installation/Pipeline/test_ss_mm_cc_lx.sh 8'
-
-                            stash includes: 'build/**,etc/**,Installation/Pipeline/**,js/**,scripts/**,tests/**,UnitTests/**,utils/**',
-                                  name: 'build-cc-lx'
-
+                            sh './Installation/Pipeline/build_enterprise_linux.sh 16'
+                            stash includes: binaries, name: 'build-cc-lx'
                         }
+
+                        parallel(
+                            'community': {
+                                node('linux') {
+                                    sh './Installation/Pipeline/test_community_linux.sh 8'
+                                }
+                            },
+                            'enterprise': {
+                                node('linux') {
+                                    sh './Installation/Pipeline/test_enterprise_linux.sh 8'
+                                }
+                            }
+                        )
                     },
 
-                    'ee-ma': {
+                    'mac': {
                         node('mac') {
                             unstash 'source'
                             sh './Installation/Pipeline/build_ee_mc.sh 16'
@@ -86,7 +97,7 @@ pipeline {
                         }
                     },
 
-                    'ee-wi': {
+                    'windows': {
                         node('windows') {
                             unstash 'source'
                             PowerShell(". .\\Installation\\Pipeline\\build_ee_wi.ps1")

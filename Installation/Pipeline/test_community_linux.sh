@@ -2,27 +2,24 @@
 
 concurrency=$1
 
-chmod +x build/bin/*
-chmod +x build/tests/*
-chmod +x scripts/unittest
-chmod +x scripts/disable-cores.sh
-chmod +x build/tests/*
-
-cat /proc/sys/kernel/core_pattern
-ulimit -c
+echo "ARANGOD VERSION: `build/bin/arangod --version`"
+echo "CORE PATTERN: `cat /proc/sys/kernel/core_pattern`"
+echo "CORE LIMIT: `ulimit -c`"
 
 rm -f core.* *.log out
 rm -Rf tmp && mkdir tmp
 export TMPDIR=$(pwd)/tmp
-
-build/bin/arangod --version
-OPTS="--skipNondeterministic true --skipTimeCritical true  --configDir etc/jenkins --skipLogAnalysis true"
+export TEMPDIR=$(pwd)/tmp
 
 PORT01=`./Installation/Pipeline/port.sh`
 PORT02=`./Installation/Pipeline/port.sh`
 PORT03=`./Installation/Pipeline/port.sh`
 
+trap "./Installation/Pipeline/port.sh --clean $PORT01 $PORT02 $PORT03" EXIT
+
 # note that: shebang does not work if path contains a '@'
+
+OPTS="--skipNondeterministic true --skipTimeCritical true  --configDir etc/jenkins --skipLogAnalysis true"
 
 echo "
 scripts/unittest boost                     --skipCache false 2>&1
@@ -52,10 +49,4 @@ scripts/unittest shell_server_aql          --minPort `expr $PORT03 + 20` --maxPo
 scripts/unittest shell_server_aql          --minPort `expr $PORT03 + 30` --maxPort `expr $PORT03 + 39` $OPTS --testBuckets 4/3 2>&1
 scripts/unittest ssl_server                --minPort `expr $PORT03 + 40` --maxPort `expr $PORT03 + 49` $OPTS  2>&1
 scripts/unittest upgrade                   --minPort `expr $PORT03 + 50` --maxPort `expr $PORT03 + 59` $OPTS 2>&1
-" | parallel -j$concurrency
-
-result=$!
-
-./Installation/Pipeline/port.sh --clean $PORT01 $PORT02 $PORT03
-
-exit $result
+" | parallel --no-notice --load 10 --jobs $concurrency
