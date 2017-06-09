@@ -8,6 +8,21 @@ def PowerShell(psCmd) {
     bat "powershell.exe -NonInteractive -ExecutionPolicy Bypass -Command \"\$ErrorActionPreference='Stop';[Console]::OutputEncoding=[System.Text.Encoding]::UTF8;$psCmd;EXIT \$global:LastExitCode\""
 }
 
+
+node('master') {
+    retry(3) {
+        try {
+            checkout scm
+        }
+        catch (err) {
+            echo "GITHUB checkout failed, retrying in 5min"
+            sleep 300
+        }
+    }
+}
+
+
+/*
 pipeline {
     agent any 
 
@@ -125,3 +140,4 @@ pipeline {
         }
     }
 }
+*/
