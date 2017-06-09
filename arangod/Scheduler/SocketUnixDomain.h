@@ -62,7 +62,7 @@ class SocketUnixDomain final : public Socket {
   protected:
     void shutdownReceive(boost::system::error_code& ec) override;
     void shutdownSend(boost::system::error_code& ec) override;
-    void close(boost::system::error_code& ec) override { _socket.close(ec); }
+    void close(boost::system::error_code& ec) override;
 
   public:
     boost::asio::local::stream_protocol::socket _socket;

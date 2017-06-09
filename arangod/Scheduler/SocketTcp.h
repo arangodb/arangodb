@@ -74,14 +74,13 @@ class SocketTcp final : public Socket {
   // functions access the _socket only and it is ok that they are not implemented for
   // _sslSocket in the children
 
-  void shutdownAndClose(boost::system::error_code& ec, bool closeSend, bool closeReceive) override;
+  void shutdown(boost::system::error_code& ec, bool closeSend, bool closeReceive) override;
+  void close(boost::system::error_code& ec) override;
   std::size_t available(boost::system::error_code& ec) override;
 
  protected:
   void shutdownReceive(boost::system::error_code& ec) override;
   void shutdownSend(boost::system::error_code& ec) override;
-  void close(boost::system::error_code& ec) override { _socket.close(ec); }
-
 
  public:
   Mutex _lock;

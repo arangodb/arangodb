@@ -86,6 +86,10 @@ SocketTask::~SocketTask() {
   if (err) {
     LOG_TOPIC(ERR, Logger::COMMUNICATION) << "unable to cancel _keepAliveTimer";
   }
+
+  if (_peer) {
+    _peer->close(err);
+  }
 }
 
 // -----------------------------------------------------------------------------
@@ -274,7 +278,7 @@ void SocketTask::closeStreamNoLock() {
   bool closeSend = !_closedSend;
   bool closeReceive = !_closedReceive;
   
-  _peer->shutdownAndClose(err, closeSend, closeReceive);
+  _peer->shutdown(err, closeSend, closeReceive);
   
   _closedSend = true;
   _closedReceive = true;
