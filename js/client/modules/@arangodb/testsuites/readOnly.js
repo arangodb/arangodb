@@ -93,9 +93,19 @@ function readOnly (options) {
 
 const requests = [
   [200, 'post', '/_api/collection', 'root', {name:'testcol'}],
+  [202, 'post', '/_api/document/testcol', 'root', {_key:'abcd'}],
+
+  // create, delete, truncate collection
   [403, 'post', '/_api/collection', 'test', {name:'testcol2'}],
   [403, 'delete', '/_api/collection/testcol', 'test', {}],
-  [403, 'put', '/_api/collection/testcol/truncate', 'test', {}]
+  [403, 'put', '/_api/collection/testcol/truncate', 'test', {}],
+
+  // get, delete, update, replace document
+  [200, 'get', '/_api/document/testcol/abcd', 'test', {}],
+  [403, 'delete', '/_api/document/testcol/abcd', 'test', {}],
+  [403, 'patch', '/_api/document/testcol/abcd', 'test', {foo:'bar'}],
+  [403, 'put', '/_api/document/testcol/abcd', 'test', {foo:'bar'}]
+
 
 ]
 
@@ -111,13 +121,12 @@ const requests = [
         ]);
 
   for (const r of requests) {
-    print(r[1]);
     const res = request[r[1]]({
       url: `${adbInstance.arangods[0].url}${r[2]}`,
-      body: JSON.stringify(r[4]),
+      body: Object.keys(r[4]).length ? JSON.stringify(r[4]) : '',
       auth: {username:r[3], password:''}
     });
-    print(res.statusCode === r[0]);
+    print(res.statusCode === r[0], res.statusCode);
   }
 
   pu.shutdownInstance(adbInstance, options);
