@@ -18,7 +18,7 @@ if test "$1" == "--clean"; then
 fi
 
 port=5000
-INCR=100
+INCR=200
 
 find $PORTDIR -type f -ctime +$TIMEOUT -exec rm "{}" ";"
 

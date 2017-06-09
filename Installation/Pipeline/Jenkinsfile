@@ -68,15 +68,15 @@ stage('build & test') {
             }
 
             parallel(
-                'community': {
+                'singleserver-community': {
                     node('linux') {
-                        sh './Installation/Pipeline/test_community_mmfiles_linux.sh 8'
+                        sh './Installation/Pipeline/test_singleserver_community_mmfiles_linux.sh 8'
                     }
                 },
 
-                'enterprise': {
+                'cluster-enterprise': {
                     node('linux') {
-                        sh './Installation/Pipeline/test_enterprise_rocksdb_linux.sh 8'
+                        sh './Installation/Pipeline/test_cluster_enterprise_rocksdb_linux.sh 8'
                     }
                 },
 
@@ -100,7 +100,7 @@ stage('build & test') {
         'mac': {
             node('mac') {
                 unstash 'source'
-                sh './Installation/Pipeline/build_enterprise_mac.sh 16'
+                sh './Installation/Pipeline/build_community_mac.sh 16'
             }
         },
 
