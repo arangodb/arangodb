@@ -73,3 +73,7 @@ level = info
 @COMMENT_LOGFILE@file = @LOCALSTATEDIR@/log/arangodb3/arangod.log
 
 [cluster]
+
+[rocksdb]
+# encryption-keyfile=/your-encryption-file
+

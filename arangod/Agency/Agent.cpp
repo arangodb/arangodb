@@ -57,7 +57,7 @@ Agent::Agent(config_t const& config)
     _compactor(this),
     _ready(false),
     _preparing(false),
-    _startup(false) {
+    _startup(true) {
   _state.configure(this);
   _constituent.configure(this);
 }
@@ -543,7 +543,7 @@ void Agent::sendAppendEntriesRPC() {
         std::make_shared<std::string>(builder.toJson()), headerFields,
         std::make_shared<AgentCallback>(
           this, followerId, (toLog) ? highest : 0, toLog),
-        std::max(1.0e-3 * toLog * dt.count(), 0.25 * _config.minPing()), true);
+        std::max(1.0e-3 * toLog * dt.count(), _config.minPing()), true);
 
       // _lastSent, _lastHighest: local and single threaded access
       _lastSent[followerId]        = system_clock::now();
@@ -702,9 +702,10 @@ void Agent::load() {
   }
 
   if (size() > 1) {
-    _startup = true;
     _inception->start();
   } else {
+    rebuildDBs();
+    _startup = false;
     activateAgency();
   }
 }
@@ -766,7 +767,14 @@ trans_ret_t Agent::transact(query_t const& queries) {
       _waitForCV.wait(100);
       MUTEX_LOCKER(ioLocker, _ioLock);
       _startup = (_commitIndex != _state.lastIndex());
+      if (!_startup) {
+        _spearhead = _readDB;
+      }
     }
+  }
+
+  while (_preparing) {
+    _waitForCV.wait(100);
   }
   
   // Apply to spearhead and get indices for log entries
@@ -829,7 +837,14 @@ trans_ret_t Agent::transient(query_t const& queries) {
       _waitForCV.wait(100);
       MUTEX_LOCKER(ioLocker, _ioLock);
       _startup = (_commitIndex != _state.lastIndex());
+      if (!_startup) {
+        _spearhead = _readDB;
+      }
     }
+  }
+  
+  while (_preparing) {
+    _waitForCV.wait(100);
   }
   
   // Apply to spearhead and get indices for log entries
@@ -925,9 +940,15 @@ write_ret_t Agent::write(query_t const& query, bool discardStartup) {
       _waitForCV.wait(100);
       MUTEX_LOCKER(ioLocker, _ioLock);
       _startup = (_commitIndex != _state.lastIndex());
+      if (!_startup) {
+        _spearhead = _readDB;
+      }
+    }
+    while (_preparing) {
+      _waitForCV.wait(100);
     }
   }
-
+  
   addTrxsOngoing(query->slice());    // remember that these are ongoing
 
   auto slice = query->slice();
@@ -993,9 +1014,16 @@ read_ret_t Agent::read(query_t const& query) {
       _waitForCV.wait(100);
       MUTEX_LOCKER(ioLocker, _ioLock);
       _startup = (_commitIndex != _state.lastIndex());
+      if (!_startup) {
+        _spearhead = _readDB;
+      }
     }
   }
 
+  while (_preparing) {
+    _waitForCV.wait(100);
+  }
+  
   MUTEX_LOCKER(ioLocker, _ioLock);
   // Only leader else redirect
   if (challengeLeadership()) {
@@ -1029,7 +1057,7 @@ void Agent::run() {
       sendAppendEntriesRPC();
 
       // Don't panic
-      _appendCV.wait(10);
+      _appendCV.wait(static_cast<uint64_t>(1.0e-1*_config.minPing()));
 
       // Detect faulty agent and replace
       // if possible and only if not already activating
@@ -1463,6 +1491,7 @@ Agent& Agent::operator=(VPackSlice const& compaction) {
   _nextCompactionAfter = _commitIndex + _config.compactionStepSize();
 
   return *this;
+  
 }
 
 /// Are we still starting up?

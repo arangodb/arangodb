@@ -1138,6 +1138,11 @@ std::vector<communicator::Ticket> ClusterComm::activeServerTickets(std::vector<s
   return tickets;
 }
 
+void ClusterComm::disable() {
+   _communicator->disable();
+   _communicator->abortRequests();
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief ClusterComm main loop
 ////////////////////////////////////////////////////////////////////////////////

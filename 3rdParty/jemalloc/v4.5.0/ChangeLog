@@ -4,6 +4,41 @@ brevity.  Much more detail can be found in the git revision history:
 
     https://github.com/jemalloc/jemalloc
 
+* 4.5.0 (February 28, 2017)
+
+  This is the first release to benefit from much broader continuous integration
+  testing, thanks to @davidtgoldblatt.  Had we had this testing infrastructure
+  in place for prior releases, it would have caught all of the most serious
+  regressions fixed by this release.
+
+  New features:
+  - Add --disable-thp and the opt.thp to provide opt-out mechanisms for
+    transparent huge page integration.  (@jasone)
+  - Update zone allocator integration to work with macOS 10.12.  (@glandium)
+  - Restructure *CFLAGS configuration, so that CFLAGS behaves typically, and
+    EXTRA_CFLAGS provides a way to specify e.g. -Werror during building, but not
+    during configuration.  (@jasone, @ronawho)
+
+  Bug fixes:
+  - Fix DSS (sbrk(2)-based) allocation.  This regression was first released in
+    4.3.0.  (@jasone)
+  - Handle race in per size class utilization computation.  This functionality
+    was first released in 4.0.0.  (@interwq)
+  - Fix lock order reversal during gdump.  (@jasone)
+  - Fix-refactor tcache synchronization.  This regression was first released in
+    4.0.0.  (@jasone)
+  - Fix various JSON-formatted malloc_stats_print() bugs.  This functionality
+    was first released in 4.3.0.  (@jasone)
+  - Fix huge-aligned allocation.  This regression was first released in 4.4.0.
+    (@jasone)
+  - When transparent huge page integration is enabled, detect what state pages
+    start in according to the kernel's current operating mode, and only convert
+    arena chunks to non-huge during purging if that is not their initial state.
+    This functionality was first released in 4.4.0.  (@jasone)
+  - Fix lg_chunk clamping for the --enable-cache-oblivious --disable-fill case.
+    This regression was first released in 4.0.0.  (@jasone, @428desmo)
+  - Properly detect sparc64 when building for Linux.  (@glaubitz)
+
 * 4.4.0 (December 3, 2016)
 
   New features:

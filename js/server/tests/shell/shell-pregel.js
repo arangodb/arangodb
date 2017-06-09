@@ -45,8 +45,10 @@ function testAlgo(a, p) {
   var i = 1000;
   do {
     internal.wait(1);
-    var doc = db._pregelStatus(key);
-    if (doc.state !== "running") {
+    var stats = db._pregelStatus(key);
+    if (stats.state !== "running") {
+      assertEqual(stats.vertexCount, 11, stats);
+      assertEqual(stats.edgeCount, 17, stats);
 
       db[vColl].all().toArray()
       .forEach(function(d) {

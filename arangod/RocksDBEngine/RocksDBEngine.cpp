@@ -102,6 +102,7 @@ rocksdb::ColumnFamilyHandle* RocksDBColumnFamily::_fulltext(nullptr);
 rocksdb::ColumnFamilyHandle* RocksDBColumnFamily::_other(nullptr);
 rocksdb::ColumnFamilyHandle* RocksDBColumnFamily::_index(nullptr);
 rocksdb::ColumnFamilyHandle* RocksDBColumnFamily::_uniqueIndex(nullptr);
+rocksdb::ColumnFamilyHandle* RocksDBColumnFamily::_views(nullptr);
 std::vector<rocksdb::ColumnFamilyHandle*> RocksDBColumnFamily::_allHandles;
 
 // create the storage engine
@@ -148,11 +149,18 @@ void RocksDBEngine::collectOptions(
   options->addOption("--rocksdb.wal-file-timeout",
                      "timeout after which unused WAL files are deleted",
                      new DoubleParameter(&_pruneWaitTime));
+
+#ifdef USE_ENTERPRISE 
+   collectEnterpriseOptions(options);
+#endif
 }
 
 // validate the storage engine's specific options
-void RocksDBEngine::validateOptions(std::shared_ptr<options::ProgramOptions>) {
+void RocksDBEngine::validateOptions(std::shared_ptr<options::ProgramOptions> options) {
   transaction::Options::setLimits(_maxTransactionSize, _intermediateCommitSize, _intermediateCommitCount);
+#ifdef USE_ENTERPRISE 
+   validateEnterpriseOptions(options);
+#endif
 }
 
 // preparation phase for storage engine. can be used for internal setup.
@@ -165,6 +173,10 @@ void RocksDBEngine::prepare() {
   _basePath = databasePathFeature->directory();
 
   TRI_ASSERT(!_basePath.empty());
+
+#ifdef USE_ENTERPRISE
+  prepareEnterprise();
+#endif
 }
 
 void RocksDBEngine::start() {
@@ -236,19 +248,24 @@ void RocksDBEngine::start() {
   // level-0 compaction will not be triggered by number of files at all.
   //
   // Default: 4
-  _options.level0_file_num_compaction_trigger = opts->_level0CompactionTrigger;
+  _options.level0_file_num_compaction_trigger = static_cast<int>(opts->_level0CompactionTrigger);
 
   // Soft limit on number of level-0 files. We start slowing down writes at this
   // point. A value <0 means that no writing slow down will be triggered by
   // number of files in level-0.
-  _options.level0_slowdown_writes_trigger = opts->_level0SlowdownTrigger;
+  _options.level0_slowdown_writes_trigger = static_cast<int>(opts->_level0SlowdownTrigger);
 
   // Maximum number of level-0 files.  We stop writes at this point.
-  _options.level0_stop_writes_trigger = opts->_level0StopTrigger;
+  _options.level0_stop_writes_trigger = static_cast<int>(opts->_level0StopTrigger);
 
   _options.recycle_log_file_num = static_cast<size_t>(opts->_recycleLogFileNum);
   _options.compaction_readahead_size =
       static_cast<size_t>(opts->_compactionReadaheadSize);
+
+#ifdef USE_ENTERPRISE
+  configureEnterpriseRocksDBOptions(_options);
+  startEnterprise();
+#endif
 
   _options.env->SetBackgroundThreads((int)opts->_numThreadsHigh,
                                      rocksdb::Env::Priority::HIGH);
@@ -307,14 +324,16 @@ void RocksDBEngine::start() {
   cfOptions2.comparator = _vpackCmp.get();
   columFamilies.emplace_back("IndexValue", cfOptions2); // 6
   columFamilies.emplace_back("UniqueIndexValue", cfOptions2);// 7
+  columFamilies.emplace_back("Views", cfOptions2);// 8
   // DO NOT FORGET TO DESTROY THE CFs ON CLOSE
 
   std::vector<rocksdb::ColumnFamilyHandle*> cfHandles;
-  size_t const numberOfColumnFamilies = RocksDBColumnFamily::numberOfColumnFamilies;
+  size_t const numberOfColumnFamilies = RocksDBColumnFamily::minNumberOfColumnFamilies;
   {
     rocksdb::Options testOptions;
     testOptions.create_if_missing = false;
     testOptions.create_missing_column_families = false;
+    testOptions.env = _options.env;
     std::vector<std::string> existingColumnFamilies;
     rocksdb::Status status = rocksdb::DB::ListColumnFamilies(testOptions, _path, &existingColumnFamilies);
     if (!status.ok()) {
@@ -384,6 +403,7 @@ void RocksDBEngine::start() {
   RocksDBColumnFamily::_fulltext = cfHandles[5];
   RocksDBColumnFamily::_index = cfHandles[6];
   RocksDBColumnFamily::_uniqueIndex = cfHandles[7];
+  RocksDBColumnFamily::_views = cfHandles[8];
   RocksDBColumnFamily::_allHandles = cfHandles;
   TRI_ASSERT(RocksDBColumnFamily::_other->GetID() == 0);
 

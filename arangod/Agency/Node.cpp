@@ -858,35 +858,35 @@ bool Node::getBool() const {
   return slice().getBool();
 }
 
-bool Node::isBool() const noexcept {
+bool Node::isBool() const {
   if (type() == NODE) {
     return false;
   }
   return slice().isBool();
 }
 
-bool Node::isDouble() const noexcept {
+bool Node::isDouble() const {
   if (type() == NODE) {
     return false;
   }
   return slice().isDouble();
 }
 
-bool Node::isString() const noexcept {
+bool Node::isString() const {
   if (type() == NODE) {
     return false;
   }
   return slice().isString();
 }
 
-bool Node::isUInt() const noexcept {
+bool Node::isUInt() const {
   if (type() == NODE) {
     return false;
   }
   return slice().isUInt() || slice().isSmallInt();
 }
 
-bool Node::isInt() const noexcept {
+bool Node::isInt() const {
   if (type() == NODE) {
     return false;
   }

@@ -1167,44 +1167,41 @@ static bool throwExceptionAfterBadSyncRequest(ClusterCommResult* res,
   }
 
   if (res->status == CL_COMM_ERROR) {
-    std::string errorMessage;
-    TRI_ASSERT(nullptr != res->result);
-
-    arangodb::basics::StringBuffer const& responseBodyBuf(res->result->getBody());
-
-    // extract error number and message from response
-    int errorNum = TRI_ERROR_NO_ERROR;
-    std::shared_ptr<VPackBuilder> builder = VPackParser::fromJson(
-        responseBodyBuf.c_str(), responseBodyBuf.length());
-    VPackSlice slice = builder->slice();
-
-    if (!slice.hasKey("error") || slice.get("error").getBoolean()) {
-      errorNum = TRI_ERROR_INTERNAL;
-      errorMessage = std::string("Error message received from shard '") +
+    std::string errorMessage = std::string("Error message received from shard '") +
                      std::string(res->shardID) +
                      std::string("' on cluster node '") +
                      std::string(res->serverID) + std::string("': ");
-    }
 
-    if (slice.isObject()) {
-      VPackSlice v = slice.get("errorNum");
 
-      if (v.isNumber()) {
-        if (v.getNumericValue<int>() != TRI_ERROR_NO_ERROR) {
-          /* if we've got an error num, error has to be true. */
-          TRI_ASSERT(errorNum == TRI_ERROR_INTERNAL);
-          errorNum = v.getNumericValue<int>();
+    int errorNum = TRI_ERROR_INTERNAL;
+    if (res->result != nullptr) {
+      errorNum = TRI_ERROR_NO_ERROR;
+      arangodb::basics::StringBuffer const& responseBodyBuf(res->result->getBody());
+      std::shared_ptr<VPackBuilder> builder = VPackParser::fromJson(
+          responseBodyBuf.c_str(), responseBodyBuf.length());
+      VPackSlice slice = builder->slice();
+
+      if (!slice.hasKey("error") || slice.get("error").getBoolean()) {
+        errorNum = TRI_ERROR_INTERNAL;
+      }
+
+      if (slice.isObject()) {
+        VPackSlice v = slice.get("errorNum");
+        if (v.isNumber()) {
+          if (v.getNumericValue<int>() != TRI_ERROR_NO_ERROR) {
+            /* if we've got an error num, error has to be true. */
+            TRI_ASSERT(errorNum == TRI_ERROR_INTERNAL);
+            errorNum = v.getNumericValue<int>();
+          }
+        }
+
+        v = slice.get("errorMessage");
+        if (v.isString()) {
+          errorMessage += v.copyString();
+        } else {
+          errorMessage += std::string("(no valid error in response)");
         }
       }
-
-      v = slice.get("errorMessage");
-      if (v.isString()) {
-        errorMessage += v.copyString();
-      } else {
-        errorMessage += std::string("(no valid error in response)");
-      }
-    } else {
-      errorMessage += std::string("(no valid response)");
     }
 
     if (isShutdown && errorNum == TRI_ERROR_QUERY_NOT_FOUND) {

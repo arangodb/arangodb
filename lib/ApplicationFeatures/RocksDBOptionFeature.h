@@ -66,9 +66,9 @@ class RocksDBOptionFeature final
   uint64_t _tableBlockSize;
   uint64_t _recycleLogFileNum;
   uint64_t _compactionReadaheadSize;
-  uint64_t _level0CompactionTrigger;
-  uint64_t _level0SlowdownTrigger;
-  uint64_t _level0StopTrigger;
+  int64_t _level0CompactionTrigger;
+  int64_t _level0SlowdownTrigger;
+  int64_t _level0StopTrigger;
   bool _verifyChecksumsInCompaction;
   bool _optimizeFiltersForHits;
   bool _useDirectReads;

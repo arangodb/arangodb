@@ -110,15 +110,6 @@ supported there:
 Memory management
 -----------------
 
-* added startup options `--vm.resident-limit` and `--vm.path` for file-backed 
-  memory mapping after reaching a configurable maximum RAM size
-
-  This prevents ArangoDB from using all available RAM when using large datasets.
-  This will also lower the chances of the arangod process being killed by the
-  operation system's OOM killer.
-
-  Note: these options are not available in all builds and environments.
-
 * make arangod start with less V8 JavaScript contexts
 
   This speeds up the server start and makes arangod use less memory at start.
@@ -201,6 +192,10 @@ JavaScript
   `print`/`printShell` functions in ArangoShell and arangod. This will emit longer
   prefixes of string values before truncating them with `...`, which is helpful
   for debugging. This change is mostly useful when using the ArangoShell (arangosh).
+
+
+* the `@arangodb` module now provides a `time` function which returns the current time
+  in seconds as a floating point value with microsecond precision.
 
 
 Foxx

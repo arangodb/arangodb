@@ -1,27 +1,27 @@
 #include "test/jemalloc_test.h"
 
-TEST_BEGIN(test_pages_huge) {
-	size_t alloc_size;
+TEST_BEGIN(test_pages_huge)
+{
 	bool commit;
-	void *pages, *hugepage;
+	void *pages;
 
-	alloc_size = HUGEPAGE * 2 - PAGE;
 	commit = true;
-	pages = pages_map(NULL, alloc_size, &commit);
+	pages = pages_map(NULL, PAGE, &commit);
 	assert_ptr_not_null(pages, "Unexpected pages_map() error");
 
-	hugepage = (void *)(ALIGNMENT_CEILING((uintptr_t)pages, HUGEPAGE));
-	assert_b_ne(pages_huge(hugepage, HUGEPAGE), have_thp,
+	assert_false(pages_huge(pages, PAGE),
 	    "Unexpected pages_huge() result");
-	assert_false(pages_nohuge(hugepage, HUGEPAGE),
+	assert_false(pages_nohuge(pages, PAGE),
 	    "Unexpected pages_nohuge() result");
 
-	pages_unmap(pages, alloc_size);
+	pages_unmap(pages, PAGE);
 }
 TEST_END
 
 int
-main(void) {
-	return test(
-	    test_pages_huge);
+main(void)
+{
+
+	return (test(
+	    test_pages_huge));
 }

@@ -42,6 +42,7 @@ class TestPutOperator : public MergeOperator {
 
 TEST_F(DBMergeOperatorTest, MergeErrorOnRead) {
   Options options;
+  options.env = CurrentOptions().env;
   options.create_if_missing = true;
   options.merge_operator.reset(new TestPutOperator());
   Reopen(options);
@@ -54,6 +55,7 @@ TEST_F(DBMergeOperatorTest, MergeErrorOnRead) {
 
 TEST_F(DBMergeOperatorTest, MergeErrorOnWrite) {
   Options options;
+  options.env = CurrentOptions().env;
   options.create_if_missing = true;
   options.merge_operator.reset(new TestPutOperator());
   options.max_successive_merges = 3;
@@ -69,6 +71,7 @@ TEST_F(DBMergeOperatorTest, MergeErrorOnWrite) {
 
 TEST_F(DBMergeOperatorTest, MergeErrorOnIteration) {
   Options options;
+  options.env = CurrentOptions().env;
   options.create_if_missing = true;
   options.merge_operator.reset(new TestPutOperator());
 

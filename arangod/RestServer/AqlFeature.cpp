@@ -30,7 +30,6 @@
 #include "RestServer/QueryRegistryFeature.h"
 #include "RestServer/TraverserEngineRegistryFeature.h"
 
-
 using namespace arangodb;
 using namespace arangodb::application_features;
 
@@ -68,14 +67,13 @@ AqlFeature* AqlFeature::lease() {
 void AqlFeature::unlease() {
   MUTEX_LOCKER(locker, AqlFeature::_aqlFeatureMutex);
   AqlFeature* aql = AqlFeature::_AQL;
-  if (aql == nullptr) {
-    return;
-  }
+  TRI_ASSERT(aql != nullptr);
   --aql->_numberLeases;
 }
 
 void AqlFeature::start() {
   MUTEX_LOCKER(locker, AqlFeature::_aqlFeatureMutex);
+  TRI_ASSERT(_AQL == nullptr);
   _AQL = this;
   LOG_TOPIC(DEBUG, Logger::QUERIES) << "AQL feature started";
 }
@@ -86,11 +84,16 @@ void AqlFeature::stop() {
     _isStopped = true;  // prevent new AQL queries from being launched
   }
   LOG_TOPIC(DEBUG, Logger::QUERIES) << "AQL feature stopped";
-  QueryRegistryFeature::QUERY_REGISTRY->destroyAll();
-  TraverserEngineRegistryFeature::TRAVERSER_ENGINE_REGISTRY->destroyAll();
 
   // Wait until all AQL queries are done
   while (true) {
+    try {
+      QueryRegistryFeature::QUERY_REGISTRY->destroyAll();
+      TraverserEngineRegistryFeature::TRAVERSER_ENGINE_REGISTRY->destroyAll();
+    } catch (...) {
+      // ignore errors here. if it fails, we'll try again in next round
+    }
+
     size_t m, n, o;
     {
       MUTEX_LOCKER(locker, AqlFeature::_aqlFeatureMutex);

@@ -53,12 +53,12 @@ class RocksDBIndex : public Index {
                    attributes,
                bool unique, bool sparse,
                rocksdb::ColumnFamilyHandle* cf,
-               uint64_t objectId = 0,
-               bool useCache = false);
+               uint64_t objectId,
+               bool useCache);
 
   RocksDBIndex(TRI_idx_iid_t, LogicalCollection*,
                arangodb::velocypack::Slice const&, rocksdb::ColumnFamilyHandle* cf,
-               bool useCache = false);
+               bool useCache);
 
  public:
   ~RocksDBIndex();

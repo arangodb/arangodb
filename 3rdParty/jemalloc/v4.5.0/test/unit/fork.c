@@ -4,7 +4,8 @@
 #include <sys/wait.h>
 #endif
 
-TEST_BEGIN(test_fork) {
+TEST_BEGIN(test_fork)
+{
 #ifndef _WIN32
 	void *p;
 	pid_t pid;
@@ -31,9 +32,8 @@ TEST_BEGIN(test_fork) {
 
 		/* Parent. */
 		while (true) {
-			if (waitpid(pid, &status, 0) == -1) {
+			if (waitpid(pid, &status, 0) == -1)
 				test_fail("Unexpected waitpid() failure");
-			}
 			if (WIFSIGNALED(status)) {
 				test_fail("Unexpected child termination due to "
 				    "signal %d", WTERMSIG(status));
@@ -56,7 +56,9 @@ TEST_BEGIN(test_fork) {
 TEST_END
 
 int
-main(void) {
-	return test(
-	    test_fork);
+main(void)
+{
+
+	return (test(
+	    test_fork));
 }

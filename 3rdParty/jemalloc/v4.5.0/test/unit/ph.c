@@ -3,14 +3,15 @@
 typedef struct node_s node_t;
 
 struct node_s {
-#define NODE_MAGIC 0x9823af7e
+#define	NODE_MAGIC 0x9823af7e
 	uint32_t magic;
 	phn(node_t) link;
 	uint64_t key;
 };
 
 static int
-node_cmp(const node_t *a, const node_t *b) {
+node_cmp(const node_t *a, const node_t *b)
+{
 	int ret;
 
 	ret = (a->key > b->key) - (a->key < b->key);
@@ -22,7 +23,7 @@ node_cmp(const node_t *a, const node_t *b) {
 		ret = (((uintptr_t)a) > ((uintptr_t)b))
 		    - (((uintptr_t)a) < ((uintptr_t)b));
 	}
-	return ret;
+	return (ret);
 }
 
 static int
@@ -31,26 +32,25 @@ node_cmp_magic(const node_t *a, const node_t *b) {
 	assert_u32_eq(a->magic, NODE_MAGIC, "Bad magic");
 	assert_u32_eq(b->magic, NODE_MAGIC, "Bad magic");
 
-	return node_cmp(a, b);
+	return (node_cmp(a, b));
 }
 
 typedef ph(node_t) heap_t;
 ph_gen(static, heap_, heap_t, node_t, link, node_cmp_magic);
 
 static void
-node_print(const node_t *node, unsigned depth) {
+node_print(const node_t *node, unsigned depth)
+{
 	unsigned i;
 	node_t *leftmost_child, *sibling;
 
-	for (i = 0; i < depth; i++) {
+	for (i = 0; i < depth; i++)
 		malloc_printf("\t");
-	}
 	malloc_printf("%2"FMTu64"\n", node->key);
 
 	leftmost_child = phn_lchild_get(node_t, link, node);
-	if (leftmost_child == NULL) {
+	if (leftmost_child == NULL)
 		return;
-	}
 	node_print(leftmost_child, depth + 1);
 
 	for (sibling = phn_next_get(node_t, link, leftmost_child); sibling !=
@@ -60,13 +60,13 @@ node_print(const node_t *node, unsigned depth) {
 }
 
 static void
-heap_print(const heap_t *heap) {
+heap_print(const heap_t *heap)
+{
 	node_t *auxelm;
 
 	malloc_printf("vvv heap %p vvv\n", heap);
-	if (heap->ph_root == NULL) {
+	if (heap->ph_root == NULL)
 		goto label_return;
-	}
 
 	node_print(heap->ph_root, 0);
 
@@ -83,7 +83,8 @@ label_return:
 }
 
 static unsigned
-node_validate(const node_t *node, const node_t *parent) {
+node_validate(const node_t *node, const node_t *parent)
+{
 	unsigned nnodes = 1;
 	node_t *leftmost_child, *sibling;
 
@@ -93,9 +94,8 @@ node_validate(const node_t *node, const node_t *parent) {
 	}
 
 	leftmost_child = phn_lchild_get(node_t, link, node);
-	if (leftmost_child == NULL) {
-		return nnodes;
-	}
+	if (leftmost_child == NULL)
+		return (nnodes);
 	assert_ptr_eq((void *)phn_prev_get(node_t, link, leftmost_child),
 	    (void *)node, "Leftmost child does not link to node");
 	nnodes += node_validate(leftmost_child, node);
@@ -107,17 +107,17 @@ node_validate(const node_t *node, const node_t *parent) {
 		    "sibling's prev doesn't link to sibling");
 		nnodes += node_validate(sibling, node);
 	}
-	return nnodes;
+	return (nnodes);
 }
 
 static unsigned
-heap_validate(const heap_t *heap) {
+heap_validate(const heap_t *heap)
+{
 	unsigned nnodes = 0;
 	node_t *auxelm;
 
-	if (heap->ph_root == NULL) {
+	if (heap->ph_root == NULL)
 		goto label_return;
-	}
 
 	nnodes += node_validate(heap->ph_root, NULL);
 
@@ -130,13 +130,13 @@ heap_validate(const heap_t *heap) {
 	}
 
 label_return:
-	if (false) {
+	if (false)
 		heap_print(heap);
-	}
-	return nnodes;
+	return (nnodes);
 }
 
-TEST_BEGIN(test_ph_empty) {
+TEST_BEGIN(test_ph_empty)
+{
 	heap_t heap;
 
 	heap_new(&heap);
@@ -146,23 +146,27 @@ TEST_BEGIN(test_ph_empty) {
 TEST_END
 
 static void
-node_remove(heap_t *heap, node_t *node) {
+node_remove(heap_t *heap, node_t *node)
+{
+
 	heap_remove(heap, node);
 
 	node->magic = 0;
 }
 
 static node_t *
-node_remove_first(heap_t *heap) {
+node_remove_first(heap_t *heap)
+{
 	node_t *node = heap_remove_first(heap);
 	node->magic = 0;
-	return node;
+	return (node);
 }
 
-TEST_BEGIN(test_ph_random) {
-#define NNODES 25
-#define NBAGS 250
-#define SEED 42
+TEST_BEGIN(test_ph_random)
+{
+#define	NNODES 25
+#define	NBAGS 250
+#define	SEED 42
 	sfmt_t *sfmt;
 	uint64_t bag[NNODES];
 	heap_t heap;
@@ -174,20 +178,17 @@ TEST_BEGIN(test_ph_random) {
 		switch (i) {
 		case 0:
 			/* Insert in order. */
-			for (j = 0; j < NNODES; j++) {
+			for (j = 0; j < NNODES; j++)
 				bag[j] = j;
-			}
 			break;
 		case 1:
 			/* Insert in reverse order. */
-			for (j = 0; j < NNODES; j++) {
+			for (j = 0; j < NNODES; j++)
 				bag[j] = NNODES - j - 1;
-			}
 			break;
 		default:
-			for (j = 0; j < NNODES; j++) {
+			for (j = 0; j < NNODES; j++)
 				bag[j] = gen_rand64_range(sfmt, NNODES);
-			}
 		}
 
 		for (j = 1; j <= NNODES; j++) {
@@ -280,8 +281,10 @@ TEST_BEGIN(test_ph_random) {
 TEST_END
 
 int
-main(void) {
-	return test(
+main(void)
+{
+
+	return (test(
 	    test_ph_empty,
-	    test_ph_random);
+	    test_ph_random));
 }

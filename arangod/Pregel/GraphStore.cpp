@@ -258,7 +258,10 @@ void GraphStore<V, E>::loadDocument(WorkerConfig* config,
     // allocate space if needed
     if (_vertexData->size() <= _localVerticeCount) {
       if (!_config->lazyLoading()) {
-        LOG_TOPIC(ERR, Logger::PREGEL) << "WTF";
+        LOG_TOPIC(ERR, Logger::PREGEL) << "Pregel did not preallocate enough "
+                                       << "space for all vertices. This hints "
+                                       << "at a bug with collection count()";
+        TRI_ASSERT(false);
         THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
       }
       // lazy loading always uses vector backed storage
@@ -441,7 +444,10 @@ void GraphStore<V, E>::_loadEdges(transaction::Methods* trx,
     // If this is called from loadDocument we didn't preallocate the vector
     if (_edges->size() <= offset) {
       if (!_config->lazyLoading()) {
-        LOG_TOPIC(ERR, Logger::PREGEL) << "WTF";
+        LOG_TOPIC(ERR, Logger::PREGEL) << "Pregel did not preallocate enough "
+                                       << "space for all edges. This hints "
+                                       << "at a bug with collection count()";
+        TRI_ASSERT(false);
         THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
       }
       // lazy loading always uses vector backed storage

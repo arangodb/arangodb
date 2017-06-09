@@ -93,7 +93,7 @@ struct StatsManager {
     }
   }
 
-  void serializeValues(VPackBuilder& b) {
+  void serializeValues(VPackBuilder& b) const {
     MessageStats stats;
     for (auto const& pair : _serverStats) {
       stats.accumulate(pair.second);
@@ -102,7 +102,7 @@ struct StatsManager {
   }
 
   /// Test if all messages were processed
-  bool allMessagesProcessed() {
+  bool allMessagesProcessed() const {
     uint64_t send = 0, received = 0;
     for (auto const& pair : _serverStats) {
       send += pair.second.sendCount;
@@ -111,7 +111,7 @@ struct StatsManager {
     return send == received;
   }
 
-  void debugOutput() {
+  void debugOutput() const {
     uint64_t send = 0, received = 0;
     for (auto const& pair : _serverStats) {
       send += pair.second.sendCount;
@@ -122,7 +122,7 @@ struct StatsManager {
   }
 
   /// tests if active count is greater 0
-  bool noActiveVertices() {
+  bool noActiveVertices() const {
     for (auto const& pair : _activeStats) {
       if (pair.second > 0) {
         return false;
@@ -139,7 +139,7 @@ struct StatsManager {
 
   void reset() { _serverStats.clear(); }
 
-  size_t clientCount() { return _serverStats.size(); }
+  size_t clientCount() const { return _serverStats.size(); }
 
  private:
   std::map<std::string, uint64_t> _activeStats;

@@ -400,6 +400,9 @@
 /// - 1487: @LIT{the number of current dbservers is lower than the requested replicationFactor}
 ///   Will be raised if one tries to create a collection with a
 ///   replicationFactor greater than the available number of DBServers.
+/// - 1488: @LIT{a follower could not be dropped in agency}
+///   Will be raised if a follower that ought to be dropped could not be
+///   dropped in the agency (under Current).
 /// - 1500: @LIT{query killed}
 ///   Will be raised when a running query is killed by an explicit admin
 ///   command.
@@ -647,6 +650,8 @@
 ///   Will be raised when the client could not read data.
 /// - 2100: @LIT{Request aborted}
 ///   Request was aborted.
+/// - 2101: @LIT{Communication was disabled}
+///   Communication was disabled.
 /// - 3000: @LIT{failed to parse manifest file}
 ///   The service manifest file is not well-formed JSON.
 /// - 3001: @LIT{manifest file is invalid}
@@ -2371,6 +2376,17 @@ void TRI_InitializeErrorMessages ();
 #define TRI_ERROR_CLUSTER_INSUFFICIENT_DBSERVERS                          (1487)
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief 1488: ERROR_CLUSTER_COULD_NOT_DROP_FOLLOWER
+///
+/// a follower could not be dropped in agency
+///
+/// Will be raised if a follower that ought to be dropped could not be dropped
+/// in the agency (under Current).
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_CLUSTER_COULD_NOT_DROP_FOLLOWER                         (1488)
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief 1500: ERROR_QUERY_KILLED
 ///
 /// query killed
@@ -3474,6 +3490,16 @@ void TRI_InitializeErrorMessages ();
 ////////////////////////////////////////////////////////////////////////////////
 
 #define TRI_COMMUNICATOR_REQUEST_ABORTED                                  (2100)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 2101: COMMUNICATOR_DISABLED
+///
+/// Communication was disabled
+///
+/// Communication was disabled.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_COMMUNICATOR_DISABLED                                         (2101)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 3000: ERROR_MALFORMED_MANIFEST_FILE

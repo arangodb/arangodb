@@ -161,10 +161,39 @@ void BootstrapFeature::start() {
   } else if (ss->isCoordinator()) {
     LOG_TOPIC(DEBUG, Logger::STARTUP) << "Racing for cluster bootstrap...";
     raceForClusterBootstrap();
-    LOG_TOPIC(DEBUG, Logger::STARTUP)
-        << "Running server/bootstrap/coordinator.js";
-    V8DealerFeature::DEALER->loadJavaScriptFileInAllContexts(vocbase,
-        "server/bootstrap/coordinator.js", nullptr);
+    bool success = false;
+    while (!success) {
+      LOG_TOPIC(DEBUG, Logger::STARTUP)
+          << "Running server/bootstrap/coordinator.js";
+      
+      VPackBuilder builder;      
+      V8DealerFeature::DEALER->loadJavaScriptFileInAllContexts(vocbase,
+          "server/bootstrap/coordinator.js", &builder);
+      
+      auto slice = builder.slice();
+      if (slice.isArray()) {
+        if (slice.length() > 0) {
+          bool newResult = true;
+          for (auto const& val: VPackArrayIterator(slice)) {
+            newResult = newResult && val.isTrue();
+          }
+          if (!newResult) {
+            LOG_TOPIC(ERR, Logger::STARTUP)
+              << "result of bootstrap was: " << builder.toJson() << ". retrying bootstrap in 1s.";
+          }
+          success = newResult;
+        } else {
+          LOG_TOPIC(ERR, Logger::STARTUP)
+            << "bootstrap wasn't executed in a single context! retrying bootstrap in 1s.";
+        }
+      } else {
+        LOG_TOPIC(ERR, Logger::STARTUP)
+          << "result of bootstrap was not an array: " << slice.typeName() << ". retrying bootstrap in 1s.";
+      }
+      if (!success) {
+        sleep(1);
+      }
+    }
   } else if (ss->isDBServer()) {
     LOG_TOPIC(DEBUG, Logger::STARTUP)
         << "Running server/bootstrap/db-server.js";

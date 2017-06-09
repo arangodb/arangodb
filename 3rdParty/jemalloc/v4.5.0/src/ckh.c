@@ -34,7 +34,7 @@
  * respectively.
  *
  ******************************************************************************/
-#define JEMALLOC_CKH_C_
+#define	JEMALLOC_CKH_C_
 #include "jemalloc/internal/jemalloc_internal.h"
 
 /******************************************************************************/
@@ -50,25 +50,26 @@ static void	ckh_shrink(tsd_t *tsd, ckh_t *ckh);
  * otherwise.
  */
 JEMALLOC_INLINE_C size_t
-ckh_bucket_search(ckh_t *ckh, size_t bucket, const void *key) {
+ckh_bucket_search(ckh_t *ckh, size_t bucket, const void *key)
+{
 	ckhc_t *cell;
 	unsigned i;
 
 	for (i = 0; i < (ZU(1) << LG_CKH_BUCKET_CELLS); i++) {
 		cell = &ckh->tab[(bucket << LG_CKH_BUCKET_CELLS) + i];
-		if (cell->key != NULL && ckh->keycomp(key, cell->key)) {
-			return (bucket << LG_CKH_BUCKET_CELLS) + i;
-		}
+		if (cell->key != NULL && ckh->keycomp(key, cell->key))
+			return ((bucket << LG_CKH_BUCKET_CELLS) + i);
 	}
 
-	return SIZE_T_MAX;
+	return (SIZE_T_MAX);
 }
 
 /*
  * Search table for key and return cell number if found; SIZE_T_MAX otherwise.
  */
 JEMALLOC_INLINE_C size_t
-ckh_isearch(ckh_t *ckh, const void *key) {
+ckh_isearch(ckh_t *ckh, const void *key)
+{
 	size_t hashes[2], bucket, cell;
 
 	assert(ckh != NULL);
@@ -78,19 +79,19 @@ ckh_isearch(ckh_t *ckh, const void *key) {
 	/* Search primary bucket. */
 	bucket = hashes[0] & ((ZU(1) << ckh->lg_curbuckets) - 1);
 	cell = ckh_bucket_search(ckh, bucket, key);
-	if (cell != SIZE_T_MAX) {
-		return cell;
-	}
+	if (cell != SIZE_T_MAX)
+		return (cell);
 
 	/* Search secondary bucket. */
 	bucket = hashes[1] & ((ZU(1) << ckh->lg_curbuckets) - 1);
 	cell = ckh_bucket_search(ckh, bucket, key);
-	return cell;
+	return (cell);
 }
 
 JEMALLOC_INLINE_C bool
 ckh_try_bucket_insert(ckh_t *ckh, size_t bucket, const void *key,
-    const void *data) {
+    const void *data)
+{
 	ckhc_t *cell;
 	unsigned offset, i;
 
@@ -107,11 +108,11 @@ ckh_try_bucket_insert(ckh_t *ckh, size_t bucket, const void *key,
 			cell->key = key;
 			cell->data = data;
 			ckh->count++;
-			return false;
+			return (false);
 		}
 	}
 
-	return true;
+	return (true);
 }
 
 /*
@@ -122,7 +123,8 @@ ckh_try_bucket_insert(ckh_t *ckh, size_t bucket, const void *key,
  */
 JEMALLOC_INLINE_C bool
 ckh_evict_reloc_insert(ckh_t *ckh, size_t argbucket, void const **argkey,
-    void const **argdata) {
+    void const **argdata)
+{
 	const void *key, *data, *tkey, *tdata;
 	ckhc_t *cell;
 	size_t hashes[2], bucket, tbucket;
@@ -181,18 +183,18 @@ ckh_evict_reloc_insert(ckh_t *ckh, size_t argbucket, void const **argkey,
 		if (tbucket == argbucket) {
 			*argkey = key;
 			*argdata = data;
-			return true;
+			return (true);
 		}
 
 		bucket = tbucket;
-		if (!ckh_try_bucket_insert(ckh, bucket, key, data)) {
-			return false;
-		}
+		if (!ckh_try_bucket_insert(ckh, bucket, key, data))
+			return (false);
 	}
 }
 
 JEMALLOC_INLINE_C bool
-ckh_try_insert(ckh_t *ckh, void const**argkey, void const**argdata) {
+ckh_try_insert(ckh_t *ckh, void const**argkey, void const**argdata)
+{
 	size_t hashes[2], bucket;
 	const void *key = *argkey;
 	const void *data = *argdata;
@@ -201,20 +203,18 @@ ckh_try_insert(ckh_t *ckh, void const**argkey, void const**argdata) {
 
 	/* Try to insert in primary bucket. */
 	bucket = hashes[0] & ((ZU(1) << ckh->lg_curbuckets) - 1);
-	if (!ckh_try_bucket_insert(ckh, bucket, key, data)) {
-		return false;
-	}
+	if (!ckh_try_bucket_insert(ckh, bucket, key, data))
+		return (false);
 
 	/* Try to insert in secondary bucket. */
 	bucket = hashes[1] & ((ZU(1) << ckh->lg_curbuckets) - 1);
-	if (!ckh_try_bucket_insert(ckh, bucket, key, data)) {
-		return false;
-	}
+	if (!ckh_try_bucket_insert(ckh, bucket, key, data))
+		return (false);
 
 	/*
 	 * Try to find a place for this item via iterative eviction/relocation.
 	 */
-	return ckh_evict_reloc_insert(ckh, bucket, argkey, argdata);
+	return (ckh_evict_reloc_insert(ckh, bucket, argkey, argdata));
 }
 
 /*
@@ -222,7 +222,8 @@ ckh_try_insert(ckh_t *ckh, void const**argkey, void const**argdata) {
  * old table into the new.
  */
 JEMALLOC_INLINE_C bool
-ckh_rebuild(ckh_t *ckh, ckhc_t *aTab) {
+ckh_rebuild(ckh_t *ckh, ckhc_t *aTab)
+{
 	size_t count, i, nins;
 	const void *key, *data;
 
@@ -234,17 +235,18 @@ ckh_rebuild(ckh_t *ckh, ckhc_t *aTab) {
 			data = aTab[i].data;
 			if (ckh_try_insert(ckh, &key, &data)) {
 				ckh->count = count;
-				return true;
+				return (true);
 			}
 			nins++;
 		}
 	}
 
-	return false;
+	return (false);
 }
 
 static bool
-ckh_grow(tsd_t *tsd, ckh_t *ckh) {
+ckh_grow(tsd_t *tsd, ckh_t *ckh)
+{
 	bool ret;
 	ckhc_t *tab, *ttab;
 	unsigned lg_prevbuckets, lg_curcells;
@@ -265,7 +267,7 @@ ckh_grow(tsd_t *tsd, ckh_t *ckh) {
 
 		lg_curcells++;
 		usize = sa2u(sizeof(ckhc_t) << lg_curcells, CACHELINE);
-		if (unlikely(usize == 0 || usize > LARGE_MAXCLASS)) {
+		if (unlikely(usize == 0 || usize > HUGE_MAXCLASS)) {
 			ret = true;
 			goto label_return;
 		}
@@ -282,25 +284,24 @@ ckh_grow(tsd_t *tsd, ckh_t *ckh) {
 		ckh->lg_curbuckets = lg_curcells - LG_CKH_BUCKET_CELLS;
 
 		if (!ckh_rebuild(ckh, tab)) {
-			idalloctm(tsd_tsdn(tsd), iealloc(tsd_tsdn(tsd), tab),
-			    tab, NULL, true, true);
+			idalloctm(tsd_tsdn(tsd), tab, NULL, true, true);
 			break;
 		}
 
 		/* Rebuilding failed, so back out partially rebuilt table. */
-		idalloctm(tsd_tsdn(tsd), iealloc(tsd_tsdn(tsd), ckh->tab),
-		    ckh->tab, NULL, true, true);
+		idalloctm(tsd_tsdn(tsd), ckh->tab, NULL, true, true);
 		ckh->tab = tab;
 		ckh->lg_curbuckets = lg_prevbuckets;
 	}
 
 	ret = false;
 label_return:
-	return ret;
+	return (ret);
 }
 
 static void
-ckh_shrink(tsd_t *tsd, ckh_t *ckh) {
+ckh_shrink(tsd_t *tsd, ckh_t *ckh)
+{
 	ckhc_t *tab, *ttab;
 	size_t usize;
 	unsigned lg_prevbuckets, lg_curcells;
@@ -312,9 +313,8 @@ ckh_shrink(tsd_t *tsd, ckh_t *ckh) {
 	lg_prevbuckets = ckh->lg_curbuckets;
 	lg_curcells = ckh->lg_curbuckets + LG_CKH_BUCKET_CELLS - 1;
 	usize = sa2u(sizeof(ckhc_t) << lg_curcells, CACHELINE);
-	if (unlikely(usize == 0 || usize > LARGE_MAXCLASS)) {
+	if (unlikely(usize == 0 || usize > HUGE_MAXCLASS))
 		return;
-	}
 	tab = (ckhc_t *)ipallocztm(tsd_tsdn(tsd), usize, CACHELINE, true, NULL,
 	    true, arena_ichoose(tsd, NULL));
 	if (tab == NULL) {
@@ -331,8 +331,7 @@ ckh_shrink(tsd_t *tsd, ckh_t *ckh) {
 	ckh->lg_curbuckets = lg_curcells - LG_CKH_BUCKET_CELLS;
 
 	if (!ckh_rebuild(ckh, tab)) {
-		idalloctm(tsd_tsdn(tsd), iealloc(tsd_tsdn(tsd), tab), tab, NULL,
-		    true, true);
+		idalloctm(tsd_tsdn(tsd), tab, NULL, true, true);
 #ifdef CKH_COUNT
 		ckh->nshrinks++;
 #endif
@@ -340,8 +339,7 @@ ckh_shrink(tsd_t *tsd, ckh_t *ckh) {
 	}
 
 	/* Rebuilding failed, so back out partially rebuilt table. */
-	idalloctm(tsd_tsdn(tsd), iealloc(tsd_tsdn(tsd), ckh->tab), ckh->tab,
-	    NULL, true, true);
+	idalloctm(tsd_tsdn(tsd), ckh->tab, NULL, true, true);
 	ckh->tab = tab;
 	ckh->lg_curbuckets = lg_prevbuckets;
 #ifdef CKH_COUNT
@@ -351,7 +349,8 @@ ckh_shrink(tsd_t *tsd, ckh_t *ckh) {
 
 bool
 ckh_new(tsd_t *tsd, ckh_t *ckh, size_t minitems, ckh_hash_t *hash,
-    ckh_keycomp_t *keycomp) {
+    ckh_keycomp_t *keycomp)
+{
 	bool ret;
 	size_t mincells, usize;
 	unsigned lg_mincells;
@@ -381,16 +380,15 @@ ckh_new(tsd_t *tsd, ckh_t *ckh, size_t minitems, ckh_hash_t *hash,
 	mincells = ((minitems + (3 - (minitems % 3))) / 3) << 2;
 	for (lg_mincells = LG_CKH_BUCKET_CELLS;
 	    (ZU(1) << lg_mincells) < mincells;
-	    lg_mincells++) {
-		/* Do nothing. */
-	}
+	    lg_mincells++)
+		; /* Do nothing. */
 	ckh->lg_minbuckets = lg_mincells - LG_CKH_BUCKET_CELLS;
 	ckh->lg_curbuckets = lg_mincells - LG_CKH_BUCKET_CELLS;
 	ckh->hash = hash;
 	ckh->keycomp = keycomp;
 
 	usize = sa2u(sizeof(ckhc_t) << lg_mincells, CACHELINE);
-	if (unlikely(usize == 0 || usize > LARGE_MAXCLASS)) {
+	if (unlikely(usize == 0 || usize > HUGE_MAXCLASS)) {
 		ret = true;
 		goto label_return;
 	}
@@ -403,11 +401,13 @@ ckh_new(tsd_t *tsd, ckh_t *ckh, size_t minitems, ckh_hash_t *hash,
 
 	ret = false;
 label_return:
-	return ret;
+	return (ret);
 }
 
 void
-ckh_delete(tsd_t *tsd, ckh_t *ckh) {
+ckh_delete(tsd_t *tsd, ckh_t *ckh)
+{
+
 	assert(ckh != NULL);
 
 #ifdef CKH_VERBOSE
@@ -422,43 +422,43 @@ ckh_delete(tsd_t *tsd, ckh_t *ckh) {
 	    (unsigned long long)ckh->nrelocs);
 #endif
 
-	idalloctm(tsd_tsdn(tsd), iealloc(tsd_tsdn(tsd), ckh->tab), ckh->tab,
-	    NULL, true, true);
-	if (config_debug) {
+	idalloctm(tsd_tsdn(tsd), ckh->tab, NULL, true, true);
+	if (config_debug)
 		memset(ckh, JEMALLOC_FREE_JUNK, sizeof(ckh_t));
-	}
 }
 
 size_t
-ckh_count(ckh_t *ckh) {
+ckh_count(ckh_t *ckh)
+{
+
 	assert(ckh != NULL);
 
-	return ckh->count;
+	return (ckh->count);
 }
 
 bool
-ckh_iter(ckh_t *ckh, size_t *tabind, void **key, void **data) {
+ckh_iter(ckh_t *ckh, size_t *tabind, void **key, void **data)
+{
 	size_t i, ncells;
 
 	for (i = *tabind, ncells = (ZU(1) << (ckh->lg_curbuckets +
 	    LG_CKH_BUCKET_CELLS)); i < ncells; i++) {
 		if (ckh->tab[i].key != NULL) {
-			if (key != NULL) {
+			if (key != NULL)
 				*key = (void *)ckh->tab[i].key;
-			}
-			if (data != NULL) {
+			if (data != NULL)
 				*data = (void *)ckh->tab[i].data;
-			}
 			*tabind = i + 1;
-			return false;
+			return (false);
 		}
 	}
 
-	return true;
+	return (true);
 }
 
 bool
-ckh_insert(tsd_t *tsd, ckh_t *ckh, const void *key, const void *data) {
+ckh_insert(tsd_t *tsd, ckh_t *ckh, const void *key, const void *data)
+{
 	bool ret;
 
 	assert(ckh != NULL);
@@ -477,24 +477,23 @@ ckh_insert(tsd_t *tsd, ckh_t *ckh, const void *key, const void *data) {
 
 	ret = false;
 label_return:
-	return ret;
+	return (ret);
 }
 
 bool
 ckh_remove(tsd_t *tsd, ckh_t *ckh, const void *searchkey, void **key,
-    void **data) {
+    void **data)
+{
 	size_t cell;
 
 	assert(ckh != NULL);
 
 	cell = ckh_isearch(ckh, searchkey);
 	if (cell != SIZE_T_MAX) {
-		if (key != NULL) {
+		if (key != NULL)
 			*key = (void *)ckh->tab[cell].key;
-		}
-		if (data != NULL) {
+		if (data != NULL)
 			*data = (void *)ckh->tab[cell].data;
-		}
 		ckh->tab[cell].key = NULL;
 		ckh->tab[cell].data = NULL; /* Not necessary. */
 
@@ -507,47 +506,51 @@ ckh_remove(tsd_t *tsd, ckh_t *ckh, const void *searchkey, void **key,
 			ckh_shrink(tsd, ckh);
 		}
 
-		return false;
+		return (false);
 	}
 
-	return true;
+	return (true);
 }
 
 bool
-ckh_search(ckh_t *ckh, const void *searchkey, void **key, void **data) {
+ckh_search(ckh_t *ckh, const void *searchkey, void **key, void **data)
+{
 	size_t cell;
 
 	assert(ckh != NULL);
 
 	cell = ckh_isearch(ckh, searchkey);
 	if (cell != SIZE_T_MAX) {
-		if (key != NULL) {
+		if (key != NULL)
 			*key = (void *)ckh->tab[cell].key;
-		}
-		if (data != NULL) {
+		if (data != NULL)
 			*data = (void *)ckh->tab[cell].data;
-		}
-		return false;
+		return (false);
 	}
 
-	return true;
+	return (true);
 }
 
 void
-ckh_string_hash(const void *key, size_t r_hash[2]) {
+ckh_string_hash(const void *key, size_t r_hash[2])
+{
+
 	hash(key, strlen((const char *)key), 0x94122f33U, r_hash);
 }
 
 bool
-ckh_string_keycomp(const void *k1, const void *k2) {
-	assert(k1 != NULL);
-	assert(k2 != NULL);
+ckh_string_keycomp(const void *k1, const void *k2)
+{
 
-	return !strcmp((char *)k1, (char *)k2);
+    assert(k1 != NULL);
+    assert(k2 != NULL);
+
+    return (strcmp((char *)k1, (char *)k2) ? false : true);
 }
 
 void
-ckh_pointer_hash(const void *key, size_t r_hash[2]) {
+ckh_pointer_hash(const void *key, size_t r_hash[2])
+{
 	union {
 		const void	*v;
 		size_t		i;
@@ -559,6 +562,8 @@ ckh_pointer_hash(const void *key, size_t r_hash[2]) {
 }
 
 bool
-ckh_pointer_keycomp(const void *k1, const void *k2) {
-	return (k1 == k2);
+ckh_pointer_keycomp(const void *k1, const void *k2)
+{
+
+	return ((k1 == k2) ? true : false);
 }

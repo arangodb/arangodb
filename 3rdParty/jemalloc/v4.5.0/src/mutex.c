@@ -1,4 +1,4 @@
-#define JEMALLOC_MUTEX_C_
+#define	JEMALLOC_MUTEX_C_
 #include "jemalloc/internal/jemalloc_internal.h"
 
 #if defined(JEMALLOC_LAZY_LOCK) && !defined(_WIN32)
@@ -6,7 +6,7 @@
 #endif
 
 #ifndef _CRT_SPINCOUNT
-#define _CRT_SPINCOUNT 4000
+#define	_CRT_SPINCOUNT 4000
 #endif
 
 /******************************************************************************/
@@ -35,7 +35,9 @@ static int (*pthread_create_fptr)(pthread_t *__restrict, const pthread_attr_t *,
     void *(*)(void *), void *__restrict);
 
 static void
-pthread_create_once(void) {
+pthread_create_once(void)
+{
+
 	pthread_create_fptr = dlsym(RTLD_NEXT, "pthread_create");
 	if (pthread_create_fptr == NULL) {
 		malloc_write("<jemalloc>: Error in dlsym(RTLD_NEXT, "
@@ -49,12 +51,13 @@ pthread_create_once(void) {
 JEMALLOC_EXPORT int
 pthread_create(pthread_t *__restrict thread,
     const pthread_attr_t *__restrict attr, void *(*start_routine)(void *),
-    void *__restrict arg) {
+    void *__restrict arg)
+{
 	static pthread_once_t once_control = PTHREAD_ONCE_INIT;
 
 	pthread_once(&once_control, pthread_create_once);
 
-	return pthread_create_fptr(thread, attr, start_routine, arg);
+	return (pthread_create_fptr(thread, attr, start_routine, arg));
 }
 #endif
 
@@ -66,16 +69,16 @@ JEMALLOC_EXPORT int	_pthread_mutex_init_calloc_cb(pthread_mutex_t *mutex,
 #endif
 
 bool
-malloc_mutex_init(malloc_mutex_t *mutex, const char *name,
-    witness_rank_t rank) {
+malloc_mutex_init(malloc_mutex_t *mutex, const char *name, witness_rank_t rank)
+{
+
 #ifdef _WIN32
 #  if _WIN32_WINNT >= 0x0600
 	InitializeSRWLock(&mutex->lock);
 #  else
 	if (!InitializeCriticalSectionAndSpinCount(&mutex->lock,
-	    _CRT_SPINCOUNT)) {
-		return true;
-	}
+	    _CRT_SPINCOUNT))
+		return (true);
 #  endif
 #elif (defined(JEMALLOC_OS_UNFAIR_LOCK))
 	mutex->lock = OS_UNFAIR_LOCK_INIT;
@@ -87,41 +90,44 @@ malloc_mutex_init(malloc_mutex_t *mutex, const char *name,
 		postponed_mutexes = mutex;
 	} else {
 		if (_pthread_mutex_init_calloc_cb(&mutex->lock,
-		    bootstrap_calloc) != 0) {
-			return true;
-		}
+		    bootstrap_calloc) != 0)
+			return (true);
 	}
 #else
 	pthread_mutexattr_t attr;
 
-	if (pthread_mutexattr_init(&attr) != 0) {
-		return true;
-	}
+	if (pthread_mutexattr_init(&attr) != 0)
+		return (true);
 	pthread_mutexattr_settype(&attr, MALLOC_MUTEX_TYPE);
 	if (pthread_mutex_init(&mutex->lock, &attr) != 0) {
 		pthread_mutexattr_destroy(&attr);
-		return true;
+		return (true);
 	}
 	pthread_mutexattr_destroy(&attr);
 #endif
-	if (config_debug) {
-		witness_init(&mutex->witness, name, rank, NULL, NULL);
-	}
-	return false;
+	if (config_debug)
+		witness_init(&mutex->witness, name, rank, NULL);
+	return (false);
 }
 
 void
-malloc_mutex_prefork(tsdn_t *tsdn, malloc_mutex_t *mutex) {
+malloc_mutex_prefork(tsdn_t *tsdn, malloc_mutex_t *mutex)
+{
+
 	malloc_mutex_lock(tsdn, mutex);
 }
 
 void
-malloc_mutex_postfork_parent(tsdn_t *tsdn, malloc_mutex_t *mutex) {
+malloc_mutex_postfork_parent(tsdn_t *tsdn, malloc_mutex_t *mutex)
+{
+
 	malloc_mutex_unlock(tsdn, mutex);
 }
 
 void
-malloc_mutex_postfork_child(tsdn_t *tsdn, malloc_mutex_t *mutex) {
+malloc_mutex_postfork_child(tsdn_t *tsdn, malloc_mutex_t *mutex)
+{
+
 #ifdef JEMALLOC_MUTEX_INIT_CB
 	malloc_mutex_unlock(tsdn, mutex);
 #else
@@ -129,24 +135,24 @@ malloc_mutex_postfork_child(tsdn_t *tsdn, malloc_mutex_t *mutex) {
 	    mutex->witness.rank)) {
 		malloc_printf("<jemalloc>: Error re-initializing mutex in "
 		    "child\n");
-		if (opt_abort) {
+		if (opt_abort)
 			abort();
-		}
 	}
 #endif
 }
 
 bool
-malloc_mutex_boot(void) {
+malloc_mutex_boot(void)
+{
+
 #ifdef JEMALLOC_MUTEX_INIT_CB
 	postpone_init = false;
 	while (postponed_mutexes != NULL) {
 		if (_pthread_mutex_init_calloc_cb(&postponed_mutexes->lock,
-		    bootstrap_calloc) != 0) {
-			return true;
-		}
+		    bootstrap_calloc) != 0)
+			return (true);
 		postponed_mutexes = postponed_mutexes->postponed_next;
 	}
 #endif
-	return false;
+	return (false);
 }

@@ -131,7 +131,7 @@ std::atomic_uint_fast64_t NEXT_TICKET_ID(static_cast<uint64_t>(0));
 std::vector<char> urlDotSeparators{'/', '#', '?'};
 }
 
-Communicator::Communicator() : _curl(nullptr), _mc(CURLM_OK) {
+Communicator::Communicator() : _curl(nullptr), _mc(CURLM_OK), _enabled(true) {
   curl_global_init(CURL_GLOBAL_ALL);
   _curl = curl_multi_init();
 
@@ -252,6 +252,12 @@ void Communicator::wait() {
 // -----------------------------------------------------------------------------
 
 void Communicator::createRequestInProgress(NewRequest const& newRequest) {
+  if (!_enabled) {
+    LOG_TOPIC(DEBUG, arangodb::Logger::COMMUNICATION) << "Request to  '" << newRequest._destination.url() << "' was not even started because communication is disabled";
+    newRequest._callbacks._onError(TRI_COMMUNICATOR_DISABLED, {nullptr});
+    return;
+  }
+
   auto request = (HttpRequest*)newRequest._request.get();
   TRI_ASSERT(request != nullptr);
 

@@ -86,6 +86,7 @@ class DBOptionsTest : public DBTestBase {
 TEST_F(DBOptionsTest, GetLatestDBOptions) {
   // GetOptions should be able to get latest option changed by SetOptions.
   Options options;
+  options.env = CurrentOptions().env;
   options.create_if_missing = true;
   Random rnd(228);
   Reopen(options);
@@ -97,6 +98,7 @@ TEST_F(DBOptionsTest, GetLatestDBOptions) {
 TEST_F(DBOptionsTest, GetLatestCFOptions) {
   // GetOptions should be able to get latest option changed by SetOptions.
   Options options;
+  options.env = CurrentOptions().env;
   options.create_if_missing = true;
   Random rnd(228);
   Reopen(options);
@@ -118,6 +120,7 @@ TEST_F(DBOptionsTest, SetOptionsAndReopen) {
   ASSERT_OK(dbfull()->SetOptions(rand_opts));
   // Verify if DB can be reopen after setting options.
   Options options;
+  options.env = CurrentOptions().env;
   ASSERT_OK(TryReopen(options));
 }
 
@@ -126,6 +129,7 @@ TEST_F(DBOptionsTest, EnableAutoCompactionAndTriggerStall) {
   for (int method_type = 0; method_type < 2; method_type++) {
     for (int option_type = 0; option_type < 4; option_type++) {
       Options options;
+      options.env = CurrentOptions().env;
       options.create_if_missing = true;
       options.disable_auto_compactions = true;
       options.write_buffer_size = 1024 * 1024 * 10;
@@ -226,6 +230,7 @@ TEST_F(DBOptionsTest, EnableAutoCompactionAndTriggerStall) {
 
 TEST_F(DBOptionsTest, SetOptionsMayTriggerCompaction) {
   Options options;
+  options.env = CurrentOptions().env;
   options.create_if_missing = true;
   options.level0_file_num_compaction_trigger = 1000;
   Reopen(options);
@@ -244,6 +249,7 @@ TEST_F(DBOptionsTest, SetOptionsMayTriggerCompaction) {
 
 TEST_F(DBOptionsTest, SetBackgroundCompactionThreads) {
   Options options;
+  options.env = CurrentOptions().env;
   options.create_if_missing = true;
   options.base_background_compactions = 1;  // default value
   options.max_background_compactions = 1;   // default value
@@ -258,6 +264,7 @@ TEST_F(DBOptionsTest, SetBackgroundCompactionThreads) {
 
 TEST_F(DBOptionsTest, AvoidFlushDuringShutdown) {
   Options options;
+  options.env = CurrentOptions().env;
   options.create_if_missing = true;
   options.disable_auto_compactions = true;
   WriteOptions write_without_wal;
@@ -280,6 +287,7 @@ TEST_F(DBOptionsTest, AvoidFlushDuringShutdown) {
 
 TEST_F(DBOptionsTest, SetDelayedWriteRateOption) {
   Options options;
+  options.env = CurrentOptions().env;
   options.create_if_missing = true;
   options.delayed_write_rate = 2 * 1024U * 1024U;
   Reopen(options);
@@ -296,6 +304,7 @@ TEST_F(DBOptionsTest, MaxTotalWalSizeChange) {
   test::RandomString(&rnd, value_size, &value);
 
   Options options;
+  options.env = CurrentOptions().env;
   options.create_if_missing = true;
   CreateColumnFamilies({"1", "2", "3"}, options);
   ReopenWithColumnFamilies({"default", "1", "2", "3"}, options);
@@ -326,7 +335,7 @@ static void assert_candidate_files_empty(DBImpl* dbfull, const bool empty) {
 }
 
 TEST_F(DBOptionsTest, DeleteObsoleteFilesPeriodChange) {
-  SpecialEnv env(Env::Default());
+  SpecialEnv env(CurrentOptions().env);
   env.time_elapse_only_sleep_ = true;
   Options options;
   options.env = &env;

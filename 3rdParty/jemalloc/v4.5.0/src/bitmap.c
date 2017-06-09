@@ -1,12 +1,13 @@
-#define JEMALLOC_BITMAP_C_
+#define	JEMALLOC_BITMAP_C_
 #include "jemalloc/internal/jemalloc_internal.h"
 
 /******************************************************************************/
 
-#ifdef BITMAP_USE_TREE
+#ifdef USE_TREE
 
 void
-bitmap_info_init(bitmap_info_t *binfo, size_t nbits) {
+bitmap_info_init(bitmap_info_t *binfo, size_t nbits)
+{
 	unsigned i;
 	size_t group_count;
 
@@ -34,12 +35,15 @@ bitmap_info_init(bitmap_info_t *binfo, size_t nbits) {
 }
 
 static size_t
-bitmap_info_ngroups(const bitmap_info_t *binfo) {
-	return binfo->levels[binfo->nlevels].group_offset;
+bitmap_info_ngroups(const bitmap_info_t *binfo)
+{
+
+	return (binfo->levels[binfo->nlevels].group_offset);
 }
 
 void
-bitmap_init(bitmap_t *bitmap, const bitmap_info_t *binfo) {
+bitmap_init(bitmap_t *bitmap, const bitmap_info_t *binfo)
+{
 	size_t extra;
 	unsigned i;
 
@@ -53,24 +57,24 @@ bitmap_init(bitmap_t *bitmap, const bitmap_info_t *binfo) {
 	memset(bitmap, 0xffU, bitmap_size(binfo));
 	extra = (BITMAP_GROUP_NBITS - (binfo->nbits & BITMAP_GROUP_NBITS_MASK))
 	    & BITMAP_GROUP_NBITS_MASK;
-	if (extra != 0) {
+	if (extra != 0)
 		bitmap[binfo->levels[1].group_offset - 1] >>= extra;
-	}
 	for (i = 1; i < binfo->nlevels; i++) {
 		size_t group_count = binfo->levels[i].group_offset -
 		    binfo->levels[i-1].group_offset;
 		extra = (BITMAP_GROUP_NBITS - (group_count &
 		    BITMAP_GROUP_NBITS_MASK)) & BITMAP_GROUP_NBITS_MASK;
-		if (extra != 0) {
+		if (extra != 0)
 			bitmap[binfo->levels[i+1].group_offset - 1] >>= extra;
-		}
 	}
 }
 
-#else /* BITMAP_USE_TREE */
+#else /* USE_TREE */
 
 void
-bitmap_info_init(bitmap_info_t *binfo, size_t nbits) {
+bitmap_info_init(bitmap_info_t *binfo, size_t nbits)
+{
+
 	assert(nbits > 0);
 	assert(nbits <= (ZU(1) << LG_BITMAP_MAXBITS));
 
@@ -79,25 +83,29 @@ bitmap_info_init(bitmap_info_t *binfo, size_t nbits) {
 }
 
 static size_t
-bitmap_info_ngroups(const bitmap_info_t *binfo) {
-	return binfo->ngroups;
+bitmap_info_ngroups(const bitmap_info_t *binfo)
+{
+
+	return (binfo->ngroups);
 }
 
 void
-bitmap_init(bitmap_t *bitmap, const bitmap_info_t *binfo) {
+bitmap_init(bitmap_t *bitmap, const bitmap_info_t *binfo)
+{
 	size_t extra;
 
 	memset(bitmap, 0xffU, bitmap_size(binfo));
 	extra = (BITMAP_GROUP_NBITS - (binfo->nbits & BITMAP_GROUP_NBITS_MASK))
 	    & BITMAP_GROUP_NBITS_MASK;
-	if (extra != 0) {
+	if (extra != 0)
 		bitmap[binfo->ngroups - 1] >>= extra;
-	}
 }
 
-#endif /* BITMAP_USE_TREE */
+#endif /* USE_TREE */
 
 size_t
-bitmap_size(const bitmap_info_t *binfo) {
+bitmap_size(const bitmap_info_t *binfo)
+{
+
 	return (bitmap_info_ngroups(binfo) << LG_SIZEOF_BITMAP);
 }

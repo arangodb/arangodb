@@ -667,7 +667,7 @@ int Syncer::getMasterState(std::string& errorMsg) {
     VPackSlice const slice = builder->slice();
 
     if (!slice.isObject()) {
-      LOG_TOPIC(DEBUG, Logger::REPLICATION) << "synger::getMasterState - state is not an object";
+      LOG_TOPIC(DEBUG, Logger::REPLICATION) << "syncer::getMasterState - state is not an object";
       res = TRI_ERROR_REPLICATION_INVALID_RESPONSE;
       errorMsg = "got invalid response from master at " +
                  _masterInfo._endpoint + ": invalid JSON";
@@ -678,7 +678,7 @@ int Syncer::getMasterState(std::string& errorMsg) {
   }
 
   if (res != TRI_ERROR_NO_ERROR){
-    LOG_TOPIC(DEBUG, Logger::REPLICATION) << "synger::getMasterState - handleStateResponse failed";
+    LOG_TOPIC(DEBUG, Logger::REPLICATION) << "syncer::getMasterState - handleStateResponse failed";
   }
   return res;
 }
@@ -710,6 +710,11 @@ int Syncer::handleStateResponse(VPackSlice const& slice, std::string& errorMsg) 
   }
 
   TRI_voc_tick_t const lastLogTick = VelocyPackHelper::stringUInt64(tick);
+
+  if (lastLogTick == 0) {
+    errorMsg = "lastLogTick is 0 in response" + endpointString;
+    return TRI_ERROR_REPLICATION_INVALID_RESPONSE;
+  }
 
   // state."running"
   bool running = VelocyPackHelper::getBooleanValue(state, "running", false);

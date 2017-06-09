@@ -32,7 +32,7 @@ are present in the MMFiles engine:
   are split into multiple smaller RocksDB transactions that are committed individually.
   The entire user transaction will not necessarily have ACID properties in this case.
 
-  The thresholds values for transaction sizes can be configured globally using the
+  The threshold values for transaction sizes can be configured globally using the
   startup options
   
   * `--rocksdb.intermediate-commit-size`: if the size of all operations in a transaction 
@@ -55,10 +55,7 @@ The following known issues will be resolved in future releases:
 
 * the RocksDB engine is not yet performance-optimized and potentially not well configured
 
-* the edge index in the RocksDB engine is not memory-optimized. It has a cache that will
-  currently use more memory than expected. This will be changed after 3.2.beta is released
-
-* collections for which a geo index is present will use a collection-level write locks 
+* collections for which a geo index is present will use collection-level write locks 
   even with the RocksDB engine. Reads from these collections can still be done in parallel 
   but no writes 
 
@@ -76,3 +73,10 @@ The following known issues will be resolved in future releases:
 
 * AQL queries in the cluster still issue an extra locking HTTP request per shard though
   this would not be necessary for the RocksDB engine in most cases.
+
+### Installer
+
+* Upgrading from 3.1 to 3.2 on Windows requires the user to manually copy the database directory
+  to the new location and run an upgrade on the database. Please consult the
+  [Documentation](https://docs.arangodb.com/devel/Manual/GettingStarted/Installing/Windows.html)
+  for detailed instructions.
