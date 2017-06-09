@@ -48,6 +48,8 @@ node('master') {
                 submoduleCfg: [],
                 userRemoteConfigs: [[credentialsId: credentialsId, url: enterpriseRepo]]])
     }
+
+    stash includes: '**', name: 'source'
 }
 
 parallel(
