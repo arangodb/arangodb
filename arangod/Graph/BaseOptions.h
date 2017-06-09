@@ -35,6 +35,7 @@ namespace arangodb {
 
 namespace aql {
 struct AstNode;
+class ExecutionPlan;
 class Expression;
 class Query;
 }
@@ -98,7 +99,7 @@ struct BaseOptions {
 
   void setVariable(aql::Variable const*);
 
-  void addLookupInfo(aql::Ast* ast, std::string const& collectionName,
+  void addLookupInfo(aql::ExecutionPlan* plan, std::string const& collectionName,
                      std::string const& attributeName, aql::AstNode* condition);
 
   void clearVariableValues();
@@ -142,12 +143,12 @@ struct BaseOptions {
   // Does not close the builder.
   void injectEngineInfo(arangodb::velocypack::Builder&) const;
 
-  aql::Expression* getEdgeExpression(size_t cursorId) const;
+  aql::Expression* getEdgeExpression(size_t cursorId, bool& needToInjectVertex) const;
 
   bool evaluateExpression(aql::Expression*,
                           arangodb::velocypack::Slice varValue) const;
 
-  void injectLookupInfoInList(std::vector<LookupInfo>&, aql::Ast* ast,
+  void injectLookupInfoInList(std::vector<LookupInfo>&, aql::ExecutionPlan* plan,
                               std::string const& collectionName,
                               std::string const& attributeName,
                               aql::AstNode* condition);

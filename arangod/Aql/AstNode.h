@@ -659,6 +659,13 @@ struct AstNode {
   /// @brief Steals the computed value and frees it.
   void stealComputedValue();
 
+
+  /// @brief Removes all members from the current node that are also
+  ///        members of the other node (ignoring ording)
+  ///        Can only be applied if this and other are of type
+  ///        n-ary-and
+  void removeMembersInOtherAndNode(AstNode const* other);
+
  public:
   /// @brief the node type
   AstNodeType const type;
@@ -677,7 +684,7 @@ struct AstNode {
   std::vector<AstNode*> members;
 };
 
-int CompareAstNodes(AstNode const*, AstNode const*, bool);
+int CompareAstNodes(AstNode const* lhs, AstNode const* rhs, bool compareUtf8);
 
 /// @brief less comparator for Ast value nodes
 template <bool useUtf8>
