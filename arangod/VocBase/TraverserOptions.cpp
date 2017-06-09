@@ -398,13 +398,13 @@ void TraverserOptions::buildEngineInfo(VPackBuilder& result) const {
   result.close();
 }
 
-void TraverserOptions::addDepthLookupInfo(aql::Ast* ast,
+void TraverserOptions::addDepthLookupInfo(aql::ExecutionPlan* plan,
                                           std::string const& collectionName,
                                           std::string const& attributeName,
                                           aql::AstNode* condition,
                                           uint64_t depth) {
   auto& list = _depthLookupInfo[depth];
-  injectLookupInfoInList(list, ast, collectionName, attributeName, condition);
+  injectLookupInfoInList(list, plan, collectionName, attributeName, condition);
 }
 
 bool TraverserOptions::vertexHasFilter(uint64_t depth) const {
@@ -428,7 +428,8 @@ bool TraverserOptions::hasEdgeFilter(int64_t depth, size_t cursorId) const {
     TRI_ASSERT(specific->second.size() > cursorId);
     expression = specific->second[cursorId].expression;
   } else {
-    expression = getEdgeExpression(cursorId);
+    bool unused;
+    expression = getEdgeExpression(cursorId, unused);
   }
   return expression != nullptr;
 }
@@ -445,32 +446,40 @@ bool TraverserOptions::evaluateEdgeExpression(arangodb::velocypack::Slice edge,
   arangodb::aql::Expression* expression = nullptr;
 
   auto specific = _depthLookupInfo.find(depth);
+  auto needToInjectVertex = false;
 
   if (specific != _depthLookupInfo.end()) {
     TRI_ASSERT(!specific->second.empty());
     TRI_ASSERT(specific->second.size() > cursorId);
     expression = specific->second[cursorId].expression;
+    needToInjectVertex = !specific->second[cursorId].conditionNeedUpdate;
   } else {
-    expression = getEdgeExpression(cursorId);
+    expression = getEdgeExpression(cursorId, needToInjectVertex);
+
   }
   if (expression == nullptr) {
     return true;
   }
 
-  // inject _from/_to value
-  auto node = expression->nodeForModification();
+  if (needToInjectVertex) {
+    // If we have to inject the vertex value it has to be within
+    // the last member of the condition.
+    // We only get into this case iff the index used does
+    // not cover _from resp. _to.
+    // inject _from/_to value
+    auto node = expression->nodeForModification();
 
-  TRI_ASSERT(node->numMembers() > 0);
-  auto dirCmp = node->getMemberUnchecked(node->numMembers() - 1);
-  TRI_ASSERT(dirCmp->type == aql::NODE_TYPE_OPERATOR_BINARY_EQ);
-  TRI_ASSERT(dirCmp->numMembers() == 2);
+    TRI_ASSERT(node->numMembers() > 0);
+    auto dirCmp = node->getMemberUnchecked(node->numMembers() - 1);
+    TRI_ASSERT(dirCmp->type == aql::NODE_TYPE_OPERATOR_BINARY_EQ);
+    TRI_ASSERT(dirCmp->numMembers() == 2);
 
-  auto idNode = dirCmp->getMemberUnchecked(1);
-  TRI_ASSERT(idNode->type == aql::NODE_TYPE_VALUE);
-  TRI_ASSERT(idNode->isValueType(aql::VALUE_TYPE_STRING));
-  idNode->stealComputedValue();
-  idNode->setStringValue(vertexId.data(), vertexId.length());
-
+    auto idNode = dirCmp->getMemberUnchecked(1);
+    TRI_ASSERT(idNode->type == aql::NODE_TYPE_VALUE);
+    TRI_ASSERT(idNode->isValueType(aql::VALUE_TYPE_STRING));
+    idNode->stealComputedValue();
+    idNode->setStringValue(vertexId.data(), vertexId.length());
+  }
   return evaluateExpression(expression, edge);
 }
 
