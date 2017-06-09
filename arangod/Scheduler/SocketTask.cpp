@@ -130,13 +130,6 @@ void SocketTask::addWriteBuffer(WriteBuffer& buffer) {
     return;
   }
 
-  if (application_features::ApplicationServer::isStopping()) {
-    LOG_TOPIC(TRACE, Logger::COMMUNICATION) << "aborting because shutdown is in progress";
-    closeStream();
-    buffer.release();
-    return;
-  }
-
   {
     auto self = shared_from_this();
 
@@ -173,10 +166,6 @@ void SocketTask::writeWriteBuffer() {
   err.clear();
 
   while (true) {
-    if (application_features::ApplicationServer::isStopping()) {
-      break;
-    }
-
     RequestStatistics::SET_WRITE_START(_writeBuffer._statistics);
     written = _peer->write(_writeBuffer._buffer, err);
 
@@ -199,12 +188,6 @@ void SocketTask::writeWriteBuffer() {
     // try to send next buffer
     total = _writeBuffer._buffer->length();
     written = 0;
-  }
-
-  if (application_features::ApplicationServer::isStopping()) {
-    LOG_TOPIC(TRACE, Logger::COMMUNICATION) << "aborting because shutdown is in progress";
-    closeStreamNoLock();
-    return;
   }
 
   // write could have blocked which is the only acceptable error
@@ -231,10 +214,6 @@ void SocketTask::writeWriteBuffer() {
                         LOG_TOPIC(DEBUG, Logger::COMMUNICATION)
                             << "write on stream failed with: " << ec.message();
                         closeStreamNoLock();
-                      } else if (application_features::ApplicationServer::isStopping()) {
-                        LOG_TOPIC(TRACE, Logger::COMMUNICATION) << "aborting because shutdown is in progress";
-                        closeStreamNoLock();
-                        return;
                       } else {
                         if (completedWriteBuffer()) {
                           _loop._scheduler->post([self, this]() {
@@ -433,12 +412,6 @@ void SocketTask::asyncReadSome() {
     size_t n = 0;
 
     while (++n <= MAX_DIRECT_TRIES) {
-      if (application_features::ApplicationServer::isStopping()) {
-        LOG_TOPIC(TRACE, Logger::COMMUNICATION) << "aborting because shutdown is in progress";
-        closeStream();
-        return;
-      }
-      
       if (!reserveMemory()) {
         LOG_TOPIC(TRACE, Logger::COMMUNICATION) << "failed to reserve memory";
         return;
@@ -497,14 +470,10 @@ void SocketTask::asyncReadSome() {
             LOG_TOPIC(DEBUG, Logger::COMMUNICATION)
                 << "read on stream failed with: " << ec.message();
             closeStream();
-          } else if (application_features::ApplicationServer::isStopping()) {
-            LOG_TOPIC(TRACE, Logger::COMMUNICATION) << "aborting because shutdown is in progress";
-            closeStream();
-            return;
           } else {
             _readBuffer.increaseLength(transferred);
 
-            if (processAll() && ! application_features::ApplicationServer::isStopping()) {
+            if (processAll()) {
               _loop._scheduler->post([self, this]() { asyncReadSome(); });
             }
 
