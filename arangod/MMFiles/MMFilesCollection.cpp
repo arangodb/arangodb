@@ -24,6 +24,7 @@
 #include "MMFilesCollection.h"
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/PlanCache.h"
+#include "Basics/Exceptions.h"
 #include "Basics/FileUtils.h"
 #include "Basics/PerformanceLogScope.h"
 #include "Basics/ReadLocker.h"
@@ -927,6 +928,11 @@ MMFilesDatafile* MMFilesCollection::createDatafile(TRI_voc_fid_t fid,
   // create an entry for the new datafile
   try {
     _datafileStatistics.create(fid);
+  } catch (basics::Exception const& ex) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(ex.code(), ex.what());
+  } catch (std::exception const& ex) {
+    // rethrow but do not change error code
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, ex.what());
   } catch (...) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
   }
@@ -2012,7 +2018,7 @@ std::shared_ptr<Index> MMFilesCollection::lookupIndex(
 
   if (!value.isString()) {
     // Compatibility with old v8-vocindex.
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "invalid index definition");
   }
 
   std::string tmp = value.copyString();
@@ -2770,6 +2776,8 @@ Result MMFilesCollection::insert(transaction::Methods* trx,
     return Result(ex.code());
   } catch (std::bad_alloc const&) {
     return Result(TRI_ERROR_OUT_OF_MEMORY);
+  } catch (std::exception const& ex) {
+    return Result(TRI_ERROR_INTERNAL, ex.what());
   } catch (...) {
     return Result(TRI_ERROR_INTERNAL);
   }
@@ -2791,6 +2799,8 @@ Result MMFilesCollection::insert(transaction::Methods* trx,
         res = Result(ex.code());
       } catch (std::bad_alloc const&) {
         res = Result(TRI_ERROR_OUT_OF_MEMORY);
+      } catch (std::exception const& ex) {
+        res = Result(TRI_ERROR_INTERNAL, ex.what());
       } catch (...) {
         res = Result(TRI_ERROR_INTERNAL);
       }
@@ -3220,6 +3230,8 @@ Result MMFilesCollection::update(
     res = Result(ex.code());
   } catch (std::bad_alloc const&) {
     res = Result(TRI_ERROR_OUT_OF_MEMORY);
+  } catch (std::exception const& ex) {
+    res = Result(TRI_ERROR_INTERNAL, ex.what());
   } catch (...) {
     res = Result(TRI_ERROR_INTERNAL);
   }
@@ -3347,6 +3359,8 @@ Result MMFilesCollection::replace(
     res = Result(ex.code());
   } catch (std::bad_alloc const&) {
     res = Result(TRI_ERROR_OUT_OF_MEMORY);
+  } catch (std::exception const& ex) {
+    res = Result(TRI_ERROR_INTERNAL, ex.what());
   } catch (...) {
     res = Result(TRI_ERROR_INTERNAL);
   }
@@ -3493,6 +3507,8 @@ Result MMFilesCollection::remove(arangodb::transaction::Methods* trx,
     res = Result(ex.code());
   } catch (std::bad_alloc const&) {
     res = Result(TRI_ERROR_OUT_OF_MEMORY);
+  } catch (std::exception const& ex) {
+    res = Result(TRI_ERROR_INTERNAL, ex.what());
   } catch (...) {
     res = Result(TRI_ERROR_INTERNAL);
   }
@@ -3653,6 +3669,8 @@ Result MMFilesCollection::removeFastPath(arangodb::transaction::Methods* trx,
     res = Result(ex.code());
   } catch (std::bad_alloc const&) {
     res = Result(TRI_ERROR_OUT_OF_MEMORY);
+  } catch (std::exception const& ex) {
+    res = Result(TRI_ERROR_INTERNAL, ex.what());
   } catch (...) {
     res = Result(TRI_ERROR_INTERNAL);
   }
