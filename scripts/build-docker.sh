@@ -28,14 +28,14 @@ fi
 # Create debian-jessie-builder
 if [ ! -e ${BUILDDIR}/.build-docker-containers ]; then
     cd ${BUILDDIR} 
-    git clone git@github.com:arangodb-helper/build-docker-containers.git ${BUILDDIR}/.build-docker-containers
+    git clone https://github.com/arangodb-helper/build-docker-containers ${BUILDDIR}/.build-docker-containers
 fi
 docker build -t arangodb/debian-jessie-builder ${BUILDDIR}/.build-docker-containers/distros/debian/jessie/build/
 
 # Ensure arangodb/arangodb-docker exists 
 if [ ! -e ${BUILDDIR}/.arangodb-docker ]; then
     cd ${BUILDDIR}
-    git clone git@github.com:arangodb/arangodb-docker.git ${BUILDDIR}/.arangodb-docker
+    git clone https://github.com/arangodb/arangodb-docker ${BUILDDIR}/.arangodb-docker
 fi 
 
 # Build jessie package
