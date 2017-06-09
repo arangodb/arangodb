@@ -38,7 +38,8 @@ class SocketTcp final : public Socket {
         _socket(_sslSocket.next_layer()),
         _peerEndpoint() {}
 
-  SocketTcp(SocketTcp&& that) = default;
+  SocketTcp(SocketTcp const& that) = delete;
+  SocketTcp(SocketTcp&& that) = delete;
 
   void close() override {
     MUTEX_LOCKER(guard, _lock);

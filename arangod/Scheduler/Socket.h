@@ -128,6 +128,7 @@ class Socket {
       : _ioService(ioService),
         _context(std::move(context)),
         _encrypted(encrypted) {}
+  Socket(Socket const& that) = delete;
   Socket(Socket&& that) = delete;
   virtual ~Socket() {}
 

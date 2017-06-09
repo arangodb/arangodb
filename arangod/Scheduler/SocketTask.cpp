@@ -500,17 +500,3 @@ void SocketTask::asyncReadSome() {
         });
   }
 }
-
-// caller must hold the _writeLock
-void SocketTask::closeReceiveStream() {
-  if (!_closedReceive) {
-    try {
-      _peer->shutdownReceive();
-    } catch (boost::system::system_error& err) {
-      LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "shutdown receive stream "
-                << " failed with: " << err.what();
-    }
-
-    _closedReceive = true;
-  }
-}
