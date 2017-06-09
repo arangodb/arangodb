@@ -24,27 +24,11 @@
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Rest/HttpRequest.h"
+#include "VocBase/Actions/Database.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/Iterator.h>
 #include <velocypack/velocypack-aliases.h>
-
-#include "Agency/AgencyComm.h"
-#include "Cluster/ClusterComm.h"
-#include "Cluster/ClusterInfo.h"
-#include "Cluster/ServerState.h"
-#include "RestServer/DatabaseFeature.h"
-#include "V8/v8-conv.h"
-#include "V8/v8-utils.h"
-#include "V8/v8-vpack.h"
-#include "V8Server/V8Context.h"
-#include "V8Server/V8DealerFeature.h"
-#include "VocBase/modes.h"
-#include "VocBase/vocbase.h"
-
-#include <v8.h>
-#include "GeneralServer/AuthenticationFeature.h"
-#include "VocBase/AuthInfo.h"
 
 using namespace arangodb;
 using namespace arangodb::basics;
@@ -67,11 +51,6 @@ RestStatus RestDatabaseHandler::execute() {
     }
     return createDatabase();
   } else if (type == rest::RequestType::DELETE_REQ) {
-    if (!_vocbase->isSystem()) {
-      generateError(rest::ResponseCode::BAD,
-                    TRI_ERROR_ARANGO_USE_SYSTEM_DATABASE);
-      return RestStatus::DONE;
-    }
     return deleteDatabase();
   } else {
     generateError(rest::ResponseCode::METHOD_NOT_ALLOWED,
@@ -101,50 +80,14 @@ RestStatus RestDatabaseHandler::getDatabases() {
     return RestStatus::DONE;
   }
 
-  DatabaseFeature* databaseFeature =
-      application_features::ApplicationServer::getFeature<DatabaseFeature>(
-          "Database");
-  if (databaseFeature == nullptr) {
-    generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_SERVER_ERROR);
-    return RestStatus::DONE;
-  }
-
   VPackBuilder result;
 
   if (suffixes.empty() || suffixes[0] == "user") {
     std::vector<std::string> names;
-    std::string const& username = _request->user();
-
     if (suffixes.empty()) {
-      if (ServerState::instance()->isCoordinator()) {
-        ClusterInfo* ci = ClusterInfo::instance();
-        names = ci->databases(true);
-      } else {
-        // list of all databases
-        names = databaseFeature->getDatabaseNames();
-      }
+      names = actions::Database::list(std::string());
     } else if (suffixes[0] == "user") {
-      // slow path for coordinator
-      if (ServerState::instance()->isCoordinator()) {
-        auto auth = application_features::ApplicationServer::getFeature<
-            AuthenticationFeature>("Authentication");
-        std::vector<std::string> aaa = databaseFeature->getDatabaseNames();
-        for (std::string const& ss : aaa) {
-          if (auth->canUseDatabase(_request->user(), ss) != AuthLevel::NONE) {
-            names.push_back(ss);
-          }
-        }
-
-        // Give up
-      } else {
-        // fetch all databases for the current user
-        // note: req.user may be null if authentication is turned off
-        if (username.empty()) {
-          names = databaseFeature->getDatabaseNames();
-        } else {
-          names = databaseFeature->getDatabaseNamesForUser(_request->user());
-        }
-      }
+      names = actions::Database::list(_request->user());
     }
 
     result.openArray();
@@ -153,38 +96,10 @@ RestStatus RestDatabaseHandler::getDatabases() {
     }
     result.close();
   } else if (suffixes[0] == "current") {
-    if (ServerState::instance()->isCoordinator()) {
-      AgencyComm agency;
-      AgencyCommResult commRes =
-          agency.getValues("Plan/Databases/" + _request->databaseName());
-      if (!commRes.successful()) {
-        // Error in communication, note that value not found is not an error
-        LOG_TOPIC(TRACE, Logger::REQUESTS)
-            << "rest database handler: no agency communication";
-        generateError(rest::ResponseCode::BAD, commRes.errorCode());
-        return RestStatus::DONE;
-      }
-
-      VPackSlice value =
-          commRes.slice()[0].get({AgencyCommManager::path(), "Plan",
-                                  "Databases", _request->databaseName()});
-      if (value.isObject() && value.hasKey("name")) {
-        VPackValueLength l = 0;
-        const char* name = value.get("name").getString(l);
-        TRI_ASSERT(l > 0);
-
-        VPackObjectBuilder b(&result);
-        result.add("name", value.get("name"));
-        result.add("id", value.get("id"));
-        result.add("path", value.get("none"));
-        result.add("isSystem", VPackValue(name[0] == '_'));
-      }
-    } else {
-      VPackObjectBuilder b(&result);
-      result.add("name", VPackValue(_vocbase->name()));
-      result.add("id", VPackValue(_vocbase->id()));
-      result.add("path", VPackValue(_vocbase->path()));
-      result.add("isSystem", VPackValue(_vocbase->isSystem()));
+    Result res = actions::Database::info(_vocbase, result);
+    if (!res.ok()) {
+      generateError(rest::ResponseCode::BAD, res.errorNumber());
+      return RestStatus::DONE;
     }
   }
 
@@ -205,10 +120,6 @@ RestStatus RestDatabaseHandler::getDatabases() {
 // / @brief was docuBlock JSF_get_api_database_create
 // //////////////////////////////////////////////////////////////////////////////
 RestStatus RestDatabaseHandler::createDatabase() {
-  if (TRI_GetOperationModeServer() == TRI_VOCBASE_MODE_NO_CREATE) {
-    generateError(rest::ResponseCode::BAD, TRI_ERROR_ARANGO_READ_ONLY);
-    return RestStatus::DONE;
-  }
 
   std::vector<std::string> const& suffixes = _request->suffixes();
   bool parseSuccess = true;
@@ -226,247 +137,18 @@ RestStatus RestDatabaseHandler::createDatabase() {
   std::string dbName = nameVal.copyString();
 
   VPackSlice options = parsedBody->slice().get("options");
-  if (options.isNone() || options.isNull()) {
-    options = VPackSlice::emptyObjectSlice();
-  } else if (!options.isObject()) {
-    generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER);
-    return RestStatus::DONE;
-  }
-
   VPackSlice users = parsedBody->slice().get("users");
-  if (users.isNone() || users.isNull()) {
-    users = VPackSlice::emptyArraySlice();
-  } else if (!users.isArray()) {
-    generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER);
+
+  Result res = actions::Database::create(dbName, users, options);
+  if (!res.ok()) {
+    generateError(res.errorNumber() == TRI_ERROR_ARANGO_DUPLICATE_NAME
+                  ? rest::ResponseCode::CONFLICT
+                  : rest::ResponseCode::BAD,
+                  res.errorNumber(),
+                  res.errorMessage());
     return RestStatus::DONE;
   }
-
-  VPackBuilder sanitizedUsers;
-  sanitizedUsers.openArray();
-  for (VPackSlice const& user : VPackArrayIterator(users)) {
-    sanitizedUsers.openObject();
-    if (!user.isObject()) {
-      generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER);
-      return RestStatus::DONE;
-    }
-
-    VPackSlice name;
-    if (user.hasKey("username")) {
-      name = user.get("username");
-    } else if (user.hasKey("user")) {
-      name = user.get("user");
-    }
-    if (!name.isString()) {
-      generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER);
-      return RestStatus::DONE;
-    }
-    sanitizedUsers.add("username", name);
-
-    if (user.hasKey("passwd")) {
-      VPackSlice passwd = user.get("passwd");
-      if (!passwd.isString()) {
-        generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER);
-        return RestStatus::DONE;
-      }
-      sanitizedUsers.add("passwd", passwd);
-    } else {
-      sanitizedUsers.add("passwd", VPackValue(""));
-    }
-
-    VPackSlice active = user.get("active");
-    if (!active.isBool()) {
-      sanitizedUsers.add("active", VPackValue(true));
-    } else {
-      sanitizedUsers.add("active", active);
-    }
-
-    VPackSlice extra = user.get("extra");
-    if (extra.isObject()) {
-      sanitizedUsers.add("extra", extra);
-    }
-    sanitizedUsers.close();
-  }
-  sanitizedUsers.close();
-
-  DatabaseFeature* databaseFeature =
-      application_features::ApplicationServer::getFeature<DatabaseFeature>(
-          "Database");
-  if (databaseFeature == nullptr) {
-    generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_SERVER_ERROR);
-    return RestStatus::DONE;
-  }
-
-  if (ServerState::instance()->isCoordinator()) {
-    if (!TRI_vocbase_t::IsAllowedName(false, dbName)) {
-      generateError(rest::ResponseCode::BAD,
-                    TRI_ERROR_ARANGO_DATABASE_NAME_INVALID);
-      return RestStatus::DONE;
-    }
-
-    uint64_t const id = ClusterInfo::instance()->uniqid();
-    VPackBuilder builder;
-    try {
-      VPackObjectBuilder b(&builder);
-      std::string const idString(StringUtils::itoa(id));
-      builder.add("id", VPackValue(idString));
-      builder.add("name", VPackValue(dbName));
-      builder.add("options", options);
-      builder.add("coordinator", VPackValue(ServerState::instance()->getId()));
-    } catch (VPackException const& e) {
-      generateError(rest::ResponseCode::SERVER_ERROR, e.errorCode());
-      return RestStatus::DONE;
-    }
-
-    ClusterInfo* ci = ClusterInfo::instance();
-    std::string errorMsg;
-
-    int res =
-        ci->createDatabaseCoordinator(dbName, builder.slice(), errorMsg, 120.0);
-    if (res != TRI_ERROR_NO_ERROR) {
-      generateError(res == TRI_ERROR_ARANGO_DUPLICATE_NAME
-                        ? rest::ResponseCode::CONFLICT
-                        : rest::ResponseCode::BAD,
-                    res);
-
-      return RestStatus::DONE;
-    }
-    // database was created successfully in agency
-    V8Context* ctx = V8DealerFeature::DEALER->enterContext(_vocbase, true);
-    if (ctx == nullptr) {
-      generateError(rest::ResponseCode::SERVER_ERROR, TRI_ERROR_INTERNAL,
-                    "Could not get v8 context");
-      return RestStatus::DONE;
-    }
-    TRI_DEFER(V8DealerFeature::DEALER->exitContext(ctx));
-    v8::Isolate* isolate = ctx->_isolate;
-    v8::HandleScope scope(isolate);
-    TRI_GET_GLOBALS();
-
-    // now wait for heartbeat thread to create the database object
-    TRI_vocbase_t* vocbase = nullptr;
-    int tries = 0;
-    while (++tries <= 6000) {
-      vocbase = databaseFeature->useDatabaseCoordinator(id);
-      if (vocbase != nullptr) {
-        break;
-      }
-      // sleep
-      usleep(10000);
-    }
-
-    if (vocbase == nullptr) {
-      generateError(rest::ResponseCode::SERVER_ERROR, TRI_ERROR_INTERNAL,
-                    "unable to find database");
-      return RestStatus::DONE;
-    }
-    TRI_ASSERT(vocbase->id() == id);
-    TRI_ASSERT(vocbase->name() == dbName);
-
-    // now run upgrade and copy users into context
-    TRI_ASSERT(sanitizedUsers.slice().isArray());
-    v8::Handle<v8::Object> userVar = v8::Object::New(ctx->_isolate);
-    userVar->Set(TRI_V8_ASCII_STRING("users"),
-                 TRI_VPackToV8(isolate, sanitizedUsers.slice()));
-    isolate->GetCurrentContext()->Global()->Set(
-        TRI_V8_ASCII_STRING("UPGRADE_ARGS"), userVar);
-
-    // switch databases
-    TRI_vocbase_t* orig = v8g->_vocbase;
-    TRI_ASSERT(orig != nullptr);
-    v8g->_vocbase = vocbase;
-
-    // initalize database
-    bool allowUseDatabase = v8g->_allowUseDatabase;
-    v8g->_allowUseDatabase = true;
-
-    V8DealerFeature::DEALER->startupLoader()->executeGlobalScript(
-        isolate, isolate->GetCurrentContext(),
-        "server/bootstrap/coordinator-database.js");
-
-    v8g->_allowUseDatabase = allowUseDatabase;
-
-    // and switch back
-    v8g->_vocbase = orig;
-
-    vocbase->release();
-  } else {
-    // options for database (currently only allows setting "id" for testing
-    // purposes)
-    TRI_voc_tick_t id = 0;
-    if (options.hasKey("id")) {
-      id = options.get("id").getUInt();
-    }
-
-    TRI_vocbase_t* vocbase = nullptr;
-    int res = databaseFeature->createDatabase(id, dbName, vocbase);
-
-    if (res != TRI_ERROR_NO_ERROR) {
-      generateError(res == TRI_ERROR_ARANGO_DUPLICATE_NAME
-                        ? rest::ResponseCode::CONFLICT
-                        : rest::ResponseCode::BAD,
-                    res);
-      return RestStatus::DONE;
-    }
-
-    TRI_ASSERT(vocbase != nullptr);
-    TRI_ASSERT(!vocbase->isDangling());
-
-    V8Context* ctx = V8DealerFeature::DEALER->enterContext(vocbase, true);
-    if (ctx == nullptr) {
-      generateError(rest::ResponseCode::SERVER_ERROR, TRI_ERROR_INTERNAL,
-                    "Could not get v8 context");
-      return RestStatus::DONE;
-    }
-    TRI_DEFER(V8DealerFeature::DEALER->exitContext(ctx));
-    v8::Isolate* isolate = ctx->_isolate;
-    v8::HandleScope scope(isolate);
-
-    // copy users into context
-    TRI_ASSERT(sanitizedUsers.slice().isArray());
-    v8::Handle<v8::Object> userVar = v8::Object::New(ctx->_isolate);
-    userVar->Set(TRI_V8_ASCII_STRING("users"),
-                 TRI_VPackToV8(isolate, sanitizedUsers.slice()));
-    isolate->GetCurrentContext()->Global()->Set(
-        TRI_V8_ASCII_STRING("UPGRADE_ARGS"), userVar);
-
-    // switch databases
-    {
-      TRI_GET_GLOBALS();
-      TRI_vocbase_t* orig = v8g->_vocbase;
-      TRI_ASSERT(orig != nullptr);
-
-      v8g->_vocbase = vocbase;
-
-      // initalize database
-      try {
-        V8DealerFeature::DEALER->startupLoader()->executeGlobalScript(
-            isolate, isolate->GetCurrentContext(),
-            "server/bootstrap/local-database.js");
-        if (v8g->_vocbase == vocbase) {
-          // decrease the reference-counter only if we are coming back with the
-          // same database
-          vocbase->release();
-        }
-
-        // and switch back
-        v8g->_vocbase = orig;
-      } catch (...) {
-        if (v8g->_vocbase == vocbase) {
-          // decrease the reference-counter only if we are coming back with the
-          // same database
-          vocbase->release();
-        }
-
-        // and switch back
-        v8g->_vocbase = orig;
-
-        generateError(rest::ResponseCode::SERVER_ERROR, TRI_ERROR_INTERNAL,
-                      "Could not get v8 context");
-        return RestStatus::DONE;
-      }
-    }
-  }
-
+  
   VPackBuilder b;
   b.openObject();
   b.add("result", VPackValue(true));
@@ -480,6 +162,11 @@ RestStatus RestDatabaseHandler::createDatabase() {
 // / @brief was docuBlock JSF_get_api_database_delete
 // //////////////////////////////////////////////////////////////////////////////
 RestStatus RestDatabaseHandler::deleteDatabase() {
+  if (!_vocbase->isSystem()) {
+    generateError(rest::ResponseCode::BAD,
+                  TRI_ERROR_ARANGO_USE_SYSTEM_DATABASE);
+    return RestStatus::DONE;
+  }
   std::vector<std::string> const& suffixes = _request->suffixes();
   if (suffixes.size() != 1) {
     generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER);
@@ -487,91 +174,15 @@ RestStatus RestDatabaseHandler::deleteDatabase() {
   }
 
   std::string const& dbName = suffixes[0];
-
-  V8Context* ctx = V8DealerFeature::DEALER->enterContext(_vocbase, true);
-  if (ctx == nullptr) {
-    generateError(rest::ResponseCode::SERVER_ERROR, TRI_ERROR_INTERNAL,
-                  "Could not get v8 context");
+  
+  Result res = actions::Database::drop(_vocbase, dbName);
+  if (!res.ok()) {
+    generateError(res.errorNumber() == TRI_ERROR_ARANGO_DATABASE_NOT_FOUND
+                  ? rest::ResponseCode::NOT_FOUND
+                  : rest::ResponseCode::BAD,
+                  res.errorNumber(),
+                  res.errorMessage());
     return RestStatus::DONE;
-  }
-  TRI_DEFER(V8DealerFeature::DEALER->exitContext(ctx));
-  v8::Isolate* isolate = ctx->_isolate;
-  v8::HandleScope scope(isolate);
-
-  // clear collections in cache object
-  TRI_ClearObjectCacheV8(isolate);
-
-  // If we are a coordinator in a cluster, we have to behave differently:
-  if (ServerState::instance()->isCoordinator()) {
-    // Arguments are already checked, there is exactly one argument
-    auto databaseFeature =
-        application_features::ApplicationServer::getFeature<DatabaseFeature>(
-            "Database");
-    TRI_vocbase_t* vocbase = databaseFeature->useDatabaseCoordinator(dbName);
-
-    if (vocbase == nullptr) {
-      // no such database
-      generateError(rest::ResponseCode::NOT_FOUND,
-                    TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
-      return RestStatus::DONE;
-    }
-
-    TRI_voc_tick_t const id = vocbase->id();
-    vocbase->release();
-
-    ClusterInfo* ci = ClusterInfo::instance();
-    std::string errorMsg;
-
-    int res = ci->dropDatabaseCoordinator(dbName, errorMsg, 120.0);
-
-    if (res != TRI_ERROR_NO_ERROR) {
-      generateError(res == TRI_ERROR_ARANGO_DATABASE_NOT_FOUND
-                        ? rest::ResponseCode::NOT_FOUND
-                        : rest::ResponseCode::SERVER_ERROR,
-                    res);
-      return RestStatus::DONE;
-    }
-
-    // now wait for heartbeat thread to drop the database object
-    int tries = 0;
-
-    while (++tries <= 6000) {
-      TRI_vocbase_t* vocbase = databaseFeature->useDatabaseCoordinator(id);
-
-      if (vocbase == nullptr) {
-        // object has vanished
-        break;
-      }
-
-      vocbase->release();
-      // sleep
-      usleep(10000);
-    }
-
-  } else {
-    DatabaseFeature* databaseFeature =
-        application_features::ApplicationServer::getFeature<DatabaseFeature>(
-            "Database");
-    int res = databaseFeature->dropDatabase(dbName, false, true);
-
-    if (res != TRI_ERROR_NO_ERROR) {
-      generateError(res == TRI_ERROR_ARANGO_DATABASE_NOT_FOUND
-                        ? rest::ResponseCode::NOT_FOUND
-                        : rest::ResponseCode::SERVER_ERROR,
-                    res);
-      return RestStatus::DONE;
-    }
-
-    // run the garbage collection in case the database held some objects which
-    // can
-    // now be freed
-    TRI_RunGarbageCollectionV8(isolate, 0.25);
-
-    TRI_ExecuteJavaScriptString(
-        isolate, isolate->GetCurrentContext(),
-        TRI_V8_ASCII_STRING("require('internal').executeGlobalContextFunction('"
-                            "reloadRouting')"),
-        TRI_V8_ASCII_STRING("reload routing"), false);
   }
 
   VPackBuilder b;
