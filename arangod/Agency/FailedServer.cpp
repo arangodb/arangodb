@@ -310,7 +310,7 @@ JOB_STATUS FailedServer::status() {
   if (deleteTodos) {
     LOG_TOPIC(INFO, Logger::SUPERVISION)
       << "Server " << _server << " is healthy again. Will try to delete"
-      "any jobs which have not yet started!";
+      " any jobs which have not yet started!";
     deleteTodos->close();
     deleteTodos->close();
     // Transact to agency
