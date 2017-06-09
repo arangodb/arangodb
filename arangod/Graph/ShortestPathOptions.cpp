@@ -169,9 +169,9 @@ double ShortestPathOptions::estimateCost(size_t& nrItems) const {
 }
 
 void ShortestPathOptions::addReverseLookupInfo(
-    aql::Ast* ast, std::string const& collectionName,
+    aql::ExecutionPlan* plan, std::string const& collectionName,
     std::string const& attributeName, aql::AstNode* condition) {
-  injectLookupInfoInList(_reverseLookupInfos, ast, collectionName,
+  injectLookupInfoInList(_reverseLookupInfos, plan, collectionName,
                          attributeName, condition);
 }
 
