@@ -1962,14 +1962,13 @@ static void JS_CreateDatabase(v8::FunctionCallbackInfo<v8::Value> const& args) {
   VPackBuilder users;
   if (args.Length() >= 3 && args[2]->IsArray()) {
     VPackArrayBuilder a(&users);
-    
     v8::Handle<v8::Array> ar = v8::Handle<v8::Array>::Cast(args[2]);
     for (uint32_t i = 0; i < ar->Length(); ++i) {
       v8::Handle<v8::Value> user = ar->Get(i);
       if (!user->IsObject()) {
         TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER, "user is not an object");
       }
-      TRI_V8ToVPack(isolate, users, user, true);
+      TRI_V8ToVPackSimple(isolate, users, user);
     }
   }
   
