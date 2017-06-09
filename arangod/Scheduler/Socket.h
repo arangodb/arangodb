@@ -146,7 +146,8 @@ class Socket {
   virtual void asyncRead(boost::asio::mutable_buffers_1 const& buffer,
                          AsyncHandler const& handler) = 0;
   
-  virtual void shutdownAndClose(boost::system::error_code& ec, bool closeSend, bool closeReceive) {
+  virtual void close(boost::system::error_code& ec) = 0;
+  virtual void shutdown(boost::system::error_code& ec, bool closeSend, bool closeReceive) {
     if (closeSend) {
       this->shutdownSend(ec);
       if (ec && ec != boost::asio::error::not_connected) {
@@ -162,19 +163,12 @@ class Socket {
             << "shutdown receive stream failed with: " << ec.message();
       }
     }
-
-    this->close(ec);
-    if (ec && ec != boost::asio::error::not_connected) {
-      LOG_TOPIC(DEBUG, Logger::COMMUNICATION)
-          << "closing stream failed with: " << ec.message();
-    }
   }
- 
+
  protected:
   virtual bool sslHandshake() = 0;
   virtual void shutdownReceive(boost::system::error_code& ec) = 0;
   virtual void shutdownSend(boost::system::error_code& ec) = 0;
-  virtual void close(boost::system::error_code& ec) = 0;
 
  public:
   boost::asio::io_service& _ioService;

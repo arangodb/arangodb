@@ -47,3 +47,12 @@ void SocketUnixDomain::shutdownReceive(boost::system::error_code& ec) {
 void SocketUnixDomain::shutdownSend(boost::system::error_code& ec) {
   _socket.shutdown(boost::asio::local::stream_protocol::socket::shutdown_send, ec);
 }
+void SocketUnixDomain::close(boost::system::error_code& ec) {
+  if (_socket.is_open()) {
+    _socket.close(ec); 
+    if (ec && ec != boost::asio::error::not_connected) {
+      LOG_TOPIC(DEBUG, Logger::COMMUNICATION)
+          << "closing socket failed with: " << ec.message();
+    }
+  }
+}
