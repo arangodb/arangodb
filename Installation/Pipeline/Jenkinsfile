@@ -9,6 +9,7 @@ def PowerShell(psCmd) {
 }
 
 
+stage('checkout') {
 node('master') {
     milestone(1)
 
@@ -54,6 +55,7 @@ node('master') {
     stash includes: '**', name: 'source'
 
     milestone(2)
+}
 }
 
 parallel(
