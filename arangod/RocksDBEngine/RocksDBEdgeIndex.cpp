@@ -61,6 +61,10 @@
 using namespace arangodb;
 using namespace arangodb::basics;
 
+namespace {
+constexpr bool EdgeIndexFillBlockCache = false;
+}
+
 RocksDBEdgeIndexIterator::RocksDBEdgeIndexIterator(
     LogicalCollection* collection, transaction::Methods* trx,
     ManagedDocumentResult* mmdr, arangodb::RocksDBEdgeIndex const* index,
@@ -69,15 +73,17 @@ RocksDBEdgeIndexIterator::RocksDBEdgeIndexIterator(
       _keys(keys.get()),
       _keysIterator(_keys->slice()),
       _index(index),
-      _iterator(
-          rocksutils::toRocksMethods(trx)->NewIterator(index->columnFamily())),
       _bounds(RocksDBKeyBounds::EdgeIndex(0)),
       _cache(cache),
       _builderIterator(arangodb::basics::VelocyPackHelper::EmptyArrayValue()) {
   keys.release();  // now we have ownership for _keys
   TRI_ASSERT(_keys != nullptr);
   TRI_ASSERT(_keys->slice().isArray());
-  resetInplaceMemory();
+
+  auto* rocksMethods = rocksutils::toRocksMethods(trx);
+  rocksdb::ReadOptions options = rocksMethods->readOptions(); // intentional copy of the options
+  options.fill_cache = EdgeIndexFillBlockCache;
+  _iterator = std::move(rocksMethods->NewIterator(options, index->columnFamily()));
 }
 
 RocksDBEdgeIndexIterator::~RocksDBEdgeIndexIterator() {
@@ -296,7 +302,7 @@ void RocksDBEdgeIndexIterator::lookupInRocksDB(StringRef fromTo) {
   resetInplaceMemory();
   rocksdb::Comparator const* cmp = _index->comparator();
 
-  cache::Cache *cc = _cache.get();
+  cache::Cache* cc = _cache.get();
   _builder.openArray(true);
   auto end = _bounds.end();
   while (_iterator->Valid() && (cmp->Compare(_iterator->key(), end) < 0)) {
@@ -620,6 +626,10 @@ void RocksDBEdgeIndex::warmup(arangodb::transaction::Methods* trx) {
   ManagedDocumentResult mmdr;
   bool needsInsert = false;
 
+  // intentional copy of the read options
+  RocksDBMethods* mthds = rocksutils::toRocksMethods(trx);
+  auto options = mthds->readOptions();
+  options.fill_cache = EdgeIndexFillBlockCache;
   cache::Cache* cc = _cache.get();
   rocksutils::iterateBounds(
       bounds,
@@ -691,7 +701,8 @@ void RocksDBEdgeIndex::warmup(arangodb::transaction::Methods* trx) {
           }
         }
       },
-      RocksDBColumnFamily::edge());
+      RocksDBColumnFamily::edge(),
+      options);
 
   if (!previous.empty() && needsInsert) {
     // We still have something to store

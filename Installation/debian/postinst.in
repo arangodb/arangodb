@@ -13,12 +13,12 @@ sed -i /etc/arangodb3/arangod.conf -e "s;storage-engine = auto;storage-engine = 
 
 if [ "$1" = "configure" -a -z "$2" ]; then
     db_get @CPACK_PACKAGE_NAME@/password
-
     # Escape backslashes and quotes 
     if [ -n "$RET" ]; then
-        ARANGODB_DEFAULT_ROOT_PASSWORD=`echo "${RET}"|sed -e 's;\\\\;\\\\\\\\;g' -e 's;";\\\\";g'` \
+        ARANGODB_DEFAULT_ROOT_PASSWORD=`echo "$RET"|sed -e 's;\\\\;\\\\\\\\;g' -e 's;";\\\\";g'` \
                                       /usr/sbin/arango-init-database \
-	                              --server.rest-server false --server.statistics false --foxx.queues false \
+	                              --server.rest-server false \
+				      --server.statistics false --foxx.queues false \
                                       --uid arangodb --gid arangodb || true
     fi
     db_set @CPACK_PACKAGE_NAME@/password_again ""

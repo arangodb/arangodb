@@ -417,8 +417,9 @@ int InitialSyncer::sendFinishBatch() {
 ////////////////////////////////////////////////////////////////////////////////
 
 bool InitialSyncer::checkAborted() {
-  if (_vocbase->replicationApplier() != nullptr &&
-      _vocbase->replicationApplier()->stopInitialSynchronization()) {
+  if (application_features::ApplicationServer::isStopping() ||
+      (_vocbase->replicationApplier() != nullptr &&
+       _vocbase->replicationApplier()->stopInitialSynchronization())) {
     return true;
   }
   return false;

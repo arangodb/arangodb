@@ -235,7 +235,7 @@ void RocksDBGeoIndexIterator::reset() { replaceCursor(nullptr); }
 RocksDBGeoIndex::RocksDBGeoIndex(TRI_idx_iid_t iid,
                                  arangodb::LogicalCollection* collection,
                                  VPackSlice const& info)
-    : RocksDBIndex(iid, collection, info, RocksDBColumnFamily::geo()),
+    : RocksDBIndex(iid, collection, info, RocksDBColumnFamily::geo(), false),
       _variant(INDEX_GEO_INDIVIDUAL_LAT_LON),
       _geoJson(false),
       _geoIndex(nullptr) {

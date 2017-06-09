@@ -302,10 +302,6 @@ void RocksDBOptionFeature::validateOptions(
 }
 
 void RocksDBOptionFeature::start() {
-
-  // increase parallelism and re-fetch the number of threads
-  rocksDBDefaults.IncreaseParallelism(std::thread::hardware_concurrency());
-
   if (_numThreadsHigh == 0) {
     _numThreadsHigh = rocksDBDefaults.max_background_flushes;
   }
