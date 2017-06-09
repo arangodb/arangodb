@@ -10,6 +10,8 @@ def PowerShell(psCmd) {
 
 
 node('master') {
+    milestone(1)
+
     retry(3) {
         try {
             checkout scm
@@ -50,6 +52,8 @@ node('master') {
     }
 
     stash includes: '**', name: 'source'
+
+    milestone(2)
 }
 
 parallel(
