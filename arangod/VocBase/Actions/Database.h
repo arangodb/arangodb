@@ -23,25 +23,26 @@
 #ifndef ARANGOD_VOC_BASE_API_DATABASE_H
 #define ARANGOD_VOC_BASE_API_DATABASE_H 1
 
-#include "Basics/Result.h"
 #include <velocypack/Builder.h>
 #include <velocypack/Slice.h>
+#include "Basics/Result.h"
 
 struct TRI_vocbase_t;
 
 namespace arangodb {
 namespace actions {
 
-  /// Common code for the db._database(),
-  struct Database {
-    static std::vector<std::string> list(std::string const& user = "");
-    static arangodb::Result info(TRI_vocbase_t* vocbase, arangodb::velocypack::Builder& result);
-    static arangodb::Result create(std::string const& dbName,
-                                   arangodb::velocypack::Slice const& users,
-                                                arangodb::velocypack::Slice const& options);
-    static arangodb::Result drop(TRI_vocbase_t* systemVocbase, std::string const&);
-  };
-  
+/// Common code for the db._database(),
+struct Database {
+  static std::vector<std::string> list(std::string const& user = "");
+  static arangodb::Result info(TRI_vocbase_t* vocbase,
+                               arangodb::velocypack::Builder& result);
+  static arangodb::Result create(std::string const& dbName,
+                                 arangodb::velocypack::Slice const& users,
+                                 arangodb::velocypack::Slice const& options);
+  static arangodb::Result drop(TRI_vocbase_t* systemVocbase,
+                               std::string const&);
+};
 }
 }
 

@@ -120,7 +120,6 @@ RestStatus RestDatabaseHandler::getDatabases() {
 // / @brief was docuBlock JSF_get_api_database_create
 // //////////////////////////////////////////////////////////////////////////////
 RestStatus RestDatabaseHandler::createDatabase() {
-
   std::vector<std::string> const& suffixes = _request->suffixes();
   bool parseSuccess = true;
   std::shared_ptr<VPackBuilder> parsedBody = parseVelocyPackBody(parseSuccess);
@@ -142,13 +141,12 @@ RestStatus RestDatabaseHandler::createDatabase() {
   Result res = actions::Database::create(dbName, users, options);
   if (!res.ok()) {
     generateError(res.errorNumber() == TRI_ERROR_ARANGO_DUPLICATE_NAME
-                  ? rest::ResponseCode::CONFLICT
-                  : rest::ResponseCode::BAD,
-                  res.errorNumber(),
-                  res.errorMessage());
+                      ? rest::ResponseCode::CONFLICT
+                      : rest::ResponseCode::BAD,
+                  res.errorNumber(), res.errorMessage());
     return RestStatus::DONE;
   }
-  
+
   VPackBuilder b;
   b.openObject();
   b.add("result", VPackValue(true));
@@ -174,14 +172,13 @@ RestStatus RestDatabaseHandler::deleteDatabase() {
   }
 
   std::string const& dbName = suffixes[0];
-  
+
   Result res = actions::Database::drop(_vocbase, dbName);
   if (!res.ok()) {
     generateError(res.errorNumber() == TRI_ERROR_ARANGO_DATABASE_NOT_FOUND
-                  ? rest::ResponseCode::NOT_FOUND
-                  : rest::ResponseCode::BAD,
-                  res.errorNumber(),
-                  res.errorMessage());
+                      ? rest::ResponseCode::NOT_FOUND
+                      : rest::ResponseCode::BAD,
+                  res.errorNumber(), res.errorMessage());
     return RestStatus::DONE;
   }
 
