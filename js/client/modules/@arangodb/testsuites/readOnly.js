@@ -91,7 +91,16 @@ function readOnly (options) {
     };
   }
 
-  const res = pu.run.arangoshCmd(options, adbInstance, {}, [
+const requests = [
+  [200, 'post', '/_api/collection', 'root', {name:'testcol'}],
+  [403, 'post', '/_api/collection', 'test', {name:'testcol2'}],
+  [403, 'delete', '/_api/collection/testcol', 'test', {}],
+  [403, 'put', '/_api/collection/testcol/truncate', 'test', {}]
+
+]
+
+
+  let res = pu.run.arangoshCmd(options, adbInstance, {}, [
           '--javascript.execute-string',
           `
           const users = require("@arangodb/users");
@@ -101,12 +110,18 @@ function readOnly (options) {
           `
         ]);
 
-  print(res);
+  for (const r of requests) {
+    print(r[1]);
+    const res = request[r[1]]({
+      url: `${adbInstance.arangods[0].url}${r[2]}`,
+      body: JSON.stringify(r[4]),
+      auth: {username:r[3], password:''}
+    });
+    print(res.statusCode === r[0]);
+  }
 
   pu.shutdownInstance(adbInstance, options);
 
-
-  print(results);
   return results;
 }
 
