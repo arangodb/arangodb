@@ -77,12 +77,12 @@ function SynchronousReplicationSuite () {
       ccinfo = shards.map(
         s => global.ArangoClusterInfo.getCollectionInfoCurrent(database, cn, s)
       );
+      console.info("Plan:", cinfo.shards, "Current:", ccinfo.map(s => s.servers));
       replicas = ccinfo.map(s => s.servers.length);
       if (replicas.every(x => x > 1)) {
         console.info("Replication up and running!");
         return true;
       }  
-      console.info("Plan:", cinfo.shards, "Current:", ccinfo.map(s => s.servers));
       wait(0.5);
       global.ArangoClusterInfo.flush();
     }
