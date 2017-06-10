@@ -70,12 +70,16 @@ stage('build & test') {
             parallel(
                 'singleserver-community': {
                     node('linux') {
+                        unstash 'build-enterprise-linux'
+
                         sh './Installation/Pipeline/test_singleserver_community_mmfiles_linux.sh 8'
                     }
                 },
 
                 'cluster-enterprise': {
                     node('linux') {
+                        unstash 'build-enterprise-linux'
+
                         sh './Installation/Pipeline/test_cluster_enterprise_rocksdb_linux.sh 8'
                     }
                 },

@@ -6,8 +6,8 @@ echo "ARANGOD VERSION: `build/bin/arangod --version`"
 echo "CORE PATTERN: `cat /proc/sys/kernel/core_pattern`"
 echo "CORE LIMIT: `ulimit -c`"
 
-rm -f core.* *.log out
-rm -Rf tmp && mkdir tmp
+rm -rf core.* *.log out
+rm -rf tmp && mkdir tmp
 export TMPDIR=$(pwd)/tmp
 export TEMPDIR=$(pwd)/tmp
 
