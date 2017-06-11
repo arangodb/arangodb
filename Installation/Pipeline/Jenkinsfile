@@ -25,11 +25,11 @@ stage('checkout') {
                         def entries = changeLogSets[i].items
 
                         for (int j = 0; j < entries.length; j++) {
-                            def author = ${entry.author}
-                            def commitId = ${entry.commitId}
+                            def author = entry.author
+                            def commitId = entry.commitId
                             def entry = entries[j]
-                            def msg = ${entry.msg}
-                            def timestamp = ${new Date(entry.timestamp)}
+                            def msg = entry.msg
+                            def timestamp = new Date(entry.timestamp)
 
                             if (msg ==~ /(?i)ci: *clean/) {
                                 echo "using clean build because of message '" + msg + "'"
@@ -40,8 +40,8 @@ stage('checkout') {
 
                             for (int k = 0; k < files.size(); k++) {
                                 def file = files[k]
-                                def editType = ${file.editType.name}
-                                def path = ${file.path}
+                                def editType = file.editType.name
+                                def path = file.path
                             }
                         }
                     }
