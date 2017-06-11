@@ -23,6 +23,8 @@ stage('checkout') {
                     def changeLogSets = currentBuild.changeSets
 
                     echo changeLogSets.toString()
+                    echo "SIZE"
+                    echo changeLogSets.size();
 
                     for (int i = 0; i < changeLogSets.size(); i++) {
                         def entries = changeLogSets[i].items
