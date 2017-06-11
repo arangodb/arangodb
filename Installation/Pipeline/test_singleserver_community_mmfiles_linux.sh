@@ -13,8 +13,9 @@ export TEMPDIR=$(pwd)/tmp
 
 PORT01=`./Installation/Pipeline/port.sh`
 PORT02=`./Installation/Pipeline/port.sh`
+PORT03=`./Installation/Pipeline/port.sh`
 
-trap "./Installation/Pipeline/port.sh --clean $PORT01 $PORT02" EXIT
+trap "./Installation/Pipeline/port.sh --clean $PORT01 $PORT02 $PORT03" EXIT
 
 # note that: shebang does not work if path contains a '@'
 

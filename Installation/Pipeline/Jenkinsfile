@@ -10,6 +10,9 @@ def PowerShell(psCmd) {
 
 def cleanBuild = false
 
+properties [[$class: 'BuildDiscarderProperty', strategy: [$class: 'LogRotator', daysToKeepStr: '5', numToKeepStr: '5']],
+    [$class: 'ScannerJobProperty', doNotScan: false]]
+
 stage('checkout') {
     node('master') {
         milestone(1)
@@ -109,7 +112,7 @@ stage('build & test') {
                 'singleserver-community': {
                     node('linux') {
                         unstash 'build-enterprise-linux'
-
+                        echo "Running singleserver comunity mmfiles linux test"
                         sh './Installation/Pipeline/test_singleserver_community_mmfiles_linux.sh 8'
                     }
                 },
@@ -117,7 +120,7 @@ stage('build & test') {
                 'cluster-enterprise': {
                     node('linux') {
                         unstash 'build-enterprise-linux'
-
+                        echo "Running cluster enterprise rocksdb linux test"
                         sh './Installation/Pipeline/test_cluster_enterprise_rocksdb_linux.sh 8'
                     }
                 },
@@ -125,9 +128,13 @@ stage('build & test') {
                 'jslint': {
                     node('linux') {
                         unstash 'build-enterprise-linux'
+                        echo "Running jslint test"
 
                         script {
                             try {
+                                sh 'ls -l'
+                                sh 'ls -l Installation'
+                                sh 'ls -l Installation/Pipeline'
                                 sh './Installation/Pipeline/test-jslint.sh'
                             }
                             catch (exc) {
