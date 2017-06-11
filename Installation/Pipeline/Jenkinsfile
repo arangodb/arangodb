@@ -18,10 +18,15 @@ stage('checkout') {
                 checkout scm
 
                 script {
+                    echo "LOG LOG LOG"
+                    
                     def changeLogSets = currentBuild.changeSets
+
+                    echo changeLogSets
 
                     for (int i = 0; i < changeLogSets.size(); i++) {
                         def entries = changeLogSets[i].items
+
                         for (int j = 0; j < entries.length; j++) {
                             def entry = entries[j]
 
@@ -31,6 +36,7 @@ stage('checkout') {
 
                             for (int k = 0; k < files.size(); k++) {
                                 def file = files[k]
+
                                 echo "  ${file.editType.name} ${file.path}"
                             }
                         }
