@@ -9,6 +9,7 @@ def PowerShell(psCmd) {
 }
 
 def cleanBuild = false
+def cleanAll = false
 
 stage('checkout') {
     node('master') {
@@ -32,9 +33,14 @@ stage('checkout') {
                             def msg = entry.msg
                             def timestamp = new Date(entry.timestamp)
 
-                            if (msg ==~ /(?i).*ci: *clean.*/) {
+                            if (msg ==~ /(?i).*ci: *clean[ \\].*/) {
                                 echo "using clean build because message contained 'ci: clean'"
                                 cleanBuild = true
+                            }
+
+                            if (msg ==~ /(?i).*ci: *clean-all[ \\].*/) {
+                                echo "using clean all because message contained 'ci: clean-all'"
+                                cleanAll = true
                             }
 
                             def files = new ArrayList(entry.affectedFiles)
@@ -93,29 +99,39 @@ stage('checkout') {
 
 stage('build & test') {
     parallel(
-        'linux': {
+        'build-linux': {
             node('linux') {
-                unstash 'source'
-
-                if (cleanBuild) {
+                if (cleanAll) {
+                    sh 'rm -rf *'
+                } else if (cleanBuild) {
                     sh 'rm -rf build-jenkins'
                 }
+
+                unstash 'source'
 
                 sh './Installation/Pipeline/build_enterprise_linux.sh 16'
                 stash includes: binaries, name: 'build-enterprise-linux'
             }
 
             parallel(
-                'singleserver-community': {
+                'test-singleserver-community': {
                     node('linux') {
+                        if (cleanAll) {
+                            sh 'rm -rf *'
+                        }
+
                         unstash 'build-enterprise-linux'
                         echo "Running singleserver comunity mmfiles linux test"
                         sh './Installation/Pipeline/test_singleserver_community_mmfiles_linux.sh 8'
                     }
                 },
 
-                'cluster-enterprise': {
+                'test-cluster-enterprise': {
                     node('linux') {
+                        if (cleanAll) {
+                            sh 'rm -rf *'
+                        }
+
                         unstash 'build-enterprise-linux'
                         echo "Running cluster enterprise rocksdb linux test"
                         sh './Installation/Pipeline/test_cluster_enterprise_rocksdb_linux.sh 8'
@@ -124,15 +140,16 @@ stage('build & test') {
 
                 'jslint': {
                     node('linux') {
+                        if (cleanAll) {
+                            sh 'rm -rf *'
+                        }
+
                         unstash 'build-enterprise-linux'
                         echo "Running jslint test"
 
                         script {
                             try {
-                                sh 'ls -l'
-                                sh 'ls -l Installation'
-                                sh 'ls -l Installation/Pipeline'
-                                sh './Installation/Pipeline/test-jslint.sh'
+                                sh './Installation/Pipeline/test_jslint.sh'
                             }
                             catch (exc) {
                                 currentBuild.result = 'UNSTABLE'
@@ -143,25 +160,29 @@ stage('build & test') {
             )
         },
 
-        'mac': {
+        'build-mac': {
             node('mac') {
-                unstash 'source'
-
-                if (cleanBuild) {
+                if (cleanAll) {
+                    sh 'rm -rf *'
+                } else if (cleanBuild) {
                     sh 'rm -rf build-jenkins'
                 }
+
+                unstash 'source'
 
                 sh './Installation/Pipeline/build_community_mac.sh 16'
             }
         },
 
-        'windows': {
+        'build-windows': {
             node('windows') {
-                unstash 'source'
-
-                if (cleanBuild) {
+                if (cleanAll) {
+                    bat 'del /F /Q *'
+                } else if (cleanBuild) {
                     bat 'del /F /Q build'
                 }
+
+                unstash 'source'
 
                 PowerShell(". .\\Installation\\Pipeline\\build_enterprise_windows.ps1")
             }
