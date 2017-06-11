@@ -857,7 +857,8 @@ size_t ClusterComm::performRequests(std::vector<ClusterCommRequest>& requests,
   try {
     while (true) {
       now = TRI_microtime();
-      if (now > endTime) {
+      if (now > endTime ||
+          application_features::ApplicationServer::isStopping()) {
         break;
       }
       if (nrDone >= requests.size()) {

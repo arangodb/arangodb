@@ -238,14 +238,17 @@ void MMFilesPersistentIndex::toVelocyPackFigures(VPackBuilder& builder) const {
 Result MMFilesPersistentIndex::insert(transaction::Methods* trx,
                                       TRI_voc_rid_t revisionId,
                                       VPackSlice const& doc, bool isRollback) {
-  auto comparator = MMFilesPersistentIndexFeature::instance()->comparator();
   std::vector<MMFilesSkiplistIndexElement*> elements;
 
   int res;
   try {
     res = fillElement(elements, revisionId, doc);
-  } catch (...) {
+  } catch (basics::Exception const& ex) {
+    res = ex.code();
+  } catch (std::bad_alloc const&) {
     res = TRI_ERROR_OUT_OF_MEMORY;
+  } catch (...) {
+    res = TRI_ERROR_INTERNAL;
   }
 
   // make sure we clean up before we leave this method
@@ -333,6 +336,7 @@ Result MMFilesPersistentIndex::insert(transaction::Methods* trx,
       static_cast<MMFilesTransactionState*>(trx->state())->rocksTransaction();
   TRI_ASSERT(rocksTransaction != nullptr);
 
+  auto comparator = MMFilesPersistentIndexFeature::instance()->comparator();
   rocksdb::ReadOptions readOptions;
 
   size_t const count = elements.size();
@@ -404,8 +408,12 @@ Result MMFilesPersistentIndex::remove(transaction::Methods* trx,
   int res;
   try {
     res = fillElement(elements, revisionId, doc);
-  } catch (...) {
+  } catch (basics::Exception const& ex) {
+    res = ex.code();
+  } catch (std::bad_alloc const&) {
     res = TRI_ERROR_OUT_OF_MEMORY;
+  } catch (...) {
+    res = TRI_ERROR_INTERNAL;
   }
 
   // make sure we clean up before we leave this method

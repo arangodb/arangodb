@@ -22,11 +22,11 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "MMFilesIndexFactory.h"
+#include "Basics/Exceptions.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/StringRef.h"
 #include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
-
 #include "Cluster/ServerState.h"
 #include "Indexes/Index.h"
 #include "MMFiles/MMFilesEdgeIndex.h"
@@ -89,8 +89,10 @@ static int ProcessIndexFields(VPackSlice const definition,
     }
 
     builder.close();
-  } catch (...) {
+  } catch (std::bad_alloc const&) {
     return TRI_ERROR_OUT_OF_MEMORY;
+  } catch (...) {
+    return TRI_ERROR_INTERNAL;
   }
   return TRI_ERROR_NO_ERROR;
 }
@@ -335,10 +337,12 @@ int MMFilesIndexFactory::enhanceIndexDefinition(VPackSlice const definition,
       }
 
     }
-
-  } catch (...) {
-    // TODO Check for different type of Errors
+  } catch (basics::Exception const& ex) {
+    return ex.code();
+  } catch (std::exception const&) {
     return TRI_ERROR_OUT_OF_MEMORY;
+  } catch (...) {
+    return TRI_ERROR_INTERNAL;
   }
 
   return res;

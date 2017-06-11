@@ -162,6 +162,7 @@ void TRI_InitializeErrorMessages () {
   REG_ERROR(ERROR_CLUSTER_MUST_NOT_DROP_COLL_OTHER_DISTRIBUTESHARDSLIKE, "must not drop collection while another has a distributeShardsLike attribute pointing to it");
   REG_ERROR(ERROR_CLUSTER_UNKNOWN_DISTRIBUTESHARDSLIKE, "must not have a distributeShardsLike attribute pointing to an unknown collection");
   REG_ERROR(ERROR_CLUSTER_INSUFFICIENT_DBSERVERS, "the number of current dbservers is lower than the requested replicationFactor");
+  REG_ERROR(ERROR_CLUSTER_COULD_NOT_DROP_FOLLOWER, "a follower could not be dropped in agency");
   REG_ERROR(ERROR_QUERY_KILLED, "query killed");
   REG_ERROR(ERROR_QUERY_PARSE, "%s");
   REG_ERROR(ERROR_QUERY_EMPTY, "query is empty");

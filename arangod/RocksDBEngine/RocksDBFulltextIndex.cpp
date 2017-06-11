@@ -61,7 +61,7 @@ DocumentIdentifierToken RocksDBFulltextIndex::toDocumentIdentifierToken(
 RocksDBFulltextIndex::RocksDBFulltextIndex(
     TRI_idx_iid_t iid, arangodb::LogicalCollection* collection,
     VPackSlice const& info)
-    : RocksDBIndex(iid, collection, info, RocksDBColumnFamily::geo()),
+    : RocksDBIndex(iid, collection, info, RocksDBColumnFamily::geo(), false),
       _minWordLength(TRI_FULLTEXT_MIN_WORD_LENGTH_DEFAULT) {
   TRI_ASSERT(iid != 0);
 

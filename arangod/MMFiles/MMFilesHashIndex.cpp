@@ -710,8 +710,10 @@ int MMFilesHashIndex::lookup(
   documents.clear();
   try {
     _multiArray->_hashArray->lookupByKey(&context, &key, documents);
-  } catch (...) {
+  } catch (std::bad_alloc const&) {
     return TRI_ERROR_OUT_OF_MEMORY;
+  } catch (...) {
+    return TRI_ERROR_INTERNAL;
   }
   return TRI_ERROR_NO_ERROR;
 }
@@ -855,8 +857,10 @@ int MMFilesHashIndex::insertMulti(transaction::Methods* trx,
       work(hashElement, isRollback);
     } catch (arangodb::basics::Exception const& ex) {
       res = ex.code();
-    } catch (...) {
+    } catch (std::bad_alloc const&) {
       res = TRI_ERROR_OUT_OF_MEMORY;
+    } catch (...) {
+      res = TRI_ERROR_INTERNAL;
     }
 
     if (res != TRI_ERROR_NO_ERROR) {

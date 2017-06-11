@@ -86,6 +86,10 @@ SocketTask::~SocketTask() {
   if (err) {
     LOG_TOPIC(ERR, Logger::COMMUNICATION) << "unable to cancel _keepAliveTimer";
   }
+
+  if (_peer) {
+    _peer->close(err);
+  }
 }
 
 // -----------------------------------------------------------------------------
@@ -240,7 +244,7 @@ bool SocketTask::completedWriteBuffer() {
   return true;
 }
 
-// caller must hold the _writeLock
+// caller must not hold the _writeLock
 void SocketTask::closeStream() {
   MUTEX_LOCKER(locker, _writeLock);
   closeStreamNoLock();
@@ -250,35 +254,13 @@ void SocketTask::closeStream() {
 void SocketTask::closeStreamNoLock() {
   boost::system::error_code err;
 
-  if (!_closedSend) {
-    _peer->shutdownSend(err);
-
-    if (err && err != boost::asio::error::not_connected) {
-      LOG_TOPIC(DEBUG, Logger::COMMUNICATION)
-          << "shutdown send stream failed with: " << err.message();
-    }
-
-    _closedSend = true;
-  }
-
-  if (!_closedReceive) {
-    _peer->shutdownReceive(err);
-
-    if (err && err != boost::asio::error::not_connected) {
-      LOG_TOPIC(DEBUG, Logger::COMMUNICATION)
-          << "shutdown send stream failed with: " << err.message();
-    }
-
-    _closedReceive = true;
-  }
-
-  _peer->close(err);
-
-  if (err && err != boost::asio::error::not_connected) {
-    LOG_TOPIC(DEBUG, Logger::COMMUNICATION)
-        << "shutdown send stream failed with: " << err.message();
-  }
-
+  bool closeSend = !_closedSend;
+  bool closeReceive = !_closedReceive;
+  
+  _peer->shutdown(err, closeSend, closeReceive);
+  
+  _closedSend = true;
+  _closedReceive = true;
   _closeRequested = false;
   _keepAliveTimer.cancel();
   _keepAliveTimerActive = false;
@@ -498,19 +480,5 @@ void SocketTask::asyncReadSome() {
             compactify();
           }
         });
-  }
-}
-
-// caller must hold the _writeLock
-void SocketTask::closeReceiveStream() {
-  if (!_closedReceive) {
-    try {
-      _peer->shutdownReceive();
-    } catch (boost::system::system_error& err) {
-      LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "shutdown receive stream "
-                << " failed with: " << err.what();
-    }
-
-    _closedReceive = true;
   }
 }

@@ -49,6 +49,8 @@ devel
 
 * PR #2514: Foxx services that can't be fixed by self-healing now serve a 503 error
 
+* added `time` function to `@arangodb` module
+
 v3.2.alpha4 (2017-04-25)
 ------------------------
 

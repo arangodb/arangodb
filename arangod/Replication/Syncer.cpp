@@ -711,6 +711,11 @@ int Syncer::handleStateResponse(VPackSlice const& slice, std::string& errorMsg) 
 
   TRI_voc_tick_t const lastLogTick = VelocyPackHelper::stringUInt64(tick);
 
+  if (lastLogTick == 0) {
+    errorMsg = "lastLogTick is 0 in response" + endpointString;
+    return TRI_ERROR_REPLICATION_INVALID_RESPONSE;
+  }
+
   // state."running"
   bool running = VelocyPackHelper::getBooleanValue(state, "running", false);
 

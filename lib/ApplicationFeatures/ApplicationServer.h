@@ -127,9 +127,11 @@ class ApplicationServer {
   };
 
   static ApplicationServer* server;
+
   static bool isStopping() {
     return server != nullptr && server->_stopping.load();
   }
+
   static bool isPrepared() {
     return server != nullptr && (server->_state == ServerState::IN_START ||
                                  server->_state == ServerState::IN_WAIT ||

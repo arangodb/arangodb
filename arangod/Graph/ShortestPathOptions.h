@@ -29,6 +29,7 @@
 namespace arangodb {
 
 namespace aql {
+class ExecutionPlan;
 class Query;
 }
 
@@ -90,7 +91,7 @@ struct ShortestPathOptions : public BaseOptions {
 
   // Creates a complete Object containing all EngineInfo
   // in the given builder.
-  void addReverseLookupInfo(aql::Ast* ast, std::string const& collectionName,
+  void addReverseLookupInfo(aql::ExecutionPlan* plan, std::string const& collectionName,
                             std::string const& attributeName,
                             aql::AstNode* condition);
 
