@@ -46,10 +46,10 @@ scripts/unittest ldap                      --minPort `expr $PORT03 +  40` --maxP
 scripts/unittest server_http               --minPort `expr $PORT03 +  80` --maxPort `expr $PORT03 + 119` $OPTS --cluster true 2>&1
 scripts/unittest shell_client              --minPort `expr $PORT03 + 120` --maxPort `expr $PORT03 + 159` $OPTS --cluster true 2>&1
 scripts/unittest shell_server              --minPort `expr $PORT03 + 160` --maxPort `expr $PORT03 + 199` $OPTS --cluster true 2>&1
-scripts/unittest shell_server_aql          --minPort `expr $PORT04 +   0` --maxPort `expr $PORT03 +  39` $OPTS --cluster true --testBuckets 4/0 2>&1
+scripts/unittest shell_server_aql          --minPort `expr $PORT04 +   0` --maxPort `expr $PORT04 +  39` $OPTS --cluster true --testBuckets 4/0 2>&1
 scripts/unittest shell_server_aql          --minPort `expr $PORT04 +  40` --maxPort `expr $PORT04 +  79` $OPTS --cluster true --testBuckets 4/1 2>&1
 scripts/unittest shell_server_aql          --minPort `expr $PORT04 +  80` --maxPort `expr $PORT04 + 119` $OPTS --cluster true --testBuckets 4/2 2>&1
 scripts/unittest shell_server_aql          --minPort `expr $PORT04 + 120` --maxPort `expr $PORT04 + 159` $OPTS --cluster true --testBuckets 4/3 2>&1
 scripts/unittest ssl_server                --minPort `expr $PORT04 + 160` --maxPort `expr $PORT04 + 199` $OPTS --cluster true 2>&1
-scripts/unittest upgrade                   --minPort `expr $PORT05 +   0` --maxPort `expr $PORT04 +  39` $OPTS --cluster true 2>&1
+scripts/unittest upgrade                   --minPort `expr $PORT05 +   0` --maxPort `expr $PORT05 +  39` $OPTS --cluster true 2>&1
 " | parallel --no-notice --load 10 --jobs $concurrency
