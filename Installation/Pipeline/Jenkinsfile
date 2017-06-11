@@ -32,8 +32,6 @@ stage('checkout') {
                             def msg = entry.msg
                             def timestamp = new Date(entry.timestamp)
 
-                            echo "commit message ${msg}"
-
                             if (msg ==~ /(?i).*ci: *clean.*/) {
                                 echo "using clean build because message contained 'ci: clean'"
                                 cleanBuild = true
@@ -158,7 +156,7 @@ stage('build & test') {
                 unstash 'source'
 
                 if (cleanBuild) {
-                    bat 'del /F build'
+                    bat 'del /F /Q build'
                 }
 
                 PowerShell(". .\\Installation\\Pipeline\\build_enterprise_windows.ps1")
