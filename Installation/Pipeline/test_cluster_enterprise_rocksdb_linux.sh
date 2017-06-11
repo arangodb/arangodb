@@ -24,7 +24,7 @@ PORTLDAP=`expr $PORT05 + 199`
 docker rm -f ldap-$JOB_BASE_NAME || echo
 mkdir -p ldap
 docker pull arangodb/openldap-test-container:jessie
-docker run -d -e LDAP_CERT_CN=127.0.0.1 --rm -p $PORTLDAP:389 -v $(pwd)/ldap:/cert --name ldap-$JOB_BASE_NAME arangodb/openldap-test-container:jessie
+docker run -d -e LDAP_CERT_CN=127.0.0.1 --rm -p $PORTLDAP:389 -v $(pwd)/ldap:/cert --name ldap-$PORTLDAP arangodb/openldap-test-container:jessie
 
 # note that: shebang does not work if path contains a '@'
 

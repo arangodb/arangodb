@@ -120,6 +120,7 @@ stage('build & test') {
                             sh 'rm -rf *'
                         }
 
+                        sh 'rm -rf build'
                         unstash 'build-enterprise-linux'
                         echo "Running singleserver comunity mmfiles linux test"
                         sh './Installation/Pipeline/test_singleserver_community_mmfiles_linux.sh 8'
@@ -132,6 +133,7 @@ stage('build & test') {
                             sh 'rm -rf *'
                         }
 
+                        sh 'rm -rf build'
                         unstash 'build-enterprise-linux'
                         echo "Running cluster enterprise rocksdb linux test"
                         sh './Installation/Pipeline/test_cluster_enterprise_rocksdb_linux.sh 8'
@@ -144,6 +146,7 @@ stage('build & test') {
                             sh 'rm -rf *'
                         }
 
+                        sh 'rm -rf build'
                         unstash 'build-enterprise-linux'
                         echo "Running jslint test"
 
@@ -189,28 +192,3 @@ stage('build & test') {
         }
     )
 }
-
-/*
-pipeline {
-    agent any 
-
-
-        stage('JS Lint') {
-            steps {
-                node('linux') {
-                    unstash 'build-cc-lx'
-
-                    script {
-                        try {
-                            sh './Installation/Pipeline/jslint.sh'
-                        }
-                        catch (exc) {
-                            currentBuild.result = 'UNSTABLE'
-                        }
-                    }
-                }
-            }
-        }
-    }
-}
-*/
