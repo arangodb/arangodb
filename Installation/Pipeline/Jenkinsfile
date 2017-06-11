@@ -34,7 +34,7 @@ stage('checkout') {
 
                             echo "commit message ${msg}"
 
-                            if (msg ==~ /(?i)ci: *clean/) {
+                            if (msg ==~ /(?i).*ci: *clean.*/) {
                                 echo "using clean build because message contained 'ci: clean'"
                                 cleanBuild = true
                             }
