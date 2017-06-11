@@ -22,7 +22,7 @@ stage('checkout') {
                     
                     def changeLogSets = currentBuild.changeSets
 
-                    echo changeLogSets
+                    echo changeLogSets.toString()
 
                     for (int i = 0; i < changeLogSets.size(); i++) {
                         def entries = changeLogSets[i].items
@@ -46,7 +46,7 @@ stage('checkout') {
             }
             catch (err) {
                 echo "GITHUB checkout failed, retrying in 5min"
-                echo err
+                echo err.toString()
                 sleep 300
             }
         }
