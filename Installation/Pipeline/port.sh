@@ -1,6 +1,6 @@
 #!/bin/bash
 
-TIMEOUT=3600s
+TIMEOUT=60 # in minutes
 
 PORTDIR=/var/tmp/ports
 mkdir -p $PORTDIR
@@ -20,7 +20,7 @@ fi
 port=5000
 INCR=200
 
-find $PORTDIR -type f -ctime +$TIMEOUT -exec rm "{}" ";"
+find $PORTDIR -type f -cmin +$TIMEOUT -exec rm "{}" ";"
 
 while ! ((set -o noclobber ; date > $PORTDIR/$port) 2> /dev/null); do
     sleep 1
