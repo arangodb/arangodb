@@ -8,6 +8,7 @@ def PowerShell(psCmd) {
     bat "powershell.exe -NonInteractive -ExecutionPolicy Bypass -Command \"\$ErrorActionPreference='Stop';[Console]::OutputEncoding=[System.Text.Encoding]::UTF8;$psCmd;EXIT \$global:LastExitCode\""
 }
 
+def cleanBuild = false
 
 stage('checkout') {
     node('master') {
@@ -18,28 +19,29 @@ stage('checkout') {
                 checkout scm
 
                 script {
-                    echo "LOG LOG LOG"
-                    
                     def changeLogSets = currentBuild.changeSets
-
-                    echo changeLogSets.toString()
-                    echo "SIZE"
-                    echo changeLogSets.size().toString();
 
                     for (int i = 0; i < changeLogSets.size(); i++) {
                         def entries = changeLogSets[i].items
 
                         for (int j = 0; j < entries.length; j++) {
+                            def author = ${entry.author}
+                            def commitId = ${entry.commitId}
                             def entry = entries[j]
+                            def msg = ${entry.msg}
+                            def timestamp = ${new Date(entry.timestamp)}
 
-                            echo "${entry.commitId} by ${entry.author} on ${new Date(entry.timestamp)}: ${entry.msg}"
+                            if (msg = ~/(?i)ci: *clean/) {
+                                echo "using clean build because of message '" + msg + "'"
+                                cleanBuild = true
+                            }
 
                             def files = new ArrayList(entry.affectedFiles)
 
                             for (int k = 0; k < files.size(); k++) {
                                 def file = files[k]
-
-                                echo "  ${file.editType.name} ${file.path}"
+                                def editType = ${file.editType.name}
+                                def path = ${file.path}
                             }
                         }
                     }
@@ -93,6 +95,11 @@ stage('build & test') {
         'linux': {
             node('linux') {
                 unstash 'source'
+
+                if (cleanBuild) {
+                    sh 'rm -rf build-jenkins'
+                }
+
                 sh './Installation/Pipeline/build_enterprise_linux.sh 16'
                 stash includes: binaries, name: 'build-enterprise-linux'
             }
@@ -134,6 +141,11 @@ stage('build & test') {
         'mac': {
             node('mac') {
                 unstash 'source'
+
+                if (cleanBuild) {
+                    sh 'rm -rf build-jenkins'
+                }
+
                 sh './Installation/Pipeline/build_community_mac.sh 16'
             }
         },
@@ -141,6 +153,11 @@ stage('build & test') {
         'windows': {
             node('windows') {
                 unstash 'source'
+
+                if (cleanBuild) {
+                    bat 'del /F build'
+                }
+
                 PowerShell(". .\\Installation\\Pipeline\\build_enterprise_windows.ps1")
             }
         }
