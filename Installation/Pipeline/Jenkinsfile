@@ -32,7 +32,7 @@ stage('checkout') {
                             def msg = entry.msg
                             def timestamp = new Date(entry.timestamp)
 
-                            echo "commit message ${message}"
+                            echo "commit message ${msg}"
 
                             if (msg ==~ /(?i)ci: *clean/) {
                                 echo "using clean build because message contained 'ci: clean'"
