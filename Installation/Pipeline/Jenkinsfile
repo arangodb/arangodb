@@ -25,9 +25,10 @@ stage('checkout') {
                         def entries = changeLogSets[i].items
 
                         for (int j = 0; j < entries.length; j++) {
+                            def entry = entries[j]
+
                             def author = entry.author
                             def commitId = entry.commitId
-                            def entry = entries[j]
                             def msg = entry.msg
                             def timestamp = new Date(entry.timestamp)
 
