@@ -10,9 +10,6 @@ def PowerShell(psCmd) {
 
 def cleanBuild = false
 
-properties [[$class: 'BuildDiscarderProperty', strategy: [$class: 'LogRotator', daysToKeepStr: '5', numToKeepStr: '5']],
-    [$class: 'ScannerJobProperty', doNotScan: false]]
-
 stage('checkout') {
     node('master') {
         milestone(1)
