@@ -31,7 +31,7 @@ stage('checkout') {
                             def msg = ${entry.msg}
                             def timestamp = ${new Date(entry.timestamp)}
 
-                            if (msg = ~/(?i)ci: *clean/) {
+                            if (msg ==~ /(?i)ci: *clean/) {
                                 echo "using clean build because of message '" + msg + "'"
                                 cleanBuild = true
                             }
