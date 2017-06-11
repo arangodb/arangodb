@@ -46,6 +46,7 @@ stage('checkout') {
             }
             catch (err) {
                 echo "GITHUB checkout failed, retrying in 5min"
+                echo err
                 sleep 300
             }
         }
