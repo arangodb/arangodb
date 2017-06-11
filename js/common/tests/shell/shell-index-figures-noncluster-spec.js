@@ -124,7 +124,7 @@ describe('Index figures', function () {
 
     });
 
-    describe('warmup', function() {
+    describe('loading indexes into memory', function() {
 
       before('insert document', function() {
         // We insert enough documents to trigger resizing
@@ -148,7 +148,7 @@ describe('Index figures', function () {
         expect(edgeIndex.figures.cacheSize).to.be.a('number');
         let oldSize = edgeIndex.figures.cacheSize;
 
-        col.warmup();
+        col.loadIndexesInMemory();
 
         // Test if the memory consumption goes up
         let indexes2 = col.getIndexes(true);
