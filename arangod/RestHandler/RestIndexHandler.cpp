@@ -25,6 +25,8 @@
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Rest/HttpRequest.h"
 #include "VocBase/Actions/Indexes.h"
+#include "Cluster/ServerState.h"
+#include "Cluster/ClusterInfo.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/Iterator.h>
@@ -55,10 +57,26 @@ RestStatus RestIndexHandler::execute() {
   }
 }
 
+LogicalCollection* RestIndexHandler::collection(std::string const& cName,
+                                     std::shared_ptr<LogicalCollection>& coll) {
+  if (!cName.empty()) {
+    if (ServerState::instance()->isCoordinator()) {
+      try {
+        coll = ClusterInfo::instance()->getCollection(_vocbase->name(), cName);
+        return coll.get();
+      } catch (...) {}
+    } else {
+      return _vocbase->lookupCollection(cName);
+    }
+  }
+  return nullptr;
+}
+
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief get database infos
 // //////////////////////////////////////////////////////////////////////////////
 RestStatus RestIndexHandler::getIndexes() {
+  std::shared_ptr<LogicalCollection> tmpColl;
   std::vector<std::string> const& suffixes = _request->suffixes();
   if (suffixes.empty()) {
     // .............................................................................
@@ -66,9 +84,9 @@ RestStatus RestIndexHandler::getIndexes() {
     // .............................................................................
     
     bool found = false;
-    std::string collectionName = _request->value("collection", found);
-    LogicalCollection* coll = _vocbase->lookupCollection(collectionName);
-    if (!found || coll == nullptr) {
+    std::string cName = _request->value("collection", found);
+    LogicalCollection* coll = collection(cName, tmpColl);
+    if (coll == nullptr) {
       generateError(rest::ResponseCode::NOT_FOUND,
                     TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
       return RestStatus::DONE;
@@ -109,18 +127,17 @@ RestStatus RestIndexHandler::getIndexes() {
     // /_api/index/<collection-name>/<index-identifier>
     // .............................................................................
     
-    std::string const& collectionName = suffixes[0];
-    LogicalCollection* coll = _vocbase->lookupCollection(collectionName);
+    std::string const& cName = suffixes[0];
+    LogicalCollection* coll = collection(cName, tmpColl);
     if (coll == nullptr) {
       generateError(rest::ResponseCode::NOT_FOUND,
                     TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
       return RestStatus::DONE;
     }
+    
     std::string const& iid = suffixes[1];
-    
-    
     VPackBuilder b;
-    b.add(VPackValue(collectionName + TRI_INDEX_HANDLE_SEPARATOR_CHR + iid));
+    b.add(VPackValue(cName + TRI_INDEX_HANDLE_SEPARATOR_CHR + iid));
     
     VPackBuilder output;
     Result res = actions::Indexes::getIndex(coll, b.slice(), output);
@@ -147,6 +164,7 @@ RestStatus RestIndexHandler::getIndexes() {
 // / @brief was docuBlock JSF_get_api_database_create
 // //////////////////////////////////////////////////////////////////////////////
 RestStatus RestIndexHandler::createIndex() {
+  
   std::vector<std::string> const& suffixes = _request->suffixes();
   bool parseSuccess = true;
   std::shared_ptr<VPackBuilder> parsedBody = parseVelocyPackBody(parseSuccess);
@@ -157,9 +175,16 @@ RestStatus RestIndexHandler::createIndex() {
   }
   
   bool found = false;
-  std::string collectionName = _request->value("collection", found);
-  LogicalCollection* coll = _vocbase->lookupCollection(collectionName);
-  if (!found || coll == nullptr) {
+  std::string cName = _request->value("collection", found);
+  if (!found) {
+    generateError(rest::ResponseCode::NOT_FOUND,
+                  TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
+    return RestStatus::DONE;
+  }
+  
+  std::shared_ptr<LogicalCollection> tmpColl;
+  LogicalCollection* coll = collection(cName, tmpColl);
+  if (coll == nullptr) {
     generateError(rest::ResponseCode::NOT_FOUND,
                   TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
     return RestStatus::DONE;
@@ -169,7 +194,7 @@ RestStatus RestIndexHandler::createIndex() {
   VPackSlice body = parsedBody->slice();
   if (body.get("collection").isNone()) {
     copy.openObject();
-    copy.add("collection", VPackValue(collectionName));
+    copy.add("collection", VPackValue(cName));
     copy.close();
     copy = VPackCollection::merge(body, copy.slice(), false);
     body = copy.slice();
@@ -209,8 +234,9 @@ RestStatus RestIndexHandler::dropIndex() {
     return RestStatus::DONE;
   }
   
-  std::string const& collectionName = suffixes[0];
-  LogicalCollection* coll = _vocbase->lookupCollection(collectionName);
+  std::string const& cName = suffixes[0];
+  std::shared_ptr<LogicalCollection> tmpColl;
+  LogicalCollection* coll = collection(cName, tmpColl);
   if (coll == nullptr) {
     generateError(rest::ResponseCode::NOT_FOUND,
                   TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
@@ -219,7 +245,7 @@ RestStatus RestIndexHandler::dropIndex() {
   
   std::string const& iid = suffixes[1];
   VPackBuilder idBuilder;
-  idBuilder.add(VPackValue(collectionName + TRI_INDEX_HANDLE_SEPARATOR_CHR + iid));
+  idBuilder.add(VPackValue(cName + TRI_INDEX_HANDLE_SEPARATOR_CHR + iid));
   
   Result res = actions::Indexes::drop(coll, idBuilder.slice());
   if (res.ok()) {

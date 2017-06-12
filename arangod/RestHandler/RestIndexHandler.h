@@ -24,8 +24,12 @@
 #define ARANGOD_REST_HANDLER_INDEX_HANDLER_H 1
 
 #include "RestHandler/RestVocbaseBaseHandler.h"
+#include <memory>
+#include <string>
 
 namespace arangodb {
+class LogicalCollection;
+  
 class RestIndexHandler : public arangodb::RestVocbaseBaseHandler {
  public:
   RestIndexHandler(GeneralRequest*, GeneralResponse*);
@@ -39,6 +43,9 @@ class RestIndexHandler : public arangodb::RestVocbaseBaseHandler {
   RestStatus getIndexes();
   RestStatus createIndex();
   RestStatus dropIndex();
+  
+  LogicalCollection* collection(std::string const& cName,
+                                std::shared_ptr<LogicalCollection>& coll);
 };
 }
 

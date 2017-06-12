@@ -106,7 +106,6 @@ arangodb::Result Indexes::getAll(arangodb::LogicalCollection const* collection,
                                 VPackBuilder& result) {
 
   VPackBuilder tmp;
-  tmp.openArray(true);
   if (ServerState::instance()->isCoordinator()) {
     
     std::string const databaseName(collection->dbName());
@@ -134,13 +133,14 @@ arangodb::Result Indexes::getAll(arangodb::LogicalCollection const* collection,
     
     // get list of indexes
     auto indexes = collection->getIndexes();
+    tmp.openArray(true);
     for (std::shared_ptr<arangodb::Index> const& idx : indexes) {
       idx->toVelocyPack(tmp, withFigures, false);
     }
+    tmp.close();
     trx.finish(res);
     // READ-LOCK end
   }
-  tmp.close();
   
   double selectivity = 0, memory = 0, cacheSize = 0,
   cacheLiftimeHitRate = 0,
@@ -278,10 +278,10 @@ Result Indexes::ensureIndex(arangodb::LogicalCollection* collection,
                                     bool create,
                                     VPackBuilder& output) {
   
-  VPackBuilder builder;
+  VPackBuilder defBuilder;
   StorageEngine* engine = EngineSelectorFeature::ENGINE;
   IndexFactory const* idxFactory = engine->indexFactory();
-  int res = idxFactory->enhanceIndexDefinition(definition, builder, create,
+  int res = idxFactory->enhanceIndexDefinition(definition, defBuilder, create,
                                             ServerState::instance()->isCoordinator());
   
   if (res != TRI_ERROR_NO_ERROR) {
@@ -291,7 +291,7 @@ Result Indexes::ensureIndex(arangodb::LogicalCollection* collection,
   std::string const dbname(collection->dbName());
   std::string const cid = collection->cid_as_string();
   std::string const collname(collection->name());
-  VPackSlice indexDef = builder.slice();
+  VPackSlice indexDef = defBuilder.slice();
   if (ServerState::instance()->isCoordinator()) {
     TRI_ASSERT(indexDef.isObject());
     auto c = ClusterInfo::instance()->getCollection(dbname, collname);
@@ -351,21 +351,28 @@ Result Indexes::ensureIndex(arangodb::LogicalCollection* collection,
   // ensure an index, coordinator case
   if (ServerState::instance()->isCoordinator()) {
     std::string errorMsg;
+    VPackBuilder tmp;
 #ifdef USE_ENTERPRISE
     int res = EnsureIndexCoordinatorEnterprise(collection, indexDef, create,
-                                               resultBuilder, errorMsg);
+                                               tmp, errorMsg);
 #else
     int res = ClusterInfo::instance()->ensureIndexCoordinator(dbname, cid,
                                                               indexDef, create, &arangodb::Index::Compare,
-                                                           output, errorMsg, 360.0);
+                                                              tmp, errorMsg, 360.0);
 #endif
     if (res != TRI_ERROR_NO_ERROR) {
       return Result(res);
-    }
-    if (output.slice().isNone()) {
+    } else if (tmp.slice().isNone()) {
       // did not find a suitable index
       return Result(create ? TRI_ERROR_OUT_OF_MEMORY : TRI_ERROR_ARANGO_INDEX_NOT_FOUND);
     }
+    // the cluster won't set a proper id value
+    std::string iid = tmp.slice().get("id").copyString();
+    VPackBuilder b;
+    b.openObject();
+    b.add("id", VPackValue(collection->name() + TRI_INDEX_HANDLE_SEPARATOR_CHR + iid));
+    b.close();
+    output = VPackCollection::merge(tmp.slice(), b.slice(), false);
     return Result();
   } else {
     return EnsureIndexLocal(collection, indexDef, create, output);
