@@ -41,8 +41,6 @@
 #include <velocypack/Iterator.h>
 #include <velocypack/velocypack-aliases.h>
 
-#include <iostream>
-
 using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::velocypack;
@@ -165,9 +163,12 @@ static AuthEntry CreateAuthEntry(VPackSlice const& slice, AuthSource source) {
   } // if
 
   AuthLevel systemDatabaseLevel = AuthLevel::RO;
-  auto const& it = authContexts.find("_system");
-  if (it != authContexts.end()) {
-    systemDatabaseLevel = it->second->databaseAuthLevel();
+  for (auto const& colName : std::vector<std::string>{"_system", "*"}) {
+    auto const& it = authContexts.find(colName);
+    if (it != authContexts.end()) {
+      systemDatabaseLevel = it->second->databaseAuthLevel();
+      break;
+    }
   }
 
   for (auto const& ctx : authContexts) {
