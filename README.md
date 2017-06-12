@@ -1,4 +1,4 @@
-![ArangoDB-Logo](https://docs.arangodb.com/assets/arangodb_logo_2016_inverted.png)
+![-Logo](https://docs.arangodb.com/assetst 1pm already? time/arangodb_logo_2016_inverted.png)
 
 ArangoDB
 ========
@@ -14,6 +14,7 @@ ArangoDB
 
 3.0: [![Build Status](https://secure.travis-ci.org/arangodb/arangodb.png?branch=3.0)](http://travis-ci.org/arangodb/arangodb)
 3.1: [![Build Status](https://secure.travis-ci.org/arangodb/arangodb.png?branch=3.1)](http://travis-ci.org/arangodb/arangodb)
+3.2: [![Build Status](https://secure.travis-ci.org/arangodb/arangodb.png?branch=3.2)](http://travis-ci.org/arangodb/arangodb)
 
 Slack: [![ArangoDB-Logo](https://slack.arangodb.com/badge.svg)](https://slack.arangodb.com)
 
@@ -66,24 +67,27 @@ and get it running in the cloud.
 
 Other features of ArangoDB include:
 
-- **Schema-free schemata** let you combine the space efficiency of MySQL with the
-  performance power of NoSQL
 - Use a **data-centric microservices** approach with ArangoDB Foxx and fuse your
   application-logic and database together for maximal throughput
 - JavaScript for all: **no language zoo**, you can use one language from your
   browser to your back-end
-- ArangoDB is **multi-threaded** - exploit the power of all your cores
 - **Flexible data modeling**: model your data as combination of key-value pairs,
   documents or graphs - perfect for social relations
-- Free **index choice**: use the correct index for your problem, be it a skip
-  list or a fulltext search
-- Configurable **durability**: let the application decide if it needs more
-  durability or more performance
+- Different **storage engines**: ArangoDB provides a storage engine for mostly
+  in-memory operations and an alternative storage engine based on RocksDB which 
+  handle datasets that are much bigger than RAM.
 - **Powerful query language** (AQL) to retrieve and modify data 
 - **Transactions**: run queries on multiple documents or collections with
   optional transactional consistency and isolation
 - **Replication** and **Sharding**: set up the database in a master-slave
   configuration or spread bigger datasets across multiple servers
+- Configurable **durability**: let the application decide if it needs more
+  durability or more performance
+- **Schema-free schemata** let you combine the space efficiency of MySQL with the
+  performance power of NoSQL
+- Free **index choice**: use the correct index for your problem, be it a skiplist 
+  or a fulltext search
+- ArangoDB is **multi-threaded** - exploit the power of all your cores
 - It is **open source** (Apache License 2.0)
 
 For more in-depth information read the [design goals of ArangoDB](https://www.arangodb.com/2012/03/07/avocadodbs-design-objectives)
@@ -115,7 +119,7 @@ issue tracker for reporting them:
 
 [https://github.com/arangodb/arangodb/issues](https://github.com/arangodb/arangodb/issues)
 
-You can use the Google group for improvements, feature requests, comments:
+You can use our Google group for improvements, feature requests, comments:
 
 [https://www.arangodb.com/community](https://www.arangodb.com/community)
 
