@@ -34,15 +34,6 @@ class Index;
 class LogicalCollection;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief looks up a index identifier
-////////////////////////////////////////////////////////////////////////////////
-
-std::shared_ptr<arangodb::Index> TRI_LookupIndexByHandle(
-    v8::Isolate* isolate, arangodb::CollectionNameResolver const* resolver,
-    arangodb::LogicalCollection const* collection, v8::Handle<v8::Value> const val,
-    bool ignoreNotFound);
-
 void TRI_InitV8IndexArangoDB(v8::Isolate* isolate,
                              v8::Handle<v8::ObjectTemplate> ArangoDBNS);
 

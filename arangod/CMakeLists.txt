@@ -280,6 +280,7 @@ SET(ARANGOD_SOURCES
   RestHandler/RestEdgesHandler.cpp
   RestHandler/RestEngineHandler.cpp
   RestHandler/RestImportHandler.cpp
+  RestHandler/RestIndexHandler.cpp
   RestHandler/RestJobHandler.cpp
   RestHandler/RestPleaseUpgradeHandler.cpp
   RestHandler/RestPregelHandler.cpp
@@ -369,6 +370,7 @@ SET(ARANGOD_SOURCES
   V8Server/v8-vocindex.cpp
   Views/LoggerView.cpp
   VocBase/Actions/Database.cpp
+  VocBase/Actions/Indexes.cpp
   VocBase/AuthInfo.cpp
   VocBase/EdgeCollectionInfo.cpp
   VocBase/Graphs.cpp

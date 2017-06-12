@@ -55,6 +55,7 @@
 #include "RestHandler/RestEngineHandler.h"
 #include "RestHandler/RestHandlerCreator.h"
 #include "RestHandler/RestImportHandler.h"
+#include "RestHandler/RestIndexHandler.h"
 #include "RestHandler/RestJobHandler.h"
 #include "RestHandler/RestPleaseUpgradeHandler.h"
 #include "RestHandler/RestPregelHandler.h"
@@ -365,6 +366,10 @@ void GeneralServerFeature::defineHandlers() {
   _handlerFactory->addPrefixHandler(
       RestVocbaseBaseHandler::IMPORT_PATH,
       RestHandlerCreator<RestImportHandler>::createNoData);
+  
+  _handlerFactory->addPrefixHandler(
+      RestVocbaseBaseHandler::INDEX_PATH,
+      RestHandlerCreator<RestIndexHandler>::createNoData);
 
   _handlerFactory->addPrefixHandler(
       RestVocbaseBaseHandler::SIMPLE_QUERY_ALL_PATH,
