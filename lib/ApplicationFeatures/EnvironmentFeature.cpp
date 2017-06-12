@@ -102,11 +102,13 @@ void EnvironmentFeature::prepare() {
   }
 #endif
 
+#if 0
+  // TODO: 12-06-2017 turn off check for now and reactivate for next beta
   try {
     std::string value =
         basics::FileUtils::slurp("/proc/sys/vm/overcommit_memory");
     uint64_t v = basics::StringUtils::uint64(value);
-    if (v != 0 && v != 1) {
+    if (v != 0 && v != 2) {
       // from https://www.kernel.org/doc/Documentation/sysctl/vm.txt:
       //
       //   When this flag is 0, the kernel attempts to estimate the amount
@@ -117,13 +119,14 @@ void EnvironmentFeature::prepare() {
       //   policy that attempts to prevent any overcommit of memory.
       LOG_TOPIC(WARN, Logger::MEMORY)
           << "/proc/sys/vm/overcommit_memory is set to '" << v
-          << "'. It is recommended to set it to a value of 0 or 1";
+          << "'. It is recommended to set it to a value of 0 or 2";
       LOG_TOPIC(WARN, Logger::MEMORY) << "execute 'sudo bash -c \"echo 0 > "
                                          "/proc/sys/vm/overcommit_memory\"'";
     }
   } catch (...) {
     // file not found or value not convertible into integer
   }
+#endif
   
   try {
     std::string value =
