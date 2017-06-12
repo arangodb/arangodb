@@ -1401,9 +1401,9 @@ ArangoCollection.prototype.removeByKeys = function (keys) {
 // / @brief load indexes of a collection into memory
 // //////////////////////////////////////////////////////////////////////////////
 
-ArangoCollection.prototype.loadIndexesInMemory = function () {
+ArangoCollection.prototype.loadIndexesIntoMemory = function () {
   this._status = null;
-  var requestResult = this._database._connection.PUT(this._baseurl('loadIndexesInMemory'), '');
+  var requestResult = this._database._connection.PUT(this._baseurl('loadIndexesIntoMemory'), '');
   this._status = null;
 
   arangosh.checkRequestResult(requestResult);

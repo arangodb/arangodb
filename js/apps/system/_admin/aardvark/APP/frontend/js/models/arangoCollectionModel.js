@@ -160,7 +160,7 @@
       $.ajax({
         cache: false,
         type: 'PUT',
-        url: arangoHelper.databaseUrl('/_api/collection/' + this.get('id') + '/loadIndexesInMemory'),
+        url: arangoHelper.databaseUrl('/_api/collection/' + this.get('id') + '/loadIndexesIntoMemory'),
         success: function () {
           arangoHelper.arangoNotification('Loading indexes into Memory.');
         },

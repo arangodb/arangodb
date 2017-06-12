@@ -144,7 +144,7 @@ Same as above. Instead of an index an index handle can be given.
 
 
 Loads all indexes of this collection into Memory.
-`collection.loadIndexesInMemory()`
+`collection.loadIndexesIntoMemory()`
 
 This function tries to cache all index entries
 of this collection into the main memory.
@@ -165,14 +165,14 @@ If the index is larger than your memory limit this function will fill up values
 up to this limit and for the time beeing there is no way to control which indexes
 of the collection should have priority over others.
 
-    @startDocuBlockInline LoadIndexesInMemory
-    @EXAMPLE_ARANGOSH_OUTPUT{loadIndexesInMemory}
+    @startDocuBlockInline LoadIndexesIntoMemory
+    @EXAMPLE_ARANGOSH_OUTPUT{loadIndexesIntoMemory}
     ~db._drop("example");
     ~db._createEdgeCollection("example");
-    db.example.loadIndexesInMemory();
+    db.example.loadIndexesIntoMemory();
     ~db._drop("example");
     @END_EXAMPLE_ARANGOSH_OUTPUT
-    @endDocuBlock loadIndexesInMemory
+    @endDocuBlock loadIndexesIntoMemory
 
 Database Methods
 ----------------

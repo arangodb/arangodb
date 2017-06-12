@@ -148,7 +148,7 @@ describe('Index figures', function () {
         expect(edgeIndex.figures.cacheSize).to.be.a('number');
         let oldSize = edgeIndex.figures.cacheSize;
 
-        col.loadIndexesInMemory();
+        col.loadIndexesIntoMemory();
 
         // Test if the memory consumption goes up
         let indexes2 = col.getIndexes(true);

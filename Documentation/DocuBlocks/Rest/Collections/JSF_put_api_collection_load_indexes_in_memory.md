@@ -1,8 +1,8 @@
 
-@startDocuBlock JSF_put_api_collection_loadindexesinmemory
+@startDocuBlock JSF_put_api_collection_loadindexesintomemory
 @brief Load Indexes into Memory
 
-@RESTHEADER{PUT /_api/collection/{collection-name}/loadIndexesInMemory, Load Indexes into Memory}
+@RESTHEADER{PUT /_api/collection/{collection-name}/loadIndexesIntoMemory, Load Indexes into Memory}
 
 @RESTURLPARAMETERS
 
@@ -44,11 +44,11 @@ If the *collection-name* is unknown, then a *HTTP 404* is returned.
 
 @EXAMPLES
 
-@EXAMPLE_ARANGOSH_RUN{RestCollectionIdentifierLoadIndexesInMemory}
+@EXAMPLE_ARANGOSH_RUN{RestCollectionIdentifierLoadIndexesIntoMemory}
     var cn = "products";
     db._drop(cn);
     var coll = db._create(cn);
-    var url = "/_api/collection/"+ coll.name() + "/loadIndexesInMemory";
+    var url = "/_api/collection/"+ coll.name() + "/loadIndexesIntoMemory";
 
     var response = logCurlRequest('PUT', url, '');
 

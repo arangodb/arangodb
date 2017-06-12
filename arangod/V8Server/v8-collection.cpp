@@ -3337,7 +3337,7 @@ void TRI_InitV8Collections(v8::Handle<v8::Context> context,
                        JS_UpdateVocbaseCol);
   TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING("version"),
                        JS_VersionVocbaseCol);
-  TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING("loadIndexesInMemory"),
+  TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING("loadIndexesIntoMemory"),
                        JS_WarmupVocbaseCol);
 
   TRI_InitV8IndexCollection(isolate, rt);
