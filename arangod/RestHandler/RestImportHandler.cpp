@@ -94,7 +94,9 @@ RestStatus RestImportHandler::execute() {
 
       switch (_response->transportType()) {
         case Endpoint::TransportType::HTTP: {
-          if (found &&
+          if (_request->contentType() == arangodb::ContentType::VPACK){
+            createFromVPack(documentType);
+          } else if (found &&
               (documentType == "documents" || documentType == "array" ||
                documentType == "list" || documentType == "auto")) {
             createFromJson(documentType);
