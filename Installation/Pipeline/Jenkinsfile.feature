@@ -116,11 +116,7 @@ stage('build & test') {
             parallel(
                 'test-singleserver-community': {
                     node('linux') {
-                        if (cleanAll) {
-                            sh 'rm -rf *'
-                        }
-
-                        sh 'rm -rf build'
+                        sh 'rm -rf *'
                         unstash 'build-enterprise-linux'
                         echo "Running singleserver comunity mmfiles linux test"
                         sh './Installation/Pipeline/test_singleserver_community_mmfiles_linux.sh 8'
@@ -129,11 +125,7 @@ stage('build & test') {
 
                 'test-cluster-enterprise': {
                     node('linux') {
-                        if (cleanAll) {
-                            sh 'rm -rf *'
-                        }
-
-                        sh 'rm -rf build'
+                        sh 'rm -rf *'
                         unstash 'build-enterprise-linux'
                         echo "Running cluster enterprise rocksdb linux test"
                         sh './Installation/Pipeline/test_cluster_enterprise_rocksdb_linux.sh 8'
@@ -142,11 +134,7 @@ stage('build & test') {
 
                 'jslint': {
                     node('linux') {
-                        if (cleanAll) {
-                            sh 'rm -rf *'
-                        }
-
-                        sh 'rm -rf build'
+                        sh 'rm -rf *'
                         unstash 'build-enterprise-linux'
                         echo "Running jslint test"
 
