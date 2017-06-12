@@ -90,7 +90,7 @@ int EnumerateCollectionBlock::initialize() {
     if (!inSync) {
       THROW_ARANGO_EXCEPTION_MESSAGE(
           TRI_ERROR_CLUSTER_AQL_COLLECTION_OUT_OF_SYNC,
-          "collection " + _collection->name);
+          "collection " + _collection->name + " did not come into sync in time (" + std::to_string(maxWait) +")");
     }
   }
 
