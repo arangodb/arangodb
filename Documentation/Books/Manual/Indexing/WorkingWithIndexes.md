@@ -165,6 +165,15 @@ If the index is larger than your memory limit this function will fill up values
 up to this limit and for the time beeing there is no way to control which indexes
 of the collection should have priority over others.
 
+    @startDocuBlockInline LoadIndexesInMemory
+    @EXAMPLE_ARANGOSH_OUTPUT{loadIndexesInMemory}
+    ~db._drop("example");
+    ~db._createEdgeCollection("example");
+    db.example.loadIndexesInMemory();
+    ~db._drop("example");
+    @END_EXAMPLE_ARANGOSH_OUTPUT
+    @endDocuBlock loadIndexesInMemory
+
 Database Methods
 ----------------
 
