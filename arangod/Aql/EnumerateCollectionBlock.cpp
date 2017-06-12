@@ -61,8 +61,6 @@ int EnumerateCollectionBlock::initialize() {
     auto logicalCollection = _collection->getCollection();
     auto cid = logicalCollection->planId();
     auto dbName = logicalCollection->dbName();
-    auto collectionInfoCurrent = ClusterInfo::instance()->getCollectionCurrent(
-        dbName, std::to_string(cid));
 
     double maxWait = _engine->getQuery()->queryOptions().satelliteSyncWait;
     bool inSync = false;
@@ -72,6 +70,8 @@ int EnumerateCollectionBlock::initialize() {
     double endTime = startTime + maxWait;
 
     while (!inSync) {
+      auto collectionInfoCurrent = ClusterInfo::instance()->getCollectionCurrent(
+        dbName, std::to_string(cid));
       auto followers = collectionInfoCurrent->servers(_collection->getName());
       inSync = std::find(followers.begin(), followers.end(),
                          ServerState::instance()->getId()) != followers.end();
