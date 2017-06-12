@@ -94,7 +94,7 @@ void MMFilesPersistentIndexFeature::start() {
   auto database = ApplicationServer::getFeature<DatabasePathFeature>("DatabasePath");
   _path = database->subdirectoryName("rocksdb");
 
-  LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "initializing rocksdb, path: " << _path;
+  LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "initializing rocksdb for persistent indexes, path: " << _path;
 
   _comparator = new MMFilesPersistentIndexKeyComparator();
 
@@ -138,7 +138,7 @@ void MMFilesPersistentIndexFeature::start() {
   rocksdb::Status status = rocksdb::OptimisticTransactionDB::Open(_options, _path, &_db);
 
   if (! status.ok()) {
-    LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << "unable to initialize RocksDB: " << status.ToString();
+    LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << "unable to initialize RocksDB engine for persistent indexes: " << status.ToString();
     FATAL_ERROR_EXIT();
   }
 }
@@ -148,7 +148,7 @@ void MMFilesPersistentIndexFeature::unprepare() {
     return;
   }
 
-  LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "shutting down RocksDB";
+  LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "shutting down RocksDB for persistent indexes";
 
   // flush
   rocksdb::FlushOptions options;
@@ -156,7 +156,7 @@ void MMFilesPersistentIndexFeature::unprepare() {
   rocksdb::Status status = _db->GetBaseDB()->Flush(options);
 
   if (! status.ok()) {
-    LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "error flushing data to RocksDB: " << status.ToString();
+    LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "error flushing data to RocksDB for persistent indexes: " << status.ToString();
   }
 
   syncWal();
@@ -173,12 +173,12 @@ int MMFilesPersistentIndexFeature::syncWal() {
     return TRI_ERROR_NO_ERROR;
   }
 
-  LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "syncing RocksDB WAL";
+  LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "syncing RocksDB WAL for persistent indexes";
 
   rocksdb::Status status = Instance->db()->GetBaseDB()->SyncWAL();
 
-  if (! status.ok()) {
-    LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "error syncing RocksDB WAL: " << status.ToString();
+  if (!status.ok()) {
+    LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "error syncing RocksDB WAL for persistent indexes: " << status.ToString();
     return TRI_ERROR_INTERNAL;
   }
 #endif
