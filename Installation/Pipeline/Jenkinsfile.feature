@@ -97,58 +97,56 @@ stage('checkout') {
     }
 }
 
+stage('build linux') {
+    node('linux') {
+        if (cleanAll) {
+            sh 'rm -rf *'
+        } else if (cleanBuild) {
+            sh 'rm -rf build-jenkins'
+        }
+
+        unstash 'source'
+
+        sh './Installation/Pipeline/build_enterprise_linux.sh 16'
+        stash includes: binaries, name: 'build-enterprise-linux'
+    }
+}
+
 stage('build & test') {
     parallel(
-        'build-linux': {
+        'test-singleserver-community': {
             node('linux') {
-                if (cleanAll) {
-                    sh 'rm -rf *'
-                } else if (cleanBuild) {
-                    sh 'rm -rf build-jenkins'
-                }
-
-                unstash 'source'
-
-                sh './Installation/Pipeline/build_enterprise_linux.sh 16'
-                stash includes: binaries, name: 'build-enterprise-linux'
+                sh 'rm -rf *'
+                unstash 'build-enterprise-linux'
+                echo "Running singleserver comunity mmfiles linux test"
+                sh './Installation/Pipeline/test_singleserver_community_mmfiles_linux.sh 8'
             }
+        },
 
-            parallel(
-                'test-singleserver-community': {
-                    node('linux') {
-                        sh 'rm -rf *'
-                        unstash 'build-enterprise-linux'
-                        echo "Running singleserver comunity mmfiles linux test"
-                        sh './Installation/Pipeline/test_singleserver_community_mmfiles_linux.sh 8'
+        'test-cluster-enterprise': {
+            node('linux') {
+                sh 'rm -rf *'
+                unstash 'build-enterprise-linux'
+                echo "Running cluster enterprise rocksdb linux test"
+                sh './Installation/Pipeline/test_cluster_enterprise_rocksdb_linux.sh 8'
+            }
+        },
+
+        'jslint': {
+            node('linux') {
+                sh 'rm -rf *'
+                unstash 'build-enterprise-linux'
+                echo "Running jslint test"
+
+                script {
+                    try {
+                        sh './Installation/Pipeline/test_jslint.sh'
                     }
-                },
-
-                'test-cluster-enterprise': {
-                    node('linux') {
-                        sh 'rm -rf *'
-                        unstash 'build-enterprise-linux'
-                        echo "Running cluster enterprise rocksdb linux test"
-                        sh './Installation/Pipeline/test_cluster_enterprise_rocksdb_linux.sh 8'
-                    }
-                },
-
-                'jslint': {
-                    node('linux') {
-                        sh 'rm -rf *'
-                        unstash 'build-enterprise-linux'
-                        echo "Running jslint test"
-
-                        script {
-                            try {
-                                sh './Installation/Pipeline/test_jslint.sh'
-                            }
-                            catch (exc) {
-                                currentBuild.result = 'UNSTABLE'
-                            }
-                        }
+                    catch (exc) {
+                        currentBuild.result = 'UNSTABLE'
                     }
                 }
-            )
+            }
         },
 
         'build-mac': {
