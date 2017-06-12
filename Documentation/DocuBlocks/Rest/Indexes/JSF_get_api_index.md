@@ -19,7 +19,7 @@ keys.
 @RESTRETURNCODES
 
 @RESTRETURNCODE{200}
-returns a json object containing a list of indexes on that collection.
+returns a JSON object containing a list of indexes on that collection.
 
 @EXAMPLES
 

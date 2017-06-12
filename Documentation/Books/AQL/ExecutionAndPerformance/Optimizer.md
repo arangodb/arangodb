@@ -409,8 +409,6 @@ The following optimizer rules may appear in the `rules` attribute of a plan:
 * `interchange-adjacent-enumerations`: will appear if a query contains multiple
   *FOR* statements whose order were permuted. Permutation of *FOR* statements is
   performed because it may enable further optimizations by other rules.
-* `remove-sort-rand`: will appear when a *SORT RAND()* expression is removed by
-  moving the random iteration into an *EnumerateCollectionNode*. (MMFiles-specific)
 * `remove-collect-variables`: will appear if an *INTO* clause was removed from a *COLLECT*
   statement because the result of *INTO* is not used. May also appear if a result
   of a *COLLECT* statement's *AGGREGATE* variables is not used.
@@ -441,7 +439,10 @@ The following optimizer rules may appear in the `rules` attribute of a plan:
 * `inline-subqueries`: will appear when a subquery was pulled out in its surrounding scope,
   e.g. `FOR x IN (FOR y IN collection FILTER y.value >= 5 RETURN y.test) RETURN x.a`
   would become `FOR tmp IN collection FILTER tmp.value >= 5 LET x = tmp.test RETURN x.a`
-* `geo-index-optimizer`: will appear when a geo index is utilized (MMFiles-specific)
+* `geo-index-optimizer`: will appear when a geo index is utilized.
+* `remove-sort-rand`: will appear when a *SORT RAND()* expression is removed by
+  moving the random iteration into an *EnumerateCollectionNode*. This optimizer rule
+  is specific for the MMFiles storage engine.
 
 The following optimizer rules may appear in the `rules` attribute of cluster plans:
 
