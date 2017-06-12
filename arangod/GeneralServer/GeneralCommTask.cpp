@@ -125,7 +125,7 @@ void GeneralCommTask::executeRequest(
   // give up, if we cannot find a handler
   if (handler == nullptr) {
     LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "no handler is known, giving up";
-    handleSimpleError(rest::ResponseCode::NOT_FOUND, messageId);
+    handleSimpleError(rest::ResponseCode::NOT_FOUND, *request, messageId);
     return;
   }
 
@@ -158,7 +158,7 @@ void GeneralCommTask::executeRequest(
       processResponse(response.get());
       return;
     } else {
-      handleSimpleError(rest::ResponseCode::SERVER_ERROR, TRI_ERROR_QUEUE_FULL,
+      handleSimpleError(rest::ResponseCode::SERVER_ERROR, *request, TRI_ERROR_QUEUE_FULL,
                         TRI_errno_string(TRI_ERROR_QUEUE_FULL), messageId);
     }
   }
@@ -170,7 +170,7 @@ void GeneralCommTask::executeRequest(
   }
 
   if (!ok) {
-    handleSimpleError(rest::ResponseCode::SERVER_ERROR, messageId);
+    handleSimpleError(rest::ResponseCode::SERVER_ERROR, *request, messageId);
   }
 }
 
@@ -274,7 +274,8 @@ bool GeneralCommTask::handleRequest(std::shared_ptr<RestHandler> handler) {
   bool ok = SchedulerFeature::SCHEDULER->queue(std::move(job));
 
   if (!ok) {
-    handleSimpleError(rest::ResponseCode::SERVICE_UNAVAILABLE, TRI_ERROR_QUEUE_FULL,
+    
+    handleSimpleError(rest::ResponseCode::SERVICE_UNAVAILABLE, *(handler->request()), TRI_ERROR_QUEUE_FULL,
                       TRI_errno_string(TRI_ERROR_QUEUE_FULL), messageId);
   }
 
