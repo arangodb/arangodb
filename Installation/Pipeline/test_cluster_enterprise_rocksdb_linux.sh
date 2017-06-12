@@ -52,4 +52,4 @@ scripts/unittest shell_server_aql          --minPort `expr $PORT04 +  80` --maxP
 scripts/unittest shell_server_aql          --minPort `expr $PORT04 + 120` --maxPort `expr $PORT04 + 159` $OPTS --cluster true --testBuckets 4/3 2>&1
 scripts/unittest ssl_server                --minPort `expr $PORT04 + 160` --maxPort `expr $PORT04 + 199` $OPTS --cluster true 2>&1
 scripts/unittest upgrade                   --minPort `expr $PORT05 +   0` --maxPort `expr $PORT05 +  39` $OPTS --cluster true 2>&1
-" | parallel --results log-output --no-notice --load 10 --jobs $concurrency
+" | parallel --output-as-file --results log-output --no-notice --load 10 --jobs $concurrency
