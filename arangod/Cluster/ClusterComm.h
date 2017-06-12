@@ -235,6 +235,9 @@ struct ClusterCommResult {
       case TRI_COMMUNICATOR_REQUEST_ABORTED:
         status = CL_COMM_BACKEND_UNAVAILABLE;
         break;
+      case TRI_ERROR_HTTP_SERVICE_UNAVAILABLE:
+        status = CL_COMM_BACKEND_UNAVAILABLE;
+        break;
       case TRI_ERROR_CLUSTER_TIMEOUT:
         status = CL_COMM_TIMEOUT;
         sendWasComplete = true;
