@@ -94,6 +94,7 @@ function readOnly (options) {
 const requests = [
   [200, 'post', '/_api/collection', 'root', {name:'testcol'}],
   [202, 'post', '/_api/document/testcol', 'root', {_key:'abcd'}],
+  [201, 'post', '/_api/index?collection=testcol', 'root', {fields:['abc'],type:'hash'}],
 
   // create, delete, truncate collection
   [403, 'post', '/_api/collection', 'test', {name:'testcol2'}],
@@ -102,12 +103,16 @@ const requests = [
 
   // get, delete, update, replace document
   [200, 'get', '/_api/document/testcol/abcd', 'test', {}],
+  [403, 'post', '/_api/document/testcol', 'test', {_key:'wxyz'}],
   [403, 'delete', '/_api/document/testcol/abcd', 'test', {}],
   [403, 'patch', '/_api/document/testcol/abcd', 'test', {foo:'bar'}],
-  [403, 'put', '/_api/document/testcol/abcd', 'test', {foo:'bar'}]
+  [403, 'put', '/_api/document/testcol/abcd', 'test', {foo:'bar'}],
 
+  // create and delete index
+  [403, 'post', '/_api/index?collection=testcol', 'test', {fields:['xyz'],type:'hash'}],
 
 ]
+
 
 
   let res = pu.run.arangoshCmd(options, adbInstance, {}, [
@@ -128,6 +133,14 @@ const requests = [
     });
     print(res.statusCode === r[0], res.statusCode);
   }
+
+  res = request.get({
+      url: `${adbInstance.arangods[0].url}/_api/index?collection=testcol`,
+      auth: {username:'test', password:''}
+  });
+
+  const idxId = JSON.parse(res.body).indexes.filter(idx => idx.type == 'hash')[0].id;
+
 
   pu.shutdownInstance(adbInstance, options);
 
