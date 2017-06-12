@@ -91,3 +91,32 @@ to produce a 2.8-compatible dump with a 3.0 ArangoDB, please specify the option
 `--compat28 true` when invoking arangodump.
     
     unix> arangodump --compat28 true --collection myvalues --output-directory "dump"
+
+### Advanced cluster options
+
+Starting with version 3.1.17, collections may be created with shard
+distribution identical to an existing prototypical collection;
+i.e. shards are distributed in the very same pattern as in the
+prototype collection. Such collections cannot be dumped without the
+reference collection or arangodump with yield an error.
+
+    unix> arangodump --collection clonedCollection --output-directory "dump"
+
+    ERROR Collection clonedCollection's shard distribution is based on a that of collection prototypeCollection, which is not dumped along. You may dump the collection regardless of the missing prototype collection by using the --ignore-distribute-shards-like-errors parameter.
+
+There are two ways to approach that problem: Solve it, i.e. dump the
+prototype collection along:
+
+    unix> arangodump --collection clonedCollection --collection prototypeCollection --output-directory "dump"
+    
+    Processed 2 collection(s), wrote 81920 byte(s) into datafiles, sent 1 batch(es)
+
+Or override that behaviour to be able to dump the collection
+individually.
+
+    unix> arangodump --collection B clonedCollection --output-directory "dump" --ignore-distribute-shards-like-errors
+    
+    Processed 1 collection(s), wrote 34217 byte(s) into datafiles, sent 1 batch(es)
+
+No that in consequence, restoring such a collection without its
+prototype is affected. [arangorestore](Arangorestore.md)

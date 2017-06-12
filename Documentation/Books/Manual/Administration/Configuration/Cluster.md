@@ -1,21 +1,8 @@
 Clusters Options
 ================
 
-### Node ID
-<!-- arangod/Cluster/ApplicationCluster.h -->
-
-
-This server's id: `--cluster.my-local-info info`
-
-Some local information about the server in the cluster, this can for
-example be an IP address with a process ID or any string unique to
-the server. Specifying *info* is mandatory on startup if the server
-id (see below) is not specified. Each server of the cluster must
-have a unique local info. This is ignored if my-id below is specified.
-
-
 ### Agency endpoint
-<!-- arangod/Cluster/ApplicationCluster.h -->
+<!-- arangod/Cluster/ClusterFeature.h -->
 
 
 List of agency endpoints:
@@ -37,48 +24,12 @@ alternative endpoint if one of them becomes unavailable.
 **Examples**
 
 ```
---cluster.agency-endpoint tcp://192.168.1.1:4001 --cluster.agency-endpoint
-tcp://192.168.1.2:4002
+--cluster.agency-endpoint tcp://192.168.1.1:4001 --cluster.agency-endpoint tcp://192.168.1.2:4002 ...
 ```
 
-### Agency prefix
-<!-- arangod/Cluster/ApplicationCluster.h -->
+### My address
 
-
-Global agency prefix:
-`--cluster.agency-prefix prefix`
-
-The global key prefix used in all requests to the agency. The specified
-prefix will become part of each agency key. Specifying the key prefix
-allows managing multiple ArangoDB clusters with the same agency
-server(s).
-
-*prefix* must consist of the letters *a-z*, *A-Z* and the digits *0-9*
-only. Specifying a prefix is mandatory.
-
-**Examples**
-
-```
---cluster.prefix mycluster
-```
-
-### MyId
-<!-- arangod/Cluster/ApplicationCluster.h -->
-
-This server's id: `--cluster.my-id id`
-
-The local server's id in the cluster. Specifying *id* is mandatory on
-startup. Each server of the cluster must have a unique id.
-
-Specifying the id is very important because the server id is used for
-determining the server's role and tasks in the cluster.
-
-*id* must be a string consisting of the letters *a-z*, *A-Z* or the
-digits *0-9* only.
-
-### MyAddress
-
-<!-- arangod/Cluster/ApplicationCluster.h -->
+<!-- arangod/Cluster/ClusterFeature.h -->
 
 
 This server's address / endpoint:
@@ -97,6 +48,53 @@ for the server's id, ArangoDB will refuse to start.
 
 **Examples**
 
+Listen only on interface with address `192.168.1.1`
 ```
 --cluster.my-address tcp://192.168.1.1:8530
 ```
+
+Listen on all ipv4 and ipv6 addresses, which are configured on port `8530`
+```
+--cluster.my-address ssl://[::]:8530
+```
+
+### My role
+
+<!-- arangod/Cluster/ClusterFeature.h -->
+
+
+This server's role:
+`--cluster.my-role [dbserver|coordinator]`
+
+The server's role. Is this instance a db server (backend data server)
+or a coordinator (frontend server for external and application access)
+
+### Node ID (deprecated)
+<!-- arangod/Cluster/ClusterFeature.h -->
+
+
+This server's id: `--cluster.my-local-info info`
+
+Some local information about the server in the cluster, this can for
+example be an IP address with a process ID or any string unique to
+the server. Specifying *info* is mandatory on startup if the server
+id (see below) is not specified. Each server of the cluster must
+have a unique local info. This is ignored if my-id below is specified.
+
+This option is deprecated and will be removed in a future release. The
+cluster node ids have been dropped in favour of once generated UUIDs.
+
+### More advanced options (should generally remain untouched)
+<!-- arangod/Cluster/ClusterFeature.h -->
+
+
+Synchroneous replication timing: `--cluster.synchronous-replication-timeout-factor double`
+
+Strech or clinch timeouts for internal synchroneous replication
+mechanism between db servers. All such timeouts are affected by this
+change. Please change only with intent and great care. Default at `1.0`.
+
+System replication factor: `--cluster.system-replication-factorinteger`
+
+Change default replication factor for system collections. Default at `2`.
+
