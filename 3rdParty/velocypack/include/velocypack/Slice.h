@@ -713,6 +713,9 @@ class Slice {
         }
 
         VELOCYPACK_ASSERT(h > 0x00 && h <= 0x0e);
+        if (h >= sizeof(SliceStaticData::WidthMap) / sizeof(SliceStaticData::WidthMap[0])) {
+          throw Exception(Exception::InternalError, "invalid Array/Object type");
+        }
         return readIntegerNonEmpty<ValueLength>(_start + 1,
                                                 SliceStaticData::WidthMap[h]);
       }
