@@ -70,7 +70,7 @@ stage('checkout') {
                 poll: false,
                 scm: [
                     $class: 'GitSCM',
-                    branches: [[name: "* /${env.BRANCH_NAME}"]],
+                    branches: [[name: "*/${env.BRANCH_NAME}"]],
                     doGenerateSubmoduleConfigurations: false,
                     extensions: [[$class: 'RelativeTargetDirectory', relativeTargetDir: 'enterprise']],
                     submoduleCfg: [],
@@ -84,7 +84,7 @@ stage('checkout') {
                 poll: false,
                 scm: [
                     $class: 'GitSCM',
-                    branches: [[name: "* /devel"]],
+                    branches: [[name: "*/devel"]],
                     doGenerateSubmoduleConfigurations: false,
                     extensions: [[$class: 'RelativeTargetDirectory', relativeTargetDir: 'enterprise']],
                     submoduleCfg: [],
