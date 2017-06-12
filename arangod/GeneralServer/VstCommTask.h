@@ -70,12 +70,13 @@ class VstCommTask : public GeneralCommTask {
 
   void handleAuthentication(VPackSlice const& header, uint64_t messageId);
 
-  void handleSimpleError(rest::ResponseCode code, uint64_t id) override {
+  void handleSimpleError(rest::ResponseCode code, GeneralRequest const& req, uint64_t id) override {
     VstResponse response(code, id);
+    response.setContentType(req.contentTypeResponse());
     addResponse(&response, nullptr);
   }
 
-  void handleSimpleError(rest::ResponseCode, int code,
+  void handleSimpleError(rest::ResponseCode, GeneralRequest const&, int code,
                          std::string const& errorMessage,
                          uint64_t messageId) override;
 

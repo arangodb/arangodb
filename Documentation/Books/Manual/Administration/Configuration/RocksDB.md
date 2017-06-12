@@ -94,8 +94,7 @@ false.
 
 `--rocksdb.use-direct-writes` (Hidden)
 
-Only meaningful on Linux. If set,use `O_DIRECT` for writing files. Default:
-true.
+Only meaningful on Linux. If set,use `O_DIRECT` for writing files. Default: false.
 
 `--rocksdb.use-fsync` (Hidden)
 

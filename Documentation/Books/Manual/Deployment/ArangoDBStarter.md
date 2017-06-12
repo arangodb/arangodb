@@ -1,29 +1,50 @@
 Automatic native Clusters
 -------------------------
-Similar as the Mesos framework aranges an ArangoDB cluster in a DC/OS environment for you, `arangodb` can do this for you in a plain environment.
+Similarly to how the Mesos framework aranges an ArangoDB cluster in a
+DC/OS environment for you, `arangodb` can do this for you in a plain
+environment.
 
-With `arangodb` you launch a primary node. It will bind a network port, and output the commands you need to cut'n'paste into the other nodes: 
+By invoking the first `arangodb` you launch a primary node. It will
+bind a network port, and output the commands you need to cut'n'paste
+into the other nodes. Let's review the process of such a startup on
+three hosts named `h01`, `h02`, and `h03`: 
 
-    # arangodb 
-    2017/05/11 11:00:52 Starting arangodb version 0.7.0, build 90aebe6
-    2017/05/11 11:00:52 Serving as master with ID '85c05e3b' on :8528...
-    2017/05/11 11:00:52 Waiting for 3 servers to show up.
-    2017/05/11 11:00:52 Use the following commands to start other servers:
+    arangodb@h01 ~> arangodb --ownAddress h01:4000
+    2017/06/12 14:59:38 Starting arangodb version 0.5.0+git, build 5f97368
+    2017/06/12 14:59:38 Serving as master with ID '52698769' on h01:4000...
+    2017/06/12 14:59:38 Waiting for 3 servers to show up.
+    2017/06/12 14:59:38 Use the following commands to start other servers:
     
-    arangodb --data.dir=./db2 --starter.join 127.0.0.1
-    
-    arangodb --data.dir=./db3 --starter.join 127.0.0.1
-    
-    2017/05/11 11:00:52 Listening on 0.0.0.0:8528 (:8528)
+    arangodb --dataDir=./db2 --join h01:4000
 
-So you cut the lines `arangodb --data.dir=./db2 --starter.join 127.0.0.1` and execute them for the other nodes. 
-If you run it on another node on your network, replace the `--starter.join 127.0.0.1` by the public IP of the first host.
+    arangodb --dataDir=./db3 --join h01:4000
+
+    2017/06/12 14:59:38 Listening on 0.0.0.0:4000 (h01:4000)
+
+So you cut the lines `arangodb --data.dir=./db2 --starter.join
+127.0.0.1` and execute them for the other nodes. If you run it on
+another node on your network, replace the `--starter.join 127.0.0.1`
+by the public IP of the first host. 
+
+    arangodbh02 ~> arangodb --dataDir=./db2 --join h01:4000
+    2017/06/12 14:48:50 Starting arangodb version 0.5.0+git, build 5f97368
+    2017/06/12 14:48:50 Contacting master h01:4000...
+    2017/06/12 14:48:50 Waiting for 3 servers to show up...
+    2017/06/12 14:48:50 Listening on 0.0.0.0:4000 (:4000)
+
+    arangodbh03 ~> arangodb --dataDir=./db3 --join h01:4000
+    2017/06/12 14:48:50 Starting arangodb version 0.5.0+git, build 5f97368
+    2017/06/12 14:48:50 Contacting master h01:4000...
+    2017/06/12 14:48:50 Waiting for 3 servers to show up...
+    2017/06/12 14:48:50 Listening on 0.0.0.0:4000 (:4000)
 
 Once the two other processes joined the cluster, and started their ArangoDB server processes (this may take a while depending on your system), it will inform you where to connect the Cluster from a Browser, shell or your programm:
 
-    2017/05/11 11:01:47 Your cluster can now be accessed with a browser at
-                        `http://localhost:8529` or
-    2017/05/11 11:01:47 using `arangosh --server.endpoint tcp://localhost:8529`.
+    ...
+    2017/06/12 14:55:21 coordinator up and running.
+
+At this point you may access your cluster at either coordinator
+endpoint, http://h01:4002/, http://h02:4002/ or http://h03:4002/.
 
 Automatic native local test Clusters
 ------------------------------------
@@ -49,8 +70,10 @@ In the Docker world you need to take care about where persistant data is stored,
 
 (You can use any type of docker volume that fits your setup instead.)
 
-We then need to determine the the IP of the docker host where you intend to run ArangoDB starter on. 
-Depending on your host os, [ipconfig](https://en.wikipedia.org/wiki/Ipconfig) can be used, on a Linux host `/sbin/ip route`:
+We then need to determine the the IP of the docker host where you
+intend to run ArangoDB starter on. Depending on your operating system
+execute `ip addr, ifconfig or ipconfig` to determine your local ip
+address. 
 
     192.168.1.0/24 dev eth0 proto kernel scope link src 192.168.1.32
 
@@ -64,22 +87,24 @@ So this example uses the IP `192.168.1.32`:
 
 It will start the master instance, and command you to start the slave instances:
 
-2017/05/11 09:04:24 Starting arangodb version 0.7.0, build 90aebe6
-2017/05/11 09:04:24 Serving as master with ID 'fc673b3b' on 192.168.140.80:8528...
-2017/05/11 09:04:24 Waiting for 3 servers to show up.
-2017/05/11 09:04:24 Use the following commands to start other servers:
+    Unable to find image 'arangodb/arangodb-starter:latest' locally
+    latest: Pulling from arangodb/arangodb-starter
+    Digest: sha256:b87d20c0b4757b7daa4cb7a9f55cb130c90a09ddfd0366a91970bcf31a7fd5a4
+    Status: Downloaded newer image for arangodb/arangodb-starter:latest
+    2017/06/12 13:26:14 Starting arangodb version 0.7.1, build f128884
+    2017/06/12 13:26:14 Serving as master with ID '46a2b40d' on 192.168.1.32:8528...
+    2017/06/12 13:26:14 Waiting for 3 servers to show up.
+    2017/06/12 13:26:14 Use the following commands to start other servers:
 
-docker volume create arangodb2 && \
-    docker run -it --name=adb2 --rm -p 8533:8528 -v arangodb2:/data \
-    -v /var/run/docker.sock:/var/run/docker.sock arangodb/arangodb-starter \
-    --starter.address=192.168.1.32 --starter.join=192.168.1.32
+    docker volume create arangodb2 && \
+      docker run -it --name=adb2 --rm -p 8533:8528 -v arangodb2:/data \
+      -v /var/run/docker.sock:/var/run/docker.sock arangodb/arangodb-starter:0.7 \
+      --starter.address=192.168.1.32 --starter.join=192.168.1.32
 
-docker volume create arangodb3 && \
-    docker run -it --name=adb3 --rm -p 8538:8528 -v arangodb3:/data \
-    -v /var/run/docker.sock:/var/run/docker.sock arangodb/arangodb-starter \
-    --starter.address=192.168.1.32 --starter.join=192.168.1.32
-
-    2017/05/11 09:04:24 Listening on 0.0.0.0:8528 (192.168.1.32:8528)    
+    docker volume create arangodb3 && \
+      docker run -it --name=adb3 --rm -p 8538:8528 -v arangodb3:/data \
+      -v /var/run/docker.sock:/var/run/docker.sock arangodb/arangodb-starter:0.7 \
+      --starter.address=192.168.1.32 --starter.join=192.168.1.32
 
 Once you start the other instances, it will continue like this: 
 
@@ -93,9 +118,9 @@ Once you start the other instances, it will continue like this:
     2017/05/11 09:05:52 Starting dbserver on port 8530
     2017/05/11 09:05:53 Looking for a running instance of coordinator on port 8529
     2017/05/11 09:05:53 Starting coordinator on port 8529
-    2017/05/11 09:05:58 agent up and running (version 3.1.19).
-    2017/05/11 09:06:15 dbserver up and running (version 3.1.19).
-    2017/05/11 09:06:31 coordinator up and running (version 3.1.19).
+    2017/05/11 09:05:58 agent up and running (version 3.2.devel).
+    2017/05/11 09:06:15 dbserver up and running (version 3.2.devel).
+    2017/05/11 09:06:31 coordinator up and running (version 3.2.devel).
 
 And at least it tells you where you can work with your cluster:
 
