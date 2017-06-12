@@ -1103,60 +1103,6 @@ static void JS_DescriptionServerState(
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief returns the data path
-////////////////////////////////////////////////////////////////////////////////
-
-static void JS_DataPathServerState(
-    v8::FunctionCallbackInfo<v8::Value> const& args) {
-  TRI_V8_TRY_CATCH_BEGIN(isolate);
-  v8::HandleScope scope(isolate);
-
-  if (args.Length() != 0) {
-    TRI_V8_THROW_EXCEPTION_USAGE("dataPath()");
-  }
-
-  std::string const path = ServerState::instance()->getDataPath();
-  TRI_V8_RETURN_STD_STRING(path);
-  TRI_V8_TRY_CATCH_END
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief returns the log path
-////////////////////////////////////////////////////////////////////////////////
-
-static void JS_LogPathServerState(
-    v8::FunctionCallbackInfo<v8::Value> const& args) {
-  TRI_V8_TRY_CATCH_BEGIN(isolate);
-  v8::HandleScope scope(isolate);
-
-  if (args.Length() != 0) {
-    TRI_V8_THROW_EXCEPTION_USAGE("logPath()");
-  }
-
-  std::string const path = ServerState::instance()->getLogPath();
-  TRI_V8_RETURN_STD_STRING(path);
-  TRI_V8_TRY_CATCH_END
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief returns the arangod path
-////////////////////////////////////////////////////////////////////////////////
-
-static void JS_ArangodPathServerState(
-    v8::FunctionCallbackInfo<v8::Value> const& args) {
-  TRI_V8_TRY_CATCH_BEGIN(isolate);
-  v8::HandleScope scope(isolate);
-
-  if (args.Length() != 0) {
-    TRI_V8_THROW_EXCEPTION_USAGE("arangodPath()");
-  }
-
-  std::string const path = ServerState::instance()->getArangodPath();
-  TRI_V8_RETURN_STD_STRING(path);
-  TRI_V8_TRY_CATCH_END
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief returns the javascript startup path
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -1170,43 +1116,6 @@ static void JS_JavaScriptPathServerState(
   }
 
   std::string const path = ServerState::instance()->getJavaScriptPath();
-  TRI_V8_RETURN_STD_STRING(path);
-  TRI_V8_TRY_CATCH_END
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief returns the DBserver config
-////////////////////////////////////////////////////////////////////////////////
-
-static void JS_DBserverConfigServerState(
-    v8::FunctionCallbackInfo<v8::Value> const& args) {
-  TRI_V8_TRY_CATCH_BEGIN(isolate);
-  v8::HandleScope scope(isolate);
-
-  if (args.Length() != 0) {
-    TRI_V8_THROW_EXCEPTION_USAGE("dbserverConfig()");
-  }
-
-  std::string const path = ServerState::instance()->getDBserverConfig();
-  TRI_V8_RETURN_STD_STRING(path);
-  TRI_V8_TRY_CATCH_END
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief returns the coordinator config
-////////////////////////////////////////////////////////////////////////////////
-
-static void JS_CoordinatorConfigServerState(
-    v8::FunctionCallbackInfo<v8::Value> const& args) {
-  TRI_V8_TRY_CATCH_BEGIN(isolate);
-  v8::HandleScope scope(isolate);
-  ONLY_IN_CLUSTER
-
-  if (args.Length() != 0) {
-    TRI_V8_THROW_EXCEPTION_USAGE("coordinatorConfig()");
-  }
-
-  std::string const path = ServerState::instance()->getCoordinatorConfig();
   TRI_V8_RETURN_STD_STRING(path);
   TRI_V8_TRY_CATCH_END
 }
@@ -2142,18 +2051,8 @@ void TRI_InitV8Cluster(v8::Isolate* isolate, v8::Handle<v8::Context> context) {
                        JS_IdOfPrimaryServerState);
   TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING("description"),
                        JS_DescriptionServerState);
-  TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING("dataPath"),
-                       JS_DataPathServerState);
-  TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING("logPath"),
-                       JS_LogPathServerState);
-  TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING("arangodPath"),
-                       JS_ArangodPathServerState);
   TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING("javaScriptPath"),
                        JS_JavaScriptPathServerState);
-  TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING("dbserverConfig"),
-                       JS_DBserverConfigServerState);
-  TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING("coordinatorConfig"),
-                       JS_CoordinatorConfigServerState);
 #ifdef DEBUG_SYNC_REPLICATION
   TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING("enableSyncReplicationDebug"),
                        JS_EnableSyncReplicationDebug);

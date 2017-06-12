@@ -142,6 +142,9 @@ to the [naming conventions](../NamingConventions/README.md).
   servers holding copies take over, usually without an error being
   reported.
 
+- *distributeShardsLike* distribute the shards of this collection
+  cloning the shard distribution of another.
+
 `db._create(collection-name, properties, type)`
 
 Specifies the optional *type* of the collection, it can either be *document* 
@@ -305,6 +308,8 @@ In order to drop a system collection, one must specify an *options* object
 with attribute *isSystem* set to *true*. Otherwise it is not possible to
 drop system collections.
 
+**Note**: cluster collection, which are prototypes for collections
+with *distributeShardsLike* parameter, cannot be dropped.
 
 *Examples*
 

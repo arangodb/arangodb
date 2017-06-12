@@ -61,11 +61,6 @@ class ClusterFeature : public application_features::ApplicationFeature {
   std::string _myId;
   std::string _myRole;
   std::string _myAddress;
-  std::string _dataPath;
-  std::string _logPath;
-  std::string _arangodPath;
-  std::string _dbserverConfig;
-  std::string _coordinatorConfig;
   uint32_t _systemReplicationFactor = 2;
   bool _createWaitsForSyncReplication = true;
   double _syncReplTimeoutFactor = 1.0;
