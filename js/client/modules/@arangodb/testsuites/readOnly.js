@@ -131,15 +131,33 @@ const requests = [
       body: Object.keys(r[4]).length ? JSON.stringify(r[4]) : '',
       auth: {username:r[3], password:''}
     });
-    print(res.statusCode === r[0], res.statusCode);
+    r.splice(1, 0, res.statusCode);
+    if (r[0] === r[1]) {
+      results[r.slice(0,4).join('_')] = {
+        failed: 0,
+        status: true
+      };
+    } else {
+      results.failed += 1;
+      results[r.slice(0,4).join('_')] = {
+        failed: 1,
+        status: false
+      };
+    }
   }
 
   res = request.get({
-      url: `${adbInstance.arangods[0].url}/_api/index?collection=testcol`,
-      auth: {username:'test', password:''}
+    url: `${adbInstance.arangods[0].url}/_api/index?collection=testcol`,
+    auth: {username:'test', password:''}
+  });
+  const idxId = JSON.parse(res.body).indexes.filter(idx => idx.type == 'hash')[0].id;
+  res = request.delete({
+    url: `${adbInstance.arangods[0].url}/_api/index/${idxId}`,
+    auth: {username:'test', password:''}
   });
 
-  const idxId = JSON.parse(res.body).indexes.filter(idx => idx.type == 'hash')[0].id;
+
+  print(res.statusCode);
 
 
   pu.shutdownInstance(adbInstance, options);
