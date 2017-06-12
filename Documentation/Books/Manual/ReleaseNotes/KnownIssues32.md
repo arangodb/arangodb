@@ -3,6 +3,14 @@ Known Issues
 
 The following known issues are present in this version of ArangoDB:
 
+### Cluster Deployment
+
+The beta does not yet support a DC/OS deployment. You can use the ArangoDB Starter to 
+start a cluster omn bare metal.
+
+### Read-Only Users
+
+The beta allows to add read-only users. However, these are not yet supported.
 
 ### RocksDB storage engine
 

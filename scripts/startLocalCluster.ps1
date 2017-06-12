@@ -28,6 +28,7 @@ New-Item -Path cluster -Force -ItemType Directory | Out-Null
 
 $agentArguments = @(
     "--agency.activate=true",
+    "--agency.supervision=true",
     "--agency.size=$AgentCount",
     "--javascript.v8-contexts=1",
     "--server.statistics=false",

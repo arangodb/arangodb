@@ -590,7 +590,7 @@ std::shared_ptr<VPackBuilder> VelocyPackHelper::velocyPackFromFile(
       throw;
     }
   }
-  THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
+  THROW_ARANGO_EXCEPTION(TRI_errno());
 }
 
 static bool PrintVelocyPack(int fd, VPackSlice const& slice,

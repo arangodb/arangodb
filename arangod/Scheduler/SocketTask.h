@@ -154,7 +154,6 @@ class SocketTask : virtual public Task {
   bool trySyncRead();
   bool processAll();
   void asyncReadSome();
-  void closeReceiveStream();
 
  private:
   Mutex _writeLock;

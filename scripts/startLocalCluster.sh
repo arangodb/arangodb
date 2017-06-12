@@ -28,9 +28,17 @@ fi
 SFRE=1.0
 COMP=2000
 KEEP=1000
-AG_BASE=$(( $PORT_OFFSET + 4001 ))
-CO_BASE=$(( $PORT_OFFSET + 8530 ))
-DB_BASE=$(( $PORT_OFFSET + 8629 ))
+if [ -z "$ONGOING_PORTS" ] ; then
+  CO_BASE=$(( $PORT_OFFSET + 8530 ))
+  DB_BASE=$(( $PORT_OFFSET + 8629 ))
+  AG_BASE=$(( $PORT_OFFSET + 4001 ))
+  SE_BASE=$(( $PORT_OFFSET + 8729 ))
+else
+  CO_BASE=$(( $PORT_OFFSET + 8530 ))
+  DB_BASE=$(( $PORT_OFFSET + 8530 + $NRCOORDINATORS ))
+  AG_BASE=$(( $PORT_OFFSET + 8530 + $NRCOORDINATORS + $NRDBSERVERS ))
+  SE_BASE=$(( $PORT_OFFSET + 8530 + $NRCOORDINATORS + $NRDBSERVERS + $NRAGENTS ))
+fi
 NATH=$(( $NRDBSERVERS + $NRCOORDINATORS + $NRAGENTS ))
 ENDPOINT=[::]
 ADDRESS=[::1]
@@ -183,8 +191,8 @@ done
 
 if [ "$SECONDARIES" == "1" ] ; then
     let index=1
-    PORTTOPSE=`expr 8729 + $NRDBSERVERS - 1` 
-    for PORT in `seq 8729 $PORTTOPSE` ; do
+    PORTTOPSE=`expr $SE_BASE + $NRDBSERVERS - 1` 
+    for PORT in `seq $SE_BASE $PORTTOPSE` ; do
         mkdir cluster/data$PORT
         
         CLUSTER_ID="Secondary$index"

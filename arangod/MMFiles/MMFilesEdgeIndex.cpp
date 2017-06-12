@@ -297,10 +297,14 @@ Result MMFilesEdgeIndex::insert(transaction::Methods* trx,
 
   try {
     _edgesTo->insert(&context, toElement, true, isRollback);
-  } catch (...) {
+  } catch (std::bad_alloc const&) {
     // roll back partial insert
     _edgesFrom->remove(&context, fromElement);
     return IndexResult(TRI_ERROR_OUT_OF_MEMORY, this);
+  } catch (...) {
+    // roll back partial insert
+    _edgesFrom->remove(&context, fromElement);
+    return IndexResult(TRI_ERROR_INTERNAL, this);
   }
 
   return Result(TRI_ERROR_NO_ERROR);
