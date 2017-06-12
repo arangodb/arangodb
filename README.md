@@ -1,4 +1,4 @@
-![-Logo](https://docs.arangodb.com/assetst 1pm already? time/arangodb_logo_2016_inverted.png)
+![ArangoDB-Logo](https://docs.arangodb.com/assets/arangodb_logo_2016_inverted.png)
 
 ArangoDB
 ========
