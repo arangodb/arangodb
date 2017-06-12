@@ -277,11 +277,16 @@ V8Context* V8DealerFeature::addContext() {
 
   applyContextUpdate(context);
 
-  DatabaseFeature* database =
-      ApplicationServer::getFeature<DatabaseFeature>("Database");
+  try {
+    DatabaseFeature* database =
+        ApplicationServer::getFeature<DatabaseFeature>("Database");
 
-  loadJavaScriptFileInContext(database->systemDatabase(), "server/initialize.js", context, nullptr);
-  return context; 
+    loadJavaScriptFileInContext(database->systemDatabase(), "server/initialize.js", context, nullptr);
+    return context; 
+  } catch (...) {
+    delete context;
+    throw;
+  }
 }
 
 void V8DealerFeature::unprepare() {
@@ -401,17 +406,17 @@ void V8DealerFeature::collectGarbage() {
                   << ", wasDirty: " << wasDirty;
         bool hasActiveExternals = false;
         auto isolate = context->_isolate;
-        TRI_ASSERT(context->_locker == nullptr);
-        context->_locker = new v8::Locker(isolate);
-        isolate->Enter();
         {
+          // this guard will lock and enter the isolate
+          // and automatically exit and unlock it when it runs out of scope
+          V8ContextGuard contextGuard(context);
+
           v8::HandleScope scope(isolate);
 
           auto localContext =
               v8::Local<v8::Context>::New(isolate, context->_context);
 
           localContext->Enter();
-
           {
             v8::Context::Scope contextScope(localContext);
 
@@ -422,13 +427,8 @@ void V8DealerFeature::collectGarbage() {
             TRI_RunGarbageCollectionV8(isolate, 1.0);
             hasActiveExternals = v8g->hasActiveExternals();
           }
-
           localContext->Exit();
         }
-
-        isolate->Exit();
-        delete context->_locker;
-        context->_locker = nullptr;
 
         // update garbage collection statistics
         context->_hasActiveExternals = hasActiveExternals;
@@ -527,10 +527,7 @@ void V8DealerFeature::enterContextInternal(TRI_vocbase_t* vocbase,
   // turn off memory allocation failures before going into v8 code 
   TRI_DisallowMemoryFailures();
 
-  TRI_ASSERT(context->_locker == nullptr);
-  context->_locker = new v8::Locker(isolate);
-
-  isolate->Enter();
+  context->lockAndEnter();
   {
     v8::HandleScope scope(isolate);
     auto localContext = v8::Local<v8::Context>::New(isolate, context->_context);
@@ -793,15 +790,12 @@ void V8DealerFeature::exitContextInternal(V8Context* context) {
     v8g->_canceled = false;
   }
 
+  // make sure the context will be exited
+  TRI_DEFER(context->unlockAndExit());
+  
   // check if we need to execute global context methods
-  bool runGlobal = false;
+  bool const runGlobal = context->hasGlobalMethodsQueued();
 
-  {
-    MUTEX_LOCKER(mutexLocker, context->_globalMethodsLock);
-    runGlobal = !context->_globalMethods.empty();
-  }
-
-  // exit the context
   {
     v8::HandleScope scope(isolate);
 
@@ -815,7 +809,11 @@ void V8DealerFeature::exitContextInternal(V8Context* context) {
       TRI_ASSERT(context->_locker->IsLocked(isolate));
       TRI_ASSERT(v8::Locker::IsLocked(isolate));
 
-      context->handleGlobalContextMethods();
+      try {
+        context->handleGlobalContextMethods();
+      } catch (...) {
+        // ignore errors here
+      }
     }
 
     TRI_GET_GLOBALS();
@@ -829,13 +827,6 @@ void V8DealerFeature::exitContextInternal(V8Context* context) {
     auto localContext = v8::Local<v8::Context>::New(isolate, context->_context);
     localContext->Exit();
   }
-
-  isolate->Exit();
-
-  delete context->_locker;
-  context->_locker = nullptr;
-
-  TRI_ASSERT(!v8::Locker::IsLocked(isolate));
 }
 
 void V8DealerFeature::exitContext(V8Context* context) {
@@ -865,8 +856,13 @@ void V8DealerFeature::exitContext(V8Context* context) {
     if (performGarbageCollection && !_freeContexts.empty()) {
       // only add the context to the dirty list if there is at least one other
       // free context
+
+      // note that re-adding the context here should not fail as we reserved
+      // enough room for all contexts during startup
       _dirtyContexts.emplace_back(context);
     } else {
+      // note that re-adding the context here should not fail as we reserved
+      // enough room for all contexts during startup
       _freeContexts.emplace_back(context);
     }
 
@@ -877,6 +873,8 @@ void V8DealerFeature::exitContext(V8Context* context) {
     CONDITION_LOCKER(guard, _contextCondition);
 
     _busyContexts.erase(context);
+    // note that re-adding the context here should not fail as we reserved
+    // enough room for all contexts during startup
     _freeContexts.emplace_back(context);
 
     guard.broadcast();
@@ -1071,20 +1069,19 @@ V8Context* V8DealerFeature::buildContext(size_t id) {
           "V8Platform");
   TRI_ASSERT(v8platform != nullptr);
 
+  // create isolate
   v8::Isolate* isolate = v8platform->createIsolate();
-  V8Context* context = new V8Context(id);
+  TRI_ASSERT(isolate != nullptr);
 
-  TRI_ASSERT(context->_locker == nullptr);
+  // pass isolate to a new context
+  auto context = std::make_unique<V8Context>(id, isolate);
 
-  // enter a new isolate
-  context->_isolate = isolate;
-  TRI_ASSERT(context->_locker == nullptr);
-  context->_locker = new v8::Locker(isolate);
-  context->_isolate->Enter();
+  try {
+    // this guard will lock and enter the isolate
+    // and automatically exit and unlock it when it runs out of scope
+    V8ContextGuard contextGuard(context.get());
 
-  // create the context
-  {
-    v8::HandleScope handle_scope(isolate);
+    v8::HandleScope handleScope(isolate);
 
     v8::Handle<v8::ObjectTemplate> global = v8::ObjectTemplate::New(isolate);
 
@@ -1162,11 +1159,11 @@ V8Context* V8DealerFeature::buildContext(size_t id) {
 
     // and return from the context
     localContext->Exit();
+  } catch (...) {
+    LOG_TOPIC(WARN, Logger::V8) << "caught exception during context initialization";
+    v8platform->disposeIsolate(isolate);
+    throw;
   }
-
-  isolate->Exit();
-  delete context->_locker;
-  context->_locker = nullptr;
 
   // some random delay value to add as an initial garbage collection offset
   // this avoids collecting all contexts at the very same time
@@ -1180,7 +1177,7 @@ V8Context* V8DealerFeature::buildContext(size_t id) {
 
   LOG_TOPIC(TRACE, arangodb::Logger::V8) << "initialized V8 context #" << id;
 
-  return context;
+  return context.release();
 }
 
 bool V8DealerFeature::loadJavaScriptFileInContext(TRI_vocbase_t* vocbase,
@@ -1188,6 +1185,7 @@ bool V8DealerFeature::loadJavaScriptFileInContext(TRI_vocbase_t* vocbase,
     VPackBuilder* builder) {
   
   TRI_ASSERT(vocbase != nullptr);
+  TRI_ASSERT(context != nullptr);
 
   if (_stopping) {
     return false;
@@ -1199,7 +1197,13 @@ bool V8DealerFeature::loadJavaScriptFileInContext(TRI_vocbase_t* vocbase,
 
   enterContextInternal(vocbase, context, true);
 
-  loadJavaScriptFileInternal(file, context, builder);
+  try {
+    loadJavaScriptFileInternal(file, context, builder);
+  } catch (...) {
+    LOG_TOPIC(WARN, Logger::V8) << "caught exception while executing JavaScript file '" << file << "' in context #" << context->_id;
+    exitContextInternal(context);
+    throw;
+  }
   
   exitContextInternal(context);
   return true;
@@ -1231,7 +1235,7 @@ void V8DealerFeature::loadJavaScriptFileInternal(std::string const& file, V8Cont
     }
   }
   
-  LOG_TOPIC(TRACE, arangodb::Logger::V8) << "loaded Javascript files for V8 context #" << context->_id;
+  LOG_TOPIC(TRACE, arangodb::Logger::V8) << "loaded Javascript file '" << file << "' for V8 context #" << context->_id;
 }
 
 void V8DealerFeature::shutdownContext(V8Context* context) {
@@ -1239,10 +1243,11 @@ void V8DealerFeature::shutdownContext(V8Context* context) {
   LOG_TOPIC(TRACE, arangodb::Logger::V8) << "shutting down V8 context #" << context->_id;
 
   auto isolate = context->_isolate;
-  isolate->Enter();
-  TRI_ASSERT(context->_locker == nullptr);
-  context->_locker = new v8::Locker(isolate);
   {
+    // this guard will lock and enter the isolate
+    // and automatically exit and unlock it when it runs out of scope
+    V8ContextGuard contextGuard(context);
+
     v8::HandleScope scope(isolate);
 
     auto localContext = v8::Local<v8::Context>::New(isolate, context->_context);
@@ -1285,11 +1290,8 @@ void V8DealerFeature::shutdownContext(V8Context* context) {
 
     localContext->Exit();
   }
-  context->_context.Reset();
 
-  isolate->Exit();
-  delete context->_locker;
-  context->_locker = nullptr;
+  context->_context.Reset();
 
   application_features::ApplicationServer::getFeature<V8PlatformFeature>(
           "V8Platform")->disposeIsolate(isolate);
