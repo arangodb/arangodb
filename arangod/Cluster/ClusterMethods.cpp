@@ -665,7 +665,7 @@ int warmupOnCoordinator(std::string const& dbname,
         "", coordTransactionID, "shard:" + p.first,
         arangodb::rest::RequestType::GET,
         "/_db/" + StringUtils::urlEncode(dbname) + "/_api/collection/" +
-            StringUtils::urlEncode(p.first) + "/warmup",
+            StringUtils::urlEncode(p.first) + "/loadIndexesIntoMemory",
         std::shared_ptr<std::string const>(), headers, nullptr, 300.0);
   }
 

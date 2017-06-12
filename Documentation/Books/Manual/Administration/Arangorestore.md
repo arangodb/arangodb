@@ -160,3 +160,20 @@ be ignored.
 Note that in a cluster, every newly created collection will have a new
 ID, it is not possible to reuse the ID from the originally dumped
 collection. This is for safety reasons to ensure consistency of IDs.
+
+### Restoring collections with sharding prototypes
+
+*arangorestore* will yield an error, while trying to restore a
+collection, whose shard distribution follows a collection, which does
+not exist in the cluster and which was not dumped along:
+
+    unix> arangorestore --collection clonedCollection --server.database mydb --input-directory "dump"
+
+    ERROR got error from server: HTTP 500 (Internal Server Error): ArangoError 1486: must not have a distributeShardsLike attribute pointing to an unknown collection
+    Processed 0 collection(s), read 0 byte(s) from datafiles, sent 0 batch(es)
+
+The collection can be restored by overriding the error message as
+follows:
+
+    unix> arangorestore --collection clonedCollection --server.database mydb --input-directory "dump" --ignore-distribute-shards-like-errors
+
