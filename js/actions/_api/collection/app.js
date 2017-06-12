@@ -468,17 +468,15 @@ function put_api_collection_load (req, res, collection) {
 }
 
 // //////////////////////////////////////////////////////////////////////////////
-// / @brief was docuBlock JSF_put_api_collection_warmup
+// / @brief was docuBlock JSF_put_api_collection_loadIndexesIntoMemory
 // //////////////////////////////////////////////////////////////////////////////
 
-function put_api_collection_warmup (req, res, collection) {
+function put_api_collection_load_indexes_in_memory (req, res, collection) {
   try {
-    // Warmup the indexes
-    collection.warmup();
+    // Load all index values into Memory
+    collection.loadIndexesIntoMemory();
 
-    var result = collectionRepresentation(collection);
-
-    actions.resultOk(req, res, actions.HTTP_OK, result);
+    actions.resultOk(req, res, actions.HTTP_OK, true);
   } catch (err) {
     actions.resultException(req, res, err, undefined, false);
   }
@@ -632,12 +630,12 @@ function put_api_collection (req, res) {
     put_api_collection_rename(req, res, collection);
   } else if (sub === 'rotate') {
     put_api_collection_rotate(req, res, collection);
-  } else if (sub === 'warmup') {
-    put_api_collection_warmup(req, res, collection);
+  } else if (sub === 'loadIndexesIntoMemory') {
+    put_api_collection_load_indexes_in_memory(req, res, collection);
   } else {
     actions.resultNotFound(req, res, arangodb.ERROR_HTTP_NOT_FOUND,
       "expecting one of the actions 'load', 'unload',"
-      + " 'truncate', 'properties', 'rename'");
+      + " 'truncate', 'properties', 'rename', 'loadIndexesIntoMemory'");
   }
 }
 
