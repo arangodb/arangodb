@@ -172,7 +172,7 @@ of the collection should have priority over others.
     db.example.loadIndexesIntoMemory();
     ~db._drop("example");
     @END_EXAMPLE_ARANGOSH_OUTPUT
-    @endDocuBlock loadIndexesIntoMemory
+    @endDocuBlock LoadIndexesIntoMemory
 
 Database Methods
 ----------------

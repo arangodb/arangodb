@@ -1,4 +1,4 @@
 arangosh&gt; arango.GET(<span class="hljs-string">"hello/echo"</span>)
 arangosh&gt; db._query(<span class="hljs-string">"FOR route IN _routing FILTER route.url == '/hello/echo' REMOVE route in _routing"</span>)
-[object ArangoQueryCursor, <span class="hljs-attr">count</span>: <span class="hljs-number">0</span>, <span class="hljs-attr">hasMore</span>: <span class="hljs-literal">false</span>]
+[object ArangoQueryCursor, <span class="hljs-attr">count</span>: <span class="hljs-number">0</span>, <span class="hljs-attr">cached</span>: <span class="hljs-literal">false</span>, <span class="hljs-attr">hasMore</span>: <span class="hljs-literal">false</span>]
 arangosh&gt; <span class="hljs-built_in">require</span>(<span class="hljs-string">"internal"</span>).reloadRouting()

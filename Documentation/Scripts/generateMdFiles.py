@@ -465,7 +465,7 @@ def replaceTextInline(text, pathOfFile, searchText):
   match = re.search(rePattern, text)
 
   if (match == None): 
-      print >> sys.stderr, "%sfailed to match with '%s' for %s in file %s in: \n%s" % (ERR_COLOR, rePattern, searchText, pathOfFile, text, RESET)
+      print >> sys.stderr, "%sfailed to match with '%s' for %s in file %s in: %s\n%s" % (ERR_COLOR, rePattern, searchText, pathOfFile, text, RESET)
       exit(1)
 
   subtext = match.group(0)
