@@ -111,7 +111,12 @@ const requests = [
   [403, 'post', '/_api/document/testcol', 'test', {_key:'wxyz'}],
   [403, 'delete', '/_api/document/testcol/abcd', 'test', {}],
   [403, 'patch', '/_api/document/testcol/abcd', 'test', {foo:'bar'}],
-  [403, 'put', '/_api/document/testcol/abcd', 'test', {foo:'bar'}]
+  [403, 'put', '/_api/document/testcol/abcd', 'test', {foo:'bar'}],
+
+  // create, delete database
+  [201, 'post', '/_db/_system/_api/database', 'root', {name:'wxyzdb'}],
+  [403, 'post', '/_db/_system/_api/database', 'test', {name:'abcddb'}],
+  [403, 'delete', '/_db/_system/_api/database/wxyzdb', 'test', {}]
 
 ]
 
