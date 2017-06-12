@@ -95,6 +95,11 @@ const requests = [
   [200, 'post', '/_api/collection', 'root', {name:'testcol'}],
   [202, 'post', '/_api/document/testcol', 'root', {_key:'abcd'}],
   [201, 'post', '/_api/index?collection=testcol', 'root', {fields:['abc'],type:'hash'}],
+  [200, 'get', '/_api/index?collection=testcol', 'root', {}],
+
+  // create and delete index
+  [403, 'delete', '/_api/index/', 'test', {}],
+  [403, 'post', '/_api/index?collection=testcol', 'test', {fields:['xyz'],type:'hash'}],
 
   // create, delete, truncate collection
   [403, 'post', '/_api/collection', 'test', {name:'testcol2'}],
@@ -106,12 +111,39 @@ const requests = [
   [403, 'post', '/_api/document/testcol', 'test', {_key:'wxyz'}],
   [403, 'delete', '/_api/document/testcol/abcd', 'test', {}],
   [403, 'patch', '/_api/document/testcol/abcd', 'test', {foo:'bar'}],
-  [403, 'put', '/_api/document/testcol/abcd', 'test', {foo:'bar'}],
-
-  // create and delete index
-  [403, 'post', '/_api/index?collection=testcol', 'test', {fields:['xyz'],type:'hash'}],
+  [403, 'put', '/_api/document/testcol/abcd', 'test', {foo:'bar'}]
 
 ]
+
+  const run = (tests) => {
+    const bodies = [];
+    for (const r of tests) {
+      const res = request[r[1]]({
+        url: `${adbInstance.arangods[0].url}${r[2]}`,
+        body: Object.keys(r[4]).length ? JSON.stringify(r[4]) : '',
+        auth: {username:r[3], password:''}
+      });
+      try {
+        bodies.push(JSON.parse(res.body));
+      } catch(e) {
+        bodies.push({});
+      }
+      r.splice(1, 0, res.statusCode);
+      if (r[0] === r[1]) {
+        results[r.slice(0,5).join('_')] = {
+          failed: 0,
+          status: true
+        };
+      } else {
+        results.failed += 1;
+        results[r.slice(0,5).join('_')] = {
+          failed: 1,
+          status: false
+        };
+      }
+    }
+    return bodies;
+  }
 
 
 
@@ -125,40 +157,9 @@ const requests = [
           `
         ]);
 
-  for (const r of requests) {
-    const res = request[r[1]]({
-      url: `${adbInstance.arangods[0].url}${r[2]}`,
-      body: Object.keys(r[4]).length ? JSON.stringify(r[4]) : '',
-      auth: {username:r[3], password:''}
-    });
-    r.splice(1, 0, res.statusCode);
-    if (r[0] === r[1]) {
-      results[r.slice(0,4).join('_')] = {
-        failed: 0,
-        status: true
-      };
-    } else {
-      results.failed += 1;
-      results[r.slice(0,4).join('_')] = {
-        failed: 1,
-        status: false
-      };
-    }
-  }
-
-  res = request.get({
-    url: `${adbInstance.arangods[0].url}/_api/index?collection=testcol`,
-    auth: {username:'test', password:''}
-  });
-  const idxId = JSON.parse(res.body).indexes.filter(idx => idx.type == 'hash')[0].id;
-  res = request.delete({
-    url: `${adbInstance.arangods[0].url}/_api/index/${idxId}`,
-    auth: {username:'test', password:''}
-  });
-
-
-  print(res.statusCode);
-
+  let bodies = run(requests.splice(0,4));
+  requests[0][2] += bodies.pop().indexes.filter(idx => idx.type == 'hash')[0].id
+  run(requests);
 
   pu.shutdownInstance(adbInstance, options);
 
