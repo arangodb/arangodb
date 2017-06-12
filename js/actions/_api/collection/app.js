@@ -476,9 +476,7 @@ function put_api_collection_load_indexes_in_memory (req, res, collection) {
     // Load all index values into Memory
     collection.loadIndexesInMemory();
 
-    var result = collectionRepresentation(collection);
-
-    actions.resultOk(req, res, actions.HTTP_OK, result);
+    actions.resultOk(req, res, actions.HTTP_OK, true);
   } catch (err) {
     actions.resultException(req, res, err, undefined, false);
   }
