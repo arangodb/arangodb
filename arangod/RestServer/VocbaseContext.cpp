@@ -153,13 +153,13 @@ rest::ResponseCode VocbaseContext::authenticate() {
   // check that we are allowed to see the database
   if (!forceOpen) {
     // check for GET /_db/_system/_api/user/USERNAME/database
-    std::string pathWithUser = std::string("/_api/user/") + username + std::string("/database");
+    std::string pathWithUser = std::string("/_api/user/") + username;
 
-    if (_request->requestType() == RequestType::GET && StringUtils::isPrefix(path, pathWithUser)) {
+    if (_request->requestType() == RequestType::GET &&
+      (StringUtils::isPrefix(path, pathWithUser) || (StringUtils::isPrefix(path, "/_admin/aardvark/"))) ) {
       _request->setExecContext(nullptr);
       return rest::ResponseCode::OK;
     }
-
 
     if (!StringUtils::isPrefix(path, "/_api/user/")) {
       std::string const& dbname = _request->databaseName();
