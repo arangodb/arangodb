@@ -91,6 +91,9 @@ class SortedCollectBlock : public ExecutionBlock {
 
   /// @brief writes the current group data into the result
   void emitGroup(AqlItemBlock const* cur, AqlItemBlock* res, size_t row);
+  
+  /// @brief skips the current group
+  void skipGroup();
 
  private:
   /// @brief pairs, consisting of out register and in register
