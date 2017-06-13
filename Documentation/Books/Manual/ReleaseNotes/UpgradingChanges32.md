@@ -33,13 +33,21 @@ REST API
 --------
 
 * Removed undocumented internal HTTP API:
-  * PUT _api/edges
+  * PUT /_api/edges
 
-  The documented GET _api/edges and the undocumented POST _api/edges remains unmodified.
+  The documented GET /_api/edges and the undocumented POST /_api/edges remains unmodified.
 
 * change undocumented behaviour in case of invalid revision ids in
   `If-Match` and `If-None-Match` headers from returning HTTP status code 400 (bad request) 
   to returning HTTP status code 412 (precondition failed).
+
+* the REST API for fetching the list of currently running AQL queries and the REST API
+  for fetching the list of slow AQL queries now return an extra *bindVars* attribute which
+  contains the bind parameters used by the queries.
+
+  This affects the return values of the following API endpoints:
+  * GET /_api/query/current
+  * GET /_api/query/slow
 
 
 JavaScript API

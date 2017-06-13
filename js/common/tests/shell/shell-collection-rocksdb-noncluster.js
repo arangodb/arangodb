@@ -427,7 +427,7 @@ function CollectionSuite () {
         }
       });
 
-      c.warmup();
+      c.loadIndexesIntoMemory();
 
       // checking if edge cach grew
       idxs = c.getIndexes(true);

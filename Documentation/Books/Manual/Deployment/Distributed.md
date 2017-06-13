@@ -18,29 +18,29 @@ then the commands you have to use are (you can use host names if they can be res
 On 192.168.1.1:
 
 ```
-arangod --server.endpoint tcp://0.0.0.0:5001 --agency.my-address tcp://192.168.1.1:5001 --server.authentication false --agency.activate true --agency.size 3 --agency.supervision true --database.directory agency
+sudo arangod --server.endpoint tcp://0.0.0.0:5001 --agency.my-address tcp://192.168.1.1:5001 --server.authentication false --agency.activate true --agency.size 3 --agency.supervision true --database.directory agency
 ```
 
 On 192.168.1.2:
 
 ```
-arangod --server.endpoint tcp://0.0.0.0:5001 --agency.my-address tcp://192.168.1.2:5001 --server.authentication false --agency.activate true --agency.size 3 --agency.supervision true --database.directory agency
+sudo arangod --server.endpoint tcp://0.0.0.0:5001 --agency.my-address tcp://192.168.1.2:5001 --server.authentication false --agency.activate true --agency.size 3 --agency.supervision true --database.directory agency
 ```
 
 On 192.168.1.3:
 
 ```
-arangod --server.endpoint tcp://0.0.0.0:5001 --agency.my-address tcp://192.168.1.3:5001 --server.authentication false --agency.activate true --agency.size 3 --agency.endpoint tcp://192.168.1.1:5001 --agency.endpoint tcp://192.168.1.2:5001 --agency.endpoint tcp://192.168.1.3:5001 --agency.supervision true --database.directory agency
+sudo arangod --server.endpoint tcp://0.0.0.0:5001 --agency.my-address tcp://192.168.1.3:5001 --server.authentication false --agency.activate true --agency.size 3 --agency.endpoint tcp://192.168.1.1:5001 --agency.endpoint tcp://192.168.1.2:5001 --agency.endpoint tcp://192.168.1.3:5001 --agency.supervision true --database.directory agency
 ```
 
 On 192.168.1.1:
 ```
-arangod --server.authentication=false --server.endpoint tcp://0.0.0.0:8529 --cluster.my-address tcp://192.168.1.1:8529 --cluster.my-local-info db1 --cluster.my-role PRIMARY --cluster.agency-endpoint tcp://192.168.1.1:5001 --cluster.agency-endpoint tcp://192.168.1.2:5001 --cluster.agency-endpoint tcp://192.168.1.3:5001 --database.directory primary1 &
+sudo arangod --server.authentication=false --server.endpoint tcp://0.0.0.0:8529 --cluster.my-address tcp://192.168.1.1:8529 --cluster.my-local-info db1 --cluster.my-role PRIMARY --cluster.agency-endpoint tcp://192.168.1.1:5001 --cluster.agency-endpoint tcp://192.168.1.2:5001 --cluster.agency-endpoint tcp://192.168.1.3:5001 --database.directory primary1 &
 ```
 
 On 192.168.1.2:
 ```
-arangod --server.authentication=false --server.endpoint tcp://0.0.0.0:8530 --cluster.my-address tcp://192.168.1.2:8530 --cluster.my-local-info db2 --cluster.my-role PRIMARY --cluster.agency-endpoint tcp://192.168.1.1:5001 --cluster.agency-endpoint tcp://192.168.1.2:5001 --cluster.agency-endpoint tcp://192.168.1.3:5001 --database.directory primary2 &
+sudo arangod --server.authentication=false --server.endpoint tcp://0.0.0.0:8530 --cluster.my-address tcp://192.168.1.2:8530 --cluster.my-local-info db2 --cluster.my-role PRIMARY --cluster.agency-endpoint tcp://192.168.1.1:5001 --cluster.agency-endpoint tcp://192.168.1.2:5001 --cluster.agency-endpoint tcp://192.168.1.3:5001 --database.directory primary2 &
 ```
 
 On 192.168.1.3:
