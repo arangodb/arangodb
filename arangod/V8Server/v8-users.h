@@ -20,30 +20,18 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_VOC_BASE_API_DATABASE_H
-#define ARANGOD_VOC_BASE_API_DATABASE_H 1
+#ifndef ARANGOD_V8_SERVER_V8_COLLECTION_H
+#define ARANGOD_V8_SERVER_V8_COLLECTION_H 1
 
-#include <velocypack/Builder.h>
-#include <velocypack/Slice.h>
-#include "Basics/Result.h"
+#include <v8.h>
 
 struct TRI_vocbase_t;
+struct TRI_v8_global_t;
 
-namespace arangodb {
-namespace actions {
+void TRI_InitV8Users(v8::Handle<v8::Context> context,
+                     TRI_vocbase_t* vocbase,
+                     TRI_v8_global_t* v8g, v8::Isolate* isolate,
+                     v8::Handle<v8::ObjectTemplate> ArangoDBNS);
 
-/// Common code for the db._database(),
-struct Database {
-  static std::vector<std::string> list(std::string const& user = "");
-  static arangodb::Result info(TRI_vocbase_t* vocbase,
-                               arangodb::velocypack::Builder& result);
-  static arangodb::Result create(std::string const& dbName,
-                                 arangodb::velocypack::Slice const& users,
-                                 arangodb::velocypack::Slice const& options);
-  static arangodb::Result drop(TRI_vocbase_t* systemVocbase,
-                               std::string const&);
-};
-}
-}
 
 #endif

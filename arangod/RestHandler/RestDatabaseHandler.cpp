@@ -24,7 +24,7 @@
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Rest/HttpRequest.h"
-#include "VocBase/Actions/Database.h"
+#include "VocBase/Methods/Database.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/Iterator.h>
@@ -85,9 +85,9 @@ RestStatus RestDatabaseHandler::getDatabases() {
   if (suffixes.empty() || suffixes[0] == "user") {
     std::vector<std::string> names;
     if (suffixes.empty()) {
-      names = actions::Database::list(std::string());
+      names = methods::Database::list(std::string());
     } else if (suffixes[0] == "user") {
-      names = actions::Database::list(_request->user());
+      names = methods::Database::list(_request->user());
     }
 
     result.openArray();
@@ -96,7 +96,7 @@ RestStatus RestDatabaseHandler::getDatabases() {
     }
     result.close();
   } else if (suffixes[0] == "current") {
-    Result res = actions::Database::info(_vocbase, result);
+    Result res = methods::Database::info(_vocbase, result);
     if (!res.ok()) {
       generateError(rest::ResponseCode::BAD, res.errorNumber());
       return RestStatus::DONE;
@@ -138,7 +138,7 @@ RestStatus RestDatabaseHandler::createDatabase() {
   VPackSlice options = parsedBody->slice().get("options");
   VPackSlice users = parsedBody->slice().get("users");
 
-  Result res = actions::Database::create(dbName, users, options);
+  Result res = methods::Database::create(dbName, users, options);
   if (!res.ok()) {
     generateError(res.errorNumber() == TRI_ERROR_ARANGO_DUPLICATE_NAME
                       ? rest::ResponseCode::CONFLICT
@@ -173,7 +173,7 @@ RestStatus RestDatabaseHandler::deleteDatabase() {
 
   std::string const& dbName = suffixes[0];
 
-  Result res = actions::Database::drop(_vocbase, dbName);
+  Result res = methods::Database::drop(_vocbase, dbName);
   if (!res.ok()) {
     generateError(res.errorNumber() == TRI_ERROR_ARANGO_DATABASE_NOT_FOUND
                       ? rest::ResponseCode::NOT_FOUND

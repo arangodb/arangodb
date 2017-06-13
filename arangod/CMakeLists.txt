@@ -363,14 +363,15 @@ SET(ARANGOD_SOURCES
   V8Server/v8-replication.cpp
   V8Server/v8-statistics.cpp
   V8Server/v8-user-structures.cpp
+  V8Server/v8-users.cpp
   V8Server/v8-util.cpp
   V8Server/v8-views.cpp
   V8Server/v8-vocbase.cpp
   V8Server/v8-voccursor.cpp
   V8Server/v8-vocindex.cpp
   Views/LoggerView.cpp
-  VocBase/Actions/Database.cpp
-  VocBase/Actions/Indexes.cpp
+  VocBase/Methods/Database.cpp
+  VocBase/Methods/Indexes.cpp
   VocBase/AuthInfo.cpp
   VocBase/EdgeCollectionInfo.cpp
   VocBase/Graphs.cpp

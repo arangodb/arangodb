@@ -47,7 +47,7 @@
 #include "V8Server/v8-externals.h"
 #include "V8Server/v8-vocbase.h"
 #include "V8Server/v8-vocbaseprivate.h"
-#include "VocBase/Actions/Indexes.h"
+#include "VocBase/Methods/Indexes.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/modes.h"
 
@@ -86,7 +86,7 @@ static void EnsureIndex(v8::FunctionCallbackInfo<v8::Value> const& args,
   TRI_V8ToVPackSimple(isolate, builder, args[0]);
   
   VPackBuilder output;
-  Result res = actions::Indexes::ensureIndex(collection, builder.slice(), create, output);
+  Result res = methods::Indexes::ensureIndex(collection, builder.slice(), create, output);
   if (!res.ok()) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(res.errorNumber(), res.errorMessage());
   }
@@ -148,7 +148,7 @@ static void JS_DropIndexVocbaseCol(
   VPackBuilder builder;
   TRI_V8ToVPackSimple(isolate, builder, args[0]);
   
-  Result res = actions::Indexes::drop(collection, builder.slice());
+  Result res = methods::Indexes::drop(collection, builder.slice());
   if (res.ok()) {
     TRI_V8_RETURN_TRUE();
   }
@@ -179,7 +179,7 @@ static void JS_GetIndexesVocbaseCol(
   }
 
   VPackBuilder output;
-  Result res = actions::Indexes::getAll(collection, withFigures, output);
+  Result res = methods::Indexes::getAll(collection, withFigures, output);
   if (!res.ok()) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(res.errorNumber(), res.errorMessage());
   }

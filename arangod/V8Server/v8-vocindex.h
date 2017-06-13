@@ -40,26 +40,4 @@ void TRI_InitV8IndexArangoDB(v8::Isolate* isolate,
 void TRI_InitV8IndexCollection(v8::Isolate* isolate,
                                v8::Handle<v8::ObjectTemplate> rt);
 
-int EnsureIndexCoordinator(std::string const& dbName, std::string const& cid,
-                           arangodb::velocypack::Slice const slice, bool create,
-                           arangodb::velocypack::Builder& resultBuilder,
-                           std::string& errorMessage);
-
-#ifdef USE_ENTERPRISE
-int EnsureIndexCoordinatorEnterprise(
-    arangodb::LogicalCollection const* collection,
-    arangodb::velocypack::Slice const slice, bool create,
-    arangodb::velocypack::Builder& resultBuilder, std::string& errorMessage);
-#endif
-
-int DropIndexCoordinator(
-    std::string const& databaseName,
-    std::string const& cid,
-    TRI_idx_iid_t const iid);
-
-#ifdef USE_ENTERPRISE
-int DropIndexCoordinatorEnterprise(
-    arangodb::LogicalCollection const* collection, TRI_idx_iid_t const iid);
-#endif
-
 #endif

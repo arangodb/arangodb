@@ -46,7 +46,7 @@
 #include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb;
-using namespace arangodb::actions;
+using namespace arangodb::methods;
 
 std::vector<std::string> Database::list(std::string const& user) {
   DatabaseFeature* databaseFeature =
