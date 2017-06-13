@@ -6,53 +6,89 @@ installation process you may change this. In the following description we will a
 that ArangoDB has been installed in the location *&lt;ROOTDIR&gt;*.
 
 You have to be careful when choosing an installation directory. You need either
-write permission to this directory or you need to modify the config file for the
-server process. In the latter case the database directory and the Foxx directory
-have to be writable by the user.
+write permission to this directory or you need to modify the configuration file
+for the server process. In the latter case the database directory and the Foxx
+directory have to be writable by the user.
 
-### Single User Installation
+## Single- and Multiuser Installation
+There are two main modes for the installer of ArangoDB.
+The installer lets you select:
 
-Select a different directory during installation. For example
-*C:\Users\&lt;Username&gt;\ArangoDB* or *C:\ArangoDB*.
+- multi user installation (default; admin privileges required)
+  Will install ArangoDB as service.
+- single user installation
+  Allow to install Arangodb as normal user.
+  Requires manual starting of the database server.
 
-### Multiple Users Installation
+## CheckBoxes
+The checkboxes allow you to chose weather you want to:
 
-Keep the default directory. After the installation edit the file
-*&lt;ROOTDIR&gt;\etc\ArangoDB\arangod.conf*. Adjust the *directory*
-and *app-path* so that these paths point into your home directory.
+- chose custom install paths
+- do an automatic upgrade
+- keep an backup of your data
+- add executables to path
+- create a desktop icon
 
-    [database]
-    directory = @HOMEDRIVE@\@HOMEPATH@\arangodb\databases
+or not.
 
-    [javascript]
-    app-path = @HOMEDRIVE@\@HOMEPATH@\arangodb\apps
 
-Create the directories for each user that wants to use ArangoDB.
+### Custom Install Paths
 
-### Service Installation
+This checkbox controls if you will be able to override
+the default paths for the installation in subsequent steps.
 
-Keep the default directory. After the installation open a command line
-as administrator (search for *cmd* and right click *run as
-administrator*).
+The default installation paths are:
 
-    cmd> arangod --install-service
-    INFO: adding service 'ArangoDB - the native multi-model NoSQL database' (internal 'ArangoDB')
-    INFO: added service with command line '"C:\Program Files (x86)\ArangoDB 3.x.x\bin\arangod.exe" --start-service'
+Multi User Default:
+- Installation: *C:\Program Files\ArangoDB-3.x.x*
+- DataBase:     *C:\ProgramData\ArangoDB*
+- Foxx Service: *C:\ProgramData\ArangoDB-apps*
 
-Open the service manager and start ArangoDB. In order to enable logging
-edit the file "<ROOTDIR>\etc\arangodb\arangod.conf" and uncomment the file
-option.
+Single User Default:
+- Installation: *C:\Users\\\<your user\>\AppData\Local\ArangoDB-3.x.x*
+- DataBase:     *C:\Users\\\<your user\>\AppData\Local\ArangoDB*
+- Foxx Service: *C:\Users\\\<your user\>\AppData\Local\ArangoDB-apps*
 
-    [log]
-    file = @ROOTDIR@\var\log\arangodb\arangod.log
+We are not using the roaming part of the user's profile, because doing so
+avoids the data being synced to the windows domain controller.
 
+### Automatic Upgrade
+If this checkbox is selected the installer will attempt to perform an automatic
+update. For more information please see
+[Upgrading from Previous Version](#upgrading-from-previous-version).
+
+### Keep Backup
+Select this to create a backup of your database directory during automatic upgrade.
+The backup will be created next to your current database directory suffixed by
+a time stamp.
+
+### Add to Path
+Select this to add the binary directory to your system's path (multi user
+installation) or user's path (single user installation).
+
+### Desktop Icon
+Select if you want the installer to create Desktop Icons that let you:
+
+- access the web inteface
+- start the commandline client (arangosh)
+- start the database server (single user installation only)
+
+## Upgrading from Previous Version
+If you are upgrading ArangoDB from an earlier version you need to copy your old
+database directory [to the new default paths](#custom-install-paths). Upgrading
+will keep your old data, password and choice of storage engine as it is.
+Switching to the RocksDB storage engine requires a
+[export](../../Administration/Arangoexport.md) and
+[reimport](../../Administration/Arangoimp.md) of your data.
 
 Starting
 --------
 
-If you installed ArangoDB as a service it is automatically started.
+If you installed ArangoDB for multiple users (as a service) it is automatically
+started. Otherwise you need to use the link that was created on you Desktop if
+you chose to let the installer create desktop icons or
 
-Otherwise, use the executable *arangod.exe* located in
+the executable *arangod.exe* located in
 *&lt;ROOTDIR&gt;\bin*. This will use the configuration file *arangod.conf*
 located in *&lt;ROOTDIR&gt;\etc\arangodb*, which you can adjust to your needs
 and use the data directory *&lt;ROOTDIR&gt;\var\lib\arangodb*. This is the place
