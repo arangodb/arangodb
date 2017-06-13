@@ -6,7 +6,7 @@ echo "ARANGOD VERSION: `build/bin/arangod --version`"
 echo "CORE PATTERN: `cat /proc/sys/kernel/core_pattern`"
 echo "CORE LIMIT: `ulimit -c`"
 
-rm -rf core.* *.log out
+rm -rf core.* *.log log-output out
 rm -rf tmp && mkdir tmp
 export TMPDIR=$(pwd)/tmp
 export TEMPDIR=$(pwd)/tmp
@@ -22,6 +22,7 @@ trap "./Installation/Pipeline/port.sh --clean $PORT01 $PORT02 $PORT03" EXIT
 OPTS="--storageEngine mmfiles --skipNondeterministic true --skipTimeCritical true  --configDir etc/jenkins --skipLogAnalysis true"
 
 echo "
+test_singleserver_community_mmfiles_linux.sh
 scripts/unittest boost                     --skipCache false 2>&1
 scripts/unittest agency                    --minPort `expr $PORT01 +   0` --maxPort `expr $PORT01 +   9` $OPTS 2>&1
 scripts/unittest arangobench               --minPort `expr $PORT01 +  10` --maxPort `expr $PORT01 +  19` $OPTS 2>&1
@@ -49,4 +50,10 @@ scripts/unittest shell_server_aql          --minPort `expr $PORT03 +  20` --maxP
 scripts/unittest shell_server_aql          --minPort `expr $PORT03 +  30` --maxPort `expr $PORT03 +  39` $OPTS --testBuckets 4/3 2>&1
 scripts/unittest ssl_server                --minPort `expr $PORT03 +  40` --maxPort `expr $PORT03 +  49` $OPTS 2>&1
 scripts/unittest upgrade                   --minPort `expr $PORT03 +  50` --maxPort `expr $PORT03 +  59` $OPTS 2>&1
-" | parallel --output-as-file --results log-output --no-notice --load 10 --jobs $concurrency
+" | parallel --header : --output-as-file --results log-output --no-notice --load 10 --jobs $concurrency
+
+result=$!
+
+fgrep "Overall state:" log-output/*/*/stdout
+
+exit $result

@@ -120,6 +120,7 @@ stage('build & test') {
                 unstash 'build-enterprise-linux'
                 echo "Running singleserver comunity mmfiles linux test"
                 sh './Installation/Pipeline/test_singleserver_community_mmfiles_linux.sh 8'
+                archiveArtifacts allowEmptyArchive: true, artifacts: 'log-output/**', defaultExcludes: false
             }
         },
 
