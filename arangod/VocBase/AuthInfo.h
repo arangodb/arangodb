@@ -133,6 +133,8 @@ class AuthInfo {
     _queryRegistry(nullptr) {
   }
   
+  ~AuthInfo();
+
  public:
   void setQueryRegistry(aql::QueryRegistry* registry) {
     TRI_ASSERT(registry != nullptr);

@@ -1,3 +1,10 @@
+v3.1.23 (XXXX-XX-XX)
+--------------------
+
+* fix invalid locking in JWT authentication cache, which could have
+  crashed the server
+
+
 v3.1.22 (2017-06-07)
 --------------------
 
