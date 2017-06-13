@@ -93,3 +93,9 @@ The following known issues will be resolved in future releases:
  * Edition label beyond ArangoDB Logo looks blurry in Safari on Mac OS X.
 
  * AQL Editor: Selecting "all results" as limit option will return zero results, which is wrong.
+
+### Mac OS X
+ * Storage engine is not changeable on a existing database. Currently only initial databases are supported.
+   In order to use another storage engine, you have to delete your ArangoDB application (Mac Application Folder)
+   and `/Users/<your_user_name>/Library/ArangoDB` folder.
+  
