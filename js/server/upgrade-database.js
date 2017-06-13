@@ -784,6 +784,50 @@
       }
     });
 
+    // upgrade _users database permissions
+    addTask({
+      name: 'upgradeDatabasePermissions',
+      description: 'upgrade _users database permissions',
+
+      system: DATABASE_SYSTEM,
+      cluster: [CLUSTER_NONE, CLUSTER_LOCAL],
+      database: [DATABASE_INIT, DATABASE_UPGRADE, DATABASE_EXISTING],
+
+      task: function () {
+        db._query(`LET x = (FOR user IN _users
+    FILTER IS_OBJECT( user.databases[ATTRIBUTES(user.databases)[0]])
+    RETURN user)
+
+LET y = (FOR user IN _users
+    FILTER !IS_OBJECT( user.databases[ATTRIBUTES(user.databases)[0]])
+
+    LET databases = MERGE(
+        FOR dbName IN ATTRIBUTES(user.databases)
+
+        LET read = user.databases[dbName] == 'ro' ? true : false
+        LET write = user.databases[dbName] == 'rw' ? true : false
+
+        RETURN {
+            [dbName]: {
+                permissions: { read : write ? write : read, write: write },
+                collections: {
+                    "*": {
+                        permissions: { read: write ? write : read, write: write }
+                    }
+                }
+            }
+        }
+    )
+
+    UPDATE user WITH {databases:databases} IN _users
+    RETURN NEW
+)
+FOR z IN UNION(x, y) RETURN z`);
+print('upgraded permissions');
+        return true;
+      }
+    });
+
     return upgradeDatabase();
   }
 
