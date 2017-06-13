@@ -6,7 +6,7 @@ The following known issues are present in this version of ArangoDB:
 ### Cluster Deployment
 
 The beta does not yet support a DC/OS deployment. You can use the ArangoDB Starter to 
-start a cluster omn bare metal.
+start a cluster on bare metal.
 
 ### Read-Only Users
 
@@ -96,16 +96,16 @@ The following known issues will be resolved in future releases:
   failed startup.
 
 ### Web UI
- * Edition label beyond ArangoDB Logo looks blurry in Safari on Mac OS X.
+ * Edition label (Community or Enterprise) next to the ArangoDB logo looks blurry in Safari on Mac OS X.
 
  * AQL Editor: Selecting "all results" as limit option will return zero results, which is wrong.
 
 ### Mac OS X
- * Storage engine is not changeable on a existing database. Currently only initial databases are supported.
+ * Storage engine is not changeable on an existing database. Currently only the initial selection of the storage engine is supported.
    In order to use another storage engine, you have to delete your ArangoDB application (Mac Application Folder)
    and `/Users/<your_user_name>/Library/ArangoDB` folder.
 
 ### OpenSSL 1.1
 
- * ArangoDB has been tested with 1.0 only and won't build against 1.1. See [here](../../cookbook/Compiling/OpenSSL.html)
-   how to compile on systems that ship 1.1 by default.
+ * ArangoDB has been tested with OpenSSL 1.0 only and won't build against 1.1 when compiling on your own. See [here](../../cookbook/Compiling/OpenSSL.html)
+   for how to compile on systems that ship OpenSSL 1.1 by default.
