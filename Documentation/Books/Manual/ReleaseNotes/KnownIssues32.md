@@ -88,3 +88,8 @@ The following known issues will be resolved in future releases:
   to the new location and run an upgrade on the database. Please consult the
   [Documentation](https://docs.arangodb.com/devel/Manual/GettingStarted/Installing/Windows.html)
   for detailed instructions.
+  
+### Web UI
+ * Edition label beyond ArangoDB Logo looks blurry in Safari on Mac OS X.
+
+ * AQL Editor: Selecting "all results" as limit option will return zero results, which is wrong.
