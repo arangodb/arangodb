@@ -83,7 +83,7 @@ RocksDBEdgeIndexIterator::RocksDBEdgeIndexIterator(
   auto* rocksMethods = rocksutils::toRocksMethods(trx);
   rocksdb::ReadOptions options = rocksMethods->readOptions(); // intentional copy of the options
   options.fill_cache = EdgeIndexFillBlockCache;
-  _iterator = std::move(rocksMethods->NewIterator(options, index->columnFamily()));
+  _iterator = rocksMethods->NewIterator(options, index->columnFamily());
 }
 
 RocksDBEdgeIndexIterator::~RocksDBEdgeIndexIterator() {
