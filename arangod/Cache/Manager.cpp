@@ -368,9 +368,11 @@ std::pair<bool, Manager::time_point> Manager::requestGrow(
           nextRequest = std::chrono::steady_clock::now();
           resizeCache(TaskEnvironment::none, cache,
                       metadata->newLimit());  // unlocks metadata
-        } else {
-          metadata->unlock();
         }
+      }
+
+      if (!allowed) {
+        metadata->unlock();
       }
     }
     _state.unlock();
@@ -619,10 +621,6 @@ void Manager::resizeCache(Manager::TaskEnvironment environment,
 
   if (metadata->usage <= newLimit) {
     uint64_t oldLimit = metadata->hardUsageLimit;
-    /*std::cout << "(" << metadata->softUsageLimit << ", "
-              << metadata->hardUsageLimit << ") -> " << newLimit << " ("
-              << metadata->deservedSize << ", " << metadata->maxSize << ")"
-              << std::endl;*/
     bool success = metadata->adjustLimits(newLimit, newLimit);
     TRI_ASSERT(success);
     metadata->unlock();
@@ -634,10 +632,6 @@ void Manager::resizeCache(Manager::TaskEnvironment environment,
     return;
   }
 
-  /*std::cout << "(" << metadata->softUsageLimit << ", "
-            << metadata->hardUsageLimit << ") -> " << newLimit << " ("
-            << metadata->deservedSize << ", " << metadata->maxSize << ")"
-            << std::endl;*/
   bool success = metadata->adjustLimits(newLimit, metadata->hardUsageLimit);
   TRI_ASSERT(success);
   TRI_ASSERT(!metadata->isSet(State::Flag::resizing));

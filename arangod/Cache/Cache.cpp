@@ -168,8 +168,8 @@ bool Cache::isResizing() {
     _metadata.lock();
     resizing = _metadata.isSet(State::Flag::resizing);
     _metadata.unlock();
-    _state.unlock();
   }
+  _state.unlock();
 
   return resizing;
 }
@@ -181,8 +181,8 @@ bool Cache::isMigrating() {
     _metadata.lock();
     migrating = _metadata.isSet(State::Flag::migrating);
     _metadata.unlock();
-    _state.unlock();
   }
+  _state.unlock();
 
   return migrating;
 }
