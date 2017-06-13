@@ -59,6 +59,8 @@ using namespace arangodb::options;
 
 V8DealerFeature* V8DealerFeature::DEALER = nullptr;
 
+static thread_local bool alreadyLockedInThread = false;
+
 namespace {
 class V8GcThread : public Thread {
  public:
@@ -300,20 +302,31 @@ void V8DealerFeature::unprepare() {
 }
 
 bool V8DealerFeature::addGlobalContextMethod(std::string const& method) {
-  bool result = true;
-
-  CONDITION_LOCKER(guard, _contextCondition);
-  for (auto& context : _contexts) {
-    try {
-      if (!context->addGlobalContextMethod(method)) {
+  auto cb = [this, &method]() -> bool {
+    bool result = true;
+    for (auto& context : _contexts) {
+      try {
+        if (!context->addGlobalContextMethod(method)) {
+          result = false;
+        }
+      } catch (...) {
         result = false;
       }
-    } catch (...) {
-      result = false;
     }
-  }
+    return result;
+  };
 
-  return result;
+  if (alreadyLockedInThread) {
+    // the condition lock has already been acquired in this thread
+    // we cannot detect this easily here without a thread-local variable
+    // as we may be called from a JavaScript callback here
+    return cb();
+  } else {
+    // the condition lock has not been acquired in this thread, so
+    // we are responsible for locking properly!
+    CONDITION_LOCKER(guard, _contextCondition);
+    return cb();
+  }
 }
 
 void V8DealerFeature::collectGarbage() {
@@ -480,14 +493,22 @@ void V8DealerFeature::collectGarbage() {
 void V8DealerFeature::loadJavaScriptFileInAllContexts(TRI_vocbase_t* vocbase,
     std::string const& file,
     VPackBuilder* builder) {
-  CONDITION_LOCKER(guard, _contextCondition);
   
   if (builder != nullptr) {
     builder->openArray();
   }
-  for (auto& context : _contexts) {
-    loadJavaScriptFileInContext(vocbase, file, context, builder);
+  
+  {
+    alreadyLockedInThread = true;
+    TRI_DEFER(alreadyLockedInThread = false);
+
+    CONDITION_LOCKER(guard, _contextCondition);
+  
+    for (auto& context : _contexts) {
+      loadJavaScriptFileInContext(vocbase, file, context, builder);
+    }
   }
+
   if (builder != nullptr) {
     builder->close();
   }
@@ -496,6 +517,10 @@ void V8DealerFeature::loadJavaScriptFileInAllContexts(TRI_vocbase_t* vocbase,
 void V8DealerFeature::loadJavaScriptFileInDefaultContext(TRI_vocbase_t* vocbase,
     std::string const& file, VPackBuilder* builder) {
   // find context with id 0
+    
+  alreadyLockedInThread = true;
+  TRI_DEFER(alreadyLockedInThread = false);
+
   CONDITION_LOCKER(guard, _contextCondition);
   
   for (auto const& context : _contexts) {
@@ -699,6 +724,7 @@ V8Context* V8DealerFeature::enterContext(TRI_vocbase_t* vocbase,
           delete context;
         }
 
+        guard.broadcast();
         continue;
       }
 
@@ -736,7 +762,7 @@ V8Context* V8DealerFeature::enterContext(TRI_vocbase_t* vocbase,
     // should not fail because we reserved enough space beforehand
     _busyContexts.emplace(context);
   }
-
+  
   TRI_ASSERT(context != nullptr);
 
   enterContextInternal(vocbase, context, allowUseDatabase);
