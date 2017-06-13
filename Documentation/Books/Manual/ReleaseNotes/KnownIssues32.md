@@ -98,4 +98,8 @@ The following known issues will be resolved in future releases:
  * Storage engine is not changeable on a existing database. Currently only initial databases are supported.
    In order to use another storage engine, you have to delete your ArangoDB application (Mac Application Folder)
    and `/Users/<your_user_name>/Library/ArangoDB` folder.
-  
+
+### OpenSSL 1.1
+
+ * ArangoDB has been tested with 1.0 only and won't build against 1.1. See [here](https://github.com/arangodb/Cookbook/blob/master/recipes/Compiling/OpenSSL.md)
+   how to compile on systems that ship 1.1 by default  
