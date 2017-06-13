@@ -88,7 +88,13 @@ The following known issues will be resolved in future releases:
   to the new location and run an upgrade on the database. Please consult the
   [Documentation](https://docs.arangodb.com/devel/Manual/GettingStarted/Installing/Windows.html)
   for detailed instructions.
-  
+
+### System Integration
+* On some Linux systems systemd and system v might report that the arangodb
+  service is in good condition when it could not be started. In this case the
+  user needs to check `/var/log/arangodb3` for further information about the
+  failed startup.
+
 ### Web UI
  * Edition label beyond ArangoDB Logo looks blurry in Safari on Mac OS X.
 
