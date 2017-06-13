@@ -42,8 +42,6 @@
 #include "VocBase/AuthInfo.h"
 #include "VocBase/vocbase.h"
 
-#include <iostream>
-
 using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
@@ -154,6 +152,15 @@ rest::ResponseCode VocbaseContext::authenticate() {
 
   // check that we are allowed to see the database
   if (!forceOpen) {
+    // check for GET /_db/_system/_api/user/USERNAME/database
+    std::string pathWithUser = std::string("/_api/user/") + username + std::string("/database");
+
+    if (_request->requestType() == RequestType::GET && StringUtils::isPrefix(path, pathWithUser)) {
+      _request->setExecContext(nullptr);
+      return rest::ResponseCode::OK;
+    }
+
+
     if (!StringUtils::isPrefix(path, "/_api/user/")) {
       std::string const& dbname = _request->databaseName();
       if (!username.empty() || !dbname.empty()) {
@@ -161,7 +168,6 @@ rest::ResponseCode VocbaseContext::authenticate() {
             _authentication->canUseDatabase(username, dbname);
 
         if (level == AuthLevel::NONE) {
-          std::cout << "events::NotAuthorized AuthLevel::NONE\n";
           events::NotAuthorized(_request);
           result = rest::ResponseCode::UNAUTHORIZED;
         }

@@ -207,8 +207,6 @@ void GeneralRequest::setRequestContext(RequestContext* requestContext,
 }
 
 void GeneralRequest::setExecContext(ExecContext* execContext) {
-  TRI_ASSERT(execContext != nullptr);
-
   _execContext = execContext;
 }
 
