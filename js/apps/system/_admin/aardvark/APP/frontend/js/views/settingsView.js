@@ -247,7 +247,7 @@
             );
             buttons.push(
               window.modalView.createNotificationButton(
-                'Warmup',
+                'Load Indexes in Memory',
                 this.warmupCollection.bind(this)
               )
             );

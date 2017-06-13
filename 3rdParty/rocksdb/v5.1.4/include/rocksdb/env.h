@@ -1023,6 +1023,10 @@ class EnvWrapper : public Env {
     return target_->GetThreadID();
   }
 
+  std::string GenerateUniqueId() override {
+    return target_->GenerateUniqueId();
+  }
+
  private:
   Env* target_;
 };

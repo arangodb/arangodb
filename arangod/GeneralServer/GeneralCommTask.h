@@ -99,9 +99,9 @@ class GeneralCommTask : public SocketTask {
 
   virtual void addResponse(GeneralResponse*, RequestStatistics*) = 0;
 
-  virtual void handleSimpleError(rest::ResponseCode, uint64_t messageId) = 0;
+  virtual void handleSimpleError(rest::ResponseCode, GeneralRequest const&, uint64_t messageId) = 0;
 
-  virtual void handleSimpleError(rest::ResponseCode, int code,
+  virtual void handleSimpleError(rest::ResponseCode, GeneralRequest const&, int code,
                                  std::string const& errorMessage,
                                  uint64_t messageId) = 0;
 

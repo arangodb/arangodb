@@ -56,16 +56,19 @@ test_tools(){
 main(){
     #test for basic tools
     test_tools
-    
+
     TARGET=$1
     shift
     if test -z "$TARGET"; then
         ./scripts/build-deb.sh --buildDir build-docu --parallel 2
 
         # we expect this to be a symlink, so no -r ;-)
+        echo "#############################################"
+        echo "RELINKING BUILD DIRECTORY !!!!!!!!!!!!!!!!!!!"
+        echo "#############################################"
         rm -f build
         ln -s build-docu build
-        
+
         ./utils/generateExamples.sh
     fi
     ./utils/generateSwagger.sh

@@ -61,8 +61,6 @@ int EnumerateCollectionBlock::initialize() {
     auto logicalCollection = _collection->getCollection();
     auto cid = logicalCollection->planId();
     auto dbName = logicalCollection->dbName();
-    auto collectionInfoCurrent = ClusterInfo::instance()->getCollectionCurrent(
-        dbName, std::to_string(cid));
 
     double maxWait = _engine->getQuery()->queryOptions().satelliteSyncWait;
     bool inSync = false;
@@ -72,6 +70,8 @@ int EnumerateCollectionBlock::initialize() {
     double endTime = startTime + maxWait;
 
     while (!inSync) {
+      auto collectionInfoCurrent = ClusterInfo::instance()->getCollectionCurrent(
+        dbName, std::to_string(cid));
       auto followers = collectionInfoCurrent->servers(_collection->getName());
       inSync = std::find(followers.begin(), followers.end(),
                          ServerState::instance()->getId()) != followers.end();
@@ -90,7 +90,7 @@ int EnumerateCollectionBlock::initialize() {
     if (!inSync) {
       THROW_ARANGO_EXCEPTION_MESSAGE(
           TRI_ERROR_CLUSTER_AQL_COLLECTION_OUT_OF_SYNC,
-          "collection " + _collection->name);
+          "collection " + _collection->name + " did not come into sync in time (" + std::to_string(maxWait) +")");
     }
   }
 

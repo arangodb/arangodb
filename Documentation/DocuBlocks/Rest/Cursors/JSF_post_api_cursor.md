@@ -92,6 +92,18 @@ to bring the satellite collections involved in the query into sync.
 The default value is *60.0* (seconds). When the max time has been reached the query
 will be stopped.
 
+@RESTSTRUCT{maxTransactionSize,JSF_post_api_cursor_opts,integer,optional,int64}
+Transaction size limit in bytes. Honored by the RocksDB storage engine only.
+
+@RESTSTRUCT{intermediateCommitSize,JSF_post_api_cursor_opts,integer,optional,int64}
+Maximum total size of operations after which an intermediate commit is performed 
+automatically. Honored by the RocksDB storage engine only.
+
+@RESTSTRUCT{intermediateCommitCount,JSF_post_api_cursor_opts,integer,optional,int64}
+Maximum number of operations after which an intermediate commit is performed 
+automatically. Honored by the RocksDB storage engine only.
+
+
 @RESTDESCRIPTION
 The query details include the query string plus optional query options and
 bind parameters. These values need to be passed in a JSON representation in

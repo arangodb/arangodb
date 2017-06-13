@@ -160,9 +160,9 @@
       $.ajax({
         cache: false,
         type: 'PUT',
-        url: arangoHelper.databaseUrl('/_api/collection/' + this.get('id') + '/warmup'),
+        url: arangoHelper.databaseUrl('/_api/collection/' + this.get('id') + '/loadIndexesIntoMemory'),
         success: function () {
-          arangoHelper.arangoNotification('Warmup started.');
+          arangoHelper.arangoNotification('Loading indexes into Memory.');
         },
         error: function () {
           arangoHelper.arangoError('Collection error.');
