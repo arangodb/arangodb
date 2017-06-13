@@ -29,6 +29,7 @@
 #endif
 
 #include "Basics/directories.h"
+#include "Basics/Exceptions.h"
 #include "Basics/FileUtils.h"
 #include "Basics/Mutex.h"
 #include "Basics/MutexLocker.h"
@@ -2204,22 +2205,22 @@ std::string TRI_GetTempPath() {
                               NULL);                  // no template
 
   if (tempFileHandle == INVALID_HANDLE_VALUE) {
-    LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << "Can not create a temporary file";
-    FATAL_ERROR_EXIT();
+    LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "Cannot create temporary file '" << (LPTSTR) tempFileName;
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL, "cannot create temporary file"); 
   }
 
   ok = CloseHandle(tempFileHandle);
 
   if (!ok) {
-    LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << "Can not close the handle of a temporary file";
-    FATAL_ERROR_EXIT();
+    LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "Cannot close handle of temporary file";
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL, "cannot close handle of temporary file"); 
   }
 
   ok = DeleteFile(tempFileName);
 
   if (!ok) {
-    LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << "Can not destroy a temporary file";
-    FATAL_ERROR_EXIT();
+    LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "Cannot delete temporary file";
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL, "cannot delete temporary file"); 
   }
 
   // ...........................................................................
@@ -2234,14 +2235,13 @@ std::string TRI_GetTempPath() {
         TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, pathSize + 1, false));
 
     if (temp == nullptr) {
-      LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << "Out of memory";
-      FATAL_ERROR_EXIT();
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
     }
 
     for (j = 0; j < pathSize; ++j) {
       if (tempPathName[j] > 127) {
-        LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << "Invalid characters in temporary path name";
-        FATAL_ERROR_EXIT();
+        TRI_Free(TRI_UNKNOWN_MEM_ZONE, temp);
+        THROW_ARANGO_EXCEPTION(WARN, arangodb::Logger::FIXME) << "Invalid characters in temporary path name";
       }
       temp[j] = (char)(tempPathName[j]);
     }
@@ -2255,6 +2255,10 @@ std::string TRI_GetTempPath() {
 
     result = TRI_DuplicateString(temp);
     TRI_Free(TRI_UNKNOWN_MEM_ZONE, temp);
+  }
+
+  if (result == nullptr) {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
   }
 
   std::string r = result;
