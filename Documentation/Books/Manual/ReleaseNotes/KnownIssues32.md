@@ -107,5 +107,5 @@ The following known issues will be resolved in future releases:
 
 ### OpenSSL 1.1
 
- * ArangoDB has been tested with 1.0 only and won't build against 1.1. See [here](../../Cookbook/Compiling/OpenSSL.html)
+ * ArangoDB has been tested with 1.0 only and won't build against 1.1. See [here](../../cookbook/Compiling/OpenSSL.html)
    how to compile on systems that ship 1.1 by default.
