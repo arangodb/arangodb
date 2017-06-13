@@ -172,7 +172,7 @@ static AuthEntry CreateAuthEntry(VPackSlice const& slice, AuthSource source) {
   }
 
   for (auto const& ctx : authContexts) {
-    LOG_TOPIC(INFO, arangodb::Logger::FIXME) << userSlice.copyString() << " Database " << ctx.first;
+    LOG_TOPIC(DEBUG, arangodb::Logger::AUTHENTICATION) << userSlice.copyString() << " Database " << ctx.first;
     ctx.second->systemAuthLevel(systemDatabaseLevel);
     ctx.second->dump();
   }

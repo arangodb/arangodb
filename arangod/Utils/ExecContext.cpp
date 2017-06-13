@@ -45,26 +45,26 @@ AuthLevel AuthContext::collectionAuthLevel(std::string const& collectionName) {
 }
 
 void AuthContext::dump() {
-  LOG_TOPIC(INFO, arangodb::Logger::FIXME) << "Dump AuthContext rights";
+  LOG_TOPIC(DEBUG, arangodb::Logger::AUTHENTICATION) << "Dump AuthContext rights";
 
   if (_databaseAuthLevel == AuthLevel::RO) {
-    LOG_TOPIC(INFO, arangodb::Logger::FIXME) << "database level RO";
+    LOG_TOPIC(DEBUG, arangodb::Logger::AUTHENTICATION) << "database level RO";
   }
   if (_databaseAuthLevel == AuthLevel::RW) {
-    LOG_TOPIC(INFO, arangodb::Logger::FIXME) << "database level RW";
+    LOG_TOPIC(DEBUG, arangodb::Logger::AUTHENTICATION) << "database level RW";
   }
 
   if (_systemAuthLevel == AuthLevel::RO) {
-    LOG_TOPIC(INFO, arangodb::Logger::FIXME) << "_system level RO";
+    LOG_TOPIC(DEBUG, arangodb::Logger::AUTHENTICATION) << "_system level RO";
   }
   if (_systemAuthLevel == AuthLevel::RW) {
-    LOG_TOPIC(INFO, arangodb::Logger::FIXME) << "_system level RW";
+    LOG_TOPIC(DEBUG, arangodb::Logger::AUTHENTICATION) << "_system level RW";
   }
 
   for (auto const& it : _collectionAccess) {
     if (it.second == AuthLevel::RO)
-      LOG_TOPIC(INFO, arangodb::Logger::FIXME) << it.first << " RO";
+      LOG_TOPIC(DEBUG, arangodb::Logger::AUTHENTICATION) << it.first << " RO";
     if (it.second == AuthLevel::RW)
-      LOG_TOPIC(INFO, arangodb::Logger::FIXME) << it.first << " RW";
+      LOG_TOPIC(DEBUG, arangodb::Logger::AUTHENTICATION) << it.first << " RW";
   }
 }
