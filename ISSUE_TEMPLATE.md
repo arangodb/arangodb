@@ -3,7 +3,7 @@ I'm using the latest ArangoDB of the respective release series:
 - [ ] 2.8
 - [ ] 3.0
 - [ ] 3.1
-- [ ] 3.2 pre-releases: ___
+- [ ] 3.2 Beta1
 - [ ] self-compiled devel branch
 
 On this operating system:
