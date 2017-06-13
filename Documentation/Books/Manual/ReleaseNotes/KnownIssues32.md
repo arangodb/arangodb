@@ -32,7 +32,7 @@ are present in the MMFiles engine:
   context of the MMFiles engine. These are:
 
   - the `rotate` method on collections
-  - the `flush` method for WAL files 
+  - the `flush` method for WAL files
 
 * transactions are limited in size. Transactions that get too big (in terms of
   number of operations involved or the total size of data modified by the transaction)
@@ -42,11 +42,11 @@ are present in the MMFiles engine:
 
   The threshold values for transaction sizes can be configured globally using the
   startup options
-  
+
   * `--rocksdb.intermediate-commit-size`: if the size of all operations in a transaction 
     reaches this threshold, the transaction is committed automatically and a new transaction
     is started. The value is specified in bytes.
-  
+
   * `--rocksdb.intermediate-commit-count`: if the number of operations in a transaction 
     reaches this value, the transaction is committed automatically and a new transaction
     is started.
@@ -57,7 +57,7 @@ are present in the MMFiles engine:
     ("resource limit exceeded").
 
   It is also possible to override these thresholds per transaction.
-       
+
 
 The following known issues will be resolved in future releases:
 
@@ -65,7 +65,7 @@ The following known issues will be resolved in future releases:
 
 * collections for which a geo index is present will use collection-level write locks 
   even with the RocksDB engine. Reads from these collections can still be done in parallel 
-  but no writes 
+  but no writes
 
 * modifying documents in a collection with a geo index will cause multiple additional 
   writes to RocksDB for maintaining the index structures
@@ -86,7 +86,7 @@ The following known issues will be resolved in future releases:
 
 * Upgrading from 3.1 to 3.2 on Windows requires the user to manually copy the database directory
   to the new location and run an upgrade on the database. Please consult the
-  [Documentation](https://docs.arangodb.com/devel/Manual/GettingStarted/Installing/Windows.html)
+  [Documentation](../GettingStarted/Installing/Windows.md)
   for detailed instructions.
 
 ### System Integration
@@ -107,5 +107,5 @@ The following known issues will be resolved in future releases:
 
 ### OpenSSL 1.1
 
- * ArangoDB has been tested with 1.0 only and won't build against 1.1. See [here](https://github.com/arangodb/Cookbook/blob/master/recipes/Compiling/OpenSSL.md)
-   how to compile on systems that ship 1.1 by default  
+ * ArangoDB has been tested with 1.0 only and won't build against 1.1. See [here](../../Cookbook/Compiling/OpenSSL.html)
+   how to compile on systems that ship 1.1 by default.
