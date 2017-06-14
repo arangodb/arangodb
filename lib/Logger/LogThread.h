@@ -50,6 +50,8 @@ class LogThread final : public Thread {
   bool isSilent() override { return true; }
   void run() override;
 
+  bool hasMessages();
+
  private:
   static arangodb::basics::ConditionVariable* CONDITION;
   static boost::lockfree::queue<LogMessage*>* MESSAGES;
