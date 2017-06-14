@@ -271,13 +271,15 @@ static Result EnsureIndexLocal(arangodb::LogicalCollection* collection,
   return res;
 }
 
-Result Indexes::ensureIndexCoordinator(std::string const& dbname,
-                                       std::string const& cid,
+Result Indexes::ensureIndexCoordinator(arangodb::LogicalCollection* collection,
                                        VPackSlice const& indexDef, bool create,
                                        VPackBuilder& resultBuilder) {
+  TRI_ASSERT(collection != nullptr);
+  std::string const dbName = collection->dbName();
+  std::string const cid = collection->cid_as_string();
   std::string errorMsg;
   int res = ClusterInfo::instance()->ensureIndexCoordinator(
-      dbname, cid, indexDef, create, &arangodb::Index::Compare, resultBuilder,
+      dbName, cid, indexDef, create, &arangodb::Index::Compare, resultBuilder,
       errorMsg, 360.0);
   return Result(res, errorMsg);
 }
@@ -296,7 +298,6 @@ Result Indexes::ensureIndex(arangodb::LogicalCollection* collection,
   }
 
   std::string const dbname(collection->dbName());
-  std::string const cid = collection->cid_as_string();
   std::string const collname(collection->name());
   VPackSlice indexDef = defBuilder.slice();
   if (ServerState::instance()->isCoordinator()) {
@@ -479,9 +480,9 @@ arangodb::Result Indexes::drop(arangodb::LogicalCollection const* collection,
     std::string const databaseName(collection->dbName());
     std::string const cid = collection->cid_as_string();
     std::string errorMsg;
-    int res = ClusterInfo::instance()->dropIndexCoordinator(databaseName, cid,
+    int r = ClusterInfo::instance()->dropIndexCoordinator(databaseName, cid,
                                                             iid, errorMsg, 0.0);
-    return Result(res, errorMsg);
+    return Result(r, errorMsg);
 #endif
   } else {
     READ_LOCKER(readLocker, collection->vocbase()->_inventoryLock);

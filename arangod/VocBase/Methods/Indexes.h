@@ -61,7 +61,7 @@ struct Indexes {
 
  private:
   static arangodb::Result ensureIndexCoordinator(
-      std::string const& dbname, std::string const& cid,
+      arangodb::LogicalCollection* collection,
       arangodb::velocypack::Slice const& indexDef, bool create,
       arangodb::velocypack::Builder& resultBuilder);
 
