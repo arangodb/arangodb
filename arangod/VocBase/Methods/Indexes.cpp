@@ -271,7 +271,7 @@ static Result EnsureIndexLocal(arangodb::LogicalCollection* collection,
   return res;
 }
 
-Result Indexes::ensureIndexCoordinator(arangodb::LogicalCollection* collection,
+Result Indexes::ensureIndexCoordinator(arangodb::LogicalCollection const* collection,
                                        VPackSlice const& indexDef, bool create,
                                        VPackBuilder& resultBuilder) {
   TRI_ASSERT(collection != nullptr);
