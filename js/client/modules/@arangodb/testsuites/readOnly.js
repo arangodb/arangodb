@@ -150,16 +150,12 @@ const requests = [
     return bodies;
   }
 
-
-
   let res = pu.run.arangoshCmd(options, adbInstance, {}, [
           '--javascript.execute-string',
-          `
-          const users = require("@arangodb/users");
+          `const users = require('@arangodb/users');
           users.save('test', '', true);
           users.grantDatabase('test', '_system', 'ro');
-          users.reload();
-          `
+          users.reload();`
         ]);
 
   let bodies = run(requests.splice(0,4));

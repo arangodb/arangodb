@@ -48,7 +48,7 @@ function needSystemUser (req, res) {
     return true;
   }
 
-  const allowed = users.permission(user, '_system') === 'rw';
+  const allowed = users.permission(user, '_system').permissions.write;
 
   if (!allowed) {
     actions.resultError(req, res, actions.HTTP_FORBIDDEN,
