@@ -24,8 +24,7 @@ OPTS="--storageEngine $engine --skipNondeterministic true --skipTimeCritical tru
 
 rm -rf log-output
 
-echo "
-test_singleserver_community_mmfiles_linux
+echo "test_singleserver_community_mmfiles_linux
 scripts/unittest boost                     --skipCache false                                                                     2>&1
 scripts/unittest agency                                       --minPort `expr $PORT01 +   0` --maxPort `expr $PORT01 +   9` $OPTS 2>&1
 scripts/unittest arangobench                                  --minPort `expr $PORT01 +  10` --maxPort `expr $PORT01 +  19` $OPTS 2>&1
@@ -53,13 +52,22 @@ scripts/unittest shell_server_aql          --testBuckets 4/2  --minPort `expr $P
 scripts/unittest shell_server_aql          --testBuckets 4/3  --minPort `expr $PORT03 +  30` --maxPort `expr $PORT03 +  39` $OPTS 2>&1
 scripts/unittest ssl_server                                   --minPort `expr $PORT03 +  40` --maxPort `expr $PORT03 +  49` $OPTS 2>&1
 scripts/unittest upgrade                                      --minPort `expr $PORT03 +  50` --maxPort `expr $PORT03 +  59` $OPTS 2>&1
-" | parallel --header : --results log-output --no-notice --load 10 --jobs $concurrency
+" | parallel --header 1 --results log-output --files --no-notice --load 10 --jobs $concurrency | sed -e 's:^.*_unittest *::' | sed -e 's: *--minPort.*$::'
 
 result=$?
 
 echo "Result: $result"
 echo "Options: $OPTS"
+echo
 
-fgrep "Overall state: Fail" log-output/*/*/stdout | sed -e 's:.*_unittest *::' | sed -e 's: *--minPort.*Overall state::' | sed -e 's:  : :g'
+for file in log-output/*/*/stdout; do
+    base=`echo "$file" | sed -e 's:^\\(log-output/[^/]*\\)/.*$:\\1:'`
+    long=`echo "$file" | sed -e 's:/stdout$::'`
+    short=`echo "$long" | sed -e 's:^.*_unittest *::' | sed -e 's: *--minPort.*$::' | sed -e 's:\\\\::g' | sed -e 's: *2>&1$::g' | sed -e 's:  *: :g'`
+
+    mv -- "$long" "$base/$short"
+done
+
+fgrep "Overall state: Fail" log-output/*/*/stdout
 
 exit $result

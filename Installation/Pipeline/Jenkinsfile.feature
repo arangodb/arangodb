@@ -119,8 +119,15 @@ stage('build & test') {
                 sh 'rm -rf *'
                 unstash 'build-enterprise-linux'
                 echo "Running singleserver comunity mmfiles linux test"
-                sh './Installation/Pipeline/test_singleserver_community_mmfiles_linux.sh 8'
-                archiveArtifacts allowEmptyArchive: true, artifacts: 'log-output/**', defaultExcludes: false
+                script {
+                    try {
+                        sh './Installation/Pipeline/test_singleserver_community_mmfiles_linux.sh 8'
+                    }
+                    catch (exc) {
+                        archiveArtifacts allowEmptyArchive: true, artifacts: 'log-output/**', defaultExcludes: false
+                        throw exc
+                    }
+                }
             }
         },
 
