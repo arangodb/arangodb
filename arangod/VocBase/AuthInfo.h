@@ -39,19 +39,12 @@
 #include "Basics/Result.h"
 #include "GeneralServer/AuthenticationHandler.h"
 #include "Utils/ExecContext.h"
+#include "VocBase/AuthUserEntry.h"
 
 namespace arangodb {
 namespace velocypack {
 class Slice;
 }
-
-enum class AuthLevel {
-  NONE, RO, RW
-};
-
-enum class AuthSource {
-  COLLECTION, LDAP
-};
 
 class HexHashResult : public arangodb::Result {
   public:
@@ -64,71 +57,6 @@ class HexHashResult : public arangodb::Result {
 };
 
 class AuthContext;
-
-class AuthEntry {
- public:
-  AuthEntry() 
-      : _active(false), 
-        _mustChange(false), 
-        _created(TRI_microtime()), 
-        _source(AuthSource::COLLECTION) {}
-
-  AuthEntry(std::string&& username, std::string&& passwordMethod,
-            std::string&& passwordSalt, std::string&& passwordHash,
-            bool active, bool mustChange, AuthSource source,
-            std::unordered_map<std::string, std::shared_ptr<AuthContext>>&& authContexts)
-      : _username(std::move(username)),
-        _passwordMethod(std::move(passwordMethod)),
-        _passwordSalt(std::move(passwordSalt)),
-        _passwordHash(std::move(passwordHash)),
-        _active(active),
-        _mustChange(mustChange),
-        _created(TRI_microtime()),
-        _source(source),
-        _authContexts(std::move(authContexts)) {}
-  
-  AuthEntry(AuthEntry const& other) = delete;
-
-  AuthEntry(AuthEntry&& other) noexcept
-      : _username(std::move(other._username)),
-        _passwordMethod(std::move(other._passwordMethod)),
-        _passwordSalt(std::move(other._passwordSalt)),
-        _passwordHash(std::move(other._passwordHash)),
-        _active(other._active),
-        _mustChange(other._mustChange),
-        _created(other._created),
-        _source(other._source),
-        _authContexts(std::move(other._authContexts)) {}
-
- public:
-  std::string const& username() const { return _username; }
-  std::string const& passwordMethod() const { return _passwordMethod; }
-  std::string const& passwordSalt() const { return _passwordSalt; }
-  std::string const& passwordHash() const { return _passwordHash; }
-  bool isActive() const { return _active; }
-  bool mustChange() const { return _mustChange; }
-  double created() const { return _created; }
-  AuthSource source() const { return _source; }
-
-  bool checkPasswordHash(std::string const& hash) const {
-    return _passwordHash == hash;
-  }
-
-  AuthLevel canUseDatabase(std::string const& dbname) const;
-
-  std::shared_ptr<AuthContext> getAuthContext(std::string const& database) const;
-
- private:
-  std::string const _username;
-  std::string const _passwordMethod;
-  std::string const _passwordSalt;
-  std::string const _passwordHash;
-  bool const _active;
-  bool _mustChange;
-  double _created;
-  AuthSource _source;
-  std::unordered_map<std::string, std::shared_ptr<AuthContext>> _authContexts;
-};
 
 class AuthResult {
  public:
@@ -169,6 +97,8 @@ class AuthInfo {
   }
 
   void outdate() { _outdated = true; }
+  
+  void addUser();
 
   AuthResult checkPassword(std::string const& username,
                            std::string const& password);
@@ -216,7 +146,7 @@ class AuthInfo {
   Mutex _queryLock;
   std::atomic<bool> _outdated;
 
-  std::unordered_map<std::string, arangodb::AuthEntry> _authInfo;
+  std::unordered_map<std::string, AuthUserEntry> _authInfo;
   std::shared_ptr<AuthContext> _noneAuthContext;
   std::unordered_map<std::string, arangodb::AuthResult> _authBasicCache;
   arangodb::basics::LruCache<std::string, arangodb::AuthJwtResult> _authJwtCache;

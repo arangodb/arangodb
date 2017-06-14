@@ -32,7 +32,7 @@ AuthContext::AuthContext(AuthLevel authLevel, std::unordered_map<std::string, Au
     _systemAuthLevel(AuthLevel::NONE),
     _collectionAccess(std::move(collectionAccess)) {}
 
-AuthLevel AuthContext::collectionAuthLevel(std::string const& collectionName) {
+AuthLevel AuthContext::collectionAuthLevel(std::string const& collectionName) const {
   for(const auto& collection : std::vector<std::string>({collectionName, "*"})) {
     auto const& it = _collectionAccess.find(collection);
 

@@ -78,6 +78,10 @@ void TRI_InitV8Users(v8::Handle<v8::Context> context,
                        JS_GrantDatabase);
   TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING("revokeDatabase"),
                        JS_RevokeDatabase);
+   TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING("grantCollection"),
+   JS_GrantCollection);
+   TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING("revokeCollection"),
+   JS_RevokeCollection);
   TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING("updateConfigData"),
                        JS_UpdateConfigData);
   TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING("configData"),
