@@ -7,11 +7,12 @@ v3.1.23 (XXXX-XX-XX)
 * fix invalid locking in JWT authentication cache, which could have
   crashed the server
 
+* fix undefined behavior in traverser when traversals were used inside
+  a FOR loop
+
 
 v3.1.22 (2017-06-07)
 --------------------
-
-* fix UB in traverser
 
 * fixed issue #2505: Problem with export + report of a bug
 
