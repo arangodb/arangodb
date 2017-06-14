@@ -175,6 +175,15 @@ class AuthInfo {
 
   AuthResult checkAuthentication(AuthType authType,
                                 std::string const& secret);
+  
+  void grantDatabase(std::string const& username,
+                     std::string const& dbname,
+                     AuthLevel level);
+  
+  void grantCollection(std::string const& username,
+                       std::string const& dbname,
+                       std::string const& collection,
+                       AuthLevel level);
 
   AuthLevel canUseDatabase(std::string const& username,
                            std::string const& dbname);
@@ -189,7 +198,7 @@ class AuthInfo {
  private:
   void reload();
   void insertInitial();
-  bool populate(velocypack::Slice const& slice);
+  bool parseUsers(velocypack::Slice const& slice);
 
   AuthResult checkAuthenticationBasic(std::string const& secret);
   AuthResult checkAuthenticationJWT(std::string const& secret);
@@ -197,7 +206,6 @@ class AuthInfo {
   AuthJwtResult validateJwtBody(std::string const&);
   bool validateJwtHMAC256Signature(std::string const&, std::string const&);
   std::shared_ptr<VPackBuilder> parseJson(std::string const&, std::string const&);
-
 
   HexHashResult hexHashFromData(std::string const& hashMethod, char const* data, size_t len);
 

@@ -361,6 +361,7 @@ SET(ARANGOD_SOURCES
   V8Server/v8-query.cpp
   V8Server/v8-replication.cpp
   V8Server/v8-statistics.cpp
+  V8Server/v8-users.cpp
   V8Server/v8-user-structures.cpp
   V8Server/v8-util.cpp
   V8Server/v8-views.cpp

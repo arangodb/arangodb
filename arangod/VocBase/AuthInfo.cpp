@@ -260,14 +260,14 @@ void AuthInfo::insertInitial() {
     builder.close();  // The user object
     builder.close();  // The Array
 
-    populate(builder.slice());
+    parseUsers(builder.slice());
   } catch (...) {
     // No action
   }
 }
 
 // private, must be called with _authInfoLock in write mode
-bool AuthInfo::populate(VPackSlice const& slice) {
+bool AuthInfo::parseUsers(VPackSlice const& slice) {
   TRI_ASSERT(slice.isArray());
 
   _authInfo.clear();
@@ -358,7 +358,7 @@ void AuthInfo::reload() {
     if (usersSlice.length() == 0) {
       insertInitial();
     } else {
-      populate(usersSlice);
+      parseUsers(usersSlice);
     }
   }
 
@@ -459,6 +459,44 @@ AuthResult AuthInfo::checkPassword(std::string const& username,
         }
 
         MUTEX_LOCKER(locker, _queryLock);
+        
+        // ============ _users entry ============
+        VPackBuilder userBuilder;
+        userBuilder.openObject();
+        // username
+        userBuilder.add("user", VPackValue(username));
+        userBuilder.add("source", VPackValue("LDAP"));
+        userBuilder.add("configData", VPackSlice::emptyObjectSlice());
+        userBuilder.add("userData", VPackSlice::emptyObjectSlice());
+        
+        // auth data
+        userBuilder.add("authData", VPackValue(VPackValueType::Object));
+        userBuilder.add("active", VPackValue(true));
+        userBuilder.add("changePassword", VPackValue(false));
+        
+        // simple auth
+        userBuilder.add("simple", VPackValue(VPackValueType::Object));
+        userBuilder.add("method", VPackValue("sha256"));
+        
+        std::string salt = UniformCharacter(8, "0123456789abcdef").random();
+        userBuilder.add("salt", VPackValue(salt));
+        
+        std::string saltedPassword = salt + password;
+        HexHashResult hex = hexHashFromData("sha256", saltedPassword.data(), saltedPassword.size());
+        if (!hex.ok()) {
+          THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_FAILED, "Could not calculate hex-hash from data");
+        }
+        userBuilder.add("hash", VPackValue(hex.hexHash()));
+        userBuilder.close();  // simple
+        userBuilder.close();  // authData
+        
+        userBuilder.add("databases", VPackValue(VPackValueType::Object));
+        for(auto const& permission : authResult.permissions() ) {
+          userBuilder.add(permission.first, VPackValue(permission.second));
+        }
+        userBuilder.close();// databases
+        userBuilder.close();// object
+        //===================
 
         std::string const queryStr("UPSERT {user: @username} INSERT @user REPLACE @user IN _users");
         auto emptyBuilder = std::make_shared<VPackBuilder>();
@@ -466,45 +504,7 @@ AuthResult AuthInfo::checkPassword(std::string const& username,
         VPackBuilder binds;
         binds.openObject();
         binds.add("username", VPackValue(username));
-
-        binds.add("user", VPackValue(VPackValueType::Object));
-
-        binds.add("user", VPackValue(username));
-        binds.add("source", VPackValue("LDAP"));
-
-        binds.add("databases", VPackValue(VPackValueType::Object));
-        for(auto const& permission : authResult.permissions() ) {
-          binds.add(permission.first, VPackValue(permission.second));
-        }
-        binds.close();
-
-        binds.add("configData", VPackValue(VPackValueType::Object));
-        binds.close();
-
-        binds.add("userData", VPackValue(VPackValueType::Object));
-        binds.close();
-
-        binds.add("authData", VPackValue(VPackValueType::Object));
-        binds.add("active", VPackValue(true));
-        binds.add("changePassword", VPackValue(false));
-
-        binds.add("simple", VPackValue(VPackValueType::Object));
-        binds.add("method", VPackValue("sha256"));
-
-        std::string salt = UniformCharacter(8, "0123456789abcdef").random();
-        binds.add("salt", VPackValue(salt));
-
-        std::string saltedPassword = salt + password;
-        HexHashResult hex = hexHashFromData("sha256", saltedPassword.data(), saltedPassword.size());
-        if (!hex.ok()) {
-          THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_FAILED, "Could not calculate hex-hash from data");
-        }
-        binds.add("hash", VPackValue(hex.hexHash()));
-
-        binds.close();  // simple
-        binds.close(); // authData
-
-        binds.close(); // user
+        binds.add("user", userBuilder.slice());
         binds.close(); // obj
 
         arangodb::aql::Query query(false, vocbase, arangodb::aql::QueryString(queryStr),
@@ -523,36 +523,7 @@ AuthResult AuthInfo::checkPassword(std::string const& username,
           THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_FAILED, "query error");
         }
 
-        VPackBuilder builder;
-        builder.openObject();
-
-        // username
-        builder.add("user", VPackValue(username));
-        builder.add("source", VPackValue("LDAP"));
-        builder.add("authData", VPackValue(VPackValueType::Object));
-
-        // simple auth
-        builder.add("simple", VPackValue(VPackValueType::Object));
-        builder.add("method", VPackValue("sha256"));
-
-        builder.add("salt", VPackValue(salt));
-
-        builder.add("hash", VPackValue(hex.hexHash()));
-
-        builder.close();  // simple
-
-        builder.add("active", VPackValue(true));
-
-        builder.close();  // authData
-
-        builder.add("databases", VPackValue(VPackValueType::Object));
-        for(auto const& permission : authResult.permissions() ) {
-          builder.add(permission.first, VPackValue(permission.second));
-        }
-        builder.close();
-        builder.close();  // The Object
-
-        AuthEntry auth = CreateAuthEntry(builder.slice().resolveExternal(), AuthSource::LDAP);
+        AuthEntry auth = CreateAuthEntry(userBuilder.slice().resolveExternal(), AuthSource::LDAP);
         _authInfo.emplace(auth.username(), std::move(auth));
 
         it = _authInfo.find(username);
