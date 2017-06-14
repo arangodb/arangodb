@@ -21,11 +21,12 @@
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_VOC_BASE_AUTH_H
-#define ARANGOD_VOC_BASE_AUTH_H 1
+#ifndef ARANGOD_VOC_BASE_AUTH_USER_H
+#define ARANGOD_VOC_BASE_AUTH_USER_H 1
 
 #include <unordered_map>
 #include <velocypack/Builder.h>
+#include <velocypack/Slice.h>
 
 namespace arangodb {
 
@@ -61,9 +62,9 @@ class AuthUserEntry {
         _source(source),
         _authContexts(std::move(authContexts)) {}
   
-  AuthUserEntry(AuthEntry const& other) = delete;
+  AuthUserEntry(AuthUserEntry const& other) = delete;
 
-  AuthUserEntry(AuthEntry&& other) noexcept
+  AuthUserEntry(AuthUserEntry&& other) noexcept
       : _username(std::move(other._username)),
         _passwordMethod(std::move(other._passwordMethod)),
         _passwordSalt(std::move(other._passwordSalt)),
@@ -89,8 +90,10 @@ class AuthUserEntry {
   }
 
   AuthLevel canUseDatabase(std::string const& dbname) const;
-  
   std::shared_ptr<AuthContext> getAuthContext(std::string const& database) const;
+  
+  static AuthUserEntry fromSlice(velocypack::Slice const&,
+                                 AuthSource source);
   //velocypack::Builder toVPackBuilder() const;
 
  private:

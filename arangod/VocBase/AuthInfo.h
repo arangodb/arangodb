@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2017 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -21,16 +21,10 @@
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_VOC_BASE_AUTH_H
-#define ARANGOD_VOC_BASE_AUTH_H 1
+#ifndef ARANGOD_VOC_BASE_AUTH_INFO_H
+#define ARANGOD_VOC_BASE_AUTH_INFO_H 1
 
 #include "Basics/Common.h"
-
-#include <chrono>
-
-#include <velocypack/Builder.h>
-#include <velocypack/velocypack-aliases.h>
-
 #include "ApplicationFeatures/ApplicationFeature.h"
 #include "Aql/QueryRegistry.h"
 #include "Basics/Mutex.h"
@@ -41,10 +35,11 @@
 #include "Utils/ExecContext.h"
 #include "VocBase/AuthUserEntry.h"
 
+#include <chrono>
+#include <velocypack/Slice.h>
+#include <velocypack/Builder.h>
+
 namespace arangodb {
-namespace velocypack {
-class Slice;
-}
 
 class HexHashResult : public arangodb::Result {
   public:

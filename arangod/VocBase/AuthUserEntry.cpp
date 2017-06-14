@@ -46,8 +46,7 @@ using namespace arangodb::basics;
 using namespace arangodb::velocypack;
 using namespace arangodb::rest;
 
-
-static AuthUserEntry CreateAuthUserEntry(VPackSlice const& slice, AuthSource source) {
+AuthUserEntry AuthUserEntry::fromSlice(VPackSlice const& slice, AuthSource source) {
   if (slice.isNone() || !slice.isObject()) {
     return AuthUserEntry();
   }
