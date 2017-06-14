@@ -554,6 +554,7 @@ bool State::loadCollections(TRI_vocbase_t* vocbase,
   _options.silent = true;
 
   if (loadPersisted()) {
+    // Now append one more zero log entry to ensure that the log is not empty.
     MUTEX_LOCKER(logLock, _logLock);
     if (_log.empty()) {
       std::shared_ptr<Buffer<uint8_t>> buf =
@@ -668,9 +669,20 @@ bool State::loadCompacted() {
     for (auto const& i : VPackArrayIterator(result)) {
       auto ii = i.resolveExternals();
       buffer_t tmp = std::make_shared<arangodb::velocypack::Buffer<uint8_t>>();
+      // REVIEW: I suggest to not use operator= in the agent here because
+      // it obfuscates what is happening. Rather let's use _agent->setStores
+      // or something like this. Do we want to do this here anyway? If we
+      // will be a follower, we might not need the stores at all...
       (*_agent) = ii;
       try {
         _cur = basics::StringUtils::uint64(ii.get("_key").copyString());
+        // REVIEW: _cur should not be set here, since it is something that
+        // belongs to _log and not to the stores. Rather, _cur should be
+        // set in loadRemaining according to the first log entry actually
+        // stored in _log. This is more robust and it is easier to check
+        // the invariant that _cur contains the index of the first entry in
+        // _log. Furthermore, if this throws, then _cur remains silently
+        // unset.
       } catch (std::exception const& e) {
         LOG_TOPIC(ERR, Logger::AGENCY) << e.what() << " " << __FILE__
                                        << __LINE__;
@@ -680,6 +692,9 @@ bool State::loadCompacted() {
 
   // We can be sure that every compacted snapshot only contains index entries
   // that have been written and agreed upon by an absolute majority of agents.
+  // REVIEW: This does not really make sense here. The _log will usually be
+  // empty here and we have intentionally set _commitIndex and _lastApplied
+  // just now. I suggest to delete this here.
   if (!_log.empty()) {
     _agent->lastCommitted(lastLog().index);
   }
@@ -813,7 +828,13 @@ bool State::loadRemaining() {
             ii.get(StaticStrings::KeyString).copyString() +
             " to integer."
             << e.what();
+          // REVIEW: How do we recover properly if an exception is caught here?
+          // Is this also a fatal error? If we simply ignore then we run the
+          // risk of violating the invariant that there are no holes in the
+          // log. At least we should return `false`, I guess.
         }
+        // REVIEW: should set _cur here to enforce the invariant that _cur is
+        // the index of the first entry in _log.
       }
     }
     TRI_ASSERT(!_log.empty());

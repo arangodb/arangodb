@@ -182,6 +182,8 @@ bool Agent::leading() const {
 
 /// Start constituent personality
 void Agent::startConstituent() {
+  // REVIEW: The comment of activateAgency says that it is only used in
+  // single agent mode, which is a contradiction to it being called here!
   activateAgency();
 }
 
@@ -696,6 +698,7 @@ query_t Agent::activate(query_t const& everything) {
 }
 
 /// @brief Activate agency (Inception thread for multi-host, main thread else)
+/// REVIEW: This comment does not longer seem to be accurate.
 bool Agent::activateAgency() {
   if (_config.activeEmpty()) {
     size_t count = 0;
@@ -735,19 +738,28 @@ void Agent::load() {
 
   LOG_TOPIC(DEBUG, Logger::AGENCY) << "Loading persistent state.";
   if (!_state.loadCollections(vocbase, queryRegistry, _config.waitForSync())) {
-    LOG_TOPIC(DEBUG, Logger::AGENCY)
+    // REVIEW: Should this not be a fatal error condition? Note that not
+    // finding any persisted state will still return `true` with an empty
+    // log, which is fine.
+    LOG_FATAL(DEBUG, Logger::AGENCY)
         << "Failed to load persistent state on startup.";
+    FATAL_ERROR_EXIT();
   }
 
   // Note that the agent thread is terminated immediately when there is only
   // one agent, since no AppendEntriesRPC have to be issued. Therefore,
   // this thread is almost certainly terminated (and thus isStopping() returns
   // true), when we get here.
+  // REVIEW: This comment does not make sense. Rather it should read like:
+  // "If we are more than one agent and the agent thread is already stopping,
+  // then this means that the server has itself been told to stop, so we 
+  // might as well not complete the initialization."
   if (size() > 1 && this->isStopping()) {
     return;
   }
 
   {
+    // REVIEW: Why is this needed here?
     CONDITION_LOCKER(guard, _appendCV);
     guard.broadcast();
   }
@@ -769,8 +781,14 @@ void Agent::load() {
   if (_inception != nullptr) { // resilient agency only
     _inception->start();
   } else {
+    // REVIEW: The following is unnecessary, since after loadCollections
+    // _spearhead and _readDB are anyway equal.
     _spearhead = _readDB;
     activateAgency();
+    // REVIEW: How do we become a leader in single agent mode? Currently,
+    // activateAgency does not seem to be responsible for this. Maybe we
+    // organise an actual election in which only we ourselves vote for
+    // ourselves?
   }
 }
 
@@ -1500,6 +1518,11 @@ Agent::lastCommitted() const {
 
 /// Last commit index
 void Agent::lastCommitted(arangodb::consensus::index_t lastCommitIndex) {
+  // REVIEW: Should we hold both locks here at the same time, and if so, in
+  // which order? Like this here, we do not set the two member variables
+  // atomically! The previous method holds both locks and acquires _ioLock
+  // first. So we would have to do it in this order here as well. Performance
+  // is probably not an issue here.
   MUTEX_LOCKER(ioLocker, _ioLock);
   _commitIndex = lastCommitIndex;
   MUTEX_LOCKER(liLocker, _liLock);
@@ -1526,6 +1549,8 @@ arangodb::consensus::index_t Agent::readDB(Node& node) const {
 Store const& Agent::transient() const { return _transient; }
 
 /// Rebuild from persisted state
+/// REVIEW: please rename to setStores or something similar. Makes for easier
+/// understanding and greppability.
 Agent& Agent::operator=(VPackSlice const& compaction) {
   // Catch up with compacted state
   MUTEX_LOCKER(ioLocker, _ioLock);
@@ -1536,6 +1561,9 @@ Agent& Agent::operator=(VPackSlice const& compaction) {
   try {
     _commitIndex = arangodb::basics::StringUtils::uint64(
       compaction.get("_key").copyString());
+    // REVIEW: if this throws _commitIndex is silently not set at all and
+    // the agent's state is corrupt. We should probably make this a
+    // fatal error condition, since we cannot recover.
     MUTEX_LOCKER(liLocker, _liLock);
     _lastApplied = _commitIndex;
   } catch (std::exception const& e) {
@@ -1543,6 +1571,9 @@ Agent& Agent::operator=(VPackSlice const& compaction) {
   }
 
   // Schedule next compaction
+  // REVIEW: What if compactionKeepSize is larger than compactionStepSize?
+  // Then, with this setting, the next compacted snapshot would be earlier
+  // than the current one. Do we want to forbid this or add more here?
   _nextCompactionAfter = _commitIndex + _config.compactionStepSize();
 
   return *this;

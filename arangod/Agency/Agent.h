@@ -270,6 +270,8 @@ class Agent : public arangodb::Thread,
   void notifyInactive() const;
 
   /// @brief Activate this agent in single agent mode.
+  /// REVIEW: Is this actually true? Currently this is called in
+  /// startConstituent as well!
   bool activateAgency();
 
   /// @brief Assignment of persisted state

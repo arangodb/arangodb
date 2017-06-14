@@ -179,10 +179,19 @@ class State {
 
   bool saveCompacted();
 
-  /// @brief Load collection from persistent store
+  /// @brief Load collection from persistent store. Note that after this
+  /// method returns successfully, the most recent log compaction snapshot
+  /// is loaded and both _readDB and _spearHead are in this state, _commitIndex
+  /// and _lastApplied point to the same index, but all further persisted
+  /// log entries are held in _log. Note that it is not guaranteed that the
+  /// first entry in _log has an index one larger than the one of the snapshot,
+  /// but it is guaranteed that _cur contains the index of the first entry in
+  /// _log. The log will never be empty, in the beginning an artifial zero
+  /// entry is generated and _cur is set to 0.
   bool loadPersisted();
-  bool loadCompacted();
-  bool loadRemaining();
+  bool loadCompacted();   // sets _readDB, _spearHead, _commitIndex and
+                          // _lastApplied in agent
+  bool loadRemaining();   // loads the log and advances _spearHead
   bool loadOrPersistConfiguration();
 
   /// @brief Check collections
