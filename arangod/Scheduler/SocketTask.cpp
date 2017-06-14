@@ -86,6 +86,16 @@ SocketTask::~SocketTask() {
   if (err) {
     LOG_TOPIC(ERR, Logger::COMMUNICATION) << "unable to cancel _keepAliveTimer";
   }
+
+
+  if (_peer) {
+    _peer->close(err);
+
+    if (err && err != boost::asio::error::not_connected) {
+      LOG_TOPIC(DEBUG, Logger::COMMUNICATION)
+          << "SocketTask: close send stream failed with: " << err.message();
+    }
+  }
 }
 
 // -----------------------------------------------------------------------------
@@ -263,15 +273,7 @@ void SocketTask::closeStream() {
 
     _closedReceive = true;
   }
-
-  _peer->close(err);
-
-  if (err && err != boost::asio::error::not_connected) {
-    LOG_TOPIC(DEBUG, Logger::COMMUNICATION)
-        << "SocketTask::CloseStream - shutdown send stream "
-        << "failed with: " << err.message();
-  }
-
+  
   _closeRequested = false;
   _keepAliveTimer.cancel();
   _keepAliveTimerActive = false;
