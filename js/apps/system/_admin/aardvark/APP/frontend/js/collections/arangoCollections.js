@@ -1,6 +1,6 @@
 /* jshint browser: true */
 /* jshint unused: false */
-/* global Backbone, window, arangoCollectionModel, $, arangoHelper, _ */
+/* global Backbone, window, arangoCollectionModel, $, arangoHelper, frontendConfig, _ */
 (function () {
   'use strict';
 
@@ -167,7 +167,11 @@
         data.shardKeys = object.shardBy;
       }
       if (object.replicationFactor) {
-        data.replicationFactor = JSON.parse(object.replicationFactor);
+        if (typeof object.replicationFactor === 'number' && frontendConfig.isEnterprise) {
+          data.replicationFactor = JSON.parse(object.replicationFactor);
+        } else {
+          data.replicationFactor = object.replicationFactor;
+        }
       }
 
       $.ajax({
