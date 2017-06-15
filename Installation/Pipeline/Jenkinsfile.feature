@@ -119,7 +119,10 @@ stage('build linux') {
 
         unstash 'source'
 
-        sh './Installation/Pipeline/build_community_linux.sh 16'
+        cache(maxCacheSize: 250, caches: [[$class: 'ArbitraryFileCache', includes: 'build-jenkins/**', path: "/vol/cache/${env.BRANCH_NAME}"]]) {
+            sh './Installation/Pipeline/build_community_linux.sh 16'
+        }
+
         stash includes: binariesCommunity, name: 'build-community-linux'
     }
 }
