@@ -4,12 +4,16 @@ concurrency="$1"
 engine="$2"
 type="test_singleserver_community_mmfiles_linux"
 
-echo "ARANGOD VERSION: `build/bin/arangod --version`"
+echo "TYPE: $type"
+echo "ENGINE: $engine"
+echo "CONCURRENY: $concurrency"
+echo "HOST: `hostname`"
+echo "PWD: `pwd`"
 echo "CORE PATTERN: `cat /proc/sys/kernel/core_pattern`"
 echo "CORE LIMIT: `ulimit -c`"
-echo "CONCURRENY: $concurreny"
-echo "ENGINE: $engine"
-echo "TYPE: $type"
+
+echo
+echo "ARANGOD VERSION: `build/bin/arangod --version`"
 
 rm -rf core.* *.log out
 rm -rf tmp && mkdir tmp
@@ -30,7 +34,7 @@ rm -rf log-output
 mkdir log-output
 
 echo "$type
-scripts/unittest boost                     --skipCache false                                                                     2>&1
+scripts/unittest boost                     --skipCache false                                                                      2>&1
 scripts/unittest agency                                       --minPort `expr $PORT01 +   0` --maxPort `expr $PORT01 +   9` $OPTS 2>&1
 scripts/unittest arangobench                                  --minPort `expr $PORT01 +  10` --maxPort `expr $PORT01 +  19` $OPTS 2>&1
 scripts/unittest arangosh                  --skipShebang true --minPort `expr $PORT01 +  20` --maxPort `expr $PORT01 +  29` $OPTS 2>&1

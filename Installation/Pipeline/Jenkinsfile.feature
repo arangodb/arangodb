@@ -16,8 +16,6 @@ def buildMac = false
 
 stage('checkout') {
     node('master') {
-        milestone(1)
-
         retry(3) {
             try {
                 checkout scm
@@ -105,8 +103,6 @@ stage('checkout') {
         }
 
         stash includes: '**', name: 'source'
-
-        milestone(2)
     }
 }
 
