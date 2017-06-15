@@ -52,7 +52,7 @@ scripts/unittest shell_server_aql          --testBuckets 4/2  --minPort `expr $P
 scripts/unittest shell_server_aql          --testBuckets 4/3  --minPort `expr $PORT03 +  30` --maxPort `expr $PORT03 +  39` $OPTS 2>&1
 scripts/unittest ssl_server                                   --minPort `expr $PORT03 +  40` --maxPort `expr $PORT03 +  49` $OPTS 2>&1
 scripts/unittest upgrade                                      --minPort `expr $PORT03 +  50` --maxPort `expr $PORT03 +  59` $OPTS 2>&1
-" | parallel --header 1 --results log-output --files --no-notice --load 10 --jobs $concurrency | sed -e 's:^.*_unittest *::' | sed -e 's: *--minPort.*$::'
+" | parallel --header 1 --results log-output --files --no-notice --load 10 --jobs $concurrency > log-output/test_singleserver_community_mmfiles_linux.log
 
 result=$?
 

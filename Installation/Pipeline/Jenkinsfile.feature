@@ -11,6 +11,9 @@ def PowerShell(psCmd) {
 def cleanBuild = false
 def cleanAll = false
 
+def buildWindows = false
+def buildMac = false
+
 stage('checkout') {
     node('master') {
         milestone(1)
@@ -41,6 +44,16 @@ stage('checkout') {
                             if (msg ==~ /(?i).*ci: *clean-all[ \\]].*/) {
                                 echo "using clean all because message contained 'ci: clean-all'"
                                 cleanAll = true
+                            }
+
+                            if (msg ==~ /(?i).*ci: *windows[ \\]].*/) {
+                                echo "building windows because message contained 'ci: windows'"
+                                buildWindows = true
+                            }
+
+                            if (msg ==~ /(?i).*ci: *mac[ \\]].*/) {
+                                echo "building mac because message contained 'ci: mac'"
+                                buildMac = true
                             }
 
                             def files = new ArrayList(entry.affectedFiles)
@@ -101,7 +114,8 @@ stage('build linux') {
     node('linux') {
         if (cleanAll) {
             sh 'rm -rf *'
-        } else if (cleanBuild) {
+        }
+        else if (cleanBuild) {
             sh 'rm -rf build-jenkins'
         }
 
@@ -124,8 +138,10 @@ stage('build & test') {
                         sh './Installation/Pipeline/test_singleserver_community_mmfiles_linux.sh 8'
                     }
                     catch (exc) {
-                        archiveArtifacts allowEmptyArchive: true, artifacts: 'log-output/**', defaultExcludes: false
                         throw exc
+                    }
+                    finally {
+                        archiveArtifacts allowEmptyArchive: true, artifacts: 'log-output/**', defaultExcludes: false
                     }
                 }
             }
@@ -158,30 +174,36 @@ stage('build & test') {
         },
 
         'build-mac': {
-            node('mac') {
-                if (cleanAll) {
-                    sh 'rm -rf *'
-                } else if (cleanBuild) {
-                    sh 'rm -rf build-jenkins'
+            if (buildMac) {
+                node('mac') {
+                    if (cleanAll) {
+                        sh 'rm -rf *'
+                    }
+                    else if (cleanBuild) {
+                        sh 'rm -rf build-jenkins'
+                    }
+
+                    unstash 'source'
+
+                    sh './Installation/Pipeline/build_community_mac.sh 16'
                 }
-
-                unstash 'source'
-
-                sh './Installation/Pipeline/build_community_mac.sh 16'
             }
         },
 
         'build-windows': {
-            node('windows') {
-                if (cleanAll) {
-                    bat 'del /F /Q *'
-                } else if (cleanBuild) {
-                    bat 'del /F /Q build'
+            if (buildWindows) {
+                node('windows') {
+                    if (cleanAll) {
+                        bat 'del /F /Q *'
+                    }
+                    else if (cleanBuild) {
+                        bat 'del /F /Q build'
+                    }
+
+                    unstash 'source'
+
+                    PowerShell(". .\\Installation\\Pipeline\\build_enterprise_windows.ps1")
                 }
-
-                unstash 'source'
-
-                PowerShell(". .\\Installation\\Pipeline\\build_enterprise_windows.ps1")
             }
         }
     )
