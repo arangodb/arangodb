@@ -1,11 +1,15 @@
 #!/bin/bash
 
-concurrency=$1
-engine=$2
+concurrency="$1"
+engine="$2"
+type="test_singleserver_community_mmfiles_linux"
 
 echo "ARANGOD VERSION: `build/bin/arangod --version`"
 echo "CORE PATTERN: `cat /proc/sys/kernel/core_pattern`"
 echo "CORE LIMIT: `ulimit -c`"
+echo "CONCURRENY: $concurreny"
+echo "ENGINE: $engine"
+echo "TYPE: $type"
 
 rm -rf core.* *.log out
 rm -rf tmp && mkdir tmp
@@ -23,8 +27,9 @@ trap "./Installation/Pipeline/port.sh --clean $PORT01 $PORT02 $PORT03" EXIT
 OPTS="--storageEngine $engine --skipNondeterministic true --skipTimeCritical true  --configDir etc/jenkins --skipLogAnalysis true"
 
 rm -rf log-output
+mkdir log-output
 
-echo "test_singleserver_community_mmfiles_linux
+echo "$type
 scripts/unittest boost                     --skipCache false                                                                     2>&1
 scripts/unittest agency                                       --minPort `expr $PORT01 +   0` --maxPort `expr $PORT01 +   9` $OPTS 2>&1
 scripts/unittest arangobench                                  --minPort `expr $PORT01 +  10` --maxPort `expr $PORT01 +  19` $OPTS 2>&1
@@ -52,7 +57,7 @@ scripts/unittest shell_server_aql          --testBuckets 4/2  --minPort `expr $P
 scripts/unittest shell_server_aql          --testBuckets 4/3  --minPort `expr $PORT03 +  30` --maxPort `expr $PORT03 +  39` $OPTS 2>&1
 scripts/unittest ssl_server                                   --minPort `expr $PORT03 +  40` --maxPort `expr $PORT03 +  49` $OPTS 2>&1
 scripts/unittest upgrade                                      --minPort `expr $PORT03 +  50` --maxPort `expr $PORT03 +  59` $OPTS 2>&1
-" | parallel --header 1 --results log-output --files --no-notice --load 10 --jobs $concurrency > log-output/test_singleserver_community_mmfiles_linux.log
+" | parallel --header 1 --results log-output --files --no-notice --load 10 --jobs $concurrency > log-output/${type}.log
 
 result=$?
 
