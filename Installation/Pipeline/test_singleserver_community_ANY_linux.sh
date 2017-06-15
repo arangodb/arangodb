@@ -65,6 +65,8 @@ scripts/unittest upgrade                                      --minPort `expr $P
 
 result=$?
 
+echo
+echo "================================================================================"
 echo "Result: $result"
 echo "Options: $OPTS"
 echo

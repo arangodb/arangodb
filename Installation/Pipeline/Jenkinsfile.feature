@@ -1,8 +1,10 @@
 //  -*- mode: groovy-mode
 
-def binaries = 'build/**,etc/**,Installation/Pipeline/**,js/**,scripts/**,tests/**,UnitTests/**,utils/**'
 def enterpriseRepo = 'https://github.com/arangodb/enterprise'
 def credentialsId = '8d893d23-6714-4f35-a239-c847c798e080'
+
+def binariesCommunity = 'build/**,etc/**,Installation/Pipeline/**,js/**,scripts/**,tests/**,UnitTests/**,utils/**'
+def binariesEnterprise = 'build/**,enterprise/js/**,etc/**,Installation/Pipeline/**,js/**,scripts/**,tests/**,UnitTests/**,utils/**'
 
 def PowerShell(psCmd) {
     bat "powershell.exe -NonInteractive -ExecutionPolicy Bypass -Command \"\$ErrorActionPreference='Stop';[Console]::OutputEncoding=[System.Text.Encoding]::UTF8;$psCmd;EXIT \$global:LastExitCode\""
@@ -117,8 +119,8 @@ stage('build linux') {
 
         unstash 'source'
 
-        sh './Installation/Pipeline/build_enterprise_linux.sh 16'
-        stash includes: binaries, name: 'build-enterprise-linux'
+        sh './Installation/Pipeline/build_community_linux.sh 16'
+        stash includes: binariesCommunity, name: 'build-community-linux'
     }
 }
 
@@ -127,7 +129,7 @@ stage('build & test') {
         'test-singleserver-community': {
             node('linux') {
                 sh 'rm -rf *'
-                unstash 'build-enterprise-linux'
+                unstash 'build-community-linux'
                 echo "Running singleserver comunity mmfiles linux test"
                 script {
                     try {
@@ -143,19 +145,21 @@ stage('build & test') {
             }
         },
 
-        'test-cluster-enterprise': {
-            node('linux') {
-                sh 'rm -rf *'
-                unstash 'build-enterprise-linux'
-                echo "Running cluster enterprise rocksdb linux test"
-                sh './Installation/Pipeline/test_cluster_enterprise_rocksdb_linux.sh 8'
+        'test-cluster-community': {
+            if (false) {
+                node('linux') {
+                    sh 'rm -rf *'
+                    unstash 'build-community-linux'
+                    echo "Running cluster community rocksdb linux test"
+                    sh './Installation/Pipeline/test_cluster_community_rocksdb_linux.sh 8'
+                }
             }
         },
 
         'jslint': {
             node('linux') {
                 sh 'rm -rf *'
-                unstash 'build-enterprise-linux'
+                unstash 'build-community-linux'
                 echo "Running jslint test"
 
                 script {
