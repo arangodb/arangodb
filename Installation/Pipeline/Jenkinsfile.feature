@@ -1,8 +1,10 @@
 //  -*- mode: groovy-mode
 
-def binaries = 'build/**,etc/**,Installation/Pipeline/**,js/**,scripts/**,tests/**,UnitTests/**,utils/**'
 def enterpriseRepo = 'https://github.com/arangodb/enterprise'
 def credentialsId = '8d893d23-6714-4f35-a239-c847c798e080'
+
+def binariesCommunity = 'build/**,etc/**,Installation/Pipeline/**,js/**,scripts/**,tests/**,UnitTests/**,utils/**'
+def binariesEnterprise = 'build/**,enterprise/js/**,etc/**,Installation/Pipeline/**,js/**,scripts/**,tests/**,UnitTests/**,utils/**'
 
 def PowerShell(psCmd) {
     bat "powershell.exe -NonInteractive -ExecutionPolicy Bypass -Command \"\$ErrorActionPreference='Stop';[Console]::OutputEncoding=[System.Text.Encoding]::UTF8;$psCmd;EXIT \$global:LastExitCode\""
@@ -11,10 +13,11 @@ def PowerShell(psCmd) {
 def cleanBuild = false
 def cleanAll = false
 
+def buildWindows = false
+def buildMac = false
+
 stage('checkout') {
     node('master') {
-        milestone(1)
-
         retry(3) {
             try {
                 checkout scm
@@ -41,6 +44,16 @@ stage('checkout') {
                             if (msg ==~ /(?i).*ci: *clean-all[ \\]].*/) {
                                 echo "using clean all because message contained 'ci: clean-all'"
                                 cleanAll = true
+                            }
+
+                            if (msg ==~ /(?i).*ci: *windows[ \\]].*/) {
+                                echo "building windows because message contained 'ci: windows'"
+                                buildWindows = true
+                            }
+
+                            if (msg ==~ /(?i).*ci: *mac[ \\]].*/) {
+                                echo "building mac because message contained 'ci: mac'"
+                                buildMac = true
                             }
 
                             def files = new ArrayList(entry.affectedFiles)
@@ -92,102 +105,105 @@ stage('checkout') {
         }
 
         stash includes: '**', name: 'source'
+    }
+}
 
-        milestone(2)
+stage('build linux') {
+    node('linux') {
+        if (cleanAll) {
+            sh 'rm -rf *'
+        }
+        else if (cleanBuild) {
+            sh 'rm -rf build-jenkins'
+        }
+
+        unstash 'source'
+
+        sh './Installation/Pipeline/build_community_linux.sh 16'
+        stash includes: binariesCommunity, name: 'build-community-linux'
     }
 }
 
 stage('build & test') {
     parallel(
-        'build-linux': {
+        'test-singleserver-community': {
             node('linux') {
-                if (cleanAll) {
-                    sh 'rm -rf *'
-                } else if (cleanBuild) {
-                    sh 'rm -rf build-jenkins'
-                }
-
-                unstash 'source'
-
-                sh './Installation/Pipeline/build_enterprise_linux.sh 16'
-                stash includes: binaries, name: 'build-enterprise-linux'
-            }
-
-            parallel(
-                'test-singleserver-community': {
-                    node('linux') {
-                        if (cleanAll) {
-                            sh 'rm -rf *'
-                        }
-
-                        sh 'rm -rf build'
-                        unstash 'build-enterprise-linux'
-                        echo "Running singleserver comunity mmfiles linux test"
+                sh 'rm -rf *'
+                unstash 'build-community-linux'
+                echo "Running singleserver comunity mmfiles linux test"
+                script {
+                    try {
                         sh './Installation/Pipeline/test_singleserver_community_mmfiles_linux.sh 8'
                     }
-                },
-
-                'test-cluster-enterprise': {
-                    node('linux') {
-                        if (cleanAll) {
-                            sh 'rm -rf *'
-                        }
-
-                        sh 'rm -rf build'
-                        unstash 'build-enterprise-linux'
-                        echo "Running cluster enterprise rocksdb linux test"
-                        sh './Installation/Pipeline/test_cluster_enterprise_rocksdb_linux.sh 8'
+                    catch (exc) {
+                        throw exc
                     }
-                },
-
-                'jslint': {
-                    node('linux') {
-                        if (cleanAll) {
-                            sh 'rm -rf *'
-                        }
-
-                        sh 'rm -rf build'
-                        unstash 'build-enterprise-linux'
-                        echo "Running jslint test"
-
-                        script {
-                            try {
-                                sh './Installation/Pipeline/test_jslint.sh'
-                            }
-                            catch (exc) {
-                                currentBuild.result = 'UNSTABLE'
-                            }
-                        }
+                    finally {
+                        archiveArtifacts allowEmptyArchive: true, artifacts: 'log-output/**', defaultExcludes: false
                     }
                 }
-            )
+            }
+        },
+
+        'test-cluster-community': {
+            if (false) {
+                node('linux') {
+                    sh 'rm -rf *'
+                    unstash 'build-community-linux'
+                    echo "Running cluster community rocksdb linux test"
+                    sh './Installation/Pipeline/test_cluster_community_rocksdb_linux.sh 8'
+                }
+            }
+        },
+
+        'jslint': {
+            node('linux') {
+                sh 'rm -rf *'
+                unstash 'build-community-linux'
+                echo "Running jslint test"
+
+                script {
+                    try {
+                        sh './Installation/Pipeline/test_jslint.sh'
+                    }
+                    catch (exc) {
+                        currentBuild.result = 'UNSTABLE'
+                    }
+                }
+            }
         },
 
         'build-mac': {
-            node('mac') {
-                if (cleanAll) {
-                    sh 'rm -rf *'
-                } else if (cleanBuild) {
-                    sh 'rm -rf build-jenkins'
+            if (buildMac) {
+                node('mac') {
+                    if (cleanAll) {
+                        sh 'rm -rf *'
+                    }
+                    else if (cleanBuild) {
+                        sh 'rm -rf build-jenkins'
+                    }
+
+                    unstash 'source'
+
+                    sh './Installation/Pipeline/build_community_mac.sh 16'
                 }
-
-                unstash 'source'
-
-                sh './Installation/Pipeline/build_community_mac.sh 16'
             }
         },
 
         'build-windows': {
-            node('windows') {
-                if (cleanAll) {
-                    bat 'del /F /Q *'
-                } else if (cleanBuild) {
-                    bat 'del /F /Q build'
+            if (buildWindows) {
+                node('windows') {
+                    if (cleanAll) {
+                        bat 'del /F /Q *'
+                    }
+                    else if (cleanBuild) {
+                        bat 'del /F /Q build'
+                    }
+
+                    unstash 'source'
+
+                    PowerShell(". .\\Installation\\Pipeline\\build_enterprise_windows.ps1")
                 }
-
-                unstash 'source'
-
-                PowerShell(". .\\Installation\\Pipeline\\build_enterprise_windows.ps1")
             }
         }
     )
