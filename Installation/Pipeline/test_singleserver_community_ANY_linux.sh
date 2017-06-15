@@ -76,10 +76,19 @@ for file in log-output/*/*/stdout; do
     long=`echo "$file" | sed -e 's:/stdout$::'`
     short=`echo "$long" | sed -e 's:^.*_unittest *::' | sed -e 's: *--minPort.*$::' | sed -e 's:\\\\::g' | sed -e 's: *2>&1$::g' | sed -e 's:  *: :g'`
 
-    mv -- "$long/stdout" "$base/$short.log"
+    filename="$base/$short"
+
+    mv -- "$long/stdout" $filename
     rm -rf -- "$long"
+
+    if fgrep -q "Overall state: Fail" $filename; then
+        echo "FAIL: $short"
+        mv "$filename" "${filename}_FAILED.log"
+    else
+        mv "$filename" "${filename}_OK.log"
+    fi
 done
 
-fgrep "Overall state: Fail" log-output/*/*/stdout
+fgrep  log-output/*/*/stdout
 
 exit $result
