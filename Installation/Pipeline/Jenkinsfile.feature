@@ -121,11 +121,13 @@ stage('build linux') {
 
         cache(maxCacheSize: 50000, caches: [
             [$class: 'ArbitraryFileCache',
-             includes: 'build-jenkins/**',
-             path: "."]]) {
+             includes: '**',
+             path: "build-jenkins"]]) {
             script {
                 try {
-                    sh './Installation/Pipeline/build_community_linux.sh 16'
+                    # sh './Installation/Pipeline/build_community_linux.sh 16'
+                    sh 'mkdir build-jenkins'
+                    sh 'touch build-jenkins/emil'
                 }
                 catch (exc) {
                     throw exc
