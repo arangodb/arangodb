@@ -163,11 +163,11 @@ void SocketTask::writeWriteBuffer() {
   if (_writeBuffer.empty()) {
     return;
   }
+    
+  size_t total = _writeBuffer._buffer->length();
+  size_t written = 0;
 
   if (!_peer->isEncrypted()) {
-    size_t total = _writeBuffer._buffer->length();
-    size_t written = 0;
-
     boost::system::error_code err;
     err.clear();
 
