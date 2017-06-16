@@ -22,16 +22,20 @@ mkdir -p log-output
             -DUSE_CATCH_TESTS=On \
             -DUSE_FAILURE_TESTS=On \
             -DDEBUG_SYNC_REPLICATION=On \
-            .. > ../log-output/$type.log 2>&1
+            .. > ../log-output/$type.log 2>&1 || exit 1
 
     echo "Building..."
-    make -j$concurrency >> ../log-output/$type.log 2>&1
+    make -j$concurrency >> ../log-output/$type.log 2>&1 || exit 1
 )
 
 # copy binaries to preserve them
+echo "Copying..."
+
 rm -rf build
 mkdir build
 
 cp -a build-jenkins/bin   build
 cp -a build-jenkins/etc   build
 cp -a build-jenkins/tests build
+
+echo "Done..."

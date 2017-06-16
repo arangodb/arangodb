@@ -121,9 +121,18 @@ stage('build linux') {
 
         cache(maxCacheSize: 5000, caches: [
             [$class: 'ArbitraryFileCache',
-             includes: 'build-jenkins/**',
-             path: "${HOME}/cache/arangodb/linux/community/${env.BRANCH_NAME}"]]) {
-            sh './Installation/Pipeline/build_community_linux.sh 16'
+             includes: '**',
+             path: ".]]) {
+            script {
+                try {
+                    sh './Installation/Pipeline/build_community_linux.sh 16'
+                catch (exc) {
+                    throw exc
+                }
+                finally {
+                    archiveArtifacts allowEmptyArchive: true, artifacts: 'log-output/**', defaultExcludes: false
+                }
+            }
         }
 
         stash includes: binariesCommunity, name: 'build-community-linux'
