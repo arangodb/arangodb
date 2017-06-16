@@ -56,10 +56,15 @@ void LogThread::flush() {
     if (MESSAGES->empty()) {
       break;
     }
-  
+
     CONDITION_LOCKER(guard, *CONDITION);
     guard.signal();
   }
+}
+
+void LogThread::wakeup() {
+  CONDITION_LOCKER(guard, *CONDITION);
+  guard.signal();
 }
 
 bool LogThread::hasMessages() {
