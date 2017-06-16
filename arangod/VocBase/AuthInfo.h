@@ -161,6 +161,7 @@ class AuthInfo {
 
  public:
   AuthInfo();
+  ~AuthInfo();
 
  public:
   void setQueryRegistry(aql::QueryRegistry* registry) {
@@ -198,9 +199,7 @@ class AuthInfo {
   bool validateJwtHMAC256Signature(std::string const&, std::string const&);
   std::shared_ptr<VPackBuilder> parseJson(std::string const&, std::string const&);
 
-
   HexHashResult hexHashFromData(std::string const& hashMethod, char const* data, size_t len);
-
 
  private:
   basics::ReadWriteLock _authInfoLock;

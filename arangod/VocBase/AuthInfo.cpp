@@ -46,7 +46,6 @@ using namespace arangodb::basics;
 using namespace arangodb::velocypack;
 using namespace arangodb::rest;
 
-
 static AuthEntry CreateAuthEntry(VPackSlice const& slice, AuthSource source) {
   if (slice.isNone() || !slice.isObject()) {
     return AuthEntry();
@@ -207,6 +206,20 @@ AuthInfo::AuthInfo()
     _noneAuthContext(std::make_shared<AuthContext>(AuthLevel::NONE, std::unordered_map<std::string, AuthLevel>({{"*", AuthLevel::NONE}}))),
     _jwtSecret(""),
     _queryRegistry(nullptr) {}
+
+AuthInfo::~AuthInfo() {
+  // properly clear structs while using the appropriate locks
+  {  
+    WRITE_LOCKER(readLocker, _authInfoLock);
+    _authInfo.clear();
+    _authBasicCache.clear();
+  }
+
+  {
+    WRITE_LOCKER(writeLocker, _authJwtLock);
+    _authJwtCache.clear();
+  }
+}
 
 void AuthInfo::setJwtSecret(std::string const& jwtSecret) {
   WRITE_LOCKER(writeLocker, _authJwtLock);
@@ -668,21 +681,22 @@ AuthResult AuthInfo::checkAuthenticationBasic(std::string const& secret) {
 
 AuthResult AuthInfo::checkAuthenticationJWT(std::string const& jwt) {
   try {
-    READ_LOCKER(readLocker, _authJwtLock);
-    auto result = _authJwtCache.get(jwt);
+    // note that we need the write lock here because it is an LRU
+    // cache. reading from it will move the read entry to the start of
+    // the cache's linked list. so acquiring just a read-lock is
+    // insufficient!!
+    WRITE_LOCKER(readLocker, _authJwtLock);
+    // intentionally copy the entry from the cache
+    AuthJwtResult result = _authJwtCache.get(jwt);
+
     if (result._expires) {
       std::chrono::system_clock::time_point now =
         std::chrono::system_clock::now();
 
       if (now >= result._expireTime) {
-        readLocker.unlock();
-        WRITE_LOCKER(writeLocker, _authJwtLock);
-        result = _authJwtCache.get(jwt);
-        if (result._expires && now >= result._expireTime) {
-          try {
-            _authJwtCache.remove(jwt);
-          } catch (std::range_error const&) {
-          }
+        try {
+          _authJwtCache.remove(jwt);
+        } catch (std::range_error const&) {
         }
         return AuthResult();
       }
