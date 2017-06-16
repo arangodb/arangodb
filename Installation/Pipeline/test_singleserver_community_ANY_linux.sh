@@ -30,8 +30,8 @@ trap "./Installation/Pipeline/port.sh --clean $PORT01 $PORT02 $PORT03" EXIT
 
 OPTS="--storageEngine $engine --skipNondeterministic true --skipTimeCritical true  --configDir etc/jenkins --skipLogAnalysis true"
 
-rm -rf log-output
-mkdir log-output
+rm -rf log-output/$type
+mkdir -p log-output
 
 echo "$type
 scripts/unittest boost                     --skipCache false                                                                      2>&1

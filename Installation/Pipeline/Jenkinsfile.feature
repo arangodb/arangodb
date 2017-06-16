@@ -119,7 +119,10 @@ stage('build linux') {
 
         unstash 'source'
 
-        cache(maxCacheSize: 5000, caches: [[$class: 'ArbitraryFileCache', includes: 'build-jenkins/**', path: "cache/arangodb/linux/community/${env.BRANCH_NAME}"]]) {
+        cache(maxCacheSize: 5000, caches: [
+            [$class: 'ArbitraryFileCache',
+             includes: 'build-jenkins/**',
+             path: "${HOME}/cache/arangodb/linux/community/${env.BRANCH_NAME}"]]) {
             sh './Installation/Pipeline/build_community_linux.sh 16'
         }
 
