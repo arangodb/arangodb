@@ -123,8 +123,8 @@ stage('build linux') {
             try {
                 cache(maxCacheSize: 50000, caches: [
                     [$class: 'ArbitraryFileCache',
-                     includes: 'build-jenkins/**',
-                     path: "build-jenkins"]]) {
+                     includes: '**',
+                     path: "./build-jenkins"]]) {
                         sh 'echo ./Installation/Pipeline/build_community_linux.sh 16'
                         sh 'mkdir -p build-jenkins'
                         sh 'touch build-jenkins/xxxx-emil'
