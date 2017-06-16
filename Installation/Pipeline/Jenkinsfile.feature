@@ -119,9 +119,9 @@ stage('build linux') {
 
         unstash 'source'
 
-        cache(maxCacheSize: 5000, caches: [
+        cache(maxCacheSize: 50000, caches: [
             [$class: 'ArbitraryFileCache',
-             includes: '**',
+             includes: 'build-jenkins/**',
              path: "."]]) {
             script {
                 try {
