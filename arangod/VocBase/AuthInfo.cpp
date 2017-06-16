@@ -59,6 +59,20 @@ AuthInfo::AuthInfo()
     _jwtSecret(""),
     _queryRegistry(nullptr) {}
 
+AuthInfo::~AuthInfo() {
+  // properly clear structs while using the appropriate locks
+  {  
+    WRITE_LOCKER(readLocker, _authInfoLock);
+    _authInfo.clear();
+    _authBasicCache.clear();
+  }
+
+  {
+    WRITE_LOCKER(writeLocker, _authJwtLock);
+    _authJwtCache.clear();
+  }
+}
+
 void AuthInfo::setJwtSecret(std::string const& jwtSecret) {
   WRITE_LOCKER(writeLocker, _authJwtLock);
   _jwtSecret = jwtSecret;
@@ -456,18 +470,7 @@ AuthResult AuthInfo::checkPassword(std::string const& username,
 // public
 AuthLevel AuthInfo::canUseDatabase(std::string const& username,
                                    std::string const& dbname) {
-  if (_outdated) {
-    loadFromDB();
-  }
-
-  READ_LOCKER(readLocker, _authInfoLock);
-  auto const& it = _authInfo.find(username);
-  if (it == _authInfo.end()) {
-    return AuthLevel::NONE;
-  }
-
-  AuthUserEntry const& entry = it->second;
-  return entry.canUseDatabase(dbname);
+  return getAuthContext(username, dbname)->databaseAuthLevel();
 }
 
 // public called from VocbaseContext.cpp
@@ -534,21 +537,22 @@ AuthResult AuthInfo::checkAuthenticationBasic(std::string const& secret) {
 
 AuthResult AuthInfo::checkAuthenticationJWT(std::string const& jwt) {
   try {
-    READ_LOCKER(readLocker, _authJwtLock);
-    auto result = _authJwtCache.get(jwt);
+    // note that we need the write lock here because it is an LRU
+    // cache. reading from it will move the read entry to the start of
+    // the cache's linked list. so acquiring just a read-lock is
+    // insufficient!!
+    WRITE_LOCKER(readLocker, _authJwtLock);
+    // intentionally copy the entry from the cache
+    AuthJwtResult result = _authJwtCache.get(jwt);
+
     if (result._expires) {
       std::chrono::system_clock::time_point now =
         std::chrono::system_clock::now();
 
       if (now >= result._expireTime) {
-        readLocker.unlock();
-        WRITE_LOCKER(writeLocker, _authJwtLock);
-        result = _authJwtCache.get(jwt);
-        if (result._expires && now >= result._expireTime) {
-          try {
-            _authJwtCache.remove(jwt);
-          } catch (std::range_error const&) {
-          }
+        try {
+          _authJwtCache.remove(jwt);
+        } catch (std::range_error const&) {
         }
         return AuthResult();
       }
@@ -760,12 +764,15 @@ std::string AuthInfo::generateJwt(VPackBuilder const& payload) {
 }
 
 std::shared_ptr<AuthContext> AuthInfo::getAuthContext(std::string const& username, std::string const& database) {
+  if (_outdated) {
+    loadFromDB();
+  }
+  
   READ_LOCKER(guard, _authInfoLock);
   auto it = _authInfo.find(username);
   if (it == _authInfo.end()) {
     return _noneAuthContext;
   }
-
   // AuthUserEntry const& entry =
   return it->second.getAuthContext(database);
 }

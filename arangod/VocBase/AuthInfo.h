@@ -74,6 +74,7 @@ class AuthInfo {
 
  public:
   AuthInfo();
+  ~AuthInfo();
 
  public:
   void setQueryRegistry(aql::QueryRegistry* registry) {
