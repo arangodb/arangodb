@@ -37,6 +37,8 @@ else ()
   set(SNAPPY_LIBRARIES ${CMAKE_BINARY_DIR}/3rdParty/snappy/google-snappy-d53de18/libsnappystatic.a)
 endif ()
 
+message(STATUS "WITH_SNAPPY ${WITH_SNAPPY}")
+message(STATUS "ArangoDB (3rdParty/rocksdb/CMakeLists.txt) Snappy path: ${SNAPPY_INCLUDE_DIR}")
 add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/${ARANGO_ROCKSDB_VERSION})
 
 # result

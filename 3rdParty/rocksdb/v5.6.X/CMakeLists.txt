@@ -58,12 +58,14 @@ else()
   endif()
   option(WITH_SNAPPY "build with SNAPPY" OFF)
   if(WITH_SNAPPY)
-    find_package(snappy REQUIRED)
+    #find_package(snappy REQUIRED) provided by arangodb
     add_definitions(-DSNAPPY)
     include_directories(${SNAPPY_INCLUDE_DIR})
     list(APPEND THIRDPARTY_LIBS ${SNAPPY_LIBRARIES})
   endif()
 endif()
+
+message(STATUS "WITH_SNAPPY ${WITH_SNAPPY}")
 
 # set GIT_DATE_TIME - Create US Time String
 if(WIN32)
