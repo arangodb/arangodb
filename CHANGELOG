@@ -1,6 +1,8 @@
 devel
 -----
 
+* potentially fixed issue #2559: Duplicate _key generated on insertion
+
 
 v3.2.beta1 (2017-06-12)
 -----------------------

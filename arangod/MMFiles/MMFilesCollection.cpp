@@ -235,7 +235,7 @@ int MMFilesCollection::OpenIteratorHandleDocumentMarker(
   if (state->_trackKeys) {
     VPackValueLength length;
     char const* p = keySlice.getString(length);
-    collection->keyGenerator()->track(p, length);
+    collection->keyGenerator()->track(p, static_cast<size_t>(length));
   }
 
   ++state->_documents;
