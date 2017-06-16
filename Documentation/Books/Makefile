@@ -271,7 +271,7 @@ build-book:
 	else \
 		export VERSION="$(newVersionNumber)"; \
 	fi; \
-	ls -l $(NAME)/SUMMARY.md \
+	ls -l $(NAME)/SUMMARY.md; \
 	(cd ppbooks/$(NAME) && sed -i -e "s/VERSION_NUMBER/v$${VERSION}/g" styles/header.js); \
 	(cd ppbooks/$(NAME) && sed -i -e "s/VERSION_NUMBER/v$${VERSION}/g" HEADER.html); \
 	(cd ppbooks/$(NAME) && sed -i -e "s/VERSION_NUMBER/v$${VERSION}/g" README.md); \
