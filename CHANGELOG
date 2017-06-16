@@ -1,6 +1,16 @@
 devel
 -----
 
+* fix races in SSL communication code
+
+* fix invalid locking in JWT authentication cache, which could have
+  crashed the server
+
+* fix invalid first group results for sorted AQL COLLECT when LIMIT
+  was used
+
+* fix potential race, which could make arangod hang on startup
+
 
 v3.2.beta1 (2017-06-12)
 -----------------------
