@@ -122,7 +122,7 @@ stage('build linux') {
         cache(maxCacheSize: 5000, caches: [
             [$class: 'ArbitraryFileCache',
              includes: '**',
-             path: ".]]) {
+             path: "."]]) {
             script {
                 try {
                     sh './Installation/Pipeline/build_community_linux.sh 16'
