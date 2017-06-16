@@ -55,7 +55,6 @@
   * [Configuration](Foxx/Configuration.md)
   * [Miscellaneous](Foxx/Miscellaneous.md)
 * [User Management](UserManagement/README.md)
-  * [Authorization Model](UserManagement/AuthorizationModel.md)
 * [Tasks](Tasks/README.md)
 * [Agency](Agency/README.md)
 * [Miscellaneous functions](MiscellaneousFunctions/README.md)
