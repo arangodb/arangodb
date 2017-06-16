@@ -1,6 +1,8 @@
 v3.1.23 (XXXX-XX-XX)
 --------------------
 
+* fix races in SSL communication code
+
 * fix invalid first group results for sorted AQL COLLECT when LIMIT
   was used
 
