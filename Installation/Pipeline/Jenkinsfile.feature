@@ -126,6 +126,7 @@ stage('build linux') {
             script {
                 try {
                     sh './Installation/Pipeline/build_community_linux.sh 16'
+                }
                 catch (exc) {
                     throw exc
                 }
