@@ -125,7 +125,7 @@ stage('build linux') {
              path: "build-jenkins"]]) {
             script {
                 try {
-                    # sh './Installation/Pipeline/build_community_linux.sh 16'
+                    sh 'echo ./Installation/Pipeline/build_community_linux.sh 16'
                     sh 'mkdir build-jenkins'
                     sh 'touch build-jenkins/emil'
                 }
