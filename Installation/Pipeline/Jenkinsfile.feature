@@ -126,7 +126,6 @@ stage('build linux') {
             script {
                 try {
                     sh 'echo ./Installation/Pipeline/build_community_linux.sh 16'
-                    sh 'mkdir build-jenkins'
                     sh 'touch build-jenkins/emil'
                 }
                 catch (exc) {
