@@ -4,6 +4,8 @@ project(rocksdb C CXX)
 
 set(FAIL_ON_WARNINGS OFF CACHE BOOL "do not enable -Werror")
 
+set(ARANGO_ROCKSDB_VERSION "v5.6.X")
+
 # jemalloc settings
 if (USE_JEMALLOC)
   if (WIN32)
@@ -35,8 +37,7 @@ else ()
   set(SNAPPY_LIBRARIES ${CMAKE_BINARY_DIR}/3rdParty/snappy/google-snappy-d53de18/libsnappystatic.a)
 endif ()
 
-add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/v5.4.0)
+add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/${ARANGO_ROCKSDB_VERSION})
 
 # result
-
-list(APPEND LINK_DIRECTORIES "${CMAKE_CURRENT_BINARY_DIR}/rocksdb/v5.4.0")
+list(APPEND LINK_DIRECTORIES "${CMAKE_CURRENT_BINARY_DIR}/rocksdb/${ARANGO_ROCKSDB_VERSION}")
