@@ -184,7 +184,7 @@ void RocksDBOptionFeature::collectOptions(
   options->addHiddenOption(
       "--rocksdb.base-background-compactions",
       "suggested number of concurrent background compaction jobs",
-      new UInt64Parameter(&_baseBackgroundCompactions));
+      new Int64Parameter(&_baseBackgroundCompactions));
 
   options->addOption("--rocksdb.max-background-compactions",
                      "maximum number of concurrent background compaction jobs",
@@ -197,7 +197,7 @@ void RocksDBOptionFeature::collectOptions(
 
   options->addOption("--rocksdb.max-background-flushes",
                      "maximum number of concurrent flush operations",
-                     new UInt64Parameter(&_maxFlushes));
+                     new Int64Parameter(&_maxFlushes));
 
   options->addOption("--rocksdb.level0-compaction-trigger",
                      "number of level-0 files that triggers a compaction",
@@ -267,15 +267,21 @@ void RocksDBOptionFeature::validateOptions(
         << "invalid value for '--rocksdb.num-levels'";
     FATAL_ERROR_EXIT();
   }
-  if (_baseBackgroundCompactions < 1 || _baseBackgroundCompactions > 64) {
+
+
+  LOG_TOPIC(ERR, arangodb::Logger::STARTUP) << _baseBackgroundCompactions;
+  if (_baseBackgroundCompactions == -1) { /*we are good */ }
+  else if(_baseBackgroundCompactions < 1 || _baseBackgroundCompactions > 64) {
     LOG_TOPIC(FATAL, arangodb::Logger::FIXME)
         << "invalid value for '--rocksdb.base-background-compactions'";
     FATAL_ERROR_EXIT();
   }
-  if (_maxBackgroundCompactions < _baseBackgroundCompactions) {
+  if (static_cast<int64_t>(_maxBackgroundCompactions) < _baseBackgroundCompactions) {
     _maxBackgroundCompactions = _baseBackgroundCompactions;
   }
-  if (_maxFlushes < 1 || _maxFlushes > 64) {
+
+  if (_maxFlushes == -1) { /*we are good */ }
+  else if (_maxFlushes < 1 || _maxFlushes > 64) {
     LOG_TOPIC(FATAL, arangodb::Logger::FIXME)
         << "invalid value for '--rocksdb.max-background-flushes'";
     FATAL_ERROR_EXIT();
