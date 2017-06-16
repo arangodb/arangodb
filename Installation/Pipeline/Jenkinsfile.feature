@@ -119,21 +119,21 @@ stage('build linux') {
 
         unstash 'source'
 
-        cache(maxCacheSize: 50000, caches: [
-            [$class: 'ArbitraryFileCache',
-             includes: '**',
-             path: "build-jenkins"]]) {
-            script {
-                try {
-                    sh 'echo ./Installation/Pipeline/build_community_linux.sh 16'
-                    sh 'touch build-jenkins/emil'
+        script {
+            try {
+                cache(maxCacheSize: 50000, caches: [
+                    [$class: 'ArbitraryFileCache',
+                     includes: '**',
+                     path: "build-jenkins"]]) {
+                        sh 'echo ./Installation/Pipeline/build_community_linux.sh 16'
+                        sh 'touch build-jenkins/xxxx-emil'
                 }
-                catch (exc) {
-                    throw exc
-                }
-                finally {
-                    archiveArtifacts allowEmptyArchive: true, artifacts: 'log-output/**', defaultExcludes: false
-                }
+            }
+            catch (exc) {
+                throw exc
+            }
+            finally {
+                archiveArtifacts allowEmptyArchive: true, artifacts: 'log-output/**', defaultExcludes: false
             }
         }
 
