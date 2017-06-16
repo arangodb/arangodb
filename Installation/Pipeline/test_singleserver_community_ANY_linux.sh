@@ -81,7 +81,7 @@ for file in log-output/*/*/stdout; do
     mv -- "$long/stdout" "$filename"
     rm -rf -- "$long"
 
-    if fgrep -q "Overall state: Fail" $filename; then
+    if fgrep -q "Overall state: Fail" -- $filename; then
         echo "FAIL: $short"
         mv -- "$filename" "${filename}_FAILED.log"
     else
