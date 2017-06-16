@@ -185,6 +185,34 @@ exports.revokeDatabase = function (username, database) {
   return arangosh.checkRequestResult(requestResult).result;
 };
 
+// changes the collection access level
+exports.grantCollection = function (username, database, collection, type) {
+  if (type === undefined) {
+    type = 'rw';
+  }
+
+  var db = internal.db;
+  var uri = '_api/user/' + encodeURIComponent(username)
+  + '/database/' + encodeURIComponent(database) + '/'
+  + encodeURIComponent(collection);
+  var data = { grant: type };
+
+  var requestResult = db._connection.PUT(uri, JSON.stringify(data));
+
+  return arangosh.checkRequestResult(requestResult).result;
+};
+
+// changes the collection access level
+exports.revokeCollection = function (username, database, collection) {
+  var db = internal.db;
+  var uri = '_api/user/' + encodeURIComponent(username)
+  + '/database/' + encodeURIComponent(database) + '/'
+  + encodeURIComponent(collection);
+  var requestResult = db._connection.DELETE(uri);
+
+  return arangosh.checkRequestResult(requestResult).result;
+};
+
 // create/update (value != null) or delete (value == null)
 exports.updateConfigData = function (username, key, value) {
   var db = internal.db;

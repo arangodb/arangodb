@@ -41,16 +41,6 @@
 
 namespace arangodb {
 
-class HexHashResult : public arangodb::Result {
-  public:
-    explicit HexHashResult(int errorNumber) : Result(errorNumber) {}
-    explicit HexHashResult(std::string const& hexHash) : Result(0),  _hexHash(hexHash) {}
-    std::string const& hexHash() { return _hexHash; }
-
-  protected:
-    std::string const _hexHash;
-};
-
 class AuthContext;
 
 class AuthResult {
@@ -91,24 +81,29 @@ class AuthInfo {
     _queryRegistry = registry;
   }
 
+  /// Tells coordinator to reload his data. Only call in HearBeat thread
   void outdate() { _outdated = true; }
   
-  void addUser();
+  /// Trigger eventual reload on all coordinators, user facing API call
+  void tellAgencyToReloadAuth();
+  
+  /// Add user from arangodb, do not use for LDAP  users
+  Result storeUser(bool replace, std::string const& user, std::string const& pass, bool active, bool changePassword);
+  Result modifyUser(std::string const& username, std::function<void(AuthUserEntry&)> const&);
+  Result getUser(std::string const& user, VPackBuilder& builder);
+  Result removeUser(std::string const& user);
+  
+  velocypack::Builder getConfigData(std::string const& user);
+  Result setConfigData(std::string const& user, velocypack::Slice const& data);
+  velocypack::Builder getUserData(std::string const& user);
+  Result setUserData(std::string const& user, velocypack::Slice const& data);
+
 
   AuthResult checkPassword(std::string const& username,
                            std::string const& password);
 
   AuthResult checkAuthentication(AuthType authType,
                                 std::string const& secret);
-  
-  void grantDatabase(std::string const& username,
-                     std::string const& dbname,
-                     AuthLevel level);
-  
-  void grantCollection(std::string const& username,
-                       std::string const& dbname,
-                       std::string const& collection,
-                       AuthLevel level);
 
   AuthLevel canUseDatabase(std::string const& username,
                            std::string const& dbname);
@@ -121,7 +116,7 @@ class AuthInfo {
   std::shared_ptr<AuthContext> getAuthContext(std::string const& username, std::string const& database);
  
  private:
-  void reload();
+  void loadFromDB();
   void insertInitial();
   bool parseUsers(velocypack::Slice const& slice);
 
@@ -131,9 +126,6 @@ class AuthInfo {
   AuthJwtResult validateJwtBody(std::string const&);
   bool validateJwtHMAC256Signature(std::string const&, std::string const&);
   std::shared_ptr<VPackBuilder> parseJson(std::string const&, std::string const&);
-
-  HexHashResult hexHashFromData(std::string const& hashMethod, char const* data, size_t len);
-
 
  private:
   basics::ReadWriteLock _authInfoLock;

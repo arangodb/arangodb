@@ -428,6 +428,10 @@ class VelocyPackHelper {
   static constexpr arangodb::velocypack::Slice EmptyObjectValue() {
     return arangodb::velocypack::Slice::emptyObjectSlice();
   }
+  
+  static constexpr arangodb::velocypack::Slice EmptyString() {
+    return arangodb::velocypack::Slice("\x40");
+  }
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief "constant" global object for illegal slices

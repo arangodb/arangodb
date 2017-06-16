@@ -41,70 +41,65 @@ enum class AuthSource {
 class AuthContext;
 
 class AuthUserEntry {
- public:
-  AuthUserEntry()
-      : _active(false), 
-        _mustChange(false), 
-        _created(TRI_microtime()), 
-        _source(AuthSource::COLLECTION) {}
-
-  AuthUserEntry(std::string&& username, std::string&& passwordMethod,
-            std::string&& passwordSalt, std::string&& passwordHash,
-            bool active, bool mustChange, AuthSource source,
-            std::unordered_map<std::string, std::shared_ptr<AuthContext>>&& authContexts)
-      : _username(std::move(username)),
-        _passwordMethod(std::move(passwordMethod)),
-        _passwordSalt(std::move(passwordSalt)),
-        _passwordHash(std::move(passwordHash)),
-        _active(active),
-        _mustChange(mustChange),
-        _created(TRI_microtime()),
-        _source(source),
-        _authContexts(std::move(authContexts)) {}
+  friend class AuthInfo;
+ /*public:
   
-  AuthUserEntry(AuthUserEntry const& other) = delete;
-
   AuthUserEntry(AuthUserEntry&& other) noexcept
-      : _username(std::move(other._username)),
+      : _key(std::move(other._key)),
+        _active(other._active),
+        _source(other._source),
+        _username(std::move(other._username)),
         _passwordMethod(std::move(other._passwordMethod)),
         _passwordSalt(std::move(other._passwordSalt)),
         _passwordHash(std::move(other._passwordHash)),
-        _active(other._active),
-        _mustChange(other._mustChange),
-        _created(other._created),
-        _source(other._source),
-        _authContexts(std::move(other._authContexts)) {}
+        _passwordChangeToken(std::move(other._passwordChangeToken)),
+        _changePassword(other._changePassword),
+        _authContexts(std::move(other._authContexts)) {}*/
 
  public:
+  std::string const& key() const { return _key; }
   std::string const& username() const { return _username; }
   std::string const& passwordMethod() const { return _passwordMethod; }
   std::string const& passwordSalt() const { return _passwordSalt; }
   std::string const& passwordHash() const { return _passwordHash; }
   bool isActive() const { return _active; }
-  bool mustChange() const { return _mustChange; }
-  double created() const { return _created; }
+  bool mustChangePassword() const { return _changePassword; }
   AuthSource source() const { return _source; }
 
-  bool checkPasswordHash(std::string const& hash) const {
-    return _passwordHash == hash;
-  }
-
+  bool checkPassword(std::string const& password) const;
+  void updatePassword(std::string const& password);
+  
   AuthLevel canUseDatabase(std::string const& dbname) const;
   std::shared_ptr<AuthContext> getAuthContext(std::string const& database) const;
-  
-  static AuthUserEntry fromSlice(velocypack::Slice const&,
-                                 AuthSource source);
-  //velocypack::Builder toVPackBuilder() const;
+  velocypack::Builder toVPackBuilder() const;
 
+  void setActive(bool active) { _active = active; }
+  void changePassword(bool c) { _changePassword = c; }
+  
+  void grantDatabase(std::string const& dbname, AuthLevel level);
+  void grantCollection(std::string const& dbname, std::string const& collection, AuthLevel level);
+  
+  static AuthUserEntry newUser(std::string const& user,
+                               std::string const& pass,
+                               AuthSource source);
+  static AuthUserEntry fromDocument(velocypack::Slice const&);
+  
+private:
+  
+  AuthUserEntry() {}
+  
  private:
-  std::string const _username;
-  std::string const _passwordMethod;
-  std::string const _passwordSalt;
-  std::string const _passwordHash;
-  bool const _active;
-  bool _mustChange;
-  double _created;
-  AuthSource _source;
+  std::string _key;
+  bool _active = true;
+  AuthSource _source = AuthSource::COLLECTION;
+  
+  std::string _username;
+  std::string _passwordMethod;
+  std::string _passwordSalt;
+  std::string _passwordHash;
+  std::string _passwordChangeToken;
+  bool _changePassword;
+
   std::unordered_map<std::string, std::shared_ptr<AuthContext>> _authContexts;
 };
 

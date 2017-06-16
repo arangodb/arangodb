@@ -30,13 +30,14 @@ namespace arangodb {
 enum class AuthLevel;
 
 class AuthContext {
+  friend class AuthUserEntry;
+  
   public:
     AuthContext(AuthLevel authLevel, std::unordered_map<std::string, AuthLevel>&& collectionAccess);
     AuthLevel databaseAuthLevel() const { return _databaseAuthLevel; }
-    void systemAuthLevel(AuthLevel level) { _systemAuthLevel = level; }
     AuthLevel systemAuthLevel() const { return _systemAuthLevel; }
     AuthLevel collectionAuthLevel(std::string const& collectionName) const;
-
+  
     void dump();
 
   protected:
