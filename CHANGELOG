@@ -1,6 +1,8 @@
 v3.1.23 (XXXX-XX-XX)
 --------------------
 
+* potentially fixed issue #2559: Duplicate _key generated on insertion
+
 * fix invalid first group results for sorted AQL COLLECT when LIMIT
   was used
 
