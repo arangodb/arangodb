@@ -18,100 +18,108 @@ def buildLinux = true
 def buildMac = false
 def buildWindows = false
 
+def checkoutCommunity() {
+    retry(3) {
+        try {
+            checkout scm
+    }
+    catch (err) {
+        echo "GITHUB checkout failed, retrying in 5min"
+        echo err.toString()
+        sleep 300
+    }
+}
+}
+
+def checkoutEnterprise() {
+    try {
+        echo "Trying enterprise branch ${env.BRANCH_NAME}"
+
+        checkout(
+            changelog: false,
+            poll: false,
+            scm: [
+                $class: 'GitSCM',
+                branches: [[name: "*/${env.BRANCH_NAME}"]],
+                doGenerateSubmoduleConfigurations: false,
+                extensions: [[$class: 'RelativeTargetDirectory', relativeTargetDir: 'enterprise']],
+                submoduleCfg: [],
+                userRemoteConfigs: [[credentialsId: credentialsId, url: enterpriseRepo]]])
+
+        buildEnterprise = true
+    }
+    catch (err) {
+        echo "Failed ${env.BRANCH_NAME}, trying enterprise branch devel"
+
+        checkout(
+            changelog: false,
+            poll: false,
+            scm: [
+                $class: 'GitSCM',
+                branches: [[name: "*/devel"]],
+                doGenerateSubmoduleConfigurations: false,
+                extensions: [[$class: 'RelativeTargetDirectory', relativeTargetDir: 'enterprise']],
+                submoduleCfg: [],
+                userRemoteConfigs: [[credentialsId: credentialsId, url: enterpriseRepo]]])
+    }
+
+}
+
+def checkCommitMessages() {
+    def changeLogSets = currentBuild.changeSets
+
+    for (int i = 0; i < changeLogSets.size(); i++) {
+        def entries = changeLogSets[i].items
+
+        for (int j = 0; j < entries.length; j++) {
+            def entry = entries[j]
+
+            def author = entry.author
+            def commitId = entry.commitId
+            def msg = entry.msg
+            def timestamp = new Date(entry.timestamp)
+
+            if (msg ==~ /(?i).*ci: *clean[ \\]].*/) {
+                echo "using clean build because message contained 'ci: clean'"
+                cleanBuild = true
+            }
+
+            if (msg ==~ /(?i).*ci: *no-linux[ \\]].*/) {
+                echo "not building linux because message contained 'ci: no-linux'"
+                buildLinux = false
+            }
+
+            if (msg ==~ /(?i).*ci: *mac[ \\]].*/) {
+                echo "building mac because message contained 'ci: mac'"
+                buildMac = true
+            }
+
+            if (msg ==~ /(?i).*ci: *windows[ \\]].*/) {
+                echo "building windows because message contained 'ci: windows'"
+                buildWindows = true
+            }
+
+            if (msg ==~ /(?i).*ci: *enterprise[ \\]].*/) {
+                echo "building enterprise because message contained 'ci: enterprise'"
+                buildMac = true
+            }
+
+            def files = new ArrayList(entry.affectedFiles)
+
+            for (int k = 0; k < files.size(); k++) {
+                def file = files[k]
+                def editType = file.editType.name
+                def path = file.path
+            }
+        }
+    }
+}
+
 stage('checkout') {
     node('master') {
-        retry(3) {
-            try {
-                checkout scm
-
-                script {
-                    def changeLogSets = currentBuild.changeSets
-
-                    for (int i = 0; i < changeLogSets.size(); i++) {
-                        def entries = changeLogSets[i].items
-
-                        for (int j = 0; j < entries.length; j++) {
-                            def entry = entries[j]
-
-                            def author = entry.author
-                            def commitId = entry.commitId
-                            def msg = entry.msg
-                            def timestamp = new Date(entry.timestamp)
-
-                            if (msg ==~ /(?i).*ci: *clean[ \\]].*/) {
-                                echo "using clean build because message contained 'ci: clean'"
-                                cleanBuild = true
-                            }
-
-                            if (msg ==~ /(?i).*ci: *no-linux[ \\]].*/) {
-                                echo "not building linux because message contained 'ci: no-linux'"
-                                buildLinux = false
-                            }
-
-                            if (msg ==~ /(?i).*ci: *mac[ \\]].*/) {
-                                echo "building mac because message contained 'ci: mac'"
-                                buildMac = true
-                            }
-
-                            if (msg ==~ /(?i).*ci: *windows[ \\]].*/) {
-                                echo "building windows because message contained 'ci: windows'"
-                                buildWindows = true
-                            }
-
-                            if (msg ==~ /(?i).*ci: *enterprise[ \\]].*/) {
-                                echo "building enterprise because message contained 'ci: enterprise'"
-                                buildMac = true
-                            }
-
-                            def files = new ArrayList(entry.affectedFiles)
-
-                            for (int k = 0; k < files.size(); k++) {
-                                def file = files[k]
-                                def editType = file.editType.name
-                                def path = file.path
-                            }
-                        }
-                    }
-                }
-
-            }
-            catch (err) {
-                echo "GITHUB checkout failed, retrying in 5min"
-                echo err.toString()
-                sleep 300
-            }
-        }
-
-        try {
-            echo "Trying enterprise branch ${env.BRANCH_NAME}"
-
-            checkout(
-                changelog: false,
-                poll: false,
-                scm: [
-                    $class: 'GitSCM',
-                    branches: [[name: "*/${env.BRANCH_NAME}"]],
-                    doGenerateSubmoduleConfigurations: false,
-                    extensions: [[$class: 'RelativeTargetDirectory', relativeTargetDir: 'enterprise']],
-                    submoduleCfg: [],
-                    userRemoteConfigs: [[credentialsId: credentialsId, url: enterpriseRepo]]])
-
-            buildEnterprise = true
-        }
-        catch (err) {
-            echo "Failed ${env.BRANCH_NAME}, trying enterprise branch devel"
-
-            checkout(
-                changelog: false,
-                poll: false,
-                scm: [
-                    $class: 'GitSCM',
-                    branches: [[name: "*/devel"]],
-                    doGenerateSubmoduleConfigurations: false,
-                    extensions: [[$class: 'RelativeTargetDirectory', relativeTargetDir: 'enterprise']],
-                    submoduleCfg: [],
-                    userRemoteConfigs: [[credentialsId: credentialsId, url: enterpriseRepo]]])
-        }
+        checkoutCommunity()
+        checkCommitMessages()
+        checkoutEnterprise()
 
         sh 'rm -f source.*'
         sh 'tar -c -z -f source.tar.gz --exclude "source.*" --exclude "*tmp" *'
