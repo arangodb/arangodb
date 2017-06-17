@@ -1,7 +1,7 @@
 //  -*- mode: groovy-mode
 
-def enterpriseRepo = 'https://github.com/arangodb/enterprise'
-def credentials = '8d893d23-6714-4f35-a239-c847c798e080'
+enterpriseRepo = 'https://github.com/arangodb/enterprise'
+credentials = '8d893d23-6714-4f35-a239-c847c798e080'
 
 def binariesCommunity = 'build/**,etc/**,Installation/Pipeline/**,js/**,scripts/**,tests/arangodbtests,UnitTests/**,utils/**'
 def binariesEnterprise = 'build/**,enterprise/js/**,etc/**,Installation/Pipeline/**,js/**,scripts/**,tests/arangodbtests,UnitTests/**,utils/**'
