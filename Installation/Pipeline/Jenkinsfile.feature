@@ -1,7 +1,7 @@
 //  -*- mode: groovy-mode
 
 def enterpriseRepo = 'https://github.com/arangodb/enterprise'
-def credentialsId = '8d893d23-6714-4f35-a239-c847c798e080'
+def credentials = '8d893d23-6714-4f35-a239-c847c798e080'
 
 def binariesCommunity = 'build/**,etc/**,Installation/Pipeline/**,js/**,scripts/**,tests/arangodbtests,UnitTests/**,utils/**'
 def binariesEnterprise = 'build/**,enterprise/js/**,etc/**,Installation/Pipeline/**,js/**,scripts/**,tests/arangodbtests,UnitTests/**,utils/**'
@@ -22,13 +22,13 @@ def checkoutCommunity() {
     retry(3) {
         try {
             checkout scm
+        }
+        catch (err) {
+            echo "GITHUB checkout failed, retrying in 5min"
+            echo err.toString()
+            sleep 300
+        }
     }
-    catch (err) {
-        echo "GITHUB checkout failed, retrying in 5min"
-        echo err.toString()
-        sleep 300
-    }
-}
 }
 
 def checkoutEnterprise() {
@@ -44,7 +44,7 @@ def checkoutEnterprise() {
                 doGenerateSubmoduleConfigurations: false,
                 extensions: [[$class: 'RelativeTargetDirectory', relativeTargetDir: 'enterprise']],
                 submoduleCfg: [],
-                userRemoteConfigs: [[credentialsId: credentialsId, url: enterpriseRepo]]])
+                userRemoteConfigs: [[credentialsId: credentials, url: enterpriseRepo]]])
 
         buildEnterprise = true
     }
@@ -60,7 +60,7 @@ def checkoutEnterprise() {
                 doGenerateSubmoduleConfigurations: false,
                 extensions: [[$class: 'RelativeTargetDirectory', relativeTargetDir: 'enterprise']],
                 submoduleCfg: [],
-                userRemoteConfigs: [[credentialsId: credentialsId, url: enterpriseRepo]]])
+                userRemoteConfigs: [[credentialsId: credentials, url: enterpriseRepo]]])
     }
 
 }
