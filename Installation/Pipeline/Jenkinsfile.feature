@@ -3,8 +3,8 @@
 def enterpriseRepo = 'https://github.com/arangodb/enterprise'
 def credentialsId = '8d893d23-6714-4f35-a239-c847c798e080'
 
-def binariesCommunity = 'build/**,etc/**,Installation/Pipeline/**,js/**,scripts/**,tests/**,UnitTests/**,utils/**'
-def binariesEnterprise = 'build/**,enterprise/js/**,etc/**,Installation/Pipeline/**,js/**,scripts/**,tests/**,UnitTests/**,utils/**'
+def binariesCommunity = 'build/**,etc/**,Installation/Pipeline/**,js/**,scripts/**,tests/arangodbtests,UnitTests/**,utils/**'
+def binariesEnterprise = 'build/**,enterprise/js/**,etc/**,Installation/Pipeline/**,js/**,scripts/**,tests/arangodbtests,UnitTests/**,utils/**'
 
 def PowerShell(psCmd) {
     bat "powershell.exe -NonInteractive -ExecutionPolicy Bypass -Command \"\$ErrorActionPreference='Stop';[Console]::OutputEncoding=[System.Text.Encoding]::UTF8;$psCmd;EXIT \$global:LastExitCode\""
@@ -125,9 +125,7 @@ stage('build linux') {
                     [$class: 'ArbitraryFileCache',
                      includes: '**',
                      path: "./build-jenkins"]]) {
-                        sh 'echo ./Installation/Pipeline/build_community_linux.sh 16'
-                        sh 'mkdir -p build-jenkins'
-                        sh 'touch build-jenkins/xxxx-emil'
+                        sh './Installation/Pipeline/build_community_linux.sh 16'
                 }
             }
             catch (exc) {
