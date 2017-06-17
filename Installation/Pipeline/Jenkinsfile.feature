@@ -104,7 +104,7 @@ stage('checkout') {
                     userRemoteConfigs: [[credentialsId: credentialsId, url: enterpriseRepo]]])
         }
 
-        sh 'rm -f source.tar.gz'
+        sh 'rm -f source.*'
         sh 'tar -c -z -f source.tar.gz --exclude "source.*" --exclude "*tmp" *'
         stash includes: 'source.tar.gz', name: 'source'
     }
@@ -122,7 +122,7 @@ stage('build linux') {
                 cache(maxCacheSize: 50000, caches: [
                     [$class: 'ArbitraryFileCache',
                      includes: '**',
-                     path: "build-jenkins.zip"]]) {
+                     path: "build-jenkins.tar.gz"]]) {
                         sh 'if test -f build-jenkins.tar.gz; then tar -x -z -p -f build-jenkins.tar.gz; rm build-jenkins.tar.gz; fi'
                         sh './Installation/Pipeline/build_community_linux.sh 16'
                         sh 'tar -c -z -f build-jenkins.tar.gz build-jenkins'
