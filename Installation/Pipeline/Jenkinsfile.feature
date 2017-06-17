@@ -116,7 +116,7 @@ def checkCommitMessages() {
 
             if (msg ==~ /(?i).*ci: *enterprise[ \\]].*/) {
                 echo "building enterprise because message contained 'ci: enterprise'"
-                buildMac = true
+                buildEnterprise = true
             }
 
             def files = new ArrayList(entry.affectedFiles)
