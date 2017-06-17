@@ -38,9 +38,9 @@ def checkoutCommunity() {
         try {
             checkout scm
         }
-        catch (err) {
+        catch (exc) {
             echo "GITHUB checkout failed, retrying in 5min"
-            echo err.toString()
+            echo exc.toString()
             sleep 300
         }
     }
@@ -63,7 +63,7 @@ def checkoutEnterprise() {
 
         buildEnterprise = true
     }
-    catch (err) {
+    errxc (err) {
         echo "Failed ${env.BRANCH_NAME}, trying enterprise branch devel"
 
         checkout(
@@ -174,6 +174,7 @@ def buildEdition(edition, os) {
         }
     }
     catch (exc) {
+        echo exc.toString()
         throw exc
     }
     finally {
@@ -200,6 +201,7 @@ def testEdition(edition, os, type, engine) {
         sh './Installation/Pipeline/test_' + type + '_' + edition + '_' + engine + '_' + os + '.sh 8'
     }
     catch (exc) {
+        echo exc.toString()
         throw exc
     }
     finally {
@@ -212,6 +214,7 @@ def jslint() {
         sh './Installation/Pipeline/test_jslint.sh'
     }
     catch (exc) {
+        echo exc.toString()
         currentBuild.result = 'UNSTABLE'
     }
 }
