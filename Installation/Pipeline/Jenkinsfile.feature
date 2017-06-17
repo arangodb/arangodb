@@ -132,7 +132,7 @@ def checkCommitMessages() {
 
 def stashSourceCode() {
     sh 'rm -f source.*'
-    sh 'tar -c -z -f source.tar.gz --exclude "source.*" --exclude "*tmp" *'
+    sh 'tar -c -z -f source.tar.gz --exclude "source.*" --exclude "*tmp" --exclude ".git" *'
     stash includes: 'source.tar.gz', name: 'source'
 }
 
