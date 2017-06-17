@@ -11,10 +11,12 @@ def PowerShell(psCmd) {
 }
 
 def cleanBuild = false
-def cleanAll = false
 
-def buildWindows = false
+def buildEnterprise = false
+
+def buildLinux = true
 def buildMac = false
+def buildWindows = false
 
 stage('checkout') {
     node('master') {
@@ -41,9 +43,14 @@ stage('checkout') {
                                 cleanBuild = true
                             }
 
-                            if (msg ==~ /(?i).*ci: *clean-all[ \\]].*/) {
-                                echo "using clean all because message contained 'ci: clean-all'"
-                                cleanAll = true
+                            if (msg ==~ /(?i).*ci: *no-linux[ \\]].*/) {
+                                echo "not building linux because message contained 'ci: no-linux'"
+                                buildLinux = false
+                            }
+
+                            if (msg ==~ /(?i).*ci: *mac[ \\]].*/) {
+                                echo "building mac because message contained 'ci: mac'"
+                                buildMac = true
                             }
 
                             if (msg ==~ /(?i).*ci: *windows[ \\]].*/) {
@@ -51,8 +58,8 @@ stage('checkout') {
                                 buildWindows = true
                             }
 
-                            if (msg ==~ /(?i).*ci: *mac[ \\]].*/) {
-                                echo "building mac because message contained 'ci: mac'"
+                            if (msg ==~ /(?i).*ci: *enterprise[ \\]].*/) {
+                                echo "building enterprise because message contained 'ci: enterprise'"
                                 buildMac = true
                             }
 
@@ -88,6 +95,8 @@ stage('checkout') {
                     extensions: [[$class: 'RelativeTargetDirectory', relativeTargetDir: 'enterprise']],
                     submoduleCfg: [],
                     userRemoteConfigs: [[credentialsId: credentialsId, url: enterpriseRepo]]])
+
+            buildEnterprise = true
         }
         catch (err) {
             echo "Failed ${env.BRANCH_NAME}, trying enterprise branch devel"
@@ -110,85 +119,159 @@ stage('checkout') {
     }
 }
 
-stage('build linux') {
-    node('linux') {
-        sh 'rm -rf *'
+if (buildLinux) {
+    stage('build linux') {
+        parallel(
+            'community': {
+                node('linux') {
+                    sh 'rm -rf *'
 
-        unstash 'source'
-        sh 'tar -x -z -p -f source.tar.gz'
-        sh 'mkdir -p artefacts'
+                    unstash 'source'
+                    sh 'tar -x -z -p -f source.tar.gz'
+                    sh 'mkdir -p artefacts'
 
-        script {
-            try {
-                cache(maxCacheSize: 50000, caches: [
-                    [$class: 'ArbitraryFileCache',
-                     includes: 'build-jenkins.tar.gz',
-                     path: "artefacts"]]) {
-                        sh 'if test -f artefacts/build-jenkins.tar.gz; then tar -x -z -p -f artefacts/build-jenkins.tar.gz; rm artefacts/build-jenkins.tar.gz; fi'
-                        sh './Installation/Pipeline/build_community_linux.sh 16'
-                        sh 'tar -c -z -f artefacts/build-jenkins.tar.gz build-jenkins'
+                    script {
+                        try {
+                            cache(maxCacheSize: 50000, caches: [
+                                [$class: 'ArbitraryFileCache',
+                                 includes: 'build-community-linux.tar.gz',
+                                 path: "artefacts"]]) {
+                                    if (!cleanBuild) {
+                                        sh 'if test -f artefacts/build-community-linux.tar.gz; then tar -x -z -p -f artefacts/build-community-linux.tar.gz; fi'
+                                    }
+
+                                    sh 'rm -f artefacts/build-community-linux.tar.gz'
+                                    sh './Installation/Pipeline/build_community_linux.sh 16'
+                                    sh 'tar -c -z -f artefacts/build-community-linux.tar.gz build-community'
+                            }
+                        }
+                        catch (exc) {
+                            throw exc
+                        }
+                        finally {
+                            archiveArtifacts allowEmptyArchive: true, artifacts: 'log-output/**', defaultExcludes: false
+                        }
+                    }
+
+                    stash includes: binariesCommunity, name: 'build-community-linux'
+                }
+            },
+
+            'enterprise': {
+                if (buildEnterprise) {
+                    node('linux') {
+                        sh 'rm -rf *'
+
+                        unstash 'source'
+                        sh 'tar -x -z -p -f source.tar.gz'
+                        sh 'mkdir -p artefacts'
+
+                        script {
+                            try {
+                                cache(maxCacheSize: 50000, caches: [
+                                    [$class: 'ArbitraryFileCache',
+                                     includes: 'build-enterprise-linux.tar.gz',
+                                     path: "artefacts"]]) {
+                                        if (!cleanBuild) {
+                                            sh 'if test -f artefacts/build-enterprise-linux.tar.gz; then tar -x -z -p -f artefacts/build-enterprise-linux.tar.gz; fi'
+                                        }
+
+                                        sh 'rm -f artefacts/build-enterprise-linux.tar.gz'
+                                        sh './Installation/Pipeline/build_enterprise_linux.sh 16'
+                                        sh 'tar -c -z -f artefacts/build-enterprise-linux.tar.gz build-enterprise'
+                                }
+                            }
+                            catch (exc) {
+                                throw exc
+                            }
+                            finally {
+                                archiveArtifacts allowEmptyArchive: true, artifacts: 'log-output/**', defaultExcludes: false
+                            }
+                        }
+
+                        stash includes: binariesEnterprise, name: 'build-enterprise-linux'
+                    }
+                }
+                else {
+                    echo "Not build enterprise version"
                 }
             }
-            catch (exc) {
-                throw exc
-            }
-            finally {
-                archiveArtifacts allowEmptyArchive: true, artifacts: 'log-output/**', defaultExcludes: false
-            }
-        }
-
-        stash includes: binariesCommunity, name: 'build-community-linux'
+        )
     }
 }
 
 stage('build & test') {
     parallel(
         'test-singleserver-community': {
-            node('linux') {
-                sh 'rm -rf *'
-                unstash 'build-community-linux'
-                echo "Running singleserver comunity mmfiles linux test"
-                script {
-                    try {
-                        sh './Installation/Pipeline/test_singleserver_community_mmfiles_linux.sh 8'
-                    }
-                    catch (exc) {
-                        throw exc
-                    }
-                    finally {
-                        archiveArtifacts allowEmptyArchive: true, artifacts: 'log-output/**', defaultExcludes: false
+            if (buildLinux) {
+                node('linux') {
+                    sh 'rm -rf *'
+                    unstash 'build-community-linux'
+                    echo "Running singleserver community rocksdb linux test"
+                    script {
+                        try {
+                            sh './Installation/Pipeline/test_singleserver_community_rocksdb_linux.sh 8'
+                        }
+                        catch (exc) {
+                            throw exc
+                        }
+                        finally {
+                            archiveArtifacts allowEmptyArchive: true, artifacts: 'log-output/**', defaultExcludes: false
+                        }
                     }
                 }
             }
         },
 
-        'test-cluster-community': {
-            if (false) {
+        'test-singleserver-enterprise': {
+            if (buildLinux && buildEnterprise) {
                 node('linux') {
                     sh 'rm -rf *'
-                    unstash 'build-community-linux'
-                    echo "Running cluster community rocksdb linux test"
-                    sh './Installation/Pipeline/test_cluster_community_rocksdb_linux.sh 8'
+                    unstash 'build-enterprise-linux'
+                    echo "Running singleserver enterprise mmfiles linux test"
+                    script {
+                        try {
+                            sh './Installation/Pipeline/test_singleserver_enterprise_mmfiles_linux.sh 8'
+                        }
+                        catch (exc) {
+                            throw exc
+                        }
+                        finally {
+                            archiveArtifacts allowEmptyArchive: true, artifacts: 'log-output/**', defaultExcludes: false
+                        }
+                    }
                 }
+            }
+            else {
+                echo "Not build enterprise version"
             }
         },
 
         'jslint': {
-            node('linux') {
-                sh 'rm -rf *'
-                unstash 'build-community-linux'
-                echo "Running jslint test"
+            if (buildLinux) {
+                node('linux') {
+                    sh 'rm -rf *'
+                    unstash 'build-community-linux'
+                    echo "Running jslint test"
 
-                script {
-                    try {
-                        sh './Installation/Pipeline/test_jslint.sh'
-                    }
-                    catch (exc) {
-                        currentBuild.result = 'UNSTABLE'
+                    script {
+                        try {
+                            sh './Installation/Pipeline/test_jslint.sh'
+                        }
+                        catch (exc) {
+                            currentBuild.result = 'UNSTABLE'
+                        }
                     }
                 }
             }
-        },
+        }
+    )
+}
+
+
+
+
+/*
 
         'build-mac': {
             if (buildMac) {
@@ -209,6 +292,7 @@ stage('build & test') {
 
         'build-windows': {
             if (buildWindows) {
+
                 node('windows') {
                     if (cleanAll) {
                         bat 'del /F /Q *'
@@ -223,5 +307,4 @@ stage('build & test') {
                 }
             }
         }
-    )
-}
+*/
