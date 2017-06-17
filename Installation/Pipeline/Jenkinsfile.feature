@@ -121,8 +121,8 @@ stage('build linux') {
             try {
                 cache(maxCacheSize: 50000, caches: [
                     [$class: 'ArbitraryFileCache',
-                     includes: 'build-jenkins.zip',
-                     path: "."]]) {
+                     includes: '**',
+                     path: "build-jenkins.zip"]]) {
                         sh 'if test -f build-jenkins.tar.gz; then tar -x -z -p -f build-jenkins.tar.gz; rm build-jenkins.tar.gz; fi'
                         sh './Installation/Pipeline/build_community_linux.sh 16'
                         sh 'tar -c -z -f build-jenkins.tar.gz build-jenkins'
