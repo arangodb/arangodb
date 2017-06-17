@@ -50,7 +50,7 @@ mkdir -p log-output
 
     echo "`date +%T` building..."
     make -j$concurrency >> ../log-output/$type.log 2>&1 || exit 1
-)
+) || exit 1
 
 # copy binaries to preserve them
 echo "`date +%T` copying..."

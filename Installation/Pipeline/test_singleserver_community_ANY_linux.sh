@@ -53,4 +53,4 @@ scripts/unittest ssl_server                                   --minPort `expr $P
 scripts/unittest upgrade                                      --minPort `expr $PORT03 +  50` --maxPort `expr $PORT03 +  59` $OPTS 2>&1
 " | parallel --header 1 --results log-output --files --no-notice --load 10 --jobs $concurrency > log-output/${type}.log
 
-. ./Installation/Pipeline/include/test_check_results.inc $?
+. ./Installation/Pipeline/include/test_check_result.inc $?

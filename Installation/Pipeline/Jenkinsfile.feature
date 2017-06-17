@@ -216,7 +216,7 @@ stage('checkout') {
 if (buildLinux) {
     stage('build linux') {
         parallel(
-            'community': {
+            'build-community-linux': {
                 node('linux') {
                     unstashSourceCode()
                     buildEdition('community', 'linux')
@@ -224,7 +224,7 @@ if (buildLinux) {
                 }
             },
 
-            'enterprise': {
+            'build-enterprise-linux': {
                 if (buildEnterprise) {
                     node('linux') {
                         unstashSourceCode()
@@ -238,37 +238,33 @@ if (buildLinux) {
             }
         )
     }
-}
 
-stage('build & test') {
-    parallel(
-        'test-singleserver-community': {
-            if (buildLinux) {
+    stage('test linux') {
+        parallel(
+            'test-singleserver-community': {
                 node('linux') {
                     echo "Running singleserver community rocksdb linux test"
 
                     unstashBinaries('community', 'linux')
                     testEdition('community', 'linux', 'singleserver', 'rocksdb')
                 }
-            }
-        },
+            },
 
-        'test-singleserver-enterprise': {
-            if (buildLinux && buildEnterprise) {
-                node('linux') {
-                    echo "Running singleserver enterprise mmfiles linux test"
+            'test-singleserver-enterprise': {
+                if (buildEnterprise) {
+                    node('linux') {
+                        echo "Running singleserver enterprise mmfiles linux test"
 
-                    unstashBinaries('enterprise', 'linux')
-                    testEdition('enterprise', 'linux', 'singleserver', 'mmfiles')
+                        unstashBinaries('enterprise', 'linux')
+                        testEdition('enterprise', 'linux', 'singleserver', 'mmfiles')
+                    }
                 }
-            }
-            else {
-                echo "Enterprise version not built, skipping 'test-singleserver-enterprise'"
-            }
-        },
+                else {
+                    echo "Enterprise version not built, skipping 'test-singleserver-enterprise'"
+                }
+            },
 
-        'jslint': {
-            if (buildLinux) {
+            'jslint': {
                 node('linux') {
                     echo "Running jslint test"
 
@@ -276,12 +272,10 @@ stage('build & test') {
                     jslint()
                 }
             }
-            else {
-                 echo "Linux version not built, skipping jslint"
-            }
-        }
-    )
+        )
+    }
 }
+
 
 
 
