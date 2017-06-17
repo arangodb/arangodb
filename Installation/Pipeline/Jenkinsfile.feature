@@ -105,7 +105,7 @@ stage('checkout') {
         }
 
         sh 'rm -f source.tar.gz'
-        sh 'tar czf source.tar.gz *'
+        sh 'tar -c -z -f source.tar.gz --exclude source.zip --exclude "*tmp" .'
         stash includes: 'source.tar.gz', name: 'source'
     }
 }
@@ -114,8 +114,8 @@ stage('build linux') {
     node('linux') {
         sh 'rm -rf *'
 
-        unstash 'source.tar.gz'
-        sh 'tar xzf source.tar.gz'
+        unstash 'source'
+        sh 'tar -x -z -p -f source.tar.gz'
 
         script {
             try {
@@ -123,8 +123,9 @@ stage('build linux') {
                     [$class: 'ArbitraryFileCache',
                      includes: 'build-jenkins.zip',
                      path: "."]]) {
+                        sh 'if test -f build-jenkins.tar.gz; then tar -x -z -p -f build-jenkins.tar.gz; rm build-jenkins.tar.gz; fi'
                         sh './Installation/Pipeline/build_community_linux.sh 16'
-                        zip zipFile: 'build-jenkins.zip', glob: 'build-jenkins/**'
+                        sh 'tar -c -z -f build-jenkins.tar.gz build-jenkins'
                 }
             }
             catch (exc) {
