@@ -104,7 +104,8 @@ stage('checkout') {
                     userRemoteConfigs: [[credentialsId: credentialsId, url: enterpriseRepo]]])
         }
 
-        zip zipFile: 'source.zip', glob: '**'
+        sh 'rm -f source.zip'
+        zip zipFile: 'source.zip'
         stash includes: 'source.zip', name: 'source'
     }
 }
