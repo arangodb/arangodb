@@ -161,7 +161,7 @@ def buildEdition(edition, os) {
                     }
 
                     sh 'rm -f artefacts/' + tarfile
-                    sh './Installation/Pipeline/build_community_linux.sh 16'
+                    sh './Installation/Pipeline/build_' + edition + '_' + os + '.sh 16'
                     sh 'tar -c -z -f artefacts/' + tarfile + ' build-' + edition
             }
         }
