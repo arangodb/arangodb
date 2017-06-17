@@ -104,28 +104,26 @@ stage('checkout') {
                     userRemoteConfigs: [[credentialsId: credentialsId, url: enterpriseRepo]]])
         }
 
-        stash includes: '**', name: 'source'
+        zip zipFile: 'source.zip', glob: '**'
+        stash includes: 'source.zip', name: 'source'
     }
 }
 
 stage('build linux') {
     node('linux') {
-        if (cleanAll) {
-            sh 'rm -rf *'
-        }
-        else if (cleanBuild) {
-            sh 'rm -rf build-jenkins'
-        }
+        sh 'rm -rf *'
 
-        unstash 'source'
+        unstash 'source.zip'
+        unzip zipFile: 'source.zip'
 
         script {
             try {
                 cache(maxCacheSize: 50000, caches: [
                     [$class: 'ArbitraryFileCache',
-                     includes: '**',
-                     path: "./build-jenkins"]]) {
+                     includes: 'build-jenkins.zip',
+                     path: "."]]) {
                         sh './Installation/Pipeline/build_community_linux.sh 16'
+                        zip zipFile: 'build-jenkins.zip', glob: 'build-jenkins/**'
                 }
             }
             catch (exc) {
