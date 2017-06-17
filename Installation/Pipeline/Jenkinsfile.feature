@@ -116,16 +116,17 @@ stage('build linux') {
 
         unstash 'source'
         sh 'tar -x -z -p -f source.tar.gz'
+        sh 'mkdir -p artefacts'
 
         script {
             try {
                 cache(maxCacheSize: 50000, caches: [
                     [$class: 'ArbitraryFileCache',
-                     includes: '**',
-                     path: "build-jenkins.tar.gz"]]) {
-                        sh 'if test -f build-jenkins.tar.gz; then tar -x -z -p -f build-jenkins.tar.gz; rm build-jenkins.tar.gz; fi'
+                     includes: 'build-jenkins.tar.gz',
+                     path: "artefacts"]]) {
+                        sh 'if test -f artefacts/build-jenkins.tar.gz; then tar -x -z -p -f artefacts/build-jenkins.tar.gz; rm artefacts/build-jenkins.tar.gz; fi'
                         sh './Installation/Pipeline/build_community_linux.sh 16'
-                        sh 'tar -c -z -f build-jenkins.tar.gz build-jenkins'
+                        sh 'tar -c -z -f artefacts/build-jenkins.tar.gz build-jenkins'
                 }
             }
             catch (exc) {
