@@ -32,10 +32,10 @@ mkdir -p log-output
 echo "Copying..."
 
 rm -rf build
-mkdir build
+mkdir -p build/tests
 
-cp -a build-jenkins/bin   build
-cp -a build-jenkins/etc   build
-cp -a build-jenkins/tests build
+cp -a build-jenkins/bin                 build
+cp -a build-jenkins/etc                 build
+cp -a build-jenkins/tests/arangodbtests build/tests
 
 echo "Done..."
