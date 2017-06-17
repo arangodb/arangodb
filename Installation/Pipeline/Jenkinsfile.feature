@@ -94,7 +94,7 @@ def checkCommitMessages() {
             def msg = entry.msg
             def timestamp = new Date(entry.timestamp)
 
-            echo mesg
+            echo msg
 
             if (msg ==~ /(?i).*\\[ci:[^\\]]*clean[ \\]].*/) {
                 echo "using clean build because message contained 'clean'"
