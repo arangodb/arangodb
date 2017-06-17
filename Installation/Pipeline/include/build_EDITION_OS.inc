@@ -37,7 +37,7 @@ mkdir -p log-output
     mkdir -p build-$edition
     cd build-$edition
 
-    echo "Configuring..."
+    echo "`date +%T` configuring..."
     CXXFLAGS=-fno-omit-frame-pointer \
         cmake \
             -DCMAKE_BUILD_TYPE=RelWithDebInfo \
@@ -48,12 +48,12 @@ mkdir -p log-output
             $ENTERPRISE \
             .. > ../log-output/$type.log 2>&1 || exit 1
 
-    echo "Building..."
+    echo "`date +%T` building..."
     make -j$concurrency >> ../log-output/$type.log 2>&1 || exit 1
 )
 
 # copy binaries to preserve them
-echo "Copying..."
+echo "`date +%T` copying..."
 
 rm -rf build
 mkdir -p build/tests
@@ -62,4 +62,4 @@ cp -a build-$edition/bin                 build
 cp -a build-$edition/etc                 build
 cp -a build-$edition/tests/arangodbtests build/tests
 
-echo "Done..."
+echo "`date +%T` done..."

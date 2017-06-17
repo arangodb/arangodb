@@ -1,22 +1,37 @@
 //  -*- mode: groovy-mode
 
+// start with empty build directory
+cleanBuild = false
+
+// build enterprise version
+buildEnterprise = false
+
+// build linux
+buildLinux = true
+
+// build mac
+buildMac = false
+
+// build windows
+buildWindows = false
+
+// github repositiory for enterprise version
 enterpriseRepo = 'https://github.com/arangodb/enterprise'
+
+// Jenkins credentials for enterprise repositiory
 credentials = '8d893d23-6714-4f35-a239-c847c798e080'
 
-def binariesCommunity = 'build/**,etc/**,Installation/Pipeline/**,js/**,scripts/**,tests/arangodbtests,UnitTests/**,utils/**'
-def binariesEnterprise = 'build/**,enterprise/js/**,etc/**,Installation/Pipeline/**,js/**,scripts/**,tests/arangodbtests,UnitTests/**,utils/**'
+// binaries to copy for testing
+binariesCommunity = 'build/**,etc/**,Installation/Pipeline/**,js/**,scripts/**,tests/arangodbtests,UnitTests/**,utils/**'
+binariesEnterprise = binariesCommunity + ',enterprise/js/**'
 
 def PowerShell(psCmd) {
     bat "powershell.exe -NonInteractive -ExecutionPolicy Bypass -Command \"\$ErrorActionPreference='Stop';[Console]::OutputEncoding=[System.Text.Encoding]::UTF8;$psCmd;EXIT \$global:LastExitCode\""
 }
 
-def cleanBuild = false
-
-def buildEnterprise = false
-
-def buildLinux = true
-def buildMac = false
-def buildWindows = false
+// -----------------------------------------------------------------------------
+// --SECTION--                                                           SCRIPTS
+// -----------------------------------------------------------------------------
 
 def checkoutCommunity() {
     retry(3) {
@@ -115,15 +130,86 @@ def checkCommitMessages() {
     }
 }
 
+def stashSourceCode() {
+    sh 'rm -f source.*'
+    sh 'tar -c -z -f source.tar.gz --exclude "source.*" --exclude "*tmp" *'
+    stash includes: 'source.tar.gz', name: 'source'
+}
+
+def unstashSourceCode() {
+    sh 'rm -rf *'
+
+    unstash 'source'
+
+    sh 'tar -x -z -p -f source.tar.gz'
+    sh 'mkdir -p artefacts'
+}
+
+def buildEdition(edition, os) {
+    def tarfile = 'build-' + edition + '-' + os + '.tar.gz'
+    
+    try {
+        cache(maxCacheSize: 50000, caches: [
+            [$class: 'ArbitraryFileCache',
+             includes: tarfile,
+             path: 'artefacts']]) {
+                if (!cleanBuild) {
+                    sh 'if test -f artefacts/' + tarfile + '; then tar -x -z -p -f artefacts/' + tarfile + '; fi'
+                }
+
+                sh 'rm -f artefacts/' + tarfile
+                sh './Installation/Pipeline/build_community_linux.sh 16'
+                sh 'tar -c -z -f artefacts/' + tarfile + ' build-' + edition
+        }
+    }
+    catch (exc) {
+        throw exc
+    }
+    finally {
+        archiveArtifacts allowEmptyArchive: true, artifacts: 'log-output/**', defaultExcludes: false
+    }
+}
+
+def stashBinaries(edition, os) {
+    stash includes: binariesCommunity, name: 'build-' + edition + '-' + os
+}
+
+def unstashBinaries(edition, os) {
+    sh 'rm -rf *'
+    unstash 'build-community-linux'
+}
+
+def testEdition(edition, os, type, engine) {
+    try {
+        sh './Installation/Pipeline/test_' + type + '_' + edition + '_' + engine + '_' + os + '.sh 8'
+    }
+    catch (exc) {
+        throw exc
+    }
+    finally {
+        archiveArtifacts allowEmptyArchive: true, artifacts: 'log-output/**', defaultExcludes: false
+    }
+}
+
+def jslint() {
+    try {
+        sh './Installation/Pipeline/test_jslint.sh'
+    }
+    catch (exc) {
+        currentBuild.result = 'UNSTABLE'
+    }
+}
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                          PIPELINE
+// -----------------------------------------------------------------------------
+
 stage('checkout') {
     node('master') {
         checkoutCommunity()
         checkCommitMessages()
         checkoutEnterprise()
-
-        sh 'rm -f source.*'
-        sh 'tar -c -z -f source.tar.gz --exclude "source.*" --exclude "*tmp" *'
-        stash includes: 'source.tar.gz', name: 'source'
+        stashSourceCode()
     }
 }
 
@@ -132,76 +218,22 @@ if (buildLinux) {
         parallel(
             'community': {
                 node('linux') {
-                    sh 'rm -rf *'
-
-                    unstash 'source'
-                    sh 'tar -x -z -p -f source.tar.gz'
-                    sh 'mkdir -p artefacts'
-
-                    script {
-                        try {
-                            cache(maxCacheSize: 50000, caches: [
-                                [$class: 'ArbitraryFileCache',
-                                 includes: 'build-community-linux.tar.gz',
-                                 path: "artefacts"]]) {
-                                    if (!cleanBuild) {
-                                        sh 'if test -f artefacts/build-community-linux.tar.gz; then tar -x -z -p -f artefacts/build-community-linux.tar.gz; fi'
-                                    }
-
-                                    sh 'rm -f artefacts/build-community-linux.tar.gz'
-                                    sh './Installation/Pipeline/build_community_linux.sh 16'
-                                    sh 'tar -c -z -f artefacts/build-community-linux.tar.gz build-community'
-                            }
-                        }
-                        catch (exc) {
-                            throw exc
-                        }
-                        finally {
-                            archiveArtifacts allowEmptyArchive: true, artifacts: 'log-output/**', defaultExcludes: false
-                        }
-                    }
-
-                    stash includes: binariesCommunity, name: 'build-community-linux'
+                    unstashSourceCode()
+                    buildEdition('community', 'linux')
+                    stashBinaries('community', 'linux')
                 }
             },
 
             'enterprise': {
                 if (buildEnterprise) {
                     node('linux') {
-                        sh 'rm -rf *'
-
-                        unstash 'source'
-                        sh 'tar -x -z -p -f source.tar.gz'
-                        sh 'mkdir -p artefacts'
-
-                        script {
-                            try {
-                                cache(maxCacheSize: 50000, caches: [
-                                    [$class: 'ArbitraryFileCache',
-                                     includes: 'build-enterprise-linux.tar.gz',
-                                     path: "artefacts"]]) {
-                                        if (!cleanBuild) {
-                                            sh 'if test -f artefacts/build-enterprise-linux.tar.gz; then tar -x -z -p -f artefacts/build-enterprise-linux.tar.gz; fi'
-                                        }
-
-                                        sh 'rm -f artefacts/build-enterprise-linux.tar.gz'
-                                        sh './Installation/Pipeline/build_enterprise_linux.sh 16'
-                                        sh 'tar -c -z -f artefacts/build-enterprise-linux.tar.gz build-enterprise'
-                                }
-                            }
-                            catch (exc) {
-                                throw exc
-                            }
-                            finally {
-                                archiveArtifacts allowEmptyArchive: true, artifacts: 'log-output/**', defaultExcludes: false
-                            }
-                        }
-
-                        stash includes: binariesEnterprise, name: 'build-enterprise-linux'
+                        unstashSourceCode()
+                        buildEdition('enterprise', 'linux')
+                        stashBinaries('enterprise', 'linux')
                     }
                 }
                 else {
-                    echo "Not build enterprise version"
+                    echo "Not building enterprise version"
                 }
             }
         )
@@ -213,20 +245,10 @@ stage('build & test') {
         'test-singleserver-community': {
             if (buildLinux) {
                 node('linux') {
-                    sh 'rm -rf *'
-                    unstash 'build-community-linux'
                     echo "Running singleserver community rocksdb linux test"
-                    script {
-                        try {
-                            sh './Installation/Pipeline/test_singleserver_community_rocksdb_linux.sh 8'
-                        }
-                        catch (exc) {
-                            throw exc
-                        }
-                        finally {
-                            archiveArtifacts allowEmptyArchive: true, artifacts: 'log-output/**', defaultExcludes: false
-                        }
-                    }
+
+                    unstashBinaries('community', 'linux')
+                    testEdition('community', 'linux', 'singleserver', 'rocksdb')
                 }
             }
         },
@@ -234,43 +256,28 @@ stage('build & test') {
         'test-singleserver-enterprise': {
             if (buildLinux && buildEnterprise) {
                 node('linux') {
-                    sh 'rm -rf *'
-                    unstash 'build-enterprise-linux'
                     echo "Running singleserver enterprise mmfiles linux test"
-                    script {
-                        try {
-                            sh './Installation/Pipeline/test_singleserver_enterprise_mmfiles_linux.sh 8'
-                        }
-                        catch (exc) {
-                            throw exc
-                        }
-                        finally {
-                            archiveArtifacts allowEmptyArchive: true, artifacts: 'log-output/**', defaultExcludes: false
-                        }
-                    }
+
+                    unstashBinaries('enterprise', 'linux')
+                    testEdition('enterprise', 'linux', 'singleserver', 'mmfiles')
                 }
             }
             else {
-                echo "Not build enterprise version"
+                echo "Enterprise version not built, skipping 'test-singleserver-enterprise'"
             }
         },
 
         'jslint': {
             if (buildLinux) {
                 node('linux') {
-                    sh 'rm -rf *'
-                    unstash 'build-community-linux'
                     echo "Running jslint test"
 
-                    script {
-                        try {
-                            sh './Installation/Pipeline/test_jslint.sh'
-                        }
-                        catch (exc) {
-                            currentBuild.result = 'UNSTABLE'
-                        }
-                    }
+                    unstashBinaries('community', 'linux')
+                    jslint()
                 }
+            }
+            else {
+                 echo "Linux version not built, skipping jslint"
             }
         }
     )
