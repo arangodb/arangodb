@@ -96,27 +96,27 @@ def checkCommitMessages() {
 
             echo msg
 
-            if (msg ==~ /(?i).*\\[ci:[^\\]]*clean[ \\]].*/) {
+            if (msg ==~ /(?i).*\[ci:[^\]]*clean[ \]].*/) {
                 echo "using clean build because message contained 'clean'"
                 cleanBuild = true
             }
 
-            if (msg ==~ /(?i).*\\[ci:[^\\]]*no-linux[ \\]].*/) {
+            if (msg ==~ /(?i).*\[ci:[^\]]*no-linux[ \]].*/) {
                 echo "not building linux because message contained 'no-linux'"
                 buildLinux = false
             }
 
-            if (msg ==~ /(?i).*\\[ci:[^\\]]*mac[ \\]].*/) {
+            if (msg ==~ /(?i).*\[ci:[^\]]*mac[ \]].*/) {
                 echo "building mac because message contained 'mac'"
                 buildMac = true
             }
 
-            if (msg ==~ /(?i).*\\[ci:[^\\]]*windows[ \\]].*/) {
+            if (msg ==~ /(?i).*\[ci:[^\]]*windows[ \]].*/) {
                 echo "building windows because message contained 'windows'"
                 buildWindows = true
             }
 
-            if (msg ==~ /(?i).*\\[ci:[^\\]]*enterprise[ \\]].*/) {
+            if (msg ==~ /(?i).*\[ci:[^\]]*enterprise[ \]].*/) {
                 echo "building enterprise because message contained 'enterprise'"
                 buildEnterprise = true
             }
