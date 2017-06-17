@@ -1086,7 +1086,7 @@ function processQuery (query, explain) {
           (node.outVariable ? ' ' + keyword('INTO') + ' ' + variableName(node.outVariable) : '') +
           ((node.expressionVariable && node.outVariable) ? " = " + variableName(node.expressionVariable) : "") + 
           (node.keepVariables ? ' ' + keyword('KEEP') + ' ' + node.keepVariables.map(function (variable) { return variableName(variable.variable); }).join(', ') : '') +
-          '   ' + annotation('/* ' + node.collectOptions.method + '*/');
+          '   ' + annotation('/* ' + node.collectOptions.method + ' */');
         return collect;
       case 'SortNode':
         return keyword('SORT') + ' ' + node.elements.map(function (node) {

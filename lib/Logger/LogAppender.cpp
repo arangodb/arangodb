@@ -223,8 +223,11 @@ void LogAppender::log(LogMessage* message) {
 }
 
 void LogAppender::writeStderr(LogLevel level, std::string const& msg) {
-  if (level == LogLevel::FATAL || level == LogLevel::ERR) {
+  if (level == LogLevel::FATAL) {
     fprintf(stderr, "%s%s%s\n", ShellColorsFeature::SHELL_COLOR_RED, msg.c_str(), ShellColorsFeature::SHELL_COLOR_RESET);
+  } else if (level == LogLevel::ERR) {
+    fprintf(stderr, "%s%s%s\n", ShellColorsFeature::SHELL_COLOR_RED, msg.c_str(), ShellColorsFeature::SHELL_COLOR_RESET);
+    fflush(stderr);
   } else if (level == LogLevel::WARN) {
     fprintf(stderr, "%s%s%s\n", ShellColorsFeature::SHELL_COLOR_YELLOW, msg.c_str(), ShellColorsFeature::SHELL_COLOR_RESET);
   } else {
