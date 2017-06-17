@@ -22,7 +22,7 @@ enterpriseRepo = 'https://github.com/arangodb/enterprise'
 credentials = '8d893d23-6714-4f35-a239-c847c798e080'
 
 // binaries to copy for testing
-binariesCommunity = 'build/**,etc/**,Installation/Pipeline/**,js/**,scripts/**,tests/arangodbtests,UnitTests/**,utils/**'
+binariesCommunity = 'build/**,etc/**,Installation/Pipeline/**,js/**,scripts/**,UnitTests/**,utils/**'
 binariesEnterprise = binariesCommunity + ',enterprise/js/**'
 
 def PowerShell(psCmd) {
@@ -149,17 +149,26 @@ def buildEdition(edition, os) {
     def tarfile = 'build-' + edition + '-' + os + '.tar.gz'
     
     try {
-        cache(maxCacheSize: 50000, caches: [
-            [$class: 'ArbitraryFileCache',
-             includes: tarfile,
-             path: 'artefacts']]) {
-                if (!cleanBuild) {
-                    sh 'if test -f artefacts/' + tarfile + '; then tar -x -z -p -f artefacts/' + tarfile + '; fi'
-                }
+        if (os == 'linux' || os == 'mac') {
+            cache(maxCacheSize: 50000, caches: [
+                [$class: 'ArbitraryFileCache',
+                 includes: tarfile,
+                 path: 'artefacts']]) {
+                    if (!cleanBuild) {
+                        sh 'if test -f artefacts/' + tarfile + '; then tar -x -z -p -f artefacts/' + tarfile + '; fi'
+                    }
 
-                sh 'rm -f artefacts/' + tarfile
-                sh './Installation/Pipeline/build_community_linux.sh 16'
-                sh 'tar -c -z -f artefacts/' + tarfile + ' build-' + edition
+                    sh 'rm -f artefacts/' + tarfile
+                    sh './Installation/Pipeline/build_community_linux.sh 16'
+                    sh 'tar -c -z -f artefacts/' + tarfile + ' build-' + edition
+            }
+        }
+        else if (os == 'windows') {
+            if (cleanBuild) {
+                bat 'del /F /Q build'
+            }
+
+            PowerShell('. .\\Installation\\Pipeline\\build_' + edition + '_windows.ps1')
         }
     }
     catch (exc) {
@@ -171,12 +180,17 @@ def buildEdition(edition, os) {
 }
 
 def stashBinaries(edition, os) {
-    stash includes: binariesCommunity, name: 'build-' + edition + '-' + os
+    if (edition == 'community') {
+        stash includes: binariesCommunity, name: 'build-' + edition + '-' + os
+    }
+    else if (edition == 'enterprise') {
+        stash includes: binariesEnterprise, name: 'build-' + edition + '-' + os
+    }
 }
 
 def unstashBinaries(edition, os) {
     sh 'rm -rf *'
-    unstash 'build-community-linux'
+    unstash 'build-' + edition + '-' + os
 }
 
 def testEdition(edition, os, type, engine) {
@@ -276,44 +290,20 @@ if (buildLinux) {
     }
 }
 
-
-
-
-
-/*
-
-        'build-mac': {
-            if (buildMac) {
-                node('mac') {
-                    if (cleanAll) {
-                        sh 'rm -rf *'
-                    }
-                    else if (cleanBuild) {
-                        sh 'rm -rf build-jenkins'
-                    }
-
-                    unstash 'source'
-
-                    sh './Installation/Pipeline/build_community_mac.sh 16'
-                }
+stage('build other') {
+    parallel(
+        'build-community-windows': {
+            node('windows') {
+                unstashSourceCode()
+                buildEdition('community', 'windows')
             }
         },
 
-        'build-windows': {
-            if (buildWindows) {
-
-                node('windows') {
-                    if (cleanAll) {
-                        bat 'del /F /Q *'
-                    }
-                    else if (cleanBuild) {
-                        bat 'del /F /Q build'
-                    }
-
-                    unstash 'source'
-
-                    PowerShell(". .\\Installation\\Pipeline\\build_enterprise_windows.ps1")
-                }
+        'build-community-mac': {
+            node('windows') {
+                unstashSourceCode()
+                buildEdition('community', 'mac')
             }
         }
-*/
+    )
+}
