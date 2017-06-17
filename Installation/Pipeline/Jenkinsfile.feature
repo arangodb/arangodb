@@ -105,7 +105,7 @@ stage('checkout') {
         }
 
         sh 'rm -f source.tar.gz'
-        sh 'tar -c -z -f source.tar.gz --exclude source.zip --exclude "*tmp" .'
+        sh 'tar -c -z -f source.tar.gz --exclude "source.*" --exclude "*tmp" *'
         stash includes: 'source.tar.gz', name: 'source'
     }
 }
