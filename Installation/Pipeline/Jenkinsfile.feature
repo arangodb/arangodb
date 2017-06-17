@@ -104,9 +104,9 @@ stage('checkout') {
                     userRemoteConfigs: [[credentialsId: credentialsId, url: enterpriseRepo]]])
         }
 
-        sh 'rm -f source.zip'
-        zip zipFile: 'source.zip'
-        stash includes: 'source.zip', name: 'source'
+        sh 'rm -f source.tar.gz'
+        sh 'tar czf source.tar.gz *'
+        stash includes: 'source.tar.gz', name: 'source'
     }
 }
 
@@ -114,8 +114,8 @@ stage('build linux') {
     node('linux') {
         sh 'rm -rf *'
 
-        unstash 'source.zip'
-        unzip zipFile: 'source.zip'
+        unstash 'source.tar.gz'
+        sh 'tar xzf source.tar.gz'
 
         script {
             try {
