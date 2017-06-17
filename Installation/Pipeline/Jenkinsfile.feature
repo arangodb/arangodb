@@ -63,7 +63,7 @@ def checkoutEnterprise() {
 
         buildEnterprise = true
     }
-    errxc (err) {
+    catch (exc) {
         echo "Failed ${env.BRANCH_NAME}, trying enterprise branch devel"
 
         checkout(
