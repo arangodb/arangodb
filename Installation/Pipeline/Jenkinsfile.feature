@@ -184,7 +184,6 @@ def buildEdition(edition, os) {
         else if (os == 'windows') {
             cache(maxCacheSize: 50000, caches: [
                 [$class: 'ArbitraryFileCache',
-                 includes: '**',
                  path: 'build']]) {
                 if (!cleanBuild) {
                     bat 'del /F /Q build'
