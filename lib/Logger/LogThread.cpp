@@ -56,16 +56,25 @@ void LogThread::flush() {
     if (MESSAGES->empty()) {
       break;
     }
-  
+
     CONDITION_LOCKER(guard, *CONDITION);
     guard.signal();
   }
 }
 
+void LogThread::wakeup() {
+  CONDITION_LOCKER(guard, *CONDITION);
+  guard.signal();
+}
+
+bool LogThread::hasMessages() {
+  return (!MESSAGES->empty());
+}
+
 void LogThread::run() {
   LogMessage* msg;
 
-  while (! isStopping() && Logger::_active.load()) {
+  while (!isStopping() && Logger::_active.load()) {
     while (_messages.pop(msg)) {
       try {
         LogAppender::log(msg);

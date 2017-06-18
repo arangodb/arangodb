@@ -257,8 +257,8 @@ std::pair<double, double> Manager::globalHitRates() {
   uint64_t currentHits = _findHits.load();
   uint64_t currentMisses = _findMisses.load();
   if (currentHits + currentMisses > 0) {
-    lifetimeRate = 100 * (static_cast<double>(currentHits) /
-                          static_cast<double>(currentHits + currentMisses));
+    lifetimeRate = 100.0 * (static_cast<double>(currentHits) /
+                            static_cast<double>(currentHits + currentMisses));
   }
 
   if (_enableWindowedStats && _findStats.get() != nullptr) {
@@ -278,8 +278,9 @@ std::pair<double, double> Manager::globalHitRates() {
         currentMisses = (*stats)[0].second;
       }
       if (currentHits + currentMisses > 0) {
-        windowedRate = 100 * (static_cast<double>(currentHits) /
-                              static_cast<double>(currentHits + currentMisses));
+        windowedRate =
+            100.0 * (static_cast<double>(currentHits) /
+                     static_cast<double>(currentHits + currentMisses));
       }
     }
   }
@@ -750,8 +751,8 @@ std::shared_ptr<Manager::PriorityList> Manager::priorityList() {
   double baseWeight = std::max(minimumWeight, uniformMarginalWeight);
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   if (1.0 < (baseWeight * static_cast<double>(_caches.size()))) {
-    LOG_TOPIC(FATAL, Logger::FIXME) << "weight: " << baseWeight
-                                    << ", count: " << _caches.size();
+    LOG_TOPIC(FATAL, Logger::FIXME)
+        << "weight: " << baseWeight << ", count: " << _caches.size();
     TRI_ASSERT(1.0 >= (baseWeight * static_cast<double>(_caches.size())));
   }
 #endif

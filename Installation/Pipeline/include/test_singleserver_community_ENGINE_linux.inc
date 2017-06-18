@@ -2,23 +2,18 @@
 
 concurrency="$1"
 engine="$2"
-type="test_singleserver_community_mmfiles_linux"
 
-echo "TYPE: $type"
-echo "ENGINE: $engine"
-echo "CONCURRENY: $concurrency"
-echo "HOST: `hostname`"
-echo "PWD: `pwd`"
-echo "CORE PATTERN: `cat /proc/sys/kernel/core_pattern`"
-echo "CORE LIMIT: `ulimit -c`"
+if [ "$engine" == mmfiles ]; then
+    type="test_singleserver_community_mmfiles_linux"
+elif [ "$engine" == rocksdb ]; then
+    type="test_singleserver_community_rocksdb_linux"
+else
+    echo "$0: unknown engine '$engine', expecting 'mmfiles' or 'rocksdb'"
+    exit 1
+fi
 
-echo
-echo "ARANGOD VERSION: `build/bin/arangod --version`"
-
-rm -rf core.* *.log out
-rm -rf tmp && mkdir tmp
-export TMPDIR=$(pwd)/tmp
-export TEMPDIR=$(pwd)/tmp
+. ./Installation/Pipeline/include/test_log_info.inc
+. ./Installation/Pipeline/include/test_setup_tmp.inc
 
 PORT01=`./Installation/Pipeline/port.sh`
 PORT02=`./Installation/Pipeline/port.sh`
@@ -26,12 +21,7 @@ PORT03=`./Installation/Pipeline/port.sh`
 
 trap "./Installation/Pipeline/port.sh --clean $PORT01 $PORT02 $PORT03" EXIT
 
-# note that: shebang does not work if path contains a '@'
-
-OPTS="--storageEngine $engine --skipNondeterministic true --skipTimeCritical true  --configDir etc/jenkins --skipLogAnalysis true"
-
-rm -rf log-output
-mkdir log-output
+OPTS="--storageEngine $engine --skipNondeterministic true --skipTimeCritical true --configDir etc/jenkins --skipLogAnalysis true"
 
 echo "$type
 scripts/unittest boost                     --skipCache false                                                                      2>&1
@@ -63,22 +53,4 @@ scripts/unittest ssl_server                                   --minPort `expr $P
 scripts/unittest upgrade                                      --minPort `expr $PORT03 +  50` --maxPort `expr $PORT03 +  59` $OPTS 2>&1
 " | parallel --header 1 --results log-output --files --no-notice --load 10 --jobs $concurrency > log-output/${type}.log
 
-result=$?
-
-echo
-echo "================================================================================"
-echo "Result: $result"
-echo "Options: $OPTS"
-echo
-
-for file in log-output/*/*/stdout; do
-    base=`echo "$file" | sed -e 's:^\\(log-output/[^/]*\\)/.*$:\\1:'`
-    long=`echo "$file" | sed -e 's:/stdout$::'`
-    short=`echo "$long" | sed -e 's:^.*_unittest *::' | sed -e 's: *--minPort.*$::' | sed -e 's:\\\\::g' | sed -e 's: *2>&1$::g' | sed -e 's:  *: :g'`
-
-    mv -- "$long" "$base/$short"
-done
-
-fgrep "Overall state: Fail" log-output/*/*/stdout
-
-exit $result
+. ./Installation/Pipeline/include/test_check_result.inc $?
