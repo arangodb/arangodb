@@ -137,13 +137,13 @@ def stashSourceCode() {
 
     if (buildLinux || buildMac) {
         sh 'tar -c -z -f source.tar.gz --exclude "source.*" --exclude "*tmp" --exclude ".git" *'
+        stash includes: 'source.*', name: 'sourceTar'
     }
 
     if (buildWindows) {
         sh 'zip -y -x "*tmp" -x ".git" -x "source.*" -q -r source.zip *'
+        stash includes: 'source.*', name: 'sourceZip'
     }
-
-    stash includes: 'source.*', name: 'source'
 }
 
 def unstashSourceCode() {
@@ -154,13 +154,13 @@ def unstashSourceCode() {
         bat 'del /F /Q *'
     }
 
-    unstash 'source'
-
     if (os == 'linux' || os == 'mac') {
+        unstash 'sourceTar'
         sh 'tar -x -z -p -f source.tar.gz'
         sh 'mkdir -p artefacts'
     }
     else if (os == 'windows') {
+        unstash 'sourceZip'
         unzip zipFile: 'source.zip'
         bat 'mkdir artefacts'
     }
@@ -253,21 +253,27 @@ stage('checkout') {
 
 if (buildLinux) {
     stage('build linux') {
+        def os = 'linux'
+
         parallel(
             'build-community-linux': {
-                node('linux') {
-                    unstashSourceCode()
-                    buildEdition('community', 'linux')
-                    stashBinaries('community', 'linux')
+                def edition = 'community'
+
+                node(os) {
+                    unstashSourceCode(os)
+                    buildEdition(edition, os)
+                    stashBinaries(edition, os)
                 }
             },
 
             'build-enterprise-linux': {
                 if (buildEnterprise) {
-                    node('linux') {
-                        unstashSourceCode()
-                        buildEdition('enterprise', 'linux')
-                        stashBinaries('enterprise', 'linux')
+                    def edition = 'enterprise'
+
+                    node(os) {
+                        unstashSourceCode(os)
+                        buildEdition(edition, os)
+                        stashBinaries(edition, os)
                     }
                 }
                 else {
@@ -278,23 +284,29 @@ if (buildLinux) {
     }
 
     stage('test linux') {
+        def os = 'linux'
+
         parallel(
             'test-singleserver-community': {
-                node('linux') {
+                def edition = 'community'
+
+                node(os) {
                     echo "Running singleserver community rocksdb linux test"
 
-                    unstashBinaries('community', 'linux')
-                    testEdition('community', 'linux', 'singleserver', 'rocksdb')
+                    unstashBinaries(edition, os)
+                    testEdition(edition, os, 'singleserver', 'rocksdb')
                 }
             },
 
             'test-singleserver-enterprise': {
+                def edition = 'enterprise'
+
                 if (buildEnterprise) {
-                    node('linux') {
+                    node(os) {
                         echo "Running singleserver enterprise mmfiles linux test"
 
-                        unstashBinaries('enterprise', 'linux')
-                        testEdition('enterprise', 'linux', 'singleserver', 'mmfiles')
+                        unstashBinaries(edition, os)
+                        testEdition(edition, os, 'singleserver', 'mmfiles')
                     }
                 }
                 else {
@@ -303,10 +315,10 @@ if (buildLinux) {
             },
 
             'jslint': {
-                node('linux') {
+                node(os) {
                     echo "Running jslint test"
 
-                    unstashBinaries('community', 'linux')
+                    unstashBinaries('community', os)
                     jslint()
                 }
             }
