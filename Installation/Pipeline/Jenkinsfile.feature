@@ -134,8 +134,15 @@ def checkCommitMessages() {
 
 def stashSourceCode() {
     sh 'rm -f source.*'
-    sh 'tar -c -z -f source.tar.gz --exclude "source.*" --exclude "*tmp" --exclude ".git" *'
-    stash includes: 'source.tar.gz', name: 'source'
+
+    if (os == 'linux' || os == 'mac') {
+        sh 'tar -c -z -f source.tar.gz --exclude "source.*" --exclude "*tmp" --exclude ".git" *'
+        stash includes: 'source.tar.gz', name: 'source'
+    }
+    else {
+        sh 'zip -y -x "*tmp" -x ".git" -x "source.*" -q -r source.zip *'
+        stash includes: 'source.zip', name: 'source'
+    }
 }
 
 def unstashSourceCode() {
@@ -153,7 +160,7 @@ def unstashSourceCode() {
         sh 'mkdir -p artefacts'
     }
     else if (os == 'windows') {
-        bat 'del /F /Q *'
+        unzip zipFile: 'source.zip'
         bat 'mkdir artefacts'
     }
 }
