@@ -184,15 +184,11 @@ def buildEdition(edition, os) {
             }
         }
         else if (os == 'windows') {
-            cache(maxCacheSize: 50000, caches: [
-                [$class: 'ArbitraryFileCache',
-                 path: 'build']]) {
-                if (!cleanBuild) {
-                    bat 'del /F /Q build'
-                }
-
-                PowerShell('. .\\Installation\\Pipeline\\build_' + edition + '_windows.ps1')
+            if (!cleanBuild) {
+                bat 'del /F /Q build'
             }
+
+            PowerShell('. .\\Installation\\Pipeline\\build_' + edition + '_windows.ps1')
         }
     }
     catch (exc) {
