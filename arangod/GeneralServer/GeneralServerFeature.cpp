@@ -453,11 +453,11 @@ void GeneralServerFeature::defineHandlers() {
                        AsyncJobManager*>,
       _jobManager.get());
 
-  _handlerFactory->addHandler(
-      "/_api/version", RestHandlerCreator<RestVersionHandler>::createNoData);
+  _handlerFactory->addPrefixHandler(
+      "/_api/engine", RestHandlerCreator<RestEngineHandler>::createNoData);
 
   _handlerFactory->addHandler(
-      "/_api/engine", RestHandlerCreator<RestEngineHandler>::createNoData);
+      "/_api/version", RestHandlerCreator<RestVersionHandler>::createNoData);
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   _handlerFactory->addHandler(

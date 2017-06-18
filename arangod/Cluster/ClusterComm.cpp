@@ -22,6 +22,9 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "ClusterComm.h"
+
+#include "Agency/AgencyFeature.h"
+#include "Agency/Agent.h"
 #include "Basics/ConditionLocker.h"
 #include "Basics/HybridLogicalClock.h"
 #include "Basics/StringUtils.h"
@@ -1098,6 +1101,18 @@ std::pair<ClusterCommResult*, HttpRequest*> ClusterComm::prepareRequest(std::str
   TRI_voc_tick_t timeStamp = TRI_HybridLogicalClock();
   headersCopy[StaticStrings::HLCHeader] =
     arangodb::basics::HybridLogicalClock::encodeTimeStamp(timeStamp);
+
+  auto state = ServerState::instance();
+
+  if (state->isCoordinator() || state->isDBServer()) {
+    headersCopy[StaticStrings::ClusterCommSource] = state->getId();
+  } else if (state->isAgent()) {
+    auto agent = AgencyFeature::AGENT;
+
+    if (agent != nullptr) {
+      headersCopy[StaticStrings::ClusterCommSource] = "AGENT-" + agent->id();
+    }
+  }
 
 #ifdef DEBUG_CLUSTER_COMM
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE

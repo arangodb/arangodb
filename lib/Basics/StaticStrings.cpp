@@ -83,6 +83,7 @@ std::string const StaticStrings::BatchContentType(
     "application/x-arango-batchpart");
 std::string const StaticStrings::CacheControl("cache-control");
 std::string const StaticStrings::Close("Close");
+std::string const StaticStrings::ClusterCommSource("x-arango-source");
 std::string const StaticStrings::Code("code");
 std::string const StaticStrings::Connection("connection");
 std::string const StaticStrings::ContentEncoding("content-encoding");

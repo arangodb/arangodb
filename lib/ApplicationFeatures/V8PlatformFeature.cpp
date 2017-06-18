@@ -189,7 +189,6 @@ v8::Isolate* V8PlatformFeature::createIsolate() {
     }
   }
 
-
   return isolate;
 }
 
