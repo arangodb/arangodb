@@ -1978,18 +1978,19 @@ void MMFilesCollection::prepareIndexes(VPackSlice indexesSlice) {
 
   TRI_ASSERT(!_indexes.empty());
 
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   if (_indexes[0]->type() != Index::IndexType::TRI_IDX_TYPE_PRIMARY_INDEX ||
       (_logicalCollection->type() == TRI_COL_TYPE_EDGE &&
        _indexes[1]->type() != Index::IndexType::TRI_IDX_TYPE_EDGE_INDEX)) {
-    LOG_TOPIC(ERR, arangodb::Logger::FIXME)
-        << "got invalid indexes for collection '" << _logicalCollection->name()
-        << "'";
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
     for (auto const& it : _indexes) {
       LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "- " << it.get();
     }
-  }
 #endif
+    std::string errorMsg("got invalid indexes for collection '");
+    errorMsg.append(_logicalCollection->name());
+    errorMsg.push_back('\'');
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, errorMsg);
+  }
 }
 
 /// @brief creates the initial indexes for the collection
