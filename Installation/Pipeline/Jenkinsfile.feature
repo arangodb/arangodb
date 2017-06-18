@@ -139,48 +139,57 @@ def stashSourceCode() {
 }
 
 def unstashSourceCode() {
-    sh 'rm -rf *'
+    if (os == 'linux' || os == 'mac') {
+        sh 'rm -rf *'
+    }
+    else if (os == 'windows') {
+        bat 'del /F /Q *'
+    }
 
     unstash 'source'
 
-    sh 'tar -x -z -p -f source.tar.gz'
-    sh 'mkdir -p artefacts'
+    if (os == 'linux' || os == 'mac') {
+        sh 'tar -x -z -p -f source.tar.gz'
+        sh 'mkdir -p artefacts'
+    }
+    else if (os == 'windows') {
+        bat 'del /F /Q *'
+        bat 'mkdir artefacts'
+    }
 }
 
 def buildEdition(edition, os) {
-    if (os == 'windows') {
-        if (cleanBuild) {
-            bat 'del /F /Q build'
-        }
+    try {
+        def tarfile = 'build-' + edition + '-' + os + '.tar.gz'
 
-        PowerShell('. .\\Installation\\Pipeline\\build_' + edition + '_windows.ps1')
-    }
-    else {
-        try {
-            def tarfile = 'build-' + edition + '-' + os + '.tar.gz'
+        if (os == 'linux' || os == 'mac') {
+            cache(maxCacheSize: 50000, caches: [
+                [$class: 'ArbitraryFileCache',
+                 includes: tarfile,
+                 path: 'artefacts']]) {
+                    if (!cleanBuild) {
+                        sh 'if test -f artefacts/' + tarfile + '; then tar -x -z -p -f artefacts/' + tarfile + '; fi'
+                    }
 
-            if (os == 'linux' || os == 'mac') {
-                cache(maxCacheSize: 50000, caches: [
-                    [$class: 'ArbitraryFileCache',
-                     includes: tarfile,
-                     path: 'artefacts']]) {
-                        if (!cleanBuild) {
-                            sh 'if test -f artefacts/' + tarfile + '; then tar -x -z -p -f artefacts/' + tarfile + '; fi'
-                        }
-
-                        sh 'rm -f artefacts/' + tarfile
-                        sh './Installation/Pipeline/build_' + edition + '_' + os + '.sh 16'
-                        sh 'tar -c -z -f artefacts/' + tarfile + ' build-' + edition
-                }
+                    sh 'rm -f artefacts/' + tarfile
+                    sh './Installation/Pipeline/build_' + edition + '_' + os + '.sh 16'
+                    sh 'tar -c -z -f artefacts/' + tarfile + ' build-' + edition
             }
         }
-        catch (exc) {
-            echo exc.toString()
-            throw exc
+        else if (os == 'windows') {
+            if (cleanBuild) {
+                bat 'del /F /Q build'
+            }
+
+            PowerShell('. .\\Installation\\Pipeline\\build_' + edition + '_windows.ps1')
         }
-        finally {
-            archiveArtifacts allowEmptyArchive: true, artifacts: 'log-output/**', defaultExcludes: false
-        }
+    }
+    catch (exc) {
+        echo exc.toString()
+        throw exc
+    }
+    finally {
+        archiveArtifacts allowEmptyArchive: true, artifacts: 'log-output/**', defaultExcludes: false
     }
 }
 
