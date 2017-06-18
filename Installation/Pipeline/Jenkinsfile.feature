@@ -182,19 +182,15 @@ def buildEdition(edition, os) {
             }
         }
         else if (os == 'windows') {
-            def tarfile = 'build-' + edition + '-' + os + 'zip'
-
             cache(maxCacheSize: 50000, caches: [
                 [$class: 'ArbitraryFileCache',
-                 includes: tarfile,
-                 path: 'artefacts']]) {
-                if (!cleanBuild && fileExists('artefacts/' + tarfile)) {
-                    unzip tarfile: 'source.zip'
+                 includes: '**',
+                 path: 'build']]) {
+                if (!cleanBuild) {
+                    bat 'del /F /Q build'
                 }
 
-                bat 'del /F /Q artefacts/' + tarfile
                 PowerShell('. .\\Installation\\Pipeline\\build_' + edition + '_windows.ps1')
-                zip ziFile: 'source.zip', glob: 'build/**'
             }
         }
     }
