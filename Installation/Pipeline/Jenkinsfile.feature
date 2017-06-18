@@ -77,7 +77,6 @@ def checkoutEnterprise() {
                 submoduleCfg: [],
                 userRemoteConfigs: [[credentialsId: credentials, url: enterpriseRepo]]])
     }
-
 }
 
 def checkCommitMessages() {
@@ -141,8 +140,7 @@ def stashSourceCode() {
     }
 
     if (buildWindows) {
-        sh 'zip -y -x "*tmp" -x ".git" -x "source.*" -q -r source.zip *'
-        stash includes: 'source.*', name: 'sourceZip'
+        stash includes: '**', excludes: '*tmp,.git,source.*', name: 'source'
     }
 }
 
@@ -160,8 +158,7 @@ def unstashSourceCode(os) {
         sh 'mkdir -p artefacts'
     }
     else if (os == 'windows') {
-        unstash 'sourceZip'
-        PowerShell('Expand-Archive -Verbose -Force source.zip')
+        unstash 'source'
         bat 'mkdir artefacts'
     }
 }
