@@ -38,6 +38,8 @@ using namespace arangodb::basics;
 using namespace arangodb::options;
 using namespace arangodb::rest;
 
+consensus::Agent* AgencyFeature::AGENT = nullptr;
+
 AgencyFeature::AgencyFeature(application_features::ApplicationServer* server)
     : ApplicationFeature(server, "Agency"),
       _activated(false),
@@ -216,7 +218,6 @@ void AgencyFeature::prepare() {
 }
 
 void AgencyFeature::start() {
-
   if (!isEnabled()) {
     return;
   }
@@ -265,6 +266,8 @@ void AgencyFeature::start() {
       _compactionStepSize, _compactionKeepSize, _supervisionGracePeriod,
       _cmdLineTimings, _maxAppendSize)));
 
+  AGENT = _agent.get();
+
   LOG_TOPIC(DEBUG, Logger::AGENCY) << "Starting agency personality";
   _agent->start();
 
@@ -307,4 +310,6 @@ void AgencyFeature::stop() {
       }
     }
   }
+
+  AGENT = nullptr;
 }
