@@ -135,14 +135,15 @@ def checkCommitMessages() {
 def stashSourceCode() {
     sh 'rm -f source.*'
 
-    if (os == 'linux' || os == 'mac') {
+    if (buildLinux || buildMac) {
         sh 'tar -c -z -f source.tar.gz --exclude "source.*" --exclude "*tmp" --exclude ".git" *'
-        stash includes: 'source.tar.gz', name: 'source'
     }
-    else {
+
+    if (buildWindows) {
         sh 'zip -y -x "*tmp" -x ".git" -x "source.*" -q -r source.zip *'
-        stash includes: 'source.zip', name: 'source'
     }
+
+    stash includes: 'source.*', name: 'source'
 }
 
 def unstashSourceCode() {
