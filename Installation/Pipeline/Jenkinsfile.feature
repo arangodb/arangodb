@@ -161,7 +161,7 @@ def unstashSourceCode(os) {
     }
     else if (os == 'windows') {
         unstash 'sourceZip'
-        Powershell('Expand-Archive source.zip')
+        PowerShell('Expand-Archive source.zip')
         bat 'mkdir artefacts'
     }
 }
