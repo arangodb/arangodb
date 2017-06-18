@@ -146,7 +146,7 @@ def stashSourceCode() {
     }
 }
 
-def unstashSourceCode() {
+def unstashSourceCode(os) {
     if (os == 'linux' || os == 'mac') {
         sh 'rm -rf *'
     }
@@ -329,26 +329,30 @@ if (buildLinux) {
 stage('build other') {
     parallel(
         'build-community-windows': {
+            def os = 'windows'
+
             if (buildWindows) {
                 node('windows') {
-                    unstashSourceCode()
-                    buildEdition('community', 'windows')
+                    unstashSourceCode(os)
+                    buildEdition('community', os)
                 }
             }
             else {
-                echo "Not building windows version"
+                echo "Not building " + os + " version"
             }
         },
 
         'build-community-mac': {
+            def os = 'mac'
+
             if (buildMac) {
                 node('mac') {
-                    unstashSourceCode()
-                    buildEdition('community', 'mac')
+                    unstashSourceCode(os)
+                    buildEdition('community', os)
                 }
             }
             else {
-                echo "Not building mac version"
+                echo "Not building " + os + " version"
             }
         }
     )
