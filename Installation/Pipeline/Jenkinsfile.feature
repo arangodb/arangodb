@@ -305,7 +305,7 @@ stage('build other') {
         },
 
         'build-community-mac': {
-            node('windows') {
+            node('mac') {
                 unstashSourceCode()
                 buildEdition('community', 'mac')
             }
