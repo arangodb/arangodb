@@ -37,6 +37,7 @@ def checkoutCommunity() {
     retry(3) {
         try {
             checkout scm
+            sh 'git clean -f -d -x'
         }
         catch (exc) {
             echo "GITHUB checkout failed, retrying in 5min"
@@ -77,6 +78,8 @@ def checkoutEnterprise() {
                 submoduleCfg: [],
                 userRemoteConfigs: [[credentialsId: credentials, url: enterpriseRepo]]])
     }
+
+    sh 'cd enterprise && git clean -f -d -x'
 }
 
 def checkCommitMessages() {
