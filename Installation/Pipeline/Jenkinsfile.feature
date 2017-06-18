@@ -148,37 +148,39 @@ def unstashSourceCode() {
 }
 
 def buildEdition(edition, os) {
-    def tarfile = 'build-' + edition + '-' + os + '.tar.gz'
-    
-    try {
-        if (os == 'linux' || os == 'mac') {
-            cache(maxCacheSize: 50000, caches: [
-                [$class: 'ArbitraryFileCache',
-                 includes: tarfile,
-                 path: 'artefacts']]) {
-                    if (!cleanBuild) {
-                        sh 'if test -f artefacts/' + tarfile + '; then tar -x -z -p -f artefacts/' + tarfile + '; fi'
-                    }
+    if (os == 'windows') {
+        if (cleanBuild) {
+            bat 'del /F /Q build'
+        }
 
-                    sh 'rm -f artefacts/' + tarfile
-                    sh './Installation/Pipeline/build_' + edition + '_' + os + '.sh 16'
-                    sh 'tar -c -z -f artefacts/' + tarfile + ' build-' + edition
+        PowerShell('. .\\Installation\\Pipeline\\build_' + edition + '_windows.ps1')
+    }
+    else {
+        try {
+            def tarfile = 'build-' + edition + '-' + os + '.tar.gz'
+
+            if (os == 'linux' || os == 'mac') {
+                cache(maxCacheSize: 50000, caches: [
+                    [$class: 'ArbitraryFileCache',
+                     includes: tarfile,
+                     path: 'artefacts']]) {
+                        if (!cleanBuild) {
+                            sh 'if test -f artefacts/' + tarfile + '; then tar -x -z -p -f artefacts/' + tarfile + '; fi'
+                        }
+
+                        sh 'rm -f artefacts/' + tarfile
+                        sh './Installation/Pipeline/build_' + edition + '_' + os + '.sh 16'
+                        sh 'tar -c -z -f artefacts/' + tarfile + ' build-' + edition
+                }
             }
         }
-        else if (os == 'windows') {
-            if (cleanBuild) {
-                bat 'del /F /Q build'
-            }
-
-            PowerShell('. .\\Installation\\Pipeline\\build_' + edition + '_windows.ps1')
+        catch (exc) {
+            echo exc.toString()
+            throw exc
         }
-    }
-    catch (exc) {
-        echo exc.toString()
-        throw exc
-    }
-    finally {
-        archiveArtifacts allowEmptyArchive: true, artifacts: 'log-output/**', defaultExcludes: false
+        finally {
+            archiveArtifacts allowEmptyArchive: true, artifacts: 'log-output/**', defaultExcludes: false
+        }
     }
 }
 
@@ -298,16 +300,26 @@ if (buildLinux) {
 stage('build other') {
     parallel(
         'build-community-windows': {
-            node('windows') {
-                unstashSourceCode()
-                buildEdition('community', 'windows')
+            if (buildWindows) {
+                node('windows') {
+                    unstashSourceCode()
+                    buildEdition('community', 'windows')
+                }
+            }
+            else {
+                echo "Not building windows version"
             }
         },
 
         'build-community-mac': {
-            node('mac') {
-                unstashSourceCode()
-                buildEdition('community', 'mac')
+            if (buildMac) {
+                node('mac') {
+                    unstashSourceCode()
+                    buildEdition('community', 'mac')
+                }
+            }
+            else {
+                echo "Not building mac version"
             }
         }
     )
