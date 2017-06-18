@@ -40,6 +40,8 @@ Every database object has a least a permissions and collections object. The perm
 | update a user |   |   | rw |
 | drop a user |   |   | rw |
 
+In this table the collection is a document or ege collection; a collection database is the database in which the collection is stored. The _system database is the system database.
+
 The table shows which rigths are needed for certain actions.
 
 If we want to create a user that can only read all collections in database reports, the permissions json would look this way:
