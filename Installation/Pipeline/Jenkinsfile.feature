@@ -168,15 +168,15 @@ def unstashSourceCode(os) {
 
 def buildEdition(edition, os) {
     try {
-        def tarfile = 'build-' + edition + '-' + os + '.tar.gz'
-
         if (os == 'linux' || os == 'mac') {
+            def tarfile = 'build-' + edition + '-' + os + '.tar.gz'
+
             cache(maxCacheSize: 50000, caches: [
                 [$class: 'ArbitraryFileCache',
                  includes: tarfile,
                  path: 'artefacts']]) {
-                    if (!cleanBuild) {
-                        sh 'if test -f artefacts/' + tarfile + '; then tar -x -z -p -f artefacts/' + tarfile + '; fi'
+                    if (!cleanBuild && fileExists('artefacts/' + tarfile)) {
+                        sh 'tar -x -z -p -f artefacts/' + tarfile
                     }
 
                     sh 'rm -f artefacts/' + tarfile
@@ -185,11 +185,20 @@ def buildEdition(edition, os) {
             }
         }
         else if (os == 'windows') {
-            if (cleanBuild) {
-                bat 'del /F /Q build'
-            }
+            def tarfile = 'build-' + edition + '-' + os + 'zip'
 
-            PowerShell('. .\\Installation\\Pipeline\\build_' + edition + '_windows.ps1')
+            cache(maxCacheSize: 50000, caches: [
+                [$class: 'ArbitraryFileCache',
+                 includes: tarfile,
+                 path: 'artefacts']]) {
+                if (!cleanBuild && fileExists('artefacts/' + tarfile)) {
+                    unzip tarfile: 'source.zip'
+                }
+
+                bat 'del /F /Q artefacts/' + tarfile
+                PowerShell('. .\\Installation\\Pipeline\\build_' + edition + '_windows.ps1')
+                zip ziFile: 'source.zip', glob: 'build/**'
+            }
         }
     }
     catch (exc) {
