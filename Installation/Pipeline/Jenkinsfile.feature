@@ -159,7 +159,9 @@ def unstashSourceCode(os) {
     }
     else if (os == 'windows') {
         unstash 'source'
-        bat 'mkdir artefacts'
+        if (!fileExists('artefacts')) {
+           bat 'mkdir artefacts'
+        }
     }
 }
 
