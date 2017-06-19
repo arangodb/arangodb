@@ -515,9 +515,11 @@
         }
 
         // only add account if user has not created his/her own accounts already
-        userManager.save('root', defaultRootPW, true);
-        userManager.grantDatabase('root', '*', 'rw');
-
+        try {
+          userManager.save('root', defaultRootPW, true);
+          userManager.grantDatabase('root', '*', 'rw');
+        } catch(ignored) {}
+        
         return true;
       }
     });

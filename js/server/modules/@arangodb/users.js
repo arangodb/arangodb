@@ -31,15 +31,32 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 const internal = require('internal'); // OK: reloadAuth
-const arangodb = require('@arangodb');
-const shallowCopy = require('@arangodb/util').shallowCopy;
-const crypto = require('@arangodb/crypto');
 
-const db = arangodb.db;
-const ArangoError = arangodb.ArangoError;
+
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief constructor
+// //////////////////////////////////////////////////////////////////////////////
+
+var ArangoUsers = internal.ArangoUsers;
+exports.save = ArangoUsers.save;
+exports.replace = ArangoUsers.replace;
+exports.update = ArangoUsers.update;
+exports.remove = ArangoUsers.remove;
+exports.document = ArangoUsers.document;
+exports.reload = ArangoUsers.reload;
+exports.grantDatabase = ArangoUsers.grantDatabase;
+exports.revokeDatabase = ArangoUsers.revokeDatabase;
+exports.grantCollection = ArangoUsers.grantCollection;
+exports.revokeCollection = ArangoUsers.revokeCollection;
+exports.updateConfigData = ArangoUsers.updateConfigData;
+exports.revokeCollection = ArangoUsers.revokeCollection;
+exports.updateConfigData = ArangoUsers.updateConfigData;
+exports.configData = ArangoUsers.configData;
+exports.permission = ArangoUsers.permission;
+
 
 // converts a user document to the legacy format
-const convertToLegacyFormat = function (doc) {
+/*const convertToLegacyFormat = function (doc) {
   let ad = doc.authData || {}; 
   return {
     user: doc.user,
@@ -376,70 +393,6 @@ exports.reload = function () {
   }
 };
 
-// sets a password-change token
-exports.setPasswordToken = function (username, token) {
-  const users = getStorage();
-
-  const user = users.firstExample({
-    user: username
-  });
-
-  if (user === null) {
-    return null;
-  }
-
-  if (token === null || token === undefined) {
-    token = internal.genRandomAlphaNumbers(50);
-  }
-
-  users.update(user, {
-    authData: {
-      passwordToken: token
-    }
-  });
-
-  return token;
-};
-
-// checks the password-change token
-exports.userByToken = function (token) {
-  const users = getStorage();
-
-  return users.firstExample({
-    'authData.passwordToken': token
-  });
-};
-
-// checks the password-change token
-exports.changePassword = function (token, password) {
-  const users = getStorage();
-
-  const user = users.firstExample({
-    'authData.passwordToken': token
-  });
-
-  if (user === null) {
-    return false;
-  }
-
-  password = validatePassword(password);
-
-  const authData = shallowCopy(user).authData;
-
-  delete authData.passwordToken;
-  authData.simple = hashPassword(password);
-  authData.changePassword = false;
-
-  users.update(user, {
-    authData: authData
-  });
-
-  // not exports.reload() as this is an abstract method...
-  require('@arangodb/users').reload();
-
-  return true;
-};
-
 // changes the allowed databases
 exports.grantDatabase = function (username, database, type) {
   const users = getStorage();
@@ -619,3 +572,4 @@ exports.permission = function (username, key) {
     }
   }
 };
+*/

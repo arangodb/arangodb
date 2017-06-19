@@ -30,39 +30,41 @@ namespace arangodb {
 enum class AuthLevel;
 
 class AuthContext {
-  public:
-    AuthContext(AuthLevel authLevel, std::unordered_map<std::string, AuthLevel>&& collectionAccess);
-    AuthLevel databaseAuthLevel() { return _databaseAuthLevel; }
-    void systemAuthLevel(AuthLevel level) { _systemAuthLevel = level; }
-    AuthLevel systemAuthLevel() { return _systemAuthLevel; }
-    AuthLevel collectionAuthLevel(std::string const& collectionName);
+  friend class AuthUserEntry;
 
-    void dump();
+ public:
+  AuthContext(AuthLevel authLevel,
+              std::unordered_map<std::string, AuthLevel>&& collectionAccess);
+  AuthLevel databaseAuthLevel() const { return _databaseAuthLevel; }
+  AuthLevel systemAuthLevel() const { return _systemAuthLevel; }
+  AuthLevel collectionAuthLevel(std::string const& collectionName) const;
 
-  protected:
-    AuthLevel _databaseAuthLevel;
-    AuthLevel _systemAuthLevel;
-    std::unordered_map<std::string, AuthLevel> _collectionAccess;
+  void dump();
+
+ protected:
+  AuthLevel _databaseAuthLevel;
+  AuthLevel _systemAuthLevel;
+  std::unordered_map<std::string, AuthLevel> _collectionAccess;
 };
 
 class ExecContext {
-  public:
-    ExecContext(std::string const& user, std::string const& database,
-    std::shared_ptr<AuthContext> authContext)
+ public:
+  ExecContext(std::string const& user, std::string const& database,
+              std::shared_ptr<AuthContext> authContext)
       : _user(user), _database(database) {
-        _auth = authContext;
-      }
+    _auth = authContext;
+  }
 
-      static thread_local ExecContext* CURRENT_EXECCONTEXT;
+  static thread_local ExecContext* CURRENT_EXECCONTEXT;
 
-      std::string const& user() { return _user; }
-      std::string const& database() { return _database; }
-      std::shared_ptr<AuthContext> authContext() { return _auth; }
+  std::string const& user() { return _user; }
+  std::string const& database() { return _database; }
+  std::shared_ptr<AuthContext> authContext() { return _auth; }
 
-  protected:
-    std::string _user;
-    std::string _database;
-    std::shared_ptr<AuthContext> _auth;
+ protected:
+  std::string _user;
+  std::string _database;
+  std::shared_ptr<AuthContext> _auth;
 };
 }
 

@@ -64,6 +64,9 @@ class RestBaseHandler : public rest::RestHandler {
 
   // generates an error
   void generateError(rest::ResponseCode, int, std::string const&);
+  
+  // generates an error
+  void generateError(arangodb::Result const&);
 
   // generates a canceled message
   void generateCanceled();
