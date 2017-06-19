@@ -56,16 +56,9 @@ else()
       include_directories(${JEMALLOC_INCLUDE_DIR})
     endif()
   endif()
-  option(WITH_SNAPPY "build with SNAPPY" OFF)
-  if(WITH_SNAPPY)
-    #find_package(snappy REQUIRED) provided by arangodb
-    add_definitions(-DSNAPPY)
-    include_directories(${SNAPPY_INCLUDE_DIR})
-    list(APPEND THIRDPARTY_LIBS ${SNAPPY_LIBRARIES})
-  endif()
 endif()
 
-message(STATUS "WITH_SNAPPY ${WITH_SNAPPY}")
+add_definitions(-DSNAPPY)
 
 # set GIT_DATE_TIME - Create US Time String
 if(WIN32)
@@ -597,7 +590,7 @@ endif()
 
 add_library(${ROCKSDB_STATIC_LIB} STATIC ${SOURCES})
 target_link_libraries(${ROCKSDB_STATIC_LIB}
-  ${THIRDPARTY_LIBS} ${SYSTEM_LIBS})
+  ${THIRDPARTY_LIBS} ${SYSTEM_LIBS} snappystatic)
 
 #if(WIN32)
 #  add_library(${ROCKSDB_IMPORT_LIB} SHARED ${SOURCES})

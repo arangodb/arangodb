@@ -4,7 +4,6 @@
 # Edit these lines to set defaults for use of external libraries
 #
 set(USE_GFLAGS_DEFAULT 0)        # GFLAGS is disabled by default, enable with -DGFLAGS=1 cmake command line agrument
-set(USE_SNAPPY_DEFAULT 0)        # SNAPPY is disabled by default, enable with -DSNAPPY=1 cmake command line agrument
 set(USE_LZ4_DEFAULT 0)           # LZ4 is disabled by default, enable with -DLZ4=1 cmake command line agrument
 set(USE_ZLIB_DEFAULT 0)          # ZLIB is disabled by default, enable with -DZLIB=1 cmake command line agrument
 set(USE_XPRESS_DEFAULT 0)        # XPRESS is disabled by default, enable with -DXPRESS=1 cmake command line agrument
@@ -59,49 +58,6 @@ if (${USE_GFLAGS} EQUAL 1)
   set (THIRDPARTY_LIBS ${THIRDPARTY_LIBS} ${GFLAGS_LIBS})
 else ()
   message(STATUS "GFLAGS library is disabled")
-endif ()
-
-# ================================================== SNAPPY ==================================================
-#
-# Edit these 4 lines to define paths to Snappy
-#
-set(SNAPPY_HOME $ENV{THIRDPARTY_HOME}/Snappy.Library)
-set(SNAPPY_INCLUDE ${SNAPPY_HOME}/inc/inc)
-set(SNAPPY_LIB_DEBUG ${SNAPPY_HOME}/bin/debug/amd64/snappy.lib)
-set(SNAPPY_LIB_RELEASE ${SNAPPY_HOME}/bin/retail/amd64/snappy.lib)
-
-#
-# Don't touch these lines
-#
-if (DEFINED SNAPPY)
-  set(USE_SNAPPY ${SNAPPY})
-else ()
-  set(USE_SNAPPY ${USE_SNAPPY_DEFAULT})
-endif ()
-
-if (${USE_SNAPPY} EQUAL 1)
-  message(STATUS "SNAPPY library is enabled")
-  
-  if(DEFINED ENV{SNAPPY_INCLUDE})
-    set(SNAPPY_INCLUDE $ENV{SNAPPY_INCLUDE})
-  endif()
-  
-  if(DEFINED ENV{SNAPPY_LIB_DEBUG})
-    set(SNAPPY_LIB_DEBUG $ENV{SNAPPY_LIB_DEBUG})
-  endif()
-
-  if(DEFINED ENV{SNAPPY_LIB_RELEASE})
-    set(SNAPPY_LIB_RELEASE $ENV{SNAPPY_LIB_RELEASE})
-  endif()
-  
-  set(SNAPPY_CXX_FLAGS -DSNAPPY)
-  set(SNAPPY_LIBS debug ${SNAPPY_LIB_DEBUG} optimized ${SNAPPY_LIB_RELEASE})
-
-  add_definitions(${SNAPPY_CXX_FLAGS})
-  include_directories(${SNAPPY_INCLUDE})
-  set (THIRDPARTY_LIBS ${THIRDPARTY_LIBS} ${SNAPPY_LIBS})
-else ()
-  message(STATUS "SNAPPY library is disabled")
 endif ()
 
 # ================================================== LZ4 ==================================================

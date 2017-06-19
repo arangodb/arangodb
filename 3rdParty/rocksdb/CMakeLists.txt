@@ -24,21 +24,21 @@ else ()
 endif ()
 
 # snappy settings
-set(SNAPPY_HOME ${CMAKE_SOURCE_DIR}/3rdParty/snappy/google-snappy-d53de18/)
+#set(SNAPPY_HOME ${CMAKE_SOURCE_DIR}/3rdParty/snappy/google-snappy-d53de18/)
 
-if (WIN32)
-  set(SNAPPY 1 CACHE BOOL "enable snappy")
-  set(SNAPPY_INCLUDE ${SNAPPY_HOME};${CMAKE_BINARY_DIR}/3rdParty/snappy/google-snappy-d53de18/)
-  set(SNAPPY_LIB_DEBUG snappystatic)
-  set(SNAPPY_LIB_RELEASE snappystatic)
-else ()
-  set(WITH_SNAPPY ON CACHE BOOL "enable snappy")
-  set(SNAPPY_INCLUDE_DIR ${SNAPPY_HOME};${CMAKE_BINARY_DIR}/3rdParty/snappy/google-snappy-d53de18/)
-  set(SNAPPY_LIBRARIES ${CMAKE_BINARY_DIR}/3rdParty/snappy/google-snappy-d53de18/libsnappystatic.a)
-endif ()
-
-message(STATUS "WITH_SNAPPY ${WITH_SNAPPY}")
-message(STATUS "ArangoDB (3rdParty/rocksdb/CMakeLists.txt) Snappy path: ${SNAPPY_INCLUDE_DIR}")
+#if (WIN32)
+#  set(SNAPPY 1 CACHE BOOL "enable snappy")
+#  set(SNAPPY_INCLUDE ${SNAPPY_HOME};${CMAKE_BINARY_DIR}/3rdParty/snappy/google-snappy-d53de18/)
+#  set(SNAPPY_LIB_DEBUG snappystatic)
+#  set(SNAPPY_LIB_RELEASE snappystatic)
+#else ()
+#  set(WITH_SNAPPY ON CACHE BOOL "enable snappy")
+#  set(SNAPPY_INCLUDE_DIR ${SNAPPY_HOME};${CMAKE_BINARY_DIR}/3rdParty/snappy/google-snappy-d53de18/)
+#  set(SNAPPY_LIBRARIES ${CMAKE_BINARY_DIR}/3rdParty/snappy/google-snappy-d53de18/libsnappystatic.a)
+#endif ()
+#
+#message(STATUS "WITH_SNAPPY ${WITH_SNAPPY}")
+#message(STATUS "ArangoDB (3rdParty/rocksdb/CMakeLists.txt) Snappy path: ${SNAPPY_INCLUDE_DIR}")
 add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/${ARANGO_ROCKSDB_VERSION})
 
 # result
