@@ -27,7 +27,7 @@
 
 namespace arangodb {
 class AuthInfo;
-  
+
 class RestUsersHandler : public arangodb::RestBaseHandler {
  public:
   RestUsersHandler(GeneralRequest*, GeneralResponse*);
@@ -37,10 +37,10 @@ class RestUsersHandler : public arangodb::RestBaseHandler {
   bool isDirect() const override { return true; }
   RestStatus execute() override;
 
-private:
+ private:
   bool isSystemUser() const;
   bool canAccessUser(std::string const& user) const;
-  
+
   RestStatus getRequest(AuthInfo*);
   RestStatus postRequest(AuthInfo*);
   RestStatus putRequest(AuthInfo*);

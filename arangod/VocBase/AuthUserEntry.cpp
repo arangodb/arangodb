@@ -26,17 +26,17 @@
 #include "Aql/Query.h"
 #include "Aql/QueryString.h"
 #include "Basics/ReadLocker.h"
+#include "Basics/StringRef.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/WriteLocker.h"
 #include "Basics/tri-strings.h"
-#include "Basics/StringRef.h"
 #include "Cluster/ServerState.h"
 #include "GeneralServer/AuthenticationFeature.h"
 #include "GeneralServer/GeneralServerFeature.h"
 #include "Logger/Logger.h"
+#include "Random/UniformCharacter.h"
 #include "RestServer/DatabaseFeature.h"
 #include "Ssl/SslInterface.h"
-#include "Random/UniformCharacter.h"
 #include "Transaction/Helpers.h"
 
 #include <velocypack/Iterator.h>
@@ -46,33 +46,33 @@ using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
 
-static int convertToAuthLevel(arangodb::basics::StringRef const& ref) {
+static AuthLevel _convertToAuthLevel(arangodb::StringRef ref) {
   if (ref.compare("rw") == 0) {
     return AuthLevel::RW;
   } else if (ref.compare("ro") == 0) {
     return AuthLevel::RO;
-  } else if (ref.compare("none") == 0 || grants.empty()) {
+  } else if (ref.compare("none") == 0 || ref.empty()) {
     return AuthLevel::NONE;
   }
-  THROW_ARANGO_EXCEPTION(TRI_ERROR_BAD_PARAMETER, "expecting access type 'rw', 'ro' or 'none'");
+  THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
+                                 "expecting access type 'rw', 'ro' or 'none'");
 }
 
-AuthLevel convertToAuthLevel(velocypack::Slice grants) {
-  return convertToAuthLevel(StringRef(grants));
+AuthLevel arangodb::convertToAuthLevel(velocypack::Slice grants) {
+  return _convertToAuthLevel(StringRef(grants));
 }
 
-AuthLevel convertToAuthLevel(std::string grants) {
-  return convertToAuthLevel(StringRef(grants));
+AuthLevel arangodb::convertToAuthLevel(std::string grants) {
+  return _convertToAuthLevel(StringRef(grants));
 }
 
 // private hash function
 static int HexHashFromData(std::string const& hashMethod,
-                           std::string const& str,
-                           std::string& outHash) {
+                           std::string const& str, std::string& outHash) {
   char* crypted = nullptr;
   size_t cryptedLength;
   char* hex;
-  
+
   try {
     if (hashMethod == "sha1") {
       arangodb::rest::SslInterface::sslSHA1(str.data(), str.size(), crypted,
@@ -89,12 +89,13 @@ static int HexHashFromData(std::string const& hashMethod,
     } else if (hashMethod == "sha224") {
       arangodb::rest::SslInterface::sslSHA224(str.data(), str.size(), crypted,
                                               cryptedLength);
-    } else if (hashMethod == "md5") {// WFT?!!!
+    } else if (hashMethod == "md5") {  // WFT?!!!
       arangodb::rest::SslInterface::sslMD5(str.data(), str.size(), crypted,
                                            cryptedLength);
     } else {
       // invalid algorithm...
-      LOG_TOPIC(DEBUG, arangodb::Logger::FIXME) << "invalid algorithm for hexHashFromData: " << hashMethod;
+      LOG_TOPIC(DEBUG, arangodb::Logger::FIXME)
+          << "invalid algorithm for hexHashFromData: " << hashMethod;
       return TRI_ERROR_BAD_PARAMETER;
     }
   } catch (...) {
@@ -102,26 +103,24 @@ static int HexHashFromData(std::string const& hashMethod,
     // exceptions
     return TRI_ERROR_FAILED;
   }
-  
-  if (crypted == nullptr ||
-      cryptedLength == 0) {
+
+  if (crypted == nullptr || cryptedLength == 0) {
     delete[] crypted;
     return TRI_ERROR_OUT_OF_MEMORY;
   }
-  
+
   size_t hexLen;
   hex = TRI_EncodeHexString(crypted, cryptedLength, &hexLen);
   delete[] crypted;
-  
+
   if (hex == nullptr) {
     return TRI_ERROR_OUT_OF_MEMORY;
   }
-  
+
   outHash = std::string(hex, hexLen);
   TRI_FreeString(TRI_CORE_MEM_ZONE, hex);
   return TRI_ERROR_NO_ERROR;
 }
-
 
 static void AddSource(VPackBuilder& builder, AuthSource source) {
   switch (source) {
@@ -150,39 +149,39 @@ static void AddAuthLevel(VPackBuilder& builder, AuthLevel lvl) {
 }
 
 static AuthLevel AuthLevelFromSlice(VPackSlice const& slice) {
-  if (slice.hasKey("write") && slice.get("write").isTrue() ) {
+  if (slice.hasKey("write") && slice.get("write").isTrue()) {
     return AuthLevel::RW;
-  } else if (slice.hasKey("read") && slice.get("read").isTrue() ) {
+  } else if (slice.hasKey("read") && slice.get("read").isTrue()) {
     return AuthLevel::RO;
   }
   return AuthLevel::NONE;
 }
 
-
 // ============= public ==================
 
 AuthUserEntry AuthUserEntry::newUser(std::string const& user,
-                      std::string const& password,
-                      AuthSource source) {
+                                     std::string const& password,
+                                     AuthSource source) {
   AuthUserEntry entry;
   entry._active = true;
   entry._source = source;
-  
+
   entry._username = user;
   entry._passwordMethod = "sha256";
-  
-  std::string salt = UniformCharacter(8, "0123456789abcdef").random();  
+
+  std::string salt = UniformCharacter(8, "0123456789abcdef").random();
   std::string hash;
   int res = HexHashFromData("sha256", salt + password, hash);
   if (res != TRI_ERROR_NO_ERROR) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(res, "Could not calculate hex-hash from data");
+    THROW_ARANGO_EXCEPTION_MESSAGE(res,
+                                   "Could not calculate hex-hash from data");
   }
-  
+
   entry._passwordSalt = salt;
   entry._passwordHash = hash;
   entry._passwordChangeToken = std::string();
   entry._changePassword = false;
-  
+
   // build authentication entry
   return entry;
 }
@@ -191,22 +190,26 @@ AuthUserEntry AuthUserEntry::fromDocument(VPackSlice const& slice) {
   if (slice.isNone() || !slice.isObject()) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_BAD_PARAMETER);
   }
-  
-  VPackSlice const keySlice = transaction::helpers::extractKeyFromDocument(slice);
+
+  VPackSlice const keySlice =
+      transaction::helpers::extractKeyFromDocument(slice);
   if (!keySlice.isString()) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER, "cannot extract key");
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
+                                   "cannot extract key");
   }
 
   // extract "user" attribute
   VPackSlice const userSlice = slice.get("user");
   if (!userSlice.isString()) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER, "cannot extract username");
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
+                                   "cannot extract username");
   }
 
   VPackSlice const authDataSlice = slice.get("authData");
 
   if (!authDataSlice.isObject()) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER, "cannot extract authData");
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
+                                   "cannot extract authData");
   }
 
   VPackSlice const simpleSlice = authDataSlice.get("simple");
@@ -221,7 +224,8 @@ AuthUserEntry AuthUserEntry::fromDocument(VPackSlice const& slice) {
 
   if (!methodSlice.isString() || !saltSlice.isString() ||
       !hashSlice.isString()) {
-    LOG_TOPIC(DEBUG, arangodb::Logger::FIXME) << "cannot extract password internals";
+    LOG_TOPIC(DEBUG, arangodb::Logger::FIXME)
+        << "cannot extract password internals";
     return AuthUserEntry();
   }
 
@@ -238,7 +242,7 @@ AuthUserEntry AuthUserEntry::fromDocument(VPackSlice const& slice) {
   // extract "changePassword" attribute
   bool mustChange =
       VelocyPackHelper::getBooleanValue(authDataSlice, "changePassword", false);
-  
+
   // extract "passwordToken"
   VPackSlice passwordTokenSlice = authDataSlice.get("passwordToken");
   if (!passwordTokenSlice.isString()) {
@@ -252,12 +256,12 @@ AuthUserEntry AuthUserEntry::fromDocument(VPackSlice const& slice) {
 
   if (databasesSlice.isObject()) {
     for (auto const& obj : VPackObjectIterator(databasesSlice)) {
-
       if (obj.value.isObject()) {
         std::unordered_map<std::string, AuthLevel> collections;
         AuthLevel databaseAuth = AuthLevel::NONE;
 
-        if (obj.value.hasKey("permissions") && obj.value.get("permissions").isObject()) {
+        if (obj.value.hasKey("permissions") &&
+            obj.value.get("permissions").isObject()) {
           auto const permissionsSlice = obj.value.get("permissions");
           databaseAuth = AuthLevelFromSlice(permissionsSlice);
         }
@@ -265,33 +269,43 @@ AuthUserEntry AuthUserEntry::fromDocument(VPackSlice const& slice) {
         VPackSlice collectionsSlice = obj.value.get("collections");
         if (collectionsSlice.isObject()) {
           for (auto const& collection : VPackObjectIterator(collectionsSlice)) {
-
-            if (collection.value.hasKey("permissions") && collection.value.get("permissions").isObject()) {
+            if (collection.value.hasKey("permissions") &&
+                collection.value.get("permissions").isObject()) {
               auto const permissionsSlice = obj.value.get("permissions");
               collections.emplace(collection.key.copyString(),
                                   AuthLevelFromSlice(permissionsSlice));
-            } // if
-          } // for
-        } // if
+            }  // if
+          }    // for
+        }      // if
 
-        authContexts.emplace(obj.key.copyString(), std::make_shared<AuthContext>(databaseAuth, std::move(collections)));
+        authContexts.emplace(obj.key.copyString(),
+                             std::make_shared<AuthContext>(
+                                 databaseAuth, std::move(collections)));
 
       } else {
-        LOG_TOPIC(INFO, arangodb::Logger::CONFIG) << "Deprecation Warning: Update access rights for user '" << userSlice.copyString() << "'";
-        ValueLength length;
+        LOG_TOPIC(INFO, arangodb::Logger::CONFIG)
+            << "Deprecation Warning: Update access rights for user '"
+            << userSlice.copyString() << "'";
+        VPackValueLength length;
         char const* value = obj.value.getString(length);
 
         if (TRI_CaseEqualString(value, "rw", 2)) {
-          authContexts.emplace(obj.key.copyString(), std::make_shared<AuthContext>(AuthLevel::RW,
-                                                   std::unordered_map<std::string, AuthLevel>({{"*", AuthLevel::RW}}) ));
+          authContexts.emplace(
+              obj.key.copyString(),
+              std::make_shared<AuthContext>(
+                  AuthLevel::RW, std::unordered_map<std::string, AuthLevel>(
+                                     {{"*", AuthLevel::RW}})));
 
         } else if (TRI_CaseEqualString(value, "ro", 2)) {
-          authContexts.emplace(obj.key.copyString(), std::make_shared<AuthContext>(AuthLevel::RO,
-                                                   std::unordered_map<std::string, AuthLevel>({{"*", AuthLevel::RO}}) ));
+          authContexts.emplace(
+              obj.key.copyString(),
+              std::make_shared<AuthContext>(
+                  AuthLevel::RO, std::unordered_map<std::string, AuthLevel>(
+                                     {{"*", AuthLevel::RO}})));
         }
       }
-    } // for
-  } // if
+    }  // for
+  }    // if
 
   AuthLevel systemDatabaseLevel = AuthLevel::RO;
   for (auto const& colName : std::vector<std::string>{"_system", "*"}) {
@@ -303,16 +317,17 @@ AuthUserEntry AuthUserEntry::fromDocument(VPackSlice const& slice) {
   }
 
   for (auto const& ctx : authContexts) {
-    LOG_TOPIC(DEBUG, arangodb::Logger::AUTHENTICATION) << userSlice.copyString() << " Database " << ctx.first;
+    LOG_TOPIC(DEBUG, arangodb::Logger::AUTHENTICATION)
+        << userSlice.copyString() << " Database " << ctx.first;
     ctx.second->_systemAuthLevel = systemDatabaseLevel;
     ctx.second->dump();
   }
-  
+
   AuthUserEntry entry;
   entry._key = keySlice.copyString();
   entry._active = active;
   entry._source = AuthSource::COLLECTION;
-  
+
   entry._username = userSlice.copyString();
   entry._passwordMethod = methodSlice.copyString();
   entry._passwordSalt = saltSlice.copyString();
@@ -329,7 +344,8 @@ bool AuthUserEntry::checkPassword(std::string const& password) const {
   std::string hash;
   int res = HexHashFromData(_passwordMethod, _passwordSalt + password, hash);
   if (res != TRI_ERROR_NO_ERROR) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(res, "Could not calculate hex-hash from input");
+    THROW_ARANGO_EXCEPTION_MESSAGE(res,
+                                   "Could not calculate hex-hash from input");
   }
   return _passwordHash == hash;
 }
@@ -338,7 +354,8 @@ void AuthUserEntry::updatePassword(std::string const& password) {
   std::string hash;
   int res = HexHashFromData(_passwordMethod, _passwordSalt + password, hash);
   if (res != TRI_ERROR_NO_ERROR) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(res, "Could not calculate hex-hash from input");
+    THROW_ARANGO_EXCEPTION_MESSAGE(res,
+                                   "Could not calculate hex-hash from input");
   }
   _passwordHash = hash;
 }
@@ -347,7 +364,8 @@ AuthLevel AuthUserEntry::canUseDatabase(std::string const& dbname) const {
   return getAuthContext(dbname)->databaseAuthLevel();
 }
 
-std::shared_ptr<AuthContext> AuthUserEntry::getAuthContext(std::string const& dbname) const {
+std::shared_ptr<AuthContext> AuthUserEntry::getAuthContext(
+    std::string const& dbname) const {
   auto const& it = _authContexts.find(dbname);
   if (it != _authContexts.end()) {
     return it->second;
@@ -356,12 +374,14 @@ std::shared_ptr<AuthContext> AuthUserEntry::getAuthContext(std::string const& db
   if (it2 != _authContexts.end()) {
     return it2->second;
   }
-  return std::make_shared<AuthContext>(AuthLevel::NONE, std::unordered_map<std::string, AuthLevel>({{"*", AuthLevel::NONE}}));
+  return std::make_shared<AuthContext>(
+      AuthLevel::NONE,
+      std::unordered_map<std::string, AuthLevel>({{"*", AuthLevel::NONE}}));
 }
 
 VPackBuilder AuthUserEntry::toVPackBuilder() const {
   TRI_ASSERT(!_username.empty());
-  
+
   VPackBuilder builder;
   VPackObjectBuilder o(&builder, true);
   if (!_key.empty()) {
@@ -369,8 +389,8 @@ VPackBuilder AuthUserEntry::toVPackBuilder() const {
   }
   builder.add("user", VPackValue(_username));
   AddSource(builder, _source);
-  
-  { // authData sub-object
+
+  {  // authData sub-object
     VPackObjectBuilder o2(&builder, "authData", true);
     builder.add("active", VPackValue(_active));
     if (!_passwordChangeToken.empty()) {
@@ -386,16 +406,16 @@ VPackBuilder AuthUserEntry::toVPackBuilder() const {
       builder.add("method", VPackValue(_passwordMethod));
     }
   }
-  { // databases sub-object
+  {  // databases sub-object
     VPackObjectBuilder o2(&builder, "databases", true);
     for (auto const& dbCtxPair : _authContexts) {
       VPackObjectBuilder o3(&builder, dbCtxPair.first, true);
-      {// permissions
+      {  // permissions
         VPackObjectBuilder o4(&builder, "permissions", true);
         AuthLevel lvl = dbCtxPair.second->databaseAuthLevel();
         AddAuthLevel(builder, lvl);
       }
-      {// collections
+      {  // collections
         VPackObjectBuilder o4(&builder, "collections", true);
         for (auto const& colAccessPair : dbCtxPair.second->_collectionAccess) {
           VPackObjectBuilder o4(&builder, colAccessPair.first, true);
@@ -405,39 +425,48 @@ VPackBuilder AuthUserEntry::toVPackBuilder() const {
       }
     }
   }
-  
+
   return builder;
 }
 
 void AuthUserEntry::grantDatabase(std::string const& dbname, AuthLevel level) {
-  if (_username == "root" && dbname == StaticStrings::SystemDatabase && level != AuthLevel::RW) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN,
-                                   "Cannot lower access level of 'root' to _system");
+  if (_username == "root" && dbname == StaticStrings::SystemDatabase &&
+      level != AuthLevel::RW) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+        TRI_ERROR_FORBIDDEN, "Cannot lower access level of 'root' to _system");
   }
-  
+
   auto it = _authContexts.find(dbname);
   if (it != _authContexts.end()) {
     it->second->_databaseAuthLevel = level;
   } else {
-    _authContexts.emplace(dbname, std::make_shared<AuthContext>(level,
-                                                                std::unordered_map<std::string, AuthLevel>({{"*", level}}) ));
+    _authContexts.emplace(
+        dbname,
+        std::make_shared<AuthContext>(
+            level, std::unordered_map<std::string, AuthLevel>({{"*", level}})));
   }
-  if (dbname == StaticStrings::SystemDatabase
-      || (dbname == "*" && _authContexts.find(StaticStrings::SystemDatabase) == _authContexts.end())) {
+  if (dbname == StaticStrings::SystemDatabase ||
+      (dbname == "*" &&
+       _authContexts.find(StaticStrings::SystemDatabase) ==
+           _authContexts.end())) {
     _authContexts[dbname]->_systemAuthLevel = level;
   }
 }
 
-void AuthUserEntry::grantCollection(std::string const& dbname, std::string const& collection, AuthLevel level) {
+void AuthUserEntry::grantCollection(std::string const& dbname,
+                                    std::string const& collection,
+                                    AuthLevel level) {
   if (_username == "root" && level != AuthLevel::RW) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN,
-                                   "Cannot lower access level of 'root' to _system");
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+        TRI_ERROR_FORBIDDEN, "Cannot lower access level of 'root' to _system");
   }
   auto it = _authContexts.find(dbname);
   if (it != _authContexts.end()) {
     it->second->_collectionAccess[collection] = level;
   } else {
-    _authContexts.emplace(dbname, std::make_shared<AuthContext>(level,
-                                                                std::unordered_map<std::string, AuthLevel>({{collection, level}}) ));
+    _authContexts.emplace(dbname,
+                          std::make_shared<AuthContext>(
+                              level, std::unordered_map<std::string, AuthLevel>(
+                                         {{collection, level}})));
   }
 }

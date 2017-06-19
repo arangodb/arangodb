@@ -21,10 +21,10 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "RestUsersHandler.h"
+#include "Basics/VelocyPackHelper.h"
 #include "GeneralServer/AuthenticationFeature.h"
 #include "RestServer/DatabaseFeature.h"
 #include "VocBase/vocbase.h"
-#include "Basics/VelocyPackHelper.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/Collection.h>
@@ -38,14 +38,15 @@ using namespace arangodb::basics;
 using namespace arangodb::rest;
 
 RestUsersHandler::RestUsersHandler(GeneralRequest* request,
-                                 GeneralResponse* response)
+                                   GeneralResponse* response)
     : RestBaseHandler(request, response) {}
 
 RestStatus RestUsersHandler::execute() {
   RequestType const type = _request->requestType();
-  auto auth = application_features::ApplicationServer::getFeature<AuthenticationFeature>("Authentication");
+  auto auth = application_features::ApplicationServer::getFeature<
+      AuthenticationFeature>("Authentication");
   TRI_ASSERT(auth != nullptr);
-  AuthInfo *authInfo = auth->authInfo();
+  AuthInfo* authInfo = auth->authInfo();
 
   switch (type) {
     case RequestType::GET:
@@ -58,23 +59,26 @@ RestStatus RestUsersHandler::execute() {
       return patchRequest(authInfo);
     case RequestType::DELETE_REQ:
       return deleteRequest(authInfo);
-      
+
     default:
       generateError(ResponseCode::BAD, TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
       return RestStatus::DONE;
   }
-  
+
   /*return RestStatus::QUEUE
-      .then([]() { LOG_TOPIC(INFO, arangodb::Logger::FIXME) << "demo handler going to sleep"; })
+      .then([]() { LOG_TOPIC(INFO, arangodb::Logger::FIXME) << "demo handler
+     going to sleep"; })
       .then([]() { sleep(5); })
-      .then([]() { LOG_TOPIC(INFO, arangodb::Logger::FIXME) << "demo handler done sleeping"; })
+      .then([]() { LOG_TOPIC(INFO, arangodb::Logger::FIXME) << "demo handler
+     done sleeping"; })
       .then([this]() { doSomeMoreWork(); })
       .then([this]() { return evenMoreWork(); });*/
 }
 
 bool RestUsersHandler::isSystemUser() const {
   if (_request->execContext() != nullptr) {
-    return _request->execContext()->authContext()->systemAuthLevel() == AuthLevel::RW;
+    return _request->execContext()->authContext()->systemAuthLevel() ==
+           AuthLevel::RW;
   }
   return false;
 }
@@ -84,7 +88,6 @@ bool RestUsersHandler::canAccessUser(std::string const& user) const {
 }
 
 RestStatus RestUsersHandler::getRequest(AuthInfo* authInfo) {
-  
   std::vector<std::string> const& suffixes = _request->suffixes();
   if (suffixes.empty()) {
     if (isSystemUser()) {
@@ -103,7 +106,7 @@ RestStatus RestUsersHandler::getRequest(AuthInfo* authInfo) {
     }
   } else if (suffixes.size() >= 2) {
     std::string const& user = suffixes[0];
-    
+
     if (canAccessUser(user)) {
       VPackBuilder data;
       if (suffixes[1] == "config") {
@@ -114,13 +117,14 @@ RestStatus RestUsersHandler::getRequest(AuthInfo* authInfo) {
         }
       } else if (suffixes[1] == "database") {
         VPackObjectBuilder o(&data, true);
-        DatabaseFeature::DATABASE->enumerateDatabases([&](TRI_vocbase_t* vocbase){
-          AuthLevel lvl = authInfo->canUseDatabase(user, vocbase->name());
-          if (lvl != AuthLevel::NONE) {
-            std::string str = AuthLevel::RO == lvl ? "ro" : "rw";
-            data.add(vocbase->name(), VPackValue(str));
-          }
-        });
+        DatabaseFeature::DATABASE->enumerateDatabases(
+            [&](TRI_vocbase_t* vocbase) {
+              AuthLevel lvl = authInfo->canUseDatabase(user, vocbase->name());
+              if (lvl != AuthLevel::NONE) {
+                std::string str = AuthLevel::RO == lvl ? "ro" : "rw";
+                data.add(vocbase->name(), VPackValue(str));
+              }
+            });
       }
       generateResult(ResponseCode::OK, data.slice());
     } else {
@@ -131,7 +135,8 @@ RestStatus RestUsersHandler::getRequest(AuthInfo* authInfo) {
 }
 
 /// helper to create(0), replace(1), update(2) a user
-static Result StoreUser(AuthInfo* authInfo, int mode, std::string const& user, VPackSlice json) {
+static Result StoreUser(AuthInfo* authInfo, int mode, std::string const& user,
+                        VPackSlice json) {
   VPackSlice s = json.get("passwd");
   std::string passwd = s.isString() ? s.copyString() : "";
   s = json.get("active");
@@ -139,7 +144,7 @@ static Result StoreUser(AuthInfo* authInfo, int mode, std::string const& user, V
   VPackSlice extra = json.get("extra");
   s = json.get("changePassword");
   bool changePasswd = s.isBool() ? s.getBool() : false;
-  
+
   Result r;
   if (mode == 0 || mode == 1) {
     r = authInfo->storeUser(mode == 1, user, passwd, active, changePasswd);
@@ -153,13 +158,11 @@ static Result StoreUser(AuthInfo* authInfo, int mode, std::string const& user, V
   if (r.ok() && extra.isObject() && !extra.isEmptyObject()) {
     r = authInfo->setUserData(user, extra);
   }
-  
-  
+
   return r;
 }
 
 RestStatus RestUsersHandler::postRequest(AuthInfo* authInfo) {
-  
   std::vector<std::string> const& suffixes = _request->suffixes();
   bool parseSuccess = false;
   std::shared_ptr<VPackBuilder> parsedBody = parseVelocyPackBody(parseSuccess);
@@ -167,7 +170,7 @@ RestStatus RestUsersHandler::postRequest(AuthInfo* authInfo) {
     generateResult(rest::ResponseCode::OK, VPackSlice());
     return RestStatus::DONE;
   }
-  
+
   if (suffixes.size() == 1) {
     std::string const& user = suffixes[0];
     std::string password;
@@ -205,7 +208,6 @@ RestStatus RestUsersHandler::postRequest(AuthInfo* authInfo) {
 }
 
 RestStatus RestUsersHandler::putRequest(AuthInfo* authInfo) {
-  
   std::vector<std::string> const& suffixes = _request->suffixes();
   bool parseSuccess = false;
   std::shared_ptr<VPackBuilder> parsedBody = parseVelocyPackBody(parseSuccess);
@@ -213,7 +215,7 @@ RestStatus RestUsersHandler::putRequest(AuthInfo* authInfo) {
     generateResult(rest::ResponseCode::OK, VPackSlice());
     return RestStatus::DONE;
   }
-  
+
   if (suffixes.size() == 1) {
     std::string const& user = suffixes[0];
     if (canAccessUser(user)) {
@@ -232,14 +234,13 @@ RestStatus RestUsersHandler::putRequest(AuthInfo* authInfo) {
     std::string const& user = suffixes[0];
 
     if (suffixes[1] == "database") {
-      
       // update a user's permissions
       if (isSystemUser()) {
         std::string const& db = suffixes[2];
         std::string coll = suffixes.size() == 4 ? suffixes[3] : "";
         VPackSlice grant = parsedBody->slice().get("grant");
         AuthLevel lvl = convertToAuthLevel(grant);
-        
+
         authInfo->updateUser(user, [&](AuthUserEntry& entry) {
           if (coll.empty()) {
             entry.grantDatabase(db, lvl);
@@ -250,7 +251,7 @@ RestStatus RestUsersHandler::putRequest(AuthInfo* authInfo) {
       } else {
         generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_FORBIDDEN);
       }
-      
+
     } else if (suffixes[1] == "config") {
       // update internal config data, used in the admin dashboard
       if (canAccessUser(user)) {
@@ -258,7 +259,7 @@ RestStatus RestUsersHandler::putRequest(AuthInfo* authInfo) {
         VPackBuilder config = authInfo->getConfigData(user);
         VPackBuilder b;
         b(VPackValue(VPackValueType::Object))(key, parsedBody->slice());
-        
+
         config = VPackCollection::merge(config.slice(), b.slice(), false);
         Result r = authInfo->setConfigData(user, config.slice());
         if (r.ok()) {
@@ -284,7 +285,7 @@ RestStatus RestUsersHandler::patchRequest(AuthInfo* authInfo) {
     generateResult(rest::ResponseCode::OK, VPackSlice());
     return RestStatus::DONE;
   }
-  
+
   if (suffixes.size() == 1) {
     std::string const& user = suffixes[0];
     if (canAccessUser(user)) {
@@ -303,7 +304,6 @@ RestStatus RestUsersHandler::patchRequest(AuthInfo* authInfo) {
     generateError(rest::ResponseCode::BAD, TRI_ERROR_BAD_PARAMETER);
   }
   return RestStatus::DONE;
-
 }
 
 RestStatus RestUsersHandler::deleteRequest(AuthInfo* authInfo) {
@@ -314,7 +314,7 @@ RestStatus RestUsersHandler::deleteRequest(AuthInfo* authInfo) {
     generateResult(rest::ResponseCode::OK, VPackSlice());
     return RestStatus::DONE;
   }
-  
+
   if (suffixes.size() == 1) {
     if (isSystemUser()) {
       std::string const& user = suffixes[0];
@@ -339,7 +339,7 @@ RestStatus RestUsersHandler::deleteRequest(AuthInfo* authInfo) {
     }
   } else if (suffixes.size() == 3 || suffixes.size() == 4) {
     std::string const& user = suffixes[0];
-    
+
     if (suffixes[1] == "database") {
       // revoke a user's permissions
       if (isSystemUser()) {
@@ -355,16 +355,15 @@ RestStatus RestUsersHandler::deleteRequest(AuthInfo* authInfo) {
       } else {
         generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_FORBIDDEN);
       }
-      
+
     } else if (suffixes[1] == "config") {
-      
       // remove internal config data, used in the admin dashboard
       if (canAccessUser(user)) {
         std::string const& key = suffixes[2];
         VPackBuilder config = authInfo->getConfigData(user);
         VPackBuilder b;
         b(VPackValue(VPackValueType::Object))(key, VPackSlice::nullSlice());
-        
+
         config = VPackCollection::merge(config.slice(), b.slice(), false, true);
         Result r = authInfo->setConfigData(user, config.slice());
         if (r.ok()) {
@@ -376,7 +375,7 @@ RestStatus RestUsersHandler::deleteRequest(AuthInfo* authInfo) {
         generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_FORBIDDEN);
       }
     }
-    
+
   } else {
     generateError(rest::ResponseCode::BAD, TRI_ERROR_BAD_PARAMETER);
   }
@@ -396,10 +395,13 @@ RestStatus RestUsersHandler::evenMoreWork() {
   generateResult(rest::ResponseCode::OK, result.slice());
 
   return RestStatus::DONE
-      .then([]() { LOG_TOPIC(INFO, arangodb::Logger::FIXME) << "demo handler keeps working"; })
+      .then([]() { LOG_TOPIC(INFO, arangodb::Logger::FIXME) << "demo handler
+keeps working"; })
       .then([]() { sleep(5); })
       .then(
-          []() { LOG_TOPIC(INFO, arangodb::Logger::FIXME) << "even if the result has already been returned"; })
-      .then([]() { LOG_TOPIC(INFO, arangodb::Logger::FIXME) << "finally done"; });
+          []() { LOG_TOPIC(INFO, arangodb::Logger::FIXME) << "even if the result
+has already been returned"; })
+      .then([]() { LOG_TOPIC(INFO, arangodb::Logger::FIXME) << "finally done";
+});
 }
 */

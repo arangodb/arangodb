@@ -27,13 +27,17 @@ using namespace arangodb;
 
 thread_local ExecContext* ExecContext::CURRENT_EXECCONTEXT = nullptr;
 
-AuthContext::AuthContext(AuthLevel authLevel, std::unordered_map<std::string, AuthLevel>&& collectionAccess)
-  : _databaseAuthLevel(authLevel),
-    _systemAuthLevel(AuthLevel::NONE),
-    _collectionAccess(std::move(collectionAccess)) {}
+AuthContext::AuthContext(
+    AuthLevel authLevel,
+    std::unordered_map<std::string, AuthLevel>&& collectionAccess)
+    : _databaseAuthLevel(authLevel),
+      _systemAuthLevel(AuthLevel::NONE),
+      _collectionAccess(std::move(collectionAccess)) {}
 
-AuthLevel AuthContext::collectionAuthLevel(std::string const& collectionName) const {
-  for(const auto& collection : std::vector<std::string>({collectionName, "*"})) {
+AuthLevel AuthContext::collectionAuthLevel(
+    std::string const& collectionName) const {
+  for (const auto& collection :
+       std::vector<std::string>({collectionName, "*"})) {
     auto const& it = _collectionAccess.find(collection);
 
     if (it == _collectionAccess.end()) {
@@ -45,7 +49,8 @@ AuthLevel AuthContext::collectionAuthLevel(std::string const& collectionName) co
 }
 
 void AuthContext::dump() {
-  LOG_TOPIC(DEBUG, arangodb::Logger::AUTHENTICATION) << "Dump AuthContext rights";
+  LOG_TOPIC(DEBUG, arangodb::Logger::AUTHENTICATION)
+      << "Dump AuthContext rights";
 
   if (_databaseAuthLevel == AuthLevel::RO) {
     LOG_TOPIC(DEBUG, arangodb::Logger::AUTHENTICATION) << "database level RO";
