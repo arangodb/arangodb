@@ -15,7 +15,7 @@ shell> curl -X PUT --data-binary @- --dump - http://localhost:8529/_api/gharial/
 EOF
 
 HTTP/<span class="hljs-number">1.1</span> <span class="hljs-number">202</span> Accepted
-etag: _VGFV0A6---
+etag: _VK-NOUW---
 content-type: application/json; charset=utf<span class="hljs-number">-8</span>
 x-content-type-options: nosniff
 
@@ -43,7 +43,7 @@ x-content-type-options: nosniff
     <span class="hljs-string">"numberOfShards"</span> : <span class="hljs-number">0</span>, 
     <span class="hljs-string">"smartGraphAttribute"</span> : <span class="hljs-string">""</span>, 
     <span class="hljs-string">"_id"</span> : <span class="hljs-string">"_graphs/social"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_VGFV0A6---"</span> 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_VK-NOUW---"</span> 
   }, 
   <span class="hljs-string">"code"</span> : <span class="hljs-number">202</span> 
 }

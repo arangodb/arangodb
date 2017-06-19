@@ -3,9 +3,9 @@ shell> curl -X PUT --header 'x-arango-async: store' --dump - http://localhost:85
 HTTP/1.1 202 Accepted
 content-type: text/plain; charset=utf-8
 x-content-type-options: nosniff
-x-arango-async-id: 149682700474281
+x-arango-async-id: 149787082513826
 
-shell> curl -X DELETE --dump - http://localhost:8529/_api/job/149682700474281
+shell> curl -X DELETE --dump - http://localhost:8529/_api/job/149787082513826
 
 HTTP/<span class="hljs-number">1.1</span> <span class="hljs-number">200</span> OK
 content-type: application/json; charset=utf<span class="hljs-number">-8</span>

@@ -36,7 +36,7 @@ x-content-type-options: nosniff
       <span class="hljs-string">"scannedIndex"</span> : <span class="hljs-number">0</span>, 
       <span class="hljs-string">"filtered"</span> : <span class="hljs-number">500</span>, 
       <span class="hljs-string">"fullCount"</span> : <span class="hljs-number">500</span>, 
-      <span class="hljs-string">"executionTime"</span> : <span class="hljs-number">0.0006220340728759766</span> 
+      <span class="hljs-string">"executionTime"</span> : <span class="hljs-number">0.0006740093231201172</span> 
     }, 
     <span class="hljs-string">"warnings"</span> : [ ] 
   }, 

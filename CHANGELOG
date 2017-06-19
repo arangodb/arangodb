@@ -1,4 +1,4 @@
-v3.1.23 (XXXX-XX-XX)
+v3.1.23 (2017-06-19)
 --------------------
 
 * potentially fixed issue #2559: Duplicate _key generated on insertion

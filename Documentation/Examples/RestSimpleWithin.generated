@@ -18,7 +18,7 @@ x-content-type-options: nosniff
     { 
       <span class="hljs-string">"_key"</span> : <span class="hljs-string">"11187"</span>, 
       <span class="hljs-string">"_id"</span> : <span class="hljs-string">"products/11187"</span>, 
-      <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_VGFXFXe---"</span>, 
+      <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_VK-Ognm--_"</span>, 
       <span class="hljs-string">"name"</span> : <span class="hljs-string">"Name/0.002/"</span>, 
       <span class="hljs-string">"loc"</span> : [ 
         <span class="hljs-number">0.002</span>, 
@@ -28,7 +28,7 @@ x-content-type-options: nosniff
     { 
       <span class="hljs-string">"_key"</span> : <span class="hljs-string">"11181"</span>, 
       <span class="hljs-string">"_id"</span> : <span class="hljs-string">"products/11181"</span>, 
-      <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_VGFXFXa---"</span>, 
+      <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_VK-Ogni--_"</span>, 
       <span class="hljs-string">"name"</span> : <span class="hljs-string">"Name/-0.002/"</span>, 
       <span class="hljs-string">"loc"</span> : [ 
         <span class="hljs-number">-0.002</span>, 

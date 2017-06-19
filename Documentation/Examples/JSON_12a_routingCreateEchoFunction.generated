@@ -5,7 +5,7 @@ arangosh&gt; db._routing.save({
 ........&gt;  } 
 ........&gt; });
 { 
-  <span class="hljs-string">"_id"</span> : <span class="hljs-string">"_routing/8955"</span>, 
-  <span class="hljs-string">"_key"</span> : <span class="hljs-string">"8955"</span>, 
-  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_VGFV1aO---"</span> 
+  <span class="hljs-string">"_id"</span> : <span class="hljs-string">"_routing/8952"</span>, 
+  <span class="hljs-string">"_key"</span> : <span class="hljs-string">"8952"</span>, 
+  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_VK-NPru---"</span> 
 }
