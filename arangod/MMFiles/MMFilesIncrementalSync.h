@@ -569,8 +569,6 @@ int handleSyncKeysMMFiles(arangodb::InitialSyncer& syncer,
           std::string const localKey(
               localKeySlice.get(StaticStrings::KeyString).copyString());
 
-//LOG_TOPIC(ERR, Logger::FIXME) << "- LOCAL KEY: " << localKey << ", REMOTE KEY: " << keyString;
-
           // compare local with remote key
           int res = localKey.compare(keyString);
 
@@ -581,38 +579,30 @@ int handleSyncKeysMMFiles(arangodb::InitialSyncer& syncer,
             keyBuilder.add(StaticStrings::KeyString, VPackValue(localKey));
             keyBuilder.close();
 
-//LOG_TOPIC(ERR, Logger::FIXME) << "GOT A LOCAL DOC NOT PRESENT REMOTELY: " << localKey;
-
             trx.remove(collectionName, keyBuilder.slice(), options);
             ++nextStart;
           } else if (res == 0) {
-//LOG_TOPIC(ERR, Logger::FIXME) << "KEY MATCH: " << localKey;
             // key match
             break;
           } else {
             TRI_ASSERT(res > 0);
             // a remotely present key that is not present locally
-//LOG_TOPIC(ERR, Logger::FIXME) << "GOT A REMOTE DOC NOT PRESENT LOCALLY: " << keyString;
             break;
           }
         }
 
-//LOG_TOPIC(ERR, Logger::FIXME) << "LOOKING AT KEY: " << keySlice.toJson();
         MMFilesSimpleIndexElement element = idx->lookupKey(&trx, keySlice);
 
         if (!element) {
           // key not found locally
-//LOG_TOPIC(ERR, Logger::FIXME) << "- NOT FOUND LOCALLY. WILL FETCH";
           toFetch.emplace_back(i);
         } else if (TRI_RidToString(element.revisionId()) !=
                    pair.at(1).copyString()) {
           // key found, but revision id differs
           toFetch.emplace_back(i);
-//LOG_TOPIC(ERR, Logger::FIXME) << "- FOUND LOCALLY, BUT WITH DIFFERENT RID. WILL FETCH";
           ++nextStart;
         } else {
           // a match - nothing to do!
-//LOG_TOPIC(ERR, Logger::FIXME) << "- FOUND LOCALLY. WILL NOT FETCH";
           ++nextStart;
         }
       }
