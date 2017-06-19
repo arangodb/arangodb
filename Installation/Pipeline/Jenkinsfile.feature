@@ -195,6 +195,12 @@ def checkCommitMessages() {
             }
         }
     }
+
+    echo 'Clean Build: ' + (cleanBuild ? 'true' : 'false')
+    echo 'Build Enterprise: ' + (buildEnterprise ? 'true' : 'false')
+    echo 'Build Linux: ' + (buildLinux ? 'true' : 'false')
+    echo 'Build Mac: ' + (buildMac ? 'true' : 'false')
+    echo 'Build Windows: ' + (buildWindows ? 'true' : 'false')
 }
 
 def stashSourceCode() {
@@ -356,7 +362,7 @@ if (buildLinux) {
                 def edition = 'community'
 
                 node(os) {
-                    echo "Running singleserver community rocksdb linux test"
+                    echo "Running singleserver " + edition + " rocksdb " + os + " test"
 
                     unstashBinaries(edition, os)
                     testEdition(edition, os, 'singleserver', 'rocksdb')
@@ -368,7 +374,7 @@ if (buildLinux) {
 
                 if (buildEnterprise) {
                     node(os) {
-                        echo "Running singleserver enterprise mmfiles linux test"
+                        echo "Running singleserver " + edition + " mmfiles " + os + " test"
 
                         unstashBinaries(edition, os)
                         testEdition(edition, os, 'singleserver', 'mmfiles')
