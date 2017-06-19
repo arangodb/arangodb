@@ -38,6 +38,7 @@
 #include <chrono>
 #include <list>
 
+using namespace arangodb;
 using namespace arangodb::cache;
 
 Finding PlainCache::find(void const* key, uint32_t keySize) {
@@ -45,32 +46,33 @@ Finding PlainCache::find(void const* key, uint32_t keySize) {
   Finding result;
   uint32_t hash = hashKey(key, keySize);
 
-  bool ok;
+  Result status;
   PlainBucket* bucket;
   std::shared_ptr<Table> source;
-  std::tie(ok, bucket, source) = getBucket(hash, Cache::triesFast);
+  std::tie(status, bucket, source) = getBucket(hash, Cache::triesFast);
 
-  if (ok) {
+  if (status.ok()) {
     result.set(bucket->find(hash, key, keySize));
     recordStat(result.found() ? Stat::findHit : Stat::findMiss);
     bucket->unlock();
     endOperation();
+  } else {
+    result.reportError(status);
   }
 
   return result;
 }
 
-bool PlainCache::insert(CachedValue* value) {
+Result PlainCache::insert(CachedValue* value) {
   TRI_ASSERT(value != nullptr);
-  bool inserted = false;
   uint32_t hash = hashKey(value->key(), value->keySize);
 
-  bool ok;
+  Result status;
   PlainBucket* bucket;
   std::shared_ptr<Table> source;
-  std::tie(ok, bucket, source) = getBucket(hash, Cache::triesFast);
+  std::tie(status, bucket, source) = getBucket(hash, Cache::triesFast);
 
-  if (ok) {
+  if (status.ok()) {
     bool allowed = true;
     bool maybeMigrate = false;
     int64_t change = static_cast<int64_t>(value->size());
@@ -80,6 +82,7 @@ bool PlainCache::insert(CachedValue* value) {
       candidate = bucket->evictionCandidate();
       if (candidate == nullptr) {
         allowed = false;
+        status.reset(TRI_ERROR_ARANGO_BUSY);
       }
     }
 
@@ -100,15 +103,15 @@ bool PlainCache::insert(CachedValue* value) {
             eviction = true;
           }
           freeValue(candidate);
-        }
+      }
         bucket->insert(hash, value);
-        inserted = true;
         if (!eviction) {
           maybeMigrate = source->slotFilled();
         }
         maybeMigrate |= reportInsert(eviction);
       } else {
         requestGrow();  // let function do the hard work
+        status.reset(TRI_ERROR_RESOURCE_LIMIT);
       }
     }
 
@@ -119,20 +122,19 @@ bool PlainCache::insert(CachedValue* value) {
     endOperation();
   }
 
-  return inserted;
+  return status;
 }
 
-bool PlainCache::remove(void const* key, uint32_t keySize) {
+Result PlainCache::remove(void const* key, uint32_t keySize) {
   TRI_ASSERT(key != nullptr);
-  bool removed = false;
   uint32_t hash = hashKey(key, keySize);
 
-  bool ok;
+  Result status;
   PlainBucket* bucket;
   std::shared_ptr<Table> source;
-  std::tie(ok, bucket, source) = getBucket(hash, Cache::triesSlow);
+  std::tie(status, bucket, source) = getBucket(hash, Cache::triesSlow);
 
-  if (ok) {
+  if (status.ok()) {
     bool maybeMigrate = false;
     CachedValue* candidate = bucket->remove(hash, key, keySize);
 
@@ -148,7 +150,6 @@ bool PlainCache::remove(void const* key, uint32_t keySize) {
       maybeMigrate = source->slotEmptied();
     }
 
-    removed = true;
     bucket->unlock();
     if (maybeMigrate) {
       requestMigrate(_table->idealSize());
@@ -156,10 +157,12 @@ bool PlainCache::remove(void const* key, uint32_t keySize) {
     endOperation();
   }
 
-  return removed;
+  return status;
 }
 
-bool PlainCache::blacklist(void const* key, uint32_t keySize) { return false; }
+Result PlainCache::blacklist(void const* key, uint32_t keySize) {
+  return {TRI_ERROR_NOT_IMPLEMENTED};
+}
 
 uint64_t PlainCache::allocationSize(bool enableWindowedStats) {
   return sizeof(PlainCache) +
@@ -194,13 +197,13 @@ PlainCache::~PlainCache() {
 
 uint64_t PlainCache::freeMemoryFrom(uint32_t hash) {
   uint64_t reclaimed = 0;
-  bool ok;
+  Result status;
   bool maybeMigrate = false;
   PlainBucket* bucket;
   std::shared_ptr<Table> source;
-  std::tie(ok, bucket, source) = getBucket(hash, Cache::triesFast, false);
+  std::tie(status, bucket, source) = getBucket(hash, Cache::triesFast, false);
 
-  if (ok) {
+  if (status.ok()) {
     // evict LRU freeable value if exists
     CachedValue* candidate = bucket->evictionCandidate();
 
@@ -282,8 +285,9 @@ void PlainCache::migrateBucket(void* sourcePtr,
   source->unlock();
 }
 
-std::tuple<bool, PlainBucket*, std::shared_ptr<Table>> PlainCache::getBucket(
+std::tuple<Result, PlainBucket*, std::shared_ptr<Table>> PlainCache::getBucket(
     uint32_t hash, int64_t maxTries, bool singleOperation) {
+  Result status;
   PlainBucket* bucket = nullptr;
   std::shared_ptr<Table> source(nullptr);
 
@@ -302,14 +306,21 @@ std::tuple<bool, PlainBucket*, std::shared_ptr<Table>> PlainCache::getBucket(
       bucket = reinterpret_cast<PlainBucket*>(pair.first);
       source = pair.second;
       ok = (bucket != nullptr);
+      if (!ok) {
+        status.reset(TRI_ERROR_LOCK_TIMEOUT);
+      }
+    } else {
+      status.reset(TRI_ERROR_SHUTTING_DOWN);
     }
     if (!ok && started) {
       endOperation();
     }
     _state.unlock();
+  } else {
+    status.reset(TRI_ERROR_LOCK_TIMEOUT);
   }
 
-  return std::make_tuple(ok, bucket, source);
+  return std::make_tuple(status, bucket, source);
 }
 
 Table::BucketClearer PlainCache::bucketClearer(Metadata* metadata) {
