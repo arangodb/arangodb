@@ -33,7 +33,6 @@
 #include <velocypack/Collection.h>
 #include <velocypack/velocypack-aliases.h>
 
-
 using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
@@ -92,7 +91,7 @@ RestStatus RestUsersHandler::getRequest(AuthInfo* authInfo) {
   if (suffixes.empty()) {
     if (isSystemUser()) {
       VPackBuilder users = authInfo->allUsers();
-      
+
       VPackBuilder r;
       r(VPackValue(VPackValueType::Object))("result", users.slice())();
       generateResult(ResponseCode::OK, r.slice());
@@ -103,7 +102,7 @@ RestStatus RestUsersHandler::getRequest(AuthInfo* authInfo) {
     std::string const& user = suffixes[0];
     if (canAccessUser(user)) {
       VPackBuilder doc = authInfo->getUser(user);
-      
+
       VPackBuilder r;
       r(VPackValue(VPackValueType::Object))("result", doc.slice())();
       generateResult(ResponseCode::OK, r.slice());
@@ -126,15 +125,16 @@ RestStatus RestUsersHandler::getRequest(AuthInfo* authInfo) {
                 data.add(vocbase->name(), VPackValue(str));
               }
             });
-        
+
       } else if (suffixes[1] == "config") {
         if (suffixes.size() == 3) {
-          data.add("result", authInfo->getConfigData(user).slice().get(suffixes[2]));
+          data.add("result",
+                   authInfo->getConfigData(user).slice().get(suffixes[2]));
         } else {
           data.add("result", authInfo->getConfigData(user).slice());
         }
       }
-      data.close();// openObject
+      data.close();  // openObject
       generateResult(ResponseCode::OK, data.slice());
     } else {
       generateError(ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN);
@@ -196,7 +196,7 @@ RestStatus RestUsersHandler::postRequest(AuthInfo* authInfo) {
     } else {
       generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_FORBIDDEN);
     }
-    
+
   } else if (suffixes.size() == 1) {
     // validate username / password
     std::string const& user = suffixes[0];
@@ -403,4 +403,3 @@ RestStatus RestUsersHandler::deleteRequest(AuthInfo* authInfo) {
   }
   return RestStatus::DONE;
 }
-
