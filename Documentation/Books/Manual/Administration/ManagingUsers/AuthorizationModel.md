@@ -32,8 +32,8 @@ Every database object has a least a permissions and collections object. The perm
 | create a collection |  | rw |   |
 | drop a collection |  | rw |   |
 | truncate a collection | rw |  |   |
-| create a index |   | rw |   |
-| drop a index |   | rw |   |
+| create an index |   | rw |   |
+| drop an index |   | rw |   |
 | create a database |   |   | rw |
 | drop a database |   |   | rw |
 | create a user |   |   | rw |
