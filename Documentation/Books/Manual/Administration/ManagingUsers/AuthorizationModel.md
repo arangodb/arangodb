@@ -62,3 +62,6 @@ If we want to create a user that can only read all collections in database repor
             }
         }
     }
+
+### The special collection '*'
+The collection * is a wildcard and stands for all databases.
