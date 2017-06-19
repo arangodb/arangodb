@@ -1,6 +1,6 @@
 /* jshint browser: true */
 /* jshint unused: false */
-/* global Backbone, window, arangoCollectionModel, $, arangoHelper, frontendConfig, _ */
+/* global Backbone, window, arangoCollectionModel, $, arangoHelper, _ */
 (function () {
   'use strict';
 
@@ -166,11 +166,13 @@
         data.numberOfShards = object.shards;
         data.shardKeys = object.shardBy;
       }
+
       if (object.replicationFactor) {
-        if (typeof object.replicationFactor === 'number' && frontendConfig.isEnterprise) {
+        data.replicationFactor = object.replicationFactor;
+        var pattern = new RegExp(/^[0-9]+$/);
+        if (pattern.test(object.replicationFactor)) {
+          // looks like a number
           data.replicationFactor = JSON.parse(object.replicationFactor);
-        } else {
-          data.replicationFactor = object.replicationFactor;
         }
       }
 
