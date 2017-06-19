@@ -154,6 +154,7 @@ class SocketTask : virtual public Task {
   Mutex _writeLock;
   WriteBuffer _writeBuffer;
   std::list<WriteBuffer> _writeBuffers;
+  boost::asio::io_service::strand _strand;
 
  protected:
   std::unique_ptr<Socket> _peer;
