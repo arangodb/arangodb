@@ -412,13 +412,11 @@ void Functions::Stringify(arangodb::Transaction* trx,
     return;
   }
    
-  if (slice.isObject() || slice.isArray()) {
-    VPackDumper dumper(&buffer, trx->transactionContextPtr()->getVPackOptions());
-    dumper.dump(slice);
-    return;
-  } 
-  
-  VPackDumper dumper(&buffer);
+  VPackOptions* options = trx->transactionContextPtr()->getVPackOptionsForDump();
+  VPackOptions adjustedOptions = *options;
+  adjustedOptions.escapeUnicode = false;
+  adjustedOptions.escapeForwardSlashes = false;
+  VPackDumper dumper(&buffer, &adjustedOptions);
   dumper.dump(slice);
 }
 

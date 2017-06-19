@@ -3,6 +3,10 @@ v3.1.23 (XXXX-XX-XX)
 
 * fix races in SSL communication code
 
+* fix invalid results (too many) when a skipping LIMIT was used for a
+  traversal. `LIMIT x` or `LIMIT 0, x` were not affected, but `LIMIT s, x`
+  may have returned too many results
+
 * fix invalid first group results for sorted AQL COLLECT when LIMIT
   was used
 
