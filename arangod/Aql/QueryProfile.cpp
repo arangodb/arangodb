@@ -26,7 +26,6 @@
 #include "Aql/Query.h"
 #include "Aql/QueryList.h"
 #include "Basics/EnumIterator.h"
-#include "Logger/Logger.h"
 #include "VocBase/vocbase.h"
 
 #include <velocypack/Builder.h>
@@ -69,7 +68,6 @@ double QueryProfile::setDone(QueryExecutionState::ValueType state) {
 
   if (state != QueryExecutionState::ValueType::INVALID_STATE) {
     // record duration of state
-  LOG_TOPIC(ERR, Logger::FIXME) << "SETTING DONE TO " << (now - stamp);
     timers[static_cast<int>(state)] = now - stamp;
   }
 
@@ -80,7 +78,6 @@ double QueryProfile::setDone(QueryExecutionState::ValueType state) {
 
 /// @brief sets the absolute end time for an execution state
 void QueryProfile::setEnd(QueryExecutionState::ValueType state, double time) {
-  LOG_TOPIC(ERR, Logger::FIXME) << "SETTING TIME TO " << time;
   timers[static_cast<int>(state)] = time - stamp;
 }
 
