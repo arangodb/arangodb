@@ -28,6 +28,7 @@
 #include "Basics/tri-strings.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/voc-errors.h"
+#include "VocBase/ticks.h"
 #include "VocBase/vocbase.h"
 
 #include <array>
@@ -60,14 +61,14 @@ void KeyGenerator::Initialize() {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief create the key enerator
+/// @brief create the key generator
 ////////////////////////////////////////////////////////////////////////////////
 
 KeyGenerator::KeyGenerator(bool allowUserKeys)
     : _allowUserKeys(allowUserKeys) {}
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief destroy the key enerator
+/// @brief destroy the key generator
 ////////////////////////////////////////////////////////////////////////////////
 
 KeyGenerator::~KeyGenerator() {}
@@ -215,14 +216,15 @@ std::shared_ptr<VPackBuilder> KeyGenerator::toVelocyPack() const {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief create the key enerator
+/// @brief create the key generator
 ////////////////////////////////////////////////////////////////////////////////
 
 TraditionalKeyGenerator::TraditionalKeyGenerator(bool allowUserKeys)
-    : KeyGenerator(allowUserKeys) {}
+    : KeyGenerator(allowUserKeys),
+      _lastValue(0) {}
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief destroy the key enerator
+/// @brief destroy the key generator
 ////////////////////////////////////////////////////////////////////////////////
 
 TraditionalKeyGenerator::~TraditionalKeyGenerator() {}
@@ -253,7 +255,17 @@ bool TraditionalKeyGenerator::validateKey(char const* key, size_t len) {
 /// @brief generate a key
 ////////////////////////////////////////////////////////////////////////////////
 
-std::string TraditionalKeyGenerator::generate(TRI_voc_tick_t tick) {
+std::string TraditionalKeyGenerator::generate() {
+  TRI_voc_tick_t tick = TRI_NewTickServer();
+  if (tick <= _lastValue) {
+    tick = ++_lastValue;
+  } else {
+    _lastValue = tick;
+  }
+  if (tick == UINT64_MAX) {
+    // sanity check
+    return "";
+  }
   return arangodb::basics::StringUtils::itoa(tick);
 }
 
@@ -280,8 +292,17 @@ int TraditionalKeyGenerator::validate(std::string const& key, bool isRestore) {
 /// @brief track usage of a key
 ////////////////////////////////////////////////////////////////////////////////
 
-void TraditionalKeyGenerator::track(char const*, VPackValueLength) {
-  TRI_ASSERT(false);
+void TraditionalKeyGenerator::track(char const* p, VPackValueLength length) {
+  // check the numeric key part
+  if (length > 0 && p[0] >= '0' && p[0] <= '9') {
+    // potentially numeric key
+    uint64_t value = StringUtils::uint64(p, length);
+
+    if (value > _lastValue) {
+      // and update our last value
+      _lastValue = value;
+    }
+  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -338,7 +359,7 @@ bool AutoIncrementKeyGenerator::validateKey(char const* key, size_t len) {
 /// @brief generate a key
 ////////////////////////////////////////////////////////////////////////////////
 
-std::string AutoIncrementKeyGenerator::generate(TRI_voc_tick_t tick) {
+std::string AutoIncrementKeyGenerator::generate() {
   uint64_t keyValue;
 
   {

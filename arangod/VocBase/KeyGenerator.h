@@ -94,7 +94,7 @@ class KeyGenerator {
   /// @brief generate a key
   //////////////////////////////////////////////////////////////////////////////
 
-  virtual std::string generate(TRI_voc_tick_t) = 0;
+  virtual std::string generate() = 0;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief validate a key
@@ -140,7 +140,7 @@ class KeyGenerator {
   static std::array<bool, 256> LookupTable;
 };
 
-class TraditionalKeyGenerator : public KeyGenerator {
+class TraditionalKeyGenerator final : public KeyGenerator {
  public:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief create the generator
@@ -163,13 +163,13 @@ class TraditionalKeyGenerator : public KeyGenerator {
 
  public:
   
-  bool trackKeys() const override { return false; }
+  bool trackKeys() const override { return true; }
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief generate a key
   //////////////////////////////////////////////////////////////////////////////
 
-  std::string generate(TRI_voc_tick_t) override;
+  std::string generate() override;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief validate a key
@@ -194,9 +194,12 @@ class TraditionalKeyGenerator : public KeyGenerator {
   //////////////////////////////////////////////////////////////////////////////
 
   virtual void toVelocyPack(arangodb::velocypack::Builder&) const override;
+
+ private:
+  uint64_t _lastValue;  // last value assigned
 };
 
-class AutoIncrementKeyGenerator : public KeyGenerator {
+class AutoIncrementKeyGenerator final : public KeyGenerator {
  public:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief create the generator
@@ -225,7 +228,7 @@ class AutoIncrementKeyGenerator : public KeyGenerator {
   /// @brief generate a key
   //////////////////////////////////////////////////////////////////////////////
 
-  std::string generate(TRI_voc_tick_t) override;
+  std::string generate() override;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief validate a key

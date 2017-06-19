@@ -1,6 +1,8 @@
 v3.1.23 (XXXX-XX-XX)
 --------------------
 
+* potentially fixed issue #2559: Duplicate _key generated on insertion
+
 * fix races in SSL communication code
 
 * fix invalid results (too many) when a skipping LIMIT was used for a
