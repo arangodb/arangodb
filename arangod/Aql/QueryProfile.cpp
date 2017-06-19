@@ -26,6 +26,7 @@
 #include "Aql/Query.h"
 #include "Aql/QueryList.h"
 #include "Basics/EnumIterator.h"
+#include "Logger/Logger.h"
 #include "VocBase/vocbase.h"
 
 #include <velocypack/Builder.h>
@@ -63,16 +64,24 @@ QueryProfile::~QueryProfile() {
 }
 
 /// @brief sets a state to done
-void QueryProfile::setDone(QueryExecutionState::ValueType state) {
+double QueryProfile::setDone(QueryExecutionState::ValueType state) {
   double const now = TRI_microtime();
 
   if (state != QueryExecutionState::ValueType::INVALID_STATE) {
     // record duration of state
+  LOG_TOPIC(ERR, Logger::FIXME) << "SETTING DONE TO " << (now - stamp);
     timers[static_cast<int>(state)] = now - stamp;
   }
 
   // set timestamp
   stamp = now;
+  return now;
+}
+
+/// @brief sets the absolute end time for an execution state
+void QueryProfile::setEnd(QueryExecutionState::ValueType state, double time) {
+  LOG_TOPIC(ERR, Logger::FIXME) << "SETTING TIME TO " << time;
+  timers[static_cast<int>(state)] = time - stamp;
 }
 
 /// @brief convert the profile to VelocyPack
@@ -80,7 +89,7 @@ std::shared_ptr<VPackBuilder> QueryProfile::toVelocyPack() {
   auto result = std::make_shared<VPackBuilder>();
   
   result->openObject(true);
-  for (auto state : ENUM_ITERATOR(QueryExecutionState::ValueType, INITIALIZATION, FINISHED)) {
+  for (auto state : ENUM_ITERATOR(QueryExecutionState::ValueType, INITIALIZATION, FINALIZATION)) {
     double const value = timers[static_cast<size_t>(state)];
 
     if (value >= 0.0) {

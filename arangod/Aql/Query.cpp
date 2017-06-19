@@ -654,24 +654,29 @@ QueryResult Query::execute(QueryRegistry* registry) {
     result.context = _trx->transactionContext();
 
     _engine->_stats.setExecutionTime(runTime());
+    enterState(QueryExecutionState::ValueType::FINALIZATION);
+
     auto stats = std::make_shared<VPackBuilder>();
     cleanupPlanAndEngine(TRI_ERROR_NO_ERROR, stats.get());
 
-    enterState(QueryExecutionState::ValueType::FINALIZATION);
- 
     result.warnings = warningsToVelocyPack();
     result.result = std::move(resultBuilder);
     result.stats = std::move(stats);
 
+    // patch stats in place
+    // we do this because "executionTime" should include the whole span of the execution and we have to set it at the very end
+    double now = TRI_microtime();
+    double const rt = runTime(now);
+    basics::VelocyPackHelper::patchDouble(result.stats->slice().get("executionTime"), rt);
+
+LOG_TOPIC(ERR, Logger::FIXME) << "RT: " << rt << "; PROF: " << _profile.get() << ", OPT PROF: " << _queryOptions.profile;
     if (_profile != nullptr && _queryOptions.profile) {
+      _profile->setEnd(QueryExecutionState::ValueType::FINALIZATION, now);
       result.profile = _profile->toVelocyPack();
     }
 
-    // patch stats in place
-    // we do this because "executionTime" should include the whole span of the execution and we have to set it at the very end
-    basics::VelocyPackHelper::patchDouble(result.stats->slice().get("executionTime"), runTime());
 
-    LOG_TOPIC(DEBUG, Logger::QUERIES) << TRI_microtime() - _startTime << " "
+    LOG_TOPIC(DEBUG, Logger::QUERIES) << rt << " "
                                       << "Query::execute:returning"
                                       << " this: " << (uintptr_t) this;
     
@@ -841,23 +846,26 @@ QueryResultV8 Query::executeV8(v8::Isolate* isolate, QueryRegistry* registry) {
     result.context = _trx->transactionContext();
 
     _engine->_stats.setExecutionTime(runTime());
+    enterState(QueryExecutionState::ValueType::FINALIZATION);
+
     auto stats = std::make_shared<VPackBuilder>();
     cleanupPlanAndEngine(TRI_ERROR_NO_ERROR, stats.get());
-
-    enterState(QueryExecutionState::ValueType::FINALIZATION);
 
     result.warnings = warningsToVelocyPack();
     result.stats = std::move(stats);
 
+    // patch executionTime stats value in place
+    // we do this because "executionTime" should include the whole span of the execution and we have to set it at the very end
+    double now = TRI_microtime();
+    double const rt = runTime(now);
+    basics::VelocyPackHelper::patchDouble(result.stats->slice().get("executionTime"), rt);
+
     if (_profile != nullptr && _queryOptions.profile) {
+      _profile->setEnd(QueryExecutionState::ValueType::FINALIZATION, now);
       result.profile = _profile->toVelocyPack();
     }
     
-    // patch executionTime stats value in place
-    // we do this because "executionTime" should include the whole span of the execution and we have to set it at the very end
-    basics::VelocyPackHelper::patchDouble(result.stats->slice().get("executionTime"), runTime());
-    
-    LOG_TOPIC(DEBUG, Logger::QUERIES) << TRI_microtime() - _startTime << " "
+    LOG_TOPIC(DEBUG, Logger::QUERIES) << rt << " "
                                       << "Query::executeV8:returning"
                                       << " this: " << (uintptr_t) this;
 
