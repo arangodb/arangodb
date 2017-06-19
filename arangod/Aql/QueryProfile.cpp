@@ -78,16 +78,16 @@ void QueryProfile::setDone(QueryExecutionState::ValueType state) {
 /// @brief convert the profile to VelocyPack
 std::shared_ptr<VPackBuilder> QueryProfile::toVelocyPack() {
   auto result = std::make_shared<VPackBuilder>();
-  {
-    VPackObjectBuilder b(result.get());
+  
+  result->openObject(true);
+  for (auto state : ENUM_ITERATOR(QueryExecutionState::ValueType, INITIALIZATION, FINISHED)) {
+    double const value = timers[static_cast<size_t>(state)];
 
-    for (auto state : ENUM_ITERATOR(QueryExecutionState::ValueType, INITIALIZATION, FINISHED)) {
-      double const value = timers[static_cast<size_t>(state)];
-
-      if (value > 0.0) {
-        result->add(QueryExecutionState::toString(state), VPackValue(value));
-      }
+    if (value >= 0.0) {
+      result->add(QueryExecutionState::toString(state), VPackValue(value));
     }
   }
+  result->close();
+  
   return result;
 }

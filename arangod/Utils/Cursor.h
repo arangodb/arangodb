@@ -103,7 +103,7 @@ class Cursor {
   CursorId const _id;
   size_t const _batchSize;
   size_t _position;
-  std::shared_ptr<arangodb::velocypack::Builder> _extra;
+  std::shared_ptr<arangodb::velocypack::Builder> const _extra;
   double _ttl;
   double _expires;
   bool const _hasCount;

@@ -653,15 +653,15 @@ QueryResult Query::execute(QueryRegistry* registry) {
     QueryResult result; 
     result.context = _trx->transactionContext();
 
-    _engine->_stats.setExecutionTime(TRI_microtime() - _startTime);
+    _engine->_stats.setExecutionTime(runTime());
     auto stats = std::make_shared<VPackBuilder>();
     cleanupPlanAndEngine(TRI_ERROR_NO_ERROR, stats.get());
 
     enterState(QueryExecutionState::ValueType::FINALIZATION);
  
     result.warnings = warningsToVelocyPack();
-    result.result = resultBuilder;
-    result.stats = stats;
+    result.result = std::move(resultBuilder);
+    result.stats = std::move(stats);
 
     if (_profile != nullptr && _queryOptions.profile) {
       result.profile = _profile->toVelocyPack();
@@ -840,14 +840,14 @@ QueryResultV8 Query::executeV8(v8::Isolate* isolate, QueryRegistry* registry) {
 
     result.context = _trx->transactionContext();
 
-    _engine->_stats.setExecutionTime(TRI_microtime() - _startTime);
+    _engine->_stats.setExecutionTime(runTime());
     auto stats = std::make_shared<VPackBuilder>();
     cleanupPlanAndEngine(TRI_ERROR_NO_ERROR, stats.get());
 
     enterState(QueryExecutionState::ValueType::FINALIZATION);
 
     result.warnings = warningsToVelocyPack();
-    result.stats = stats;
+    result.stats = std::move(stats);
 
     if (_profile != nullptr && _queryOptions.profile) {
       result.profile = _profile->toVelocyPack();
