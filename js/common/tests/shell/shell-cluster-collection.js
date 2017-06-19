@@ -384,7 +384,7 @@ function ClusterCollectionSuite () {
         assertEqual(ERRORS.ERROR_CLUSTER_INSUFFICIENT_DBSERVERS.code, err.errorNum);
       }
       db._drop('bigreplication');
-    }
+    },
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test creation / deleting of documents with replication set
@@ -393,22 +393,43 @@ function ClusterCollectionSuite () {
     testCreateReplicated : function () {
       var cn = "UnitTestsClusterCrudRepl";
       var c = db._create(cn, { numberOfShards: 2, replicationFactor: 2});
+
+      // store and delete document
       c.save({foo: 'bar'});
       db._query(`FOR x IN @@cn REMOVE x IN @@cn`, {'@cn': cn});
       assertEqual(0, c.toArray().length);
 
-      db._query(`FOR x IN @@cn REMOVE {_key: x._key} IN @@cn`, {'@cn': cn});
+      //insert
+      var cursor = db._query(`
+        let x = (FOR a IN [1]
+                 INSERT {
+                   "_key" : "ulf",
+                   "super" : "dog"
+                 } IN @@cn)
+        return x`,
+        {'@cn' : cn});
+      assertEqual(1, c.toArray().length);
+
+      //update
+      cursor = db._query(`
+        let x = (UPDATE 'ulf' WITH {
+                   "super" : "cat"
+                 } IN @@cn RETURN NEW)
+        RETURN x`,
+        {'@cn' : cn});
+      assertEqual(1, c.toArray().length);
+      var doc = c.any();
+      assertTrue(doc.super === "cat");
+      doc = cursor.next();                // should be: cursor >>= id
+      assertTrue(doc[0].super === "cat");  // extra [] buy subquery return
+
+      //remove
+      cursor = db._query(`
+        let x = (REMOVE 'ulf' IN @@cn)
+        return x`,
+        {'@cn' : cn});
       assertEqual(0, c.toArray().length);
 
-      db._query(`
-                let x = (FOR a IN [1]
-                         INSERT {
-                           "foo": "bar"
-                         } IN @@cn)
-                return x`,
-                {'@cn' : cn});
-
-      assertEqual(1, c.toArray().length);
       db._drop(cn);
     }
 
