@@ -44,7 +44,7 @@ int syncChunkRocksDB(InitialSyncer& syncer, SingleCollectionTransaction* trx,
                      std::string const& keysId, uint64_t chunkId,
                      std::string const& lowString,
                      std::string const& highString,
-                     std::vector<std::pair<std::string, uint64_t>> markers,
+                     std::vector<std::pair<std::string, uint64_t>> const& markers,
                      std::string& errorMsg) {
   std::string const baseUrl = syncer.BaseUrl + "/keys";
   TRI_voc_tick_t const chunkSize = 5000;
