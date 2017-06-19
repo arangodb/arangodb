@@ -1456,7 +1456,7 @@ OperationResult transaction::Methods::insertLocal(
     // Now replicate the same operation on all followers:
     auto const& followerInfo = collection->followers();
     followers = followerInfo->get();
-    doingSynchronousReplication = followers->size() > 0;
+    doingSynchronousReplication = followerInfo->isLeader() && followers->size() > 0;
   }
 
   if (doingSynchronousReplication && res.ok()) {
@@ -1774,7 +1774,7 @@ OperationResult transaction::Methods::modifyLocal(
     // Now replicate the same operation on all followers:
     auto const& followerInfo = collection->followers();
     followers = followerInfo->get();
-    doingSynchronousReplication = followers->size() > 0;
+    doingSynchronousReplication = followerInfo->isLeader() && followers->size() > 0;
   }
 
   if (doingSynchronousReplication && res.ok()) {
@@ -2028,7 +2028,7 @@ OperationResult transaction::Methods::removeLocal(
     // Now replicate the same operation on all followers:
     auto const& followerInfo = collection->followers();
     followers = followerInfo->get();
-    doingSynchronousReplication = followers->size() > 0;
+    doingSynchronousReplication = followerInfo->isLeader() && followers->size() > 0;
   }
 
   if (doingSynchronousReplication && res.ok()) {
@@ -2258,7 +2258,7 @@ OperationResult transaction::Methods::truncateLocal(
     // Now replicate the same operation on all followers:
     auto const& followerInfo = collection->followers();
     followers = followerInfo->get();
-    if (followers->size() > 0) {
+    if (followerInfo->isLeader() && followers->size() > 0) {
       // Now replicate the good operations on all followers:
       auto cc = arangodb::ClusterComm::instance();
       if (cc != nullptr) {
