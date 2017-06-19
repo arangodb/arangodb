@@ -150,7 +150,7 @@ from the request.
 
 @EXAMPLES
 
-@EXAMPLE_ARANGOSH_RUN{RestGrantDatabase}
+@EXAMPLE_ARANGOSH_RUN{RestGrantCollection}
     var users = require("@arangodb/users");
     var theUser = "admin@myapp";
     users.save(theUser, "secret")
