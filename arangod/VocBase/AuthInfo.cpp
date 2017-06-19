@@ -190,12 +190,15 @@ static VPackBuilder QueryUser(aql::QueryRegistry* queryRegistry,
 
   VPackSlice doc = usersSlice.at(0);
   if (doc.isExternal()) {
-    doc = doc.resolveExternal();
+    doc = doc.resolveExternals();
   }
   return VPackBuilder(doc);
 }
 
-static void ConvertLegacyFormat(VPackSlice const& doc, VPackBuilder& result) {
+static void ConvertLegacyFormat(VPackSlice doc, VPackBuilder& result) {
+  if (doc.isExternal()) {
+    doc = doc.resolveExternals();
+  }
   VPackSlice authDataSlice = doc.get("authData");
   VPackObjectBuilder b(&result, true);
   result.add("user", doc.get("user"));
@@ -206,9 +209,7 @@ static void ConvertLegacyFormat(VPackSlice const& doc, VPackBuilder& result) {
     result.add("changePassword", VPackValue(false));
   }
   VPackSlice extra = doc.get("userData");
-  if (!extra.isNone()) {
-    result.add("extra", extra);
-  }
+  result.add("extra", extra.isNone() ? VPackSlice::emptyObjectSlice() : extra);
 }
 
 // private, will acquire _authInfoLock in write-mode and release it
@@ -222,8 +223,8 @@ void AuthInfo::loadFromDB() {
 
   // TODO: is this correct?
   if (_authenticationHandler == nullptr) {
-    _authenticationHandler.reset(FeatureCacheFeature::instance()->authenticationFeature()
-                                 ->getHandler());
+    _authenticationHandler.reset(
+        FeatureCacheFeature::instance()->authenticationFeature()->getHandler());
   }
 
   {
@@ -315,7 +316,7 @@ VPackBuilder AuthInfo::allUsers() {
   }
 
   VPackBuilder result;
-  if (users) {
+  if (users && !users->isEmpty()) {
     VPackArrayBuilder a(&result);
     for (VPackSlice const& doc : VPackArrayIterator(users->slice())) {
       ConvertLegacyFormat(doc, result);

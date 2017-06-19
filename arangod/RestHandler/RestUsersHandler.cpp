@@ -87,15 +87,22 @@ bool RestUsersHandler::canAccessUser(std::string const& user) const {
   return user == _request->user() ? true : isSystemUser();
 }
 
+/// helper to generate a compliant response for individual user requests
+void RestUsersHandler::generateUserResult(rest::ResponseCode code,
+                                          VPackBuilder const& doc) {
+  VPackBuilder b;
+  b(VPackValue(VPackValueType::Object))("error", VPackValue(false))(
+      "code", VPackValue((int)code))();
+  b = VPackCollection::merge(doc.slice(), b.slice(), false);
+  generateResult(code, b.slice());
+}
+
 RestStatus RestUsersHandler::getRequest(AuthInfo* authInfo) {
   std::vector<std::string> suffixes = _request->decodedSuffixes();
   if (suffixes.empty()) {
     if (isSystemUser()) {
       VPackBuilder users = authInfo->allUsers();
-
-      VPackBuilder r;
-      r(VPackValue(VPackValueType::Object))("result", users.slice())();
-      generateResult(ResponseCode::OK, r.slice());
+      generateSuccess(ResponseCode::OK, users.slice());
     } else {
       generateError(ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN);
     }
@@ -103,7 +110,7 @@ RestStatus RestUsersHandler::getRequest(AuthInfo* authInfo) {
     std::string const& user = suffixes[0];
     if (canAccessUser(user)) {
       VPackBuilder doc = authInfo->getUser(user);
-      generateResult(ResponseCode::OK, doc.slice());
+      generateUserResult(ResponseCode::OK, doc);
     } else {
       generateError(ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN);
     }
@@ -132,6 +139,8 @@ RestStatus RestUsersHandler::getRequest(AuthInfo* authInfo) {
           data.add("result", authInfo->getConfigData(user).slice());
         }
       }
+      data.add("error", VPackValue(false));
+      data.add("code", VPackValue(200));
       data.close();  // openObject
       generateResult(ResponseCode::OK, data.slice());
     } else {
@@ -144,13 +153,19 @@ RestStatus RestUsersHandler::getRequest(AuthInfo* authInfo) {
 /// helper to create(0), replace(1), update(2) a user
 static Result StoreUser(AuthInfo* authInfo, int mode, std::string const& user,
                         VPackSlice json) {
-  VPackSlice s = json.get("passwd");
-  std::string passwd = s.isString() ? s.copyString() : "";
-  s = json.get("active");
-  bool active = s.isBool() ? s.getBool() : true;
-  VPackSlice extra = json.get("extra");
-  s = json.get("changePassword");
-  bool changePasswd = s.isBool() ? s.getBool() : false;
+  std::string passwd;
+  bool active = true;
+  VPackSlice extra;
+  bool changePasswd = false;
+  if (json.isObject()) {
+    VPackSlice s = json.get("passwd");
+    passwd = s.isString() ? s.copyString() : "";
+    s = json.get("active");
+    active = s.isBool() ? s.getBool() : true;
+    extra = json.get("extra");
+    s = json.get("changePassword");
+    changePasswd = s.isBool() ? s.getBool() : false;
+  }
 
   Result r;
   if (mode == 0 || mode == 1) {
@@ -187,7 +202,7 @@ RestStatus RestUsersHandler::postRequest(AuthInfo* authInfo) {
       Result r = StoreUser(authInfo, 0, user, parsedBody->slice());
       if (r.ok()) {
         VPackBuilder doc = authInfo->getUser(user);
-        generateResult(ResponseCode::OK, doc.slice());
+        generateUserResult(ResponseCode::CREATED, doc);
       } else {
         generateError(r);
       }
@@ -205,11 +220,9 @@ RestStatus RestUsersHandler::postRequest(AuthInfo* authInfo) {
     }
     AuthResult result = authInfo->checkPassword(user, password);
     if (result._authorized) {
-      VPackBuilder b;
-      b(VPackValue(VPackValueType::Object))("result", VPackValue(true));
-      generateResult(rest::ResponseCode::OK, b.slice());
+      generateSuccess(rest::ResponseCode::OK, VPackSlice::trueSlice());
     } else {
-      generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_HTTP_NOT_FOUND);
+      generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_USER_NOT_FOUND);
     }
   } else {
     generateError(rest::ResponseCode::BAD, TRI_ERROR_BAD_PARAMETER);
@@ -233,7 +246,7 @@ RestStatus RestUsersHandler::putRequest(AuthInfo* authInfo) {
       Result r = StoreUser(authInfo, 1, user, parsedBody->slice());
       if (r.ok()) {
         VPackBuilder doc = authInfo->getUser(user);
-        generateResult(ResponseCode::OK, doc.slice());
+        generateUserResult(ResponseCode::OK, doc);
       } else {
         generateError(r);
       }
@@ -273,7 +286,7 @@ RestStatus RestUsersHandler::putRequest(AuthInfo* authInfo) {
         std::string const& key = suffixes[2];
         VPackBuilder config = authInfo->getConfigData(user);
         VPackBuilder b;
-        b(VPackValue(VPackValueType::Object))(key, parsedBody->slice());
+        b(VPackValue(VPackValueType::Object))(key, parsedBody->slice())();
 
         config = VPackCollection::merge(config.slice(), b.slice(), false);
         Result r = authInfo->setConfigData(user, config.slice());
@@ -308,7 +321,7 @@ RestStatus RestUsersHandler::patchRequest(AuthInfo* authInfo) {
       Result r = StoreUser(authInfo, 2, user, parsedBody->slice());
       if (r.ok()) {
         VPackBuilder doc = authInfo->getUser(user);
-        generateResult(ResponseCode::OK, doc.slice());
+        generateUserResult(ResponseCode::OK, doc);
       } else {
         generateError(r);
       }
@@ -335,7 +348,10 @@ RestStatus RestUsersHandler::deleteRequest(AuthInfo* authInfo) {
       std::string const& user = suffixes[0];
       Result r = authInfo->removeUser(user);
       if (r.ok()) {
-        generateResult(ResponseCode::ACCEPTED, VPackSlice());
+        VPackBuilder b;
+        b(VPackValue(VPackValueType::Object))("error", VPackValue(false))(
+            "code", VPackValue(202))();
+        generateResult(ResponseCode::ACCEPTED, b.slice());
       } else {
         generateError(r);
       }
