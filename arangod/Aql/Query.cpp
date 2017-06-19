@@ -669,7 +669,6 @@ QueryResult Query::execute(QueryRegistry* registry) {
     double const rt = runTime(now);
     basics::VelocyPackHelper::patchDouble(result.stats->slice().get("executionTime"), rt);
 
-LOG_TOPIC(ERR, Logger::FIXME) << "RT: " << rt << "; PROF: " << _profile.get() << ", OPT PROF: " << _queryOptions.profile;
     if (_profile != nullptr && _queryOptions.profile) {
       _profile->setEnd(QueryExecutionState::ValueType::FINALIZATION, now);
       result.profile = _profile->toVelocyPack();
