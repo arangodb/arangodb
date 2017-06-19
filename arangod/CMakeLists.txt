@@ -288,6 +288,7 @@ SET(ARANGOD_SOURCES
   RestHandler/RestSimpleHandler.cpp
   RestHandler/RestSimpleQueryHandler.cpp
   RestHandler/RestUploadHandler.cpp
+  RestHandler/RestUsersHandler.cpp
   RestHandler/RestVersionHandler.cpp
   RestHandler/RestViewHandler.cpp
   RestHandler/RestVocbaseBaseHandler.cpp

@@ -187,6 +187,9 @@ GeneralRequest::~GeneralRequest() {
   if (_requestContext != nullptr && _isRequestContextOwner) {
     delete _requestContext;
   }
+  if (_execContext != nullptr) {
+    delete _execContext;
+  }
 }
 
 void GeneralRequest::setRequestContext(RequestContext* requestContext,
@@ -207,6 +210,9 @@ void GeneralRequest::setRequestContext(RequestContext* requestContext,
 }
 
 void GeneralRequest::setExecContext(ExecContext* execContext) {
+  if (_execContext != nullptr) {
+    delete _execContext;
+  }
   _execContext = execContext;
 }
 

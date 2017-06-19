@@ -44,6 +44,7 @@
 #include "Utils/OperationResult.h"
 
 #include <velocypack/Builder.h>
+#include <velocypack/Collection.h>
 #include <velocypack/Iterator.h>
 #include <velocypack/velocypack-aliases.h>
 
@@ -85,22 +86,6 @@ std::string AuthInfo::jwtSecret() {
 }
 
 // private, must be called with _authInfoLock in write mode
-void AuthInfo::insertInitial() {
-  if (!_authInfo.empty()) {
-    return;
-  }
-
-  try {
-    AuthUserEntry entry = AuthUserEntry::newUser("root", "", AuthSource::COLLECTION);
-    entry.setActive(true);
-    entry.grantDatabase("*", AuthLevel::RW);
-    _authInfo.emplace("root", std::move(entry));
-  } catch (...) {
-    // No action
-  }
-}
-
-// private, must be called with _authInfoLock in write mode
 bool AuthInfo::parseUsers(VPackSlice const& slice) {
   TRI_ASSERT(slice.isArray());
 
@@ -123,6 +108,97 @@ bool AuthInfo::parseUsers(VPackSlice const& slice) {
   return true;
 }
 
+static std::shared_ptr<VPackBuilder> QueryAllUsers(aql::QueryRegistry* queryRegistry) {
+  TRI_vocbase_t* vocbase = DatabaseFeature::DATABASE->systemDatabase();
+  if (vocbase == nullptr) {
+    LOG_TOPIC(DEBUG, arangodb::Logger::FIXME) << "system database is unknown";
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
+  }
+  
+  std::string const queryStr("FOR user IN _users RETURN user");
+  auto emptyBuilder = std::make_shared<VPackBuilder>();
+  arangodb::aql::Query query(false, vocbase, arangodb::aql::QueryString(queryStr),
+                             emptyBuilder, emptyBuilder,
+                             arangodb::aql::PART_MAIN);
+  
+  LOG_TOPIC(DEBUG, arangodb::Logger::FIXME) << "starting to load authentication and authorization information";
+  auto queryResult = query.execute(queryRegistry);
+  
+  if (queryResult.code != TRI_ERROR_NO_ERROR) {
+    if (queryResult.code == TRI_ERROR_REQUEST_CANCELED ||
+        (queryResult.code == TRI_ERROR_QUERY_KILLED)) {
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_REQUEST_CANCELED);
+    }
+    return std::shared_ptr<VPackBuilder>();
+  }
+  
+  VPackSlice usersSlice = queryResult.result->slice();
+  if (usersSlice.isNone()) {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
+  } else if (!usersSlice.isArray()) {
+    LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "cannot read users from _users collection";
+    return std::shared_ptr<VPackBuilder>();
+  }
+  
+  return queryResult.result;
+}
+
+
+static VPackBuilder QueryUser(aql::QueryRegistry* queryRegistry,
+                              std::string const& user) {
+  TRI_vocbase_t* vocbase = DatabaseFeature::DATABASE->systemDatabase();
+  if (vocbase == nullptr) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_FAILED, "_system db is unknown");
+  }
+  
+  std::string const queryStr("FOR u IN _users FILTER u.user == @name RETURN u");
+  auto emptyBuilder = std::make_shared<VPackBuilder>();
+  
+  VPackBuilder binds;
+  binds.openObject();
+  binds.add("name", VPackValue(user));
+  binds.close(); // obj
+  arangodb::aql::Query query(false, vocbase, arangodb::aql::QueryString(queryStr),
+                             std::make_shared<VPackBuilder>(binds), emptyBuilder,
+                             arangodb::aql::PART_MAIN);
+  
+  auto queryResult = query.execute(queryRegistry);
+  if (queryResult.code != TRI_ERROR_NO_ERROR) {
+    if (queryResult.code == TRI_ERROR_REQUEST_CANCELED ||
+        (queryResult.code == TRI_ERROR_QUERY_KILLED)) {
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_REQUEST_CANCELED);
+    }
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_FAILED, "query error");
+  }
+  
+  VPackSlice usersSlice = queryResult.result->slice();
+  if (usersSlice.isNone() || !usersSlice.isArray()) {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
+  }
+  if (usersSlice.length() == 0) {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_USER_NOT_FOUND);
+  }
+  
+  VPackSlice doc = usersSlice.at(0);
+  if (doc.isExternal()) {
+    doc = doc.resolveExternal();
+  }
+  return VPackBuilder(doc);
+}
+
+static void ConvertLegacyFormat(VPackSlice const& doc, VPackBuilder& result) {
+  VPackSlice authDataSlice = doc.get("authData");
+  VPackObjectBuilder b(&result, true);
+  result.add("user", doc.get("user"));
+  result.add("active", authDataSlice.get("active"));
+  if (authDataSlice.hasKey("changePassword")) {
+    result.add("changePassword", authDataSlice.get("changePassword"));
+  } else {
+    result.add("changePassword", VPackValue(false));
+  }
+  result.add("extra", doc.get("userData"));
+}
+
 // private, will acquire _authInfoLock in write-mode and release it
 void AuthInfo::loadFromDB() {
   auto role = ServerState::instance()->getRole();
@@ -143,62 +219,101 @@ void AuthInfo::loadFromDB() {
     insertInitial();
   }
 
-  TRI_vocbase_t* vocbase = DatabaseFeature::DATABASE->systemDatabase();
-
-  if (vocbase == nullptr) {
-    LOG_TOPIC(DEBUG, arangodb::Logger::FIXME) << "system database is unknown, cannot load authentication "
-               << "and authorization information";
-    return;
-  }
-  
   MUTEX_LOCKER(locker, _queryLock);
+  TRI_ASSERT(_queryRegistry != nullptr);
   if (!_outdated) {
     return;
   }
-  std::string const queryStr("FOR user IN _users RETURN user");
-  auto emptyBuilder = std::make_shared<VPackBuilder>();
-  arangodb::aql::Query query(false, vocbase, arangodb::aql::QueryString(queryStr),
-                             emptyBuilder, emptyBuilder,
-                             arangodb::aql::PART_MAIN);
-
-  LOG_TOPIC(DEBUG, arangodb::Logger::FIXME) << "starting to load authentication and authorization information";
-  TRI_ASSERT(_queryRegistry != nullptr);
-  auto queryResult = query.execute(_queryRegistry);
-  
-  if (queryResult.code != TRI_ERROR_NO_ERROR) {
-    if (queryResult.code == TRI_ERROR_REQUEST_CANCELED ||
-        (queryResult.code == TRI_ERROR_QUERY_KILLED)) {
-      THROW_ARANGO_EXCEPTION(TRI_ERROR_REQUEST_CANCELED);
-    }
-    _outdated = false;
-    return;
-  }
-  
-  VPackSlice usersSlice = queryResult.result->slice();
-  if (usersSlice.isNone()) {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
-  }
-  if (!usersSlice.isArray()) {
-    LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "cannot read users from _users collection";
-    return;
-  }
-
-  {
+  std::shared_ptr<VPackBuilder> builder = QueryAllUsers(_queryRegistry);
+  if (builder) {
+    VPackSlice usersSlice = builder->slice();
     WRITE_LOCKER(writeLocker, _authInfoLock);
     if (usersSlice.length() == 0) {
       insertInitial();
     } else {
       parseUsers(usersSlice);
     }
+    _outdated = false;
   }
-  _outdated = false;
+}
+
+// private, must be called with _authInfoLock in write mode
+void AuthInfo::insertInitial() {
+  if (!_authInfo.empty()) {
+    return;
+  }
+  
+  try {
+    AuthUserEntry entry = AuthUserEntry::newUser("root", "", AuthSource::COLLECTION);
+    entry.setActive(true);
+    entry.grantDatabase("*", AuthLevel::RW);
+    entry.grantCollection("*", "*", AuthLevel::RW);
+    storeUserInternal(entry, false);
+  } catch (...) {
+    // No action
+  }
+}
+
+// private, must be called with _authInfoLock in write mode
+Result AuthInfo::storeUserInternal(AuthUserEntry const& entry, bool replace) {
+  VPackBuilder data = entry.toVPackBuilder();
+  
+  TRI_vocbase_t* vocbase = DatabaseFeature::DATABASE->systemDatabase();
+  if (vocbase == nullptr) {
+    return Result(TRI_ERROR_INTERNAL);
+  }
+  std::shared_ptr<transaction::Context> ctx(new transaction::StandaloneContext(vocbase));
+  SingleCollectionTransaction trx(ctx, TRI_COL_NAME_USERS, AccessMode::Type::WRITE);
+  
+  Result res = trx.begin();
+  if (res.ok()) {
+    OperationOptions ops;
+    ops.returnNew = true;
+    OperationResult result = replace ? trx.replace(TRI_COL_NAME_USERS, data.slice(), ops) : trx.insert(TRI_COL_NAME_USERS, data.slice(), ops);
+    res = trx.finish(result.code);
+    if (res.ok()) {
+      VPackSlice userDoc = result.slice();
+      TRI_ASSERT(userDoc.isObject() && userDoc.hasKey("new"));
+      userDoc = userDoc.get("new");
+      if (userDoc.isExternal()) {
+        userDoc = userDoc.resolveExternal();
+      }
+      _authInfo.emplace(entry.username(), AuthUserEntry::fromDocument(userDoc));
+    }
+  }
+  return res;
 }
 
 // ================= public ==================
 
-void AuthInfo::tellAgencyToReloadAuth() {
-  AgencyComm agency;
+VPackBuilder AuthInfo::allUsers() {
+  std::shared_ptr<VPackBuilder> users;
+  {
+    MUTEX_LOCKER(locker, _queryLock);
+    if (!_outdated) {
+      return VPackBuilder();
+    }
+    TRI_ASSERT(_queryRegistry != nullptr);
+    users = QueryAllUsers(_queryRegistry);
+  }
   
+  VPackBuilder result;
+  if (users) {
+    VPackArrayBuilder a(&result);
+    for (VPackSlice const& doc : VPackArrayIterator(users->slice())) {
+      ConvertLegacyFormat(doc, result);
+    }
+  }
+  return result;
+}
+
+void AuthInfo::reloadAllUsers() {
+  if (!ServerState::instance()->isCoordinator()) {
+    _outdated = true;
+    return;
+  }
+  
+  AgencyComm agency;
   int maxTries = 10;
   while (maxTries-- > 0) {
     AgencyCommResult commRes = agency.getValues("Sync/UserVersion");
@@ -224,6 +339,8 @@ void AuthInfo::tellAgencyToReloadAuth() {
   LOG_TOPIC(WARN, Logger::AUTHENTICATION) << "Sync/UserVersion could not be updated";
 }
 
+
+
 Result AuthInfo::storeUser(bool replace,
                            std::string const& user,
                            std::string const& pass,
@@ -232,13 +349,15 @@ Result AuthInfo::storeUser(bool replace,
   if (_outdated) {
     loadFromDB();
   }
-  
+  if (user.empty()) {
+    return TRI_ERROR_USER_INVALID_NAME;
+  }
   WRITE_LOCKER(readLocker, _authInfoLock);
   auto const& it = _authInfo.find(user);
   if (replace && it == _authInfo.end()) {
-    return Result(TRI_ERROR_USER_NOT_FOUND);
+    return TRI_ERROR_USER_NOT_FOUND;
   } else if (!replace && it != _authInfo.end()) {
-    return Result(TRI_ERROR_USER_DUPLICATE);
+    return TRI_ERROR_USER_DUPLICATE;
   }
   
   AuthUserEntry entry = AuthUserEntry::newUser(user, pass, AuthSource::COLLECTION);
@@ -249,29 +368,11 @@ Result AuthInfo::storeUser(bool replace,
     entry._key = it->second.key();
   }
   
-  //_authInfo.emplace(user, std::move(entry));
-  VPackBuilder data = entry.toVPackBuilder();
-  
-  TRI_vocbase_t* vocbase = DatabaseFeature::DATABASE->systemDatabase();
-  if (vocbase == nullptr) {
-    return Result(TRI_ERROR_INTERNAL);
+  Result r = storeUserInternal(entry, replace);
+  if (r.ok()) {
+    reloadAllUsers();
   }
-  std::shared_ptr<transaction::Context> ctx(new transaction::StandaloneContext(vocbase));
-  SingleCollectionTransaction trx(ctx, TRI_COL_NAME_USERS, AccessMode::Type::WRITE);
-  
-  Result res = trx.begin();
-  if (res.ok()) {
-    OperationOptions ops;
-    ops.returnNew = true;
-    OperationResult result = replace ? trx.replace(TRI_COL_NAME_USERS, data.slice(), ops) : trx.insert(TRI_COL_NAME_USERS, data.slice(), ops);
-    res = trx.finish(result.code);
-    if (res.ok()) {
-      VPackSlice userDoc = result.slice();
-      _authInfo.emplace(user, AuthUserEntry::fromDocument(userDoc));
-      tellAgencyToReloadAuth();
-    }
-  }
-  return res;
+  return r;
 }
 
 static Result UpdateUser(VPackSlice const& user) {
@@ -291,11 +392,11 @@ static Result UpdateUser(VPackSlice const& user) {
   return res;
 }
 
-Result AuthInfo::modifyUser(std::string const& user, std::function<void(AuthUserEntry&)> const& func) {
+Result AuthInfo::updateUser(std::string const& user, std::function<void(AuthUserEntry&)> const& func) {
  WRITE_LOCKER(readLocker, _authInfoLock);
   auto it = _authInfo.find(user);
-  if (it != _authInfo.end()) {
-    return Result(TRI_ERROR_USER_DUPLICATE);
+  if (it == _authInfo.end()) {
+    return Result(TRI_ERROR_USER_NOT_FOUND);
   }
   TRI_ASSERT(!it->second.key().empty());
   func(it->second);
@@ -304,56 +405,25 @@ Result AuthInfo::modifyUser(std::string const& user, std::function<void(AuthUser
   Result r = UpdateUser(data.slice());
   
   // we need to reload data after the next callback
-  _outdated = true;
-  tellAgencyToReloadAuth();
+  reloadAllUsers();
   return r;
 }
 
-Result AuthInfo::getUser(std::string const& user, VPackBuilder& builder) {
+
+VPackBuilder AuthInfo::getUser(std::string const& user) {
   MUTEX_LOCKER(locker, _queryLock);
-  
-  TRI_vocbase_t* vocbase = DatabaseFeature::DATABASE->systemDatabase();
-  if (vocbase == nullptr) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_FAILED, "_system db is unknown");
-  }
-  
-  std::string const queryStr("FOR u IN _users FILTER u.user == @name RETURN u");
-  auto emptyBuilder = std::make_shared<VPackBuilder>();
-  
-  VPackBuilder binds;
-  binds.openObject();
-  binds.add("user", VPackValue(user));
-  binds.close(); // obj
-  arangodb::aql::Query query(false, vocbase, arangodb::aql::QueryString(queryStr),
-                             std::make_shared<VPackBuilder>(binds), emptyBuilder,
-                             arangodb::aql::PART_MAIN);
-  
-  auto queryResult = query.execute(_queryRegistry);
-  if (queryResult.code != TRI_ERROR_NO_ERROR) {
-    if (queryResult.code == TRI_ERROR_REQUEST_CANCELED ||
-        (queryResult.code == TRI_ERROR_QUERY_KILLED)) {
-      THROW_ARANGO_EXCEPTION(TRI_ERROR_REQUEST_CANCELED);
-    }
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_FAILED, "query error");
-  }
-  
-  VPackSlice usersSlice = queryResult.result->slice();
-  if (usersSlice.isNone() || !usersSlice.isArray()) {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
-  }
-  if (usersSlice.length() == 0) {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_USER_NOT_FOUND);
-  }
-  
-  builder.add(usersSlice.getNthValue(0));
-  return Result();
+  VPackBuilder doc = QueryUser(_queryRegistry, user);
+  VPackBuilder result;
+  VPackArrayBuilder a(&result);
+  ConvertLegacyFormat(doc.slice(), result);
+  return result;
 }
 
 Result AuthInfo::removeUser(std::string const& user) {
   WRITE_LOCKER(readLocker, _authInfoLock);
   auto it = _authInfo.find(user);
-  if (it != _authInfo.end()) {
-    return Result(TRI_ERROR_USER_DUPLICATE);
+  if (it == _authInfo.end()) {
+    return Result(TRI_ERROR_USER_NOT_FOUND);
   }
   TRI_ASSERT(!it->second.key().empty());
   
@@ -373,16 +443,16 @@ Result AuthInfo::removeUser(std::string const& user) {
     res = trx.finish(result.code);
     if (res.ok()) {
       _authInfo.erase(it);
-      tellAgencyToReloadAuth();
+      reloadAllUsers();
     }
   }
   return res;
 }
 
 VPackBuilder AuthInfo::getConfigData(std::string const& username) {
-  VPackBuilder bb;
-  Result r = getUser(username, bb);
-  return r.ok() ? VPackBuilder(bb.slice().get("configData")) : VPackBuilder();
+  MUTEX_LOCKER(locker, _queryLock);
+  VPackBuilder bb = QueryUser(_queryRegistry, username);
+  return VPackBuilder(bb.slice().get("configData"));
 }
 
 Result AuthInfo::setConfigData(std::string const& user, velocypack::Slice const& data) {
@@ -402,9 +472,9 @@ Result AuthInfo::setConfigData(std::string const& user, velocypack::Slice const&
 }
 
 VPackBuilder AuthInfo::getUserData(std::string const& username) {
-  VPackBuilder bb;
-  Result r = getUser(username, bb);
-  return r.ok() ? VPackBuilder(bb.slice().get("userData")) : VPackBuilder();
+  MUTEX_LOCKER(locker, _queryLock);
+  VPackBuilder bb = QueryUser(_queryRegistry, username);
+  return VPackBuilder(bb.slice().get("userData"));
 }
 
 Result AuthInfo::setUserData(std::string const& user, velocypack::Slice const& data) {

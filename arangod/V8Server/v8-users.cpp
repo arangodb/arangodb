@@ -52,10 +52,11 @@ void StoreUser(v8::FunctionCallbackInfo<v8::Value> const& args, bool replace) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
   
-  if (args.Length() < 2 || !args[0]->IsString() || !args[1]->IsString()) {
+  if (args.Length() < 1) {
     TRI_V8_THROW_EXCEPTION_USAGE("save(username, password[, active, userData, changePassword])");
+  } else if (!args[0]->IsString()) {
+    TRI_V8_THROW_EXCEPTION(TRI_ERROR_USER_INVALID_NAME);
   }
-  
   if (ExecContext::CURRENT_EXECCONTEXT != nullptr) {
     AuthLevel level =
     ExecContext::CURRENT_EXECCONTEXT->authContext()->systemAuthLevel();
@@ -63,13 +64,10 @@ void StoreUser(v8::FunctionCallbackInfo<v8::Value> const& args, bool replace) {
       TRI_V8_THROW_EXCEPTION(TRI_ERROR_FORBIDDEN);
     }
   }
-  
   std::string username = TRI_ObjectToString(args[0]);
-  std::string pass = TRI_ObjectToString(args[1]);
-  bool active = true;
-  if (args.Length() >= 3) {
-    active = TRI_ObjectToBoolean(args[2]);
-  }
+  std::string pass = args.Length() > 1 && args[1]->IsString() ? TRI_ObjectToString(args[1]) : "";
+  bool active = args.Length() >= 3 ? TRI_ObjectToBoolean(args[2]) : true;
+
   VPackBuilder extras;
   if (args.Length() >= 4) {
     active = TRI_V8ToVPackSimple(isolate, extras, args[3]);
@@ -88,9 +86,14 @@ void StoreUser(v8::FunctionCallbackInfo<v8::Value> const& args, bool replace) {
     if (!extras.isEmpty()) {
       authentication->authInfo()->setConfigData(username, extras.slice());
     }
+    
+    VPackBuilder result = authentication->authInfo()->getUser(username);
+    if (!result.isEmpty()) {
+      TRI_V8_RETURN(TRI_VPackToV8(isolate, result.slice()));
+    }
   }
   
-  TRI_V8_RETURN_TRUE();
+  TRI_V8_RETURN_UNDEFINED();
   TRI_V8_TRY_CATCH_END
 }
 
@@ -118,22 +121,17 @@ static void JS_UpdateUser(v8::FunctionCallbackInfo<v8::Value> const& args) {
   
   std::string username = TRI_ObjectToString(args[0]);
   std::string pass = TRI_ObjectToString(args[1]);
-  bool active = true;
-  if (args.Length() >= 3) {
-    active = TRI_ObjectToBoolean(args[2]);
-  }
+  bool active = args.Length() >= 3 ? TRI_ObjectToBoolean(args[2]) : true;
+
   VPackBuilder extras;
   if (args.Length() >= 4) {
     active = TRI_V8ToVPackSimple(isolate, extras, args[3]);
   }
-  bool changePassword = false;
-  if (args.Length() >= 5) {
-    changePassword = TRI_ObjectToBoolean(args[4]);
-  }
-  
+  bool changePassword = args.Length() >= 5 ? TRI_ObjectToBoolean(args[4]) : false;
+
   auto authentication = application_features::ApplicationServer::getFeature<AuthenticationFeature>("Authentication");
   if (authentication->isEnabled()) {
-    authentication->authInfo()->modifyUser(username, [&] (AuthUserEntry& entry){
+    authentication->authInfo()->updateUser(username, [&] (AuthUserEntry& entry){
       entry.setActive(active);
       entry.updatePassword(pass);
       entry.changePassword(changePassword);
@@ -164,7 +162,10 @@ static void JS_RemoveUser(v8::FunctionCallbackInfo<v8::Value> const& args) {
   std::string username = TRI_ObjectToString(args[0]);
   auto authentication = application_features::ApplicationServer::getFeature<AuthenticationFeature>("Authentication");
   if (authentication->isEnabled()) {
-    authentication->authInfo()->removeUser(username);
+    Result r = authentication->authInfo()->removeUser(username);
+    if (!r.ok()) {
+      TRI_V8_THROW_EXCEPTION_MESSAGE(r.errorNumber(), r.errorMessage());
+    }
   }
   
   TRI_V8_RETURN_TRUE();
@@ -189,8 +190,7 @@ static void JS_GetUser(v8::FunctionCallbackInfo<v8::Value> const& args) {
   auto authentication = application_features::ApplicationServer::getFeature<AuthenticationFeature>("Authentication");
   if (authentication->isEnabled()) {
     std::string username = TRI_ObjectToString(args[0]);
-    VPackBuilder result;
-    authentication->authInfo()->getUser(username, result);
+    VPackBuilder result = authentication->authInfo()->getUser(username);
     if (!result.isEmpty()) {
       TRI_V8_RETURN(TRI_VPackToV8(isolate, result.slice()));
     }
@@ -209,7 +209,7 @@ static void JS_ReloadAuthData(v8::FunctionCallbackInfo<v8::Value> const& args) {
   if (ExecContext::CURRENT_EXECCONTEXT != nullptr) {
     AuthLevel level =
     ExecContext::CURRENT_EXECCONTEXT->authContext()->systemAuthLevel();
-    if (level != AuthLevel::RO) {
+    if (level != AuthLevel::RW) {
       TRI_V8_THROW_EXCEPTION(TRI_ERROR_FORBIDDEN);
     }
   }
@@ -233,7 +233,7 @@ static void JS_GrantDatabase(v8::FunctionCallbackInfo<v8::Value> const& args) {
   if (ExecContext::CURRENT_EXECCONTEXT != nullptr) {
     AuthLevel level =
     ExecContext::CURRENT_EXECCONTEXT->authContext()->systemAuthLevel();
-    if (level != AuthLevel::RO) {
+    if (level != AuthLevel::RW) {
       TRI_V8_THROW_EXCEPTION(TRI_ERROR_FORBIDDEN);
     }
   }
@@ -246,18 +246,15 @@ static void JS_GrantDatabase(v8::FunctionCallbackInfo<v8::Value> const& args) {
     AuthLevel lvl = AuthLevel::RW;
     if (args.Length() >= 3) {
       std::string type = TRI_ObjectToString(args[2]);
-      if (type == "rw") {
-        lvl = AuthLevel::RW;
-      } else if (type == "ro") {
-        lvl = AuthLevel::RO;
-      } else {
-        TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER, "expecting access type 'rw' or 'ro'");
-      }
+      lvl = convertToAuthLevel(type);
     }
     
-    authentication->authInfo()->modifyUser(username, [&](AuthUserEntry& entry) {
+    Result r = authentication->authInfo()->updateUser(username, [&](AuthUserEntry& entry) {
       entry.grantDatabase(db, lvl);
     });
+    if (!r.ok()) {
+      TRI_V8_THROW_EXCEPTION_MESSAGE(r.errorNumber(), r.errorMessage());
+    }
   }
   
   TRI_V8_RETURN_UNDEFINED();
@@ -273,7 +270,7 @@ static void JS_RevokeDatabase(v8::FunctionCallbackInfo<v8::Value> const& args) {
   if (ExecContext::CURRENT_EXECCONTEXT != nullptr) {
     AuthLevel level =
     ExecContext::CURRENT_EXECCONTEXT->authContext()->systemAuthLevel();
-    if (level != AuthLevel::RO) {
+    if (level != AuthLevel::RW) {
       TRI_V8_THROW_EXCEPTION(TRI_ERROR_FORBIDDEN);
     }
   }
@@ -283,9 +280,12 @@ static void JS_RevokeDatabase(v8::FunctionCallbackInfo<v8::Value> const& args) {
   if (authentication->isEnabled()) {
     std::string username = TRI_ObjectToString(args[0]);
     std::string db = TRI_ObjectToString(args[1]);
-    authentication->authInfo()->modifyUser(username, [&](AuthUserEntry& entry) {
+    Result r = authentication->authInfo()->updateUser(username, [&](AuthUserEntry& entry) {
       entry.grantDatabase(db, AuthLevel::NONE);
     });
+    if (!r.ok()) {
+      TRI_V8_THROW_EXCEPTION_MESSAGE(r.errorNumber(), r.errorMessage());
+    }
   }
   
   TRI_V8_RETURN_UNDEFINED();
@@ -301,8 +301,8 @@ static void JS_GrantCollection(v8::FunctionCallbackInfo<v8::Value> const& args) 
   }
   if (ExecContext::CURRENT_EXECCONTEXT != nullptr) {
     AuthLevel level =
-    ExecContext::CURRENT_EXECCONTEXT->authContext()->systemAuthLevel();
-    if (level != AuthLevel::RO) {
+    ExecContext::CURRENT_EXECCONTEXT->authContext()->databaseAuthLevel();
+    if (level != AuthLevel::RW) {
       TRI_V8_THROW_EXCEPTION(TRI_ERROR_FORBIDDEN);
     }
   }
@@ -317,17 +317,14 @@ static void JS_GrantCollection(v8::FunctionCallbackInfo<v8::Value> const& args) 
     AuthLevel lvl = AuthLevel::RW;
     if (args.Length() >= 4) {
       std::string type = TRI_ObjectToString(args[3]);
-      if (type == "rw") {
-        lvl = AuthLevel::RW;
-      } else if (type == "ro") {
-        lvl = AuthLevel::RO;
-      } else {
-        TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER, "expecting access type 'rw' or 'ro'");
-      }
+      lvl = convertToAuthLevel(type);
     }
-    authentication->authInfo()->modifyUser(username, [&](AuthUserEntry& entry) {
+    Result r = authentication->authInfo()->updateUser(username, [&](AuthUserEntry& entry) {
       entry.grantCollection(db, coll, lvl);
     });
+    if (!r.ok()) {
+      TRI_V8_THROW_EXCEPTION_MESSAGE(r.errorNumber(), r.errorMessage());
+    }
   }
   
   TRI_V8_RETURN_UNDEFINED();
@@ -342,8 +339,8 @@ static void JS_RevokeCollection(v8::FunctionCallbackInfo<v8::Value> const& args)
   }
   if (ExecContext::CURRENT_EXECCONTEXT != nullptr) {
     AuthLevel level =
-    ExecContext::CURRENT_EXECCONTEXT->authContext()->systemAuthLevel();
-    if (level != AuthLevel::RO) {
+    ExecContext::CURRENT_EXECCONTEXT->authContext()->databaseAuthLevel();
+    if (level != AuthLevel::RW) {
       TRI_V8_THROW_EXCEPTION(TRI_ERROR_FORBIDDEN);
     }
   }
@@ -355,9 +352,12 @@ static void JS_RevokeCollection(v8::FunctionCallbackInfo<v8::Value> const& args)
     std::string db = TRI_ObjectToString(args[1]);
     std::string coll = TRI_ObjectToString(args[2]);
 
-    authentication->authInfo()->modifyUser(username, [&](AuthUserEntry& entry) {
+    Result r = authentication->authInfo()->updateUser(username, [&](AuthUserEntry& entry) {
       entry.grantCollection(db, coll, AuthLevel::NONE);
     });
+    if (!r.ok()) {
+      TRI_V8_THROW_EXCEPTION_MESSAGE(r.errorNumber(), r.errorMessage());
+    }
   }
   
   TRI_V8_RETURN_UNDEFINED();
@@ -430,15 +430,26 @@ static void JS_GetPermission(v8::FunctionCallbackInfo<v8::Value> const& args) {
   if (authentication->isEnabled()) {
     std::string username = TRI_ObjectToString(args[0]);
     
-    v8::Handle<v8::Object> result = v8::Object::New(isolate);
-    DatabaseFeature::DATABASE->enumerateDatabases([&](TRI_vocbase_t* vocbase){
-      AuthLevel lvl = authentication->authInfo()->canUseDatabase(username, vocbase->name());
-      if (lvl != AuthLevel::NONE) {
-        std::string str = AuthLevel::RO == lvl ? "ro" : "rw";
-        result->ForceSet(TRI_V8_STD_STRING(vocbase->name()), TRI_V8_STD_STRING(str));
+    if (args.Length() > 1) {
+      std::string key = TRI_ObjectToString(args[1]);
+      AuthLevel lvl = authentication->authInfo()->canUseDatabase(username, key);
+      if (lvl == AuthLevel::RO) {
+        TRI_V8_RETURN(TRI_V8_STRING("ro"));
+      } else if (lvl == AuthLevel::RW) {
+        TRI_V8_RETURN(TRI_V8_STRING("rw"));
       }
-    });
-    TRI_V8_RETURN(result);
+      TRI_V8_RETURN(TRI_V8_STRING("none"));
+    } else {
+      v8::Handle<v8::Object> result = v8::Object::New(isolate);
+      DatabaseFeature::DATABASE->enumerateDatabases([&](TRI_vocbase_t* vocbase){
+        AuthLevel lvl = authentication->authInfo()->canUseDatabase(username, vocbase->name());
+        if (lvl != AuthLevel::NONE) {
+          std::string str = AuthLevel::RO == lvl ? "ro" : "rw";
+          result->ForceSet(TRI_V8_STD_STRING(vocbase->name()), TRI_V8_STD_STRING(str));
+        }
+      });
+      TRI_V8_RETURN(result);
+    }
   }
   TRI_V8_RETURN_UNDEFINED();
   TRI_V8_TRY_CATCH_END
@@ -455,7 +466,7 @@ void TRI_InitV8Users(v8::Handle<v8::Context> context,
   ft->SetClassName(TRI_V8_ASCII_STRING("ArangoUsers"));
 
   rt = ft->InstanceTemplate();
-  rt->SetInternalFieldCount(3);
+  rt->SetInternalFieldCount(2);
 
   TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING("save"),
                        JS_SaveUser);
@@ -484,9 +495,15 @@ void TRI_InitV8Users(v8::Handle<v8::Context> context,
   TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING("permission"),
                        JS_GetPermission);
   
-  TRI_InitV8IndexCollection(isolate, rt);
-
-  v8g->VocbaseColTempl.Reset(isolate, rt);
-  TRI_AddGlobalFunctionVocbase(isolate, TRI_V8_ASCII_STRING("ArangoUsers"),
-                               ft->GetFunction());
+  v8g->UsersTempl.Reset(isolate, rt);
+  ft->SetClassName(TRI_V8_ASCII_STRING("ArangoUsersCtor"));
+  TRI_AddGlobalFunctionVocbase(isolate, TRI_V8_ASCII_STRING("ArangoUsersCtor"),
+                               ft->GetFunction(), true);
+  
+  // register the global object
+  v8::Handle<v8::Object> aa = rt->NewInstance();
+  if (!aa.IsEmpty()) {
+    TRI_AddGlobalVariableVocbase(isolate,
+                                 TRI_V8_ASCII_STRING("ArangoUsers"), aa);
+  }
 }

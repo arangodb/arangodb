@@ -21,7 +21,7 @@
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "AuthInfo.h"
+#include "AuthUserEntry.h"
 
 #include "Aql/Query.h"
 #include "Aql/QueryString.h"
@@ -29,6 +29,7 @@
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/WriteLocker.h"
 #include "Basics/tri-strings.h"
+#include "Basics/StringRef.h"
 #include "Cluster/ServerState.h"
 #include "GeneralServer/AuthenticationFeature.h"
 #include "GeneralServer/GeneralServerFeature.h"
@@ -43,9 +44,26 @@
 
 using namespace arangodb;
 using namespace arangodb::basics;
-using namespace arangodb::velocypack;
 using namespace arangodb::rest;
 
+static int convertToAuthLevel(arangodb::basics::StringRef const& ref) {
+  if (ref.compare("rw") == 0) {
+    return AuthLevel::RW;
+  } else if (ref.compare("ro") == 0) {
+    return AuthLevel::RO;
+  } else if (ref.compare("none") == 0 || grants.empty()) {
+    return AuthLevel::NONE;
+  }
+  THROW_ARANGO_EXCEPTION(TRI_ERROR_BAD_PARAMETER, "expecting access type 'rw', 'ro' or 'none'");
+}
+
+AuthLevel convertToAuthLevel(velocypack::Slice grants) {
+  return convertToAuthLevel(StringRef(grants));
+}
+
+AuthLevel convertToAuthLevel(std::string grants) {
+  return convertToAuthLevel(StringRef(grants));
+}
 
 // private hash function
 static int HexHashFromData(std::string const& hashMethod,
@@ -104,6 +122,44 @@ static int HexHashFromData(std::string const& hashMethod,
   return TRI_ERROR_NO_ERROR;
 }
 
+
+static void AddSource(VPackBuilder& builder, AuthSource source) {
+  switch (source) {
+    case AuthSource::COLLECTION:
+      builder.add("source", VPackValue("COLLECTION"));
+      break;
+    case AuthSource::LDAP:
+      builder.add("source", VPackValue("LDAP"));
+      break;
+    default:
+      TRI_ASSERT(false);
+  }
+}
+
+static void AddAuthLevel(VPackBuilder& builder, AuthLevel lvl) {
+  if (lvl == AuthLevel::RW) {
+    builder.add("read", VPackValue(true));
+    builder.add("write", VPackValue(true));
+  } else if (lvl == AuthLevel::RO) {
+    builder.add("read", VPackValue(true));
+    builder.add("write", VPackValue(false));
+  } else {
+    builder.add("read", VPackValue(false));
+    builder.add("write", VPackValue(false));
+  }
+}
+
+static AuthLevel AuthLevelFromSlice(VPackSlice const& slice) {
+  if (slice.hasKey("write") && slice.get("write").isTrue() ) {
+    return AuthLevel::RW;
+  } else if (slice.hasKey("read") && slice.get("read").isTrue() ) {
+    return AuthLevel::RO;
+  }
+  return AuthLevel::NONE;
+}
+
+
+// ============= public ==================
 
 AuthUserEntry AuthUserEntry::newUser(std::string const& user,
                       std::string const& password,
@@ -203,32 +259,17 @@ AuthUserEntry AuthUserEntry::fromDocument(VPackSlice const& slice) {
 
         if (obj.value.hasKey("permissions") && obj.value.get("permissions").isObject()) {
           auto const permissionsSlice = obj.value.get("permissions");
-
-          if (permissionsSlice.hasKey("read") && permissionsSlice.get("read").isTrue() ) {
-            databaseAuth = AuthLevel::RO;
-          }
-
-          if (permissionsSlice.hasKey("write") && permissionsSlice.get("write").isTrue() ) {
-            databaseAuth = AuthLevel::RW;
-          }
+          databaseAuth = AuthLevelFromSlice(permissionsSlice);
         }
 
-        if (obj.value.hasKey("collections") && obj.value.get("collections").isObject()) {
-          for (auto const& collection : VPackObjectIterator(obj.value.get("collections"))) {
+        VPackSlice collectionsSlice = obj.value.get("collections");
+        if (collectionsSlice.isObject()) {
+          for (auto const& collection : VPackObjectIterator(collectionsSlice)) {
 
             if (collection.value.hasKey("permissions") && collection.value.get("permissions").isObject()) {
               auto const permissionsSlice = obj.value.get("permissions");
-              std::string const collectionName = collection.key.copyString();
-              AuthLevel collectionAuth = AuthLevel::NONE;
-
-              if (permissionsSlice.hasKey("read") && permissionsSlice.get("read").isTrue() ) {
-                collectionAuth = AuthLevel::RO;
-              }
-
-              if (permissionsSlice.hasKey("write") && permissionsSlice.get("write").isTrue() ) {
-                collectionAuth = AuthLevel::RW;
-              }
-              collections.emplace(collectionName, collectionAuth);
+              collections.emplace(collection.key.copyString(),
+                                  AuthLevelFromSlice(permissionsSlice));
             } // if
           } // for
         } // if
@@ -318,32 +359,6 @@ std::shared_ptr<AuthContext> AuthUserEntry::getAuthContext(std::string const& db
   return std::make_shared<AuthContext>(AuthLevel::NONE, std::unordered_map<std::string, AuthLevel>({{"*", AuthLevel::NONE}}));
 }
 
-static void AddSource(VPackBuilder& builder, AuthSource source) {
-  switch (source) {
-    case AuthSource::COLLECTION:
-      builder.add("source", VPackValue("COLLECTION"));
-      break;
-    case AuthSource::LDAP:
-      builder.add("source", VPackValue("LDAP"));
-      break;
-    default:
-      TRI_ASSERT(false);
-  }
-}
-
-static void AddAuthLevel(VPackBuilder& builder, AuthLevel lvl) {
-  if (lvl == AuthLevel::RW) {
-    builder.add("read", VPackValue(true));
-    builder.add("write", VPackValue(true));
-  } else if (lvl == AuthLevel::RO) {
-    builder.add("read", VPackValue(true));
-    builder.add("write", VPackValue(false));
-  } else {
-    builder.add("read", VPackValue(false));
-    builder.add("write", VPackValue(false));
-  }
-}
-
 VPackBuilder AuthUserEntry::toVPackBuilder() const {
   TRI_ASSERT(!_username.empty());
   
@@ -374,38 +389,28 @@ VPackBuilder AuthUserEntry::toVPackBuilder() const {
   { // databases sub-object
     VPackObjectBuilder o2(&builder, "databases", true);
     for (auto const& dbCtxPair : _authContexts) {
+      VPackObjectBuilder o3(&builder, dbCtxPair.first, true);
       {// permissions
-        VPackObjectBuilder o3(&builder, "permissions", true);
+        VPackObjectBuilder o4(&builder, "permissions", true);
         AuthLevel lvl = dbCtxPair.second->databaseAuthLevel();
         AddAuthLevel(builder, lvl);
       }
       {// collections
-        VPackObjectBuilder o3(&builder, "collections", true);
+        VPackObjectBuilder o4(&builder, "collections", true);
         for (auto const& colAccessPair : dbCtxPair.second->_collectionAccess) {
           VPackObjectBuilder o4(&builder, colAccessPair.first, true);
+          VPackObjectBuilder o5(&builder, "permissions", true);
           AddAuthLevel(builder, colAccessPair.second);
         }
       }
     }
-    builder.add("active", VPackValue(_active));
-    if (!_passwordChangeToken.empty()) {
-      builder.add("changePassword", VPackValue(_changePassword));
-    }
-    if (_changePassword) {
-      builder.add("changePassword", VPackValue(_changePassword));
-    }
-    VPackObjectBuilder o3(&builder, "simple", true);
-    builder.add("hash", VPackValue(_passwordHash));
-    builder.add("salt", VPackValue(_passwordSalt));
-    builder.add("method", VPackValue(_passwordMethod));
   }
   
   return builder;
 }
 
 void AuthUserEntry::grantDatabase(std::string const& dbname, AuthLevel level) {
-  if (_username == "root" && dbname == StaticStrings::SystemDatabase
-      && level != AuthLevel::RW) {
+  if (_username == "root" && dbname == StaticStrings::SystemDatabase && level != AuthLevel::RW) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN,
                                    "Cannot lower access level of 'root' to _system");
   }
@@ -417,12 +422,17 @@ void AuthUserEntry::grantDatabase(std::string const& dbname, AuthLevel level) {
     _authContexts.emplace(dbname, std::make_shared<AuthContext>(level,
                                                                 std::unordered_map<std::string, AuthLevel>({{"*", level}}) ));
   }
-  if (dbname == StaticStrings::SystemDatabase) {
+  if (dbname == StaticStrings::SystemDatabase
+      || (dbname == "*" && _authContexts.find(StaticStrings::SystemDatabase) == _authContexts.end())) {
     _authContexts[dbname]->_systemAuthLevel = level;
   }
 }
 
 void AuthUserEntry::grantCollection(std::string const& dbname, std::string const& collection, AuthLevel level) {
+  if (_username == "root" && level != AuthLevel::RW) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN,
+                                   "Cannot lower access level of 'root' to _system");
+  }
   auto it = _authContexts.find(dbname);
   if (it != _authContexts.end()) {
     it->second->_collectionAccess[collection] = level;

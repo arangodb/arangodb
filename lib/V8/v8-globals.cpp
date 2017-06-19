@@ -37,6 +37,8 @@ TRI_v8_global_t::TRI_v8_global_t(v8::Isolate* isolate)
       VocbaseColTempl(),
       VocbaseViewTempl(),
       VocbaseTempl(),
+      EnvTempl(),
+      UsersTempl(),
 
       BufferTempl(),
 

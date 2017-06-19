@@ -86,12 +86,13 @@ class AuthInfo {
   void outdate() { _outdated = true; }
   
   /// Trigger eventual reload on all coordinators, user facing API call
-  void tellAgencyToReloadAuth();
+  void reloadAllUsers();
   
+  VPackBuilder allUsers();
   /// Add user from arangodb, do not use for LDAP  users
   Result storeUser(bool replace, std::string const& user, std::string const& pass, bool active, bool changePassword);
-  Result modifyUser(std::string const& username, std::function<void(AuthUserEntry&)> const&);
-  Result getUser(std::string const& user, VPackBuilder& builder);
+  Result updateUser(std::string const& username, std::function<void(AuthUserEntry&)> const&);
+  velocypack::Builder getUser(std::string const& user);
   Result removeUser(std::string const& user);
   
   velocypack::Builder getConfigData(std::string const& user);
@@ -118,9 +119,10 @@ class AuthInfo {
  
  private:
   void loadFromDB();
-  void insertInitial();
   bool parseUsers(velocypack::Slice const& slice);
-
+  void insertInitial();
+  Result storeUserInternal(AuthUserEntry const& user, bool replace);
+  
   AuthResult checkAuthenticationBasic(std::string const& secret);
   AuthResult checkAuthenticationJWT(std::string const& secret);
   bool validateJwtHeader(std::string const&);

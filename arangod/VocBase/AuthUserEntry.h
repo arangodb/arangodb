@@ -33,6 +33,9 @@ namespace arangodb {
 enum class AuthLevel {
   NONE, RO, RW
 };
+  
+AuthLevel convertToAuthLevel(velocypack::Slice grants);
+AuthLevel convertToAuthLevel(std::string grant);
 
 enum class AuthSource {
   COLLECTION, LDAP

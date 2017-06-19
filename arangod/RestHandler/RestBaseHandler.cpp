@@ -144,6 +144,12 @@ void RestBaseHandler::generateError(rest::ResponseCode code, int errorCode,
   }
 }
 
+// generates an error
+void RestBaseHandler::generateError(arangodb::Result const& r) {
+  ResponseCode code = GeneralResponse::responseCode(r.errorNumber());
+  generateError(code, r.errorNumber(), r.errorMessage());
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief generates a cancel message
 ////////////////////////////////////////////////////////////////////////////////
