@@ -1,5 +1,25 @@
 //  -*- mode: groovy-mode
 
+properties([
+    parameters([
+        booleanParam(
+            defaultValue: true,
+            description: 'build Linux',
+            name: 'buildLinux'
+        ),
+        booleanParam(
+            defaultValue: false,
+            description: 'build Mac',
+            name: 'buildMac'
+        ),
+        booleanParam(
+            defaultValue: false,
+            description: 'build Windows',
+            name: 'buildWindows'
+        ),
+    ])
+])
+
 // start with empty build directory
 cleanBuild = false
 
@@ -7,13 +27,17 @@ cleanBuild = false
 buildEnterprise = false
 
 // build linux
-buildLinux = true
+buildLinux = params.buildLinux
 
 // build mac
-buildMac = false
+buildMac = params.buildMac
 
 // build windows
-buildWindows = false
+buildWindows = params.buildWindows
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                             CONSTANTS AND HELPERS
+// -----------------------------------------------------------------------------
 
 // github repositiory for enterprise version
 enterpriseRepo = 'https://github.com/arangodb/enterprise'
