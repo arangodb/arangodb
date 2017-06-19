@@ -1,3 +1,24 @@
+v3.1.23 (XXXX-XX-XX)
+--------------------
+
+* potentially fixed issue #2559: Duplicate _key generated on insertion
+
+* fix races in SSL communication code
+
+* fix invalid results (too many) when a skipping LIMIT was used for a
+  traversal. `LIMIT x` or `LIMIT 0, x` were not affected, but `LIMIT s, x`
+  may have returned too many results
+
+* fix invalid first group results for sorted AQL COLLECT when LIMIT
+  was used
+
+* fix invalid locking in JWT authentication cache, which could have
+  crashed the server
+
+* fix undefined behavior in traverser when traversals were used inside
+  a FOR loop
+
+
 v3.1.22 (2017-06-07)
 --------------------
 

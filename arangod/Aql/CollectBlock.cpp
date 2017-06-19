@@ -354,6 +354,8 @@ int SortedCollectBlock::getOrSkipSome(size_t atLeast, size_t atMost,
           // need to emit the current group first
           TRI_ASSERT(cur != nullptr);
           emitGroup(cur, res.get(), skipped);
+        } else {
+          skipGroup();
         }
 
         // increase output row count
@@ -375,14 +377,10 @@ int SortedCollectBlock::getOrSkipSome(size_t atLeast, size_t atMost,
         _currentGroup.groupValues[i] = cur->getValueReference(_pos, it.second).clone();
         ++i;
       }
-      if (!skipping) {
-        _currentGroup.setFirstRow(_pos);
-      }
+      _currentGroup.setFirstRow(_pos);
     }
 
-    if (!skipping) {
-      _currentGroup.setLastRow(_pos);
-    }
+    _currentGroup.setLastRow(_pos);
 
     if (++_pos >= cur->size()) {
       _buffer.pop_front();
@@ -525,6 +523,12 @@ void SortedCollectBlock::emitGroup(AqlItemBlock const* cur, AqlItemBlock* res,
     }
   }
 
+  // reset the group so a new one can start
+  _currentGroup.reset();
+}
+
+/// @brief skips the current group
+void SortedCollectBlock::skipGroup() {
   // reset the group so a new one can start
   _currentGroup.reset();
 }
