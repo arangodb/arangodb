@@ -119,6 +119,62 @@ function ReplicationSuite() {
     },
 
     ////////////////////////////////////////////////////////////////////////////////
+    /// @brief test existing collection
+    ////////////////////////////////////////////////////////////////////////////////
+
+    testRemoveSomeWithIncremental: function() {
+      connectToMaster();
+
+      var st;
+
+      compare(
+        function(state) {
+          var c = db._create(cn),
+            i;
+
+          for (i = 0; i < 5000; ++i) {
+            c.save({
+              _key: "test" + i
+            });
+          }
+
+          state.checksum = collectionChecksum(cn);
+          state.count = collectionCount(cn);
+          assertEqual(5000, state.count);
+
+          st = state; // save state
+        },
+        function(state) {
+        },
+        function(state) {
+          assertEqual(state.count, collectionCount(cn));
+          assertEqual(state.checksum, collectionChecksum(cn));
+        },
+        true
+      );
+   
+      connectToSlave();
+
+      var c = db._collection(cn);
+      // remove some random documents
+      for (var i = 0; i < 50; ++i) {
+        c.remove(c.any());
+      } 
+      
+      assertEqual(4950, collectionCount(cn));
+  
+      // and sync again    
+      var syncResult = replication.syncCollection(cn, {
+        endpoint: masterEndpoint,
+        verbose: true,
+        incremental: true
+      });
+          
+      assertEqual(st.count, collectionCount(cn));
+      assertEqual(st.checksum, collectionChecksum(cn));
+    },
+
+    ////////////////////////////////////////////////////////////////////////////////
     /// @brief test collection properties
     ////////////////////////////////////////////////////////////////////////////////
 
@@ -975,7 +1031,7 @@ function ReplicationSuite() {
         true
       );
     }
-
+  
   };
 }
 
