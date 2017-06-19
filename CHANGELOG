@@ -5,11 +5,15 @@ devel
   traversal. `LIMIT x` or `LIMIT 0, x` were not affected, but `LIMIT s, x`
   may have returned too many results
 
-* fix invalid first group results for sorted AQL COLLECT when LIMIT
-  was used
+* fix races in SSL communication code
 
 * fix invalid locking in JWT authentication cache, which could have
   crashed the server
+
+* fix invalid first group results for sorted AQL COLLECT when LIMIT
+  was used
+
+* fix potential race, which could make arangod hang on startup
 
 * removed `exception` field from transaction error result; users should throw
   explicit `Error` instances to return custom exceptions (addresses issue #2561)
