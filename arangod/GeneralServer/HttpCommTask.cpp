@@ -259,8 +259,9 @@ bool HttpCommTask::processRead(double startTime) {
     size_t headerLength = ptr - (_readBuffer.c_str() + _startPosition);
 
     if (headerLength > MaximalHeaderSize) {
-      LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "maximal header size is " << MaximalHeaderSize
-                << ", request header size is " << headerLength;
+      LOG_TOPIC(WARN, arangodb::Logger::FIXME)
+          << "maximal header size is " << MaximalHeaderSize
+          << ", request header size is " << headerLength;
 
       HttpRequest tmpRequest(_connectionInfo, nullptr, 0, _allowMethodOverride);
       // header is too large
@@ -624,6 +625,16 @@ void HttpCommTask::processRequest(std::unique_ptr<HttpRequest> request) {
     if (timeStampInt != 0 && timeStampInt != UINT64_MAX) {
       TRI_HybridLogicalClock(timeStampInt);
     }
+  }
+
+  // check source
+  std::string const& source =
+      request->header(StaticStrings::ClusterCommSource, found);
+
+  if (found) {
+    LOG_TOPIC(TRACE, Logger::REQUESTS)
+        << "\"http-request-source\",\"" << (void*)this << "\",\""
+        << source << "\"";
   }
 
   // create a handler and execute
