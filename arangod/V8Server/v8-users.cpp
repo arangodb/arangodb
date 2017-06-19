@@ -89,20 +89,18 @@ void StoreUser(v8::FunctionCallbackInfo<v8::Value> const& args, bool replace) {
 
   auto authentication =
       FeatureCacheFeature::instance()->authenticationFeature();
-  if (authentication->isActive()) {
-    Result r = authentication->authInfo()->storeUser(replace, username, pass,
-                                                     active, changePassword);
-    if (!r.ok()) {
-      TRI_V8_THROW_EXCEPTION_MESSAGE(r.errorNumber(), r.errorMessage());
-    }
-    if (!extras.isEmpty()) {
-      authentication->authInfo()->setUserData(username, extras.slice());
-    }
+  Result r = authentication->authInfo()->storeUser(replace, username, pass,
+                                                   active, changePassword);
+  if (!r.ok()) {
+    TRI_V8_THROW_EXCEPTION_MESSAGE(r.errorNumber(), r.errorMessage());
+  }
+  if (!extras.isEmpty()) {
+    authentication->authInfo()->setUserData(username, extras.slice());
+  }
 
-    VPackBuilder result = authentication->authInfo()->getUser(username);
-    if (!result.isEmpty()) {
-      TRI_V8_RETURN(TRI_VPackToV8(isolate, result.slice()));
-    }
+  VPackBuilder result = authentication->authInfo()->getUser(username);
+  if (!result.isEmpty()) {
+    TRI_V8_RETURN(TRI_VPackToV8(isolate, result.slice()));
   }
 
   TRI_V8_RETURN_UNDEFINED();
@@ -148,15 +146,13 @@ static void JS_UpdateUser(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   auto authentication =
       FeatureCacheFeature::instance()->authenticationFeature();
-  if (authentication->isActive()) {
-    authentication->authInfo()->updateUser(username, [&](AuthUserEntry& entry) {
-      entry.setActive(active);
-      entry.updatePassword(pass);
-      entry.changePassword(changePassword);
-    });
-    if (!extras.isEmpty()) {
-      authentication->authInfo()->setUserData(username, extras.slice());
-    }
+  authentication->authInfo()->updateUser(username, [&](AuthUserEntry& entry) {
+    entry.setActive(active);
+    entry.updatePassword(pass);
+    entry.changePassword(changePassword);
+  });
+  if (!extras.isEmpty()) {
+    authentication->authInfo()->setUserData(username, extras.slice());
   }
 
   TRI_V8_RETURN_TRUE();
@@ -180,11 +176,9 @@ static void JS_RemoveUser(v8::FunctionCallbackInfo<v8::Value> const& args) {
   std::string username = TRI_ObjectToString(args[0]);
   auto authentication =
       FeatureCacheFeature::instance()->authenticationFeature();
-  if (authentication->isActive()) {
-    Result r = authentication->authInfo()->removeUser(username);
-    if (!r.ok()) {
-      TRI_V8_THROW_EXCEPTION_MESSAGE(r.errorNumber(), r.errorMessage());
-    }
+  Result r = authentication->authInfo()->removeUser(username);
+  if (!r.ok()) {
+    TRI_V8_THROW_EXCEPTION_MESSAGE(r.errorNumber(), r.errorMessage());
   }
 
   TRI_V8_RETURN_TRUE();
@@ -207,12 +201,10 @@ static void JS_GetUser(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   auto authentication =
       FeatureCacheFeature::instance()->authenticationFeature();
-  if (authentication->isActive()) {
-    std::string username = TRI_ObjectToString(args[0]);
-    VPackBuilder result = authentication->authInfo()->getUser(username);
-    if (!result.isEmpty()) {
-      TRI_V8_RETURN(TRI_VPackToV8(isolate, result.slice()));
-    }
+  std::string username = TRI_ObjectToString(args[0]);
+  VPackBuilder result = authentication->authInfo()->getUser(username);
+  if (!result.isEmpty()) {
+    TRI_V8_RETURN(TRI_VPackToV8(isolate, result.slice()));
   }
 
   TRI_V8_RETURN_UNDEFINED();
@@ -235,9 +227,7 @@ static void JS_ReloadAuthData(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   auto authentication =
       FeatureCacheFeature::instance()->authenticationFeature();
-  if (authentication->isActive()) {
-    authentication->authInfo()->outdate();
-  }
+  authentication->authInfo()->outdate();
 
   TRI_V8_RETURN_UNDEFINED();
   TRI_V8_TRY_CATCH_END
@@ -259,20 +249,18 @@ static void JS_GrantDatabase(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   auto authentication =
       FeatureCacheFeature::instance()->authenticationFeature();
-  if (authentication->isActive()) {
-    std::string username = TRI_ObjectToString(args[0]);
-    std::string db = TRI_ObjectToString(args[1]);
-    AuthLevel lvl = AuthLevel::RW;
-    if (args.Length() >= 3) {
-      std::string type = TRI_ObjectToString(args[2]);
-      lvl = convertToAuthLevel(type);
-    }
+  std::string username = TRI_ObjectToString(args[0]);
+  std::string db = TRI_ObjectToString(args[1]);
+  AuthLevel lvl = AuthLevel::RW;
+  if (args.Length() >= 3) {
+    std::string type = TRI_ObjectToString(args[2]);
+    lvl = convertToAuthLevel(type);
+  }
 
-    Result r = authentication->authInfo()->updateUser(
-        username, [&](AuthUserEntry& entry) { entry.grantDatabase(db, lvl); });
-    if (!r.ok()) {
-      TRI_V8_THROW_EXCEPTION_MESSAGE(r.errorNumber(), r.errorMessage());
-    }
+  Result r = authentication->authInfo()->updateUser(
+      username, [&](AuthUserEntry& entry) { entry.grantDatabase(db, lvl); });
+  if (!r.ok()) {
+    TRI_V8_THROW_EXCEPTION_MESSAGE(r.errorNumber(), r.errorMessage());
   }
 
   TRI_V8_RETURN_UNDEFINED();
@@ -295,16 +283,13 @@ static void JS_RevokeDatabase(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   auto authentication =
       FeatureCacheFeature::instance()->authenticationFeature();
-  if (authentication->isActive()) {
-    std::string username = TRI_ObjectToString(args[0]);
-    std::string db = TRI_ObjectToString(args[1]);
-    Result r = authentication->authInfo()->updateUser(
-        username, [&](AuthUserEntry& entry) {
-          entry.grantDatabase(db, AuthLevel::NONE);
-        });
-    if (!r.ok()) {
-      TRI_V8_THROW_EXCEPTION_MESSAGE(r.errorNumber(), r.errorMessage());
-    }
+  std::string username = TRI_ObjectToString(args[0]);
+  std::string db = TRI_ObjectToString(args[1]);
+  Result r = authentication->authInfo()->updateUser(
+      username,
+      [&](AuthUserEntry& entry) { entry.grantDatabase(db, AuthLevel::NONE); });
+  if (!r.ok()) {
+    TRI_V8_THROW_EXCEPTION_MESSAGE(r.errorNumber(), r.errorMessage());
   }
 
   TRI_V8_RETURN_UNDEFINED();
@@ -329,22 +314,20 @@ static void JS_GrantCollection(
 
   auto authentication =
       FeatureCacheFeature::instance()->authenticationFeature();
-  if (authentication->isActive()) {
-    std::string username = TRI_ObjectToString(args[0]);
-    std::string db = TRI_ObjectToString(args[1]);
-    std::string coll = TRI_ObjectToString(args[2]);
+  std::string username = TRI_ObjectToString(args[0]);
+  std::string db = TRI_ObjectToString(args[1]);
+  std::string coll = TRI_ObjectToString(args[2]);
 
-    AuthLevel lvl = AuthLevel::RW;
-    if (args.Length() >= 4) {
-      std::string type = TRI_ObjectToString(args[3]);
-      lvl = convertToAuthLevel(type);
-    }
-    Result r = authentication->authInfo()->updateUser(
-        username,
-        [&](AuthUserEntry& entry) { entry.grantCollection(db, coll, lvl); });
-    if (!r.ok()) {
-      TRI_V8_THROW_EXCEPTION_MESSAGE(r.errorNumber(), r.errorMessage());
-    }
+  AuthLevel lvl = AuthLevel::RW;
+  if (args.Length() >= 4) {
+    std::string type = TRI_ObjectToString(args[3]);
+    lvl = convertToAuthLevel(type);
+  }
+  Result r = authentication->authInfo()->updateUser(
+      username,
+      [&](AuthUserEntry& entry) { entry.grantCollection(db, coll, lvl); });
+  if (!r.ok()) {
+    TRI_V8_THROW_EXCEPTION_MESSAGE(r.errorNumber(), r.errorMessage());
   }
 
   TRI_V8_RETURN_UNDEFINED();
@@ -369,18 +352,16 @@ static void JS_RevokeCollection(
 
   auto authentication =
       FeatureCacheFeature::instance()->authenticationFeature();
-  if (authentication->isActive()) {
-    std::string username = TRI_ObjectToString(args[0]);
-    std::string db = TRI_ObjectToString(args[1]);
-    std::string coll = TRI_ObjectToString(args[2]);
+  std::string username = TRI_ObjectToString(args[0]);
+  std::string db = TRI_ObjectToString(args[1]);
+  std::string coll = TRI_ObjectToString(args[2]);
 
-    Result r = authentication->authInfo()->updateUser(
-        username, [&](AuthUserEntry& entry) {
-          entry.grantCollection(db, coll, AuthLevel::NONE);
-        });
-    if (!r.ok()) {
-      TRI_V8_THROW_EXCEPTION_MESSAGE(r.errorNumber(), r.errorMessage());
-    }
+  Result r = authentication->authInfo()->updateUser(
+      username, [&](AuthUserEntry& entry) {
+        entry.grantCollection(db, coll, AuthLevel::NONE);
+      });
+  if (!r.ok()) {
+    TRI_V8_THROW_EXCEPTION_MESSAGE(r.errorNumber(), r.errorMessage());
   }
 
   TRI_V8_RETURN_UNDEFINED();
@@ -398,25 +379,23 @@ static void JS_UpdateConfigData(
 
   auto authentication =
       FeatureCacheFeature::instance()->authenticationFeature();
-  if (authentication->isActive()) {
-    std::string username = TRI_ObjectToString(args[0]);
-    std::string key = TRI_ObjectToString(args[1]);
-    VPackBuilder merge;
-    if (args.Length() > 2) {
-      VPackBuilder value;
-      int res = TRI_V8ToVPackSimple(isolate, value, args[2]);
-      if (res != TRI_ERROR_NO_ERROR) {
-        TRI_V8_THROW_EXCEPTION(res);
-      }
-      merge.add(key, value.slice());
-    } else {
-      merge.add(key, VPackSlice::nullSlice());
+  std::string username = TRI_ObjectToString(args[0]);
+  std::string key = TRI_ObjectToString(args[1]);
+  VPackBuilder merge;
+  if (args.Length() > 2) {
+    VPackBuilder value;
+    int res = TRI_V8ToVPackSimple(isolate, value, args[2]);
+    if (res != TRI_ERROR_NO_ERROR) {
+      TRI_V8_THROW_EXCEPTION(res);
     }
-    VPackBuilder old = authentication->authInfo()->getConfigData(username);
-    VPackBuilder updated =
-        VelocyPackHelper::merge(old.slice(), merge.slice(), true, true);
-    authentication->authInfo()->setConfigData(username, updated.slice());
+    merge.add(key, value.slice());
+  } else {
+    merge.add(key, VPackSlice::nullSlice());
   }
+  VPackBuilder old = authentication->authInfo()->getConfigData(username);
+  VPackBuilder updated =
+      VelocyPackHelper::merge(old.slice(), merge.slice(), true, true);
+  authentication->authInfo()->setConfigData(username, updated.slice());
 
   TRI_V8_RETURN_UNDEFINED();
   TRI_V8_TRY_CATCH_END
@@ -432,12 +411,10 @@ static void JS_GetConfigData(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   auto authentication =
       FeatureCacheFeature::instance()->authenticationFeature();
-  if (authentication->isActive()) {
-    std::string username = TRI_ObjectToString(args[0]);
-    VPackBuilder config = authentication->authInfo()->getConfigData(username);
-    if (!config.isEmpty()) {
-      TRI_V8_RETURN(TRI_VPackToV8(isolate, config.slice()));
-    }
+  std::string username = TRI_ObjectToString(args[0]);
+  VPackBuilder config = authentication->authInfo()->getConfigData(username);
+  if (!config.isEmpty()) {
+    TRI_V8_RETURN(TRI_VPackToV8(isolate, config.slice()));
   }
 
   TRI_V8_RETURN_UNDEFINED();
@@ -454,32 +431,29 @@ static void JS_GetPermission(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   auto authentication =
       FeatureCacheFeature::instance()->authenticationFeature();
-  if (authentication->isActive()) {
-    std::string username = TRI_ObjectToString(args[0]);
+  std::string username = TRI_ObjectToString(args[0]);
 
-    if (args.Length() > 1) {
-      std::string key = TRI_ObjectToString(args[1]);
-      AuthLevel lvl = authentication->authInfo()->canUseDatabase(username, key);
-      if (lvl == AuthLevel::RO) {
-        TRI_V8_RETURN(TRI_V8_STRING("ro"));
-      } else if (lvl == AuthLevel::RW) {
-        TRI_V8_RETURN(TRI_V8_STRING("rw"));
-      }
-      TRI_V8_RETURN(TRI_V8_STRING("none"));
-    } else {
-      v8::Handle<v8::Object> result = v8::Object::New(isolate);
-      DatabaseFeature::DATABASE->enumerateDatabases(
-          [&](TRI_vocbase_t* vocbase) {
-            AuthLevel lvl = authentication->authInfo()->canUseDatabase(
-                username, vocbase->name());
-            if (lvl != AuthLevel::NONE) {
-              std::string str = AuthLevel::RO == lvl ? "ro" : "rw";
-              result->ForceSet(TRI_V8_STD_STRING(vocbase->name()),
-                               TRI_V8_STD_STRING(str));
-            }
-          });
-      TRI_V8_RETURN(result);
+  if (args.Length() > 1) {
+    std::string key = TRI_ObjectToString(args[1]);
+    AuthLevel lvl = authentication->authInfo()->canUseDatabase(username, key);
+    if (lvl == AuthLevel::RO) {
+      TRI_V8_RETURN(TRI_V8_STRING("ro"));
+    } else if (lvl == AuthLevel::RW) {
+      TRI_V8_RETURN(TRI_V8_STRING("rw"));
     }
+    TRI_V8_RETURN(TRI_V8_STRING("none"));
+  } else {
+    v8::Handle<v8::Object> result = v8::Object::New(isolate);
+    DatabaseFeature::DATABASE->enumerateDatabases([&](TRI_vocbase_t* vocbase) {
+      AuthLevel lvl =
+          authentication->authInfo()->canUseDatabase(username, vocbase->name());
+      if (lvl != AuthLevel::NONE) {
+        std::string str = AuthLevel::RO == lvl ? "ro" : "rw";
+        result->ForceSet(TRI_V8_STD_STRING(vocbase->name()),
+                         TRI_V8_STD_STRING(str));
+      }
+    });
+    TRI_V8_RETURN(result);
   }
   TRI_V8_RETURN_UNDEFINED();
   TRI_V8_TRY_CATCH_END

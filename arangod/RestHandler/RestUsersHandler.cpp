@@ -79,7 +79,8 @@ bool RestUsersHandler::isSystemUser() const {
     return _request->execContext()->authContext()->systemAuthLevel() ==
            AuthLevel::RW;
   }
-  return false;
+  // if authentication is deactivated authorize anyway
+  return !FeatureCacheFeature::instance()->authenticationFeature()->isActive();
 }
 
 bool RestUsersHandler::canAccessUser(std::string const& user) const {
@@ -102,10 +103,7 @@ RestStatus RestUsersHandler::getRequest(AuthInfo* authInfo) {
     std::string const& user = suffixes[0];
     if (canAccessUser(user)) {
       VPackBuilder doc = authInfo->getUser(user);
-
-      VPackBuilder r;
-      r(VPackValue(VPackValueType::Object))("result", doc.slice())();
-      generateResult(ResponseCode::OK, r.slice());
+      generateResult(ResponseCode::OK, doc.slice());
     } else {
       generateError(ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN);
     }
@@ -295,7 +293,7 @@ RestStatus RestUsersHandler::putRequest(AuthInfo* authInfo) {
 }
 
 RestStatus RestUsersHandler::patchRequest(AuthInfo* authInfo) {
-  std::vector<std::string> const& suffixes = _request->suffixes();
+  std::vector<std::string> const& suffixes = _request->decodedSuffixes();
   bool parseSuccess = false;
   std::shared_ptr<VPackBuilder> parsedBody = parseVelocyPackBody(parseSuccess);
   if (!parseSuccess) {

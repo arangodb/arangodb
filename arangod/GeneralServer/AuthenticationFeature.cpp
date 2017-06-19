@@ -89,10 +89,6 @@ void AuthenticationFeature::collectOptions(
 }
 
 void AuthenticationFeature::validateOptions(std::shared_ptr<ProgramOptions>) {
-  /*if (!_active) {
-    forceDisable();
-    return;
-  }*/
   if (!_jwtSecretProgramOption.empty()) {
     if (_jwtSecretProgramOption.length() > _maxSecretLength) {
       LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "Given JWT secret too long. Max length is "
