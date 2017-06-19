@@ -79,7 +79,8 @@ class FollowerInfo {
   /// @brief report if we are the leader
   //////////////////////////////////////////////////////////////////////////////
 
-  bool isLeader() const {
+  bool isLeader() {
+    MUTEX_LOCKER(locker, _mutex);
     return _isLeader;
   }
 
@@ -88,6 +89,7 @@ class FollowerInfo {
   //////////////////////////////////////////////////////////////////////////////
 
   void setLeader(bool b) {
+    MUTEX_LOCKER(locker, _mutex);
     _isLeader = b;
   }
 
