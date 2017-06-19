@@ -90,9 +90,7 @@ SocketTask::~SocketTask() {
     LOG_TOPIC(ERR, Logger::COMMUNICATION) << "unable to cancel _keepAliveTimer";
   }
 
-  if (_peer) {
-    _peer->close(err);
-  }
+  _peer->close(err);
 }
 
 // -----------------------------------------------------------------------------
@@ -342,11 +340,6 @@ bool SocketTask::trySyncRead() {
     return false;
   }
 
-  if (!_peer) {
-    LOG_TOPIC(DEBUG, Logger::COMMUNICATION) << "peer disappeared";
-    return false;
-  }
-
   if (0 == _peer->available(err)) {
     return false;
   }
@@ -357,10 +350,7 @@ bool SocketTask::trySyncRead() {
     return false;
   }
 
-  size_t bytesRead = 0;
-
-  bytesRead =
-      _peer->read(boost::asio::buffer(_readBuffer.end(), READ_BLOCK_SIZE), err);
+  size_t bytesRead = _peer->read(boost::asio::buffer(_readBuffer.end(), READ_BLOCK_SIZE), err);
 
   if (0 == bytesRead) {
     return false;  // should not happen
