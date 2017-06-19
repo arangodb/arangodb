@@ -86,13 +86,6 @@ int RestHandler::prepareEngine() {
   RequestStatistics::SET_REQUEST_END(_statistics);
 
   ExecContext::CURRENT_EXECCONTEXT = _request->execContext();
-
-  if (ExecContext::CURRENT_EXECCONTEXT == nullptr) {
-    // std::cout << "ExecContext::CURRENT_EXECCONTEXT is nullptr :S \n";
-  } else {
-    std::cout << "CURRENT_EXECCONTEXT != nullptr\n";
-  }
-
   if (_canceled) {
     _engine.setState(RestEngine::State::DONE);
     RequestStatistics::SET_EXECUTE_ERROR(_statistics);

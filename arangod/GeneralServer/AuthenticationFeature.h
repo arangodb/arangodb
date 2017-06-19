@@ -44,6 +44,8 @@ class AuthenticationFeature final
   void start() override final;
   void stop() override final;
   void unprepare() override final;
+      
+  bool isActive() const { return _active && isEnabled(); }
 
  private:
   AuthInfo _authInfo;

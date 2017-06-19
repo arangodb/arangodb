@@ -48,6 +48,7 @@
 #include "Random/RandomGenerator.h"
 #include "Rest/HttpRequest.h"
 #include "Rest/HttpResponse.h"
+#include "RestServer/FeatureCacheFeature.h"
 #include "SimpleHttpClient/GeneralClientConnection.h"
 #include "SimpleHttpClient/SimpleHttpClient.h"
 #include "SimpleHttpClient/SimpleHttpResult.h"
@@ -1136,10 +1137,7 @@ AgencyCommResult AgencyComm::sendTransactionWithFailover(
 bool AgencyComm::ensureStructureInitialized() {
   LOG_TOPIC(TRACE, Logger::AGENCYCOMM) << "checking if agency is initialized";
 
-  AuthenticationFeature* authentication =
-      application_features::ApplicationServer::getFeature<
-          AuthenticationFeature>("Authentication");
-
+  auto authentication = FeatureCacheFeature::instance()->authenticationFeature();
   TRI_ASSERT(authentication != nullptr);
 
   while (true) {
@@ -1149,7 +1147,7 @@ bool AgencyComm::ensureStructureInitialized() {
       // mop: we initialized it .. great success
       std::string secret;
 
-      if (authentication->isEnabled()) {
+      if (authentication->isActive()) {
         secret = authentication->jwtSecret();
       }
 

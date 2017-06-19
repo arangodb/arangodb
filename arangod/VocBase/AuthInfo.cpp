@@ -37,6 +37,7 @@
 #include "Logger/Logger.h"
 #include "Random/UniformCharacter.h"
 #include "RestServer/DatabaseFeature.h"
+#include "RestServer/FeatureCacheFeature.h"
 #include "Ssl/SslInterface.h"
 #include "Transaction/StandaloneContext.h"
 #include "Utils/OperationOptions.h"
@@ -204,7 +205,10 @@ static void ConvertLegacyFormat(VPackSlice const& doc, VPackBuilder& result) {
   } else {
     result.add("changePassword", VPackValue(false));
   }
-  result.add("extra", doc.get("userData"));
+  VPackSlice extra = doc.get("userData");
+  if (!extra.isNone()) {
+    result.add("extra", extra);
+  }
 }
 
 // private, will acquire _authInfoLock in write-mode and release it
@@ -218,10 +222,8 @@ void AuthInfo::loadFromDB() {
 
   // TODO: is this correct?
   if (_authenticationHandler == nullptr) {
-    _authenticationHandler.reset(
-        application_features::ApplicationServer::getFeature<
-            AuthenticationFeature>("Authentication")
-            ->getHandler());
+    _authenticationHandler.reset(FeatureCacheFeature::instance()->authenticationFeature()
+                                 ->getHandler());
   }
 
   {
@@ -433,8 +435,9 @@ VPackBuilder AuthInfo::getUser(std::string const& user) {
   MUTEX_LOCKER(locker, _queryLock);
   VPackBuilder doc = QueryUser(_queryRegistry, user);
   VPackBuilder result;
-  VPackArrayBuilder a(&result);
-  ConvertLegacyFormat(doc.slice(), result);
+  if (!doc.isEmpty()) {
+    ConvertLegacyFormat(doc.slice(), result);
+  }
   return result;
 }
 

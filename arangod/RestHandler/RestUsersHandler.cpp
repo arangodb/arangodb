@@ -23,15 +23,16 @@
 #include "RestUsersHandler.h"
 #include "Basics/VelocyPackHelper.h"
 #include "GeneralServer/AuthenticationFeature.h"
+#include "Rest/HttpRequest.h"
+#include "Rest/Version.h"
 #include "RestServer/DatabaseFeature.h"
+#include "RestServer/FeatureCacheFeature.h"
 #include "VocBase/vocbase.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/Collection.h>
 #include <velocypack/velocypack-aliases.h>
 
-#include "Rest/HttpRequest.h"
-#include "Rest/Version.h"
 
 using namespace arangodb;
 using namespace arangodb::basics;
@@ -43,8 +44,7 @@ RestUsersHandler::RestUsersHandler(GeneralRequest* request,
 
 RestStatus RestUsersHandler::execute() {
   RequestType const type = _request->requestType();
-  auto auth = application_features::ApplicationServer::getFeature<
-      AuthenticationFeature>("Authentication");
+  auto auth = FeatureCacheFeature::instance()->authenticationFeature();
   TRI_ASSERT(auth != nullptr);
   AuthInfo* authInfo = auth->authInfo();
 
@@ -88,11 +88,14 @@ bool RestUsersHandler::canAccessUser(std::string const& user) const {
 }
 
 RestStatus RestUsersHandler::getRequest(AuthInfo* authInfo) {
-  std::vector<std::string> const& suffixes = _request->suffixes();
+  std::vector<std::string> suffixes = _request->decodedSuffixes();
   if (suffixes.empty()) {
     if (isSystemUser()) {
       VPackBuilder users = authInfo->allUsers();
-      generateResult(ResponseCode::OK, users.slice());
+      
+      VPackBuilder r;
+      r(VPackValue(VPackValueType::Object))("result", users.slice());
+      generateResult(ResponseCode::OK, r.slice());
     } else {
       generateError(ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN);
     }
@@ -100,7 +103,10 @@ RestStatus RestUsersHandler::getRequest(AuthInfo* authInfo) {
     std::string const& user = suffixes[0];
     if (canAccessUser(user)) {
       VPackBuilder doc = authInfo->getUser(user);
-      generateResult(ResponseCode::OK, doc.slice());
+      
+      VPackBuilder r;
+      r(VPackValue(VPackValueType::Object))("result", doc.slice());
+      generateResult(ResponseCode::OK, r.slice());
     } else {
       generateError(ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN);
     }
@@ -109,14 +115,9 @@ RestStatus RestUsersHandler::getRequest(AuthInfo* authInfo) {
 
     if (canAccessUser(user)) {
       VPackBuilder data;
-      if (suffixes[1] == "config") {
-        if (suffixes.size() == 3) {
-          data.add(authInfo->getConfigData(user).slice().get(suffixes[2]));
-        } else {
-          data = authInfo->getConfigData(user);
-        }
-      } else if (suffixes[1] == "database") {
-        VPackObjectBuilder o(&data, true);
+      data.openObject();
+      if (suffixes[1] == "database") {
+        VPackObjectBuilder b(&data, "result", true);
         DatabaseFeature::DATABASE->enumerateDatabases(
             [&](TRI_vocbase_t* vocbase) {
               AuthLevel lvl = authInfo->canUseDatabase(user, vocbase->name());
@@ -125,7 +126,15 @@ RestStatus RestUsersHandler::getRequest(AuthInfo* authInfo) {
                 data.add(vocbase->name(), VPackValue(str));
               }
             });
+        
+      } else if (suffixes[1] == "config") {
+        if (suffixes.size() == 3) {
+          data.add("result", authInfo->getConfigData(user).slice().get(suffixes[2]));
+        } else {
+          data.add("result", authInfo->getConfigData(user).slice());
+        }
       }
+      data.close();// openObject
       generateResult(ResponseCode::OK, data.slice());
     } else {
       generateError(ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN);
@@ -163,7 +172,7 @@ static Result StoreUser(AuthInfo* authInfo, int mode, std::string const& user,
 }
 
 RestStatus RestUsersHandler::postRequest(AuthInfo* authInfo) {
-  std::vector<std::string> const& suffixes = _request->suffixes();
+  std::vector<std::string> suffixes = _request->decodedSuffixes();
   bool parseSuccess = false;
   std::shared_ptr<VPackBuilder> parsedBody = parseVelocyPackBody(parseSuccess);
   if (!parseSuccess) {
@@ -171,22 +180,8 @@ RestStatus RestUsersHandler::postRequest(AuthInfo* authInfo) {
     return RestStatus::DONE;
   }
 
-  if (suffixes.size() == 1) {
-    std::string const& user = suffixes[0];
-    std::string password;
-    VPackSlice s = parsedBody->slice().get("passwd");
-    if (s.isString()) {
-      password = s.copyString();
-    }
-    AuthResult result = authInfo->checkPassword(user, password);
-    if (result._authorized) {
-      VPackBuilder b;
-      b(VPackValue(VPackValueType::Object))("result", VPackValue(true));
-      generateResult(rest::ResponseCode::OK, b.slice());
-    } else {
-      generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_HTTP_NOT_FOUND);
-    }
-  } else if (suffixes.size() == 2) {
+  if (suffixes.empty()) {
+    // create a new user
     if (isSystemUser()) {
       VPackSlice s = parsedBody->slice().get("user");
       std::string user = s.isString() ? s.copyString() : "";
@@ -201,6 +196,23 @@ RestStatus RestUsersHandler::postRequest(AuthInfo* authInfo) {
     } else {
       generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_FORBIDDEN);
     }
+    
+  } else if (suffixes.size() == 1) {
+    // validate username / password
+    std::string const& user = suffixes[0];
+    std::string password;
+    VPackSlice s = parsedBody->slice().get("passwd");
+    if (s.isString()) {
+      password = s.copyString();
+    }
+    AuthResult result = authInfo->checkPassword(user, password);
+    if (result._authorized) {
+      VPackBuilder b;
+      b(VPackValue(VPackValueType::Object))("result", VPackValue(true));
+      generateResult(rest::ResponseCode::OK, b.slice());
+    } else {
+      generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_HTTP_NOT_FOUND);
+    }
   } else {
     generateError(rest::ResponseCode::BAD, TRI_ERROR_BAD_PARAMETER);
   }
@@ -208,7 +220,7 @@ RestStatus RestUsersHandler::postRequest(AuthInfo* authInfo) {
 }
 
 RestStatus RestUsersHandler::putRequest(AuthInfo* authInfo) {
-  std::vector<std::string> const& suffixes = _request->suffixes();
+  std::vector<std::string> suffixes = _request->decodedSuffixes();
   bool parseSuccess = false;
   std::shared_ptr<VPackBuilder> parsedBody = parseVelocyPackBody(parseSuccess);
   if (!parseSuccess) {
@@ -217,9 +229,9 @@ RestStatus RestUsersHandler::putRequest(AuthInfo* authInfo) {
   }
 
   if (suffixes.size() == 1) {
+    // replace existing user
     std::string const& user = suffixes[0];
     if (canAccessUser(user)) {
-      // update user
       Result r = StoreUser(authInfo, 1, user, parsedBody->slice());
       if (r.ok()) {
         VPackBuilder doc = authInfo->getUser(user);
@@ -231,8 +243,8 @@ RestStatus RestUsersHandler::putRequest(AuthInfo* authInfo) {
       generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_FORBIDDEN);
     }
   } else if (suffixes.size() == 3 || suffixes.size() == 4) {
+    // update database / collection permissions
     std::string const& user = suffixes[0];
-
     if (suffixes[1] == "database") {
       // update a user's permissions
       if (isSystemUser()) {
@@ -241,13 +253,18 @@ RestStatus RestUsersHandler::putRequest(AuthInfo* authInfo) {
         VPackSlice grant = parsedBody->slice().get("grant");
         AuthLevel lvl = convertToAuthLevel(grant);
 
-        authInfo->updateUser(user, [&](AuthUserEntry& entry) {
+        Result r = authInfo->updateUser(user, [&](AuthUserEntry& entry) {
           if (coll.empty()) {
             entry.grantDatabase(db, lvl);
           } else {
             entry.grantCollection(db, coll, lvl);
           }
         });
+        if (r.ok()) {
+          generateResult(ResponseCode::OK, VPackSlice());
+        } else {
+          generateError(r);
+        }
       } else {
         generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_FORBIDDEN);
       }
@@ -307,7 +324,7 @@ RestStatus RestUsersHandler::patchRequest(AuthInfo* authInfo) {
 }
 
 RestStatus RestUsersHandler::deleteRequest(AuthInfo* authInfo) {
-  std::vector<std::string> const& suffixes = _request->suffixes();
+  std::vector<std::string> suffixes = _request->decodedSuffixes();
   bool parseSuccess = false;
   std::shared_ptr<VPackBuilder> parsedBody = parseVelocyPackBody(parseSuccess);
   if (!parseSuccess) {
@@ -345,13 +362,18 @@ RestStatus RestUsersHandler::deleteRequest(AuthInfo* authInfo) {
       if (isSystemUser()) {
         std::string const& db = suffixes[2];
         std::string coll = suffixes.size() == 4 ? suffixes[3] : "";
-        authInfo->updateUser(user, [&](AuthUserEntry& entry) {
+        Result r = authInfo->updateUser(user, [&](AuthUserEntry& entry) {
           if (coll.empty()) {
             entry.grantDatabase(db, AuthLevel::NONE);
           } else {
             entry.grantCollection(db, coll, AuthLevel::NONE);
           }
         });
+        if (r.ok()) {
+          generateResult(ResponseCode::OK, VPackSlice());
+        } else {
+          generateError(r);
+        }
       } else {
         generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_FORBIDDEN);
       }

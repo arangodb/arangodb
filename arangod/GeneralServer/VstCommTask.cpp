@@ -242,7 +242,7 @@ bool VstCommTask::isChunkComplete(char* start) {
 void VstCommTask::handleAuthentication(VPackSlice const& header,
                                        uint64_t messageId) {
   bool authOk = false;
-  if (!_authentication->isEnabled()) {
+  if (!_authentication->isActive()) {
     authOk = true;
   } else {
     std::string auth;
@@ -366,7 +366,7 @@ bool VstCommTask::processRead(double startTime) {
 
       // check authentication
       AuthLevel level = AuthLevel::RW;
-      if (_authentication->isEnabled()) {  // only check authorization if
+      if (_authentication->isActive()) {  // only check authorization if
                                            // authentication is enabled
         std::string const& path = request->requestPath();
         if (!StringUtils::isPrefix(path, "/_open/") &&

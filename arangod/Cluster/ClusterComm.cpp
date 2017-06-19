@@ -33,6 +33,7 @@
 #include "Cluster/ServerState.h"
 #include "GeneralServer/AuthenticationFeature.h"
 #include "Logger/Logger.h"
+#include "RestServer/FeatureCacheFeature.h"
 #include "Scheduler/JobGuard.h"
 #include "Scheduler/SchedulerFeature.h"
 #include "SimpleHttpClient/ConnectionManager.h"
@@ -224,9 +225,9 @@ ClusterComm::ClusterComm()
       _authenticationEnabled(false),
       _jwt(""),
       _jwtAuthorization("") {
-  auto authentication = application_features::ApplicationServer::getFeature<AuthenticationFeature>("Authentication");
+  auto authentication = FeatureCacheFeature::instance()->authenticationFeature();
   TRI_ASSERT(authentication != nullptr);
-  if (authentication->isEnabled()) {
+  if (authentication->isActive()) {
     _authenticationEnabled = true;
     VPackBuilder bodyBuilder;
     {

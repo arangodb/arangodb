@@ -42,6 +42,7 @@
 #include "ProgramOptions/Section.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/DatabasePathFeature.h"
+#include "RestServer/FeatureCacheFeature.h"
 #include "RestServer/QueryRegistryFeature.h"
 #include "RestServer/TraverserEngineRegistryFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
@@ -878,8 +879,7 @@ std::vector<std::string> DatabaseFeature::getDatabaseNamesForUser(
         continue;
       }
 
-      auto authentication = application_features::ApplicationServer::getFeature<
-          AuthenticationFeature>("Authentication");
+      auto authentication = FeatureCacheFeature::instance()->authenticationFeature();
       auto level = authentication->canUseDatabase(username, vocbase->name());
 
       if (level == AuthLevel::NONE) {

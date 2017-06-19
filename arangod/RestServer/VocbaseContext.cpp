@@ -73,7 +73,7 @@ VocbaseContext::~VocbaseContext() {
 rest::ResponseCode VocbaseContext::authenticate() {
   TRI_ASSERT(_vocbase != nullptr);
   
-  if (!_authentication->isEnabled()) {
+  if (!_authentication->isActive()) {
     // no authentication required at all
     return rest::ResponseCode::OK;
   }
