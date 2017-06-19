@@ -831,10 +831,14 @@ function executePlanForCollections(plannedCollections) {
                       collection.removeFollower(removedFollower);
                     });
                   }
-                } else {
-
                 }
                 if (!shouldBeLeader && localCollections[shardName].isLeader) {
+                  // Note that the following does not delete the follower list
+                  // and that this is crucial, because in the planned leader 
+                  // resign case, updateCurrentForCollections will report the
+                  // resignation together with the old in-sync list to the
+                  // agency. If this list would be empty, then the supervision
+                  // would be very angry with us!
                   collection.leaderResign();
                 } else if (shouldBeLeader &&
                   !localCollections[shardName].isLeader) {

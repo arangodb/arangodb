@@ -1078,8 +1078,10 @@ static void JS_LeaderResign(v8::FunctionCallbackInfo<v8::Value> const& args) {
     }
 
     // do not reset followers at this time...we are still the only source of truth
-    // to trust...
-    //trx.documentCollection()->followers()->clear();
+    // to trust, in particular, in the planned leader resignation, we will shortly
+    // after the call to this function here report the controlled resignation to
+    // the agency. This report must still contain the correct follower list or else
+    // the supervision is super angry with us.
     collection->followers()->setLeader(false);
   }
 
