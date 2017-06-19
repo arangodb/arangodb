@@ -113,6 +113,62 @@ from the request.
 
 <!-- ---------------------------------------------------------------------- -->
 
+@startDocuBlock UserHandling_grantCollection
+@brief Grant or revoke access to a collection.
+
+@RESTHEADER{PUT /_api/user/{user}/database/{dbname}/{collection}, Grant or revoke collection access}
+
+@RESTBODYPARAM{grant,string,required,string}
+Use "rw" to grant read and write access rights, or "ro" to
+grant read-only access right. To revoke access rights, use "none".
+
+@RESTURLPARAMETERS
+
+@RESTURLPARAM{user,string,required}
+The name of the user.
+
+@RESTURLPARAM{dbname,string,required}
+The name of the database.
+
+@RESTURLPARAM{collection,string,required}
+The name of the collection.
+
+@RESTDESCRIPTION
+
+Grants or revokes access to the collection *collection* in the database *dbname* for user *user*. You
+need permission to the *_system* database in order to execute this
+REST call.
+
+@RESTRETURNCODES
+
+@RESTRETURNCODE{200}
+Returned if the access permissions were changed successfully.
+
+@RESTRETURNCODE{400}
+If the JSON representation is malformed or mandatory data is missing
+from the request.
+
+@EXAMPLES
+
+@EXAMPLE_ARANGOSH_RUN{RestGrantDatabase}
+    var users = require("@arangodb/users");
+    var theUser = "admin@myapp";
+    users.save(theUser, "secret")
+
+    var url = "/_api/user/" + theUser + "/database/_system/reports";
+    var data = { grant: "rw" };
+    var response = logCurlRequest('PUT', url, data);
+
+    assert(response.code === 200);
+
+    logJsonResponse(response);
+    users.remove(theUser);
+@END_EXAMPLE_ARANGOSH_RUN
+
+@endDocuBlock
+
+<!-- ---------------------------------------------------------------------- -->
+
 @startDocuBlock UserHandling_fetchDatabaseList
 @brief List available database to the specified user
 
