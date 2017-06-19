@@ -64,14 +64,14 @@ If we want to create a user that can only read all collections in database repor
     }
 
 ### The special collection *
-The collection * is a wildcard and stands for all collections in a database. The permission lookup goes this way:
-First look for the exact collection name requested. If the collection could not be found, look for the * collection.
-If the * collection is found check the permissions on the collection *. If the collection * is not found no permissions are granted.
+The collection \* is a wildcard and stands for all collections in a database. The permission lookup goes this way:
+First look for the exact collection name requested. If the collection could not be found, look for the \* collection.
+If the \* collection is found check the permissions on the collection \*. If the collection \* is not found no permissions are granted.
 
 ### The special database *
-The database * is a wildcard and stands for all database in a ArangoDB single instance or cluster . The permission lookup goes this way:
-First look for the exact databse name requested. If the database could not be found, look for the * database.
-If the * database is found check the permissions on the database *. If the database * is not found no permissions are granted.
+The database \* is a wildcard and stands for all database in a ArangoDB single instance or cluster . The permission lookup goes this way:
+First look for the exact databse name requested. If the database could not be found, look for the \* database.
+If the \* database is found check the permissions on the database \*. If the database \* is not found no permissions are granted.
 
     databases: {
         reports: {
@@ -91,7 +91,7 @@ If the * database is found check the permissions on the database *. If the datab
     }
 
 If we request a document fom the collection daily on the database reports we get access because a read permission 
-is defined for the wildcard collection.
+is defined for the wildcard collection \*.
 
     databases: {
         reports: {
@@ -111,4 +111,4 @@ is defined for the wildcard collection.
     }
 
 If we reuqest a document from the collection weekly on the database reports we get no access because the collection weekly
-does not exist in the permissions object and also no wildcard collection.
+does not exist in the permissions object and also no wildcard collection \*.
