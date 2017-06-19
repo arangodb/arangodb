@@ -139,8 +139,8 @@ arangodb::Result Indexes::getAll(arangodb::LogicalCollection const* collection,
     // READ-LOCK end
   }
 
-  double selectivity = 0, memory = 0, cacheSize = 0, cacheLiftimeHitRate = 0,
-         cacheWindowHitRate = 0;
+  double selectivity = 0, memory = 0, cacheSize = 0, cacheLifeTimeHitRate = 0,
+         cacheWindowedHitRate = 0;
 
   VPackArrayBuilder a(&result);
   for (VPackSlice const& index : VPackArrayIterator(tmp.slice())) {
@@ -166,27 +166,32 @@ arangodb::Result Indexes::getAll(arangodb::LogicalCollection const* collection,
           if ((val = figures.get("memory")).isNumber()) {
             memory += val.getNumber<double>();
           }
-          if ((val = figures.get("cacheLiftimeHitRate")).isNumber()) {
-            cacheLiftimeHitRate += val.getNumber<double>();
+          if ((val = figures.get("cacheLifeTimeHitRate")).isNumber()) {
+            cacheLifeTimeHitRate += val.getNumber<double>();
           }
-          if ((val = figures.get("cacheWindowHitRate")).isNumber()) {
-            cacheWindowHitRate += val.getNumber<double>();
+          if ((val = figures.get("cacheWindowedHitRate")).isNumber()) {
+            cacheWindowedHitRate += val.getNumber<double>();
           }
         }
 
-        if (fields[0].compareString("_from") == 0) {
+        if (fields[0].compareString(StaticStrings::FromString) == 0) {
           continue;
-        } else if (fields[0].compareString("_to") == 0) {
+        } else if (fields[0].compareString(StaticStrings::ToString) == 0) {
+          merge.add("fields", VPackValue(VPackValueType::Array));
+          merge.add(VPackValue(StaticStrings::FromString));
+          merge.add(VPackValue(StaticStrings::ToString));
+          merge.close();
+          
           merge.add("selectivityEstimate", VPackValue(selectivity / 2));
           if (withFigures) {
             merge.add("figures", VPackValue(VPackValueType::Object));
             merge.add("memory", VPackValue(memory));
-            if (cacheSize != 0 || cacheLiftimeHitRate != 0) {
+            if (cacheSize != 0 || cacheLifeTimeHitRate != 0) {
               merge.add("cacheSize", VPackValue(cacheSize));
-              merge.add("cacheLiftimeHitRate",
-                        VPackValue(cacheLiftimeHitRate / 2));
-              merge.add("cacheWindowHitRate",
-                        VPackValue(cacheWindowHitRate / 2));
+              merge.add("cacheLifeTimeHitRate",
+                        VPackValue(cacheLifeTimeHitRate / 2));
+              merge.add("cacheWindowedHitRate",
+                        VPackValue(cacheWindowedHitRate / 2));
             }
             merge.close();
           }
