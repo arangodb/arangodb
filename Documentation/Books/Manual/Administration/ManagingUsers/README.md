@@ -17,18 +17,18 @@ Alternatively, you can use the ArangoDB shell. Fire up *arangosh*
 and require the users module.
 
 ```
-arangosh> var users = require("@arangodb/users");
-arangosh> users.save("admin@testapp", "mypassword");
+arangosh> var users = require('@arangodb/users');
+arangosh> users.save('admin@testapp', 'mypassword');
 ```
 
 Creates an user call *admin@testapp*. This user will have no access
 at all.
 
 ```
-arangosh> users.grantDatabase("admin@testapp", "testdb");
+arangosh> users.grantDatabase('admin@testapp', 'testdb", 'rw');
 ```
 
-This grants the user access to the database *testdb*. `revokeDatabase`
+This grants the user read write access to the database *testdb*. `revokeDatabase`
 will revoke the right.
 
 ### Save
@@ -59,15 +59,15 @@ grant the access rights for one or more databases using
 
     @startDocuBlockInline USER_02_saveUser
     @EXAMPLE_ARANGOSH_OUTPUT{USER_02_saveUser}
-    require("@arangodb/users").save("my-user", "my-secret-password");
+    require('@arangodb/users').save('my-user', 'my-secret-password');
     @END_EXAMPLE_ARANGOSH_OUTPUT
     @endDocuBlock USER_02_saveUser
 
 ### Grant Database
 
-`users.grantDatabase(user, database)`
+`users.grantDatabase(user, database, type)`
 
-This grants read/write access to the *database* for the *user*.
+This grants *type* access to the *database* for the *user*.
 
 If a user has access rights to the *_system* database, he is considered superuser.
 
@@ -76,6 +76,20 @@ If a user has access rights to the *_system* database, he is considered superuse
 `users.revokeDatabase(user, database)`
 
 This revokes read/write access to the *database* for the *user*.
+
+### Grant Collection
+
+`users.grantCollection(user, database, collection, type)`
+
+This grants type access to the *collection* in *database* for the *user*.
+
+If a user has access rights to the *_system* database, he is considered superuser.
+
+### Revoke Collection
+
+`users.revokeCollection(user, database)`
+
+This revokes read/write access to the *collection* for the *user*.
 
 ### Replace
 
