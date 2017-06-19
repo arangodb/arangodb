@@ -46,7 +46,10 @@ struct QueryProfile {
 
   ~QueryProfile();
 
-  void setDone(QueryExecutionState::ValueType);
+  double setDone(QueryExecutionState::ValueType);
+
+  /// @brief sets the absolute end time for an execution state
+  void setEnd(QueryExecutionState::ValueType state, double time);
 
   /// @brief convert the profile to VelocyPack
   std::shared_ptr<arangodb::velocypack::Builder> toVelocyPack();
