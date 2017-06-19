@@ -166,8 +166,14 @@
         data.numberOfShards = object.shards;
         data.shardKeys = object.shardBy;
       }
+
       if (object.replicationFactor) {
-        data.replicationFactor = JSON.parse(object.replicationFactor);
+        data.replicationFactor = object.replicationFactor;
+        var pattern = new RegExp(/^[0-9]+$/);
+        if (pattern.test(object.replicationFactor)) {
+          // looks like a number
+          data.replicationFactor = JSON.parse(object.replicationFactor);
+        }
       }
 
       $.ajax({
