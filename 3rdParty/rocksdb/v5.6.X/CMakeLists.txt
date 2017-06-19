@@ -563,11 +563,11 @@ set(ROCKSDB_STATIC_LIB rocksdb${ARTIFACT_SUFFIX})
 #set(ROCKSDB_SHARED_LIB rocksdb-shared${ARTIFACT_SUFFIX})
 #set(ROCKSDB_IMPORT_LIB ${ROCKSDB_SHARED_LIB})
 
-#if(WIN32)
-#  set(SYSTEM_LIBS ${SYSTEM_LIBS} Shlwapi.lib Rpcrt4.lib)
+if(WIN32)
+  set(SYSTEM_LIBS ${SYSTEM_LIBS} Shlwapi.lib Rpcrt4.lib)
 #  set(LIBS ${ROCKSDB_STATIC_LIB} ${THIRDPARTY_LIBS} ${SYSTEM_LIBS})
-#else()
-#  set(SYSTEM_LIBS ${CMAKE_THREAD_LIBS_INIT})
+else()
+  set(SYSTEM_LIBS ${CMAKE_THREAD_LIBS_INIT})
 #  set(LIBS ${ROCKSDB_SHARED_LIB} ${THIRDPARTY_LIBS} ${SYSTEM_LIBS})
 #
 #  add_library(${ROCKSDB_SHARED_LIB} SHARED ${SOURCES})
@@ -579,7 +579,7 @@ set(ROCKSDB_STATIC_LIB rocksdb${ARTIFACT_SUFFIX})
 #                        SOVERSION ${ROCKSDB_VERSION_MAJOR}
 #                        CXX_STANDARD 11
 #                        OUTPUT_NAME "rocksdb")
-#endif()
+endif()
 
 option(WITH_LIBRADOS "Build with librados" OFF)
 if(WITH_LIBRADOS)

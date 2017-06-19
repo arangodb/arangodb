@@ -748,16 +748,15 @@ add_subdirectory(3rdParty)
 add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/3rdParty/boost)
 add_definitions("-DARANGODB_BOOST_VERSION=\"${BOOST_VERSION}\"")
 
-
 # ------------------------------------------------------------------------------
 # RocksDB
 # ------------------------------------------------------------------------------
 
 add_subdirectory(3rdParty/rocksdb)
- 
+
 add_definitions(-DARANGODB_ROCKSDB_VERSION=\"${ROCKSDB_VERSION}\")
 include_directories(${ROCKSDB_INCLUDE_DIR})
- 
+
 set(ROCKSDB_LIBS rocksdb;snappystatic)
 
 add_dependencies(rocksdb snappystatic)
