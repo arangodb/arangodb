@@ -1969,6 +1969,9 @@
       } catch (e) {
         arangoHelper.arangoError('Parse Error', 'Could not parse defined user limit.');
       }
+      if (isNaN(userLimit)) {
+        userLimit = true;
+      }
 
       var pushQueryResults = function (data) {
         if (self.tmpQueryResult === null) {
@@ -1983,7 +1986,7 @@
             self.tmpQueryResult[key] = val;
           } else {
             _.each(data.result, function (d) {
-              if (self.tmpQueryResult.result.length < userLimit) {
+              if (self.tmpQueryResult.result.length <= userLimit || userLimit) {
                 self.tmpQueryResult.result.push(d);
               } else {
                 self.tmpQueryResult.complete = false;
@@ -2007,9 +2010,15 @@
           processData: false,
           success: function (data, textStatus, xhr) {
             // query finished, now fetch results using cursor
+            var flag = true;
+            if (self.tmpQueryResult && self.tmpQueryResult.result && self.tmpQueryResult.result.length) {
+              if (self.tmpQueryResult.result.length <= userLimit || userLimit) {
+                flag = false;
+              }
+            }
 
             if (xhr.status === 201 || xhr.status === 200) {
-              if (data.hasMore) {
+              if (data.hasMore && flag) {
                 pushQueryResults(data);
 
                 // continue to fetch result
@@ -2018,9 +2027,9 @@
                 pushQueryResults(data);
                 self.renderQueryResult(self.tmpQueryResult, counter, false, queryID);
                 self.tmpQueryResult = null;
+                // SCROLL TO RESULT BOX
+                $('.centralRow').animate({ scrollTop: $('#queryContent').height() }, 'fast');
               }
-              // SCROLL TO RESULT BOX
-              $('.centralRow').animate({ scrollTop: $('#queryContent').height() }, 'fast');
             } else if (xhr.status === 204) {
             // query not ready yet, retry
               self.checkQueryTimer = window.setTimeout(function () {
