@@ -483,8 +483,8 @@ VPackBuilder AuthInfo::getConfigData(std::string const& username) {
 Result AuthInfo::setConfigData(std::string const& user,
                                velocypack::Slice const& data) {
   auto it = _authInfo.find(user);
-  if (it != _authInfo.end()) {
-    return Result(TRI_ERROR_USER_DUPLICATE);
+  if (it == _authInfo.end()) {
+    return Result(TRI_ERROR_USER_NOT_FOUND);
   }
   TRI_ASSERT(!it->second.key().empty());
 
@@ -506,8 +506,8 @@ VPackBuilder AuthInfo::getUserData(std::string const& username) {
 Result AuthInfo::setUserData(std::string const& user,
                              velocypack::Slice const& data) {
   auto it = _authInfo.find(user);
-  if (it != _authInfo.end()) {
-    return Result(TRI_ERROR_USER_DUPLICATE);
+  if (it == _authInfo.end()) {
+    return Result(TRI_ERROR_USER_NOT_FOUND);
   }
   TRI_ASSERT(!it->second.key().empty());
 

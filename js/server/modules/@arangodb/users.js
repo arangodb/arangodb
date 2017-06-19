@@ -31,7 +31,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 const internal = require('internal'); // OK: reloadAuth
-
+const arangodb = require("@arangodb");
 
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief constructor
@@ -53,7 +53,17 @@ exports.revokeCollection = ArangoUsers.revokeCollection;
 exports.updateConfigData = ArangoUsers.updateConfigData;
 exports.configData = ArangoUsers.configData;
 exports.permission = ArangoUsers.permission;
-
+exports.exists = function (username) {
+  try {
+    exports.document(username);
+    return true;
+  } catch (e) {
+    if (e.errorNum === arangodb.errors.ERROR_USER_NOT_FOUND.code) {
+      return false;
+    }
+    throw e;
+  }
+};
 
 // converts a user document to the legacy format
 /*const convertToLegacyFormat = function (doc) {
@@ -323,18 +333,6 @@ exports.document = function (username) {
   }
 
   return convertToLegacyFormat(user);
-};
-
-exports.exists = function (username) {
-  try {
-    exports.document(username);
-    return true;
-  } catch (e) {
-    if (e.errorNum === arangodb.errors.ERROR_USER_NOT_FOUND.code) {
-      return false;
-    }
-    throw e;
-  }
 };
 
 // checks whether a combination of username / password is valid.

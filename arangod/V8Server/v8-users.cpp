@@ -70,18 +70,25 @@ void StoreUser(v8::FunctionCallbackInfo<v8::Value> const& args, bool replace) {
   std::string pass = args.Length() > 1 && args[1]->IsString()
                          ? TRI_ObjectToString(args[1])
                          : "";
-  bool active = args.Length() >= 3 ? TRI_ObjectToBoolean(args[2]) : true;
+  bool active = true;
+  if (args.Length() >= 3 && args[2]->IsBoolean()) {
+    active = TRI_ObjectToBoolean(args[2]);
+  }
 
   VPackBuilder extras;
   if (args.Length() >= 4) {
-    active = TRI_V8ToVPackSimple(isolate, extras, args[3]);
+    int r = TRI_V8ToVPackSimple(isolate, extras, args[3]);
+    if (r != TRI_ERROR_NO_ERROR) {
+      TRI_V8_THROW_EXCEPTION(r);
+    }
   }
   bool changePassword = false;
   if (args.Length() >= 5) {
     changePassword = TRI_ObjectToBoolean(args[4]);
   }
 
-  auto authentication = FeatureCacheFeature::instance()->authenticationFeature();
+  auto authentication =
+      FeatureCacheFeature::instance()->authenticationFeature();
   if (authentication->isActive()) {
     Result r = authentication->authInfo()->storeUser(replace, username, pass,
                                                      active, changePassword);
@@ -89,7 +96,7 @@ void StoreUser(v8::FunctionCallbackInfo<v8::Value> const& args, bool replace) {
       TRI_V8_THROW_EXCEPTION_MESSAGE(r.errorNumber(), r.errorMessage());
     }
     if (!extras.isEmpty()) {
-      authentication->authInfo()->setConfigData(username, extras.slice());
+      authentication->authInfo()->setUserData(username, extras.slice());
     }
 
     VPackBuilder result = authentication->authInfo()->getUser(username);
@@ -131,12 +138,16 @@ static void JS_UpdateUser(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   VPackBuilder extras;
   if (args.Length() >= 4) {
-    active = TRI_V8ToVPackSimple(isolate, extras, args[3]);
+    int r = TRI_V8ToVPackSimple(isolate, extras, args[3]);
+    if (r != TRI_ERROR_NO_ERROR) {
+      TRI_V8_THROW_EXCEPTION(r);
+    }
   }
   bool changePassword =
       args.Length() >= 5 ? TRI_ObjectToBoolean(args[4]) : false;
 
-  auto authentication = FeatureCacheFeature::instance()->authenticationFeature();
+  auto authentication =
+      FeatureCacheFeature::instance()->authenticationFeature();
   if (authentication->isActive()) {
     authentication->authInfo()->updateUser(username, [&](AuthUserEntry& entry) {
       entry.setActive(active);
@@ -144,7 +155,7 @@ static void JS_UpdateUser(v8::FunctionCallbackInfo<v8::Value> const& args) {
       entry.changePassword(changePassword);
     });
     if (!extras.isEmpty()) {
-      authentication->authInfo()->setConfigData(username, extras.slice());
+      authentication->authInfo()->setUserData(username, extras.slice());
     }
   }
 
@@ -167,7 +178,8 @@ static void JS_RemoveUser(v8::FunctionCallbackInfo<v8::Value> const& args) {
   }
 
   std::string username = TRI_ObjectToString(args[0]);
-  auto authentication = FeatureCacheFeature::instance()->authenticationFeature();
+  auto authentication =
+      FeatureCacheFeature::instance()->authenticationFeature();
   if (authentication->isActive()) {
     Result r = authentication->authInfo()->removeUser(username);
     if (!r.ok()) {
@@ -193,7 +205,8 @@ static void JS_GetUser(v8::FunctionCallbackInfo<v8::Value> const& args) {
     }
   }
 
-  auto authentication = FeatureCacheFeature::instance()->authenticationFeature();
+  auto authentication =
+      FeatureCacheFeature::instance()->authenticationFeature();
   if (authentication->isActive()) {
     std::string username = TRI_ObjectToString(args[0]);
     VPackBuilder result = authentication->authInfo()->getUser(username);
@@ -220,7 +233,8 @@ static void JS_ReloadAuthData(v8::FunctionCallbackInfo<v8::Value> const& args) {
     }
   }
 
-  auto authentication = FeatureCacheFeature::instance()->authenticationFeature();
+  auto authentication =
+      FeatureCacheFeature::instance()->authenticationFeature();
   if (authentication->isActive()) {
     authentication->authInfo()->outdate();
   }
@@ -243,7 +257,8 @@ static void JS_GrantDatabase(v8::FunctionCallbackInfo<v8::Value> const& args) {
     }
   }
 
-  auto authentication = FeatureCacheFeature::instance()->authenticationFeature();
+  auto authentication =
+      FeatureCacheFeature::instance()->authenticationFeature();
   if (authentication->isActive()) {
     std::string username = TRI_ObjectToString(args[0]);
     std::string db = TRI_ObjectToString(args[1]);
@@ -278,7 +293,8 @@ static void JS_RevokeDatabase(v8::FunctionCallbackInfo<v8::Value> const& args) {
     }
   }
 
-  auto authentication = FeatureCacheFeature::instance()->authenticationFeature();
+  auto authentication =
+      FeatureCacheFeature::instance()->authenticationFeature();
   if (authentication->isActive()) {
     std::string username = TRI_ObjectToString(args[0]);
     std::string db = TRI_ObjectToString(args[1]);
@@ -311,7 +327,8 @@ static void JS_GrantCollection(
     }
   }
 
-  auto authentication = FeatureCacheFeature::instance()->authenticationFeature();
+  auto authentication =
+      FeatureCacheFeature::instance()->authenticationFeature();
   if (authentication->isActive()) {
     std::string username = TRI_ObjectToString(args[0]);
     std::string db = TRI_ObjectToString(args[1]);
@@ -350,7 +367,8 @@ static void JS_RevokeCollection(
     }
   }
 
-  auto authentication = FeatureCacheFeature::instance()->authenticationFeature();
+  auto authentication =
+      FeatureCacheFeature::instance()->authenticationFeature();
   if (authentication->isActive()) {
     std::string username = TRI_ObjectToString(args[0]);
     std::string db = TRI_ObjectToString(args[1]);
@@ -378,7 +396,8 @@ static void JS_UpdateConfigData(
     TRI_V8_THROW_EXCEPTION_USAGE("updateConfigData(username, key[, value])");
   }
 
-  auto authentication = FeatureCacheFeature::instance()->authenticationFeature();
+  auto authentication =
+      FeatureCacheFeature::instance()->authenticationFeature();
   if (authentication->isActive()) {
     std::string username = TRI_ObjectToString(args[0]);
     std::string key = TRI_ObjectToString(args[1]);
@@ -411,7 +430,8 @@ static void JS_GetConfigData(v8::FunctionCallbackInfo<v8::Value> const& args) {
     TRI_V8_THROW_EXCEPTION_USAGE("configData(username[, key])");
   }
 
-  auto authentication = FeatureCacheFeature::instance()->authenticationFeature();
+  auto authentication =
+      FeatureCacheFeature::instance()->authenticationFeature();
   if (authentication->isActive()) {
     std::string username = TRI_ObjectToString(args[0]);
     VPackBuilder config = authentication->authInfo()->getConfigData(username);
@@ -432,7 +452,8 @@ static void JS_GetPermission(v8::FunctionCallbackInfo<v8::Value> const& args) {
     TRI_V8_THROW_EXCEPTION_USAGE("permission(username[, key])");
   }
 
-  auto authentication = FeatureCacheFeature::instance()->authenticationFeature();
+  auto authentication =
+      FeatureCacheFeature::instance()->authenticationFeature();
   if (authentication->isActive()) {
     std::string username = TRI_ObjectToString(args[0]);
 
