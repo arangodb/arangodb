@@ -1,6 +1,8 @@
 devel
 -----
 
+* potentially fixed issue #2559: Duplicate _key generated on insertion
+
 * fix invalid results (too many) when a skipping LIMIT was used for a
   traversal. `LIMIT x` or `LIMIT 0, x` were not affected, but `LIMIT s, x`
   may have returned too many results
