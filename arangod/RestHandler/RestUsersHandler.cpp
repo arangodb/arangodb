@@ -94,7 +94,7 @@ RestStatus RestUsersHandler::getRequest(AuthInfo* authInfo) {
       VPackBuilder users = authInfo->allUsers();
       
       VPackBuilder r;
-      r(VPackValue(VPackValueType::Object))("result", users.slice());
+      r(VPackValue(VPackValueType::Object))("result", users.slice())();
       generateResult(ResponseCode::OK, r.slice());
     } else {
       generateError(ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN);
@@ -105,7 +105,7 @@ RestStatus RestUsersHandler::getRequest(AuthInfo* authInfo) {
       VPackBuilder doc = authInfo->getUser(user);
       
       VPackBuilder r;
-      r(VPackValue(VPackValueType::Object))("result", doc.slice());
+      r(VPackValue(VPackValueType::Object))("result", doc.slice())();
       generateResult(ResponseCode::OK, r.slice());
     } else {
       generateError(ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN);
@@ -384,7 +384,7 @@ RestStatus RestUsersHandler::deleteRequest(AuthInfo* authInfo) {
         std::string const& key = suffixes[2];
         VPackBuilder config = authInfo->getConfigData(user);
         VPackBuilder b;
-        b(VPackValue(VPackValueType::Object))(key, VPackSlice::nullSlice());
+        b(VPackValue(VPackValueType::Object))(key, VPackSlice::nullSlice())();
 
         config = VPackCollection::merge(config.slice(), b.slice(), false, true);
         Result r = authInfo->setConfigData(user, config.slice());
@@ -404,26 +404,3 @@ RestStatus RestUsersHandler::deleteRequest(AuthInfo* authInfo) {
   return RestStatus::DONE;
 }
 
-/*
-RestStatus RestUsersHandler::evenMoreWork() {
-  LOG_TOPIC(INFO, arangodb::Logger::FIXME) << "demo handler almost done";
-
-  VPackBuilder result;
-  result.add(VPackValue(VPackValueType::Object));
-  result.add("server", VPackValue("arango"));
-  result.add("version", VPackValue(ARANGODB_VERSION));
-  result.close();
-
-  generateResult(rest::ResponseCode::OK, result.slice());
-
-  return RestStatus::DONE
-      .then([]() { LOG_TOPIC(INFO, arangodb::Logger::FIXME) << "demo handler
-keeps working"; })
-      .then([]() { sleep(5); })
-      .then(
-          []() { LOG_TOPIC(INFO, arangodb::Logger::FIXME) << "even if the result
-has already been returned"; })
-      .then([]() { LOG_TOPIC(INFO, arangodb::Logger::FIXME) << "finally done";
-});
-}
-*/
