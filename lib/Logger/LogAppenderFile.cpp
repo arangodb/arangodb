@@ -178,7 +178,7 @@ bool LogAppenderFile::logMessage(LogLevel level, std::string const& message,
   TRI_EscapeControlsCString(message.c_str(), message.size(), _buffer.get(), &escapedLength, true);
   TRI_ASSERT(escapedLength <= neededBufferSize);
 
-  writeLogFile(fd, _buffer.get(), static_cast<ssize_t>(escapedLength));
+  writeLogFile(level, fd, _buffer.get(), static_cast<ssize_t>(escapedLength));
 
   if (_bufferSize > 16384) {
     // free the buffer so the Logger is not hogging so much memory
@@ -203,13 +203,11 @@ std::string LogAppenderFile::details() {
   return "";
 }
 
-void LogAppenderFile::writeLogFile(int fd, char const* buffer, ssize_t len) {
+void LogAppenderFile::writeLogFile(LogLevel level, int fd, char const* buffer, ssize_t len) {
   bool giveUp = false;
 
   while (len > 0) {
-    ssize_t n;
-
-    n = TRI_WRITE(fd, buffer, len);
+    ssize_t n = TRI_WRITE(fd, buffer, len);
 
     if (n < 0) {
       fprintf(stderr, "cannot log data: %s\n", TRI_LAST_ERROR_STR);
@@ -223,5 +221,12 @@ void LogAppenderFile::writeLogFile(int fd, char const* buffer, ssize_t len) {
 
     buffer += n;
     len -= n;
+  }
+
+  if (level == LogLevel::FATAL) {
+    FILE* f = fdopen(fd, "w+");
+    if (f != nullptr) {
+      fflush(f);
+    }
   }
 }
