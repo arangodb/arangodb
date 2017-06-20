@@ -265,8 +265,8 @@ RestStatus RestUsersHandler::putRequest(AuthInfo* authInfo) {
   std::vector<std::string> suffixes = _request->decodedSuffixes();
   bool parseSuccess = false;
   std::shared_ptr<VPackBuilder> parsedBody = parseVelocyPackBody(parseSuccess);
-  if (!parseSuccess || !parsedBody->slice().isObject()) {
-    generateResult(rest::ResponseCode::OK, VPackSlice());
+  if (!parseSuccess) {
+    generateError(rest::ResponseCode::BAD, TRI_ERROR_BAD_PARAMETER);
     return RestStatus::DONE;
   }
 
@@ -292,7 +292,10 @@ RestStatus RestUsersHandler::putRequest(AuthInfo* authInfo) {
       if (isSystemUser()) {
         std::string const& db = suffixes[2];
         std::string coll = suffixes.size() == 4 ? suffixes[3] : "";
-        VPackSlice grant = parsedBody->slice().get("grant");
+        VPackSlice grant;
+        if (parsedBody->slice().isObject()) {
+          grant = parsedBody->slice().get("grant");
+        }
         AuthLevel lvl = convertToAuthLevel(grant);
 
         Result r = authInfo->updateUser(user, [&](AuthUserEntry& entry) {
@@ -316,10 +319,12 @@ RestStatus RestUsersHandler::putRequest(AuthInfo* authInfo) {
       if (canAccessUser(user)) {
         std::string const& key = suffixes[2];
         VPackBuilder config = authInfo->getConfigData(user);
-        VPackBuilder b;
-        b(VPackValue(VPackValueType::Object))(key, parsedBody->slice())();
-
-        config = VPackCollection::merge(config.slice(), b.slice(), false);
+        if (!parsedBody->isEmpty()) {
+          VPackBuilder b;
+          b(VPackValue(VPackValueType::Object))(key, parsedBody->slice())();
+          config = VPackCollection::merge(config.slice(), b.slice(), false);
+        }
+        
         Result r = authInfo->setConfigData(user, config.slice());
         if (r.ok()) {
           generateResult(ResponseCode::OK, VPackSlice());
@@ -340,8 +345,8 @@ RestStatus RestUsersHandler::patchRequest(AuthInfo* authInfo) {
   std::vector<std::string> const& suffixes = _request->decodedSuffixes();
   bool parseSuccess = false;
   std::shared_ptr<VPackBuilder> parsedBody = parseVelocyPackBody(parseSuccess);
-  if (!parseSuccess || !parsedBody->slice().isObject()) {
-    generateResult(rest::ResponseCode::OK, VPackSlice());
+  if (!parseSuccess) {
+    generateError(rest::ResponseCode::BAD, TRI_ERROR_BAD_PARAMETER);
     return RestStatus::DONE;
   }
 
