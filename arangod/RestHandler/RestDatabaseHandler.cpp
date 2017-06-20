@@ -140,10 +140,7 @@ RestStatus RestDatabaseHandler::createDatabase() {
 
   Result res = methods::Database::create(dbName, users, options);
   if (!res.ok()) {
-    generateError(res.errorNumber() == TRI_ERROR_ARANGO_DUPLICATE_NAME
-                      ? rest::ResponseCode::CONFLICT
-                      : rest::ResponseCode::BAD,
-                  res.errorNumber(), res.errorMessage());
+    generateError(res);
     return RestStatus::DONE;
   }
 

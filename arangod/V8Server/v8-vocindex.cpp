@@ -211,6 +211,13 @@ static void CreateVocBase(v8::FunctionCallbackInfo<v8::Value> const& args,
   if (TRI_GetOperationModeServer() == TRI_VOCBASE_MODE_NO_CREATE) {
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_READ_ONLY);
   }
+  
+  if (ExecContext::CURRENT_EXECCONTEXT != nullptr) {
+    AuthLevel level = ExecContext::CURRENT_EXECCONTEXT->authContext()->databaseAuthLevel();
+    if (level != AuthLevel::RW) {
+      TRI_V8_THROW_EXCEPTION(TRI_ERROR_FORBIDDEN);
+    }
+  }
 
   // optional, third parameter can override collection type
   if (args.Length() >= 3 && args[2]->IsString()) {

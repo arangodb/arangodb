@@ -2990,6 +2990,8 @@ static void JS_CollectionsVocbase(
   } else {
     colls = vocbase->collections(false);
   }
+  
+#warning Add collection filter
 
   std::sort(colls.begin(), colls.end(), [](LogicalCollection* lhs, LogicalCollection* rhs) -> bool {
     return StringUtils::tolower(lhs->name()) < StringUtils::tolower(rhs->name());

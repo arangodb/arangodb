@@ -294,7 +294,6 @@ Result Indexes::ensureIndex(arangodb::LogicalCollection* collection,
                             VPackBuilder& output) {
   if (ExecContext::CURRENT_EXECCONTEXT != nullptr) {
     AuthLevel level = ExecContext::CURRENT_EXECCONTEXT->authContext()->databaseAuthLevel();
-    
     if (level != AuthLevel::RW) {
       return TRI_ERROR_FORBIDDEN;
     }
@@ -481,7 +480,6 @@ arangodb::Result Indexes::drop(arangodb::LogicalCollection const* collection,
                                VPackSlice const& indexArg) {
   if (ExecContext::CURRENT_EXECCONTEXT != nullptr) {
     AuthLevel level = ExecContext::CURRENT_EXECCONTEXT->authContext()->databaseAuthLevel();
-    
     if (level != AuthLevel::RW) {
       return TRI_ERROR_FORBIDDEN;
     }

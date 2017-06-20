@@ -3,7 +3,7 @@
 ///
 /// Copyright 2017 ArangoDB GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Apache License, Version 2.0 (the "License");/Users/simon/Library/Containers/com.apple.mail/Data/Library/Mail Downloads/22B63F7F-9B46-4E7C-A05D-BADD33D5FECF/image3.JPG
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
