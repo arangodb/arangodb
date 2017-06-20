@@ -7,10 +7,9 @@ x-content-type-options: nosniff
 { 
   <span class="hljs-string">"result"</span> : { 
     <span class="hljs-string">"name"</span> : <span class="hljs-string">"_system"</span>, 
-    <span class="hljs-string">"id"</span> : <span class="hljs-string">"1"</span>, 
-    <span class="hljs-string">"path"</span> : <span class="hljs-string">"/tmp/arangosh_m3KVV3/tmp-31115-1642980252/data/databases/database-1"</span>, 
+    <span class="hljs-string">"id"</span> : <span class="hljs-number">1</span>, 
+    <span class="hljs-string">"path"</span> : <span class="hljs-string">"/tmp/arangosh_5l4He2/tmp-30979-2517055169/data/databases/database-1"</span>, 
     <span class="hljs-string">"isSystem"</span> : <span class="hljs-literal">true</span> 
   }, 
-  <span class="hljs-string">"error"</span> : <span class="hljs-literal">false</span>, 
-  <span class="hljs-string">"code"</span> : <span class="hljs-number">200</span> 
+  <span class="hljs-string">"error"</span> : <span class="hljs-literal">false</span> 
 }

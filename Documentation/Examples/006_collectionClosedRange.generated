@@ -1,51 +1,51 @@
 arangosh&gt; db.old.ensureIndex({ <span class="hljs-attr">type</span>: <span class="hljs-string">"skiplist"</span>, <span class="hljs-attr">fields</span>: [ <span class="hljs-string">"age"</span> ] });
 { 
-  <span class="hljs-string">"id"</span> : <span class="hljs-string">"old/191"</span>, 
-  <span class="hljs-string">"type"</span> : <span class="hljs-string">"skiplist"</span>, 
   <span class="hljs-string">"fields"</span> : [ 
     <span class="hljs-string">"age"</span> 
   ], 
-  <span class="hljs-string">"unique"</span> : <span class="hljs-literal">false</span>, 
-  <span class="hljs-string">"sparse"</span> : <span class="hljs-literal">false</span>, 
+  <span class="hljs-string">"id"</span> : <span class="hljs-string">"old/191"</span>, 
   <span class="hljs-string">"isNewlyCreated"</span> : <span class="hljs-literal">true</span>, 
+  <span class="hljs-string">"sparse"</span> : <span class="hljs-literal">false</span>, 
+  <span class="hljs-string">"type"</span> : <span class="hljs-string">"skiplist"</span>, 
+  <span class="hljs-string">"unique"</span> : <span class="hljs-literal">false</span>, 
   <span class="hljs-string">"code"</span> : <span class="hljs-number">201</span> 
 }
 arangosh&gt; db.old.save({ <span class="hljs-attr">age</span>: <span class="hljs-number">15</span> });
 { 
   <span class="hljs-string">"_id"</span> : <span class="hljs-string">"old/194"</span>, 
   <span class="hljs-string">"_key"</span> : <span class="hljs-string">"194"</span>, 
-  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_VH05nku---"</span> 
+  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_VKXe2RS---"</span> 
 }
 arangosh&gt; db.old.save({ <span class="hljs-attr">age</span>: <span class="hljs-number">25</span> });
 { 
   <span class="hljs-string">"_id"</span> : <span class="hljs-string">"old/198"</span>, 
   <span class="hljs-string">"_key"</span> : <span class="hljs-string">"198"</span>, 
-  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_VH05nky---"</span> 
+  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_VKXe2RS--_"</span> 
 }
 arangosh&gt; db.old.save({ <span class="hljs-attr">age</span>: <span class="hljs-number">30</span> });
 { 
   <span class="hljs-string">"_id"</span> : <span class="hljs-string">"old/201"</span>, 
   <span class="hljs-string">"_key"</span> : <span class="hljs-string">"201"</span>, 
-  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_VH05nky--_"</span> 
+  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_VKXe2RW---"</span> 
 }
 arangosh&gt; db.old.closedRange(<span class="hljs-string">"age"</span>, <span class="hljs-number">10</span>, <span class="hljs-number">30</span>).toArray();
 [ 
   { 
     <span class="hljs-string">"_key"</span> : <span class="hljs-string">"194"</span>, 
     <span class="hljs-string">"_id"</span> : <span class="hljs-string">"old/194"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_VH05nku---"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_VKXe2RS---"</span>, 
     <span class="hljs-string">"age"</span> : <span class="hljs-number">15</span> 
   }, 
   { 
     <span class="hljs-string">"_key"</span> : <span class="hljs-string">"198"</span>, 
     <span class="hljs-string">"_id"</span> : <span class="hljs-string">"old/198"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_VH05nky---"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_VKXe2RS--_"</span>, 
     <span class="hljs-string">"age"</span> : <span class="hljs-number">25</span> 
   }, 
   { 
     <span class="hljs-string">"_key"</span> : <span class="hljs-string">"201"</span>, 
     <span class="hljs-string">"_id"</span> : <span class="hljs-string">"old/201"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_VH05nky--_"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_VKXe2RW---"</span>, 
     <span class="hljs-string">"age"</span> : <span class="hljs-number">30</span> 
   } 
 ]
