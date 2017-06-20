@@ -474,5 +474,23 @@ global.DEFINE_MODULE('console', (function () {
     }
   };
 
+  exports.debugStack = function (e, msg) {
+    if (msg) {
+      exports.debugLines(msg);
+    }
+    if (e.codeFrame) {
+      exports.debugLines(e.codeFrame);
+    }
+    let err = e;
+    while (err) {
+      exports.debugLines(
+        !msg && err === e
+        ? err.stack
+        : `via ${err.stack}`
+      );
+      err = err.cause;
+    }
+  };
+
   return exports;
 }()));
