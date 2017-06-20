@@ -175,7 +175,8 @@ std::unordered_map<int, std::string const> const AstNode::TypeNames{
     {static_cast<int>(NODE_TYPE_OPERATOR_BINARY_ARRAY_NIN),
      "array compare not in"},
     {static_cast<int>(NODE_TYPE_QUANTIFIER), "quantifier"},
-    {static_cast<int>(NODE_TYPE_SHORTEST_PATH), "shortest path"}};
+    {static_cast<int>(NODE_TYPE_SHORTEST_PATH), "shortest path"},
+    {static_cast<int>(NODE_TYPE_VIEW), "view"}};
 
 /// @brief names for AST node value types
 std::unordered_map<int, std::string const> const AstNode::ValueTypeNames{
@@ -237,17 +238,17 @@ int arangodb::aql::CompareAstNodes(AstNode const* lhs, AstNode const* rhs,
 
     if (diff < 0) {
       return -1;
-    } 
+    }
     return 1;
   }
 
 
   switch (lType) {
-    case VPackValueType::Null: { 
+    case VPackValueType::Null: {
       return 0;
     }
 
-    case VPackValueType::Bool: { 
+    case VPackValueType::Bool: {
       int diff = static_cast<int>(lhs->getIntValue() - rhs->getIntValue());
 
       if (diff != 0) {
@@ -259,8 +260,8 @@ int arangodb::aql::CompareAstNodes(AstNode const* lhs, AstNode const* rhs,
       return 0;
     }
 
-    case VPackValueType::Int: 
-    case VPackValueType::Double: { 
+    case VPackValueType::Int:
+    case VPackValueType::Double: {
       // TODO
       double d = lhs->getDoubleValue() - rhs->getDoubleValue();
       if (d != 0.0) {
@@ -272,7 +273,7 @@ int arangodb::aql::CompareAstNodes(AstNode const* lhs, AstNode const* rhs,
       return 0;
     }
 
-    case VPackValueType::String: { 
+    case VPackValueType::String: {
       if (compareUtf8) {
         int res = TRI_compare_utf8(lhs->getStringValue(), lhs->getStringLength(),
                                    rhs->getStringValue(), rhs->getStringLength());
@@ -281,7 +282,7 @@ int arangodb::aql::CompareAstNodes(AstNode const* lhs, AstNode const* rhs,
         }
         return 0;
       }
-      
+
       size_t const minLength =
           (std::min)(lhs->getStringLength(), rhs->getStringLength());
 
@@ -300,7 +301,7 @@ int arangodb::aql::CompareAstNodes(AstNode const* lhs, AstNode const* rhs,
       return 0;
     }
 
-    case VPackValueType::Array: { 
+    case VPackValueType::Array: {
       size_t const numLhs = lhs->numMembers();
       size_t const numRhs = rhs->numMembers();
       size_t const n = ((numLhs > numRhs) ? numRhs : numLhs);
@@ -321,7 +322,7 @@ int arangodb::aql::CompareAstNodes(AstNode const* lhs, AstNode const* rhs,
       return 0;
     }
 
-    case VPackValueType::Object: { 
+    case VPackValueType::Object: {
       // this is a rather exceptional case, so we can
       // afford the inefficiency to convert the node to VPack
       // for comparison (this saves us from writing our own compare function
@@ -408,6 +409,7 @@ AstNode::AstNode(Ast* ast, arangodb::velocypack::Slice const& slice)
 
   switch (type) {
     case NODE_TYPE_COLLECTION:
+    case NODE_TYPE_VIEW:
     case NODE_TYPE_PARAMETER:
     case NODE_TYPE_ATTRIBUTE_ACCESS:
     case NODE_TYPE_FCALL_USER: {
@@ -480,8 +482,8 @@ AstNode::AstNode(Ast* ast, arangodb::velocypack::Slice const& slice)
       break;
     }
     case NODE_TYPE_OPERATOR_BINARY_IN:
-    case NODE_TYPE_OPERATOR_BINARY_NIN: 
-    case NODE_TYPE_OPERATOR_BINARY_ARRAY_IN: 
+    case NODE_TYPE_OPERATOR_BINARY_NIN:
+    case NODE_TYPE_OPERATOR_BINARY_ARRAY_IN:
     case NODE_TYPE_OPERATOR_BINARY_ARRAY_NIN: {
       bool sorted = false;
       VPackSlice v = slice.get("sorted");
@@ -541,7 +543,7 @@ AstNode::AstNode(Ast* ast, arangodb::velocypack::Slice const& slice)
     case NODE_TYPE_OPERATOR_BINARY_ARRAY_LT:
     case NODE_TYPE_OPERATOR_BINARY_ARRAY_LE:
     case NODE_TYPE_OPERATOR_BINARY_ARRAY_GT:
-    case NODE_TYPE_OPERATOR_BINARY_ARRAY_GE: 
+    case NODE_TYPE_OPERATOR_BINARY_ARRAY_GE:
     case NODE_TYPE_OPERATOR_TERNARY:
     case NODE_TYPE_SUBQUERY:
     case NODE_TYPE_BOUND_ATTRIBUTE_ACCESS:
@@ -593,10 +595,10 @@ AstNode::AstNode(Ast* ast, arangodb::velocypack::Slice const& slice)
   ast->query()->addNode(this);
 }
 
-/// @brief create the node 
+/// @brief create the node
 AstNode::AstNode(std::function<void(AstNode*)> registerNode,
                  std::function<char const*(std::string const&)> registerString,
-                 arangodb::velocypack::Slice const& slice) 
+                 arangodb::velocypack::Slice const& slice)
     : AstNode(getNodeTypeFromVPack(slice)) {
   TRI_ASSERT(flags == 0);
   TRI_ASSERT(computedValue == nullptr);
@@ -647,6 +649,7 @@ AstNode::AstNode(std::function<void(AstNode*)> registerNode,
     case NODE_TYPE_FCALL_USER:
     case NODE_TYPE_OBJECT_ELEMENT:
     case NODE_TYPE_COLLECTION:
+    case NODE_TYPE_VIEW:
     case NODE_TYPE_PARAMETER:
     case NODE_TYPE_VARIABLE:
     case NODE_TYPE_FCALL:
@@ -738,13 +741,13 @@ AstNode::~AstNode() {
     delete[] computedValue;
   }
 }
-  
+
 /// @brief return the string value of a node, as an std::string
 std::string AstNode::getString() const {
-  TRI_ASSERT(type == NODE_TYPE_VALUE || type == NODE_TYPE_OBJECT_ELEMENT || 
-             type == NODE_TYPE_ATTRIBUTE_ACCESS || type == NODE_TYPE_PARAMETER || 
+  TRI_ASSERT(type == NODE_TYPE_VALUE || type == NODE_TYPE_OBJECT_ELEMENT ||
+             type == NODE_TYPE_ATTRIBUTE_ACCESS || type == NODE_TYPE_PARAMETER ||
              type == NODE_TYPE_COLLECTION || type == NODE_TYPE_BOUND_ATTRIBUTE_ACCESS ||
-             type == NODE_TYPE_FCALL_USER);
+             type == NODE_TYPE_FCALL_USER || type == NODE_TYPE_VIEW);
   TRI_ASSERT(value.type == VALUE_TYPE_STRING);
   return std::string(getStringValue(), getStringLength());
 }
@@ -1034,7 +1037,7 @@ void AstNode::toVelocyPack(VPackBuilder& builder, bool verbose) const {
       builder.add("typeID", VPackValue(static_cast<int>(type)));
     }
     if (type == NODE_TYPE_COLLECTION || type == NODE_TYPE_PARAMETER ||
-        type == NODE_TYPE_ATTRIBUTE_ACCESS ||
+        type == NODE_TYPE_ATTRIBUTE_ACCESS || type == NODE_TYPE_VIEW ||
         type == NODE_TYPE_OBJECT_ELEMENT || type == NODE_TYPE_FCALL_USER) {
       // dump "name" of node
       builder.add("name", VPackValuePair(getStringValue(), getStringLength(), VPackValueType::String));
@@ -1049,7 +1052,7 @@ void AstNode::toVelocyPack(VPackBuilder& builder, bool verbose) const {
       // transport information about a node's sortedness
       builder.add("sorted", VPackValue(hasFlag(VALUE_SORTED)));
     }
- 
+
     if (type == NODE_TYPE_VALUE) {
       // dump value of "value" node
       builder.add(VPackValue("value"));
@@ -1527,7 +1530,7 @@ bool AstNode::isSimple() const {
       type == NODE_TYPE_OPERATOR_BINARY_GT ||
       type == NODE_TYPE_OPERATOR_BINARY_GE ||
       type == NODE_TYPE_OPERATOR_BINARY_IN ||
-      type == NODE_TYPE_OPERATOR_BINARY_NIN || 
+      type == NODE_TYPE_OPERATOR_BINARY_NIN ||
       type == NODE_TYPE_OPERATOR_BINARY_ARRAY_EQ ||
       type == NODE_TYPE_OPERATOR_BINARY_ARRAY_NE ||
       type == NODE_TYPE_OPERATOR_BINARY_ARRAY_LT ||
@@ -1791,7 +1794,7 @@ bool AstNode::mustCheckUniqueness() const {
       }
     }
   }
-        
+
   if (mustCheck) {
     // we have duplicate keys, or we can't tell yet
     setFlag(DETERMINED_CHECKUNIQUENESS, VALUE_CHECKUNIQUENESS);
@@ -2330,6 +2333,7 @@ void AstNode::findVariableAccess(
     case NODE_TYPE_ASSIGN:
     case NODE_TYPE_OBJECT_ELEMENT:
     case NODE_TYPE_COLLECTION:
+    case NODE_TYPE_VIEW:
     case NODE_TYPE_PARAMETER:
     case NODE_TYPE_FCALL_USER:
     case NODE_TYPE_NOP:
@@ -2377,7 +2381,7 @@ AstNode const* AstNode::findReference(AstNode const* findme) const {
         }
         if (member != nullptr) {
           ret = member->findReference(findme);
-          if (ret != nullptr) { 
+          if (ret != nullptr) {
             return ret;
           }
         }
@@ -2500,6 +2504,7 @@ AstNode const* AstNode::findReference(AstNode const* findme) const {
     case NODE_TYPE_REFERENCE:
     case NODE_TYPE_OBJECT_ELEMENT:
     case NODE_TYPE_COLLECTION:
+    case NODE_TYPE_VIEW:
     case NODE_TYPE_PARAMETER:
     case NODE_TYPE_FCALL_USER:
     case NODE_TYPE_NOP:

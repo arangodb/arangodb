@@ -189,6 +189,7 @@ enum AstNodeType : uint32_t {
   NODE_TYPE_QUANTIFIER = 73,
   NODE_TYPE_WITH = 74,
   NODE_TYPE_SHORTEST_PATH = 75,
+  NODE_TYPE_VIEW = 76,
 };
 
 static_assert(NODE_TYPE_VALUE < NODE_TYPE_ARRAY, "incorrect node types order");
@@ -303,7 +304,7 @@ struct AstNode {
 
   /// @brief reset flags in case a node is changed drastically
   inline void clearFlags() { flags = 0; }
-  
+
   /// @brief recursively clear flags
   void clearFlagsRecursive();
 
@@ -457,7 +458,7 @@ struct AstNode {
 
   /// @brief whether or not a node is a comparison operator
   bool isComparisonOperator() const;
-  
+
   /// @brief whether or not a node is an array comparison operator
   bool isArrayComparisonOperator() const;
 
@@ -468,7 +469,7 @@ struct AstNode {
   /// @brief whether or not a node (and its subnodes) can safely be executed on
   /// a DB server
   bool canRunOnDBServer() const;
-  
+
   /// @brief whether or not an object's keys must be checked for uniqueness
   bool mustCheckUniqueness() const;
 
@@ -481,7 +482,7 @@ struct AstNode {
   /// @brief whether or not a node (and its subnodes) may contain a call to a
   /// user-defined function
   bool callsUserDefinedFunction() const;
-  
+
   /// @brief whether or not a node (and its subnodes) may contain a call to a
   /// a function or a user-defined function
   bool callsFunction() const;
@@ -559,7 +560,7 @@ struct AstNode {
     }
     members.erase(members.begin() + i, members.end());
   }
-  
+
   inline void clearMembers() {
     members.clear();
   }
@@ -611,7 +612,7 @@ struct AstNode {
     value.value._string = v;
     value.length = static_cast<uint32_t>(length);
   }
-  
+
   /// @brief whether or not a string is equal to another
   inline bool stringEquals(char const* other, bool caseInsensitive) const {
     if (caseInsensitive) {
@@ -619,7 +620,7 @@ struct AstNode {
     }
     return (strncmp(getStringValue(), other, getStringLength()) == 0);
   }
-  
+
   /// @brief whether or not a string is equal to another
   inline bool stringEquals(std::string const& other) const {
     return (other.size() == getStringLength() && memcmp(other.c_str(), getStringValue(), getStringLength()) == 0);

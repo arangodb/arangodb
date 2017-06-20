@@ -65,7 +65,7 @@ class Ast {
 
   /// @brief return the variable generator
   inline VariableGenerator* variables() { return &_variables; }
-  
+
   /// @brief return the root of the AST
   inline AstNode const* root() const { return _root; }
 
@@ -150,7 +150,7 @@ class Ast {
   AstNode* createNodeExample(AstNode const*, AstNode const*);
 
   /// @brief create an AST for node
-  AstNode* createNodeFor(char const*, size_t, AstNode const*, bool);
+  AstNode* createNodeFor(char const*, size_t, AstNode const*, bool, bool);
 
   /// @brief create an AST let node, without an IF condition
   AstNode* createNodeLet(char const*, size_t, AstNode const*, bool);
@@ -216,6 +216,9 @@ class Ast {
 
   /// @brief create an AST collection node
   AstNode* createNodeCollection(char const*, AccessMode::Type);
+
+  /// @brief create an AST view node
+  AstNode* createNodeView(AstNode const*);
 
   /// @brief create an AST reference node
   AstNode* createNodeReference(char const*, size_t);
@@ -303,7 +306,7 @@ class Ast {
 
   /// @brief create an AST collection pair node
   AstNode* createNodeCollectionPair(AstNode const*, AstNode const*);
- 
+
   /// @brief create an AST with collections node
   AstNode* createNodeWithCollections (AstNode const*);
 
@@ -407,7 +410,7 @@ class Ast {
 
   /// @brief create an AST node from vpack
   AstNode* nodeFromVPack(arangodb::velocypack::Slice const&, bool);
-  
+
   /// @brief resolve an attribute access
   static AstNode const* resolveConstAttributeAccess(AstNode const*);
 
