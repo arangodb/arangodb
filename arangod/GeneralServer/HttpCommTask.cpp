@@ -105,6 +105,8 @@ void HttpCommTask::handleSimpleError(rest::ResponseCode code, GeneralRequest con
 
 void HttpCommTask::addResponse(HttpResponse* response,
                                RequestStatistics* stat) {
+  _lock.assertLockedByCurrentThread();
+
   resetKeepAlive();
 
   // response has been queued, allow further requests
@@ -290,7 +292,10 @@ bool HttpCommTask::processRead(double startTime) {
           protocolVersion, /*skipSocketInit*/ true);
       commTask->addToReadBuffer(_readBuffer.c_str() + 11,
                                 _readBuffer.length() - 11);
-      commTask->processRead(startTime);
+      {
+        MUTEX_LOCKER(locker, commTask->_lock);
+        commTask->processRead(startTime);
+      }
       commTask->start();
       return false;
     }

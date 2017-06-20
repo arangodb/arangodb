@@ -33,6 +33,8 @@ using namespace arangodb;
 #ifdef TRI_HAVE_POSIX_THREADS
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+// initialize _holder to "maximum" thread id. this will work if the type of _holder
+// is numeric, but will not work if its type is more complex.
 Mutex::Mutex() : _mutex(), _holder((std::numeric_limits<decltype(_holder)>::max)()) { 
 #else
 Mutex::Mutex() : _mutex() { 

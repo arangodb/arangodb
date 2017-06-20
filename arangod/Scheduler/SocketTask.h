@@ -43,6 +43,7 @@ class ConnectionStatistics;
 namespace rest {
 class SocketTask : virtual public Task {
   friend class HttpCommTask;
+
   explicit SocketTask(SocketTask const&) = delete;
   SocketTask& operator=(SocketTask const&) = delete;
 
@@ -129,22 +130,23 @@ class SocketTask : virtual public Task {
 
   // will acquire the _lock
   void closeStream();
+  
+  // caller must hold the _lock
+  void closeStreamNoLock();
 
-  // will acquire the _lock
+  // caller must hold the _lock
   void resetKeepAlive();
 
-  // will acquire the _lock
+  // caller must hold the _lock
   void cancelKeepAlive();
-
+  
  protected:
+  Mutex _lock;
   ConnectionStatistics* _connectionStatistics;
   ConnectionInfo _connectionInfo;
   basics::StringBuffer _readBuffer; // needs _lock
 
  private:
-  // caller must hold the _lock
-  void closeStreamNoLock();
-
   void writeWriteBuffer();
   bool completedWriteBuffer();
 
@@ -155,7 +157,6 @@ class SocketTask : virtual public Task {
   bool abandon();
 
  private:
-  Mutex _lock;
   WriteBuffer _writeBuffer;
   std::list<WriteBuffer> _writeBuffers;
 
