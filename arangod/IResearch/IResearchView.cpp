@@ -563,7 +563,7 @@ bool appendOrder(irs::order& buf, arangodb::aql::SortCondition const& root) {
       virtual const irs::flags& features() const override { return irs::flags::empty_instance(); }
       virtual bool less(const score_t& lhs, const score_t& rhs) const override { return false; }
       virtual collector::ptr prepare_collector() const override { return nullptr; }
-      virtual scorer::ptr prepare_scorer(irs::sub_reader const& segment, irs::term_reader const& field, irs::attributes const& query_attrs, irs::attributes const& doc_attrs) const override { return nullptr; }
+      virtual scorer::ptr prepare_scorer(irs::sub_reader const& segment, irs::term_reader const& field, irs::attribute_store const& query_attrs, irs::attribute_store const& doc_attrs) const override { return nullptr; }
     };
     DECLARE_TYPE_ID(irs::sort::type_id) { static irs::sort::type_id type("noop_sort"); return type; }
     NoopSort(): sort(NoopSort::type()) {}

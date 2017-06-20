@@ -37,8 +37,6 @@ NS_LOCAL
 struct TestAttribute: public irs::attribute {
   DECLARE_ATTRIBUTE_TYPE();
   DECLARE_FACTORY_DEFAULT();
-  TestAttribute() noexcept: irs::attribute(TestAttribute::type()) {}
-  virtual void clear() override {}
 };
 
 DEFINE_ATTRIBUTE_TYPE(TestAttribute);
@@ -47,14 +45,14 @@ DEFINE_FACTORY_DEFAULT(TestAttribute);
 class EmptyTokenizer: public irs::analysis::analyzer {
 public:
   DECLARE_ANALYZER_TYPE();
-  EmptyTokenizer(): irs::analysis::analyzer(EmptyTokenizer::type()) { _attrs.add<TestAttribute>(); }
-  virtual iresearch::attributes const& attributes() const NOEXCEPT override { return _attrs; }
+  EmptyTokenizer(): irs::analysis::analyzer(EmptyTokenizer::type()) { _attrs.emplace<TestAttribute>(); }
+  virtual irs::attribute_store const& attributes() const NOEXCEPT override { return _attrs; }
   static ptr make(irs::string_ref const&) { PTR_NAMED(EmptyTokenizer, ptr); return ptr; }
   virtual bool next() override { return false; }
   virtual bool reset(irs::string_ref const& data) override { return true; }
 
 private:
-  irs::attributes _attrs;
+  irs::attribute_store _attrs;
 };
 
 DEFINE_ANALYZER_TYPE_NAMED(EmptyTokenizer, "empty");

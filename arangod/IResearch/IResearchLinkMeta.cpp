@@ -71,12 +71,12 @@ class IdentityTokenizer: public irs::analysis::analyzer {
   DECLARE_FACTORY_DEFAULT(irs::string_ref const& args); // args ignored
 
   IdentityTokenizer();
-  virtual iresearch::attributes const& attributes() const NOEXCEPT override;
+  virtual irs::attribute_store const& attributes() const NOEXCEPT override;
   virtual bool next() override;
   virtual bool reset(irs::string_ref const& data) override;
 
  private:
-  irs::attributes _attrs;
+  irs::attribute_store _attrs;
   bool _empty;
   irs::string_ref _value;
 };
@@ -85,24 +85,24 @@ DEFINE_ANALYZER_TYPE_NAMED(IdentityTokenizer, IDENTITY_TOKENIZER_NAME);
 REGISTER_ANALYZER(IdentityTokenizer);
 
 /*static*/ irs::analysis::analyzer::ptr IdentityTokenizer::make(irs::string_ref const& args) {
-  PTR_NAMED(IdentityTokenizer, ptr); \
-  return ptr; \
+  PTR_NAMED(IdentityTokenizer, ptr);
+  return ptr;
 }
 
 IdentityTokenizer::IdentityTokenizer()
   : irs::analysis::analyzer(IdentityTokenizer::type()), _empty(true) {
-  _attrs.add<IdentityValue>();
-  _attrs.add<irs::increment>();
+  _attrs.emplace<IdentityValue>();
+  _attrs.emplace<irs::increment>();
 }
 
-irs::attributes const& IdentityTokenizer::attributes() const NOEXCEPT {
+irs::attribute_store const& IdentityTokenizer::attributes() const NOEXCEPT {
   return _attrs;
 }
 
 bool IdentityTokenizer::next() {
   auto empty = _empty;
 
-  _attrs.get<IdentityValue>()->value(irs::ref_cast<irs::byte_type>(_value));
+  const_cast<const irs::attribute_store&>(_attrs).get<IdentityValue>()->value(irs::ref_cast<irs::byte_type>(_value));
   _empty = true;
   _value = irs::string_ref::nil;
 

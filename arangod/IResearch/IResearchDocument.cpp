@@ -796,7 +796,7 @@ irs::by_term& byTerm(
     case arangodb::aql::VALUE_TYPE_INT:
     case arangodb::aql::VALUE_TYPE_DOUBLE: {
       irs::numeric_token_stream stream;
-      irs::term_attribute const* term = stream.attributes().get<irs::term_attribute>();
+      irs::term_attribute const* term = stream.attributes().get<irs::term_attribute>().get();
       TRI_ASSERT(term);
       stream.reset(valueNode.getDoubleValue());
       stream.next();
