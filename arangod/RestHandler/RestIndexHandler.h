@@ -1,8 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
-/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
+/// Copyright 2017 ArangoDB GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -18,26 +17,36 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Dr. Frank Celler
+/// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_V8_SERVER_V8_VOCINDEX_H
-#define ARANGOD_V8_SERVER_V8_VOCINDEX_H 1
+#ifndef ARANGOD_REST_HANDLER_INDEX_HANDLER_H
+#define ARANGOD_REST_HANDLER_INDEX_HANDLER_H 1
 
-#include "Basics/Common.h"
-#include "Utils/CollectionNameResolver.h"
-#include "V8/v8-globals.h"
-#include "V8Server/v8-vocbase.h"
+#include "RestHandler/RestVocbaseBaseHandler.h"
+#include <memory>
+#include <string>
 
 namespace arangodb {
-class Index;
 class LogicalCollection;
+  
+class RestIndexHandler : public arangodb::RestVocbaseBaseHandler {
+ public:
+  RestIndexHandler(GeneralRequest*, GeneralResponse*);
+
+ public:
+  char const* name() const override final { return "RestIndexHandler"; }
+  bool isDirect() const override { return true; }
+  RestStatus execute() override;
+
+ private:
+  RestStatus getIndexes();
+  RestStatus createIndex();
+  RestStatus dropIndex();
+  
+  LogicalCollection* collection(std::string const& cName,
+                                std::shared_ptr<LogicalCollection>& coll);
+};
 }
-
-void TRI_InitV8IndexArangoDB(v8::Isolate* isolate,
-                             v8::Handle<v8::ObjectTemplate> ArangoDBNS);
-
-void TRI_InitV8IndexCollection(v8::Isolate* isolate,
-                               v8::Handle<v8::ObjectTemplate> rt);
 
 #endif

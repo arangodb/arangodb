@@ -81,6 +81,7 @@
 #include "VocBase/KeyGenerator.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/modes.h"
+#include "VocBase/Methods/Database.h"
 
 using namespace arangodb;
 using namespace arangodb::basics;
@@ -1886,77 +1887,6 @@ static void JS_UseDatabase(v8::FunctionCallbackInfo<v8::Value> const& args) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief return the list of all existing databases in a coordinator
-////////////////////////////////////////////////////////////////////////////////
-
-static void ListDatabasesCoordinator(
-    v8::FunctionCallbackInfo<v8::Value> const& args) {
-  v8::Isolate* isolate = args.GetIsolate();
-  v8::HandleScope scope(isolate);
-
-  // Arguments are already checked, there are 0 or 3.
-
-  ClusterInfo* ci = ClusterInfo::instance();
-
-  if (args.Length() == 0) {
-    std::vector<DatabaseID> list = ci->databases(true);
-    v8::Handle<v8::Array> result = v8::Array::New(isolate);
-    for (size_t i = 0; i < list.size(); ++i) {
-      result->Set(static_cast<uint32_t>(i), TRI_V8_STD_STRING(list[i]));
-    }
-    TRI_V8_RETURN(result);
-  } else {
-    // We have to ask a DBServer, any will do:
-    int tries = 0;
-    std::vector<ServerID> DBServers;
-    while (true) {
-      DBServers = ci->getCurrentDBServers();
-
-      if (!DBServers.empty()) {
-        ServerID sid = DBServers[0];
-        auto cc = ClusterComm::instance();
-        if (cc != nullptr) {
-          // nullptr happens only during controlled shutdown
-          std::unordered_map<std::string, std::string> headers;
-          headers["Authentication"] = TRI_ObjectToString(args[2]);
-          auto res = cc->syncRequest(
-              "", 0, "server:" + sid, arangodb::rest::RequestType::GET,
-              "/_api/database/user", std::string(), headers, 0.0);
-
-          if (res->status == CL_COMM_SENT) {
-            // We got an array back as JSON, let's parse it and build a v8
-            StringBuffer& body = res->result->getBody();
-
-            std::shared_ptr<VPackBuilder> builder =
-                VPackParser::fromJson(body.c_str(), body.length());
-            VPackSlice resultSlice = builder->slice();
-
-            if (resultSlice.isObject()) {
-              VPackSlice r = resultSlice.get("result");
-              if (r.isArray()) {
-                uint32_t i = 0;
-                v8::Handle<v8::Array> result = v8::Array::New(isolate);
-                for (auto const& it : VPackArrayIterator(r)) {
-                  std::string v = it.copyString();
-                  result->Set(i++, TRI_V8_STD_STRING(v));
-                }
-                TRI_V8_RETURN(result);
-              }
-            }
-          }
-        }
-      }
-      if (++tries >= 2) {
-        break;
-      }
-      ci->loadCurrentDBServers();  // just in case some new have arrived
-    }
-    // Give up:
-    TRI_V8_RETURN_UNDEFINED();
-  }
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief was docuBlock databaseListDatabase
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -1978,26 +1908,12 @@ static void JS_Databases(v8::FunctionCallbackInfo<v8::Value> const& args) {
   if (argc == 0 && !vocbase->isSystem()) {
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_USE_SYSTEM_DATABASE);
   }
-
-  // If we are a coordinator in a cluster, we have to behave differently:
-  if (ServerState::instance()->isCoordinator()) {
-    ListDatabasesCoordinator(args);
-    return;
+  
+  std::string user;
+  if (argc > 0) {
+    user = TRI_ObjectToString(args[0]);
   }
-
-  auto databaseFeature =
-      application_features::ApplicationServer::getFeature<DatabaseFeature>(
-          "Database");
-  std::vector<std::string> names;
-
-  if (argc == 0) {
-    // return all databases
-    names = databaseFeature->getDatabaseNames();
-  } else {
-    // return all databases for a specific user
-    names =
-        databaseFeature->getDatabaseNamesForUser(TRI_ObjectToString(args[0]));
-  }
+  std::vector<std::string> names = methods::Database::list(user);
 
   v8::Handle<v8::Array> result = v8::Array::New(isolate, (int)names.size());
   for (size_t i = 0; i < names.size(); ++i) {
@@ -2008,120 +1924,6 @@ static void JS_Databases(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_END
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief create a new database, case of a coordinator in a cluster
-////////////////////////////////////////////////////////////////////////////////
-
-static void CreateDatabaseCoordinator(
-    v8::FunctionCallbackInfo<v8::Value> const& args) {
-  v8::Isolate* isolate = args.GetIsolate();
-  v8::HandleScope scope(isolate);
-
-  // First work with the arguments to create a VelocyPack entry:
-  std::string const name = TRI_ObjectToString(args[0]);
-
-  if (!TRI_vocbase_t::IsAllowedName(false, name)) {
-    TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_DATABASE_NAME_INVALID);
-  }
-
-  uint64_t const id = ClusterInfo::instance()->uniqid();
-  VPackBuilder builder;
-  try {
-    VPackObjectBuilder b(&builder);
-    std::string const idString(StringUtils::itoa(id));
-
-    builder.add("id", VPackValue(idString));
-
-    std::string const valueString(TRI_ObjectToString(args[0]));
-    builder.add("name", VPackValue(valueString));
-
-    if (args.Length() > 1) {
-      VPackBuilder tmpBuilder;
-      int res = TRI_V8ToVPack(isolate, tmpBuilder, args[1], false);
-      if (res != TRI_ERROR_NO_ERROR) {
-        TRI_V8_THROW_EXCEPTION_MEMORY();
-      }
-      builder.add("options", tmpBuilder.slice());
-    }
-
-    std::string const serverId(ServerState::instance()->getId());
-    builder.add("coordinator", VPackValue(serverId));
-  } catch (VPackException const&) {
-    TRI_V8_THROW_EXCEPTION_MEMORY();
-  }
-
-  ClusterInfo* ci = ClusterInfo::instance();
-  std::string errorMsg;
-
-  int res =
-      ci->createDatabaseCoordinator(name, builder.slice(), errorMsg, 120.0);
-
-  if (res != TRI_ERROR_NO_ERROR) {
-    TRI_V8_THROW_EXCEPTION_MESSAGE(res, errorMsg);
-  }
-
-  // database was created successfully in agency
-
-  TRI_GET_GLOBALS();
-
-  // now wait for heartbeat thread to create the database object
-  TRI_vocbase_t* vocbase = nullptr;
-  int tries = 0;
-
-  auto databaseFeature =
-      application_features::ApplicationServer::getFeature<DatabaseFeature>(
-          "Database");
-
-  while (++tries <= 6000) {
-    vocbase = databaseFeature->useDatabaseCoordinator(id);
-
-    if (vocbase != nullptr) {
-      break;
-    }
-
-    // sleep
-    usleep(10000);
-  }
-
-  if (vocbase == nullptr) {
-    TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "unable to find database");
-  }
-
-  // now run upgrade and copy users into context
-  if (args.Length() >= 3 && args[2]->IsArray()) {
-    v8::Handle<v8::Object> users = v8::Object::New(isolate);
-    users->Set(TRI_V8_ASCII_STRING("users"), args[2]);
-
-    isolate->GetCurrentContext()->Global()->Set(
-        TRI_V8_ASCII_STRING("UPGRADE_ARGS"), users);
-  } else {
-    isolate->GetCurrentContext()->Global()->Set(
-        TRI_V8_ASCII_STRING("UPGRADE_ARGS"), v8::Object::New(isolate));
-  }
-
-  // switch databases
-  TRI_vocbase_t* orig = v8g->_vocbase;
-  TRI_ASSERT(orig != nullptr);
-
-  v8g->_vocbase = vocbase;
-
-  // initalize database
-  bool allowUseDatabase = v8g->_allowUseDatabase;
-  v8g->_allowUseDatabase = true;
-
-  V8DealerFeature::DEALER->startupLoader()->executeGlobalScript(
-      isolate, isolate->GetCurrentContext(),
-      "server/bootstrap/coordinator-database.js");
-
-  v8g->_allowUseDatabase = allowUseDatabase;
-
-  // and switch back
-  v8g->_vocbase = orig;
-
-  vocbase->release();
-
-  TRI_V8_RETURN_TRUE();
-}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief was docuBlock databaseCreateDatabase
@@ -2160,138 +1962,33 @@ static void JS_CreateDatabase(v8::FunctionCallbackInfo<v8::Value> const& args) {
   if (!vocbase->isSystem()) {
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_USE_SYSTEM_DATABASE);
   }
-
-  if (ServerState::instance()->isCoordinator()) {
-    CreateDatabaseCoordinator(args);
-    return;
+  
+  VPackBuilder options;
+  if (args.Length() >= 2 && args[1]->IsObject()) {
+    TRI_V8ToVPack(isolate, options, args[1], false);
   }
 
-  TRI_GET_GLOBALS();
-  TRI_voc_tick_t id = 0;
-  // options for database (currently only allows setting "id" for testing
-  // purposes)
-  if (args.Length() > 1 && args[1]->IsObject()) {
-    v8::Handle<v8::Object> options = args[1]->ToObject();
-
-    TRI_GET_GLOBAL_STRING(IdKey);
-    if (options->Has(IdKey)) {
-      // only used for testing to create database with a specific id
-      id = TRI_ObjectToUInt64(options->Get(IdKey), true);
-    }
-  }
-
-  std::string const name = TRI_ObjectToString(args[0]);
-
-  DatabaseFeature* databaseFeature =
-      application_features::ApplicationServer::getFeature<DatabaseFeature>(
-          "Database");
-  TRI_vocbase_t* database = nullptr;
-  int res = databaseFeature->createDatabase(id, name, database);
-
-  if (res != TRI_ERROR_NO_ERROR) {
-    TRI_V8_THROW_EXCEPTION(res);
-  }
-
-  TRI_ASSERT(database != nullptr);
-  TRI_ASSERT(!database->isDangling());
-
-  // copy users into context
+  VPackBuilder users;
   if (args.Length() >= 3 && args[2]->IsArray()) {
-    v8::Handle<v8::Object> users = v8::Object::New(isolate);
-    users->Set(TRI_V8_ASCII_STRING("users"), args[2]);
-
-    isolate->GetCurrentContext()->Global()->Set(
-        TRI_V8_ASCII_STRING("UPGRADE_ARGS"), users);
-  } else {
-    isolate->GetCurrentContext()->Global()->Set(
-        TRI_V8_ASCII_STRING("UPGRADE_ARGS"), v8::Object::New(isolate));
-  }
-
-  // switch databases
-  {
-    TRI_vocbase_t* orig = v8g->_vocbase;
-    TRI_ASSERT(orig != nullptr);
-
-    v8g->_vocbase = database;
-
-    // initalize database
-    try {
-      V8DealerFeature::DEALER->startupLoader()->executeGlobalScript(
-          isolate, isolate->GetCurrentContext(),
-          "server/bootstrap/local-database.js");
-      if (v8g->_vocbase == database) {
-        // decrease the reference-counter only if we are coming back with the same database
-        database->release();
+    VPackArrayBuilder a(&users);
+    v8::Handle<v8::Array> ar = v8::Handle<v8::Array>::Cast(args[2]);
+    for (uint32_t i = 0; i < ar->Length(); ++i) {
+      v8::Handle<v8::Value> user = ar->Get(i);
+      if (!user->IsObject()) {
+        TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER, "user is not an object");
       }
-
-      // and switch back
-      v8g->_vocbase = orig;
-    } catch (...) {
-      if (v8g->_vocbase == database) {
-        // decrease the reference-counter only if we are coming back with the same database
-        database->release();
-      }
-
-      // and switch back
-      v8g->_vocbase = orig;
-      throw;
+      TRI_V8ToVPackSimple(isolate, users, user);
     }
+  }
+  
+  std::string const dbName = TRI_ObjectToString(args[0]);
+  Result res = methods::Database::create(dbName, users.slice(), options.slice());
+  if (!res.ok()) {
+    TRI_V8_THROW_EXCEPTION_MESSAGE(res.errorNumber(), res.errorMessage());
   }
 
   TRI_V8_RETURN_TRUE();
   TRI_V8_TRY_CATCH_END
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief drop a database, case of a coordinator in a cluster
-////////////////////////////////////////////////////////////////////////////////
-
-static void DropDatabaseCoordinator(
-    v8::FunctionCallbackInfo<v8::Value> const& args) {
-  v8::Isolate* isolate = args.GetIsolate();
-  v8::HandleScope scope(isolate);
-
-  // Arguments are already checked, there is exactly one argument
-  auto databaseFeature =
-      application_features::ApplicationServer::getFeature<DatabaseFeature>(
-          "Database");
-  std::string const name = TRI_ObjectToString(args[0]);
-  TRI_vocbase_t* vocbase = databaseFeature->useDatabaseCoordinator(name);
-
-  if (vocbase == nullptr) {
-    // no such database
-    TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
-  }
-
-  TRI_voc_tick_t const id = vocbase->id();
-  vocbase->release();
-
-  ClusterInfo* ci = ClusterInfo::instance();
-  std::string errorMsg;
-
-  int res = ci->dropDatabaseCoordinator(name, errorMsg, 120.0);
-
-  if (res != TRI_ERROR_NO_ERROR) {
-    TRI_V8_THROW_EXCEPTION_MESSAGE(res, errorMsg);
-  }
-
-  // now wait for heartbeat thread to drop the database object
-  int tries = 0;
-
-  while (++tries <= 6000) {
-    TRI_vocbase_t* vocbase = databaseFeature->useDatabaseCoordinator(id);
-
-    if (vocbase == nullptr) {
-      // object has vanished
-      break;
-    }
-
-    vocbase->release();
-    // sleep
-    usleep(10000);
-  }
-
-  TRI_V8_RETURN_TRUE();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2324,32 +2021,12 @@ static void JS_DropDatabase(v8::FunctionCallbackInfo<v8::Value> const& args) {
     }
   }
 
-  // clear collections in cache object
-  TRI_ClearObjectCacheV8(isolate);
-
-  // If we are a coordinator in a cluster, we have to behave differently:
-  if (ServerState::instance()->isCoordinator()) {
-    DropDatabaseCoordinator(args);
-    return;
-  }
-
   std::string const name = TRI_ObjectToString(args[0]);
-
-  DatabaseFeature* databaseFeature =
-      application_features::ApplicationServer::getFeature<DatabaseFeature>(
-          "Database");
-  int res = databaseFeature->dropDatabase(name, false, true);
-
-  if (res != TRI_ERROR_NO_ERROR) {
-    TRI_V8_THROW_EXCEPTION(res);
+  Result res = methods::Database::drop(vocbase, name);
+  if (!res.ok()) {
+    TRI_V8_THROW_EXCEPTION_MESSAGE(res.errorNumber(), res.errorMessage());
   }
-
-  // run the garbage collection in case the database held some objects which can
-  // now be freed
-  TRI_RunGarbageCollectionV8(isolate, 0.25);
-
-  TRI_V8ReloadRouting(isolate);
-
+  
   TRI_V8_RETURN_TRUE();
   TRI_V8_TRY_CATCH_END
 }
@@ -2485,19 +2162,6 @@ int TRI_CheckDatabaseVersion(TRI_vocbase_t* vocbase,
 
   return code;
 }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief reloads routing
-////////////////////////////////////////////////////////////////////////////////
-
-void TRI_V8ReloadRouting(v8::Isolate* isolate) {
-  TRI_ExecuteJavaScriptString(
-      isolate, isolate->GetCurrentContext(),
-      TRI_V8_ASCII_STRING(
-          "require('internal').executeGlobalContextFunction('reloadRouting')"),
-      TRI_V8_ASCII_STRING("reload routing"), false);
-}
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief check if we are in the enterprise edition

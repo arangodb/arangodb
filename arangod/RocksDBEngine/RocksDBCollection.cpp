@@ -1543,8 +1543,8 @@ arangodb::Result RocksDBCollection::lookupRevisionVPack(
       auto entry = cache::CachedValue::construct(
           key.string().data(), static_cast<uint32_t>(key.string().size()),
           value.data(), static_cast<uint64_t>(value.size()));
-      bool cached = _cache->insert(entry);
-      if (!cached) {
+      auto status = _cache->insert(entry);
+      if (status.fail()) {
         delete entry;
       }
     }
@@ -1850,14 +1850,13 @@ void RocksDBCollection::blackListKey(char const* data, std::size_t len) const {
   if (useCache()) {
     TRI_ASSERT(_cache != nullptr);
     bool blacklisted = false;
-    uint64_t attempts = 0;
     while (!blacklisted) {
-      blacklisted = _cache->blacklist(data, static_cast<uint32_t>(len));
-      if (attempts++ % 10 == 0) {
-        if (_cache->isShutdown()) {
-          disableCache();
-          break;
-        }
+      auto status = _cache->blacklist(data, static_cast<uint32_t>(len));
+      if (status.ok()) {
+        blacklisted = true;
+      } else if (status.errorNumber() == TRI_ERROR_SHUTTING_DOWN) {
+        disableCache();
+        break;
       }
     }
   }
