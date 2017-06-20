@@ -4,7 +4,7 @@ Write-ahead log
 `const wal = require('internal').wal`
 
 This module provides functionality for administering the write-ahead logs.
-Most of these functions only return good values when invoked with the 
+Most of these functions only return sensible values when invoked with the 
 [mmfiles engine being active](../../Administration/Configuration/GeneralArangod.md#storage-engine).
 
 ### Configuration
