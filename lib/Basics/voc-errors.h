@@ -403,6 +403,11 @@
 /// - 1488: @LIT{a follower could not be dropped in agency}
 ///   Will be raised if a follower that ought to be dropped could not be
 ///   dropped in the agency (under Current).
+/// - 1489: @LIT{a shard leader refuses to perform a replication operation}
+///   Will be raised if a replication operation is refused by a shard leader.
+/// - 1490: @LIT{a shard follower refuses to perform an operation that is not a replication}
+///   Will be raised if a non-replication operation is refused by a shard
+///   follower.
 /// - 1500: @LIT{query killed}
 ///   Will be raised when a running query is killed by an explicit admin
 ///   command.
@@ -2385,6 +2390,27 @@ void TRI_InitializeErrorMessages ();
 ////////////////////////////////////////////////////////////////////////////////
 
 #define TRI_ERROR_CLUSTER_COULD_NOT_DROP_FOLLOWER                         (1488)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 1489: ERROR_CLUSTER_SHARD_LEADER_REFUSES_REPLICATION
+///
+/// a shard leader refuses to perform a replication operation
+///
+/// Will be raised if a replication operation is refused by a shard leader.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_CLUSTER_SHARD_LEADER_REFUSES_REPLICATION                (1489)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 1490: ERROR_CLUSTER_SHARD_FOLLOWER_REFUSES_OPERATION
+///
+/// a shard follower refuses to perform an operation that is not a replication
+///
+/// Will be raised if a non-replication operation is refused by a shard
+/// follower.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_CLUSTER_SHARD_FOLLOWER_REFUSES_OPERATION                (1490)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1500: ERROR_QUERY_KILLED

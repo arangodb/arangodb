@@ -1384,6 +1384,17 @@ OperationResult transaction::Methods::insertLocal(
   TRI_voc_cid_t cid = addCollectionAtRuntime(collectionName);
   LogicalCollection* collection = documentCollection(trxCollection(cid));
 
+  if (_state->isDBServer()) {
+    // Block operation early if we are not supposed to perform it:
+    bool isLeader = collection->followers()->isLeader();
+    if (isLeader && options.isSynchronousReplication) {
+      return OperationResult(TRI_ERROR_CLUSTER_SHARD_LEADER_REFUSES_REPLICATION);
+    }
+    if (!isLeader && !options.isSynchronousReplication) {
+      return OperationResult(TRI_ERROR_CLUSTER_SHARD_FOLLOWER_REFUSES_OPERATION);
+    }
+  }
+
   if (options.returnNew) {
     pinData(cid);  // will throw when it fails
   }
@@ -1456,7 +1467,7 @@ OperationResult transaction::Methods::insertLocal(
     // Now replicate the same operation on all followers:
     auto const& followerInfo = collection->followers();
     followers = followerInfo->get();
-    doingSynchronousReplication = followerInfo->isLeader() && followers->size() > 0;
+    doingSynchronousReplication = followers->size() > 0;
   }
 
   if (doingSynchronousReplication && res.ok()) {
@@ -1670,6 +1681,17 @@ OperationResult transaction::Methods::modifyLocal(
   TRI_voc_cid_t cid = addCollectionAtRuntime(collectionName);
   LogicalCollection* collection = documentCollection(trxCollection(cid));
 
+  if (_state->isDBServer()) {
+    // Block operation early if we are not supposed to perform it:
+    bool isLeader = collection->followers()->isLeader();
+    if (isLeader && options.isSynchronousReplication) {
+      return OperationResult(TRI_ERROR_CLUSTER_SHARD_LEADER_REFUSES_REPLICATION);
+    }
+    if (!isLeader && !options.isSynchronousReplication) {
+      return OperationResult(TRI_ERROR_CLUSTER_SHARD_FOLLOWER_REFUSES_OPERATION);
+    }
+  }
+
   if (options.returnOld || options.returnNew) {
     pinData(cid);  // will throw when it fails
   }
@@ -1774,7 +1796,7 @@ OperationResult transaction::Methods::modifyLocal(
     // Now replicate the same operation on all followers:
     auto const& followerInfo = collection->followers();
     followers = followerInfo->get();
-    doingSynchronousReplication = followerInfo->isLeader() && followers->size() > 0;
+    doingSynchronousReplication = followers->size() > 0;
   }
 
   if (doingSynchronousReplication && res.ok()) {
@@ -1941,6 +1963,17 @@ OperationResult transaction::Methods::removeLocal(
   TRI_voc_cid_t cid = addCollectionAtRuntime(collectionName);
   LogicalCollection* collection = documentCollection(trxCollection(cid));
 
+  if (_state->isDBServer()) {
+    // Block operation early if we are not supposed to perform it:
+    bool isLeader = collection->followers()->isLeader();
+    if (isLeader && options.isSynchronousReplication) {
+      return OperationResult(TRI_ERROR_CLUSTER_SHARD_LEADER_REFUSES_REPLICATION);
+    }
+    if (!isLeader && !options.isSynchronousReplication) {
+      return OperationResult(TRI_ERROR_CLUSTER_SHARD_FOLLOWER_REFUSES_OPERATION);
+    }
+  }
+
   if (options.returnOld) {
     pinData(cid);  // will throw when it fails
   }
@@ -2028,7 +2061,7 @@ OperationResult transaction::Methods::removeLocal(
     // Now replicate the same operation on all followers:
     auto const& followerInfo = collection->followers();
     followers = followerInfo->get();
-    doingSynchronousReplication = followerInfo->isLeader() && followers->size() > 0;
+    doingSynchronousReplication = followers->size() > 0;
   }
 
   if (doingSynchronousReplication && res.ok()) {
@@ -2235,6 +2268,19 @@ OperationResult transaction::Methods::truncateLocal(
     std::string const& collectionName, OperationOptions& options) {
   TRI_voc_cid_t cid = addCollectionAtRuntime(collectionName);
 
+  LogicalCollection* collection = documentCollection(trxCollection(cid));
+
+  if (_state->isDBServer()) {
+    // Block operation early if we are not supposed to perform it:
+    bool isLeader = collection->followers()->isLeader();
+    if (isLeader && options.isSynchronousReplication) {
+      return OperationResult(TRI_ERROR_CLUSTER_SHARD_LEADER_REFUSES_REPLICATION);
+    }
+    if (!isLeader && !options.isSynchronousReplication) {
+      return OperationResult(TRI_ERROR_CLUSTER_SHARD_FOLLOWER_REFUSES_OPERATION);
+    }
+  }
+
   pinData(cid);  // will throw when it fails
 
   Result res = lock(trxCollection(cid), AccessMode::Type::WRITE);
@@ -2242,8 +2288,6 @@ OperationResult transaction::Methods::truncateLocal(
   if (!res.ok()) {
     return OperationResult(res);
   }
-
-  LogicalCollection* collection = documentCollection(trxCollection(cid));
 
   try {
     collection->truncate(this, options);
@@ -2258,7 +2302,7 @@ OperationResult transaction::Methods::truncateLocal(
     // Now replicate the same operation on all followers:
     auto const& followerInfo = collection->followers();
     followers = followerInfo->get();
-    if (followerInfo->isLeader() && followers->size() > 0) {
+    if (followers->size() > 0) {
       // Now replicate the good operations on all followers:
       auto cc = arangodb::ClusterComm::instance();
       if (cc != nullptr) {
