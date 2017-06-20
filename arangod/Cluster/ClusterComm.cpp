@@ -22,6 +22,9 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "ClusterComm.h"
+
+#include "Agency/AgencyFeature.h"
+#include "Agency/Agent.h"
 #include "Basics/ConditionLocker.h"
 #include "Basics/HybridLogicalClock.h"
 #include "Basics/StringUtils.h"
@@ -437,7 +440,7 @@ OperationID ClusterComm::asyncRequest(
       TRI_ASSERT(ret == true);
     };
   } else {
-    callbacks._onError = [callback, result, doLogConnectionErrors, this](int errorCode, std::unique_ptr<GeneralResponse> response) {
+    callbacks._onError = [result, doLogConnectionErrors, this](int errorCode, std::unique_ptr<GeneralResponse> response) {
       CONDITION_LOCKER(locker, somethingReceived);
       result->fromError(errorCode, std::move(response));
       if (result->status == CL_COMM_BACKEND_UNAVAILABLE) {
@@ -1098,6 +1101,18 @@ std::pair<ClusterCommResult*, HttpRequest*> ClusterComm::prepareRequest(std::str
   TRI_voc_tick_t timeStamp = TRI_HybridLogicalClock();
   headersCopy[StaticStrings::HLCHeader] =
     arangodb::basics::HybridLogicalClock::encodeTimeStamp(timeStamp);
+
+  auto state = ServerState::instance();
+
+  if (state->isCoordinator() || state->isDBServer()) {
+    headersCopy[StaticStrings::ClusterCommSource] = state->getId();
+  } else if (state->isAgent()) {
+    auto agent = AgencyFeature::AGENT;
+
+    if (agent != nullptr) {
+      headersCopy[StaticStrings::ClusterCommSource] = "AGENT-" + agent->id();
+    }
+  }
 
 #ifdef DEBUG_CLUSTER_COMM
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE

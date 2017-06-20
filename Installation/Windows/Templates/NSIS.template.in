@@ -25,7 +25,7 @@
 !define VERSION "@CPACK_PACKAGE_VERSION@"
 !define PATCH  "@CPACK_PACKAGE_VERSION_PATCH@"
 !define INST_DIR "@CPACK_TEMPORARY_DIRECTORY@"
-
+!define ARANGO_INI "etc\arangodb3\arangod.conf"
 ;--------------------------------
 ; custom defines for the DRY people of us.
 !define TRI_UNINSTALL_REG_PATH "Software\Microsoft\Windows\CurrentVersion\Uninstall\@CPACK_PACKAGE_INSTALL_REGISTRY_KEY@";
@@ -78,6 +78,8 @@ Var ini_APPDIR
 Var ini_LOGFILE
 
 Var UpgradeInstall
+Var LaunchAfterInstall
+Var LaunchLink
 ;----------------------------------------
 ; The first dialog page
 Var Dlg1_Dialog
@@ -90,7 +92,6 @@ Var Dlg1_CB_custom_path
 Var Dlg1_CB_automatic_update
 Var Dlg1_CB_keep_backup
 Var Dlg1_CB_add_path
-Var Dlg1_CB_as_service
 Var Dlg1_CB_DesktopIcon
 ;----------------------------------------
 ; The second dialog page
@@ -123,23 +124,59 @@ RequestExecutionLevel highest
 !include "ReadINIFileKeys.nsh"
 
 !macro determine_install_scope un
-Function ${un}determine_install_scope
+  Function ${un}determine_install_scope
+    Pop $0
   ; Now that we know the install scope, calculate directories:
   ${If} $TRI_INSTALL_SCOPE_ALL == 1
-      SetShellVarContext all
+    SetShellVarContext all
+    ${If} $INSTDIR == ""
+    ${OrIf} $0 == 1
       StrCpy $INSTDIR "@CPACK_NSIS_INSTALL_ROOT@\@CPACK_PACKAGE_INSTALL_DIRECTORY@"
-      StrCpy $DATADIR "$APPDATA\ArangoDB"
-      StrCpy $APPDIR "$APPDATA\ArangoDB-apps"
+    ${EndIf}
+    StrCpy $DATADIR "$APPDATA\ArangoDB\"
+    StrCpy $APPDIR "$APPDATA\ArangoDB-apps\"
   ${Else}
-      SetShellVarContext current
+    SetShellVarContext current
+    ${If} $INSTDIR == ""
       StrCpy $INSTDIR "$LOCALAPPDATA\@CPACK_PACKAGE_INSTALL_DIRECTORY@"
-      StrCpy $DATADIR "$LOCALAPPDATA\ArangoDB"
-      StrCpy $APPDIR "$LOCALAPPDATA\ArangoDB-apps"
-   ${EndIf}
+    ${EndIf}
+    StrCpy $DATADIR "$LOCALAPPDATA\ArangoDB\"
+    StrCpy $APPDIR "$LOCALAPPDATA\ArangoDB-apps\"
+  ${EndIf}
 FunctionEnd
 !macroend
 !insertmacro determine_install_scope ""
 !insertmacro determine_install_scope "un."
+
+
+!macro determineInstallScope forceSet
+  Push ${forceSet}
+  call determine_install_scope
+!macroend
+
+!macro un.determineInstallScope forceSet
+  Push ${forceSet}
+  call un.determine_install_scope
+!macroend
+
+;--------------------------------
+Var CB_Launch
+Function edit_finish_page
+  IfSilent 0 continueUI
+  Return
+continueUI:
+  ${NSD_CreateCheckbox} 120u -20u 50% 20u "Launch ArangoDB?"
+  Pop $CB_Launch
+  ${NSD_Check} $CB_Launch
+FunctionEnd
+Function check_launch_arangodb
+  ${NSD_GetState} $CB_Launch $0
+  ${If} $0 <> 0
+    StrCpy $LaunchAfterInstall "1"
+  ${Else}
+    StrCpy $LaunchAfterInstall "0"
+  ${EndIf}
+FunctionEnd
 
 Function un.ReadSettings
   SetRegView ${BITS}
@@ -148,7 +185,7 @@ Function un.ReadSettings
   ReadRegStr $TRI_INSTALL_SCOPE_ALL HKCC "Software\@CPACK_NSIS_PACKAGE_NAME@" "scopeAll"
   ReadRegStr $TRI_INSTALL_SERVICE   HKCC "Software\@CPACK_NSIS_PACKAGE_NAME@" "service"
 
-  call un.determine_install_scope
+  !insertmacro un.determineInstallScope 0
 
   ReadRegStr $START_MENU               SHCTX "${TRI_UNINSTALL_REG_PATH}" "StartMenu"
   ;MessageBox MB_OK "Start menu is in: $START_MENU"
@@ -156,8 +193,9 @@ Function un.ReadSettings
 
   ;MessageBox MB_OK "Add to path: $ADD_TO_PATH"
   ReadRegStr $ADD_DESKTOP_ICON         SHCTX "${TRI_UNINSTALL_REG_PATH}" "InstallToDesktop"
-  ReadRegStr $DATADIR                  SHCTX "${TRI_UNINSTALL_REG_PATH}" "DATADIR"
-  ReadRegStr $APPDIR                   SHCTX "${TRI_UNINSTALL_REG_PATH}" "APPDIR"
+  ReadINIStr $DATADIR                  "$INSTDIR\${ARANGO_INI}" "database"   "directory"
+  ReadINIStr $APPDIR                   "$INSTDIR\${ARANGO_INI}" "javascript" "app-path"
+
 FunctionEnd
 
 Function check_previous_install
@@ -325,10 +363,17 @@ Var AR_RegFlags
 ;--------------------------------
 ; Define some macro setting for the gui
 @CPACK_NSIS_INSTALLER_MUI_ICON_CODE@
-@CPACK_NSIS_INSTALLER_ICON_CODE@
+;;;1
+;; @CPACK_NSIS_INSTALLER_ICON_CODE@
+;;;2
 @CPACK_NSIS_INSTALLER_MUI_COMPONENTS_DESC@
+;;;3
 @CPACK_NSIS_INSTALLER_MUI_FINISHPAGE_RUN_CODE@
 
+!define MUI_HEADERIMAGE_BITMAP "@CPACK_NSIS_HEADER_ICON@"
+!define MUI_HEADERIMAGE_BITMAP_STRETCH "AspectFitHeight"
+!define MUI_WELCOMEFINISHPAGE_BITMAP "@CPACK_NSIS_PAGE_ICON@"
+!define MUI_WELCOMEFINISHPAGE_BITMAP_NOSTRETCH 1
 ;--------------------------------
 ;Pages
   !define MUI_PAGE_CUSTOMFUNCTION_PRE skip_page
@@ -338,6 +383,10 @@ Var AR_RegFlags
   !insertmacro MUI_PAGE_LICENSE "@CPACK_RESOURCE_FILE_LICENSE@"
 
   Page custom InstallOptionsPage1 InstallOptionsPage1_results
+
+  !define MUI_PAGE_CUSTOMFUNCTION_PRE hide_install_directory
+  !define MUI_PAGE_CUSTOMFUNCTION_LEAVE check_installation_directory
+  !insertmacro MUI_PAGE_DIRECTORY
 
   !define MUI_PAGE_HEADER_TEXT "Choose the database folder for @CPACK_PACKAGE_NAME@"
   !define MUI_PAGE_HEADER_SUBTEXT ""
@@ -359,10 +408,6 @@ Var AR_RegFlags
 
   Page custom InstallOptionsPage2 InstallOptionsPage2_results
 
-  !define MUI_PAGE_CUSTOMFUNCTION_PRE hide_install_directory
-  !define MUI_PAGE_CUSTOMFUNCTION_LEAVE check_installation_directory
-  !insertmacro MUI_PAGE_DIRECTORY
-
   ;Start Menu Folder Page Configuration
   !define MUI_STARTMENUPAGE_REGISTRY_ROOT "SHCTX"
   !define MUI_STARTMENUPAGE_REGISTRY_KEY "Software\@CPACK_PACKAGE_VENDOR@\@CPACK_PACKAGE_INSTALL_REGISTRY_KEY@"
@@ -374,6 +419,9 @@ Var AR_RegFlags
   !define MUI_PAGE_CUSTOMFUNCTION_PRE stop_old_service
   !define MUI_PAGE_CUSTOMFUNCTION_LEAVE insert_registration_keys
   !insertmacro MUI_PAGE_INSTFILES
+
+  !define MUI_PAGE_CUSTOMFUNCTION_SHOW edit_finish_page
+  !define MUI_PAGE_CUSTOMFUNCTION_LEAVE check_launch_arangodb
   !insertmacro MUI_PAGE_FINISH
 
   !insertmacro MUI_UNPAGE_WELCOME
@@ -438,14 +486,15 @@ Var AR_RegFlags
 
 !insertmacro Locate
 
+Var ForAllTxt
 ;--------------------------------
 ; Create custom pages
 Function InstallOptionsPage1
   IfSilent 0 continueUI
-  Call determine_install_scope
   Return
 
 continueUI:
+  !insertmacro determineInstallScope 1
   Push ${TEMP1}
 displayAgain:
 
@@ -458,18 +507,17 @@ displayAgain:
     Abort
   ${EndIf}
 
-  ${NSD_CreateLabel} 0 0 100% 6% "Install @CPACK_PACKAGE_NAME@"
-  Pop $0 ; Don't care...
-
-
   ${NSD_CreateLabel} 0 20 100% 6% "Choose to install @CPACK_PACKAGE_NAME@ for all users or the current user:"
   Pop $0 ; Don't care...
 
-  ${NSD_CreateRadioButton} 5 40 80% 6% "for all users (and ArangoDB as a service)"
+  StrCpy $ForAllTxt "for all users (and ArangoDB as a service)"
+  ${If} $AllowGlobalInstall == "0"
+    StrCpy $ForAllTxt "$ForAllTxt (only available for privileged users)"
+  ${EndIf}
+  ${NSD_CreateRadioButton} 5 45 100% 6% $ForAllTxt
   Pop $Dlg1_RB_all_users
-  ${NSD_SetState} $Dlg1_RB_all_users ${BST_CHECKED}
 
-  ${NSD_CreateRadioButton} 5 60 50% 6% "for the current user"
+  ${NSD_CreateRadioButton} 5 65 50% 6% "for the current user"
   Pop $Dlg1_RB_cur_user
 
   ; Checkboxes
@@ -495,10 +543,11 @@ displayAgain:
   Pop $Dlg1_CB_DesktopIcon
   ${NSD_SetState} $Dlg1_CB_DesktopIcon ${BST_CHECKED}
 
-
   ${If} $AllowGlobalInstall == "0"
+    ${NSD_SetState} $Dlg1_RB_cur_user ${BST_CHECKED}
     EnableWindow $Dlg1_RB_all_users 0
-    EnableWindow $Dlg1_CB_as_service 0
+  ${Else}
+    ${NSD_SetState} $Dlg1_RB_all_users ${BST_CHECKED}
   ${EndIf}
 
   nsDialogs::Show
@@ -507,6 +556,10 @@ FunctionEnd
 
 ;--------------------------------
 Function InstallOptionsPage1_results
+  IfSilent 0 continueUI
+  Return
+
+continueUI:
   Push $R0
   Push $R1
   Push $R2
@@ -564,7 +617,7 @@ Function InstallOptionsPage1_results
   ${EndIf}
 
 
-  Call determine_install_scope
+  !insertmacro determineInstallScope 1
   Call check_previous_install
   Pop $R2
   Pop $R1
@@ -820,7 +873,8 @@ Section "-Core installation"
   ;Create shortcuts
   CreateDirectory "$SMPROGRAMS\$STARTMENU_FOLDER"
   CreateShortCut  "$SMPROGRAMS\$STARTMENU_FOLDER\Arango Shell.lnk"  "$INSTDIR\${BIN_DIR}\arangosh.exe"  '' '$INSTDIR\resources\arangodb.ico' '0' SW_SHOWMAXIMIZED
-  CreateShortCut  "$SMPROGRAMS\$STARTMENU_FOLDER\Arango Server.lnk" "$INSTDIR\${SBIN_DIR}\arangod.exe"   '' '$INSTDIR\resources\arangodb.ico' '0' SW_SHOWMAXIMIZED
+  StrCpy $LaunchLink "$SMPROGRAMS\$STARTMENU_FOLDER\Arango Server.lnk"
+  CreateShortCut  "$LaunchLink" "$INSTDIR\${SBIN_DIR}\arangod.exe"   '' '$INSTDIR\resources\arangodb.ico' '0' SW_SHOWMINIMIZED
   CreateShortCut  "$SMPROGRAMS\$STARTMENU_FOLDER\Uninstall.lnk"     "$INSTDIR\Uninstall.exe"
 
   ;Read a value from an InstallOptions INI file
@@ -863,7 +917,7 @@ Section "-Core installation"
   FileClose $4
   ; Alter the shipped file and insert the values from above:
   push "$newCfgValuesFile"
-  push "$INSTDIR\etc\arangodb3\arangod.conf"
+  push "$INSTDIR\${ARANGO_INI}"
   call ReadINIFileKeys
   Delete "$newCfgValuesFile"
 
@@ -890,9 +944,15 @@ Function .onInstSuccess
     Return
 
 continueUI:
-  ${If} $TRI_INSTALL_SERVICE == '1'
-  ${AndIf} $ServiceUp == 1
-    ${OpenURL} ${TRI_AARDVARK_URL}
+  ${If} $LaunchAfterInstall == '1'
+    ${If} $AllowGlobalInstall == "0"
+      ExecShell "" "$LaunchLink"
+      sleep 10
+      StrCpy $ServiceUp "1"
+    ${EndIf}
+    ${If} $ServiceUp == 1
+      ${OpenURL} ${TRI_AARDVARK_URL}
+    ${EndIf}
   ${EndIf}
 FunctionEnd
 
@@ -924,11 +984,12 @@ FunctionEnd
 
 Function insert_registration_keys
   ClearErrors
-
-  WriteRegExpandStr HKCC "Software\@CPACK_NSIS_PACKAGE_NAME@" "service" "$TRI_INSTALL_SERVICE"
-  IfErrors there_are_erros
-  WriteRegExpandStr HKCC "Software\@CPACK_NSIS_PACKAGE_NAME@" "scopeAll" "$TRI_INSTALL_SCOPE_ALL"
-  IfErrors there_are_erros
+  ${If} $AllowGlobalInstall == "1"
+    WriteRegExpandStr HKCC "Software\@CPACK_NSIS_PACKAGE_NAME@" "service" "$TRI_INSTALL_SERVICE"
+    IfErrors there_are_erros
+    WriteRegExpandStr HKCC "Software\@CPACK_NSIS_PACKAGE_NAME@" "scopeAll" "$TRI_INSTALL_SCOPE_ALL"
+    IfErrors there_are_erros
+  ${EndIf}
   Return
 there_are_erros: ;nothing
   MessageBox MB_OK "There was an error during adding the installation keys to the registry$\nArango will work fine but there may be trouble during the deinstallation$\nplease contact @CPACK_NSIS_CONTACT@"
@@ -955,8 +1016,12 @@ Function un.onInit
 
   Pop $0
   SetShellVarContext current
-  ReadRegStr $TRI_INSTALL_SERVICE   HKCC "Software\@CPACK_NSIS_PACKAGE_NAME@" "service"
-  ReadRegStr $TRI_INSTALL_SCOPE_ALL HKCC "Software\@CPACK_NSIS_PACKAGE_NAME@" "scopeAll"
+  StrCpy $TRI_INSTALL_SERVICE   "0"
+  StrCpy $TRI_INSTALL_SCOPE_ALL "0"
+  ${If} $AllowGlobalInstall == "1"
+    ReadRegStr $TRI_INSTALL_SERVICE   HKCC "Software\@CPACK_NSIS_PACKAGE_NAME@" "service"
+    ReadRegStr $TRI_INSTALL_SCOPE_ALL HKCC "Software\@CPACK_NSIS_PACKAGE_NAME@" "scopeAll"
+  ${EndIf}
 
   ${If} $TRI_INSTALL_SCOPE_ALL == 1
     SetShellVarContext all
@@ -1142,6 +1207,26 @@ var allPathOpts
 var CMDINSTDIR
 
 Function .onInit
+  UserInfo::GetAccountType
+  pop $0
+  ${If} $0 == "admin"
+    StrCpy $AllowGlobalInstall "1"
+  ${Else}
+    StrCpy $AllowGlobalInstall "0"
+  ${EndIf}
+
+  ${GetParameters} $R0
+  ClearErrors
+  ${GetOptions} $R0 "/INSTALL_SCOPE_ALL=" $0
+  ${If} $0 == "1"
+    StrCpy $TRI_INSTALL_SCOPE_ALL "1"
+    StrCpy $TRI_INSTALL_SERVICE "1"
+  ${Else}
+    StrCpy $TRI_INSTALL_SCOPE_ALL "0"
+    StrCpy $TRI_INSTALL_SERVICE "0"
+  ${EndIf}
+  
+  !insertmacro determineInstallScope 1
 
   ${GetParameters} $R0
   ClearErrors
@@ -1153,11 +1238,17 @@ Function .onInit
   ${GetParameters} $R0
   ClearErrors
   ${GetOptions} $R0 "/INSTDIR="        $CMDINSTDIR
-  IfErrors +2 0
+  IfErrors noInstDir 0
+  IfSilent 0 noInstDir # If not silent, empty inst dir isn't important here.
   StrCpy $INSTDIR "$CMDINSTDIR"
+  StrLen $0 "$INSTDIR"
+  ${If} $0 < 3
+    MessageBox MB_OK 'Refusing to install flat on drive "$INSTDIR"'
+    Abort
+  ${EndIf}
+noInstDir:
 
-  # we only want to manipulate APPDIR here if /APPDIR is really set!
-  StrCpy $APPDIR "$INSTDIR\var\lib\arangodb3"
+   # we only want to manipulate APPDIR here if /APPDIR is really set!
   ${GetParameters} $R0
   ClearErrors
   ${GetOptions} $R0 "/APPDIR="        $CMDINSTDIR
@@ -1188,26 +1279,7 @@ Function .onInit
   IfErrors 0 +2
   StrCpy $ADD_TO_PATH "0"
 
-  ${GetOptions} $R0 "/INSTALL_SCOPE_ALL=" $0
-  ${If} $0 == 1
-    StrCpy $TRI_INSTALL_SCOPE_ALL "1"
-  ${Else}
-    StrCpy $TRI_INSTALL_SCOPE_ALL "0"
-  ${EndIf}
-
-  IfSilent 0 dontFetchPath
-  ${GetParameters} $R0
-  ClearErrors
-  StrCpy $TRI_INSTALL_SERVICE "1"
-  ${GetOptions} $R0 "/INSTALL_SERVICE=" $TRI_INSTALL_SERVICE
-
-  StrLen $0 "$INSTDIR"
-  ${If} $0 < 3
-    MessageBox MB_OK 'Refusing to install flat on drive "$INSTDIR"'
-    Abort
-  ${EndIf}
   StrCmp "@CPACK_NSIS_ENABLE_UNINSTALL_BEFORE_INSTALL@" "ON" 0 inst
-dontFetchPath:
 
   ReadRegStr $0 HKLM "${TRI_UNINSTALL_REG_PATH}" "UninstallString"
   StrCmp $0 "" inst

@@ -38,10 +38,51 @@ RestEngineHandler::RestEngineHandler(GeneralRequest* request,
     : RestBaseHandler(request, response) {}
 
 RestStatus RestEngineHandler::execute() {
+  // extract the sub-request type
+  auto const type = _request->requestType();
+
+  if (type == rest::RequestType::GET) {
+    handleGet();
+    return RestStatus::DONE;
+  }
+
+  generateError(rest::ResponseCode::METHOD_NOT_ALLOWED,
+                TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
+  return RestStatus::DONE;
+}
+
+void RestEngineHandler::handleGet() {
+  std::vector<std::string> const& suffixes = _request->suffixes();
+
+  if (suffixes.size() > 1 || (suffixes.size() == 1 && suffixes[0] != "stats")) {
+    generateError(rest::ResponseCode::BAD, TRI_ERROR_BAD_PARAMETER,
+                  "expecting GET /_api/engine[/stats]");
+    return;
+  }
+
+  if (suffixes.size() == 0) {
+    getCapabilities();
+    return;
+  }
+
+  getStats();
+  return;
+}
+
+void RestEngineHandler::getCapabilities() {
   VPackBuilder result;
   StorageEngine* engine = EngineSelectorFeature::ENGINE;
   engine->getCapabilities(result);
-  
+
   generateResult(rest::ResponseCode::OK, result.slice());
-  return RestStatus::DONE;
+  return;
+}
+
+void RestEngineHandler::getStats() {
+  VPackBuilder result;
+  StorageEngine* engine = EngineSelectorFeature::ENGINE;
+  engine->getStatistics(result);
+
+  generateResult(rest::ResponseCode::OK, result.slice());
+  return;
 }

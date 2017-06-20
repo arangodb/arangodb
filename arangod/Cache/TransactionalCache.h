@@ -76,42 +76,43 @@ class TransactionalCache final : public Cache {
   /// @brief Looks up the given key.
   ///
   /// May report a false negative if it fails to acquire a lock in a timely
-  /// fashion. Should not block for long.
+  /// fashion. The Result contained in the return value should report an error
+  /// code in this case. Should not block for long.
   //////////////////////////////////////////////////////////////////////////////
   Finding find(void const* key, uint32_t keySize);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Attempts to insert the given value.
   ///
-  /// Returns true if inserted, false otherwise. Will not insert if the key is
+  /// Returns ok if inserted, error otherwise. Will not insert if the key is
   /// (or its corresponding hash) is blacklisted. Will not insert value if this
   /// would cause the total usage to exceed the limits. May also not insert
   /// value if it fails to acquire a lock in a timely fashion. Should not block
   /// for long.
   //////////////////////////////////////////////////////////////////////////////
-  bool insert(CachedValue* value);
+  Result insert(CachedValue* value);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Attempts to remove the given key.
   ///
-  /// Returns true if the key guaranteed not to be in the cache, false if the
+  /// Returns ok if the key guaranteed not to be in the cache, error if the
   /// key may remain in the cache. May leave the key in the cache if it fails to
   /// acquire a lock in a timely fashion. Makes more attempts to acquire a lock
   /// before quitting, so may block for longer than find or insert. Client may
   /// re-try.
   //////////////////////////////////////////////////////////////////////////////
-  bool remove(void const* key, uint32_t keySize);
+  Result remove(void const* key, uint32_t keySize);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Attempts to blacklist the given key.
   ///
-  /// Returns true if the key was blacklisted and is guaranteed not to be in the
-  /// cache, false otherwise. May not blacklist the key if it fails to
+  /// Returns ok if the key was blacklisted and is guaranteed not to be in the
+  /// cache, error otherwise. May not blacklist the key if it fails to
   /// acquire a lock in a timely fashion. Makes more attempts to acquire a lock
   /// before quitting, so may block for longer than find or insert. Client
   /// should re-try.
   //////////////////////////////////////////////////////////////////////////////
-  bool blacklist(void const* key, uint32_t keySize);
+  Result blacklist(void const* key, uint32_t keySize);
 
  private:
   // friend class manager and tasks
@@ -131,7 +132,7 @@ class TransactionalCache final : public Cache {
                              std::shared_ptr<Table> newTable);
 
   // helpers
-  std::tuple<bool, TransactionalBucket*, std::shared_ptr<Table>> getBucket(
+  std::tuple<Result, TransactionalBucket*, std::shared_ptr<Table>> getBucket(
       uint32_t hash, int64_t maxTries, bool singleOperation = true);
   uint32_t getIndex(uint32_t hash, bool useAuxiliary) const;
 

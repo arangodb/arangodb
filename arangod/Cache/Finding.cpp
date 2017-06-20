@@ -24,23 +24,32 @@
 #include "Cache/Finding.h"
 #include "Cache/CachedValue.h"
 
+using namespace arangodb;
 using namespace arangodb::cache;
 
-Finding::Finding() : _value(nullptr) {}
+Finding::Finding() : _value(nullptr), _result(TRI_ERROR_NO_ERROR) {}
 
-Finding::Finding(CachedValue* v) : _value(v) {
+Finding::Finding(CachedValue* v) : _value(v), _result(TRI_ERROR_NO_ERROR) {
   if (_value != nullptr) {
     _value->lease();
   }
 }
 
-Finding::Finding(Finding const& other) : _value(other._value) {
+Finding::Finding(CachedValue* v, Result const& r) : _value(v), _result(r) {
   if (_value != nullptr) {
     _value->lease();
   }
 }
 
-Finding::Finding(Finding&& other) : _value(other._value) {
+Finding::Finding(Finding const& other)
+    : _value(other._value), _result(other._result) {
+  if (_value != nullptr) {
+    _value->lease();
+  }
+}
+
+Finding::Finding(Finding&& other)
+    : _value(other._value), _result(std::move(other._result)) {
   other._value = nullptr;
 }
 
@@ -58,6 +67,8 @@ Finding& Finding::operator=(Finding const& other) {
     _value->lease();
   }
 
+  _result = other._result;
+
   return *this;
 }
 
@@ -72,6 +83,8 @@ Finding& Finding::operator=(Finding&& other) {
 
   _value = other._value;
   other._value = nullptr;
+
+  _result = std::move(other._result);
 
   return *this;
 }
@@ -109,6 +122,8 @@ void Finding::reset(CachedValue* v) {
   }
 }
 
+void Finding::reportError(Result const& r) { _result = r; }
+
 bool Finding::found() const { return (_value != nullptr); }
 
 CachedValue const* Finding::value() const { return _value; }
@@ -116,3 +131,5 @@ CachedValue const* Finding::value() const { return _value; }
 CachedValue* Finding::copy() const {
   return ((_value == nullptr) ? nullptr : _value->copy());
 }
+
+Result Finding::result() const { return _result; }

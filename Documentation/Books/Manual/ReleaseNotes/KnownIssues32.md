@@ -1,7 +1,8 @@
 Known Issues
 ============
 
-The following known issues are present in this version of ArangoDB:
+The following known issues are present in this version of ArangoDB and will be fixed
+in follow-up releases:
 
 ### Cluster Deployment
 
@@ -58,7 +59,6 @@ are present in the MMFiles engine:
 
   It is also possible to override these thresholds per transaction.
 
-
 The following known issues will be resolved in future releases:
 
 * the RocksDB engine is not yet performance-optimized and potentially not well configured
@@ -79,8 +79,11 @@ The following known issues will be resolved in future releases:
   in the MMFiles engine. It is therefore discouraged to call it for cases other than manual
   inspection of a few documents in a collection
 
+* the `autoincrement` key generator will not save the last assigned key permanently, so
+  it may assign an already used key after a server restart
+
 * AQL queries in the cluster still issue an extra locking HTTP request per shard though
-  this would not be necessary for the RocksDB engine in most cases.
+  this would not be necessary for the RocksDB engine in most cases
 
 ### Installer
 
@@ -90,17 +93,26 @@ The following known issues will be resolved in future releases:
   for detailed instructions.
 
 ### System Integration
+
 * On some Linux systems systemd and system v might report that the arangodb
   service is in good condition when it could not be started. In this case the
   user needs to check `/var/log/arangodb3` for further information about the
   failed startup.
 
+### Startup
+
+* We have seen the arangod process hanging during startup in slower environments. The reason
+  for this is a race in the V8 context initialization, and it has already been fixed in
+  the devel branch.
+
 ### Web UI
+
  * Edition label (Community or Enterprise) next to the ArangoDB logo looks blurry in Safari on Mac OS X.
 
  * AQL Editor: Selecting "all results" as limit option will return zero results, which is wrong.
 
 ### Mac OS X
+
  * Storage engine is not changeable on an existing database. Currently only the initial selection of the storage engine is supported.
    In order to use another storage engine, you have to delete your ArangoDB application (Mac Application Folder)
    and `/Users/<your_user_name>/Library/ArangoDB` folder.
