@@ -203,6 +203,7 @@ void HttpCommTask::addResponse(HttpResponse* response,
 }
 
 // reads data from the socket
+// caller must hold the _lock
 bool HttpCommTask::processRead(double startTime) {
   cancelKeepAlive();
 
@@ -278,10 +279,12 @@ bool HttpCommTask::processRead(double startTime) {
       LOG_TOPIC(TRACE, Logger::COMMUNICATION) << "switching from HTTP to VST";
       ProtocolVersion protocolVersion = _readBuffer.c_str()[6] == '0' 
           ? ProtocolVersion::VST_1_0 : ProtocolVersion::VST_1_1;
-      _abandoned = true;
-      cancelKeepAlive();
-      std::shared_ptr<GeneralCommTask> commTask;
-      commTask = std::make_shared<VstCommTask>(
+
+      if (!abandon()) {
+        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "task is already abandoned");
+      }
+      
+      std::shared_ptr<GeneralCommTask> commTask = std::make_shared<VstCommTask>(
           _loop, _server, std::move(_peer), std::move(_connectionInfo),
           GeneralServerFeature::keepAliveTimeout(), 
           protocolVersion, /*skipSocketInit*/ true);
