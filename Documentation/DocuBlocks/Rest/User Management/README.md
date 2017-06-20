@@ -179,6 +179,11 @@ from the request.
 @RESTURLPARAM{user,string,required}
 The name of the user for which you want to query the databases.
 
+@RESTQUERYPARAMETERS
+
+@RESTQUERYPARAM{full,boolean,optional}
+Return the full set of permissions for all databases and all collections.
+
 @RESTDESCRIPTION
 
 Fetch the list of databases available to the specified *user*. You
@@ -189,6 +194,10 @@ The call will return a JSON object with the per-database access
 privileges for the specified user. The *result* object will contain
 the databases names as object keys, and the associated privileges
 for the database as values.
+
+In case you specified *full*, the result will contain the permissions
+for the databases as well as the permissions for the 
+
 
 @RESTRETURNCODES
 
@@ -213,6 +222,120 @@ If the access privileges are not right etc.
 
     logJsonResponse(response);
     users.remove(theUser);
+@END_EXAMPLE_ARANGOSH_RUN
+
+With the full response format:
+
+@EXAMPLE_ARANGOSH_RUN{RestFetchUserDatabaseListFull}
+var users = require("@arangodb/users");
+var theUser="anotherAdmin@secapp";
+users.save(theUser, "secret");
+users.grantDatabase(theUser, "_system", "rw");
+
+var url = "/_api/user/" + theUser + "/database?full=true";
+var response = logCurlRequest('GET', url);
+
+assert(response.code === 200);
+
+logJsonResponse(response);
+users.remove(theUser);
+@END_EXAMPLE_ARANGOSH_RUN
+
+@endDocuBlock
+
+<!-- ---------------------------------------------------------------------- -->
+
+@startDocuBlock UserHandling_fetchDatabasePermission
+@brief Get specific database permissions
+
+@RESTHEADER{GET /_api/user/{user}/database/{database}, Get the db permission level}
+
+@RESTURLPARAMETERS
+
+@RESTURLPARAM{user,string,required}
+The name of the user for which you want to query the databases.
+
+@RESTURLPARAM{database,string,required}
+The name of the database to query
+
+@RESTDESCRIPTION
+
+Fetch the permission level for a specific database
+
+
+@RESTRETURNCODES
+
+@RESTRETURNCODE{200}
+Returned if the acccess level can be returned
+
+@RESTRETURNCODE{400}
+If the access privileges are not right etc.
+
+@EXAMPLES
+
+@EXAMPLE_ARANGOSH_RUN{RestFetchUserDatabasePermission}
+var users = require("@arangodb/users");
+var theUser="anotherAdmin@secapp";
+users.save(theUser, "secret");
+users.grantDatabase(theUser, "_system", "rw");
+
+var url = "/_api/user/" + theUser + "/database/_system";
+var response = logCurlRequest('GET', url);
+
+assert(response.code === 200);
+
+logJsonResponse(response);
+users.remove(theUser);
+@END_EXAMPLE_ARANGOSH_RUN
+
+@endDocuBlock
+
+<!-- ---------------------------------------------------------------------- -->
+
+@startDocuBlock UserHandling_fetchCollectionPermission
+@brief Get specific collection permissions
+
+@RESTHEADER{GET /_api/user/{user}/database/{database}/{collection}, Get the collection permission level}
+
+@RESTURLPARAMETERS
+
+@RESTURLPARAM{user,string,required}
+The name of the user for which you want to query the databases.
+
+@RESTURLPARAM{database,string,required}
+The name of the database to query
+
+@RESTURLPARAM{collection,string,required}
+The name of the collection
+
+
+@RESTDESCRIPTION
+
+Fetch the permission level for a specific collection
+
+@RESTRETURNCODES
+
+@RESTRETURNCODE{200}
+Returned if the acccess level can be returned
+
+@RESTRETURNCODE{400}
+If the access privileges are not right etc.
+
+@EXAMPLES
+
+@EXAMPLE_ARANGOSH_RUN{RestFetchUserCollectionPermission}
+var users = require("@arangodb/users");
+var theUser="anotherAdmin@secapp";
+users.save(theUser, "secret");
+users.grantDatabase(theUser, "_system", "rw");
+
+var url = "/_api/user/" + theUser + "/database/_system/_users";
+var response = logCurlRequest('GET', url);
+
+assert(response.code === 200);
+
+logJsonResponse(response);
+users.remove(theUser);
 @END_EXAMPLE_ARANGOSH_RUN
 
 @endDocuBlock
