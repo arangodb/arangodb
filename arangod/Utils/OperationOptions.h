@@ -32,8 +32,7 @@ struct OperationOptions {
   OperationOptions() 
       : recoveryData(nullptr), waitForSync(false), keepNull(true),
         mergeObjects(true), silent(false), ignoreRevs(true),
-        returnOld(false), returnNew(false), isRestore(false),
-        isSynchronousReplication(false) {}
+        returnOld(false), returnNew(false), isRestore(false) {}
 
   // original marker, set by an engine's recovery procedure only!
   void* recoveryData;
@@ -64,9 +63,10 @@ struct OperationOptions {
   bool isRestore;
 
   // for synchronous replication operations, we have to mark them such that
-  // we can deny them if we are a (new) leader and that we can deny others
-  // if we are merely a follower
-  bool isSynchronousReplication;
+  // we can deny them if we are a (new) leader, and that we can deny other
+  // operation if we are merely a follower. Finally, we must deny replications
+  // from the wrong leader.
+  std::string isSynchronousReplicationFrom;
 };
 
 }

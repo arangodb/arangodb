@@ -525,16 +525,12 @@ function put_api_collection_truncate (req, res, collection) {
       waitForSync = true;
     }
   }
-  let isSynchronousReplication = false;
+  let isSynchronousReplicationFrom = "";
   if (req.parameters.hasOwnProperty('isSynchronousReplication')) {
-    let value = req.parameters.isSynchronousReplication.toLowerCase();
-    if (value === 'true' || value === 'yes' ||
-        value === 'on' || value === 'y' || value === '1') {
-      isSynchronousReplication = true;
-    }
+    isSynchronousReplicationFrom = req.parameters.isSynchronousReplication;
   }
   try {
-    collection.truncate(waitForSync, isSynchronousReplication);
+    collection.truncate(waitForSync, isSynchronousReplicationFrom);
 
     var result = collectionRepresentation(collection);
 

@@ -328,7 +328,7 @@ function getLocalCollections () {
         type: collection.type(),
         status: collection.status(),
         planId: collection.planId(),
-        isLeader: collection.isLeader()
+        theLeader: collection.getLeader()
       };
 
       // merge properties
@@ -359,7 +359,7 @@ function organiseLeaderResign (database, collId, shardName) {
   try {
     // we know the shard exists locally!
     var db = require('internal').db;
-    db._collection(shardName).leaderResign();
+    db._collection(shardName).setLeader("");  // resign
     db._executeTransaction(
       { 'collections': { 'write': [shardName] },
         'action': function () { }
@@ -800,28 +800,30 @@ function executePlanForCollections(plannedCollections) {
                 collectionInfo.name = save.name;
                 collection = db._collection(shardName);
                 if (shouldBeLeader) {
-                  collection.assumeLeadership();
+                  collection.setLeader("");   // take power
+                } else {
+                  collection.setLeader(plannedServers[0]);
                 }
                 collectionStatus = ArangoCollection.STATUS_LOADED;
               } else {
                 collection = db._collection(shardName);
-                // We adjust local leadership, note that the planned resignation
-                // case is not handled here, since then ourselves does not appear
-                // in shards[shard] but only "_" + ourselves.
                 // We adjust local leadership, note that the planned
                 // resignation case is not handled here, since then
                 // ourselves does not appear in shards[shard] but only
-                // "_" + ourselves. See below under "Drop local shards"
-                // to see the proper handling of this case. Place is marked
-                // with *** in comments.
+                // "_" + ourselves. We adjust local leadership, note
+                // that the planned resignation case is not handled
+                // here, since then ourselves does not appear in
+                // shards[shard] but only "_" + ourselves. See below
+                // under "Drop local shards" to see the proper handling
+                // of this case. Place is marked with *** in comments.
 
                 if (shouldBeLeader) {
-                  if (!localCollections[shardName].isLeader) {
-                    collection.assumeLeadership();
+                  if (localCollections[shardName].theLeader !== "") {
+                    collection.setLeader("");  // assume leadership
                   } else {
-                    // would not harm in assumeLeadership situation but
-                    // in its current implementation assumeLeadership will reset all
-                    // followers...so we can save some work here :S
+                    // would not harm in assume leadership situation but
+                    // in its current implementation setLeader("") will 
+                    // reset all followers...so we can save some work here :S
                     let currentFollowers = collection.getFollowers();
                     let plannedFollowers = plannedServers.slice(1);
                     let removedFollowers = currentFollowers.filter(follower => {
@@ -831,18 +833,16 @@ function executePlanForCollections(plannedCollections) {
                       collection.removeFollower(removedFollower);
                     });
                   }
-                }
-                if (!shouldBeLeader && localCollections[shardName].isLeader) {
-                  // Note that the following does not delete the follower list
-                  // and that this is crucial, because in the planned leader 
-                  // resign case, updateCurrentForCollections will report the
-                  // resignation together with the old in-sync list to the
-                  // agency. If this list would be empty, then the supervision
-                  // would be very angry with us!
-                  collection.leaderResign();
-                } else if (shouldBeLeader &&
-                  !localCollections[shardName].isLeader) {
-                    collection.assumeLeadership();
+                } else {
+                  if (localCollections[shardName].theLeader === "") {
+                    // Note that the following does not delete the follower list
+                    // and that this is crucial, because in the planned leader 
+                    // resign case, updateCurrentForCollections will report the
+                    // resignation together with the old in-sync list to the
+                    // agency. If this list would be empty, then the supervision
+                    // would be very angry with us!
+                    collection.setLeader(plannedServers[0]);
+                  }
                 }
 
                 collectionStatus = localCollections[shardName].status;
@@ -936,12 +936,12 @@ function executePlanForCollections(plannedCollections) {
           // May be we have been the leader and are asked to withdraw: ***
           if (shardMap.hasOwnProperty(collection) &&
               shardMap[collection][0] === '_' + ourselves) {
-            if (collections[collection].isLeader) {
+            if (collections[collection].theLeader === "") {
               organiseLeaderResign(database, collections[collection].planId,
                 collection);
             }
           } else {
-            if (!collections[collection].isLeader) {
+            if (collections[collection].theLeader !== "") {
               // Remove us from the follower list, this is a best
               // effort: If an error occurs, this is no problem, since
               // the leader will soon notice that the shard here is
@@ -1076,7 +1076,7 @@ function updateCurrentForCollections(localErrors, plannedCollections,
       for (shard in localCollections) {
         if (localCollections.hasOwnProperty(shard)) {
           let shardInfo = localCollections[shard];
-          if (shardInfo.isLeader) {
+          if (shardInfo.theLeader === "") {
             let localCollectionInfo = assembleLocalCollectionInfo(shardInfo, localErrors[shard] || {});
             let currentCollectionInfo = fetchKey(currentCollections, database, shardInfo.planId, shard);
 
