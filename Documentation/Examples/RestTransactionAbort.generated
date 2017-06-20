@@ -12,7 +12,6 @@ content-type: application/json; charset=utf<span class="hljs-number">-8</span>
 x-content-type-options: nosniff
 
 { 
-  <span class="hljs-string">"exception"</span> : <span class="hljs-string">"doh!"</span>, 
   <span class="hljs-string">"error"</span> : <span class="hljs-literal">true</span>, 
   <span class="hljs-string">"code"</span> : <span class="hljs-number">500</span>, 
   <span class="hljs-string">"errorNum"</span> : <span class="hljs-number">500</span>, 
