@@ -28,6 +28,19 @@ Whether or not this option is specified, the server will always perform a
 version check on startup. Running the server with a non-matching version number
 in the VERSION file will make the server refuse to start.
 
+### Storage Engine
+As of ArangoDB 3.2 several storage engines are supported. The previously existing
+engine is called `MMFiles`, the newly created one is based on [RocksDB](http://rocksdb.org)
+and thus called the like.
+
+One storage engine type is supported per server per installation. 
+Live switching of storage engines on currently installed systems isn't supported.
+If you configure the wrong engine not matching the previously used one will result
+in the server refusing to start. You may however use `auto` to let ArangoDB choose 
+the previously used one. 
+
+
+`--server.storage-engine [auto|mmfiles|rocksdb]`
 
 ### Daemon
 
