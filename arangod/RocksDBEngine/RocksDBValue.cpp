@@ -24,6 +24,8 @@
 
 #include "RocksDBEngine/RocksDBValue.h"
 #include "Basics/Exceptions.h"
+#include "Basics/StaticStrings.h"
+#include "Basics/StringUtils.h"
 #include "RocksDBEngine/RocksDBCommon.h"
 
 using namespace arangodb;
@@ -65,6 +67,10 @@ RocksDBValue RocksDBValue::ReplicationApplierConfig(VPackSlice const& data) {
   return RocksDBValue(RocksDBEntryType::ReplicationApplierConfig, data);
 }
 
+RocksDBValue RocksDBValue::KeyGeneratorValue(VPackSlice const& data) {
+  return RocksDBValue(RocksDBEntryType::KeyGeneratorValue, data);
+}
+
 RocksDBValue RocksDBValue::Empty(RocksDBEntryType type) {
   return RocksDBValue(type);
 }
@@ -97,6 +103,18 @@ VPackSlice RocksDBValue::data(std::string const& s) {
   return data(s.data(), s.size());
 }
 
+uint64_t RocksDBValue::keyValue(RocksDBValue const& value) {
+  return keyValue(value._buffer.data(), value._buffer.size());
+}
+
+uint64_t RocksDBValue::keyValue(rocksdb::Slice const& slice) {
+  return keyValue(slice.data(), slice.size());
+}
+
+uint64_t RocksDBValue::keyValue(std::string const& s) {
+  return keyValue(s.data(), s.size());
+}
+
 RocksDBValue::RocksDBValue(RocksDBEntryType type) : _type(type), _buffer() {}
 
 RocksDBValue::RocksDBValue(RocksDBEntryType type, uint64_t data)
@@ -121,6 +139,7 @@ RocksDBValue::RocksDBValue(RocksDBEntryType type, VPackSlice const& data)
     case RocksDBEntryType::Collection:
     case RocksDBEntryType::Document:
     case RocksDBEntryType::View:
+    case RocksDBEntryType::KeyGeneratorValue:
     case RocksDBEntryType::ReplicationApplierConfig: {
       _buffer.reserve(static_cast<size_t>(data.byteSize()));
       _buffer.append(reinterpret_cast<char const*>(data.begin()),
@@ -141,7 +160,7 @@ RocksDBValue::RocksDBValue(RocksDBEntryType type, StringRef const& data)
       _buffer.append(data.data(), data.size());
       break;
     }
-      
+
     default:
       THROW_ARANGO_EXCEPTION(TRI_ERROR_BAD_PARAMETER);
   }
@@ -162,4 +181,22 @@ VPackSlice RocksDBValue::data(char const* data, size_t size) {
   TRI_ASSERT(data != nullptr);
   TRI_ASSERT(size >= sizeof(char));
   return VPackSlice(data);
+}
+
+#include "Logger/Logger.h"
+
+uint64_t RocksDBValue::keyValue(char const* data, size_t size) {
+  TRI_ASSERT(data != nullptr);
+  TRI_ASSERT(size >= sizeof(char));
+  VPackSlice slice(data);
+  VPackSlice key = slice.get(StaticStrings::KeyString);
+  if (key.isString()) {
+    std::string s = key.copyString();
+    if (s.size() > 0 && s[0] >= '0' && s[0] <= '9') {
+      LOG_TOPIC(ERR, Logger::FIXME) << "found _key " << s;
+      return basics::StringUtils::uint64(s);
+    }
+  }
+
+  return 0;
 }
