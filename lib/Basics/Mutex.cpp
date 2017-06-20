@@ -23,18 +23,34 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Mutex.h"
-
 #include "Logger/Logger.h"
+
+#include <limits>
 
 using namespace arangodb;
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief constructs a mutex
-////////////////////////////////////////////////////////////////////////////////
-
 #ifdef TRI_HAVE_POSIX_THREADS
 
-Mutex::Mutex() : _mutex() { pthread_mutex_init(&_mutex, nullptr); }
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+// initialize _holder to "maximum" thread id. this will work if the type of _holder
+// is numeric, but will not work if its type is more complex.
+Mutex::Mutex() : _mutex(), _holder((std::numeric_limits<decltype(_holder)>::max)()) { 
+#else
+Mutex::Mutex() : _mutex() { 
+#endif
+  pthread_mutexattr_init(&_attributes);
+
+#ifdef __linux__
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  // use an error checking mutex if available (only for LinuxThread) and only
+  // in maintainer mode
+  pthread_mutexattr_settype(&_attributes, PTHREAD_MUTEX_ERRORCHECK_NP);
+#endif
+#endif
+   
+  pthread_mutex_init(&_mutex, &_attributes);
+}
 
 #endif
 
@@ -44,13 +60,13 @@ Mutex::Mutex() : _mutex() { InitializeSRWLock(&_mutex); }
 
 #endif
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief deletes the mutex
-////////////////////////////////////////////////////////////////////////////////
-
 #ifdef TRI_HAVE_POSIX_THREADS
 
-Mutex::~Mutex() { pthread_mutex_destroy(&_mutex); }
+Mutex::~Mutex() { 
+  pthread_mutex_destroy(&_mutex); 
+  pthread_mutexattr_destroy(&_attributes); 
+}
 
 #endif
 
@@ -59,13 +75,15 @@ Mutex::~Mutex() { pthread_mutex_destroy(&_mutex); }
 Mutex::~Mutex() {}
 #endif
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief acquires the lock
-////////////////////////////////////////////////////////////////////////////////
-
 #ifdef TRI_HAVE_POSIX_THREADS
 
 void Mutex::lock() {
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  // we must not hold the lock ourselves here
+  TRI_ASSERT(_holder != Thread::currentThreadId());
+#endif
+
   int rc = pthread_mutex_lock(&_mutex);
 
   if (rc != 0) {
@@ -76,9 +94,18 @@ void Mutex::lock() {
     LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << "could not lock the mutex object: " << strerror(rc);
     FATAL_ERROR_ABORT();
   }
+  
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  _holder = Thread::currentThreadId();
+#endif
 }
 
 bool Mutex::tryLock() {
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  // we must not hold the lock ourselves here
+  TRI_ASSERT(_holder != Thread::currentThreadId());
+#endif
+
   int rc = pthread_mutex_trylock(&_mutex);
   
   if (rc != 0) {
@@ -91,6 +118,10 @@ bool Mutex::tryLock() {
     LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << "could not lock the mutex object: " << strerror(rc);
     FATAL_ERROR_ABORT();
   }
+
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  _holder = Thread::currentThreadId();
+#endif
   return true;
 }
 
@@ -104,13 +135,14 @@ bool Mutex::tryLock() { return TryAcquireSRWLockExclusive(&_mutex) != 0; }
 
 #endif
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief releases the lock
-////////////////////////////////////////////////////////////////////////////////
-
 #ifdef TRI_HAVE_POSIX_THREADS
 
 void Mutex::unlock() {
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  TRI_ASSERT(_holder == Thread::currentThreadId());
+  _holder = 0;
+#endif
   int rc = pthread_mutex_unlock(&_mutex);
 
   if (rc != 0) {
@@ -125,4 +157,12 @@ void Mutex::unlock() {
 
 void Mutex::unlock() { ReleaseSRWLockExclusive(&_mutex); }
 
+#endif
+  
+/// @brief assert that the mutex is locked by the current thread. will do
+/// nothing in non-maintainer mode and will do nothing for non-posix locks
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+void Mutex::assertLockedByCurrentThread() {
+  TRI_ASSERT(_holder == Thread::currentThreadId());
+}
 #endif

@@ -24,13 +24,13 @@
 #ifndef ARANGOD_GENERAL_SERVER_VST_COMM_TASK_H
 #define ARANGOD_GENERAL_SERVER_VST_COMM_TASK_H 1
 
+#include "Basics/Common.h"
 #include "GeneralServer/GeneralCommTask.h"
-
-#include <stdexcept>
-
 #include "lib/Rest/VstMessage.h"
 #include "lib/Rest/VstRequest.h"
 #include "lib/Rest/VstResponse.h"
+
+#include <stdexcept>
 
 namespace arangodb {
 
@@ -38,7 +38,7 @@ class AuthenticationFeature;
 
 namespace rest {
 
-class VstCommTask : public GeneralCommTask {
+class VstCommTask final : public GeneralCommTask {
  public:
   VstCommTask(EventLoop, GeneralServer*, std::unique_ptr<Socket> socket,
               ConnectionInfo&&, double timeout, ProtocolVersion protocolVersion,
@@ -54,11 +54,11 @@ class VstCommTask : public GeneralCommTask {
     }
 
     addResponse(vstResponse, stat);
-  };
+  }
 
   arangodb::Endpoint::TransportType transportType() override {
     return arangodb::Endpoint::TransportType::VST;
-  };
+  }
 
  protected:
   // read data check if chunk and message are complete
