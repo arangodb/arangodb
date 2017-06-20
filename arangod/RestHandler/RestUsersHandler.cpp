@@ -219,7 +219,7 @@ RestStatus RestUsersHandler::postRequest(AuthInfo* authInfo) {
   std::vector<std::string> suffixes = _request->decodedSuffixes();
   bool parseSuccess = false;
   std::shared_ptr<VPackBuilder> parsedBody = parseVelocyPackBody(parseSuccess);
-  if (!parseSuccess) {
+  if (!parseSuccess || !parsedBody->slice().isObject()) {
     generateResult(rest::ResponseCode::OK, VPackSlice());
     return RestStatus::DONE;
   }
@@ -265,7 +265,7 @@ RestStatus RestUsersHandler::putRequest(AuthInfo* authInfo) {
   std::vector<std::string> suffixes = _request->decodedSuffixes();
   bool parseSuccess = false;
   std::shared_ptr<VPackBuilder> parsedBody = parseVelocyPackBody(parseSuccess);
-  if (!parseSuccess) {
+  if (!parseSuccess || !parsedBody->slice().isObject()) {
     generateResult(rest::ResponseCode::OK, VPackSlice());
     return RestStatus::DONE;
   }
@@ -340,7 +340,7 @@ RestStatus RestUsersHandler::patchRequest(AuthInfo* authInfo) {
   std::vector<std::string> const& suffixes = _request->decodedSuffixes();
   bool parseSuccess = false;
   std::shared_ptr<VPackBuilder> parsedBody = parseVelocyPackBody(parseSuccess);
-  if (!parseSuccess) {
+  if (!parseSuccess || !parsedBody->slice().isObject()) {
     generateResult(rest::ResponseCode::OK, VPackSlice());
     return RestStatus::DONE;
   }
@@ -367,12 +367,6 @@ RestStatus RestUsersHandler::patchRequest(AuthInfo* authInfo) {
 
 RestStatus RestUsersHandler::deleteRequest(AuthInfo* authInfo) {
   std::vector<std::string> suffixes = _request->decodedSuffixes();
-  bool parseSuccess = false;
-  std::shared_ptr<VPackBuilder> parsedBody = parseVelocyPackBody(parseSuccess);
-  if (!parseSuccess) {
-    generateResult(rest::ResponseCode::OK, VPackSlice());
-    return RestStatus::DONE;
-  }
 
   if (suffixes.size() == 1) {
     if (isSystemUser()) {
