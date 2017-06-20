@@ -1,0 +1,157 @@
+//
+// IResearch search engine 
+// 
+// Copyright (c) 2016 by EMC Corporation, All Rights Reserved
+// 
+// This software contains the intellectual property of EMC Corporation or is licensed to
+// EMC Corporation from third parties. Use of this software and the intellectual property
+// contained therein is expressly limited to the terms and conditions of the License
+// Agreement under which it is provided by or on behalf of EMC.
+// 
+
+#include <boost/locale/generator.hpp>
+#include <boost/locale/info.hpp>
+#include <boost/locale/util.hpp>
+#include "locale_utils.hpp"
+
+NS_LOCAL
+
+std::locale generate_locale(std::string const& sName) {
+  // valgrind reports invalid reads for locale_genrator if declared inside function
+  boost::locale::generator locale_genrator; // stateful object, cannot be static
+
+  return locale_genrator.generate(sName);
+}
+
+NS_END
+
+NS_ROOT
+NS_BEGIN( locale_utils )
+
+std::string country(std::locale const& locale) {
+  try {
+    // try extracting 'info' facet from existing locale
+    return std::use_facet<boost::locale::info>(locale).country();
+  }
+  catch (...) {
+    // use Boost to parse the locale name and create a facet
+    auto locale_info = boost::locale::util::create_info(locale, locale.name());
+    auto& info_facet = std::use_facet<boost::locale::info>(locale_info);
+
+    return info_facet.country();
+  }
+}
+
+std::string encoding(std::locale const& locale){
+  try {
+    // try extracting 'info' facet from existing locale
+    return std::use_facet<boost::locale::info>(locale).encoding();
+  }
+  catch (...) {
+    // use Boost to parse the locale name and create a facet
+    auto locale_info = boost::locale::util::create_info(locale, locale.name());
+    auto& info_facet = std::use_facet<boost::locale::info>(locale_info);
+
+    return info_facet.encoding();
+  }
+}
+
+std::string language(std::locale const& locale){
+  try {
+    // try extracting 'info' facet from existing locale
+    return std::use_facet<boost::locale::info>(locale).language();
+  }
+  catch (...) {
+    // use Boost to parse the locale name and create a facet
+    auto locale_info = boost::locale::util::create_info(locale, locale.name());
+    auto& info_facet = std::use_facet<boost::locale::info>(locale_info);
+
+    return info_facet.language();
+  }
+}
+
+std::locale locale(char const* czName, bool bForceUTF8 /*= false*/) {
+  if (!czName) {
+    return bForceUTF8
+      ? locale(std::locale::classic().name(), true)
+      : std::locale::classic()
+      ;
+  }
+
+  const std::string sName(czName);
+
+  return locale(sName, bForceUTF8);
+}
+
+std::locale locale(std::string const& sName, bool bForceUTF8 /*= false*/) {
+  if (!bForceUTF8) {
+    return generate_locale(sName);
+  }
+
+  // ensure boost::locale::info facet exists for 'sName' since it is used below
+  auto locale = generate_locale(sName);
+  auto locale_info = boost::locale::util::create_info(locale, sName);
+  auto& info_facet = std::use_facet<boost::locale::info>(locale_info);
+
+  if (info_facet.utf8()) {
+    return locale;
+  }
+
+  return iresearch::locale_utils::locale(
+    info_facet.language(),
+    info_facet.country(),
+    "UTF-8",
+    info_facet.variant()
+  );
+}
+
+std::locale locale(std::string const& sLanguage, std::string const& sCountry, std::string const& sEncoding, std::string const& sVariant /*= ""*/) {
+  bool bValid = sLanguage.find('_') == std::string::npos && sCountry.find('_') == std::string::npos && sEncoding.find('_') == std::string::npos && sVariant.find('_') == std::string::npos
+              && sLanguage.find('.') == std::string::npos && sCountry.find('.') == std::string::npos && sEncoding.find('.') == std::string::npos && sVariant.find('.') == std::string::npos
+              && sLanguage.find('@') == std::string::npos && sCountry.find('@') == std::string::npos && sEncoding.find('@') == std::string::npos && sVariant.find('@') == std::string::npos;
+  std::string sName = sLanguage;// sLanguage.empty() && sCountry.empty() && (!sEncoding.empty() || !sVariant.empty()) ? "C" : sLanguage;
+
+  if (!bValid || !sCountry.empty()) {
+    sName.append(1, '_').append(sCountry);
+  }
+
+  if (!bValid || !sEncoding.empty()) {
+    sName.append(1, '.').append(sEncoding);
+  }
+
+  if (!bValid || !sVariant.empty()) {
+    sName.append(1, '@').append(sVariant);
+  }
+
+  return iresearch::locale_utils::locale(sName);
+}
+
+std::string name(std::locale const& locale) {
+  try {
+    return std::use_facet<boost::locale::info>(locale).name();
+  }
+  catch (...) {
+    return locale.name(); // fall back to default value if failed to get facet
+  }
+}
+
+bool utf8(std::locale const& locale) {
+  try {
+    // try extracting 'info' facet from existing locale
+    return std::use_facet<boost::locale::info>(locale).utf8();
+  }
+  catch (...) {
+    // use Boost to parse the locale name and create a facet
+    auto locale_info = boost::locale::util::create_info(locale, locale.name());
+    auto& info_facet = std::use_facet<boost::locale::info>(locale_info);
+
+    return info_facet.utf8();
+  }
+}
+
+NS_END
+NS_END
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                       END-OF-FILE
+// -----------------------------------------------------------------------------

@@ -1,0 +1,595 @@
+//
+// IResearch search engine 
+// 
+// Copyright (c) 2016 by EMC Corporation, All Rights Reserved
+// 
+// This software contains the intellectual property of EMC Corporation or is licensed to
+// EMC Corporation from third parties. Use of this software and the intellectual property
+// contained therein is expressly limited to the terms and conditions of the License
+// Agreement under which it is provided by or on behalf of EMC.
+// 
+
+#include "shared.hpp"
+#include "directory_attributes.hpp"
+#include "fs_directory.hpp"
+#include "checksum_io.hpp"
+#include "error/error.hpp"
+#include "utils/log.hpp"
+#include "utils/object_pool.hpp"
+#include "utils/utf8_path.hpp"
+
+#ifdef _WIN32
+  #include <Windows.h> // for GetLastError()
+#endif
+
+#include <boost/filesystem/operations.hpp>
+#include <boost/system/error_code.hpp>
+#include <boost/locale/encoding.hpp>
+
+MSVC_ONLY(__pragma(warning(push)))
+MSVC_ONLY(__pragma(warning(disable:4244)))
+MSVC_ONLY(__pragma(warning(disable:4245)))
+#include <boost/crc.hpp>
+MSVC_ONLY(__pragma(warning(pop)))
+
+NS_ROOT
+MSVC_ONLY(__pragma(warning(push)))
+MSVC_ONLY(__pragma(warning(disable: 4996))) // the compiler encountered a deprecated declaration
+
+//////////////////////////////////////////////////////////////////////////////
+/// @class fs_lock
+//////////////////////////////////////////////////////////////////////////////
+
+class fs_lock : public index_lock {
+ public:
+  fs_lock(const std::string& dir, const std::string& file)
+    : dir_(dir), file_(file) {
+  }
+
+  virtual bool lock() override {
+    if (handle_) {
+      // don't allow self obtaining
+      return false;
+    }
+
+    bool exists;
+    utf8_path path;
+
+    if (!(path/dir_).exists(exists)) {
+      IR_FRMT_ERROR("Error caught in: %s", __FUNCTION__);
+      return false;
+    }
+
+    // create directory if it is not exists
+    if (!exists && !path.mkdir()) {
+      IR_FRMT_ERROR("Error caught in: %s", __FUNCTION__);
+      return false;
+    }
+
+    // create lock file
+    if (!file_utils::verify_lock_file((path/file_).c_str())) {
+      if (!path.exists(exists) || (exists && !path.remove())) {
+        IR_FRMT_ERROR("Error caught in: %s", __FUNCTION__);
+        return false;
+      }
+
+      handle_ = file_utils::create_lock_file(path.c_str());
+    }
+
+    return handle_ != nullptr;
+  }
+
+  virtual bool is_locked(bool& result) const NOEXCEPT override {
+    if (handle_ != nullptr) {
+      result = true;
+      return true;
+    }
+
+    try {
+      utf8_path path;
+
+      path/dir_/file_;
+      result = file_utils::verify_lock_file(path.c_str());
+
+      return true;
+    } catch (...) {
+      IR_EXCEPTION();
+    }
+
+    return false;
+  }
+
+  virtual bool unlock() NOEXCEPT override {
+    if (handle_ != nullptr) {
+      handle_ = nullptr;
+#ifdef _WIN32
+      // file will be automatically removed on close
+      return true;
+#else
+      return (utf8_path()/dir_/file_).remove();
+#endif
+    }
+
+    return false;
+  }
+
+ private:
+  std::string dir_;
+  std::string file_;
+  file_utils::lock_handle_t handle_;
+}; // fs_lock
+
+//////////////////////////////////////////////////////////////////////////////
+/// @class fs_index_output
+//////////////////////////////////////////////////////////////////////////////
+class fs_index_output : public buffered_index_output {
+ public:
+  static index_output::ptr open(const file_path_t name) NOEXCEPT {
+    assert(name);
+
+    file_utils::handle_t handle(file_open(name, "wb"));
+
+    if (nullptr == handle) {
+      auto path = boost::locale::conv::utf_to_utf<char>(name);
+
+      // even win32 uses 'errno' fo error codes in calls to file_open(...)
+      IR_FRMT_ERROR("Failed to open output file, error: %d, path: %s", errno, path.c_str());
+
+      return nullptr;
+    }
+
+    try {
+      return fs_index_output::make<fs_index_output>(std::move(handle));
+    } catch(...) {
+      IR_EXCEPTION();
+    }
+
+    return nullptr;
+  }
+
+  virtual void close() override {
+    buffered_index_output::close();
+    handle.reset(nullptr);
+  }
+
+  virtual int64_t checksum() const override {
+    throw not_supported();
+  }
+
+ protected:
+  virtual void flush_buffer(const byte_type* b, size_t len) override {
+    assert(handle);
+
+    auto len_written = fwrite(b, sizeof(byte_type), len, handle.get());
+
+    if (len && len_written != len) {
+      std::stringstream ss;
+      ss << "Failed to write buffer, written " << len_written 
+         << " out of " << len << " bytes.", 
+      throw detailed_io_error(ss.str());
+    }
+  }
+
+ private:
+  DECLARE_FACTORY(index_output);
+
+  fs_index_output(file_utils::handle_t&& handle) NOEXCEPT
+    : handle(std::move(handle)) {
+  }
+
+  file_utils::handle_t handle;
+}; // fs_index_output
+
+//////////////////////////////////////////////////////////////////////////////
+/// @class fs_index_input
+//////////////////////////////////////////////////////////////////////////////
+class pooled_fs_index_input; // predeclaration used by fs_index_input
+class fs_index_input : public buffered_index_input {
+ public:
+  virtual ptr dup() const NOEXCEPT override;
+
+  static index_input::ptr open(
+    const file_path_t name, size_t pool_size
+  ) NOEXCEPT {
+    assert(name);
+
+    auto handle = file_handle::make();
+
+    handle->handle = file_open(name, "rb");
+
+    if (nullptr == handle->handle) {
+      auto path = boost::locale::conv::utf_to_utf<char>(name);
+
+      // even win32 uses 'errno' for error codes in calls to file_open(...)
+      IR_FRMT_ERROR("Failed to open input file, error: %d, path: %s", errno, path.c_str());
+
+      return nullptr;
+    }
+
+    // convert file descriptor to POSIX
+    auto size = file_utils::file_size(file_no(*handle));
+
+    if (handle->size < 0) {
+      auto path = boost::locale::conv::utf_to_utf<char>(name);
+      #ifdef _WIN32
+        auto error = GetLastError();
+      #else
+        auto error = errno;
+      #endif
+
+      IR_FRMT_ERROR("Failed to get stat for input file, error: %d, path: %s", error, path.c_str());
+
+      return nullptr;
+    }
+
+    handle->size = size;
+
+    try {
+      return fs_index_input::make<fs_index_input>(std::move(handle), pool_size);
+    } catch(...) {
+      IR_EXCEPTION();
+    }
+
+    return nullptr;
+  }
+
+  virtual size_t length() const override {
+    return handle_->size;
+  }
+
+  virtual ptr reopen() const NOEXCEPT override;
+
+ protected:
+  virtual void seek_internal(size_t pos) override {
+    if (pos >= handle_->size) {
+      std::stringstream ss;
+      ss << "Seek out of range for input file, length " << handle_->size 
+         << ", position " << pos;
+      throw detailed_io_error(ss.str());
+    }
+
+    pos_ = pos;
+  }
+
+  virtual size_t read_internal(byte_type* b, size_t len) override {
+    assert(b);
+    assert(handle_->handle);
+
+    FILE* stream = *handle_;
+
+    if (handle_->pos != pos_) {
+      if (fseek(stream, static_cast<long>(pos_), SEEK_SET) != 0) {
+
+        std::stringstream ss;
+        ss << "Failed to seek to " << pos_ 
+           << " for input file, error " << ferror(stream);
+        throw detailed_io_error(ss.str());
+      }
+
+      handle_->pos = pos_;
+    }
+
+    const size_t read = fread(b, sizeof(byte_type), len, stream);
+    pos_ = handle_->pos += read;
+
+    if (read != len) {
+      if (feof(stream)) {
+        //eof(true);
+        // read past eof
+        throw eof_error();
+      }
+
+      // read error
+      std::stringstream ss;
+      ss << "Failed to read from input file, read " << read 
+         << " out of " << len 
+         << " bytes, error " << ferror(stream);
+      throw detailed_io_error(ss.str());
+    }
+
+    assert(handle_->pos == pos_);
+    return read;
+  }
+
+ private:
+  friend pooled_fs_index_input;
+
+  /* use shared wrapper here since we don't want to
+  * call "ftell" every time we need to know current 
+  * position */
+  struct file_handle {
+    DECLARE_SPTR(file_handle);
+    DECLARE_FACTORY_DEFAULT();
+
+    operator FILE*() const { return handle.get(); }
+
+    file_utils::handle_t handle; /* native file handle */
+    size_t size{}; /* file size */
+    size_t pos{}; /* current file position*/
+  }; // file_handle
+
+  DECLARE_FACTORY(index_input);
+
+  fs_index_input(file_handle::ptr&& handle, size_t pool_size) NOEXCEPT
+    : handle_(std::move(handle)), pool_size_(pool_size), pos_(0) {
+    assert(handle_);
+  }
+
+  fs_index_input(const fs_index_input&) = default;
+  fs_index_input& operator=(const fs_index_input&) = delete;
+
+  file_handle::ptr handle_; /* shared file handle */
+  size_t pool_size_; // size of pool for instances of pooled_fs_index_input
+  size_t pos_; /* current input stream position */
+}; // fs_index_input
+
+DEFINE_FACTORY_DEFAULT(fs_index_input::file_handle);
+
+class pooled_fs_index_input: public fs_index_input {
+ public:
+  explicit pooled_fs_index_input(const fs_index_input& in);
+  virtual ~pooled_fs_index_input();
+  virtual ptr dup() const NOEXCEPT;
+  virtual ptr reopen() const NOEXCEPT;
+
+ private:
+  typedef unbounded_object_pool<file_handle> fd_pool_t;
+  std::shared_ptr<fd_pool_t> fd_pool_;
+
+  pooled_fs_index_input(const pooled_fs_index_input& in) = default;
+  file_handle::ptr reopen(const file_handle& src) const NOEXCEPT;
+};
+
+index_input::ptr fs_index_input::dup() const NOEXCEPT {
+  try {
+    PTR_NAMED(fs_index_input, ptr, *this);
+    return ptr;
+  } catch(...) {
+    IR_EXCEPTION();
+  }
+
+  return nullptr;
+}
+
+index_input::ptr fs_index_input::reopen() const NOEXCEPT {
+  auto ptr = index_input::make<pooled_fs_index_input>(*this);
+
+  if (!ptr) {
+    return nullptr;
+  }
+
+  auto& in = static_cast<pooled_fs_index_input&>(*ptr);
+
+  return in.handle_ && in.handle_->handle ? std::move(ptr) : nullptr;
+}
+
+pooled_fs_index_input::pooled_fs_index_input(const fs_index_input& in)
+  : fs_index_input(in), fd_pool_(memory::make_unique<fd_pool_t>(pool_size_)) {
+  handle_ = reopen(*handle_);
+}
+
+pooled_fs_index_input::~pooled_fs_index_input() {
+  handle_.reset(); // release handle before the fs_pool_ is deallocated
+}
+
+index_input::ptr pooled_fs_index_input::dup() const NOEXCEPT {
+  try {
+    PTR_NAMED(pooled_fs_index_input, ptr, *this);
+    return ptr;
+  } catch(...) {
+    IR_EXCEPTION();
+  }
+
+  return nullptr;
+}
+
+index_input::ptr pooled_fs_index_input::reopen() const NOEXCEPT {
+  auto ptr = dup();
+
+  if (!ptr) {
+    return nullptr;
+  }
+
+  auto& in = static_cast<pooled_fs_index_input&>(*ptr);
+
+  in.handle_ = reopen(*handle_); // reserve a new handle from pool
+
+  return in.handle_ && in.handle_->handle ? std::move(ptr) : nullptr;
+}
+
+fs_index_input::file_handle::ptr pooled_fs_index_input::reopen(
+  const file_handle& src
+) const NOEXCEPT {
+  // reserve a new handle from the pool
+  auto handle = const_cast<pooled_fs_index_input*>(this)->fd_pool_->emplace();
+
+  if (!handle->handle) {
+    handle->handle = file_open(src, "rb"); // same permission as in fs_index_input::open(...)
+
+    if (!handle->handle) {
+      // even win32 uses 'errno' for error codes in calls to file_open(...)
+      IR_FRMT_ERROR("Failed to reopen input file, error: %d", errno);
+
+      return nullptr;
+    }
+  }
+
+  handle->pos = ::ftell(handle->handle.get()); // match position of file descriptor
+  handle->size = src.size;
+
+  return handle;
+}
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                       fs_directory implementation
+// -----------------------------------------------------------------------------
+
+/*static*/ bool fs_directory::create_directory(const string_ref& dir) {
+  return (utf8_path()/dir).mkdir();
+}
+
+/*static*/ bool fs_directory::remove_directory(const string_ref& dir) {
+  return (utf8_path()/dir).rmdir();
+}
+
+fs_directory::fs_directory(const std::string& dir)
+  : dir_(dir) {
+}
+
+attribute_store& fs_directory::attributes() NOEXCEPT {
+  return attributes_;
+}
+
+void fs_directory::close() NOEXCEPT { }
+
+index_output::ptr fs_directory::create(const std::string& name) NOEXCEPT {
+  typedef checksum_index_output<boost::crc_32_type> checksum_output_t;
+
+  try {
+    utf8_path path;
+
+    path/dir_/name;
+
+    auto out = fs_index_output::open(path.c_str());
+
+    if (out) {
+      return index_output::make<checksum_output_t>(std::move(out));
+    }
+
+    IR_FRMT_ERROR("Failed to open output file, path: %s", name.c_str());
+
+    return nullptr;
+  } catch(...) {
+    IR_EXCEPTION();
+  }
+
+  return nullptr;
+}
+
+const std::string& fs_directory::directory() const NOEXCEPT {
+  return dir_;
+}
+
+bool fs_directory::exists(
+  bool& result, const std::string& name
+) const NOEXCEPT {
+  return (utf8_path()/dir_/name).exists(result);
+}
+
+bool fs_directory::length(
+  uint64_t& result, const std::string& name
+) const NOEXCEPT {
+  return (utf8_path()/dir_/name).file_size(result);
+}
+
+index_lock::ptr fs_directory::make_lock(const std::string& name) NOEXCEPT {
+  return index_lock::make<fs_lock>(dir_, name);
+}
+
+bool fs_directory::mtime(
+  std::time_t& result, const std::string& name
+) const NOEXCEPT {
+  return (utf8_path()/dir_/name).file_mtime(result);
+}
+
+bool fs_directory::remove(const std::string& name) NOEXCEPT {
+  try {
+    utf8_path path;
+
+    path/dir_/name;
+
+    return path.remove();
+  } catch (...) {
+    IR_EXCEPTION();
+  }
+
+  return false;
+}
+
+index_input::ptr fs_directory::open(const std::string& name) const NOEXCEPT {
+  try {
+    utf8_path path;
+    auto pool_size =
+      const_cast<attribute_store&>(attributes()).emplace<fd_pool_size>()->size;
+
+    path/dir_/name;
+
+    return fs_index_input::open(path.c_str(), pool_size);
+  } catch(...) {
+    IR_EXCEPTION();
+  }
+
+  return nullptr;
+}
+
+bool fs_directory::rename(
+  const std::string& src, const std::string& dst
+) NOEXCEPT {
+  try {
+    utf8_path src_path;
+    utf8_path dst_path;
+
+    src_path/dir_/src;
+    dst_path/dir_/dst;
+
+    return src_path.rename(dst_path);
+  } catch (...) {
+    IR_EXCEPTION();
+  }
+
+  return false;
+}
+
+bool fs_directory::visit(const directory::visitor_f& visitor) const {
+  auto directory = (utf8_path()/dir_).native();
+
+  if (!file_utils::is_directory(directory.c_str())) {
+    return false;
+  }
+
+#ifdef _WIN32
+  utf8_path path;
+  auto dir_visitor = [&path, &visitor] (const file_path_t name) {
+    path.clear();
+    path / name;
+
+    auto filename = path.utf8();
+    return visitor(filename);
+  };
+#else
+  std::string filename;
+  auto dir_visitor = [&filename, &visitor] (const file_path_t name) {
+    filename.assign(name);
+    return visitor(filename);
+  };
+#endif
+
+  return file_utils::visit_directory(directory.c_str(), dir_visitor, false);
+}
+
+bool fs_directory::sync(const std::string& name) NOEXCEPT {
+  try {
+    utf8_path path;
+
+    path/dir_/name;
+
+    if (file_utils::file_sync(path.c_str())) {
+      return true;
+    }
+
+    #ifdef _WIN32
+      auto error = GetLastError();
+    #else
+      auto error = errno;
+    #endif
+
+    IR_FRMT_ERROR("Failed to sync file, error: %d, path: %s", error, path.utf8().c_str());
+  } catch (...) {
+    IR_EXCEPTION();
+  }
+
+  return false;
+}
+
+MSVC_ONLY(__pragma(warning(pop)))
+NS_END
