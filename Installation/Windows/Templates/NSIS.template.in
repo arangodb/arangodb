@@ -133,15 +133,15 @@ RequestExecutionLevel highest
     ${OrIf} $0 == 1
       StrCpy $INSTDIR "@CPACK_NSIS_INSTALL_ROOT@\@CPACK_PACKAGE_INSTALL_DIRECTORY@"
     ${EndIf}
-    StrCpy $DATADIR "$APPDATA\ArangoDB"
-    StrCpy $APPDIR "$APPDATA\ArangoDB-apps"
+    StrCpy $DATADIR "$APPDATA\ArangoDB\"
+    StrCpy $APPDIR "$APPDATA\ArangoDB-apps\"
   ${Else}
     SetShellVarContext current
     ${If} $INSTDIR == ""
       StrCpy $INSTDIR "$LOCALAPPDATA\@CPACK_PACKAGE_INSTALL_DIRECTORY@"
     ${EndIf}
-    StrCpy $DATADIR "$LOCALAPPDATA\ArangoDB"
-    StrCpy $APPDIR "$LOCALAPPDATA\ArangoDB-apps"
+    StrCpy $DATADIR "$LOCALAPPDATA\ArangoDB\"
+    StrCpy $APPDIR "$LOCALAPPDATA\ArangoDB-apps\"
   ${EndIf}
 FunctionEnd
 !macroend
@@ -384,6 +384,10 @@ Var AR_RegFlags
 
   Page custom InstallOptionsPage1 InstallOptionsPage1_results
 
+  !define MUI_PAGE_CUSTOMFUNCTION_PRE hide_install_directory
+  !define MUI_PAGE_CUSTOMFUNCTION_LEAVE check_installation_directory
+  !insertmacro MUI_PAGE_DIRECTORY
+
   !define MUI_PAGE_HEADER_TEXT "Choose the database folder for @CPACK_PACKAGE_NAME@"
   !define MUI_PAGE_HEADER_SUBTEXT ""
   !define MUI_DIRECTORYPAGE_TEXT_TOP "choose the folder where @CPACK_PACKAGE_NAME@ will create its database files"
@@ -403,10 +407,6 @@ Var AR_RegFlags
   !insertmacro MUI_PAGE_DIRECTORY
 
   Page custom InstallOptionsPage2 InstallOptionsPage2_results
-
-  !define MUI_PAGE_CUSTOMFUNCTION_PRE hide_install_directory
-  !define MUI_PAGE_CUSTOMFUNCTION_LEAVE check_installation_directory
-  !insertmacro MUI_PAGE_DIRECTORY
 
   ;Start Menu Folder Page Configuration
   !define MUI_STARTMENUPAGE_REGISTRY_ROOT "SHCTX"
