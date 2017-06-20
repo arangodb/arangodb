@@ -25,6 +25,7 @@
 #define ARANGODB_CACHE_CACHE_H
 
 #include "Basics/Common.h"
+#include "Basics/Result.h"
 #include "Cache/CachedValue.h"
 #include "Cache/Common.h"
 #include "Cache/Finding.h"
@@ -78,9 +79,9 @@ class Cache : public std::enable_shared_from_this<Cache> {
 
   // primary functionality; documented in derived classes
   virtual Finding find(void const* key, uint32_t keySize) = 0;
-  virtual bool insert(CachedValue* value) = 0;
-  virtual bool remove(void const* key, uint32_t keySize) = 0;
-  virtual bool blacklist(void const* key, uint32_t keySize) = 0;
+  virtual Result insert(CachedValue* value) = 0;
+  virtual Result remove(void const* key, uint32_t keySize) = 0;
+  virtual Result blacklist(void const* key, uint32_t keySize) = 0;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Returns the total memory usage for this cache in bytes.
@@ -131,8 +132,8 @@ class Cache : public std::enable_shared_from_this<Cache> {
   bool isShutdown();
 
  protected:
-  static constexpr int64_t triesFast = 10000;
-  static constexpr int64_t triesSlow = 100000;
+  static constexpr int64_t triesFast = 200;
+  static constexpr int64_t triesSlow = 10000;
   static constexpr int64_t triesGuarantee = -1;
 
  protected:

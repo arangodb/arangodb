@@ -1,19 +1,53 @@
 //  -*- mode: groovy-mode
 
+properties([
+    parameters([
+        booleanParam(
+            defaultValue: false,
+            description: 'clean build',
+            name: 'cleanBuild'
+        ),
+        booleanParam(
+            defaultValue: false,
+            description: 'build enterprise',
+            name: 'buildEnterprise'
+        ),
+        booleanParam(
+            defaultValue: true,
+            description: 'build Linux',
+            name: 'buildLinux'
+        ),
+        booleanParam(
+            defaultValue: false,
+            description: 'build Mac',
+            name: 'buildMac'
+        ),
+        booleanParam(
+            defaultValue: false,
+            description: 'build Windows',
+            name: 'buildWindows'
+        ),
+    ])
+])
+
 // start with empty build directory
-cleanBuild = false
+cleanBuild = params.cleanBuild
 
 // build enterprise version
-buildEnterprise = false
+buildEnterprise = params.buildEnterprise
 
 // build linux
-buildLinux = true
+buildLinux = params.buildLinux
 
 // build mac
-buildMac = false
+buildMac = params.buildMac
 
 // build windows
-buildWindows = false
+buildWindows = params.buildWindows
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                             CONSTANTS AND HELPERS
+// -----------------------------------------------------------------------------
 
 // github repositiory for enterprise version
 enterpriseRepo = 'https://github.com/arangodb/enterprise'
@@ -34,6 +68,10 @@ def PowerShell(psCmd) {
 // -----------------------------------------------------------------------------
 
 def checkoutCommunity() {
+    if (cleanBuild) {
+       sh 'rm -rf *'
+    }
+
     retry(3) {
         try {
             checkout scm
@@ -103,6 +141,16 @@ def checkCommitMessages() {
                 cleanBuild = true
             }
 
+            if (msg ==~ /(?i).*\[ci:[^\]]*no-clean[ \]].*/) {
+                echo "using clean build because message contained 'no-clean'"
+                cleanBuild = false
+            }
+
+            if (msg ==~ /(?i).*\[ci:[^\]]*linux[ \]].*/) {
+                echo "not building linux because message contained 'linux'"
+                buildLinux = true
+            }
+
             if (msg ==~ /(?i).*\[ci:[^\]]*no-linux[ \]].*/) {
                 echo "not building linux because message contained 'no-linux'"
                 buildLinux = false
@@ -113,14 +161,29 @@ def checkCommitMessages() {
                 buildMac = true
             }
 
+            if (msg ==~ /(?i).*\[ci:[^\]]*no-mac[ \]].*/) {
+                echo "building mac because message contained 'no-mac'"
+                buildMac = false
+            }
+
             if (msg ==~ /(?i).*\[ci:[^\]]*windows[ \]].*/) {
                 echo "building windows because message contained 'windows'"
                 buildWindows = true
             }
 
+            if (msg ==~ /(?i).*\[ci:[^\]]*no-windows[ \]].*/) {
+                echo "building windows because message contained 'no-windows'"
+                buildWindows = false
+            }
+
             if (msg ==~ /(?i).*\[ci:[^\]]*enterprise[ \]].*/) {
                 echo "building enterprise because message contained 'enterprise'"
                 buildEnterprise = true
+            }
+
+            if (msg ==~ /(?i).*\[ci:[^\]]*no-enterprise[ \]].*/) {
+                echo "building enterprise because message contained 'no-enterprise'"
+                buildEnterprise = false
             }
 
             def files = new ArrayList(entry.affectedFiles)
@@ -132,6 +195,12 @@ def checkCommitMessages() {
             }
         }
     }
+
+    echo 'Clean Build: ' + (cleanBuild ? 'true' : 'false')
+    echo 'Build Enterprise: ' + (buildEnterprise ? 'true' : 'false')
+    echo 'Build Linux: ' + (buildLinux ? 'true' : 'false')
+    echo 'Build Mac: ' + (buildMac ? 'true' : 'false')
+    echo 'Build Windows: ' + (buildWindows ? 'true' : 'false')
 }
 
 def stashSourceCode() {
@@ -293,7 +362,7 @@ if (buildLinux) {
                 def edition = 'community'
 
                 node(os) {
-                    echo "Running singleserver community rocksdb linux test"
+                    echo "Running singleserver " + edition + " rocksdb " + os + " test"
 
                     unstashBinaries(edition, os)
                     testEdition(edition, os, 'singleserver', 'rocksdb')
@@ -305,7 +374,7 @@ if (buildLinux) {
 
                 if (buildEnterprise) {
                     node(os) {
-                        echo "Running singleserver enterprise mmfiles linux test"
+                        echo "Running singleserver " + edition + " mmfiles " + os + " test"
 
                         unstashBinaries(edition, os)
                         testEdition(edition, os, 'singleserver', 'mmfiles')

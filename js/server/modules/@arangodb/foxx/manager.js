@@ -147,7 +147,7 @@ function selfHealAll (skipReloadRouting) {
         db._useDatabase(name);
         modified = selfHeal() || modified;
       } catch (e) {
-        console.warnStack(e);
+        console.debugStack(e);
       }
     }
   } finally {
