@@ -57,17 +57,6 @@ RestStatus RestDatabaseHandler::execute() {
                   TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
     return RestStatus::DONE;
   }
-
-  /*bool parseSuccess = true;
-  std::shared_ptr<VPackBuilder> parsedBody =
-      parseVelocyPackBody(parseSuccess);
-
-  if (!parseSuccess) {
-    generateResult(rest::ResponseCode::OK, VPackSlice());
-    return RestStatus::DONE;
-  }
-
-  VPackBuilder result;*/
 }
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -104,14 +93,9 @@ RestStatus RestDatabaseHandler::getDatabases() {
   }
 
   if (result.isEmpty()) {
-    generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER);
+    generateError(rest::ResponseCode::BAD, TRI_ERROR_BAD_PARAMETER);
   } else {
-    VPackBuilder pack;
-    pack.openObject();
-    pack.add("result", result.slice());
-    pack.add("error", VPackValue(false));
-    pack.close();
-    generateResult(rest::ResponseCode::OK, pack.slice());
+    generateSuccess(rest::ResponseCode::OK, result.slice());
   }
   return RestStatus::DONE;
 }
@@ -139,17 +123,11 @@ RestStatus RestDatabaseHandler::createDatabase() {
   VPackSlice users = parsedBody->slice().get("users");
 
   Result res = methods::Database::create(dbName, users, options);
-  if (!res.ok()) {
+  if (res.ok()) {
+    generateSuccess(rest::ResponseCode::CREATED, VPackSlice::trueSlice());
+  } else {
     generateError(res);
-    return RestStatus::DONE;
   }
-
-  VPackBuilder b;
-  b.openObject();
-  b.add("result", VPackValue(true));
-  b.add("error", VPackValue(false));
-  b.close();
-  generateResult(rest::ResponseCode::CREATED, b.slice());
   return RestStatus::DONE;
 }
 
@@ -171,19 +149,11 @@ RestStatus RestDatabaseHandler::deleteDatabase() {
   std::string const& dbName = suffixes[0];
 
   Result res = methods::Database::drop(_vocbase, dbName);
-  if (!res.ok()) {
-    generateError(res.errorNumber() == TRI_ERROR_ARANGO_DATABASE_NOT_FOUND
-                      ? rest::ResponseCode::NOT_FOUND
-                      : rest::ResponseCode::BAD,
-                  res.errorNumber(), res.errorMessage());
-    return RestStatus::DONE;
+  if (res.ok()) {
+    generateSuccess(rest::ResponseCode::OK, VPackSlice::trueSlice());
+  } else {
+    generateError(res);
   }
 
-  VPackBuilder b;
-  b.openObject();
-  b.add("result", VPackValue(true));
-  b.add("error", VPackValue(false));
-  b.close();
-  generateResult(rest::ResponseCode::OK, b.slice());
   return RestStatus::DONE;
 }

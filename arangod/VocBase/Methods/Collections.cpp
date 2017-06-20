@@ -83,4 +83,21 @@ void methods::Collections::enumerateCollections(TRI_vocbase_t* vocbase,
   }
 }
 
-
+LogicalCollection* methods::Collections::lookupCollection(TRI_vocbase_t* vocbase,
+                                                          std::string const& collection) {
+  if (!collection.empty()) {
+    if (ServerState::instance()->isCoordinator()) {
+      try {
+        std::shared_ptr<LogicalCollection> coll =
+          ClusterInfo::instance()->getCollection(vocbase->name(), collection);
+        if (coll) {
+          auto colCopy = coll->clone();
+          return colCopy.release();
+        }
+      } catch (...) {}
+    } else {
+      return vocbase->lookupCollection(collection);
+    }
+  }
+  return nullptr;
+}

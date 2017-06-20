@@ -140,6 +140,16 @@ AuthLevel AuthenticationFeature::canUseDatabase(std::string const& username,
   return authInfo()->canUseDatabase(username, dbname);
 }
 
+AuthLevel AuthenticationFeature::canUseCollection(std::string const& username,
+                                                  std::string const& dbname,
+                                                  std::string const& coll) {
+  if (!isActive()) {
+    return AuthLevel::RW;
+  }
+  
+  return authInfo()->canUseCollection(username, dbname, coll);
+}
+
 AuthInfo* AuthenticationFeature::authInfo() {
   return &_authInfo;
 }

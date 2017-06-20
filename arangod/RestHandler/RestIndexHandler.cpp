@@ -150,9 +150,7 @@ RestStatus RestIndexHandler::getIndexes() {
       output = VPackCollection::merge(output.slice(), b.slice(), false);
       generateResult(rest::ResponseCode::OK, output.slice());
     } else {
-      generateError(res.errorNumber() == TRI_ERROR_ARANGO_INDEX_NOT_FOUND ?
-                      rest::ResponseCode::NOT_FOUND : rest::ResponseCode::BAD,
-                    res.errorNumber(), res.errorMessage());
+      generateError(res);
     }
   } else {
     generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER);
@@ -216,9 +214,7 @@ RestStatus RestIndexHandler::createIndex() {
     
     generateResult(r, output.slice());
   } else {
-    generateError(res.errorNumber() == TRI_ERROR_ARANGO_INDEX_NOT_FOUND ?
-                  rest::ResponseCode::NOT_FOUND : rest::ResponseCode::BAD,
-                  res.errorNumber(), res.errorMessage());
+    generateError(res);
   }
   return RestStatus::DONE;
 }
@@ -257,8 +253,7 @@ RestStatus RestIndexHandler::dropIndex() {
     b.close();
     generateResult(rest::ResponseCode::OK, b.slice());
   } else {
-    generateError(rest::ResponseCode::NOT_FOUND,
-                  TRI_ERROR_ARANGO_INDEX_NOT_FOUND, iid);
+    generateError(res);
   }
   return RestStatus::DONE;
 }

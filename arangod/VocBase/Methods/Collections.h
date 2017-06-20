@@ -34,13 +34,14 @@ struct TRI_vocbase_t;
 
 namespace arangodb {
 class LogicalCollection;
-class CollectionNameResolver;
 namespace methods {
 
 /// Common code for collection REST handler and v8-collections
 struct Collections {
   static void enumerateCollections(TRI_vocbase_t* vocbase,
                                    std::function<void(LogicalCollection*)> const&);
+  static LogicalCollection* lookupCollection(TRI_vocbase_t* vocbase,
+                                             std::string const& collection);
 };
 }
 }

@@ -2990,30 +2990,34 @@ static void JS_CollectionsVocbase(
   } else {
     colls = vocbase->collections(false);
   }
-  
-#warning Add collection filter
 
   std::sort(colls.begin(), colls.end(), [](LogicalCollection* lhs, LogicalCollection* rhs) -> bool {
     return StringUtils::tolower(lhs->name()) < StringUtils::tolower(rhs->name());
   });
-
+  
   bool error = false;
+  
   // already create an array of the correct size
   v8::Handle<v8::Array> result = v8::Array::New(isolate);
-
   size_t const n = colls.size();
-
+  size_t x = 0;
   for (size_t i = 0; i < n; ++i) {
     auto collection = colls[i];
-
+    
+    if (ExecContext::CURRENT_EXECCONTEXT != nullptr) {
+      AuthLevel level = ExecContext::CURRENT_EXECCONTEXT->authContext()
+                                    ->collectionAuthLevel(collection->name());
+      if (level == AuthLevel::NONE) {
+        continue;
+      }
+    }
+    
     v8::Handle<v8::Value> c = WrapCollection(isolate, collection);
-
     if (c.IsEmpty()) {
       error = true;
       break;
     }
-
-    result->Set(static_cast<uint32_t>(i), c);
+    result->Set(static_cast<uint32_t>(x++), c);
   }
 
   if (error) {
