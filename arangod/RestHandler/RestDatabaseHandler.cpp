@@ -126,7 +126,10 @@ RestStatus RestDatabaseHandler::createDatabase() {
   if (res.ok()) {
     generateSuccess(rest::ResponseCode::CREATED, VPackSlice::trueSlice());
   } else {
-    generateError(res);
+    generateError(res.errorNumber() == TRI_ERROR_ARANGO_DUPLICATE_NAME
+                      ? rest::ResponseCode::CONFLICT
+                      : rest::ResponseCode::BAD,
+                  res.errorNumber(), res.errorMessage());
   }
   return RestStatus::DONE;
 }
