@@ -129,24 +129,19 @@ RestStatus RestUsersHandler::getRequest(AuthInfo* authInfo) {
         DatabaseFeature::DATABASE->enumerateDatabases([&](
             TRI_vocbase_t* vocbase) {
           lvl = authInfo->canUseDatabase(user, vocbase->name());
-          if (lvl != AuthLevel::NONE) {
-            std::string str = AuthLevel::RO == lvl ? "ro" : "rw";
-            if (full) {
-              VPackObjectBuilder b(&data, vocbase->name(), true);
-              data.add("permission", VPackValue(str));
-              VPackObjectBuilder b2(&data, "collections", true);
-              methods::Collections::enumerateCollections(
-                  vocbase, [&](LogicalCollection* c) {
-                    lvl = authInfo->canUseCollection(user, vocbase->name(),
-                                                     c->name());
-                    if (lvl != AuthLevel::NONE) {
-                      data.add(c->name(),
-                               VPackValue(AuthLevel::RO == lvl ? "ro" : "rw"));
-                    }
-                  });
-            } else {
-              data.add(vocbase->name(), VPackValue(str));
-            }
+          std::string str = convertFromAuthLevel(lvl);
+          if (full) {
+            VPackObjectBuilder b(&data, vocbase->name(), true);
+            data.add("permission", VPackValue(str));
+            VPackObjectBuilder b2(&data, "collections", true);
+            methods::Collections::enumerateCollections(
+                vocbase, [&](LogicalCollection* c) {
+                  lvl = authInfo->canUseCollection(user, vocbase->name(),
+                                                   c->name());
+                  data.add(c->name(), VPackValue(convertFromAuthLevel(lvl)));
+                });
+          } else {
+            data.add(vocbase->name(), VPackValue(str));
           }
         });
         data.close();
