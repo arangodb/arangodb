@@ -32,7 +32,8 @@ struct OperationOptions {
   OperationOptions() 
       : recoveryData(nullptr), waitForSync(false), keepNull(true),
         mergeObjects(true), silent(false), ignoreRevs(true),
-        returnOld(false), returnNew(false), isRestore(false) {}
+        returnOld(false), returnNew(false), isRestore(false),
+        isSynchronousReplication(false) {}
 
   // original marker, set by an engine's recovery procedure only!
   void* recoveryData;
@@ -61,6 +62,11 @@ struct OperationOptions {
   // for insert operations: use _key value even when this is normally prohibited for the end user
   // this option is there to ensure _key values once set can be restored by replicated and arangorestore
   bool isRestore;
+
+  // for synchronous replication operations, we have to mark them such that
+  // we can deny them if we are a (new) leader and that we can deny others
+  // if we are merely a follower
+  bool isSynchronousReplication;
 };
 
 }

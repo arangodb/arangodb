@@ -86,11 +86,11 @@ struct LocalCollectionGuard {
 };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief extract the forceSync flag from the arguments
+/// @brief extract a boolean flag from the arguments
 /// must specify the argument index starting from 1
 ////////////////////////////////////////////////////////////////////////////////
 
-static inline bool ExtractWaitForSync(
+static inline bool ExtractBooleanArgument(
     v8::FunctionCallbackInfo<v8::Value> const& args, int index) {
   TRI_ASSERT(index > 0);
 
@@ -2522,7 +2522,7 @@ static void InsertVocbaseCol(v8::Isolate* isolate,
       options.isRestore = TRI_ObjectToBoolean(optionsObject->Get(IsRestoreKey));
     }
   } else {
-    options.waitForSync = ExtractWaitForSync(args, optsIdx + 1);
+    options.waitForSync = ExtractBooleanArgument(args, optsIdx + 1);
   }
 
   if (!args[docIdx]->IsObject()) {
@@ -2699,7 +2699,8 @@ static void JS_TruncateVocbaseCol(
   v8::HandleScope scope(isolate);
 
   OperationOptions opOptions;
-  opOptions.waitForSync = ExtractWaitForSync(args, 1);
+  opOptions.waitForSync = ExtractBooleanArgument(args, 1);
+  opOptions.isSynchronousReplication = ExtractBooleanArgument(args, 2);
 
   arangodb::LogicalCollection* collection =
       TRI_UnwrapClass<arangodb::LogicalCollection>(args.Holder(), WRP_VOCBASE_COL_TYPE);
