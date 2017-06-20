@@ -153,6 +153,8 @@ window.ArangoUsers = Backbone.Collection.extend({
   },
 
   whoAmI: function (callback) {
+    var self = this;
+
     if (this.activeUser) {
       callback(false, this.activeUser);
       return;
@@ -160,6 +162,7 @@ window.ArangoUsers = Backbone.Collection.extend({
     $.ajax('whoAmI?_=' + Date.now())
       .success(
         function (data) {
+          self.activeUser = data.user;
           callback(false, data.user);
         }
     ).error(

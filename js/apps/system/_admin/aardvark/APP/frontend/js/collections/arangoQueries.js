@@ -1,6 +1,6 @@
 /* jshint browser: true */
 /* jshint unused: false */
-/* global Backbone, window, ArangoQuery, $, _, arangoHelper */
+/* global Backbone, frontendConfig, window, ArangoQuery, $, _, arangoHelper */
 (function () {
   'use strict';
 
@@ -17,6 +17,13 @@
           }
         }
       );
+    },
+
+    fetch: function (options) {
+      if (window.App.currentUser && window.App.currentDB.get('name') !== '_system') {
+        this.url = frontendConfig.basePath + '/_api/user/' + encodeURIComponent(window.App.currentUser);
+      }
+      return Backbone.Collection.prototype.fetch.call(this, options);
     },
 
     url: arangoHelper.databaseUrl('/_api/user/'),
