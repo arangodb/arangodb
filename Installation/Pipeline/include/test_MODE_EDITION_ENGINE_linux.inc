@@ -94,14 +94,14 @@ elif [ "$mode" == cluster ]; then
     scripts/unittest endpoints                                    --minPort `expr $PORT02 +  80` --maxPort `expr $PORT02 + 119` $OPTS 2>&1
     scripts/unittest http_server                                  --minPort `expr $PORT02 + 120` --maxPort `expr $PORT02 + 159` $OPTS 2>&1
     scripts/unittest server_http                                  --minPort `expr $PORT02 + 160` --maxPort `expr $PORT02 + 199` $OPTS 2>&1
-    scripts/unittest shell_client                                 --minPort `expr $PORT03 +   0` --maxPort `expr $PORT02 +  39` $OPTS 2>&1
-    scripts/unittest shell_server                                 --minPort `expr $PORT03 +  40` --maxPort `expr $PORT03 +  79` $OPTS   2>&1
-    scripts/unittest shell_server_aql          --testBuckets 4/0  --minPort `expr $PORT03 +  80` --maxPort `expr $PORT03 + 119` $OPTS  2>&1
-    scripts/unittest shell_server_aql          --testBuckets 4/1  --minPort `expr $PORT03 + 120` --maxPort `expr $PORT03 + 159` $OPTS  2>&1
+    scripts/unittest shell_client                                 --minPort `expr $PORT03 +   0` --maxPort `expr $PORT03 +  39` $OPTS 2>&1
+    scripts/unittest shell_server                                 --minPort `expr $PORT03 +  40` --maxPort `expr $PORT03 +  79` $OPTS 2>&1
+    scripts/unittest shell_server_aql          --testBuckets 4/0  --minPort `expr $PORT03 +  80` --maxPort `expr $PORT03 + 119` $OPTS 2>&1
+    scripts/unittest shell_server_aql          --testBuckets 4/1  --minPort `expr $PORT03 + 120` --maxPort `expr $PORT03 + 159` $OPTS 2>&1
     scripts/unittest shell_server_aql          --testBuckets 4/2  --minPort `expr $PORT03 + 160` --maxPort `expr $PORT03 + 199` $OPTS 2>&1
-    scripts/unittest shell_server_aql          --testBuckets 4/3  --minPort `expr $PORT04 +   0` --maxPort `expr $PORT04 +  39` $OPTS  2>&1
-    scripts/unittest ssl_server                                   --minPort `expr $PORT04 +  40` --maxPort `expr $PORT04 +  79` $OPTS  2>&1
-    scripts/unittest upgrade                                      --minPort `expr $PORT04 +  80` --maxPort `expr $PORT04 + 119` $OPTS  2>&1
+    scripts/unittest shell_server_aql          --testBuckets 4/3  --minPort `expr $PORT04 +   0` --maxPort `expr $PORT04 +  39` $OPTS 2>&1
+    scripts/unittest ssl_server                                   --minPort `expr $PORT04 +  40` --maxPort `expr $PORT04 +  79` $OPTS 2>&1
+    scripts/unittest upgrade                                      --minPort `expr $PORT04 +  80` --maxPort `expr $PORT04 + 119` $OPTS 2>&1
     $ENTERPRISE_TESTS
     " | parallel --header 1 --results log-output --files --no-notice --load 10 --jobs $concurrency > log-output/${type}.log
 fi
