@@ -163,6 +163,8 @@ void TRI_InitializeErrorMessages () {
   REG_ERROR(ERROR_CLUSTER_UNKNOWN_DISTRIBUTESHARDSLIKE, "must not have a distributeShardsLike attribute pointing to an unknown collection");
   REG_ERROR(ERROR_CLUSTER_INSUFFICIENT_DBSERVERS, "the number of current dbservers is lower than the requested replicationFactor");
   REG_ERROR(ERROR_CLUSTER_COULD_NOT_DROP_FOLLOWER, "a follower could not be dropped in agency");
+  REG_ERROR(ERROR_CLUSTER_SHARD_LEADER_REFUSES_REPLICATION, "a shard leader refuses to perform a replication operation");
+  REG_ERROR(ERROR_CLUSTER_SHARD_FOLLOWER_REFUSES_OPERATION, "a shard follower refuses to perform an operation that is not a replication");
   REG_ERROR(ERROR_QUERY_KILLED, "query killed");
   REG_ERROR(ERROR_QUERY_PARSE, "%s");
   REG_ERROR(ERROR_QUERY_EMPTY, "query is empty");

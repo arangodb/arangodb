@@ -1384,6 +1384,22 @@ OperationResult transaction::Methods::insertLocal(
   TRI_voc_cid_t cid = addCollectionAtRuntime(collectionName);
   LogicalCollection* collection = documentCollection(trxCollection(cid));
 
+  bool isFollower = false;
+  if (_state->isDBServer()) {
+    // Block operation early if we are not supposed to perform it:
+    std::string theLeader = collection->followers()->getLeader();
+    if (theLeader.empty()) {
+      if (!options.isSynchronousReplicationFrom.empty()) {
+        return OperationResult(TRI_ERROR_CLUSTER_SHARD_LEADER_REFUSES_REPLICATION);
+      }
+    } else {  // we are a follower following theLeader
+      isFollower = true;
+      if (options.isSynchronousReplicationFrom != theLeader) {
+        return OperationResult(TRI_ERROR_CLUSTER_SHARD_FOLLOWER_REFUSES_OPERATION);
+      }
+    }
+  }
+
   if (options.returnNew) {
     pinData(cid);  // will throw when it fails
   }
@@ -1456,7 +1472,7 @@ OperationResult transaction::Methods::insertLocal(
     // Now replicate the same operation on all followers:
     auto const& followerInfo = collection->followers();
     followers = followerInfo->get();
-    doingSynchronousReplication = followerInfo->isLeader() && followers->size() > 0;
+    doingSynchronousReplication = !isFollower && followers->size() > 0;
   }
 
   if (doingSynchronousReplication && res.ok()) {
@@ -1469,7 +1485,7 @@ OperationResult transaction::Methods::insertLocal(
         "/_db/" + arangodb::basics::StringUtils::urlEncode(databaseName()) +
         "/_api/document/" +
         arangodb::basics::StringUtils::urlEncode(collection->name()) +
-        "?isRestore=true";
+        "?isRestore=true&isSynchronousReplication=true";
 
     VPackBuilder payload;
 
@@ -1520,6 +1536,8 @@ OperationResult transaction::Methods::insertLocal(
         if (nrGood < followers->size()) {
           // we drop all followers that were not successful:
           for (size_t i = 0; i < followers->size(); ++i) {
+            // If any would-be-follower refused to follow it must have been
+            // made leader in the meantime, in this case we must ...
             bool replicationWorked =
                 requests[i].done &&
                 requests[i].result.status == CL_COMM_RECEIVED &&
@@ -1670,6 +1688,22 @@ OperationResult transaction::Methods::modifyLocal(
   TRI_voc_cid_t cid = addCollectionAtRuntime(collectionName);
   LogicalCollection* collection = documentCollection(trxCollection(cid));
 
+  bool isFollower = false;
+  if (_state->isDBServer()) {
+    // Block operation early if we are not supposed to perform it:
+    std::string theLeader = collection->followers()->getLeader();
+    if (theLeader.empty()) {
+      if (!options.isSynchronousReplicationFrom.empty()) {
+        return OperationResult(TRI_ERROR_CLUSTER_SHARD_LEADER_REFUSES_REPLICATION);
+      }
+    } else {  // we are a follower following theLeader
+      isFollower = true;
+      if (options.isSynchronousReplicationFrom != theLeader) {
+        return OperationResult(TRI_ERROR_CLUSTER_SHARD_FOLLOWER_REFUSES_OPERATION);
+      }
+    }
+  }
+
   if (options.returnOld || options.returnNew) {
     pinData(cid);  // will throw when it fails
   }
@@ -1774,7 +1808,7 @@ OperationResult transaction::Methods::modifyLocal(
     // Now replicate the same operation on all followers:
     auto const& followerInfo = collection->followers();
     followers = followerInfo->get();
-    doingSynchronousReplication = followerInfo->isLeader() && followers->size() > 0;
+    doingSynchronousReplication = !isFollower && followers->size() > 0;
   }
 
   if (doingSynchronousReplication && res.ok()) {
@@ -1790,7 +1824,7 @@ OperationResult transaction::Methods::modifyLocal(
           "/_db/" + arangodb::basics::StringUtils::urlEncode(databaseName()) +
           "/_api/document/" +
           arangodb::basics::StringUtils::urlEncode(collection->name()) +
-          "?isRestore=true";
+          "?isRestore=true&isSynchronousReplication=true";
 
       VPackBuilder payload;
 
@@ -1941,6 +1975,22 @@ OperationResult transaction::Methods::removeLocal(
   TRI_voc_cid_t cid = addCollectionAtRuntime(collectionName);
   LogicalCollection* collection = documentCollection(trxCollection(cid));
 
+  bool isFollower = false;
+  if (_state->isDBServer()) {
+    // Block operation early if we are not supposed to perform it:
+    std::string theLeader = collection->followers()->getLeader();
+    if (theLeader.empty()) {
+      if (!options.isSynchronousReplicationFrom.empty()) {
+        return OperationResult(TRI_ERROR_CLUSTER_SHARD_LEADER_REFUSES_REPLICATION);
+      }
+    } else {  // we are a follower following theLeader
+      isFollower = true;
+      if (options.isSynchronousReplicationFrom != theLeader) {
+        return OperationResult(TRI_ERROR_CLUSTER_SHARD_FOLLOWER_REFUSES_OPERATION);
+      }
+    }
+  }
+
   if (options.returnOld) {
     pinData(cid);  // will throw when it fails
   }
@@ -2028,7 +2078,7 @@ OperationResult transaction::Methods::removeLocal(
     // Now replicate the same operation on all followers:
     auto const& followerInfo = collection->followers();
     followers = followerInfo->get();
-    doingSynchronousReplication = followerInfo->isLeader() && followers->size() > 0;
+    doingSynchronousReplication = !isFollower && followers->size() > 0;
   }
 
   if (doingSynchronousReplication && res.ok()) {
@@ -2045,7 +2095,7 @@ OperationResult transaction::Methods::removeLocal(
           "/_db/" + arangodb::basics::StringUtils::urlEncode(databaseName()) +
           "/_api/document/" +
           arangodb::basics::StringUtils::urlEncode(collection->name()) +
-          "?isRestore=true";
+          "?isRestore=true&isSynchronousReplication=true";
 
       VPackBuilder payload;
 
@@ -2235,6 +2285,24 @@ OperationResult transaction::Methods::truncateLocal(
     std::string const& collectionName, OperationOptions& options) {
   TRI_voc_cid_t cid = addCollectionAtRuntime(collectionName);
 
+  LogicalCollection* collection = documentCollection(trxCollection(cid));
+
+  bool isFollower = false;
+  if (_state->isDBServer()) {
+    // Block operation early if we are not supposed to perform it:
+    std::string theLeader = collection->followers()->getLeader();
+    if (theLeader.empty()) {
+      if (!options.isSynchronousReplicationFrom.empty()) {
+        return OperationResult(TRI_ERROR_CLUSTER_SHARD_LEADER_REFUSES_REPLICATION);
+      }
+    } else {  // we are a follower following theLeader
+      isFollower = true;
+      if (options.isSynchronousReplicationFrom != theLeader) {
+        return OperationResult(TRI_ERROR_CLUSTER_SHARD_FOLLOWER_REFUSES_OPERATION);
+      }
+    }
+  }
+
   pinData(cid);  // will throw when it fails
 
   Result res = lock(trxCollection(cid), AccessMode::Type::WRITE);
@@ -2242,8 +2310,6 @@ OperationResult transaction::Methods::truncateLocal(
   if (!res.ok()) {
     return OperationResult(res);
   }
-
-  LogicalCollection* collection = documentCollection(trxCollection(cid));
 
   try {
     collection->truncate(this, options);
@@ -2258,7 +2324,7 @@ OperationResult transaction::Methods::truncateLocal(
     // Now replicate the same operation on all followers:
     auto const& followerInfo = collection->followers();
     followers = followerInfo->get();
-    if (followerInfo->isLeader() && followers->size() > 0) {
+    if (!isFollower && followers->size() > 0) {
       // Now replicate the good operations on all followers:
       auto cc = arangodb::ClusterComm::instance();
       if (cc != nullptr) {
@@ -2267,7 +2333,7 @@ OperationResult transaction::Methods::truncateLocal(
             "/_db/" + arangodb::basics::StringUtils::urlEncode(databaseName()) +
             "/_api/collection/" +
             arangodb::basics::StringUtils::urlEncode(collectionName) +
-            "/truncate";
+            "/truncate?isSynchronousReplication=true";
 
         auto body = std::make_shared<std::string>();
 

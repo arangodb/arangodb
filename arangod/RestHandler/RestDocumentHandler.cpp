@@ -122,6 +122,8 @@ bool RestDocumentHandler::createDocument() {
       extractBooleanParameter(StaticStrings::ReturnNewString, false);
   opOptions.silent =
       extractBooleanParameter(StaticStrings::SilentString, false);
+  extractStringParameter(StaticStrings::IsSynchronousReplicationString,
+                         opOptions.isSynchronousReplicationFrom);
 
   // find and load collection given by name or identifier
   auto transactionContext(transaction::StandaloneContext::Create(_vocbase));
@@ -388,6 +390,8 @@ bool RestDocumentHandler::modifyDocument(bool isPatch) {
       extractBooleanParameter(StaticStrings::ReturnOldString, false);
   opOptions.silent =
       extractBooleanParameter(StaticStrings::SilentString, false);
+  extractStringParameter(StaticStrings::IsSynchronousReplicationString,
+                         opOptions.isSynchronousReplicationFrom);
 
   // extract the revision, if single document variant and header given:
   std::shared_ptr<VPackBuilder> builder;
@@ -514,6 +518,8 @@ bool RestDocumentHandler::deleteDocument() {
       extractBooleanParameter(StaticStrings::WaitForSyncString, false);
   opOptions.silent =
       extractBooleanParameter(StaticStrings::SilentString, false);
+  extractStringParameter(StaticStrings::IsSynchronousReplicationString,
+                         opOptions.isSynchronousReplicationFrom);
 
   auto transactionContext(transaction::StandaloneContext::Create(_vocbase));
 

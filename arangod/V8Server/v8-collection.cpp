@@ -86,15 +86,30 @@ struct LocalCollectionGuard {
 };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief extract the forceSync flag from the arguments
+/// @brief extract a boolean flag from the arguments
 /// must specify the argument index starting from 1
 ////////////////////////////////////////////////////////////////////////////////
 
-static inline bool ExtractWaitForSync(
+static inline bool ExtractBooleanArgument(
     v8::FunctionCallbackInfo<v8::Value> const& args, int index) {
   TRI_ASSERT(index > 0);
 
   return (args.Length() >= index && TRI_ObjectToBoolean(args[index - 1]));
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief extract a string argument from the arguments
+/// must specify the argument index starting from 1
+////////////////////////////////////////////////////////////////////////////////
+
+static inline void ExtractStringArgument(
+    v8::FunctionCallbackInfo<v8::Value> const& args, int index,
+    std::string& ret) {
+  TRI_ASSERT(index > 0);
+
+  if (args.Length() >= index && args[index - 1]->IsString()) {
+    ret = TRI_ObjectToString(args[index - 1]);
+  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1044,56 +1059,10 @@ static void JS_FiguresVocbaseCol(
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief was docuBlock leaderResign
-////////////////////////////////////////////////////////////////////////////////
-
-static void JS_LeaderResign(v8::FunctionCallbackInfo<v8::Value> const& args) {
-  TRI_V8_TRY_CATCH_BEGIN(isolate);
-  v8::HandleScope scope(isolate);
-
-  TRI_vocbase_t* vocbase = GetContextVocBase(isolate);
-
-  if (vocbase == nullptr) {
-    TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
-  }
-
-  if (ServerState::instance()->isDBServer()) {
-    arangodb::LogicalCollection const* v8Collection =
-        TRI_UnwrapClass<arangodb::LogicalCollection>(args.Holder(),
-                                                     WRP_VOCBASE_COL_TYPE);
-
-    if (v8Collection == nullptr) {
-      TRI_V8_THROW_EXCEPTION_INTERNAL("cannot extract collection");
-    }
-
-    TRI_vocbase_t* vocbase = v8Collection->vocbase();
-    if (vocbase == nullptr) {
-      TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
-    }
-
-    std::string collectionName = v8Collection->name();
-    auto collection = vocbase->lookupCollection(collectionName);
-    if (collection == nullptr) {
-      TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
-    }
-
-    // do not reset followers at this time...we are still the only source of truth
-    // to trust, in particular, in the planned leader resignation, we will shortly
-    // after the call to this function here report the controlled resignation to
-    // the agency. This report must still contain the correct follower list or else
-    // the supervision is super angry with us.
-    collection->followers()->setLeader(false);
-  }
-
-  TRI_V8_RETURN_UNDEFINED();
-  TRI_V8_TRY_CATCH_END
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief was docuBlock assumeLeadership
 ////////////////////////////////////////////////////////////////////////////////
 
-static void JS_AssumeLeadership(v8::FunctionCallbackInfo<v8::Value> const& args) {
+static void JS_SetLeader(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
@@ -1122,8 +1091,21 @@ static void JS_AssumeLeadership(v8::FunctionCallbackInfo<v8::Value> const& args)
     if (collection == nullptr) {
       TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
     }
-    collection->followers()->clear();
-    collection->followers()->setLeader(true);
+    std::string theLeader;
+    if (args.Length() >= 1 && args[0]->IsString()) {
+      TRI_Utf8ValueNFC l(TRI_UNKNOWN_MEM_ZONE, args[0]);
+      theLeader = std::string(*l, l.length());
+    }
+    collection->followers()->setLeader(std::string(""));
+    if (theLeader.empty()) {
+      collection->followers()->clear();
+    }
+    // do not reset followers when we resign at this time...we are
+    // still the only source of truth to trust, in particular, in the
+    // planned leader resignation, we will shortly after the call to
+    // this function here report the controlled resignation to the
+    // agency. This report must still contain the correct follower list
+    // or else the supervision is super angry with us.
   }
 
   TRI_V8_RETURN_UNDEFINED();
@@ -1131,10 +1113,10 @@ static void JS_AssumeLeadership(v8::FunctionCallbackInfo<v8::Value> const& args)
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief was docuBlock isLeader
+/// @brief was docuBlock getLeader
 ////////////////////////////////////////////////////////////////////////////////
 
-static void JS_IsLeader(v8::FunctionCallbackInfo<v8::Value> const& args) {
+static void JS_GetLeader(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
@@ -1144,7 +1126,7 @@ static void JS_IsLeader(v8::FunctionCallbackInfo<v8::Value> const& args) {
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
   }
 
-  bool b = false;
+  std::string theLeader;
   if (ServerState::instance()->isDBServer()) {
     arangodb::LogicalCollection const* collection =
         TRI_UnwrapClass<arangodb::LogicalCollection>(args.Holder(),
@@ -1164,14 +1146,11 @@ static void JS_IsLeader(v8::FunctionCallbackInfo<v8::Value> const& args) {
     if (realCollection == nullptr) {
       TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
     }
-    b = realCollection->followers()->isLeader();
+    theLeader = realCollection->followers()->getLeader();
   }
 
-  if (b) {
-    TRI_V8_RETURN_TRUE();
-  } else {
-    TRI_V8_RETURN_FALSE();
-  }
+  v8::Handle<v8::String> res = TRI_V8_STD_STRING2(isolate, theLeader);
+  TRI_V8_RETURN(res);
   TRI_V8_TRY_CATCH_END
 }
 
@@ -2522,7 +2501,7 @@ static void InsertVocbaseCol(v8::Isolate* isolate,
       options.isRestore = TRI_ObjectToBoolean(optionsObject->Get(IsRestoreKey));
     }
   } else {
-    options.waitForSync = ExtractWaitForSync(args, optsIdx + 1);
+    options.waitForSync = ExtractBooleanArgument(args, optsIdx + 1);
   }
 
   if (!args[docIdx]->IsObject()) {
@@ -2699,7 +2678,8 @@ static void JS_TruncateVocbaseCol(
   v8::HandleScope scope(isolate);
 
   OperationOptions opOptions;
-  opOptions.waitForSync = ExtractWaitForSync(args, 1);
+  opOptions.waitForSync = ExtractBooleanArgument(args, 1);
+  ExtractStringArgument(args, 2, opOptions.isSynchronousReplicationFrom);
 
   arangodb::LogicalCollection* collection =
       TRI_UnwrapClass<arangodb::LogicalCollection>(args.Holder(), WRP_VOCBASE_COL_TYPE);
@@ -3292,12 +3272,10 @@ void TRI_InitV8Collections(v8::Handle<v8::Context> context,
                        JS_InsertVocbaseCol);
   TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING("_binaryInsert"),
                        JS_BinaryInsertVocbaseCol);
-  TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING("leaderResign"),
-                       JS_LeaderResign, true);
-  TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING("assumeLeadership"),
-                       JS_AssumeLeadership, true);
-  TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING("isLeader"),
-                       JS_IsLeader, true);
+  TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING("setLeader"),
+                       JS_SetLeader, true);
+  TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING("getLeader"),
+                       JS_GetLeader, true);
 #ifdef DEBUG_SYNC_REPLICATION
   TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING("addFollower"),
                        JS_AddFollower, true);
