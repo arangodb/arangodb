@@ -8,7 +8,7 @@ properties([
             name: 'cleanBuild'
         ),
         booleanParam(
-            defaultValue: false,
+            defaultValue: true,
             description: 'build enterprise',
             name: 'buildEnterprise'
         ),
@@ -358,26 +358,61 @@ if (buildLinux) {
         def os = 'linux'
 
         parallel(
-            'test-singleserver-community': {
+            'test-singleserver-community-rocksdb': {
+                def mode = 'singleserver'
                 def edition = 'community'
+                def engine = 'rocksdb'
 
                 node(os) {
-                    echo "Running singleserver " + edition + " rocksdb " + os + " test"
+                    echo "Running " + mode + " " + edition + " " + engine + " " + os + " test"
 
                     unstashBinaries(edition, os)
-                    testEdition(edition, os, 'singleserver', 'rocksdb')
+                    testEdition(edition, os, mode, engine)
                 }
             },
 
-            'test-singleserver-enterprise': {
+            'test-singleserver-enterprise-mmfiles': {
+                def mode = 'singleserver'
                 def edition = 'enterprise'
+                def engine = 'mmfiles'
 
                 if (buildEnterprise) {
                     node(os) {
-                        echo "Running singleserver " + edition + " mmfiles " + os + " test"
+                        echo "Running " + mode + " " + edition + " " + engine + " " + os + " test"
 
                         unstashBinaries(edition, os)
-                        testEdition(edition, os, 'singleserver', 'mmfiles')
+                        testEdition(edition, os, mode, engine)
+                    }
+                }
+                else {
+                    echo "Enterprise version not built, skipping 'test-singleserver-enterprise'"
+                }
+            },
+
+            'test-cluster-community-mmfiles': {
+                def mode = 'cluster'
+                def edition = 'community'
+                def engine = 'mmfiles'
+
+                node(os) {
+                    echo "Running " + mode + " " + edition + " " + engine + " " + os + " test"
+
+                    unstashBinaries(edition, os)
+                    testEdition(edition, os, mode, engine)
+                }
+            },
+
+            'test-cluster-enterprise-rocksdb': {
+                def mode = 'cluster'
+                def edition = 'enterprise'
+                def engine = 'rocksdb'
+
+                if (buildEnterprise) {
+                    node(os) {
+                        echo "Running " + mode + " " + edition + " " + engine + " " + os + " test"
+
+                        unstashBinaries(edition, os)
+                        testEdition(edition, os, mode, engine)
                     }
                 }
                 else {

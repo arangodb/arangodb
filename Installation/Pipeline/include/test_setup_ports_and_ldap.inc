@@ -27,10 +27,10 @@ if [ "$edition" == enterprise ]; then
   mkdir -p ldap
   docker pull arangodb/openldap-test-container:jessie
   docker stop ldap-$PORTLDAP
-  docker run -d -e LDAP_CERT_CN=127.0.0.1 --rm -p $PORTLDAP:389 -v $(pwd)/ldap:/cert --name ldap-$PORTLDAP arangodb/openldap-test-container:jessie
+  docker run -d -e LDAP_CERT_CN=127.0.0.1 -p $PORTLDAP:389 -v $(pwd)/ldap:/cert --name ldap-$PORTLDAP arangodb/openldap-test-container:jessie
 
   LDAPTRAP="docker stop ldap-$PORTLDAP ;"
 fi
 
 
-trap "$PORTTRAP $LDAPTRAP" EXIT
+trap "$LDAPTRAP $PORTTRAP" EXIT
