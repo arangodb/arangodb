@@ -256,7 +256,7 @@ def buildEdition(edition, os) {
             }
         }
         else if (os == 'windows') {
-            if (!cleanBuild) {
+            if (cleanBuild) {
                 bat 'del /F /Q build'
             }
 
