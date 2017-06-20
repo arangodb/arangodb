@@ -998,7 +998,7 @@
         contentType: 'application/json',
         success: function (data) {
           // fetching available dbs and permissions
-          if (data.result === 'rw') {
+          if (data.result === 'ro') {
             self.changeViewToReadOnly();
           }
         },
