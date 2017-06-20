@@ -118,7 +118,7 @@ void MMFilesPersistentIndexFeature::start() {
   _options.num_levels = static_cast<int>(opts->_numLevels);
   _options.max_bytes_for_level_base = opts->_maxBytesForLevelBase;
   _options.max_bytes_for_level_multiplier = static_cast<int>(opts->_maxBytesForLevelMultiplier);
-  _options.verify_checksums_in_compaction = opts->_verifyChecksumsInCompaction;
+  //_options.verify_checksums_in_compaction = opts->_verifyChecksumsInCompaction;
   _options.optimize_filters_for_hits = opts->_optimizeFiltersForHits;
 
   _options.base_background_compactions = static_cast<int>(opts->_baseBackgroundCompactions);
