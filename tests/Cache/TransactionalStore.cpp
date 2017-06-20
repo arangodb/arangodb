@@ -258,8 +258,8 @@ TransactionalStore::Document TransactionalStore::lookup(
       memcpy(&result, buffer.data(), sizeof(Document));
       CachedValue* value = CachedValue::construct(&key, sizeof(uint64_t),
                                                   &result, sizeof(Document));
-      bool inserted = _cache->insert(value);
-      if (!inserted) {
+      auto status = _cache->insert(value);
+      if (status.fail()) {
         delete value;
       }
     }

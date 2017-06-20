@@ -25,6 +25,7 @@
 #define ARANGODB_CACHE_FINDING_H
 
 #include "Basics/Common.h"
+#include "Basics/Result.h"
 #include "Cache/CachedValue.h"
 
 namespace arangodb {
@@ -43,6 +44,7 @@ class Finding {
  public:
   Finding();
   explicit Finding(CachedValue* v);
+  explicit Finding(CachedValue* v, Result const& r);
   Finding(Finding const& other);
   Finding(Finding&& other);
   Finding& operator=(Finding const& other);
@@ -61,6 +63,11 @@ class Finding {
   void set(CachedValue* v);
 
   //////////////////////////////////////////////////////////////////////////////
+  /// @brief Sets the error Result object.
+  //////////////////////////////////////////////////////////////////////////////
+  void reportError(Result const& r);
+
+  //////////////////////////////////////////////////////////////////////////////
   /// @brief Specifies whether the value was found. If not, value is nullptr.
   //////////////////////////////////////////////////////////////////////////////
   bool found() const;
@@ -74,14 +81,20 @@ class Finding {
   /// @brief Creates a copy of the underlying value and returns a pointer.
   //////////////////////////////////////////////////////////////////////////////
   CachedValue* copy() const;
-  
+
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Releases the finding.
   //////////////////////////////////////////////////////////////////////////////
   void release();
 
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief Returns the status result object associated with the lookup.
+  /////////////////////////////////////////////////////////////////////////////
+  Result result() const;
+
  private:
   CachedValue* _value;
+  Result _result;
 };
 
 };  // end namespace cache

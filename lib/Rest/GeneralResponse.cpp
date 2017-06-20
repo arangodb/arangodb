@@ -416,6 +416,7 @@ rest::ResponseCode GeneralResponse::responseCode(int code) {
       return ResponseCode::BAD;
 
     case TRI_ERROR_ARANGO_READ_ONLY:
+    case TRI_ERROR_FORBIDDEN:
       return ResponseCode::FORBIDDEN;
 
     case TRI_ERROR_ARANGO_DATABASE_NOT_FOUND:
