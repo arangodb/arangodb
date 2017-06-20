@@ -1510,6 +1510,10 @@ OperationResult transaction::Methods::insertLocal(
       for (auto const& f : *followers) {
         requests.emplace_back("server:" + f, arangodb::rest::RequestType::POST,
                               path, body);
+        auto headers
+          = std::make_unique<std::unordered_map<std::string, std::string>>();
+        headers->emplace("x-arango-replication", "true");
+        requests.back().setHeaders(headers);
       }
       auto cc = arangodb::ClusterComm::instance();
       if (cc != nullptr) {
@@ -1835,6 +1839,10 @@ OperationResult transaction::Methods::modifyLocal(
                                     ? arangodb::rest::RequestType::PUT
                                     : arangodb::rest::RequestType::PATCH,
                                 path, body);
+          auto headers
+            = std::make_unique<std::unordered_map<std::string, std::string>>();
+          headers->emplace("x-arango-replication", "true");
+          requests.back().setHeaders(headers);
         }
         size_t nrDone = 0;
         size_t nrGood = cc->performRequests(requests, chooseTimeout(count),
@@ -2088,6 +2096,10 @@ OperationResult transaction::Methods::removeLocal(
           requests.emplace_back("server:" + f,
                                 arangodb::rest::RequestType::DELETE_REQ, path,
                                 body);
+          auto headers
+            = std::make_unique<std::unordered_map<std::string, std::string>>();
+          headers->emplace("x-arango-replication", "true");
+          requests.back().setHeaders(headers);
         }
         size_t nrDone = 0;
         size_t nrGood = cc->performRequests(requests, chooseTimeout(count),
@@ -2276,6 +2288,10 @@ OperationResult transaction::Methods::truncateLocal(
         for (auto const& f : *followers) {
           requests.emplace_back("server:" + f, arangodb::rest::RequestType::PUT,
                                 path, body);
+          auto headers
+            = std::make_unique<std::unordered_map<std::string, std::string>>();
+          headers->emplace("x-arango-replication", "true");
+          requests.back().setHeaders(headers);
         }
         size_t nrDone = 0;
         size_t nrGood = cc->performRequests(requests, TRX_FOLLOWER_TIMEOUT,
