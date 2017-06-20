@@ -257,20 +257,22 @@ exports.configData = function (username, key) {
 };
 
 // one db permission data (key != null) or all (key == null)    
-exports.permission = function (username, key) {
+exports.permission = function (username, dbName, coll) {
   var db = internal.db;
   var requestResult;
   var uri;
 
-  if (key === undefined || key === null) {
+  if (dbName === undefined || dbName === null) {
     uri = '_api/user/' + encodeURIComponent(username)
       + '/database';
 
     requestResult = db._connection.GET(uri);
   } else {
     uri = '_api/user/' + encodeURIComponent(username)
-    + '/database/' + encodeURIComponent(key);
-
+    + '/database/' + encodeURIComponent(dbName);
+    if (coll) {
+      uri += '/' + encodeURIComponent(coll);
+    }
     requestResult = db._connection.GET(uri);
   }
 

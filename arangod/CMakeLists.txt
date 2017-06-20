@@ -372,6 +372,7 @@ SET(ARANGOD_SOURCES
   V8Server/v8-voccursor.cpp
   V8Server/v8-vocindex.cpp
   Views/LoggerView.cpp
+  VocBase/Methods/Collections.cpp
   VocBase/Methods/Database.cpp
   VocBase/Methods/Indexes.cpp
   VocBase/AuthInfo.cpp

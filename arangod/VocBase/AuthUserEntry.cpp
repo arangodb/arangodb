@@ -65,6 +65,16 @@ AuthLevel arangodb::convertToAuthLevel(std::string grants) {
   return _convertToAuthLevel(StringRef(grants));
 }
 
+std::string arangodb::convertFromAuthLevel(AuthLevel lvl) {
+  if (lvl == AuthLevel::RW) {
+    return "rw";
+  } else if (lvl == AuthLevel::RO) {
+    return "ro";
+  } else {
+    return "none";
+  }
+}
+
 // private hash function
 static int HexHashFromData(std::string const& hashMethod,
                            std::string const& str, std::string& outHash) {

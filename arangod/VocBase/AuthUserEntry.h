@@ -34,6 +34,7 @@ enum class AuthLevel { NONE, RO, RW };
 
 AuthLevel convertToAuthLevel(velocypack::Slice grants);
 AuthLevel convertToAuthLevel(std::string grant);
+std::string convertFromAuthLevel(AuthLevel lvl);
 
 enum class AuthSource { COLLECTION, LDAP };
 

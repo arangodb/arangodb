@@ -27,6 +27,8 @@
 #include "Rest/Version.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/FeatureCacheFeature.h"
+#include "VocBase/LogicalCollection.h"
+#include "VocBase/Methods/Collections.h"
 #include "VocBase/vocbase.h"
 
 #include <velocypack/Builder.h>
@@ -63,15 +65,6 @@ RestStatus RestUsersHandler::execute() {
       generateError(ResponseCode::BAD, TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
       return RestStatus::DONE;
   }
-
-  /*return RestStatus::QUEUE
-      .then([]() { LOG_TOPIC(INFO, arangodb::Logger::FIXME) << "demo handler
-     going to sleep"; })
-      .then([]() { sleep(5); })
-      .then([]() { LOG_TOPIC(INFO, arangodb::Logger::FIXME) << "demo handler
-     done sleeping"; })
-      .then([this]() { doSomeMoreWork(); })
-      .then([this]() { return evenMoreWork(); });*/
 }
 
 bool RestUsersHandler::isSystemUser() const {
@@ -116,37 +109,75 @@ RestStatus RestUsersHandler::getRequest(AuthInfo* authInfo) {
     }
   } else if (suffixes.size() >= 2) {
     std::string const& user = suffixes[0];
-
-    if (canAccessUser(user)) {
-      VPackBuilder data;
-      data.openObject();
-      if (suffixes[1] == "database") {
-        VPackObjectBuilder b(&data, "result", true);
-        DatabaseFeature::DATABASE->enumerateDatabases(
-            [&](TRI_vocbase_t* vocbase) {
-              AuthLevel lvl = authInfo->canUseDatabase(user, vocbase->name());
-              if (lvl != AuthLevel::NONE) {
-                std::string str = AuthLevel::RO == lvl ? "ro" : "rw";
-                data.add(vocbase->name(), VPackValue(str));
-              }
-            });
-
-      } else if (suffixes[1] == "config") {
-        if (suffixes.size() == 3) {
-          data.add("result",
-                   authInfo->getConfigData(user).slice().get(suffixes[2]));
-        } else {
-          data.add("result", authInfo->getConfigData(user).slice());
-        }
-      }
-      data.add("error", VPackValue(false));
-      data.add("code", VPackValue(200));
-      data.close();  // openObject
-      generateResult(ResponseCode::OK, data.slice());
-    } else {
+    if (!canAccessUser(user)) {
       generateError(ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN);
+      return RestStatus::DONE;
+    }
+
+    AuthLevel lvl;
+    if (suffixes[1] == "database") {
+      if (suffixes.size() == 2) {
+        bool full = false;
+        std::string const& param = _request->value("full", full);
+        if (full) {
+          full = StringUtils::boolean(param);
+        }
+
+        // return list of databases
+        VPackBuilder data;
+        data.openObject();
+        DatabaseFeature::DATABASE->enumerateDatabases([&](
+            TRI_vocbase_t* vocbase) {
+          lvl = authInfo->canUseDatabase(user, vocbase->name());
+          if (lvl != AuthLevel::NONE) {
+            std::string str = AuthLevel::RO == lvl ? "ro" : "rw";
+            if (full) {
+              VPackObjectBuilder b(&data, vocbase->name(), true);
+              data.add("permission", VPackValue(str));
+              VPackObjectBuilder b2(&data, "collections", true);
+              methods::Collections::enumerateCollections(
+                  vocbase, [&](LogicalCollection* c) {
+                    lvl = authInfo->canUseCollection(user, vocbase->name(),
+                                                     c->name());
+                    if (lvl != AuthLevel::NONE) {
+                      data.add(c->name(),
+                               VPackValue(AuthLevel::RO == lvl ? "ro" : "rw"));
+                    }
+                  });
+            } else {
+              data.add(vocbase->name(), VPackValue(str));
+            }
+          }
+        });
+        data.close();
+        generateSuccess(ResponseCode::OK, data.slice());
+      } else if (suffixes.size() == 3) {
+        // return specific database
+        lvl = authInfo->canUseDatabase(user, suffixes[2]);
+        VPackBuilder data;
+        data.add(VPackValue(convertFromAuthLevel(lvl)));
+        generateSuccess(ResponseCode::OK, data.slice());
+
+      } else if (suffixes.size() == 4) {
+        lvl = authInfo->canUseCollection(user, suffixes[2], suffixes[3]);
+        VPackBuilder data;
+        data.add(VPackValue(convertFromAuthLevel(lvl)));
+        generateSuccess(ResponseCode::OK, data.slice());
+      } else {
+        generateError(ResponseCode::BAD, TRI_ERROR_BAD_PARAMETER);
+      }
+    } else if (suffixes[1] == "config") {
+      VPackBuilder data = authInfo->getConfigData(user);
+      if (suffixes.size() == 3) {
+        generateSuccess(ResponseCode::OK, data.slice().get(suffixes[2]));
+      } else {
+        generateSuccess(ResponseCode::OK, data.slice());
+      }
+    } else {
+      generateError(ResponseCode::BAD, TRI_ERROR_BAD_PARAMETER);
     }
   }
+
   return RestStatus::DONE;
 }
 

@@ -575,6 +575,12 @@ AuthLevel AuthInfo::canUseDatabase(std::string const& username,
   return getAuthContext(username, dbname)->databaseAuthLevel();
 }
 
+AuthLevel AuthInfo::canUseCollection(std::string const& username,
+                                   std::string const& dbname,
+                                     std::string const& coll) {
+  return getAuthContext(username, dbname)->collectionAuthLevel(coll);
+}
+
 // public called from VocbaseContext.cpp
 AuthResult AuthInfo::checkAuthentication(AuthType authType,
                                          std::string const& secret) {

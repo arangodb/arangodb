@@ -105,6 +105,9 @@ class AuthInfo {
 
   AuthLevel canUseDatabase(std::string const& username,
                            std::string const& dbname);
+  AuthLevel canUseCollection(std::string const& username,
+                           std::string const& dbname,
+                             std::string const& coll);
 
   void setJwtSecret(std::string const&);
   std::string jwtSecret();
