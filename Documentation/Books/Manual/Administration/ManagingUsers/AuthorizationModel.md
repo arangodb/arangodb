@@ -69,7 +69,7 @@ First look for the exact collection name requested. If the collection could not 
 If the \* collection is found check the permissions on the collection \*. If the collection \* is not found no permissions are granted.
 
 ### The special database *
-The database \* is a wildcard and stands for all database in a ArangoDB single instance or cluster . The permission lookup goes this way:
+The database \* is a wildcard and stands for all database in a ArangoDB single instance or cluster. The permission lookup goes this way:
 First look for the exact databse name requested. If the database could not be found, look for the \* database.
 If the \* database is found check the permissions on the database \*. If the database \* is not found no permissions are granted.
 
