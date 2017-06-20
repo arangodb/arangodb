@@ -49,8 +49,7 @@ Cursor::~Cursor() {}
 
 VPackSlice Cursor::extra() const {
   if (_extra == nullptr) {
-    VPackSlice empty;
-    return empty;
+    return VPackSlice();
   }
   return _extra->slice();
 }

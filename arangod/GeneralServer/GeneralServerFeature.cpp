@@ -46,6 +46,7 @@
 #include "RestHandler/RestAuthHandler.h"
 #include "RestHandler/RestBatchHandler.h"
 #include "RestHandler/RestCursorHandler.h"
+#include "RestHandler/RestDatabaseHandler.h"
 #include "RestHandler/RestDebugHandler.h"
 #include "RestHandler/RestDemoHandler.h"
 #include "RestHandler/RestDocumentHandler.h"
@@ -54,6 +55,7 @@
 #include "RestHandler/RestEngineHandler.h"
 #include "RestHandler/RestHandlerCreator.h"
 #include "RestHandler/RestImportHandler.h"
+#include "RestHandler/RestIndexHandler.h"
 #include "RestHandler/RestJobHandler.h"
 #include "RestHandler/RestPleaseUpgradeHandler.h"
 #include "RestHandler/RestPregelHandler.h"
@@ -349,6 +351,10 @@ void GeneralServerFeature::defineHandlers() {
       RestVocbaseBaseHandler::CURSOR_PATH,
       RestHandlerCreator<RestCursorHandler>::createData<aql::QueryRegistry*>,
       queryRegistry);
+  
+  _handlerFactory->addPrefixHandler(
+      RestVocbaseBaseHandler::DATABASE_PATH,
+      RestHandlerCreator<RestDatabaseHandler>::createNoData);
 
   _handlerFactory->addPrefixHandler(
       RestVocbaseBaseHandler::DOCUMENT_PATH,
@@ -361,6 +367,10 @@ void GeneralServerFeature::defineHandlers() {
   _handlerFactory->addPrefixHandler(
       RestVocbaseBaseHandler::IMPORT_PATH,
       RestHandlerCreator<RestImportHandler>::createNoData);
+  
+  _handlerFactory->addPrefixHandler(
+      RestVocbaseBaseHandler::INDEX_PATH,
+      RestHandlerCreator<RestIndexHandler>::createNoData);
 
   _handlerFactory->addPrefixHandler(
       RestVocbaseBaseHandler::SIMPLE_QUERY_ALL_PATH,

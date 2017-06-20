@@ -59,7 +59,6 @@ are present in the MMFiles engine:
 
   It is also possible to override these thresholds per transaction.
 
-
 The following known issues will be resolved in future releases:
 
 * the RocksDB engine is not yet performance-optimized and potentially not well configured
@@ -80,8 +79,11 @@ The following known issues will be resolved in future releases:
   in the MMFiles engine. It is therefore discouraged to call it for cases other than manual
   inspection of a few documents in a collection
 
+* the `autoincrement` key generator will not save the last assigned key permanently, so
+  it may assign an already used key after a server restart
+
 * AQL queries in the cluster still issue an extra locking HTTP request per shard though
-  this would not be necessary for the RocksDB engine in most cases.
+  this would not be necessary for the RocksDB engine in most cases
 
 ### Installer
 

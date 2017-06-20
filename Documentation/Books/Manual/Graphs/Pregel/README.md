@@ -250,6 +250,9 @@ The algorithm can be executed like this:
 Centrality measures help identify the most important vertices in a graph. They can be used in a wide range of applications:
 For example they can be used to identify *influencers* in social networks, or *middle-men* in terrorist networks.
 There are various definitions for centrality, the simplest one being the vertex degree. 
+These definitions were not designed with scalability in mind. It is probably impossible to discover an efficient algorithm which computes them in a distributed way. 
+Fortunately there are scalable substitutions available, which should be equally usable for most use cases.
+
 
 ![Illustration of an execution of different centrality measures (Freeman 1977)](centrality_visual.png)
 
@@ -274,7 +277,7 @@ algorithm. The algorithm can be used like this
 
 ```javascript
     var pregel = require("@arangodb/pregel");
-    var handle = pregel.start("effectivecloseness", "yourgraph", resultField: "closeness");
+    var handle = pregel.start("effectivecloseness", "yourgraph", {resultField: "closeness"});
 ```
 
 ##### LineRank
@@ -289,10 +292,6 @@ Where the &sigma; represents the number of shortest paths between *x* and *y*, a
 number of paths also passing through a vertex *v*. By intuition a vertex with higher betweeness centrality will have more information
 passing through it.
 
-Unfortunately these definitions were not designed with scalability in mind. It is probably impossible to compute them
-efficiently and accurately. Fortunately there are scalable substitutions proposed by **U Kang et.al. 2011**.
-
-
 **LineRank** approximates the random walk betweenness of every vertex in a graph. This is the probability that someone starting on
 an arbitary vertex, will visit this node when he randomly chooses edges to visit.
 The algoruthm essentially builds a line graph out of your graph (switches the vertices and edges), and then computes a score similar to PageRank.
@@ -301,7 +300,7 @@ The algorithm is from the paper *Centralities in Large Networks: Algorithms and 
 
 ```javascript
     var pregel = require("@arangodb/pregel");
-    var handle = pregel.start("linerank", "yourgraph", "resultField": "rank");
+    var handle = pregel.start("linerank", "yourgraph", {"resultField": "rank"});
 ```
 
 
