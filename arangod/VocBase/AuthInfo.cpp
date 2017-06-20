@@ -308,9 +308,6 @@ VPackBuilder AuthInfo::allUsers() {
   std::shared_ptr<VPackBuilder> users;
   {
     MUTEX_LOCKER(locker, _queryLock);
-    if (!_outdated) {
-      return VPackBuilder();
-    }
     TRI_ASSERT(_queryRegistry != nullptr);
     users = QueryAllUsers(_queryRegistry);
   }

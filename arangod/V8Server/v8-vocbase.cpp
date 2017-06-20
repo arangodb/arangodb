@@ -74,6 +74,7 @@
 #include "V8Server/v8-externals.h"
 #include "V8Server/v8-replication.h"
 #include "V8Server/v8-statistics.h"
+#include "V8Server/v8-users.h"
 #include "V8Server/v8-views.h"
 #include "V8Server/v8-voccursor.h"
 #include "V8Server/v8-vocindex.h"
@@ -2314,6 +2315,7 @@ void TRI_InitV8VocBridge(v8::Isolate* isolate, v8::Handle<v8::Context> context,
 
   TRI_InitV8Collections(context, vocbase, v8g, isolate, ArangoNS);
   TRI_InitV8Views(context, vocbase, v8g, isolate, ArangoNS);
+  TRI_InitV8Users(context, vocbase, v8g, isolate);
 
   TRI_InitV8cursor(context, v8g);
 
