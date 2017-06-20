@@ -2002,7 +2002,15 @@ static void JS_DropDatabase(v8::FunctionCallbackInfo<v8::Value> const& args) {
   if (!vocbase->isSystem()) {
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_USE_SYSTEM_DATABASE);
   }
-  
+
+  if (ExecContext::CURRENT_EXECCONTEXT != nullptr) {
+    AuthLevel level = ExecContext::CURRENT_EXECCONTEXT->authContext()->systemAuthLevel();
+
+    if (level != AuthLevel::RW) {
+      TRI_V8_THROW_EXCEPTION(TRI_ERROR_FORBIDDEN);
+    }
+  }
+
   std::string const name = TRI_ObjectToString(args[0]);
   Result res = methods::Database::drop(vocbase, name);
   if (!res.ok()) {
