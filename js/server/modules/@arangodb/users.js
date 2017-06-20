@@ -27,7 +27,8 @@
 // Copyright holder is triAGENS GmbH, Cologne, Germany
 //
 // @author Jan Steemann
-// @author Copyright 2012-2014, triAGENS GmbH, Cologne, Germany
+// @author Simon Grätzer
+// @author Copyright 2012-2017, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
 const internal = require('internal'); // OK: reloadAuth

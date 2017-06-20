@@ -37,7 +37,6 @@
 #include "Transaction/Helpers.h"
 #include "Transaction/Hints.h"
 #include "Transaction/V8Context.h"
-#include "Utils/CollectionNameResolver.h"
 #include "Utils/Events.h"
 #include "Utils/SingleCollectionTransaction.h"
 #include "V8/v8-conv.h"
@@ -69,14 +68,6 @@ static void EnsureIndex(v8::FunctionCallbackInfo<v8::Value> const& args,
   v8::Isolate* isolate = args.GetIsolate();
   v8::HandleScope scope(isolate);
 
-  if (ExecContext::CURRENT_EXECCONTEXT != nullptr) {
-    AuthLevel level = ExecContext::CURRENT_EXECCONTEXT->authContext()->databaseAuthLevel();
-
-    if (level != AuthLevel::RW) {
-      TRI_V8_THROW_EXCEPTION(TRI_ERROR_FORBIDDEN);
-    }
-  }
-
   arangodb::LogicalCollection* collection =
       TRI_UnwrapClass<arangodb::LogicalCollection>(args.Holder(),
                                                    WRP_VOCBASE_COL_TYPE);
@@ -84,7 +75,6 @@ static void EnsureIndex(v8::FunctionCallbackInfo<v8::Value> const& args,
   if (collection == nullptr) {
     TRI_V8_THROW_EXCEPTION_INTERNAL("cannot extract collection");
   }
-
 
   if (args.Length() != 1 || !args[0]->IsObject()) {
     std::string name(functionName);
@@ -140,14 +130,6 @@ static void JS_DropIndexVocbaseCol(
     v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
-
-  if (ExecContext::CURRENT_EXECCONTEXT != nullptr) {
-    AuthLevel level = ExecContext::CURRENT_EXECCONTEXT->authContext()->databaseAuthLevel();
-
-    if (level != AuthLevel::RW) {
-      TRI_V8_THROW_EXCEPTION(TRI_ERROR_FORBIDDEN);
-    }
-  }
 
   PREVENT_EMBEDDED_TRANSACTION();
 
@@ -213,17 +195,8 @@ static void JS_GetIndexesVocbaseCol(
 
 static void CreateVocBase(v8::FunctionCallbackInfo<v8::Value> const& args,
                           TRI_col_type_e collectionType) {
-
   v8::Isolate* isolate = args.GetIsolate();
   v8::HandleScope scope(isolate);
-
-  if (ExecContext::CURRENT_EXECCONTEXT != nullptr) {
-    AuthLevel level = ExecContext::CURRENT_EXECCONTEXT->authContext()->databaseAuthLevel();
-
-    if (level != AuthLevel::RW) {
-      TRI_V8_THROW_EXCEPTION(TRI_ERROR_FORBIDDEN);
-    }
-  }
 
   TRI_vocbase_t* vocbase = GetContextVocBase(isolate);
 

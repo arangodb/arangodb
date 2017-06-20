@@ -685,7 +685,7 @@ static void JS_ReloadAuth(v8::FunctionCallbackInfo<v8::Value> const& args) {
   
   auto authentication = application_features::ApplicationServer::getFeature<AuthenticationFeature>(
     "Authentication");
-  if (authentication->isActive()) {
+  if (authentication->isEnabled()) {
     authentication->authInfo()->outdate();
   }
 
@@ -1934,14 +1934,6 @@ static void JS_CreateDatabase(v8::FunctionCallbackInfo<v8::Value> const& args) {
   v8::Isolate* isolate = args.GetIsolate();
   v8::HandleScope scope(isolate);
 
-  if (ExecContext::CURRENT_EXECCONTEXT != nullptr) {
-    AuthLevel level = ExecContext::CURRENT_EXECCONTEXT->authContext()->systemAuthLevel();
-
-    if (level != AuthLevel::RW) {
-      TRI_V8_THROW_EXCEPTION(TRI_ERROR_FORBIDDEN);
-    }
-  }
-
   if (args.Length() < 1 || args.Length() > 3) {
     TRI_V8_THROW_EXCEPTION_USAGE(
         "db._createDatabase(<name>, <options>, <users>)");
@@ -2004,11 +1996,9 @@ static void JS_DropDatabase(v8::FunctionCallbackInfo<v8::Value> const& args) {
   }
 
   TRI_vocbase_t* vocbase = GetContextVocBase(isolate);
-
   if (vocbase == nullptr) {
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
   }
-
   if (!vocbase->isSystem()) {
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_USE_SYSTEM_DATABASE);
   }
@@ -2106,7 +2096,7 @@ static void JS_AuthenticationEnabled(
   v8::HandleScope scope(isolate);
 
   v8::Handle<v8::Boolean> result =
-      v8::Boolean::New(isolate, authentication->isActive());
+      v8::Boolean::New(isolate, authentication->isEnabled());
 
   TRI_V8_RETURN(result);
   TRI_V8_TRY_CATCH_END

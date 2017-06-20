@@ -124,6 +124,13 @@ arangodb::Result Database::create(std::string const& dbName,
   if (TRI_GetOperationModeServer() == TRI_VOCBASE_MODE_NO_CREATE) {
     return Result(TRI_ERROR_ARANGO_READ_ONLY);
   }
+  if (ExecContext::CURRENT_EXECCONTEXT != nullptr) {
+    AuthLevel level = ExecContext::CURRENT_EXECCONTEXT->authContext()->systemAuthLevel();
+    
+    if (level != AuthLevel::RW) {
+      return TRI_ERROR_FORBIDDEN;
+    }
+  }
 
   VPackSlice options = inOptions;
   if (options.isNone() || options.isNull()) {
@@ -338,6 +345,13 @@ arangodb::Result Database::create(std::string const& dbName,
 arangodb::Result Database::drop(TRI_vocbase_t* systemVocbase,
                                 std::string const& dbName) {
   TRI_ASSERT(systemVocbase->isSystem());
+  if (ExecContext::CURRENT_EXECCONTEXT != nullptr) {
+    AuthLevel level = ExecContext::CURRENT_EXECCONTEXT->authContext()->systemAuthLevel();
+    
+    if (level != AuthLevel::RW) {
+      return TRI_ERROR_FORBIDDEN;
+    }
+  }
 
   V8Context* ctx = V8DealerFeature::DEALER->enterContext(systemVocbase, true);
   if (ctx == nullptr) {
