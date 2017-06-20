@@ -1,6 +1,6 @@
 tags
 build
-core.*
+core-.*
 *.vim
 .deps
 .dirstamp
@@ -45,6 +45,8 @@ cluster/**
 p/
 
 core
+!3rdParty/iresearch/core
+!core.h
 TAGS
 
 CPackConfig.cmake
