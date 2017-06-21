@@ -144,6 +144,13 @@ RestStatus RestUsersHandler::getRequest(AuthInfo* authInfo) {
             data.add(vocbase->name(), VPackValue(str));
           }
         });
+        lvl = authInfo->canUseDatabase(user, "*");
+        VPackValue val(convertFromAuthLevel(lvl));
+        if (full) {
+          data("*", VPackValue(VPackValueType::Object))("permission", val)();
+        } else if (lvl != AuthLevel::NONE){
+          data.add("*", val);
+        }
         data.close();
         generateSuccess(ResponseCode::OK, data.slice());
       } else if (suffixes.size() == 3) {

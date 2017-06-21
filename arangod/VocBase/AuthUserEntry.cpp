@@ -265,6 +265,22 @@ AuthUserEntry AuthUserEntry::fromDocument(VPackSlice const& slice) {
 
   if (databasesSlice.isObject()) {
     for (auto const& obj : VPackObjectIterator(databasesSlice)) {
+      std::string const dbName = obj.key.copyString();
+
+      // check if database exists
+      if (dbName != "*") {
+        TRI_vocbase_t* vocbase = nullptr;
+        if (ServerState::instance()->isCoordinator()) {
+          vocbase =
+              DatabaseFeature::DATABASE->lookupDatabaseCoordinator(dbName);
+        } else {
+          vocbase = DatabaseFeature::DATABASE->lookupDatabase(dbName);
+        }
+        if (vocbase == nullptr) {
+          continue;
+        }
+      }
+
       if (obj.value.isObject()) {
         std::unordered_map<std::string, AuthLevel> collections;
         AuthLevel databaseAuth = AuthLevel::NONE;
@@ -285,9 +301,8 @@ AuthUserEntry AuthUserEntry::fromDocument(VPackSlice const& slice) {
           }    // for
         }      // if
 
-        authContexts.emplace(obj.key.copyString(),
-                             std::make_shared<AuthContext>(
-                                 databaseAuth, std::move(collections)));
+        authContexts.emplace(dbName, std::make_shared<AuthContext>(
+                                         databaseAuth, std::move(collections)));
 
       } else {
         LOG_TOPIC(INFO, arangodb::Logger::CONFIG)

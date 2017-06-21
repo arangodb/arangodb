@@ -24,7 +24,9 @@
 #include "TransactionState.h"
 #include "Aql/QueryCache.h"
 #include "Basics/Exceptions.h"
+#include "GeneralServer/AuthenticationFeature.h"
 #include "Logger/Logger.h"
+#include "RestServer/FeatureCacheFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
 #include "StorageEngine/TransactionCollection.h"
@@ -100,7 +102,9 @@ int TransactionState::addCollection(TRI_voc_cid_t cid,
                                     int nestingLevel, bool force) {
   LOG_TRX(this, nestingLevel) << "adding collection " << cid;
 
-  if (ExecContext::CURRENT_EXECCONTEXT != nullptr) {
+  AuthenticationFeature* auth =
+      FeatureCacheFeature::instance()->authenticationFeature();
+  if (auth->isActive() && ExecContext::CURRENT_EXECCONTEXT != nullptr) {
     std::string const colName = _resolver->getCollectionNameCluster(cid);
 
     if (Logger::logLevel() >= LogLevel::DEBUG) {
@@ -120,16 +124,25 @@ int TransactionState::addCollection(TRI_voc_cid_t cid,
         LOG_TOPIC(DEBUG, Logger::AUTHORIZATION)
             << "AccessMode::Type::EXCLUSIVE";
     }
-
-    AuthLevel level =
-        ExecContext::CURRENT_EXECCONTEXT->authContext()->collectionAuthLevel(
-            colName);
+    // only valid on coordinator or single server
+    TRI_ASSERT(ServerState::instance()->isCoordinator() ||
+               !ServerState::instance()->isRunningInCluster());
+    // avoid extra lookups of auth context, if we use the same db as stored
+    // in the execution context initialized by RestServer/VocbaseContext
+    AuthLevel level;
+    if (ExecContext::CURRENT_EXECCONTEXT->database() == _vocbase->name()) {
+      level =
+          ExecContext::CURRENT_EXECCONTEXT->authContext()->collectionAuthLevel(
+              colName);
+    } else {
+      level = auth->canUseCollection(ExecContext::CURRENT_EXECCONTEXT->user(),
+                                     _vocbase->name(), colName);
+    }
 
     if (level == AuthLevel::NONE) {
       LOG_TOPIC(DEBUG, Logger::AUTHORIZATION) << "collection AuthLevel::NONE";
       return TRI_ERROR_FORBIDDEN;
     }
-
     bool collectionWillWrite = AccessMode::isWriteOrExclusive(accessType);
     if (level == AuthLevel::RO && collectionWillWrite) {
       LOG_TOPIC(DEBUG, Logger::AUTHORIZATION) << "no write right for collection"
