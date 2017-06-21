@@ -51,7 +51,15 @@
       // if collections are available
       if ($(e.currentTarget).find('.collection-row').children().length > 4) {
         $(e.currentTarget).find('.collection-row').fadeIn('fast');
+        // caret animation
+        $('.db-row .fa-caret-down').hide();
+        $('.db-row .fa-caret-right').show();
+        $(e.currentTarget).find('.fa-caret-down').show();
+        $(e.currentTarget).find('.fa-caret-right').hide();
       } else {
+        // caret animation
+        $('.db-row .fa-caret-down').hide();
+        $('.db-row .fa-caret-right').show();
         arangoHelper.arangoNotification('Permissions', 'No collections in "' + db + '" available.');
       }
     },

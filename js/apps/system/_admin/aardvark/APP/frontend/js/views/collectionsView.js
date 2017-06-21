@@ -7,6 +7,7 @@
   window.CollectionsView = Backbone.View.extend({
     el: '#content',
     el2: '#collectionsThumbnailsIn',
+    readOnly: false,
 
     searchTimeout: null,
     refreshRate: 10000,
@@ -138,8 +139,14 @@
       $('#searchInput')[0].setSelectionRange(length, length);
 
       arangoHelper.fixTooltips('.icon_arangodb, .arangoicon', 'left');
+      arangoHelper.checkDatabasePermissions(this.setReadOnly.bind(this));
 
       return this;
+    },
+
+    setReadOnly: function () {
+      this.readOnly = true;
+      $('#createCollection').parent().parent().addClass('disabled');
     },
 
     events: {
@@ -312,23 +319,25 @@
     },
 
     createCollection: function (e) {
-      e.preventDefault();
-      var self = this;
+      if (!this.readOnly) {
+        e.preventDefault();
+        var self = this;
 
-      $.ajax({
-        type: 'GET',
-        cache: false,
-        url: arangoHelper.databaseUrl('/_api/engine'),
-        contentType: 'application/json',
-        processData: false,
-        success: function (data) {
-          self.engine = data;
-          self.createNewCollectionModal(data);
-        },
-        error: function () {
-          arangoHelper.arangoError('Engine', 'Could not fetch ArangoDB Engine details.');
-        }
-      });
+        $.ajax({
+          type: 'GET',
+          cache: false,
+          url: arangoHelper.databaseUrl('/_api/engine'),
+          contentType: 'application/json',
+          processData: false,
+          success: function (data) {
+            self.engine = data;
+            self.createNewCollectionModal(data);
+          },
+          error: function () {
+            arangoHelper.arangoError('Engine', 'Could not fetch ArangoDB Engine details.');
+          }
+        });
+      }
     },
 
     submitCreateCollection: function () {
