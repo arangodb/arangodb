@@ -29,6 +29,7 @@
 
 #include "Basics/ReadLocker.h"
 #include "Basics/VelocyPackHelper.h"
+#include "Basics/ReadUnlocker.h"
 #include "Basics/WriteLocker.h"
 #include "Basics/tri-strings.h"
 #include "Cluster/ServerState.h"
@@ -212,7 +213,7 @@ static void ConvertLegacyFormat(VPackSlice doc, VPackBuilder& result) {
   result.add("extra", extra.isNone() ? VPackSlice::emptyObjectSlice() : extra);
 }
 
-// private, will acquire _authInfoLock in write-mode and release it
+// private, need to write lock _authInfoLock
 void AuthInfo::loadFromDB() {
   auto role = ServerState::instance()->getRole();
   if (role != ServerState::ROLE_SINGLE &&
@@ -227,10 +228,7 @@ void AuthInfo::loadFromDB() {
         FeatureCacheFeature::instance()->authenticationFeature()->getHandler());
   }
 
-  {
-    WRITE_LOCKER(writeLocker, _authInfoLock);
-    insertInitial();
-  }
+  insertInitial();
 
   MUTEX_LOCKER(locker, _queryLock);
   TRI_ASSERT(_queryRegistry != nullptr);
@@ -240,7 +238,6 @@ void AuthInfo::loadFromDB() {
   std::shared_ptr<VPackBuilder> builder = QueryAllUsers(_queryRegistry);
   if (builder) {
     VPackSlice usersSlice = builder->slice();
-    WRITE_LOCKER(writeLocker, _authInfoLock);
     if (usersSlice.length() == 0) {
       insertInitial();
     } else {
@@ -257,9 +254,13 @@ void AuthInfo::insertInitial() {
   }
 
   try {
+    // Attention:
+    // the root user needs to have a specific rights grant
+    // to the "_system" database, otherwise things break
     AuthUserEntry entry =
         AuthUserEntry::newUser("root", "", AuthSource::COLLECTION);
     entry.setActive(true);
+    entry.grantDatabase(StaticStrings::SystemDatabase, AuthLevel::RW);
     entry.grantDatabase("*", AuthLevel::RW);
     entry.grantCollection("*", "*", AuthLevel::RW);
     storeUserInternal(entry, false);
@@ -313,8 +314,8 @@ VPackBuilder AuthInfo::allUsers() {
   }
 
   VPackBuilder result;
+  VPackArrayBuilder a(&result);
   if (users && !users->isEmpty()) {
-    VPackArrayBuilder a(&result);
     for (VPackSlice const& doc : VPackArrayIterator(users->slice())) {
       ConvertLegacyFormat(doc, result);
     }
@@ -362,13 +363,13 @@ void AuthInfo::reloadAllUsers() {
 Result AuthInfo::storeUser(bool replace, std::string const& user,
                            std::string const& pass, bool active,
                            bool changePassword) {
-  if (_outdated) {
-    loadFromDB();
-  }
   if (user.empty()) {
     return TRI_ERROR_USER_INVALID_NAME;
   }
-  WRITE_LOCKER(readLocker, _authInfoLock);
+  WRITE_LOCKER(writeGuard, _authInfoLock);
+  if (_outdated) {
+    loadFromDB();
+  }
   auto const& it = _authInfo.find(user);
   if (replace && it == _authInfo.end()) {
     return TRI_ERROR_USER_NOT_FOUND;
@@ -521,51 +522,51 @@ Result AuthInfo::setUserData(std::string const& user,
 AuthResult AuthInfo::checkPassword(std::string const& username,
                                    std::string const& password) {
   if (_outdated) {
-    loadFromDB();
+    WRITE_LOCKER(writeGuard, _authInfoLock);
+    if (_outdated) {
+      loadFromDB();
+    }
   }
-
-  WRITE_LOCKER(writeLocker, _authInfoLock);
+  
+  READ_LOCKER(JobGuard, _authInfoLock);
   AuthResult result(username);
   auto it = _authInfo.find(username);
 
-  if (it == _authInfo.end() ||
-      (it->second.source() == AuthSource::LDAP)) {  // && it->second.created() <
-                                                    // TRI_microtime() - 60)) {
+  if (it == _authInfo.end() || (it->second.source() == AuthSource::LDAP)) {
     TRI_ASSERT(_authenticationHandler != nullptr);
-    AuthenticationResult authResult =
-        _authenticationHandler->authenticate(username, password);
+    AuthenticationResult authResult = _authenticationHandler->authenticate(username, password);
     if (!authResult.ok()) {
       return result;
     }
 
-    if (authResult.source() ==
-        AuthSource::LDAP) {  // user authed, add to _authInfo and _users
-      if (it !=
-          _authInfo
-              .end()) {  //  && it->second.created() < TRI_microtime() - 60) {
-        _authInfo.erase(username);
-      }
+    // user authed, add to _authInfo and _users
+    if (authResult.source() == AuthSource::LDAP) {
+      READ_UNLOCKER(unlock, _authInfoLock);
+      WRITE_LOCKER(writeGuard, _authInfoLock);
+      
       AuthUserEntry entry =
-          AuthUserEntry::newUser(username, password, AuthSource::LDAP);
-      auto r = _authInfo.emplace(username, entry);
-      if (!r.second) {
-        return result;
+      AuthUserEntry::newUser(username, password, AuthSource::LDAP);
+      
+      it = _authInfo.find(username);
+      if (it != _authInfo.end()) {
+        it->second = entry;
+      } else {
+        auto r = _authInfo.emplace(username, entry);
+        if (!r.second) {
+          return result;
+        }
+        it = r.first;
       }
-      it = r.first;
     }  // AuthSource::LDAP
   }
 
-  if (it == _authInfo.end()) {
-    return result;
+  if (it != _authInfo.end()) {
+    AuthUserEntry const& auth = it->second;
+    if (auth.isActive()) {
+      result._mustChange = auth.mustChangePassword();
+      result._authorized = auth.checkPassword(password);
+    }
   }
-
-  AuthUserEntry const& auth = it->second;
-  if (!auth.isActive()) {
-    return result;
-  }
-
-  result._mustChange = auth.mustChangePassword();
-  result._authorized = auth.checkPassword(password);
   return result;
 }
 
@@ -585,7 +586,10 @@ AuthLevel AuthInfo::canUseCollection(std::string const& username,
 AuthResult AuthInfo::checkAuthentication(AuthType authType,
                                          std::string const& secret) {
   if (_outdated) {
-    loadFromDB();
+    WRITE_LOCKER(writeGuard, _authInfoLock);
+    if (_outdated) {
+      loadFromDB();
+    }
   }
 
   switch (authType) {
@@ -882,7 +886,10 @@ std::string AuthInfo::generateJwt(VPackBuilder const& payload) {
 std::shared_ptr<AuthContext> AuthInfo::getAuthContext(
     std::string const& username, std::string const& database) {
   if (_outdated) {
-    loadFromDB();
+    WRITE_LOCKER(writeGuard, _authInfoLock);
+    if (_outdated) {
+      loadFromDB();
+    }
   }
 
   READ_LOCKER(guard, _authInfoLock);

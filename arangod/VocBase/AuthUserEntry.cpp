@@ -269,18 +269,16 @@ AuthUserEntry AuthUserEntry::fromDocument(VPackSlice const& slice) {
         std::unordered_map<std::string, AuthLevel> collections;
         AuthLevel databaseAuth = AuthLevel::NONE;
 
-        if (obj.value.hasKey("permissions") &&
-            obj.value.get("permissions").isObject()) {
-          auto const permissionsSlice = obj.value.get("permissions");
+        auto const permissionsSlice = obj.value.get("permissions");
+        if (permissionsSlice.isObject()) {
           databaseAuth = AuthLevelFromSlice(permissionsSlice);
         }
 
         VPackSlice collectionsSlice = obj.value.get("collections");
         if (collectionsSlice.isObject()) {
           for (auto const& collection : VPackObjectIterator(collectionsSlice)) {
-            if (collection.value.hasKey("permissions") &&
-                collection.value.get("permissions").isObject()) {
-              auto const permissionsSlice = obj.value.get("permissions");
+            auto const permissionsSlice = collection.value.get("permissions");
+            if (permissionsSlice.isObject()) {
               collections.emplace(collection.key.copyString(),
                                   AuthLevelFromSlice(permissionsSlice));
             }  // if
@@ -344,6 +342,12 @@ AuthUserEntry AuthUserEntry::fromDocument(VPackSlice const& slice) {
   entry._passwordChangeToken = passwordTokenSlice.copyString();
   entry._changePassword = mustChange;
   entry._authContexts = std::move(authContexts);
+  
+  // ensure the root user always has the right to change permissions
+  if (entry._username == "root") {
+    entry.grantDatabase(StaticStrings::SystemDatabase, AuthLevel::RW);
+    entry.grantCollection(StaticStrings::SystemDatabase, "*", AuthLevel::RW);
+  }
 
   // build authentication entry
   return entry;
@@ -418,6 +422,10 @@ VPackBuilder AuthUserEntry::toVPackBuilder() const {
   {  // databases sub-object
     VPackObjectBuilder o2(&builder, "databases", true);
     for (auto const& dbCtxPair : _authContexts) {
+      TRI_ASSERT(dbCtxPair.first != StaticStrings::SystemDatabase ||
+                 dbCtxPair.second->databaseAuthLevel() ==
+                  dbCtxPair.second->systemAuthLevel());
+      
       VPackObjectBuilder o3(&builder, dbCtxPair.first, true);
       {  // permissions
         VPackObjectBuilder o4(&builder, "permissions", true);
@@ -439,6 +447,10 @@ VPackBuilder AuthUserEntry::toVPackBuilder() const {
 }
 
 void AuthUserEntry::grantDatabase(std::string const& dbname, AuthLevel level) {
+  if (dbname.empty()) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
+                                   "Cannot set rights for empty db name");
+  }
   if (_username == "root" && dbname == StaticStrings::SystemDatabase &&
       level != AuthLevel::RW) {
     THROW_ARANGO_EXCEPTION_MESSAGE(
@@ -463,20 +475,28 @@ void AuthUserEntry::grantDatabase(std::string const& dbname, AuthLevel level) {
 }
 
 void AuthUserEntry::grantCollection(std::string const& dbname,
-                                    std::string const& collection,
-                                    AuthLevel level) {
-  if (_username == "root" && level != AuthLevel::RW) {
+                                    std::string const& coll, AuthLevel level) {
+  if (dbname.empty()) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
+                                   "Cannot set rights for empty db name");
+  }
+  if (coll.empty()) {
     THROW_ARANGO_EXCEPTION_MESSAGE(
-        TRI_ERROR_FORBIDDEN, "Cannot lower access level of 'root' to "
+        TRI_ERROR_BAD_PARAMETER, "Cannot set rights for empty collection name");
+  }
+  if (_username == "root" && dbname == StaticStrings::SystemDatabase &&
+      (coll[0] == '_' || coll == "*") && level != AuthLevel::RW) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN,
+                                   "Cannot lower access level of 'root' to "
                                    " a collection in _system");
   }
   auto it = _authContexts.find(dbname);
   if (it != _authContexts.end()) {
-    it->second->_collectionAccess[collection] = level;
+    it->second->_collectionAccess[coll] = level;
   } else {
     _authContexts.emplace(dbname,
                           std::make_shared<AuthContext>(
                               level, std::unordered_map<std::string, AuthLevel>(
-                                         {{collection, level}})));
+                                         {{coll, level}})));
   }
 }
