@@ -301,7 +301,7 @@ RestStatus RestUsersHandler::putRequest(AuthInfo* authInfo) {
           }
         });
         if (r.ok()) {
-          generateResult(ResponseCode::OK, VPackSlice());
+          resetResponse(ResponseCode::OK);
         } else {
           generateError(r);
         }
@@ -322,7 +322,8 @@ RestStatus RestUsersHandler::putRequest(AuthInfo* authInfo) {
         
         Result r = authInfo->setConfigData(user, config.slice());
         if (r.ok()) {
-          generateResult(ResponseCode::OK, VPackSlice());
+          resetResponse(ResponseCode::OK);
+
         } else {
           generateError(r);
         }
@@ -386,7 +387,7 @@ RestStatus RestUsersHandler::deleteRequest(AuthInfo* authInfo) {
       std::string const& user = suffixes[0];
       Result r = authInfo->setConfigData(user, VPackSlice::nullSlice());
       if (r.ok()) {
-        generateResult(ResponseCode::OK, VPackSlice());
+        resetResponse(ResponseCode::OK);
       } else {
         generateError(r);
       }
@@ -409,7 +410,7 @@ RestStatus RestUsersHandler::deleteRequest(AuthInfo* authInfo) {
           }
         });
         if (r.ok()) {
-          generateResult(ResponseCode::OK, VPackSlice());
+          resetResponse(ResponseCode::OK);
         } else {
           generateError(r);
         }
@@ -428,7 +429,7 @@ RestStatus RestUsersHandler::deleteRequest(AuthInfo* authInfo) {
         config = VPackCollection::merge(config.slice(), b.slice(), false, true);
         Result r = authInfo->setConfigData(user, config.slice());
         if (r.ok()) {
-          generateResult(ResponseCode::OK, VPackSlice());
+          resetResponse(ResponseCode::OK);
         } else {
           generateError(r);
         }
