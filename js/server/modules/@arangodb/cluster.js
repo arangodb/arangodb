@@ -541,8 +541,8 @@ function synchronizeOneShard (database, shard, planId, leader) {
 
     let startTime = new Date();
     sy = rep.syncCollection(shard,
-      { endpoint: ep, incremental: true,
-      keepBarrier: true, useCollectionId: false });
+      { endpoint: ep, incremental: true, keepBarrier: true,
+        useCollectionId: false, leaderId: leader });
     let endTime = new Date();
     let longSync = false;
     if (endTime - startTime > 5000) {

@@ -144,10 +144,6 @@ class InitialSyncer : public Syncer {
 
   std::string progress() { return _progress; }
 
-  void setLeaderId(std::string const& leaderId) {
-    _leaderId = leaderId;
-  }
-
  private:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief set a progress message
@@ -356,16 +352,6 @@ class InitialSyncer : public Syncer {
   //////////////////////////////////////////////////////////////////////////////
 
   static size_t const MaxChunkSize;
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief leaderId, this is used in the cluster to the unique ID of the
-  /// source server (the shard leader in this case). We need this information
-  /// to apply the changes locally to a shard, which is configured as a
-  /// follower and thus only accepts modifications that are replications
-  /// from the leader. Leave empty if there is no concept of a "leader".
-  //////////////////////////////////////////////////////////////////////////////
-
-  std::string _leaderId;
 
 };
 }
