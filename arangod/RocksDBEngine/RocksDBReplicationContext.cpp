@@ -364,7 +364,7 @@ arangodb::Result RocksDBReplicationContext::dumpDocuments(
     }
 
     size_t newPos = from + it.getNumber<size_t>();
-    if (oldPos != from && newPos > oldPos + 1) {
+    if (newPos > oldPos) {
       uint64_t ignore = 0;
       primary->skip(newPos - oldPos, ignore);
       TRI_ASSERT(ignore == newPos - oldPos);
@@ -372,6 +372,7 @@ arangodb::Result RocksDBReplicationContext::dumpDocuments(
     }
     hasMore = _iter->next(cb, 1);
     _lastIteratorOffset++;
+    oldPos = newPos + 1;
   }
   b.close();
   _hasMore = hasMore;

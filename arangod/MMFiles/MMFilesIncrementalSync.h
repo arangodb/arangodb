@@ -1,4 +1,28 @@
-#include "Replication/InitialSyncer.h"
+////////////////////////////////////////////////////////////////////////////////
+/// DISCLAIMER
+///
+/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
+///
+/// Licensed under the Apache License, Version 2.0 (the "License");
+/// you may not use this file except in compliance with the License.
+/// You may obtain a copy of the License at
+///
+///     http://www.apache.org/licenses/LICENSE-2.0
+///
+/// Unless required by applicable law or agreed to in writing, software
+/// distributed under the License is distributed on an "AS IS" BASIS,
+/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+/// See the License for the specific language governing permissions and
+/// limitations under the License.
+///
+/// Copyright holder is ArangoDB GmbH, Cologne, Germany
+///
+/// @author Simon Graetzer
+////////////////////////////////////////////////////////////////////////////////
+
+#ifndef ARANGOD_MMFILES_INCREMENTAL_SYNC_H
+#define ARANGOD_MMFILES_INCREMENTAL_SYNC_H 1
 
 #include "Basics/StaticStrings.h"
 #include "Basics/StringUtils.h"
@@ -7,6 +31,7 @@
 #include "MMFiles/MMFilesDitch.h"
 #include "MMFiles/MMFilesIndexElement.h"
 #include "MMFiles/MMFilesPrimaryIndex.h"
+#include "Replication/InitialSyncer.h"
 #include "SimpleHttpClient/SimpleHttpClient.h"
 #include "SimpleHttpClient/SimpleHttpResult.h"
 #include "Transaction/Helpers.h"
@@ -539,14 +564,17 @@ int handleSyncKeysMMFiles(arangodb::InitialSyncer& syncer,
 
         std::string const keyString = keySlice.copyString();
 
+        bool mustRefetch = false;
+
         while (nextStart < markers.size()) {
           VPackSlice const localKeySlice(markers[nextStart]);
           std::string const localKey(
               localKeySlice.get(StaticStrings::KeyString).copyString());
 
+          // compare local with remote key
           int res = localKey.compare(keyString);
 
-          if (res != 0) {
+          if (res < 0) {
             // we have a local key that is not present remotely
             keyBuilder.clear();
             keyBuilder.openObject();
@@ -555,25 +583,34 @@ int handleSyncKeysMMFiles(arangodb::InitialSyncer& syncer,
 
             trx.remove(collectionName, keyBuilder.slice(), options);
             ++nextStart;
-          } else {
+          } else if (res == 0) {
             // key match
+            break;
+          } else {
+            // a remotely present key that is not present locally
+            TRI_ASSERT(res > 0);
+            mustRefetch = true;
             break;
           }
         }
 
-        MMFilesSimpleIndexElement element = idx->lookupKey(&trx, keySlice);
-
-        if (!element) {
-          // key not found locally
+        if (mustRefetch) {
           toFetch.emplace_back(i);
-        } else if (TRI_RidToString(element.revisionId()) !=
-                   pair.at(1).copyString()) {
-          // key found, but revision id differs
-          toFetch.emplace_back(i);
-          ++nextStart;
         } else {
-          // a match - nothing to do!
-          ++nextStart;
+          MMFilesSimpleIndexElement element = idx->lookupKey(&trx, keySlice);
+
+          if (!element) {
+            // key not found locally
+            toFetch.emplace_back(i);
+          } else if (TRI_RidToString(element.revisionId()) !=
+                    pair.at(1).copyString()) {
+            // key found, but revision id differs
+            toFetch.emplace_back(i);
+            ++nextStart;
+          } else {
+            // a match - nothing to do!
+            ++nextStart;
+          }
         }
       }
 
@@ -710,3 +747,5 @@ int handleSyncKeysMMFiles(arangodb::InitialSyncer& syncer,
   return res;
 }
 }
+
+#endif
