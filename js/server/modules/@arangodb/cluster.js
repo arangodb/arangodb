@@ -359,7 +359,13 @@ function organiseLeaderResign (database, collId, shardName) {
   try {
     // we know the shard exists locally!
     var db = require('internal').db;
-    db._collection(shardName).setLeader("");  // resign
+    db._collection(shardName).setTheLeader("LEADER_NOT_YET_KNOWN");  // resign
+    // Note that it is likely that we will be a follower for this shard
+    // with another leader in due course. However, we do not know the
+    // name of the new leader yet. This setting will make us a follower
+    // for now but we will not accept any replication operation from any
+    // leader, until we have negotiated a deal with it. Then the actual
+    // name of the leader will be set.
     db._executeTransaction(
       { 'collections': { 'write': [shardName] },
         'action': function () { }
@@ -576,6 +582,10 @@ function synchronizeOneShard (database, shard, planId, leader) {
                 shard, sy2);
               ok = false;
             } else {
+              var collection = db._collection(shard);
+              // Mark us as follower for this leader such that we begin
+              // accepting replication operations:
+              collection.setTheLeader(leader);
               ok = addShardFollower(ep, database, shard);
             }
           } catch (err3) {
@@ -800,9 +810,9 @@ function executePlanForCollections(plannedCollections) {
                 collectionInfo.name = save.name;
                 collection = db._collection(shardName);
                 if (shouldBeLeader) {
-                  collection.setLeader("");   // take power
+                  collection.setTheLeader("");   // take power
                 } else {
-                  collection.setLeader(plannedServers[0]);
+                  collection.setTheLeader(plannedServers[0]);
                 }
                 collectionStatus = ArangoCollection.STATUS_LOADED;
               } else {
@@ -819,11 +829,15 @@ function executePlanForCollections(plannedCollections) {
 
                 if (shouldBeLeader) {
                   if (localCollections[shardName].theLeader !== "") {
-                    collection.setLeader("");  // assume leadership
+                    collection.setTheLeader("");  // assume leadership
                   } else {
-                    // would not harm in assume leadership situation but
-                    // in its current implementation setLeader("") will 
-                    // reset all followers...so we can save some work here :S
+                    // If someone (the Supervision most likely) has thrown
+                    // out a follower from the plan, then the leader
+                    // will not notice until it fails to replicate an operation
+                    // to the old follower. This here is to drop such a follower
+                    // from the local list of followers. Will be reported
+                    // to Current in due course. This is not needed for 
+                    // correctness but is a performance optimization.
                     let currentFollowers = collection.getFollowers();
                     let plannedFollowers = plannedServers.slice(1);
                     let removedFollowers = currentFollowers.filter(follower => {
@@ -833,7 +847,7 @@ function executePlanForCollections(plannedCollections) {
                       collection.removeFollower(removedFollower);
                     });
                   }
-                } else {
+                } else {   // !shouldBeLeader
                   if (localCollections[shardName].theLeader === "") {
                     // Note that the following does not delete the follower list
                     // and that this is crucial, because in the planned leader 
@@ -841,8 +855,14 @@ function executePlanForCollections(plannedCollections) {
                     // resignation together with the old in-sync list to the
                     // agency. If this list would be empty, then the supervision
                     // would be very angry with us!
-                    collection.setLeader(plannedServers[0]);
+                    collection.setTheLeader(plannedServers[0]);
                   }
+                  // Note that if we have been a follower to some leader
+                  // we do not immediately adjust the leader here, even if
+                  // the planned leader differs from what we have set locally.
+                  // The setting must only be adjusted once we have
+                  // synchronized with the new leader and negotiated
+                  // a leader/follower relationship!
                 }
 
                 collectionStatus = localCollections[shardName].status;

@@ -439,9 +439,11 @@ void RestVocbaseBaseHandler::generateTransactionError(
       return;
 
     case TRI_ERROR_CLUSTER_BACKEND_UNAVAILABLE:
+    case TRI_ERROR_CLUSTER_SHARD_LEADER_RESIGNED: {
       generateError(rest::ResponseCode::SERVICE_UNAVAILABLE, res,
                     "A required backend was not available");
       return;
+    }
 
     case TRI_ERROR_CLUSTER_MUST_NOT_CHANGE_SHARDING_ATTRIBUTES:
     case TRI_ERROR_CLUSTER_MUST_NOT_SPECIFY_KEY: {

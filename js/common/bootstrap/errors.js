@@ -170,6 +170,7 @@
     "ERROR_CLUSTER_COULD_NOT_DROP_FOLLOWER" : { "code" : 1488, "message" : "a follower could not be dropped in agency" },
     "ERROR_CLUSTER_SHARD_LEADER_REFUSES_REPLICATION" : { "code" : 1489, "message" : "a shard leader refuses to perform a replication operation" },
     "ERROR_CLUSTER_SHARD_FOLLOWER_REFUSES_OPERATION" : { "code" : 1490, "message" : "a shard follower refuses to perform an operation that is not a replication" },
+    "ERROR_CLUSTER_SHARD_LEADER_RESIGNED" : { "code" : 1491, "message" : "a (former) shard leader refuses to perform an operation, because it has resigned in the meantime" },
     "ERROR_QUERY_KILLED"           : { "code" : 1500, "message" : "query killed" },
     "ERROR_QUERY_PARSE"            : { "code" : 1501, "message" : "%s" },
     "ERROR_QUERY_EMPTY"            : { "code" : 1502, "message" : "query is empty" },

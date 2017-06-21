@@ -80,7 +80,7 @@ class FollowerInfo {
   /// @brief set leadership
   //////////////////////////////////////////////////////////////////////////////
 
-  void setLeader(std::string const& who) {
+  void setTheLeader(std::string const& who) {
     MUTEX_LOCKER(locker, _mutex);
     _theLeader = who;
   }

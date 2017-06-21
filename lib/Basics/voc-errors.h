@@ -411,6 +411,9 @@
 /// - 1490: @LIT{a shard follower refuses to perform an operation that is not a replication}
 ///   Will be raised if a non-replication operation is refused by a shard
 ///   follower.
+/// - 1491: @LIT{a (former) shard leader refuses to perform an operation, because it has resigned in the meantime}
+///   Will be raised if a non-replication operation is refused by a former
+///   shard leader that has found out that it is no longer the leader.
 /// - 1500: @LIT{query killed}
 ///   Will be raised when a running query is killed by an explicit admin
 ///   command.
@@ -2425,6 +2428,18 @@ void TRI_InitializeErrorMessages ();
 ////////////////////////////////////////////////////////////////////////////////
 
 #define TRI_ERROR_CLUSTER_SHARD_FOLLOWER_REFUSES_OPERATION                (1490)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 1491: ERROR_CLUSTER_SHARD_LEADER_RESIGNED
+///
+/// a (former) shard leader refuses to perform an operation, because it has
+/// resigned in the meantime
+///
+/// Will be raised if a non-replication operation is refused by a former shard
+/// leader that has found out that it is no longer the leader.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_CLUSTER_SHARD_LEADER_RESIGNED                           (1491)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1500: ERROR_QUERY_KILLED

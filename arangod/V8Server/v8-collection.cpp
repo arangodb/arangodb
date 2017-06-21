@@ -1062,7 +1062,7 @@ static void JS_FiguresVocbaseCol(
 /// @brief was docuBlock assumeLeadership
 ////////////////////////////////////////////////////////////////////////////////
 
-static void JS_SetLeader(v8::FunctionCallbackInfo<v8::Value> const& args) {
+static void JS_SetTheLeader(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
@@ -1096,7 +1096,7 @@ static void JS_SetLeader(v8::FunctionCallbackInfo<v8::Value> const& args) {
       TRI_Utf8ValueNFC l(TRI_UNKNOWN_MEM_ZONE, args[0]);
       theLeader = std::string(*l, l.length());
     }
-    collection->followers()->setLeader(std::string(""));
+    collection->followers()->setTheLeader(theLeader);
     if (theLeader.empty()) {
       collection->followers()->clear();
     }
@@ -3272,8 +3272,8 @@ void TRI_InitV8Collections(v8::Handle<v8::Context> context,
                        JS_InsertVocbaseCol);
   TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING("_binaryInsert"),
                        JS_BinaryInsertVocbaseCol);
-  TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING("setLeader"),
-                       JS_SetLeader, true);
+  TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING("setTheLeader"),
+                       JS_SetTheLeader, true);
   TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING("getLeader"),
                        JS_GetLeader, true);
 #ifdef DEBUG_SYNC_REPLICATION

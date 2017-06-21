@@ -1497,7 +1497,8 @@ OperationResult transaction::Methods::insertLocal(
         "/_db/" + arangodb::basics::StringUtils::urlEncode(databaseName()) +
         "/_api/document/" +
         arangodb::basics::StringUtils::urlEncode(collection->name()) +
-        "?isRestore=true&isSynchronousReplication=true";
+        "?isRestore=true&isSynchronousReplication=" +
+        ServerState::instance()->getId();
 
     VPackBuilder payload;
 
@@ -1552,8 +1553,7 @@ OperationResult transaction::Methods::insertLocal(
           // error (note that we use the follower version, since we have
           // lost leadership):
           if (findRefusal(requests)) {
-            return OperationResult(
-                TRI_ERROR_CLUSTER_SHARD_FOLLOWER_REFUSES_OPERATION);
+            return OperationResult(TRI_ERROR_CLUSTER_SHARD_LEADER_RESIGNED);
           }
 
           // Otherwise we drop all followers that were not successful:
@@ -1844,7 +1844,8 @@ OperationResult transaction::Methods::modifyLocal(
           "/_db/" + arangodb::basics::StringUtils::urlEncode(databaseName()) +
           "/_api/document/" +
           arangodb::basics::StringUtils::urlEncode(collection->name()) +
-          "?isRestore=true&isSynchronousReplication=true";
+          "?isRestore=true&isSynchronousReplication=" +
+          ServerState::instance()->getId();
 
       VPackBuilder payload;
 
@@ -1900,8 +1901,7 @@ OperationResult transaction::Methods::modifyLocal(
           // error (note that we use the follower version, since we have
           // lost leadership):
           if (findRefusal(requests)) {
-            return OperationResult(
-                TRI_ERROR_CLUSTER_SHARD_FOLLOWER_REFUSES_OPERATION);
+            return OperationResult(TRI_ERROR_CLUSTER_SHARD_LEADER_RESIGNED);
           }
 
           // Otherwise we drop all followers that were not successful:
@@ -2125,7 +2125,8 @@ OperationResult transaction::Methods::removeLocal(
           "/_db/" + arangodb::basics::StringUtils::urlEncode(databaseName()) +
           "/_api/document/" +
           arangodb::basics::StringUtils::urlEncode(collection->name()) +
-          "?isRestore=true&isSynchronousReplication=true";
+          "?isRestore=true&isSynchronousReplication=" +
+          ServerState::instance()->getId();
 
       VPackBuilder payload;
 
@@ -2179,8 +2180,7 @@ OperationResult transaction::Methods::removeLocal(
           // error (note that we use the follower version, since we have
           // lost leadership):
           if (findRefusal(requests)) {
-            return OperationResult(
-                TRI_ERROR_CLUSTER_SHARD_FOLLOWER_REFUSES_OPERATION);
+            return OperationResult(TRI_ERROR_CLUSTER_SHARD_LEADER_RESIGNED);
           }
 
           // we drop all followers that were not successful:
@@ -2373,7 +2373,8 @@ OperationResult transaction::Methods::truncateLocal(
             "/_db/" + arangodb::basics::StringUtils::urlEncode(databaseName()) +
             "/_api/collection/" +
             arangodb::basics::StringUtils::urlEncode(collectionName) +
-            "/truncate?isSynchronousReplication=true";
+            "/truncate?isSynchronousReplication=" +
+            ServerState::instance()->getId();
 
         auto body = std::make_shared<std::string>();
 
@@ -2393,8 +2394,7 @@ OperationResult transaction::Methods::truncateLocal(
           // error (note that we use the follower version, since we have
           // lost leadership):
           if (findRefusal(requests)) {
-            return OperationResult(
-                TRI_ERROR_CLUSTER_SHARD_FOLLOWER_REFUSES_OPERATION);
+            return OperationResult(TRI_ERROR_CLUSTER_SHARD_LEADER_RESIGNED);
           }
           // we drop all followers that were not successful:
           for (size_t i = 0; i < followers->size(); ++i) {
