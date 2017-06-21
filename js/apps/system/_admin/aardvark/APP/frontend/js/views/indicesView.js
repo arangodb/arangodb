@@ -1,6 +1,6 @@
 /* jshint browser: true */
 /* jshint unused: false */
-/* global _, arangoHelper, frontendConfig, Backbone, window, templateEngine, $ */
+/* global _, arangoHelper, Backbone, window, templateEngine, $ */
 
 (function () {
   'use strict';
@@ -39,7 +39,7 @@
           self.getIndex();
 
           // check permissions and adjust views
-          self.checkPermissions();
+          arangoHelper.checkCollectionPermissions(self.collectionName, self.changeViewToReadOnly);
         },
         error: function () {
           arangoHelper.arangoNotification('Index', 'Could not fetch index information.');
@@ -47,30 +47,8 @@
       });
     },
 
-    checkPermissions: function () {
-      var self = this;
-      var url = arangoHelper.databaseUrl('/_api/user/' +
-        encodeURIComponent(window.App.userCollection.activeUser) +
-        '/database/' + encodeURIComponent(frontendConfig.db) + this.collection.collectionID);
-
-      // FETCH COMPLETE DB LIST
-      $.ajax({
-        type: 'GET',
-        url: url,
-        contentType: 'application/json',
-        success: function (data) {
-          // fetching available dbs and permissions
-          if (data.result === 'ro') {
-            self.changeViewToReadOnly();
-          }
-        },
-        error: function (data) {
-          arangoHelper.arangoError('User', 'Could not fetch collection permissions.');
-        }
-      });
-    },
-
     changeViewToReadOnly: function () {
+      $('.breadcrumb').html($('.breadcrumb').html() + ' (read-only)');
       // this method disables all write-based functions
       $('#addIndex').addClass('disabled');
       $('#addIndex').css('color', 'rgba(0,0,0,.5)');

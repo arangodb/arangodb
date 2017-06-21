@@ -15,7 +15,7 @@
 
     <div class="pure-g pure-table pure-table-body">
       <% _.each(permissions, function(content, db) { %>
-        <div class="pure-table-row db-row noHover" id="<%= db %>-db">
+        <div class="pure-table-row db-row noHover underline" id="<%= db %>-db">
           <div class="<%= genClass %> left"><%= db %></div>
 
           <% var permissionsDB = content.permission; %>
@@ -78,17 +78,17 @@
                       <input class="collCheckbox readWrite" type="radio" db="<%= db %>" name="<%=db%>-<%=collectionName%>" collection="<%= collectionName %>" permission="<%= collectionName %>">
                     </div>
                     <div class="<%= genClass2 %> mid inner">
-                      <input class="collCheckbox readOnly" type="radio" db="<%= db %>" name="<%=db%><%=collectionName%>" collection="<%= collectionName %>" permission="<%= collectionName %>" checked>
+                      <input class="collCheckbox readOnly" type="radio" db="<%= db %>" name="<%=db%>-<%=collectionName%>" collection="<%= collectionName %>" permission="<%= collectionName %>" checked>
                     </div>
                     <div class="<%= genClass2 %> mid inner">
                       <input class="collCheckbox noAccess" type="radio" db="<%= db %>" name="<%=db%>-<%=collectionName%>" collection="<%= collectionName %>" permission="<%= collectionName %>">
                     </div>
                   <% } else { %>
                     <div class="<%= genClass2 %> mid inner">
-                      <input class="collCheckbox readWrite" type="radio" db="<%= db %>" name="<%=db%><%=collectionName%>" collection="<%= collectionName %>" permission="<%= collectionName %>">
+                      <input class="collCheckbox readWrite" type="radio" db="<%= db %>" name="<%=db%>-<%=collectionName%>" collection="<%= collectionName %>" permission="<%= collectionName %>">
                     </div>
                     <div class="<%= genClass2 %> mid inner">
-                      <input class="collCheckbox readOnly" type="radio" db="<%= db %>" name="<%=db%><%=collectionName%>" collection="<%= collectionName %>" permission="<%= collectionName %>">
+                      <input class="collCheckbox readOnly" type="radio" db="<%= db %>" name="<%=db%>-<%=collectionName%>" collection="<%= collectionName %>" permission="<%= collectionName %>">
                     </div>
                     <div class="<%= genClass2 %> mid inner">
                       <input class="collCheckbox noAccess" type="radio" db="<%= db %>" name="<%=db%>-<%=collectionName%>" collection="<%= collectionName %>" permission="<%= collectionName %> checked">
