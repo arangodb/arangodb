@@ -128,7 +128,7 @@ SET(ARANGOD_SOURCES
   Agency/GossipCallback.cpp
   Agency/Inception.cpp
   Agency/Job.cpp
-  Agency/JobContext.cpp  
+  Agency/JobContext.cpp
   Agency/MoveShard.cpp
   Agency/Node.cpp
   Agency/NotifyCallback.cpp
@@ -165,6 +165,7 @@ SET(ARANGOD_SOURCES
   Aql/ConditionFinder.cpp
   Aql/EnumerateCollectionBlock.cpp
   Aql/EnumerateListBlock.cpp
+  Aql/EnumerateViewBlock.cpp
   Aql/ExecutionBlock.cpp
   Aql/ExecutionEngine.cpp
   Aql/ExecutionNode.cpp

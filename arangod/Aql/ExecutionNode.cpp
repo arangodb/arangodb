@@ -73,7 +73,8 @@ std::unordered_map<int, std::string const> const ExecutionNode::TypeNames{
     {static_cast<int>(NORESULTS), "NoResultsNode"},
     {static_cast<int>(UPSERT), "UpsertNode"},
     {static_cast<int>(TRAVERSAL), "TraversalNode"},
-    {static_cast<int>(SHORTEST_PATH), "ShortestPathNode"}};
+    {static_cast<int>(SHORTEST_PATH), "ShortestPathNode"},
+    {static_cast<int>(ENUMERATE_VIEW), "EnumerateViewNode"}};
 
 /// @brief returns the type name of the node
 std::string const& ExecutionNode::getTypeString() const {
@@ -141,6 +142,8 @@ ExecutionNode* ExecutionNode::fromVPackFactory(
       return new EnumerateCollectionNode(plan, slice);
     case ENUMERATE_LIST:
       return new EnumerateListNode(plan, slice);
+    case ENUMERATE_VIEW:
+      return new EnumerateViewNode(plan, slice);
     case FILTER:
       return new FilterNode(plan, slice);
     case LIMIT:
@@ -375,7 +378,7 @@ ExecutionNode::ExecutionNode(ExecutionPlan* plan,
 }
 
 /// @brief toVelocyPack, export an ExecutionNode to VelocyPack
-void ExecutionNode::toVelocyPack(VPackBuilder& builder, 
+void ExecutionNode::toVelocyPack(VPackBuilder& builder,
                                  bool verbose, bool keepTopLevelOpen) const {
   // default value is to NOT keep top level open
   builder.openObject();
@@ -550,7 +553,8 @@ ExecutionNode const* ExecutionNode::getLoop() const {
     auto type = node->getType();
 
     if (type == ENUMERATE_COLLECTION || type == INDEX || type == TRAVERSAL ||
-        type == ENUMERATE_LIST || type == SHORTEST_PATH) {
+        type == ENUMERATE_LIST || type == SHORTEST_PATH ||
+        type == ENUMERATE_VIEW) {
       return node;
     }
   }
@@ -692,7 +696,7 @@ void ExecutionNode::toVelocyPackHelperGeneric(VPackBuilder& nodes,
 /// @brief static analysis debugger
 #if 0
 struct RegisterPlanningDebugger final : public WalkerWorker<ExecutionNode> {
-  RegisterPlanningDebugger () 
+  RegisterPlanningDebugger ()
     : indent(0) {
   }
 
@@ -854,6 +858,22 @@ void ExecutionNode::RegisterPlan::after(ExecutionNode* en) {
       nrRegs.emplace_back(registerId);
 
       auto ep = static_cast<EnumerateListNode const*>(en);
+      TRI_ASSERT(ep != nullptr);
+      varInfo.emplace(ep->_outVariable->id, VarInfo(depth, totalNrRegs));
+      totalNrRegs++;
+      break;
+    }
+
+    case ExecutionNode::ENUMERATE_VIEW: {
+      depth++;
+      nrRegsHere.emplace_back(1);
+      // create a copy of the last value here
+      // this is requried because back returns a reference and emplace/push_back
+      // may invalidate all references
+      RegisterId registerId = 1 + nrRegs.back();
+      nrRegs.emplace_back(registerId);
+
+      auto ep = static_cast<EnumerateViewNode const*>(en);
       TRI_ASSERT(ep != nullptr);
       varInfo.emplace(ep->_outVariable->id, VarInfo(depth, totalNrRegs));
       totalNrRegs++;
@@ -1109,7 +1129,7 @@ void ExecutionNode::RegisterPlan::after(ExecutionNode* en) {
         en->getVarsUsedLater();
     std::vector<Variable const*> const& varsUsedHere =
         en->getVariablesUsedHere();
-  
+
     // We need to delete those variables that have been used here but are not
     // used any more later:
     std::unordered_set<RegisterId> regsToClear;
@@ -1122,7 +1142,7 @@ void ExecutionNode::RegisterPlan::after(ExecutionNode* en) {
 
         if (it2 == varInfo.end()) {
           // report an error here to prevent crashing
-          THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, std::string("missing variable #") + std::to_string(v->id) + " (" + v->name + ") for node #" + std::to_string(en->id()) + " (" + en->getTypeString() + ") while planning registers"); 
+          THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, std::string("missing variable #") + std::to_string(v->id) + " (" + v->name + ") for node #" + std::to_string(en->id()) + " (" + en->getTypeString() + ") while planning registers");
         }
 
         // finally adjust the variable inside the IN calculation
@@ -1306,6 +1326,58 @@ double EnumerateListNode::estimateCost(size_t& nrItems) const {
   return depCost + static_cast<double>(length) * incoming;
 }
 
+EnumerateViewNode::EnumerateViewNode(ExecutionPlan* plan,
+                                     arangodb::velocypack::Slice const& base)
+    : ExecutionNode(plan, base),
+      _vocbase(plan->getAst()->query()->vocbase()),
+      _view(_vocbase->lookupView(base.get("view").copyString())),
+      _outVariable(varFromVPack(plan->getAst(), base, "outVariable")) {}
+
+/// @brief toVelocyPack, for EnumerateViewNode
+void EnumerateViewNode::toVelocyPackHelper(VPackBuilder& nodes,
+                                           bool verbose) const {
+  ExecutionNode::toVelocyPackHelperGeneric(nodes,
+                                           verbose);  // call base class method
+
+  nodes.add("database", VPackValue(_vocbase->name()));
+  nodes.add("view", VPackValue(_view->name()));
+
+  nodes.add(VPackValue("outVariable"));
+  _outVariable->toVelocyPack(nodes);
+
+  // And close it:
+  nodes.close();
+}
+
+/// @brief clone ExecutionNode recursively
+ExecutionNode* EnumerateViewNode::clone(ExecutionPlan* plan,
+                                        bool withDependencies,
+                                        bool withProperties) const {
+  auto outVariable = _outVariable;
+
+  if (withProperties) {
+    outVariable = plan->getAst()->variables()->createVariable(outVariable);
+  }
+
+  auto c = new EnumerateViewNode(plan, _id, _vocbase, _view, outVariable);
+
+  cloneHelper(c, plan, withDependencies, withProperties);
+
+  return static_cast<ExecutionNode*>(c);
+}
+
+/// @brief the cost of an enumerate view node
+double EnumerateViewNode::estimateCost(size_t& nrItems) const {
+  size_t incoming = 0;
+  double depCost = _dependencies.at(0)->getCost(incoming);
+
+  // For the time being, we assume 100
+  size_t length = 100; // TODO: get a better guess from view
+
+  nrItems = length * incoming;
+  return depCost + static_cast<double>(length) * incoming;
+}
+
 LimitNode::LimitNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& base)
     : ExecutionNode(plan, base),
       _offset(base.get("offset").getNumericValue<decltype(_offset)>()),
@@ -1416,7 +1488,7 @@ void SubqueryNode::toVelocyPackHelper(VPackBuilder& nodes, bool verbose) const {
   // And add it:
   nodes.close();
 }
-  
+
 bool SubqueryNode::isConst() {
   if (isModificationQuery() || !isDeterministic()) {
     return false;
@@ -1438,7 +1510,7 @@ bool SubqueryNode::isConst() {
       return false;
     }
   }
-      
+
   return true;
 }
 
@@ -1467,7 +1539,7 @@ bool SubqueryNode::isModificationQuery() const {
     if (current->isModificationNode()) {
       return true;
     }
-    
+
     stack.pop_back();
 
     current->addDependencies(stack);
@@ -1714,4 +1786,3 @@ double NoResultsNode::estimateCost(size_t& nrItems) const {
   nrItems = 0;
   return 0.5;  // just to make it non-zero
 }
-

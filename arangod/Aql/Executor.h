@@ -123,6 +123,9 @@ class Executor {
   /// @brief generate JavaScript code for a full collection access
   void generateCodeCollection(AstNode const*);
 
+  /// @brief generate JavaScript code for a full view access
+  void generateCodeView(AstNode const*);
+
   /// @brief generate JavaScript code for a call to a built-in function
   void generateCodeFunctionCall(AstNode const*);
 
@@ -159,7 +162,7 @@ class Executor {
 
   /// @brief mapping from literal array/objects to register ids
   std::unordered_map<AstNode const*, size_t> _constantRegisters;
-  
+
   /// @brief mapping from user-defined function names to register ids
   std::unordered_map<std::string, size_t> _userFunctions;
 

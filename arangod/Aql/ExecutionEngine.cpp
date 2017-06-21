@@ -32,6 +32,7 @@
 #include "Aql/CollectOptions.h"
 #include "Aql/EnumerateCollectionBlock.h"
 #include "Aql/EnumerateListBlock.h"
+#include "Aql/EnumerateViewBlock.h"
 #include "Aql/ExecutionNode.h"
 #include "Aql/IndexBlock.h"
 #include "Aql/ModificationBlocks.h"
@@ -57,7 +58,7 @@ using namespace arangodb::aql;
 
 // @brief Local struct to create the
 // information required to build traverser engines
-// on DB servers. 
+// on DB servers.
 struct TraverserEngineShardLists {
   explicit TraverserEngineShardLists(size_t length) {
     // Make sure they all have a fixed size.
@@ -101,6 +102,10 @@ static ExecutionBlock* CreateBlock(
     case ExecutionNode::ENUMERATE_LIST: {
       return new EnumerateListBlock(engine,
                                     static_cast<EnumerateListNode const*>(en));
+    }
+    case ExecutionNode::ENUMERATE_VIEW: {
+      return new EnumerateViewBlock(engine,
+                                    static_cast<EnumerateViewNode const*>(en));
     }
     case ExecutionNode::TRAVERSAL: {
       return new TraversalBlock(engine, static_cast<TraversalNode const*>(en));
@@ -257,7 +262,7 @@ struct Instanciator final : public WalkerWorker<ExecutionNode> {
       }
 
       engine->addBlock(eb.get());
-      
+
       if (!en->hasParent()) {
         // yes. found a new root!
         root = eb.get();
@@ -448,7 +453,7 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
     bool populated;
     // in the original plan that needs this engine
   };
-    
+
   void includedShards(std::unordered_set<std::string> const& allowed) {
     _includedShards = allowed;
   }
@@ -576,7 +581,7 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
     // mop: this is currently only working for satellites and hardcoded to their structure
     for (auto auxiliaryCollection: info->getAuxiliaryCollections()) {
       TRI_ASSERT(auxiliaryCollection->isSatellite());
-      
+
       // add the collection
       result.openObject();
       auto auxiliaryShards = auxiliaryCollection->shardIds();
@@ -598,7 +603,7 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
     result.add(VPackValue("options"));
     // the toVelocyPack will open & close the "options" object
     query->queryOptions().toVelocyPack(result, true);
-    
+
     result.close();
 
     TRI_ASSERT(result.isClosed());
@@ -675,8 +680,8 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
         }
       }
     }
-     
-    size_t numShards = shardIds->size();   
+
+    size_t numShards = shardIds->size();
     //LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "GOT ALL RESPONSES FROM DB SERVERS: " << nrok << "\n";
 
     if (nrok != static_cast<int>(numShards)) {
@@ -1178,7 +1183,7 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
     engines[currentEngineId].nodes.emplace_back(en);
   }
 };
-  
+
 /// @brief shutdown, will be called exactly once for the whole query
 int ExecutionEngine::shutdown(int errorCode) {
   int res = TRI_ERROR_NO_ERROR;
@@ -1195,7 +1200,7 @@ int ExecutionEngine::shutdown(int errorCode) {
     }
 
     res = _root->shutdown(errorCode);
- 
+
     // prevent a duplicate shutdown
     _wasShutdown = true;
   }
@@ -1211,7 +1216,7 @@ ExecutionEngine* ExecutionEngine::instantiateFromPlan(
   bool const isCoordinator =
       arangodb::ServerState::instance()->isCoordinator(role);
   bool const isDBServer = arangodb::ServerState::instance()->isDBServer(role);
-    
+
   TRI_ASSERT(queryRegistry != nullptr);
 
   ExecutionEngine* engine = nullptr;

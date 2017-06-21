@@ -354,6 +354,7 @@ static AstNode const* GetIntoExpression(AstNode const* node) {
 %type <node> simple_value;
 %type <node> value_literal;
 %type <node> collection_name;
+%type <node> view_name;
 %type <node> in_or_into_collection;
 %type <node> bind_parameter;
 %type <strval> variable_name;
@@ -472,18 +473,16 @@ statement_block_statement:
   ;
 
 for_statement:
-    T_FOR variable_name T_IN T_VIEW expression {
+    T_FOR variable_name T_IN T_VIEW view_name {
       parser->ast()->scopes()->start(arangodb::aql::AQL_SCOPE_FOR);
 
-      auto node = parser->ast()->createNodeFor($2.value, $2.length, $5, true,
-        true);
+      auto node = parser->ast()->createNodeFor($2.value, $2.length, $5, true);
       parser->ast()->addOperation(node);
     }
     | T_FOR variable_name T_IN expression {
       parser->ast()->scopes()->start(arangodb::aql::AQL_SCOPE_FOR);
 
-      auto node = parser->ast()->createNodeFor($2.value, $2.length, $4, true,
-        false);
+      auto node = parser->ast()->createNodeFor($2.value, $2.length, $4, true);
       parser->ast()->addOperation(node);
     }
     | T_FOR traversal_statement {
@@ -1005,7 +1004,7 @@ upsert_statement:
 
       scopes->start(arangodb::aql::AQL_SCOPE_FOR);
       std::string const variableName = parser->ast()->variables()->nextName();
-      auto forNode = parser->ast()->createNodeFor(variableName.c_str(), variableName.size(), $8, false, false);
+      auto forNode = parser->ast()->createNodeFor(variableName.c_str(), variableName.size(), $8, false);
       parser->ast()->addOperation(forNode);
 
       auto filterNode = parser->ast()->createNodeUpsertFilter(parser->ast()->createNodeReference(variableName), $3);
@@ -1720,6 +1719,15 @@ collection_name:
       $$ = parser->ast()->createNodeParameter($1.value, $1.length);
     }
   ;
+
+view_name:
+    T_STRING {
+      $$ = parser->ast()->createNodeView($1.value);
+    }
+  | T_QUOTED_STRING {
+      $$ = parser->ast()->createNodeView($1.value);
+    }
+  ; // TODO: add parameter case
 
 bind_parameter:
     T_PARAMETER {

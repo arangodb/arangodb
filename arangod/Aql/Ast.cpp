@@ -172,7 +172,7 @@ AstNode* Ast::createNodeExample(AstNode const* variable,
 /// @brief create an AST for node
 AstNode* Ast::createNodeFor(char const* variableName, size_t nameLength,
                             AstNode const* expression,
-                            bool isUserDefinedVariable, bool isView) {
+                            bool isUserDefinedVariable) {
   if (variableName == nullptr) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
   }
@@ -183,13 +183,7 @@ AstNode* Ast::createNodeFor(char const* variableName, size_t nameLength,
   AstNode* variable =
       createNodeVariable(variableName, nameLength, isUserDefinedVariable);
   node->addMember(variable);
-
-  if (isView) {
-    AstNode* view = createNodeView(expression);
-    node->addMember(view);
-  } else {
-    node->addMember(expression);
-  }
+  node->addMember(expression);
 
   return node;
 }
@@ -587,11 +581,18 @@ AstNode* Ast::createNodeCollection(char const* name,
 }
 
 /// @brief create an AST view node
-AstNode* Ast::createNodeView(AstNode const* expression) {
-  AstNode* node = createNode(NODE_TYPE_VIEW);
-  node->reserve(1);
+AstNode* Ast::createNodeView(char const* name) {
+  if (name == nullptr) {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
+  }
 
-  node->addMember(expression);
+  if (*name == '\0' || !LogicalCollection::IsAllowedName(true, name)) {
+    _query->registerErrorCustom(TRI_ERROR_ARANGO_ILLEGAL_NAME, name);
+    return nullptr;
+  }
+
+  AstNode* node = createNode(NODE_TYPE_VIEW);
+  node->setStringValue(name, strlen(name));
 
   return node;
 }

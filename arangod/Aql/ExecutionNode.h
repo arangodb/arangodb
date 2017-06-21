@@ -56,6 +56,7 @@
 #include "Aql/Expression.h"
 #include "Aql/Variable.h"
 #include "Aql/WalkerWorker.h"
+#include "VocBase/LogicalView.h"
 #include "VocBase/voc-types.h"
 #include "VocBase/vocbase.h"
 
@@ -124,7 +125,8 @@ class ExecutionNode {
     UPSERT = 21,
     TRAVERSAL = 22,
     INDEX = 23,
-    SHORTEST_PATH = 24
+    SHORTEST_PATH = 24,
+    ENUMERATE_VIEW = 25
   };
 
   ExecutionNode() = delete;
@@ -810,6 +812,67 @@ class EnumerateListNode : public ExecutionNode {
  private:
   /// @brief input variable to read from
   Variable const* _inVariable;
+
+  /// @brief output variable to write to
+  Variable const* _outVariable;
+};
+
+/// @brief class EnumerateViewNode
+class EnumerateViewNode : public ExecutionNode {
+  friend class ExecutionNode;
+  friend class ExecutionBlock;
+  friend class EnumerateViewBlock;
+  friend class RedundantCalculationsReplacer;
+
+ public:
+  EnumerateViewNode(ExecutionPlan* plan, size_t id, TRI_vocbase_t* vocbase,
+                    std::shared_ptr<LogicalView> view,
+                    Variable const* outVariable)
+      : ExecutionNode(plan, id),
+        _vocbase(vocbase),
+        _view(view),
+        _outVariable(outVariable) {
+    TRI_ASSERT(_vocbase != nullptr);
+    TRI_ASSERT(_view != nullptr);
+    TRI_ASSERT(_outVariable != nullptr);
+  }
+
+  EnumerateViewNode(ExecutionPlan*, arangodb::velocypack::Slice const& base);
+
+  /// @brief return the type of the node
+  NodeType getType() const override final { return ENUMERATE_VIEW; }
+
+  /// @brief export to VelocyPack
+  void toVelocyPackHelper(arangodb::velocypack::Builder&,
+                          bool) const override final;
+
+  /// @brief clone ExecutionNode recursively
+  ExecutionNode* clone(ExecutionPlan* plan, bool withDependencies,
+                       bool withProperties) const override final;
+
+  /// @brief the cost of an enumerate list node
+  double estimateCost(size_t&) const override final;
+
+  /// @brief getVariablesSetHere
+  std::vector<Variable const*> getVariablesSetHere() const override final {
+    return std::vector<Variable const*>{_outVariable};
+  }
+
+  /// @brief return out variable
+  Variable const* outVariable() const { return _outVariable; }
+
+  /// @brief return the database
+  TRI_vocbase_t* vocbase() const { return _vocbase; }
+
+  /// @brief return the view
+  std::shared_ptr<LogicalView> view() const { return _view; }
+
+ private:
+  /// @brief the database
+  TRI_vocbase_t* _vocbase;
+
+  /// @brief collection
+  std::shared_ptr<LogicalView> _view;
 
   /// @brief output variable to write to
   Variable const* _outVariable;

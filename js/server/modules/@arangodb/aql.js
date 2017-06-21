@@ -480,7 +480,7 @@ function reloadUserFunctions () {
   });
 
   // now reset the functions for all databases
-  // this ensures that functions of other databases will be reloaded next 
+  // this ensures that functions of other databases will be reloaded next
   // time (the reload does not necessarily need to be carried out in the
   // database in which the function is registered)
   UserFunctions = { };
@@ -590,6 +590,26 @@ function COLLECTION (name, func) {
   }
   return c;
 }
+
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief get access to a view
+// //////////////////////////////////////////////////////////////////////////////
+
+function VIEW (name, func) {
+  'use strict';
+
+  if (typeof name !== 'string') {
+    THROW(func, INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, func);
+  }
+
+  var v = INTERNAL.db._view(name);
+
+  if (v === null || v === undefined) {
+    THROW(func, INTERNAL.errors.ERROR_ARANGO_VIEW_NOT_FOUND, String(name));
+  }
+  return v;
+}
+
 
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief clone an object
@@ -1180,6 +1200,18 @@ function GET_DOCUMENTS (collection, func) {
   }
 
   return COLLECTION(collection, func).ALL(0, null).documents;
+}
+
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief get all documents from the specified collection
+// //////////////////////////////////////////////////////////////////////////////
+
+function GET_DOCUMENTS_FROM_VIEW (view, func) {
+  'use strict';
+
+  var v = VIEW(view, func);
+
+  return [];
 }
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -4138,7 +4170,7 @@ function AQL_WITHIN (collection, latitude, longitude, radius, distanceAttribute)
 }
 
 // //////////////////////////////////////////////////////////////////////////////
-// / @brief return documents within a bounding rectangle 
+// / @brief return documents within a bounding rectangle
 // //////////////////////////////////////////////////////////////////////////////
 
 function AQL_WITHIN_RECTANGLE (collection, latitude1, longitude1, latitude2, longitude2) {
@@ -5429,8 +5461,8 @@ function AQL_DATE_COMPARE (value1, value2, unitRangeStart, unitRangeEnd) {
     return null;
   }
 }
-        
-        
+
+
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief return at most <limit> documents near a certain point
 // //////////////////////////////////////////////////////////////////////////////
@@ -5521,6 +5553,7 @@ exports.KEYS = KEYS;
 exports.GET_INDEX = GET_INDEX;
 exports.DOCUMENT_MEMBER = DOCUMENT_MEMBER;
 exports.GET_DOCUMENTS = GET_DOCUMENTS;
+exports.GET_DOCUMENTS_FROM_VIEW = GET_DOCUMENTS_FROM_VIEW;
 exports.TERNARY_OPERATOR = TERNARY_OPERATOR;
 exports.LOGICAL_AND = LOGICAL_AND;
 exports.LOGICAL_OR = LOGICAL_OR;

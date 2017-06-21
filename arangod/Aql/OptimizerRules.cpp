@@ -1854,6 +1854,7 @@ struct SortToIndexNode final : public WalkerWorker<ExecutionNode> {
       case EN::TRAVERSAL:
       case EN::SHORTEST_PATH:
       case EN::ENUMERATE_LIST:
+      case EN::ENUMERATE_VIEW:
       case EN::SUBQUERY:
       case EN::FILTER:
         return false;  // skip. we don't care.
@@ -2616,6 +2617,7 @@ void arangodb::aql::distributeFilternCalcToClusterRule(
         case EN::SORT:
         case EN::INDEX:
         case EN::ENUMERATE_COLLECTION:
+        case EN::ENUMERATE_VIEW:
         case EN::TRAVERSAL:
         case EN::SHORTEST_PATH:
           // do break
@@ -2718,6 +2720,7 @@ void arangodb::aql::distributeSortToClusterRule(
         case EN::TRAVERSAL:
         case EN::SHORTEST_PATH:
         case EN::ENUMERATE_COLLECTION:
+        case EN::ENUMERATE_VIEW:
           // For all these, we do not want to pull a SortNode further down
           // out to the DBservers, note that potential FilterNodes and
           // CalculationNodes that can be moved to the DBservers have
@@ -2974,6 +2977,7 @@ class RemoveToEnumCollFinder final : public WalkerWorker<ExecutionNode> {
       }
       case EN::SINGLETON:
       case EN::ENUMERATE_LIST:
+      case EN::ENUMERATE_VIEW:
       case EN::SUBQUERY:
       case EN::COLLECT:
       case EN::INSERT:
@@ -3260,9 +3264,9 @@ struct OrSimplifier {
               if (setter != nullptr && setter->getType() == EN::ENUMERATE_COLLECTION) {
                 qualifies = true;
               }
-            
+
               std::pair<Variable const*, std::vector<arangodb::basics::AttributeName>> tmp2;
-             
+
               if (qualifies && rightValue->isAttributeAccessForVariable(tmp2)) {
                 auto setter = plan->getVarSetBy(tmp2.first->id);
                 if (setter != nullptr && setter->getType() == EN::ENUMERATE_COLLECTION) {

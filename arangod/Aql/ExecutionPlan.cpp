@@ -673,6 +673,18 @@ ExecutionNode* ExecutionPlan::fromNodeFor(ExecutionNode* previous,
     }
     en = registerNode(new EnumerateCollectionNode(
         this, nextId(), _ast->query()->vocbase(), collection, v, false));
+  } else if (expression->type == NODE_TYPE_VIEW) {
+    // second operand is a view
+    std::string const viewName = expression->getString();
+    auto vocbase = _ast->query()->vocbase();
+    auto view = vocbase->lookupView(viewName);
+
+    if (view == nullptr) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
+                                     "no view for EnumerateView");
+    }
+
+    en = registerNode(new EnumerateViewNode(this, nextId(), vocbase, view, v));
   } else if (expression->type == NODE_TYPE_REFERENCE) {
     // second operand is already a variable
     auto inVariable = static_cast<Variable*>(expression->getData());

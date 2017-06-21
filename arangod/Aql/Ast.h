@@ -150,7 +150,7 @@ class Ast {
   AstNode* createNodeExample(AstNode const*, AstNode const*);
 
   /// @brief create an AST for node
-  AstNode* createNodeFor(char const*, size_t, AstNode const*, bool, bool);
+  AstNode* createNodeFor(char const*, size_t, AstNode const*, bool);
 
   /// @brief create an AST let node, without an IF condition
   AstNode* createNodeLet(char const*, size_t, AstNode const*, bool);
@@ -218,7 +218,7 @@ class Ast {
   AstNode* createNodeCollection(char const*, AccessMode::Type);
 
   /// @brief create an AST view node
-  AstNode* createNodeView(AstNode const*);
+  AstNode* createNodeView(char const*);
 
   /// @brief create an AST reference node
   AstNode* createNodeReference(char const*, size_t);

@@ -95,6 +95,11 @@ function collection (v) {
   return colors.COLOR_RED + v + colors.COLOR_RESET;
 }
 
+function view (v) {
+  'use strict';
+  return colors.COLOR_RED + 'VIEW( ' + v + ' )' + colors.COLOR_RESET;
+}
+
 function attribute (v) {
   'use strict';
   return '`' + colors.COLOR_YELLOW + v + colors.COLOR_RESET + '`';
@@ -288,10 +293,10 @@ function printTraversalDetails (traversals) {
   var maxConditionsLen = String('Filter conditions').length;
 
   var optify = function(options, colorize) {
-    var opts = { 
+    var opts = {
       bfs: options.bfs || undefined, /* only print if set to true to space room */
-      uniqueVertices: options.uniqueVertices, 
-      uniqueEdges: options.uniqueEdges 
+      uniqueVertices: options.uniqueVertices,
+      uniqueEdges: options.uniqueEdges
     };
 
     var result = '';
@@ -348,13 +353,13 @@ function printTraversalDetails (traversals) {
       }
     }
     if (node.hasOwnProperty('options')) {
-      let opts = optify(node.options); 
+      let opts = optify(node.options);
       if (opts.length > maxOptionsLen) {
         maxOptionsLen = opts.length;
       }
     } else if (node.hasOwnProperty("traversalFlags")) {
       // Backwards compatibility for < 3.2
-      let opts = optify(node.traversalFlags); 
+      let opts = optify(node.traversalFlags);
       if (opts.length > maxOptionsLen) {
         maxOptionsLen = opts.length;
       }
@@ -836,6 +841,8 @@ function processQuery (query, explain) {
         return keyword('FOR') + ' ' + variableName(node.outVariable) + ' ' + keyword('IN') + ' ' + collection(node.collection) + '   ' + annotation('/* full collection scan' + (node.random ? ', random order' : '') + (node.satellite ? ', satellite' : '') + ' */');
       case 'EnumerateListNode':
         return keyword('FOR') + ' ' + variableName(node.outVariable) + ' ' + keyword('IN') + ' ' + variableName(node.inVariable) + '   ' + annotation('/* list iteration */');
+      case 'EnumerateViewNode':
+        return keyword('FOR') + ' ' + variableName(node.outVariable) + ' ' + keyword('IN') + ' ' + view(node.view) + '   ' + annotation('/* view query */');
       case 'IndexNode':
         collectionVariables[node.outVariable.id] = node.collection;
         var types = [];
@@ -901,7 +908,7 @@ function processQuery (query, explain) {
 
           if (!isLast && node.edgeCollections[i] === node.edgeCollections[i + 1]) {
             // don't print same collection twice
-            ++i; 
+            ++i;
           }
         }
         var allIndexes = [];
@@ -915,7 +922,7 @@ function processQuery (query, explain) {
           ix.direction = d;
           ix.node = node.id;
           allIndexes.push(ix);
-          
+
           // level-specific indexes
           for (var l in node.indexes.levels) {
             ix = node.indexes.levels[l][i];
@@ -1084,7 +1091,7 @@ function processQuery (query, explain) {
         collect +=
           (node.count ? ' ' + keyword('WITH COUNT') : '') +
           (node.outVariable ? ' ' + keyword('INTO') + ' ' + variableName(node.outVariable) : '') +
-          ((node.expressionVariable && node.outVariable) ? " = " + variableName(node.expressionVariable) : "") + 
+          ((node.expressionVariable && node.outVariable) ? " = " + variableName(node.expressionVariable) : "") +
           (node.keepVariables ? ' ' + keyword('KEEP') + ' ' + node.keepVariables.map(function (variable) { return variableName(variable.variable); }).join(', ') : '') +
           '   ' + annotation('/* ' + node.collectOptions.method + '*/');
         return collect;
@@ -1153,6 +1160,7 @@ function processQuery (query, explain) {
 
     if ([ 'EnumerateCollectionNode',
         'EnumerateListNode',
+        'EnumerateViewNode',
         'IndexRangeNode',
         'IndexNode',
         'SubqueryNode' ].indexOf(node.type) !== -1) {
