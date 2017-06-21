@@ -317,8 +317,8 @@ AuthUserEntry AuthUserEntry::fromDocument(VPackSlice const& slice) {
   }    // if
 
   AuthLevel systemDatabaseLevel = AuthLevel::RO;
-  for (auto const& colName : std::vector<std::string>{"_system", "*"}) {
-    auto const& it = authContexts.find(colName);
+  for (auto const& dbName : std::vector<std::string>{"_system", "*"}) {
+    auto const& it = authContexts.find(dbName);
     if (it != authContexts.end()) {
       systemDatabaseLevel = it->second->databaseAuthLevel();
       break;

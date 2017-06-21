@@ -114,11 +114,14 @@ const requests = [
   [403, 'put', '/_api/document/testcol/abcd', 'test', {foo:'bar'}],
 
   // create, delete database
-  [201, 'post', '/_db/_system/_api/database', 'root', {name:'wxyzdb'}],
-  [403, 'post', '/_db/_system/_api/database', 'test', {name:'abcddb'}],
-  [403, 'delete', '/_db/_system/_api/database/wxyzdb', 'test', {}]
+  [201, 'post',   '/_db/_system/_api/database', 'root', {name:'wxyzdb'}],
+  [403, 'post',   '/_db/_system/_api/database', 'test', {name:'abcddb'}],
+  [403, 'delete', '/_db/_system/_api/database/wxyzdb', 'test', {}],
 
-]
+  // database with only collection access
+  [200, 'get', '/_db/testdb2/_api/document/testcol2/one', 'test', {}],
+  [403, 'get', '/_db/testdb2/_api/document/testcol3/one', 'test', {}]
+];
 
   const run = (tests) => {
     const bodies = [];
@@ -130,6 +133,7 @@ const requests = [
       });
       try {
         bodies.push(JSON.parse(res.body));
+        print(JSON.parse(res.body));
       } catch(e) {
         bodies.push({});
       }
@@ -155,6 +159,17 @@ const requests = [
           `const users = require('@arangodb/users');
           users.save('test', '', true);
           users.grantDatabase('test', '_system', 'ro');
+
+          db._createDatabase('testdb2');
+          db._useDatabase('testdb2');
+          db._createDocumentCollection('testcol2');
+          db._createDocumentCollection('testcol3');
+          db.testcol2.save({_key:'one'});
+          db.testcol3.save({_key:'one'});
+          users.grantCollection('test', 'testdb2', 'testcol2', 'ro');
+          db._useDatabase('_system');
+          /* let res = db._query("for u in _users filter u.user == 'test' return u").toArray();
+          print(res); */
           users.reload();`
         ]);
 
