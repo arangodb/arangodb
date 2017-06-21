@@ -1,3 +1,9 @@
+v3.1.24 (XXXX-XX-XX)
+--------------------
+
+* fixed one more LIMIT issue in traversals
+
+
 v3.1.23 (2017-06-19)
 --------------------
 
