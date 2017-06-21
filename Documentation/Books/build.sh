@@ -634,6 +634,7 @@ Available Verbs:
     build-books - builds the HTML representation of all books
     build-book - build one book, spetify with --name, optionally specify --filter to limit the md files to be regenerated.
     build-book-keep-md - don't flush pregenerated files while building a book - shortcut version.
+    clean - clean the working directory
 
 If ../../VERSION contains the string "devel" the current date will be added to all pages containing the version.
 
@@ -716,6 +717,9 @@ case "$VERB" in
 	fi
 	build-book-keep-md "$NAME"
 	;;
+    clean)
+        clean
+        ;;
     *)
 	printHelp
 	exit 1
