@@ -133,7 +133,6 @@ const requests = [
       });
       try {
         bodies.push(JSON.parse(res.body));
-        print(JSON.parse(res.body));
       } catch(e) {
         bodies.push({});
       }
