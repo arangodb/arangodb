@@ -210,7 +210,7 @@ var mType = {
   REPLICATION_MARKER_REMOVE: 2302
 };
 
-function syncCollectionFinalize (database, collname, from, config) {
+function syncCollectionFinalize (database, collname, from, config, sourceServer) {
   var url = endpointToURL(config.endpoint) + '/_db/' + database +
     '/_api/replication/logger-follow?collection=' + collname + '&serverId=' +
     serverId() + '&from=';
@@ -239,13 +239,15 @@ function syncCollectionFinalize (database, collname, from, config) {
         return;
       }
       try {
-        coll.insert(entry.data, {isRestore: true});
+        coll.insert(entry.data, {isRestore: true,
+                                 isSynchronousReplication: sourceServer});
         return;
       } catch (err) {
         console.debug('syncCollectionFinalize: insert1', entry, JSON.stringify(err));
       }
       try {
-        coll.replace(entry.data._key, entry.data, {isRestore: true});
+        coll.replace(entry.data._key, entry.data,
+          {isRestore: true, isSynchronousReplication: sourceServer});
       } catch (errx) {
         console.error('syncCollectionFinalize: replace1', entry, JSON.stringify(errx));
         throw errx;
@@ -255,13 +257,15 @@ function syncCollectionFinalize (database, collname, from, config) {
         return;
       }
       try {
-        coll.insert(entry.data, {isRestore: true});
+        coll.insert(entry.data,
+          {isRestore: true, isSynchronousReplication: sourceServer});
         return;
       } catch (err) {
         console.debug('syncCollectionFinalize: insert2', entry, JSON.stringify(err));
       }
       try {
-        coll.replace(entry.data._key, entry.data, {isRestore: true});
+        coll.replace(entry.data._key, entry.data,
+          {isRestore: true, isSynchronousReplication: sourceServer});
       } catch (errx) {
         console.error('syncCollectionFinalize: replace2', entry, JSON.stringify(errx));
         throw errx;
@@ -271,7 +275,7 @@ function syncCollectionFinalize (database, collname, from, config) {
         return;
       }
       try {
-        coll.remove(entry.data._key);
+        coll.remove(entry.data._key, {isSynchronousReplication: sourceServer});
       } catch (errx) {
         console.error('syncCollectionFinalize: remove', entry, JSON.stringify(errx));
         if (errx.errorNum !== ERRORS.ERROR_ARANGO_DOCUMENT_NOT_FOUND.code) {

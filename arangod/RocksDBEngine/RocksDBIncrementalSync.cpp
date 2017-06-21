@@ -400,6 +400,9 @@ int handleSyncKeysRocksDB(InitialSyncer& syncer,
   options.silent = true;
   options.ignoreRevs = true;
   options.isRestore = true;
+  if (!syncer._leaderId.empty()) {
+    options.isSynchronousReplicationFrom = syncer._leaderId;
+  }
 
   VPackBuilder keyBuilder;
   size_t const numChunks = static_cast<size_t>(chunkSlice.length());
