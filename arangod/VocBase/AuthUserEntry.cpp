@@ -467,7 +467,8 @@ void AuthUserEntry::grantCollection(std::string const& dbname,
                                     AuthLevel level) {
   if (_username == "root" && level != AuthLevel::RW) {
     THROW_ARANGO_EXCEPTION_MESSAGE(
-        TRI_ERROR_FORBIDDEN, "Cannot lower access level of 'root' to _system");
+        TRI_ERROR_FORBIDDEN, "Cannot lower access level of 'root' to "
+                                   " a collection in _system");
   }
   auto it = _authContexts.find(dbname);
   if (it != _authContexts.end()) {
