@@ -140,17 +140,17 @@ RestStatus RestUsersHandler::getRequest(AuthInfo* authInfo) {
                                                    c->name());
                   data.add(c->name(), VPackValue(convertFromAuthLevel(lvl)));
                 });
-          } else if (lvl != AuthLevel::NONE) {// hide db's without access
+          } else if (lvl != AuthLevel::NONE) {  // hide db's without access
             data.add(vocbase->name(), VPackValue(str));
           }
         });
-        lvl = authInfo->canUseDatabase(user, "*");
+        /*lvl = authInfo->canUseDatabase(user, "*");
         VPackValue val(convertFromAuthLevel(lvl));
         if (full) {
           data("*", VPackValue(VPackValueType::Object))("permission", val)();
-        } else if (lvl != AuthLevel::NONE){
+        } else if (lvl != AuthLevel::NONE) {
           data.add("*", val);
-        }
+        }*/
         data.close();
         generateSuccess(ResponseCode::OK, data.slice());
       } else if (suffixes.size() == 3) {
@@ -320,14 +320,16 @@ RestStatus RestUsersHandler::putRequest(AuthInfo* authInfo) {
       // update internal config data, used in the admin dashboard
       if (canAccessUser(user)) {
         std::string const& key = suffixes[2];
-        VPackBuilder config = authInfo->getConfigData(user);
+        VPackBuilder conf = authInfo->getConfigData(user);
         if (!parsedBody->isEmpty()) {
           VPackBuilder b;
           b(VPackValue(VPackValueType::Object))(key, parsedBody->slice())();
-          config = VPackCollection::merge(config.slice(), b.slice(), false);
+          conf = conf.slice().isObject()
+                     ? VPackCollection::merge(conf.slice(), b.slice(), false)
+                     : b;
         }
-        
-        Result r = authInfo->setConfigData(user, config.slice());
+
+        Result r = authInfo->setConfigData(user, conf.slice());
         if (r.ok()) {
           resetResponse(ResponseCode::OK);
 
@@ -392,7 +394,7 @@ RestStatus RestUsersHandler::deleteRequest(AuthInfo* authInfo) {
   } else if (suffixes.size() == 2) {
     if (suffixes[1] == "config") {
       std::string const& user = suffixes[0];
-      Result r = authInfo->setConfigData(user, VPackSlice::nullSlice());
+      Result r = authInfo->setConfigData(user, VPackSlice::emptyObjectSlice());
       if (r.ok()) {
         resetResponse(ResponseCode::OK);
       } else {
@@ -430,11 +432,15 @@ RestStatus RestUsersHandler::deleteRequest(AuthInfo* authInfo) {
       if (canAccessUser(user)) {
         std::string const& key = suffixes[2];
         VPackBuilder config = authInfo->getConfigData(user);
+
+        Result r;
         VPackBuilder b;
         b(VPackValue(VPackValueType::Object))(key, VPackSlice::nullSlice())();
-
-        config = VPackCollection::merge(config.slice(), b.slice(), false, true);
-        Result r = authInfo->setConfigData(user, config.slice());
+        if (!config.isEmpty()) {
+          config =
+              VPackCollection::merge(config.slice(), b.slice(), false, true);
+          r = authInfo->setConfigData(user, config.slice());
+        }
         if (r.ok()) {
           resetResponse(ResponseCode::OK);
         } else {

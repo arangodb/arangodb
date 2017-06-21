@@ -306,9 +306,10 @@ static void CreateVocBase(v8::FunctionCallbackInfo<v8::Value> const& args,
   }
   // in case of success we grant the creating user RW access
   if (auth->isActive() && ExecContext::CURRENT_EXECCONTEXT != nullptr) {
+    // this should not fail, we can not get here without database RW access
     auth->authInfo()->updateUser(ExecContext::CURRENT_EXECCONTEXT->user(),
                                  [&](AuthUserEntry& entry) {
-      entry.grantDatabase(name, AuthLevel::RW);
+      entry.grantCollection(vocbase->name(), name, AuthLevel::RW);
     });
   }
   TRI_V8_RETURN(result);

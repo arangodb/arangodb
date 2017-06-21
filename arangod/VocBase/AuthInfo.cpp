@@ -234,18 +234,27 @@ void AuthInfo::loadFromDB() {
     insertInitial();
   }
 
-  TRI_ASSERT(_queryRegistry != nullptr);
-  std::shared_ptr<VPackBuilder> builder = QueryAllUsers(_queryRegistry);
-  if (builder) {
-    VPackSlice usersSlice = builder->slice();
-    WRITE_LOCKER(writeLocker, _authInfoLock);
-    if (usersSlice.length() == 0) {
-      insertInitial();
-    } else {
-      parseUsers(usersSlice);
+  // we cannot set this execution context, otherwise the transaction
+  // will ask us again for permissions and we get a deadlock
+  ExecContext* oldExe = ExecContext::CURRENT_EXECCONTEXT;
+  ExecContext::CURRENT_EXECCONTEXT = nullptr;
+  
+  try {
+    TRI_ASSERT(_queryRegistry != nullptr);
+    std::shared_ptr<VPackBuilder> builder = QueryAllUsers(_queryRegistry);
+    if (builder) {
+      VPackSlice usersSlice = builder->slice();
+      WRITE_LOCKER(writeLocker, _authInfoLock);
+      if (usersSlice.length() == 0) {
+        insertInitial();
+      } else {
+        parseUsers(usersSlice);
+      }
+      _outdated = false;
     }
-    _outdated = false;
-  }
+  } catch(...) {}
+  
+  ExecContext::CURRENT_EXECCONTEXT = oldExe;
 }
 
 // private, must be called with _authInfoLock in write mode
