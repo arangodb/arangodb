@@ -126,10 +126,12 @@ RestStatus RestDatabaseHandler::createDatabase() {
   if (res.ok()) {
     generateSuccess(rest::ResponseCode::CREATED, VPackSlice::trueSlice());
   } else {
-    generateError(res.errorNumber() == TRI_ERROR_ARANGO_DUPLICATE_NAME
-                      ? rest::ResponseCode::CONFLICT
-                      : rest::ResponseCode::BAD,
-                  res.errorNumber(), res.errorMessage());
+    if (res.errorNumber() == TRI_ERROR_FORBIDDEN ||
+        res.errorNumber() == TRI_ERROR_ARANGO_DUPLICATE_NAME) {
+      generateError(res);
+    } else {// http_server compatibility
+      generateError(rest::ResponseCode::BAD, res.errorNumber(), res.errorMessage());
+    }
   }
   return RestStatus::DONE;
 }
