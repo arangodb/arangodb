@@ -582,6 +582,7 @@ function synchronizeOneShard (database, shard, planId, leader) {
                 shard, sy2);
               ok = false;
             } else {
+              var db = require("internal").db;
               var collection = db._collection(shard);
               // Mark us as follower for this leader such that we begin
               // accepting replication operations:

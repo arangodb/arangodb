@@ -551,6 +551,7 @@ static bool findRefusal(std::vector<ClusterCommRequest>& requests) {
       return true;
     }
   }
+  return false;
 }
 
 transaction::Methods::Methods(
