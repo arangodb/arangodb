@@ -1033,7 +1033,6 @@
         url: url,
         contentType: 'application/json',
         success: function (data) {
-          console.log(data);
           // fetching available dbs and permissions
           if (data.result === 'ro') {
             roCallback();

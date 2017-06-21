@@ -30,7 +30,6 @@
       var continueRender = function (user, errCallback, debug) {
         var url;
 
-        console.log(user);
         if (!user) {
           url = arangoHelper.databaseUrl('/_api/database/user');
         } else {
@@ -45,7 +44,6 @@
         $('#loginForm').hide();
         $('.login-window #databases').show();
 
-        console.log('Method #1');
         $.ajax(url).success(function (permissions) {
           //  enable db select and login button
           $('#loginDatabase').html('');
@@ -183,7 +181,6 @@
         // enable db select and login button
         $('#loginDatabase').html('');
 
-        console.log('Method #2');
         _.each(permissions.result, function (rule, db) {
           $('#loginDatabase').append(
             '<option>' + db + '</option>'
