@@ -183,8 +183,6 @@ VPackSlice RocksDBValue::data(char const* data, size_t size) {
   return VPackSlice(data);
 }
 
-#include "Logger/Logger.h"
-
 uint64_t RocksDBValue::keyValue(char const* data, size_t size) {
   TRI_ASSERT(data != nullptr);
   TRI_ASSERT(size >= sizeof(char));
@@ -193,7 +191,6 @@ uint64_t RocksDBValue::keyValue(char const* data, size_t size) {
   if (key.isString()) {
     std::string s = key.copyString();
     if (s.size() > 0 && s[0] >= '0' && s[0] <= '9') {
-      LOG_TOPIC(ERR, Logger::FIXME) << "found _key " << s;
       return basics::StringUtils::uint64(s);
     }
   }

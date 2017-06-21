@@ -22,7 +22,7 @@
 /// @author Daniel H. Larkin
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "RocksDBEngine/RocksDBKey.h"
+#include "RocksDBKey.h"
 #include "Basics/Exceptions.h"
 #include "Logger/Logger.h"
 #include "RocksDBEngine/RocksDBCommon.h"
