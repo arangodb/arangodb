@@ -5,6 +5,12 @@ RocksDB is a highly configurable key-value store used to power our RocksDB
 storage engine. Most of the options on this page are pass-through options to the
 underlying RocksDB instance, and we change very few of their default settings.
 
+Depending [on the storage engine you have chosen](GeneralArangod.md#storage-engine) the availability
+and the scope of these options changes. 
+
+In case you have chosen `mmfiles` some of the following options apply to persistent indexes.
+In case of `rocksdb` it will apply to all data stored as well as indexes.
+
 ## Pass-through options
 
 ### Write buffers

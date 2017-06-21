@@ -39,6 +39,7 @@
 #include <chrono>
 #include <list>
 
+using namespace arangodb;
 using namespace arangodb::cache;
 
 Finding TransactionalCache::find(void const* key, uint32_t keySize) {
@@ -46,12 +47,12 @@ Finding TransactionalCache::find(void const* key, uint32_t keySize) {
   Finding result;
   uint32_t hash = hashKey(key, keySize);
 
-  bool ok;
+  Result status;
   TransactionalBucket* bucket;
   std::shared_ptr<Table> source;
-  std::tie(ok, bucket, source) = getBucket(hash, Cache::triesFast);
+  std::tie(status, bucket, source) = getBucket(hash, Cache::triesFast);
 
-  if (ok) {
+  if (status.ok()) {
     result.set(bucket->find(hash, key, keySize));
     recordStat(result.found() ? Stat::findHit : Stat::findMiss);
     bucket->unlock();
@@ -61,17 +62,16 @@ Finding TransactionalCache::find(void const* key, uint32_t keySize) {
   return result;
 }
 
-bool TransactionalCache::insert(CachedValue* value) {
+Result TransactionalCache::insert(CachedValue* value) {
   TRI_ASSERT(value != nullptr);
-  bool inserted = false;
   uint32_t hash = hashKey(value->key(), value->keySize);
 
-  bool ok;
+  Result status;
   TransactionalBucket* bucket;
   std::shared_ptr<Table> source;
-  std::tie(ok, bucket, source) = getBucket(hash, Cache::triesFast);
+  std::tie(status, bucket, source) = getBucket(hash, Cache::triesFast);
 
-  if (ok) {
+  if (status.ok()) {
     bool maybeMigrate = false;
     bool allowed = !bucket->isBlacklisted(hash);
     if (allowed) {
@@ -82,6 +82,7 @@ bool TransactionalCache::insert(CachedValue* value) {
         candidate = bucket->evictionCandidate();
         if (candidate == nullptr) {
           allowed = false;
+          status.reset(TRI_ERROR_ARANGO_BUSY);
         }
       }
 
@@ -104,15 +105,17 @@ bool TransactionalCache::insert(CachedValue* value) {
             freeValue(candidate);
           }
           bucket->insert(hash, value);
-          inserted = true;
           if (!eviction) {
             maybeMigrate = source->slotFilled();
           }
           maybeMigrate |= reportInsert(eviction);
         } else {
           requestGrow();  // let function do the hard work
+          status.reset(TRI_ERROR_RESOURCE_LIMIT);
         }
       }
+    } else {
+      status.reset(TRI_ERROR_ARANGO_CONFLICT);
     }
 
     bucket->unlock();
@@ -122,20 +125,19 @@ bool TransactionalCache::insert(CachedValue* value) {
     endOperation();
   }
 
-  return inserted;
+  return status;
 }
 
-bool TransactionalCache::remove(void const* key, uint32_t keySize) {
+Result TransactionalCache::remove(void const* key, uint32_t keySize) {
   TRI_ASSERT(key != nullptr);
-  bool removed = false;
   uint32_t hash = hashKey(key, keySize);
 
-  bool ok;
+  Result status;
   TransactionalBucket* bucket;
   std::shared_ptr<Table> source;
-  std::tie(ok, bucket, source) = getBucket(hash, Cache::triesSlow);
+  std::tie(status, bucket, source) = getBucket(hash, Cache::triesSlow);
 
-  if (ok) {
+  if (status.ok()) {
     bool maybeMigrate = false;
     CachedValue* candidate = bucket->remove(hash, key, keySize);
 
@@ -151,7 +153,6 @@ bool TransactionalCache::remove(void const* key, uint32_t keySize) {
       maybeMigrate = source->slotEmptied();
     }
 
-    removed = true;
     bucket->unlock();
     if (maybeMigrate) {
       requestMigrate(_table->idealSize());
@@ -159,23 +160,21 @@ bool TransactionalCache::remove(void const* key, uint32_t keySize) {
     endOperation();
   }
 
-  return removed;
+  return status;
 }
 
-bool TransactionalCache::blacklist(void const* key, uint32_t keySize) {
+Result TransactionalCache::blacklist(void const* key, uint32_t keySize) {
   TRI_ASSERT(key != nullptr);
-  bool blacklisted = false;
   uint32_t hash = hashKey(key, keySize);
 
-  bool ok;
+  Result status;
   TransactionalBucket* bucket;
   std::shared_ptr<Table> source;
-  std::tie(ok, bucket, source) = getBucket(hash, Cache::triesSlow);
+  std::tie(status, bucket, source) = getBucket(hash, Cache::triesSlow);
 
-  if (ok) {
+  if (status.ok()) {
     bool maybeMigrate = false;
     CachedValue* candidate = bucket->blacklist(hash, key, keySize);
-    blacklisted = true;
 
     if (candidate != nullptr) {
       int64_t change = -static_cast<int64_t>(candidate->size());
@@ -196,7 +195,7 @@ bool TransactionalCache::blacklist(void const* key, uint32_t keySize) {
     endOperation();
   }
 
-  return blacklisted;
+  return status;
 }
 
 uint64_t TransactionalCache::allocationSize(bool enableWindowedStats) {
@@ -236,12 +235,12 @@ TransactionalCache::~TransactionalCache() {
 
 uint64_t TransactionalCache::freeMemoryFrom(uint32_t hash) {
   uint64_t reclaimed = 0;
-  bool ok;
+  Result status;
   TransactionalBucket* bucket;
   std::shared_ptr<Table> source;
-  std::tie(ok, bucket, source) = getBucket(hash, Cache::triesFast, false);
+  std::tie(status, bucket, source) = getBucket(hash, Cache::triesFast, false);
 
-  if (ok) {
+  if (status.ok()) {
     bool maybeMigrate = false;
     // evict LRU freeable value if exists
     CachedValue* candidate = bucket->evictionCandidate();
@@ -369,9 +368,10 @@ void TransactionalCache::migrateBucket(void* sourcePtr,
   source->unlock();
 }
 
-std::tuple<bool, TransactionalBucket*, std::shared_ptr<Table>>
+std::tuple<Result, TransactionalBucket*, std::shared_ptr<Table>>
 TransactionalCache::getBucket(uint32_t hash, int64_t maxTries,
                               bool singleOperation) {
+  Result status;
   TransactionalBucket* bucket = nullptr;
   std::shared_ptr<Table> source(nullptr);
 
@@ -393,15 +393,21 @@ TransactionalCache::getBucket(uint32_t hash, int64_t maxTries,
       ok = (bucket != nullptr);
       if (ok) {
         bucket->updateBlacklistTerm(term);
+      } else {
+        status.reset(TRI_ERROR_LOCK_TIMEOUT);
       }
+    } else {
+      status.reset(TRI_ERROR_SHUTTING_DOWN);
     }
     if (!ok && started) {
       endOperation();
     }
     _state.unlock();
+  } else {
+    status.reset(TRI_ERROR_LOCK_TIMEOUT);
   }
 
-  return std::make_tuple(ok, bucket, source);
+  return std::make_tuple(status, bucket, source);
 }
 
 Table::BucketClearer TransactionalCache::bucketClearer(Metadata* metadata) {

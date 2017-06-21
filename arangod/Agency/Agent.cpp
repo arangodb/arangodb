@@ -1020,8 +1020,8 @@ void Agent::run() {
       sendAppendEntriesRPC();
 
       // Don't panic
-      _appendCV.wait(static_cast<uint64_t>(1.0e-1*_config.minPing()));
-
+      _appendCV.wait(static_cast<uint64_t>(4.e3*_config.minPing()));
+      
       // Detect faulty agent and replace
       // if possible and only if not already activating
       if (duration<double>(system_clock::now() - tp).count() > 10.0) {

@@ -66,8 +66,8 @@ TEST_CASE("cache::PlainCache", "[cache][!hide][longRunning]") {
     for (uint64_t i = 0; i < 1024; i++) {
       CachedValue* value =
           CachedValue::construct(&i, sizeof(uint64_t), &i, sizeof(uint64_t));
-      bool success = cache->insert(value);
-      if (success) {
+      auto status = cache->insert(value);
+      if (status.ok()) {
         auto f = cache->find(&i, sizeof(uint64_t));
         REQUIRE(f.found());
       } else {
@@ -79,8 +79,8 @@ TEST_CASE("cache::PlainCache", "[cache][!hide][longRunning]") {
       uint64_t j = 2 * i;
       CachedValue* value =
           CachedValue::construct(&i, sizeof(uint64_t), &j, sizeof(uint64_t));
-      bool success = cache->insert(value);
-      if (success) {
+      auto status = cache->insert(value);
+      if (status.ok()) {
         auto f = cache->find(&i, sizeof(uint64_t));
         REQUIRE(f.found());
         REQUIRE(0 == memcmp(f.value()->value(), &j, sizeof(uint64_t)));
@@ -92,8 +92,8 @@ TEST_CASE("cache::PlainCache", "[cache][!hide][longRunning]") {
     for (uint64_t i = 1024; i < 256 * 1024; i++) {
       CachedValue* value =
           CachedValue::construct(&i, sizeof(uint64_t), &i, sizeof(uint64_t));
-      bool success = cache->insert(value);
-      if (success) {
+      auto status = cache->insert(value);
+      if (status.ok()) {
         auto f = cache->find(&i, sizeof(uint64_t));
         REQUIRE(f.found());
       } else {
@@ -113,8 +113,8 @@ TEST_CASE("cache::PlainCache", "[cache][!hide][longRunning]") {
     for (uint64_t i = 0; i < 1024; i++) {
       CachedValue* value =
           CachedValue::construct(&i, sizeof(uint64_t), &i, sizeof(uint64_t));
-      bool success = cache->insert(value);
-      if (success) {
+      auto status = cache->insert(value);
+      if (status.ok()) {
         auto f = cache->find(&i, sizeof(uint64_t));
         REQUIRE(f.found());
         REQUIRE(f.value() != nullptr);
@@ -135,8 +135,8 @@ TEST_CASE("cache::PlainCache", "[cache][!hide][longRunning]") {
 
     // test removal of bogus keys
     for (uint64_t i = 1024; i < 2048; i++) {
-      bool removed = cache->remove(&i, sizeof(uint64_t));
-      BOOST_ASSERT(removed);
+      auto status = cache->remove(&i, sizeof(uint64_t));
+      REQUIRE(status.ok());
       // ensure existing keys not removed
       uint64_t found = 0;
       for (uint64_t j = 0; j < 1024; j++) {
@@ -152,8 +152,8 @@ TEST_CASE("cache::PlainCache", "[cache][!hide][longRunning]") {
 
     // remove actual keys
     for (uint64_t i = 0; i < 1024; i++) {
-      bool removed = cache->remove(&i, sizeof(uint64_t));
-      REQUIRE(removed);
+      auto status = cache->remove(&i, sizeof(uint64_t));
+      REQUIRE(status.ok());
       auto f = cache->find(&i, sizeof(uint64_t));
       REQUIRE(!f.found());
     }
@@ -170,8 +170,8 @@ TEST_CASE("cache::PlainCache", "[cache][!hide][longRunning]") {
     for (uint64_t i = 0; i < 4 * 1024 * 1024; i++) {
       CachedValue* value =
           CachedValue::construct(&i, sizeof(uint64_t), &i, sizeof(uint64_t));
-      bool success = cache->insert(value);
-      if (!success) {
+      auto status = cache->insert(value);
+      if (status.fail()) {
         delete value;
       }
     }
@@ -200,8 +200,8 @@ TEST_CASE("cache::PlainCache", "[cache][!hide][longRunning]") {
         uint64_t item = lower + i;
         CachedValue* value = CachedValue::construct(&item, sizeof(uint64_t),
                                                     &item, sizeof(uint64_t));
-        bool ok = cache->insert(value);
-        if (!ok) {
+        auto status = cache->insert(value);
+        if (status.fail()) {
           delete value;
         }
       }
@@ -230,8 +230,8 @@ TEST_CASE("cache::PlainCache", "[cache][!hide][longRunning]") {
           uint64_t item = ++validUpper;
           CachedValue* value = CachedValue::construct(&item, sizeof(uint64_t),
                                                       &item, sizeof(uint64_t));
-          bool ok = cache->insert(value);
-          if (!ok) {
+          auto status = cache->insert(value);
+          if (status.fail()) {
             delete value;
           }
         } else {  // lookup something
@@ -280,19 +280,22 @@ TEST_CASE("cache::PlainCache", "[cache][!hide][longRunning]") {
     for (uint64_t i = 0; i < 1024; i++) {
       CachedValue* value =
           CachedValue::construct(&i, sizeof(uint64_t), &i, sizeof(uint64_t));
-      if (!cacheHit->insert(value)) {
+      auto status = cacheHit->insert(value);
+      if (status.fail()) {
         delete value;
       }
 
       value =
           CachedValue::construct(&i, sizeof(uint64_t), &i, sizeof(uint64_t));
-      if (!cacheMiss->insert(value)) {
+      status = cacheMiss->insert(value);
+      if (status.fail()) {
         delete value;
       }
 
       value =
           CachedValue::construct(&i, sizeof(uint64_t), &i, sizeof(uint64_t));
-      if (!cacheMixed->insert(value)) {
+      status = cacheMixed->insert(value);
+      if (status.fail()) {
         delete value;
       }
     }

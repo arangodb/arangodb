@@ -1,16 +1,30 @@
 #!/bin/bash
 
 concurrency="$1"
-engine="$2"
+edition="$2"
+engine="$3"
+
+type="test_singleserver"
+
+if [ "$edition" == community ]; then
+    type="${type}_${edition}"
+elif [ "$edition" == enterprise ]; then
+    type="${type}_${edition}"
+else
+    echo "$0: unknown edition '$edition', expecting 'community' or 'enterprise'"
+    exit 1
+fi
 
 if [ "$engine" == mmfiles ]; then
-    type="test_singleserver_community_mmfiles_linux"
+    type="${type}_${engine}"
 elif [ "$engine" == rocksdb ]; then
-    type="test_singleserver_community_rocksdb_linux"
+    type="${type}_${engine}"
 else
     echo "$0: unknown engine '$engine', expecting 'mmfiles' or 'rocksdb'"
     exit 1
 fi
+
+type="${type}_linux"
 
 . ./Installation/Pipeline/include/test_log_info.inc
 . ./Installation/Pipeline/include/test_setup_tmp.inc
