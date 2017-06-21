@@ -120,7 +120,16 @@ const requests = [
 
   // database with only collection access
   [200, 'get', '/_db/testdb2/_api/document/testcol2/one', 'test', {}],
-  [403, 'get', '/_db/testdb2/_api/document/testcol3/one', 'test', {}]
+  [403, 'get', '/_db/testdb2/_api/document/testcol3/one', 'test', {}],
+  [403, 'post', '/_db/testdb2/_api/document/testcol2', 'test', {_key:'wxyz'}],
+  [403, 'post', '/_db/testdb2/_api/document/testcol3', 'test', {_key:'wxyz'}],
+
+  [200, 'get', '/_db/testdb2/_api/document/testcol2/one', 'test2', {}],
+  [403, 'get', '/_db/testdb2/_api/document/testcol3/one', 'test2', {}],
+  [202, 'post', '/_db/testdb2/_api/document/testcol2', 'test2', {_key:'wxyz'}],
+  [403, 'post', '/_db/testdb2/_api/document/testcol3', 'test2', {_key:'wxyz'}],
+
+  [200, 'get', '/_db/testdb2/_api/document/testcol2/wxyz', 'test', {}],
 ];
 
   const run = (tests) => {
@@ -157,6 +166,7 @@ const requests = [
           '--javascript.execute-string',
           `const users = require('@arangodb/users');
           users.save('test', '', true);
+          users.save('test2', '', true);
           users.grantDatabase('test', '_system', 'ro');
 
           db._createDatabase('testdb2');
@@ -166,6 +176,7 @@ const requests = [
           db.testcol2.save({_key:'one'});
           db.testcol3.save({_key:'one'});
           users.grantCollection('test', 'testdb2', 'testcol2', 'ro');
+          users.grantCollection('test2', 'testdb2', 'testcol2', 'rw');
           db._useDatabase('_system');
           /* let res = db._query("for u in _users filter u.user == 'test' return u").toArray();
           print(res); */
