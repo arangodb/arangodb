@@ -545,7 +545,7 @@ bool transaction::Methods::findIndexHandleForAndNode(
 
 static bool findRefusal(std::vector<ClusterCommRequest>& requests) {
   for (size_t i = 0; i < requests.size(); ++i) {
-    if (requests[i].result.done &&
+    if (requests[i].done &&
         requests[i].result.status == CL_COMM_RECEIVED &&
         requests[i].result.answer_code == rest::ResponseCode::NOT_ACCEPTABLE) {
       return true;

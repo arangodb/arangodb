@@ -45,6 +45,7 @@
     "ERROR_HTTP_FORBIDDEN"         : { "code" : 403, "message" : "forbidden" },
     "ERROR_HTTP_NOT_FOUND"         : { "code" : 404, "message" : "not found" },
     "ERROR_HTTP_METHOD_NOT_ALLOWED" : { "code" : 405, "message" : "method not supported" },
+    "ERROR_HTTP_NOT_ACCEPTABLE"    : { "code" : 406, "message" : "request not acceptable" },
     "ERROR_HTTP_PRECONDITION_FAILED" : { "code" : 412, "message" : "precondition failed" },
     "ERROR_HTTP_SERVER_ERROR"      : { "code" : 500, "message" : "internal server error" },
     "ERROR_HTTP_SERVICE_UNAVAILABLE" : { "code" : 503, "message" : "service unavailable" },

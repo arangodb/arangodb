@@ -32,6 +32,7 @@
 var arangodb = require('@arangodb');
 var actions = require('@arangodb/actions');
 var cluster = require('@arangodb/cluster');
+var errors = require('internal').errors;
 
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief return a prefixed URL
