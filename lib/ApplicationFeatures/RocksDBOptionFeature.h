@@ -55,10 +55,10 @@ class RocksDBOptionFeature final
   uint64_t _numUncompressedLevels;
   uint64_t _maxBytesForLevelBase;
   double _maxBytesForLevelMultiplier;
-  uint64_t _baseBackgroundCompactions;
+  int64_t _baseBackgroundCompactions;
   uint64_t _maxBackgroundCompactions;
   uint64_t _maxSubcompactions;
-  uint64_t _maxFlushes;
+  int64_t _maxFlushes;
   uint64_t _numThreadsHigh;
   uint64_t _numThreadsLow;
   uint64_t _blockCacheSize;

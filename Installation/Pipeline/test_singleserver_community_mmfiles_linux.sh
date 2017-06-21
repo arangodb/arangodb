@@ -1,3 +1,3 @@
 #!/bin/bash
 
-./Installation/Pipeline/include/test_singleserver_EDITION_ENGINE_linux.inc $1 community mmfiles
+. ./Installation/Pipeline/include/test_MODE_EDITION_ENGINE_linux.inc "$1" singleserver community mmfiles
