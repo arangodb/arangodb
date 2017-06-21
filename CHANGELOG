@@ -22,6 +22,8 @@ devel
 
 * fixed issue #2613: Reduce log level when Foxx manager tries to self heal missing database
 
+* add a read only mode for users and collection level authorization
+
 v3.2.beta1 (2017-06-12)
 -----------------------
 
