@@ -192,6 +192,8 @@ def checkCommitMessages() {
                 def file = files[k]
                 def editType = file.editType.name
                 def path = file.path
+
+                echo "File " + file + ", path " + path
             }
         }
     }
