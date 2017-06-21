@@ -140,7 +140,7 @@ RestStatus RestUsersHandler::getRequest(AuthInfo* authInfo) {
                                                    c->name());
                   data.add(c->name(), VPackValue(convertFromAuthLevel(lvl)));
                 });
-          } else {
+          } else if (lvl != AuthLevel::NONE) {// hide db's without access
             data.add(vocbase->name(), VPackValue(str));
           }
         });
