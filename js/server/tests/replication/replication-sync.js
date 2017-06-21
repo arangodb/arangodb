@@ -32,6 +32,7 @@ var jsunity = require("jsunity");
 var arangodb = require("@arangodb");
 var errors = arangodb.errors;
 var db = arangodb.db;
+var _ = require('lodash');
 
 var replication = require("@arangodb/replication");
 var console = require("console");
@@ -142,7 +143,63 @@ function ReplicationSuite() {
           state.count = collectionCount(cn);
           assertEqual(5000, state.count);
 
-          st = state; // save state
+          st = _.clone(state); // save state
+        },
+        function(state) {
+        },
+        function(state) {
+          assertEqual(state.count, collectionCount(cn));
+          assertEqual(state.checksum, collectionChecksum(cn));
+        },
+        true
+      );
+  
+      connectToSlave();
+
+      assertEqual(5000, collectionCount(cn));
+      var c = db._collection(cn);
+      // remove some random documents
+      for (var i = 0; i < 50; ++i) {
+        c.remove(c.any());
+      } 
+      assertEqual(4950, collectionCount(cn));
+  
+      // and sync again    
+      var syncResult = replication.syncCollection(cn, {
+        endpoint: masterEndpoint,
+        verbose: true,
+        incremental: true
+      });
+  
+      assertEqual(st.count, collectionCount(cn));
+      assertEqual(st.checksum, collectionChecksum(cn));
+    },
+
+    ////////////////////////////////////////////////////////////////////////////////
+    /// @brief test existing collection
+    ////////////////////////////////////////////////////////////////////////////////
+
+    testInsertSomeWithIncremental: function() {
+      connectToMaster();
+
+      var st;
+
+      compare(
+        function(state) {
+          var c = db._create(cn),
+            i;
+
+          for (i = 0; i < 5000; ++i) {
+            c.save({
+              _key: "test" + i
+            });
+          }
+
+          state.checksum = collectionChecksum(cn);
+          state.count = collectionCount(cn);
+          assertEqual(5000, state.count);
+
+          st = _.clone(state); // save state
         },
         function(state) {
         },
@@ -156,12 +213,12 @@ function ReplicationSuite() {
       connectToSlave();
 
       var c = db._collection(cn);
-      // remove some random documents
-      for (var i = 0; i < 50; ++i) {
-        c.remove(c.any());
+      // insert some random documents
+      for (var i = 0; i < 100; ++i) {
+        c.insert({ foo: "bar" + i });
       } 
       
-      assertEqual(4950, collectionCount(cn));
+      assertEqual(5100, collectionCount(cn));
   
       // and sync again    
       var syncResult = replication.syncCollection(cn, {
@@ -198,7 +255,7 @@ function ReplicationSuite() {
           var c = db._collection(cn);
           var p = c.properties();
           assertTrue(p.waitForSync);
-          if(mmfilesEngine){
+          if (mmfilesEngine) {
             assertEqual(32, p.indexBuckets);
             assertEqual(16 * 1024 * 1024, p.journalSize);
           }
@@ -232,7 +289,7 @@ function ReplicationSuite() {
           var c = db._collection(cn);
           var p = c.properties();
           assertTrue(p.waitForSync);
-          if(mmfilesEngine){
+          if (mmfilesEngine) {
             assertEqual(32, p.indexBuckets);
             assertEqual(16 * 1024 * 1024, p.journalSize);
           }

@@ -564,6 +564,8 @@ int handleSyncKeysMMFiles(arangodb::InitialSyncer& syncer,
 
         std::string const keyString = keySlice.copyString();
 
+        bool mustRefetch = false;
+
         while (nextStart < markers.size()) {
           VPackSlice const localKeySlice(markers[nextStart]);
           std::string const localKey(
@@ -585,25 +587,30 @@ int handleSyncKeysMMFiles(arangodb::InitialSyncer& syncer,
             // key match
             break;
           } else {
-            TRI_ASSERT(res > 0);
             // a remotely present key that is not present locally
+            TRI_ASSERT(res > 0);
+            mustRefetch = true;
             break;
           }
         }
 
-        MMFilesSimpleIndexElement element = idx->lookupKey(&trx, keySlice);
-
-        if (!element) {
-          // key not found locally
+        if (mustRefetch) {
           toFetch.emplace_back(i);
-        } else if (TRI_RidToString(element.revisionId()) !=
-                   pair.at(1).copyString()) {
-          // key found, but revision id differs
-          toFetch.emplace_back(i);
-          ++nextStart;
         } else {
-          // a match - nothing to do!
-          ++nextStart;
+          MMFilesSimpleIndexElement element = idx->lookupKey(&trx, keySlice);
+
+          if (!element) {
+            // key not found locally
+            toFetch.emplace_back(i);
+          } else if (TRI_RidToString(element.revisionId()) !=
+                    pair.at(1).copyString()) {
+            // key found, but revision id differs
+            toFetch.emplace_back(i);
+            ++nextStart;
+          } else {
+            // a match - nothing to do!
+            ++nextStart;
+          }
         }
       }
 
