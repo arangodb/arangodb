@@ -1,6 +1,6 @@
 /* jshint browser: true */
 /* jshint unused: false */
-/* global arangoHelper, _, $, window, arangoHelper, templateEngine, frontendConfig, Joi, btoa */
+/* global arangoHelper, _, $, window, arangoHelper, templateEngine, Joi, btoa */
 /* global numeral */
 
 (function () {
@@ -95,6 +95,8 @@
         window.progressView.hide();
         this.drawTable();
         this.renderPaginationElements();
+        // check permissions and adjust views
+        arangoHelper.checkCollectionPermissions(this.collection.collectionID, this.changeViewToReadOnly);
       }
     },
 
@@ -814,16 +816,18 @@
     },
 
     remove: function (a) {
-      this.docid = $(a.currentTarget).parent().parent().prev().find('.key').text();
-      $('#confirmDeleteBtn').attr('disabled', false);
-      $('#docDeleteModal').modal('show');
+      if (!$(a.currentTarget).hasClass('disabled')) {
+        this.docid = $(a.currentTarget).parent().parent().prev().find('.key').text();
+        $('#confirmDeleteBtn').attr('disabled', false);
+        $('#docDeleteModal').modal('show');
+      }
     },
 
     confirmDelete: function () {
       $('#confirmDeleteBtn').attr('disabled', true);
       var hash = window.location.hash.split('/');
       var check = hash[3];
-      // to_do - find wrong event handler
+      // find wrong event handler
       if (check !== 'source') {
         this.reallyDelete();
       }
@@ -920,9 +924,6 @@
         showNum: false
       });
       this.resize();
-
-      // check permissions and adjust views
-      this.checkPermissions();
     },
 
     checkCollectionState: function () {
@@ -985,29 +986,6 @@
       return this;
     },
 
-    checkPermissions: function () {
-      var self = this;
-      var url = arangoHelper.databaseUrl('/_api/user/' +
-        encodeURIComponent(window.App.userCollection.activeUser) +
-        '/database/' + encodeURIComponent(frontendConfig.db) + this.collection.collectionID);
-
-      // FETCH COMPLETE DB LIST
-      $.ajax({
-        type: 'GET',
-        url: url,
-        contentType: 'application/json',
-        success: function (data) {
-          // fetching available dbs and permissions
-          if (data.result === 'ro') {
-            self.changeViewToReadOnly();
-          }
-        },
-        error: function (data) {
-          arangoHelper.arangoError('User', 'Could not fetch collection permissions.');
-        }
-      });
-    },
-
     changeViewToReadOnly: function () {
       // this method disables all write-based functions
       $('.breadcrumb').html($('.breadcrumb').html() + ' (read-only)');
@@ -1017,6 +995,10 @@
       $('#addDocumentButton').addClass('disabled');
       $('#addDocumentButton .fa-plus-circle').css('color', '#d3d3d3');
       $('#addDocumentButton .fa-plus-circle').css('cursor', 'not-allowed');
+      // delete a document
+      $('.deleteButton').addClass('disabled');
+      $('.deleteButton .fa-minus-circle').css('color', '#d3d3d3');
+      $('.deleteButton .fa-minus-circle').css('cursor', 'not-allowed');
     },
 
     rerender: function () {
