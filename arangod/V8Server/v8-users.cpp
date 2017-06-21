@@ -118,9 +118,9 @@ static void JS_ReplaceUser(v8::FunctionCallbackInfo<v8::Value> const& args) {
 static void JS_UpdateUser(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
-  if (args.Length() < 2 || !args[0]->IsString() || !args[1]->IsString()) {
+  if (args.Length() < 1 || !args[0]->IsString()) {
     TRI_V8_THROW_EXCEPTION_USAGE(
-        "update(username, password[, active, userData, changePassword])");
+        "update(username[, password, active, userData, changePassword])");
   }
   if (ExecContext::CURRENT_EXECCONTEXT != nullptr) {
     AuthLevel level =
@@ -131,9 +131,6 @@ static void JS_UpdateUser(v8::FunctionCallbackInfo<v8::Value> const& args) {
   }
 
   std::string username = TRI_ObjectToString(args[0]);
-  std::string pass = TRI_ObjectToString(args[1]);
-  bool active = args.Length() >= 3 ? TRI_ObjectToBoolean(args[2]) : true;
-
   VPackBuilder extras;
   if (args.Length() >= 4) {
     int r = TRI_V8ToVPackSimple(isolate, extras, args[3]);
@@ -141,15 +138,19 @@ static void JS_UpdateUser(v8::FunctionCallbackInfo<v8::Value> const& args) {
       TRI_V8_THROW_EXCEPTION(r);
     }
   }
-  bool changePassword =
-      args.Length() >= 5 ? TRI_ObjectToBoolean(args[4]) : false;
-
+  
   auto authentication =
       FeatureCacheFeature::instance()->authenticationFeature();
   authentication->authInfo()->updateUser(username, [&](AuthUserEntry& entry) {
-    entry.setActive(active);
-    entry.updatePassword(pass);
-    entry.changePassword(changePassword);
+    if (args.Length() > 1 && args[1]->IsString()) {
+      entry.updatePassword(TRI_ObjectToString(args[1]));
+    }
+    if (args.Length() > 2 && args[2]->IsBoolean()) {
+      entry.setActive(TRI_ObjectToBoolean(args[2]));
+    }
+    if (args.Length() > 4 && args[4]->IsBoolean()) {
+      entry.changePassword(TRI_ObjectToBoolean(args[4]));
+    }
   });
   if (!extras.isEmpty()) {
     authentication->authInfo()->setUserData(username, extras.slice());
