@@ -537,6 +537,8 @@ function synchronizeOneShard (database, shard, planId, leader) {
     // Mark us as follower for this leader such that we begin
     // accepting replication operations, note that this is also
     // used for the initial synchronization:
+    var db = require("internal").db;
+    var collection = db._collection(shard);
     collection.setTheLeader(leader);
 
     let startTime = new Date();
@@ -588,8 +590,6 @@ function synchronizeOneShard (database, shard, planId, leader) {
                 shard, sy2);
               ok = false;
             } else {
-              var db = require("internal").db;
-              var collection = db._collection(shard);
               ok = addShardFollower(ep, database, shard);
             }
           } catch (err3) {

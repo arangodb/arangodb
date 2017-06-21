@@ -478,6 +478,9 @@ struct TRI_v8_global_t {
   /// @brief "isRestore" key name
   v8::Persistent<v8::String> IsRestoreKey;
 
+  /// @brief "isSynchronousReplication" key name
+  v8::Persistent<v8::String> IsSynchronousReplicationKey;
+
   /// @brief "isSystem" key name
   v8::Persistent<v8::String> IsSystemKey;
 

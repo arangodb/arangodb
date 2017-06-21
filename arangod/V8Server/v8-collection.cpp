@@ -580,6 +580,11 @@ static void RemoveVocbaseCol(v8::FunctionCallbackInfo<v8::Value> const& args) {
       if (optionsObject->Has(SilentKey)) {
         options.silent = TRI_ObjectToBoolean(optionsObject->Get(SilentKey));
       }
+      TRI_GET_GLOBAL_STRING(IsSynchronousReplicationKey);
+      if (optionsObject->Has(IsSynchronousReplicationKey)) {
+        options.isSynchronousReplicationFrom 
+          = TRI_ObjectToString(optionsObject->Get(IsSynchronousReplicationKey));
+      }
     } else {  // old variant remove(<document>, <overwrite>, <waitForSync>)
       options.ignoreRevs = TRI_ObjectToBoolean(args[1]);
       if (argLength > 2) {
@@ -1682,6 +1687,11 @@ static void parseReplaceAndUpdateOptions(
     if (optionsObject->Has(IsRestoreKey)) {
       options.isRestore = TRI_ObjectToBoolean(optionsObject->Get(IsRestoreKey));
     }
+    TRI_GET_GLOBAL_STRING(IsSynchronousReplicationKey);
+    if (optionsObject->Has(IsSynchronousReplicationKey)) {
+      options.isSynchronousReplicationFrom 
+        = TRI_ObjectToString(optionsObject->Get(IsSynchronousReplicationKey));
+    }
     if (operation == TRI_VOC_DOCUMENT_OPERATION_UPDATE) {
       // intentionally not called for TRI_VOC_DOCUMENT_OPERATION_REPLACE
       TRI_GET_GLOBAL_STRING(KeepNullKey);
@@ -2499,6 +2509,11 @@ static void InsertVocbaseCol(v8::Isolate* isolate,
     TRI_GET_GLOBAL_STRING(IsRestoreKey);
     if (optionsObject->Has(IsRestoreKey)) {
       options.isRestore = TRI_ObjectToBoolean(optionsObject->Get(IsRestoreKey));
+    }
+    TRI_GET_GLOBAL_STRING(IsSynchronousReplicationKey);
+    if (optionsObject->Has(IsSynchronousReplicationKey)) {
+      options.isSynchronousReplicationFrom 
+        = TRI_ObjectToString(optionsObject->Get(IsSynchronousReplicationKey));
     }
   } else {
     options.waitForSync = ExtractBooleanArgument(args, optsIdx + 1);
