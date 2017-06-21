@@ -122,6 +122,12 @@ static std::shared_ptr<VPackBuilder> QueryAllUsers(
     LOG_TOPIC(DEBUG, arangodb::Logger::FIXME) << "system database is unknown";
     THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
   }
+  
+  // we cannot set this execution context, otherwise the transaction
+  // will ask us again for permissions and we get a deadlock
+  ExecContext* oldExe = ExecContext::CURRENT_EXECCONTEXT;
+  ExecContext::CURRENT_EXECCONTEXT = nullptr;
+  TRI_DEFER(ExecContext::CURRENT_EXECCONTEXT = oldExe);
 
   std::string const queryStr("FOR user IN _users RETURN user");
   auto emptyBuilder = std::make_shared<VPackBuilder>();
@@ -159,6 +165,12 @@ static VPackBuilder QueryUser(aql::QueryRegistry* queryRegistry,
   if (vocbase == nullptr) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_FAILED, "_system db is unknown");
   }
+  
+  // we cannot set this execution context, otherwise the transaction
+  // will ask us again for permissions and we get a deadlock
+  ExecContext* oldExe = ExecContext::CURRENT_EXECCONTEXT;
+  ExecContext::CURRENT_EXECCONTEXT = nullptr;
+  TRI_DEFER(ExecContext::CURRENT_EXECCONTEXT = oldExe);
 
   std::string const queryStr("FOR u IN _users FILTER u.user == @name RETURN u");
   auto emptyBuilder = std::make_shared<VPackBuilder>();
@@ -234,27 +246,18 @@ void AuthInfo::loadFromDB() {
     insertInitial();
   }
 
-  // we cannot set this execution context, otherwise the transaction
-  // will ask us again for permissions and we get a deadlock
-  ExecContext* oldExe = ExecContext::CURRENT_EXECCONTEXT;
-  ExecContext::CURRENT_EXECCONTEXT = nullptr;
-  
-  try {
-    TRI_ASSERT(_queryRegistry != nullptr);
-    std::shared_ptr<VPackBuilder> builder = QueryAllUsers(_queryRegistry);
-    if (builder) {
-      VPackSlice usersSlice = builder->slice();
-      WRITE_LOCKER(writeLocker, _authInfoLock);
-      if (usersSlice.length() == 0) {
-        insertInitial();
-      } else {
-        parseUsers(usersSlice);
-      }
-      _outdated = false;
+  TRI_ASSERT(_queryRegistry != nullptr);
+  std::shared_ptr<VPackBuilder> builder = QueryAllUsers(_queryRegistry);
+  if (builder) {
+    VPackSlice usersSlice = builder->slice();
+    WRITE_LOCKER(writeLocker, _authInfoLock);
+    if (usersSlice.length() == 0) {
+      insertInitial();
+    } else {
+      parseUsers(usersSlice);
     }
-  } catch(...) {}
-  
-  ExecContext::CURRENT_EXECCONTEXT = oldExe;
+    _outdated = false;
+  }
 }
 
 // private, must be called with _authInfoLock in write mode
