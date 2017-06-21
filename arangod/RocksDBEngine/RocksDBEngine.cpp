@@ -217,10 +217,10 @@ void RocksDBEngine::start() {
   _options.max_bytes_for_level_base = opts->_maxBytesForLevelBase;
   _options.max_bytes_for_level_multiplier =
       static_cast<int>(opts->_maxBytesForLevelMultiplier);
-  _options.verify_checksums_in_compaction = opts->_verifyChecksumsInCompaction;
+  //_options.verify_checksums_in_compaction = opts->_verifyChecksumsInCompaction;
   _options.optimize_filters_for_hits = opts->_optimizeFiltersForHits;
   _options.use_direct_reads = opts->_useDirectReads;
-  _options.use_direct_writes = opts->_useDirectWrites;
+  //_options.use_direct_writes = opts->_useDirectWrites;
   if (opts->_skipCorrupted) {
     _options.wal_recovery_mode =
         rocksdb::WALRecoveryMode::kSkipAnyCorruptedRecords;

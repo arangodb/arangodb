@@ -54,7 +54,6 @@ check_include_file(sys/uio.h HAVE_SYS_UIO_H)
 check_include_file(sys/byteorder.h HAVE_SYS_BYTEORDER_H)
 
 include(FindZLIB)
-
 if (ZLIB_FOUND)
   set(HAVE_LIBZ 1)
   include_directories(${ZLIB_INCLUDE_DIRS})
@@ -148,3 +147,7 @@ set(SNAPPY_SRCS
 )
 
 add_library(snappystatic STATIC ${SNAPPY_SRCS} ${SNAPPY_PUBLIC_HDRS} ${SNAPPY_PRIVATE_HDRS})
+if (ZLIB_FOUND)
+  target_include_directories(snappystatic PRIVATE ${ZLIB_INCLUDE_DIRS})
+endif()
+target_include_directories(snappystatic PUBLIC ${ZLIB_INCLUDE_DIRS} ${CMAKE_CURRENT_BINARY_DIR} ${CMAKE_CURRENT_SOURCE_DIR})

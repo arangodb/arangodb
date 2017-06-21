@@ -1,5 +1,8 @@
 Write-ahead log
 ===============
+The Write-ahead log is part of the MMFiles storage engine; This doesn't apply to your
+ArangoDB if you are running with the [RocksDB](../Administration/Configuration/RocksDB.md)
+storage engine.
 
 Starting with version 2.2 ArangoDB stores all data-modification operation in
 its write-ahead log. The write-ahead log is sequence of append-only files containing

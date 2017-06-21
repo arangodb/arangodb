@@ -104,14 +104,20 @@ arangodb::Result Database::info(TRI_vocbase_t* vocbase, VPackBuilder& result) {
 
       VPackObjectBuilder b(&result);
       result.add("name", value.get("name"));
-      result.add("id", value.get("id"));
+      if (value.get("id").isString()) {
+        result.add("id", value.get("id"));
+      } else if (value.get("id").isNumber()) {
+        result.add("id", VPackValue(std::to_string(value.get("id").getUInt())));
+      } else {
+        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "unexpected type for 'id' attribute");
+      }
       result.add("path", value.get("none"));
       result.add("isSystem", VPackValue(name[0] == '_'));
     }
   } else {
     VPackObjectBuilder b(&result);
     result.add("name", VPackValue(vocbase->name()));
-    result.add("id", VPackValue(vocbase->id()));
+    result.add("id", VPackValue(std::to_string(vocbase->id())));
     result.add("path", VPackValue(vocbase->path()));
     result.add("isSystem", VPackValue(vocbase->isSystem()));
   }
