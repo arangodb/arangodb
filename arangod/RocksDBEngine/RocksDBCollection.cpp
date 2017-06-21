@@ -1843,12 +1843,10 @@ arangodb::Result RocksDBCollection::serializeKeyGenerator(
   rocksdb::Status s = rtrx->Put(key.string(), value.string());
 
   if (!s.ok()) {
-    LOG_TOPIC(WARN, Logger::ENGINES) << "writing index estimates failed";
+    LOG_TOPIC(WARN, Logger::ENGINES) << "writing key generator data failed";
     rtrx->Rollback();
     return rocksutils::convertStatus(s);
   }
-
-  LOG_TOPIC(ERR, Logger::FIXME) << "coll " << _objectId << " wrote " << builder.slice().toJson();
 
   return {TRI_ERROR_NO_ERROR};
 }

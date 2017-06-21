@@ -399,7 +399,6 @@ void RocksDBCounterManager::readKeyGenerators() {
     // If this hits we have two generators for the same collection
     TRI_ASSERT(_generators.find(objectId) == _generators.end());
     try {
-      LOG_TOPIC(ERR, Logger::FIXME) << "found " << lastValue << " for " << objectId;
       _generators.emplace( objectId, lastValue);
     } catch (...) {
       // Nothing to do, just validate that no corrupted memory was produced.
@@ -529,11 +528,9 @@ public:
   }
 
   void storeLastKeyValue(uint64_t objectId, uint64_t keyValue) {
-    LOG_TOPIC(ERR, Logger::FIXME) << "checking " << keyValue << " for " << objectId;
     auto it = _generators->find(objectId);
     if (it == _generators->end() && keyValue != 0) {
       try {
-        LOG_TOPIC(ERR, Logger::FIXME) << "keeping";
         _generators->emplace(objectId, keyValue);
       } catch (...) {}
       return;

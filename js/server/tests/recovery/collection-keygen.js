@@ -34,21 +34,21 @@ var jsunity = require('jsunity');
 function runSetup () {
   'use strict';
   internal.debugClearFailAt();
-  var c, d;
+  var c;
 
   db._drop('UnitTestsRecovery1');
   c = db._create('UnitTestsRecovery1', { keyOptions: { type: 'autoincrement',
     offset: 0, increment: 1 } } );
-  d = c.save({ name: 'a' });
-  d = c.save({ name: 'b' });
-  d = c.save({ name: 'c' });
+  c.save({ name: 'a' });
+  c.save({ name: 'b' });
+  c.save({ name: 'c' }, { waitForSync: true });
 
   db._drop('UnitTestsRecovery2');
   c = db._create('UnitTestsRecovery2', { keyOptions: { type: 'autoincrement',
     offset: 10, increment: 5 } } );
-  d = c.save({ name: 'a' });
-  d = c.save({ name: 'b' });
-  d = c.save({ name: 'c' });
+  c.save({ name: 'a' });
+  c.save({ name: 'b' });
+  c.save({ name: 'c' }, { waitForSync: true });
 
   internal.debugSegfault('crashing server');
 }
@@ -69,14 +69,18 @@ function recoverySuite () {
     // / @brief test whether we can restore the trx data
     // //////////////////////////////////////////////////////////////////////////////
 
-    testCollectionProperties: function () {
-      var c, d, prop;
+    testCollectionKeyGen: function () {
+      var c, d;
 
       c = db._collection('UnitTestsRecovery1');
+      assertEqual(["1", "2", "3"], c.toArray().map(function(doc) { return doc._key; }).sort());
       d = c.save({ name: "d"});
+      assertEqual("4", d._key);
 
       c = db._collection('UnitTestsRecovery2');
+      assertEqual(["10", "15", "20"], c.toArray().map(function(doc) { return doc._key; }).sort());
       d = c.save({ name: "d"});
+      assertEqual("25", d._key);
     }
 
   };
