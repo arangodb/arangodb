@@ -51,13 +51,9 @@
           $('#loginDatabase').html('');
           // fill select with allowed dbs
           _.each(permissions.result, function (rule, db) {
-            console.log(rule);
-            if (rule.permissions.read === true || rule.permissions.write === true) {
-              $('#loginDatabase').append(
-                '<option>' + db + '</option>'
-              );
-            }
-            console.log('db: ' + db);
+            $('#loginDatabase').append(
+              '<option>' + db + '</option>'
+            );
           });
 
           self.renderDBS();
@@ -189,11 +185,9 @@
 
         console.log('Method #2');
         _.each(permissions.result, function (rule, db) {
-          if (rule.permissions.read === true || rule.permissions.write === true) {
-            $('#loginDatabase').append(
-              '<option>' + db + '</option>'
-            );
-          }
+          $('#loginDatabase').append(
+            '<option>' + db + '</option>'
+          );
         });
 
         self.renderDBS();

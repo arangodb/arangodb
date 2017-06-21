@@ -125,8 +125,9 @@ arangodb::Result Database::create(std::string const& dbName,
     return Result(TRI_ERROR_ARANGO_READ_ONLY);
   }
   if (ExecContext::CURRENT_EXECCONTEXT != nullptr) {
-    AuthLevel level = ExecContext::CURRENT_EXECCONTEXT->authContext()->systemAuthLevel();
-    
+    AuthLevel level =
+        ExecContext::CURRENT_EXECCONTEXT->authContext()->systemAuthLevel();
+
     if (level != AuthLevel::RW) {
       return TRI_ERROR_FORBIDDEN;
     }
@@ -346,8 +347,9 @@ arangodb::Result Database::drop(TRI_vocbase_t* systemVocbase,
                                 std::string const& dbName) {
   TRI_ASSERT(systemVocbase->isSystem());
   if (ExecContext::CURRENT_EXECCONTEXT != nullptr) {
-    AuthLevel level = ExecContext::CURRENT_EXECCONTEXT->authContext()->systemAuthLevel();
-    
+    AuthLevel level =
+        ExecContext::CURRENT_EXECCONTEXT->authContext()->systemAuthLevel();
+
     if (level != AuthLevel::RW) {
       return TRI_ERROR_FORBIDDEN;
     }

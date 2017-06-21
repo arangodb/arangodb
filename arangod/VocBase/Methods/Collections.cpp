@@ -23,7 +23,6 @@
 #include "Collections.h"
 #include "Basics/Common.h"
 
-#include "Cluster/ClusterInfo.h"
 #include "Basics/ReadLocker.h"
 #include "Basics/StringUtils.h"
 #include "Basics/StringUtils.h"
@@ -32,12 +31,13 @@
 #include "Basics/tri-strings.h"
 #include "Cluster/ClusterComm.h"
 #include "Cluster/ClusterInfo.h"
+#include "Cluster/ClusterInfo.h"
 #include "Cluster/ServerState.h"
 #include "GeneralServer/AuthenticationFeature.h"
-#include "Rest/HttpRequest.h"
-#include "RestServer/DatabaseFeature.h"
 #include "Indexes/Index.h"
 #include "Indexes/IndexFactory.h"
+#include "Rest/HttpRequest.h"
+#include "RestServer/DatabaseFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
 #include "Transaction/Helpers.h"
@@ -62,20 +62,22 @@ using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::methods;
 
-void methods::Collections::enumerateCollections(TRI_vocbase_t* vocbase,
-                                       std::function<void(LogicalCollection*)> const& func) {
+void methods::Collections::enumerateCollections(
+    TRI_vocbase_t* vocbase,
+    std::function<void(LogicalCollection*)> const& func) {
   if (ServerState::instance()->isCoordinator()) {
     std::vector<std::shared_ptr<LogicalCollection>> colls =
-      ClusterInfo::instance()->getCollections(vocbase->name());
+        ClusterInfo::instance()->getCollections(vocbase->name());
     for (std::shared_ptr<LogicalCollection> const& c : colls) {
       if (!c->deleted()) {
         func(c.get());
       }
     }
-    
+
   } else {
-    std::vector<arangodb::LogicalCollection*> colls = vocbase->collections(false);
-    for (LogicalCollection *c : colls) {
+    std::vector<arangodb::LogicalCollection*> colls =
+        vocbase->collections(false);
+    for (LogicalCollection* c : colls) {
       if (!c->deleted()) {
         func(c);
       }
@@ -83,18 +85,19 @@ void methods::Collections::enumerateCollections(TRI_vocbase_t* vocbase,
   }
 }
 
-LogicalCollection* methods::Collections::lookupCollection(TRI_vocbase_t* vocbase,
-                                                          std::string const& collection) {
+LogicalCollection* methods::Collections::lookupCollection(
+    TRI_vocbase_t* vocbase, std::string const& collection) {
   if (!collection.empty()) {
     if (ServerState::instance()->isCoordinator()) {
       try {
         std::shared_ptr<LogicalCollection> coll =
-          ClusterInfo::instance()->getCollection(vocbase->name(), collection);
+            ClusterInfo::instance()->getCollection(vocbase->name(), collection);
         if (coll) {
           auto colCopy = coll->clone();
           return colCopy.release();
         }
-      } catch (...) {}
+      } catch (...) {
+      }
     } else {
       return vocbase->lookupCollection(collection);
     }
