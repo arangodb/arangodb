@@ -322,25 +322,33 @@ stage('checkout') {
     }
 }
 
-if (buildLinux) {
-    stage('build linux') {
-        def os = 'linux'
+// cmake is very picky about the absolute path. Therefore never put a stage
+// into an `if`
 
-        parallel(
-            'build-community-linux': {
-                def edition = 'community'
+stage('build linux') {
+    def os = 'linux'
 
+    parallel(
+        'build-community-linux': {
+            def edition = 'community'
+
+            if (buildLinux) {
                 node(os) {
                     unstashSourceCode(os)
                     buildEdition(edition, os)
                     stashBinaries(edition, os)
                 }
-            },
+            }
+            else {
+                echo "Not building " + os + " version"
+            }
+        },
 
-            'build-enterprise-linux': {
+        'build-enterprise-linux': {
+            def edition = 'enterprise'
+
+            if (buildLinux) {
                 if (buildEnterprise) {
-                    def edition = 'enterprise'
-
                     node(os) {
                         unstashSourceCode(os)
                         buildEdition(edition, os)
@@ -351,31 +359,41 @@ if (buildLinux) {
                     echo "Not building enterprise version"
                 }
             }
-        )
-    }
+            else {
+                echo "Not building " + os + " version"
+            }
+        }
+    )
+}
 
-    stage('test linux') {
-        def os = 'linux'
+stage('test linux') {
+    def os = 'linux'
 
-        parallel(
-            'test-singleserver-community-rocksdb': {
-                def mode = 'singleserver'
-                def edition = 'community'
-                def engine = 'rocksdb'
+    parallel(
+        'test-singleserver-community-rocksdb': {
+            def mode = 'singleserver'
+            def edition = 'community'
+            def engine = 'rocksdb'
 
+            if (buildLinux) {
                 node(os) {
                     echo "Running " + mode + " " + edition + " " + engine + " " + os + " test"
 
                     unstashBinaries(edition, os)
                     testEdition(edition, os, mode, engine)
                 }
-            },
+            }
+            else {
+                echo "Not building " + os + " version"
+            }
+        },
 
-            'test-singleserver-enterprise-mmfiles': {
-                def mode = 'singleserver'
-                def edition = 'enterprise'
-                def engine = 'mmfiles'
+        'test-singleserver-enterprise-mmfiles': {
+            def mode = 'singleserver'
+            def edition = 'enterprise'
+            def engine = 'mmfiles'
 
+            if (buildLinux) {
                 if (buildEnterprise) {
                     node(os) {
                         echo "Running " + mode + " " + edition + " " + engine + " " + os + " test"
@@ -387,26 +405,36 @@ if (buildLinux) {
                 else {
                     echo "Enterprise version not built, skipping 'test-singleserver-enterprise'"
                 }
-            },
+            }
+            else {
+                echo "Not building " + os + " version"
+            }
+        },
 
-            'test-cluster-community-mmfiles': {
-                def mode = 'cluster'
-                def edition = 'community'
-                def engine = 'mmfiles'
+        'test-cluster-community-mmfiles': {
+            def mode = 'cluster'
+            def edition = 'community'
+            def engine = 'mmfiles'
 
+            if (buildLinux) {
                 node(os) {
                     echo "Running " + mode + " " + edition + " " + engine + " " + os + " test"
 
                     unstashBinaries(edition, os)
                     testEdition(edition, os, mode, engine)
                 }
-            },
+            }
+            else {
+                echo "Not building " + os + " version"
+            }
+        },
 
-            'test-cluster-enterprise-rocksdb': {
-                def mode = 'cluster'
-                def edition = 'enterprise'
-                def engine = 'rocksdb'
+        'test-cluster-enterprise-rocksdb': {
+            def mode = 'cluster'
+            def edition = 'enterprise'
+            def engine = 'rocksdb'
 
+            if (buildLinux) {
                 if (buildEnterprise) {
                     node(os) {
                         echo "Running " + mode + " " + edition + " " + engine + " " + os + " test"
@@ -418,9 +446,14 @@ if (buildLinux) {
                 else {
                     echo "Enterprise version not built, skipping 'test-singleserver-enterprise'"
                 }
-            },
+            }
+            else {
+                echo "Not building " + os + " version"
+            }
+        },
 
-            'jslint': {
+        'jslint': {
+            if (buildLinux) {
                 node(os) {
                     echo "Running jslint test"
 
@@ -428,19 +461,23 @@ if (buildLinux) {
                     jslint()
                 }
             }
-        )
-    }
+            else {
+                echo "Not building " + os + " version"
+            }
+        }
+    )
 }
 
 stage('build other') {
     parallel(
         'build-community-windows': {
             def os = 'windows'
+            def edition = 'community'
 
             if (buildWindows) {
                 node('windows') {
                     unstashSourceCode(os)
-                    buildEdition('community', os)
+                    buildEdition(edition, os)
                 }
             }
             else {
@@ -450,11 +487,12 @@ stage('build other') {
 
         'build-community-mac': {
             def os = 'mac'
+            def edition = 'community'
 
             if (buildMac) {
                 node('mac') {
                     unstashSourceCode(os)
-                    buildEdition('community', os)
+                    buildEdition(edition, os)
                 }
             }
             else {
