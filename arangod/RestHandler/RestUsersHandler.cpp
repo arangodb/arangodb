@@ -205,9 +205,17 @@ static Result StoreUser(AuthInfo* authInfo, int mode, std::string const& user,
     r = authInfo->storeUser(mode == 1, user, passwd, active, changePasswd);
   } else if (mode == 2) {
     r = authInfo->updateUser(user, [&](AuthUserEntry& entry) {
-      entry.updatePassword(passwd);
-      entry.setActive(active);
-      entry.changePassword(changePasswd);
+      if (json.isObject()) {
+        if (json.get("passwd").isString()) {
+          entry.updatePassword(passwd);
+        }
+        if (json.get("active").isBool()) {
+          entry.setActive(active);
+        }
+        if (json.get("changePassword").isBool()) {
+          entry.changePassword(changePasswd);
+        }
+      }
     });
   }
   if (r.ok() && extra.isObject() && !extra.isEmptyObject()) {
