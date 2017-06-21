@@ -440,10 +440,11 @@ def replaceText(text, pathOfFile, searchText):
   #print '7'*80
   global dokuBlocks
   if not searchText in dokuBlocks[0]:
-      print >> sys.stderr, "%sFailed to locate the docublock '%s' for replacing it into the file '%s'\n have:%s" % (ERR_COLOR, searchText, pathOfFile, RESET)
+      print >> sys.stderr, ERR_COLOR + "Failed to locate the docublock '" + searchText + "' for replacing it into the file '" +pathOfFile + "'\n have:" + RESET
       print >> sys.stderr, WRN_COLOR + dokuBlocks[0].keys() + RESET
       print >> sys.stderr, ERR_COLOR + '*' * 80 + RESET
       print >> sys.stderr, WRN_COLOR + text + RESET
+      print >> sys.stderr, ERR_COLOR + "Failed to locate the docublock '" + searchText + "' for replacing it into the file '" +pathOfFile + "' For details scroll up!" + RESET
       exit(1)
   #print '7'*80
   #print dokuBlocks[0][searchText]
@@ -455,22 +456,23 @@ def replaceTextInline(text, pathOfFile, searchText):
   ''' inserts docublocks into md '''
   global dokuBlocks
   if not searchText in dokuBlocks[1]:
-      print >> sys.stderr, "%sFailed to locate the inline docublock '%s' for replacing it into the file '%s'\n have: %s" % (ERR_COLOR, searchText, pathOfFile, RESET)
+      print >> sys.stderr, ERR_COLOR + "Failed to locate the inline docublock '" + searchText + "' for replacing it into the file '" + pathOfFile + "'\n have: " + RESET
       print >> sys.stderr, "%s%s%s" %(WRN_COLOR, dokuBlocks[1].keys(), RESET)
       print >> sys.stderr, ERR_COLOR + '*' * 80 + RESET
       print >> sys.stderr, WRN_COLOR + text + RESET
+      print >> sys.stderr, ERR_COLOR + "Failed to locate the inline docublock '" + searchText + "' for replacing it into the file '" + pathOfFile + "' For details scroll up!" + RESET
       exit(1)
   rePattern = r'(?s)\s*@startDocuBlockInline\s+'+ searchText +'\s.*?@endDocuBlock\s' + searchText
   # (?s) is equivalent to flags=re.DOTALL but works in Python 2.6
   match = re.search(rePattern, text)
 
-  if (match == None): 
-      print >> sys.stderr, "%sfailed to match with '%s' for %s in file %s in: \n%s" % (ERR_COLOR, rePattern, searchText, pathOfFile, text, RESET)
+  if (match == None):
+      print >> sys.stderr, ERR_COLOR + "failed to match with '" + rePattern + "' for " + searchText + " in file " + pathOfFile + " in: \n" + text + RESET
       exit(1)
 
   subtext = match.group(0)
   if (len(re.findall('@startDocuBlock', subtext)) > 1):
-      print >> sys.stderr, "%sfailed to snap with '%s' on end docublock for %s in %s our match is:\n%s" % (ERR_COLOR, rePattern, searchText, pathOfFile, subtext, RESET)
+      print >> sys.stderr, ERR_COLOR + "failed to snap with '" + rePattern + "' on end docublock for " + searchText + " in " + pathOfFile + " our match is:\n" + subtext + RESET
       exit(1)
 
   return re.sub(rePattern, dokuBlocks[1][searchText], text)
