@@ -102,8 +102,18 @@ if (USE_IRESEARCH)
     set(IRESEARCH_EXCLUDE_STATIC_THIRD_PARTY_LIBS TRUE) # disable linking in of 3rd party libraries automatically
   endif()
 
+  if (MSVC)
+    set(BOOST_LIBRARYDIR
+      "${CMAKE_CURRENT_BINARY_DIR}/boost/Debug"
+      "${CMAKE_CURRENT_BINARY_DIR}/boost/Release"
+      "${CMAKE_CURRENT_BINARY_DIR}/boost/RelWithDebInfo"
+      "${CMAKE_CURRENT_BINARY_DIR}/boost/MinSizeRel"
+    )
+  else()
+    set(BOOST_LIBRARYDIR "${CMAKE_CURRENT_BINARY_DIR}/boost")
+  endif()
+
   set(BOOST_INCLUDEDIR "${CMAKE_CURRENT_SOURCE_DIR}/boost/1.62.0")
-  set(BOOST_LIBRARYDIR "${CMAKE_CURRENT_BINARY_DIR}/boost/${CMAKE_CFG_INTDIR}")
   set(Boost_NO_SYSTEM_PATHS ON)
 
   find_package(IResearch REQUIRED) # set IRESEARCH_BUILD_DIR
