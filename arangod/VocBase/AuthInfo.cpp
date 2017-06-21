@@ -28,8 +28,8 @@
 #include "Aql/QueryString.h"
 
 #include "Basics/ReadLocker.h"
-#include "Basics/VelocyPackHelper.h"
 #include "Basics/ReadUnlocker.h"
+#include "Basics/VelocyPackHelper.h"
 #include "Basics/WriteLocker.h"
 #include "Basics/tri-strings.h"
 #include "Cluster/ServerState.h"
@@ -213,7 +213,8 @@ static void ConvertLegacyFormat(VPackSlice doc, VPackBuilder& result) {
   result.add("extra", extra.isNone() ? VPackSlice::emptyObjectSlice() : extra);
 }
 
-// private, will acquire _authInfoLock in write-mode and release it. Lock _loadFromDBLock before calling
+// private, will acquire _authInfoLock in write-mode and release it. Lock
+// _loadFromDBLock before calling
 void AuthInfo::loadFromDB() {
   auto role = ServerState::instance()->getRole();
   if (role != ServerState::ROLE_SINGLE &&
@@ -373,7 +374,7 @@ Result AuthInfo::storeUser(bool replace, std::string const& user,
       loadFromDB();
     }
   }
-  
+
   WRITE_LOCKER(writeGuard, _authInfoLock);
   auto const& it = _authInfo.find(user);
   if (replace && it == _authInfo.end()) {
@@ -423,7 +424,7 @@ Result AuthInfo::updateUser(std::string const& user,
     return TRI_ERROR_USER_NOT_FOUND;
   }
   VPackBuilder data;
-  { // we require an consisten view on the user object
+  {  // we require an consisten view on the user object
     WRITE_LOCKER(readLocker, _authInfoLock);
     auto it = _authInfo.find(user);
     if (it == _authInfo.end()) {
@@ -433,7 +434,7 @@ Result AuthInfo::updateUser(std::string const& user,
     func(it->second);
     data = it->second.toVPackBuilder();
   }
-  
+
   Result r = UpdateUser(data.slice());
 
   // we need to reload data after the next callback
@@ -535,14 +536,15 @@ AuthResult AuthInfo::checkPassword(std::string const& username,
       loadFromDB();
     }
   }
-  
+
   READ_LOCKER(JobGuard, _authInfoLock);
   AuthResult result(username);
   auto it = _authInfo.find(username);
 
   if (it == _authInfo.end() || (it->second.source() == AuthSource::LDAP)) {
     TRI_ASSERT(_authenticationHandler != nullptr);
-    AuthenticationResult authResult = _authenticationHandler->authenticate(username, password);
+    AuthenticationResult authResult =
+        _authenticationHandler->authenticate(username, password);
     if (!authResult.ok()) {
       return result;
     }
@@ -551,10 +553,10 @@ AuthResult AuthInfo::checkPassword(std::string const& username,
     if (authResult.source() == AuthSource::LDAP) {
       READ_UNLOCKER(unlock, _authInfoLock);
       WRITE_LOCKER(writeGuard, _authInfoLock);
-      
+
       AuthUserEntry entry =
-      AuthUserEntry::newUser(username, password, AuthSource::LDAP);
-      
+          AuthUserEntry::newUser(username, password, AuthSource::LDAP);
+
       it = _authInfo.find(username);
       if (it != _authInfo.end()) {
         it->second = entry;
@@ -585,7 +587,7 @@ AuthLevel AuthInfo::canUseDatabase(std::string const& username,
 }
 
 AuthLevel AuthInfo::canUseCollection(std::string const& username,
-                                   std::string const& dbname,
+                                     std::string const& dbname,
                                      std::string const& coll) {
   return getAuthContext(username, dbname)->collectionAuthLevel(coll);
 }
