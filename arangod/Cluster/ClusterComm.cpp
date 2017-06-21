@@ -928,7 +928,8 @@ size_t ClusterComm::performRequests(std::vector<ClusterCommRequest>& requests,
         continue;
       }
       size_t index = it->second;
-      if (res.status == CL_COMM_RECEIVED) {
+      if (res.status == CL_COMM_RECEIVED &&
+          res.answer_code != rest::ResponseCode::NOT_ACCEPTABLE) {
         requests[index].result = res;
         requests[index].done = true;
         nrDone++;
@@ -942,7 +943,15 @@ size_t ClusterComm::performRequests(std::vector<ClusterCommRequest>& requests,
           << requests[index].path << " with return code "
           << (int)res.answer_code;
       } else if (res.status == CL_COMM_BACKEND_UNAVAILABLE ||
-         (res.status == CL_COMM_TIMEOUT && !res.sendWasComplete)) {
+                 (res.status == CL_COMM_TIMEOUT && !res.sendWasComplete) ||
+                 (res.status == CL_COMM_RECEIVED &&
+                  res.answer_code == rest::ResponseCode::NOT_ACCEPTABLE)) {
+        // Note that this case includes the refusal of a leader to accept
+        // the operation, in which we have to flush ClusterInfo:
+        if (res.status == CL_COMM_RECEIVED &&
+            res.answer_code == rest::ResponseCode::NOT_ACCEPTABLE) {
+          ClusterInfo::instance()->loadCurrent();
+        }
         requests[index].result = res;
 
         // In this case we will retry:
@@ -960,7 +969,7 @@ size_t ClusterComm::performRequests(std::vector<ClusterCommRequest>& requests,
         LOG_TOPIC(ERR, Logger::CLUSTER) << "ClusterComm::performRequests: "
             << "got BACKEND_UNAVAILABLE or TIMEOUT from "
             << requests[index].destination << ":" << requests[index].path;
-      } else {  // a "proper error"
+      } else {  // a "proper error" which has to returned to the client
         requests[index].result = res;
         requests[index].done = true;
         nrDone++;

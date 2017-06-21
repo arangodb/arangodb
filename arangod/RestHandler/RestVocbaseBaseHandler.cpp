@@ -436,6 +436,12 @@ void RestVocbaseBaseHandler::generateTransactionError(
       return;
     }
 
+    case TRI_ERROR_CLUSTER_SHARD_LEADER_REFUSES_REPLICATION:
+    case TRI_ERROR_CLUSTER_SHARD_FOLLOWER_REFUSES_OPERATION:
+      generateError(rest::ResponseCode::NOT_ACCEPTABLE, res);
+      return;
+    }
+
     case TRI_ERROR_CLUSTER_UNSUPPORTED: {
       generateError(rest::ResponseCode::NOT_IMPLEMENTED, res);
       return;

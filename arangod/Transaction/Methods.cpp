@@ -541,6 +541,18 @@ bool transaction::Methods::findIndexHandleForAndNode(
   return true;
 }
 
+/// @brief Find out if any of the given requests has ended in a refusal
+
+static bool findRefusal(std::vector<ClusterCommRequest>& requests) {
+  for (size_t i = 0; i < requests.size(); ++i) {
+    if (requests[i].result.done &&
+        requests[i].result.status == CL_COMM_RECEIVED &&
+        requests[i].result.answer_code == rest::ResponseCode::NOT_ACCEPTABLE) {
+      return true;
+    }
+  }
+}
+
 transaction::Methods::Methods(
     std::shared_ptr<transaction::Context> const& transactionContext,
     transaction::Options const& options)
@@ -1534,10 +1546,18 @@ OperationResult transaction::Methods::insertLocal(
         size_t nrGood = cc->performRequests(requests, chooseTimeout(count),
                                             nrDone, Logger::REPLICATION);
         if (nrGood < followers->size()) {
-          // we drop all followers that were not successful:
+          // If any would-be-follower refused to follow there must be a
+          // new leader in the meantime, in this case we must not allow
+          // this operation to succeed, we simply return with a refusal
+          // error (note that we use the follower version, since we have
+          // lost leadership):
+          if (findRefusal(requests)) {
+            return OperationResult(
+                TRI_ERROR_CLUSTER_SHARD_FOLLOWER_REFUSES_OPERATION);
+          }
+
+          // Otherwise we drop all followers that were not successful:
           for (size_t i = 0; i < followers->size(); ++i) {
-            // If any would-be-follower refused to follow it must have been
-            // made leader in the meantime, in this case we must ...
             bool replicationWorked =
                 requests[i].done &&
                 requests[i].result.status == CL_COMM_RECEIVED &&
@@ -1874,7 +1894,17 @@ OperationResult transaction::Methods::modifyLocal(
         size_t nrGood = cc->performRequests(requests, chooseTimeout(count),
                                             nrDone, Logger::REPLICATION);
         if (nrGood < followers->size()) {
-          // we drop all followers that were not successful:
+          // If any would-be-follower refused to follow there must be a
+          // new leader in the meantime, in this case we must not allow
+          // this operation to succeed, we simply return with a refusal
+          // error (note that we use the follower version, since we have
+          // lost leadership):
+          if (findRefusal(requests)) {
+            return OperationResult(
+                TRI_ERROR_CLUSTER_SHARD_FOLLOWER_REFUSES_OPERATION);
+          }
+
+          // Otherwise we drop all followers that were not successful:
           for (size_t i = 0; i < followers->size(); ++i) {
             bool replicationWorked =
                 requests[i].done &&
@@ -2143,6 +2173,16 @@ OperationResult transaction::Methods::removeLocal(
         size_t nrGood = cc->performRequests(requests, chooseTimeout(count),
                                             nrDone, Logger::REPLICATION);
         if (nrGood < followers->size()) {
+          // If any would-be-follower refused to follow there must be a
+          // new leader in the meantime, in this case we must not allow
+          // this operation to succeed, we simply return with a refusal
+          // error (note that we use the follower version, since we have
+          // lost leadership):
+          if (findRefusal(requests)) {
+            return OperationResult(
+                TRI_ERROR_CLUSTER_SHARD_FOLLOWER_REFUSES_OPERATION);
+          }
+
           // we drop all followers that were not successful:
           for (size_t i = 0; i < followers->size(); ++i) {
             bool replicationWorked =
@@ -2347,6 +2387,15 @@ OperationResult transaction::Methods::truncateLocal(
         size_t nrGood = cc->performRequests(requests, TRX_FOLLOWER_TIMEOUT,
                                             nrDone, Logger::REPLICATION);
         if (nrGood < followers->size()) {
+          // If any would-be-follower refused to follow there must be a
+          // new leader in the meantime, in this case we must not allow
+          // this operation to succeed, we simply return with a refusal
+          // error (note that we use the follower version, since we have
+          // lost leadership):
+          if (findRefusal(requests)) {
+            return OperationResult(
+                TRI_ERROR_CLUSTER_SHARD_FOLLOWER_REFUSES_OPERATION);
+          }
           // we drop all followers that were not successful:
           for (size_t i = 0; i < followers->size(); ++i) {
             bool replicationWorked =
