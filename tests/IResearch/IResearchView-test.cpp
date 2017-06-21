@@ -447,7 +447,85 @@ SECTION("test_query") {
   // FIXME TODO implement
 }
 
-SECTION("test_update") {
+SECTION("test_update_overwrite") {
+  auto createJson = arangodb::velocypack::Parser::fromJson("{ \
+    \"name\": \"testView\", \
+    \"type\": \"iresearch\" \
+  }");
+
+  // modify meta params
+  {
+    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "testVocbase");
+    auto logicalView = vocbase.createView(createJson->slice(), 0);
+    CHECK((false == !logicalView));
+    auto view = logicalView->getImplementation();
+    CHECK((false == !view));
+
+    // initial update (overwrite)
+    {
+      arangodb::iresearch::IResearchViewMeta expectedMeta;
+      auto updateJson = arangodb::velocypack::Parser::fromJson("{ \
+        \"locale\": \"en\", \
+        \"name\": \"<invalid and ignored>\", \
+        \"threadsMaxIdle\": 10, \
+        \"threadsMaxTotal\": 20 \
+      }");
+
+      expectedMeta._name = "testView";
+      expectedMeta._locale = irs::locale_utils::locale("en", true);
+      expectedMeta._threadsMaxIdle = 10;
+      expectedMeta._threadsMaxTotal = 20;
+      CHECK((view->updateProperties(updateJson->slice(), false, false).ok()));
+
+      arangodb::velocypack::Builder builder;
+
+      builder.openObject();
+      view->getPropertiesVPack(builder);
+      builder.close();
+
+      auto slice = builder.slice();
+      arangodb::iresearch::IResearchViewMeta meta;
+      std::string error;
+
+      CHECK((10U == slice.length()));
+      CHECK((meta.init(slice, error) && expectedMeta == meta));
+
+      auto tmpSlice = slice.get("links");
+      CHECK((true == tmpSlice.isObject() && 0 == tmpSlice.length()));
+    }
+
+    // subsequent update (overwrite)
+    {
+      arangodb::iresearch::IResearchViewMeta expectedMeta;
+      auto updateJson = arangodb::velocypack::Parser::fromJson("{ \
+        \"locale\": \"ru\", \
+        \"name\": \"<invalid and ignored>\" \
+      }");
+
+      expectedMeta._name = "testView";
+      expectedMeta._locale = irs::locale_utils::locale("ru", true);
+      CHECK((view->updateProperties(updateJson->slice(), false, false).ok()));
+
+      arangodb::velocypack::Builder builder;
+
+      builder.openObject();
+      view->getPropertiesVPack(builder);
+      builder.close();
+
+      auto slice = builder.slice();
+      arangodb::iresearch::IResearchViewMeta meta;
+      std::string error;
+
+      CHECK((10U == slice.length()));
+      CHECK((meta.init(slice, error) && expectedMeta == meta));
+
+      auto tmpSlice = slice.get("links");
+      CHECK((true == tmpSlice.isObject() && 0 == tmpSlice.length()));
+    }
+  }
+}
+
+SECTION("test_update_partial") {
   auto createJson = arangodb::velocypack::Parser::fromJson("{ \
     \"name\": \"testView\", \
     \"type\": \"iresearch\" \

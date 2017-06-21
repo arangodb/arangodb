@@ -2111,7 +2111,7 @@ arangodb::Result IResearchView::updateProperties(
       );
     }
 
-    if (!meta.init(namedJson.slice(), error, _meta, &mask)) {
+    if (!meta.init(namedJson.slice(), error, partialUpdate ? _meta : IResearchViewMeta::DEFAULT(), &mask)) {
       return arangodb::Result(TRI_ERROR_BAD_PARAMETER, std::move(error));
     }
 
