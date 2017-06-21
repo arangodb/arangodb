@@ -342,7 +342,7 @@ AuthUserEntry AuthUserEntry::fromDocument(VPackSlice const& slice) {
   entry._passwordChangeToken = passwordTokenSlice.copyString();
   entry._changePassword = mustChange;
   entry._authContexts = std::move(authContexts);
-  
+
   // ensure the root user always has the right to change permissions
   if (entry._username == "root") {
     entry.grantDatabase(StaticStrings::SystemDatabase, AuthLevel::RW);
@@ -424,8 +424,8 @@ VPackBuilder AuthUserEntry::toVPackBuilder() const {
     for (auto const& dbCtxPair : _authContexts) {
       TRI_ASSERT(dbCtxPair.first != StaticStrings::SystemDatabase ||
                  dbCtxPair.second->databaseAuthLevel() ==
-                  dbCtxPair.second->systemAuthLevel());
-      
+                     dbCtxPair.second->systemAuthLevel());
+
       VPackObjectBuilder o3(&builder, dbCtxPair.first, true);
       {  // permissions
         VPackObjectBuilder o4(&builder, "permissions", true);
@@ -475,7 +475,8 @@ void AuthUserEntry::grantDatabase(std::string const& dbname, AuthLevel level) {
 }
 
 void AuthUserEntry::grantCollection(std::string const& dbname,
-                                    std::string const& coll, AuthLevel level) {
+                                    std::string const& coll,
+                                    AuthLevel const level) {
   if (dbname.empty()) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
                                    "Cannot set rights for empty db name");
@@ -494,9 +495,16 @@ void AuthUserEntry::grantCollection(std::string const& dbname,
   if (it != _authContexts.end()) {
     it->second->_collectionAccess[coll] = level;
   } else {
-    _authContexts.emplace(dbname,
-                          std::make_shared<AuthContext>(
-                              level, std::unordered_map<std::string, AuthLevel>(
-                                         {{coll, level}})));
+    // do not overwrite wildcard access to a database, by granting more
+    // specific rights to a collection in a specific db
+    AuthLevel dbLevel = level;
+    it = _authContexts.find("*");
+    if (it != _authContexts.end()) {
+      dbLevel = it->second->databaseAuthLevel();
+    }
+    _authContexts.emplace(
+        dbname, std::make_shared<AuthContext>(
+                    dbLevel, std::unordered_map<std::string, AuthLevel>(
+                                 {{coll, level}})));
   }
 }
