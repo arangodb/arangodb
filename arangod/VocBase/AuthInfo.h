@@ -81,7 +81,7 @@ class AuthInfo {
   /// Tells coordinator to reload his data. Only call in HearBeat thread
   void outdate() { _outdated = true; }
 
-  /// Trigger eventual reload on all coordinators, user facing API call
+  /// Trigger eventual reload, user facing API call
   void reloadAllUsers();
 
   VPackBuilder allUsers();
@@ -134,7 +134,7 @@ class AuthInfo {
  private:
   basics::ReadWriteLock _authInfoLock;
   basics::ReadWriteLock _authJwtLock;
-  Mutex _queryLock;
+  Mutex _loadFromDBLock;
   std::atomic<bool> _outdated;
 
   std::unordered_map<std::string, AuthUserEntry> _authInfo;

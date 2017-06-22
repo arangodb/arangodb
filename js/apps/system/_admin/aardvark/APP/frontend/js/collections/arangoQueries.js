@@ -1,6 +1,6 @@
 /* jshint browser: true */
 /* jshint unused: false */
-/* global Backbone, frontendConfig, window, ArangoQuery, $, _, arangoHelper */
+/* global Backbone, frontendConfig, window, ArangoQuery, $, arangoHelper */
 (function () {
   'use strict';
 
@@ -38,15 +38,14 @@
         this.activeUser = 'root';
       }
 
-      _.each(response.result, function (val) {
-        if (val.user === self.activeUser) {
-          try {
-            if (val.extra.queries) {
-              toReturn = val.extra.queries;
-            }
-          } catch (e) {}
-        }
-      });
+      if (response.user === self.activeUser) {
+        try {
+          if (response.extra.queries) {
+            toReturn = response.extra.queries;
+          }
+        } catch (e) {}
+      }
+
       return toReturn;
     },
 

@@ -30,8 +30,10 @@
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ClusterMethods.h"
+#include "GeneralServer/AuthenticationFeature.h"
 #include "Indexes/Index.h"
 #include "Indexes/IndexFactory.h"
+#include "RestServer/FeatureCacheFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
 #include "Transaction/Helpers.h"
@@ -207,13 +209,14 @@ static void CreateVocBase(v8::FunctionCallbackInfo<v8::Value> const& args,
   if (args.Length() < 1 || args.Length() > 4) {
     TRI_V8_THROW_EXCEPTION_USAGE("_create(<name>, <properties>, <type>, <options>)");
   }
-
   if (TRI_GetOperationModeServer() == TRI_VOCBASE_MODE_NO_CREATE) {
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_READ_ONLY);
   }
   
-  if (ExecContext::CURRENT_EXECCONTEXT != nullptr) {
-    AuthLevel level = ExecContext::CURRENT_EXECCONTEXT->authContext()->databaseAuthLevel();
+  AuthenticationFeature* auth = FeatureCacheFeature::instance()->authenticationFeature();
+  if (auth->isActive() && ExecContext::CURRENT_EXECCONTEXT != nullptr) {
+    AuthLevel level = auth->canUseDatabase(ExecContext::CURRENT_EXECCONTEXT->user(),
+                                           vocbase->name());
     if (level != AuthLevel::RW) {
       TRI_V8_THROW_EXCEPTION(TRI_ERROR_FORBIDDEN);
     }
@@ -228,7 +231,6 @@ static void CreateVocBase(v8::FunctionCallbackInfo<v8::Value> const& args,
       collectionType = TRI_COL_TYPE_DOCUMENT;
     }
   }
-
 
   PREVENT_EMBEDDED_TRANSACTION();
 
@@ -263,6 +265,7 @@ static void CreateVocBase(v8::FunctionCallbackInfo<v8::Value> const& args,
 
   infoSlice = builder.slice();
 
+  v8::Handle<v8::Value> result;
   if (ServerState::instance()->isCoordinator()) {
     bool createWaitsForSyncReplication = application_features::ApplicationServer::getFeature<ClusterFeature>("Cluster")->createWaitsForSyncReplication();
 
@@ -278,21 +281,17 @@ static void CreateVocBase(v8::FunctionCallbackInfo<v8::Value> const& args,
         ClusterMethods::createCollectionOnCoordinator(
           collectionType, vocbase, infoSlice, false,
           createWaitsForSyncReplication);
-    TRI_V8_RETURN(WrapCollection(isolate, col.release()));
+    
+    result = WrapCollection(isolate, col.release());
   }
-
+  
   try {
     arangodb::LogicalCollection const* collection =
         vocbase->createCollection(infoSlice);
 
     TRI_ASSERT(collection != nullptr);
-
-    v8::Handle<v8::Value> result = WrapCollection(isolate, collection);
-    if (result.IsEmpty()) {
-      TRI_V8_THROW_EXCEPTION_MEMORY();
-    }
-
-    TRI_V8_RETURN(result);
+    result = WrapCollection(isolate, collection);
+    
   } catch (basics::Exception const& ex) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(ex.code(), ex.what());
   } catch (std::exception const& ex) {
@@ -301,6 +300,19 @@ static void CreateVocBase(v8::FunctionCallbackInfo<v8::Value> const& args,
     TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
                                    "cannot create collection");
   }
+  
+  if (result.IsEmpty()) {
+    TRI_V8_THROW_EXCEPTION_MEMORY();
+  }
+  // in case of success we grant the creating user RW access
+  if (auth->isActive() && ExecContext::CURRENT_EXECCONTEXT != nullptr) {
+    // this should not fail, we can not get here without database RW access
+    auth->authInfo()->updateUser(ExecContext::CURRENT_EXECCONTEXT->user(),
+                                 [&](AuthUserEntry& entry) {
+      entry.grantCollection(vocbase->name(), name, AuthLevel::RW);
+    });
+  }
+  TRI_V8_RETURN(result);
 }
 
 ////////////////////////////////////////////////////////////////////////////////

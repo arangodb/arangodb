@@ -37,6 +37,7 @@
 #include "Basics/conversions.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ClusterMethods.h"
+#include "GeneralServer/AuthenticationFeature.h"
 #include "Indexes/Index.h"
 #include "Cluster/FollowerInfo.h"
 #include "Pregel/AggregatorHandler.h"
@@ -44,6 +45,7 @@
 #include "Pregel/PregelFeature.h"
 #include "Pregel/Worker.h"
 #include "RestServer/DatabaseFeature.h"
+#include "RestServer/FeatureCacheFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/PhysicalCollection.h"
 #include "StorageEngine/StorageEngine.h"
@@ -953,7 +955,6 @@ static void JS_DropVocbaseCol(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   if (ExecContext::CURRENT_EXECCONTEXT != nullptr) {
     AuthLevel level = ExecContext::CURRENT_EXECCONTEXT->authContext()->databaseAuthLevel();
-
     if (level != AuthLevel::RW) {
       TRI_V8_THROW_EXCEPTION(TRI_ERROR_FORBIDDEN);
     }
@@ -1629,6 +1630,13 @@ static void JS_RenameVocbaseCol(
   if (ServerState::instance()->isCoordinator()) {
     // renaming a collection in a cluster is unsupported
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_CLUSTER_UNSUPPORTED);
+  }
+  
+  if (ExecContext::CURRENT_EXECCONTEXT != nullptr) {
+    AuthLevel level = ExecContext::CURRENT_EXECCONTEXT->authContext()->databaseAuthLevel();
+    if (level != AuthLevel::RW) {
+      TRI_V8_THROW_EXCEPTION(TRI_ERROR_FORBIDDEN);
+    }
   }
 
   std::string const name = TRI_ObjectToString(args[0]);
@@ -2719,10 +2727,12 @@ static void JS_TruncateVocbaseCol(
     TRI_V8_THROW_EXCEPTION_INTERNAL("cannot extract collection");
   }
 
-  if (ExecContext::CURRENT_EXECCONTEXT != nullptr) {
+  AuthenticationFeature* auth = FeatureCacheFeature::instance()->authenticationFeature();
+  if (auth->isEnabled() && ExecContext::CURRENT_EXECCONTEXT != nullptr) {
     CollectionNameResolver resolver(collection->vocbase());
-    AuthLevel level = ExecContext::CURRENT_EXECCONTEXT->authContext()->collectionAuthLevel(resolver.getCollectionNameCluster(collection->cid()));
-
+    std::string const cName = resolver.getCollectionNameCluster(collection->cid());
+    AuthLevel level = auth->canUseCollection(ExecContext::CURRENT_EXECCONTEXT->user(),
+                                             collection->vocbase()->name(), cName);
     if (level != AuthLevel::RW) {
       TRI_V8_THROW_EXCEPTION(TRI_ERROR_FORBIDDEN);
     }
@@ -2995,6 +3005,7 @@ static void JS_CollectionsVocbase(
     return StringUtils::tolower(lhs->name()) < StringUtils::tolower(rhs->name());
   });
   
+  AuthenticationFeature* auth = FeatureCacheFeature::instance()->authenticationFeature();
   bool error = false;
   
   // already create an array of the correct size
@@ -3003,10 +3014,10 @@ static void JS_CollectionsVocbase(
   size_t x = 0;
   for (size_t i = 0; i < n; ++i) {
     auto collection = colls[i];
-    
-    if (ExecContext::CURRENT_EXECCONTEXT != nullptr) {
-      AuthLevel level = ExecContext::CURRENT_EXECCONTEXT->authContext()
-                                    ->collectionAuthLevel(collection->name());
+  
+    if (auth->isActive() && ExecContext::CURRENT_EXECCONTEXT != nullptr) {
+      AuthLevel level = auth->canUseCollection(ExecContext::CURRENT_EXECCONTEXT->user(),
+                             vocbase->name(), collection->name());
       if (level == AuthLevel::NONE) {
         continue;
       }

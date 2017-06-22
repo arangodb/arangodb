@@ -432,5 +432,11 @@ arangodb::Result Database::drop(TRI_vocbase_t* systemVocbase,
                             "reloadRouting')"),
         TRI_V8_ASCII_STRING("reload routing"), false);
   }
+  
+  auto auth = application_features::ApplicationServer::getFeature<AuthenticationFeature>("Authentication");
+  if (auth->isActive()) {
+    auth->authInfo()->reloadAllUsers();
+  }
+  
   return Result();
 }

@@ -28,8 +28,8 @@
 #include "Aql/QueryString.h"
 
 #include "Basics/ReadLocker.h"
-#include "Basics/VelocyPackHelper.h"
 #include "Basics/ReadUnlocker.h"
+#include "Basics/VelocyPackHelper.h"
 #include "Basics/WriteLocker.h"
 #include "Basics/tri-strings.h"
 #include "Cluster/ServerState.h"
@@ -122,6 +122,12 @@ static std::shared_ptr<VPackBuilder> QueryAllUsers(
     LOG_TOPIC(DEBUG, arangodb::Logger::FIXME) << "system database is unknown";
     THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
   }
+  
+  // we cannot set this execution context, otherwise the transaction
+  // will ask us again for permissions and we get a deadlock
+  ExecContext* oldExe = ExecContext::CURRENT_EXECCONTEXT;
+  ExecContext::CURRENT_EXECCONTEXT = nullptr;
+  TRI_DEFER(ExecContext::CURRENT_EXECCONTEXT = oldExe);
 
   std::string const queryStr("FOR user IN _users RETURN user");
   auto emptyBuilder = std::make_shared<VPackBuilder>();
@@ -159,6 +165,12 @@ static VPackBuilder QueryUser(aql::QueryRegistry* queryRegistry,
   if (vocbase == nullptr) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_FAILED, "_system db is unknown");
   }
+  
+  // we cannot set this execution context, otherwise the transaction
+  // will ask us again for permissions and we get a deadlock
+  ExecContext* oldExe = ExecContext::CURRENT_EXECCONTEXT;
+  ExecContext::CURRENT_EXECCONTEXT = nullptr;
+  TRI_DEFER(ExecContext::CURRENT_EXECCONTEXT = oldExe);
 
   std::string const queryStr("FOR u IN _users FILTER u.user == @name RETURN u");
   auto emptyBuilder = std::make_shared<VPackBuilder>();
@@ -213,7 +225,8 @@ static void ConvertLegacyFormat(VPackSlice doc, VPackBuilder& result) {
   result.add("extra", extra.isNone() ? VPackSlice::emptyObjectSlice() : extra);
 }
 
-// private, need to write lock _authInfoLock
+// private, will acquire _authInfoLock in write-mode and release it. Lock
+// _loadFromDBLock before calling
 void AuthInfo::loadFromDB() {
   auto role = ServerState::instance()->getRole();
   if (role != ServerState::ROLE_SINGLE &&
@@ -228,16 +241,16 @@ void AuthInfo::loadFromDB() {
         FeatureCacheFeature::instance()->authenticationFeature()->getHandler());
   }
 
-  insertInitial();
-
-  MUTEX_LOCKER(locker, _queryLock);
-  TRI_ASSERT(_queryRegistry != nullptr);
-  if (!_outdated) {
-    return;
+  {
+    WRITE_LOCKER(writeLocker, _authInfoLock);
+    insertInitial();
   }
+
+  TRI_ASSERT(_queryRegistry != nullptr);
   std::shared_ptr<VPackBuilder> builder = QueryAllUsers(_queryRegistry);
   if (builder) {
     VPackSlice usersSlice = builder->slice();
+    WRITE_LOCKER(writeLocker, _authInfoLock);
     if (usersSlice.length() == 0) {
       insertInitial();
     } else {
@@ -270,6 +283,7 @@ void AuthInfo::insertInitial() {
 }
 
 // private, must be called with _authInfoLock in write mode
+// this method can only be called by users with access to the _syste collection
 Result AuthInfo::storeUserInternal(AuthUserEntry const& entry, bool replace) {
   VPackBuilder data = entry.toVPackBuilder();
 
@@ -308,7 +322,6 @@ Result AuthInfo::storeUserInternal(AuthUserEntry const& entry, bool replace) {
 VPackBuilder AuthInfo::allUsers() {
   std::shared_ptr<VPackBuilder> users;
   {
-    MUTEX_LOCKER(locker, _queryLock);
     TRI_ASSERT(_queryRegistry != nullptr);
     users = QueryAllUsers(_queryRegistry);
   }
@@ -323,8 +336,10 @@ VPackBuilder AuthInfo::allUsers() {
   return result;
 }
 
+/// Trigger eventual reload, user facing API call
 void AuthInfo::reloadAllUsers() {
   if (!ServerState::instance()->isCoordinator()) {
+    // will reload users on next suitable query
     _outdated = true;
     return;
   }
@@ -366,10 +381,14 @@ Result AuthInfo::storeUser(bool replace, std::string const& user,
   if (user.empty()) {
     return TRI_ERROR_USER_INVALID_NAME;
   }
-  WRITE_LOCKER(writeGuard, _authInfoLock);
   if (_outdated) {
-    loadFromDB();
+    MUTEX_LOCKER(locker, _loadFromDBLock);
+    if (_outdated) {
+      loadFromDB();
+    }
   }
+
+  WRITE_LOCKER(writeGuard, _authInfoLock);
   auto const& it = _authInfo.find(user);
   if (replace && it == _authInfo.end()) {
     return TRI_ERROR_USER_NOT_FOUND;
@@ -398,6 +417,13 @@ static Result UpdateUser(VPackSlice const& user) {
   if (vocbase == nullptr) {
     return Result(TRI_ERROR_INTERNAL);
   }
+  
+  // we cannot set this execution context, otherwise the transaction
+  // will ask us again for permissions and we get a deadlock
+  ExecContext* oldExe = ExecContext::CURRENT_EXECCONTEXT;
+  ExecContext::CURRENT_EXECCONTEXT = nullptr;
+  TRI_DEFER(ExecContext::CURRENT_EXECCONTEXT = oldExe);
+  
   std::shared_ptr<transaction::Context> ctx(
       new transaction::StandaloneContext(vocbase));
   SingleCollectionTransaction trx(ctx, TRI_COL_NAME_USERS,
@@ -414,15 +440,21 @@ static Result UpdateUser(VPackSlice const& user) {
 
 Result AuthInfo::updateUser(std::string const& user,
                             std::function<void(AuthUserEntry&)> const& func) {
-  WRITE_LOCKER(readLocker, _authInfoLock);
-  auto it = _authInfo.find(user);
-  if (it == _authInfo.end()) {
-    return Result(TRI_ERROR_USER_NOT_FOUND);
+  if (user.empty()) {
+    return TRI_ERROR_USER_NOT_FOUND;
   }
-  TRI_ASSERT(!it->second.key().empty());
-  func(it->second);
+  VPackBuilder data;
+  {  // we require an consisten view on the user object
+    WRITE_LOCKER(readLocker, _authInfoLock);
+    auto it = _authInfo.find(user);
+    if (it == _authInfo.end()) {
+      return Result(TRI_ERROR_USER_NOT_FOUND);
+    }
+    TRI_ASSERT(!it->second.key().empty());
+    func(it->second);
+    data = it->second.toVPackBuilder();
+  }
 
-  VPackBuilder data = it->second.toVPackBuilder();
   Result r = UpdateUser(data.slice());
 
   // we need to reload data after the next callback
@@ -431,7 +463,6 @@ Result AuthInfo::updateUser(std::string const& user,
 }
 
 VPackBuilder AuthInfo::getUser(std::string const& user) {
-  MUTEX_LOCKER(locker, _queryLock);
   VPackBuilder doc = QueryUser(_queryRegistry, user);
   VPackBuilder result;
   if (!doc.isEmpty()) {
@@ -474,7 +505,6 @@ Result AuthInfo::removeUser(std::string const& user) {
 }
 
 VPackBuilder AuthInfo::getConfigData(std::string const& username) {
-  MUTEX_LOCKER(locker, _queryLock);
   VPackBuilder bb = QueryUser(_queryRegistry, username);
   return VPackBuilder(bb.slice().get("configData"));
 }
@@ -497,7 +527,6 @@ Result AuthInfo::setConfigData(std::string const& user,
 }
 
 VPackBuilder AuthInfo::getUserData(std::string const& username) {
-  MUTEX_LOCKER(locker, _queryLock);
   VPackBuilder bb = QueryUser(_queryRegistry, username);
   return VPackBuilder(bb.slice().get("userData"));
 }
@@ -522,19 +551,20 @@ Result AuthInfo::setUserData(std::string const& user,
 AuthResult AuthInfo::checkPassword(std::string const& username,
                                    std::string const& password) {
   if (_outdated) {
-    WRITE_LOCKER(writeGuard, _authInfoLock);
+    MUTEX_LOCKER(locker, _loadFromDBLock);
     if (_outdated) {
       loadFromDB();
     }
   }
-  
+
   READ_LOCKER(JobGuard, _authInfoLock);
   AuthResult result(username);
   auto it = _authInfo.find(username);
 
   if (it == _authInfo.end() || (it->second.source() == AuthSource::LDAP)) {
     TRI_ASSERT(_authenticationHandler != nullptr);
-    AuthenticationResult authResult = _authenticationHandler->authenticate(username, password);
+    AuthenticationResult authResult =
+        _authenticationHandler->authenticate(username, password);
     if (!authResult.ok()) {
       return result;
     }
@@ -543,10 +573,10 @@ AuthResult AuthInfo::checkPassword(std::string const& username,
     if (authResult.source() == AuthSource::LDAP) {
       READ_UNLOCKER(unlock, _authInfoLock);
       WRITE_LOCKER(writeGuard, _authInfoLock);
-      
+
       AuthUserEntry entry =
-      AuthUserEntry::newUser(username, password, AuthSource::LDAP);
-      
+          AuthUserEntry::newUser(username, password, AuthSource::LDAP);
+
       it = _authInfo.find(username);
       if (it != _authInfo.end()) {
         it->second = entry;
@@ -577,7 +607,7 @@ AuthLevel AuthInfo::canUseDatabase(std::string const& username,
 }
 
 AuthLevel AuthInfo::canUseCollection(std::string const& username,
-                                   std::string const& dbname,
+                                     std::string const& dbname,
                                      std::string const& coll) {
   return getAuthContext(username, dbname)->collectionAuthLevel(coll);
 }
@@ -586,7 +616,7 @@ AuthLevel AuthInfo::canUseCollection(std::string const& username,
 AuthResult AuthInfo::checkAuthentication(AuthType authType,
                                          std::string const& secret) {
   if (_outdated) {
-    WRITE_LOCKER(writeGuard, _authInfoLock);
+    MUTEX_LOCKER(locker, _loadFromDBLock);
     if (_outdated) {
       loadFromDB();
     }
@@ -886,7 +916,7 @@ std::string AuthInfo::generateJwt(VPackBuilder const& payload) {
 std::shared_ptr<AuthContext> AuthInfo::getAuthContext(
     std::string const& username, std::string const& database) {
   if (_outdated) {
-    WRITE_LOCKER(writeGuard, _authInfoLock);
+    MUTEX_LOCKER(locker, _loadFromDBLock);
     if (_outdated) {
       loadFromDB();
     }
