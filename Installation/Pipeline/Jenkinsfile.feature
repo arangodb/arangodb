@@ -1,7 +1,5 @@
 //  -*- mode: groovy-mode
 
-env.GZIP = '--fast'
-
 properties([
     parameters([
         booleanParam(
@@ -221,7 +219,7 @@ def stashSourceCode() {
     sh 'rm -f source.*'
 
     if (buildLinux || buildMac) {
-        sh 'tar -c -z -f source.tar.gz --exclude "source.*" --exclude "*tmp" --exclude ".git" *'
+        sh 'tar -c -f source.tar --exclude "source.*" --exclude "*tmp" --exclude ".git" *'
         stash includes: 'source.*', name: 'sourceTar'
     }
 
@@ -240,7 +238,7 @@ def unstashSourceCode(os) {
 
     if (os == 'linux' || os == 'mac') {
         unstash 'sourceTar'
-        sh 'tar -x -z -p -f source.tar.gz'
+        sh 'tar -x -p -f source.tar'
         sh 'mkdir -p artefacts'
     }
     else if (os == 'windows') {
@@ -273,19 +271,19 @@ def unstashBinaries(edition, os) {
 def buildEdition(edition, os) {
     try {
         if (os == 'linux' || os == 'mac') {
-            def tarfile = 'build-' + edition + '-' + os + '.tar.gz'
+            def tarfile = 'build-' + edition + '-' + os + '.tar'
 
             cache(maxCacheSize: 50000, caches: [
                 [$class: 'ArbitraryFileCache',
                  includes: tarfile,
                  path: 'artefacts']]) {
                     if (!cleanBuild && fileExists('artefacts/' + tarfile)) {
-                        sh 'tar -x -z -p -f artefacts/' + tarfile
+                        sh 'tar -x -p -f artefacts/' + tarfile
                     }
 
                     sh 'rm -f artefacts/' + tarfile
                     sh './Installation/Pipeline/build_' + edition + '_' + os + '.sh 16'
-                    sh 'tar -c -z -f artefacts/' + tarfile + ' build-' + edition
+                    sh 'tar -c -f artefacts/' + tarfile + ' build-' + edition
             }
         }
         else if (os == 'windows') {
