@@ -665,7 +665,7 @@ describe('Cluster sync', function() {
       };
       let errors = cluster.executePlanForCollections(plan);
       db._useDatabase('test');
-      expect(db._collection('s100001').isLeader()).to.equal(true);
+      expect(db._collection('s100001').getTheLeader()).to.equal("");
     });
     it('should be following a leader when ordered to be follower', function() {
       let plan = {
@@ -713,7 +713,7 @@ describe('Cluster sync', function() {
       };
       let errors = cluster.executePlanForCollections(plan);
       db._useDatabase('test');
-      expect(db._collection('s100001').isLeader()).to.equal(false);
+      expect(db._collection('s100001').getTheLeader()).to.equal("the leader-leader");
     });
     it('should be able to switch from leader to follower', function() {
       let plan = {
@@ -762,7 +762,7 @@ describe('Cluster sync', function() {
       plan.test['100001'].shards['s100001'].unshift('der-hund');
       cluster.executePlanForCollections(plan);
       db._useDatabase('test');
-      expect(db._collection('s100001').isLeader()).to.equal(false);
+      expect(db._collection('s100001').getTheLeader()).to.equal("der-hund");
     });
     it('should be able to switch from follower to leader', function() {
       let plan = {
@@ -812,7 +812,7 @@ describe('Cluster sync', function() {
       plan.test['100001'].shards['s100001'] = ["repltest"];
       cluster.executePlanForCollections(plan);
       db._useDatabase('test');
-      expect(db._collection('s100001').isLeader()).to.equal(true);
+      expect(db._collection('s100001').getTheLeader()).to.equal("");
     });
     it('should kill any unplanned server from current', function() {
       let collection = db._create('s100001');
