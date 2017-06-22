@@ -280,19 +280,19 @@ def unstashBinaries(edition, os) {
 def buildEdition(edition, os) {
     try {
         if (os == 'linux' || os == 'mac') {
-            def tarfile = 'build-' + edition + '-' + os + '.tar'
+            def tarfile = 'build-' + edition + '-' + os + '.tar.gz'
 
             cache(maxCacheSize: 50000, caches: [
                 [$class: 'ArbitraryFileCache',
                  includes: tarfile,
                  path: 'artefacts']]) {
                     if (!cleanBuild && fileExists('artefacts/' + tarfile)) {
-                        sh 'tar -x -p -f artefacts/' + tarfile
+                        sh 'tar -x --fast -z -p -f artefacts/' + tarfile
                     }
 
                     sh 'rm -f artefacts/' + tarfile
                     sh './Installation/Pipeline/build_' + edition + '_' + os + '.sh 64'
-                    sh 'tar -c -f artefacts/' + tarfile + ' build-' + edition
+                    sh 'tar -c -x -f artefacts/' + tarfile + ' build-' + edition
             }
         }
         else if (os == 'windows') {
