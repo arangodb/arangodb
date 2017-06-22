@@ -496,12 +496,11 @@ stage('checkout') {
 stage('build') {
     parallel(
         'build-community-linux':    { buildStep('linux',   'community',  false) },
-        'build-enterprise-linux':   { buildStep('linux',   'enterprise', false) },
-
         'build-community-mac':      { buildStep('mac',     'community',  false) },
-        'build-enterprise-mac':     { buildStep('mac',     'enterprise', true) },
-
         'build-community-windows':  { buildStep('windows', 'community',  false) },
+
+        'build-enterprise-linux':   { buildStep('linux',   'enterprise', false) },
+        'build-enterprise-mac':     { buildStep('mac',     'enterprise', true) },
         'build-enterprise-windows': { buildStep('windows', 'enterprise', true) },
     )
 }
@@ -509,15 +508,13 @@ stage('build') {
 stage('test') {
     parallel(
         'test-cluster-community-mmfiles-linux':        { testStep('community',  'linux', 'cluster',      'mmfiles', false) },
-        'test-cluster-enterprise-mmfiles-linux':       { testStep('enterprise', 'linux', 'cluster',      'mmfiles', true) },
-
         'test-cluster-community-rocksdb-linux':        { testStep('community',  'linux', 'cluster',      'rocksdb', true) },
+        'test-cluster-enterprise-mmfiles-linux':       { testStep('enterprise', 'linux', 'cluster',      'mmfiles', true) },
         'test-cluster-enterprise-rocksdb-linux':       { testStep('enterprise', 'linux', 'cluster',      'rocksdb', false) },
 
         'test-singleserver-community-mmfiles-linux':   { testStep('community',  'linux', 'singleserver', 'mmfiles', true) },
-        'test-singleserver-enterprise-mmfiles-linux':  { testStep('enterprise', 'linux', 'singleserver', 'mmfiles', false) },
-
         'test-singleserver-community-rocksdb-linux':   { testStep('community',  'linux', 'singleserver', 'rocksdb', false) },
+        'test-singleserver-enterprise-mmfiles-linux':  { testStep('enterprise', 'linux', 'singleserver', 'mmfiles', false) },
         'test-singleserver-enterprise-rocksdb-linux':  { testStep('enterprise', 'linux', 'singleserver', 'rocksdb', true) },
 
         'test-resilience-community-rocksdb': { testResilienceStep('linux', 'community', 'rocksdb', false) },
