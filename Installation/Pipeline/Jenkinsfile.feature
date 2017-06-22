@@ -280,20 +280,23 @@ def unstashBinaries(edition, os) {
 def buildEdition(edition, os) {
     try {
         if (os == 'linux' || os == 'mac') {
-            def tarfile = 'build-' + edition + '-' + os + '.tar'
+/*
+            def tarfile = 'build-' + edition + '-' + os + '.tar.gz'
 
             cache(maxCacheSize: 50000, caches: [
                 [$class: 'ArbitraryFileCache',
                  includes: tarfile,
                  path: 'artefacts']]) {
                     if (!cleanBuild && fileExists('artefacts/' + tarfile)) {
-                        sh 'tar -x -p -f artefacts/' + tarfile
+                        sh 'tar -x -z -p -f artefacts/' + tarfile
                     }
 
                     sh 'rm -f artefacts/' + tarfile
                     sh './Installation/Pipeline/build_' + edition + '_' + os + '.sh 64'
-                    sh 'tar -c -f artefacts/' + tarfile + ' build-' + edition
+                    sh 'GZIP=--fast tar -c -z -f artefacts/' + tarfile + ' build-' + edition
             }
+*/
+            sh './Installation/Pipeline/build_' + edition + '_' + os + '.sh 64'
         }
         else if (os == 'windows') {
             if (cleanBuild) {
@@ -448,7 +451,7 @@ def testEditionResilience(edition, os, engine) {
     sh "ls -l"
 }
 
-def testResilienceStep(os, edition, engine) {
+def testResilienceStep(os, edition, engine, full) {
     if (! runResilience) {
         echo "Not running resilience tests"
         return
@@ -506,13 +509,6 @@ stage('build') {
     parallel(
         'build-community-linux': {
             buildStep('linux', 'community', false)
-
-            parallel(
-                'test-singleserver-community-mmfiles-linux':   { testStep('community',  'linux', 'singleserver', 'mmfiles', true) },
-                'test-singleserver-community-rocksdb-linux':   { testStep('community',  'linux', 'singleserver', 'rocksdb', false) },
-                'test-cluster-community-mmfiles-linux':        { testStep('community',  'linux', 'cluster',      'mmfiles', false) },
-                'test-cluster-community-rocksdb-linux':        { testStep('community',  'linux', 'cluster',      'rocksdb', true) }
-            )
         },
 
         'build-community-mac':      { buildStep('mac',     'community',  false) },
@@ -526,11 +522,14 @@ stage('build') {
 
 stage('test') {
     parallel(
-        'test-cluster-enterprise-mmfiles-linux':       { testStep('enterprise', 'linux', 'cluster',      'mmfiles', true) },
+        'test-cluster-community-mmfiles-linux':        { testStep('community',  'linux', 'cluster',      'mmfiles', false) },
+        'test-cluster-community-rocksdb-linux':        { testStep('community',  'linux', 'cluster',      'rocksdb', true)  },
+        'test-cluster-enterprise-mmfiles-linux':       { testStep('enterprise', 'linux', 'cluster',      'mmfiles', true)  },
         'test-cluster-enterprise-rocksdb-linux':       { testStep('enterprise', 'linux', 'cluster',      'rocksdb', false) },
-
+        'test-singleserver-community-mmfiles-linux':   { testStep('community',  'linux', 'singleserver', 'mmfiles', true)  },
+        'test-singleserver-community-rocksdb-linux':   { testStep('community',  'linux', 'singleserver', 'rocksdb', false) },
         'test-singleserver-enterprise-mmfiles-linux':  { testStep('enterprise', 'linux', 'singleserver', 'mmfiles', false) },
-        'test-singleserver-enterprise-rocksdb-linux':  { testStep('enterprise', 'linux', 'singleserver', 'rocksdb', true) },
+        'test-singleserver-enterprise-rocksdb-linux':  { testStep('enterprise', 'linux', 'singleserver', 'rocksdb', true)  },
 
         'test-resilience-community-rocksdb': { testResilienceStep('linux', 'community', 'rocksdb', false) },
         'test-resilience-community-mmfiles': { testResilienceStep('linux', 'community', 'mmfiles', false) },
