@@ -373,7 +373,7 @@ bool RestDocumentHandler::modifyDocument(bool isPatch) {
 
   if ((!isArrayCase && !body.isObject()) || (isArrayCase && !body.isArray())) {
     generateTransactionError(collectionName,
-                             TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID, "");
+        OperationResult(TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID), "");
     return false;
   }
 
