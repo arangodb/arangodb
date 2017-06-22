@@ -27,6 +27,16 @@ properties([
             description: 'build Windows',
             name: 'buildWindows'
         ),
+        booleanParam(
+            defaultValue: false,
+            description: 'run tests',
+            name: 'runTests'
+        ),
+        booleanParam(
+            defaultValue: false,
+            description: 'run resilience',
+            name: 'runResilience'
+        )
     ])
 ])
 
@@ -45,9 +55,18 @@ buildMac = params.buildMac
 // build windows
 buildWindows = params.buildWindows
 
+// run tests
+runTests = params.runTests
+
+// run tests
+runResilience = params.runResilience
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                             CONSTANTS AND HELPERS
 // -----------------------------------------------------------------------------
+
+// github repositiory for resilience tests
+resilienceRepo = 'https://github.com/arangodb/resilience-tests'
 
 // github repositiory for enterprise version
 enterpriseRepo = 'https://github.com/arangodb/enterprise'
@@ -64,7 +83,7 @@ def PowerShell(psCmd) {
 }
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                                           SCRIPTS
+// --SECTION--                                                       SCRIPTS SCM
 // -----------------------------------------------------------------------------
 
 def checkoutCommunity() {
@@ -118,6 +137,21 @@ def checkoutEnterprise() {
     }
 
     sh 'cd enterprise && git clean -f -d -x'
+}
+
+def checkoutResilience() {
+    checkout(
+        changelog: false,
+        poll: false,
+        scm: [
+            $class: 'GitSCM',
+            branches: [[name: "*/master"]],
+            doGenerateSubmoduleConfigurations: false,
+            extensions: [[$class: 'RelativeTargetDirectory', relativeTargetDir: 'resilience']],
+            submoduleCfg: [],
+            userRemoteConfigs: [[credentialsId: credentials, url: resilienceRepo]]])
+
+    sh 'cd resilience && git clean -f -d -x'
 }
 
 def checkCommitMessages() {
@@ -203,7 +237,13 @@ def checkCommitMessages() {
     echo 'Build Linux: ' + (buildLinux ? 'true' : 'false')
     echo 'Build Mac: ' + (buildMac ? 'true' : 'false')
     echo 'Build Windows: ' + (buildWindows ? 'true' : 'false')
+    echo 'Run Tests: ' + (runTests ? 'true' : 'false')
+    echo 'Run Resilience: ' + (runResilience ? 'true' : 'false')
 }
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                     SCRIPTS STASH
+// -----------------------------------------------------------------------------
 
 def stashSourceCode() {
     sh 'rm -f source.*'
@@ -238,6 +278,24 @@ def unstashSourceCode(os) {
         }
     }
 }
+
+def stashBinaries(edition, os) {
+    if (edition == 'community') {
+        stash includes: binariesCommunity, name: 'build-' + edition + '-' + os
+    }
+    else if (edition == 'enterprise') {
+        stash includes: binariesEnterprise, name: 'build-' + edition + '-' + os
+    }
+}
+
+def unstashBinaries(edition, os) {
+    sh 'rm -rf *'
+    unstash 'build-' + edition + '-' + os
+}
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                     SCRIPTS BUILD
+// -----------------------------------------------------------------------------
 
 def buildEdition(edition, os) {
     try {
@@ -274,18 +332,60 @@ def buildEdition(edition, os) {
     }
 }
 
-def stashBinaries(edition, os) {
-    if (edition == 'community') {
-        stash includes: binariesCommunity, name: 'build-' + edition + '-' + os
+def buildStep(os, edition) {
+    if (os == 'linux' && ! buildLinux) {
+        echo "Not building " + os + " version"
+        return
     }
-    else if (edition == 'enterprise') {
-        stash includes: binariesEnterprise, name: 'build-' + edition + '-' + os
+
+    if (os == 'mac' && ! buildMac) {
+        echo "Not building " + os + " version"
+        return
+    }
+
+    if (os == 'windows' && ! buildWindows) {
+        echo "Not building " + os + " version"
+        return
+    }
+
+    node(os) {
+        unstashSourceCode(os)
+        buildEdition(edition, os)
+        stashBinaries(edition, os)
     }
 }
 
-def unstashBinaries(edition, os) {
-    sh 'rm -rf *'
-    unstash 'build-' + edition + '-' + os
+// -----------------------------------------------------------------------------
+// --SECTION--                                                     SCRIPTS TESTS
+// -----------------------------------------------------------------------------
+
+def jslint() {
+    try {
+        sh './Installation/Pipeline/test_jslint.sh'
+    }
+    catch (exc) {
+        echo exc.toString()
+        currentBuild.result = 'UNSTABLE'
+    }
+}
+
+def jslintStep() {
+    if (runTests) {
+        if (buildLinux) {
+            node(os) {
+                echo "Running jslint test"
+
+                unstashBinaries('community', os)
+                jslint()
+            }
+        }
+        else {
+            echo "Not building " + os + " version"
+        }
+    }
+    else {
+        echo "Not running tests"
+    }
 }
 
 def testEdition(edition, os, type, engine) {
@@ -301,13 +401,50 @@ def testEdition(edition, os, type, engine) {
     }
 }
 
-def jslint() {
-    try {
-        sh './Installation/Pipeline/test_jslint.sh'
+def testStep(edition, os, mode, engine) {
+    if (os == 'linux' && ! buildLinux) {
+        echo "Not building " + os + " version"
+        return
     }
-    catch (exc) {
-        echo exc.toString()
-        currentBuild.result = 'UNSTABLE'
+
+    if (os == 'mac' && ! buildMac) {
+        echo "Not building " + os + " version"
+        return
+    }
+
+    if (os == 'windows' && ! buildWindows) {
+        echo "Not building " + os + " version"
+        return
+    }
+
+    if (runTests) {
+        node(os) {
+            echo "Running " + mode + " " + edition + " " + engine + " " + os + " test"
+
+            unstashBinaries(edition, os)
+            testEdition(edition, os, mode, engine)
+    }
+    else {
+        echo "Not running tests"
+    }
+}
+
+def testEditionResilience(edition, os, engine) {
+    echo "missing"
+    sh "ls -l"
+}
+
+def testResilienceStep(os, edition, engine) {
+    if (os == 'linux' && ! buildLinux) {
+        echo "Not building " + os + " version"
+        return
+    }
+
+    if (buildLinux) {
+        node(os) {
+            unstashBinaries(edition, os)
+            testEditionResilience(edition, os, engine)
+        }
     }
 }
 
@@ -320,6 +457,7 @@ stage('checkout') {
         checkoutCommunity()
         checkCommitMessages()
         checkoutEnterprise()
+        checkoutResilience()
         stashSourceCode()
     }
 }
@@ -331,40 +469,8 @@ stage('build linux') {
     def os = 'linux'
 
     parallel(
-        'build-community-linux': {
-            def edition = 'community'
-
-            if (buildLinux) {
-                node(os) {
-                    unstashSourceCode(os)
-                    buildEdition(edition, os)
-                    stashBinaries(edition, os)
-                }
-            }
-            else {
-                echo "Not building " + os + " version"
-            }
-        },
-
-        'build-enterprise-linux': {
-            def edition = 'enterprise'
-
-            if (buildLinux) {
-                if (buildEnterprise) {
-                    node(os) {
-                        unstashSourceCode(os)
-                        buildEdition(edition, os)
-                        stashBinaries(edition, os)
-                    }
-                }
-                else {
-                    echo "Not building enterprise version"
-                }
-            }
-            else {
-                echo "Not building " + os + " version"
-            }
-        }
+        'build-community-linux':  { buildStep(os, 'community') },
+        'build-enterprise-linux': { buildStep(os, 'enterprise') }
     )
 }
 
@@ -372,134 +478,26 @@ stage('test linux') {
     def os = 'linux'
 
     parallel(
-        'test-singleserver-community-rocksdb': {
-            def mode = 'singleserver'
-            def edition = 'community'
-            def engine = 'rocksdb'
-
-            if (buildLinux) {
-                node(os) {
-                    echo "Running " + mode + " " + edition + " " + engine + " " + os + " test"
-
-                    unstashBinaries(edition, os)
-                    testEdition(edition, os, mode, engine)
-                }
-            }
-            else {
-                echo "Not building " + os + " version"
-            }
-        },
-
-        'test-singleserver-enterprise-mmfiles': {
-            def mode = 'singleserver'
-            def edition = 'enterprise'
-            def engine = 'mmfiles'
-
-            if (buildLinux) {
-                if (buildEnterprise) {
-                    node(os) {
-                        echo "Running " + mode + " " + edition + " " + engine + " " + os + " test"
-
-                        unstashBinaries(edition, os)
-                        testEdition(edition, os, mode, engine)
-                    }
-                }
-                else {
-                    echo "Enterprise version not built, skipping 'test-singleserver-enterprise'"
-                }
-            }
-            else {
-                echo "Not building " + os + " version"
-            }
-        },
-
-        'test-cluster-community-mmfiles': {
-            def mode = 'cluster'
-            def edition = 'community'
-            def engine = 'mmfiles'
-
-            if (buildLinux) {
-                node(os) {
-                    echo "Running " + mode + " " + edition + " " + engine + " " + os + " test"
-
-                    unstashBinaries(edition, os)
-                    testEdition(edition, os, mode, engine)
-                }
-            }
-            else {
-                echo "Not building " + os + " version"
-            }
-        },
-
-        'test-cluster-enterprise-rocksdb': {
-            def mode = 'cluster'
-            def edition = 'enterprise'
-            def engine = 'rocksdb'
-
-            if (buildLinux) {
-                if (buildEnterprise) {
-                    node(os) {
-                        echo "Running " + mode + " " + edition + " " + engine + " " + os + " test"
-
-                        unstashBinaries(edition, os)
-                        testEdition(edition, os, mode, engine)
-                    }
-                }
-                else {
-                    echo "Enterprise version not built, skipping 'test-singleserver-enterprise'"
-                }
-            }
-            else {
-                echo "Not building " + os + " version"
-            }
-        },
-
-        'jslint': {
-            if (buildLinux) {
-                node(os) {
-                    echo "Running jslint test"
-
-                    unstashBinaries('community', os)
-                    jslint()
-                }
-            }
-            else {
-                echo "Not building " + os + " version"
-            }
-        }
+        'test-singleserver-community-rocksdb':  { testStep ('community', os, 'singleserver', 'rocksdb') },
+        'test-singleserver-enterprise-mmfiles': { testStep ('enterprise', os, 'singleserver', 'mmfiles') },
+        'test-cluster-community-mmfiles':       { testStep ('community', os, 'cluster', 'mmfiles') },
+        'test-cluster-enterprise-rocksdb':      { testStep ('community', os, 'enterprise', 'mmfiles') },
+        'jslint': { jslintStep() }
     )
 }
 
 stage('build other') {
     parallel(
-        'build-community-windows': {
-            def os = 'windows'
-            def edition = 'community'
+        'build-community-windows': { buildStep('windows', 'community') },
+        'build-community-mac':     { buildStep('mac', 'community') }
+    )
+}
 
-            if (buildWindows) {
-                node('windows') {
-                    unstashSourceCode(os)
-                    buildEdition(edition, os)
-                }
-            }
-            else {
-                echo "Not building " + os + " version"
-            }
-        },
+stage('resilience') {
+    def os = 'linux'
 
-        'build-community-mac': {
-            def os = 'mac'
-            def edition = 'community'
-
-            if (buildMac) {
-                node('mac') {
-                    unstashSourceCode(os)
-                    buildEdition(edition, os)
-                }
-            }
-            else {
-                echo "Not building " + os + " version"
-            }
-        }
+    parallel(
+        'test-resilience-community-rocksdb': { testResilienceStep('linux', 'community', 'rocksdb') },
+        'test-resilience-community-mmfiles': { testResilienceStep('linux', 'community', 'mmfiles') }
     )
 }
