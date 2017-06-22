@@ -28,7 +28,9 @@
 #include "RocksDBEngine/RocksDBEngine.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 
+#ifdef __linux__
 #include <sys/sysinfo.h>
+#endif
 
 using namespace arangodb;
 using namespace arangodb::basics;
