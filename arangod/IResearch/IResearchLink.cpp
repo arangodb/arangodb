@@ -126,22 +126,14 @@ void IResearchLink::batchInsert(
     return;
   }
 
-  if (!trx || !trx->state()) {
-    queue->setStatus(TRI_ERROR_BAD_PARAMETER); // 'trx' and transaction state required
-
-    return;
-  }
-
-  auto trxState = trx->state();
-
-  if (!trxState) {
-    queue->setStatus(TRI_ERROR_BAD_PARAMETER); // transaction state required
+  if (!trx) {
+    queue->setStatus(TRI_ERROR_BAD_PARAMETER); // 'trx' required
 
     return;
   }
 
   TRI_voc_fid_t fid = 0; // FIXME TODO find proper fid
-  auto res = _view->insert(fid, trxState->id(), _collection->cid(), batch, _meta);
+  auto res = _view->insert(fid, *trx, _collection->cid(), batch, _meta);
 
   if (TRI_ERROR_NO_ERROR != res) {
     queue->setStatus(res);
@@ -180,20 +172,13 @@ int IResearchLink::insert(
     return TRI_ERROR_ARANGO_COLLECTION_NOT_LOADED; // '_collection' and '_view' required
   }
 
-  if (!trx || !trx->state()) {
-    return TRI_ERROR_BAD_PARAMETER; // 'trx' and transaction state required
-  }
-
-  auto trxState = trx->state();
-
-  if (!trxState) {
-    return TRI_ERROR_BAD_PARAMETER; // transaction state required
+  if (!trx) {
+    return TRI_ERROR_BAD_PARAMETER; // 'trx' required
   }
 
   TRI_voc_fid_t fid = 0; // FIXME TODO find proper fid
 
-  // FIXME TODO after insertion add a transaction commit/abort to call _view->finish(trxState->id(), commit)
-  return _view->insert(fid, trxState->id(), _collection->cid(), rid, doc, _meta);
+  return _view->insert(fid, *trx, _collection->cid(), rid, doc, _meta);
 }
 
 bool IResearchLink::isPersistent() const {
@@ -316,18 +301,12 @@ int IResearchLink::remove(
     return TRI_ERROR_ARANGO_COLLECTION_NOT_LOADED; // '_collection' and '_view' required
   }
 
-  if (!trx || !trx->state()) {
-    return TRI_ERROR_BAD_PARAMETER; // 'trx' and transaction state required
-  }
-
-  auto trxState = trx->state();
-
-  if (!trxState) {
-    return TRI_ERROR_BAD_PARAMETER; // transaction state required
+  if (!trx) {
+    return TRI_ERROR_BAD_PARAMETER; // 'trx' required
   }
 
   // remove documents matching on cid and rid
-  return _view->remove(trx->state()->id(), _collection->cid(), rid);
+  return _view->remove(*trx, _collection->cid(), rid);
 }
 
 /*static*/ bool IResearchLink::setName(

@@ -92,11 +92,6 @@ class IResearchView final: public arangodb::ViewImplementation {
   int drop(TRI_voc_cid_t cid);
 
   ////////////////////////////////////////////////////////////////////////////////
-  /// @brief process a finished transaction and release resources held by it
-  ////////////////////////////////////////////////////////////////////////////////
-  int finish(TRI_voc_tid_t tid, bool commit);
-
-  ////////////////////////////////////////////////////////////////////////////////
   /// @brief persist the specified WAL file into permanent storage
   ////////////////////////////////////////////////////////////////////////////////
   int finish(TRI_voc_fid_t const& fid);
@@ -113,7 +108,7 @@ class IResearchView final: public arangodb::ViewImplementation {
   ////////////////////////////////////////////////////////////////////////////////
   int insert(
     TRI_voc_fid_t fid,
-    TRI_voc_tid_t tid,
+    transaction::Methods& trx,
     TRI_voc_cid_t cid,
     TRI_voc_rid_t rid,
     arangodb::velocypack::Slice const& doc,
@@ -129,7 +124,7 @@ class IResearchView final: public arangodb::ViewImplementation {
   ////////////////////////////////////////////////////////////////////////////////
   int insert(
     TRI_voc_fid_t fid,
-    TRI_voc_tid_t tid,
+    transaction::Methods& trx,
     TRI_voc_cid_t cid,
     std::vector<std::pair<TRI_voc_rid_t, arangodb::velocypack::Slice>> const& batch,
     IResearchLinkMeta const& meta
@@ -197,7 +192,7 @@ class IResearchView final: public arangodb::ViewImplementation {
   /// @brief remove documents matching 'cid' and 'rid' from the iResearch View
   ///        to be done in the scope of transaction 'tid'
   ////////////////////////////////////////////////////////////////////////////////
-  int remove(TRI_voc_tid_t tid, TRI_voc_cid_t cid, TRI_voc_rid_t rid);
+  int remove(transaction::Methods& trx, TRI_voc_cid_t cid, TRI_voc_rid_t rid);
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief called for a filter condition that was previously handed to the view
@@ -331,11 +326,17 @@ class IResearchView final: public arangodb::ViewImplementation {
   MemoryStoreByFid _storeByWalFid;
   DataStore _storePersisted;
   irs::async_utils::thread_pool _threadPool;
+  std::function<void(transaction::Methods* trx)> _transactionCallback;
 
   IResearchView(
     arangodb::LogicalView*,
     arangodb::velocypack::Slice const& info
   );
+
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief process a finished transaction and release resources held by it
+  ////////////////////////////////////////////////////////////////////////////////
+  int finish(TRI_voc_tid_t tid, bool commit);
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief wait for a flush of all index data to its respective stores

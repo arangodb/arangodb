@@ -988,6 +988,25 @@ IResearchView::IResearchView(
    _asyncMetaRevision(1),
    _asyncTerminate(false),
    _threadPool(0, 0) { // 0 == create pool with no threads, i.e. not running anything
+  // initialize transaction callback
+  _transactionCallback = [this](transaction::Methods* trx)->void {
+    if (!trx || !trx->state()) {
+      LOG_TOPIC(WARN, Logger::FIXME) << "failed to find transaction id while processing transaction callback for iResearch view '" << name() << "'";
+      return; // 'trx' and transaction state required
+    }
+
+    switch (trx->status()) {
+     case transaction::Status::ABORTED:
+      finish(trx->state()->id(), false);
+      return;
+     case transaction::Status::COMMITTED:
+      finish(trx->state()->id(), true);
+      return;
+     default:
+      {} // NOOP
+    }
+  };
+
   // add asynchronous commit job
   _threadPool.run(
     [this]()->void {
@@ -1466,12 +1485,16 @@ void IResearchView::getPropertiesVPack(
 
 int IResearchView::insert(
     TRI_voc_fid_t fid,
-    TRI_voc_tid_t tid,
+    transaction::Methods& trx,
     TRI_voc_cid_t cid,
     TRI_voc_rid_t rid,
     arangodb::velocypack::Slice const& doc,
     IResearchLinkMeta const& meta
 ) {
+  if (!trx.state()) {
+    return TRI_ERROR_BAD_PARAMETER; // 'trx' and transaction id required
+  }
+
   FieldIterator body(doc, meta);
 
   if (!body.valid()) {
@@ -1481,7 +1504,14 @@ int IResearchView::insert(
 
   WriteMutex mutex(_mutex); // '_storeByTid' & '_storeByFid' can be asynchronously updated
   SCOPED_LOCK(mutex);
-  auto& store = _storeByTid[tid]._storeByFid[fid];
+  auto storeItr = irs::map_utils::try_emplace(_storeByTid, trx.state()->id());
+
+  // only register a callback if it has not been registered before
+  if (storeItr.second) {
+    trx.registerCallback(_transactionCallback);
+  }
+
+  auto& store = storeItr.first->second._storeByFid[fid];
 
   mutex.unlock(true); // downgrade to a read-lock
 
@@ -1510,14 +1540,25 @@ int IResearchView::insert(
 
 int IResearchView::insert(
     TRI_voc_fid_t fid,
-    TRI_voc_tid_t tid,
+    transaction::Methods& trx,
     TRI_voc_cid_t cid,
     std::vector<std::pair<TRI_voc_rid_t, arangodb::velocypack::Slice>> const& batch,
     IResearchLinkMeta const& meta
 ) {
+  if (!trx.state()) {
+    return TRI_ERROR_BAD_PARAMETER; // 'trx' and transaction id required
+  }
+
   WriteMutex mutex(_mutex); // '_storeByTid' & '_storeByFid' can be asynchronously updated
   SCOPED_LOCK(mutex); // '_meta' can be asynchronously updated
-  auto& store = _storeByTid[tid]._storeByFid[fid];
+  auto storeItr = irs::map_utils::try_emplace(_storeByTid, trx.state()->id());
+
+  // only register a callback if it has not been registered before
+  if (storeItr.second) {
+    trx.registerCallback(_transactionCallback);
+  }
+
+  auto& store = storeItr.first->second._storeByFid[fid];
   const size_t commitBatch = _meta._commitBulk._commitIntervalBatchSize;
   SyncState state = SyncState(_meta._commitBulk);
 
@@ -1871,14 +1912,25 @@ void IResearchView::open() {
 }
 
 int IResearchView::remove(
-  TRI_voc_tid_t tid,
+  transaction::Methods& trx,
   TRI_voc_cid_t cid,
   TRI_voc_rid_t rid
 ) {
+  if (!trx.state()) {
+    return TRI_ERROR_BAD_PARAMETER; // 'trx' and transaction id required
+  }
+
   std::shared_ptr<irs::filter> shared_filter(iresearch::FilterFactory::filter(cid, rid));
   WriteMutex mutex(_mutex); // '_storeByTid' can be asynchronously updated
   SCOPED_LOCK(mutex);
-  auto& store = _storeByTid[tid];
+  auto storeItr = irs::map_utils::try_emplace(_storeByTid, trx.state()->id());
+
+  // only register a callback if it has not been registered before
+  if (storeItr.second) {
+    trx.registerCallback(_transactionCallback);
+  }
+
+  auto& store = storeItr.first->second;
 
   mutex.unlock(true); // downgrade to a read-lock
 

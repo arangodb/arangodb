@@ -211,30 +211,33 @@ SECTION("test_write") {
 
   {
     arangodb::transaction::UserTransaction trx(arangodb::transaction::StandaloneContext::Create(&vocbase), EMPTY, EMPTY, EMPTY, arangodb::transaction::Options());
+    CHECK((trx.begin().ok()));
     CHECK(TRI_ERROR_NO_ERROR == link->insert(&trx, 1, doc0->slice(), false));
+    CHECK((trx.commit().ok()));
   }
 
-  CHECK((TRI_ERROR_NO_ERROR == view->finish(0, true))); // FIXME TODO remove once transaction commit supports finishing transaction in IResearchView
   CHECK((TRI_ERROR_NO_ERROR == view->finish(0))); // TODO FIXME this should be a proper FID once IResearchLink supports fid resolution
   CHECK((true == view->sync()));
   CHECK((1 == reader.reopen().live_docs_count()));
 
   {
     arangodb::transaction::UserTransaction trx(arangodb::transaction::StandaloneContext::Create(&vocbase), EMPTY, EMPTY, EMPTY, arangodb::transaction::Options());
+    CHECK((trx.begin().ok()));
     CHECK((TRI_ERROR_NO_ERROR == link->insert(&trx, 2, doc1->slice(), false)));
+    CHECK((trx.commit().ok()));
   }
 
-  CHECK((TRI_ERROR_NO_ERROR == view->finish(0, true))); // FIXME TODO remove once transaction commit supports finishing transaction in IResearchView
   CHECK((TRI_ERROR_NO_ERROR == view->finish(0))); // TODO FIXME this should be a proper FID once IResearchLink supports fid resolution
   CHECK((true == view->sync()));
   CHECK((2 == reader.reopen().live_docs_count()));
 
   {
     arangodb::transaction::UserTransaction trx(arangodb::transaction::StandaloneContext::Create(&vocbase), EMPTY, EMPTY, EMPTY, arangodb::transaction::Options());
+    CHECK((trx.begin().ok()));
     CHECK((TRI_ERROR_NO_ERROR == link->remove(&trx, 2, doc1->slice(), false)));
+    CHECK((trx.commit().ok()));
   }
 
-  CHECK((TRI_ERROR_NO_ERROR == view->finish(0, true))); // FIXME TODO remove once transaction commit supports finishing transaction in IResearchView
   CHECK((TRI_ERROR_NO_ERROR == view->finish(0))); // TODO FIXME this should be a proper FID once IResearchLink supports fid resolution
   CHECK((true == view->sync()));
   CHECK((1 == reader.reopen().live_docs_count()));
