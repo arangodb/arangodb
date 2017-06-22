@@ -1266,10 +1266,17 @@ int TRI_VerifyLockFile(char const* filename) {
     return TRI_ERROR_NO_ERROR;
   }
 
-  int fd = TRI_TRACKED_OPEN_FILE(filename, O_RDONLY | TRI_O_CLOEXEC);
+  int fd = TRI_TRACKED_OPEN_FILE(filename, O_RDWR | TRI_O_CLOEXEC);
 
   if (fd < 0) {
-    return TRI_ERROR_NO_ERROR;
+    TRI_set_errno(TRI_ERROR_SYS_ERROR);
+    LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "cannot open lockfile '" << filename << "' in write mode: " << TRI_last_error();
+    
+    if (errno == EACCES) {
+      return TRI_ERROR_CANNOT_WRITE_FILE;
+    }
+
+    return TRI_ERROR_INTERNAL;
   }
 
   char buffer[128];
@@ -1323,7 +1330,7 @@ int TRI_VerifyLockFile(char const* filename) {
   lock.l_whence = SEEK_SET;
   // try to lock pid file
   int canLock = fcntl(fd, F_SETLK, &lock);  // Exclusive (write) lock
-
+      
   // file was not yet locked; could be locked
   if (canLock == 0) {
     lock.l_type = F_UNLCK;
@@ -1342,12 +1349,13 @@ int TRI_VerifyLockFile(char const* filename) {
   }
 
   canLock = errno;
+  TRI_set_errno(TRI_ERROR_SYS_ERROR);
 
   // from man 2 fcntl: "If a conflicting lock is held by another process, 
   // this call returns -1 and sets errno to EACCES or EAGAIN."
   if (canLock != EACCES && canLock != EAGAIN) {
     LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "fcntl on lockfile '" << filename
-              << "' failed: " << TRI_errno_string(canLock) 
+              << "' failed: " << TRI_last_error()
               << ". a possible reason is that the filesystem does not support file-locking";
   }
 #endif
