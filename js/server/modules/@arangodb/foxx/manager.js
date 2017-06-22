@@ -617,7 +617,6 @@ function _install (mount, options = {}) {
     options,
     noisy: true
   });
-  GLOBAL_SERVICE_MAP.get(db._name()).set(mount, service);
   if (options.setup !== false) {
     try {
       service.executeScript('setup');
@@ -642,6 +641,7 @@ function _install (mount, options = {}) {
     RETURN NEW
   `).next();
   service._rev = meta._rev;
+  GLOBAL_SERVICE_MAP.get(db._name()).set(mount, service);
   try {
     ensureServiceExecuted(service, true);
   } catch (e) {
