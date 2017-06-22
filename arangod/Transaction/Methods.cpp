@@ -1407,6 +1407,9 @@ OperationResult transaction::Methods::insertLocal(
       }
     } else {  // we are a follower following theLeader
       isFollower = true;
+      if (options.isSynchronousReplicationFrom.empty()) {
+        return OperationResult(TRI_ERROR_CLUSTER_SHARD_LEADER_RESIGNED);
+      }
       if (options.isSynchronousReplicationFrom != theLeader) {
         return OperationResult(TRI_ERROR_CLUSTER_SHARD_FOLLOWER_REFUSES_OPERATION);
       }
@@ -1719,6 +1722,9 @@ OperationResult transaction::Methods::modifyLocal(
       }
     } else {  // we are a follower following theLeader
       isFollower = true;
+      if (options.isSynchronousReplicationFrom.empty()) {
+        return OperationResult(TRI_ERROR_CLUSTER_SHARD_LEADER_RESIGNED);
+      }
       if (options.isSynchronousReplicationFrom != theLeader) {
         return OperationResult(TRI_ERROR_CLUSTER_SHARD_FOLLOWER_REFUSES_OPERATION);
       }
@@ -2016,6 +2022,9 @@ OperationResult transaction::Methods::removeLocal(
       }
     } else {  // we are a follower following theLeader
       isFollower = true;
+      if (options.isSynchronousReplicationFrom.empty()) {
+        return OperationResult(TRI_ERROR_CLUSTER_SHARD_LEADER_RESIGNED);
+      }
       if (options.isSynchronousReplicationFrom != theLeader) {
         return OperationResult(TRI_ERROR_CLUSTER_SHARD_FOLLOWER_REFUSES_OPERATION);
       }
@@ -2338,6 +2347,9 @@ OperationResult transaction::Methods::truncateLocal(
       }
     } else {  // we are a follower following theLeader
       isFollower = true;
+      if (options.isSynchronousReplicationFrom.empty()) {
+        return OperationResult(TRI_ERROR_CLUSTER_SHARD_LEADER_RESIGNED);
+      }
       if (options.isSynchronousReplicationFrom != theLeader) {
         return OperationResult(TRI_ERROR_CLUSTER_SHARD_FOLLOWER_REFUSES_OPERATION);
       }
