@@ -31,6 +31,7 @@
 #include "GeneralServer/AuthenticationFeature.h"
 #include "Rest/HttpRequest.h"
 #include "RestServer/DatabaseFeature.h"
+#include "RestServer/FeatureCacheFeature.h"
 #include "V8/v8-conv.h"
 #include "V8/v8-utils.h"
 #include "V8/v8-vpack.h"
@@ -65,10 +66,9 @@ std::vector<std::string> Database::list(std::string const& user) {
       return databaseFeature->getDatabaseNames();
     }
   } else {
-    // slow path for coordinator
+    // slow path for user case
     if (ServerState::instance()->isCoordinator()) {
-      auto auth = application_features::ApplicationServer::getFeature<
-          AuthenticationFeature>("Authentication");
+      auto auth = FeatureCacheFeature::instance()->authenticationFeature();
       std::vector<std::string> names;
       std::vector<std::string> dbs = databaseFeature->getDatabaseNames();
       for (std::string const& db : dbs) {
@@ -130,7 +130,8 @@ arangodb::Result Database::create(std::string const& dbName,
   if (TRI_GetOperationModeServer() == TRI_VOCBASE_MODE_NO_CREATE) {
     return Result(TRI_ERROR_ARANGO_READ_ONLY);
   }
-  if (ExecContext::CURRENT_EXECCONTEXT != nullptr) {
+  auto auth = FeatureCacheFeature::instance()->authenticationFeature();
+  if (auth->isActive() && ExecContext::CURRENT_EXECCONTEXT != nullptr) {
     AuthLevel level =
         ExecContext::CURRENT_EXECCONTEXT->authContext()->systemAuthLevel();
 
@@ -249,6 +250,14 @@ arangodb::Result Database::create(std::string const& dbName,
     TRI_DEFER(vocbase->release());
     TRI_ASSERT(vocbase->id() == id);
     TRI_ASSERT(vocbase->name() == dbName);
+    
+    // we need to add the permissions before running the upgrade script
+    if (auth->isActive() && ExecContext::CURRENT_EXECCONTEXT != nullptr) {
+      // ignore errors here Result r =
+      auth->authInfo()->updateUser(ExecContext::CURRENT_EXECCONTEXT->user(), [&](AuthUserEntry& entry) {
+        entry.grantDatabase(dbName, AuthLevel::RW);
+      });
+    }
 
     V8Context* ctx = V8DealerFeature::DEALER->enterContext(vocbase, true);
     if (ctx == nullptr) {
@@ -286,13 +295,19 @@ arangodb::Result Database::create(std::string const& dbName,
 
     TRI_vocbase_t* vocbase = nullptr;
     int res = databaseFeature->createDatabase(id, dbName, vocbase);
-
     if (res != TRI_ERROR_NO_ERROR) {
       return Result(res);
     }
-
     TRI_ASSERT(vocbase != nullptr);
     TRI_ASSERT(!vocbase->isDangling());
+    
+    // we need to add the permissions before running the upgrade script
+    if (auth->isActive() && ExecContext::CURRENT_EXECCONTEXT != nullptr) {
+      // ignore errors here Result r =
+      auth->authInfo()->updateUser(ExecContext::CURRENT_EXECCONTEXT->user(), [&](AuthUserEntry& entry) {
+        entry.grantDatabase(dbName, AuthLevel::RW);
+      });
+    }
 
     V8Context* ctx = V8DealerFeature::DEALER->enterContext(vocbase, true);
     if (ctx == nullptr) {
@@ -346,6 +361,7 @@ arangodb::Result Database::create(std::string const& dbName,
       }
     }
   }
+  
   return Result();
 }
 
@@ -433,7 +449,7 @@ arangodb::Result Database::drop(TRI_vocbase_t* systemVocbase,
         TRI_V8_ASCII_STRING("reload routing"), false);
   }
   
-  auto auth = application_features::ApplicationServer::getFeature<AuthenticationFeature>("Authentication");
+  auto auth = FeatureCacheFeature::instance()->authenticationFeature();
   if (auth->isActive()) {
     auth->authInfo()->reloadAllUsers();
   }
