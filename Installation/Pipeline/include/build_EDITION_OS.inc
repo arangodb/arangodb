@@ -51,7 +51,7 @@ touch log-output/$type.log
 
     if [ "$?" != 0 ]; then
         if fgrep 'Re-run cmake with a different source directory' ../log-output/$type.log; then
-            rm CMakeCache.txt
+            rm -rf *
             
             CXXFLAGS=-fno-omit-frame-pointer \
                 cmake \
