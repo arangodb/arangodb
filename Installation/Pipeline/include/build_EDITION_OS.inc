@@ -46,7 +46,25 @@ mkdir -p log-output
             -DUSE_FAILURE_TESTS=On \
             -DDEBUG_SYNC_REPLICATION=On \
             $ENTERPRISE \
-            .. > ../log-output/$type.log 2>&1 || exit 1
+            .. > ../log-output/$type.log 2>&1
+
+    if [ "$?" != 0 ]; then
+        if fgrep 'Re-run cmake with a different source directory' ../log-output/$type.log; then
+            rm CMakeCache.txt
+            
+            CXXFLAGS=-fno-omit-frame-pointer \
+                cmake \
+                    -DCMAKE_BUILD_TYPE=RelWithDebInfo \
+                    -DUSE_MAINTAINER_MODE=On \
+                    -DUSE_CATCH_TESTS=On \
+                    -DUSE_FAILURE_TESTS=On \
+                    -DDEBUG_SYNC_REPLICATION=On \
+                    $ENTERPRISE \
+                    .. > ../log-output/$type.log 2>&1 || exit 1
+        else
+            exit 1
+        fi
+    fi
 
     echo "`date +%T` building..."
     make -j$concurrency >> ../log-output/$type.log 2>&1 || exit 1
