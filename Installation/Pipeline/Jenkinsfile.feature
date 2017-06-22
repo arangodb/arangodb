@@ -423,6 +423,7 @@ def testStep(edition, os, mode, engine) {
 
             unstashBinaries(edition, os)
             testEdition(edition, os, mode, engine)
+        }
     }
     else {
         echo "Not running tests"
