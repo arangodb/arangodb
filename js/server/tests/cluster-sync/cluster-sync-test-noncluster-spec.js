@@ -816,7 +816,7 @@ describe('Cluster sync', function() {
     });
     it('should kill any unplanned server from current', function() {
       let collection = db._create('s100001');
-      collection.assumeLeadership();
+      collection.setLeader("");
       collection.addFollower('test');
       collection.addFollower('test2');
       let plan = {
@@ -1011,7 +1011,7 @@ describe('Cluster sync', function() {
     it('should report a new collection in current', function() {
       let props = { planId: '888111' };
       let collection = db._create('testi', props);
-      collection.assumeLeadership();
+      collection.setLeader("");
       let current = {
       };
       let result = cluster.updateCurrentForCollections({}, current);
@@ -1069,7 +1069,7 @@ describe('Cluster sync', function() {
     it('should report newly assumed leadership for which we were a follower previously and remove any leaders and followers (these have to reregister themselves separately)', function() {
       let props = { planId: '888111' };
       let collection = db._create('testi', props);
-      collection.assumeLeadership();
+      collection.setLeader("");
       let current = {
         testung: {
           888111: {
@@ -1103,7 +1103,7 @@ describe('Cluster sync', function() {
     it('should report newly created indices', function() {
       let props = { planId: '888111' };
       let collection = db._create('testi', props);
-      collection.assumeLeadership();
+      collection.setLeader("");
       collection.ensureIndex({"type": "hash", "fields": ["hund"]});
       let current = {
         testung: {
@@ -1169,7 +1169,7 @@ describe('Cluster sync', function() {
       };
       let props = { planId: '888111' };
       let collection = db._create('testi', props);
-      collection.assumeLeadership();
+      collection.setLeader("");
       let result = cluster.updateCurrentForCollections(errors, current);
       expect(result).to.be.an('object');
       expect(Object.keys(result)).to.have.lengthOf(1);
@@ -1201,7 +1201,7 @@ describe('Cluster sync', function() {
 
       let props = { planId: '888111' };
       let collection = db._create('testi', props);
-      collection.assumeLeadership();
+      collection.setLeader("");
       let result = cluster.updateCurrentForCollections({}, current);
       expect(result).to.be.an('object');
       expect(Object.keys(result)).to.have.lengthOf(1);
@@ -1223,7 +1223,7 @@ describe('Cluster sync', function() {
 
       let props = { planId: '888111' };
       let collection = db._create('testi', props);
-      collection.assumeLeadership();
+      collection.setLeader("");
       collection.ensureIndex({type: "hash", fields: ["test"]});
       let result = cluster.updateCurrentForCollections({}, current);
       expect(result).to.be.an('object');
