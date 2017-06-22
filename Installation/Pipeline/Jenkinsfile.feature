@@ -292,7 +292,7 @@ def buildEdition(edition, os) {
 
                     sh 'rm -f artefacts/' + tarfile
                     sh './Installation/Pipeline/build_' + edition + '_' + os + '.sh 64'
-                    sh 'tar -c -x -f artefacts/' + tarfile + ' build-' + edition
+                    sh 'tar -c -f artefacts/' + tarfile + ' build-' + edition
             }
         }
         else if (os == 'windows') {
