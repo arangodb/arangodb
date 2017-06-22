@@ -32,6 +32,7 @@ echo "PWD: `pwd`"
 
 rm -rf log-output/$type.log
 mkdir -p log-output
+touch ../log-output/$type.log
 
 (
     mkdir -p build-$edition
@@ -46,7 +47,7 @@ mkdir -p log-output
             -DUSE_FAILURE_TESTS=On \
             -DDEBUG_SYNC_REPLICATION=On \
             $ENTERPRISE \
-            .. > ../log-output/$type.log 2>&1
+            .. >> ../log-output/$type.log 2>&1
 
     if [ "$?" != 0 ]; then
         if fgrep 'Re-run cmake with a different source directory' ../log-output/$type.log; then
@@ -60,7 +61,7 @@ mkdir -p log-output
                     -DUSE_FAILURE_TESTS=On \
                     -DDEBUG_SYNC_REPLICATION=On \
                     $ENTERPRISE \
-                    .. > ../log-output/$type.log 2>&1 || exit 1
+                    .. >> ../log-output/$type.log 2>&1 || exit 1
         else
             exit 1
         fi

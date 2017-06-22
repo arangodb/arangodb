@@ -385,6 +385,7 @@ def testEdition(edition, os, type, engine) {
 def testStep(edition, os, mode, engine) {
     if (! runTests) {
         echo "Not running tests"
+        return
     }
 
     if (os == 'linux' && ! buildLinux) {
@@ -428,6 +429,7 @@ def testEditionResilience(edition, os, engine) {
 def testResilienceStep(os, edition, engine) {
     if (! runResilience) {
         echo "Not running resilience tests"
+        return
     }
 
     if (os == 'linux' && ! buildLinux) {
@@ -487,7 +489,7 @@ stage('build') {
     )
 }
 
-stage('test linux') {
+stage('test') {
     def os = 'linux'
 
     parallel(
@@ -495,15 +497,10 @@ stage('test linux') {
         'test-singleserver-enterprise-mmfiles-linux': { testStep('enterprise', os, 'singleserver', 'mmfiles') },
         'test-cluster-community-mmfiles-linux':       { testStep('community', os, 'cluster', 'mmfiles') },
         'test-cluster-enterprise-rocksdb-linux':      { testStep('community', os, 'cluster', 'mmfiles') },
-        'jslint': { jslintStep() }
-    )
-}
 
-stage('resilience') {
-    def os = 'linux'
-
-    parallel(
         'test-resilience-community-rocksdb': { testResilienceStep('linux', 'community', 'rocksdb') },
-        'test-resilience-community-mmfiles': { testResilienceStep('linux', 'community', 'mmfiles') }
+        'test-resilience-community-mmfiles': { testResilienceStep('linux', 'community', 'mmfiles') },
+
+        'jslint': { jslintStep() }
     )
 }
