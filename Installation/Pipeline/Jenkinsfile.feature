@@ -4,27 +4,32 @@ properties([
     parameters([
         booleanParam(
             defaultValue: false,
-            description: 'clean build',
+            description: 'clean build directories',
             name: 'cleanBuild'
         ),
         booleanParam(
             defaultValue: true,
-            description: 'build enterprise',
+            description: 'build and run tests for community',
+            name: 'buildCommunity'
+        ),
+        booleanParam(
+            defaultValue: true,
+            description: 'build and run tests for enterprise',
             name: 'buildEnterprise'
         ),
         booleanParam(
             defaultValue: true,
-            description: 'build Linux',
+            description: 'build and run tests on Linux',
             name: 'buildLinux'
         ),
         booleanParam(
             defaultValue: false,
-            description: 'build Mac',
+            description: 'build and run tests on Mac',
             name: 'buildMac'
         ),
         booleanParam(
             defaultValue: false,
-            description: 'build Windows',
+            description: 'build and run tests in Windows',
             name: 'buildWindows'
         ),
         booleanParam(
@@ -34,7 +39,7 @@ properties([
         ),
         booleanParam(
             defaultValue: false,
-            description: 'run resilience',
+            description: 'run resilience tests',
             name: 'runResilience'
         )
     ])
@@ -43,7 +48,10 @@ properties([
 // start with empty build directory
 cleanBuild = params.cleanBuild
 
-// build enterprise version
+// build community
+buildCommunity = params.buildCommunity
+
+// build enterprise
 buildEnterprise = params.buildEnterprise
 
 // build linux
@@ -118,8 +126,6 @@ def checkoutEnterprise() {
                 extensions: [[$class: 'RelativeTargetDirectory', relativeTargetDir: 'enterprise']],
                 submoduleCfg: [],
                 userRemoteConfigs: [[credentialsId: credentials, url: enterpriseRepo]]])
-
-        buildEnterprise = true
     }
     catch (exc) {
         echo "Failed ${env.BRANCH_NAME}, trying enterprise branch devel"
@@ -180,46 +186,6 @@ def checkCommitMessages() {
                 cleanBuild = false
             }
 
-            if (msg ==~ /(?i).*\[ci:[^\]]*linux[ \]].*/) {
-                echo "not building linux because message contained 'linux'"
-                buildLinux = true
-            }
-
-            if (msg ==~ /(?i).*\[ci:[^\]]*no-linux[ \]].*/) {
-                echo "not building linux because message contained 'no-linux'"
-                buildLinux = false
-            }
-
-            if (msg ==~ /(?i).*\[ci:[^\]]*mac[ \]].*/) {
-                echo "building mac because message contained 'mac'"
-                buildMac = true
-            }
-
-            if (msg ==~ /(?i).*\[ci:[^\]]*no-mac[ \]].*/) {
-                echo "building mac because message contained 'no-mac'"
-                buildMac = false
-            }
-
-            if (msg ==~ /(?i).*\[ci:[^\]]*windows[ \]].*/) {
-                echo "building windows because message contained 'windows'"
-                buildWindows = true
-            }
-
-            if (msg ==~ /(?i).*\[ci:[^\]]*no-windows[ \]].*/) {
-                echo "building windows because message contained 'no-windows'"
-                buildWindows = false
-            }
-
-            if (msg ==~ /(?i).*\[ci:[^\]]*enterprise[ \]].*/) {
-                echo "building enterprise because message contained 'enterprise'"
-                buildEnterprise = true
-            }
-
-            if (msg ==~ /(?i).*\[ci:[^\]]*no-enterprise[ \]].*/) {
-                echo "building enterprise because message contained 'no-enterprise'"
-                buildEnterprise = false
-            }
-
             def files = new ArrayList(entry.affectedFiles)
 
             for (int k = 0; k < files.size(); k++) {
@@ -233,6 +199,7 @@ def checkCommitMessages() {
     }
 
     echo 'Clean Build: ' + (cleanBuild ? 'true' : 'false')
+    echo 'Build Community: ' + (buildCommunity ? 'true' : 'false')
     echo 'Build Enterprise: ' + (buildEnterprise ? 'true' : 'false')
     echo 'Build Linux: ' + (buildLinux ? 'true' : 'false')
     echo 'Build Mac: ' + (buildMac ? 'true' : 'false')
@@ -273,6 +240,7 @@ def unstashSourceCode(os) {
     }
     else if (os == 'windows') {
         unstash 'source'
+
         if (!fileExists('artefacts')) {
            bat 'mkdir artefacts'
         }
@@ -348,6 +316,16 @@ def buildStep(os, edition) {
         return
     }
 
+    if (edition == 'enterprise' && ! buildEnterprise) {
+        echo "Not building " + edition + " version"
+        return
+    }
+
+    if (edition == 'community' && ! buildCommunity) {
+        echo "Not building " + edition + " version"
+        return
+    }
+
     node(os) {
         unstashSourceCode(os)
         buildEdition(edition, os)
@@ -402,6 +380,10 @@ def testEdition(edition, os, type, engine) {
 }
 
 def testStep(edition, os, mode, engine) {
+    if (! runTests) {
+        echo "Not running tests"
+    }
+
     if (os == 'linux' && ! buildLinux) {
         echo "Not building " + os + " version"
         return
@@ -417,16 +399,21 @@ def testStep(edition, os, mode, engine) {
         return
     }
 
-    if (runTests) {
-        node(os) {
-            echo "Running " + mode + " " + edition + " " + engine + " " + os + " test"
-
-            unstashBinaries(edition, os)
-            testEdition(edition, os, mode, engine)
-        }
+    if (edition == 'enterprise' && ! buildEnterprise) {
+        echo "Not building " + edition + " version"
+        return
     }
-    else {
-        echo "Not running tests"
+
+    if (edition == 'community' && ! buildCommunity) {
+        echo "Not building " + edition + " version"
+        return
+    }
+
+    node(os) {
+        echo "Running " + mode + " " + edition + " " + engine + " " + os + " test"
+
+        unstashBinaries(edition, os)
+        testEdition(edition, os, mode, engine)
     }
 }
 
@@ -436,16 +423,38 @@ def testEditionResilience(edition, os, engine) {
 }
 
 def testResilienceStep(os, edition, engine) {
+    if (! runResilience) {
+        echo "Not running resilience tests"
+    }
+
     if (os == 'linux' && ! buildLinux) {
         echo "Not building " + os + " version"
         return
     }
 
-    if (buildLinux) {
-        node(os) {
-            unstashBinaries(edition, os)
-            testEditionResilience(edition, os, engine)
-        }
+    if (os == 'mac' && ! buildMac) {
+        echo "Not building " + os + " version"
+        return
+    }
+
+    if (os == 'windows' && ! buildWindows) {
+        echo "Not building " + os + " version"
+        return
+    }
+
+    if (edition == 'enterprise' && ! buildEnterprise) {
+        echo "Not building " + edition + " version"
+        return
+    }
+
+    if (edition == 'community' && ! buildCommunity) {
+        echo "Not building " + edition + " version"
+        return
+    }
+
+    node(os) {
+        unstashBinaries(edition, os)
+        testEditionResilience(edition, os, engine)
     }
 }
 
@@ -466,12 +475,12 @@ stage('checkout') {
 // cmake is very picky about the absolute path. Therefore never put a stage
 // into an `if`
 
-stage('build linux') {
-    def os = 'linux'
-
+stage('build') {
     parallel(
-        'build-community-linux':  { buildStep(os, 'community') },
-        'build-enterprise-linux': { buildStep(os, 'enterprise') }
+        'build-community-linux':   { buildStep('linux', 'community') },
+        'build-enterprise-linux':  { buildStep('linux', 'enterprise') },
+        'build-community-windows': { buildStep('windows', 'community') },
+        'build-community-mac':     { buildStep('mac', 'community') }
     )
 }
 
@@ -484,13 +493,6 @@ stage('test linux') {
         'test-cluster-community-mmfiles':       { testStep ('community', os, 'cluster', 'mmfiles') },
         'test-cluster-enterprise-rocksdb':      { testStep ('community', os, 'enterprise', 'mmfiles') },
         'jslint': { jslintStep() }
-    )
-}
-
-stage('build other') {
-    parallel(
-        'build-community-windows': { buildStep('windows', 'community') },
-        'build-community-mac':     { buildStep('mac', 'community') }
     )
 }
 
