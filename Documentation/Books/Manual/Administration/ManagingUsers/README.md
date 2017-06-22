@@ -67,7 +67,7 @@ grant the access rights for one or more databases using
 
 `users.grantDatabase(user, database, type)`
 
-This grants *type* access to the *database* for the *user*.
+This grants *type* ('rw' or 'ro') access to the *database* for the *user*.
 
 If a user has access rights to the *_system* database, he is considered superuser.
 
@@ -81,7 +81,7 @@ This revokes read/write access to the *database* for the *user*.
 
 `users.grantCollection(user, database, collection, type)`
 
-This grants type access to the *collection* in *database* for the *user*.
+This grants *type* ('rw' or 'ro') access to the *collection* in *database* for the *user*.
 
 If a user has access rights to the *_system* database, he is considered superuser.
 
