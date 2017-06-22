@@ -9,7 +9,6 @@
 // four bytes at a time.
 
 #include "util/crc32c.h"
-#include <iostream>
 #include <cstdint>
 
 #ifdef HAVE_SSE42
@@ -20,7 +19,7 @@ namespace rocksdb {
 namespace crc32c {
 
 #if defined(HAVE_SSE42) && (defined(__LP64__) || defined(_WIN64))
-static uint64_t LE_LOAD64(const uint8_t *p) {
+static inline uint64_t LE_LOAD64(const uint8_t *p) {
   return DecodeFixed64(reinterpret_cast<const char*>(p));
 }
 #endif
@@ -36,12 +35,7 @@ bool IsFastCrc32Supported(){
 
 
 void Fast_CRC32(uint64_t* l, uint8_t const **p) {
-#ifndef HAVE_SSE42
-  std::cerr << "Binary compiled without HAVE_SSE42! Fast_CRC32 is not supported!";
-  std::terminate(); // this should not happen
-  // the functin may only be called if SSE is
-  // available on the system and at compile time
-#elif defined(__LP64__) || defined(_WIN64)
+#if defined(HAVE_SSE42) && (defined(__LP64__) || defined(_WIN64))
   *l = _mm_crc32_u64(*l, LE_LOAD64(*p));
   *p += 8;
 #else

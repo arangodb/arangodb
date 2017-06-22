@@ -133,7 +133,7 @@ case "$1" in
   ################################################################################
 
   restart)
-    $0 stop
+    $0 stop || rc_exit
     $0 start
 
     # Remember status and be quiet

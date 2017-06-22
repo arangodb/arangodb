@@ -143,7 +143,7 @@ int main() {
 }
 " HAVE_SSE42)
 
-## fail if force ssl is enabled but the compiler is not capable
+## fail if force sse is enabled but the compiler is not capable
 message(info "HAVE_SSE42: ${HAVE_SSE42}")
 message(info "FORCE_SSE42: ${HAVE_SSE42}")
 if(FORCE_SSE42 AND NOT HAVE_SSE42)
@@ -612,12 +612,13 @@ target_link_libraries(${ROCKSDB_STATIC_LIB}
 #get_property(info_out SOURCE util/crc32_sse4.cc PROPERTY COMPILE_DEFINITIONS)
 #message(INFO "compile definitions ${info_out}")
 
-set_property( SOURCE util/crc32.cc APPEND PROPERTY COMPILE_FLAGS "${RDB_ARCH_FLAGS}")
+set_property( SOURCE util/crc32c.cc APPEND PROPERTY COMPILE_FLAGS "${RDB_ARCH_FLAGS}")
 #get_property(info_out SOURCE util/crc32_sse4.cc PROPERTY COMPILE_FLAGS)
 #message(INFO "compile flags ${info_out}")
 
 if(HAVE_SSE42)
-  set_property( SOURCE util/crc32.cc APPEND PROPERTY COMPILE_DEFINITIONS "HAVE_SSE42=1")
+  set_property( SOURCE util/crc32c_sse4.cc APPEND PROPERTY COMPILE_FLAGS "${RDB_ARCH_FLAGS}")
+  set_property( SOURCE util/crc32c_sse4.cc APPEND PROPERTY COMPILE_DEFINITIONS "HAVE_SSE42=1")
   #get_property(info_out SOURCE util/crc32_sse4.cc PROPERTY COMPILE_DEFINITIONS)
   #message(INFO "compile definitions ${info_out}")
 endif()
