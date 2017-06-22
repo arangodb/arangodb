@@ -1,5 +1,7 @@
 //  -*- mode: groovy-mode
 
+env.GZIP = '--fast'
+
 properties([
     parameters([
         booleanParam(
