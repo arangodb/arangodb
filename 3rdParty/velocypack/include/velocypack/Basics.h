@@ -54,9 +54,9 @@ class NonCopyable {
 
 // prevent heap allocation
 struct NonHeapAllocatable {
-  void* operator new(std::size_t) throw(std::bad_alloc) = delete; 
+  void* operator new(std::size_t) = delete; 
   void operator delete(void*) noexcept = delete; 
-  void* operator new[](std::size_t) throw(std::bad_alloc) = delete; 
+  void* operator new[](std::size_t) = delete; 
   void operator delete[](void*) noexcept = delete;  
 };
 

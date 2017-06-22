@@ -542,6 +542,10 @@ bool MMFilesDatafile::readWrite() {
   return (TRI_ProtectMMFile(_data, _initSize, PROT_READ | PROT_WRITE, _fd) == TRI_ERROR_NO_ERROR);
 }
 
+void MMFilesDatafile::dontDump() {
+  TRI_MMFileAdvise(_data, _initSize, TRI_MADVISE_DONTDUMP);
+}
+
 int MMFilesDatafile::lockInMemory() {
   TRI_ASSERT(!_lockedInMemory);
   int res = TRI_MMFileLock(_data, _initSize);
@@ -999,6 +1003,7 @@ MMFilesDatafile::MMFilesDatafile(std::string const& filename, int fd, void* mmHa
     // Advise OS that sequential access is going to happen:
     sequentialAccess();
   }
+  dontDump();
 }
   
 MMFilesDatafile::~MMFilesDatafile() {
