@@ -39,4 +39,9 @@ install(
   REGEX "^.*/.npmignore"                                   EXCLUDE
   REGEX "^.*/expect.js$"                                   EXCLUDE
   REGEX "^.*/.bin"                                         EXCLUDE
+  REGEX "^.*/_admin/aardvark/APP/frontend/html/"           EXCLUDE
+  REGEX "^.*/_admin/aardvark/APP/frontend/img/"            EXCLUDE
+  REGEX "^.*/_admin/aardvark/APP/frontend/js/"             EXCLUDE
+  REGEX "^.*/_admin/aardvark/APP/frontend/scss/"           EXCLUDE
+  REGEX "^.*/_admin/aardvark/APP/frontend/src/"            EXCLUDE
 )
