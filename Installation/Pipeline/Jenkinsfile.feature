@@ -13,7 +13,7 @@ properties([
             name: 'buildCommunity'
         ),
         booleanParam(
-            defaultValue: true,
+            defaultValue: false,
             description: 'build and run tests for enterprise',
             name: 'buildEnterprise'
         ),
@@ -34,13 +34,18 @@ properties([
         ),
         booleanParam(
             defaultValue: false,
-            description: 'run tests',
-            name: 'runTests'
+            description: 'run jslint',
+            name: 'runJslint'
         ),
         booleanParam(
             defaultValue: false,
             description: 'run resilience tests',
             name: 'runResilience'
+        ),
+        booleanParam(
+            defaultValue: false,
+            description: 'run tests',
+            name: 'runTests'
         )
     ])
 ])
@@ -66,11 +71,14 @@ buildMac = params.buildMac
 // build windows
 buildWindows = params.buildWindows
 
-// run tests
-runTests = params.runTests
+// run jslint
+runJslint = params.runJslint
+
+// run resilience tests
+runResilience = params.runResilience
 
 // run tests
-runResilience = params.runResilience
+runTests = params.runTests
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                             CONSTANTS AND HELPERS
@@ -207,8 +215,9 @@ def checkCommitMessages() {
     echo 'Build Linux: ' + (buildLinux ? 'true' : 'false')
     echo 'Build Mac: ' + (buildMac ? 'true' : 'false')
     echo 'Build Windows: ' + (buildWindows ? 'true' : 'false')
-    echo 'Run Tests: ' + (runTests ? 'true' : 'false')
+    echo 'Run Jslint: ' + (runJslint ? 'true' : 'false')
     echo 'Run Resilience: ' + (runResilience ? 'true' : 'false')
+    echo 'Run Tests: ' + (runTests ? 'true' : 'false')
 }
 
 // -----------------------------------------------------------------------------
@@ -359,7 +368,7 @@ def jslint() {
 }
 
 def jslintStep() {
-    if (runTests) {
+    if (runJslint) {
         if (buildLinux) {
             node(os) {
                 echo "Running jslint test"
