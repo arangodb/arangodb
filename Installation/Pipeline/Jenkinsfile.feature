@@ -280,6 +280,7 @@ def unstashBinaries(edition, os) {
 def buildEdition(edition, os) {
     try {
         if (os == 'linux' || os == 'mac') {
+/*
             def tarfile = 'build-' + edition + '-' + os + '.tar.gz'
 
             cache(maxCacheSize: 50000, caches: [
@@ -294,6 +295,8 @@ def buildEdition(edition, os) {
                     sh './Installation/Pipeline/build_' + edition + '_' + os + '.sh 64'
                     sh 'GZIP=--fast tar -c -z -f artefacts/' + tarfile + ' build-' + edition
             }
+*/
+            sh './Installation/Pipeline/build_' + edition + '_' + os + '.sh 64'
         }
         else if (os == 'windows') {
             if (cleanBuild) {
@@ -506,13 +509,6 @@ stage('build') {
     parallel(
         'build-community-linux': {
             buildStep('linux', 'community', false)
-
-            parallel(
-                'test-singleserver-community-mmfiles-linux':   { testStep('community',  'linux', 'singleserver', 'mmfiles', true) },
-                'test-singleserver-community-rocksdb-linux':   { testStep('community',  'linux', 'singleserver', 'rocksdb', false) },
-                'test-cluster-community-mmfiles-linux':        { testStep('community',  'linux', 'cluster',      'mmfiles', false) },
-                'test-cluster-community-rocksdb-linux':        { testStep('community',  'linux', 'cluster',      'rocksdb', true) }
-            )
         },
 
         'build-community-mac':      { buildStep('mac',     'community',  false) },
@@ -526,6 +522,11 @@ stage('build') {
 
 stage('test') {
     parallel(
+        'test-singleserver-community-mmfiles-linux':   { testStep('community',  'linux', 'singleserver', 'mmfiles', true) },
+        'test-singleserver-community-rocksdb-linux':   { testStep('community',  'linux', 'singleserver', 'rocksdb', false) },
+        'test-cluster-community-mmfiles-linux':        { testStep('community',  'linux', 'cluster',      'mmfiles', false) },
+        'test-cluster-community-rocksdb-linux':        { testStep('community',  'linux', 'cluster',      'rocksdb', true) }
+
         'test-cluster-enterprise-mmfiles-linux':       { testStep('enterprise', 'linux', 'cluster',      'mmfiles', true) },
         'test-cluster-enterprise-rocksdb-linux':       { testStep('enterprise', 'linux', 'cluster',      'rocksdb', false) },
 
