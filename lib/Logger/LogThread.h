@@ -39,6 +39,7 @@ struct LogMessage;
 class LogThread final : public Thread {
  public:
   static void log(std::unique_ptr<LogMessage>&);
+  // flush all pending log messages
   static void flush();
 
  public:
@@ -49,6 +50,11 @@ class LogThread final : public Thread {
   bool isSystem() override { return true; }
   bool isSilent() override { return true; }
   void run() override;
+
+  // whether or not the log thread has messages queued
+  bool hasMessages();
+  // wake up the log thread from the outside
+  void wakeup();
 
  private:
   static arangodb::basics::ConditionVariable* CONDITION;

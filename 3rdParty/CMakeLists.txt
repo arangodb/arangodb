@@ -98,7 +98,7 @@ set(ENABLE_THREADED_RESOLVER ON CACHE type BOOL)
 add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/curl/curl-7.50.3)
 
 ################################################################################
-## ROCKSDB
+## SNAPPY
 ################################################################################
 
 add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/snappy/google-snappy-d53de18)

@@ -91,8 +91,8 @@ TEST_CASE("cache::Manager", "[cache][!hide][longRunning]") {
         size_t cacheIndex = item % cacheCount;
         CachedValue* value = CachedValue::construct(&item, sizeof(uint64_t),
                                                     &item, sizeof(uint64_t));
-        bool ok = caches[cacheIndex]->insert(value);
-        if (!ok) {
+        auto status = caches[cacheIndex]->insert(value);
+        if (status.fail()) {
           delete value;
         }
       }
@@ -123,8 +123,8 @@ TEST_CASE("cache::Manager", "[cache][!hide][longRunning]") {
           size_t cacheIndex = item % cacheCount;
           CachedValue* value = CachedValue::construct(&item, sizeof(uint64_t),
                                                       &item, sizeof(uint64_t));
-          bool ok = caches[cacheIndex]->insert(value);
-          if (!ok) {
+          auto status = caches[cacheIndex]->insert(value);
+          if (status.fail()) {
             delete value;
           }
         } else {  // lookup something

@@ -4447,41 +4447,46 @@ bool TRI_RunGarbageCollectionV8(v8::Isolate* isolate, double availableTime) {
     idleTimeInMs = 10000;
   }
 
-  TRI_ClearObjectCacheV8(isolate);
+  try {
+    TRI_ClearObjectCacheV8(isolate);
 
-  double const until = TRI_microtime() + availableTime;
+    double const until = TRI_microtime() + availableTime;
 
-  int totalGcTimeInMs = static_cast<int>(availableTime) * 1000;
-  int gcAttempts = totalGcTimeInMs / idleTimeInMs;
+    int totalGcTimeInMs = static_cast<int>(availableTime) * 1000;
+    int gcAttempts = totalGcTimeInMs / idleTimeInMs;
 
-  if (gcAttempts <= 0) {
-    // minimum is to run the GC once
-    gcAttempts = 1;
-  }
-
-  int gcTries = 0;
-
-  while (++gcTries <= gcAttempts) {
-    if (SingleRunGarbageCollectionV8(isolate, idleTimeInMs)) {
-      return false;
+    if (gcAttempts <= 0) {
+      // minimum is to run the GC once
+      gcAttempts = 1;
     }
-  }
 
-  size_t i = 0;
-  while (TRI_microtime() < until) {
-    if (++i % 1000 == 0) {
-      // garbage collection only every x iterations, otherwise we'll use too
-      // much CPU
-      if (++gcTries > gcAttempts ||
-          SingleRunGarbageCollectionV8(isolate, idleTimeInMs)) {
+    int gcTries = 0;
+
+    while (++gcTries <= gcAttempts) {
+      if (SingleRunGarbageCollectionV8(isolate, idleTimeInMs)) {
         return false;
       }
     }
 
-    usleep(1000);
-  }
+    size_t i = 0;
+    while (TRI_microtime() < until) {
+      if (++i % 1000 == 0) {
+        // garbage collection only every x iterations, otherwise we'll use too
+        // much CPU
+        if (++gcTries > gcAttempts ||
+            SingleRunGarbageCollectionV8(isolate, idleTimeInMs)) {
+          return false;
+        }
+      }
 
-  return true;
+      usleep(1000);
+    }
+
+    return true;
+  } catch (...) {
+    // error caught during garbage collection
+    return false;
+  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////

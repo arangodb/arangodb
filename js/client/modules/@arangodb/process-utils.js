@@ -53,6 +53,8 @@ const RESET = require('internal').COLORS.COLOR_RESET;
 
 const platform = require('internal').platform;
 
+const abortSignal = 6;
+
 let executableExt = '';
 if (platform.substr(0, 3) === 'win') {
   executableExt = '.exe';
@@ -702,11 +704,11 @@ function shutdownArangod (arangod, options, forceTerminate) {
   if ((arangod.exitStatus === undefined) ||
       (arangod.exitStatus.status === 'RUNNING')) {
     if (forceTerminate) {
-      killExternal(arangod.pid, 11);
+      killExternal(arangod.pid, abortSignal);
       arangod.exitStatus = {
-        SIGNAL: '11'
+        SIGNAL: String(abortSignal)
       };
-      analyzeServerCrash(arangod, options, 'instance forcefully KILLED because of fatal  timeout in testrun');
+      analyzeServerCrash(arangod, options, 'shutdown timeout; instance forcefully KILLED because of fatal timeout in testrun');
     } else if (options.useKillExternal) {
       killExternal(arangod.pid);
     } else {
@@ -786,9 +788,8 @@ function shutdownInstance (instanceInfo, options, forceTerminate) {
             ];
           }
           */
-          killExternal(arangod.pid, 11);
-
-          analyzeServerCrash(arangod, options, 'instance forcefully KILLED after 60s - ' + arangod.exitStatus.signal);
+          killExternal(arangod.pid, abortSignal);
+          analyzeServerCrash(arangod, options, 'shutdown timeout; instance forcefully KILLED after 60s - ' + arangod.exitStatus.signal);
           return false;
         } else {
           return true;
@@ -894,8 +895,8 @@ function startInstanceCluster (instanceInfo, protocol, options,
     ++count;
     if (count === 500) {
       instanceInfo.arangods.forEach(arangod => {
-        print('forcefully terminating ' + arangod.role + ' with pid: ' + arangod.pid);
-        killExternal(arangod.pid, 9);
+        killExternal(arangod.pid, abortSignal);
+        analyzeServerCrash(arangod, options, 'startup timeout; forcefully terminating ' + arangod.role + ' with pid: ' + arangod.pid);
       });
 
       throw new Error('cluster startup timed out! bailing out!');
@@ -910,13 +911,14 @@ function startInstanceCluster (instanceInfo, protocol, options,
 
       if (!checkArangoAlive(arangod, options)) {
         instanceInfo.arangods.forEach(arangod => {
-          print('forcefully terminating ' + arangod.role + ' with pid: ' + arangod.pid);
-          killExternal(arangod.pid, 9);
+          killExternal(arangod.pid, abortSignal);
+          analyzeServerCrash(arangod, options, 'startup timeout; forcefully terminating ' + arangod.role + ' with pid: ' + arangod.pid);
         });
 
         throw new Error('cluster startup failed! bailing out!');
       }
       wait(0.5, false);
+      return true;
     });
 
     let upAndRunning = 0;

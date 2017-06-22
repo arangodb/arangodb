@@ -34,6 +34,8 @@
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/WriteLocker.h"
 #include "Basics/build.h"
+#include "Cache/CacheManagerFeature.h"
+#include "Cache/Manager.h"
 #include "GeneralServer/RestHandlerFactory.h"
 #include "Logger/Logger.h"
 #include "ProgramOptions/ProgramOptions.h"
@@ -150,7 +152,7 @@ void RocksDBEngine::collectOptions(
                      "timeout after which unused WAL files are deleted",
                      new DoubleParameter(&_pruneWaitTime));
 
-#ifdef USE_ENTERPRISE 
+#ifdef USE_ENTERPRISE
    collectEnterpriseOptions(options);
 #endif
 }
@@ -158,7 +160,7 @@ void RocksDBEngine::collectOptions(
 // validate the storage engine's specific options
 void RocksDBEngine::validateOptions(std::shared_ptr<options::ProgramOptions> options) {
   transaction::Options::setLimits(_maxTransactionSize, _intermediateCommitSize, _intermediateCommitCount);
-#ifdef USE_ENTERPRISE 
+#ifdef USE_ENTERPRISE
    validateEnterpriseOptions(options);
 #endif
 }
@@ -215,10 +217,10 @@ void RocksDBEngine::start() {
   _options.max_bytes_for_level_base = opts->_maxBytesForLevelBase;
   _options.max_bytes_for_level_multiplier =
       static_cast<int>(opts->_maxBytesForLevelMultiplier);
-  _options.verify_checksums_in_compaction = opts->_verifyChecksumsInCompaction;
+  //_options.verify_checksums_in_compaction = opts->_verifyChecksumsInCompaction;
   _options.optimize_filters_for_hits = opts->_optimizeFiltersForHits;
   _options.use_direct_reads = opts->_useDirectReads;
-  _options.use_direct_writes = opts->_useDirectWrites;
+  //_options.use_direct_writes = opts->_useDirectWrites;
   if (opts->_skipCorrupted) {
     _options.wal_recovery_mode =
         rocksdb::WALRecoveryMode::kSkipAnyCorruptedRecords;
@@ -1414,29 +1416,52 @@ RocksDBReplicationManager* RocksDBEngine::replicationManager() const {
 void RocksDBEngine::getStatistics(VPackBuilder& builder) const {
   builder.openObject();
   // add int properties
-  auto c1 = [&](std::string const& s) {
+  auto addInt = [&](std::string const& s) {
+    std::string v;
+    if (_db->GetProperty(s, &v)) {
+      int64_t i = basics::StringUtils::int64(v);
+      builder.add(s, VPackValue(i));
+    }
+  };
+  auto addStr = [&](std::string const& s) {
     std::string v;
     if (_db->GetProperty(s, &v)) {
       builder.add(s, VPackValue(v));
     }
   };
-  c1(rocksdb::DB::Properties::kNumImmutableMemTable);
-  c1(rocksdb::DB::Properties::kMemTableFlushPending);
-  c1(rocksdb::DB::Properties::kCompactionPending);
-  c1(rocksdb::DB::Properties::kBackgroundErrors);
-  c1(rocksdb::DB::Properties::kCurSizeActiveMemTable);
-  c1(rocksdb::DB::Properties::kCurSizeAllMemTables);
-  c1(rocksdb::DB::Properties::kSizeAllMemTables);
-  c1(rocksdb::DB::Properties::kNumEntriesImmMemTables);
-  c1(rocksdb::DB::Properties::kNumSnapshots);
-  c1(rocksdb::DB::Properties::kDBStats);
-  c1(rocksdb::DB::Properties::kCFStats);
-  c1(rocksdb::DB::Properties::kSSTables);
-  c1(rocksdb::DB::Properties::kNumRunningCompactions);
-  c1(rocksdb::DB::Properties::kNumRunningFlushes);
-  c1(rocksdb::DB::Properties::kIsFileDeletionsEnabled);
-  c1(rocksdb::DB::Properties::kBaseLevel);
-  c1(rocksdb::DB::Properties::kTotalSstFilesSize);
+  auto addCf = [&](std::string const& name, rocksdb::ColumnFamilyHandle* c) {
+    std::string v;
+    if (_db->GetProperty(c, rocksdb::DB::Properties::kCFStats, &v)) {
+      builder.add(name, VPackValue(v));
+    }
+  };
+  addInt(rocksdb::DB::Properties::kNumImmutableMemTable);
+  addInt(rocksdb::DB::Properties::kMemTableFlushPending);
+  addInt(rocksdb::DB::Properties::kCompactionPending);
+  addInt(rocksdb::DB::Properties::kBackgroundErrors);
+  addInt(rocksdb::DB::Properties::kCurSizeActiveMemTable);
+  addInt(rocksdb::DB::Properties::kCurSizeAllMemTables);
+  addInt(rocksdb::DB::Properties::kSizeAllMemTables);
+  addInt(rocksdb::DB::Properties::kNumEntriesImmMemTables);
+  addInt(rocksdb::DB::Properties::kNumSnapshots);
+  addStr(rocksdb::DB::Properties::kDBStats);
+  addStr(rocksdb::DB::Properties::kSSTables);
+  addInt(rocksdb::DB::Properties::kNumRunningCompactions);
+  addInt(rocksdb::DB::Properties::kNumRunningFlushes);
+  addInt(rocksdb::DB::Properties::kIsFileDeletionsEnabled);
+  addInt(rocksdb::DB::Properties::kBaseLevel);
+  addInt(rocksdb::DB::Properties::kTotalSstFilesSize);
+  builder.add("rocksdb.cfstats", VPackValue(VPackValueType::Object));
+  addCf("other", RocksDBColumnFamily::other());
+  addCf("documents", RocksDBColumnFamily::documents());
+  addCf("primary", RocksDBColumnFamily::primary());
+  addCf("edge", RocksDBColumnFamily::edge());
+  addCf("geo", RocksDBColumnFamily::geo());
+  addCf("fulltext", RocksDBColumnFamily::fulltext());
+  addCf("index", RocksDBColumnFamily::index());
+  addCf("uniqueIndex", RocksDBColumnFamily::uniqueIndex());
+  addCf("views", RocksDBColumnFamily::views());
+  builder.close();
 
   if (_options.table_factory) {
     void* options = _options.table_factory->GetOptions();
@@ -1444,6 +1469,13 @@ void RocksDBEngine::getStatistics(VPackBuilder& builder) const {
       builder.add("rocksdb.block-cache-used", VPackValue(static_cast<rocksdb::BlockBasedTableOptions*>(options)->block_cache->GetUsage()));
     }
   }
+
+  cache::Manager* manager = CacheManagerFeature::MANAGER;
+  auto rates = manager->globalHitRates();
+  builder.add("cache.size", VPackValue(manager->globalLimit()));
+  builder.add("cache.used", VPackValue(manager->globalAllocation()));
+  builder.add("cache.hit-rate-lifetime", VPackValue(rates.first));
+  builder.add("cache.hit-rate-recent", VPackValue(rates.second));
 
   builder.close();
 }

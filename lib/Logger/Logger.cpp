@@ -375,6 +375,11 @@ void Logger::shutdown() {
   // join with the logging thread
   if (_threaded) {
     // ignore all errors for now as we cannot log them anywhere...
+    int tries = 0;
+    while (_loggingThread->hasMessages() && ++tries < 1000) {
+      _loggingThread->wakeup();
+      usleep(10000);
+    }
     _loggingThread->beginShutdown();
     _loggingThread.reset();
   }

@@ -1090,28 +1090,6 @@ void RocksDBRestReplicationHandler::handleCommandCreateKeys() {
     return;
   }
 
-  // turn off the compaction for the collection
-  // StorageEngine* engine = EngineSelectorFeature::ENGINE;
-  // TRI_voc_tick_t id;
-  // int res = engine->insertCompactionBlocker(_vocbase, 1200.0, id);
-  // if (res != TRI_ERROR_NO_ERROR) {
-  //  THROW_ARANGO_EXCEPTION(res);
-  //}
-
-  // initialize a container with the keys
-  // auto keys =
-  // std::make_unique<MMFilesCollectionKeys>(_vocbase, col->name(), id, 300.0);
-
-  // std::string const idString(std::to_string(keys->id()));
-
-  // keys->create(tickEnd);
-  // size_t const count = keys->count();
-
-  // auto keysRepository = _vocbase->collectionKeys();
-
-  // keysRepository->store(keys.get());
-  // keys.release();
-
   VPackBuilder result;
   result.add(VPackValue(VPackValueType::Object));
   result.add("id", VPackValue(StringUtils::itoa(ctx->id())));
