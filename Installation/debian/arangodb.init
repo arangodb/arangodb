@@ -104,7 +104,7 @@ case "$1" in
     ;;
 
   restart)
-    $0 stop
+    $0 stop || exit 1
     sleep 3
     $0 start
     exit $?

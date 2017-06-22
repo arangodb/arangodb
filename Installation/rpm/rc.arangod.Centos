@@ -75,7 +75,10 @@ stop() {
   killproc -p "${pidfile}" -d 10 $ARANGO_BIN
 
   RETVAL=$?
-  echo
+  echo "$RETVAL"
+  if test "$RETVAL" -ne "0"
+     exit "$RETVAL"
+  fi
 }
 
 
@@ -95,7 +98,7 @@ case "$1" in
     ;;
 
   restart)
-    stop
+    stop || exit 1
     start
     ;;
 
