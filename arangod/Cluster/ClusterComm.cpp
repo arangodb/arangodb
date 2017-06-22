@@ -421,7 +421,7 @@ OperationID ClusterComm::asyncRequest(
             << "cannot create connection to server '" << result->serverID
             << "' at endpoint '" << result->endpoint << "'";
         } else {
-          LOG_TOPIC(ERR, Logger::CLUSTER)
+          LOG_TOPIC(INFO, Logger::CLUSTER)
             << "cannot create connection to server '" << result->serverID
             << "' at endpoint '" << result->endpoint << "'";
         }
