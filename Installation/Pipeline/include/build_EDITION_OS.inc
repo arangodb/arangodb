@@ -32,7 +32,7 @@ echo "PWD: `pwd`"
 
 rm -rf log-output/$type.log
 mkdir -p log-output
-touch ../log-output/$type.log
+touch log-output/$type.log
 
 (
     mkdir -p build-$edition
