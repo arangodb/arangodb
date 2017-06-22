@@ -44,7 +44,7 @@ int syncChunkRocksDB(InitialSyncer& syncer, SingleCollectionTransaction* trx,
                      std::string const& keysId, uint64_t chunkId,
                      std::string const& lowString,
                      std::string const& highString,
-                     std::vector<std::pair<std::string, uint64_t>> markers,
+                     std::vector<std::pair<std::string, uint64_t>> const& markers,
                      std::string& errorMsg) {
   std::string const baseUrl = syncer.BaseUrl + "/keys";
   TRI_voc_tick_t const chunkSize = 5000;
@@ -54,6 +54,8 @@ int syncChunkRocksDB(InitialSyncer& syncer, SingleCollectionTransaction* trx,
   options.silent = true;
   options.ignoreRevs = true;
   options.isRestore = true;
+
+  LOG_TOPIC(TRACE, Logger::REPLICATION) << "synching chunk. low: '" << lowString << "', high: '" << highString << "'";
 
   // no match
   // must transfer keys for non-matching range
@@ -106,24 +108,6 @@ int syncChunkRocksDB(InitialSyncer& syncer, SingleCollectionTransaction* trx,
   }
 
   transaction::BuilderLeaser keyBuilder(trx);
-  /*size_t nextStart = 0;
-  // delete all keys at start of the range
-  while (nextStart < markers.size()) {
-    std::string const& localKey = markers[nextStart].first;
-
-    if ( localKey.compare(lowString) < 0) {
-      // we have a local key that is not present remotely
-      keyBuilder.clear();
-      keyBuilder.openObject();
-      keyBuilder.add(StaticStrings::KeyString, VPackValue(localKey));
-      keyBuilder.close();
-
-      trx.remove(collectionName, keyBuilder.slice(), options);
-      ++nextStart;
-    } else {
-      break;
-    }
-  }*/
 
   std::vector<size_t> toFetch;
 
@@ -166,12 +150,14 @@ int syncChunkRocksDB(InitialSyncer& syncer, SingleCollectionTransaction* trx,
       continue;
     }
 
+    bool mustRefetch = false;
+
     // remove keys not present anymore
     while (nextStart < markers.size()) {
       std::string const& localKey = markers[nextStart].first;
 
       int res = keySlice.compareString(localKey);
-      if (res != 0) {
+      if (res > 0) {
         // we have a local key that is not present remotely
         keyBuilder->clear();
         keyBuilder->openObject();
@@ -179,25 +165,35 @@ int syncChunkRocksDB(InitialSyncer& syncer, SingleCollectionTransaction* trx,
         keyBuilder->close();
 
         trx->remove(collectionName, keyBuilder->slice(), options);
+
         ++nextStart;
+      } else if (res == 0) {
+        // key match 
+        break;
       } else {
-        // key match
+        // we have a remote key that is not present locally
+        TRI_ASSERT(res < 0); 
+        mustRefetch = true;
         break;
       }
     }
 
-    // see if key exists
-    DocumentIdentifierToken token = physical->lookupKey(trx, keySlice);
-    if (token._data == 0) {
-      // key not found locally
+    if (mustRefetch) {
       toFetch.emplace_back(i);
-    } else if (TRI_RidToString(token._data) != pair.at(1).copyString()) {
-      // key found, but revision id differs
-      toFetch.emplace_back(i);
-      ++nextStart;
     } else {
-      // a match - nothing to do!
-      ++nextStart;
+      // see if key exists
+      DocumentIdentifierToken token = physical->lookupKey(trx, keySlice);
+      if (token._data == 0) {
+        // key not found locally
+        toFetch.emplace_back(i);
+      } else if (token._data != basics::StringUtils::uint64(pair.at(1).copyString())) {
+        // key found, but revision id differs
+        toFetch.emplace_back(i);
+        ++nextStart;
+      } else {
+        // a match - nothing to do!
+        ++nextStart;
+      }
     }
 
     i++;
@@ -207,18 +203,19 @@ int syncChunkRocksDB(InitialSyncer& syncer, SingleCollectionTransaction* trx,
   while (nextStart < markers.size()) {
     std::string const& localKey = markers[nextStart].first;
 
-    TRI_ASSERT(localKey.compare(highString) > 0);
-    // if (localKey.compare(highString) > 0) {
-    // we have a local key that is not present remotely
-    keyBuilder->clear();
-    keyBuilder->openObject();
-    keyBuilder->add(StaticStrings::KeyString, VPackValue(localKey));
-    keyBuilder->close();
+    if (localKey.compare(highString) > 0) {
+      // we have a local key that is not present remotely
+      keyBuilder->clear();
+      keyBuilder->openObject();
+      keyBuilder->add(StaticStrings::KeyString, VPackValue(localKey));
+      keyBuilder->close();
 
-    trx->remove(collectionName, keyBuilder->slice(), options);
-    //}
+      trx->remove(collectionName, keyBuilder->slice(), options);
+    }
     ++nextStart;
   }
+
+  LOG_TOPIC(TRACE, Logger::REPLICATION) << "will refetch " << toFetch.size() << " documents for this chunk";
 
   if (!toFetch.empty()) {
     VPackBuilder keysBuilder;
@@ -307,7 +304,7 @@ int syncChunkRocksDB(InitialSyncer& syncer, SingleCollectionTransaction* trx,
 
         return TRI_ERROR_REPLICATION_INVALID_RESPONSE;
       }
-
+  
       DocumentIdentifierToken token = physical->lookupKey(trx, keySlice);
 
       if (!token._data) {
