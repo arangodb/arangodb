@@ -206,6 +206,11 @@ double RocksDBVPackIndex::selectivityEstimate(
   if (_unique) {
     return 1.0;  // only valid if unique
   }
+  if (ServerState::instance()->isCoordinator()) {
+    // Coordinator has no idea of estimates. Just return a hard-coded value
+    return 0.1;
+  }
+  TRI_ASSERT(_estimator);
   return _estimator->computeEstimate();
 }
 
