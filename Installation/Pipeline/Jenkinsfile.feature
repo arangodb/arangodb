@@ -287,7 +287,7 @@ def buildEdition(edition, os) {
                  includes: tarfile,
                  path: 'artefacts']]) {
                     if (!cleanBuild && fileExists('artefacts/' + tarfile)) {
-                        sh 'tar -x --fast -z -p -f artefacts/' + tarfile
+                        sh 'GZIP=--fast tar -x -z -p -f artefacts/' + tarfile
                     }
 
                     sh 'rm -f artefacts/' + tarfile
