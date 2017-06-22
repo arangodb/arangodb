@@ -329,7 +329,10 @@ def buildStep(os, edition) {
     node(os) {
         unstashSourceCode(os)
         buildEdition(edition, os)
-        stashBinaries(edition, os)
+
+        if (runTests || runResilience) {
+            stashBinaries(edition, os)
+        }
     }
 }
 
@@ -488,10 +491,10 @@ stage('test linux') {
     def os = 'linux'
 
     parallel(
-        'test-singleserver-community-rocksdb':  { testStep ('community', os, 'singleserver', 'rocksdb') },
-        'test-singleserver-enterprise-mmfiles': { testStep ('enterprise', os, 'singleserver', 'mmfiles') },
-        'test-cluster-community-mmfiles':       { testStep ('community', os, 'cluster', 'mmfiles') },
-        'test-cluster-enterprise-rocksdb':      { testStep ('community', os, 'enterprise', 'mmfiles') },
+        'test-singleserver-community-rocksdb-linux':  { testStep('community', os, 'singleserver', 'rocksdb') },
+        'test-singleserver-enterprise-mmfiles-linux': { testStep('enterprise', os, 'singleserver', 'mmfiles') },
+        'test-cluster-community-mmfiles-linux':       { testStep('community', os, 'cluster', 'mmfiles') },
+        'test-cluster-enterprise-rocksdb-linux':      { testStep('community', os, 'cluster', 'mmfiles') },
         'jslint': { jslintStep() }
     )
 }
