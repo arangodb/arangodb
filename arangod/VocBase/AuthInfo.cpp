@@ -490,11 +490,15 @@ Result AuthInfo::removeUser(std::string const& user) {
 
   Result res = trx.begin();
   if (res.ok()) {
-    VPackBuilder keyBuilder;
-    keyBuilder.add(VPackValue(it->second.key()));
+    VPackBuilder builder;
+    {
+      VPackObjectBuilder guard(&builder);
+      builder.add(StaticStrings::KeyString, VPackValue(it->second.key()));
+      // TODO maybe protect with a revision ID?
+    }
 
     OperationResult result =
-        trx.remove(TRI_COL_NAME_USERS, keyBuilder.slice(), OperationOptions());
+        trx.remove(TRI_COL_NAME_USERS, builder.slice(), OperationOptions());
     res = trx.finish(result.code);
     if (res.ok()) {
       _authInfo.erase(it);
