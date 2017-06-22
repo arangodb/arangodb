@@ -287,12 +287,12 @@ def buildEdition(edition, os) {
                  includes: tarfile,
                  path: 'artefacts']]) {
                     if (!cleanBuild && fileExists('artefacts/' + tarfile)) {
-                        sh 'GZIP=--fast tar -x -z -p -f artefacts/' + tarfile
+                        sh 'tar -x -z -p -f artefacts/' + tarfile
                     }
 
                     sh 'rm -f artefacts/' + tarfile
                     sh './Installation/Pipeline/build_' + edition + '_' + os + '.sh 64'
-                    sh 'tar -c -f artefacts/' + tarfile + ' build-' + edition
+                    sh 'GZIP=--fast tar -c -z -f artefacts/' + tarfile + ' build-' + edition
             }
         }
         else if (os == 'windows') {
