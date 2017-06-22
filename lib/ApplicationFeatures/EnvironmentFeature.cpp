@@ -246,13 +246,13 @@ void EnvironmentFeature::start() {
             ? 100.0 * ((ram - swapSpace) / ram)
             : 0.0;
         if (static_cast<double>(r) > 1.05 * rr ||
-            static_cast<double>(r) < 0.95 * r) {
+            static_cast<double>(r) < 0.95 * rr) {
           LOG_TOPIC(WARN, Logger::MEMORY)
             << "/proc/sys/vm/overcommit_ratio is set to '" << r
-            << "'. It is recommended to set it to " << static_cast<size_t>(rr)
-            << " (100 * (max(0, (RAM - Swap Space)) / RAM)).";
+            << "'. It is recommended to set it to '" << std::llround(rr)
+            << "' (100 * (max(0, (RAM - Swap Space)) / RAM)).";
           LOG_TOPIC(WARN, Logger::MEMORY) << "execute 'sudo bash -c \"echo "
-                                          << rr << " > "
+                                          << std::llround(rr) << " > "
                                           << "/proc/sys/vm/overcommit_ratio\"'";
         }
       }
