@@ -302,11 +302,13 @@ RestStatus RestUsersHandler::putRequest(AuthInfo* authInfo) {
       if (isSystemUser()) {
         std::string const& db = suffixes[2];
         std::string coll = suffixes.size() == 4 ? suffixes[3] : "";
-        VPackSlice grant;
+        AuthLevel lvl = AuthLevel::RW;
         if (parsedBody->slice().isObject()) {
-          grant = parsedBody->slice().get("grant");
+          VPackSlice grant = parsedBody->slice().get("grant");
+          if (grant.isString()) {
+            lvl = convertToAuthLevel(grant);
+          }
         }
-        AuthLevel lvl = convertToAuthLevel(grant);
 
         Result r = authInfo->updateUser(user, [&](AuthUserEntry& entry) {
           if (coll.empty()) {
