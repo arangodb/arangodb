@@ -646,9 +646,10 @@ function _install (mount, options = {}) {
     ensureServiceExecuted(service, true);
   } catch (e) {
     if (!options.force) {
-      throw e;
+      console.errorStack(e);
+    } else {
+      console.warnStack(e);
     }
-    console.warnStack(e);
   }
   return service;
 }
