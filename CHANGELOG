@@ -323,8 +323,18 @@ v3.2.alpha1 (2017-02-05)
 * generated Foxx services now use swagger tags
 
 
-v3.1.23 (XXXX-XX-XX)
+v3.1.24 (XXXX-XX-XX)
 --------------------
+
+* fixed one more LIMIT issue in traversals
+
+
+v3.1.23 (2017-06-19)
+--------------------
+
+* potentially fixed issue #2559: Duplicate _key generated on insertion
+
+* fix races in SSL communication code
 
 * fix invalid results (too many) when a skipping LIMIT was used for a
   traversal. `LIMIT x` or `LIMIT 0, x` were not affected, but `LIMIT s, x`
