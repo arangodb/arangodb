@@ -1,5 +1,6 @@
 #!/bin/bash
 
+load=32
 concurrency=$1
 edition=$2
 os=$3
@@ -68,7 +69,7 @@ touch log-output/$type.log
     fi
 
     echo "`date +%T` building..."
-    make -j$concurrency >> ../log-output/$type.log 2>&1 || exit 1
+    make -j $concurrency -l $load >> ../log-output/$type.log 2>&1 || exit 1
 ) || exit 1
 
 # copy binaries to preserve them
