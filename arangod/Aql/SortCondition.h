@@ -79,12 +79,17 @@ class SortCondition {
       Variable const*,
       std::vector<std::vector<arangodb::basics::AttributeName>> const&) const;
 
+  /// @brief  return the sort condition (as an AstNode) at `position`.
+  /// `position` can  be a value between 0 and the result of
+  /// SortCondition::numAttributes().
+  std::pair<Variable const*, AstNode const*> field(size_t position) const;
+
  private:
 
   /// @brief fields used in the sort conditions
   std::vector<std::pair<Variable const*,
                         std::vector<arangodb::basics::AttributeName>>> _fields;
-  
+
   /// @brief const attributes
   std::vector<std::vector<arangodb::basics::AttributeName>> const _constAttributes;
 
@@ -97,6 +102,9 @@ class SortCondition {
   /// @brief whether or not all sorts are in ascending order.
   /// this is only meaningful if the sort is unidirectional
   bool _ascending;
+
+  /// @brief map of variable ids to ast nodes
+  std::unordered_map<VariableId, AstNode const*> const* _definitions;
 };
 }
 }

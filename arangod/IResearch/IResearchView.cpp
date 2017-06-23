@@ -37,8 +37,6 @@
 #include "Aql/SortCondition.h"
 #include "Basics/Result.h"
 #include "Basics/files.h"
-#include "Indexes/Index.h"
-#include "Indexes/IndexIterator.h"
 #include "Logger/Logger.h"
 #include "Logger/LogMacros.h"
 #include "Transaction/StandaloneContext.h"
@@ -46,6 +44,7 @@
 #include "Transaction/UserTransaction.h"
 #include "velocypack/Builder.h"
 #include "velocypack/Iterator.h"
+#include "Views/ViewIterator.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/LogicalView.h"
 #include "VocBase/PhysicalView.h"
@@ -169,7 +168,7 @@ uint64_t CompoundReader::docs_count() const {
 }
 
 irs::index_reader::reader_iterator CompoundReader::end() const {
-  return reader_iterator(new IteratorImpl(_subReaders.end())); 
+  return reader_iterator(new IteratorImpl(_subReaders.end()));
 }
 
 uint64_t CompoundReader::live_docs_count() const {
@@ -191,78 +190,27 @@ size_t CompoundReader::size() const {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief minimal implementation of an index for use with iterators
-////////////////////////////////////////////////////////////////////////////////
-class MinimalIndex: public arangodb::Index {
- public:
-  MinimalIndex(): Index(0, nullptr, definitionSlice()) {}
-  virtual bool allowExpansion() const override { return false; }
-  virtual IndexType type() const override { return IndexType::TRI_IDX_TYPE_UNKNOWN; }
-  virtual char const* typeName() const { return "unknown"; }
-  virtual bool canBeDropped() const override { return false; }
-  virtual bool isSorted() const override { return false; }
-  virtual bool hasSelectivityEstimate() const override { return false; }
-  virtual size_t memory() const  override { return 0; }
-  virtual int insert(arangodb::transaction::Methods*, TRI_voc_rid_t revisionId, arangodb::velocypack::Slice const&, bool isRollback) override { return TRI_ERROR_NOT_IMPLEMENTED; }
-  virtual int remove(arangodb::transaction::Methods*, TRI_voc_rid_t revisionId, arangodb::velocypack::Slice const&, bool isRollback) override { return TRI_ERROR_NOT_IMPLEMENTED; }
-  virtual int unload() override { return TRI_ERROR_NO_ERROR; }
- private:
-  static arangodb::velocypack::Slice definitionSlice() {
-    static struct State {
-      arangodb::velocypack::Builder builder;
-      State() {
-        arangodb::velocypack::Builder subBuilder;
-        subBuilder.openArray();
-        subBuilder.close();
-        builder.openObject();
-        builder.add("fields", subBuilder.slice());
-        builder.add("type", arangodb::velocypack::Value(""));
-        builder.close();
-      }
-    } instance;
-    return instance.builder.slice();
-  }
-};
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief minimal implementation of a logical collection for use with iterators
-////////////////////////////////////////////////////////////////////////////////
-class MinimalLogicalCollection: public arangodb::LogicalCollection {
- public:
-  MinimalLogicalCollection(): LogicalCollection(nullptr, definitionSlice()) {}
- private:
-  static arangodb::velocypack::Slice definitionSlice() {
-    static struct State {
-      arangodb::velocypack::Builder builder;
-      State() {
-        builder.openObject();
-        builder.add("deleted", arangodb::velocypack::Value(true));
-        builder.add("id", arangodb::velocypack::Value(0));
-        builder.add("isSystem", arangodb::velocypack::Value(true));
-        builder.add("name", arangodb::velocypack::Value("_"));
-        builder.close();
-      }
-    } instance;
-    return instance.builder.slice();
-  }
-};
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief base class for iterators of query results from iResearch View
 ////////////////////////////////////////////////////////////////////////////////
-class IndexIteratorBase: public arangodb::IndexIterator {
+class ViewIteratorBase: public arangodb::ViewIterator {
  public:
-  DECLARE_PTR(arangodb::IndexIterator);
-  IndexIteratorBase(
+  DECLARE_PTR(arangodb::ViewIterator);
+  ViewIteratorBase(
     const char* typeName,
+    arangodb::ViewImplementation* view,
     arangodb::transaction::Methods& trx,
     CompoundReader&& reader
   );
-  bool readDocument(
+  virtual bool readDocument(
     arangodb::DocumentIdentifierToken const& token,
     arangodb::ManagedDocumentResult& result
   ) const;
   virtual char const* typeName() const override;
+
+  virtual bool nextExtra(ExtraCallback const& callback, size_t limit);
+  virtual bool hasExtra() const;
+
+  virtual void skip(uint64_t count, uint64_t& skipped);
 
  protected:
   CompoundReader _reader;
@@ -274,8 +222,6 @@ class IndexIteratorBase: public arangodb::IndexIterator {
   ) const noexcept;
 
  private:
-  MinimalLogicalCollection _collection;
-  MinimalIndex _index;
   size_t _subDocIdBits; // bits reserved for doc_id of sub-readers (depends on size of sub_readers)
   size_t _subDocIdMask; // bit mask for the sub-reader doc_id portion of doc_id
   char const* _typeName;
@@ -288,18 +234,19 @@ class IndexIteratorBase: public arangodb::IndexIterator {
   ) const noexcept;
 };
 
-IndexIteratorBase::IndexIteratorBase(
+ViewIteratorBase::ViewIteratorBase(
     char const* typeName,
+    arangodb::ViewImplementation* view,
     arangodb::transaction::Methods& trx,
     CompoundReader&& reader
-): IndexIterator(&_collection, &trx, nullptr, &_index),
+): ViewIterator(view, &trx),
    _reader(std::move(reader)),
    _typeName(typeName) {
   _subDocIdBits = _reader.size();
   _subDocIdMask = (size_t(1) <<_subDocIdBits) - 1;
 }
 
-bool IndexIteratorBase::loadToken(
+bool ViewIteratorBase::loadToken(
   arangodb::DocumentIdentifierToken& buf,
   size_t subReaderId,
   irs::doc_id_t subDocId
@@ -313,7 +260,7 @@ bool IndexIteratorBase::loadToken(
   return true;
 }
 
-bool IndexIteratorBase::readDocument(
+bool ViewIteratorBase::readDocument(
     arangodb::DocumentIdentifierToken const& token,
     arangodb::ManagedDocumentResult& result
 ) const {
@@ -349,28 +296,46 @@ bool IndexIteratorBase::readDocument(
   return collection->readDocument(_trx, colToken, result);
 }
 
-irs::doc_id_t IndexIteratorBase::subDocId(
+bool ViewIteratorBase::nextExtra(ExtraCallback const& callback, size_t limit) {
+  // shut up compiler warning...
+  // TODO: implementation
+  return false;
+}
+
+bool ViewIteratorBase::hasExtra() const {
+  // shut up compiler warning...
+  // TODO: implementation
+  return false;
+}
+
+void ViewIteratorBase::skip(uint64_t count, uint64_t& skipped) {
+  // shut up compiler warning...
+  // TODO: implementation
+}
+
+irs::doc_id_t ViewIteratorBase::subDocId(
   arangodb::DocumentIdentifierToken const& token
 ) const noexcept {
   return irs::doc_id_t(token._data & _subDocIdMask);
 }
 
-size_t IndexIteratorBase::subReaderId(
+size_t ViewIteratorBase::subReaderId(
   arangodb::DocumentIdentifierToken const& token
 ) const noexcept {
   return token._data >> _subDocIdBits;
 }
 
-char const* IndexIteratorBase::typeName() const {
+char const* ViewIteratorBase::typeName() const {
   return _typeName;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief iterator for ordered set of query results from iResearch View
 ////////////////////////////////////////////////////////////////////////////////
-class OrderedIndexIterator: public IndexIteratorBase {
+class OrderedViewIterator: public ViewIteratorBase {
  public:
-  OrderedIndexIterator(
+  OrderedViewIterator(
+    arangodb::ViewImplementation* view,
     arangodb::transaction::Methods& trx,
     CompoundReader&& reader,
     irs::filter const& filter,
@@ -389,12 +354,13 @@ class OrderedIndexIterator: public IndexIteratorBase {
   State _state; // previous iteration state
 };
 
-OrderedIndexIterator::OrderedIndexIterator(
+OrderedViewIterator::OrderedViewIterator(
+  arangodb::ViewImplementation* view,
     arangodb::transaction::Methods& trx,
     CompoundReader&& reader,
     irs::filter const& filter,
     irs::order const& order
-): IndexIteratorBase("iresearch-ordered-iterator", trx, std::move(reader)),
+): ViewIteratorBase("iresearch-ordered-iterator", view, trx, std::move(reader)),
    _order(order.prepare()) {
   _filter = filter.prepare(_reader, _order);
   reset();
@@ -408,7 +374,7 @@ OrderedIndexIterator::OrderedIndexIterator(
 ///        after the last returned Token.
 /// @return has more
 ////////////////////////////////////////////////////////////////////////////////
-bool OrderedIndexIterator::next(TokenCallback const& callback, size_t limit) {
+bool OrderedViewIterator::next(TokenCallback const& callback, size_t limit) {
   auto& order = _order;
   auto scoreLess = [&order](
       irs::bstring const& lhs,
@@ -476,16 +442,17 @@ bool OrderedIndexIterator::next(TokenCallback const& callback, size_t limit) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief resets the iterator
 ////////////////////////////////////////////////////////////////////////////////
-void OrderedIndexIterator::reset() {
+void OrderedViewIterator::reset() {
   _state._skip = 0;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief iterator for unordered set of query results from iResearch View
 ////////////////////////////////////////////////////////////////////////////////
-class UnorderedIndexIterator: public IndexIteratorBase {
+class UnorderedViewIterator: public ViewIteratorBase {
  public:
-  UnorderedIndexIterator(
+  UnorderedViewIterator(
+    arangodb::ViewImplementation* view,
     arangodb::transaction::Methods& trx,
     CompoundReader&& reader,
     irs::filter const& filter
@@ -503,11 +470,13 @@ class UnorderedIndexIterator: public IndexIteratorBase {
   State _state; // previous iteration state
 };
 
-UnorderedIndexIterator::UnorderedIndexIterator(
+UnorderedViewIterator::UnorderedViewIterator(
+  arangodb::ViewImplementation* view,
     arangodb::transaction::Methods& trx,
     CompoundReader&& reader,
     irs::filter const& filter
-): IndexIteratorBase("iresearch-unordered-iterator", trx, std::move(reader)),
+): ViewIteratorBase("iresearch-unordered-iterator", view, trx,
+      std::move(reader)),
    _filter(filter.prepare(_reader)) {
   reset();
 }
@@ -520,7 +489,7 @@ UnorderedIndexIterator::UnorderedIndexIterator(
 ///        after the last returned Token.
 /// @return has more
 ////////////////////////////////////////////////////////////////////////////////
-bool UnorderedIndexIterator::next(TokenCallback const& callback, size_t limit) {
+bool UnorderedViewIterator::next(TokenCallback const& callback, size_t limit) {
   arangodb::DocumentIdentifierToken tmpToken;
 
   for (size_t count = _reader.size();
@@ -551,7 +520,7 @@ bool UnorderedIndexIterator::next(TokenCallback const& callback, size_t limit) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief resets the iterator
 ////////////////////////////////////////////////////////////////////////////////
-void UnorderedIndexIterator::reset() {
+void UnorderedViewIterator::reset() {
   _state._itr.reset();
   _state._readerOffset = 0;
 }
@@ -1610,7 +1579,7 @@ int IResearchView::insert(
   return TRI_ERROR_NO_ERROR;
 }
 
-arangodb::IndexIterator* IResearchView::iteratorForCondition(
+arangodb::ViewIterator* IResearchView::iteratorForCondition(
     transaction::Methods* trx,
     arangodb::aql::AstNode const* node,
     arangodb::aql::Variable const* reference,
@@ -1690,12 +1659,14 @@ arangodb::IndexIterator* IResearchView::iteratorForCondition(
   }
 
   if (order.empty()) {
-    PTR_NAMED(UnorderedIndexIterator, iterator, *trx, std::move(compoundReader), filter);
+    PTR_NAMED(UnorderedViewIterator, iterator, this, *trx,
+      std::move(compoundReader), filter);
 
     return iterator.release();
   }
 
-  PTR_NAMED(OrderedIndexIterator, iterator, *trx, std::move(compoundReader), filter, order);
+  PTR_NAMED(OrderedViewIterator, iterator, this, *trx,
+    std::move(compoundReader), filter, order);
 
   return iterator.release();
 }

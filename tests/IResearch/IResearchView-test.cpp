@@ -31,7 +31,6 @@
 #include "Aql/AstNode.h"
 #include "Aql/SortCondition.h"
 #include "Basics/files.h"
-#include "Indexes/IndexIterator.h"
 #include "IResearch/IResearchLinkMeta.h"
 #include "IResearch/IResearchView.h"
 #include "Logger/Logger.h"
@@ -43,6 +42,7 @@
 #include "Transaction/UserTransaction.h"
 #include "velocypack/Iterator.h"
 #include "velocypack/Parser.h"
+#include "Views/ViewIterator.h"
 #include "VocBase/KeyGenerator.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/LogicalView.h"
@@ -348,12 +348,11 @@ SECTION("test_query") {
 
     arangodb::transaction::UserTransaction trx(arangodb::transaction::StandaloneContext::Create(&vocbase), EMPTY, EMPTY, EMPTY, options);
     CHECK((trx.begin().ok()));
-    std::unique_ptr<arangodb::IndexIterator> itr(dynamic_cast<arangodb::iresearch::IResearchView*>(view)->iteratorForCondition(&trx, &noop, nullptr, &order));
+    std::unique_ptr<arangodb::ViewIterator> itr(dynamic_cast<arangodb::iresearch::IResearchView*>(view)->iteratorForCondition(&trx, &noop, nullptr, &order));
 
     CHECK((false == !itr));
     CHECK((std::string("iresearch-ordered-iterator") == itr->typeName()));
     CHECK((&trx == itr->transaction()));
-    CHECK((nullptr != itr->collection()));
     CHECK((false == itr->hasExtra()));
     CHECK_THROWS(itr->nextExtra([](arangodb::DocumentIdentifierToken const&, arangodb::velocypack::Slice)->void{}, 42));
     size_t count = 0;
@@ -380,12 +379,11 @@ SECTION("test_query") {
     arangodb::transaction::UserTransaction trx(arangodb::transaction::StandaloneContext::Create(&vocbase), EMPTY, EMPTY, EMPTY, options);
 
     CHECK((trx.begin().ok()));
-    std::unique_ptr<arangodb::IndexIterator> itr(dynamic_cast<arangodb::iresearch::IResearchView*>(view)->iteratorForCondition(&trx, &noop, nullptr, nullptr));
+    std::unique_ptr<arangodb::ViewIterator> itr(dynamic_cast<arangodb::iresearch::IResearchView*>(view)->iteratorForCondition(&trx, &noop, nullptr, nullptr));
 
     CHECK((false == !itr));
     CHECK((std::string("iresearch-unordered-iterator") == itr->typeName()));
     CHECK((&trx == itr->transaction()));
-    CHECK((nullptr != itr->collection()));
     CHECK((false == itr->hasExtra()));
     CHECK_THROWS(itr->nextExtra([](arangodb::DocumentIdentifierToken const&, arangodb::velocypack::Slice)->void{}, 42));
     size_t count = 0;
@@ -412,12 +410,11 @@ SECTION("test_query") {
     arangodb::aql::SortCondition order;
     arangodb::transaction::UserTransaction trx(arangodb::transaction::StandaloneContext::Create(&vocbase), EMPTY, EMPTY, EMPTY, options);
     CHECK((trx.begin().ok()));
-    std::unique_ptr<arangodb::IndexIterator> itr(dynamic_cast<arangodb::iresearch::IResearchView*>(view)->iteratorForCondition(&trx, &noop, nullptr, &order));
+    std::unique_ptr<arangodb::ViewIterator> itr(dynamic_cast<arangodb::iresearch::IResearchView*>(view)->iteratorForCondition(&trx, &noop, nullptr, &order));
 
     CHECK((false == !itr));
     CHECK((std::string("iresearch-unordered-iterator") == itr->typeName()));
     CHECK((&trx == itr->transaction()));
-    CHECK((nullptr != itr->collection()));
     CHECK((false == itr->hasExtra()));
     CHECK_THROWS(itr->nextExtra([](arangodb::DocumentIdentifierToken const&, arangodb::velocypack::Slice)->void{}, 42));
     size_t count = 0;

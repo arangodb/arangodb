@@ -42,7 +42,7 @@ class ViewIterator {
  public:
   typedef std::function<void(DocumentIdentifierToken const& token)> TokenCallback;
 
-  typedef std::function<void(DocumentIdentifierToken const& token, arangodb::velocypack::Slice extra)> ExtraCallback; 
+  typedef std::function<void(DocumentIdentifierToken const& token, arangodb::velocypack::Slice extra)> ExtraCallback;
 
   ViewIterator() = delete;
   ViewIterator(ViewIterator const&) = delete;
@@ -67,14 +67,14 @@ class ViewIterator {
   virtual bool next(TokenCallback const& callback, size_t limit) = 0;
 
   // reset the iterator to its beginning
-  virtual void reset();
+  virtual void reset() = 0;
 
-  virtual bool nextExtra(ExtraCallback const& callback, size_t limit);
-  virtual bool hasExtra() const; 
+  virtual bool nextExtra(ExtraCallback const& callback, size_t limit) = 0;
+  virtual bool hasExtra() const = 0;
 
-  virtual void skip(uint64_t count, uint64_t& skipped); // same as IndexIterator API
+  virtual void skip(uint64_t count, uint64_t& skipped) = 0; // same as IndexIterator API
 
-  bool readDocument(arangodb::DocumentIdentifierToken const& token, arangodb::ManagedDocumentResult& result) const; 
+  virtual bool readDocument(arangodb::DocumentIdentifierToken const& token, arangodb::ManagedDocumentResult& result) const = 0; 
 
  protected:
   ViewImplementation* _view;

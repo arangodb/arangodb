@@ -35,7 +35,7 @@
 
 NS_BEGIN(arangodb)
 
-class IndexIterator; // forward declaration
+class ViewIterator; // forward declaration
 
 NS_BEGIN(aql)
 
@@ -135,10 +135,10 @@ class IResearchView final: public arangodb::ViewImplementation {
   ///        from the view
   ///        the call will get the specialized filter condition and the sort
   ///        condition from the previous calls
-  /// @return an IndexIterator which the AQL query engine will use for fetching
+  /// @return a ViewIterator which the AQL query engine will use for fetching
   ///         results from the view
   ////////////////////////////////////////////////////////////////////////////////
-  virtual arangodb::IndexIterator* iteratorForCondition(
+  virtual arangodb::ViewIterator* iteratorForCondition(
     transaction::Methods* trx,
     arangodb::aql::AstNode const* node,
     arangodb::aql::Variable const* reference,

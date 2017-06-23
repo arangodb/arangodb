@@ -45,7 +45,8 @@ SortCondition::SortCondition()
       _constAttributes(),
       _unidirectional(false),
       _onlyAttributeAccess(false),
-      _ascending(true) {}
+      _ascending(true),
+      _definitions(nullptr) {}
 
 /// @brief create the sort condition
 SortCondition::SortCondition(
@@ -56,7 +57,8 @@ SortCondition::SortCondition(
       _constAttributes(constAttributes),
       _unidirectional(true),
       _onlyAttributeAccess(true),
-      _ascending(true) {
+      _ascending(true),
+      _definitions(&variableDefinitions) {
 
   bool foundDirection = false;
 
@@ -75,7 +77,7 @@ SortCondition::SortCondition(
 
       if (node != nullptr && node->type == NODE_TYPE_ATTRIBUTE_ACCESS) {
         fieldNames.clear();
-        
+
         while (node->type == NODE_TYPE_ATTRIBUTE_ACCESS) {
           fieldNames.emplace_back(
               arangodb::basics::AttributeName(node->getString(), false));
@@ -98,7 +100,7 @@ SortCondition::SortCondition(
               isConst = true;
               break;
             }
-          } 
+          }
         }
       }
     }
@@ -139,18 +141,18 @@ size_t SortCondition::coveredAttributes(
         indexAttributes) const {
   size_t numCovered = 0;
   size_t fieldsPosition = 0;
-  
+
   // iterate over all fields of the index definition
   size_t const n = indexAttributes.size();
 
   for (size_t i = 0; i < n; /* no hoisting */) {
-    if (fieldsPosition >= _fields.size()) { 
+    if (fieldsPosition >= _fields.size()) {
       // done
       break;
     }
-    
+
     auto const& field = _fields[fieldsPosition];
-      
+
     // ...and check if the field is present in the index definition too
     if (reference == field.first &&
         arangodb::basics::AttributeName::isIdentical(field.second, indexAttributes[i], false)) {
@@ -171,7 +173,7 @@ size_t SortCondition::coveredAttributes(
       ++fieldsPosition;
       ++numCovered;
     }
-    
+
     if (!isConstant &&
         IsContained(_constAttributes, indexAttributes[i])) {
       // no field match, but a constant attribute
@@ -179,7 +181,7 @@ size_t SortCondition::coveredAttributes(
       ++i; // next index field
     }
 
-          
+
     if (!isConstant) {
       break;
     }
@@ -187,4 +189,21 @@ size_t SortCondition::coveredAttributes(
 
   TRI_ASSERT(numCovered <= _fields.size());
   return numCovered;
+}
+
+std::pair<Variable const*, AstNode const*> SortCondition::field(
+    size_t position) const {
+  if (isEmpty() || position > numAttributes() || _definitions == nullptr) {
+    return std::make_pair(nullptr, nullptr);
+  }
+
+  auto const& field = _fields[position];
+  Variable const* var = field.first;
+  auto it = _definitions->find(var->id);
+  if (it == _definitions->end()) {
+    return std::make_pair(nullptr, nullptr);
+  }
+  AstNode const* node = it->second;
+
+  return std::make_pair(var, node);
 }
