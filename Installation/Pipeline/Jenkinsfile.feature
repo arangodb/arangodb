@@ -286,7 +286,7 @@ def buildEdition(edition, os) {
             try {
                 step($class: 'hudson.plugins.copyartifact.CopyArtifact',
                      projectName: "/" + "${env.JOB_NAME}",
-                     buildSelector { latestSuccessful(true) }
+                     buildSelector { latestSuccessful(true) },
                      filter: fullpath)
 
                 if (!cleanBuild && fileExists(fullpath)) {
