@@ -610,10 +610,10 @@ stage('resilience') {
         'test-resilience-community-rocksdb-mac':      { testResilienceStep('mac',     'community',  'rocksdb', false) },
         'test-resilience-community-rocksdb-windows':  { testResilienceStep('windows', 'community',  'rocksdb', false) },
         'test-resilience-enterprise-mmfiles-linux':   { testResilienceStep('linux',   'enterprise', 'mmfiles', false) },
-        'test-resilience-enterprise-mmfiles-mac':     { testResilienceStep('mac',     'enterprise', 'mmfiles', false) }
+        'test-resilience-enterprise-mmfiles-mac':     { testResilienceStep('mac',     'enterprise', 'mmfiles', false) },
         'test-resilience-enterprise-mmfiles-windows': { testResilienceStep('windows', 'enterprise', 'mmfiles', false) },
         'test-resilience-enterprise-rocksdb-linux':   { testResilienceStep('linux',   'enterprise', 'rocksdb', false) },
         'test-resilience-enterprise-rocksdb-mac':     { testResilienceStep('mac',     'enterprise', 'rocksdb', false) },
-        'test-resilience-enterprise-rocksdb-windows': { testResilienceStep('windows', 'enterprise', 'rocksdb', false) },
+        'test-resilience-enterprise-rocksdb-windows': { testResilienceStep('windows', 'enterprise', 'rocksdb', false) }
     )
 }
