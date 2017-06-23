@@ -284,7 +284,7 @@ def buildEdition(edition, os) {
             def fullpath = 'artefacts/' + tarfile
 
             try {
-                unarchive mapping: ['artefacts': tarfile]
+                unarchive mapping: [(fullepath): '.']
 
                 if (!cleanBuild && fileExists(fullpath)) {
                     sh 'tar -x -z -p -f ' + fullpath
@@ -294,6 +294,10 @@ def buildEdition(edition, os) {
                 echo exc.toString()
                 throw exc
             }
+
+            sh 'ls -l'
+            sh 'ls -l artefacts'
+            throw "error"
 
             sh 'rm -f ' + fullpath
             sh './Installation/Pipeline/build_' + edition + '_' + os + '.sh 64'
