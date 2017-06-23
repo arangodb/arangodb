@@ -284,7 +284,7 @@ def buildEdition(edition, os) {
             def fullpath = 'artefacts/' + tarfile
 
             try {
-                unarchive mapping: [(fullpath): fullpath]
+                unarchive mapping: ['artefacts': tarfile]
 
                 if (!cleanBuild && fileExists(fullpath)) {
                     sh 'tar -x -z -p -f ' + fullpath
@@ -292,13 +292,14 @@ def buildEdition(edition, os) {
             }
             catch (exc) {
                 echo exc.toString()
+                throw exc
             }
 
             sh 'rm -f ' + fullpath
             sh './Installation/Pipeline/build_' + edition + '_' + os + '.sh 64'
 
             sh 'GZIP=--fast tar -c -z -f ' + fullpath + ' build-' + edition
-            archiveArtifacts allowEmptyArchive: true, artifacts: 'artefacts/' + tarfile, defaultExcludes: false
+            archiveArtifacts allowEmptyArchive: true, artifacts: fullfile, defaultExcludes: false
         }
         else if (os == 'windows') {
             def builddir = 'build-' + edition + '-' + os
