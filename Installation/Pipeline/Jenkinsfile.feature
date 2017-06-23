@@ -294,7 +294,6 @@ def buildEdition(edition, os) {
             }
             catch (exc) {
                 echo exc.toString()
-                throw exc
             }
 
             sh 'rm -f ' + fullpath
@@ -530,38 +529,91 @@ stage('checkout') {
 
 stage('build') {
     parallel(
+        'jslint': {
+            jslintStep()
+        },
+
         'build-community-linux': {
             buildStep('linux', 'community', false)
 
             parallel(
                 'test-cluster-community-mmfiles-linux':        { testStep('community',  'linux', 'cluster',      'mmfiles', false) },
-                'test-cluster-community-rocksdb-linux':        { testStep('community',  'linux', 'cluster',      'rocksdb', true)  }
+                'test-cluster-community-rocksdb-linux':        { testStep('community',  'linux', 'cluster',      'rocksdb', true)  },
+                'test-singleserver-community-mmfiles-linux':   { testStep('community',  'linux', 'singleserver', 'mmfiles', true)  },
+                'test-singleserver-community-rocksdb-linux':   { testStep('community',  'linux', 'singleserver', 'rocksdb', false) }
             )
         },
 
-        'build-community-mac':      { buildStep('mac',     'community',  false) },
-        'build-community-windows':  { buildStep('windows', 'community',  false) },
+        'build-enterprise-linux': {
+            buildStep('linux', 'enterprise', false)
 
-        'build-enterprise-linux':   { buildStep('linux',   'enterprise', false) },
-        'build-enterprise-mac':     { buildStep('mac',     'enterprise', true) },
-        'build-enterprise-windows': { buildStep('windows', 'enterprise', true) },
+            parallel(
+                'test-cluster-enterprise-mmfiles-linux':       { testStep('enterprise', 'linux', 'cluster',      'mmfiles', true)  },
+                'test-cluster-enterprise-rocksdb-linux':       { testStep('enterprise', 'linux', 'cluster',      'rocksdb', false) },
+                'test-singleserver-enterprise-mmfiles-linux':  { testStep('enterprise', 'linux', 'singleserver', 'mmfiles', false) },
+                'test-singleserver-enterprise-rocksdb-linux':  { testStep('enterprise', 'linux', 'singleserver', 'rocksdb', true)  }
+            )
+        },
+
+        'build-community-mac': {
+            buildStep('mac', 'community',  false)
+
+            parallel(
+                'test-cluster-community-mmfiles-mac':        { testStep('community',  'mac', 'cluster',      'mmfiles', false) },
+                'test-cluster-community-rocksdb-mac':        { testStep('community',  'mac', 'cluster',      'rocksdb', true)  },
+                'test-singleserver-community-mmfiles-mac':   { testStep('community',  'mac', 'singleserver', 'mmfiles', false)  },
+                'test-singleserver-community-rocksdb-mac':   { testStep('community',  'mac', 'singleserver', 'rocksdb', false) }
+            )
+        },
+
+        'build-enterprise-mac': {
+            buildStep('mac', 'enterprise', true)
+
+            parallel(
+                'test-cluster-enterprise-mmfiles-mac':       { testStep('enterprise', 'mac', 'cluster',      'mmfiles', false)  },
+                'test-cluster-enterprise-rocksdb-mac':       { testStep('enterprise', 'mac', 'cluster',      'rocksdb', false) },
+                'test-singleserver-enterprise-mmfiles-mac':  { testStep('enterprise', 'mac', 'singleserver', 'mmfiles', false) },
+                'test-singleserver-enterprise-rocksdb-mac':  { testStep('enterprise', 'mac', 'singleserver', 'rocksdb', false)  }
+            )
+        },
+
+        'build-community-windows': {
+            buildStep('windows', 'community', false)
+
+            parallel(
+                'test-cluster-community-mmfiles-windows':        { testStep('community',  'windows', 'cluster',      'mmfiles', false) },
+                'test-cluster-community-rocksdb-windows':        { testStep('community',  'windows', 'cluster',      'rocksdb', false)  },
+                'test-singleserver-community-mmfiles-windows':   { testStep('community',  'windows', 'singleserver', 'mmfiles', false)  },
+                'test-singleserver-community-rocksdb-windows':   { testStep('community',  'windows', 'singleserver', 'rocksdb', true) }
+            )
+        },
+
+        'build-enterprise-windows': {
+            buildStep('windows', 'enterprise', true)
+
+            parallel(
+                'test-cluster-enterprise-mmfiles-windows':       { testStep('enterprise', 'windows', 'cluster',      'mmfiles', false)  },
+                'test-cluster-enterprise-rocksdb-windows':       { testStep('enterprise', 'windows', 'cluster',      'rocksdb', false) },
+                'test-singleserver-enterprise-mmfiles-windows':  { testStep('enterprise', 'windows', 'singleserver', 'mmfiles', false) },
+                'test-singleserver-enterprise-rocksdb-windows':  { testStep('enterprise', 'windows', 'singleserver', 'rocksdb', false)  }
+            )
+        }
     )
 }
 
-stage('test') {
+stage('resilience') {
     parallel(
-        'test-cluster-community-mmfiles-linux':        { testStep('community',  'linux', 'cluster',      'mmfiles', false) },
-        'test-cluster-community-rocksdb-linux':        { testStep('community',  'linux', 'cluster',      'rocksdb', true)  },
-        'test-cluster-enterprise-mmfiles-linux':       { testStep('enterprise', 'linux', 'cluster',      'mmfiles', true)  },
-        'test-cluster-enterprise-rocksdb-linux':       { testStep('enterprise', 'linux', 'cluster',      'rocksdb', false) },
-        'test-singleserver-community-mmfiles-linux':   { testStep('community',  'linux', 'singleserver', 'mmfiles', true)  },
-        'test-singleserver-community-rocksdb-linux':   { testStep('community',  'linux', 'singleserver', 'rocksdb', false) },
-        'test-singleserver-enterprise-mmfiles-linux':  { testStep('enterprise', 'linux', 'singleserver', 'mmfiles', false) },
-        'test-singleserver-enterprise-rocksdb-linux':  { testStep('enterprise', 'linux', 'singleserver', 'rocksdb', true)  },
-
-        'test-resilience-community-rocksdb': { testResilienceStep('linux', 'community', 'rocksdb', false) },
-        'test-resilience-community-mmfiles': { testResilienceStep('linux', 'community', 'mmfiles', false) },
-
-        'jslint': { jslintStep() }
+        'test-resilience-community-mmfiles-linux':    { testResilienceStep('linux',   'community',  'mmfiles', false) },
+        'test-resilience-community-mmfiles-mac':      { testResilienceStep('mac',     'community',  'mmfiles', false) },
+        'test-resilience-community-mmfiles-windows':  { testResilienceStep('windows', 'community',  'mmfiles', false) },
+        'test-resilience-community-rocksdb-linux':    { testResilienceStep('linux',   'community',  'rocksdb', false) },
+        'test-resilience-community-rocksdb-mac':      { testResilienceStep('mac',     'community',  'rocksdb', false) },
+        'test-resilience-community-rocksdb-windows':  { testResilienceStep('windows', 'community',  'rocksdb', false) },
+        'test-resilience-enterprise-mmfiles-linux':   { testResilienceStep('linux',   'enterprise', 'mmfiles', false) },
+        'test-resilience-enterprise-mmfiles-mac':     { testResilienceStep('mac',     'enterprise', 'mmfiles', false) }
+        'test-resilience-enterprise-mmfiles-windows': { testResilienceStep('windows', 'enterprise', 'mmfiles', false) },
+        'test-resilience-enterprise-rocksdb-linux':   { testResilienceStep('linux',   'enterprise', 'rocksdb', false) },
+        'test-resilience-enterprise-rocksdb-mac':     { testResilienceStep('mac',     'enterprise', 'rocksdb', false) },
+        'test-resilience-enterprise-rocksdb-windows': { testResilienceStep('windows', 'enterprise', 'rocksdb', false) },
     )
 }
