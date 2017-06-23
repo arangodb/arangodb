@@ -610,21 +610,44 @@ function _buildServiceInPath (mount, tempServicePath, tempBundlePath) {
   fs.move(tempBundlePath, bundlePath);
 }
 
-function _install (mount, options = {}) {
-  const collection = utils.getStorage();
-  const service = FoxxService.create({
-    mount,
-    options,
-    noisy: true
-  });
-  if (options.setup !== false) {
+function _deleteServiceFromPath (mount, options) {
+  const servicePath = FoxxService.basePath(mount);
+  if (fs.exists(servicePath)) {
     try {
-      service.executeScript('setup');
+      fs.removeDirectoryRecursive(servicePath, true);
     } catch (e) {
       if (!options.force) {
         throw e;
       }
       console.warnStack(e);
+    }
+  }
+  const bundlePath = FoxxService.bundlePath(mount);
+  if (fs.exists(bundlePath)) {
+    try {
+      fs.remove(bundlePath);
+    } catch (e) {
+      if (!options.force) {
+        throw e;
+      }
+      console.warnStack(e);
+    }
+  }
+}
+
+function _install (mount, options = {}) {
+  const collection = utils.getStorage();
+  let service;
+  try {
+    service = FoxxService.create({
+      mount,
+      options,
+      noisy: true
+    });
+  } catch (e) {
+    _deleteServiceFromPath(mount, options);
+    if (!options.force) {
+      throw e;
     }
   }
   service.updateChecksum();
@@ -642,6 +665,17 @@ function _install (mount, options = {}) {
   `).next();
   service._rev = meta._rev;
   GLOBAL_SERVICE_MAP.get(db._name()).set(mount, service);
+  if (options.setup !== false) {
+    try {
+      service.executeScript('setup');
+    } catch (e) {
+      if (!options.force) {
+        console.errorStack(e);
+      } else {
+        console.warnStack(e);
+      }
+    }
+  }
   try {
     ensureServiceExecuted(service, true);
   } catch (e) {
@@ -697,28 +731,7 @@ function _uninstall (mount, options = {}) {
     }
   }
   GLOBAL_SERVICE_MAP.get(db._name()).delete(mount);
-  const servicePath = FoxxService.basePath(mount);
-  if (fs.exists(servicePath)) {
-    try {
-      fs.removeDirectoryRecursive(servicePath, true);
-    } catch (e) {
-      if (!options.force) {
-        throw e;
-      }
-      console.warnStack(e);
-    }
-  }
-  const bundlePath = FoxxService.bundlePath(mount);
-  if (fs.exists(bundlePath)) {
-    try {
-      fs.remove(bundlePath);
-    } catch (e) {
-      if (!options.force) {
-        throw e;
-      }
-      console.warnStack(e);
-    }
-  }
+  _deleteServiceFromPath(mount, options);
   return service;
 }
 
