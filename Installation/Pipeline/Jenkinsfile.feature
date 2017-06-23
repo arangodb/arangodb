@@ -532,6 +532,11 @@ stage('build') {
     parallel(
         'build-community-linux': {
             buildStep('linux', 'community', false)
+
+            parallel(
+                'test-cluster-community-mmfiles-linux':        { testStep('community',  'linux', 'cluster',      'mmfiles', false) },
+                'test-cluster-community-rocksdb-linux':        { testStep('community',  'linux', 'cluster',      'rocksdb', true)  }
+            )
         },
 
         'build-community-mac':      { buildStep('mac',     'community',  false) },
