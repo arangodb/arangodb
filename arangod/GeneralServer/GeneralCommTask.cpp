@@ -26,7 +26,6 @@
 #include "GeneralCommTask.h"
 
 #include "Basics/HybridLogicalClock.h"
-#include "Basics/Locking.h"
 #include "Basics/MutexLocker.h"
 #include "Basics/StaticStrings.h"
 #include "Cluster/ServerState.h"
@@ -176,12 +175,10 @@ void GeneralCommTask::executeRequest(
 }
 
 void GeneralCommTask::processResponse(GeneralResponse* response) {
-  _lock.assertLockedByCurrentThread();
-  
   if (response == nullptr) {
     LOG_TOPIC(WARN, Logger::COMMUNICATION)
         << "processResponse received a nullptr, closing connection";
-    closeStreamNoLock();
+    closeStream();
   } else {
     addResponse(response, nullptr);
   }
@@ -251,7 +248,7 @@ bool GeneralCommTask::handleRequest(std::shared_ptr<RestHandler> handler) {
   }
 
   if (isDirect) {
-    handleRequestDirectly(basics::ConditionalLocking::DoNotLock, std::move(handler));
+    handleRequestDirectly(std::move(handler));
     return true;
   }
 
@@ -259,9 +256,7 @@ bool GeneralCommTask::handleRequest(std::shared_ptr<RestHandler> handler) {
 
   if (isPrio) {
     SchedulerFeature::SCHEDULER->post(
-        [self, this, handler]() { 
-          handleRequestDirectly(basics::ConditionalLocking::DoLock, std::move(handler));
-        });
+        [self, this, handler]() { handleRequestDirectly(std::move(handler)); });
     return true;
   }
 
@@ -273,7 +268,7 @@ bool GeneralCommTask::handleRequest(std::shared_ptr<RestHandler> handler) {
   std::unique_ptr<Job> job(
       new Job(_server, std::move(handler),
               [self, this](std::shared_ptr<RestHandler> h) {
-                handleRequestDirectly(basics::ConditionalLocking::DoLock, h);
+                handleRequestDirectly(h);
               }));
 
   bool ok = SchedulerFeature::SCHEDULER->queue(std::move(job));
@@ -287,18 +282,11 @@ bool GeneralCommTask::handleRequest(std::shared_ptr<RestHandler> handler) {
   return ok;
 }
 
-void GeneralCommTask::handleRequestDirectly(bool doLock, std::shared_ptr<RestHandler> handler) {
-  if (!doLock) {
-    _lock.assertLockedByCurrentThread();
-  }
-
+void GeneralCommTask::handleRequestDirectly(
+    std::shared_ptr<RestHandler> handler) {
   auto self = shared_from_this();
-  handler->initEngine(_loop, [self, this, doLock](RestHandler* h) {
+  handler->initEngine(_loop, [self, this](RestHandler* h) {
     RequestStatistics* stat = h->stealStatistics();
-
-    CONDITIONAL_MUTEX_LOCKER(locker, _lock, doLock); 
-    _lock.assertLockedByCurrentThread();
-
     addResponse(h->response(), stat);
   });
 
