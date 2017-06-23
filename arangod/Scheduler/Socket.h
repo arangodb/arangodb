@@ -135,8 +135,6 @@ class Socket {
   virtual void setNonBlocking(bool) = 0;
   virtual std::string peerAddress() = 0;
   virtual int peerPort() = 0;
-
-  bool isEncrypted() const { return _encrypted; }
   bool handshake();
   virtual size_t write(basics::StringBuffer* buffer,
                        boost::system::error_code& ec) = 0;
