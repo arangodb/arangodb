@@ -34,6 +34,8 @@
 #include "RocksDBEngine/RocksDBMethods.h"
 #include "RocksDBEngine/RocksDBToken.h"
 
+#include <rocksdb/db.h>
+
 using namespace arangodb;
 using namespace arangodb::rocksdbengine;
 
@@ -317,8 +319,8 @@ size_t RocksDBGeoIndex::memory() const {
   RocksDBKeyBounds bounds = RocksDBKeyBounds::GeoIndex(_objectId);
   rocksdb::Range r(bounds.start(), bounds.end());
   uint64_t out;
-  db->GetApproximateSizes(&r, 1, &out, true);
-  return (size_t)out;
+  db->GetApproximateSizes(RocksDBColumnFamily::geo(), &r, 1, &out, static_cast<uint8_t>(rocksdb::DB::SizeApproximationFlags::INCLUDE_MEMTABLES | rocksdb::DB::SizeApproximationFlags::INCLUDE_FILES));
+  return static_cast<size_t>(out);
 }
 
 /// @brief return a JSON representation of the index

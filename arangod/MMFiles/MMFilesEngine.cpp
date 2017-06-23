@@ -3001,9 +3001,10 @@ int MMFilesEngine::openCollection(TRI_vocbase_t* vocbase,
   std::sort(compactors.begin(), compactors.end(), DatafileComparator());
 
   // add the datafiles and journals
-  physical->_datafiles = datafiles;
-  physical->_journals = journals;
-  physical->_compactors = compactors;
+  WRITE_LOCKER(writeLocker, physical->_filesLock);
+  physical->_datafiles = std::move(datafiles);
+  physical->_journals = std::move(journals);
+  physical->_compactors = std::move(compactors);
 
   return TRI_ERROR_NO_ERROR;
 }
