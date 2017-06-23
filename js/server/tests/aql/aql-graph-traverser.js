@@ -79,6 +79,7 @@ function limitSuite () {
     setUpAll: function() {
       db._drop(gn + "v"); 
       db._drop(gn + "e");
+      db._drop(gn + "e2");
       
       var i;
 
@@ -91,14 +92,19 @@ function limitSuite () {
       for (i = 0; i < 10000; ++i) {
         c.insert({ _from: gn + "v/test" + i, _to: gn + "v/test" + i }); 
       }
-
+        
+      c = db._createEdgeCollection(gn + "e2");
+      c.insert({ _from: gn + "v/test1", _to: gn + "v/test0" }); 
+      c.insert({ _from: gn + "v/test2", _to: gn + "v/test0" }); 
+      c.insert({ _from: gn + "v/test2", _to: gn + "v/test1" }); 
     },
 
     tearDownAll: function () {
       db._drop(gn + "v");
       db._drop(gn + "e");
+      db._drop(gn + "e2");
     },
-
+    
     testLimits: function() {
       var queries = [
         [ "FOR v IN " + gn + "v FOR e IN 1..1 OUTBOUND v._id " + gn + "e LIMIT 0, 10000 RETURN e", 10000 ], 
@@ -133,7 +139,31 @@ function limitSuite () {
       queries.forEach(function(query) {
         assertEqual(query[1], AQL_EXECUTE(query[0]).json.length);
       });
+    },
+    
+    testLimitsMultiEdges: function() {
+      var queries = [
+        [ "WITH " + gn + "v FOR v IN ['" + gn + "v/test0'] FOR e IN 1..1 OUTBOUND v " + gn + "e2 RETURN e", 0 ], 
+        [ "WITH " + gn + "v FOR v IN ['" + gn + "v/test0'] FOR e IN 1..1 OUTBOUND v " + gn + "e2 LIMIT 0, 1 RETURN e", 0 ], 
+        [ "WITH " + gn + "v FOR v IN ['" + gn + "v/test0'] FOR e IN 1..1 OUTBOUND v " + gn + "e2 LIMIT 1, 1 RETURN e", 0 ], 
+        [ "WITH " + gn + "v FOR v IN ['" + gn + "v/test1'] FOR e IN 1..1 OUTBOUND v " + gn + "e2 RETURN e", 1 ], 
+        [ "WITH " + gn + "v FOR v IN ['" + gn + "v/test1'] FOR e IN 1..1 OUTBOUND v " + gn + "e2 LIMIT 0, 1 RETURN e", 1 ], 
+        [ "WITH " + gn + "v FOR v IN ['" + gn + "v/test1'] FOR e IN 1..1 OUTBOUND v " + gn + "e2 LIMIT 1, 1 RETURN e", 0 ], 
+        [ "WITH " + gn + "v FOR v IN ['" + gn + "v/test1'] FOR e IN 1..1 OUTBOUND v " + gn + "e2 LIMIT 2, 1 RETURN e", 0 ], 
+        [ "WITH " + gn + "v FOR v IN ['" + gn + "v/test2'] FOR e IN 1..1 OUTBOUND v " + gn + "e2 RETURN e", 2 ], 
+        [ "WITH " + gn + "v FOR v IN ['" + gn + "v/test2'] FOR e IN 1..1 OUTBOUND v " + gn + "e2 LIMIT 0, 1 RETURN e", 1 ], 
+        [ "WITH " + gn + "v FOR v IN ['" + gn + "v/test2'] FOR e IN 1..1 OUTBOUND v " + gn + "e2 LIMIT 0, 1 RETURN e", 1 ], 
+        [ "WITH " + gn + "v FOR v IN ['" + gn + "v/test2'] FOR e IN 1..1 OUTBOUND v " + gn + "e2 LIMIT 0, 2 RETURN e", 2 ], 
+        [ "WITH " + gn + "v FOR v IN ['" + gn + "v/test2'] FOR e IN 1..1 OUTBOUND v " + gn + "e2 LIMIT 1, 1 RETURN e", 1 ], 
+        [ "WITH " + gn + "v FOR v IN ['" + gn + "v/test2'] FOR e IN 1..1 OUTBOUND v " + gn + "e2 LIMIT 1, 2 RETURN e", 1 ], 
+        [ "WITH " + gn + "v FOR v IN ['" + gn + "v/test2'] FOR e IN 1..1 OUTBOUND v " + gn + "e2 LIMIT 2, 1 RETURN e", 0 ]
+      ]; 
+      
+      queries.forEach(function(query) {
+        assertEqual(query[1], AQL_EXECUTE(query[0]).json.length, query);
+      });
     }
+
   };
 }
 
