@@ -2897,13 +2897,11 @@ Result transaction::Methods::resolveId(char const* handle, size_t length,
 
 /// @brief invoke a callback method when a transaction has finished
 void transaction::CallbackInvoker::invoke() noexcept {
-  if (!_trx->_onFinish) {
-    return;
-  }
-
-  try {
-    _trx->_onFinish(_trx);
-  } catch (...) {
-    // we must not propagate exceptions from here
+  for (auto const& cb : _trx->_callbacks) {
+    try {
+      cb(_trx);
+    } catch (...) {
+      // we must not propagate exceptions from here
+    }
   }
 }
