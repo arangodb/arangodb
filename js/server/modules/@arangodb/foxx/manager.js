@@ -343,13 +343,17 @@ function commitLocalState (replace) {
       RETURN service
     `).next();
     if (!serviceDefinition) {
-      const service = FoxxService.create({mount});
-      service.updateChecksum();
-      if (!bundleCollection.exists(service.checksum)) {
-        bundleCollection._binaryInsert({_key: service.checksum}, bundlePath);
+      try {
+        const service = FoxxService.create({mount});
+        service.updateChecksum();
+        if (!bundleCollection.exists(service.checksum)) {
+          bundleCollection._binaryInsert({_key: service.checksum}, bundlePath);
+        }
+        collection.save(service.toJSON());
+        modified = true;
+      } catch (e) {
+        console.errorStack(e);
       }
-      collection.save(service.toJSON());
-      modified = true;
     } else {
       const checksum = safeChecksum(mount);
       if (!serviceDefinition.checksum || (replace && serviceDefinition.checksum !== checksum)) {
@@ -648,8 +652,8 @@ function _install (mount, options = {}) {
       service.executeScript('setup');
     }
   } catch (e) {
-    _deleteServiceFromPath(mount, options);
     if (!options.force) {
+      _deleteServiceFromPath(mount, options);
       throw e;
     } else {
       console.warnStack(e);
