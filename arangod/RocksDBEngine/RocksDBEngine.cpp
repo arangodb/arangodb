@@ -1387,6 +1387,7 @@ TRI_vocbase_t* RocksDBEngine::openExistingDatabase(TRI_voc_tick_t id,
       TRI_ASSERT(physical != nullptr);
 
       physical->deserializeIndexEstimates(counterManager());
+      physical->deserializeKeyGenerator(counterManager());
       LOG_TOPIC(DEBUG, arangodb::Logger::FIXME) << "added document collection '"
                                                 << collection->name() << "'";
     }
