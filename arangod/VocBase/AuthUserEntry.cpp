@@ -394,10 +394,6 @@ void AuthUserEntry::updatePassword(std::string const& password) {
   _passwordHash = hash;
 }
 
-AuthLevel AuthUserEntry::canUseDatabase(std::string const& dbname) const {
-  return getAuthContext(dbname)->databaseAuthLevel();
-}
-
 std::shared_ptr<AuthContext> AuthUserEntry::getAuthContext(
     std::string const& dbname) const {
   auto const& it = _authContexts.find(dbname);

@@ -69,7 +69,6 @@ class AuthUserEntry {
   bool checkPassword(std::string const& password) const;
   void updatePassword(std::string const& password);
 
-  AuthLevel canUseDatabase(std::string const& dbname) const;
   std::shared_ptr<AuthContext> getAuthContext(
       std::string const& database) const;
   velocypack::Builder toVPackBuilder() const;
