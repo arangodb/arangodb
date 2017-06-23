@@ -143,20 +143,20 @@ function limitSuite () {
     
     testLimitsMultiEdges: function() {
       var queries = [
-        [ "FOR v IN ['" + gn + "v/test0'] FOR e IN 1..1 OUTBOUND v " + gn + "e2 RETURN e", 0 ], 
-        [ "FOR v IN ['" + gn + "v/test0'] FOR e IN 1..1 OUTBOUND v " + gn + "e2 LIMIT 0, 1 RETURN e", 0 ], 
-        [ "FOR v IN ['" + gn + "v/test0'] FOR e IN 1..1 OUTBOUND v " + gn + "e2 LIMIT 1, 1 RETURN e", 0 ], 
-        [ "FOR v IN ['" + gn + "v/test1'] FOR e IN 1..1 OUTBOUND v " + gn + "e2 RETURN e", 1 ], 
-        [ "FOR v IN ['" + gn + "v/test1'] FOR e IN 1..1 OUTBOUND v " + gn + "e2 LIMIT 0, 1 RETURN e", 1 ], 
-        [ "FOR v IN ['" + gn + "v/test1'] FOR e IN 1..1 OUTBOUND v " + gn + "e2 LIMIT 1, 1 RETURN e", 0 ], 
-        [ "FOR v IN ['" + gn + "v/test1'] FOR e IN 1..1 OUTBOUND v " + gn + "e2 LIMIT 2, 1 RETURN e", 0 ], 
-        [ "FOR v IN ['" + gn + "v/test2'] FOR e IN 1..1 OUTBOUND v " + gn + "e2 RETURN e", 2 ], 
-        [ "FOR v IN ['" + gn + "v/test2'] FOR e IN 1..1 OUTBOUND v " + gn + "e2 LIMIT 0, 1 RETURN e", 1 ], 
-        [ "FOR v IN ['" + gn + "v/test2'] FOR e IN 1..1 OUTBOUND v " + gn + "e2 LIMIT 0, 1 RETURN e", 1 ], 
-        [ "FOR v IN ['" + gn + "v/test2'] FOR e IN 1..1 OUTBOUND v " + gn + "e2 LIMIT 0, 2 RETURN e", 2 ], 
-        [ "FOR v IN ['" + gn + "v/test2'] FOR e IN 1..1 OUTBOUND v " + gn + "e2 LIMIT 1, 1 RETURN e", 1 ], 
-        [ "FOR v IN ['" + gn + "v/test2'] FOR e IN 1..1 OUTBOUND v " + gn + "e2 LIMIT 1, 2 RETURN e", 1 ], 
-        [ "FOR v IN ['" + gn + "v/test2'] FOR e IN 1..1 OUTBOUND v " + gn + "e2 LIMIT 2, 1 RETURN e", 0 ]
+        [ "WITH " + gn + "v FOR v IN ['" + gn + "v/test0'] FOR e IN 1..1 OUTBOUND v " + gn + "e2 RETURN e", 0 ], 
+        [ "WITH " + gn + "v FOR v IN ['" + gn + "v/test0'] FOR e IN 1..1 OUTBOUND v " + gn + "e2 LIMIT 0, 1 RETURN e", 0 ], 
+        [ "WITH " + gn + "v FOR v IN ['" + gn + "v/test0'] FOR e IN 1..1 OUTBOUND v " + gn + "e2 LIMIT 1, 1 RETURN e", 0 ], 
+        [ "WITH " + gn + "v FOR v IN ['" + gn + "v/test1'] FOR e IN 1..1 OUTBOUND v " + gn + "e2 RETURN e", 1 ], 
+        [ "WITH " + gn + "v FOR v IN ['" + gn + "v/test1'] FOR e IN 1..1 OUTBOUND v " + gn + "e2 LIMIT 0, 1 RETURN e", 1 ], 
+        [ "WITH " + gn + "v FOR v IN ['" + gn + "v/test1'] FOR e IN 1..1 OUTBOUND v " + gn + "e2 LIMIT 1, 1 RETURN e", 0 ], 
+        [ "WITH " + gn + "v FOR v IN ['" + gn + "v/test1'] FOR e IN 1..1 OUTBOUND v " + gn + "e2 LIMIT 2, 1 RETURN e", 0 ], 
+        [ "WITH " + gn + "v FOR v IN ['" + gn + "v/test2'] FOR e IN 1..1 OUTBOUND v " + gn + "e2 RETURN e", 2 ], 
+        [ "WITH " + gn + "v FOR v IN ['" + gn + "v/test2'] FOR e IN 1..1 OUTBOUND v " + gn + "e2 LIMIT 0, 1 RETURN e", 1 ], 
+        [ "WITH " + gn + "v FOR v IN ['" + gn + "v/test2'] FOR e IN 1..1 OUTBOUND v " + gn + "e2 LIMIT 0, 1 RETURN e", 1 ], 
+        [ "WITH " + gn + "v FOR v IN ['" + gn + "v/test2'] FOR e IN 1..1 OUTBOUND v " + gn + "e2 LIMIT 0, 2 RETURN e", 2 ], 
+        [ "WITH " + gn + "v FOR v IN ['" + gn + "v/test2'] FOR e IN 1..1 OUTBOUND v " + gn + "e2 LIMIT 1, 1 RETURN e", 1 ], 
+        [ "WITH " + gn + "v FOR v IN ['" + gn + "v/test2'] FOR e IN 1..1 OUTBOUND v " + gn + "e2 LIMIT 1, 2 RETURN e", 1 ], 
+        [ "WITH " + gn + "v FOR v IN ['" + gn + "v/test2'] FOR e IN 1..1 OUTBOUND v " + gn + "e2 LIMIT 2, 1 RETURN e", 0 ]
       ]; 
       
       queries.forEach(function(query) {

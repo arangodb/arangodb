@@ -283,22 +283,22 @@ static void CreateVocBase(v8::FunctionCallbackInfo<v8::Value> const& args,
           createWaitsForSyncReplication);
     
     result = WrapCollection(isolate, col.release());
-  }
-  
-  try {
-    arangodb::LogicalCollection const* collection =
-        vocbase->createCollection(infoSlice);
-
-    TRI_ASSERT(collection != nullptr);
-    result = WrapCollection(isolate, collection);
-    
-  } catch (basics::Exception const& ex) {
-    TRI_V8_THROW_EXCEPTION_MESSAGE(ex.code(), ex.what());
-  } catch (std::exception const& ex) {
-    TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, ex.what());
-  } catch (...) {
-    TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
-                                   "cannot create collection");
+  } else {
+    try {
+      arangodb::LogicalCollection const* collection =
+      vocbase->createCollection(infoSlice);
+      
+      TRI_ASSERT(collection != nullptr);
+      result = WrapCollection(isolate, collection);
+      
+    } catch (basics::Exception const& ex) {
+      TRI_V8_THROW_EXCEPTION_MESSAGE(ex.code(), ex.what());
+    } catch (std::exception const& ex) {
+      TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, ex.what());
+    } catch (...) {
+      TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
+                                     "cannot create collection");
+    }
   }
   
   if (result.IsEmpty()) {

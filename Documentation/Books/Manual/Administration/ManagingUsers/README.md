@@ -25,11 +25,18 @@ Creates an user call *admin@testapp*. This user will have no access
 at all.
 
 ```
-arangosh> users.grantDatabase('admin@testapp', 'testdb", 'rw');
+arangosh> users.grantDatabase('admin@testapp', 'testdb', 'rw');
 ```
 
 This grants the user read write access to the database *testdb*. `revokeDatabase`
-will revoke the right.
+will revoke the right. *Attention:* Be aware that from 3.2 the `grantDatabase` will
+not automatically grant users the right to write or read collections in a database. 
+If you grant read only rights on a database `testdb` you will need to explicitly grant
+access rights to individual collections via `grantCollection`.
+
+```
+arangosh> users.grantCollection('admin@testapp', 'testdb', 'testcoll', 'rw');
+```
 
 ### Save
 
@@ -69,7 +76,8 @@ grant the access rights for one or more databases using
 
 This grants *type* ('rw' or 'ro') access to the *database* for the *user*.
 
-If a user has access rights to the *_system* database, he is considered superuser.
+If a user has access rights to the *_system* database, he is considered a superuser
+with the right to create and drop users and databases.
 
 ### Revoke Database
 
@@ -82,8 +90,6 @@ This revokes read/write access to the *database* for the *user*.
 `users.grantCollection(user, database, collection, type)`
 
 This grants *type* ('rw' or 'ro') access to the *collection* in *database* for the *user*.
-
-If a user has access rights to the *_system* database, he is considered superuser.
 
 ### Revoke Collection
 
