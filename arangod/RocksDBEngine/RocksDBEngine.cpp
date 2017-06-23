@@ -1203,7 +1203,10 @@ void RocksDBEngine::pruneWalFiles() {
     // check if WAL file is expired
     if ((*it).second < TRI_microtime()) {
       auto s = _db->DeleteFile((*it).first);
-      if (s.ok()) {
+      // apparently there is a case where a file was already deleted
+      // but is still in _prunableWalFiles. In this case we get an invalid
+      // argument response.
+      if (s.ok() || s.IsInvalidArgument()) {
         it = _prunableWalFiles.erase(it);
         continue;
       }
