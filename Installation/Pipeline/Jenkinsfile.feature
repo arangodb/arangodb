@@ -304,6 +304,14 @@ def buildEdition(edition, os) {
             if (cleanBuild) {
                 bat 'del /F /Q build'
             }
+            else {
+                try {
+                    unarchive mapping: ['build': 'build']
+                }
+                catch (exc) {
+                    echo exc.toString()
+                }
+            }
 
             PowerShell('. .\\Installation\\Pipeline\\build_' + edition + '_windows.ps1')
 
