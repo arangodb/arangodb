@@ -284,8 +284,11 @@ def buildEdition(edition, os) {
             def fullpath = 'artefacts/' + tarfile
 
             try {
-                step([$class: 'CopyArtifact', filter: fullpath]);
-
+                copyArtifacts() {
+                    includePatterns('**')
+                    buildSelector { latestSuccessful(true) }
+                }
+    
                 if (!cleanBuild && fileExists(fullpath)) {
                     sh 'tar -x -z -p -f ' + fullpath
                 }
