@@ -132,7 +132,7 @@ class LoggerView final : public ViewImplementation {
   //////////////////////////////////////////////////////////////////////////////
   virtual arangodb::aql::AstNode* specializeCondition(
       arangodb::aql::Ast* ast, arangodb::aql::AstNode const* node,
-      arangodb::aql::Variable const* reference) {}
+      arangodb::aql::Variable const* reference) { return nullptr; }
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief this method will be called at query execution, when the AQL query
