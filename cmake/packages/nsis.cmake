@@ -55,7 +55,7 @@ message(STATUS "W_BIN_DIR: ${W_BIN_DIR} ${CMAKE_INSTALL_BINDIR} ")
 set(CPACK_ARANGODB_NSIS_DEFINES "
     !define BITS ${BITS}
     !define TRI_FRIENDLY_SVC_NAME '${ARANGODB_FRIENDLY_STRING}'
-    !define TRI_AARDVARK_URL 'http://127.0.0.1:8529'
+    !define TRI_AARDVARK_URL 'http://127.0.0.1:8529/_db/_system/_admin/aardvark/index.html'
     !define SBIN_DIR '${W_SBIN_DIR}'
     !define BIN_DIR '${W_BIN_DIR}'
     ")

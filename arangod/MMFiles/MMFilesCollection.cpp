@@ -2727,6 +2727,14 @@ Result MMFilesCollection::insert(transaction::Methods* trx,
     // we can get away with the fast hash function here, as key values are
     // restricted to strings
     newSlice = slice;
+
+    VPackSlice keySlice = newSlice.get(StaticStrings::KeyString);
+    if (keySlice.isString()) {
+      VPackValueLength l;
+      char const* p = keySlice.getString(l);
+      TRI_ASSERT(p != nullptr);
+      _logicalCollection->keyGenerator()->track(p, l);
+    }
   }
 
   // create marker

@@ -54,6 +54,7 @@ class RocksDBValue {
   static RocksDBValue UniqueIndexValue(TRI_voc_rid_t revisionId);
   static RocksDBValue View(VPackSlice const& data);
   static RocksDBValue ReplicationApplierConfig(VPackSlice const& data);
+  static RocksDBValue KeyGeneratorValue(VPackSlice const& data);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Used to construct an empty value of the given type for retrieval
@@ -77,7 +78,7 @@ class RocksDBValue {
   /// May be called only on EdgeIndexValue values. Other types will throw.
   //////////////////////////////////////////////////////////////////////////////
   static StringRef vertexId(rocksdb::Slice const&);
-  
+
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Extracts the VelocyPack data from a value
   ///
@@ -87,6 +88,15 @@ class RocksDBValue {
   static VPackSlice data(RocksDBValue const&);
   static VPackSlice data(rocksdb::Slice const&);
   static VPackSlice data(std::string const&);
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief Extracts the numeric value from the key field of a VPackSlice
+  ///
+  /// May be called only on values of the following types: KeyGeneratorValue.
+  //////////////////////////////////////////////////////////////////////////////
+  static uint64_t keyValue(RocksDBValue const&);
+  static uint64_t keyValue(rocksdb::Slice const&);
+  static uint64_t keyValue(std::string const&);
 
  public:
   //////////////////////////////////////////////////////////////////////////////
@@ -100,10 +110,10 @@ class RocksDBValue {
 
   RocksDBValue(RocksDBEntryType type, rocksdb::Slice slice)
       : _type(type), _buffer(slice.data(), slice.size()) {}
- 
-  RocksDBValue(RocksDBValue&& other) 
+
+  RocksDBValue(RocksDBValue&& other)
       : _type(other._type), _buffer(std::move(other._buffer)) {}
- 
+
  private:
   RocksDBValue();
   explicit RocksDBValue(RocksDBEntryType type);
@@ -116,6 +126,7 @@ class RocksDBValue {
   static TRI_voc_rid_t revisionId(char const* data, uint64_t size);
   static StringRef vertexId(char const* data, size_t size);
   static VPackSlice data(char const* data, size_t size);
+  static uint64_t keyValue(char const* data, size_t size);
 
  private:
   RocksDBEntryType const _type;

@@ -251,6 +251,9 @@ int PhysicalCollection::newObjectForInsert(
       return res;
     }
     builder.add(StaticStrings::KeyString, s);
+        
+    // track the key just used
+    _logicalCollection->keyGenerator()->track(p, l);
   }
 
   // _id
