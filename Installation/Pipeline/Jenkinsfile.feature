@@ -298,10 +298,11 @@ def buildEdition(edition, os) {
             }
 
             sh 'rm -f ' + fullpath
+
             sh './Installation/Pipeline/build_' + edition + '_' + os + '.sh 64'
 
             sh 'GZIP=--fast tar -c -z -f ' + fullpath + ' build-' + edition
-            archiveArtifacts allowEmptyArchive: true, artifacts: fullfile, defaultExcludes: false
+            archiveArtifacts allowEmptyArchive: true, artifacts: fullpath, defaultExcludes: false
         }
         else if (os == 'windows') {
             def builddir = 'build-' + edition + '-' + os
@@ -323,8 +324,8 @@ def buildEdition(edition, os) {
             }
 
             PowerShell('. .\\Installation\\Pipeline\\build_' + edition + '_windows.ps1')
-            bat 'move build ' + builddir
 
+            bat 'move build ' + builddir
             archiveArtifacts allowEmptyArchive: true, artifacts: builddir + '/**', defaultExcludes: false
         }
     }
