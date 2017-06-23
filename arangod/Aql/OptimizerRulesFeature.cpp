@@ -154,6 +154,10 @@ void OptimizerRulesFeature::addRules() {
   // merge filters into traversals
   registerRule("optimize-traversals", optimizeTraversalsRule,
                OptimizerRule::optimizeTraversalsRule_pass6, DoesNotCreateAdditionalPlans, CanBeDisabled);
+  
+  // optimize unneccessary filters
+  registerRule("remove-filters-covered-by-traversal", removeFiltersCoveredByTraversal,
+               OptimizerRule::removeFiltersCoveredByTraversal_pass6, DoesNotCreateAdditionalPlans, CanBeDisabled);
 
   // prepare traversal info
   registerRule("prepare-traversals", prepareTraversalsRule,

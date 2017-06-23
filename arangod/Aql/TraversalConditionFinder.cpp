@@ -566,7 +566,8 @@ bool TraversalConditionFinder::before(ExecutionNode* en) {
       TRI_ASSERT(andNode->type == NODE_TYPE_OPERATOR_NARY_AND);
 
       std::unordered_set<Variable const*> varsUsedByCondition;
-
+      
+      auto originalFilterConditions = std::make_unique<Condition>(_plan->getAst());
       for (size_t i = andNode->numMembers(); i > 0; --i) {
         // Whenever we do not support a of the condition we have to throw it out
 
@@ -604,6 +605,8 @@ bool TraversalConditionFinder::before(ExecutionNode* en) {
           continue;
         }
 
+        AstNode* cloned = andNode->getMember(i - 1)->clone(_plan->getAst());
+        
         // If we get here we can optimize this condition
         if (!checkPathVariableAccessFeasible(_plan->getAst(), andNode, i - 1,
                                              node, pathVar,
@@ -615,6 +618,10 @@ bool TraversalConditionFinder::before(ExecutionNode* en) {
             andNode->clearMembers();
             break;
           }
+
+        } else {
+          TRI_ASSERT(!conditionIsImpossible);
+          originalFilterConditions->andCombine(cloned);
         }
       }
 
@@ -650,7 +657,9 @@ bool TraversalConditionFinder::before(ExecutionNode* en) {
       }
 
       if (!isEmpty) {
-        node->setCondition(_condition.release());
+        //node->setCondition(_condition.release());
+        originalFilterConditions->normalize();
+        node->setCondition(originalFilterConditions.release());
         // We restart here with an empty condition.
         // All Filters that have been collected thus far
         // depend on sth issued by this traverser or later

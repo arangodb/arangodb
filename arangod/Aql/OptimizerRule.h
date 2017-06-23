@@ -156,6 +156,7 @@ struct OptimizerRule {
 
     // merge filters into graph traversals
     optimizeTraversalsRule_pass6,
+    removeFiltersCoveredByTraversal_pass6,
     prepareTraversalsRule_pass6,
 
     /// Pass 9: push down calculations beyond FILTERs and LIMITs
