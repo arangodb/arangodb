@@ -278,13 +278,12 @@ describe('Foxx Manager', function () {
           FoxxManager.install(malformedSetupApp, mount);
         } catch (e) {
         }
-        const checksum = db._query(aql`
+        const size = db._query(aql`
           FOR service IN _apps
           FILTER service.mount == ${mount}
           RETURN service.checksum
-        `).next();
-        expect(checksum).to.be.a('string');
-        expect(checksum).not.to.be.empty;
+        `).toArray().length;
+        expect(size).to.equal(0);
       });
 
       it('should not be available', function () {

@@ -644,10 +644,15 @@ function _install (mount, options = {}) {
       options,
       noisy: true
     });
+    if (options.setup !== false) {
+      service.executeScript('setup');
+    }
   } catch (e) {
     _deleteServiceFromPath(mount, options);
     if (!options.force) {
       throw e;
+    } else {
+      console.warnStack(e);
     }
   }
   service.updateChecksum();
@@ -665,17 +670,6 @@ function _install (mount, options = {}) {
   `).next();
   service._rev = meta._rev;
   GLOBAL_SERVICE_MAP.get(db._name()).set(mount, service);
-  if (options.setup !== false) {
-    try {
-      service.executeScript('setup');
-    } catch (e) {
-      if (!options.force) {
-        console.errorStack(e);
-      } else {
-        console.warnStack(e);
-      }
-    }
-  }
   try {
     ensureServiceExecuted(service, true);
   } catch (e) {
