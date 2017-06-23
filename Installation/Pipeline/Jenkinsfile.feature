@@ -284,7 +284,7 @@ def buildEdition(edition, os) {
             def fullpath = 'artefacts/' + tarfile
 
             try {
-                unarchive mapping: ['artefacts/': '.']
+                unarchive mapping: ['.': '.']
 
                 if (!cleanBuild && fileExists(fullpath)) {
                     sh 'tar -x -z -p -f ' + fullpath
