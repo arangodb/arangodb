@@ -317,13 +317,19 @@ void RocksDBEngine::start() {
   std::vector<rocksdb::ColumnFamilyDescriptor> columFamilies;
   rocksdb::ColumnFamilyOptions cfOptions1(_options);
   columFamilies.emplace_back(rocksdb::kDefaultColumnFamilyName, cfOptions1);// 0
-  columFamilies.emplace_back("Documents", cfOptions1);// 1
+  
+  rocksdb::ColumnFamilyOptions cfOptions3(_options);
+  table_options.index_type = rocksdb::BlockBasedTableOptions::IndexType::kHashSearch;
+  cfOptions3.table_factory.reset(
+                               rocksdb::NewBlockBasedTableFactory(table_options));
+
+  columFamilies.emplace_back("Documents", cfOptions3);// 1
   columFamilies.emplace_back("PrimaryIndex", cfOptions1);// 2
   columFamilies.emplace_back("EdgeIndex", cfOptions1);// 3
   columFamilies.emplace_back("GeoIndex", cfOptions1);// 4
   columFamilies.emplace_back("FulltextIndex", cfOptions1);// 5
   rocksdb::ColumnFamilyOptions cfOptions2(_options);
-  cfOptions2.comparator = _vpackCmp.get();
+  cfOptions2.comparator = _vpackCmp.get();// only place for vpack comp
   columFamilies.emplace_back("IndexValue", cfOptions2); // 6
   columFamilies.emplace_back("UniqueIndexValue", cfOptions2);// 7
   columFamilies.emplace_back("Views", cfOptions2);// 8
