@@ -286,13 +286,9 @@ def buildEdition(edition, os) {
             try {
                 step($class: 'hudson.plugins.copyartifact.CopyArtifact',
                      projectName: "/" + "${env.JOB_NAME}",
-                     filter: "**")
+                     buildSelector { latestSuccessful(true) }
+                     filter: fullpath)
 
-                copyArtifacts() {
-                    includePatterns('**')
-                    buildSelector { latestSuccessful(true) }
-                }
-    
                 if (!cleanBuild && fileExists(fullpath)) {
                     sh 'tar -x -z -p -f ' + fullpath
                 }
