@@ -178,6 +178,7 @@
 #define TRI_STAT_MTIME_SEC(statbuf) statbuf.st_mtim.tv_sec
 #define TRI_UNLINK ::unlink
 #define TRI_WRITE ::write
+#define TRI_FDOPEN(a, b) ::fdopen((a), (b))
 
 #define TRI_usleep_t useconds_t
 #define TRI_lseek_t off_t
@@ -335,6 +336,7 @@
 #define TRI_STAT_MTIME_SEC(statbuf) statbuf.st_mtimespec.tv_sec
 #define TRI_UNLINK ::unlink
 #define TRI_WRITE ::write
+#define TRI_FDOPEN(a, b) ::fdopen((a), (b))
 
 #define TRI_usleep_t useconds_t
 #define TRI_lseek_t off_t
@@ -479,6 +481,7 @@
 #define TRI_STAT_MTIME_SEC(statbuf) statbuf.st_mtimespec.tv_sec
 #define TRI_UNLINK ::unlink
 #define TRI_WRITE ::write
+#define TRI_FDOPEN(a, b) ::fdopen((a), (b))
 
 #define TRI_usleep_t useconds_t
 #define TRI_lseek_t off_t
@@ -642,6 +645,7 @@
 #define TRI_STAT_MTIME_SEC(statbuf) statbuf.st_mtim.tv_sec
 #define TRI_UNLINK ::unlink
 #define TRI_WRITE ::write
+#define TRI_FDOPEN(a, b) ::fdopen((a), (b))
 
 #define TRI_usleep_t useconds_t
 #define TRI_lseek_t off_t
@@ -838,6 +842,7 @@ typedef unsigned char bool;
 #define TRI_STAT ::_stat64
 #define TRI_UNLINK ::_unlink
 #define TRI_WRITE ::_write
+#define TRI_FDOPEN(a, b) ::_fdopen((a), (b))
 
 #define TRI_usleep_t unsigned long
 #define TRI_lseek_t __int64
