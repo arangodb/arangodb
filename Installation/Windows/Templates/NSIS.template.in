@@ -945,9 +945,9 @@ Function .onInstSuccess
 
 continueUI:
   ${If} $LaunchAfterInstall == '1'
-    ${If} $AllowGlobalInstall == "0"
+    ${If} $TRI_INSTALL_SERVICE == "0"
       ExecShell "" "$LaunchLink"
-      sleep 10
+      sleep 5000
       StrCpy $ServiceUp "1"
     ${EndIf}
     ${If} $ServiceUp == 1
