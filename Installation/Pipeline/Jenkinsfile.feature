@@ -283,10 +283,15 @@ def buildEdition(edition, os) {
             def tarfile = 'build-' + edition + '-' + os + '.tar.gz'
             def fullpath = 'artefacts/' + tarfile
 
-            unarchive mapping: [(fullpath): fullpath]
+            try {
+                unarchive mapping: [(fullpath): fullpath]
 
-            if (!cleanBuild && fileExists(fullpath)) {
-                sh 'tar -x -z -p -f ' + fullpath
+                if (!cleanBuild && fileExists(fullpath)) {
+                    sh 'tar -x -z -p -f ' + fullpath
+                }
+            }
+            catch (exc) {
+                echo exc.toString()
             }
 
             sh 'rm -f ' + fullpath
@@ -301,6 +306,8 @@ def buildEdition(edition, os) {
             }
 
             PowerShell('. .\\Installation\\Pipeline\\build_' + edition + '_windows.ps1')
+
+            archiveArtifacts allowEmptyArchive: true, artifacts: 'builds/**', defaultExcludes: false
         }
     }
     catch (exc) {
