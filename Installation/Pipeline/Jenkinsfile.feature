@@ -301,12 +301,15 @@ def buildEdition(edition, os) {
             archiveArtifacts allowEmptyArchive: true, artifacts: 'artefacts/' + tarfile, defaultExcludes: false
         }
         else if (os == 'windows') {
+            def builddir = 'build-' + edition + '-' + os
+
             if (cleanBuild) {
                 bat 'del /F /Q build'
             }
             else {
                 try {
-                    unarchive mapping: ['build': 'build']
+                    unarchive mapping: [(builddir): '**']
+                    bat 'move ' + builddir + ' build'
                 }
                 catch (exc) {
                     echo exc.toString()
@@ -314,8 +317,9 @@ def buildEdition(edition, os) {
             }
 
             PowerShell('. .\\Installation\\Pipeline\\build_' + edition + '_windows.ps1')
+            bat 'move build ' + builddir
 
-            archiveArtifacts allowEmptyArchive: true, artifacts: 'builds/**', defaultExcludes: false
+            archiveArtifacts allowEmptyArchive: true, artifacts: builddir + '/**', defaultExcludes: false
         }
     }
     catch (exc) {
