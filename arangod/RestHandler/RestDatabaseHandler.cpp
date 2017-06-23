@@ -24,7 +24,7 @@
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Rest/HttpRequest.h"
-#include "VocBase/Methods/Database.h"
+#include "VocBase/Methods/Databases.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/Iterator.h>
@@ -74,9 +74,9 @@ RestStatus RestDatabaseHandler::getDatabases() {
   if (suffixes.empty() || suffixes[0] == "user") {
     std::vector<std::string> names;
     if (suffixes.empty()) {
-      names = methods::Database::list(std::string());
+      names = methods::Databases::list(std::string());
     } else if (suffixes[0] == "user") {
-      names = methods::Database::list(_request->user());
+      names = methods::Databases::list(_request->user());
     }
 
     result.openArray();
@@ -85,7 +85,7 @@ RestStatus RestDatabaseHandler::getDatabases() {
     }
     result.close();
   } else if (suffixes[0] == "current") {
-    Result res = methods::Database::info(_vocbase, result);
+    Result res = methods::Databases::info(_vocbase, result);
     if (!res.ok()) {
       generateError(rest::ResponseCode::BAD, res.errorNumber());
       return RestStatus::DONE;
@@ -122,7 +122,7 @@ RestStatus RestDatabaseHandler::createDatabase() {
   VPackSlice options = parsedBody->slice().get("options");
   VPackSlice users = parsedBody->slice().get("users");
 
-  Result res = methods::Database::create(dbName, users, options);
+  Result res = methods::Databases::create(dbName, users, options);
   if (res.ok()) {
     generateSuccess(rest::ResponseCode::CREATED, VPackSlice::trueSlice());
   } else {
@@ -153,7 +153,7 @@ RestStatus RestDatabaseHandler::deleteDatabase() {
 
   std::string const& dbName = suffixes[0];
 
-  Result res = methods::Database::drop(_vocbase, dbName);
+  Result res = methods::Databases::drop(_vocbase, dbName);
   if (res.ok()) {
     generateSuccess(rest::ResponseCode::OK, VPackSlice::trueSlice());
   } else {

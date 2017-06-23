@@ -36,16 +36,19 @@ AuthContext::AuthContext(
 
 AuthLevel AuthContext::collectionAuthLevel(
     std::string const& collectionName) const {
-  for (const auto& collection :
-       std::vector<std::string>({collectionName, "*"})) {
-    auto const& it = _collectionAccess.find(collection);
-
-    if (it == _collectionAccess.end()) {
-      continue;
-    }
+  auto const& it = _collectionAccess.find(collectionName);
+  if (it != _collectionAccess.end()) {
     return it->second;
   }
+  auto const& it2 = _collectionAccess.find("*");
+  if (it2 != _collectionAccess.end()) {
+    return it2->second;
+  }
   return AuthLevel::NONE;
+}
+
+bool AuthContext::hasSpecificCollection(std::string const& collectionName) const {
+  return _collectionAccess.find(collectionName) != _collectionAccess.end();
 }
 
 void AuthContext::dump() {

@@ -37,6 +37,9 @@
 #include "RestServer/DatabaseFeature.h"
 #include "Ssl/SslInterface.h"
 #include "Transaction/Helpers.h"
+#include "VocBase/Methods/Collections.h"
+#include "VocBase/Methods/Databases.h"
+#include "VocBase/LogicalCollection.h"
 
 #include <velocypack/Iterator.h>
 #include <velocypack/velocypack-aliases.h>
@@ -268,14 +271,9 @@ AuthUserEntry AuthUserEntry::fromDocument(VPackSlice const& slice) {
       std::string const dbName = obj.key.copyString();
 
       // check if database exists
+      TRI_vocbase_t* vocbase = nullptr;
       if (dbName != "*") {
-        TRI_vocbase_t* vocbase = nullptr;
-        if (ServerState::instance()->isCoordinator()) {
-          vocbase =
-              DatabaseFeature::DATABASE->lookupDatabaseCoordinator(dbName);
-        } else {
-          vocbase = DatabaseFeature::DATABASE->lookupDatabase(dbName);
-        }
+        vocbase = methods::Databases::lookup(dbName);
         if (vocbase == nullptr) {
           continue;
         }
@@ -293,11 +291,19 @@ AuthUserEntry AuthUserEntry::fromDocument(VPackSlice const& slice) {
         VPackSlice collectionsSlice = obj.value.get("collections");
         if (collectionsSlice.isObject()) {
           for (auto const& collection : VPackObjectIterator(collectionsSlice)) {
-            auto const permissionsSlice = collection.value.get("permissions");
-            if (permissionsSlice.isObject()) {
-              collections.emplace(collection.key.copyString(),
-                                  AuthLevelFromSlice(permissionsSlice));
+            
+            std::string const cName = collection.key.copyString();
+            // skip nonexisting collections
+            bool exists = dbName == "*" || cName == "*" ||
+              methods::Collections::lookupCollection(vocbase, cName, [&](LogicalCollection*) {});
+            if (exists) {
+              auto const permissionsSlice = collection.value.get("permissions");
+              if (permissionsSlice.isObject()) {
+                collections.emplace(cName,
+                                    AuthLevelFromSlice(permissionsSlice));
+              }// if
             }  // if
+            
           }    // for
         }      // if
 
@@ -402,9 +408,7 @@ std::shared_ptr<AuthContext> AuthUserEntry::getAuthContext(
   if (it2 != _authContexts.end()) {
     return it2->second;
   }
-  return std::make_shared<AuthContext>(
-      AuthLevel::NONE,
-      std::unordered_map<std::string, AuthLevel>({{"*", AuthLevel::NONE}}));
+  return std::shared_ptr<AuthContext>();
 }
 
 VPackBuilder AuthUserEntry::toVPackBuilder() const {

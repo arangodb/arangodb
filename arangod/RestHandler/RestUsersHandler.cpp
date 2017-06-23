@@ -114,7 +114,6 @@ RestStatus RestUsersHandler::getRequest(AuthInfo* authInfo) {
       return RestStatus::DONE;
     }
 
-    AuthLevel lvl;
     if (suffixes[1] == "database") {
       if (suffixes.size() == 2) {
         bool full = false;
@@ -128,40 +127,53 @@ RestStatus RestUsersHandler::getRequest(AuthInfo* authInfo) {
         data.openObject();
         DatabaseFeature::DATABASE->enumerateDatabases([&](
             TRI_vocbase_t* vocbase) {
-          lvl = authInfo->canUseDatabase(user, vocbase->name());
-          std::string str = convertFromAuthLevel(lvl);
+          std::shared_ptr<AuthContext> context =
+              authInfo->getAuthContext(user, vocbase->name());
+          AuthLevel lvl = authInfo->canUseDatabase(user, vocbase->name());
+          std::string str = "undefined";
+          if (context != authInfo->noneAuthContext()) {
+            str = convertFromAuthLevel(lvl);
+          }
+
           if (full) {
             VPackObjectBuilder b(&data, vocbase->name(), true);
             data.add("permission", VPackValue(str));
             VPackObjectBuilder b2(&data, "collections", true);
             methods::Collections::enumerateCollections(
                 vocbase, [&](LogicalCollection* c) {
-                  lvl = authInfo->canUseCollection(user, vocbase->name(),
-                                                   c->name());
-                  data.add(c->name(), VPackValue(convertFromAuthLevel(lvl)));
+                  if (context->hasSpecificCollection(c->name())) {
+                    lvl = context->collectionAuthLevel(c->name());
+                    data.add(c->name(), VPackValue(convertFromAuthLevel(lvl)));
+                  } else {
+                    data.add(c->name(), VPackValue("undefined"));
+                  }
                 });
+            lvl = authInfo->canUseCollection(user, vocbase->name(), "*");
+            data.add("*", VPackValue(convertFromAuthLevel(lvl)));
           } else if (lvl != AuthLevel::NONE) {  // hide db's without access
             data.add(vocbase->name(), VPackValue(str));
           }
         });
-        /*lvl = authInfo->canUseDatabase(user, "*");
-        VPackValue val(convertFromAuthLevel(lvl));
         if (full) {
-          data("*", VPackValue(VPackValueType::Object))("permission", val)();
-        } else if (lvl != AuthLevel::NONE) {
-          data.add("*", val);
-        }*/
+          AuthLevel lvl = authInfo->canUseDatabase(user, "*");
+          AuthLevel lvl2 = authInfo->canUseCollection(user, "*", "*");
+          data("*", VPackValue(VPackValueType::Object))(
+              "permission", VPackValue(convertFromAuthLevel(lvl)))(
+              "collections", VPackValue(VPackValueType::Object))(
+              "*", VPackValue(convertFromAuthLevel(lvl2)))()();
+        }
         data.close();
         generateSuccess(ResponseCode::OK, data.slice());
       } else if (suffixes.size() == 3) {
         // return specific database
-        lvl = authInfo->canUseDatabase(user, suffixes[2]);
+        AuthLevel lvl = authInfo->canUseDatabase(user, suffixes[2]);
         VPackBuilder data;
         data.add(VPackValue(convertFromAuthLevel(lvl)));
         generateSuccess(ResponseCode::OK, data.slice());
 
       } else if (suffixes.size() == 4) {
-        lvl = authInfo->canUseCollection(user, suffixes[2], suffixes[3]);
+        AuthLevel lvl =
+            authInfo->canUseCollection(user, suffixes[2], suffixes[3]);
         VPackBuilder data;
         data.add(VPackValue(convertFromAuthLevel(lvl)));
         generateSuccess(ResponseCode::OK, data.slice());

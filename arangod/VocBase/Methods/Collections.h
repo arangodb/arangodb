@@ -40,8 +40,9 @@ namespace methods {
 struct Collections {
   static void enumerateCollections(
       TRI_vocbase_t* vocbase, std::function<void(LogicalCollection*)> const&);
-  static LogicalCollection* lookupCollection(TRI_vocbase_t* vocbase,
-                                             std::string const& collection);
+  static bool lookupCollection(TRI_vocbase_t* vocbase,
+                               std::string const& collection,
+                               std::function<void(LogicalCollection*)> const&);
 };
 }
 }

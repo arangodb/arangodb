@@ -20,7 +20,7 @@
 /// @author Simon Gräter
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "Database.h"
+#include "Databases.h"
 #include "Basics/Common.h"
 
 #include "Agency/AgencyComm.h"
@@ -49,7 +49,17 @@
 using namespace arangodb;
 using namespace arangodb::methods;
 
-std::vector<std::string> Database::list(std::string const& user) {
+TRI_vocbase_t* Databases::lookup(std::string const& dbname) {
+  if (DatabaseFeature::DATABASE != nullptr) {
+    if (ServerState::instance()->isCoordinator()) {
+      return DatabaseFeature::DATABASE->lookupDatabaseCoordinator(dbname);
+    }
+    return DatabaseFeature::DATABASE->lookupDatabase(dbname);
+  }
+  return nullptr;
+}
+
+std::vector<std::string> Databases::list(std::string const& user) {
   DatabaseFeature* databaseFeature =
       application_features::ApplicationServer::getFeature<DatabaseFeature>(
           "Database");
@@ -83,7 +93,7 @@ std::vector<std::string> Database::list(std::string const& user) {
   }
 }
 
-arangodb::Result Database::info(TRI_vocbase_t* vocbase, VPackBuilder& result) {
+arangodb::Result Databases::info(TRI_vocbase_t* vocbase, VPackBuilder& result) {
   if (ServerState::instance()->isCoordinator()) {
     AgencyComm agency;
     AgencyCommResult commRes =
@@ -124,7 +134,7 @@ arangodb::Result Database::info(TRI_vocbase_t* vocbase, VPackBuilder& result) {
   return Result();
 }
 
-arangodb::Result Database::create(std::string const& dbName,
+arangodb::Result Databases::create(std::string const& dbName,
                                   VPackSlice const& inUsers,
                                   VPackSlice const& inOptions) {
   if (TRI_GetOperationModeServer() == TRI_VOCBASE_MODE_NO_CREATE) {
@@ -365,7 +375,7 @@ arangodb::Result Database::create(std::string const& dbName,
   return Result();
 }
 
-arangodb::Result Database::drop(TRI_vocbase_t* systemVocbase,
+arangodb::Result Databases::drop(TRI_vocbase_t* systemVocbase,
                                 std::string const& dbName) {
   TRI_ASSERT(systemVocbase->isSystem());
   if (ExecContext::CURRENT_EXECCONTEXT != nullptr) {
