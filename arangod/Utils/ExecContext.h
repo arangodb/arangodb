@@ -38,6 +38,7 @@ class AuthContext {
   AuthLevel databaseAuthLevel() const { return _databaseAuthLevel; }
   AuthLevel systemAuthLevel() const { return _systemAuthLevel; }
   AuthLevel collectionAuthLevel(std::string const& collectionName) const;
+  bool hasSpecificCollection(std::string const& collectionName) const;
 
   void dump();
 

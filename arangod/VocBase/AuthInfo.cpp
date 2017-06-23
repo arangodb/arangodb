@@ -931,6 +931,6 @@ std::shared_ptr<AuthContext> AuthInfo::getAuthContext(
   if (it == _authInfo.end()) {
     return _noneAuthContext;
   }
-  // AuthUserEntry const& entry =
-  return it->second.getAuthContext(database);
+  std::shared_ptr<AuthContext> c = it->second.getAuthContext(database);
+  return c ? c : _noneAuthContext;
 }

@@ -85,22 +85,27 @@ void methods::Collections::enumerateCollections(
   }
 }
 
-LogicalCollection* methods::Collections::lookupCollection(
-    TRI_vocbase_t* vocbase, std::string const& collection) {
+bool methods::Collections::lookupCollection(
+    TRI_vocbase_t* vocbase, std::string const& collection,
+    std::function<void(LogicalCollection*)> const& func) {
   if (!collection.empty()) {
     if (ServerState::instance()->isCoordinator()) {
       try {
         std::shared_ptr<LogicalCollection> coll =
             ClusterInfo::instance()->getCollection(vocbase->name(), collection);
         if (coll) {
-          auto colCopy = coll->clone();
-          return colCopy.release();
+          func(coll.get());
+          return true;
         }
       } catch (...) {
       }
     } else {
-      return vocbase->lookupCollection(collection);
+      LogicalCollection* coll = vocbase->lookupCollection(collection);
+      if (coll != nullptr) {
+        func(coll);
+        return true;
+      }
     }
   }
-  return nullptr;
+  return false;
 }

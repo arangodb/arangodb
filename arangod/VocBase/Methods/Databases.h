@@ -33,7 +33,8 @@ namespace arangodb {
 namespace methods {
 
 /// Common code for the db._database(),
-struct Database {
+struct Databases {
+  static TRI_vocbase_t* lookup(std::string const& dbname);
   static std::vector<std::string> list(std::string const& user = "");
   static arangodb::Result info(TRI_vocbase_t* vocbase,
                                arangodb::velocypack::Builder& result);
@@ -42,6 +43,7 @@ struct Database {
                                  arangodb::velocypack::Slice const& options);
   static arangodb::Result drop(TRI_vocbase_t* systemVocbase,
                                std::string const&);
+  
 };
 }
 }

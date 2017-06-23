@@ -116,6 +116,8 @@ class AuthInfo {
 
   std::shared_ptr<AuthContext> getAuthContext(std::string const& username,
                                               std::string const& database);
+  
+  std::shared_ptr<AuthContext> noneAuthContext() { return _noneAuthContext; }
 
  private:
   void loadFromDB();

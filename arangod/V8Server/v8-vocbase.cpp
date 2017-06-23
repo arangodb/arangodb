@@ -81,7 +81,7 @@
 #include "VocBase/KeyGenerator.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/modes.h"
-#include "VocBase/Methods/Database.h"
+#include "VocBase/Methods/Databases.h"
 
 using namespace arangodb;
 using namespace arangodb::basics;
@@ -1913,7 +1913,7 @@ static void JS_Databases(v8::FunctionCallbackInfo<v8::Value> const& args) {
   if (argc > 0) {
     user = TRI_ObjectToString(args[0]);
   }
-  std::vector<std::string> names = methods::Database::list(user);
+  std::vector<std::string> names = methods::Databases::list(user);
 
   v8::Handle<v8::Array> result = v8::Array::New(isolate, (int)names.size());
   for (size_t i = 0; i < names.size(); ++i) {
@@ -1974,7 +1974,7 @@ static void JS_CreateDatabase(v8::FunctionCallbackInfo<v8::Value> const& args) {
   }
   
   std::string const dbName = TRI_ObjectToString(args[0]);
-  Result res = methods::Database::create(dbName, users.slice(), options.slice());
+  Result res = methods::Databases::create(dbName, users.slice(), options.slice());
   if (!res.ok()) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(res.errorNumber(), res.errorMessage());
   }
@@ -2012,7 +2012,7 @@ static void JS_DropDatabase(v8::FunctionCallbackInfo<v8::Value> const& args) {
   }
 
   std::string const name = TRI_ObjectToString(args[0]);
-  Result res = methods::Database::drop(vocbase, name);
+  Result res = methods::Databases::drop(vocbase, name);
   if (!res.ok()) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(res.errorNumber(), res.errorMessage());
   }
