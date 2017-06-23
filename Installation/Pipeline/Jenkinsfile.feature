@@ -297,10 +297,6 @@ def buildEdition(edition, os) {
                 throw exc
             }
 
-            sh 'ls -l'
-            sh 'ls -l artefacts'
-            throw "error"
-
             sh 'rm -f ' + fullpath
             sh './Installation/Pipeline/build_' + edition + '_' + os + '.sh 64'
 
@@ -315,7 +311,10 @@ def buildEdition(edition, os) {
             }
             else {
                 try {
-                    unarchive mapping: [(builddir): '**']
+                    step($class: 'hudson.plugins.copyartifact.CopyArtifact',
+                         projectName: "/" + "${env.JOB_NAME}",
+                         filter: builddir + '/**')
+
                     bat 'move ' + builddir + ' build'
                 }
                 catch (exc) {
