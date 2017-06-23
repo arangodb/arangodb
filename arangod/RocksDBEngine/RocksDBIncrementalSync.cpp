@@ -54,6 +54,9 @@ int syncChunkRocksDB(InitialSyncer& syncer, SingleCollectionTransaction* trx,
   options.silent = true;
   options.ignoreRevs = true;
   options.isRestore = true;
+  if (!syncer._leaderId.empty()) {
+    options.isSynchronousReplicationFrom = syncer._leaderId;
+  }
 
   LOG_TOPIC(TRACE, Logger::REPLICATION) << "synching chunk. low: '" << lowString << "', high: '" << highString << "'";
 
