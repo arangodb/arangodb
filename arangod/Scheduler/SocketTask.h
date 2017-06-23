@@ -139,10 +139,9 @@ class SocketTask : virtual public Task {
  protected:
   ConnectionStatistics* _connectionStatistics;
   ConnectionInfo _connectionInfo;
-  basics::StringBuffer _readBuffer; // needs _readLock
 
- private:
   Mutex _readLock;
+  basics::StringBuffer _readBuffer; // needs _readLock
 
  private:
   // caller must hold the _writeLock
@@ -160,8 +159,6 @@ class SocketTask : virtual public Task {
   Mutex _writeLock;
   WriteBuffer _writeBuffer;
   std::list<WriteBuffer> _writeBuffers;
-
-  boost::asio::io_service::strand _strand;
 
   std::unique_ptr<Socket> _peer;
   boost::posix_time::milliseconds _keepAliveTimeout;
