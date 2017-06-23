@@ -284,6 +284,10 @@ def buildEdition(edition, os) {
             def fullpath = 'artefacts/' + tarfile
 
             try {
+                step($class: 'hudson.plugins.copyartifact.CopyArtifact',
+                     projectName: "/" + "${env.JOB_NAME}",
+                     filter: "**")
+
                 copyArtifacts() {
                     includePatterns('**')
                     buildSelector { latestSuccessful(true) }
