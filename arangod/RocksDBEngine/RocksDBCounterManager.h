@@ -97,6 +97,9 @@ class RocksDBCounterManager {
   std::unique_ptr<arangodb::RocksDBCuckooIndexEstimator<uint64_t>>
   stealIndexEstimator(uint64_t indexObjectId);
 
+  // Steal the key genenerator state that recovery has detected.
+  uint64_t stealKeyGenerator(uint64_t indexObjectId);
+
   // Free up all index estimators that were not read by any index.
   // This is to save some memory.
   // NOTE: After calling this the stored estimate of all not yet
@@ -105,6 +108,9 @@ class RocksDBCounterManager {
   // So call it after ALL indexes for all databases
   // have been created in memory.
   void clearIndexEstimators();
+
+  // Clear out key generator map for values not read by any collection.
+  void clearKeyGenerators();
 
  protected:
   struct CMValue {
@@ -124,6 +130,7 @@ class RocksDBCounterManager {
   void readCounterValues();
   void readSettings();
   void readIndexEstimates();
+  void readKeyGenerators();
 
   bool parseRocksWAL();
 
@@ -131,6 +138,11 @@ class RocksDBCounterManager {
   /// @brief counter values
   //////////////////////////////////////////////////////////////////////////////
   std::unordered_map<uint64_t, CMValue> _counters;
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief Key generator container
+  //////////////////////////////////////////////////////////////////////////////
+  std::unordered_map<uint64_t, uint64_t> _generators;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Index Estimator contianer.
@@ -142,6 +154,8 @@ class RocksDBCounterManager {
       std::pair<uint64_t,
                 std::unique_ptr<RocksDBCuckooIndexEstimator<uint64_t>>>>
       _estimators;
+
+
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief synced sequence numbers
