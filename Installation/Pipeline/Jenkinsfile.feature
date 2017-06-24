@@ -93,6 +93,9 @@ enterpriseRepo = 'https://github.com/arangodb/enterprise'
 // Jenkins credentials for enterprise repositiory
 credentials = '8d893d23-6714-4f35-a239-c847c798e080'
 
+// jenkins cache
+def cacheDir = '/vol/cache/' + env.JOB_NAME
+
 // execute a powershell
 def PowerShell(psCmd) {
     bat "powershell.exe -NonInteractive -ExecutionPolicy Bypass -Command \"\$ErrorActionPreference='Stop';[Console]::OutputEncoding=[System.Text.Encoding]::UTF8;$psCmd;EXIT \$global:LastExitCode\""
@@ -226,10 +229,8 @@ def stashSourceCode() {
     sh 'find -L . -type l -delete'
     sh 'zip -r -1 -x "*tmp" -x ".git" -y -q source.zip *'
 
-    def name = env.JOB_NAME
-
-    sh 'mkdir -p /vol/cache/' + name
-    sh 'mv -f source.zip /vol/cache/' + name + '/source.zip'
+    sh 'mkdir -p ' + cacheDir
+    sh 'mv -f source.zip ' + cacheDir + '/source.zip'
 }
 
 def unstashSourceCode(os) {
@@ -243,12 +244,12 @@ def unstashSourceCode(os) {
     def name = env.JOB_NAME
 
     if (os == 'linux' || os == 'mac') {
-        sh 'scp jenkins@c1:/vol/cache/' + name + '/source.zip source.zip'
+        sh 'scp jenkins@c1:' + cacheDir + '/source.zip source.zip'
         sh 'unzip -o -q source.zip'
         sh 'mkdir -p artefacts'
     }
     else if (os == 'windows') {
-        bat 'scp jenkins@c1:/vol/cache/' + name + '/source.zip source.zip'
+        bat 'scp jenkins@c1:' + cacheDir + '/source.zip source.zip'
         PowerShell('Expand-Archive -Path source.zip -DestinationPath .')
 
         if (!fileExists('artefacts')) {
@@ -262,7 +263,7 @@ def stashBuild(edition, os) {
 
     if (os == 'linux' || os == 'mac') {
       sh 'zip -r -1 -y -q ' + name + ' build-' + edition
-      sh 'scp ' + name + ' jenkins@c1:/vol/cache/' + name
+      sh 'scp ' + name + ' jenkins@c1:' + cacheDir
     }
 }
 
@@ -270,7 +271,7 @@ def unstashBuild(edition, os) {
     def name = 'build-' + edition + '-' + os + '.zip'
 
     if (os == 'linux' || os == 'mac') {
-      sh 'scp jenkins@c1:/vol/cache/' + name + ' ' + name
+      sh 'scp jenkins@c1:' + cacheDir + '/' + name + ' ' + name
       sh 'unzip -o -q ' + name
     }
 }
@@ -288,7 +289,7 @@ def stashBinaries(edition, os) {
             sh 'zip -r -1 -y -q ' + name + ' ' dirs + ' ' + enterprise/js
         }
 
-        sh 'scp ' + name + ' jenkins@c1:/vol/cache'
+        sh 'scp ' + name + ' jenkins@c1:' + cacheDir
     }
 }
 
@@ -298,7 +299,7 @@ def unstashBinaries(edition, os) {
     sh 'rm -rf *'
 
     if (os == 'linux' || os == 'mac') {
-        sh 'scp jenkins@c1:/vol/cache/' + name + ' ' + name
+        sh 'scp jenkins@c1:' + cacheDir + '/' + name + ' ' + name
     }
 }
 
