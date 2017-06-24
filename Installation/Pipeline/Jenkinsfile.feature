@@ -4,6 +4,21 @@ properties([
     parameters([
         booleanParam(
             defaultValue: false,
+            description: 'build and run tests on Linux',
+            name: 'Linux'
+        ),
+        booleanParam(
+            defaultValue: false,
+            description: 'build and run tests on Mac',
+            name: 'Mac'
+        ),
+        booleanParam(
+            defaultValue: false,
+            description: 'build and run tests in Windows',
+            name: 'Windows'
+        ),
+        booleanParam(
+            defaultValue: false,
             description: 'clean build directories',
             name: 'cleanBuild'
         ),
@@ -16,21 +31,6 @@ properties([
             defaultValue: false,
             description: 'build and run tests for enterprise',
             name: 'buildEnterprise'
-        ),
-        booleanParam(
-            defaultValue: false,
-            description: 'build and run tests on Linux',
-            name: 'buildLinux'
-        ),
-        booleanParam(
-            defaultValue: false,
-            description: 'build and run tests on Mac',
-            name: 'buildMac'
-        ),
-        booleanParam(
-            defaultValue: false,
-            description: 'build and run tests in Windows',
-            name: 'buildWindows'
         ),
         booleanParam(
             defaultValue: false,
@@ -63,13 +63,13 @@ buildCommunity = params.buildCommunity
 buildEnterprise = params.buildEnterprise
 
 // build linux
-buildLinux = params.buildLinux
+buildLinux = params.Linux
 
 // build mac
-buildMac = params.buildMac
+buildMac = params.Mac
 
 // build windows
-buildWindows = params.buildWindows
+buildWindows = params.Windows
 
 // run jslint
 runJslint = params.runJslint
@@ -209,12 +209,12 @@ def checkCommitMessages() {
         }
     }
 
+    echo 'Linux: ' + (buildLinux ? 'true' : 'false')
+    echo 'Mac: ' + (buildMac ? 'true' : 'false')
+    echo 'Windows: ' + (buildWindows ? 'true' : 'false')
     echo 'Clean Build: ' + (cleanBuild ? 'true' : 'false')
     echo 'Build Community: ' + (buildCommunity ? 'true' : 'false')
     echo 'Build Enterprise: ' + (buildEnterprise ? 'true' : 'false')
-    echo 'Build Linux: ' + (buildLinux ? 'true' : 'false')
-    echo 'Build Mac: ' + (buildMac ? 'true' : 'false')
-    echo 'Build Windows: ' + (buildWindows ? 'true' : 'false')
     echo 'Run Jslint: ' + (runJslint ? 'true' : 'false')
     echo 'Run Resilience: ' + (runResilience ? 'true' : 'false')
     echo 'Run Tests: ' + (runTests ? 'true' : 'false')
@@ -285,7 +285,7 @@ def stashBinaries(edition, os) {
     def name = 'binaries-' + edition + '-' + os + '.zip'
 
     if (os == 'linux' || os == 'mac') {
-        def dirs = 'build etc Installation Pipeline js scripts UnitTests utils'
+        def dirs = 'build etc Installation/Pipeline js scripts UnitTests utils'
 
         if (edition == 'community') {
             sh 'zip -r -1 -y -q ' + name + ' ' + dirs
@@ -364,34 +364,42 @@ def buildEdition(edition, os) {
     }
 }
 
-def buildStep(edition, os, full) {
+def buildStepCheck(edition, os, full) {
     if (full && ! buildFull) {
         echo "Not building combination " + os + " " + edition + " "
-        return {}
+        return false
     }
 
     if (os == 'linux' && ! buildLinux) {
         echo "Not building " + os + " version"
-        return {}
+        return false
     }
 
     if (os == 'mac' && ! buildMac) {
         echo "Not building " + os + " version"
-        return {}
+        return false
     }
 
     if (os == 'windows' && ! buildWindows) {
         echo "Not building " + os + " version"
-        return {}
+        return false
     }
 
     if (edition == 'enterprise' && ! buildEnterprise) {
         echo "Not building " + edition + " version"
-        return {}
+        return false
     }
 
     if (edition == 'community' && ! buildCommunity) {
         echo "Not building " + edition + " version"
+        return false
+    }
+
+    return true
+}
+
+def buildStep(edition, os, full) {
+    if (! buildStepCheck(edition, os, full)) {
         return {}
     }
 
@@ -413,9 +421,11 @@ def buildStepParallel() {
 
     for (edition in ['community', 'enterprise']) {
         for (os in ['linux', 'mac', 'windows']) {
-            def name = 'build-' + edition + '-' + os
+            if (buildStepCheck(edition, os, full)) {
+                def name = 'build-' + edition + '-' + os
 
-            branches[name] = buildStep(edition, os, full)
+                branches[name] = buildStep(edition, os, full)
+            }
         }
     }
 
@@ -437,14 +447,23 @@ def jslint() {
 }
 
 def jslintStep() {
+    def edition = 'community'
     def os = 'linux'
 
-    if (runJslint && buildLinux && buildCommunity) {
+    if (runJslint) {
         return {
             node(os) {
                 echo "Running jslint test"
 
-                unstashBinaries('community', os)
+                try {
+                    unstashBinaries(edition, os)
+                }
+                catch (exc) {
+                    echo exc.toString()
+                    currentBuild.result = 'UNSTABLE'
+                    return
+                }
+                
                 jslint()
             }
         }
