@@ -465,13 +465,13 @@ def testStepCheck(edition, os, mode, engine, full) {
 }
 
 def testStepName(edition, os, mode, engine, full) {
-    name = "test-"
+    name = "test-" + mode + '-' + edition + '-' + engine + '-' + os;
 
     if (! testStepCheck(edition, os, mode, engine, full)) {
-        name = "test_DISABLED-"
+        name = name + "-DISABLED"
     }
 
-    return name + mode + '-' + edition + '-' + engine + '-' + os;
+    return name 
 }
 
 def testStep(edition, os, mode, engine, full) {
@@ -489,10 +489,10 @@ def testStep(edition, os, mode, engine, full) {
 
 def testStepParallel(os, edition) {
     parallel(
-        testStepName(edition, os, 'cluster',      'mmfiles', false): { testStep(edition,  os, 'cluster',      'mmfiles', false) },
-        testStepName(edition, os, 'cluster',      'rocksdb', true):  { testStep(edition,  os, 'cluster',      'rocksdb', true)  },
-        testStepName(edition, os, 'singleserver', 'mmfiles', true):  { testStep(edition,  os, 'singleserver', 'mmfiles', true)  },
-        testStepName(edition, os, 'singleserver', 'rocksdb', false): { testStep(edition,  os, 'singleserver', 'rocksdb', false) }
+        (testStepName(edition, os, 'cluster',      'mmfiles', false)): { testStep(edition,  os, 'cluster',      'mmfiles', false) },
+        (testStepName(edition, os, 'cluster',      'rocksdb', true)):  { testStep(edition,  os, 'cluster',      'rocksdb', true)  },
+        (testStepName(edition, os, 'singleserver', 'mmfiles', true)):  { testStep(edition,  os, 'singleserver', 'mmfiles', true)  },
+        (testStepName(edition, os, 'singleserver', 'rocksdb', false)): { testStep(edition,  os, 'singleserver', 'rocksdb', false) }
     )
 }
 
