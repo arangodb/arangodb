@@ -46,7 +46,8 @@ properties([
             defaultValue: false,
             description: 'run tests',
             name: 'runTests'
-        )
+        ),
+        [$class: 'MatrixCombinationsParameterValue', name: paramFilter', value:'env_name=="int"']
     ])
 ])
 
@@ -411,9 +412,9 @@ def jslintStep() {
     }
 }
 
-def testEdition(edition, os, type, engine) {
+def testEdition(edition, os, mode, engine) {
     try {
-        sh './Installation/Pipeline/test_' + type + '_' + edition + '_' + engine + '_' + os + '.sh 8'
+        sh './Installation/Pipeline/test_' + mode + '_' + edition + '_' + engine + '_' + os + '.sh 10'
     }
     catch (exc) {
         echo exc.toString()
@@ -424,7 +425,7 @@ def testEdition(edition, os, type, engine) {
     }
 }
 
-def testStep(edition, os, mode, engine, full) {
+def testStepCheck(edition, os, mode, engine, full) {
     if (! runTests) {
         echo "Not running tests"
         return
@@ -460,12 +461,39 @@ def testStep(edition, os, mode, engine, full) {
         return
     }
 
+    return true
+}
+
+def testStepName(edition, os, mode, engine, full) {
+    name = "test-"
+
+    if (! testStepCheck(edition, os, mode, engine, full) {
+        name = "test_DISABLED-"
+    }
+
+    return name + mode + '-' + edition + '-' + engine + '-' + os;
+}
+
+def testStep(edition, os, mode, engine, full) {
+    if (! testStepCheck(edition, os, mode, engine, full) {
+        return
+    }
+
     node(os) {
         echo "Running " + mode + " " + edition + " " + engine + " " + os + " test"
 
         unstashBinaries(edition, os)
         testEdition(edition, os, mode, engine)
     }
+}
+
+def testStepParallel(os, edition) {
+    parallel(
+        testStepName(edition, os, 'cluster',      'mmfiles', false): { testStep(edition,  os, 'cluster',      'mmfiles', false) },
+        testStepName(edition, os, 'cluster',      'rocksdb', true):  { testStep(edition,  os, 'cluster',      'rocksdb', true)  },
+        testStepName(edition, os, 'singleserver', 'mmfiles', true):  { testStep(edition,  os, 'singleserver', 'mmfiles', true)  },
+        testStepName(edition, os, 'singleserver', 'rocksdb', false): { testStep(edition,  os, 'singleserver', 'rocksdb', false) }
+    )
 }
 
 def testEditionResilience(edition, os, engine) {
@@ -534,69 +562,51 @@ stage('build') {
         },
 
         'build-community-linux': {
-            buildStep('linux', 'community', false)
+            def os = 'linux'
+            def edition = 'community'
 
-            parallel(
-                'test-cluster-community-mmfiles-linux':        { testStep('community',  'linux', 'cluster',      'mmfiles', false) },
-                'test-cluster-community-rocksdb-linux':        { testStep('community',  'linux', 'cluster',      'rocksdb', true)  },
-                'test-singleserver-community-mmfiles-linux':   { testStep('community',  'linux', 'singleserver', 'mmfiles', true)  },
-                'test-singleserver-community-rocksdb-linux':   { testStep('community',  'linux', 'singleserver', 'rocksdb', false) }
-            )
+            buildStep(os, edition, false)
+            testStepParallel(os, edition)
         },
 
         'build-enterprise-linux': {
-            buildStep('linux', 'enterprise', false)
+            def os = 'linux'
+            def edition = 'community'
 
-            parallel(
-                'test-cluster-enterprise-mmfiles-linux':       { testStep('enterprise', 'linux', 'cluster',      'mmfiles', true)  },
-                'test-cluster-enterprise-rocksdb-linux':       { testStep('enterprise', 'linux', 'cluster',      'rocksdb', false) },
-                'test-singleserver-enterprise-mmfiles-linux':  { testStep('enterprise', 'linux', 'singleserver', 'mmfiles', false) },
-                'test-singleserver-enterprise-rocksdb-linux':  { testStep('enterprise', 'linux', 'singleserver', 'rocksdb', true)  }
-            )
+            buildStep(os, 'enterprise', false)
+            testStepParallel(os, edition)
         },
 
         'build-community-mac': {
-            buildStep('mac', 'community',  false)
+            def os = 'mac'
+            def edition = 'community'
 
-            parallel(
-                'test-cluster-community-mmfiles-mac':        { testStep('community',  'mac', 'cluster',      'mmfiles', false) },
-                'test-cluster-community-rocksdb-mac':        { testStep('community',  'mac', 'cluster',      'rocksdb', true)  },
-                'test-singleserver-community-mmfiles-mac':   { testStep('community',  'mac', 'singleserver', 'mmfiles', false)  },
-                'test-singleserver-community-rocksdb-mac':   { testStep('community',  'mac', 'singleserver', 'rocksdb', false) }
-            )
+            buildStep(os, edition,  false)
+            testStepParallel(os, edition)
         },
 
         'build-enterprise-mac': {
-            buildStep('mac', 'enterprise', true)
+            def os = 'mac'
+            def edition = 'enterprise'
 
-            parallel(
-                'test-cluster-enterprise-mmfiles-mac':       { testStep('enterprise', 'mac', 'cluster',      'mmfiles', false)  },
-                'test-cluster-enterprise-rocksdb-mac':       { testStep('enterprise', 'mac', 'cluster',      'rocksdb', false) },
-                'test-singleserver-enterprise-mmfiles-mac':  { testStep('enterprise', 'mac', 'singleserver', 'mmfiles', false) },
-                'test-singleserver-enterprise-rocksdb-mac':  { testStep('enterprise', 'mac', 'singleserver', 'rocksdb', false)  }
-            )
+            buildStep(os, edition, true)
+            testStepParallel(os, edition)
         },
 
         'build-community-windows': {
-            buildStep('windows', 'community', false)
+            def os = 'windows'
+            def edition = 'community'
 
-            parallel(
-                'test-cluster-community-mmfiles-windows':        { testStep('community',  'windows', 'cluster',      'mmfiles', false) },
-                'test-cluster-community-rocksdb-windows':        { testStep('community',  'windows', 'cluster',      'rocksdb', false)  },
-                'test-singleserver-community-mmfiles-windows':   { testStep('community',  'windows', 'singleserver', 'mmfiles', false)  },
-                'test-singleserver-community-rocksdb-windows':   { testStep('community',  'windows', 'singleserver', 'rocksdb', true) }
-            )
+            buildStep(os, edition, false)
+            testStepParallel(os, edition)
         },
 
         'build-enterprise-windows': {
-            buildStep('windows', 'enterprise', true)
+            def os = 'windows'
+            def edition = 'enterprise'
 
-            parallel(
-                'test-cluster-enterprise-mmfiles-windows':       { testStep('enterprise', 'windows', 'cluster',      'mmfiles', false)  },
-                'test-cluster-enterprise-rocksdb-windows':       { testStep('enterprise', 'windows', 'cluster',      'rocksdb', false) },
-                'test-singleserver-enterprise-mmfiles-windows':  { testStep('enterprise', 'windows', 'singleserver', 'mmfiles', false) },
-                'test-singleserver-enterprise-rocksdb-windows':  { testStep('enterprise', 'windows', 'singleserver', 'rocksdb', false)  }
-            )
+            buildStep(os, edition, true)
+            testStepParallel(os, edition)
         }
     )
 }
