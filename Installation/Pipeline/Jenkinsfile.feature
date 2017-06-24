@@ -231,8 +231,8 @@ def stashSourceCode() {
 
     def name = env.JOB_NAME
 
-    sh 'mkdir -p /vol/cache/source/' + name
-    sh 'mv -f source.zip /vol/cache/source/' + name + '/source.zip'
+    sh 'mkdir -p /vol/cache/' + name
+    sh 'mv -f source.zip /vol/cache/' + name + '/source.zip'
 }
 
 def unstashSourceCode(os) {
@@ -246,12 +246,12 @@ def unstashSourceCode(os) {
     def name = env.JOB_NAME
 
     if (os == 'linux' || os == 'mac') {
-        sh 'scp jenkins@c1:/vol/cache/source/' + name + '/source.zip source.zip'
+        sh 'scp jenkins@c1:/vol/cache/' + name + '/source.zip source.zip'
         sh 'unzip -o -q source.zip'
         sh 'mkdir -p artefacts'
     }
     else if (os == 'windows') {
-        bat 'scp jenkins@c1:/vol/cache/source/' + name + '/source.zip source.zip'
+        bat 'scp jenkins@c1:/vol/cache/' + name + '/source.zip source.zip'
         PowerShell('Expand-Archive -Path source.zip -DestinationPath .')
 
         if (!fileExists('artefacts')) {
@@ -261,17 +261,30 @@ def unstashSourceCode(os) {
 }
 
 def stashBinaries(edition, os) {
-    if (edition == 'community') {
-        stash includes: binariesCommunity, name: 'build-' + edition + '-' + os
-    }
-    else if (edition == 'enterprise') {
-        stash includes: binariesEnterprise, name: 'build-' + edition + '-' + os
+    def name = 'build-' + edition + '-' + os + '.zip'
+
+    if (os == 'linux' || os == 'mac') {
+        def dirs = 'build etc Installation Pipeline js scripts UnitTests utils'
+
+        if (edition == 'community') {
+            sh 'zip -r -1 -y -q ' + name + ' ' + dirs
+        }
+        else if (edition == 'enterprise') {
+            sh 'zip -r -1 -y -q ' + name + ' ' dirs + ' ' + enterprise/js
+        }
+
+        sh 'scp ' + name + ' jenkins@c1:/vol/cache'
     }
 }
 
 def unstashBinaries(edition, os) {
+    def name = 'build-' + edition + '-' + os + '.zip'
+
     sh 'rm -rf *'
-    unstash 'build-' + edition + '-' + os
+
+    if (os == 'linux' || os == 'mac') {
+        sh 'scp jenkins@c1:/vol/cache/' + name + ' ' + name
+    }
 }
 
 // -----------------------------------------------------------------------------
