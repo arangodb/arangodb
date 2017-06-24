@@ -251,7 +251,7 @@ def unstashSourceCode(os) {
     }
     else if (os == 'windows') {
         bat 'scp jenkins@c1:/vol/cache/source-' + name + '.zip source.zip'
-        PowerShell('Expand-Archive -Path .\source.zip -DestinationPath .')
+        PowerShell('Expand-Archive -Path source.zip -DestinationPath .')
 
         if (!fileExists('artefacts')) {
            bat 'mkdir artefacts'
