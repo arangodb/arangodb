@@ -393,6 +393,8 @@ def jslint() {
 }
 
 def jslintStep() {
+    def os = 'linux'
+
     if (runJslint) {
         if (buildLinux) {
             node(os) {
@@ -464,10 +466,10 @@ def testStepCheck(edition, os, mode, engine, full) {
 }
 
 def testStepName(edition, os, mode, engine, full) {
-    name = "test-" + mode + '-' + edition + '-' + engine + '-' + os;
+    def name = "test-" + mode + '-' + edition + '-' + engine + '-' + os;
 
     if (! testStepCheck(edition, os, mode, engine, full)) {
-        name = name + "-DISABLED"
+        name = "DISABLED-" + name
     }
 
     return name 
