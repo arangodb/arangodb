@@ -389,6 +389,7 @@ def buildStepParallel() {
 
                 branches[name] = {
                     buildStep(edition, os, full)
+                }
             }
         }
     }
