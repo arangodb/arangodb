@@ -384,7 +384,7 @@ def buildStepParallel() {
 
     for (edition in ['community', 'enterprise']) {
         for (os in ['linux', 'mac', 'winodws']) {
-            def name = testStepName(edition, os, mode, engine, full)
+            def name = 'build-' + edition + '-' + os
 
             branches[name] = {
                 buildStep(edition, os, full)
