@@ -263,7 +263,7 @@ def stashBuild(edition, os) {
     }
     else if (os == 'windows') {
         bat 'del /F /q ' + name
-        PowerShell('Compress -Archive -Path build-' + edition + ' -DestinationPath ' + name
+        PowerShell('Compress -Archive -Path build-' + edition + ' -DestinationPath ' + name)
         bat 'scp ' + name + ' jenkins@c1:' + cacheDir
     }
 }
@@ -272,11 +272,11 @@ def unstashBuild(edition, os) {
     def name = 'build-' + edition + '-' + os + '.zip'
 
     if (os == 'linux' || os == 'mac') {
-      sh 'scp jenkins@c1:' + cacheDir + '/' + name + ' ' + name
-      sh 'unzip -o -q ' + name
+        sh 'scp jenkins@c1:' + cacheDir + '/' + name + ' ' + name
+        sh 'unzip -o -q ' + name
     }
     else if (os == 'windows') {
-      bat 'scp jenkins@c1:' + cacheDir + '/' + name + ' ' + name
+        bat 'scp jenkins@c1:' + cacheDir + '/' + name + ' ' + name
         PowerShell('Expand-Archive -Path ' + name + ' -DestinationPath .')
     }
 }
