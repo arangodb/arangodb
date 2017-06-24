@@ -231,8 +231,8 @@ def stashSourceCode() {
 
     def name = env.JOB_NAME
 
-    sh 'mkdir -p source.zip /vol/cache/source/' + name
-    sh 'mv source.zip /vol/cache/source/' + name + '/source.zip'
+    sh 'mkdir -p /vol/cache/source/' + name
+    sh 'mv -f source.zip /vol/cache/source/' + name + '/source.zip'
 }
 
 def unstashSourceCode(os) {
