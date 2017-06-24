@@ -46,8 +46,7 @@ properties([
             defaultValue: false,
             description: 'run tests',
             name: 'runTests'
-        ),
-        [$class: 'MatrixCombinationsParameterValue', name: 'paramFilter', value:'env_name=="int"']
+        )
     ])
 ])
 
