@@ -231,7 +231,8 @@ def stashSourceCode() {
 
     def name = env.JOB_NAME
 
-    sh 'mv source.zip /vol/cache/source-' + name + '.zip'
+    sh 'mkdir -p source.zip /vol/cache/source/' + name
+    sh 'mv source.zip /vol/cache/source/' + name + '/source.zip'
 }
 
 def unstashSourceCode(os) {
@@ -245,12 +246,12 @@ def unstashSourceCode(os) {
     def name = env.JOB_NAME
 
     if (os == 'linux' || os == 'mac') {
-        sh 'scp jenkins@c1:/vol/cache/source-' + name + '.zip source.zip'
+        sh 'scp jenkins@c1:/vol/cache/source/' + name + '/source.zip source.zip'
         sh 'unzip -o -q source.zip'
         sh 'mkdir -p artefacts'
     }
     else if (os == 'windows') {
-        bat 'scp jenkins@c1:/vol/cache/source-' + name + '.zip source.zip'
+        bat 'scp jenkins@c1:/vol/cache/source/' + name + '/source.zip source.zip'
         PowerShell('Expand-Archive -Path source.zip -DestinationPath .')
 
         if (!fileExists('artefacts')) {
