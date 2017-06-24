@@ -227,7 +227,7 @@ def checkCommitMessages() {
 def stashSourceCode() {
     sh 'rm -f source.*'
     sh 'find -L . -type l -delete'
-    sh 'zip -r -1 -x '*tmp' -x '.git' -y -q source.zip *'
+    sh 'zip -r -1 -x "*tmp" -x ".git" -y -q source.zip *'
 
     def name = env.JOB_NAME.replaceAll(/\//, '-')
 
