@@ -467,7 +467,7 @@ def testStepCheck(edition, os, mode, engine, full) {
 def testStepName(edition, os, mode, engine, full) {
     name = "test-"
 
-    if (! testStepCheck(edition, os, mode, engine, full) {
+    if (! testStepCheck(edition, os, mode, engine, full)) {
         name = "test_DISABLED-"
     }
 
@@ -475,7 +475,7 @@ def testStepName(edition, os, mode, engine, full) {
 }
 
 def testStep(edition, os, mode, engine, full) {
-    if (! testStepCheck(edition, os, mode, engine, full) {
+    if (! testStepCheck(edition, os, mode, engine, full)) {
         return
     }
 
