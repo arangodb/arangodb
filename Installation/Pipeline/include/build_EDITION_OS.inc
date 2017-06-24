@@ -34,7 +34,7 @@ echo "PWD: `pwd`"
 mkdir -p build-$edition
 
 if [ ! -f build-$edition/location ]; then
-    ls -l | md5sum | awk '{print $1}' > build-$edition/location
+    (ls -l  && echo "$edition $os") | md5sum | awk '{print $1}' > build-$edition/location
 fi
 
 GENPATH="/tmp/`cat build-$edition/location`"
