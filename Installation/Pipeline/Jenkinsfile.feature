@@ -315,9 +315,9 @@ def buildEdition(edition, os) {
                 try {
                     unstashBuild(edition, os)
                 }
-            }
-            catch (exc) {
-                echo exc.toString()
+                catch (exc) {
+                    echo exc.toString()
+                }
             }
 
             sh './Installation/Pipeline/build_' + edition + '_' + os + '.sh 64'
