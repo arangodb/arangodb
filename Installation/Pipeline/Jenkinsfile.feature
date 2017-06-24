@@ -94,7 +94,7 @@ enterpriseRepo = 'https://github.com/arangodb/enterprise'
 credentials = '8d893d23-6714-4f35-a239-c847c798e080'
 
 // jenkins cache
-def cacheDir = '/vol/cache/' + env.JOB_NAME
+cacheDir = '/vol/cache/' + env.JOB_NAME
 
 // execute a powershell
 def PowerShell(psCmd) {
