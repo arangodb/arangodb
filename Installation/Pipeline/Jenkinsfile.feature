@@ -412,8 +412,8 @@ def jslint() {
 def jslintStep() {
     def os = 'linux'
 
-    if (runJslint) {
-        if (buildLinux) {
+    if (runJslint && buildLinux && buildCommunity) {
+        return {
             node(os) {
                 echo "Running jslint test"
 
@@ -421,12 +421,6 @@ def jslintStep() {
                 jslint()
             }
         }
-        else {
-            echo "Not building " + os + " version"
-        }
-    }
-    else {
-        echo "Not running tests"
     }
 }
 
@@ -493,15 +487,13 @@ def testStepName(edition, os, mode, engine, full) {
 }
 
 def testStep(edition, os, mode, engine, full) {
-    if (! testStepCheck(edition, os, mode, engine, full)) {
-        return
-    }
+    return {
+        node(os) {
+            echo "Running " + mode + " " + edition + " " + engine + " " + os + " test"
 
-    node(os) {
-        echo "Running " + mode + " " + edition + " " + engine + " " + os + " test"
-
-        unstashBinaries(edition, os)
-        testEdition(edition, os, mode, engine)
+            unstashBinaries(edition, os)
+            testEdition(edition, os, mode, engine)
+        }
     }
 }
 
@@ -516,9 +508,7 @@ def testStepParallel() {
                     if (testStepCheck(edition, os, mode, engine, full)) {
                         def name = testStepName(edition, os, mode, engine, full)
 
-                        branches[name] = {
-                            testStep(edition, os, mode, engine, full)
-                        }
+                        branches[name] = testStep(edition, os, mode, engine, full)
                     }
                 }
             }
