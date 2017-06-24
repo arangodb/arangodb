@@ -489,12 +489,18 @@ def testStep(edition, os, mode, engine, full) {
 }
 
 def testStepParallel(os, edition) {
-    parallel(
-        (testStepName(edition, os, 'cluster',      'mmfiles', false)): { testStep(edition,  os, 'cluster',      'mmfiles', false) },
-        (testStepName(edition, os, 'cluster',      'rocksdb', true)):  { testStep(edition,  os, 'cluster',      'rocksdb', true)  },
-        (testStepName(edition, os, 'singleserver', 'mmfiles', true)):  { testStep(edition,  os, 'singleserver', 'mmfiles', true)  },
-        (testStepName(edition, os, 'singleserver', 'rocksdb', false)): { testStep(edition,  os, 'singleserver', 'rocksdb', false) }
-    )
+    def branches = [:]
+    def full = false
+
+    for (mode in ['cluster', 'singleserver']) {
+        for (engine in ['mmfiles', 'rocksdb']) {
+            if (testStepCheck(edition, os, mode, engine, full)) {
+                branches[testStepName(edition, os, mode, engine, full)] = { testStep(edition, os, edition, engine, full) }
+            }
+        }
+    }
+
+    parallel branches
 }
 
 def testEditionResilience(edition, os, engine) {
