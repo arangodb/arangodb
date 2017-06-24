@@ -8,7 +8,7 @@ properties([
             name: 'cleanBuild'
         ),
         booleanParam(
-            defaultValue: true,
+            defaultValue: false,
             description: 'build and run tests for community',
             name: 'buildCommunity'
         ),
@@ -18,7 +18,7 @@ properties([
             name: 'buildEnterprise'
         ),
         booleanParam(
-            defaultValue: true,
+            defaultValue: false,
             description: 'build and run tests on Linux',
             name: 'buildLinux'
         ),
@@ -229,10 +229,9 @@ def stashSourceCode() {
     sh 'find -L . -type l -delete'
     sh 'zip -r -1 -x "*tmp" -x ".git" -y -q source.zip *'
 
-    def name = env.JOB_NAME.replaceAll(/\//, '-')
+    def name = env.JOB_NAME
 
     sh 'mv source.zip /vol/cache/source-' + name + '.zip'
-    throw "Stop"
 }
 
 def unstashSourceCode(os) {
@@ -243,13 +242,16 @@ def unstashSourceCode(os) {
         bat 'del /F /Q *'
     }
 
+    def name = env.JOB_NAME
+
     if (os == 'linux' || os == 'mac') {
-        unstash 'sourceTar'
-        sh 'tar -x -p -f source.tar'
+        sh 'scp jenkins@c1:/vol/cache/source-' + name + '.zip source.zip'
+        sh 'unzip -o -q source.zip'
         sh 'mkdir -p artefacts'
     }
     else if (os == 'windows') {
-        unstash 'source'
+        bat 'scp jenkins@c1:/vol/cache/source-' + name + '.zip source.zip'
+        PowerShell('Expand-Archive -Path .\source.zip -DestinationPath .')
 
         if (!fileExists('artefacts')) {
            bat 'mkdir artefacts'
