@@ -31,12 +31,25 @@ echo "CONCURRENY: $concurrency"
 echo "HOST: `hostname`"
 echo "PWD: `pwd`"
 
+mkdir -p build-$edition
+
+if [ ! -f build-$edition/location ]; then
+    ls -l | md5sum | awk '{print $1}' > build-$edition/location
+fi
+
+GENPATH="/tmp/`cat build-$edition/location`"
+
+rm -f $GENPATH
+ln -s `pwd` $GENPATH
+cd $GENPATH
+
+echo "GENPATH: `pwd`"
+
 rm -rf log-output/$type.log
 mkdir -p log-output
 touch log-output/$type.log
 
 (
-    mkdir -p build-$edition
     cd build-$edition
 
     echo "`date +%T` configuring..."

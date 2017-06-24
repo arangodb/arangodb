@@ -246,15 +246,10 @@ def unstashSourceCode(os) {
     if (os == 'linux' || os == 'mac') {
         sh 'scp jenkins@c1:' + cacheDir + '/source.zip source.zip'
         sh 'unzip -o -q source.zip'
-        sh 'mkdir -p artefacts'
     }
     else if (os == 'windows') {
         bat 'scp jenkins@c1:' + cacheDir + '/source.zip source.zip'
         PowerShell('Expand-Archive -Path source.zip -DestinationPath .')
-
-        if (!fileExists('artefacts')) {
-           bat 'mkdir artefacts'
-        }
     }
 }
 
