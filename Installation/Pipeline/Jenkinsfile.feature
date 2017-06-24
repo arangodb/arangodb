@@ -340,40 +340,42 @@ def buildEdition(edition, os) {
 def buildStep(edition, os, full) {
     if (full && ! buildFull) {
         echo "Not building combination " + os + " " + edition + " "
-        return
+        return {}
     }
 
     if (os == 'linux' && ! buildLinux) {
         echo "Not building " + os + " version"
-        return
+        return {}
     }
 
     if (os == 'mac' && ! buildMac) {
         echo "Not building " + os + " version"
-        return
+        return {}
     }
 
     if (os == 'windows' && ! buildWindows) {
         echo "Not building " + os + " version"
-        return
+        return {}
     }
 
     if (edition == 'enterprise' && ! buildEnterprise) {
         echo "Not building " + edition + " version"
-        return
+        return {}
     }
 
     if (edition == 'community' && ! buildCommunity) {
         echo "Not building " + edition + " version"
-        return
+        return {}
     }
 
-    node(os) {
-        unstashSourceCode(os)
-        buildEdition(edition, os)
+    return {
+        node(os) {
+            unstashSourceCode(os)
+            buildEdition(edition, os)
 
-        if (runTests || runResilience) {
-            stashBinaries(edition, os)
+            if (runTests || runResilience) {
+                stashBinaries(edition, os)
+            }
         }
     }
 }
@@ -386,9 +388,7 @@ def buildStepParallel() {
         for (os in ['linux', 'mac', 'winodws']) {
             def name = 'build-' + edition + '-' + os
 
-            branches[name] = {
-                buildStep(edition, os, full)
-            }
+            branches[name] = buildStep(edition, os, full)
         }
     }
 
