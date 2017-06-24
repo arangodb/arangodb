@@ -93,10 +93,7 @@ enterpriseRepo = 'https://github.com/arangodb/enterprise'
 // Jenkins credentials for enterprise repositiory
 credentials = '8d893d23-6714-4f35-a239-c847c798e080'
 
-// binaries to copy for testing
-binariesCommunity = 'build/**,etc/**,Installation/Pipeline/**,js/**,scripts/**,UnitTests/**,utils/**'
-binariesEnterprise = binariesCommunity + ',enterprise/js/**'
-
+// execute a powershell
 def PowerShell(psCmd) {
     bat "powershell.exe -NonInteractive -ExecutionPolicy Bypass -Command \"\$ErrorActionPreference='Stop';[Console]::OutputEncoding=[System.Text.Encoding]::UTF8;$psCmd;EXIT \$global:LastExitCode\""
 }
@@ -261,7 +258,7 @@ def unstashSourceCode(os) {
 }
 
 def stashBinaries(edition, os) {
-    def name = 'build-' + edition + '-' + os + '.zip'
+    def name = 'binaries-' + edition + '-' + os + '.zip'
 
     if (os == 'linux' || os == 'mac') {
         def dirs = 'build etc Installation Pipeline js scripts UnitTests utils'
@@ -278,7 +275,7 @@ def stashBinaries(edition, os) {
 }
 
 def unstashBinaries(edition, os) {
-    def name = 'build-' + edition + '-' + os + '.zip'
+    def name = 'binaries-' + edition + '-' + os + '.zip'
 
     sh 'rm -rf *'
 
