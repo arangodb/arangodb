@@ -257,6 +257,24 @@ def unstashSourceCode(os) {
     }
 }
 
+def stashBuild(edition, os) {
+    def name = 'build-' + edition + '-' + os + '.zip'
+
+    if (os == 'linux' || os == 'mac') {
+      sh 'zip -r -1 -y -q ' + name + ' build-' + edition
+      sh 'scp ' + name + ' jenkins@c1:/vol/cache/' + name
+    }
+}
+
+def unstashBuild(edition, os) {
+    def name = 'build-' + edition + '-' + os + '.zip'
+
+    if (os == 'linux' || os == 'mac') {
+      sh 'scp jenkins@c1:/vol/cache/' + name + ' ' + name
+      sh 'unzip -o -q ' + name
+    }
+}
+
 def stashBinaries(edition, os) {
     def name = 'binaries-' + edition + '-' + os + '.zip'
 
@@ -292,27 +310,19 @@ def buildEdition(edition, os) {
     try {
         if (os == 'linux' || os == 'mac') {
             def tarfile = 'build-' + edition + '-' + os + '.tar.gz'
-            def fullpath = 'artefacts/' + tarfile
 
-            try {
-                step($class: 'hudson.plugins.copyartifact.CopyArtifact',
-                     projectName: "/" + "${env.JOB_NAME}",
-                     filter: fullpath)
-
-                if (!cleanBuild && fileExists(fullpath)) {
-                    sh 'tar -x -z -p -f ' + fullpath
+            if (! cleanBuild) {
+                try {
+                    unstashBuild(edition, os)
                 }
             }
             catch (exc) {
                 echo exc.toString()
             }
 
-            sh 'rm -f ' + fullpath
-
             sh './Installation/Pipeline/build_' + edition + '_' + os + '.sh 64'
 
-            sh 'GZIP=--fast tar -c -z -f ' + fullpath + ' build-' + edition
-            archiveArtifacts allowEmptyArchive: true, artifacts: fullpath, defaultExcludes: false
+            stashBuild(edition, os)
         }
         else if (os == 'windows') {
             def builddir = 'build-' + edition + '-' + os
