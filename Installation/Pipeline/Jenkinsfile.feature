@@ -226,15 +226,13 @@ def checkCommitMessages() {
 
 def stashSourceCode() {
     sh 'rm -f source.*'
+    sh 'find -L . -type l -delete'
+    sh 'zip -r -1 -x '*tmp' -x '.git' -y -q source.zip *'
 
-    if (buildLinux || buildMac) {
-        sh 'tar -c -f source.tar --exclude "source.*" --exclude "*tmp" --exclude ".git" *'
-        stash includes: 'source.*', name: 'sourceTar'
-    }
+    def name = env.JOB_NAME.replaceAll(/\//, '-')
 
-    if (buildWindows) {
-        stash includes: '**', excludes: '*tmp,.git,source.*', name: 'source'
-    }
+    sh 'mv source.zip /vol/cache/source-' + name + '.zip'
+    throw "Stop"
 }
 
 def unstashSourceCode(os) {
