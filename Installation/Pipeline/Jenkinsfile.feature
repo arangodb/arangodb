@@ -385,7 +385,7 @@ def buildStepParallel() {
     def full = false
 
     for (edition in ['community', 'enterprise']) {
-        for (os in ['linux', 'mac', 'winodws']) {
+        for (os in ['linux', 'mac', 'windows']) {
             def name = 'build-' + edition + '-' + os
 
             branches[name] = buildStep(edition, os, full)
@@ -502,7 +502,7 @@ def testStepParallel() {
     def full = false
 
     for (edition in ['community', 'enterprise']) {
-        for (os in ['linux', 'mac', 'winodws']) {
+        for (os in ['linux', 'mac', 'windows']) {
             for (mode in ['cluster', 'singleserver']) {
                 for (engine in ['mmfiles', 'rocksdb']) {
                     if (testStepCheck(edition, os, mode, engine, full)) {
