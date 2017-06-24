@@ -378,6 +378,24 @@ def buildStep(os, edition, full) {
     }
 }
 
+def buildStepParallel() {
+    def branches = [:]
+    def full = false
+
+    for (edition in ['community', 'enterprise']) {
+        for (os in ['linux', 'mac', 'winodws']) {
+            if (testStepCheck(edition, os, mode, engine, full)) {
+                def name = testStepName(edition, os, mode, engine, full)
+
+                branches[name] = {
+                    buildStep(edition, os, full)
+            }
+        }
+    }
+
+    parallel branches
+}
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                     SCRIPTS TESTS
 // -----------------------------------------------------------------------------
@@ -488,16 +506,28 @@ def testStep(edition, os, mode, engine, full) {
     }
 }
 
-def testStepParallel(os, edition) {
+def testStepParallel() {
     def branches = [:]
     def full = false
 
-    for (mode in ['cluster', 'singleserver']) {
-        for (engine in ['mmfiles', 'rocksdb']) {
-            if (testStepCheck(edition, os, mode, engine, full)) {
-                branches[testStepName(edition, os, mode, engine, full)] = { testStep(edition, os, edition, engine, full) }
+    for (edition in ['community', 'enterprise']) {
+        for (os in ['linux', 'mac', 'winodws']) {
+            for (mode in ['cluster', 'singleserver']) {
+                for (engine in ['mmfiles', 'rocksdb']) {
+                    if (testStepCheck(edition, os, mode, engine, full)) {
+                        def name = testStepName(edition, os, mode, engine, full)
+
+                        branches[name] = {
+                            testStep(edition, os, mode, engine, full)
+                        }
+                    }
+                }
             }
         }
+    }
+
+    if (runJslint) {
+        branches['jslint'] = jslintStep()
     }
 
     parallel branches
@@ -563,59 +593,11 @@ stage('checkout') {
 // into an `if`
 
 stage('build') {
-    parallel(
-        'jslint': {
-            jslintStep()
-        },
+    buildStepParallel()
+}
 
-        'build-community-linux': {
-            def os = 'linux'
-            def edition = 'community'
-
-            buildStep(os, edition, false)
-            testStepParallel(os, edition)
-        },
-
-        'build-enterprise-linux': {
-            def os = 'linux'
-            def edition = 'community'
-
-            buildStep(os, 'enterprise', false)
-            testStepParallel(os, edition)
-        },
-
-        'build-community-mac': {
-            def os = 'mac'
-            def edition = 'community'
-
-            buildStep(os, edition,  false)
-            testStepParallel(os, edition)
-        },
-
-        'build-enterprise-mac': {
-            def os = 'mac'
-            def edition = 'enterprise'
-
-            buildStep(os, edition, true)
-            testStepParallel(os, edition)
-        },
-
-        'build-community-windows': {
-            def os = 'windows'
-            def edition = 'community'
-
-            buildStep(os, edition, false)
-            testStepParallel(os, edition)
-        },
-
-        'build-enterprise-windows': {
-            def os = 'windows'
-            def edition = 'enterprise'
-
-            buildStep(os, edition, true)
-            testStepParallel(os, edition)
-        }
-    )
+stage('tests') {
+    testStepParallel()
 }
 
 stage('resilience') {
