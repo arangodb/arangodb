@@ -305,6 +305,7 @@ def unstashBinaries(edition, os) {
 
     if (os == 'linux' || os == 'mac') {
         sh 'scp jenkins@c1:' + cacheDir + '/' + name + ' ' + name
+        sh 'unzip -o -q ' + name
     }
 }
 
