@@ -337,7 +337,7 @@ def buildEdition(edition, os) {
     }
 }
 
-def buildStep(os, edition, full) {
+def buildStep(edition, os, full) {
     if (full && ! buildFull) {
         echo "Not building combination " + os + " " + edition + " "
         return
