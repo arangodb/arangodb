@@ -287,7 +287,7 @@ def unstashBuild(edition, os) {
 
     if (os == 'linux' || os == 'mac') {
         lock('cache') {
-            sh 'scp -F c:/Users/jenkins/ssh_config "jenkins@c1:' + cacheDir + '/' + name + '" ' + name
+            sh 'scp "jenkins@c1:' + cacheDir + '/' + name + '" ' + name
         }
 
         sh 'unzip -o -q ' + name
