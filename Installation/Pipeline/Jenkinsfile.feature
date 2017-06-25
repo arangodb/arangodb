@@ -254,7 +254,7 @@ def unstashSourceCode(os) {
     }
     else if (os == 'windows') {
         lock('cache') {
-            bat 'scp "jenkins@c1:' + cacheDir + '/source.zip" source.zip'
+            bat 'scp -F c:/Users/jenkins/ssh_config "jenkins@c1:' + cacheDir + '/source.zip" source.zip'
         }
 
         PowerShell('Expand-Archive -Path source.zip -DestinationPath .')
@@ -277,7 +277,7 @@ def stashBuild(edition, os) {
         PowerShell('Compress -Archive -Path build-' + edition + ' -DestinationPath ' + name)
 
         lock('cache') {
-            bat 'scp ' + name + ' "jenkins@c1:' + cacheDir + '"'
+            bat 'scp -F c:/Users/jenkins/ssh_config ' + name + ' "jenkins@c1:' + cacheDir + '"'
         }
     }
 }
@@ -287,14 +287,14 @@ def unstashBuild(edition, os) {
 
     if (os == 'linux' || os == 'mac') {
         lock('cache') {
-            sh 'scp "jenkins@c1:' + cacheDir + '/' + name + '" ' + name
+            sh 'scp -F c:/Users/jenkins/ssh_config "jenkins@c1:' + cacheDir + '/' + name + '" ' + name
         }
 
         sh 'unzip -o -q ' + name
     }
     else if (os == 'windows') {
         lock('cache') {
-            bat 'scp "jenkins@c1:' + cacheDir + '/' + name + '" ' + name
+            bat 'scp -F c:/Users/jenkins/ssh_config "jenkins@c1:' + cacheDir + '/' + name + '" ' + name
         }
 
         PowerShell('Expand-Archive -Path ' + name + ' -DestinationPath .')
