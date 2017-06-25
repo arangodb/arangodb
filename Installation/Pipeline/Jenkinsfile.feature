@@ -596,7 +596,8 @@ def testStepParallel() {
 // -----------------------------------------------------------------------------
 
 def testResilience(os, engine, foxx) {
-    sh './Installation/Pipeline/test_resilience_' + foxx + '_' + engine + '_' + os +}
+    sh './Installation/Pipeline/test_resilience_' + foxx + '_' + engine + '_' + os + '.sh'
+}
 
 def testResilienceCheck(os, engine, full) {
     if (! runResilience) {
