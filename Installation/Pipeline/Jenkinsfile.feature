@@ -257,7 +257,7 @@ def unstashSourceCode(os) {
             bat 'scp -F c:/Users/jenkins/ssh_config "jenkins@c1:' + cacheDir + '/source.zip" source.zip'
         }
 
-        PowerShell('Expand-Archive -Path source.zip -DestinationPath .')
+        bat 'c:\\cmake\\bin\\cmake -E tar xf source.zip'
     }
 }
 
@@ -297,7 +297,7 @@ def unstashBuild(edition, os) {
             bat 'scp -F c:/Users/jenkins/ssh_config "jenkins@c1:' + cacheDir + '/' + name + '" ' + name
         }
 
-        PowerShell('Expand-Archive -Path ' + name + ' -DestinationPath .')
+        bat 'c:\\cmake\\bin\\cmake -E tar xf ' + name
     }
 }
 
