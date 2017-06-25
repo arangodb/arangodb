@@ -229,8 +229,10 @@ def stashSourceCode() {
     sh 'find -L . -type l -delete'
     sh 'zip -r -1 -x "*tmp" -x ".git" -y -q source.zip *'
 
-    sh 'mkdir -p ' + cacheDir
-    sh 'mv -f source.zip ' + cacheDir + '/source.zip'
+    lock('cache') {
+        sh 'mkdir -p ' + cacheDir
+        sh 'mv -f source.zip ' + cacheDir + '/source.zip'
+    }
 }
 
 def unstashSourceCode(os) {
@@ -244,11 +246,17 @@ def unstashSourceCode(os) {
     def name = env.JOB_NAME
 
     if (os == 'linux' || os == 'mac') {
-        sh 'scp jenkins@c1:' + cacheDir + '/source.zip source.zip'
+        lock('cache') {
+            sh 'scp jenkins@c1:' + cacheDir + '/source.zip source.zip'
+        }
+
         sh 'unzip -o -q source.zip'
     }
     else if (os == 'windows') {
-        bat 'scp jenkins@c1:' + cacheDir + '/source.zip source.zip'
+        lock('cache') {
+            bat 'scp jenkins@c1:' + cacheDir + '/source.zip source.zip'
+        }
+
         PowerShell('Expand-Archive -Path source.zip -DestinationPath .')
     }
 }
@@ -259,12 +267,18 @@ def stashBuild(edition, os) {
     if (os == 'linux' || os == 'mac') {
         sh 'rm -f ' + name
         sh 'zip -r -1 -y -q ' + name + ' build-' + edition
-        sh 'scp ' + name + ' jenkins@c1:' + cacheDir
+
+        lock('cache') {
+            sh 'scp ' + name + ' jenkins@c1:' + cacheDir
+        }
     }
     else if (os == 'windows') {
         bat 'del /F /q ' + name
         PowerShell('Compress -Archive -Path build-' + edition + ' -DestinationPath ' + name)
-        bat 'scp ' + name + ' jenkins@c1:' + cacheDir
+
+        lock('cache') {
+            bat 'scp ' + name + ' jenkins@c1:' + cacheDir
+        }
     }
 }
 
@@ -272,11 +286,17 @@ def unstashBuild(edition, os) {
     def name = 'build-' + edition + '-' + os + '.zip'
 
     if (os == 'linux' || os == 'mac') {
-        sh 'scp jenkins@c1:' + cacheDir + '/' + name + ' ' + name
+        lock('cache') {
+            sh 'scp jenkins@c1:' + cacheDir + '/' + name + ' ' + name
+        }
+
         sh 'unzip -o -q ' + name
     }
     else if (os == 'windows') {
-        bat 'scp jenkins@c1:' + cacheDir + '/' + name + ' ' + name
+        lock('cache') {
+            bat 'scp jenkins@c1:' + cacheDir + '/' + name + ' ' + name
+        }
+
         PowerShell('Expand-Archive -Path ' + name + ' -DestinationPath .')
     }
 }
@@ -294,7 +314,9 @@ def stashBinaries(edition, os) {
             sh 'zip -r -1 -y -q ' + name + ' ' + dirs + ' enterprise/js'
         }
 
-        sh 'scp ' + name + ' jenkins@c1:' + cacheDir
+        lock('cache') {
+            sh 'scp ' + name + ' jenkins@c1:' + cacheDir
+        }
     }
 }
 
@@ -304,7 +326,10 @@ def unstashBinaries(edition, os) {
     sh 'rm -rf *'
 
     if (os == 'linux' || os == 'mac') {
-        sh 'scp jenkins@c1:' + cacheDir + '/' + name + ' ' + name
+        lock('cache') {
+            sh 'scp jenkins@c1:' + cacheDir + '/' + name + ' ' + name
+        }
+
         sh 'unzip -o -q ' + name
     }
 }
