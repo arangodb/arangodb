@@ -50,7 +50,7 @@ OPTS="--storageEngine $engine --skipNondeterministic true --skipTimeCritical tru
 
 if [ "$mode" == singleserver ]; then
     if [ "$edition" == enterprise -a "$os" == linux ]; then
-        ENTERPRISE_TESTS="scripts/unittest ldap --caCertFilePath $(pwd)/ldap/ca_server.pem --ldapHost 127.0.0.1 --ldapPort $PORTLDAP --minPort `expr $PORT03 + 60` --maxPort `expr $PORT03 + 69` $OPTS 2>&1"
+        ENTERPRISE_TESTS="scripts/unittest ldap --caCertFilePath $(pwd)/ldap/ca_server.pem --ldapHost 127.0.0.1 --ldapPort $PORTLDAP --minPort `expr $PORT01 + 1000` --maxPort `expr $PORT01 + 1069` $OPTS 2>&1"
     fi
 
     echo "$type
@@ -65,22 +65,22 @@ if [ "$mode" == singleserver ]; then
     scripts/unittest dfdb                                         --minPort `expr $PORT01 +  70` --maxPort `expr $PORT01 +  79` $OPTS 2>&1
     scripts/unittest dump                                         --minPort `expr $PORT01 +  80` --maxPort `expr $PORT01 +  89` $OPTS 2>&1
     scripts/unittest dump_authentication                          --minPort `expr $PORT01 +  90` --maxPort `expr $PORT01 +  99` $OPTS 2>&1
-    scripts/unittest endpoints                                    --minPort `expr $PORT02 + 100` --maxPort `expr $PORT02 + 109` $OPTS 2>&1
-    scripts/unittest http_replication                             --minPort `expr $PORT02 + 110` --maxPort `expr $PORT02 + 119` $OPTS 2>&1
-    scripts/unittest http_server                                  --minPort `expr $PORT02 + 120` --maxPort `expr $PORT02 + 129` $OPTS 2>&1
-    scripts/unittest replication_ongoing                          --minPort `expr $PORT02 + 130` --maxPort `expr $PORT02 + 139` $OPTS 2>&1
-    scripts/unittest replication_static                           --minPort `expr $PORT02 + 140` --maxPort `expr $PORT02 + 149` $OPTS 2>&1
-    scripts/unittest replication_sync                             --minPort `expr $PORT02 + 150` --maxPort `expr $PORT02 + 159` $OPTS 2>&1
-    scripts/unittest server_http                                  --minPort `expr $PORT02 + 160` --maxPort `expr $PORT02 + 169` $OPTS 2>&1
-    scripts/unittest shell_client                                 --minPort `expr $PORT02 + 170` --maxPort `expr $PORT02 + 179` $OPTS 2>&1
-    scripts/unittest shell_replication                            --minPort `expr $PORT02 + 180` --maxPort `expr $PORT02 + 189` $OPTS 2>&1
-    scripts/unittest shell_server                                 --minPort `expr $PORT02 + 190` --maxPort `expr $PORT02 + 199` $OPTS 2>&1
-    scripts/unittest shell_server_aql          --testBuckets 4/0  --minPort `expr $PORT03 +   0` --maxPort `expr $PORT03 +   9` $OPTS 2>&1
-    scripts/unittest shell_server_aql          --testBuckets 4/1  --minPort `expr $PORT03 +  10` --maxPort `expr $PORT03 +  19` $OPTS 2>&1
-    scripts/unittest shell_server_aql          --testBuckets 4/2  --minPort `expr $PORT03 +  20` --maxPort `expr $PORT03 +  29` $OPTS 2>&1
-    scripts/unittest shell_server_aql          --testBuckets 4/3  --minPort `expr $PORT03 +  30` --maxPort `expr $PORT03 +  39` $OPTS 2>&1
-    scripts/unittest ssl_server                                   --minPort `expr $PORT03 +  40` --maxPort `expr $PORT03 +  49` $OPTS 2>&1
-    scripts/unittest upgrade                                      --minPort `expr $PORT03 +  50` --maxPort `expr $PORT03 +  59` $OPTS 2>&1
+    scripts/unittest endpoints                                    --minPort `expr $PORT01 + 100` --maxPort `expr $PORT01 + 109` $OPTS 2>&1
+    scripts/unittest http_replication                             --minPort `expr $PORT01 + 110` --maxPort `expr $PORT01 + 119` $OPTS 2>&1
+    scripts/unittest http_server                                  --minPort `expr $PORT01 + 120` --maxPort `expr $PORT01 + 129` $OPTS 2>&1
+    scripts/unittest replication_ongoing                          --minPort `expr $PORT01 + 130` --maxPort `expr $PORT01 + 139` $OPTS 2>&1
+    scripts/unittest replication_static                           --minPort `expr $PORT01 + 140` --maxPort `expr $PORT01 + 149` $OPTS 2>&1
+    scripts/unittest replication_sync                             --minPort `expr $PORT01 + 150` --maxPort `expr $PORT01 + 159` $OPTS 2>&1
+    scripts/unittest server_http                                  --minPort `expr $PORT01 + 160` --maxPort `expr $PORT01 + 169` $OPTS 2>&1
+    scripts/unittest shell_client                                 --minPort `expr $PORT01 + 170` --maxPort `expr $PORT01 + 179` $OPTS 2>&1
+    scripts/unittest shell_replication                            --minPort `expr $PORT01 + 180` --maxPort `expr $PORT01 + 189` $OPTS 2>&1
+    scripts/unittest shell_server                                 --minPort `expr $PORT01 + 190` --maxPort `expr $PORT01 + 199` $OPTS 2>&1
+    scripts/unittest shell_server_aql          --testBuckets 4/0  --minPort `expr $PORT01 + 200` --maxPort `expr $PORT01 + 209` $OPTS 2>&1
+    scripts/unittest shell_server_aql          --testBuckets 4/1  --minPort `expr $PORT01 + 210` --maxPort `expr $PORT01 + 219` $OPTS 2>&1
+    scripts/unittest shell_server_aql          --testBuckets 4/2  --minPort `expr $PORT01 + 220` --maxPort `expr $PORT01 + 229` $OPTS 2>&1
+    scripts/unittest shell_server_aql          --testBuckets 4/3  --minPort `expr $PORT01 + 230` --maxPort `expr $PORT01 + 239` $OPTS 2>&1
+    scripts/unittest ssl_server                                   --minPort `expr $PORT01 + 240` --maxPort `expr $PORT01 + 249` $OPTS 2>&1
+    scripts/unittest upgrade                                      --minPort `expr $PORT01 + 250` --maxPort `expr $PORT01 + 259` $OPTS 2>&1
     $ENTERPRISE_TESTS
     " | parallel --header 1 --results log-output --files --no-notice --load 10 --jobs $concurrency > log-output/${type}.log
 
@@ -88,7 +88,7 @@ elif [ "$mode" == cluster ]; then
     OPTS="$OPTS --cluster true"
 
     if [ "$edition" == enterprise -a "$os" == linux ]; then
-        ENTERPRISE_TESTS="scripts/unittest ldap --caCertFilePath $(pwd)/ldap/ca_server.pem --ldapHost 127.0.0.1 --ldapPort $PORTLDAP --minPort `expr $PORT04 + 120` --maxPort `expr $PORT04 + 159` $OPTS 2>&1"
+        ENTERPRISE_TESTS="scripts/unittest ldap --caCertFilePath $(pwd)/ldap/ca_server.pem --ldapHost 127.0.0.1 --ldapPort $PORTLDAP --minPort `expr $PORT01 + 1000` --maxPort `expr $PORT01 + 1039` $OPTS 2>&1"
     fi
 
     echo "$type
@@ -97,19 +97,19 @@ elif [ "$mode" == cluster ]; then
     scripts/unittest authentication                               --minPort `expr $PORT01 +  80` --maxPort `expr $PORT01 + 119` $OPTS 2>&1
     scripts/unittest authentication_parameters                    --minPort `expr $PORT01 + 120` --maxPort `expr $PORT01 + 159` $OPTS 2>&1
     scripts/unittest config                                       --minPort `expr $PORT01 + 160` --maxPort `expr $PORT01 + 199` $OPTS 2>&1
-    scripts/unittest dump                                         --minPort `expr $PORT02 +   0` --maxPort `expr $PORT02 +  39` $OPTS 2>&1
-    scripts/unittest dump_authentication                          --minPort `expr $PORT02 +  40` --maxPort `expr $PORT02 +  79` $OPTS 2>&1
-    scripts/unittest endpoints                                    --minPort `expr $PORT02 +  80` --maxPort `expr $PORT02 + 119` $OPTS 2>&1
-    scripts/unittest http_server                                  --minPort `expr $PORT02 + 120` --maxPort `expr $PORT02 + 159` $OPTS 2>&1
-    scripts/unittest server_http                                  --minPort `expr $PORT02 + 160` --maxPort `expr $PORT02 + 199` $OPTS 2>&1
-    scripts/unittest shell_client                                 --minPort `expr $PORT03 +   0` --maxPort `expr $PORT03 +  39` $OPTS 2>&1
-    scripts/unittest shell_server                                 --minPort `expr $PORT03 +  40` --maxPort `expr $PORT03 +  79` $OPTS 2>&1
-    scripts/unittest shell_server_aql          --testBuckets 4/0  --minPort `expr $PORT03 +  80` --maxPort `expr $PORT03 + 119` $OPTS 2>&1
-    scripts/unittest shell_server_aql          --testBuckets 4/1  --minPort `expr $PORT03 + 120` --maxPort `expr $PORT03 + 159` $OPTS 2>&1
-    scripts/unittest shell_server_aql          --testBuckets 4/2  --minPort `expr $PORT03 + 160` --maxPort `expr $PORT03 + 199` $OPTS 2>&1
-    scripts/unittest shell_server_aql          --testBuckets 4/3  --minPort `expr $PORT04 +   0` --maxPort `expr $PORT04 +  39` $OPTS 2>&1
-    scripts/unittest ssl_server                                   --minPort `expr $PORT04 +  40` --maxPort `expr $PORT04 +  79` $OPTS 2>&1
-    scripts/unittest upgrade                                      --minPort `expr $PORT04 +  80` --maxPort `expr $PORT04 + 119` $OPTS 2>&1
+    scripts/unittest dump                                         --minPort `expr $PORT01 + 200` --maxPort `expr $PORT01 + 239` $OPTS 2>&1
+    scripts/unittest dump_authentication                          --minPort `expr $PORT01 + 240` --maxPort `expr $PORT01 + 279` $OPTS 2>&1
+    scripts/unittest endpoints                                    --minPort `expr $PORT01 + 280` --maxPort `expr $PORT01 + 319` $OPTS 2>&1
+    scripts/unittest http_server                                  --minPort `expr $PORT01 + 320` --maxPort `expr $PORT01 + 359` $OPTS 2>&1
+    scripts/unittest server_http                                  --minPort `expr $PORT01 + 360` --maxPort `expr $PORT01 + 399` $OPTS 2>&1
+    scripts/unittest shell_client                                 --minPort `expr $PORT01 + 400` --maxPort `expr $PORT01 + 439` $OPTS 2>&1
+    scripts/unittest shell_server                                 --minPort `expr $PORT01 + 440` --maxPort `expr $PORT01 + 479` $OPTS 2>&1
+    scripts/unittest shell_server_aql          --testBuckets 4/0  --minPort `expr $PORT01 + 480` --maxPort `expr $PORT01 + 519` $OPTS 2>&1
+    scripts/unittest shell_server_aql          --testBuckets 4/1  --minPort `expr $PORT01 + 520` --maxPort `expr $PORT01 + 559` $OPTS 2>&1
+    scripts/unittest shell_server_aql          --testBuckets 4/2  --minPort `expr $PORT01 + 560` --maxPort `expr $PORT01 + 599` $OPTS 2>&1
+    scripts/unittest shell_server_aql          --testBuckets 4/3  --minPort `expr $PORT01 + 600` --maxPort `expr $PORT01 + 639` $OPTS 2>&1
+    scripts/unittest ssl_server                                   --minPort `expr $PORT01 + 640` --maxPort `expr $PORT01 + 679` $OPTS 2>&1
+    scripts/unittest upgrade                                      --minPort `expr $PORT01 + 680` --maxPort `expr $PORT01 + 719` $OPTS 2>&1
     $ENTERPRISE_TESTS
     " | parallel --header 1 --results log-output --files --no-notice --load 10 --jobs $concurrency > log-output/${type}.log
 fi

@@ -595,12 +595,10 @@ def testStepParallel() {
 // --SECTION--                                                SCRIPTS RESILIENCE
 // -----------------------------------------------------------------------------
 
-def testResilience(edition, os, engine) {
-    echo "missing"
-    sh "ls -l"
-}
+def testResilience(os, engine, foxx) {
+    sh './Installation/Pipeline/test_resilience_' + foxx + '_' + engine + '_' + os +}
 
-def testResilienceCheck(edition, os, engine, full) {
+def testResilienceCheck(os, engine, full) {
     if (! runResilience) {
         echo "Not running resilience tests"
         return false
@@ -621,34 +619,29 @@ def testResilienceCheck(edition, os, engine, full) {
         return false
     }
 
-    if (edition == 'enterprise' && ! buildEnterprise) {
-        echo "Not building " + edition + " version"
-        return false
-    }
-
-    if (edition == 'community' && ! buildCommunity) {
-        echo "Not building " + edition + " version"
+    if (! buildCommunity) {
+        echo "Not building community version"
         return false
     }
 
     return true
 }
 
-def testResilienceName(edition, os, engine, full) {
-    def name = 'test-resilience' + '-' + edition + '-' + engine + '-' + os;
+def testResilienceName(os, engine, foxx, full) {
+    def name = 'test-resilience' + '-' + foxx + '_' + engine + '-' + os;
 
-    if (! testResilienceCheck(edition, os, engine, full)) {
+    if (! testResilienceCheck(os, engine, full)) {
         name = "DISABLED-" + name
     }
 
     return name 
 }
 
-def testResilienceStep(edition, os, engine) {
+def testResilienceStep(os, engine, foxx) {
     return {
         node(os) {
-            unstashBinaries(edition, os)
-            testResilience(edition, os, engine)
+            unstashBinaries('community', os)
+            testResilience(os, engine, foxx)
         }
     }
 }
@@ -657,13 +650,13 @@ def testResilienceParallel() {
     def branches = [:]
     def full = false
 
-    for (edition in ['community', 'enterprise']) {
+    for (foxx in ['foxx', 'nofoxx']) {
         for (os in ['linux', 'mac', 'windows']) {
             for (engine in ['mmfiles', 'rocksdb']) {
-                if (testResilienceCheck(edition, os, engine, full)) {
-                    def name = testResilienceName(edition, os, engine, full)
+                if (testResilienceCheck(os, engine, foxx, full)) {
+                    def name = testResilienceName(os, engine, foxx, full)
 
-                    branches[name] = testResilienceStep(edition, os, engine)
+                    branches[name] = testResilienceStep(os, engine, foxx)
                 }
             }
         }

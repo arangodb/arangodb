@@ -1,5 +1,3 @@
-#!/bin/bash
-
 load=32
 concurrency=$1
 edition=$2
