@@ -599,7 +599,7 @@ def testResilience(os, engine, foxx) {
     sh './Installation/Pipeline/test_resilience_' + foxx + '_' + engine + '_' + os + '.sh'
 }
 
-def testResilienceCheck(os, engine, full) {
+def testResilienceCheck(os, engine, foxx, full) {
     if (! runResilience) {
         echo "Not running resilience tests"
         return false
@@ -631,7 +631,7 @@ def testResilienceCheck(os, engine, full) {
 def testResilienceName(os, engine, foxx, full) {
     def name = 'test-resilience' + '-' + foxx + '_' + engine + '-' + os;
 
-    if (! testResilienceCheck(os, engine, full)) {
+    if (! testResilienceCheck(os, engine, foxx, full)) {
         name = "DISABLED-" + name
     }
 
