@@ -305,7 +305,7 @@ def stashBinaries(edition, os) {
     def name = 'binaries-' + edition + '-' + os + '.zip'
 
     if (os == 'linux' || os == 'mac') {
-        def dirs = 'build etc Installation/Pipeline js scripts UnitTests utils'
+        def dirs = 'build etc Installation/Pipeline js scripts UnitTests utils resilience'
 
         if (edition == 'community') {
             sh 'zip -r -1 -y -q ' + name + ' ' + dirs
@@ -425,18 +425,11 @@ def buildStepCheck(edition, os, full) {
 }
 
 def buildStep(edition, os, full) {
-    if (! buildStepCheck(edition, os, full)) {
-        return {}
-    }
-
     return {
         node(os) {
             unstashSourceCode(os)
             buildEdition(edition, os)
-
-            if (runTests || runResilience) {
-                stashBinaries(edition, os)
-            }
+            stashBinaries(edition, os)
         }
     }
 }
@@ -459,7 +452,7 @@ def buildStepParallel() {
 }
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                                     SCRIPTS TESTS
+// --SECTION--                                                    SCRIPTS JSLINT
 // -----------------------------------------------------------------------------
 
 def jslint() {
@@ -496,6 +489,10 @@ def jslintStep() {
     }
 }
 
+// -----------------------------------------------------------------------------
+// --SECTION--                                                     SCRIPTS TESTS
+// -----------------------------------------------------------------------------
+
 def testEdition(edition, os, mode, engine) {
     try {
         sh './Installation/Pipeline/test_' + mode + '_' + edition + '_' + engine + '_' + os + '.sh 10'
@@ -512,37 +509,37 @@ def testEdition(edition, os, mode, engine) {
 def testStepCheck(edition, os, mode, engine, full) {
     if (! runTests) {
         echo "Not running tests"
-        return
+        return false
     }
 
     if (full && ! buildFull) {
         echo "Not building combination " + os + " " + edition + " "
-        return
+        return false
     }
 
     if (os == 'linux' && ! buildLinux) {
         echo "Not building " + os + " version"
-        return
+        return false
     }
 
     if (os == 'mac' && ! buildMac) {
         echo "Not building " + os + " version"
-        return
+        return false
     }
 
     if (os == 'windows' && ! buildWindows) {
         echo "Not building " + os + " version"
-        return
+        return false
     }
 
     if (edition == 'enterprise' && ! buildEnterprise) {
         echo "Not building " + edition + " version"
-        return
+        return false
     }
 
     if (edition == 'community' && ! buildCommunity) {
         echo "Not building " + edition + " version"
-        return
+        return false
     }
 
     return true
@@ -594,46 +591,85 @@ def testStepParallel() {
     parallel branches
 }
 
-def testEditionResilience(edition, os, engine) {
+// -----------------------------------------------------------------------------
+// --SECTION--                                                SCRIPTS RESILIENCE
+// -----------------------------------------------------------------------------
+
+def testResilience(edition, os, engine) {
     echo "missing"
     sh "ls -l"
 }
 
-def testResilienceStep(os, edition, engine, full) {
+def testResilienceCheck(os, edition, engine, full) {
     if (! runResilience) {
         echo "Not running resilience tests"
-        return
+        return false
     }
 
     if (os == 'linux' && ! buildLinux) {
         echo "Not building " + os + " version"
-        return
+        return false
     }
 
     if (os == 'mac' && ! buildMac) {
         echo "Not building " + os + " version"
-        return
+        return false
     }
 
     if (os == 'windows' && ! buildWindows) {
         echo "Not building " + os + " version"
-        return
+        return false
     }
 
     if (edition == 'enterprise' && ! buildEnterprise) {
         echo "Not building " + edition + " version"
-        return
+        return false
     }
 
     if (edition == 'community' && ! buildCommunity) {
         echo "Not building " + edition + " version"
-        return
+        return false
     }
 
-    node(os) {
-        unstashBinaries(edition, os)
-        testEditionResilience(edition, os, engine)
+    return true
+}
+
+def testResilienceName(edition, os, engine, full) {
+    def name = 'test-resilience' + '-' + edition + '-' + engine + '-' + os;
+
+    if (! testStepCheck(edition, os, mode, engine, full)) {
+        name = "DISABLED-" + name
     }
+
+    return name 
+}
+
+def testResilienceStep(os, edition, engine, full) {
+    return {
+        node(os) {
+            unstashBinaries(edition, os)
+            testResilience(edition, os, engine)
+        }
+    }
+}
+
+def testResilienceParallel() {
+    def branches = [:]
+    def full = false
+
+    for (edition in ['community', 'enterprise']) {
+        for (os in ['linux', 'mac', 'windows']) {
+            for (engine in ['mmfiles', 'rocksdb']) {
+                if (testResilienceCheck(edition, os, engine, full)) {
+                    def name = testResilienceName(edition, os, engine, full)
+
+                    branches[name] = testResilienceStep(edition, os, engine, full)
+                }
+            }
+        }
+    }
+
+    parallel branches
 }
 
 // -----------------------------------------------------------------------------
@@ -650,9 +686,6 @@ stage('checkout') {
     }
 }
 
-// cmake is very picky about the absolute path. Therefore never put a stage
-// into an `if`
-
 stage('build') {
     buildStepParallel()
 }
@@ -662,18 +695,5 @@ stage('tests') {
 }
 
 stage('resilience') {
-    parallel(
-        'test-resilience-community-mmfiles-linux':    { testResilienceStep('linux',   'community',  'mmfiles', false) },
-        'test-resilience-community-mmfiles-mac':      { testResilienceStep('mac',     'community',  'mmfiles', false) },
-        'test-resilience-community-mmfiles-windows':  { testResilienceStep('windows', 'community',  'mmfiles', false) },
-        'test-resilience-community-rocksdb-linux':    { testResilienceStep('linux',   'community',  'rocksdb', false) },
-        'test-resilience-community-rocksdb-mac':      { testResilienceStep('mac',     'community',  'rocksdb', false) },
-        'test-resilience-community-rocksdb-windows':  { testResilienceStep('windows', 'community',  'rocksdb', false) },
-        'test-resilience-enterprise-mmfiles-linux':   { testResilienceStep('linux',   'enterprise', 'mmfiles', false) },
-        'test-resilience-enterprise-mmfiles-mac':     { testResilienceStep('mac',     'enterprise', 'mmfiles', false) },
-        'test-resilience-enterprise-mmfiles-windows': { testResilienceStep('windows', 'enterprise', 'mmfiles', false) },
-        'test-resilience-enterprise-rocksdb-linux':   { testResilienceStep('linux',   'enterprise', 'rocksdb', false) },
-        'test-resilience-enterprise-rocksdb-mac':     { testResilienceStep('mac',     'enterprise', 'rocksdb', false) },
-        'test-resilience-enterprise-rocksdb-windows': { testResilienceStep('windows', 'enterprise', 'rocksdb', false) }
-    )
+    testResilienceParallel();
 }
