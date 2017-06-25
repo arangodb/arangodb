@@ -92,22 +92,24 @@ Function ReadINIFileKeys
   Push $R4 ;uni var
   Push $R5 ;uni var
   Push $R6 ;last INI section
- 
+
+  ClearErrors
+
   FileOpen $R2 $R1 r
- 
+
   Loop:
     FileRead $R2 $R3   ;get next line into R3
     IfErrors Exit
- 
+
     Push $R3
-    Call StrTrimNewLines 
+    Call StrTrimNewLines
     Pop $R3
- 
+
     StrCmp $R3 "" Loop   ;if blank line, skip
- 
+
     StrCpy $R4 $R3 1   ;get first char into R4
     StrCmp $R4 ";" Loop   ;check it for semicolon and skip line if so(ini comment)
- 
+
     StrCpy $R4 $R3 "" -1   ;get last char of line into R4
     StrCmp $R4 "]" 0 +6     ;if last char is ], parse section name, else jump to parse key/value
     StrCpy $R6 $R3 -1   ;get all except last char
@@ -115,20 +117,22 @@ Function ReadINIFileKeys
     IntOp $R4 $R4 - 1    ;subtract one from length
     StrCpy $R6 $R6 "" -$R4   ;copy all but first char to trim leading [, placing the section name in R6
     Goto Loop
- 
+
     Push "="  ;push delimiting char
     Push $R3
     Call SplitFirstStrPart
     Pop $R4
-    Pop $R5       
- 
-    WriteINIStr $R0 $R6 $R4 $R5      
- 
+    Pop $R5
+
+    WriteINIStr $R0 $R6 $R4 $R5
+    IfErrors 0 Loop
+    MessageBox MB_OK "Ini file write errored while writing $R0 $R6 $R4 $R5"
+
     Goto Loop
   Exit:
- 
+
     FileClose $R2
- 
+
     Pop $R6
     Pop $R5
     Pop $R4

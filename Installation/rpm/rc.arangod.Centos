@@ -76,7 +76,7 @@ stop() {
 
   RETVAL=$?
   echo "$RETVAL"
-  if test "$RETVAL" -ne "0"
+  if test "$RETVAL" -ne "0" ; then
      exit "$RETVAL"
   fi
 }
