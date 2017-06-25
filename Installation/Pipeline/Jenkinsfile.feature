@@ -424,7 +424,7 @@ def buildStepCheck(edition, os, full) {
     return true
 }
 
-def buildStep(edition, os, full) {
+def buildStep(edition, os) {
     return {
         node(os) {
             unstashSourceCode(os)
@@ -443,7 +443,7 @@ def buildStepParallel() {
             if (buildStepCheck(edition, os, full)) {
                 def name = 'build-' + edition + '-' + os
 
-                branches[name] = buildStep(edition, os, full)
+                branches[name] = buildStep(edition, os)
             }
         }
     }
@@ -555,7 +555,7 @@ def testName(edition, os, mode, engine, full) {
     return name 
 }
 
-def testStep(edition, os, mode, engine, full) {
+def testStep(edition, os, mode, engine) {
     return {
         node(os) {
             echo "Running " + mode + " " + edition + " " + engine + " " + os + " test"
@@ -577,7 +577,7 @@ def testStepParallel() {
                     if (testCheck(edition, os, mode, engine, full)) {
                         def name = testName(edition, os, mode, engine, full)
 
-                        branches[name] = testStep(edition, os, mode, engine, full)
+                        branches[name] = testStep(edition, os, mode, engine)
                     }
                 }
             }
@@ -600,7 +600,7 @@ def testResilience(edition, os, engine) {
     sh "ls -l"
 }
 
-def testResilienceCheck(os, edition, engine, full) {
+def testResilienceCheck(edition, os, engine, full) {
     if (! runResilience) {
         echo "Not running resilience tests"
         return false
@@ -644,7 +644,7 @@ def testResilienceName(edition, os, engine, full) {
     return name 
 }
 
-def testResilienceStep(os, edition, engine, full) {
+def testResilienceStep(edition, os, engine) {
     return {
         node(os) {
             unstashBinaries(edition, os)
@@ -663,7 +663,7 @@ def testResilienceParallel() {
                 if (testResilienceCheck(edition, os, engine, full)) {
                     def name = testResilienceName(edition, os, engine, full)
 
-                    branches[name] = testResilienceStep(edition, os, engine, full)
+                    branches[name] = testResilienceStep(edition, os, engine)
                 }
             }
         }
