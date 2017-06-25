@@ -506,7 +506,7 @@ def testEdition(edition, os, mode, engine) {
     }
 }
 
-def testStepCheck(edition, os, mode, engine, full) {
+def testCheck(edition, os, mode, engine, full) {
     if (! runTests) {
         echo "Not running tests"
         return false
@@ -545,10 +545,10 @@ def testStepCheck(edition, os, mode, engine, full) {
     return true
 }
 
-def testStepName(edition, os, mode, engine, full) {
+def testName(edition, os, mode, engine, full) {
     def name = "test-" + mode + '-' + edition + '-' + engine + '-' + os;
 
-    if (! testStepCheck(edition, os, mode, engine, full)) {
+    if (! testCheck(edition, os, mode, engine, full)) {
         name = "DISABLED-" + name
     }
 
@@ -574,8 +574,8 @@ def testStepParallel() {
         for (os in ['linux', 'mac', 'windows']) {
             for (mode in ['cluster', 'singleserver']) {
                 for (engine in ['mmfiles', 'rocksdb']) {
-                    if (testStepCheck(edition, os, mode, engine, full)) {
-                        def name = testStepName(edition, os, mode, engine, full)
+                    if (testCheck(edition, os, mode, engine, full)) {
+                        def name = testName(edition, os, mode, engine, full)
 
                         branches[name] = testStep(edition, os, mode, engine, full)
                     }
@@ -637,7 +637,7 @@ def testResilienceCheck(os, edition, engine, full) {
 def testResilienceName(edition, os, engine, full) {
     def name = 'test-resilience' + '-' + edition + '-' + engine + '-' + os;
 
-    if (! testStepCheck(edition, os, engine, full)) {
+    if (! testResilienceCheck(edition, os, engine, full)) {
         name = "DISABLED-" + name
     }
 
