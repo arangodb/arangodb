@@ -291,7 +291,7 @@ def stashBinaries(edition, os) {
             sh 'zip -r -1 -y -q ' + name + ' ' + dirs
         }
         else if (edition == 'enterprise') {
-            sh 'zip -r -1 -y -q ' + name + ' ' dirs + ' ' + enterprise/js
+            sh 'zip -r -1 -y -q ' + name + ' ' + dirs + ' ' + enterprise/js
         }
 
         sh 'scp ' + name + ' jenkins@c1:' + cacheDir
