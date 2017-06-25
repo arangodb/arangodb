@@ -637,7 +637,7 @@ def testResilienceCheck(os, edition, engine, full) {
 def testResilienceName(edition, os, engine, full) {
     def name = 'test-resilience' + '-' + edition + '-' + engine + '-' + os;
 
-    if (! testStepCheck(edition, os, mode, engine, full)) {
+    if (! testStepCheck(edition, os, engine, full)) {
         name = "DISABLED-" + name
     }
 
