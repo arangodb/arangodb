@@ -1,5 +1,3 @@
-#!/bin/bash
-
 load=32
 concurrency=$1
 edition=$2
@@ -31,12 +29,29 @@ echo "CONCURRENY: $concurrency"
 echo "HOST: `hostname`"
 echo "PWD: `pwd`"
 
+mkdir -p build-$edition
+
+if [ ! -f build-$edition/location ]; then
+    if [ "$os" == mac ]; then
+        (ls -l  && echo "$edition $os") | md5 | awk '{print $1}' > build-$edition/location
+    else
+        (ls -l  && echo "$edition $os") | md5sum | awk '{print $1}' > build-$edition/location
+    fi
+fi
+
+GENPATH="/tmp/`cat build-$edition/location`"
+
+rm -f $GENPATH
+ln -s `pwd` $GENPATH
+cd $GENPATH
+
+echo "GENPATH: `pwd`"
+
 rm -rf log-output/$type.log
 mkdir -p log-output
 touch log-output/$type.log
 
 (
-    mkdir -p build-$edition
     cd build-$edition
 
     echo "`date +%T` configuring..."
@@ -52,7 +67,9 @@ touch log-output/$type.log
 
     if [ "$?" != 0 ]; then
         if fgrep 'Re-run cmake with a different source directory' ../log-output/$type.log; then
+            mv location ..
             rm -rf *
+            mv ../location .
             
             CXXFLAGS=-fno-omit-frame-pointer \
                 cmake \
