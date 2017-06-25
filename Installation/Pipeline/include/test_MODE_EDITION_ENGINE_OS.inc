@@ -2,6 +2,7 @@ concurrency="$1"
 mode="$2"
 edition="$3"
 engine="$4"
+os="$5"
 
 type="test"
 
@@ -32,7 +33,14 @@ else
     exit 1
 fi
 
-type="${type}_linux"
+if [ "$os" == linux ]; then
+    type="${type}_${os}linux"
+elif [ "$os" == mac ]; then
+    type="${type}_${os}"
+else
+    echo "$0: unknown engine '$os', expecting 'linux' or 'mac'"
+    exit 1
+fi
 
 . ./Installation/Pipeline/include/test_log_info.inc
 . ./Installation/Pipeline/include/test_setup_tmp.inc
@@ -41,7 +49,7 @@ type="${type}_linux"
 OPTS="--storageEngine $engine --skipNondeterministic true --skipTimeCritical true --configDir etc/jenkins --skipLogAnalysis true"
 
 if [ "$mode" == singleserver ]; then
-    if [ "$edition" == enterprise ]; then
+    if [ "$edition" == enterprise -a "$os" == linux ]; then
         ENTERPRISE_TESTS="scripts/unittest ldap --caCertFilePath $(pwd)/ldap/ca_server.pem --ldapHost 127.0.0.1 --ldapPort $PORTLDAP --minPort `expr $PORT03 + 60` --maxPort `expr $PORT03 + 69` $OPTS 2>&1"
     fi
 
@@ -79,7 +87,7 @@ if [ "$mode" == singleserver ]; then
 elif [ "$mode" == cluster ]; then
     OPTS="$OPTS --cluster true"
 
-    if [ "$edition" == enterprise ]; then
+    if [ "$edition" == enterprise -a "$os" == linux ]; then
         ENTERPRISE_TESTS="scripts/unittest ldap --caCertFilePath $(pwd)/ldap/ca_server.pem --ldapHost 127.0.0.1 --ldapPort $PORTLDAP --minPort `expr $PORT04 + 120` --maxPort `expr $PORT04 + 159` $OPTS 2>&1"
     fi
 

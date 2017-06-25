@@ -22,7 +22,7 @@ elif [ "$mode" == cluster ]; then
   PORTTRAP="./Installation/Pipeline/port.sh --clean $PORT01 $PORT02 $PORT03 $PORT04 ;"
 fi
 
-if [ "$edition" == enterprise ]; then
+if [ "$edition" == enterprise -a "$os" == linux ]; then
   docker rm -f ldap-$PORTLDAP || echo
   mkdir -p ldap
   docker pull arangodb/openldap-test-container:jessie
