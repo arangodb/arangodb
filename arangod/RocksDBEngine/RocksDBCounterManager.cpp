@@ -528,16 +528,21 @@ public:
   }
 
   void storeLastKeyValue(uint64_t objectId, uint64_t keyValue) {
+    if (keyValue == 0) {
+      return;
+    }
+    
     auto it = _generators->find(objectId);
-    if (it == _generators->end() && keyValue != 0) {
+    
+    if (it == _generators->end()) {
       try {
         _generators->emplace(objectId, keyValue);
       } catch (...) {}
       return;
     }
 
-    if (keyValue > it->second) {
-      it->second = keyValue;
+    if (keyValue > (*it).second) {
+      (*it).second = keyValue;
     }
   }
 
