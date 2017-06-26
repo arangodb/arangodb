@@ -4,11 +4,26 @@ properties([
     parameters([
         booleanParam(
             defaultValue: false,
+            description: 'build and run tests on Linux',
+            name: 'Linux'
+        ),
+        booleanParam(
+            defaultValue: false,
+            description: 'build and run tests on Mac',
+            name: 'Mac'
+        ),
+        booleanParam(
+            defaultValue: false,
+            description: 'build and run tests in Windows',
+            name: 'Windows'
+        ),
+        booleanParam(
+            defaultValue: false,
             description: 'clean build directories',
             name: 'cleanBuild'
         ),
         booleanParam(
-            defaultValue: true,
+            defaultValue: false,
             description: 'build and run tests for community',
             name: 'buildCommunity'
         ),
@@ -16,21 +31,6 @@ properties([
             defaultValue: false,
             description: 'build and run tests for enterprise',
             name: 'buildEnterprise'
-        ),
-        booleanParam(
-            defaultValue: true,
-            description: 'build and run tests on Linux',
-            name: 'buildLinux'
-        ),
-        booleanParam(
-            defaultValue: false,
-            description: 'build and run tests on Mac',
-            name: 'buildMac'
-        ),
-        booleanParam(
-            defaultValue: false,
-            description: 'build and run tests in Windows',
-            name: 'buildWindows'
         ),
         booleanParam(
             defaultValue: false,
@@ -63,13 +63,13 @@ buildCommunity = params.buildCommunity
 buildEnterprise = params.buildEnterprise
 
 // build linux
-buildLinux = params.buildLinux
+buildLinux = params.Linux
 
 // build mac
-buildMac = params.buildMac
+buildMac = params.Mac
 
 // build windows
-buildWindows = params.buildWindows
+buildWindows = params.Windows
 
 // run jslint
 runJslint = params.runJslint
@@ -93,10 +93,10 @@ enterpriseRepo = 'https://github.com/arangodb/enterprise'
 // Jenkins credentials for enterprise repositiory
 credentials = '8d893d23-6714-4f35-a239-c847c798e080'
 
-// binaries to copy for testing
-binariesCommunity = 'build/**,etc/**,Installation/Pipeline/**,js/**,scripts/**,UnitTests/**,utils/**'
-binariesEnterprise = binariesCommunity + ',enterprise/js/**'
+// jenkins cache
+cacheDir = '/vol/cache/' + env.JOB_NAME.replaceAll('%', '_')
 
+// execute a powershell
 def PowerShell(psCmd) {
     bat "powershell.exe -NonInteractive -ExecutionPolicy Bypass -Command \"\$ErrorActionPreference='Stop';[Console]::OutputEncoding=[System.Text.Encoding]::UTF8;$psCmd;EXIT \$global:LastExitCode\""
 }
@@ -209,12 +209,12 @@ def checkCommitMessages() {
         }
     }
 
+    echo 'Linux: ' + (buildLinux ? 'true' : 'false')
+    echo 'Mac: ' + (buildMac ? 'true' : 'false')
+    echo 'Windows: ' + (buildWindows ? 'true' : 'false')
     echo 'Clean Build: ' + (cleanBuild ? 'true' : 'false')
     echo 'Build Community: ' + (buildCommunity ? 'true' : 'false')
     echo 'Build Enterprise: ' + (buildEnterprise ? 'true' : 'false')
-    echo 'Build Linux: ' + (buildLinux ? 'true' : 'false')
-    echo 'Build Mac: ' + (buildMac ? 'true' : 'false')
-    echo 'Build Windows: ' + (buildWindows ? 'true' : 'false')
     echo 'Run Jslint: ' + (runJslint ? 'true' : 'false')
     echo 'Run Resilience: ' + (runResilience ? 'true' : 'false')
     echo 'Run Tests: ' + (runTests ? 'true' : 'false')
@@ -226,14 +226,12 @@ def checkCommitMessages() {
 
 def stashSourceCode() {
     sh 'rm -f source.*'
+    sh 'find -L . -type l -delete'
+    sh 'zip -r -1 -x "*tmp" -x ".git" -y -q source.zip *'
 
-    if (buildLinux || buildMac) {
-        sh 'tar -c -f source.tar --exclude "source.*" --exclude "*tmp" --exclude ".git" *'
-        stash includes: 'source.*', name: 'sourceTar'
-    }
-
-    if (buildWindows) {
-        stash includes: '**', excludes: '*tmp,.git,source.*', name: 'source'
+    lock('cache') {
+        sh 'mkdir -p ' + cacheDir
+        sh 'mv -f source.zip ' + cacheDir + '/source.zip'
     }
 }
 
@@ -245,32 +243,95 @@ def unstashSourceCode(os) {
         bat 'del /F /Q *'
     }
 
+    def name = env.JOB_NAME
+
     if (os == 'linux' || os == 'mac') {
-        unstash 'sourceTar'
-        sh 'tar -x -p -f source.tar'
-        sh 'mkdir -p artefacts'
+        lock('cache') {
+            sh 'scp "jenkins@c1:' + cacheDir + '/source.zip" source.zip'
+        }
+
+        sh 'unzip -o -q source.zip'
     }
     else if (os == 'windows') {
-        unstash 'source'
+        lock('cache') {
+            bat 'scp -F c:/Users/jenkins/ssh_config "jenkins@c1:' + cacheDir + '/source.zip" source.zip'
+        }
 
-        if (!fileExists('artefacts')) {
-           bat 'mkdir artefacts'
+        bat 'c:\\cmake\\bin\\cmake -E tar xf source.zip'
+    }
+}
+
+def stashBuild(edition, os) {
+    def name = 'build-' + edition + '-' + os + '.zip'
+
+    if (os == 'linux' || os == 'mac') {
+        sh 'rm -f ' + name
+        sh 'zip -r -1 -y -q ' + name + ' build-' + edition
+
+        lock('cache') {
+            sh 'scp ' + name + ' "jenkins@c1:' + cacheDir + '"'
+        }
+    }
+    else if (os == 'windows') {
+        bat 'del /F /q ' + name
+        PowerShell('Compress -Archive -Path build-' + edition + ' -DestinationPath ' + name)
+
+        lock('cache') {
+            bat 'scp -F c:/Users/jenkins/ssh_config ' + name + ' "jenkins@c1:' + cacheDir + '"'
         }
     }
 }
 
-def stashBinaries(edition, os) {
-    if (edition == 'community') {
-        stash includes: binariesCommunity, name: 'build-' + edition + '-' + os
+def unstashBuild(edition, os) {
+    def name = 'build-' + edition + '-' + os + '.zip'
+
+    if (os == 'linux' || os == 'mac') {
+        lock('cache') {
+            sh 'scp "jenkins@c1:' + cacheDir + '/' + name + '" ' + name
+        }
+
+        sh 'unzip -o -q ' + name
     }
-    else if (edition == 'enterprise') {
-        stash includes: binariesEnterprise, name: 'build-' + edition + '-' + os
+    else if (os == 'windows') {
+        lock('cache') {
+            bat 'scp -F c:/Users/jenkins/ssh_config "jenkins@c1:' + cacheDir + '/' + name + '" ' + name
+        }
+
+        bat 'c:\\cmake\\bin\\cmake -E tar xf ' + name
+    }
+}
+
+def stashBinaries(edition, os) {
+    def name = 'binaries-' + edition + '-' + os + '.zip'
+
+    if (os == 'linux' || os == 'mac') {
+        def dirs = 'build etc Installation/Pipeline js scripts UnitTests utils resilience'
+
+        if (edition == 'community') {
+            sh 'zip -r -1 -y -q ' + name + ' ' + dirs
+        }
+        else if (edition == 'enterprise') {
+            sh 'zip -r -1 -y -q ' + name + ' ' + dirs + ' enterprise/js'
+        }
+
+        lock('cache') {
+            sh 'scp ' + name + ' "jenkins@c1:' + cacheDir + '"'
+        }
     }
 }
 
 def unstashBinaries(edition, os) {
+    def name = 'binaries-' + edition + '-' + os + '.zip'
+
     sh 'rm -rf *'
-    unstash 'build-' + edition + '-' + os
+
+    if (os == 'linux' || os == 'mac') {
+        lock('cache') {
+            sh 'scp "jenkins@c1:' + cacheDir + '/' + name + '" ' + name
+        }
+
+        sh 'unzip -o -q ' + name
+    }
 }
 
 // -----------------------------------------------------------------------------
@@ -280,30 +341,44 @@ def unstashBinaries(edition, os) {
 def buildEdition(edition, os) {
     try {
         if (os == 'linux' || os == 'mac') {
-/*
             def tarfile = 'build-' + edition + '-' + os + '.tar.gz'
 
-            cache(maxCacheSize: 50000, caches: [
-                [$class: 'ArbitraryFileCache',
-                 includes: tarfile,
-                 path: 'artefacts']]) {
-                    if (!cleanBuild && fileExists('artefacts/' + tarfile)) {
-                        sh 'tar -x -z -p -f artefacts/' + tarfile
-                    }
-
-                    sh 'rm -f artefacts/' + tarfile
-                    sh './Installation/Pipeline/build_' + edition + '_' + os + '.sh 64'
-                    sh 'GZIP=--fast tar -c -z -f artefacts/' + tarfile + ' build-' + edition
+            if (! cleanBuild) {
+                try {
+                    unstashBuild(edition, os)
+                }
+                catch (exc) {
+                    echo exc.toString()
+                }
             }
-*/
+
             sh './Installation/Pipeline/build_' + edition + '_' + os + '.sh 64'
+
+            stashBuild(edition, os)
         }
         else if (os == 'windows') {
+            def builddir = 'build-' + edition + '-' + os
+
             if (cleanBuild) {
                 bat 'del /F /Q build'
             }
+            else {
+                try {
+                    step($class: 'hudson.plugins.copyartifact.CopyArtifact',
+                         projectName: "/" + "${env.JOB_NAME}",
+                         filter: builddir + '/**')
+
+                    bat 'move ' + builddir + ' build'
+                }
+                catch (exc) {
+                    echo exc.toString()
+                }
+            }
 
             PowerShell('. .\\Installation\\Pipeline\\build_' + edition + '_windows.ps1')
+
+            bat 'move build ' + builddir
+            archiveArtifacts allowEmptyArchive: true, artifacts: builddir + '/**', defaultExcludes: false
         }
     }
     catch (exc) {
@@ -315,49 +390,69 @@ def buildEdition(edition, os) {
     }
 }
 
-def buildStep(os, edition, full) {
+def buildStepCheck(edition, os, full) {
     if (full && ! buildFull) {
         echo "Not building combination " + os + " " + edition + " "
-        return
+        return false
     }
 
     if (os == 'linux' && ! buildLinux) {
         echo "Not building " + os + " version"
-        return
+        return false
     }
 
     if (os == 'mac' && ! buildMac) {
         echo "Not building " + os + " version"
-        return
+        return false
     }
 
     if (os == 'windows' && ! buildWindows) {
         echo "Not building " + os + " version"
-        return
+        return false
     }
 
     if (edition == 'enterprise' && ! buildEnterprise) {
         echo "Not building " + edition + " version"
-        return
+        return false
     }
 
     if (edition == 'community' && ! buildCommunity) {
         echo "Not building " + edition + " version"
-        return
+        return false
     }
 
-    node(os) {
-        unstashSourceCode(os)
-        buildEdition(edition, os)
+    return true
+}
 
-        if (runTests || runResilience) {
+def buildStep(edition, os) {
+    return {
+        node(os) {
+            unstashSourceCode(os)
+            buildEdition(edition, os)
             stashBinaries(edition, os)
         }
     }
 }
 
+def buildStepParallel() {
+    def branches = [:]
+    def full = false
+
+    for (edition in ['community', 'enterprise']) {
+        for (os in ['linux', 'mac', 'windows']) {
+            if (buildStepCheck(edition, os, full)) {
+                def name = 'build-' + edition + '-' + os
+
+                branches[name] = buildStep(edition, os)
+            }
+        }
+    }
+
+    parallel branches
+}
+
 // -----------------------------------------------------------------------------
-// --SECTION--                                                     SCRIPTS TESTS
+// --SECTION--                                                    SCRIPTS JSLINT
 // -----------------------------------------------------------------------------
 
 def jslint() {
@@ -371,27 +466,36 @@ def jslint() {
 }
 
 def jslintStep() {
+    def edition = 'community'
+    def os = 'linux'
+
     if (runJslint) {
-        if (buildLinux) {
+        return {
             node(os) {
                 echo "Running jslint test"
 
-                unstashBinaries('community', os)
+                try {
+                    unstashBinaries(edition, os)
+                }
+                catch (exc) {
+                    echo exc.toString()
+                    currentBuild.result = 'UNSTABLE'
+                    return
+                }
+                
                 jslint()
             }
         }
-        else {
-            echo "Not building " + os + " version"
-        }
-    }
-    else {
-        echo "Not running tests"
     }
 }
 
-def testEdition(edition, os, type, engine) {
+// -----------------------------------------------------------------------------
+// --SECTION--                                                     SCRIPTS TESTS
+// -----------------------------------------------------------------------------
+
+def testEdition(edition, os, mode, engine) {
     try {
-        sh './Installation/Pipeline/test_' + type + '_' + edition + '_' + engine + '_' + os + '.sh 8'
+        sh './Installation/Pipeline/test_' + mode + '_' + edition + '_' + engine + '_' + os + '.sh 10'
     }
     catch (exc) {
         echo exc.toString()
@@ -402,90 +506,164 @@ def testEdition(edition, os, type, engine) {
     }
 }
 
-def testStep(edition, os, mode, engine, full) {
+def testCheck(edition, os, mode, engine, full) {
     if (! runTests) {
         echo "Not running tests"
-        return
+        return false
     }
 
     if (full && ! buildFull) {
         echo "Not building combination " + os + " " + edition + " "
-        return
+        return false
     }
 
     if (os == 'linux' && ! buildLinux) {
         echo "Not building " + os + " version"
-        return
+        return false
     }
 
     if (os == 'mac' && ! buildMac) {
         echo "Not building " + os + " version"
-        return
+        return false
     }
 
     if (os == 'windows' && ! buildWindows) {
         echo "Not building " + os + " version"
-        return
+        return false
     }
 
     if (edition == 'enterprise' && ! buildEnterprise) {
         echo "Not building " + edition + " version"
-        return
+        return false
     }
 
     if (edition == 'community' && ! buildCommunity) {
         echo "Not building " + edition + " version"
-        return
+        return false
     }
 
-    node(os) {
-        echo "Running " + mode + " " + edition + " " + engine + " " + os + " test"
+    return true
+}
 
-        unstashBinaries(edition, os)
-        testEdition(edition, os, mode, engine)
+def testName(edition, os, mode, engine, full) {
+    def name = "test-" + mode + '-' + edition + '-' + engine + '-' + os;
+
+    if (! testCheck(edition, os, mode, engine, full)) {
+        name = "DISABLED-" + name
+    }
+
+    return name 
+}
+
+def testStep(edition, os, mode, engine) {
+    return {
+        node(os) {
+            echo "Running " + mode + " " + edition + " " + engine + " " + os + " test"
+
+            unstashBinaries(edition, os)
+            testEdition(edition, os, mode, engine)
+        }
     }
 }
 
-def testEditionResilience(edition, os, engine) {
-    echo "missing"
-    sh "ls -l"
+def testStepParallel() {
+    def branches = [:]
+    def full = false
+
+    for (edition in ['community', 'enterprise']) {
+        for (os in ['linux', 'mac', 'windows']) {
+            for (mode in ['cluster', 'singleserver']) {
+                for (engine in ['mmfiles', 'rocksdb']) {
+                    if (testCheck(edition, os, mode, engine, full)) {
+                        def name = testName(edition, os, mode, engine, full)
+
+                        branches[name] = testStep(edition, os, mode, engine)
+                    }
+                }
+            }
+        }
+    }
+
+    if (runJslint) {
+        branches['jslint'] = jslintStep()
+    }
+
+    parallel branches
 }
 
-def testResilienceStep(os, edition, engine, full) {
+// -----------------------------------------------------------------------------
+// --SECTION--                                                SCRIPTS RESILIENCE
+// -----------------------------------------------------------------------------
+
+def testResilience(os, engine, foxx) {
+    sh './Installation/Pipeline/test_resilience_' + foxx + '_' + engine + '_' + os + '.sh'
+}
+
+def testResilienceCheck(os, engine, foxx, full) {
     if (! runResilience) {
         echo "Not running resilience tests"
-        return
+        return false
     }
 
     if (os == 'linux' && ! buildLinux) {
         echo "Not building " + os + " version"
-        return
+        return false
     }
 
     if (os == 'mac' && ! buildMac) {
         echo "Not building " + os + " version"
-        return
+        return false
     }
 
     if (os == 'windows' && ! buildWindows) {
         echo "Not building " + os + " version"
-        return
+        return false
     }
 
-    if (edition == 'enterprise' && ! buildEnterprise) {
-        echo "Not building " + edition + " version"
-        return
+    if (! buildCommunity) {
+        echo "Not building community version"
+        return false
     }
 
-    if (edition == 'community' && ! buildCommunity) {
-        echo "Not building " + edition + " version"
-        return
+    return true
+}
+
+def testResilienceName(os, engine, foxx, full) {
+    def name = 'test-resilience' + '-' + foxx + '_' + engine + '-' + os;
+
+    if (! testResilienceCheck(os, engine, foxx, full)) {
+        name = "DISABLED-" + name
     }
 
-    node(os) {
-        unstashBinaries(edition, os)
-        testEditionResilience(edition, os, engine)
+    return name 
+}
+
+def testResilienceStep(os, engine, foxx) {
+    return {
+        node(os) {
+            unstashBinaries('community', os)
+            testResilience(os, engine, foxx)
+        }
     }
+}
+
+def testResilienceParallel() {
+    def branches = [:]
+    def full = false
+
+    for (foxx in ['foxx', 'nofoxx']) {
+        for (os in ['linux', 'mac', 'windows']) {
+            for (engine in ['mmfiles', 'rocksdb']) {
+                if (testResilienceCheck(os, engine, foxx, full)) {
+                    def name = testResilienceName(os, engine, foxx, full)
+
+                    branches[name] = testResilienceStep(os, engine, foxx)
+                }
+            }
+        }
+    }
+
+    parallel branches
 }
 
 // -----------------------------------------------------------------------------
@@ -502,38 +680,14 @@ stage('checkout') {
     }
 }
 
-// cmake is very picky about the absolute path. Therefore never put a stage
-// into an `if`
-
 stage('build') {
-    parallel(
-        'build-community-linux': {
-            buildStep('linux', 'community', false)
-        },
-
-        'build-community-mac':      { buildStep('mac',     'community',  false) },
-        'build-community-windows':  { buildStep('windows', 'community',  false) },
-
-        'build-enterprise-linux':   { buildStep('linux',   'enterprise', false) },
-        'build-enterprise-mac':     { buildStep('mac',     'enterprise', true) },
-        'build-enterprise-windows': { buildStep('windows', 'enterprise', true) },
-    )
+    buildStepParallel()
 }
 
-stage('test') {
-    parallel(
-        'test-cluster-community-mmfiles-linux':        { testStep('community',  'linux', 'cluster',      'mmfiles', false) },
-        'test-cluster-community-rocksdb-linux':        { testStep('community',  'linux', 'cluster',      'rocksdb', true)  },
-        'test-cluster-enterprise-mmfiles-linux':       { testStep('enterprise', 'linux', 'cluster',      'mmfiles', true)  },
-        'test-cluster-enterprise-rocksdb-linux':       { testStep('enterprise', 'linux', 'cluster',      'rocksdb', false) },
-        'test-singleserver-community-mmfiles-linux':   { testStep('community',  'linux', 'singleserver', 'mmfiles', true)  },
-        'test-singleserver-community-rocksdb-linux':   { testStep('community',  'linux', 'singleserver', 'rocksdb', false) },
-        'test-singleserver-enterprise-mmfiles-linux':  { testStep('enterprise', 'linux', 'singleserver', 'mmfiles', false) },
-        'test-singleserver-enterprise-rocksdb-linux':  { testStep('enterprise', 'linux', 'singleserver', 'rocksdb', true)  },
+stage('tests') {
+    testStepParallel()
+}
 
-        'test-resilience-community-rocksdb': { testResilienceStep('linux', 'community', 'rocksdb', false) },
-        'test-resilience-community-mmfiles': { testResilienceStep('linux', 'community', 'mmfiles', false) },
-
-        'jslint': { jslintStep() }
-    )
+stage('resilience') {
+    testResilienceParallel();
 }
