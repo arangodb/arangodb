@@ -89,7 +89,9 @@ class LoggerView final : public ViewImplementation {
   virtual bool supportsFilterCondition(arangodb::aql::AstNode const* node,
                                        arangodb::aql::Variable const* reference,
                                        size_t& estimatedItems,
-                                       double& estimatedCost) const { return false; }
+                                       double& estimatedCost) const {
+    return false;
+  }
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief this method may be called by the AQL optimizer to check if the
@@ -116,7 +118,9 @@ class LoggerView final : public ViewImplementation {
   virtual bool supportsSortCondition(
       arangodb::aql::SortCondition const* sortCondition,
       arangodb::aql::Variable const* reference, double& estimatedCost,
-      size_t& coveredAttributes) const { return false; }
+      size_t& coveredAttributes) const {
+    return false;
+  }
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief this is called for a filter condition that was previously handed
@@ -145,7 +149,9 @@ class LoggerView final : public ViewImplementation {
   virtual ViewIterator* iteratorForCondition(
       transaction::Methods* trx, arangodb::aql::AstNode const* node,
       arangodb::aql::Variable const* reference,
-      arangodb::aql::SortCondition const* sortCondition) { return nullptr; }
+      arangodb::aql::SortCondition const* sortCondition) {
+    return nullptr;
+  }
 
  private:
   // example data

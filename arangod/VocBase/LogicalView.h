@@ -104,6 +104,86 @@ class LogicalView {
   static bool IsAllowedName(velocypack::Slice parameters);
   static bool IsAllowedName(std::string const& name);
 
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief this method may be called by the AQL optimizer to check if the view
+  /// supports a filter condition (as identified by the AST node `node`) at
+  /// least partially. The AQL variable `reference` is the variable that was
+  /// used for accessing the view in the AQL query.
+  ///
+  /// For example, in the AQL query
+  ///
+  ///   FOR doc IN VIEW myView
+  ///     FILTER doc.foo == 'bar'
+  ///     RETURN doc
+  ///
+  /// the filter condition would be `doc.foo == 'bar'` (represented in an AST)
+  /// and the variable would be `doc`.
+  ///
+  /// The view can return an estimate for the number of items to return and can
+  /// provide an estimated cost value. Note that these return values are
+  /// informational only (e.g. for displaying them in the AQL explain output).
+  //////////////////////////////////////////////////////////////////////////////
+  bool supportsFilterCondition(arangodb::aql::AstNode const* node,
+                               arangodb::aql::Variable const* reference,
+                               size_t& estimatedItems,
+                               double& estimatedCost) const;
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief this method may be called by the AQL optimizer to check if the
+  /// view supports a particular sort condition (as identified by the
+  /// `sortCondition` passed) at least partially. The AQL variable `reference`
+  /// identifies the variable in the AQL query that is used to access the view.
+  ///
+  /// For example, in the AQL query
+  ///
+  ///   FOR doc IN VIEW myView
+  ///     SORT doc.foo, doc.bar
+  ///     RETURN doc
+  ///
+  /// the sort condition would be `[ doc.foo, doc.bar ]` (represented in an
+  /// AST) and the variable would be `doc`.
+  ///
+  /// The view can return an estimated cost value. Note that this value is
+  /// informational only  (e.g. for displaying them in the AQL explain output).
+  /// It must also return the number of sort condition parts that are covered
+  /// by the view, from left to right, starting at the first sort condition
+  /// part. If the first sort condition part is not covered by the view, then
+  /// `coveredAttributes` must be `0`.
+  //////////////////////////////////////////////////////////////////////////////
+  bool supportsSortCondition(arangodb::aql::SortCondition const* sortCondition,
+                             arangodb::aql::Variable const* reference,
+                             double& estimatedCost,
+                             size_t& coveredAttributes) const;
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief this is called for a filter condition that was previously handed
+  /// to the view in `supportsFilterCondition`, and for which the view has
+  /// claimed to support it (at least partially).
+  ///
+  /// This call gives the view the chance to filter out all parts of the filter
+  /// condition that it cannot handle itself.
+  ///
+  /// If the view does not support the entire filter condition (or needs to
+  /// rewrite the filter condition somehow), it may return a new AstNode. It
+  /// not allowed to modify the AstNode.
+  //////////////////////////////////////////////////////////////////////////////
+  arangodb::aql::AstNode* specializeCondition(
+      arangodb::aql::Ast* ast, arangodb::aql::AstNode const* node,
+      arangodb::aql::Variable const* reference);
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief this method will be called at query execution, when the AQL query
+  /// engine requests data from the view.
+  ///
+  /// It will get the specialized filter condition and the sort condition from
+  /// the previous calls. It must return a ViewIterator which the AQL query
+  /// engine will use for fetching results from the view.
+  //////////////////////////////////////////////////////////////////////////////
+  ViewIterator* iteratorForCondition(
+      transaction::Methods* trx, arangodb::aql::AstNode const* node,
+      arangodb::aql::Variable const* reference,
+      arangodb::aql::SortCondition const* sortCondition);
+
  private:
   // SECTION: Meta Information
   //

@@ -89,7 +89,7 @@ static std::string const ReadStringValue(VPackSlice info,
   }
   return Helper::getStringValue(info, name, def);
 }
-}
+}  // namespace
 
 /// @brief This the "copy" constructor used in the cluster
 ///        it is required to create objects that survive plan
@@ -271,4 +271,46 @@ void LogicalView::spawnImplementation(
     ViewCreator creator, arangodb::velocypack::Slice const& parameters,
     bool isNew) {
   _implementation = creator(this, parameters, isNew);
+}
+
+bool LogicalView::supportsFilterCondition(
+    arangodb::aql::AstNode const* node,
+    arangodb::aql::Variable const* reference, size_t& estimatedItems,
+    double& estimatedCost) const {
+  if (_implementation.get() == nullptr) {
+    return false;
+  }
+  return _implementation->supportsFilterCondition(
+      node, reference, estimatedItems, estimatedCost);
+}
+
+bool LogicalView::supportsSortCondition(
+    arangodb::aql::SortCondition const* sortCondition,
+    arangodb::aql::Variable const* reference, double& estimatedCost,
+    size_t& coveredAttributes) const {
+  if (_implementation.get() == nullptr) {
+    return false;
+  }
+  return _implementation->supportsSortCondition(
+      sortCondition, reference, estimatedCost, coveredAttributes);
+}
+
+arangodb::aql::AstNode* LogicalView::specializeCondition(
+    arangodb::aql::Ast* ast, arangodb::aql::AstNode const* node,
+    arangodb::aql::Variable const* reference) {
+  if (_implementation.get() == nullptr) {
+    return nullptr;
+  }
+  return _implementation->specializeCondition(ast, node, reference);
+}
+
+ViewIterator* LogicalView::iteratorForCondition(
+    transaction::Methods* trx, arangodb::aql::AstNode const* node,
+    arangodb::aql::Variable const* reference,
+    arangodb::aql::SortCondition const* sortCondition) {
+  if (_implementation.get() == nullptr) {
+    return nullptr;
+  }
+  return _implementation->iteratorForCondition(trx, node, reference,
+                                               sortCondition);
 }
