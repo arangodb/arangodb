@@ -283,6 +283,8 @@ V8Context* V8DealerFeature::addContext() {
     DatabaseFeature* database =
         ApplicationServer::getFeature<DatabaseFeature>("Database");
 
+    // no other thread can use the context when we are here, as the
+    // context has not been added to the global list of contexts yet
     loadJavaScriptFileInContext(database->systemDatabase(), "server/initialize.js", context, nullptr);
     return context; 
   } catch (...) {
@@ -505,7 +507,14 @@ void V8DealerFeature::loadJavaScriptFileInAllContexts(TRI_vocbase_t* vocbase,
     CONDITION_LOCKER(guard, _contextCondition);
   
     for (auto& context : _contexts) {
+      while (context->isUsed()) {
+        // we must not enter the context if another thread is also using it...
+        guard.wait(10000);
+      }
+
+      TRI_ASSERT(!context->isUsed());
       loadJavaScriptFileInContext(vocbase, file, context, builder);
+      TRI_ASSERT(!context->isUsed());
     }
   }
 
@@ -525,6 +534,12 @@ void V8DealerFeature::loadJavaScriptFileInDefaultContext(TRI_vocbase_t* vocbase,
   
   for (auto const& context : _contexts) {
     if (context->_id == 0) {
+      while (context->isUsed()) {
+        // we must not enter the context if another thread is also using it...
+        guard.wait(10000);
+      }
+      
+      TRI_ASSERT(!context->isUsed());
       loadJavaScriptFileInContext(vocbase, file, context, builder);
       break;
     }
