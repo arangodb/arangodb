@@ -695,7 +695,7 @@ void RocksDBCollection::truncate(transaction::Methods* trx,
     // add possible log statement
     state->prepareOperation(cid, revisionId, StringRef(key),
                             TRI_VOC_DOCUMENT_OPERATION_REMOVE);
-    Result r = mthd->Delete(RocksDBColumnFamily::documents(), iter->key());
+    Result r = mthd->Delete(RocksDBColumnFamily::documents(), RocksDBKey(iter->key()));
     if (!r.ok()) {
       THROW_ARANGO_EXCEPTION(r);
     }
