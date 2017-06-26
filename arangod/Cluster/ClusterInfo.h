@@ -133,8 +133,7 @@ class CollectionInfoCurrent {
     TRI_voc_size_t s;
 
     for (auto const& it: _vpacks) {
-      s = arangodb::basics::VelocyPackHelper::getNumericValue<int>(it.second->slice(), "errorNum",
-                                                             0);
+      s = arangodb::basics::VelocyPackHelper::getNumericValue<int>(it.second->slice(), "errorNum", 0);
       m.insert(std::make_pair(it.first, s));
     }
     return m;

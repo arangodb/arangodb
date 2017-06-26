@@ -61,6 +61,7 @@ class StaticStrings {
   static std::string const ReturnOldString;
   static std::string const SilentString;
   static std::string const WaitForSyncString;
+  static std::string const IsSynchronousReplicationString;
  
   // database and collection names 
   static std::string const SystemDatabase;

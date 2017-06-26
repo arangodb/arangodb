@@ -81,6 +81,9 @@
 ///   Will be raised when an URI is unknown.
 /// - 405: @LIT{method not supported}
 ///   Will be raised when an unsupported HTTP method is used for an operation.
+/// - 406: @LIT{request not acceptable}
+///   Will be raised when an unsupported HTTP content type is used for an
+///   operation, or if a request is not acceptable for a leader or follower.
 /// - 412: @LIT{precondition failed}
 ///   Will be raised when a precondition for an HTTP request is not met.
 /// - 500: @LIT{internal server error}
@@ -403,6 +406,14 @@
 /// - 1488: @LIT{a follower could not be dropped in agency}
 ///   Will be raised if a follower that ought to be dropped could not be
 ///   dropped in the agency (under Current).
+/// - 1489: @LIT{a shard leader refuses to perform a replication operation}
+///   Will be raised if a replication operation is refused by a shard leader.
+/// - 1490: @LIT{a shard follower refuses to perform an operation that is not a replication}
+///   Will be raised if a non-replication operation is refused by a shard
+///   follower.
+/// - 1491: @LIT{a (former) shard leader refuses to perform an operation, because it has resigned in the meantime}
+///   Will be raised if a non-replication operation is refused by a former
+///   shard leader that has found out that it is no longer the leader.
 /// - 1500: @LIT{query killed}
 ///   Will be raised when a running query is killed by an explicit admin
 ///   command.
@@ -1089,6 +1100,17 @@ void TRI_InitializeErrorMessages ();
 ////////////////////////////////////////////////////////////////////////////////
 
 #define TRI_ERROR_HTTP_METHOD_NOT_ALLOWED                                 (405)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 406: ERROR_HTTP_NOT_ACCEPTABLE
+///
+/// request not acceptable
+///
+/// Will be raised when an unsupported HTTP content type is used for an
+/// operation, or if a request is not acceptable for a leader or follower.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_HTTP_NOT_ACCEPTABLE                                     (406)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 412: ERROR_HTTP_PRECONDITION_FAILED
@@ -2385,6 +2407,39 @@ void TRI_InitializeErrorMessages ();
 ////////////////////////////////////////////////////////////////////////////////
 
 #define TRI_ERROR_CLUSTER_COULD_NOT_DROP_FOLLOWER                         (1488)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 1489: ERROR_CLUSTER_SHARD_LEADER_REFUSES_REPLICATION
+///
+/// a shard leader refuses to perform a replication operation
+///
+/// Will be raised if a replication operation is refused by a shard leader.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_CLUSTER_SHARD_LEADER_REFUSES_REPLICATION                (1489)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 1490: ERROR_CLUSTER_SHARD_FOLLOWER_REFUSES_OPERATION
+///
+/// a shard follower refuses to perform an operation that is not a replication
+///
+/// Will be raised if a non-replication operation is refused by a shard
+/// follower.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_CLUSTER_SHARD_FOLLOWER_REFUSES_OPERATION                (1490)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 1491: ERROR_CLUSTER_SHARD_LEADER_RESIGNED
+///
+/// a (former) shard leader refuses to perform an operation, because it has
+/// resigned in the meantime
+///
+/// Will be raised if a non-replication operation is refused by a former shard
+/// leader that has found out that it is no longer the leader.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_CLUSTER_SHARD_LEADER_RESIGNED                           (1491)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1500: ERROR_QUERY_KILLED
