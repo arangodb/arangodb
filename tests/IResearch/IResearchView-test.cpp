@@ -331,7 +331,7 @@ SECTION("test_query") {
     TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "testVocbase");
     auto logicalView = vocbase.createView(createJson->slice(), 0);
     CHECK((false == !logicalView));
-    auto view = logicalView->getImplementation();
+    auto* view = logicalView->getImplementation();
     CHECK((false == !view));
 
     std::vector<std::pair<arangodb::aql::VariableId, bool>> sorts;
@@ -353,6 +353,7 @@ SECTION("test_query") {
     CHECK((false == !itr));
     CHECK((std::string("iresearch-ordered-iterator") == itr->typeName()));
     CHECK((&trx == itr->transaction()));
+    CHECK((view == itr->view()));
     CHECK((false == itr->hasExtra()));
     CHECK_THROWS(itr->nextExtra([](arangodb::DocumentIdentifierToken const&, arangodb::velocypack::Slice)->void{}, 42));
     size_t count = 0;
@@ -369,7 +370,7 @@ SECTION("test_query") {
     TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "testVocbase");
     auto logicalView = vocbase.createView(createJson->slice(), 0);
     CHECK((false == !logicalView));
-    auto view = logicalView->getImplementation();
+    auto* view = logicalView->getImplementation();
     CHECK((false == !view));
 
     arangodb::transaction::Options options;
@@ -384,6 +385,7 @@ SECTION("test_query") {
     CHECK((false == !itr));
     CHECK((std::string("iresearch-unordered-iterator") == itr->typeName()));
     CHECK((&trx == itr->transaction()));
+    CHECK((view == itr->view()));
     CHECK((false == itr->hasExtra()));
     CHECK_THROWS(itr->nextExtra([](arangodb::DocumentIdentifierToken const&, arangodb::velocypack::Slice)->void{}, 42));
     size_t count = 0;
@@ -400,7 +402,7 @@ SECTION("test_query") {
     TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "testVocbase");
     auto logicalView = vocbase.createView(createJson->slice(), 0);
     CHECK((false == !logicalView));
-    auto view = logicalView->getImplementation();
+    auto* view = logicalView->getImplementation();
     CHECK((false == !view));
 
     arangodb::transaction::Options options;
@@ -415,6 +417,7 @@ SECTION("test_query") {
     CHECK((false == !itr));
     CHECK((std::string("iresearch-unordered-iterator") == itr->typeName()));
     CHECK((&trx == itr->transaction()));
+    CHECK((view == itr->view()));
     CHECK((false == itr->hasExtra()));
     CHECK_THROWS(itr->nextExtra([](arangodb::DocumentIdentifierToken const&, arangodb::velocypack::Slice)->void{}, 42));
     size_t count = 0;

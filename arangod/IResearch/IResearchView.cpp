@@ -197,20 +197,18 @@ class ViewIteratorBase: public arangodb::ViewIterator {
   DECLARE_PTR(arangodb::ViewIterator);
   ViewIteratorBase(
     const char* typeName,
-    arangodb::ViewImplementation* view,
+    arangodb::ViewImplementation& view,
     arangodb::transaction::Methods& trx,
     CompoundReader&& reader
   );
+  virtual bool hasExtra() const override;
+  virtual bool nextExtra(ExtraCallback const& callback, size_t limit) override;
   virtual bool readDocument(
     arangodb::DocumentIdentifierToken const& token,
     arangodb::ManagedDocumentResult& result
-  ) const;
+  ) const override;
+  virtual void skip(uint64_t count, uint64_t& skipped) override;
   virtual char const* typeName() const override;
-
-  virtual bool nextExtra(ExtraCallback const& callback, size_t limit);
-  virtual bool hasExtra() const;
-
-  virtual void skip(uint64_t count, uint64_t& skipped);
 
  protected:
   CompoundReader _reader;
@@ -236,14 +234,20 @@ class ViewIteratorBase: public arangodb::ViewIterator {
 
 ViewIteratorBase::ViewIteratorBase(
     char const* typeName,
-    arangodb::ViewImplementation* view,
+    arangodb::ViewImplementation& view,
     arangodb::transaction::Methods& trx,
     CompoundReader&& reader
-): ViewIterator(view, &trx),
+): ViewIterator(&view, &trx),
    _reader(std::move(reader)),
    _typeName(typeName) {
   _subDocIdBits = _reader.size();
   _subDocIdMask = (size_t(1) <<_subDocIdBits) - 1;
+}
+
+bool ViewIteratorBase::hasExtra() const {
+  // shut up compiler warning...
+  // FIXME TODO: implementation
+  return false;
 }
 
 bool ViewIteratorBase::loadToken(
@@ -258,6 +262,12 @@ bool ViewIteratorBase::loadToken(
   buf._data = (subReaderId << _subDocIdBits) | subDocId;
 
   return true;
+}
+
+bool ViewIteratorBase::nextExtra(ExtraCallback const& callback, size_t limit) {
+  // shut up compiler warning...
+  // FIXME TODO: implementation
+  return false;
 }
 
 bool ViewIteratorBase::readDocument(
@@ -296,21 +306,9 @@ bool ViewIteratorBase::readDocument(
   return collection->readDocument(_trx, colToken, result);
 }
 
-bool ViewIteratorBase::nextExtra(ExtraCallback const& callback, size_t limit) {
-  // shut up compiler warning...
-  // TODO: implementation
-  return false;
-}
-
-bool ViewIteratorBase::hasExtra() const {
-  // shut up compiler warning...
-  // TODO: implementation
-  return false;
-}
-
 void ViewIteratorBase::skip(uint64_t count, uint64_t& skipped) {
   // shut up compiler warning...
-  // TODO: implementation
+  // FIXME TODO: implementation
 }
 
 irs::doc_id_t ViewIteratorBase::subDocId(
@@ -335,7 +333,7 @@ char const* ViewIteratorBase::typeName() const {
 class OrderedViewIterator: public ViewIteratorBase {
  public:
   OrderedViewIterator(
-    arangodb::ViewImplementation* view,
+    arangodb::ViewImplementation& view,
     arangodb::transaction::Methods& trx,
     CompoundReader&& reader,
     irs::filter const& filter,
@@ -355,7 +353,7 @@ class OrderedViewIterator: public ViewIteratorBase {
 };
 
 OrderedViewIterator::OrderedViewIterator(
-  arangodb::ViewImplementation* view,
+  arangodb::ViewImplementation& view,
     arangodb::transaction::Methods& trx,
     CompoundReader&& reader,
     irs::filter const& filter,
@@ -452,7 +450,7 @@ void OrderedViewIterator::reset() {
 class UnorderedViewIterator: public ViewIteratorBase {
  public:
   UnorderedViewIterator(
-    arangodb::ViewImplementation* view,
+    arangodb::ViewImplementation& view,
     arangodb::transaction::Methods& trx,
     CompoundReader&& reader,
     irs::filter const& filter
@@ -471,12 +469,11 @@ class UnorderedViewIterator: public ViewIteratorBase {
 };
 
 UnorderedViewIterator::UnorderedViewIterator(
-  arangodb::ViewImplementation* view,
+  arangodb::ViewImplementation& view,
     arangodb::transaction::Methods& trx,
     CompoundReader&& reader,
     irs::filter const& filter
-): ViewIteratorBase("iresearch-unordered-iterator", view, trx,
-      std::move(reader)),
+): ViewIteratorBase("iresearch-unordered-iterator", view, trx, std::move(reader)),
    _filter(filter.prepare(_reader)) {
   reset();
 }
@@ -1659,14 +1656,12 @@ arangodb::ViewIterator* IResearchView::iteratorForCondition(
   }
 
   if (order.empty()) {
-    PTR_NAMED(UnorderedViewIterator, iterator, this, *trx,
-      std::move(compoundReader), filter);
+    PTR_NAMED(UnorderedViewIterator, iterator, *this, *trx, std::move(compoundReader), filter);
 
     return iterator.release();
   }
 
-  PTR_NAMED(OrderedViewIterator, iterator, this, *trx,
-    std::move(compoundReader), filter, order);
+  PTR_NAMED(OrderedViewIterator, iterator, *this, *trx, std::move(compoundReader), filter, order);
 
   return iterator.release();
 }
