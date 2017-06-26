@@ -267,6 +267,7 @@ void TraditionalKeyGenerator::toVelocyPack(VPackBuilder& builder) const {
   TRI_ASSERT(!builder.isClosed());
   builder.add("type", VPackValue(name()));
   builder.add("allowUserKeys", VPackValue(_allowUserKeys));
+  builder.add("lastValue", VPackValue(_lastValue));
 }
 
 /// @brief create the generator
@@ -372,6 +373,7 @@ void AutoIncrementKeyGenerator::toVelocyPack(VPackBuilder& builder) const {
   builder.add("allowUserKeys", VPackValue(_allowUserKeys));
   builder.add("offset", VPackValue(_offset));
   builder.add("increment", VPackValue(_increment));
+  builder.add("lastValue", VPackValue(_lastValue));
 }
 
 /// @brief validate a document id (collection name + / + document key)

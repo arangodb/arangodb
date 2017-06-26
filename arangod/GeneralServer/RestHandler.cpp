@@ -26,6 +26,7 @@
 #include <velocypack/Exception.h>
 
 #include "Basics/StringUtils.h"
+#include "GeneralServer/GeneralCommTask.h"
 #include "Logger/Logger.h"
 #include "Rest/GeneralRequest.h"
 #include "Statistics/RequestStatistics.h"

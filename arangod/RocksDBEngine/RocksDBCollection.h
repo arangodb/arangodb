@@ -204,6 +204,9 @@ class RocksDBCollection final : public PhysicalCollection {
 
   void recalculateIndexEstimates();
 
+  Result serializeKeyGenerator(rocksdb::Transaction*) const;
+  void deserializeKeyGenerator(arangodb::RocksDBCounterManager* mgr);
+
  private:
   /// @brief return engine-specific figures
   void figuresSpecific(

@@ -49,7 +49,8 @@ enum class RocksDBEntryType : char {
   ReplicationApplierConfig = ':',
   FulltextIndexValue = ';',
   GeoIndexValue = '<',
-  IndexEstimateValue = '='
+  IndexEstimateValue = '=',
+  KeyGeneratorValue = '>'
 };
 
 char const* rocksDBEntryTypeName(RocksDBEntryType);
