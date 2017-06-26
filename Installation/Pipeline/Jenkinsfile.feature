@@ -1,9 +1,14 @@
 //  -*- mode: groovy-mode
 
+echo "BRANCH_NAME: " + env.BRANCH_NAME
+echo "CHANGE_ID: " + env.CHANGE_ID
+echo "CHANGE_TARGET: " + env.CHANGE_TARGET
+echo "JOB_NAME: " + env.JOB_NAME
+
 properties([
     parameters([
         booleanParam(
-            defaultValue: false,
+            defaultValue: true,
             description: 'build and run tests on Linux',
             name: 'Linux'
         ),
@@ -23,7 +28,7 @@ properties([
             name: 'cleanBuild'
         ),
         booleanParam(
-            defaultValue: false,
+            defaultValue: true,
             description: 'build and run tests for community',
             name: 'buildCommunity'
         ),
@@ -43,7 +48,7 @@ properties([
             name: 'runResilience'
         ),
         booleanParam(
-            defaultValue: false,
+            defaultValue: true,
             description: 'run tests',
             name: 'runTests'
         )
