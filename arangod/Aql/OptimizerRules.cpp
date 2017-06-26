@@ -3780,11 +3780,7 @@ void arangodb::aql::removeFiltersCoveredByTraversal(Optimizer* opt, std::unique_
           if (outVariable != nullptr &&
               varsUsedByCondition.find(outVariable) != varsUsedByCondition.end()) {
             
-            condition->root()->dump(0);
-            LOG_TOPIC(WARN, Logger::FIXME) << "============================================";
-            traversalCondition->root()->dump(0);
-
-            auto newNode = condition->removeIndexCondition(plan.get(), outVariable, traversalCondition->root());
+            auto newNode = condition->removeTraversalCondition(plan.get(), outVariable, traversalCondition->root());
             if (newNode == nullptr) {
               // no condition left...
               // FILTER node can be completely removed

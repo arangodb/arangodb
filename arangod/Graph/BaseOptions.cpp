@@ -272,7 +272,7 @@ void BaseOptions::injectLookupInfoInList(std::vector<LookupInfo>& list,
     // It is sufficient to only check member one.
     // We build the condition this way.
     auto mem = eq->getMemberUnchecked(0);
-    if (mem->isAttributeAccessForVariable(pathCmp)) {
+    if (mem->isAttributeAccessForVariable(pathCmp, true)) {
       if (pathCmp.first != _tmpVar) {
         continue;
       }
@@ -286,7 +286,7 @@ void BaseOptions::injectLookupInfoInList(std::vector<LookupInfo>& list,
     }
   }
   std::unordered_set<size_t> toRemove;
-  aql::Condition::CollectOverlappingMembers(plan, _tmpVar, condition, info.indexCondition, toRemove);
+  aql::Condition::CollectOverlappingMembers(plan, _tmpVar, condition, info.indexCondition, toRemove, false);
   size_t n = condition->numMembers();
   if (n == toRemove.size()) {
     // FastPath, all covered.

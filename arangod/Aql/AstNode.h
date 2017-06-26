@@ -430,7 +430,8 @@ struct AstNode {
   /// returns true if yes, and then also returns variable reference and array
   /// of attribute names in the parameter passed by reference
   bool isAttributeAccessForVariable(
-      std::pair<Variable const*, std::vector<arangodb::basics::AttributeName>>&)
+      std::pair<Variable const*, std::vector<arangodb::basics::AttributeName>>&,
+                                    bool allowIndexedAccess = false)
       const;
 
   /// @brief locate a variable including the direct path vector leading to it.
@@ -459,7 +460,12 @@ struct AstNode {
   bool isComparisonOperator() const;
   
   /// @brief whether or not a node is an array comparison operator
-  bool isArrayComparisonOperator() const;
+  bool isArrayComparisonOperator() const {
+    return AstNode::isArrayComparisonOperator(type);
+  }
+  
+  /// @brief whether or not a node is an array comparison operator
+  static bool isArrayComparisonOperator(AstNodeType);
 
   /// @brief whether or not a node (and its subnodes) may throw a runtime
   /// exception

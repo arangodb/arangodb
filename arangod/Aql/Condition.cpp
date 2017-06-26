@@ -267,6 +267,14 @@ bool ConditionPart::isCoveredBy(ConditionPart const& other,
 
     return false;
   }
+  
+  // never compare array operators with non array operators.
+  // TODO maybe unneccesary as we would never get here?
+  bool a = AstNode::isArrayComparisonOperator(operatorType);
+  bool b = AstNode::isArrayComparisonOperator(other.operatorType);
+  if ((!a && b) || (a && !b)) {
+    return false;
+  }
 
   // Results are -1, 0, 1, move to 0, 1, 2 for the lookup:
   ConditionPartCompareResult res = ConditionPart::ResultsTable
@@ -481,7 +489,7 @@ void Condition::normalize() {
 
 void Condition::CollectOverlappingMembers(
     ExecutionPlan const* plan, Variable const* variable, AstNode* andNode,
-    AstNode* otherAndNode, std::unordered_set<size_t>& toRemove) {
+    AstNode* otherAndNode, std::unordered_set<size_t>& toRemove, bool isFromTraverser) {
   std::pair<Variable const*, std::vector<arangodb::basics::AttributeName>>
       result;
 
@@ -489,22 +497,28 @@ void Condition::CollectOverlappingMembers(
 
   for (size_t i = 0; i < n; ++i) {
     auto operand = andNode->getMemberUnchecked(i);
-
-    if (operand->isComparisonOperator() &&
-        operand->type != NODE_TYPE_OPERATOR_BINARY_NE &&
-        operand->type != NODE_TYPE_OPERATOR_BINARY_NIN) {
+    bool allowOps = operand->isComparisonOperator();
+    if (isFromTraverser) {
+      allowOps = allowOps || operand->isArrayComparisonOperator();
+    } else {
+      allowOps = allowOps && operand->type != NODE_TYPE_OPERATOR_BINARY_NE &&
+      operand->type != NODE_TYPE_OPERATOR_BINARY_NIN;
+    }
+    
+    if (allowOps) {
       auto lhs = operand->getMember(0);
       auto rhs = operand->getMember(1);
 
-      if (lhs->type == NODE_TYPE_ATTRIBUTE_ACCESS) {
+      if (lhs->type == NODE_TYPE_ATTRIBUTE_ACCESS ||
+          (isFromTraverser && lhs->type == NODE_TYPE_EXPANSION)) {
         clearAttributeAccess(result);
 
-        if (lhs->isAttributeAccessForVariable(result) &&
+        if (lhs->isAttributeAccessForVariable(result, isFromTraverser) &&
             result.first == variable) {
           ConditionPart current(variable, result.second, operand,
                                 ATTRIBUTE_LEFT, nullptr);
 
-          if (CanRemove(plan, current, otherAndNode)) {
+          if (CanRemove(plan, current, otherAndNode, isFromTraverser)) {
             toRemove.emplace(i);
           }
         }
@@ -514,12 +528,12 @@ void Condition::CollectOverlappingMembers(
           rhs->type == NODE_TYPE_EXPANSION) {
         clearAttributeAccess(result);
 
-        if (rhs->isAttributeAccessForVariable(result) &&
+        if (rhs->isAttributeAccessForVariable(result, isFromTraverser) &&
             result.first == variable) {
           ConditionPart current(variable, result.second, operand,
                                 ATTRIBUTE_RIGHT, nullptr);
 
-          if (CanRemove(plan, current, otherAndNode)) {
+          if (CanRemove(plan, current, otherAndNode, isFromTraverser)) {
             toRemove.emplace(i);
           }
         }
@@ -553,8 +567,7 @@ AstNode* Condition::removeIndexCondition(ExecutionPlan const* plan,
   size_t const n = andNode->numMembers();
 
   std::unordered_set<size_t> toRemove;
-
-  CollectOverlappingMembers(plan, variable, andNode, otherAndNode, toRemove);
+  CollectOverlappingMembers(plan, variable, andNode, otherAndNode, toRemove, false);
 
   if (toRemove.empty()) {
     return _root;
@@ -563,6 +576,55 @@ AstNode* Condition::removeIndexCondition(ExecutionPlan const* plan,
   // build a new AST condition
   AstNode* newNode = nullptr;
 
+  for (size_t i = 0; i < n; ++i) {
+    if (toRemove.find(i) == toRemove.end()) {
+      auto what = andNode->getMemberUnchecked(i);
+
+      if (newNode == nullptr) {
+        // the only node so far
+        newNode = what;
+      } else {
+        // AND-combine with existing node
+        newNode = _ast->createNodeBinaryOperator(NODE_TYPE_OPERATOR_BINARY_AND,
+                                                 newNode, what);
+      }
+    }
+  }
+
+  return newNode;
+}
+
+/// @brief remove filter conditions already covered by the traversal
+AstNode* Condition::removeTraversalCondition(ExecutionPlan const* plan,
+                                             Variable const* variable,
+                                             AstNode* other) {
+  if (_root == nullptr || other == nullptr) {
+    return _root;
+  }
+  TRI_ASSERT(_root != nullptr);
+  TRI_ASSERT(_root->type == NODE_TYPE_OPERATOR_NARY_OR);
+
+  TRI_ASSERT(other != nullptr);
+  TRI_ASSERT(other->type == NODE_TYPE_OPERATOR_NARY_OR);
+  if (other->numMembers() != 1 && _root->numMembers() != 1) {
+    return _root;
+  }
+
+  auto andNode = _root->getMemberUnchecked(0);
+  TRI_ASSERT(andNode->type == NODE_TYPE_OPERATOR_NARY_AND);
+  auto otherAndNode = other->getMemberUnchecked(0);
+  TRI_ASSERT(otherAndNode->type == NODE_TYPE_OPERATOR_NARY_AND);
+  size_t const n = andNode->numMembers();
+
+  std::unordered_set<size_t> toRemove;
+  CollectOverlappingMembers(plan, variable, andNode, otherAndNode, toRemove, true);
+  
+  if (toRemove.empty()) {
+    return _root;
+  }
+
+  // build a new AST condition
+  AstNode* newNode = nullptr;
   for (size_t i = 0; i < n; ++i) {
     if (toRemove.find(i) == toRemove.end()) {
       auto what = andNode->getMemberUnchecked(i);
@@ -996,7 +1058,7 @@ void Condition::validateAst(AstNode const* node, int level) {
 
 /// @brief checks if the current condition is covered by the other
 bool Condition::CanRemove(ExecutionPlan const* plan, ConditionPart const& me,
-                          arangodb::aql::AstNode const* andNode) {
+                          arangodb::aql::AstNode const* andNode, bool isFromTraverser) {
   TRI_ASSERT(andNode != nullptr);
   TRI_ASSERT(andNode->type == NODE_TYPE_OPERATOR_NARY_AND);
 
@@ -1024,14 +1086,16 @@ bool Condition::CanRemove(ExecutionPlan const* plan, ConditionPart const& me,
     for (size_t i = 0; i < n; ++i) {
       auto operand = andNode->getMemberUnchecked(i);
 
-      if (operand->isComparisonOperator()) {
+      if (operand->isComparisonOperator() ||
+          (isFromTraverser && operand->isArrayComparisonOperator())) {
         auto lhs = operand->getMember(0);
         auto rhs = operand->getMember(1);
 
-        if (lhs->type == NODE_TYPE_ATTRIBUTE_ACCESS) {
+        if (lhs->type == NODE_TYPE_ATTRIBUTE_ACCESS ||
+            (isFromTraverser && lhs->type == NODE_TYPE_EXPANSION)) {
           clearAttributeAccess(result);
 
-          if (lhs->isAttributeAccessForVariable(result)) {
+          if (lhs->isAttributeAccessForVariable(result, isFromTraverser)) {
             if (rhs->isConstant()) {
               ConditionPart indexCondition(result.first, result.second, operand,
                                            ATTRIBUTE_LEFT, nullptr);
@@ -1052,7 +1116,7 @@ bool Condition::CanRemove(ExecutionPlan const* plan, ConditionPart const& me,
             rhs->type == NODE_TYPE_EXPANSION) {
           clearAttributeAccess(result);
 
-          if (rhs->isAttributeAccessForVariable(result)) {
+          if (rhs->isAttributeAccessForVariable(result, isFromTraverser)) {
             if (lhs->isConstant()) {
               ConditionPart indexCondition(result.first, result.second, operand,
                                            ATTRIBUTE_RIGHT, nullptr);
