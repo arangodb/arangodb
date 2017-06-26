@@ -102,7 +102,8 @@ V8DealerFeature::V8DealerFeature(
       _gcFinished(false),
       _nrAdditionalContexts(0),
       _minimumContexts(1),
-      _forceNrContexts(0) {
+      _forceNrContexts(0),
+      _contextsModificationBlockers(0) {
   setOptional(false);
   requiresElevatedPrivileges(false);
   startsAfter("Action");
@@ -457,7 +458,8 @@ void V8DealerFeature::collectGarbage() {
 
           if (_contexts.size() > _nrMinContexts && 
               !context->isDefault() &&
-              context->age() > minAge) {
+              context->age() > minAge &&
+              _contextsModificationBlockers == 0) {
             // remove the extra context as it is not needed anymore
             _contexts.erase(std::remove_if(_contexts.begin(), _contexts.end(), [&context](V8Context* c) {
               return (c->_id == context->_id);
@@ -491,31 +493,49 @@ void V8DealerFeature::collectGarbage() {
 
   _gcFinished = true;
 }
+  
+void V8DealerFeature::unblockContextsModification() {
+  CONDITION_LOCKER(guard, _contextCondition);
+    
+  TRI_ASSERT(_contextsModificationBlockers > 0);
+  --_contextsModificationBlockers;
+}
 
 void V8DealerFeature::loadJavaScriptFileInAllContexts(TRI_vocbase_t* vocbase,
-    std::string const& file,
-    VPackBuilder* builder) {
+    std::string const& file, VPackBuilder* builder) {
+    
+  alreadyLockedInThread = true;
+  TRI_DEFER(alreadyLockedInThread = false);
   
   if (builder != nullptr) {
     builder->openArray();
   }
-  
+ 
+  std::vector<V8Context*> contexts; 
   {
-    alreadyLockedInThread = true;
-    TRI_DEFER(alreadyLockedInThread = false);
-
     CONDITION_LOCKER(guard, _contextCondition);
+    
+    // block the addition or removal of contexts
+    ++_contextsModificationBlockers;
   
-    for (auto& context : _contexts) {
-      while (context->isUsed()) {
-        // we must not enter the context if another thread is also using it...
-        guard.wait(10000);
-      }
+    // copy the list of contexts into a local variable
+    contexts = _contexts;
+  }
 
-      TRI_ASSERT(!context->isUsed());
-      loadJavaScriptFileInContext(vocbase, file, context, builder);
-      TRI_ASSERT(!context->isUsed());
+  TRI_DEFER(unblockContextsModification());
+
+  // now safely scan the local copy of the contexts  
+  for (auto& context : contexts) {
+    CONDITION_LOCKER(guard, _contextCondition);
+
+    while (context->isUsed()) {
+      // we must not enter the context if another thread is also using it...
+      guard.wait(10000);
     }
+
+    TRI_ASSERT(!context->isUsed());
+    loadJavaScriptFileInContext(vocbase, file, context, builder);
+    TRI_ASSERT(!context->isUsed());
   }
 
   if (builder != nullptr) {
@@ -530,19 +550,20 @@ void V8DealerFeature::loadJavaScriptFileInDefaultContext(TRI_vocbase_t* vocbase,
   alreadyLockedInThread = true;
   TRI_DEFER(alreadyLockedInThread = false);
 
-  CONDITION_LOCKER(guard, _contextCondition);
+  // enter context #0
+  V8Context* context = enterContext(vocbase, true, 0);
   
-  for (auto const& context : _contexts) {
-    if (context->_id == 0) {
-      while (context->isUsed()) {
-        // we must not enter the context if another thread is also using it...
-        guard.wait(10000);
-      }
-      
-      TRI_ASSERT(!context->isUsed());
-      loadJavaScriptFileInContext(vocbase, file, context, builder);
-      break;
-    }
+  if (context == nullptr) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "could not acquire default V8 context");
+  }
+
+  TRI_DEFER(exitContext(context));
+  
+  try {
+    loadJavaScriptFileInternal(file, context, builder);
+  } catch (...) {
+    LOG_TOPIC(WARN, Logger::V8) << "caught exception while executing JavaScript file '" << file << "' in context #" << context->_id;
+    throw;
   }
 }
 
@@ -696,7 +717,8 @@ V8Context* V8DealerFeature::enterContext(TRI_vocbase_t* vocbase,
         break;
       }
 
-      if (_contexts.size() + _nrInflightContexts < _nrMaxContexts) {
+      if (_contexts.size() + _nrInflightContexts < _nrMaxContexts &&
+          _contextsModificationBlockers == 0) {
         ++_nrInflightContexts;
 
         TRI_ASSERT(guard.isLocked());
