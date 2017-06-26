@@ -257,23 +257,34 @@ bool ConditionPart::isCoveredBy(ConditionPart const& other,
     return false;
   }
 
-  if (isExpanded && other.isExpanded &&
-      operatorType == NODE_TYPE_OPERATOR_BINARY_IN &&
-      other.operatorType == NODE_TYPE_OPERATOR_BINARY_IN &&
-      other.valueNode->isConstant()) {
-    if (CompareAstNodes(other.valueNode, valueNode, false) == 0) {
-      return true;
-    }
-
-    return false;
-  }
-  
   // never compare array operators with non array operators.
   // TODO maybe unneccesary as we would never get here?
-  bool a = AstNode::isArrayComparisonOperator(operatorType);
-  bool b = AstNode::isArrayComparisonOperator(other.operatorType);
-  if ((!a && b) || (a && !b)) {
-    return false;
+  if (isExpanded || other.isExpanded) {
+    if (isExpanded && other.isExpanded &&
+        ((operatorType == NODE_TYPE_OPERATOR_BINARY_IN &&
+          other.operatorType == NODE_TYPE_OPERATOR_BINARY_IN) ||
+         (operatorType == NODE_TYPE_OPERATOR_BINARY_ARRAY_IN &&
+          other.operatorType == NODE_TYPE_OPERATOR_BINARY_ARRAY_IN)) &&
+        other.valueNode->isConstant()) {
+      if (CompareAstNodes(other.valueNode, valueNode, false) == 0) {
+        return true;
+      }
+      return false;
+    }
+
+    if ((!isExpanded && other.isExpanded) ||
+        (isExpanded && !other.isExpanded)) {
+      return false;
+    }
+    TRI_ASSERT(operatorNode->numMembers() == 3 &&
+               other.operatorNode->numMembers() == 3);
+    AstNode* q1 = operatorNode->getMemberUnchecked(2);
+    TRI_ASSERT(q1->type == NODE_TYPE_QUANTIFIER);
+    AstNode* q2 = other.operatorNode->getMemberUnchecked(2);
+    TRI_ASSERT(q2->type == NODE_TYPE_QUANTIFIER);
+    if (q1->getIntValue() != q2->getIntValue()) {
+      return false;
+    }
   }
 
   // Results are -1, 0, 1, move to 0, 1, 2 for the lookup:
@@ -487,9 +498,12 @@ void Condition::normalize() {
 #endif
 }
 
-void Condition::CollectOverlappingMembers(
-    ExecutionPlan const* plan, Variable const* variable, AstNode* andNode,
-    AstNode* otherAndNode, std::unordered_set<size_t>& toRemove, bool isFromTraverser) {
+void Condition::CollectOverlappingMembers(ExecutionPlan const* plan,
+                                          Variable const* variable,
+                                          AstNode* andNode,
+                                          AstNode* otherAndNode,
+                                          std::unordered_set<size_t>& toRemove,
+                                          bool isFromTraverser) {
   std::pair<Variable const*, std::vector<arangodb::basics::AttributeName>>
       result;
 
@@ -502,9 +516,9 @@ void Condition::CollectOverlappingMembers(
       allowOps = allowOps || operand->isArrayComparisonOperator();
     } else {
       allowOps = allowOps && operand->type != NODE_TYPE_OPERATOR_BINARY_NE &&
-      operand->type != NODE_TYPE_OPERATOR_BINARY_NIN;
+                 operand->type != NODE_TYPE_OPERATOR_BINARY_NIN;
     }
-    
+
     if (allowOps) {
       auto lhs = operand->getMember(0);
       auto rhs = operand->getMember(1);
@@ -567,7 +581,8 @@ AstNode* Condition::removeIndexCondition(ExecutionPlan const* plan,
   size_t const n = andNode->numMembers();
 
   std::unordered_set<size_t> toRemove;
-  CollectOverlappingMembers(plan, variable, andNode, otherAndNode, toRemove, false);
+  CollectOverlappingMembers(plan, variable, andNode, otherAndNode, toRemove,
+                            false);
 
   if (toRemove.empty()) {
     return _root;
@@ -617,8 +632,9 @@ AstNode* Condition::removeTraversalCondition(ExecutionPlan const* plan,
   size_t const n = andNode->numMembers();
 
   std::unordered_set<size_t> toRemove;
-  CollectOverlappingMembers(plan, variable, andNode, otherAndNode, toRemove, true);
-  
+  CollectOverlappingMembers(plan, variable, andNode, otherAndNode, toRemove,
+                            true);
+
   if (toRemove.empty()) {
     return _root;
   }
@@ -1058,7 +1074,8 @@ void Condition::validateAst(AstNode const* node, int level) {
 
 /// @brief checks if the current condition is covered by the other
 bool Condition::CanRemove(ExecutionPlan const* plan, ConditionPart const& me,
-                          arangodb::aql::AstNode const* andNode, bool isFromTraverser) {
+                          arangodb::aql::AstNode const* andNode,
+                          bool isFromTraverser) {
   TRI_ASSERT(andNode != nullptr);
   TRI_ASSERT(andNode->type == NODE_TYPE_OPERATOR_NARY_AND);
 

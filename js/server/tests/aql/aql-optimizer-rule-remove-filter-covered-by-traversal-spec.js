@@ -93,7 +93,7 @@ describe('Single Traversal Optimizer', function () {
   describe('should remove a single', () => {
 
     describe('equality filter', () => {
-      /*it('on p.vertices[1].foo', () => {
+      it('on p.vertices[1].foo', () => {
         let query = `WITH @@vertices
                        FOR v, e, p IN 2 OUTBOUND @start @@edges
                        FILTER p.vertices[1].foo == 3
@@ -114,7 +114,7 @@ describe('Single Traversal Optimizer', function () {
         let plan = AQL_EXPLAIN(query, bindVars, activateOptimizer);
         hasNoFilterNode(plan);
         validateResult(query, bindVars);
-      });*/
+      });
 
       it('on p.vertices[*] ALL', () => {
         let query = `WITH @@vertices

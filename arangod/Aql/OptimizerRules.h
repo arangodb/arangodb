@@ -196,6 +196,11 @@ void optimizeTraversalsRule(Optimizer* opt, std::unique_ptr<ExecutionPlan> plan,
 void removeFiltersCoveredByTraversal(Optimizer* opt, std::unique_ptr<ExecutionPlan> plan,
                                      OptimizerRule const* rule);
 
+/// @brief removes redundant path variables, after applying
+/// `removeFiltersCoveredByTraversal`. Should significantly reduce overhead
+void removeTraversalPathVariable(Optimizer* opt, std::unique_ptr<ExecutionPlan> plan,
+                                 OptimizerRule const* rule);
+
 /// @brief prepares traversals for execution (hidden rule)
 void prepareTraversalsRule(Optimizer* opt, std::unique_ptr<ExecutionPlan> plan,
                            OptimizerRule const* rule);

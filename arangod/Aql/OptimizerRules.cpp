@@ -3825,6 +3825,33 @@ void arangodb::aql::removeFiltersCoveredByTraversal(Optimizer* opt, std::unique_
   opt->addPlan(std::move(plan), rule, modified);
 }
 
+/// @brief removes redundant path variables, after applying
+/// `removeFiltersCoveredByTraversal`. Should significantly reduce overhead
+void arangodb::aql::removeTraversalPathVariable(Optimizer* opt,
+                                           std::unique_ptr<ExecutionPlan> plan,
+                                           OptimizerRule const* rule) {
+  SmallVector<ExecutionNode*>::allocator_type::arena_type a;
+  SmallVector<ExecutionNode*> tNodes{a};
+  plan->findNodesOfType(tNodes, EN::TRAVERSAL, true);
+  
+  bool modified = false;
+  // first make a pass over all traversal nodes and remove unused
+  // variables from them
+  for (auto const& n : tNodes) {
+    TraversalNode* traversal = static_cast<TraversalNode*>(n);
+    
+    auto varsUsedLater = n->getVarsUsedLater();
+    auto outVariable = traversal->pathOutVariable();
+    if (outVariable != nullptr &&
+        varsUsedLater.find(outVariable) == varsUsedLater.end()) {
+      // traversal path outVariable not used later
+      traversal->setPathOutput(nullptr);
+      modified = true;
+    }
+  }
+  opt->addPlan(std::move(plan), rule, modified);
+}
+
 /// @brief prepares traversals for execution (hidden rule)
 void arangodb::aql::prepareTraversalsRule(Optimizer* opt,
                                           std::unique_ptr<ExecutionPlan> plan,
