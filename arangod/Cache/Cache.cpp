@@ -351,11 +351,15 @@ void Cache::shutdown() {
         _table->setAuxiliary(std::shared_ptr<Table>(nullptr));
     if (extra.get() != nullptr) {
       extra->clear();
+      _state.unlock();
       _manager->reclaimTable(extra);
+      _state.lock();
     }
     _table->clear();
+    _state.unlock();
     _manager->reclaimTable(_table);
     _manager->unregisterCache(shared_from_this());
+    _state.lock();
   }
   _metadata.lock();
   _metadata.changeTable(0);
