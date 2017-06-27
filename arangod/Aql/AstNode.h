@@ -460,12 +460,7 @@ struct AstNode {
   bool isComparisonOperator() const;
   
   /// @brief whether or not a node is an array comparison operator
-  bool isArrayComparisonOperator() const {
-    return AstNode::isArrayComparisonOperator(type);
-  }
-  
-  /// @brief whether or not a node is an array comparison operator
-  static bool isArrayComparisonOperator(AstNodeType);
+  bool isArrayComparisonOperator() const;
 
   /// @brief whether or not a node (and its subnodes) may throw a runtime
   /// exception

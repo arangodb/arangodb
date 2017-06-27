@@ -26,6 +26,7 @@
 #include "Aql/AstNode.h"
 #include "Aql/Collection.h"
 #include "Aql/ExecutionPlan.h"
+#include "Aql/Quantifier.h"
 #include "Aql/Query.h"
 #include "Aql/SortCondition.h"
 #include "Aql/Variable.h"
@@ -259,9 +260,8 @@ bool ConditionPart::isCoveredBy(ConditionPart const& other,
 
   // never compare array operators with non array operators.
   // TODO maybe unneccesary as we would never get here?
-  if (isExpanded || other.isExpanded) {
-    if (isExpanded && other.isExpanded &&
-        ((operatorType == NODE_TYPE_OPERATOR_BINARY_IN &&
+  if (isExpanded && other.isExpanded) {
+    if (((operatorType == NODE_TYPE_OPERATOR_BINARY_IN &&
           other.operatorType == NODE_TYPE_OPERATOR_BINARY_IN) ||
          (operatorType == NODE_TYPE_OPERATOR_BINARY_ARRAY_IN &&
           other.operatorType == NODE_TYPE_OPERATOR_BINARY_ARRAY_IN)) &&
@@ -272,17 +272,18 @@ bool ConditionPart::isCoveredBy(ConditionPart const& other,
       return false;
     }
 
-    if ((!isExpanded && other.isExpanded) ||
-        (isExpanded && !other.isExpanded)) {
-      return false;
-    }
+    // assuming we have expanded operators now
     TRI_ASSERT(operatorNode->numMembers() == 3 &&
                other.operatorNode->numMembers() == 3);
+    TRI_ASSERT(operatorNode->isArrayComparisonOperator());
+    
     AstNode* q1 = operatorNode->getMemberUnchecked(2);
     TRI_ASSERT(q1->type == NODE_TYPE_QUANTIFIER);
     AstNode* q2 = other.operatorNode->getMemberUnchecked(2);
     TRI_ASSERT(q2->type == NODE_TYPE_QUANTIFIER);
-    if (q1->getIntValue() != q2->getIntValue()) {
+    // do only cover ALL and NONE when both sides have same quantifier
+    if (q1->getIntValue() != q2->getIntValue() ||
+        q1->getIntValue() == Quantifier::ANY) {
       return false;
     }
   }

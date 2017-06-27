@@ -1679,7 +1679,7 @@ bool AstNode::isComparisonOperator() const {
 }
 
 /// @brief whether or not a node is an array comparison operator
-bool AstNode::isArrayComparisonOperator(AstNodeType type) {
+bool AstNode::isArrayComparisonOperator() const {
   return (type == NODE_TYPE_OPERATOR_BINARY_ARRAY_EQ ||
           type == NODE_TYPE_OPERATOR_BINARY_ARRAY_NE ||
           type == NODE_TYPE_OPERATOR_BINARY_ARRAY_LT ||
@@ -1689,7 +1689,6 @@ bool AstNode::isArrayComparisonOperator(AstNodeType type) {
           type == NODE_TYPE_OPERATOR_BINARY_ARRAY_IN ||
           type == NODE_TYPE_OPERATOR_BINARY_ARRAY_NIN);
 }
-
 
 /// @brief whether or not a node (and its subnodes) can throw a runtime
 /// exception
