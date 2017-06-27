@@ -32,7 +32,7 @@ const db = arangodb.db;
 const fs = require('fs');
 const console = require('console');
 const request = require("@arangodb/request");
-const foxxManager = require('@arangodb/foxx/manager');
+const FoxxManager = require('@arangodb/foxx/manager');
 
 const suspendExternal = require('internal').suspendExternal;
 const continueExternal = require("internal").continueExternal;
@@ -68,7 +68,7 @@ let executeOnServer = function(code) {
 
 function serverSetup() {
   let directory = require('./js/client/assets/queuetest/dirname.js');
-  foxxManager.install(directory, '/queuetest');
+  FoxxManager.install(directory, '/queuetest');
   db._create('foxxqueuetest', {numberOfShards: 1, replicationFactor: 1});
   db.foxxqueuetest.insert({'_key': 'test', 'date': null, 'server': null});
   
@@ -86,7 +86,7 @@ function serverTeardown() {
 const queues = require('@arangodb/foxx/queues');
 `;
   executeOnServer(serverCode);
-  foxxManager.uninstall('/queuetest');
+  FoxxManager.uninstall('/queuetest');
   db._drop('foxxqueuetest');
 }
 

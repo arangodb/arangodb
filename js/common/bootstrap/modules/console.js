@@ -432,7 +432,7 @@ global.DEFINE_MODULE('console', (function () {
       exports.errorLines(
         !msg && err === e
         ? err.stack
-        : `via ${err.stack}`
+        : `via ${err.stack || err}`
       );
       err = err.cause;
     }
@@ -450,7 +450,7 @@ global.DEFINE_MODULE('console', (function () {
       exports.warnLines(
         !msg && err === e
         ? err.stack
-        : `via ${err.stack}`
+        : `via ${err.stack || err}`
       );
       err = err.cause;
     }
@@ -468,7 +468,7 @@ global.DEFINE_MODULE('console', (function () {
       exports.infoLines(
         !msg && err === e
         ? err.stack
-        : `via ${err.stack}`
+        : `via ${err.stack || err}`
       );
       err = err.cause;
     }

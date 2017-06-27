@@ -35,7 +35,7 @@ const errors = arangodb.errors;
 const ArangoError = arangodb.ArangoError;
 const download = require('internal').download;
 const fs = require('fs');
-const utils = require('@arangodb/foxx/manager-utils');
+const fmu = require('@arangodb/foxx/manager-utils');
 const semver = require('semver');
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -317,7 +317,7 @@ function availableJson (matchEngine) {
 // //////////////////////////////////////////////////////////////////////////////
 
 var update = function () {
-  var url = utils.buildGithubUrl(getFishbowlUrl());
+  var url = fmu.buildGithubUrl(getFishbowlUrl());
   var filename = fs.getTempFile('bundles', false);
 
   try {
@@ -447,7 +447,7 @@ var installationInfo = function (serviceInfo) {
   if (!versionInfo.type) {
     url = versionInfo.location;
   } else if (versionInfo.type === 'github') {
-    url = utils.buildGithubUrl(versionInfo.location, versionInfo.tag);
+    url = fmu.buildGithubUrl(versionInfo.location, versionInfo.tag);
   } else {
     throw new Error(`Unknown location type ${versionInfo.type}`);
   }

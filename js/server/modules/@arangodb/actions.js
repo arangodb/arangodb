@@ -987,12 +987,19 @@ function foxxRouting (req, res, options, next) {
       delete options.error;
 
       if (service.isDevelopment) {
-        FoxxManager.reloadInstalledService(mount, true);
+        FoxxManager._reloadInstalledService(mount, true);
       }
 
-      options.routing = flattenRoutingTree(buildRoutingTree([
-        FoxxManager.ensureRouted(mount).routes
-      ]));
+      FoxxManager._ensureRouted(mount);
+      if (service.error && !service.routes) {
+        throw service.error;
+      }
+
+      if (!service.routes) {
+        options.routing = {};
+      } else {
+        options.routing = flattenRoutingTree(buildRoutingTree([service.routes]));
+      }
     }
   } catch (e) {
     console.errorStack(e, `Failed to load Foxx service mounted at "${mount}"`);
@@ -1052,8 +1059,12 @@ function buildRouting (dbname) {
   routing = null;
 
   // install the foxx routes
-  var mountPoints = FoxxManager._mountPoints();
+  routes.push({
+    url: {match: '/*'},
+    action: {callback: FoxxManager._dispatch}
+  });
 
+  var mountPoints = FoxxManager._legacyMountPoints();
   for (let i = 0; i < mountPoints.length; i++) {
     var mountPoint = mountPoints[i];
 

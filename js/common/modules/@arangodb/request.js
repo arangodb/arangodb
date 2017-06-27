@@ -160,6 +160,10 @@ function request (req) {
     headers['content-type'] = contentType;
   }
 
+  if (req.json) {
+    headers.accept = 'application/json, */*;q=0.9';
+  }
+
   if (req.headers) {
     Object.keys(req.headers).forEach(function (name) {
       headers[name.toLowerCase()] = req.headers[name];

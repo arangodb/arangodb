@@ -31,10 +31,10 @@ exports.createQuery = require('@arangodb/foxx/legacy/query').createQuery;
 exports.toJSONSchema = require('@arangodb/foxx/legacy/schema').toJSONSchema;
 exports.queues = require('@arangodb/foxx/queues');
 
-const manager = require('@arangodb/foxx/manager');
+const FoxxManager = require('@arangodb/foxx/manager');
 
 exports.getExports = function (path) {
-  return manager.requireService('/' + path.replace(/(^\/+|\/+$)/, ''));
+  return FoxxManager.requireService('/' + path.replace(/(^\/+|\/+$)/, ''));
 };
 
 exports.requireApp = function (path) {

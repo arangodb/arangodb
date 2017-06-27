@@ -329,9 +329,7 @@ function mountController (service, mount, filename) {
   }
 }
 
-exports.routeService = function (service, throwOnErrors) {
-  let error = null;
-
+exports.routeService = function (service) {
   service.routes = {
     urlPrefix: '',
     name: `foxx("${service.mount}")`,
@@ -348,47 +346,30 @@ exports.routeService = function (service, throwOnErrors) {
     }
   };
 
-  try {
-    // mount all controllers
-    let controllerFiles = service.manifest.controllers;
-    if (typeof controllerFiles === 'string') {
-      mountController(service, '/', controllerFiles);
-    } else if (controllerFiles) {
-      Object.keys(controllerFiles).forEach(function (key) {
-        mountController(service, key, controllerFiles[key]);
+  // mount all controllers
+  let controllerFiles = service.manifest.controllers;
+  if (typeof controllerFiles === 'string') {
+    mountController(service, '/', controllerFiles);
+  } else if (controllerFiles) {
+    Object.keys(controllerFiles).forEach(function (key) {
+      mountController(service, key, controllerFiles[key]);
+    });
+  }
+
+  // install all files and assets
+  installAssets(service);
+
+  // mount all exports
+  if (service.manifest.exports) {
+    let exportsFiles = service.manifest.exports;
+    if (typeof exportsFiles === 'string') {
+      service.main.exports = service.run(exportsFiles);
+    } else if (exportsFiles) {
+      Object.keys(exportsFiles).forEach(function (key) {
+        service.main.exports[key] = service.run(exportsFiles[key]);
       });
     }
-
-    // install all files and assets
-    installAssets(service, service.routes);
-  } catch (e) {
-    console.errorLines(`Cannot compute Foxx service routes: ${e.stack}`);
-    error = e;
-    if (throwOnErrors) {
-      throw e;
-    }
   }
-
-  try {
-    // mount all exports
-    if (service.manifest.exports) {
-      let exportsFiles = service.manifest.exports;
-      if (typeof exportsFiles === 'string') {
-        service.main.exports = service.run(exportsFiles);
-      } else if (exportsFiles) {
-        Object.keys(exportsFiles).forEach(function (key) {
-          service.main.exports[key] = service.run(exportsFiles[key]);
-        });
-      }
-    }
-  } catch (e) {
-    console.errorLines(`Cannot compute Foxx service exports: ${e.stack}`);
-    if (throwOnErrors) {
-      throw e;
-    }
-  }
-
-  return error;
 };
 
 exports.__test_transformControllerToRoute = transformControllerToRoute;

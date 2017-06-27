@@ -1,7 +1,7 @@
 /*global describe, it, before, beforeEach, afterEach */
 'use strict';
 const expect = require('chai').expect;
-const fm = require('@arangodb/foxx/manager');
+const FoxxManager = require('@arangodb/foxx/manager');
 const request = require('@arangodb/request');
 const fs = require('fs');
 const internal = require('internal');
@@ -20,13 +20,13 @@ describe('Foxx service path handling', () => {
   });
   beforeEach(function () {
     try {
-      fm.uninstall(mount, {force: true});
+      FoxxManager.uninstall(mount, {force: true});
     } catch (e) {}
-    fm.install(fs.join(basePath, 'paths'), mount);
+    FoxxManager.install(fs.join(basePath, 'paths'), mount);
   });
 
   afterEach(function () {
-    fm.uninstall(mount, {force: true});
+    FoxxManager.uninstall(mount, {force: true});
   });
 
   it('supports plain URLs', () => {

@@ -39,7 +39,7 @@ var throwFileNotFound = arangodb.throwFileNotFound;
 var throwBadParameter = arangodb.throwBadParameter;
 
 var utils = require('@arangodb/foxx/manager-utils');
-var store = require('@arangodb/foxx/store');
+var FoxxStore = require('@arangodb/foxx/store');
 
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief extracts command-line options
@@ -635,16 +635,16 @@ var run = function (args) {
         }
         break;
       case 'available':
-        store.available();
+        FoxxStore.available();
         break;
       case 'info':
-        store.info(args[1]);
+        FoxxStore.info(args[1]);
         break;
       case 'search':
-        store.search(args[1]);
+        FoxxStore.search(args[1]);
         break;
       case 'update':
-        store.update();
+        FoxxStore.update();
         break;
       case 'help':
         help();
@@ -740,9 +740,9 @@ exports.listDevelopmentJson = utils.listDevelopmentJson;
 // / @brief Exports from foxx store module.
 // //////////////////////////////////////////////////////////////////////////////
 
-exports.available = store.available;
-exports.availableJson = store.availableJson;
-exports.search = store.search;
-exports.searchJson = store.searchJson;
-exports.update = store.update;
-exports.info = store.info;
+exports.available = FoxxStore.available;
+exports.availableJson = FoxxStore.availableJson;
+exports.search = FoxxStore.search;
+exports.searchJson = FoxxStore.searchJson;
+exports.update = FoxxStore.update;
+exports.info = FoxxStore.info;
