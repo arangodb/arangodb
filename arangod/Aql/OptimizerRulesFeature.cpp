@@ -162,7 +162,7 @@ void OptimizerRulesFeature::addRules() {
   // optimize unneccessary filters already applied by the traversal. Only ever does something if previous
   // rule remove all filters using the path variable
   registerRule("remove-redundant-path-var", removeTraversalPathVariable,
-               OptimizerRule::removeTraversalPathVariable_pass6, DoesNotCreateAdditionalPlans, CanNotBeDisabled);
+               OptimizerRule::removeTraversalPathVariable_pass6, DoesNotCreateAdditionalPlans, CanBeDisabled);
 
   // prepare traversal info
   registerRule("prepare-traversals", prepareTraversalsRule,
