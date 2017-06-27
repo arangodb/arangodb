@@ -258,24 +258,21 @@ bool ConditionPart::isCoveredBy(ConditionPart const& other,
     return false;
   }
 
-  // never compare array operators with non array operators.
-  // TODO maybe unneccesary as we would never get here?
-  if (isExpanded && other.isExpanded) {
-    if (((operatorType == NODE_TYPE_OPERATOR_BINARY_IN &&
-          other.operatorType == NODE_TYPE_OPERATOR_BINARY_IN) ||
-         (operatorType == NODE_TYPE_OPERATOR_BINARY_ARRAY_IN &&
-          other.operatorType == NODE_TYPE_OPERATOR_BINARY_ARRAY_IN)) &&
-        other.valueNode->isConstant()) {
-      if (CompareAstNodes(other.valueNode, valueNode, false) == 0) {
-        return true;
-      }
+  if (isExpanded && other.isExpanded &&
+      operatorType == NODE_TYPE_OPERATOR_BINARY_IN &&
+      other.operatorType == NODE_TYPE_OPERATOR_BINARY_IN &&
+      other.valueNode->isConstant()) {
+    return CompareAstNodes(other.valueNode, valueNode, false) == 0;
+  }
+  
+  bool a = operatorNode->isArrayComparisonOperator();
+  bool b = other.operatorNode->isArrayComparisonOperator();
+  if (a || b) {
+    if (a != b) {
       return false;
     }
-
-    // assuming we have expanded operators now
     TRI_ASSERT(operatorNode->numMembers() == 3 &&
                other.operatorNode->numMembers() == 3);
-    TRI_ASSERT(operatorNode->isArrayComparisonOperator());
     
     AstNode* q1 = operatorNode->getMemberUnchecked(2);
     TRI_ASSERT(q1->type == NODE_TYPE_QUANTIFIER);
@@ -285,6 +282,13 @@ bool ConditionPart::isCoveredBy(ConditionPart const& other,
     if (q1->getIntValue() != q2->getIntValue() ||
         q1->getIntValue() == Quantifier::ANY) {
       return false;
+    }
+    
+    if (isExpanded && other.isExpanded &&
+        operatorType == NODE_TYPE_OPERATOR_BINARY_ARRAY_IN &&
+        other.operatorType == NODE_TYPE_OPERATOR_BINARY_ARRAY_IN &&
+        other.valueNode->isConstant()) {
+      return CompareAstNodes(other.valueNode, valueNode, false) == 0;
     }
   }
 
