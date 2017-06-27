@@ -25,6 +25,7 @@
 #include "Basics/ReadLocker.h"
 #include "Basics/Result.h"
 #include "Basics/StaticStrings.h"
+#include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/WriteLocker.h"
 #include "Cache/CacheManagerFeature.h"
@@ -694,7 +695,7 @@ void RocksDBCollection::truncate(transaction::Methods* trx,
     // add possible log statement
     state->prepareOperation(cid, revisionId, StringRef(key),
                             TRI_VOC_DOCUMENT_OPERATION_REMOVE);
-    Result r = mthd->Delete(RocksDBColumnFamily::documents(), iter->key());
+    Result r = mthd->Delete(RocksDBColumnFamily::documents(), RocksDBKey(iter->key()));
     if (!r.ok()) {
       THROW_ARANGO_EXCEPTION(r);
     }
@@ -1828,6 +1829,34 @@ void RocksDBCollection::createCache() const {
       cache::CacheType::Transactional);
   _cachePresent = (_cache.get() != nullptr);
   TRI_ASSERT(_useCache);
+}
+
+arangodb::Result RocksDBCollection::serializeKeyGenerator(
+    rocksdb::Transaction* rtrx) const {
+  VPackBuilder builder;
+  builder.openObject();
+  _logicalCollection->keyGenerator()->toVelocyPack(builder);
+  builder.close();
+
+  RocksDBKey key = RocksDBKey::KeyGeneratorValue(_objectId);
+  RocksDBValue value = RocksDBValue::KeyGeneratorValue(builder.slice());
+  rocksdb::Status s = rtrx->Put(key.string(), value.string());
+
+  if (!s.ok()) {
+    LOG_TOPIC(WARN, Logger::ENGINES) << "writing key generator data failed";
+    rtrx->Rollback();
+    return rocksutils::convertStatus(s);
+  }
+
+  return {TRI_ERROR_NO_ERROR};
+}
+
+void RocksDBCollection::deserializeKeyGenerator(RocksDBCounterManager* mgr) {
+  uint64_t value = mgr->stealKeyGenerator(_objectId);
+  if (value > 0) {
+    std::string k(basics::StringUtils::itoa(value));
+    _logicalCollection->keyGenerator()->track(k.data(), k.size());
+  }
 }
 
 void RocksDBCollection::disableCache() const {

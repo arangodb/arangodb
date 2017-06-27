@@ -37,12 +37,13 @@ class FollowerInfo {
   std::shared_ptr<std::vector<ServerID> const> _followers;
   Mutex                                        _mutex;
   arangodb::LogicalCollection*                 _docColl;
-  bool                                         _isLeader;
+  std::string                                  _theLeader;
+     // if the latter is empty, the we are leading
 
  public:
 
   explicit FollowerInfo(arangodb::LogicalCollection* d)
-    : _followers(new std::vector<ServerID>()), _docColl(d), _isLeader(false) { }
+    : _followers(new std::vector<ServerID>()), _docColl(d) { }
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief get information about current followers of a shard.
@@ -76,19 +77,21 @@ class FollowerInfo {
   void clear();
 
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief report if we are the leader
-  //////////////////////////////////////////////////////////////////////////////
-
-  bool isLeader() const {
-    return _isLeader;
-  }
-
-  //////////////////////////////////////////////////////////////////////////////
   /// @brief set leadership
   //////////////////////////////////////////////////////////////////////////////
 
-  void setLeader(bool b) {
-    _isLeader = b;
+  void setTheLeader(std::string const& who) {
+    MUTEX_LOCKER(locker, _mutex);
+    _theLeader = who;
+  }
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief get the leader
+  //////////////////////////////////////////////////////////////////////////////
+
+  std::string getLeader() {
+    MUTEX_LOCKER(locker, _mutex);
+    return _theLeader;
   }
 
 };

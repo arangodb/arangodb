@@ -43,7 +43,6 @@ class ConnectionStatistics;
 namespace rest {
 class SocketTask : virtual public Task {
   friend class HttpCommTask;
-
   explicit SocketTask(SocketTask const&) = delete;
   SocketTask& operator=(SocketTask const&) = delete;
 
@@ -60,8 +59,8 @@ class SocketTask : virtual public Task {
   void start();
 
  protected:
-  // caller will hold the _lock
-  virtual bool processRead(double startTime) = 0;
+  // caller will hold the _readLock
+  virtual bool processRead(double start_time) = 0;
   virtual void compactify() {}
 
   // This function is used during the protocol switch from http
@@ -125,28 +124,30 @@ class SocketTask : virtual public Task {
     }
   };
 
-  // will acquire the _lock
+  // will acquire the _writeLock
   void addWriteBuffer(WriteBuffer&);
 
-  // will acquire the _lock
+  // will acquire the _writeLock
   void closeStream();
-  
-  // caller must hold the _lock
-  void closeStreamNoLock();
 
-  // caller must hold the _lock
+  // will acquire the _writeLock
   void resetKeepAlive();
 
-  // caller must hold the _lock
+  // will acquire the _writeLock
   void cancelKeepAlive();
-  
+
  protected:
-  Mutex _lock;
   ConnectionStatistics* _connectionStatistics;
   ConnectionInfo _connectionInfo;
-  basics::StringBuffer _readBuffer; // needs _lock
+  basics::StringBuffer _readBuffer; // needs _readLock
 
  private:
+  Mutex _readLock;
+
+ private:
+  // caller must hold the _writeLock
+  void closeStreamNoLock();
+
   void writeWriteBuffer();
   bool completedWriteBuffer();
 
@@ -154,13 +155,11 @@ class SocketTask : virtual public Task {
   bool trySyncRead();
   bool processAll();
   void asyncReadSome();
-  bool abandon();
 
  private:
+  Mutex _writeLock;
   WriteBuffer _writeBuffer;
   std::list<WriteBuffer> _writeBuffers;
-
-  boost::asio::io_service::strand _strand;
 
   std::unique_ptr<Socket> _peer;
   boost::posix_time::milliseconds _keepAliveTimeout;
@@ -168,7 +167,7 @@ class SocketTask : virtual public Task {
   bool const _useKeepAliveTimer;
   bool _keepAliveTimerActive;
   bool _closeRequested;
-  std::atomic<bool> _abandoned;
+  std::atomic_bool _abandoned;
 
   bool _closedSend = false;
   bool _closedReceive = false;
