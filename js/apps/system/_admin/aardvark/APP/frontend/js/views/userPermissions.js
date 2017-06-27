@@ -43,6 +43,9 @@
       if ($(e.target).attr('type')) {
         return;
       }
+      if ($(e.target).parent().hasClass('noAction')) {
+        return;
+      }
       if ($(e.target).hasClass('inner') || $(e.target).is('span')) {
         return;
       }

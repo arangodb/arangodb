@@ -49,9 +49,15 @@
           $('#loginDatabase').html('');
           // fill select with allowed dbs
           _.each(permissions.result, function (rule, db) {
-            $('#loginDatabase').append(
-              '<option>' + db + '</option>'
-            );
+            if (frontendConfig.authenticationEnabled) {
+              $('#loginDatabase').append(
+                '<option>' + db + '</option>'
+              );
+            } else {
+              $('#loginDatabase').append(
+                '<option>' + rule + '</option>'
+              );
+            }
           });
 
           self.renderDBS();
@@ -182,9 +188,15 @@
         $('#loginDatabase').html('');
 
         _.each(permissions.result, function (rule, db) {
-          $('#loginDatabase').append(
-            '<option>' + db + '</option>'
-          );
+          if (frontendConfig.authenticationEnabled) {
+            $('#loginDatabase').append(
+              '<option>' + db + '</option>'
+            );
+          } else {
+            $('#loginDatabase').append(
+              '<option>' + rule + '</option>'
+            );
+          }
         });
 
         self.renderDBS();

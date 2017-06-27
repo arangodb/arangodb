@@ -30,4 +30,8 @@
   &:hover {
     cursor: pointer !important;
   }
+
+  &.noAction {
+    cursor: default !important;
+  }
 }
