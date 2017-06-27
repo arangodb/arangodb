@@ -26,6 +26,7 @@
 #include "Aql/ExecutionPlan.h"
 #include "Aql/Quantifier.h"
 #include "Aql/TraversalNode.h"
+#include "VocBase/TraverserOptions.h"
 
 using namespace arangodb::aql;
 using EN = arangodb::aql::ExecutionNode;
@@ -217,7 +218,8 @@ static bool IsSupportedNode(Variable const* pathVar, AstNode const* node) {
 static bool checkPathVariableAccessFeasible(Ast* ast, AstNode* parent,
                                             size_t testIndex, TraversalNode* tn,
                                             Variable const* pathVar,
-                                            bool& conditionIsImpossible) {
+                                            bool& conditionIsImpossible,
+                                            int64_t& indexedAccessDepth) {
   AstNode* node = parent->getMemberUnchecked(testIndex);
   if (!IsSupportedNode(pathVar, node)) {
     return false;
@@ -255,7 +257,8 @@ static bool checkPathVariableAccessFeasible(Ast* ast, AstNode* parent,
   };
 
   auto searchPattern = [&patternStep, &isEdge, &depth, &pathVar, &notSupported,
-                        &parentOfReplace, &replaceIdx](AstNode* node, void* unused) -> AstNode* {
+                        &parentOfReplace, &replaceIdx,
+                        &indexedAccessDepth](AstNode* node, void* unused) -> AstNode* {
     if (notSupported) {
       // Short circuit, this condition cannot be fulfilled.
       return node;
@@ -320,6 +323,16 @@ static bool checkPathVariableAccessFeasible(Ast* ast, AstNode* parent,
           // Search for the parent having this node.
           patternStep = 6;
           parentOfReplace = node;
+          
+          // we need to know the depth at which a filter condition will
+          // access a path. Otherwise there are too many results
+          TRI_ASSERT(node->numMembers() == 2);
+          AstNode* indexVal = node->getMemberUnchecked(1);
+          if (indexVal->isIntValue()) {
+            indexedAccessDepth = indexVal->getIntValue() + (isEdge?1:0);
+          } else { // should cause the caller to not remove a filter
+            indexedAccessDepth = INT64_MAX;
+          }
           return node;
         }
         if (node->type == NODE_TYPE_EXPANSION) {
@@ -532,7 +545,7 @@ bool TraversalConditionFinder::before(ExecutionNode* en) {
         // No condition, no optimize
         break;
       }
-
+      auto options = static_cast<traverser::TraverserOptions*>(node->options());
       auto const& varsValidInTraversal = node->getVarsValid();
 
       bool conditionIsImpossible = false;
@@ -606,11 +619,13 @@ bool TraversalConditionFinder::before(ExecutionNode* en) {
         }
 
         AstNode* cloned = andNode->getMember(i - 1)->clone(_plan->getAst());
+        int64_t indexedAccessDepth = -1;
         
         // If we get here we can optimize this condition
         if (!checkPathVariableAccessFeasible(_plan->getAst(), andNode, i - 1,
                                              node, pathVar,
-                                             conditionIsImpossible)) {
+                                             conditionIsImpossible,
+                                             indexedAccessDepth)) {
           andNode->removeMemberUnchecked(i - 1);
           if (conditionIsImpossible) {
             // If we get here we cannot fulfill the condition
@@ -621,7 +636,17 @@ bool TraversalConditionFinder::before(ExecutionNode* en) {
 
         } else {
           TRI_ASSERT(!conditionIsImpossible);
-          originalFilterConditions->andCombine(cloned);
+          
+          // remember the original filter conditions if we can remove them later
+          if (indexedAccessDepth == -1) {
+            originalFilterConditions->andCombine(cloned);
+          } else if ((int64_t)options->minDepth <= indexedAccessDepth &&
+              (uint64_t)indexedAccessDepth <= options->maxDepth) {
+            // if we had an  index access then indexedAccessDepth
+            // is in [minDepth,maxDepth],
+            originalFilterConditions->andCombine(cloned);
+            options->minDepth = indexedAccessDepth;
+          } // otherwise do not remove the filter statement
         }
       }
 
