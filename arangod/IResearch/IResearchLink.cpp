@@ -162,6 +162,34 @@ bool IResearchLink::hasSelectivityEstimate() const {
   return false; // selectivity can only be determined per query since multiple fields are indexed
 }
 
+// FIXME TODO for use by iresearch::kludge, remove once checkpoint ids are implemented
+#if 1
+int IResearchLink::insert(
+    transaction::Methods* trx,
+    TRI_voc_rid_t rid,
+    VPackSlice const& doc,
+    bool isRollback
+) {
+  return TRI_ERROR_NO_ERROR; // NOOP because handled by iresearch::kludge::insert(...)
+}
+
+int IResearchLink::insert(
+    transaction::Methods* trx,
+    TRI_voc_fid_t fid,
+    TRI_voc_rid_t rid,
+    VPackSlice const& doc
+) {
+  if (!_collection || !_view) {
+    return TRI_ERROR_ARANGO_COLLECTION_NOT_LOADED; // '_collection' and '_view' required
+  }
+
+  if (!trx) {
+    return TRI_ERROR_BAD_PARAMETER; // 'trx' required
+  }
+
+  return _view->insert(fid, *trx, _collection->cid(), rid, doc, _meta);
+}
+#else
 int IResearchLink::insert(
   transaction::Methods* trx,
   TRI_voc_rid_t rid,
@@ -180,6 +208,7 @@ int IResearchLink::insert(
 
   return _view->insert(fid, *trx, _collection->cid(), rid, doc, _meta);
 }
+#endif
 
 bool IResearchLink::isPersistent() const {
   return true; // records persisted into the iResearch view
@@ -291,12 +320,26 @@ size_t IResearchLink::memory() const {
   return size;
 }
 
+// FIXME TODO for use by iresearch::kludge, remove once checkpoint ids are implemented
+#if 1
+int IResearchLink::remove(
+    transaction::Methods* trx,
+    TRI_voc_rid_t rid,
+    VPackSlice const& doc,
+    bool isRollback
+) {
+  return TRI_ERROR_NO_ERROR; // NOOP because handled by iresearch::kludge::remove(...)
+}
+
+int IResearchLink::remove(transaction::Methods* trx, TRI_voc_rid_t rid) {
+#else
 int IResearchLink::remove(
   transaction::Methods* trx,
   TRI_voc_rid_t rid,
   VPackSlice const& doc,
   bool isRollback
 ) {
+#endif
   if (!_collection || !_view) {
     return TRI_ERROR_ARANGO_COLLECTION_NOT_LOADED; // '_collection' and '_view' required
   }

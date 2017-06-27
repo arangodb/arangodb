@@ -80,6 +80,14 @@ class IResearchLink final: public Index {
     bool isRollback
   ) override;
 
+  // FIXME TODO for use by iresearch::kludge, remove once checkpoint ids are implemented
+  int insert(
+    transaction::Methods* trx,
+    TRI_voc_fid_t fid,
+    TRI_voc_rid_t rid,
+    VPackSlice const& doc
+  );
+
   bool isPersistent() const override;
   bool isSorted() const override;
 
@@ -113,6 +121,10 @@ class IResearchLink final: public Index {
     VPackSlice const& doc,
     bool isRollback
   ) override;
+
+  // FIXME TODO for use by iresearch::kludge, remove once checkpoint ids are implemented
+  // kludge required since fully bypassing regular insert/remove rollback procedure
+  int remove(transaction::Methods* trx, TRI_voc_rid_t rid);
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief set the iResearch view 'name' field in the builder to the specified

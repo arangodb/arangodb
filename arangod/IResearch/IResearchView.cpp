@@ -201,8 +201,8 @@ class ViewIteratorBase: public arangodb::ViewIterator {
     arangodb::transaction::Methods& trx,
     CompoundReader&& reader
   );
-  virtual bool hasMore() const override;
   virtual bool hasExtra() const override;
+  virtual bool hasMore() const override;
   virtual bool nextExtra(ExtraCallback const& callback, size_t limit) override;
   virtual bool readDocument(
     arangodb::DocumentIdentifierToken const& token,
@@ -245,13 +245,13 @@ ViewIteratorBase::ViewIteratorBase(
   _subDocIdMask = (size_t(1) <<_subDocIdBits) - 1;
 }
 
-bool ViewIteratorBase::hasMore() const {
+bool ViewIteratorBase::hasExtra() const {
   // shut up compiler warning...
   // FIXME TODO: implementation
   return false;
 }
 
-bool ViewIteratorBase::hasExtra() const {
+bool ViewIteratorBase::hasMore() const {
   // shut up compiler warning...
   // FIXME TODO: implementation
   return false;
@@ -274,6 +274,13 @@ bool ViewIteratorBase::loadToken(
 bool ViewIteratorBase::nextExtra(ExtraCallback const& callback, size_t limit) {
   // shut up compiler warning...
   // FIXME TODO: implementation
+  TRI_ASSERT(!hasExtra());
+  THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_NOT_IMPLEMENTED,
+                                 "Requested extra values from an index that "
+                                 "does not support it. This seems to be a bug "
+                                 "in ArangoDB. Please report the query you are "
+                                 "using + the indexes you have defined on the "
+                                 "relevant collections to arangodb.com");
   return false;
 }
 
