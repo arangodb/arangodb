@@ -531,9 +531,9 @@ public:
     if (keyValue == 0) {
       return;
     }
-    
+
     auto it = _generators->find(objectId);
-    
+
     if (it == _generators->end()) {
       try {
         _generators->emplace(objectId, keyValue);
@@ -596,8 +596,8 @@ public:
     } else if (type == RocksDBEntryType::Database) {
       storeMaxTick(RocksDBKey::databaseId(key));
     } else if (type == RocksDBEntryType::View) {
-      LOG_TOPIC(ERR, Logger::STARTUP)
-          << "tick update for views needs to be implemented";
+      storeMaxTick(std::max(RocksDBKey::databaseId(key),
+                            RocksDBKey::viewId(key)));
     }
   }
 
