@@ -31,6 +31,7 @@
 namespace arangodb {
 namespace aql {
 struct AstNode;
+class ExecutionPlan;
 
 class SortCondition {
  public:
@@ -41,7 +42,8 @@ class SortCondition {
   SortCondition();
 
   /// @brief create the sort condition
-  SortCondition(std::vector<std::pair<VariableId, bool>> const&,
+  SortCondition(ExecutionPlan* plan,
+                std::vector<std::pair<Variable const*, bool>> const&,
                 std::vector<std::vector<arangodb::basics::AttributeName>> const&,
                 std::unordered_map<VariableId, AstNode const*> const&);
 
@@ -79,20 +81,30 @@ class SortCondition {
       Variable const*,
       std::vector<std::vector<arangodb::basics::AttributeName>> const&) const;
 
-  /// @brief  return the sort condition (as an AstNode) at `position`.
+  /// @brief  return the sort condition (as a tuple containing variable, AstNode
+  /// and sort order) at `position`.
   /// `position` can  be a value between 0 and the result of
-  /// SortCondition::numAttributes().
-  std::pair<Variable const*, AstNode const*> field(size_t position) const;
+  /// SortCondition::numAttributes(). The bool attribute returned is whether
+  /// the sort order is ascending (true) or descending (false)
+  std::tuple<Variable const*, AstNode const*, bool> field(size_t position) const;
 
  private:
 
-  /// @brief fields used in the sort conditions
-  std::vector<std::pair<Variable const*,
-                        std::vector<arangodb::basics::AttributeName>>> _fields;
+  struct SortField {
+    Variable const* variable;
+    std::vector<arangodb::basics::AttributeName> attributes;
+    AstNode const* node;
+    bool order;
+  };
 
+  ExecutionPlan* _plan;
+
+  /// @brief fields used in the sort conditions
+  std::vector<SortField> _fields;
+  
   /// @brief const attributes
   std::vector<std::vector<arangodb::basics::AttributeName>> const _constAttributes;
-
+ 
   /// @brief whether or not the sort is unidirectional
   bool _unidirectional;
 
@@ -102,9 +114,6 @@ class SortCondition {
   /// @brief whether or not all sorts are in ascending order.
   /// this is only meaningful if the sort is unidirectional
   bool _ascending;
-
-  /// @brief map of variable ids to ast nodes
-  std::unordered_map<VariableId, AstNode const*> const* _definitions;
 };
 }
 }

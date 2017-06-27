@@ -1650,7 +1650,7 @@ void arangodb::aql::useIndexesRule(Optimizer* opt,
 struct SortToIndexNode final : public WalkerWorker<ExecutionNode> {
   ExecutionPlan* _plan;
   SortNode* _sortNode;
-  std::vector<std::pair<VariableId, bool>> _sorts;
+  std::vector<std::pair<Variable const*, bool>> _sorts;
   std::unordered_map<VariableId, AstNode const*> _variableDefinitions;
   bool _modified;
 
@@ -1673,7 +1673,7 @@ struct SortToIndexNode final : public WalkerWorker<ExecutionNode> {
       return true;
     }
 
-    SortCondition sortCondition(
+    SortCondition sortCondition(_plan,
         _sorts, std::vector<std::vector<arangodb::basics::AttributeName>>(),
         _variableDefinitions);
 
@@ -1782,7 +1782,7 @@ struct SortToIndexNode final : public WalkerWorker<ExecutionNode> {
       isSparse = false;
     }
 
-    SortCondition sortCondition(
+    SortCondition sortCondition(_plan,
         _sorts, cond->getConstAttributes(outVariable, !isSparse),
         _variableDefinitions);
 
@@ -1891,7 +1891,7 @@ struct SortToIndexNode final : public WalkerWorker<ExecutionNode> {
         }
         _sortNode = static_cast<SortNode*>(en);
         for (auto& it : _sortNode->getElements()) {
-          _sorts.emplace_back((it.var)->id, it.ascending);
+          _sorts.emplace_back(it.var, it.ascending);
         }
         return false;
 

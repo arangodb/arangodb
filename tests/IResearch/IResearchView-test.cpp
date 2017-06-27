@@ -334,13 +334,13 @@ SECTION("test_query") {
     auto* view = logicalView->getImplementation();
     CHECK((false == !view));
 
-    std::vector<std::pair<arangodb::aql::VariableId, bool>> sorts;
+    std::vector<std::pair<arangodb::aql::Variable const*, bool>> sorts;
     std::vector<std::vector<arangodb::basics::AttributeName>> constAttributes;
     std::unordered_map<arangodb::aql::VariableId, arangodb::aql::AstNode const*> variableDefinitions;
 
-    sorts.emplace_back(std::make_pair(0, true)); // add one condition
+    sorts.emplace_back(std::make_pair(nullptr, true)); // add one condition
 
-    arangodb::aql::SortCondition order(sorts, constAttributes, variableDefinitions);
+    arangodb::aql::SortCondition order(nullptr, sorts, constAttributes, variableDefinitions);
 
     arangodb::transaction::Options options;
     options.waitForSync = false;

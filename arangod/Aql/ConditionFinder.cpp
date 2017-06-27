@@ -77,7 +77,7 @@ bool ConditionFinder::before(ExecutionNode* en) {
       // register which variables are used in a SORT
       if (_sorts.empty()) {
         for (auto& it : static_cast<SortNode const*>(en)->getElements()) {
-          _sorts.emplace_back((it.var)->id, it.ascending);
+          _sorts.emplace_back(it.var, it.ascending);
           TRI_IF_FAILURE("ConditionFinder::sortNode") {
             THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
           }
@@ -184,9 +184,9 @@ bool ConditionFinder::before(ExecutionNode* en) {
       std::unique_ptr<SortCondition> sortCondition;
       if (!en->isInInnerLoop()) {
         // we cannot optimize away a sort if we're in an inner loop ourselves
-        sortCondition.reset(new SortCondition(_sorts, condition->getConstAttributes(node->outVariable(), false), _variableDefinitions));
+        sortCondition.reset(new SortCondition(_plan, _sorts, condition->getConstAttributes(node->outVariable(), false), _variableDefinitions));
       } else {
-        sortCondition.reset(new SortCondition);
+        sortCondition.reset(new SortCondition());
       }
 
       if (condition->isEmpty() && sortCondition->isEmpty()) {
