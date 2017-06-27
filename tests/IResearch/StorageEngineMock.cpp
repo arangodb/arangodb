@@ -157,9 +157,7 @@ void PhysicalCollectionMock::open(bool ignoreErrors) {
 }
 
 std::string const& PhysicalCollectionMock::path() const {
-  TRI_ASSERT(false);
-  static std::string value("<invalid>");
-  return value;
+  return physicalPath;
 }
 
 arangodb::Result PhysicalCollectionMock::persistProperties() {
@@ -211,8 +209,8 @@ TRI_voc_rid_t PhysicalCollectionMock::revision(arangodb::transaction::Methods*) 
 //  return TRI_ERROR_INTERNAL;
 //}
 
-void PhysicalCollectionMock::setPath(std::string const&) {
-  TRI_ASSERT(false);
+void PhysicalCollectionMock::setPath(std::string const& value) {
+  physicalPath = value;
 }
 
 //void PhysicalCollectionMock::sizeHint(arangodb::transaction::Methods* trx, int64_t hint) {
@@ -249,7 +247,7 @@ arangodb::PhysicalView* PhysicalViewMock::clone(arangodb::LogicalView*, arangodb
 }
 
 void PhysicalViewMock::drop() {
-  TRI_ASSERT(false);
+  // NOOP, assume physical view dropped OK
 }
 
 void PhysicalViewMock::getPropertiesVPack(arangodb::velocypack::Builder&, bool includeSystem /*= false*/) const {
@@ -261,17 +259,15 @@ void PhysicalViewMock::open() {
 }
 
 std::string const& PhysicalViewMock::path() const {
-  TRI_ASSERT(false);
-  static std::string invalid("<invalid>");
-  return invalid;
+  return physicalPath;
 }
 
 arangodb::Result PhysicalViewMock::persistProperties() {
   return arangodb::Result(persistPropertiesResult);
 }
 
-void PhysicalViewMock::setPath(std::string const&) {
-  TRI_ASSERT(false);
+void PhysicalViewMock::setPath(std::string const& value) {
+  physicalPath = value;
 }
 
 arangodb::Result PhysicalViewMock::updateProperties(arangodb::velocypack::Slice const& slice, bool doSync) {
@@ -322,8 +318,7 @@ std::string StorageEngineMock::collectionPath(TRI_vocbase_t const* vocbase, TRI_
 }
 
 std::string StorageEngineMock::createCollection(TRI_vocbase_t* vocbase, TRI_voc_cid_t id, arangodb::LogicalCollection const*) {
-  TRI_ASSERT(false);
-  return "<invalid>";
+  return "<invalid>"; // physical path of the new collection
 }
 
 TRI_vocbase_t* StorageEngineMock::createDatabase(TRI_voc_tick_t id, arangodb::velocypack::Slice const& args, int& status) {
@@ -357,7 +352,7 @@ arangodb::TransactionState* StorageEngineMock::createTransactionState(TRI_vocbas
 }
 
 void StorageEngineMock::createView(TRI_vocbase_t* vocbase, TRI_voc_cid_t id, arangodb::LogicalView const*) {
-  TRI_ASSERT(false);
+  // NOOP, assume physical view created OK
 }
 
 std::string StorageEngineMock::databasePath(TRI_vocbase_t const* vocbase) const {
@@ -392,8 +387,7 @@ arangodb::Result StorageEngineMock::dropDatabase(TRI_vocbase_t*) {
 //}
 
 arangodb::Result StorageEngineMock::dropView(TRI_vocbase_t* vocbase, arangodb::LogicalView*) {
-  TRI_ASSERT(false);
-  return arangodb::Result(TRI_ERROR_INTERNAL);
+  return arangodb::Result(TRI_ERROR_NO_ERROR); // assume mock view dropped OK
 }
 
 //int StorageEngineMock::extendCompactionBlocker(TRI_vocbase_t* vocbase, TRI_voc_tick_t id, double ttl) {
@@ -439,13 +433,11 @@ TRI_vocbase_t* StorageEngineMock::openDatabase(arangodb::velocypack::Slice const
 }
 
 arangodb::Result StorageEngineMock::persistCollection(TRI_vocbase_t* vocbase, arangodb::LogicalCollection const* collection) {
-  TRI_ASSERT(false);
-  return arangodb::Result(TRI_ERROR_INTERNAL);
+  return arangodb::Result(TRI_ERROR_NO_ERROR); // assume mock collection persisted OK
 }
 
 arangodb::Result StorageEngineMock::persistView(TRI_vocbase_t* vocbase, arangodb::LogicalView const*) {
-  TRI_ASSERT(false);
-  return arangodb::Result(TRI_ERROR_INTERNAL);
+  return arangodb::Result(TRI_ERROR_NO_ERROR); // assume mock view persisted OK
 }
 
 void StorageEngineMock::prepareDropDatabase(TRI_vocbase_t* vocbase, bool useWriteMarker, int& status) {
@@ -471,8 +463,7 @@ arangodb::Result StorageEngineMock::renameCollection(TRI_vocbase_t* vocbase, ara
 }
 
 int StorageEngineMock::shutdownDatabase(TRI_vocbase_t* vocbase) {
-  TRI_ASSERT(false);
-  return TRI_ERROR_INTERNAL;
+  return TRI_ERROR_NO_ERROR; // assume shutdown successful
 }
 
 void StorageEngineMock::signalCleanup(TRI_vocbase_t* vocbase) {
@@ -554,7 +545,7 @@ int TransactionCollectionMock::updateUsage(arangodb::AccessMode::Type accessType
 }
 
 void TransactionCollectionMock::unuse(int nestingLevel) {
-  TRI_ASSERT(false);
+  // NOOP, assume success
 }
 
 int TransactionCollectionMock::use(int nestingLevel) {
@@ -593,8 +584,7 @@ arangodb::Result TransactionStateMock::commitTransaction(arangodb::transaction::
 }
 
 bool TransactionStateMock::hasFailedOperations() const {
-  TRI_ASSERT(false);
-  return false;
+  return false; // assume no failed operations
 }
 
 // -----------------------------------------------------------------------------

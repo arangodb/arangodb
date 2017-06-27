@@ -326,7 +326,7 @@ class ObjectIterator {
 
  private:
   Iterator& top() noexcept {
-    TRI_ASSERT(_stack.empty());
+    TRI_ASSERT(!_stack.empty());
     return _stack.back();
   }
 

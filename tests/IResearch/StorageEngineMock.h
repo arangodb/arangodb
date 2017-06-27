@@ -39,6 +39,8 @@ class TransactionManager;
 
 class PhysicalCollectionMock: public arangodb::PhysicalCollection {
  public:
+  std::string physicalPath;
+
   PhysicalCollectionMock(arangodb::LogicalCollection* collection, arangodb::velocypack::Slice const& info);
 //  virtual bool applyForTickRange(TRI_voc_tick_t dataMin, TRI_voc_tick_t dataMax, std::function<bool(TRI_voc_tick_t foundTick, MMFilesMarker const* marker)> const& callback) override;
   virtual PhysicalCollection* clone(arangodb::LogicalCollection*, PhysicalCollection*) override;
@@ -94,6 +96,7 @@ class PhysicalCollectionMock: public arangodb::PhysicalCollection {
 class PhysicalViewMock: public arangodb::PhysicalView {
  public:
   static int persistPropertiesResult;
+  std::string physicalPath;
 
   PhysicalViewMock(arangodb::LogicalView* view, arangodb::velocypack::Slice const& info);
   virtual PhysicalView* clone(arangodb::LogicalView*, arangodb::PhysicalView*) override;
