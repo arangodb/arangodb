@@ -252,7 +252,7 @@ Result RocksDBCounterManager::sync(bool force) {
     return rocksutils::convertStatus(s);
   }
 
-  // Now persist the index estimates:
+  // Now persist the index estimates and key generators
   {
     for (auto const& pair : copy) {
       auto dbColPair = rocksutils::mapObjectToCollection(pair.first);
@@ -287,6 +287,11 @@ Result RocksDBCounterManager::sync(bool force) {
           static_cast<RocksDBCollection*>(collection->getPhysical());
       TRI_ASSERT(rocksCollection != nullptr);
       Result res = rocksCollection->serializeIndexEstimates(rtrx.get());
+      if (!res.ok()) {
+        return res;
+      }
+
+      res = rocksCollection->serializeKeyGenerator(rtrx.get());
       if (!res.ok()) {
         return res;
       }
@@ -375,6 +380,33 @@ void RocksDBCounterManager::readIndexEstimates() {
   }
 }
 
+void RocksDBCounterManager::readKeyGenerators() {
+  WRITE_LOCKER(guard, _rwLock);
+  RocksDBKeyBounds bounds = RocksDBKeyBounds::KeyGenerators();
+
+  rocksdb::Comparator const* cmp = _db->GetOptions().comparator;
+  rocksdb::ReadOptions readOptions;
+  std::unique_ptr<rocksdb::Iterator> iter(_db->NewIterator(readOptions,
+                                                           RocksDBColumnFamily::other()));
+  iter->Seek(bounds.start());
+
+  for (; iter->Valid() && cmp->Compare(iter->key(), bounds.end()) < 0;
+       iter->Next()) {
+    uint64_t objectId = RocksDBKey::objectId(iter->key());
+    auto properties = RocksDBValue::data(iter->value());
+    uint64_t lastValue = properties.get("lastValue").getUInt();
+
+    // If this hits we have two generators for the same collection
+    TRI_ASSERT(_generators.find(objectId) == _generators.end());
+    try {
+      _generators.emplace( objectId, lastValue);
+    } catch (...) {
+      // Nothing to do, just validate that no corrupted memory was produced.
+      TRI_ASSERT(_generators.find(objectId) == _generators.end());
+    }
+  }
+}
+
 std::unique_ptr<RocksDBCuckooIndexEstimator<uint64_t>>
 RocksDBCounterManager::stealIndexEstimator(uint64_t objectId) {
   std::unique_ptr<RocksDBCuckooIndexEstimator<uint64_t>> res(nullptr);
@@ -388,6 +420,18 @@ RocksDBCounterManager::stealIndexEstimator(uint64_t objectId) {
   return res;
 }
 
+uint64_t RocksDBCounterManager::stealKeyGenerator(uint64_t objectId) {
+  uint64_t res = 0;
+  auto it = _generators.find(objectId);
+  if (it != _generators.end()) {
+    // We swap out the stored estimate in order to move it to the caller
+    res = it->second;
+    // Drop the now empty estimator
+    _generators.erase(objectId);
+  }
+  return res;
+}
+
 void RocksDBCounterManager::clearIndexEstimators() {
   // We call this to remove all index estimators that have been stored but are
   // no longer read
@@ -395,6 +439,10 @@ void RocksDBCounterManager::clearIndexEstimators() {
 
   // TODO REMOVE RocksDB Keys of all not stolen values?
   _estimators.clear();
+}
+
+void RocksDBCounterManager::clearKeyGenerators() {
+  _generators.clear();
 }
 
 /// Parse counter values from rocksdb
@@ -430,6 +478,7 @@ public:
       std::pair<uint64_t,
                 std::unique_ptr<RocksDBCuckooIndexEstimator<uint64_t>>>>*
       _estimators;
+  std::unordered_map<uint64_t, uint64_t>* _generators;
   rocksdb::SequenceNumber currentSeqNum;
   uint64_t _maxTick = 0;
   uint64_t _maxHLC = 0;
@@ -439,8 +488,9 @@ public:
           uint64_t,
           std::pair<uint64_t,
                     std::unique_ptr<RocksDBCuckooIndexEstimator<uint64_t>>>>*
-          estimators)
-  : _estimators(estimators), currentSeqNum(0) {}
+          estimators,
+      std::unordered_map<uint64_t, uint64_t>* generators)
+  : _estimators(estimators), _generators(generators), currentSeqNum(0) {}
 
   ~WBReader() {
     // update ticks after parsing wal
@@ -477,6 +527,25 @@ public:
     }
   }
 
+  void storeLastKeyValue(uint64_t objectId, uint64_t keyValue) {
+    if (keyValue == 0) {
+      return;
+    }
+    
+    auto it = _generators->find(objectId);
+    
+    if (it == _generators->end()) {
+      try {
+        _generators->emplace(objectId, keyValue);
+      } catch (...) {}
+      return;
+    }
+
+    if (keyValue > (*it).second) {
+      (*it).second = keyValue;
+    }
+  }
+
   void updateMaxTick(const rocksdb::Slice& key, const rocksdb::Slice& value) {
     // RETURN (side-effect): update _maxTick
     //
@@ -491,6 +560,8 @@ public:
 
     if (type == RocksDBEntryType::Document) {
       storeMaxHLC(RocksDBKey::revisionId(key));
+      storeLastKeyValue(RocksDBKey::objectId(key),
+        RocksDBValue::keyValue(value));
     } else if (type == RocksDBEntryType::PrimaryIndexValue) {
       // document key
       StringRef ref = RocksDBKey::primaryKey(key);
@@ -626,7 +697,7 @@ bool RocksDBCounterManager::parseRocksWAL() {
 
   rocksdb::SequenceNumber start = UINT64_MAX;
   // Tell the WriteBatch reader the transaction markers to look for
-  auto handler = std::make_unique<WBReader>(&_estimators);
+  auto handler = std::make_unique<WBReader>(&_estimators, &_generators);
 
   for (auto const& pair : _counters) {
     handler->seqStart.emplace(pair.first, pair.second._sequenceNum);

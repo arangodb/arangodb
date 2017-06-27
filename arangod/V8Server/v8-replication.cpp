@@ -312,9 +312,17 @@ static void JS_SynchronizeReplication(
         TRI_ObjectToBoolean(object->Get(TRI_V8_ASCII_STRING("useCollectionId")));
   }
 
+  std::string leaderId;
+  if (object->Has(TRI_V8_ASCII_STRING("leaderId"))) {
+    leaderId = TRI_ObjectToString(object->Get(TRI_V8_ASCII_STRING("leaderId")));
+  }
+
   std::string errorMsg = "";
   InitialSyncer syncer(vocbase, &config, restrictCollections, restrictType,
                        verbose);
+  if (!leaderId.empty()) {
+    syncer.setLeaderId(leaderId);
+  }
 
   int res = TRI_ERROR_NO_ERROR;
   v8::Handle<v8::Object> result = v8::Object::New(isolate);

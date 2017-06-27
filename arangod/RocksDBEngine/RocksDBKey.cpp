@@ -22,7 +22,7 @@
 /// @author Daniel H. Larkin
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "RocksDBEngine/RocksDBKey.h"
+#include "RocksDBKey.h"
 #include "Basics/Exceptions.h"
 #include "Logger/Logger.h"
 #include "RocksDBEngine/RocksDBCommon.h"
@@ -116,6 +116,11 @@ RocksDBKey RocksDBKey::ReplicationApplierConfig(TRI_voc_tick_t databaseId) {
 RocksDBKey RocksDBKey::IndexEstimateValue(uint64_t collectionObjectId) {
   return RocksDBKey(RocksDBEntryType::IndexEstimateValue, collectionObjectId);
 }
+
+RocksDBKey RocksDBKey::KeyGeneratorValue(uint64_t objectId) {
+  return RocksDBKey(RocksDBEntryType::KeyGeneratorValue, objectId);
+}
+
 // ========================= Member methods ===========================
 
 RocksDBEntryType RocksDBKey::type(RocksDBKey const& key) {
@@ -146,6 +151,7 @@ TRI_voc_cid_t RocksDBKey::collectionId(rocksdb::Slice const& slice) {
 uint64_t RocksDBKey::objectId(RocksDBKey const& key) {
   return objectId(key._buffer.data(), key._buffer.size());
 }
+
 uint64_t RocksDBKey::objectId(rocksdb::Slice const& slice) {
   return objectId(slice.data(), slice.size());
 }
@@ -221,6 +227,7 @@ RocksDBKey::RocksDBKey(RocksDBEntryType type, uint64_t first)
     case RocksDBEntryType::Database:
     case RocksDBEntryType::CounterValue:
     case RocksDBEntryType::IndexEstimateValue:
+    case RocksDBEntryType::KeyGeneratorValue:
     case RocksDBEntryType::ReplicationApplierConfig: {
       size_t length = sizeof(char) + sizeof(uint64_t);
       _buffer.reserve(length);

@@ -41,6 +41,7 @@ void TRI_InitializeErrorMessages () {
   REG_ERROR(ERROR_HTTP_FORBIDDEN, "forbidden");
   REG_ERROR(ERROR_HTTP_NOT_FOUND, "not found");
   REG_ERROR(ERROR_HTTP_METHOD_NOT_ALLOWED, "method not supported");
+  REG_ERROR(ERROR_HTTP_NOT_ACCEPTABLE, "request not acceptable");
   REG_ERROR(ERROR_HTTP_PRECONDITION_FAILED, "precondition failed");
   REG_ERROR(ERROR_HTTP_SERVER_ERROR, "internal server error");
   REG_ERROR(ERROR_HTTP_SERVICE_UNAVAILABLE, "service unavailable");
@@ -163,6 +164,9 @@ void TRI_InitializeErrorMessages () {
   REG_ERROR(ERROR_CLUSTER_UNKNOWN_DISTRIBUTESHARDSLIKE, "must not have a distributeShardsLike attribute pointing to an unknown collection");
   REG_ERROR(ERROR_CLUSTER_INSUFFICIENT_DBSERVERS, "the number of current dbservers is lower than the requested replicationFactor");
   REG_ERROR(ERROR_CLUSTER_COULD_NOT_DROP_FOLLOWER, "a follower could not be dropped in agency");
+  REG_ERROR(ERROR_CLUSTER_SHARD_LEADER_REFUSES_REPLICATION, "a shard leader refuses to perform a replication operation");
+  REG_ERROR(ERROR_CLUSTER_SHARD_FOLLOWER_REFUSES_OPERATION, "a shard follower refuses to perform an operation that is not a replication");
+  REG_ERROR(ERROR_CLUSTER_SHARD_LEADER_RESIGNED, "a (former) shard leader refuses to perform an operation, because it has resigned in the meantime");
   REG_ERROR(ERROR_QUERY_KILLED, "query killed");
   REG_ERROR(ERROR_QUERY_PARSE, "%s");
   REG_ERROR(ERROR_QUERY_EMPTY, "query is empty");
