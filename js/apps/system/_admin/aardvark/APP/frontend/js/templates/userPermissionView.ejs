@@ -16,9 +16,15 @@
       <% _.each(permissions, function(content, db) { %>
         <div class="pure-table-row db-row noHover" id="<%= db %>-db">
           <div class="<%= genClass %> left">
-            <i class="fa fa-caret-right" style="width: 10px;"></i>
-            <i class="fa fa-caret-down" style="display: none; width: 10px;"></i>
-            <%= db %>
+            <% if (db.charAt(0) !== '*') { %>
+              <i class="fa fa-caret-right" style="width: 10px;"></i>
+              <i class="fa fa-caret-down" style="display: none; width: 10px;"></i>
+            <% } %>
+            <% if (db.charAt(0) === '*') { %>
+              _DEFAULT_
+            <% } else { %>
+              <%= db %>
+            <% } %>
           </div>
 
           <% var permissionsDB = content.permission; %>
@@ -61,7 +67,7 @@
             <div class="<%= genClass %> mid inner"></div>
             <div class="<%= genClass %> mid inner"></div>
             <% _.each(content.collections, function(permissionCollection, collectionName) { %>
-              <% if (collectionName.charAt(0) !== '_') { %>
+              <% if (collectionName.charAt(0) !== '_' && collectionName.charAt(0) !== '*') { %>
 
                 <div class="pure-table-row noHover">
                   <div class="<%= genClass %> left inner"><span class="collName"><%= collectionName %></span></div>

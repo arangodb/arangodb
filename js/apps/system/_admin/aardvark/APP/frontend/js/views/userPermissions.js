@@ -82,6 +82,10 @@
     setDBPermission: function (e) {
       var db = $(e.currentTarget).attr('name');
 
+      if (db.charAt(0) === '_DEFAULT') {
+        db = '*';
+      }
+
       var value;
       if ($(e.currentTarget).hasClass('readOnly')) {
         value = 'ro';
