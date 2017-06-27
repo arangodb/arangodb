@@ -2728,7 +2728,7 @@ static void JS_TruncateVocbaseCol(
   }
 
   AuthenticationFeature* auth = FeatureCacheFeature::instance()->authenticationFeature();
-  if (auth->isEnabled() && ExecContext::CURRENT_EXECCONTEXT != nullptr) {
+  if (auth->isActive() && ExecContext::CURRENT_EXECCONTEXT != nullptr) {
     CollectionNameResolver resolver(collection->vocbase());
     std::string const cName = resolver.getCollectionNameCluster(collection->cid());
     AuthLevel level = auth->canUseCollection(ExecContext::CURRENT_EXECCONTEXT->user(),

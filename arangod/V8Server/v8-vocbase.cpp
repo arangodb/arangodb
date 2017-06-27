@@ -685,7 +685,7 @@ static void JS_ReloadAuth(v8::FunctionCallbackInfo<v8::Value> const& args) {
   
   auto authentication = application_features::ApplicationServer::getFeature<AuthenticationFeature>(
     "Authentication");
-  if (authentication->isEnabled()) {
+  if (authentication->isActive()) {
     authentication->authInfo()->outdate();
   }
 
@@ -2096,7 +2096,7 @@ static void JS_AuthenticationEnabled(
   v8::HandleScope scope(isolate);
 
   v8::Handle<v8::Boolean> result =
-      v8::Boolean::New(isolate, authentication->isEnabled());
+      v8::Boolean::New(isolate, authentication->isActive());
 
   TRI_V8_RETURN(result);
   TRI_V8_TRY_CATCH_END
