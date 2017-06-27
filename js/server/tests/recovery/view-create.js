@@ -35,8 +35,13 @@ function runSetup () {
   'use strict';
   internal.debugClearFailAt();
 
+  db._drop('UnitTestsRecoveryDummy');
+  var c = db._create('UnitTestsRecoveryDummy');
+
   db._dropView('UnitTestsRecovery1');
   var v1 = db._createView('UnitTestsRecovery1', 'logger', {});
+
+  c.save({ _key: 'crashme' }, true);
 
   internal.debugSegfault('crashing server');
 }
