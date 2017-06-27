@@ -156,11 +156,8 @@ RestStatus RestUsersHandler::getRequest(AuthInfo* authInfo) {
         });
         if (full) {
           AuthLevel lvl = authInfo->canUseDatabase(user, "*");
-          AuthLevel lvl2 = authInfo->canUseCollection(user, "*", "*");
           data("*", VPackValue(VPackValueType::Object))(
-              "permission", VPackValue(convertFromAuthLevel(lvl)))(
-              "collections", VPackValue(VPackValueType::Object))(
-              "*", VPackValue(convertFromAuthLevel(lvl2)))()();
+              "permission", VPackValue(convertFromAuthLevel(lvl)))();
         }
         data.close();
         generateSuccess(ResponseCode::OK, data.slice());
