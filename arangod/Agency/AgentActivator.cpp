@@ -55,7 +55,7 @@ void AgentActivator::run() {
   std::string const path = privApiPrefix + "activate";
   auto const started = system_clock::now();
   auto const timeout = seconds(60);
-  auto const endpoint = _agent->config().pool().at(_replacement);
+  auto const endpoint= _agent->config().pool().at(_replacement);
 
   CONDITION_LOCKER(guard, _cv);
  

@@ -134,6 +134,32 @@ RestStatus RestAgencyPrivHandler::execute() {
         } else {
           return reportBadQuery();  // bad query
         }
+      } else if (suffixes[0] == "add-server") {
+        auto ret = _agent->addServer(_request->toVelocyPackBuilderPtr());
+        if (ret.accepted) {
+          result.add(_agent->config().toBuilder()->slice());
+        } else if (_agent->leaderID() == NO_LEADER) {
+          Builder body;
+          body.add(VPackValue("NO_LEADER"));
+          generateResult(rest::ResponseCode::SERVICE_UNAVAILABLE, body.slice());
+          return RestStatus::DONE;
+        } else {
+          TRI_ASSERT(ret.redirect != _agent->id());
+          redirectRequest(ret.redirect);
+        }
+      } else if (suffixes[0] == "remove-server") {
+        auto ret = _agent->removeServer(_request->toVelocyPackBuilderPtr());
+        if (ret.accepted) {
+          result.add(_agent->config().toBuilder()->slice());
+        } else if (_agent->leaderID() == NO_LEADER) {
+          Builder body;
+          body.add(VPackValue("NO_LEADER"));
+          generateResult(rest::ResponseCode::SERVICE_UNAVAILABLE, body.slice());
+          return RestStatus::DONE;
+        } else {
+          TRI_ASSERT(ret.redirect != _agent->id());
+          redirectRequest(ret.redirect);
+        }
       } else if (suffixes[0] == "activate") {  // notify
         if (_request->requestType() != rest::RequestType::POST) {
           return reportMethodNotAllowed();
@@ -205,3 +231,19 @@ RestStatus RestAgencyPrivHandler::execute() {
   }
   return RestStatus::DONE;
 }
+
+void RestAgencyPrivHandler::redirectRequest(std::string const& leaderId) {
+  try {
+    std::string url = Endpoint::uriForm(_agent->config().poolAt(leaderId)) +
+                      _request->requestPath();
+    _response->setResponseCode(rest::ResponseCode::TEMPORARY_REDIRECT);
+    _response->setHeaderNC(StaticStrings::Location, url);
+    LOG_TOPIC(DEBUG, Logger::AGENCY) << "Sending 307 redirect to " << url;
+  } catch (std::exception const& e) {
+    LOG_TOPIC(WARN, Logger::AGENCY) << e.what() << " " << __FILE__ << ":"
+                                    << __LINE__;
+    generateError(rest::ResponseCode::SERVER_ERROR, TRI_ERROR_INTERNAL,
+                  e.what());
+  }
+}
+

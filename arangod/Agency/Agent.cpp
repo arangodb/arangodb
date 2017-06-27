@@ -1107,37 +1107,93 @@ void Agent::failedActivation(
 
 
 void Agent::detectActiveAgentFailures() {
-  // Detect faulty agent if pool larger than agency
 
+  // Another activator active? Leave!
+  MUTEX_LOCKER(actLock, _activatorLock);
+  if (_activator != nullptr) {
+    return;
+  }
+
+  // Detect faulty agent if pool larger than agency
   std::map<std::string, TimePoint> lastAcked;
   {
     MUTEX_LOCKER(ioLocker, _ioLock);
     lastAcked = _lastAcked;
   }
 
-  MUTEX_LOCKER(actLock, _activatorLock);
-  if (_activator != nullptr) {
+  // Do we have any spare agents in stock? Else out!
+  auto poolSize = _config.pool().size();
+  TRI_ASSERT(poolSize >= size());
+  if (poolSize == size()) {
     return;
   }
-  
-  if (_config.poolSize() > _config.size()) {
-    std::vector<std::string> active = _config.active();
-    for (auto const& id : active) {
-      if (id != this->id()) {
-        auto ds = duration<double>(
-          system_clock::now() - lastAcked.at(id)).count();
-        if (ds > 180.0) {
-          std::string repl = _config.nextAgentInLine();
-          LOG_TOPIC(DEBUG, Logger::AGENCY)
-            << "Active agent " << id << " has failed. << " << repl
-            << " will be promoted to active agency membership";
-          _activator = std::make_unique<AgentActivator>(this, id, repl);
-          _activator->start();
-          return;
-        }
+
+  // Any faulty else leave.
+  std::vector<std::string> active = _config.active();
+  std::vector<std::string> faulty;
+  for (auto const& peerId : active) {
+    if (peerId != id()) {
+      if (duration<double>(system_clock::now()-lastAcked.at(peerId)).count()>15) {
+        faulty.push_back(peerId);
       }
     }
   }
+  if (faulty.empty()) {
+    return;
+  }
+
+  std::string replacement = _config.nextAgentInLine();
+  if (replacement.empty()) { // No replacement left
+    return;
+  }
+  
+  query_t builder = std::make_shared<Builder>();
+  { VPackArrayBuilder trxs(builder.get());
+    { VPackArrayBuilder trx(builder.get());
+      { VPackObjectBuilder act(builder.get());
+        // Anounce activation
+        builder->add(VPackValue(".agency/Activating"));
+        { VPackObjectBuilder op(builder.get());
+          builder->add("op", VPackValue("set"));
+          builder->add(VPackValue("new"));
+          { VPackObjectBuilder a(builder.get());
+            builder->add("failed", VPackValue(faulty.front()));
+            builder->add("activating", VPackValue(replacement));
+          }
+          builder->add("ttl", VPackValue(60.0));
+        }}
+      // Precondition: no other activation going on
+      { VPackObjectBuilder precond(builder.get());
+        builder->add(VPackValue(".agency/Activating"));
+        { VPackObjectBuilder a(builder.get());
+          builder->add("oldEmpty", VPackValue(true));
+        }}
+    }} // Close transactions
+  
+  LOG_TOPIC(INFO, Logger::AGENCY) <<    builder->toJson();
+  auto res = write(builder);
+
+  if (!res.accepted) {
+    LOG_TOPIC(DEBUG, Logger::AGENCY)
+      << "Lost leadership. Aborting activation of new agent for failed agent "
+      << faulty.front();
+  }
+
+  TRI_ASSERT(res.indices.size() == 1);
+  if (res.indices.front() == 0) { // Precondition failed
+    LOG_TOPIC(DEBUG, Logger::AGENCY)
+      << "Precondition failed. Aborting activation of new agent for failed agent "
+      << faulty.front();
+  }
+  
+  LOG_TOPIC(DEBUG, Logger::AGENCY)
+    << "Active agent " << faulty.front() << " has failed. << " << replacement
+    << " will be promoted to active agency membership";
+  _activator = std::make_unique<AgentActivator>(this, faulty.front(), replacement);
+  _activator->start();
+  
+  return;
+  
 }
 
 
@@ -1680,5 +1736,34 @@ bool Agent::isTrxOngoing(std::string& id) {
 Inception const* Agent::inception() const {
   return _inception.get();
 }
+
+write_ret_t Agent::addServer(query_t const server) {
+
+  Slice slice = server->slice();
+  if (!slice.isObject() || !slice.hasKey("endpoint") || !slice.hasKey("id")) {
+    LOG_TOPIC(WARN, Logger::AGENCY)
+      << "add-server call must be a json object containing endpoint and id";
+  }
+
+  query_t builder = std::make_shared<Builder>();
+  { VPackArrayBuilder trxs(builder.get());
+    { VPackArrayBuilder trx(builder.get());
+      { VPackObjectBuilder wa(builder.get());
+        builder->add(".agency/configure/add", slice);
+      }}} // Close transactions
+  
+  LOG_TOPIC(INFO, Logger::AGENCY) << builder->toJson();
+  
+  return write(builder);
+  
+}
+
+write_ret_t Agent::removeServer(query_t const server) {
+  
+  query_t builder = std::make_shared<Builder>();
+  return write(builder);
+  
+}
+
 
 }}  // namespace

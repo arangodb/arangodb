@@ -163,10 +163,10 @@ if [ ! -d arangod ] || [ ! -d arangosh ] || [ ! -d UnitTests ] ; then
   exit 1
 fi
 
-if [[ $(( $NRAGENTS % 2 )) == 0 ]]; then
-  echo Number of agents must be odd.
-  exit 1
-fi
+# if [[ $(( $NRAGENTS % 2 )) == 0 ]]; then
+#   echo Number of agents must be odd.
+#   exit 1
+# fi
 
 
 if [ ! -z "$INTERACTIVE_MODE" ] ; then
@@ -273,6 +273,7 @@ done
 
 echo "  done. Your agents are ready at port $BASE onward."
 #echo "Process ids: $PIDS"
-echo "Try ${CURL}[::1]:5000/_api/agency/config."
+echo "Try ${CURL}[::1]:$BASE/_api/agency/config for current configuration"
+echo "Try ${CURL}[::1]:$BASE/_api/agency/read -Ld '[[\"/\"]]' to read key-value store"
 
 

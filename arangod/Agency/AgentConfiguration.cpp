@@ -283,7 +283,7 @@ std::string config_t::nextAgentInLine() const {
 
   READ_LOCKER(readLocker, _lock);
 
-  if (_poolSize > _agencySize) {
+  if (_pool.size() > _agencySize) {
     for (const auto& p : _pool) {
       if (std::find(_active.begin(), _active.end(), p.first) == _active.end()) {
         return p.first;

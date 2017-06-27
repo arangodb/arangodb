@@ -167,11 +167,11 @@ void AgencyFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
   }
 
   // Size needs to be odd
-  if (_size % 2 == 0) {
+/*  if (_size % 2 == 0) {
     LOG_TOPIC(FATAL, Logger::AGENCY)
         << "AGENCY: agency must have odd number of members";
     FATAL_ERROR_EXIT();
-  }
+    }*/
 
   // Timeouts sanity
   if (_minElectionTimeout <= 0.) {

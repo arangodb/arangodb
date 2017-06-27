@@ -129,6 +129,12 @@ class Agent : public arangodb::Thread,
   ///        also used as heartbeat ($5.2).
   void sendAppendEntriesRPC();
 
+  /// @brief add a server to agency
+  write_ret_t  addServer(query_t const);
+
+  /// @brief Remove server from agency
+  write_ret_t  removeServer(query_t const);
+
   /// @brief 1. Deal with appendEntries to slaves.
   ///        2. Report success of write processes.
   void run() override final;

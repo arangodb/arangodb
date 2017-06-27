@@ -73,6 +73,7 @@ class RestAgencyPrivHandler : public arangodb::RestBaseHandler {
   RestStatus reportMethodNotAllowed();
   RestStatus reportGone();
 
+  void redirectRequest(std::string const& leaderId);
   consensus::Agent* _agent;
 };
 
