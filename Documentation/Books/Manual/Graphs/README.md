@@ -84,7 +84,7 @@ You can then configure several named graphs including a subset of the available 
 or you use anonymous graph queries, where you specify a list of edge collections to take into account in that query.
 To only follow friend edges, you would specify `friend_edges` as sole edge collection.
 
-Both approaches have advantages and disadvantages. `FILTER` operations on ede attributes will do comparisons on
+Both approaches have advantages and disadvantages. `FILTER` operations on edge attributes will do comparisons on
 each traversed edge, which may become CPU-intense. When not *finding* the edges in the first place because of the
 collection containing them is not traversed at all, there will never be a reason to actualy check for their
 `type` attribute with `FILTER`.
