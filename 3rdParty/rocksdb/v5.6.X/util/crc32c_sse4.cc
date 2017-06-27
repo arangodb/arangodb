@@ -38,7 +38,7 @@ void Fast_CRC32(uint64_t* l, uint8_t const **p) {
 #if defined(HAVE_SSE42) && (defined(__LP64__) || defined(_WIN64))
   *l = _mm_crc32_u64(*l, LE_LOAD64(*p));
   *p += 8;
-#else
+#elif defined(HAVE_SSE42)
   *l = _mm_crc32_u32(static_cast<unsigned int>(*l), LE_LOAD32(*p));
   *p += 4;
   *l = _mm_crc32_u32(static_cast<unsigned int>(*l), LE_LOAD32(*p));

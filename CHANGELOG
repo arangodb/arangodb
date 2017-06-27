@@ -7,6 +7,8 @@ devel
   traversal. `LIMIT x` or `LIMIT 0, x` were not affected, but `LIMIT s, x`
   may have returned too many results
 
+* fix races in SSL communication code
+
 * fix invalid locking in JWT authentication cache, which could have
   crashed the server
 

@@ -249,26 +249,30 @@ class RestVocbaseBaseHandler : public RestBaseHandler {
                         arangodb::velocypack::Options const* options = nullptr);
 
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief generate an error message for a transaction error
-  ///        DEPRECATED
+  /// @brief generate an error message for a transaction error, this method
+  /// is used by the others.
   //////////////////////////////////////////////////////////////////////////////
 
-  void generateTransactionError(std::string const&, int, std::string const& key,
-                                TRI_voc_rid_t = 0);
+  void generateTransactionError(std::string const&, OperationResult const&,
+      std::string const& key, TRI_voc_rid_t = 0);
   
   //////////////////////////////////////////////////////////////////////////////
   /// @brief generate an error message for a transaction error
   //////////////////////////////////////////////////////////////////////////////
+ 
   void generateTransactionError(std::string const& str, Result const& res,
                                 std::string const& key, TRI_voc_rid_t rid = 0){
-    generateTransactionError(str, res.errorNumber(), key, rid);
+    generateTransactionError(str,
+        OperationResult(res.errorNumber(), res.errorMessage()), key, rid);
   }
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief generate an error message for a transaction error
   //////////////////////////////////////////////////////////////////////////////
 
-  void generateTransactionError(OperationResult const&);
+  void generateTransactionError(OperationResult const& result) {
+    generateTransactionError("", result, "", 0);
+  }
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief extracts the revision
@@ -287,6 +291,12 @@ class RestVocbaseBaseHandler : public RestBaseHandler {
   bool extractBooleanParameter(char const* name, bool def) const {
     return extractBooleanParameter(std::string(name), def);
   }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief extracts a string parameter value
+////////////////////////////////////////////////////////////////////////////////
+
+  void extractStringParameter(std::string const& name, std::string& ret) const;
 
  protected:
   //////////////////////////////////////////////////////////////////////////////

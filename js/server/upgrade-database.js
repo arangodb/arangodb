@@ -36,6 +36,7 @@
   delete global.UPGRADE_ARGS;
 
   const internal = require('internal');
+  const errors = internal.errors;
   const fs = require('fs');
   const console = require('console');
   const userManager = require('@arangodb/users');
@@ -517,9 +518,13 @@
         // only add account if user has not created his/her own accounts already
         try {
           userManager.save('root', defaultRootPW, true);
-          userManager.grantDatabase('root', '*', 'rw');
-        } catch(ignored) {}
-        
+        } catch (e) {
+          if (e.errorNum !== errors.ERROR_USER_DUPLICATE.code) {
+            throw e;
+          }
+        }
+        userManager.grantDatabase('root', '*', 'rw');
+
         return true;
       }
     });

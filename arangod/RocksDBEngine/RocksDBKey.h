@@ -40,7 +40,7 @@ namespace arangodb {
 class RocksDBKey {
  public:
   RocksDBKey() = delete;
-  RocksDBKey(rocksdb::Slice slice)
+  explicit RocksDBKey(rocksdb::Slice slice)
       : _type(static_cast<RocksDBEntryType>(slice.data()[0])),
         _buffer(slice.data(), slice.size()) {}
 

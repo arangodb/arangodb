@@ -105,7 +105,6 @@ arangodb::Result Indexes::getAll(arangodb::LogicalCollection const* collection,
   if (ServerState::instance()->isCoordinator()) {
     std::string const databaseName(collection->dbName());
     std::string const cid = collection->cid_as_string();
-    std::string const collectionName(collection->name());
 
     auto c = ClusterInfo::instance()->getCollection(databaseName, cid);
     c->getIndexesVPack(tmp, withFigures, false);
@@ -125,7 +124,6 @@ arangodb::Result Indexes::getAll(arangodb::LogicalCollection const* collection,
 
     // READ-LOCK start
     trx.lockRead();
-    std::string const collectionName(collection->name());
 
     // get list of indexes
     auto indexes = collection->getIndexes();
@@ -236,7 +234,7 @@ static Result EnsureIndexLocal(arangodb::LogicalCollection* collection,
     // TODO Encapsulate in try{}catch(){} instead of errno()
     try {
       idx = collection->createIndex(&trx, definition, created);
-    } catch (arangodb::basics::Exception e) {
+    } catch (arangodb::basics::Exception const& e) {
       return Result(e.code());
     }
     if (idx == nullptr) {
@@ -372,7 +370,6 @@ Result Indexes::ensureIndex(arangodb::LogicalCollection* collection,
 
   // ensure an index, coordinator case
   if (ServerState::instance()->isCoordinator()) {
-    std::string errorMsg;
     VPackBuilder tmp;
 #ifdef USE_ENTERPRISE
     Result res =

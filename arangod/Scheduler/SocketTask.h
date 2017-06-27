@@ -139,9 +139,10 @@ class SocketTask : virtual public Task {
  protected:
   ConnectionStatistics* _connectionStatistics;
   ConnectionInfo _connectionInfo;
-
-  Mutex _readLock;
   basics::StringBuffer _readBuffer; // needs _readLock
+
+ private:
+  Mutex _readLock;
 
  private:
   // caller must hold the _writeLock
