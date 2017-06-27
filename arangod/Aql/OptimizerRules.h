@@ -187,6 +187,10 @@ void removeDataModificationOutVariablesRule(Optimizer*, std::unique_ptr<Executio
 void patchUpdateStatementsRule(Optimizer*, std::unique_ptr<ExecutionPlan>,
                                OptimizerRule const*);
 
+/// @brief move filters and sort conditions into views
+void handleViewsRule(Optimizer* opt, std::unique_ptr<ExecutionPlan> plan,
+                     OptimizerRule const* rule);
+
 /// @brief optimizes away unused traversal output variables and
 /// merges filter nodes into graph traversal nodes
 void optimizeTraversalsRule(Optimizer* opt, std::unique_ptr<ExecutionPlan> plan,

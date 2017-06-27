@@ -136,6 +136,9 @@ struct OptimizerRule {
     // remove redundant OR conditions
     removeRedundantOrRule_pass6,
 
+    // move filters and sort conditions into views
+    handleViewsRule_pass6,
+
     applyGeoIndexRule,
 
     useIndexesRule_pass6,

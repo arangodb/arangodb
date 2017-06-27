@@ -3659,6 +3659,41 @@ void arangodb::aql::patchUpdateStatementsRule(
   opt->addPlan(std::move(plan), rule, modified);
 }
 
+/// @brief move filters and sort conditions into views
+void arangodb::aql::handleViewsRule(Optimizer* opt,
+                                    std::unique_ptr<ExecutionPlan> plan,
+                                    OptimizerRule const* rule) {
+  SmallVector<ExecutionNode*>::allocator_type::arena_type a;
+  SmallVector<ExecutionNode*> viewNodes{a};
+  plan->findNodesOfType(viewNodes, EN::ENUMERATE_VIEW, true);
+
+  if (viewNodes.empty()) {
+    // no views present
+    opt->addPlan(std::move(plan), rule, false);
+    return;
+  }
+
+  bool modified = false;
+
+  // make a pass over all view nodes
+  for (auto const& n : viewNodes) {
+    EnumerateViewNode* view = static_cast<EnumerateViewNode*>(n);
+
+    LOG_TOPIC(ERR, Logger::FIXME) << "FOUND A VIEW REFERRING TO '" << view->view()->name() << "'";
+
+    // TODO:
+    // - find sort conditions south of the "view" node
+    // - find filter conditions south of the "view" node
+    // - check if the view can handle any of them using supportsSortCondition
+    //   or supportsFilterCondition
+    // - remove the sort and filter conditions from the execution plan
+    //   if the view takes over
+
+  }
+
+  opt->addPlan(std::move(plan), rule, modified);
+}
+
 /// @brief optimizes away unused traversal output variables and
 /// merges filter nodes into graph traversal nodes
 void arangodb::aql::optimizeTraversalsRule(Optimizer* opt,

@@ -18,13 +18,15 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Max Neunhoeffer
+/// @author Daniel H. Larkin
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "EnumerateViewBlock.h"
 #include "Aql/AqlItemBlock.h"
 #include "Aql/AqlValue.h"
+#include "Aql/Ast.h"
 #include "Aql/ExecutionEngine.h"
+#include "Aql/Query.h"
 #include "Basics/Exceptions.h"
 #include "VocBase/vocbase.h"
 
@@ -40,7 +42,12 @@ EnumerateViewBlock::EnumerateViewBlock(ExecutionEngine* engine,
       _mmdr(new ManagedDocumentResult) // TODO
        {
   TRI_ASSERT(_view != nullptr);
-  _iter.reset(_view->iteratorForCondition(transaction(), en->_node,
+
+  // TODO: this creates a dummy filter that is always true. fix it and
+  // replace it with the real filter condition
+  AstNode* boolVal = engine->getQuery()->ast()->createNodeValueBool(true);
+  AstNode* filter = engine->getQuery()->ast()->createNodeFilter(boolVal);
+  _iter.reset(_view->iteratorForCondition(transaction(), en->_node ? en->_node : filter,
                                           _outVariable, en->_sortCondition));
   TRI_ASSERT(_iter != nullptr);
 }

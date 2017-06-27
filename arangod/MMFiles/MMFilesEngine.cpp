@@ -2035,6 +2035,10 @@ TRI_vocbase_t* MMFilesEngine::openExistingDatabase(TRI_voc_tick_t id,
       registerViewPath(vocbase->id(), view->id(), physical->path());
 
       view->spawnImplementation(creator, it, false);
+    
+      if (view->getImplementation() == nullptr) {
+        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "unable to spawn view implementation");
+      }
       view->getImplementation()->open();
     }
   } catch (std::exception const& ex) {
