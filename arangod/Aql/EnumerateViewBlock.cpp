@@ -28,14 +28,21 @@
 #include "Basics/Exceptions.h"
 #include "VocBase/vocbase.h"
 
+using namespace arangodb;
 using namespace arangodb::aql;
 
 EnumerateViewBlock::EnumerateViewBlock(ExecutionEngine* engine,
                                        EnumerateViewNode const* en)
     : ExecutionBlock(engine, en),
-      _view(nullptr) // TODO
+      _view(en->view()),
+      _outVariable(en->_outVariable),
+      _iter(nullptr),
+      _mmdr(new ManagedDocumentResult) // TODO
        {
-  // TODO: set iterator
+  TRI_ASSERT(_view != nullptr);
+  _iter.reset(_view->iteratorForCondition(transaction(), en->_node,
+                                          _outVariable, en->_sortCondition));
+  TRI_ASSERT(_iter != nullptr);
 }
 
 EnumerateViewBlock::~EnumerateViewBlock() {}
@@ -48,7 +55,11 @@ int EnumerateViewBlock::initializeCursor(AqlItemBlock* items, size_t pos) {
     return res;
   }
 
-  // TODO: handle local data (if any)
+  DEBUG_BEGIN_BLOCK();
+  if (_iter.get() != nullptr) {
+    _iter->reset();
+  }
+  DEBUG_END_BLOCK();
 
   return TRI_ERROR_NO_ERROR;
   DEBUG_END_BLOCK();
@@ -57,28 +68,166 @@ int EnumerateViewBlock::initializeCursor(AqlItemBlock* items, size_t pos) {
 AqlItemBlock* EnumerateViewBlock::getSome(size_t, size_t atMost) {
   DEBUG_BEGIN_BLOCK();
   traceGetSomeBegin();
+  TRI_ASSERT(_iter != nullptr);
+
   if (_done) {
     traceGetSomeEnd(nullptr);
     return nullptr;
   }
 
-  // TODO: actually get some
+  bool needMore;
+  AqlItemBlock* cur = nullptr;
+  size_t send = 0;
+  std::unique_ptr<AqlItemBlock> res;
+  do {
+    do {
+      needMore = false;
 
-  traceGetSomeEnd(nullptr);
-  return nullptr;
+      if (_buffer.empty()) {
+        size_t toFetch = (std::min)(DefaultBatchSize(), atMost);
+        if (!ExecutionBlock::getBlock(toFetch, toFetch)) {
+          _done = true;
+          return nullptr;
+        }
+        _pos = 0;  // this is in the first block
+        _iter->reset();
+      }
+
+      // If we get here, we do have _buffer.front()
+      cur = _buffer.front();
+
+      if (!_iter->hasMore()) {
+        needMore = true;
+        // we have exhausted this cursor
+        // re-initialize fetching of documents
+        _iter->reset();
+        if (++_pos >= cur->size()) {
+          _buffer.pop_front();  // does not throw
+          returnBlock(cur);
+          _pos = 0;
+        }
+      }
+    } while (needMore);
+
+    TRI_ASSERT(cur != nullptr);
+    TRI_ASSERT(_iter->hasMore());
+
+    size_t curRegs = cur->getNrRegs();
+
+    RegisterId nrRegs =
+        getPlanNode()->getRegisterPlan()->nrRegs[getPlanNode()->getDepth()];
+
+    res.reset(requestBlock(atMost, nrRegs));
+    // automatically freed if we throw
+    TRI_ASSERT(curRegs <= res->getNrRegs());
+
+    // only copy 1st row of registers inherited from previous frame(s)
+    inheritRegisters(cur, res.get(), _pos);
+
+    auto cb = [&](DocumentIdentifierToken const& tkn) {
+      if (_iter->readDocument(tkn, *_mmdr)) {
+        // The result is in the first variable of this depth,
+        // we do not need to do a lookup in
+        // getPlanNode()->_registerPlan->varInfo,
+        // but can just take cur->getNrRegs() as registerId:
+        uint8_t const* vpack = _mmdr->vpack();
+        if (_mmdr->canUseInExternal()) {
+          res->setValue(send, static_cast<arangodb::aql::RegisterId>(curRegs),
+                        AqlValue(vpack, AqlValueFromManagedDocument()));
+        } else {
+          AqlValue a(_mmdr->createAqlValue());
+          AqlValueGuard guard(a, true);
+          res->setValue(send, static_cast<arangodb::aql::RegisterId>(curRegs), a);
+          guard.steal();
+        }
+      }
+
+      if (send > 0) {
+        // re-use already copied AQLValues
+        res->copyValuesFromFirstRow(send, static_cast<RegisterId>(curRegs));
+      }
+      ++send;
+    };
+
+    throwIfKilled();  // check if we were aborted
+
+    TRI_IF_FAILURE("EnumerateViewBlock::moreDocuments") {
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+    }
+
+    bool tmp = _iter->next(cb, atMost);
+    if (!tmp) {
+      TRI_ASSERT(!_iter->hasMore());
+    }
+
+    // If the collection is actually empty we cannot forward an empty block
+  } while (send == 0);
+  // _engine->_stats.scannedFull += static_cast<int64_t>(send);
+  // TODO stats?
+  TRI_ASSERT(res != nullptr);
+
+  if (send < atMost) {
+    // The collection did not have enough results
+    res->shrink(send, false);
+  }
+
+  // Clear out registers no longer needed later:
+  clearRegisters(res.get());
+
+  traceGetSomeEnd(res.get());
+
+  return res.release();
+
   DEBUG_END_BLOCK();
 }
 
 size_t EnumerateViewBlock::skipSome(size_t atLeast, size_t atMost) {
   DEBUG_BEGIN_BLOCK();
+  size_t skipped = 0;
+  TRI_ASSERT(_iter != nullptr);
+
   if (_done) {
-    return 0;
+    return skipped;
   }
 
-  size_t skipped = 0;
+  while (skipped < atLeast) {
+    if (_buffer.empty()) {
+      size_t toFetch = (std::min)(DefaultBatchSize(), atMost);
+      if (!getBlock(toFetch, toFetch)) {
+        _done = true;
+        return skipped;
+      }
+      _pos = 0;  // this is in the first block
+      _iter->reset();
+    }
 
-  // TODO: actually skip some
+    // if we get here, then _buffer.front() exists
+    AqlItemBlock* cur = _buffer.front();
+    uint64_t skippedHere = 0;
 
+    if (_iter->hasMore()) {
+      _iter->skip(atMost - skipped, skippedHere);
+    }
+
+    skipped += skippedHere;
+
+    if (skipped < atLeast) {
+      TRI_ASSERT(!_iter->hasMore());
+      // not skipped enough re-initialize fetching of documents
+      _iter->reset();
+      if (++_pos >= cur->size()) {
+        _buffer.pop_front();  // does not throw
+        returnBlock(cur);
+        _pos = 0;
+      }
+    }
+  }
+
+  // _engine->_stats.scannedFull += static_cast<int64_t>(skipped);
+  // TODO stats?
+  // We skipped atLeast documents
   return skipped;
+
+  // cppcheck-suppress style
   DEBUG_END_BLOCK();
 }

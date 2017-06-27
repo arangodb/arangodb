@@ -27,6 +27,7 @@
 #include "ExecutionBlock.h"
 #include "Aql/ExecutionNode.h"
 #include "Views/ViewIterator.h"
+#include "VocBase/LogicalView.h"
 
 namespace arangodb {
 namespace aql {
@@ -34,8 +35,6 @@ namespace aql {
 class AqlItemBlock;
 
 class ExecutionEngine;
-
-class LogicalView;
 
 class EnumerateViewBlock : public ExecutionBlock {
  public:
@@ -53,8 +52,10 @@ class EnumerateViewBlock : public ExecutionBlock {
   size_t skipSome(size_t atLeast, size_t atMost) override final;
 
  private:
-   LogicalView* _view;
+   std::shared_ptr<LogicalView> _view;
+   Variable const* _outVariable;
    std::unique_ptr<ViewIterator> _iter;
+   std::unique_ptr<ManagedDocumentResult> _mmdr;
 };
 
 }

@@ -201,6 +201,7 @@ class ViewIteratorBase: public arangodb::ViewIterator {
     arangodb::transaction::Methods& trx,
     CompoundReader&& reader
   );
+  virtual bool hasMore() const override;
   virtual bool hasExtra() const override;
   virtual bool nextExtra(ExtraCallback const& callback, size_t limit) override;
   virtual bool readDocument(
@@ -242,6 +243,12 @@ ViewIteratorBase::ViewIteratorBase(
    _typeName(typeName) {
   _subDocIdBits = _reader.size();
   _subDocIdMask = (size_t(1) <<_subDocIdBits) - 1;
+}
+
+bool ViewIteratorBase::hasMore() const {
+  // shut up compiler warning...
+  // FIXME TODO: implementation
+  return false;
 }
 
 bool ViewIteratorBase::hasExtra() const {

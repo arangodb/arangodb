@@ -831,7 +831,9 @@ class EnumerateViewNode : public ExecutionNode {
       : ExecutionNode(plan, id),
         _vocbase(vocbase),
         _view(view),
-        _outVariable(outVariable) {
+        _outVariable(outVariable),
+        _node(nullptr), // TODO
+        _sortCondition(nullptr) /* TODO */ {
     TRI_ASSERT(_vocbase != nullptr);
     TRI_ASSERT(_view != nullptr);
     TRI_ASSERT(_outVariable != nullptr);
@@ -876,6 +878,12 @@ class EnumerateViewNode : public ExecutionNode {
 
   /// @brief output variable to write to
   Variable const* _outVariable;
+
+  /// @brief holds the full condition for this node
+  AstNode const* _node;
+
+  /// @brief sort condition to pass to the view
+  SortCondition const* _sortCondition;
 };
 
 /// @brief class LimitNode

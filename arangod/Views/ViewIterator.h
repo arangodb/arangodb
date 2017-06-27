@@ -66,6 +66,8 @@ class ViewIterator {
   // if no more results are available, the method must return `false`.
   virtual bool next(TokenCallback const& callback, size_t limit) = 0;
 
+  virtual bool hasMore() const = 0;
+
   // reset the iterator to its beginning
   virtual void reset() = 0;
 
@@ -74,7 +76,7 @@ class ViewIterator {
 
   virtual void skip(uint64_t count, uint64_t& skipped) = 0; // same as IndexIterator API
 
-  virtual bool readDocument(arangodb::DocumentIdentifierToken const& token, arangodb::ManagedDocumentResult& result) const = 0; 
+  virtual bool readDocument(arangodb::DocumentIdentifierToken const& token, arangodb::ManagedDocumentResult& result) const = 0;
 
  protected:
   ViewImplementation* _view;

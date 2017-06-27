@@ -1331,7 +1331,9 @@ EnumerateViewNode::EnumerateViewNode(ExecutionPlan* plan,
     : ExecutionNode(plan, base),
       _vocbase(plan->getAst()->query()->vocbase()),
       _view(_vocbase->lookupView(base.get("view").copyString())),
-      _outVariable(varFromVPack(plan->getAst(), base, "outVariable")) {}
+      _outVariable(varFromVPack(plan->getAst(), base, "outVariable")),
+      _node(nullptr), // TODO
+      _sortCondition(nullptr) /* TODO */ {}
 
 /// @brief toVelocyPack, for EnumerateViewNode
 void EnumerateViewNode::toVelocyPackHelper(VPackBuilder& nodes,
@@ -1344,6 +1346,8 @@ void EnumerateViewNode::toVelocyPackHelper(VPackBuilder& nodes,
 
   nodes.add(VPackValue("outVariable"));
   _outVariable->toVelocyPack(nodes);
+
+  // TODO _node and _sortCondition
 
   // And close it:
   nodes.close();
