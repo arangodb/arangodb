@@ -49,16 +49,24 @@
       if ($(e.target).hasClass('inner') || $(e.target).is('span')) {
         return;
       }
+      var visible = $(e.currentTarget).find('.collection-row').is(':visible');
+
       var db = $(e.currentTarget).attr('id').split('-')[0];
       $('.collection-row').hide();
       // if collections are available
       if ($(e.currentTarget).find('.collection-row').children().length > 4) {
-        $(e.currentTarget).find('.collection-row').fadeIn('fast');
-        // caret animation
+        // if menu was already visible -> then hide
         $('.db-row .fa-caret-down').hide();
         $('.db-row .fa-caret-right').show();
-        $(e.currentTarget).find('.fa-caret-down').show();
-        $(e.currentTarget).find('.fa-caret-right').hide();
+        if (visible) {
+          $(e.currentTarget).find('.collection-row').hide();
+        } else {
+          // else show menu
+          $(e.currentTarget).find('.collection-row').fadeIn('fast');
+          // caret animation
+          $(e.currentTarget).find('.fa-caret-down').show();
+          $(e.currentTarget).find('.fa-caret-right').hide();
+        }
       } else {
         // caret animation
         $('.db-row .fa-caret-down').hide();
