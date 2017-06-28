@@ -354,6 +354,9 @@ def unstashBinaries(edition, os) {
 // --SECTION--                                                     SCRIPTS BUILD
 // -----------------------------------------------------------------------------
 
+buildsSuccess = [:]
+allBuildsSuccessful = true
+
 def buildEdition(edition, os) {
     if (! cleanBuild) {
         try {
@@ -387,22 +390,22 @@ def buildEdition(edition, os) {
 
 def buildStepCheck(edition, os, full) {
     if (full && ! buildFull) {
-        echo "Not building combination " + os + " " + edition + " "
+        echo "Not building combination ${os} ${edition}"
         return false
     }
 
     if (os == 'linux' && ! buildLinux) {
-        echo "Not building " + os + " version"
+        echo "Not building ${os} version"
         return false
     }
 
     if (os == 'mac' && ! buildMac) {
-        echo "Not building " + os + " version"
+        echo "Not building ${os} version"
         return false
     }
 
     if (os == 'windows' && ! buildWindows) {
-        echo "Not building " + os + " version"
+        echo "Not building ${os} version"
         return false
     }
 
@@ -422,9 +425,20 @@ def buildStepCheck(edition, os, full) {
 def buildStep(edition, os) {
     return {
         node(os) {
-            unstashSourceCode(os)
-            buildEdition(edition, os)
-            stashBinaries(edition, os)
+            def name = "${edition}-${os}"
+
+            try {
+                unstashSourceCode(os)
+                buildEdition(edition, os)
+                stashBinaries(edition, os)
+                buildsSuccess[name] = true
+            }
+            catch (exc) {
+                echo exc.toString()
+                buildsSuccess[name] = false
+                allBuildsSuccessful = false
+                currentBuild.result = 'UNSTABLE'
+            }
         }
     }
 }
@@ -507,23 +521,29 @@ def testCheck(edition, os, mode, engine, full) {
         return false
     }
 
+    def name = "${edition}-${os}"
+
+    if (buildsSuccess.containsKey(name) && ! buildsSuccess[name]) {
+       echo "Not testing failed build ${name}"
+    }
+
     if (full && ! buildFull) {
-        echo "Not building combination " + os + " " + edition + " "
+        echo "Not building combination ${os} ${edition}"
         return false
     }
 
     if (os == 'linux' && ! buildLinux) {
-        echo "Not building " + os + " version"
+        echo "Not building ${os} version"
         return false
     }
 
     if (os == 'mac' && ! buildMac) {
-        echo "Not building " + os + " version"
+        echo "Not building ${os} version"
         return false
     }
 
     if (os == 'windows' && ! buildWindows) {
-        echo "Not building " + os + " version"
+        echo "Not building ${os} version"
         return false
     }
 
@@ -553,7 +573,7 @@ def testName(edition, os, mode, engine, full) {
 def testStep(edition, os, mode, engine) {
     return {
         node(os) {
-            echo "Running " + mode + " " + edition + " " + engine + " " + os + " test"
+            echo "Running " + mode + " " + edition + " " + engine + " ${os} test"
 
             unstashBinaries(edition, os)
             testEdition(edition, os, mode, engine)
@@ -601,17 +621,17 @@ def testResilienceCheck(os, engine, foxx, full) {
     }
 
     if (os == 'linux' && ! buildLinux) {
-        echo "Not building " + os + " version"
+        echo "Not building ${os} version"
         return false
     }
 
     if (os == 'mac' && ! buildMac) {
-        echo "Not building " + os + " version"
+        echo "Not building ${os} version"
         return false
     }
 
     if (os == 'windows' && ! buildWindows) {
-        echo "Not building " + os + " version"
+        echo "Not building ${os} version"
         return false
     }
 
@@ -685,4 +705,10 @@ stage('tests') {
 
 stage('resilience') {
     testResilienceParallel();
+}
+
+stage('result') {
+    if (! allBuildsSuccessful) {
+        currentBuild.result = 'FAILURE'
+    }
 }
