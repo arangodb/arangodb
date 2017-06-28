@@ -27,18 +27,30 @@ Then create the setup script with the following content:
 ```js
 'use strict';
 const db = require('@arangodb').db;
-const sessions = module.context.collectionName('sessions');
-const users = module.context.collectionName('users');
+const documentCollections = ['sessions','users'];
+const edgeCollections = [];
 
-if (!db._collection(sessions)) {
-  db._createDocumentCollection(sessions);
+for (const localName of documentCollections) {
+  const qualifiedName = module.context.collectionName(localName);
+  if (!db._collection(qualifiedName)) {
+    db._createDocumentCollection(qualifiedName);
+  } else if (module.context.isProduction) {
+    console.warn(`collection ${qualifiedName} already exists. Leaving it untouched.`)
+  }
 }
 
-if (!db._collection(users)) {
-  db._createDocumentCollection(users);
+for (const localName of edgeCollections) {
+  const qualifiedName = module.context.collectionName(localName);
+  if (!db._collection(qualifiedName)) {
+    db._createEdgeCollection(qualifiedName);
+  } else if (module.context.isProduction) {
+    console.warn(`collection ${qualifiedName} already exists. Leaving it untouched.`)
+  }
 }
 
-db._collection(users).ensureIndex({
+const qualifiedUsers = module.context.collectionName('users');
+
+db._collection(qualifiedUsers).ensureIndex({
   type: 'hash',
   fields: ['username'],
   unique: true
