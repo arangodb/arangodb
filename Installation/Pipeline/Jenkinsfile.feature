@@ -1,8 +1,5 @@
 //  -*- mode: groovy-mode
 
-def jenkinsMaster = 'jenkins-master'
-def jenkinsSlave = 'jenkins'
-
 echo "BRANCH_NAME: " + env.BRANCH_NAME
 echo "CHANGE_ID: " + env.CHANGE_ID
 echo "CHANGE_TARGET: " + env.CHANGE_TARGET
@@ -91,6 +88,10 @@ runTests = params.runTests
 // -----------------------------------------------------------------------------
 // --SECTION--                                             CONSTANTS AND HELPERS
 // -----------------------------------------------------------------------------
+
+// users
+jenkinsMaster = 'jenkins-master@c1'
+jenkinsSlave = 'jenkins'
 
 // github repositiory for resilience tests
 resilienceRepo = 'https://github.com/arangodb/resilience-tests'
@@ -255,14 +256,14 @@ def unstashSourceCode(os) {
 
     if (os == 'linux' || os == 'mac') {
         lock('cache') {
-            sh 'scp "' + jenkinsMaster + '@c1:' + cacheDir + '/source.zip" source.zip'
+            sh 'scp "' + jenkinsMaster + ':' + cacheDir + '/source.zip" source.zip'
         }
 
         sh 'unzip -o -q source.zip'
     }
     else if (os == 'windows') {
         lock('cache') {
-            bat 'scp -F c:/Users/jenkins/ssh_config "' + jenkinsMaster + '@c1:' + cacheDir + '/source.zip" source.zip'
+            bat 'scp -F c:/Users/jenkins/ssh_config "' + jenkinsMaster + ':' + cacheDir + '/source.zip" source.zip'
         }
 
         bat 'c:\\cmake\\bin\\cmake -E tar xf source.zip'
@@ -277,7 +278,7 @@ def stashBuild(edition, os) {
         sh 'zip -r -1 -y -q ' + name + ' build-' + edition
 
         lock('cache') {
-            sh 'scp ' + name + ' "' + jenkinsMaster + '@c1:' + cacheDir + '"'
+            sh 'scp ' + name + ' "' + jenkinsMaster + ':' + cacheDir + '"'
         }
     }
     else if (os == 'windows') {
@@ -285,7 +286,7 @@ def stashBuild(edition, os) {
         PowerShell('Compress -Archive -Path build-' + edition + ' -DestinationPath ' + name)
 
         lock('cache') {
-            bat 'scp -F c:/Users/jenkins/ssh_config ' + name + ' "' + jenkinsMaster + '@c1:' + cacheDir + '"'
+            bat 'scp -F c:/Users/jenkins/ssh_config ' + name + ' "' + jenkinsMaster + ':' + cacheDir + '"'
         }
     }
 }
@@ -295,14 +296,14 @@ def unstashBuild(edition, os) {
 
     if (os == 'linux' || os == 'mac') {
         lock('cache') {
-            sh 'scp "' + jenkinsMaster + '@c1:' + cacheDir + '/' + name + '" ' + name
+            sh 'scp "' + jenkinsMaster + ':' + cacheDir + '/' + name + '" ' + name
         }
 
         sh 'unzip -o -q ' + name
     }
     else if (os == 'windows') {
         lock('cache') {
-            bat 'scp -F c:/Users/jenkins/ssh_config "' + jenkinsMaster + '@c1:' + cacheDir + '/' + name + '" ' + name
+            bat 'scp -F c:/Users/jenkins/ssh_config "' + jenkinsMaster + ':' + cacheDir + '/' + name + '" ' + name
         }
 
         bat 'c:\\cmake\\bin\\cmake -E tar xf ' + name
@@ -323,7 +324,7 @@ def stashBinaries(edition, os) {
         }
 
         lock('cache') {
-            sh 'scp ' + name + ' "' + jenkinsMaster + '@c1:' + cacheDir + '"'
+            sh 'scp ' + name + ' "' + jenkinsMaster + ':' + cacheDir + '"'
         }
     }
 }
@@ -335,7 +336,7 @@ def unstashBinaries(edition, os) {
 
     if (os == 'linux' || os == 'mac') {
         lock('cache') {
-            sh 'scp "' + jenkinsMaster + '@c1:' + cacheDir + '/' + name + '" ' + name
+            sh 'scp "' + jenkinsMaster + ':' + cacheDir + '/' + name + '" ' + name
         }
 
         sh 'unzip -o -q ' + name
