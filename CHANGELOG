@@ -1,6 +1,8 @@
 devel
 -----
 
+* fix log output in the front-end, it stop of too many messages
+
 * potentially fixed issue #2559: Duplicate _key generated on insertion
 
 * fix invalid results (too many) when a skipping LIMIT was used for a
