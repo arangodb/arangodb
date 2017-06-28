@@ -26,7 +26,7 @@ STD_COLOR="${C[White]}"
 OK_COLOR="${C[Green]}"
 RESET="${C[RESET]}"
 
-newVersionNumber=$(cat ../../VERSION)
+newVersionNumber=$(cat ../../VERSION | tr -d '\r\n')
 
 
 function start_X11_display()
@@ -435,6 +435,8 @@ function build-book()
     (cd "ppbooks/${NAME}" && gitbook build "./" "./../../books/${NAME}")
     rm -f "./books/${NAME}/HEADER.html"
     rm -f "./books/${NAME}/FOOTER.html"
+    echo "${STD_COLOR} - deleting markdown files in output (gitbook 3.x bug)"
+    find "./books/${NAME}/" -type f -name "*.md" -delete
     echo "${STD_COLOR} - putting in deprecated items ${RESET}"
     python ../Scripts/deprecated.py || exit 1
     
