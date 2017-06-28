@@ -138,6 +138,7 @@ RequestExecutionLevel highest
   ${Else}
     SetShellVarContext current
     ${If} $INSTDIR == ""
+    ${OrIf} $0 == 1
       StrCpy $INSTDIR "$LOCALAPPDATA\@CPACK_PACKAGE_INSTALL_DIRECTORY@"
     ${EndIf}
     StrCpy $DATADIR "$LOCALAPPDATA\ArangoDB\"
@@ -628,7 +629,17 @@ Function InstallOptionsPage2
    IfSilent 0 continueUI
    Return
 continueUI:
-  ${If} $UpgradeInstall == "1"
+
+  ${If} $UpgradeInstall == "0"
+    IfFileExists "$DATADIR/databases" cleanupDBDirectory 0
+    IfFileExists "$DATADIR/journals" cleanupDBDirectory 0
+    IfFileExists "$DATADIR/rocksdb" cleanupDBDirectory 0
+    IfFileExists "$DATADIR/engine-rocksdb" cleanupDBDirectory 0
+    goto startDialog
+    cleanupDBDirectory:
+      MessageBox MB_ICONEXCLAMATION "please clean up the previously existing incomplete database directory $\r$\n$DATADIR$\r$\n before continuing with the installation!"
+    startDialog:
+  ${Else}
     StrCpy $STORAGE_ENGINE "auto"
     Return
   ${EndIf}
@@ -945,9 +956,9 @@ Function .onInstSuccess
 
 continueUI:
   ${If} $LaunchAfterInstall == '1'
-    ${If} $AllowGlobalInstall == "0"
+    ${If} $TRI_INSTALL_SERVICE == "0"
       ExecShell "" "$LaunchLink"
-      sleep 10
+      sleep 5000
       StrCpy $ServiceUp "1"
     ${EndIf}
     ${If} $ServiceUp == 1
@@ -1097,7 +1108,9 @@ Section "Uninstall"
     Pop $0
     DetailPrint 'Stopping ArangoDB fails - Reason: $0'
     MessageBox MB_OK 'Stopping ArangoDB fails - Reason: $0'
-
+  ${Else}
+    IfFileExists "$DATADIR/LOCK" 0 +2
+    MessageBox MB_ICONEXCLAMATION "please stop the ArangoDB before continueing with the uninstallation!"
   ${EndIf}
 Done:
   DetailPrint 'Removing files'

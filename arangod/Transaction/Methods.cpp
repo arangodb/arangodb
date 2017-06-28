@@ -541,6 +541,19 @@ bool transaction::Methods::findIndexHandleForAndNode(
   return true;
 }
 
+/// @brief Find out if any of the given requests has ended in a refusal
+
+static bool findRefusal(std::vector<ClusterCommRequest>& requests) {
+  for (size_t i = 0; i < requests.size(); ++i) {
+    if (requests[i].done &&
+        requests[i].result.status == CL_COMM_RECEIVED &&
+        requests[i].result.answer_code == rest::ResponseCode::NOT_ACCEPTABLE) {
+      return true;
+    }
+  }
+  return false;
+}
+
 transaction::Methods::Methods(
     std::shared_ptr<transaction::Context> const& transactionContext,
     transaction::Options const& options)
@@ -1384,6 +1397,25 @@ OperationResult transaction::Methods::insertLocal(
   TRI_voc_cid_t cid = addCollectionAtRuntime(collectionName);
   LogicalCollection* collection = documentCollection(trxCollection(cid));
 
+  bool isFollower = false;
+  if (_state->isDBServer()) {
+    // Block operation early if we are not supposed to perform it:
+    std::string theLeader = collection->followers()->getLeader();
+    if (theLeader.empty()) {
+      if (!options.isSynchronousReplicationFrom.empty()) {
+        return OperationResult(TRI_ERROR_CLUSTER_SHARD_LEADER_REFUSES_REPLICATION);
+      }
+    } else {  // we are a follower following theLeader
+      isFollower = true;
+      if (options.isSynchronousReplicationFrom.empty()) {
+        return OperationResult(TRI_ERROR_CLUSTER_SHARD_LEADER_RESIGNED);
+      }
+      if (options.isSynchronousReplicationFrom != theLeader) {
+        return OperationResult(TRI_ERROR_CLUSTER_SHARD_FOLLOWER_REFUSES_OPERATION);
+      }
+    }
+  }
+
   if (options.returnNew) {
     pinData(cid);  // will throw when it fails
   }
@@ -1456,7 +1488,7 @@ OperationResult transaction::Methods::insertLocal(
     // Now replicate the same operation on all followers:
     auto const& followerInfo = collection->followers();
     followers = followerInfo->get();
-    doingSynchronousReplication = followers->size() > 0;
+    doingSynchronousReplication = !isFollower && followers->size() > 0;
   }
 
   if (doingSynchronousReplication && res.ok()) {
@@ -1469,7 +1501,8 @@ OperationResult transaction::Methods::insertLocal(
         "/_db/" + arangodb::basics::StringUtils::urlEncode(databaseName()) +
         "/_api/document/" +
         arangodb::basics::StringUtils::urlEncode(collection->name()) +
-        "?isRestore=true";
+        "?isRestore=true&isSynchronousReplication=" +
+        ServerState::instance()->getId();
 
     VPackBuilder payload;
 
@@ -1518,7 +1551,16 @@ OperationResult transaction::Methods::insertLocal(
         size_t nrGood = cc->performRequests(requests, chooseTimeout(count),
                                             nrDone, Logger::REPLICATION);
         if (nrGood < followers->size()) {
-          // we drop all followers that were not successful:
+          // If any would-be-follower refused to follow there must be a
+          // new leader in the meantime, in this case we must not allow
+          // this operation to succeed, we simply return with a refusal
+          // error (note that we use the follower version, since we have
+          // lost leadership):
+          if (findRefusal(requests)) {
+            return OperationResult(TRI_ERROR_CLUSTER_SHARD_LEADER_RESIGNED);
+          }
+
+          // Otherwise we drop all followers that were not successful:
           for (size_t i = 0; i < followers->size(); ++i) {
             bool replicationWorked =
                 requests[i].done &&
@@ -1670,6 +1712,25 @@ OperationResult transaction::Methods::modifyLocal(
   TRI_voc_cid_t cid = addCollectionAtRuntime(collectionName);
   LogicalCollection* collection = documentCollection(trxCollection(cid));
 
+  bool isFollower = false;
+  if (_state->isDBServer()) {
+    // Block operation early if we are not supposed to perform it:
+    std::string theLeader = collection->followers()->getLeader();
+    if (theLeader.empty()) {
+      if (!options.isSynchronousReplicationFrom.empty()) {
+        return OperationResult(TRI_ERROR_CLUSTER_SHARD_LEADER_REFUSES_REPLICATION);
+      }
+    } else {  // we are a follower following theLeader
+      isFollower = true;
+      if (options.isSynchronousReplicationFrom.empty()) {
+        return OperationResult(TRI_ERROR_CLUSTER_SHARD_LEADER_RESIGNED);
+      }
+      if (options.isSynchronousReplicationFrom != theLeader) {
+        return OperationResult(TRI_ERROR_CLUSTER_SHARD_FOLLOWER_REFUSES_OPERATION);
+      }
+    }
+  }
+
   if (options.returnOld || options.returnNew) {
     pinData(cid);  // will throw when it fails
   }
@@ -1774,7 +1835,7 @@ OperationResult transaction::Methods::modifyLocal(
     // Now replicate the same operation on all followers:
     auto const& followerInfo = collection->followers();
     followers = followerInfo->get();
-    doingSynchronousReplication = followers->size() > 0;
+    doingSynchronousReplication = !isFollower && followers->size() > 0;
   }
 
   if (doingSynchronousReplication && res.ok()) {
@@ -1790,7 +1851,8 @@ OperationResult transaction::Methods::modifyLocal(
           "/_db/" + arangodb::basics::StringUtils::urlEncode(databaseName()) +
           "/_api/document/" +
           arangodb::basics::StringUtils::urlEncode(collection->name()) +
-          "?isRestore=true";
+          "?isRestore=true&isSynchronousReplication=" +
+          ServerState::instance()->getId();
 
       VPackBuilder payload;
 
@@ -1840,7 +1902,16 @@ OperationResult transaction::Methods::modifyLocal(
         size_t nrGood = cc->performRequests(requests, chooseTimeout(count),
                                             nrDone, Logger::REPLICATION);
         if (nrGood < followers->size()) {
-          // we drop all followers that were not successful:
+          // If any would-be-follower refused to follow there must be a
+          // new leader in the meantime, in this case we must not allow
+          // this operation to succeed, we simply return with a refusal
+          // error (note that we use the follower version, since we have
+          // lost leadership):
+          if (findRefusal(requests)) {
+            return OperationResult(TRI_ERROR_CLUSTER_SHARD_LEADER_RESIGNED);
+          }
+
+          // Otherwise we drop all followers that were not successful:
           for (size_t i = 0; i < followers->size(); ++i) {
             bool replicationWorked =
                 requests[i].done &&
@@ -1941,6 +2012,25 @@ OperationResult transaction::Methods::removeLocal(
   TRI_voc_cid_t cid = addCollectionAtRuntime(collectionName);
   LogicalCollection* collection = documentCollection(trxCollection(cid));
 
+  bool isFollower = false;
+  if (_state->isDBServer()) {
+    // Block operation early if we are not supposed to perform it:
+    std::string theLeader = collection->followers()->getLeader();
+    if (theLeader.empty()) {
+      if (!options.isSynchronousReplicationFrom.empty()) {
+        return OperationResult(TRI_ERROR_CLUSTER_SHARD_LEADER_REFUSES_REPLICATION);
+      }
+    } else {  // we are a follower following theLeader
+      isFollower = true;
+      if (options.isSynchronousReplicationFrom.empty()) {
+        return OperationResult(TRI_ERROR_CLUSTER_SHARD_LEADER_RESIGNED);
+      }
+      if (options.isSynchronousReplicationFrom != theLeader) {
+        return OperationResult(TRI_ERROR_CLUSTER_SHARD_FOLLOWER_REFUSES_OPERATION);
+      }
+    }
+  }
+
   if (options.returnOld) {
     pinData(cid);  // will throw when it fails
   }
@@ -2028,7 +2118,7 @@ OperationResult transaction::Methods::removeLocal(
     // Now replicate the same operation on all followers:
     auto const& followerInfo = collection->followers();
     followers = followerInfo->get();
-    doingSynchronousReplication = followers->size() > 0;
+    doingSynchronousReplication = !isFollower && followers->size() > 0;
   }
 
   if (doingSynchronousReplication && res.ok()) {
@@ -2045,7 +2135,8 @@ OperationResult transaction::Methods::removeLocal(
           "/_db/" + arangodb::basics::StringUtils::urlEncode(databaseName()) +
           "/_api/document/" +
           arangodb::basics::StringUtils::urlEncode(collection->name()) +
-          "?isRestore=true";
+          "?isRestore=true&isSynchronousReplication=" +
+          ServerState::instance()->getId();
 
       VPackBuilder payload;
 
@@ -2093,6 +2184,15 @@ OperationResult transaction::Methods::removeLocal(
         size_t nrGood = cc->performRequests(requests, chooseTimeout(count),
                                             nrDone, Logger::REPLICATION);
         if (nrGood < followers->size()) {
+          // If any would-be-follower refused to follow there must be a
+          // new leader in the meantime, in this case we must not allow
+          // this operation to succeed, we simply return with a refusal
+          // error (note that we use the follower version, since we have
+          // lost leadership):
+          if (findRefusal(requests)) {
+            return OperationResult(TRI_ERROR_CLUSTER_SHARD_LEADER_RESIGNED);
+          }
+
           // we drop all followers that were not successful:
           for (size_t i = 0; i < followers->size(); ++i) {
             bool replicationWorked =
@@ -2235,6 +2335,27 @@ OperationResult transaction::Methods::truncateLocal(
     std::string const& collectionName, OperationOptions& options) {
   TRI_voc_cid_t cid = addCollectionAtRuntime(collectionName);
 
+  LogicalCollection* collection = documentCollection(trxCollection(cid));
+
+  bool isFollower = false;
+  if (_state->isDBServer()) {
+    // Block operation early if we are not supposed to perform it:
+    std::string theLeader = collection->followers()->getLeader();
+    if (theLeader.empty()) {
+      if (!options.isSynchronousReplicationFrom.empty()) {
+        return OperationResult(TRI_ERROR_CLUSTER_SHARD_LEADER_REFUSES_REPLICATION);
+      }
+    } else {  // we are a follower following theLeader
+      isFollower = true;
+      if (options.isSynchronousReplicationFrom.empty()) {
+        return OperationResult(TRI_ERROR_CLUSTER_SHARD_LEADER_RESIGNED);
+      }
+      if (options.isSynchronousReplicationFrom != theLeader) {
+        return OperationResult(TRI_ERROR_CLUSTER_SHARD_FOLLOWER_REFUSES_OPERATION);
+      }
+    }
+  }
+
   pinData(cid);  // will throw when it fails
 
   Result res = lock(trxCollection(cid), AccessMode::Type::WRITE);
@@ -2242,8 +2363,6 @@ OperationResult transaction::Methods::truncateLocal(
   if (!res.ok()) {
     return OperationResult(res);
   }
-
-  LogicalCollection* collection = documentCollection(trxCollection(cid));
 
   try {
     collection->truncate(this, options);
@@ -2258,7 +2377,7 @@ OperationResult transaction::Methods::truncateLocal(
     // Now replicate the same operation on all followers:
     auto const& followerInfo = collection->followers();
     followers = followerInfo->get();
-    if (followers->size() > 0) {
+    if (!isFollower && followers->size() > 0) {
       // Now replicate the good operations on all followers:
       auto cc = arangodb::ClusterComm::instance();
       if (cc != nullptr) {
@@ -2267,7 +2386,8 @@ OperationResult transaction::Methods::truncateLocal(
             "/_db/" + arangodb::basics::StringUtils::urlEncode(databaseName()) +
             "/_api/collection/" +
             arangodb::basics::StringUtils::urlEncode(collectionName) +
-            "/truncate";
+            "/truncate?isSynchronousReplication=" +
+            ServerState::instance()->getId();
 
         auto body = std::make_shared<std::string>();
 
@@ -2281,6 +2401,14 @@ OperationResult transaction::Methods::truncateLocal(
         size_t nrGood = cc->performRequests(requests, TRX_FOLLOWER_TIMEOUT,
                                             nrDone, Logger::REPLICATION);
         if (nrGood < followers->size()) {
+          // If any would-be-follower refused to follow there must be a
+          // new leader in the meantime, in this case we must not allow
+          // this operation to succeed, we simply return with a refusal
+          // error (note that we use the follower version, since we have
+          // lost leadership):
+          if (findRefusal(requests)) {
+            return OperationResult(TRI_ERROR_CLUSTER_SHARD_LEADER_RESIGNED);
+          }
           // we drop all followers that were not successful:
           for (size_t i = 0; i < followers->size(); ++i) {
             bool replicationWorked =

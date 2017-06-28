@@ -160,8 +160,6 @@ class SocketTask : virtual public Task {
   WriteBuffer _writeBuffer;
   std::list<WriteBuffer> _writeBuffers;
 
-  boost::asio::io_service::strand _strand;
-
   std::unique_ptr<Socket> _peer;
   boost::posix_time::milliseconds _keepAliveTimeout;
   boost::asio::deadline_timer _keepAliveTimer;

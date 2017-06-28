@@ -417,8 +417,8 @@ size_t RocksDBEdgeIndex::memory() const {
   RocksDBKeyBounds bounds = RocksDBKeyBounds::EdgeIndex(_objectId);
   rocksdb::Range r(bounds.start(), bounds.end());
   uint64_t out;
-  db->GetApproximateSizes(&r, 1, &out, true);
-  return (size_t)out;
+  db->GetApproximateSizes(RocksDBColumnFamily::edge(), &r, 1, &out, static_cast<uint8_t>(rocksdb::DB::SizeApproximationFlags::INCLUDE_MEMTABLES | rocksdb::DB::SizeApproximationFlags::INCLUDE_FILES));
+  return static_cast<size_t>(out);
 }
 
 /// @brief return a VelocyPack representation of the index
@@ -448,7 +448,7 @@ Result RocksDBEdgeIndex::insert(transaction::Methods* trx,
 
   // acquire rocksdb transaction
   RocksDBMethods* mthd = rocksutils::toRocksMethods(trx);
-  Result r = mthd->Put(_cf, rocksdb::Slice(key.string()), value.string(),
+  Result r = mthd->Put(_cf, RocksDBKey(rocksdb::Slice(key.string())), value.string(),
                        rocksutils::index);
   if (r.ok()) {
     std::hash<StringRef> hasher;
@@ -482,7 +482,7 @@ Result RocksDBEdgeIndex::remove(transaction::Methods* trx,
 
   // acquire rocksdb transaction
   RocksDBMethods* mthd = rocksutils::toRocksMethods(trx);
-  Result res = mthd->Delete(_cf, rocksdb::Slice(key.string()));
+  Result res = mthd->Delete(_cf, RocksDBKey(rocksdb::Slice(key.string())));
   if (res.ok()) {
     std::hash<StringRef> hasher;
     uint64_t hash = static_cast<uint64_t>(hasher(fromToRef));
@@ -513,7 +513,7 @@ void RocksDBEdgeIndex::batchInsert(
         RocksDBKey::EdgeIndexValue(_objectId, fromToRef, doc.first);
 
     blackListKey(fromToRef);
-    Result r = mthd->Put(_cf, rocksdb::Slice(key.string()), rocksdb::Slice(),
+    Result r = mthd->Put(_cf, RocksDBKey(rocksdb::Slice(key.string())), rocksdb::Slice(),
                          rocksutils::index);
     if (!r.ok()) {
       queue->setStatus(r.errorNumber());

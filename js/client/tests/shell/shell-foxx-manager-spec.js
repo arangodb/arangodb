@@ -173,5 +173,128 @@ describe('Foxx Manager', function () {
         expect(db._collection(setupCol)).to.be.an.instanceOf(ArangoCollection);
       });
     });
+
+    describe('installed service with malformed setup', function () {
+      const malformedSetupApp = fs.join(basePath, 'malformed-setup-file');
+
+      beforeEach(function () {
+        try {
+          FoxxManager.uninstall(mount, {force: true});
+        } catch (e) {
+        }
+      });
+
+      afterEach(function () {
+        try {
+          FoxxManager.uninstall(mount, {force: false});
+        } catch (e) {
+        }
+      });
+
+      it('should not contains in _apps', function () {
+        try {
+          FoxxManager.install(malformedSetupApp, mount);
+        } catch (e) {
+        }
+        const size = db._query(aql`
+          FOR service IN _apps
+          FILTER service.mount == ${mount}
+          RETURN service.checksum
+        `).toArray().length;
+        expect(size).to.equal(0);
+      });
+
+      it('should not be available', function () {
+        try {
+          FoxxManager.install(malformedSetupApp, mount);
+        } catch (e) {
+        }
+        const url = `${arango.getEndpoint().replace('tcp://', 'http://')}${mount}/test`;
+        const res = download(url);
+        expect(res.code).to.equal(404);
+      });
+    });
+
+    describe('installed service with malformed setup path', function () {
+      const malformedSetupApp = fs.join(basePath, 'malformed-setup-path');
+
+      beforeEach(function () {
+        try {
+          FoxxManager.uninstall(mount, {force: true});
+        } catch (e) {
+        }
+      });
+
+      afterEach(function () {
+        try {
+          FoxxManager.uninstall(mount, {force: false});
+        } catch (e) {
+        }
+      });
+
+      it('should not contains in _apps', function () {
+        try {
+          FoxxManager.install(malformedSetupApp, mount);
+        } catch (e) {
+        }
+        const size = db._query(aql`
+          FOR service IN _apps
+          FILTER service.mount == ${mount}
+          RETURN service.checksum
+        `).toArray().length;
+        expect(size).to.equal(0);
+      });
+
+      it('should not be available', function () {
+        try {
+          FoxxManager.install(malformedSetupApp, mount);
+        } catch (e) {
+        }
+        const url = `${arango.getEndpoint().replace('tcp://', 'http://')}${mount}/test`;
+        const res = download(url);
+        expect(res.code).to.equal(404);
+      });
+    });
+
+    describe('installed service with broken setup', function () {
+      const malformedSetupApp = fs.join(basePath, 'broken-setup-file');
+
+      beforeEach(function () {
+        try {
+          FoxxManager.uninstall(mount, {force: true});
+        } catch (e) {
+        }
+      });
+
+      afterEach(function () {
+        try {
+          FoxxManager.uninstall(mount, {force: false});
+        } catch (e) {
+        }
+      });
+
+      it('should contains in _apps', function () {
+        try {
+          FoxxManager.install(malformedSetupApp, mount);
+        } catch (e) {
+        }
+        const size = db._query(aql`
+          FOR service IN _apps
+          FILTER service.mount == ${mount}
+          RETURN service.checksum
+        `).toArray().length;
+        expect(size).to.equal(0);
+      });
+
+      it('should not be available', function () {
+        try {
+          FoxxManager.install(malformedSetupApp, mount);
+        } catch (e) {
+        }
+        const url = `${arango.getEndpoint().replace('tcp://', 'http://')}${mount}/test`;
+        const res = download(url);
+        expect(res.code).to.equal(404);
+      });
+    });
   });
 });

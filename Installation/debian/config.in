@@ -36,13 +36,13 @@ if test "$DO_CONFIGURE" = "yes"; then
                 db_get @CPACK_PACKAGE_NAME@/password
                 #if [ -z "$RET" ]; then
                 #fi
-                ROOT_PW="${RET}"
+                ROOT_PW="$RET"
                 ;;
             2)
 		db_input high @CPACK_PACKAGE_NAME@/password_again || true
                 db_go
                 db_get @CPACK_PACKAGE_NAME@/password_again
-                if [ "${ROOT_PW}" = "${RET}" ]; then
+                if [ "$ROOT_PW" = "$RET" ]; then
                     ROOT_PW=""
                 else
                     db_input critical @CPACK_PACKAGE_NAME@/password_mismatch
@@ -55,6 +55,7 @@ if test "$DO_CONFIGURE" = "yes"; then
 		;;
             4)
                 db_input high @CPACK_PACKAGE_NAME@/storage_engine || true
+                db_go
                 ;;
 	    5)
                 db_get @CPACK_PACKAGE_NAME@/upgrade

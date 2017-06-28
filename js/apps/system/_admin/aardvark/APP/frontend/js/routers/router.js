@@ -826,12 +826,14 @@
           $('#databaseNavi').css('display', 'none');
           $('#databaseNaviSelect').css('display', 'none');
         } else {
-          if (!this.databaseView) {
-            this.databaseView = new window.DatabaseView({
-              users: this.userCollection,
-              collection: this.arangoDatabase
-            });
+          if (this.databaseView) {
+            // cleanup events and view
+            this.databaseView.remove();
           }
+          this.databaseView = new window.DatabaseView({
+            users: this.userCollection,
+            collection: this.arangoDatabase
+          });
           this.databaseView.render();
         }
       }.bind(this);

@@ -384,6 +384,9 @@ int Syncer::applyCollectionDumpMarker(
     options.silent = true;
     options.ignoreRevs = true;
     options.isRestore = true;
+    if (!_leaderId.empty()) {
+      options.isSynchronousReplicationFrom = _leaderId;
+    }
 
     try {
       // try insert first
@@ -418,6 +421,9 @@ int Syncer::applyCollectionDumpMarker(
       OperationOptions options;
       options.silent = true;
       options.ignoreRevs = true;
+      if (!_leaderId.empty()) {
+        options.isSynchronousReplicationFrom = _leaderId;
+      }
       OperationResult opRes = trx.remove(collectionName, old, options);
 
       if (opRes.successful() ||

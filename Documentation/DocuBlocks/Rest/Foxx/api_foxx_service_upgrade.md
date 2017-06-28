@@ -20,8 +20,8 @@ The request body can be any of the following formats:
 
 A service definition is an object or form with the following properties or fields:
 
-- *configuration*: a (stringified) JSON object describing configuration values
-- *dependencies*: a (stringified) JSON object describing dependency settings
+- *configuration*: a JSON object describing configuration values
+- *dependencies*: a JSON object describing dependency settings
 - *source*: a fully qualified URL or an absolute path on the server's file system
 
 When using multipart data, the *source* field can also alternatively be a file field
