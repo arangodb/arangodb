@@ -282,7 +282,7 @@ build-book:
 	else \
 		export VERSION="$(newVersionNumber)"; \
 	fi; \
-	ls -l $(NAME)/SUMMARY.md
+	ls -l $(NAME)/SUMMARY.md; \
 	(cd ppbooks/$(NAME) && sed -i -e "s/VERSION_NUMBER/v$${VERSION}/g" styles/header.js); \
 	(cd ppbooks/$(NAME) && sed -i -e "s/VERSION_NUMBER/v$${VERSION}/g" HEADER.html); \
 	(cd ppbooks/$(NAME) && sed -i -e "s/VERSION_NUMBER/v$${VERSION}/g" README.md); \
@@ -306,6 +306,7 @@ build-book:
 	cd ppbooks/$(NAME) && gitbook build ./ ./../../books/$(NAME)
 	rm -f ./books/$(NAME)/HEADER.html
 	rm -f ./books/$(NAME)/FOOTER.html
+	find ./books/$(NAME)/ -type f -name "*.md" -delete
 	python ../Scripts/deprecated.py
 
 	make book-check-markdown-leftovers
