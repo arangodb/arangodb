@@ -29,6 +29,7 @@
 
 #include "catch.hpp"
 
+#include "RocksDBEngine/RocksDBPrefixExtractor.h"
 #include "RocksDBEngine/RocksDBComparator.h"
 #include "RocksDBEngine/RocksDBKey.h"
 #include "RocksDBEngine/RocksDBKeyBounds.h"
@@ -222,11 +223,20 @@ SECTION("test_primary_index") {
 
 /// @brief test edge index
 SECTION("test_edge_index") {
+
   RocksDBKey key1 = RocksDBKey::EdgeIndexValue(0, StringRef("a/1"), 33);
   auto const& s1 = key1.string();
 
-  CHECK(s1.size() == sizeof(char) + sizeof(uint64_t) + strlen("a/1") + sizeof(char) + sizeof(uint64_t));
-  CHECK(s1 == std::string("5\0\0\0\0\0\0\0\0a/1\0!\0\0\0\0\0\0\0", 21));
+  REQUIRE(s1.size() == sizeof(char) + sizeof(uint64_t) + strlen("a/1") + sizeof(char) + sizeof(uint64_t) + sizeof(char));
+  REQUIRE(s1 == std::string("5\0\0\0\0\0\0\0\0a/1\0!\0\0\0\0\0\0\0\xff", 22));
+  
+  // check the variable length edge prefix
+  RocksDBEdgePrefixExtractor* pe = new RocksDBEdgePrefixExtractor();
+  REQUIRE(pe->InDomain(key1.string()));
+  
+  rocksdb::Slice prefix = pe->Transform(key1.string());
+  REQUIRE(prefix.size() == sizeof(char) + sizeof(uint64_t) + strlen("a/1") + sizeof(char));
+  REQUIRE(memcmp(s1.data(), prefix.data(), prefix.size()) == 0);
 }
 }
 
@@ -248,6 +258,41 @@ SECTION("test_geo_index") {
   RocksDBKeyBounds bb2 = RocksDBKeyBounds::GeoIndex(256, true);
   CHECK(cmp->Compare(k2.string(), bb2.start()) > 0);
   CHECK(cmp->Compare(k2.string(), bb2.end()) < 0);
+}
+  
+/// @brief test edge index extractor together with bounds
+SECTION("test_edge_index") {
+  
+  RocksDBKey key1 = RocksDBKey::EdgeIndexValue(0, StringRef("a/1"), 33);
+  // check the variable length edge prefix
+  RocksDBEdgePrefixExtractor* pe = new RocksDBEdgePrefixExtractor();
+  REQUIRE(pe->InDomain(key1.string()));
+  
+  // check the correct key bounds comparisons
+  RocksDBKeyBounds bounds = RocksDBKeyBounds::EdgeIndex(0);
+  REQUIRE(pe->InDomain(bounds.start()));
+  REQUIRE(pe->InDomain(bounds.end()));
+  rocksdb::Slice prefixBegin = pe->Transform(bounds.start());
+  rocksdb::Slice prefixEnd = pe->Transform(bounds.end());
+  REQUIRE_FALSE(pe->InDomain(prefixBegin));
+  REQUIRE_FALSE(pe->InDomain(prefixBegin));
+  REQUIRE(memcmp(bounds.start().data(), prefixBegin.data(), prefixBegin.size()) == 0);
+  REQUIRE(memcmp(bounds.start().data(), prefixBegin.data(), prefixBegin.size()) == 0);
+  
+  // check our assumptions about bound construction
+  rocksdb::Comparator const* cmp = rocksdb::BytewiseComparator();
+  REQUIRE(cmp->Compare(prefixBegin, prefixEnd) < 0);
+  REQUIRE(cmp->Compare(prefixBegin, key1.string()) < 0);
+  REQUIRE(cmp->Compare(prefixEnd, key1.string()) > 0);
+  
+  RocksDBKey key2 = RocksDBKey::EdgeIndexValue(0, StringRef("c/1000"), 33);
+  REQUIRE(cmp->Compare(prefixBegin, key2.string()) < 0);
+  REQUIRE(cmp->Compare(prefixEnd, key2.string()) > 0);
+  
+  // test higher prefix
+  RocksDBKey key3 = RocksDBKey::EdgeIndexValue(1, StringRef("c/1000"), 33);
+  REQUIRE(cmp->Compare(prefixBegin, key3.string()) < 0);
+  REQUIRE(cmp->Compare(prefixEnd, key3.string()) < 0);
 }
   
 }

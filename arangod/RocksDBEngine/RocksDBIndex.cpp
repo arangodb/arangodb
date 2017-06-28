@@ -208,6 +208,9 @@ void RocksDBIndex::truncate(transaction::Methods* trx) {
   rocksdb::Slice end = indexBounds.end();
   rocksdb::Comparator const* cmp = this->comparator();
   options.iterate_upper_bound = &end;
+  if (type() == RocksDBIndex::TRI_IDX_TYPE_EDGE_INDEX) {
+    options.prefix_same_as_start = false;
+  }
 
   std::unique_ptr<rocksdb::Iterator> iter = mthds->NewIterator(options, _cf);
   iter->Seek(indexBounds.start());

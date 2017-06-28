@@ -212,7 +212,8 @@ std::size_t countKeyRange(rocksdb::DB* db, rocksdb::ReadOptions const& opts,
 /// @brief helper method to remove large ranges of data
 /// Should mainly be used to implement the drop() call
 Result removeLargeRange(rocksdb::TransactionDB* db,
-                        RocksDBKeyBounds const& bounds) {
+                        RocksDBKeyBounds const& bounds,
+                        bool prefix_same_as_start) {
   LOG_TOPIC(DEBUG, Logger::FIXME) << "removing large range: " << bounds;
   rocksdb::ColumnFamilyHandle* handle = bounds.columnFamily();
   try {
@@ -236,16 +237,16 @@ Result removeLargeRange(rocksdb::TransactionDB* db,
     rocksdb::WriteBatch batch;
     rocksdb::ReadOptions readOptions;
     readOptions.fill_cache = false;
+    readOptions.prefix_same_as_start = prefix_same_as_start;
+    readOptions.iterate_upper_bound = &upper;
     std::unique_ptr<rocksdb::Iterator> it(db->NewIterator(readOptions, handle));
 
-    // TODO: split this into multiple batches if batches get too big
-    it->Seek(lower);
     size_t counter = 0;
-    while (it->Valid() && cmp->Compare(it->key(), upper) < 0) {
+    for (it->Seek(lower); it->Valid(); it->Next()) {
       TRI_ASSERT(cmp->Compare(it->key(), lower) > 0);
+      TRI_ASSERT(cmp->Compare(it->key(), upper) < 0);
       counter++;
       batch.Delete(it->key());
-      it->Next();
       if (counter == 1000) {
         LOG_TOPIC(DEBUG, Logger::FIXME) << "Intermediate delete write";
         // Persist deletes all 1000 documents

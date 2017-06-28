@@ -323,13 +323,6 @@ void RocksDBEngine::start() {
   // TODO: enable memtable_insert_with_hint_prefix_extractor?
   _options.bloom_locality = 1;
 
-  usleep(1000000);
-  usleep(1000000);
-  usleep(1000000);
-  usleep(1000000);
-  usleep(1000000);
-  usleep(1000000);
-
   // create column families
   std::vector<rocksdb::ColumnFamilyDescriptor> columFamilies;
   rocksdb::ColumnFamilyOptions cfOptions1(_options);
@@ -343,7 +336,7 @@ void RocksDBEngine::start() {
   cfOptions3.prefix_extractor.reset(new RocksDBEdgePrefixExtractor());
   table_options.index_type =
       rocksdb::BlockBasedTableOptions::IndexType::kHashSearch;
-  cfOptions3.table_factory.reset(
+  cfOptions3.table_factory = std::shared_ptr<rocksdb::TableFactory>(
       rocksdb::NewBlockBasedTableFactory(table_options));
   columFamilies.emplace_back("EdgeIndex", cfOptions3);  // 3
 

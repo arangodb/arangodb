@@ -310,17 +310,37 @@ RocksDBKeyBounds::RocksDBKeyBounds(RocksDBEntryType type, uint64_t first)
     }
 
     case RocksDBEntryType::PrimaryIndexValue:
-    case RocksDBEntryType::EdgeIndexValue:
     case RocksDBEntryType::FulltextIndexValue: {
       size_t length = sizeof(char) + sizeof(uint64_t);
       _internals.reserve(length);
       _internals.push_back(static_cast<char>(_type));
       uint64ToPersistent(_internals.buffer(), first);
+      
+      _internals.separate();
+      
+      _internals.push_back(static_cast<char>(_type));
+      uint64ToPersistent(_internals.buffer(), first);
+      _internals.push_back(0xFFU);
+      break;
+    }
+    
+    case RocksDBEntryType::EdgeIndexValue: {
+      size_t length = sizeof(char) + sizeof(uint64_t);
+      _internals.reserve(length);
+      _internals.push_back(static_cast<char>(_type));
+      uint64ToPersistent(_internals.buffer(), first);
+      _internals.push_back('\0');
+      _internals.push_back(_stringSeparator);
+      uint64ToPersistent(_internals.buffer(), 0);
+      _internals.push_back(0xFFU);
 
       _internals.separate();
 
       _internals.push_back(static_cast<char>(_type));
       uint64ToPersistent(_internals.buffer(), first);
+      _internals.push_back(0xFFU);
+      _internals.push_back(_stringSeparator);
+      uint64ToPersistent(_internals.buffer(), UINT64_MAX);
       _internals.push_back(0xFFU);
       break;
     }
@@ -344,6 +364,7 @@ RocksDBKeyBounds::RocksDBKeyBounds(RocksDBEntryType type, uint64_t first,
       _internals.buffer().append(second.data(), second.length());
       _internals.push_back(_stringSeparator);
       uint64ToPersistent(_internals.buffer(), 0);
+      _internals.push_back(0xFFU);
 
       _internals.separate();
 
@@ -352,7 +373,7 @@ RocksDBKeyBounds::RocksDBKeyBounds(RocksDBEntryType type, uint64_t first,
       _internals.buffer().append(second.data(), second.length());
       _internals.push_back(_stringSeparator);
       uint64ToPersistent(_internals.buffer(), UINT64_MAX);
-
+      _internals.push_back(0xFFU);
       break;
     }
 

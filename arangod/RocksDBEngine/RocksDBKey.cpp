@@ -343,6 +343,7 @@ RocksDBKey::RocksDBKey(RocksDBEntryType type, uint64_t first,
       _buffer.append(second.data(), second.length());
       _buffer.push_back(_stringSeparator);
       uint64ToPersistent(_buffer, third);
+      _buffer.push_back(0xFFU);
       break;
     }
 
@@ -437,7 +438,13 @@ TRI_voc_rid_t RocksDBKey::revisionId(char const* data, size_t size) {
       TRI_ASSERT(size == (sizeof(char) + (2 * sizeof(uint64_t))));
       return uint64FromPersistent(data + sizeof(char) + sizeof(uint64_t));
     }
-    case RocksDBEntryType::EdgeIndexValue:
+    case RocksDBEntryType::EdgeIndexValue: {
+      TRI_ASSERT(size >= (sizeof(char)*3 + (2 * sizeof(uint64_t))));
+      // 1 byte prefix + 8 byte objectID + _from/_to + 1 byte \0
+      // + 8 byte revision ID + 1-byte 0xff
+      return uint64FromPersistent(data + size - sizeof(uint64_t) - sizeof(char));
+      break;
+    }
     case RocksDBEntryType::IndexValue:
     case RocksDBEntryType::FulltextIndexValue: {
       TRI_ASSERT(size >= (sizeof(char) + (2 * sizeof(uint64_t))));
@@ -473,9 +480,10 @@ StringRef RocksDBKey::vertexId(char const* data, size_t size) {
   RocksDBEntryType type = static_cast<RocksDBEntryType>(data[0]);
   switch (type) {
     case RocksDBEntryType::EdgeIndexValue: {
-      // 1 byte prefix + 8 byte objectID + _from/_to + 1 byte \0 + 8 byte rev
+      // 1 byte prefix + 8 byte objectID + _from/_to + 1 byte \0
+      // + 8 byte revision ID + 1-byte 0xff
       TRI_ASSERT(size > (sizeof(char) + sizeof(uint64_t)) * 2);
-      size_t keySize = size - (sizeof(char) + sizeof(uint64_t)) * 2;
+      size_t keySize = size - (sizeof(char) + sizeof(uint64_t)) * 2 - sizeof(char);
       return StringRef(data + sizeof(char) + sizeof(uint64_t), keySize);
     }
 

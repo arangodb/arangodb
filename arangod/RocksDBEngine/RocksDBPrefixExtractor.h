@@ -64,21 +64,37 @@ class RocksDBEdgePrefixExtractor final : public rocksdb::SliceTransform {
   const char* Name() const { return "EdgePrefixExtractor"; }
 
   rocksdb::Slice Transform(rocksdb::Slice const& key) const {
-    TRI_ASSERT(key.size() > sizeof(char) * 2 + sizeof(uint64_t) * 2);
-    size_t length = key.size() - sizeof(uint64_t);  // just remove revision ID
-    return rocksdb::Slice(key.data(), length);
+    // 1-byte type + 8-byte objectID + 0..n-byte string + 1-byte '\0'
+    // + 8 byte revisionID + 1-byte 0xFF (these are cut off)
+    TRI_ASSERT(key.size() >= sizeof(char) * 2 + sizeof(uint64_t));
+    if (key.data()[key.size() - 1] != '\0') {
+      // unfortunately rocksdb seems to call Tranform(Transform(k))
+      TRI_ASSERT(static_cast<uint8_t>(key.data()[key.size() - 1]) == 0xFFU);
+      TRI_ASSERT(key.size() > sizeof(char) * 3 + sizeof(uint64_t)*2);
+      size_t l = key.size() - sizeof(uint64_t) - sizeof(char);
+      TRI_ASSERT(key.data()[l - 1] == '\0');
+      return rocksdb::Slice(key.data(), l);
+    } else {
+      TRI_ASSERT(key.data()[key.size() - 1] == '\0');
+      return key;
+    }
   }
 
   bool InDomain(rocksdb::Slice const& key) const {
-    TRI_ASSERT(key.size() > sizeof(char) * 2 + sizeof(uint64_t));
-    return static_cast<RocksDBEntryType>(key.data()[0]) ==
-           RocksDBEntryType::EdgeIndexValue;
+    TRI_ASSERT(static_cast<RocksDBEntryType>(key.data()[0]) ==
+               RocksDBEntryType::EdgeIndexValue);
+    // 1-byte type + 8-byte objectID + n-byte string + 1-byte '\0' + ...
+    TRI_ASSERT(key.size() >= sizeof(char) * 2 + sizeof(uint64_t));
+    return key.data()[key.size() - 1] != '\0';
   }
 
   bool InRange(rocksdb::Slice const& dst) const {
-    TRI_ASSERT(dst.size() > sizeof(char) * 2 + sizeof(uint64_t));
-    return static_cast<RocksDBEntryType>(dst.data()[0]) ==
-           RocksDBEntryType::EdgeIndexValue;
+    TRI_ASSERT(dst.size() >= sizeof(char) * 2 + sizeof(uint64_t));
+    return dst.data()[dst.size() - 1] != '\0';
+  }
+
+  bool SameResultWhenAppended(rocksdb::Slice const& prefix) const {
+    return true;
   }
 
  private:

@@ -172,7 +172,8 @@ std::size_t countKeyRange(rocksdb::DB*, rocksdb::ReadOptions const&,
 /// @brief helper method to remove large ranges of data
 /// Should mainly be used to implement the drop() call
 Result removeLargeRange(rocksdb::TransactionDB* db,
-                        RocksDBKeyBounds const& bounds);
+                        RocksDBKeyBounds const& bounds,
+                        bool prefix_same_as_start = true);
 
 std::vector<std::pair<RocksDBKey, RocksDBValue>> collectionKVPairs(
     TRI_voc_tick_t databaseId);
