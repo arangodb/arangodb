@@ -23,7 +23,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "RocksDBEngine/RocksDBPrefixExtractor.h"
-#include "Basics/VelocyPackHelper.h"
 #include "RocksDBEngine/RocksDBKey.h"
 #include "RocksDBEngine/RocksDBTypes.h"
 

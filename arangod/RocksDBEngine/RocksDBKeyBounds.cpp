@@ -343,6 +343,7 @@ RocksDBKeyBounds::RocksDBKeyBounds(RocksDBEntryType type, uint64_t first,
       uint64ToPersistent(_internals.buffer(), first);
       _internals.buffer().append(second.data(), second.length());
       _internals.push_back(_stringSeparator);
+      uint64ToPersistent(_internals.buffer(), 0);
 
       _internals.separate();
 

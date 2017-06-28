@@ -20,6 +20,7 @@
 ///
 /// @author Jan Steemann
 /// @author Daniel H. Larkin
+/// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifndef ARANGO_ROCKSDB_ROCKSDB_PREFIX_EXTRACTOR_H
@@ -36,6 +37,7 @@
 
 namespace arangodb {
 
+/// Default prefix extractor mostly used to fill prefix bloom filters
 class RocksDBPrefixExtractor final : public rocksdb::SliceTransform {
  public:
   RocksDBPrefixExtractor();
@@ -51,6 +53,35 @@ class RocksDBPrefixExtractor final : public rocksdb::SliceTransform {
 
  private:
   const std::string _name;
+  static const size_t _prefixLength[];
+};
+
+class RocksDBEdgePrefixExtractor final : public rocksdb::SliceTransform {
+ public:
+  RocksDBEdgePrefixExtractor() {}
+  ~RocksDBEdgePrefixExtractor(){};
+
+  const char* Name() const { return "EdgePrefixExtractor"; }
+
+  rocksdb::Slice Transform(rocksdb::Slice const& key) const {
+    TRI_ASSERT(key.size() > sizeof(char) * 2 + sizeof(uint64_t) * 2);
+    size_t length = key.size() - sizeof(uint64_t);  // just remove revision ID
+    return rocksdb::Slice(key.data(), length);
+  }
+
+  bool InDomain(rocksdb::Slice const& key) const {
+    TRI_ASSERT(key.size() > sizeof(char) * 2 + sizeof(uint64_t));
+    return static_cast<RocksDBEntryType>(key.data()[0]) ==
+           RocksDBEntryType::EdgeIndexValue;
+  }
+
+  bool InRange(rocksdb::Slice const& dst) const {
+    TRI_ASSERT(dst.size() > sizeof(char) * 2 + sizeof(uint64_t));
+    return static_cast<RocksDBEntryType>(dst.data()[0]) ==
+           RocksDBEntryType::EdgeIndexValue;
+  }
+
+ private:
   static const size_t _prefixLength[];
 };
 
