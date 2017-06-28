@@ -2214,21 +2214,21 @@ std::string TRI_GetTempPath() {
 
   if (tempFileHandle == INVALID_HANDLE_VALUE) {
     LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "Cannot create temporary file '" << (LPTSTR) tempFileName;
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL, "cannot create temporary file"); 
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "cannot create temporary file"); 
   }
 
   ok = CloseHandle(tempFileHandle);
 
   if (!ok) {
     LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "Cannot close handle of temporary file";
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL, "cannot close handle of temporary file"); 
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "cannot close handle of temporary file"); 
   }
 
   ok = DeleteFile(tempFileName);
 
   if (!ok) {
     LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "Cannot delete temporary file";
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL, "cannot delete temporary file"); 
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "cannot delete temporary file"); 
   }
 
   // ...........................................................................
@@ -2249,7 +2249,7 @@ std::string TRI_GetTempPath() {
     for (j = 0; j < pathSize; ++j) {
       if (tempPathName[j] > 127) {
         TRI_Free(TRI_UNKNOWN_MEM_ZONE, temp);
-        THROW_ARANGO_EXCEPTION(WARN, arangodb::Logger::FIXME) << "Invalid characters in temporary path name";
+        LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "Invalid characters in temporary path name";
       }
       temp[j] = (char)(tempPathName[j]);
     }

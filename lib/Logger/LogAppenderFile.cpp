@@ -224,7 +224,7 @@ void LogAppenderFile::writeLogFile(LogLevel level, int fd, char const* buffer, s
   }
 
   if (level == LogLevel::FATAL) {
-    FILE* f = fdopen(fd, "w+");
+    FILE* f = TRI_FDOPEN(fd, "w+");
     if (f != nullptr) {
       fflush(f);
     }
