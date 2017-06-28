@@ -541,7 +541,7 @@ void AuthUserEntry::removeCollection(std::string const& dbname,
         "Cannot set rights for empty db / collection name");
   }
   if (_username == "root" && dbname == StaticStrings::SystemDatabase &&
-      (coll[0] == '_' || coll == "*")) {
+      (coll == "*")) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN,
                                    "Cannot lower access level of 'root' to "
                                    " a collection in _system");
