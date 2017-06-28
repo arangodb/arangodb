@@ -337,8 +337,9 @@ SECTION("test_query") {
     std::vector<std::pair<arangodb::aql::Variable const*, bool>> sorts;
     std::vector<std::vector<arangodb::basics::AttributeName>> constAttributes;
     std::unordered_map<arangodb::aql::VariableId, arangodb::aql::AstNode const*> variableDefinitions;
+    arangodb::aql::Variable variable("testVariable", 0);
 
-    sorts.emplace_back(std::make_pair(nullptr, true)); // add one condition
+    sorts.emplace_back(std::make_pair(&variable, true)); // add one condition
 
     arangodb::aql::SortCondition order(nullptr, sorts, constAttributes, variableDefinitions);
 

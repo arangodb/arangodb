@@ -143,7 +143,7 @@ class IResearchView final: public arangodb::ViewImplementation {
     arangodb::aql::AstNode const* node,
     arangodb::aql::Variable const* reference,
     arangodb::aql::SortCondition const* sortCondition
-  ) /*override*/;
+  ) override;
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief count of known links registered with this view
@@ -208,7 +208,7 @@ class IResearchView final: public arangodb::ViewImplementation {
     arangodb::aql::Ast* ast,
     arangodb::aql::AstNode const* node,
     arangodb::aql::Variable const* reference
-  ) /*override*/;
+  ) override;
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief called by the AQL optimizer to check if the view supports a filter
@@ -226,7 +226,7 @@ class IResearchView final: public arangodb::ViewImplementation {
     arangodb::aql::Variable const* reference,
     size_t& estimatedItems,
     double& estimatedCost
-  ) const /*override*/;
+  ) const override;
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief called by the AQL optimizer to check if the view supports a
@@ -249,7 +249,7 @@ class IResearchView final: public arangodb::ViewImplementation {
     arangodb::aql::Variable const* reference,
     double& estimatedCost,
     size_t& coveredAttributes
-  ) const /*override*/;
+  ) const override;
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief wait for a flush of all index data to its respective stores
