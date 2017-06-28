@@ -44,7 +44,7 @@ exports.service = joi.alternatives(
       joi.string(),
       joi.object().type(Buffer)
     ).required(),
-    configuration: joi.string().optional(),
-    dependencies: joi.string().optional()
+    configuration: joi.object().optional(),
+    dependencies: joi.object().optional()
   }).required()
 );
