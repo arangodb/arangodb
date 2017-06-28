@@ -156,6 +156,7 @@ build-book:
 	cd ppbooks/$(NAME) && gitbook install
 	cd ppbooks/$(NAME) && gitbook build ./ ./../../books/$(NAME)
 	rm -f ./books/$(NAME)/FOOTER.html
+	find ./books/$(NAME)/ -type f -name "*.md" -delete
 	python ../Scripts/deprecated.py
 
 	make book-check-markdown-leftovers
