@@ -4,7 +4,19 @@
   "author": "ArangoDB GmbH",
   "description": "Official manual for ArangoDB - the native multi-model NoSQL database",
   "language": "en",
-  "plugins":["-search", "-lunr", "-sharing", "toggle-chapters", "addcssjs", "anchorjs", "sitemap-general", "ga", "callouts@git+https://github.com/Simran-B/gitbook-plugin-callouts.git", "localized-footer", "edit-link@git+https://github.com/Simran-B/gitbook-plugin-edit-link.git"],
+  "plugins": [
+    "-search",
+    "-lunr",
+    "-sharing",
+    "toggle-chapters",
+    "addcssjs",
+    "anchorjs",
+    "sitemap-general@git+https://github.com/Simran-B/gitbook-plugin-sitemap-general.git",
+    "ga",
+    "callouts@git+https://github.com/Simran-B/gitbook-plugin-callouts.git",
+    "edit-link@git+https://github.com/Simran-B/gitbook-plugin-edit-link.git",
+    "localized-footer"
+  ],
   "pdf": {
     "fontSize": 12,
     "toc": true,
@@ -24,7 +36,9 @@
       "css": ["styles/header.css"]
     },
     "sitemap-general": {
-      "prefix": "https://docs.arangodb.com/3.1/Manual/"
+      "prefix": "https://docs.arangodb.com/3.1/Manual/",
+      "changefreq": "weekly",
+      "priority": 0.8
     },
     "ga": {
       "token": "UA-81053435-2"
