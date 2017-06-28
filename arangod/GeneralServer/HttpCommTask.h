@@ -1,8 +1,8 @@
 #ifndef ARANGOD_GENERAL_SERVER_HTTP_COMM_TASK_H
 #define ARANGOD_GENERAL_SERVER_HTTP_COMM_TASK_H 1
 
+#include "Basics/Common.h"
 #include "GeneralServer/GeneralCommTask.h"
-
 #include "Rest/HttpResponse.h"
 
 namespace arangodb {
