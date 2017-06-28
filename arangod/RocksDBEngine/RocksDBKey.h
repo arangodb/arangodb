@@ -40,7 +40,7 @@ namespace arangodb {
 class RocksDBKey {
  public:
   RocksDBKey() = delete;
-  RocksDBKey(rocksdb::Slice slice)
+  explicit RocksDBKey(rocksdb::Slice slice)
       : _type(static_cast<RocksDBEntryType>(slice.data()[0])),
         _buffer(slice.data(), slice.size()) {}
 
@@ -149,6 +149,11 @@ class RocksDBKey {
   ///        a collection
   //////////////////////////////////////////////////////////////////////////////
   static RocksDBKey IndexEstimateValue(uint64_t objectId);
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief Create a fully-specified key for key generator for a collection
+  //////////////////////////////////////////////////////////////////////////////
+  static RocksDBKey KeyGeneratorValue(uint64_t objectId);
 
  public:
   //////////////////////////////////////////////////////////////////////////////

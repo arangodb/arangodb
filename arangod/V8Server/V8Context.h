@@ -113,6 +113,7 @@ class V8Context {
   V8Context(size_t id, v8::Isolate* isolate);
 
   bool isDefault() const { return _id == 0; }
+  bool isUsed() const { return _locker != nullptr; }
   double age() const;
   void lockAndEnter();
   void unlockAndExit();

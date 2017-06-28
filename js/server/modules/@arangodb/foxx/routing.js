@@ -206,6 +206,23 @@ function createBrokenServiceRoute (service, err) {
   `);
 }
 
+function checkAndCreateDefaultDocumentRoute (service) {
+  const defaultDocument = service.manifest.defaultDocument;
+  if (defaultDocument) {
+    service.routes.routes.push({
+      url: {match: '/'},
+      action: {
+        do: '@arangodb/actions/redirectRequest',
+        options: {
+          permanently: false,
+          destination: defaultDocument,
+          relative: true
+        }
+      }
+    });
+  }
+}
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  public functions
 // -----------------------------------------------------------------------------
@@ -241,25 +258,12 @@ exports.routeService = function (service, throwOnErrors) {
 
   service._reset();
 
-  const defaultDocument = service.manifest.defaultDocument;
-  if (defaultDocument) {
-    service.routes.routes.push({
-      url: {match: '/'},
-      action: {
-        do: '@arangodb/actions/redirectRequest',
-        options: {
-          permanently: false,
-          destination: defaultDocument,
-          relative: true
-        }
-      }
-    });
-  }
-
   let error = null;
   if (service.legacy) {
     error = routeLegacyService(service, throwOnErrors);
+    checkAndCreateDefaultDocumentRoute(service);
   } else {
+    checkAndCreateDefaultDocumentRoute(service);
     if (service.manifest.main) {
       try {
         service.main.exports = service.run(service.manifest.main);

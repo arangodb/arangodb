@@ -116,22 +116,13 @@ router.get((req, res) => {
 
 router.post(prepareServiceRequestBody, (req, res) => {
   const mount = req.queryParams.mount;
-  FoxxManager.install(req.body.source, mount, _.omit(req.queryParams, ['mount', 'development']));
-  if (req.body.configuration) {
-    FoxxManager.setConfiguration(mount, {
+  FoxxManager.install(req.body.source, mount, Object.assign(
+    _.omit(req.queryParams, ['mount']),
+    {
       configuration: req.body.configuration,
-      replace: true
-    });
-  }
-  if (req.body.dependencies) {
-    FoxxManager.setDependencies(mount, {
-      dependencies: req.body.dependencies,
-      replace: true
-    });
-  }
-  if (req.queryParams.development) {
-    FoxxManager.development(mount);
-  }
+      dependencies: req.body.dependencies
+    }
+  ));
   const service = FoxxManager.lookupService(mount);
   res.json(serviceToJson(service));
 })
@@ -170,19 +161,13 @@ serviceRouter.get((req, res) => {
 
 serviceRouter.patch(prepareServiceRequestBody, (req, res) => {
   const mount = req.queryParams.mount;
-  FoxxManager.upgrade(req.body.source, mount, _.omit(req.queryParams, ['mount']));
-  if (req.body.configuration) {
-    FoxxManager.setConfiguration(mount, {
+  FoxxManager.upgrade(req.body.source, mount, Object.assign(
+    _.omit(req.queryParams, ['mount']),
+    {
       configuration: req.body.configuration,
-      replace: false
-    });
-  }
-  if (req.body.dependencies) {
-    FoxxManager.setDependencies(mount, {
-      dependencies: req.body.dependencies,
-      replace: false
-    });
-  }
+      dependencies: req.body.dependencies
+    }
+  ));
   const service = FoxxManager.lookupService(mount);
   res.json(serviceToJson(service));
 })
@@ -194,19 +179,13 @@ serviceRouter.patch(prepareServiceRequestBody, (req, res) => {
 
 serviceRouter.put(prepareServiceRequestBody, (req, res) => {
   const mount = req.queryParams.mount;
-  FoxxManager.replace(req.body.source, mount, _.omit(req.queryParams, ['mount']));
-  if (req.body.configuration) {
-    FoxxManager.setConfiguration(mount, {
+  FoxxManager.replace(req.body.source, mount, Object.assign(
+    _.omit(req.queryParams, ['mount']),
+    {
       configuration: req.body.configuration,
-      replace: true
-    });
-  }
-  if (req.body.dependencies) {
-    FoxxManager.setDependencies(mount, {
-      dependencies: req.body.dependencies,
-      replace: true
-    });
-  }
+      dependencies: req.body.dependencies
+    }
+  ));
   const service = FoxxManager.lookupService(mount);
   res.json(serviceToJson(service));
 })

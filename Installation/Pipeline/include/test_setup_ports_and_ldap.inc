@@ -1,28 +1,12 @@
 PORTTRAP=""
 LDAPTRAP=""
 
-PORTLDAP=""
+PORT01=`./Installation/Pipeline/port.sh`
+PORTLDAP=`expr $PORT01 + 199`
 
-if [ "$mode" == singleserver ]; then
-  PORT01=`./Installation/Pipeline/port.sh`
-  PORT02=`./Installation/Pipeline/port.sh`
-  PORT03=`./Installation/Pipeline/port.sh`
+PORTTRAP="./Installation/Pipeline/port.sh --clean $PORT01 ;"
 
-  PORTLDAP=`expr $PORT03 + 199`
-
-  PORTTRAP="./Installation/Pipeline/port.sh --clean $PORT01 $PORT02 $PORT03 ;"
-elif [ "$mode" == cluster ]; then
-  PORT01=`./Installation/Pipeline/port.sh`
-  PORT02=`./Installation/Pipeline/port.sh`
-  PORT03=`./Installation/Pipeline/port.sh`
-  PORT04=`./Installation/Pipeline/port.sh`
-
-  PORTLDAP=`expr $PORT04 + 199`
-
-  PORTTRAP="./Installation/Pipeline/port.sh --clean $PORT01 $PORT02 $PORT03 $PORT04 ;"
-fi
-
-if [ "$edition" == enterprise ]; then
+if [ "$edition" == enterprise -a "$os" == linux ]; then
   docker rm -f ldap-$PORTLDAP || echo
   mkdir -p ldap
   docker pull arangodb/openldap-test-container:jessie

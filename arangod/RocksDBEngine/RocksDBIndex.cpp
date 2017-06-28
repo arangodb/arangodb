@@ -215,7 +215,7 @@ void RocksDBIndex::truncate(transaction::Methods* trx) {
   while (iter->Valid() && cmp->Compare(iter->key(), end) < 0) {
     TRI_ASSERT(_objectId == RocksDBKey::objectId(iter->key()));
 
-    Result r = mthds->Delete(_cf, iter->key());
+    Result r = mthds->Delete(_cf, RocksDBKey(iter->key()));
     if (!r.ok()) {
       THROW_ARANGO_EXCEPTION(r);
     }

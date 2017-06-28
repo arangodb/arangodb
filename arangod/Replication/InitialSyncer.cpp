@@ -950,6 +950,9 @@ int InitialSyncer::handleCollectionSync(arangodb::LogicalCollection* col,
     }
 
     OperationOptions options;
+    if (!_leaderId.empty()) {
+      options.isSynchronousReplicationFrom = _leaderId;
+    }
     OperationResult opRes = trx.truncate(collectionName, options);
 
     if (!opRes.successful()) {
@@ -1108,6 +1111,9 @@ int InitialSyncer::handleCollection(VPackSlice const& parameters,
           }
 
           OperationOptions options;
+          if (!_leaderId.empty()) {
+            options.isSynchronousReplicationFrom = _leaderId;
+          }
           OperationResult opRes = trx.truncate(col->name(), options);
 
           if (!opRes.successful()) {

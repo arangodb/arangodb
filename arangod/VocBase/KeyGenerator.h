@@ -127,6 +127,8 @@ class TraditionalKeyGenerator final : public KeyGenerator {
   virtual void toVelocyPack(arangodb::velocypack::Builder&) const override;
 
  private:
+  arangodb::Mutex _lock;
+
   uint64_t _lastValue;
 };
 
