@@ -461,8 +461,9 @@ arangodb::Result Databases::drop(TRI_vocbase_t* systemVocbase,
   
   auto auth = FeatureCacheFeature::instance()->authenticationFeature();
   if (auth->isActive()) {
-    auth->authInfo()->reloadAllUsers();
+    auth->authInfo()->enumerateUsers([&](AuthUserEntry& entry) {
+      entry.removeDatabase(dbName);
+    });
   }
-  
   return Result();
 }

@@ -122,7 +122,7 @@ static std::shared_ptr<VPackBuilder> QueryAllUsers(
     LOG_TOPIC(DEBUG, arangodb::Logger::FIXME) << "system database is unknown";
     THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
   }
-  
+
   // we cannot set this execution context, otherwise the transaction
   // will ask us again for permissions and we get a deadlock
   ExecContext* oldExe = ExecContext::CURRENT_EXECCONTEXT;
@@ -165,7 +165,7 @@ static VPackBuilder QueryUser(aql::QueryRegistry* queryRegistry,
   if (vocbase == nullptr) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_FAILED, "_system db is unknown");
   }
-  
+
   // we cannot set this execution context, otherwise the transaction
   // will ask us again for permissions and we get a deadlock
   ExecContext* oldExe = ExecContext::CURRENT_EXECCONTEXT;
@@ -338,12 +338,13 @@ VPackBuilder AuthInfo::allUsers() {
 
 /// Trigger eventual reload, user facing API call
 void AuthInfo::reloadAllUsers() {
+  _outdated = true;
   if (!ServerState::instance()->isCoordinator()) {
     // will reload users on next suitable query
-    _outdated = true;
     return;
   }
 
+  // tell other coordinators to reload as well
   AgencyComm agency;
   int maxTries = 10;
   while (maxTries-- > 0) {
@@ -417,13 +418,13 @@ static Result UpdateUser(VPackSlice const& user) {
   if (vocbase == nullptr) {
     return Result(TRI_ERROR_INTERNAL);
   }
-  
+
   // we cannot set this execution context, otherwise the transaction
   // will ask us again for permissions and we get a deadlock
   ExecContext* oldExe = ExecContext::CURRENT_EXECCONTEXT;
   ExecContext::CURRENT_EXECCONTEXT = nullptr;
   TRI_DEFER(ExecContext::CURRENT_EXECCONTEXT = oldExe);
-  
+
   std::shared_ptr<transaction::Context> ctx(
       new transaction::StandaloneContext(vocbase));
   SingleCollectionTransaction trx(ctx, TRI_COL_NAME_USERS,
@@ -438,6 +439,24 @@ static Result UpdateUser(VPackSlice const& user) {
   return res;
 }
 
+Result AuthInfo::enumerateUsers(
+    std::function<void(AuthUserEntry&)> const& func) {
+  // we require an consisten view on the user object
+  WRITE_LOCKER(guard, _authInfoLock);
+  for (auto& it : _authInfo) {
+    TRI_ASSERT(!it.second.key().empty());
+    func(it.second);
+    VPackBuilder data = it.second.toVPackBuilder();
+    Result r = UpdateUser(data.slice());
+    if (!r.ok()) {
+      return r;
+    }
+  }
+  // we need to reload data after the next callback
+  reloadAllUsers();
+  return TRI_ERROR_NO_ERROR;
+}
+
 Result AuthInfo::updateUser(std::string const& user,
                             std::function<void(AuthUserEntry&)> const& func) {
   if (user.empty()) {
@@ -445,7 +464,7 @@ Result AuthInfo::updateUser(std::string const& user,
   }
   VPackBuilder data;
   {  // we require an consisten view on the user object
-    WRITE_LOCKER(readLocker, _authInfoLock);
+    WRITE_LOCKER(guard, _authInfoLock);
     auto it = _authInfo.find(user);
     if (it == _authInfo.end()) {
       return Result(TRI_ERROR_USER_NOT_FOUND);

@@ -42,19 +42,6 @@ class AuthContext;
 
 class AuthUserEntry {
   friend class AuthInfo;
-  /*public:
-
-   AuthUserEntry(AuthUserEntry&& other) noexcept
-       : _key(std::move(other._key)),
-         _active(other._active),
-         _source(other._source),
-         _username(std::move(other._username)),
-         _passwordMethod(std::move(other._passwordMethod)),
-         _passwordSalt(std::move(other._passwordSalt)),
-         _passwordHash(std::move(other._passwordHash)),
-         _passwordChangeToken(std::move(other._passwordChangeToken)),
-         _changePassword(other._changePassword),
-         _authContexts(std::move(other._authContexts)) {}*/
 
  public:
   std::string const& key() const { return _key; }
@@ -77,8 +64,11 @@ class AuthUserEntry {
   void changePassword(bool c) { _changePassword = c; }
 
   void grantDatabase(std::string const& dbname, AuthLevel level);
+  void removeDatabase(std::string const& dbname);
   void grantCollection(std::string const& dbname, std::string const& collection,
                        AuthLevel level);
+  void removeCollection(std::string const& dbname,
+                        std::string const& collection);
 
   static AuthUserEntry newUser(std::string const& user, std::string const& pass,
                                AuthSource source);

@@ -37,9 +37,9 @@
 #include "RestServer/DatabaseFeature.h"
 #include "Ssl/SslInterface.h"
 #include "Transaction/Helpers.h"
+#include "VocBase/LogicalCollection.h"
 #include "VocBase/Methods/Collections.h"
 #include "VocBase/Methods/Databases.h"
-#include "VocBase/LogicalCollection.h"
 
 #include <velocypack/Iterator.h>
 #include <velocypack/velocypack-aliases.h>
@@ -291,21 +291,21 @@ AuthUserEntry AuthUserEntry::fromDocument(VPackSlice const& slice) {
         VPackSlice collectionsSlice = obj.value.get("collections");
         if (collectionsSlice.isObject()) {
           for (auto const& collection : VPackObjectIterator(collectionsSlice)) {
-            
             std::string const cName = collection.key.copyString();
             // skip nonexisting collections
             bool exists = dbName == "*" || cName == "*" ||
-              methods::Collections::lookupCollection(vocbase, cName, [&](LogicalCollection*) {});
+                          methods::Collections::lookupCollection(
+                              vocbase, cName, [&](LogicalCollection*) {});
             if (exists) {
               auto const permissionsSlice = collection.value.get("permissions");
               if (permissionsSlice.isObject()) {
                 collections.emplace(cName,
                                     AuthLevelFromSlice(permissionsSlice));
-              }// if
-            }  // if
-            
-          }    // for
-        }      // if
+              }  // if
+            }    // if
+
+          }  // for
+        }    // if
 
         authContexts.emplace(dbName, std::make_shared<AuthContext>(
                                          databaseAuth, std::move(collections)));
@@ -489,16 +489,25 @@ void AuthUserEntry::grantDatabase(std::string const& dbname, AuthLevel level) {
   }
 }
 
+void AuthUserEntry::removeDatabase(std::string const& dbname) {
+  if (dbname.empty()) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
+                                   "Cannot remove rights for empty db name");
+  }
+  if (_username == "root" && dbname == StaticStrings::SystemDatabase) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+        TRI_ERROR_FORBIDDEN, "Cannot remove access level of 'root' to _system");
+  }
+  _authContexts.erase(dbname);
+}
+
 void AuthUserEntry::grantCollection(std::string const& dbname,
                                     std::string const& coll,
                                     AuthLevel const level) {
-  if (dbname.empty()) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
-                                   "Cannot set rights for empty db name");
-  }
-  if (coll.empty()) {
+  if (dbname.empty() || coll.empty()) {
     THROW_ARANGO_EXCEPTION_MESSAGE(
-        TRI_ERROR_BAD_PARAMETER, "Cannot set rights for empty collection name");
+        TRI_ERROR_BAD_PARAMETER,
+        "Cannot set rights for empty db / collection name");
   }
   if (_username == "root" && dbname == StaticStrings::SystemDatabase &&
       (coll[0] == '_' || coll == "*") && level != AuthLevel::RW) {
@@ -521,5 +530,24 @@ void AuthUserEntry::grantCollection(std::string const& dbname,
         dbname, std::make_shared<AuthContext>(
                     dbLevel, std::unordered_map<std::string, AuthLevel>(
                                  {{coll, level}})));
+  }
+}
+
+void AuthUserEntry::removeCollection(std::string const& dbname,
+                                     std::string const& coll) {
+  if (dbname.empty() || coll.empty()) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+        TRI_ERROR_BAD_PARAMETER,
+        "Cannot set rights for empty db / collection name");
+  }
+  if (_username == "root" && dbname == StaticStrings::SystemDatabase &&
+      (coll[0] == '_' || coll == "*")) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN,
+                                   "Cannot lower access level of 'root' to "
+                                   " a collection in _system");
+  }
+  auto it = _authContexts.find(dbname);
+  if (it != _authContexts.end()) {
+    it->second->_collectionAccess.erase(coll);
   }
 }

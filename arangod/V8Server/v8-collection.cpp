@@ -982,12 +982,14 @@ static void JS_DropVocbaseCol(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   arangodb::LogicalCollection* collection =
       TRI_UnwrapClass<arangodb::LogicalCollection>(args.Holder(), WRP_VOCBASE_COL_TYPE);
-
   if (collection == nullptr) {
     TRI_V8_THROW_EXCEPTION_INTERNAL("cannot extract collection");
   }
 
   PREVENT_EMBEDDED_TRANSACTION();
+  
+  std::string const dbname = collection->dbName();
+  std::string const collName = collection->name();
 
   // If we are a coordinator in a cluster, we have to behave differently:
   if (ServerState::instance()->isCoordinator()) {
@@ -996,35 +998,40 @@ static void JS_DropVocbaseCol(v8::FunctionCallbackInfo<v8::Value> const& args) {
 #else
     DropVocbaseColCoordinator(args, collection);
 #endif
-    return;
-  }
-
-  bool allowDropSystem = false;
-  double timeout = -1.0;  // forever, unless specified otherwise
-  if (args.Length() > 0) {
-    // options
-    if (args[0]->IsObject()) {
-      TRI_GET_GLOBALS();
-      v8::Handle<v8::Object> optionsObject = args[0].As<v8::Object>();
-      TRI_GET_GLOBAL_STRING(IsSystemKey);
-      if (optionsObject->Has(IsSystemKey)) {
-        allowDropSystem = TRI_ObjectToBoolean(optionsObject->Get(IsSystemKey));
+  } else {
+    bool allowDropSystem = false;
+    double timeout = -1.0;  // forever, unless specified otherwise
+    if (args.Length() > 0) {
+      // options
+      if (args[0]->IsObject()) {
+        TRI_GET_GLOBALS();
+        v8::Handle<v8::Object> optionsObject = args[0].As<v8::Object>();
+        TRI_GET_GLOBAL_STRING(IsSystemKey);
+        if (optionsObject->Has(IsSystemKey)) {
+          allowDropSystem = TRI_ObjectToBoolean(optionsObject->Get(IsSystemKey));
+        }
+        TRI_GET_GLOBAL_STRING(TimeoutKey);
+        if (optionsObject->Has(TimeoutKey)) {
+          timeout = TRI_ObjectToDouble(optionsObject->Get(TimeoutKey));
+        }
+      } else {
+        allowDropSystem = TRI_ObjectToBoolean(args[0]);
       }
-      TRI_GET_GLOBAL_STRING(TimeoutKey);
-      if (optionsObject->Has(TimeoutKey)) {
-        timeout = TRI_ObjectToDouble(optionsObject->Get(TimeoutKey));
-      }
-    } else {
-      allowDropSystem = TRI_ObjectToBoolean(args[0]);
+    }
+    
+    int res = collection->vocbase()->dropCollection(collection, allowDropSystem, timeout);
+    if (res != TRI_ERROR_NO_ERROR) {
+      TRI_V8_THROW_EXCEPTION_MESSAGE(res, "cannot drop collection");
     }
   }
-
-  int res = collection->vocbase()->dropCollection(collection, allowDropSystem, timeout);
-
-  if (res != TRI_ERROR_NO_ERROR) {
-    TRI_V8_THROW_EXCEPTION_MESSAGE(res, "cannot drop collection");
+  
+  AuthenticationFeature* auth = FeatureCacheFeature::instance()->authenticationFeature();
+  if (auth->isActive()) {
+    auth->authInfo()->enumerateUsers([&](AuthUserEntry& entry) {
+      entry.removeCollection(dbname, collName);
+    });
   }
-
+  
   TRI_V8_RETURN_UNDEFINED();
   TRI_V8_TRY_CATCH_END
 }

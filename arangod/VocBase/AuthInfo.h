@@ -88,6 +88,7 @@ class AuthInfo {
   /// Add user from arangodb, do not use for LDAP  users
   Result storeUser(bool replace, std::string const& user,
                    std::string const& pass, bool active, bool changePassword);
+  Result enumerateUsers(std::function<void(AuthUserEntry&)> const& func);
   Result updateUser(std::string const& username,
                     std::function<void(AuthUserEntry&)> const&);
   velocypack::Builder getUser(std::string const& user);
@@ -106,7 +107,7 @@ class AuthInfo {
   AuthLevel canUseDatabase(std::string const& username,
                            std::string const& dbname);
   AuthLevel canUseCollection(std::string const& username,
-                           std::string const& dbname,
+                             std::string const& dbname,
                              std::string const& coll);
 
   void setJwtSecret(std::string const&);
@@ -116,7 +117,7 @@ class AuthInfo {
 
   std::shared_ptr<AuthContext> getAuthContext(std::string const& username,
                                               std::string const& database);
-  
+
   std::shared_ptr<AuthContext> noneAuthContext() { return _noneAuthContext; }
 
  private:
