@@ -462,9 +462,7 @@ void Constituent::callElection() {
   }
 
   // Collect ballots. I vote for myself.
-  size_t yea = 1;
-  size_t nay = 0;
-  size_t majority = size() / 2 + 1;
+  size_t yea = 1 , nay = 0, majority = size() / 2 + 1;
   
   // We collect votes, we leave the following loop when one of the following
   // conditions is met:

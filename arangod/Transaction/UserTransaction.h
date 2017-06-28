@@ -37,12 +37,14 @@ namespace transaction {
 class UserTransaction final : public transaction::Methods {
  public:
   /// @brief create the transaction
-  UserTransaction(std::shared_ptr<transaction::Context> transactionContext,
-                      std::vector<std::string> const& readCollections,
-                      std::vector<std::string> const& writeCollections,
-                      std::vector<std::string> const& exclusiveCollections,
-                      transaction::Options const& options)
+  UserTransaction(
+    std::shared_ptr<transaction::Context> transactionContext,
+    std::vector<std::string> const& readCollections,
+    std::vector<std::string> const& writeCollections,
+    std::vector<std::string> const& exclusiveCollections,
+    transaction::Options const& options = transaction::Options())
       : transaction::Methods(transactionContext, options) {
+
     addHint(transaction::Hints::Hint::LOCK_ENTIRELY);
 
     for (auto const& it : exclusiveCollections) {
@@ -56,6 +58,7 @@ class UserTransaction final : public transaction::Methods {
     for (auto const& it : readCollections) {
       addCollection(it, AccessMode::Type::READ);
     }
+    
   }
 
 };

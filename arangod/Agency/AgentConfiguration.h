@@ -197,14 +197,17 @@ struct config_t {
   /// @brief Get replacement for deceased active agent
   bool swapActiveMember(std::string const&, std::string const&);
 
-  /// @brief Get next agent in line of succession
-  std::string nextAgentInLine() const;
-
-  /// @brief
+  /// @brief Start up (clean, persistence)
   std::string startup() const;
 
   /// @brief Update an indivdual uuid's endpoint
   bool updateEndpoint(std::string const&, std::string const&);
+
+  /// @brief Add new agent to pool
+  void updateConfiguration(VPackSlice const&);
+
+  /// @brief Add new agent to pool
+  void addServer(VPackSlice const&);
 
 };
 }

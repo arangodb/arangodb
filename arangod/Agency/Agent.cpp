@@ -1008,7 +1008,6 @@ void Agent::run() {
 
   CONDITION_LOCKER(guard, _appendCV);
   using namespace std::chrono;
-  auto tp = system_clock::now();
 
   // Only run in case we are in multi-host mode
   while (!this->isStopping() && size() > 1) {
@@ -1022,13 +1021,6 @@ void Agent::run() {
       // Don't panic
       _appendCV.wait(static_cast<uint64_t>(4.e3*_config.minPing()));
       
-      // Detect faulty agent and replace
-      // if possible and only if not already activating
-      if (duration<double>(system_clock::now() - tp).count() > 10.0) {
-        detectActiveAgentFailures();
-        tp = system_clock::now();
-      }
-
     } else {
       _appendCV.wait(1000000);
     }
@@ -1083,14 +1075,8 @@ void Agent::persistConfiguration(term_t t) {
   { VPackArrayBuilder trxs(agency.get());
     { VPackArrayBuilder trx(agency.get());
       { VPackObjectBuilder oper(agency.get());
-        agency->add(VPackValue(".agency"));
-        { VPackObjectBuilder a(agency.get());
-          agency->add("term", VPackValue(t));
-          agency->add("id", VPackValue(id()));
-          agency->add("active", _config.activeToBuilder()->slice());
-          agency->add("pool", _config.poolToBuilder()->slice());
-          agency->add("size", VPackValue(size()));
-        }}}}
+        agency->add(".agency", _config.toBuilder()->slice());
+      }}}
   
   // In case we've lost leadership, no harm will arise as the failed write
   // prevents bogus agency configuration to be replicated among agents. ***
@@ -1103,97 +1089,6 @@ void Agent::failedActivation(
   std::string const& failed, std::string const& replacement) {
   MUTEX_LOCKER(actLock, _activatorLock);
   _activator.reset(nullptr);
-}
-
-
-void Agent::detectActiveAgentFailures() {
-
-  // Another activator active? Leave!
-  MUTEX_LOCKER(actLock, _activatorLock);
-  if (_activator != nullptr) {
-    return;
-  }
-
-  // Detect faulty agent if pool larger than agency
-  std::map<std::string, TimePoint> lastAcked;
-  {
-    MUTEX_LOCKER(ioLocker, _ioLock);
-    lastAcked = _lastAcked;
-  }
-
-  // Do we have any spare agents in stock? Else out!
-  auto poolSize = _config.pool().size();
-  TRI_ASSERT(poolSize >= size());
-  if (poolSize == size()) {
-    return;
-  }
-
-  // Any faulty else leave.
-  std::vector<std::string> active = _config.active();
-  std::vector<std::string> faulty;
-  for (auto const& peerId : active) {
-    if (peerId != id()) {
-      if (duration<double>(system_clock::now()-lastAcked.at(peerId)).count()>15) {
-        faulty.push_back(peerId);
-      }
-    }
-  }
-  if (faulty.empty()) {
-    return;
-  }
-
-  std::string replacement = _config.nextAgentInLine();
-  if (replacement.empty()) { // No replacement left
-    return;
-  }
-  
-  query_t builder = std::make_shared<Builder>();
-  { VPackArrayBuilder trxs(builder.get());
-    { VPackArrayBuilder trx(builder.get());
-      { VPackObjectBuilder act(builder.get());
-        // Anounce activation
-        builder->add(VPackValue(".agency/Activating"));
-        { VPackObjectBuilder op(builder.get());
-          builder->add("op", VPackValue("set"));
-          builder->add(VPackValue("new"));
-          { VPackObjectBuilder a(builder.get());
-            builder->add("failed", VPackValue(faulty.front()));
-            builder->add("activating", VPackValue(replacement));
-          }
-          builder->add("ttl", VPackValue(60.0));
-        }}
-      // Precondition: no other activation going on
-      { VPackObjectBuilder precond(builder.get());
-        builder->add(VPackValue(".agency/Activating"));
-        { VPackObjectBuilder a(builder.get());
-          builder->add("oldEmpty", VPackValue(true));
-        }}
-    }} // Close transactions
-  
-  LOG_TOPIC(INFO, Logger::AGENCY) <<    builder->toJson();
-  auto res = write(builder);
-
-  if (!res.accepted) {
-    LOG_TOPIC(DEBUG, Logger::AGENCY)
-      << "Lost leadership. Aborting activation of new agent for failed agent "
-      << faulty.front();
-  }
-
-  TRI_ASSERT(res.indices.size() == 1);
-  if (res.indices.front() == 0) { // Precondition failed
-    LOG_TOPIC(DEBUG, Logger::AGENCY)
-      << "Precondition failed. Aborting activation of new agent for failed agent "
-      << faulty.front();
-  }
-  
-  LOG_TOPIC(DEBUG, Logger::AGENCY)
-    << "Active agent " << faulty.front() << " has failed. << " << replacement
-    << " will be promoted to active agency membership";
-  _activator = std::make_unique<AgentActivator>(this, faulty.front(), replacement);
-  _activator->start();
-  
-  return;
-  
 }
 
 
@@ -1745,24 +1640,30 @@ write_ret_t Agent::addServer(query_t const server) {
       << "add-server call must be a json object containing endpoint and id";
   }
 
-  query_t builder = std::make_shared<Builder>();
-  { VPackArrayBuilder trxs(builder.get());
-    { VPackArrayBuilder trx(builder.get());
-      { VPackObjectBuilder wa(builder.get());
-        builder->add(".agency/configure/add", slice);
+  // The new configuration to be persisted.-------------------------------------
+  // Actual agent's configuration is changed after successful persistence.
+  auto config = _config;
+  config.addServer(server->slice());
+  query_t agency = std::make_shared<Builder>();
+  { VPackArrayBuilder trxs(agency.get());
+    { VPackArrayBuilder trx(agency.get());
+      { VPackObjectBuilder wa(agency.get());
+        agency->add(".agency", config.toBuilder()->slice());
       }}} // Close transactions
   
-  LOG_TOPIC(INFO, Logger::AGENCY) << builder->toJson();
+  LOG_TOPIC(INFO, Logger::AGENCY) << agency->toJson();
   
-  return write(builder);
-  
+  return write(agency);
+
 }
 
 write_ret_t Agent::removeServer(query_t const server) {
-  
   query_t builder = std::make_shared<Builder>();
   return write(builder);
-  
+}
+
+void Agent::updateConfiguration(Slice const& slice) {
+  _config.updateConfiguration(slice);
 }
 
 

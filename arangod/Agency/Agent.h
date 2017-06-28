@@ -202,9 +202,6 @@ class Agent : public arangodb::Thread,
   /// @brief Get notification as inactive pool member
   void notify(query_t const&);
 
-  /// @brief Detect active agent failures
-  void detectActiveAgentFailures();
-
   /// @brief All there is in the state machine
   query_t allLogs() const;
 
@@ -253,6 +250,9 @@ class Agent : public arangodb::Thread,
   friend class Compactor;
 
  private:
+
+  /// @brief add agent to configuration (from State after successful local persistence)
+  void updateConfiguration(VPackSlice const&);
 
   /// @brief persist agency configuration in RAFT
   void persistConfiguration(term_t t);

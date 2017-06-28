@@ -163,12 +163,6 @@ if [ ! -d arangod ] || [ ! -d arangosh ] || [ ! -d UnitTests ] ; then
   exit 1
 fi
 
-# if [[ $(( $NRAGENTS % 2 )) == 0 ]]; then
-#   echo Number of agents must be odd.
-#   exit 1
-# fi
-
-
 if [ ! -z "$INTERACTIVE_MODE" ] ; then
     if [ "$INTERACTIVE_MODE" == "C" ] ; then
         ARANGOD="${BUILD}/bin/arangod "

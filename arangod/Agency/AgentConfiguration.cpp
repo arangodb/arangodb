@@ -279,21 +279,6 @@ bool config_t::swapActiveMember(
   return true;
 }
 
-std::string config_t::nextAgentInLine() const {
-
-  READ_LOCKER(readLocker, _lock);
-
-  if (_pool.size() > _agencySize) {
-    for (const auto& p : _pool) {
-      if (std::find(_active.begin(), _active.end(), p.first) == _active.end()) {
-        return p.first;
-      }
-    }
-  }
-  
-  return ""; // No one left
-}
-
 size_t config_t::maxAppendSize() const {
   READ_LOCKER(readLocker, _lock);
   return _maxAppendSize;
@@ -514,25 +499,20 @@ void config_t::override(VPackSlice const& conf) {
 query_t config_t::toBuilder() const {
 
   query_t ret = std::make_shared<arangodb::velocypack::Builder>();
-  {
-    VPackObjectBuilder b(ret.get());
+  { VPackObjectBuilder b(ret.get());
     READ_LOCKER(readLocker, _lock);
 
     ret->add(VPackValue(poolStr));
-    {
-      VPackObjectBuilder bb(ret.get());
+    { VPackObjectBuilder bb(ret.get());
       for (auto const& i : _pool) {
         ret->add(i.first, VPackValue(i.second));
-      }
-    }
+      }}
 
     ret->add(VPackValue(activeStr));
-    {
-      VPackArrayBuilder bb(ret.get());
+    { VPackArrayBuilder bb(ret.get());
       for (auto const& i : _active) {
         ret->add(VPackValue(i));
-      }
-    }
+      }}
 
     ret->add(idStr, VPackValue(_id));
     ret->add(agencySizeStr, VPackValue(_agencySize));
@@ -742,3 +722,41 @@ bool config_t::merge(VPackSlice const& conf) {
 }
 
 
+void config_t::updateConfiguration(VPackSlice const& other) {
+
+  TRI_ASSERT(other.isObject());
+  TRI_ASSERT(other.hasKey(poolStr));
+  TRI_ASSERT(other.hasKey(activeStr));
+
+  WRITE_LOCKER(writeLocker, _lock);
+
+  auto pool = other.get(poolStr);
+  TRI_ASSERT(pool.isObject());
+  for (auto const p : VPackObjectIterator(other.get(poolStr))) {
+    _pool[p.key.copyString()] = p.value.copyString();
+  }
+
+  auto active = other.get(activeStr);
+  TRI_ASSERT(active.isArray());
+  _active.clear();
+  for (auto const id : VPackArrayIterator(active)) {
+    _active.push_back(id.copyString());
+  }
+  
+}
+
+void config_t::addServer(VPackSlice const& server) {
+
+  TRI_ASSERT(server.isObject());
+  TRI_ASSERT(server.hasKey("endpoint"));
+  TRI_ASSERT(server.hasKey("id"));
+
+  auto id = server.get("id");
+  auto endpoint = server.get("endpoint");
+  TRI_ASSERT(id.isString());
+  TRI_ASSERT(endpoint.isString());
+
+  auto idStr = id.copyString();
+  _pool[idStr] = endpoint.copyString();
+  _active.push_back(idStr);
+}
