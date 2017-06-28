@@ -34,7 +34,7 @@ else
 fi
 
 if [ "$os" == linux ]; then
-    type="${type}_${os}linux"
+    type="${type}_${os}"
 elif [ "$os" == mac ]; then
     type="${type}_${os}"
 else
