@@ -1,7 +1,9 @@
-v3.1.24 (XXXX-XX-XX)
+v3.1.24 (xxxx-xx-xx)
 --------------------
 
 * fixed one more LIMIT issue in traversals
+
+* fixed issue #2684: Legacy service UI not working
 
 
 v3.1.23 (2017-06-19)
@@ -130,7 +132,7 @@ v3.1.17 (2017-04-04)
 
 * fixed issue #2403
 
-  this restores the default read-cache size value for RAM sizes of less than 
+  this restores the default read-cache size value for RAM sizes of less than
   4 GB to the default size the read cache had in 3.1.15 and before. 3.1.16
   decreased the default value too much for small RAM sizes.
 
@@ -358,15 +360,15 @@ shards.
 
       db._query("FOR i IN 1..100000 SORT i RETURN i", {}, { options: { memoryLimit: 100000 } });
 
-  This option limits the default maximum amount of memory (in bytes) that a single 
+  This option limits the default maximum amount of memory (in bytes) that a single
   AQL query can use.
   When a single AQL query reaches the specified limit value, the query will be
   aborted with a *resource limit exceeded* exception. In a cluster, the memory
   accounting is done per shard, so the limit value is effectively a memory limit per
   query per shard.
 
-  The global limit value can be overriden per query by setting the *memoryLimit* 
-  option value for individual queries when running an AQL query. 
+  The global limit value can be overriden per query by setting the *memoryLimit*
+  option value for individual queries when running an AQL query.
 
 * added server startup option `--query.memory-limit`
 
@@ -379,10 +381,10 @@ shards.
 * added option -D to define a configuration file environment key=value
 
 * changed encoding behavior for URLs encoded in the C++ code of ArangoDB:
-  previously the special characters `-`, `_`, `~` and `.` were returned as-is 
-  after URL-encoding, now `.` will be encoded to be `%2e`. 
+  previously the special characters `-`, `_`, `~` and `.` were returned as-is
+  after URL-encoding, now `.` will be encoded to be `%2e`.
   This also changes the behavior of how incoming URIs are processed: previously
-  occurrences of `..` in incoming request URIs were collapsed (e.g. `a/../b/` was 
+  occurrences of `..` in incoming request URIs were collapsed (e.g. `a/../b/` was
   collapsed to a plain `b/`). Now `..` in incoming request URIs are not collapsed.
 
 * improve cluster stability in various ways
@@ -488,7 +490,7 @@ v3.1.4 (2016-12-08)
 
 * agency RAFT timing estimates more conservative in waitForSync
   scenario
-  
+
 * agency RAFT timing estimates capped at maximum 2.0/10.0 for low/high
 
 
@@ -600,7 +602,7 @@ v3.1.1 (2016-11-15)
   produced an empty result
 
 * disallow updating `_from` and `_to` values of edges in Smart Graphs. Updating these
-  attributes would lead to potential redistribution of edges to other shards, which must be 
+  attributes would lead to potential redistribution of edges to other shards, which must be
   avoided.
 
 * fixed issue #2148
@@ -1505,7 +1507,7 @@ v2.8.12 (XXXX-XX-XX)
 v2.8.11 (2016-07-13)
 --------------------
 
-* fixed array index batch insertion issues for hash indexes that caused problems when 
+* fixed array index batch insertion issues for hash indexes that caused problems when
   no elements remained for insertion
 
 * fixed issue #1937
@@ -1947,9 +1949,9 @@ v2.8.0-beta7 (2016-01-06)
 * fixes for AQL optimizer and traversal
 
 * added `--create-collection-type` option to arangoimp
- 
-  This allows specifying the type of the collection to be created when 
-  `--create-collection` is set to `true`. 
+
+  This allows specifying the type of the collection to be created when
+  `--create-collection` is set to `true`.
 
 * Foxx export cache should no longer break if a broken app is loaded in the
   web admin interface.
