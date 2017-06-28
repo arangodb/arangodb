@@ -23,13 +23,8 @@
 
 #include "VstCommTask.h"
 
-#include <iostream>
-#include <limits>
-#include <stdexcept>
-
-#include <boost/optional.hpp>
-
 #include "Basics/HybridLogicalClock.h"
+#include "Basics/MutexUnlocker.h"
 #include "Basics/StringBuffer.h"
 #include "Basics/VelocyPackHelper.h"
 #include "GeneralServer/AuthenticationFeature.h"
@@ -45,6 +40,10 @@
 #include "Scheduler/SchedulerFeature.h"
 #include "Utils/Events.h"
 #include "VocBase/ticks.h"
+
+#include <iostream>
+#include <limits>
+#include <stdexcept>
 
 using namespace arangodb;
 using namespace arangodb::basics;
@@ -104,6 +103,8 @@ VstCommTask::VstCommTask(EventLoop loop, GeneralServer* server,
 }
 
 void VstCommTask::addResponse(VstResponse* response, RequestStatistics* stat) {
+  _lock.assertLockedByCurrentThread();
+
   VPackMessageNoOwnBuffer response_message = response->prepareForNetwork();
   uint64_t const id = response_message._id;
 
@@ -284,6 +285,8 @@ void VstCommTask::handleAuthentication(VPackSlice const& header,
 
 // reads data from the socket
 bool VstCommTask::processRead(double startTime) {
+  _lock.assertLockedByCurrentThread();
+
   auto& prv = _processReadVariables;
 
   auto chunkBegin = _readBuffer.begin() + prv._readBufferOffset;
@@ -394,6 +397,9 @@ bool VstCommTask::processRead(double startTime) {
               chunkHeader._messageID);
         } else {
           request->setClientTaskId(_taskId);
+
+          // temporarily release the mutex
+          MUTEX_UNLOCKER(locker, _lock);
 
           std::unique_ptr<VstResponse> response(new VstResponse(
               rest::ResponseCode::SERVER_ERROR, chunkHeader._messageID));

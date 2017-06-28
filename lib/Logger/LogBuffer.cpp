@@ -57,15 +57,16 @@ std::vector<LogBuffer> LogBuffer::entries(LogLevel level, uint64_t start,
   MUTEX_LOCKER(guard, LogBuffer::_ringBufferLock);
 
   size_t s = 0;
-  size_t e;
+  size_t n;
 
   if (LogBuffer::_ringBufferId >= LogBuffer::RING_BUFFER_SIZE) {
-    s = e = (LogBuffer::_ringBufferId + 1) % LogBuffer::RING_BUFFER_SIZE;
+    s = (LogBuffer::_ringBufferId) % LogBuffer::RING_BUFFER_SIZE;
+    n = LogBuffer::RING_BUFFER_SIZE;
   } else {
-    e = static_cast<size_t>(LogBuffer::_ringBufferId);
+    n = static_cast<size_t>(LogBuffer::_ringBufferId);
   }
 
-  for (size_t i = s; i != e;) {
+  for (size_t i = s; 0 < n; --n) {
     LogBuffer& p = LogBuffer::_ringBuffer[i];
 
     if (p._id >= start) {
