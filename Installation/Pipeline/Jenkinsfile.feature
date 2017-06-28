@@ -348,46 +348,21 @@ def unstashBinaries(edition, os) {
 // -----------------------------------------------------------------------------
 
 def buildEdition(edition, os) {
+    if (! cleanBuild) {
+        try {
+            unstashBuild(edition, os)
+        }
+        catch (exc) {
+            echo exc.toString()
+        }
+    }
+
     try {
         if (os == 'linux' || os == 'mac') {
-            def tarfile = 'build-' + edition + '-' + os + '.tar.gz'
-
-            if (! cleanBuild) {
-                try {
-                    unstashBuild(edition, os)
-                }
-                catch (exc) {
-                    echo exc.toString()
-                }
-            }
-
             sh './Installation/Pipeline/build_' + edition + '_' + os + '.sh 64'
-
-            stashBuild(edition, os)
         }
         else if (os == 'windows') {
-            def builddir = 'build-' + edition + '-' + os
-
-            if (cleanBuild) {
-                bat 'del /F /Q build'
-            }
-            else {
-                try {
-                    step($class: 'hudson.plugins.copyartifact.CopyArtifact',
-                         projectName: "/" + "${env.JOB_NAME}",
-                         filter: builddir + '/**')
-
-                    bat 'move ' + builddir + ' build'
-                }
-                catch (exc) {
-                    echo exc.toString()
-                }
-            }
-
             PowerShell('. .\\Installation\\Pipeline\\build_' + edition + '_windows.ps1')
-
-            bat 'move build ' + builddir
-            archiveArtifacts allowEmptyArchive: true, artifacts: builddir + '/**', defaultExcludes: false
         }
     }
     catch (exc) {
@@ -395,6 +370,7 @@ def buildEdition(edition, os) {
         throw exc
     }
     finally {
+        stashBuild(edition, os)
         archiveArtifacts allowEmptyArchive: true, artifacts: 'log-output/**', defaultExcludes: false
     }
 }
