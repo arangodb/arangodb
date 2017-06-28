@@ -220,11 +220,17 @@ bool TraditionalKeyGenerator::validateKey(char const* key, size_t len) {
 /// @brief generate a key
 std::string TraditionalKeyGenerator::generate() {
   TRI_voc_tick_t tick = TRI_NewTickServer();
-  if (tick <= _lastValue) {
-    tick = ++_lastValue;
-  } else {
-    _lastValue = tick;
+  
+  {
+    MUTEX_LOCKER(mutexLocker, _lock);
+
+    if (tick <= _lastValue) {
+      tick = ++_lastValue;
+    } else {
+      _lastValue = tick;
+    }
   }
+
   if (tick == UINT64_MAX) {
     // sanity check
     return "";
@@ -255,6 +261,8 @@ void TraditionalKeyGenerator::track(char const* p, size_t length) {
     // potentially numeric key
     uint64_t value = StringUtils::uint64(p, length);
 
+    MUTEX_LOCKER(mutexLocker, _lock);
+
     if (value > _lastValue) {
       // and update our last value
       _lastValue = value;
@@ -267,6 +275,7 @@ void TraditionalKeyGenerator::toVelocyPack(VPackBuilder& builder) const {
   TRI_ASSERT(!builder.isClosed());
   builder.add("type", VPackValue(name()));
   builder.add("allowUserKeys", VPackValue(_allowUserKeys));
+  builder.add("lastValue", VPackValue(_lastValue));
 }
 
 /// @brief create the generator
@@ -342,9 +351,10 @@ int AutoIncrementKeyGenerator::validate(char const* p, size_t length, bool isRes
   }
 
   uint64_t intValue = arangodb::basics::StringUtils::uint64(p, length);
+    
+  MUTEX_LOCKER(mutexLocker, _lock);
 
   if (intValue > _lastValue) {
-    MUTEX_LOCKER(mutexLocker, _lock);
     // update our last value
     _lastValue = intValue;
   }
@@ -357,6 +367,8 @@ void AutoIncrementKeyGenerator::track(char const* p, size_t length) {
   // check the numeric key part
   if (length > 0 && p[0] >= '0' && p[0] <= '9') {
     uint64_t value = StringUtils::uint64(p, length);
+  
+    MUTEX_LOCKER(mutexLocker, _lock);
 
     if (value > _lastValue) {
       // and update our last value
@@ -372,6 +384,7 @@ void AutoIncrementKeyGenerator::toVelocyPack(VPackBuilder& builder) const {
   builder.add("allowUserKeys", VPackValue(_allowUserKeys));
   builder.add("offset", VPackValue(_offset));
   builder.add("increment", VPackValue(_increment));
+  builder.add("lastValue", VPackValue(_lastValue));
 }
 
 /// @brief validate a document id (collection name + / + document key)

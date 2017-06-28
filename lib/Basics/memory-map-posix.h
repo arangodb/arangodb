@@ -26,6 +26,10 @@
 
 #include "Basics/Common.h"
 
+#ifdef __linux__
+#include <linux/version.h>
+#endif
+
 #ifdef TRI_HAVE_POSIX_MMAP
 
 #include <sys/mman.h>
@@ -47,16 +51,32 @@
 /// @brief constants for TRI_MMFileAdvise
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifdef __linux__
-#define TRI_MADVISE_SEQUENTIAL MADV_SEQUENTIAL
-#define TRI_MADVISE_RANDOM MADV_RANDOM
-#define TRI_MADVISE_WILLNEED MADV_WILLNEED
-#define TRI_MADVISE_DONTNEED MADV_DONTNEED
-#else
 #define TRI_MADVISE_SEQUENTIAL 0
 #define TRI_MADVISE_RANDOM 0
 #define TRI_MADVISE_WILLNEED 0
 #define TRI_MADVISE_DONTNEED 0
+#define TRI_MADVISE_DONTDUMP 0
+
+#ifdef __linux__
+
+#undef TRI_MADVISE_SEQUENTIAL
+#define TRI_MADVISE_SEQUENTIAL MADV_SEQUENTIAL
+
+#undef TRI_MADVISE_RANDOM
+#define TRI_MADVISE_RANDOM MADV_RANDOM
+
+#undef TRI_MADVISE_WILLNEED
+#define TRI_MADVISE_WILLNEED MADV_WILLNEED
+
+#undef TRI_MADVISE_DONTNEED
+#define TRI_MADVISE_DONTNEED MADV_DONTNEED
+
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(3,4,0)
+// only present since Linux 3.4
+#undef TRI_MADVISE_DONTDUMP
+#define TRI_MADVISE_DONTDUMP MADV_DONTDUMP
+#endif
+
 #endif
 
 #endif

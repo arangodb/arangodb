@@ -241,6 +241,7 @@ struct MMFilesDatafile {
   void randomAccess();
   void willNeed();
   void dontNeed();
+  void dontDump();
   bool readOnly();
   bool readWrite();
   

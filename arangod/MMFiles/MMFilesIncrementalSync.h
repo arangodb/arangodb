@@ -297,6 +297,9 @@ int handleSyncKeysMMFiles(arangodb::InitialSyncer& syncer,
   options.silent = true;
   options.ignoreRevs = true;
   options.isRestore = true;
+  if (!syncer._leaderId.empty()) {
+    options.isSynchronousReplicationFrom = syncer._leaderId;
+  }
 
   VPackBuilder keyBuilder;
   size_t const n = static_cast<size_t>(slice.length());

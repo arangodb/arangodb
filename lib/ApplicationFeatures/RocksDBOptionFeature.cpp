@@ -268,10 +268,8 @@ void RocksDBOptionFeature::validateOptions(
     FATAL_ERROR_EXIT();
   }
 
-
-  LOG_TOPIC(ERR, arangodb::Logger::STARTUP) << _baseBackgroundCompactions;
-  if (_baseBackgroundCompactions == -1) { /*we are good */ }
-  else if(_baseBackgroundCompactions < 1 || _baseBackgroundCompactions > 64) {
+  if (_baseBackgroundCompactions != -1 &&
+      (_baseBackgroundCompactions < 1 || _baseBackgroundCompactions > 64)) {
     LOG_TOPIC(FATAL, arangodb::Logger::FIXME)
         << "invalid value for '--rocksdb.base-background-compactions'";
     FATAL_ERROR_EXIT();
