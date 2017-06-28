@@ -1,5 +1,12 @@
 //  -*- mode: groovy-mode
 
+properties(
+    [[
+      $class: 'BuildDiscarderProperty',
+      strategy: [$class: 'LogRotator', artifactDaysToKeepStr: '', artifactNumToKeepStr: '', daysToKeepStr: '3', numToKeepStr: '5']
+    ]]
+)
+
 echo "BRANCH_NAME: " + env.BRANCH_NAME
 echo "CHANGE_ID: " + env.CHANGE_ID
 echo "CHANGE_TARGET: " + env.CHANGE_TARGET
