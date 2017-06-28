@@ -29,6 +29,8 @@ devel
 
 * fixed issue #2677: Foxx disabling development mode creates non-deterministic service bundle
 
+* fixed issue #2684: Legacy service UI not working
+
 v3.2.beta1 (2017-06-12)
 -----------------------
 
