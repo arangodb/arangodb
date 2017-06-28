@@ -1,6 +1,8 @@
 v3.1.24 (xxxx-xx-xx)
 --------------------
 
+* fixed one more LIMIT issue in traversals
+
 * fixed issue #2684: Legacy service UI not working
 
 

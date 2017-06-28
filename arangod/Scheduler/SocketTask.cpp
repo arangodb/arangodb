@@ -52,7 +52,6 @@ SocketTask::SocketTask(arangodb::EventLoop loop,
       _connectionInfo(connectionInfo),
       _readBuffer(TRI_UNKNOWN_MEM_ZONE, READ_BLOCK_SIZE + 1, false),
       _writeBuffer(nullptr, nullptr),
-      _strand(socket->_ioService),
       _peer(std::move(socket)),
       _keepAliveTimeout(static_cast<long>(keepAliveTimeout * 1000)),
       _keepAliveTimer(_peer->_ioService, _keepAliveTimeout),
@@ -212,7 +211,7 @@ void SocketTask::writeWriteBuffer() {
   _peer->asyncWrite(
       boost::asio::buffer(_writeBuffer._buffer->begin() + written,
                           total - written),
-      _strand.wrap([self, this](const boost::system::error_code& ec,
+      [self, this](const boost::system::error_code& ec,
                    std::size_t transferred) {
         MUTEX_LOCKER(locker, _writeLock);
 
@@ -229,7 +228,7 @@ void SocketTask::writeWriteBuffer() {
             _loop._scheduler->post([self, this]() { writeWriteBuffer(); });
           }
         }
-      }));
+      });
 }
 
 bool SocketTask::completedWriteBuffer() {
@@ -463,7 +462,7 @@ void SocketTask::asyncReadSome() {
 
     _peer->asyncRead(
         boost::asio::buffer(_readBuffer.end(), READ_BLOCK_SIZE),
-        _strand.wrap([self, this](const boost::system::error_code& ec,
+        [self, this](const boost::system::error_code& ec,
                      std::size_t transferred) {
           JobGuard guard(_loop);
           guard.work();
@@ -483,7 +482,7 @@ void SocketTask::asyncReadSome() {
 
             compactify();
           }
-        }));
+        });
   }
 }
 
