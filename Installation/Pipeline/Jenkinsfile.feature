@@ -469,12 +469,15 @@ def buildStepParallel(osList) {
 // --SECTION--                                                    SCRIPTS JSLINT
 // -----------------------------------------------------------------------------
 
+jslintSuccessful = true
+
 def jslint() {
     try {
         sh './Installation/Pipeline/test_jslint.sh'
     }
     catch (exc) {
         echo exc.toString()
+        jslintSuccessful = false
         currentBuild.result = 'UNSTABLE'
     }
 }
@@ -629,6 +632,9 @@ def testStepParallel(osList, modeList) {
 // --SECTION--                                                SCRIPTS RESILIENCE
 // -----------------------------------------------------------------------------
 
+resiliencesSuccess = [:]
+allResiliencesSuccessful = true
+
 def testResilience(os, engine, foxx) {
     sh "./Installation/Pipeline/test_resilience_${foxx}_${engine}_${os}.sh"
 }
@@ -675,8 +681,20 @@ def testResilienceName(os, engine, foxx, full) {
 def testResilienceStep(os, engine, foxx) {
     return {
         node(os) {
-            unstashBinaries('community', os)
-            testResilience(os, engine, foxx)
+            echo "Running ${foxx} ${engine} ${os} test"
+
+            def name = "${os}-${engine}-${foxx}"
+
+            try {
+                unstashBinaries('community', os)
+                testResilience(os, engine, foxx)
+            }
+            catch (exc) {
+                echo exc.toString()
+                resiliencesSuccess[name] = false
+                allResiliencesSuccessful = false
+                currentBuild.result = 'UNSTABLE'
+            }
         }
     }
 }
@@ -744,7 +762,14 @@ stage('result') {
             echo "TEST ${kv.key}: ${kv.value}"
         }
 
-        if (! (allBuildsSuccessful && allTestsSuccessful)) {
+        for (kv in resiliencesSuccess) {
+            echo "RESILIENCE ${kv.key}: ${kv.value}"
+        }
+
+        if (! (allBuildsSuccessful
+            && allTestsSuccessful
+            && resiliencesSuccess
+            && jslintSuccessful)) {
             currentBuild.result = 'FAILURE'
         }
     }
