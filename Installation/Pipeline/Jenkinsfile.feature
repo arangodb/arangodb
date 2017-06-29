@@ -120,7 +120,7 @@ def PowerShell(psCmd) {
 // copy data to master cache
 def scpToMaster(os, from, to) {
     if (os == 'linux' || os == 'mac') {
-        ssh "scp '${from}' '${jenkinsMaster}:${cacheDir}/${to}'"
+        sh "scp '${from}' '${jenkinsMaster}:${cacheDir}/${to}'"
     }
     else if (os == 'windows') {
         bat "scp -F c:/Users/jenkins/ssh_config '${from}' '${jenkinsMaster}:${cacheDir}/${to}'"
@@ -130,7 +130,7 @@ def scpToMaster(os, from, to) {
 // copy data from master cache
 def scpFromMaster(os, from, to) {
     if (os == 'linux' || os == 'mac') {
-        ssh "scp '${jenkinsMaster}:${cacheDir}/${from}' '${to}'"
+        sh "scp '${jenkinsMaster}:${cacheDir}/${from}' '${to}'"
     }
     else if (os == 'windows') {
         bat "scp -F c:/Users/jenkins/ssh_config '${jenkinsMaster}:${cacheDir}/${from}' '${to}'"
