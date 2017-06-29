@@ -148,11 +148,11 @@ RestStatus RestAgencyPrivHandler::execute() {
             Builder body;
             body.add(VPackValue("NO_LEADER"));
             generateResult(rest::ResponseCode::SERVICE_UNAVAILABLE, body.slice());
-            return RestStatus::DONE;
           } else {
             TRI_ASSERT(ret.redirect != _agent->id());
             redirectRequest(ret.redirect);
           }
+          return RestStatus::DONE;
         }
       } else if (suffixes[0] == "remove-server") {
         auto ret = _agent->removeServer(_request->toVelocyPackBuilderPtr());

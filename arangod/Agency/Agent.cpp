@@ -56,7 +56,8 @@ Agent::Agent(config_t const& config)
     _activator(nullptr),
     _compactor(this),
     _ready(false),
-    _preparing(false) {
+    _preparing(false),
+    _joinConfig(nullptr) {
   _state.configure(this);
   _constituent.configure(this);
 }
@@ -239,9 +240,8 @@ void Agent::reportIn(std::string const& peerId, index_t index, size_t toLog) {
           << " through " << index << " to read db";
 
         _readDB.applyLogEntries(
-          _state.slices(
-            _commitIndex + 1, index), _commitIndex, _constituent.term(),
-            true /* inform others by callbacks */ );
+          _state.slices(_commitIndex + 1, index), _commitIndex, term(),
+          true /* inform others by callbacks */ );
         
         MUTEX_LOCKER(liLocker, _liLock);
         _commitIndex = index;
@@ -605,7 +605,7 @@ query_t Agent::activate(query_t const& everything) {
           _readDB = compact.get("readDB");
         }
         commitIndex = _commitIndex;
-        _readDB.applyLogEntries(batch, commitIndex, _constituent.term(),
+        _readDB.applyLogEntries(batch, commitIndex, term(),
                                 false  /* do not perform callbacks */);
         _spearhead = _readDB;
       }
@@ -1044,7 +1044,7 @@ void Agent::reportActivated(
       _confirmed[replacement] = commitIndex;
       _lastAcked[replacement] = system_clock::now();
       _config.swapActiveMember(failed, replacement);
-      myterm = _constituent.term();
+      myterm = term();
     }
     
     {
@@ -1057,7 +1057,7 @@ void Agent::reportActivated(
     
   } else {
     MUTEX_LOCKER(ioLocker, _ioLock);
-    myterm = _constituent.term();
+    myterm = term();
   }
 
   persistConfiguration(myterm);
@@ -1167,7 +1167,7 @@ void Agent::lead() {
   term_t myterm;
   {
     MUTEX_LOCKER(ioLocker, _ioLock);
-    myterm = _constituent.term();
+    myterm = term();
   }
 
   persistConfiguration(myterm);
@@ -1322,8 +1322,8 @@ arangodb::consensus::index_t Agent::rebuildDBs() {
     << lastCompactionIndex << " to " << _commitIndex << " " << _state;
 
   auto logs = _state.slices(lastCompactionIndex+1, _commitIndex);
-  _readDB.applyLogEntries(logs, _commitIndex, _constituent.term(),
-      false  /* do not send callbacks */);
+  _readDB.applyLogEntries(logs, _commitIndex, this->term(),
+                          false  /* do not send callbacks */);
   _spearhead = _readDB;
 
   LOG_TOPIC(TRACE, Logger::AGENCY) << "ReadDB: " << _readDB;
@@ -1417,6 +1417,55 @@ Agent& Agent::operator=(VPackSlice const& compaction) {
   
 }
 
+bool Agent::haveJoinConfig() const {
+  MUTEX_LOCKER(guard, _joinLock);
+  return (_joinConfig != nullptr);
+}
+
+void Agent::join() {
+
+  MUTEX_LOCKER(guard, _joinLock);
+  TRI_ASSERT(_joinConfig != nullptr);
+  
+  std::string path = "/_api/agency_priv/add-server";
+  VPackBuilder addServerBody;
+  { VPackObjectBuilder a(&addServerBody);
+    addServerBody.add("endpoint", VPackValue(endpoint()));
+    addServerBody.add("id", VPackValue(id()));
+  }
+
+  auto const pool = _joinConfig->slice().get(poolStr);
+  AgencyCommResult comres;
+  
+  while (true) { 
+    size_t peer = rand() % pool.length();
+    auto ep = pool.valueAt(peer);
+    TRI_ASSERT(ep.isString());
+    auto cc = ClusterComm::instance();
+    if (cc == nullptr) {
+      break;
+    }
+    comres = cc->syncRequest(
+      id(), 1, ep.copyString(), rest::RequestType::POST, path,
+      addServerBody.toJson(), std::unordered_map<std::string, std::string>(),
+      5.0);
+    if (comres->status == CL_COMM_SENT) {
+      LOG_TOPIC(DEBUG, Logger::AGENCY)
+        << "Handling add-server request with headers("
+        << comres->result->getHeaderFields() << ") and httpCode("
+        << comres->result->getHttpReturnCode() << ")";
+      
+      if (comres->result->getHttpReturnCode() == 200) {
+        auto const newconfig =
+          comres->result->getBodyVelocyPack()->slice().get("configuration");
+        updateConfiguration(newconfig);
+        break;
+      } 
+    }
+  }
+}
+
+
 /// Are we still starting up?
 bool Agent::booting() { return (!_config.poolComplete()); }
 
@@ -1431,6 +1480,16 @@ query_t Agent::gossip(query_t const& in, bool isCallback, size_t version) {
   LOG_TOPIC(DEBUG, Logger::AGENCY) << "Incoming gossip: "
       << in->slice().toJson();
 
+  // Once term > 0 
+  // will only respond with join key word containing configuration
+  if (term() > 0) {
+    auto ret = std::make_shared<Builder>();
+    { VPackObjectBuilder a(ret.get());
+      ret->add("leaderId", VPackValue(leaderID()));
+      ret->add("join", _config.toBuilder()->slice()); }
+    return ret;
+  }
+
   VPackSlice slice = in->slice();
   if (!slice.isObject()) {
     THROW_ARANGO_EXCEPTION_MESSAGE(
@@ -1439,6 +1498,35 @@ query_t Agent::gossip(query_t const& in, bool isCallback, size_t version) {
             slice.typeName());
   }
 
+  // If in has "join" keyword we are joining live agency,
+  // stop gossipping and contact leader add-server
+  // else continue normal gossipping
+  if (slice.hasKey("join")) {
+    Slice join = slice.get("join");
+    TRI_ASSERT(join.isObject());
+
+    auto pool = join.get("pool");
+    TRI_ASSERT(pool.isObject());
+    if (pool.length() == 1) {
+      LOG_TOPIC(FATAL, Logger::AGENCY) << "We do not expand single host agencies";
+      FATAL_ERROR_EXIT();
+    }
+
+    {
+      MUTEX_LOCKER(guard, _joinLock);
+      if (_joinConfig == nullptr) {
+        _joinConfig = std::make_shared<Builder>();
+        _joinConfig->add(slice.get("join"));
+      }
+    }
+
+    // return true
+    auto ret = std::make_shared<Builder>();
+    ret->add(VPackValue(true));
+    return ret;
+  }
+
+  // Regular gossipping from here on
   if (!slice.hasKey("id") || !slice.get("id").isString()) {
     THROW_ARANGO_EXCEPTION_MESSAGE(
         20002, "Gossip message must contain string parameter 'id'");

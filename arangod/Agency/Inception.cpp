@@ -95,6 +95,9 @@ void Inception::gossip() {
 
     // gossip peers
     for (auto const& p : config.gossipPeers()) {
+      if (config.poolComplete()) {
+        break;
+      }
       if (p != config.endpoint()) {
         {
           MUTEX_LOCKER(ackedLocker,_vLock);
@@ -110,6 +113,10 @@ void Inception::gossip() {
         if (this->isStopping() || _agent->isStopping() || cc == nullptr) {
           return;
         }
+        if(_agent->haveJoinConfig()) {
+          _agent->join();
+          return;
+        }
         cc->asyncRequest(
           clientid, 1, p, rest::RequestType::POST, path,
           std::make_shared<std::string>(out->toJson()), hf,
@@ -120,6 +127,9 @@ void Inception::gossip() {
     // pool entries
     bool complete = true;
     for (auto const& pair : config.pool()) {
+      if (config.poolComplete()) {
+        break;
+      }
       if (pair.second != config.endpoint()) {
         {
           MUTEX_LOCKER(ackedLocker,_vLock);
@@ -129,6 +139,10 @@ void Inception::gossip() {
         }
         complete = false;
         auto const clientid = config.id() + std::to_string(j++);
+        if(_agent->haveJoinConfig()) {
+          _agent->join();
+          return;
+        }
         auto hf =
           std::make_unique<std::unordered_map<std::string, std::string>>();
         LOG_TOPIC(DEBUG, Logger::AGENCY) << "Sending gossip message: "

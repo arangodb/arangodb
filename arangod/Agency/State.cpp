@@ -139,8 +139,9 @@ bool State::persistconf(
   index_t index, term_t term, arangodb::velocypack::Slice const& entry,
   std::string const& clientId) const {
   
-  LOG_TOPIC(TRACE, Logger::AGENCY) << "persist configuration index=" << index
-                                   << " term=" << term << " entry: " << entry.toJson();
+  LOG_TOPIC(TRACE, Logger::AGENCY)
+    << "persist configuration index=" << index << " term=" << term
+    << " entry: " << entry.toJson();
   
   // The conventional log entry-------------------------------------------------
   Builder log;
@@ -231,7 +232,6 @@ std::vector<index_t> State::log(
       TRI_ASSERT(transaction.length() > 0);
       bool reconfiguration = 
         transaction.keyAt(0).copyString().compare(0, RECONFIGURE.size(), RECONFIGURE) == 0;
-      LOG_TOPIC(INFO, Logger::AGENCY) << transaction.toJson() << " " << reconfiguration;
       idx[j] =
         logNonBlocking(
           _log.back().index+1, transaction, term, clientId, true, reconfiguration);
@@ -342,7 +342,6 @@ index_t State::log(query_t const& transactions, size_t ndups) {
     
     bool reconfiguration =
       query.keyAt(0).copyString().compare(0, RECONFIGURE.size(), RECONFIGURE) == 0;
-    LOG_TOPIC(INFO, Logger::AGENCY) << query.toJson() << " " << reconfiguration;
 
     // first to disk
     if (logNonBlocking(index, query, term, clientId, false, reconfiguration)==0) {

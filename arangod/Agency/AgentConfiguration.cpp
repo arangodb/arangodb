@@ -515,7 +515,7 @@ query_t config_t::toBuilder() const {
       }}
 
     ret->add(idStr, VPackValue(_id));
-    ret->add(agencySizeStr, VPackValue(_agencySize));
+    ret->add(agencySizeStr, VPackValue(_pool.size()));
     ret->add(poolSizeStr, VPackValue(_poolSize));
     ret->add(endpointStr, VPackValue(_endpoint));
     ret->add(minPingStr, VPackValue(_minPing));
@@ -726,8 +726,13 @@ void config_t::updateConfiguration(VPackSlice const& other) {
 
   TRI_ASSERT(other.isObject());
   TRI_ASSERT(other.hasKey(poolStr));
-  TRI_ASSERT(other.hasKey(activeStr));
-
+  TRI_ASSERT(other.hasKey(maxPingStr));
+  TRI_ASSERT(other.hasKey(minPingStr));
+  TRI_ASSERT(other.hasKey(compactionStepSizeStr));
+  TRI_ASSERT(other.hasKey(compactionKeepSizeStr));
+  TRI_ASSERT(other.hasKey(supervisionGracePeriodStr));
+  TRI_ASSERT(other.hasKey(supervisionFrequencyStr));
+  
   WRITE_LOCKER(writeLocker, _lock);
 
   auto pool = other.get(poolStr);
@@ -742,6 +747,16 @@ void config_t::updateConfiguration(VPackSlice const& other) {
   for (auto const id : VPackArrayIterator(active)) {
     _active.push_back(id.copyString());
   }
+
+  _minPing = other.get(minPingStr).getNumber<double>();
+  _maxPing = other.get(maxPingStr).getNumber<double>();
+  _supervisionFrequency = other.get(supervisionFrequencyStr).getNumber<double>();
+  _supervisionGracePeriod = other.get(supervisionGracePeriodStr).getNumber<double>();
+
+  _agencySize = _pool.size();
+  _poolSize = _pool.size();
+  
+  ++_version;
   
 }
 
@@ -759,4 +774,7 @@ void config_t::addServer(VPackSlice const& server) {
   auto idStr = id.copyString();
   _pool[idStr] = endpoint.copyString();
   _active.push_back(idStr);
+
+  _version++;
+  
 }

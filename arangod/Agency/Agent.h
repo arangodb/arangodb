@@ -242,8 +242,14 @@ class Agent : public arangodb::Thread,
   void beginPrepareLeadership() { _preparing = true; }
   void endPrepareLeadership()  { _preparing = false; }
 
-  // #brief access Inception thread
+  /// @brief access Inception thread
   Inception const* inception() const;
+
+  /// @brief Join a rafting agecy
+  bool haveJoinConfig() const;
+
+  /// @brief Join a rafting agecy
+  void join();
 
   /// @brief State reads persisted state and prepares the agent
   friend class State;
@@ -339,8 +345,11 @@ class Agent : public arangodb::Thread,
   // lock for _leaderCommitIndex
   mutable arangodb::Mutex _liLock;
 
-  // @brief guard _activator 
+  // @brief guard _activator
   mutable arangodb::Mutex _activatorLock;
+
+  // @brief guard _joinConfig
+  mutable arangodb::Mutex _joinLock;
 
   /// @brief Next compaction after
   index_t _nextCompactionAfter;
@@ -366,6 +375,8 @@ class Agent : public arangodb::Thread,
 
   // lock for _ongoingTrxs
   arangodb::Mutex _trxsLock;
+
+  query_t _joinConfig;
 
 };
 }
