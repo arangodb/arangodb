@@ -386,7 +386,6 @@ def buildEdition(edition, os) {
         }
     }
     catch (exc) {
-        echo exc.toString()
         throw exc
     }
     finally {
@@ -441,10 +440,9 @@ def buildStep(edition, os) {
                 buildsSuccess[name] = true
             }
             catch (exc) {
-                echo exc.toString()
                 buildsSuccess[name] = false
                 allBuildsSuccessful = false
-                currentBuild.result = 'UNSTABLE'
+                throw exc
             }
         }
     }
@@ -476,9 +474,8 @@ def jslint() {
         sh './Installation/Pipeline/test_jslint.sh'
     }
     catch (exc) {
-        echo exc.toString()
         jslintSuccessful = false
-        currentBuild.result = 'UNSTABLE'
+        throw exc
     }
 }
 
@@ -496,8 +493,7 @@ def jslintStep() {
                 }
                 catch (exc) {
                     echo exc.toString()
-                    currentBuild.result = 'UNSTABLE'
-                    return
+                    throw exc
                 }
                 
                 jslint()
@@ -518,7 +514,6 @@ def testEdition(edition, os, mode, engine) {
         sh "./Installation/Pipeline/test_${mode}_${edition}_${engine}_${os}.sh 10"
     }
     catch (exc) {
-        echo exc.toString()
         throw exc
     }
     finally {
@@ -597,7 +592,7 @@ def testStep(edition, os, mode, engine) {
                 echo exc.toString()
                 testsSuccess[name] = false
                 allTestsSuccessful = false
-                currentBuild.result = 'UNSTABLE'
+                throw exc
             }
         }
     }
@@ -690,10 +685,9 @@ def testResilienceStep(os, engine, foxx) {
                 testResilience(os, engine, foxx)
             }
             catch (exc) {
-                echo exc.toString()
                 resiliencesSuccess[name] = false
                 allResiliencesSuccessful = false
-                currentBuild.result = 'UNSTABLE'
+                throw exc
             }
         }
     }
@@ -732,24 +726,49 @@ stage('checkout') {
     }
 }
 
-stage('build linux') {
-    buildStepParallel(['linux'])
+try {
+    stage('build linux') {
+        buildStepParallel(['linux'])
+    }
+}
+catch (exc) {
+    echo exc.toString()
 }
 
-stage('tests linux') {
-    testStepParallel(['linux'], ['cluster', 'singleserver'])
+try {
+    stage('tests linux') {
+        testStepParallel(['linux'], ['cluster', 'singleserver'])
+    }
+}
+catch (exc) {
+    echo exc.toString()
 }
 
-stage('build mac & windows') {
-    buildStepParallel(['mac', 'windows'])
+try {
+    stage('build mac & windows') {
+        buildStepParallel(['mac', 'windows'])
+    }
+}
+catch (exc) {
+    echo exc.toString()
 }
 
-stage('tests mac & windows') {
-    testStepParallel(['mac', 'windows'], ['cluster', 'singleserver'])
+try {
+    stage('tests mac & windows') {
+        testStepParallel(['mac', 'windows'], ['cluster', 'singleserver'])
+    }
+}
+catch (exc) {
+    echo exc.toString()
 }
 
-stage('resilience') {
-    testResilienceParallel();
+try {
+    stage('resilience') {
+        testResilienceParallel();
+    }
+}
+catch (exc) {
+    echo exc.toString()
 }
 
 stage('result') {
