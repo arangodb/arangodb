@@ -42,6 +42,7 @@ else
     exit 1
 fi
 
+. ./Installation/Pipeline/include/test_ulimits.inc
 . ./Installation/Pipeline/include/test_log_info.inc
 . ./Installation/Pipeline/include/test_setup_tmp.inc
 . ./Installation/Pipeline/include/test_setup_ports_and_ldap.inc
