@@ -1,7 +1,7 @@
 Managing Users
 ==============
 
-The user management in ArangoDB 3 is similar to the one found in
+The user management in ArangoDB 3 is similar to the ones found in
 MySQL, Postgres, or other database systems.
 
 An ArangoDB server contains a list of users. Each user can have access
@@ -28,11 +28,13 @@ at all.
 arangosh> users.grantDatabase('admin@testapp', 'testdb', 'rw');
 ```
 
-This grants the user read write access to the database *testdb*. `revokeDatabase`
-will revoke the right. *Attention:* Be aware that from 3.2 the `grantDatabase` will
-not automatically grant users the right to write or read collections in a database. 
-If you grant read only rights on a database `testdb` you will need to explicitly grant
-access rights to individual collections via `grantCollection`.
+This grants the user read write access to the database
+*testdb*. `revokeDatabase` will revoke the right.
+
+**Note**: Be aware that from 3.2 the `grantDatabase` will not automatically
+grant users the right to write or read collections in a database.  If you grant
+read only rights on a database `testdb` you will need to explicitly grant access
+rights to individual collections via `grantCollection`.
 
 ```
 arangosh> users.grantCollection('admin@testapp', 'testdb', 'testcoll', 'rw');
@@ -58,7 +60,7 @@ This method will fail if either the username or the passwords are not specified
 or given in a wrong format, or there already exists a user with the specified
 name.
 
-**Note**: the user will not have permission to access any database. You need to
+**Note**: The user will not have permission to access any database. You need to
 grant the access rights for one or more databases using
 [grantDatabase](#grant-database).
 
