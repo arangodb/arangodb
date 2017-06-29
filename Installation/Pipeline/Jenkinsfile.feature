@@ -736,11 +736,16 @@ stage('resilience') {
 
 stage('result') {
     node('master') {
+        for (kv in buildsSuccess) {
+            echo "BUILD ${kv.key}: ${kv.value}"
+        }
+
+        for (kv in testsSuccess) {
+            echo "TEST ${kv.key}: ${kv.value}"
+        }
+
         if (! (allBuildsSuccessful && allTestsSuccessful)) {
             currentBuild.result = 'FAILURE'
         }
-
-        buildsSuccess.map{ k, v -> echo "BUILD ${k}: ${v}" }
-        testsSuccess.map{ k, v -> echo "TESTS ${k}: ${v}" }
     }
 }
