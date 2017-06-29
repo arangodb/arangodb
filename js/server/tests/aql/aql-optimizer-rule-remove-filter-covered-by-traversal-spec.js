@@ -109,8 +109,6 @@ describe('Single Traversal Optimizer', function () {
                        FOR v, e, p IN 2 OUTBOUND @start @@edges
                        FILTER p.vertices[2].foo == 3
                        RETURN v`;
-        db._explain(query, bindVars);
-
         let plan = AQL_EXPLAIN(query, bindVars, activateOptimizer);
         hasNoFilterNode(plan);
         validateResult(query, bindVars);
@@ -121,8 +119,27 @@ describe('Single Traversal Optimizer', function () {
                        FOR v, e, p IN 2 OUTBOUND @start @@edges
                        FILTER p.vertices[*].foo ALL == 3
                        RETURN v`;
-        db._explain(query, bindVars);
+        let plan = AQL_EXPLAIN(query, bindVars, activateOptimizer);
+        hasNoFilterNode(plan);
+        validateResult(query, bindVars);
+      });
 
+      it('on p.edges[*] ALL', () => {
+        let query = `WITH @@vertices
+                       FOR v, e, p IN 2 ANY @start @@edges
+                       FILTER p.edges[*].foo ALL == 3
+                       RETURN v`;
+        let plan = AQL_EXPLAIN(query, bindVars, activateOptimizer);
+        hasNoFilterNode(plan);
+        validateResult(query, bindVars);
+      });
+
+      it('on p.edges[*] ALL AND p.vertices[*] NONE', () => {
+        let query = `WITH @@vertices
+                       FOR v, e, p IN 0..2 ANY @start @@edges
+                       FILTER p.edges[*].foo ALL <= 5
+                       FILTER p.vertices[*].foo NONE > 6
+                       RETURN v`;
         let plan = AQL_EXPLAIN(query, bindVars, activateOptimizer);
         hasNoFilterNode(plan);
         validateResult(query, bindVars);

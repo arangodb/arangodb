@@ -640,12 +640,15 @@ bool TraversalConditionFinder::before(ExecutionNode* en) {
           // remember the original filter conditions if we can remove them later
           if (indexedAccessDepth == -1) {
             originalFilterConditions->andCombine(cloned);
-          } else if ((int64_t)options->minDepth <= indexedAccessDepth &&
-              (uint64_t)indexedAccessDepth <= options->maxDepth) {
+          } else if ((uint64_t)indexedAccessDepth <= options->maxDepth) {
             // if we had an  index access then indexedAccessDepth
-            // is in [minDepth,maxDepth],
+            // is in [0..maxDepth], if the depth is not a concrete value
+            // then indexedAccessDepth would be INT64_MAX
             originalFilterConditions->andCombine(cloned);
-            options->minDepth = indexedAccessDepth;
+            // do not return paths shorter than the deepest path access
+            if ((int64_t)options->minDepth < indexedAccessDepth) {
+              options->minDepth = indexedAccessDepth;
+            }
           } // otherwise do not remove the filter statement
         }
       }

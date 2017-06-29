@@ -42,7 +42,7 @@ struct Quantifier {
   /// @brief converts a quantifier int value into its string equivalent
   static std::string Stringify(int64_t value);
 
-  static bool IsAllOrAny(AstNode const* quantifier);
+  static bool IsAllOrNone(AstNode const* quantifier);
   
   /// @brief determine the min/max number of matches for an array comparison
   static std::pair<size_t, size_t> RequiredMatches(size_t inputSize, AstNode const* quantifier);
