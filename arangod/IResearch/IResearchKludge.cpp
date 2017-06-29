@@ -61,7 +61,8 @@ void insertDocument(
         auto rid = doc.revisionId();
         VPackSlice document(reinterpret_cast<uint8_t const*>(doc.dataptr()));
 
-        if (TRI_ERROR_NO_ERROR != idx->insert(&trx, fid, rid, document)) {
+        auto res = idx->insert(&trx, fid, rid, document);
+        if (res.fail()) {
           LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "failed to insert document '" << doc.revisionId() << "' from collection '" << collection.cid() << "' into IResearchLink '" << index->id() << "' via IResearchKludge, skipping";
           IR_EXCEPTION();
         }
@@ -130,7 +131,8 @@ void removeDocument(
           auto* idx = static_cast<IResearchLink*>(index.get());
         #endif
 
-        if (TRI_ERROR_NO_ERROR != idx->remove(&trx, rid)) {
+        auto res = idx->remove(&trx, rid);
+        if (res.fail()) {
           LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "failed to remove document '" << rid << "' from collection '" << collection.cid() << "' from IResearchLink '" << index->id() << "' via IResearchKludge, skipping";
           IR_EXCEPTION();
         }

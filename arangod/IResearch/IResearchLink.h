@@ -73,7 +73,7 @@ class IResearchLink final: public Index {
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief insert an ArangoDB document into an iResearch View using '_meta' params
   ////////////////////////////////////////////////////////////////////////////////
-  int insert(
+  Result insert(
     transaction::Methods* trx,
     TRI_voc_rid_t rid,
     VPackSlice const& doc,
@@ -81,7 +81,7 @@ class IResearchLink final: public Index {
   ) override;
 
   // FIXME TODO for use by iresearch::kludge, remove once checkpoint ids are implemented
-  int insert(
+  Result insert(
     transaction::Methods* trx,
     TRI_voc_fid_t fid,
     TRI_voc_rid_t rid,
@@ -115,7 +115,7 @@ class IResearchLink final: public Index {
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief remove an ArangoDB document from an iResearch View
   ////////////////////////////////////////////////////////////////////////////////
-  int remove(
+  Result remove(
     transaction::Methods* trx,
     TRI_voc_rid_t rid,
     VPackSlice const& doc,
@@ -124,7 +124,7 @@ class IResearchLink final: public Index {
 
   // FIXME TODO for use by iresearch::kludge, remove once checkpoint ids are implemented
   // kludge required since fully bypassing regular insert/remove rollback procedure
-  int remove(transaction::Methods* trx, TRI_voc_rid_t rid);
+  Result remove(transaction::Methods* trx, TRI_voc_rid_t rid);
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief set the iResearch view 'name' field in the builder to the specified
@@ -166,6 +166,11 @@ class IResearchLink final: public Index {
   /// @brief iResearch Link index type string value
   ////////////////////////////////////////////////////////////////////////////////
   char const* typeName() const;
+
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief called when the iResearch Link is loaded into memory
+  ////////////////////////////////////////////////////////////////////////////////
+  int load() override;
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief called when the iResearch Link is unloaded from memory

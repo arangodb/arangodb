@@ -164,7 +164,7 @@ bool IResearchLink::hasSelectivityEstimate() const {
 
 // FIXME TODO for use by iresearch::kludge, remove once checkpoint ids are implemented
 #if 1
-int IResearchLink::insert(
+Result IResearchLink::insert(
     transaction::Methods* trx,
     TRI_voc_rid_t rid,
     VPackSlice const& doc,
@@ -173,7 +173,7 @@ int IResearchLink::insert(
   return TRI_ERROR_NO_ERROR; // NOOP because handled by iresearch::kludge::insert(...)
 }
 
-int IResearchLink::insert(
+Result IResearchLink::insert(
     transaction::Methods* trx,
     TRI_voc_fid_t fid,
     TRI_voc_rid_t rid,
@@ -190,7 +190,7 @@ int IResearchLink::insert(
   return _view->insert(fid, *trx, _collection->cid(), rid, doc, _meta);
 }
 #else
-int IResearchLink::insert(
+Result IResearchLink::insert(
   transaction::Methods* trx,
   TRI_voc_rid_t rid,
   VPackSlice const& doc,
@@ -322,7 +322,7 @@ size_t IResearchLink::memory() const {
 
 // FIXME TODO for use by iresearch::kludge, remove once checkpoint ids are implemented
 #if 1
-int IResearchLink::remove(
+Result IResearchLink::remove(
     transaction::Methods* trx,
     TRI_voc_rid_t rid,
     VPackSlice const& doc,
@@ -331,9 +331,9 @@ int IResearchLink::remove(
   return TRI_ERROR_NO_ERROR; // NOOP because handled by iresearch::kludge::remove(...)
 }
 
-int IResearchLink::remove(transaction::Methods* trx, TRI_voc_rid_t rid) {
+Result IResearchLink::remove(transaction::Methods* trx, TRI_voc_rid_t rid) {
 #else
-int IResearchLink::remove(
+Result IResearchLink::remove(
   transaction::Methods* trx,
   TRI_voc_rid_t rid,
   VPackSlice const& doc,
@@ -412,6 +412,12 @@ Index::IndexType IResearchLink::type() const {
 
 char const* IResearchLink::typeName() const {
   return LINK_TYPE.c_str();
+}
+
+int IResearchLink::load() {
+  // TODO FIXME implement
+
+  return TRI_ERROR_NO_ERROR;
 }
 
 int IResearchLink::unload() {
