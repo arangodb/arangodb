@@ -7,10 +7,10 @@ properties(
     ]]
 )
 
-echo "BRANCH_NAME: " + env.BRANCH_NAME
-echo "CHANGE_ID: " + env.CHANGE_ID
-echo "CHANGE_TARGET: " + env.CHANGE_TARGET
-echo "JOB_NAME: " + env.JOB_NAME
+echo "BRANCH_NAME: ${env.BRANCH_NAME}"
+echo "CHANGE_ID: ${env.CHANGE_ID}"
+echo "CHANGE_TARGET: ${env.CHANGE_TARGET}"
+echo "JOB_NAME: ${env.JOB_NAME}"
 
 properties([
     parameters([
@@ -115,6 +115,26 @@ cacheDir = '/vol/cache/' + env.JOB_NAME.replaceAll('%', '_')
 // execute a powershell
 def PowerShell(psCmd) {
     bat "powershell.exe -NonInteractive -ExecutionPolicy Bypass -Command \"\$ErrorActionPreference='Stop';[Console]::OutputEncoding=[System.Text.Encoding]::UTF8;$psCmd;EXIT \$global:LastExitCode\""
+}
+
+// copy data to master cache
+def scpToMaster(os, from, to) {
+    if (os == 'linux' || os == 'mac') {
+        ssh "scp '${from}' '${jenkinsMaster}:${cacheDir}/${to}'"
+    }
+    else if (os == 'windows') {
+        bat "scp -F c:/Users/jenkins/ssh_config '${from}' '${jenkinsMaster}:${cacheDir}/${to}'"
+    }
+}
+
+// copy data from master cache
+def scpFromMaster(os, from, to) {
+    if (os == 'linux' || os == 'mac') {
+        ssh "scp '${jenkinsMaster}:${cacheDir}/${from}' '${to}'"
+    }
+    else if (os == 'windows') {
+        bat "scp -F c:/Users/jenkins/ssh_config '${jenkinsMaster}:${cacheDir}/${from}' '${to}'"
+    }
 }
 
 // -----------------------------------------------------------------------------
@@ -225,17 +245,15 @@ def checkCommitMessages() {
         }
     }
 
-    script {
-        echo 'Linux: ' + (buildLinux ? 'true' : 'false')
-        echo 'Mac: ' + (buildMac ? 'true' : 'false')
-        echo 'Windows: ' + (buildWindows ? 'true' : 'false')
-        echo 'Clean Build: ' + (cleanBuild ? 'true' : 'false')
-        echo 'Build Community: ' + (buildCommunity ? 'true' : 'false')
-        echo 'Build Enterprise: ' + (buildEnterprise ? 'true' : 'false')
-        echo 'Run Jslint: ' + (runJslint ? 'true' : 'false')
-        echo 'Run Resilience: ' + (runResilience ? 'true' : 'false')
-        echo 'Run Tests: ' + (runTests ? 'true' : 'false')
-    }
+    echo 'Linux: ' + (buildLinux ? 'true' : 'false')
+    echo 'Mac: ' + (buildMac ? 'true' : 'false')
+    echo 'Windows: ' + (buildWindows ? 'true' : 'false')
+    echo 'Clean Build: ' + (cleanBuild ? 'true' : 'false')
+    echo 'Build Community: ' + (buildCommunity ? 'true' : 'false')
+    echo 'Build Enterprise: ' + (buildEnterprise ? 'true' : 'false')
+    echo 'Run Jslint: ' + (runJslint ? 'true' : 'false')
+    echo 'Run Resilience: ' + (runResilience ? 'true' : 'false')
+    echo 'Run Tests: ' + (runTests ? 'true' : 'false')
 }
 
 // -----------------------------------------------------------------------------
@@ -243,112 +261,85 @@ def checkCommitMessages() {
 // -----------------------------------------------------------------------------
 
 def stashSourceCode() {
-    script {
-        sh 'rm -f source.*'
-        sh 'find -L . -type l -delete'
-        sh 'zip -r -1 -x "*tmp" -x ".git" -y -q source.zip *'
+    sh 'rm -f source.*'
+    sh 'find -L . -type l -delete'
+    sh 'zip -r -1 -x "*tmp" -x ".git" -y -q source.zip *'
 
-        lock('cache') {
-            sh 'mkdir -p ' + cacheDir
-            sh 'mv -f source.zip ' + cacheDir + '/source.zip'
-        }
+    lock('cache') {
+        sh 'mkdir -p ' + cacheDir
+        sh "mv -f source.zip ${cacheDir}/source.zip"
     }
 }
 
 def unstashSourceCode(os) {
-    script {
-        if (os == 'linux' || os == 'mac') {
-            sh 'rm -rf *'
-        }
-        else if (os == 'windows') {
-            bat 'del /F /Q *'
-        }
+    if (os == 'linux' || os == 'mac') {
+        sh 'rm -rf *'
+    }
+    else if (os == 'windows') {
+        bat 'del /F /Q *'
+    }
 
-        def name = env.JOB_NAME
+    lock('cache') {
+        scpFromMaster(os, 'source.zip', 'source.zip')
+    }
 
-        if (os == 'linux' || os == 'mac') {
-            lock('cache') {
-                sh 'scp "' + jenkinsMaster + ':' + cacheDir + '/source.zip" source.zip'
-            }
-
-            sh 'unzip -o -q source.zip'
-        }
-        else if (os == 'windows') {
-            lock('cache') {
-                bat 'scp -F c:/Users/jenkins/ssh_config "' + jenkinsMaster + ':' + cacheDir + '/source.zip" source.zip'
-            }
-
-            bat 'c:\\cmake\\bin\\cmake -E tar xf source.zip'
-        }
+    if (os == 'linux' || os == 'mac') {
+        sh 'unzip -o -q source.zip'
+    }
+    else if (os == 'windows') {
+        bat 'c:\\cmake\\bin\\cmake -E tar xf source.zip'
     }
 }
 
 def stashBuild(edition, os) {
-    def name = 'build-' + edition + '-' + os + '.zip'
+    def name = "build-${edition}-${os}.zip"
 
     if (os == 'linux' || os == 'mac') {
-        script { 
-            sh 'rm -f ' + name
-            sh 'zip -r -1 -y -q ' + name + ' build-' + edition
-
-            lock('cache') {
-                sh 'scp ' + name + ' "' + jenkinsMaster + ':' + cacheDir + '"'
-            }
-        }
+        sh "rm -f ${name}"
+        sh "zip -r -1 -y -q ${name} build-${edition}"
     }
     else if (os == 'windows') {
-        script { 
-            bat 'del /F /q ' + name
-            PowerShell('Compress -Archive -Path build-' + edition + ' -DestinationPath ' + name)
+        bat "del /F /q ${name}"
+        bat "c:\\cmake\\bin\\cmake -E tar cf ${name} build"
+    }
 
-            lock('cache') {
-                bat 'scp -F c:/Users/jenkins/ssh_config ' + name + ' "' + jenkinsMaster + ':' + cacheDir + '"'
-            }
-        }
+    lock('cache') {
+        scpToMaster(os, name, name)
     }
 }
 
 def unstashBuild(edition, os) {
-    def name = 'build-' + edition + '-' + os + '.zip'
+    def name = "build-${edition}-${os}.zip"
+
+    lock('cache') {
+        scpFromMaster(os, name, name)
+    }
 
     if (os == 'linux' || os == 'mac') {
-        script { 
-            lock('cache') {
-                sh 'scp "' + jenkinsMaster + ':' + cacheDir + '/' + name + '" ' + name
-            }
-
-            sh 'unzip -o -q ' + name
-        }
+        sh "unzip -o -q ${name}"
     }
     else if (os == 'windows') {
-        script { 
-            lock('cache') {
-                bat 'scp -F c:/Users/jenkins/ssh_config "' + jenkinsMaster + ':' + cacheDir + '/' + name + '" ' + name
-            }
-
-            bat 'c:\\cmake\\bin\\cmake -E tar xf ' + name
-        }
+        bat "c:\\cmake\\bin\\cmake -E tar xf ${name}"
     }
 }
 
 def stashBinaries(edition, os) {
-    def name = 'binaries-' + edition + '-' + os + '.zip'
+    def name = "binaries-${edition}-${os}.zip"
+    def dirs = 'build etc Installation/Pipeline js scripts UnitTests utils resilience'
+
+    if (edition == 'enterprise') {
+        dirs = "${dirs} enterprise/js"
+    }
 
     if (os == 'linux' || os == 'mac') {
-        script { 
-            def dirs = 'build etc Installation/Pipeline js scripts UnitTests utils resilience'
+        sh "zip -r -1 -y -q ${name} ${dirs}"
+    }
+    else if (os == 'windows') {
+        bat "c:\\cmake\\bin\\cmake -E tar cf ${name} ${dirs}"
+    }
 
-            if (edition == 'community') {
-                sh 'zip -r -1 -y -q ' + name + ' ' + dirs
-            }
-            else if (edition == 'enterprise') {
-                sh 'zip -r -1 -y -q ' + name + ' ' + dirs + ' enterprise/js'
-            }
-
-            lock('cache') {
-                sh 'scp ' + name + ' "' + jenkinsMaster + ':' + cacheDir + '"'
-            }
-        }
+    lock('cache') {
+        scpToMaster(os, name, name)
     }
 }
 
@@ -359,7 +350,7 @@ def unstashBinaries(edition, os) {
         sh 'rm -rf *'
 
         lock('cache') {
-            sh 'scp "' + jenkinsMaster + ':' + cacheDir + '/' + name + '" ' + name
+            scpFromMaster(os, name, name)
         }
 
         sh 'unzip -o -q ' + name
@@ -385,13 +376,13 @@ def buildEdition(edition, os) {
 
     try {
         if (os == 'linux') {
-            sh './Installation/Pipeline/build_' + edition + '_' + os + '.sh 64'
+            sh "./Installation/Pipeline/build_${edition}_${os}.sh 64"
         }
         else if (os == 'mac') {
-            sh './Installation/Pipeline/build_' + edition + '_' + os + '.sh 24'
+            sh './Installation/Pipeline/build_${edition}_${os}.sh 20"
         }
         else if (os == 'windows') {
-            PowerShell('. .\\Installation\\Pipeline\\build_' + edition + '_windows.ps1')
+            PowerShell('. .\\Installation\\Pipeline\\build_${edition}_windows.ps1')
         }
     }
     catch (exc) {
@@ -426,12 +417,12 @@ def buildStepCheck(edition, os, full) {
     }
 
     if (edition == 'enterprise' && ! buildEnterprise) {
-        echo "Not building " + edition + " version"
+        echo "Not building ${edition} version"
         return false
     }
 
     if (edition == 'community' && ! buildCommunity) {
-        echo "Not building " + edition + " version"
+        echo "Not building ${edition} version"
         return false
     }
 
@@ -466,9 +457,7 @@ def buildStepParallel(osList) {
     for (edition in ['community', 'enterprise']) {
         for (os in osList) {
             if (buildStepCheck(edition, os, full)) {
-                def name = 'build-' + edition + '-' + os
-
-                branches[name] = buildStep(edition, os)
+                branches["build-${edition}-${os}"] = buildStep(edition, os)
             }
         }
     }
@@ -520,7 +509,7 @@ def jslintStep() {
 
 def testEdition(edition, os, mode, engine) {
     try {
-        sh './Installation/Pipeline/test_' + mode + '_' + edition + '_' + engine + '_' + os + '.sh 10'
+        sh "./Installation/Pipeline/test_${mode}_${edition}_${engine}_${os}.sh 10"
     }
     catch (exc) {
         echo exc.toString()
@@ -564,12 +553,12 @@ def testCheck(edition, os, mode, engine, full) {
     }
 
     if (edition == 'enterprise' && ! buildEnterprise) {
-        echo "Not building " + edition + " version"
+        echo "Not building ${edition} version"
         return false
     }
 
     if (edition == 'community' && ! buildCommunity) {
-        echo "Not building " + edition + " version"
+        echo "Not building ${edition} version"
         return false
     }
 
@@ -577,10 +566,10 @@ def testCheck(edition, os, mode, engine, full) {
 }
 
 def testName(edition, os, mode, engine, full) {
-    def name = "test-" + mode + '-' + edition + '-' + engine + '-' + os;
+    def name = "test-${mode}-${edition}-${engine}-${os}";
 
     if (! testCheck(edition, os, mode, engine, full)) {
-        name = "DISABLED-" + name
+        name = "DISABLED-${name}"
     }
 
     return name 
@@ -589,7 +578,7 @@ def testName(edition, os, mode, engine, full) {
 def testStep(edition, os, mode, engine) {
     return {
         node(os) {
-            echo "Running " + mode + " " + edition + " " + engine + " ${os} test"
+            echo "Running ${mode} ${edition} ${engine} ${os} test"
 
             unstashBinaries(edition, os)
             testEdition(edition, os, mode, engine)
@@ -627,7 +616,7 @@ def testStepParallel(osList, modeList) {
 // -----------------------------------------------------------------------------
 
 def testResilience(os, engine, foxx) {
-    sh './Installation/Pipeline/test_resilience_' + foxx + '_' + engine + '_' + os + '.sh'
+    sh "./Installation/Pipeline/test_resilience_${foxx}_${engine}_${os}.sh"
 }
 
 def testResilienceCheck(os, engine, foxx, full) {
@@ -660,10 +649,10 @@ def testResilienceCheck(os, engine, foxx, full) {
 }
 
 def testResilienceName(os, engine, foxx, full) {
-    def name = 'test-resilience' + '-' + foxx + '_' + engine + '-' + os;
+    def name = "test-resilience-${foxx}-${engine}-${os}";
 
     if (! testResilienceCheck(os, engine, foxx, full)) {
-        name = "DISABLED-" + name
+        name = "DISABLED-${name}"
     }
 
     return name 
@@ -715,12 +704,8 @@ stage('build linux') {
     buildStepParallel(['linux'])
 }
 
-stage('tests linux single') {
-    testStepParallel(['linux'], ['singleserver'])
-}
-
-stage('tests linux cluster') {
-    testStepParallel(['linux'], ['cluster'])
+stage('tests linux') {
+    testStepParallel(['linux'], ['cluster', 'singleserver'])
 }
 
 stage('build mac & windows') {
@@ -736,7 +721,11 @@ stage('resilience') {
 }
 
 stage('result') {
-    if (! allBuildsSuccessful) {
-        currentBuild.result = 'FAILURE'
+    node('master') {
+        if (! allBuildsSuccessful) {
+            currentBuild.result = 'FAILURE'
+        }
+
+        buildsSuccess.map{ k, v -> echo "BUILD ${k}: ${v}" }
     }
 }

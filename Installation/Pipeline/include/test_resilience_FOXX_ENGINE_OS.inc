@@ -41,8 +41,10 @@ trap "$PORTTRAP" EXIT
 
     if [ "$foxx" == yes ]; then
         TESTS=$(find test/* -name "*foxx*")
-    else
+    elif [ "$foxx" == no ]; then
         TESTS=$(find test/* -not -name "*foxx*")
+    else
+        TESTS="$foxx"
     fi
 
     echo "TESTS: $TESTS"
