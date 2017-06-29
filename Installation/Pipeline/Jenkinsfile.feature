@@ -522,7 +522,7 @@ def testEdition(edition, os, mode, engine) {
         throw exc
     }
     finally {
-        archiveArtifacts allowEmptyArchive: true, artifacts: 'log-output/*/FAILED_*', defaultExcludes: false
+        archiveArtifacts allowEmptyArchive: true, artifacts: 'log-output/**', defaultExcludes: false
     }
 }
 
