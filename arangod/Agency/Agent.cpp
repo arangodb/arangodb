@@ -1435,20 +1435,42 @@ void Agent::join() {
   }
 
   auto const pool = _joinConfig->slice().get(poolStr);
-  AgencyCommResult comres;
+  std::unique_ptr<ClusterCommResult> comres;
+  std::string ep;
+  auto cc = ClusterComm::instance();
   
-  while (true) { 
-    size_t peer = rand() % pool.length();
-    auto ep = pool.valueAt(peer);
-    TRI_ASSERT(ep.isString());
-    auto cc = ClusterComm::instance();
+  while (true) {
+/*    if (comres->result != nullptr) {
+      if (comres->result->getHttpReturnCode() == 307) {
+        try {
+          std::string location = comres->result->getHeaderFields().at("location");
+          auto ssl = (location[4]=='s');
+          auto host = location.substr(ssl ? 8 : 7, location.find('/', 8));
+          ep  = ssl ? "ssl://" : "tcp://";
+          ep += host;
+        } catch (...) {
+          ep.clear();
+        }
+      } else if (comres->result->getHttpReturnCode() == 503) {
+        CONDITION_LOCKER(guard, _waitForCV);
+        _waitForCV.wait(100000*_config.minPing()); // .1 * minPing
+      }
+    }
+
+    if (ep.empty()) {*/
+      ep = pool.valueAt(rand() % pool.length()).copyString();
+      //}
+    
+/*    LOG_TOPIC(ERR, Logger::AGENCY)
+      << ((comres->result!= nullptr) ? comres->result->getHttpReturnCode() : 0)
+      << ep;*/
+
     if (cc == nullptr) {
       break;
     }
     comres = cc->syncRequest(
-      id(), 1, ep.copyString(), rest::RequestType::POST, path,
-      addServerBody.toJson(), std::unordered_map<std::string, std::string>(),
-      5.0);
+      id(), 1, ep, rest::RequestType::POST, path, addServerBody.toJson(),
+      std::unordered_map<std::string, std::string>(), 5.0);
     if (comres->status == CL_COMM_SENT) {
       LOG_TOPIC(DEBUG, Logger::AGENCY)
         << "Handling add-server request with headers("
