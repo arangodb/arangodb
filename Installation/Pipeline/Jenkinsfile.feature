@@ -225,15 +225,17 @@ def checkCommitMessages() {
         }
     }
 
-    echo 'Linux: ' + (buildLinux ? 'true' : 'false')
-    echo 'Mac: ' + (buildMac ? 'true' : 'false')
-    echo 'Windows: ' + (buildWindows ? 'true' : 'false')
-    echo 'Clean Build: ' + (cleanBuild ? 'true' : 'false')
-    echo 'Build Community: ' + (buildCommunity ? 'true' : 'false')
-    echo 'Build Enterprise: ' + (buildEnterprise ? 'true' : 'false')
-    echo 'Run Jslint: ' + (runJslint ? 'true' : 'false')
-    echo 'Run Resilience: ' + (runResilience ? 'true' : 'false')
-    echo 'Run Tests: ' + (runTests ? 'true' : 'false')
+    script {
+        echo 'Linux: ' + (buildLinux ? 'true' : 'false')
+        echo 'Mac: ' + (buildMac ? 'true' : 'false')
+        echo 'Windows: ' + (buildWindows ? 'true' : 'false')
+        echo 'Clean Build: ' + (cleanBuild ? 'true' : 'false')
+        echo 'Build Community: ' + (buildCommunity ? 'true' : 'false')
+        echo 'Build Enterprise: ' + (buildEnterprise ? 'true' : 'false')
+        echo 'Run Jslint: ' + (runJslint ? 'true' : 'false')
+        echo 'Run Resilience: ' + (runResilience ? 'true' : 'false')
+        echo 'Run Tests: ' + (runTests ? 'true' : 'false')
+    }
 }
 
 // -----------------------------------------------------------------------------
@@ -241,39 +243,43 @@ def checkCommitMessages() {
 // -----------------------------------------------------------------------------
 
 def stashSourceCode() {
-    sh 'rm -f source.*'
-    sh 'find -L . -type l -delete'
-    sh 'zip -r -1 -x "*tmp" -x ".git" -y -q source.zip *'
+    script {
+        sh 'rm -f source.*'
+        sh 'find -L . -type l -delete'
+        sh 'zip -r -1 -x "*tmp" -x ".git" -y -q source.zip *'
 
-    lock('cache') {
-        sh 'mkdir -p ' + cacheDir
-        sh 'mv -f source.zip ' + cacheDir + '/source.zip'
+        lock('cache') {
+            sh 'mkdir -p ' + cacheDir
+            sh 'mv -f source.zip ' + cacheDir + '/source.zip'
+        }
     }
 }
 
 def unstashSourceCode(os) {
-    if (os == 'linux' || os == 'mac') {
-        sh 'rm -rf *'
-    }
-    else if (os == 'windows') {
-        bat 'del /F /Q *'
-    }
-
-    def name = env.JOB_NAME
-
-    if (os == 'linux' || os == 'mac') {
-        lock('cache') {
-            sh 'scp "' + jenkinsMaster + ':' + cacheDir + '/source.zip" source.zip'
+    script {
+        if (os == 'linux' || os == 'mac') {
+            sh 'rm -rf *'
+        }
+        else if (os == 'windows') {
+            bat 'del /F /Q *'
         }
 
-        sh 'unzip -o -q source.zip'
-    }
-    else if (os == 'windows') {
-        lock('cache') {
-            bat 'scp -F c:/Users/jenkins/ssh_config "' + jenkinsMaster + ':' + cacheDir + '/source.zip" source.zip'
-        }
+        def name = env.JOB_NAME
 
-        bat 'c:\\cmake\\bin\\cmake -E tar xf source.zip'
+        if (os == 'linux' || os == 'mac') {
+            lock('cache') {
+                sh 'scp "' + jenkinsMaster + ':' + cacheDir + '/source.zip" source.zip'
+            }
+
+            sh 'unzip -o -q source.zip'
+        }
+        else if (os == 'windows') {
+            lock('cache') {
+                bat 'scp -F c:/Users/jenkins/ssh_config "' + jenkinsMaster + ':' + cacheDir + '/source.zip" source.zip'
+            }
+
+            bat 'c:\\cmake\\bin\\cmake -E tar xf source.zip'
+        }
     }
 }
 
@@ -281,19 +287,23 @@ def stashBuild(edition, os) {
     def name = 'build-' + edition + '-' + os + '.zip'
 
     if (os == 'linux' || os == 'mac') {
-        sh 'rm -f ' + name
-        sh 'zip -r -1 -y -q ' + name + ' build-' + edition
+        script { 
+            sh 'rm -f ' + name
+            sh 'zip -r -1 -y -q ' + name + ' build-' + edition
 
-        lock('cache') {
-            sh 'scp ' + name + ' "' + jenkinsMaster + ':' + cacheDir + '"'
+            lock('cache') {
+                sh 'scp ' + name + ' "' + jenkinsMaster + ':' + cacheDir + '"'
+            }
         }
     }
     else if (os == 'windows') {
-        bat 'del /F /q ' + name
-        PowerShell('Compress -Archive -Path build-' + edition + ' -DestinationPath ' + name)
+        script { 
+            bat 'del /F /q ' + name
+            PowerShell('Compress -Archive -Path build-' + edition + ' -DestinationPath ' + name)
 
-        lock('cache') {
-            bat 'scp -F c:/Users/jenkins/ssh_config ' + name + ' "' + jenkinsMaster + ':' + cacheDir + '"'
+            lock('cache') {
+                bat 'scp -F c:/Users/jenkins/ssh_config ' + name + ' "' + jenkinsMaster + ':' + cacheDir + '"'
+            }
         }
     }
 }
@@ -302,18 +312,22 @@ def unstashBuild(edition, os) {
     def name = 'build-' + edition + '-' + os + '.zip'
 
     if (os == 'linux' || os == 'mac') {
-        lock('cache') {
-            sh 'scp "' + jenkinsMaster + ':' + cacheDir + '/' + name + '" ' + name
-        }
+        script { 
+            lock('cache') {
+                sh 'scp "' + jenkinsMaster + ':' + cacheDir + '/' + name + '" ' + name
+            }
 
-        sh 'unzip -o -q ' + name
+            sh 'unzip -o -q ' + name
+        }
     }
     else if (os == 'windows') {
-        lock('cache') {
-            bat 'scp -F c:/Users/jenkins/ssh_config "' + jenkinsMaster + ':' + cacheDir + '/' + name + '" ' + name
-        }
+        script { 
+            lock('cache') {
+                bat 'scp -F c:/Users/jenkins/ssh_config "' + jenkinsMaster + ':' + cacheDir + '/' + name + '" ' + name
+            }
 
-        bat 'c:\\cmake\\bin\\cmake -E tar xf ' + name
+            bat 'c:\\cmake\\bin\\cmake -E tar xf ' + name
+        }
     }
 }
 
@@ -321,17 +335,19 @@ def stashBinaries(edition, os) {
     def name = 'binaries-' + edition + '-' + os + '.zip'
 
     if (os == 'linux' || os == 'mac') {
-        def dirs = 'build etc Installation/Pipeline js scripts UnitTests utils resilience'
+        script { 
+            def dirs = 'build etc Installation/Pipeline js scripts UnitTests utils resilience'
 
-        if (edition == 'community') {
-            sh 'zip -r -1 -y -q ' + name + ' ' + dirs
-        }
-        else if (edition == 'enterprise') {
-            sh 'zip -r -1 -y -q ' + name + ' ' + dirs + ' enterprise/js'
-        }
+            if (edition == 'community') {
+                sh 'zip -r -1 -y -q ' + name + ' ' + dirs
+            }
+            else if (edition == 'enterprise') {
+                sh 'zip -r -1 -y -q ' + name + ' ' + dirs + ' enterprise/js'
+            }
 
-        lock('cache') {
-            sh 'scp ' + name + ' "' + jenkinsMaster + ':' + cacheDir + '"'
+            lock('cache') {
+                sh 'scp ' + name + ' "' + jenkinsMaster + ':' + cacheDir + '"'
+            }
         }
     }
 }
@@ -339,9 +355,9 @@ def stashBinaries(edition, os) {
 def unstashBinaries(edition, os) {
     def name = 'binaries-' + edition + '-' + os + '.zip'
 
-    sh 'rm -rf *'
-
     if (os == 'linux' || os == 'mac') {
+        sh 'rm -rf *'
+
         lock('cache') {
             sh 'scp "' + jenkinsMaster + ':' + cacheDir + '/' + name + '" ' + name
         }
@@ -443,12 +459,12 @@ def buildStep(edition, os) {
     }
 }
 
-def buildStepParallel() {
+def buildStepParallel(osList) {
     def branches = [:]
     def full = false
 
     for (edition in ['community', 'enterprise']) {
-        for (os in ['linux', 'mac', 'windows']) {
+        for (os in osList) {
             if (buildStepCheck(edition, os, full)) {
                 def name = 'build-' + edition + '-' + os
 
@@ -581,13 +597,13 @@ def testStep(edition, os, mode, engine) {
     }
 }
 
-def testStepParallel() {
+def testStepParallel(osList, modeList) {
     def branches = [:]
     def full = false
 
     for (edition in ['community', 'enterprise']) {
-        for (os in ['linux', 'mac', 'windows']) {
-            for (mode in ['cluster', 'singleserver']) {
+        for (os in osList) {
+            for (mode in modeList) {
                 for (engine in ['mmfiles', 'rocksdb']) {
                     if (testCheck(edition, os, mode, engine, full)) {
                         def name = testName(edition, os, mode, engine, full)
@@ -695,12 +711,24 @@ stage('checkout') {
     }
 }
 
-stage('build') {
-    buildStepParallel()
+stage('build linux') {
+    buildStepParallel(['linux'])
 }
 
-stage('tests') {
-    testStepParallel()
+stage('tests linux single') {
+    testStepParallel(['linux'], ['singleserver'])
+}
+
+stage('tests linux cluster') {
+    testStepParallel(['linux'], ['cluster'])
+}
+
+stage('build mac & windows') {
+    buildStepParallel(['mac', 'windows'])
+}
+
+stage('tests mac & windows') {
+    testStepParallel(['mac', 'windows'], ['cluster', 'singleserver'])
 }
 
 stage('resilience') {
