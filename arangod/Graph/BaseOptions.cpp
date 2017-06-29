@@ -366,6 +366,7 @@ bool BaseOptions::evaluateExpression(arangodb::aql::Expression* expression,
   }
 
   TRI_ASSERT(!expression->isV8());
+  TRI_ASSERT(value.isObject() || value.isNull());
   expression->setVariable(_tmpVar, value);
   bool mustDestroy = false;
   aql::AqlValue res = expression->execute(_trx, _ctx, mustDestroy);
