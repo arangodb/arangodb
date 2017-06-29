@@ -133,7 +133,7 @@ def scpFromMaster(os, from, to) {
         sh "scp '${jenkinsMaster}:${cacheDir}/${from}' '${to}'"
     }
     else if (os == 'windows') {
-        bat "scp -F c:/Users/jenkins/ssh_config \"${jenkinsMaster}:${cacheDir}/${from}\" \”${to}\""
+        bat "scp -F c:/Users/jenkins/ssh_config \"${jenkinsMaster}:${cacheDir}/${from}\" \"${to}\""
     }
 }
 
