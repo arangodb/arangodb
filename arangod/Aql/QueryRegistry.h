@@ -66,7 +66,9 @@ class QueryRegistry {
   /// @brief destroy, this removes the entry from the registry and calls
   /// delete on the Query*. It is allowed to call this regardless of whether
   /// the query is open or closed. No check is performed that this call comes
-  /// from the same thread that has opened it!
+  /// from the same thread that has opened it! Note that if the query is
+  /// "open", then this will set the "killed" flag in the query and do not
+  /// more.
   void destroy(std::string const& vocbase, QueryId id, int errorCode);
 
   void destroy(TRI_vocbase_t* vocbase, QueryId id, int errorCode);
