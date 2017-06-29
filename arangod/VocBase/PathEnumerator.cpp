@@ -84,7 +84,7 @@ bool DepthFirstEnumerator::next() {
     auto callback = [&](std::unique_ptr<graph::EdgeDocumentToken>&& eid, VPackSlice const& edge,
                         size_t cursorId) {
 
-      if (_opts->hasEdgeFilter(_enumeratedPath.vertices.size(), cursorId)) {
+      if (_opts->hasEdgeFilter(_enumeratedPath.edges.size(), cursorId)) {
         VPackSlice e = edge;
         if (edge.isString()) {
           e = _opts->cache()->lookupToken(eid.get());
