@@ -507,6 +507,9 @@ def jslintStep() {
 // --SECTION--                                                     SCRIPTS TESTS
 // -----------------------------------------------------------------------------
 
+testsSuccess = [:]
+allTestsSuccessful = true
+
 def testEdition(edition, os, mode, engine) {
     try {
         sh "./Installation/Pipeline/test_${mode}_${edition}_${engine}_${os}.sh 10"
@@ -516,7 +519,7 @@ def testEdition(edition, os, mode, engine) {
         throw exc
     }
     finally {
-        archiveArtifacts allowEmptyArchive: true, artifacts: 'log-output/**', defaultExcludes: false
+        archiveArtifacts allowEmptyArchive: true, artifacts: 'log-output/*/FAILED_*', defaultExcludes: false
     }
 }
 
@@ -580,8 +583,19 @@ def testStep(edition, os, mode, engine) {
         node(os) {
             echo "Running ${mode} ${edition} ${engine} ${os} test"
 
-            unstashBinaries(edition, os)
-            testEdition(edition, os, mode, engine)
+            def name = "${edition}-${os}-${mode}-${edition}"
+
+            try {
+                unstashBinaries(edition, os)
+                testEdition(edition, os, mode, engine)
+                testsSuccess[name] = true
+            }
+            catch (exc) {
+                echo exc.toString()
+                testsSuccess[name] = false
+                allTestsSuccessful = false
+                currentBuild.result = 'UNSTABLE'
+            }
         }
     }
 }
@@ -722,10 +736,11 @@ stage('resilience') {
 
 stage('result') {
     node('master') {
-        if (! allBuildsSuccessful) {
+        if (! (allBuildsSuccessful && allTestsSuccessful)) {
             currentBuild.result = 'FAILURE'
         }
 
         buildsSuccess.map{ k, v -> echo "BUILD ${k}: ${v}" }
+        testsSuccess.map{ k, v -> echo "TESTS ${k}: ${v}" }
     }
 }
