@@ -684,7 +684,8 @@ ExecutionNode* ExecutionPlan::fromNodeFor(ExecutionNode* previous,
                                      "no view for EnumerateView");
     }
 
-    en = registerNode(new EnumerateViewNode(this, nextId(), vocbase, view, v));
+    en = registerNode(new EnumerateViewNode(this, nextId(), vocbase, view, v,
+                                            nullptr, nullptr));
   } else if (expression->type == NODE_TYPE_REFERENCE) {
     // second operand is already a variable
     auto inVariable = static_cast<Variable*>(expression->getData());

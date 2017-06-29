@@ -30,7 +30,7 @@ namespace aql {
 class ExecutionPlan;
 class Optimizer;
 struct OptimizerRule;
-  
+
 /// @brief type of an optimizer rule function, the function gets an
 /// optimizer, an ExecutionPlan, and the current rule. it has
 /// to append one or more plans to the resulting deque. This must
@@ -76,7 +76,7 @@ struct OptimizerRule {
 
     // "Pass 2": try to remove redundant or unnecessary nodes
     // ======================================================
-    
+
     // remove filters from the query that are not necessary at all
     // filters that are always true will be removed entirely
     // filters that are always false will be replaced with a NoResults node
@@ -92,12 +92,12 @@ struct OptimizerRule {
     //           this is level 500, please never let new plans from higher
     //           levels go back to this or lower levels!
     // ======================================================
-    
+
     interchangeAdjacentEnumerationsRule_pass3,
 
     // "Pass 4": moving nodes "up" (potentially outside loops) (second try):
     // ======================================================
-    
+
     // move calculations up the dependency chain (to pull them out of
     // inner loops etc.)
     moveCalculationsUpRule_pass4,
@@ -216,7 +216,7 @@ struct OptimizerRule {
         canCreateAdditionalPlans(canCreateAdditionalPlans),
         canBeDisabled(canBeDisabled),
         isHidden(isHidden) {}
- 
+
 };
 
 } // namespace aql

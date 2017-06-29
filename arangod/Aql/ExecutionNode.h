@@ -827,13 +827,15 @@ class EnumerateViewNode : public ExecutionNode {
  public:
   EnumerateViewNode(ExecutionPlan* plan, size_t id, TRI_vocbase_t* vocbase,
                     std::shared_ptr<LogicalView> view,
-                    Variable const* outVariable)
+                    Variable const* outVariable,
+                    AstNode const* filterNode,
+                    std::shared_ptr<SortCondition> sortCondition)
       : ExecutionNode(plan, id),
         _vocbase(vocbase),
         _view(view),
         _outVariable(outVariable),
-        _node(nullptr), // TODO
-        _sortCondition(nullptr) /* TODO */ {
+        _filterNode(filterNode),
+        _sortCondition(sortCondition) {
     TRI_ASSERT(_vocbase != nullptr);
     TRI_ASSERT(_view != nullptr);
     TRI_ASSERT(_outVariable != nullptr);
@@ -869,6 +871,14 @@ class EnumerateViewNode : public ExecutionNode {
   /// @brief return the view
   std::shared_ptr<LogicalView> view() const { return _view; }
 
+  /// @brief return the filter node
+  AstNode const* filterNode() const { return _filterNode; }
+
+  /// @brief return the condition to pass to the view
+  std::shared_ptr<SortCondition> sortCondition() const {
+    return _sortCondition;
+  }
+
  private:
   /// @brief the database
   TRI_vocbase_t* _vocbase;
@@ -879,11 +889,11 @@ class EnumerateViewNode : public ExecutionNode {
   /// @brief output variable to write to
   Variable const* _outVariable;
 
-  /// @brief holds the full condition for this node
-  AstNode const* _node;
+  /// @brief filter node to pass to view
+  AstNode const* _filterNode;
 
-  /// @brief sort condition to pass to the view
-  SortCondition const* _sortCondition;
+  /// @brief sortCondition to pass to the view
+  std::shared_ptr<SortCondition> _sortCondition;
 };
 
 /// @brief class LimitNode

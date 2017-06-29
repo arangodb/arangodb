@@ -29,6 +29,11 @@
 #include "Basics/AttributeNameParser.h"
 
 namespace arangodb {
+namespace velocypack {
+  class Builder;
+  class Slice;
+}
+
 namespace aql {
 struct AstNode;
 class ExecutionPlan;
@@ -88,6 +93,14 @@ class SortCondition {
   /// the sort order is ascending (true) or descending (false)
   std::tuple<Variable const*, AstNode const*, bool> field(size_t position) const;
 
+  /// @brief export to VelocyPack
+  void toVelocyPackHelper(arangodb::velocypack::Builder&,
+                          bool) const;
+
+  static std::shared_ptr<SortCondition> fromVelocyPack(
+      ExecutionPlan const* plan, arangodb::velocypack::Slice const& base,
+      std::string name);
+
  private:
 
   struct SortField {
@@ -101,10 +114,10 @@ class SortCondition {
 
   /// @brief fields used in the sort conditions
   std::vector<SortField> _fields;
-  
+
   /// @brief const attributes
   std::vector<std::vector<arangodb::basics::AttributeName>> const _constAttributes;
- 
+
   /// @brief whether or not the sort is unidirectional
   bool _unidirectional;
 

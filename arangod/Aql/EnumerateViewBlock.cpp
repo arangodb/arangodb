@@ -39,16 +39,17 @@ EnumerateViewBlock::EnumerateViewBlock(ExecutionEngine* engine,
       _view(en->view()),
       _outVariable(en->_outVariable),
       _iter(nullptr),
-      _mmdr(new ManagedDocumentResult) // TODO
-       {
+      _mmdr(new ManagedDocumentResult)  // TODO
+{
   TRI_ASSERT(_view != nullptr);
 
   // TODO: this creates a dummy filter that is always true. fix it and
   // replace it with the real filter condition
   AstNode* boolVal = engine->getQuery()->ast()->createNodeValueBool(true);
   AstNode* filter = engine->getQuery()->ast()->createNodeFilter(boolVal);
-  _iter.reset(_view->iteratorForCondition(transaction(), en->_node ? en->_node : filter,
-                                          _outVariable, en->_sortCondition));
+  _iter.reset(_view->iteratorForCondition(
+      transaction(), en->filterNode() ? en->filterNode() : filter, _outVariable,
+      en->sortCondition().get()));
   TRI_ASSERT(_iter != nullptr);
 }
 
@@ -144,7 +145,8 @@ AqlItemBlock* EnumerateViewBlock::getSome(size_t, size_t atMost) {
         } else {
           AqlValue a(_mmdr->createAqlValue());
           AqlValueGuard guard(a, true);
-          res->setValue(send, static_cast<arangodb::aql::RegisterId>(curRegs), a);
+          res->setValue(send, static_cast<arangodb::aql::RegisterId>(curRegs),
+                        a);
           guard.steal();
         }
       }

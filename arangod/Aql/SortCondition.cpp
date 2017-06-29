@@ -26,6 +26,9 @@
 #include "Aql/ExecutionPlan.h"
 #include "Basics/Exceptions.h"
 
+#include <velocypack/Builder.h>
+#include <velocypack/Slice.h>
+
 using namespace arangodb::aql;
 
 /// @brief whether or not an attribute is contained in a vector
@@ -100,7 +103,7 @@ SortCondition::SortCondition(
           }
 
           _fields.emplace_back(SortField{
-            static_cast<Variable const*>(node->getData()), 
+            static_cast<Variable const*>(node->getData()),
             fieldNames,
             rootNode,
             sorts[i].second
@@ -222,7 +225,20 @@ std::tuple<Variable const*, AstNode const*, bool> SortCondition::field(
   }
 
   TRI_ASSERT(position < _fields.size());
-  
+
   SortField const& field = _fields[position];
   return std::make_tuple(field.variable, field.node, field.order);
+}
+
+/// @brief toVelocyPack
+void SortCondition::toVelocyPackHelper(VPackBuilder& nodes,
+                                       bool verbose) const {
+  // TODO FIXME implement
+}
+
+std::shared_ptr<SortCondition> SortCondition::fromVelocyPack(
+    ExecutionPlan const* plan, arangodb::velocypack::Slice const& base,
+    std::string name) {
+  // TODO FIXME implement
+  return nullptr;
 }

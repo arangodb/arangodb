@@ -2034,6 +2034,140 @@ void arangodb::aql::removeFiltersCoveredByIndexRule(
   opt->addPlan(std::move(plan), rule, modified);
 }
 
+struct SortToViewNode final : public WalkerWorker<ExecutionNode> {
+  ExecutionPlan* _plan;
+  SortNode* _sortNode;
+  std::vector<std::pair<Variable const*, bool>> _sorts;
+  std::unordered_map<VariableId, AstNode const*> _variableDefinitions;
+  bool _modified;
+
+ public:
+  explicit SortToViewNode(ExecutionPlan* plan)
+      : _plan(plan),
+        _sortNode(nullptr),
+        _sorts(),
+        _variableDefinitions(),
+        _modified(false) {}
+
+  bool handleEnumerateViewNode(
+      EnumerateViewNode* enumerateViewNode) {
+    if (_sortNode == nullptr) {
+      return true;
+    }
+
+    if (enumerateViewNode->isInInnerLoop()) {
+      // index node contained in an outer loop. must not optimize away the sort!
+      // TODO keep this or no?
+      return true;
+    }
+
+    auto sortCondition = std::make_shared<SortCondition>(_plan,
+        _sorts, std::vector<std::vector<arangodb::basics::AttributeName>>(),
+        _variableDefinitions);
+
+    // TODO allow more general conditions here
+    if (!sortCondition->isEmpty() && sortCondition->isOnlyAttributeAccess() &&
+        sortCondition->isUnidirectional()) {
+      // we have found a sort condition, which is unidirectionl
+      // now check if any of the collection's indexes covers it
+
+      auto view = enumerateViewNode->view();
+      Variable const* outVariable = enumerateViewNode->outVariable();
+      double estimatedCost;
+      size_t coveredAttributes = 0;
+
+      bool supported = view->supportsSortCondition(sortCondition.get(),
+                                                   outVariable,
+                                                   estimatedCost,
+                                                   coveredAttributes);
+
+      LOG_TOPIC(ERR, Logger::FIXME) << std::boolalpha << "VIEW " << view->name() << " SUPPORTS SORT: " << supported;
+
+      if (supported) {
+        std::unique_ptr<ExecutionNode> newNode(new EnumerateViewNode(_plan,
+          _plan->nextId(), enumerateViewNode->vocbase(), view, outVariable,
+          enumerateViewNode->filterNode(), sortCondition));
+
+        auto n = newNode.release();
+
+        _plan->registerNode(n);
+        _plan->replaceNode(enumerateViewNode, n);
+        _modified = true;
+
+        LOG_TOPIC(ERR, Logger::FIXME) << "ADDED SORT CONDITION TO VIEW NODE";
+
+        if (coveredAttributes == sortCondition->numAttributes()) {
+          // if the index covers the complete sort condition, we can also remove
+          // the sort node
+          _plan->unlinkNode(_plan->getNodeById(_sortNode->id()));
+          LOG_TOPIC(ERR, Logger::FIXME) << "REMOVED SORT NODE " << _sortNode->id();
+        }
+      }
+    }
+
+    return true;  // always abort further searching here
+  }
+
+  bool enterSubquery(ExecutionNode*, ExecutionNode*) override final {
+    return false;
+  }
+
+  bool before(ExecutionNode* en) override final {
+    switch (en->getType()) {
+      case EN::TRAVERSAL:
+      case EN::SHORTEST_PATH:
+      case EN::ENUMERATE_COLLECTION:
+      case EN::ENUMERATE_LIST:
+      case EN::INDEX:
+      case EN::SUBQUERY:
+      case EN::FILTER:
+        return false;  // skip. we don't care.
+        // TODO handle filters and combine here
+
+      case EN::CALCULATION: {
+        auto outvars = en->getVariablesSetHere();
+        TRI_ASSERT(outvars.size() == 1);
+
+        _variableDefinitions.emplace(
+            outvars[0]->id,
+            static_cast<CalculationNode const*>(en)->expression()->node());
+        return false;
+      }
+
+      case EN::SINGLETON:
+      case EN::COLLECT:
+      case EN::INSERT:
+      case EN::REMOVE:
+      case EN::REPLACE:
+      case EN::UPDATE:
+      case EN::UPSERT:
+      case EN::RETURN:
+      case EN::NORESULTS:
+      case EN::SCATTER:
+      case EN::DISTRIBUTE:
+      case EN::GATHER:
+      case EN::REMOTE:
+      case EN::LIMIT:  // LIMIT is criterion to stop
+        return true;   // abort.
+
+      case EN::SORT:  // pulling two sorts together is done elsewhere.
+        if (!_sorts.empty() || _sortNode != nullptr) {
+          return true;  // a different SORT node. abort
+        }
+        _sortNode = static_cast<SortNode*>(en);
+        for (auto& it : _sortNode->getElements()) {
+          _sorts.emplace_back(it.var, it.ascending);
+          LOG_TOPIC(ERR, Logger::FIXME) << "PICKED UP SORT CONDITION";
+        }
+        return false;
+
+      case EN::ENUMERATE_VIEW:
+        return handleEnumerateViewNode(static_cast<EnumerateViewNode*>(en));
+    }
+    return true;
+  }
+};
+
 /// @brief helper to compute lots of permutation tuples
 /// a permutation tuple is represented as a single vector together with
 /// another vector describing the boundaries of the tuples.
@@ -3663,6 +3797,7 @@ void arangodb::aql::patchUpdateStatementsRule(
 void arangodb::aql::handleViewsRule(Optimizer* opt,
                                     std::unique_ptr<ExecutionPlan> plan,
                                     OptimizerRule const* rule) {
+  bool modified = false;
   SmallVector<ExecutionNode*>::allocator_type::arena_type a;
   SmallVector<ExecutionNode*> viewNodes{a};
   plan->findNodesOfType(viewNodes, EN::ENUMERATE_VIEW, true);
@@ -3673,22 +3808,38 @@ void arangodb::aql::handleViewsRule(Optimizer* opt,
     return;
   }
 
-  bool modified = false;
-
   // make a pass over all view nodes
   for (auto const& n : viewNodes) {
     EnumerateViewNode* view = static_cast<EnumerateViewNode*>(n);
 
     LOG_TOPIC(ERR, Logger::FIXME) << "FOUND A VIEW REFERRING TO '" << view->view()->name() << "'";
 
-    // TODO:
-    // - find sort conditions south of the "view" node
+
+    // TODO
     // - find filter conditions south of the "view" node
     // - check if the view can handle any of them using supportsSortCondition
     //   or supportsFilterCondition
-    // - remove the sort and filter conditions from the execution plan
+    // - remove the filter conditions from the execution plan
     //   if the view takes over
 
+  }
+
+  {
+    LOG_TOPIC(ERR, Logger::FIXME) << "LOOKING FOR SORT NODES TO COMBINE";
+    SmallVector<ExecutionNode*>::allocator_type::arena_type a;
+    SmallVector<ExecutionNode*> nodes{a};
+    plan->findNodesOfType(nodes, EN::SORT, true);
+
+    for (auto const& n : nodes) {
+      auto sortNode = static_cast<SortNode*>(n);
+
+      SortToViewNode finder(plan.get());
+      sortNode->walk(&finder);
+
+      if (finder._modified) {
+        modified = true;
+      }
+    }
   }
 
   opt->addPlan(std::move(plan), rule, modified);

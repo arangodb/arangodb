@@ -32,6 +32,7 @@
 #include "Aql/IndexNode.h"
 #include "Aql/ModificationNodes.h"
 #include "Aql/Query.h"
+#include "Aql/SortCondition.h"
 #include "Aql/SortNode.h"
 #include "Aql/TraversalNode.h"
 #include "Aql/ShortestPathNode.h"
@@ -1332,8 +1333,9 @@ EnumerateViewNode::EnumerateViewNode(ExecutionPlan* plan,
       _vocbase(plan->getAst()->query()->vocbase()),
       _view(_vocbase->lookupView(base.get("view").copyString())),
       _outVariable(varFromVPack(plan->getAst(), base, "outVariable")),
-      _node(nullptr), // TODO
-      _sortCondition(nullptr) /* TODO */ {}
+      _filterNode(nullptr), // TODO
+      _sortCondition(SortCondition::fromVelocyPack(plan, base, "sortCondition"))
+    {}
 
 /// @brief toVelocyPack, for EnumerateViewNode
 void EnumerateViewNode::toVelocyPackHelper(VPackBuilder& nodes,
@@ -1347,7 +1349,21 @@ void EnumerateViewNode::toVelocyPackHelper(VPackBuilder& nodes,
   nodes.add(VPackValue("outVariable"));
   _outVariable->toVelocyPack(nodes);
 
-  // TODO _node and _sortCondition
+  nodes.add(VPackValue("filterNode"));
+  if (_filterNode) {
+    _filterNode->toVelocyPack(nodes, verbose);
+  } else {
+    nodes.openObject();
+    nodes.close();
+  }
+
+  nodes.add(VPackValue("sortCondition"));
+  if (_sortCondition) {
+    _sortCondition->toVelocyPackHelper(nodes, verbose);
+  } else {
+    nodes.openObject();
+    nodes.close();
+  }
 
   // And close it:
   nodes.close();
@@ -1363,7 +1379,9 @@ ExecutionNode* EnumerateViewNode::clone(ExecutionPlan* plan,
     outVariable = plan->getAst()->variables()->createVariable(outVariable);
   }
 
-  auto c = new EnumerateViewNode(plan, _id, _vocbase, _view, outVariable);
+  auto c = new EnumerateViewNode(plan, _id, _vocbase, _view, outVariable,
+                                 _filterNode, _sortCondition);
+                                 // TODO clone filterNode and sortCondition?
 
   cloneHelper(c, plan, withDependencies, withProperties);
 
