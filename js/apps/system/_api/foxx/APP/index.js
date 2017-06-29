@@ -100,6 +100,10 @@ router.use((req, res, next) => {
 router.get((req, res) => {
   res.json(
     FoxxManager.installedServices()
+    .filter((service) => (
+      !req.queryParams.excludeSystem ||
+      !service.mount.startsWith('/_')
+    ))
     .map((service) => (
       {
         mount: service.mount,
@@ -112,6 +116,7 @@ router.get((req, res) => {
     ))
   );
 })
+.queryParam('excludeSystem', schemas.flag.default(false))
 .response(200, joi.array().items(schemas.shortInfo).required());
 
 router.post(prepareServiceRequestBody, (req, res) => {
