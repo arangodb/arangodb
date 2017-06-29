@@ -178,14 +178,22 @@ void ConstantWeightShortestPathFinder::expandVertex(bool backward,
 
   auto callback = [&](std::unique_ptr<EdgeDocumentToken>&& eid, VPackSlice edge,
                       size_t cursorIdx) -> void {
-    StringRef other(transaction::helpers::extractFromFromDocument(edge));
-    if (other == vertex) {
-      other = StringRef(transaction::helpers::extractToFromDocument(edge));
-    }
-    if (other != vertex) {
-      StringRef id = _options->cache()->persistString(other);
-      _edges.emplace_back(std::move(eid));
-      _neighbors.emplace_back(id);
+    if (edge.isString()) {
+      if (edge.compareString(vertex.data(), vertex.length()) != 0) {
+        StringRef id = _options->cache()->persistString(StringRef(edge));
+        _edges.emplace_back(std::move(eid));
+        _neighbors.emplace_back(id);
+      }
+    } else {
+      StringRef other(transaction::helpers::extractFromFromDocument(edge));
+      if (other == vertex) {
+        other = StringRef(transaction::helpers::extractToFromDocument(edge));
+      }
+      if (other != vertex) {
+        StringRef id = _options->cache()->persistString(other);
+        _edges.emplace_back(std::move(eid));
+        _neighbors.emplace_back(id);
+      }
     }
   };
   edgeCursor->readAll(callback);

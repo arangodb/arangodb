@@ -522,6 +522,7 @@ int TRI_vocbase_t::loadCollection(arangodb::LogicalCollection* collection,
     TRI_ASSERT(collection->status() == TRI_VOC_COL_STATUS_LOADING);
 
     collection->setStatus(TRI_VOC_COL_STATUS_LOADED);
+    collection->load();
 
     // release the WRITE lock and try again
     locker.unlock();

@@ -25,6 +25,7 @@
 #define ARANGOD_CONSENSUS_STATE_H 1
 
 #include "AgencyCommon.h"
+#include "Agency/Store.h"
 #include "Cluster/ClusterComm.h"
 #include "Utils/OperationOptions.h"
 
@@ -84,6 +85,12 @@ class State {
   ///        Default: [first, last]
   log_t at(index_t) const;
   
+  /// @brief Check for a log entry, returns 0, if the log does not
+  /// contain an entry with index `index`, 1, if it does contain one
+  /// with term `term` and -1, if it does contain one with another term
+  /// than `term`:
+  int checkLog(index_t index, term_t term) const;
+  
   /// @brief Has entry with index und term
   bool has(index_t, term_t) const;
   
@@ -131,8 +138,9 @@ class State {
   bool compact(arangodb::consensus::index_t cind);
 
   /// @brief Remove RAFT conflicts. i.e. All indices, where higher term version
-  ///        exists are overwritten
-  size_t removeConflicts(query_t const&);
+  ///        exists are overwritten, a snapshot in first position is ignored
+  ///        as well, the flag gotSnapshot has to be true in this case.
+  size_t removeConflicts(query_t const&, bool gotSnapshot);
 
   /// @brief Persist active agency in pool, throws an exception in case of error
   void persistActiveAgents(query_t const& active, query_t const& pool);
@@ -140,7 +148,31 @@ class State {
   /// @brief Get everything from the state machine
   query_t allLogs() const;
 
+  /// @brief load a compacted snapshot, returns true if successfull and false
+  /// otherwise. In case of success store and index are modified. The store
+  /// is reset to the state after log index `index` has been applied. Sets
+  /// `index` to 0 if there is no compacted snapshot.
+  bool loadLastCompactedSnapshot(Store& store, index_t& index, term_t& term);
+
+  /// @brief Persist a compaction snapshot
+  bool persistCompactionSnapshot(arangodb::consensus::index_t cind,
+                                 arangodb::consensus::term_t term,
+                                 arangodb::consensus::Store& snapshot);
+
+  /// @brief restoreLogFromSnapshot, needed in the follower, this erases the
+  /// complete log and persists the given snapshot. After this operation, the
+  /// log is empty and something ought to be appended to it rather quickly.
+  bool restoreLogFromSnapshot(arangodb::consensus::Store& snapshot,
+                              arangodb::consensus::index_t index,
+                              arangodb::consensus::term_t term);
+
  private:
+
+  /// @brief Log single log entry. Must be guarded by caller.
+  index_t logNonBlocking(
+    index_t idx, velocypack::Slice const& slice, term_t term,
+    std::string const& clientId = std::string(), bool leading = false);
+  
   /// @brief Save currentTerm, votedFor, log entries
   bool persist(index_t, term_t, arangodb::velocypack::Slice const&,
                std::string const&) const;
@@ -188,7 +220,6 @@ class State {
   */
   mutable arangodb::Mutex _logLock; 
   std::deque<log_t> _log;           /**< @brief  State entries */
-  std::string _endpoint;            /**< @brief persistence end point */
   bool _collectionsChecked;         /**< @brief Collections checked */
   bool _collectionsLoaded;
   std::multimap<std::string,arangodb::consensus::index_t> _clientIdLookupTable;
@@ -196,7 +227,8 @@ class State {
   /// @brief Our query registry
   aql::QueryRegistry* _queryRegistry;
 
-  /// @brief Current log offset
+  /// @brief Current log offset, this is the index that is stored at position
+  /// 0 in the deque _log.
   size_t _cur;
 
   /// @brief Operation options

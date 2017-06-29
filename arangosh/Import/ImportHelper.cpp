@@ -168,6 +168,19 @@ ImportHelper::ImportHelper(ClientFeature const* client,
     _senderThreads.emplace_back(new SenderThread(std::move(http), &_stats));
     _senderThreads.back()->start();
   }
+ 
+  // wait until all sender threads are ready 
+  while (true) {
+    uint32_t numReady = 0;
+    for (auto const& t : _senderThreads) {
+      if (t->isReady()) {
+        numReady++;
+      }
+    }
+    if (numReady == _senderThreads.size()) {
+      break;
+    }
+  }
 }
 
 ImportHelper::~ImportHelper() {
@@ -821,7 +834,7 @@ SenderThread* ImportHelper::findSender() {
         _hasError = true;
         _errorMessage = t->errorMessage();
         return nullptr;
-      } else if (t->idle()) {
+      } else if (t->isIdle()) {
         return t.get();
       }
     }
@@ -834,7 +847,7 @@ void ImportHelper::waitForSenders() {
   while (!_senderThreads.empty()) {
     uint32_t numIdle = 0;
     for (auto const& t : _senderThreads) {
-      if (t->idle() || t->hasError()) {
+      if (t->isDone()) {
         numIdle++;
       }
     }

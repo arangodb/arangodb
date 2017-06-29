@@ -1,5 +1,3 @@
-
-
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
@@ -89,16 +87,20 @@ class Store : public arangodb::Thread {
   // @brief Move assigment
   Store& operator=(Store&& rhs);
 
-  /// @brief Apply entry in query
-  std::vector<bool> apply(query_t const& query, bool verbose = false);
+  /// @brief Apply entry in query, query must be an array of individual
+  /// transactions that are in turn arrays with 1, 2 or 3 entries as described
+  /// in the next method.
+  std::vector<bool> applyTransactions(query_t const& query);
 
-  /// @brief Apply single entry in query
-  check_ret_t apply(Slice const& query, bool verbose = false);
+  /// @brief Apply single transaction in query, here query is an array and the
+  /// first entry is a write transaction (i.e. an array of length 1, 2 or 3), 
+  /// if present, the second entry is a precondition, and the third
+  /// entry, if present, is a uuid:
+  check_ret_t applyTransaction(Slice const& query);
 
-  /// @brief Apply entry in query
-  std::vector<bool> apply(std::vector<Slice> const& query,
-                          index_t lastCommitIndex, term_t term,
-                          bool inform = true);
+  /// @brief Apply log entries in query, also process callbacks
+  std::vector<bool> applyLogEntries(std::vector<Slice> const& query,
+                          index_t index, term_t term, bool inform);
 
   /// @brief Read specified query from store
   std::vector<bool> read(query_t const& query, query_t& result) const;
@@ -139,10 +141,10 @@ class Store : public arangodb::Thread {
 
   friend class Node;
 
- private:
-
   /// @brief Apply single slice
   bool applies(arangodb::velocypack::Slice const&);
+
+ private:
 
   /// @brief Remove time to live entries for uri
   void removeTTL(std::string const&);

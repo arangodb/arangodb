@@ -168,8 +168,8 @@ bool Cache::isResizing() {
     _metadata.lock();
     resizing = _metadata.isSet(State::Flag::resizing);
     _metadata.unlock();
-    _state.unlock();
   }
+  _state.unlock();
 
   return resizing;
 }
@@ -181,8 +181,8 @@ bool Cache::isMigrating() {
     _metadata.lock();
     migrating = _metadata.isSet(State::Flag::migrating);
     _metadata.unlock();
-    _state.unlock();
   }
+  _state.unlock();
 
   return migrating;
 }
@@ -351,11 +351,15 @@ void Cache::shutdown() {
         _table->setAuxiliary(std::shared_ptr<Table>(nullptr));
     if (extra.get() != nullptr) {
       extra->clear();
+      _state.unlock();
       _manager->reclaimTable(extra);
+      _state.lock();
     }
     _table->clear();
+    _state.unlock();
     _manager->reclaimTable(_table);
     _manager->unregisterCache(shared_from_this());
+    _state.lock();
   }
   _metadata.lock();
   _metadata.changeTable(0);

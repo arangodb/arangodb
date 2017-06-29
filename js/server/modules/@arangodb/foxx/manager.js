@@ -147,7 +147,7 @@ function selfHealAll (skipReloadRouting) {
         db._useDatabase(name);
         modified = selfHeal() || modified;
       } catch (e) {
-        console.warnStack(e);
+        console.debugStack(e);
       }
     }
   } finally {
@@ -343,13 +343,17 @@ function commitLocalState (replace) {
       RETURN service
     `).next();
     if (!serviceDefinition) {
-      const service = FoxxService.create({mount});
-      service.updateChecksum();
-      if (!bundleCollection.exists(service.checksum)) {
-        bundleCollection._binaryInsert({_key: service.checksum}, bundlePath);
+      try {
+        const service = FoxxService.create({mount});
+        service.updateChecksum();
+        if (!bundleCollection.exists(service.checksum)) {
+          bundleCollection._binaryInsert({_key: service.checksum}, bundlePath);
+        }
+        collection.save(service.toJSON());
+        modified = true;
+      } catch (e) {
+        console.errorStack(e);
       }
-      collection.save(service.toJSON());
-      modified = true;
     } else {
       const checksum = safeChecksum(mount);
       if (!serviceDefinition.checksum || (replace && serviceDefinition.checksum !== checksum)) {
@@ -610,21 +614,48 @@ function _buildServiceInPath (mount, tempServicePath, tempBundlePath) {
   fs.move(tempBundlePath, bundlePath);
 }
 
-function _install (mount, options = {}) {
-  const collection = utils.getStorage();
-  const service = FoxxService.create({
-    mount,
-    options,
-    noisy: true
-  });
-  GLOBAL_SERVICE_MAP.get(db._name()).set(mount, service);
-  if (options.setup !== false) {
+function _deleteServiceFromPath (mount, options) {
+  const servicePath = FoxxService.basePath(mount);
+  if (fs.exists(servicePath)) {
     try {
-      service.executeScript('setup');
+      fs.removeDirectoryRecursive(servicePath, true);
     } catch (e) {
       if (!options.force) {
         throw e;
       }
+      console.warnStack(e);
+    }
+  }
+  const bundlePath = FoxxService.bundlePath(mount);
+  if (fs.exists(bundlePath)) {
+    try {
+      fs.remove(bundlePath);
+    } catch (e) {
+      if (!options.force) {
+        throw e;
+      }
+      console.warnStack(e);
+    }
+  }
+}
+
+function _install (mount, options = {}) {
+  const collection = utils.getStorage();
+  let service;
+  try {
+    service = FoxxService.create({
+      mount,
+      options,
+      noisy: true
+    });
+    if (options.setup !== false) {
+      service.executeScript('setup');
+    }
+  } catch (e) {
+    if (!options.force) {
+      _deleteServiceFromPath(mount, options);
+      throw e;
+    } else {
       console.warnStack(e);
     }
   }
@@ -642,13 +673,15 @@ function _install (mount, options = {}) {
     RETURN NEW
   `).next();
   service._rev = meta._rev;
+  GLOBAL_SERVICE_MAP.get(db._name()).set(mount, service);
   try {
     ensureServiceExecuted(service, true);
   } catch (e) {
     if (!options.force) {
-      throw e;
+      console.errorStack(e);
+    } else {
+      console.warnStack(e);
     }
-    console.warnStack(e);
   }
   return service;
 }
@@ -696,28 +729,7 @@ function _uninstall (mount, options = {}) {
     }
   }
   GLOBAL_SERVICE_MAP.get(db._name()).delete(mount);
-  const servicePath = FoxxService.basePath(mount);
-  if (fs.exists(servicePath)) {
-    try {
-      fs.removeDirectoryRecursive(servicePath, true);
-    } catch (e) {
-      if (!options.force) {
-        throw e;
-      }
-      console.warnStack(e);
-    }
-  }
-  const bundlePath = FoxxService.bundlePath(mount);
-  if (fs.exists(bundlePath)) {
-    try {
-      fs.remove(bundlePath);
-    } catch (e) {
-      if (!options.force) {
-        throw e;
-      }
-      console.warnStack(e);
-    }
-  }
+  _deleteServiceFromPath(mount, options);
   return service;
 }
 

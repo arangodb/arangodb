@@ -216,7 +216,7 @@ static void InitFailMalloc(void) {
 
 #ifdef ARANGODB_ENABLE_FAILURE_TESTS
 /// @brief overloaded, intentionally failing operator new
-void* operator new (size_t size) throw(std::bad_alloc) {
+void* operator new(size_t size) {
   if (ShouldFail(size)) {
     throw std::bad_alloc();
   }
@@ -231,7 +231,7 @@ void* operator new (size_t size) throw(std::bad_alloc) {
 }
 
 /// @brief overloaded, intentionally failing operator new, non-throwing
-void* operator new (size_t size, std::nothrow_t const&) throw() {
+void* operator new(size_t size, std::nothrow_t const&) noexcept {
   if (ShouldFail(size)) {
     return nullptr;
   }
@@ -239,7 +239,7 @@ void* operator new (size_t size, std::nothrow_t const&) throw() {
 }
 
 /// @brief overloaded, intentionally failing operator new[]
-void* operator new[] (size_t size) throw(std::bad_alloc) {
+void* operator new[](size_t size) {
   if (ShouldFail(size)) {
     throw std::bad_alloc();
   }
@@ -254,7 +254,7 @@ void* operator new[] (size_t size) throw(std::bad_alloc) {
 }
 
 /// @brief overloaded, intentionally failing operator new[], non-throwing
-void* operator new[] (size_t size, std::nothrow_t const&) throw() {
+void* operator new[](size_t size, std::nothrow_t const&) noexcept {
   if (ShouldFail(size)) {
     return nullptr;
   }
@@ -262,28 +262,28 @@ void* operator new[] (size_t size, std::nothrow_t const&) throw() {
 }
 
 /// @brief overloaded operator delete
-void operator delete (void* pointer) throw() {
+void operator delete(void* pointer) noexcept {
   if (pointer) {
     free(pointer);
   }
 }
 
 /// @brief overloaded operator delete
-void operator delete (void* pointer, std::nothrow_t const&) throw() {
+void operator delete(void* pointer, std::nothrow_t const&) noexcept {
   if (pointer) {
     free(pointer);
   }
 }
 
 /// @brief overloaded operator delete
-void operator delete[] (void* pointer) throw() {
+void operator delete[](void* pointer) noexcept {
   if (pointer) {
     free(pointer);
   }
 }
 
 /// @brief overloaded operator delete
-void operator delete[] (void* pointer, std::nothrow_t const&) throw() {
+void operator delete[](void* pointer, std::nothrow_t const&) noexcept {
   if (pointer) {
     free(pointer);
   }

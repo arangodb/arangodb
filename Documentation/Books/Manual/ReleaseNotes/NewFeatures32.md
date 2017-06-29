@@ -106,18 +106,22 @@ supported there:
 
 * fulltext: user-defined sorted reverted index on words occurring in documents
 
+Satellite Collections
+---------------------
+
+With SatelliteCollections, you can define collections to shard to a cluster and
+collections to replicate to each machine. The ArangoDB query optimizer knows where
+each shard is located and sends the requests to the DBServers involved, which then
+executes the query, locally. With this approach, network hops during join
+operations on sharded collections can be avoided and response times can be close to
+that of a single instance.
+
+[Satellite collections](../Administration/Replication/Synchronous/Satellites.md)
+are available in the *Enterprise* edition.
+
 
 Memory management
 -----------------
-
-* added startup options `--vm.resident-limit` and `--vm.path` for file-backed 
-  memory mapping after reaching a configurable maximum RAM size
-
-  This prevents ArangoDB from using all available RAM when using large datasets.
-  This will also lower the chances of the arangod process being killed by the
-  operation system's OOM killer.
-
-  Note: these options are not available in all builds and environments.
 
 * make arangod start with less V8 JavaScript contexts
 
@@ -203,6 +207,10 @@ JavaScript
   for debugging. This change is mostly useful when using the ArangoShell (arangosh).
 
 
+* the `@arangodb` module now provides a `time` function which returns the current time
+  in seconds as a floating point value with microsecond precision.
+
+
 Foxx
 ----
 
@@ -217,7 +225,7 @@ Foxx
 
 
 Distributed Graph Processing
-------
+----------------------------
 
 * We added support for executing distributed graph algorithms aka `Pregel`. 
 * Users can run arbitrary algorithms on an entire graph, including in cluster mode.
@@ -352,3 +360,14 @@ Foxx
 * it's now possible to provide your own version of the `graphql-sync` module when using the [GraphQL extensions for Foxx](../Foxx/GraphQL.md) by passing a copy of the module using the new _graphql_ option.
 
 * custom API endpoints can now be tagged using the [tag method](../Foxx/Router/Endpoints.md#tag) to generate a cleaner Swagger documentation.
+
+
+Miscellaneous Changes
+---------------------
+
+* arangod now validates several OS/environment settings on startup and warns if
+  the settings are non-ideal. It additionally will print out ways to remedy the
+  options.
+  
+  Most of the checks are executed on Linux systems only.
+

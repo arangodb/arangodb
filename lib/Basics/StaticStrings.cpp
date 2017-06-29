@@ -55,6 +55,8 @@ std::string const StaticStrings::ReturnNewString("returnNew");
 std::string const StaticStrings::ReturnOldString("returnOld");
 std::string const StaticStrings::SilentString("silent");
 std::string const StaticStrings::WaitForSyncString("waitForSync");
+std::string const StaticStrings::IsSynchronousReplicationString(
+    "isSynchronousReplication");
 
 // database and collection names
 std::string const StaticStrings::SystemDatabase("_system");
@@ -83,6 +85,7 @@ std::string const StaticStrings::BatchContentType(
     "application/x-arango-batchpart");
 std::string const StaticStrings::CacheControl("cache-control");
 std::string const StaticStrings::Close("Close");
+std::string const StaticStrings::ClusterCommSource("x-arango-source");
 std::string const StaticStrings::Code("code");
 std::string const StaticStrings::Connection("connection");
 std::string const StaticStrings::ContentEncoding("content-encoding");

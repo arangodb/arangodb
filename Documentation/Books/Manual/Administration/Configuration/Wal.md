@@ -1,8 +1,11 @@
-Write-ahead log options
-=======================
+MMFiles Write-ahead log options
+===============================
 
-Since ArangoDB 2.2, the server will write all data-modification operations into its
-write-ahead log.
+Since ArangoDB 2.2, the MMFiles storage engine will write all data-modification
+operations into its write-ahead log.
+
+With ArangoDB 3.2 another Storage engine option becomes available - [RocksDB](RocksDB.md).
+In case of using RocksDB most of the subsequent options don't have a useful meaning.
 
 The write-ahead log is a sequence of logfiles that are written in an append-only
 fashion. Full logfiles will eventually be garbage-collected, and the relevant data

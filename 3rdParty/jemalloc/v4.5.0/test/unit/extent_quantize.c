@@ -1,81 +1,39 @@
 #include "test/jemalloc_test.h"
 
-TEST_BEGIN(test_small_extent_size) {
-	unsigned nbins, i;
-	size_t sz, extent_size;
-	size_t mib[4];
-	size_t miblen = sizeof(mib) / sizeof(size_t);
-
-	/*
-	 * Iterate over all small size classes, get their extent sizes, and
-	 * verify that the quantized size is the same as the extent size.
-	 */
-
-	sz = sizeof(unsigned);
-	assert_d_eq(mallctl("arenas.nbins", (void *)&nbins, &sz, NULL, 0), 0,
-	    "Unexpected mallctl failure");
-
-	assert_d_eq(mallctlnametomib("arenas.bin.0.slab_size", mib, &miblen), 0,
-	    "Unexpected mallctlnametomib failure");
-	for (i = 0; i < nbins; i++) {
-		mib[2] = i;
-		sz = sizeof(size_t);
-		assert_d_eq(mallctlbymib(mib, miblen, (void *)&extent_size, &sz,
-		    NULL, 0), 0, "Unexpected mallctlbymib failure");
-		assert_zu_eq(extent_size,
-		    extent_size_quantize_floor(extent_size),
-		    "Small extent quantization should be a no-op "
-		    "(extent_size=%zu)", extent_size);
-		assert_zu_eq(extent_size,
-		    extent_size_quantize_ceil(extent_size),
-		    "Small extent quantization should be a no-op "
-		    "(extent_size=%zu)", extent_size);
-	}
-}
-TEST_END
-
-TEST_BEGIN(test_large_extent_size) {
-	bool cache_oblivious;
-	unsigned nlextents, i;
+TEST_BEGIN(test_huge_extent_size) {
+	unsigned nhchunks, i;
 	size_t sz, extent_size_prev, ceil_prev;
 	size_t mib[4];
 	size_t miblen = sizeof(mib) / sizeof(size_t);
 
 	/*
-	 * Iterate over all large size classes, get their extent sizes, and
+	 * Iterate over all huge size classes, get their extent sizes, and
 	 * verify that the quantized size is the same as the extent size.
 	 */
 
-	sz = sizeof(bool);
-	assert_d_eq(mallctl("config.cache_oblivious", (void *)&cache_oblivious,
-	    &sz, NULL, 0), 0, "Unexpected mallctl failure");
-
 	sz = sizeof(unsigned);
-	assert_d_eq(mallctl("arenas.nlextents", (void *)&nlextents, &sz, NULL,
+	assert_d_eq(mallctl("arenas.nhchunks", (void *)&nhchunks, &sz, NULL,
 	    0), 0, "Unexpected mallctl failure");
 
-	assert_d_eq(mallctlnametomib("arenas.lextent.0.size", mib, &miblen), 0,
+	assert_d_eq(mallctlnametomib("arenas.hchunk.0.size", mib, &miblen), 0,
 	    "Unexpected mallctlnametomib failure");
-	for (i = 0; i < nlextents; i++) {
-		size_t lextent_size, extent_size, floor, ceil;
+	for (i = 0; i < nhchunks; i++) {
+		size_t extent_size, floor, ceil;
+
 
 		mib[2] = i;
 		sz = sizeof(size_t);
-		assert_d_eq(mallctlbymib(mib, miblen, (void *)&lextent_size,
+		assert_d_eq(mallctlbymib(mib, miblen, (void *)&extent_size,
 		    &sz, NULL, 0), 0, "Unexpected mallctlbymib failure");
-		extent_size = cache_oblivious ? lextent_size + PAGE :
-		    lextent_size;
 		floor = extent_size_quantize_floor(extent_size);
 		ceil = extent_size_quantize_ceil(extent_size);
 
 		assert_zu_eq(extent_size, floor,
 		    "Extent quantization should be a no-op for precise size "
-		    "(lextent_size=%zu, extent_size=%zu)", lextent_size,
-		    extent_size);
+		    "(extent_size=%zu)", extent_size);
 		assert_zu_eq(extent_size, ceil,
 		    "Extent quantization should be a no-op for precise size "
-		    "(lextent_size=%zu, extent_size=%zu)", lextent_size,
-		    extent_size);
+		    "(extent_size=%zu)", extent_size);
 
 		if (i > 0) {
 			assert_zu_eq(extent_size_prev,
@@ -89,7 +47,7 @@ TEST_BEGIN(test_large_extent_size) {
 				    ceil_prev, extent_size);
 			}
 		}
-		if (i + 1 < nlextents) {
+		if (i + 1 < nhchunks) {
 			extent_size_prev = floor;
 			ceil_prev = extent_size_quantize_ceil(extent_size +
 			    PAGE);
@@ -135,7 +93,6 @@ TEST_END
 int
 main(void) {
 	return test(
-	    test_small_extent_size,
-	    test_large_extent_size,
+	    test_huge_extent_size,
 	    test_monotonic);
 }

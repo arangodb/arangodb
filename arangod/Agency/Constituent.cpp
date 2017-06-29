@@ -129,7 +129,7 @@ void Constituent::termNoLock(term_t t) {
       SingleCollectionTransaction trx(transactionContext, "election",
                                       AccessMode::Type::WRITE);
       
-      Result res = trx.begin();
+      auto res = trx.begin();
       
       if (!res.ok()) {
         THROW_ARANGO_EXCEPTION(res);
@@ -139,8 +139,18 @@ void Constituent::termNoLock(term_t t) {
       options.waitForSync = _agent->config().waitForSync();
       options.silent = true;
       
-      OperationResult result = trx.insert("election", body.slice(), options);
-      trx.finish(result.code);
+      OperationResult result;
+      try {
+        result = trx.insert("election", body.slice(), options);
+      } catch (std::exception const& e) {
+        LOG_TOPIC(FATAL, Logger::AGENCY)
+          << "Failed to persist RAFT election ballot: " << e.what() << ". Bailing out."
+          << __FILE__ << ":" << __LINE__;
+        FATAL_ERROR_EXIT();
+      }
+
+      res = trx.finish(result.code);
+
     }
   }
 }
@@ -156,7 +166,24 @@ bool Constituent::logUpToDate(
 
 bool Constituent::logMatches(
   arangodb::consensus::index_t prevLogIndex, term_t prevLogTerm) const {
-  return _agent->state().has(prevLogIndex, prevLogTerm);
+
+  int res = _agent->state().checkLog(prevLogIndex, prevLogTerm);
+  if (res == 1) {
+    return true;
+  } else if (res == -1) {
+    return false;
+  } else {
+    return true;  // This is important: If we have compacted away this log
+                  // entry, then we know that this or a later entry was
+                  // already committed by a majority and is therefore
+                  // set in stone. Therefore the check must return true
+                  // here and this is correct behaviour.
+                  // The other case in which we do not have the log entry
+                  // is if it is so new that we have never heard about it
+                  // in this case we can safely return true here as well,
+                  // since we will replace our own log anyway in the very
+                  // near future.
+  }
 }
 
 
@@ -293,33 +320,33 @@ bool Constituent::checkLeader(
     << ", prev-log-index: " << prevLogIndex << ", prev-log-term: "
     << prevLogTerm << ") in term " << _term;
 
-  if (term >= _term) {
-    _lastHeartbeatSeen = TRI_microtime();
-    LOG_TOPIC(TRACE, Logger::AGENCY)
-      << "setting last heartbeat: " << _lastHeartbeatSeen;
-    
-    if (term > _term) {
-      termNoLock(term);
-    }
+  if (term < _term) {
+    return false;
+  }
 
-    if (!logMatches(prevLogIndex,prevLogTerm)) {
-      return false;
-    }
-    
-    if (_leaderID != id) {
-      LOG_TOPIC(DEBUG, Logger::AGENCY)
-        << "Set _leaderID to " << id << " in term " << _term;
-      _leaderID = id;
-      TRI_ASSERT(_leaderID != _id);
-      if (_role != FOLLOWER) {
-        followNoLock(term);
-      }
-    }
-    
-    return true;
+  _lastHeartbeatSeen = TRI_microtime();
+  LOG_TOPIC(TRACE, Logger::AGENCY)
+    << "setting last heartbeat: " << _lastHeartbeatSeen;
+  
+  if (term > _term) {
+    termNoLock(term);
+  }
+
+  if (!logMatches(prevLogIndex, prevLogTerm)) {
+    return false;
   }
   
-  return false;
+  if (_leaderID != id) {
+    LOG_TOPIC(DEBUG, Logger::AGENCY)
+      << "Set _leaderID to " << id << " in term " << _term;
+    _leaderID = id;
+    TRI_ASSERT(_leaderID != _id);
+    if (_role != FOLLOWER) {
+      followNoLock(term);
+    }
+  }
+  
+  return true;
 }
 
 /// @brief Vote

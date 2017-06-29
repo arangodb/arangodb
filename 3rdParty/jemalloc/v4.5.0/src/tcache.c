@@ -1,4 +1,4 @@
-#define JEMALLOC_TCACHE_C_
+#define	JEMALLOC_TCACHE_C_
 #include "jemalloc/internal/jemalloc_internal.h"
 
 /******************************************************************************/
@@ -27,12 +27,15 @@ static malloc_mutex_t	tcaches_mtx;
 /******************************************************************************/
 
 size_t
-tcache_salloc(tsdn_t *tsdn, const void *ptr) {
-	return arena_salloc(tsdn, iealloc(tsdn, ptr), ptr);
+tcache_salloc(tsdn_t *tsdn, const void *ptr)
+{
+
+	return (arena_salloc(tsdn, ptr, false));
 }
 
 void
-tcache_event_hard(tsd_t *tsd, tcache_t *tcache) {
+tcache_event_hard(tsd_t *tsd, tcache_t *tcache)
+{
 	szind_t binind = tcache->next_gc_bin;
 	tcache_bin_t *tbin = &tcache->tbins[binind];
 	tcache_bin_info_t *tbin_info = &tcache_bin_info[binind];
@@ -53,44 +56,42 @@ tcache_event_hard(tsd_t *tsd, tcache_t *tcache) {
 		 * Reduce fill count by 2X.  Limit lg_fill_div such that the
 		 * fill count is always at least 1.
 		 */
-		if ((tbin_info->ncached_max >> (tbin->lg_fill_div+1)) >= 1) {
+		if ((tbin_info->ncached_max >> (tbin->lg_fill_div+1)) >= 1)
 			tbin->lg_fill_div++;
-		}
 	} else if (tbin->low_water < 0) {
 		/*
 		 * Increase fill count by 2X.  Make sure lg_fill_div stays
 		 * greater than 0.
 		 */
-		if (tbin->lg_fill_div > 1) {
+		if (tbin->lg_fill_div > 1)
 			tbin->lg_fill_div--;
-		}
 	}
 	tbin->low_water = tbin->ncached;
 
 	tcache->next_gc_bin++;
-	if (tcache->next_gc_bin == nhbins) {
+	if (tcache->next_gc_bin == nhbins)
 		tcache->next_gc_bin = 0;
-	}
 }
 
 void *
 tcache_alloc_small_hard(tsdn_t *tsdn, arena_t *arena, tcache_t *tcache,
-    tcache_bin_t *tbin, szind_t binind, bool *tcache_success) {
+    tcache_bin_t *tbin, szind_t binind, bool *tcache_success)
+{
 	void *ret;
 
 	arena_tcache_fill_small(tsdn, arena, tbin, binind, config_prof ?
 	    tcache->prof_accumbytes : 0);
-	if (config_prof) {
+	if (config_prof)
 		tcache->prof_accumbytes = 0;
-	}
 	ret = tcache_alloc_easy(tbin, tcache_success);
 
-	return ret;
+	return (ret);
 }
 
 void
 tcache_bin_flush_small(tsd_t *tsd, tcache_t *tcache, tcache_bin_t *tbin,
-    szind_t binind, unsigned rem) {
+    szind_t binind, unsigned rem)
+{
 	arena_t *arena;
 	void *ptr;
 	unsigned i, nflush, ndeferred;
@@ -103,15 +104,15 @@ tcache_bin_flush_small(tsd_t *tsd, tcache_t *tcache, tcache_bin_t *tbin,
 	assert(arena != NULL);
 	for (nflush = tbin->ncached - rem; nflush > 0; nflush = ndeferred) {
 		/* Lock the arena bin associated with the first object. */
-		extent_t *extent = iealloc(tsd_tsdn(tsd), *(tbin->avail - 1));
-		arena_t *bin_arena = extent_arena_get(extent);
+		arena_chunk_t *chunk = (arena_chunk_t *)CHUNK_ADDR2BASE(
+		    *(tbin->avail - 1));
+		arena_t *bin_arena = extent_node_arena_get(&chunk->node);
 		arena_bin_t *bin = &bin_arena->bins[binind];
 
 		if (config_prof && bin_arena == arena) {
 			if (arena_prof_accum(tsd_tsdn(tsd), arena,
-			    tcache->prof_accumbytes)) {
+			    tcache->prof_accumbytes))
 				prof_idump(tsd_tsdn(tsd));
-			}
 			tcache->prof_accumbytes = 0;
 		}
 
@@ -127,11 +128,14 @@ tcache_bin_flush_small(tsd_t *tsd, tcache_t *tcache, tcache_bin_t *tbin,
 		for (i = 0; i < nflush; i++) {
 			ptr = *(tbin->avail - 1 - i);
 			assert(ptr != NULL);
-
-			extent = iealloc(tsd_tsdn(tsd), ptr);
-			if (extent_arena_get(extent) == bin_arena) {
+			chunk = (arena_chunk_t *)CHUNK_ADDR2BASE(ptr);
+			if (extent_node_arena_get(&chunk->node) == bin_arena) {
+				size_t pageind = ((uintptr_t)ptr -
+				    (uintptr_t)chunk) >> LG_PAGE;
+				arena_chunk_map_bits_t *bitselm =
+				    arena_bitselm_get_mutable(chunk, pageind);
 				arena_dalloc_bin_junked_locked(tsd_tsdn(tsd),
-				    bin_arena, extent, ptr);
+				    bin_arena, chunk, ptr, bitselm);
 			} else {
 				/*
 				 * This object was allocated via a different
@@ -162,65 +166,58 @@ tcache_bin_flush_small(tsd_t *tsd, tcache_t *tcache, tcache_bin_t *tbin,
 	memmove(tbin->avail - rem, tbin->avail - tbin->ncached, rem *
 	    sizeof(void *));
 	tbin->ncached = rem;
-	if ((int)tbin->ncached < tbin->low_water) {
+	if ((int)tbin->ncached < tbin->low_water)
 		tbin->low_water = tbin->ncached;
-	}
 }
 
 void
 tcache_bin_flush_large(tsd_t *tsd, tcache_bin_t *tbin, szind_t binind,
-    unsigned rem, tcache_t *tcache) {
+    unsigned rem, tcache_t *tcache)
+{
+	arena_t *arena;
+	void *ptr;
+	unsigned i, nflush, ndeferred;
 	bool merged_stats = false;
 
 	assert(binind < nhbins);
 	assert(rem <= tbin->ncached);
 
-	arena_t *arena = arena_choose(tsd, NULL);
+	arena = arena_choose(tsd, NULL);
 	assert(arena != NULL);
-	unsigned nflush = tbin->ncached - rem;
-	while (nflush > 0) {
+	for (nflush = tbin->ncached - rem; nflush > 0; nflush = ndeferred) {
 		/* Lock the arena associated with the first object. */
-		extent_t *extent = iealloc(tsd_tsdn(tsd), *(tbin->avail - 1));
-		arena_t *locked_arena = extent_arena_get(extent);
+		arena_chunk_t *chunk = (arena_chunk_t *)CHUNK_ADDR2BASE(
+		    *(tbin->avail - 1));
+		arena_t *locked_arena = extent_node_arena_get(&chunk->node);
 		UNUSED bool idump;
 
-		if (config_prof) {
+		if (config_prof)
 			idump = false;
-		}
-
-		malloc_mutex_lock(tsd_tsdn(tsd), &locked_arena->large_mtx);
-		for (unsigned i = 0; i < nflush; i++) {
-			void *ptr = *(tbin->avail - 1 - i);
-			assert(ptr != NULL);
-			extent = iealloc(tsd_tsdn(tsd), ptr);
-			if (extent_arena_get(extent) == locked_arena) {
-				large_dalloc_prep_junked_locked(tsd_tsdn(tsd),
-				    extent);
-			}
-		}
+		malloc_mutex_lock(tsd_tsdn(tsd), &locked_arena->lock);
 		if ((config_prof || config_stats) && locked_arena == arena) {
 			if (config_prof) {
-				idump = arena_prof_accum(tsd_tsdn(tsd), arena,
+				idump = arena_prof_accum_locked(arena,
 				    tcache->prof_accumbytes);
 				tcache->prof_accumbytes = 0;
 			}
 			if (config_stats) {
 				merged_stats = true;
-				arena_stats_large_nrequests_add(tsd_tsdn(tsd),
-				    &arena->stats, binind,
-				    tbin->tstats.nrequests);
+				arena->stats.nrequests_large +=
+				    tbin->tstats.nrequests;
+				arena->stats.lstats[binind - NBINS].nrequests +=
+				    tbin->tstats.nrequests;
 				tbin->tstats.nrequests = 0;
 			}
 		}
-		malloc_mutex_unlock(tsd_tsdn(tsd), &locked_arena->large_mtx);
-
-		unsigned ndeferred = 0;
-		for (unsigned i = 0; i < nflush; i++) {
-			void *ptr = *(tbin->avail - 1 - i);
+		ndeferred = 0;
+		for (i = 0; i < nflush; i++) {
+			ptr = *(tbin->avail - 1 - i);
 			assert(ptr != NULL);
-			extent = iealloc(tsd_tsdn(tsd), ptr);
-			if (extent_arena_get(extent) == locked_arena) {
-				large_dalloc_finish(tsd_tsdn(tsd), extent);
+			chunk = (arena_chunk_t *)CHUNK_ADDR2BASE(ptr);
+			if (extent_node_arena_get(&chunk->node) ==
+			    locked_arena) {
+				arena_dalloc_large_junked_locked(tsd_tsdn(tsd),
+				    locked_arena, chunk, ptr);
 			} else {
 				/*
 				 * This object was allocated via a different
@@ -232,47 +229,52 @@ tcache_bin_flush_large(tsd_t *tsd, tcache_bin_t *tbin, szind_t binind,
 				ndeferred++;
 			}
 		}
-		if (config_prof && idump) {
+		malloc_mutex_unlock(tsd_tsdn(tsd), &locked_arena->lock);
+		if (config_prof && idump)
 			prof_idump(tsd_tsdn(tsd));
-		}
 		arena_decay_ticks(tsd_tsdn(tsd), locked_arena, nflush -
 		    ndeferred);
-		nflush = ndeferred;
 	}
 	if (config_stats && !merged_stats) {
 		/*
 		 * The flush loop didn't happen to flush to this thread's
 		 * arena, so the stats didn't get merged.  Manually do so now.
 		 */
-		arena_stats_large_nrequests_add(tsd_tsdn(tsd), &arena->stats,
-		    binind, tbin->tstats.nrequests);
+		malloc_mutex_lock(tsd_tsdn(tsd), &arena->lock);
+		arena->stats.nrequests_large += tbin->tstats.nrequests;
+		arena->stats.lstats[binind - NBINS].nrequests +=
+		    tbin->tstats.nrequests;
 		tbin->tstats.nrequests = 0;
+		malloc_mutex_unlock(tsd_tsdn(tsd), &arena->lock);
 	}
 
 	memmove(tbin->avail - rem, tbin->avail - tbin->ncached, rem *
 	    sizeof(void *));
 	tbin->ncached = rem;
-	if ((int)tbin->ncached < tbin->low_water) {
+	if ((int)tbin->ncached < tbin->low_water)
 		tbin->low_water = tbin->ncached;
-	}
 }
 
 static void
-tcache_arena_associate(tsdn_t *tsdn, tcache_t *tcache, arena_t *arena) {
+tcache_arena_associate(tsdn_t *tsdn, tcache_t *tcache, arena_t *arena)
+{
+
 	if (config_stats) {
 		/* Link into list of extant tcaches. */
-		malloc_mutex_lock(tsdn, &arena->tcache_ql_mtx);
+		malloc_mutex_lock(tsdn, &arena->lock);
 		ql_elm_new(tcache, link);
 		ql_tail_insert(&arena->tcache_ql, tcache, link);
-		malloc_mutex_unlock(tsdn, &arena->tcache_ql_mtx);
+		malloc_mutex_unlock(tsdn, &arena->lock);
 	}
 }
 
 static void
-tcache_arena_dissociate(tsdn_t *tsdn, tcache_t *tcache, arena_t *arena) {
+tcache_arena_dissociate(tsdn_t *tsdn, tcache_t *tcache, arena_t *arena)
+{
+
 	if (config_stats) {
 		/* Unlink from list of extant tcaches. */
-		malloc_mutex_lock(tsdn, &arena->tcache_ql_mtx);
+		malloc_mutex_lock(tsdn, &arena->lock);
 		if (config_debug) {
 			bool in_ql = false;
 			tcache_t *iter;
@@ -286,36 +288,38 @@ tcache_arena_dissociate(tsdn_t *tsdn, tcache_t *tcache, arena_t *arena) {
 		}
 		ql_remove(&arena->tcache_ql, tcache, link);
 		tcache_stats_merge(tsdn, tcache, arena);
-		malloc_mutex_unlock(tsdn, &arena->tcache_ql_mtx);
+		malloc_mutex_unlock(tsdn, &arena->lock);
 	}
 }
 
 void
 tcache_arena_reassociate(tsdn_t *tsdn, tcache_t *tcache, arena_t *oldarena,
-    arena_t *newarena) {
+    arena_t *newarena)
+{
+
 	tcache_arena_dissociate(tsdn, tcache, oldarena);
 	tcache_arena_associate(tsdn, tcache, newarena);
 }
 
 tcache_t *
-tcache_get_hard(tsd_t *tsd) {
+tcache_get_hard(tsd_t *tsd)
+{
 	arena_t *arena;
 
 	if (!tcache_enabled_get()) {
-		if (tsd_nominal(tsd)) {
+		if (tsd_nominal(tsd))
 			tcache_enabled_set(false); /* Memoize. */
-		}
-		return NULL;
+		return (NULL);
 	}
 	arena = arena_choose(tsd, NULL);
-	if (unlikely(arena == NULL)) {
-		return NULL;
-	}
-	return tcache_create(tsd_tsdn(tsd), arena);
+	if (unlikely(arena == NULL))
+		return (NULL);
+	return (tcache_create(tsd_tsdn(tsd), arena));
 }
 
 tcache_t *
-tcache_create(tsdn_t *tsdn, arena_t *arena) {
+tcache_create(tsdn_t *tsdn, arena_t *arena)
+{
 	tcache_t *tcache;
 	size_t size, stack_offset;
 	unsigned i;
@@ -330,9 +334,8 @@ tcache_create(tsdn_t *tsdn, arena_t *arena) {
 
 	tcache = ipallocztm(tsdn, size, CACHELINE, true, NULL, true,
 	    arena_get(TSDN_NULL, 0, true));
-	if (tcache == NULL) {
-		return NULL;
-	}
+	if (tcache == NULL)
+		return (NULL);
 
 	tcache_arena_associate(tsdn, tcache, arena);
 
@@ -351,11 +354,12 @@ tcache_create(tsdn_t *tsdn, arena_t *arena) {
 		    (uintptr_t)stack_offset);
 	}
 
-	return tcache;
+	return (tcache);
 }
 
 static void
-tcache_destroy(tsd_t *tsd, tcache_t *tcache) {
+tcache_destroy(tsd_t *tsd, tcache_t *tcache)
+{
 	arena_t *arena;
 	unsigned i;
 
@@ -366,8 +370,11 @@ tcache_destroy(tsd_t *tsd, tcache_t *tcache) {
 		tcache_bin_t *tbin = &tcache->tbins[i];
 		tcache_bin_flush_small(tsd, tcache, tbin, i, 0);
 
-		if (config_stats) {
-			assert(tbin->tstats.nrequests == 0);
+		if (config_stats && tbin->tstats.nrequests != 0) {
+			arena_bin_t *bin = &arena->bins[i];
+			malloc_mutex_lock(tsd_tsdn(tsd), &bin->lock);
+			bin->stats.nrequests += tbin->tstats.nrequests;
+			malloc_mutex_unlock(tsd_tsdn(tsd), &bin->lock);
 		}
 	}
 
@@ -375,27 +382,29 @@ tcache_destroy(tsd_t *tsd, tcache_t *tcache) {
 		tcache_bin_t *tbin = &tcache->tbins[i];
 		tcache_bin_flush_large(tsd, tbin, i, 0, tcache);
 
-		if (config_stats) {
-			assert(tbin->tstats.nrequests == 0);
+		if (config_stats && tbin->tstats.nrequests != 0) {
+			malloc_mutex_lock(tsd_tsdn(tsd), &arena->lock);
+			arena->stats.nrequests_large += tbin->tstats.nrequests;
+			arena->stats.lstats[i - NBINS].nrequests +=
+			    tbin->tstats.nrequests;
+			malloc_mutex_unlock(tsd_tsdn(tsd), &arena->lock);
 		}
 	}
 
 	if (config_prof && tcache->prof_accumbytes > 0 &&
-	    arena_prof_accum(tsd_tsdn(tsd), arena, tcache->prof_accumbytes)) {
+	    arena_prof_accum(tsd_tsdn(tsd), arena, tcache->prof_accumbytes))
 		prof_idump(tsd_tsdn(tsd));
-	}
 
-	idalloctm(tsd_tsdn(tsd), iealloc(tsd_tsdn(tsd), tcache), tcache, NULL,
-	    true, true);
+	idalloctm(tsd_tsdn(tsd), tcache, NULL, true, true);
 }
 
 void
-tcache_cleanup(tsd_t *tsd) {
+tcache_cleanup(tsd_t *tsd)
+{
 	tcache_t *tcache;
 
-	if (!config_tcache) {
+	if (!config_tcache)
 		return;
-	}
 
 	if ((tcache = tsd_tcache_get(tsd)) != NULL) {
 		tcache_destroy(tsd, tcache);
@@ -404,10 +413,20 @@ tcache_cleanup(tsd_t *tsd) {
 }
 
 void
-tcache_stats_merge(tsdn_t *tsdn, tcache_t *tcache, arena_t *arena) {
+tcache_enabled_cleanup(tsd_t *tsd)
+{
+
+	/* Do nothing. */
+}
+
+void
+tcache_stats_merge(tsdn_t *tsdn, tcache_t *tcache, arena_t *arena)
+{
 	unsigned i;
 
 	cassert(config_stats);
+
+	malloc_mutex_assert_owner(tsdn, &arena->lock);
 
 	/* Merge and reset tcache stats. */
 	for (i = 0; i < NBINS; i++) {
@@ -420,9 +439,10 @@ tcache_stats_merge(tsdn_t *tsdn, tcache_t *tcache, arena_t *arena) {
 	}
 
 	for (; i < nhbins; i++) {
+		malloc_large_stats_t *lstats = &arena->stats.lstats[i - NBINS];
 		tcache_bin_t *tbin = &tcache->tbins[i];
-		arena_stats_large_nrequests_add(tsdn, &arena->stats, i,
-		    tbin->tstats.nrequests);
+		arena->stats.nrequests_large += tbin->tstats.nrequests;
+		lstats->nrequests += tbin->tstats.nrequests;
 		tbin->tstats.nrequests = 0;
 	}
 }
@@ -434,8 +454,8 @@ tcaches_create_prep(tsd_t *tsd) {
 	malloc_mutex_lock(tsd_tsdn(tsd), &tcaches_mtx);
 
 	if (tcaches == NULL) {
-		tcaches = base_alloc(tsd_tsdn(tsd), b0get(), sizeof(tcache_t *)
-		    * (MALLOCX_TCACHE_MAX+1), CACHELINE);
+		tcaches = base_alloc(tsd_tsdn(tsd), sizeof(tcache_t *) *
+		    (MALLOCX_TCACHE_MAX+1));
 		if (tcaches == NULL) {
 			err = true;
 			goto label_return;
@@ -455,27 +475,27 @@ label_return:
 
 bool
 tcaches_create(tsd_t *tsd, unsigned *r_ind) {
-	witness_assert_depth(tsd_tsdn(tsd), 0);
-
 	bool err;
+	arena_t *arena;
+	tcache_t *tcache;
+	tcaches_t *elm;
 
 	if (tcaches_create_prep(tsd)) {
 		err = true;
 		goto label_return;
 	}
 
-	arena_t *arena = arena_ichoose(tsd, NULL);
+	arena = arena_ichoose(tsd, NULL);
 	if (unlikely(arena == NULL)) {
 		err = true;
 		goto label_return;
 	}
-	tcache_t *tcache = tcache_create(tsd_tsdn(tsd), arena);
+	tcache = tcache_create(tsd_tsdn(tsd), arena);
 	if (tcache == NULL) {
 		err = true;
 		goto label_return;
 	}
 
-	tcaches_t *elm;
 	malloc_mutex_lock(tsd_tsdn(tsd), &tcaches_mtx);
 	if (tcaches_avail != NULL) {
 		elm = tcaches_avail;
@@ -492,7 +512,7 @@ tcaches_create(tsd_t *tsd, unsigned *r_ind) {
 
 	err = false;
 label_return:
-	witness_assert_depth(tsd_tsdn(tsd), 0);
+	malloc_mutex_assert_not_owner(tsd_tsdn(tsd), &tcaches_mtx);
 	return err;
 }
 
@@ -516,8 +536,10 @@ tcaches_flush(tsd_t *tsd, unsigned ind) {
 
 void
 tcaches_destroy(tsd_t *tsd, unsigned ind) {
+	tcaches_t *elm;
+
 	malloc_mutex_lock(tsd_tsdn(tsd), &tcaches_mtx);
-	tcaches_t *elm = &tcaches[ind];
+	elm = &tcaches[ind];
 	tcaches_elm_flush(tsd, elm);
 	elm->next = tcaches_avail;
 	tcaches_avail = elm;
@@ -526,17 +548,20 @@ tcaches_destroy(tsd_t *tsd, unsigned ind) {
 
 bool
 tcache_boot(tsdn_t *tsdn) {
-	cassert(config_tcache);
-
 	unsigned i;
 
-	/* If necessary, clamp opt_lg_tcache_max. */
-	if (opt_lg_tcache_max < 0 || (ZU(1) << opt_lg_tcache_max) <
-	    SMALL_MAXCLASS) {
+	cassert(config_tcache);
+
+	/*
+	 * If necessary, clamp opt_lg_tcache_max, now that large_maxclass is
+	 * known.
+	 */
+	if (opt_lg_tcache_max < 0 || (ZU(1) << opt_lg_tcache_max) < SMALL_MAXCLASS)
 		tcache_maxclass = SMALL_MAXCLASS;
-	} else {
+	else if ((ZU(1) << opt_lg_tcache_max) > large_maxclass)
+		tcache_maxclass = large_maxclass;
+	else
 		tcache_maxclass = (ZU(1) << opt_lg_tcache_max);
-	}
 
 	if (malloc_mutex_init(&tcaches_mtx, "tcaches", WITNESS_RANK_TCACHES)) {
 		return true;
@@ -545,11 +570,10 @@ tcache_boot(tsdn_t *tsdn) {
 	nhbins = size2index(tcache_maxclass) + 1;
 
 	/* Initialize tcache_bin_info. */
-	tcache_bin_info = (tcache_bin_info_t *)base_alloc(tsdn, b0get(), nhbins
-	    * sizeof(tcache_bin_info_t), CACHELINE);
-	if (tcache_bin_info == NULL) {
-		return true;
-	}
+	tcache_bin_info = (tcache_bin_info_t *)base_alloc(tsdn, nhbins *
+	    sizeof(tcache_bin_info_t));
+	if (tcache_bin_info == NULL)
+		return (true);
 	stack_nelms = 0;
 	for (i = 0; i < NBINS; i++) {
 		if ((arena_bin_info[i].nregs << 1) <= TCACHE_NSLOTS_SMALL_MIN) {
@@ -570,7 +594,7 @@ tcache_boot(tsdn_t *tsdn) {
 		stack_nelms += tcache_bin_info[i].ncached_max;
 	}
 
-	return false;
+	return (false);
 }
 
 void

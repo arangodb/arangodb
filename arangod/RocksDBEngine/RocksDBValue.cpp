@@ -24,6 +24,8 @@
 
 #include "RocksDBEngine/RocksDBValue.h"
 #include "Basics/Exceptions.h"
+#include "Basics/StaticStrings.h"
+#include "Basics/StringUtils.h"
 #include "RocksDBEngine/RocksDBCommon.h"
 
 using namespace arangodb;
@@ -45,8 +47,8 @@ RocksDBValue RocksDBValue::PrimaryIndexValue(TRI_voc_rid_t revisionId) {
   return RocksDBValue(RocksDBEntryType::PrimaryIndexValue, revisionId);
 }
 
-RocksDBValue RocksDBValue::EdgeIndexValue() {
-  return RocksDBValue(RocksDBEntryType::EdgeIndexValue);
+RocksDBValue RocksDBValue::EdgeIndexValue(arangodb::StringRef const& vertexId) {
+  return RocksDBValue(RocksDBEntryType::EdgeIndexValue, vertexId);
 }
 
 RocksDBValue RocksDBValue::IndexValue() {
@@ -65,6 +67,10 @@ RocksDBValue RocksDBValue::ReplicationApplierConfig(VPackSlice const& data) {
   return RocksDBValue(RocksDBEntryType::ReplicationApplierConfig, data);
 }
 
+RocksDBValue RocksDBValue::KeyGeneratorValue(VPackSlice const& data) {
+  return RocksDBValue(RocksDBEntryType::KeyGeneratorValue, data);
+}
+
 RocksDBValue RocksDBValue::Empty(RocksDBEntryType type) {
   return RocksDBValue(type);
 }
@@ -81,16 +87,8 @@ TRI_voc_rid_t RocksDBValue::revisionId(std::string const& s) {
   return revisionId(s.data(), s.size());
 }
 
-StringRef RocksDBValue::primaryKey(RocksDBValue const& value) {
-  return primaryKey(value._buffer.data(), value._buffer.size());
-}
-
-StringRef RocksDBValue::primaryKey(rocksdb::Slice const& slice) {
-  return primaryKey(slice.data(), slice.size());
-}
-
-StringRef RocksDBValue::primaryKey(std::string const& s) {
-  return primaryKey(s.data(), s.size());
+StringRef RocksDBValue::vertexId(rocksdb::Slice const& s) {
+  return vertexId(s.data(), s.size());
 }
 
 VPackSlice RocksDBValue::data(RocksDBValue const& value) {
@@ -103,6 +101,18 @@ VPackSlice RocksDBValue::data(rocksdb::Slice const& slice) {
 
 VPackSlice RocksDBValue::data(std::string const& s) {
   return data(s.data(), s.size());
+}
+
+uint64_t RocksDBValue::keyValue(RocksDBValue const& value) {
+  return keyValue(value._buffer.data(), value._buffer.size());
+}
+
+uint64_t RocksDBValue::keyValue(rocksdb::Slice const& slice) {
+  return keyValue(slice.data(), slice.size());
+}
+
+uint64_t RocksDBValue::keyValue(std::string const& s) {
+  return keyValue(s.data(), s.size());
 }
 
 RocksDBValue::RocksDBValue(RocksDBEntryType type) : _type(type), _buffer() {}
@@ -129,10 +139,25 @@ RocksDBValue::RocksDBValue(RocksDBEntryType type, VPackSlice const& data)
     case RocksDBEntryType::Collection:
     case RocksDBEntryType::Document:
     case RocksDBEntryType::View:
+    case RocksDBEntryType::KeyGeneratorValue:
     case RocksDBEntryType::ReplicationApplierConfig: {
       _buffer.reserve(static_cast<size_t>(data.byteSize()));
       _buffer.append(reinterpret_cast<char const*>(data.begin()),
                      static_cast<size_t>(data.byteSize()));
+      break;
+    }
+
+    default:
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_BAD_PARAMETER);
+  }
+}
+
+RocksDBValue::RocksDBValue(RocksDBEntryType type, StringRef const& data)
+: _type(type), _buffer() {
+  switch (_type) {
+    case RocksDBEntryType::EdgeIndexValue: {
+      _buffer.reserve(static_cast<size_t>(data.size()));
+      _buffer.append(data.data(), data.size());
       break;
     }
 
@@ -146,7 +171,7 @@ TRI_voc_rid_t RocksDBValue::revisionId(char const* data, uint64_t size) {
   return uint64FromPersistent(data);
 }
 
-StringRef RocksDBValue::primaryKey(char const* data, size_t size) {
+StringRef RocksDBValue::vertexId(char const* data, size_t size) {
   TRI_ASSERT(data != nullptr);
   TRI_ASSERT(size >= sizeof(char));
   return StringRef(data, size);
@@ -156,4 +181,19 @@ VPackSlice RocksDBValue::data(char const* data, size_t size) {
   TRI_ASSERT(data != nullptr);
   TRI_ASSERT(size >= sizeof(char));
   return VPackSlice(data);
+}
+
+uint64_t RocksDBValue::keyValue(char const* data, size_t size) {
+  TRI_ASSERT(data != nullptr);
+  TRI_ASSERT(size >= sizeof(char));
+  VPackSlice slice(data);
+  VPackSlice key = slice.get(StaticStrings::KeyString);
+  if (key.isString()) {
+    std::string s = key.copyString();
+    if (s.size() > 0 && s[0] >= '0' && s[0] <= '9') {
+      return basics::StringUtils::uint64(s);
+    }
+  }
+
+  return 0;
 }

@@ -22,7 +22,8 @@ It returns an object with the attributes
 
 - *result*: will be *true* if rotation succeeded
 
-**Note**: This method is not available in a cluster.
+**Note**: this method is specific for the MMFiles storage engine, and there
+it is not available in a cluster.
 
 @RESTRETURNCODES
 

@@ -94,7 +94,9 @@ RestStatus RestImportHandler::execute() {
 
       switch (_response->transportType()) {
         case Endpoint::TransportType::HTTP: {
-          if (found &&
+          if (_request->contentType() == arangodb::ContentType::VPACK){
+            createFromVPack(documentType);
+          } else if (found &&
               (documentType == "documents" || documentType == "array" ||
                documentType == "list" || documentType == "auto")) {
             createFromJson(documentType);
@@ -174,10 +176,12 @@ std::string RestImportHandler::buildParseError(size_t i,
 ////////////////////////////////////////////////////////////////////////////////
 
 int RestImportHandler::handleSingleDocument(SingleCollectionTransaction& trx,
+                                            VPackBuilder& tempBuilder,
                                             RestImportResult& result,
                                             VPackBuilder& babies,
                                             VPackSlice slice,
                                             bool isEdgeCollection, size_t i) {
+
   if (!slice.isObject()) {
     std::string part = VPackDumper::toString(slice);
     if (part.size() > 255) {
@@ -193,7 +197,7 @@ int RestImportHandler::handleSingleDocument(SingleCollectionTransaction& trx,
     registerError(result, errorMsg);
     return TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID;
   }
-    
+
   if (!isEdgeCollection) {
     babies.add(slice);
     return TRI_ERROR_NO_ERROR;
@@ -201,24 +205,23 @@ int RestImportHandler::handleSingleDocument(SingleCollectionTransaction& trx,
 
 
   // document ok, now import it
-  VPackBuilder newBuilder;
+  transaction::BuilderLeaser newBuilder(&trx);
+  tempBuilder.clear();
 
   // add prefixes to _from and _to
   if (!_fromPrefix.empty() || !_toPrefix.empty()) {
-    transaction::BuilderLeaser tempBuilder(&trx);
-
-    tempBuilder->openObject();
+    tempBuilder.openObject();
     if (!_fromPrefix.empty()) {
       VPackSlice from = slice.get(StaticStrings::FromString);
       if (from.isString()) {
         std::string f = from.copyString();
         if (f.find('/') == std::string::npos) {
-          tempBuilder->add(StaticStrings::FromString,
+          tempBuilder.add(StaticStrings::FromString,
                             VPackValue(_fromPrefix + f));
         }
       } else if (from.isInteger()) {
         uint64_t f = from.getNumber<uint64_t>();
-        tempBuilder->add(StaticStrings::FromString,
+        tempBuilder.add(StaticStrings::FromString,
                           VPackValue(_fromPrefix + std::to_string(f)));
       }
     }
@@ -227,28 +230,27 @@ int RestImportHandler::handleSingleDocument(SingleCollectionTransaction& trx,
       if (to.isString()) {
         std::string t = to.copyString();
         if (t.find('/') == std::string::npos) {
-          tempBuilder->add(StaticStrings::ToString,
+          tempBuilder.add(StaticStrings::ToString,
                             VPackValue(_toPrefix + t));
         }
       } else if (to.isInteger()) {
         uint64_t t = to.getNumber<uint64_t>();
-        tempBuilder->add(StaticStrings::ToString,
+        tempBuilder.add(StaticStrings::ToString,
                           VPackValue(_toPrefix + std::to_string(t)));
       }
     }
-    tempBuilder->close();
+    tempBuilder.close();
 
-    if (tempBuilder->slice().length() > 0) {
-      newBuilder =
-          VPackCollection::merge(slice, tempBuilder->slice(), false, false);
-      slice = newBuilder.slice();
+    if (tempBuilder.slice().length() > 0) {
+      VPackCollection::merge(*(newBuilder.builder()), slice, tempBuilder.slice(), false, false);
+      slice = newBuilder->slice();
     }
   }
 
   try {
-    arangodb::basics::VelocyPackHelper::checkAndGetStringValue(
+    arangodb::basics::VelocyPackHelper::ensureStringValue(
         slice, StaticStrings::FromString);
-    arangodb::basics::VelocyPackHelper::checkAndGetStringValue(
+    arangodb::basics::VelocyPackHelper::ensureStringValue(
         slice, StaticStrings::ToString);
   } catch (arangodb::basics::Exception const&) {
     std::string part = VPackDumper::toString(slice);
@@ -384,6 +386,8 @@ bool RestImportHandler::createFromJson(std::string const& type) {
   VPackBuilder babies;
   babies.openArray();
 
+  VPackBuilder tmpBuilder;
+
   if (linewise) {
     // http required here
     HttpRequest* req = dynamic_cast<HttpRequest*>(_request.get());
@@ -397,7 +401,8 @@ bool RestImportHandler::createFromJson(std::string const& type) {
     char const* ptr = body.c_str();
     char const* end = ptr + body.size();
     size_t i = 0;
-
+  
+    VPackBuilder lineBuilder;
     while (ptr < end) {
       // read line until done
       i++;
@@ -417,9 +422,6 @@ bool RestImportHandler::createFromJson(std::string const& type) {
       // now find end of line
       char const* pos = static_cast<char const*>(memchr(ptr, '\n', end - ptr));
       char const* oldPtr = nullptr;
-
-      std::shared_ptr<VPackBuilder> builder;
-
       bool success = false;
 
       if (pos == ptr) {
@@ -429,19 +431,18 @@ bool RestImportHandler::createFromJson(std::string const& type) {
         continue;
       }
 
+      TRI_ASSERT(ptr != nullptr);
+      oldPtr = ptr;
+
+      tmpBuilder.clear();
       if (pos != nullptr) {
         // non-empty line
         *(const_cast<char*>(pos)) = '\0';
-        TRI_ASSERT(ptr != nullptr);
-        oldPtr = ptr;
-        builder = parseVelocyPackLine(ptr, pos, success);
+        parseVelocyPackLine(tmpBuilder, ptr, pos, success);
         ptr = pos + 1;
       } else {
         // last-line, non-empty
-        TRI_ASSERT(pos == nullptr);
-        TRI_ASSERT(ptr != nullptr);
-        oldPtr = ptr;
-        builder = parseVelocyPackLine(ptr, success);
+        parseVelocyPackLine(tmpBuilder, ptr, end, success);
         ptr = end;
       }
 
@@ -456,7 +457,7 @@ bool RestImportHandler::createFromJson(std::string const& type) {
         continue;
       }
 
-      res = handleSingleDocument(trx, result, babies, builder->slice(),
+      res = handleSingleDocument(trx, lineBuilder, result, babies, tmpBuilder.slice(),
                                  isEdgeCollection, i);
 
       if (res.fail()) {
@@ -491,13 +492,12 @@ bool RestImportHandler::createFromJson(std::string const& type) {
       return false;
     }
 
-    VPackValueLength const n = documents.length();
+    VPackBuilder lineBuilder;
+    VPackArrayIterator it(documents);
 
-    for (VPackValueLength i = 0; i < n; ++i) {
-      VPackSlice const slice = documents.at(i);
-
-      res = handleSingleDocument(trx, result, babies, slice, isEdgeCollection,
-                                 static_cast<size_t>(i + 1));
+    while (it.valid()) {
+      res = handleSingleDocument(trx, lineBuilder, result, babies, it.value(), isEdgeCollection,
+                                 static_cast<size_t>(it.index() + 1));
 
       if (res.fail()) {
         if (complete) {
@@ -507,6 +507,8 @@ bool RestImportHandler::createFromJson(std::string const& type) {
 
         res = TRI_ERROR_NO_ERROR;
       }
+
+      it.next();
     }
   }
 
@@ -596,13 +598,12 @@ bool RestImportHandler::createFromVPack(std::string const& type) {
     return false;
   }
 
-  VPackValueLength const n = documents.length();
+  VPackBuilder lineBuilder;
 
-  for (VPackValueLength i = 0; i < n; ++i) {
-    VPackSlice const slice = documents.at(i);
-
-    res = handleSingleDocument(trx, result, babies, slice, isEdgeCollection,
-                               static_cast<size_t>(i + 1));
+  VPackArrayIterator it(documents);
+  while (it.valid()) {
+    res = handleSingleDocument(trx, lineBuilder, result, babies, it.value(), isEdgeCollection,
+                               static_cast<size_t>(it.index() + 1));
 
     if (res.fail()) {
       if (complete) {
@@ -612,6 +613,8 @@ bool RestImportHandler::createFromVPack(std::string const& type) {
 
       res = TRI_ERROR_NO_ERROR;
     }
+
+    it.next();
   }
 
   babies.close();
@@ -716,18 +719,24 @@ bool RestImportHandler::createFromKeyValueList() {
 
   *(const_cast<char*>(lineEnd)) = '\0';
   bool success = false;
-  std::shared_ptr<VPackBuilder> parsedKeys;
+  VPackBuilder parsedKeys;
   try {
-    parsedKeys = parseVelocyPackLine(lineStart, lineEnd, success);
+    parseVelocyPackLine(parsedKeys, lineStart, lineEnd, success);
   } catch (...) {
     // This throws if the body is not parseable
     generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
                   "no JSON string array found in first line");
     return false;
   }
-  VPackSlice const keys = parsedKeys->slice();
+  if (!success) {
+    generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
+                  "no JSON string array found in first line");
+    return false;
+  }
 
-  if (!success || !checkKeys(keys)) {
+  VPackSlice const keys = parsedKeys.slice();
+
+  if (!checkKeys(keys)) {
     generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
                   "no JSON string array found in first line");
     return false;
@@ -761,10 +770,13 @@ bool RestImportHandler::createFromKeyValueList() {
     // Ignore the result ...
   }
 
+  VPackBuilder parsedValues;
   VPackBuilder babies;
   babies.openArray();
 
   size_t i = static_cast<size_t>(lineNumber);
+  VPackBuilder lineBuilder;
+  VPackBuilder objectBuilder;
 
   while (current != nullptr && current < bodyEnd) {
     i++;
@@ -804,8 +816,8 @@ bool RestImportHandler::createFromKeyValueList() {
     }
 
     bool success;
-    std::shared_ptr<VPackBuilder> parsedValues =
-        parseVelocyPackLine(lineStart, lineEnd, success);
+    parsedValues.clear();
+    parseVelocyPackLine(parsedValues, lineStart, lineEnd, success);
 
     // build the json object from the array
     std::string errorMsg;
@@ -814,11 +826,11 @@ bool RestImportHandler::createFromKeyValueList() {
       registerError(result, errorMsg);
       res = TRI_ERROR_INTERNAL;
     } else {
-      VPackSlice const values = parsedValues->slice();
+      VPackSlice const values = parsedValues.slice();
       try {
-        std::shared_ptr<VPackBuilder> objectBuilder =
-            createVelocyPackObject(keys, values, errorMsg, i);
-        res = handleSingleDocument(trx, result, babies, objectBuilder->slice(),
+        objectBuilder.clear();
+        createVelocyPackObject(objectBuilder, keys, values, errorMsg, i);
+        res = handleSingleDocument(trx, lineBuilder, result, babies, objectBuilder.slice(),
                                    isEdgeCollection, i);
       } catch (...) {
         // raise any error
@@ -1031,32 +1043,15 @@ void RestImportHandler::generateDocumentsCreated(
 /// @brief parse a single document line
 ////////////////////////////////////////////////////////////////////////////////
 
-std::shared_ptr<VPackBuilder> RestImportHandler::parseVelocyPackLine(
-    std::string const& line, bool& success) {
-  try {
-    success = true;
-    return VPackParser::fromJson(line);
-  } catch (VPackException const&) {
-    success = false;
-    VPackParser p;
-    return p.steal();
-  }
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief parse a single document line
-////////////////////////////////////////////////////////////////////////////////
-
-std::shared_ptr<VPackBuilder> RestImportHandler::parseVelocyPackLine(
+void RestImportHandler::parseVelocyPackLine(VPackBuilder& builder,
     char const* start, char const* end, bool& success) {
   try {
-    std::string tmp(start, end);
-    return parseVelocyPackLine(tmp, success);
+    success = true;
+    VPackParser parser(builder);
+    parser.parse(start, std::distance(start, end));
   } catch (std::exception const&) {
     // The line is invalid and could not be transformed into a string
     success = false;
-    VPackParser p;
-    return p.steal();
   }
 }
 
@@ -1064,7 +1059,8 @@ std::shared_ptr<VPackBuilder> RestImportHandler::parseVelocyPackLine(
 /// @brief create a VelocyPack object from a key and value list
 ////////////////////////////////////////////////////////////////////////////////
 
-std::shared_ptr<VPackBuilder> RestImportHandler::createVelocyPackObject(
+void RestImportHandler::createVelocyPackObject(
+    VPackBuilder& result,
     VPackSlice const& keys, VPackSlice const& values, std::string& errorMsg,
     size_t lineNumber) {
   if (!values.isArray()) {
@@ -1083,28 +1079,26 @@ std::shared_ptr<VPackBuilder> RestImportHandler::createVelocyPackObject(
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER, errorMsg);
   }
 
-  auto result = std::make_shared<VPackBuilder>();
-  result->openObject();
+  result.openObject();
 
   while (itKeys.valid()) {
     TRI_ASSERT(itValues.valid());
-    
+
     VPackSlice const key = itKeys.value();
     VPackSlice const value = itValues.value();
 
     if (key.isString() && !value.isNone() && !value.isNull()) {
       VPackValueLength l;
       char const* p = key.getString(l);
-      result->add(p, l, value);
+      result.add(p, l, value);
     }
 
     itKeys.next();
     itValues.next();
   }
 
-  result->close();
+  result.close();
 
-  return result;
 }
 
 ////////////////////////////////////////////////////////////////////////////////

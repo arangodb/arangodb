@@ -41,9 +41,15 @@ void AgentCallback::shutdown() { _agent = 0; }
 bool AgentCallback::operator()(arangodb::ClusterCommResult* res) {
   if (res->status == CL_COMM_SENT) {
     if (_agent) {
-      LOG_TOPIC(DEBUG, Logger::CLUSTER)
-        << res->result->getBodyVelocyPack()->toJson();
-      _agent->reportIn(_slaveID, _last, _toLog);
+      auto body = res->result->getBodyVelocyPack();
+      if (!body->slice().get("success").isTrue()) {
+        LOG_TOPIC(DEBUG, Logger::CLUSTER)
+          << "Got negative answer from follower, will retry later.";
+      } else {
+        LOG_TOPIC(DEBUG, Logger::CLUSTER)
+          << body->slice().toJson();
+        _agent->reportIn(_slaveID, _last, _toLog);
+      }
     }
     LOG_TOPIC(TRACE, Logger::AGENCY) 
       << "Got good callback from AppendEntriesRPC: "

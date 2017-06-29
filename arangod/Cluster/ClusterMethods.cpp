@@ -665,7 +665,7 @@ int warmupOnCoordinator(std::string const& dbname,
         "", coordTransactionID, "shard:" + p.first,
         arangodb::rest::RequestType::GET,
         "/_db/" + StringUtils::urlEncode(dbname) + "/_api/collection/" +
-            StringUtils::urlEncode(p.first) + "/warmup",
+            StringUtils::urlEncode(p.first) + "/loadIndexesIntoMemory",
         std::shared_ptr<std::string const>(), headers, nullptr, 300.0);
   }
 
@@ -2330,7 +2330,7 @@ ClusterMethods::persistCollectionInAgency(
   size_t replicationFactor = col->replicationFactor();
 
   ClusterInfo* ci = ClusterInfo::instance();
-  std::vector<std::string> dbServers = ci->getCurrentDBServers();
+  std::vector<std::string> dbServers;
   if (!distributeShardsLike.empty()) {
     CollectionNameResolver resolver(col->vocbase());
     TRI_voc_cid_t otherCid =
@@ -2365,6 +2365,7 @@ ClusterMethods::persistCollectionInAgency(
       }
       col->distributeShardsLike(otherCidString);
     } else {
+      dbServers = ci->getCurrentDBServers();
       if (ignoreDistributeShardsLikeErrors) {
         col->distributeShardsLike(std::string());
       } else {
@@ -2372,6 +2373,7 @@ ClusterMethods::persistCollectionInAgency(
       }
     }
   } else if (!avoid.empty()) {
+    dbServers = ci->getCurrentDBServers();
     if (dbServers.size() - avoid.size() >= replicationFactor) {
       dbServers.erase(
         std::remove_if(
@@ -2380,6 +2382,8 @@ ClusterMethods::persistCollectionInAgency(
           }), dbServers.end());
     }
     std::random_shuffle(dbServers.begin(), dbServers.end());
+  } else {
+    dbServers = ci->getCurrentDBServers();
   }
 
   // cluster system replicationFactor is 1...allow startup with 1 DBServer.

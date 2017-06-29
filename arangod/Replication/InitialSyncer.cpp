@@ -417,8 +417,9 @@ int InitialSyncer::sendFinishBatch() {
 ////////////////////////////////////////////////////////////////////////////////
 
 bool InitialSyncer::checkAborted() {
-  if (_vocbase->replicationApplier() != nullptr &&
-      _vocbase->replicationApplier()->stopInitialSynchronization()) {
+  if (application_features::ApplicationServer::isStopping() ||
+      (_vocbase->replicationApplier() != nullptr &&
+       _vocbase->replicationApplier()->stopInitialSynchronization())) {
     return true;
   }
   return false;
@@ -949,6 +950,9 @@ int InitialSyncer::handleCollectionSync(arangodb::LogicalCollection* col,
     }
 
     OperationOptions options;
+    if (!_leaderId.empty()) {
+      options.isSynchronousReplicationFrom = _leaderId;
+    }
     OperationResult opRes = trx.truncate(collectionName, options);
 
     if (!opRes.successful()) {
@@ -1107,6 +1111,9 @@ int InitialSyncer::handleCollection(VPackSlice const& parameters,
           }
 
           OperationOptions options;
+          if (!_leaderId.empty()) {
+            options.isSynchronousReplicationFrom = _leaderId;
+          }
           OperationResult opRes = trx.truncate(col->name(), options);
 
           if (!opRes.successful()) {

@@ -136,12 +136,13 @@ class MMFilesGeoIndex final : public Index {
 
   bool matchesDefinition(VPackSlice const& info) const override;
 
-  int insert(transaction::Methods*, TRI_voc_rid_t,
-             arangodb::velocypack::Slice const&, bool isRollback) override;
+  Result insert(transaction::Methods*, TRI_voc_rid_t,
+                arangodb::velocypack::Slice const&, bool isRollback) override;
 
-  int remove(transaction::Methods*, TRI_voc_rid_t,
-             arangodb::velocypack::Slice const&, bool isRollback) override;
+  Result remove(transaction::Methods*, TRI_voc_rid_t,
+                arangodb::velocypack::Slice const&, bool isRollback) override;
 
+  int load() override { return 0; }
   int unload() override;
 
   /// @brief looks up all points within a given radius

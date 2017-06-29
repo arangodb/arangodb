@@ -1,11 +1,9 @@
-#define JEMALLOC_PAGES_C_
+#define	JEMALLOC_PAGES_C_
 #include "jemalloc/internal/jemalloc_internal.h"
 
 #ifdef JEMALLOC_SYSCTL_VM_OVERCOMMIT
 #include <sys/sysctl.h>
 #endif
-
-#include "arangodb-jemalloc.c"
 
 /******************************************************************************/
 /* Data. */
@@ -20,14 +18,14 @@ static bool	os_overcommits;
 /******************************************************************************/
 
 void *
-pages_map(void *addr, size_t size, bool *commit) {
+pages_map(void *addr, size_t size, bool *commit)
+{
 	void *ret;
 
 	assert(size != 0);
 
-	if (os_overcommits) {
+	if (os_overcommits)
 		*commit = true;
-	}
 
 #ifdef _WIN32
 	/*
@@ -44,18 +42,13 @@ pages_map(void *addr, size_t size, bool *commit) {
 	{
 		int prot = *commit ? PAGES_PROT_COMMIT : PAGES_PROT_DECOMMIT;
 
-#ifdef ARANGODB_JEMALLOC
-                ret = adb_mmap(addr, size, prot, mmap_flags);
-#else
-
 		ret = mmap(addr, size, prot, mmap_flags, -1, 0);
-#endif
 	}
 	assert(ret != NULL);
 
-	if (ret == MAP_FAILED) {
+	if (ret == MAP_FAILED)
 		ret = NULL;
-	} else if (addr != NULL && ret != addr) {
+	else if (addr != NULL && ret != addr) {
 		/*
 		 * We succeeded in mapping memory, but not in the right place.
 		 */
@@ -65,11 +58,13 @@ pages_map(void *addr, size_t size, bool *commit) {
 #endif
 	assert(ret == NULL || (addr == NULL && ret != addr)
 	    || (addr != NULL && ret == addr));
-	return ret;
+	return (ret);
 }
 
 void
-pages_unmap(void *addr, size_t size) {
+pages_unmap(void *addr, size_t size)
+{
+
 #ifdef _WIN32
 	if (VirtualFree(addr, 0, MEM_RELEASE) == 0)
 #else
@@ -86,15 +81,15 @@ pages_unmap(void *addr, size_t size) {
 		              "munmap"
 #endif
 		              "(): %s\n", buf);
-		if (opt_abort) {
+		if (opt_abort)
 			abort();
-		}
 	}
 }
 
 void *
 pages_trim(void *addr, size_t alloc_size, size_t leadsize, size_t size,
-    bool *commit) {
+    bool *commit)
+{
 	void *ret = (void *)((uintptr_t)addr + leadsize);
 
 	assert(alloc_size >= leadsize + size);
@@ -104,34 +99,31 @@ pages_trim(void *addr, size_t alloc_size, size_t leadsize, size_t size,
 
 		pages_unmap(addr, alloc_size);
 		new_addr = pages_map(ret, size, commit);
-		if (new_addr == ret) {
-			return ret;
-		}
-		if (new_addr) {
+		if (new_addr == ret)
+			return (ret);
+		if (new_addr)
 			pages_unmap(new_addr, size);
-		}
-		return NULL;
+		return (NULL);
 	}
 #else
 	{
 		size_t trailsize = alloc_size - leadsize - size;
 
-		if (leadsize != 0) {
+		if (leadsize != 0)
 			pages_unmap(addr, leadsize);
-		}
-		if (trailsize != 0) {
+		if (trailsize != 0)
 			pages_unmap((void *)((uintptr_t)ret + size), trailsize);
-		}
-		return ret;
+		return (ret);
 	}
 #endif
 }
 
 static bool
-pages_commit_impl(void *addr, size_t size, bool commit) {
-	if (os_overcommits) {
-		return true;
-	}
+pages_commit_impl(void *addr, size_t size, bool commit)
+{
+
+	if (os_overcommits)
+		return (true);
 
 #ifdef _WIN32
 	return (commit ? (addr != VirtualAlloc(addr, size, MEM_COMMIT,
@@ -141,95 +133,103 @@ pages_commit_impl(void *addr, size_t size, bool commit) {
 		int prot = commit ? PAGES_PROT_COMMIT : PAGES_PROT_DECOMMIT;
 		void *result = mmap(addr, size, prot, mmap_flags | MAP_FIXED,
 		    -1, 0);
-		if (result == MAP_FAILED) {
-			return true;
-		}
+		if (result == MAP_FAILED)
+			return (true);
 		if (result != addr) {
 			/*
 			 * We succeeded in mapping memory, but not in the right
 			 * place.
 			 */
 			pages_unmap(result, size);
-			return true;
+			return (true);
 		}
-		return false;
+		return (false);
 	}
 #endif
 }
 
 bool
-pages_commit(void *addr, size_t size) {
-	return pages_commit_impl(addr, size, true);
+pages_commit(void *addr, size_t size)
+{
+
+	return (pages_commit_impl(addr, size, true));
 }
 
 bool
-pages_decommit(void *addr, size_t size) {
-	return pages_commit_impl(addr, size, false);
+pages_decommit(void *addr, size_t size)
+{
+
+	return (pages_commit_impl(addr, size, false));
 }
 
 bool
-pages_purge_lazy(void *addr, size_t size) {
-	if (!pages_can_purge_lazy) {
-		return true;
-	}
+pages_purge(void *addr, size_t size)
+{
+	bool unzeroed;
 
 #ifdef _WIN32
 	VirtualAlloc(addr, size, MEM_RESET, PAGE_READWRITE);
-#elif defined(JEMALLOC_PURGE_MADVISE_FREE)
-	madvise(addr, size, MADV_FREE);
+	unzeroed = true;
+#elif (defined(JEMALLOC_PURGE_MADVISE_FREE) || \
+    defined(JEMALLOC_PURGE_MADVISE_DONTNEED))
+#  if defined(JEMALLOC_PURGE_MADVISE_FREE)
+#    define JEMALLOC_MADV_PURGE MADV_FREE
+#    define JEMALLOC_MADV_ZEROS false
+#  elif defined(JEMALLOC_PURGE_MADVISE_DONTNEED)
+#    define JEMALLOC_MADV_PURGE MADV_DONTNEED
+#    define JEMALLOC_MADV_ZEROS true
+#  else
+#    error No madvise(2) flag defined for purging unused dirty pages
+#  endif
+	int err = madvise(addr, size, JEMALLOC_MADV_PURGE);
+	unzeroed = (!JEMALLOC_MADV_ZEROS || err != 0);
+#  undef JEMALLOC_MADV_PURGE
+#  undef JEMALLOC_MADV_ZEROS
 #else
-	not_reached();
+	/* Last resort no-op. */
+	unzeroed = true;
 #endif
-	return false;
+	return (unzeroed);
 }
 
 bool
-pages_purge_forced(void *addr, size_t size) {
-	if (!pages_can_purge_forced) {
-		return true;
-	}
+pages_huge(void *addr, size_t size)
+{
 
-#if defined(JEMALLOC_PURGE_MADVISE_DONTNEED)
-	return (madvise(addr, size, MADV_DONTNEED) != 0);
-#else
-	not_reached();
-#endif
-}
+	assert(PAGE_ADDR2BASE(addr) == addr);
+	assert(PAGE_CEILING(size) == size);
 
-bool
-pages_huge(void *addr, size_t size) {
-	assert(HUGEPAGE_ADDR2BASE(addr) == addr);
-	assert(HUGEPAGE_CEILING(size) == size);
-
-#ifdef JEMALLOC_THP
+#ifdef JEMALLOC_HAVE_MADVISE_HUGE
 	return (madvise(addr, size, MADV_HUGEPAGE) != 0);
 #else
-	return true;
+	return (false);
 #endif
 }
 
 bool
-pages_nohuge(void *addr, size_t size) {
-	assert(HUGEPAGE_ADDR2BASE(addr) == addr);
-	assert(HUGEPAGE_CEILING(size) == size);
+pages_nohuge(void *addr, size_t size)
+{
 
-#ifdef JEMALLOC_THP
+	assert(PAGE_ADDR2BASE(addr) == addr);
+	assert(PAGE_CEILING(size) == size);
+
+#ifdef JEMALLOC_HAVE_MADVISE_HUGE
 	return (madvise(addr, size, MADV_NOHUGEPAGE) != 0);
 #else
-	return false;
+	return (false);
 #endif
 }
 
 #ifdef JEMALLOC_SYSCTL_VM_OVERCOMMIT
 static bool
-os_overcommits_sysctl(void) {
+os_overcommits_sysctl(void)
+{
 	int vm_overcommit;
 	size_t sz;
 
 	sz = sizeof(vm_overcommit);
-	if (sysctlbyname("vm.overcommit", &vm_overcommit, &sz, NULL, 0) != 0) {
-		return false; /* Error. */
-	}
+	if (sysctlbyname("vm.overcommit", &vm_overcommit, &sz, NULL, 0) != 0)
+		return (false); /* Error. */
 
 	return ((vm_overcommit & 0x3) == 0);
 }
@@ -241,9 +241,9 @@ os_overcommits_sysctl(void) {
  * reentry during bootstrapping if another library has interposed system call
  * wrappers.
  */
-#ifndef ARANGODB_JEMALLOC
 static bool
-os_overcommits_proc(void) {
+os_overcommits_proc(void)
+{
 	int fd;
 	char buf[1];
 	ssize_t nread;
@@ -253,9 +253,8 @@ os_overcommits_proc(void) {
 #else
 	fd = open("/proc/sys/vm/overcommit_memory", O_RDONLY);
 #endif
-	if (fd == -1) {
-		return false; /* Error. */
-	}
+	if (fd == -1)
+		return (false); /* Error. */
 
 #if defined(JEMALLOC_USE_SYSCALL) && defined(SYS_read)
 	nread = (ssize_t)syscall(SYS_read, fd, &buf, sizeof(buf));
@@ -269,9 +268,8 @@ os_overcommits_proc(void) {
 	close(fd);
 #endif
 
-	if (nread < 1) {
-		return false; /* Error. */
-	}
+	if (nread < 1)
+		return (false); /* Error. */
 	/*
 	 * /proc/sys/vm/overcommit_memory meanings:
 	 * 0: Heuristic overcommit.
@@ -281,28 +279,24 @@ os_overcommits_proc(void) {
 	return (buf[0] == '0' || buf[0] == '1');
 }
 #endif
-#endif
 
 void
-pages_boot(void) {
+pages_boot(void)
+{
+
 #ifndef _WIN32
 	mmap_flags = MAP_PRIVATE | MAP_ANON;
 #endif
 
-#ifdef ARANGODB_JEMALLOC
-        os_overcommits = true;
-#else
 #ifdef JEMALLOC_SYSCTL_VM_OVERCOMMIT
 	os_overcommits = os_overcommits_sysctl();
 #elif defined(JEMALLOC_PROC_SYS_VM_OVERCOMMIT_MEMORY)
 	os_overcommits = os_overcommits_proc();
 #  ifdef MAP_NORESERVE
-	if (os_overcommits) {
+	if (os_overcommits)
 		mmap_flags |= MAP_NORESERVE;
-	}
 #  endif
 #else
 	os_overcommits = false;
-#endif
 #endif
 }

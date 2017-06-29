@@ -1,19 +1,20 @@
 #include "test/jemalloc_test.h"
 
-TEST_BEGIN(test_overflow) {
-	unsigned nlextents;
+TEST_BEGIN(test_overflow)
+{
+	unsigned nhchunks;
 	size_t mib[4];
 	size_t sz, miblen, max_size_class;
 	void *p;
 
 	sz = sizeof(unsigned);
-	assert_d_eq(mallctl("arenas.nlextents", (void *)&nlextents, &sz, NULL,
-	    0), 0, "Unexpected mallctl() error");
+	assert_d_eq(mallctl("arenas.nhchunks", (void *)&nhchunks, &sz, NULL, 0),
+	    0, "Unexpected mallctl() error");
 
 	miblen = sizeof(mib) / sizeof(size_t);
-	assert_d_eq(mallctlnametomib("arenas.lextent.0.size", mib, &miblen), 0,
+	assert_d_eq(mallctlnametomib("arenas.hchunk.0.size", mib, &miblen), 0,
 	    "Unexpected mallctlnametomib() error");
-	mib[2] = nlextents - 1;
+	mib[2] = nhchunks - 1;
 
 	sz = sizeof(size_t);
 	assert_d_eq(mallctlbymib(mib, miblen, (void *)&max_size_class, &sz,
@@ -40,7 +41,9 @@ TEST_BEGIN(test_overflow) {
 TEST_END
 
 int
-main(void) {
-	return test(
-	    test_overflow);
+main(void)
+{
+
+	return (test(
+	    test_overflow));
 }

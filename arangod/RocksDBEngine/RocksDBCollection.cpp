@@ -25,6 +25,7 @@
 #include "Basics/ReadLocker.h"
 #include "Basics/Result.h"
 #include "Basics/StaticStrings.h"
+#include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/WriteLocker.h"
 #include "Cache/CacheManagerFeature.h"
@@ -168,6 +169,20 @@ int RocksDBCollection::close() {
     it->unload();
   }
   return TRI_ERROR_NO_ERROR;
+}
+
+void RocksDBCollection::load() {
+  READ_LOCKER(guard, _indexesLock);
+  for (auto it : _indexes) {
+    it->load();
+  }
+}
+
+void RocksDBCollection::unload() {
+  READ_LOCKER(guard, _indexesLock);
+  for (auto it : _indexes) {
+    it->unload();
+  }
 }
 
 TRI_voc_rid_t RocksDBCollection::revision() const { return _revisionId; }
@@ -680,7 +695,7 @@ void RocksDBCollection::truncate(transaction::Methods* trx,
     // add possible log statement
     state->prepareOperation(cid, revisionId, StringRef(key),
                             TRI_VOC_DOCUMENT_OPERATION_REMOVE);
-    Result r = mthd->Delete(RocksDBColumnFamily::documents(), iter->key());
+    Result r = mthd->Delete(RocksDBColumnFamily::documents(), RocksDBKey(iter->key()));
     if (!r.ok()) {
       THROW_ARANGO_EXCEPTION(r);
     }
@@ -712,9 +727,9 @@ DocumentIdentifierToken RocksDBCollection::lookupKey(transaction::Methods* trx,
   return primaryIndex()->lookupKey(trx, StringRef(key));
 }
 
-int RocksDBCollection::read(transaction::Methods* trx,
-                            arangodb::velocypack::Slice const key,
-                            ManagedDocumentResult& result, bool) {
+Result RocksDBCollection::read(transaction::Methods* trx,
+                               arangodb::velocypack::Slice const key,
+                               ManagedDocumentResult& result, bool) {
   TRI_ASSERT(key.isString());
   RocksDBToken token = primaryIndex()->lookupKey(trx, StringRef(key));
 
@@ -754,11 +769,12 @@ bool RocksDBCollection::readDocumentNoCache(
   return res.ok();
 }
 
-int RocksDBCollection::insert(arangodb::transaction::Methods* trx,
-                              arangodb::velocypack::Slice const slice,
-                              arangodb::ManagedDocumentResult& mdr,
-                              OperationOptions& options,
-                              TRI_voc_tick_t& resultMarkerTick, bool /*lock*/) {
+Result RocksDBCollection::insert(arangodb::transaction::Methods* trx,
+                                 arangodb::velocypack::Slice const slice,
+                                 arangodb::ManagedDocumentResult& mdr,
+                                 OperationOptions& options,
+                                 TRI_voc_tick_t& resultMarkerTick,
+                                 bool /*lock*/) {
   // store the tick that was used for writing the document
   // note that we don't need it for this engine
   resultMarkerTick = 0;
@@ -803,7 +819,7 @@ int RocksDBCollection::insert(arangodb::transaction::Methods* trx,
   res.reset(newObjectForInsert(trx, slice, fromSlice, toSlice, isEdgeCollection,
                                *builder.get(), options.isRestore));
   if (res.fail()) {
-    return res.errorNumber();
+    return res;
   }
   VPackSlice newSlice = builder->slice();
 
@@ -824,7 +840,7 @@ int RocksDBCollection::insert(arangodb::transaction::Methods* trx,
     Result lookupResult = lookupRevisionVPack(revisionId, trx, mdr, false);
 
     if (lookupResult.fail()) {
-      return lookupResult.errorNumber();
+      return lookupResult;
     }
 
     // report document and key size
@@ -840,18 +856,18 @@ int RocksDBCollection::insert(arangodb::transaction::Methods* trx,
     guard.commit();
   }
 
-  return res.errorNumber();
+  return res;
 }
 
-int RocksDBCollection::update(arangodb::transaction::Methods* trx,
-                              arangodb::velocypack::Slice const newSlice,
-                              arangodb::ManagedDocumentResult& mdr,
-                              OperationOptions& options,
-                              TRI_voc_tick_t& resultMarkerTick, bool /*lock*/,
-                              TRI_voc_rid_t& prevRev,
-                              ManagedDocumentResult& previous,
-                              TRI_voc_rid_t const& revisionId,
-                              arangodb::velocypack::Slice const key) {
+Result RocksDBCollection::update(arangodb::transaction::Methods* trx,
+                                 arangodb::velocypack::Slice const newSlice,
+                                 arangodb::ManagedDocumentResult& mdr,
+                                 OperationOptions& options,
+                                 TRI_voc_tick_t& resultMarkerTick,
+                                 bool /*lock*/, TRI_voc_rid_t& prevRev,
+                                 ManagedDocumentResult& previous,
+                                 TRI_voc_rid_t const& revisionId,
+                                 arangodb::velocypack::Slice const key) {
   resultMarkerTick = 0;
 
   bool const isEdgeCollection =
@@ -859,7 +875,7 @@ int RocksDBCollection::update(arangodb::transaction::Methods* trx,
   RocksDBOperationResult res = lookupDocument(trx, key, previous);
 
   if (res.fail()) {
-    return res.errorNumber();
+    return res;
   }
 
   TRI_ASSERT(!previous.empty());
@@ -939,10 +955,10 @@ int RocksDBCollection::update(arangodb::transaction::Methods* trx,
     guard.commit();
   }
 
-  return res.errorNumber();
+  return res;
 }
 
-int RocksDBCollection::replace(
+Result RocksDBCollection::replace(
     transaction::Methods* trx, arangodb::velocypack::Slice const newSlice,
     ManagedDocumentResult& mdr, OperationOptions& options,
     TRI_voc_tick_t& resultMarkerTick, bool /*lock*/, TRI_voc_rid_t& prevRev,
@@ -964,7 +980,7 @@ int RocksDBCollection::replace(
   Result res = lookupDocument(trx, key, previous).errorNumber();
 
   if (res.fail()) {
-    return res.errorNumber();
+    return res;
   }
 
   TRI_ASSERT(!previous.empty());
@@ -1033,16 +1049,16 @@ int RocksDBCollection::replace(
     guard.commit();
   }
 
-  return opResult.errorNumber();
+  return opResult;
 }
 
-int RocksDBCollection::remove(arangodb::transaction::Methods* trx,
-                              arangodb::velocypack::Slice const slice,
-                              arangodb::ManagedDocumentResult& previous,
-                              OperationOptions& options,
-                              TRI_voc_tick_t& resultMarkerTick, bool /*lock*/,
-                              TRI_voc_rid_t const& revisionId,
-                              TRI_voc_rid_t& prevRev) {
+Result RocksDBCollection::remove(arangodb::transaction::Methods* trx,
+                                 arangodb::velocypack::Slice const slice,
+                                 arangodb::ManagedDocumentResult& previous,
+                                 OperationOptions& options,
+                                 TRI_voc_tick_t& resultMarkerTick,
+                                 bool /*lock*/, TRI_voc_rid_t const& revisionId,
+                                 TRI_voc_rid_t& prevRev) {
   // store the tick that was used for writing the document
   // note that we don't need it for this engine
   resultMarkerTick = 0;
@@ -1105,7 +1121,7 @@ int RocksDBCollection::remove(arangodb::transaction::Methods* trx,
     guard.commit();
   }
 
-  return res.errorNumber();
+  return res;
 }
 
 void RocksDBCollection::deferDropCollection(
@@ -1121,7 +1137,7 @@ void RocksDBCollection::figuresSpecific(
   rocksdb::Range r(bounds.start(), bounds.end());
 
   uint64_t out = 0;
-  db->GetApproximateSizes(&r, 1, &out, true);
+  db->GetApproximateSizes(RocksDBColumnFamily::documents(), &r, 1, &out, static_cast<uint8_t>(rocksdb::DB::SizeApproximationFlags::INCLUDE_MEMTABLES | rocksdb::DB::SizeApproximationFlags::INCLUDE_FILES));
 
   builder->add("documentsSize", VPackValue(out));
 }
@@ -1414,7 +1430,7 @@ RocksDBOperationResult RocksDBCollection::removeDocument(
   RocksDBOperationResult resInner;
   READ_LOCKER(guard, _indexesLock);
   for (std::shared_ptr<Index> const& idx : _indexes) {
-    int tmpres = idx->remove(trx, revisionId, doc, false);
+    Result tmpres = idx->remove(trx, revisionId, doc, false);
     resInner.reset(tmpres);
 
     // in case of no-memory, return immediately
@@ -1528,8 +1544,8 @@ arangodb::Result RocksDBCollection::lookupRevisionVPack(
       auto entry = cache::CachedValue::construct(
           key.string().data(), static_cast<uint32_t>(key.string().size()),
           value.data(), static_cast<uint64_t>(value.size()));
-      bool cached = _cache->insert(entry);
-      if (!cached) {
+      auto status = _cache->insert(entry);
+      if (status.fail()) {
         delete entry;
       }
     }
@@ -1676,7 +1692,6 @@ uint64_t RocksDBCollection::recalculateCounts() {
   // count documents
   auto documentBounds = RocksDBKeyBounds::CollectionDocuments(_objectId);
   _numberDocuments = rocksutils::countKeyRange(globalRocksDB(), readOptions,
-                                               RocksDBColumnFamily::documents(),
                                                documentBounds);
 
   // update counter manager value
@@ -1713,7 +1728,7 @@ void RocksDBCollection::estimateSize(velocypack::Builder& builder) {
   RocksDBKeyBounds bounds = RocksDBKeyBounds::CollectionDocuments(_objectId);
   rocksdb::Range r(bounds.start(), bounds.end());
   uint64_t out = 0, total = 0;
-  db->GetApproximateSizes(&r, 1, &out, true);
+  db->GetApproximateSizes(RocksDBColumnFamily::documents(), &r, 1, &out, static_cast<uint8_t>(rocksdb::DB::SizeApproximationFlags::INCLUDE_MEMTABLES | rocksdb::DB::SizeApproximationFlags::INCLUDE_FILES));
   total += out;
 
   builder.openObject();
@@ -1816,6 +1831,34 @@ void RocksDBCollection::createCache() const {
   TRI_ASSERT(_useCache);
 }
 
+arangodb::Result RocksDBCollection::serializeKeyGenerator(
+    rocksdb::Transaction* rtrx) const {
+  VPackBuilder builder;
+  builder.openObject();
+  _logicalCollection->keyGenerator()->toVelocyPack(builder);
+  builder.close();
+
+  RocksDBKey key = RocksDBKey::KeyGeneratorValue(_objectId);
+  RocksDBValue value = RocksDBValue::KeyGeneratorValue(builder.slice());
+  rocksdb::Status s = rtrx->Put(key.string(), value.string());
+
+  if (!s.ok()) {
+    LOG_TOPIC(WARN, Logger::ENGINES) << "writing key generator data failed";
+    rtrx->Rollback();
+    return rocksutils::convertStatus(s);
+  }
+
+  return {TRI_ERROR_NO_ERROR};
+}
+
+void RocksDBCollection::deserializeKeyGenerator(RocksDBCounterManager* mgr) {
+  uint64_t value = mgr->stealKeyGenerator(_objectId);
+  if (value > 0) {
+    std::string k(basics::StringUtils::itoa(value));
+    _logicalCollection->keyGenerator()->track(k.data(), k.size());
+  }
+}
+
 void RocksDBCollection::disableCache() const {
   if (!_cachePresent) {
     return;
@@ -1836,14 +1879,13 @@ void RocksDBCollection::blackListKey(char const* data, std::size_t len) const {
   if (useCache()) {
     TRI_ASSERT(_cache != nullptr);
     bool blacklisted = false;
-    uint64_t attempts = 0;
     while (!blacklisted) {
-      blacklisted = _cache->blacklist(data, static_cast<uint32_t>(len));
-      if (attempts++ % 10 == 0) {
-        if (_cache->isShutdown()) {
-          disableCache();
-          break;
-        }
+      auto status = _cache->blacklist(data, static_cast<uint32_t>(len));
+      if (status.ok()) {
+        blacklisted = true;
+      } else if (status.errorNumber() == TRI_ERROR_SHUTTING_DOWN) {
+        disableCache();
+        break;
       }
     }
   }

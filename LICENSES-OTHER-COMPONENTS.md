@@ -1376,3 +1376,8 @@ exception from the GPL license:
 
 * GitHub: https://github.com/softwaretailoring/wheelnav
 * License: [MIT License](https://github.com/softwaretailoring/wheelnav/blob/master/LICENSE)
+
+#### jquery-csv
+
+* GitHub: https://github.com/evanplaice/jquery-csv
+* License: [MIT License](https://github.com/evanplaice/jquery-csv)

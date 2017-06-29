@@ -1,22 +1,23 @@
 #include "test/jemalloc_test.h"
 
-#define MAXALIGN (((size_t)1) << 22)
-#define NITER 3
+#define	MAXALIGN (((size_t)1) << 22)
+#define	NITER 3
 
-TEST_BEGIN(test_basic) {
+TEST_BEGIN(test_basic)
+{
 	void *ptr = mallocx(64, 0);
 	sdallocx(ptr, 64, 0);
 }
 TEST_END
 
-TEST_BEGIN(test_alignment_and_size) {
+TEST_BEGIN(test_alignment_and_size)
+{
 	size_t nsz, sz, alignment, total;
 	unsigned i;
 	void *ps[NITER];
 
-	for (i = 0; i < NITER; i++) {
+	for (i = 0; i < NITER; i++)
 		ps[i] = NULL;
-	}
 
 	for (alignment = 8;
 	    alignment <= MAXALIGN;
@@ -31,9 +32,8 @@ TEST_BEGIN(test_alignment_and_size) {
 				ps[i] = mallocx(sz, MALLOCX_ALIGN(alignment) |
 				    MALLOCX_ZERO);
 				total += nsz;
-				if (total >= (MAXALIGN << 1)) {
+				if (total >= (MAXALIGN << 1))
 					break;
-				}
 			}
 			for (i = 0; i < NITER; i++) {
 				if (ps[i] != NULL) {
@@ -48,8 +48,10 @@ TEST_BEGIN(test_alignment_and_size) {
 TEST_END
 
 int
-main(void) {
-	return test(
+main(void)
+{
+
+	return (test(
 	    test_basic,
-	    test_alignment_and_size);
+	    test_alignment_and_size));
 }

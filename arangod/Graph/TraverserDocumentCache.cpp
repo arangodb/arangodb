@@ -79,8 +79,8 @@ VPackSlice TraverserDocumentCache::lookupAndCache(StringRef id) {
         cache::CachedValue::construct(key, keySize, resVal, resValSize));
 
     if (value) {
-      bool success = _cache->insert(value.get());
-      if (!success) {
+      auto result = _cache->insert(value.get());
+      if (!result.ok()) {
         LOG_TOPIC(DEBUG, Logger::GRAPHS) << "Insert failed";
       } else {
         // Cache is responsible.
@@ -149,8 +149,8 @@ void TraverserDocumentCache::insertDocument(
           cache::CachedValue::construct(key, keySize, resVal, resValSize));
 
       if (value) {
-        bool success = _cache->insert(value.get());
-        if (!success) {
+        auto result = _cache->insert(value.get());
+        if (!result.ok()) {
           LOG_TOPIC(DEBUG, Logger::GRAPHS) << "Insert document into cache failed";
         } else {
           // Cache is responsible.

@@ -439,15 +439,7 @@ void RocksDBRestReplicationHandler::handleCommandBatch() {
 
     _vocbase->updateReplicationClient(serverId, ctx->lastTick());
 
-    // now extend the blocker
-    // StorageEngine* engine = EngineSelectorFeature::ENGINE;
-    // res = engine->extendCompactionBlocker(_vocbase, id, expires);
-
-    if (res == TRI_ERROR_NO_ERROR) {
-      resetResponse(rest::ResponseCode::NO_CONTENT);
-    } else {
-      generateError(GeneralResponse::responseCode(res), res);
-    }
+    resetResponse(rest::ResponseCode::NO_CONTENT);
     return;
   }
 
@@ -1097,28 +1089,6 @@ void RocksDBRestReplicationHandler::handleCommandCreateKeys() {
                   TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
     return;
   }
-
-  // turn off the compaction for the collection
-  // StorageEngine* engine = EngineSelectorFeature::ENGINE;
-  // TRI_voc_tick_t id;
-  // int res = engine->insertCompactionBlocker(_vocbase, 1200.0, id);
-  // if (res != TRI_ERROR_NO_ERROR) {
-  //  THROW_ARANGO_EXCEPTION(res);
-  //}
-
-  // initialize a container with the keys
-  // auto keys =
-  // std::make_unique<MMFilesCollectionKeys>(_vocbase, col->name(), id, 300.0);
-
-  // std::string const idString(std::to_string(keys->id()));
-
-  // keys->create(tickEnd);
-  // size_t const count = keys->count();
-
-  // auto keysRepository = _vocbase->collectionKeys();
-
-  // keysRepository->store(keys.get());
-  // keys.release();
 
   VPackBuilder result;
   result.add(VPackValue(VPackValueType::Object));

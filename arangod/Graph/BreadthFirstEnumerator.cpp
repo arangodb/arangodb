@@ -130,10 +130,16 @@ bool BreadthFirstEnumerator::next() {
 
       auto callback = [&](std::unique_ptr<graph::EdgeDocumentToken>&& eid,
                           VPackSlice e, size_t cursorIdx) -> void {
-
-        if (!_traverser->edgeMatchesConditions(e, nextVertex, _currentDepth,
-                                               cursorIdx)) {
-          return;
+        
+        if (_opts->hasEdgeFilter(_currentDepth, cursorIdx)) {
+          VPackSlice edge = e;
+          if (edge.isString()) {
+            edge = _opts->cache()->lookupToken(eid.get());
+          }
+          if (!_traverser->edgeMatchesConditions(edge, nextVertex, _currentDepth,
+                                                 cursorIdx)) {
+            return;
+          }
         }
 
         if (_traverser->getSingleVertex(e, nextVertex, _currentDepth, vId)) {

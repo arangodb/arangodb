@@ -23,7 +23,7 @@
 
 #include "v8-globals.h"
 
-TRI_v8_global_s::TRI_v8_global_s(v8::Isolate* isolate)
+TRI_v8_global_t::TRI_v8_global_t(v8::Isolate* isolate)
     : JSCollections(),
       JSViews(),
 
@@ -164,6 +164,8 @@ TRI_v8_global_s::TRI_v8_global_s(v8::Isolate* isolate)
   IdKey.Reset(isolate, TRI_V8_ASCII_STRING("id"));
   InitTimeoutKey.Reset(isolate, TRI_V8_ASCII_STRING("initTimeout"));
   IsRestoreKey.Reset(isolate, TRI_V8_ASCII_STRING("isRestore"));
+  IsSynchronousReplicationKey.Reset(isolate,
+      TRI_V8_ASCII_STRING("isSynchronousReplication"));
   IsSystemKey.Reset(isolate, TRI_V8_ASCII_STRING("isSystem"));
   IsVolatileKey.Reset(isolate, TRI_V8_ASCII_STRING("isVolatile"));
   JournalSizeKey.Reset(isolate, TRI_V8_ASCII_STRING("journalSize"));
@@ -211,8 +213,6 @@ TRI_v8_global_s::TRI_v8_global_s(v8::Isolate* isolate)
   _FromKey.Reset(isolate, TRI_V8_ASCII_STRING("_from"));
   _ToKey.Reset(isolate, TRI_V8_ASCII_STRING("_to"));
 }
-
-TRI_v8_global_s::~TRI_v8_global_s() {}
 
 /// @brief creates a global context
 TRI_v8_global_t* TRI_CreateV8Globals(v8::Isolate* isolate) {

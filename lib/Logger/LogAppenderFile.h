@@ -42,7 +42,7 @@ class LogAppenderFile : public LogAppender {
   std::string details() override final;
 
  private:
-  void writeLogFile(int, char const*, ssize_t);
+  void writeLogFile(LogLevel, int, char const*, ssize_t);
 
  private:
   static std::vector<std::pair<int, std::string>> _fds;

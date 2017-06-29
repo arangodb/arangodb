@@ -403,6 +403,71 @@ Builder Collection::merge(Slice const& left, Slice const& right,
   return b;
 }
 
+Builder& Collection::merge(Builder& builder, Slice const& left, Slice const& right,
+                          bool mergeValues, bool nullMeansRemove) {
+  if (!left.isObject() || !right.isObject()) {
+    throw Exception(Exception::InvalidValueType, "Expecting type Object");
+  }
+
+  builder.add(Value(ValueType::Object));
+
+  std::unordered_map<std::string, Slice> rightValues;
+  {
+    ObjectIterator it(right);
+    while (it.valid()) {
+      rightValues.emplace(it.key(true).copyString(), it.value());
+      it.next();
+    }
+  }
+
+  {
+    ObjectIterator it(left);
+
+    while (it.valid()) {
+      auto key = it.key(true).copyString();
+      auto found = rightValues.find(key);
+
+      if (found == rightValues.end()) {
+        // use left value
+        builder.add(key, it.value());
+      } else if (mergeValues && it.value().isObject() &&
+                 (*found).second.isObject()) {
+        // merge both values
+        auto& value = (*found).second;
+        if (!nullMeansRemove || (!value.isNone() && !value.isNull())) {
+          Collection::merge(builder, it.value(), value, true, nullMeansRemove);
+        }
+        // clear the value in the map so its not added again
+        (*found).second = Slice();
+      } else {
+        // use right value
+        auto& value = (*found).second;
+        if (!nullMeansRemove || (!value.isNone() && !value.isNull())) {
+          builder.add(key, value);
+        }
+        // clear the value in the map so its not added again
+        (*found).second = Slice();
+      }
+      it.next();
+    }
+  }
+
+  // add remaining values that were only in right
+  for (auto& it : rightValues) {
+    auto& s = it.second;
+    if (s.isNone()) {
+      continue;
+    }
+    if (nullMeansRemove && s.isNull()) {
+      continue;
+    }
+    builder.add(std::move(it.first), s);
+  }
+
+  builder.close();
+  return builder;
+}
+
 template <Collection::VisitationOrder order>
 static bool doVisit(
     Slice const& slice,

@@ -228,8 +228,12 @@ RestStatus RestAgencyHandler::handleStore() {
       index = _agent->lastCommitted().second;
     }
     
-    query_t builder = _agent->buildDB(index);
-    generateResult(rest::ResponseCode::OK, builder->slice());
+    try {
+      query_t builder = _agent->buildDB(index);
+      generateResult(rest::ResponseCode::OK, builder->slice());
+    } catch (...) {
+      generateError(rest::ResponseCode::BAD, 400);
+    }
     
   } else {
     generateError(rest::ResponseCode::BAD, 400);
@@ -646,8 +650,8 @@ RestStatus RestAgencyHandler::handleConfig() {
     VPackObjectBuilder b(&body);
     body.add("term", Value(_agent->term()));
     body.add("leaderId", Value(_agent->leaderID()));
-    body.add("lastCommitted", Value(last.first));
-    body.add("leaderCommitted", Value(last.second));
+    body.add("lastApplied", Value(last.first));
+    body.add("commitIndex", Value(last.second));
     body.add("lastAcked", _agent->lastAckedAgo()->slice());
     body.add("configuration", _agent->config().toBuilder()->slice());
   }

@@ -136,7 +136,7 @@ TEST_CASE("FailedServer", "[agency][supervision]") {
     Mock<AgentInterface> mockAgent;
     
     std::string jobId = "1";
-    When(Method(mockAgent, write)).AlwaysDo([&](query_t const& q) -> write_ret_t {
+    When(Method(mockAgent, write)).AlwaysDo([&](query_t const& q, bool d) -> write_ret_t {
         INFO(q->slice().toJson());
         auto expectedJobKey = PREFIX + toDoPrefix + jobId;
         REQUIRE(typeName(q->slice()) == "array");
@@ -202,7 +202,7 @@ TEST_CASE("FailedServer", "[agency][supervision]") {
     Node agency = createNodeFromBuilder(*builder);
     
     Mock<AgentInterface> mockAgent;
-    When(Method(mockAgent, write)).AlwaysDo([&](query_t const& q) -> write_ret_t {
+    When(Method(mockAgent, write)).AlwaysDo([&](query_t const& q, bool d) -> write_ret_t {
         INFO(q->slice().toJson());
         REQUIRE(typeName(q->slice()) == "array" );
         REQUIRE(q->slice().length() == 1);
@@ -268,7 +268,7 @@ TEST_CASE("FailedServer", "[agency][supervision]") {
     Node agency = createNodeFromBuilder(*builder);
     
     Mock<AgentInterface> mockAgent;
-    When(Method(mockAgent, write)).AlwaysDo([&](query_t const& q) -> write_ret_t {
+    When(Method(mockAgent, write)).AlwaysDo([&](query_t const& q, bool d) -> write_ret_t {
         INFO(q->slice().toJson());
         REQUIRE(typeName(q->slice()) == "array" );
         REQUIRE(q->slice().length() == 1);
@@ -335,7 +335,7 @@ TEST_CASE("FailedServer", "[agency][supervision]") {
     Node agency = createNodeFromBuilder(*builder);
     
     Mock<AgentInterface> mockAgent;
-    When(Method(mockAgent, write)).AlwaysDo([&](query_t const& q) -> write_ret_t {
+    When(Method(mockAgent, write)).AlwaysDo([&](query_t const& q, bool d) -> write_ret_t {
         INFO(q->slice().toJson());
         REQUIRE(typeName(q->slice()) == "array" );
         REQUIRE(q->slice().length() == 1);
@@ -403,7 +403,7 @@ TEST_CASE("FailedServer", "[agency][supervision]") {
     Node agency = createNodeFromBuilder(*builder);
     
     Mock<AgentInterface> mockAgent;
-    When(Method(mockAgent, write)).AlwaysDo([&](query_t const& q) -> write_ret_t {
+    When(Method(mockAgent, write)).AlwaysDo([&](query_t const& q, bool d) -> write_ret_t {
         INFO(q->slice().toJson());
         REQUIRE(typeName(q->slice()) == "array" );
         REQUIRE(q->slice().length() == 1);

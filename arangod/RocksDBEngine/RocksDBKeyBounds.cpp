@@ -24,6 +24,7 @@
 
 #include "RocksDBKeyBounds.h"
 #include "Basics/Exceptions.h"
+#include "RocksDBEngine/RocksDBColumnFamily.h"
 #include "RocksDBEngine/RocksDBCommon.h"
 #include "RocksDBEngine/RocksDBTypes.h"
 
@@ -91,12 +92,12 @@ RocksDBKeyBounds RocksDBKeyBounds::GeoIndex(uint64_t indexId, bool isSlot) {
   uint64ToPersistent(internals.buffer(), norm);       // lower endian
 
   internals.separate();
-  
+
   internals.push_back(static_cast<char>(RocksDBEntryType::GeoIndexValue));
   uint64ToPersistent(internals.buffer(), indexId);
   norm = norm | (0xFFFFFFFFULL << 32);
   uint64ToPersistent(internals.buffer(), norm);
-  
+
   return b;
 }
 
@@ -125,6 +126,10 @@ RocksDBKeyBounds RocksDBKeyBounds::IndexEstimateValues() {
   return RocksDBKeyBounds(RocksDBEntryType::IndexEstimateValue);
 }
 
+RocksDBKeyBounds RocksDBKeyBounds::KeyGenerators() {
+  return RocksDBKeyBounds(RocksDBEntryType::KeyGeneratorValue);
+}
+
 RocksDBKeyBounds RocksDBKeyBounds::FulltextIndexPrefix(
     uint64_t indexId, arangodb::StringRef const& word) {
   // I did not want to pass a bool to the constructor for this
@@ -137,7 +142,7 @@ RocksDBKeyBounds RocksDBKeyBounds::FulltextIndexPrefix(
       static_cast<char>(RocksDBEntryType::FulltextIndexValue));
   uint64ToPersistent(internals.buffer(), indexId);
   internals.buffer().append(word.data(), word.length());
-  
+
   internals.separate();
   internals.push_back(
       static_cast<char>(RocksDBEntryType::FulltextIndexValue));
@@ -156,11 +161,11 @@ RocksDBKeyBounds RocksDBKeyBounds::FulltextIndexComplete(
 
 // ============================ Member Methods ==============================
 
-RocksDBKeyBounds::RocksDBKeyBounds(RocksDBKeyBounds const& other) 
+RocksDBKeyBounds::RocksDBKeyBounds(RocksDBKeyBounds const& other)
     : _type(other._type),
       _internals(other._internals) {}
 
-RocksDBKeyBounds::RocksDBKeyBounds(RocksDBKeyBounds&& other) 
+RocksDBKeyBounds::RocksDBKeyBounds(RocksDBKeyBounds&& other)
     : _type(other._type),
       _internals(std::move(other._internals)) {}
 
@@ -196,6 +201,30 @@ uint64_t RocksDBKeyBounds::objectId() const {
 
     default:
       THROW_ARANGO_EXCEPTION(TRI_ERROR_TYPE_ERROR);
+  }
+}
+
+rocksdb::ColumnFamilyHandle* RocksDBKeyBounds::columnFamily() const {
+  RocksDBEntryType type = static_cast<RocksDBEntryType>(_internals._buffer[0]);
+  switch (type) {
+    case RocksDBEntryType::Document:
+      return RocksDBColumnFamily::documents();
+    case RocksDBEntryType::PrimaryIndexValue:
+      return RocksDBColumnFamily::primary();
+    case RocksDBEntryType::EdgeIndexValue:
+      return RocksDBColumnFamily::edge();
+    case RocksDBEntryType::IndexValue:
+      return RocksDBColumnFamily::index();
+    case RocksDBEntryType::UniqueIndexValue:
+      return RocksDBColumnFamily::uniqueIndex();
+    case RocksDBEntryType::FulltextIndexValue:
+      return RocksDBColumnFamily::fulltext();
+    case RocksDBEntryType::GeoIndexValue:
+      return RocksDBColumnFamily::geo();
+    case RocksDBEntryType::View:
+      return RocksDBColumnFamily::views();
+    default:
+      return RocksDBColumnFamily::other();
   }
 }
 
@@ -271,7 +300,7 @@ RocksDBKeyBounds::RocksDBKeyBounds(RocksDBEntryType type, uint64_t first)
       _internals.reserve(length);
       _internals.push_back(static_cast<char>(_type));
       uint64ToPersistent(_internals.buffer(), first);
-      
+
       _internals.separate();
 
       _internals.push_back(static_cast<char>(_type));
@@ -287,7 +316,7 @@ RocksDBKeyBounds::RocksDBKeyBounds(RocksDBEntryType type, uint64_t first)
       _internals.reserve(length);
       _internals.push_back(static_cast<char>(_type));
       uint64ToPersistent(_internals.buffer(), first);
-      
+
       _internals.separate();
 
       _internals.push_back(static_cast<char>(_type));
@@ -316,7 +345,7 @@ RocksDBKeyBounds::RocksDBKeyBounds(RocksDBEntryType type, uint64_t first,
       _internals.push_back(_stringSeparator);
 
       _internals.separate();
-      
+
       _internals.push_back(static_cast<char>(_type));
       uint64ToPersistent(_internals.buffer(), first);
       _internals.buffer().append(second.data(), second.length());
@@ -370,7 +399,7 @@ namespace arangodb {
 
 std::ostream& operator<<(std::ostream& stream, RocksDBKeyBounds const& bounds) {
   stream << "[bound " << arangodb::rocksDBEntryTypeName(bounds.type()) << ": ";
-  
+
   auto dump = [&stream](rocksdb::Slice const& slice) {
     size_t const n = slice.size();
 

@@ -24,6 +24,7 @@
 
 #include "FollowerInfo.h"
 
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "Cluster/ServerState.h"
 #include "VocBase/LogicalCollection.h"
 
@@ -183,7 +184,12 @@ void FollowerInfo::add(ServerID const& sid) {
 /// since been dropped (see `dropFollowerInfo` below).
 ////////////////////////////////////////////////////////////////////////////////
 
-void FollowerInfo::remove(ServerID const& sid) {
+bool FollowerInfo::remove(ServerID const& sid) {
+  if (application_features::ApplicationServer::isStopping()) {
+    // If we are already shutting down, we cannot be trusted any more with
+    // such an important decision like dropping a follower.
+    return false;
+  }
   MUTEX_LOCKER(locker, _mutex);
 
   // First check if there is anything to do:
@@ -195,7 +201,7 @@ void FollowerInfo::remove(ServerID const& sid) {
     }
   }
   if (!found) {
-    return;  // nothing to do
+    return true;  // nothing to do
   }
 
   auto v = std::make_shared<std::vector<ServerID>>();
@@ -207,10 +213,11 @@ void FollowerInfo::remove(ServerID const& sid) {
       }
     }
   }
+  auto _oldFollowers = _followers;
   _followers = v;  // will cast to std::vector<ServerID> const
 #ifdef DEBUG_SYNC_REPLICATION
   if (!AgencyCommManager::MANAGER) {
-    return;
+    return true;
   }
 #endif
   // Now tell the agency, path is
@@ -267,13 +274,15 @@ void FollowerInfo::remove(ServerID const& sid) {
     usleep(500000);
   } while (TRI_microtime() < startTime + 30);
   if (!success) {
+    _followers = _oldFollowers;
     LOG_TOPIC(ERR, Logger::CLUSTER)
         << "FollowerInfo::remove, timeout in agency operation for key " << path;
   }
+  return success;
 }
 
 //////////////////////////////////////////////////////////////////////////////
-/// @brief clear follower list, no changes in agency necesary
+/// @brief clear follower list, no changes in agency necessary
 //////////////////////////////////////////////////////////////////////////////
 
 void FollowerInfo::clear() {

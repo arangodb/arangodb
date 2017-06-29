@@ -22,11 +22,11 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "MMFilesIndexFactory.h"
+#include "Basics/Exceptions.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/StringRef.h"
 #include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
-
 #include "Cluster/ServerState.h"
 #include "Indexes/Index.h"
 #include "MMFiles/MMFilesEdgeIndex.h"
@@ -89,8 +89,10 @@ static int ProcessIndexFields(VPackSlice const definition,
     }
 
     builder.close();
-  } catch (...) {
+  } catch (std::bad_alloc const&) {
     return TRI_ERROR_OUT_OF_MEMORY;
+  } catch (...) {
+    return TRI_ERROR_INTERNAL;
   }
   return TRI_ERROR_NO_ERROR;
 }
@@ -170,9 +172,13 @@ static int EnhanceJsonIndexPersistent(VPackSlice const definition,
 
 static void ProcessIndexGeoJsonFlag(VPackSlice const definition,
                                     VPackBuilder& builder) {
-  bool geoJson =
-      basics::VelocyPackHelper::getBooleanValue(definition, "geoJson", false);
-  builder.add("geoJson", VPackValue(geoJson));
+  VPackSlice fieldsSlice = definition.get("fields");
+  if (fieldsSlice.isArray() && fieldsSlice.length() == 1) {
+    // only add geoJson for indexes with a single field (with needs to be an array) 
+    bool geoJson =
+        basics::VelocyPackHelper::getBooleanValue(definition, "geoJson", false);
+    builder.add("geoJson", VPackValue(geoJson));
+  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -221,6 +227,10 @@ static int EnhanceJsonIndexFulltext(VPackSlice const definition,
                                     VPackBuilder& builder, bool create) {
   int res = ProcessIndexFields(definition, builder, 1, create);
   if (res == TRI_ERROR_NO_ERROR) {
+    // hard-coded defaults
+    builder.add("sparse", VPackValue(true));
+    builder.add("unique", VPackValue(false));
+
     // handle "minLength" attribute
     int minWordLength = TRI_FULLTEXT_MIN_WORD_LENGTH_DEFAULT;
     VPackSlice minLength = definition.get("minLength");
@@ -327,10 +337,12 @@ int MMFilesIndexFactory::enhanceIndexDefinition(VPackSlice const definition,
       }
 
     }
-
-  } catch (...) {
-    // TODO Check for different type of Errors
+  } catch (basics::Exception const& ex) {
+    return ex.code();
+  } catch (std::exception const&) {
     return TRI_ERROR_OUT_OF_MEMORY;
+  } catch (...) {
+    return TRI_ERROR_INTERNAL;
   }
 
   return res;

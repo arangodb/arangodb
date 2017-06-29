@@ -20,6 +20,7 @@ After=sysinit.target sockets.target timers.target paths.target slices.target net
 Type=forking
 LimitNOFILE=131072
 PIDFile=/var/run/arangodb3/arangod.pid
+Environment=GLIBCXX_FORCE_NEW=1
 ExecStartPre=/usr/bin/install -g arangodb -o arangodb -d /var/tmp/arangodb3
 ExecStartPre=/usr/bin/install -g arangodb -o arangodb -d /var/run/arangodb3
 ExecStartPre=@CHOWN_EXECUTABLE@ -R arangodb:arangodb /var/log/arangodb3

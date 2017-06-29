@@ -52,7 +52,8 @@ class RocksDBEdgeIndexIterator final : public IndexIterator {
                            transaction::Methods* trx,
                            ManagedDocumentResult* mmdr,
                            arangodb::RocksDBEdgeIndex const* index,
-                           std::unique_ptr<VPackBuilder>& keys, cache::Cache*);
+                           std::unique_ptr<VPackBuilder>& keys,
+                           std::shared_ptr<cache::Cache>);
   ~RocksDBEdgeIndexIterator();
   char const* typeName() const override { return "edge-index-iterator"; }
   bool hasExtra() const override { return true; }
@@ -61,9 +62,6 @@ class RocksDBEdgeIndexIterator final : public IndexIterator {
   void reset() override;
 
  private:
-  void resizeMemory();
-  void reserveInplaceMemory(uint64_t count);
-  uint64_t valueLength() const;
   void resetInplaceMemory();
   arangodb::StringRef getFromToFromIterator(
       arangodb::velocypack::ArrayIterator const&);
@@ -76,11 +74,9 @@ class RocksDBEdgeIndexIterator final : public IndexIterator {
   // the following 2 values are required for correct batch handling
   std::unique_ptr<rocksdb::Iterator> _iterator;  // iterator position in rocksdb
   RocksDBKeyBounds _bounds;
-  cache::Cache* _cache;
+  std::shared_ptr<cache::Cache> _cache;
   arangodb::velocypack::ArrayIterator _builderIterator;
   arangodb::velocypack::Builder _builder;
-  size_t _copyCounter;
-  size_t _lookupCounter;
 };
 
 class RocksDBEdgeIndex final : public RocksDBIndex {
@@ -115,12 +111,12 @@ class RocksDBEdgeIndex final : public RocksDBIndex {
 
   void toVelocyPack(VPackBuilder&, bool, bool) const override;
 
-  int insert(transaction::Methods*, TRI_voc_rid_t,
+  Result insert(transaction::Methods*, TRI_voc_rid_t,
              arangodb::velocypack::Slice const&, bool isRollback) override;
 
   int insertRaw(RocksDBMethods*, TRI_voc_rid_t, VPackSlice const&) override;
 
-  int remove(transaction::Methods*, TRI_voc_rid_t,
+  Result remove(transaction::Methods*, TRI_voc_rid_t,
              arangodb::velocypack::Slice const&, bool isRollback) override;
 
   /// optimization for truncateNoTrx, never called in fillIndex
@@ -184,6 +180,7 @@ class RocksDBEdgeIndex final : public RocksDBIndex {
                      arangodb::aql::AstNode const* valNode) const;
 
   std::string _directionAttr;
+  bool _isFromIndex;
 
   /// @brief A fixed size library to estimate the selectivity of the index.
   /// On insertion of a document we have to insert it into the estimator,

@@ -170,9 +170,13 @@ static int EnhanceJsonIndexPersistent(VPackSlice const definition,
 
 static void ProcessIndexGeoJsonFlag(VPackSlice const definition,
                                     VPackBuilder& builder) {
-  bool geoJson =
-      basics::VelocyPackHelper::getBooleanValue(definition, "geoJson", false);
-  builder.add("geoJson", VPackValue(geoJson));
+  VPackSlice fieldsSlice = definition.get("fields");
+  if (fieldsSlice.isArray() && fieldsSlice.length() == 1) {
+    // only add geoJson for indexes with a single field (with needs to be an array) 
+    bool geoJson =
+        basics::VelocyPackHelper::getBooleanValue(definition, "geoJson", false);
+    builder.add("geoJson", VPackValue(geoJson));
+  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -222,6 +226,10 @@ static int EnhanceJsonIndexFulltext(VPackSlice const definition,
                                     VPackBuilder& builder, bool create) {
   int res = ProcessIndexFields(definition, builder, 1, create);
   if (res == TRI_ERROR_NO_ERROR) {
+    // hard-coded defaults
+    builder.add("sparse", VPackValue(true));
+    builder.add("unique", VPackValue(false));
+    
     // handle "minLength" attribute
     int minWordLength = TRI_FULLTEXT_MIN_WORD_LENGTH_DEFAULT;
     VPackSlice minLength = definition.get("minLength");

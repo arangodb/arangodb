@@ -46,6 +46,7 @@ SenderThread::SenderThread(
       _data(TRI_UNKNOWN_MEM_ZONE, false),
       _hasError(false),
       _idle(true),
+      _ready(false),
       _stats(stats) {}
 
 SenderThread::~SenderThread() {
@@ -73,31 +74,52 @@ void SenderThread::sendData(std::string const& url,
   guard.broadcast();
 }
 
+bool SenderThread::hasError() {
+  CONDITION_LOCKER(guard, _condition);
+  return _hasError;
+}
+
+bool SenderThread::isReady() {
+  CONDITION_LOCKER(guard, _condition);
+  return _ready;
+}
+
+bool SenderThread::isIdle() {
+  CONDITION_LOCKER(guard, _condition);
+  return _idle;
+}
+
+bool SenderThread::isDone() {
+  CONDITION_LOCKER(guard, _condition);
+  return _idle || _hasError;
+}
+
 void SenderThread::run() {
   while (!isStopping() && !_hasError) {
     {
       CONDITION_LOCKER(guard, _condition);
-      guard.wait();
+      _ready = true;
+      if (_idle) {
+        guard.wait();
+      }
     }
     if (isStopping()) {
-      CONDITION_LOCKER(guard, _condition);
-      _idle = true;
-      return;
+      break;
     }
     try {
       if (_data.length() > 0) {
         TRI_ASSERT(!_idle && !_url.empty());
 
-        std::unordered_map<std::string, std::string> headerFields;
         std::unique_ptr<httpclient::SimpleHttpResult> result(
             _client->request(rest::RequestType::POST, _url, _data.c_str(),
-                             _data.length(), headerFields));
+                             _data.length()));
 
         handleResult(result.get());
 
         _url.clear();
         _data.reset();
       }
+
       CONDITION_LOCKER(guard, _condition);
       _idle = true;
     } catch (...) {
@@ -106,6 +128,9 @@ void SenderThread::run() {
       _idle = true;
     }
   }
+    
+  CONDITION_LOCKER(guard, _condition);
+  TRI_ASSERT(_idle);
 }
 
 void SenderThread::handleResult(httpclient::SimpleHttpResult* result) {

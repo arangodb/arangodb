@@ -165,6 +165,7 @@
     * [Hash Cache Options](Administration/Configuration/Cache.md)
     * [Asynchronous Tasks](Administration/Configuration/Asynchronous.md)
   * [Durability](Administration/Durability.md)
+  * [Encryption](Administration/Encryption/README.md)
   * [Replication](Administration/Replication/README.md)
     * [Asynchronous Replication](Administration/Replication/Asynchronous/README.md)
       * [Components](Administration/Replication/Asynchronous/Components.md)
@@ -174,7 +175,7 @@
     * [Synchronous Replication](Administration/Replication/Synchronous/README.md)
       * [Implementation](Administration/Replication/Synchronous/Implementation.md)
       * [Configuration](Administration/Replication/Synchronous/Configuration.md)
-
+    * [Satellite Collections](Administration/Replication/Synchronous/Satellites.md)
   * [Sharding](Administration/Sharding/README.md)
 #    * [Authentication](Administration/Sharding/Authentication.md)
 #    * [Firewall setup](Administration/Sharding/FirewallSetup.md)

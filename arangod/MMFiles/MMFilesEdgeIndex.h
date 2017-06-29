@@ -103,16 +103,17 @@ class MMFilesEdgeIndex final : public Index {
 
   void toVelocyPackFigures(VPackBuilder&) const override;
 
-  int insert(transaction::Methods*, TRI_voc_rid_t,
+  Result insert(transaction::Methods*, TRI_voc_rid_t,
              arangodb::velocypack::Slice const&, bool isRollback) override;
 
-  int remove(transaction::Methods*, TRI_voc_rid_t,
+  Result remove(transaction::Methods*, TRI_voc_rid_t,
              arangodb::velocypack::Slice const&, bool isRollback) override;
 
   void batchInsert(transaction::Methods*,
                    std::vector<std::pair<TRI_voc_rid_t, VPackSlice>> const&,
                    std::shared_ptr<arangodb::basics::LocalTaskQueue>) override;
 
+  int load() override { return 0; }
   int unload() override;
 
   int sizeHint(transaction::Methods*, size_t) override;

@@ -60,9 +60,10 @@ RocksDBOptionFeature::RocksDBOptionFeature(
           rocksDBDefaults.max_bytes_for_level_multiplier),
       _baseBackgroundCompactions(rocksDBDefaults.base_background_compactions),
       _maxBackgroundCompactions(rocksDBDefaults.max_background_compactions),
+      _maxSubcompactions(rocksDBDefaults.max_subcompactions),
       _maxFlushes(rocksDBDefaults.max_background_flushes),
-      _numThreadsHigh(rocksDBDefaults.max_background_flushes),
-      _numThreadsLow(rocksDBDefaults.max_background_compactions),
+      _numThreadsHigh(0),
+      _numThreadsLow(0),
       _blockCacheSize((TRI_PhysicalMemory >= (static_cast<uint64_t>(4) << 30))
         ? static_cast<uint64_t>(((TRI_PhysicalMemory - (static_cast<uint64_t>(2) << 30)) * 0.3))
         : (256 << 20)),
@@ -70,13 +71,16 @@ RocksDBOptionFeature::RocksDBOptionFeature(
       _tableBlockSize(std::max(rocksDBTableOptionsDefaults.block_size, static_cast<decltype(rocksDBTableOptionsDefaults.block_size)>(16 * 1024))),
       _recycleLogFileNum(rocksDBDefaults.recycle_log_file_num),
       _compactionReadaheadSize(rocksDBDefaults.compaction_readahead_size),
-      _verifyChecksumsInCompaction(
-          rocksDBDefaults.verify_checksums_in_compaction),
+      _level0CompactionTrigger(2),
+      _level0SlowdownTrigger(rocksDBDefaults.level0_slowdown_writes_trigger),
+      _level0StopTrigger(rocksDBDefaults.level0_stop_writes_trigger),
+      //_verifyChecksumsInCompaction( rocksDBDefaults.verify_checksums_in_compaction),
       _optimizeFiltersForHits(rocksDBDefaults.optimize_filters_for_hits),
       _useDirectReads(rocksDBDefaults.use_direct_reads),
-      _useDirectWrites(rocksDBDefaults.use_direct_writes),
+      //_useDirectWrites(rocksDBDefaults.use_direct_writes),
       _useFSync(rocksDBDefaults.use_fsync),
-      _skipCorrupted(false) {
+      _skipCorrupted(false),
+      _dynamicLevelBytes(true) {
   uint64_t testSize = _blockCacheSize >> 19;
   while (testSize > 0) {
     _blockCacheShardBits++;
@@ -85,12 +89,8 @@ RocksDBOptionFeature::RocksDBOptionFeature(
 
   setOptional(true);
   requiresElevatedPrivileges(false);
+  startsAfter("Daemon");
   startsAfter("DatabasePath");
-
-  // increase parallelism and re-fetch the number of threads
-  rocksDBDefaults.IncreaseParallelism(std::thread::hardware_concurrency());
-  _numThreadsHigh = rocksDBDefaults.max_background_flushes;
-  _numThreadsLow = rocksDBDefaults.max_background_compactions;
 }
 
 void RocksDBOptionFeature::collectOptions(
@@ -115,8 +115,9 @@ void RocksDBOptionFeature::collectOptions(
   options->addHiddenOption(
       "--rocksdb.delayed_write_rate",
       "limited write rate to DB (in bytes per second) if we are writing to the "
-      "last "
-      "mem table allowed and we allow more than 3 mem tables",
+      "last mem-table allowed and we allow more than 3 mem-tables, or if we "
+      "have surpassed a certain number of level-0 files and need to slowdown "
+      "writes",
       new UInt64Parameter(&_delayedWriteRate));
 
   options->addOption("--rocksdb.min-write-buffer-number-to-merge",
@@ -133,31 +134,36 @@ void RocksDBOptionFeature::collectOptions(
                      "number of uncompressed levels for the database",
                      new UInt64Parameter(&_numUncompressedLevels));
 
-  options->addHiddenOption("--rocksdb.max-bytes-for-level-base",
-                           "control maximum total data size for level-1",
-                           new UInt64Parameter(&_maxBytesForLevelBase));
+  options->addOption("--rocksdb.dynamic-level-bytes",
+                     "if true, determine the number of bytes for each level "
+                     "dynamically to minimize space amplification",
+                     new BooleanParameter(&_dynamicLevelBytes));
+
+  options->addOption("--rocksdb.max-bytes-for-level-base",
+                     "if not using dynamic level sizes, this controls the "
+                     "maximum total data size for level-1",
+                     new UInt64Parameter(&_maxBytesForLevelBase));
 
   options->addOption("--rocksdb.max-bytes-for-level-multiplier",
-                     "maximum number of bytes for level L can be calculated as "
-                     "max-bytes-for-level-base * "
+                     "if not using dynamic level sizes, the maximum number of "
+                     "bytes for level L can be calculated as "
+                     " max-bytes-for-level-base * "
                      "(max-bytes-for-level-multiplier ^ (L-1))",
                      new DoubleParameter(&_maxBytesForLevelMultiplier));
 
-  options->addHiddenOption(
-      "--rocksdb.verify-checksums-in-compaction",
-      "if true, compaction will verify checksum on every read that happens "
-      "as part of compaction",
-      new BooleanParameter(&_verifyChecksumsInCompaction));
+  //options->addHiddenOption(
+  //    "--rocksdb.verify-checksums-in-compaction",
+  //    "if true, compaction will verify checksum on every read that happens "
+  //    "as part of compaction",
+  //    new BooleanParameter(&_verifyChecksumsInCompaction));
 
   options->addHiddenOption(
       "--rocksdb.optimize-filters-for-hits",
       "this flag specifies that the implementation should optimize the filters "
       "mainly for cases where keys are found rather than also optimize for "
-      "keys "
-      "missed. This would be used in cases where the application knows that "
-      "there are very few misses or the performance in the case of misses is "
-      "not "
-      "important",
+      "keys missed. This would be used in cases where the application knows "
+      "that there are very few misses or the performance in the case of "
+      "misses is not important",
       new BooleanParameter(&_optimizeFiltersForHits));
 
 #ifdef __linux__
@@ -165,9 +171,9 @@ void RocksDBOptionFeature::collectOptions(
                            "use O_DIRECT for reading files",
                            new BooleanParameter(&_useDirectReads));
 
-  options->addHiddenOption("--rocksdb.use-direct-writes",
-                           "use O_DIRECT for writing files",
-                           new BooleanParameter(&_useDirectWrites));
+  //options->addHiddenOption("--rocksdb.use-direct-writes",
+  //                         "use O_DIRECT for writing files",
+  //                         new BooleanParameter(&_useDirectWrites));
 #endif
 
   options->addHiddenOption("--rocksdb.use-fsync",
@@ -178,15 +184,32 @@ void RocksDBOptionFeature::collectOptions(
   options->addHiddenOption(
       "--rocksdb.base-background-compactions",
       "suggested number of concurrent background compaction jobs",
-      new UInt64Parameter(&_baseBackgroundCompactions));
+      new Int64Parameter(&_baseBackgroundCompactions));
 
   options->addOption("--rocksdb.max-background-compactions",
                      "maximum number of concurrent background compaction jobs",
                      new UInt64Parameter(&_maxBackgroundCompactions));
 
+  options->addOption("--rocksdb.max-subcompactions",
+                     "maximum number of concurrent subjobs for a background "
+                     "compaction",
+                     new UInt64Parameter(&_maxSubcompactions));
+
   options->addOption("--rocksdb.max-background-flushes",
                      "maximum number of concurrent flush operations",
-                     new UInt64Parameter(&_maxFlushes));
+                     new Int64Parameter(&_maxFlushes));
+
+  options->addOption("--rocksdb.level0-compaction-trigger",
+                     "number of level-0 files that triggers a compaction",
+                     new Int64Parameter(&_level0CompactionTrigger));
+
+  options->addOption("--rocksdb.level0-slowdown-trigger",
+                     "number of level-0 files that triggers a write slowdown",
+                     new Int64Parameter(&_level0SlowdownTrigger));
+
+  options->addOption("--rocksdb.level0-stop-trigger",
+                     "number of level-0 files that triggers a full write stall",
+                     new Int64Parameter(&_level0StopTrigger));
 
   options->addOption(
       "--rocksdb.num-threads-priority-high",
@@ -205,7 +228,7 @@ void RocksDBOptionFeature::collectOptions(
   options->addOption("--rocksdb.block-cache-shard-bits",
                      "number of shard bits to use for block cache",
                      new UInt64Parameter(&_blockCacheShardBits));
-  
+
   options->addOption("--rocksdb.table-block-size",
                      "approximate size (in bytes) of user data packed per block",
                      new UInt64Parameter(&_tableBlockSize));
@@ -244,28 +267,35 @@ void RocksDBOptionFeature::validateOptions(
         << "invalid value for '--rocksdb.num-levels'";
     FATAL_ERROR_EXIT();
   }
-  if (_baseBackgroundCompactions < 1 || _baseBackgroundCompactions > 64) {
+
+  if (_baseBackgroundCompactions != -1 &&
+      (_baseBackgroundCompactions < 1 || _baseBackgroundCompactions > 64)) {
     LOG_TOPIC(FATAL, arangodb::Logger::FIXME)
         << "invalid value for '--rocksdb.base-background-compactions'";
     FATAL_ERROR_EXIT();
   }
-  if (_maxBackgroundCompactions < _baseBackgroundCompactions) {
+  if (static_cast<int64_t>(_maxBackgroundCompactions) < _baseBackgroundCompactions) {
     _maxBackgroundCompactions = _baseBackgroundCompactions;
   }
-  if (_maxFlushes < 1 || _maxFlushes > 64) {
+
+  if (_maxFlushes == -1) { /*we are good */ }
+  else if (_maxFlushes < 1 || _maxFlushes > 64) {
     LOG_TOPIC(FATAL, arangodb::Logger::FIXME)
         << "invalid value for '--rocksdb.max-background-flushes'";
     FATAL_ERROR_EXIT();
   }
-  if (_numThreadsHigh < 1 || _numThreadsHigh > 64) {
+  if (_numThreadsHigh > 64) {
     LOG_TOPIC(FATAL, arangodb::Logger::FIXME)
         << "invalid value for '--rocksdb.num-threads-priority-high'";
     FATAL_ERROR_EXIT();
   }
-  if (_numThreadsLow < 1 || _numThreadsLow > 256) {
+  if ( _numThreadsLow > 256) {
     LOG_TOPIC(FATAL, arangodb::Logger::FIXME)
         << "invalid value for '--rocksdb.num-threads-priority-low'";
     FATAL_ERROR_EXIT();
+  }
+  if (_maxSubcompactions > _numThreadsLow) {
+    _maxSubcompactions = _numThreadsLow;
   }
   if (_blockCacheShardBits > 32) {
     LOG_TOPIC(FATAL, arangodb::Logger::FIXME)
@@ -275,6 +305,14 @@ void RocksDBOptionFeature::validateOptions(
 }
 
 void RocksDBOptionFeature::start() {
+  if (_numThreadsHigh == 0) {
+    _numThreadsHigh = rocksDBDefaults.max_background_flushes;
+  }
+
+  if (_numThreadsLow == 0) {
+    _numThreadsLow = rocksDBDefaults.max_background_compactions;
+  }
+
   LOG_TOPIC(TRACE, Logger::FIXME) << "using RocksDB options:"
                                   << " write_buffer_size: " << _writeBufferSize
                                   << " max_write_buffer_number: " << _maxWriteBufferNumber
@@ -291,9 +329,9 @@ void RocksDBOptionFeature::start() {
                                   << " block_cache_size: " << _blockCacheSize
                                   << " block_cache_shard_bits: " << _blockCacheShardBits
                                   << " compaction_read_ahead_size: " << _compactionReadaheadSize
-                                  << " verify_checksums_in_compaction: " << std::boolalpha << _verifyChecksumsInCompaction
+                                  //<< " verify_checksums_in_compaction: " << std::boolalpha << _verifyChecksumsInCompaction
                                   << " optimize_filters_for_hits: " << std::boolalpha << _optimizeFiltersForHits
                                   << " use_direct_reads: " << std::boolalpha << _useDirectReads
-                                  << " use_direct_writes: " << std::boolalpha << _useDirectWrites
+                                  //<< " use_direct_writes: " << std::boolalpha << _useDirectWrites
                                   << " use_fsync: " << std::boolalpha << _useFSync;
 }

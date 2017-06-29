@@ -156,7 +156,13 @@ Node::Node(Node&& other)
       _value(std::move(other._value)),
       _vecBuf(std::move(other._vecBuf)),
       _vecBufDirty(std::move(other._vecBufDirty)),
-      _isArray(std::move(other._isArray)) {}
+      _isArray(std::move(other._isArray)) {
+  // The _children map has been moved here, therefore we must
+  // correct the _parent entry of all direct children:
+  for (auto& child : _children) {
+    child.second->_parent = this;
+  }
+}
 
 /// Copy constructor
 Node::Node(Node const& other)
@@ -170,6 +176,7 @@ Node::Node(Node const& other)
       _isArray(other._isArray) {
   for (auto const& p : other._children) {
     auto copy = std::make_shared<Node>(*p.second);
+    copy->_parent = this;   // new children have us as _parent!
     _children.insert(std::make_pair(p.first, copy));
   }
 }
@@ -205,9 +212,14 @@ Node& Node::operator=(Node&& rhs) {
   // 1. remove any existing time to live entry
   // 2. move children map over
   // 3. move value over
-  // Must not move ober rhs's _parent, _observers
+  // Must not move over rhs's _parent, _observers
   _nodeName = std::move(rhs._nodeName);
   _children = std::move(rhs._children);
+  // The _children map has been moved here, therefore we must
+  // correct the _parent entry of all direct children:
+  for (auto& child : _children) {
+    child.second->_parent = this;
+  }
   _value = std::move(rhs._value);
   _vecBuf = std::move(rhs._vecBuf);
   _vecBufDirty = std::move(rhs._vecBufDirty);
@@ -227,6 +239,7 @@ Node& Node::operator=(Node const& rhs) {
   _children.clear();
   for (auto const& p : rhs._children) {
     auto copy = std::make_shared<Node>(*p.second);
+    copy->_parent = this;   // new child copy has us as _parent
     _children.insert(std::make_pair(p.first, copy));
   }
   _value = rhs._value;
@@ -251,6 +264,9 @@ bool Node::operator!=(VPackSlice const& rhs) const { return !(*this == rhs); }
 
 /// Remove this node from store
 bool Node::remove() {
+  if (_parent == nullptr) {
+    return false;
+  }
   Node& parent = *_parent;
   return parent.removeChild(_nodeName);
 }
@@ -278,6 +294,7 @@ Node& Node::operator()(std::vector<std::string> const& pv) {
     }
     auto pvc(pv);
     pvc.erase(pvc.begin());
+    TRI_ASSERT(_children[key]->_parent == this);
     return (*_children[key])(pvc);
   } else {
     return *this;
@@ -295,6 +312,7 @@ Node const& Node::operator()(std::vector<std::string> const& pv) const {
       throw StoreException(std::string("Node ") + key + " not found!");
     }
     auto const& child = *_children.at(key);
+    TRI_ASSERT(child._parent == this);
     auto pvc(pv);
     pvc.erase(pvc.begin());
     return child(pvc);
@@ -320,7 +338,8 @@ Node const& Node::get(std::string const& path) const {
 
 // lh-store
 Node const& Node::root() const {
-  Node *par = _parent, *tmp = nullptr;
+  Node* par = _parent;
+  Node const* tmp = this;
   while (par != nullptr) {
     tmp = par;
     par = par->_parent;
@@ -330,7 +349,8 @@ Node const& Node::root() const {
 
 // rh-store
 Node& Node::root() {
-  Node *par = _parent, *tmp = nullptr;
+  Node* par = _parent;
+  Node* tmp = this;
   while (par != nullptr) {
     tmp = par;
     par = par->_parent;
@@ -838,35 +858,35 @@ bool Node::getBool() const {
   return slice().getBool();
 }
 
-bool Node::isBool() const noexcept {
+bool Node::isBool() const {
   if (type() == NODE) {
     return false;
   }
   return slice().isBool();
 }
 
-bool Node::isDouble() const noexcept {
+bool Node::isDouble() const {
   if (type() == NODE) {
     return false;
   }
   return slice().isDouble();
 }
 
-bool Node::isString() const noexcept {
+bool Node::isString() const {
   if (type() == NODE) {
     return false;
   }
   return slice().isString();
 }
 
-bool Node::isUInt() const noexcept {
+bool Node::isUInt() const {
   if (type() == NODE) {
     return false;
   }
   return slice().isUInt() || slice().isSmallInt();
 }
 
-bool Node::isInt() const noexcept {
+bool Node::isInt() const {
   if (type() == NODE) {
     return false;
   }

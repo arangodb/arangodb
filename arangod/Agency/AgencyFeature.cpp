@@ -38,6 +38,8 @@ using namespace arangodb::basics;
 using namespace arangodb::options;
 using namespace arangodb::rest;
 
+consensus::Agent* AgencyFeature::AGENT = nullptr;
+
 AgencyFeature::AgencyFeature(application_features::ApplicationServer* server)
     : ApplicationFeature(server, "Agency"),
       _activated(false),
@@ -48,8 +50,9 @@ AgencyFeature::AgencyFeature(application_features::ApplicationServer* server)
       _supervision(false),
       _waitForSync(true),
       _supervisionFrequency(1.0),
-      _compactionStepSize(200000),
-      _compactionKeepSize(500),
+      _compactionStepSize(20000),
+      _compactionKeepSize(10000),
+      _maxAppendSize(250),
       _supervisionGracePeriod(10.0),
       _cmdLineTimings(false)
 {
@@ -121,6 +124,11 @@ void AgencyFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
                            "wait for hard disk syncs on every persistence call "
                            "(required in production)",
                            new BooleanParameter(&_waitForSync));
+
+  options->addHiddenOption("--agency.max-append-size",
+                           "maximum size of appendEntries document (# log entries)",
+                           new UInt64Parameter(&_maxAppendSize));
+
 }
 
 void AgencyFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
@@ -188,6 +196,12 @@ void AgencyFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
         << " " << __FILE__ << __LINE__;
   }
 
+  if (_compactionKeepSize == 0) {
+    LOG_TOPIC(WARN, Logger::AGENCY)
+        << "agency.compaction-keep-size must not be 0, set to 1000";
+    _compactionKeepSize = 1000;
+  }
+
   if (!_agencyMyAddress.empty()) {
     std::string const unified = Endpoint::unifiedForm(_agencyMyAddress);
 
@@ -204,7 +218,6 @@ void AgencyFeature::prepare() {
 }
 
 void AgencyFeature::start() {
-
   if (!isEnabled()) {
     return;
   }
@@ -243,11 +256,17 @@ void AgencyFeature::start() {
   }
   LOG_TOPIC(DEBUG, Logger::AGENCY) << "Agency endpoint " << endpoint;
 
+  if (_waitForSync) {
+    _maxAppendSize /= 10;
+  }
+
   _agent.reset(new consensus::Agent(consensus::config_t(
       _size, _poolSize, _minElectionTimeout, _maxElectionTimeout, endpoint,
       _agencyEndpoints, _supervision, _waitForSync, _supervisionFrequency,
       _compactionStepSize, _compactionKeepSize, _supervisionGracePeriod,
-      _cmdLineTimings)));
+      _cmdLineTimings, _maxAppendSize)));
+
+  AGENT = _agent.get();
 
   LOG_TOPIC(DEBUG, Logger::AGENCY) << "Starting agency personality";
   _agent->start();
@@ -291,4 +310,6 @@ void AgencyFeature::stop() {
       }
     }
   }
+
+  AGENT = nullptr;
 }

@@ -1,0 +1,37 @@
+foxx="$1"
+engine="$2"
+os="$3"
+
+. ./Installation/Pipeline/include/test_log_info.inc
+. ./Installation/Pipeline/include/test_setup_tmp.inc
+
+PORT01=`./Installation/Pipeline/port.sh`
+PORTTRAP="./Installation/Pipeline/port.sh --clean $PORT01 ;"
+
+trap "$PORTTRAP" EXIT
+
+(
+    cd resilience
+    rm -f core.* build etc js
+
+    ln -s ../build .
+    ln -s ../etc .
+    ln -s ../js .
+
+    npm install > ../log-output/npm-install.log 2>&1
+
+    if [ "$foxx" == yes ]; then
+        TESTS=$(find test/* -name "*foxx*")
+    else
+        TESTS=$(find test/* -not -name "*foxx*")
+    fi
+
+    echo "TESTS: $TESTS"
+
+    MIN_PORT=`expr $PORT01 + 0` \
+    MAX_PORT=`expr $PORT01 + 1999` \
+    PORT_OFFSET=10 \
+    RESILIENCE_ARANGO_BASEPATH=. \
+    ARANGO_STORAGE_ENGINE=rocksdb \
+            npm run test-jenkins -- $TESTS
+)

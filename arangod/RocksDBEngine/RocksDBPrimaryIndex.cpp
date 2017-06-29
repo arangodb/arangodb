@@ -29,6 +29,7 @@
 #include "Cache/CachedValue.h"
 #include "Cache/TransactionalCache.h"
 #include "Cluster/ServerState.h"
+#include "Indexes/IndexResult.h"
 #include "Indexes/SimpleAttributeEqualityMatcher.h"
 #include "Logger/Logger.h"
 #include "RocksDBEngine/RocksDBCollection.h"
@@ -59,6 +60,10 @@
 #include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb;
+
+namespace {
+constexpr bool PrimaryIndexFillBlockCache = false;
+}
 
 // ================ Primary Index Iterator ================
 
@@ -141,8 +146,8 @@ size_t RocksDBPrimaryIndex::memory() const {
   RocksDBKeyBounds bounds = RocksDBKeyBounds::PrimaryIndex(_objectId);
   rocksdb::Range r(bounds.start(), bounds.end());
   uint64_t out;
-  db->GetApproximateSizes(&r, 1, &out, true);
-  return (size_t)out;
+  db->GetApproximateSizes(RocksDBColumnFamily::primary(), &r, 1, &out, static_cast<uint8_t>(rocksdb::DB::SizeApproximationFlags::INCLUDE_MEMTABLES | rocksdb::DB::SizeApproximationFlags::INCLUDE_FILES));
+  return static_cast<size_t>(out);
 }
 
 int RocksDBPrimaryIndex::cleanup() {
@@ -184,7 +189,8 @@ RocksDBToken RocksDBPrimaryIndex::lookupKey(transaction::Methods* trx,
 
   // acquire rocksdb transaction
   RocksDBMethods* mthds = rocksutils::toRocksMethods(trx);
-  auto& options = mthds->readOptions();
+  auto options = mthds->readOptions(); // intentional copy
+  options.fill_cache = PrimaryIndexFillBlockCache;
   TRI_ASSERT(options.snapshot != nullptr);
 
   arangodb::Result r = mthds->Get(_cf, key, value.buffer());
@@ -198,8 +204,8 @@ RocksDBToken RocksDBPrimaryIndex::lookupKey(transaction::Methods* trx,
     auto entry = cache::CachedValue::construct(
         key.string().data(), static_cast<uint32_t>(key.string().size()),
         value.buffer()->data(), static_cast<uint64_t>(value.buffer()->size()));
-    bool cached = _cache->insert(entry);
-    if (!cached) {
+    auto status = _cache->insert(entry);
+    if (status.fail()) {
       delete entry;
     }
   }
@@ -207,9 +213,9 @@ RocksDBToken RocksDBPrimaryIndex::lookupKey(transaction::Methods* trx,
   return RocksDBToken(RocksDBValue::revisionId(value));
 }
 
-int RocksDBPrimaryIndex::insert(transaction::Methods* trx,
-                                TRI_voc_rid_t revisionId,
-                                VPackSlice const& slice, bool) {
+Result RocksDBPrimaryIndex::insert(transaction::Methods* trx,
+                                   TRI_voc_rid_t revisionId,
+                                   VPackSlice const& slice, bool) {
   auto key = RocksDBKey::PrimaryIndexValue(
       _objectId, StringRef(slice.get(StaticStrings::KeyString)));
   auto value = RocksDBValue::PrimaryIndexValue(revisionId);
@@ -223,7 +229,7 @@ int RocksDBPrimaryIndex::insert(transaction::Methods* trx,
   blackListKey(key.string().data(), static_cast<uint32_t>(key.string().size()));
 
   Result status = mthd->Put(_cf, key, value.string(), rocksutils::index);
-  return status.errorNumber();
+  return IndexResult(status.errorNumber(), this);
 }
 
 int RocksDBPrimaryIndex::insertRaw(RocksDBMethods*, TRI_voc_rid_t,
@@ -231,9 +237,9 @@ int RocksDBPrimaryIndex::insertRaw(RocksDBMethods*, TRI_voc_rid_t,
   THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
 }
 
-int RocksDBPrimaryIndex::remove(transaction::Methods* trx,
-                                TRI_voc_rid_t revisionId,
-                                VPackSlice const& slice, bool) {
+Result RocksDBPrimaryIndex::remove(transaction::Methods* trx,
+                                   TRI_voc_rid_t revisionId,
+                                   VPackSlice const& slice, bool) {
   // TODO: deal with matching revisions?
   auto key = RocksDBKey::PrimaryIndexValue(
       _objectId, StringRef(slice.get(StaticStrings::KeyString)));
@@ -244,7 +250,7 @@ int RocksDBPrimaryIndex::remove(transaction::Methods* trx,
   RocksDBMethods* mthds = rocksutils::toRocksMethods(trx);
   Result r = mthds->Delete(_cf, key);
   // rocksutils::convertStatus(status, rocksutils::StatusHint::index);
-  return r.errorNumber();
+  return IndexResult(r.errorNumber(), this);
 }
 
 /// optimization for truncateNoTrx, never called in fillIndex

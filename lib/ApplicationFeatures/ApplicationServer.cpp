@@ -239,16 +239,29 @@ void ApplicationServer::run(int argc, char* argv[]) {
 void ApplicationServer::beginShutdown() {
   LOG_TOPIC(TRACE, Logger::STARTUP) << "ApplicationServer::beginShutdown";
 
+  bool old = _stopping.exchange(true);
+
   // fowards the begin shutdown signal to all features
-  for (auto it = _orderedFeatures.rbegin(); it != _orderedFeatures.rend();
-       ++it) {
-    if ((*it)->isEnabled()) {
-      LOG_TOPIC(TRACE, Logger::STARTUP) << (*it)->name() << "::beginShutdown";
-      (*it)->beginShutdown();
+  if (!old) {
+    for (auto it = _orderedFeatures.rbegin(); it != _orderedFeatures.rend();
+         ++it) {
+      if ((*it)->isEnabled()) {
+        LOG_TOPIC(TRACE, Logger::STARTUP) << (*it)->name() << "::beginShutdown";
+        try {
+          (*it)->beginShutdown();
+        } catch (std::exception const& ex) {
+          LOG_TOPIC(ERR, Logger::STARTUP)
+              << "caught exception during beginShutdown of feature '"
+              << (*it)->name() << "': " << ex.what();
+        } catch (...) {
+          LOG_TOPIC(ERR, Logger::STARTUP)
+              << "caught unknown exception during beginShutdown of feature '"
+              << (*it)->name() << "'";
+        }
+      }
     }
   }
 
-  _stopping = true;
   // TODO: use condition variable for signaling shutdown
   // to run method
 }
@@ -616,7 +629,13 @@ void ApplicationServer::stop() {
     }
 
     LOG_TOPIC(TRACE, Logger::STARTUP) << feature->name() << "::stop";
-    feature->stop();
+    try {
+      feature->stop();
+    } catch (std::exception const& ex) {
+      LOG_TOPIC(ERR, Logger::STARTUP) << "caught exception during stop of feature '" << feature->name() << "': " << ex.what();
+    } catch (...) {
+      LOG_TOPIC(ERR, Logger::STARTUP) << "caught unknown exception during stop of feature '" << feature->name() << "'";
+    }
     feature->state(FeatureState::STOPPED);
     reportFeatureProgress(_state, feature->name());
   }
@@ -630,7 +649,13 @@ void ApplicationServer::unprepare() {
     auto feature = *it;
 
     LOG_TOPIC(TRACE, Logger::STARTUP) << feature->name() << "::unprepare";
-    feature->unprepare();
+    try {
+      feature->unprepare();
+    } catch (std::exception const& ex) {
+      LOG_TOPIC(ERR, Logger::STARTUP) << "caught exception during unprepare of feature '" << feature->name() << "': " << ex.what();
+    } catch (...) {
+      LOG_TOPIC(ERR, Logger::STARTUP) << "caught unknown exception during unprepare of feature '" << feature->name() << "'";
+    }
     feature->state(FeatureState::UNPREPARED);
     reportFeatureProgress(_state, feature->name());
   }

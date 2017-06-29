@@ -54,19 +54,20 @@ size_t SocketTcp::read(boost::asio::mutable_buffers_1 const& buffer,
   }
 }
 
-void SocketTcp::shutdownReceive() {
+void SocketTcp::shutdown(boost::system::error_code& ec, bool closeSend, bool closeReceive) {
   MUTEX_LOCKER(guard, _lock);
-  _socket.shutdown(boost::asio::ip::tcp::socket::shutdown_receive);
+  Socket::shutdown(ec, closeSend, closeReceive);
 }
 
-void SocketTcp::shutdownReceive(boost::system::error_code& ec) {
+void SocketTcp::close(boost::system::error_code& ec) {
   MUTEX_LOCKER(guard, _lock);
-  _socket.shutdown(boost::asio::ip::tcp::socket::shutdown_receive, ec);
-}
-
-void SocketTcp::shutdownSend(boost::system::error_code& ec) {
-  MUTEX_LOCKER(guard, _lock);
-  _socket.shutdown(boost::asio::ip::tcp::socket::shutdown_send, ec);
+  if (_socket.is_open()) {
+    _socket.close(ec);
+    if (ec && ec != boost::asio::error::not_connected) {
+      LOG_TOPIC(DEBUG, Logger::COMMUNICATION)
+          << "closing socket failed with: " << ec.message();
+    }
+  }
 }
 
 std::size_t SocketTcp::available(boost::system::error_code& ec) {
@@ -82,4 +83,12 @@ void SocketTcp::asyncRead(boost::asio::mutable_buffers_1 const& buffer,
   } else {
     return socketcommon::doAsyncRead(_socket, buffer, handler);
   }
+}
+
+void SocketTcp::shutdownReceive(boost::system::error_code& ec) {
+  _socket.shutdown(boost::asio::ip::tcp::socket::shutdown_receive, ec);
+}
+
+void SocketTcp::shutdownSend(boost::system::error_code& ec) {
+  _socket.shutdown(boost::asio::ip::tcp::socket::shutdown_send, ec);
 }

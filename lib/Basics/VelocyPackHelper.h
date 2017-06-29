@@ -281,9 +281,16 @@ class VelocyPackHelper {
   //////////////////////////////////////////////////////////////////////////////
 
   static std::string checkAndGetStringValue(VPackSlice const&, char const*);
+  
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief ensures a sub-element is of type string
+  //////////////////////////////////////////////////////////////////////////////
 
   static std::string checkAndGetStringValue(VPackSlice const&,
                                             std::string const&);
+  
+  static void ensureStringValue(VPackSlice const&,
+                                std::string const&);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief returns a Numeric sub-element, or throws if <name> does not exist

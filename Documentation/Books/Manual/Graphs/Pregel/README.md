@@ -201,6 +201,27 @@ the iterations are bound by the diameter (the longest shortest path) of your gra
   pregel.start("sssp", "graphname", {source:"vertices/1337"})
 ```
 
+
+#### Connected Components
+
+There are two algorithms to find connected components in a graph. To find weakly connected components (WCC)
+you can use the algorithm named "connectedcomponents", to find strongly connected components (SCC) you can use the algorithm
+named "scc". Both algorithm will assign a component ID to each vertex.
+
+A weakly connected components means that there exist a path from every vertex pair in that component.
+WCC is a very simple and fast algorithm, which will only work correctly on undirected graphs. Your results on directed graphs may vary, depending on how connected your components are.
+
+In the case of SCC a component means every vertex is reachable from any other vertex in the same component. The algorithm is more complex than the WCC algorithm and requires more RAM, because each vertex needs to store much more state. 
+Consider using WCC if you think your data may be suitable for it.
+
+```javascript
+  var pregel = require("@arangodb/pregel");
+  // weakly connected components
+  pregel.start("connectedcomponents", "graphname")
+  // strongly connected components
+  pregel.start("scc", "graphname")
+```
+
 #### Hyperlink-Induced Topic Search (HITS)
 
 HITS is a link analysis algorithm that rates Web pages, developed by Jon Kleinberg (The algorithm is also known as hubs and authorities).
@@ -229,6 +250,9 @@ The algorithm can be executed like this:
 Centrality measures help identify the most important vertices in a graph. They can be used in a wide range of applications:
 For example they can be used to identify *influencers* in social networks, or *middle-men* in terrorist networks.
 There are various definitions for centrality, the simplest one being the vertex degree. 
+These definitions were not designed with scalability in mind. It is probably impossible to discover an efficient algorithm which computes them in a distributed way. 
+Fortunately there are scalable substitutions available, which should be equally usable for most use cases.
+
 
 ![Illustration of an execution of different centrality measures (Freeman 1977)](centrality_visual.png)
 
@@ -253,7 +277,7 @@ algorithm. The algorithm can be used like this
 
 ```javascript
     var pregel = require("@arangodb/pregel");
-    var handle = pregel.start("effectivecloseness", "yourgraph", resultField: "closeness");
+    var handle = pregel.start("effectivecloseness", "yourgraph", {resultField: "closeness"});
 ```
 
 ##### LineRank
@@ -268,10 +292,6 @@ Where the &sigma; represents the number of shortest paths between *x* and *y*, a
 number of paths also passing through a vertex *v*. By intuition a vertex with higher betweeness centrality will have more information
 passing through it.
 
-Unfortunately these definitions were not designed with scalability in mind. It is probably impossible to compute them
-efficiently and accurately. Fortunately there are scalable substitutions proposed by **U Kang et.al. 2011**.
-
-
 **LineRank** approximates the random walk betweenness of every vertex in a graph. This is the probability that someone starting on
 an arbitary vertex, will visit this node when he randomly chooses edges to visit.
 The algoruthm essentially builds a line graph out of your graph (switches the vertices and edges), and then computes a score similar to PageRank.
@@ -280,12 +300,17 @@ The algorithm is from the paper *Centralities in Large Networks: Algorithms and 
 
 ```javascript
     var pregel = require("@arangodb/pregel");
-    var handle = pregel.start("linerank", "yourgraph", "resultField": "rank");
+    var handle = pregel.start("linerank", "yourgraph", {"resultField": "rank"});
 ```
 
 
-#### Community Detection: Label Propagation 
+#### Community Detection
 
+Graphs based on real world networks often have a community structure. This means it is possible to find groups of vertices such that each each vertex group is internally more densely connected than outside the group.
+This has many applications when you want to analyze your networks, for example
+Social networks include community groups (the origin of the term, in fact) based on common location, interests, occupation, etc.
+
+##### Label Propagation 
 
 *Label Propagation* can be used to implement community detection on large graphs. The idea is that each
 vertex should be in the community that most of his neighbours are in. We iteratively detemine this by first

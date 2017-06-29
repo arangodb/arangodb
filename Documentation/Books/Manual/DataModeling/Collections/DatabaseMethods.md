@@ -90,6 +90,8 @@ to the [naming conventions](../NamingConventions/README.md).
   following attributes (**note**: some of them are optional):
   - *type*: specifies the type of the key generator. The currently
     available generators are *traditional* and *autoincrement*.
+    (**note**: *autoincrement* is currently only supported for non-sharded
+    collections)
   - *allowUserKeys*: if set to *true*, then it is allowed to supply
     own key values in the *_key* attribute of a document. If set to
     *false*, then the key generator will solely be responsible for
@@ -139,6 +141,16 @@ to the [naming conventions](../NamingConventions/README.md).
   If a server fails, this is detected automatically and one of the
   servers holding copies take over, usually without an error being
   reported.
+
+- *distributeShardsLike* distribute the shards of this collection
+  cloning the shard distribution of another.
+
+  When using the *Enterprise* version of ArangoDB the replicationFactor
+  may be set to "satellite" making the collection locally joinable
+  on every database server. This reduces the number of network hops
+  dramatically when using joins in AQL at the costs of reduced write
+  performance on these collections.
+
 
 `db._create(collection-name, properties, type)`
 
@@ -303,6 +315,8 @@ In order to drop a system collection, one must specify an *options* object
 with attribute *isSystem* set to *true*. Otherwise it is not possible to
 drop system collections.
 
+**Note**: cluster collection, which are prototypes for collections
+with *distributeShardsLike* parameter, cannot be dropped.
 
 *Examples*
 

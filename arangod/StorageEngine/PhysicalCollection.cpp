@@ -66,6 +66,16 @@ void PhysicalCollection::drop() {
   }
 }
 
+bool PhysicalCollection::hasIndexOfType(arangodb::Index::IndexType type) const {
+  READ_LOCKER(guard, _indexesLock);
+  for (auto const& idx : _indexes) {
+    if (idx->type() == type) {
+      return true;
+    }
+  }
+  return false;
+}
+
 std::shared_ptr<Index> PhysicalCollection::lookupIndex(
     TRI_idx_iid_t idxId) const {
   READ_LOCKER(guard, _indexesLock);
@@ -225,23 +235,25 @@ int PhysicalCollection::newObjectForInsert(
     TRI_ASSERT(!isRestore);  // need key in case of restore
     newRev = TRI_HybridLogicalClock();
     std::string keyString =
-        _logicalCollection->keyGenerator()->generate(TRI_NewTickServer());
+        _logicalCollection->keyGenerator()->generate();
     if (keyString.empty()) {
       return TRI_ERROR_ARANGO_OUT_OF_KEYS;
     }
-    uint8_t* where =
-        builder.add(StaticStrings::KeyString, VPackValue(keyString));
-    s = VPackSlice(where);  // point to newly built value, the string
+    builder.add(StaticStrings::KeyString, VPackValue(keyString));
   } else if (!s.isString()) {
     return TRI_ERROR_ARANGO_DOCUMENT_KEY_BAD;
   } else {
-    std::string keyString = s.copyString();
+    VPackValueLength l;
+    char const* p = s.getString(l);
     int res =
-        _logicalCollection->keyGenerator()->validate(keyString, isRestore);
+        _logicalCollection->keyGenerator()->validate(p, l, isRestore);
     if (res != TRI_ERROR_NO_ERROR) {
       return res;
     }
     builder.add(StaticStrings::KeyString, s);
+        
+    // track the key just used
+    _logicalCollection->keyGenerator()->track(p, l);
   }
 
   // _id

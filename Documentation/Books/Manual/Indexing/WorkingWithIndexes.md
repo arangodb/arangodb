@@ -139,6 +139,40 @@ Same as above. Instead of an index an index handle can be given.
     @endDocuBlock col_dropIndex
 
 
+### Load Indexes into Memory
+<!-- arangod/V8Server/v8-vocindex.cpp -->
+
+
+Loads all indexes of this collection into Memory.
+`collection.loadIndexesIntoMemory()`
+
+This function tries to cache all index entries
+of this collection into the main memory.
+Therefore it iterates over all indexes of the collection
+and stores the indexed values, not the entire document data,
+in Memory.
+All lookups that could be found in the cache are much faster
+than lookups not stored in the cache so you get a nice performance boost.
+It is also guaranteed that the cache is consistent with the stored data.
+
+For the time beeing this function is only useful on RocksDB storage engine,
+as in MMFiles engine all indexes are in memory anyways.
+
+On RocksDB this function honors all memory limits, if the indexes you want
+to load are smaller than your memory limit this function guarantees that most
+index values are cached.
+If the index is larger than your memory limit this function will fill up values
+up to this limit and for the time beeing there is no way to control which indexes
+of the collection should have priority over others.
+
+    @startDocuBlockInline LoadIndexesIntoMemory
+    @EXAMPLE_ARANGOSH_OUTPUT{loadIndexesIntoMemory}
+    ~db._drop("example");
+    ~db._createEdgeCollection("example");
+    db.example.loadIndexesIntoMemory();
+    ~db._drop("example");
+    @END_EXAMPLE_ARANGOSH_OUTPUT
+    @endDocuBlock LoadIndexesIntoMemory
 
 Database Methods
 ----------------

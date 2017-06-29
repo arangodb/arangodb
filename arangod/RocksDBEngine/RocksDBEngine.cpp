@@ -34,6 +34,8 @@
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/WriteLocker.h"
 #include "Basics/build.h"
+#include "Cache/CacheManagerFeature.h"
+#include "Cache/Manager.h"
 #include "GeneralServer/RestHandlerFactory.h"
 #include "Logger/Logger.h"
 #include "ProgramOptions/ProgramOptions.h"
@@ -102,6 +104,7 @@ rocksdb::ColumnFamilyHandle* RocksDBColumnFamily::_fulltext(nullptr);
 rocksdb::ColumnFamilyHandle* RocksDBColumnFamily::_other(nullptr);
 rocksdb::ColumnFamilyHandle* RocksDBColumnFamily::_index(nullptr);
 rocksdb::ColumnFamilyHandle* RocksDBColumnFamily::_uniqueIndex(nullptr);
+rocksdb::ColumnFamilyHandle* RocksDBColumnFamily::_views(nullptr);
 std::vector<rocksdb::ColumnFamilyHandle*> RocksDBColumnFamily::_allHandles;
 
 // create the storage engine
@@ -148,11 +151,18 @@ void RocksDBEngine::collectOptions(
   options->addOption("--rocksdb.wal-file-timeout",
                      "timeout after which unused WAL files are deleted",
                      new DoubleParameter(&_pruneWaitTime));
+
+#ifdef USE_ENTERPRISE
+   collectEnterpriseOptions(options);
+#endif
 }
 
 // validate the storage engine's specific options
-void RocksDBEngine::validateOptions(std::shared_ptr<options::ProgramOptions>) {
+void RocksDBEngine::validateOptions(std::shared_ptr<options::ProgramOptions> options) {
   transaction::Options::setLimits(_maxTransactionSize, _intermediateCommitSize, _intermediateCommitCount);
+#ifdef USE_ENTERPRISE
+   validateEnterpriseOptions(options);
+#endif
 }
 
 // preparation phase for storage engine. can be used for internal setup.
@@ -165,6 +175,10 @@ void RocksDBEngine::prepare() {
   _basePath = databasePathFeature->directory();
 
   TRI_ASSERT(!_basePath.empty());
+
+#ifdef USE_ENTERPRISE
+  prepareEnterprise();
+#endif
 }
 
 void RocksDBEngine::start() {
@@ -199,13 +213,14 @@ void RocksDBEngine::start() {
   _options.min_write_buffer_number_to_merge =
       static_cast<int>(opts->_minWriteBufferNumberToMerge);
   _options.num_levels = static_cast<int>(opts->_numLevels);
+  _options.level_compaction_dynamic_level_bytes = opts->_dynamicLevelBytes;
   _options.max_bytes_for_level_base = opts->_maxBytesForLevelBase;
   _options.max_bytes_for_level_multiplier =
       static_cast<int>(opts->_maxBytesForLevelMultiplier);
-  _options.verify_checksums_in_compaction = opts->_verifyChecksumsInCompaction;
+  //_options.verify_checksums_in_compaction = opts->_verifyChecksumsInCompaction;
   _options.optimize_filters_for_hits = opts->_optimizeFiltersForHits;
   _options.use_direct_reads = opts->_useDirectReads;
-  _options.use_direct_writes = opts->_useDirectWrites;
+  //_options.use_direct_writes = opts->_useDirectWrites;
   if (opts->_skipCorrupted) {
     _options.wal_recovery_mode =
         rocksdb::WALRecoveryMode::kSkipAnyCorruptedRecords;
@@ -217,6 +232,8 @@ void RocksDBEngine::start() {
       static_cast<int>(opts->_baseBackgroundCompactions);
   _options.max_background_compactions =
       static_cast<int>(opts->_maxBackgroundCompactions);
+  _options.max_subcompactions =
+      static_cast<int>(opts->_maxSubcompactions);
   _options.max_background_flushes = static_cast<int>(opts->_maxFlushes);
   _options.use_fsync = opts->_useFSync;
 
@@ -228,24 +245,29 @@ void RocksDBEngine::start() {
                                                  : rocksdb::kNoCompression);
   }
 
-  // TODO: try out the effects of these options 
+  // TODO: try out the effects of these options
   // Number of files to trigger level-0 compaction. A value <0 means that
   // level-0 compaction will not be triggered by number of files at all.
   //
   // Default: 4
-  // _options.level0_file_num_compaction_trigger = -1;
+  _options.level0_file_num_compaction_trigger = static_cast<int>(opts->_level0CompactionTrigger);
 
   // Soft limit on number of level-0 files. We start slowing down writes at this
   // point. A value <0 means that no writing slow down will be triggered by
   // number of files in level-0.
-  // _options.level0_slowdown_writes_trigger = -1;
+  _options.level0_slowdown_writes_trigger = static_cast<int>(opts->_level0SlowdownTrigger);
 
   // Maximum number of level-0 files.  We stop writes at this point.
-  // _options.level0_stop_writes_trigger = 256;
+  _options.level0_stop_writes_trigger = static_cast<int>(opts->_level0StopTrigger);
 
   _options.recycle_log_file_num = static_cast<size_t>(opts->_recycleLogFileNum);
   _options.compaction_readahead_size =
       static_cast<size_t>(opts->_compactionReadaheadSize);
+
+#ifdef USE_ENTERPRISE
+  configureEnterpriseRocksDBOptions(_options);
+  startEnterprise();
+#endif
 
   _options.env->SetBackgroundThreads((int)opts->_numThreadsHigh,
                                      rocksdb::Env::Priority::HIGH);
@@ -304,14 +326,16 @@ void RocksDBEngine::start() {
   cfOptions2.comparator = _vpackCmp.get();
   columFamilies.emplace_back("IndexValue", cfOptions2); // 6
   columFamilies.emplace_back("UniqueIndexValue", cfOptions2);// 7
+  columFamilies.emplace_back("Views", cfOptions2);// 8
   // DO NOT FORGET TO DESTROY THE CFs ON CLOSE
- 
+
   std::vector<rocksdb::ColumnFamilyHandle*> cfHandles;
-  size_t const numberOfColumnFamilies = RocksDBColumnFamily::numberOfColumnFamilies;
+  size_t const numberOfColumnFamilies = RocksDBColumnFamily::minNumberOfColumnFamilies;
   {
-    rocksdb::Options testOptions; 
+    rocksdb::Options testOptions;
     testOptions.create_if_missing = false;
     testOptions.create_missing_column_families = false;
+    testOptions.env = _options.env;
     std::vector<std::string> existingColumnFamilies;
     rocksdb::Status status = rocksdb::DB::ListColumnFamilies(testOptions, _path, &existingColumnFamilies);
     if (!status.ok()) {
@@ -335,14 +359,14 @@ void RocksDBEngine::start() {
         }
         names.append(it);
       }
-      
+
       LOG_TOPIC(DEBUG, arangodb::Logger::STARTUP) << "found existing column families: " << names;
 
       if (existingColumnFamilies.size() < numberOfColumnFamilies) {
-        LOG_TOPIC(FATAL, arangodb::Logger::STARTUP) 
-            << "unexpected number of column families found in database (" << cfHandles.size() << "). " 
+        LOG_TOPIC(FATAL, arangodb::Logger::STARTUP)
+            << "unexpected number of column families found in database (" << cfHandles.size() << "). "
             << "expecting at least " << numberOfColumnFamilies
-            << ". if you are upgrading from an alpha version of ArangoDB 3.2, " 
+            << ". if you are upgrading from an alpha version of ArangoDB 3.2, "
             << "it is required to restart with a new database directory and re-import data";
         FATAL_ERROR_EXIT();
       }
@@ -364,8 +388,8 @@ void RocksDBEngine::start() {
   }
 
   if (cfHandles.size() < numberOfColumnFamilies) {
-    LOG_TOPIC(FATAL, arangodb::Logger::STARTUP) 
-        << "unexpected number of column families found in database. " 
+    LOG_TOPIC(FATAL, arangodb::Logger::STARTUP)
+        << "unexpected number of column families found in database. "
         << "got " << cfHandles.size() << ", expecting at least " << numberOfColumnFamilies;
     FATAL_ERROR_EXIT();
   }
@@ -381,6 +405,7 @@ void RocksDBEngine::start() {
   RocksDBColumnFamily::_fulltext = cfHandles[5];
   RocksDBColumnFamily::_index = cfHandles[6];
   RocksDBColumnFamily::_uniqueIndex = cfHandles[7];
+  RocksDBColumnFamily::_views = cfHandles[8];
   RocksDBColumnFamily::_allHandles = cfHandles;
   TRI_ASSERT(RocksDBColumnFamily::_other->GetID() == 0);
 
@@ -1362,6 +1387,7 @@ TRI_vocbase_t* RocksDBEngine::openExistingDatabase(TRI_voc_tick_t id,
       TRI_ASSERT(physical != nullptr);
 
       physical->deserializeIndexEstimates(counterManager());
+      physical->deserializeKeyGenerator(counterManager());
       LOG_TOPIC(DEBUG, arangodb::Logger::FIXME) << "added document collection '"
                                                 << collection->name() << "'";
     }
@@ -1391,29 +1417,66 @@ RocksDBReplicationManager* RocksDBEngine::replicationManager() const {
 void RocksDBEngine::getStatistics(VPackBuilder& builder) const {
   builder.openObject();
   // add int properties
-  auto c1 = [&](std::string const& s) {
+  auto addInt = [&](std::string const& s) {
+    std::string v;
+    if (_db->GetProperty(s, &v)) {
+      int64_t i = basics::StringUtils::int64(v);
+      builder.add(s, VPackValue(i));
+    }
+  };
+  auto addStr = [&](std::string const& s) {
     std::string v;
     if (_db->GetProperty(s, &v)) {
       builder.add(s, VPackValue(v));
     }
   };
-  c1(rocksdb::DB::Properties::kNumImmutableMemTable);
-  c1(rocksdb::DB::Properties::kMemTableFlushPending);
-  c1(rocksdb::DB::Properties::kCompactionPending);
-  c1(rocksdb::DB::Properties::kBackgroundErrors);
-  c1(rocksdb::DB::Properties::kCurSizeActiveMemTable);
-  c1(rocksdb::DB::Properties::kCurSizeAllMemTables);
-  c1(rocksdb::DB::Properties::kSizeAllMemTables);
-  c1(rocksdb::DB::Properties::kNumEntriesImmMemTables);
-  c1(rocksdb::DB::Properties::kNumSnapshots);
-  c1(rocksdb::DB::Properties::kDBStats);
-  c1(rocksdb::DB::Properties::kCFStats);
-  c1(rocksdb::DB::Properties::kSSTables);
-  c1(rocksdb::DB::Properties::kNumRunningCompactions);
-  c1(rocksdb::DB::Properties::kNumRunningFlushes);
-  c1(rocksdb::DB::Properties::kIsFileDeletionsEnabled);
-  c1(rocksdb::DB::Properties::kBaseLevel);
-  c1(rocksdb::DB::Properties::kTotalSstFilesSize);
+  auto addCf = [&](std::string const& name, rocksdb::ColumnFamilyHandle* c) {
+    std::string v;
+    if (_db->GetProperty(c, rocksdb::DB::Properties::kCFStats, &v)) {
+      builder.add(name, VPackValue(v));
+    }
+  };
+  addInt(rocksdb::DB::Properties::kNumImmutableMemTable);
+  addInt(rocksdb::DB::Properties::kMemTableFlushPending);
+  addInt(rocksdb::DB::Properties::kCompactionPending);
+  addInt(rocksdb::DB::Properties::kBackgroundErrors);
+  addInt(rocksdb::DB::Properties::kCurSizeActiveMemTable);
+  addInt(rocksdb::DB::Properties::kCurSizeAllMemTables);
+  addInt(rocksdb::DB::Properties::kSizeAllMemTables);
+  addInt(rocksdb::DB::Properties::kNumEntriesImmMemTables);
+  addInt(rocksdb::DB::Properties::kNumSnapshots);
+  addStr(rocksdb::DB::Properties::kDBStats);
+  addStr(rocksdb::DB::Properties::kSSTables);
+  addInt(rocksdb::DB::Properties::kNumRunningCompactions);
+  addInt(rocksdb::DB::Properties::kNumRunningFlushes);
+  addInt(rocksdb::DB::Properties::kIsFileDeletionsEnabled);
+  addInt(rocksdb::DB::Properties::kBaseLevel);
+  addInt(rocksdb::DB::Properties::kTotalSstFilesSize);
+  builder.add("rocksdb.cfstats", VPackValue(VPackValueType::Object));
+  addCf("other", RocksDBColumnFamily::other());
+  addCf("documents", RocksDBColumnFamily::documents());
+  addCf("primary", RocksDBColumnFamily::primary());
+  addCf("edge", RocksDBColumnFamily::edge());
+  addCf("geo", RocksDBColumnFamily::geo());
+  addCf("fulltext", RocksDBColumnFamily::fulltext());
+  addCf("index", RocksDBColumnFamily::index());
+  addCf("uniqueIndex", RocksDBColumnFamily::uniqueIndex());
+  addCf("views", RocksDBColumnFamily::views());
+  builder.close();
+
+  if (_options.table_factory) {
+    void* options = _options.table_factory->GetOptions();
+    if (options != nullptr) {
+      builder.add("rocksdb.block-cache-used", VPackValue(static_cast<rocksdb::BlockBasedTableOptions*>(options)->block_cache->GetUsage()));
+    }
+  }
+
+  cache::Manager* manager = CacheManagerFeature::MANAGER;
+  auto rates = manager->globalHitRates();
+  builder.add("cache.size", VPackValue(manager->globalLimit()));
+  builder.add("cache.used", VPackValue(manager->globalAllocation()));
+  builder.add("cache.hit-rate-lifetime", VPackValue(rates.first));
+  builder.add("cache.hit-rate-recent", VPackValue(rates.second));
 
   builder.close();
 }

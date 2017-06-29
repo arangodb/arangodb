@@ -562,10 +562,10 @@ class Slice {
       return static_cast<T>(getDouble());
     }
     if (isInt() || isSmallInt()) {
-      return static_cast<T>(getInt());
+      return static_cast<T>(getIntUnchecked());
     }
     if (isUInt()) {
-      return static_cast<T>(getUInt());
+      return static_cast<T>(getUIntUnchecked());
     }
 
     throw Exception(Exception::InvalidValueType, "Expecting numeric type");
@@ -713,6 +713,9 @@ class Slice {
         }
 
         VELOCYPACK_ASSERT(h > 0x00 && h <= 0x0e);
+        if (h >= sizeof(SliceStaticData::WidthMap) / sizeof(SliceStaticData::WidthMap[0])) {
+          throw Exception(Exception::InternalError, "invalid Array/Object type");
+        }
         return readIntegerNonEmpty<ValueLength>(_start + 1,
                                                 SliceStaticData::WidthMap[h]);
       }
@@ -860,6 +863,12 @@ class Slice {
   std::string toString(Options const* options = &Options::Defaults) const;
   std::string hexType() const;
   
+  int64_t getIntUnchecked() const;
+
+  // return the value for a UInt object, without checks
+  // returns 0 for invalid values/types
+  uint64_t getUIntUnchecked() const;
+  
  private:
   // get the total byte size for a String slice, including the head byte
   // not check is done if the type of the slice is actually String 
@@ -873,11 +882,7 @@ class Slice {
     }
     return static_cast<ValueLength>(1 + h - 0x40);
   }
-
-  // return the value for a UInt object, without checks
-  // returns 0 for invalid values/types
-  uint64_t getUIntUnchecked() const;
-
+  
   // translates an integer key into a string, without checks
   Slice translateUnchecked() const;
 

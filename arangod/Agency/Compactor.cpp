@@ -45,7 +45,7 @@ Compactor::~Compactor() {
 
 
 // @brief Run
-void Compactor::run () {
+void Compactor::run() {
 
   LOG_TOPIC(DEBUG, Logger::AGENCY) << "Starting compactor personality";
 
@@ -58,7 +58,13 @@ void Compactor::run () {
       break;
     }
     
-    _agent->compact();
+    try {
+      _agent->compact();
+    }
+    catch (std::exception& e) {
+      LOG_TOPIC(ERR, Logger::AGENCY) << "Expection during compaction, details: "
+        << e.what();
+    }
   }
   
 }

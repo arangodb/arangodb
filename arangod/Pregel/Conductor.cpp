@@ -690,6 +690,22 @@ VPackBuilder Conductor::collectAQLResults() {
   return messages;
 }
 
+VPackBuilder Conductor::toVelocyPack() const {
+  VPackBuilder result;
+  result.openObject();
+  result.add("state", VPackValue(pregel::ExecutionStateNames[_state]));
+  result.add("gss", VPackValue(_globalSuperstep));
+  result.add("totalRuntime", VPackValue(totalRuntimeSecs()));
+  _aggregators->serializeValues(result);
+  _statistics.serializeValues(result);
+  if (_state != ExecutionState::RUNNING) {
+    result.add("vertexCount", VPackValue(_totalVerticesCount));
+    result.add("edgeCount", VPackValue(_totalEdgesCount));
+  }
+  result.close();
+  return result;
+}
+
 int Conductor::_sendToAllDBServers(std::string const& path,
                                    VPackBuilder const& message) {
   return _sendToAllDBServers(path, message, std::function<void(VPackSlice)>());

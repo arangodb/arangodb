@@ -131,22 +131,6 @@ describe('Foxx Manager install', function () {
       });
     });
 
-    it('with broken exports file', function () {
-      expect(function () {
-        FoxxManager.install(fs.join(basePath, 'broken-exports-file'), '/unittest/broken');
-      }).to.throw(ArangoError).that.satisfies(function (err) {
-        expect(err).to.have.property('errorNum', errors.ERROR_MODULE_FAILURE.code);
-        if (require('@arangodb').isServer) {
-          expect(err).to.have.property('cause');
-          expect(err.cause).not.to.be.an.instanceof(SyntaxError);
-          expect(err.cause).not.to.be.an.instanceof(ArangoError);
-        } else {
-          expect(err).not.to.have.property('cause');
-        }
-        return true;
-      });
-    });
-
     it('with broken setup file', function () {
       expect(function () {
         FoxxManager.install(fs.join(basePath, 'broken-setup-file'), '/unittest/broken');

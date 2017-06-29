@@ -28,6 +28,7 @@
 #include "Aql/SortCondition.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/VelocyPackHelper.h"
+#include "Indexes/IndexResult.h"
 #include "RocksDBEngine/RocksDBCollection.h"
 #include "RocksDBEngine/RocksDBColumnFamily.h"
 #include "RocksDBEngine/RocksDBCommon.h"
@@ -170,7 +171,7 @@ uint64_t RocksDBVPackIndex::HashForKey(const rocksdb::Slice& key) {
 RocksDBVPackIndex::RocksDBVPackIndex(TRI_idx_iid_t iid,
                                      arangodb::LogicalCollection* collection,
                                      arangodb::velocypack::Slice const& info)
-    : RocksDBIndex(iid, collection, info, RocksDBColumnFamily::index()),
+    : RocksDBIndex(iid, collection, info, RocksDBColumnFamily::index(), false),
       _useExpansion(false),
       _allowPartialIndex(true),
       _estimator(nullptr) {
@@ -205,6 +206,11 @@ double RocksDBVPackIndex::selectivityEstimate(
   if (_unique) {
     return 1.0;  // only valid if unique
   }
+  if (ServerState::instance()->isCoordinator()) {
+    // Coordinator has no idea of estimates. Just return a hard-coded value
+    return 0.1;
+  }
+  TRI_ASSERT(_estimator);
   return _estimator->computeEstimate();
 }
 
@@ -214,8 +220,8 @@ size_t RocksDBVPackIndex::memory() const {
                                     : RocksDBKeyBounds::IndexEntries(_objectId);
   rocksdb::Range r(bounds.start(), bounds.end());
   uint64_t out;
-  db->GetApproximateSizes(&r, 1, &out, true);
-  return (size_t)out;
+  db->GetApproximateSizes(_unique ? RocksDBColumnFamily::uniqueIndex() : RocksDBColumnFamily::index(), &r, 1, &out, static_cast<uint8_t>(rocksdb::DB::SizeApproximationFlags::INCLUDE_MEMTABLES | rocksdb::DB::SizeApproximationFlags::INCLUDE_FILES));
+  return static_cast<size_t>(out);
 }
 
 /// @brief return a VelocyPack representation of the index
@@ -503,9 +509,9 @@ void RocksDBVPackIndex::fillPaths(std::vector<std::vector<std::string>>& paths,
 }
 
 /// @brief inserts a document into the index
-int RocksDBVPackIndex::insert(transaction::Methods* trx,
-                              TRI_voc_rid_t revisionId, VPackSlice const& doc,
-                              bool isRollback) {
+Result RocksDBVPackIndex::insert(transaction::Methods* trx,
+                                 TRI_voc_rid_t revisionId,
+                                 VPackSlice const& doc, bool isRollback) {
   std::vector<RocksDBKey> elements;
   std::vector<uint64_t> hashes;
   int res;
@@ -517,7 +523,7 @@ int RocksDBVPackIndex::insert(transaction::Methods* trx,
   }
 
   if (res != TRI_ERROR_NO_ERROR) {
-    return res;
+    return IndexResult(res, this);
   }
 
   // now we are going to construct the value to insert into rocksdb
@@ -568,7 +574,7 @@ int RocksDBVPackIndex::insert(transaction::Methods* trx,
     _estimator->insert(it);
   }
 
-  return res;
+  return IndexResult(res, this);
 }
 
 int RocksDBVPackIndex::insertRaw(RocksDBMethods* batch,
@@ -614,9 +620,9 @@ int RocksDBVPackIndex::insertRaw(RocksDBMethods* batch,
 }
 
 /// @brief removes a document from the index
-int RocksDBVPackIndex::remove(transaction::Methods* trx,
-                              TRI_voc_rid_t revisionId, VPackSlice const& doc,
-                              bool isRollback) {
+Result RocksDBVPackIndex::remove(transaction::Methods* trx,
+                                 TRI_voc_rid_t revisionId,
+                                 VPackSlice const& doc, bool isRollback) {
   std::vector<RocksDBKey> elements;
   std::vector<uint64_t> hashes;
 
@@ -629,7 +635,7 @@ int RocksDBVPackIndex::remove(transaction::Methods* trx,
   }
 
   if (res != TRI_ERROR_NO_ERROR) {
-    return res;
+    return IndexResult(res, this);
   }
 
   RocksDBMethods* mthds = rocksutils::toRocksMethods(trx);
@@ -648,7 +654,7 @@ int RocksDBVPackIndex::remove(transaction::Methods* trx,
     _estimator->remove(it);
   }
 
-  return res;
+  return IndexResult(res, this);
 }
 
 int RocksDBVPackIndex::removeRaw(RocksDBMethods* writeBatch,

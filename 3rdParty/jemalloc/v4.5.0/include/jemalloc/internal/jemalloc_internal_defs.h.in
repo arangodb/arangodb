@@ -1,5 +1,5 @@
 #ifndef JEMALLOC_INTERNAL_DEFS_H_
-#define JEMALLOC_INTERNAL_DEFS_H_
+#define	JEMALLOC_INTERNAL_DEFS_H_
 /*
  * If JEMALLOC_PREFIX is defined via --with-jemalloc-prefix, it will cause all
  * public APIs to be prefixed.  This makes it possible, with some care, to use
@@ -21,13 +21,6 @@
  * order to yield to another virtual CPU.
  */
 #undef CPU_SPINWAIT
-
-/*
- * Number of significant bits in virtual addresses.  This may be less than the
- * total number of bits in a pointer, e.g. on x64, for which the uppermost 16
- * bits are the same as bit 47.
- */
-#undef LG_VADDR
 
 /* Defined if C11 atomics are available. */
 #undef JEMALLOC_C11ATOMICS
@@ -165,16 +158,19 @@
 #undef JEMALLOC_TCACHE
 
 /*
- * JEMALLOC_DSS enables use of sbrk(2) to allocate extents from the data storage
+ * JEMALLOC_DSS enables use of sbrk(2) to allocate chunks from the data storage
  * segment (DSS).
  */
 #undef JEMALLOC_DSS
 
-/* Support memory filling (junk/zero). */
+/* Support memory filling (junk/zero/quarantine/redzone). */
 #undef JEMALLOC_FILL
 
 /* Support utrace(2)-based tracing. */
 #undef JEMALLOC_UTRACE
+
+/* Support Valgrind. */
+#undef JEMALLOC_VALGRIND
 
 /* Support optional abort() on OOM. */
 #undef JEMALLOC_XMALLOC
@@ -195,13 +191,6 @@
 #undef LG_PAGE
 
 /*
- * One huge page is 2^LG_HUGEPAGE bytes.  Note that this is defined even if the
- * system does not explicitly support huge pages; system calls that require
- * explicit huge page support are separately configured.
- */
-#undef LG_HUGEPAGE
-
-/*
  * If defined, adjacent virtual memory mappings with identical attributes
  * automatically coalesce, and they fragment when changes are made to subranges.
  * This is the normal order of things for mmap()/munmap(), but on Windows
@@ -211,7 +200,7 @@
 #undef JEMALLOC_MAPS_COALESCE
 
 /*
- * If defined, use munmap() to unmap freed extents, rather than storing them for
+ * If defined, use munmap() to unmap freed chunks, rather than storing them for
  * later reuse.  This is disabled by default on Linux because common sequences
  * of mmap()/munmap() calls will cause virtual memory map holes.
  */
@@ -236,7 +225,7 @@
 
 /*
  * JEMALLOC_IVSALLOC enables ivsalloc(), which verifies that pointers reside
- * within jemalloc-owned extents before dereferencing them.
+ * within jemalloc-owned chunks before dereferencing them.
  */
 #undef JEMALLOC_IVSALLOC
 
@@ -264,6 +253,12 @@
 #undef JEMALLOC_HAVE_MADVISE
 
 /*
+ * Defined if transparent huge pages are supported via the MADV_[NO]HUGEPAGE
+ * arguments to madvise(2).
+ */
+#undef JEMALLOC_HAVE_MADVISE_HUGE
+
+/*
  * Methods for purging unused pages differ between operating systems.
  *
  *   madvise(..., MADV_FREE) : This marks pages as being unused, such that they
@@ -275,10 +270,7 @@
 #undef JEMALLOC_PURGE_MADVISE_FREE
 #undef JEMALLOC_PURGE_MADVISE_DONTNEED
 
-/*
- * Defined if transparent huge pages are supported via the MADV_[NO]HUGEPAGE
- * arguments to madvise(2).
- */
+/* Defined if transparent huge page support is enabled. */
 #undef JEMALLOC_THP
 
 /* Define if operating system has alloca.h header. */

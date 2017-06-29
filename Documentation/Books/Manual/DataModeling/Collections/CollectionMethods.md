@@ -12,6 +12,11 @@ Drops a *collection* and all its indexes and data.
 In order to drop a system collection, an *options* object
 with attribute *isSystem* set to *true* must be specified.
 
+**Note**: dropping a collection in a cluster, which is prototype for
+sharing in other collections is prohibited. In order to be able to
+drop such a collection, all dependent collections must be dropped
+first. 
+
 **Examples**
 
     @startDocuBlockInline collectionDrop
@@ -184,6 +189,7 @@ loads a collection
 
 Loads a collection into memory.
 
+**Note**: cluster collections are loaded at all times.
 
 **Examples**
 
@@ -197,7 +203,6 @@ Loads a collection into memory.
     ~ db._drop("example");
     @END_EXAMPLE_ARANGOSH_OUTPUT
     @endDocuBlock collectionLoad
-
 
 
 ### Revision
@@ -268,6 +273,7 @@ unloads a collection
 Starts unloading a collection from memory. Note that unloading is deferred
 until all query have finished.
 
+**Note**: cluster collections cannot be unloaded.
 
 **Examples**
 
@@ -281,7 +287,6 @@ until all query have finished.
     ~ db._drop("example");
     @END_EXAMPLE_ARANGOSH_OUTPUT
     @endDocuBlock CollectionUnload
-
 
 
 ### Rename
@@ -318,7 +323,6 @@ database.
     @endDocuBlock collectionRename
 
 
-
 ### Rotate
 <!-- arangod/V8Server/v8-collection.cpp -->
 
@@ -331,6 +335,7 @@ current journal of the collection a read-only datafile so it may become a
 candidate for garbage collection. If there is currently no journal available
 for the collection, the operation will fail with an error.
 
-**Note**: this method is not available in a cluster.
+**Note**: this method is specific for the MMFiles storage engine, and there
+it is not available in a cluster.
 
 

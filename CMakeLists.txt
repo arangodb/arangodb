@@ -408,7 +408,7 @@ endif ()
 include_directories(${PROJECT_SOURCE_DIR}/3rdParty/linenoise-ng/include)
 include_directories(${PROJECT_SOURCE_DIR}/3rdParty/linenoise-ng/src)
 include_directories(${PROJECT_SOURCE_DIR}/3rdParty/velocypack/include)
-include_directories(${PROJECT_SOURCE_DIR}/3rdParty/rocksdb/v5.1.4/include)
+include_directories(${PROJECT_SOURCE_DIR}/3rdParty/rocksdb/v5.6.X/include)
 
 include_directories(${PROJECT_BINARY_DIR})
 include_directories(${PROJECT_BINARY_DIR}/lib)
@@ -582,7 +582,7 @@ if (USE_JEMALLOC)
   include_directories("${JEMALLOC_HOME}/include")
   link_directories("${JEMALLOC_HOME}/lib")
 
-  set(SYS_LIBS ${SYS_LIBS} jemalloc.a)
+  set(SYS_LIBS ${SYS_LIBS} ${JEMALLOC_LIB})
 
   if (LINUX OR DARWIN)
     add_definitions("-DARANGODB_MMAP_JEMALLOC=1")
@@ -725,23 +725,6 @@ if(ARANGODB_DEBUG_CMAKE)
   message( STATUS "DirDefs: ${DirDefs}" )
 endif()
 
-# ------------------------------------------------------------------------------
-# RocksDB
-# ------------------------------------------------------------------------------
-
-add_subdirectory(3rdParty/rocksdb)
- 
-add_definitions(-DARANGODB_ROCKSDB_VERSION=\"${ROCKSDB_VERSION}\")
-include_directories(${ROCKSDB_INCLUDE_DIR})
- 
-set(ROCKSDB_LIBS rocksdblib;snappystatic)
-
-add_dependencies(rocksdblib snappystatic)
-
-if (USE_JEMALLOC)
-  add_dependencies(rocksdblib jemalloc)
-endif ()
-
 ################################################################################
 ## 3RD PARTY
 ################################################################################
@@ -776,6 +759,23 @@ add_subdirectory(3rdParty)
 
 add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/3rdParty/boost)
 add_definitions("-DARANGODB_BOOST_VERSION=\"${BOOST_VERSION}\"")
+
+# ------------------------------------------------------------------------------
+# RocksDB
+# ------------------------------------------------------------------------------
+
+add_subdirectory(3rdParty/rocksdb)
+
+add_definitions(-DARANGODB_ROCKSDB_VERSION=\"${ROCKSDB_VERSION}\")
+include_directories(${ROCKSDB_INCLUDE_DIR})
+
+set(ROCKSDB_LIBS rocksdb;snappystatic)
+
+add_dependencies(rocksdb snappystatic)
+
+if (USE_JEMALLOC)
+  add_dependencies(rocksdb jemalloc)
+endif ()
 
 ################################################################################
 ## VELOCYPACK

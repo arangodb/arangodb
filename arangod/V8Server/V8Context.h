@@ -110,10 +110,14 @@ class GlobalContextMethods {
 
 class V8Context {
  public:
-  explicit V8Context(size_t id);
+  V8Context(size_t id, v8::Isolate* isolate);
 
   bool isDefault() const { return _id == 0; }
+  bool isUsed() const { return _locker != nullptr; }
   double age() const;
+  void lockAndEnter();
+  void unlockAndExit();
+  bool hasGlobalMethodsQueued();
 
   size_t const _id;
 
@@ -133,6 +137,16 @@ class V8Context {
   void handleGlobalContextMethods();
   void handleCancelationCleanup();
 };
+
+class V8ContextGuard {
+ public:
+  explicit V8ContextGuard(V8Context* context);
+  ~V8ContextGuard();
+
+ private:
+  V8Context* _context;
+};
+
 }
 
 #endif

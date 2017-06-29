@@ -326,10 +326,10 @@ struct TRI_vocbase_t;
   auto WHICH = v8::Local<TYPE>::New(isolate, v8g->WHICH)
 
 /// @brief globals stored in the isolate
-typedef struct TRI_v8_global_s {
-  explicit TRI_v8_global_s(v8::Isolate*);
+struct TRI_v8_global_t {
+  explicit TRI_v8_global_t(v8::Isolate*);
 
-  ~TRI_v8_global_s();
+  ~TRI_v8_global_t() {}
 
   /// @brief whether or not the context has active externals
   inline bool hasActiveExternals() const { return _activeExternals > 0; }
@@ -477,6 +477,9 @@ typedef struct TRI_v8_global_s {
 
   /// @brief "isRestore" key name
   v8::Persistent<v8::String> IsRestoreKey;
+
+  /// @brief "isSynchronousReplication" key name
+  v8::Persistent<v8::String> IsSynchronousReplicationKey;
 
   /// @brief "isSystem" key name
   v8::Persistent<v8::String> IsSystemKey;
@@ -631,8 +634,7 @@ typedef struct TRI_v8_global_s {
 
   /// @brief whether or not useDatabase() is allowed
   bool _allowUseDatabase;
-
-} TRI_v8_global_t;
+};
 
 /// @brief creates a global context
 TRI_v8_global_t* TRI_CreateV8Globals(v8::Isolate*);

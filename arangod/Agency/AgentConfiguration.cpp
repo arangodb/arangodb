@@ -43,13 +43,14 @@ config_t::config_t()
       _cmdLineTimings(false),
       _version(0),
       _startup("origin"),
+      _maxAppendSize(250),
       _lock()
       {}
 
 config_t::config_t(size_t as, size_t ps, double minp, double maxp,
                    std::string const& e, std::vector<std::string> const& g,
                    bool s, bool w, double f, uint64_t c, uint64_t k, double p,
-                   bool t)
+                   bool t, size_t a)
     : _agencySize(as),
       _poolSize(ps),
       _minPing(minp),
@@ -64,8 +65,10 @@ config_t::config_t(size_t as, size_t ps, double minp, double maxp,
       _supervisionGracePeriod(p),
       _cmdLineTimings(t),
       _version(0),
-      _startup("origin"),     
-      _lock() {}
+      _startup("origin"),
+      _maxAppendSize(a),
+      _lock()
+      {}
 
 config_t::config_t(config_t const& other) { *this = other; }
 
@@ -87,7 +90,8 @@ config_t::config_t(config_t&& other)
       _supervisionGracePeriod(std::move(other._supervisionGracePeriod)),
       _cmdLineTimings(std::move(other._cmdLineTimings)),
       _version(std::move(other._version)),
-      _startup(std::move(other._startup)){}
+      _startup(std::move(other._startup)),
+      _maxAppendSize(std::move(other._maxAppendSize)){}
 
 config_t& config_t::operator=(config_t const& other) {
   // must hold the lock of other to copy _pool, _minPing, _maxPing etc.
@@ -111,6 +115,7 @@ config_t& config_t::operator=(config_t const& other) {
   _cmdLineTimings = other._cmdLineTimings;
   _version = other._version;
   _startup = other._startup;
+  _maxAppendSize = other._maxAppendSize;
   return *this;
 }
 
@@ -133,6 +138,7 @@ config_t& config_t::operator=(config_t&& other) {
   _cmdLineTimings = std::move(other._cmdLineTimings);
   _version = std::move(other._version);
   _startup = std::move(other._startup);
+  _maxAppendSize = std::move(other._maxAppendSize);
   return *this;
 }
 
@@ -286,6 +292,11 @@ std::string config_t::nextAgentInLine() const {
   }
   
   return ""; // No one left
+}
+
+size_t config_t::maxAppendSize() const {
+  READ_LOCKER(readLocker, _lock);
+  return _maxAppendSize;
 }
 
 size_t config_t::compactionStepSize() const {

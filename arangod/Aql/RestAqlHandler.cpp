@@ -27,6 +27,7 @@
 #include "Aql/ExecutionBlock.h"
 #include "Aql/ExecutionEngine.h"
 #include "Aql/Query.h"
+#include "Basics/Exceptions.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/StringUtils.h"
 #include "Basics/VPackStringBufferAdapter.h"
@@ -799,6 +800,9 @@ void RestAqlHandler::handleUseQuery(std::string const& operation, Query* query,
         int res;
         try {
           res = query->engine()->initialize();
+        } catch (arangodb::basics::Exception const& ex) {
+          generateError(rest::ResponseCode::SERVER_ERROR, ex.code(), "initialize lead to an exception: " + ex.message());
+          return;
         } catch (...) {
           generateError(rest::ResponseCode::SERVER_ERROR,
                         TRI_ERROR_HTTP_SERVER_ERROR,
@@ -820,6 +824,9 @@ void RestAqlHandler::handleUseQuery(std::string const& operation, Query* query,
             items.reset(new AqlItemBlock(query->resourceMonitor(), querySlice.get("items")));
             res = query->engine()->initializeCursor(items.get(), pos);
           }
+        } catch (arangodb::basics::Exception const& ex) {
+          generateError(rest::ResponseCode::SERVER_ERROR, ex.code(), "initializeCursor lead to an exception: " + ex.message());
+          return;
         } catch (...) {
           generateError(rest::ResponseCode::SERVER_ERROR,
                         TRI_ERROR_HTTP_SERVER_ERROR,
@@ -843,9 +850,15 @@ void RestAqlHandler::handleUseQuery(std::string const& operation, Query* query,
           // return warnings if present
           query->addWarningsToVelocyPackObject(answerBuilder);
 
+          // return the query to the registry
+          _queryRegistry->close(_vocbase, _qId);
+
           // delete the query from the registry
           _queryRegistry->destroy(_vocbase, _qId, errorCode);
           _qId = 0;
+        } catch (arangodb::basics::Exception const& ex) {
+          generateError(rest::ResponseCode::SERVER_ERROR, ex.code(), "shutdown lead to an exception: " + ex.message());
+          return;
         } catch (...) {
           generateError(rest::ResponseCode::SERVER_ERROR,
                         TRI_ERROR_HTTP_SERVER_ERROR,

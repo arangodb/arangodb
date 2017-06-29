@@ -65,6 +65,7 @@ Supervision::~Supervision() {
 }
 
 static std::string const syncPrefix = "/Sync/ServerStates/";
+static std::string const supervisionPrefix = "/Supervision";
 static std::string const healthPrefix = "/Supervision/Health/";
 static std::string const planDBServersPrefix = "/Plan/DBServers";
 static std::string const planCoordinatorsPrefix = "/Plan/Coordinators";
@@ -485,6 +486,9 @@ void Supervision::run() {
   // First wait until somebody has initialized the ArangoDB data, before
   // that running the supervision does not make sense and will indeed
   // lead to horrible errors:
+
+  std::string const supervisionNode = _agencyPrefix + supervisionPrefix;
+
   while (!this->isStopping()) {
     {
       CONDITION_LOCKER(guard, _cv);
@@ -492,9 +496,9 @@ void Supervision::run() {
     }
     
     MUTEX_LOCKER(locker, _lock);
-    if (_agent->readDB().has(_agencyPrefix)) {
+    if (_agent->readDB().has(supervisionNode)) {
       try {
-        _snapshot = _agent->readDB().get(_agencyPrefix);
+        _snapshot = _agent->readDB().get(supervisionNode);
         if (_snapshot.children().size() > 0) {
           break;
         }

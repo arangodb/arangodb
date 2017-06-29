@@ -28,6 +28,7 @@
 #include "Basics/hashes.h"
 #include "Basics/tri-strings.h"
 #include "Indexes/IndexLookupContext.h"
+#include "Indexes/IndexResult.h"
 #include "Indexes/SimpleAttributeEqualityMatcher.h"
 #include "MMFiles/MMFilesCollection.h"
 #include "MMFiles/MMFilesIndexElement.h"
@@ -239,8 +240,8 @@ void MMFilesPrimaryIndex::toVelocyPackFigures(VPackBuilder& builder) const {
   _primaryIndex->appendToVelocyPack(builder);
 }
 
-int MMFilesPrimaryIndex::insert(transaction::Methods*, TRI_voc_rid_t,
-                                VPackSlice const&, bool) {
+Result MMFilesPrimaryIndex::insert(transaction::Methods*, TRI_voc_rid_t,
+                                   VPackSlice const&, bool) {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   LOG_TOPIC(WARN, arangodb::Logger::FIXME)
       << "insert() called for primary index";
@@ -249,8 +250,8 @@ int MMFilesPrimaryIndex::insert(transaction::Methods*, TRI_voc_rid_t,
                                  "insert() called for primary index");
 }
 
-int MMFilesPrimaryIndex::remove(transaction::Methods*, TRI_voc_rid_t,
-                                VPackSlice const&, bool) {
+Result MMFilesPrimaryIndex::remove(transaction::Methods*, TRI_voc_rid_t,
+                                   VPackSlice const&, bool) {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   LOG_TOPIC(WARN, arangodb::Logger::FIXME)
       << "remove() called for primary index";
@@ -358,30 +359,30 @@ MMFilesSimpleIndexElement MMFilesPrimaryIndex::lookupSequentialReverse(
 
 /// @brief adds a key/element to the index
 /// returns a status code, and *found will contain a found element (if any)
-int MMFilesPrimaryIndex::insertKey(transaction::Methods* trx,
-                                   TRI_voc_rid_t revisionId,
-                                   VPackSlice const& doc) {
+Result MMFilesPrimaryIndex::insertKey(transaction::Methods* trx,
+                                      TRI_voc_rid_t revisionId,
+                                      VPackSlice const& doc) {
   ManagedDocumentResult result;
   IndexLookupContext context(trx, _collection, &result, 1);
   MMFilesSimpleIndexElement element(buildKeyElement(revisionId, doc));
 
-  return _primaryIndex->insert(&context, element);
+  return IndexResult(_primaryIndex->insert(&context, element), this);
 }
 
-int MMFilesPrimaryIndex::insertKey(transaction::Methods* trx,
-                                   TRI_voc_rid_t revisionId,
-                                   VPackSlice const& doc,
-                                   ManagedDocumentResult& mmdr) {
+Result MMFilesPrimaryIndex::insertKey(transaction::Methods* trx,
+                                      TRI_voc_rid_t revisionId,
+                                      VPackSlice const& doc,
+                                      ManagedDocumentResult& mmdr) {
   IndexLookupContext context(trx, _collection, &mmdr, 1);
   MMFilesSimpleIndexElement element(buildKeyElement(revisionId, doc));
 
-  return _primaryIndex->insert(&context, element);
+  return IndexResult(_primaryIndex->insert(&context, element), this);
 }
 
 /// @brief removes an key/element from the index
-int MMFilesPrimaryIndex::removeKey(transaction::Methods* trx,
-                                   TRI_voc_rid_t revisionId,
-                                   VPackSlice const& doc) {
+Result MMFilesPrimaryIndex::removeKey(transaction::Methods* trx,
+                                      TRI_voc_rid_t revisionId,
+                                      VPackSlice const& doc) {
   ManagedDocumentResult result;
   IndexLookupContext context(trx, _collection, &result, 1);
 
@@ -390,16 +391,16 @@ int MMFilesPrimaryIndex::removeKey(transaction::Methods* trx,
       _primaryIndex->removeByKey(&context, keySlice.begin());
 
   if (!found) {
-    return TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND;
+    return IndexResult(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND, this);
   }
 
-  return TRI_ERROR_NO_ERROR;
+  return Result(TRI_ERROR_NO_ERROR);
 }
 
-int MMFilesPrimaryIndex::removeKey(transaction::Methods* trx,
-                                   TRI_voc_rid_t revisionId,
-                                   VPackSlice const& doc,
-                                   ManagedDocumentResult& mmdr) {
+Result MMFilesPrimaryIndex::removeKey(transaction::Methods* trx,
+                                      TRI_voc_rid_t revisionId,
+                                      VPackSlice const& doc,
+                                      ManagedDocumentResult& mmdr) {
   IndexLookupContext context(trx, _collection, &mmdr, 1);
 
   VPackSlice keySlice(transaction::helpers::extractKeyFromDocument(doc));
@@ -407,10 +408,10 @@ int MMFilesPrimaryIndex::removeKey(transaction::Methods* trx,
       _primaryIndex->removeByKey(&context, keySlice.begin());
 
   if (!found) {
-    return TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND;
+    return IndexResult(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND, this);
   }
 
-  return TRI_ERROR_NO_ERROR;
+  return Result(TRI_ERROR_NO_ERROR);
 }
 
 /// @brief resizes the index

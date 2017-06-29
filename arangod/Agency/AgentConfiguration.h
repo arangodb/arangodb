@@ -75,6 +75,7 @@ struct config_t {
   bool _cmdLineTimings;
   size_t _version;
   std::string _startup;
+  size_t _maxAppendSize;
 
   mutable arangodb::basics::ReadWriteLock _lock; // guard member variables
 
@@ -84,7 +85,7 @@ struct config_t {
   /// @brief ctor
   config_t(size_t as, size_t ps, double minp, double maxp, std::string const& e,
            std::vector<std::string> const& g, bool s, bool w, double f,
-           uint64_t c, uint64_t k, double p, bool t);
+           uint64_t c, uint64_t k, double p, bool t, size_t a);
 
   /// @brief copy constructor
   config_t(config_t const&);
@@ -121,6 +122,9 @@ struct config_t {
 
   /// @brief active agency size
   size_t size() const;
+
+  /// @brief maximum appendEntries #logs
+  size_t maxAppendSize() const;
 
   /// @brief active empty?
   bool activeEmpty() const;

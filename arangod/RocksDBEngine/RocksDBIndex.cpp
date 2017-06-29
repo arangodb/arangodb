@@ -58,7 +58,7 @@ RocksDBIndex::RocksDBIndex(
       _useCache(useCache) {
   if (_useCache) {
     createCache();
-  } 
+  }
 }
 
 RocksDBIndex::RocksDBIndex(TRI_idx_iid_t id, LogicalCollection* collection,
@@ -108,6 +108,14 @@ void RocksDBIndex::toVelocyPackFigures(VPackBuilder& builder) const {
   } else {
     builder.add("cacheSize", VPackValue(0));
   }
+}
+
+int RocksDBIndex::load() {
+  if (_useCache) {
+    createCache();
+    TRI_ASSERT(_cachePresent);
+  }
+  return TRI_ERROR_NO_ERROR;
 }
 
 int RocksDBIndex::unload() {
@@ -206,8 +214,8 @@ void RocksDBIndex::truncate(transaction::Methods* trx) {
 
   while (iter->Valid() && cmp->Compare(iter->key(), end) < 0) {
     TRI_ASSERT(_objectId == RocksDBKey::objectId(iter->key()));
-    
-    Result r = mthds->Delete(_cf, iter->key());
+
+    Result r = mthds->Delete(_cf, RocksDBKey(iter->key()));
     if (!r.ok()) {
       THROW_ARANGO_EXCEPTION(r);
     }
@@ -233,14 +241,13 @@ void RocksDBIndex::blackListKey(char const* data, std::size_t len){
   if (useCache()) {
     TRI_ASSERT(_cache != nullptr);
     bool blacklisted = false;
-    uint64_t attempts = 0;
     while (!blacklisted) {
-      blacklisted = _cache->blacklist(data, (uint32_t)len);
-      if (attempts++ % 10 == 0) {
-        if (_cache->isShutdown()) {
-          disableCache();
-          break;
-        }
+      auto status = _cache->blacklist(data, static_cast<uint32_t>(len));
+      if (status.ok()) {
+        blacklisted = true;
+      } else if (status.errorNumber() == TRI_ERROR_SHUTTING_DOWN) {
+        disableCache();
+        break;
       }
     }
   }

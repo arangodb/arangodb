@@ -29,6 +29,11 @@
 #include "RocksDBEngine/RocksDBTransactionState.h"
 
 using namespace arangodb;
+  
+namespace {
+constexpr bool AllIteratorFillBlockCache = true;
+constexpr bool AnyIteratorFillBlockCache = false;
+}
 
 // ================ All Iterator ==================
 
@@ -49,7 +54,7 @@ RocksDBAllIndexIterator::RocksDBAllIndexIterator(
   rocksdb::ReadOptions options = mthds->readOptions();
   TRI_ASSERT(options.snapshot != nullptr);
   TRI_ASSERT(options.prefix_same_as_start);
-  options.fill_cache = true;
+  options.fill_cache = AllIteratorFillBlockCache;
   options.verify_checksums = false;  // TODO evaluate
   // options.readahead_size = 4 * 1024 * 1024;
   _iterator = mthds->NewIterator(options, cf);
@@ -161,12 +166,12 @@ RocksDBAnyIndexIterator::RocksDBAnyIndexIterator(
           static_cast<RocksDBCollection*>(col->getPhysical())->objectId())),
       _total(0),
       _returned(0) {
-  // intentional copy of the read options
   RocksDBMethods* mthds = rocksutils::toRocksMethods(trx);
+  // intentional copy of the read options
   auto options = mthds->readOptions();
   TRI_ASSERT(options.snapshot != nullptr);
   TRI_ASSERT(options.prefix_same_as_start);
-  options.fill_cache = false;
+  options.fill_cache = AnyIteratorFillBlockCache;
   options.verify_checksums = false;  // TODO evaluate
   _iterator = mthds->NewIterator(options, RocksDBColumnFamily::documents());
 

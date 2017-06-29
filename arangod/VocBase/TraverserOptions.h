@@ -106,12 +106,14 @@ struct TraverserOptions : public graph::BaseOptions {
   void buildEngineInfo(arangodb::velocypack::Builder&) const;
 
   /// @brief Add a lookup info for specific depth
-  void addDepthLookupInfo(aql::Ast* ast, std::string const& collectionName,
+  void addDepthLookupInfo(aql::ExecutionPlan* plan, std::string const& collectionName,
                           std::string const& attributeName,
                           aql::AstNode* condition, uint64_t depth);
 
   bool vertexHasFilter(uint64_t) const;
 
+  bool hasEdgeFilter(int64_t, size_t) const;
+  
   bool evaluateEdgeExpression(arangodb::velocypack::Slice, StringRef vertexId,
                               uint64_t, size_t) const;
 

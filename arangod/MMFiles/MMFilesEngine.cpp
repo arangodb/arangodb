@@ -22,6 +22,7 @@
 /// @author Jan Christoph Uhde
 ////////////////////////////////////////////////////////////////////////////////
 
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/FileUtils.h"
 #include "Basics/MutexLocker.h"
 #include "Basics/ReadLocker.h"
@@ -695,6 +696,10 @@ int MMFilesEngine::getViews(TRI_vocbase_t* vocbase,
 }
 
 void MMFilesEngine::waitForSync(TRI_voc_tick_t tick) {
+  if (application_features::ApplicationServer::isStopping()) {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_SHUTTING_DOWN);
+  }
+
   MMFilesLogfileManager::instance()->slots()->waitForTick(tick);
 }
 
@@ -3000,9 +3005,10 @@ int MMFilesEngine::openCollection(TRI_vocbase_t* vocbase,
   std::sort(compactors.begin(), compactors.end(), DatafileComparator());
 
   // add the datafiles and journals
-  physical->_datafiles = datafiles;
-  physical->_journals = journals;
-  physical->_compactors = compactors;
+  WRITE_LOCKER(writeLocker, physical->_filesLock);
+  physical->_datafiles = std::move(datafiles);
+  physical->_journals = std::move(journals);
+  physical->_compactors = std::move(compactors);
 
   return TRI_ERROR_NO_ERROR;
 }

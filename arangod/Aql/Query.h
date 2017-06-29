@@ -55,8 +55,6 @@ namespace velocypack {
 class Builder;
 }
 
-class QueryRegistryFeature;
-
 namespace aql {
 
 struct AstNode;
@@ -115,10 +113,13 @@ class Query {
   ResourceMonitor* resourceMonitor() { return &_resourceMonitor; }
 
   /// @brief return the start timestamp of the query
-  double startTime () const { return _startTime; }
+  double startTime() const { return _startTime; }
   
   /// @brief return the current runtime of the query
-  double runTime () const { return TRI_microtime() - _startTime; }
+  double runTime(double now) const { return now - _startTime; }
+  
+  /// @brief return the current runtime of the query
+  double runTime() const { return runTime(TRI_microtime()); }
 
   /// @brief whether or not the query is killed
   inline bool killed() const { return _killed; }
@@ -341,8 +342,6 @@ class Query {
  
   /// @brief query start time
   double _startTime;
-
-  QueryRegistryFeature const* _queryRegistry;
 
   /// @brief the query part
   QueryPart const _part;

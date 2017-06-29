@@ -58,21 +58,35 @@ bool NeighborsEnumerator::next() {
         // We are finished.
         return false;
       }
+      TRI_ASSERT(!_opts->vertexHasFilter(_searchDepth));
 
       _lastDepth.swap(_currentDepth);
       _currentDepth.clear();
-      StringRef v;
       for (auto const& nextVertex : _lastDepth) {
-        auto callback = [&](std::unique_ptr<EdgeDocumentToken>&&, VPackSlice e, size_t cursorId) {
+        auto callback = [&](std::unique_ptr<EdgeDocumentToken>&&,
+                            VPackSlice other, size_t cursorId) {
           // Counting should be done in readAll
-          if (_traverser->getSingleVertex(e, nextVertex, _searchDepth, v)) {
-            StringRef otherId = _traverser->traverserCache()->persistString(v);
-            if (_allFound.find(otherId) == _allFound.end()) {
-              _currentDepth.emplace(otherId);
-              _allFound.emplace(otherId);
+          StringRef v;
+          if (other.isString()) {
+            v = _opts->cache()->persistString(StringRef(other));
+          } else {
+            TRI_ASSERT(other.isObject());
+            VPackSlice tmp = transaction::helpers::extractFromFromDocument(other);
+            if (tmp.compareString(nextVertex.data(), nextVertex.length()) == 0) {
+              tmp = transaction::helpers::extractToFromDocument(other);
             }
+            TRI_ASSERT(tmp.isString());
+            v = _opts->cache()->persistString(StringRef(tmp));
+          }
+
+          if (_allFound.find(v) == _allFound.end()) {
+            _currentDepth.emplace(v);
+            _allFound.emplace(v);
+          } else {
+            _opts->cache()->increaseFilterCounter();
           }
         };
+
         std::unique_ptr<arangodb::graph::EdgeCursor> cursor(
             _opts->nextCursor(_traverser->mmdr(), nextVertex, _searchDepth));
         cursor->readAll(callback);

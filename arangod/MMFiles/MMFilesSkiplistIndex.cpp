@@ -25,10 +25,12 @@
 #include "Aql/AstNode.h"
 #include "Aql/SortCondition.h"
 #include "Basics/AttributeNameParser.h"
+#include "Basics/Exceptions.h"
 #include "Basics/FixedSizeAllocator.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Indexes/IndexLookupContext.h"
+#include "Indexes/IndexResult.h"
 #include "MMFiles/MMFilesToken.h"
 #include "Transaction/Helpers.h"
 #include "Transaction/Methods.h"
@@ -712,16 +714,20 @@ void MMFilesSkiplistIndex::toVelocyPackFigures(VPackBuilder& builder) const {
 }
 
 /// @brief inserts a document into a skiplist index
-int MMFilesSkiplistIndex::insert(transaction::Methods* trx,
-                                 TRI_voc_rid_t revisionId,
-                                 VPackSlice const& doc, bool isRollback) {
+Result MMFilesSkiplistIndex::insert(transaction::Methods* trx,
+                                    TRI_voc_rid_t revisionId,
+                                    VPackSlice const& doc, bool isRollback) {
   std::vector<MMFilesSkiplistIndexElement*> elements;
 
   int res;
   try {
     res = fillElement<MMFilesSkiplistIndexElement>(elements, revisionId, doc);
-  } catch (...) {
+  } catch (basics::Exception const& ex) {
+    res = ex.code();
+  } catch (std::bad_alloc const&) {
     res = TRI_ERROR_OUT_OF_MEMORY;
+  } catch (...) {
+    res = TRI_ERROR_INTERNAL;
   }
 
   if (res != TRI_ERROR_NO_ERROR) {
@@ -729,7 +735,7 @@ int MMFilesSkiplistIndex::insert(transaction::Methods* trx,
       // free all elements to prevent leak
       _allocator->deallocate(element);
     }
-    return res;
+    return IndexResult(res, this);
   }
 
   ManagedDocumentResult result;
@@ -760,20 +766,24 @@ int MMFilesSkiplistIndex::insert(transaction::Methods* trx,
     }
   }
 
-  return res;
+  return IndexResult(res, this);
 }
 
 /// @brief removes a document from a skiplist index
-int MMFilesSkiplistIndex::remove(transaction::Methods* trx,
-                                 TRI_voc_rid_t revisionId,
-                                 VPackSlice const& doc, bool isRollback) {
+Result MMFilesSkiplistIndex::remove(transaction::Methods* trx,
+                                    TRI_voc_rid_t revisionId,
+                                    VPackSlice const& doc, bool isRollback) {
   std::vector<MMFilesSkiplistIndexElement*> elements;
 
   int res;
   try {
     res = fillElement<MMFilesSkiplistIndexElement>(elements, revisionId, doc);
-  } catch (...) {
+  } catch (basics::Exception const& ex) {
+    res = ex.code();
+  } catch (std::bad_alloc const&) {
     res = TRI_ERROR_OUT_OF_MEMORY;
+  } catch (...) {
+    res = TRI_ERROR_INTERNAL;
   }
 
   if (res != TRI_ERROR_NO_ERROR) {
@@ -781,7 +791,7 @@ int MMFilesSkiplistIndex::remove(transaction::Methods* trx,
       // free all elements to prevent leak
       _allocator->deallocate(element);
     }
-    return res;
+    return IndexResult(res, this);
   }
 
   ManagedDocumentResult result;
@@ -803,7 +813,7 @@ int MMFilesSkiplistIndex::remove(transaction::Methods* trx,
     _allocator->deallocate(elements[i]);
   }
 
-  return res;
+  return IndexResult(res, this);
 }
 
 int MMFilesSkiplistIndex::unload() {

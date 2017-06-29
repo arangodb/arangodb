@@ -131,7 +131,7 @@ std::atomic_uint_fast64_t NEXT_TICKET_ID(static_cast<uint64_t>(0));
 std::vector<char> urlDotSeparators{'/', '#', '?'};
 }
 
-Communicator::Communicator() : _curl(nullptr), _mc(CURLM_OK) {
+Communicator::Communicator() : _curl(nullptr), _mc(CURLM_OK), _enabled(true) {
   curl_global_init(CURL_GLOBAL_ALL);
   _curl = curl_multi_init();
 
@@ -175,6 +175,7 @@ Ticket Communicator::addRequest(Destination destination,
         NewRequest{destination, std::move(request), callbacks, options, id});
   }
 
+  LOG_TOPIC(TRACE, Logger::COMMUNICATION) << "request to " << destination.url() << " has been put onto queue";
   // mop: just send \0 terminated empty string to wake up worker thread
 #ifdef _WIN32
   ssize_t numBytes = send(_socks[1], "", 1, 0);
@@ -251,6 +252,12 @@ void Communicator::wait() {
 // -----------------------------------------------------------------------------
 
 void Communicator::createRequestInProgress(NewRequest const& newRequest) {
+  if (!_enabled) {
+    LOG_TOPIC(DEBUG, arangodb::Logger::COMMUNICATION) << "Request to  '" << newRequest._destination.url() << "' was not even started because communication is disabled";
+    newRequest._callbacks._onError(TRI_COMMUNICATOR_DISABLED, {nullptr});
+    return;
+  }
+
   auto request = (HttpRequest*)newRequest._request.get();
   TRI_ASSERT(request != nullptr);
 
@@ -296,6 +303,7 @@ void Communicator::createRequestInProgress(NewRequest const& newRequest) {
   curl_easy_setopt(handle, CURLOPT_HEADER, 0L);
   curl_easy_setopt(handle, CURLOPT_URL, url.c_str());
   curl_easy_setopt(handle, CURLOPT_VERBOSE, 1L);
+  curl_easy_setopt(handle, CURLOPT_PROXY, "");
   curl_easy_setopt(handle, CURLOPT_WRITEFUNCTION, Communicator::readBody);
   curl_easy_setopt(handle, CURLOPT_WRITEDATA, handleInProgress->_rip.get());
   curl_easy_setopt(handle, CURLOPT_HEADERFUNCTION, Communicator::readHeaders);

@@ -30,6 +30,7 @@
 #include "Basics/LocalTaskQueue.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Indexes/IndexLookupContext.h"
+#include "Indexes/IndexResult.h"
 #include "Indexes/SimpleAttributeEqualityMatcher.h"
 #include "MMFiles/MMFilesCollection.h"
 #include "MMFiles/MMFilesToken.h"
@@ -598,18 +599,18 @@ bool MMFilesHashIndex::matchesDefinition(VPackSlice const& info) const {
   return true;
 }
 
-int MMFilesHashIndex::insert(transaction::Methods* trx,
+Result MMFilesHashIndex::insert(transaction::Methods* trx,
                              TRI_voc_rid_t revisionId, VPackSlice const& doc,
                              bool isRollback) {
   if (_unique) {
-    return insertUnique(trx, revisionId, doc, isRollback);
+    return IndexResult(insertUnique(trx, revisionId, doc, isRollback), this);
   }
 
-  return insertMulti(trx, revisionId, doc, isRollback);
+  return IndexResult(insertMulti(trx, revisionId, doc, isRollback), this);
 }
 
 /// @brief removes an entry from the hash array part of the hash index
-int MMFilesHashIndex::remove(transaction::Methods* trx,
+Result MMFilesHashIndex::remove(transaction::Methods* trx,
                              TRI_voc_rid_t revisionId, VPackSlice const& doc,
                              bool isRollback) {
   std::vector<MMFilesHashIndexElement*> elements;
@@ -619,7 +620,7 @@ int MMFilesHashIndex::remove(transaction::Methods* trx,
     for (auto& hashElement : elements) {
       _allocator->deallocate(hashElement);
     }
-    return res;
+    return IndexResult(res, this);
   }
 
   for (auto& hashElement : elements) {
@@ -638,7 +639,7 @@ int MMFilesHashIndex::remove(transaction::Methods* trx,
     _allocator->deallocate(hashElement);
   }
 
-  return res;
+  return IndexResult(res, this);
 }
 
 void MMFilesHashIndex::batchInsert(
@@ -709,8 +710,10 @@ int MMFilesHashIndex::lookup(
   documents.clear();
   try {
     _multiArray->_hashArray->lookupByKey(&context, &key, documents);
-  } catch (...) {
+  } catch (std::bad_alloc const&) {
     return TRI_ERROR_OUT_OF_MEMORY;
+  } catch (...) {
+    return TRI_ERROR_INTERNAL;
   }
   return TRI_ERROR_NO_ERROR;
 }
@@ -854,8 +857,10 @@ int MMFilesHashIndex::insertMulti(transaction::Methods* trx,
       work(hashElement, isRollback);
     } catch (arangodb::basics::Exception const& ex) {
       res = ex.code();
-    } catch (...) {
+    } catch (std::bad_alloc const&) {
       res = TRI_ERROR_OUT_OF_MEMORY;
+    } catch (...) {
+      res = TRI_ERROR_INTERNAL;
     }
 
     if (res != TRI_ERROR_NO_ERROR) {

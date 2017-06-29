@@ -61,6 +61,12 @@ struct OperationOptions {
   // for insert operations: use _key value even when this is normally prohibited for the end user
   // this option is there to ensure _key values once set can be restored by replicated and arangorestore
   bool isRestore;
+
+  // for synchronous replication operations, we have to mark them such that
+  // we can deny them if we are a (new) leader, and that we can deny other
+  // operation if we are merely a follower. Finally, we must deny replications
+  // from the wrong leader.
+  std::string isSynchronousReplicationFrom;
 };
 
 }

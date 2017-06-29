@@ -52,6 +52,7 @@ ServerFeature::ServerFeature(application_features::ApplicationServer* server,
       _operationMode(OperationMode::MODE_SERVER) {
   setOptional(true);
   requiresElevatedPrivileges(false);
+  startsAfter("Authentication");
   startsAfter("Cluster");
   startsAfter("Database");
   startsAfter("MMFilesWalRecovery");

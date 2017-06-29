@@ -61,6 +61,7 @@ class StaticStrings {
   static std::string const ReturnOldString;
   static std::string const SilentString;
   static std::string const WaitForSyncString;
+  static std::string const IsSynchronousReplicationString;
  
   // database and collection names 
   static std::string const SystemDatabase;
@@ -82,6 +83,7 @@ class StaticStrings {
   static std::string const BatchContentType;
   static std::string const CacheControl;
   static std::string const Close;
+  static std::string const ClusterCommSource;
   static std::string const Code;
   static std::string const Connection;
   static std::string const ContentEncoding;

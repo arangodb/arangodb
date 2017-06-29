@@ -36,6 +36,10 @@
 
 #include <iosfwd>
 
+namespace rocksdb {
+class ColumnFamilyHandle;
+}
+
 namespace arangodb {
 
 class RocksDBKeyBounds {
@@ -131,6 +135,11 @@ class RocksDBKeyBounds {
   static RocksDBKeyBounds IndexEstimateValues();
 
   //////////////////////////////////////////////////////////////////////////////
+  /// @brief Bounds for all key generators
+  //////////////////////////////////////////////////////////////////////////////
+  static RocksDBKeyBounds KeyGenerators();
+
+  //////////////////////////////////////////////////////////////////////////////
   /// @brief Bounds for all entries of a fulltext index, matching prefixes
   //////////////////////////////////////////////////////////////////////////////
   static RocksDBKeyBounds FulltextIndexPrefix(uint64_t,
@@ -147,7 +156,7 @@ class RocksDBKeyBounds {
   RocksDBKeyBounds(RocksDBKeyBounds&& other);
   RocksDBKeyBounds& operator=(RocksDBKeyBounds const& other);
   RocksDBKeyBounds& operator=(RocksDBKeyBounds&& other);
-  
+
   RocksDBEntryType type() const { return _type; }
 
   //////////////////////////////////////////////////////////////////////////////
@@ -169,6 +178,17 @@ class RocksDBKeyBounds {
   rocksdb::Slice end() const {
     return _internals.end();
   }
+
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief Returns the column family from this Bound
+  ///
+  /// All bounds iterators need to iterate over the correct column families
+  /// with this helper function it is made sure that correct column family
+  /// for bound is used.
+  //////////////////////////////////////////////////////////////////////////////
+
+  rocksdb::ColumnFamilyHandle* columnFamily() const;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Returns the object ID for these bounds
@@ -192,14 +212,14 @@ class RocksDBKeyBounds {
   class BoundsBuffer {
    friend class RocksDBKeyBounds;
 
-   public: 
+   public:
     BoundsBuffer() : _separatorPosition(0) {}
-    
-    BoundsBuffer(BoundsBuffer const& other) 
+
+    BoundsBuffer(BoundsBuffer const& other)
         : _buffer(other._buffer), _separatorPosition(other._separatorPosition) {
     }
 
-    BoundsBuffer(BoundsBuffer&& other) 
+    BoundsBuffer(BoundsBuffer&& other)
         : _buffer(std::move(other._buffer)), _separatorPosition(other._separatorPosition) {
       other._separatorPosition = 0;
     }
@@ -222,12 +242,12 @@ class RocksDBKeyBounds {
     }
 
     // reserve space for bounds
-    void reserve(size_t length) { 
+    void reserve(size_t length) {
       TRI_ASSERT(_separatorPosition == 0);
       TRI_ASSERT(_buffer.empty());
-      _buffer.reserve(length); 
+      _buffer.reserve(length);
     }
-   
+
     // mark the end of the start buffer
     void separate() {
       TRI_ASSERT(_separatorPosition == 0);
@@ -239,7 +259,7 @@ class RocksDBKeyBounds {
     void push_back(char c) {
       _buffer.push_back(c);
     }
-    
+
     // return the internal buffer for modification or reading
     std::string& buffer() { return _buffer; }
     std::string const& buffer() const { return _buffer; }

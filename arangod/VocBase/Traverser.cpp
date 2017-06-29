@@ -38,9 +38,13 @@ using namespace arangodb::traverser;
 using namespace arangodb::graph;
 
 bool Traverser::VertexGetter::getVertex(VPackSlice edge, std::vector<StringRef>& result) {
-  VPackSlice res = transaction::helpers::extractFromFromDocument(edge);
-  if (result.back() == StringRef(res)) {
-    res = transaction::helpers::extractToFromDocument(edge);
+  VPackSlice res = edge;
+  if (!res.isString()) {
+    res = transaction::helpers::extractFromFromDocument(edge);
+    if (result.back() == StringRef(res)) {
+      res = transaction::helpers::extractToFromDocument(edge);
+    }
+    TRI_ASSERT(res.isString());
   }
 
   if (!_traverser->vertexMatchesConditions(res, result.size())) {
@@ -52,12 +56,15 @@ bool Traverser::VertexGetter::getVertex(VPackSlice edge, std::vector<StringRef>&
 
 bool Traverser::VertexGetter::getSingleVertex(arangodb::velocypack::Slice edge, StringRef cmp,
                                               uint64_t depth, StringRef& result) {
-  VPackSlice resSlice;
-  VPackSlice from = transaction::helpers::extractFromFromDocument(edge);
-  if (from.compareString(cmp.data(), cmp.length()) != 0) {
-    resSlice = from;
-  } else {
-    resSlice = transaction::helpers::extractToFromDocument(edge);
+  VPackSlice resSlice = edge;
+  if (!resSlice.isString()) {
+    VPackSlice from = transaction::helpers::extractFromFromDocument(edge);
+    if (from.compareString(cmp.data(), cmp.length()) != 0) {
+      resSlice = from;
+    } else {
+      resSlice = transaction::helpers::extractToFromDocument(edge);
+    }
+    TRI_ASSERT(resSlice.isString());
   }
   result = _traverser->traverserCache()->persistString(StringRef(resSlice));
   return _traverser->vertexMatchesConditions(resSlice, depth);
@@ -67,12 +74,17 @@ void Traverser::VertexGetter::reset(StringRef const&) {
 }
 
 bool Traverser::UniqueVertexGetter::getVertex(VPackSlice edge, std::vector<StringRef>& result) {
-  VPackSlice toAdd = transaction::helpers::extractFromFromDocument(edge);
-  StringRef const& cmp = result.back();
-  TRI_ASSERT(toAdd.isString());
-  if (cmp == StringRef(toAdd)) {
-    toAdd = transaction::helpers::extractToFromDocument(edge);
+  VPackSlice toAdd = edge;
+  if (!toAdd.isString()) {
+    toAdd = transaction::helpers::extractFromFromDocument(edge);
+    StringRef const& cmp = result.back();
+    TRI_ASSERT(toAdd.isString());
+    if (cmp == StringRef(toAdd)) {
+      toAdd = transaction::helpers::extractToFromDocument(edge);
+    }
+    TRI_ASSERT(toAdd.isString());
   }
+  
   StringRef toAddStr = _traverser->traverserCache()->persistString(StringRef(toAdd));
   // First check if we visited it. If not, then mark
   if (_returnedVertices.find(toAddStr) != _returnedVertices.end()) {
@@ -93,12 +105,14 @@ bool Traverser::UniqueVertexGetter::getVertex(VPackSlice edge, std::vector<Strin
 
 bool Traverser::UniqueVertexGetter::getSingleVertex(arangodb::velocypack::Slice edge, StringRef cmp,
                                               uint64_t depth, StringRef& result) {
-  VPackSlice resSlice = transaction::helpers::extractFromFromDocument(edge);
-    
-  if (resSlice.compareString(cmp.data(), cmp.length()) == 0) {
-    resSlice = transaction::helpers::extractToFromDocument(edge);
+  VPackSlice resSlice = edge;
+  if (!resSlice.isString()) {
+    resSlice = transaction::helpers::extractFromFromDocument(edge);
+    if (resSlice.compareString(cmp.data(), cmp.length()) == 0) {
+      resSlice = transaction::helpers::extractToFromDocument(edge);
+    }
+    TRI_ASSERT(resSlice.isString());
   }
-  TRI_ASSERT(resSlice.isString());
   
   result = _traverser->traverserCache()->persistString(StringRef(resSlice));
   // First check if we visited it. If not, then mark

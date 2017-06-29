@@ -43,6 +43,7 @@ class ClusterFeature : public application_features::ApplicationFeature {
   void validateOptions(std::shared_ptr<options::ProgramOptions>) override final;
   void prepare() override final;
   void start() override final;
+  void beginShutdown() override final;
   void unprepare() override final;
 
   std::string agencyPrefix() {
@@ -60,11 +61,6 @@ class ClusterFeature : public application_features::ApplicationFeature {
   std::string _myId;
   std::string _myRole;
   std::string _myAddress;
-  std::string _dataPath;
-  std::string _logPath;
-  std::string _arangodPath;
-  std::string _dbserverConfig;
-  std::string _coordinatorConfig;
   uint32_t _systemReplicationFactor = 2;
   bool _createWaitsForSyncReplication = true;
   double _syncReplTimeoutFactor = 1.0;

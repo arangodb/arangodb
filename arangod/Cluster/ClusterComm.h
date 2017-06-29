@@ -235,6 +235,9 @@ struct ClusterCommResult {
       case TRI_COMMUNICATOR_REQUEST_ABORTED:
         status = CL_COMM_BACKEND_UNAVAILABLE;
         break;
+      case TRI_ERROR_HTTP_SERVICE_UNAVAILABLE:
+        status = CL_COMM_BACKEND_UNAVAILABLE;
+        break;
       case TRI_ERROR_CLUSTER_TIMEOUT:
         status = CL_COMM_TIMEOUT;
         sendWasComplete = true;
@@ -518,6 +521,12 @@ class ClusterComm {
   void addAuthorization(std::unordered_map<std::string, std::string>* headers);
 
   std::string jwt() { return _jwt; };
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief abort and disable all communication 
+  //////////////////////////////////////////////////////////////////////////////
+
+  void disable();
   
  private:
   size_t performSingleRequest(std::vector<ClusterCommRequest>& requests,
@@ -616,6 +625,7 @@ class ClusterComm {
 
   void cleanupAllQueues();
 
+
   //////////////////////////////////////////////////////////////////////////////
   /// @brief activeServerTickets for a list of servers
   //////////////////////////////////////////////////////////////////////////////
@@ -638,6 +648,7 @@ class ClusterComm {
   bool _authenticationEnabled;
   std::string _jwt;
   std::string _jwtAuthorization;
+
 };
 
 ////////////////////////////////////////////////////////////////////////////////

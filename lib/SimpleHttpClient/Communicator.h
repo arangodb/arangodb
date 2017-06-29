@@ -120,6 +120,8 @@ class Communicator {
   std::vector<RequestInProgress const*> requestsInProgress();
   void abortRequest(Ticket ticketId);
   void abortRequests();
+  void disable() { _enabled = false; };
+  void enable()  { _enabled = true; };
 
  private:
   struct NewRequest {
@@ -144,6 +146,7 @@ class Communicator {
 #else
   int _fds[2];
 #endif
+  bool _enabled;
 
  private:
   void createRequestInProgress(NewRequest const& newRequest);

@@ -28,10 +28,13 @@
 #include "Aql/SortCondition.h"
 #include "Basics/StringRef.h"
 #include "Basics/VelocyPackHelper.h"
+#include "Indexes/IndexResult.h"
 #include "Logger/Logger.h"
 #include "RocksDBEngine/RocksDBCommon.h"
 #include "RocksDBEngine/RocksDBMethods.h"
 #include "RocksDBEngine/RocksDBToken.h"
+
+#include <rocksdb/db.h>
 
 using namespace arangodb;
 using namespace arangodb::rocksdbengine;
@@ -234,7 +237,7 @@ void RocksDBGeoIndexIterator::reset() { replaceCursor(nullptr); }
 RocksDBGeoIndex::RocksDBGeoIndex(TRI_idx_iid_t iid,
                                  arangodb::LogicalCollection* collection,
                                  VPackSlice const& info)
-    : RocksDBIndex(iid, collection, info, RocksDBColumnFamily::geo()),
+    : RocksDBIndex(iid, collection, info, RocksDBColumnFamily::geo(), false),
       _variant(INDEX_GEO_INDIVIDUAL_LAT_LON),
       _geoJson(false),
       _geoIndex(nullptr) {
@@ -316,8 +319,8 @@ size_t RocksDBGeoIndex::memory() const {
   RocksDBKeyBounds bounds = RocksDBKeyBounds::GeoIndex(_objectId);
   rocksdb::Range r(bounds.start(), bounds.end());
   uint64_t out;
-  db->GetApproximateSizes(&r, 1, &out, true);
-  return (size_t)out;
+  db->GetApproximateSizes(RocksDBColumnFamily::geo(), &r, 1, &out, static_cast<uint8_t>(rocksdb::DB::SizeApproximationFlags::INCLUDE_MEMTABLES | rocksdb::DB::SizeApproximationFlags::INCLUDE_FILES));
+  return static_cast<size_t>(out);
 }
 
 /// @brief return a JSON representation of the index
@@ -476,13 +479,14 @@ int RocksDBGeoIndex::internalInsert(TRI_voc_rid_t revisionId,
   return TRI_ERROR_NO_ERROR;
 }
 
-int RocksDBGeoIndex::insert(transaction::Methods* trx, TRI_voc_rid_t revisionId,
-                            VPackSlice const& doc, bool isRollback) {
+Result RocksDBGeoIndex::insert(transaction::Methods* trx,
+                               TRI_voc_rid_t revisionId,
+                               VPackSlice const& doc, bool isRollback) {
   // acquire rocksdb transaction
   GeoIndex_setRocksMethods(_geoIndex, rocksutils::toRocksMethods(trx));
   int res = this->internalInsert(revisionId, doc);
   GeoIndex_clearRocks(_geoIndex);
-  return res;
+  return IndexResult(res, this);
 }
 
 int RocksDBGeoIndex::insertRaw(RocksDBMethods* batch, TRI_voc_rid_t revisionId,
@@ -553,13 +557,14 @@ int RocksDBGeoIndex::internalRemove(TRI_voc_rid_t revisionId,
   return TRI_ERROR_NO_ERROR;
 }
 
-int RocksDBGeoIndex::remove(transaction::Methods* trx, TRI_voc_rid_t revisionId,
-                            VPackSlice const& doc, bool isRollback) {
+Result RocksDBGeoIndex::remove(transaction::Methods* trx,
+                               TRI_voc_rid_t revisionId,
+                               VPackSlice const& doc, bool isRollback) {
   // acquire rocksdb methods
   GeoIndex_setRocksMethods(_geoIndex, rocksutils::toRocksMethods(trx));
   int res = this->internalRemove(revisionId, doc);
   GeoIndex_clearRocks(_geoIndex);
-  return res;
+  return IndexResult(res, this);
 }
 
 int RocksDBGeoIndex::removeRaw(RocksDBMethods* batch, TRI_voc_rid_t revisionId,

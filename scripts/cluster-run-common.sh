@@ -18,6 +18,8 @@ function help() {
   echo "  -b/--offset-ports       Offset ports        (default: 0, i.e. A:4001, C:8530, D:8629)"
   echo "  -r/--rocksdb-engine     Use Rocksdb engine  (default: false )"
   echo "  -q/--source-dir         ArangoDB source dir (default: .)"
+  echo "  -B/--bin-dir            ArangoDB binary dir (default: ./build)"
+  echo "  -O/--ongoing-ports      Ongoing ports       (default: false)"
   echo ""
   echo "EXAMPLES:"
   echo "  $0"
@@ -42,7 +44,7 @@ if [ -z "$XTERMOPTIONS" ] ; then
     XTERMOPTIONS="--geometry=80x43"
 fi
 SECONDARIES=0
-BUILD="build"
+BUILD="./build"
 JWT_SECRET=""
 PORT_OFFSET=0
 SRC_DIR="."
@@ -111,6 +113,10 @@ while [[ ${1} ]]; do
       ;;
     -B|--build)
       BUILD=${2}
+      shift
+      ;;
+    -O|--ongoing-ports)
+      ONGOING_PORTS=${2}
       shift
       ;;
     *)
