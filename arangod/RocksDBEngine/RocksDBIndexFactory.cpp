@@ -44,6 +44,10 @@
 #include <velocypack/Slice.h>
 #include <velocypack/velocypack-aliases.h>
 
+#ifdef USE_IRESEARCH
+#include "IResearch/IResearchLink.h"
+#endif
+
 using namespace arangodb;
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -172,7 +176,7 @@ static void ProcessIndexGeoJsonFlag(VPackSlice const definition,
                                     VPackBuilder& builder) {
   VPackSlice fieldsSlice = definition.get("fields");
   if (fieldsSlice.isArray() && fieldsSlice.length() == 1) {
-    // only add geoJson for indexes with a single field (with needs to be an array) 
+    // only add geoJson for indexes with a single field (with needs to be an array)
     bool geoJson =
         basics::VelocyPackHelper::getBooleanValue(definition, "geoJson", false);
     builder.add("geoJson", VPackValue(geoJson));
@@ -229,7 +233,7 @@ static int EnhanceJsonIndexFulltext(VPackSlice const definition,
     // hard-coded defaults
     builder.add("sparse", VPackValue(true));
     builder.add("unique", VPackValue(false));
-    
+
     // handle "minLength" attribute
     int minWordLength = TRI_FULLTEXT_MIN_WORD_LENGTH_DEFAULT;
     VPackSlice minLength = definition.get("minLength");
@@ -333,10 +337,16 @@ int RocksDBIndexFactory::enhanceIndexDefinition(VPackSlice const definition,
       case Index::TRI_IDX_TYPE_PERSISTENT_INDEX:
         res = EnhanceJsonIndexPersistent(definition, enhanced, create);
         break;
-        
+
       case Index::TRI_IDX_TYPE_FULLTEXT_INDEX:
         res = EnhanceJsonIndexFulltext(definition, enhanced, create);
         break;
+
+#ifdef USE_IRESEARCH
+      case Index::TRI_IDX_TYPE_IRESEARCH_LINK:
+        res = arangodb::iresearch::EnhanceJsonIResearchLink(definition, enhanced, create);
+        break;
+#endif
 
       case Index::TRI_IDX_TYPE_UNKNOWN:
       default: {
@@ -447,6 +457,12 @@ std::shared_ptr<Index> RocksDBIndexFactory::prepareIndexFromSlice(
       newIdx.reset(new arangodb::RocksDBFulltextIndex(iid, col, info));
       break;
     }
+#ifdef USE_IRESEARCH
+    case arangodb::Index::TRI_IDX_TYPE_IRESEARCH_LINK: {
+      newIdx = arangodb::iresearch::IResearchLink::make(iid, col, info);
+      break;
+    }
+#endif
 
     case arangodb::Index::TRI_IDX_TYPE_UNKNOWN:
     default: {

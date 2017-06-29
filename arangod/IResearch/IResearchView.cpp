@@ -726,6 +726,7 @@ arangodb::Result updateLinks(
         );
       }
 
+      namedJson.add("type", arangodb::velocypack::Value("iresearch"));
       namedJson.close();
 
       std::string error;
