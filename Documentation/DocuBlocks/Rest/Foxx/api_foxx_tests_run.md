@@ -14,7 +14,7 @@ Supported test reporters are:
 - *xunit*: an XUnit/JUnit compatible structure
 - *tap*: a raw TAP compatible stream
 
-The *Accept* request header can  be used to further control the response format:
+The *Accept* request header can be used to further control the response format:
 
 When using the *stream* reporter `application/x-ldjson` will result
 in the response body being formatted as a newline-delimited JSON stream.
@@ -34,6 +34,9 @@ Mount path of the installed service.
 
 @RESTQUERYPARAM{reporter,string,optional}
 Test reporter to use.
+
+@RESTQUERYPARAM{idiomatic,boolean,optional}
+Use the matching format for the reporter, regardless of the *Accept* header.
 
 @RESTRETURNCODES
 
