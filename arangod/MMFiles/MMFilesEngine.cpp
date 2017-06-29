@@ -711,7 +711,7 @@ TRI_vocbase_t* MMFilesEngine::openDatabase(
   std::string const name = args.get("name").copyString();
 
   bool const wasCleanShutdown =
-      MMFilesLogfileManager::instance()->hasFoundLastTick();
+      MMFilesLogfileManager::hasFoundLastTick();
   status = TRI_ERROR_NO_ERROR;
       
   return openExistingDatabase(id, name, wasCleanShutdown, isUpgrade);
