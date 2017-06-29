@@ -583,7 +583,7 @@ def testStep(edition, os, mode, engine) {
         node(os) {
             echo "Running ${mode} ${edition} ${engine} ${os} test"
 
-            def name = "${edition}-${os}-${mode}-${edition}"
+            def name = "${edition}-${os}-${mode}-${engine}"
 
             try {
                 unstashBinaries(edition, os)
