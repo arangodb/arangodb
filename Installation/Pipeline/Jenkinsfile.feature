@@ -123,7 +123,7 @@ def scpToMaster(os, from, to) {
         sh "scp '${from}' '${jenkinsMaster}:${cacheDir}/${to}'"
     }
     else if (os == 'windows') {
-        bat "scp -F c:/Users/jenkins/ssh_config '${from}' '${jenkinsMaster}:${cacheDir}/${to}'"
+        bat "scp -F c:/Users/jenkins/ssh_config \"${from}\" \"${jenkinsMaster}:${cacheDir}/${to}\""
     }
 }
 
@@ -133,7 +133,7 @@ def scpFromMaster(os, from, to) {
         sh "scp '${jenkinsMaster}:${cacheDir}/${from}' '${to}'"
     }
     else if (os == 'windows') {
-        bat "scp -F c:/Users/jenkins/ssh_config '${jenkinsMaster}:${cacheDir}/${from}' '${to}'"
+        bat "scp -F c:/Users/jenkins/ssh_config \"${jenkinsMaster}:${cacheDir}/${from}\" \"${to}\""
     }
 }
 
@@ -386,7 +386,6 @@ def buildEdition(edition, os) {
         }
     }
     catch (exc) {
-        echo exc.toString()
         throw exc
     }
     finally {
@@ -441,10 +440,9 @@ def buildStep(edition, os) {
                 buildsSuccess[name] = true
             }
             catch (exc) {
-                echo exc.toString()
                 buildsSuccess[name] = false
                 allBuildsSuccessful = false
-                currentBuild.result = 'UNSTABLE'
+                throw exc
             }
         }
     }
@@ -469,13 +467,15 @@ def buildStepParallel(osList) {
 // --SECTION--                                                    SCRIPTS JSLINT
 // -----------------------------------------------------------------------------
 
+jslintSuccessful = true
+
 def jslint() {
     try {
         sh './Installation/Pipeline/test_jslint.sh'
     }
     catch (exc) {
-        echo exc.toString()
-        currentBuild.result = 'UNSTABLE'
+        jslintSuccessful = false
+        throw exc
     }
 }
 
@@ -493,8 +493,7 @@ def jslintStep() {
                 }
                 catch (exc) {
                     echo exc.toString()
-                    currentBuild.result = 'UNSTABLE'
-                    return
+                    throw exc
                 }
                 
                 jslint()
@@ -507,12 +506,14 @@ def jslintStep() {
 // --SECTION--                                                     SCRIPTS TESTS
 // -----------------------------------------------------------------------------
 
+testsSuccess = [:]
+allTestsSuccessful = true
+
 def testEdition(edition, os, mode, engine) {
     try {
         sh "./Installation/Pipeline/test_${mode}_${edition}_${engine}_${os}.sh 10"
     }
     catch (exc) {
-        echo exc.toString()
         throw exc
     }
     finally {
@@ -580,8 +581,19 @@ def testStep(edition, os, mode, engine) {
         node(os) {
             echo "Running ${mode} ${edition} ${engine} ${os} test"
 
-            unstashBinaries(edition, os)
-            testEdition(edition, os, mode, engine)
+            def name = "${edition}-${os}-${mode}-${engine}"
+
+            try {
+                unstashBinaries(edition, os)
+                testEdition(edition, os, mode, engine)
+                testsSuccess[name] = true
+            }
+            catch (exc) {
+                echo exc.toString()
+                testsSuccess[name] = false
+                allTestsSuccessful = false
+                throw exc
+            }
         }
     }
 }
@@ -614,6 +626,9 @@ def testStepParallel(osList, modeList) {
 // -----------------------------------------------------------------------------
 // --SECTION--                                                SCRIPTS RESILIENCE
 // -----------------------------------------------------------------------------
+
+resiliencesSuccess = [:]
+allResiliencesSuccessful = true
 
 def testResilience(os, engine, foxx) {
     sh "./Installation/Pipeline/test_resilience_${foxx}_${engine}_${os}.sh"
@@ -661,8 +676,19 @@ def testResilienceName(os, engine, foxx, full) {
 def testResilienceStep(os, engine, foxx) {
     return {
         node(os) {
-            unstashBinaries('community', os)
-            testResilience(os, engine, foxx)
+            echo "Running ${foxx} ${engine} ${os} test"
+
+            def name = "${os}-${engine}-${foxx}"
+
+            try {
+                unstashBinaries('community', os)
+                testResilience(os, engine, foxx)
+            }
+            catch (exc) {
+                resiliencesSuccess[name] = false
+                allResiliencesSuccessful = false
+                throw exc
+            }
         }
     }
 }
@@ -700,32 +726,70 @@ stage('checkout') {
     }
 }
 
-stage('build linux') {
-    buildStepParallel(['linux'])
+try {
+    stage('build linux') {
+        buildStepParallel(['linux'])
+    }
+}
+catch (exc) {
+    echo exc.toString()
 }
 
-stage('tests linux') {
-    testStepParallel(['linux'], ['cluster', 'singleserver'])
+try {
+    stage('tests linux') {
+        testStepParallel(['linux'], ['cluster', 'singleserver'])
+    }
+}
+catch (exc) {
+    echo exc.toString()
 }
 
-stage('build mac & windows') {
-    buildStepParallel(['mac', 'windows'])
+try {
+    stage('build mac & windows') {
+        buildStepParallel(['mac', 'windows'])
+    }
+}
+catch (exc) {
+    echo exc.toString()
 }
 
-stage('tests mac & windows') {
-    testStepParallel(['mac', 'windows'], ['cluster', 'singleserver'])
+try {
+    stage('tests mac & windows') {
+        testStepParallel(['mac', 'windows'], ['cluster', 'singleserver'])
+    }
+}
+catch (exc) {
+    echo exc.toString()
 }
 
-stage('resilience') {
-    testResilienceParallel();
+try {
+    stage('resilience') {
+        testResilienceParallel();
+    }
+}
+catch (exc) {
+    echo exc.toString()
 }
 
 stage('result') {
     node('master') {
-        if (! allBuildsSuccessful) {
-            currentBuild.result = 'FAILURE'
+        for (kv in buildsSuccess) {
+            echo "BUILD ${kv.key}: ${kv.value}"
         }
 
-        buildsSuccess.map{ k, v -> echo "BUILD ${k}: ${v}" }
+        for (kv in testsSuccess) {
+            echo "TEST ${kv.key}: ${kv.value}"
+        }
+
+        for (kv in resiliencesSuccess) {
+            echo "RESILIENCE ${kv.key}: ${kv.value}"
+        }
+
+        if (! (allBuildsSuccessful
+            && allTestsSuccessful
+            && resiliencesSuccess
+            && jslintSuccessful)) {
+            currentBuild.result = 'FAILURE'
+        }
     }
 }
