@@ -181,9 +181,9 @@ RocksDBToken RocksDBPrimaryIndex::lookupKey(transaction::Methods* trx,
     auto f = _cache->find(key.string().data(),
                           static_cast<uint32_t>(key.string().size()));
     if (f.found()) {
-      value.buffer()->append(reinterpret_cast<char const*>(f.value()->value()),
-                             static_cast<size_t>(f.value()->valueSize));
-      return RocksDBToken(RocksDBValue::revisionId(value));
+      rocksdb::Slice s(reinterpret_cast<char const*>(f.value()->value()),
+                       static_cast<size_t>(f.value()->valueSize));
+      return RocksDBToken(RocksDBValue::revisionId(s));
     }
   }
 

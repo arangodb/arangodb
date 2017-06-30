@@ -312,9 +312,10 @@ Result RocksDBCounterManager::sync(bool force) {
 void RocksDBCounterManager::readSettings() {
   RocksDBKey key = RocksDBKey::SettingsValue();
 
-  std::string result;
+  rocksdb::PinnableSlice result;
   rocksdb::Status status =
-      _db->Get(rocksdb::ReadOptions(), key.string(), &result);
+      _db->Get(rocksdb::ReadOptions(), RocksDBColumnFamily::other(),
+               key.string(), &result);
   if (status.ok()) {
     // key may not be there, so don't fail when not found
     VPackSlice slice = VPackSlice(result.data());

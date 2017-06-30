@@ -125,6 +125,19 @@ static void ProcessIndexSparseFlag(VPackSlice const definition,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief process the deduplicate flag and add it to the json
+////////////////////////////////////////////////////////////////////////////////
+
+static void ProcessIndexDeduplicateFlag(VPackSlice const definition,
+                                        VPackBuilder& builder) {
+  bool dup = true;
+  if (definition.hasKey("deduplicate")) {
+    dup = basics::VelocyPackHelper::getBooleanValue(definition, "deduplicate", true);
+  }
+  builder.add("deduplicate", VPackValue(dup));
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief enhances the json of a hash index
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -134,6 +147,7 @@ static int EnhanceJsonIndexHash(VPackSlice const definition,
   if (res == TRI_ERROR_NO_ERROR) {
     ProcessIndexSparseFlag(definition, builder, create);
     ProcessIndexUniqueFlag(definition, builder);
+    ProcessIndexDeduplicateFlag(definition, builder);
   }
   return res;
 }
@@ -148,6 +162,7 @@ static int EnhanceJsonIndexSkiplist(VPackSlice const definition,
   if (res == TRI_ERROR_NO_ERROR) {
     ProcessIndexSparseFlag(definition, builder, create);
     ProcessIndexUniqueFlag(definition, builder);
+    ProcessIndexDeduplicateFlag(definition, builder);
   }
   return res;
 }
@@ -162,6 +177,7 @@ static int EnhanceJsonIndexPersistent(VPackSlice const definition,
   if (res == TRI_ERROR_NO_ERROR) {
     ProcessIndexSparseFlag(definition, builder, create);
     ProcessIndexUniqueFlag(definition, builder);
+    ProcessIndexDeduplicateFlag(definition, builder);
   }
   return res;
 }

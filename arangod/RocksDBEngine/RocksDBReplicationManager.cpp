@@ -99,11 +99,7 @@ RocksDBReplicationContext* RocksDBReplicationManager::createContext() {
 
   {
     MUTEX_LOCKER(mutexLocker, _lock);
-
     _contexts.emplace(id, context.get());
-    if (_contexts.size() == 1) {
-      // disableFileDeletions();
-    }
   }
   return context.release();
 }
@@ -140,9 +136,6 @@ bool RocksDBReplicationManager::remove(RocksDBReplicationId id) {
 
     // context not in use by someone else
     _contexts.erase(it);
-    if (_contexts.empty()) {
-      // enableFileDeletions();
-    }
   }
 
   TRI_ASSERT(context != nullptr);
@@ -285,8 +278,6 @@ bool RocksDBReplicationManager::garbageCollect(bool force) {
 
     MUTEX_LOCKER(mutexLocker, _lock);
 
-    auto oldSize = _contexts.size();
-
     for (auto it = _contexts.begin(); it != _contexts.end();
          /* no hoisting */) {
       auto context = it->second;
@@ -317,12 +308,6 @@ bool RocksDBReplicationManager::garbageCollect(bool force) {
         ++it;
       }
     }
-
-    // FIXME effectively force should only be called on shutdown
-    // nevertheless this is quite ugly
-    if ((oldSize > 0) && (_contexts.size() == 0) && !force) {
-      enableFileDeletions();
-    }
   } catch (...) {
     // go on and remove whatever we found so far
   }
@@ -333,18 +318,6 @@ bool RocksDBReplicationManager::garbageCollect(bool force) {
   }
 
   return (!found.empty());
-}
-
-void RocksDBReplicationManager::disableFileDeletions() {
-  auto rocks = globalRocksDB();
-  auto s = rocks->DisableFileDeletions();
-  TRI_ASSERT(s.ok());
-}
-
-void RocksDBReplicationManager::enableFileDeletions() {
-  auto rocks = globalRocksDB();
-  auto s = rocks->EnableFileDeletions(false);
-  TRI_ASSERT(s.ok());
 }
 
 RocksDBReplicationContextGuard::RocksDBReplicationContextGuard(
