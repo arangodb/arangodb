@@ -194,9 +194,9 @@ std::pair<TRI_voc_tick_t, TRI_voc_cid_t> mapObjectToCollection(
 
 std::size_t countKeyRange(rocksdb::DB* db, rocksdb::ReadOptions const& opts,
                           RocksDBKeyBounds const& bounds) {
-  rocksdb::ColumnFamilyHandle* handle = bounds.columnFamily();
+  rocksdb::ColumnFamilyHandle* cf = bounds.columnFamily();
   rocksdb::Comparator const* cmp = db->GetOptions().comparator;
-  std::unique_ptr<rocksdb::Iterator> it(db->NewIterator(opts, handle));
+  std::unique_ptr<rocksdb::Iterator> it(db->NewIterator(opts, cf));
   std::size_t count = 0;
 
   rocksdb::Slice lower(bounds.start());
@@ -214,15 +214,15 @@ std::size_t countKeyRange(rocksdb::DB* db, rocksdb::ReadOptions const& opts,
 Result removeLargeRange(rocksdb::TransactionDB* db,
                         RocksDBKeyBounds const& bounds,
                         bool prefix_same_as_start) {
+  rocksdb::ColumnFamilyHandle* cf = bounds.columnFamily();
   LOG_TOPIC(DEBUG, Logger::FIXME) << "removing large range: " << bounds;
-  rocksdb::ColumnFamilyHandle* handle = bounds.columnFamily();
   try {
     // delete files in range lower..upper
     rocksdb::Slice lower(bounds.start());
     rocksdb::Slice upper(bounds.end());
     {
       rocksdb::Status status =
-          rocksdb::DeleteFilesInRange(db->GetBaseDB(), handle, &lower, &upper);
+          rocksdb::DeleteFilesInRange(db->GetBaseDB(), cf, &lower, &upper);
       if (!status.ok()) {
         // if file deletion failed, we will still iterate over the remaining
         // keys, so we don't need to abort and raise an error here
@@ -233,13 +233,13 @@ Result removeLargeRange(rocksdb::TransactionDB* db,
 
     // go on and delete the remaining keys (delete files in range does not
     // necessarily find them all, just complete files)
-    rocksdb::Comparator const* cmp = handle->GetComparator();
+    rocksdb::Comparator const* cmp = cf->GetComparator();
     rocksdb::WriteBatch batch;
     rocksdb::ReadOptions readOptions;
     readOptions.fill_cache = false;
     readOptions.prefix_same_as_start = prefix_same_as_start;
     readOptions.iterate_upper_bound = &upper;
-    std::unique_ptr<rocksdb::Iterator> it(db->NewIterator(readOptions, handle));
+    std::unique_ptr<rocksdb::Iterator> it(db->NewIterator(readOptions, cf));
 
     size_t counter = 0;
     for (it->Seek(lower); it->Valid(); it->Next()) {
@@ -299,7 +299,7 @@ std::vector<std::pair<RocksDBKey, RocksDBValue>> collectionKVPairs(
                       RocksDBKey(it->key()),
                       RocksDBValue(RocksDBEntryType::Collection, it->value()));
                 },
-                arangodb::RocksDBColumnFamily::other());
+                arangodb::RocksDBColumnFamily::definitions());
   return rv;
 }
 
@@ -313,7 +313,7 @@ std::vector<std::pair<RocksDBKey, RocksDBValue>> viewKVPairs(
                       RocksDBKey(it->key()),
                       RocksDBValue(RocksDBEntryType::View, it->value()));
                 },
-                arangodb::RocksDBColumnFamily::other());
+                arangodb::RocksDBColumnFamily::definitions());
   return rv;
 }
 

@@ -172,7 +172,8 @@ static void ProcessIndexGeoJsonFlag(VPackSlice const definition,
                                     VPackBuilder& builder) {
   VPackSlice fieldsSlice = definition.get("fields");
   if (fieldsSlice.isArray() && fieldsSlice.length() == 1) {
-    // only add geoJson for indexes with a single field (with needs to be an array) 
+    // only add geoJson for indexes with a single field (with needs to be an
+    // array)
     bool geoJson =
         basics::VelocyPackHelper::getBooleanValue(definition, "geoJson", false);
     builder.add("geoJson", VPackValue(geoJson));
@@ -217,7 +218,6 @@ static int EnhanceJsonIndexGeo2(VPackSlice const definition,
   return res;
 }
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief enhances the json of a fulltext index
 ////////////////////////////////////////////////////////////////////////////////
@@ -229,7 +229,7 @@ static int EnhanceJsonIndexFulltext(VPackSlice const definition,
     // hard-coded defaults
     builder.add("sparse", VPackValue(true));
     builder.add("unique", VPackValue(false));
-    
+
     // handle "minLength" attribute
     int minWordLength = TRI_FULLTEXT_MIN_WORD_LENGTH_DEFAULT;
     VPackSlice minLength = definition.get("minLength");
@@ -245,7 +245,8 @@ static int EnhanceJsonIndexFulltext(VPackSlice const definition,
 
 int RocksDBIndexFactory::enhanceIndexDefinition(VPackSlice const definition,
                                                 VPackBuilder& enhanced,
-                                                bool create, bool isCoordinator) const {
+                                                bool create,
+                                                bool isCoordinator) const {
   // extract index type
   Index::IndexType type = Index::TRI_IDX_TYPE_UNKNOWN;
   VPackSlice current = definition.get("type");
@@ -333,7 +334,7 @@ int RocksDBIndexFactory::enhanceIndexDefinition(VPackSlice const definition,
       case Index::TRI_IDX_TYPE_PERSISTENT_INDEX:
         res = EnhanceJsonIndexPersistent(definition, enhanced, create);
         break;
-        
+
       case Index::TRI_IDX_TYPE_FULLTEXT_INDEX:
         res = EnhanceJsonIndexFulltext(definition, enhanced, create);
         break;
@@ -439,7 +440,7 @@ std::shared_ptr<Index> RocksDBIndexFactory::prepareIndexFromSlice(
       break;
     }
     case arangodb::Index::TRI_IDX_TYPE_GEO1_INDEX:
-    case arangodb::Index::TRI_IDX_TYPE_GEO2_INDEX:{
+    case arangodb::Index::TRI_IDX_TYPE_GEO2_INDEX: {
       newIdx.reset(new arangodb::RocksDBGeoIndex(iid, col, info));
       break;
     }
@@ -450,7 +451,8 @@ std::shared_ptr<Index> RocksDBIndexFactory::prepareIndexFromSlice(
 
     case arangodb::Index::TRI_IDX_TYPE_UNKNOWN:
     default: {
-      std::string msg = "invalid or unsupported index type '" + typeString + "'";
+      std::string msg =
+          "invalid or unsupported index type '" + typeString + "'";
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_NOT_IMPLEMENTED, msg);
     }
   }
@@ -479,6 +481,6 @@ void RocksDBIndexFactory::fillSystemIndexes(
 }
 
 std::vector<std::string> RocksDBIndexFactory::supportedIndexes() const {
-  return std::vector<std::string>{"primary", "edge", "hash", "skiplist",
-                                  "persistent", "geo", "fulltext"};
+  return std::vector<std::string>{"primary",    "edge", "hash",    "skiplist",
+                                  "persistent", "geo",  "fulltext"};
 }

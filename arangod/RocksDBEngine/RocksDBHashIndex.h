@@ -45,7 +45,6 @@ class RocksDBHashIndex final : public RocksDBVPackIndex {
   bool matchesDefinition(VPackSlice const& info) const override;
 
   bool isSorted() const override { return true; }
-
 };
 }
 

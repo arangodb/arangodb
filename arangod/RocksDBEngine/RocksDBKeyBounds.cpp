@@ -65,12 +65,16 @@ RocksDBKeyBounds RocksDBKeyBounds::EdgeIndexVertex(
   return RocksDBKeyBounds(RocksDBEntryType::EdgeIndexValue, indexId, vertexId);
 }
 
-RocksDBKeyBounds RocksDBKeyBounds::IndexEntries(uint64_t indexId) {
-  return RocksDBKeyBounds(RocksDBEntryType::IndexValue, indexId);
+RocksDBKeyBounds RocksDBKeyBounds::VPackIndex(uint64_t indexId) {
+  return RocksDBKeyBounds(RocksDBEntryType::VPackIndexValue, indexId);
 }
 
-RocksDBKeyBounds RocksDBKeyBounds::UniqueIndex(uint64_t indexId) {
-  return RocksDBKeyBounds(RocksDBEntryType::UniqueIndexValue, indexId);
+RocksDBKeyBounds RocksDBKeyBounds::VPackHashIndex(uint64_t indexId) {
+  return RocksDBKeyBounds(RocksDBEntryType::VPackHashIndexValue, indexId);
+}
+
+RocksDBKeyBounds RocksDBKeyBounds::UniqueVPackIndex(uint64_t indexId) {
+  return RocksDBKeyBounds(RocksDBEntryType::UniqueVPackIndexValue, indexId);
 }
 
 RocksDBKeyBounds RocksDBKeyBounds::FulltextIndex(uint64_t indexId) {
@@ -88,8 +92,8 @@ RocksDBKeyBounds RocksDBKeyBounds::GeoIndex(uint64_t indexId, bool isSlot) {
   internals.reserve(length);
   internals.push_back(static_cast<char>(RocksDBEntryType::GeoIndexValue));
   uint64ToPersistent(internals.buffer(), indexId);
-  uint64_t norm = isSlot ? 0xFFU : 0;        // encode slot|pot in lowest bit
-  uint64ToPersistent(internals.buffer(), norm);       // lower endian
+  uint64_t norm = isSlot ? 0xFFU : 0;  // encode slot|pot in lowest bit
+  uint64ToPersistent(internals.buffer(), norm);  // lower endian
 
   internals.separate();
 
@@ -101,17 +105,23 @@ RocksDBKeyBounds RocksDBKeyBounds::GeoIndex(uint64_t indexId, bool isSlot) {
   return b;
 }
 
-RocksDBKeyBounds RocksDBKeyBounds::IndexRange(uint64_t indexId,
+RocksDBKeyBounds RocksDBKeyBounds::VPackIndex(uint64_t indexId,
                                               VPackSlice const& left,
                                               VPackSlice const& right) {
-  return RocksDBKeyBounds(RocksDBEntryType::IndexValue, indexId, left, right);
+  return RocksDBKeyBounds(RocksDBEntryType::VPackIndexValue, indexId, left,
+                          right);
 }
 
-RocksDBKeyBounds RocksDBKeyBounds::UniqueIndexRange(uint64_t indexId,
+RocksDBKeyBounds RocksDBKeyBounds::VPackHashIndex(uint64_t indexId,
+                                                  VPackSlice const& value) {
+  return RocksDBKeyBounds(RocksDBEntryType::VPackIndexValue, indexId, value);
+}
+
+RocksDBKeyBounds RocksDBKeyBounds::UniqueVPackIndex(uint64_t indexId,
                                                     VPackSlice const& left,
                                                     VPackSlice const& right) {
-  return RocksDBKeyBounds(RocksDBEntryType::UniqueIndexValue, indexId, left,
-                          right);
+  return RocksDBKeyBounds(RocksDBEntryType::UniqueVPackIndexValue, indexId,
+                          left, right);
 }
 
 RocksDBKeyBounds RocksDBKeyBounds::DatabaseViews(TRI_voc_tick_t databaseId) {
@@ -138,14 +148,12 @@ RocksDBKeyBounds RocksDBKeyBounds::FulltextIndexPrefix(
 
   auto& internals = b.internals();
   internals.reserve(length);
-  internals.push_back(
-      static_cast<char>(RocksDBEntryType::FulltextIndexValue));
+  internals.push_back(static_cast<char>(RocksDBEntryType::FulltextIndexValue));
   uint64ToPersistent(internals.buffer(), indexId);
   internals.buffer().append(word.data(), word.length());
 
   internals.separate();
-  internals.push_back(
-      static_cast<char>(RocksDBEntryType::FulltextIndexValue));
+  internals.push_back(static_cast<char>(RocksDBEntryType::FulltextIndexValue));
   uint64ToPersistent(internals.buffer(), indexId);
   internals.buffer().append(word.data(), word.length());
   internals.push_back(
@@ -162,12 +170,10 @@ RocksDBKeyBounds RocksDBKeyBounds::FulltextIndexComplete(
 // ============================ Member Methods ==============================
 
 RocksDBKeyBounds::RocksDBKeyBounds(RocksDBKeyBounds const& other)
-    : _type(other._type),
-      _internals(other._internals) {}
+    : _type(other._type), _internals(other._internals) {}
 
 RocksDBKeyBounds::RocksDBKeyBounds(RocksDBKeyBounds&& other)
-    : _type(other._type),
-      _internals(std::move(other._internals)) {}
+    : _type(other._type), _internals(std::move(other._internals)) {}
 
 RocksDBKeyBounds& RocksDBKeyBounds::operator=(RocksDBKeyBounds const& other) {
   if (this != &other) {
@@ -193,9 +199,13 @@ uint64_t RocksDBKeyBounds::objectId() const {
     case RocksDBEntryType::Document:
     case RocksDBEntryType::PrimaryIndexValue:
     case RocksDBEntryType::EdgeIndexValue:
-    case RocksDBEntryType::IndexValue:
-    case RocksDBEntryType::UniqueIndexValue: {
-      TRI_ASSERT(_internals.buffer().size() >= (sizeof(char) + sizeof(uint64_t)));
+    case RocksDBEntryType::VPackIndexValue:
+    case RocksDBEntryType::VPackHashIndexValue:
+    case RocksDBEntryType::UniqueVPackIndexValue:
+    case RocksDBEntryType::GeoIndexValue:
+    case RocksDBEntryType::FulltextIndexValue: {
+      TRI_ASSERT(_internals.buffer().size() >=
+                 (sizeof(char) + sizeof(uint64_t)));
       return uint64FromPersistent(_internals.buffer().data() + sizeof(char));
     }
 
@@ -213,28 +223,25 @@ rocksdb::ColumnFamilyHandle* RocksDBKeyBounds::columnFamily() const {
       return RocksDBColumnFamily::primary();
     case RocksDBEntryType::EdgeIndexValue:
       return RocksDBColumnFamily::edge();
-    case RocksDBEntryType::IndexValue:
-      return RocksDBColumnFamily::index();
-    case RocksDBEntryType::UniqueIndexValue:
-      return RocksDBColumnFamily::uniqueIndex();
+    case RocksDBEntryType::VPackIndexValue:
+    case RocksDBEntryType::UniqueVPackIndexValue:
+      return RocksDBColumnFamily::vpack();
+    case RocksDBEntryType::VPackHashIndexValue:
+      return RocksDBColumnFamily::vpackHash();
     case RocksDBEntryType::FulltextIndexValue:
       return RocksDBColumnFamily::fulltext();
     case RocksDBEntryType::GeoIndexValue:
       return RocksDBColumnFamily::geo();
-    case RocksDBEntryType::View:
-      return RocksDBColumnFamily::views();
     default:
-      return RocksDBColumnFamily::other();
+      return RocksDBColumnFamily::definitions();
   }
 }
 
 // constructor for an empty bound. do not use for anything but to
 // default-construct a key bound!
-RocksDBKeyBounds::RocksDBKeyBounds()
-    : _type(RocksDBEntryType::Database) {}
+RocksDBKeyBounds::RocksDBKeyBounds() : _type(RocksDBEntryType::Database) {}
 
-RocksDBKeyBounds::RocksDBKeyBounds(RocksDBEntryType type)
-    : _type(type) {
+RocksDBKeyBounds::RocksDBKeyBounds(RocksDBEntryType type) : _type(type) {
   switch (_type) {
     case RocksDBEntryType::Database: {
       _internals.reserve(2 * sizeof(char));
@@ -264,8 +271,9 @@ RocksDBKeyBounds::RocksDBKeyBounds(RocksDBEntryType type)
 RocksDBKeyBounds::RocksDBKeyBounds(RocksDBEntryType type, uint64_t first)
     : _type(type) {
   switch (_type) {
-    case RocksDBEntryType::IndexValue:
-    case RocksDBEntryType::UniqueIndexValue: {
+    case RocksDBEntryType::VPackIndexValue:
+    case RocksDBEntryType::VPackHashIndexValue:
+    case RocksDBEntryType::UniqueVPackIndexValue: {
       // Unique VPack index values are stored as follows:
       // 7 + 8-byte object ID of index + VPack array with index value(s) ....
       // prefix is the same for non-unique indexes
@@ -273,75 +281,71 @@ RocksDBKeyBounds::RocksDBKeyBounds(RocksDBEntryType type, uint64_t first)
       VPackSlice min("\x02\x03\x1e");  // [minSlice]
       VPackSlice max("\x02\x03\x1f");  // [maxSlice]
 
-      size_t length = 2 * (sizeof(char) + sizeof(uint64_t)) + min.byteSize() + max.byteSize();
+      size_t length = 2 * (sizeof(uint64_t)) + min.byteSize() + max.byteSize();
       _internals.reserve(length);
-      _internals.push_back(static_cast<char>(_type));
       uint64ToPersistent(_internals.buffer(), first);
       _internals.buffer().append((char*)(min.begin()), min.byteSize());
+      if (type == RocksDBEntryType::VPackHashIndexValue) {
+        _internals.buffer().push_back(_stringSeparator);
+      }
 
       _internals.separate();
 
       _internals.push_back(static_cast<char>(_type));
       uint64ToPersistent(_internals.buffer(), first);
       _internals.buffer().append((char*)(max.begin()), max.byteSize());
+      if (type == RocksDBEntryType::VPackHashIndexValue) {
+        _internals.buffer().push_back(_stringSeparator);
+      }
       break;
     }
 
     case RocksDBEntryType::Collection:
-    case RocksDBEntryType::Document:
-    case RocksDBEntryType::GeoIndexValue:
     case RocksDBEntryType::View: {
       // Collections are stored as follows:
       // Key: 1 + 8-byte ArangoDB database ID + 8-byte ArangoDB collection ID
-      //
-      // Documents are stored as follows:
-      // Key: 3 + 8-byte object ID of collection + 8-byte document revision ID
-      size_t length = 2 * (sizeof(char) + sizeof(uint64_t) + sizeof(uint64_t));
-      _internals.reserve(length);
+      _internals.reserve(2 * (sizeof(char) + 2 * sizeof(uint64_t)));
       _internals.push_back(static_cast<char>(_type));
       uint64ToPersistent(_internals.buffer(), first);
-
       _internals.separate();
-
       _internals.push_back(static_cast<char>(_type));
+      uint64ToPersistent(_internals.buffer(), first);
+      uint64ToPersistent(_internals.buffer(), UINT64_MAX);
+
+      break;
+    }
+    case RocksDBEntryType::Document:
+    case RocksDBEntryType::GeoIndexValue: {
+      // Documents are stored as follows:
+      // Key: 8-byte object ID of collection + 8-byte document revision ID
+      _internals.reserve(4 * sizeof(uint64_t));
+      uint64ToPersistent(_internals.buffer(), first);
+      _internals.separate();
       uint64ToPersistent(_internals.buffer(), first);
       uint64ToPersistent(_internals.buffer(), UINT64_MAX);
       break;
     }
 
     case RocksDBEntryType::PrimaryIndexValue:
+    case RocksDBEntryType::EdgeIndexValue:
     case RocksDBEntryType::FulltextIndexValue: {
       size_t length = sizeof(char) + sizeof(uint64_t);
       _internals.reserve(length);
       _internals.push_back(static_cast<char>(_type));
       uint64ToPersistent(_internals.buffer(), first);
-      
-      _internals.separate();
-      
-      _internals.push_back(static_cast<char>(_type));
-      uint64ToPersistent(_internals.buffer(), first);
-      _internals.push_back(0xFFU);
-      break;
-    }
-    
-    case RocksDBEntryType::EdgeIndexValue: {
-      size_t length = sizeof(char) + sizeof(uint64_t);
-      _internals.reserve(length);
-      _internals.push_back(static_cast<char>(_type));
-      uint64ToPersistent(_internals.buffer(), first);
-      _internals.push_back('\0');
-      _internals.push_back(_stringSeparator);
-      uint64ToPersistent(_internals.buffer(), 0);
-      _internals.push_back(0xFFU);
+      if (type == RocksDBEntryType::EdgeIndexValue) {
+        _internals.push_back('\0');
+        _internals.push_back(_stringSeparator);
+      }
 
       _internals.separate();
 
       _internals.push_back(static_cast<char>(_type));
       uint64ToPersistent(_internals.buffer(), first);
       _internals.push_back(0xFFU);
-      _internals.push_back(_stringSeparator);
-      uint64ToPersistent(_internals.buffer(), UINT64_MAX);
-      _internals.push_back(0xFFU);
+      if (type == RocksDBEntryType::EdgeIndexValue) {
+        _internals.push_back(_stringSeparator);
+      }
       break;
     }
 
@@ -357,25 +361,54 @@ RocksDBKeyBounds::RocksDBKeyBounds(RocksDBEntryType type, uint64_t first,
   switch (_type) {
     case RocksDBEntryType::FulltextIndexValue:
     case RocksDBEntryType::EdgeIndexValue: {
-      size_t length = 2 * (sizeof(char) + sizeof(uint64_t) + second.size() + sizeof(char)) + 1;
-      _internals.reserve(length);
-      _internals.push_back(static_cast<char>(_type));
+      _internals.reserve(2 * (sizeof(uint64_t) + second.size() + 2));
       uint64ToPersistent(_internals.buffer(), first);
       _internals.buffer().append(second.data(), second.length());
       _internals.push_back(_stringSeparator);
-      uint64ToPersistent(_internals.buffer(), 0);
-      _internals.push_back(0xFFU);
 
       _internals.separate();
 
-      _internals.push_back(static_cast<char>(_type));
       uint64ToPersistent(_internals.buffer(), first);
       _internals.buffer().append(second.data(), second.length());
       _internals.push_back(_stringSeparator);
       uint64ToPersistent(_internals.buffer(), UINT64_MAX);
-      _internals.push_back(0xFFU);
+      if (type == RocksDBEntryType::EdgeIndexValue) {
+        _internals.push_back(0xFFU);
+      }
       break;
     }
+
+    default:
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_BAD_PARAMETER);
+  }
+}
+
+/// iterate over the specified bounds of the velocypack index
+RocksDBKeyBounds::RocksDBKeyBounds(RocksDBEntryType type, uint64_t first,
+                                   VPackSlice const& second) {
+  switch (type) {
+    case RocksDBEntryType::VPackHashIndexValue: {
+      size_t startLength = sizeof(uint64_t) +
+                           static_cast<size_t>(second.byteSize()) +
+                           sizeof(char);
+      size_t endLength = 2 * sizeof(uint64_t) +
+                         static_cast<size_t>(second.byteSize()) +
+                         2 * sizeof(char);
+
+      _internals.reserve(startLength + endLength);
+      uint64ToPersistent(_internals.buffer(), first);
+      _internals.buffer().append(reinterpret_cast<char const*>(second.begin()),
+                                 static_cast<size_t>(second.byteSize()));
+      _internals.buffer().push_back(_stringSeparator);
+
+      _internals.separate();
+
+      uint64ToPersistent(_internals.buffer(), first);
+      _internals.buffer().append(reinterpret_cast<char const*>(second.begin()),
+                                 static_cast<size_t>(second.byteSize()));
+      uint64ToPersistent(_internals.buffer(), UINT64_MAX);
+      _internals.buffer().push_back(0xFFU);
+    } break;
 
     default:
       THROW_ARANGO_EXCEPTION(TRI_ERROR_BAD_PARAMETER);
@@ -388,26 +421,23 @@ RocksDBKeyBounds::RocksDBKeyBounds(RocksDBEntryType type, uint64_t first,
                                    VPackSlice const& third)
     : _type(type) {
   switch (_type) {
-    case RocksDBEntryType::IndexValue:
-    case RocksDBEntryType::UniqueIndexValue: {
-      size_t startLength = sizeof(char) + sizeof(uint64_t) +
-                           static_cast<size_t>(second.byteSize()) +
-                           sizeof(char);
-      size_t endLength = sizeof(char) + sizeof(uint64_t) +
-                         static_cast<size_t>(third.byteSize()) + sizeof(char);
+    case RocksDBEntryType::VPackIndexValue:
+    case RocksDBEntryType::UniqueVPackIndexValue: {
+      size_t startLength =
+          sizeof(uint64_t) + static_cast<size_t>(second.byteSize());
+      size_t endLength =
+          2 * sizeof(uint64_t) + static_cast<size_t>(third.byteSize());
 
       _internals.reserve(startLength + endLength);
-      _internals.push_back(static_cast<char>(_type));
       uint64ToPersistent(_internals.buffer(), first);
       _internals.buffer().append(reinterpret_cast<char const*>(second.begin()),
-                          static_cast<size_t>(second.byteSize()));
+                                 static_cast<size_t>(second.byteSize()));
 
       _internals.separate();
 
-      _internals.push_back(static_cast<char>(_type));
       uint64ToPersistent(_internals.buffer(), first);
       _internals.buffer().append(reinterpret_cast<char const*>(third.begin()),
-                        static_cast<size_t>(third.byteSize()));
+                                 static_cast<size_t>(third.byteSize()));
       uint64ToPersistent(_internals.buffer(), UINT64_MAX);
       break;
     }
@@ -447,5 +477,4 @@ std::ostream& operator<<(std::ostream& stream, RocksDBKeyBounds const& bounds) {
 
   return stream;
 }
-
 }

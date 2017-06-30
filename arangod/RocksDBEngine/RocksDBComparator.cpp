@@ -34,31 +34,25 @@
 
 using namespace arangodb;
 
-RocksDBComparator::RocksDBComparator() {}
+RocksDBVPackComparator::RocksDBVPackComparator() {}
 
-RocksDBComparator::~RocksDBComparator() {}
+RocksDBVPackComparator::~RocksDBVPackComparator() {}
 
 inline static VPackSlice indexedVPack(rocksdb::Slice const& slice) {
   TRI_ASSERT(slice.size() > (sizeof(char) + sizeof(uint64_t)));
-  return VPackSlice(slice.data() + sizeof(char) + sizeof(uint64_t));
+  return VPackSlice(slice.data() + sizeof(uint64_t));
 }
 
-int RocksDBComparator::compareIndexValues(rocksdb::Slice const& lhs,
-                                          rocksdb::Slice const& rhs) const {
-  TRI_ASSERT(RocksDBKey::type(lhs) == RocksDBEntryType::IndexValue
-             || RocksDBKey::type(lhs) == RocksDBEntryType::UniqueIndexValue);
-  TRI_ASSERT(RocksDBKey::type(rhs) == RocksDBKey::type(rhs));
-  
-  constexpr size_t prefixLength = RocksDBPrefixExtractor::getIndexPrefixLength();
-  int r = memcmp(lhs.data(), rhs.data(), prefixLength);
+int RocksDBVPackComparator::compareIndexValues(
+    rocksdb::Slice const& lhs, rocksdb::Slice const& rhs) const {
+  constexpr size_t objectIDLength = RocksDBKey::objectIdSize();
+  int r = memcmp(lhs.data(), rhs.data(), objectIDLength);
   if (r != 0) {
     return r;
-  }
-  if (lhs.size() == prefixLength || rhs.size() == prefixLength) {
+  } else if (lhs.size() == objectIDLength || rhs.size() == objectIDLength) {
     if (lhs.size() == rhs.size()) {
       return 0;
     }
-
     return ((lhs.size() < rhs.size()) ? -1 : 1);
   }
 
@@ -96,8 +90,8 @@ int RocksDBComparator::compareIndexValues(rocksdb::Slice const& lhs,
   return ((lSize < rSize) ? -1 : 1);
 }
 
-int RocksDBComparator::compareIndexedValues(VPackSlice const& lhs,
-                                            VPackSlice const& rhs) const {
+int RocksDBVPackComparator::compareIndexedValues(VPackSlice const& lhs,
+                                                 VPackSlice const& rhs) const {
   TRI_ASSERT(lhs.isArray());
   TRI_ASSERT(rhs.isArray());
 
@@ -105,12 +99,12 @@ int RocksDBComparator::compareIndexedValues(VPackSlice const& lhs,
   VPackArrayIterator rhsIter(rhs);
   size_t const lLength = lhsIter.size();
   size_t const rLength = rhsIter.size();
-  
+
   while (lhsIter.valid() || rhsIter.valid()) {
     size_t i = lhsIter.index();
     int res = arangodb::basics::VelocyPackHelper::compare(
-                                                          (i < lLength ? *lhsIter : VPackSlice::noneSlice()),
-                                                          (i < rLength ? *rhsIter : VPackSlice::noneSlice()), true);
+        (i < lLength ? *lhsIter : VPackSlice::noneSlice()),
+        (i < rLength ? *rhsIter : VPackSlice::noneSlice()), true);
     if (res != 0) {
       return res;
     }

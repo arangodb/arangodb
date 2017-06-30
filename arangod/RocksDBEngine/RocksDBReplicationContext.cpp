@@ -206,7 +206,7 @@ arangodb::Result RocksDBReplicationContext::dumpKeyChunks(VPackBuilder& b,
                                                           uint64_t chunkSize) {
   TRI_ASSERT(_trx);
   TRI_ASSERT(_iter);
-  
+
   std::string lowKey;
   VPackSlice highKey;  // FIXME: no good keeping this
   uint64_t hash = 0x012345678;

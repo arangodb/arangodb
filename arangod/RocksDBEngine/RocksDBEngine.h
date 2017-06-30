@@ -31,7 +31,7 @@
 #include "StorageEngine/StorageEngine.h"
 #include "VocBase/AccessMode.h"
 
-#ifdef USE_ENTERPRISE 
+#ifdef USE_ENTERPRISE
 #include "Enterprise/RocksDBEngine/RocksDBEngineEE.h"
 #endif
 
@@ -44,7 +44,7 @@ namespace arangodb {
 class PhysicalCollection;
 class PhysicalView;
 class RocksDBBackgroundThread;
-class RocksDBComparator;
+class RocksDBVPackComparator;
 class RocksDBCounterManager;
 class RocksDBReplicationManager;
 class RocksDBLogValue;
@@ -85,7 +85,8 @@ class RocksDBEngine final : public StorageEngine {
 
   TransactionManager* createTransactionManager() override;
   transaction::ContextData* createTransactionContextData() override;
-  TransactionState* createTransactionState(TRI_vocbase_t*, transaction::Options const&) override;
+  TransactionState* createTransactionState(
+      TRI_vocbase_t*, transaction::Options const&) override;
   TransactionCollection* createTransactionCollection(
       TransactionState* state, TRI_voc_cid_t cid, AccessMode::Type accessType,
       int nestingLevel) override;
@@ -261,7 +262,7 @@ class RocksDBEngine final : public StorageEngine {
   /// default read options
   rocksdb::Options _options;
   /// arangodb comparator - requried because of vpack in keys
-  std::unique_ptr<RocksDBComparator> _vpackCmp;
+  std::unique_ptr<RocksDBVPackComparator> _vpackCmp;
   /// path used by rocksdb (inside _basePath)
   std::string _path;
   /// path to arangodb data dir
@@ -273,7 +274,7 @@ class RocksDBEngine final : public StorageEngine {
   std::unique_ptr<RocksDBCounterManager> _counterManager;
   /// Background thread handling garbage collection etc
   std::unique_ptr<RocksDBBackgroundThread> _backgroundThread;
-  uint64_t _maxTransactionSize;  // maximum allowed size for a transaction
+  uint64_t _maxTransactionSize;       // maximum allowed size for a transaction
   uint64_t _intermediateCommitSize;   // maximum size for a
                                       // transaction before an
                                       // intermediate commit is performed

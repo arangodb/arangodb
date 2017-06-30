@@ -29,7 +29,7 @@
 #include "RocksDBEngine/RocksDBTransactionState.h"
 
 using namespace arangodb;
-  
+
 namespace {
 constexpr bool AllIteratorFillBlockCache = true;
 constexpr bool AnyIteratorFillBlockCache = false;
@@ -95,7 +95,8 @@ bool RocksDBAllIndexIterator::next(TokenCallback const& cb, size_t limit) {
     TRI_ASSERT(_bounds.objectId() == RocksDBKey::objectId(_iterator->key()));
 #endif
 
-    TRI_voc_rid_t revisionId = RocksDBKey::revisionId(_iterator->key());
+    TRI_voc_rid_t revisionId =
+        RocksDBKey::revisionId(RocksDBEntryType::Document, _iterator->key());
     cb(RocksDBToken(revisionId));
 
     --limit;
@@ -125,7 +126,8 @@ bool RocksDBAllIndexIterator::nextDocument(
   }
 
   while (limit > 0) {
-    TRI_voc_rid_t revisionId = RocksDBKey::revisionId(_iterator->key());
+    TRI_voc_rid_t revisionId =
+        RocksDBKey::revisionId(RocksDBEntryType::Document, _iterator->key());
     _mmdr->setManaged((uint8_t const*)_iterator->value().data(), revisionId);
     cb(*_mmdr);
     --limit;
@@ -207,9 +209,9 @@ bool RocksDBAnyIndexIterator::next(TokenCallback const& cb, size_t limit) {
   }
 
   while (limit > 0) {
-    TRI_voc_rid_t revisionId = RocksDBKey::revisionId(_iterator->key());
+    TRI_voc_rid_t revisionId =
+        RocksDBKey::revisionId(RocksDBEntryType::Document, _iterator->key());
     cb(RocksDBToken(revisionId));
-
     --limit;
     _returned++;
     _iterator->Next();
@@ -236,7 +238,8 @@ bool RocksDBAnyIndexIterator::nextDocument(
   }
 
   while (limit > 0) {
-    TRI_voc_rid_t revisionId = RocksDBKey::revisionId(_iterator->key());
+    TRI_voc_rid_t revisionId =
+        RocksDBKey::revisionId(RocksDBEntryType::Document, _iterator->key());
     _mmdr->setManaged((uint8_t const*)_iterator->value().data(), revisionId);
     cb(*_mmdr);
 

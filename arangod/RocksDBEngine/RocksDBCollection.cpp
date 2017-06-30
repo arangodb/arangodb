@@ -679,13 +679,14 @@ void RocksDBCollection::truncate(transaction::Methods* trx,
   ro.iterate_upper_bound = &end;
 
   std::unique_ptr<rocksdb::Iterator> iter =
-      mthd->NewIterator(ro, RocksDBColumnFamily::documents());
+      mthd->NewIterator(ro, documentBounds.columnFamily());
   iter->Seek(documentBounds.start());
 
   while (iter->Valid() && cmp->Compare(iter->key(), end) < 0) {
     TRI_ASSERT(_objectId == RocksDBKey::objectId(iter->key()));
 
-    TRI_voc_rid_t revisionId = RocksDBKey::revisionId(iter->key());
+    TRI_voc_rid_t revId =
+        RocksDBKey::revisionId(RocksDBEntryType::Document, iter->key());
     VPackSlice key =
         VPackSlice(iter->value().data()).get(StaticStrings::KeyString);
     TRI_ASSERT(key.isString());
@@ -693,22 +694,21 @@ void RocksDBCollection::truncate(transaction::Methods* trx,
     blackListKey(iter->key().data(), static_cast<uint32_t>(iter->key().size()));
 
     // add possible log statement
-    state->prepareOperation(cid, revisionId, StringRef(key),
+    state->prepareOperation(cid, revId, StringRef(key),
                             TRI_VOC_DOCUMENT_OPERATION_REMOVE);
-    Result r = mthd->Delete(RocksDBColumnFamily::documents(), RocksDBKey(iter->key()));
+    Result r =
+        mthd->Delete(RocksDBColumnFamily::documents(), RocksDBKey(iter->key()));
     if (!r.ok()) {
       THROW_ARANGO_EXCEPTION(r);
     }
     // report size of key
-    RocksDBOperationResult result =
-        state->addOperation(cid, revisionId, TRI_VOC_DOCUMENT_OPERATION_REMOVE,
-                            0, iter->key().size());
+    RocksDBOperationResult result = state->addOperation(
+        cid, revId, TRI_VOC_DOCUMENT_OPERATION_REMOVE, 0, iter->key().size());
 
     // transaction size limit reached -- fail
     if (result.fail()) {
       THROW_ARANGO_EXCEPTION(result);
     }
-
     iter->Next();
   }
 
@@ -1137,7 +1137,11 @@ void RocksDBCollection::figuresSpecific(
   rocksdb::Range r(bounds.start(), bounds.end());
 
   uint64_t out = 0;
-  db->GetApproximateSizes(RocksDBColumnFamily::documents(), &r, 1, &out, static_cast<uint8_t>(rocksdb::DB::SizeApproximationFlags::INCLUDE_MEMTABLES | rocksdb::DB::SizeApproximationFlags::INCLUDE_FILES));
+  db->GetApproximateSizes(
+      RocksDBColumnFamily::documents(), &r, 1, &out,
+      static_cast<uint8_t>(
+          rocksdb::DB::SizeApproximationFlags::INCLUDE_MEMTABLES |
+          rocksdb::DB::SizeApproximationFlags::INCLUDE_FILES));
 
   builder->add("documentsSize", VPackValue(out));
 }
@@ -1242,7 +1246,7 @@ arangodb::Result RocksDBCollection::fillIndexes(
   rocksdb::TransactionDB* db = globalRocksDB();
   uint64_t numDocsWritten = 0;
   // write batch will be reset each 5000 documents
-  rocksdb::WriteBatchWithIndex batch(db->DefaultColumnFamily()->GetComparator(),
+  rocksdb::WriteBatchWithIndex batch(ridx->columnFamily()->GetComparator(),
                                      32 * 1024 * 1024);
   RocksDBBatchedMethods batched(state, &batch);
 
@@ -1691,8 +1695,8 @@ uint64_t RocksDBCollection::recalculateCounts() {
 
   // count documents
   auto documentBounds = RocksDBKeyBounds::CollectionDocuments(_objectId);
-  _numberDocuments = rocksutils::countKeyRange(globalRocksDB(), readOptions,
-                                               documentBounds);
+  _numberDocuments =
+      rocksutils::countKeyRange(globalRocksDB(), readOptions, documentBounds);
 
   // update counter manager value
   res = globalRocksEngine()->counterManager()->setAbsoluteCounter(
@@ -1728,7 +1732,11 @@ void RocksDBCollection::estimateSize(velocypack::Builder& builder) {
   RocksDBKeyBounds bounds = RocksDBKeyBounds::CollectionDocuments(_objectId);
   rocksdb::Range r(bounds.start(), bounds.end());
   uint64_t out = 0, total = 0;
-  db->GetApproximateSizes(RocksDBColumnFamily::documents(), &r, 1, &out, static_cast<uint8_t>(rocksdb::DB::SizeApproximationFlags::INCLUDE_MEMTABLES | rocksdb::DB::SizeApproximationFlags::INCLUDE_FILES));
+  db->GetApproximateSizes(
+      RocksDBColumnFamily::documents(), &r, 1, &out,
+      static_cast<uint8_t>(
+          rocksdb::DB::SizeApproximationFlags::INCLUDE_MEMTABLES |
+          rocksdb::DB::SizeApproximationFlags::INCLUDE_FILES));
   total += out;
 
   builder.openObject();

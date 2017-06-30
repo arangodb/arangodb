@@ -349,8 +349,8 @@ void RocksDBCounterManager::readIndexEstimates() {
 
   rocksdb::Comparator const* cmp = _db->GetOptions().comparator;
   rocksdb::ReadOptions readOptions;
-  std::unique_ptr<rocksdb::Iterator> iter(_db->NewIterator(readOptions,
-                                                           RocksDBColumnFamily::other()));
+  std::unique_ptr<rocksdb::Iterator> iter(
+      _db->NewIterator(readOptions, RocksDBColumnFamily::definitions()));
   iter->Seek(bounds.start());
 
   for (; iter->Valid() && cmp->Compare(iter->key(), bounds.end()) < 0;
@@ -364,7 +364,8 @@ void RocksDBCounterManager::readIndexEstimates() {
     // If this hits we have two estimates for the same index
     TRI_ASSERT(_estimators.find(objectId) == _estimators.end());
     try {
-      if (RocksDBCuckooIndexEstimator<uint64_t>::isFormatSupported(estimateSerialisation)) {
+      if (RocksDBCuckooIndexEstimator<uint64_t>::isFormatSupported(
+              estimateSerialisation)) {
         _estimators.emplace(
             objectId,
             std::make_pair(
@@ -386,8 +387,8 @@ void RocksDBCounterManager::readKeyGenerators() {
 
   rocksdb::Comparator const* cmp = _db->GetOptions().comparator;
   rocksdb::ReadOptions readOptions;
-  std::unique_ptr<rocksdb::Iterator> iter(_db->NewIterator(readOptions,
-                                                           RocksDBColumnFamily::other()));
+  std::unique_ptr<rocksdb::Iterator> iter(
+      _db->NewIterator(readOptions, RocksDBColumnFamily::definitions()));
   iter->Seek(bounds.start());
 
   for (; iter->Valid() && cmp->Compare(iter->key(), bounds.end()) < 0;
@@ -399,7 +400,7 @@ void RocksDBCounterManager::readKeyGenerators() {
     // If this hits we have two generators for the same collection
     TRI_ASSERT(_generators.find(objectId) == _generators.end());
     try {
-      _generators.emplace( objectId, lastValue);
+      _generators.emplace(objectId, lastValue);
     } catch (...) {
       // Nothing to do, just validate that no corrupted memory was produced.
       TRI_ASSERT(_generators.find(objectId) == _generators.end());
@@ -441,9 +442,7 @@ void RocksDBCounterManager::clearIndexEstimators() {
   _estimators.clear();
 }
 
-void RocksDBCounterManager::clearKeyGenerators() {
-  _generators.clear();
-}
+void RocksDBCounterManager::clearKeyGenerators() { _generators.clear(); }
 
 /// Parse counter values from rocksdb
 void RocksDBCounterManager::readCounterValues() {
@@ -452,8 +451,8 @@ void RocksDBCounterManager::readCounterValues() {
 
   rocksdb::Comparator const* cmp = _db->GetOptions().comparator;
   rocksdb::ReadOptions readOptions;
-  std::unique_ptr<rocksdb::Iterator> iter(_db->NewIterator(readOptions,
-                                                           RocksDBColumnFamily::other()));
+  std::unique_ptr<rocksdb::Iterator> iter(
+      _db->NewIterator(readOptions, RocksDBColumnFamily::definitions()));
   iter->Seek(bounds.start());
 
   while (iter->Valid() && cmp->Compare(iter->key(), bounds.end()) < 0) {
@@ -469,7 +468,7 @@ void RocksDBCounterManager::readCounterValues() {
 /// WAL parser, no locking required here, because we have been locked from the
 /// outside
 class WBReader final : public rocksdb::WriteBatch::Handler {
-public:
+ public:
   // must be set by the counter manager
   std::unordered_map<uint64_t, rocksdb::SequenceNumber> seqStart;
   std::unordered_map<uint64_t, RocksDBCounterManager::CounterAdjustment> deltas;
@@ -490,7 +489,7 @@ public:
                     std::unique_ptr<RocksDBCuckooIndexEstimator<uint64_t>>>>*
           estimators,
       std::unordered_map<uint64_t, uint64_t>* generators)
-  : _estimators(estimators), _generators(generators), currentSeqNum(0) {}
+      : _estimators(estimators), _generators(generators), currentSeqNum(0) {}
 
   ~WBReader() {
     // update ticks after parsing wal
@@ -501,9 +500,10 @@ public:
     TRI_HybridLogicalClock(_maxHLC);
   }
 
-  bool shouldHandle(uint32_t column_family_id, const rocksdb::Slice& key) {
-    if (RocksDBKey::type(key) == RocksDBEntryType::Document) {
-      uint64_t objectId = RocksDBKey::counterObjectId(key);
+  bool shouldHandleDocument(uint32_t column_family_id,
+                            const rocksdb::Slice& key) {
+    if (column_family_id == RocksDBColumnFamily::documents()->GetID()) {
+      uint64_t objectId = RocksDBKey::objectId(key);
       auto const& it = seqStart.find(objectId);
       if (it != seqStart.end()) {
         if (deltas.find(objectId) == deltas.end()) {
@@ -531,13 +531,14 @@ public:
     if (keyValue == 0) {
       return;
     }
-    
+
     auto it = _generators->find(objectId);
-    
+
     if (it == _generators->end()) {
       try {
         _generators->emplace(objectId, keyValue);
-      } catch (...) {}
+      } catch (...) {
+      }
       return;
     }
 
@@ -546,7 +547,8 @@ public:
     }
   }
 
-  void updateMaxTick(const rocksdb::Slice& key, const rocksdb::Slice& value) {
+  void updateMaxTick(uint32_t column_family_id, const rocksdb::Slice& key,
+                     const rocksdb::Slice& value) {
     // RETURN (side-effect): update _maxTick
     //
     // extract max tick from Markers and store them as side-effect in
@@ -556,13 +558,12 @@ public:
     // array
     //          - documents - _rev (revision as maxtick)
     //          - databases
-    auto const type = RocksDBKey::type(key);
 
-    if (type == RocksDBEntryType::Document) {
-      storeMaxHLC(RocksDBKey::revisionId(key));
+    if (column_family_id == RocksDBColumnFamily::documents()->GetID()) {
+      storeMaxHLC(RocksDBKey::revisionId(RocksDBEntryType::Document, key));
       storeLastKeyValue(RocksDBKey::objectId(key),
-        RocksDBValue::keyValue(value));
-    } else if (type == RocksDBEntryType::PrimaryIndexValue) {
+                        RocksDBValue::keyValue(value));
+    } else if (column_family_id == RocksDBColumnFamily::primary()->GetID()) {
       // document key
       StringRef ref = RocksDBKey::primaryKey(key);
       TRI_ASSERT(!ref.empty());
@@ -583,30 +584,36 @@ public:
           // non-numeric key. simply ignore it
         }
       }
-    } else if (type == RocksDBEntryType::Collection) {
-      storeMaxTick(RocksDBKey::collectionId(key));
-      auto slice = RocksDBValue::data(value);
-      storeMaxTick(basics::VelocyPackHelper::stringUInt64(slice, "objectId"));
-      VPackSlice indexes = slice.get("indexes");
-      for (VPackSlice const& idx : VPackArrayIterator(indexes)) {
-        storeMaxTick(
-            std::max(basics::VelocyPackHelper::stringUInt64(idx, "objectId"),
-                     basics::VelocyPackHelper::stringUInt64(idx, "id")));
+    } else if (column_family_id ==
+               RocksDBColumnFamily::definitions()->GetID()) {
+      auto const type = RocksDBKey::type(key);
+
+      if (type == RocksDBEntryType::Collection) {
+        storeMaxTick(RocksDBKey::collectionId(key));
+        auto slice = RocksDBValue::data(value);
+        storeMaxTick(basics::VelocyPackHelper::stringUInt64(slice, "objectId"));
+        VPackSlice indexes = slice.get("indexes");
+        for (VPackSlice const& idx : VPackArrayIterator(indexes)) {
+          storeMaxTick(
+              std::max(basics::VelocyPackHelper::stringUInt64(idx, "objectId"),
+                       basics::VelocyPackHelper::stringUInt64(idx, "id")));
+        }
+      } else if (type == RocksDBEntryType::Database) {
+        storeMaxTick(RocksDBKey::databaseId(key));
+      } else if (type == RocksDBEntryType::View) {
+        LOG_TOPIC(ERR, Logger::STARTUP)
+            << "tick update for views needs to be implemented";
       }
-    } else if (type == RocksDBEntryType::Database) {
-      storeMaxTick(RocksDBKey::databaseId(key));
-    } else if (type == RocksDBEntryType::View) {
-      LOG_TOPIC(ERR, Logger::STARTUP)
-          << "tick update for views needs to be implemented";
     }
   }
 
   rocksdb::Status PutCF(uint32_t column_family_id, const rocksdb::Slice& key,
-                    const rocksdb::Slice& value) override {
-    updateMaxTick(key, value);
-    if (shouldHandle(column_family_id, key)) {
-      uint64_t objectId = RocksDBKey::counterObjectId(key);
-      uint64_t revisionId = RocksDBKey::revisionId(key);
+                        const rocksdb::Slice& value) override {
+    updateMaxTick(column_family_id, key, value);
+    if (shouldHandleDocument(column_family_id, key)) {
+      uint64_t objectId = RocksDBKey::objectId(key);
+      uint64_t revisionId =
+          RocksDBKey::revisionId(RocksDBEntryType::Document, key);
 
       auto const& it = deltas.find(objectId);
       if (it != deltas.end()) {
@@ -616,38 +623,34 @@ public:
       }
     } else {
       // We have to adjust the estimate with an insert
-      switch (RocksDBKey::type(key)) {
-        case RocksDBEntryType::IndexValue: {
-          uint64_t objectId = RocksDBKey::counterObjectId(key);
-          auto it = _estimators->find(objectId);
-          if (it != _estimators->end() && it->second.first < currentSeqNum) {
-            // We track estimates for this index
-            uint64_t hash = RocksDBVPackIndex::HashForKey(key);
-            it->second.second->insert(hash);
-          }
-          break;
+      if (column_family_id == RocksDBColumnFamily::vpack()->GetID() ||
+          column_family_id == RocksDBColumnFamily::vpackHash()->GetID()) {
+        uint64_t objectId = RocksDBKey::objectId(key);
+        auto it = _estimators->find(objectId);
+        if (it != _estimators->end() && it->second.first < currentSeqNum) {
+          // We track estimates for this index
+          uint64_t hash = RocksDBVPackIndex::HashForKey(key);
+          it->second.second->insert(hash);
         }
-        case RocksDBEntryType::EdgeIndexValue: {
-          uint64_t objectId = RocksDBKey::counterObjectId(key);
-          auto it = _estimators->find(objectId);
-          if (it != _estimators->end() && it->second.first < currentSeqNum) {
-            // We track estimates for this index
-            uint64_t hash = RocksDBEdgeIndex::HashForKey(key);
-            it->second.second->insert(hash);
-          }
-          break;
+      } else if (column_family_id == RocksDBColumnFamily::edge()->GetID()) {
+        uint64_t objectId = RocksDBKey::objectId(key);
+        auto it = _estimators->find(objectId);
+        if (it != _estimators->end() && it->second.first < currentSeqNum) {
+          // We track estimates for this index
+          uint64_t hash = RocksDBEdgeIndex::HashForKey(key);
+          it->second.second->insert(hash);
         }
-        default:
-          break;
       }
     }
     return rocksdb::Status();
   }
 
-  rocksdb::Status DeleteCF(uint32_t column_family_id, const rocksdb::Slice& key) override {
-    if (shouldHandle(column_family_id, key)) {
-      uint64_t objectId = RocksDBKey::counterObjectId(key);
-      uint64_t revisionId = RocksDBKey::revisionId(key);
+  rocksdb::Status DeleteCF(uint32_t column_family_id,
+                           const rocksdb::Slice& key) override {
+    if (shouldHandleDocument(column_family_id, key)) {
+      uint64_t objectId = RocksDBKey::objectId(key);
+      uint64_t revisionId =
+          RocksDBKey::revisionId(RocksDBEntryType::Document, key);
 
       auto const& it = deltas.find(objectId);
       if (it != deltas.end()) {
@@ -657,36 +660,26 @@ public:
       }
     } else {
       // We have to adjust the estimate with an remove
-      switch (RocksDBKey::type(key)) {
-        case RocksDBEntryType::IndexValue: {
-          uint64_t objectId = RocksDBKey::counterObjectId(key);
-          auto it = _estimators->find(objectId);
-          if (it != _estimators->end() && it->second.first < currentSeqNum) {
-            // We track estimates for this index
-            uint64_t hash = RocksDBVPackIndex::HashForKey(key);
-            it->second.second->remove(hash);
-          }
-          break;
+      if (column_family_id == RocksDBColumnFamily::vpack()->GetID() ||
+          column_family_id == RocksDBColumnFamily::vpackHash()->GetID()) {
+        uint64_t objectId = RocksDBKey::objectId(key);
+        auto it = _estimators->find(objectId);
+        if (it != _estimators->end() && it->second.first < currentSeqNum) {
+          // We track estimates for this index
+          uint64_t hash = RocksDBVPackIndex::HashForKey(key);
+          it->second.second->remove(hash);
         }
-        case RocksDBEntryType::EdgeIndexValue: {
-          uint64_t objectId = RocksDBKey::counterObjectId(key);
-          auto it = _estimators->find(objectId);
-          if (it != _estimators->end() && it->second.first < currentSeqNum) {
-            // We track estimates for this index
-            uint64_t hash = RocksDBEdgeIndex::HashForKey(key);
-            it->second.second->remove(hash);
-          }
-          break;
+      } else if (column_family_id == RocksDBColumnFamily::edge()->GetID()) {
+        uint64_t objectId = RocksDBKey::objectId(key);
+        auto it = _estimators->find(objectId);
+        if (it != _estimators->end() && it->second.first < currentSeqNum) {
+          // We track estimates for this index
+          uint64_t hash = RocksDBEdgeIndex::HashForKey(key);
+          it->second.second->remove(hash);
         }
-        default:
-          break;
       }
     }
     return rocksdb::Status();
-  }
-
-  rocksdb::Status SingleDeleteCF(uint32_t column_family_id, const rocksdb::Slice& key) override {
-    return DeleteCF(column_family_id, key);
   }
 };
 

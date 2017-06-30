@@ -96,22 +96,21 @@ namespace arangodb {
 std::string const RocksDBEngine::EngineName("rocksdb");
 std::string const RocksDBEngine::FeatureName("RocksDBEngine");
 
+rocksdb::ColumnFamilyHandle* RocksDBColumnFamily::_definitions(nullptr);
 rocksdb::ColumnFamilyHandle* RocksDBColumnFamily::_documents(nullptr);
 rocksdb::ColumnFamilyHandle* RocksDBColumnFamily::_primary(nullptr);
 rocksdb::ColumnFamilyHandle* RocksDBColumnFamily::_edge(nullptr);
+rocksdb::ColumnFamilyHandle* RocksDBColumnFamily::_vpack(nullptr);
+rocksdb::ColumnFamilyHandle* RocksDBColumnFamily::_vpackHash(nullptr);
 rocksdb::ColumnFamilyHandle* RocksDBColumnFamily::_geo(nullptr);
 rocksdb::ColumnFamilyHandle* RocksDBColumnFamily::_fulltext(nullptr);
-rocksdb::ColumnFamilyHandle* RocksDBColumnFamily::_other(nullptr);
-rocksdb::ColumnFamilyHandle* RocksDBColumnFamily::_index(nullptr);
-rocksdb::ColumnFamilyHandle* RocksDBColumnFamily::_uniqueIndex(nullptr);
-rocksdb::ColumnFamilyHandle* RocksDBColumnFamily::_views(nullptr);
 std::vector<rocksdb::ColumnFamilyHandle*> RocksDBColumnFamily::_allHandles;
 
 // create the storage engine
 RocksDBEngine::RocksDBEngine(application_features::ApplicationServer* server)
     : StorageEngine(server, EngineName, FeatureName, new RocksDBIndexFactory()),
       _db(nullptr),
-      _vpackCmp(new RocksDBComparator()),
+      _vpackCmp(new RocksDBVPackComparator()),
       _maxTransactionSize(transaction::Options::defaultMaxTransactionSize),
       _intermediateCommitSize(
           transaction::Options::defaultIntermediateCommitSize),
@@ -224,7 +223,7 @@ void RocksDBEngine::start() {
   _options.max_bytes_for_level_multiplier =
       static_cast<int>(opts->_maxBytesForLevelMultiplier);
   //_options.verify_checksums_in_compaction =
-  //opts->_verifyChecksumsInCompaction;
+  // opts->_verifyChecksumsInCompaction;
   _options.optimize_filters_for_hits = opts->_optimizeFiltersForHits;
   _options.use_direct_reads = opts->_useDirectReads;
   //_options.use_direct_writes = opts->_useDirectWrites;
@@ -317,36 +316,41 @@ void RocksDBEngine::start() {
   // garbage collect them
   _options.WAL_size_limit_MB = 0;
   double counter_sync_seconds = 2.5;
-
-  _options.prefix_extractor.reset(new RocksDBPrefixExtractor());
   _options.memtable_prefix_bloom_size_ratio = 0.2;  // TODO: pick better value?
   // TODO: enable memtable_insert_with_hint_prefix_extractor?
   _options.bloom_locality = 1;
 
-  // create column families
-  std::vector<rocksdb::ColumnFamilyDescriptor> columFamilies;
-  rocksdb::ColumnFamilyOptions cfOptions1(_options);
-  columFamilies.emplace_back(rocksdb::kDefaultColumnFamilyName,
-                             cfOptions1);                  // 0
-  columFamilies.emplace_back("Documents", cfOptions1);     // 1
-  columFamilies.emplace_back("PrimaryIndex", cfOptions1);  // 2
-
-  // used hash based
-  rocksdb::ColumnFamilyOptions cfOptions3(_options);
-  cfOptions3.prefix_extractor.reset(new RocksDBEdgePrefixExtractor());
+  // definitions still need the type byte
+  rocksdb::ColumnFamilyOptions definitionsCF(_options);
+  definitionsCF.prefix_extractor.reset(rocksdb::NewFixedPrefixTransform(1));
+  // 8 byte object id prefix for documents
+  rocksdb::ColumnFamilyOptions fixedPrefCF(_options);
+  fixedPrefCF.prefix_extractor.reset(
+      rocksdb::NewFixedPrefixTransform(RocksDBKey::objectIdSize()));
+  // colum family options with prefix containing indexed value
+  rocksdb::ColumnFamilyOptions dyncamicPrefCF(_options);
+  dyncamicPrefCF.prefix_extractor.reset(new RocksDBPrefixExtractor());
   table_options.index_type =
       rocksdb::BlockBasedTableOptions::IndexType::kHashSearch;
-  cfOptions3.table_factory = std::shared_ptr<rocksdb::TableFactory>(
+  dyncamicPrefCF.table_factory = std::shared_ptr<rocksdb::TableFactory>(
       rocksdb::NewBlockBasedTableFactory(table_options));
-  columFamilies.emplace_back("EdgeIndex", cfOptions3);  // 3
+  // velocypack based index variants with custom comparator
+  rocksdb::ColumnFamilyOptions vpackFixedPrefCF(fixedPrefCF);
+  vpackFixedPrefCF.comparator = _vpackCmp.get();
+  rocksdb::ColumnFamilyOptions vpackDynPrefixCF(dyncamicPrefCF);
+  vpackDynPrefixCF.comparator = _vpackCmp.get();
 
-  columFamilies.emplace_back("GeoIndex", cfOptions1);       // 4
-  columFamilies.emplace_back("FulltextIndex", cfOptions1);  // 5
-  rocksdb::ColumnFamilyOptions cfOptions2(_options);
-  cfOptions2.comparator = _vpackCmp.get();  // only place for vpack comp
-  columFamilies.emplace_back("IndexValue", cfOptions2);        // 6
-  columFamilies.emplace_back("UniqueIndexValue", cfOptions2);  // 7
-  columFamilies.emplace_back("Views", cfOptions2);             // 8
+  // create column families
+  std::vector<rocksdb::ColumnFamilyDescriptor> cfFamilies;
+  // no prefix families for default column family
+  cfFamilies.emplace_back("Definitions", definitionsCF);        // 0
+  cfFamilies.emplace_back("Documents", fixedPrefCF);            // 1
+  cfFamilies.emplace_back("PrimaryIndex", fixedPrefCF);         // 2
+  cfFamilies.emplace_back("EdgeIndex", dyncamicPrefCF);         // 3
+  cfFamilies.emplace_back("VPackIndex", vpackFixedPrefCF);      // 4
+  cfFamilies.emplace_back("VPackHashIndex", vpackDynPrefixCF);  // 5
+  cfFamilies.emplace_back("GeoIndex", fixedPrefCF);             // 6
+  cfFamilies.emplace_back("FulltextIndex", fixedPrefCF);        // 7
   // DO NOT FORGET TO DESTROY THE CFs ON CLOSE
 
   std::vector<rocksdb::ColumnFamilyHandle*> cfHandles;
@@ -399,19 +403,18 @@ void RocksDBEngine::start() {
   }
 
   rocksdb::Status status = rocksdb::TransactionDB::Open(
-      _options, transactionOptions, _path, columFamilies, &cfHandles, &_db);
+      _options, transactionOptions, _path, cfFamilies, &cfHandles, &_db);
 
   if (!status.ok()) {
     LOG_TOPIC(FATAL, arangodb::Logger::STARTUP)
         << "unable to initialize RocksDB engine: " << status.ToString();
     FATAL_ERROR_EXIT();
   }
-  if (columFamilies.size() != cfHandles.size()) {
+  if (cfFamilies.size() != cfHandles.size()) {
     LOG_TOPIC(FATAL, arangodb::Logger::STARTUP)
         << "unable to initialize RocksDB column families";
     FATAL_ERROR_EXIT();
   }
-
   if (cfHandles.size() < numberOfColumnFamilies) {
     LOG_TOPIC(FATAL, arangodb::Logger::STARTUP)
         << "unexpected number of column families found in database. "
@@ -420,20 +423,17 @@ void RocksDBEngine::start() {
     FATAL_ERROR_EXIT();
   }
 
-  TRI_ASSERT(cfHandles.size() >= numberOfColumnFamilies);
-
   // set our column families
-  RocksDBColumnFamily::_other = cfHandles[0];
+  RocksDBColumnFamily::_definitions = cfHandles[0];
   RocksDBColumnFamily::_documents = cfHandles[1];
   RocksDBColumnFamily::_primary = cfHandles[2];
   RocksDBColumnFamily::_edge = cfHandles[3];
-  RocksDBColumnFamily::_geo = cfHandles[4];
-  RocksDBColumnFamily::_fulltext = cfHandles[5];
-  RocksDBColumnFamily::_index = cfHandles[6];
-  RocksDBColumnFamily::_uniqueIndex = cfHandles[7];
-  RocksDBColumnFamily::_views = cfHandles[8];
+  RocksDBColumnFamily::_vpack = cfHandles[4];
+  RocksDBColumnFamily::_vpackHash = cfHandles[5];
+  RocksDBColumnFamily::_geo = cfHandles[6];
+  RocksDBColumnFamily::_fulltext = cfHandles[7];
   RocksDBColumnFamily::_allHandles = cfHandles;
-  TRI_ASSERT(RocksDBColumnFamily::_other->GetID() == 0);
+  TRI_ASSERT(RocksDBColumnFamily::_definitions->GetID() == 0);
 
   // only enable logger after RocksDB start
   logger->enable();
@@ -549,7 +549,7 @@ void RocksDBEngine::getDatabases(arangodb::velocypack::Builder& result) {
 
   rocksdb::ReadOptions readOptions;
   std::unique_ptr<rocksdb::Iterator> iter(
-      _db->NewIterator(readOptions, RocksDBColumnFamily::other()));
+      _db->NewIterator(readOptions, RocksDBColumnFamily::definitions()));
   result.openArray();
   auto rSlice = rocksDBSlice(RocksDBEntryType::Database);
   for (iter->Seek(rSlice); iter->Valid() && iter->key().starts_with(rSlice);
@@ -642,7 +642,7 @@ int RocksDBEngine::getCollectionsAndIndexes(
     bool wasCleanShutdown, bool isUpgrade) {
   rocksdb::ReadOptions readOptions;
   std::unique_ptr<rocksdb::Iterator> iter(
-      _db->NewIterator(readOptions, RocksDBColumnFamily::other()));
+      _db->NewIterator(readOptions, RocksDBColumnFamily::definitions()));
 
   result.openArray();
   auto rSlice = rocksDBSlice(RocksDBEntryType::Collection);
@@ -670,7 +670,7 @@ int RocksDBEngine::getViews(TRI_vocbase_t* vocbase,
                             arangodb::velocypack::Builder& result) {
   rocksdb::ReadOptions readOptions;
   std::unique_ptr<rocksdb::Iterator> iter(
-      _db->NewIterator(readOptions, RocksDBColumnFamily::other()));
+      _db->NewIterator(readOptions, RocksDBColumnFamily::definitions()));
 
   result.openArray();
   auto rSlice = rocksDBSlice(RocksDBEntryType::View);
@@ -788,7 +788,7 @@ int RocksDBEngine::writeCreateDatabaseMarker(TRI_voc_tick_t id,
   auto value = RocksDBValue::Database(slice);
   rocksdb::WriteOptions options;  // TODO: check which options would make sense
 
-  rocksdb::Status res = _db->Put(options, RocksDBColumnFamily::other(),
+  rocksdb::Status res = _db->Put(options, RocksDBColumnFamily::definitions(),
                                  key.string(), value.string());
   auto result = rocksutils::convertStatus(res);
   return result.errorNumber();
@@ -958,8 +958,7 @@ arangodb::Result RocksDBEngine::dropCollection(
   // delete documents
   RocksDBKeyBounds bounds =
       RocksDBKeyBounds::CollectionDocuments(coll->objectId());
-  arangodb::Result result = rocksutils::removeLargeRange(_db, bounds);
-
+  auto result = rocksutils::removeLargeRange(_db, bounds);
   // TODO FAILURE Simulate result.fail()
   if (result.fail()) {
     // We try to remove all documents.
@@ -1259,8 +1258,15 @@ Result RocksDBEngine::dropDatabase(TRI_voc_tick_t id) {
         // delete index documents
         uint64_t objectId =
             basics::VelocyPackHelper::stringUInt64(it, "objectId");
-        RocksDBKeyBounds bounds = RocksDBKeyBounds::IndexEntries(objectId);
+        TRI_ASSERT(it.get("type").isString());
+        Index::IndexType type = Index::type(it.get("type").copyString());
+        bool unique =
+            basics::VelocyPackHelper::getBooleanValue(it, "unique", false);
+        RocksDBKeyBounds bounds =
+            RocksDBIndex::getBounds(type, objectId, unique);
+
         res = rocksutils::removeLargeRange(_db, bounds);
+#warning FIX INDEX drop
         if (res.fail()) {
           return res;
         }
@@ -1482,15 +1488,14 @@ void RocksDBEngine::getStatistics(VPackBuilder& builder) const {
   addInt(rocksdb::DB::Properties::kBaseLevel);
   addInt(rocksdb::DB::Properties::kTotalSstFilesSize);
   builder.add("rocksdb.cfstats", VPackValue(VPackValueType::Object));
-  addCf("other", RocksDBColumnFamily::other());
+  addCf("definitions", RocksDBColumnFamily::definitions());
   addCf("documents", RocksDBColumnFamily::documents());
   addCf("primary", RocksDBColumnFamily::primary());
   addCf("edge", RocksDBColumnFamily::edge());
+  addCf("vpack", RocksDBColumnFamily::vpack());
+  addCf("vpackHash", RocksDBColumnFamily::vpackHash());
   addCf("geo", RocksDBColumnFamily::geo());
   addCf("fulltext", RocksDBColumnFamily::fulltext());
-  addCf("index", RocksDBColumnFamily::index());
-  addCf("uniqueIndex", RocksDBColumnFamily::uniqueIndex());
-  addCf("views", RocksDBColumnFamily::views());
   builder.close();
 
   if (_options.table_factory) {

@@ -139,11 +139,11 @@ class RocksDBGeoIndex final : public RocksDBIndex {
   bool matchesDefinition(VPackSlice const& info) const override;
 
   Result insert(transaction::Methods*, TRI_voc_rid_t,
-             arangodb::velocypack::Slice const&, bool isRollback) override;
+                arangodb::velocypack::Slice const&, bool isRollback) override;
   int insertRaw(RocksDBMethods*, TRI_voc_rid_t,
                 arangodb::velocypack::Slice const&) override;
   Result remove(transaction::Methods*, TRI_voc_rid_t,
-             arangodb::velocypack::Slice const&, bool isRollback) override;
+                arangodb::velocypack::Slice const&, bool isRollback) override;
   int removeRaw(RocksDBMethods*, TRI_voc_rid_t,
                 arangodb::velocypack::Slice const&) override;
 

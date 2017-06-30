@@ -101,7 +101,10 @@ size_t RocksDBFulltextIndex::memory() const {
       RocksDBKeyBounds::FulltextIndexPrefix(_objectId, StringRef());
   rocksdb::Range r(bounds.start(), bounds.end());
   uint64_t out;
-  db->GetApproximateSizes(RocksDBColumnFamily::fulltext(), &r, 1, &out, static_cast<uint8_t>(rocksdb::DB::SizeApproximationFlags::INCLUDE_MEMTABLES | rocksdb::DB::SizeApproximationFlags::INCLUDE_FILES));
+  uint8_t flags = rocksdb::DB::SizeApproximationFlags::INCLUDE_MEMTABLES |
+                  rocksdb::DB::SizeApproximationFlags::INCLUDE_FILES;
+  db->GetApproximateSizes(RocksDBColumnFamily::fulltext(), &r, 1, &out,
+                          static_cast<uint8_t>(flags));
   return static_cast<size_t>(out);
 }
 
@@ -202,7 +205,7 @@ Result RocksDBFulltextIndex::insert(transaction::Methods* trx,
   RocksDBMethods* mthd = rocksutils::toRocksMethods(trx);
   // now we are going to construct the value to insert into rocksdb
   // unique indexes have a different key structure
-  RocksDBValue value = RocksDBValue::IndexValue();
+  RocksDBValue value = RocksDBValue::VPackIndexValue();
 
   int res = TRI_ERROR_NO_ERROR;
   // size_t const count = words.size();
@@ -239,7 +242,7 @@ int RocksDBFulltextIndex::insertRaw(RocksDBMethods* batch,
   // now we are going to construct the value to insert into rocksdb
   // unique indexes have a different key structure
   // StringRef docKey(doc.get(StaticStrings::KeyString));
-  RocksDBValue value = RocksDBValue::IndexValue();
+  RocksDBValue value = RocksDBValue::VPackIndexValue();
 
   for (std::string const& word : words) {
     RocksDBKey key =
@@ -525,13 +528,14 @@ Result RocksDBFulltextIndex::applyQueryToken(
       return rocksutils::convertStatus(s);
     }
 
-    TRI_voc_rid_t revisionId = RocksDBKey::revisionId(iter->key());
+    TRI_voc_rid_t revId = RocksDBKey::revisionId(
+        RocksDBEntryType::FulltextIndexValue, iter->key());
     if (token.operation == FulltextQueryToken::AND) {
-      intersect.insert(revisionId);
+      intersect.insert(revId);
     } else if (token.operation == FulltextQueryToken::OR) {
-      resultSet.insert(revisionId);
+      resultSet.insert(revId);
     } else if (token.operation == FulltextQueryToken::EXCLUDE) {
-      resultSet.erase(revisionId);
+      resultSet.erase(revId);
     }
     iter->Next();
   }

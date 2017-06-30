@@ -35,10 +35,10 @@
 
 namespace arangodb {
 
-class RocksDBComparator final : public rocksdb::Comparator {
+class RocksDBVPackComparator final : public rocksdb::Comparator {
  public:
-  RocksDBComparator();
-  ~RocksDBComparator();
+  RocksDBVPackComparator();
+  ~RocksDBVPackComparator();
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Compares any two RocksDB keys.
@@ -46,17 +46,20 @@ class RocksDBComparator final : public rocksdb::Comparator {
   ///          > 0 if lhs > rhs
   ///            0 if lhs == rhs
   //////////////////////////////////////////////////////////////////////////////
-  int Compare(rocksdb::Slice const& lhs, rocksdb::Slice const& rhs) const override {
+  int Compare(rocksdb::Slice const& lhs,
+              rocksdb::Slice const& rhs) const override {
     return compareIndexValues(lhs, rhs);
   }
-  
-  bool Equal(rocksdb::Slice const& lhs, rocksdb::Slice const& rhs) const override {
+
+  bool Equal(rocksdb::Slice const& lhs,
+             rocksdb::Slice const& rhs) const override {
     return (compareIndexValues(lhs, rhs) == 0);
   }
 
   // SECTION: API compatibility
-  char const* Name() const override { return "ArangoRocksDBComparator2"; }
-  void FindShortestSeparator(std::string*, rocksdb::Slice const&) const override {}
+  char const* Name() const override { return "RocksDBVPackComparator"; }
+  void FindShortestSeparator(std::string*,
+                             rocksdb::Slice const&) const override {}
   void FindShortSuccessor(std::string*) const override {}
 
  private:
@@ -66,7 +69,8 @@ class RocksDBComparator final : public rocksdb::Comparator {
   /// If two keys are not of the same type, we can short-circuit the comparison
   /// early.
   //////////////////////////////////////////////////////////////////////////////
-  //int compareType(rocksdb::Slice const& lhs, rocksdb::Slice const& rhs) const;
+  // int compareType(rocksdb::Slice const& lhs, rocksdb::Slice const& rhs)
+  // const;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Compares keys in standard lexicographic order.
@@ -77,7 +81,7 @@ class RocksDBComparator final : public rocksdb::Comparator {
   /// data. Unfortunately, VelocyPack is not lexicographically comparable, so we
   /// must handle those keys separately.
   //////////////////////////////////////////////////////////////////////////////
-  //int compareLexicographic(rocksdb::Slice const& lhs,
+  // int compareLexicographic(rocksdb::Slice const& lhs,
   //                         rocksdb::Slice const& rhs) const;
 
   //////////////////////////////////////////////////////////////////////////////

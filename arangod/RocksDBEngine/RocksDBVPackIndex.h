@@ -66,9 +66,7 @@ class RocksDBVPackIndexIterator final : public IndexIterator {
                             transaction::Methods* trx,
                             ManagedDocumentResult* mmdr,
                             arangodb::RocksDBVPackIndex const* index,
-                            bool reverse,
-                            arangodb::velocypack::Slice const& left,
-                            arangodb::velocypack::Slice const& right);
+                            bool reverse, RocksDBKeyBounds const& bounds);
 
   ~RocksDBVPackIndexIterator() = default;
 

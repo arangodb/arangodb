@@ -319,7 +319,11 @@ size_t RocksDBGeoIndex::memory() const {
   RocksDBKeyBounds bounds = RocksDBKeyBounds::GeoIndex(_objectId);
   rocksdb::Range r(bounds.start(), bounds.end());
   uint64_t out;
-  db->GetApproximateSizes(RocksDBColumnFamily::geo(), &r, 1, &out, static_cast<uint8_t>(rocksdb::DB::SizeApproximationFlags::INCLUDE_MEMTABLES | rocksdb::DB::SizeApproximationFlags::INCLUDE_FILES));
+  db->GetApproximateSizes(
+      RocksDBColumnFamily::geo(), &r, 1, &out,
+      static_cast<uint8_t>(
+          rocksdb::DB::SizeApproximationFlags::INCLUDE_MEMTABLES |
+          rocksdb::DB::SizeApproximationFlags::INCLUDE_FILES));
   return static_cast<size_t>(out);
 }
 
@@ -480,8 +484,8 @@ int RocksDBGeoIndex::internalInsert(TRI_voc_rid_t revisionId,
 }
 
 Result RocksDBGeoIndex::insert(transaction::Methods* trx,
-                               TRI_voc_rid_t revisionId,
-                               VPackSlice const& doc, bool isRollback) {
+                               TRI_voc_rid_t revisionId, VPackSlice const& doc,
+                               bool isRollback) {
   // acquire rocksdb transaction
   GeoIndex_setRocksMethods(_geoIndex, rocksutils::toRocksMethods(trx));
   int res = this->internalInsert(revisionId, doc);
@@ -558,8 +562,8 @@ int RocksDBGeoIndex::internalRemove(TRI_voc_rid_t revisionId,
 }
 
 Result RocksDBGeoIndex::remove(transaction::Methods* trx,
-                               TRI_voc_rid_t revisionId,
-                               VPackSlice const& doc, bool isRollback) {
+                               TRI_voc_rid_t revisionId, VPackSlice const& doc,
+                               bool isRollback) {
   // acquire rocksdb methods
   GeoIndex_setRocksMethods(_geoIndex, rocksutils::toRocksMethods(trx));
   int res = this->internalRemove(revisionId, doc);

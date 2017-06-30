@@ -315,7 +315,8 @@ void RocksDBEdgeIndexIterator::lookupInRocksDB(StringRef fromTo) {
   _builder.openArray(true);
   auto end = _bounds.end();
   while (_iterator->Valid() && (cmp->Compare(_iterator->key(), end) < 0)) {
-    TRI_voc_rid_t revisionId = RocksDBKey::revisionId(_iterator->key());
+    TRI_voc_rid_t revisionId = RocksDBKey::revisionId(
+        RocksDBEntryType::EdgeIndexValue, _iterator->key());
     RocksDBToken token(revisionId);
 
     // adding revision ID and _from or _to value
@@ -374,7 +375,7 @@ RocksDBEdgeIndex::RocksDBEdgeIndex(TRI_idx_iid_t iid,
                                         {{AttributeName(attr, false)}}),
                    false, false, RocksDBColumnFamily::edge(),
                    basics::VelocyPackHelper::stringUInt64(info, "objectId"),
-                   //!ServerState::instance()->isCoordinator() /*useCache*/),
+                   //! ServerState::instance()->isCoordinator() /*useCache*/),
                    /*useCache*/ false),
       _directionAttr(attr),
       _isFromIndex(attr == StaticStrings::FromString),
@@ -730,8 +731,9 @@ void RocksDBEdgeIndex::warmup(arangodb::transaction::Methods* trx) {
       }
     }
     if (needsInsert) {
-      TRI_voc_rid_t revisionId = RocksDBKey::revisionId(key);
-      RocksDBToken token(revisionId);
+      TRI_voc_rid_t revId =
+          RocksDBKey::revisionId(RocksDBEntryType::EdgeIndexValue, key);
+      RocksDBToken token(revId);
       if (rocksColl->readDocument(trx, token, mmdr)) {
         builder.add(VPackValue(token.revisionId()));
 

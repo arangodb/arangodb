@@ -112,12 +112,12 @@ class RocksDBEdgeIndex final : public RocksDBIndex {
   void toVelocyPack(VPackBuilder&, bool, bool) const override;
 
   Result insert(transaction::Methods*, TRI_voc_rid_t,
-             arangodb::velocypack::Slice const&, bool isRollback) override;
+                arangodb::velocypack::Slice const&, bool isRollback) override;
 
   int insertRaw(RocksDBMethods*, TRI_voc_rid_t, VPackSlice const&) override;
 
   Result remove(transaction::Methods*, TRI_voc_rid_t,
-             arangodb::velocypack::Slice const&, bool isRollback) override;
+                arangodb::velocypack::Slice const&, bool isRollback) override;
 
   /// optimization for truncateNoTrx, never called in fillIndex
   int removeRaw(RocksDBMethods*, TRI_voc_rid_t,
@@ -163,7 +163,6 @@ class RocksDBEdgeIndex final : public RocksDBIndex {
   bool deserializeEstimate(arangodb::RocksDBCounterManager* mgr) override;
 
   void recalculateEstimates() override;
-
 
  private:
   /// @brief create the iterator

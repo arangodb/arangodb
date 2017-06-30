@@ -21,9 +21,9 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "RocksDBMethods.h"
+#include "Logger/Logger.h"
 #include "RocksDBEngine/RocksDBCommon.h"
 #include "RocksDBEngine/RocksDBTransactionState.h"
-#include "Logger/Logger.h"
 
 #include <rocksdb/db.h>
 #include <rocksdb/options.h>
@@ -134,8 +134,7 @@ arangodb::Result RocksDBTrxMethods::Get(rocksdb::ColumnFamilyHandle* cf,
                                         std::string* val) {
   rocksdb::ReadOptions const& ro = _state->_rocksReadOptions;
   TRI_ASSERT(ro.snapshot != nullptr);
-  rocksdb::Status s = _state->_rocksTransaction->Get(ro, cf, key.string(),
-                                                     val);
+  rocksdb::Status s = _state->_rocksTransaction->Get(ro, cf, key.string(), val);
   return s.ok() ? arangodb::Result() : rocksutils::convertStatus(s);
 }
 
