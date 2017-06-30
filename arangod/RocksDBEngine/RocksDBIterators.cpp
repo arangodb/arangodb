@@ -288,8 +288,8 @@ RocksDBSortedAllIterator::RocksDBSortedAllIterator(
   TRI_ASSERT(options.prefix_same_as_start);
   options.verify_checksums = false;
   _iterator = mthds->NewIterator(options, index->columnFamily());
-
   _iterator->Seek(_bounds.start());
+  TRI_ASSERT(index->columnFamily() == RocksDBColumnFamily::primary());
 }
 
 bool RocksDBSortedAllIterator::outOfRange() const {

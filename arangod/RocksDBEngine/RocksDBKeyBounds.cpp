@@ -280,9 +280,8 @@ RocksDBKeyBounds::RocksDBKeyBounds(RocksDBEntryType type, uint64_t first)
       // static slices with an array with one entry
       VPackSlice min("\x02\x03\x1e");  // [minSlice]
       VPackSlice max("\x02\x03\x1f");  // [maxSlice]
-
-      size_t length = 2 * (sizeof(uint64_t)) + min.byteSize() + max.byteSize();
-      _internals.reserve(length);
+      _internals.reserve(2 * (sizeof(uint64_t)) + min.byteSize() + max.byteSize());
+      
       uint64ToPersistent(_internals.buffer(), first);
       _internals.buffer().append((char*)(min.begin()), min.byteSize());
       if (type == RocksDBEntryType::VPackHashIndexValue) {
@@ -290,8 +289,7 @@ RocksDBKeyBounds::RocksDBKeyBounds(RocksDBEntryType type, uint64_t first)
       }
 
       _internals.separate();
-
-      _internals.push_back(static_cast<char>(_type));
+      
       uint64ToPersistent(_internals.buffer(), first);
       _internals.buffer().append((char*)(max.begin()), max.byteSize());
       if (type == RocksDBEntryType::VPackHashIndexValue) {
@@ -331,7 +329,6 @@ RocksDBKeyBounds::RocksDBKeyBounds(RocksDBEntryType type, uint64_t first)
     case RocksDBEntryType::FulltextIndexValue: {
       size_t length = sizeof(char) + sizeof(uint64_t);
       _internals.reserve(length);
-      _internals.push_back(static_cast<char>(_type));
       uint64ToPersistent(_internals.buffer(), first);
       if (type == RocksDBEntryType::EdgeIndexValue) {
         _internals.push_back('\0');
@@ -340,7 +337,6 @@ RocksDBKeyBounds::RocksDBKeyBounds(RocksDBEntryType type, uint64_t first)
 
       _internals.separate();
 
-      _internals.push_back(static_cast<char>(_type));
       uint64ToPersistent(_internals.buffer(), first);
       _internals.push_back(0xFFU);
       if (type == RocksDBEntryType::EdgeIndexValue) {

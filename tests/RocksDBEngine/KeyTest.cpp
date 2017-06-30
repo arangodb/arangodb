@@ -146,50 +146,50 @@ TEST_CASE("RocksDBKeyTest", "[rocksdbkeytest]") {
     RocksDBKey key1 = RocksDBKey::Document(0, 0);
     auto const& s1 = key1.string();
 
-    CHECK(s1.size() == sizeof(char) + sizeof(uint64_t) + sizeof(uint64_t));
-    CHECK(s1 == std::string("3\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0", 17));
+    CHECK(s1.size() == +sizeof(uint64_t) + sizeof(uint64_t));
+    CHECK(s1 == std::string("\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0", 16));
 
     RocksDBKey key2 = RocksDBKey::Document(23, 42);
     auto const& s2 = key2.string();
 
-    CHECK(s2.size() == sizeof(char) + sizeof(uint64_t) + sizeof(uint64_t));
-    CHECK(s2 == std::string("3\x17\0\0\0\0\0\0\0\x2a\0\0\0\0\0\0\0", 17));
+    CHECK(s2.size() == +sizeof(uint64_t) + sizeof(uint64_t));
+    CHECK(s2 == std::string("\x17\0\0\0\0\0\0\0\x2a\0\0\0\0\0\0\0", 16));
 
     RocksDBKey key3 = RocksDBKey::Document(255, 255);
     auto const& s3 = key3.string();
 
-    CHECK(s3.size() == sizeof(char) + sizeof(uint64_t) + sizeof(uint64_t));
-    CHECK(s3 == std::string("3\xff\0\0\0\0\0\0\0\xff\0\0\0\0\0\0\0", 17));
+    CHECK(s3.size() == sizeof(uint64_t) + sizeof(uint64_t));
+    CHECK(s3 == std::string("\xff\0\0\0\0\0\0\0\xff\0\0\0\0\0\0\0", 16));
 
     RocksDBKey key4 = RocksDBKey::Document(256, 257);
     auto const& s4 = key4.string();
 
-    CHECK(s4.size() == sizeof(char) + sizeof(uint64_t) + sizeof(uint64_t));
-    CHECK(s4 == std::string("3\0\x01\0\0\0\0\0\0\x01\x01\0\0\0\0\0\0", 17));
+    CHECK(s4.size() == sizeof(uint64_t) + sizeof(uint64_t));
+    CHECK(s4 == std::string("\0\x01\0\0\0\0\0\0\x01\x01\0\0\0\0\0\0", 16));
 
     RocksDBKey key5 = RocksDBKey::Document(49152, 16384);
     auto const& s5 = key5.string();
 
-    CHECK(s5.size() == sizeof(char) + sizeof(uint64_t) + sizeof(uint64_t));
-    CHECK(s5 == std::string("3\0\xc0\0\0\0\0\0\0\0\x40\0\0\0\0\0\0", 17));
+    CHECK(s5.size() == sizeof(uint64_t) + sizeof(uint64_t));
+    CHECK(s5 == std::string("\0\xc0\0\0\0\0\0\0\0\x40\0\0\0\0\0\0", 16));
 
     RocksDBKey key6 = RocksDBKey::Document(12345678901, 987654321);
     auto const& s6 = key6.string();
 
-    CHECK(s6.size() == sizeof(char) + sizeof(uint64_t) + sizeof(uint64_t));
+    CHECK(s6.size() == sizeof(uint64_t) + sizeof(uint64_t));
     CHECK(s6 == std::string(
-                    "3\x35\x1c\xdc\xdf\x02\0\0\0\xb1\x68\xde\x3a\0\0\0\0", 17));
+                    "\x35\x1c\xdc\xdf\x02\0\0\0\xb1\x68\xde\x3a\0\0\0\0", 16));
 
     RocksDBKey key7 =
         RocksDBKey::Document(0xf0f1f2f3f4f5f6f7ULL, 0xf0f1f2f3f4f5f6f7ULL);
     auto const& s7 = key7.string();
 
-    CHECK(s7.size() == sizeof(char) + sizeof(uint64_t) + sizeof(uint64_t));
+    CHECK(s7.size() == sizeof(uint64_t) + sizeof(uint64_t));
     CHECK(
         s7 ==
         std::string(
-            "3\xf7\xf6\xf5\xf4\xf3\xf2\xf1\xf0\xf7\xf6\xf5\xf4\xf3\xf2\xf1\xf0",
-            17));
+            "\xf7\xf6\xf5\xf4\xf3\xf2\xf1\xf0\xf7\xf6\xf5\xf4\xf3\xf2\xf1\xf0",
+            16));
   }
 
   /// @brief test primary index
@@ -197,28 +197,27 @@ TEST_CASE("RocksDBKeyTest", "[rocksdbkeytest]") {
     RocksDBKey key1 = RocksDBKey::PrimaryIndexValue(0, StringRef(""));
     auto const& s1 = key1.string();
 
-    CHECK(s1.size() == sizeof(char) + sizeof(uint64_t) + strlen(""));
-    CHECK(s1 == std::string("4\0\0\0\0\0\0\0\0", 9));
+    CHECK(s1.size() == sizeof(uint64_t) + strlen(""));
+    CHECK(s1 == std::string("\0\0\0\0\0\0\0\0", 8));
 
     RocksDBKey key2 = RocksDBKey::PrimaryIndexValue(0, StringRef("abc"));
     auto const& s2 = key2.string();
 
-    CHECK(s2.size() == sizeof(char) + sizeof(uint64_t) + strlen("abc"));
-    CHECK(s2 == std::string("4\0\0\0\0\0\0\0\0abc", 12));
+    CHECK(s2.size() == sizeof(uint64_t) + strlen("abc"));
+    CHECK(s2 == std::string("\0\0\0\0\0\0\0\0abc", 11));
 
     RocksDBKey key3 = RocksDBKey::PrimaryIndexValue(0, StringRef(" "));
     auto const& s3 = key3.string();
 
-    CHECK(s3.size() == sizeof(char) + sizeof(uint64_t) + strlen(" "));
-    CHECK(s3 == std::string("4\0\0\0\0\0\0\0\0 ", 10));
+    CHECK(s3.size() == sizeof(uint64_t) + strlen(" "));
+    CHECK(s3 == std::string("\0\0\0\0\0\0\0\0 ", 9));
 
     RocksDBKey key4 =
         RocksDBKey::PrimaryIndexValue(0, StringRef("this is a key"));
     auto const& s4 = key4.string();
 
-    CHECK(s4.size() ==
-          sizeof(char) + sizeof(uint64_t) + strlen("this is a key"));
-    CHECK(s4 == std::string("4\0\0\0\0\0\0\0\0this is a key", 22));
+    CHECK(s4.size() == sizeof(uint64_t) + strlen("this is a key"));
+    CHECK(s4 == std::string("\0\0\0\0\0\0\0\0this is a key", 21));
 
     // 254 bytes
     char const* longKey =
@@ -229,36 +228,43 @@ TEST_CASE("RocksDBKeyTest", "[rocksdbkeytest]") {
     RocksDBKey key5 = RocksDBKey::PrimaryIndexValue(0, StringRef(longKey));
     auto const& s5 = key5.string();
 
-    CHECK(s5.size() == sizeof(char) + sizeof(uint64_t) + strlen(longKey));
-    CHECK(s5 == std::string("4\0\0\0\0\0\0\0\0", 9) + longKey);
+    CHECK(s5.size() == sizeof(uint64_t) + strlen(longKey));
+    CHECK(s5 == std::string("\0\0\0\0\0\0\0\0", 8) + longKey);
 
     RocksDBKey key6 =
         RocksDBKey::PrimaryIndexValue(123456789, StringRef("this is a key"));
     auto const& s6 = key6.string();
 
-    CHECK(s6.size() ==
-          sizeof(char) + sizeof(uint64_t) + strlen("this is a key"));
-    CHECK(s6 == std::string("4\x15\xcd\x5b\x07\0\0\0\0this is a key", 22));
+    CHECK(s6.size() == sizeof(uint64_t) + strlen("this is a key"));
+    CHECK(s6 == std::string("\x15\xcd\x5b\x07\0\0\0\0this is a key", 21));
   }
 
   /// @brief test edge index
   SECTION("test_edge_index") {
     RocksDBKey key1 = RocksDBKey::EdgeIndexValue(0, StringRef("a/1"), 33);
+    RocksDBKey key2 = RocksDBKey::EdgeIndexValue(0, StringRef("b/1"), 33);
     auto const& s1 = key1.string();
 
-    REQUIRE(s1.size() ==
-            sizeof(char) + sizeof(uint64_t) + strlen("a/1") + sizeof(char) +
-                sizeof(uint64_t) + sizeof(char));
-    REQUIRE(s1 == std::string("5\0\0\0\0\0\0\0\0a/1\0!\0\0\0\0\0\0\0\xff", 22));
+    CHECK(s1.size() ==
+          sizeof(uint64_t) + strlen("a/1") + sizeof(char) + sizeof(uint64_t) +
+              sizeof(char));
+    CHECK(s1 == std::string("\0\0\0\0\0\0\0\0a/1\0!\0\0\0\0\0\0\0\xff", 21));
+    CHECK(key2.string().size() ==
+          sizeof(uint64_t) + strlen("b/1") + sizeof(char) + sizeof(uint64_t) +
+              sizeof(char));
+    CHECK(key2.string() ==
+          std::string("\0\0\0\0\0\0\0\0b/1\0!\0\0\0\0\0\0\0\xff", 21));
 
     // check the variable length edge prefix
-    RocksDBPrefixExtractor* pe = new RocksDBPrefixExtractor();
-    REQUIRE(pe->InDomain(key1.string()));
+    auto pe = std::make_unique<RocksDBPrefixExtractor>();
+    CHECK(pe->InDomain(key1.string()));
 
     rocksdb::Slice prefix = pe->Transform(key1.string());
-    REQUIRE(prefix.size() ==
-            sizeof(char) + sizeof(uint64_t) + strlen("a/1") + sizeof(char));
-    REQUIRE(memcmp(s1.data(), prefix.data(), prefix.size()) == 0);
+    CHECK(prefix.size() == sizeof(uint64_t) + strlen("a/1") + sizeof(char));
+    CHECK(memcmp(s1.data(), prefix.data(), prefix.size()) == 0);
+
+    rocksdb::Comparator const* cmp = rocksdb::BytewiseComparator();
+    CHECK(cmp->Compare(key1.string(), key2.string()) < 0);
   }
 }
 
@@ -280,11 +286,11 @@ TEST_CASE("RocksDBKeyBoundsTest", "[rocksdbkeybounds]") {
     CHECK(cmp->Compare(k2.string(), bb2.end()) < 0);
   }
 
-  /// @brief test edge index extractor together with bounds
+  /// @brief test edge index with dynamic prefix extractor
   SECTION("test_edge_index") {
     RocksDBKey key1 = RocksDBKey::EdgeIndexValue(0, StringRef("a/1"), 33);
     // check the variable length edge prefix
-    RocksDBPrefixExtractor* pe = new RocksDBPrefixExtractor();
+    auto pe = std::make_unique<RocksDBPrefixExtractor>();
     REQUIRE(pe->InDomain(key1.string()));
 
     // check the correct key bounds comparisons
@@ -294,64 +300,78 @@ TEST_CASE("RocksDBKeyBoundsTest", "[rocksdbkeybounds]") {
     rocksdb::Slice prefixBegin = pe->Transform(bounds.start());
     rocksdb::Slice prefixEnd = pe->Transform(bounds.end());
     REQUIRE_FALSE(pe->InDomain(prefixBegin));
-    REQUIRE_FALSE(pe->InDomain(prefixBegin));
+    REQUIRE_FALSE(pe->InDomain(prefixEnd));
     REQUIRE(memcmp(bounds.start().data(), prefixBegin.data(),
                    prefixBegin.size()) == 0);
-    REQUIRE(memcmp(bounds.start().data(), prefixBegin.data(),
-                   prefixBegin.size()) == 0);
+    REQUIRE(memcmp(bounds.end().data(), prefixEnd.data(), prefixEnd.size()) ==
+            0);
 
     // check our assumptions about bound construction
     rocksdb::Comparator const* cmp = rocksdb::BytewiseComparator();
-    REQUIRE(cmp->Compare(prefixBegin, prefixEnd) < 0);
-    REQUIRE(cmp->Compare(prefixBegin, key1.string()) < 0);
-    REQUIRE(cmp->Compare(prefixEnd, key1.string()) > 0);
+    CHECK(cmp->Compare(prefixBegin, prefixEnd) < 0);
+    CHECK(cmp->Compare(prefixBegin, key1.string()) < 0);
+    CHECK(cmp->Compare(prefixEnd, key1.string()) > 0);
 
     RocksDBKey key2 = RocksDBKey::EdgeIndexValue(0, StringRef("c/1000"), 33);
-    REQUIRE(cmp->Compare(prefixBegin, key2.string()) < 0);
-    REQUIRE(cmp->Compare(prefixEnd, key2.string()) > 0);
+    CHECK(cmp->Compare(prefixBegin, key2.string()) < 0);
+    CHECK(cmp->Compare(prefixEnd, key2.string()) > 0);
 
     // test higher prefix
     RocksDBKey key3 = RocksDBKey::EdgeIndexValue(1, StringRef("c/1000"), 33);
-    REQUIRE(cmp->Compare(prefixBegin, key3.string()) < 0);
-    REQUIRE(cmp->Compare(prefixEnd, key3.string()) < 0);
+    CHECK(cmp->Compare(prefixBegin, key3.string()) < 0);
+    CHECK(cmp->Compare(prefixEnd, key3.string()) < 0);
   }
 
-  /// @brief test edge index extractor together with bounds
+  /// @brief test hash index with prefix over indexed slice
   SECTION("test_hash_index") {
-    VPackSlice t = VPackSlice::trueSlice();
-    RocksDBKey key1 = RocksDBKey::VPackHashIndexValue(0, t, 33);
+    VPackBuilder t;
+    t(VPackValue(VPackValueType::Array))(VPackSlice::trueSlice())();
+    VPackBuilder f;
+    f(VPackValue(VPackValueType::Array))(VPackSlice::falseSlice())();
+
+    RocksDBKey key1 = RocksDBKey::VPackHashIndexValue(0, f.slice(), 33);
+    RocksDBKey key2 = RocksDBKey::VPackHashIndexValue(0, t.slice(), 33);
+    RocksDBKey key3 = RocksDBKey::VPackHashIndexValue(1, f.slice(), 33);
+    
+    std::string s1 = key1.string();
+    std::string s2 = key1.string();
+    CHECK(static_cast<uint8_t>(s1.data()[s1.size()-1]) == 0xFFU);
+    CHECK(static_cast<uint8_t>(s2.data()[s1.size()-1]) == 0xFFU);
 
     // check the variable length edge prefix
-    RocksDBPrefixExtractor* pe = new RocksDBPrefixExtractor();
-    REQUIRE(pe->InDomain(key1.string()));
+    auto pe = std::make_unique<RocksDBPrefixExtractor>();
+    CHECK(pe->InDomain(key1.string()));
 
     // check the correct key bounds comparisons
     RocksDBKeyBounds bounds = RocksDBKeyBounds::VPackHashIndex(0);
-    REQUIRE_FALSE(pe->InDomain(bounds.start()));
-    REQUIRE_FALSE(pe->InDomain(bounds.end()));
+    CHECK_FALSE(pe->InDomain(bounds.start()));
+    CHECK_FALSE(pe->InDomain(bounds.end()));
     rocksdb::Slice prefixBegin = pe->Transform(bounds.start());
     rocksdb::Slice prefixEnd = pe->Transform(bounds.end());
-    REQUIRE_FALSE(pe->InDomain(prefixBegin));
-    REQUIRE_FALSE(pe->InDomain(prefixBegin));
-    REQUIRE(memcmp(bounds.start().data(), prefixBegin.data(),
-                   prefixBegin.size()) == 0);
-    REQUIRE(memcmp(bounds.start().data(), prefixBegin.data(),
-                   prefixBegin.size()) == 0);
-
+    CHECK_FALSE(pe->InDomain(prefixBegin));
+    CHECK_FALSE(pe->InDomain(prefixEnd));
+    CHECK(memcmp(bounds.start().data(), prefixBegin.data(),
+                 prefixBegin.size()) == 0);
+    CHECK(memcmp(bounds.end().data(), prefixEnd.data(), prefixEnd.size()) == 0);
+    CHECK(prefixBegin.data()[prefixBegin.size()-1] == '\0');
+    CHECK(prefixEnd.data()[prefixBegin.size()-1] == '\0');
+    
+    
     // check our assumptions about bound construction
-    rocksdb::Comparator const* cmp = rocksdb::BytewiseComparator();
-    REQUIRE(cmp->Compare(prefixBegin, prefixEnd) < 0);
-    REQUIRE(cmp->Compare(prefixBegin, key1.string()) < 0);
-    REQUIRE(cmp->Compare(prefixEnd, key1.string()) > 0);
+    auto cmp = std::make_unique<RocksDBVPackComparator>();
+    CHECK(cmp->Compare(prefixBegin, prefixEnd) < 0);
+    CHECK(cmp->Compare(prefixBegin, key1.string()) < 0);
+    CHECK(cmp->Compare(prefixEnd, key1.string()) > 0);
 
-    RocksDBKey key2 = RocksDBKey::VPackHashIndexValue(0, t, 33);
-    REQUIRE(cmp->Compare(prefixBegin, key2.string()) < 0);
-    REQUIRE(cmp->Compare(prefixEnd, key2.string()) > 0);
+    CHECK(cmp->Compare(prefixBegin, key2.string()) < 0);
+    CHECK(cmp->Compare(prefixEnd, key2.string()) > 0);
+
+    CHECK(cmp->Compare(key1.string(), key2.string()) < 0);
+    CHECK(cmp->Compare(key2.string(), key3.string()) < 0);
+    CHECK(cmp->Compare(key1.string(), key3.string()) < 0);
 
     // test higher prefix
-    VPackSlice f = VPackSlice::falseSlice();
-    RocksDBKey key3 = RocksDBKey::VPackHashIndexValue(1, f, 33);
-    REQUIRE(cmp->Compare(prefixBegin, key3.string()) < 0);
-    REQUIRE(cmp->Compare(prefixEnd, key3.string()) < 0);
+    CHECK(cmp->Compare(prefixBegin, key3.string()) < 0);
+    CHECK(cmp->Compare(prefixEnd, key3.string()) < 0);
   }
 }

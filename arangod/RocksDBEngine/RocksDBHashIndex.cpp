@@ -25,6 +25,7 @@
 #include <velocypack/Iterator.h>
 #include <velocypack/velocypack-aliases.h>
 #include "Basics/VelocyPackHelper.h"
+#include "Indexes/SimpleAttributeEqualityMatcher.h"
 
 using namespace arangodb;
 
@@ -93,4 +94,22 @@ bool RocksDBHashIndex::matchesDefinition(VPackSlice const& info) const {
     }
   }
   return true;
+}
+
+/// @brief checks whether the index supports the condition
+bool RocksDBHashIndex::supportsFilterCondition(
+    arangodb::aql::AstNode const* node,
+    arangodb::aql::Variable const* reference, size_t itemsInIndex,
+    size_t& estimatedItems, double& estimatedCost) const {
+  SimpleAttributeEqualityMatcher matcher(_fields);
+  return matcher.matchAll(this, node, reference, itemsInIndex, estimatedItems,
+                          estimatedCost);
+}
+
+/// @brief specializes the condition for use with the index
+arangodb::aql::AstNode* RocksDBHashIndex::specializeCondition(
+    arangodb::aql::AstNode* node,
+    arangodb::aql::Variable const* reference) const {
+  SimpleAttributeEqualityMatcher matcher(_fields);
+  return matcher.specializeAll(this, node, reference);
 }

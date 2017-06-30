@@ -181,9 +181,9 @@ class RocksDBKey {
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Extracts the object id
   ///
-  /// May be called on any valid key (in our keyspace)
+  /// May be called on any valid key in the definitions column family
   //////////////////////////////////////////////////////////////////////////////
-  static uint64_t counterObjectId(rocksdb::Slice const&);
+  static uint64_t definitionsObjectId(rocksdb::Slice const&);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Extracts the databaseId from a key
@@ -204,21 +204,21 @@ class RocksDBKey {
   static TRI_voc_cid_t collectionId(rocksdb::Slice const&);
 
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief Extracts the objectId from a key
-  ///
-  /// May be called only on the the following key types: Document,
-  /// all kinds of index entries. Other types will throw.
-  //////////////////////////////////////////////////////////////////////////////
-  static uint64_t objectId(RocksDBKey const&);
-  static uint64_t objectId(rocksdb::Slice const&);
-
-  //////////////////////////////////////////////////////////////////////////////
   /// @brief Extracts the viewId from a key
   ///
   /// May be called only on View keys. Other types will throw.
   //////////////////////////////////////////////////////////////////////////////
   static TRI_voc_cid_t viewId(RocksDBKey const&);
   static TRI_voc_cid_t viewId(rocksdb::Slice const&);
+  
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief Extracts the objectId from a key
+  ///
+  /// May be called only on the the following key types: Document and
+  /// all index entries. Other types will behave undefined
+  //////////////////////////////////////////////////////////////////////////////
+  static uint64_t objectId(RocksDBKey const&);
+  static uint64_t objectId(rocksdb::Slice const&);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Extracts the revisionId from a key
@@ -306,10 +306,13 @@ class RocksDBKey {
     return type;
   }
 
+  // valid on metadata like database, collection, counters, views...
   static TRI_voc_tick_t databaseId(char const* data, size_t size);
   static TRI_voc_cid_t collectionId(char const* data, size_t size);
-  static TRI_voc_cid_t objectId(char const* data, size_t size);
   static TRI_voc_cid_t viewId(char const* data, size_t size);
+  
+  // valid on data entries like document, edge, vpack, hash-vpack
+  static TRI_voc_cid_t objectId(char const* data, size_t size);
   static TRI_voc_rid_t revisionId(RocksDBEntryType, char const*, size_t);
   static StringRef primaryKey(char const* data, size_t size);
   static StringRef vertexId(char const* data, size_t size);

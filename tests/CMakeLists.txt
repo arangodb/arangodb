@@ -32,7 +32,6 @@ add_executable(
   Basics/vector-test.cpp
   Basics/structure-size-test.cpp
   Basics/EndpointTest.cpp
-  Basics/RocksDBKeyTest.cpp
   Basics/StringBufferTest.cpp
   Basics/StringUtilsTest.cpp
   Basics/VelocyPackHelper-test.cpp
@@ -54,6 +53,7 @@ add_executable(
   Cluster/ClusterHelpersTest.cpp
   Geo/georeg.cpp
   Pregel/typedbuffer.cpp
+  RocksDBEngine/KeyTest.cpp
   RocksDBEngine/IndexEstimatorTest.cpp
   RocksDBEngine/TypeConversionTest.cpp
   main.cpp

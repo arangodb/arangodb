@@ -342,8 +342,9 @@ void RocksDBEngine::start() {
 
   // create column families
   std::vector<rocksdb::ColumnFamilyDescriptor> cfFamilies;
-  // no prefix families for default column family
-  cfFamilies.emplace_back("Definitions", definitionsCF);        // 0
+  // no prefix families for default column family (Has to be there)
+  cfFamilies.emplace_back(rocksdb::kDefaultColumnFamilyName,
+                          definitionsCF);                       // 0
   cfFamilies.emplace_back("Documents", fixedPrefCF);            // 1
   cfFamilies.emplace_back("PrimaryIndex", fixedPrefCF);         // 2
   cfFamilies.emplace_back("EdgeIndex", dyncamicPrefCF);         // 3
@@ -1266,7 +1267,6 @@ Result RocksDBEngine::dropDatabase(TRI_voc_tick_t id) {
             RocksDBIndex::getBounds(type, objectId, unique);
 
         res = rocksutils::removeLargeRange(_db, bounds);
-#warning FIX INDEX drop
         if (res.fail()) {
           return res;
         }

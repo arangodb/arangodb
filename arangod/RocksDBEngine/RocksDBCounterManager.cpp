@@ -355,7 +355,7 @@ void RocksDBCounterManager::readIndexEstimates() {
 
   for (; iter->Valid() && cmp->Compare(iter->key(), bounds.end()) < 0;
        iter->Next()) {
-    uint64_t objectId = RocksDBKey::counterObjectId(iter->key());
+    uint64_t objectId = RocksDBKey::definitionsObjectId(iter->key());
     uint64_t lastSeqNumber =
         rocksutils::uint64FromPersistent(iter->value().data());
 
@@ -393,7 +393,7 @@ void RocksDBCounterManager::readKeyGenerators() {
 
   for (; iter->Valid() && cmp->Compare(iter->key(), bounds.end()) < 0;
        iter->Next()) {
-    uint64_t objectId = RocksDBKey::objectId(iter->key());
+    uint64_t objectId = RocksDBKey::definitionsObjectId(iter->key());
     auto properties = RocksDBValue::data(iter->value());
     uint64_t lastValue = properties.get("lastValue").getUInt();
 
@@ -456,7 +456,7 @@ void RocksDBCounterManager::readCounterValues() {
   iter->Seek(bounds.start());
 
   while (iter->Valid() && cmp->Compare(iter->key(), bounds.end()) < 0) {
-    uint64_t objectId = RocksDBKey::counterObjectId(iter->key());
+    uint64_t objectId = RocksDBKey::definitionsObjectId(iter->key());
     auto const& it =
         _counters.emplace(objectId, CMValue(VPackSlice(iter->value().data())));
     _syncedSeqNums[objectId] = it.first->second._sequenceNum;
