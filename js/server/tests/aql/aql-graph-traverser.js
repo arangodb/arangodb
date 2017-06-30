@@ -1992,7 +1992,7 @@ function complexFilteringSuite () {
         if (mmfilesEngine) {
           assertEqual(stats.scannedIndex, 9);
         } else {
-          assertEqual(stats.scannedIndex, 5);
+          assertTrue(stats.scannedIndex <= 5);
         }
       }
       else {
@@ -2044,7 +2044,7 @@ function complexFilteringSuite () {
         if (mmfilesEngine) {
           assertEqual(stats.scannedIndex, 13);
         } else {
-          assertEqual(stats.scannedIndex, 7);
+          assertTrue(stats.scannedIndex <= 7);
         }
       }
       else {
@@ -2097,7 +2097,7 @@ function complexFilteringSuite () {
         if (mmfilesEngine) {
           assertEqual(stats.scannedIndex, 9);
         } else {
-          assertEqual(stats.scannedIndex, 5);
+          assertTrue(stats.scannedIndex <= 5);
         }
       }
       else {
@@ -2147,7 +2147,7 @@ function complexFilteringSuite () {
         if (mmfilesEngine) {
           assertEqual(stats.scannedIndex, 8);
         } else {
-          assertEqual(stats.scannedIndex, 4);
+          assertTrue(stats.scannedIndex <= 4);
         }
       }
       else {
@@ -2199,7 +2199,7 @@ function complexFilteringSuite () {
           if (mmfilesEngine) {
             assertEqual(stats.scannedIndex, 11);
           } else {
-            assertEqual(stats.scannedIndex, 5);
+            assertTrue(stats.scannedIndex <= 5);
           }
         }
       }
@@ -2263,7 +2263,7 @@ function complexFilteringSuite () {
           if (mmfilesEngine) {
             assertEqual(stats.scannedIndex, 9);
           } else {
-            assertEqual(stats.scannedIndex, 5);
+            assertEqual(stats.scannedIndex <= 5);
           }
         }
         else {
@@ -2330,7 +2330,7 @@ function complexFilteringSuite () {
           if (mmfilesEngine) {
             assertEqual(stats.scannedIndex, 9);
           } else {
-            assertEqual(stats.scannedIndex, 5);
+            assertTrue(stats.scannedIndex <= 5);
           }
         }
         else {
@@ -3014,7 +3014,7 @@ function optimizeQuantifierSuite() {
         if (mmfilesEngine) {
           assertEqual(stats.scannedIndex, 9);
         } else {
-          assertEqual(stats.scannedIndex, 5);
+          assertTrue(stats.scannedIndex <= 5);
         }
       } else {
         // With traverser-read-cache
@@ -3067,7 +3067,7 @@ function optimizeQuantifierSuite() {
         if (mmfilesEngine) {
           assertEqual(stats.scannedIndex, 8);
         } else {
-          assertEqual(stats.scannedIndex, 4);
+          assertTrue(stats.scannedIndex <= 4);
         }
       } else {
         // With traverser-read-cache
@@ -3104,7 +3104,7 @@ function optimizeQuantifierSuite() {
         if (mmfilesEngine) {
           assertEqual(stats.scannedIndex, 8);
         } else {
-          assertEqual(stats.scannedIndex, 4);
+          assertTrue(stats.scannedIndex <= 4);
         }
       } else {
         // With traverser-read-cache
@@ -3142,7 +3142,7 @@ function optimizeQuantifierSuite() {
         if (mmfilesEngine) {
           assertEqual(stats.scannedIndex, 9);
         } else {
-          assertEqual(stats.scannedIndex, 5);
+          assertTrue(stats.scannedIndex <= 5);
         }
       } else {
         // With traverser-read-cache
@@ -3195,7 +3195,7 @@ function optimizeQuantifierSuite() {
         if (mmfilesEngine) {
           assertEqual(stats.scannedIndex, 8);
         } else {
-          assertEqual(stats.scannedIndex, 4);
+          assertTrue(stats.scannedIndex <= 4);
         }
       } else {
         // With traverser-read-cache
@@ -3231,7 +3231,7 @@ function optimizeQuantifierSuite() {
         if (mmfilesEngine) {
           assertEqual(stats.scannedIndex, 8);
         } else {
-          assertEqual(stats.scannedIndex, 4);
+          assertTrue(stats.scannedIndex <= 4);
         }
       } else {
         // With traverser-read-cache
@@ -3270,7 +3270,7 @@ function optimizeQuantifierSuite() {
         if (mmfilesEngine) {
           assertEqual(stats.scannedIndex, 9);
         } else {
-          assertEqual(stats.scannedIndex, 5);
+          assertTrue(stats.scannedIndex <= 5);
         }
       } else {
         // With traverser-read-cache
@@ -3309,7 +3309,7 @@ function optimizeQuantifierSuite() {
         if (mmfilesEngine) {
           assertEqual(stats.scannedIndex, 7);
         } else {
-          assertEqual(stats.scannedIndex, 3);
+          assertTrue(stats.scannedIndex <= 3);
         }
       } else {
         // With activated traverser-read-cache:
@@ -3348,7 +3348,7 @@ function optimizeQuantifierSuite() {
         if (mmfilesEngine) {
           assertEqual(stats.scannedIndex, 9);
         } else {
-          assertEqual(stats.scannedIndex, 5);
+          assertTrue(stats.scannedIndex <= 5);
         }
       } else {
         // With traverser-read-cache
@@ -3388,7 +3388,7 @@ function optimizeQuantifierSuite() {
         if (mmfilesEngine) {
           assertEqual(stats.scannedIndex, 7);
         } else {
-          assertEqual(stats.scannedIndex, 3);
+          assertTrue(stats.scannedIndex <= 3);
         }
       } else {
         // With activated traverser-read-cache:
@@ -3428,7 +3428,7 @@ function optimizeQuantifierSuite() {
         if (mmfilesEngine) {
           assertEqual(stats.scannedIndex, 9);
         } else {
-          assertEqual(stats.scannedIndex, 5);
+          assertTrue(stats.scannedIndex <= 5);
         }
       } else {
         // With activated traverser-read-cache:
@@ -3468,7 +3468,7 @@ function optimizeQuantifierSuite() {
         if (mmfilesEngine) {
           assertEqual(stats.scannedIndex, 7);
         } else {
-          assertEqual(stats.scannedIndex, 3);
+          assertTrue(stats.scannedIndex <= 3);
         }
       } else {
         // With activated traverser-read-cache:
