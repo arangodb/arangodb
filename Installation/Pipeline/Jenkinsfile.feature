@@ -244,20 +244,19 @@ def checkCommitMessages() {
     }
 
 echo """BRANCH_NAME: ${env.BRANCH_NAME}
-        CHANGE_ID: ${env.CHANGE_ID}
-        CHANGE_TARGET: ${env.CHANGE_TARGET}
-        JOB_NAME: ${env.JOB_NAME}
+CHANGE_ID: ${env.CHANGE_ID}
+CHANGE_TARGET: ${env.CHANGE_TARGET}
+JOB_NAME: ${env.JOB_NAME}
 
-        Linux: ${useLinux}
-        Mac: ${useMac}
-        Windows: ${useWindows}
-        Clean Build: ${cleanBuild}
-        Building Community: ${buildCommunity}
-        Building Enterprise: ${buildEnterprise}
-        Running Jslint: ${runJslint}
-        Running Resilience: ${runResilience}
-        Running Tests: ${runTests}""".stripIndent()
-
+Linux: ${useLinux}
+Mac: ${useMac}
+Windows: ${useWindows}
+Clean Build: ${cleanBuild}
+Building Community: ${buildCommunity}
+Building Enterprise: ${buildEnterprise}
+Running Jslint: ${runJslint}
+Running Resilience: ${runResilience}
+Running Tests: ${runTests}"""
 }
 
 // -----------------------------------------------------------------------------
