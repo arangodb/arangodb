@@ -7,11 +7,6 @@ properties(
     ]]
 )
 
-echo "BRANCH_NAME: ${env.BRANCH_NAME}"
-echo "CHANGE_ID: ${env.CHANGE_ID}"
-echo "CHANGE_TARGET: ${env.CHANGE_TARGET}"
-echo "JOB_NAME: ${env.JOB_NAME}"
-
 properties([
     parameters([
         booleanParam(
@@ -75,13 +70,13 @@ buildCommunity = params.buildCommunity
 buildEnterprise = params.buildEnterprise
 
 // build linux
-buildLinux = params.Linux
+useLinux = params.Linux
 
 // build mac
-buildMac = params.Mac
+useMac = params.Mac
 
 // build windows
-buildWindows = params.Windows
+useWindows = params.Windows
 
 // run jslint
 runJslint = params.runJslint
@@ -228,9 +223,12 @@ def checkCommitMessages() {
                 cleanBuild = true
             }
 
-            if (msg ==~ /(?i).*\[ci:[^\]]*no-clean[ \]].*/) {
-                echo "using clean build because message contained 'no-clean'"
+            if (msg ==~ /(?i).*\[ci:[^\]]*skip[ \]].*/) {
+                echo "skipping everything because message contained 'skip'"
                 cleanBuild = false
+                useLinux = false
+                useMac = false
+                useWindows = false
             }
 
             def files = new ArrayList(entry.affectedFiles)
@@ -245,15 +243,21 @@ def checkCommitMessages() {
         }
     }
 
-    echo 'Linux: ' + (buildLinux ? 'true' : 'false')
-    echo 'Mac: ' + (buildMac ? 'true' : 'false')
-    echo 'Windows: ' + (buildWindows ? 'true' : 'false')
-    echo 'Clean Build: ' + (cleanBuild ? 'true' : 'false')
-    echo 'Build Community: ' + (buildCommunity ? 'true' : 'false')
-    echo 'Build Enterprise: ' + (buildEnterprise ? 'true' : 'false')
-    echo 'Run Jslint: ' + (runJslint ? 'true' : 'false')
-    echo 'Run Resilience: ' + (runResilience ? 'true' : 'false')
-    echo 'Run Tests: ' + (runTests ? 'true' : 'false')
+echo """"BRANCH_NAME: ${env.BRANCH_NAME}
+         CHANGE_ID: ${env.CHANGE_ID}"
+         CHANGE_TARGET: ${env.CHANGE_TARGET}"
+         JOB_NAME: ${env.JOB_NAME}
+
+         Linux: ${useLinux}
+         Mac: ${useMac}
+         Windows: ${useWindows}
+         Clean Build: ${cleanBuild}
+         Build Community: ${buildCommunity}
+         Build Enterprise: ${buildEnterprise}
+         Run Jslint: ${runJslint}
+         Run Resilience: ${runResilience}
+         Run Tests: ${runTests}""".stripIndent()
+
 }
 
 // -----------------------------------------------------------------------------
@@ -400,17 +404,17 @@ def buildStepCheck(edition, os, full) {
         return false
     }
 
-    if (os == 'linux' && ! buildLinux) {
+    if (os == 'linux' && ! useLinux) {
         echo "Not building ${os} version"
         return false
     }
 
-    if (os == 'mac' && ! buildMac) {
+    if (os == 'mac' && ! useMac) {
         echo "Not building ${os} version"
         return false
     }
 
-    if (os == 'windows' && ! buildWindows) {
+    if (os == 'windows' && ! useWindows) {
         echo "Not building ${os} version"
         return false
     }
@@ -538,17 +542,17 @@ def testCheck(edition, os, mode, engine, full) {
         return false
     }
 
-    if (os == 'linux' && ! buildLinux) {
+    if (os == 'linux' && ! useLinux) {
         echo "Not building ${os} version"
         return false
     }
 
-    if (os == 'mac' && ! buildMac) {
+    if (os == 'mac' && ! useMac) {
         echo "Not building ${os} version"
         return false
     }
 
-    if (os == 'windows' && ! buildWindows) {
+    if (os == 'windows' && ! useWindows) {
         echo "Not building ${os} version"
         return false
     }
@@ -640,17 +644,17 @@ def testResilienceCheck(os, engine, foxx, full) {
         return false
     }
 
-    if (os == 'linux' && ! buildLinux) {
+    if (os == 'linux' && ! useLinux) {
         echo "Not building ${os} version"
         return false
     }
 
-    if (os == 'mac' && ! buildMac) {
+    if (os == 'mac' && ! useMac) {
         echo "Not building ${os} version"
         return false
     }
 
-    if (os == 'windows' && ! buildWindows) {
+    if (os == 'windows' && ! useWindows) {
         echo "Not building ${os} version"
         return false
     }
