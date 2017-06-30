@@ -13,6 +13,11 @@ In case of `rocksdb` it will apply to all data stored as well as indexes.
 
 ## Pass-through options
 
+`--rocksdb.wal-directory`
+
+Absolute path for the RocksDB WAL files. If left empty, this will use a subdirectory
+`journals` inside the data directory.
+
 ### Write buffers
 
 `--rocksdb.write-buffer-size`
@@ -32,6 +37,15 @@ Default: 2.
 
 Minimum number of write buffers that will be merged together when flushing to
 normal storage. Default: 1.
+
+`--rocksdb.max-total-wal-size`
+
+Maximum total size of WAL files that, when reached, will force a flush of all
+column families whose data is backed by the oldest WAL files. Setting this
+to a low value will trigger regular flushing of column family data from memtables, 
+so that WAL files can be moved to the archive.
+Setting this to a high value will avoid regular flushing but may prevent WAL
+files from being moved to the archive and being removed.
 
 `--rocksdb.delayed-write-rate` (Hidden)
 
@@ -98,7 +112,7 @@ RocksDB's compaction is doing sequential instead of random reads. Default: 0.
 Only meaningful on Linux. If set, use `O_DIRECT` for reading files. Default:
 false.
 
-`--rocksdb.use-direct-writes` (Hidden)
+`--rocksdb.use-direct-io-for-flush-and-compaction` (Hidden)
 
 Only meaningful on Linux. If set,use `O_DIRECT` for writing files. Default: false.
 
@@ -158,11 +172,6 @@ Approximate size of user data (in bytes) packed per block for uncompressed data.
 Number of log files to keep around for recycling. Default: 0.
 
 ### Miscellaneous
-
-`--rocksdb.verify-checksums-in-compaction` (Hidden)
-
-If true, compaction will verify the data checksum on every read that happens as
-part of compaction. Default: true;
 
 `--rocksdb.optimize-filters-for-hits` (Hidden)
 

@@ -194,6 +194,21 @@ void RocksDBEngine::start() {
   auto* databasePathFeature =
       ApplicationServer::getFeature<DatabasePathFeature>("DatabasePath");
   _path = databasePathFeature->subdirectoryName("engine-rocksdb");
+    
+  if (!basics::FileUtils::isDirectory(_path)) {
+    std::string systemErrorStr;
+    long errorNo;
+
+    int res = TRI_CreateRecursiveDirectory(_path.c_str(), errorNo,
+                                           systemErrorStr);
+
+    if (res == TRI_ERROR_NO_ERROR) {
+      LOG_TOPIC(TRACE, arangodb::Logger::ENGINES) << "created RocksDB data directory '" << _path << "'";
+    } else {
+      LOG_TOPIC(FATAL, arangodb::Logger::ENGINES) << "unable to create RocksDB data directory '" << _path << "': " << systemErrorStr;
+      FATAL_ERROR_EXIT();
+    }
+  }
 
   rocksdb::TransactionDBOptions transactionOptions;
   // number of locks per column_family
@@ -204,9 +219,6 @@ void RocksDBEngine::start() {
       ApplicationServer::getFeature<arangodb::RocksDBOptionFeature>(
           "RocksDBOption");
   
-  LOG_TOPIC(TRACE, arangodb::Logger::ROCKSDB) << "initializing RocksDB, path: '"
-                                              << _path << "', WAL directory '" << _options.wal_dir << "'";
-
   _options.enable_pipelined_write = opts->_enablePipelinedWrite;
   _options.write_buffer_size = static_cast<size_t>(opts->_writeBufferSize);
   _options.max_write_buffer_number =
@@ -227,7 +239,15 @@ void RocksDBEngine::start() {
   // files may linger around forever and will not get removed
   _options.max_total_wal_size = opts->_maxTotalWalSize;
 
-  _options.wal_dir = opts->_walDirectory;
+  if (opts->_walDirectory.empty()) {
+    _options.wal_dir = basics::FileUtils::buildFilename(_path, "journals");
+  } else {
+    _options.wal_dir = opts->_walDirectory;
+  }
+  
+  LOG_TOPIC(TRACE, arangodb::Logger::ROCKSDB) << "initializing RocksDB, path: '"
+                                              << _path << "', WAL directory '" << _options.wal_dir << "'";
+
   
   if (opts->_skipCorrupted) {
     _options.wal_recovery_mode =

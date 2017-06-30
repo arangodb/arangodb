@@ -50,7 +50,7 @@ RocksDBOptionFeature::RocksDBOptionFeature(
     : application_features::ApplicationFeature(server, "RocksDBOption"),
       _writeBufferSize(rocksDBDefaults.write_buffer_size),
       _maxWriteBufferNumber(rocksDBDefaults.max_write_buffer_number),
-      _maxTotalWalSize(64 << 20),
+      _maxTotalWalSize(80 << 20),
       _delayedWriteRate(rocksDBDefaults.delayed_write_rate),
       _minWriteBufferNumberToMerge(
           rocksDBDefaults.min_write_buffer_number_to_merge),
