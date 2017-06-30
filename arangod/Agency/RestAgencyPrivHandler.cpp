@@ -134,14 +134,22 @@ RestStatus RestAgencyPrivHandler::execute() {
         } else {
           return reportBadQuery();  // bad query
         }
-      } else if (suffixes[0] == "add-server") {
-        auto ret = _agent->addServer(_request->toVelocyPackBuilderPtr());
+      } else if (suffixes[0] == "add-server" || suffixes[0] == "remove-server" ) {
+        auto tmp = std::make_shared<Builder>();
+        { VPackObjectBuilder b(tmp.get());
+          tmp->add(suffixes[0], _request->toVelocyPackBuilderPtr()->slice()); }
+        write_ret_t ret;
+        try {
+          ret = _agent->reconfigure(tmp);
+        } catch (std::exception const& e) {
+          return reportBadQuery(e.what());  // bad query
+        }
         if (ret.accepted) {
           try {
             result.add("configuration",_agent->config().toBuilder()->slice());
           } catch (std::exception const& e) {
             LOG_TOPIC(ERR, Logger::AGENCY)
-              << "Failed to add server to agency: " << e.what();
+              << "Failed " << suffixes[0] << ": " << e.what();
           }
         } else {
           if (_agent->leaderID() == NO_LEADER) {
@@ -153,19 +161,6 @@ RestStatus RestAgencyPrivHandler::execute() {
             redirectRequest(ret.redirect);
           }
           return RestStatus::DONE;
-        }
-      } else if (suffixes[0] == "remove-server") {
-        auto ret = _agent->removeServer(_request->toVelocyPackBuilderPtr());
-        if (ret.accepted) {
-          result.add(_agent->config().toBuilder()->slice());
-        } else if (_agent->leaderID() == NO_LEADER) {
-          Builder body;
-          body.add(VPackValue("NO_LEADER"));
-          generateResult(rest::ResponseCode::SERVICE_UNAVAILABLE, body.slice());
-          return RestStatus::DONE;
-        } else {
-          TRI_ASSERT(ret.redirect != _agent->id());
-          redirectRequest(ret.redirect);
         }
       } else if (suffixes[0] == "activate") {  // notify
         if (_request->requestType() != rest::RequestType::POST) {

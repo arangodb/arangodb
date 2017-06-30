@@ -737,7 +737,8 @@ void config_t::updateConfiguration(VPackSlice const& other) {
 
   auto pool = other.get(poolStr);
   TRI_ASSERT(pool.isObject());
-  for (auto const p : VPackObjectIterator(other.get(poolStr))) {
+  _pool.clear();
+  for (auto const p : VPackObjectIterator(pool)) {
     _pool[p.key.copyString()] = p.value.copyString();
   }
 
@@ -760,7 +761,7 @@ void config_t::updateConfiguration(VPackSlice const& other) {
   
 }
 
-void config_t::addServer(VPackSlice const& server) {
+bool config_t::addServer(VPackSlice const& server) {
 
   TRI_ASSERT(server.isObject());
   TRI_ASSERT(server.hasKey("endpoint"));
@@ -771,10 +772,60 @@ void config_t::addServer(VPackSlice const& server) {
   TRI_ASSERT(id.isString());
   TRI_ASSERT(endpoint.isString());
 
-  auto idStr = id.copyString();
-  _pool[idStr] = endpoint.copyString();
-  _active.push_back(idStr);
+  auto ids = id.copyString();
+  try {
+    if (_pool.find(ids) == _pool.end()) {
+      _pool[ids] = endpoint.copyString();
+      _active.push_back(ids);
+    } else {
+      LOG_TOPIC(ERR, Logger::AGENCY)
+        << "Failed to add new server " << server.toJson()
+        << " to agency: an agent with id " << ids << " already exists.";
+      return false;
+    }
+  } catch (std::exception const& e) {
+    LOG_TOPIC(ERR, Logger::AGENCY)
+      << "Failed to add new server " << server.toJson() << " to agency: "
+      << e.what() << " " << __FILE__ << __LINE__; 
+  }
 
   _version++;
+  return true;
+  
+}
+
+bool config_t::removeServer(VPackSlice const& server) {
+
+  TRI_ASSERT(server.isObject());
+  TRI_ASSERT(server.hasKey("id"));
+
+  auto id = server.get("id");
+  TRI_ASSERT(id.isString());
+  auto ids = id.copyString();
+  auto tmpActive = _active;           // Fail safe
+  auto tmpPool   = _pool;
+
+  try {
+    auto it = _pool.find(ids);
+    if (it != _pool.end()) {
+      _pool.erase(it);
+      _active.erase(std::remove(_active.begin(), _active.end(), ids));
+    } else {
+      LOG_TOPIC(ERR, Logger::AGENCY)
+        << "Failed to remove server " << server.toJson() << " from agency :"
+        << " This server is unknown";
+      return false;
+    }
+  } catch (std::exception const& e) { // Undo and complain
+    _pool = tmpPool;
+    _active = tmpActive;
+    LOG_TOPIC(ERR, Logger::AGENCY)
+      << "Failed to remove server " << server.toJson() << " from agency :"
+      << e.what() <<  " " << __FILE__ << __LINE__;
+    return false;
+  }
+      
+  _version++;
+  return true;
   
 }

@@ -1445,8 +1445,7 @@ void Agent::join() {
       if (comres->result->getHttpReturnCode() == 307) {
         try {
           std::string location = comres->result->getHeaderFields().at("location");
-          auto pos = location.find(':');
-          
+          auto pos = location.find(':');        
           auto ssl = (location[pos-1]=='s');
           pos += 3;
           auto host = location.substr(pos, location.find('/',pos)-pos);
@@ -1744,34 +1743,47 @@ Inception const* Agent::inception() const {
   return _inception.get();
 }
 
-write_ret_t Agent::addServer(query_t const server) {
-
-  Slice slice = server->slice();
-  if (!slice.isObject() || !slice.hasKey("endpoint") || !slice.hasKey("id")) {
+write_ret_t Agent::reconfigure(query_t const payload) {
+  
+  Slice slice = payload->slice();
+  if (!slice.isObject()) {
     LOG_TOPIC(WARN, Logger::AGENCY)
       << "add-server call must be a json object containing endpoint and id";
   }
+  std::string operation = slice.keyAt(0).copyString();
+  Slice opVal = slice.valueAt(0);
+  
 
-  // The new configuration to be persisted.-------------------------------------
-  // Actual agent's configuration is changed after successful persistence.
+  // The new configuration to be persisted. ------------------------------------
+  // Actual agent's configuration is changed
+  //   imemdiately after successful persistence.
   auto config = _config;
-  config.addServer(server->slice());
+  if (operation == "add-server") {
+    if (!config.addServer(opVal)) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(
+        30000, "Failed to add new server to agency");
+    }
+  } else if (operation == "remove-server") {
+    if (!config.removeServer(opVal)){
+      THROW_ARANGO_EXCEPTION_MESSAGE(
+        30000, "Failed to remove server from agency");
+    }
+  } else {
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+      30000, "Unknown agency reconfiguration operation");
+  }
+
+  // Persist new .agency entry
   query_t agency = std::make_shared<Builder>();
   { VPackArrayBuilder trxs(agency.get());
     { VPackArrayBuilder trx(agency.get());
       { VPackObjectBuilder wa(agency.get());
         agency->add(".agency", config.toBuilder()->slice());
       }}} // Close transactions
-  
   LOG_TOPIC(INFO, Logger::AGENCY) << agency->toJson();
   
   return write(agency);
 
-}
-
-write_ret_t Agent::removeServer(query_t const server) {
-  query_t builder = std::make_shared<Builder>();
-  return write(builder);
 }
 
 void Agent::updateConfiguration(Slice const& slice) {
