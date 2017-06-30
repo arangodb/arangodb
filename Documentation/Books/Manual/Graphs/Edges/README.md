@@ -32,5 +32,5 @@ Other fields can be updated as in default collection.
 Working with Edges
 ------------------
 
-Edges are normal [documents](../../DataModeling/Documents/DocumentMethods.md)
+Edges are normal [documents](../../DataModeling/Documents/DocumentMethods.md#edges)
 that always contain a `_from` and a `_to` attribute.
