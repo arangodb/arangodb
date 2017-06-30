@@ -382,7 +382,7 @@ def buildEdition(edition, os) {
             sh "./Installation/Pipeline/build_${edition}_${os}.sh 20"
         }
         else if (os == 'windows') {
-            PowerShell('. .\\Installation\\Pipeline\\build_${edition}_windows.ps1')
+            PowerShell(". .\\Installation\\Pipeline\\build_${edition}_windows.ps1")
         }
     }
     catch (exc) {
