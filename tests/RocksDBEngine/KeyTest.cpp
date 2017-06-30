@@ -324,14 +324,15 @@ TEST_CASE("RocksDBKeyBoundsTest", "[rocksdbkeybounds]") {
 
   /// @brief test hash index with prefix over indexed slice
   SECTION("test_hash_index") {
+
     VPackBuilder t;
     t(VPackValue(VPackValueType::Array))(VPackSlice::trueSlice())();
     VPackBuilder f;
     f(VPackValue(VPackValueType::Array))(VPackSlice::falseSlice())();
 
     RocksDBKey key1 = RocksDBKey::VPackHashIndexValue(0, f.slice(), 33);
-    RocksDBKey key2 = RocksDBKey::VPackHashIndexValue(0, t.slice(), 33);
-    RocksDBKey key3 = RocksDBKey::VPackHashIndexValue(1, f.slice(), 33);
+    RocksDBKey key2 = RocksDBKey::VPackHashIndexValue(0, t.slice(), 34);
+    RocksDBKey key3 = RocksDBKey::VPackHashIndexValue(1, f.slice(), 35);
     
     std::string s1 = key1.string();
     std::string s2 = key1.string();
@@ -356,7 +357,6 @@ TEST_CASE("RocksDBKeyBoundsTest", "[rocksdbkeybounds]") {
     CHECK(prefixBegin.data()[prefixBegin.size()-1] == '\0');
     CHECK(prefixEnd.data()[prefixBegin.size()-1] == '\0');
     
-    
     // check our assumptions about bound construction
     auto cmp = std::make_unique<RocksDBVPackComparator>();
     CHECK(cmp->Compare(prefixBegin, prefixEnd) < 0);
@@ -373,5 +373,26 @@ TEST_CASE("RocksDBKeyBoundsTest", "[rocksdbkeybounds]") {
     // test higher prefix
     CHECK(cmp->Compare(prefixBegin, key3.string()) < 0);
     CHECK(cmp->Compare(prefixEnd, key3.string()) < 0);
+    
+    
+    bounds = RocksDBKeyBounds::VPackHashIndex(0, f.slice());
+    CHECK(cmp->Compare(bounds.start(), key1.string()) < 0);
+    CHECK(cmp->Compare(bounds.end(), key1.string()) > 0);
+    // check prefix ordering
+    prefixBegin = pe->Transform(bounds.start());
+    prefixEnd = pe->Transform(bounds.end());
+    CHECK(memcmp(bounds.start().data(), prefixBegin.data(),
+                 prefixBegin.size()) == 0);
+    CHECK(memcmp(bounds.end().data(), prefixEnd.data(), prefixEnd.size()) == 0);
+    CHECK(cmp->Compare(prefixBegin, key1.string()) < 0);
+    CHECK(cmp->Compare(prefixEnd, key1.string()) < 0);
+    CHECK(prefixBegin == prefixEnd);
+
+
+    // prefixes are different
+    CHECK(cmp->Compare(bounds.start(), key2.string()) < 0);
+    CHECK(cmp->Compare(bounds.end(), key2.string()) < 0);
+    CHECK(cmp->Compare(prefixBegin, pe->Transform(key2.string())) < 0);
+    CHECK(cmp->Compare(prefixEnd, pe->Transform(key2.string())) < 0);
   }
 }

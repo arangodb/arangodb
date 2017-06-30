@@ -225,7 +225,7 @@ class RocksDBKey {
   ///
   /// May be called only on Document keys. Other types will throw.
   //////////////////////////////////////////////////////////////////////////////
-  static TRI_voc_rid_t revisionId(RocksDBEntryType type, RocksDBKey const&);
+  static TRI_voc_rid_t revisionId(RocksDBKey const&);
   static TRI_voc_rid_t revisionId(RocksDBEntryType type, rocksdb::Slice const&);
 
   //////////////////////////////////////////////////////////////////////////////
@@ -269,7 +269,7 @@ class RocksDBKey {
   /// @brief Returns a reference to the full, constructed key
   //////////////////////////////////////////////////////////////////////////////
   std::string const& string() const;
-
+  
  private:
   explicit RocksDBKey(RocksDBEntryType type);
   RocksDBKey(RocksDBEntryType type, uint64_t first);

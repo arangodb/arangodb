@@ -214,6 +214,7 @@ void RocksDBIndex::truncate(transaction::Methods* trx) {
   if (type() == RocksDBIndex::TRI_IDX_TYPE_EDGE_INDEX ||
       (!_unique && type() == RocksDBIndex::TRI_IDX_TYPE_HASH_INDEX)) {
     options.prefix_same_as_start = false;
+    options.total_order_seek = true;
   }
 
   std::unique_ptr<rocksdb::Iterator> iter = mthds->NewIterator(options, _cf);

@@ -669,6 +669,7 @@ void RocksDBEdgeIndex::warmup(arangodb::transaction::Methods* trx) {
   rocksdb::ReadOptions options = mthds->readOptions();
   options.iterate_upper_bound = &end;  // save to use on rocksb::DB directly
   options.prefix_same_as_start = false;
+  options.total_order_seek = true;
   options.verify_checksums = false;
   options.fill_cache = EdgeIndexFillBlockCache;
   std::unique_ptr<rocksdb::Iterator> it(
@@ -894,6 +895,7 @@ void RocksDBEdgeIndex::recalculateEstimates() {
   rocksdb::ReadOptions options;
   options.iterate_upper_bound = &end;  // save to use on rocksb::DB directly
   options.prefix_same_as_start = false;
+  options.total_order_seek = true;
   options.verify_checksums = false;
   std::unique_ptr<rocksdb::Iterator> it(
       rocksutils::globalRocksDB()->NewIterator(options, _cf));

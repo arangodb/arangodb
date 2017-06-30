@@ -49,6 +49,10 @@ class RocksDBHashIndex final : public RocksDBVPackIndex {
   bool supportsFilterCondition(arangodb::aql::AstNode const*,
                                arangodb::aql::Variable const*, size_t, size_t&,
                                double&) const override;
+  
+  bool supportsSortCondition(arangodb::aql::SortCondition const*,
+                             arangodb::aql::Variable const*, size_t, double&,
+                             size_t&) const override;
 
   arangodb::aql::AstNode* specializeCondition(
       arangodb::aql::AstNode*, arangodb::aql::Variable const*) const override;

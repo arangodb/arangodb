@@ -320,23 +320,26 @@ void RocksDBEngine::start() {
   // TODO: enable memtable_insert_with_hint_prefix_extractor?
   _options.bloom_locality = 1;
 
-  // definitions still need the type byte
+  // cf options for definitons (dbs, collections, views, ...)
   rocksdb::ColumnFamilyOptions definitionsCF(_options);
-  definitionsCF.prefix_extractor.reset(rocksdb::NewFixedPrefixTransform(1));
-  // 8 byte object id prefix for documents
+  
+  // cf options with fixed 8 byte object id prefix for documents
   rocksdb::ColumnFamilyOptions fixedPrefCF(_options);
-  fixedPrefCF.prefix_extractor.reset(
-      rocksdb::NewFixedPrefixTransform(RocksDBKey::objectIdSize()));
-  // colum family options with prefix containing indexed value
+  fixedPrefCF.prefix_extractor = std::shared_ptr<rocksdb::SliceTransform const>(rocksdb::NewFixedPrefixTransform(RocksDBKey::objectIdSize()));
+  
+  // construct column family options with prefix containing indexed value
   rocksdb::ColumnFamilyOptions dyncamicPrefCF(_options);
-  dyncamicPrefCF.prefix_extractor.reset(new RocksDBPrefixExtractor());
-  table_options.index_type =
-      rocksdb::BlockBasedTableOptions::IndexType::kHashSearch;
+  dyncamicPrefCF.prefix_extractor = std::make_shared<RocksDBPrefixExtractor>();
+  // also use hash-search based SST file format
+  rocksdb::BlockBasedTableOptions tblo(table_options);
+  tblo.index_type = rocksdb::BlockBasedTableOptions::IndexType::kHashSearch;
   dyncamicPrefCF.table_factory = std::shared_ptr<rocksdb::TableFactory>(
-      rocksdb::NewBlockBasedTableFactory(table_options));
+      rocksdb::NewBlockBasedTableFactory(tblo));
+  
   // velocypack based index variants with custom comparator
   rocksdb::ColumnFamilyOptions vpackFixedPrefCF(fixedPrefCF);
   vpackFixedPrefCF.comparator = _vpackCmp.get();
+  // copy settings from cf options with dynamic prefix
   rocksdb::ColumnFamilyOptions vpackDynPrefixCF(dyncamicPrefCF);
   vpackDynPrefixCF.comparator = _vpackCmp.get();
 

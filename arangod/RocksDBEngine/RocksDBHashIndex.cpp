@@ -106,6 +106,13 @@ bool RocksDBHashIndex::supportsFilterCondition(
                           estimatedCost);
 }
 
+bool RocksDBHashIndex::supportsSortCondition(
+                                              arangodb::aql::SortCondition const* sortCondition,
+                                              arangodb::aql::Variable const* reference, size_t itemsInIndex,
+                                              double& estimatedCost, size_t& coveredAttributes) const {
+  return false;
+}
+
 /// @brief specializes the condition for use with the index
 arangodb::aql::AstNode* RocksDBHashIndex::specializeCondition(
     arangodb::aql::AstNode* node,

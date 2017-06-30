@@ -86,7 +86,7 @@ RocksDBKeyBounds RocksDBKeyBounds::GeoIndex(uint64_t indexId) {
 }
 
 RocksDBKeyBounds RocksDBKeyBounds::GeoIndex(uint64_t indexId, bool isSlot) {
-  RocksDBKeyBounds b;
+  RocksDBKeyBounds b(RocksDBEntryType::GeoIndexValue);
   size_t length = 2 * (sizeof(char) + sizeof(uint64_t) + sizeof(uint64_t));
   auto& internals = b.internals();
   internals.reserve(length);
@@ -114,7 +114,7 @@ RocksDBKeyBounds RocksDBKeyBounds::VPackIndex(uint64_t indexId,
 
 RocksDBKeyBounds RocksDBKeyBounds::VPackHashIndex(uint64_t indexId,
                                                   VPackSlice const& value) {
-  return RocksDBKeyBounds(RocksDBEntryType::VPackIndexValue, indexId, value);
+  return RocksDBKeyBounds(RocksDBEntryType::VPackHashIndexValue, indexId, value);
 }
 
 RocksDBKeyBounds RocksDBKeyBounds::UniqueVPackIndex(uint64_t indexId,
@@ -141,24 +141,22 @@ RocksDBKeyBounds RocksDBKeyBounds::KeyGenerators() {
 }
 
 RocksDBKeyBounds RocksDBKeyBounds::FulltextIndexPrefix(
-    uint64_t indexId, arangodb::StringRef const& word) {
+    uint64_t objectId, arangodb::StringRef const& word) {
   // I did not want to pass a bool to the constructor for this
-  RocksDBKeyBounds b;
-  size_t length = 2 * (sizeof(char) + sizeof(uint64_t) + word.size()) + 1;
+  RocksDBKeyBounds b(RocksDBEntryType::FulltextIndexValue);
 
   auto& internals = b.internals();
-  internals.reserve(length);
-  internals.push_back(static_cast<char>(RocksDBEntryType::FulltextIndexValue));
-  uint64ToPersistent(internals.buffer(), indexId);
+  internals.reserve(2 * (sizeof(uint64_t) + word.size()) + 1);
+  uint64ToPersistent(internals.buffer(), objectId);
   internals.buffer().append(word.data(), word.length());
+  // no sperator byte, so we match all suffixes
 
   internals.separate();
-  internals.push_back(static_cast<char>(RocksDBEntryType::FulltextIndexValue));
-  uint64ToPersistent(internals.buffer(), indexId);
+  
+  uint64ToPersistent(internals.buffer(), objectId);
   internals.buffer().append(word.data(), word.length());
-  internals.push_back(
-      0xFFU);  // invalid UTF-8 character, higher than with memcmp
-
+  internals.push_back(0xFFU);
+  // 0xFF is higher than any valud utf-8 character
   return b;
 }
 
@@ -194,8 +192,8 @@ RocksDBKeyBounds& RocksDBKeyBounds::operator=(RocksDBKeyBounds&& other) {
 }
 
 uint64_t RocksDBKeyBounds::objectId() const {
-  RocksDBEntryType type = static_cast<RocksDBEntryType>(_internals._buffer[0]);
-  switch (type) {
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  switch (_type) {
     case RocksDBEntryType::Document:
     case RocksDBEntryType::PrimaryIndexValue:
     case RocksDBEntryType::EdgeIndexValue:
@@ -206,17 +204,18 @@ uint64_t RocksDBKeyBounds::objectId() const {
     case RocksDBEntryType::FulltextIndexValue: {
       TRI_ASSERT(_internals.buffer().size() >=
                  (sizeof(char) + sizeof(uint64_t)));
-      return uint64FromPersistent(_internals.buffer().data() + sizeof(char));
+      return uint64FromPersistent(_internals.buffer().data());
     }
 
     default:
       THROW_ARANGO_EXCEPTION(TRI_ERROR_TYPE_ERROR);
   }
+#endif
+  return uint64FromPersistent(_internals.buffer().data());
 }
 
 rocksdb::ColumnFamilyHandle* RocksDBKeyBounds::columnFamily() const {
-  RocksDBEntryType type = static_cast<RocksDBEntryType>(_internals._buffer[0]);
-  switch (type) {
+  switch (_type) {
     case RocksDBEntryType::Document:
       return RocksDBColumnFamily::documents();
     case RocksDBEntryType::PrimaryIndexValue:
@@ -262,6 +261,10 @@ RocksDBKeyBounds::RocksDBKeyBounds(RocksDBEntryType type) : _type(type) {
       uint64ToPersistent(_internals.buffer(), UINT64_MAX);
       break;
     }
+    case RocksDBEntryType::GeoIndexValue:
+    case RocksDBEntryType::FulltextIndexValue:
+      break;
+      
     default:
       THROW_ARANGO_EXCEPTION(TRI_ERROR_BAD_PARAMETER);
   }
@@ -381,7 +384,7 @@ RocksDBKeyBounds::RocksDBKeyBounds(RocksDBEntryType type, uint64_t first,
 
 /// iterate over the specified bounds of the velocypack index
 RocksDBKeyBounds::RocksDBKeyBounds(RocksDBEntryType type, uint64_t first,
-                                   VPackSlice const& second) {
+                                   VPackSlice const& second) : _type(type) {
   switch (type) {
     case RocksDBEntryType::VPackHashIndexValue: {
       size_t startLength = sizeof(uint64_t) +
@@ -396,12 +399,15 @@ RocksDBKeyBounds::RocksDBKeyBounds(RocksDBEntryType type, uint64_t first,
       _internals.buffer().append(reinterpret_cast<char const*>(second.begin()),
                                  static_cast<size_t>(second.byteSize()));
       _internals.buffer().push_back(_stringSeparator);
+      uint64ToPersistent(_internals.buffer(), 0);
+      _internals.buffer().push_back(0xFFU);
 
       _internals.separate();
 
       uint64ToPersistent(_internals.buffer(), first);
       _internals.buffer().append(reinterpret_cast<char const*>(second.begin()),
                                  static_cast<size_t>(second.byteSize()));
+      _internals.buffer().push_back(_stringSeparator);
       uint64ToPersistent(_internals.buffer(), UINT64_MAX);
       _internals.buffer().push_back(0xFFU);
     } break;

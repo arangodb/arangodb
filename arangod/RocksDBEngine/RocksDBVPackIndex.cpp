@@ -43,6 +43,9 @@
 #include "Transaction/Methods.h"
 #include "VocBase/LogicalCollection.h"
 
+#include "RocksDBEngine/RocksDBPrefixExtractor.h"
+#include "Basics/VelocypackHelper.h"
+
 #include <rocksdb/iterator.h>
 #include <rocksdb/options.h>
 #include <rocksdb/utilities/transaction.h>
@@ -96,6 +99,7 @@ RocksDBVPackIndexIterator::RocksDBVPackIndexIterator(
     options.iterate_upper_bound = &_upperBound;
   }
 
+  TRI_ASSERT(options.prefix_same_as_start);
   _iterator = mthds->NewIterator(options, index->columnFamily());
   if (reverse) {
     _iterator->SeekForPrev(_bounds.end());
@@ -590,10 +594,12 @@ Result RocksDBVPackIndex::insert(transaction::Methods* trx,
     }
   }
 
-  for (auto& it : hashes) {
-    // The estimator is only useful if we are in a non-unique indexes
-    TRI_ASSERT(!_unique);
-    _estimator->insert(it);
+  if (res == TRI_ERROR_NO_ERROR) {
+    for (auto& it : hashes) {
+      // The estimator is only useful if we are in a non-unique indexes
+      TRI_ASSERT(!_unique);
+      _estimator->insert(it);
+    }
   }
 
   return IndexResult(res, this);
@@ -627,17 +633,20 @@ int RocksDBVPackIndex::insertRaw(RocksDBMethods* batch,
       rocksdb::ReadOptions readOpts;
       if (batch->Exists(_cf, key)) {
         res = TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED;
+        break;
       }
     }
-    if (res == TRI_ERROR_NO_ERROR) {
-      batch->Put(_cf, key, value.string(), rocksutils::index);
-    }
+    TRI_ASSERT(RocksDBKey::revisionId(key) == revisionId);
+    TRI_ASSERT(RocksDBKey::indexedVPack(key.string()).length() == _fields.size());
+    batch->Put(_cf, key, value.string(), rocksutils::index);
   }
 
-  for (auto& it : hashes) {
-    // The estimator is only useful if we are in a non-unique indexes
-    TRI_ASSERT(!_unique);
-    _estimator->insert(it);
+  if (res == TRI_ERROR_NO_ERROR) {
+    for (auto& it : hashes) {
+      // The estimator is only useful if we are in a non-unique indexes
+      TRI_ASSERT(!_unique);
+      _estimator->insert(it);
+    }
   }
 
   return res;
@@ -769,6 +778,45 @@ RocksDBVPackIndexIterator* RocksDBVPackIndex::lookup(
   VPackSlice leftBorder;
   VPackSlice rightBorder;
 
+  if (!_unique && type() == Index::TRI_IDX_TYPE_HASH_INDEX) {
+    TRI_ASSERT(_cf == RocksDBColumnFamily::vpackHash());
+    TRI_ASSERT(lastNonEq.isNone());
+    // we do not need a minSlice here we do a complete match
+    leftSearch.close();
+    leftBorder = leftSearch.slice();
+    TRI_ASSERT(leftBorder.isArray() && leftBorder.length() == _fields.size());
+    
+    RocksDBKeyBounds bounds = RocksDBKeyBounds::VPackHashIndex(_objectId, leftBorder);
+    
+    rocksdb::ReadOptions opts;
+    opts.prefix_same_as_start = false;
+    opts.total_order_seek = true;
+    RocksDBKeyBounds bbbbb = RocksDBKeyBounds::VPackHashIndex(_objectId);
+    std::unique_ptr<rocksdb::Iterator> it(rocksutils::globalRocksDB()->NewIterator(opts, _cf));
+    for (it->Seek(bbbbb.start()); it->Valid() &&
+         _cf->GetComparator()->Compare(it->key(), bbbbb.end()) < 0; it->Next()) {
+      VPackSlice s = RocksDBKey::indexedVPack(it->key());
+      LOG_TOPIC(ERR, Logger::FIXME) << RocksDBKey::objectId(it->key())
+       << " , " <<
+      RocksDBKey::revisionId(RocksDBEntryType::VPackHashIndexValue, it->key())
+      << " , " << s.toJson();
+      if (arangodb::basics::VelocyPackHelper::compare(s, leftBorder, true) == 0) {
+        rocksdb::ColumnFamilyDescriptor cfd;
+        _cf->GetDescriptor(&cfd);
+        auto pre1 = cfd.options.prefix_extractor->Transform(it->key());
+        auto pre2 = cfd.options.prefix_extractor->Transform(bounds.start());
+
+        TRI_ASSERT(RocksDBKey::objectId(pre1) == RocksDBKey::objectId(pre2));
+        TRI_ASSERT(_cf->GetComparator()->Compare(pre1, pre2) == 0);
+        bounds = RocksDBKeyBounds::VPackHashIndex(_objectId, s);
+        break;
+      }
+    }
+    
+    return new RocksDBVPackIndexIterator(
+        _collection, trx, mmdr, this, reverse, bounds);
+  }
+
   if (lastNonEq.isNone()) {
     // We only have equality!
     rightSearch = leftSearch;
@@ -818,19 +866,22 @@ RocksDBVPackIndexIterator* RocksDBVPackIndex::lookup(
       rightSearch.add(lastRight);
       rightSearch.add(VPackSlice::maxKeySlice());
       rightSearch.close();
-      rightBorder = rightSearch.slice();
+      VPackSlice search = rightSearch.slice();
+      rightBorder = search;
     } else {
       lastRight = lastNonEq.get(StaticStrings::IndexLt);
       if (!lastRight.isNone()) {
         rightSearch.add(lastRight);
         rightSearch.add(VPackSlice::minKeySlice());
         rightSearch.close();
-        rightBorder = rightSearch.slice();
+        VPackSlice search = rightSearch.slice();
+        rightBorder = search;
       } else {
         // No upper bound set default to (x <= INFINITY)
         rightSearch.add(VPackSlice::maxKeySlice());
         rightSearch.close();
-        rightBorder = rightSearch.slice();
+        VPackSlice search = rightSearch.slice();
+        rightBorder = search;
       }
     }
   }
@@ -840,14 +891,7 @@ RocksDBVPackIndexIterator* RocksDBVPackIndex::lookup(
     bounds =
         RocksDBKeyBounds::UniqueVPackIndex(_objectId, leftBorder, rightBorder);
   } else {
-    if (type() == Index::TRI_IDX_TYPE_HASH_INDEX) {
-      TRI_ASSERT(leftBorder == rightBorder);
-      TRI_ASSERT(_cf == RocksDBColumnFamily::vpackHash());
-      bounds = RocksDBKeyBounds::VPackHashIndex(_objectId, leftBorder);
-    } else {
-      bounds =
-          RocksDBKeyBounds::VPackIndex(objectId(), leftBorder, rightBorder);
-    }
+    bounds = RocksDBKeyBounds::VPackIndex(objectId(), leftBorder, rightBorder);
   }
   return new RocksDBVPackIndexIterator(_collection, trx, mmdr, this, reverse,
                                        bounds);
@@ -1075,7 +1119,7 @@ bool RocksDBVPackIndex::supportsFilterCondition(
     estimatedCost = 0.995 * values;
     return true;
   }
-    
+
   if (attributesCovered > 0 &&
       (!_sparse || attributesCovered == _fields.size())) {
     // if the condition contains at least one index attribute and is not
@@ -1085,15 +1129,15 @@ bool RocksDBVPackIndex::supportsFilterCondition(
     // sparse indexes are contained in Index::canUseConditionPart)
     estimatedItems = static_cast<size_t>((std::max)(
         static_cast<size_t>(estimatedCost * values), static_cast<size_t>(1)));
- 
-    // check if the index has a selectivity estimate ready 
+
+    // check if the index has a selectivity estimate ready
     if (attributesCoveredByEquality == _fields.size()) {
       StringRef ignore;
       double estimate = this->selectivityEstimate(&ignore);
       if (estimate > 0.0) {
         estimatedItems = static_cast<size_t>(1.0 / estimate);
       }
-    } 
+    }
     estimatedCost = static_cast<double>(estimatedItems);
     return true;
   }
