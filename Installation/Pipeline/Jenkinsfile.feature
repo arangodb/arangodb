@@ -458,7 +458,12 @@ def buildStepParallel(osList) {
         }
     }
 
-    parallel branches
+    if (branches.size() > 1) {
+        parallel branches
+    }
+    else if (branches.size() == 1) {
+        branches.values()[0]()
+    }
 }
 
 // -----------------------------------------------------------------------------
@@ -618,7 +623,12 @@ def testStepParallel(osList, modeList) {
         branches['jslint'] = jslintStep()
     }
 
-    parallel branches
+    if (branches.size() > 1) {
+        parallel branches
+    }
+    else if (branches.size() == 1) {
+        branches.values()[0]()
+    }
 }
 
 // -----------------------------------------------------------------------------
@@ -707,7 +717,12 @@ def testResilienceParallel() {
         }
     }
 
-    parallel branches
+    if (branches.size() > 1) {
+        parallel branches
+    }
+    else if (branches.size() == 1) {
+        branches.values()[0]()
+    }
 }
 
 // -----------------------------------------------------------------------------
