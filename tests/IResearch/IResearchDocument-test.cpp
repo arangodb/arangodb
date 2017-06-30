@@ -32,6 +32,7 @@
 #include "velocypack/velocypack-aliases.h"
 
 #include "analysis/analyzers.hpp"
+#include "analysis/token_streams.hpp"
 
 NS_LOCAL
 

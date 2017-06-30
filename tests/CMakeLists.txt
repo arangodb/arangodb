@@ -11,6 +11,7 @@ if (USE_IRESEARCH)
     IResearch/Containers-test.cpp
     IResearch/IResearchLink-test.cpp
     IResearch/IResearchLinkMeta-test.cpp
+    IResearch/IResearchOrder-test.cpp
     IResearch/IResearchView-test.cpp
     IResearch/IResearchViewMeta-test.cpp
     IResearch/IResearchDocument-test.cpp

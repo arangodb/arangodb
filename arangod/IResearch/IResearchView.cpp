@@ -536,30 +536,6 @@ void UnorderedViewIterator::reset() {
   _state._readerOffset = 0;
 }
 
-bool appendOrder(irs::order& buf, arangodb::aql::SortCondition const& root) {
-  struct NoopSort: public irs::sort {
-    struct Prepared: irs::sort::prepared_base<bool> {
-      virtual void add(score_t& dst, score_t const& src) const override {}
-      virtual const irs::flags& features() const override { return irs::flags::empty_instance(); }
-      virtual bool less(const score_t& lhs, const score_t& rhs) const override { return false; }
-      virtual collector::ptr prepare_collector() const override { return nullptr; }
-      virtual scorer::ptr prepare_scorer(irs::sub_reader const& segment, irs::term_reader const& field, irs::attribute_store const& query_attrs, irs::attribute_store const& doc_attrs) const override { return nullptr; }
-    };
-    DECLARE_TYPE_ID(irs::sort::type_id) { static irs::sort::type_id type("noop_sort"); return type; }
-    NoopSort(): sort(NoopSort::type()) {}
-    static ptr make() { PTR_NAMED(NoopSort, ptr); return ptr; }
-    virtual prepared::ptr prepare() const override { PTR_NAMED(Prepared, ptr); return ptr; }
-  };
-
-  // fill 'buf' with dummy 'sort' objects equal in number to the count of conditions in 'root'
-  for (auto i = root.numAttributes(); i > 0; --i) {
-    buf.add<NoopSort>();
-  }
-
-  // FIXME TODO implement
-  return true;
-}
-
 arangodb::Result createPersistedDataDirectory(
     irs::directory::ptr& dstDirectory, // out param
     irs::index_writer::ptr& dstWriter, // out param
@@ -726,7 +702,6 @@ arangodb::Result updateLinks(
         );
       }
 
-      namedJson.add("type", arangodb::velocypack::Value("iresearch"));
       namedJson.close();
 
       std::string error;
@@ -1611,26 +1586,26 @@ arangodb::ViewIterator* IResearchView::iteratorForCondition(
 
   irs::Or filter;
 
-  if (!arangodb::iresearch::FilterFactory::filter(filter, *node)) {
+  if (!FilterFactory::filter(&filter, *node)) {
     LOG_TOPIC(WARN, Logger::FIXME) << "failed to build filter while querying iResearch view '" << name() << "', query" << node->toVelocyPack(true)->toJson();
 
     return nullptr;
   }
 
   irs::order order;
+  OrderFactory::OrderContext orderCtx{ order, *trx };
+  ReadMutex mutex(_mutex); // members can be asynchronously updated
+  SCOPED_LOCK(mutex);
 
-  if (sortCondition && !appendOrder(order, *sortCondition)) {
+  if (sortCondition && !OrderFactory::order(&orderCtx, *sortCondition, _meta)) {
     LOG_TOPIC(WARN, Logger::FIXME) << "failed to build order while querying iResearch view '" << name() << "', query" << node->toVelocyPack(true)->toJson();
 
     return nullptr;
   }
 
   CompoundReader compoundReader;
-  ReadMutex mutex(_mutex); // members can be asynchronously updated
 
   try {
-    SCOPED_LOCK(mutex);
-
     for (auto& fidStore: _storeByWalFid) {
       auto reader = fidStore.second._reader.reopen(); // refresh to latest version
 
@@ -1901,7 +1876,7 @@ int IResearchView::remove(
     return TRI_ERROR_BAD_PARAMETER; // 'trx' and transaction id required
   }
 
-  std::shared_ptr<irs::filter> shared_filter(iresearch::FilterFactory::filter(cid, rid));
+  std::shared_ptr<irs::filter> shared_filter(FilterFactory::filter(cid, rid));
   WriteMutex mutex(_mutex); // '_storeByTid' can be asynchronously updated
   SCOPED_LOCK(mutex);
   auto storeItr = irs::map_utils::try_emplace(_storeByTid, trx.state()->id());
@@ -1954,8 +1929,8 @@ bool IResearchView::supportsFilterCondition(
   size_t& estimatedItems,
   double& estimatedCost
 ) const {
-  // FIXME TODO implement
-  return false;
+  // no way to estimate items/cost before preparing the query
+  return node && FilterFactory::filter(nullptr, *node);
 }
 
 bool IResearchView::supportsSortCondition(
@@ -1964,8 +1939,11 @@ bool IResearchView::supportsSortCondition(
   double& estimatedCost,
   size_t& coveredAttributes
 ) const {
-  // FIXME TODO implement
-  return false;
+  irs::order order;
+  ReadMutex mutex(_mutex); // '_meta' can be asynchronously updated
+  SCOPED_LOCK(mutex);
+
+  return sortCondition && OrderFactory::order(nullptr, *sortCondition, _meta);
 }
 
 bool IResearchView::sync(size_t maxMsec /*= 0*/) {

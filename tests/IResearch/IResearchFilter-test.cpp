@@ -31,6 +31,7 @@
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "RestServer/AqlFeature.h"
 #include "RestServer/QueryRegistryFeature.h"
+#include "RestServer/TraverserEngineRegistryFeature.h"
 #include "Aql/Ast.h"
 #include "Aql/Query.h"
 
@@ -62,7 +63,7 @@ void assertFilterSuccess(std::string const& queryString, irs::filter const& expe
   auto options = std::make_shared<arangodb::velocypack::Builder>();
 
   arangodb::aql::Query query(
-     true, &vocbase, arangodb::aql::QueryString(queryString),
+     false, &vocbase, arangodb::aql::QueryString(queryString),
      bindVars, options,
      arangodb::aql::PART_MAIN
   );
@@ -76,7 +77,8 @@ void assertFilterSuccess(std::string const& queryString, irs::filter const& expe
   REQUIRE(filterNode);
 
   irs::Or actual;
-  CHECK(arangodb::iresearch::FilterFactory::filter(actual, *filterNode));
+  CHECK((arangodb::iresearch::FilterFactory::filter(nullptr, *filterNode)));
+  CHECK((arangodb::iresearch::FilterFactory::filter(&actual, *filterNode)));
   CHECK(expected == actual);
 }
 
@@ -84,7 +86,7 @@ void assertFilterFail(std::string const& queryString) {
   TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "testVocbase");
 
   arangodb::aql::Query query(
-     true, &vocbase, arangodb::aql::QueryString(queryString),
+     false, &vocbase, arangodb::aql::QueryString(queryString),
      nullptr, nullptr,
      arangodb::aql::PART_MAIN
   );
@@ -98,7 +100,8 @@ void assertFilterFail(std::string const& queryString) {
   REQUIRE(filterNode);
 
   irs::Or actual;
-  CHECK(!arangodb::iresearch::FilterFactory::filter(actual, *filterNode));
+  CHECK((!arangodb::iresearch::FilterFactory::filter(nullptr, *filterNode)));
+  CHECK((!arangodb::iresearch::FilterFactory::filter(&actual, *filterNode)));
 }
 
 }
@@ -120,7 +123,7 @@ struct IResearchFilterSetup {
       feature = new arangodb::AqlFeature(&server)
     );
     feature->start();
-    feature->start();
+    feature->prepare();
 
     // QueryRegistryFeature
     arangodb::application_features::ApplicationServer::server->addFeature(
@@ -128,9 +131,17 @@ struct IResearchFilterSetup {
     );
     feature->start();
     feature->prepare();
+
+    // TraverserEngineRegistryFeature (required for AqlFeature::stop() to work)
+    arangodb::application_features::ApplicationServer::server->addFeature(
+      feature = new arangodb::TraverserEngineRegistryFeature(&server)
+    );
+    feature->start();
+    feature->prepare();
   }
 
   ~IResearchFilterSetup() {
+    arangodb::AqlFeature(&server).stop(); // unset singleton instance
     arangodb::application_features::ApplicationServer::server = nullptr;
     arangodb::EngineSelectorFeature::ENGINE = nullptr;
   }

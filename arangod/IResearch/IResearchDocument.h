@@ -26,23 +26,40 @@
 
 #include "VocBase/voc-types.h"
 
-#include "Aql/AstNode.h"
 #include "IResearchLinkMeta.h"
 #include "VelocyPackHelper.h"
 
-#include "store/data_output.hpp"
-#include "utils/attributes.hpp"
-#include "analysis/token_streams.hpp"
 #include "search/filter.hpp"
 
 NS_BEGIN(iresearch)
 
-class boolean_filter;
+class boolean_filter; // forward declaration
+struct data_output; // forward declaration
+class token_stream; // forward declaration
 
 NS_END // iresearch
 
 NS_BEGIN(arangodb)
+NS_BEGIN(aql)
+
+struct AstNode; // forward declaration
+class SortCondition; // forward declaration
+
+NS_END // aql
+NS_END // arangodb
+
+NS_BEGIN(arangodb)
+NS_BEGIN(transaction)
+
+class Methods; // forward declaration
+
+NS_END // transaction
+NS_END // arangodb
+
+NS_BEGIN(arangodb)
 NS_BEGIN(iresearch)
+
+struct IResearchViewMeta; // forward declaration
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief indexed/stored document field adapter for IResearch
@@ -96,7 +113,7 @@ class FieldIterator : public std::iterator<std::forward_iterator_tag, Field cons
   static FieldIterator const END; // unified end for all field iterators
 
   explicit FieldIterator();
-  FieldIterator(VPackSlice const& doc, IResearchLinkMeta const& linkMeta);
+  FieldIterator(arangodb::velocypack::Slice const& doc, IResearchLinkMeta const& linkMeta);
 
   Field const& operator*() const noexcept {
     return _value;
@@ -124,7 +141,7 @@ class FieldIterator : public std::iterator<std::forward_iterator_tag, Field cons
   }
 
   void reset(
-    VPackSlice const& doc,
+    arangodb::velocypack::Slice const& doc,
     IResearchLinkMeta const& linkMeta
   );
 
@@ -138,8 +155,12 @@ class FieldIterator : public std::iterator<std::forward_iterator_tag, Field cons
   );
 
   struct Level {
-    Level(VPackSlice slice, size_t nameLength, IResearchLinkMeta const& meta, Filter filter)
-      : it(slice), nameLength(nameLength), meta(&meta), filter(filter) {
+    Level(
+        arangodb::velocypack::Slice slice,
+        size_t nameLength,
+        IResearchLinkMeta const& meta,
+        Filter filter
+    ): it(slice), nameLength(nameLength), meta(&meta), filter(filter) {
     }
 
     bool operator==(Level const& rhs) const noexcept {
@@ -176,8 +197,8 @@ class FieldIterator : public std::iterator<std::forward_iterator_tag, Field cons
 
   void next();
   IResearchLinkMeta const* nextTop();
-  bool push(VPackSlice slice, IResearchLinkMeta const*& topMeta);
-  bool setValue(VPackSlice const& value, IResearchLinkMeta const& context);
+  bool push(arangodb::velocypack::Slice slice, IResearchLinkMeta const*& topMeta);
+  bool setValue(arangodb::velocypack::Slice const& value, IResearchLinkMeta const& context);
 
   void resetTokenizers(IResearchLinkMeta const& context) {
     auto const& tokenizers = context._tokenizers;
@@ -220,8 +241,33 @@ class DocumentPrimaryKey {
 struct FilterFactory {
   static irs::filter::ptr filter(TRI_voc_cid_t cid);
   static irs::filter::ptr filter(TRI_voc_cid_t cid, TRI_voc_rid_t rid);
-  static bool filter(irs::boolean_filter& rootFilter, arangodb::aql::AstNode const& root);
+
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief determine if the 'node' can be converted into an iresearch filter
+  ///        if 'filter' != nullptr then also append the iresearch filter there
+  ////////////////////////////////////////////////////////////////////////////////
+  static bool filter(
+    irs::boolean_filter* filter,
+    arangodb::aql::AstNode const& node
+  );
 }; // FilterFactory
+
+struct OrderFactory {
+  struct OrderContext {
+    irs::order& order;
+    arangodb::transaction::Methods& trx;
+  };
+
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief determine if the 'node' can be converted into an iresearch order
+  ///        if 'order' != nullptr then also append the iresearch order there
+  ////////////////////////////////////////////////////////////////////////////////
+  static bool order(
+    OrderContext* ctx,
+    arangodb::aql::SortCondition const& node,
+    IResearchViewMeta const& meta
+  );
+};
 
 NS_END // iresearch
 NS_END // arangodb

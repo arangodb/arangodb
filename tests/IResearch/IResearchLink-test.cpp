@@ -218,9 +218,9 @@ SECTION("test_write") {
     CHECK((trx.begin().ok()));
 // FIXME TODO for use by iresearch::kludge, remove once checkpoint ids are implemented
 #if 1
-    CHECK((TRI_ERROR_NO_ERROR == static_cast<arangodb::iresearch::IResearchLink*>(link.get())->insert(&trx, 0, 1, doc0->slice()).errorNumber()));
+    CHECK((static_cast<arangodb::iresearch::IResearchLink*>(link.get())->insert(&trx, 0, 1, doc0->slice()).ok()));
 #else
-    CHECK((TRI_ERROR_NO_ERROR == link->insert(&trx, 1, doc0->slice(), false)).errorNumber());
+    CHECK((link->insert(&trx, 1, doc0->slice(), false).ok()));
 #endif
     CHECK((trx.commit().ok()));
   }
@@ -234,9 +234,9 @@ SECTION("test_write") {
     CHECK((trx.begin().ok()));
 // FIXME TODO for use by iresearch::kludge, remove once checkpoint ids are implemented
 #if 1
-    CHECK((TRI_ERROR_NO_ERROR == static_cast<arangodb::iresearch::IResearchLink*>(link.get())->insert(&trx, 0, 2, doc1->slice()).errorNumber()));
+    CHECK((static_cast<arangodb::iresearch::IResearchLink*>(link.get())->insert(&trx, 0, 2, doc1->slice()).ok()));
 #else
-    CHECK((TRI_ERROR_NO_ERROR == link->insert(&trx, 2, doc1->slice(), false).errorNumber()));
+    CHECK((link->insert(&trx, 2, doc1->slice(), false).ok()));
 #endif
     CHECK((trx.commit().ok()));
   }
@@ -250,9 +250,9 @@ SECTION("test_write") {
     CHECK((trx.begin().ok()));
 // FIXME TODO for use by iresearch::kludge, remove once checkpoint ids are implemented
 #if 1
-    CHECK((TRI_ERROR_NO_ERROR == static_cast<arangodb::iresearch::IResearchLink*>(link.get())->remove(&trx, 2).errorNumber()));
+    CHECK((static_cast<arangodb::iresearch::IResearchLink*>(link.get())->remove(&trx, 2).ok()));
 #else
-    CHECK((TRI_ERROR_NO_ERROR == link->remove(&trx, 2, doc1->slice(), false)));
+    CHECK((link->remove(&trx, 2, doc1->slice(), false).ok()));
 #endif
     CHECK((trx.commit().ok()));
   }
