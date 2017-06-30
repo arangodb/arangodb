@@ -118,7 +118,7 @@ GeneralArrayCursor.prototype._PRINT = function (context) {
   text = 'GeneralArrayCursor([.. ' + this._documents.length + ' docs .., cached: ' + String(this._cached);
 
   if (this.hasOwnProperty('_extra') &&
-    this._extra.hasOwnProperty('warnings')) {
+    this._extra.hasOwnProperty('warnings') && this._extra.warnings.length > 0) {
     text += ', warning(s): ';
     var last = null;
     for (var j = 0; j < this._extra.warnings.length; j++) {
