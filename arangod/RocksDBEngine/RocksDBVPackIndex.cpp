@@ -1031,17 +1031,11 @@ bool RocksDBVPackIndex::supportsFilterCondition(
 
   if (attributesCoveredByEquality == _fields.size() && unique()) {
     // index is unique and condition covers all attributes by equality
-    if (estimatedItems >= values) {
-      // reduce costs due to uniqueness
-      estimatedItems = values;
-      estimatedCost = static_cast<double>(estimatedItems);
-    } else {
-      // cost is already low... now slightly prioritize the unique index
-      estimatedCost *= 0.995;
-    }
+    estimatedItems = values;
+    estimatedCost = 0.995 * values;
     return true;
   }
-
+    
   if (attributesCovered > 0 &&
       (!_sparse || attributesCovered == _fields.size())) {
     // if the condition contains at least one index attribute and is not
@@ -1051,7 +1045,16 @@ bool RocksDBVPackIndex::supportsFilterCondition(
     // sparse indexes are contained in Index::canUseConditionPart)
     estimatedItems = static_cast<size_t>((std::max)(
         static_cast<size_t>(estimatedCost * values), static_cast<size_t>(1)));
-    estimatedCost *= static_cast<double>(values);
+ 
+    // check if the index has a selectivity estimate ready 
+    if (attributesCoveredByEquality == _fields.size()) {
+      StringRef ignore;
+      double estimate = this->selectivityEstimate(&ignore);
+      if (estimate > 0.0) {
+        estimatedItems = static_cast<size_t>(1.0 / estimate);
+      }
+    } 
+    estimatedCost = static_cast<double>(estimatedItems);
     return true;
   }
 
