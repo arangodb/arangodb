@@ -702,6 +702,7 @@ void MMFilesSkiplistIndex::toVelocyPack(VPackBuilder& builder, bool withFigures,
     Index::toVelocyPack(builder, withFigures, forPersistence);
     builder.add("unique", VPackValue(_unique));
     builder.add("sparse", VPackValue(_sparse));
+    builder.add("deduplicate", VPackValue(_deduplicate));
   }
   builder.close();
 }

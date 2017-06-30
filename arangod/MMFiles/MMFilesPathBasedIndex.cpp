@@ -23,6 +23,7 @@
 
 #include "MMFilesPathBasedIndex.h"
 #include "Aql/AstNode.h"
+#include "Basics/Exceptions.h"
 #include "Basics/FixedSizeAllocator.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Logger/Logger.h"
@@ -42,12 +43,14 @@ MMFilesPathBasedIndex::MMFilesPathBasedIndex(TRI_idx_iid_t iid,
                                arangodb::LogicalCollection* collection,
                                VPackSlice const& info, size_t baseSize, bool allowPartialIndex)
     : Index(iid, collection, info),
+      _deduplicate(arangodb::basics::VelocyPackHelper::getBooleanValue(
+          info, "deduplicate", true)),
       _useExpansion(false),
       _allowPartialIndex(allowPartialIndex) {
   TRI_ASSERT(!_fields.empty());
 
   TRI_ASSERT(iid != 0);
-
+      
   fillPaths(_paths, _expanding);
 
   for (auto const& it : _fields) {
@@ -143,7 +146,13 @@ int MMFilesPathBasedIndex::fillElement(std::vector<T*>& elements,
     std::vector<std::vector<std::pair<VPackSlice, uint32_t>>> toInsert;
     std::vector<std::pair<VPackSlice, uint32_t>> sliceStack;
 
-    buildIndexValues(doc, 0, toInsert, sliceStack);
+    try {
+      buildIndexValues(doc, 0, toInsert, sliceStack);
+    } catch (basics::Exception const& ex) {
+      return ex.code();
+    } catch (...) {
+      return TRI_ERROR_INTERNAL;
+    }
 
     if (!toInsert.empty()) {
       elements.reserve(toInsert.size());
@@ -289,6 +298,8 @@ void MMFilesPathBasedIndex::buildIndexValues(
       sliceStack.emplace_back(something, static_cast<uint32_t>(something.start() - document.start()));
       buildIndexValues(document, level + 1, toInsert, sliceStack);
       sliceStack.pop_back();
+    } else if (_unique && !_deduplicate) {
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED);
     }
   };
   for (auto const& member : VPackArrayIterator(current)) {
