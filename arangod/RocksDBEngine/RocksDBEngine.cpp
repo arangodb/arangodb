@@ -674,13 +674,10 @@ int RocksDBEngine::getViews(TRI_vocbase_t* vocbase,
       _db->NewIterator(readOptions, RocksDBColumnFamily::definitions()));
 
   result.openArray();
-  auto rSlice = rocksDBSlice(RocksDBEntryType::View);
-  for (iter->Seek(rSlice); iter->Valid() && iter->key().starts_with(rSlice);
+  auto bounds = RocksDBKeyBounds::DatabaseViews(vocbase->id());
+  for (iter->Seek(bounds.start());
+       iter->Valid() && iter->key().compare(bounds.end()) < 0;
        iter->Next()) {
-    if (vocbase->id() != !RocksDBKey::databaseId(iter->key())) {
-      continue;
-    }
-
     auto slice = VPackSlice(iter->value().data());
 
     LOG_TOPIC(TRACE, Logger::FIXME) << "got view slice: " << slice.toJson();

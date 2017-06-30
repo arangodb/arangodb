@@ -601,8 +601,8 @@ class WBReader final : public rocksdb::WriteBatch::Handler {
       } else if (type == RocksDBEntryType::Database) {
         storeMaxTick(RocksDBKey::databaseId(key));
       } else if (type == RocksDBEntryType::View) {
-        LOG_TOPIC(ERR, Logger::STARTUP)
-            << "tick update for views needs to be implemented";
+        storeMaxTick(std::max(RocksDBKey::databaseId(key),
+                              RocksDBKey::viewId(key)));
       }
     }
   }
