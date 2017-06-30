@@ -50,6 +50,7 @@ class RocksDBOptionFeature final
   std::string _walDirectory;
   uint64_t _writeBufferSize;
   uint64_t _maxWriteBufferNumber;
+  uint64_t _maxTotalWalSize;
   uint64_t _delayedWriteRate;
   uint64_t _minWriteBufferNumberToMerge;
   uint64_t _numLevels;

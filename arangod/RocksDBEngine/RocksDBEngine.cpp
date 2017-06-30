@@ -222,6 +222,11 @@ void RocksDBEngine::start() {
   _options.optimize_filters_for_hits = opts->_optimizeFiltersForHits;
   _options.use_direct_reads = opts->_useDirectReads;
   _options.use_direct_io_for_flush_and_compaction = opts->_useDirectIoForFlushAndCompaction;
+  // limit the total size of WAL files. This forces the flush of memtables of
+  // column families still backed by WAL files. If we would not do this, WAL
+  // files may linger around forever and will not get removed
+  _options.max_total_wal_size = opts->_maxTotalWalSize;
+
   _options.wal_dir = opts->_walDirectory;
   
   if (opts->_skipCorrupted) {
@@ -309,11 +314,6 @@ void RocksDBEngine::start() {
                                                  // ourselves, don't let RocksDB
                                                  // garbage collect them
   _options.WAL_size_limit_MB = 0;
-
-  // limit the total size of WAL files. This forces the flush of memtables of
-  // column families still backed by WAL files. If we would not do this, WAL
-  // files may linger around forever and will not get removed
-  _options.max_total_wal_size = 64 << 20;
 
   _options.prefix_extractor.reset(new RocksDBPrefixExtractor());
   _options.memtable_prefix_bloom_size_ratio = 0.2;  // TODO: pick better value?

@@ -50,6 +50,7 @@ RocksDBOptionFeature::RocksDBOptionFeature(
     : application_features::ApplicationFeature(server, "RocksDBOption"),
       _writeBufferSize(rocksDBDefaults.write_buffer_size),
       _maxWriteBufferNumber(rocksDBDefaults.max_write_buffer_number),
+      _maxTotalWalSize(64 << 20),
       _delayedWriteRate(rocksDBDefaults.delayed_write_rate),
       _minWriteBufferNumberToMerge(
           rocksDBDefaults.min_write_buffer_number_to_merge),
@@ -117,6 +118,10 @@ void RocksDBOptionFeature::collectOptions(
   options->addOption("--rocksdb.max-write-buffer-number",
                      "maximum number of write buffers that built up in memory",
                      new UInt64Parameter(&_maxWriteBufferNumber));
+  
+  options->addOption("--rocksdb.max-total-wal-size",
+                     "maximum total size of WAL files that will force flush stale column families",
+                     new UInt64Parameter(&_maxTotalWalSize));
 
   options->addHiddenOption(
       "--rocksdb.delayed_write_rate",
@@ -325,6 +330,7 @@ void RocksDBOptionFeature::start() {
                                   << " wal_dir: " << _walDirectory << "'"
                                   << ", write_buffer_size: " << _writeBufferSize
                                   << ", max_write_buffer_number: " << _maxWriteBufferNumber
+                                  << ", max_total_wal_size: " << _maxTotalWalSize
                                   << ", delayed_write_rate: " << _delayedWriteRate
                                   << ", min_write_buffer_number_to_merge: " << _minWriteBufferNumberToMerge
                                   << ", num_levels: " << _numLevels
