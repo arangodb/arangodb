@@ -142,6 +142,81 @@ describe ArangoDB do
         ArangoDB.drop_collection(@cn)
       end
       
+      it "rolls back in case of violation, array index w/o deduplication" do
+        cmd = "/_api/index?collection=#{@cn}"
+        body = "{ \"type\" : \"hash\", \"unique\" : true, \"fields\" : [ \"a[*]\" ], \"deduplicate\": false }"
+        doc = ArangoDB.log_post("#{prefix}-create1", cmd, :body => body)
+
+        doc.code.should eq(201)
+        doc.parsed_response['type'].should eq("hash")
+        doc.parsed_response['unique'].should eq(true)
+        doc.parsed_response['deduplicate'].should eq(false)
+            
+        # create a document
+        cmd1 = "/_api/document?collection=#{@cn}"
+        body = "{ \"a\" : [ 1 ] }"
+        doc = ArangoDB.log_post("#{prefix}-create2", cmd1, :body => body)
+
+        doc.code.should eq(201)
+        
+        body = "{ \"a\" : [ 2 ] }"
+        doc = ArangoDB.log_post("#{prefix}-create2", cmd1, :body => body)
+
+        doc.code.should eq(201)
+        
+        body = "{ \"a\" : [ 3, 4 ] }"
+        doc = ArangoDB.log_post("#{prefix}-create2", cmd1, :body => body)
+
+        doc.code.should eq(201)
+        
+        doc.code.should eq(201)
+
+        # create a unique constraint violation
+        body = "{ \"a\" : [ 5, 5 ] }"
+        doc = ArangoDB.log_post("#{prefix}-create3", cmd1, :body => body)
+
+        doc.code.should eq(409)
+      end
+      
+      it "rolls back in case of violation, array index" do
+        cmd = "/_api/index?collection=#{@cn}"
+        body = "{ \"type\" : \"hash\", \"unique\" : true, \"fields\" : [ \"a[*]\" ] }"
+        doc = ArangoDB.log_post("#{prefix}-create1", cmd, :body => body)
+
+        doc.code.should eq(201)
+        doc.parsed_response['type'].should eq("hash")
+        doc.parsed_response['unique'].should eq(true)
+        doc.parsed_response['deduplicate'].should eq(true)
+            
+        # create a document
+        cmd1 = "/_api/document?collection=#{@cn}"
+        body = "{ \"a\" : [ 1, 1 ] }"
+        doc = ArangoDB.log_post("#{prefix}-create2", cmd1, :body => body)
+
+        doc.code.should eq(201)
+        
+        body = "{ \"a\" : [ 2 ] }"
+        doc = ArangoDB.log_post("#{prefix}-create2", cmd1, :body => body)
+
+        doc.code.should eq(201)
+        
+        body = "{ \"a\" : [ 3, 4 ] }"
+        doc = ArangoDB.log_post("#{prefix}-create2", cmd1, :body => body)
+
+        doc.code.should eq(201)
+        
+        body = "{ \"a\" : [ 5, 5 ] }"
+        doc = ArangoDB.log_post("#{prefix}-create2", cmd1, :body => body)
+
+        doc.code.should eq(201)
+
+        # create a unique constraint violation
+        body = "{ \"a\" : [ 4 ] }"
+        doc = ArangoDB.log_post("#{prefix}-create3", cmd1, :body => body)
+
+        doc.code.should eq(409)
+      end
+      
       it "rolls back in case of violation" do
         cmd = "/_api/index?collection=#{@cn}"
         body = "{ \"type\" : \"hash\", \"unique\" : true, \"fields\" : [ \"a\" ] }"

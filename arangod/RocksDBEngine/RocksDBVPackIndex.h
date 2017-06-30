@@ -238,6 +238,9 @@ class RocksDBVPackIndex : public RocksDBIndex {
 
   /// @brief ... and which of them expands
   std::vector<int> _expanding;
+  
+  /// @brief whether or not array indexes will de-duplicate their input values
+  bool _deduplicate;
 
   /// @brief whether or not at least one attribute is expanded
   bool _useExpansion;

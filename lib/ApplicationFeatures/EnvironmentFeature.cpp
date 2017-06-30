@@ -245,12 +245,15 @@ void EnvironmentFeature::start() {
         double rr = (ram >= swapSpace)
             ? 100.0 * ((ram - swapSpace) / ram)
             : 0.0;
-        if (static_cast<double>(r) > 1.05 * rr ||
-            static_cast<double>(r) < 0.95 * rr) {
+        if (static_cast<double>(r) < 0.99 * rr) {
           LOG_TOPIC(WARN, Logger::MEMORY)
             << "/proc/sys/vm/overcommit_ratio is set to '" << r
-            << "'. It is recommended to set it to '" << std::llround(rr)
-            << "' (100 * (max(0, (RAM - Swap Space)) / RAM)).";
+            << "'. It is recommended to set it to at least'" << std::llround(rr)
+            << "' (100 * (max(0, (RAM - Swap Space)) / RAM)) to utilize all "
+            << "available RAM. Setting it to this value will minimize swap "
+            << "usage, but may result in more out-of-memory errors, while "
+            << "setting it to 100 will allow the system to use both all "
+            << "available RAM and swap space.";
           LOG_TOPIC(WARN, Logger::MEMORY) << "execute 'sudo bash -c \"echo "
                                           << std::llround(rr) << " > "
                                           << "/proc/sys/vm/overcommit_ratio\"'";

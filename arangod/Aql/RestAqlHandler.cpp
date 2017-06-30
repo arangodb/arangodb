@@ -850,6 +850,9 @@ void RestAqlHandler::handleUseQuery(std::string const& operation, Query* query,
           // return warnings if present
           query->addWarningsToVelocyPackObject(answerBuilder);
 
+          // return the query to the registry
+          _queryRegistry->close(_vocbase, _qId);
+
           // delete the query from the registry
           _queryRegistry->destroy(_vocbase, _qId, errorCode);
           _qId = 0;

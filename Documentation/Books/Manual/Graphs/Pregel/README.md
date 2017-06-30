@@ -118,7 +118,7 @@ Valid values for the `state` field include:
 - "running" algorithm is still running
 - "done": The execution is done, the result might not be written back into the collection yet.
 - "canceled": The execution was permanently canceled, either by the user or by an error.
-- "in error": The exeuction is in an error state. This can be caused by primary DBServers beeing not reachable or beeing non responsive.
+- "in error": The exeuction is in an error state. This can be caused by primary DBServers being not reachable or being non responsive.
   The execution might recover later, or switch to "canceled" if it was not able to recover successfuly
 - "recovering": The execution is actively recovering, will switch back to "running" if the recovery was successful
 
