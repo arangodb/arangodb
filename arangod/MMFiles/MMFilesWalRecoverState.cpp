@@ -824,8 +824,9 @@ bool MMFilesWalRecoverState::ReplayMarker(MMFilesMarker const* marker,
         // be
         // dropped later
         bool const forceSync = state->willViewBeDropped(databaseId, viewId);
+    
         arangodb::Result res =
-            view->updateProperties(payloadSlice, false, forceSync);
+            view->updateProperties(payloadSlice.get("properties"), false, forceSync);
         if (!res.ok()) {
           LOG_TOPIC(WARN, arangodb::Logger::FIXME)
               << "cannot change properties for view " << viewId
