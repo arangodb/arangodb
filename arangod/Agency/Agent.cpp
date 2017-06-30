@@ -1436,35 +1436,37 @@ void Agent::join() {
 
   auto const pool = _joinConfig->slice().get(poolStr);
   std::unique_ptr<ClusterCommResult> comres;
+  
   std::string ep;
   auto cc = ClusterComm::instance();
   
   while (true) {
-/*    if (comres->result != nullptr) {
+    if (comres != nullptr && comres->sendWasComplete == true) {
       if (comres->result->getHttpReturnCode() == 307) {
         try {
           std::string location = comres->result->getHeaderFields().at("location");
-          auto ssl = (location[4]=='s');
-          auto host = location.substr(ssl ? 8 : 7, location.find('/', 8));
+          auto pos = location.find(':');
+          
+          auto ssl = (location[pos-1]=='s');
+          pos += 3;
+          auto host = location.substr(pos, location.find('/',pos)-pos);
           ep  = ssl ? "ssl://" : "tcp://";
           ep += host;
         } catch (...) {
           ep.clear();
         }
-      } else if (comres->result->getHttpReturnCode() == 503) {
-        CONDITION_LOCKER(guard, _waitForCV);
-        _waitForCV.wait(100000*_config.minPing()); // .1 * minPing
-      }
+      } 
     }
 
-    if (ep.empty()) {*/
+    if (ep.empty()) {
       ep = pool.valueAt(rand() % pool.length()).copyString();
-      //}
-    
-/*    LOG_TOPIC(ERR, Logger::AGENCY)
-      << ((comres->result!= nullptr) ? comres->result->getHttpReturnCode() : 0)
-      << ep;*/
+    }
 
+    LOG_TOPIC(DEBUG, Logger::AGENCY)
+      << "Have response code while trying to join agency "
+      << ((comres != nullptr) ? comres->result->getHttpReturnCode() : 0)
+      << ". Contacting " << ep << " next ...";
+    
     if (cc == nullptr) {
       break;
     }
