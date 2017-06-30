@@ -255,49 +255,57 @@ bool RocksDBEdgeIndexIterator::nextExtra(ExtraCallback const& cb,
 
     bool needRocksLookup = true;
     if (_cache) {
-      // Try to read from cache
-      auto finding = _cache->find(fromTo.data(), (uint32_t)fromTo.size());
-      if (finding.found()) {
-        needRocksLookup = false;
-        // We got sth. in the cache
-        VPackSlice cachedData(finding.value()->value());
-        TRI_ASSERT(cachedData.isArray());
-        if (cachedData.length() / 2 < limit) {
-          // Directly return it, no need to copy
-          _builderIterator = VPackArrayIterator(cachedData);
-          while (_builderIterator.valid()) {
-            TRI_ASSERT(_builderIterator.value().isNumber());
-            RocksDBToken tkn{
-                _builderIterator.value().getNumericValue<uint64_t>()};
+      for (size_t attempts = 0; attempts < 10; ++attempts) {
+        // Try to read from cache
+        auto finding = _cache->find(fromTo.data(), (uint32_t)fromTo.size());
+        if (finding.found()) {
+          needRocksLookup = false;
+          // We got sth. in the cache
+          VPackSlice cachedData(finding.value()->value());
+          TRI_ASSERT(cachedData.isArray());
+          if (cachedData.length() / 2 < limit) {
+            // Directly return it, no need to copy
+            _builderIterator = VPackArrayIterator(cachedData);
+            while (_builderIterator.valid()) {
+              TRI_ASSERT(_builderIterator.value().isNumber());
+              RocksDBToken tkn{
+                  _builderIterator.value().getNumericValue<uint64_t>()};
 
-            _builderIterator.next();
+              _builderIterator.next();
 
-            TRI_ASSERT(_builderIterator.valid());
-            TRI_ASSERT(_builderIterator.value().isString());
-            cb(tkn, _builderIterator.value());
+              TRI_ASSERT(_builderIterator.valid());
+              TRI_ASSERT(_builderIterator.value().isString());
+              cb(tkn, _builderIterator.value());
 
-            _builderIterator.next();
-            limit--;
+              _builderIterator.next();
+              limit--;
+            }
+            _builderIterator = VPackArrayIterator(
+                arangodb::basics::VelocyPackHelper::EmptyArrayValue());
+          } else {
+            // We need to copy it.
+            // And then we just get back to beginning of the loop
+            _builder.clear();
+            _builder.add(cachedData);
+            TRI_ASSERT(_builder.slice().isArray());
+            _builderIterator = VPackArrayIterator(_builder.slice());
+            // Do not set limit
           }
-          _builderIterator = VPackArrayIterator(
-              arangodb::basics::VelocyPackHelper::EmptyArrayValue());
-        } else {
-          // We need to copy it.
-          // And then we just get back to beginning of the loop
-          _builder.clear();
-          _builder.add(cachedData);
-          TRI_ASSERT(_builder.slice().isArray());
-          _builderIterator = VPackArrayIterator(_builder.slice());
-          // Do not set limit
+          break;
+        } //finding found
+        if (finding.result().isNot(TRI_ERROR_LOCK_TIMEOUT)) {
+          // We really have not found an entry.
+          // Otherwise we do not know yet
+          break;
         }
+      } //attempts
+
+      if (needRocksLookup) {
+        lookupInRocksDB(fromTo);
       }
-    }
 
-    if (needRocksLookup) {
-      lookupInRocksDB(fromTo);
+      _keysIterator.next();
     }
-
-    _keysIterator.next();
   }
   TRI_ASSERT(limit == 0);
   return _builderIterator.valid() || _keysIterator.valid();
