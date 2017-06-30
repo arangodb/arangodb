@@ -243,20 +243,20 @@ def checkCommitMessages() {
         }
     }
 
-echo """"BRANCH_NAME: ${env.BRANCH_NAME}
-         CHANGE_ID: ${env.CHANGE_ID}"
-         CHANGE_TARGET: ${env.CHANGE_TARGET}"
-         JOB_NAME: ${env.JOB_NAME}
+echo """BRANCH_NAME: ${env.BRANCH_NAME}
+        CHANGE_ID: ${env.CHANGE_ID}
+        CHANGE_TARGET: ${env.CHANGE_TARGET}
+        JOB_NAME: ${env.JOB_NAME}
 
-         Linux: ${useLinux}
-         Mac: ${useMac}
-         Windows: ${useWindows}
-         Clean Build: ${cleanBuild}
-         Build Community: ${buildCommunity}
-         Build Enterprise: ${buildEnterprise}
-         Run Jslint: ${runJslint}
-         Run Resilience: ${runResilience}
-         Run Tests: ${runTests}""".stripIndent()
+        Linux: ${useLinux}
+        Mac: ${useMac}
+        Windows: ${useWindows}
+        Clean Build: ${cleanBuild}
+        Building Community: ${buildCommunity}
+        Building Enterprise: ${buildEnterprise}
+        Running Jslint: ${runJslint}
+        Running Resilience: ${runResilience}
+        Running Tests: ${runTests}""".stripIndent()
 
 }
 
@@ -374,7 +374,7 @@ def buildEdition(edition, os) {
             unstashBuild(edition, os)
         }
         catch (exc) {
-            echo exc.toString()
+            echo "no stashed build environment, starting clean build"
         }
     }
 
@@ -400,32 +400,26 @@ def buildEdition(edition, os) {
 
 def buildStepCheck(edition, os, full) {
     if (full && ! buildFull) {
-        echo "Not building combination ${os} ${edition}"
         return false
     }
 
     if (os == 'linux' && ! useLinux) {
-        echo "Not building ${os} version"
         return false
     }
 
     if (os == 'mac' && ! useMac) {
-        echo "Not building ${os} version"
         return false
     }
 
     if (os == 'windows' && ! useWindows) {
-        echo "Not building ${os} version"
         return false
     }
 
     if (edition == 'enterprise' && ! buildEnterprise) {
-        echo "Not building ${edition} version"
         return false
     }
 
     if (edition == 'community' && ! buildCommunity) {
-        echo "Not building ${edition} version"
         return false
     }
 
@@ -777,21 +771,23 @@ catch (exc) {
 
 stage('result') {
     node('master') {
+        def result = ""
+
         for (kv in buildsSuccess) {
-            echo "BUILD ${kv.key}: ${kv.value}"
+            result = result + "BUILD ${kv.key}: ${kv.value}\n"
         }
 
         for (kv in testsSuccess) {
-            echo "TEST ${kv.key}: ${kv.value}"
+            result = result + "TEST ${kv.key}: ${kv.value}\n"
         }
 
         for (kv in resiliencesSuccess) {
-            echo "RESILIENCE ${kv.key}: ${kv.value}"
+            result = result + "RESILIENCE ${kv.key}: ${kv.value}\n"
         }
 
         if (! (allBuildsSuccessful
             && allTestsSuccessful
-            && resiliencesSuccess
+            && allResiliencesSuccessful
             && jslintSuccessful)) {
             currentBuild.result = 'FAILURE'
         }
