@@ -525,44 +525,37 @@ def testEdition(edition, os, mode, engine) {
 }
 
 def testCheck(edition, os, mode, engine, full) {
-    if (! runTests) {
-        echo "Not running tests"
-        return false
-    }
-
     def name = "${edition}-${os}"
 
     if (buildsSuccess.containsKey(name) && ! buildsSuccess[name]) {
-       echo "Not testing failed build ${name}"
+        return false
+    }
+
+    if (! runTests) {
+        return false
     }
 
     if (full && ! buildFull) {
-        echo "Not building combination ${os} ${edition}"
         return false
     }
 
     if (os == 'linux' && ! useLinux) {
-        echo "Not building ${os} version"
         return false
     }
 
     if (os == 'mac' && ! useMac) {
-        echo "Not building ${os} version"
         return false
     }
 
     if (os == 'windows' && ! useWindows) {
-        echo "Not building ${os} version"
         return false
     }
 
     if (edition == 'enterprise' && ! buildEnterprise) {
-        echo "Not building ${edition} version"
         return false
     }
 
     if (edition == 'community' && ! buildCommunity) {
-        echo "Not building ${edition} version"
         return false
     }
 
@@ -643,28 +636,29 @@ def testResilience(os, engine, foxx) {
 }
 
 def testResilienceCheck(os, engine, foxx, full) {
+    def name = "community-${os}"
+
+    if (buildsSuccess.containsKey(name) && ! buildsSuccess[name]) {
+        return false
+    }
+
     if (! runResilience) {
-        echo "Not running resilience tests"
         return false
     }
 
     if (os == 'linux' && ! useLinux) {
-        echo "Not building ${os} version"
         return false
     }
 
     if (os == 'mac' && ! useMac) {
-        echo "Not building ${os} version"
         return false
     }
 
     if (os == 'windows' && ! useWindows) {
-        echo "Not building ${os} version"
         return false
     }
 
     if (! buildCommunity) {
-        echo "Not building community version"
         return false
     }
 
@@ -799,6 +793,8 @@ stage('result') {
         for (kv in resiliencesSuccess) {
             result = result + "RESILIENCE ${kv.key}: ${kv.value}\n"
         }
+
+        echo result
 
         if (! (allBuildsSuccessful
             && allTestsSuccessful
