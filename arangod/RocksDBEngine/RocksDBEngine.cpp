@@ -600,16 +600,17 @@ void RocksDBEngine::getCollectionInfo(TRI_vocbase_t* vocbase, TRI_voc_cid_t cid,
 
   // read collection info from database
   auto key = RocksDBKey::Collection(vocbase->id(), cid);
-  auto value = RocksDBValue::Empty(RocksDBEntryType::Collection);
+  rocksdb::PinnableSlice value;
   rocksdb::ReadOptions options;
-  rocksdb::Status res = _db->Get(options, key.string(), value.buffer());
+  rocksdb::Status res = _db->Get(options, RocksDBColumnFamily::other(),
+                                 key.string(), &value);
   auto result = rocksutils::convertStatus(res);
 
   if (result.errorNumber() != TRI_ERROR_NO_ERROR) {
     THROW_ARANGO_EXCEPTION(result.errorNumber());
   }
 
-  VPackSlice fullParameters = VPackSlice(value.buffer()->data());
+  VPackSlice fullParameters = RocksDBValue::data(value);
 
   builder.add("parameters", fullParameters);
 
@@ -712,11 +713,11 @@ std::shared_ptr<arangodb::velocypack::Builder>
 RocksDBEngine::getReplicationApplierConfiguration(TRI_vocbase_t* vocbase,
                                                   int& status) {
   auto key = RocksDBKey::ReplicationApplierConfig(vocbase->id());
-  auto value = RocksDBValue::Empty(RocksDBEntryType::ReplicationApplierConfig);
+  rocksdb::PinnableSlice value;
 
   auto db = rocksutils::globalRocksDB();
   auto opts = rocksdb::ReadOptions();
-  auto s = db->Get(opts, key.string(), value.buffer());
+  auto s = db->Get(opts, RocksDBColumnFamily::other(), key.string(), &value);
   if (!s.ok()) {
     status = TRI_ERROR_FILE_NOT_FOUND;
     return std::shared_ptr<arangodb::velocypack::Builder>();
