@@ -1,4 +1,11 @@
 New-Item -ItemType Directory -Force -Path C:\ports
+New-Item -ItemType Directory -Force -Path log-output
+New-Item -ItemType Directory -Force -Path tmp
+
+$env:TEMP=".\tmp"
+
+$timeLimit = (Get-Date).AddDays(-1) 
+Get-ChildItem C:\ports | ? { $_.PSIsContainer -and $_.LastWriteTime -lt $timeLimit } | Remove-Item
 
 $port = 15000
 $portIncrement = 2000
@@ -12,8 +19,12 @@ do {
 until (New-Item -ItemType File -Path $portFile -ErrorAction SilentlyContinue)
 
 WorkFlow RunTests {
-  $minPort = $using:port
+  Param ([int]$port)
+
+  $minPort = $port
   $portInterval = 40
+  $workspace = Get-Location
+
   $tests = @(
     "arangobench",
     "arangosh",
@@ -34,9 +45,10 @@ WorkFlow RunTests {
     @("ssl_server","ssl_server", "--rspec C:\tools\ruby23\bin\rspec.bat"),
     "upgrade"
   )
-  $workspace=$ENV:WORKSPACE
+
   foreach -parallel -throttlelimit 3 ($testdef in $tests) {
     $testargs = ""
+
     if ($testdef -isnot [system.array]) {
       $name = $testdef
       $test = $testdef
@@ -45,23 +57,31 @@ WorkFlow RunTests {
       $test = $testdef[1]
       $testargs = $testdef[2].Split(" ")
     }
-    $log = $name + ".log"
+
+    $log = "log-output\" + $name + ".log"
+
     InlineScript {
       $testscript = {
-        cd $USING:workspace
-        # Start-Transcript -Path $USING:log
-        .\build\bin\arangosh.exe --log.level warning --javascript.execute UnitTests\unittest.js $USING:test -- --cluster true --minPort $USING:minPort --maxPort $USING:minPort+portInterval-1 --skipNondeterministic true --skipTimeCritical true  --configDir etc/jenkins --skipLogAnalysis true $USING:testargs
-        # Stop-Transcript
+        $maxPort = $USING:minPort + $USING:portInterval - 1
+
+        Set-Location $USING:workspace
+        Start-Transcript -Path $USING:log
+        .\build\bin\arangosh.exe --log.level warning --javascript.execute UnitTests\unittest.js $USING:test -- --cluster true --minPort $USING:minPort --maxPort $USING:maxPort --skipNondeterministic true --skipTimeCritical true  --configDir etc/jenkins --skipLogAnalysis true $USING:testargs
+        Stop-Transcript
       }
+
       Invoke-Command -ScriptBlock $testscript
     }
+
     $WORKFLOW:minPort=$WORKFLOW:minPort+$portInterval
   }
 }
-New-Item -ItemType Directory -Force -Path tmp
-$env:TEMP=".\tmp"
+
 move .\build\bin\RelWithDebInfo\* .\build\bin\
-RunTests
+
+RunTests -port $port
 $result = $LastExitCode
+
 del $portFile
+
 exit $result
