@@ -326,27 +326,35 @@ void RocksDBOptionFeature::start() {
     _numThreadsLow = rocksDBDefaults.max_background_compactions;
   }
 
-  LOG_TOPIC(TRACE, Logger::FIXME) << "using RocksDB options:"
-                                  << " wal_dir: " << _walDirectory << "'"
-                                  << ", write_buffer_size: " << _writeBufferSize
-                                  << ", max_write_buffer_number: " << _maxWriteBufferNumber
-                                  << ", max_total_wal_size: " << _maxTotalWalSize
-                                  << ", delayed_write_rate: " << _delayedWriteRate
-                                  << ", min_write_buffer_number_to_merge: " << _minWriteBufferNumberToMerge
-                                  << ", num_levels: " << _numLevels
-                                  << ", max_bytes_for_level_base: " << _maxBytesForLevelBase
-                                  << ", max_bytes_for_level_multiplier: " << _maxBytesForLevelMultiplier
-                                  << ", base_background_compactions: " << _baseBackgroundCompactions
-                                  << ", max_background_compactions: " << _maxBackgroundCompactions
-                                  << ", max_flushes: " << _maxFlushes
-                                  << ", num_threads_high: " << _numThreadsHigh
-                                  << ", num_threads_low: " << _numThreadsLow
-                                  << ", block_cache_size: " << _blockCacheSize
-                                  << ", block_cache_shard_bits: " << _blockCacheShardBits
-                                  << ", compaction_read_ahead_size: " << _compactionReadaheadSize
-                                  << ", enable_pipelined_write: " << _enablePipelinedWrite
-                                  << ", optimize_filters_for_hits: " << _optimizeFiltersForHits
-                                  << ", use_direct_reads: " << _useDirectReads
-                                  << ", use_direct_io_for_flush_and_compaction: " << _useDirectIoForFlushAndCompaction
-                                  << ", use_fsync: " << _useFSync;
+<<<<<<< HEAD
+  LOG_TOPIC(TRACE, Logger::ROCKSDB) << "using RocksDB options:"
+                                    << " wal_dir: " << _walDirectory << "'"
+                                    << ", write_buffer_size: " << _writeBufferSize
+                                    << ", max_write_buffer_number: " << _maxWriteBufferNumber
+                                    << ", max_total_wal_size: " << _maxTotalWalSize
+                                    << ", delayed_write_rate: " << _delayedWriteRate
+                                    << ", min_write_buffer_number_to_merge: " << _minWriteBufferNumberToMerge
+                                    << ", num_levels: " << _numLevels
+                                    << ", num_uncompressed_levels: " << _numUncompressedLevels
+                                    << ", max_bytes_for_level_base: " << _maxBytesForLevelBase
+                                    << ", max_bytes_for_level_multiplier: " << _maxBytesForLevelMultiplier
+                                    << ", base_background_compactions: " << _baseBackgroundCompactions
+                                    << ", max_background_compactions: " << _maxBackgroundCompactions
+                                    << ", max_sub_compactions: " << _maxSubcompactions
+                                    << ", max_flushes: " << _maxFlushes
+                                    << ", num_threads_high: " << _numThreadsHigh
+                                    << ", num_threads_low: " << _numThreadsLow
+                                    << ", block_cache_size: " << _blockCacheSize
+                                    << ", block_cache_shard_bits: " << _blockCacheShardBits
+                                    << ", table_block_size: " << _tableBlockSize
+                                    << ", recycle_log_file_num: " << _recycleLogFileNum 
+                                    << ", compaction_read_ahead_size: " << _compactionReadaheadSize
+                                    << ", level0_compaction_trigger: " << _level0CompactionTrigger
+                                    << ", level0_slowdown_trigger: " << _level0SlowdownTrigger
+                                    << ", enable_pipelined_write: " << _enablePipelinedWrite
+                                    << ", optimize_filters_for_hits: " << _optimizeFiltersForHits
+                                    << ", use_direct_reads: " << _useDirectReads
+                                    << ", use_direct_io_for_flush_and_compaction: " << _useDirectIoForFlushAndCompaction
+                                    << ", use_fsync: " << _useFSync
+                                    << ", dynamic_level_bytes: " << std::boolalpha << _dynamicLevelBytes;
 }

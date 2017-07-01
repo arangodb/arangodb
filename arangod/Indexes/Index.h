@@ -215,7 +215,6 @@ class Index {
   virtual bool canBeDropped() const = 0;
 
   /// @brief Checks if this index is identical to the given definition
-
   virtual bool matchesDefinition(arangodb::velocypack::Slice const&) const;
 
   /// @brief whether or not the index is sorted

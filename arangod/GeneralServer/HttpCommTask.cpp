@@ -294,7 +294,7 @@ bool HttpCommTask::processRead(double startTime) {
                                 _readBuffer.length() - 11);
       {
         MUTEX_LOCKER(locker, commTask->_lock);
-        commTask->processRead(startTime);
+        commTask->processAll();
       }
       commTask->start();
       return false;
