@@ -314,7 +314,7 @@ void RocksDBCounterManager::readSettings() {
 
   rocksdb::PinnableSlice result;
   rocksdb::Status status =
-      _db->Get(rocksdb::ReadOptions(), RocksDBColumnFamily::other(),
+      _db->Get(rocksdb::ReadOptions(), RocksDBColumnFamily::definitions(),
                key.string(), &result);
   if (status.ok()) {
     // key may not be there, so don't fail when not found

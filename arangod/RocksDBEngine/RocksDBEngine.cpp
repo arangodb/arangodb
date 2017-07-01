@@ -602,7 +602,7 @@ void RocksDBEngine::getCollectionInfo(TRI_vocbase_t* vocbase, TRI_voc_cid_t cid,
   auto key = RocksDBKey::Collection(vocbase->id(), cid);
   rocksdb::PinnableSlice value;
   rocksdb::ReadOptions options;
-  rocksdb::Status res = _db->Get(options, RocksDBColumnFamily::other(),
+  rocksdb::Status res = _db->Get(options, RocksDBColumnFamily::definitions(),
                                  key.string(), &value);
   auto result = rocksutils::convertStatus(res);
 
@@ -717,7 +717,7 @@ RocksDBEngine::getReplicationApplierConfiguration(TRI_vocbase_t* vocbase,
 
   auto db = rocksutils::globalRocksDB();
   auto opts = rocksdb::ReadOptions();
-  auto s = db->Get(opts, RocksDBColumnFamily::other(), key.string(), &value);
+  auto s = db->Get(opts, RocksDBColumnFamily::definitions(), key.string(), &value);
   if (!s.ok()) {
     status = TRI_ERROR_FILE_NOT_FOUND;
     return std::shared_ptr<arangodb::velocypack::Builder>();

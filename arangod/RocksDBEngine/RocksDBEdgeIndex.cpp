@@ -226,7 +226,7 @@ bool RocksDBEdgeIndexIterator::nextExtra(ExtraCallback const& cb,
       RocksDBToken tkn{_builderIterator.value().getNumericValue<uint64_t>()};
       _builderIterator.next();
       TRI_ASSERT(_builderIterator.valid());
-      // For now we store complete edges.
+      // For now we store the complete opposite _from/_to value
       TRI_ASSERT(_builderIterator.value().isString());
 
       cb(tkn, _builderIterator.value());

@@ -438,10 +438,10 @@ arangodb::StringRef RocksDBKey::primaryKey(char const* data, size_t size) {
 StringRef RocksDBKey::vertexId(char const* data, size_t size) {
   TRI_ASSERT(data != nullptr);
   TRI_ASSERT(size > sizeof(uint64_t) * 2);
-  // 1 byte prefix + 8 byte objectID + _from/_to + 1 byte \0
-  // + 8 byte revision ID + 1-byte 0xff
-  size_t keySize = size - (sizeof(char) + sizeof(uint64_t)) * 2 - sizeof(char);
-  return StringRef(data + sizeof(char) + sizeof(uint64_t), keySize);
+  // 8 byte objectID + _from/_to + 1 byte \0 +
+  // 8 byte revision ID + 1-byte 0xff
+  size_t keySize = size - (sizeof(char) + sizeof(uint64_t)) * 2;
+  return StringRef(data + sizeof(uint64_t), keySize);
 }
 
 VPackSlice RocksDBKey::indexedVPack(char const* data, size_t size) {

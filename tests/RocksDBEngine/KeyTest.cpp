@@ -254,6 +254,9 @@ TEST_CASE("RocksDBKeyTest", "[rocksdbkeytest]") {
               sizeof(char));
     CHECK(key2.string() ==
           std::string("\0\0\0\0\0\0\0\0b/1\0!\0\0\0\0\0\0\0\xff", 21));
+    
+    CHECK(RocksDBKey::vertexId(key1).compare("a/1") == 0);
+    CHECK(RocksDBKey::vertexId(key2).compare("b/1") == 0);
 
     // check the variable length edge prefix
     auto pe = std::make_unique<RocksDBPrefixExtractor>();
