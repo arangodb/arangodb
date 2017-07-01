@@ -516,10 +516,16 @@ def testEdition(edition, os, mode, engine) {
         sh "./Installation/Pipeline/test_${mode}_${edition}_${engine}_${os}.sh 10"
     }
     catch (exc) {
+        archiveArtifacts allowEmptyArchive: true,
+                         artifacts: 'core.*, build/bin/arangod',
+                         defaultExcludes: false
+
         throw exc
     }
     finally {
-        archiveArtifacts allowEmptyArchive: true, artifacts: 'log-output/**', defaultExcludes: false
+        archiveArtifacts allowEmptyArchive: true,
+                         artifacts: 'log-output/**, *.log, tmp/**/log, tmp/**/log0, tmp/**/log1, tmp/**/log2',
+                         defaultExcludes: false
     }
 }
 
