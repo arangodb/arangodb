@@ -83,17 +83,14 @@ RocksDBKeyBounds RocksDBKeyBounds::GeoIndex(uint64_t indexId) {
 
 RocksDBKeyBounds RocksDBKeyBounds::GeoIndex(uint64_t indexId, bool isSlot) {
   RocksDBKeyBounds b(RocksDBEntryType::GeoIndexValue);
-  size_t length = 2 * (sizeof(char) + sizeof(uint64_t) + sizeof(uint64_t));
   auto& internals = b.internals();
-  internals.reserve(length);
-  internals.push_back(static_cast<char>(RocksDBEntryType::GeoIndexValue));
+  internals.reserve(4 * sizeof(uint64_t));
   uint64ToPersistent(internals.buffer(), indexId);
   uint64_t norm = isSlot ? 0xFFU : 0;  // encode slot|pot in lowest bit
   uint64ToPersistent(internals.buffer(), norm);  // lower endian
 
   internals.separate();
 
-  internals.push_back(static_cast<char>(RocksDBEntryType::GeoIndexValue));
   uint64ToPersistent(internals.buffer(), indexId);
   norm = norm | (0xFFFFFFFFULL << 32);
   uint64ToPersistent(internals.buffer(), norm);

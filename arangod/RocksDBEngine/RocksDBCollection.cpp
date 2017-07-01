@@ -1281,14 +1281,14 @@ arangodb::Result RocksDBCollection::fillIndexes(
     it->reset();
     batch.Clear();
 
-    res = TRI_ERROR_NO_ERROR;
+    arangodb::Result res2;// do not overwrite original error
     auto removeCb = [&](DocumentIdentifierToken token) {
-      if (res.ok() && numDocsWritten > 0 &&
+      if (res2.ok() && numDocsWritten > 0 &&
           this->readDocument(trx, token, mmdr)) {
         // we need to remove already inserted documents up to numDocsWritten
-        res = ridx->removeInternal(trx, &batched, mmdr.lastRevisionId(),
+        res2 = ridx->removeInternal(trx, &batched, mmdr.lastRevisionId(),
                               VPackSlice(mmdr.vpack()));
-        if (res.ok()) {
+        if (res2.ok()) {
           numDocsWritten--;
         }
       }
@@ -1296,7 +1296,7 @@ arangodb::Result RocksDBCollection::fillIndexes(
 
     hasMore = true;
     while (hasMore && numDocsWritten > 0) {
-      hasMore = it->next(removeCb, 5000);
+      hasMore = it->next(removeCb, 500);
     }
     // TODO: if this fails, do we have any recourse?
     // Simon: Don't think so

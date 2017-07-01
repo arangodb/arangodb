@@ -305,7 +305,6 @@ bool RocksDBEdgeIndexIterator::nextExtra(ExtraCallback const& cb,
     if (needRocksLookup) {
       lookupInRocksDB(fromTo);
     }
-    
     _keysIterator.next();
   }
   TRI_ASSERT(limit == 0);
@@ -383,7 +382,7 @@ RocksDBEdgeIndex::RocksDBEdgeIndex(TRI_idx_iid_t iid,
                                         {{AttributeName(attr, false)}}),
                    false, false, RocksDBColumnFamily::edge(),
                    basics::VelocyPackHelper::stringUInt64(info, "objectId"),
-                   ! ServerState::instance()->isCoordinator() /*useCache*/),
+                   !ServerState::instance()->isCoordinator() /*useCache*/),
       _directionAttr(attr),
       _isFromIndex(attr == StaticStrings::FromString),
       _estimator(nullptr) {

@@ -432,13 +432,13 @@ Result RocksDBGeoIndex::insertInternal(transaction::Methods* trx,
     VPackSlice lat = doc.get(_latitude);
     if (!lat.isNumber()) {
       // Invalid, no insert. Index is sparse
-      return TRI_ERROR_NO_ERROR;
+      return IndexResult(TRI_ERROR_NO_ERROR, this);
     }
 
     VPackSlice lon = doc.get(_longitude);
     if (!lon.isNumber()) {
       // Invalid, no insert. Index is sparse
-      return TRI_ERROR_NO_ERROR;
+      return IndexResult(TRI_ERROR_NO_ERROR, this);
     }
     latitude = lat.getNumericValue<double>();
     longitude = lon.getNumericValue<double>();
@@ -446,17 +446,17 @@ Result RocksDBGeoIndex::insertInternal(transaction::Methods* trx,
     VPackSlice loc = doc.get(_location);
     if (!loc.isArray() || loc.length() < 2) {
       // Invalid, no insert. Index is sparse
-      return TRI_ERROR_NO_ERROR;
+      return IndexResult(TRI_ERROR_NO_ERROR, this);
     }
     VPackSlice first = loc.at(0);
     if (!first.isNumber()) {
       // Invalid, no insert. Index is sparse
-      return TRI_ERROR_NO_ERROR;
+      return IndexResult(TRI_ERROR_NO_ERROR, this);
     }
     VPackSlice second = loc.at(1);
     if (!second.isNumber()) {
       // Invalid, no insert. Index is sparse
-      return TRI_ERROR_NO_ERROR;
+      return IndexResult(TRI_ERROR_NO_ERROR, this);
     }
     if (_geoJson) {
       longitude = first.getNumericValue<double>();
@@ -477,14 +477,14 @@ Result RocksDBGeoIndex::insertInternal(transaction::Methods* trx,
   if (res == -1) {
     LOG_TOPIC(WARN, arangodb::Logger::FIXME)
         << "found duplicate entry in geo-index, should not happen";
-    return TRI_set_errno(TRI_ERROR_INTERNAL);
+    return IndexResult(TRI_set_errno(TRI_ERROR_INTERNAL), this);
   } else if (res == -2) {
-    return TRI_set_errno(TRI_ERROR_OUT_OF_MEMORY);
+    return IndexResult(TRI_set_errno(TRI_ERROR_OUT_OF_MEMORY), this);
   } else if (res == -3) {
     LOG_TOPIC(DEBUG, arangodb::Logger::FIXME)
         << "illegal geo-coordinates, ignoring entry";
   } else if (res < 0) {
-    return TRI_set_errno(TRI_ERROR_INTERNAL);
+    return IndexResult(TRI_set_errno(TRI_ERROR_INTERNAL), this);
   }
   return IndexResult(TRI_ERROR_NO_ERROR, this);
 }
@@ -539,19 +539,16 @@ Result RocksDBGeoIndex::removeInternal(transaction::Methods* trx,
     }
   }
 
-  if (!ok) {
-    return IndexResult(TRI_ERROR_BAD_PARAMETER, this);
-    ;
+  if (ok) {
+    GeoCoordinate gc;
+    gc.latitude = latitude;
+    gc.longitude = longitude;
+    gc.data = static_cast<uint64_t>(revisionId);
+    // ignore non-existing elements in geo-index
+    GeoIndex_remove(_geoIndex, &gc);
   }
 
-  GeoCoordinate gc;
-  gc.latitude = latitude;
-  gc.longitude = longitude;
-  gc.data = static_cast<uint64_t>(revisionId);
-  // ignore non-existing elements in geo-index
-  GeoIndex_remove(_geoIndex, &gc);
-
-  return IndexResult(0, this);
+  return IndexResult(TRI_ERROR_NO_ERROR, this);
 }
 
 int RocksDBGeoIndex::unload() {

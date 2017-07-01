@@ -537,7 +537,6 @@ Result RocksDBVPackIndex::insertInternal(transaction::Methods* trx,
                                : RocksDBValue::VPackIndexValue();
 
   size_t const count = elements.size();
-
   for (size_t i = 0; i < count; ++i) {
     RocksDBKey& key = elements[i];
     if (_unique) {
