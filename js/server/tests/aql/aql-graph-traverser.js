@@ -1990,7 +1990,7 @@ function complexFilteringSuite () {
         // 2 Edge Lookups (2 B) (0 D)
         // 2 Primary Lookups (C, F)
         if (mmfilesEngine) {
-          assertEqual(stats.scannedIndex, 9);
+          assertTrue(stats.scannedIndex <= 9);
         } else {
           assertTrue(stats.scannedIndex <= 5);
         }
@@ -2042,7 +2042,7 @@ function complexFilteringSuite () {
         // 2 Primary lookup B,D
         // 4 Primary Lookups (C, F, E, G)
         if (mmfilesEngine) {
-          assertEqual(stats.scannedIndex, 13);
+          assertTrue(stats.scannedIndex <= 13);
         } else {
           assertTrue(stats.scannedIndex <= 7);
         }
@@ -2095,7 +2095,7 @@ function complexFilteringSuite () {
         // 2 Edge Lookups (0 B) (2 D)
         // 2 Primary Lookups (E, G)
         if (mmfilesEngine) {
-          assertEqual(stats.scannedIndex, 9);
+          assertTrue(stats.scannedIndex <= 9);
         } else {
           assertTrue(stats.scannedIndex <= 5);
         }
@@ -2145,7 +2145,7 @@ function complexFilteringSuite () {
         // 2 Edge
         // 2 Primary (C,F)
         if (mmfilesEngine) {
-          assertEqual(stats.scannedIndex, 8);
+          assertTrue(stats.scannedIndex <= 8);
         } else {
           assertTrue(stats.scannedIndex <= 4);
         }
@@ -2197,7 +2197,7 @@ function complexFilteringSuite () {
         // lazy loads all vertices in it.
         if (stats.scannedIndex !== 8) {
           if (mmfilesEngine) {
-            assertEqual(stats.scannedIndex, 11);
+            assertTrue(stats.scannedIndex <= 11);
           } else {
             assertTrue(stats.scannedIndex <= 5);
           }
@@ -2261,9 +2261,11 @@ function complexFilteringSuite () {
           // 2 Edge Lookups (2 B) (0 D)
           // 2 Primary Lookups (C, F)
           if (mmfilesEngine) {
-            assertEqual(stats.scannedIndex, 9);
+            assertTrue(stats.scannedIndex <= 9);
           } else {
-            assertEqual(stats.scannedIndex <= 5);
+            // FIXME this used to be 5 ??
+            assertTrue(stats.scannedIndex <= 5, stats.scannedIndex);
+            //assertEqual(stats.scannedIndex <= 5);
           }
         }
         else {
@@ -2328,7 +2330,7 @@ function complexFilteringSuite () {
           // 2 Edge Lookups (2 B) (0 D)
           // 2 Primary Lookups (C, F)
           if (mmfilesEngine) {
-            assertEqual(stats.scannedIndex, 9);
+            assertTrue(stats.scannedIndex <= 9);
           } else {
             assertTrue(stats.scannedIndex <= 5);
           }
@@ -3012,7 +3014,7 @@ function optimizeQuantifierSuite() {
       assertEqual(stats.scannedFull, 0);
       if (isCluster) {
         if (mmfilesEngine) {
-          assertEqual(stats.scannedIndex, 9);
+          assertTrue(stats.scannedIndex <= 9);
         } else {
           assertTrue(stats.scannedIndex <= 5);
         }
@@ -3065,7 +3067,7 @@ function optimizeQuantifierSuite() {
       assertEqual(stats.scannedFull, 0);
       if (isCluster) {
         if (mmfilesEngine) {
-          assertEqual(stats.scannedIndex, 8);
+          assertTrue(stats.scannedIndex <= 8);
         } else {
           assertTrue(stats.scannedIndex <= 4);
         }
@@ -3102,7 +3104,7 @@ function optimizeQuantifierSuite() {
       assertEqual(stats.scannedFull, 0);
       if (isCluster) {
         if (mmfilesEngine) {
-          assertEqual(stats.scannedIndex, 8);
+          assertTrue(stats.scannedIndex <= 8);
         } else {
           assertTrue(stats.scannedIndex <= 4);
         }
@@ -3140,7 +3142,7 @@ function optimizeQuantifierSuite() {
       assertEqual(stats.scannedFull, 0);
       if (isCluster) {
         if (mmfilesEngine) {
-          assertEqual(stats.scannedIndex, 9);
+          assertTrue(stats.scannedIndex <= 9);
         } else {
           assertTrue(stats.scannedIndex <= 5);
         }
@@ -3193,7 +3195,7 @@ function optimizeQuantifierSuite() {
       assertEqual(stats.scannedFull, 0);
       if (isCluster) {
         if (mmfilesEngine) {
-          assertEqual(stats.scannedIndex, 8);
+          assertTrue(stats.scannedIndex <= 8);
         } else {
           assertTrue(stats.scannedIndex <= 4);
         }
@@ -3229,7 +3231,7 @@ function optimizeQuantifierSuite() {
       assertEqual(stats.scannedFull, 0);
       if (isCluster) {
         if (mmfilesEngine) {
-          assertEqual(stats.scannedIndex, 8);
+          assertTrue(stats.scannedIndex <= 8);
         } else {
           assertTrue(stats.scannedIndex <= 4);
         }
@@ -3268,7 +3270,7 @@ function optimizeQuantifierSuite() {
       assertEqual(stats.scannedFull, 0);
       if (isCluster) {
         if (mmfilesEngine) {
-          assertEqual(stats.scannedIndex, 9);
+          assertTrue(stats.scannedIndex <= 9);
         } else {
           assertTrue(stats.scannedIndex <= 5);
         }
@@ -3307,7 +3309,7 @@ function optimizeQuantifierSuite() {
       assertEqual(stats.scannedFull, 0);
       if (isCluster) {
         if (mmfilesEngine) {
-          assertEqual(stats.scannedIndex, 7);
+          assertTrue(stats.scannedIndex <= 7);
         } else {
           assertTrue(stats.scannedIndex <= 3);
         }
@@ -3346,7 +3348,7 @@ function optimizeQuantifierSuite() {
       assertEqual(stats.scannedFull, 0);
       if (isCluster) {
         if (mmfilesEngine) {
-          assertEqual(stats.scannedIndex, 9);
+          assertTrue(stats.scannedIndex <= 9);
         } else {
           assertTrue(stats.scannedIndex <= 5);
         }
@@ -3386,7 +3388,7 @@ function optimizeQuantifierSuite() {
       assertEqual(stats.scannedFull, 0);
       if (isCluster) {
         if (mmfilesEngine) {
-          assertEqual(stats.scannedIndex, 7);
+          assertTrue(stats.scannedIndex <= 7);
         } else {
           assertTrue(stats.scannedIndex <= 3);
         }
@@ -3426,7 +3428,7 @@ function optimizeQuantifierSuite() {
       assertEqual(stats.scannedFull, 0);
       if (isCluster) {
         if (mmfilesEngine) {
-          assertEqual(stats.scannedIndex, 9);
+          assertTrue(stats.scannedIndex <= 9);
         } else {
           assertTrue(stats.scannedIndex <= 5);
         }
@@ -3466,7 +3468,7 @@ function optimizeQuantifierSuite() {
       assertEqual(stats.scannedFull, 0);
       if (isCluster) {
         if (mmfilesEngine) {
-          assertEqual(stats.scannedIndex, 7);
+          assertTrue(stats.scannedIndex <= 7);
         } else {
           assertTrue(stats.scannedIndex <= 3);
         }
