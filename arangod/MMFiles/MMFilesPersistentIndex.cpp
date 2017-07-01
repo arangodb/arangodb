@@ -225,6 +225,7 @@ void MMFilesPersistentIndex::toVelocyPack(VPackBuilder& builder,
   Index::toVelocyPack(builder, withFigures, forPersistence);
   builder.add("unique", VPackValue(_unique));
   builder.add("sparse", VPackValue(_sparse));
+  builder.add("deduplicate", VPackValue(_deduplicate));
   builder.close();
 }
 

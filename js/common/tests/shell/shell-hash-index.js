@@ -30,6 +30,7 @@
 
 var jsunity = require("jsunity");
 var internal = require("internal");
+var ERRORS = require("internal").errors;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite: Creation
@@ -66,6 +67,214 @@ function HashIndexSuite() {
 
       collection = null;
       internal.wait(0.0);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test: documents
+////////////////////////////////////////////////////////////////////////////////
+
+    testUniquenessTopAttribute : function () {
+      var idx = collection.ensureIndex({ type: "hash", unique: true, fields: ["a"] });
+
+      assertEqual("hash", idx.type);
+      assertEqual(true, idx.unique);
+      assertEqual(["a"], idx.fields);
+      assertEqual(true, idx.isNewlyCreated);
+
+      collection.save({ a : null });
+      collection.save({ a : 0 });
+      collection.save({ a : 1 });
+      collection.save({ a : 2 });
+      try {
+        collection.save({ a : 2 });
+        fail();
+      } catch (err) {
+        assertEqual(ERRORS.ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED.code, err.errorNum);
+      }
+
+      assertEqual(4, collection.count());
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test: documents
+////////////////////////////////////////////////////////////////////////////////
+
+    testUniquenessSubAttribute : function () {
+      var idx = collection.ensureIndex({ type: "hash", unique: true, fields: ["a.b"] });
+
+      assertEqual("hash", idx.type);
+      assertEqual(true, idx.unique);
+      assertEqual(["a.b"], idx.fields);
+      assertEqual(true, idx.isNewlyCreated);
+
+      collection.save({ a : { b : null } });
+      collection.save({ a : { b : 0 } });
+      collection.save({ a : { b : 1 } });
+      collection.save({ a : { b : 2 } });
+      try {
+        collection.save({ a : { b : 2 } });
+        fail();
+      } catch (err) {
+        assertEqual(ERRORS.ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED.code, err.errorNum);
+      }
+
+      assertEqual(4, collection.count());
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test: documents
+////////////////////////////////////////////////////////////////////////////////
+
+    testUniquenessSubAttributeKey : function () {
+      var idx = collection.ensureIndex({ type: "hash", unique: true, fields: ["a._key"] });
+
+      assertEqual("hash", idx.type);
+      assertEqual(true, idx.unique);
+      assertEqual(["a._key"], idx.fields);
+      assertEqual(true, idx.isNewlyCreated);
+
+      collection.save({ a : { _key : null } });
+      collection.save({ a : { _key : 0 } });
+      collection.save({ a : { _key : 1 } });
+      collection.save({ a : { _key : 2 } });
+      try {
+        collection.save({ a : { _key : 2 } });
+        fail();
+      } catch (err) {
+        assertEqual(ERRORS.ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED.code, err.errorNum);
+      }
+
+      assertEqual(4, collection.count());
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test: documents
+////////////////////////////////////////////////////////////////////////////////
+
+    testUniquenessArrayAttribute : function () {
+      var idx = collection.ensureIndex({ type: "hash", unique: true, fields: ["a[*].b"] });
+
+      assertEqual("hash", idx.type);
+      assertEqual(true, idx.unique);
+      assertEqual(["a[*].b"], idx.fields);
+      assertEqual(true, idx.isNewlyCreated);
+
+      collection.save({ a : [ { b : null } ] });
+      collection.save({ a : [ { b : 0 } ] });
+      collection.save({ a : [ { b : 1 } ] });
+      collection.save({ a : [ { b : 2 } ] });
+      try {
+        collection.save({ a : [ { b : 2 } ] });
+        fail();
+      } catch (err) {
+        assertEqual(ERRORS.ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED.code, err.errorNum);
+      }
+
+      assertEqual(4, collection.count());
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test: documents
+////////////////////////////////////////////////////////////////////////////////
+
+    testUniquenessArrayAttributeKey : function () {
+      var idx = collection.ensureIndex({ type: "hash", unique: true, fields: ["a[*]._key"] });
+
+      assertEqual("hash", idx.type);
+      assertEqual(true, idx.unique);
+      assertEqual(["a[*]._key"], idx.fields);
+      assertEqual(true, idx.isNewlyCreated);
+
+      collection.save({ a : [ { _key : null } ] });
+      collection.save({ a : [ { _key : 0 } ] });
+      collection.save({ a : [ { _key : 1 } ] });
+      collection.save({ a : [ { _key : 2 } ] });
+      try {
+        collection.save({ a : [ { _key : 2 } ] });
+        fail();
+      } catch (err) {
+        assertEqual(ERRORS.ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED.code, err.errorNum);
+      }
+
+      assertEqual(4, collection.count());
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test: documents
+////////////////////////////////////////////////////////////////////////////////
+
+    testDeduplicationDefault : function () {
+      var idx = collection.ensureIndex({ type: "hash", unique: true, fields: ["a[*].b"] });
+
+      assertEqual("hash", idx.type);
+      assertEqual(true, idx.unique);
+      assertEqual(["a[*].b"], idx.fields);
+      assertEqual(true, idx.deduplicate);
+      assertEqual(true, idx.isNewlyCreated);
+
+      collection.save({ a : [ { b : 1 }, { b : 1 } ] });
+      collection.save({ a : [ { b : 2 }, { b : 2 } ] });
+      collection.save({ a : [ { b : 3 }, { b : 4 } ] });
+      try {
+        collection.save({ a : [ { b : 2 } ] });
+        fail();
+      } catch (err) {
+        assertEqual(ERRORS.ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED.code, err.errorNum);
+      }
+
+      assertEqual(3, collection.count());
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test: documents
+////////////////////////////////////////////////////////////////////////////////
+
+    testDeduplicationOn : function () {
+      var idx = collection.ensureIndex({ type: "hash", unique: true, fields: ["a[*].b"], deduplicate: true });
+
+      assertEqual("hash", idx.type);
+      assertEqual(true, idx.unique);
+      assertEqual(["a[*].b"], idx.fields);
+      assertEqual(true, idx.deduplicate);
+      assertEqual(true, idx.isNewlyCreated);
+
+      collection.save({ a : [ { b : 1 }, { b : 1 } ] });
+      collection.save({ a : [ { b : 2 }, { b : 2 } ] });
+      collection.save({ a : [ { b : 3 }, { b : 4 } ] });
+      try {
+        collection.save({ a : [ { b : 2 } ] });
+        fail();
+      } catch (err) {
+        assertEqual(ERRORS.ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED.code, err.errorNum);
+      }
+
+      assertEqual(3, collection.count());
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test: documents
+////////////////////////////////////////////////////////////////////////////////
+
+    testDeduplicationOff : function () {
+      var idx = collection.ensureIndex({ type: "hash", unique: true, fields: ["a[*].b"], deduplicate: false });
+
+      assertEqual("hash", idx.type);
+      assertEqual(true, idx.unique);
+      assertEqual(["a[*].b"], idx.fields);
+      assertEqual(false, idx.deduplicate);
+      assertEqual(true, idx.isNewlyCreated);
+
+      collection.save({ a : [ { b : 1 } ] });
+      collection.save({ a : [ { b : 2 } ] });
+      collection.save({ a : [ { b : 3 }, { b : 4 } ] });
+      try {
+        collection.save({ a : [ { b : 5 }, { b : 5 } ] });
+        fail();
+      } catch (err) {
+        assertEqual(ERRORS.ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED.code, err.errorNum);
+      }
+
+      assertEqual(3, collection.count());
     },
 
 ////////////////////////////////////////////////////////////////////////////////
