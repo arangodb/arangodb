@@ -510,10 +510,12 @@ def jslintStep() {
 
 testsSuccess = [:]
 allTestsSuccessful = true
+numberTestsSuccessful = 0
 
 def testEdition(edition, os, mode, engine) {
     try {
         sh "./Installation/Pipeline/test_${mode}_${edition}_${engine}_${os}.sh 10"
+        numberTestsSuccessful += 1
     }
     catch (exc) {
         archiveArtifacts allowEmptyArchive: true,
@@ -758,7 +760,9 @@ catch (exc) {
 
 try {
     stage('build mac') {
-        buildStepParallel(['mac'])
+        if (allBuildsSuccessful) {
+            buildStepParallel(['mac'])
+        }
     }
 }
 catch (exc) {
@@ -767,7 +771,9 @@ catch (exc) {
 
 try {
     stage('tests mac') {
-        testStepParallel(['mac'], ['cluster', 'singleserver'])
+        if (allTestsSuccessful) {
+            testStepParallel(['mac'], ['cluster', 'singleserver'])
+        }
     }
 }
 catch (exc) {
@@ -776,7 +782,9 @@ catch (exc) {
 
 try {
     stage('build windows') {
-        buildStepParallel(['windows'])
+        if (allBuildsSuccessful) {
+            buildStepParallel(['windows'])
+        }
     }
 }
 catch (exc) {
@@ -785,7 +793,9 @@ catch (exc) {
 
 try {
     stage('tests windows') {
-        testStepParallel(['windows'], ['cluster', 'singleserver'])
+        if (allTestsSuccessful) {
+            testStepParallel(['windows'], ['cluster', 'singleserver'])
+        }
     }
 }
 catch (exc) {
@@ -806,15 +816,15 @@ stage('result') {
         def result = ""
 
         for (kv in buildsSuccess) {
-            result = result + "BUILD ${kv.key}: ${kv.value}\n"
+            result += "BUILD ${kv.key}: ${kv.value}\n"
         }
 
         for (kv in testsSuccess) {
-            result = result + "TEST ${kv.key}: ${kv.value}\n"
+            result += "TEST ${kv.key}: ${kv.value}\n"
         }
 
         for (kv in resiliencesSuccess) {
-            result = result + "RESILIENCE ${kv.key}: ${kv.value}\n"
+            result += "RESILIENCE ${kv.key}: ${kv.value}\n"
         }
 
         if (result == "") {
