@@ -804,7 +804,9 @@ catch (exc) {
 
 try {
     stage('resilience') {
-        testResilienceParallel();
+        if (allTestsSuccessful) {
+            testResilienceParallel();
+        }
     }
 }
 catch (exc) {
