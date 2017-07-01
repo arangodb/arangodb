@@ -47,7 +47,7 @@ RocksDBAllIndexIterator::RocksDBAllIndexIterator(
       _iterator(),
       _cmp(RocksDBColumnFamily::documents()->GetComparator()) {
   // acquire rocksdb transaction
-  RocksDBMethods* mthds = rocksutils::toRocksMethods(trx);
+  auto* mthds = RocksDBTransactionState::toMethods(trx);
   rocksdb::ColumnFamilyHandle* cf = RocksDBColumnFamily::documents();
 
   // intentional copy of the read options
@@ -168,7 +168,7 @@ RocksDBAnyIndexIterator::RocksDBAnyIndexIterator(
           static_cast<RocksDBCollection*>(col->getPhysical())->objectId())),
       _total(0),
       _returned(0) {
-  RocksDBMethods* mthds = rocksutils::toRocksMethods(trx);
+  auto* mthds = RocksDBTransactionState::toMethods(trx);
   // intentional copy of the read options
   auto options = mthds->readOptions();
   TRI_ASSERT(options.snapshot != nullptr);
@@ -275,13 +275,8 @@ RocksDBSortedAllIterator::RocksDBSortedAllIterator(
       _index(index),
 #endif
       _cmp(index->comparator()) {
-
-  // acquire rocksdb transaction
-  RocksDBTransactionState* state = rocksutils::toRocksTransactionState(trx);
-  TRI_ASSERT(state != nullptr);
-
-  RocksDBMethods* mthds = rocksutils::toRocksMethods(trx);
-
+ 
+  RocksDBMethods* mthds = RocksDBTransactionState::toMethods(trx);
   // intentional copy of the read options
   auto options = mthds->readOptions();
   TRI_ASSERT(options.snapshot != nullptr);

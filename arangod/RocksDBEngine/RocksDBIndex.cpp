@@ -204,15 +204,14 @@ void RocksDBIndex::recalculateEstimates() {
 }
 
 void RocksDBIndex::truncate(transaction::Methods* trx) {
-  RocksDBMethods* mthds = rocksutils::toRocksMethods(trx);
+  auto* mthds = RocksDBTransactionState::toMethods(trx);
   RocksDBKeyBounds indexBounds = getBounds(type(), _objectId, _unique);
 
   rocksdb::ReadOptions options = mthds->readOptions();
   rocksdb::Slice end = indexBounds.end();
   rocksdb::Comparator const* cmp = this->comparator();
   options.iterate_upper_bound = &end;
-  if (type() == RocksDBIndex::TRI_IDX_TYPE_EDGE_INDEX ||
-      (!_unique && type() == RocksDBIndex::TRI_IDX_TYPE_HASH_INDEX)) {
+  if (type() == RocksDBIndex::TRI_IDX_TYPE_EDGE_INDEX) {
     options.prefix_same_as_start = false;
     options.total_order_seek = true;
   }
@@ -268,9 +267,6 @@ RocksDBKeyBounds RocksDBIndex::getBounds(Index::IndexType type,
     case RocksDBIndex::TRI_IDX_TYPE_EDGE_INDEX:
       return RocksDBKeyBounds::EdgeIndex(objectId);
     case RocksDBIndex::TRI_IDX_TYPE_HASH_INDEX:
-      if (!unique) {
-        return RocksDBKeyBounds::VPackHashIndex(objectId);
-      }
     case RocksDBIndex::TRI_IDX_TYPE_SKIPLIST_INDEX:
     case RocksDBIndex::TRI_IDX_TYPE_PERSISTENT_INDEX:
       if (unique) {

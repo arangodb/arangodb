@@ -101,7 +101,6 @@ rocksdb::ColumnFamilyHandle* RocksDBColumnFamily::_documents(nullptr);
 rocksdb::ColumnFamilyHandle* RocksDBColumnFamily::_primary(nullptr);
 rocksdb::ColumnFamilyHandle* RocksDBColumnFamily::_edge(nullptr);
 rocksdb::ColumnFamilyHandle* RocksDBColumnFamily::_vpack(nullptr);
-rocksdb::ColumnFamilyHandle* RocksDBColumnFamily::_vpackHash(nullptr);
 rocksdb::ColumnFamilyHandle* RocksDBColumnFamily::_geo(nullptr);
 rocksdb::ColumnFamilyHandle* RocksDBColumnFamily::_fulltext(nullptr);
 std::vector<rocksdb::ColumnFamilyHandle*> RocksDBColumnFamily::_allHandles;
@@ -339,9 +338,6 @@ void RocksDBEngine::start() {
   // velocypack based index variants with custom comparator
   rocksdb::ColumnFamilyOptions vpackFixedPrefCF(fixedPrefCF);
   vpackFixedPrefCF.comparator = _vpackCmp.get();
-  // copy settings from cf options with dynamic prefix
-  rocksdb::ColumnFamilyOptions vpackDynPrefixCF(dyncamicPrefCF);
-  vpackDynPrefixCF.comparator = _vpackCmp.get();
 
   // create column families
   std::vector<rocksdb::ColumnFamilyDescriptor> cfFamilies;
@@ -352,9 +348,8 @@ void RocksDBEngine::start() {
   cfFamilies.emplace_back("PrimaryIndex", fixedPrefCF);         // 2
   cfFamilies.emplace_back("EdgeIndex", dyncamicPrefCF);         // 3
   cfFamilies.emplace_back("VPackIndex", vpackFixedPrefCF);      // 4
-  cfFamilies.emplace_back("VPackHashIndex", vpackDynPrefixCF);  // 5
-  cfFamilies.emplace_back("GeoIndex", fixedPrefCF);             // 6
-  cfFamilies.emplace_back("FulltextIndex", fixedPrefCF);        // 7
+  cfFamilies.emplace_back("GeoIndex", fixedPrefCF);             // 5
+  cfFamilies.emplace_back("FulltextIndex", fixedPrefCF);        // 6
   // DO NOT FORGET TO DESTROY THE CFs ON CLOSE
 
   std::vector<rocksdb::ColumnFamilyHandle*> cfHandles;
@@ -433,9 +428,8 @@ void RocksDBEngine::start() {
   RocksDBColumnFamily::_primary = cfHandles[2];
   RocksDBColumnFamily::_edge = cfHandles[3];
   RocksDBColumnFamily::_vpack = cfHandles[4];
-  RocksDBColumnFamily::_vpackHash = cfHandles[5];
-  RocksDBColumnFamily::_geo = cfHandles[6];
-  RocksDBColumnFamily::_fulltext = cfHandles[7];
+  RocksDBColumnFamily::_geo = cfHandles[5];
+  RocksDBColumnFamily::_fulltext = cfHandles[6];
   RocksDBColumnFamily::_allHandles = cfHandles;
   TRI_ASSERT(RocksDBColumnFamily::_definitions->GetID() == 0);
 
@@ -1493,7 +1487,6 @@ void RocksDBEngine::getStatistics(VPackBuilder& builder) const {
   addCf("primary", RocksDBColumnFamily::primary());
   addCf("edge", RocksDBColumnFamily::edge());
   addCf("vpack", RocksDBColumnFamily::vpack());
-  addCf("vpackHash", RocksDBColumnFamily::vpackHash());
   addCf("geo", RocksDBColumnFamily::geo());
   addCf("fulltext", RocksDBColumnFamily::fulltext());
   builder.close();

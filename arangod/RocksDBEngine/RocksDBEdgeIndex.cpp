@@ -80,11 +80,11 @@ RocksDBEdgeIndexIterator::RocksDBEdgeIndexIterator(
   TRI_ASSERT(_keys != nullptr);
   TRI_ASSERT(_keys->slice().isArray());
 
-  auto* rocksMethods = rocksutils::toRocksMethods(trx);
-  rocksdb::ReadOptions options =
-      rocksMethods->readOptions();  // intentional copy of the options
+  auto* mthds = RocksDBTransactionState::toMethods(trx);
+  // intentional copy of the options
+  rocksdb::ReadOptions options = mthds->readOptions();
   options.fill_cache = EdgeIndexFillBlockCache;
-  _iterator = rocksMethods->NewIterator(options, index->columnFamily());
+  _iterator = mthds->NewIterator(options, index->columnFamily());
 }
 
 RocksDBEdgeIndexIterator::~RocksDBEdgeIndexIterator() {
@@ -293,13 +293,13 @@ bool RocksDBEdgeIndexIterator::nextExtra(ExtraCallback const& cb,
             // Do not set limit
           }
           break;
-        } //finding found
+        }  // finding found
         if (finding.result().isNot(TRI_ERROR_LOCK_TIMEOUT)) {
           // We really have not found an entry.
           // Otherwise we do not know yet
           break;
         }
-      } //attempts
+      }  // attempts
 
       if (needRocksLookup) {
         lookupInRocksDB(fromTo);
@@ -447,9 +447,10 @@ void RocksDBEdgeIndex::toVelocyPack(VPackBuilder& builder, bool withFigures,
   builder.close();
 }
 
-Result RocksDBEdgeIndex::insert(transaction::Methods* trx,
-                                TRI_voc_rid_t revisionId, VPackSlice const& doc,
-                                bool isRollback) {
+Result RocksDBEdgeIndex::insertInternal(transaction::Methods* trx,
+                                        RocksDBMethods* mthd,
+                                        TRI_voc_rid_t revisionId,
+                                        VPackSlice const& doc) {
   VPackSlice fromTo = doc.get(_directionAttr);
   TRI_ASSERT(fromTo.isString());
   auto fromToRef = StringRef(fromTo);
@@ -464,7 +465,6 @@ Result RocksDBEdgeIndex::insert(transaction::Methods* trx,
   blackListKey(fromToRef);
 
   // acquire rocksdb transaction
-  RocksDBMethods* mthd = rocksutils::toRocksMethods(trx);
   Result r = mthd->Put(_cf, RocksDBKey(rocksdb::Slice(key.string())),
                        value.string(), rocksutils::index);
   if (r.ok()) {
@@ -477,14 +477,10 @@ Result RocksDBEdgeIndex::insert(transaction::Methods* trx,
   }
 }
 
-int RocksDBEdgeIndex::insertRaw(RocksDBMethods*, TRI_voc_rid_t,
-                                VPackSlice const&) {
-  THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
-}
-
-Result RocksDBEdgeIndex::remove(transaction::Methods* trx,
-                                TRI_voc_rid_t revisionId, VPackSlice const& doc,
-                                bool isRollback) {
+Result RocksDBEdgeIndex::removeInternal(transaction::Methods* trx,
+                                        RocksDBMethods* mthd,
+                                        TRI_voc_rid_t revisionId,
+                                        VPackSlice const& doc) {
   // VPackSlice primaryKey = doc.get(StaticStrings::KeyString);
   VPackSlice fromTo = doc.get(_directionAttr);
   auto fromToRef = StringRef(fromTo);
@@ -499,8 +495,6 @@ Result RocksDBEdgeIndex::remove(transaction::Methods* trx,
   // blacklist key in cache
   blackListKey(fromToRef);
 
-  // acquire rocksdb transaction
-  RocksDBMethods* mthd = rocksutils::toRocksMethods(trx);
   Result res = mthd->Delete(_cf, RocksDBKey(rocksdb::Slice(key.string())));
   if (res.ok()) {
     std::hash<StringRef> hasher;
@@ -512,17 +506,11 @@ Result RocksDBEdgeIndex::remove(transaction::Methods* trx,
   }
 }
 
-/// optimization for truncateNoTrx, never called in fillIndex
-int RocksDBEdgeIndex::removeRaw(RocksDBMethods*, TRI_voc_rid_t,
-                                VPackSlice const&) {
-  THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
-}
-
 void RocksDBEdgeIndex::batchInsert(
     transaction::Methods* trx,
     std::vector<std::pair<TRI_voc_rid_t, VPackSlice>> const& documents,
     std::shared_ptr<arangodb::basics::LocalTaskQueue> queue) {
-  RocksDBMethods* mthd = rocksutils::toRocksMethods(trx);
+  auto* mthds = RocksDBTransactionState::toMethods(trx);
   for (std::pair<TRI_voc_rid_t, VPackSlice> const& doc : documents) {
     // VPackSlice primaryKey = doc.second.get(StaticStrings::KeyString);
     VPackSlice fromTo = doc.second.get(_directionAttr);
@@ -532,8 +520,8 @@ void RocksDBEdgeIndex::batchInsert(
         RocksDBKey::EdgeIndexValue(_objectId, fromToRef, doc.first);
 
     blackListKey(fromToRef);
-    Result r = mthd->Put(_cf, RocksDBKey(rocksdb::Slice(key.string())),
-                         rocksdb::Slice(), rocksutils::index);
+    Result r = mthds->Put(_cf, RocksDBKey(rocksdb::Slice(key.string())),
+                          rocksdb::Slice(), rocksutils::index);
     if (!r.ok()) {
       queue->setStatus(r.errorNumber());
       break;
@@ -663,7 +651,7 @@ void RocksDBEdgeIndex::warmup(arangodb::transaction::Methods* trx) {
   bool needsInsert = false;
 
   // intentional copy of the read options
-  RocksDBMethods* mthds = rocksutils::toRocksMethods(trx);
+  auto* mthds = RocksDBTransactionState::toMethods(trx);
   auto bounds = RocksDBKeyBounds::EdgeIndex(_objectId);
   rocksdb::Slice const end = bounds.end();
   rocksdb::ReadOptions options = mthds->readOptions();

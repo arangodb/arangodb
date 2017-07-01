@@ -42,20 +42,9 @@ class RocksDBHashIndex final : public RocksDBVPackIndex {
 
   char const* typeName() const override { return "rocksdb-hash"; }
 
-  bool isSorted() const override { return false; }
+  bool isSorted() const override { return true; }
 
   bool matchesDefinition(VPackSlice const& info) const override;
-
-  bool supportsFilterCondition(arangodb::aql::AstNode const*,
-                               arangodb::aql::Variable const*, size_t, size_t&,
-                               double&) const override;
-  
-  bool supportsSortCondition(arangodb::aql::SortCondition const*,
-                             arangodb::aql::Variable const*, size_t, double&,
-                             size_t&) const override;
-
-  arangodb::aql::AstNode* specializeCondition(
-      arangodb::aql::AstNode*, arangodb::aql::Variable const*) const override;
 };
 }
 

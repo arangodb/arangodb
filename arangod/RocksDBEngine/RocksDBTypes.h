@@ -43,15 +43,14 @@ enum class RocksDBEntryType : char {
   PrimaryIndexValue = '4',
   EdgeIndexValue = '5',
   VPackIndexValue = '6',
-  VPackHashIndexValue = '7',
-  UniqueVPackIndexValue = '8',
-  SettingsValue = '9',
-  ReplicationApplierConfig = ':',
-  FulltextIndexValue = ';',
-  GeoIndexValue = '<',
-  IndexEstimateValue = '=',
-  KeyGeneratorValue = '>',
-  View = '?'
+  UniqueVPackIndexValue = '7',
+  SettingsValue = '8',
+  ReplicationApplierConfig = '9',
+  FulltextIndexValue = ':',
+  GeoIndexValue = ';',
+  IndexEstimateValue = '<',
+  KeyGeneratorValue = '=',
+  View = '>'
 };
 
 char const* rocksDBEntryTypeName(RocksDBEntryType);

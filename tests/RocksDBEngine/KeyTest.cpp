@@ -321,78 +321,78 @@ TEST_CASE("RocksDBKeyBoundsTest", "[rocksdbkeybounds]") {
     CHECK(cmp->Compare(prefixBegin, key3.string()) < 0);
     CHECK(cmp->Compare(prefixEnd, key3.string()) < 0);
   }
-
+  
+  
   /// @brief test hash index with prefix over indexed slice
   SECTION("test_hash_index") {
-
-    VPackBuilder t;
-    t(VPackValue(VPackValueType::Array))(VPackSlice::trueSlice())();
-    VPackBuilder f;
-    f(VPackValue(VPackValueType::Array))(VPackSlice::falseSlice())();
-
-    RocksDBKey key1 = RocksDBKey::VPackHashIndexValue(0, f.slice(), 33);
-    RocksDBKey key2 = RocksDBKey::VPackHashIndexValue(0, t.slice(), 34);
-    RocksDBKey key3 = RocksDBKey::VPackHashIndexValue(1, f.slice(), 35);
     
-    std::string s1 = key1.string();
-    std::string s2 = key1.string();
-    CHECK(static_cast<uint8_t>(s1.data()[s1.size()-1]) == 0xFFU);
-    CHECK(static_cast<uint8_t>(s2.data()[s1.size()-1]) == 0xFFU);
+    VPackBuilder lower;
+    lower(VPackValue(VPackValueType::Array))(VPackValue("a"))();
+    VPackBuilder higher;
+    higher(VPackValue(VPackValueType::Array))(VPackValue("b"))();
+    
+    RocksDBKey key1 = RocksDBKey::VPackIndexValue(1, lower.slice(), 33);
+    RocksDBKey key2 = RocksDBKey::VPackIndexValue(1, higher.slice(), 33);
+    RocksDBKey key3 = RocksDBKey::VPackIndexValue(2, lower.slice(), 16);
 
     // check the variable length edge prefix
-    auto pe = std::make_unique<RocksDBPrefixExtractor>();
+    std::unique_ptr<rocksdb::SliceTransform const> pe(rocksdb::NewFixedPrefixTransform(RocksDBKey::objectIdSize()));
+    
     CHECK(pe->InDomain(key1.string()));
-
+    
     // check the correct key bounds comparisons
-    RocksDBKeyBounds bounds = RocksDBKeyBounds::VPackHashIndex(0);
-    CHECK_FALSE(pe->InDomain(bounds.start()));
-    CHECK_FALSE(pe->InDomain(bounds.end()));
+    RocksDBKeyBounds bounds = RocksDBKeyBounds::VPackIndex(1);
+    CHECK(pe->InDomain(bounds.start()));
+    CHECK(pe->InDomain(bounds.end()));
     rocksdb::Slice prefixBegin = pe->Transform(bounds.start());
     rocksdb::Slice prefixEnd = pe->Transform(bounds.end());
-    CHECK_FALSE(pe->InDomain(prefixBegin));
-    CHECK_FALSE(pe->InDomain(prefixEnd));
+    CHECK(pe->InDomain(prefixBegin));
+    CHECK(pe->InDomain(prefixEnd));
     CHECK(memcmp(bounds.start().data(), prefixBegin.data(),
                  prefixBegin.size()) == 0);
     CHECK(memcmp(bounds.end().data(), prefixEnd.data(), prefixEnd.size()) == 0);
     CHECK(prefixBegin.data()[prefixBegin.size()-1] == '\0');
     CHECK(prefixEnd.data()[prefixBegin.size()-1] == '\0');
     
-    // check our assumptions about bound construction
+    // prefix is just object id
     auto cmp = std::make_unique<RocksDBVPackComparator>();
-    CHECK(cmp->Compare(prefixBegin, prefixEnd) < 0);
+    CHECK(cmp->Compare(prefixBegin, prefixEnd) == 0);
     CHECK(cmp->Compare(prefixBegin, key1.string()) < 0);
-    CHECK(cmp->Compare(prefixEnd, key1.string()) > 0);
-
-    CHECK(cmp->Compare(prefixBegin, key2.string()) < 0);
-    CHECK(cmp->Compare(prefixEnd, key2.string()) > 0);
-
+    CHECK(cmp->Compare(prefixEnd, key1.string()) < 0);
+    
     CHECK(cmp->Compare(key1.string(), key2.string()) < 0);
     CHECK(cmp->Compare(key2.string(), key3.string()) < 0);
     CHECK(cmp->Compare(key1.string(), key3.string()) < 0);
-
-    // test higher prefix
-    CHECK(cmp->Compare(prefixBegin, key3.string()) < 0);
+    
     CHECK(cmp->Compare(prefixEnd, key3.string()) < 0);
     
     
-    bounds = RocksDBKeyBounds::VPackHashIndex(0, f.slice());
-    CHECK(cmp->Compare(bounds.start(), key1.string()) < 0);
-    CHECK(cmp->Compare(bounds.end(), key1.string()) > 0);
-    // check prefix ordering
-    prefixBegin = pe->Transform(bounds.start());
-    prefixEnd = pe->Transform(bounds.end());
-    CHECK(memcmp(bounds.start().data(), prefixBegin.data(),
-                 prefixBegin.size()) == 0);
-    CHECK(memcmp(bounds.end().data(), prefixEnd.data(), prefixEnd.size()) == 0);
-    CHECK(cmp->Compare(prefixBegin, key1.string()) < 0);
-    CHECK(cmp->Compare(prefixEnd, key1.string()) < 0);
-    CHECK(prefixBegin == prefixEnd);
+    VPackBuilder a;
+    a(VPackValue(VPackValueType::Array))(VPackValue(1))();
+    VPackBuilder b;
+    b(VPackValue(VPackValueType::Array))(VPackValue(3))();
+    VPackBuilder c;
+    c(VPackValue(VPackValueType::Array))(VPackValue(5))();
+    
+    RocksDBKey key4 = RocksDBKey::VPackIndexValue(1, a.slice(), 18);
+    RocksDBKey key5 = RocksDBKey::VPackIndexValue(1, b.slice(), 60);
+    RocksDBKey key6 = RocksDBKey::VPackIndexValue(1, b.slice(), 90);
+    RocksDBKey key7 = RocksDBKey::VPackIndexValue(1, c.slice(), 12);
+    
+    bounds = RocksDBKeyBounds::VPackIndex(1, a.slice(), c.slice());
+    CHECK(cmp->Compare(bounds.start(), key4.string()) < 0);
+    CHECK(cmp->Compare(key4.string(), bounds.end()) < 0);
+    CHECK(cmp->Compare(bounds.start(), key5.string()) < 0);
+    CHECK(cmp->Compare(key5.string(), bounds.end()) < 0);
+    CHECK(cmp->Compare(bounds.start(), key6.string()) < 0);
+    CHECK(cmp->Compare(key6.string(), bounds.end()) < 0);
+    CHECK(cmp->Compare(bounds.start(), key7.string()) < 0);
+    CHECK(cmp->Compare(key7.string(), bounds.end()) < 0);
 
-
-    // prefixes are different
-    CHECK(cmp->Compare(bounds.start(), key2.string()) < 0);
-    CHECK(cmp->Compare(bounds.end(), key2.string()) < 0);
-    CHECK(cmp->Compare(prefixBegin, pe->Transform(key2.string())) < 0);
-    CHECK(cmp->Compare(prefixEnd, pe->Transform(key2.string())) < 0);
+    CHECK(cmp->Compare(key4.string(), key5.string()) < 0);
+    CHECK(cmp->Compare(key5.string(), key6.string()) < 0);
+    CHECK(cmp->Compare(key4.string(), key6.string()) < 0);
+    CHECK(cmp->Compare(key6.string(), key7.string()) < 0);
+    CHECK(cmp->Compare(key4.string(), key7.string()) < 0);
   }
 }

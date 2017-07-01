@@ -38,11 +38,6 @@ RocksDBVPackComparator::RocksDBVPackComparator() {}
 
 RocksDBVPackComparator::~RocksDBVPackComparator() {}
 
-inline static VPackSlice indexedVPack(rocksdb::Slice const& slice) {
-  TRI_ASSERT(slice.size() > (sizeof(char) + sizeof(uint64_t)));
-  return VPackSlice(slice.data() + sizeof(uint64_t));
-}
-
 int RocksDBVPackComparator::compareIndexValues(
     rocksdb::Slice const& lhs, rocksdb::Slice const& rhs) const {
   constexpr size_t objectIDLength = RocksDBKey::objectIdSize();
@@ -56,18 +51,18 @@ int RocksDBVPackComparator::compareIndexValues(
     return ((lhs.size() < rhs.size()) ? -1 : 1);
   }
 
-  TRI_ASSERT(lhs.size() > sizeof(char) + sizeof(uint64_t));
-  TRI_ASSERT(rhs.size() > sizeof(char) + sizeof(uint64_t));
+  TRI_ASSERT(lhs.size() > sizeof(uint64_t));
+  TRI_ASSERT(rhs.size() > sizeof(uint64_t));
 
-  VPackSlice const lSlice = indexedVPack(lhs);
-  VPackSlice const rSlice = indexedVPack(rhs);
+  VPackSlice const lSlice = VPackSlice(lhs.data() + sizeof(uint64_t));
+  VPackSlice const rSlice = VPackSlice(rhs.data() + sizeof(uint64_t));;
 
   r = compareIndexedValues(lSlice, rSlice);
   if (r != 0) {
     return r;
   }
 
-  constexpr size_t offset = sizeof(char) + sizeof(uint64_t);
+  constexpr size_t offset = sizeof(uint64_t);
   size_t lOffset = offset + static_cast<size_t>(lSlice.byteSize());
   size_t rOffset = offset + static_cast<size_t>(rSlice.byteSize());
   char const* lBase = lhs.data() + lOffset;

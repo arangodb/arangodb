@@ -128,20 +128,6 @@ void uint16ToPersistent(std::string& p, uint16_t value) {
   } while (++len < sizeof(uint16_t));
 }
 
-RocksDBTransactionState* toRocksTransactionState(transaction::Methods* trx) {
-  TRI_ASSERT(trx != nullptr);
-  TransactionState* state = trx->state();
-  TRI_ASSERT(state != nullptr);
-  return static_cast<RocksDBTransactionState*>(state);
-}
-
-RocksDBMethods* toRocksMethods(transaction::Methods* trx) {
-  TRI_ASSERT(trx != nullptr);
-  TransactionState* state = trx->state();
-  TRI_ASSERT(state != nullptr);
-  return static_cast<RocksDBTransactionState*>(state)->rocksdbMethods();
-}
-
 rocksdb::TransactionDB* globalRocksDB() {
   StorageEngine* engine = EngineSelectorFeature::ENGINE;
   TRI_ASSERT(engine != nullptr);

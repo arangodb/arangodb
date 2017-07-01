@@ -69,10 +69,6 @@ RocksDBKeyBounds RocksDBKeyBounds::VPackIndex(uint64_t indexId) {
   return RocksDBKeyBounds(RocksDBEntryType::VPackIndexValue, indexId);
 }
 
-RocksDBKeyBounds RocksDBKeyBounds::VPackHashIndex(uint64_t indexId) {
-  return RocksDBKeyBounds(RocksDBEntryType::VPackHashIndexValue, indexId);
-}
-
 RocksDBKeyBounds RocksDBKeyBounds::UniqueVPackIndex(uint64_t indexId) {
   return RocksDBKeyBounds(RocksDBEntryType::UniqueVPackIndexValue, indexId);
 }
@@ -110,11 +106,6 @@ RocksDBKeyBounds RocksDBKeyBounds::VPackIndex(uint64_t indexId,
                                               VPackSlice const& right) {
   return RocksDBKeyBounds(RocksDBEntryType::VPackIndexValue, indexId, left,
                           right);
-}
-
-RocksDBKeyBounds RocksDBKeyBounds::VPackHashIndex(uint64_t indexId,
-                                                  VPackSlice const& value) {
-  return RocksDBKeyBounds(RocksDBEntryType::VPackHashIndexValue, indexId, value);
 }
 
 RocksDBKeyBounds RocksDBKeyBounds::UniqueVPackIndex(uint64_t indexId,
@@ -198,7 +189,6 @@ uint64_t RocksDBKeyBounds::objectId() const {
     case RocksDBEntryType::PrimaryIndexValue:
     case RocksDBEntryType::EdgeIndexValue:
     case RocksDBEntryType::VPackIndexValue:
-    case RocksDBEntryType::VPackHashIndexValue:
     case RocksDBEntryType::UniqueVPackIndexValue:
     case RocksDBEntryType::GeoIndexValue:
     case RocksDBEntryType::FulltextIndexValue: {
@@ -225,8 +215,6 @@ rocksdb::ColumnFamilyHandle* RocksDBKeyBounds::columnFamily() const {
     case RocksDBEntryType::VPackIndexValue:
     case RocksDBEntryType::UniqueVPackIndexValue:
       return RocksDBColumnFamily::vpack();
-    case RocksDBEntryType::VPackHashIndexValue:
-      return RocksDBColumnFamily::vpackHash();
     case RocksDBEntryType::FulltextIndexValue:
       return RocksDBColumnFamily::fulltext();
     case RocksDBEntryType::GeoIndexValue:
@@ -275,7 +263,6 @@ RocksDBKeyBounds::RocksDBKeyBounds(RocksDBEntryType type, uint64_t first)
     : _type(type) {
   switch (_type) {
     case RocksDBEntryType::VPackIndexValue:
-    case RocksDBEntryType::VPackHashIndexValue:
     case RocksDBEntryType::UniqueVPackIndexValue: {
       // Unique VPack index values are stored as follows:
       // 7 + 8-byte object ID of index + VPack array with index value(s) ....
@@ -287,17 +274,11 @@ RocksDBKeyBounds::RocksDBKeyBounds(RocksDBEntryType type, uint64_t first)
       
       uint64ToPersistent(_internals.buffer(), first);
       _internals.buffer().append((char*)(min.begin()), min.byteSize());
-      if (type == RocksDBEntryType::VPackHashIndexValue) {
-        _internals.buffer().push_back(_stringSeparator);
-      }
 
       _internals.separate();
       
       uint64ToPersistent(_internals.buffer(), first);
       _internals.buffer().append((char*)(max.begin()), max.byteSize());
-      if (type == RocksDBEntryType::VPackHashIndexValue) {
-        _internals.buffer().push_back(_stringSeparator);
-      }
       break;
     }
 
@@ -376,41 +357,6 @@ RocksDBKeyBounds::RocksDBKeyBounds(RocksDBEntryType type, uint64_t first,
       }
       break;
     }
-
-    default:
-      THROW_ARANGO_EXCEPTION(TRI_ERROR_BAD_PARAMETER);
-  }
-}
-
-/// iterate over the specified bounds of the velocypack index
-RocksDBKeyBounds::RocksDBKeyBounds(RocksDBEntryType type, uint64_t first,
-                                   VPackSlice const& second) : _type(type) {
-  switch (type) {
-    case RocksDBEntryType::VPackHashIndexValue: {
-      size_t startLength = sizeof(uint64_t) +
-                           static_cast<size_t>(second.byteSize()) +
-                           sizeof(char);
-      size_t endLength = 2 * sizeof(uint64_t) +
-                         static_cast<size_t>(second.byteSize()) +
-                         2 * sizeof(char);
-
-      _internals.reserve(startLength + endLength);
-      uint64ToPersistent(_internals.buffer(), first);
-      _internals.buffer().append(reinterpret_cast<char const*>(second.begin()),
-                                 static_cast<size_t>(second.byteSize()));
-      _internals.buffer().push_back(_stringSeparator);
-      uint64ToPersistent(_internals.buffer(), 0);
-      _internals.buffer().push_back(0xFFU);
-
-      _internals.separate();
-
-      uint64ToPersistent(_internals.buffer(), first);
-      _internals.buffer().append(reinterpret_cast<char const*>(second.begin()),
-                                 static_cast<size_t>(second.byteSize()));
-      _internals.buffer().push_back(_stringSeparator);
-      uint64ToPersistent(_internals.buffer(), UINT64_MAX);
-      _internals.buffer().push_back(0xFFU);
-    } break;
 
     default:
       THROW_ARANGO_EXCEPTION(TRI_ERROR_BAD_PARAMETER);

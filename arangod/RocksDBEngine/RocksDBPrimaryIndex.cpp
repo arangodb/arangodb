@@ -192,7 +192,7 @@ RocksDBToken RocksDBPrimaryIndex::lookupKey(transaction::Methods* trx,
   }
 
   // acquire rocksdb transaction
-  RocksDBMethods* mthds = rocksutils::toRocksMethods(trx);
+  RocksDBMethods* mthds = RocksDBTransactionState::toMethods(trx);
   auto options = mthds->readOptions();  // intentional copy
   options.fill_cache = PrimaryIndexFillBlockCache;
   TRI_ASSERT(options.snapshot != nullptr);
@@ -217,15 +217,15 @@ RocksDBToken RocksDBPrimaryIndex::lookupKey(transaction::Methods* trx,
   return RocksDBToken(RocksDBValue::revisionId(value));
 }
 
-Result RocksDBPrimaryIndex::insert(transaction::Methods* trx,
-                                   TRI_voc_rid_t revisionId,
-                                   VPackSlice const& slice, bool) {
+Result RocksDBPrimaryIndex::insertInternal(transaction::Methods* trx,
+                                           RocksDBMethods* mthd,
+                                           TRI_voc_rid_t revisionId,
+                                           VPackSlice const& slice) {
   auto key = RocksDBKey::PrimaryIndexValue(
       _objectId, StringRef(slice.get(StaticStrings::KeyString)));
   auto value = RocksDBValue::PrimaryIndexValue(revisionId);
 
   // acquire rocksdb transaction
-  RocksDBMethods* mthd = rocksutils::toRocksMethods(trx);
   if (mthd->Exists(_cf, key)) {
     return TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED;
   }
@@ -236,14 +236,10 @@ Result RocksDBPrimaryIndex::insert(transaction::Methods* trx,
   return IndexResult(status.errorNumber(), this);
 }
 
-int RocksDBPrimaryIndex::insertRaw(RocksDBMethods*, TRI_voc_rid_t,
-                                   VPackSlice const&) {
-  THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
-}
-
-Result RocksDBPrimaryIndex::remove(transaction::Methods* trx,
-                                   TRI_voc_rid_t revisionId,
-                                   VPackSlice const& slice, bool) {
+Result RocksDBPrimaryIndex::removeInternal(transaction::Methods* trx,
+                                           RocksDBMethods* mthd,
+                                           TRI_voc_rid_t revisionId,
+                                           VPackSlice const& slice) {
   // TODO: deal with matching revisions?
   auto key = RocksDBKey::PrimaryIndexValue(
       _objectId, StringRef(slice.get(StaticStrings::KeyString)));
@@ -251,16 +247,10 @@ Result RocksDBPrimaryIndex::remove(transaction::Methods* trx,
   blackListKey(key.string().data(), static_cast<uint32_t>(key.string().size()));
 
   // acquire rocksdb transaction
-  RocksDBMethods* mthds = rocksutils::toRocksMethods(trx);
+  RocksDBMethods* mthds = RocksDBTransactionState::toMethods(trx);
   Result r = mthds->Delete(_cf, key);
   // rocksutils::convertStatus(status, rocksutils::StatusHint::index);
   return IndexResult(r.errorNumber(), this);
-}
-
-/// optimization for truncateNoTrx, never called in fillIndex
-int RocksDBPrimaryIndex::removeRaw(RocksDBMethods*, TRI_voc_rid_t,
-                                   VPackSlice const&) {
-  THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
 }
 
 /// @brief called when the index is dropped

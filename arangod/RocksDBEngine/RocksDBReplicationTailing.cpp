@@ -75,7 +75,7 @@ class WALParser : public rocksdb::WriteBatch::Handler {
   explicit WALParser(TRI_vocbase_t* vocbase, bool includeSystem,
                      TRI_voc_cid_t collectionId, VPackBuilder& builder)
       : _documentsCF(RocksDBColumnFamily::documents()->GetID()),
-        _otherCF(RocksDBColumnFamily::definitions()->GetID()),
+        _definitionsCF(RocksDBColumnFamily::definitions()->GetID()),
         _vocbase(vocbase),
         _includeSystem(includeSystem),
         _onlyCollectionId(collectionId),
@@ -220,7 +220,7 @@ class WALParser : public rocksdb::WriteBatch::Handler {
     LOG_TOPIC(_LOG, Logger::ROCKSDB) << "PUT: key:" << key.ToString()
                                      << "  value: " << value.ToString();
 
-    if (column_family_id == _otherCF &&
+    if (column_family_id == _definitionsCF &&
         RocksDBKey::type(key) == RocksDBEntryType::Collection) {
       if (_lastLogType == RocksDBLogType::IndexCreate ||
           _lastLogType == RocksDBLogType::IndexDrop) {
@@ -298,7 +298,7 @@ class WALParser : public rocksdb::WriteBatch::Handler {
       return rocksdb::Status();
     }
 
-    if (column_family_id == _otherCF &&
+    if (column_family_id == _definitionsCF &&
         RocksDBKey::type(key) == RocksDBEntryType::Collection) {
       // a database DROP will not set this flag
       if (_lastLogType == RocksDBLogType::CollectionDrop) {
@@ -409,7 +409,7 @@ class WALParser : public rocksdb::WriteBatch::Handler {
   bool shouldHandleKey(uint32_t column_family_id,
                        rocksdb::Slice const& key) const {
     TRI_voc_cid_t cid;
-    if (column_family_id == _otherCF &&
+    if (column_family_id == _definitionsCF &&
         (RocksDBKey::type(key) == RocksDBEntryType::Collection ||
          RocksDBKey::type(key) == RocksDBEntryType::View)) {
       cid = RocksDBKey::collectionId(key);
@@ -447,7 +447,7 @@ class WALParser : public rocksdb::WriteBatch::Handler {
 
  private:
   uint32_t const _documentsCF;
-  uint32_t const _otherCF;
+  uint32_t const _definitionsCF;
 
   // these parameters are relevant to determine if we can print
   // a specific marker from the WAL

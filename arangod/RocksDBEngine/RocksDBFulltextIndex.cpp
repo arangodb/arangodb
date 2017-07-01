@@ -194,15 +194,15 @@ bool RocksDBFulltextIndex::matchesDefinition(VPackSlice const& info) const {
   return true;
 }
 
-Result RocksDBFulltextIndex::insert(transaction::Methods* trx,
-                                    TRI_voc_rid_t revisionId,
-                                    VPackSlice const& doc, bool isRollback) {
+Result RocksDBFulltextIndex::insertInternal(transaction::Methods* trx,
+                                            RocksDBMethods* mthd,
+                                            TRI_voc_rid_t revisionId,
+                                            VPackSlice const& doc) {
   std::set<std::string> words = wordlist(doc);
   if (words.empty()) {
     return TRI_ERROR_NO_ERROR;
   }
 
-  RocksDBMethods* mthd = rocksutils::toRocksMethods(trx);
   // now we are going to construct the value to insert into rocksdb
   // unique indexes have a different key structure
   RocksDBValue value = RocksDBValue::VPackIndexValue();
@@ -231,31 +231,10 @@ Result RocksDBFulltextIndex::insert(transaction::Methods* trx,
   return IndexResult(res, this);
 }
 
-int RocksDBFulltextIndex::insertRaw(RocksDBMethods* batch,
-                                    TRI_voc_rid_t revisionId,
-                                    arangodb::velocypack::Slice const& doc) {
-  std::set<std::string> words = wordlist(doc);
-  if (words.empty()) {
-    return TRI_ERROR_NO_ERROR;
-  }
-
-  // now we are going to construct the value to insert into rocksdb
-  // unique indexes have a different key structure
-  // StringRef docKey(doc.get(StaticStrings::KeyString));
-  RocksDBValue value = RocksDBValue::VPackIndexValue();
-
-  for (std::string const& word : words) {
-    RocksDBKey key =
-        RocksDBKey::FulltextIndexValue(_objectId, StringRef(word), revisionId);
-    batch->Put(_cf, key, value.string());
-  }
-
-  return TRI_ERROR_NO_ERROR;
-}
-
-Result RocksDBFulltextIndex::remove(transaction::Methods* trx,
-                                    TRI_voc_rid_t revisionId,
-                                    VPackSlice const& doc, bool isRollback) {
+Result RocksDBFulltextIndex::removeInternal(transaction::Methods* trx,
+                                            RocksDBMethods* mthd,
+                                            TRI_voc_rid_t revisionId,
+                                            VPackSlice const& doc) {
   std::set<std::string> words = wordlist(doc);
   if (words.empty()) {
     // TODO: distinguish the cases "empty wordlist" and "out of memory"
@@ -263,7 +242,6 @@ Result RocksDBFulltextIndex::remove(transaction::Methods* trx,
     return IndexResult(TRI_ERROR_OUT_OF_MEMORY);
   }
 
-  RocksDBMethods* mthd = rocksutils::toRocksMethods(trx);
   // now we are going to construct the value to insert into rocksdb
   // unique indexes have a different key structure
   int res = TRI_ERROR_NO_ERROR;
@@ -278,20 +256,6 @@ Result RocksDBFulltextIndex::remove(transaction::Methods* trx,
     }
   }
   return IndexResult(res, this);
-}
-
-int RocksDBFulltextIndex::removeRaw(RocksDBMethods* batch,
-                                    TRI_voc_rid_t revisionId,
-                                    arangodb::velocypack::Slice const& doc) {
-  std::set<std::string> words = wordlist(doc);
-  // now we are going to construct the value to insert into rocksdb
-  // unique indexes have a different key structure
-  for (std::string const& word : words) {
-    RocksDBKey key =
-        RocksDBKey::FulltextIndexValue(_objectId, StringRef(word), revisionId);
-    batch->Delete(_cf, key);
-  }
-  return TRI_ERROR_NO_ERROR;
 }
 
 int RocksDBFulltextIndex::cleanup() {
@@ -506,7 +470,7 @@ static RocksDBKeyBounds MakeBounds(uint64_t oid,
 Result RocksDBFulltextIndex::applyQueryToken(
     transaction::Methods* trx, FulltextQueryToken const& token,
     std::set<TRI_voc_rid_t>& resultSet) {
-  RocksDBMethods* mthds = rocksutils::toRocksMethods(trx);
+  auto mthds = RocksDBTransactionState::toMethods(trx);
   // why can't I have an assignment operator when I want one
   RocksDBKeyBounds bounds = MakeBounds(_objectId, token);
   rocksdb::Slice end = bounds.end();

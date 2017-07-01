@@ -30,6 +30,7 @@
 #include "RocksDBEngine/RocksDBCommon.h"
 #include "RocksDBEngine/RocksDBIterators.h"
 #include "RocksDBEngine/RocksDBTransactionState.h"
+#include "RocksDBEngine/RocksDBMethods.h"
 #include "Transaction/Helpers.h"
 #include "Transaction/StandaloneContext.h"
 #include "Transaction/UserTransaction.h"
@@ -82,8 +83,8 @@ void RocksDBReplicationContext::bind(TRI_vocbase_t* vocbase) {
   if ((_trx.get() == nullptr) || (_trx->vocbase() != vocbase)) {
     releaseDumpingResources();
     _trx = createTransaction(vocbase);
-    TRI_ASSERT(_trx);
-    _lastTick = toRocksTransactionState(_trx.get())->sequenceNumber();
+    auto state = RocksDBTransactionState::toState(_trx.get());
+    _lastTick = state->sequenceNumber();
   }
 }
 

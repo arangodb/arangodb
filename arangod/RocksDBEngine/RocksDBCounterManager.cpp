@@ -623,8 +623,7 @@ class WBReader final : public rocksdb::WriteBatch::Handler {
       }
     } else {
       // We have to adjust the estimate with an insert
-      if (column_family_id == RocksDBColumnFamily::vpack()->GetID() ||
-          column_family_id == RocksDBColumnFamily::vpackHash()->GetID()) {
+      if (column_family_id == RocksDBColumnFamily::vpack()->GetID()) {
         uint64_t objectId = RocksDBKey::objectId(key);
         auto it = _estimators->find(objectId);
         if (it != _estimators->end() && it->second.first < currentSeqNum) {
@@ -660,8 +659,7 @@ class WBReader final : public rocksdb::WriteBatch::Handler {
       }
     } else {
       // We have to adjust the estimate with an remove
-      if (column_family_id == RocksDBColumnFamily::vpack()->GetID() ||
-          column_family_id == RocksDBColumnFamily::vpackHash()->GetID()) {
+      if (column_family_id == RocksDBColumnFamily::vpack()->GetID()) {
         uint64_t objectId = RocksDBKey::objectId(key);
         auto it = _estimators->find(objectId);
         if (it != _estimators->end() && it->second.first < currentSeqNum) {

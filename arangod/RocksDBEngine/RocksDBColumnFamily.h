@@ -39,8 +39,8 @@ namespace arangodb {
 struct RocksDBColumnFamily {
   friend class RocksDBEngine;
 
-  static constexpr size_t minNumberOfColumnFamilies = 8;
-  static constexpr size_t numberOfColumnFamilies = 9;
+  static constexpr size_t minNumberOfColumnFamilies = 7;
+  static constexpr size_t numberOfColumnFamilies = 7;
 
   static rocksdb::ColumnFamilyHandle* definitions() { return _definitions; }
 
@@ -53,8 +53,6 @@ struct RocksDBColumnFamily {
   /// non unique vpack indexes (skiplist, permanent indexes)
   static rocksdb::ColumnFamilyHandle* vpack() { return _vpack; }
 
-  static rocksdb::ColumnFamilyHandle* vpackHash() { return _vpackHash; }
-
   static rocksdb::ColumnFamilyHandle* geo() { return _geo; }
 
   static rocksdb::ColumnFamilyHandle* fulltext() { return _fulltext; }
@@ -65,7 +63,6 @@ struct RocksDBColumnFamily {
   static rocksdb::ColumnFamilyHandle* _primary;
   static rocksdb::ColumnFamilyHandle* _edge;
   static rocksdb::ColumnFamilyHandle* _vpack;
-  static rocksdb::ColumnFamilyHandle* _vpackHash;
   static rocksdb::ColumnFamilyHandle* _geo;
   static rocksdb::ColumnFamilyHandle* _fulltext;
   static std::vector<rocksdb::ColumnFamilyHandle*> _allHandles;

@@ -51,32 +51,28 @@ class ColumnFamilyHandle;
 namespace arangodb {
 
 class RocksDBOperationResult : public Result {
- public:
+public:
   explicit RocksDBOperationResult() : Result(), _keySize(0) {}
-
+  
   RocksDBOperationResult(Result const& other) : _keySize(0) {
     cloneData(other);
   }
-
+  
   RocksDBOperationResult(Result&& other) : _keySize(0) {
     cloneData(std::move(other));
   }
-
+  
   uint64_t keySize() const { return _keySize; }
   void keySize(uint64_t s) { _keySize = s; }
-
- protected:
+  
+protected:
   uint64_t _keySize;
 };
 
-class TransactionState;
-class RocksDBTransactionState;
 class RocksDBMethods;
 class RocksDBKeyBounds;
 class RocksDBEngine;
-namespace transaction {
-class Methods;
-}
+  
 namespace rocksutils {
 
 //// to persistent
@@ -150,9 +146,6 @@ uint16_t uint16FromPersistent(char const* p);
 void uint16ToPersistent(char* p, uint16_t value);
 void uint16ToPersistent(std::string& out, uint16_t value);
 
-RocksDBTransactionState* toRocksTransactionState(transaction::Methods* trx);
-RocksDBMethods* toRocksMethods(transaction::Methods* trx);
-
 rocksdb::TransactionDB* globalRocksDB();
 RocksDBEngine* globalRocksEngine();
 arangodb::Result globalRocksDBPut(
@@ -183,8 +176,8 @@ std::vector<std::pair<RocksDBKey, RocksDBValue>> collectionKVPairs(
 std::vector<std::pair<RocksDBKey, RocksDBValue>> viewKVPairs(
     TRI_voc_tick_t databaseId);
 
-// optional switch to std::function to reduce amount of includes and to avoid
-// template
+// optional switch to std::function to reduce amount of includes and
+// to avoid template
 // this helper is not meant for transactional usage!
 template <typename T>  // T is a invokeable that takes a rocksdb::Iterator*
 void iterateBounds(RocksDBKeyBounds const& bounds, T callback,

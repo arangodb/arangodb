@@ -67,12 +67,6 @@ static rocksdb::Slice VPackIndexValue(
         &vpackIndexValue),
     1);
 
-static RocksDBEntryType vpackHashIdx = RocksDBEntryType::VPackHashIndexValue;
-static rocksdb::Slice VPackHashIndexValue(
-    reinterpret_cast<std::underlying_type<RocksDBEntryType>::type*>(
-        &vpackHashIdx),
-    1);
-
 static RocksDBEntryType uniqueVPIndex = RocksDBEntryType::UniqueVPackIndexValue;
 static rocksdb::Slice UniqueVPackIndexValue(
     reinterpret_cast<std::underlying_type<RocksDBEntryType>::type*>(
@@ -139,8 +133,6 @@ char const* arangodb::rocksDBEntryTypeName(arangodb::RocksDBEntryType type) {
       return "EdgeIndexValue";
     case arangodb::RocksDBEntryType::VPackIndexValue:
       return "VPackIndexValue";
-    case arangodb::RocksDBEntryType::VPackHashIndexValue:
-      return "VPackHashIndexValue";
     case arangodb::RocksDBEntryType::UniqueVPackIndexValue:
       return "UniqueVPackIndexValue";
     case arangodb::RocksDBEntryType::View:
@@ -217,8 +209,6 @@ rocksdb::Slice const& arangodb::rocksDBSlice(RocksDBEntryType const& type) {
       return EdgeIndexValue;
     case RocksDBEntryType::VPackIndexValue:
       return VPackIndexValue;
-    case RocksDBEntryType::VPackHashIndexValue:
-      return VPackHashIndexValue;
     case RocksDBEntryType::UniqueVPackIndexValue:
       return UniqueVPackIndexValue;
     case RocksDBEntryType::FulltextIndexValue:

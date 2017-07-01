@@ -216,7 +216,8 @@ void RocksDBGeoIndexIterator::replaceCursor(::GeoCursor* c) {
 
 void RocksDBGeoIndexIterator::createCursor(double lat, double lon) {
   _coor = GeoCoordinate{lat, lon, 0};
-  GeoIndex_setRocksMethods(_index->_geoIndex, rocksutils::toRocksMethods(_trx));
+  GeoIndex_setRocksMethods(_index->_geoIndex,
+                           RocksDBTransactionState::toMethods(_trx));
   replaceCursor(::GeoIndex_NewCursor(_index->_geoIndex, &_coor));
 }
 
@@ -417,8 +418,13 @@ bool RocksDBGeoIndex::matchesDefinition(VPackSlice const& info) const {
 }
 
 /// internal insert function, set batch or trx before calling
-int RocksDBGeoIndex::internalInsert(TRI_voc_rid_t revisionId,
-                                    velocypack::Slice const& doc) {
+Result RocksDBGeoIndex::insertInternal(transaction::Methods* trx,
+                                       RocksDBMethods* mthd,
+                                       TRI_voc_rid_t revisionId,
+                                       velocypack::Slice const& doc) {
+  GeoIndex_setRocksMethods(_geoIndex, mthd);
+  TRI_DEFER(GeoIndex_clearRocks(_geoIndex));
+
   double latitude;
   double longitude;
 
@@ -480,30 +486,17 @@ int RocksDBGeoIndex::internalInsert(TRI_voc_rid_t revisionId,
   } else if (res < 0) {
     return TRI_set_errno(TRI_ERROR_INTERNAL);
   }
-  return TRI_ERROR_NO_ERROR;
-}
-
-Result RocksDBGeoIndex::insert(transaction::Methods* trx,
-                               TRI_voc_rid_t revisionId, VPackSlice const& doc,
-                               bool isRollback) {
-  // acquire rocksdb transaction
-  GeoIndex_setRocksMethods(_geoIndex, rocksutils::toRocksMethods(trx));
-  int res = this->internalInsert(revisionId, doc);
-  GeoIndex_clearRocks(_geoIndex);
-  return IndexResult(res, this);
-}
-
-int RocksDBGeoIndex::insertRaw(RocksDBMethods* batch, TRI_voc_rid_t revisionId,
-                               arangodb::velocypack::Slice const& doc) {
-  GeoIndex_setRocksMethods(_geoIndex, batch);
-  int res = this->internalInsert(revisionId, doc);
-  GeoIndex_clearRocks(_geoIndex);
-  return res;
+  return IndexResult(TRI_ERROR_NO_ERROR, this);
 }
 
 /// internal remove function, set batch or trx before calling
-int RocksDBGeoIndex::internalRemove(TRI_voc_rid_t revisionId,
-                                    velocypack::Slice const& doc) {
+Result RocksDBGeoIndex::removeInternal(transaction::Methods* trx,
+                                       RocksDBMethods* mthd,
+                                       TRI_voc_rid_t revisionId,
+                                       velocypack::Slice const& doc) {
+  GeoIndex_setRocksMethods(_geoIndex, RocksDBTransactionState::toMethods(trx));
+  TRI_DEFER(GeoIndex_clearRocks(_geoIndex));
+
   double latitude = 0.0;
   double longitude = 0.0;
   bool ok = true;
@@ -547,36 +540,18 @@ int RocksDBGeoIndex::internalRemove(TRI_voc_rid_t revisionId,
   }
 
   if (!ok) {
-    return TRI_ERROR_NO_ERROR;
+    return IndexResult(TRI_ERROR_BAD_PARAMETER, this);
+    ;
   }
 
   GeoCoordinate gc;
   gc.latitude = latitude;
   gc.longitude = longitude;
   gc.data = static_cast<uint64_t>(revisionId);
-
   // ignore non-existing elements in geo-index
   GeoIndex_remove(_geoIndex, &gc);
 
-  return TRI_ERROR_NO_ERROR;
-}
-
-Result RocksDBGeoIndex::remove(transaction::Methods* trx,
-                               TRI_voc_rid_t revisionId, VPackSlice const& doc,
-                               bool isRollback) {
-  // acquire rocksdb methods
-  GeoIndex_setRocksMethods(_geoIndex, rocksutils::toRocksMethods(trx));
-  int res = this->internalRemove(revisionId, doc);
-  GeoIndex_clearRocks(_geoIndex);
-  return IndexResult(res, this);
-}
-
-int RocksDBGeoIndex::removeRaw(RocksDBMethods* batch, TRI_voc_rid_t revisionId,
-                               arangodb::velocypack::Slice const& doc) {
-  GeoIndex_setRocksMethods(_geoIndex, batch);
-  int res = this->internalRemove(revisionId, doc);
-  GeoIndex_clearRocks(_geoIndex);
-  return res;
+  return IndexResult(0, this);
 }
 
 int RocksDBGeoIndex::unload() {
@@ -605,8 +580,7 @@ GeoCoordinates* RocksDBGeoIndex::withinQuery(transaction::Methods* trx,
   GeoCoordinate gc;
   gc.latitude = lat;
   gc.longitude = lon;
-
-  GeoIndex_setRocksMethods(_geoIndex, rocksutils::toRocksMethods(trx));
+  GeoIndex_setRocksMethods(_geoIndex, RocksDBTransactionState::toMethods(trx));
   GeoCoordinates* coords = GeoIndex_PointsWithinRadius(_geoIndex, &gc, radius);
   GeoIndex_clearRocks(_geoIndex);
   return coords;
@@ -620,7 +594,7 @@ GeoCoordinates* RocksDBGeoIndex::nearQuery(transaction::Methods* trx,
   gc.latitude = lat;
   gc.longitude = lon;
 
-  GeoIndex_setRocksMethods(_geoIndex, rocksutils::toRocksMethods(trx));
+  GeoIndex_setRocksMethods(_geoIndex, RocksDBTransactionState::toMethods(trx));
   GeoCoordinates* coords =
       GeoIndex_NearestCountPoints(_geoIndex, &gc, static_cast<int>(count));
   GeoIndex_clearRocks(_geoIndex);

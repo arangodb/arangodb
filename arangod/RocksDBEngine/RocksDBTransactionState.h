@@ -107,6 +107,20 @@ class RocksDBTransactionState final : public TransactionState {
 
   uint64_t sequenceNumber() const;
 
+  static RocksDBTransactionState* toState(transaction::Methods* trx) {
+    TRI_ASSERT(trx != nullptr);
+    TransactionState* state = trx->state();
+    TRI_ASSERT(state != nullptr);
+    return static_cast<RocksDBTransactionState*>(state);
+  }
+
+  static RocksDBMethods* toMethods(transaction::Methods* trx) {
+    TRI_ASSERT(trx != nullptr);
+    TransactionState* state = trx->state();
+    TRI_ASSERT(state != nullptr);
+    return static_cast<RocksDBTransactionState*>(state)->rocksdbMethods();
+  }
+
  private:
   void createTransaction();
   arangodb::Result internalCommit();

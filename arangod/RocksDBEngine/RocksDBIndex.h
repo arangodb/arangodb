@@ -29,6 +29,7 @@
 #include "Basics/Common.h"
 #include "Indexes/Index.h"
 #include "RocksDBEngine/RocksDBKeyBounds.h"
+#include "RocksDBEngine/RocksDBTransactionState.h"
 
 namespace rocksdb {
 class Comparator;
@@ -85,16 +86,18 @@ class RocksDBIndex : public Index {
     // nothing to do here
     return TRI_ERROR_NO_ERROR;
   }
-
-  /// insert index elements into the specified write batch. Should be used
-  /// as an optimization for the non transactional fillIndex method
-  virtual int insertRaw(RocksDBMethods*, TRI_voc_rid_t,
-                        arangodb::velocypack::Slice const&) = 0;
-
-  /// remove index elements and put it in the specified write batch. Should be
-  /// used as an optimization for the non transactional fillIndex method
-  virtual int removeRaw(RocksDBMethods*, TRI_voc_rid_t,
-                        arangodb::velocypack::Slice const&) = 0;
+  
+  Result insert(transaction::Methods* trx, TRI_voc_rid_t rid,
+                velocypack::Slice const& doc, bool) override {
+    auto mthds = RocksDBTransactionState::toMethods(trx);
+    return insertInternal(trx, mthds, rid, doc);
+  }
+  
+  Result remove(transaction::Methods* trx, TRI_voc_rid_t rid,
+                arangodb::velocypack::Slice const& doc, bool) override {
+    auto mthds = RocksDBTransactionState::toMethods(trx);
+    return removeInternal(trx, mthds, rid, doc);
+  }
 
   void createCache();
   void disableCache();
@@ -104,15 +107,26 @@ class RocksDBIndex : public Index {
   virtual bool deserializeEstimate(RocksDBCounterManager* mgr);
 
   virtual void recalculateEstimates();
-
+  
+  /// insert index elements into the specified write batch.
+  virtual Result insertInternal(transaction::Methods* trx,
+                                RocksDBMethods*, TRI_voc_rid_t,
+                                arangodb::velocypack::Slice const&) = 0;
+  
+  /// remove index elements and put it in the specified write batch.
+  virtual Result removeInternal(transaction::Methods* trx,
+                                RocksDBMethods*, TRI_voc_rid_t,
+                                arangodb::velocypack::Slice const&) = 0;
+  
   rocksdb::ColumnFamilyHandle* columnFamily() const { return _cf; }
-
+  
   rocksdb::Comparator const* comparator() const;
-
+  
   static RocksDBKeyBounds getBounds(Index::IndexType type, uint64_t objectId,
                                     bool unique);
-
- protected:
+  
+protected:
+  
   // Will be called during truncate to allow the index to update selectivity
   // estimates, blacklist keys, etc.
   virtual Result postprocessRemove(transaction::Methods* trx,
