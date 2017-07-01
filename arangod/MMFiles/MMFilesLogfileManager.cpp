@@ -57,6 +57,14 @@ using namespace arangodb::options;
 // the logfile manager singleton
 MMFilesLogfileManager* MMFilesLogfileManager::Instance = nullptr;
 
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+bool MMFilesLogfileManager::SafeToUseInstance = false;
+#endif
+
+// whether or not there was a SHUTDOWN file with a last tick at
+// server start
+int MMFilesLogfileManager::FoundLastTick = -1;
+
 namespace {
 // minimum value for --wal.throttle-when-pending
 static constexpr uint64_t MinThrottleWhenPending() { return 1024 * 1024; }
@@ -90,7 +98,6 @@ static constexpr uint32_t MaxSlots() { return 1024 * 1024 * 16; }
 MMFilesLogfileManager::MMFilesLogfileManager(ApplicationServer* server)
     : ApplicationFeature(server, "MMFilesLogfileManager"),
       _allowWrites(false),  // start in read-only mode
-      _hasFoundLastTick(false),
       _inRecovery(true),
       _logfilesLock(),
       _logfiles(),
@@ -113,6 +120,7 @@ MMFilesLogfileManager::MMFilesLogfileManager(ApplicationServer* server)
 
   setOptional(true);
   requiresElevatedPrivileges(false);
+  startsAfter("Database");
   startsAfter("DatabasePath");
   startsAfter("EngineSelector");
   startsAfter("FeatureCache");
@@ -246,6 +254,9 @@ void MMFilesLogfileManager::validateOptions(std::shared_ptr<options::ProgramOpti
 }
   
 void MMFilesLogfileManager::prepare() {
+  Instance = this;
+  FoundLastTick = 0; // initialize the last found tick value to "not found"
+
   auto databasePath = ApplicationServer::getFeature<DatabasePathFeature>("DatabasePath");
   _databasePath = databasePath->directory();
 
@@ -268,7 +279,9 @@ void MMFilesLogfileManager::prepare() {
 }
 
 void MMFilesLogfileManager::start() {
-  Instance = this;
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  SafeToUseInstance = true;
+#endif
 
   // needs server initialized
   size_t pageSize = PageSizeFeature::getPageSize();
@@ -1786,7 +1799,7 @@ int MMFilesLogfileManager::readShutdownInfo() {
   TRI_UpdateTickServer(static_cast<TRI_voc_tick_t>(lastTick));
 
   if (lastTick > 0) {
-    _hasFoundLastTick = true;
+    FoundLastTick = 1;
   }
  
   // read last assigned revision id to seed HLC value 

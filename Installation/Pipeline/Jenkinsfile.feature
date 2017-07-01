@@ -757,8 +757,8 @@ catch (exc) {
 }
 
 try {
-    stage('build mac & windows') {
-        buildStepParallel(['mac', 'windows'])
+    stage('build mac') {
+        buildStepParallel(['mac'])
     }
 }
 catch (exc) {
@@ -766,8 +766,26 @@ catch (exc) {
 }
 
 try {
-    stage('tests mac & windows') {
-        testStepParallel(['mac', 'windows'], ['cluster', 'singleserver'])
+    stage('tests mac') {
+        testStepParallel(['mac'], ['cluster', 'singleserver'])
+    }
+}
+catch (exc) {
+    echo exc.toString()
+}
+
+try {
+    stage('build windows') {
+        buildStepParallel(['windows'])
+    }
+}
+catch (exc) {
+    echo exc.toString()
+}
+
+try {
+    stage('tests windows') {
+        testStepParallel(['windows'], ['cluster', 'singleserver'])
     }
 }
 catch (exc) {
@@ -797,6 +815,10 @@ stage('result') {
 
         for (kv in resiliencesSuccess) {
             result = result + "RESILIENCE ${kv.key}: ${kv.value}\n"
+        }
+
+        if (result == "") {
+           result = "All tests passed!"
         }
 
         echo result

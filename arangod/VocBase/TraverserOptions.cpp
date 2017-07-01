@@ -480,6 +480,9 @@ bool TraverserOptions::evaluateEdgeExpression(arangodb::velocypack::Slice edge,
     idNode->stealComputedValue();
     idNode->setStringValue(vertexId.data(), vertexId.length());
   }
+  if (edge.isExternal()) {
+    edge = edge.resolveExternal();
+  }
   return evaluateExpression(expression, edge);
 }
 
@@ -495,6 +498,9 @@ bool TraverserOptions::evaluateVertexExpression(
     expression = _baseVertexExpression;
   }
 
+  if (vertex.isExternal()) {
+    vertex = vertex.resolveExternal();
+  }
   return evaluateExpression(expression, vertex);
 }
 

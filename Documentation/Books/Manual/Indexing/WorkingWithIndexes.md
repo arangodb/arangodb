@@ -94,6 +94,14 @@ Calling this method returns an index object. Whether or not the index
 object existed before the call is indicated in the return attribute
 *isNewlyCreated*.
 
+**deduplicate** can be *true* or *false* and is supported by array indexes of
+type *hash* or *skiplist*. It controls whether inserting duplicate index values 
+from the same document into a unique array index will lead to a unique constraint
+error or not. The default value is *true*, so only a single instance of each
+non-unique index value will be inserted into the index per document. Trying to
+insert a value into the index that already exists in the index will always fail,
+regardless of the value of this attribute.
+
 
 **Examples**
 
@@ -155,14 +163,14 @@ All lookups that could be found in the cache are much faster
 than lookups not stored in the cache so you get a nice performance boost.
 It is also guaranteed that the cache is consistent with the stored data.
 
-For the time beeing this function is only useful on RocksDB storage engine,
+For the time being this function is only useful on RocksDB storage engine,
 as in MMFiles engine all indexes are in memory anyways.
 
 On RocksDB this function honors all memory limits, if the indexes you want
 to load are smaller than your memory limit this function guarantees that most
 index values are cached.
 If the index is larger than your memory limit this function will fill up values
-up to this limit and for the time beeing there is no way to control which indexes
+up to this limit and for the time being there is no way to control which indexes
 of the collection should have priority over others.
 
     @startDocuBlockInline LoadIndexesIntoMemory
