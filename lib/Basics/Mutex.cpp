@@ -33,7 +33,7 @@ using namespace arangodb;
 // --SECTION                                              TRI_HAVE_POSIX_THREADS
 // -----------------------------------------------------------------------------
 
-#if defiend(TRI_HAVE_POSIX_THREADS)
+#if defined(TRI_HAVE_POSIX_THREADS)
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
 // initialize _holder to "maximum" thread id. this will work if the type of
