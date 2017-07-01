@@ -192,8 +192,8 @@ bool RocksDBEdgeIndexIterator::next(TokenCallback const& cb, size_t limit) {
           // Otherwise we do not know yet
           break;
         }
-      }
-    }
+      } // attempts
+    } // if (_cache)
 
     if (needRocksLookup) {
       lookupInRocksDB(fromTo);
@@ -300,13 +300,13 @@ bool RocksDBEdgeIndexIterator::nextExtra(ExtraCallback const& cb,
           break;
         }
       }  // attempts
-
-      if (needRocksLookup) {
-        lookupInRocksDB(fromTo);
-      }
-
-      _keysIterator.next();
+    } // if (_cache)
+    
+    if (needRocksLookup) {
+      lookupInRocksDB(fromTo);
     }
+    
+    _keysIterator.next();
   }
   TRI_ASSERT(limit == 0);
   return _builderIterator.valid() || _keysIterator.valid();
@@ -383,8 +383,7 @@ RocksDBEdgeIndex::RocksDBEdgeIndex(TRI_idx_iid_t iid,
                                         {{AttributeName(attr, false)}}),
                    false, false, RocksDBColumnFamily::edge(),
                    basics::VelocyPackHelper::stringUInt64(info, "objectId"),
-                   //! ServerState::instance()->isCoordinator() /*useCache*/),
-                   /*useCache*/ false),
+                   ! ServerState::instance()->isCoordinator() /*useCache*/),
       _directionAttr(attr),
       _isFromIndex(attr == StaticStrings::FromString),
       _estimator(nullptr) {
