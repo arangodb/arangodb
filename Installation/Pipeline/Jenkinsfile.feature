@@ -7,50 +7,69 @@ properties(
     ]]
 )
 
+def defaultLinux = true
+def defaultMac = false
+def defaultWindows = false
+def defaultCleanBuild = false
+def defaultCommunity = true
+def defaultEnterprise = false
+def defaultJslint = true
+def defaultRunResilience = false
+def defaultRunTests = true
+def defaultSkipTestsOnError = true
+
+if (env.BRANCH_NAME == "devel") {
+    def defaultMac = false
+    def defaultWindows = false
+    def defaultEnterprise = false
+    def defaultRunResilience = false
+    def defaultSkipTestsOnError = false
+}
+
 properties([
     parameters([
         booleanParam(
-            defaultValue: true,
+            defaultValue: defaultLinux,
             description: 'build and run tests on Linux',
             name: 'Linux'
         ),
         booleanParam(
-            defaultValue: false,
+            defaultValue: defaultMac,
             description: 'build and run tests on Mac',
             name: 'Mac'
         ),
         booleanParam(
-            defaultValue: false,
+            defaultValue: defaultWindows,
             description: 'build and run tests in Windows',
             name: 'Windows'
         ),
         booleanParam(
-            defaultValue: false,
+            defaultValue: defaultCleanBuild,
             description: 'clean build directories',
             name: 'cleanBuild'
         ),
         booleanParam(
-            defaultValue: true,
+            defaultValue: defaultCommunity,
             description: 'build and run tests for community',
-            name: 'buildCommunity'
+            name: 'Community'
         ),
         booleanParam(
-            defaultValue: false,
+            defaultValue: defaultEnterprise,
             description: 'build and run tests for enterprise',
-            name: 'buildEnterprise'
+            name: 'Enterprise'
         ),
         booleanParam(
-            defaultValue: false,
+            defaultValue: defaultJslint,
             description: 'run jslint',
             name: 'runJslint'
         ),
         booleanParam(
-            defaultValue: false,
+            defaultValue: defaultRunResilience,
             description: 'run resilience tests',
             name: 'runResilience'
         ),
         booleanParam(
-            defaultValue: true,
+            defaultValue: defaultRunTests,
             description: 'run tests',
             name: 'runTests'
         )
@@ -64,10 +83,10 @@ cleanBuild = params.cleanBuild
 buildFull = false
 
 // build community
-buildCommunity = params.buildCommunity
+useCommunity = params.Community
 
 // build enterprise
-buildEnterprise = params.buildEnterprise
+useEnterprise = params.Enterprise
 
 // build linux
 useLinux = params.Linux
@@ -86,6 +105,9 @@ runResilience = params.runResilience
 
 // run tests
 runTests = params.runTests
+
+// skip tests on previous error
+skipTestsOnError = defaultSkipTestsOnError
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                             CONSTANTS AND HELPERS
@@ -252,8 +274,8 @@ Linux: ${useLinux}
 Mac: ${useMac}
 Windows: ${useWindows}
 Clean Build: ${cleanBuild}
-Building Community: ${buildCommunity}
-Building Enterprise: ${buildEnterprise}
+Building Community: ${useCommunity}
+Building Enterprise: ${useEnterprise}
 Running Jslint: ${runJslint}
 Running Resilience: ${runResilience}
 Running Tests: ${runTests}"""
@@ -414,11 +436,11 @@ def buildStepCheck(edition, os, full) {
         return false
     }
 
-    if (edition == 'enterprise' && ! buildEnterprise) {
+    if (edition == 'enterprise' && ! useEnterprise) {
         return false
     }
 
-    if (edition == 'community' && ! buildCommunity) {
+    if (edition == 'community' && ! useCommunity) {
         return false
     }
 
@@ -567,11 +589,11 @@ def testCheck(edition, os, mode, engine, full) {
         return false
     }
 
-    if (edition == 'enterprise' && ! buildEnterprise) {
+    if (edition == 'enterprise' && ! useEnterprise) {
         return false
     }
 
-    if (edition == 'community' && ! buildCommunity) {
+    if (edition == 'community' && ! useCommunity) {
         return false
     }
 
@@ -674,7 +696,7 @@ def testResilienceCheck(os, engine, foxx, full) {
         return false
     }
 
-    if (! buildCommunity) {
+    if (! useCommunity) {
         return false
     }
 
@@ -780,7 +802,7 @@ catch (exc) {
 
 try {
     stage('tests mac') {
-        if (allTestsSuccessful) {
+        if (allTestsSuccessful || ! skipTestsOnError) {
             testStepParallel(['mac'], ['cluster', 'singleserver'])
         }
     }
@@ -802,7 +824,7 @@ catch (exc) {
 
 try {
     stage('tests windows') {
-        if (allTestsSuccessful) {
+        if (allTestsSuccessful || ! skipTestsOnError) {
             testStepParallel(['windows'], ['cluster', 'singleserver'])
         }
     }
