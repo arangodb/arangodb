@@ -93,7 +93,7 @@ bool Mutex::tryLock() {
   int rc = pthread_mutex_trylock(&_mutex);
 
   if (rc != 0) {
-    if (rc == EBUSY) {  // lock is already beeing held
+    if (rc == EBUSY) {  // lock is already being held
       return false;
     } else if (rc == EDEADLK) {
       LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "mutex deadlock detected";
