@@ -77,7 +77,9 @@ class ReadUnlocker {
 #else
 
   explicit ReadUnlocker(ReadWriteLock* readWriteLock)
-      : _readWriteLock(readWriteLock) {}
+      : _readWriteLock(readWriteLock) {
+        _readWriteLock->unlock();
+      }
 
 #endif
 

@@ -36,6 +36,7 @@
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
 #include "RestServer/DatabaseFeature.h"
+#include "RestServer/FeatureCacheFeature.h"
 #include "Scheduler/Scheduler.h"
 #include "Scheduler/SchedulerFeature.h"
 #include "SimpleHttpClient/ConnectionManager.h"
@@ -238,11 +239,8 @@ void ClusterFeature::prepare() {
 
   if (agency->isEnabled() || _enableCluster) {
     startClusterComm = true;
-    auto authenticationFeature =
-      application_features::ApplicationServer::getFeature<AuthenticationFeature>(
-        "Authentication");
-
-    if (authenticationFeature->isEnabled() && !authenticationFeature->hasUserdefinedJwt()) {
+    auto authentication = FeatureCacheFeature::instance()->authenticationFeature();
+    if (authentication->isActive() && !authentication->hasUserdefinedJwt()) {
       LOG_TOPIC(FATAL, arangodb::Logger::CLUSTER) << "Cluster authentication enabled but jwt not set via command line. Please"
         << " provide --server.jwt-secret which is used throughout the cluster.";
       FATAL_ERROR_EXIT();

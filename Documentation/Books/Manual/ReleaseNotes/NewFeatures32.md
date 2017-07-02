@@ -352,6 +352,16 @@ Authentication
 * added [LDAP](../Administration/Configuration/Ldap.md) authentication (Enterprise only)
 
 
+Authorization
+--------------
+
+* added read only mode for users
+* collection level authorization rights
+
+Read more in the [overview](../Administration/ManagingUsers/README.md)
+and about the new [authorization Model](../Administration/ManagingUsers/AuthorizationModel.md)
+
+
 Foxx
 ----
 

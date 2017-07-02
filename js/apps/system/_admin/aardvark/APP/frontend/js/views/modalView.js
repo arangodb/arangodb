@@ -539,5 +539,6 @@
       this.clearValidators();
       $('#modal-dialog').modal('hide');
     }
+
   });
 }());

@@ -42,6 +42,11 @@ devel
 
 * fixed issue #2613: Reduce log level when Foxx manager tries to self heal missing database
 
+* add a read only mode for users and collection level authorization
+
+* removed `exception` field from transaction error result; users should throw
+  explicit `Error` instances to return custom exceptions (addresses issue #2561)
+
 * fixed issue #2677: Foxx disabling development mode creates non-deterministic service bundle
 
 * fixed issue #2684: Legacy service UI not working

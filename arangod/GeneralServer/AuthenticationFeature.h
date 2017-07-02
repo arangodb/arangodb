@@ -44,6 +44,8 @@ class AuthenticationFeature final
   void start() override final;
   void stop() override final;
   void unprepare() override final;
+      
+  bool isActive() const { return _active && isEnabled(); }
 
  private:
   AuthInfo _authInfo;
@@ -62,6 +64,8 @@ class AuthenticationFeature final
   void setJwtSecret(std::string const& jwtSecret) { authInfo()->setJwtSecret(jwtSecret); }
   AuthInfo* authInfo();
   AuthLevel canUseDatabase(std::string const& username, std::string const& dbname);
+  AuthLevel canUseCollection(std::string const& username, std::string const& dbname,
+                             std::string const& collection);
   AuthenticationHandler* getHandler();
 };
 };

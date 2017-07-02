@@ -31,6 +31,7 @@
 #include "Cluster/ServerState.h"
 #include "Cluster/ClusterComm.h"
 #include "GeneralServer/AuthenticationFeature.h"
+#include "RestServer/FeatureCacheFeature.h"
 #include "V8/v8-buffer.h"
 #include "V8/v8-conv.h"
 #include "V8/v8-globals.h"
@@ -1884,10 +1885,9 @@ static void JS_GetId(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
 static void JS_ClusterDownload(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
-  AuthenticationFeature* authentication =
-      application_features::ApplicationServer::getFeature<AuthenticationFeature>("Authentication");
   
-  if (authentication->isEnabled()) {
+  auto authentication = FeatureCacheFeature::instance()->authenticationFeature();
+  if (authentication->isActive()) {
     // mop: really quick and dirty
     v8::Handle<v8::Object> options = v8::Object::New(isolate);
     v8::Handle<v8::Object> headers = v8::Object::New(isolate);

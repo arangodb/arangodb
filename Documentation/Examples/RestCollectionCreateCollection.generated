@@ -6,11 +6,11 @@ EOF
 
 HTTP/<span class="hljs-number">1.1</span> <span class="hljs-number">200</span> OK
 content-type: application/json; charset=utf<span class="hljs-number">-8</span>
-location: <span class="hljs-regexp">/_db/</span>_system/_api/collection/testCollectionBasics
 x-content-type-options: nosniff
+location: <span class="hljs-regexp">/_db/</span>_system/_api/collection/testCollectionBasics
 
 { 
-  <span class="hljs-string">"id"</span> : <span class="hljs-string">"9196"</span>, 
+  <span class="hljs-string">"id"</span> : <span class="hljs-string">"9162"</span>, 
   <span class="hljs-string">"name"</span> : <span class="hljs-string">"testCollectionBasics"</span>, 
   <span class="hljs-string">"waitForSync"</span> : <span class="hljs-literal">false</span>, 
   <span class="hljs-string">"isVolatile"</span> : <span class="hljs-literal">false</span>, 
@@ -29,11 +29,11 @@ EOF
 
 HTTP/<span class="hljs-number">1.1</span> <span class="hljs-number">200</span> OK
 content-type: application/json; charset=utf<span class="hljs-number">-8</span>
-location: <span class="hljs-regexp">/_db/</span>_system/_api/collection/testCollectionEdges
 x-content-type-options: nosniff
+location: <span class="hljs-regexp">/_db/</span>_system/_api/collection/testCollectionEdges
 
 { 
-  <span class="hljs-string">"id"</span> : <span class="hljs-string">"9198"</span>, 
+  <span class="hljs-string">"id"</span> : <span class="hljs-string">"9164"</span>, 
   <span class="hljs-string">"name"</span> : <span class="hljs-string">"testCollectionEdges"</span>, 
   <span class="hljs-string">"waitForSync"</span> : <span class="hljs-literal">false</span>, 
   <span class="hljs-string">"isVolatile"</span> : <span class="hljs-literal">false</span>, 

@@ -65,11 +65,19 @@ RestStatus RestPregelHandler::execute() {
     } else if (suffix[0] == Utils::conductorPrefix) {
       VPackBuilder response;
       PregelFeature::handleConductorRequest(suffix[1], body, response);
-      generateResult(rest::ResponseCode::OK, response.slice());
+      if (response.isEmpty()) {
+        resetResponse(rest::ResponseCode::OK);
+      } else {
+        generateResult(rest::ResponseCode::OK, response.slice());
+      }
     } else if (suffix[0] == Utils::workerPrefix) {
       VPackBuilder response;
       PregelFeature::handleWorkerRequest(_vocbase, suffix[1], body, response);
-      generateResult(rest::ResponseCode::OK, response.slice());
+      if (response.isEmpty()) {
+        resetResponse(rest::ResponseCode::OK);
+      } else {
+        generateResult(rest::ResponseCode::OK, response.slice());
+      }
     } else {
       generateError(rest::ResponseCode::BAD,
                     TRI_ERROR_NOT_IMPLEMENTED, "the prefix is incorrect");

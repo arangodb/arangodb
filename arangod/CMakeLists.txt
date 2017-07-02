@@ -290,6 +290,7 @@ SET(ARANGOD_SOURCES
   RestHandler/RestSimpleHandler.cpp
   RestHandler/RestSimpleQueryHandler.cpp
   RestHandler/RestUploadHandler.cpp
+  RestHandler/RestUsersHandler.cpp
   RestHandler/RestVersionHandler.cpp
   RestHandler/RestViewHandler.cpp
   RestHandler/RestVocbaseBaseHandler.cpp
@@ -349,6 +350,7 @@ SET(ARANGOD_SOURCES
   Utils/CollectionNameResolver.cpp
   Utils/Cursor.cpp
   Utils/CursorRepository.cpp
+  Utils/ExecContext.cpp
   Utils/OperationCursor.cpp
   Utils/SingleCollectionTransaction.cpp
   Utils/WorkMonitorArangod.cpp
@@ -362,6 +364,7 @@ SET(ARANGOD_SOURCES
   V8Server/v8-query.cpp
   V8Server/v8-replication.cpp
   V8Server/v8-statistics.cpp
+  V8Server/v8-users.cpp
   V8Server/v8-user-structures.cpp
   V8Server/v8-util.cpp
   V8Server/v8-views.cpp
@@ -369,9 +372,11 @@ SET(ARANGOD_SOURCES
   V8Server/v8-voccursor.cpp
   V8Server/v8-vocindex.cpp
   Views/LoggerView.cpp
-  VocBase/Methods/Database.cpp
+  VocBase/Methods/Collections.cpp
+  VocBase/Methods/Databases.cpp
   VocBase/Methods/Indexes.cpp
   VocBase/AuthInfo.cpp
+  VocBase/AuthUserEntry.cpp
   VocBase/EdgeCollectionInfo.cpp
   VocBase/Graphs.cpp
   VocBase/KeyGenerator.cpp
