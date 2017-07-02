@@ -58,7 +58,7 @@ function endpoints (options) {
       if (platform.substr(0, 3) === 'win') {
         return undefined;
       }
-      return 'unix:///tmp/arangodb-tmp.sock';
+      return 'unix://./arangodb-tmp.sock';
     }
   };
 
