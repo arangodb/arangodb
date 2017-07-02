@@ -326,7 +326,6 @@ void RocksDBOptionFeature::start() {
     _numThreadsLow = rocksDBDefaults.max_background_compactions;
   }
 
-<<<<<<< HEAD
   LOG_TOPIC(TRACE, Logger::ROCKSDB) << "using RocksDB options:"
                                     << " wal_dir: " << _walDirectory << "'"
                                     << ", write_buffer_size: " << _writeBufferSize
