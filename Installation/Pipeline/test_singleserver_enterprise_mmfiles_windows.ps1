@@ -22,21 +22,30 @@ WorkFlow RunTests {
   Param ([int]$port)
 
   $minPort = $port
-  $portInterval = 40
+  $portInterval = 10
   $workspace = Get-Location
 
   $tests = @(
+    "agency",
+    @("boost", "boost", "--skipCache false"),
     "arangobench",
     "arangosh",
     "authentication",
     "authentication_parameters",
+    "cluster_sync",
     "config",
+    "dfdb",
     "dump",
     "dump_authentication",
     "endpoints",
+    @("http_replication","http_replication", "--rspec C:\tools\ruby23\bin\rspec.bat"),
     @("http_server","http_server", "--rspec C:\tools\ruby23\bin\rspec.bat"),
+    "replication_sync",
+    "replication_static",
+    "replication_ongoing",
     "server_http",
     "shell_client",
+    "shell_replication",
     "shell_server",
     @("shell_server_aql_1", "shell_server_aql","--testBuckets 4/0"),
     @("shell_server_aql_2", "shell_server_aql","--testBuckets 4/1"),
@@ -66,7 +75,7 @@ WorkFlow RunTests {
 
         Set-Location $USING:workspace
         Start-Transcript -Path $USING:log
-        .\build\bin\arangosh.exe --log.level warning --javascript.execute UnitTests\unittest.js $USING:test -- --cluster true --minPort $USING:minPort --maxPort $USING:maxPort --skipNondeterministic true --skipTimeCritical true  --configDir etc/jenkins --skipLogAnalysis true $USING:testargs
+        .\build\bin\arangosh.exe --log.level warning --javascript.execute UnitTests\unittest.js $USING:test -- --minPort $USING:minPort --maxPort $USING:maxPort --skipNondeterministic true --skipTimeCritical true  --configDir etc/jenkins --skipLogAnalysis true $USING:testargs
         Stop-Transcript
       }
 
