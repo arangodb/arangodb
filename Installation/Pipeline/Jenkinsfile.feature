@@ -19,11 +19,11 @@ def defaultRunTests = true
 def defaultSkipTestsOnError = true
 
 if (env.BRANCH_NAME == "devel") {
-    def defaultMac = false
-    def defaultWindows = false
-    def defaultEnterprise = false
-    def defaultRunResilience = false
-    def defaultSkipTestsOnError = false
+    defaultMac = false
+    defaultWindows = false
+    defaultEnterprise = false
+    defaultRunResilience = false
+    defaultSkipTestsOnError = false
 }
 
 properties([
