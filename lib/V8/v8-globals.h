@@ -378,6 +378,9 @@ struct TRI_v8_global_t {
 
   /// @brief TRI_vocbase_t template
   v8::Persistent<v8::ObjectTemplate> EnvTempl;
+  
+  /// @brief users template
+  v8::Persistent<v8::ObjectTemplate> UsersTempl;
 
   /// @brief Buffer template
   v8::Persistent<v8::FunctionTemplate> BufferTempl;

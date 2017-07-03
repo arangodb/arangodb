@@ -50,6 +50,7 @@ RocksDBOptionFeature::RocksDBOptionFeature(
     : application_features::ApplicationFeature(server, "RocksDBOption"),
       _writeBufferSize(rocksDBDefaults.write_buffer_size),
       _maxWriteBufferNumber(rocksDBDefaults.max_write_buffer_number),
+      _maxTotalWalSize(80 << 20),
       _delayedWriteRate(rocksDBDefaults.delayed_write_rate),
       _minWriteBufferNumberToMerge(
           rocksDBDefaults.min_write_buffer_number_to_merge),
@@ -74,13 +75,14 @@ RocksDBOptionFeature::RocksDBOptionFeature(
       _level0CompactionTrigger(2),
       _level0SlowdownTrigger(rocksDBDefaults.level0_slowdown_writes_trigger),
       _level0StopTrigger(rocksDBDefaults.level0_stop_writes_trigger),
-      //_verifyChecksumsInCompaction( rocksDBDefaults.verify_checksums_in_compaction),
+      _enablePipelinedWrite(rocksDBDefaults.enable_pipelined_write),
       _optimizeFiltersForHits(rocksDBDefaults.optimize_filters_for_hits),
       _useDirectReads(rocksDBDefaults.use_direct_reads),
-      //_useDirectWrites(rocksDBDefaults.use_direct_writes),
+      _useDirectIoForFlushAndCompaction(rocksDBDefaults.use_direct_io_for_flush_and_compaction),
       _useFSync(rocksDBDefaults.use_fsync),
       _skipCorrupted(false),
-      _dynamicLevelBytes(true) {
+      _dynamicLevelBytes(true),
+      _enableStatistics(false) {
   uint64_t testSize = _blockCacheSize >> 19;
   while (testSize > 0) {
     _blockCacheShardBits++;
@@ -102,6 +104,11 @@ void RocksDBOptionFeature::collectOptions(
                              "RocksDB engine is enabled for the persistent "
                              "index",
                              true);
+  
+  options->addOption("--rocksdb.wal-directory",
+                     "optional path to the RocksDB WAL directory. "
+                     "If not set, the WAL directory will be located inside the regular data directory",
+                     new StringParameter(&_walDirectory));
 
   options->addOption("--rocksdb.write-buffer-size",
                      "amount of data to build up in memory before converting "
@@ -111,6 +118,10 @@ void RocksDBOptionFeature::collectOptions(
   options->addOption("--rocksdb.max-write-buffer-number",
                      "maximum number of write buffers that built up in memory",
                      new UInt64Parameter(&_maxWriteBufferNumber));
+  
+  options->addOption("--rocksdb.max-total-wal-size",
+                     "maximum total size of WAL files that will force flush stale column families",
+                     new UInt64Parameter(&_maxTotalWalSize));
 
   options->addHiddenOption(
       "--rocksdb.delayed_write_rate",
@@ -151,11 +162,13 @@ void RocksDBOptionFeature::collectOptions(
                      "(max-bytes-for-level-multiplier ^ (L-1))",
                      new DoubleParameter(&_maxBytesForLevelMultiplier));
 
-  //options->addHiddenOption(
-  //    "--rocksdb.verify-checksums-in-compaction",
-  //    "if true, compaction will verify checksum on every read that happens "
-  //    "as part of compaction",
-  //    new BooleanParameter(&_verifyChecksumsInCompaction));
+  options->addOption("--rocksdb.enable-pipelined-write",
+                     "if true, use a two stage write queue for WAL writes and memtable writes",
+                     new BooleanParameter(&_enablePipelinedWrite));
+  
+  options->addOption("--rocksdb.enable-statistics",
+                     "whether or not RocksDB statistics should be turned on",
+                     new BooleanParameter(&_enableStatistics));
 
   options->addHiddenOption(
       "--rocksdb.optimize-filters-for-hits",
@@ -171,9 +184,9 @@ void RocksDBOptionFeature::collectOptions(
                            "use O_DIRECT for reading files",
                            new BooleanParameter(&_useDirectReads));
 
-  //options->addHiddenOption("--rocksdb.use-direct-writes",
-  //                         "use O_DIRECT for writing files",
-  //                         new BooleanParameter(&_useDirectWrites));
+  options->addHiddenOption("--rocksdb.use-direct-io-for-flush-and-compaction",
+                           "use O_DIRECT for flush and compaction",
+                           new BooleanParameter(&_useDirectIoForFlushAndCompaction));
 #endif
 
   options->addHiddenOption("--rocksdb.use-fsync",
@@ -313,25 +326,34 @@ void RocksDBOptionFeature::start() {
     _numThreadsLow = rocksDBDefaults.max_background_compactions;
   }
 
-  LOG_TOPIC(TRACE, Logger::FIXME) << "using RocksDB options:"
-                                  << " write_buffer_size: " << _writeBufferSize
-                                  << " max_write_buffer_number: " << _maxWriteBufferNumber
-                                  << " delayed_write_rate: " << _delayedWriteRate
-                                  << " min_write_buffer_number_to_merge: " << _minWriteBufferNumberToMerge
-                                  << " num_levels: " << _numLevels
-                                  << " max_bytes_for_level_base: " << _maxBytesForLevelBase
-                                  << " max_bytes_for_level_multiplier: " << _maxBytesForLevelMultiplier
-                                  << " base_background_compactions: " << _baseBackgroundCompactions
-                                  << " max_background_compactions: " << _maxBackgroundCompactions
-                                  << " max_flushes: " << _maxFlushes
-                                  << " num_threads_high: " << _numThreadsHigh
-                                  << " num_threads_low: " << _numThreadsLow
-                                  << " block_cache_size: " << _blockCacheSize
-                                  << " block_cache_shard_bits: " << _blockCacheShardBits
-                                  << " compaction_read_ahead_size: " << _compactionReadaheadSize
-                                  //<< " verify_checksums_in_compaction: " << std::boolalpha << _verifyChecksumsInCompaction
-                                  << " optimize_filters_for_hits: " << std::boolalpha << _optimizeFiltersForHits
-                                  << " use_direct_reads: " << std::boolalpha << _useDirectReads
-                                  //<< " use_direct_writes: " << std::boolalpha << _useDirectWrites
-                                  << " use_fsync: " << std::boolalpha << _useFSync;
+  LOG_TOPIC(TRACE, Logger::ROCKSDB) << "using RocksDB options:"
+                                    << " wal_dir: " << _walDirectory << "'"
+                                    << ", write_buffer_size: " << _writeBufferSize
+                                    << ", max_write_buffer_number: " << _maxWriteBufferNumber
+                                    << ", max_total_wal_size: " << _maxTotalWalSize
+                                    << ", delayed_write_rate: " << _delayedWriteRate
+                                    << ", min_write_buffer_number_to_merge: " << _minWriteBufferNumberToMerge
+                                    << ", num_levels: " << _numLevels
+                                    << ", num_uncompressed_levels: " << _numUncompressedLevels
+                                    << ", max_bytes_for_level_base: " << _maxBytesForLevelBase
+                                    << ", max_bytes_for_level_multiplier: " << _maxBytesForLevelMultiplier
+                                    << ", base_background_compactions: " << _baseBackgroundCompactions
+                                    << ", max_background_compactions: " << _maxBackgroundCompactions
+                                    << ", max_sub_compactions: " << _maxSubcompactions
+                                    << ", max_flushes: " << _maxFlushes
+                                    << ", num_threads_high: " << _numThreadsHigh
+                                    << ", num_threads_low: " << _numThreadsLow
+                                    << ", block_cache_size: " << _blockCacheSize
+                                    << ", block_cache_shard_bits: " << _blockCacheShardBits
+                                    << ", table_block_size: " << _tableBlockSize
+                                    << ", recycle_log_file_num: " << _recycleLogFileNum 
+                                    << ", compaction_read_ahead_size: " << _compactionReadaheadSize
+                                    << ", level0_compaction_trigger: " << _level0CompactionTrigger
+                                    << ", level0_slowdown_trigger: " << _level0SlowdownTrigger
+                                    << ", enable_pipelined_write: " << _enablePipelinedWrite
+                                    << ", optimize_filters_for_hits: " << _optimizeFiltersForHits
+                                    << ", use_direct_reads: " << _useDirectReads
+                                    << ", use_direct_io_for_flush_and_compaction: " << _useDirectIoForFlushAndCompaction
+                                    << ", use_fsync: " << _useFSync
+                                    << ", dynamic_level_bytes: " << std::boolalpha << _dynamicLevelBytes;
 }

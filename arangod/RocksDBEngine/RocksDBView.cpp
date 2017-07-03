@@ -29,6 +29,7 @@
 #include "Basics/WriteLocker.h"
 #include "Logger/Logger.h"
 #include "RocksDBEngine/RocksDBCommon.h"
+#include "RocksDBEngine/RocksDBColumnFamily.h"
 #include "RocksDBEngine/RocksDBEngine.h"
 #include "RocksDBEngine/RocksDBKey.h"
 #include "RocksDBEngine/RocksDBValue.h"
@@ -80,8 +81,9 @@ void RocksDBView::drop() {
   auto key =
       RocksDBKey::View(_logicalView->vocbase()->id(), _logicalView->id());
 
+  rocksdb::WriteOptions options;  // TODO: check which options would make sense
   auto status = rocksutils::convertStatus(
-      db->Delete(rocksdb::WriteOptions(), key.string()));
+      db->Delete(options, RocksDBColumnFamily::other(), key.string()));
   if (!status.ok()) {
     THROW_ARANGO_EXCEPTION(status.errorNumber());
   }
@@ -94,6 +96,7 @@ arangodb::Result RocksDBView::updateProperties(VPackSlice const& slice,
 }
 
 arangodb::Result RocksDBView::persistProperties() {
+  auto db = rocksutils::globalRocksDB();
   auto key =
       RocksDBKey::View(_logicalView->vocbase()->id(), _logicalView->id());
 
@@ -103,7 +106,11 @@ arangodb::Result RocksDBView::persistProperties() {
   infoBuilder.close();
   auto value = RocksDBValue::View(infoBuilder.slice());
 
-  return rocksutils::globalRocksDBPut(key.string(), value.string());
+  rocksdb::WriteOptions options;  // TODO: check which options would make sense
+  rocksdb::Status res = db->Put(options, RocksDBColumnFamily::other(),
+                                key.string(), value.string());
+
+  return rocksutils::convertStatus(res);
 }
 
 PhysicalView* RocksDBView::clone(LogicalView* logical, PhysicalView* physical) {

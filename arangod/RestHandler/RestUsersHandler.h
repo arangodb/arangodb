@@ -20,30 +20,36 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_VOC_BASE_API_DATABASE_H
-#define ARANGOD_VOC_BASE_API_DATABASE_H 1
+#ifndef ARANGOD_REST_HANDLER_REST_USERS_HANDLER_H
+#define ARANGOD_REST_HANDLER_REST_USERS_HANDLER_H 1
 
-#include <velocypack/Builder.h>
-#include <velocypack/Slice.h>
-#include "Basics/Result.h"
-
-struct TRI_vocbase_t;
+#include "RestHandler/RestBaseHandler.h"
 
 namespace arangodb {
-namespace methods {
+class AuthInfo;
 
-/// Common code for the db._database(),
-struct Database {
-  static std::vector<std::string> list(std::string const& user = "");
-  static arangodb::Result info(TRI_vocbase_t* vocbase,
-                               arangodb::velocypack::Builder& result);
-  static arangodb::Result create(std::string const& dbName,
-                                 arangodb::velocypack::Slice const& users,
-                                 arangodb::velocypack::Slice const& options);
-  static arangodb::Result drop(TRI_vocbase_t* systemVocbase,
-                               std::string const&);
+class RestUsersHandler : public arangodb::RestBaseHandler {
+ public:
+  RestUsersHandler(GeneralRequest*, GeneralResponse*);
+
+ public:
+  virtual char const* name() const override { return "RestUsersHandler"; }
+  bool isDirect() const override { return true; }
+  RestStatus execute() override;
+
+ private:
+  bool isSystemUser() const;
+  bool canAccessUser(std::string const& user) const;
+
+  /// helper to generate a compliant response for individual user requests
+  void generateUserResult(rest::ResponseCode code, VPackBuilder const& doc);
+
+  RestStatus getRequest(AuthInfo*);
+  RestStatus postRequest(AuthInfo*);
+  RestStatus putRequest(AuthInfo*);
+  RestStatus patchRequest(AuthInfo*);
+  RestStatus deleteRequest(AuthInfo*);
 };
-}
 }
 
 #endif

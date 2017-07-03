@@ -3,6 +3,8 @@
 Pregel Subsystem
 ========
 
+The pregel subsystem implements a variety of different grapg algorithms, 
+this readme is more intended for internal use.
 
 #### Protocol
 

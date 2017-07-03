@@ -172,6 +172,8 @@ RocksDBVPackIndex::RocksDBVPackIndex(TRI_idx_iid_t iid,
                                      arangodb::LogicalCollection* collection,
                                      arangodb::velocypack::Slice const& info)
     : RocksDBIndex(iid, collection, info, RocksDBColumnFamily::index(), false),
+      _deduplicate(arangodb::basics::VelocyPackHelper::getBooleanValue(
+          info, "deduplicate", true)),
       _useExpansion(false),
       _allowPartialIndex(true),
       _estimator(nullptr) {
@@ -232,6 +234,7 @@ void RocksDBVPackIndex::toVelocyPack(VPackBuilder& builder, bool withFigures,
   RocksDBIndex::toVelocyPack(builder, withFigures, forPersistence);
   builder.add("unique", VPackValue(_unique));
   builder.add("sparse", VPackValue(_sparse));
+  builder.add("deduplicate", VPackValue(_deduplicate));
   builder.close();
 }
 
@@ -452,6 +455,8 @@ void RocksDBVPackIndex::buildIndexValues(VPackBuilder& leased,
       buildIndexValues(leased, revisionId, doc, level + 1, elements, sliceStack,
                        hashes);
       sliceStack.pop_back();
+    } else if (_unique && !_deduplicate) {
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED);
     }
   };
   for (auto const& member : VPackArrayIterator(current)) {
@@ -518,6 +523,8 @@ Result RocksDBVPackIndex::insert(transaction::Methods* trx,
   try {
     transaction::BuilderLeaser leased(trx);
     res = fillElement(*(leased.get()), revisionId, doc, elements, hashes);
+  } catch (basics::Exception const& ex) {
+    res = ex.code();
   } catch (...) {
     res = TRI_ERROR_OUT_OF_MEMORY;
   }
@@ -586,6 +593,8 @@ int RocksDBVPackIndex::insertRaw(RocksDBMethods* batch,
   try {
     VPackBuilder leased;
     res = fillElement(leased, revisionId, doc, elements, hashes);
+  } catch (basics::Exception const& ex) {
+    res = ex.code();
   } catch (...) {
     return TRI_ERROR_OUT_OF_MEMORY;
   }
@@ -630,6 +639,8 @@ Result RocksDBVPackIndex::remove(transaction::Methods* trx,
   try {
     transaction::BuilderLeaser leased(trx);
     res = fillElement(*(leased.get()), revisionId, doc, elements, hashes);
+  } catch (basics::Exception const& ex) {
+    res = ex.code();
   } catch (...) {
     res = TRI_ERROR_OUT_OF_MEMORY;
   }
@@ -667,6 +678,8 @@ int RocksDBVPackIndex::removeRaw(RocksDBMethods* writeBatch,
   try {
     VPackBuilder leased;
     res = fillElement(leased, revisionId, doc, elements, hashes);
+  } catch (basics::Exception const& ex) {
+    res = ex.code();
   } catch (...) {
     res = TRI_ERROR_OUT_OF_MEMORY;
   }
@@ -1031,17 +1044,11 @@ bool RocksDBVPackIndex::supportsFilterCondition(
 
   if (attributesCoveredByEquality == _fields.size() && unique()) {
     // index is unique and condition covers all attributes by equality
-    if (estimatedItems >= values) {
-      // reduce costs due to uniqueness
-      estimatedItems = values;
-      estimatedCost = static_cast<double>(estimatedItems);
-    } else {
-      // cost is already low... now slightly prioritize the unique index
-      estimatedCost *= 0.995;
-    }
+    estimatedItems = values;
+    estimatedCost = 0.995 * values;
     return true;
   }
-
+    
   if (attributesCovered > 0 &&
       (!_sparse || attributesCovered == _fields.size())) {
     // if the condition contains at least one index attribute and is not
@@ -1051,7 +1058,16 @@ bool RocksDBVPackIndex::supportsFilterCondition(
     // sparse indexes are contained in Index::canUseConditionPart)
     estimatedItems = static_cast<size_t>((std::max)(
         static_cast<size_t>(estimatedCost * values), static_cast<size_t>(1)));
-    estimatedCost *= static_cast<double>(values);
+ 
+    // check if the index has a selectivity estimate ready 
+    if (attributesCoveredByEquality == _fields.size()) {
+      StringRef ignore;
+      double estimate = this->selectivityEstimate(&ignore);
+      if (estimate > 0.0) {
+        estimatedItems = static_cast<size_t>(1.0 / estimate);
+      }
+    } 
+    estimatedCost = static_cast<double>(estimatedItems);
     return true;
   }
 

@@ -144,8 +144,6 @@ int main() {
 " HAVE_SSE42)
 
 ## fail if force sse is enabled but the compiler is not capable
-message(info "HAVE_SSE42: ${HAVE_SSE42}")
-message(info "FORCE_SSE42: ${HAVE_SSE42}")
 if(FORCE_SSE42 AND NOT HAVE_SSE42)
   message(FATAL_ERROR "FORCE_SSE42=ON but unable to compile with SSE4.2 enabled")
 endif()

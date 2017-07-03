@@ -1,6 +1,24 @@
 devel
 -----
 
+* added "deduplicate" attribute for array indexes, which controls whether inserting
+  duplicate index values from the same document into a unique array index will lead to
+  an error or not:
+
+      // with deduplicate = true, which is the default value:
+      db._create("test");
+      db.test.ensureIndex({ type: "hash", fields: ["tags[*]"], deduplicate: true });
+      db.test.insert({ tags: ["a", "b"] });
+      db.test.insert({ tags: ["c", "d", "c"] }); // will work, because deduplicate = true
+      db.test.insert({ tags: ["a"] }); // will fail
+      
+      // with deduplicate = false
+      db._create("test");
+      db.test.ensureIndex({ type: "hash", fields: ["tags[*]"], deduplicate: false });
+      db.test.insert({ tags: ["a", "b"] });
+      db.test.insert({ tags: ["c", "d", "c"] }); // will not work, because deduplicate = false
+      db.test.insert({ tags: ["a"] }); // will fail
+
 * fix log output in the front-end, it stop of too many messages
 
 * potentially fixed issue #2559: Duplicate _key generated on insertion
@@ -24,9 +42,15 @@ devel
 
 * fixed issue #2613: Reduce log level when Foxx manager tries to self heal missing database
 
+* add a read only mode for users and collection level authorization
+
+* removed `exception` field from transaction error result; users should throw
+  explicit `Error` instances to return custom exceptions (addresses issue #2561)
+
 * fixed issue #2677: Foxx disabling development mode creates non-deterministic service bundle
 
 * fixed issue #2684: Legacy service UI not working
+
 
 v3.2.beta1 (2017-06-12)
 -----------------------

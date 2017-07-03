@@ -401,7 +401,7 @@ static bool checkPathVariableAccessFeasible(Ast* ast, AstNode* parent,
     if (patternStep == 5) {
       // The first item is direct child of the parent.
       // Use parent to replace
-      // This is only the case on Expansion beeing
+      // This is only the case on Expansion being
       // the node we have to replace.
       TRI_ASSERT(parentOfReplace->type == NODE_TYPE_EXPANSION);
       if (parentOfReplace != node->getMemberUnchecked(0)) {

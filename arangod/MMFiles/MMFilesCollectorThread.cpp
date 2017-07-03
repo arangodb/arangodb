@@ -739,12 +739,6 @@ int MMFilesCollectorThread::collect(MMFilesWalLogfile* logfile) {
   // transactions
   CollectorState state;
   state.failedTransactions = TransactionManagerFeature::manager()->getFailedTransactions();
-  /*
-    if (_inRecovery) {
-      state.droppedCollections = _logfileManager->getDroppedCollections();
-      state.droppedDatabases   = _logfileManager->getDroppedDatabases();
-    }
-  */
 
   // scan all markers in logfile, this will fill the state
   bool result =

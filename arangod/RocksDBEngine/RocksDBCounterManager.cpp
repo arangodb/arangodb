@@ -312,9 +312,10 @@ Result RocksDBCounterManager::sync(bool force) {
 void RocksDBCounterManager::readSettings() {
   RocksDBKey key = RocksDBKey::SettingsValue();
 
-  std::string result;
+  rocksdb::PinnableSlice result;
   rocksdb::Status status =
-      _db->Get(rocksdb::ReadOptions(), key.string(), &result);
+      _db->Get(rocksdb::ReadOptions(), RocksDBColumnFamily::other(),
+               key.string(), &result);
   if (status.ok()) {
     // key may not be there, so don't fail when not found
     VPackSlice slice = VPackSlice(result.data());
@@ -531,9 +532,9 @@ public:
     if (keyValue == 0) {
       return;
     }
-    
+
     auto it = _generators->find(objectId);
-    
+
     if (it == _generators->end()) {
       try {
         _generators->emplace(objectId, keyValue);
@@ -596,8 +597,8 @@ public:
     } else if (type == RocksDBEntryType::Database) {
       storeMaxTick(RocksDBKey::databaseId(key));
     } else if (type == RocksDBEntryType::View) {
-      LOG_TOPIC(ERR, Logger::STARTUP)
-          << "tick update for views needs to be implemented";
+      storeMaxTick(std::max(RocksDBKey::databaseId(key),
+                            RocksDBKey::viewId(key)));
     }
   }
 

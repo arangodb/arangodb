@@ -44,6 +44,8 @@ var vertex = {};
 var edge = {};
 var vc;
 var ec;
+var mmfilesEngine = (db._engine().name === "mmfiles");
+var rocksDBEngine = (db._engine().name === "rocksdb");
 
 var cleanup = function () {
   db._drop(vn);
@@ -77,26 +79,26 @@ function limitSuite () {
   return {
 
     setUpAll: function() {
-      db._drop(gn + "v"); 
+      db._drop(gn + "v");
       db._drop(gn + "e");
       db._drop(gn + "e2");
-      
+
       var i;
 
-      var c = db._create(gn + "v"); 
+      var c = db._create(gn + "v");
       for (i = 0; i < 10000; ++i) {
-        c.insert({_key: "test" + i }); 
+        c.insert({_key: "test" + i });
       }
 
       c = db._createEdgeCollection(gn + "e");
       for (i = 0; i < 10000; ++i) {
-        c.insert({ _from: gn + "v/test" + i, _to: gn + "v/test" + i }); 
+        c.insert({ _from: gn + "v/test" + i, _to: gn + "v/test" + i });
       }
-        
+
       c = db._createEdgeCollection(gn + "e2");
-      c.insert({ _from: gn + "v/test1", _to: gn + "v/test0" }); 
-      c.insert({ _from: gn + "v/test2", _to: gn + "v/test0" }); 
-      c.insert({ _from: gn + "v/test2", _to: gn + "v/test1" }); 
+      c.insert({ _from: gn + "v/test1", _to: gn + "v/test0" });
+      c.insert({ _from: gn + "v/test2", _to: gn + "v/test0" });
+      c.insert({ _from: gn + "v/test2", _to: gn + "v/test1" });
     },
 
     tearDownAll: function () {
@@ -104,7 +106,7 @@ function limitSuite () {
       db._drop(gn + "e");
       db._drop(gn + "e2");
     },
-    
+
     testLimits: function() {
       var queries = [
         [ "FOR v IN " + gn + "v FOR e IN 1..1 OUTBOUND v._id " + gn + "e LIMIT 0, 10000 RETURN e", 10000 ], 
@@ -1898,12 +1900,13 @@ function complexFilteringSuite () {
       // 1 Primary (Tri1)
       // 1 Edge (Tri1->Tri2)
       // 1 Primary (Tri2)
-      if (isCluster) {
+
+      if(mmfilesEngine){
         assertEqual(stats.scannedIndex, 2);
+      } else {
+        assertEqual(stats.scannedIndex, 1);
       }
-      else {
-        assertEqual(stats.scannedIndex, 2);
-      }
+
       assertEqual(stats.filtered, 1);
     },
 
@@ -1986,7 +1989,11 @@ function complexFilteringSuite () {
         // 2 Primary lookup B,D
         // 2 Edge Lookups (2 B) (0 D)
         // 2 Primary Lookups (C, F)
-        assertEqual(stats.scannedIndex, 9);
+        if (mmfilesEngine) {
+          assertEqual(stats.scannedIndex, 9);
+        } else {
+          assertEqual(stats.scannedIndex, 5);
+        }
       }
       else {
         // 2 Edge Lookups (A)
@@ -2000,7 +2007,11 @@ function complexFilteringSuite () {
         // assertEqual(stats.scannedIndex, 9);
         
         // Without traverser-read-cache
-        assertEqual(stats.scannedIndex, 17);
+        if(mmfilesEngine){
+          assertEqual(stats.scannedIndex, 17);
+        } else {
+          assertEqual(stats.scannedIndex, 13);
+        }
       }
       // 1 Filter On D
       assertEqual(stats.filtered, 1);
@@ -2027,7 +2038,11 @@ function complexFilteringSuite () {
         // 1 Primary lookup A
         // 2 Primary lookup B,D
         // 4 Primary Lookups (C, F, E, G)
-        assertEqual(stats.scannedIndex, 13);
+        if (mmfilesEngine) {
+          assertEqual(stats.scannedIndex, 13);
+        } else {
+          assertEqual(stats.scannedIndex, 7);
+        }
       }
       else {
         // 2 Edge Lookups (A)
@@ -2041,7 +2056,11 @@ function complexFilteringSuite () {
         // assertEqual(stats.scannedIndex, 13);
 
         // With traverser-read-cache
-        assertEqual(stats.scannedIndex, 24);
+        if(mmfilesEngine){
+          assertEqual(stats.scannedIndex, 24);
+        } else {
+          assertEqual(stats.scannedIndex, 18);
+        }
       }
       // 2 Filter (B, C) too short
       // 2 Filter (E, G)
@@ -2069,7 +2088,11 @@ function complexFilteringSuite () {
         // 2 Primary lookup B,D
         // 2 Edge Lookups (0 B) (2 D)
         // 2 Primary Lookups (E, G)
-        assertEqual(stats.scannedIndex, 9);
+        if (mmfilesEngine) {
+          assertEqual(stats.scannedIndex, 9);
+        } else {
+          assertEqual(stats.scannedIndex, 5);
+        }
       }
       else {
         // 2 Edge Lookups (A)
@@ -2079,9 +2102,13 @@ function complexFilteringSuite () {
         // 1 Primary Lookups A -> D
         // With traverser-read-cache
         // assertEqual(stats.scannedIndex, 9);
-        
+
         // Without traverser-read-cache
-        assertEqual(stats.scannedIndex, 11);
+        if(mmfilesEngine){
+          assertEqual(stats.scannedIndex, 11);
+        } else {
+          assertEqual(stats.scannedIndex, 7);
+        }
       }
       // 2 Filter (B, D) too short
       // 2 Filter (E, G)
@@ -2108,7 +2135,11 @@ function complexFilteringSuite () {
         // 1 Primary (B)
         // 2 Edge
         // 2 Primary (C,F)
-        assertEqual(stats.scannedIndex, 8);
+        if (mmfilesEngine) {
+          assertEqual(stats.scannedIndex, 8);
+        } else {
+          assertEqual(stats.scannedIndex, 4);
+        }
       }
       else {
         // 2 Edge Lookups (A)
@@ -2118,9 +2149,13 @@ function complexFilteringSuite () {
         // 1 Primary Lookups A -> B -> F
         // With traverser-read-cache
         // assertEqual(stats.scannedIndex, 8);
-        
+
         // Without traverser-read-cache
-        assertEqual(stats.scannedIndex, 15);
+        if (mmfilesEngine){
+          assertEqual(stats.scannedIndex, 15);
+        } else {
+          assertEqual(stats.scannedIndex, 11);
+        }
       }
       // 1 Filter (A->D)
       assertEqual(stats.filtered, 1);
@@ -2149,7 +2184,11 @@ function complexFilteringSuite () {
         // they may be inserted in the vertexToFetch list, which
         // lazy loads all vertices in it.
         if (stats.scannedIndex !== 8) {
-          assertEqual(stats.scannedIndex, 11);
+          if (mmfilesEngine) {
+            assertEqual(stats.scannedIndex, 11);
+          } else {
+            assertEqual(stats.scannedIndex, 5);
+          }
         }
       }
       else {
@@ -2163,7 +2202,11 @@ function complexFilteringSuite () {
         // assertEqual(stats.scannedIndex, 11);
         
         // Without traverser-read-cache
-        assertEqual(stats.scannedIndex, 20);
+        if(mmfilesEngine){
+          assertEqual(stats.scannedIndex, 20);
+        } else {
+          assertEqual(stats.scannedIndex, 14);
+        }
       }
       // 2 Filter On (B, D) too short 
       // 2 Filter On (D->E, D->G)
@@ -2202,7 +2245,11 @@ function complexFilteringSuite () {
           // 2 Primary lookup B,D
           // 2 Edge Lookups (2 B) (0 D)
           // 2 Primary Lookups (C, F)
-          assertEqual(stats.scannedIndex, 9);
+          if (mmfilesEngine) {
+            assertEqual(stats.scannedIndex, 9);
+          } else {
+            assertEqual(stats.scannedIndex, 5);
+          }
         }
         else {
           // Cluster uses a lookup cache.
@@ -2219,7 +2266,11 @@ function complexFilteringSuite () {
           // assertEqual(stats.scannedIndex, 9);
           
           // Without traverser-read-cache
-          assertEqual(stats.scannedIndex, 17);
+          if(mmfilesEngine){
+            assertEqual(stats.scannedIndex, 17);
+          } else {
+            assertEqual(stats.scannedIndex, 13);
+          }
         }
         // 1 Filter On D
         assertEqual(stats.filtered, 1);
@@ -2258,7 +2309,11 @@ function complexFilteringSuite () {
           // 2 Primary lookup B,D
           // 2 Edge Lookups (2 B) (0 D)
           // 2 Primary Lookups (C, F)
-          assertEqual(stats.scannedIndex, 9);
+          if (mmfilesEngine) {
+            assertEqual(stats.scannedIndex, 9);
+          } else {
+            assertEqual(stats.scannedIndex, 5);
+          }
         }
         else {
           // Cluster uses a lookup cache.
@@ -2275,7 +2330,11 @@ function complexFilteringSuite () {
           // assertEqual(stats.scannedIndex, 9);
           
           // Without traverser-read-cache
-          assertEqual(stats.scannedIndex, 17);
+          if(mmfilesEngine){
+            assertEqual(stats.scannedIndex, 17);
+          } else {
+            assertEqual(stats.scannedIndex, 13);
+          }
         }
         // 1 Filter On D
         assertEqual(stats.filtered, 1);
@@ -2931,7 +2990,11 @@ function optimizeQuantifierSuite() {
       let stats = cursor.getExtra().stats;
       assertEqual(stats.scannedFull, 0);
       if (isCluster) {
-        assertEqual(stats.scannedIndex, 9);
+        if (mmfilesEngine) {
+          assertEqual(stats.scannedIndex, 9);
+        } else {
+          assertEqual(stats.scannedIndex, 5);
+        }
       } else {
         // With traverser-read-cache
         // assertEqual(stats.scannedIndex, 9);
@@ -2939,7 +3002,11 @@ function optimizeQuantifierSuite() {
         // Without traverser-read-cache
         // TODO Check for Optimization
         // assertEqual(stats.scannedIndex, 23);
-        assertEqual(stats.scannedIndex, 22);
+        if(mmfilesEngine){
+          assertEqual(stats.scannedIndex, 22);
+        } else {
+          assertEqual(stats.scannedIndex, 18);
+        }
       }
       assertEqual(stats.filtered, 1);
 
@@ -2973,7 +3040,11 @@ function optimizeQuantifierSuite() {
       let stats = cursor.getExtra().stats;
       assertEqual(stats.scannedFull, 0);
       if (isCluster) {
-        assertEqual(stats.scannedIndex, 8);
+        if (mmfilesEngine) {
+          assertEqual(stats.scannedIndex, 8);
+        } else {
+          assertEqual(stats.scannedIndex, 4);
+        }
       } else {
         // With traverser-read-cache
         // assertEqual(stats.scannedIndex, 8);
@@ -2981,7 +3052,11 @@ function optimizeQuantifierSuite() {
         // TODO Check for Optimization
         // Without traverser-read-cache
         // assertEqual(stats.scannedIndex, 18);
-        assertEqual(stats.scannedIndex, 17);
+        if(mmfilesEngine){
+          assertEqual(stats.scannedIndex, 17);
+        } else {
+          assertEqual(stats.scannedIndex, 13);
+        }
       }
       assertEqual(stats.filtered, 2);
 
@@ -2999,14 +3074,22 @@ function optimizeQuantifierSuite() {
       stats = cursor.getExtra().stats;
       assertEqual(stats.scannedFull, 0);
       if (isCluster) {
-        assertEqual(stats.scannedIndex, 8);
+        if (mmfilesEngine) {
+          assertEqual(stats.scannedIndex, 8);
+        } else {
+          assertEqual(stats.scannedIndex, 4);
+        }
       } else {
         // With traverser-read-cache
         // assertEqual(stats.scannedIndex, 8);
 
         // Without traverser-read-cache
         // assertEqual(stats.scannedIndex, 18);
-        assertEqual(stats.scannedIndex, 17);
+        if(mmfilesEngine){
+          assertEqual(stats.scannedIndex, 17);
+        } else {
+          assertEqual(stats.scannedIndex, 13);
+        }
       }
       assertEqual(stats.filtered, 2);
     },
@@ -3026,7 +3109,11 @@ function optimizeQuantifierSuite() {
       let stats = cursor.getExtra().stats;
       assertEqual(stats.scannedFull, 0);
       if (isCluster) {
-        assertEqual(stats.scannedIndex, 9);
+        if (mmfilesEngine) {
+          assertEqual(stats.scannedIndex, 9);
+        } else {
+          assertEqual(stats.scannedIndex, 5);
+        }
       } else {
         // With traverser-read-cache
         // assertEqual(stats.scannedIndex, 9);
@@ -3034,7 +3121,11 @@ function optimizeQuantifierSuite() {
         // Without traverser-read-cache
         // TODO Check for Optimization
         // assertEqual(stats.scannedIndex, 23);
-        assertEqual(stats.scannedIndex, 22);
+        if(mmfilesEngine){
+          assertEqual(stats.scannedIndex, 22);
+        } else {
+          assertEqual(stats.scannedIndex, 18);
+        }
       }
       assertEqual(stats.filtered, 1);
 
@@ -3068,14 +3159,22 @@ function optimizeQuantifierSuite() {
       let stats = cursor.getExtra().stats;
       assertEqual(stats.scannedFull, 0);
       if (isCluster) {
-        assertEqual(stats.scannedIndex, 8);
+        if (mmfilesEngine) {
+          assertEqual(stats.scannedIndex, 8);
+        } else {
+          assertEqual(stats.scannedIndex, 4);
+        }
       } else {
         // With traverser-read-cache
         // assertEqual(stats.scannedIndex, 8);
 
         // Without traverser-read-cache
         // assertEqual(stats.scannedIndex, 18);
-        assertEqual(stats.scannedIndex, 17);
+        if(mmfilesEngine){
+          assertEqual(stats.scannedIndex, 17);
+        } else {
+          assertEqual(stats.scannedIndex, 13);
+        }
       }
       assertEqual(stats.filtered, 1);
 
@@ -3093,15 +3192,22 @@ function optimizeQuantifierSuite() {
       stats = cursor.getExtra().stats;
       assertEqual(stats.scannedFull, 0);
       if (isCluster) {
-        assertEqual(stats.scannedIndex, 8);
+        if (mmfilesEngine) {
+          assertEqual(stats.scannedIndex, 8);
+        } else {
+          assertEqual(stats.scannedIndex, 4);
+        }
       } else {
         // With traverser-read-cache
         // assertEqual(stats.scannedIndex, 8);
 
         // Without traverser-read-cache
         // TODO Check for Optimization
-        //assertEqual(stats.scannedIndex, 18);
-        assertEqual(stats.scannedIndex, 17);
+        if(mmfilesEngine){
+          assertEqual(stats.scannedIndex, 17);
+        } else {
+          assertEqual(stats.scannedIndex, 13);
+        }
       }
       assertEqual(stats.filtered, 1);
     },
@@ -3122,14 +3228,22 @@ function optimizeQuantifierSuite() {
       let stats = cursor.getExtra().stats;
       assertEqual(stats.scannedFull, 0);
       if (isCluster) {
-        assertEqual(stats.scannedIndex, 9);
+        if (mmfilesEngine) {
+          assertEqual(stats.scannedIndex, 9);
+        } else {
+          assertEqual(stats.scannedIndex, 5);
+        }
       } else {
         // With traverser-read-cache
         // assertEqual(stats.scannedIndex, 9);
 
         // Without traverser-read-cache
         // assertEqual(stats.scannedIndex, 17);
-        assertEqual(stats.scannedIndex, 18);
+        if(mmfilesEngine){
+          assertEqual(stats.scannedIndex, 18);
+        } else {
+          assertEqual(stats.scannedIndex, 14);
+        }
       }
       assertEqual(stats.filtered, 2);
     },
@@ -3150,14 +3264,22 @@ function optimizeQuantifierSuite() {
       let stats = cursor.getExtra().stats;
       assertEqual(stats.scannedFull, 0);
       if (isCluster) {
-        assertEqual(stats.scannedIndex, 7);
+        if (mmfilesEngine) {
+          assertEqual(stats.scannedIndex, 7);
+        } else {
+          assertEqual(stats.scannedIndex, 3);
+        }
       } else {
         // With activated traverser-read-cache:
         // assertEqual(stats.scannedIndex, 7);
 
         // Without traverser-read-cache
         // assertEqual(stats.scannedIndex, 12);
-        assertEqual(stats.scannedIndex, 13);
+        if(mmfilesEngine){
+          assertEqual(stats.scannedIndex, 13);
+        } else {
+          assertEqual(stats.scannedIndex, 9);
+        }
       }
       assertEqual(stats.filtered, 3);
     },
@@ -3178,7 +3300,11 @@ function optimizeQuantifierSuite() {
       let stats = cursor.getExtra().stats;
       assertEqual(stats.scannedFull, 0);
       if (isCluster) {
-        assertEqual(stats.scannedIndex, 9);
+        if (mmfilesEngine) {
+          assertEqual(stats.scannedIndex, 9);
+        } else {
+          assertEqual(stats.scannedIndex, 5);
+        }
       } else {
         // With traverser-read-cache
         // assertEqual(stats.scannedIndex, 9);
@@ -3186,7 +3312,11 @@ function optimizeQuantifierSuite() {
         // Without traverser-read-cache
         // TODO Check for Optimization
         // assertEqual(stats.scannedIndex, 17);
-        assertEqual(stats.scannedIndex, 18);
+        if(mmfilesEngine){
+          assertEqual(stats.scannedIndex, 18);
+        } else {
+          assertEqual(stats.scannedIndex, 14);
+        }
       }
       assertEqual(stats.filtered, 2);
     },
@@ -3207,7 +3337,11 @@ function optimizeQuantifierSuite() {
       let stats = cursor.getExtra().stats;
       assertEqual(stats.scannedFull, 0);
       if (isCluster) {
-        assertEqual(stats.scannedIndex, 7);
+        if (mmfilesEngine) {
+          assertEqual(stats.scannedIndex, 7);
+        } else {
+          assertEqual(stats.scannedIndex, 3);
+        }
       } else {
         // With activated traverser-read-cache:
         // assertEqual(stats.scannedIndex, 7);
@@ -3215,7 +3349,11 @@ function optimizeQuantifierSuite() {
         // Without traverser-read-cache
         // TODO Check for Optimization
         // assertEqual(stats.scannedIndex, 12);
-        assertEqual(stats.scannedIndex, 13);
+        if(mmfilesEngine){
+          assertEqual(stats.scannedIndex, 13);
+        } else {
+          assertEqual(stats.scannedIndex, 9);
+        }
       }
       assertEqual(stats.filtered, 3);
     },
@@ -3236,7 +3374,11 @@ function optimizeQuantifierSuite() {
       let stats = cursor.getExtra().stats;
       assertEqual(stats.scannedFull, 0);
       if (isCluster) {
-        assertEqual(stats.scannedIndex, 9);
+        if (mmfilesEngine) {
+          assertEqual(stats.scannedIndex, 9);
+        } else {
+          assertEqual(stats.scannedIndex, 5);
+        }
       } else {
         // With activated traverser-read-cache:
         // assertEqual(stats.scannedIndex, 9);
@@ -3244,7 +3386,11 @@ function optimizeQuantifierSuite() {
         // Without traverser-read-cache
         // TODO Check for Optimization
         // assertEqual(stats.scannedIndex, 17);
-        assertEqual(stats.scannedIndex, 18);
+        if(mmfilesEngine){
+          assertEqual(stats.scannedIndex, 18);
+        } else {
+          assertEqual(stats.scannedIndex, 14);
+        }
       }
       assertEqual(stats.filtered, 4);
     },
@@ -3265,7 +3411,11 @@ function optimizeQuantifierSuite() {
       let stats = cursor.getExtra().stats;
       assertEqual(stats.scannedFull, 0);
       if (isCluster) {
-        assertEqual(stats.scannedIndex, 7);
+        if (mmfilesEngine) {
+          assertEqual(stats.scannedIndex, 7);
+        } else {
+          assertEqual(stats.scannedIndex, 3);
+        }
       } else {
         // With activated traverser-read-cache:
         // assertEqual(stats.scannedIndex, 7);
@@ -3273,7 +3423,11 @@ function optimizeQuantifierSuite() {
         // Without traverser-read-cache
         // TODO Check for Optimization
         // assertEqual(stats.scannedIndex, 12);
-        assertEqual(stats.scannedIndex, 13);
+        if(mmfilesEngine){
+          assertEqual(stats.scannedIndex, 13);
+        } else {
+          assertEqual(stats.scannedIndex, 9);
+        }
       }
       assertEqual(stats.filtered, 4);
     }

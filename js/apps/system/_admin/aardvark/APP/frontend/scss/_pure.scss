@@ -130,6 +130,13 @@
       }
     }
 
+    &.underline {
+      &:hover {
+        > div {
+          text-decoration: underline;
+        }
+      }
+    }
 
     .left {
       text-align: left;
