@@ -465,9 +465,9 @@ void RocksDBEngine::start() {
   rocksdb::PinnableSlice oldVersion;
   rocksdb::Status s = _db->Get(rocksdb::ReadOptions(), cfHandles[0],
                                key.string(), &oldVersion);
-  if (!s.IsNotFound()) {
-    TRI_ASSERT(oldVersion.size() != 0);
-    if (oldVersion.data()[0] < version) {
+  if (!s.ok()) {
+    TRI_ASSERT(s.IsNotFound() || oldVersion.size() != 0);
+    if (s.IsNotFound() || oldVersion.data()[0] < version) {
       LOG_TOPIC(ERR, Logger::ENGINES)
       << "Your db directory is in an old format. Please delete the directory.";
       FATAL_ERROR_EXIT();
