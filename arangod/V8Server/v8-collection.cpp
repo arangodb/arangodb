@@ -37,6 +37,7 @@
 #include "Basics/conversions.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ClusterMethods.h"
+#include "GeneralServer/AuthenticationFeature.h"
 #include "Indexes/Index.h"
 #include "Cluster/FollowerInfo.h"
 #include "Pregel/AggregatorHandler.h"
@@ -44,11 +45,13 @@
 #include "Pregel/PregelFeature.h"
 #include "Pregel/Worker.h"
 #include "RestServer/DatabaseFeature.h"
+#include "RestServer/FeatureCacheFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/PhysicalCollection.h"
 #include "StorageEngine/StorageEngine.h"
 #include "Transaction/Hints.h"
 #include "Transaction/V8Context.h"
+#include "Utils/CollectionNameResolver.h"
 #include "Utils/OperationOptions.h"
 #include "Utils/OperationResult.h"
 #include "Utils/SingleCollectionTransaction.h"
@@ -544,6 +547,10 @@ static void DocumentVocbase(
 ////////////////////////////////////////////////////////////////////////////////
 
 static void RemoveVocbaseCol(v8::FunctionCallbackInfo<v8::Value> const& args) {
+
+
+
+
   v8::Isolate* isolate = args.GetIsolate();
   v8::HandleScope scope(isolate);
   OperationOptions options;
@@ -966,14 +973,23 @@ static void JS_DropVocbaseCol(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
+  if (ExecContext::CURRENT_EXECCONTEXT != nullptr) {
+    AuthLevel level = ExecContext::CURRENT_EXECCONTEXT->authContext()->databaseAuthLevel();
+    if (level != AuthLevel::RW) {
+      TRI_V8_THROW_EXCEPTION(TRI_ERROR_FORBIDDEN);
+    }
+  }
+
   arangodb::LogicalCollection* collection =
       TRI_UnwrapClass<arangodb::LogicalCollection>(args.Holder(), WRP_VOCBASE_COL_TYPE);
-
   if (collection == nullptr) {
     TRI_V8_THROW_EXCEPTION_INTERNAL("cannot extract collection");
   }
 
   PREVENT_EMBEDDED_TRANSACTION();
+  
+  std::string const dbname = collection->dbName();
+  std::string const collName = collection->name();
 
   // If we are a coordinator in a cluster, we have to behave differently:
   if (ServerState::instance()->isCoordinator()) {
@@ -982,35 +998,40 @@ static void JS_DropVocbaseCol(v8::FunctionCallbackInfo<v8::Value> const& args) {
 #else
     DropVocbaseColCoordinator(args, collection);
 #endif
-    return;
-  }
-
-  bool allowDropSystem = false;
-  double timeout = -1.0;  // forever, unless specified otherwise
-  if (args.Length() > 0) {
-    // options
-    if (args[0]->IsObject()) {
-      TRI_GET_GLOBALS();
-      v8::Handle<v8::Object> optionsObject = args[0].As<v8::Object>();
-      TRI_GET_GLOBAL_STRING(IsSystemKey);
-      if (optionsObject->Has(IsSystemKey)) {
-        allowDropSystem = TRI_ObjectToBoolean(optionsObject->Get(IsSystemKey));
+  } else {
+    bool allowDropSystem = false;
+    double timeout = -1.0;  // forever, unless specified otherwise
+    if (args.Length() > 0) {
+      // options
+      if (args[0]->IsObject()) {
+        TRI_GET_GLOBALS();
+        v8::Handle<v8::Object> optionsObject = args[0].As<v8::Object>();
+        TRI_GET_GLOBAL_STRING(IsSystemKey);
+        if (optionsObject->Has(IsSystemKey)) {
+          allowDropSystem = TRI_ObjectToBoolean(optionsObject->Get(IsSystemKey));
+        }
+        TRI_GET_GLOBAL_STRING(TimeoutKey);
+        if (optionsObject->Has(TimeoutKey)) {
+          timeout = TRI_ObjectToDouble(optionsObject->Get(TimeoutKey));
+        }
+      } else {
+        allowDropSystem = TRI_ObjectToBoolean(args[0]);
       }
-      TRI_GET_GLOBAL_STRING(TimeoutKey);
-      if (optionsObject->Has(TimeoutKey)) {
-        timeout = TRI_ObjectToDouble(optionsObject->Get(TimeoutKey));
-      }
-    } else {
-      allowDropSystem = TRI_ObjectToBoolean(args[0]);
+    }
+    
+    int res = collection->vocbase()->dropCollection(collection, allowDropSystem, timeout);
+    if (res != TRI_ERROR_NO_ERROR) {
+      TRI_V8_THROW_EXCEPTION_MESSAGE(res, "cannot drop collection");
     }
   }
-
-  int res = collection->vocbase()->dropCollection(collection, allowDropSystem, timeout);
-
-  if (res != TRI_ERROR_NO_ERROR) {
-    TRI_V8_THROW_EXCEPTION_MESSAGE(res, "cannot drop collection");
+  
+  AuthenticationFeature* auth = FeatureCacheFeature::instance()->authenticationFeature();
+  if (auth->isActive()) {
+    auth->authInfo()->enumerateUsers([&](AuthUserEntry& entry) {
+      entry.removeCollection(dbname, collName);
+    });
   }
-
+  
   TRI_V8_RETURN_UNDEFINED();
   TRI_V8_TRY_CATCH_END
 }
@@ -1602,6 +1623,13 @@ static void JS_RenameVocbaseCol(
   if (ServerState::instance()->isCoordinator()) {
     // renaming a collection in a cluster is unsupported
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_CLUSTER_UNSUPPORTED);
+  }
+  
+  if (ExecContext::CURRENT_EXECCONTEXT != nullptr) {
+    AuthLevel level = ExecContext::CURRENT_EXECCONTEXT->authContext()->databaseAuthLevel();
+    if (level != AuthLevel::RW) {
+      TRI_V8_THROW_EXCEPTION(TRI_ERROR_FORBIDDEN);
+    }
   }
 
   std::string const name = TRI_ObjectToString(args[0]);
@@ -2703,6 +2731,17 @@ static void JS_TruncateVocbaseCol(
     TRI_V8_THROW_EXCEPTION_INTERNAL("cannot extract collection");
   }
 
+  AuthenticationFeature* auth = FeatureCacheFeature::instance()->authenticationFeature();
+  if (auth->isActive() && ExecContext::CURRENT_EXECCONTEXT != nullptr) {
+    CollectionNameResolver resolver(collection->vocbase());
+    std::string const cName = resolver.getCollectionNameCluster(collection->cid());
+    AuthLevel level = auth->canUseCollection(ExecContext::CURRENT_EXECCONTEXT->user(),
+                                             collection->vocbase()->name(), cName);
+    if (level != AuthLevel::RW) {
+      TRI_V8_THROW_EXCEPTION(TRI_ERROR_FORBIDDEN);
+    }
+  }
+
   // optionally specify non trx remove
   bool unsafeTruncate = false;
   if (args.Length() > 0) {
@@ -2969,24 +3008,31 @@ static void JS_CollectionsVocbase(
   std::sort(colls.begin(), colls.end(), [](LogicalCollection* lhs, LogicalCollection* rhs) -> bool {
     return StringUtils::tolower(lhs->name()) < StringUtils::tolower(rhs->name());
   });
-
+  
+  AuthenticationFeature* auth = FeatureCacheFeature::instance()->authenticationFeature();
   bool error = false;
+  
   // already create an array of the correct size
   v8::Handle<v8::Array> result = v8::Array::New(isolate);
-
   size_t const n = colls.size();
-
+  size_t x = 0;
   for (size_t i = 0; i < n; ++i) {
     auto collection = colls[i];
-
+  
+    if (auth->isActive() && ExecContext::CURRENT_EXECCONTEXT != nullptr) {
+      AuthLevel level = auth->canUseCollection(ExecContext::CURRENT_EXECCONTEXT->user(),
+                             vocbase->name(), collection->name());
+      if (level == AuthLevel::NONE) {
+        continue;
+      }
+    }
+    
     v8::Handle<v8::Value> c = WrapCollection(isolate, collection);
-
     if (c.IsEmpty()) {
       error = true;
       break;
     }
-
-    result->Set(static_cast<uint32_t>(i), c);
+    result->Set(static_cast<uint32_t>(x++), c);
   }
 
   if (error) {

@@ -99,6 +99,26 @@ void RestBaseHandler::generateResult(
   writeResult(std::forward<Payload>(payload), *(context->getVPackOptionsForDump()));
 }
 
+void RestBaseHandler::generateSuccess(rest::ResponseCode code, VPackSlice const& payload) {
+  resetResponse(code);
+  
+  VPackBuffer<uint8_t> buffer;
+  VPackBuilder builder(buffer);
+  try {
+    builder.add(VPackValue(VPackValueType::Object));
+    builder.add("error", VPackValue(false));
+    builder.add("code", VPackValue(static_cast<int>(code)));
+    builder.add("result", payload);
+    builder.close();
+    
+    VPackOptions options(VPackOptions::Defaults);
+    options.escapeUnicode = true;
+    writeResult(std::move(buffer), options);
+  } catch (...) {
+    // Building the error response failed
+  }
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief generates an error
 ////////////////////////////////////////////////////////////////////////////////
@@ -142,6 +162,12 @@ void RestBaseHandler::generateError(rest::ResponseCode code, int errorCode,
   } catch (...) {
     // Building the error response failed
   }
+}
+
+// generates an error
+void RestBaseHandler::generateError(arangodb::Result const& r) {
+  ResponseCode code = GeneralResponse::responseCode(r.errorNumber());
+  generateError(code, r.errorNumber(), r.errorMessage());
 }
 
 ////////////////////////////////////////////////////////////////////////////////

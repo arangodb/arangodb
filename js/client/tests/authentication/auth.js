@@ -83,6 +83,7 @@ function AuthSuite () {
     testNewUser : function () {
       users.save("hackers@arangodb.com", "foobar");
       users.grantDatabase('hackers@arangodb.com', db._name());
+      users.grantCollection('hackers@arangodb.com', db._name(), "*");
       users.reload();
 
       arango.reconnect(arango.getEndpoint(), db._name(), "hackers@arangodb.com", "foobar");
@@ -116,6 +117,7 @@ function AuthSuite () {
     testEmptyPassword : function () {
       users.save("hackers@arangodb.com", "");
       users.grantDatabase('hackers@arangodb.com', db._name());
+      users.grantCollection('hackers@arangodb.com', db._name(), "*");
       users.reload();
 
       arango.reconnect(arango.getEndpoint(), db._name(), "hackers@arangodb.com", "");

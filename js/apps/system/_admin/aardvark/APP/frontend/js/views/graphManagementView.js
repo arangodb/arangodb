@@ -11,6 +11,7 @@
     edgeDefintionTemplate: templateEngine.createTemplate('edgeDefinitionTable.ejs'),
     eCollList: [],
     removedECollList: [],
+    readOnly: false,
 
     dropdownVisible: false,
 
@@ -129,12 +130,14 @@
 
     addNewGraph: function (e) {
       e.preventDefault();
-      if (frontendConfig.isCluster && frontendConfig.isEnterprise) {
-        this.createEditGraphModal();
-      } else {
-        this.createEditGraphModal();
-        // hide tab entry
-        $('#tab-smartGraph').parent().remove();
+      if (!this.readOnly) {
+        if (frontendConfig.isCluster && frontendConfig.isEnterprise) {
+          this.createEditGraphModal();
+        } else {
+          this.createEditGraphModal();
+          // hide tab entry
+          $('#tab-smartGraph').parent().remove();
+        }
       }
     },
 
@@ -341,6 +344,7 @@
             }
           };
           arangoHelper.setCheckboxStatus('#graphManagementDropdown');
+          arangoHelper.checkDatabasePermissions(self.setReadOnly.bind(self));
         }
       });
 
@@ -348,6 +352,11 @@
         this.loadGraphViewer(name, refetch);
       }
       return this;
+    },
+
+    setReadOnly: function () {
+      this.readOnly = true;
+      $('#createGraph').parent().parent().addClass('disabled');
     },
 
     setFromAndTo: function (e) {

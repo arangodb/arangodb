@@ -15,6 +15,7 @@
 
   window.DocumentView = Backbone.View.extend({
     el: '#content',
+    readOnly: false,
     colid: 0,
     docid: 0,
 
@@ -57,7 +58,9 @@
     },
 
     addDocument: function () {
-      window.App.documentsView.addDocumentModal();
+      if (!this.readOnly) {
+        window.App.documentsView.addDocumentModal();
+      }
     },
 
     storeMode: function () {
@@ -91,6 +94,7 @@
           this.breadcrumb();
           this.fillInfo();
           this.fillEditor();
+          arangoHelper.checkCollectionPermissions(this.colid, this.changeViewToReadOnly.bind(this));
         }
       }.bind(this);
 
@@ -98,22 +102,24 @@
     },
 
     deleteDocumentModal: function () {
-      var buttons = []; var tableContent = [];
-      tableContent.push(
-        window.modalView.createReadOnlyEntry(
-          'doc-delete-button',
-          'Confirm delete, document id is',
-          this.type._id,
-          undefined,
-          undefined,
-          false,
-          /[<>&'"]/
-        )
-      );
-      buttons.push(
-        window.modalView.createDeleteButton('Delete', this.deleteDocument.bind(this))
-      );
-      window.modalView.show('modalTable.ejs', 'Delete Document', buttons, tableContent);
+      if (!this.readOnly) {
+        var buttons = []; var tableContent = [];
+        tableContent.push(
+          window.modalView.createReadOnlyEntry(
+            'doc-delete-button',
+            'Confirm delete, document id is',
+            this.type._id,
+            undefined,
+            undefined,
+            false,
+            /[<>&'"]/
+          )
+        );
+        buttons.push(
+          window.modalView.createDeleteButton('Delete', this.deleteDocument.bind(this))
+        );
+        window.modalView.show('modalTable.ejs', 'Delete Document', buttons, tableContent);
+      }
     },
 
     deleteDocument: function () {
@@ -216,12 +222,27 @@
         ace: window.ace
         // iconlib: 'fontawesome4'
       };
+
       this.editor = new JSONEditor(container, options);
       if (this.defaultMode) {
         this.editor.setMode(this.defaultMode);
       }
 
       return this;
+    },
+
+    changeViewToReadOnly: function () {
+      this.readOnly = true;
+      // breadcrumb
+      $('.breadcrumb').html($('.breadcrumb').html() + ' (read-only)');
+      // editor read only mode
+      this.editor.setMode('view');
+      $('.jsoneditor-modes').hide();
+      // bottom buttons
+      $('.bottomButtonBar button').addClass('disabled');
+      $('.bottomButtonBar button').unbind('click');
+      // top add document button
+      $('#addDocument').addClass('disabled');
     },
 
     cleanupEditor: function () {

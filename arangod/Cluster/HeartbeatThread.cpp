@@ -537,7 +537,7 @@ void HeartbeatThread::runCoordinator() {
 
           if (userVersion > 0 && userVersion != oldUserVersion) {
             oldUserVersion = userVersion;
-            if (authentication->isEnabled()) {
+            if (authentication->isActive()) {
               authentication->authInfo()->outdate();
             }
           }

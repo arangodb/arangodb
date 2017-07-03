@@ -11,7 +11,7 @@ arangosh&gt; db._query(<span class="hljs-string">"FOR v IN 1..3 OUTBOUND 'circle
   <span class="hljs-string">"J"</span>, 
   <span class="hljs-string">"K"</span> 
 ]
-[object ArangoQueryCursor, <span class="hljs-attr">count</span>: <span class="hljs-number">10</span>, <span class="hljs-attr">hasMore</span>: <span class="hljs-literal">false</span>]
+[object ArangoQueryCursor, <span class="hljs-attr">count</span>: <span class="hljs-number">10</span>, <span class="hljs-attr">cached</span>: <span class="hljs-literal">false</span>, <span class="hljs-attr">hasMore</span>: <span class="hljs-literal">false</span>]
 arangosh&gt; db._query(<span class="hljs-string">"FOR v IN 1..3 OUTBOUND 'circles/A' edges RETURN v._key"</span>);
 [ 
   <span class="hljs-string">"B"</span>, 
@@ -25,4 +25,4 @@ arangosh&gt; db._query(<span class="hljs-string">"FOR v IN 1..3 OUTBOUND 'circle
   <span class="hljs-string">"J"</span>, 
   <span class="hljs-string">"K"</span> 
 ]
-[object ArangoQueryCursor, <span class="hljs-attr">count</span>: <span class="hljs-number">10</span>, <span class="hljs-attr">hasMore</span>: <span class="hljs-literal">false</span>]
+[object ArangoQueryCursor, <span class="hljs-attr">count</span>: <span class="hljs-number">10</span>, <span class="hljs-attr">cached</span>: <span class="hljs-literal">false</span>, <span class="hljs-attr">hasMore</span>: <span class="hljs-literal">false</span>]

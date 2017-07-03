@@ -7,50 +7,69 @@ properties(
     ]]
 )
 
+def defaultLinux = true
+def defaultMac = false
+def defaultWindows = false
+def defaultCleanBuild = false
+def defaultCommunity = true
+def defaultEnterprise = false
+def defaultJslint = true
+def defaultRunResilience = false
+def defaultRunTests = true
+def defaultSkipTestsOnError = true
+
+if (env.BRANCH_NAME == "devel") {
+    defaultMac = false
+    defaultWindows = false
+    defaultEnterprise = false
+    defaultRunResilience = false
+    defaultSkipTestsOnError = false
+}
+
 properties([
     parameters([
         booleanParam(
-            defaultValue: true,
+            defaultValue: defaultLinux,
             description: 'build and run tests on Linux',
             name: 'Linux'
         ),
         booleanParam(
-            defaultValue: false,
+            defaultValue: defaultMac,
             description: 'build and run tests on Mac',
             name: 'Mac'
         ),
         booleanParam(
-            defaultValue: false,
+            defaultValue: defaultWindows,
             description: 'build and run tests in Windows',
             name: 'Windows'
         ),
         booleanParam(
-            defaultValue: false,
+            defaultValue: defaultCleanBuild,
             description: 'clean build directories',
             name: 'cleanBuild'
         ),
         booleanParam(
-            defaultValue: true,
+            defaultValue: defaultCommunity,
             description: 'build and run tests for community',
-            name: 'buildCommunity'
+            name: 'Community'
         ),
         booleanParam(
-            defaultValue: false,
+            defaultValue: defaultEnterprise,
             description: 'build and run tests for enterprise',
-            name: 'buildEnterprise'
+            name: 'Enterprise'
         ),
         booleanParam(
-            defaultValue: false,
+            defaultValue: defaultJslint,
             description: 'run jslint',
             name: 'runJslint'
         ),
         booleanParam(
-            defaultValue: false,
+            defaultValue: defaultRunResilience,
             description: 'run resilience tests',
             name: 'runResilience'
         ),
         booleanParam(
-            defaultValue: true,
+            defaultValue: defaultRunTests,
             description: 'run tests',
             name: 'runTests'
         )
@@ -64,10 +83,10 @@ cleanBuild = params.cleanBuild
 buildFull = false
 
 // build community
-buildCommunity = params.buildCommunity
+useCommunity = params.Community
 
 // build enterprise
-buildEnterprise = params.buildEnterprise
+useEnterprise = params.Enterprise
 
 // build linux
 useLinux = params.Linux
@@ -86,6 +105,9 @@ runResilience = params.runResilience
 
 // run tests
 runTests = params.runTests
+
+// skip tests on previous error
+skipTestsOnError = defaultSkipTestsOnError
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                             CONSTANTS AND HELPERS
@@ -244,20 +266,19 @@ def checkCommitMessages() {
     }
 
 echo """BRANCH_NAME: ${env.BRANCH_NAME}
-        CHANGE_ID: ${env.CHANGE_ID}
-        CHANGE_TARGET: ${env.CHANGE_TARGET}
-        JOB_NAME: ${env.JOB_NAME}
+CHANGE_ID: ${env.CHANGE_ID}
+CHANGE_TARGET: ${env.CHANGE_TARGET}
+JOB_NAME: ${env.JOB_NAME}
 
-        Linux: ${useLinux}
-        Mac: ${useMac}
-        Windows: ${useWindows}
-        Clean Build: ${cleanBuild}
-        Building Community: ${buildCommunity}
-        Building Enterprise: ${buildEnterprise}
-        Running Jslint: ${runJslint}
-        Running Resilience: ${runResilience}
-        Running Tests: ${runTests}""".stripIndent()
-
+Linux: ${useLinux}
+Mac: ${useMac}
+Windows: ${useWindows}
+Clean Build: ${cleanBuild}
+Building Community: ${useCommunity}
+Building Enterprise: ${useEnterprise}
+Running Jslint: ${runJslint}
+Running Resilience: ${runResilience}
+Running Tests: ${runTests}"""
 }
 
 // -----------------------------------------------------------------------------
@@ -386,7 +407,7 @@ def buildEdition(edition, os) {
             sh "./Installation/Pipeline/build_${edition}_${os}.sh 20"
         }
         else if (os == 'windows') {
-            PowerShell(". .\\Installation\\Pipeline\\build_${edition}_windows.ps1")
+            PowerShell(". .\\Installation\\Pipeline\\build_${edition}_${os}.ps1")
         }
     }
     catch (exc) {
@@ -415,11 +436,11 @@ def buildStepCheck(edition, os, full) {
         return false
     }
 
-    if (edition == 'enterprise' && ! buildEnterprise) {
+    if (edition == 'enterprise' && ! useEnterprise) {
         return false
     }
 
-    if (edition == 'community' && ! buildCommunity) {
+    if (edition == 'community' && ! useCommunity) {
         return false
     }
 
@@ -511,58 +532,68 @@ def jslintStep() {
 
 testsSuccess = [:]
 allTestsSuccessful = true
+numberTestsSuccessful = 0
 
 def testEdition(edition, os, mode, engine) {
     try {
-        sh "./Installation/Pipeline/test_${mode}_${edition}_${engine}_${os}.sh 10"
+        if (os == 'linux') {
+            sh "./Installation/Pipeline/test_${mode}_${edition}_${engine}_${os}.sh 10"
+        }
+        else if (os == 'mac') {
+            sh "./Installation/Pipeline/test_${mode}_${edition}_${engine}_${os}.sh 10"
+        }
+        else if (os == 'windows') {
+            PowerShell(". .\\Installation\\Pipeline\\test_${mode}_${edition}_${engine}_${os}.ps1")
+        }
+
+        numberTestsSuccessful += 1
     }
     catch (exc) {
+        archiveArtifacts allowEmptyArchive: true,
+                         artifacts: 'core.*, build/bin/arangod',
+                         defaultExcludes: false
+
         throw exc
     }
     finally {
-        archiveArtifacts allowEmptyArchive: true, artifacts: 'log-output/**', defaultExcludes: false
+        archiveArtifacts allowEmptyArchive: true,
+                         artifacts: 'log-output/**, *.log, tmp/**/log, tmp/**/log0, tmp/**/log1, tmp/**/log2',
+                         defaultExcludes: false
     }
 }
 
 def testCheck(edition, os, mode, engine, full) {
-    if (! runTests) {
-        echo "Not running tests"
-        return false
-    }
-
     def name = "${edition}-${os}"
 
     if (buildsSuccess.containsKey(name) && ! buildsSuccess[name]) {
-       echo "Not testing failed build ${name}"
+        return false
+    }
+
+    if (! runTests) {
+        return false
     }
 
     if (full && ! buildFull) {
-        echo "Not building combination ${os} ${edition}"
         return false
     }
 
     if (os == 'linux' && ! useLinux) {
-        echo "Not building ${os} version"
         return false
     }
 
     if (os == 'mac' && ! useMac) {
-        echo "Not building ${os} version"
         return false
     }
 
     if (os == 'windows' && ! useWindows) {
-        echo "Not building ${os} version"
         return false
     }
 
-    if (edition == 'enterprise' && ! buildEnterprise) {
-        echo "Not building ${edition} version"
+    if (edition == 'enterprise' && ! useEnterprise) {
         return false
     }
 
-    if (edition == 'community' && ! buildCommunity) {
-        echo "Not building ${edition} version"
+    if (edition == 'community' && ! useCommunity) {
         return false
     }
 
@@ -643,28 +674,29 @@ def testResilience(os, engine, foxx) {
 }
 
 def testResilienceCheck(os, engine, foxx, full) {
+    def name = "community-${os}"
+
+    if (buildsSuccess.containsKey(name) && ! buildsSuccess[name]) {
+        return false
+    }
+
     if (! runResilience) {
-        echo "Not running resilience tests"
         return false
     }
 
     if (os == 'linux' && ! useLinux) {
-        echo "Not building ${os} version"
         return false
     }
 
     if (os == 'mac' && ! useMac) {
-        echo "Not building ${os} version"
         return false
     }
 
     if (os == 'windows' && ! useWindows) {
-        echo "Not building ${os} version"
         return false
     }
 
-    if (! buildCommunity) {
-        echo "Not building community version"
+    if (! useCommunity) {
         return false
     }
 
@@ -759,7 +791,9 @@ catch (exc) {
 
 try {
     stage('build mac') {
-        buildStepParallel(['mac'])
+        if (allBuildsSuccessful) {
+            buildStepParallel(['mac'])
+        }
     }
 }
 catch (exc) {
@@ -768,7 +802,9 @@ catch (exc) {
 
 try {
     stage('tests mac') {
-        testStepParallel(['mac'], ['cluster', 'singleserver'])
+        if (allTestsSuccessful || ! skipTestsOnError) {
+            testStepParallel(['mac'], ['cluster', 'singleserver'])
+        }
     }
 }
 catch (exc) {
@@ -777,7 +813,9 @@ catch (exc) {
 
 try {
     stage('build windows') {
-        buildStepParallel(['windows'])
+        if (allBuildsSuccessful) {
+            buildStepParallel(['windows'])
+        }
     }
 }
 catch (exc) {
@@ -786,7 +824,9 @@ catch (exc) {
 
 try {
     stage('tests windows') {
-        testStepParallel(['windows'], ['cluster', 'singleserver'])
+        if (allTestsSuccessful || ! skipTestsOnError) {
+            testStepParallel(['windows'], ['cluster', 'singleserver'])
+        }
     }
 }
 catch (exc) {
@@ -795,7 +835,9 @@ catch (exc) {
 
 try {
     stage('resilience') {
-        testResilienceParallel();
+        if (allTestsSuccessful) {
+            testResilienceParallel();
+        }
     }
 }
 catch (exc) {
@@ -807,21 +849,22 @@ stage('result') {
         def result = ""
 
         for (kv in buildsSuccess) {
-            result = result + "BUILD ${kv.key}: ${kv.value}\n"
+            result += "BUILD ${kv.key}: ${kv.value}\n"
         }
 
         for (kv in testsSuccess) {
-            result = result + "TEST ${kv.key}: ${kv.value}\n"
+            result += "TEST ${kv.key}: ${kv.value}\n"
         }
 
         for (kv in resiliencesSuccess) {
-            result = result + "RESILIENCE ${kv.key}: ${kv.value}\n"
+            result += "RESILIENCE ${kv.key}: ${kv.value}\n"
         }
 
         if (result == "") {
            result = "All tests passed!"
         }
-        
+
+        echo result
 
         if (! (allBuildsSuccessful
             && allTestsSuccessful

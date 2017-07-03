@@ -7,4 +7,4 @@ arangosh&gt; c = stmt.execute();
   <span class="hljs-number">2</span>, 
   <span class="hljs-number">4</span> 
 ]
-[object ArangoQueryCursor, <span class="hljs-attr">count</span>: <span class="hljs-number">2</span>, <span class="hljs-attr">hasMore</span>: <span class="hljs-literal">false</span>]
+[object ArangoQueryCursor, <span class="hljs-attr">count</span>: <span class="hljs-number">2</span>, <span class="hljs-attr">cached</span>: <span class="hljs-literal">false</span>, <span class="hljs-attr">hasMore</span>: <span class="hljs-literal">false</span>]
