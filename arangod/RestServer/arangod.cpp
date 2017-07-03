@@ -118,8 +118,8 @@ static int runServer(int argc, char** argv, ArangoGlobalContext &context) {
     application_features::ApplicationServer server(options, SBIN_DIRECTORY);
 
     std::vector<std::string> nonServerFeatures = {
-        "Action",        "Affinity",
-        "Agency",        "Authentication",
+        "Action",      //"Affinity",
+        "Agency",      //"Authentication",
         "Cluster",       "Daemon",
         "FoxxQueues",    "GeneralServer", 
         "Greetings",     "LoggerBufferFeature",

@@ -5,7 +5,7 @@ arangosh&gt; db._query(<span class="hljs-string">"FOR v IN 2..2 OUTBOUND 'circle
   <span class="hljs-string">"H"</span>, 
   <span class="hljs-string">"J"</span> 
 ]
-[object ArangoQueryCursor, <span class="hljs-attr">count</span>: <span class="hljs-number">4</span>, <span class="hljs-attr">hasMore</span>: <span class="hljs-literal">false</span>]
+[object ArangoQueryCursor, <span class="hljs-attr">count</span>: <span class="hljs-number">4</span>, <span class="hljs-attr">cached</span>: <span class="hljs-literal">false</span>, <span class="hljs-attr">hasMore</span>: <span class="hljs-literal">false</span>]
 arangosh&gt; db._query(<span class="hljs-string">"FOR v IN 2 OUTBOUND 'circles/A' GRAPH 'traversalGraph' return v._key"</span>);
 [ 
   <span class="hljs-string">"C"</span>, 
@@ -13,4 +13,4 @@ arangosh&gt; db._query(<span class="hljs-string">"FOR v IN 2 OUTBOUND 'circles/A
   <span class="hljs-string">"H"</span>, 
   <span class="hljs-string">"J"</span> 
 ]
-[object ArangoQueryCursor, <span class="hljs-attr">count</span>: <span class="hljs-number">4</span>, <span class="hljs-attr">hasMore</span>: <span class="hljs-literal">false</span>]
+[object ArangoQueryCursor, <span class="hljs-attr">count</span>: <span class="hljs-number">4</span>, <span class="hljs-attr">cached</span>: <span class="hljs-literal">false</span>, <span class="hljs-attr">hasMore</span>: <span class="hljs-literal">false</span>]

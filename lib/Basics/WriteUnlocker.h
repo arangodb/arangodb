@@ -83,7 +83,9 @@ class WriteUnlocker {
 #else
 
   explicit WriteUnlocker(ReadWriteLock* readWriteLock)
-      : _readWriteLock(readWriteLock) {}
+      : _readWriteLock(readWriteLock) {
+      _readWriteLock->unlock();
+    }
 
 #endif
 
@@ -98,7 +100,7 @@ class WriteUnlocker {
   /// @brief the read-write lock
   ////////////////////////////////////////////////////////////////////////////////
 
-  ReadWriteLocker* _readWriteLock;
+  basics::ReadWriteLock* _readWriteLock;
 
 #ifdef TRI_SHOW_LOCK_TIME
 

@@ -51,7 +51,7 @@ OPTS="--storageEngine $engine --skipNondeterministic true --skipTimeCritical tru
 
 if [ "$mode" == singleserver ]; then
     if [ "$edition" == enterprise -a "$os" == linux ]; then
-        ENTERPRISE_TESTS="scripts/unittest ldap --caCertFilePath $(pwd)/ldap/ca_server.pem --ldapHost 127.0.0.1 --ldapPort $PORTLDAP --minPort `expr $PORT01 + 1000` --maxPort `expr $PORT01 + 1069` $OPTS 2>&1"
+        ENTERPRISE_TESTS="scripts/unittest ldap --minPort `expr $PORT01 + 1000` --maxPort `expr $PORT01 + 1069` --caCertFilePath $(pwd)/ldap/ca_server.pem --ldapHost 127.0.0.1 --ldapPort $PORTLDAP $OPTS 2>&1"
     fi
 
     echo "$type
@@ -89,7 +89,7 @@ elif [ "$mode" == cluster ]; then
     OPTS="$OPTS --cluster true"
 
     if [ "$edition" == enterprise -a "$os" == linux ]; then
-        ENTERPRISE_TESTS="scripts/unittest ldap --caCertFilePath $(pwd)/ldap/ca_server.pem --ldapHost 127.0.0.1 --ldapPort $PORTLDAP --minPort `expr $PORT01 + 1000` --maxPort `expr $PORT01 + 1039` $OPTS 2>&1"
+        ENTERPRISE_TESTS="scripts/unittest ldap --minPort `expr $PORT01 + 1000` --maxPort `expr $PORT01 + 1039` --caCertFilePath $(pwd)/ldap/ca_server.pem --ldapHost 127.0.0.1 --ldapPort $PORTLDAP $OPTS 2>&1"
     fi
 
     echo "$type

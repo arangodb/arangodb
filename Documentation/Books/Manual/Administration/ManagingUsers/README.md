@@ -1,7 +1,7 @@
 Managing Users
 ==============
 
-The user management in ArangoDB 3 is similar to the one found in
+The user management in ArangoDB 3 is similar to the ones found in
 MySQL, Postgres, or other database systems.
 
 An ArangoDB server contains a list of users. Each user can have access
@@ -17,19 +17,28 @@ Alternatively, you can use the ArangoDB shell. Fire up *arangosh*
 and require the users module.
 
 ```
-arangosh> var users = require("@arangodb/users");
-arangosh> users.save("admin@testapp", "mypassword");
+arangosh> var users = require('@arangodb/users');
+arangosh> users.save('admin@testapp', 'mypassword');
 ```
 
 Creates an user call *admin@testapp*. This user will have no access
 at all.
 
 ```
-arangosh> users.grantDatabase("admin@testapp", "testdb");
+arangosh> users.grantDatabase('admin@testapp', 'testdb', 'rw');
 ```
 
-This grants the user access to the database *testdb*. `revokeDatabase`
-will revoke the right.
+This grants the user read write access to the database
+*testdb*. `revokeDatabase` will revoke the right.
+
+**Note**: Be aware that from 3.2 the `grantDatabase` will not automatically
+grant users the right to write or read collections in a database.  If you grant
+read only rights on a database `testdb` you will need to explicitly grant access
+rights to individual collections via `grantCollection`.
+
+```
+arangosh> users.grantCollection('admin@testapp', 'testdb', 'testcoll', 'rw');
+```
 
 ### Save
 
@@ -51,7 +60,7 @@ This method will fail if either the username or the passwords are not specified
 or given in a wrong format, or there already exists a user with the specified
 name.
 
-**Note**: the user will not have permission to access any database. You need to
+**Note**: The user will not have permission to access any database. You need to
 grant the access rights for one or more databases using
 [grantDatabase](#grant-database).
 
@@ -59,23 +68,36 @@ grant the access rights for one or more databases using
 
     @startDocuBlockInline USER_02_saveUser
     @EXAMPLE_ARANGOSH_OUTPUT{USER_02_saveUser}
-    require("@arangodb/users").save("my-user", "my-secret-password");
+    require('@arangodb/users').save('my-user', 'my-secret-password');
     @END_EXAMPLE_ARANGOSH_OUTPUT
     @endDocuBlock USER_02_saveUser
 
 ### Grant Database
 
-`users.grantDatabase(user, database)`
+`users.grantDatabase(user, database, type)`
 
-This grants read/write access to the *database* for the *user*.
+This grants *type* ('rw' or 'ro') access to the *database* for the *user*.
 
-If a user has access rights to the *_system* database, he is considered superuser.
+If a user has access rights to the *_system* database, he is considered a superuser
+with the right to create and drop users and databases.
 
 ### Revoke Database
 
 `users.revokeDatabase(user, database)`
 
 This revokes read/write access to the *database* for the *user*.
+
+### Grant Collection
+
+`users.grantCollection(user, database, collection, type)`
+
+This grants *type* ('rw' or 'ro') access to the *collection* in *database* for the *user*.
+
+### Revoke Collection
+
+`users.revokeCollection(user, database)`
+
+This revokes read/write access to the *collection* for the *user*.
 
 ### Replace
 

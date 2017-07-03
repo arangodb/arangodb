@@ -113,4 +113,3 @@ Result SingleCollectionTransaction::unlockRead() {
 Result SingleCollectionTransaction::lockWrite() {
   return lock(trxCollection(), AccessMode::Type::WRITE);
 }
-

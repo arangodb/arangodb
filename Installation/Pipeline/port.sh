@@ -1,6 +1,6 @@
 #!/bin/bash
 
-TIMEOUT=60 # in minutes
+TIMEOUT=180 # in minutes
 
 PORTDIR=/var/tmp/ports
 mkdir -p $PORTDIR
