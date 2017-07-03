@@ -760,13 +760,32 @@ bool IResearchViewMeta::init(
   }
 
   {
-    // optional uint64
+    // optional string-encoded uint64
     static const std::string fieldName("id");
+    irs::string_ref iid;
 
-    if (!getNumber(_iid, slice, fieldName, mask->_iid, defaults._iid)) {
+    if (!getString(iid, slice, fieldName, mask->_iid, "")) {
       errorField = fieldName;
 
       return false;
+    }
+
+    if (!mask->_iid) {
+      _iid = defaults._iid;
+    } else if (!iid.c_str()[iid.size()] != 0) {
+      errorField = fieldName;
+
+      return false; // parsing this value would cause a buffer overrun since no \0
+    } else {
+      char* suffix;
+
+      _iid = std::strtoull(iid.c_str(), &suffix, 10);
+
+      if (!suffix[0]) { // if suffix then value not parsed as a whole
+        errorField = fieldName;
+
+        return false;
+      }
     }
   }
 
@@ -966,7 +985,7 @@ bool IResearchViewMeta::json(
   }
 
   if ((!ignoreEqual || _iid != ignoreEqual->_iid) && (!mask || mask->_iid)) {
-    builder.add("id", arangodb::velocypack::Value(_iid));
+    builder.add("id", arangodb::velocypack::Value(arangodb::basics::StringUtils::itoa(_iid)));
   }
 
   if ((!ignoreEqual || _locale != ignoreEqual->_locale) && (!mask || mask->_locale)) {

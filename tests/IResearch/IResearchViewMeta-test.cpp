@@ -484,7 +484,7 @@ SECTION("test_readCustomizedValues") {
         \"collections\": [ 42 ], \
         \"commitBulk\": { \"commitIntervalBatchSize\": 321, \"cleanupIntervalStep\": 123, \"consolidate\": { \"bytes\": { \"intervalStep\": 100, \"threshold\": 0.1 }, \"bytes_accum\": { \"intervalStep\": 150, \"threshold\": 0.15 }, \"count\": { \"intervalStep\": 200 }, \"fill\": {} } }, \
         \"commitItem\": { \"commitIntervalMsec\": 456, \"cleanupIntervalStep\": 654, \"commitTimeoutMsec\": 789, \"consolidate\": { \"bytes\": { \"intervalStep\": 1001, \"threshold\": 0.11 }, \"bytes_accum\": { \"intervalStep\": 1501, \"threshold\": 0.151 }, \"count\": { \"intervalStep\": 2001 }, \"fill\": {} } }, \
-        \"id\": 10, \
+        \"id\": \"10\", \
         \"locale\": \"ru_RU.KOI8-R\", \
         \"name\": \"abc\", \
         \"dataPath\": \"somepath\", \
@@ -666,7 +666,7 @@ SECTION("test_writeDefaults") {
 
   CHECK(true == expectedCommitItemConsolidate.empty());
   tmpSlice = slice.get("id");
-  CHECK((true == tmpSlice.isNumber() && 0 == tmpSlice.getUInt()));
+  CHECK((true == tmpSlice.isString() && std::string("0") == tmpSlice.copyString()));
   tmpSlice = slice.get("locale");
   CHECK((true == tmpSlice.isString() && std::string("C") == tmpSlice.copyString()));
   tmpSlice = slice.get("name");
@@ -834,7 +834,7 @@ SECTION("test_writeCustomizedValues") {
   tmpSlice = slice.get("dataPath");
   CHECK((tmpSlice.isString() && std::string("somepath") == tmpSlice.copyString()));
   tmpSlice = slice.get("id");
-  CHECK((tmpSlice.isNumber() && 10 == tmpSlice.getUInt()));
+  CHECK((tmpSlice.isString() && std::string("10") == tmpSlice.copyString()));
   tmpSlice = slice.get("locale");
   CHECK((tmpSlice.isString() && std::string("en_UK.UTF-8") == tmpSlice.copyString()));
   tmpSlice = slice.get("name");
@@ -869,7 +869,7 @@ SECTION("test_readMaskAll") {
     \"commitBulk\": { \"commitIntervalBatchSize\": 321, \"cleanupIntervalStep\": 123, \"consolidate\": { \"bytes\": { \"threshold\": 0.1 } } }, \
     \"commitItem\": { \"commitIntervalMsec\": 654, \"cleanupIntervalStep\": 456, \"consolidate\": {\"bytes_accum\": { \"threshold\": 0.1 } } }, \
     \"dataPath\": \"somepath\", \
-    \"id\": 10, \
+    \"id\": \"10\", \
     \"locale\": \"ru_RU.KOI8-R\", \
     \"name\": \"abc\", \
     \"scorers\": [ \"tfidf\" ], \

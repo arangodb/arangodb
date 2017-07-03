@@ -63,7 +63,56 @@ SECTION("test_defaults") {
   // we not able to move the invalid iterator forward
 }
 
+SECTION("test_getstring") {
+  // string value
+  {
+    auto json = arangodb::velocypack::Parser::fromJson("{ \"key\": \"value\" }");
+    auto slice = json->slice();
+    std::string buf0;
+    irs::string_ref buf1;
+    bool seen;
 
+    CHECK((arangodb::iresearch::getString(buf0, slice, "key", seen, "abc")));
+    CHECK((seen));
+    CHECK((buf0 == "value"));
+
+    CHECK((arangodb::iresearch::getString(buf1, slice, "key", seen, "abc")));
+    CHECK((seen));
+    CHECK((buf1 == "value"));
+  }
+
+  // missing key
+  {
+    auto json = arangodb::velocypack::Parser::fromJson("{}");
+    auto slice = json->slice();
+    std::string buf0;
+    irs::string_ref buf1;
+    bool seen;
+
+    CHECK((arangodb::iresearch::getString(buf0, slice, "key", seen, "abc")));
+    CHECK((!seen));
+    CHECK((buf0 == "abc"));
+
+    CHECK((arangodb::iresearch::getString(buf1, slice, "key", seen, "abc")));
+    CHECK((!seen));
+    CHECK((buf1 == "abc"));
+  }
+
+  // non-string value
+  {
+    auto json = arangodb::velocypack::Parser::fromJson("{ \"key\": 12345 }");
+    auto slice = json->slice();
+    std::string buf0;
+    irs::string_ref buf1;
+    bool seen;
+
+    CHECK((!arangodb::iresearch::getString(buf0, slice, "key", seen, "abc")));
+    CHECK((seen));
+
+    CHECK((!arangodb::iresearch::getString(buf1, slice, "key", seen, "abc")));
+    CHECK((seen));
+  }
+}
 
 SECTION("test_empty_object") {
   auto json = arangodb::velocypack::Parser::fromJson("{ }");

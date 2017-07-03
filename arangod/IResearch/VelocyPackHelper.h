@@ -166,6 +166,36 @@ inline bool getString(
 }
 
 //////////////////////////////////////////////////////////////////////////////
+/// @brief parses a string sub-element, or uses a default if it does not exist
+/// @return success
+//////////////////////////////////////////////////////////////////////////////
+inline bool getString(
+  irs::string_ref& buf,
+  arangodb::velocypack::Slice const& slice,
+  std::string const& fieldName,
+  bool& seen,
+  std::string const& fallback
+) noexcept {
+  seen = slice.hasKey(fieldName);
+
+  if (!seen) {
+    buf = fallback;
+
+    return true;
+  }
+
+  auto field = slice.get(fieldName);
+
+  if (!field.isString()) {
+    return false;
+  }
+
+  buf = getStringRef(field);
+
+  return true;
+}
+
+//////////////////////////////////////////////////////////////////////////////
 /// @brief append the contents fo slice to the builder
 /// @return success
 //////////////////////////////////////////////////////////////////////////////
