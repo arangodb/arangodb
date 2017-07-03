@@ -55,7 +55,7 @@
             <div class="<%= genClass %> mid">
               <input class="dbCheckbox noAccess" type="radio" name="<%= db %>" permission="none">
             </div>
-          <% } else { %>
+          <% } else if (permissionsDB === 'ro') { %>
             <div class="<%= genClass %> mid">
               <input class="dbCheckbox readWrite" type="radio" name="<%= db %>" permission="<%= db %>">
             </div>
@@ -64,6 +64,16 @@
             </div>
             <div class="<%= genClass %> mid">
               <input class="dbCheckbox noAccess" type="radio" name="<%= db %>" permission="none" checked>
+            </div>
+          <% } else { %>
+            <div class="<%= genClass %> mid">
+              <input class="dbCheckbox readWrite" type="radio" name="<%= db %>" permission="<%= db %>">
+            </div>
+            <div class="<%= genClass %> mid">
+              <input class="dbCheckbox readOnly" type="radio" name="<%= db %>" permission="<%= db %>">
+            </div>
+            <div class="<%= genClass %> mid">
+              <input class="dbCheckbox noAccess" type="radio" name="<%= db %>" permission="none">
             </div>
           <% } %>
 
@@ -99,7 +109,7 @@
                       <div class="<%= genClass %> mid inner">
                         <input class="collCheckbox noAccess" type="radio" db="<%= db %>" name="<%=db%>-<%=collectionName%>" collection="<%= collectionName %>" permission="<%= collectionName %>">
                       </div>
-                    <% } else { %>
+                    <% } else if (permissionCollection === 'none') { %>
                       <div class="<%= genClass %> mid inner">
                         <input class="collCheckbox readWrite" type="radio" db="<%= db %>" name="<%=db%>-<%=collectionName%>" collection="<%= collectionName %>" permission="<%= collectionName %>">
                       </div>
@@ -108,6 +118,16 @@
                       </div>
                       <div class="<%= genClass %> mid inner">
                         <input class="collCheckbox noAccess" type="radio" db="<%= db %>" name="<%=db%>-<%=collectionName%>" collection="<%= collectionName %>" permission="<%= collectionName %>" checked>
+                      </div>
+                    <% } else { %>
+                      <div class="<%= genClass %> mid inner">
+                        <input class="collCheckbox readWrite" type="radio" db="<%= db %>" name="<%=db%>-<%=collectionName%>" collection="<%= collectionName %>" permission="<%= collectionName %>">
+                      </div>
+                      <div class="<%= genClass %> mid inner">
+                        <input class="collCheckbox readOnly" type="radio" db="<%= db %>" name="<%=db%>-<%=collectionName%>" collection="<%= collectionName %>" permission="<%= collectionName %>">
+                      </div>
+                      <div class="<%= genClass %> mid inner">
+                        <input class="collCheckbox noAccess" type="radio" db="<%= db %>" name="<%=db%>-<%=collectionName%>" collection="<%= collectionName %>" permission="<%= collectionName %>">
                       </div>
                     <% } %>
 
