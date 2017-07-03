@@ -381,6 +381,7 @@ void RocksDBEngine::start() {
   std::vector<rocksdb::ColumnFamilyHandle*> cfHandles;
   size_t const numberOfColumnFamilies =
       RocksDBColumnFamily::minNumberOfColumnFamilies;
+  bool dbExisted = false;
   {
     rocksdb::Options testOptions;
     testOptions.create_if_missing = false;
@@ -401,6 +402,7 @@ void RocksDBEngine::start() {
     }
 
     if (status.ok()) {
+      dbExisted = true;
       // we were able to open the database.
       // now check which column families are present in the db
       std::string names;
@@ -465,8 +467,7 @@ void RocksDBEngine::start() {
   rocksdb::PinnableSlice oldVersion;
   rocksdb::Status s = _db->Get(rocksdb::ReadOptions(), cfHandles[0],
                                key.string(), &oldVersion);
-  if (!s.ok()) {
-    TRI_ASSERT(s.IsNotFound() || oldVersion.size() != 0);
+  if (dbExisted) {
     if (s.IsNotFound() || oldVersion.data()[0] < version) {
       LOG_TOPIC(ERR, Logger::ENGINES)
       << "Your db directory is in an old format. Please delete the directory.";
