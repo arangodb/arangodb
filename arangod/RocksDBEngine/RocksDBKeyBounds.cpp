@@ -215,8 +215,17 @@ rocksdb::ColumnFamilyHandle* RocksDBKeyBounds::columnFamily() const {
       return RocksDBColumnFamily::fulltext();
     case RocksDBEntryType::GeoIndexValue:
       return RocksDBColumnFamily::geo();
-    default:
+    case RocksDBEntryType::Database:
+    case RocksDBEntryType::Collection:
+    case RocksDBEntryType::CounterValue:
+    case RocksDBEntryType::SettingsValue:
+    case RocksDBEntryType::ReplicationApplierConfig:
+    case RocksDBEntryType::IndexEstimateValue:
+    case RocksDBEntryType::KeyGeneratorValue:
+    case RocksDBEntryType::View:
       return RocksDBColumnFamily::definitions();
+    default:
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_TYPE_ERROR);
   }
 }
 
