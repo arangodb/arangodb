@@ -26,7 +26,7 @@
 // //////////////////////////////////////////////////////////////////////////////
 
 const functionsDocumentation = {
-  'queryCacheAuthorization': 'read only tests'
+  'queryCacheAuthorization': 'authorization check for query cache'
 };
 const optionsDocumentation = [
   '   - `skipQueryCacheAuthorization` : if set to true the read only tests are skipped',
