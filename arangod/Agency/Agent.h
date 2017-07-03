@@ -40,10 +40,14 @@ struct TRI_vocbase_t;
 
 namespace arangodb {
 namespace consensus {
+
+static const std::string RECONFIGURE(".agency");
+
 class Agent : public arangodb::Thread,
               public AgentInterface {
 
  public:
+
   /// @brief Construct with program options
   explicit Agent(config_t const&);
 
@@ -99,7 +103,8 @@ class Agent : public arangodb::Thread,
   /// @brief Attempt write
   ///        Startup flag should NEVER be discarded solely for purpose of
   ///        persisting the agency configuration
-  write_ret_t write(query_t const&, bool discardStartup = false) override;
+  write_ret_t write(
+    query_t const&, WriteMode const& wmode = WriteMode()) override;
 
   /// @brief Read from agency
   read_ret_t read(query_t const&);

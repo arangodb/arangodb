@@ -159,12 +159,28 @@ Store::~Store() {
 
 /// Apply array of transactions multiple queries to store
 /// Return vector of according success
-std::vector<bool> Store::applyTransactions(query_t const& query) {
+std::vector<bool> Store::applyTransactions(
+  query_t const& query, Agent::WriteMode const& wmode) {
   std::vector<bool> success;
 
   if (query->slice().isArray()) {
     try {
       for (auto const& i : VPackArrayIterator(query->slice())) {
+        if (!wmode.privileged()) {
+          bool found = false;
+          for (auto const& o : VPackObjectIterator(i[0])) {
+            std::string key = o.key.copyString();
+            if (key.compare(0, RECONFIGURE.size(), RECONFIGURE) == 0) {
+              found = true;
+              
+              continue;
+            }
+          }
+          if (found) {
+            success.push_back(false);
+            continue;
+          }
+        }
         MUTEX_LOCKER(storeLocker, _storeLock);
         switch (i.length()) {
         case 1:  // No precondition

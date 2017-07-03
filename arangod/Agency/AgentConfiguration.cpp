@@ -761,71 +761,89 @@ void config_t::updateConfiguration(VPackSlice const& other) {
   
 }
 
-bool config_t::addServer(VPackSlice const& server) {
+arangodb::Result config_t::addServer(VPackSlice const& server) {
 
-  TRI_ASSERT(server.isObject());
-  TRI_ASSERT(server.hasKey("endpoint"));
-  TRI_ASSERT(server.hasKey("id"));
+  std::string errorMessage;
 
-  auto id = server.get("id");
-  auto endpoint = server.get("endpoint");
-  TRI_ASSERT(id.isString());
-  TRI_ASSERT(endpoint.isString());
-
-  auto ids = id.copyString();
-  try {
-    if (_pool.find(ids) == _pool.end()) {
-      _pool[ids] = endpoint.copyString();
-      _active.push_back(ids);
-    } else {
-      LOG_TOPIC(ERR, Logger::AGENCY)
-        << "Failed to add new server " << server.toJson()
-        << " to agency: an agent with id " << ids << " already exists.";
-      return false;
+  if (server.isObject() && server.hasKey("id") && server.get("id").isString()
+      && server.hasKey("endpoint") && server.get("endpoint").isString()) {
+    auto id = server.get("id").copyString();
+    auto endpoint = server.get("endpoint").copyString();
+    auto tmpActive = _active;           // Fail safe
+    auto tmpPool   = _pool;
+    try {
+      if (_pool.find(id) == _pool.end()) {
+        if (_pool.size() == 1) {
+          errorMessage = std::string("Single host agencies cannot be expanded.");
+        }
+        _pool[id] = endpoint;
+        _active.push_back(id);
+      } else {
+        errorMessage =
+          std::string("Failed to add new server ") + id + " already exists.";
+      }
+    } catch (std::exception const& e) {
+      _pool   = tmpPool;
+      _active = tmpActive;
+      errorMessage += std::string("Failed to add new server ") + server.toJson()
+        + std::string(" to agency: ") + e.what();
     }
-  } catch (std::exception const& e) {
-    LOG_TOPIC(ERR, Logger::AGENCY)
-      << "Failed to add new server " << server.toJson() << " to agency: "
-      << e.what() << " " << __FILE__ << __LINE__; 
+  } else {
+    errorMessage =
+      std::string("Server identifier for adding must be Object with id and endpoint keys");
   }
 
-  _version++;
-  return true;
+  Result result;
+  if (errorMessage.empty()) {
+    _version++;
+  } else {
+    result.reset(1, errorMessage);
+    LOG_TOPIC(ERR, Logger::AGENCY) << errorMessage;
+  }
+  return result;
   
 }
 
-bool config_t::removeServer(VPackSlice const& server) {
+arangodb::Result config_t::removeServer(VPackSlice const& server) {
 
-  TRI_ASSERT(server.isObject());
-  TRI_ASSERT(server.hasKey("id"));
+  std::string errorMessage;
 
-  auto id = server.get("id");
-  TRI_ASSERT(id.isString());
-  auto ids = id.copyString();
-  auto tmpActive = _active;           // Fail safe
-  auto tmpPool   = _pool;
-
-  try {
-    auto it = _pool.find(ids);
-    if (it != _pool.end()) {
-      _pool.erase(it);
-      _active.erase(std::remove(_active.begin(), _active.end(), ids));
-    } else {
-      LOG_TOPIC(ERR, Logger::AGENCY)
-        << "Failed to remove server " << server.toJson() << " from agency :"
-        << " This server is unknown";
-      return false;
+  if (server.isObject() && server.hasKey("id") && server.get("id").isString()) {
+    auto id = server.get("id").copyString();
+    auto tmpActive = _active;           // Fail safe
+    auto tmpPool   = _pool;
+    try {
+      auto it = _pool.find(id);
+      if (it != _pool.end()) {
+        if (_pool.size() <= 3) {
+          errorMessage = std::string("Resilient agencies cannot be reduced to less than 3 servers.");
+          
+        }
+        _pool.erase(it);
+        _active.erase(std::remove(_active.begin(), _active.end(), id));
+      } else {
+        errorMessage = std::string("Failed to remove server ") + server.toJson()
+          + " from agency: This server is unknown";
+      }
+    } catch (std::exception const& e) { // Undo and complain
+      _pool   = tmpPool;
+      _active = tmpActive;
+      errorMessage = std::string("Failed to remove server ") + server.toJson() 
+        + std::string(" from agency :") + e.what();
     }
-  } catch (std::exception const& e) { // Undo and complain
-    _pool = tmpPool;
-    _active = tmpActive;
-    LOG_TOPIC(ERR, Logger::AGENCY)
-      << "Failed to remove server " << server.toJson() << " from agency :"
-      << e.what() <<  " " << __FILE__ << __LINE__;
-    return false;
+  } else {
+    errorMessage =
+      std::string("Server identifier for removal must be Object with id");
   }
-      
-  _version++;
-  return true;
+  
+  Result result;
+  if (errorMessage.empty()) {
+    _version++;
+  } else {
+    result.reset(1, errorMessage);
+    LOG_TOPIC(ERR, Logger::AGENCY) << errorMessage;
+  }
+
+  return result;
   
 }

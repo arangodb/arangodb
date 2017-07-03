@@ -207,10 +207,10 @@ struct config_t {
   void updateConfiguration(VPackSlice const&);
 
   /// @brief Add new agent to pool
-  bool addServer(VPackSlice const&);
+  Result addServer(VPackSlice const&);
 
   /// @brief Add new agent to pool
-  bool removeServer(VPackSlice const&);
+  Result removeServer(VPackSlice const&);
 
 };
 }

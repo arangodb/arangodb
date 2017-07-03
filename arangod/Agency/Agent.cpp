@@ -903,7 +903,7 @@ inquire_ret_t Agent::inquire(query_t const& query) {
 
 
 /// Write new entries to replicated state and store
-write_ret_t Agent::write(query_t const& query, bool discardStartup) {
+write_ret_t Agent::write(query_t const& query, WriteMode const& wmode) {
 
   std::vector<bool> applied;
   std::vector<index_t> indices;
@@ -914,7 +914,7 @@ write_ret_t Agent::write(query_t const& query, bool discardStartup) {
     return write_ret_t(false, leader);
   }
 
-  if (!discardStartup) {
+  if (!wmode.discardStartup()) {
     CONDITION_LOCKER(guard, _waitForCV);
     while (_preparing) {
       _waitForCV.wait(100);
@@ -949,7 +949,7 @@ write_ret_t Agent::write(query_t const& query, bool discardStartup) {
       return write_ret_t(false, NO_LEADER);
     }
     
-    applied = _spearhead.applyTransactions(chunk);
+    applied = _spearhead.applyTransactions(chunk, wmode);
     auto tmp = _state.log(chunk, applied, term());
     indices.insert(indices.end(), tmp.begin(), tmp.end());
 
@@ -1080,7 +1080,7 @@ void Agent::persistConfiguration(term_t t) {
   
   // In case we've lost leadership, no harm will arise as the failed write
   // prevents bogus agency configuration to be replicated among agents. ***
-  write(agency, true); 
+  write(agency, WriteMode(true, true)); 
 
 }
 
@@ -1758,19 +1758,18 @@ write_ret_t Agent::reconfigure(query_t const payload) {
   // Actual agent's configuration is changed
   //   imemdiately after successful persistence.
   auto config = _config;
+  Result result;
+  
   if (operation == "add-server") {
-    if (!config.addServer(opVal)) {
-      THROW_ARANGO_EXCEPTION_MESSAGE(
-        30000, "Failed to add new server to agency");
-    }
+    result = config.addServer(opVal);
   } else if (operation == "remove-server") {
-    if (!config.removeServer(opVal)){
-      THROW_ARANGO_EXCEPTION_MESSAGE(
-        30000, "Failed to remove server from agency");
-    }
+    result = config.removeServer(opVal);
   } else {
-    THROW_ARANGO_EXCEPTION_MESSAGE(
-      30000, "Unknown agency reconfiguration operation");
+    result.reset(3, "Unknown agency reconfiguration operation");
+  }
+
+  if (!result.ok()) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(result.errorNumber(), result.errorMessage());
   }
 
   // Persist new .agency entry
@@ -1782,7 +1781,7 @@ write_ret_t Agent::reconfigure(query_t const payload) {
       }}} // Close transactions
   LOG_TOPIC(INFO, Logger::AGENCY) << agency->toJson();
   
-  return write(agency);
+  return write(agency, WriteMode(false,true));
 
 }
 

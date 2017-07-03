@@ -24,12 +24,16 @@
 #ifndef ARANGOD_CONSENSUS_STORE_H
 #define ARANGOD_CONSENSUS_STORE_H 1
 
+#include "AgentInterface.h"
+#include "Node.h"
+
 #include "Basics/ConditionVariable.h"
 #include "Basics/Thread.h"
-#include "Node.h"
 
 namespace arangodb {
 namespace consensus {
+
+class Agent;
 
 struct check_ret_t {
 
@@ -64,8 +68,6 @@ struct check_ret_t {
 
 enum CheckMode {FIRST_FAIL, FULL};
 
-class Agent;
-
 /// @brief Key value tree
 class Store : public arangodb::Thread {
  public:
@@ -90,7 +92,9 @@ class Store : public arangodb::Thread {
   /// @brief Apply entry in query, query must be an array of individual
   /// transactions that are in turn arrays with 1, 2 or 3 entries as described
   /// in the next method.
-  std::vector<bool> applyTransactions(query_t const& query);
+  std::vector<bool> applyTransactions(
+    query_t const& query,
+    AgentInterface::WriteMode const& wmode = AgentInterface::WriteMode());
 
   /// @brief Apply single transaction in query, here query is an array and the
   /// first entry is a write transaction (i.e. an array of length 1, 2 or 3), 
