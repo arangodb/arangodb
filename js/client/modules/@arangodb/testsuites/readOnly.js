@@ -160,7 +160,7 @@ const requests = [
       }
     }
     return bodies;
-  }
+  };
 
   let res = pu.run.arangoshCmd(options, adbInstance, {}, [
           '--javascript.execute-string',
@@ -184,7 +184,7 @@ const requests = [
         ]);
 
   let bodies = run(requests.splice(0,4));
-  requests[0][2] += bodies.pop().indexes.filter(idx => idx.type == 'hash')[0].id
+  requests[0][2] += bodies.pop().indexes.filter(idx => idx.type === 'hash')[0].id;
   run(requests);
 
   pu.shutdownInstance(adbInstance, options);
