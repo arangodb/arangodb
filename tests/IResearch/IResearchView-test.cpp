@@ -31,17 +31,21 @@
 #include "Aql/AstNode.h"
 #include "Aql/SortCondition.h"
 #include "Basics/files.h"
+#include "GeneralServer/AuthenticationFeature.h"
 #include "IResearch/IResearchLinkMeta.h"
 #include "IResearch/IResearchView.h"
 #include "Logger/Logger.h"
 #include "Logger/LogTopic.h"
-#include "RestServer/ViewTypesFeature.h"
+#include "RestServer/DatabaseFeature.h"
+#include "RestServer/FeatureCacheFeature.h"
 #include "RestServer/QueryRegistryFeature.h"
+#include "RestServer/ViewTypesFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "Transaction/StandaloneContext.h"
 #include "Transaction/UserTransaction.h"
 #include "velocypack/Iterator.h"
 #include "velocypack/Parser.h"
+#include "V8Server/V8DealerFeature.h"
 #include "Views/ViewIterator.h"
 #include "VocBase/KeyGenerator.h"
 #include "VocBase/LogicalCollection.h"
@@ -54,30 +58,38 @@
 struct IResearchViewSetup {
   StorageEngineMock engine;
   arangodb::application_features::ApplicationServer server;
+  std::vector<std::pair<arangodb::application_features::ApplicationFeature*, bool>> features;
   std::string testFilesystemPath;
 
   IResearchViewSetup(): server(nullptr, nullptr) {
     arangodb::EngineSelectorFeature::ENGINE = &engine;
-    arangodb::application_features::ApplicationFeature* feature;
 
-    // ViewTypesFeature
-    arangodb::application_features::ApplicationServer::server->addFeature(
-      feature = new arangodb::ViewTypesFeature(arangodb::application_features::ApplicationServer::server)
-    );
-    feature->start();
-    feature->prepare();
-
-    // QueryRegistryFeature
-    arangodb::application_features::ApplicationServer::server->addFeature(
-      feature = new arangodb::QueryRegistryFeature(&server)
-    );
-    feature->start();
-    feature->prepare();
-
+    // setup required application features
+    features.push_back(std::make_pair(new arangodb::V8DealerFeature(arangodb::application_features::ApplicationServer::server), false));
+    features.push_back(std::make_pair(new arangodb::ViewTypesFeature(arangodb::application_features::ApplicationServer::server), true));
+    features.push_back(std::make_pair(new arangodb::QueryRegistryFeature(&server), false));
+    features.push_back(std::make_pair(new arangodb::FeatureCacheFeature(arangodb::application_features::ApplicationServer::server), true));
+    features.push_back(std::make_pair(new arangodb::AuthenticationFeature(arangodb::application_features::ApplicationServer::server), true));
+    features.push_back(std::make_pair(new arangodb::DatabaseFeature(arangodb::application_features::ApplicationServer::server), false));
+    
     arangodb::ViewTypesFeature::registerViewImplementation(
       arangodb::iresearch::IResearchView::type(),
       arangodb::iresearch::IResearchView::make
     );
+
+    for (auto& f : features) {
+      arangodb::application_features::ApplicationServer::server->addFeature(f.first);
+    }
+      
+    for (auto& f : features) {
+      f.first->prepare();
+    }
+    
+    for (auto& f : features) {
+      if (f.second) {
+        f.first->start();
+      }
+    }
 
     PhysicalViewMock::persistPropertiesResult = TRI_ERROR_NO_ERROR;
     TransactionStateMock::abortTransactionCount = 0;
@@ -103,6 +115,19 @@ struct IResearchViewSetup {
     arangodb::LogTopic::setLogLevel(arangodb::Logger::FIXME.name(), arangodb::LogLevel::DEFAULT);
     arangodb::application_features::ApplicationServer::server = nullptr;
     arangodb::EngineSelectorFeature::ENGINE = nullptr;
+   
+    // destroy application features 
+    for (auto& f : features) {
+      if (f.second) {
+        f.first->stop();
+      }
+    }
+    
+    for (auto& f : features) {
+      f.first->unprepare();
+    }
+    
+    arangodb::FeatureCacheFeature::reset();
   }
 };
 
@@ -117,6 +142,7 @@ struct IResearchViewSetup {
 TEST_CASE("IResearchViewTest", "[iresearch][iresearch-view]") {
   IResearchViewSetup s;
   UNUSED(s);
+
 
 SECTION("test_defaults") {
   auto namedJson = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testView\" }");

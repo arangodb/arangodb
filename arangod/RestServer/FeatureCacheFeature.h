@@ -51,6 +51,11 @@ class FeatureCacheFeature final : public application_features::ApplicationFeatur
     TRI_ASSERT(_databaseFeature != nullptr);
     return _databaseFeature;
   }
+  
+  // reset the instance - used during testing only
+  static void reset() {
+    Instance = nullptr;
+  }
 
  private:
   static FeatureCacheFeature* Instance;
