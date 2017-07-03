@@ -100,8 +100,8 @@ RocksDBKey RocksDBKey::CounterValue(uint64_t objectId) {
   return RocksDBKey(RocksDBEntryType::CounterValue, objectId);
 }
 
-RocksDBKey RocksDBKey::SettingsValue() {
-  return RocksDBKey(RocksDBEntryType::SettingsValue);
+RocksDBKey RocksDBKey::SettingsValue(RocksDBSettingsType st) {
+  return RocksDBKey(RocksDBEntryType::SettingsValue, st);
 }
 
 RocksDBKey RocksDBKey::ReplicationApplierConfig(TRI_voc_tick_t databaseId) {
@@ -201,10 +201,12 @@ std::pair<bool, int32_t> RocksDBKey::geoValues(rocksdb::Slice const& slice) {
 
 std::string const& RocksDBKey::string() const { return _buffer; }
 
-RocksDBKey::RocksDBKey(RocksDBEntryType type) : _type(type), _buffer() {
+RocksDBKey::RocksDBKey(RocksDBEntryType type,
+                       RocksDBSettingsType st) : _type(type), _buffer() {
   switch (_type) {
     case RocksDBEntryType::SettingsValue: {
       _buffer.push_back(static_cast<char>(_type));
+      _buffer.push_back(static_cast<char>(st));
       break;
     }
 
@@ -238,14 +240,12 @@ RocksDBKey::RocksDBKey(RocksDBEntryType type, uint64_t first,
     : _type(type), _buffer() {
   switch (_type) {
     case RocksDBEntryType::UniqueVPackIndexValue: {
-      size_t length = sizeof(uint64_t) + static_cast<size_t>(slice.byteSize()) +
-                      sizeof(char);
-      _buffer.reserve(length);
+      size_t l = sizeof(uint64_t) + static_cast<size_t>(slice.byteSize());
+      _buffer.reserve(l);
       uint64ToPersistent(_buffer, first);
       _buffer.append(reinterpret_cast<char const*>(slice.begin()),
                      static_cast<size_t>(slice.byteSize()));
-      _buffer.push_back(_stringSeparator);
-      TRI_ASSERT(_buffer.size() == length);
+      TRI_ASSERT(_buffer.size() == l);
       break;
     }
 
@@ -322,7 +322,7 @@ RocksDBKey::RocksDBKey(RocksDBEntryType type, uint64_t first,
     : _type(type), _buffer() {
   switch (_type) {
     case RocksDBEntryType::FulltextIndexValue: {
-      _buffer.reserve(sizeof(uint64_t) + second.size() + sizeof(third));
+      _buffer.reserve(sizeof(uint64_t) * 2 + second.size() + sizeof(char));
       uint64ToPersistent(_buffer, first);
       _buffer.append(second.data(), second.length());
       _buffer.push_back(_stringSeparator);
@@ -409,14 +409,13 @@ TRI_voc_rid_t RocksDBKey::revisionId(RocksDBEntryType type, char const* data,
   switch (type) {
     case RocksDBEntryType::Document:
     case RocksDBEntryType::VPackIndexValue:
-    case RocksDBEntryType::UniqueVPackIndexValue:
     case RocksDBEntryType::FulltextIndexValue: {
       TRI_ASSERT(size >= (2 * sizeof(uint64_t)));
       // last 8 bytes should be the revision
       return uint64FromPersistent(data + size - sizeof(uint64_t));
     }
     case RocksDBEntryType::EdgeIndexValue: {
-      TRI_ASSERT(size >= (sizeof(char) * 3 + (2 * sizeof(uint64_t))));
+      TRI_ASSERT(size >= (sizeof(char) * 3 + 2 * sizeof(uint64_t)));
       // 1 byte prefix + 8 byte objectID + _from/_to + 1 byte \0
       // + 8 byte revision ID + 1-byte 0xff
       return uint64FromPersistent(data + size - sizeof(uint64_t) -

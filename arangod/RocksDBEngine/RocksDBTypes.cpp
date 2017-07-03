@@ -229,3 +229,8 @@ rocksdb::Slice const& arangodb::rocksDBSlice(RocksDBEntryType const& type) {
 
   return Document;  // avoids warning - errorslice instead ?!
 }
+
+
+char arangodb::rocksDBFormatVersion() {
+  return '0';
+}

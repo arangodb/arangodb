@@ -353,12 +353,12 @@ void RocksDBEngine::start() {
   fixedPrefCF.prefix_extractor = std::shared_ptr<rocksdb::SliceTransform const>(rocksdb::NewFixedPrefixTransform(RocksDBKey::objectIdSize()));
   
   // construct column family options with prefix containing indexed value
-  rocksdb::ColumnFamilyOptions dyncamicPrefCF(_options);
-  dyncamicPrefCF.prefix_extractor = std::make_shared<RocksDBPrefixExtractor>();
+  rocksdb::ColumnFamilyOptions dynamicPrefCF(_options);
+  dynamicPrefCF.prefix_extractor = std::make_shared<RocksDBPrefixExtractor>();
   // also use hash-search based SST file format
   rocksdb::BlockBasedTableOptions tblo(table_options);
   tblo.index_type = rocksdb::BlockBasedTableOptions::IndexType::kHashSearch;
-  dyncamicPrefCF.table_factory = std::shared_ptr<rocksdb::TableFactory>(
+  dynamicPrefCF.table_factory = std::shared_ptr<rocksdb::TableFactory>(
       rocksdb::NewBlockBasedTableFactory(tblo));
   
   // velocypack based index variants with custom comparator
@@ -372,7 +372,7 @@ void RocksDBEngine::start() {
                           definitionsCF);                       // 0
   cfFamilies.emplace_back("Documents", fixedPrefCF);            // 1
   cfFamilies.emplace_back("PrimaryIndex", fixedPrefCF);         // 2
-  cfFamilies.emplace_back("EdgeIndex", dyncamicPrefCF);         // 3
+  cfFamilies.emplace_back("EdgeIndex", dynamicPrefCF);         // 3
   cfFamilies.emplace_back("VPackIndex", vpackFixedPrefCF);      // 4
   cfFamilies.emplace_back("GeoIndex", fixedPrefCF);             // 5
   cfFamilies.emplace_back("FulltextIndex", fixedPrefCF);        // 6
@@ -458,7 +458,31 @@ void RocksDBEngine::start() {
   RocksDBColumnFamily::_fulltext = cfHandles[6];
   RocksDBColumnFamily::_allHandles = cfHandles;
   TRI_ASSERT(RocksDBColumnFamily::_definitions->GetID() == 0);
-
+  
+  // try to find version
+  const char version = rocksDBFormatVersion();
+  auto key = RocksDBKey::SettingsValue(RocksDBSettingsType::Version);
+  rocksdb::PinnableSlice oldVersion;
+  rocksdb::Status s = _db->Get(rocksdb::ReadOptions(), cfHandles[0],
+                               key.string(), &oldVersion);
+  if (!s.IsNotFound()) {
+    TRI_ASSERT(oldVersion.size() != 0);
+    if (oldVersion.data()[0] < version) {
+      LOG_TOPIC(ERR, Logger::ENGINES)
+      << "Your db directory is in an old format. Please delete the directory.";
+      FATAL_ERROR_EXIT();
+    } else if (oldVersion.data()[0] > version) {
+      LOG_TOPIC(ERR, Logger::ENGINES)
+      << "You are using an old version of ArangoDB, please update "
+      << "before opening this dir.";
+      FATAL_ERROR_EXIT();
+    }
+  }
+  // store current version
+  s = _db->Put(rocksdb::WriteOptions(), cfHandles[0], key.string(),
+               rocksdb::Slice(&version, sizeof(char)));
+  TRI_ASSERT(s.ok());
+  
   // only enable logger after RocksDB start
   logger->enable();
 

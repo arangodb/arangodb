@@ -133,7 +133,7 @@ class RocksDBKey {
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Create a fully-specified key for a settings value
   //////////////////////////////////////////////////////////////////////////////
-  static RocksDBKey SettingsValue();
+  static RocksDBKey SettingsValue(RocksDBSettingsType st);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Create a fully-specified key for a counter value
@@ -260,7 +260,7 @@ class RocksDBKey {
   std::string const& string() const;
   
  private:
-  explicit RocksDBKey(RocksDBEntryType type);
+  explicit RocksDBKey(RocksDBEntryType type, RocksDBSettingsType st);
   RocksDBKey(RocksDBEntryType type, uint64_t first);
   RocksDBKey(RocksDBEntryType type, uint64_t first, uint64_t second);
   RocksDBKey(RocksDBEntryType type, uint64_t first, VPackSlice const& slice);

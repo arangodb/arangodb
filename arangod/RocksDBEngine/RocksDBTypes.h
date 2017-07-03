@@ -74,10 +74,16 @@ enum class RocksDBLogType : char {
   SinglePut = '?',
   SingleRemove = '@'
 };
+  
+enum class RocksDBSettingsType : char {
+  Invalid = 0,
+  Version = 'V',
+  ServerTick = 'S'
+};
 
 char const* rocksDBLogTypeName(RocksDBLogType);
-
 rocksdb::Slice const& rocksDBSlice(RocksDBEntryType const& type);
+char rocksDBFormatVersion();
 }  // namespace arangodb
 
 #endif

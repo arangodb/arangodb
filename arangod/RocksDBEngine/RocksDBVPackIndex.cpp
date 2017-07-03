@@ -81,7 +81,7 @@ static std::vector<arangodb::basics::AttributeName> const KeyAttribute{
 RocksDBVPackIndexIterator::RocksDBVPackIndexIterator(
     LogicalCollection* collection, transaction::Methods* trx,
     ManagedDocumentResult* mmdr, arangodb::RocksDBVPackIndex const* index,
-    bool reverse, RocksDBKeyBounds const& bounds)
+    bool reverse, RocksDBKeyBounds&& bounds)
     : IndexIterator(collection, trx, mmdr, index),
       _index(index),
       _cmp(index->comparator()),
@@ -739,7 +739,7 @@ RocksDBVPackIndexIterator* RocksDBVPackIndex::lookup(
                                     : RocksDBKeyBounds::VPackIndex(
                                           _objectId, leftBorder, rightBorder);
   return new RocksDBVPackIndexIterator(_collection, trx, mmdr, this, reverse,
-                                       bounds);
+                                       std::move(bounds));
 }
 
 bool RocksDBVPackIndex::accessFitsIndex(

@@ -216,6 +216,7 @@ void RocksDBGeoIndexIterator::replaceCursor(::GeoCursor* c) {
 
 void RocksDBGeoIndexIterator::createCursor(double lat, double lon) {
   _coor = GeoCoordinate{lat, lon, 0};
+  // GeoIndex is always exclusively write-locked with rocksdb
   GeoIndex_setRocksMethods(_index->_geoIndex,
                            RocksDBTransactionState::toMethods(_trx));
   replaceCursor(::GeoIndex_NewCursor(_index->_geoIndex, &_coor));
@@ -422,6 +423,7 @@ Result RocksDBGeoIndex::insertInternal(transaction::Methods* trx,
                                        RocksDBMethods* mthd,
                                        TRI_voc_rid_t revisionId,
                                        velocypack::Slice const& doc) {
+  // GeoIndex is always exclusively write-locked with rocksdb
   GeoIndex_setRocksMethods(_geoIndex, mthd);
   TRI_DEFER(GeoIndex_clearRocks(_geoIndex));
 
@@ -494,6 +496,7 @@ Result RocksDBGeoIndex::removeInternal(transaction::Methods* trx,
                                        RocksDBMethods* mthd,
                                        TRI_voc_rid_t revisionId,
                                        velocypack::Slice const& doc) {
+  // GeoIndex is always exclusively write-locked with rocksdb
   GeoIndex_setRocksMethods(_geoIndex, RocksDBTransactionState::toMethods(trx));
   TRI_DEFER(GeoIndex_clearRocks(_geoIndex));
 
@@ -577,6 +580,7 @@ GeoCoordinates* RocksDBGeoIndex::withinQuery(transaction::Methods* trx,
   GeoCoordinate gc;
   gc.latitude = lat;
   gc.longitude = lon;
+  // GeoIndex is always exclusively write-locked with rocksdb
   GeoIndex_setRocksMethods(_geoIndex, RocksDBTransactionState::toMethods(trx));
   GeoCoordinates* coords = GeoIndex_PointsWithinRadius(_geoIndex, &gc, radius);
   GeoIndex_clearRocks(_geoIndex);
@@ -590,7 +594,7 @@ GeoCoordinates* RocksDBGeoIndex::nearQuery(transaction::Methods* trx,
   GeoCoordinate gc;
   gc.latitude = lat;
   gc.longitude = lon;
-
+  // GeoIndex is always exclusively write-locked with rocksdb
   GeoIndex_setRocksMethods(_geoIndex, RocksDBTransactionState::toMethods(trx));
   GeoCoordinates* coords =
       GeoIndex_NearestCountPoints(_geoIndex, &gc, static_cast<int>(count));

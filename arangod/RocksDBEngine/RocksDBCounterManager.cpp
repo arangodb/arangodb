@@ -241,7 +241,7 @@ Result RocksDBCounterManager::sync(bool force) {
   VPackSlice slice = b.slice();
   LOG_TOPIC(TRACE, Logger::ENGINES) << "writing settings: " << slice.toJson();
 
-  RocksDBKey key = RocksDBKey::SettingsValue();
+  RocksDBKey key = RocksDBKey::SettingsValue(RocksDBSettingsType::ServerTick);
   rocksdb::Slice value(slice.startAs<char>(), slice.byteSize());
 
   rocksdb::Status s = rtrx->Put(key.string(), value);
@@ -310,7 +310,7 @@ Result RocksDBCounterManager::sync(bool force) {
 }
 
 void RocksDBCounterManager::readSettings() {
-  RocksDBKey key = RocksDBKey::SettingsValue();
+  RocksDBKey key = RocksDBKey::SettingsValue(RocksDBSettingsType::ServerTick);
 
   rocksdb::PinnableSlice result;
   rocksdb::Status status =
