@@ -40,6 +40,12 @@ static const std::string LINK_TYPE("iresearch");
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief the name of the field in the iResearch Link definition denoting the
+///        iResearch Link type
+////////////////////////////////////////////////////////////////////////////////
+static const std::string LINK_TYPE_FIELD("type");
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief the name of the field in the iResearch Link definition denoting the
 ///        corresponding iResearch View
 ////////////////////////////////////////////////////////////////////////////////
 static const std::string VIEW_NAME_FIELD("name");
@@ -66,7 +72,7 @@ VPackSlice const& emptyParentSlice() {
       fieldsBuilder.close(); // empty array
       _builder.openObject();
       _builder.add("fields", fieldsBuilder.slice()); // empty array
-      _builder.add("type", VPackValue(LINK_TYPE)); // the index type required by Index
+      _builder.add(LINK_TYPE_FIELD, VPackValue(LINK_TYPE)); // the index type required by Index
       _builder.close(); // object with just one field required by the Index constructor
       _slice = _builder.slice();
     }
@@ -378,6 +384,16 @@ Result IResearchLink::remove(
   return true;
 }
 
+/*static*/ bool IResearchLink::setType(arangodb::velocypack::Builder& builder) {
+  if (!builder.isOpenObject()) {
+    return false;
+  }
+
+  builder.add(LINK_TYPE_FIELD, arangodb::velocypack::Value(LINK_TYPE));
+
+  return true;
+}
+
 void IResearchLink::toVelocyPack(
     VPackBuilder& builder,
     bool withFigures,
@@ -388,7 +404,7 @@ void IResearchLink::toVelocyPack(
   TRI_ASSERT(success);
 
   builder.add("id", VPackValue(std::to_string(_iid)));
-  builder.add("type", VPackValue(typeName()));
+  builder.add(LINK_TYPE_FIELD, VPackValue(typeName()));
 
   if (_view) {
     builder.add(VIEW_NAME_FIELD, VPackValue(_view->name()));

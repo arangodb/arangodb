@@ -695,7 +695,8 @@ arangodb::Result updateLinks(
 
       if (!arangodb::iresearch::mergeSlice(namedJson, link)
           || !arangodb::iresearch::IResearchLink::setName(namedJson, view.name())
-          || !arangodb::iresearch::IResearchLink::setSkipViewRegistration(namedJson, view.name())) {
+          || !arangodb::iresearch::IResearchLink::setSkipViewRegistration(namedJson, view.name())
+          || !arangodb::iresearch::IResearchLink::setType(namedJson)) {
         return arangodb::Result(
           TRI_ERROR_INTERNAL,
           std::string("failed to update link definition with the view name while updating iResearch view '") + view.name() + "' collection '" + collectionName + "'"
