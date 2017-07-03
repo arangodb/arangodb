@@ -416,12 +416,26 @@ void RocksDBEngine::start() {
       LOG_TOPIC(DEBUG, arangodb::Logger::STARTUP)
           << "found existing column families: " << names;
 
+      for (auto const& it : cfFamilies) {
+        auto it2 = std::find(existingColumnFamilies.begin(), existingColumnFamilies.end(), it.name);
+      
+        if (it2 == existingColumnFamilies.end()) {
+          LOG_TOPIC(FATAL, arangodb::Logger::STARTUP)
+              << "column family '" << it.name << "' is missing in database"
+              << ". if you are upgrading from an earlier alpha or beta version of ArangoDB 3.2, "
+              << "it is required to restart with a new database directory and "
+                 "re-import data";
+          FATAL_ERROR_EXIT();
+        }
+        
+      }
+
       if (existingColumnFamilies.size() < numberOfColumnFamilies) {
         LOG_TOPIC(FATAL, arangodb::Logger::STARTUP)
             << "unexpected number of column families found in database ("
             << cfHandles.size() << "). "
             << "expecting at least " << numberOfColumnFamilies
-            << ". if you are upgrading from an alpha version of ArangoDB 3.2, "
+            << ". if you are upgrading from an earlier alpha or beta version of ArangoDB 3.2, "
             << "it is required to restart with a new database directory and "
                "re-import data";
         FATAL_ERROR_EXIT();
