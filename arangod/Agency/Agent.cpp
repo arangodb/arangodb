@@ -339,8 +339,8 @@ bool Agent::recvAppendEntriesRPC(
       // Now the log is empty, but this will soon be rectified.
       { 
         MUTEX_LOCKER(liLocker, _liLock);
-        _nextCompactionAfter = (std::min)(_nextCompactionAfter,
-            snapshotIndex + _config.compactionStepSize());
+        _nextCompactionAfter = (std::min)(
+          _nextCompactionAfter, snapshotIndex + _config.compactionStepSize());
       }
     }
   }
@@ -905,7 +905,7 @@ inquire_ret_t Agent::inquire(query_t const& query) {
 /// Write new entries to replicated state and store
 write_ret_t Agent::write(query_t const& query, WriteMode const& wmode) {
 
-  std::vector<bool> applied;
+  std::vector<apply_ret_t> applied;
   std::vector<index_t> indices;
   auto multihost = size()>1;
 

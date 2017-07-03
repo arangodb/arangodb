@@ -326,7 +326,8 @@ RestStatus RestAgencyHandler::handleWrite() {
       call_mode = "waitForCommitted";
     }
     
-    size_t errors = 0;
+    size_t precondition_failed = 0;
+    size_t forbidden = 0;
     Builder body;
     body.openObject();
     Agent::raft_commit_t result = Agent::raft_commit_t::OK;
@@ -336,8 +337,13 @@ RestStatus RestAgencyHandler::handleWrite() {
       body.add("results", VPackValue(VPackValueType::Array));
       for (auto const& index : ret.indices) {
         body.add(VPackValue(index));
-        if (index == 0) {
-          errors++;
+      }
+      for (auto const& a : ret.applied) {
+        switch (a) {
+        case APPLIED: break;
+        case PRECONDITION_FAILED: ++precondition_failed; break;
+        case FORBIDDEN: ++forbidden; break;
+        default: break;
         }
       }
       body.close();
@@ -367,7 +373,9 @@ RestStatus RestAgencyHandler::handleWrite() {
     } else if (result == Agent::raft_commit_t::TIMEOUT) {
       generateResult(rest::ResponseCode::REQUEST_TIMEOUT, body.slice());
     } else {
-      if (errors > 0) { // Some/all requests failed
+      if (forbidden > 0) {
+        generateResult(rest::ResponseCode::FORBIDDEN, body.slice());
+      } else if (precondition_failed > 0) { // Some/all requests failed
         generateResult(rest::ResponseCode::PRECONDITION_FAILED, body.slice());
       } else {          // All good
         generateResult(rest::ResponseCode::OK, body.slice());

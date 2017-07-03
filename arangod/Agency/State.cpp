@@ -57,8 +57,6 @@ using namespace arangodb::consensus;
 using namespace arangodb::velocypack;
 using namespace arangodb::rest;
 
-static const std::string RECONFIGURE(".agency");
-
 /// Construct with endpoint
 State::State(std::string const& endpoint)
     : _agent(nullptr),
@@ -199,8 +197,9 @@ bool State::persistconf(
 
 
 /// Log transaction (leader)
-std::vector<index_t> State::log(
-  query_t const& transactions, std::vector<bool> const& applicable, term_t term) {
+std::vector<index_t> State::log(query_t const& transactions,
+                                std::vector<apply_ret_t> const& applicable,
+                                term_t term) {
 
   TRI_ASSERT(!_log.empty()); // log must not ever be empty
       
@@ -225,22 +224,22 @@ std::vector<index_t> State::log(
         );
     }
     
-    if (applicable[j]) {
+    if (applicable[j] == 0) {
       std::string clientId((i.length()==3) ? i[2].copyString() : "");
       auto transaction = i[0];
       TRI_ASSERT(transaction.isObject());
       TRI_ASSERT(transaction.length() > 0);
-      bool reconfiguration = 
-        transaction.keyAt(0).copyString().compare(0, RECONFIGURE.size(), RECONFIGURE) == 0;
+      size_t pos = transaction.keyAt(0).copyString().find(RECONFIGURE);
       idx[j] =
         logNonBlocking(
-          _log.back().index+1, transaction, term, clientId, true, reconfiguration);
+          _log.back().index+1, transaction, term, clientId, true,
+          pos != std::string::npos && (pos == 0 || pos == 1));
     }
     
     ++j;
     
   }
-
+  
   return idx;
   
 }

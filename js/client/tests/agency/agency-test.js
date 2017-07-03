@@ -901,17 +901,17 @@ function agencyTestSuite () {
     
     testHiddenAgencyWrite: function() {
       var res = accessAgency("write",[[{".agency": {"op":"set","new":"fallera"}}]]);
-      assertEqual(res.statusCode, 200);
+      assertEqual(res.statusCode, 403);
     }, 
     
     testHiddenAgencyWriteSlash: function() {
-      var res = accessAgency("write",[[{"/.agency": {"op":"set","new":"fallera"}}]]);
-      assertEqual(res.statusCode, 200);
+      var res = accessAgency("write",[[{".agency": {"op":"set","new":"fallera"}}]]);
+      assertEqual(res.statusCode, 403);
     },
     
     testHiddenAgencyWriteDeep: function() {
-      var res = accessAgency("write",[[{"/.agency/hans": {"op":"set","new":"fallera"}}]]);
-      assertEqual(res.statusCode, 200);
+      var res = accessAgency("write",[[{".agency/hans": {"op":"set","new":"fallera"}}]]);
+      assertEqual(res.statusCode, 403);
     },
 
 ////////////////////////////////////////////////////////////////////////////////

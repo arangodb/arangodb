@@ -159,9 +159,9 @@ Store::~Store() {
 
 /// Apply array of transactions multiple queries to store
 /// Return vector of according success
-std::vector<bool> Store::applyTransactions(
+std::vector<apply_ret_t> Store::applyTransactions(
   query_t const& query, Agent::WriteMode const& wmode) {
-  std::vector<bool> success;
+  std::vector<apply_ret_t> success;
 
   if (query->slice().isArray()) {
     try {
@@ -169,36 +169,35 @@ std::vector<bool> Store::applyTransactions(
         if (!wmode.privileged()) {
           bool found = false;
           for (auto const& o : VPackObjectIterator(i[0])) {
-            std::string key = o.key.copyString();
-            if (key.compare(0, RECONFIGURE.size(), RECONFIGURE) == 0) {
+            size_t pos = o.key.copyString().find(RECONFIGURE);
+            if (pos != std::string::npos && (pos == 0 || pos == 1)) {
               found = true;
-              
-              continue;
+              break;
             }
           }
           if (found) {
-            success.push_back(false);
+            success.push_back(FORBIDDEN);
             continue;
           }
         }
         MUTEX_LOCKER(storeLocker, _storeLock);
         switch (i.length()) {
         case 1:  // No precondition
-          success.push_back(applies(i[0]));
+          success.push_back(applies(i[0]) ? APPLIED : UNKNOWN_ERROR);
           break;
         case 2: // precondition + uuid
         case 3:
           if (check(i[1]).successful()) {
-            success.push_back(applies(i[0]));
+            success.push_back(applies(i[0]) ? APPLIED : UNKNOWN_ERROR);
           } else {  // precondition failed
             LOG_TOPIC(TRACE, Logger::AGENCY) << "Precondition failed!";
-            success.push_back(false);
+            success.push_back(PRECONDITION_FAILED);
           }
           break;
         default:  // Wrong
           LOG_TOPIC(ERR, Logger::AGENCY)
             << "We can only handle log entry with or without precondition!";
-          success.push_back(false);
+          success.push_back(UNKNOWN_ERROR);
           break;
         }
       }

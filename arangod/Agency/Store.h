@@ -41,7 +41,7 @@ struct check_ret_t {
   query_t failed;
   
   check_ret_t() : success(true), failed(nullptr) {}
-  
+
   explicit check_ret_t(bool s) : success(s) {}
   
   inline bool successful() const { return success; }
@@ -66,11 +66,14 @@ struct check_ret_t {
   
 };
 
-enum CheckMode {FIRST_FAIL, FULL};
-
 /// @brief Key value tree
 class Store : public arangodb::Thread {
- public:
+
+
+  enum CheckMode {FIRST_FAIL, FULL};
+
+public:
+  
   /// @brief Construct with name
   explicit Store(Agent* agent, std::string const& name = "root");
 
@@ -92,7 +95,7 @@ class Store : public arangodb::Thread {
   /// @brief Apply entry in query, query must be an array of individual
   /// transactions that are in turn arrays with 1, 2 or 3 entries as described
   /// in the next method.
-  std::vector<bool> applyTransactions(
+  std::vector<apply_ret_t> applyTransactions(
     query_t const& query,
     AgentInterface::WriteMode const& wmode = AgentInterface::WriteMode());
 
