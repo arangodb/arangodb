@@ -236,7 +236,6 @@ DatabaseFeature::DatabaseFeature(ApplicationServer* server)
   startsAfter("CacheManager");
   startsAfter("DatabasePath");
   startsAfter("EngineSelector");
-  startsAfter("MMFilesLogfileManager");
   startsAfter("InitDatabase");
   startsAfter("MMFilesEngine");
   startsAfter("MMFilesPersistentIndex");

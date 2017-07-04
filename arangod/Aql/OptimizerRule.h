@@ -151,11 +151,16 @@ struct OptimizerRule {
     // sort values used in IN comparisons of remaining filters
     sortInValuesRule_pass6,
 
-    // remove calculations that are never necessary
-    removeUnnecessaryCalculationsRule_pass6,
-
     // merge filters into graph traversals
     optimizeTraversalsRule_pass6,
+    // remove redundant filters statements
+    removeFiltersCoveredByTraversal_pass6,
+    
+    // remove calculations that are redundant
+    // needs to run after filter removal
+    removeUnnecessaryCalculationsRule_pass6,
+    // remove now obsolete path variables
+    removeTraversalPathVariable_pass6,
     prepareTraversalsRule_pass6,
 
     /// Pass 9: push down calculations beyond FILTERs and LIMITs

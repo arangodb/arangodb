@@ -404,10 +404,6 @@ include(MMFiles/CMakeLists.txt)
 
 add_library(arangoserver STATIC ${ARANGOD_SOURCES} ${MMFILES_SOURCES} ${ROCKSDB_SOURCES})
 
-if (USE_SSL)
-  target_compile_definitions(${BIN_ARANGOD} PUBLIC "ARANGODB_SSL_ENABLED=1")
-endif()
-
 target_link_libraries(arangoserver
   ${LIB_ARANGO_FE}
   ${LIB_ARANGO_V8}
