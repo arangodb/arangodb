@@ -6,9 +6,9 @@
     <div class="pure-g pure-table pure-table-header pure-title" style="clear: both">
       <div class="pure-table-row">
         <div class="<%= genClass %> left">Database</div>
-        <div class="<%= genClass %> mid">Manage</div>
-        <div class="<%= genClass %> mid">Read</div>
-        <div class="<%= genClass %> mid">No access</div>
+        <div class="<%= genClass %> mid">Administrate <i class="fa fa-info-circle tippy" title="Allows creating/dropping of collections and setting user permissions in the database."></i></div>
+        <div class="<%= genClass %> mid">Access <i class="fa fa-info-circle tippy" title="Allows access to the database. User cannot create or drop collections."></i></div>
+        <div class="<%= genClass %> mid">No access <i class="fa fa-info-circle tippy" title="User has no access to the database."></i></div>
       </div>
     </div>
 
@@ -20,14 +20,14 @@
         <% } %>
 
         <div class="pure-table-row db-row noHover <%= extraClass %>" id="<%= db %>-db">
-          <div class="<%= genClass %> left">
+          <div class="<%= genClass %> left db-label">
 
             <% if (db.charAt(0) !== '*') { %>
               <i class="fa fa-caret-right" style="width: 10px;"></i>
               <i class="fa fa-caret-down" style="display: none; width: 10px;"></i>
             <% } %>
             <% if (db.charAt(0) === '*') { %>
-              _DEFAULT_
+              (DEFAULT) <i class="fa fa-info-circle tippy" title="Default access level for databases, if authentication level is not specified."></i>
             <% } else { %>
               <%= db %>
             <% } %>
@@ -55,7 +55,7 @@
             <div class="<%= genClass %> mid">
               <input class="dbCheckbox noAccess" type="radio" name="<%= db %>" permission="none">
             </div>
-          <% } else { %>
+          <% } else if (permissionsDB === 'none') { %>
             <div class="<%= genClass %> mid">
               <input class="dbCheckbox readWrite" type="radio" name="<%= db %>" permission="<%= db %>">
             </div>
@@ -65,19 +65,37 @@
             <div class="<%= genClass %> mid">
               <input class="dbCheckbox noAccess" type="radio" name="<%= db %>" permission="none" checked>
             </div>
+          <% } else { %>
+            <div class="<%= genClass %> mid">
+              <input class="dbCheckbox readWrite" type="radio" name="<%= db %>" permission="<%= db %>">
+            </div>
+            <div class="<%= genClass %> mid">
+              <input class="dbCheckbox readOnly" type="radio" name="<%= db %>" permission="<%= db %>">
+            </div>
+            <div class="<%= genClass %> mid">
+              <input class="dbCheckbox noAccess" type="radio" name="<%= db %>" permission="none">
+            </div>
           <% } %>
 
           <div class="collection-row pure-table-row noHover inner <%= extraClass %>" style="display: none">
-            <div class="<%= genClass %> left inner"><span class="collLabel">Collections<span></div>
-            <div class="<%= genClass %> mid inner"></div>
-            <div class="<%= genClass %> mid inner"></div>
-            <div class="<%= genClass %> mid inner"></div>
+            <div class="<%= genClass %> left inner collection-label collection-label-first"><span class="collLabel">Collections<span></div>
+            <div class="<%= genClass %> mid inner collection-label">Read/Write</div>
+            <div class="<%= genClass %> mid inner collection-label">Read only</div>
+            <div class="<%= genClass %> mid inner collection-label collection-label-last">No access</div>
             <% _.each(content.collections, function(permissionCollection, collectionName) { %>
               <% if (db.charAt(0) !== '*') { %>
                 <% if (collectionName.charAt(0) !== '_') { %>
 
                   <div class="pure-table-row noHover">
-                    <div class="<%= genClass %> left inner"><span class="collName"><%= collectionName %></span></div>
+                    <% var collectionLabel = collectionName; %>
+                    <% if (collectionLabel === '*') { %>
+                      <% collectionLabel = '(DEFAULT)'; %>
+                    <% } %>
+                    <% if (collectionLabel === '(DEFAULT)') { %>
+                      <div class="<%= genClass %> left inner"><span class="collName"><%= collectionLabel %> </span><i class="fa fa-info-circle tippy" title="Default access level for collections in <%=db%>, if authentication level is not specified."></i></div>
+                    <% } else { %>
+                      <div class="<%= genClass %> left inner"><span class="collName"><%= collectionLabel %></span></div>
+                    <% } %>
 
                     <% if (permissionCollection === 'rw') { %>
                       <div class="<%= genClass %> mid inner">
@@ -99,7 +117,7 @@
                       <div class="<%= genClass %> mid inner">
                         <input class="collCheckbox noAccess" type="radio" db="<%= db %>" name="<%=db%>-<%=collectionName%>" collection="<%= collectionName %>" permission="<%= collectionName %>">
                       </div>
-                    <% } else { %>
+                    <% } else if (permissionCollection === 'none') { %>
                       <div class="<%= genClass %> mid inner">
                         <input class="collCheckbox readWrite" type="radio" db="<%= db %>" name="<%=db%>-<%=collectionName%>" collection="<%= collectionName %>" permission="<%= collectionName %>">
                       </div>
@@ -108,6 +126,16 @@
                       </div>
                       <div class="<%= genClass %> mid inner">
                         <input class="collCheckbox noAccess" type="radio" db="<%= db %>" name="<%=db%>-<%=collectionName%>" collection="<%= collectionName %>" permission="<%= collectionName %>" checked>
+                      </div>
+                    <% } else { %>
+                      <div class="<%= genClass %> mid inner">
+                        <input class="collCheckbox readWrite" type="radio" db="<%= db %>" name="<%=db%>-<%=collectionName%>" collection="<%= collectionName %>" permission="<%= collectionName %>">
+                      </div>
+                      <div class="<%= genClass %> mid inner">
+                        <input class="collCheckbox readOnly" type="radio" db="<%= db %>" name="<%=db%>-<%=collectionName%>" collection="<%= collectionName %>" permission="<%= collectionName %>">
+                      </div>
+                      <div class="<%= genClass %> mid inner">
+                        <input class="collCheckbox noAccess" type="radio" db="<%= db %>" name="<%=db%>-<%=collectionName%>" collection="<%= collectionName %>" permission="<%= collectionName %>">
                       </div>
                     <% } %>
 
