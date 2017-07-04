@@ -512,14 +512,7 @@ def jslintStep() {
             node(os) {
                 echo "Running jslint test"
 
-                try {
-                    unstashBinaries(edition, os)
-                }
-                catch (exc) {
-                    echo exc.toString()
-                    throw exc
-                }
-                
+                unstashBinaries(edition, os)
                 jslint()
             }
         }
@@ -847,6 +840,10 @@ catch (exc) {
 stage('result') {
     node('master') {
         def result = ""
+
+        if (!jslintSuccessful) {
+            result += "JSLINT failed\n"
+        }
 
         for (kv in buildsSuccess) {
             result += "BUILD ${kv.key}: ${kv.value}\n"
