@@ -998,6 +998,51 @@
             document.body.removeChild(a);
           }, 500);
         });
+    },
+
+    checkCollectionPermissions: function (collectionID, roCallback) {
+      var url = arangoHelper.databaseUrl('/_api/user/' +
+        encodeURIComponent(window.App.userCollection.activeUser) +
+        '/database/' + encodeURIComponent(frontendConfig.db) + '/' + encodeURIComponent(collectionID));
+
+      // FETCH COMPLETE DB LIST
+      $.ajax({
+        type: 'GET',
+        url: url,
+        contentType: 'application/json',
+        success: function (data) {
+          // fetching available dbs and permissions
+          if (data.result === 'ro') {
+            roCallback();
+          }
+        },
+        error: function (data) {
+          arangoHelper.arangoError('User', 'Could not fetch collection permissions.');
+        }
+      });
+    },
+
+    checkDatabasePermissions: function (roCallback) {
+      var url = arangoHelper.databaseUrl('/_api/user/' +
+        encodeURIComponent(window.App.userCollection.activeUser) +
+        '/database/' + encodeURIComponent(frontendConfig.db));
+
+      // FETCH COMPLETE DB LIST
+      $.ajax({
+        type: 'GET',
+        url: url,
+        contentType: 'application/json',
+        success: function (data) {
+          // fetching available dbs and permissions
+          if (data.result === 'ro') {
+            roCallback();
+          }
+        },
+        error: function (data) {
+          arangoHelper.arangoError('User', 'Could not fetch collection permissions.');
+        }
+      });
     }
+
   };
 }());

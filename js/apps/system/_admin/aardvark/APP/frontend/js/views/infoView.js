@@ -21,6 +21,12 @@
       window.arangoHelper.buildCollectionSubNav(this.collectionName, 'Info');
 
       this.renderInfoView();
+      // check permissions and adjust views
+      arangoHelper.checkCollectionPermissions(this.collectionName, this.changeViewToReadOnly);
+    },
+
+    changeViewToReadOnly: function () {
+      $('.breadcrumb').html($('.breadcrumb').html() + ' (read-only)');
     },
 
     breadcrumb: function () {

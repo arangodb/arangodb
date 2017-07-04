@@ -1741,7 +1741,7 @@ void MMFilesCollection::open(bool ignoreErrors) {
 
   arangodb::SingleCollectionTransaction trx(
       arangodb::transaction::StandaloneContext::Create(vocbase), cid,
-      AccessMode::Type::WRITE);
+      AccessMode::Type::READ);
   // the underlying collections must not be locked here because the "load"
   // routine can be invoked from any other place, e.g. from an AQL query
   trx.addHint(transaction::Hints::Hint::LOCK_NEVER);

@@ -71,33 +71,44 @@
           var active = false;
           var currentUser = null;
           if (username !== false) {
-            currentUser = this.userCollection.findWhere({user: username});
-            currentUser.set({loggedIn: true});
-            name = currentUser.get('extra').name;
-            img = currentUser.get('extra').img;
-            active = currentUser.get('active');
-            if (!img) {
-              img = 'img/default_user.png';
+            var continueFunc = function () {
+              currentUser = self.userCollection.findWhere({user: username});
+              currentUser.set({loggedIn: true});
+              name = currentUser.get('extra').name;
+              img = currentUser.get('extra').img;
+              active = currentUser.get('active');
+              if (!img) {
+                img = 'img/default_user.png';
+              } else {
+                img = 'https://s.gravatar.com/avatar/' + img + '?s=80';
+              }
+              if (!name) {
+                name = '';
+              }
+
+              self.$el = $('#userBar');
+              self.$el.html(self.template.render({
+                img: img,
+                name: name,
+                username: username,
+                active: active
+              }));
+
+              self.delegateEvents();
+              return self.$el;
+            };
+            if (self.userCollection.models.length === 0) {
+              self.userCollection.fetch({
+                success: function () {
+                  continueFunc(error, username);
+                }
+              });
             } else {
-              img = 'https://s.gravatar.com/avatar/' + img + '?s=80';
+              continueFunc(error, username);
             }
-            if (!name) {
-              name = '';
-            }
-
-            this.$el = $('#userBar');
-            this.$el.html(this.template.render({
-              img: img,
-              name: name,
-              username: username,
-              active: active
-            }));
-
-            this.delegateEvents();
-            return this.$el;
           }
         }
-      }.bind(this);
+      };
 
       $('#userBar').on('click', function () {
         self.toggleUserMenu();

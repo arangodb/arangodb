@@ -173,6 +173,17 @@ $iconsize: 50px;
     }
   }
 
+  &.disabled {
+    cursor: not-allowed;
+    opacity: .4;
+
+    a {
+      &:hover {
+        opacity: .8 !important;
+      }
+    }
+  }
+
   .tile-icon-svg {
     cursor: pointer;
     fill: $c-icon-grey;

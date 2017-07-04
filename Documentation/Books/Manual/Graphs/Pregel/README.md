@@ -326,3 +326,7 @@ Should work best on undirected graphs, results on directed graphs might vary dep
     var pregel = require("@arangodb/pregel");
     var handle = pregel.start("labelpropagation", "yourgraph", {maxGSS:100, resultField: "community"});
 ```
+
+##### Speaker-Listener Label Propagation
+
+

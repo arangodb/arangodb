@@ -24,7 +24,7 @@
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Rest/HttpRequest.h"
-#include "VocBase/Methods/Database.h"
+#include "VocBase/Methods/Databases.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/Iterator.h>
@@ -45,7 +45,7 @@ RestStatus RestDatabaseHandler::execute() {
     return getDatabases();
   } else if (type == rest::RequestType::POST) {
     if (!_vocbase->isSystem()) {
-      generateError(rest::ResponseCode::BAD,
+      generateError(GeneralResponse::responseCode(TRI_ERROR_ARANGO_USE_SYSTEM_DATABASE),
                     TRI_ERROR_ARANGO_USE_SYSTEM_DATABASE);
       return RestStatus::DONE;
     }
@@ -57,17 +57,6 @@ RestStatus RestDatabaseHandler::execute() {
                   TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
     return RestStatus::DONE;
   }
-
-  /*bool parseSuccess = true;
-  std::shared_ptr<VPackBuilder> parsedBody =
-      parseVelocyPackBody(parseSuccess);
-
-  if (!parseSuccess) {
-    generateResult(rest::ResponseCode::OK, VPackSlice());
-    return RestStatus::DONE;
-  }
-
-  VPackBuilder result;*/
 }
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -85,9 +74,9 @@ RestStatus RestDatabaseHandler::getDatabases() {
   if (suffixes.empty() || suffixes[0] == "user") {
     std::vector<std::string> names;
     if (suffixes.empty()) {
-      names = methods::Database::list(std::string());
+      names = methods::Databases::list(std::string());
     } else if (suffixes[0] == "user") {
-      names = methods::Database::list(_request->user());
+      names = methods::Databases::list(_request->user());
     }
 
     result.openArray();
@@ -96,7 +85,7 @@ RestStatus RestDatabaseHandler::getDatabases() {
     }
     result.close();
   } else if (suffixes[0] == "current") {
-    Result res = methods::Database::info(_vocbase, result);
+    Result res = methods::Databases::info(_vocbase, result);
     if (!res.ok()) {
       generateError(rest::ResponseCode::BAD, res.errorNumber());
       return RestStatus::DONE;
@@ -104,14 +93,9 @@ RestStatus RestDatabaseHandler::getDatabases() {
   }
 
   if (result.isEmpty()) {
-    generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER);
+    generateError(rest::ResponseCode::BAD, TRI_ERROR_BAD_PARAMETER);
   } else {
-    VPackBuilder pack;
-    pack.openObject();
-    pack.add("result", result.slice());
-    pack.add("error", VPackValue(false));
-    pack.close();
-    generateResult(rest::ResponseCode::OK, pack.slice());
+    generateSuccess(rest::ResponseCode::OK, result.slice());
   }
   return RestStatus::DONE;
 }
@@ -138,21 +122,17 @@ RestStatus RestDatabaseHandler::createDatabase() {
   VPackSlice options = parsedBody->slice().get("options");
   VPackSlice users = parsedBody->slice().get("users");
 
-  Result res = methods::Database::create(dbName, users, options);
-  if (!res.ok()) {
-    generateError(res.errorNumber() == TRI_ERROR_ARANGO_DUPLICATE_NAME
-                      ? rest::ResponseCode::CONFLICT
-                      : rest::ResponseCode::BAD,
-                  res.errorNumber(), res.errorMessage());
-    return RestStatus::DONE;
+  Result res = methods::Databases::create(dbName, users, options);
+  if (res.ok()) {
+    generateSuccess(rest::ResponseCode::CREATED, VPackSlice::trueSlice());
+  } else {
+    if (res.errorNumber() == TRI_ERROR_FORBIDDEN ||
+        res.errorNumber() == TRI_ERROR_ARANGO_DUPLICATE_NAME) {
+      generateError(res);
+    } else {// http_server compatibility
+      generateError(rest::ResponseCode::BAD, res.errorNumber(), res.errorMessage());
+    }
   }
-
-  VPackBuilder b;
-  b.openObject();
-  b.add("result", VPackValue(true));
-  b.add("error", VPackValue(false));
-  b.close();
-  generateResult(rest::ResponseCode::CREATED, b.slice());
   return RestStatus::DONE;
 }
 
@@ -161,7 +141,7 @@ RestStatus RestDatabaseHandler::createDatabase() {
 // //////////////////////////////////////////////////////////////////////////////
 RestStatus RestDatabaseHandler::deleteDatabase() {
   if (!_vocbase->isSystem()) {
-    generateError(rest::ResponseCode::BAD,
+    generateError(GeneralResponse::responseCode(TRI_ERROR_ARANGO_USE_SYSTEM_DATABASE),
                   TRI_ERROR_ARANGO_USE_SYSTEM_DATABASE);
     return RestStatus::DONE;
   }
@@ -173,20 +153,12 @@ RestStatus RestDatabaseHandler::deleteDatabase() {
 
   std::string const& dbName = suffixes[0];
 
-  Result res = methods::Database::drop(_vocbase, dbName);
-  if (!res.ok()) {
-    generateError(res.errorNumber() == TRI_ERROR_ARANGO_DATABASE_NOT_FOUND
-                      ? rest::ResponseCode::NOT_FOUND
-                      : rest::ResponseCode::BAD,
-                  res.errorNumber(), res.errorMessage());
-    return RestStatus::DONE;
+  Result res = methods::Databases::drop(_vocbase, dbName);
+  if (res.ok()) {
+    generateSuccess(rest::ResponseCode::OK, VPackSlice::trueSlice());
+  } else {
+    generateError(res);
   }
 
-  VPackBuilder b;
-  b.openObject();
-  b.add("result", VPackValue(true));
-  b.add("error", VPackValue(false));
-  b.close();
-  generateResult(rest::ResponseCode::OK, b.slice());
   return RestStatus::DONE;
 }

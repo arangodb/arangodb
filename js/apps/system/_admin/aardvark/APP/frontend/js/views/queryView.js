@@ -528,7 +528,7 @@
           contentType: 'application/json',
           processData: false,
           success: function (data) {
-            if (data.msg.includes('errorMessage')) {
+            if (data.msg && data.msg.errorMessage) {
               self.removeOutputEditor(counter);
               arangoHelper.arangoError('Explain', data.msg);
             } else {
@@ -2067,7 +2067,7 @@
               if (error.code === 409) {
                 return;
               }
-              if (error.code !== 400 && error.code !== 404 && error.code !== 500) {
+              if (error.code !== 400 && error.code !== 404 && error.code !== 500 && error.code !== 403) {
                 arangoHelper.arangoNotification('Query', 'Successfully aborted.');
               }
             }
