@@ -430,8 +430,7 @@ struct AstNode {
   /// returns true if yes, and then also returns variable reference and array
   /// of attribute names in the parameter passed by reference
   bool isAttributeAccessForVariable(
-      std::pair<Variable const*, std::vector<arangodb::basics::AttributeName>>&,
-                                    bool allowIndexedAccess = false)
+      std::pair<Variable const*, std::vector<arangodb::basics::AttributeName>>&)
       const;
 
   /// @brief locate a variable including the direct path vector leading to it.
