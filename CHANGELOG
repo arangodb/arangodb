@@ -32,6 +32,8 @@ devel
   The problem happened when the two first chunks of a VST message arrived
   together on a connection that was newly switched to VST.
 
+* fix deletion of outdated WAL files in RocksDB engine
+
 * make use of selectivity estimates in hash, skiplist and persistent indexes 
   in RocksDB engine
 
