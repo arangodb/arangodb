@@ -5,11 +5,12 @@ content-type: application/json; charset=utf<span class="hljs-number">-8</span>
 x-content-type-options: nosniff
 
 { 
+  <span class="hljs-string">"error"</span> : <span class="hljs-literal">false</span>, 
+  <span class="hljs-string">"code"</span> : <span class="hljs-number">200</span>, 
   <span class="hljs-string">"result"</span> : { 
     <span class="hljs-string">"name"</span> : <span class="hljs-string">"_system"</span>, 
-    <span class="hljs-string">"id"</span> : <span class="hljs-number">1</span>, 
-    <span class="hljs-string">"path"</span> : <span class="hljs-string">"/var/folders/61/7jqqdlt97j90msp7qkn10k8w0000gn/T/arangosh_DTshw7/tmp-37486-3976229305/data/databases/database-1"</span>, 
+    <span class="hljs-string">"id"</span> : <span class="hljs-string">"1"</span>, 
+    <span class="hljs-string">"path"</span> : <span class="hljs-string">"/var/folders/61/7jqqdlt97j90msp7qkn10k8w0000gn/T/arangosh_tspDgQ/tmp-61198-3410495978/data/databases/database-1"</span>, 
     <span class="hljs-string">"isSystem"</span> : <span class="hljs-literal">true</span> 
-  }, 
-  <span class="hljs-string">"error"</span> : <span class="hljs-literal">false</span> 
+  } 
 }

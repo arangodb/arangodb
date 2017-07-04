@@ -1,10 +1,11 @@
 arangosh&gt; db.test.ensureIndex({ <span class="hljs-attr">type</span>: <span class="hljs-string">"hash"</span>, <span class="hljs-attr">fields</span>: [ <span class="hljs-string">"a"</span>, <span class="hljs-string">"b.c"</span> ], <span class="hljs-attr">unique</span>: <span class="hljs-literal">true</span> });
 { 
+  <span class="hljs-string">"deduplicate"</span> : <span class="hljs-literal">true</span>, 
   <span class="hljs-string">"fields"</span> : [ 
     <span class="hljs-string">"a"</span>, 
     <span class="hljs-string">"b.c"</span> 
   ], 
-  <span class="hljs-string">"id"</span> : <span class="hljs-string">"test/15445"</span>, 
+  <span class="hljs-string">"id"</span> : <span class="hljs-string">"test/15440"</span>, 
   <span class="hljs-string">"isNewlyCreated"</span> : <span class="hljs-literal">true</span>, 
   <span class="hljs-string">"selectivityEstimate"</span> : <span class="hljs-number">1</span>, 
   <span class="hljs-string">"sparse"</span> : <span class="hljs-literal">false</span>, 
@@ -14,17 +15,17 @@ arangosh&gt; db.test.ensureIndex({ <span class="hljs-attr">type</span>: <span cl
 }
 arangosh&gt; db.test.save({ <span class="hljs-attr">a</span> : <span class="hljs-number">1</span>, <span class="hljs-attr">b</span> : { <span class="hljs-attr">c</span> : <span class="hljs-number">1</span> } });
 { 
-  <span class="hljs-string">"_id"</span> : <span class="hljs-string">"test/15448"</span>, 
-  <span class="hljs-string">"_key"</span> : <span class="hljs-string">"15448"</span>, 
-  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_VKWEXw6---"</span> 
+  <span class="hljs-string">"_id"</span> : <span class="hljs-string">"test/15443"</span>, 
+  <span class="hljs-string">"_key"</span> : <span class="hljs-string">"15443"</span>, 
+  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_VOyxoL----"</span> 
 }
 arangosh&gt; db.test.save({ <span class="hljs-attr">a</span> : <span class="hljs-number">1</span>, <span class="hljs-attr">b</span> : { <span class="hljs-attr">c</span> : <span class="hljs-number">1</span> } });
-[ArangoError <span class="hljs-number">1210</span>: cannot create <span class="hljs-built_in">document</span>, unique constraint violated]
+[ArangoError <span class="hljs-number">1210</span>: unique constraint violated - <span class="hljs-keyword">in</span> index <span class="hljs-number">15440</span> <span class="hljs-keyword">of</span> type hash over [<span class="hljs-string">"a"</span>,<span class="hljs-string">"b.c"</span>]]
 arangosh&gt; db.test.save({ <span class="hljs-attr">a</span> : <span class="hljs-number">1</span>, <span class="hljs-attr">b</span> : { <span class="hljs-attr">c</span> : <span class="hljs-literal">null</span> } });
 { 
-  <span class="hljs-string">"_id"</span> : <span class="hljs-string">"test/15454"</span>, 
-  <span class="hljs-string">"_key"</span> : <span class="hljs-string">"15454"</span>, 
-  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_VKWEXx---_"</span> 
+  <span class="hljs-string">"_id"</span> : <span class="hljs-string">"test/15449"</span>, 
+  <span class="hljs-string">"_key"</span> : <span class="hljs-string">"15449"</span>, 
+  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_VOyxoLC---"</span> 
 }
 arangosh&gt; db.test.save({ <span class="hljs-attr">a</span> : <span class="hljs-number">1</span> });
-[ArangoError <span class="hljs-number">1210</span>: cannot create <span class="hljs-built_in">document</span>, unique constraint violated]
+[ArangoError <span class="hljs-number">1210</span>: unique constraint violated - <span class="hljs-keyword">in</span> index <span class="hljs-number">15440</span> <span class="hljs-keyword">of</span> type hash over [<span class="hljs-string">"a"</span>,<span class="hljs-string">"b.c"</span>]]
