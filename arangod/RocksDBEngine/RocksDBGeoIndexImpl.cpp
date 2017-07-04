@@ -365,7 +365,6 @@ inline void RocksWrite(GeoIx* gix, RocksDBKey const& key,
   if (gix->rocksMethods == nullptr) {
     rocksdb::TransactionDB* db = rocksutils::globalRocksDB();
     rocksdb::WriteOptions wo;
-    wo.sync = true;
     rocksdb::Status s =
         db->Put(wo, RocksDBColumnFamily::geo(), key.string(), slice);
     if (!s.ok()) {
