@@ -6,9 +6,9 @@
     <div class="pure-g pure-table pure-table-header pure-title" style="clear: both">
       <div class="pure-table-row">
         <div class="<%= genClass %> left">Database</div>
-        <div class="<%= genClass %> mid">Administrate</div>
-        <div class="<%= genClass %> mid">Access</div>
-        <div class="<%= genClass %> mid">No access</div>
+        <div class="<%= genClass %> mid">Administrate <i class="fa fa-info-circle tippy" title="Allows creating/dropping of collections and setting user permissions in the database."></i></div>
+        <div class="<%= genClass %> mid">Access <i class="fa fa-info-circle tippy" title="Allows access to the database. User cannot create or drop collections."></i></div>
+        <div class="<%= genClass %> mid">No access <i class="fa fa-info-circle tippy" title="User has no access to the database."></i></div>
       </div>
     </div>
 
@@ -27,7 +27,7 @@
               <i class="fa fa-caret-down" style="display: none; width: 10px;"></i>
             <% } %>
             <% if (db.charAt(0) === '*') { %>
-              _DEFAULT_
+              (DEFAULT) <i class="fa fa-info-circle tippy" title="Default access level for databases, if authentication level is not specified."></i>
             <% } else { %>
               <%= db %>
             <% } %>
@@ -89,9 +89,13 @@
                   <div class="pure-table-row noHover">
                     <% var collectionLabel = collectionName; %>
                     <% if (collectionLabel === '*') { %>
-                      <% collectionLabel = '_DEFAULT_'; %>
+                      <% collectionLabel = '(DEFAULT)'; %>
                     <% } %>
-                    <div class="<%= genClass %> left inner"><span class="collName"><%= collectionLabel %></span></div>
+                    <% if (collectionLabel === '(DEFAULT)') { %>
+                      <div class="<%= genClass %> left inner"><span class="collName"><%= collectionLabel %> </span><i class="fa fa-info-circle tippy" title="Default access level for collections in <%=db%>, if authentication level is not specified."></i></div>
+                    <% } else { %>
+                      <div class="<%= genClass %> left inner"><span class="collName"><%= collectionLabel %></span></div>
+                    <% } %>
 
                     <% if (permissionCollection === 'rw') { %>
                       <div class="<%= genClass %> mid inner">

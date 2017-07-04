@@ -28,12 +28,12 @@
       'click .db-row': 'toggleAccordion'
     },
 
-    render: function (open) {
+    render: function (open, error) {
       var self = this;
 
       this.collection.fetch({
         success: function () {
-          self.continueRender(open);
+          self.continueRender(open, error);
         }
       });
     },
@@ -88,10 +88,10 @@
       var collection = $(e.currentTarget).attr('collection');
       var value;
 
-      if (db === '_DEFAULT_') {
+      if (db === '(DEFAULT)') {
         db = '*';
       }
-      if (collection === '_DEFAULT_') {
+      if (collection === '(DEFAULT)') {
         collection = '*';
       }
 
@@ -108,7 +108,7 @@
     setDBPermission: function (e) {
       var db = $(e.currentTarget).attr('name');
 
-      if (db === '_DEFAULT_') {
+      if (db === '(DEFAULT)') {
         db = '*';
       }
 
@@ -147,7 +147,7 @@
       }
     },
 
-    rollbackInputButton: function (name) {
+    rollbackInputButton: function (name, error) {
       var open;
       _.each($('.collection-row'), function (elem, key) {
         if ($(elem).is(':visible')) {
@@ -156,7 +156,7 @@
       });
 
       if (open) {
-        this.render(open);
+        this.render(open, error);
       } else {
         this.render();
       }
@@ -176,7 +176,7 @@
             grant: value
           })
         }).error(function (e) {
-          self.rollbackInputButton();
+          self.rollbackInputButton(null, e);
         });
       }
     },
@@ -189,7 +189,7 @@
         url: arangoHelper.databaseUrl('/_api/user/' + encodeURIComponent(user) + '/database/' + encodeURIComponent(db) + '/' + encodeURIComponent(collection)),
         contentType: 'application/json'
       }).error(function (e) {
-        self.rollbackInputButton();
+        self.rollbackInputButton(null, e);
       });
     },
 
@@ -207,7 +207,7 @@
             grant: value
           })
         }).error(function (e) {
-          self.rollbackInputButton();
+          self.rollbackInputButton(null, e);
         });
       }
     },
@@ -220,11 +220,11 @@
         url: arangoHelper.databaseUrl('/_api/user/' + encodeURIComponent(user) + '/database/' + encodeURIComponent(db)),
         contentType: 'application/json'
       }).error(function (e) {
-        self.rollbackInputButton();
+        self.rollbackInputButton(null, e);
       });
     },
 
-    continueRender: function (open) {
+    continueRender: function (open, error) {
       var self = this;
 
       this.currentUser = this.collection.findWhere({
@@ -246,7 +246,7 @@
         contentType: 'application/json',
         success: function (data) {
           // fetching available dbs and permissions
-          self.finishRender(data.result, open);
+          self.finishRender(data.result, open, error);
         },
         error: function (data) {
           arangoHelper.arangoError('User', 'Could not fetch user permissions');
@@ -254,7 +254,7 @@
       });
     },
 
-    finishRender: function (permissions, open) {
+    finishRender: function (permissions, open, error) {
       $(this.el).html(this.template.render({
         permissions: permissions
       }));
@@ -262,6 +262,11 @@
       if (open) {
         $('#' + open).click();
       }
+      if (error && error.responseJSON && error.responseJSON.errorMessage) {
+        arangoHelper.arangoError('User', error.responseJSON.errorMessage);
+      }
+      // tooltips
+      arangoHelper.createTooltips();
     },
 
     breadcrumb: function () {
