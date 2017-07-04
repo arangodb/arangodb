@@ -142,16 +142,18 @@ RocksDBEngine* globalRocksEngine() {
   return static_cast<RocksDBEngine*>(engine);
 }
 
-arangodb::Result globalRocksDBPut(rocksdb::Slice const& key,
+arangodb::Result globalRocksDBPut(rocksdb::ColumnFamilyHandle *cf,
+                                  rocksdb::Slice const& key,
                                   rocksdb::Slice const& val,
                                   rocksdb::WriteOptions const& options) {
-  auto status = globalRocksDB()->Put(options, key, val);
+  auto status = globalRocksDB()->Put(options, cf, key, val);
   return convertStatus(status);
 };
 
-arangodb::Result globalRocksDBRemove(rocksdb::Slice const& key,
+arangodb::Result globalRocksDBRemove(rocksdb::ColumnFamilyHandle *cf,
+                                     rocksdb::Slice const& key,
                                      rocksdb::WriteOptions const& options) {
-  auto status = globalRocksDB()->Delete(options, key);
+  auto status = globalRocksDB()->Delete(options, cf, key);
   return convertStatus(status);
 };
 

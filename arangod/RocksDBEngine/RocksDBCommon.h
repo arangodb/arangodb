@@ -149,10 +149,12 @@ void uint16ToPersistent(std::string& out, uint16_t value);
 rocksdb::TransactionDB* globalRocksDB();
 RocksDBEngine* globalRocksEngine();
 arangodb::Result globalRocksDBPut(
+    rocksdb::ColumnFamilyHandle *cf,
     rocksdb::Slice const& key, rocksdb::Slice const& value,
     rocksdb::WriteOptions const& = rocksdb::WriteOptions{});
 
 arangodb::Result globalRocksDBRemove(
+    rocksdb::ColumnFamilyHandle *cf,
     rocksdb::Slice const& key,
     rocksdb::WriteOptions const& = rocksdb::WriteOptions{});
 

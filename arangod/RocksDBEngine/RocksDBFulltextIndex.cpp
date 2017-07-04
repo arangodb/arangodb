@@ -61,7 +61,7 @@ DocumentIdentifierToken RocksDBFulltextIndex::toDocumentIdentifierToken(
 RocksDBFulltextIndex::RocksDBFulltextIndex(
     TRI_idx_iid_t iid, arangodb::LogicalCollection* collection,
     VPackSlice const& info)
-    : RocksDBIndex(iid, collection, info, RocksDBColumnFamily::geo(), false),
+    : RocksDBIndex(iid, collection, info, RocksDBColumnFamily::fulltext(), false),
       _minWordLength(TRI_FULLTEXT_MIN_WORD_LENGTH_DEFAULT) {
   TRI_ASSERT(iid != 0);
 
@@ -219,15 +219,6 @@ Result RocksDBFulltextIndex::insertInternal(transaction::Methods* trx,
       break;
     }
   }
-  /*if (res != TRI_ERROR_NO_ERROR) {
-    for (size_t j = 0; j < i; ++j) {
-      std::string const& word = words[j];
-      RocksDBKey key =
-          RocksDBKey::FulltextIndexValue(_objectId, StringRef(word),
-  revisionId);
-      rtrx->Delete(key.string());
-    }
-  }*/
   return IndexResult(res, this);
 }
 

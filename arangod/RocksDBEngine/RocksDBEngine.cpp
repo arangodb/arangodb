@@ -800,7 +800,8 @@ int RocksDBEngine::removeReplicationApplierConfiguration(
     TRI_vocbase_t* vocbase) {
   auto key = RocksDBKey::ReplicationApplierConfig(vocbase->id());
 
-  auto status = rocksutils::globalRocksDBRemove(key.string());
+  auto status = rocksutils::globalRocksDBRemove(RocksDBColumnFamily::definitions(),
+                                                key.string());
   if (!status.ok()) {
     return status.errorNumber();
   }
@@ -813,7 +814,8 @@ int RocksDBEngine::saveReplicationApplierConfiguration(
   auto key = RocksDBKey::ReplicationApplierConfig(vocbase->id());
   auto value = RocksDBValue::ReplicationApplierConfig(slice);
 
-  auto status = rocksutils::globalRocksDBPut(key.string(), value.string());
+  auto status = rocksutils::globalRocksDBPut(RocksDBColumnFamily::definitions(),
+                                             key.string(), value.string());
   if (!status.ok()) {
     return status.errorNumber();
   }
@@ -1104,7 +1106,8 @@ void RocksDBEngine::createView(TRI_vocbase_t* vocbase, TRI_voc_cid_t id,
   auto key = RocksDBKey::View(vocbase->id(), id);
   auto value = RocksDBValue::View(VPackSlice::emptyObjectSlice());
 
-  auto status = rocksutils::globalRocksDBPut(key.string(), value.string());
+  auto status = rocksutils::globalRocksDBPut(RocksDBColumnFamily::definitions(),
+                                             key.string(), value.string());
   if (!status.ok()) {
     THROW_ARANGO_EXCEPTION(status.errorNumber());
   }
@@ -1305,7 +1308,8 @@ Result RocksDBEngine::dropDatabase(TRI_voc_tick_t id) {
 
   // remove views
   for (auto const& val : viewKVPairs(id)) {
-    res = globalRocksDBRemove(val.first.string(), options);
+    res = globalRocksDBRemove(RocksDBColumnFamily::definitions(),
+                              val.first.string(), options);
     if (res.fail()) {
       return res;
     }
@@ -1331,14 +1335,9 @@ Result RocksDBEngine::dropDatabase(TRI_voc_tick_t id) {
         if (res.fail()) {
           return res;
         }
-        // delete index
-        res = globalRocksDBRemove(val.first.string(), options);
-        if (res.fail()) {
-          return res;
-        }
       }
     }
-
+    
     uint64_t objectId =
         basics::VelocyPackHelper::stringUInt64(val.second.slice(), "objectId");
     // delete documents
@@ -1349,7 +1348,8 @@ Result RocksDBEngine::dropDatabase(TRI_voc_tick_t id) {
     }
     // delete Collection
     _counterManager->removeCounter(objectId);
-    res = globalRocksDBRemove(val.first.string(), options);
+    res = globalRocksDBRemove(RocksDBColumnFamily::definitions(),
+                              val.first.string(), options);
     if (res.fail()) {
       return res;
     }
@@ -1360,7 +1360,8 @@ Result RocksDBEngine::dropDatabase(TRI_voc_tick_t id) {
   // Cleanup thread does it in MMFiles
 
   auto key = RocksDBKey::Database(id);
-  res = rocksutils::globalRocksDBRemove(key.string(), options);
+  res = rocksutils::globalRocksDBRemove(RocksDBColumnFamily::definitions(),
+                                        key.string(), options);
 
   // remove VERSION file for database. it's not a problem when this fails
   // because it will simply remain there and be ignored on subsequent starts
