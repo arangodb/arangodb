@@ -1766,7 +1766,8 @@ arangodb::Result RocksDBCollection::serializeIndexEstimates(
     if (output.size() > sizeof(uint64_t)) {
       RocksDBKey key = RocksDBKey::IndexEstimateValue(cindex->objectId());
       rocksdb::Slice value(output);
-      rocksdb::Status s = rtrx->Put(key.string(), value);
+      rocksdb::Status s = rtrx->Put(RocksDBColumnFamily::definitions(),
+                                    key.string(), value);
 
       if (!s.ok()) {
         LOG_TOPIC(WARN, Logger::ENGINES) << "writing index estimates failed";
@@ -1841,7 +1842,8 @@ arangodb::Result RocksDBCollection::serializeKeyGenerator(
 
   RocksDBKey key = RocksDBKey::KeyGeneratorValue(_objectId);
   RocksDBValue value = RocksDBValue::KeyGeneratorValue(builder.slice());
-  rocksdb::Status s = rtrx->Put(key.string(), value.string());
+  rocksdb::Status s = rtrx->Put(RocksDBColumnFamily::definitions(),
+                                key.string(), value.string());
 
   if (!s.ok()) {
     LOG_TOPIC(WARN, Logger::ENGINES) << "writing key generator data failed";

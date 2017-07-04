@@ -235,12 +235,14 @@ RocksDBKeyBounds::RocksDBKeyBounds() : _type(RocksDBEntryType::Database) {}
 
 RocksDBKeyBounds::RocksDBKeyBounds(RocksDBEntryType type) : _type(type) {
   switch (_type) {
+    
     case RocksDBEntryType::Database: {
       _internals.reserve(2 * sizeof(char));
       _internals.push_back(static_cast<char>(_type));
 
       _internals.separate();
-      _internals.push_back(static_cast<char>(_type) + 1);
+      _internals.push_back(static_cast<char>(_type));
+      _internals.push_back(0xFFU);
       break;
     }
     case RocksDBEntryType::CounterValue:

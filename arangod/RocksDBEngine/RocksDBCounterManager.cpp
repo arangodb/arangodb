@@ -223,7 +223,8 @@ Result RocksDBCounterManager::sync(bool force) {
 
     RocksDBKey key = RocksDBKey::CounterValue(pair.first);
     rocksdb::Slice value((char*)b.start(), b.size());
-    rocksdb::Status s = rtrx->Put(key.string(), value);
+    rocksdb::Status s = rtrx->Put(RocksDBColumnFamily::definitions(),
+                                  key.string(), value);
     if (!s.ok()) {
       rtrx->Rollback();
       LOG_TOPIC(WARN, Logger::ENGINES) << "writing counters failed";
@@ -244,7 +245,8 @@ Result RocksDBCounterManager::sync(bool force) {
   RocksDBKey key = RocksDBKey::SettingsValue(RocksDBSettingsType::ServerTick);
   rocksdb::Slice value(slice.startAs<char>(), slice.byteSize());
 
-  rocksdb::Status s = rtrx->Put(key.string(), value);
+  rocksdb::Status s = rtrx->Put(RocksDBColumnFamily::definitions(),
+                                key.string(), value);
 
   if (!s.ok()) {
     LOG_TOPIC(WARN, Logger::ENGINES) << "writing settings failed";
