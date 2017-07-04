@@ -53,6 +53,11 @@
 
       var db = $(e.currentTarget).attr('id').split('-')[0];
       $('.collection-row').hide();
+
+      // unhighlight db labels
+      $('.db-label').css('font-weight', 200);
+      $('.db-label').css('color', '#8a969f');
+
       // if collections are available
       if ($(e.currentTarget).find('.collection-row').children().length > 4) {
         // if menu was already visible -> then hide
@@ -63,6 +68,9 @@
         } else {
           // else show menu
           $(e.currentTarget).find('.collection-row').fadeIn('fast');
+          // highlight db label
+          $(e.currentTarget).find('.db-label').css('font-weight', 600);
+          $(e.currentTarget).find('.db-label').css('color', 'rgba(64, 74, 83, 1)');
           // caret animation
           $(e.currentTarget).find('.fa-caret-down').show();
           $(e.currentTarget).find('.fa-caret-right').hide();
@@ -80,6 +88,13 @@
       var collection = $(e.currentTarget).attr('collection');
       var value;
 
+      if (db === '_DEFAULT_') {
+        db = '*';
+      }
+      if (collection === '_DEFAULT_') {
+        collection = '*';
+      }
+
       if ($(e.currentTarget).hasClass('readOnly')) {
         value = 'ro';
       } else if ($(e.currentTarget).hasClass('readWrite')) {
@@ -93,7 +108,7 @@
     setDBPermission: function (e) {
       var db = $(e.currentTarget).attr('name');
 
-      if (db.charAt(0) === '_DEFAULT') {
+      if (db === '_DEFAULT_') {
         db = '*';
       }
 

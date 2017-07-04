@@ -6,8 +6,8 @@
     <div class="pure-g pure-table pure-table-header pure-title" style="clear: both">
       <div class="pure-table-row">
         <div class="<%= genClass %> left">Database</div>
-        <div class="<%= genClass %> mid">Manage</div>
-        <div class="<%= genClass %> mid">Read</div>
+        <div class="<%= genClass %> mid">Administrate</div>
+        <div class="<%= genClass %> mid">Access</div>
         <div class="<%= genClass %> mid">No access</div>
       </div>
     </div>
@@ -20,7 +20,7 @@
         <% } %>
 
         <div class="pure-table-row db-row noHover <%= extraClass %>" id="<%= db %>-db">
-          <div class="<%= genClass %> left">
+          <div class="<%= genClass %> left db-label">
 
             <% if (db.charAt(0) !== '*') { %>
               <i class="fa fa-caret-right" style="width: 10px;"></i>
@@ -78,16 +78,20 @@
           <% } %>
 
           <div class="collection-row pure-table-row noHover inner <%= extraClass %>" style="display: none">
-            <div class="<%= genClass %> left inner"><span class="collLabel">Collections<span></div>
-            <div class="<%= genClass %> mid inner"></div>
-            <div class="<%= genClass %> mid inner"></div>
-            <div class="<%= genClass %> mid inner"></div>
+            <div class="<%= genClass %> left inner collection-label collection-label-first"><span class="collLabel">Collections<span></div>
+            <div class="<%= genClass %> mid inner collection-label">Read/Write</div>
+            <div class="<%= genClass %> mid inner collection-label">Read only</div>
+            <div class="<%= genClass %> mid inner collection-label collection-label-last">No access</div>
             <% _.each(content.collections, function(permissionCollection, collectionName) { %>
               <% if (db.charAt(0) !== '*') { %>
                 <% if (collectionName.charAt(0) !== '_') { %>
 
                   <div class="pure-table-row noHover">
-                    <div class="<%= genClass %> left inner"><span class="collName"><%= collectionName %></span></div>
+                    <% var collectionLabel = collectionName; %>
+                    <% if (collectionLabel === '*') { %>
+                      <% collectionLabel = '_DEFAULT_'; %>
+                    <% } %>
+                    <div class="<%= genClass %> left inner"><span class="collName"><%= collectionLabel %></span></div>
 
                     <% if (permissionCollection === 'rw') { %>
                       <div class="<%= genClass %> mid inner">
