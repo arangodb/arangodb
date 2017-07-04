@@ -21,9 +21,9 @@ NS_ROOT
 // --SECTION--                                                 scorer definition
 // -----------------------------------------------------------------------------
 
-#define DECLARE_SORT_TYPE() DECLARE_TYPE_ID(iresearch::sort::type_id)
-#define DEFINE_SORT_TYPE_NAMED(class_type, class_name) DEFINE_TYPE_ID(class_type, iresearch::sort::type_id) { \
-  static iresearch::sort::type_id type(class_name); \
+#define DECLARE_SORT_TYPE() DECLARE_TYPE_ID(::iresearch::sort::type_id)
+#define DEFINE_SORT_TYPE_NAMED(class_type, class_name) DEFINE_TYPE_ID(class_type, ::iresearch::sort::type_id) { \
+  static ::iresearch::sort::type_id type(class_name); \
   return type; \
 }
 #define DEFINE_SORT_TYPE(class_type) DEFINE_SORT_TYPE_NAMED(class_type, #class_type)

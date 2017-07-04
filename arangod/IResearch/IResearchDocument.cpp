@@ -21,6 +21,7 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
+#include "AttributeScorer.h"
 #include "IResearchDocument.h"
 #include "IResearchViewMeta.h"
 
@@ -30,9 +31,7 @@
 #include "Logger/Logger.h"
 #include "Logger/LogMacros.h"
 
-#include "analysis/token_attributes.hpp"
 #include "search/boolean_filter.hpp"
-#include "search/scorers.hpp"
 #include "search/term_filter.hpp"
 #include "search/range_filter.hpp"
 #include "search/granular_range_filter.hpp"
@@ -47,234 +46,6 @@
    (((val) << 40) & UINT64_C(0x00FF000000000000)) | (((val) << 56) & UINT64_C(0xFF00000000000000)) )
 
 NS_LOCAL
-
-irs::string_ref const ATTRIBUTE_SCORER_NAME("@");
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief sort object based on attribute value
-////////////////////////////////////////////////////////////////////////////////
-class AttributeScorer: public irs::sort {
- public:
-  DECLARE_SORT_TYPE();
-
-  // for use with irs::order::add<T>(...) and default args (static build)
-  DECLARE_FACTORY_DEFAULT(arangodb::transaction::Methods& trx);
-
-  enum ValueType { ARRAY, BOOLEAN, NIL, NUMBER, OBJECT, STRING, UNKNOWN, eLast};
-
-  explicit AttributeScorer(arangodb::transaction::Methods& trx);
-
-  void orderNext(ValueType type) noexcept;
-  virtual sort::prepared::ptr prepare() const override;
-
- private:
-  // lazy-computed score from within Prepared::less(...)
-  struct Score {
-    void (*compute)(arangodb::transaction::Methods& trx, Score& score);
-    irs::doc_id_t const* document;
-    irs::sub_reader const* reader;
-    arangodb::velocypack::Slice slice;
-  };
-  class Prepared: public irs::sort::prepared_base<Score> {
-   public:
-    DECLARE_FACTORY(Prepared);
-
-    Prepared(
-      std::string const& attr,
-      size_t const (&order)[ValueType::eLast],
-      bool reverse,
-      arangodb::transaction::Methods& trx
-    );
-
-    virtual void add(score_t& dst, const score_t& src) const override;
-    virtual irs::flags const& features() const override;
-    virtual bool less(const score_t& lhs, const score_t& rhs) const override;
-    virtual collector::ptr prepare_collector() const override;
-    virtual void prepare_score(score_t& score) const override;
-    virtual scorer::ptr prepare_scorer(
-      irs::sub_reader const& segment,
-      irs::term_reader const& field,
-      irs::attribute_store const& query_attrs,
-      irs::attribute_store const& doc_attrs
-    ) const override;
-
-   private:
-    std::string _attr;
-    mutable size_t _nextOrder;
-    mutable size_t _order[ValueType::eLast + 1]; // type precedence order, +1 for unordered/unsuported types
-    bool _reverse;
-    arangodb::transaction::Methods& _trx;
-
-    size_t precedence(arangodb::velocypack::Slice const& slice) const;
-  };
-
-  std::string _attr;
-  size_t _nextOrder;
-  size_t _order[ValueType::eLast]; // type precedence order
-  arangodb::transaction::Methods& _trx;
-};
-
-AttributeScorer::Prepared::Prepared(
-    std::string const& attr,
-    size_t const (&order)[ValueType::eLast],
-    bool reverse,
-    arangodb::transaction::Methods& trx
-): _attr(attr),
-   _nextOrder(ValueType::eLast + 1), // past default set values, +1 for values unasigned by AttributeScorer
-   _reverse(reverse),
-   _trx(trx) {
-  std::memcpy(_order, order, sizeof(order));
-}
-
-void AttributeScorer::Prepared::add(score_t& dst, const score_t& src) const {
-  // NOOP
-}
-
-irs::flags const& AttributeScorer::Prepared::features() const {
-  return irs::flags::empty_instance();
-}
-
-bool AttributeScorer::Prepared::less(
-    const score_t& lhs,
-    const score_t& rhs
-) const {
-  lhs.compute(_trx, const_cast<score_t&>(lhs));
-  rhs.compute(_trx, const_cast<score_t&>(rhs));
-
-  if (lhs.slice.isBoolean() && rhs.slice.isBoolean()) {
-      return _reverse
-        ? lhs.slice.getBoolean() > rhs.slice.getBoolean()
-        : lhs.slice.getBoolean() < rhs.slice.getBoolean()
-        ;
-  }
-
-  if (lhs.slice.isNumber() && rhs.slice.isNumber()) {
-      return _reverse
-        ? lhs.slice.getNumber<double>() > rhs.slice.getNumber<double>()
-        : lhs.slice.getNumber<double>() < rhs.slice.getNumber<double>()
-        ;
-  }
-
-  if (lhs.slice.isString() && rhs.slice.isString()) {
-    arangodb::velocypack::ValueLength lhsLength;
-    arangodb::velocypack::ValueLength rhsLength;
-    auto* lhsValue = lhs.slice.getString(lhsLength);
-    auto* rhsValue = rhs.slice.getString(rhsLength);
-    irs::string_ref lhsStr(lhsValue, lhsLength);
-    irs::string_ref rhsStr(rhsValue, rhsLength);
-
-    return _reverse ? lhsStr > rhsStr : lhsStr < rhsStr;
-  }
-
-  // no way to compare values for order, compare by presedence
-  return _reverse
-    ? precedence(lhs.slice) > precedence(rhs.slice)
-    : precedence(lhs.slice) < precedence(rhs.slice)
-    ;
-}
-
-irs::sort::collector::ptr AttributeScorer::Prepared::prepare_collector() const {
-  return nullptr;
-}
-
-void AttributeScorer::Prepared::prepare_score(score_t& score) const {
-  struct Compute {
-    static void noop(arangodb::transaction::Methods& trx, Score& score) {}
-    static void invoke(arangodb::transaction::Methods& trx, Score& score) {
-      if (score.document && score.reader) {
-        // FIXME TODO
-        // read PK
-        // read JSON from transaction
-        //score.slice = find attribute in the document
-      }
-
-      score.compute = &Compute::noop; // do not recompute score again
-    }
-  };
-
-  score.compute = &Compute::invoke;
-}
-
-irs::sort::scorer::ptr AttributeScorer::Prepared::prepare_scorer(
-    irs::sub_reader const& segment,
-    irs::term_reader const& field,
-    irs::attribute_store const& query_attrs,
-    irs::attribute_store const& doc_attrs
-) const {
-  class Scorer: public irs::sort::scorer {
-   public:
-    Scorer(
-        irs::sub_reader const& reader,
-        irs::attribute_store::ref<irs::document> const& doc
-    ): _doc(doc), _reader(reader) {
-    }
-    virtual void score(irs::byte_type* score_buf) override {
-      auto& score = *reinterpret_cast<score_t*>(score_buf);
-      auto* doc = _doc.get();
-
-      score.document = doc ? doc->value : nullptr;
-      score.reader = &_reader;
-    }
-
-   private:
-    irs::attribute_store::ref<irs::document> const& _doc;
-    irs::sub_reader const& _reader;
-  };
-
-  return scorer::make<Scorer>(segment, doc_attrs.get<irs::document>());
-}
-
-size_t AttributeScorer::Prepared::precedence(
-    arangodb::velocypack::Slice const& slice
-) const {
-  ValueType type = ValueType::eLast; // unsuported type equal-precedence order
-
-  if (slice.isArray()) {
-    type = ValueType::ARRAY;
-  } else if (slice.isBoolean()) {
-    type = ValueType::BOOLEAN;
-  } else if (slice.isNull()) {
-    type = ValueType::NIL;
-  } else if (slice.isNone()) {
-    type = ValueType::UNKNOWN;
-  } else if (slice.isObject()) {
-    type = ValueType::OBJECT;
-  } else if (slice.isString()) {
-    type = ValueType::STRING;
-  }
-
-  // if unasigned, assign presedence in a first-come-first-serve order
-  if (_order[type] == ValueType::eLast) {
-    _order[type] = _nextOrder++;
-  }
-
-  return _order[type];
-}
-
-DEFINE_SORT_TYPE_NAMED(AttributeScorer, ATTRIBUTE_SCORER_NAME);
-
-/*static*/ irs::sort::ptr AttributeScorer::make(
-  arangodb::transaction::Methods& trx
-) {
-  PTR_NAMED(AttributeScorer, ptr, trx);
-
-  return ptr;
-}
-
-AttributeScorer::AttributeScorer(arangodb::transaction::Methods& trx)
-  : irs::sort(AttributeScorer::type()), _nextOrder(0), _trx(trx) {
-  std::fill_n(_order, (size_t)(ValueType::eLast), ValueType::eLast);
-}
-
-void AttributeScorer::orderNext(ValueType type) noexcept {
-  if (_order[type] == ValueType::eLast) {
-    _order[type] = _nextOrder++; // can never be > ValueType::eLast
-  }
-}
-
-irs::sort::prepared::ptr AttributeScorer::prepare() const {
-  return Prepared::make<Prepared>(_attr, _order, reverse(), _trx);
-}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief the delimiter used to separate jSON nesting levels when generating
@@ -1101,85 +872,54 @@ bool processSubnode(
 
 bool fromFCall(
     arangodb::iresearch::OrderFactory::OrderContext* ctx,
-    arangodb::aql::AstNode const& node,
+    irs::string_ref const& name,
+    arangodb::aql::AstNode const& args,
     bool reverse,
     arangodb::iresearch::IResearchViewMeta const& meta
 ) {
-  TRI_ASSERT(arangodb::aql::NODE_TYPE_FCALL == node.type);
-  auto* fn = static_cast<arangodb::aql::Function*>(node.getData());
-
-  if (!fn) {
-    return false; // no function
-  }
-
-  auto& name = fn->externalName;
-
-  for (size_t i = 0, count = node.numMembers(); i < count; ++i) {
-    auto* member = node.getMemberUnchecked(i);
-
-    if (!member) {
-      return false;
-    }
-
-    // FIXME TODO
-  }
-
-  auto argsCount = node.numMembers();
-
-  // FIXME TODO
-/*
-  if (order) {
-    order->add(scorer);
-    scorer->reverse(reverse);
-  }
-*/
-  return false;
-}
-
-bool fromFCallUser(
-    arangodb::iresearch::OrderFactory::OrderContext* ctx,
-    arangodb::aql::AstNode const& node,
-    bool reverse,
-    arangodb::iresearch::IResearchViewMeta const& meta
-) {
-  TRI_ASSERT(arangodb::aql::NODE_TYPE_FCALL_USER == node.type);
-
-  if (arangodb::aql::VALUE_TYPE_STRING != node.value.type
-      || 1 < node.numMembers()) {
-    return false; // no function name
-  }
-
-  irs::string_ref name(node.getStringValue(), node.getStringLength());
+  TRI_ASSERT(arangodb::aql::NODE_TYPE_ARRAY == args.type);
   irs::sort::ptr scorer;
+std::string n = name;
+  switch (args.numMembers()) {
+    case 0:
+      scorer = irs::scorers::get(name, irs::string_ref::nil);
 
-  if (!node.numMembers()) {
-    scorer = irs::scorers::get(name, irs::string_ref::nil);
+      if (!scorer) {
+        scorer = irs::scorers::get(name, "{}"); // pass arg as json
+      }
 
-    if (scorer) {
-      scorer = irs::scorers::get(name, "{}"); // pass arg as json
+      break;
+    case 1: {
+      auto* arg = args.getMemberUnchecked(0);
+
+      if (arg
+          && arangodb::aql::NODE_TYPE_VALUE == arg->type
+          && arangodb::aql::VALUE_TYPE_STRING == arg->value.type) {
+        irs::string_ref value(arg->getStringValue(), arg->getStringLength());
+
+        scorer = irs::scorers::get(name, value);
+
+        if (scorer) {
+          break;
+        }
+      }
     }
-  } else {
-    auto* arg = node.getMemberUnchecked(0);
+    // fall through
+    default:
+      for (size_t i = 0, count = args.numMembers(); i < count; ++i) {
+        auto* arg = args.getMemberUnchecked(i);
 
-    if (!arg) {
-      return false; // invalid arg
-    }
+        if (!arg) {
+          return false; // invalid arg
+        }
 
-    if (arangodb::aql::NODE_TYPE_VALUE == arg->type
-        && arangodb::aql::VALUE_TYPE_STRING == arg->value.type) {
-      irs::string_ref value(arg->getStringValue(), arg->getStringLength());
+        arangodb::velocypack::Builder builder;
 
-      scorer = irs::scorers::get(name, value);
-    }
-
-    if (!scorer) {
-      arangodb::velocypack::Builder builder;
-
-      builder.openObject();
-      arg->toVelocyPackValue(builder);
-      builder.close();
-      scorer = irs::scorers::get(name, builder.toJson()); // pass arg as json
-    }
+        builder.openObject();
+        arg->toVelocyPackValue(builder);
+        builder.close();
+        scorer = irs::scorers::get(name, builder.toJson()); // pass arg as json
+      }
   }
 
   if (!scorer) {
@@ -1192,6 +932,57 @@ bool fromFCallUser(
   }
 
   return true;
+}
+
+bool fromFCall(
+    arangodb::iresearch::OrderFactory::OrderContext* ctx,
+    arangodb::aql::AstNode const& node,
+    bool reverse,
+    arangodb::iresearch::IResearchViewMeta const& meta
+) {
+  TRI_ASSERT(arangodb::aql::NODE_TYPE_FCALL == node.type);
+  auto* fn = static_cast<arangodb::aql::Function*>(node.getData());
+
+  if (!fn || 1 != node.numMembers()) {
+    return false; // no function
+  }
+
+  auto* args = node.getMemberUnchecked(0);
+
+  if (!args || arangodb::aql::NODE_TYPE_ARRAY != args->type) {
+    return false; // invalid args
+  }
+
+  auto& name = fn->externalName;
+  std::string scorerName(name);
+
+  // convert name to lower case
+  std::transform(scorerName.begin(), scorerName.end(), scorerName.begin(), ::tolower);
+
+  return fromFCall(ctx, scorerName, *args, reverse, meta);
+}
+
+bool fromFCallUser(
+    arangodb::iresearch::OrderFactory::OrderContext* ctx,
+    arangodb::aql::AstNode const& node,
+    bool reverse,
+    arangodb::iresearch::IResearchViewMeta const& meta
+) {
+  TRI_ASSERT(arangodb::aql::NODE_TYPE_FCALL_USER == node.type);
+
+  if (arangodb::aql::VALUE_TYPE_STRING != node.value.type
+      || 1 != node.numMembers()) {
+    return false; // no function name
+  }
+
+  irs::string_ref name(node.getStringValue(), node.getStringLength());
+  auto* args = node.getMemberUnchecked(0);
+
+  if (!args || arangodb::aql::NODE_TYPE_ARRAY != args->type) {
+    return false; // invalid args
+  }
+
+  return fromFCall(ctx, name, *args, reverse, meta);
 }
 
 bool fromValue(
@@ -1207,75 +998,21 @@ bool fromValue(
   }
 
   if (ctx) {
-    auto& scorer = ctx->order.add<AttributeScorer>(ctx->trx);
+    irs::string_ref name(node.getStringValue(), node.getStringLength());
+    auto& scorer = ctx->order.add<arangodb::iresearch::AttributeScorer>(ctx->trx, name);
     scorer.reverse(reverse);
 
     // ArangoDB default type sort order:
     // null < bool < number < string < array/list < object/document
-    scorer.orderNext(AttributeScorer::ValueType::NIL);
-    scorer.orderNext(AttributeScorer::ValueType::BOOLEAN);
-    scorer.orderNext(AttributeScorer::ValueType::NUMBER);
-    scorer.orderNext(AttributeScorer::ValueType::STRING);
-    scorer.orderNext(AttributeScorer::ValueType::ARRAY);
-    scorer.orderNext(AttributeScorer::ValueType::OBJECT);
+    scorer.orderNext(arangodb::iresearch::AttributeScorer::ValueType::NIL);
+    scorer.orderNext(arangodb::iresearch::AttributeScorer::ValueType::BOOLEAN);
+    scorer.orderNext(arangodb::iresearch::AttributeScorer::ValueType::NUMBER);
+    scorer.orderNext(arangodb::iresearch::AttributeScorer::ValueType::STRING);
+    scorer.orderNext(arangodb::iresearch::AttributeScorer::ValueType::ARRAY);
+    scorer.orderNext(arangodb::iresearch::AttributeScorer::ValueType::OBJECT);
   }
 
   return true;
-}
-
-bool processSubnode(
-    arangodb::iresearch::OrderFactory::OrderContext* ctx,
-    arangodb::aql::AstNode const& node,
-    arangodb::iresearch::IResearchViewMeta const& meta
-) {
-  if (arangodb::aql::NODE_TYPE_SORT_ELEMENT != node.type
-      || 2 != node.numMembers()) {
-    return false;
-  }
-
-  auto* ascending = node.getMemberUnchecked(1);
-
-  if (!ascending || arangodb::aql::AstNodeType::NODE_TYPE_VALUE != ascending->type) {
-    return false;
-  }
-
-  bool reverse;
-
-  switch (ascending->value.type) {
-    case arangodb::aql::VALUE_TYPE_BOOL:
-      reverse = ascending->value.value._bool;
-      break;
-    case arangodb::aql::VALUE_TYPE_STRING:
-      if (ascending->stringEquals("ASC", true)) {
-        reverse = false;
-        break;
-      } else if (ascending->stringEquals("DESC", true)) {
-        reverse = true;
-        break;
-      }
-      // fall through
-    default:
-      return false; // unsupported value type
-  }
-
-  auto* expression = node.getMemberUnchecked(0);
-
-  if (!expression) {
-    return false;
-  }
-
-  switch (expression->type) {
-    case arangodb::aql::NODE_TYPE_FCALL: // function call
-      return fromFCall(ctx, *expression, reverse, meta);
-    case arangodb::aql::NODE_TYPE_FCALL_USER: // user function call
-      return fromFCallUser(ctx, *expression, reverse, meta);
-    case arangodb::aql::NODE_TYPE_VALUE:
-      return fromValue(ctx, *expression, reverse, meta);
-    default:
-      {} // NOOP
-  }
-
-  return false;
 }
 
 NS_END
@@ -1616,11 +1353,31 @@ bool DocumentPrimaryKey::write(irs::data_output& out) const {
   for (size_t i = 0, count = node.numAttributes(); i < count; ++i) {
     auto field = node.field(i);
     auto* variable = std::get<0>(field);
-    auto* member = std::get<1>(field);
-    //auto ascending = std::get<3>(field);
-    // FIXME TODO check what is the expected node type
+    auto* expression = std::get<1>(field);
+    auto ascending = std::get<2>(field);
+    UNUSED(variable);
 
-    if (!member || !processSubnode(ctx, *member, meta)) {
+    if (!expression) {
+      return false;
+    }
+
+    bool result;
+
+    switch (expression->type) {
+      case arangodb::aql::NODE_TYPE_FCALL: // function call
+        result = fromFCall(ctx, *expression, !ascending, meta);
+        break;
+      case arangodb::aql::NODE_TYPE_FCALL_USER: // user function call
+        result = fromFCallUser(ctx, *expression, !ascending, meta);
+        break;
+      case arangodb::aql::NODE_TYPE_VALUE:
+        result = fromValue(ctx, *expression, !ascending, meta);
+        break;
+      default:
+        result = false;
+    }
+
+    if (!result) {
       return false;
     }
   }
