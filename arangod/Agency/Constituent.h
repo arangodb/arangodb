@@ -87,6 +87,8 @@ class Constituent : public Thread {
   void follow(term_t);
   void followNoLock(term_t);
 
+  void persistTermAndVoteNoLock();
+
   // Agency size
   size_t size() const;
 

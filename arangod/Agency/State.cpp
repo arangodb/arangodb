@@ -153,6 +153,23 @@ bool State::persistconf(
   // The new configuration to be persisted.-------------------------------------
   // Actual agent's configuration is changed after successful persistence.
   auto config = entry.valueAt(0);
+  auto const myId = _agent->id();
+  Builder builder;
+  if (config.get("id").copyString() != myId) {
+    { VPackObjectBuilder b(&builder);
+      for (auto const& i : VPackObjectIterator(config)) {
+        auto key = i.key.copyString();
+        if (key == "endpoint") {
+          builder.add(key, VPackValue(_agent->endpoint()));
+        } else if (key == "id") {
+          builder.add(key, VPackValue(myId));
+        } else {
+          builder.add(key, i.value);
+        }
+      }}
+    config = builder.slice();
+  }
+  
   Builder configuration;
   { VPackObjectBuilder b(&configuration);
     configuration.add("_key", VPackValue("0"));
@@ -235,7 +252,6 @@ std::vector<index_t> State::log(query_t const& transactions,
           _log.back().index+1, transaction, term, clientId, true,
           pos != std::string::npos && (pos == 0 || pos == 1));
     }
-    
     ++j;
     
   }
