@@ -46,6 +46,7 @@
 #include "Transaction/Methods.h"
 #include "Transaction/StandaloneContext.h"
 #include "Transaction/V8Context.h"
+#include "Utils/ExecContext.h"
 #include "V8/v8-conv.h"
 #include "V8/v8-vpack.h"
 #include "V8Server/V8DealerFeature.h"
@@ -535,6 +536,16 @@ QueryResult Query::execute(QueryRegistry* registry) {
 
       if (cacheEntry != nullptr) {
         // got a result from the query cache
+        if(ExecContext::CURRENT_EXECCONTEXT != nullptr) {
+          auto const& authContext = ExecContext::CURRENT_EXECCONTEXT->authContext();
+
+          for (std::string const& collectionName : cacheEntry->_collections) {
+            if (authContext->collectionAuthLevel(collectionName) == AuthLevel::NONE) {
+              THROW_ARANGO_EXCEPTION(TRI_ERROR_FORBIDDEN);
+            }
+          }
+        }
+
         QueryResult res;
         // we don't have yet a transaction when we're here, so let's create
         // a mimimal context to build the result
@@ -723,6 +734,16 @@ QueryResultV8 Query::executeV8(v8::Isolate* isolate, QueryRegistry* registry) {
 
       if (cacheEntry != nullptr) {
         // got a result from the query cache
+        if(ExecContext::CURRENT_EXECCONTEXT != nullptr) {
+          auto const& authContext = ExecContext::CURRENT_EXECCONTEXT->authContext();
+
+          for (std::string const& collectionName : cacheEntry->_collections) {
+            if (authContext->collectionAuthLevel(collectionName) == AuthLevel::NONE) {
+              THROW_ARANGO_EXCEPTION(TRI_ERROR_FORBIDDEN);
+            }
+          }
+        }
+
         QueryResultV8 result;
         // we don't have yet a transaction when we're here, so let's create
         // a mimimal context to build the result

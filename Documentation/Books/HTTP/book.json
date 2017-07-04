@@ -4,7 +4,19 @@
   "author": "ArangoDB GmbH",
   "description": "Official HTTP API manual for ArangoDB - the native multi-model NoSQL database",
   "language": "en",
-  "plugins":["-search", "-lunr", "-sharing", "toggle-chapters", "addcssjs", "anchorjs", "sitemap-general", "ga", "edit-link", "localized-footer"],
+  "plugins": [
+    "-search",
+    "-lunr",
+    "-sharing",
+    "toggle-chapters",
+    "addcssjs",
+    "anchorjs",
+    "sitemap-general@git+https://github.com/Simran-B/gitbook-plugin-sitemap-general.git",
+    "ga",
+    "callouts@git+https://github.com/Simran-B/gitbook-plugin-callouts.git",
+    "edit-link",
+    "localized-footer"
+  ],
   "pdf": {
     "fontSize": 12,
     "toc": true,
@@ -24,7 +36,9 @@
       "css": ["styles/header.css"]
     },
     "sitemap-general": {
-      "prefix": "https://docs.arangodb.com/devel/HTTP/"
+      "prefix": "https://docs.arangodb.com/devel/HTTP/",
+      "changefreq": "daily",
+      "priority": 0.3
     },
     "ga": {
       "token": "UA-81053435-2"

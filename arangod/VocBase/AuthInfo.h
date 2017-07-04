@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2017 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -21,142 +21,52 @@
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_VOC_BASE_AUTH_H
-#define ARANGOD_VOC_BASE_AUTH_H 1
-
-#include "Basics/Common.h"
-
-#include <chrono>
-
-#include <velocypack/Builder.h>
-#include <velocypack/velocypack-aliases.h>
+#ifndef ARANGOD_VOC_BASE_AUTH_INFO_H
+#define ARANGOD_VOC_BASE_AUTH_INFO_H 1
 
 #include "ApplicationFeatures/ApplicationFeature.h"
 #include "Aql/QueryRegistry.h"
-#include "Basics/Mutex.h"
+#include "Basics/Common.h"
 #include "Basics/LruCache.h"
+#include "Basics/Mutex.h"
 #include "Basics/ReadWriteLock.h"
 #include "Basics/Result.h"
 #include "GeneralServer/AuthenticationHandler.h"
+#include "Utils/ExecContext.h"
+#include "VocBase/AuthUserEntry.h"
+
+#include <velocypack/Builder.h>
+#include <velocypack/Slice.h>
+#include <chrono>
 
 namespace arangodb {
-namespace velocypack {
-class Slice;
-}
 
-enum class AuthLevel {
-  NONE, RO, RW
-};
-
-enum class AuthSource {
-  COLLECTION, LDAP
-};
-
-class HexHashResult : public arangodb::Result {
-  public:
-    explicit HexHashResult(int errorNumber) : Result(errorNumber) {}
-    explicit HexHashResult(std::string const& hexHash) : Result(0),  _hexHash(hexHash) {}
-    std::string const& hexHash() { return _hexHash; }
-
-  protected:
-    std::string const _hexHash;
-};
-
-class AuthEntry {
- public:
-  AuthEntry() 
-      : _active(false), 
-        _mustChange(false), 
-        _created(TRI_microtime()), 
-        _source(AuthSource::COLLECTION), 
-        _allDatabases(AuthLevel::NONE) {}
-
-  AuthEntry(std::string&& username, std::string&& passwordMethod,
-            std::string&& passwordSalt, std::string&& passwordHash,
-            std::unordered_map<std::string, AuthLevel>&& databases, AuthLevel allDatabases,
-            bool active, bool mustChange, AuthSource source)
-      : _username(std::move(username)),
-        _passwordMethod(std::move(passwordMethod)),
-        _passwordSalt(std::move(passwordSalt)),
-        _passwordHash(std::move(passwordHash)),
-        _active(active),
-        _mustChange(mustChange),
-        _created(TRI_microtime()),
-        _source(source),
-        _databases(std::move(databases)),
-        _allDatabases(allDatabases) {}
-  
-  AuthEntry(AuthEntry const& other) = delete;
-
-  AuthEntry(AuthEntry&& other) noexcept
-      : _username(std::move(other._username)),
-        _passwordMethod(std::move(other._passwordMethod)),
-        _passwordSalt(std::move(other._passwordSalt)),
-        _passwordHash(std::move(other._passwordHash)),
-        _active(other._active),
-        _mustChange(other._mustChange),
-        _created(other._created),
-        _source(other._source),
-        _databases(std::move(other._databases)),
-        _allDatabases(other._allDatabases) {}
-
- public:
-  std::string const& username() const { return _username; }
-  std::string const& passwordMethod() const { return _passwordMethod; }
-  std::string const& passwordSalt() const { return _passwordSalt; }
-  std::string const& passwordHash() const { return _passwordHash; }
-  bool isActive() const { return _active; }
-  bool mustChange() const { return _mustChange; }
-  double created() const { return _created; }
-  AuthSource source() const { return _source; }
-
-  bool checkPasswordHash(std::string const& hash) const {
-    return _passwordHash == hash;
-  }
-
-  AuthLevel canUseDatabase(std::string const& dbname) const;
-
- private:
-  std::string const _username;
-  std::string const _passwordMethod;
-  std::string const _passwordSalt;
-  std::string const _passwordHash;
-  bool const _active;
-  bool _mustChange;
-  double _created;
-  AuthSource _source;
-  std::unordered_map<std::string, AuthLevel> const _databases;
-  AuthLevel const _allDatabases;
-};
+class AuthContext;
 
 class AuthResult {
  public:
-  AuthResult() 
-      : _authorized(false), _mustChange(false) {}
-  
-  explicit AuthResult(std::string const& username) 
-      : _username(username), _authorized(false), _mustChange(false) {} 
+  AuthResult() : _authorized(false), _mustChange(false) {}
+
+  explicit AuthResult(std::string const& username)
+      : _username(username), _authorized(false), _mustChange(false) {}
 
   std::string _username;
   bool _authorized;
   bool _mustChange;
 };
 
-class AuthJwtResult: public AuthResult {
+class AuthJwtResult : public AuthResult {
  public:
   AuthJwtResult() : AuthResult(), _expires(false) {}
   bool _expires;
   std::chrono::system_clock::time_point _expireTime;
 };
 
-
 class AuthenticationHandler;
 
 class AuthInfo {
  public:
-  enum class AuthType {
-    BASIC, JWT
-  };
+  enum class AuthType { BASIC, JWT };
 
  public:
   AuthInfo();
@@ -168,45 +78,73 @@ class AuthInfo {
     _queryRegistry = registry;
   }
 
+  /// Tells coordinator to reload his data. Only call in HearBeat thread
   void outdate() { _outdated = true; }
+
+  /// Trigger eventual reload, user facing API call
+  void reloadAllUsers();
+
+  VPackBuilder allUsers();
+  /// Add user from arangodb, do not use for LDAP  users
+  Result storeUser(bool replace, std::string const& user,
+                   std::string const& pass, bool active, bool changePassword);
+  Result enumerateUsers(std::function<void(AuthUserEntry&)> const& func);
+  Result updateUser(std::string const& username,
+                    std::function<void(AuthUserEntry&)> const&);
+  velocypack::Builder getUser(std::string const& user);
+  Result removeUser(std::string const& user);
+
+  velocypack::Builder getConfigData(std::string const& user);
+  Result setConfigData(std::string const& user, velocypack::Slice const& data);
+  velocypack::Builder getUserData(std::string const& user);
+  Result setUserData(std::string const& user, velocypack::Slice const& data);
 
   AuthResult checkPassword(std::string const& username,
                            std::string const& password);
 
-  AuthResult checkAuthentication(AuthType authType,
-                                std::string const& secret);
+  AuthResult checkAuthentication(AuthType authType, std::string const& secret);
 
   AuthLevel canUseDatabase(std::string const& username,
                            std::string const& dbname);
-  
+  AuthLevel canUseCollection(std::string const& username,
+                             std::string const& dbname,
+                             std::string const& coll);
+
   void setJwtSecret(std::string const&);
   std::string jwtSecret();
   std::string generateJwt(VPackBuilder const&);
   std::string generateRawJwt(VPackBuilder const&);
- 
+
+  std::shared_ptr<AuthContext> getAuthContext(std::string const& username,
+                                              std::string const& database);
+
+  std::shared_ptr<AuthContext> noneAuthContext() { return _noneAuthContext; }
+
  private:
-  void reload();
+  void loadFromDB();
+  bool parseUsers(velocypack::Slice const& slice);
   void insertInitial();
-  bool populate(velocypack::Slice const& slice);
+  Result storeUserInternal(AuthUserEntry const& user, bool replace);
 
   AuthResult checkAuthenticationBasic(std::string const& secret);
   AuthResult checkAuthenticationJWT(std::string const& secret);
   bool validateJwtHeader(std::string const&);
   AuthJwtResult validateJwtBody(std::string const&);
   bool validateJwtHMAC256Signature(std::string const&, std::string const&);
-  std::shared_ptr<VPackBuilder> parseJson(std::string const&, std::string const&);
-
-  HexHashResult hexHashFromData(std::string const& hashMethod, char const* data, size_t len);
+  std::shared_ptr<VPackBuilder> parseJson(std::string const&,
+                                          std::string const&);
 
  private:
   basics::ReadWriteLock _authInfoLock;
   basics::ReadWriteLock _authJwtLock;
-  Mutex _queryLock;
+  Mutex _loadFromDBLock;
   std::atomic<bool> _outdated;
 
-  std::unordered_map<std::string, arangodb::AuthEntry> _authInfo;
+  std::unordered_map<std::string, AuthUserEntry> _authInfo;
+  std::shared_ptr<AuthContext> _noneAuthContext;
   std::unordered_map<std::string, arangodb::AuthResult> _authBasicCache;
-  arangodb::basics::LruCache<std::string, arangodb::AuthJwtResult> _authJwtCache;
+  arangodb::basics::LruCache<std::string, arangodb::AuthJwtResult>
+      _authJwtCache;
   std::string _jwtSecret;
   aql::QueryRegistry* _queryRegistry;
   std::unique_ptr<AuthenticationHandler> _authenticationHandler;

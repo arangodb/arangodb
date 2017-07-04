@@ -89,10 +89,6 @@ void AuthenticationFeature::collectOptions(
 }
 
 void AuthenticationFeature::validateOptions(std::shared_ptr<ProgramOptions>) {
-  if (!_active) {
-    forceDisable();
-    return;
-  }
   if (!_jwtSecretProgramOption.empty()) {
     if (_jwtSecretProgramOption.length() > _maxSecretLength) {
       LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "Given JWT secret too long. Max length is "
@@ -137,17 +133,24 @@ void AuthenticationFeature::start() {
 
 AuthLevel AuthenticationFeature::canUseDatabase(std::string const& username,
                                                 std::string const& dbname) {
-  if (!isEnabled()) {
+  if (!isActive()) {
     return AuthLevel::RW;
   }
 
   return authInfo()->canUseDatabase(username, dbname);
 }
 
+AuthLevel AuthenticationFeature::canUseCollection(std::string const& username,
+                                                  std::string const& dbname,
+                                                  std::string const& coll) {
+  if (!isActive()) {
+    return AuthLevel::RW;
+  }
+  
+  return authInfo()->canUseCollection(username, dbname, coll);
+}
+
 AuthInfo* AuthenticationFeature::authInfo() {
-  // mop: catch misused stuff..authentication is disabled...why would you
-  // need any authentication info?
-  TRI_ASSERT(isEnabled());
   return &_authInfo;
 }
 
@@ -155,14 +158,13 @@ void AuthenticationFeature::unprepare() {
 }
 
 void AuthenticationFeature::prepare() {
-  if (!isEnabled()) {
-    return;
+  if (isEnabled()) {
+    std::string jwtSecret = _jwtSecretProgramOption;
+    if (jwtSecret.empty()) {
+      jwtSecret = generateNewJwtSecret();
+    }
+    authInfo()->setJwtSecret(jwtSecret);
   }
-  std::string jwtSecret = _jwtSecretProgramOption;
-  if (jwtSecret.empty()) {
-    jwtSecret = generateNewJwtSecret();
-  }
-  authInfo()->setJwtSecret(jwtSecret);
 }
 
 void AuthenticationFeature::stop() {

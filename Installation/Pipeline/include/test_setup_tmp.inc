@@ -5,3 +5,5 @@ export TEMPDIR=$(pwd)/tmp
 
 mkdir -p log-output
 rm -rf log-output/$type
+
+echo "TMPDIR: $TMPDIR"

@@ -65,6 +65,7 @@
 #include "RestHandler/RestSimpleHandler.h"
 #include "RestHandler/RestSimpleQueryHandler.h"
 #include "RestHandler/RestUploadHandler.h"
+#include "RestHandler/RestUsersHandler.h"
 #include "RestHandler/RestVersionHandler.h"
 #include "RestHandler/RestViewHandler.h"
 #include "RestHandler/WorkMonitorHandler.h"
@@ -257,7 +258,7 @@ void GeneralServerFeature::start() {
   auto authentication =
       FeatureCacheFeature::instance()->authenticationFeature();
   TRI_ASSERT(authentication != nullptr);
-  if (authentication->isEnabled()) {
+  if (authentication->isActive()) {
     authentication->authInfo()->outdate();
   }
 }
@@ -396,6 +397,10 @@ void GeneralServerFeature::defineHandlers() {
   _handlerFactory->addPrefixHandler(
       RestVocbaseBaseHandler::UPLOAD_PATH,
       RestHandlerCreator<RestUploadHandler>::createNoData);
+  
+  _handlerFactory->addPrefixHandler(
+    RestVocbaseBaseHandler::USERS_PATH,
+    RestHandlerCreator<RestUsersHandler>::createNoData);
 
   _handlerFactory->addPrefixHandler(
       RestVocbaseBaseHandler::VIEW_PATH,
@@ -498,7 +503,7 @@ void GeneralServerFeature::defineHandlers() {
       "/_admin/shutdown",
       RestHandlerCreator<arangodb::RestShutdownHandler>::createNoData);
 
-  if (authentication->isEnabled()) {
+  if (authentication->isActive()) {
     _handlerFactory->addPrefixHandler(
         "/_open/auth",
         RestHandlerCreator<arangodb::RestAuthHandler>::createNoData);

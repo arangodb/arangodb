@@ -23,7 +23,6 @@
 #include "Indexes.h"
 #include "Basics/Common.h"
 
-#include "Agency/AgencyComm.h"
 #include "Basics/ReadLocker.h"
 #include "Basics/StringUtils.h"
 #include "Basics/StringUtils.h"
@@ -106,7 +105,6 @@ arangodb::Result Indexes::getAll(arangodb::LogicalCollection const* collection,
   if (ServerState::instance()->isCoordinator()) {
     std::string const databaseName(collection->dbName());
     std::string const cid = collection->cid_as_string();
-    std::string const collectionName(collection->name());
 
     auto c = ClusterInfo::instance()->getCollection(databaseName, cid);
     c->getIndexesVPack(tmp, withFigures, false);
@@ -126,7 +124,6 @@ arangodb::Result Indexes::getAll(arangodb::LogicalCollection const* collection,
 
     // READ-LOCK start
     trx.lockRead();
-    std::string const collectionName(collection->name());
 
     // get list of indexes
     auto indexes = collection->getIndexes();
@@ -181,7 +178,7 @@ arangodb::Result Indexes::getAll(arangodb::LogicalCollection const* collection,
           merge.add(VPackValue(StaticStrings::FromString));
           merge.add(VPackValue(StaticStrings::ToString));
           merge.close();
-          
+
           merge.add("selectivityEstimate", VPackValue(selectivity / 2));
           if (withFigures) {
             merge.add("figures", VPackValue(VPackValueType::Object));
@@ -237,7 +234,7 @@ static Result EnsureIndexLocal(arangodb::LogicalCollection* collection,
     // TODO Encapsulate in try{}catch(){} instead of errno()
     try {
       idx = collection->createIndex(&trx, definition, created);
-    } catch (arangodb::basics::Exception e) {
+    } catch (arangodb::basics::Exception const& e) {
       return Result(e.code());
     }
     if (idx == nullptr) {
@@ -276,9 +273,9 @@ static Result EnsureIndexLocal(arangodb::LogicalCollection* collection,
   return res;
 }
 
-Result Indexes::ensureIndexCoordinator(arangodb::LogicalCollection const* collection,
-                                       VPackSlice const& indexDef, bool create,
-                                       VPackBuilder& resultBuilder) {
+Result Indexes::ensureIndexCoordinator(
+    arangodb::LogicalCollection const* collection, VPackSlice const& indexDef,
+    bool create, VPackBuilder& resultBuilder) {
   TRI_ASSERT(collection != nullptr);
   std::string const dbName = collection->dbName();
   std::string const cid = collection->cid_as_string();
@@ -292,6 +289,14 @@ Result Indexes::ensureIndexCoordinator(arangodb::LogicalCollection const* collec
 Result Indexes::ensureIndex(arangodb::LogicalCollection* collection,
                             VPackSlice const& definition, bool create,
                             VPackBuilder& output) {
+  if (ExecContext::CURRENT_EXECCONTEXT != nullptr) {
+    AuthLevel level =
+        ExecContext::CURRENT_EXECCONTEXT->authContext()->databaseAuthLevel();
+    if (level != AuthLevel::RW) {
+      return TRI_ERROR_FORBIDDEN;
+    }
+  }
+
   VPackBuilder defBuilder;
   StorageEngine* engine = EngineSelectorFeature::ENGINE;
   IndexFactory const* idxFactory = engine->indexFactory();
@@ -365,7 +370,6 @@ Result Indexes::ensureIndex(arangodb::LogicalCollection* collection,
 
   // ensure an index, coordinator case
   if (ServerState::instance()->isCoordinator()) {
-    std::string errorMsg;
     VPackBuilder tmp;
 #ifdef USE_ENTERPRISE
     Result res =
@@ -471,6 +475,14 @@ Result Indexes::extractHandle(arangodb::LogicalCollection const* collection,
 
 arangodb::Result Indexes::drop(arangodb::LogicalCollection const* collection,
                                VPackSlice const& indexArg) {
+  if (ExecContext::CURRENT_EXECCONTEXT != nullptr) {
+    AuthLevel level =
+        ExecContext::CURRENT_EXECCONTEXT->authContext()->databaseAuthLevel();
+    if (level != AuthLevel::RW) {
+      return TRI_ERROR_FORBIDDEN;
+    }
+  }
+
   TRI_idx_iid_t iid = 0;
   if (ServerState::instance()->isCoordinator()) {
     CollectionNameResolver resolver(collection->vocbase());
@@ -486,7 +498,7 @@ arangodb::Result Indexes::drop(arangodb::LogicalCollection const* collection,
     std::string const cid = collection->cid_as_string();
     std::string errorMsg;
     int r = ClusterInfo::instance()->dropIndexCoordinator(databaseName, cid,
-                                                            iid, errorMsg, 0.0);
+                                                          iid, errorMsg, 0.0);
     return Result(r, errorMsg);
 #endif
   } else {

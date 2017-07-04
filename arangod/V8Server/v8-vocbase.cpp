@@ -74,13 +74,14 @@
 #include "V8Server/v8-externals.h"
 #include "V8Server/v8-replication.h"
 #include "V8Server/v8-statistics.h"
+#include "V8Server/v8-users.h"
 #include "V8Server/v8-views.h"
 #include "V8Server/v8-voccursor.h"
 #include "V8Server/v8-vocindex.h"
 #include "VocBase/KeyGenerator.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/modes.h"
-#include "VocBase/Methods/Database.h"
+#include "VocBase/Methods/Databases.h"
 
 using namespace arangodb;
 using namespace arangodb::basics;
@@ -684,7 +685,7 @@ static void JS_ReloadAuth(v8::FunctionCallbackInfo<v8::Value> const& args) {
   
   auto authentication = application_features::ApplicationServer::getFeature<AuthenticationFeature>(
     "Authentication");
-  if (authentication->isEnabled()) {
+  if (authentication->isActive()) {
     authentication->authInfo()->outdate();
   }
 
@@ -1912,7 +1913,7 @@ static void JS_Databases(v8::FunctionCallbackInfo<v8::Value> const& args) {
   if (argc > 0) {
     user = TRI_ObjectToString(args[0]);
   }
-  std::vector<std::string> names = methods::Database::list(user);
+  std::vector<std::string> names = methods::Databases::list(user);
 
   v8::Handle<v8::Array> result = v8::Array::New(isolate, (int)names.size());
   for (size_t i = 0; i < names.size(); ++i) {
@@ -1973,7 +1974,7 @@ static void JS_CreateDatabase(v8::FunctionCallbackInfo<v8::Value> const& args) {
   }
   
   std::string const dbName = TRI_ObjectToString(args[0]);
-  Result res = methods::Database::create(dbName, users.slice(), options.slice());
+  Result res = methods::Databases::create(dbName, users.slice(), options.slice());
   if (!res.ok()) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(res.errorNumber(), res.errorMessage());
   }
@@ -1995,17 +1996,23 @@ static void JS_DropDatabase(v8::FunctionCallbackInfo<v8::Value> const& args) {
   }
 
   TRI_vocbase_t* vocbase = GetContextVocBase(isolate);
-
   if (vocbase == nullptr) {
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
   }
-
   if (!vocbase->isSystem()) {
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_USE_SYSTEM_DATABASE);
   }
-  
+
+  if (ExecContext::CURRENT_EXECCONTEXT != nullptr) {
+    AuthLevel level = ExecContext::CURRENT_EXECCONTEXT->authContext()->systemAuthLevel();
+
+    if (level != AuthLevel::RW) {
+      TRI_V8_THROW_EXCEPTION(TRI_ERROR_FORBIDDEN);
+    }
+  }
+
   std::string const name = TRI_ObjectToString(args[0]);
-  Result res = methods::Database::drop(vocbase, name);
+  Result res = methods::Databases::drop(vocbase, name);
   if (!res.ok()) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(res.errorNumber(), res.errorMessage());
   }
@@ -2089,7 +2096,7 @@ static void JS_AuthenticationEnabled(
   v8::HandleScope scope(isolate);
 
   v8::Handle<v8::Boolean> result =
-      v8::Boolean::New(isolate, authentication->isEnabled());
+      v8::Boolean::New(isolate, authentication->isActive());
 
   TRI_V8_RETURN(result);
   TRI_V8_TRY_CATCH_END
@@ -2316,6 +2323,7 @@ void TRI_InitV8VocBridge(v8::Isolate* isolate, v8::Handle<v8::Context> context,
 
   TRI_InitV8Collections(context, vocbase, v8g, isolate, ArangoNS);
   TRI_InitV8Views(context, vocbase, v8g, isolate, ArangoNS);
+  TRI_InitV8Users(context, vocbase, v8g, isolate);
 
   TRI_InitV8cursor(context, v8g);
 

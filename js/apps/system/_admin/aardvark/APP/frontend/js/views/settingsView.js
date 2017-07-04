@@ -7,6 +7,7 @@
 
   window.SettingsView = Backbone.View.extend({
     el: '#content',
+    readOnly: false,
 
     initialize: function (options) {
       this.collectionName = options.collectionName;
@@ -18,7 +19,7 @@
 
     render: function () {
       this.breadcrumb();
-      window.arangoHelper.buildCollectionSubNav(this.collectionName, 'Settings');
+      arangoHelper.buildCollectionSubNav(this.collectionName, 'Settings');
 
       this.renderSettings();
     },
@@ -30,153 +31,178 @@
     },
 
     unloadCollection: function () {
-      var unloadCollectionCallback = function (error) {
-        if (error) {
-          arangoHelper.arangoError('Collection error', this.model.get('name') + ' could not be unloaded.');
-        } else if (error === undefined) {
-          this.model.set('status', 'unloading');
-          this.render();
-        } else {
-          if (window.location.hash === '#collections') {
-            this.model.set('status', 'unloaded');
+      if (!this.readOnly) {
+        var unloadCollectionCallback = function (error) {
+          if (error) {
+            arangoHelper.arangoError('Collection error', this.model.get('name') + ' could not be unloaded.');
+          } else if (error === undefined) {
+            this.model.set('status', 'unloading');
             this.render();
           } else {
-            arangoHelper.arangoNotification('Collection ' + this.model.get('name') + ' unloaded.');
+            if (window.location.hash === '#collections') {
+              this.model.set('status', 'unloaded');
+              this.render();
+            } else {
+              arangoHelper.arangoNotification('Collection ' + this.model.get('name') + ' unloaded.');
+            }
           }
-        }
-      }.bind(this);
+        }.bind(this);
 
-      this.model.unloadCollection(unloadCollectionCallback);
-      window.modalView.hide();
+        this.model.unloadCollection(unloadCollectionCallback);
+        window.modalView.hide();
+      }
     },
 
     loadCollection: function () {
-      var loadCollectionCallback = function (error) {
-        if (error) {
-          arangoHelper.arangoError('Collection error', this.model.get('name') + ' could not be loaded.');
-        } else if (error === undefined) {
-          this.model.set('status', 'loading');
-          this.render();
-        } else {
-          if (window.location.hash === '#collections') {
-            this.model.set('status', 'loaded');
+      if (!this.readOnly) {
+        var loadCollectionCallback = function (error) {
+          if (error) {
+            arangoHelper.arangoError('Collection error', this.model.get('name') + ' could not be loaded.');
+          } else if (error === undefined) {
+            this.model.set('status', 'loading');
             this.render();
           } else {
-            arangoHelper.arangoNotification('Collection ' + this.model.get('name') + ' loaded.');
+            if (window.location.hash === '#collections') {
+              this.model.set('status', 'loaded');
+              this.render();
+            } else {
+              arangoHelper.arangoNotification('Collection ' + this.model.get('name') + ' loaded.');
+            }
           }
-        }
-      }.bind(this);
+        }.bind(this);
 
-      this.model.loadCollection(loadCollectionCallback);
-      window.modalView.hide();
+        this.model.loadCollection(loadCollectionCallback);
+        window.modalView.hide();
+      }
     },
 
     truncateCollection: function () {
-      this.model.truncateCollection();
-      $('.modal-delete-confirmation').hide();
-      window.modalView.hide();
+      if (!this.readOnly) {
+        this.model.truncateCollection();
+        $('.modal-delete-confirmation').hide();
+        window.modalView.hide();
+      }
     },
 
     warmupCollection: function () {
-      this.model.warmupCollection();
-      $('.modal-delete-confirmation').hide();
-      window.modalView.hide();
+      if (!this.readOnly) {
+        this.model.warmupCollection();
+        $('.modal-delete-confirmation').hide();
+        window.modalView.hide();
+      }
     },
 
     deleteCollection: function () {
-      this.model.destroy(
-        {
-          error: function () {
-            arangoHelper.arangoError('Could not delete collection.');
-          },
-          success: function () {
-            window.App.navigate('#collections', {trigger: true});
+      if (!this.readOnly) {
+        this.model.destroy(
+          {
+            error: function () {
+              arangoHelper.arangoError('Could not delete collection.');
+            },
+            success: function () {
+              window.App.navigate('#collections', {trigger: true});
+            }
           }
-        }
-      );
+        );
+      }
     },
 
     saveModifiedCollection: function () {
-      var callback = function (error, isCoordinator) {
-        if (error) {
-          arangoHelper.arangoError('Error', 'Could not get coordinator info');
-        } else {
-          var newname;
-          if (isCoordinator) {
-            newname = this.model.get('name');
+      if (!this.readOnly) {
+        var callback = function (error, isCoordinator) {
+          if (error) {
+            arangoHelper.arangoError('Error', 'Could not get coordinator info');
           } else {
-            newname = $('#change-collection-name').val();
-          }
-          var status = this.model.get('status');
-
-          if (status === 'loaded') {
-            var journalSize;
-            try {
-              journalSize = JSON.parse($('#change-collection-size').val() * 1024 * 1024);
-            } catch (e) {
-              arangoHelper.arangoError('Please enter a valid number');
-              return 0;
-            }
-
-            var indexBuckets;
-            try {
-              indexBuckets = JSON.parse($('#change-index-buckets').val());
-              if (indexBuckets < 1 || parseInt(indexBuckets, 10) !== Math.pow(2, Math.log2(indexBuckets))) {
-                throw new Error('invalid indexBuckets value');
-              }
-            } catch (e) {
-              arangoHelper.arangoError('Please enter a valid number of index buckets');
-              return 0;
-            }
-            var callbackChange = function (error) {
-              if (error) {
-                arangoHelper.arangoError('Collection error: ' + error.responseText);
-              } else {
-                arangoHelper.arangoNotification('Collection: ' + 'Successfully changed.');
-                window.App.navigate('#cSettings/' + newname, {trigger: true});
-              }
-            };
-
-            var callbackRename = function (error) {
-              if (error) {
-                arangoHelper.arangoError('Collection error: ' + error.responseText);
-              } else {
-                var wfs = $('#change-collection-sync').val();
-                this.model.changeCollection(wfs, journalSize, indexBuckets, callbackChange);
-              }
-            }.bind(this);
-
-            if (frontendConfig.isCluster === false) {
-              this.model.renameCollection(newname, callbackRename);
+            var newname;
+            if (isCoordinator) {
+              newname = this.model.get('name');
             } else {
-              callbackRename();
+              newname = $('#change-collection-name').val();
             }
-          } else if (status === 'unloaded') {
-            if (this.model.get('name') !== newname) {
-              var callbackRename2 = function (error, data) {
+            var status = this.model.get('status');
+
+            if (status === 'loaded') {
+              var journalSize;
+              try {
+                journalSize = JSON.parse($('#change-collection-size').val() * 1024 * 1024);
+              } catch (e) {
+                arangoHelper.arangoError('Please enter a valid number');
+                return 0;
+              }
+
+              var indexBuckets;
+              try {
+                indexBuckets = JSON.parse($('#change-index-buckets').val());
+                if (indexBuckets < 1 || parseInt(indexBuckets, 10) !== Math.pow(2, Math.log2(indexBuckets))) {
+                  throw new Error('invalid indexBuckets value');
+                }
+              } catch (e) {
+                arangoHelper.arangoError('Please enter a valid number of index buckets');
+                return 0;
+              }
+              var callbackChange = function (error) {
                 if (error) {
-                  arangoHelper.arangoError('Collection' + data.responseText);
+                  arangoHelper.arangoError('Collection error: ' + error.responseText);
                 } else {
-                  arangoHelper.arangoNotification('Collection' + 'Successfully changed.');
+                  arangoHelper.arangoNotification('Collection: ' + 'Successfully changed.');
                   window.App.navigate('#cSettings/' + newname, {trigger: true});
                 }
               };
 
+              var callbackRename = function (error) {
+                if (error) {
+                  arangoHelper.arangoError('Collection error: ' + error.responseText);
+                } else {
+                  var wfs = $('#change-collection-sync').val();
+                  this.model.changeCollection(wfs, journalSize, indexBuckets, callbackChange);
+                }
+              }.bind(this);
+
               if (frontendConfig.isCluster === false) {
-                this.model.renameCollection(newname, callbackRename2);
+                this.model.renameCollection(newname, callbackRename);
               } else {
-                callbackRename2();
+                callbackRename();
               }
-            } else {
-              window.modalView.hide();
+            } else if (status === 'unloaded') {
+              if (this.model.get('name') !== newname) {
+                var callbackRename2 = function (error, data) {
+                  if (error) {
+                    arangoHelper.arangoError('Collection' + data.responseText);
+                  } else {
+                    arangoHelper.arangoNotification('Collection' + 'Successfully changed.');
+                    window.App.navigate('#cSettings/' + newname, {trigger: true});
+                  }
+                };
+
+                if (frontendConfig.isCluster === false) {
+                  this.model.renameCollection(newname, callbackRename2);
+                } else {
+                  callbackRename2();
+                }
+              } else {
+                window.modalView.hide();
+              }
             }
           }
-        }
-      }.bind(this);
+        }.bind(this);
 
-      window.isCoordinator(callback);
+        window.isCoordinator(callback);
+      }
     },
+
+    changeViewToReadOnly: function () {
+      window.App.settingsView.readOnly = true;
+      $('.breadcrumb').html($('.breadcrumb').html() + ' (read-only)');
+      // this method disables all write-based functions
+      $('.modal-body input').prop('disabled', 'true');
+      $('.modal-body select').prop('disabled', 'true');
+      $('.modal-footer button').addClass('disabled');
+      $('.modal-footer button').unbind('click');
+    },
+
     renderSettings: function () {
+      var self = this;
+
       var callback = function (error, isCoordinator) {
         if (error) {
           arangoHelper.arangoError('Error', 'Could not get coordinator info');
@@ -346,11 +372,16 @@
                 );
               }
               after();
+
+              // check permissions and adjust views
+              arangoHelper.checkCollectionPermissions(self.collectionName, self.changeViewToReadOnly.bind(this));
             };
 
             this.model.getProperties(callback2);
           } else {
             after();
+            // check permissions and adjust views
+            arangoHelper.checkCollectionPermissions(self.collectionName, self.changeViewToReadOnly.bind(this));
           }
         }
       }.bind(this);

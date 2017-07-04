@@ -83,11 +83,18 @@ bool DepthFirstEnumerator::next() {
 
     auto callback = [&](std::unique_ptr<graph::EdgeDocumentToken>&& eid, VPackSlice const& edge,
                         size_t cursorId) {
-      if (!_traverser->edgeMatchesConditions(
-              edge, StringRef(_enumeratedPath.vertices.back()),
+
+      if (_opts->hasEdgeFilter(_enumeratedPath.edges.size(), cursorId)) {
+        VPackSlice e = edge;
+        if (edge.isString()) {
+          e = _opts->cache()->lookupToken(eid.get());
+        }
+        if (!_traverser->edgeMatchesConditions(
+              e, StringRef(_enumeratedPath.vertices.back()),
               _enumeratedPath.edges.size(), cursorId)) {
-        // This edge does not pass the filtering
-        return;
+          // This edge does not pass the filtering
+          return;
+        }
       }
 
       if (_opts->uniqueEdges == TraverserOptions::UniquenessLevel::PATH) {

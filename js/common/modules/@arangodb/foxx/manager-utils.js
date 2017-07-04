@@ -249,6 +249,9 @@ function zipDirectory (directory, zipFilename) {
   if (files.length === 0) {
     throwFileNotFound("Directory '" + String(directory) + "' is empty");
   }
+  // sort files to be sure they are always in same order within the zip file
+  // independent of the OS and file system
+  files.sort();
   fs.zipFile(zipFilename, directory, files);
   return zipFilename;
 }

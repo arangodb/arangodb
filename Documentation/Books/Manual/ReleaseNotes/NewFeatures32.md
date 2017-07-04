@@ -352,6 +352,16 @@ Authentication
 * added [LDAP](../Administration/Configuration/Ldap.md) authentication (Enterprise only)
 
 
+Authorization
+--------------
+
+* added read only mode for users
+* collection level authorization rights
+
+Read more in the [overview](../Administration/ManagingUsers/README.md)
+and about the new [authorization Model](../Administration/ManagingUsers/AuthorizationModel.md)
+
+
 Foxx
 ----
 
@@ -371,3 +381,20 @@ Miscellaneous Changes
   
   Most of the checks are executed on Linux systems only.
 
+* added "deduplicate" attribute for array indexes, which controls whether inserting 
+  duplicate index values from the same document into a unique array index will lead to 
+  an error or not:
+
+      // with deduplicate = true, which is the default value:
+      db._create("test");
+      db.test.ensureIndex({ type: "hash", fields: ["tags[*]"], deduplicate: true });
+      db.test.insert({ tags: ["a", "b"] });
+      db.test.insert({ tags: ["c", "d", "c"] }); // will work, because deduplicate = true
+      db.test.insert({ tags: ["a"] }); // will fail
+      
+      // with deduplicate = false
+      db._create("test");
+      db.test.ensureIndex({ type: "hash", fields: ["tags[*]"], deduplicate: false });
+      db.test.insert({ tags: ["a", "b"] });
+      db.test.insert({ tags: ["c", "d", "c"] }); // will not work, because deduplicate = false
+      db.test.insert({ tags: ["a"] }); // will fail

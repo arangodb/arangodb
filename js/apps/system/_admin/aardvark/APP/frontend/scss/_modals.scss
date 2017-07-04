@@ -80,6 +80,11 @@
     height: 33px;
     margin-top: 0;
     width: 452px;
+
+    &:disabled {
+      background-color: rgba(0, 0, 0, .05) !important;
+      cursor: not-allowed;
+    }
   }
 
   .select2-container-multi.select2-container-active {
@@ -506,7 +511,6 @@
     margin-bottom: 0;
     width: 100%;
   }
-
 }
 
 .foxx-store-row {

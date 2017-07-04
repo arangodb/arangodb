@@ -23,14 +23,14 @@
 #include "RestIndexHandler.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
+#include "Cluster/ClusterInfo.h"
+#include "Cluster/ServerState.h"
 #include "Rest/HttpRequest.h"
 #include "VocBase/Methods/Indexes.h"
-#include "Cluster/ServerState.h"
-#include "Cluster/ClusterInfo.h"
 
 #include <velocypack/Builder.h>
-#include <velocypack/Iterator.h>
 #include <velocypack/Collection.h>
+#include <velocypack/Iterator.h>
 #include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb;
@@ -38,7 +38,7 @@ using namespace arangodb::basics;
 using namespace arangodb::rest;
 
 RestIndexHandler::RestIndexHandler(GeneralRequest* request,
-                                         GeneralResponse* response)
+                                   GeneralResponse* response)
     : RestVocbaseBaseHandler(request, response) {}
 
 RestStatus RestIndexHandler::execute() {
@@ -57,14 +57,15 @@ RestStatus RestIndexHandler::execute() {
   }
 }
 
-LogicalCollection* RestIndexHandler::collection(std::string const& cName,
-                                     std::shared_ptr<LogicalCollection>& coll) {
+LogicalCollection* RestIndexHandler::collection(
+    std::string const& cName, std::shared_ptr<LogicalCollection>& coll) {
   if (!cName.empty()) {
     if (ServerState::instance()->isCoordinator()) {
       try {
         coll = ClusterInfo::instance()->getCollection(_vocbase->name(), cName);
         return coll.get();
-      } catch (...) {}
+      } catch (...) {
+      }
     } else {
       return _vocbase->lookupCollection(cName);
     }
@@ -82,7 +83,7 @@ RestStatus RestIndexHandler::getIndexes() {
     // .............................................................................
     // /_api/index?collection=<collection-name>
     // .............................................................................
-    
+
     bool found = false;
     std::string cName = _request->value("collection", found);
     LogicalCollection* coll = collection(cName, tmpColl);
@@ -91,21 +92,21 @@ RestStatus RestIndexHandler::getIndexes() {
                     TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
       return RestStatus::DONE;
     }
-    
+
     bool withFigures = false;
     std::string t = _request->value("withStats", found);
     if (found) {
       withFigures = StringUtils::tolower(t) == "true";
     }
-    
+
     VPackBuilder indexes;
     Result res = methods::Indexes::getAll(coll, withFigures, indexes);
     if (!res.ok()) {
-      generateError(rest::ResponseCode::BAD,
-                    res.errorNumber(), res.errorMessage());
+      generateError(rest::ResponseCode::BAD, res.errorNumber(),
+                    res.errorMessage());
       return RestStatus::DONE;
     }
-    
+
     TRI_ASSERT(indexes.slice().isArray());
     VPackBuilder tmp;
     tmp.openObject();
@@ -126,7 +127,7 @@ RestStatus RestIndexHandler::getIndexes() {
     // .............................................................................
     // /_api/index/<collection-name>/<index-identifier>
     // .............................................................................
-    
+
     std::string const& cName = suffixes[0];
     LogicalCollection* coll = collection(cName, tmpColl);
     if (coll == nullptr) {
@@ -134,11 +135,11 @@ RestStatus RestIndexHandler::getIndexes() {
                     TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
       return RestStatus::DONE;
     }
-    
+
     std::string const& iid = suffixes[1];
     VPackBuilder b;
     b.add(VPackValue(cName + TRI_INDEX_HANDLE_SEPARATOR_CHR + iid));
-    
+
     VPackBuilder output;
     Result res = methods::Indexes::getIndex(coll, b.slice(), output);
     if (res.ok()) {
@@ -150,9 +151,7 @@ RestStatus RestIndexHandler::getIndexes() {
       output = VPackCollection::merge(output.slice(), b.slice(), false);
       generateResult(rest::ResponseCode::OK, output.slice());
     } else {
-      generateError(res.errorNumber() == TRI_ERROR_ARANGO_INDEX_NOT_FOUND ?
-                      rest::ResponseCode::NOT_FOUND : rest::ResponseCode::BAD,
-                    res.errorNumber(), res.errorMessage());
+      generateError(res);
     }
   } else {
     generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER);
@@ -164,16 +163,16 @@ RestStatus RestIndexHandler::getIndexes() {
 // / @brief was docuBlock JSF_get_api_database_create
 // //////////////////////////////////////////////////////////////////////////////
 RestStatus RestIndexHandler::createIndex() {
-  
   std::vector<std::string> const& suffixes = _request->suffixes();
   bool parseSuccess = true;
   std::shared_ptr<VPackBuilder> parsedBody = parseVelocyPackBody(parseSuccess);
   if (!suffixes.empty() || !parseSuccess) {
     generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
-                  "expecting POST /" + _request->requestPath() + "?collection=<collection-name>");
+                  "expecting POST /" + _request->requestPath() +
+                      "?collection=<collection-name>");
     return RestStatus::DONE;
   }
-  
+
   bool found = false;
   std::string cName = _request->value("collection", found);
   if (!found) {
@@ -181,7 +180,7 @@ RestStatus RestIndexHandler::createIndex() {
                   TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
     return RestStatus::DONE;
   }
-  
+
   std::shared_ptr<LogicalCollection> tmpColl;
   LogicalCollection* coll = collection(cName, tmpColl);
   if (coll == nullptr) {
@@ -189,7 +188,7 @@ RestStatus RestIndexHandler::createIndex() {
                   TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
     return RestStatus::DONE;
   }
-  
+
   VPackBuilder copy;
   VPackSlice body = parsedBody->slice();
   if (body.get("collection").isNone()) {
@@ -199,26 +198,30 @@ RestStatus RestIndexHandler::createIndex() {
     copy = VPackCollection::merge(body, copy.slice(), false);
     body = copy.slice();
   }
-  
+
   VPackBuilder output;
   Result res = methods::Indexes::ensureIndex(coll, body, true, output);
   if (res.ok()) {
     VPackSlice created = output.slice().get("isNewlyCreated");
-    auto r = created.isBool() && created.getBool() ?
-    rest::ResponseCode::CREATED : rest::ResponseCode::OK;
-    
+    auto r = created.isBool() && created.getBool() ? rest::ResponseCode::CREATED
+                                                   : rest::ResponseCode::OK;
+
     VPackBuilder b;
     b.openObject();
     b.add("error", VPackValue(false));
     b.add("code", VPackValue(static_cast<int>(r)));
     b.close();
     output = VPackCollection::merge(output.slice(), b.slice(), false);
-    
+
     generateResult(r, output.slice());
   } else {
-    generateError(res.errorNumber() == TRI_ERROR_ARANGO_INDEX_NOT_FOUND ?
-                  rest::ResponseCode::NOT_FOUND : rest::ResponseCode::BAD,
-                  res.errorNumber(), res.errorMessage());
+    if (res.errorNumber() == TRI_ERROR_FORBIDDEN ||
+        res.errorNumber() == TRI_ERROR_ARANGO_INDEX_NOT_FOUND) {
+      generateError(res);
+    } else {  // http_server compatibility
+      generateError(rest::ResponseCode::BAD, res.errorNumber(),
+                    res.errorMessage());
+    }
   }
   return RestStatus::DONE;
 }
@@ -233,7 +236,7 @@ RestStatus RestIndexHandler::dropIndex() {
                   "expecting DELETE /<collection-name>/<index-identifier>");
     return RestStatus::DONE;
   }
-  
+
   std::string const& cName = suffixes[0];
   std::shared_ptr<LogicalCollection> tmpColl;
   LogicalCollection* coll = collection(cName, tmpColl);
@@ -242,11 +245,11 @@ RestStatus RestIndexHandler::dropIndex() {
                   TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
     return RestStatus::DONE;
   }
-  
+
   std::string const& iid = suffixes[1];
   VPackBuilder idBuilder;
   idBuilder.add(VPackValue(cName + TRI_INDEX_HANDLE_SEPARATOR_CHR + iid));
-  
+
   Result res = methods::Indexes::drop(coll, idBuilder.slice());
   if (res.ok()) {
     VPackBuilder b;
@@ -257,8 +260,7 @@ RestStatus RestIndexHandler::dropIndex() {
     b.close();
     generateResult(rest::ResponseCode::OK, b.slice());
   } else {
-    generateError(rest::ResponseCode::NOT_FOUND,
-                  TRI_ERROR_ARANGO_INDEX_NOT_FOUND, iid);
+    generateError(res);
   }
   return RestStatus::DONE;
 }

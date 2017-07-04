@@ -404,10 +404,27 @@ value `bar` will be inserted only once:
 db.posts.insert({ tags: [ "foobar", "bar", "bar" ] });
 ```
 
+This is done to avoid redudant storage of the same index value for the same document, which
+would not provide any benefit.
+
 If an array index is declared **unique**, the de-duplication of array values will happen before 
-inserting the values into the index, so the above insert operation will not necessarily fail.
-It will fail if the index already contains an instance of the `bar` value, but will succeed 
-if the value `bar` is not already present in the index.
+inserting the values into the index, so the above insert operation with two identical values
+`bar` will not necessarily fail
+
+It will always fail if the index already contains an instance of the `bar` value. However, if
+the value `bar` is not already present in the index, then the de-duplication of the array values will
+effectively lead to `bar` being inserted only once.
+
+To turn off the deduplication of array values, it is possible to set the **deduplicate** attribute
+on the array index to `false`. The default value for **deduplicate** is `true` however, so 
+de-duplication will take place if not explicitly turned off.
+
+```js
+db.posts.ensureIndex({ type: "hash", fields: [ "tags[*]" ], deduplicate: false });
+
+// will fail now
+db.posts.insert({ tags: [ "foobar", "bar", "bar" ] }); 
+```
 
 If an array index is declared and you store documents that do not have an array at the specified attribute
 this document will not be inserted in the index. Hence the following objects will not be indexed:
@@ -420,9 +437,9 @@ db.posts.insert({ tags: "this is no array" });
 db.posts.insert({ tags: { content: [1, 2, 3] } });
 ```
 
-An array index is able to index an explicit `null` value and when queried for it, it will only
-return those documents having explicitly `null` stored in the array, it will not return any
-documents that do not have the array at all.
+An array index is able to index explicit `null` values. When queried for `null`values, it 
+will only return those documents having explicitly `null` stored in the array, it will not 
+return any documents that do not have the array at all.
 
 ```js
 db.posts.ensureIndex({ type: "hash", fields: [ "tags[*]" ] });

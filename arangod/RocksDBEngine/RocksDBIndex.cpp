@@ -41,8 +41,8 @@ using namespace arangodb;
 using namespace arangodb::rocksutils;
 
 // This is the number of distinct elements the index estimator can reliably store
-// This correlates directly with the memmory of the estimator:
-// memmory == ESTIMATOR_SIZE * 6 bytes
+// This correlates directly with the memory of the estimator:
+// memory == ESTIMATOR_SIZE * 6 bytes
 
 uint64_t const arangodb::RocksDBIndex::ESTIMATOR_SIZE = 4096;
 
@@ -215,7 +215,7 @@ void RocksDBIndex::truncate(transaction::Methods* trx) {
   while (iter->Valid() && cmp->Compare(iter->key(), end) < 0) {
     TRI_ASSERT(_objectId == RocksDBKey::objectId(iter->key()));
 
-    Result r = mthds->Delete(_cf, iter->key());
+    Result r = mthds->Delete(_cf, RocksDBKey(iter->key()));
     if (!r.ok()) {
       THROW_ARANGO_EXCEPTION(r);
     }

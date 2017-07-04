@@ -73,7 +73,7 @@ VocbaseContext::~VocbaseContext() {
 rest::ResponseCode VocbaseContext::authenticate() {
   TRI_ASSERT(_vocbase != nullptr);
   
-  if (!_authentication->isEnabled()) {
+  if (!_authentication->isActive()) {
     // no authentication required at all
     return rest::ResponseCode::OK;
   }
@@ -83,6 +83,13 @@ rest::ResponseCode VocbaseContext::authenticate() {
   // mop: inside authenticateRequest() _request->user will be populated
   bool forceOpen = false;
   rest::ResponseCode result = authenticateRequest();
+
+  if (result == rest::ResponseCode::OK && !_request->user().empty()) {
+    auto authContext = _authentication->authInfo()->getAuthContext(
+        _request->user(), _request->databaseName());
+    _request->setExecContext(
+      new ExecContext(_request->user(), _request->databaseName(), authContext));
+  }
 
   if (result == rest::ResponseCode::UNAUTHORIZED ||
       result == rest::ResponseCode::FORBIDDEN) {
@@ -145,13 +152,22 @@ rest::ResponseCode VocbaseContext::authenticate() {
 
   // check that we are allowed to see the database
   if (!forceOpen) {
+    // check for GET /_db/_system/_api/user/USERNAME/database
+    std::string pathWithUser = std::string("/_api/user/") + username;
+
+    if (_request->requestType() == RequestType::GET &&
+      (StringUtils::isPrefix(path, pathWithUser) || (StringUtils::isPrefix(path, "/_admin/aardvark/"))) ) {
+      _request->setExecContext(nullptr);
+      return rest::ResponseCode::OK;
+    }
+
     if (!StringUtils::isPrefix(path, "/_api/user/")) {
       std::string const& dbname = _request->databaseName();
       if (!username.empty() || !dbname.empty()) {
         AuthLevel level =
             _authentication->canUseDatabase(username, dbname);
 
-        if (level != AuthLevel::RW) {
+        if (level == AuthLevel::NONE) {
           events::NotAuthorized(_request);
           result = rest::ResponseCode::UNAUTHORIZED;
         }
@@ -188,7 +204,7 @@ rest::ResponseCode VocbaseContext::authenticateRequest() {
       // note that these methods may throw in case of an error
       if (TRI_CaseEqualString(authStr.c_str(), "basic ", 6)) {
         return basicAuthentication(auth);
-      } 
+      }
       if (TRI_CaseEqualString(authStr.c_str(), "bearer ", 7)) {
         return jwtAuthentication(std::string(auth));
       }
@@ -203,7 +219,7 @@ rest::ResponseCode VocbaseContext::authenticateRequest() {
       return rest::ResponseCode::SERVER_ERROR;
     }
   }
-    
+
   events::UnknownAuthenticationMethod(_request);
   return rest::ResponseCode::UNAUTHORIZED;
 }

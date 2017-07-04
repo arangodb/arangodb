@@ -58,12 +58,19 @@ class RestBaseHandler : public rest::RestHandler {
   template <typename Payload>
   void generateResult(rest::ResponseCode, Payload&&,
                       std::shared_ptr<transaction::Context> context);
+  
+  /// convenience function akin to generateError,
+  /// renders payload in 'result' field
+  void generateSuccess(rest::ResponseCode, velocypack::Slice const&);
 
   // generates an error
   void generateError(rest::ResponseCode, int);
 
   // generates an error
   void generateError(rest::ResponseCode, int, std::string const&);
+  
+  // generates an error
+  void generateError(arangodb::Result const&);
 
   // generates a canceled message
   void generateCanceled();

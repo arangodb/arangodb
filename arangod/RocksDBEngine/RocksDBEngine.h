@@ -266,7 +266,7 @@ class RocksDBEngine final : public StorageEngine {
   std::string _path;
   /// path to arangodb data dir
   std::string _basePath;
-
+    
   /// repository for replication contexts
   std::unique_ptr<RocksDBReplicationManager> _replicationManager;
   /// tracks the count of documents in collections

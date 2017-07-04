@@ -145,6 +145,12 @@ std::string const RestVocbaseBaseHandler::SIMPLE_REMOVE_PATH =
 std::string const RestVocbaseBaseHandler::UPLOAD_PATH = "/_api/upload";
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief users path
+////////////////////////////////////////////////////////////////////////////////
+
+std::string const RestVocbaseBaseHandler::USERS_PATH = "/_api/user";
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief view path
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -365,54 +371,54 @@ void RestVocbaseBaseHandler::generateDocument(VPackSlice const& input,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief generate an error message for a transaction error
-///        DEPRECATED
+/// @brief generate an error message for a transaction error, this method is
+/// used by the others.
 ////////////////////////////////////////////////////////////////////////////////
 
 void RestVocbaseBaseHandler::generateTransactionError(
-    std::string const& collectionName, int res, std::string const& key,
-    TRI_voc_rid_t rev) {
-  switch (res) {
+    std::string const& collectionName, OperationResult const& result,
+    std::string const& key, TRI_voc_rid_t rev) {
+  switch (result.code) {
     case TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND:
       if (collectionName.empty()) {
         // no collection name specified
-        generateError(rest::ResponseCode::BAD, res,
+        generateError(rest::ResponseCode::BAD, result.code,
                       "no collection name specified");
       } else {
         // collection name specified but collection not found
-        generateError(rest::ResponseCode::NOT_FOUND, res,
+        generateError(rest::ResponseCode::NOT_FOUND, result.code,
                       "collection '" + collectionName + "' not found");
       }
       return;
 
     case TRI_ERROR_ARANGO_READ_ONLY:
-      generateError(rest::ResponseCode::FORBIDDEN, res,
+      generateError(rest::ResponseCode::FORBIDDEN, result.code,
                     "collection is read-only");
       return;
 
     case TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED:
-      generateError(rest::ResponseCode::CONFLICT, res,
-                    "cannot create document, unique constraint violated");
+      generateError(rest::ResponseCode::CONFLICT, result.code,
+                    result.errorMessage);
       return;
 
     case TRI_ERROR_ARANGO_DOCUMENT_KEY_BAD:
-      generateError(rest::ResponseCode::BAD, res, "invalid document key");
+      generateError(rest::ResponseCode::BAD, result.code, "invalid document key");
       return;
 
     case TRI_ERROR_ARANGO_DOCUMENT_HANDLE_BAD:
-      generateError(rest::ResponseCode::BAD, res, "invalid document handle");
+      generateError(rest::ResponseCode::BAD, result.code, "invalid document handle");
       return;
 
     case TRI_ERROR_ARANGO_INVALID_EDGE_ATTRIBUTE:
-      generateError(rest::ResponseCode::BAD, res, "invalid edge attribute");
+      generateError(rest::ResponseCode::BAD, result.code, "invalid edge attribute");
       return;
 
     case TRI_ERROR_ARANGO_OUT_OF_KEYS:
-      generateError(rest::ResponseCode::SERVER_ERROR, res, "out of keys");
+      generateError(rest::ResponseCode::SERVER_ERROR, result.code, "out of keys");
       return;
 
     case TRI_ERROR_ARANGO_DOCUMENT_KEY_UNEXPECTED:
-      generateError(rest::ResponseCode::BAD, res,
+      generateError(rest::ResponseCode::BAD, result.code,
                     "collection does not allow using user-defined keys");
       return;
 
@@ -421,112 +427,20 @@ void RestVocbaseBaseHandler::generateTransactionError(
       return;
 
     case TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID:
-      generateError(rest::ResponseCode::BAD, res);
-      return;
-
-    case TRI_ERROR_ARANGO_CONFLICT:
-      generatePreconditionFailed(collectionName, key.empty() ? "unknown" : key,
-                                 rev);
-      return;
-
-    case TRI_ERROR_CLUSTER_SHARD_GONE:
-      generateError(rest::ResponseCode::SERVER_ERROR, res,
-                    "coordinator: no responsible shard found");
-      return;
-
-    case TRI_ERROR_CLUSTER_TIMEOUT:
-      generateError(rest::ResponseCode::SERVER_ERROR, res);
-      return;
-
-    case TRI_ERROR_CLUSTER_BACKEND_UNAVAILABLE:
-      generateError(rest::ResponseCode::SERVICE_UNAVAILABLE, res,
-                    "A required backend was not available");
-      return;
-
-    case TRI_ERROR_CLUSTER_MUST_NOT_CHANGE_SHARDING_ATTRIBUTES:
-    case TRI_ERROR_CLUSTER_MUST_NOT_SPECIFY_KEY: {
-      generateError(rest::ResponseCode::BAD, res);
-      return;
-    }
-
-    case TRI_ERROR_CLUSTER_UNSUPPORTED: {
-      generateError(rest::ResponseCode::NOT_IMPLEMENTED, res);
-      return;
-    }
-
-    case TRI_ERROR_FORBIDDEN: {
-      generateError(rest::ResponseCode::FORBIDDEN, res);
-      return;
-    }
-
-    case TRI_ERROR_OUT_OF_MEMORY:
-    case TRI_ERROR_LOCK_TIMEOUT:
-    case TRI_ERROR_DEBUG:
-    case TRI_ERROR_LOCKED:
-    case TRI_ERROR_DEADLOCK: {
-      generateError(rest::ResponseCode::SERVER_ERROR, res);
-      return;
-    }
-
-    default:
-      generateError(rest::ResponseCode::SERVER_ERROR, TRI_ERROR_INTERNAL,
-                    "failed with error: " + std::string(TRI_errno_string(res)));
-  }
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief generate an error message for a transaction error
-////////////////////////////////////////////////////////////////////////////////
-
-void RestVocbaseBaseHandler::generateTransactionError(
-    OperationResult const& result) {
-  switch (result.code) {
-    case TRI_ERROR_ARANGO_READ_ONLY:
-      generateError(rest::ResponseCode::FORBIDDEN, result.code,
-                    "collection is read-only");
-      return;
-
-    case TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED:
-      generateError(rest::ResponseCode::CONFLICT, result.code,
-                    "cannot create document, unique constraint violated");
-      return;
-
-    case TRI_ERROR_ARANGO_DOCUMENT_KEY_BAD:
-      generateError(rest::ResponseCode::BAD, result.code,
-                    "invalid document key");
-      return;
-
-    case TRI_ERROR_ARANGO_DOCUMENT_HANDLE_BAD:
-      generateError(rest::ResponseCode::BAD, result.code,
-                    "invalid document handle");
-      return;
-
-    case TRI_ERROR_ARANGO_INVALID_EDGE_ATTRIBUTE:
-      generateError(rest::ResponseCode::BAD, result.code,
-                    "invalid edge attribute");
-      return;
-
-    case TRI_ERROR_ARANGO_OUT_OF_KEYS:
-      generateError(rest::ResponseCode::SERVER_ERROR, result.code,
-                    "out of keys");
-      return;
-
-    case TRI_ERROR_ARANGO_DOCUMENT_KEY_UNEXPECTED:
-      generateError(rest::ResponseCode::BAD, result.code,
-                    "collection does not allow using user-defined keys");
-      return;
-
-    case TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND:
-      generateError(rest::ResponseCode::NOT_FOUND,
-                    TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND);
-      return;
-
-    case TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID:
       generateError(rest::ResponseCode::BAD, result.code);
       return;
 
     case TRI_ERROR_ARANGO_CONFLICT:
-      generatePreconditionFailed(result.slice());
+      if (result.buffer != nullptr) {
+        // This case happens if we come via the generateTransactionError that
+        // has a proper OperationResult with a slice:
+        generatePreconditionFailed(result.slice());
+      } else {
+        // This case happens if we call this method directly with a dummy
+        // OperationResult:
+        generatePreconditionFailed(collectionName, key.empty() ? "unknown" : key,
+                                   rev);
+      }
       return;
 
     case TRI_ERROR_CLUSTER_SHARD_GONE:
@@ -538,10 +452,23 @@ void RestVocbaseBaseHandler::generateTransactionError(
       generateError(rest::ResponseCode::SERVER_ERROR, result.code);
       return;
 
+    case TRI_ERROR_CLUSTER_BACKEND_UNAVAILABLE:
+    case TRI_ERROR_CLUSTER_SHARD_LEADER_RESIGNED: {
+      generateError(rest::ResponseCode::SERVICE_UNAVAILABLE, result.code,
+                    "A required backend was not available");
+      return;
+    }
+
     case TRI_ERROR_CLUSTER_MUST_NOT_CHANGE_SHARDING_ATTRIBUTES:
     case TRI_ERROR_CLUSTER_NOT_ALL_SHARDING_ATTRIBUTES_GIVEN:
     case TRI_ERROR_CLUSTER_MUST_NOT_SPECIFY_KEY: {
       generateError(rest::ResponseCode::BAD, result.code);
+      return;
+    }
+
+    case TRI_ERROR_CLUSTER_SHARD_LEADER_REFUSES_REPLICATION:
+    case TRI_ERROR_CLUSTER_SHARD_FOLLOWER_REFUSES_OPERATION: {
+      generateError(rest::ResponseCode::NOT_ACCEPTABLE, result.code);
       return;
     }
 
@@ -565,9 +492,8 @@ void RestVocbaseBaseHandler::generateTransactionError(
     }
 
     default:
-      generateError(
-          rest::ResponseCode::SERVER_ERROR, TRI_ERROR_INTERNAL,
-          "failed with error: " + std::string(TRI_errno_string(result.code)));
+      generateError(rest::ResponseCode::SERVER_ERROR, TRI_ERROR_INTERNAL,
+                    "failed with error: " + std::string(TRI_errno_string(result.code)));
   }
 }
 
@@ -627,6 +553,20 @@ bool RestVocbaseBaseHandler::extractBooleanParameter(std::string const& name,
   }
 
   return def;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief extracts a string parameter value
+////////////////////////////////////////////////////////////////////////////////
+
+void RestVocbaseBaseHandler::extractStringParameter(
+    std::string const& name, std::string& ret) const {
+  bool found;
+  std::string const& value = _request->value(name, found);
+
+  if (found) {
+    ret = value;
+  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////

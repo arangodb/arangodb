@@ -34,6 +34,7 @@ struct DocumentIdentifierToken;
 class ManagedDocumentResult;
 struct OperationCursor;
 class StringRef;
+class LogicalCollection;
 
 namespace transaction {
 class Methods;
@@ -45,6 +46,7 @@ class Slice;
 
 namespace graph {
 struct BaseOptions;
+struct SingleServerEdgeDocumentToken;
 
 class SingleServerEdgeCursor : public EdgeCursor {
  private:
@@ -57,7 +59,7 @@ class SingleServerEdgeCursor : public EdgeCursor {
   std::vector<DocumentIdentifierToken> _cache;
   size_t _cachePos;
   std::vector<size_t> const* _internalCursorMapping;
-
+  using Callback = std::function<void(std::unique_ptr<EdgeDocumentToken>&&, arangodb::velocypack::Slice, size_t)>;
  public:
   SingleServerEdgeCursor(ManagedDocumentResult* mmdr, BaseOptions* options,
                          size_t, std::vector<size_t> const* mapping = nullptr);
@@ -73,8 +75,13 @@ class SingleServerEdgeCursor : public EdgeCursor {
                          arangodb::velocypack::Slice, size_t)>) override;
 
   std::vector<std::vector<OperationCursor*>>& getCursors() { return _cursors; }
-};
+ 
+ private:
+  //returns false if cursor can not be further advanced
+  bool advanceCursor(OperationCursor*& cursor, std::vector<OperationCursor*>& cursorSet);
 
+  void getDocAndRunCallback(OperationCursor*, Callback callback);
+};
 }  // namespace graph
 }  // namespace arangodb
 

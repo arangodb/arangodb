@@ -711,7 +711,7 @@ TRI_vocbase_t* MMFilesEngine::openDatabase(
   std::string const name = args.get("name").copyString();
 
   bool const wasCleanShutdown =
-      MMFilesLogfileManager::instance()->hasFoundLastTick();
+      MMFilesLogfileManager::hasFoundLastTick();
   status = TRI_ERROR_NO_ERROR;
       
   return openExistingDatabase(id, name, wasCleanShutdown, isUpgrade);
@@ -1318,8 +1318,8 @@ arangodb::Result MMFilesEngine::dropView(TRI_vocbase_t* vocbase,
     builder.add("name", VPackValue(view->name()));
     builder.close();
 
-    MMFilesCollectionMarker marker(TRI_DF_MARKER_VPACK_DROP_VIEW, vocbase->id(),
-                                   view->id(), builder.slice());
+    MMFilesViewMarker marker(TRI_DF_MARKER_VPACK_DROP_VIEW, vocbase->id(),
+                             view->id(), builder.slice());
 
     MMFilesWalSlotInfoCopy slotInfo =
         MMFilesLogfileManager::instance()->allocateAndWrite(marker, false);

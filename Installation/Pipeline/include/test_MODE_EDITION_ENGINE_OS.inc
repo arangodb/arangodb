@@ -34,7 +34,7 @@ else
 fi
 
 if [ "$os" == linux ]; then
-    type="${type}_${os}linux"
+    type="${type}_${os}"
 elif [ "$os" == mac ]; then
     type="${type}_${os}"
 else
@@ -42,6 +42,7 @@ else
     exit 1
 fi
 
+. ./Installation/Pipeline/include/test_ulimits.inc
 . ./Installation/Pipeline/include/test_log_info.inc
 . ./Installation/Pipeline/include/test_setup_tmp.inc
 . ./Installation/Pipeline/include/test_setup_ports_and_ldap.inc
@@ -50,7 +51,7 @@ OPTS="--storageEngine $engine --skipNondeterministic true --skipTimeCritical tru
 
 if [ "$mode" == singleserver ]; then
     if [ "$edition" == enterprise -a "$os" == linux ]; then
-        ENTERPRISE_TESTS="scripts/unittest ldap --caCertFilePath $(pwd)/ldap/ca_server.pem --ldapHost 127.0.0.1 --ldapPort $PORTLDAP --minPort `expr $PORT01 + 1000` --maxPort `expr $PORT01 + 1069` $OPTS 2>&1"
+        ENTERPRISE_TESTS="scripts/unittest ldap --minPort `expr $PORT01 + 1000` --maxPort `expr $PORT01 + 1069` --caCertFilePath $(pwd)/ldap/ca_server.pem --ldapHost 127.0.0.1 --ldapPort $PORTLDAP $OPTS 2>&1"
     fi
 
     echo "$type
@@ -88,7 +89,7 @@ elif [ "$mode" == cluster ]; then
     OPTS="$OPTS --cluster true"
 
     if [ "$edition" == enterprise -a "$os" == linux ]; then
-        ENTERPRISE_TESTS="scripts/unittest ldap --caCertFilePath $(pwd)/ldap/ca_server.pem --ldapHost 127.0.0.1 --ldapPort $PORTLDAP --minPort `expr $PORT01 + 1000` --maxPort `expr $PORT01 + 1039` $OPTS 2>&1"
+        ENTERPRISE_TESTS="scripts/unittest ldap --minPort `expr $PORT01 + 1000` --maxPort `expr $PORT01 + 1039` --caCertFilePath $(pwd)/ldap/ca_server.pem --ldapHost 127.0.0.1 --ldapPort $PORTLDAP $OPTS 2>&1"
     fi
 
     echo "$type

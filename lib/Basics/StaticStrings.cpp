@@ -55,6 +55,8 @@ std::string const StaticStrings::ReturnNewString("returnNew");
 std::string const StaticStrings::ReturnOldString("returnOld");
 std::string const StaticStrings::SilentString("silent");
 std::string const StaticStrings::WaitForSyncString("waitForSync");
+std::string const StaticStrings::IsSynchronousReplicationString(
+    "isSynchronousReplication");
 
 // database and collection names
 std::string const StaticStrings::SystemDatabase("_system");

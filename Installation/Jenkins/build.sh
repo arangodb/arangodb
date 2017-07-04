@@ -128,7 +128,11 @@ fi
 
 CFLAGS="-g -fno-omit-frame-pointer"
 CXXFLAGS="-g -fno-omit-frame-pointer"
-LDFLAGS="-g"
+if test "${isCygwin}" == 1; then
+    LDFLAGS=""
+else
+    LDFLAGS="-g"
+fi
 V8_CFLAGS="-fno-omit-frame-pointer"
 V8_CXXFLAGS="-fno-omit-frame-pointer"
 V8_LDFLAGS=""

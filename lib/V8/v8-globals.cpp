@@ -37,6 +37,8 @@ TRI_v8_global_t::TRI_v8_global_t(v8::Isolate* isolate)
       VocbaseColTempl(),
       VocbaseViewTempl(),
       VocbaseTempl(),
+      EnvTempl(),
+      UsersTempl(),
 
       BufferTempl(),
 
@@ -164,6 +166,8 @@ TRI_v8_global_t::TRI_v8_global_t(v8::Isolate* isolate)
   IdKey.Reset(isolate, TRI_V8_ASCII_STRING("id"));
   InitTimeoutKey.Reset(isolate, TRI_V8_ASCII_STRING("initTimeout"));
   IsRestoreKey.Reset(isolate, TRI_V8_ASCII_STRING("isRestore"));
+  IsSynchronousReplicationKey.Reset(isolate,
+      TRI_V8_ASCII_STRING("isSynchronousReplication"));
   IsSystemKey.Reset(isolate, TRI_V8_ASCII_STRING("isSystem"));
   IsVolatileKey.Reset(isolate, TRI_V8_ASCII_STRING("isVolatile"));
   JournalSizeKey.Reset(isolate, TRI_V8_ASCII_STRING("journalSize"));
