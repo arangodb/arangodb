@@ -215,7 +215,7 @@ void Agent::reportIn(std::string const& peerId, index_t index, size_t toLog) {
     // Update last acknowledged answer
     auto t = system_clock::now();
     std::chrono::duration<double> d = t - _lastAcked[peerId];
-    if (d.count() > _config._minPing) {
+    if (peerId != id() && d.count() > _config._minPing) {
       LOG_TOPIC(WARN, Logger::AGENCY) << "Last confirmation from peer "
         << peerId << " was received more than minPing ago: " << d.count();
     }
@@ -448,7 +448,8 @@ void Agent::sendAppendEntriesRPC() {
         continue;
       }
 
-      if (m.count() > _config.minPing()) {
+      if (m.count() > _config.minPing() &&
+          _lastSent[followerId].time_since_epoch().count() != 0) {
         LOG_TOPIC(WARN, Logger::AGENCY) << "Oops, sent out last heartbeat "
           << "to follower " << followerId << " more than minPing ago: " 
           << m.count() << " lastAcked: "
