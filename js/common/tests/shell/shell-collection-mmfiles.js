@@ -962,19 +962,6 @@ function CollectionSuite () {
       var r7 = c1.revision();
       assertEqual(0, compareStringIds(r7, r6));
 
-      c1.truncate();
-      var r8 = c1.revision();
-
-      // unload
-      c1.unload();
-      c1 = null;
-      internal.wait(5);
-
-      // compare rev
-      c1 = db._collection(cn);
-      var r9 = c1.revision();
-      assertEqual(0, compareStringIds(r9, r8));
-
       db._drop(cn);
     },
 
