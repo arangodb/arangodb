@@ -15,7 +15,7 @@ x-content-type-options: nosniff
 location: <span class="hljs-regexp">/_db/</span>_system/_api/collection/testCollectionUsers
 
 { 
-  <span class="hljs-string">"id"</span> : <span class="hljs-string">"9168"</span>, 
+  <span class="hljs-string">"id"</span> : <span class="hljs-string">"9172"</span>, 
   <span class="hljs-string">"name"</span> : <span class="hljs-string">"testCollectionUsers"</span>, 
   <span class="hljs-string">"waitForSync"</span> : <span class="hljs-literal">false</span>, 
   <span class="hljs-string">"isVolatile"</span> : <span class="hljs-literal">false</span>, 
