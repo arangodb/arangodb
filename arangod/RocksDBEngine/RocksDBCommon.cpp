@@ -234,7 +234,7 @@ Result removeLargeRange(rocksdb::TransactionDB* db,
       TRI_ASSERT(cmp->Compare(it->key(), lower) > 0);
       TRI_ASSERT(cmp->Compare(it->key(), upper) < 0);
       counter++;
-      batch.Delete(it->key());
+      batch.Delete(cf, it->key());
       if (counter == 1000) {
         LOG_TOPIC(DEBUG, Logger::FIXME) << "Intermediate delete write";
         // Persist deletes all 1000 documents
