@@ -1,48 +1,22 @@
-Authorization Model
-===================
-
-With the release of ArangoDB 3.2 read only and collection level access
-was added. Each user can have *rw* (right/write), *ro* (read-one) or
-*none* access to
-
-- a collection
-- the database containing the collection
-- the *_system* database
-
-These rights control which operations a user is allowed to execute.
-
-| action                | collection | collection database | _system database |
-|-----------------------|------------|---------------------|------------------|
-| create a document     | rw         |                     |                  |
-| read a document       | r          |                     |                  |
-| update a document     | rw         |                     |                  |
-| drop a document       | rw         |                     |                  |
-| create a collection   |            | rw                  |                  |
-| drop a collection     |            | rw                  |                  |
-| truncate a collection | rw         |                     |                  |
-| create an index       |            | rw                  |                  |
-| drop an index         |            | rw                  |                  |
-| create a database     |            |                     | rw               |
-| drop a database       |            |                     | rw               |
-| create a user         |            |                     | rw               |
-| update a user         |            |                     | rw               |
-| drop a user           |            |                     | rw               |
-
-
 Internal representation
 -----------------------
 
-In general administrator will use the *@arangodb/users* module to create users
-and administrate their rights.
+In general administrator will use the *@arangodb/users* module to
+create users and administrate their rights. This is a description of
+the internal format used to describe users and their privileges.  This
+format is stored in the collection *_users* in the *_system* database.
 
-These rights are stored in the *_users* table in the *_system* database.
+Note that this format is subject to change without notice, therefore
+you should never access this table directly. Always use the functions
+supplied by the *users* module.
 
-The new authorization model allows to add other types of rights.  Currently
-supported types are read and write permissions.  Every database object has at
-least a permissions attribute and collections attribute. The permissions
-sub-object holds the rights at dabase level while the collections sub-object
-holds an object with collection names. Every collection name object holds a
-permissions object which holds permissions for collection level authorization.
+The new authorization model allows to add other types of rights.
+Currently supported types are read and write permissions.  Every
+database object has at least a permissions attribute and collections
+attribute. The permissions sub-object holds the rights at dabase level
+while the collections sub-object holds an object with collection
+names. Every collection name object holds a permissions object which
+holds permissions for collection level authorization.
 
     databases: {
         database-name: {
