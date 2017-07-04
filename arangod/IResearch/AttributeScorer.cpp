@@ -24,7 +24,14 @@
 #include "AttributeScorer.h"
 
 #include "analysis/token_attributes.hpp"
+#include "index/field_meta.hpp"
+#include "IResearch/IResearchDocument.h"
+#include "Logger/Logger.h"
+#include "StorageEngine/DocumentIdentifierToken.h"
+#include "Transaction/Methods.h"
 #include "velocypack/Slice.h"
+#include "VocBase/LogicalCollection.h"
+#include "VocBase/ManagedDocumentResult.h"
 
 NS_LOCAL
 
@@ -34,8 +41,9 @@ irs::string_ref const ATTRIBUTE_SCORER_NAME("@");
 /// @brief lazy-computed score from within Prepared::less(...)
 ////////////////////////////////////////////////////////////////////////////////
 struct Score {
-  void (*compute)(arangodb::transaction::Methods& trx, Score& score);
-  irs::doc_id_t const* document;
+  void (*compute)(std::string const& attr, arangodb::transaction::Methods& trx, Score& score);
+  irs::doc_id_t docId;
+  irs::field_id pkColId;
   irs::sub_reader const* reader;
   arangodb::velocypack::Slice slice;
 };
@@ -97,8 +105,8 @@ irs::flags const& Prepared::features() const {
 }
 
 bool Prepared::less(const score_t& lhs, const score_t& rhs) const {
-  lhs.compute(_trx, const_cast<score_t&>(lhs));
-  rhs.compute(_trx, const_cast<score_t&>(rhs));
+  lhs.compute(_attr, _trx, const_cast<score_t&>(lhs));
+  rhs.compute(_attr, _trx, const_cast<score_t&>(rhs));
 
   if (lhs.slice.isBoolean() && rhs.slice.isBoolean()) {
       return _reverse
@@ -138,16 +146,51 @@ irs::sort::collector::ptr Prepared::prepare_collector() const {
 
 void Prepared::prepare_score(score_t& score) const {
   struct Compute {
-    static void noop(arangodb::transaction::Methods& trx, Score& score) {}
-    static void invoke(arangodb::transaction::Methods& trx, Score& score) {
-      if (score.document && score.reader) {
-        // FIXME TODO
-        // read PK
-        // read JSON from transaction
-        //score.slice = find attribute in the document
+    static void noop(std::string const& attr, arangodb::transaction::Methods& trx, Score& score) {}
+    static void invoke(std::string const& attr, arangodb::transaction::Methods& trx, Score& score) {
+      score.compute = &Compute::noop; // do not recompute score again
+
+      if (!score.reader) {
+        return; // score value not initialized, see errors during initialization
       }
 
-      score.compute = &Compute::noop; // do not recompute score again
+      arangodb::iresearch::DocumentPrimaryKey docPk;
+      irs::bytes_ref tmpRef;
+
+      if (!score.reader->values(score.pkColId)(score.docId, tmpRef) || !docPk.read(tmpRef)) {
+        LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "failed to read document primary key while computing document score, doc_id '" << score.docId << "'";
+
+        return; // not a valid document reference
+      }
+
+      static const std::string unknown("<unknown>");
+
+      trx.addCollectionAtRuntime(docPk.cid(), unknown);
+
+      auto* collection = trx.documentCollection(docPk.cid());
+
+      if (!collection) {
+        LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "failed to find collection while computing document score, cid '" << docPk.cid() << "', rid '" << docPk.rid() << "'";
+
+        return; // not a valid collection reference
+      }
+
+      arangodb::DocumentIdentifierToken colToken;
+      arangodb::ManagedDocumentResult docResult;
+
+      colToken._data = docPk.rid();
+
+      if (!collection->readDocument(&trx, colToken, docResult)) {
+        LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "failed to read document while computing document score, cid '" << docPk.cid() << "', rid '" << docPk.rid() << "'";
+
+        return; // not a valid document
+      }
+
+      arangodb::velocypack::Slice doc(docResult.vpack());
+
+      if (doc.hasKey(attr)) {
+        score.slice = doc.get(attr);
+      }
     }
   };
 
@@ -170,9 +213,19 @@ irs::sort::scorer::ptr Prepared::prepare_scorer(
     virtual void score(irs::byte_type* score_buf) override {
       auto& score = *reinterpret_cast<score_t*>(score_buf);
       auto* doc = _doc.get();
+      auto* pkColMeta = _reader.column(arangodb::iresearch::DocumentPrimaryKey::PK());
 
-      score.document = doc ? doc->value : nullptr;
-      score.reader = &_reader;
+      if (!doc) {
+        LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "encountered a document without a doc_id value while scoring a document for iResearch view, ignoring";
+        score.reader = nullptr;
+      } else if (!pkColMeta) {
+        LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "encountered a sub-reader without a primary key column while scoring a document for iResearch view, ignoring";
+        score.reader = nullptr;
+      } else {
+        score.docId = *(doc->value);
+        score.pkColId = pkColMeta->id;
+        score.reader = &_reader;
+      }
     }
 
    private:

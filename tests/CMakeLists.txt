@@ -8,6 +8,7 @@ endforeach()
 
 if (USE_IRESEARCH)
   set(IRESEARCH_TESTS_SOURCES
+    IResearch/AttributeScorer-test.cpp
     IResearch/Containers-test.cpp
     IResearch/IResearchLink-test.cpp
     IResearch/IResearchLinkMeta-test.cpp

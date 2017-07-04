@@ -134,7 +134,7 @@ void CompoundReader::add(irs::directory_reader const& reader) {
     auto* pkColMeta = entry.column(arangodb::iresearch::DocumentPrimaryKey::PK());
 
     if (!pkColMeta) {
-      LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "encountered a sub-reader without a primary key column creating reader for iResearch view, ignoring";
+      LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "encountered a sub-reader without a primary key column while creating a reader for iResearch view, ignoring";
 
       continue;
     }
