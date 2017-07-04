@@ -1,5 +1,5 @@
-devel
------
+v3.2.beta4 (2017-07-04)
+-----------------------
 
 * enabled permissions on database and collection level
 
@@ -13,7 +13,7 @@ devel
       db.test.insert({ tags: ["a", "b"] });
       db.test.insert({ tags: ["c", "d", "c"] }); // will work, because deduplicate = true
       db.test.insert({ tags: ["a"] }); // will fail
-      
+
       // with deduplicate = false
       db._create("test");
       db.test.ensureIndex({ type: "hash", fields: ["tags[*]"], deduplicate: false });
@@ -26,20 +26,20 @@ devel
 * Debian/Ubuntu installer: make messages about future package upgrades more clear
 
 * fix a hangup in VST
-    
+
   The problem happened when the two first chunks of a VST message arrived
   together on a connection that was newly switched to VST.
 
 * fix deletion of outdated WAL files in RocksDB engine
 
-* make use of selectivity estimates in hash, skiplist and persistent indexes 
+* make use of selectivity estimates in hash, skiplist and persistent indexes
   in RocksDB engine
 
 * changed VM overcommit recommendation for user-friendliness
 
 * fix a shutdown bug in the cluster: a destroyed query could still be active
- 
-* do not terminate the entire server process if a temp file cannot be created 
+
+* do not terminate the entire server process if a temp file cannot be created
   (Windows only)
 
 * fix log output in the front-end, it stopped in case of too many messages
