@@ -398,7 +398,7 @@ void RestVocbaseBaseHandler::generateTransactionError(
 
     case TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED:
       generateError(rest::ResponseCode::CONFLICT, result.code,
-                    "cannot create document, unique constraint violated");
+                    result.errorMessage);
       return;
 
     case TRI_ERROR_ARANGO_DOCUMENT_KEY_BAD:

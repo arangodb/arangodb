@@ -45,7 +45,7 @@ RestStatus RestDatabaseHandler::execute() {
     return getDatabases();
   } else if (type == rest::RequestType::POST) {
     if (!_vocbase->isSystem()) {
-      generateError(rest::ResponseCode::BAD,
+      generateError(GeneralResponse::responseCode(TRI_ERROR_ARANGO_USE_SYSTEM_DATABASE),
                     TRI_ERROR_ARANGO_USE_SYSTEM_DATABASE);
       return RestStatus::DONE;
     }
@@ -141,7 +141,7 @@ RestStatus RestDatabaseHandler::createDatabase() {
 // //////////////////////////////////////////////////////////////////////////////
 RestStatus RestDatabaseHandler::deleteDatabase() {
   if (!_vocbase->isSystem()) {
-    generateError(rest::ResponseCode::BAD,
+    generateError(GeneralResponse::responseCode(TRI_ERROR_ARANGO_USE_SYSTEM_DATABASE),
                   TRI_ERROR_ARANGO_USE_SYSTEM_DATABASE);
     return RestStatus::DONE;
   }

@@ -1180,13 +1180,13 @@ AqlValue Expression::executeSimpleExpressionArrayComparison(
   size_t const n = left.length();
   
   if (n == 0) {
-    if (Quantifier::IsAllOrAny(node->getMember(2))) {
+    if (Quantifier::IsAllOrNone(node->getMember(2))) {
       // [] ALL ... 
-      // [] ANY ... 
-      return AqlValue(false);
-    } else {
       // [] NONE ...
       return AqlValue(true);
+    } else {
+      // [] ANY ...
+      return AqlValue(false);
     }
   }
 
