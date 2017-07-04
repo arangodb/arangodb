@@ -48,6 +48,7 @@ Agent::Agent(config_t const& config)
     _config(config),
     _commitIndex(0),
     _lastApplied(0),
+    _lastReconfiguration(1),
     _spearhead(this),
     _readDB(this),
     _transient(this),
@@ -305,7 +306,11 @@ bool Agent::recvAppendEntriesRPC(
   //      our own compaction. In this case we have compacted away the
   //      snapshot index, therefore we know it was committed by a majority
   //      and thus the snapshot can be ignored safely as well.
+  size_t configVersion = 0;
+  Slice config;
   if (gotSnapshot) {
+
+    configVersion = _config.version();
     bool useSnapshot = false;   // if this remains, we ignore the snapshot
 
     index_t snapshotIndex
@@ -331,6 +336,7 @@ bool Agent::recvAppendEntriesRPC(
       // start from the snapshot
       Store snapshot(this, "snapshot");
       snapshot = payload[0].get("readDB");
+      config = payload[0].get("readDB").get(".agency");
       if (!_state.restoreLogFromSnapshot(snapshot, snapshotIndex, snapshotTerm)) {
         LOG_TOPIC(ERR, Logger::AGENCY)
           << "Could not restore received log snapshot.";
@@ -388,6 +394,12 @@ bool Agent::recvAppendEntriesRPC(
     _compactor.wakeUp();
   }
 
+  if (configVersion > 0) {
+    if (_config.version() == configVersion) {
+      _config.updateConfiguration(config);
+    }
+  }
+  
   return ok;
 }
 
@@ -953,6 +965,10 @@ write_ret_t Agent::write(query_t const& query, WriteMode const& wmode) {
     auto tmp = _state.log(chunk, applied, term());
     indices.insert(indices.end(), tmp.begin(), tmp.end());
 
+    if (wmode.privileged()) {
+      _lastReconfiguration = indices.back();
+    }
+    
   }
 
   removeTrxsOngoing(query->slice());
@@ -1439,7 +1455,8 @@ void Agent::join() {
   
   std::string ep;
   auto cc = ClusterComm::instance();
-  
+  CONDITION_LOCKER(cuard, _waitForCV);
+
   while (true) {
     if (comres != nullptr && comres->sendWasComplete == true) {
       if (comres->result->getHttpReturnCode() == 307) {
@@ -1458,10 +1475,10 @@ void Agent::join() {
     }
 
     if (ep.empty()) {
-      ep = pool.valueAt(rand() % pool.length()).copyString();
+      ep = pool.valueAt(0).copyString();
     }
 
-    LOG_TOPIC(DEBUG, Logger::AGENCY)
+    LOG_TOPIC(INFO, Logger::AGENCY)
       << "Have response code while trying to join agency "
       << ((comres != nullptr) ? comres->result->getHttpReturnCode() : 0)
       << ". Contacting " << ep << " next ...";
@@ -1485,6 +1502,9 @@ void Agent::join() {
         break;
       } 
     }
+
+    _waitForCV.wait(1000000);
+    
   }
 }
 
@@ -1744,6 +1764,10 @@ Inception const* Agent::inception() const {
 }
 
 write_ret_t Agent::reconfigure(query_t const payload) {
+
+  if (challengeLeadership()) {
+    return write_ret_t(false, leaderID());
+  }
   
   Slice slice = payload->slice();
   if (!slice.isObject()) {
@@ -1761,9 +1785,32 @@ write_ret_t Agent::reconfigure(query_t const payload) {
   Result result;
   
   if (operation == "add-server") {
-    result = config.addServer(opVal);
+    MUTEX_LOCKER(ioLocker, _ioLock);
+    for (auto const& i : _config.active()) {
+      if (i != id() && _lastReconfiguration > _confirmed[i]) {
+        LOG_TOPIC(INFO, Logger::AGENCY) << i;
+        result.reset(
+          1, "Cannot add new server to agency. An other reconfiguration is still pending");
+        break;
+      }
+    }
+    if (result.ok()) {
+      result = config.addServer(opVal);
+    }
   } else if (operation == "remove-server") {
-    result = config.removeServer(opVal);
+    MUTEX_LOCKER(ioLocker, _ioLock);
+    for (auto const& i : _config.active()) {
+      if (i != id() && _lastReconfiguration > _confirmed[i]) {
+        result.reset(
+          1, std::string("Cannot remove server from agency.") 
+          + std::string("An other reconfiguration is still pending. Only server ")
+          + i + ",  may be removed as it is lagging behind.");
+        break;
+      }
+    }
+    if (result.ok()) {
+      result = config.removeServer(opVal);
+    }
   } else {
     result.reset(3, "Unknown agency reconfiguration operation");
   }

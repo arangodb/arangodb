@@ -311,6 +311,8 @@ class Agent : public arangodb::Thread,
   /// to 0, increases monotonically)
   index_t _lastApplied;
 
+  index_t _lastReconfiguration;
+
   /// @brief Spearhead (write) kv-store
   Store _spearhead;
 
@@ -352,6 +354,9 @@ class Agent : public arangodb::Thread,
 
   // @brief guard _joinConfig
   mutable arangodb::Mutex _joinLock;
+
+  // @brief guard _joinConfig
+  mutable arangodb::Mutex _reconfLock;
 
   /// @brief Next compaction after
   index_t _nextCompactionAfter;
