@@ -234,7 +234,7 @@
     changeViewToReadOnly: function () {
       this.readOnly = true;
       // breadcrumb
-      $('.breadcrumb').html($('.breadcrumb').html() + ' (read-only)');
+      $('.breadcrumb').find('a').html($('.breadcrumb').find('a').html() + ' (read-only)');
       // editor read only mode
       this.editor.setMode('view');
       $('.jsoneditor-modes').hide();

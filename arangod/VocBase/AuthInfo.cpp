@@ -107,7 +107,9 @@ bool AuthInfo::parseUsers(VPackSlice const& slice) {
     }
 
     AuthUserEntry auth = AuthUserEntry::fromDocument(s);
-    _authInfo.emplace(auth.username(), std::move(auth));
+    if (auth.isActive()) {
+      _authInfo.emplace(auth.username(), std::move(auth));
+    }
   }
 
   return true;

@@ -1,6 +1,6 @@
 /* jshint browser: true */
 /* jshint unused: false */
-/* global arangoHelper, Backbone, window, templateEngine, $ */
+/* global arangoHelper, _, Backbone, window, templateEngine, $ */
 
 (function () {
   'use strict';
@@ -28,12 +28,12 @@
       'click .db-row': 'toggleAccordion'
     },
 
-    render: function () {
+    render: function (open, error) {
       var self = this;
 
       this.collection.fetch({
         success: function () {
-          self.continueRender();
+          self.continueRender(open, error);
         }
       });
     },
@@ -53,6 +53,11 @@
 
       var db = $(e.currentTarget).attr('id').split('-')[0];
       $('.collection-row').hide();
+
+      // unhighlight db labels
+      $('.db-label').css('font-weight', 200);
+      $('.db-label').css('color', '#8a969f');
+
       // if collections are available
       if ($(e.currentTarget).find('.collection-row').children().length > 4) {
         // if menu was already visible -> then hide
@@ -63,6 +68,9 @@
         } else {
           // else show menu
           $(e.currentTarget).find('.collection-row').fadeIn('fast');
+          // highlight db label
+          $(e.currentTarget).find('.db-label').css('font-weight', 600);
+          $(e.currentTarget).find('.db-label').css('color', 'rgba(64, 74, 83, 1)');
           // caret animation
           $(e.currentTarget).find('.fa-caret-down').show();
           $(e.currentTarget).find('.fa-caret-right').hide();
@@ -80,6 +88,13 @@
       var collection = $(e.currentTarget).attr('collection');
       var value;
 
+      if (db === '(DEFAULT)') {
+        db = '*';
+      }
+      if (collection === '(DEFAULT)') {
+        collection = '*';
+      }
+
       if ($(e.currentTarget).hasClass('readOnly')) {
         value = 'ro';
       } else if ($(e.currentTarget).hasClass('readWrite')) {
@@ -93,7 +108,7 @@
     setDBPermission: function (e) {
       var db = $(e.currentTarget).attr('name');
 
-      if (db.charAt(0) === '_DEFAULT') {
+      if (db === '(DEFAULT)') {
         db = '*';
       }
 
@@ -114,7 +129,7 @@
           window.modalView.createReadOnlyEntry(
             'db-system-revoke-button',
             'Caution',
-            'You are removing your permissions to _system database. Really continue?',
+            'You are changing your permissions to _system database. Really continue?',
             undefined,
             undefined,
             false
@@ -132,11 +147,24 @@
       }
     },
 
-    rollbackInputButton: function (name) {
-      $('input[name="' + name + '"').prop('checked', 'true');
+    rollbackInputButton: function (name, error) {
+      var open;
+      _.each($('.collection-row'), function (elem, key) {
+        if ($(elem).is(':visible')) {
+          open = $(elem).parent().attr('id');
+        }
+      });
+
+      if (open) {
+        this.render(open, error);
+      } else {
+        this.render();
+      }
     },
 
     sendCollPermission: function (user, db, collection, value) {
+      var self = this;
+
       if (value === 'none') {
         this.revokeCollPermission(user, db, collection);
       } else {
@@ -147,19 +175,27 @@
           data: JSON.stringify({
             grant: value
           })
+        }).error(function (e) {
+          self.rollbackInputButton(null, e);
         });
       }
     },
 
     revokeCollPermission: function (user, db, collection) {
+      var self = this;
+
       $.ajax({
         type: 'DELETE',
         url: arangoHelper.databaseUrl('/_api/user/' + encodeURIComponent(user) + '/database/' + encodeURIComponent(db) + '/' + encodeURIComponent(collection)),
         contentType: 'application/json'
+      }).error(function (e) {
+        self.rollbackInputButton(null, e);
       });
     },
 
     sendDBPermission: function (user, db, value) {
+      var self = this;
+
       if (value === 'none') {
         this.revokeDBPermission(user, db);
       } else {
@@ -170,19 +206,25 @@
           data: JSON.stringify({
             grant: value
           })
+        }).error(function (e) {
+          self.rollbackInputButton(null, e);
         });
       }
     },
 
     revokeDBPermission: function (user, db) {
+      var self = this;
+
       $.ajax({
         type: 'DELETE',
         url: arangoHelper.databaseUrl('/_api/user/' + encodeURIComponent(user) + '/database/' + encodeURIComponent(db)),
         contentType: 'application/json'
+      }).error(function (e) {
+        self.rollbackInputButton(null, e);
       });
     },
 
-    continueRender: function () {
+    continueRender: function (open, error) {
       var self = this;
 
       this.currentUser = this.collection.findWhere({
@@ -204,7 +246,7 @@
         contentType: 'application/json',
         success: function (data) {
           // fetching available dbs and permissions
-          self.finishRender(data.result);
+          self.finishRender(data.result, open, error);
         },
         error: function (data) {
           arangoHelper.arangoError('User', 'Could not fetch user permissions');
@@ -212,11 +254,19 @@
       });
     },
 
-    finishRender: function (permissions) {
+    finishRender: function (permissions, open, error) {
       $(this.el).html(this.template.render({
         permissions: permissions
       }));
       $('.pure-table-body').height(window.innerHeight - 200);
+      if (open) {
+        $('#' + open).click();
+      }
+      if (error && error.responseJSON && error.responseJSON.errorMessage) {
+        arangoHelper.arangoError('User', error.responseJSON.errorMessage);
+      }
+      // tooltips
+      arangoHelper.createTooltips();
     },
 
     breadcrumb: function () {
