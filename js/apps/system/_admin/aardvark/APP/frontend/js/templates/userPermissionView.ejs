@@ -55,7 +55,7 @@
             <div class="<%= genClass %> mid">
               <input class="dbCheckbox noAccess" type="radio" name="<%= db %>" permission="none">
             </div>
-          <% } else if (permissionsDB === 'ro') { %>
+          <% } else if (permissionsDB === 'none') { %>
             <div class="<%= genClass %> mid">
               <input class="dbCheckbox readWrite" type="radio" name="<%= db %>" permission="<%= db %>">
             </div>
