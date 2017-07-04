@@ -386,6 +386,9 @@ RocksDBEdgeIndex::RocksDBEdgeIndex(TRI_idx_iid_t iid,
       _directionAttr(attr),
       _isFromIndex(attr == StaticStrings::FromString),
       _estimator(nullptr) {
+  
+  TRI_ASSERT(_cf == RocksDBColumnFamily::edge()); 
+
   if (!ServerState::instance()->isCoordinator()) {
     // We activate the estimator only on DBServers
     _estimator = std::make_unique<RocksDBCuckooIndexEstimator<uint64_t>>(

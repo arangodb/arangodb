@@ -87,6 +87,8 @@ RocksDBVPackIndexIterator::RocksDBVPackIndexIterator(
       _cmp(index->comparator()),
       _reverse(reverse),
       _bounds(bounds) {
+  TRI_ASSERT(index->columnFamily() == RocksDBColumnFamily::vpack()); 
+
   RocksDBMethods* mthds = RocksDBTransactionState::toMethods(trx);
   rocksdb::ReadOptions options = mthds->readOptions();
   if (!reverse) {
@@ -176,6 +178,9 @@ RocksDBVPackIndex::RocksDBVPackIndex(TRI_idx_iid_t iid,
       _useExpansion(false),
       _allowPartialIndex(true),
       _estimator(nullptr) {
+  
+  TRI_ASSERT(_cf == RocksDBColumnFamily::vpack()); 
+
   if (!_unique && !ServerState::instance()->isCoordinator()) {
     // We activate the estimator for all non unique-indexes.
     // And only on DBServers

@@ -64,6 +64,7 @@ RocksDBFulltextIndex::RocksDBFulltextIndex(
     : RocksDBIndex(iid, collection, info, RocksDBColumnFamily::fulltext(), false),
       _minWordLength(TRI_FULLTEXT_MIN_WORD_LENGTH_DEFAULT) {
   TRI_ASSERT(iid != 0);
+  TRI_ASSERT(_cf == RocksDBColumnFamily::fulltext()); 
 
   VPackSlice const value = info.get("minLength");
 

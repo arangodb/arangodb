@@ -27,6 +27,7 @@
 #include "Cache/Common.h"
 #include "Cache/Manager.h"
 #include "Cache/TransactionalCache.h"
+#include "RocksDBEngine/RocksDBColumnFamily.h"
 #include "RocksDBEngine/RocksDBCommon.h"
 #include "RocksDBEngine/RocksDBComparator.h"
 #include "RocksDBEngine/RocksDBMethods.h"
@@ -57,6 +58,8 @@ RocksDBIndex::RocksDBIndex(
       _cache(nullptr),
       _cachePresent(false),
       _useCache(useCache) {
+  TRI_ASSERT(cf != nullptr && cf != RocksDBColumnFamily::definitions());
+
   if (_useCache) {
     createCache();
   }
@@ -71,6 +74,8 @@ RocksDBIndex::RocksDBIndex(TRI_idx_iid_t id, LogicalCollection* collection,
       _cache(nullptr),
       _cachePresent(false),
       _useCache(useCache) {
+  TRI_ASSERT(cf != nullptr && cf != RocksDBColumnFamily::definitions());
+
   if (_objectId == 0) {
     _objectId = TRI_NewTickServer();
   }

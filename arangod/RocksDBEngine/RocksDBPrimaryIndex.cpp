@@ -128,7 +128,7 @@ RocksDBPrimaryIndex::RocksDBPrimaryIndex(
                    true, false, RocksDBColumnFamily::primary(),
                    basics::VelocyPackHelper::stringUInt64(info, "objectId"),
                    false) {
-  // !ServerState::instance()->isCoordinator() /*useCache*/) {
+  TRI_ASSERT(_cf == RocksDBColumnFamily::primary()); 
   TRI_ASSERT(_objectId != 0);
 }
 

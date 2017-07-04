@@ -224,9 +224,8 @@ rocksdb::ColumnFamilyHandle* RocksDBKeyBounds::columnFamily() const {
     case RocksDBEntryType::KeyGeneratorValue:
     case RocksDBEntryType::View:
       return RocksDBColumnFamily::definitions();
-    default:
-      THROW_ARANGO_EXCEPTION(TRI_ERROR_TYPE_ERROR);
   }
+  THROW_ARANGO_EXCEPTION(TRI_ERROR_TYPE_ERROR);
 }
 
 // constructor for an empty bound. do not use for anything but to

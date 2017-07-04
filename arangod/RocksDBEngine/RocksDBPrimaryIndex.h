@@ -79,8 +79,8 @@ class RocksDBPrimaryIndex final : public RocksDBIndex {
  public:
   RocksDBPrimaryIndex() = delete;
 
-  explicit RocksDBPrimaryIndex(arangodb::LogicalCollection*,
-                               VPackSlice const& info);
+  RocksDBPrimaryIndex(arangodb::LogicalCollection*,
+                      VPackSlice const& info);
 
   ~RocksDBPrimaryIndex();
 

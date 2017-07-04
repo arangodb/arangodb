@@ -494,7 +494,7 @@ void RocksDBEngine::start() {
     }
   }
   // store current version
-  s = _db->Put(rocksdb::WriteOptions(), cfHandles[0], key.string(),
+  s = _db->Put(rocksdb::WriteOptions(), RocksDBColumnFamily::definitions(), key.string(),
                rocksdb::Slice(&version, sizeof(char)));
   TRI_ASSERT(s.ok());
   
@@ -869,7 +869,7 @@ int RocksDBEngine::writeCreateCollectionMarker(TRI_voc_tick_t databaseId,
   // Write marker + key into RocksDB inside one batch
   rocksdb::WriteBatch batch;
   batch.PutLogData(logValue.slice());
-  batch.Put(key.string(), value.string());
+  batch.Put(RocksDBColumnFamily::definitions(), key.string(), value.string());
   rocksdb::Status res = _db->Write(options, &batch);
 
   auto result = rocksutils::convertStatus(res);
@@ -997,7 +997,7 @@ arangodb::Result RocksDBEngine::dropCollection(
       RocksDBLogValue::CollectionDrop(vocbase->id(), collection->cid());
   rocksdb::WriteBatch batch;
   batch.PutLogData(logValue.slice());
-  batch.Delete(
+  batch.Delete(RocksDBColumnFamily::definitions(),
       RocksDBKey::Collection(vocbase->id(), collection->cid()).string());
   rocksdb::Status res = _db->Write(options, &batch);
 

@@ -167,7 +167,7 @@ void RocksDBCounterManager::removeCounter(uint64_t objectId) {
   if (it != _counters.end()) {
     RocksDBKey key = RocksDBKey::CounterValue(it->first);
     rocksdb::WriteOptions options;
-    rocksdb::Status s = _db->Delete(options, key.string());
+    rocksdb::Status s = _db->Delete(options, RocksDBColumnFamily::definitions(), key.string());
     if (!s.ok()) {
       LOG_TOPIC(ERR, Logger::ENGINES) << "deleting counter failed";
     }
