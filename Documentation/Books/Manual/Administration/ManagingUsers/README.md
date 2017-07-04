@@ -58,8 +58,8 @@ collection the privileges are
 
 ## Granting Privileges
 
-In order to grant privileges to a user, you can assign on of three access
-levels to the three categories.
+In order to grant privileges to a user, you can assign one of three access
+levels to the categories.
 
 For server level category privileges, an user needs the following access level
 to gain a privilege. The access levels are *Administrate*, *Access* and
