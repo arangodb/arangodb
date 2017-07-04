@@ -114,11 +114,14 @@ RestStatus RestAgencyPrivHandler::execute() {
           return reportBadQuery();  // bad query
         }
       } else if (suffixes[0] == "requestVote") {  // requestVote
+        long timeoutMult = 1.0;
         if (readValue("term", term) && readValue("candidateId", id) &&
             readValue("prevLogIndex", prevLogIndex) &&
-            readValue("prevLogTerm", prevLogTerm)) {
+            readValue("prevLogTerm", prevLogTerm) &&
+            readValue("timeoutMult", timeoutMult)) {
           priv_rpc_ret_t ret =
-              _agent->requestVote(term, id, prevLogIndex, prevLogTerm, nullptr);
+              _agent->requestVote(term, id, prevLogIndex, prevLogTerm, nullptr,
+                                  timeoutMult);
           result.add("term", VPackValue(ret.term));
           result.add("voteGranted", VPackValue(ret.success));
         }
@@ -128,7 +131,7 @@ RestStatus RestAgencyPrivHandler::execute() {
         }
         if (readValue("term", term) && readValue("agencyId", id)) {
           priv_rpc_ret_t ret = _agent->requestVote(
-              term, id, 0, 0, _request->toVelocyPackBuilderPtr());
+              term, id, 0, 0, _request->toVelocyPackBuilderPtr(), -1);
           result.add("term", VPackValue(ret.term));
           result.add("voteGranted", VPackValue(ret.success));
         } else {
