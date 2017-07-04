@@ -1,9 +1,7 @@
 devel
 -----
 
-* added read-only database users
-
-* added collection-level permissions
+* enabled permissions on database and collection level
 
 * added "deduplicate" attribute for array indexes, which controls whether inserting
   duplicate index values from the same document into a unique array index will lead to

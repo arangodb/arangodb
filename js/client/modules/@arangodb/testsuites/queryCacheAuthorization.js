@@ -126,7 +126,7 @@ const requests = [
       }
     }
     return bodies;
-  }
+  };
 
   let res = pu.run.arangoshCmd(options, adbInstance, {}, [
           '--javascript.execute-string',
