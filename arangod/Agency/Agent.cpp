@@ -213,7 +213,13 @@ void Agent::reportIn(std::string const& peerId, index_t index, size_t toLog) {
     MUTEX_LOCKER(ioLocker, _ioLock);
 
     // Update last acknowledged answer
-    _lastAcked[peerId] = system_clock::now();
+    auto t = system_clock::now();
+    std::chrono::duration<double> d = t - _lastAcked[peerId];
+    if (d.count() > _config._minPing) {
+      LOG_TOPIC(WARN, Logger::AGENCY) << "Last confirmation from peer "
+        << peerId << " was received more than minPing ago: " << d.count();
+    }
+    _lastAcked[peerId] = t;
 
     if (index > _confirmed[peerId]) {  // progress this follower?
       _confirmed[peerId] = index;
@@ -442,6 +448,13 @@ void Agent::sendAppendEntriesRPC() {
         continue;
       }
 
+      if (m.count() > _config.minPing()) {
+        LOG_TOPIC(WARN, Logger::AGENCY) << "Oops, sent out last heartbeat "
+          << "to follower " << followerId << " more than minPing ago: " 
+          << m.count() << " lastAcked: "
+          << timepointToString(_lastAcked[followerId])
+          << " lastSent: " << timepointToString(_lastSent[followerId]);
+      }
       index_t lowest = unconfirmed.front().index;
 
       bool needSnapshot = false;
