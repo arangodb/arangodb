@@ -439,10 +439,6 @@ bool TraverserOptions::evaluateEdgeExpression(arangodb::velocypack::Slice edge,
                                               StringRef vertexId,
                                               uint64_t depth,
                                               size_t cursorId) const {
-  if (_isCoordinator) {
-    // The Coordinator never checks conditions. The DBServer is responsible!
-    return true;
-  }
   arangodb::aql::Expression* expression = nullptr;
 
   auto specific = _depthLookupInfo.find(depth);
