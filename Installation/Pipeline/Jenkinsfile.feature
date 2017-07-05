@@ -463,7 +463,7 @@ def buildStepCheck(edition, os, full) {
 
 def buildStep(edition, os) {
     return {
-        lock('build-${edition}-${os}') {
+        lock("build-${edition}-${os}") {
             node(os) {
                 def name = "${edition}-${os}"
 
