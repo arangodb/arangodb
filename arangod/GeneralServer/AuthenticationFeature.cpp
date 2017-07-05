@@ -127,7 +127,7 @@ void AuthenticationFeature::prepare() {
       handler.reset(new DefaultAuthenticationHandler());
     }
 #else
-    handler.reset(DefaultAuthenticationHandler());
+    handler.reset(new DefaultAuthenticationHandler());
 #endif
     _authInfo = new AuthInfo(std::move(handler));
     

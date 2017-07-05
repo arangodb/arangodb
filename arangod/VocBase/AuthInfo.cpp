@@ -281,7 +281,7 @@ void AuthInfo::insertInitial() {
 Result AuthInfo::storeUserInternal(AuthUserEntry const& entry, bool replace) {
   VPackBuilder data = entry.toVPackBuilder();
   bool hasKey = data.slice().hasKey(StaticStrings::KeyString);
-  TRI_ASSERT(replace && hasKey || !replace && !hasKey);
+  TRI_ASSERT((replace && hasKey) || (!replace && !hasKey));
 
   TRI_vocbase_t* vocbase = DatabaseFeature::DATABASE->systemDatabase();
   if (vocbase == nullptr) {
