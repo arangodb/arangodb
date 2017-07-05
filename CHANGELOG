@@ -2,6 +2,7 @@ devel
 -----
 
 * enabled permission for read-only users on database and collection level
+* Removed "changePassword" parameter in all response bodies of the user API
 
 * added "deduplicate" attribute for array indexes, which controls whether inserting
   duplicate index values from the same document into a unique array index will lead to

@@ -216,11 +216,6 @@ static void ConvertLegacyFormat(VPackSlice doc, VPackBuilder& result) {
   VPackObjectBuilder b(&result, true);
   result.add("user", doc.get("user"));
   result.add("active", authDataSlice.get("active"));
-  if (authDataSlice.hasKey("changePassword")) {
-    result.add("changePassword", authDataSlice.get("changePassword"));
-  } else {
-    result.add("changePassword", VPackValue(false));
-  }
   VPackSlice extra = doc.get("userData");
   result.add("extra", extra.isNone() ? VPackSlice::emptyObjectSlice() : extra);
 }
@@ -311,7 +306,12 @@ Result AuthInfo::storeUserInternal(AuthUserEntry const& entry, bool replace) {
       if (userDoc.isExternal()) {
         userDoc = userDoc.resolveExternal();
       }
-      _authInfo.emplace(entry.username(), AuthUserEntry::fromDocument(userDoc));
+      AuthUserEntry created = AuthUserEntry::fromDocument(userDoc);
+      TRI_ASSERT(!created.key().empty());
+      TRI_ASSERT(created.username() == entry.username());
+      TRI_ASSERT(created.isActive() == entry.isActive());
+      TRI_ASSERT(created.passwordHash() == entry.passwordHash());
+      _authInfo.emplace(entry.username(), std::move(created));
     }
   }
   return res;
@@ -377,8 +377,7 @@ void AuthInfo::reloadAllUsers() {
 }
 
 Result AuthInfo::storeUser(bool replace, std::string const& user,
-                           std::string const& pass, bool active,
-                           bool changePassword) {
+                           std::string const& pass, bool active) {
   if (user.empty()) {
     return TRI_ERROR_USER_INVALID_NAME;
   }
@@ -400,7 +399,6 @@ Result AuthInfo::storeUser(bool replace, std::string const& user,
   AuthUserEntry entry =
       AuthUserEntry::newUser(user, pass, AuthSource::COLLECTION);
   entry.setActive(active);
-  entry.changePassword(changePassword);
   if (replace) {
     TRI_ASSERT(!(it->second.key().empty()));
     entry._key = it->second.key();
@@ -491,7 +489,7 @@ VPackBuilder AuthInfo::getUser(std::string const& user) {
 }
 
 Result AuthInfo::removeUser(std::string const& user) {
-  WRITE_LOCKER(readLocker, _authInfoLock);
+  WRITE_LOCKER(guard, _authInfoLock);
   auto it = _authInfo.find(user);
   if (it == _authInfo.end()) {
     return Result(TRI_ERROR_USER_NOT_FOUND);
@@ -502,11 +500,17 @@ Result AuthInfo::removeUser(std::string const& user) {
   if (vocbase == nullptr) {
     return Result(TRI_ERROR_INTERNAL);
   }
+  
+  // we cannot set this execution context, otherwise the transaction
+  // will ask us again for permissions and we get a deadlock
+  ExecContext* oldExe = ExecContext::CURRENT_EXECCONTEXT;
+  ExecContext::CURRENT_EXECCONTEXT = nullptr;
+  TRI_DEFER(ExecContext::CURRENT_EXECCONTEXT = oldExe);
+  
   std::shared_ptr<transaction::Context> ctx(
       new transaction::StandaloneContext(vocbase));
   SingleCollectionTransaction trx(ctx, TRI_COL_NAME_USERS,
                                   AccessMode::Type::WRITE);
-
   Result res = trx.begin();
   if (res.ok()) {
     VPackBuilder builder;
@@ -616,7 +620,6 @@ AuthResult AuthInfo::checkPassword(std::string const& username,
   if (it != _authInfo.end()) {
     AuthUserEntry const& auth = it->second;
     if (auth.isActive()) {
-      result._mustChange = auth.mustChangePassword();
       result._authorized = auth.checkPassword(password);
     }
   }
@@ -636,7 +639,7 @@ AuthLevel AuthInfo::canUseCollection(std::string const& username,
 }
 
 // public called from VocbaseContext.cpp
-AuthResult AuthInfo::checkAuthentication(AuthType authType,
+AuthResult AuthInfo::checkAuthentication(AuthenticationMethod authType,
                                          std::string const& secret) {
   if (_outdated) {
     MUTEX_LOCKER(locker, _loadFromDBLock);
@@ -646,20 +649,21 @@ AuthResult AuthInfo::checkAuthentication(AuthType authType,
   }
 
   switch (authType) {
-    case AuthType::BASIC:
+    case AuthenticationMethod::BASIC:
       return checkAuthenticationBasic(secret);
 
-    case AuthType::JWT:
+    case AuthenticationMethod::JWT:
       return checkAuthenticationJWT(secret);
+      
+    default:
+      return AuthResult();
   }
-
-  return AuthResult();
 }
 
 // private
 AuthResult AuthInfo::checkAuthenticationBasic(std::string const& secret) {
   {
-    READ_LOCKER(readLocker, _authInfoLock);
+    READ_LOCKER(guard, _authInfoLock);
     auto const& it = _authBasicCache.find(secret);
 
     if (it != _authBasicCache.end()) {
@@ -683,7 +687,7 @@ AuthResult AuthInfo::checkAuthenticationBasic(std::string const& secret) {
   AuthResult result = checkPassword(username, password);
 
   {
-    WRITE_LOCKER(readLocker, _authInfoLock);
+    WRITE_LOCKER(guard, _authInfoLock);
 
     if (result._authorized) {
       if (!_authBasicCache.emplace(secret, result).second) {
@@ -707,7 +711,7 @@ AuthResult AuthInfo::checkAuthenticationJWT(std::string const& jwt) {
     // cache. reading from it will move the read entry to the start of
     // the cache's linked list. so acquiring just a read-lock is
     // insufficient!!
-    WRITE_LOCKER(readLocker, _authJwtLock);
+    WRITE_LOCKER(writeLocker, _authJwtLock);
     // intentionally copy the entry from the cache
     AuthJwtResult result = _authJwtCache.get(jwt);
 

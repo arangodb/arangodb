@@ -61,13 +61,13 @@ Returned if a user with the same name already exists.
 <!-- ---------------------------------------------------------------------- -->
 
 @startDocuBlock UserHandling_grantDatabase
-@brief Grant or revoke access to a database.
+@brief Grant or disallow access to a database.
 
-@RESTHEADER{PUT /_api/user/{user}/database/{dbname}, Grant or revoke database access}
+@RESTHEADER{PUT /_api/user/{user}/database/{dbname}, Grant or disallow database access}
 
 @RESTBODYPARAM{grant,string,required,string}
 Use "rw" to grant read and write access rights, or "ro" to
-grant read-only access right. To revoke access rights, use "none".
+grant read-only access right. To explicitly disallow access, use "none".
 
 @RESTURLPARAMETERS
 
@@ -114,13 +114,13 @@ from the request.
 <!-- ---------------------------------------------------------------------- -->
 
 @startDocuBlock UserHandling_grantCollection
-@brief Grant or revoke access to a collection.
+@brief Grant or disallow access to a collection.
 
-@RESTHEADER{PUT /_api/user/{user}/database/{dbname}/{collection}, Grant or revoke collection access}
+@RESTHEADER{PUT /_api/user/{user}/database/{dbname}/{collection}, Grant or disallow collection access}
 
 @RESTBODYPARAM{grant,string,required,string}
 Use "rw" to grant read and write access rights, or "ro" to
-grant read-only access right. To revoke access rights, use "none".
+grant read-only access right. To explicitly disallow access, use "none".
 
 @RESTURLPARAMETERS
 
@@ -163,6 +163,107 @@ from the request.
 
     logJsonResponse(response);
     users.remove(theUser);
+@END_EXAMPLE_ARANGOSH_RUN
+
+@endDocuBlock
+
+<!-- ---------------------------------------------------------------------- -->
+
+@startDocuBlock UserHandling_revokeDatabase
+@brief Revoke access to a database, rights will revert back to the default access level
+
+@RESTHEADER{DELETE /_api/user/{user}/database/{dbname}, Revoke database access}
+
+@RESTURLPARAMETERS
+
+@RESTURLPARAM{user,string,required}
+The name of the user.
+
+@RESTURLPARAM{dbname,string,required}
+The name of the database.
+
+@RESTDESCRIPTION
+
+Revokes access to the database *dbname* for user *user*. If there is no default access level
+for databases set, the default is no access. You
+need permission to the *_system* database in order to execute this REST call.
+
+@RESTRETURNCODES
+
+@RESTRETURNCODE{200}
+Returned if the access permissions were changed successfully.
+
+@RESTRETURNCODE{400}
+If the JSON representation is malformed or mandatory data is missing
+from the request.
+
+@EXAMPLES
+
+@EXAMPLE_ARANGOSH_RUN{RestRevokeDatabase}
+var users = require("@arangodb/users");
+var theUser = "admin@myapp";
+users.save(theUser, "secret")
+
+var url = "/_api/user/" + theUser + "/database/_system";
+var response = logCurlRequest('DELETE', url);
+
+assert(response.code === 200);
+
+logJsonResponse(response);
+users.remove(theUser);
+@END_EXAMPLE_ARANGOSH_RUN
+
+@endDocuBlock
+
+<!-- ---------------------------------------------------------------------- -->
+
+@startDocuBlock UserHandling_revokeCollection
+@brief Revoke access to a collection.
+
+@RESTHEADER{DELETE /_api/user/{user}/database/{dbname}/{collection}, Revoke collection access}
+
+@RESTURLPARAMETERS
+
+@RESTURLPARAM{user,string,required}
+The name of the user.
+
+@RESTURLPARAM{dbname,string,required}
+The name of the database.
+
+@RESTURLPARAM{collection,string,required}
+The name of the collection.
+
+@RESTDESCRIPTION
+
+Revokes access to the collection *collection* in the database *dbname* for user *user*. 
+If there is no default access level for databases set, the default is no access.
+You need permission to the *_system* database in order to execute this
+REST call.
+
+@RESTRETURNCODES
+
+@RESTRETURNCODE{200}
+Returned if the access permissions were changed successfully.
+
+@RESTRETURNCODE{400}
+If the JSON representation is malformed or mandatory data is missing
+from the request.
+
+@EXAMPLES
+
+@EXAMPLE_ARANGOSH_RUN{RestGrantCollection}
+var users = require("@arangodb/users");
+var theUser = "admin@myapp";
+users.save(theUser, "secret")
+
+var url = "/_api/user/" + theUser + "/database/_system/reports";
+var data = { grant: "rw" };
+var response = logCurlRequest('PUT', url, data);
+
+assert(response.code === 200);
+
+logJsonResponse(response);
+users.remove(theUser);
 @END_EXAMPLE_ARANGOSH_RUN
 
 @endDocuBlock
@@ -569,8 +670,6 @@ attributes on success:
 - *user*: The name of the user as a string.
 - *active*: An optional flag that specifies whether the user is active.
 - *extra*: An optional JSON object with arbitrary extra data about the user.
-- *changePassword*: An optional flag that specifies whether the user must
-  change the password or not.
 
 @RESTRETURNCODES
 

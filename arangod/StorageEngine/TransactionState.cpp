@@ -149,6 +149,10 @@ int TransactionState::addCollection(TRI_voc_cid_t cid,
                                               << colName;
       return TRI_ERROR_ARANGO_READ_ONLY;
     }
+    /*if (_vocbase->isSystem() && colName == TRI_COL_NAME_USERS) {
+      LOG_TOPIC(DEBUG, Logger::AUTHORIZATION) << "Direct access to _users is not allowed";
+      return TRI_ERROR_FORBIDDEN;
+    }*/
   }
 
   // LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "cid: " << cid

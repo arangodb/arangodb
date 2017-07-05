@@ -225,8 +225,8 @@ static bool SetRequestContext(GeneralRequest* request, void* data) {
   }
 
   // the vocbase context is now responsible for releasing the vocbase
-  VocbaseContext* ctx = new arangodb::VocbaseContext(request, vocbase);
-  request->setRequestContext(ctx, true);
+  request->setRequestContext(new VocbaseContext(request, vocbase),
+                             true);
 
   // the "true" means the request is the owner of the context
   return true;

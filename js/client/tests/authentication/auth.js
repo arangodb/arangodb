@@ -305,10 +305,8 @@ function AuthSuite () {
       expect(res.body).to.be.an('string');
       var obj = JSON.parse(res.body);
       expect(obj).to.have.property('jwt');
-      expect(obj).to.have.property('must_change_password');
       expect(obj.jwt).to.be.a('string');
       expect(obj.jwt.split('.').length).to.be.equal(3);
-      expect(obj.must_change_password).to.be.a('boolean');
     },
     
     testAuthNewUser: function() {
@@ -324,10 +322,8 @@ function AuthSuite () {
       expect(res.body).to.be.an('string');
       var obj = JSON.parse(res.body);
       expect(obj).to.have.property('jwt');
-      expect(obj).to.have.property('must_change_password');
       expect(obj.jwt).to.be.a('string');
       expect(obj.jwt.split('.').length).to.be.equal(3);
-      expect(obj.must_change_password).to.be.a('boolean');
     },
     
     testAuthNewWrongPassword: function() {

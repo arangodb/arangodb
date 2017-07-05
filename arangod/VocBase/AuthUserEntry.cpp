@@ -191,8 +191,6 @@ AuthUserEntry AuthUserEntry::newUser(std::string const& user,
 
   entry._passwordSalt = salt;
   entry._passwordHash = hash;
-  entry._passwordChangeToken = std::string();
-  entry._changePassword = false;
 
   // build authentication entry
   return entry;
@@ -250,16 +248,6 @@ AuthUserEntry AuthUserEntry::fromDocument(VPackSlice const& slice) {
     return AuthUserEntry();
   }
   active = activeSlice.getBool();
-
-  // extract "changePassword" attribute
-  bool mustChange =
-      VelocyPackHelper::getBooleanValue(authDataSlice, "changePassword", false);
-
-  // extract "passwordToken"
-  VPackSlice passwordTokenSlice = authDataSlice.get("passwordToken");
-  if (!passwordTokenSlice.isString()) {
-    passwordTokenSlice = VelocyPackHelper::EmptyString();
-  }
 
   // extract "databases" attribute
   VPackSlice const databasesSlice = slice.get("databases");
@@ -360,8 +348,6 @@ AuthUserEntry AuthUserEntry::fromDocument(VPackSlice const& slice) {
   entry._passwordMethod = methodSlice.copyString();
   entry._passwordSalt = saltSlice.copyString();
   entry._passwordHash = hashSlice.copyString();
-  entry._passwordChangeToken = passwordTokenSlice.copyString();
-  entry._changePassword = mustChange;
   entry._authContexts = std::move(authContexts);
 
   // ensure the root user always has the right to change permissions
@@ -421,12 +407,6 @@ VPackBuilder AuthUserEntry::toVPackBuilder() const {
   {  // authData sub-object
     VPackObjectBuilder o2(&builder, "authData", true);
     builder.add("active", VPackValue(_active));
-    if (!_passwordChangeToken.empty()) {
-      builder.add("changePassword", VPackValue(_changePassword));
-    }
-    if (_changePassword) {
-      builder.add("changePassword", VPackValue(_changePassword));
-    }
     if (_source == AuthSource::COLLECTION) {
       VPackObjectBuilder o3(&builder, "simple", true);
       builder.add("hash", VPackValue(_passwordHash));
