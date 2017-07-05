@@ -182,7 +182,7 @@ Assume user *doe* has the following database access levels:
 and collection access levels:
 
 |                                        | access level |
-|---------------------------------- -----|--------------|
+|----------------------------------------|--------------|
 | database "\*", collection "\*"         | Read/Write   |
 | database "snake", collection "company" | Read-Only    |
 | database "snake", collection "\*"      | No Access    |
