@@ -87,11 +87,7 @@ void assertOrderSuccess(std::string const& queryString, irs::order const& expect
   }
 
   static std::vector<std::string> const EMPTY;
-  arangodb::transaction::Options trxOptions;
-  trxOptions.waitForSync = false;
-  trxOptions.allowImplicitCollections = false;
-
-  arangodb::transaction::UserTransaction trx(arangodb::transaction::StandaloneContext::Create(&vocbase), EMPTY, EMPTY, EMPTY, trxOptions);
+  arangodb::transaction::UserTransaction trx(arangodb::transaction::StandaloneContext::Create(&vocbase), EMPTY, EMPTY, EMPTY, arangodb::transaction::Options());
   irs::order actual;
   arangodb::iresearch::OrderFactory::OrderContext ctx { actual, trx };
   arangodb::aql::SortCondition order(nullptr, sorts, attrs, variableNodes);
@@ -140,11 +136,7 @@ void assertOrderFail(std::string const& queryString, size_t parseCode) {
   }
 
   static std::vector<std::string> const EMPTY;
-  arangodb::transaction::Options trxOptions;
-  trxOptions.waitForSync = false;
-  trxOptions.allowImplicitCollections = false;
-
-  arangodb::transaction::UserTransaction trx(arangodb::transaction::StandaloneContext::Create(&vocbase), EMPTY, EMPTY, EMPTY, trxOptions);
+  arangodb::transaction::UserTransaction trx(arangodb::transaction::StandaloneContext::Create(&vocbase), EMPTY, EMPTY, EMPTY, arangodb::transaction::Options());
   irs::order actual;
   arangodb::iresearch::OrderFactory::OrderContext ctx { actual, trx };
   arangodb::aql::SortCondition order(nullptr, sorts, attrs, variableNodes);
@@ -316,11 +308,7 @@ SECTION("test_FCallUser") {
 
 SECTION("test_StringValue") {
   static std::vector<std::string> const EMPTY;
-  arangodb::transaction::Options trxOptions;
-  trxOptions.waitForSync = false;
-  trxOptions.allowImplicitCollections = false;
-
-  arangodb::transaction::UserTransaction trx(arangodb::transaction::StandaloneContext::Create(nullptr), EMPTY, EMPTY, EMPTY, trxOptions);
+  arangodb::transaction::UserTransaction trx(arangodb::transaction::StandaloneContext::Create(nullptr), EMPTY, EMPTY, EMPTY, arangodb::transaction::Options());
 
   // simple field
   {
@@ -386,11 +374,7 @@ SECTION("test_order") {
     std::vector<arangodb::aql::Variable> variables;
 
     static std::vector<std::string> const EMPTY;
-    arangodb::transaction::Options trxOptions;
-    trxOptions.waitForSync = false;
-    trxOptions.allowImplicitCollections = false;
-
-    arangodb::transaction::UserTransaction trx(arangodb::transaction::StandaloneContext::Create(nullptr), EMPTY, EMPTY, EMPTY, trxOptions);
+    arangodb::transaction::UserTransaction trx(arangodb::transaction::StandaloneContext::Create(nullptr), EMPTY, EMPTY, EMPTY, arangodb::transaction::Options());
     irs::order actual;
     arangodb::iresearch::OrderFactory::OrderContext ctx { actual, trx };
     arangodb::aql::SortCondition order(nullptr, sorts, attrs, variableNodes);

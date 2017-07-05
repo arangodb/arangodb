@@ -40,29 +40,23 @@ class TransactionManager;
 class PhysicalCollectionMock: public arangodb::PhysicalCollection {
  public:
   std::string physicalPath;
+  std::vector<arangodb::velocypack::Builder> data;
 
   PhysicalCollectionMock(arangodb::LogicalCollection* collection, arangodb::velocypack::Slice const& info);
-//  virtual bool applyForTickRange(TRI_voc_tick_t dataMin, TRI_voc_tick_t dataMax, std::function<bool(TRI_voc_tick_t foundTick, MMFilesMarker const* marker)> const& callback) override;
   virtual PhysicalCollection* clone(arangodb::LogicalCollection*, PhysicalCollection*) override;
   virtual int close() override;
   virtual std::shared_ptr<arangodb::Index> createIndex(arangodb::transaction::Methods* trx, arangodb::velocypack::Slice const& info, bool& created) override;
   virtual void deferDropCollection(std::function<bool(arangodb::LogicalCollection*)> callback) override;
-//  virtual bool doCompact() const override;
   virtual bool dropIndex(TRI_idx_iid_t iid) override;
   virtual void figuresSpecific(std::shared_ptr<arangodb::velocypack::Builder>&) override;
   virtual std::unique_ptr<arangodb::IndexIterator> getAllIterator(arangodb::transaction::Methods* trx, arangodb::ManagedDocumentResult* mdr, bool reverse) const override;
   virtual std::unique_ptr<arangodb::IndexIterator> getAnyIterator(arangodb::transaction::Methods* trx, arangodb::ManagedDocumentResult* mdr) const override;
   virtual void getPropertiesVPack(arangodb::velocypack::Builder&) const override;
-//  virtual uint32_t indexBuckets() const override;
-//  virtual int64_t initialCount() const override;
+  virtual void getPropertiesVPackCoordinator(arangodb::velocypack::Builder&) const override;
   virtual arangodb::Result insert(arangodb::transaction::Methods* trx, arangodb::velocypack::Slice const newSlice, arangodb::ManagedDocumentResult& result, arangodb::OperationOptions& options, TRI_voc_tick_t& resultMarkerTick, bool lock) override;
   virtual void invokeOnAllElements(arangodb::transaction::Methods* trx, std::function<bool(arangodb::DocumentIdentifierToken const&)> callback) override;
-//  virtual bool isFullyCollected() const override;
-//  virtual int iterateMarkersOnLoad(arangodb::transaction::Methods* trx) override;
-//  virtual size_t journalSize() const override;
   virtual std::shared_ptr<arangodb::Index> lookupIndex(arangodb::velocypack::Slice const&) const override;
-//  virtual uint8_t const* lookupRevisionVPack(TRI_voc_rid_t revisionId) const override;
-//  virtual uint8_t const* lookupRevisionVPackConditional(TRI_voc_rid_t revisionId, TRI_voc_tick_t maxTick, bool excludeWal) const override;
+  virtual arangodb::DocumentIdentifierToken lookupKey(arangodb::transaction::Methods*, arangodb::velocypack::Slice const&) override;
   virtual size_t memory() const override;
   virtual uint64_t numberDocuments(arangodb::transaction::Methods* trx) const override;
   virtual void open(bool ignoreErrors) override;
@@ -71,28 +65,16 @@ class PhysicalCollectionMock: public arangodb::PhysicalCollection {
   virtual void prepareIndexes(arangodb::velocypack::Slice indexesSlice) override;
   virtual arangodb::Result read(arangodb::transaction::Methods*, arangodb::velocypack::Slice const key, arangodb::ManagedDocumentResult& result, bool) override;
   virtual bool readDocument(arangodb::transaction::Methods* trx, arangodb::DocumentIdentifierToken const& token, arangodb::ManagedDocumentResult& result) override;
-//  virtual bool readDocumentConditional(arangodb::transaction::Methods* trx, arangodb::DocumentIdentifierToken const& token, TRI_voc_tick_t maxTick, arangodb::ManagedDocumentResult& result) override;
   virtual arangodb::Result remove(arangodb::transaction::Methods* trx, arangodb::velocypack::Slice const slice, arangodb::ManagedDocumentResult& previous, arangodb::OperationOptions& options, TRI_voc_tick_t& resultMarkerTick, bool lock, TRI_voc_rid_t const& revisionId, TRI_voc_rid_t& prevRev) override;
   virtual arangodb::Result replace(arangodb::transaction::Methods* trx, arangodb::velocypack::Slice const newSlice, arangodb::ManagedDocumentResult& result, arangodb::OperationOptions& options, TRI_voc_tick_t& resultMarkerTick, bool lock, TRI_voc_rid_t& prevRev, arangodb::ManagedDocumentResult& previous, TRI_voc_rid_t const revisionId, arangodb::velocypack::Slice const fromSlice, arangodb::velocypack::Slice const toSlice) override;
   virtual int restoreIndex(arangodb::transaction::Methods*, arangodb::velocypack::Slice const&, std::shared_ptr<arangodb::Index>&) override;
   virtual TRI_voc_rid_t revision(arangodb::transaction::Methods* trx) const override;
-//  virtual int rotateActiveJournal() override;
   virtual void setPath(std::string const&) override;
-//  virtual void sizeHint(arangodb::transaction::Methods* trx, int64_t hint) override;
   virtual void truncate(arangodb::transaction::Methods* trx, arangodb::OperationOptions& options) override;
   virtual arangodb::Result update(arangodb::transaction::Methods* trx, arangodb::velocypack::Slice const newSlice, arangodb::ManagedDocumentResult& result, arangodb::OperationOptions& options, TRI_voc_tick_t& resultMarkerTick, bool lock, TRI_voc_rid_t& prevRev, arangodb::ManagedDocumentResult& previous, TRI_voc_rid_t const& revisionId, arangodb::velocypack::Slice const key) override;
-//  virtual void updateCount(int64_t) override;
   virtual void load() override {}
   virtual void unload() override {}
   virtual arangodb::Result updateProperties(arangodb::velocypack::Slice const& slice, bool doSync) override;
-  virtual void getPropertiesVPackCoordinator(arangodb::velocypack::Builder&) const override {
-    TRI_ASSERT(false);
-  }
-  virtual arangodb::DocumentIdentifierToken lookupKey(
-      arangodb::transaction::Methods*, arangodb::velocypack::Slice const&) override {
-    TRI_ASSERT(false);
-    return arangodb::DocumentIdentifierToken();
-  }
 };
 
 class PhysicalViewMock: public arangodb::PhysicalView {
