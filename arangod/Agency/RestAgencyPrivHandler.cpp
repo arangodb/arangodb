@@ -102,6 +102,8 @@ RestStatus RestAgencyPrivHandler::execute() {
         if (_request->requestType() != rest::RequestType::POST) {
           return reportMethodNotAllowed();
         }
+        long senderTimeStamp = 0;
+        readValue("senderTimeStamp", senderTimeStamp);  // ignore if not given
         if (readValue("term", term) && readValue("leaderId", id) &&
             readValue("prevLogIndex", prevLogIndex) &&
             readValue("prevLogTerm", prevLogTerm) &&
@@ -110,6 +112,7 @@ RestStatus RestAgencyPrivHandler::execute() {
               term, id, prevLogIndex, prevLogTerm, leaderCommit,
               _request->toVelocyPackBuilderPtr());
           result.add("success", VPackValue(ret));
+          result.add("senderTimeStamp", VPackValue(senderTimeStamp));
         } else {
           return reportBadQuery();  // bad query
         }

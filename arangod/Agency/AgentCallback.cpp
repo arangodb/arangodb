@@ -46,6 +46,23 @@ bool AgentCallback::operator()(arangodb::ClusterCommResult* res) {
         LOG_TOPIC(DEBUG, Logger::CLUSTER)
           << "Got negative answer from follower, will retry later.";
       } else {
+        Slice senderTimeStamp = body->slice().get("senderTimeStamp");
+        if (senderTimeStamp.isInteger()) {
+          try {
+            long sts = senderTimeStamp.getNumber<long>();
+            long now = std::llround(readSystemClock() * 1000);
+            if (now - sts > 1000) {  // a second round trip time!
+              LOG_TOPIC(WARN, Logger::AGENCY)
+                << "Round trip for appendEntriesRPC took " << now - sts
+                << " milliseconds, which is way too high!";
+            }
+          } catch(...) {
+            LOG_TOPIC(WARN, Logger::AGENCY)
+              << "Exception when looking at senderTimeStamp in appendEntriesRPC"
+                 " answer.";
+          }
+        }
+          
         LOG_TOPIC(DEBUG, Logger::CLUSTER)
           << body->slice().toJson();
         _agent->reportIn(_slaveID, _last, _toLog);

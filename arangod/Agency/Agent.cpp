@@ -517,7 +517,8 @@ void Agent::sendAppendEntriesRPC() {
       }
       path << "/_api/agency_priv/appendEntries?term=" << t << "&leaderId="
            << id() << "&prevLogIndex=" << prevLogIndex
-           << "&prevLogTerm=" << prevLogTerm << "&leaderCommit=" << commitIndex;
+           << "&prevLogTerm=" << prevLogTerm << "&leaderCommit=" << commitIndex
+           << "&senderTimeStamp=" << std::llround(readSystemClock() * 1000);
       
       size_t toLog = 0;
       // Body
