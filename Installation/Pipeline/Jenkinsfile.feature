@@ -17,6 +17,7 @@ def defaultJslint = true
 def defaultRunResilience = false
 def defaultRunTests = true
 def defaultSkipTestsOnError = true
+def defaultFullParallel = false
 
 if (env.BRANCH_NAME == "devel") {
     defaultMac = false
@@ -44,9 +45,19 @@ properties([
             name: 'Windows'
         ),
         booleanParam(
+            defaultValue: defaultFullParallel,
+            description: 'build all os in parallel',
+            name: 'fullParallel'
+        ),
+        booleanParam(
             defaultValue: defaultCleanBuild,
             description: 'clean build directories',
             name: 'cleanBuild'
+        ),
+        booleanParam(
+            defaultValue: defaultSkipTestsOnError,
+            description: 'skip Mac & Windows tests if Linux tests fails',
+            name: 'skipTestsOnError'
         ),
         booleanParam(
             defaultValue: defaultCommunity,
@@ -82,6 +93,12 @@ cleanBuild = params.cleanBuild
 // build all combinations
 buildFull = false
 
+// skip tests on previous error
+skipTestsOnError = params.skipTestsOnError
+
+// do everything in parallel
+fullParallel = params.fullParallel
+
 // build community
 useCommunity = params.Community
 
@@ -105,9 +122,6 @@ runResilience = params.runResilience
 
 // run tests
 runTests = params.runTests
-
-// skip tests on previous error
-skipTestsOnError = defaultSkipTestsOnError
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                             CONSTANTS AND HELPERS
@@ -765,27 +779,12 @@ stage('checkout') {
 }
 
 try {
-    stage('build linux') {
-        buildStepParallel(['linux'])
-    }
-}
-catch (exc) {
-    echo exc.toString()
-}
-
-try {
-    stage('tests linux') {
-        testStepParallel(['linux'], ['cluster', 'singleserver'])
-    }
-}
-catch (exc) {
-    echo exc.toString()
-}
-
-try {
-    stage('build mac') {
-        if (allBuildsSuccessful) {
-            buildStepParallel(['mac'])
+    stage('build') {
+        if (fullParallel) {
+            buildStepParallel(['linux', 'mac', 'windows'])
+        }
+        else {
+            buildStepParallel(['linux'])
         }
     }
 }
@@ -794,9 +793,12 @@ catch (exc) {
 }
 
 try {
-    stage('tests mac') {
-        if (allTestsSuccessful || ! skipTestsOnError) {
-            testStepParallel(['mac'], ['cluster', 'singleserver'])
+    stage('tests') {
+        if (fullParallel) {
+            testStepParallel(['linux', 'mac', 'windows'], ['cluster', 'singleserver'])
+        }
+        else {
+            testStepParallel(['linux'], ['cluster', 'singleserver'])
         }
     }
 }
@@ -804,26 +806,50 @@ catch (exc) {
     echo exc.toString()
 }
 
-try {
-    stage('build windows') {
-        if (allBuildsSuccessful) {
-            buildStepParallel(['windows'])
+if (! fullParallel) {
+    try {
+        stage('build mac') {
+            if (allBuildsSuccessful) {
+                buildStepParallel(['mac'])
+            }
         }
     }
-}
-catch (exc) {
-    echo exc.toString()
-}
+    catch (exc) {
+        echo exc.toString()
+    }
 
-try {
-    stage('tests windows') {
-        if (allTestsSuccessful || ! skipTestsOnError) {
-            testStepParallel(['windows'], ['cluster', 'singleserver'])
+    try {
+        stage('tests mac') {
+            if (allTestsSuccessful || ! skipTestsOnError) {
+                testStepParallel(['mac'], ['cluster', 'singleserver'])
+            }
         }
     }
-}
-catch (exc) {
-    echo exc.toString()
+    catch (exc) {
+        echo exc.toString()
+    }
+
+    try {
+        stage('build windows') {
+            if (allBuildsSuccessful) {
+                buildStepParallel(['windows'])
+            }
+        }
+    }
+    catch (exc) {
+        echo exc.toString()
+    }
+
+    try {
+        stage('tests windows') {
+            if (allTestsSuccessful || ! skipTestsOnError) {
+                testStepParallel(['windows'], ['cluster', 'singleserver'])
+            }
+        }
+    }
+    catch (exc) {
+        echo exc.toString()
+    }
 }
 
 try {
