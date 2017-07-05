@@ -138,15 +138,6 @@ class RocksDBGeoIndex final : public RocksDBIndex {
 
   bool matchesDefinition(VPackSlice const& info) const override;
 
-  Result insert(transaction::Methods*, TRI_voc_rid_t,
-             arangodb::velocypack::Slice const&, bool isRollback) override;
-  int insertRaw(RocksDBMethods*, TRI_voc_rid_t,
-                arangodb::velocypack::Slice const&) override;
-  Result remove(transaction::Methods*, TRI_voc_rid_t,
-             arangodb::velocypack::Slice const&, bool isRollback) override;
-  int removeRaw(RocksDBMethods*, TRI_voc_rid_t,
-                arangodb::velocypack::Slice const&) override;
-
   int unload() override;
 
   /// @brief looks up all points within a given radius
@@ -168,6 +159,15 @@ class RocksDBGeoIndex final : public RocksDBIndex {
     return (!_latitude.empty() && !_longitude.empty() &&
             _latitude == latitude && _longitude == longitude);
   }
+
+  /// insert index elements into the specified write batch.
+  Result insertInternal(transaction::Methods* trx, RocksDBMethods*,
+                        TRI_voc_rid_t,
+                        arangodb::velocypack::Slice const&) override;
+
+  /// remove index elements and put it in the specified write batch.
+  Result removeInternal(transaction::Methods*, RocksDBMethods*, TRI_voc_rid_t,
+                        arangodb::velocypack::Slice const&) override;
 
  private:
   /// internal insert function, set batch or trx before calling

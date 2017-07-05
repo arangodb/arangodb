@@ -515,7 +515,7 @@ router.get("/coordshort", function(req, res) {
           }
         }
       }
-      return {};
+      return false;
     });
 
     mergeHistory(coordinatorStats);

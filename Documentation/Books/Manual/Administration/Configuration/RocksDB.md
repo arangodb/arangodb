@@ -114,7 +114,7 @@ false.
 
 `--rocksdb.use-direct-io-for-flush-and-compaction` (Hidden)
 
-Only meaningful on Linux. If set,use `O_DIRECT` for writing files. Default: false.
+Only meaningful on Linux. If set, use `O_DIRECT` for writing files. Default: false.
 
 `--rocksdb.use-fsync` (Hidden)
 

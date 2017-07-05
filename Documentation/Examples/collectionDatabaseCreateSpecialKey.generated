@@ -1,16 +1,16 @@
 arangosh&gt; db._create(<span class="hljs-string">"users"</span>, { <span class="hljs-attr">keyOptions</span>: { <span class="hljs-attr">allowUserKeys</span>: <span class="hljs-literal">false</span> } });
-[ArangoCollection <span class="hljs-number">14635</span>, <span class="hljs-string">"users"</span> (type <span class="hljs-built_in">document</span>, status loaded)]
+[ArangoCollection <span class="hljs-number">14630</span>, <span class="hljs-string">"users"</span> (type <span class="hljs-built_in">document</span>, status loaded)]
 arangosh&gt; db.users.save({ <span class="hljs-attr">name</span>: <span class="hljs-string">"user 1"</span> });
 { 
-  <span class="hljs-string">"_id"</span> : <span class="hljs-string">"users/14638"</span>, 
-  <span class="hljs-string">"_key"</span> : <span class="hljs-string">"14638"</span>, 
-  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_VKWEVIu---"</span> 
+  <span class="hljs-string">"_id"</span> : <span class="hljs-string">"users/14633"</span>, 
+  <span class="hljs-string">"_key"</span> : <span class="hljs-string">"14633"</span>, 
+  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_VOyxlUy---"</span> 
 }
 arangosh&gt; db.users.save({ <span class="hljs-attr">name</span>: <span class="hljs-string">"user 2"</span>, <span class="hljs-attr">_key</span>: <span class="hljs-string">"myuser"</span> });
 [ArangoError <span class="hljs-number">1222</span>: collection does not allow using user-defined keys]
 arangosh&gt; db.users.save({ <span class="hljs-attr">name</span>: <span class="hljs-string">"user 3"</span> });
 { 
-  <span class="hljs-string">"_id"</span> : <span class="hljs-string">"users/14643"</span>, 
-  <span class="hljs-string">"_key"</span> : <span class="hljs-string">"14643"</span>, 
-  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_VKWEVIy---"</span> 
+  <span class="hljs-string">"_id"</span> : <span class="hljs-string">"users/14638"</span>, 
+  <span class="hljs-string">"_key"</span> : <span class="hljs-string">"14638"</span>, 
+  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_VOyxlU2---"</span> 
 }

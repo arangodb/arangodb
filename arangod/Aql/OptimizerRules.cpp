@@ -1987,65 +1987,36 @@ void arangodb::aql::reduceExtractionToProjectionRule(Optimizer* opt,
 
         if (exp != nullptr) {
           AstNode const* node = exp->node();
-       
-#warning remove?
-          if (node != nullptr && node->isAttributeAccessForVariable(v, false)) {
-            TRI_ASSERT(node->type == NODE_TYPE_ATTRIBUTE_ACCESS);
-
-            // fetch name of attribute
+          vars.clear();
+          current->getVariablesUsedHere(vars);
+            
+          if (vars.find(v) != vars.end()) {
             if (attributeNames.empty()) {
-              replaceVar = static_cast<CalculationNode*>(current)->outVariable();
-              optimize = true;
-              while (node->type == NODE_TYPE_ATTRIBUTE_ACCESS) {
-                attributeNames.emplace_back(node->getString());
-                node = node->getMember(0);
-              }
-              TRI_ASSERT(!attributeNames.empty());
-            } else {
-              size_t i = 0;
-              while (node->type == NODE_TYPE_ATTRIBUTE_ACCESS) {
-                if (attributeNames.size() < i + 1 || 
-                    attributeNames[i] != node->getString()) {
-                  // different attribute
-                  stop = true;
-                  break;
-                }
-                node = node->getMember(0);
-                ++i;
-              }
-            }
-          } else {
-            vars.clear();
-            current->getVariablesUsedHere(vars);
+              vars.clear();
+              current->getVariablesUsedHere(vars);
               
-            if (vars.find(v) != vars.end()) {
-              if (attributeNames.empty()) {
-                vars.clear();
-                current->getVariablesUsedHere(vars);
-                
-                if (node != nullptr) {
-                  if (Ast::populateSingleAttributeAccess(node, v, attributeNames)) {
-                    replaceVar = static_cast<CalculationNode*>(current)->outVariable();
-                    optimize = true;
-                    TRI_ASSERT(!attributeNames.empty());
-                  } else {
-                    stop = true;
-                    break;
-                  }
+              if (node != nullptr) {
+                if (Ast::populateSingleAttributeAccess(node, v, attributeNames)) {
+                  replaceVar = static_cast<CalculationNode*>(current)->outVariable();
+                  optimize = true;
+                  TRI_ASSERT(!attributeNames.empty());
                 } else {
                   stop = true;
                   break;
                 }
-              } else if (node != nullptr) {
-                if (!Ast::variableOnlyUsedForSingleAttributeAccess(node, v, attributeNames)) {
-                  stop = true;
-                  break;
-                }
               } else {
-              // don't know what to do
                 stop = true;
                 break;
               }
+            } else if (node != nullptr) {
+              if (!Ast::variableOnlyUsedForSingleAttributeAccess(node, v, attributeNames)) {
+                stop = true;
+                break;
+              }
+            } else {
+            // don't know what to do
+              stop = true;
+              break;
             }
           }
         }

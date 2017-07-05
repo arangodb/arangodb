@@ -51,12 +51,12 @@ RocksDBValue RocksDBValue::EdgeIndexValue(arangodb::StringRef const& vertexId) {
   return RocksDBValue(RocksDBEntryType::EdgeIndexValue, vertexId);
 }
 
-RocksDBValue RocksDBValue::IndexValue() {
-  return RocksDBValue(RocksDBEntryType::IndexValue);
+RocksDBValue RocksDBValue::VPackIndexValue() {
+  return RocksDBValue(RocksDBEntryType::VPackIndexValue);
 }
 
-RocksDBValue RocksDBValue::UniqueIndexValue(TRI_voc_rid_t revisionId) {
-  return RocksDBValue(RocksDBEntryType::UniqueIndexValue, revisionId);
+RocksDBValue RocksDBValue::UniqueVPackIndexValue(TRI_voc_rid_t revisionId) {
+  return RocksDBValue(RocksDBEntryType::UniqueVPackIndexValue, revisionId);
 }
 
 RocksDBValue RocksDBValue::View(VPackSlice const& data) {
@@ -120,7 +120,7 @@ RocksDBValue::RocksDBValue(RocksDBEntryType type) : _type(type), _buffer() {}
 RocksDBValue::RocksDBValue(RocksDBEntryType type, uint64_t data)
     : _type(type), _buffer() {
   switch (_type) {
-    case RocksDBEntryType::UniqueIndexValue:
+    case RocksDBEntryType::UniqueVPackIndexValue:
     case RocksDBEntryType::PrimaryIndexValue: {
       _buffer.reserve(sizeof(uint64_t));
       uint64ToPersistent(_buffer, data);  // revision id
@@ -153,7 +153,7 @@ RocksDBValue::RocksDBValue(RocksDBEntryType type, VPackSlice const& data)
 }
 
 RocksDBValue::RocksDBValue(RocksDBEntryType type, StringRef const& data)
-: _type(type), _buffer() {
+    : _type(type), _buffer() {
   switch (_type) {
     case RocksDBEntryType::EdgeIndexValue: {
       _buffer.reserve(static_cast<size_t>(data.size()));

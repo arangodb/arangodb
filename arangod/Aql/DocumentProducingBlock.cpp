@@ -86,7 +86,10 @@ DocumentProducingBlock::DocumentProducingFunction DocumentProducingBlock::buildC
       } else {
         uint8_t const* vpack = slice.begin();
         if (false && _useRawDocumentPointers) {
-#warning OPTIMIZE
+          // TODO: FIXME: we want to optimize here. however, if we do not copy the
+          // data out, some other places turn it into a VPackValueType::External,
+          // and many other functions will fail as a consequence
+
           res->setValue(row, static_cast<arangodb::aql::RegisterId>(registerId),
                         AqlValue(AqlValueHintNoCopy(vpack)));
         } else {
