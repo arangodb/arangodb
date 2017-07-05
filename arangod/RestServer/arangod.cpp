@@ -108,13 +108,6 @@ static int runServer(int argc, char** argv, ArangoGlobalContext &context) {
   try {
     context.installSegv();
     context.runStartupChecks();
-    
-    usleep(1000000);
-    usleep(1000000);
-    usleep(1000000);
-    usleep(1000000);
-    usleep(1000000);
-    usleep(1000000);
 
     std::string name = context.binaryName();
 

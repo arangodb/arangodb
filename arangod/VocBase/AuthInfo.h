@@ -66,7 +66,7 @@ class AuthenticationHandler;
 
 class AuthInfo {
  public:
-  AuthInfo();
+  AuthInfo(std::unique_ptr<AuthenticationHandler>&&);
   ~AuthInfo();
 
  public:
@@ -74,7 +74,7 @@ class AuthInfo {
     TRI_ASSERT(registry != nullptr);
     _queryRegistry = registry;
   }
-
+  
   /// Tells coordinator to reload his data. Only call in HearBeat thread
   void outdate() { _outdated = true; }
 

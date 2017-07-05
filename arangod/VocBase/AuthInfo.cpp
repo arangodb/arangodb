@@ -55,14 +55,15 @@ using namespace arangodb::basics;
 using namespace arangodb::velocypack;
 using namespace arangodb::rest;
 
-AuthInfo::AuthInfo()
+AuthInfo::AuthInfo(std::unique_ptr<AuthenticationHandler>&& handler)
     : _outdated(true),
       _noneAuthContext(std::make_shared<AuthContext>(
           AuthLevel::NONE, std::unordered_map<std::string, AuthLevel>(
                                {{"*", AuthLevel::NONE}}))),
       _authJwtCache(16384),
       _jwtSecret(""),
-      _queryRegistry(nullptr) {}
+      _queryRegistry(nullptr),
+      _authenticationHandler(handler.release()) {}
 
 AuthInfo::~AuthInfo() {
   // properly clear structs while using the appropriate locks
@@ -107,9 +108,7 @@ bool AuthInfo::parseUsers(VPackSlice const& slice) {
     }
 
     AuthUserEntry auth = AuthUserEntry::fromDocument(s);
-    if (auth.isActive()) {
-      _authInfo.emplace(auth.username(), std::move(auth));
-    }
+    _authInfo.emplace(auth.username(), std::move(auth));
   }
 
   return true;
@@ -220,22 +219,22 @@ static void ConvertLegacyFormat(VPackSlice doc, VPackBuilder& result) {
   result.add("extra", extra.isNone() ? VPackSlice::emptyObjectSlice() : extra);
 }
 
-// private, will acquire _authInfoLock in write-mode and release it. Lock
-// _loadFromDBLock before calling
+// private, will acquire _authInfoLock in write-mode and release it.
 void AuthInfo::loadFromDB() {
+  if (!_outdated) {
+    return;
+  }
+  MUTEX_LOCKER(locker, _loadFromDBLock);
+  if (!_outdated) {
+    return;
+  }
+  
   auto role = ServerState::instance()->getRole();
   if (role != ServerState::ROLE_SINGLE &&
       role != ServerState::ROLE_COORDINATOR) {
     _outdated = false;
     return;
   }
-
-  // TODO: is this correct?
-  if (_authenticationHandler == nullptr) {
-    _authenticationHandler.reset(
-        FeatureCacheFeature::instance()->authenticationFeature()->getHandler());
-  }
-
   {
     WRITE_LOCKER(writeLocker, _authInfoLock);
     insertInitial();
@@ -281,6 +280,8 @@ void AuthInfo::insertInitial() {
 // this method can only be called by users with access to the _syste collection
 Result AuthInfo::storeUserInternal(AuthUserEntry const& entry, bool replace) {
   VPackBuilder data = entry.toVPackBuilder();
+  bool hasKey = data.slice().hasKey(StaticStrings::KeyString);
+  TRI_ASSERT(replace && hasKey || !replace && !hasKey);
 
   TRI_vocbase_t* vocbase = DatabaseFeature::DATABASE->systemDatabase();
   if (vocbase == nullptr) {
@@ -311,6 +312,7 @@ Result AuthInfo::storeUserInternal(AuthUserEntry const& entry, bool replace) {
       TRI_ASSERT(created.username() == entry.username());
       TRI_ASSERT(created.isActive() == entry.isActive());
       TRI_ASSERT(created.passwordHash() == entry.passwordHash());
+      TRI_ASSERT(!replace || created.key() == entry.key());
       _authInfo.emplace(entry.username(), std::move(created));
     }
   }
@@ -338,7 +340,6 @@ VPackBuilder AuthInfo::allUsers() {
 
 /// Trigger eventual reload, user facing API call
 void AuthInfo::reloadAllUsers() {
-  _outdated = true;
   if (!ServerState::instance()->isCoordinator()) {
     // will reload users on next suitable query
     return;
@@ -381,13 +382,8 @@ Result AuthInfo::storeUser(bool replace, std::string const& user,
   if (user.empty()) {
     return TRI_ERROR_USER_INVALID_NAME;
   }
-  if (_outdated) {
-    MUTEX_LOCKER(locker, _loadFromDBLock);
-    if (_outdated) {
-      loadFromDB();
-    }
-  }
-
+  loadFromDB();
+  
   WRITE_LOCKER(writeGuard, _authInfoLock);
   auto const& it = _authInfo.find(user);
   if (replace && it == _authInfo.end()) {
@@ -489,6 +485,11 @@ VPackBuilder AuthInfo::getUser(std::string const& user) {
 }
 
 Result AuthInfo::removeUser(std::string const& user) {
+  if (user.empty()) {
+    return TRI_ERROR_USER_NOT_FOUND;
+  }
+  loadFromDB();
+  
   WRITE_LOCKER(guard, _authInfoLock);
   auto it = _authInfo.find(user);
   if (it == _authInfo.end()) {
@@ -577,19 +578,14 @@ Result AuthInfo::setUserData(std::string const& user,
 
 AuthResult AuthInfo::checkPassword(std::string const& username,
                                    std::string const& password) {
-  if (_outdated) {
-    MUTEX_LOCKER(locker, _loadFromDBLock);
-    if (_outdated) {
-      loadFromDB();
-    }
-  }
+  loadFromDB();
 
   READ_LOCKER(JobGuard, _authInfoLock);
   AuthResult result(username);
   auto it = _authInfo.find(username);
 
   if (it == _authInfo.end() || (it->second.source() == AuthSource::LDAP)) {
-    TRI_ASSERT(_authenticationHandler != nullptr);
+    TRI_ASSERT(_authenticationHandler);
     AuthenticationResult authResult =
         _authenticationHandler->authenticate(username, password);
     if (!authResult.ok()) {
@@ -641,12 +637,7 @@ AuthLevel AuthInfo::canUseCollection(std::string const& username,
 // public called from VocbaseContext.cpp
 AuthResult AuthInfo::checkAuthentication(AuthenticationMethod authType,
                                          std::string const& secret) {
-  if (_outdated) {
-    MUTEX_LOCKER(locker, _loadFromDBLock);
-    if (_outdated) {
-      loadFromDB();
-    }
-  }
+  loadFromDB();
 
   switch (authType) {
     case AuthenticationMethod::BASIC:
