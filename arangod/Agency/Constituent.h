@@ -139,7 +139,7 @@ class Constituent : public Thread {
   bool logMatches(index_t, term_t) const;
 
   // Count election events which are more recent than `threshold` seconds.
-  long countRecentElectionEvents(double threshold);
+  int64_t countRecentElectionEvents(double threshold);
 
   TRI_vocbase_t* _vocbase;
   aql::QueryRegistry* _queryRegistry;

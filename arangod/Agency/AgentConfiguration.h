@@ -63,7 +63,7 @@ struct config_t {
   size_t _poolSize;
   double _minPing;
   double _maxPing;
-  long _timeoutMult;
+  int64_t _timeoutMult;
   std::string _endpoint;
   std::map<std::string, std::string> _pool;
   std::vector<std::string> _gossipPeers;
@@ -188,13 +188,13 @@ struct config_t {
   double maxPing() const;
 
   /// @brief Get timeout multiplier
-  long timeoutMult() const;
+  int64_t timeoutMult() const;
 
   /// @brief Reset RAFT timing
   void pingTimes(double, double);
 
   /// @brief Reset timeout multiplier
-  void setTimeoutMult(long);
+  void setTimeoutMult(int64_t);
 
   /// @brief Supervision grace period
   bool cmdLineTimings() const;

@@ -102,7 +102,7 @@ RestStatus RestAgencyPrivHandler::execute() {
         if (_request->requestType() != rest::RequestType::POST) {
           return reportMethodNotAllowed();
         }
-        long senderTimeStamp = 0;
+        int64_t senderTimeStamp = 0;
         readValue("senderTimeStamp", senderTimeStamp);  // ignore if not given
         if (readValue("term", term) && readValue("leaderId", id) &&
             readValue("prevLogIndex", prevLogIndex) &&
@@ -117,11 +117,11 @@ RestStatus RestAgencyPrivHandler::execute() {
           return reportBadQuery();  // bad query
         }
       } else if (suffixes[0] == "requestVote") {  // requestVote
-        long timeoutMult = 1.0;
+        int64_t timeoutMult = 1;
+        readValue("timeoutMult", timeoutMult);
         if (readValue("term", term) && readValue("candidateId", id) &&
             readValue("prevLogIndex", prevLogIndex) &&
-            readValue("prevLogTerm", prevLogTerm) &&
-            readValue("timeoutMult", timeoutMult)) {
+            readValue("prevLogTerm", prevLogTerm)) {
           priv_rpc_ret_t ret =
               _agent->requestVote(term, id, prevLogIndex, prevLogTerm, nullptr,
                                   timeoutMult);

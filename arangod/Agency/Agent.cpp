@@ -136,7 +136,7 @@ std::string Agent::endpoint() const {
 /// Handle voting
 priv_rpc_ret_t Agent::requestVote(
     term_t termOfPeer, std::string const& id, index_t lastLogIndex,
-    index_t lastLogTerm, query_t const& query, long timeoutMult) {
+    index_t lastLogTerm, query_t const& query, int64_t timeoutMult) {
 
   if (timeoutMult != -1 && timeoutMult != _config._timeoutMult) {
     adjustTimeoutMult(timeoutMult);
@@ -154,12 +154,12 @@ config_t const Agent::config() const {
 }
 
 /// Adjust timeoutMult:
-void Agent::adjustTimeoutMult(long timeoutMult) {
+void Agent::adjustTimeoutMult(int64_t timeoutMult) {
   _config.setTimeoutMult(timeoutMult);
 }
 
 /// Get timeoutMult:
-long Agent::getTimeoutMult() const {
+int64_t Agent::getTimeoutMult() const {
   return _config.timeoutMult();
 }
 

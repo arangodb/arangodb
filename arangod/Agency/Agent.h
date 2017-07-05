@@ -65,10 +65,10 @@ class Agent : public arangodb::Thread,
   config_t const config() const;
 
   /// @brief Get timeoutMult:
-  long getTimeoutMult() const;
+  int64_t getTimeoutMult() const;
 
   /// @brief Adjust timeoutMult:
-  void adjustTimeoutMult(long timeoutMult);
+  void adjustTimeoutMult(int64_t timeoutMult);
 
   /// @brief Start thread
   bool start();

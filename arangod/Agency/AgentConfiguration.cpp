@@ -172,7 +172,7 @@ double config_t::maxPing() const {
   return _maxPing;
 }
 
-long config_t::timeoutMult() const {
+int64_t config_t::timeoutMult() const {
   READ_LOCKER(readLocker, _lock);
   return _timeoutMult;
 }
@@ -186,7 +186,7 @@ void config_t::pingTimes(double minPing, double maxPing) {
   }
 }
 
-void config_t::setTimeoutMult(long m) {
+void config_t::setTimeoutMult(int64_t m) {
   WRITE_LOCKER(writeLocker, _lock);
   if (_timeoutMult != m) {
     _timeoutMult = m;
@@ -408,7 +408,7 @@ void config_t::update(query_t const& message) {
   }
   double minPing = slice.get(minPingStr).getNumber<double>();
   double maxPing = slice.get(maxPingStr).getNumber<double>();
-  long timeoutMult = slice.get(timeoutMultStr).getNumber<long>();
+  int64_t timeoutMult = slice.get(timeoutMultStr).getNumber<int64_t>();
   WRITE_LOCKER(writeLocker, _lock);
   if (pool != _pool) {
     _pool = pool;
@@ -468,7 +468,7 @@ void config_t::override(VPackSlice const& conf) {
   }
 
   if (conf.hasKey(timeoutMultStr) && conf.get(timeoutMultStr).isInteger()) {
-    _timeoutMult = conf.get(timeoutMultStr).getNumber<long>();
+    _timeoutMult = conf.get(timeoutMultStr).getNumber<int64_t>();
   } else {
     LOG_TOPIC(ERR, Logger::AGENCY) << "Failed to override " << timeoutMultStr
                                    << " from " << conf.toJson();

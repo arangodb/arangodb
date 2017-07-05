@@ -456,7 +456,7 @@ void Constituent::callElection() {
   std::string body;
   std::stringstream path;
 
-  long electionEventCount = countRecentElectionEvents(3600);
+  int64_t electionEventCount = countRecentElectionEvents(3600);
   if (electionEventCount <= 0) {
     electionEventCount = 1;
   } else if (electionEventCount > 10) {
@@ -722,13 +722,13 @@ void Constituent::run() {
   }
 }
 
-long Constituent::countRecentElectionEvents(double threshold) {
+int64_t Constituent::countRecentElectionEvents(double threshold) {
   // This discards all election events that are older than `threshold`
   // seconds and returns the number of more recent ones.
 
   auto now = readSystemClock();
   MUTEX_LOCKER(locker, _recentElectionsMutex);
-  long count = 0;
+  int64_t count = 0;
   for (auto iter = _recentElections.begin(); iter != _recentElections.end(); ) {
     if (now - *iter > threshold) {
       // If event is more then 15 minutes ago, discard
