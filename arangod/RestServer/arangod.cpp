@@ -111,6 +111,7 @@ static int runServer(int argc, char** argv, ArangoGlobalContext &context) {
 
     std::string name = context.binaryName();
 
+emil
     auto options = std::make_shared<options::ProgramOptions>(
         argv[0], "Usage: " + name + " [<options>]", "For more information use:",
         SBIN_DIRECTORY);

@@ -463,19 +463,21 @@ def buildStepCheck(edition, os, full) {
 
 def buildStep(edition, os) {
     return {
-        node(os) {
-            def name = "${edition}-${os}"
+        lock('build-${edition}-${os}') {
+            node(os) {
+                def name = "${edition}-${os}"
 
-            try {
-                unstashSourceCode(os)
-                buildEdition(edition, os)
-                stashBinaries(edition, os)
-                buildsSuccess[name] = true
-            }
-            catch (exc) {
-                buildsSuccess[name] = false
-                allBuildsSuccessful = false
-                throw exc
+                try {
+                    unstashSourceCode(os)
+                    buildEdition(edition, os)
+                    stashBinaries(edition, os)
+                    buildsSuccess[name] = true
+                }
+                catch (exc) {
+                    buildsSuccess[name] = false
+                    allBuildsSuccessful = false
+                    throw exc
+                }
             }
         }
     }
