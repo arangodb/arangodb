@@ -304,7 +304,7 @@ def stashSourceCode() {
     sh 'find -L . -type l -delete'
     sh 'zip -r -1 -x "*tmp" -x ".git" -y -q source.zip *'
 
-    lock('cache') {
+    lock("${env.BRANCH_NAME}-cache") {
         sh 'mkdir -p ' + cacheDir
         sh "mv -f source.zip ${cacheDir}/source.zip"
     }
@@ -318,7 +318,7 @@ def unstashSourceCode(os) {
         bat 'del /F /Q *'
     }
 
-    lock('cache') {
+    lock("${env.BRANCH_NAME}-cache") {
         scpFromMaster(os, 'source.zip', 'source.zip')
     }
 
@@ -342,7 +342,7 @@ def stashBuild(edition, os) {
         bat "c:\\cmake\\bin\\cmake -E tar cf ${name} build"
     }
 
-    lock('cache') {
+    lock("${env.BRANCH_NAME}-cache") {
         scpToMaster(os, name, name)
     }
 }
@@ -350,7 +350,7 @@ def stashBuild(edition, os) {
 def unstashBuild(edition, os) {
     def name = "build-${edition}-${os}.zip"
 
-    lock('cache') {
+    lock("${env.BRANCH_NAME}-cache") {
         scpFromMaster(os, name, name)
     }
 
@@ -377,7 +377,7 @@ def stashBinaries(edition, os) {
         bat "c:\\cmake\\bin\\cmake -E tar cf ${name} ${dirs}"
     }
 
-    lock('cache') {
+    lock("${env.BRANCH_NAME}-cache") {
         scpToMaster(os, name, name)
     }
 }
@@ -388,7 +388,7 @@ def unstashBinaries(edition, os) {
     if (os == 'linux' || os == 'mac') {
         sh 'rm -rf *'
 
-        lock('cache') {
+        lock("${env.BRANCH_NAME}-cache") {
             scpFromMaster(os, name, name)
         }
 
@@ -463,7 +463,7 @@ def buildStepCheck(edition, os, full) {
 
 def buildStep(edition, os) {
     return {
-        lock("build-${edition}-${os}") {
+        lock("${env.BRANCH_NAME}-build-${edition}-${os}") {
             node(os) {
                 def name = "${edition}-${os}"
 
