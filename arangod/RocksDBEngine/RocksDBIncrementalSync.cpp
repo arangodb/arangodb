@@ -24,10 +24,10 @@
 #include "Basics/StaticStrings.h"
 #include "Basics/StringUtils.h"
 #include "Indexes/IndexIterator.h"
-#include "SimpleHttpClient/SimpleHttpClient.h"
-#include "SimpleHttpClient/SimpleHttpResult.h"
 #include "Replication/InitialSyncer.h"
 #include "RocksDBEngine/RocksDBCollection.h"
+#include "SimpleHttpClient/SimpleHttpClient.h"
+#include "SimpleHttpClient/SimpleHttpResult.h"
 #include "StorageEngine/PhysicalCollection.h"
 #include "Transaction/Helpers.h"
 #include "Utils/OperationOptions.h"
@@ -40,12 +40,12 @@
 #include <velocypack/velocypack-aliases.h>
 
 namespace arangodb {
-int syncChunkRocksDB(InitialSyncer& syncer, SingleCollectionTransaction* trx,
-                     std::string const& keysId, uint64_t chunkId,
-                     std::string const& lowString,
-                     std::string const& highString,
-                     std::vector<std::pair<std::string, uint64_t>> const& markers,
-                     std::string& errorMsg) {
+int syncChunkRocksDB(
+    InitialSyncer& syncer, SingleCollectionTransaction* trx,
+    std::string const& keysId, uint64_t chunkId, std::string const& lowString,
+    std::string const& highString,
+    std::vector<std::pair<std::string, uint64_t>> const& markers,
+    std::string& errorMsg) {
   std::string const baseUrl = syncer.BaseUrl + "/keys";
   TRI_voc_tick_t const chunkSize = 5000;
   std::string const& collectionName = trx->documentCollection()->name();
@@ -58,7 +58,8 @@ int syncChunkRocksDB(InitialSyncer& syncer, SingleCollectionTransaction* trx,
     options.isSynchronousReplicationFrom = syncer._leaderId;
   }
 
-  LOG_TOPIC(TRACE, Logger::REPLICATION) << "synching chunk. low: '" << lowString << "', high: '" << highString << "'";
+  LOG_TOPIC(TRACE, Logger::REPLICATION) << "synching chunk. low: '" << lowString
+                                        << "', high: '" << highString << "'";
 
   // no match
   // must transfer keys for non-matching range
@@ -171,11 +172,11 @@ int syncChunkRocksDB(InitialSyncer& syncer, SingleCollectionTransaction* trx,
 
         ++nextStart;
       } else if (res == 0) {
-        // key match 
+        // key match
         break;
       } else {
         // we have a remote key that is not present locally
-        TRI_ASSERT(res < 0); 
+        TRI_ASSERT(res < 0);
         mustRefetch = true;
         break;
       }
@@ -189,7 +190,8 @@ int syncChunkRocksDB(InitialSyncer& syncer, SingleCollectionTransaction* trx,
       if (token._data == 0) {
         // key not found locally
         toFetch.emplace_back(i);
-      } else if (token._data != basics::StringUtils::uint64(pair.at(1).copyString())) {
+      } else if (token._data !=
+                 basics::StringUtils::uint64(pair.at(1).copyString())) {
         // key found, but revision id differs
         toFetch.emplace_back(i);
         ++nextStart;
@@ -218,7 +220,8 @@ int syncChunkRocksDB(InitialSyncer& syncer, SingleCollectionTransaction* trx,
     ++nextStart;
   }
 
-  LOG_TOPIC(TRACE, Logger::REPLICATION) << "will refetch " << toFetch.size() << " documents for this chunk";
+  LOG_TOPIC(TRACE, Logger::REPLICATION) << "will refetch " << toFetch.size()
+                                        << " documents for this chunk";
 
   if (!toFetch.empty()) {
     VPackBuilder keysBuilder;
@@ -307,7 +310,7 @@ int syncChunkRocksDB(InitialSyncer& syncer, SingleCollectionTransaction* trx,
 
         return TRI_ERROR_REPLICATION_INVALID_RESPONSE;
       }
-  
+
       DocumentIdentifierToken token = physical->lookupKey(trx, keySlice);
 
       if (!token._data) {
