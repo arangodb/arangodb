@@ -528,7 +528,7 @@
           contentType: 'application/json',
           processData: false,
           success: function (data) {
-            if (data.msg.includes('errorMessage')) {
+            if (data.msg && data.msg.errorMessage) {
               self.removeOutputEditor(counter);
               arangoHelper.arangoError('Explain', data.msg);
             } else {

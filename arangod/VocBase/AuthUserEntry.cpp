@@ -439,7 +439,7 @@ VPackBuilder AuthUserEntry::toVPackBuilder() const {
     for (auto const& dbCtxPair : _authContexts) {
       TRI_ASSERT(dbCtxPair.first != StaticStrings::SystemDatabase ||
                  dbCtxPair.second->databaseAuthLevel() ==
-                     dbCtxPair.second->systemAuthLevel());
+                 dbCtxPair.second->systemAuthLevel());
 
       VPackObjectBuilder o3(&builder, dbCtxPair.first, true);
       {  // permissions
@@ -513,7 +513,7 @@ void AuthUserEntry::grantCollection(std::string const& dbname,
       (coll[0] == '_' || coll == "*") && level != AuthLevel::RW) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN,
                                    "Cannot lower access level of 'root' to "
-                                   " a collection in _system");
+                                   " a system collection");
   }
   auto it = _authContexts.find(dbname);
   if (it != _authContexts.end()) {
@@ -530,6 +530,9 @@ void AuthUserEntry::grantCollection(std::string const& dbname,
         dbname, std::make_shared<AuthContext>(
                     dbLevel, std::unordered_map<std::string, AuthLevel>(
                                  {{coll, level}})));
+    if (dbname == StaticStrings::SystemDatabase) {
+      _authContexts[dbname]->_systemAuthLevel = dbLevel;
+    }
   }
 }
 

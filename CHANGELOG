@@ -1,6 +1,8 @@
 devel
 -----
 
+* enabled permissions on database and collection level
+
 * added "deduplicate" attribute for array indexes, which controls whether inserting
   duplicate index values from the same document into a unique array index will lead to
   an error or not:
@@ -19,7 +21,38 @@ devel
       db.test.insert({ tags: ["c", "d", "c"] }); // will not work, because deduplicate = false
       db.test.insert({ tags: ["a"] }); // will fail
 
-* fix log output in the front-end, it stop of too many messages
+* added optimizer rule "remove-filters-covered-by-traversal"
+
+* Debian/Ubuntu installer: make messages about future package upgrades more clear
+
+* fix a hangup in VST
+    
+  The problem happened when the two first chunks of a VST message arrived
+  together on a connection that was newly switched to VST.
+
+* fix deletion of outdated WAL files in RocksDB engine
+
+* make use of selectivity estimates in hash, skiplist and persistent indexes 
+  in RocksDB engine
+
+* changed VM overcommit recommendation for user-friendliness
+
+* fix a shutdown bug in the cluster: a destroyed query could still be active
+ 
+* do not terminate the entire server process if a temp file cannot be created 
+  (Windows only)
+
+* fix log output in the front-end, it stopped in case of too many messages
+
+
+v3.2.beta3 (2017-06-27)
+-----------------------
+
+* numerous bugfixes
+
+
+v3.2.beta2 (2017-06-20)
+-----------------------
 
 * potentially fixed issue #2559: Duplicate _key generated on insertion
 

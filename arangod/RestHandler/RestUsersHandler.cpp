@@ -319,15 +319,21 @@ RestStatus RestUsersHandler::putRequest(AuthInfo* authInfo) {
           }
         }
 
+        // contains response in case of success
+        VPackBuilder b;
+        b(VPackValue(VPackValueType::Object));
+
         Result r = authInfo->updateUser(user, [&](AuthUserEntry& entry) {
           if (coll.empty()) {
             entry.grantDatabase(db, lvl);
+            b(db, VPackValue(convertFromAuthLevel(lvl)))();
           } else {
             entry.grantCollection(db, coll, lvl);
+            b(db + "/" + coll, VPackValue(convertFromAuthLevel(lvl)))();
           }
         });
         if (r.ok()) {
-          resetResponse(ResponseCode::OK);
+          generateUserResult(ResponseCode::OK, b);
         } else {
           generateError(r);
         }

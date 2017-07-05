@@ -26,10 +26,10 @@
 // //////////////////////////////////////////////////////////////////////////////
 
 const functionsDocumentation = {
-  'readOnly': 'read only tests'
+  'queryCacheAuthorization': 'authorization check for query cache'
 };
 const optionsDocumentation = [
-  '   - `skipReadOnly` : if set to true the read only tests are skipped',
+  '   - `skipQueryCacheAuthorization` : if set to true the read only tests are skipped',
 ];
 
 const pu = require('@arangodb/process-utils');
@@ -43,17 +43,17 @@ const RESET = require('internal').COLORS.COLOR_RESET;
 // const YELLOW = require('internal').COLORS.COLOR_YELLOW;
 
 // //////////////////////////////////////////////////////////////////////////////
-// / @brief TEST: readOnly
+// / @brief TEST: queryCacheAuthorization
 // //////////////////////////////////////////////////////////////////////////////
 
-function readOnly (options) {
+function queryCacheAuthorization (options) {
   const results = { failed: 0 };
 
-  if (options.skipReadOnly === true) {
-    print('skipping readOnly tests!');
+  if (options.skipQueryCacheAuthorization === true) {
+    print('skipping queryCacheAuthorization tests!');
     return {
       failed: 0,
-      readOnly: {
+      queryCacheAuthorization: {
         failed: 0,
         status: true,
         skipped: true
@@ -62,10 +62,10 @@ function readOnly (options) {
   } // if
 
   if (options.cluster) {
-    print('skipping readOnly tests on cluster!');
+    print('skipping queryCacheAuthorization tests on cluster!');
     return {
       failed: 0,
-      readOnly: {
+      queryCacheAuthorization: {
         failed: 0,
         status: true,
         skipped: true
@@ -78,10 +78,10 @@ function readOnly (options) {
         'server.authentication-system-only': false,
       };
 
-  print(CYAN + 'readOnly tests...' + RESET);
+  print(CYAN + 'queryCacheAuthorization tests...' + RESET);
 
 
-  const adbInstance = pu.startInstance('tcp', options, conf, 'readOnly');
+  const adbInstance = pu.startInstance('tcp', options, conf, 'queryCacheAuthorization');
   if (adbInstance === false) {
     results.failed += 1;
     results['test'] = {
@@ -92,44 +92,10 @@ function readOnly (options) {
   }
 
 const requests = [
-  [200, 'post', '/_api/collection', 'root', {name:'testcol'}],
-  [202, 'post', '/_api/document/testcol', 'root', {_key:'abcd'}],
-  [201, 'post', '/_api/index?collection=testcol', 'root', {fields:['abc'],type:'hash'}],
-  [200, 'get', '/_api/index?collection=testcol', 'root', {}],
-
-  // create and delete index
-  [403, 'delete', '/_api/index/', 'test', {}],
-  [403, 'post', '/_api/index?collection=testcol', 'test', {fields:['xyz'],type:'hash'}],
-
-  // create, delete, truncate collection
-  [403, 'post', '/_api/collection', 'test', {name:'testcol2'}],
-  [403, 'delete', '/_api/collection/testcol', 'test', {}],
-  [403, 'put', '/_api/collection/testcol/truncate', 'test', {}],
-
-  // get, delete, update, replace document
-  [200, 'get', '/_api/document/testcol/abcd', 'test', {}],
-  [403, 'post', '/_api/document/testcol', 'test', {_key:'wxyz'}],
-  [403, 'delete', '/_api/document/testcol/abcd', 'test', {}],
-  [403, 'patch', '/_api/document/testcol/abcd', 'test', {foo:'bar'}],
-  [403, 'put', '/_api/document/testcol/abcd', 'test', {foo:'bar'}],
-
-  // create, delete database
-  [201, 'post',   '/_db/_system/_api/database', 'root', {name:'wxyzdb'}],
-  [403, 'post',   '/_db/_system/_api/database', 'test', {name:'abcddb'}],
-  [403, 'delete', '/_db/_system/_api/database/wxyzdb', 'test', {}],
-
-  // database with only collection access
-  [200, 'get', '/_db/testdb2/_api/document/testcol2/one', 'test', {}],
-  [403, 'get', '/_db/testdb2/_api/document/testcol3/one', 'test', {}],
-  [403, 'post', '/_db/testdb2/_api/document/testcol2', 'test', {_key:'wxyz'}],
-  [403, 'post', '/_db/testdb2/_api/document/testcol3', 'test', {_key:'wxyz'}],
-
-  [200, 'get', '/_db/testdb2/_api/document/testcol2/one', 'test2', {}],
-  [403, 'get', '/_db/testdb2/_api/document/testcol3/one', 'test2', {}],
-  [202, 'post', '/_db/testdb2/_api/document/testcol2', 'test2', {_key:'wxyz'}],
-  [403, 'post', '/_db/testdb2/_api/document/testcol3', 'test2', {_key:'wxyz'}],
-
-  [200, 'get', '/_db/testdb2/_api/document/testcol2/wxyz', 'test', {}],
+  [200, 'put', '/_api/query-cache/properties', 'root', {mode:'on', maxResults: 128}],
+  [201, 'post', '/_api/cursor', 'root', {query: 'for d in testcol filter d.a == 2 return d'}],
+  [201, 'post', '/_api/cursor', 'root', {query: 'for d in testcol filter d.a == 2 return d'}],
+  [403, 'post', '/_api/cursor', 'test', {query: 'for d in testcol filter d.a == 2 return d'}]
 ];
 
   const run = (tests) => {
@@ -166,34 +132,25 @@ const requests = [
           '--javascript.execute-string',
           `const users = require('@arangodb/users');
           users.save('test', '', true);
-          users.save('test2', '', true);
           users.grantDatabase('test', '_system', 'ro');
 
-          db._createDatabase('testdb2');
-          db._useDatabase('testdb2');
-          db._createDocumentCollection('testcol2');
-          db._createDocumentCollection('testcol3');
-          db.testcol2.save({_key:'one'});
-          db.testcol3.save({_key:'one'});
-          users.grantCollection('test', 'testdb2', 'testcol2', 'ro');
-          users.grantCollection('test2', 'testdb2', 'testcol2', 'rw');
-          db._useDatabase('_system');
-          /* let res = db._query("for u in _users filter u.user == 'test' return u").toArray();
-          print(res); */
+          db._createDocumentCollection('testcol');
+          db.testcol.save({_key:'one', a:1});
+          db.testcol.save({_key:'two', a:2});
+
+          users.grantCollection('test', '_system', 'testcol', 'none');
+
           users.reload();`
         ]);
 
-  let bodies = run(requests.splice(0,4));
-  requests[0][2] += bodies.pop().indexes.filter(idx => idx.type === 'hash')[0].id;
   run(requests);
-
   pu.shutdownInstance(adbInstance, options);
 
   return results;
 }
 
 exports.setup = function (testFns, defaultFns, opts, fnDocs, optionsDoc) {
-  testFns['readOnly'] = readOnly;
+  testFns['queryCacheAuthorization'] = queryCacheAuthorization;
 
   for (var attrname in functionsDocumentation) { fnDocs[attrname] = functionsDocumentation[attrname]; }
   for (var i = 0; i < optionsDocumentation.length; i++) { optionsDoc.push(optionsDocumentation[i]); }
