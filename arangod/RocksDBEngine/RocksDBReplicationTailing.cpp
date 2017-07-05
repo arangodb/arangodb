@@ -25,9 +25,9 @@
 #include "Basics/StaticStrings.h"
 #include "Basics/StringRef.h"
 #include "Logger/Logger.h"
+#include "RocksDBEngine/RocksDBColumnFamily.h"
 #include "RocksDBEngine/RocksDBCommon.h"
 #include "RocksDBEngine/RocksDBLogValue.h"
-#include "RocksDBEngine/RocksDBColumnFamily.h"
 #include "VocBase/replication-common.h"
 #include "VocBase/ticks.h"
 
@@ -75,7 +75,7 @@ class WALParser : public rocksdb::WriteBatch::Handler {
   explicit WALParser(TRI_vocbase_t* vocbase, bool includeSystem,
                      TRI_voc_cid_t collectionId, VPackBuilder& builder)
       : _documentsCF(RocksDBColumnFamily::documents()->GetID()),
-        _otherCF(RocksDBColumnFamily::other()->GetID()),
+        _definitionsCF(RocksDBColumnFamily::definitions()->GetID()),
         _vocbase(vocbase),
         _includeSystem(includeSystem),
         _onlyCollectionId(collectionId),
@@ -213,80 +213,71 @@ class WALParser : public rocksdb::WriteBatch::Handler {
 
   rocksdb::Status PutCF(uint32_t column_family_id, rocksdb::Slice const& key,
                         rocksdb::Slice const& value) override {
-    RocksDBEntryType type = RocksDBKey::type(key);
     tick();
     if (!shouldHandleKey(column_family_id, key)) {
       return rocksdb::Status();
     }
-    LOG_TOPIC(_LOG, Logger::ROCKSDB) << "tick: " << _currentSequence << " "
-    << rocksDBEntryTypeName(type);
     LOG_TOPIC(_LOG, Logger::ROCKSDB) << "PUT: key:" << key.ToString()
-    << "  value: " << value.ToString();
-    
-    switch (type) {
-      case RocksDBEntryType::Collection: {
-        if (_lastLogType == RocksDBLogType::IndexCreate ||
-            _lastLogType == RocksDBLogType::IndexDrop) {
-          _lastLogType = RocksDBLogType::Invalid;
-          break;
-        }
-        TRI_ASSERT(_lastLogType == RocksDBLogType::CollectionCreate ||
-                   _lastLogType == RocksDBLogType::CollectionChange ||
-                   _lastLogType == RocksDBLogType::CollectionRename);
-        TRI_ASSERT(_currentDbId != 0 && _currentCollectionId != 0);
-        LOG_TOPIC(_LOG, Logger::ROCKSDB) << "CID: " << _currentCollectionId;
+                                     << "  value: " << value.ToString();
 
-        VPackSlice collectionData = RocksDBValue::data(value);
-        _builder.openObject();
-        _builder.add("tick", VPackValue(std::to_string(_currentSequence)));
-        _builder.add("type", VPackValue(convertLogType(_lastLogType)));
-        _builder.add("database", VPackValue(std::to_string(_currentDbId)));
-        _builder.add("cid", VPackValue(std::to_string(_currentCollectionId)));
-        _builder.add("cname", collectionData.get("name"));
-
-        if (_lastLogType == RocksDBLogType::CollectionRename) {
-          _builder.add("data", VPackValue(VPackValueType::Object));
-          _builder.add("id", VPackValue(std::to_string(_currentCollectionId)));
-          _builder.add("oldName", VPackValue(_oldCollectionName));
-          _builder.add("name", collectionData.get("name"));
-          _builder.close();
-        } else {  // change and create need full data
-          _builder.add("data", collectionData);
-        }
-        _builder.close();
-        // log type is only ever relevant, immediately after it appeared
-        // we want double occurences create / drop / change collection to fail
+    if (column_family_id == _definitionsCF &&
+        RocksDBKey::type(key) == RocksDBEntryType::Collection) {
+      if (_lastLogType == RocksDBLogType::IndexCreate ||
+          _lastLogType == RocksDBLogType::IndexDrop) {
         _lastLogType = RocksDBLogType::Invalid;
-        _currentDbId = 0;
-        _currentCollectionId = 0;
-        break;
+        return rocksdb::Status();
       }
-      case RocksDBEntryType::Document: {
-        TRI_ASSERT((_seenBeginTransaction && !_singleOp) ||
-                   (!_seenBeginTransaction && _singleOp));
-        // if real transaction, we need the trx id
-        TRI_ASSERT(!_seenBeginTransaction || _currentTrxId != 0);
-        TRI_ASSERT(_currentDbId != 0 && _currentCollectionId != 0);
-        _builder.openObject();
-        _builder.add("tick", VPackValue(std::to_string(_currentSequence)));
-        _builder.add("type", VPackValue(REPLICATION_MARKER_DOCUMENT));
-        // auto containers = getContainerIds(key);
-        _builder.add("database", VPackValue(std::to_string(_currentDbId)));
-        _builder.add("cid", VPackValue(std::to_string(_currentCollectionId)));
-        if (_singleOp) {  // single op is defined to 0
-          _builder.add("tid", VPackValue("0"));
-          _singleOp = false;
-        } else {
-          _builder.add("tid", VPackValue(std::to_string(_currentTrxId)));
-        }
-        _builder.add("data", RocksDBValue::data(value));
-        _builder.close();
+      TRI_ASSERT(_lastLogType == RocksDBLogType::CollectionCreate ||
+                 _lastLogType == RocksDBLogType::CollectionChange ||
+                 _lastLogType == RocksDBLogType::CollectionRename);
+      TRI_ASSERT(_currentDbId != 0 && _currentCollectionId != 0);
+      LOG_TOPIC(_LOG, Logger::ROCKSDB) << "CID: " << _currentCollectionId;
 
-        break;
+      VPackSlice collectionData = RocksDBValue::data(value);
+      _builder.openObject();
+      _builder.add("tick", VPackValue(std::to_string(_currentSequence)));
+      _builder.add("type", VPackValue(convertLogType(_lastLogType)));
+      _builder.add("database", VPackValue(std::to_string(_currentDbId)));
+      _builder.add("cid", VPackValue(std::to_string(_currentCollectionId)));
+      _builder.add("cname", collectionData.get("name"));
+
+      if (_lastLogType == RocksDBLogType::CollectionRename) {
+        _builder.add("data", VPackValue(VPackValueType::Object));
+        _builder.add("id", VPackValue(std::to_string(_currentCollectionId)));
+        _builder.add("oldName", VPackValue(_oldCollectionName));
+        _builder.add("name", collectionData.get("name"));
+        _builder.close();
+      } else {  // change and create need full data
+        _builder.add("data", collectionData);
       }
-      default:
-        break;  // shouldn't get here?
+      _builder.close();
+      // log type is only ever relevant, immediately after it appeared
+      // we want double occurences create / drop / change collection to fail
+      _lastLogType = RocksDBLogType::Invalid;
+      _currentDbId = 0;
+      _currentCollectionId = 0;
+    } else if (column_family_id == _documentsCF) {
+      TRI_ASSERT((_seenBeginTransaction && !_singleOp) ||
+                 (!_seenBeginTransaction && _singleOp));
+      // if real transaction, we need the trx id
+      TRI_ASSERT(!_seenBeginTransaction || _currentTrxId != 0);
+      TRI_ASSERT(_currentDbId != 0 && _currentCollectionId != 0);
+      _builder.openObject();
+      _builder.add("tick", VPackValue(std::to_string(_currentSequence)));
+      _builder.add("type", VPackValue(REPLICATION_MARKER_DOCUMENT));
+      // auto containers = getContainerIds(key);
+      _builder.add("database", VPackValue(std::to_string(_currentDbId)));
+      _builder.add("cid", VPackValue(std::to_string(_currentCollectionId)));
+      if (_singleOp) {  // single op is defined to 0
+        _builder.add("tid", VPackValue("0"));
+        _singleOp = false;
+      } else {
+        _builder.add("tid", VPackValue(std::to_string(_currentTrxId)));
+      }
+      _builder.add("data", RocksDBValue::data(value));
+      _builder.close();
     }
+
     return rocksdb::Status();
   }
 
@@ -302,76 +293,66 @@ class WALParser : public rocksdb::WriteBatch::Handler {
 
   rocksdb::Status handleDeletion(uint32_t column_family_id,
                                  rocksdb::Slice const& key) {
-    RocksDBEntryType type = RocksDBKey::type(key);
     tick();
     if (!shouldHandleKey(column_family_id, key)) {
       return rocksdb::Status();
     }
-    LOG_TOPIC(_LOG, Logger::ROCKSDB) << "tick: " << _currentSequence << " "
-    << rocksDBEntryTypeName(type);
-    switch (type) {
-      case RocksDBEntryType::Collection: {
-        // a database DROP will not set this flag
-        if (_lastLogType == RocksDBLogType::CollectionDrop) {
-          TRI_ASSERT(_currentDbId != 0 && _currentCollectionId != 0);
-          LOG_TOPIC(_LOG, Logger::ROCKSDB) << "CID: " << _currentCollectionId;
 
-          _builder.openObject();
-          _builder.add("tick", VPackValue(std::to_string(_currentSequence)));
-          _builder.add("type", VPackValue(REPLICATION_COLLECTION_DROP));
-          _builder.add("database", VPackValue(std::to_string(_currentDbId)));
-          _builder.add("cid", VPackValue(std::to_string(_currentCollectionId)));
-          _builder.add("data", VPackValue(VPackValueType::Object));
-          _builder.add("id", VPackValue(std::to_string(_currentCollectionId)));
-          _builder.add("name", VPackValue(""));  // not used at all
-          _builder.close();
-          _builder.close();
-        }
-        break;
-      }
-      case RocksDBEntryType::Document: {
-        // document removes, because of a drop is not transactional and
-        // should not appear in the WAL. Allso fixes
-        if (!(_seenBeginTransaction || _singleOp)) {
-          return rocksdb::Status();
-        }
-        // TODO somehow fix counters if we optimize the DELETE in
-        // documentRemove on updates
-        if (_lastLogType != RocksDBLogType::DocumentRemove &&
-            _lastLogType != RocksDBLogType::SingleRemove) {
-          return rocksdb::Status();
-        }
-        // TRI_ASSERT(_lastLogType == RocksDBLogType::DocumentRemove ||
-        //           _lastLogType == RocksDBLogType::SingleRemove);
-        TRI_ASSERT(!_seenBeginTransaction || _currentTrxId != 0);
+    if (column_family_id == _definitionsCF &&
+        RocksDBKey::type(key) == RocksDBEntryType::Collection) {
+      // a database DROP will not set this flag
+      if (_lastLogType == RocksDBLogType::CollectionDrop) {
         TRI_ASSERT(_currentDbId != 0 && _currentCollectionId != 0);
-        TRI_ASSERT(!_removeDocumentKey.empty());
+        LOG_TOPIC(_LOG, Logger::ROCKSDB) << "CID: " << _currentCollectionId;
 
-        uint64_t revisionId = RocksDBKey::revisionId(key);
         _builder.openObject();
         _builder.add("tick", VPackValue(std::to_string(_currentSequence)));
-        _builder.add(
-            "type",
-            VPackValue(static_cast<uint64_t>(REPLICATION_MARKER_REMOVE)));
+        _builder.add("type", VPackValue(REPLICATION_COLLECTION_DROP));
         _builder.add("database", VPackValue(std::to_string(_currentDbId)));
         _builder.add("cid", VPackValue(std::to_string(_currentCollectionId)));
-        if (_singleOp) {  // single op is defined to 0
-          _builder.add("tid", VPackValue("0"));
-          _singleOp = false;
-        } else {
-          _builder.add("tid", VPackValue(std::to_string(_currentTrxId)));
-        }
         _builder.add("data", VPackValue(VPackValueType::Object));
-        _builder.add(StaticStrings::KeyString, VPackValue(_removeDocumentKey));
-        _builder.add(StaticStrings::RevString,
-                     VPackValue(std::to_string(revisionId)));
+        _builder.add("id", VPackValue(std::to_string(_currentCollectionId)));
+        _builder.add("name", VPackValue(""));  // not used at all
         _builder.close();
         _builder.close();
-        _removeDocumentKey.clear();
-        break;
       }
-      default:
-        break;  // shouldn't get here?
+    } else if (column_family_id == _documentsCF) {
+      // document removes, because of a drop is not transactional and
+      // should not appear in the WAL. Allso fixes
+      if (!(_seenBeginTransaction || _singleOp)) {
+        return rocksdb::Status();
+      }
+      // TODO somehow fix counters if we optimize the DELETE in
+      // documentRemove on updates
+      if (_lastLogType != RocksDBLogType::DocumentRemove &&
+          _lastLogType != RocksDBLogType::SingleRemove) {
+        return rocksdb::Status();
+      }
+      // TRI_ASSERT(_lastLogType == RocksDBLogType::DocumentRemove ||
+      //           _lastLogType == RocksDBLogType::SingleRemove);
+      TRI_ASSERT(!_seenBeginTransaction || _currentTrxId != 0);
+      TRI_ASSERT(_currentDbId != 0 && _currentCollectionId != 0);
+      TRI_ASSERT(!_removeDocumentKey.empty());
+
+      uint64_t revId = RocksDBKey::revisionId(RocksDBEntryType::Document, key);
+      _builder.openObject();
+      _builder.add("tick", VPackValue(std::to_string(_currentSequence)));
+      _builder.add(
+          "type", VPackValue(static_cast<uint64_t>(REPLICATION_MARKER_REMOVE)));
+      _builder.add("database", VPackValue(std::to_string(_currentDbId)));
+      _builder.add("cid", VPackValue(std::to_string(_currentCollectionId)));
+      if (_singleOp) {  // single op is defined to 0
+        _builder.add("tid", VPackValue("0"));
+        _singleOp = false;
+      } else {
+        _builder.add("tid", VPackValue(std::to_string(_currentTrxId)));
+      }
+      _builder.add("data", VPackValue(VPackValueType::Object));
+      _builder.add(StaticStrings::KeyString, VPackValue(_removeDocumentKey));
+      _builder.add(StaticStrings::RevString, VPackValue(std::to_string(revId)));
+      _builder.close();
+      _builder.close();
+      _removeDocumentKey.clear();
     }
     return rocksdb::Status();
   }
@@ -427,31 +408,22 @@ class WALParser : public rocksdb::WriteBatch::Handler {
 
   bool shouldHandleKey(uint32_t column_family_id,
                        rocksdb::Slice const& key) const {
-    // TODO reconsider if we add new colum fams
-    if (column_family_id != _otherCF &&
-        column_family_id != _documentsCF) {
+    TRI_voc_cid_t cid;
+    if (column_family_id == _definitionsCF &&
+        (RocksDBKey::type(key) == RocksDBEntryType::Collection ||
+         RocksDBKey::type(key) == RocksDBEntryType::View)) {
+      cid = RocksDBKey::collectionId(key);
+    } else if (column_family_id == _documentsCF) {
+      uint64_t objectId = RocksDBKey::objectId(key);
+      auto mapping = mapObjectToCollection(objectId);
+      if (mapping.first != _vocbase->id()) {
+        return false;
+      }
+      cid = mapping.second;
+    } else {
       return false;
     }
 
-    TRI_voc_cid_t cid;
-    switch (RocksDBKey::type(key)) {
-      case RocksDBEntryType::Collection: {
-        cid = RocksDBKey::collectionId(key);
-        break;
-      }
-      case RocksDBEntryType::Document: {
-        uint64_t objectId = RocksDBKey::objectId(key);
-        auto mapping = mapObjectToCollection(objectId);
-        if (mapping.first != _vocbase->id()) {
-          return false;
-        }
-        cid = mapping.second;
-        break;
-      }
-      case RocksDBEntryType::View:  // should handle these eventually?
-      default:
-        return false;
-    }
     // only return results for one collection
     if (_onlyCollectionId != 0 && _onlyCollectionId != cid) {
       return false;
@@ -475,8 +447,8 @@ class WALParser : public rocksdb::WriteBatch::Handler {
 
  private:
   uint32_t const _documentsCF;
-  uint32_t const _otherCF;
-  
+  uint32_t const _definitionsCF;
+
   // these parameters are relevant to determine if we can print
   // a specific marker from the WAL
   TRI_vocbase_t* const _vocbase;

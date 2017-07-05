@@ -42,10 +42,9 @@ class RocksDBHashIndex final : public RocksDBVPackIndex {
 
   char const* typeName() const override { return "rocksdb-hash"; }
 
-  bool matchesDefinition(VPackSlice const& info) const override;
-
   bool isSorted() const override { return true; }
 
+  bool matchesDefinition(VPackSlice const& info) const override;
 };
 }
 

@@ -229,9 +229,8 @@ class Index {
       arangodb::StringRef const* = nullptr) const;
 
   /// @brief whether or not the index is implicitly unique
-  /// this can be the case if the index is not declared as unique, but contains
-  /// a
-  /// unique attribute such as _key
+  /// this can be the case if the index is not declared as unique,
+  /// but contains a unique attribute such as _key
   virtual bool implicitlyUnique() const;
 
   virtual size_t memory() const = 0;

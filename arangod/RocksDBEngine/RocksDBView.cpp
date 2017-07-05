@@ -33,7 +33,6 @@
 #include "RocksDBEngine/RocksDBEngine.h"
 #include "RocksDBEngine/RocksDBKey.h"
 #include "RocksDBEngine/RocksDBValue.h"
-//#include "RocksDB/RocksDBLogfileManager.h"
 #include "RestServer/DatabaseFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
@@ -83,7 +82,7 @@ void RocksDBView::drop() {
 
   rocksdb::WriteOptions options;  // TODO: check which options would make sense
   auto status = rocksutils::convertStatus(
-      db->Delete(options, RocksDBColumnFamily::other(), key.string()));
+      db->Delete(options, RocksDBColumnFamily::definitions(), key.string()));
   if (!status.ok()) {
     THROW_ARANGO_EXCEPTION(status.errorNumber());
   }
@@ -107,7 +106,7 @@ arangodb::Result RocksDBView::persistProperties() {
   auto value = RocksDBValue::View(infoBuilder.slice());
 
   rocksdb::WriteOptions options;  // TODO: check which options would make sense
-  rocksdb::Status res = db->Put(options, RocksDBColumnFamily::other(),
+  rocksdb::Status res = db->Put(options, RocksDBColumnFamily::definitions(),
                                 key.string(), value.string());
 
   return rocksutils::convertStatus(res);
