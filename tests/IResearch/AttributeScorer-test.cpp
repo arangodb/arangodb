@@ -54,7 +54,7 @@ void assertOrderSuccess(
     arangodb::LogicalView& view,
     std::string const& queryString,
     std::string const& field,
-    std::vector<std::string> const& expected
+    std::vector<size_t> const& expected
 ) {
   auto* vocbase = view.vocbase();
   std::shared_ptr<arangodb::velocypack::Builder> bindVars;
@@ -98,7 +98,7 @@ void assertOrderSuccess(
   std::shared_ptr<arangodb::ViewIterator> itr(view.iteratorForCondition(&trx, filterNode, nullptr, &order));
   CHECK((false == !itr));
 
-  auto next = 0;
+  size_t next = 0;
   auto callback = [&field, &expected, itr, &next](arangodb::DocumentIdentifierToken const& token) {
     arangodb::ManagedDocumentResult result;
 
@@ -108,13 +108,13 @@ void assertOrderSuccess(
 
     CHECK((next < expected.size()));
     CHECK((doc.hasKey(field)));
-    CHECK((doc.get(field).isString()));
-    CHECK((expected[next++] == doc.get(field).copyString()));
+    CHECK((doc.get(field).isNumber()));
+    CHECK((expected[next++] == doc.get(field).getNumber<size_t>()));
   };
 
-  CHECK((itr->next(callback, 0)));
+  CHECK((!itr->next(callback, size_t(-1)))); // false because no more results
   CHECK((trx.commit().ok()));
-  //CHECK((expected.size() == next)); FIXME TODO enable
+  CHECK((expected.size() == next));
 }
 
 NS_END
@@ -203,18 +203,18 @@ SECTION("test_query") {
 
   // fill with test data
   {
-    auto doc0 = arangodb::velocypack::Parser::fromJson("{ \"key\": \"A\", \"testAttr\": \"A\" }");
-    auto doc1 = arangodb::velocypack::Parser::fromJson("{ \"key\": \"B\", \"testAttr\": \"B\" }");
-    auto doc2 = arangodb::velocypack::Parser::fromJson("{ \"key\": \"C\", \"testAttr\": \"C\" }");
-    auto doc3 = arangodb::velocypack::Parser::fromJson("{ \"key\": \"D\", \"testAttr\": 1 }");
-    auto doc4 = arangodb::velocypack::Parser::fromJson("{ \"key\": \"E\", \"testAttr\": 2.71828 }");
-    auto doc5 = arangodb::velocypack::Parser::fromJson("{ \"key\": \"F\", \"testAttr\": 3.14159 }");
-    auto doc6 = arangodb::velocypack::Parser::fromJson("{ \"key\": \"G\", \"testAttr\": true }");
-    auto doc7 = arangodb::velocypack::Parser::fromJson("{ \"key\": \"H\", \"testAttr\": false }");
-    auto doc8 = arangodb::velocypack::Parser::fromJson("{ \"key\": \"I\", \"testAttr\": null }");
-    auto doc9 = arangodb::velocypack::Parser::fromJson("{ \"key\": \"J\", \"testAttr\": [ -1 ] }");
-    auto doc10 = arangodb::velocypack::Parser::fromJson("{ \"key\": \"K\", \"testAttr\": { \"a\": \"b\" } }");
-    auto doc11 = arangodb::velocypack::Parser::fromJson("{ \"key\": \"L\" }");
+    auto doc0 = arangodb::velocypack::Parser::fromJson("{ \"key\": 1, \"testAttr\": \"A\" }");
+    auto doc1 = arangodb::velocypack::Parser::fromJson("{ \"key\": 2, \"testAttr\": \"B\" }");
+    auto doc2 = arangodb::velocypack::Parser::fromJson("{ \"key\": 3, \"testAttr\": \"C\" }");
+    auto doc3 = arangodb::velocypack::Parser::fromJson("{ \"key\": 4, \"testAttr\": 1 }");
+    auto doc4 = arangodb::velocypack::Parser::fromJson("{ \"key\": 5, \"testAttr\": 2.71828 }");
+    auto doc5 = arangodb::velocypack::Parser::fromJson("{ \"key\": 6, \"testAttr\": 3.14159 }");
+    auto doc6 = arangodb::velocypack::Parser::fromJson("{ \"key\": 7, \"testAttr\": true }");
+    auto doc7 = arangodb::velocypack::Parser::fromJson("{ \"key\": 8, \"testAttr\": false }");
+    auto doc8 = arangodb::velocypack::Parser::fromJson("{ \"key\": 9, \"testAttr\": null }");
+    auto doc9 = arangodb::velocypack::Parser::fromJson("{ \"key\": 10, \"testAttr\": [ -1 ] }");
+    auto doc10 = arangodb::velocypack::Parser::fromJson("{ \"key\": 11, \"testAttr\": { \"a\": \"b\" } }");
+    auto doc11 = arangodb::velocypack::Parser::fromJson("{ \"key\": 12 }");
 
     arangodb::OperationOptions options;
     arangodb::ManagedDocumentResult tmpResult;
@@ -222,53 +222,59 @@ SECTION("test_query") {
     arangodb::transaction::UserTransaction trx(arangodb::transaction::StandaloneContext::Create(&vocbase), EMPTY, EMPTY, EMPTY, arangodb::transaction::Options());
     CHECK((trx.begin().ok()));
     CHECK((logicalCollection->insert(&trx, doc0->slice(), tmpResult, options, tmpResultTick, false)).ok());
+    arangodb::iresearch::kludge::insertDocument(trx, *logicalCollection, arangodb::MMFilesDocumentPosition(tmpResult.lastRevisionId(), doc0->data(), 1, false));
     CHECK((logicalCollection->insert(&trx, doc1->slice(), tmpResult, options, tmpResultTick, false)).ok());
+    arangodb::iresearch::kludge::insertDocument(trx, *logicalCollection, arangodb::MMFilesDocumentPosition(tmpResult.lastRevisionId(), doc1->data(), 1, false));
     CHECK((logicalCollection->insert(&trx, doc2->slice(), tmpResult, options, tmpResultTick, false)).ok());
+    arangodb::iresearch::kludge::insertDocument(trx, *logicalCollection, arangodb::MMFilesDocumentPosition(tmpResult.lastRevisionId(), doc2->data(), 1, false));
     CHECK((logicalCollection->insert(&trx, doc3->slice(), tmpResult, options, tmpResultTick, false)).ok());
+    arangodb::iresearch::kludge::insertDocument(trx, *logicalCollection, arangodb::MMFilesDocumentPosition(tmpResult.lastRevisionId(), doc3->data(), 1, false));
     CHECK((logicalCollection->insert(&trx, doc4->slice(), tmpResult, options, tmpResultTick, false)).ok());
+    arangodb::iresearch::kludge::insertDocument(trx, *logicalCollection, arangodb::MMFilesDocumentPosition(tmpResult.lastRevisionId(), doc4->data(), 1, false));
     CHECK((logicalCollection->insert(&trx, doc5->slice(), tmpResult, options, tmpResultTick, false)).ok());
+    arangodb::iresearch::kludge::insertDocument(trx, *logicalCollection, arangodb::MMFilesDocumentPosition(tmpResult.lastRevisionId(), doc5->data(), 1, false));
     CHECK((logicalCollection->insert(&trx, doc6->slice(), tmpResult, options, tmpResultTick, false)).ok());
+    arangodb::iresearch::kludge::insertDocument(trx, *logicalCollection, arangodb::MMFilesDocumentPosition(tmpResult.lastRevisionId(), doc6->data(), 1, false));
     CHECK((logicalCollection->insert(&trx, doc7->slice(), tmpResult, options, tmpResultTick, false)).ok());
+    arangodb::iresearch::kludge::insertDocument(trx, *logicalCollection, arangodb::MMFilesDocumentPosition(tmpResult.lastRevisionId(), doc7->data(), 1, false));
     CHECK((logicalCollection->insert(&trx, doc8->slice(), tmpResult, options, tmpResultTick, false)).ok());
+    arangodb::iresearch::kludge::insertDocument(trx, *logicalCollection, arangodb::MMFilesDocumentPosition(tmpResult.lastRevisionId(), doc8->data(), 1, false));
     CHECK((logicalCollection->insert(&trx, doc9->slice(), tmpResult, options, tmpResultTick, false)).ok());
+    arangodb::iresearch::kludge::insertDocument(trx, *logicalCollection, arangodb::MMFilesDocumentPosition(tmpResult.lastRevisionId(), doc9->data(), 1, false));
     CHECK((logicalCollection->insert(&trx, doc10->slice(), tmpResult, options, tmpResultTick, false)).ok());
+    arangodb::iresearch::kludge::insertDocument(trx, *logicalCollection, arangodb::MMFilesDocumentPosition(tmpResult.lastRevisionId(), doc10->data(), 1, false));
     CHECK((logicalCollection->insert(&trx, doc11->slice(), tmpResult, options, tmpResultTick, false)).ok());
-    arangodb::iresearch::kludge::insertDocument(trx, *logicalCollection, arangodb::MMFilesDocumentPosition(1, doc0->data(), 1, false));
-    arangodb::iresearch::kludge::insertDocument(trx, *logicalCollection, arangodb::MMFilesDocumentPosition(2, doc1->data(), 1, false));
-    arangodb::iresearch::kludge::insertDocument(trx, *logicalCollection, arangodb::MMFilesDocumentPosition(3, doc2->data(), 1, false));
-    arangodb::iresearch::kludge::insertDocument(trx, *logicalCollection, arangodb::MMFilesDocumentPosition(4, doc3->data(), 1, false));
-    arangodb::iresearch::kludge::insertDocument(trx, *logicalCollection, arangodb::MMFilesDocumentPosition(5, doc4->data(), 1, false));
-    arangodb::iresearch::kludge::insertDocument(trx, *logicalCollection, arangodb::MMFilesDocumentPosition(6, doc5->data(), 1, false));
-    arangodb::iresearch::kludge::insertDocument(trx, *logicalCollection, arangodb::MMFilesDocumentPosition(7, doc6->data(), 1, false));
-    arangodb::iresearch::kludge::insertDocument(trx, *logicalCollection, arangodb::MMFilesDocumentPosition(8, doc7->data(), 1, false));
-    arangodb::iresearch::kludge::insertDocument(trx, *logicalCollection, arangodb::MMFilesDocumentPosition(9, doc8->data(), 1, false));
-    arangodb::iresearch::kludge::insertDocument(trx, *logicalCollection, arangodb::MMFilesDocumentPosition(10, doc9->data(), 1, false));
-    arangodb::iresearch::kludge::insertDocument(trx, *logicalCollection, arangodb::MMFilesDocumentPosition(11, doc10->data(), 1, false));
-    arangodb::iresearch::kludge::insertDocument(trx, *logicalCollection, arangodb::MMFilesDocumentPosition(12, doc11->data(), 1, false));
+    arangodb::iresearch::kludge::insertDocument(trx, *logicalCollection, arangodb::MMFilesDocumentPosition(tmpResult.lastRevisionId(), doc11->data(), 1, false));
     CHECK((trx.commit().ok()));
     dynamic_cast<arangodb::iresearch::IResearchView*>(view)->sync();
   }
 
   // query view
   {
-    std::vector<std::string> const expected = { "A", "B", "C", "D", "E", "F", "G", "H", "I", "J" };
-    std::string query = "FOR d IN testCollection FILTER '1' SORT 'testAttr' RETURN d";
+    // ArangoDB default type sort order:
+    // null < bool < number < string < array/list < object/document
+    std::vector<size_t> const expected = { 9, 8, 7, 4, 5, 6, 1, 2, 3, 10, 11, 12 };
+    std::string query = "FOR d IN testCollection FILTER d.key >= 1 SORT 'testAttr' RETURN d";
 
     assertOrderSuccess(*logicalView, query, "key", expected);
   }
 
   // query view ascending
   {
-    std::vector<std::string> const expected = { "A", "B", "C", "D", "E", "F", "G", "H", "I", "J" };
-    std::string query = "FOR d IN testCollection FILTER '1' SORT 'testAttr' ASC RETURN d";
+    // ArangoDB default type sort order:
+    // null < bool < number < string < array/list < object/document
+    std::vector<size_t> const expected = { 9, 8, 7, 4, 5, 6, 1, 2, 3, 10, 11, 12 };
+    std::string query = "FOR d IN testCollection FILTER d.key >= 1 SORT 'testAttr' ASC RETURN d";
 
     assertOrderSuccess(*logicalView, query, "key", expected);
   }
 
   // query view descending
   {
-    std::vector<std::string> const expected = { "A", "B", "C", "D", "E", "F", "G", "H", "I", "J" };
-    std::string query = "FOR d IN testCollection FILTER '1' SORT 'testAttr' DESC RETURN d";
+    // ArangoDB default type sort order:
+    // null < bool < number < string < array/list < object/document
+    std::vector<size_t> const expected = { 12, 11, 10, 3, 2, 1, 6, 5, 4, 7, 8, 9 };
+    std::string query = "FOR d IN testCollection FILTER d.key >= 1 SORT 'testAttr' DESC RETURN d";
 
     assertOrderSuccess(*logicalView, query, "key", expected);
   }
@@ -282,4 +288,4 @@ SECTION("test_query") {
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE
-// ----------------------------------------------------------------------------
+// -----------------------------------------------------------------------------

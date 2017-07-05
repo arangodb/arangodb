@@ -40,7 +40,7 @@ class TransactionManager;
 class PhysicalCollectionMock: public arangodb::PhysicalCollection {
  public:
   std::string physicalPath;
-  std::vector<arangodb::velocypack::Builder> data;
+  std::vector<arangodb::velocypack::Builder> documents;
 
   PhysicalCollectionMock(arangodb::LogicalCollection* collection, arangodb::velocypack::Slice const& info);
   virtual PhysicalCollection* clone(arangodb::LogicalCollection*, PhysicalCollection*) override;

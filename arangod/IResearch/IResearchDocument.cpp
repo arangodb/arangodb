@@ -462,6 +462,7 @@ std::string nameFromAttributeAccess(
       mangleNumeric(name);
       break;
     case arangodb::aql::VALUE_TYPE_STRING:
+      // FIXME TODO enable for string field comparison to work
       //mangleStringField(name);
       break;
   }

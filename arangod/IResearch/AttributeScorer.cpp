@@ -97,7 +97,11 @@ Prepared::Prepared(
 }
 
 void Prepared::add(score_t& dst, const score_t& src) const {
-  // NOOP
+  TRI_ASSERT(
+    !dst.reader // if score is initialized then it must match exactly
+    || (dst.docId == src.docId && dst.pkColId == src.pkColId && dst.reader == src.reader)
+  );
+  dst = src; // copy over score (initialize an uninitialized score)
 }
 
 irs::flags const& Prepared::features() const {
@@ -149,6 +153,7 @@ void Prepared::prepare_score(score_t& score) const {
     static void noop(std::string const& attr, arangodb::transaction::Methods& trx, Score& score) {}
     static void invoke(std::string const& attr, arangodb::transaction::Methods& trx, Score& score) {
       score.compute = &Compute::noop; // do not recompute score again
+      score.slice = arangodb::velocypack::Slice(); // inilialize to an unsupported value
 
       if (!score.reader) {
         return; // score value not initialized, see errors during initialization
@@ -195,6 +200,7 @@ void Prepared::prepare_score(score_t& score) const {
   };
 
   score.compute = &Compute::invoke;
+  score.reader = nullptr; // unset for the case where the object is reused
 }
 
 irs::sort::scorer::ptr Prepared::prepare_scorer(
@@ -247,6 +253,8 @@ size_t Prepared::precedence(arangodb::velocypack::Slice const& slice) const {
     type = arangodb::iresearch::AttributeScorer::ValueType::NIL;
   } else if (slice.isNone()) {
     type = arangodb::iresearch::AttributeScorer::ValueType::UNKNOWN;
+  } else if (slice.isNumber()) {
+    type = arangodb::iresearch::AttributeScorer::ValueType::NUMBER;
   } else if (slice.isObject()) {
     type = arangodb::iresearch::AttributeScorer::ValueType::OBJECT;
   } else if (slice.isString()) {

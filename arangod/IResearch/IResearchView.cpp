@@ -241,7 +241,10 @@ ViewIteratorBase::ViewIteratorBase(
 ): ViewIterator(&view, &trx),
    _reader(std::move(reader)),
    _typeName(typeName) {
-  _subDocIdBits = _reader.size();
+  typedef decltype(arangodb::DocumentIdentifierToken::_data) doc_id_t;
+  _subDocIdBits = _reader.size()
+                ? irs::math::math_traits<doc_id_t>::clz(_reader.size())
+                : irs::bits_required<doc_id_t>(); // not really a usable scenario (no data)
   _subDocIdMask = (size_t(1) <<_subDocIdBits) - 1;
 }
 

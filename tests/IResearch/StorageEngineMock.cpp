@@ -88,7 +88,9 @@ void PhysicalCollectionMock::getPropertiesVPackCoordinator(arangodb::velocypack:
 }
 
 arangodb::Result PhysicalCollectionMock::insert(arangodb::transaction::Methods* trx, arangodb::velocypack::Slice const newSlice, arangodb::ManagedDocumentResult& result, arangodb::OperationOptions& options, TRI_voc_tick_t& resultMarkerTick, bool lock) {
-  data.emplace_back(newSlice);
+  documents.emplace_back(newSlice);
+  result.setUnmanaged(documents.back().data(), documents.size() - 1);
+
   return arangodb::Result();
 }
 
@@ -139,8 +141,13 @@ arangodb::Result PhysicalCollectionMock::read(arangodb::transaction::Methods*, a
 }
 
 bool PhysicalCollectionMock::readDocument(arangodb::transaction::Methods* trx, arangodb::DocumentIdentifierToken const& token, arangodb::ManagedDocumentResult& result) {
-  TRI_ASSERT(false);
-  return false;
+  if (token._data >= documents.size()) {
+    return false;
+  }
+
+  result.setUnmanaged(documents[token._data].data(), token._data);
+
+  return true;
 }
 
 arangodb::Result PhysicalCollectionMock::remove(arangodb::transaction::Methods* trx, arangodb::velocypack::Slice const slice, arangodb::ManagedDocumentResult& previous, arangodb::OperationOptions& options, TRI_voc_tick_t& resultMarkerTick, bool lock, TRI_voc_rid_t const& revisionId, TRI_voc_rid_t& prevRev) {
