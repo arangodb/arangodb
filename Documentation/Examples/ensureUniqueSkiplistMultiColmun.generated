@@ -1,6 +1,6 @@
 arangosh&gt; db.ids.ensureIndex({ <span class="hljs-attr">type</span>: <span class="hljs-string">"skiplist"</span>, <span class="hljs-attr">fields</span>: [ <span class="hljs-string">"name.first"</span>, <span class="hljs-string">"name.last"</span> ], <span class="hljs-attr">unique</span>: <span class="hljs-literal">true</span> });
 { 
-  <span class="hljs-string">"id"</span> : <span class="hljs-string">"ids/15461"</span>, 
+  <span class="hljs-string">"id"</span> : <span class="hljs-string">"ids/15491"</span>, 
   <span class="hljs-string">"type"</span> : <span class="hljs-string">"skiplist"</span>, 
   <span class="hljs-string">"fields"</span> : [ 
     <span class="hljs-string">"name.first"</span>, 
@@ -13,20 +13,20 @@ arangosh&gt; db.ids.ensureIndex({ <span class="hljs-attr">type</span>: <span cla
 }
 arangosh&gt; db.ids.save({ <span class="hljs-string">"name"</span> : { <span class="hljs-string">"first"</span> : <span class="hljs-string">"hans"</span>, <span class="hljs-string">"last"</span>: <span class="hljs-string">"hansen"</span> }});
 { 
-  <span class="hljs-string">"_id"</span> : <span class="hljs-string">"ids/15464"</span>, 
-  <span class="hljs-string">"_key"</span> : <span class="hljs-string">"15464"</span>, 
-  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_VK-PEX----"</span> 
+  <span class="hljs-string">"_id"</span> : <span class="hljs-string">"ids/15494"</span>, 
+  <span class="hljs-string">"_key"</span> : <span class="hljs-string">"15494"</span>, 
+  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_VPISdJm---"</span> 
 }
 arangosh&gt; db.ids.save({ <span class="hljs-string">"name"</span> : { <span class="hljs-string">"first"</span> : <span class="hljs-string">"jens"</span>, <span class="hljs-string">"last"</span>: <span class="hljs-string">"jensen"</span> }});
 { 
-  <span class="hljs-string">"_id"</span> : <span class="hljs-string">"ids/15468"</span>, 
-  <span class="hljs-string">"_key"</span> : <span class="hljs-string">"15468"</span>, 
-  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_VK-PEXC---"</span> 
+  <span class="hljs-string">"_id"</span> : <span class="hljs-string">"ids/15498"</span>, 
+  <span class="hljs-string">"_key"</span> : <span class="hljs-string">"15498"</span>, 
+  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_VPISdJm--_"</span> 
 }
 arangosh&gt; db.ids.save({ <span class="hljs-string">"name"</span> : { <span class="hljs-string">"first"</span> : <span class="hljs-string">"hans"</span>, <span class="hljs-string">"last"</span>: <span class="hljs-string">"jensen"</span> }});
 { 
-  <span class="hljs-string">"_id"</span> : <span class="hljs-string">"ids/15471"</span>, 
-  <span class="hljs-string">"_key"</span> : <span class="hljs-string">"15471"</span>, 
-  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_VK-PEXG---"</span> 
+  <span class="hljs-string">"_id"</span> : <span class="hljs-string">"ids/15501"</span>, 
+  <span class="hljs-string">"_key"</span> : <span class="hljs-string">"15501"</span>, 
+  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_VPISdJq---"</span> 
 }
 [ArangoError <span class="hljs-number">1210</span>: cannot create <span class="hljs-built_in">document</span>, unique constraint violated]

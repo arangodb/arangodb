@@ -1,26 +1,26 @@
 arangosh&gt; db.example.insert([{ <span class="hljs-attr">Hello</span> : <span class="hljs-string">"World"</span> }, {<span class="hljs-attr">Hello</span>: <span class="hljs-string">"there"</span>}])
 [ 
   { 
-    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"example/14982"</span>, 
-    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"14982"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_VK-P-nS---"</span> 
+    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"example/15003"</span>, 
+    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"15003"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_VPISUAa---"</span> 
   }, 
   { 
-    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"example/14986"</span>, 
-    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"14986"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_VK-P-nS--_"</span> 
+    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"example/15007"</span>, 
+    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"15007"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_VPISUAa--_"</span> 
   } 
 ]
 arangosh&gt; db.example.insert([{ <span class="hljs-attr">Hello</span> : <span class="hljs-string">"World"</span> }, {}], {<span class="hljs-attr">waitForSync</span>: <span class="hljs-literal">true</span>});
 [ 
   { 
-    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"example/14990"</span>, 
-    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"14990"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_VK-P-nW---"</span> 
+    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"example/15011"</span>, 
+    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"15011"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_VPISUAe---"</span> 
   }, 
   { 
-    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"example/14994"</span>, 
-    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"14994"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_VK-P-nW--_"</span> 
+    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"example/15015"</span>, 
+    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"15015"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_VPISUAe--_"</span> 
   } 
 ]
