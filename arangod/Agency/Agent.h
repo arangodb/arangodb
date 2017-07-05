@@ -360,6 +360,9 @@ class Agent : public arangodb::Thread,
 
   // lock for _ongoingTrxs
   arangodb::Mutex _trxsLock;
+ 
+ public:
+  mutable arangodb::Mutex _compactionLock;
 
 };
 }
