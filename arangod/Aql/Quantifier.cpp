@@ -59,12 +59,12 @@ std::string Quantifier::Stringify(int64_t value) {
   return "none";
 }
 
-bool Quantifier::IsAllOrNone(AstNode const* quantifier) {
+bool Quantifier::IsAllOrAny(AstNode const* quantifier) {
   TRI_ASSERT(quantifier != nullptr);
 
   if (quantifier->type == NODE_TYPE_QUANTIFIER) {
     auto const value = quantifier->getIntValue(true);
-    return (value == Quantifier::ALL || value == Quantifier::NONE);
+    return (value == Quantifier::ALL || value == Quantifier::ANY);
   }
   return false;
 }

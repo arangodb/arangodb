@@ -66,9 +66,7 @@ class RocksDBVPackIndexIterator final : public IndexIterator {
                             transaction::Methods* trx,
                             ManagedDocumentResult* mmdr,
                             arangodb::RocksDBVPackIndex const* index,
-                            bool reverse,
-                            arangodb::velocypack::Slice const& left,
-                            arangodb::velocypack::Slice const& right);
+                            bool reverse, RocksDBKeyBounds&& bounds);
 
   ~RocksDBVPackIndexIterator() = default;
 
@@ -131,18 +129,6 @@ class RocksDBVPackIndex : public RocksDBIndex {
 
   static constexpr size_t minimalPrefixSize() { return sizeof(TRI_voc_tick_t); }
 
-  Result insert(transaction::Methods*, TRI_voc_rid_t,
-                arangodb::velocypack::Slice const&, bool isRollback) override;
-
-  int insertRaw(RocksDBMethods*, TRI_voc_rid_t,
-                arangodb::velocypack::Slice const&) override;
-
-  Result remove(transaction::Methods*, TRI_voc_rid_t,
-                arangodb::velocypack::Slice const&, bool isRollback) override;
-
-  int removeRaw(RocksDBMethods*, TRI_voc_rid_t,
-                arangodb::velocypack::Slice const&) override;
-
   int drop() override;
 
   /// @brief attempts to locate an entry in the index
@@ -180,6 +166,12 @@ class RocksDBVPackIndex : public RocksDBIndex {
   void recalculateEstimates() override;
 
  protected:
+  Result insertInternal(transaction::Methods*, RocksDBMethods*, TRI_voc_rid_t,
+                        arangodb::velocypack::Slice const&) override;
+
+  Result removeInternal(transaction::Methods*, RocksDBMethods*, TRI_voc_rid_t,
+                        arangodb::velocypack::Slice const&) override;
+
   Result postprocessRemove(transaction::Methods* trx, rocksdb::Slice const& key,
                            rocksdb::Slice const& value) override;
 
@@ -238,7 +230,7 @@ class RocksDBVPackIndex : public RocksDBIndex {
 
   /// @brief ... and which of them expands
   std::vector<int> _expanding;
-  
+
   /// @brief whether or not array indexes will de-duplicate their input values
   bool _deduplicate;
 

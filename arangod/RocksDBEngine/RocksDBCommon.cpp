@@ -128,20 +128,6 @@ void uint16ToPersistent(std::string& p, uint16_t value) {
   } while (++len < sizeof(uint16_t));
 }
 
-RocksDBTransactionState* toRocksTransactionState(transaction::Methods* trx) {
-  TRI_ASSERT(trx != nullptr);
-  TransactionState* state = trx->state();
-  TRI_ASSERT(state != nullptr);
-  return static_cast<RocksDBTransactionState*>(state);
-}
-
-RocksDBMethods* toRocksMethods(transaction::Methods* trx) {
-  TRI_ASSERT(trx != nullptr);
-  TransactionState* state = trx->state();
-  TRI_ASSERT(state != nullptr);
-  return static_cast<RocksDBTransactionState*>(state)->rocksdbMethods();
-}
-
 rocksdb::TransactionDB* globalRocksDB() {
   StorageEngine* engine = EngineSelectorFeature::ENGINE;
   TRI_ASSERT(engine != nullptr);
@@ -156,16 +142,20 @@ RocksDBEngine* globalRocksEngine() {
   return static_cast<RocksDBEngine*>(engine);
 }
 
-arangodb::Result globalRocksDBPut(rocksdb::Slice const& key,
+arangodb::Result globalRocksDBPut(rocksdb::ColumnFamilyHandle* cf,
+                                  rocksdb::Slice const& key,
                                   rocksdb::Slice const& val,
                                   rocksdb::WriteOptions const& options) {
-  auto status = globalRocksDB()->Put(options, key, val);
+  TRI_ASSERT(cf != nullptr);
+  auto status = globalRocksDB()->Put(options, cf, key, val);
   return convertStatus(status);
 };
 
-arangodb::Result globalRocksDBRemove(rocksdb::Slice const& key,
+arangodb::Result globalRocksDBRemove(rocksdb::ColumnFamilyHandle* cf,
+                                     rocksdb::Slice const& key,
                                      rocksdb::WriteOptions const& options) {
-  auto status = globalRocksDB()->Delete(options, key);
+  TRI_ASSERT(cf != nullptr);
+  auto status = globalRocksDB()->Delete(options, cf, key);
   return convertStatus(status);
 };
 
@@ -194,9 +184,9 @@ std::pair<TRI_voc_tick_t, TRI_voc_cid_t> mapObjectToCollection(
 
 std::size_t countKeyRange(rocksdb::DB* db, rocksdb::ReadOptions const& opts,
                           RocksDBKeyBounds const& bounds) {
-  rocksdb::ColumnFamilyHandle* handle = bounds.columnFamily();
+  rocksdb::ColumnFamilyHandle* cf = bounds.columnFamily();
   rocksdb::Comparator const* cmp = db->GetOptions().comparator;
-  std::unique_ptr<rocksdb::Iterator> it(db->NewIterator(opts, handle));
+  std::unique_ptr<rocksdb::Iterator> it(db->NewIterator(opts, cf));
   std::size_t count = 0;
 
   rocksdb::Slice lower(bounds.start());
@@ -212,16 +202,17 @@ std::size_t countKeyRange(rocksdb::DB* db, rocksdb::ReadOptions const& opts,
 /// @brief helper method to remove large ranges of data
 /// Should mainly be used to implement the drop() call
 Result removeLargeRange(rocksdb::TransactionDB* db,
-                        RocksDBKeyBounds const& bounds) {
+                        RocksDBKeyBounds const& bounds,
+                        bool prefix_same_as_start) {
+  rocksdb::ColumnFamilyHandle* cf = bounds.columnFamily();
   LOG_TOPIC(DEBUG, Logger::FIXME) << "removing large range: " << bounds;
-  rocksdb::ColumnFamilyHandle* handle = bounds.columnFamily();
   try {
     // delete files in range lower..upper
     rocksdb::Slice lower(bounds.start());
     rocksdb::Slice upper(bounds.end());
     {
       rocksdb::Status status =
-          rocksdb::DeleteFilesInRange(db->GetBaseDB(), handle, &lower, &upper);
+          rocksdb::DeleteFilesInRange(db->GetBaseDB(), cf, &lower, &upper);
       if (!status.ok()) {
         // if file deletion failed, we will still iterate over the remaining
         // keys, so we don't need to abort and raise an error here
@@ -232,20 +223,20 @@ Result removeLargeRange(rocksdb::TransactionDB* db,
 
     // go on and delete the remaining keys (delete files in range does not
     // necessarily find them all, just complete files)
-    rocksdb::Comparator const* cmp = handle->GetComparator();
+    rocksdb::Comparator const* cmp = cf->GetComparator();
     rocksdb::WriteBatch batch;
     rocksdb::ReadOptions readOptions;
     readOptions.fill_cache = false;
-    std::unique_ptr<rocksdb::Iterator> it(db->NewIterator(readOptions, handle));
+    readOptions.prefix_same_as_start = prefix_same_as_start;
+    readOptions.iterate_upper_bound = &upper;
+    std::unique_ptr<rocksdb::Iterator> it(db->NewIterator(readOptions, cf));
 
-    // TODO: split this into multiple batches if batches get too big
-    it->Seek(lower);
     size_t counter = 0;
-    while (it->Valid() && cmp->Compare(it->key(), upper) < 0) {
+    for (it->Seek(lower); it->Valid(); it->Next()) {
       TRI_ASSERT(cmp->Compare(it->key(), lower) > 0);
+      TRI_ASSERT(cmp->Compare(it->key(), upper) < 0);
       counter++;
-      batch.Delete(it->key());
-      it->Next();
+      batch.Delete(cf, it->key());
       if (counter == 1000) {
         LOG_TOPIC(DEBUG, Logger::FIXME) << "Intermediate delete write";
         // Persist deletes all 1000 documents
@@ -298,7 +289,7 @@ std::vector<std::pair<RocksDBKey, RocksDBValue>> collectionKVPairs(
                       RocksDBKey(it->key()),
                       RocksDBValue(RocksDBEntryType::Collection, it->value()));
                 },
-                arangodb::RocksDBColumnFamily::other());
+                arangodb::RocksDBColumnFamily::definitions());
   return rv;
 }
 
@@ -312,7 +303,7 @@ std::vector<std::pair<RocksDBKey, RocksDBValue>> viewKVPairs(
                       RocksDBKey(it->key()),
                       RocksDBValue(RocksDBEntryType::View, it->value()));
                 },
-                arangodb::RocksDBColumnFamily::other());
+                arangodb::RocksDBColumnFamily::definitions());
   return rv;
 }
 
