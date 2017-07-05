@@ -574,9 +574,9 @@ def testEdition(edition, os, mode, engine) {
 def testCheck(edition, os, mode, engine, full) {
     def name = "${edition}-${os}"
 
-    if (! (buildsSuccess.containsKey(name) && buildsSuccess[name])) {
-        return false
-    }
+    // if (! (buildsSuccess.containsKey(name) && buildsSuccess[name])) {
+    //     return false
+    // }
 
     if (! runTests) {
         return false
@@ -685,9 +685,9 @@ def testResilience(os, engine, foxx) {
 def testResilienceCheck(os, engine, foxx, full) {
     def name = "community-${os}"
 
-    if (! (buildsSuccess.containsKey(name) && buildsSuccess[name])) {
-        return false
-    }
+    // if (! (buildsSuccess.containsKey(name) && buildsSuccess[name])) {
+    //     return false
+    // }
 
     if (! runResilience) {
         return false
