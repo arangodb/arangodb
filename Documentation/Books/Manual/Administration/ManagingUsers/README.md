@@ -101,7 +101,7 @@ for the collection are *Read/Write*, *Read Only* and *No Access*.
 | truncate a collection | Read/Write              | Administrate or Access |
 
 
-### Example
+*Example*
 
 For example, given
 
@@ -140,6 +140,29 @@ access level. Note that this includes databases which will be created
 in the future and for which no explicit access levels are set for that
 user!
 
+*Example*
+
+Assume user *doe* has the following database access levels:
+
+|                 | access level |
+|-----------------|--------------|
+|database "\*"    | Access       |
+|database "snake" | Administrate |
+|database "oil"   | No Access    |
+
+This will give the user *doe* the following database level access:
+
+- database "snake": *Administrate*
+- database "oil": *No Access*
+- database "company": *Access*
+
+If the default "\*" is changed from *Access* to *No Access* then the
+permissions will change as follows:
+
+- database "snake": *Administrate*
+- database "oil": *No Access*
+- database "company": *No Access*
+
 ### Default Collection Access Level
 
 For each user and database there is a default collection access level.
@@ -148,12 +171,54 @@ defined collection access level. Note that this includes collections
 which will be created in the future and for which no explicit access
 levels are set for a that user!
 
+*Example*
+
+Assume user *doe* has the following database access levels:
+
+|                 | access level |
+|-----------------|--------------|
+|database "\*"    | Access       |
+
+and collection access levels:
+
+|                                        | access level |
+|---------------------------------- -----|--------------|
+| database "\*", collection "\*"         | Read/Write   |
+| database "snake", collection "company" | Read-Only    |
+| database "snake", collection "\*"      | No Access    |
+| database "oil", collection "\*"        | Read-Only    |
+
+Then the user *doe* will get the following collection access levels:
+
+- database "snake", collection "company": *Read-Only*
+- database "snake", collection "potion": *No Access*
+- database "oil", collection "vial": *Read-Only*
+- database "something", collection "else": *Read/Write*
+
+Explanation:
+
+Database "snake", collection "company" directly matches a defined
+access level. This level is defined as *Read-Only*.
+
+Database "snake", collection "potion" does not match a defined access
+level. However, database "snake" matches and the default in this
+database for collection level is *No Access*.
+
+Database "oil", collection "vial" does not match a defined access
+level. However, database "oil" matches and the default in this
+database for collection level is *Read-Only*.
+
+Database "somehing", collection "else" does not match a defined access
+level. The database "something" also does have a direct matches.
+Therefore the default database is selected. The level is *Read/Write*.
+
+
 ## Managing Users in the Web Interface
 
 In order to manage users use the web interface. Log into the *_system*
 database and go to the "Users" section. Select a user and go to the
-*Access levels* tab. You will see a list of databases and their corresponding
-database access level for that user.
+*Access levels* tab. You will see a list of databases and their
+corresponding database access level for that user.
 
 Please note that server category access level follows from the access
 level on the database *_system*. Furthermore, the default database
