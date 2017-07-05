@@ -152,7 +152,6 @@
   * [Arangorestore](Administration/Arangorestore.md)
   * [Arangoexport](Administration/Arangoexport.md)
   * [Managing Users](Administration/ManagingUsers/README.md)
-    * [Authorization Model](Administration/ManagingUsers/AuthorizationModel.md)
   * [Server Configuration](Administration/Configuration/README.md)
     * [Operating System Configuration](Administration/Configuration/OperatingSystem.md)
     * [Managing Endpoints](Administration/Configuration/Endpoint.md)
