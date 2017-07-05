@@ -254,8 +254,8 @@ bool RocksDBEdgeIndexIterator::nextExtra(ExtraCallback const& cb,
     TRI_ASSERT(fromToSlice.isString());
     StringRef fromTo(fromToSlice);
 
+    bool needRocksLookup = true;
     if (_cache) {
-      bool needRocksLookup = true;
       for (size_t attempts = 0; attempts < 10; ++attempts) {
         // Try to read from cache
         auto finding = _cache->find(fromTo.data(), (uint32_t)fromTo.size());
