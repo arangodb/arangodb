@@ -24,13 +24,17 @@
 #ifndef ARANGOD_ROCKSDB_ENGINE_ROCKSDB_INDEX_H
 #define ARANGOD_ROCKSDB_ENGINE_ROCKSDB_INDEX_H 1
 
+#include <rocksdb/status.h>
 #include "Basics/AttributeNameParser.h"
 #include "Basics/Common.h"
 #include "Indexes/Index.h"
 #include "RocksDBEngine/RocksDBKeyBounds.h"
-#include <rocksdb/status.h>
+#include "RocksDBEngine/RocksDBTransactionState.h"
 
-namespace rocksdb {class Comparator; class ColumnFamilyHandle;}
+namespace rocksdb {
+class Comparator;
+class ColumnFamilyHandle;
+}
 namespace arangodb {
 namespace cache {
 class Cache;
@@ -40,7 +44,6 @@ class RocksDBCounterManager;
 class RocksDBMethods;
 
 class RocksDBIndex : public Index {
-
  protected:
    // This is the number of distinct elements the index estimator can reliably store
    // This correlates directly with the memory of the estimator:
@@ -51,14 +54,12 @@ class RocksDBIndex : public Index {
   RocksDBIndex(TRI_idx_iid_t, LogicalCollection*,
                std::vector<std::vector<arangodb::basics::AttributeName>> const&
                    attributes,
-               bool unique, bool sparse,
-               rocksdb::ColumnFamilyHandle* cf,
-               uint64_t objectId,
-               bool useCache);
+               bool unique, bool sparse, rocksdb::ColumnFamilyHandle* cf,
+               uint64_t objectId, bool useCache);
 
   RocksDBIndex(TRI_idx_iid_t, LogicalCollection*,
-               arangodb::velocypack::Slice const&, rocksdb::ColumnFamilyHandle* cf,
-               bool useCache);
+               arangodb::velocypack::Slice const&,
+               rocksdb::ColumnFamilyHandle* cf, bool useCache);
 
  public:
   ~RocksDBIndex();
@@ -84,16 +85,18 @@ class RocksDBIndex : public Index {
     // nothing to do here
     return TRI_ERROR_NO_ERROR;
   }
-
-  /// insert index elements into the specified write batch. Should be used
-  /// as an optimization for the non transactional fillIndex method
-  virtual int insertRaw(RocksDBMethods*, TRI_voc_rid_t,
-                        arangodb::velocypack::Slice const&) = 0;
-
-  /// remove index elements and put it in the specified write batch. Should be
-  /// used as an optimization for the non transactional fillIndex method
-  virtual int removeRaw(RocksDBMethods*, TRI_voc_rid_t,
-                        arangodb::velocypack::Slice const&) = 0;
+  
+  Result insert(transaction::Methods* trx, TRI_voc_rid_t rid,
+                velocypack::Slice const& doc, bool) override {
+    auto mthds = RocksDBTransactionState::toMethods(trx);
+    return insertInternal(trx, mthds, rid, doc);
+  }
+  
+  Result remove(transaction::Methods* trx, TRI_voc_rid_t rid,
+                arangodb::velocypack::Slice const& doc, bool) override {
+    auto mthds = RocksDBTransactionState::toMethods(trx);
+    return removeInternal(trx, mthds, rid, doc);
+  }
 
   void createCache();
   void disableCache();
@@ -104,25 +107,38 @@ class RocksDBIndex : public Index {
 
   virtual void recalculateEstimates();
   
-  rocksdb::ColumnFamilyHandle* columnFamily() const{
-    return _cf;
-  }
+  /// insert index elements into the specified write batch.
+  virtual Result insertInternal(transaction::Methods* trx,
+                                RocksDBMethods*, TRI_voc_rid_t,
+                                arangodb::velocypack::Slice const&) = 0;
+  
+  /// remove index elements and put it in the specified write batch.
+  virtual Result removeInternal(transaction::Methods* trx,
+                                RocksDBMethods*, TRI_voc_rid_t,
+                                arangodb::velocypack::Slice const&) = 0;
+  
+  rocksdb::ColumnFamilyHandle* columnFamily() const { return _cf; }
   
   rocksdb::Comparator const* comparator() const;
-
- protected:
+  
+  static RocksDBKeyBounds getBounds(Index::IndexType type, uint64_t objectId,
+                                    bool unique);
+  
+protected:
+  
   // Will be called during truncate to allow the index to update selectivity
   // estimates, blacklist keys, etc.
   virtual Result postprocessRemove(transaction::Methods* trx,
-                                   rocksdb::Slice const& key, rocksdb::Slice const& value);
+                                   rocksdb::Slice const& key,
+                                   rocksdb::Slice const& value);
 
   inline bool useCache() const { return (_useCache && _cachePresent); }
   void blackListKey(char const* data, std::size_t len);
-  void blackListKey(StringRef& ref){
-    blackListKey(ref.data(), ref.size());
-  };
+  void blackListKey(StringRef& ref) { blackListKey(ref.data(), ref.size()); };
 
-  RocksDBKeyBounds getBounds() const;
+  RocksDBKeyBounds getBounds() const {
+    return RocksDBIndex::getBounds(type(), _objectId, _unique);
+  };
 
  protected:
   uint64_t _objectId;

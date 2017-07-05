@@ -62,7 +62,7 @@ class IniFileParser {
 
   // parse a config file. returns true if all is well, false otherwise
   // errors that occur during parse are reported to _options
-  bool parse(std::string const& filename) {
+  bool parse(std::string const& filename, bool endPassAfterwards) {
     if (filename.empty()) {
       return _options->fail(
           "unable to open configuration file: no configuration file specified");
@@ -134,7 +134,7 @@ class IniFileParser {
         LOG_TOPIC(DEBUG, Logger::CONFIG) << "reading include file '" << include
                                          << "'";
 
-        parse(include);
+        parse(include, false);
       } else if (std::regex_match(line, match, _matchers.assignment)) {
         // found assignment
         std::string option;
@@ -170,7 +170,9 @@ class IniFileParser {
     isCommunity ^= isEnterprise;
 
     // all is well
-    _options->endPass();
+    if (endPassAfterwards) {
+      _options->endPass();
+    }
     return true;
   }
 

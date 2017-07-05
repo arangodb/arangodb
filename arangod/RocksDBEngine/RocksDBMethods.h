@@ -73,8 +73,7 @@ class RocksDBMethods {
   virtual arangodb::Result Put(
       rocksdb::ColumnFamilyHandle*, RocksDBKey const&, rocksdb::Slice const&,
       rocksutils::StatusHint hint = rocksutils::StatusHint::none) = 0;
-  // virtual arangodb::Result Merge(RocksDBKey const&, rocksdb::Slice const&) =
-  // 0;
+  
   virtual arangodb::Result Delete(rocksdb::ColumnFamilyHandle*,
                                   RocksDBKey const&) = 0;
 

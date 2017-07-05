@@ -61,9 +61,10 @@ DocumentIdentifierToken RocksDBFulltextIndex::toDocumentIdentifierToken(
 RocksDBFulltextIndex::RocksDBFulltextIndex(
     TRI_idx_iid_t iid, arangodb::LogicalCollection* collection,
     VPackSlice const& info)
-    : RocksDBIndex(iid, collection, info, RocksDBColumnFamily::geo(), false),
+    : RocksDBIndex(iid, collection, info, RocksDBColumnFamily::fulltext(), false),
       _minWordLength(TRI_FULLTEXT_MIN_WORD_LENGTH_DEFAULT) {
   TRI_ASSERT(iid != 0);
+  TRI_ASSERT(_cf == RocksDBColumnFamily::fulltext()); 
 
   VPackSlice const value = info.get("minLength");
 
@@ -101,7 +102,10 @@ size_t RocksDBFulltextIndex::memory() const {
       RocksDBKeyBounds::FulltextIndexPrefix(_objectId, StringRef());
   rocksdb::Range r(bounds.start(), bounds.end());
   uint64_t out;
-  db->GetApproximateSizes(RocksDBColumnFamily::fulltext(), &r, 1, &out, static_cast<uint8_t>(rocksdb::DB::SizeApproximationFlags::INCLUDE_MEMTABLES | rocksdb::DB::SizeApproximationFlags::INCLUDE_FILES));
+  uint8_t flags = rocksdb::DB::SizeApproximationFlags::INCLUDE_MEMTABLES |
+                  rocksdb::DB::SizeApproximationFlags::INCLUDE_FILES;
+  db->GetApproximateSizes(RocksDBColumnFamily::fulltext(), &r, 1, &out,
+                          static_cast<uint8_t>(flags));
   return static_cast<size_t>(out);
 }
 
@@ -191,18 +195,18 @@ bool RocksDBFulltextIndex::matchesDefinition(VPackSlice const& info) const {
   return true;
 }
 
-Result RocksDBFulltextIndex::insert(transaction::Methods* trx,
-                                    TRI_voc_rid_t revisionId,
-                                    VPackSlice const& doc, bool isRollback) {
+Result RocksDBFulltextIndex::insertInternal(transaction::Methods* trx,
+                                            RocksDBMethods* mthd,
+                                            TRI_voc_rid_t revisionId,
+                                            VPackSlice const& doc) {
   std::set<std::string> words = wordlist(doc);
   if (words.empty()) {
     return TRI_ERROR_NO_ERROR;
   }
 
-  RocksDBMethods* mthd = rocksutils::toRocksMethods(trx);
   // now we are going to construct the value to insert into rocksdb
   // unique indexes have a different key structure
-  RocksDBValue value = RocksDBValue::IndexValue();
+  RocksDBValue value = RocksDBValue::VPackIndexValue();
 
   int res = TRI_ERROR_NO_ERROR;
   // size_t const count = words.size();
@@ -216,43 +220,13 @@ Result RocksDBFulltextIndex::insert(transaction::Methods* trx,
       break;
     }
   }
-  /*if (res != TRI_ERROR_NO_ERROR) {
-    for (size_t j = 0; j < i; ++j) {
-      std::string const& word = words[j];
-      RocksDBKey key =
-          RocksDBKey::FulltextIndexValue(_objectId, StringRef(word),
-  revisionId);
-      rtrx->Delete(key.string());
-    }
-  }*/
   return IndexResult(res, this);
 }
 
-int RocksDBFulltextIndex::insertRaw(RocksDBMethods* batch,
-                                    TRI_voc_rid_t revisionId,
-                                    arangodb::velocypack::Slice const& doc) {
-  std::set<std::string> words = wordlist(doc);
-  if (words.empty()) {
-    return TRI_ERROR_NO_ERROR;
-  }
-
-  // now we are going to construct the value to insert into rocksdb
-  // unique indexes have a different key structure
-  // StringRef docKey(doc.get(StaticStrings::KeyString));
-  RocksDBValue value = RocksDBValue::IndexValue();
-
-  for (std::string const& word : words) {
-    RocksDBKey key =
-        RocksDBKey::FulltextIndexValue(_objectId, StringRef(word), revisionId);
-    batch->Put(_cf, key, value.string());
-  }
-
-  return TRI_ERROR_NO_ERROR;
-}
-
-Result RocksDBFulltextIndex::remove(transaction::Methods* trx,
-                                    TRI_voc_rid_t revisionId,
-                                    VPackSlice const& doc, bool isRollback) {
+Result RocksDBFulltextIndex::removeInternal(transaction::Methods* trx,
+                                            RocksDBMethods* mthd,
+                                            TRI_voc_rid_t revisionId,
+                                            VPackSlice const& doc) {
   std::set<std::string> words = wordlist(doc);
   if (words.empty()) {
     // TODO: distinguish the cases "empty wordlist" and "out of memory"
@@ -260,7 +234,6 @@ Result RocksDBFulltextIndex::remove(transaction::Methods* trx,
     return IndexResult(TRI_ERROR_OUT_OF_MEMORY);
   }
 
-  RocksDBMethods* mthd = rocksutils::toRocksMethods(trx);
   // now we are going to construct the value to insert into rocksdb
   // unique indexes have a different key structure
   int res = TRI_ERROR_NO_ERROR;
@@ -275,20 +248,6 @@ Result RocksDBFulltextIndex::remove(transaction::Methods* trx,
     }
   }
   return IndexResult(res, this);
-}
-
-int RocksDBFulltextIndex::removeRaw(RocksDBMethods* batch,
-                                    TRI_voc_rid_t revisionId,
-                                    arangodb::velocypack::Slice const& doc) {
-  std::set<std::string> words = wordlist(doc);
-  // now we are going to construct the value to insert into rocksdb
-  // unique indexes have a different key structure
-  for (std::string const& word : words) {
-    RocksDBKey key =
-        RocksDBKey::FulltextIndexValue(_objectId, StringRef(word), revisionId);
-    batch->Delete(_cf, key);
-  }
-  return TRI_ERROR_NO_ERROR;
 }
 
 int RocksDBFulltextIndex::cleanup() {
@@ -503,7 +462,7 @@ static RocksDBKeyBounds MakeBounds(uint64_t oid,
 Result RocksDBFulltextIndex::applyQueryToken(
     transaction::Methods* trx, FulltextQueryToken const& token,
     std::set<TRI_voc_rid_t>& resultSet) {
-  RocksDBMethods* mthds = rocksutils::toRocksMethods(trx);
+  auto mthds = RocksDBTransactionState::toMethods(trx);
   // why can't I have an assignment operator when I want one
   RocksDBKeyBounds bounds = MakeBounds(_objectId, token);
   rocksdb::Slice end = bounds.end();
@@ -525,13 +484,14 @@ Result RocksDBFulltextIndex::applyQueryToken(
       return rocksutils::convertStatus(s);
     }
 
-    TRI_voc_rid_t revisionId = RocksDBKey::revisionId(iter->key());
+    TRI_voc_rid_t revId = RocksDBKey::revisionId(
+        RocksDBEntryType::FulltextIndexValue, iter->key());
     if (token.operation == FulltextQueryToken::AND) {
-      intersect.insert(revisionId);
+      intersect.insert(revId);
     } else if (token.operation == FulltextQueryToken::OR) {
-      resultSet.insert(revisionId);
+      resultSet.insert(revId);
     } else if (token.operation == FulltextQueryToken::EXCLUDE) {
-      resultSet.erase(revisionId);
+      resultSet.erase(revId);
     }
     iter->Next();
   }
