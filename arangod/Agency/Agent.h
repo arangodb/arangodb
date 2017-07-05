@@ -59,7 +59,7 @@ class Agent : public arangodb::Thread,
 
   /// @brief Vote request
   priv_rpc_ret_t requestVote(term_t, std::string const&, index_t, index_t,
-                             query_t const&, long timeoutMult);
+                             query_t const&, int64_t timeoutMult);
 
   /// @brief Provide configuration
   config_t const config() const;
