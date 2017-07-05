@@ -156,8 +156,8 @@ void OptimizerRulesFeature::addRules() {
                OptimizerRule::optimizeTraversalsRule_pass6, DoesNotCreateAdditionalPlans, CanBeDisabled);
 
   // prepare traversal info
-  registerRule("prepare-traversals", prepareTraversalsRule,
-               OptimizerRule::prepareTraversalsRule_pass6, DoesNotCreateAdditionalPlans, CanNotBeDisabled, CanBeDisabled);
+  registerHiddenRule("prepare-traversals", prepareTraversalsRule,
+                     OptimizerRule::prepareTraversalsRule_pass6, DoesNotCreateAdditionalPlans, CanNotBeDisabled);
 
   /// "Pass 5": try to remove redundant or unnecessary nodes (second try)
   // remove filters from the query that are not necessary at all
@@ -203,12 +203,17 @@ void OptimizerRulesFeature::addRules() {
   // try to find sort blocks which are superseeded by indexes
   registerRule("use-index-for-sort", useIndexForSortRule,
                OptimizerRule::useIndexForSortRule_pass6, DoesNotCreateAdditionalPlans, CanBeDisabled);
+  
+  // simplify an EnumerationCollectionNode that fetches an
+  // entire document to a projection of this document
+  registerRule("reduce-extraction-to-projection", reduceExtractionToProjectionRule, OptimizerRule::reduceExtractionToProjectionRule_pass6,
+               DoesNotCreateAdditionalPlans, CanBeDisabled);
 
   // sort in-values in filters (note: must come after
   // remove-filter-covered-by-index rule)
   registerRule("sort-in-values", sortInValuesRule, OptimizerRule::sortInValuesRule_pass6,
                DoesNotCreateAdditionalPlans, CanBeDisabled);
-
+  
   // remove calculations that are never necessary
   registerRule("remove-unnecessary-calculations-2",
                removeUnnecessaryCalculationsRule,

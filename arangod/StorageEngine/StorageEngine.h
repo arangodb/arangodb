@@ -373,6 +373,8 @@ class StorageEngine : public application_features::ApplicationFeature {
                            ,uint64_t tickStart, uint64_t tickEnd
                            ,std::shared_ptr<VPackBuilder>& builderSPtr) = 0;
 
+  virtual bool useRawDocumentPointers() = 0;
+
   void getCapabilities(VPackBuilder& builder) const {
     builder.openObject();
     builder.add("name", VPackValue(typeName()));

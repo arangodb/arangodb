@@ -21,6 +21,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "RocksDBIterators.h"
+#include "Logger/Logger.h"
 #include "Random/RandomGenerator.h"
 #include "RocksDBEngine/RocksDBCollection.h"
 #include "RocksDBEngine/RocksDBColumnFamily.h"
@@ -126,8 +127,7 @@ bool RocksDBAllIndexIterator::nextDocument(
 
   while (limit > 0) {
     TRI_voc_rid_t revisionId = RocksDBKey::revisionId(_iterator->key());
-    _mmdr->setManaged((uint8_t const*)_iterator->value().data(), revisionId);
-    cb(*_mmdr);
+    cb(RocksDBToken(revisionId), VPackSlice(_iterator->value().data()));
     --limit;
 
     if (_reverse) {
@@ -237,8 +237,7 @@ bool RocksDBAnyIndexIterator::nextDocument(
 
   while (limit > 0) {
     TRI_voc_rid_t revisionId = RocksDBKey::revisionId(_iterator->key());
-    _mmdr->setManaged((uint8_t const*)_iterator->value().data(), revisionId);
-    cb(*_mmdr);
+    cb(RocksDBToken(revisionId), VPackSlice(_iterator->value().data()));
 
     --limit;
     _returned++;

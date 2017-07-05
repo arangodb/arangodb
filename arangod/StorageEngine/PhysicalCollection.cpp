@@ -105,6 +105,7 @@ void PhysicalCollection::mergeObjectsForUpdate(
   VPackSlice fromSlice;
   VPackSlice toSlice;
 
+#warning TODO fixme
   std::unordered_map<std::string, VPackSlice> newValues;
   {
     VPackObjectIterator it(newValue, true);

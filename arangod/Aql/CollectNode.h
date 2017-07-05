@@ -131,10 +131,12 @@ class CollectNode : public ExecutionNode {
 
   /// @brief whether or not the count flag is set
   inline bool count() const { return _count; }
+  
+  inline bool hasOutVariableButNoCount() const { return (_outVariable != nullptr && !_count); }
 
   /// @brief whether or not the node has an outVariable (i.e. INTO ...)
   inline bool hasOutVariable() const { return _outVariable != nullptr; }
-
+  
   /// @brief return the out variable
   Variable const* outVariable() const { return _outVariable; }
 

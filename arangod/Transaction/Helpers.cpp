@@ -35,7 +35,11 @@
 using namespace arangodb;
 
 /// @brief extract the _key attribute from a slice
-StringRef transaction::helpers::extractKeyPart(VPackSlice const slice) {
+StringRef transaction::helpers::extractKeyPart(VPackSlice slice) {
+  if (slice.isExternal()) {
+    slice = slice.resolveExternal();
+  }
+
   // extract _key
   if (slice.isObject()) {
     VPackSlice k = slice.get(StaticStrings::KeyString);

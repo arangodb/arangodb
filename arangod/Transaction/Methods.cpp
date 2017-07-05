@@ -873,8 +873,8 @@ OperationResult transaction::Methods::anyLocal(
       indexScan(collectionName, transaction::Methods::CursorType::ANY, &mmdr,
                 skip, limit, 1000, false);
 
-  cursor->allDocuments([&resultBuilder](ManagedDocumentResult const& mdr) {
-    mdr.addToBuilder(resultBuilder, false);
+  cursor->allDocuments([&resultBuilder](DocumentIdentifierToken const& token, VPackSlice slice) {
+    resultBuilder.add(slice);
   });
 
   resultBuilder.close();
@@ -2284,9 +2284,8 @@ OperationResult transaction::Methods::allLocal(
     return OperationResult(cursor->code);
   }
 
-  auto cb = [&resultBuilder](ManagedDocumentResult const& mdr) {
-    uint8_t const* vpack = mdr.vpack();
-    resultBuilder.add(VPackSlice(vpack));
+  auto cb = [&resultBuilder](DocumentIdentifierToken const& token, VPackSlice slice) {
+    resultBuilder.add(slice);
   };
   cursor->allDocuments(cb);
 

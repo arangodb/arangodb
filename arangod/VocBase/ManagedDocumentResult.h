@@ -95,11 +95,6 @@ class ManagedDocumentResult {
   
   void addToBuilder(velocypack::Builder& builder, bool allowExternals) const;
 
-  // @brief Creates an AQLValue with the content of this ManagedDocumentResult
-  // The caller is responsible to properly destroy() the
-  // returned value
-  aql::AqlValue createAqlValue() const;
-
  private:
   uint64_t _length;
   TRI_voc_rid_t _lastRevisionId;
