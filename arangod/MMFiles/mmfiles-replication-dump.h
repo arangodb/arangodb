@@ -42,7 +42,7 @@
 
 /// @brief replication dump container
 struct MMFilesReplicationDumpContext {
-  MMFilesReplicationDumpContext(std::shared_ptr<arangodb::transaction::StandaloneContext>
+  MMFilesReplicationDumpContext(std::shared_ptr<arangodb::transaction::StandaloneContext> const&
                              transactionContext,
                          size_t chunkSize, bool includeSystem,
                          TRI_voc_cid_t restrictCollection, bool useVst = false)
