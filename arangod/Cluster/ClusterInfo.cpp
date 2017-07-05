@@ -1376,7 +1376,6 @@ int ClusterInfo::dropCollectionCoordinator(
 
   auto dbServerResult = std::make_shared<int>(-1);
   auto errMsg = std::make_shared<std::string>();
-  auto cacheMutex = std::make_shared<Mutex>();
 
   std::function<bool(VPackSlice const& result)> dbServerChanged =
       [=](VPackSlice const& result) {
