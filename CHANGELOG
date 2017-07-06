@@ -21,6 +21,9 @@ devel
       db.test.insert({ tags: ["c", "d", "c"] }); // will not work, because deduplicate = false
       db.test.insert({ tags: ["a"] }); // will fail
 
+  The "deduplicate" attribute is now also accepted by the index creation HTTP
+  API endpoint POST /_api/index and is returned by GET /_api/index.
+
 * added optimizer rule "remove-filters-covered-by-traversal"
 
 * Debian/Ubuntu installer: make messages about future package upgrades more clear
