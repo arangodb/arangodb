@@ -749,11 +749,8 @@ query_t Agent::lastAckedAgo() const {
   ret->openObject();
   if (leading()) {
     for (auto const& i : lastAcked) {
-      ret->add(i.first, VPackValue(
-                 1.0e-2 * std::floor(
-                   (i.first!=id() ?
-                    duration<double>(system_clock::now()-i.second).count()*100.0
-                    : 0.0))));
+      ret->add(i.first, VPackValue(1.0e-2 * std::floor((i.first!=id() ?
+        duration<double>(system_clock::now()-i.second).count()*100.0 : 0.0))));
     }
   }
   ret->close();
