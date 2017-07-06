@@ -72,73 +72,82 @@ describe('User Rights Management', () => {
 
     for (let name of userSet) {
 
-      describe(`user ${name}`, () => {
+      let canUse = false;
+      try {
+        switchUser(name);
+        canUse = true;
+      } catch (e) {
+        canUse = false;
+      }
 
-         before(() => {
-           switchUser(name);
-         });
+      if (canUse) {
+        describe(`user ${name}`, () => {
 
-         describe('administrate on server level', () => {
+          before(() => {
+            switchUser(name);
+          });
 
-           const rootTestUser = (switchBack = true) => {
-             switchUser(root);
-             try {
-               const u = users.document(testUser);
-               if (switchBack) {
-                 switchUser(name);
-               }
-               return u !== undefined;
-             } catch (e) {
-               if (switchBack) {
-                 switchUser(name);
-               }
-               return false;
-             }
-           };
+          describe('administrate on server level', () => {
 
-           const rootDropUser = () => {
-             if (rootTestUser(false)) {
-               users.remove(testUser);
-             }
-             switchUser(name);
-           };
+            const rootTestUser = (switchBack = true) => {
+              switchUser('root');
+              try {
+                const u = users.document(testUser);
+                if (switchBack) {
+                  switchUser(name);
+                }
+                return u !== undefined;
+              } catch (e) {
+                if (switchBack) {
+                  switchUser(name);
+                }
+                return false;
+              }
+            };
+
+            const rootDropUser = () => {
+              if (rootTestUser(false)) {
+                users.remove(testUser);
+              }
+              switchUser(name);
+            };
 
             const rootCreateUser = () => {
-             if (!rootTestUser(false)) {
-               users.save(testUser, '', true);
-             }
-             switchUser(name);
-           };
+              if (!rootTestUser(false)) {
+                users.save(testUser, '', true);
+              }
+              switchUser(name);
+            };
 
 
-           beforeEach(() => {
-             db._useDatabase('_system');
-             rootDropUser();
-             rootCreateUser();
+            beforeEach(() => {
+              db._useDatabase('_system');
+              rootDropUser();
+              rootCreateUser();
 
-           });
+            });
 
-           afterEach(() => {
-             rootDropUser();
-           });
+            afterEach(() => {
+              rootDropUser();
+            });
 
-           it('update a user', () => {
-             if (activeUsers.has(name) && systemLevel['rw'].has(name)) {
-               // User needs rw on _system
-               users.grantDatabase(testUser, '_system', 'rw');
-             } else {
-               try {
-                 users.grantDatabase(testUser, '_system', 'rw');
-                 expect(false).to.equal(true, `${name} was able to update a user with insufficient rights.`);
-               } catch (e) {
-                 print(e);
-               }
-             }
-           });
+            it('update a user', () => {
+              if (activeUsers.has(name) && systemLevel['rw'].has(name)) {
+                // User needs rw on _system
+                users.grantDatabase(testUser, '_system', 'rw');
+              } else {
+                try {
+                  users.grantDatabase(testUser, '_system', 'rw');
+                  expect(false).to.equal(true, `${name} was able to update a user with insufficient rights.`);
+                } catch (e) {
+                  print(e);
+                }
+              }
+            });
 
-         });
-       });
-
+          });
+        });
+      }
     }
   });
 });

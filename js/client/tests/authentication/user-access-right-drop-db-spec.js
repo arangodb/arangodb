@@ -70,73 +70,83 @@ describe('User Rights Management', () => {
   it('should test rights for', () => {
 
     for (let name of userSet) {
+      let canUse = false;
+      try {
+        switchUser(name);
+        canUse = true;
+      } catch (e) {
+        canUse = false;
+      }
 
-      describe(`user ${name}`, () => {
+      if (canUse) {
 
-         before(() => {
-           switchUser(name);
-         });
+        describe(`user ${name}`, () => {
 
-         describe('administrate on server level', () => {
+          before(() => {
+            switchUser(name);
+          });
 
-           const rootTestDB = (switchBack = true) => {
-             switchUser(root);
-             const allDB = db._databases();
-             for (let i of allDB) {
-               if (i === testDBName) {
-                 if (switchBack) {
-                   switchUser(name);
-                 }
-                 return true;
-               }
-             }
-             if (switchBack) {
-               switchUser(name);
-             }
-             return false;
-           };
+          describe('administrate on server level', () => {
 
-           const rootDropDB = () => {
-             if (rootTestDB(false)) {
-               db._dropDatabase(testDBName);
-             }
-             switchUser(name);
-           };
+            const rootTestDB = (switchBack = true) => {
+              switchUser('root');
+              const allDB = db._databases();
+              for (let i of allDB) {
+                if (i === testDBName) {
+                  if (switchBack) {
+                    switchUser(name);
+                  }
+                  return true;
+                }
+              }
+              if (switchBack) {
+                switchUser(name);
+              }
+              return false;
+            };
 
-           const rootCreateDB = () => {
-             if (!rootTestDB(false)) {
-               db._createDatabase(testDBName);
-             }
-             switchUser(name);
-           };
+            const rootDropDB = () => {
+              if (rootTestDB(false)) {
+                db._dropDatabase(testDBName);
+              }
+              switchUser(name);
+            };
 
-           beforeEach(() => {
-             db._useDatabase('_system');
-             rootCreateDB();
-           });
+            const rootCreateDB = () => {
+              if (!rootTestDB(false)) {
+                db._createDatabase(testDBName);
+              }
+              switchUser(name);
+            };
 
-           after(() => {
-             rootDropDB();
-           });
+            beforeEach(() => {
+              db._useDatabase('_system');
+              rootCreateDB();
+            });
 
-           it('drop database', () => {
-             if (activeUsers.has(name) && systemLevel['rw'].has(name)) {
-               // User needs rw on _system
-               db._dropDatabase(testDBName);
-               expect(rootTestDB()).to.equal(false, `DB drop reported success, but DB was still found afterwards.`);
-             } else {
-               try {
-                 db._dropDatabase(testDBName);
-               } catch (e) {
-                 print(e);
-               }
-               expect(rootTestDB()).to.equal(true, `${name} was able to drop a database with insufficient rights`);
-             }
+            after(() => {
+              rootDropDB();
+            });
 
-           });
+            it('drop database', () => {
+              if (activeUsers.has(name) && systemLevel['rw'].has(name)) {
+                // User needs rw on _system
+                db._dropDatabase(testDBName);
+                expect(rootTestDB()).to.equal(false, `DB drop reported success, but DB was still found afterwards.`);
+              } else {
+                try {
+                  db._dropDatabase(testDBName);
+                } catch (e) {
+                  print(e);
+                }
+                expect(rootTestDB()).to.equal(true, `${name} was able to drop a database with insufficient rights`);
+              }
 
-         });
-       });
+            });
+
+          });
+        });
+      }
 
     }
   });

@@ -38,6 +38,7 @@ const dbName = helper.dbName;
 const colName = helper.colName;
 const rightLevels = helper.rightLevels;
 const testDBName = `${namePrefix}DBNew`;
+const errors = require('@arangodb').errors;
 
 const userSet = helper.userSet;
 const systemLevel = helper.systemLevel;
@@ -71,75 +72,84 @@ describe('User Rights Management', () => {
   it('should test rights for', () => {
 
     for (let name of userSet) {
+      let canUse = false;
+      try {
+        switchUser(name);
+        canUse = true;
+      } catch (e) {
+        canUse = false;
+      }
 
-      describe(`user ${name}`, () => {
+      if (canUse) {
 
-         before(() => {
-           switchUser(name);
-         });
+        describe(`user ${name}`, () => {
 
-         describe('administrate on server level', () => {
+          before(() => {
+            switchUser(name);
+          });
 
-           const rootTestUser = (switchBack = true) => {
-             switchUser(root);
-             try {
-               const u = users.document(testUser);
-               if (switchBack) {
-                 switchUser(name);
-               }
-               return u !== undefined;
-             } catch (e) {
-               if (switchBack) {
-                 switchUser(name);
-               }
-               return false;
-             }
-           };
+          describe('administrate on server level', () => {
 
-           const rootDropUser = () => {
-             if (rootTestUser(false)) {
-               users.remove(testUser);
-             }
-             switchUser(name);
-           };
+            const rootTestUser = (switchBack = true) => {
+              switchUser('root');
+              try {
+                const u = users.document(testUser);
+                if (switchBack) {
+                  switchUser(name);
+                }
+                return u !== undefined;
+              } catch (e) {
+                if (switchBack) {
+                  switchUser(name);
+                }
+                return false;
+              }
+            };
+
+            const rootDropUser = () => {
+              if (rootTestUser(false)) {
+                users.remove(testUser);
+              }
+              switchUser(name);
+            };
 
             const rootCreateUser = () => {
-             if (!rootTestUser(false)) {
-               users.save(testUser, '', true);
-             }
-             switchUser(name);
-           };
+              if (!rootTestUser(false)) {
+                users.save(testUser, '', true);
+              }
+              switchUser(name);
+            };
 
 
-           beforeEach(() => {
-             db._useDatabase('_system');
-             rootDropUser();
-             rootCreateUser();
+            beforeEach(() => {
+              db._useDatabase('_system');
+              rootDropUser();
+              rootCreateUser();
 
-           });
+            });
 
-           afterEach(() => {
-             rootDropUser();
-           });
+            afterEach(() => {
+              rootDropUser();
+            });
 
-           it('drop a user', () => {
-             if (activeUsers.has(name) && systemLevel['rw'].has(name)) {
-               // User needs rw on _system
-               users.remove(testUser);
-               expect(rootTestUser()).to.equal(false, `Drop user stated success, but user still found.`);
-             } else {
-               try {
-                 users.remove(testUser);
-                 expect(rootTestUser()).to.equal(true, `${name} was able to drop a user with insufficient rights.`);
-               } catch (e) {
-                 print(e);
-               }
-             }
-           });
+            it('drop a user', () => {
+              if (activeUsers.has(name) && systemLevel['rw'].has(name)) {
+                // User needs rw on _system
+                users.remove(testUser);
+                expect(rootTestUser()).to.equal(false, `Drop user stated success, but user still found.`);
+              } else {
+                try {
+                  users.remove(testUser);
+                  expect(rootTestUser()).to.equal(true, `${name} was able to drop a user with insufficient rights.`);
+                } catch (e) {
+                  print(e);
+                }
+              }
+            });
 
-         });
-       });
-
+          });
+        });
+      }
     }
   });
 });

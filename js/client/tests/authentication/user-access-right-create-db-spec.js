@@ -70,72 +70,83 @@ describe('User Rights Management', () => {
   it('should test rights for', () => {
 
     for (let name of userSet) {
+      let canUse = false;
+      try {
+        switchUser(name);
+        canUse = true;
+      } catch (e) {
+        canUse = false;
+      }
 
-      describe(`user ${name}`, () => {
+      if (canUse) {
 
-         before(() => {
-           switchUser(name);
-         });
 
-         describe('administrate on server level', () => {
+        describe(`user ${name}`, () => {
 
-           const rootTestDB = (switchBack = true) => {
-             switchUser(root);
-             const allDB = db._databases();
-             for (let i of allDB) {
-               if (i === testDBName) {
-                 if (switchBack) {
-                   switchUser(name);
-                 }
-                 return true;
-               }
-             }
-             if (switchBack) {
-               switchUser(name);
-             }
-             return false;
-           };
+          before(() => {
+            switchUser(name);
+          });
 
-           const rootDropDB = () => {
-             if (rootTestDB(false)) {
-               db._dropDatabase(testDBName);
-             }
-             switchUser(name);
-           };
+          describe('administrate on server level', () => {
 
-           const rootCreateDB = () => {
-             if (!rootTestDB(false)) {
-               db._createDatabase(testDBName);
-             }
-             switchUser(name);
-           };
+            const rootTestDB = (switchBack = true) => {
+              switchUser('root');
+              const allDB = db._databases();
+              for (let i of allDB) {
+                if (i === testDBName) {
+                  if (switchBack) {
+                    switchUser(name);
+                  }
+                  return true;
+                }
+              }
+              if (switchBack) {
+                switchUser(name);
+              }
+              return false;
+            };
 
-           before(() => {
-             db._useDatabase('_system');
-             rootDropDB();
-           });
+            const rootDropDB = () => {
+              if (rootTestDB(false)) {
+                db._dropDatabase(testDBName);
+              }
+              switchUser(name);
+            };
 
-           after(() => {
-             rootDropDB();
-           });
+            const rootCreateDB = () => {
+              if (!rootTestDB(false)) {
+                db._createDatabase(testDBName);
+              }
+              switchUser(name);
+            };
 
-           it('create database', () => {
-             if (activeUsers.has(name) && systemLevel['rw'].has(name)) {
-             // User needs rw on _system
-               db._createDatabase(testDBName);
-               expect(rootTestDB()).to.equal(true, `DB creation reported success, but DB was not found afterwards.`);
-             } else {
-               try {
-                 db._createDatabase(testDBName);
-               } catch (e) {
-                 print(e);
-               }
-               expect(rootTestDB()).to.equal(false, `${name} was able to create a database with insufficent rights`);
-             }
-           });
+            before(() => {
+              db._useDatabase('_system');
+              rootDropDB();
+            });
 
-         });
-       });
+            after(() => {
+              rootDropDB();
+            });
+
+            it('create database', () => {
+              if (activeUsers.has(name) && systemLevel['rw'].has(name)) {
+                // User needs rw on _system
+                db._createDatabase(testDBName);
+                expect(rootTestDB()).to.equal(true, `DB creation reported success, but DB was not found afterwards.`);
+              } else {
+                try {
+                  db._createDatabase(testDBName);
+                } catch (e) {
+                  print(e);
+                }
+                expect(rootTestDB()).to.equal(false, `${name} was able to create a database with insufficent rights`);
+              }
+            });
+
+          });
+        });
+      }
 
     }
   });
