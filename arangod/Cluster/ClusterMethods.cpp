@@ -810,6 +810,121 @@ int countOnCoordinator(std::string const& dbname, std::string const& collname,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief 
+////////////////////////////////////////////////////////////////////////////////
+
+
+int selectivityEstimatesOnCoordinator(std::string const& dbname, std::string const& collname,
+                       std::vector<std::pair<std::string, double>>& result) {
+
+  // Set a few variables needed for our work:
+  ClusterInfo* ci = ClusterInfo::instance();
+  auto cc = ClusterComm::instance();
+  if (cc == nullptr) {
+    // nullptr happens only during controlled shutdown
+    return TRI_ERROR_SHUTTING_DOWN;
+  }
+
+  result.clear();
+
+  // First determine the collection ID from the name:
+  std::shared_ptr<LogicalCollection> collinfo;
+  try {
+    collinfo = ci->getCollection(dbname, collname);
+  } catch (...) {
+    return TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND;
+  }
+  TRI_ASSERT(collinfo != nullptr);
+
+  auto shards = collinfo->shardIds();
+  std::vector<ClusterCommRequest> requests;
+  std::string requestsUrl;
+  auto body = std::make_shared<std::string>();
+  for (auto const& p : *shards) {
+    requestsUrl = "/_db/" + StringUtils::urlEncode(dbname) +
+                  "/_api/index?collection=" + StringUtils::urlEncode(p.first);
+    requests.emplace_back("shard:" + p.first,
+                          arangodb::rest::RequestType::GET,
+                          requestsUrl, body);
+  }
+
+  // format of expected answer:
+  // in identifiers is a map that has keys in the format
+  // s<shardid>/<indexid> and index information as value
+
+  // {"code":200
+  // ,"error":false
+  // ,"identifiers":{ "s10004/0"    :{"fields":["_key"]
+  //                                 ,"id":"s10004/0"
+  //                                 ,"selectivityEstimate":1
+  //                                 ,"sparse":false
+  //                                 ,"type":"primary"
+  //                                 ,"unique":true
+  //                                 }
+  //                 ,"s10004/10005":{"deduplicate":true
+  //                                 ,"fields":["user"]
+  //                                 ,"id":"s10004/10005"
+  //                                 ,"selectivityEstimate":1
+  //                                 ,"sparse":true
+  //                                 ,"type":"hash"
+  //                                 ,"unique":true
+  //                                 }
+  //                 }
+  // }
+
+  size_t nrDone = 0;
+  cc->performRequests(requests, CL_DEFAULT_TIMEOUT, nrDone, Logger::QUERIES);
+
+  std::map<std::string,std::vector<double>> indexEstimates;
+
+  for (auto& req : requests) {
+    auto& res = req.result;
+    if (res.status == CL_COMM_RECEIVED) {
+      if (res.answer_code == arangodb::rest::ResponseCode::OK) {
+        std::shared_ptr<VPackBuilder> answerBuilder = ExtractAnswer(res);
+        VPackSlice answer = answerBuilder->slice();
+
+        if (answer.isObject()) {
+          // add to the total
+          for(auto const& identifier : VPackObjectIterator(answer.get("identifiers"))){
+            if(identifier.value.hasKey("selectivityEstimate")) {
+              StringRef shard_index_id(identifier.key);
+              auto split_point = std::find(shard_index_id.begin(), shard_index_id.end(),'/');
+              std::string shard(shard_index_id.begin(), split_point );
+              std::string index(split_point + 1, shard_index_id.end());
+
+              double estimate = arangodb::basics::VelocyPackHelper::getNumericValue(
+                identifier.value, "selectivityEstimate", 0.0
+              );
+              indexEstimates[index].push_back(estimate);
+            }
+          }
+        } else {
+          return TRI_ERROR_INTERNAL;
+        }
+      } else {
+        return static_cast<int>(res.answer_code);
+      }
+    } else {
+      return TRI_ERROR_CLUSTER_BACKEND_UNAVAILABLE;
+    }
+  }
+
+  auto aggregate_indexes = [](std::vector<double> vec) -> double {
+    TRI_ASSERT(!vec.empty());
+    double rv = std::accumulate(vec.begin(),vec.end(), 0.0);
+    rv /= static_cast<double>(vec.size());
+    return rv;
+  };
+
+  for (auto const& p : indexEstimates){
+    result.push_back({p.first, aggregate_indexes(p.second)});
+  }
+
+  return TRI_ERROR_NO_ERROR;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief creates one or many documents in a coordinator
 ///
 /// In case of many documents (slice is a VPackArray) it will send to each
