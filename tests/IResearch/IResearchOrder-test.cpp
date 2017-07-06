@@ -22,6 +22,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "catch.hpp"
+#include "common.h"
 #include "StorageEngineMock.h"
 
 #include "Aql/Ast.h"
@@ -160,6 +161,8 @@ struct IResearchOrderSetup {
     arangodb::EngineSelectorFeature::ENGINE = &engine;
     arangodb::application_features::ApplicationFeature* feature;
 
+    arangodb::tests::init();
+
     // AqlFeature
     arangodb::application_features::ApplicationServer::server->addFeature(
       feature = new arangodb::AqlFeature(&server)
@@ -197,12 +200,6 @@ struct IResearchOrderSetup {
 
     functions.add(valid);
     functions.add(invalid);
-
-    // initialize error messages, avoiding duplicate error message definitions
-    // required to pass assert checking for existance of error message
-    if (std::string("unknown error") == TRI_errno_string(0)) {
-      TRI_InitializeErrorMessages();
-    }
   }
 
   ~IResearchOrderSetup() {
@@ -412,4 +409,4 @@ SECTION("test_order") {
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE
-// ----------------------------------------------------------------------------
+// -----------------------------------------------------------------------------

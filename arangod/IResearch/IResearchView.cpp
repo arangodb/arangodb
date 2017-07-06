@@ -29,16 +29,19 @@
 #include "utils/directory_utils.hpp"
 #include "utils/memory.hpp"
 #include "utils/misc.hpp"
+#include "utils/utf8_path.hpp"
 
 #include "IResearchDocument.h"
 #include "IResearchLink.h"
 
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/AstNode.h"
 #include "Aql/SortCondition.h"
 #include "Basics/Result.h"
 #include "Basics/files.h"
 #include "Logger/Logger.h"
 #include "Logger/LogMacros.h"
+#include "RestServer/DatabasePathFeature.h"
 #include "Transaction/StandaloneContext.h"
 #include "Utils/CollectionNameResolver.h"
 #include "Transaction/UserTransaction.h"
@@ -537,6 +540,41 @@ bool UnorderedViewIterator::next(TokenCallback const& callback, size_t limit) {
 void UnorderedViewIterator::reset() {
   _state._itr.reset();
   _state._readerOffset = 0;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief construct an absolute path from the IResearchViewMeta configuration
+////////////////////////////////////////////////////////////////////////////////
+bool appendAbsolutePersistedDataPath(
+    std::string& buf,
+    arangodb::iresearch::IResearchViewMeta const& meta
+) {
+  auto& path = meta._dataPath;
+
+  if (TRI_PathIsAbsolute(path)) {
+    buf = path;
+
+    return true;
+  }
+
+  auto* feature = arangodb::application_features::ApplicationServer::getFeature<arangodb::DatabasePathFeature>("DatabasePath");
+
+  if (!feature) {
+    return false;
+  }
+
+  // get base path from DatabaseServerFeature (similar to MMFilesEngine)
+  irs::utf8_path absPath(feature->directory());
+  static std::string subPath("databases");
+
+  absPath/subPath;
+  absPath/(path.empty()
+           ? (arangodb::iresearch::IResearchView::type() + "-" + std::to_string(meta._iid))
+           : path
+          );
+  buf = absPath.utf8();
+
+  return true;
 }
 
 arangodb::Result createPersistedDataDirectory(
@@ -1836,12 +1874,14 @@ void IResearchView::open() {
     return; // view already open
   }
 
+  std::string absoluteDataPath;
+
   try {
     auto format = irs::formats::get(IRESEARCH_STORE_FORMAT);
 
-    if (format) {
+    if (format && appendAbsolutePersistedDataPath(absoluteDataPath, _meta)) {
       _storePersisted._directory =
-        irs::directory::make<irs::fs_directory>(_meta._dataPath);
+        irs::directory::make<irs::fs_directory>(absoluteDataPath);
 
       if (_storePersisted._directory) {
         // create writer before reader to ensure data directory is present
@@ -1867,8 +1907,8 @@ void IResearchView::open() {
     throw;
   }
 
-  LOG_TOPIC(WARN, Logger::FIXME) << "failed to open iResearch view '" << name() << "'";
-  throw std::runtime_error(std::string("failed to open iResearch view '") + name() + "'");
+  LOG_TOPIC(WARN, Logger::FIXME) << "failed to open iResearch view '" << name() << "' at: " << absoluteDataPath;
+  throw std::runtime_error(std::string("failed to open iResearch view '") + name() + "' at: " + absoluteDataPath);
 }
 
 int IResearchView::remove(
@@ -2141,10 +2181,19 @@ arangodb::Result IResearchView::updateProperties(
 
     // copy directory to new location
     if (mask._dataPath) {
+      std::string absoluteDataPath;
+
+      if (!appendAbsolutePersistedDataPath(absoluteDataPath, meta)) {
+        return arangodb::Result(
+          TRI_ERROR_BAD_PARAMETER,
+          std::string("error generating absolute path for iResearch view '") + name() + "' data path '" + meta._dataPath + "'"
+        );
+      }
+
       auto res = createPersistedDataDirectory(
         storePersisted._directory,
         storePersisted._writer,
-        meta._dataPath,
+        absoluteDataPath,
         _storePersisted._reader, // reader from the original persisted data store
         name()
       );

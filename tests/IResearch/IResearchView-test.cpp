@@ -22,21 +22,26 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "catch.hpp"
+#include "common.h"
 #include "StorageEngineMock.h"
 
 #include "utils/locale_utils.hpp"
 #include "utils/log.hpp"
 #include "utils/utf8_path.hpp"
 
+#include "ApplicationFeatures/JemallocFeature.h"
 #include "Aql/AstNode.h"
 #include "Aql/SortCondition.h"
+#include "Basics/ArangoGlobalContext.h"
 #include "Basics/files.h"
 #include "GeneralServer/AuthenticationFeature.h"
 #include "IResearch/IResearchLinkMeta.h"
 #include "IResearch/IResearchView.h"
 #include "Logger/Logger.h"
 #include "Logger/LogTopic.h"
+#include "Random/RandomFeature.h"
 #include "RestServer/DatabaseFeature.h"
+#include "RestServer/DatabasePathFeature.h"
 #include "RestServer/FeatureCacheFeature.h"
 #include "RestServer/QueryRegistryFeature.h"
 #include "RestServer/ViewTypesFeature.h"
@@ -64,14 +69,17 @@ struct IResearchViewSetup {
   IResearchViewSetup(): server(nullptr, nullptr) {
     arangodb::EngineSelectorFeature::ENGINE = &engine;
 
+    arangodb::tests::init();
+
     // setup required application features
     features.push_back(std::make_pair(new arangodb::V8DealerFeature(arangodb::application_features::ApplicationServer::server), false));
     features.push_back(std::make_pair(new arangodb::ViewTypesFeature(arangodb::application_features::ApplicationServer::server), true));
     features.push_back(std::make_pair(new arangodb::QueryRegistryFeature(&server), false));
     features.push_back(std::make_pair(new arangodb::FeatureCacheFeature(arangodb::application_features::ApplicationServer::server), true));
+    features.push_back(std::make_pair(new arangodb::RandomFeature(&server), false)); // required by AuthenticationFeature
     features.push_back(std::make_pair(new arangodb::AuthenticationFeature(arangodb::application_features::ApplicationServer::server), true));
     features.push_back(std::make_pair(new arangodb::DatabaseFeature(arangodb::application_features::ApplicationServer::server), false));
-    
+
     arangodb::ViewTypesFeature::registerViewImplementation(
       arangodb::iresearch::IResearchView::type(),
       arangodb::iresearch::IResearchView::make
@@ -80,11 +88,11 @@ struct IResearchViewSetup {
     for (auto& f : features) {
       arangodb::application_features::ApplicationServer::server->addFeature(f.first);
     }
-      
+
     for (auto& f : features) {
       f.first->prepare();
     }
-    
+
     for (auto& f : features) {
       if (f.second) {
         f.first->start();
@@ -115,18 +123,18 @@ struct IResearchViewSetup {
     arangodb::LogTopic::setLogLevel(arangodb::Logger::FIXME.name(), arangodb::LogLevel::DEFAULT);
     arangodb::application_features::ApplicationServer::server = nullptr;
     arangodb::EngineSelectorFeature::ENGINE = nullptr;
-   
+
     // destroy application features 
     for (auto& f : features) {
       if (f.second) {
         f.first->stop();
       }
     }
-    
+
     for (auto& f : features) {
       f.first->unprepare();
     }
-    
+
     arangodb::FeatureCacheFeature::reset();
   }
 };
@@ -299,19 +307,71 @@ SECTION("test_move_datapath") {
 }
 
 SECTION("test_open") {
-  std::string dataPath = (irs::utf8_path()/s.testFilesystemPath/std::string("deleteme")).utf8();
-  auto namedJson = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testView\" }");
-  auto json = arangodb::velocypack::Parser::fromJson("{ \
-    \"name\": \"testView\", \
-    \"dataPath\": \"" + arangodb::basics::StringUtils::replace(dataPath, "\\", "/") + "\" \
-  }");
+  // absolute data path
+  {
+    std::string dataPath = (irs::utf8_path()/s.testFilesystemPath/std::string("deleteme")).utf8();
+    auto namedJson = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testView\" }");
+    auto json = arangodb::velocypack::Parser::fromJson("{ \
+      \"name\": \"testView\", \
+      \"dataPath\": \"" + arangodb::basics::StringUtils::replace(dataPath, "\\", "/") + "\" \
+    }");
 
-  CHECK((false == TRI_IsDirectory(dataPath.c_str())));
-  auto view = arangodb::iresearch::IResearchView::make(nullptr, json->slice(), false);
-  CHECK(false == (!view));
-  CHECK((false == TRI_IsDirectory(dataPath.c_str())));
-  view->open();
-  CHECK((true == TRI_IsDirectory(dataPath.c_str())));
+    CHECK((false == TRI_IsDirectory(dataPath.c_str())));
+    auto view = arangodb::iresearch::IResearchView::make(nullptr, json->slice(), false);
+    CHECK(false == (!view));
+    CHECK((false == TRI_IsDirectory(dataPath.c_str())));
+    view->open();
+    CHECK((true == TRI_IsDirectory(dataPath.c_str())));
+  }
+
+  auto* dbPathFeature = new arangodb::DatabasePathFeature(&s.server);
+  auto* jemallocFeature = new arangodb::JemallocFeature(&s.server); // required for DatabasePathFeature
+
+  arangodb::application_features::ApplicationServer::server->addFeature(dbPathFeature);
+  arangodb::application_features::ApplicationServer::server->addFeature(jemallocFeature);
+
+  // relative data path
+  {
+    arangodb::options::ProgramOptions options("", "", "", nullptr);
+
+    options.addPositional((irs::utf8_path()/s.testFilesystemPath).utf8());
+    dbPathFeature->validateOptions(std::shared_ptr<decltype(options)>(&options, [](decltype(options)*){})); // set data directory
+
+    std::string dataPath = (irs::utf8_path()/s.testFilesystemPath/std::string("databases")/std::string("deleteme")).utf8();
+    auto namedJson = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testView\" }");
+    auto json = arangodb::velocypack::Parser::fromJson("{ \
+      \"name\": \"testView\", \
+      \"dataPath\": \"deleteme\" \
+    }");
+
+    CHECK((false == TRI_IsDirectory(dataPath.c_str())));
+    auto view = arangodb::iresearch::IResearchView::make(nullptr, json->slice(), false);
+    CHECK(false == (!view));
+    CHECK((false == TRI_IsDirectory(dataPath.c_str())));
+    view->open();
+    CHECK((true == TRI_IsDirectory(dataPath.c_str())));
+  }
+
+  // default data path
+  {
+    arangodb::options::ProgramOptions options("", "", "", nullptr);
+
+    options.addPositional((irs::utf8_path()/s.testFilesystemPath).utf8());
+    dbPathFeature->validateOptions(std::shared_ptr<decltype(options)>(&options, [](decltype(options)*){})); // set data directory
+
+    std::string dataPath = (irs::utf8_path()/s.testFilesystemPath/std::string("databases")/std::string("iresearch-0")).utf8();
+    auto namedJson = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testView\" }");
+    auto json = arangodb::velocypack::Parser::fromJson("{ \
+      \"name\": \"testView\" \
+    }");
+
+    CHECK((false == TRI_IsDirectory(dataPath.c_str())));
+    auto view = arangodb::iresearch::IResearchView::make(nullptr, json->slice(), false);
+    CHECK(false == (!view));
+    CHECK((false == TRI_IsDirectory(dataPath.c_str())));
+    view->open();
+    CHECK((true == TRI_IsDirectory(dataPath.c_str())));
+  }
 }
 
 SECTION("test_query") {
