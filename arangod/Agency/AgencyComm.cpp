@@ -1335,7 +1335,7 @@ AgencyCommResult AgencyComm::sendWithFailover(
   while (true) {  // will be left by timeout eventually
 
     // Raise waits to a maximum 10 seconds
-    //auto waitUntil = std::chrono::steady_clock::now() + waitInterval;
+    auto waitUntil = std::chrono::steady_clock::now() + waitInterval;
     
     // timeout exit startegy
     if (std::chrono::steady_clock::now() < timeOut) {
@@ -1352,7 +1352,7 @@ AgencyCommResult AgencyComm::sendWithFailover(
           return result;
         }
 
-        //std::this_thread::sleep_until(waitUntil);
+        std::this_thread::sleep_until(waitUntil);
         if (waitInterval.count() == 0.0) {
           waitInterval = std::chrono::duration<double>(0.25);
         } else if (waitInterval.count() < 5.0) { 
