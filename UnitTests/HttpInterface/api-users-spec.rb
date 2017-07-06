@@ -554,5 +554,35 @@ describe ArangoDB do
       end
     end
 
+################################################################################
+## operations on non-existing users (that had existed before...)
+################################################################################
+
+    it "operate on non-existing users that existed before" do
+      doc = ArangoDB.log_delete("#{prefix}-nonexist", api + "/users-1") 
+      doc.code.should eq(404)
+      doc.parsed_response['error'].should eq(true)
+      doc.parsed_response['code'].should eq(404)
+      doc.parsed_response['errorNum'].should eq(1703)
+        
+      doc = ArangoDB.log_put("#{prefix}-non-exist", api + "/users-1") 
+      doc.code.should eq(404)
+      doc.parsed_response['error'].should eq(true)
+      doc.parsed_response['code'].should eq(404)
+      doc.parsed_response['errorNum'].should eq(1703)
+      
+      doc = ArangoDB.log_patch("#{prefix}-non-exist", api + "/users-1") 
+      doc.code.should eq(404)
+      doc.parsed_response['error'].should eq(true)
+      doc.parsed_response['code'].should eq(404)
+      doc.parsed_response['errorNum'].should eq(1703)
+
+      doc = ArangoDB.log_get("#{prefix}-nonexist", api + "/users-1")
+      doc.code.should eq(404)
+      doc.parsed_response['error'].should eq(true)
+      doc.parsed_response['code'].should eq(404)
+      doc.parsed_response['errorNum'].should eq(1703)
+    end
+
   end
 end
