@@ -136,7 +136,13 @@ std::string Agent::endpoint() const {
 /// Handle voting
 priv_rpc_ret_t Agent::requestVote(
     term_t termOfPeer, std::string const& id, index_t lastLogIndex,
-    index_t lastLogTerm, query_t const& query) {
+    index_t lastLogTerm, query_t const& query, int64_t timeoutMult) {
+
+  if (timeoutMult != -1 && timeoutMult != _config._timeoutMult) {
+    adjustTimeoutMult(timeoutMult);
+    LOG_TOPIC(WARN, Logger::AGENCY) << "Voter: setting timeout multiplier to "
+      << timeoutMult << " for next term.";
+  }
 
   bool doIVote = _constituent.vote(termOfPeer, id, lastLogIndex, lastLogTerm);
   return priv_rpc_ret_t(doIVote, this->term());
@@ -145,6 +151,16 @@ priv_rpc_ret_t Agent::requestVote(
 /// Get copy of momentary configuration
 config_t const Agent::config() const {
   return _config;
+}
+
+/// Adjust timeoutMult:
+void Agent::adjustTimeoutMult(int64_t timeoutMult) {
+  _config.setTimeoutMult(timeoutMult);
+}
+
+/// Get timeoutMult:
+int64_t Agent::getTimeoutMult() const {
+  return _config.timeoutMult();
 }
 
 /// Leader's id
@@ -213,7 +229,13 @@ void Agent::reportIn(std::string const& peerId, index_t index, size_t toLog) {
     MUTEX_LOCKER(ioLocker, _ioLock);
 
     // Update last acknowledged answer
-    _lastAcked[peerId] = system_clock::now();
+    auto t = system_clock::now();
+    std::chrono::duration<double> d = t - _lastAcked[peerId];
+    if (peerId != id() && d.count() > _config._minPing * _config._timeoutMult) {
+      LOG_TOPIC(WARN, Logger::AGENCY) << "Last confirmation from peer "
+        << peerId << " was received more than minPing ago: " << d.count();
+    }
+    _lastAcked[peerId] = t;
 
     if (index > _confirmed[peerId]) {  // progress this follower?
       _confirmed[peerId] = index;
@@ -439,9 +461,21 @@ void Agent::sendAppendEntriesRPC() {
 
       if (highest == _lastHighest[followerId] &&
           m.count() < 0.25 * _config.minPing()) {
+        // I intentionally left here _config.minPing() without the
+        // _config.timeoutMult(), if things are getting tight on the
+        // system, we still send out empty heartbeats every 1/4 minpings,
+        // even if we increase tolerance by a multiplier.
         continue;
       }
 
+      if (m.count() > _config.minPing() &&
+          _lastSent[followerId].time_since_epoch().count() != 0) {
+        LOG_TOPIC(WARN, Logger::AGENCY) << "Oops, sent out last heartbeat "
+          << "to follower " << followerId << " more than minPing ago: " 
+          << m.count() << " lastAcked: "
+          << timepointToString(_lastAcked[followerId])
+          << " lastSent: " << timepointToString(_lastSent[followerId]);
+      }
       index_t lowest = unconfirmed.front().index;
 
       bool needSnapshot = false;
@@ -483,7 +517,8 @@ void Agent::sendAppendEntriesRPC() {
       }
       path << "/_api/agency_priv/appendEntries?term=" << t << "&leaderId="
            << id() << "&prevLogIndex=" << prevLogIndex
-           << "&prevLogTerm=" << prevLogTerm << "&leaderCommit=" << commitIndex;
+           << "&prevLogTerm=" << prevLogTerm << "&leaderCommit=" << commitIndex
+           << "&senderTimeStamp=" << std::llround(readSystemClock() * 1000);
       
       size_t toLog = 0;
       // Body
@@ -542,7 +577,8 @@ void Agent::sendAppendEntriesRPC() {
         std::make_shared<std::string>(builder.toJson()), headerFields,
         std::make_shared<AgentCallback>(
           this, followerId, (toLog) ? highest : 0, toLog),
-        std::max(1.0e-3 * toLog * dt.count(), _config.minPing()), true);
+        std::max(1.0e-3 * toLog * dt.count(), 
+                 _config.minPing() * _config.timeoutMult()), true);
 
       // _lastSent, _lastHighest: local and single threaded access
       _lastSent[followerId]        = system_clock::now();
@@ -715,7 +751,7 @@ bool Agent::challengeLeadership() {
   
   for (auto const& i : _lastAcked) {
     duration<double> m = system_clock::now() - i.second;
-    if (0.9 * _config.minPing() > m.count()) {
+    if (0.9 * _config.minPing() * _config.timeoutMult() > m.count()) {
       ++good;
     }
   }
@@ -1021,6 +1057,8 @@ void Agent::run() {
 
       // Don't panic
       _appendCV.wait(static_cast<uint64_t>(4.e3*_config.minPing()));
+      // Again, we leave minPing here without the multiplier to run this
+      // loop often enough in cases of high load.
       
       // Detect faulty agent and replace
       // if possible and only if not already activating
@@ -1090,6 +1128,7 @@ void Agent::persistConfiguration(term_t t) {
           agency->add("active", _config.activeToBuilder()->slice());
           agency->add("pool", _config.poolToBuilder()->slice());
           agency->add("size", VPackValue(size()));
+          agency->add("timeoutMult", VPackValue(_config.timeoutMult()));
         }}}}
   
   // In case we've lost leadership, no harm will arise as the failed write
@@ -1259,6 +1298,7 @@ void Agent::notifyInactive() const {
     out.add("pool", _config.poolToBuilder()->slice());
     out.add("min ping", VPackValue(_config.minPing()));
     out.add("max ping", VPackValue(_config.maxPing())); }
+    out.add("timeoutMult", VPackValue(_config.timeoutMult()));
 
   for (auto const& p : pool) {
     if (p.first != id()) {
@@ -1345,6 +1385,9 @@ void Agent::notify(query_t const& message) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_AGENCY_INFORM_MUST_CONTAIN_POOL);
   }
   if (!slice.hasKey("max ping") || !slice.get("max ping").isNumber()) {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_AGENCY_INFORM_MUST_CONTAIN_POOL);
+  }
+  if (!slice.hasKey("timeoutMult") || !slice.get("timeoutMult").isInteger()) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_AGENCY_INFORM_MUST_CONTAIN_POOL);
   }
 
