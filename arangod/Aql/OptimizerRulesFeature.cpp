@@ -156,7 +156,7 @@ void OptimizerRulesFeature::addRules() {
                OptimizerRule::optimizeTraversalsRule_pass6, DoesNotCreateAdditionalPlans, CanBeDisabled);
   
   // optimize unneccessary filters already applied by the traversal
-  registerRule("remove-filters-covered-by-traversal", removeFiltersCoveredByTraversal,
+  registerRule("remove-filter-covered-by-traversal", removeFiltersCoveredByTraversal,
                OptimizerRule::removeFiltersCoveredByTraversal_pass6, DoesNotCreateAdditionalPlans, CanBeDisabled);
   
   // optimize unneccessary filters already applied by the traversal. Only ever does something if previous
