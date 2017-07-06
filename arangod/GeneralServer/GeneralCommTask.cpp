@@ -30,6 +30,7 @@
 #include "Basics/MutexLocker.h"
 #include "Basics/StaticStrings.h"
 #include "Cluster/ServerState.h"
+#include "GeneralServer/AuthenticationFeature.h"
 #include "GeneralServer/AsyncJobManager.h"
 #include "GeneralServer/GeneralServer.h"
 #include "GeneralServer/GeneralServerFeature.h"
@@ -43,6 +44,7 @@
 #include "Scheduler/Scheduler.h"
 #include "Scheduler/SchedulerFeature.h"
 #include "Scheduler/Socket.h"
+#include "Utils/Events.h"
 
 using namespace arangodb;
 using namespace arangodb::basics;
@@ -59,7 +61,12 @@ GeneralCommTask::GeneralCommTask(EventLoop loop, GeneralServer* server,
     : Task(loop, "GeneralCommTask"),
       SocketTask(loop, std::move(socket), std::move(info), keepAliveTimeout,
                  skipSocketInit),
-      _server(server) {}
+      _server(server),
+      _authentication(nullptr) {
+  _authentication = application_features::ApplicationServer::getFeature<
+  AuthenticationFeature>("Authentication");
+  TRI_ASSERT(_authentication != nullptr);
+}
 
 GeneralCommTask::~GeneralCommTask() {
   for (auto& statistics : _statisticsMap) {
@@ -340,4 +347,114 @@ bool GeneralCommTask::handleRequestAsync(std::shared_ptr<RestHandler> handler,
       [self, this](std::shared_ptr<RestHandler> h) { h->asyncRunEngine(); });
 
   return SchedulerFeature::SCHEDULER->queue(std::move(job));
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief checks the access rights for a specified path
+////////////////////////////////////////////////////////////////////////////////
+
+rest::ResponseCode GeneralCommTask::canAccessPath(GeneralRequest* request) const {
+  if (!_authentication->isActive()) {
+    // no authentication required at all
+    return rest::ResponseCode::OK;
+  }
+  
+  std::string const& path = request->requestPath();
+  rest::ResponseCode result = request->authorized() ?rest::ResponseCode::OK :
+    rest::ResponseCode::UNAUTHORIZED;
+  
+  // mop: inside authenticateRequest() request->user will be populated
+  bool forceOpen = false;  
+  if (request->authorized() && !request->user().empty()) {
+    auto authContext = _authentication->authInfo()->getAuthContext(
+                            request->user(), request->databaseName());
+    request->setExecContext(new ExecContext(request->user(),
+                                            request->databaseName(), authContext));
+  }
+  
+  if (!request->authorized()) {
+    
+#ifdef ARANGODB_HAVE_DOMAIN_SOCKETS
+    // check if we need to run authentication for this type of
+    // endpoint
+    ConnectionInfo const& ci = request->connectionInfo();
+    
+    if (ci.endpointType == Endpoint::DomainType::UNIX &&
+        !_authentication->authenticationUnixSockets()) {
+      // no authentication required for unix domain socket connections
+      forceOpen = true;
+      result = rest::ResponseCode::OK;
+    }
+#endif
+    
+    if (result != rest::ResponseCode::OK &&
+        _authentication->authenticationSystemOnly()) {
+      // authentication required, but only for /_api, /_admin etc.
+      
+      if (!path.empty()) {
+        // check if path starts with /_
+        if (path[0] != '/') {
+          forceOpen = true;
+          result = rest::ResponseCode::OK;
+        }
+        
+        // path begins with /
+        if (path.size() > 1 && path[1] != '_') {
+          forceOpen = true;
+          result = rest::ResponseCode::OK;
+        }
+      }
+    }
+    
+    if (result != rest::ResponseCode::OK) {
+      if (StringUtils::isPrefix(path, "/_open/") ||
+          StringUtils::isPrefix(path, "/_admin/aardvark/") || path == "/") {
+        // mop: these paths are always callable...they will be able to check
+        // req.user when it could be validated
+        result = rest::ResponseCode::OK;
+        forceOpen = true;
+      }
+    }
+  }
+  
+  
+  if (result != rest::ResponseCode::OK) {
+    return result;
+  }
+  
+  std::string const& username = request->user();
+  // mop: internal request => no username present
+  if (username.empty()) {
+    // mop: set user to root so that the foxx stuff
+    // knows about us
+    return rest::ResponseCode::OK;
+  }
+  
+  // check that we are allowed to see the database
+  if (!forceOpen) {
+    // check for GET /_db/_system/_api/user/USERNAME/database
+    std::string pathWithUser = std::string("/_api/user/") + username;
+    
+    if (request->requestType() == RequestType::GET &&
+        (StringUtils::isPrefix(path, pathWithUser) ||
+         (StringUtils::isPrefix(path, "/_admin/aardvark/"))) ) {
+      request->setExecContext(nullptr);
+      return rest::ResponseCode::OK;
+    }
+    
+    if (!StringUtils::isPrefix(path, "/_api/user/")) {
+      std::string const& dbname = request->databaseName();
+      if (!username.empty() || !dbname.empty()) {
+        AuthLevel level =
+        _authentication->canUseDatabase(username, dbname);
+        
+        if (level == AuthLevel::NONE) {
+          events::NotAuthorized(request);
+          result = rest::ResponseCode::UNAUTHORIZED;
+        }
+      }
+    }
+  }
+  
+  return result;
 }

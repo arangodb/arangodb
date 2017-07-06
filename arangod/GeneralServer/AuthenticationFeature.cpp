@@ -23,6 +23,7 @@
 #include "AuthenticationFeature.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
+#include "GeneralServer/AuthenticationHandler.h"
 #include "Logger/Logger.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "Random/RandomGenerator.h"
@@ -39,6 +40,7 @@ using namespace arangodb::options;
 AuthenticationFeature::AuthenticationFeature(
     application_features::ApplicationServer* server)
     : ApplicationFeature(server, "Authentication"),
+      _authInfo(nullptr),
       _authenticationUnixSockets(true),
       _authenticationSystemOnly(true),
       _jwtSecretProgramOption(""),
@@ -47,6 +49,13 @@ AuthenticationFeature::AuthenticationFeature(
   setOptional(true);
   requiresElevatedPrivileges(false);
   startsAfter("Random");
+#ifdef USE_ENTERPRISE
+  startsAfter("Ldap");
+#endif
+}
+
+AuthenticationFeature::~AuthenticationFeature() {
+  delete _authInfo;
 }
 
 void AuthenticationFeature::collectOptions(
@@ -108,6 +117,28 @@ std::string AuthenticationFeature::generateNewJwtSecret() {
   return jwtSecret;
 }
 
+void AuthenticationFeature::prepare() {
+  if (isEnabled()) {
+    std::unique_ptr<AuthenticationHandler> handler;
+#if USE_ENTERPRISE
+    if (application_features::ApplicationServer::getFeature<LdapFeature>("Ldap")->isEnabled()) {
+      handler.reset(new LdapAuthenticationHandler());
+    } else {
+      handler.reset(new DefaultAuthenticationHandler());
+    }
+#else
+    handler.reset(new DefaultAuthenticationHandler());
+#endif
+    _authInfo = new AuthInfo(std::move(handler));
+    
+    std::string jwtSecret = _jwtSecretProgramOption;
+    if (jwtSecret.empty()) {
+      jwtSecret = generateNewJwtSecret();
+    }
+    authInfo()->setJwtSecret(jwtSecret);
+  }
+}
+
 void AuthenticationFeature::start() {
   std::ostringstream out;
 
@@ -116,7 +147,7 @@ void AuthenticationFeature::start() {
   if (isEnabled()) {
     auto queryRegistryFeature =
       application_features::ApplicationServer::getFeature<QueryRegistryFeature>("QueryRegistry");
-    authInfo()->setQueryRegistry(queryRegistryFeature->queryRegistry());
+    _authInfo->setQueryRegistry(queryRegistryFeature->queryRegistry());
 
     if (_active && _authenticationSystemOnly) {
       out << " (system only)";
@@ -151,30 +182,12 @@ AuthLevel AuthenticationFeature::canUseCollection(std::string const& username,
 }
 
 AuthInfo* AuthenticationFeature::authInfo() {
-  return &_authInfo;
+  return _authInfo;
 }
 
 void AuthenticationFeature::unprepare() {
 }
 
-void AuthenticationFeature::prepare() {
-  if (isEnabled()) {
-    std::string jwtSecret = _jwtSecretProgramOption;
-    if (jwtSecret.empty()) {
-      jwtSecret = generateNewJwtSecret();
-    }
-    authInfo()->setJwtSecret(jwtSecret);
-  }
-}
-
 void AuthenticationFeature::stop() {
 }
 
-AuthenticationHandler* AuthenticationFeature::getHandler() {
-#if USE_ENTERPRISE
-  if (application_features::ApplicationServer::getFeature<LdapFeature>("Ldap")->isEnabled()) {
-    return new LdapAuthenticationHandler();
-  }
-#endif
-  return new DefaultAuthenticationHandler();
-}

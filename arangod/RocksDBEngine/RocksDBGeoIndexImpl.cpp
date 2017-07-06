@@ -59,7 +59,8 @@
 #define GeoIndexFIXEDPOINTS 1
 #endif
 
-namespace arangodb { namespace rocksdbengine {
+namespace arangodb {
+namespace rocksdbengine {
 
 /* =================================================== */
 /*                GeoIndexFixed structure.             */
@@ -129,13 +130,13 @@ typedef struct {
 typedef struct {
   uint64_t objectId;   /* Rocksdb Index objectId    */
   GeoIndexFixed fixed; /* fixed point data          */
-  int nextFreePot;           /* pots allocated      */
-  int nextFreeSlot;          /* slots allocated     */
-  RocksDBMethods *rocksMethods;
-  //GeoPot* ypots;       /* the pots themselves     */// gone
-  //GeoCoordinate* gxc;  /* the slots themselves    */// gone
-  //size_t _memoryUsed;  /* the amount of memory currently used */// gone
-}  GeoIx;
+  int nextFreePot;     /* pots allocated      */
+  int nextFreeSlot;    /* slots allocated     */
+  RocksDBMethods* rocksMethods;
+  // GeoPot* ypots;       /* the pots themselves     */// gone
+  // GeoCoordinate* gxc;  /* the slots themselves    */// gone
+  // size_t _memoryUsed;  /* the amount of memory currently used */// gone
+} GeoIx;
 /* =================================================== */
 /*              GeoDetailedPoint  structure            */
 /* The routine GeoMkDetail is given a point - really   */
@@ -175,7 +176,7 @@ typedef struct {
 /* The routine GeoPotJunk is used to test this,        */
 /* by comparing the distances in the pot the this array*/
 /* =================================================== */
-typedef struct {// stays
+typedef struct {  // stays
   GeoIx* gix;
   GeoCoordinate* gc;
   double x;
@@ -255,22 +256,24 @@ typedef struct {
   int pathlength;
   int path[50];
 } GeoPath;
-}}
+}
+}
 
 // must be included here after struct definition
 #include <RocksDBEngine/RocksDBCommon.h>
-#include <RocksDBEngine/RocksDBKey.h>
 #include <RocksDBEngine/RocksDBCounterManager.h>
 #include <RocksDBEngine/RocksDBEngine.h>
 #include <RocksDBEngine/RocksDBGeoIndexImpl.h>
+#include <RocksDBEngine/RocksDBKey.h>
 #include <StorageEngine/EngineSelectorFeature.h>
 
-namespace arangodb { namespace rocksdbengine {
+namespace arangodb {
+namespace rocksdbengine {
 
-static GeoCoordinate& fromPersistent(char const* in, GeoCoordinate& out){
+static GeoCoordinate& fromPersistent(char const* in, GeoCoordinate& out) {
   const char* start = in;
 
-  //convert latituide and longitute to uint64 for network transfer / storage
+  // convert latituide and longitute to uint64 for network transfer / storage
   uint64_t fromStorage = rocksutils::fromPersistent<uint64_t>(start);
   out.latitude = rocksutils::intToDouble(fromStorage);
 
@@ -282,7 +285,7 @@ static GeoCoordinate& fromPersistent(char const* in, GeoCoordinate& out){
   return out;
 }
 
-static void toPersistent(GeoCoordinate& in, char* out){
+static void toPersistent(GeoCoordinate& in, char* out) {
   char* start = out;
 
   uint64_t toStorage = rocksutils::doubleToInt(in.latitude);
@@ -294,14 +297,14 @@ static void toPersistent(GeoCoordinate& in, char* out){
   rocksutils::toPersistent(in.data, start);
 }
 
-static GeoPot& fromPersistent(char const* in, GeoPot& out){
+static GeoPot& fromPersistent(char const* in, GeoPot& out) {
   const char* start = in;
 
   out.LorLeaf = rocksutils::fromPersistent<int32_t>(start);
   out.RorPoints = rocksutils::fromPersistent<int32_t>(start);
   out.middle = rocksutils::fromPersistent<GeoString>(start);
 
-  for(std::size_t i = 0; i < GeoIndexFIXEDPOINTS; i++){
+  for (std::size_t i = 0; i < GeoIndexFIXEDPOINTS; i++) {
     out.maxdist[i] = rocksutils::fromPersistent<GeoFix>(start);
   }
 
@@ -309,21 +312,21 @@ static GeoPot& fromPersistent(char const* in, GeoPot& out){
   out.end = rocksutils::fromPersistent<GeoString>(start);
   out.level = rocksutils::fromPersistent<int32_t>(start);
 
-  for(std::size_t i = 0; i < GeoIndexFIXEDPOINTS; i++){
+  for (std::size_t i = 0; i < GeoIndexFIXEDPOINTS; i++) {
     out.points[i] = rocksutils::fromPersistent<int32_t>(start);
   }
 
   return out;
 }
 
-static void toPersistent(GeoPot const& in, char* out){
+static void toPersistent(GeoPot const& in, char* out) {
   char* start = out;
 
   rocksutils::toPersistent(in.LorLeaf, start);
   rocksutils::toPersistent(in.RorPoints, start);
   rocksutils::toPersistent(in.middle, start);
 
-  for(std::size_t i = 0; i< GeoIndexFIXEDPOINTS; i++){
+  for (std::size_t i = 0; i < GeoIndexFIXEDPOINTS; i++) {
     rocksutils::toPersistent(in.maxdist[i], start);
   }
 
@@ -331,7 +334,7 @@ static void toPersistent(GeoPot const& in, char* out){
   rocksutils::toPersistent(in.end, start);
   rocksutils::toPersistent(in.level, start);
 
-  for(std::size_t i = 0; i< GeoIndexFIXEDPOINTS; i++){
+  for (std::size_t i = 0; i < GeoIndexFIXEDPOINTS; i++) {
     rocksutils::toPersistent(in.points[i], start);
   }
 }
@@ -348,60 +351,57 @@ void GeoIndex_clearRocks(GeoIdx* gi) {
   gix->rocksMethods = nullptr;
 }
 
-inline void RocksRead(GeoIx * gix, RocksDBKey const& key, std::string *val) {
-  arangodb::Result r = gix->rocksMethods->Get(RocksDBColumnFamily::geo(), key, val);
+inline void RocksRead(GeoIx* gix, RocksDBKey const& key, std::string* val) {
+  arangodb::Result r =
+      gix->rocksMethods->Get(RocksDBColumnFamily::geo(), key, val);
   if (!r.ok()) {
     THROW_ARANGO_EXCEPTION_MESSAGE(r.errorNumber(), r.errorMessage());
   }
 }
 
-inline void RocksWrite(GeoIx * gix,
-                       RocksDBKey const& key,
+inline void RocksWrite(GeoIx* gix, RocksDBKey const& key,
                        rocksdb::Slice const& slice) {
   // only true when called from GeoIndex_new
   if (gix->rocksMethods == nullptr) {
-    rocksdb::TransactionDB *db = rocksutils::globalRocksDB();
+    rocksdb::TransactionDB* db = rocksutils::globalRocksDB();
     rocksdb::WriteOptions wo;
-    wo.sync = true;
-    rocksdb::Status s = db->Put(wo, RocksDBColumnFamily::geo(), key.string(), slice);
+    rocksdb::Status s =
+        db->Put(wo, RocksDBColumnFamily::geo(), key.string(), slice);
     if (!s.ok()) {
       arangodb::Result r = rocksutils::convertStatus(s, rocksutils::index);
       THROW_ARANGO_EXCEPTION_MESSAGE(r.errorNumber(), r.errorMessage());
     }
   } else {
-    arangodb::Result r = gix->rocksMethods->Put(RocksDBColumnFamily::geo(),
-                                                key, slice, rocksutils::index);
+    arangodb::Result r = gix->rocksMethods->Put(RocksDBColumnFamily::geo(), key,
+                                                slice, rocksutils::index);
     if (!r.ok()) {
       THROW_ARANGO_EXCEPTION_MESSAGE(r.errorNumber(), r.errorMessage());
     }
   }
 }
-  
+
 inline void RocksDelete(GeoIx* gix, RocksDBKey const& key) {
-  arangodb::Result r = gix->rocksMethods->Delete(RocksDBColumnFamily::geo(),
-                                                 key);
+  arangodb::Result r =
+      gix->rocksMethods->Delete(RocksDBColumnFamily::geo(), key);
   if (!r.ok()) {
     THROW_ARANGO_EXCEPTION_MESSAGE(r.errorNumber(), r.errorMessage());
   }
 }
 
-void SlotRead(GeoIx * gix, int slot, GeoCoordinate * gc /*out param*/)
-{
+void SlotRead(GeoIx* gix, int slot, GeoCoordinate* gc /*out param*/) {
   RocksDBKey key = RocksDBKey::GeoIndexValue(gix->objectId, slot, true);
   std::string slotValue;
   RocksRead(gix, key, &slotValue);
-  fromPersistent(slotValue.data(),*gc);
+  fromPersistent(slotValue.data(), *gc);
 }
-void SlotWrite(GeoIx * gix,int slot, GeoCoordinate * gc)
-{
+void SlotWrite(GeoIx* gix, int slot, GeoCoordinate* gc) {
   RocksDBKey key = RocksDBKey::GeoIndexValue(gix->objectId, slot, true);
-  char data[sizeof (GeoCoordinate)];
+  char data[sizeof(GeoCoordinate)];
   toPersistent(*gc, &data[0]);
   RocksWrite(gix, key, rocksdb::Slice(&data[0], sizeof(GeoCoordinate)));
 }
 
-void PotRead(GeoIx * gix, int pot, GeoPot * gp)
-{
+void PotRead(GeoIx* gix, int pot, GeoPot* gp) {
   RocksDBKey key = RocksDBKey::GeoIndexValue(gix->objectId, pot, false);
   std::string potValue;
   RocksRead(gix, key, &potValue);
@@ -409,9 +409,9 @@ void PotRead(GeoIx * gix, int pot, GeoPot * gp)
   fromPersistent(potValue.data(), *gp);
 }
 
-void PotWrite(GeoIx * gix, int pot, GeoPot * gp) {
+void PotWrite(GeoIx* gix, int pot, GeoPot* gp) {
   RocksDBKey key = RocksDBKey::GeoIndexValue(gix->objectId, pot, false);
-  char data[sizeof (GeoPot)];
+  char data[sizeof(GeoPot)];
   toPersistent(*gp, &data[0]);
   RocksWrite(gix, key, rocksdb::Slice(&data[0], sizeof(GeoPot)));
 }
@@ -448,7 +448,7 @@ double GeoIndex_distance(GeoCoordinate* c1, GeoCoordinate* c2) {
 /* takes the supplied pot, and puts it back onto the   */
 /* free list.                                          */
 /* =================================================== */
-void GeoIndexFreePot(GeoIx* gix, int pot) {// rewrite delete in rocksdb
+void GeoIndexFreePot(GeoIx* gix, int pot) {  // rewrite delete in rocksdb
   RocksDBKey key = RocksDBKey::GeoIndexValue(gix->objectId, pot, false);
   RocksDelete(gix, key);
 }
@@ -469,7 +469,7 @@ void GeoIndexFreePot(GeoIx* gix, int pot) {// rewrite delete in rocksdb
 /* therefore careful to get the new pots (if any are   */
 /* needed) before it gets too far into things.         */
 /* =================================================== */
-int GeoIndexNewPot(GeoIx* gix) {// rocksdb initial put
+int GeoIndexNewPot(GeoIx* gix) {  // rocksdb initial put
   return gix->nextFreePot++;
 }
 /* =================================================== */
@@ -492,9 +492,7 @@ int GeoIndexNewPot(GeoIx* gix) {// rocksdb initial put
 /* GeoString values of real (latitude, longitude)      */
 /* points                                              */
 /* =================================================== */
-GeoIdx* GeoIndex_new(uint64_t objectId,
-                     int numPots,
-                     int numSlots) {
+GeoIdx* GeoIndex_new(uint64_t objectId, int numPots, int numSlots) {
   TRI_ASSERT(objectId != 0);
   GeoIx* gix;
   int i;
@@ -622,21 +620,21 @@ GeoIdx* GeoIndex_new(uint64_t objectId,
     (gix->fixed.z)[i] = z;
   }
   /* set up the root pot  */
-  
+
   gix->objectId = objectId;
-  if (numPots == 0 || numSlots == 0) { // first run
+  if (numPots == 0 || numSlots == 0) {  // first run
     gix->nextFreePot = 2;
     gix->nextFreeSlot = 1;
-    
+
     GeoPot gp;
-    gp.LorLeaf = 0;   //leaf pot
-    gp.RorPoints = 0; // with no points in it!
+    gp.LorLeaf = 0;    // leaf pot
+    gp.RorPoints = 0;  // with no points in it!
     gp.middle = 0ll;
     gp.start = 0ll;
     gp.end = 0x1FFFFFFFFFFFFFll;
     gp.level = 1;
     for (i = 0; i < GeoIndexFIXEDPOINTS; i++) gp.maxdist[i] = 0;
-    PotWrite(gix, 1, &gp);// pot 1 is root
+    PotWrite(gix, 1, &gp);  // pot 1 is root
   } else {
     gix->nextFreePot = numPots + 1;
     gix->nextFreeSlot = numSlots + 1;
@@ -650,7 +648,7 @@ GeoIdx* GeoIndex_new(uint64_t objectId,
 /* objects that may have been pointed to by the user's */
 /* data pointers are (of course) not freed by this call*/
 /* =================================================== */
-void GeoIndex_free(GeoIdx* gi) {// like drop
+void GeoIndex_free(GeoIdx* gi) {  // like drop
   GeoIx* gix;
 
   if (gi == nullptr) {
@@ -658,8 +656,8 @@ void GeoIndex_free(GeoIdx* gi) {// like drop
   }
 
   gix = (GeoIx*)gi;
-  //TRI_Free(TRI_UNKNOWN_MEM_ZONE, gix->gxc);
-  //TRI_Free(TRI_UNKNOWN_MEM_ZONE, gix->ypots);
+  // TRI_Free(TRI_UNKNOWN_MEM_ZONE, gix->gxc);
+  // TRI_Free(TRI_UNKNOWN_MEM_ZONE, gix->ypots);
   TRI_Free(TRI_UNKNOWN_MEM_ZONE, gix);
 }
 /* =================================================== */
@@ -757,7 +755,7 @@ void GeoMkDetail(GeoIx* gix, GeoDetailedPoint* gd, GeoCoordinate* c) {
   /* entire routine takes about 0.94 microseconds  */
   /* math.h under MacOS defines y1 and j1 as global variable */
   gd->gix = gix;
-  gd->gc = c;      //  XQXQ copies the pointer!
+  gd->gc = c;  //  XQXQ copies the pointer!
   /* The GeoString computation takes about 0.17 microseconds  */
   gd->gs = GeoMkHilbert(c);
   double const lat = c->latitude * M_PI / 180.0;
@@ -772,8 +770,8 @@ void GeoMkDetail(GeoIx* gix, GeoDetailedPoint* gd, GeoCoordinate* c) {
     double xx1 = (gix->fixed.x)[i];
     double yy1 = (gix->fixed.y)[i];
     double z1 = (gix->fixed.z)[i];
-    double snmd = (xx1 - gd->x) * (xx1 - gd->x) + (yy1 - gd->y) * (yy1 - gd->y) +
-           (z1 - gd->z) * (z1 - gd->z);
+    double snmd = (xx1 - gd->x) * (xx1 - gd->x) +
+                  (yy1 - gd->y) * (yy1 - gd->y) + (z1 - gd->z) * (z1 - gd->z);
     (gd->fixdist)[i] = (GeoFix)(asin(sqrt(snmd) / 2.0) * ARCSINFIX);
   }
 }
@@ -859,7 +857,7 @@ void GeoStackSet(GeoStack* gk, GeoDetailedPoint* gd, GeoResults* gr) {
   gk->stacksize = 0;
   pot = 1;
   while (1) {
-    PotRead(gix,pot,&gp);
+    PotRead(gix, pot, &gp);
     if (gp.LorLeaf == 0) break;
     if (gp.middle > gd->gs) {
       gk->potid[gk->stacksize] = gp.RorPoints;
@@ -1074,9 +1072,9 @@ GeoCoordinates* GeoAnswers(GeoIx* gix, GeoResults* gr, bool returnDistances) {
   for (i = 0; i < gr->allocpoints; i++) {
     if (j >= gr->pointsct) break;
     int slot = gr->slot[i];
-    //GeoCoordinate * Rslot;
+    // GeoCoordinate * Rslot;
     if (slot == 0) continue;
-    SlotRead(gix,slot,ans->coordinates+j);
+    SlotRead(gix, slot, ans->coordinates + j);
     if (returnDistances) {
       mole = sqrt(gr->snmd[i]);
       if (mole > 2.0) mole = 2.0; /* make sure arcsin succeeds! */
@@ -1105,7 +1103,7 @@ GeoCoordinates* GeoAnswers(GeoIx* gix, GeoResults* gr, bool returnDistances) {
 int GeoPotJunk(GeoDetailedPoint* gd, int pot) {
   int i;
   GeoPot gp;
-  PotRead(gd->gix,pot,&gp);
+  PotRead(gd->gix, pot, &gp);
   for (i = 0; i < GeoIndexFIXEDPOINTS; i++)
     if (gp.maxdist[i] < gd->distrej[i]) return 1;
   return 0;
@@ -1186,11 +1184,11 @@ GeoCoordinates* GeoIndex_PointsWithinRadius(GeoIdx* gi, GeoCoordinate* c,
     gk.stacksize--;
     int pot = gk.potid[gk.stacksize];
     if (GeoPotJunk(&gd, pot)) continue;
-    PotRead(gix,pot,&gp);
+    PotRead(gix, pot, &gp);
     if (gp.LorLeaf == 0) {
       for (i = 0; i < gp.RorPoints; i++) {
         slot = gp.points[i];
-        SlotRead(gix,slot,&Xslot);
+        SlotRead(gix, slot, &Xslot);
         snmd = GeoSNMD(&gd, &Xslot);
         if (snmd > (maxsnmd * 1.00000000000001)) continue;
         r = GeoResultsGrow(gres);
@@ -1252,7 +1250,7 @@ GeoCoordinates* GeoIndex_NearestCountPoints(GeoIdx* gi, GeoCoordinate* c,
 
   while (gk.stacksize >= 0) {
     int pot = gk.potid[gk.stacksize--];
-    PotRead(gix,pot,&gp);
+    PotRead(gix, pot, &gp);
     if (left <= 0) {
       GeoSetDistance(&gd, gr->snmd[0]);
       if (GeoPotJunk(&gd, pot)) continue;
@@ -1260,7 +1258,7 @@ GeoCoordinates* GeoIndex_NearestCountPoints(GeoIdx* gi, GeoCoordinate* c,
     if (gp.LorLeaf == 0) {
       for (i = 0; i < gp.RorPoints; i++) {
         slot = gp.points[i];
-        SlotRead(gix,slot,&Xslot);
+        SlotRead(gix, slot, &Xslot);
         snmd = GeoSNMD(&gd, &Xslot);
         GeoResultsInsertPoint(gr, slot, snmd);
         left--;
@@ -1376,7 +1374,7 @@ int GeoFind(GeoPath* gt, GeoDetailedPoint* gd) {
   pot = 1;
   gt->pathlength = 0;
   while (1) {
-    PotRead(gix,pot,&gp);
+    PotRead(gix, pot, &gp);
     gt->path[gt->pathlength] = pot;
     gt->pathlength++;
     if (gp.LorLeaf == 0) break;
@@ -1390,7 +1388,7 @@ int GeoFind(GeoPath* gt, GeoDetailedPoint* gd) {
   {
     for (i = 0; i < gp.RorPoints; i++) {
       slot = gp.points[i];
-      SlotRead(gix,slot,&gc);
+      SlotRead(gix, slot, &gc);
       if (((gd->gc)->latitude == gc.latitude) &&
           ((gd->gc)->longitude == gc.longitude) &&
           ((gd->gc)->data == gc.data)) {
@@ -1405,15 +1403,15 @@ int GeoFind(GeoPath* gt, GeoDetailedPoint* gd) {
     while (1) {
       gt->pathlength--;
       pot1 = gt->path[gt->pathlength - 1];
-      PotRead(gix,pot1,&gp);
+      PotRead(gix, pot1, &gp);
       if (pot == gp.RorPoints) break; /* cannot go off the front  */
       pot = pot1;
     }
-    PotRead(gix,pot1,&gp);
+    PotRead(gix, pot1, &gp);
     pot = gp.LorLeaf;
     /* now we have a pot whose iterated right child we want  */
     while (1) {
-      PotRead(gix,pot,&gp);
+      PotRead(gix, pot, &gp);
       gt->path[gt->pathlength] = pot;
       gt->pathlength++;
       if (gp.LorLeaf == 0) break;
@@ -1437,7 +1435,7 @@ void GeoPopulateMaxdist(GeoIx* gix, GeoPot* gp, GeoString* gsa) {
   gsa[1] = 0ll;
   for (j = 0; j < GeoIndexFIXEDPOINTS; j++) gp->maxdist[j] = 0;
   for (i = 0; i < gp->RorPoints; i++) {
-    SlotRead(gix,gp->points[i],&Xslot);
+    SlotRead(gix, gp->points[i], &Xslot);
     GeoMkDetail(gix, &gd, &Xslot);
     for (j = 0; j < GeoIndexFIXEDPOINTS; j++)
       if (gd.fixdist[j] > gp->maxdist[j]) gp->maxdist[j] = gd.fixdist[j];
@@ -1470,11 +1468,11 @@ void GeoAdjust(GeoIx* gix, int potx) /* the kids are alright */
   GeoPot gpx;
   GeoPot gpy;
   GeoPot gpz;
-  PotRead(gix,potx,&gpx);
+  PotRead(gix, potx, &gpx);
   poty = gpx.LorLeaf;
-  PotRead(gix,poty,&gpy);
+  PotRead(gix, poty, &gpy);
   potz = gpx.RorPoints;
-  PotRead(gix,potz,&gpz);
+  PotRead(gix, potz, &gpz);
   gpx.start = gpy.start;
   gpx.end = gpz.end;
   gpx.middle = gpz.start;
@@ -1485,9 +1483,9 @@ void GeoAdjust(GeoIx* gix, int potx) /* the kids are alright */
     gpx.maxdist[i] = gpy.maxdist[i];
     if (gpx.maxdist[i] < gpz.maxdist[i]) gpx.maxdist[i] = gpz.maxdist[i];
   }
-  PotWrite(gix,potx,&gpx);
+  PotWrite(gix, potx, &gpx);
 }
-  
+
 /* =================================================== */
 /*             New GeoAdjust = GeoDistLev              */
 /* During insertion and deletion, this routine is used */
@@ -1497,8 +1495,7 @@ void GeoAdjust(GeoIx* gix, int potx) /* the kids are alright */
 /* the maximum distances to the fixed points.          */
 /* =================================================== */
 
-void GeoDistLev(GeoPot * gpx, GeoPot * gpy, GeoPot * gpz)
-{
+void GeoDistLev(GeoPot* gpx, GeoPot* gpy, GeoPot* gpz) {
   int i;
   gpx->start = gpy->start;
   gpx->end = gpz->end;
@@ -1511,7 +1508,7 @@ void GeoDistLev(GeoPot * gpx, GeoPot * gpy, GeoPot * gpz)
     if (gpx->maxdist[i] < gpz->maxdist[i]) gpx->maxdist[i] = gpz->maxdist[i];
   }
 }
-  
+
 /* =================================================== */
 /*             RotateLeft                              */
 /* The operation used during tree balancing to convert */
@@ -1525,24 +1522,24 @@ void GeoDistLev(GeoPot * gpx, GeoPot * gpy, GeoPot * gpz)
 /* =================================================== */
 void RotateLeft(GeoIx* gix, int pote) {
   int pota, potb, potc, potd;
-  GeoPot gpa,gpb,gpc,gpd,gpe;
-  PotRead(gix,pote,&gpe);
+  GeoPot gpa, gpb, gpc, gpd, gpe;
+  PotRead(gix, pote, &gpe);
   potd = gpe.RorPoints;
-  PotRead(gix,potd,&gpd);
+  PotRead(gix, potd, &gpd);
   pota = gpe.LorLeaf;
   potb = gpd.LorLeaf;
   potc = gpd.RorPoints;
-  PotRead(gix,pota,&gpa);
-  PotRead(gix,potb,&gpb);
-  PotRead(gix,potc,&gpc);
-  GeoDistLev(&gpd,&gpa,&gpb);
+  PotRead(gix, pota, &gpa);
+  PotRead(gix, potb, &gpb);
+  PotRead(gix, potc, &gpc);
+  GeoDistLev(&gpd, &gpa, &gpb);
   gpd.LorLeaf = pota;
   gpd.RorPoints = potb;
-  PotWrite(gix,potd,&gpd);
-  GeoDistLev(&gpe,&gpd,&gpc);
+  PotWrite(gix, potd, &gpd);
+  GeoDistLev(&gpe, &gpd, &gpc);
   gpe.LorLeaf = potd;
   gpe.RorPoints = potc;
-  PotWrite(gix,pote,&gpe);
+  PotWrite(gix, pote, &gpe);
 }
 /* =================================================== */
 /*                 RotateRight                         */
@@ -1554,24 +1551,24 @@ void RotateLeft(GeoIx* gix, int pote) {
 /* =================================================== */
 void RotateRight(GeoIx* gix, int pote) {
   int pota, potb, potc, potd;
-  GeoPot gpa,gpb,gpc,gpd,gpe;
-  PotRead(gix,pote,&gpe);
+  GeoPot gpa, gpb, gpc, gpd, gpe;
+  PotRead(gix, pote, &gpe);
   potd = gpe.LorLeaf;
-  PotRead(gix,potd,&gpd);
+  PotRead(gix, potd, &gpd);
   pota = gpd.LorLeaf;
   potb = gpd.RorPoints;
   potc = gpe.RorPoints;
-  PotRead(gix,pota,&gpa);
-  PotRead(gix,potb,&gpb);
-  PotRead(gix,potc,&gpc);
+  PotRead(gix, pota, &gpa);
+  PotRead(gix, potb, &gpb);
+  PotRead(gix, potc, &gpc);
   gpd.LorLeaf = potb;
   gpd.RorPoints = potc;
-  GeoDistLev(&gpd,&gpb,&gpc);
-  PotWrite(gix,potd,&gpd);  // same inefficiency as RotateLeft;
+  GeoDistLev(&gpd, &gpb, &gpc);
+  PotWrite(gix, potd, &gpd);  // same inefficiency as RotateLeft;
   gpe.LorLeaf = pota;
   gpe.RorPoints = potd;
-  GeoDistLev(&gpe,&gpa,&gpd);
-  PotWrite(gix,pote,&gpe);
+  GeoDistLev(&gpe, &gpa, &gpd);
+  PotWrite(gix, pote, &gpe);
 }
 /* =================================================== */
 /*        GeoIndex_insert                              */
@@ -1615,23 +1612,23 @@ int GeoIndex_insert(GeoIdx* gi, GeoCoordinate* c) {
   i = GeoFind(&gt, &gd);
   if (i == 1) return -1;
   pot = gt.path[gt.pathlength - 1];
-  PotRead(gix,pot,&gp);
+  PotRead(gix, pot, &gp);
   /* new point, so we try to put it in  */
   slot = GeoIndexNewSlot(gix);
   if (slot == -2) return -2; /* no room  :(  */
-  //SlotRead(gix,slot,&Xslot);
+  // SlotRead(gix,slot,&Xslot);
   Xslot.latitude = c->latitude;
   Xslot.longitude = c->longitude;
   Xslot.data = c->data;
-  SlotWrite(gix,slot,&Xslot);
-// XQXQ need to insert this
+  SlotWrite(gix, slot, &Xslot);
+  // XQXQ need to insert this
   /* check first if we are going to need two new pots, and  */
   /* if we are, go get them now before we get  too tangled  */
   if (gp.RorPoints == GeoIndexPOTSIZE) {
     rebalance = 1;
     pot1 = GeoIndexNewPot(gix);
     int pot2 = GeoIndexNewPot(gix);
-    //PotRead(gix,pot,&gp); /* XQXQ won't have to do this on Rocks */
+    // PotRead(gix,pot,&gp); /* XQXQ won't have to do this on Rocks */
     if ((pot1 == -2) || (pot2 == -2)) {
       GeoIndexFreeSlot(gix, slot);
       if (pot1 != -2) GeoIndexFreePot(gix, pot1);
@@ -1654,46 +1651,46 @@ int GeoIndex_insert(GeoIdx* gi, GeoCoordinate* c) {
     /* new point (which has still not been inserted) shoud */
     /* go.   Continued below . . . .                       */
     /* =================================================== */
-    //PotRead(gix,pot1,&gp1);  //XQXQ don't think this is even needed now!
-    //PotRead(gix,pot2,&gp2);  //XQXQ on Rocks it is reading a pot that is not there.
+    // PotRead(gix,pot1,&gp1);  //XQXQ don't think this is even needed now!
+    // PotRead(gix,pot2,&gp2);  //XQXQ on Rocks it is reading a pot that is not
+    // there.
     /* pot is old one, pot1 and pot2 are the new ones  */
     gp1.LorLeaf = 0;   /* leaf pot  */
     gp1.RorPoints = 0; /* no points in it yet  */
-                        /* first move the points from pot to pot2          */
+                       /* first move the points from pot to pot2          */
     gp2.LorLeaf = 0;   /* leaf pot  */
     gp2.RorPoints = gp.RorPoints;
     for (i = 0; i < gp.RorPoints; i++) gp2.points[i] = gp.points[i];
     /* move the first half of the points from pot2 to pot1 */
-    GeoString gsl[GeoIndexPOTSIZE],mid,mings;
-    for(j=0;j<GeoIndexPOTSIZE;j++) {
-      SlotRead(gix,gp2.points[j],&Xslot);
+    GeoString gsl[GeoIndexPOTSIZE], mid, mings;
+    for (j = 0; j < GeoIndexPOTSIZE; j++) {
+      SlotRead(gix, gp2.points[j], &Xslot);
       gsl[j] = GeoMkHilbert(&Xslot);
     }
     for (i = 0; i < (GeoIndexPOTSIZE / 2); i++) {
-      int jj1=std::numeric_limits<int>::max();
-      mid=0x1FFFFFFFFFFFFFll;
-      for(j=0;j<GeoIndexPOTSIZE;j++)
-      {
+      int jj1 = std::numeric_limits<int>::max();
+      mid = 0x1FFFFFFFFFFFFFll;
+      for (j = 0; j < GeoIndexPOTSIZE; j++) {
         // some value has to be less than mid or we will end up in the assert
-        if(gsl[j]==0xfffffffffffffffful) continue;
-        if(gsl[j]<mid)
-        {
-          jj1=j;
-          mid=gsl[j];
+        if (gsl[j] == 0xfffffffffffffffful) continue;
+        if (gsl[j] < mid) {
+          jj1 = j;
+          mid = gsl[j];
         }
       }
-      TRI_ASSERT(jj1 != std::numeric_limits<int>::max()); // jj1 -- must have been set
-      gsl[jj1]=0xfffffffffffffffful;
+      TRI_ASSERT(jj1 !=
+                 std::numeric_limits<int>::max());  // jj1 -- must have been set
+      gsl[jj1] = 0xfffffffffffffffful;
     }
     for (i = 0; i < GeoIndexPOTSIZE; i++) {
-      if(gsl[i]!=0xfffffffffffffffful) continue;
+      if (gsl[i] != 0xfffffffffffffffful) continue;
       gp1.points[gp1.RorPoints] = gp2.points[i];
       gp1.RorPoints++;
     }
-    j=0;
+    j = 0;
     for (i = 0; i < GeoIndexPOTSIZE; i++) {
       gp2.points[j] = gp2.points[i];
-      if(gsl[i]==0xfffffffffffffffful)
+      if (gsl[i] == 0xfffffffffffffffful)
         gp2.RorPoints--;
       else
         j++;
@@ -1708,18 +1705,18 @@ int GeoIndex_insert(GeoIdx* gi, GeoCoordinate* c) {
     gp2.end = gp.end;
     gp.LorLeaf = pot1;
     gp.RorPoints = pot2;
-    GeoDistLev(&gp,&gp1,&gp2);
-    PotWrite(gix,pot,&gp);
-    PotWrite(gix,pot1,&gp1);
-    PotWrite(gix,pot2,&gp2);
+    GeoDistLev(&gp, &gp1, &gp2);
+    PotWrite(gix, pot, &gp);
+    PotWrite(gix, pot1, &gp1);
+    PotWrite(gix, pot2, &gp2);
     gt.pathlength++;
     if (gd.gs < mings) {
       gp = gp1;
-      pot=pot1;
+      pot = pot1;
       gt.path[gt.pathlength - 1] = pot1;
     } else {
       gp = gp2;
-      pot=pot2;
+      pot = pot2;
       gt.path[gt.pathlength - 1] = pot2;
     }
   }
@@ -1742,20 +1739,20 @@ int GeoIndex_insert(GeoIdx* gi, GeoCoordinate* c) {
   /* gp is the pot, gt set correctly          */
   gp.points[gp.RorPoints] = slot;
   gp.RorPoints++;
-  PotWrite(gix,pot,&gp);
+  PotWrite(gix, pot, &gp);
   /* now propagate the maxdistances */
-  j=gt.pathlength-1;
-  while(j>=0) {
-    int changed=0;
-    PotRead(gix,gt.path[j],&gpa);
+  j = gt.pathlength - 1;
+  while (j >= 0) {
+    int changed = 0;
+    PotRead(gix, gt.path[j], &gpa);
     for (i = 0; i < GeoIndexFIXEDPOINTS; i++) {
       if (gd.fixdist[i] > gpa.maxdist[i]) {
         gpa.maxdist[i] = gd.fixdist[i];
-        changed=1;
+        changed = 1;
       }
     }
-    if(changed==0)  break;
-    PotWrite(gix,gt.path[j],&gpa);
+    if (changed == 0) break;
+    PotWrite(gix, gt.path[j], &gpa);
     j--;
   }
   /* just need to balance the tree  */
@@ -1763,31 +1760,31 @@ int GeoIndex_insert(GeoIdx* gi, GeoCoordinate* c) {
   height = 2;
   while (true) {
     int potx = GeoGetPot(&gt, height);
-    PotRead(gix,potx,&gpx);
+    PotRead(gix, potx, &gpx);
     int lvx = gpx.level;
     if (potx == 1) break;
     /* root pot ?      */
     pot1 = GeoGetPot(&gt, height + 1); /* pot1=parent(x)  */
-    PotRead(gix,pot1,&gp1);
+    PotRead(gix, pot1, &gp1);
     int lv1 = gp1.level;
     if (lv1 > lvx) break;
     if (gp1.LorLeaf == potx) /* gpx is the left child? */
     {
       pota = gp1.RorPoints; /* 1 = (xa)  */
-      PotRead(gix,pota,&gpa);
+      PotRead(gix, pota, &gpa);
       lva = gpa.level;
       if ((lva + 1) == lv1) /* so it is legal to up lev(1) */
       {
         gp1.level++;
-        PotWrite(gix,pot1,&gp1);
+        PotWrite(gix, pot1, &gp1);
         height++;
         continue;
       }
       poty = gpx.RorPoints;
-      PotRead(gix,poty,&gpy);
+      PotRead(gix, poty, &gpy);
       lvy = gpy.level;
       potz = gpx.LorLeaf;
-      PotRead(gix,potz,&gpz);
+      PotRead(gix, potz, &gpz);
       lvz = gpz.level;
       if (lvy <= lvz) {
         RotateRight(gix, pot1);
@@ -1799,20 +1796,20 @@ int GeoIndex_insert(GeoIdx* gi, GeoCoordinate* c) {
     } else /* gpx is the right child */
     {
       pota = gp1.LorLeaf; /* 1 = (ax)  */
-      PotRead(gix,pota,&gpa);
+      PotRead(gix, pota, &gpa);
       lva = gpa.level;
       if ((lva + 1) == lv1) /* so it is legal to up lev(1) */
       {
         gp1.level++;
-        PotWrite(gix,pot1,&gp1);
+        PotWrite(gix, pot1, &gp1);
         height++;
         continue;
       }
       poty = gpx.LorLeaf;
-      PotRead(gix,poty,&gpy);
+      PotRead(gix, poty, &gpy);
       lvy = gpy.level;
       potz = gpx.RorPoints;
-      PotRead(gix,potz,&gpz);
+      PotRead(gix, potz, &gpz);
       lvz = gpz.level;
       if (lvy <= lvz) {
         RotateLeft(gix, pot1);
@@ -1873,25 +1870,25 @@ int GeoIndex_remove(GeoIdx* gi, GeoCoordinate* c) {
   i = GeoFind(&gt, &gd);
   if (i != 1) return -1;
   pot = gt.path[gt.pathlength - 1];
-  PotRead(gix,pot,&gp);
+  PotRead(gix, pot, &gp);
   potix = gt.path[gt.pathlength];
   slot = gp.points[potix];
-  GeoIndexFreeSlot(gix, slot);              // XQXQ Need to delete slot
+  GeoIndexFreeSlot(gix, slot);  // XQXQ Need to delete slot
   gp.points[potix] = gp.points[gp.RorPoints - 1];
   gp.RorPoints--;
   GeoPopulateMaxdist(gix, &gp, gsa);
-  PotWrite(gix,pot,&gp);
+  PotWrite(gix, pot, &gp);
   if (pot == 1) return 0; /* just allow root pot to have fewer points */
   rebalance = 0;
   if ((2 * gp.RorPoints) < GeoIndexPOTSIZE) {
     int j, js;
     GeoString mings, gs;
     potp = gt.path[gt.pathlength - 2];
-    PotRead(gix,potp,&gpp);
+    PotRead(gix, potp, &gpp);
     if (gpp.LorLeaf == pot) {
       /*  Left   */
       potb = gpp.RorPoints;
-      PotRead(gix,potb,&gpb);
+      PotRead(gix, potb, &gpb);
       if (gpb.LorLeaf == 0) {
         /*  Left Brother  */
         if ((gpb.RorPoints + gp.RorPoints) > GeoIndexPOTSIZE) {
@@ -1899,7 +1896,7 @@ int GeoIndex_remove(GeoIdx* gi, GeoCoordinate* c) {
           mings = 0x1FFFFFFFFFFFFFll;
           js = 0;
           for (j = 0; j < gpb.RorPoints; j++) {
-            SlotRead(gix,gpb.points[j],&Xslot);
+            SlotRead(gix, gpb.points[j], &Xslot);
             gs = GeoMkHilbert(&Xslot);
             if (gs < mings) {
               mings = gs;
@@ -1917,15 +1914,14 @@ int GeoIndex_remove(GeoIdx* gi, GeoCoordinate* c) {
           gp.end = mings;
           gpb.start = mings;
           gpp.middle = mings;
-          PotWrite(gix,pot,&gp);
-          PotWrite(gix,potb,&gpb);
+          PotWrite(gix, pot, &gp);
+          PotWrite(gix, potb, &gpb);
           GeoAdjust(gix, potp);
         } else {
           /*  Left Brother Few  */
           gpp.LorLeaf = 0;
           i = 0;
-          for (j = 0; j < gpb.RorPoints; j++)
-            gpp.points[i++] = gpb.points[j];
+          for (j = 0; j < gpb.RorPoints; j++) gpp.points[i++] = gpb.points[j];
           for (j = 0; j < gp.RorPoints; j++) gpp.points[i++] = gp.points[j];
           gpp.RorPoints = i;
           GeoIndexFreePot(gix, pot);
@@ -1933,18 +1929,18 @@ int GeoIndex_remove(GeoIdx* gi, GeoCoordinate* c) {
           GeoPopulateMaxdist(gix, &gpp, gsa);
           gt.pathlength--;
           rebalance = 1;
-          PotWrite(gix,potp,&gpp);
+          PotWrite(gix, potp, &gpp);
         }
       } else {
         /* Left Nephew */
         potn = gpb.LorLeaf;
-        PotRead(gix,potn,&gpn);
+        PotRead(gix, potn, &gpn);
         if ((gpn.RorPoints + gp.RorPoints) > GeoIndexPOTSIZE) {
           /*  Left Nephew Lots  */
           mings = 0x1FFFFFFFFFFFFFll;
           js = 0;
           for (j = 0; j < gpn.RorPoints; j++) {
-            SlotRead(gix,gpn.points[j],&Xslot);
+            SlotRead(gix, gpn.points[j], &Xslot);
             gs = GeoMkHilbert(&Xslot);
             if (gs < mings) {
               mings = gs;
@@ -1963,8 +1959,8 @@ int GeoIndex_remove(GeoIdx* gi, GeoCoordinate* c) {
           gpn.start = mings;
           gpb.start = mings;
           gpp.middle = mings;
-          PotWrite(gix,pot,&gp);
-          PotWrite(gix,potn,&gpn);
+          PotWrite(gix, pot, &gp);
+          PotWrite(gix, potn, &gpn);
           GeoAdjust(gix, potb);
           GeoAdjust(gix, potp);
         } else {
@@ -1979,8 +1975,8 @@ int GeoIndex_remove(GeoIdx* gi, GeoCoordinate* c) {
           GeoIndexFreePot(gix, potn);
           GeoIndexFreePot(gix, potb);
           GeoPopulateMaxdist(gix, &gp, gsa);
-          PotWrite(gix,pot,&gp);
-          PotWrite(gix,potp,&gpp);
+          PotWrite(gix, pot, &gp);
+          PotWrite(gix, potp, &gpp);
           GeoAdjust(gix, potp);
           gt.pathlength--;
           rebalance = 1;
@@ -1989,7 +1985,7 @@ int GeoIndex_remove(GeoIdx* gi, GeoCoordinate* c) {
     } else {
       /*  Right  */
       potb = gpp.LorLeaf;
-      PotRead(gix,potb,&gpb);
+      PotRead(gix, potb, &gpb);
       if (gpb.LorLeaf == 0) {
         /*  Right Brother  */
         if ((gpb.RorPoints + gp.RorPoints) > GeoIndexPOTSIZE) {
@@ -1997,7 +1993,7 @@ int GeoIndex_remove(GeoIdx* gi, GeoCoordinate* c) {
           mings = 0ll;
           js = 0;
           for (j = 0; j < gpb.RorPoints; j++) {
-            SlotRead(gix,gpb.points[j],&Xslot);
+            SlotRead(gix, gpb.points[j], &Xslot);
             gs = GeoMkHilbert(&Xslot);
             if (gs > mings) {
               mings = gs;
@@ -2015,16 +2011,15 @@ int GeoIndex_remove(GeoIdx* gi, GeoCoordinate* c) {
           gp.start = mings;
           gpb.end = mings;
           gpp.middle = mings;
-          PotWrite(gix,pot,&gp);
-          PotWrite(gix,potb,&gpb);
+          PotWrite(gix, pot, &gp);
+          PotWrite(gix, potb, &gpb);
           GeoAdjust(gix, potp);
         } else {
           /*  Right Brother Few  */
           /* observe this is identical to Left Brother Few  */
           gpp.LorLeaf = 0;
           i = 0;
-          for (j = 0; j < gpb.RorPoints; j++)
-            gpp.points[i++] = gpb.points[j];
+          for (j = 0; j < gpb.RorPoints; j++) gpp.points[i++] = gpb.points[j];
           for (j = 0; j < gp.RorPoints; j++) gpp.points[i++] = gp.points[j];
           gpp.RorPoints = i;
           GeoIndexFreePot(gix, pot);
@@ -2032,19 +2027,19 @@ int GeoIndex_remove(GeoIdx* gi, GeoCoordinate* c) {
           GeoPopulateMaxdist(gix, &gpp, gsa);
           gt.pathlength--;
           rebalance = 1;
-          //PotWrite(gix,pot,&gp);
-          PotWrite(gix,potp,&gpp);
+          // PotWrite(gix,pot,&gp);
+          PotWrite(gix, potp, &gpp);
         }
       } else {
         /* Right Nephew */
         potn = gpb.RorPoints;
-        PotRead(gix,potn,&gpn);
+        PotRead(gix, potn, &gpn);
         if ((gpn.RorPoints + gp.RorPoints) > GeoIndexPOTSIZE) {
           /*  Right Nephew Lots  */
           mings = 0ll;
           js = 0;
           for (j = 0; j < gpn.RorPoints; j++) {
-            SlotRead(gix,gpn.points[j],&Xslot);
+            SlotRead(gix, gpn.points[j], &Xslot);
             gs = GeoMkHilbert(&Xslot);
             if (gs > mings) {
               mings = gs;
@@ -2063,8 +2058,8 @@ int GeoIndex_remove(GeoIdx* gi, GeoCoordinate* c) {
           gpn.end = mings;
           gpb.end = mings;
           gpp.middle = mings;
-          PotWrite(gix,pot,&gp);
-          PotWrite(gix,potn,&gpn);
+          PotWrite(gix, pot, &gp);
+          PotWrite(gix, potn, &gpn);
           GeoAdjust(gix, potb);
           GeoAdjust(gix, potp);
         } else {
@@ -2079,8 +2074,8 @@ int GeoIndex_remove(GeoIdx* gi, GeoCoordinate* c) {
           GeoIndexFreePot(gix, potn);
           GeoIndexFreePot(gix, potb);
           GeoPopulateMaxdist(gix, &gp, gsa);
-          PotWrite(gix,pot,&gp);
-          PotWrite(gix,potp,&gpp);
+          PotWrite(gix, pot, &gp);
+          PotWrite(gix, potp, &gpp);
           GeoAdjust(gix, potp);
           gt.pathlength--;
           rebalance = 1;
@@ -2107,26 +2102,26 @@ int GeoIndex_remove(GeoIdx* gi, GeoCoordinate* c) {
     rebalance = 0;
     pathix--;
     potp = gt.path[pathix];
-    PotRead(gix,potp,&gpp);
+    PotRead(gix, potp, &gpp);
     int levp = gpp.level;
     pot = gpp.LorLeaf;
     potb = gpp.RorPoints;
-    PotRead(gix,pot,&gp);
-    PotRead(gix,potb,&gpb);
+    PotRead(gix, pot, &gp);
+    PotRead(gix, potb, &gpb);
     int lev = gp.level;
     int levb = gpb.level;
     i = (levp - lev) * (levp - levb);
     if (i == 4) {
       gpp.level--;
-      PotWrite(gix,potp,&gpp);
+      PotWrite(gix, potp, &gpp);
       rebalance = 1;
     }
     if (i == 3) {
       if ((levp - lev) == 3) {
         potn = gpb.LorLeaf;
-        PotRead(gix,potn,&gpn);
+        PotRead(gix, potn, &gpn);
         potc = gpb.RorPoints;
-        PotRead(gix,potc,&gpc);
+        PotRead(gix, potc, &gpc);
         levn = gpn.level;
         levc = gpc.level;
         if (levn <= levc) {
@@ -2139,9 +2134,9 @@ int GeoIndex_remove(GeoIdx* gi, GeoCoordinate* c) {
         }
       } else {
         potn = gp.LorLeaf;
-        PotRead(gix,potn,&gpn);
+        PotRead(gix, potn, &gpn);
         potc = gp.RorPoints;
-        PotRead(gix,potc,&gpc);
+        PotRead(gix, potc, &gpc);
         levn = gpn.level;
         levc = gpc.level;
         if (levn >= levc) {
@@ -2268,19 +2263,20 @@ GeoCursor* GeoIndex_NewCursor(GeoIdx* gi, GeoCoordinate* c) {
   GeoMkDetail(gix, &(gcr->gd), c);
   hpot hp;
   hp.pot = 1;
-  PotRead(gix,1,&root);
+  PotRead(gix, 1, &root);
   hp.dist = makedist(&root, &(gcr->gd));
   gcr->potsnmd = GeoFixtoSNMD(hp.dist);
   gcr->slotsnmd = 20.0;
   gcr->potheap.push_back(hp);
   // not necessary here because potheap only contains one element
-  //std::push_heap(gcr->potheap.begin(), gcr->potheap.end(), hpotcompare);
+  // std::push_heap(gcr->potheap.begin(), gcr->potheap.end(), hpotcompare);
   TRI_ASSERT(gcr->potheap.size() == 1);
   // cppcheck-suppress *
   return (GeoCursor*)gcr;
 }
 
-GeoCoordinates* GeoIndex_ReadCursor(GeoCursor* gc, int count, bool returnDistances, double maxDistance) {
+GeoCoordinates* GeoIndex_ReadCursor(GeoCursor* gc, int count,
+                                    bool returnDistances, double maxDistance) {
   int i, j, r;
   GeoCoordinate ct;
   GeoCoordinates* gcts;
@@ -2292,14 +2288,14 @@ GeoCoordinates* GeoIndex_ReadCursor(GeoCursor* gc, int count, bool returnDistanc
   hslot hs;
   hpot hp;
   gcr = (GeoCr*)gc;
-  gix=gcr->Ix;
+  gix = gcr->Ix;
   GeoResults* gr = GeoResultsCons(count);
   if (gr == nullptr) return nullptr;
   while (gr->pointsct < count) {
     if (gcr->potsnmd < gcr->slotsnmd * 1.000001) {
       // smash top pot - if there is one
       if (gcr->potheap.size() == 0) break;  // that's all there is
-      PotRead(gix,gcr->potheap.front().pot,&pot);
+      PotRead(gix, gcr->potheap.front().pot, &pot);
       // anyway remove top from heap
       std::pop_heap(gcr->potheap.begin(), gcr->potheap.end(), hpotcompare);
       gcr->potheap.pop_back();
@@ -2307,7 +2303,7 @@ GeoCoordinates* GeoIndex_ReadCursor(GeoCursor* gc, int count, bool returnDistanc
         // leaf pot - put all the points into the points heap
         for (i = 0; i < pot.RorPoints; i++) {
           j = pot.points[i];
-          SlotRead(gix,j,&ct);
+          SlotRead(gix, j, &ct);
           hs.snmd = GeoSNMD(&(gcr->gd), &ct);
           hs.slot = j;
           gcr->slotheap.push_back(hs);
@@ -2319,19 +2315,19 @@ GeoCoordinates* GeoIndex_ReadCursor(GeoCursor* gc, int count, bool returnDistanc
         }
       } else {
         hp.pot = pot.LorLeaf;
-        PotRead(gix,hp.pot,&pot1);
+        PotRead(gix, hp.pot, &pot1);
         hp.dist = makedist(&pot1, &(gcr->gd));
         gcr->potheap.push_back(hp);
         std::push_heap(gcr->potheap.begin(), gcr->potheap.end(), hpotcompare);
         hp.pot = pot.RorPoints;
-        PotRead(gix,hp.pot,&pot1);
+        PotRead(gix, hp.pot, &pot1);
         hp.dist = makedist(&pot1, &(gcr->gd));
         gcr->potheap.push_back(hp);
         std::push_heap(gcr->potheap.begin(), gcr->potheap.end(), hpotcompare);
       }
       gcr->potsnmd = 10.0;
       if (!gcr->potheap.empty()) {
-        PotRead(gix,gcr->potheap.front().pot,&pot);
+        PotRead(gix, gcr->potheap.front().pot, &pot);
         gcr->potsnmd = GeoFixtoSNMD(makedist(&pot, &(gcr->gd)));
       }
     } else {
@@ -2360,9 +2356,7 @@ GeoCoordinates* GeoIndex_ReadCursor(GeoCursor* gc, int count, bool returnDistanc
   return gcts;
 }
 
-void GeoIndex_CursorFree(GeoCursor* gc) {
-  delete reinterpret_cast<GeoCr*>(gc);
-}
+void GeoIndex_CursorFree(GeoCursor* gc) { delete reinterpret_cast<GeoCr*>(gc); }
 
 /* =================================================== */
 /*        The remaining routines are usually           */
@@ -2377,11 +2371,12 @@ void RecursivePotDump(GeoIx* gix, FILE* f, int pot) {
   int i;
   GeoPot gp;
   GeoCoordinate gc;
-  PotRead(gix,pot,&gp);
+  PotRead(gix, pot, &gp);
   fprintf(f, "GP. pot %d level %d  Kids %d %d\n", pot, gp.level, gp.LorLeaf,
           gp.RorPoints);
-  fprintf(f, "strings %llx %llx %llx\n", gp.start, gp.middle, gp.end); // fixme - usage of printf is broken
-                                                                       // fast_uint64_t is not necessarily a long long
+  fprintf(f, "strings %llx %llx %llx\n", gp.start, gp.middle,
+          gp.end);  // fixme - usage of printf is broken
+                    // fast_uint64_t is not necessarily a long long
   fprintf(f, "maxdists ");
   for (i = 0; i < GeoIndexFIXEDPOINTS; i++) fprintf(f, " %x", gp.maxdist[i]);
   fprintf(f, "\n");
@@ -2389,7 +2384,7 @@ void RecursivePotDump(GeoIx* gix, FILE* f, int pot) {
     fprintf(f, "Leaf pot containing %d points . . .\n", gp.RorPoints);
     for (i = 0; i < gp.RorPoints; i++) {
       fprintf(f, "Child %d Point %d  ", i, gp.points[i]);
-      SlotRead(gix,gp.points[i],&gc);
+      SlotRead(gix, gp.points[i], &gc);
       fprintf(f, "Lat.  %9.4f,  Long. %9.4f", gc.latitude, gc.longitude);
 #if TRI_GEO_DEBUG == 2
       fprintf(f, " %llu", (unsigned long long)gc.data);
@@ -2419,14 +2414,14 @@ int RecursivePotValidate(GeoIx* gix, int pot, int* usage) {
   GeoFix maxdist[GeoIndexFIXEDPOINTS];
   GeoPot gpa, gpb;
   GeoCoordinate gc;
-  PotRead(gix,pot,&gp);
+  PotRead(gix, pot, &gp);
   usage[0]++;
   if (gp.LorLeaf == 0) {
     if ((pot != 1) && (2 * gp.RorPoints < GeoIndexPOTSIZE)) return 1;
     for (j = 0; j < GeoIndexFIXEDPOINTS; j++) maxdist[j] = 0;
     if (gp.level != 1) return 10;
     for (i = 0; i < gp.RorPoints; i++) {
-      SlotRead(gix,gp.points[i],&gc);
+      SlotRead(gix, gp.points[i], &gc);
       GeoMkDetail(gix, &gd, &gc);
       for (j = 0; j < GeoIndexFIXEDPOINTS; j++)
         if (maxdist[j] < gd.fixdist[j]) maxdist[j] = gd.fixdist[j];
@@ -2440,8 +2435,8 @@ int RecursivePotValidate(GeoIx* gix, int pot, int* usage) {
   } else {
     int pota = gp.LorLeaf;
     int potb = gp.RorPoints;
-    PotRead(gix,pota,&gpa);
-    PotRead(gix,potb,&gpb);
+    PotRead(gix, pota, &gpa);
+    PotRead(gix, potb, &gpb);
     int lev = gp.level;
     int leva = gpa.level;
     int levb = gpb.level;
@@ -2466,7 +2461,7 @@ int RecursivePotValidate(GeoIx* gix, int pot, int* usage) {
   }
 }
 
-  // rethink this function
+// rethink this function
 int GeoIndex_INDEXVALID(GeoIdx* gi) {
   int usage[2];  // pots and slots
   int j, pot, slot;
@@ -2478,29 +2473,30 @@ int GeoIndex_INDEXVALID(GeoIdx* gi) {
   j = RecursivePotValidate(gix, 1, usage);
   if (j != 0) return j;
   pot = 0;
-  PotRead(gix,pot,&gp);
+  PotRead(gix, pot, &gp);
   pot = gp.LorLeaf;
   usage[0]++;
   while (pot != 0) {
-    PotRead(gix,pot,&gp);
+    PotRead(gix, pot, &gp);
     pot = gp.LorLeaf;
     usage[0]++;
   }
   if (usage[0] != gix->potct) return 14;
-  PotRead(gix,1,&gp);
+  PotRead(gix, 1, &gp);
   if (gp.start != 0) return 15;
   if (gp.end != 0x1FFFFFFFFFFFFFll) return 16;
   slot = 0;
   usage[1]++;
-  slot = (int)((gix->gxc[slot]).latitude);    //XQXQ needs changing when testable
+  slot = (int)((gix->gxc[slot]).latitude);  // XQXQ needs changing when testable
   while (slot != 0) {
     usage[1]++;
-    slot = (int)((gix->gxc[slot]).latitude);  //XQXQ so does this
+    slot = (int)((gix->gxc[slot]).latitude);  // XQXQ so does this
   }
   if (usage[1] != gix->slotct) return 17;
   return 0;
 }
 
 #endif
-}}
+}
+}
 /* end of GeoIndex.c  */

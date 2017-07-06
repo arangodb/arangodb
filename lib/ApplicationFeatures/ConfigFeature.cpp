@@ -115,7 +115,7 @@ void ConfigFeature::loadConfigFile(std::shared_ptr<ProgramOptions> options,
     if (FileUtils::exists(local)) {
       LOG_TOPIC(DEBUG, Logger::CONFIG) << "loading override '" << local << "'";
 
-      if (!parser.parse(local)) {
+      if (!parser.parse(local, true)) {
         FATAL_ERROR_EXIT();
       }
     }
@@ -123,7 +123,7 @@ void ConfigFeature::loadConfigFile(std::shared_ptr<ProgramOptions> options,
     LOG_TOPIC(DEBUG, Logger::CONFIG) << "using user supplied config file '"
                                      << _file << "'";
 
-    if (!parser.parse(_file)) {
+    if (!parser.parse(_file, true)) {
       FATAL_ERROR_EXIT();
     }
 
@@ -192,7 +192,7 @@ void ConfigFeature::loadConfigFile(std::shared_ptr<ProgramOptions> options,
   if (FileUtils::exists(local)) {
     LOG_TOPIC(DEBUG, Logger::CONFIG) << "loading override '" << local << "'";
 
-    if (!parser.parse(local)) {
+    if (!parser.parse(local, true)) {
       FATAL_ERROR_EXIT();
     }
   } else {
@@ -219,7 +219,7 @@ void ConfigFeature::loadConfigFile(std::shared_ptr<ProgramOptions> options,
     }
   }
 
-  if (!parser.parse(filename)) {
+  if (!parser.parse(filename, true)) {
     exit(EXIT_FAILURE);
   }
 }

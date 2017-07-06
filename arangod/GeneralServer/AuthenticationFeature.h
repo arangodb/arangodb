@@ -24,7 +24,6 @@
 #define APPLICATION_FEATURES_AUTHENTICATION_FEATURE_H 1
 
 #include "ApplicationFeatures/ApplicationFeature.h"
-#include "AuthenticationHandler.h"
 #include "VocBase/AuthInfo.h"
 
 
@@ -36,6 +35,7 @@ class AuthenticationFeature final
 
  public:
   explicit AuthenticationFeature(application_features::ApplicationServer*);
+  ~AuthenticationFeature();
 
  public:
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
@@ -48,7 +48,7 @@ class AuthenticationFeature final
   bool isActive() const { return _active && isEnabled(); }
 
  private:
-  AuthInfo _authInfo;
+  AuthInfo *_authInfo;
   bool _authenticationUnixSockets;
   bool _authenticationSystemOnly;
 
@@ -66,7 +66,6 @@ class AuthenticationFeature final
   AuthLevel canUseDatabase(std::string const& username, std::string const& dbname);
   AuthLevel canUseCollection(std::string const& username, std::string const& dbname,
                              std::string const& collection);
-  AuthenticationHandler* getHandler();
 };
 };
 

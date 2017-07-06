@@ -77,7 +77,23 @@ bool RestUsersHandler::isSystemUser() const {
 }
 
 bool RestUsersHandler::canAccessUser(std::string const& user) const {
-  return user == _request->user() ? true : isSystemUser();
+  if (_request->authorized() && user == _request->user()) {
+    return true;
+  }
+  return isSystemUser();
+}
+
+/// check if the currently authenticated user is allowed to modify
+/// the collections in this particular database
+bool RestUsersHandler::canModifyDB(std::string const& dbname) const {
+  auto auth = FeatureCacheFeature::instance()->authenticationFeature();
+  TRI_ASSERT(auth != nullptr);
+  AuthInfo* authInfo = auth->authInfo();
+  if (_request->authorized() && !_request->user().empty()) {
+    auto lvl = authInfo->canUseDatabase(_request->user(), dbname);
+    return lvl == AuthLevel::RW;
+  }
+  return isSystemUser();
 }
 
 /// helper to generate a compliant response for individual user requests
@@ -198,20 +214,17 @@ static Result StoreUser(AuthInfo* authInfo, int mode, std::string const& user,
   std::string passwd;
   bool active = true;
   VPackSlice extra;
-  bool changePasswd = false;
   if (json.isObject()) {
     VPackSlice s = json.get("passwd");
     passwd = s.isString() ? s.copyString() : "";
     s = json.get("active");
     active = s.isBool() ? s.getBool() : true;
     extra = json.get("extra");
-    s = json.get("changePassword");
-    changePasswd = s.isBool() ? s.getBool() : false;
   }
 
   Result r;
   if (mode == 0 || mode == 1) {
-    r = authInfo->storeUser(mode == 1, user, passwd, active, changePasswd);
+    r = authInfo->storeUser(mode == 1, user, passwd, active);
   } else if (mode == 2) {
     r = authInfo->updateUser(user, [&](AuthUserEntry& entry) {
       if (json.isObject()) {
@@ -220,9 +233,6 @@ static Result StoreUser(AuthInfo* authInfo, int mode, std::string const& user,
         }
         if (json.get("active").isBool()) {
           entry.setActive(active);
-        }
-        if (json.get("changePassword").isBool()) {
-          entry.changePassword(changePasswd);
         }
       }
     });
@@ -308,37 +318,37 @@ RestStatus RestUsersHandler::putRequest(AuthInfo* authInfo) {
     std::string const& user = suffixes[0];
     if (suffixes[1] == "database") {
       // update a user's permissions
-      if (isSystemUser()) {
-        std::string const& db = suffixes[2];
-        std::string coll = suffixes.size() == 4 ? suffixes[3] : "";
-        AuthLevel lvl = AuthLevel::RW;
-        if (parsedBody->slice().isObject()) {
-          VPackSlice grant = parsedBody->slice().get("grant");
-          if (grant.isString()) {
-            lvl = convertToAuthLevel(grant);
-          }
-        }
-
-        // contains response in case of success
-        VPackBuilder b;
-        b(VPackValue(VPackValueType::Object));
-
-        Result r = authInfo->updateUser(user, [&](AuthUserEntry& entry) {
-          if (coll.empty()) {
-            entry.grantDatabase(db, lvl);
-            b(db, VPackValue(convertFromAuthLevel(lvl)))();
-          } else {
-            entry.grantCollection(db, coll, lvl);
-            b(db + "/" + coll, VPackValue(convertFromAuthLevel(lvl)))();
-          }
-        });
-        if (r.ok()) {
-          generateUserResult(ResponseCode::OK, b);
-        } else {
-          generateError(r);
-        }
-      } else {
+      std::string const& db = suffixes[2];
+      std::string coll = suffixes.size() == 4 ? suffixes[3] : "";
+      if (!(!coll.empty() && canModifyDB(db)) && !isSystemUser()) {
         generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_FORBIDDEN);
+        return RestStatus::DONE;
+      }
+      
+      AuthLevel lvl = AuthLevel::RW;
+      if (parsedBody->slice().isObject()) {
+        VPackSlice grant = parsedBody->slice().get("grant");
+        if (grant.isString()) {
+          lvl = convertToAuthLevel(grant);
+        }
+      }
+
+      // contains response in case of success
+      VPackBuilder b;
+      b(VPackValue(VPackValueType::Object));
+      Result r = authInfo->updateUser(user, [&](AuthUserEntry& entry) {
+        if (coll.empty()) {
+          entry.grantDatabase(db, lvl);
+          b(db, VPackValue(convertFromAuthLevel(lvl)))();
+        } else {
+          entry.grantCollection(db, coll, lvl);
+          b(db + "/" + coll, VPackValue(convertFromAuthLevel(lvl)))();
+        }
+      });
+      if (r.ok()) {
+        generateUserResult(ResponseCode::OK, b);
+      } else {
+        generateError(r);
       }
 
     } else if (suffixes[1] == "config") {
@@ -404,17 +414,20 @@ RestStatus RestUsersHandler::deleteRequest(AuthInfo* authInfo) {
   std::vector<std::string> suffixes = _request->decodedSuffixes();
 
   if (suffixes.size() == 1) {
-    if (isSystemUser()) {
-      std::string const& user = suffixes[0];
-      Result r = authInfo->removeUser(user);
-      if (r.ok()) {
-        VPackBuilder b;
-        b(VPackValue(VPackValueType::Object))("error", VPackValue(false))(
-            "code", VPackValue(202))();
-        generateResult(ResponseCode::ACCEPTED, b.slice());
-      } else {
-        generateError(r);
-      }
+    if (!isSystemUser()) {
+      generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_FORBIDDEN);
+      return RestStatus::DONE;
+    }
+    
+    std::string const& user = suffixes[0];
+    Result r = authInfo->removeUser(user);
+    if (r.ok()) {
+      VPackBuilder b;
+      b(VPackValue(VPackValueType::Object))("error", VPackValue(false))(
+          "code", VPackValue(202))();
+      generateResult(ResponseCode::ACCEPTED, b.slice());
+    } else {
+      generateError(r);
     }
   } else if (suffixes.size() == 2) {
     if (suffixes[1] == "config") {
@@ -433,25 +446,25 @@ RestStatus RestUsersHandler::deleteRequest(AuthInfo* authInfo) {
 
     if (suffixes[1] == "database") {
       // revoke a user's permissions
-      if (isSystemUser()) {
-        std::string const& db = suffixes[2];
-        std::string coll = suffixes.size() == 4 ? suffixes[3] : "";
-        Result r = authInfo->updateUser(user, [&](AuthUserEntry& entry) {
-          if (coll.empty()) {
-            entry.grantDatabase(db, AuthLevel::NONE);
-          } else {
-            entry.grantCollection(db, coll, AuthLevel::NONE);
-          }
-        });
-        if (r.ok()) {
-          resetResponse(ResponseCode::OK);
-        } else {
-          generateError(r);
-        }
-      } else {
+      std::string const& db = suffixes[2];
+      std::string coll = suffixes.size() == 4 ? suffixes[3] : "";
+      if (!(!coll.empty() && canModifyDB(db)) && !isSystemUser()) {
         generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_FORBIDDEN);
+        return RestStatus::DONE;
       }
-
+      
+      Result r = authInfo->updateUser(user, [&](AuthUserEntry& entry) {
+        if (coll.empty()) {
+          entry.removeDatabase(db);
+        } else {
+          entry.removeCollection(db, coll);
+        }
+      });
+      if (r.ok()) {
+        resetResponse(ResponseCode::OK);
+      } else {
+        generateError(r);
+      }
     } else if (suffixes[1] == "config") {
       // remove internal config data, used in the admin dashboard
       if (canAccessUser(user)) {

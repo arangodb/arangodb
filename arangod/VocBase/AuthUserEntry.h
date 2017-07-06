@@ -50,7 +50,6 @@ class AuthUserEntry {
   std::string const& passwordSalt() const { return _passwordSalt; }
   std::string const& passwordHash() const { return _passwordHash; }
   bool isActive() const { return _active; }
-  bool mustChangePassword() const { return _changePassword; }
   AuthSource source() const { return _source; }
 
   bool checkPassword(std::string const& password) const;
@@ -61,7 +60,6 @@ class AuthUserEntry {
   velocypack::Builder toVPackBuilder() const;
 
   void setActive(bool active) { _active = active; }
-  void changePassword(bool c) { _changePassword = c; }
 
   void grantDatabase(std::string const& dbname, AuthLevel level);
   void removeDatabase(std::string const& dbname);
@@ -86,9 +84,6 @@ class AuthUserEntry {
   std::string _passwordMethod;
   std::string _passwordSalt;
   std::string _passwordHash;
-  std::string _passwordChangeToken;
-  bool _changePassword;
-
   std::unordered_map<std::string, std::shared_ptr<AuthContext>> _authContexts;
 };
 }

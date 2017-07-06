@@ -94,3 +94,4 @@ bool RocksDBHashIndex::matchesDefinition(VPackSlice const& info) const {
   }
   return true;
 }
+

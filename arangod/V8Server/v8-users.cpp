@@ -55,7 +55,7 @@ void StoreUser(v8::FunctionCallbackInfo<v8::Value> const& args, bool replace) {
 
   if (args.Length() < 1) {
     TRI_V8_THROW_EXCEPTION_USAGE(
-        "save(username, password[, active, userData, changePassword])");
+        "save(username, password[, active, userData])");
   } else if (!args[0]->IsString()) {
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_USER_INVALID_NAME);
   }
@@ -82,15 +82,11 @@ void StoreUser(v8::FunctionCallbackInfo<v8::Value> const& args, bool replace) {
       TRI_V8_THROW_EXCEPTION(r);
     }
   }
-  bool changePassword = false;
-  if (args.Length() >= 5) {
-    changePassword = TRI_ObjectToBoolean(args[4]);
-  }
-
+  
   auto authentication =
       FeatureCacheFeature::instance()->authenticationFeature();
   Result r = authentication->authInfo()->storeUser(replace, username, pass,
-                                                   active, changePassword);
+                                                   active);
   if (!r.ok()) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(r.errorNumber(), r.errorMessage());
   }
@@ -120,7 +116,7 @@ static void JS_UpdateUser(v8::FunctionCallbackInfo<v8::Value> const& args) {
   v8::HandleScope scope(isolate);
   if (args.Length() < 1 || !args[0]->IsString()) {
     TRI_V8_THROW_EXCEPTION_USAGE(
-        "update(username[, password, active, userData, changePassword])");
+        "update(username[, password, active, userData])");
   }
   if (ExecContext::CURRENT_EXECCONTEXT != nullptr) {
     AuthLevel level =
@@ -147,9 +143,6 @@ static void JS_UpdateUser(v8::FunctionCallbackInfo<v8::Value> const& args) {
     }
     if (args.Length() > 2 && args[2]->IsBoolean()) {
       entry.setActive(TRI_ObjectToBoolean(args[2]));
-    }
-    if (args.Length() > 4 && args[4]->IsBoolean()) {
-      entry.changePassword(TRI_ObjectToBoolean(args[4]));
     }
   });
   if (!extras.isEmpty()) {
