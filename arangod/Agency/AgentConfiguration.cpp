@@ -726,13 +726,16 @@ void config_t::updateConfiguration(VPackSlice const& other) {
 
   TRI_ASSERT(other.isObject());
   TRI_ASSERT(other.hasKey(poolStr));
-  TRI_ASSERT(other.hasKey(maxPingStr));
-  TRI_ASSERT(other.hasKey(minPingStr));
   TRI_ASSERT(other.hasKey(compactionStepSizeStr));
   TRI_ASSERT(other.hasKey(compactionKeepSizeStr));
+  TRI_ASSERT(other.hasKey(maxPingStr));
+  TRI_ASSERT(other.hasKey(minPingStr));
+  TRI_ASSERT(other.hasKey(supervisionStr));
   TRI_ASSERT(other.hasKey(supervisionGracePeriodStr));
   TRI_ASSERT(other.hasKey(supervisionFrequencyStr));
-  
+  TRI_ASSERT(other.hasKey(compactionStepSizeStr));
+  TRI_ASSERT(other.hasKey(compactionKeepSizeStr));
+    
   WRITE_LOCKER(writeLocker, _lock);
 
   auto pool = other.get(poolStr);
@@ -741,6 +744,7 @@ void config_t::updateConfiguration(VPackSlice const& other) {
   for (auto const p : VPackObjectIterator(pool)) {
     _pool[p.key.copyString()] = p.value.copyString();
   }
+  _poolSize = _pool.size();
 
   auto active = other.get(activeStr);
   TRI_ASSERT(active.isArray());
@@ -748,14 +752,16 @@ void config_t::updateConfiguration(VPackSlice const& other) {
   for (auto const id : VPackArrayIterator(active)) {
     _active.push_back(id.copyString());
   }
+  _agencySize = _pool.size();
 
   _minPing = other.get(minPingStr).getNumber<double>();
   _maxPing = other.get(maxPingStr).getNumber<double>();
+  _supervision = other.get(supervisionStr).getBoolean();
   _supervisionFrequency = other.get(supervisionFrequencyStr).getNumber<double>();
   _supervisionGracePeriod = other.get(supervisionGracePeriodStr).getNumber<double>();
 
-  _agencySize = _pool.size();
-  _poolSize = _pool.size();
+  _compactionStepSize = other.get(compactionStepSizeStr).getNumber<uint64_t>();
+  _compactionKeepSize = other.get(compactionKeepSizeStr).getNumber<uint64_t>();
   
   ++_version;
   
