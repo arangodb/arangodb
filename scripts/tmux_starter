@@ -8,6 +8,8 @@ main(){
     fi
 
     local suite=${1:-all}
+    shift
+
     local tasks="suite_$suite"
     type -t function $tasks &>/dev/null|| die "suite $suite not defined"
     echo "using function name: $tasks"
@@ -21,7 +23,7 @@ main(){
     local cols=$((((panes>1)) * 2))
     spawn_panes "$session_name" $rows $cols
     tmux select-pane -t $session_name.0
-    execute_tasks "$(pwd)" "$tasks"
+    execute_tasks "$(pwd)" "$tasks" "$@"
     tmux -2 attach-session -t $session_name
 }
 

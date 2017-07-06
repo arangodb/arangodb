@@ -225,7 +225,7 @@ ReplaceNode::ReplaceNode(ExecutionPlan* plan,
 /// @brief toVelocyPack
 void ReplaceNode::toVelocyPackHelper(VPackBuilder& nodes, bool verbose) const {
   ModificationNode::toVelocyPackHelper(nodes, verbose);
-  
+
   nodes.add(VPackValue("inDocVariable"));
   _inDocVariable->toVelocyPack(nodes);
 

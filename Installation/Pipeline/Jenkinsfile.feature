@@ -17,6 +17,7 @@ def defaultJslint = true
 def defaultRunResilience = false
 def defaultRunTests = true
 def defaultSkipTestsOnError = true
+def defaultFullParallel = false
 
 if (env.BRANCH_NAME == "devel") {
     defaultMac = false
@@ -44,9 +45,19 @@ properties([
             name: 'Windows'
         ),
         booleanParam(
+            defaultValue: defaultFullParallel,
+            description: 'build all os in parallel',
+            name: 'fullParallel'
+        ),
+        booleanParam(
             defaultValue: defaultCleanBuild,
             description: 'clean build directories',
             name: 'cleanBuild'
+        ),
+        booleanParam(
+            defaultValue: defaultSkipTestsOnError,
+            description: 'skip Mac & Windows tests if Linux tests fails',
+            name: 'skipTestsOnError'
         ),
         booleanParam(
             defaultValue: defaultCommunity,
@@ -82,6 +93,12 @@ cleanBuild = params.cleanBuild
 // build all combinations
 buildFull = false
 
+// skip tests on previous error
+skipTestsOnError = params.skipTestsOnError
+
+// do everything in parallel
+fullParallel = params.fullParallel
+
 // build community
 useCommunity = params.Community
 
@@ -105,9 +122,6 @@ runResilience = params.runResilience
 
 // run tests
 runTests = params.runTests
-
-// skip tests on previous error
-skipTestsOnError = defaultSkipTestsOnError
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                             CONSTANTS AND HELPERS
@@ -290,7 +304,7 @@ def stashSourceCode() {
     sh 'find -L . -type l -delete'
     sh 'zip -r -1 -x "*tmp" -x ".git" -y -q source.zip *'
 
-    lock('cache') {
+    lock("${env.BRANCH_NAME}-cache") {
         sh 'mkdir -p ' + cacheDir
         sh "mv -f source.zip ${cacheDir}/source.zip"
     }
@@ -304,7 +318,7 @@ def unstashSourceCode(os) {
         bat 'del /F /Q *'
     }
 
-    lock('cache') {
+    lock("${env.BRANCH_NAME}-cache") {
         scpFromMaster(os, 'source.zip', 'source.zip')
     }
 
@@ -328,7 +342,7 @@ def stashBuild(edition, os) {
         bat "c:\\cmake\\bin\\cmake -E tar cf ${name} build"
     }
 
-    lock('cache') {
+    lock("${env.BRANCH_NAME}-cache") {
         scpToMaster(os, name, name)
     }
 }
@@ -336,7 +350,7 @@ def stashBuild(edition, os) {
 def unstashBuild(edition, os) {
     def name = "build-${edition}-${os}.zip"
 
-    lock('cache') {
+    lock("${env.BRANCH_NAME}-cache") {
         scpFromMaster(os, name, name)
     }
 
@@ -363,7 +377,7 @@ def stashBinaries(edition, os) {
         bat "c:\\cmake\\bin\\cmake -E tar cf ${name} ${dirs}"
     }
 
-    lock('cache') {
+    lock("${env.BRANCH_NAME}-cache") {
         scpToMaster(os, name, name)
     }
 }
@@ -374,7 +388,7 @@ def unstashBinaries(edition, os) {
     if (os == 'linux' || os == 'mac') {
         sh 'rm -rf *'
 
-        lock('cache') {
+        lock("${env.BRANCH_NAME}-cache") {
             scpFromMaster(os, name, name)
         }
 
@@ -449,19 +463,21 @@ def buildStepCheck(edition, os, full) {
 
 def buildStep(edition, os) {
     return {
-        node(os) {
-            def name = "${edition}-${os}"
+        lock("${env.BRANCH_NAME}-build-${edition}-${os}") {
+            node(os) {
+                def name = "${edition}-${os}"
 
-            try {
-                unstashSourceCode(os)
-                buildEdition(edition, os)
-                stashBinaries(edition, os)
-                buildsSuccess[name] = true
-            }
-            catch (exc) {
-                buildsSuccess[name] = false
-                allBuildsSuccessful = false
-                throw exc
+                try {
+                    unstashSourceCode(os)
+                    buildEdition(edition, os)
+                    stashBinaries(edition, os)
+                    buildsSuccess[name] = true
+                }
+                catch (exc) {
+                    buildsSuccess[name] = false
+                    allBuildsSuccessful = false
+                    throw exc
+                }
             }
         }
     }
@@ -512,14 +528,7 @@ def jslintStep() {
             node(os) {
                 echo "Running jslint test"
 
-                try {
-                    unstashBinaries(edition, os)
-                }
-                catch (exc) {
-                    echo exc.toString()
-                    throw exc
-                }
-                
+                unstashBinaries(edition, os)
                 jslint()
             }
         }
@@ -565,9 +574,9 @@ def testEdition(edition, os, mode, engine) {
 def testCheck(edition, os, mode, engine, full) {
     def name = "${edition}-${os}"
 
-    if (buildsSuccess.containsKey(name) && ! buildsSuccess[name]) {
-        return false
-    }
+    // if (! (buildsSuccess.containsKey(name) && buildsSuccess[name])) {
+    //     return false
+    // }
 
     if (! runTests) {
         return false
@@ -650,7 +659,7 @@ def testStepParallel(osList, modeList) {
         }
     }
 
-    if (runJslint) {
+    if (runJslint && osList.contains('Linux') && modeList.contains('Community')) {
         branches['jslint'] = jslintStep()
     }
 
@@ -676,9 +685,9 @@ def testResilience(os, engine, foxx) {
 def testResilienceCheck(os, engine, foxx, full) {
     def name = "community-${os}"
 
-    if (buildsSuccess.containsKey(name) && ! buildsSuccess[name]) {
-        return false
-    }
+    // if (! (buildsSuccess.containsKey(name) && buildsSuccess[name])) {
+    //     return false
+    // }
 
     if (! runResilience) {
         return false
@@ -772,27 +781,12 @@ stage('checkout') {
 }
 
 try {
-    stage('build linux') {
-        buildStepParallel(['linux'])
-    }
-}
-catch (exc) {
-    echo exc.toString()
-}
-
-try {
-    stage('tests linux') {
-        testStepParallel(['linux'], ['cluster', 'singleserver'])
-    }
-}
-catch (exc) {
-    echo exc.toString()
-}
-
-try {
-    stage('build mac') {
-        if (allBuildsSuccessful) {
-            buildStepParallel(['mac'])
+    stage('build') {
+        if (fullParallel) {
+            buildStepParallel(['linux', 'mac', 'windows'])
+        }
+        else {
+            buildStepParallel(['linux'])
         }
     }
 }
@@ -801,9 +795,12 @@ catch (exc) {
 }
 
 try {
-    stage('tests mac') {
-        if (allTestsSuccessful || ! skipTestsOnError) {
-            testStepParallel(['mac'], ['cluster', 'singleserver'])
+    stage('tests') {
+        if (fullParallel) {
+            testStepParallel(['linux', 'mac', 'windows'], ['cluster', 'singleserver'])
+        }
+        else {
+            testStepParallel(['linux'], ['cluster', 'singleserver'])
         }
     }
 }
@@ -811,26 +808,50 @@ catch (exc) {
     echo exc.toString()
 }
 
-try {
-    stage('build windows') {
-        if (allBuildsSuccessful) {
-            buildStepParallel(['windows'])
+if (! fullParallel) {
+    try {
+        stage('build mac') {
+            if (allBuildsSuccessful) {
+                buildStepParallel(['mac'])
+            }
         }
     }
-}
-catch (exc) {
-    echo exc.toString()
-}
+    catch (exc) {
+        echo exc.toString()
+    }
 
-try {
-    stage('tests windows') {
-        if (allTestsSuccessful || ! skipTestsOnError) {
-            testStepParallel(['windows'], ['cluster', 'singleserver'])
+    try {
+        stage('tests mac') {
+            if (allTestsSuccessful || ! skipTestsOnError) {
+                testStepParallel(['mac'], ['cluster', 'singleserver'])
+            }
         }
     }
-}
-catch (exc) {
-    echo exc.toString()
+    catch (exc) {
+        echo exc.toString()
+    }
+
+    try {
+        stage('build windows') {
+            if (allBuildsSuccessful) {
+                buildStepParallel(['windows'])
+            }
+        }
+    }
+    catch (exc) {
+        echo exc.toString()
+    }
+
+    try {
+        stage('tests windows') {
+            if (allTestsSuccessful || ! skipTestsOnError) {
+                testStepParallel(['windows'], ['cluster', 'singleserver'])
+            }
+        }
+    }
+    catch (exc) {
+        echo exc.toString()
+    }
 }
 
 try {
@@ -847,6 +868,10 @@ catch (exc) {
 stage('result') {
     node('master') {
         def result = ""
+
+        if (!jslintSuccessful) {
+            result += "JSLINT failed\n"
+        }
 
         for (kv in buildsSuccess) {
             result += "BUILD ${kv.key}: ${kv.value}\n"

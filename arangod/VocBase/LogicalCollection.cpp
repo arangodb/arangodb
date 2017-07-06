@@ -821,7 +821,8 @@ void LogicalCollection::toVelocyPack(VPackBuilder& result, bool translateCids,
   result.add("numberOfShards", VPackValue(_numberOfShards));
   result.add(VPackValue("shards"));
   result.openObject();
-  for (auto const& shards : *_shardIds) {
+  auto tmpShards = _shardIds;
+  for (auto const& shards : *tmpShards) {
     result.add(VPackValue(shards.first));
     result.openArray();
     for (auto const& servers : shards.second) {

@@ -31,6 +31,8 @@
 #include "Basics/ConditionVariable.h"
 #include "Basics/Thread.h"
 
+#include <list>
+
 struct TRI_vocbase_t;
 
 namespace arangodb {
@@ -39,6 +41,10 @@ class QueryRegistry;
 }
 
 namespace consensus {
+
+static inline double readSystemClock() {
+  return std::chrono::duration<double>(std::chrono::system_clock::now().time_since_epoch()).count();
+}
 
 class Agent;
 
@@ -132,6 +138,9 @@ class Constituent : public Thread {
   // Check if log start matches entry in my log
   bool logMatches(index_t, term_t) const;
 
+  // Count election events which are more recent than `threshold` seconds.
+  int64_t countRecentElectionEvents(double threshold);
+
   TRI_vocbase_t* _vocbase;
   aql::QueryRegistry* _queryRegistry;
 
@@ -149,6 +158,10 @@ class Constituent : public Thread {
 
   arangodb::basics::ConditionVariable _cv;  // agency callbacks
   mutable arangodb::Mutex _castLock;
+
+  // Keep track of times of last few elections:
+  mutable arangodb::Mutex _recentElectionsMutex;
+  std::list<double> _recentElections;
 };
 }
 }
