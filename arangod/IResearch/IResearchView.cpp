@@ -1737,6 +1737,8 @@ bool IResearchView::linkRegister(LinkPtr& ptr) {
     _links.erase(itr.first); // revert state
   }
 
+  LOG_TOPIC(WARN, Logger::FIXME) << "duplicate iResearch link registration detected for iResearch view '" << name() <<"' cid '" << ptr->collection()->cid() << "' iid '" << ptr->id() << "'";
+
   return false;
 }
 
