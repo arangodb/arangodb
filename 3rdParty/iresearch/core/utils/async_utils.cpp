@@ -300,11 +300,9 @@ bool thread_pool::run(std::function<void()>&& fn) {
 void thread_pool::stop(bool skip_pending /*= false*/) {
   std::unique_lock<decltype(lock_)> lock(lock_);
 
-  if (State::RUN != state_) {
-    return; // already stoped
+  if (State::RUN == state_) {
+    state_ = skip_pending ? State::ABORT : State::FINISH;
   }
-
-  state_ = skip_pending ? State::ABORT : State::FINISH;
 
   // wait for all threads to terminate
   while(!pool_.empty()) {
