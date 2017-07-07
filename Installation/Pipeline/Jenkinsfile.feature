@@ -436,7 +436,7 @@ def buildEdition(edition, os) {
     finally {
         stashBuild(edition, os)
         archiveArtifacts allowEmptyArchive: true,
-                         artifacts: 'log-output/**, *.log, tmp/**/log, tmp/**/log0, tmp/**/log1, tmp/**/log2'',
+                         artifacts: 'log-output/**, *.log, tmp/**/log, tmp/**/log0, tmp/**/log1, tmp/**/log2',
                          defaultExcludes: false
     }
 }
@@ -555,7 +555,6 @@ testJenkins = [
 
 testsSuccess = [:]
 allTestsSuccessful = true
-numberTestsSuccessful = 0
 
 def testEdition(edition, os, mode, engine) {
     try {
@@ -568,8 +567,6 @@ def testEdition(edition, os, mode, engine) {
         else if (os == 'windows') {
             PowerShell(". .\\Installation\\Pipeline\\test_${mode}_${edition}_${engine}_${os}.ps1")
         }
-
-        numberTestsSuccessful += 1
     }
     catch (exc) {
         archiveArtifacts allowEmptyArchive: true,
@@ -746,6 +743,11 @@ def testResilienceStep(os, engine, foxx) {
                     resiliencesSuccess[name] = false
                     allResiliencesSuccessful = false
                     throw exc
+                }
+                finally {
+                    archiveArtifacts allowEmptyArchive: true,
+                                     artifacts: 'log-output/**, *.log, tmp/**/log, tmp/**/log0, tmp/**/log1, tmp/**/log2',
+                                     defaultExcludes: false
                 }
             }
         }
