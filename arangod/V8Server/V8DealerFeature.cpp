@@ -261,6 +261,8 @@ void V8DealerFeature::start() {
     TRI_ASSERT(_contexts.size() > 0); 
     TRI_ASSERT(_contexts.size() <= _nrMaxContexts);  
     for (auto& context : _contexts) {
+      // apply context update is only run on contexts that no other
+      // threads can see (yet)
       applyContextUpdate(context);
       _freeContexts.push_back(context);
     }
@@ -278,6 +280,8 @@ void V8DealerFeature::start() {
 V8Context* V8DealerFeature::addContext() {
   V8Context* context = buildContext(nextId());
 
+  // apply context update is only run on contexts that no other
+  // threads can see (yet)
   applyContextUpdate(context);
 
   try {
@@ -578,17 +582,25 @@ void V8DealerFeature::startGarbageCollection() {
 void V8DealerFeature::enterContextInternal(TRI_vocbase_t* vocbase,
                                            V8Context* context,
                                            bool allowUseDatabase) {
+  context->lockAndEnter();
+  enterLockedContext(vocbase, context, allowUseDatabase);
+}
+
+void V8DealerFeature::enterLockedContext(TRI_vocbase_t* vocbase,
+                                         V8Context* context,
+                                         bool allowUseDatabase) {
   TRI_ASSERT(vocbase != nullptr);
 
   // when we get here, we should have a context and an isolate
   TRI_ASSERT(context != nullptr);
   TRI_ASSERT(context->_isolate != nullptr);
+  TRI_ASSERT(context->isUsed());
+
   auto isolate = context->_isolate;
 
   // turn off memory allocation failures before going into v8 code 
   TRI_DisallowMemoryFailures();
 
-  context->lockAndEnter();
   {
     v8::HandleScope scope(isolate);
     auto localContext = v8::Local<v8::Context>::New(isolate, context->_context);
@@ -671,6 +683,8 @@ V8Context* V8DealerFeature::enterContext(TRI_vocbase_t* vocbase,
 
         if (context != nullptr) {
           // found the context
+          TRI_ASSERT(guard.isLocked());
+          context->lockAndEnter();
           break;
         }
 
@@ -795,15 +809,29 @@ V8Context* V8DealerFeature::enterContext(TRI_vocbase_t* vocbase,
 
     // should not fail because we reserved enough space beforehand
     _busyContexts.emplace(context);
+
+    context->lockAndEnter();
   }
   
   TRI_ASSERT(context != nullptr);
+  TRI_ASSERT(context->isUsed());
 
-  enterContextInternal(vocbase, context, allowUseDatabase);
+  enterLockedContext(vocbase, context, allowUseDatabase);
   return context;
 }
 
 void V8DealerFeature::exitContextInternal(V8Context* context) {
+  try {
+    exitLockedContext(context);
+    context->unlockAndExit();
+  } catch (...) {
+    // make sure the context will be exited
+    context->unlockAndExit();
+    throw;
+  }
+}
+
+void V8DealerFeature::exitLockedContext(V8Context* context) {
   TRI_ASSERT(context != nullptr);
 
   LOG_TOPIC(TRACE, arangodb::Logger::V8) << "leaving V8 context " << context->_id;
@@ -813,6 +841,7 @@ void V8DealerFeature::exitContextInternal(V8Context* context) {
   TRI_ASSERT(context->_locker != nullptr);
   TRI_ASSERT(context->_locker->IsLocked(isolate));
   TRI_ASSERT(v8::Locker::IsLocked(isolate));
+  TRI_ASSERT(context->isUsed());
 
   bool canceled = false;
 
@@ -853,9 +882,6 @@ void V8DealerFeature::exitContextInternal(V8Context* context) {
     v8g->_canceled = false;
   }
 
-  // make sure the context will be exited
-  TRI_DEFER(context->unlockAndExit());
-  
   // check if we need to execute global context methods
   bool const runGlobal = context->hasGlobalMethodsQueued();
 
@@ -893,7 +919,7 @@ void V8DealerFeature::exitContextInternal(V8Context* context) {
 }
 
 void V8DealerFeature::exitContext(V8Context* context) {
-  exitContextInternal(context);
+  exitLockedContext(context);
 
   V8GcThread* gc = static_cast<V8GcThread*>(_gcThread.get());
   
@@ -915,6 +941,7 @@ void V8DealerFeature::exitContext(V8Context* context) {
     }
 
     CONDITION_LOCKER(guard, _contextCondition);
+    context->unlockAndExit();
 
     if (performGarbageCollection && !_freeContexts.empty()) {
       // only add the context to the dirty list if there is at least one other
@@ -934,6 +961,8 @@ void V8DealerFeature::exitContext(V8Context* context) {
     guard.broadcast();
   } else {
     CONDITION_LOCKER(guard, _contextCondition);
+    
+    context->unlockAndExit();
 
     _busyContexts.erase(context);
     // note that re-adding the context here should not fail as we reserved
@@ -955,6 +984,8 @@ void V8DealerFeature::defineContextUpdate(
   _contextUpdates.emplace_back(func, vocbase);
 }
 
+// apply context update is only run on contexts that no other
+// threads can see (yet)
 void V8DealerFeature::applyContextUpdate(V8Context* context) {
   for (auto& p : _contextUpdates) {
     auto vocbase = p.second;
