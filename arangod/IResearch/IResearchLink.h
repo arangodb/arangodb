@@ -158,6 +158,7 @@ class IResearchLink final: public Index {
   /// @brief fill and return a JSON description of a IResearchLink object
   /// @param withFigures output 'figures' section with e.g. memory size
   ////////////////////////////////////////////////////////////////////////////////
+  using Index::toVelocyPack; // for Index::toVelocyPack(bool)
   void toVelocyPack(
     VPackBuilder& builder,
     bool withFigures,
@@ -186,6 +187,7 @@ class IResearchLink final: public Index {
 
  private:
   friend bool IResearchView::linkRegister(LinkPtr&);
+  std::string _defaultName; // the name of the desired view (iff _view == nullptr)
   IResearchLinkMeta _meta; // how this collection should be indexed
   IResearchView* _view; // effectively the index itself (nullptr == not associated)
 

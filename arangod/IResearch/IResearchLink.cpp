@@ -243,6 +243,20 @@ bool IResearchLink::isSorted() const {
     PTR_NAMED(IResearchLink, ptr, iid, collection, std::move(meta));
 
     if (definition.hasKey(SKIP_VIEW_REGISTRATION_FIELD)) {
+      // TODO FIXME find a better way to remember view name for use with toVelocyPack(...)
+      if (definition.hasKey(VIEW_NAME_FIELD)) {
+        auto name = definition.get(VIEW_NAME_FIELD);
+
+        if (!name.isString()) {
+          LOG_TOPIC(WARN, Logger::FIXME) << "error parsing view name for link '" << iid << "'";
+          TRI_set_errno(TRI_ERROR_BAD_PARAMETER);
+
+          return nullptr;
+        }
+
+        ptr->_defaultName = name.copyString();
+      }
+
       return ptr;
     }
 
@@ -281,9 +295,9 @@ bool IResearchLink::isSorted() const {
     LOG_TOPIC(WARN, Logger::FIXME) << "error finding view for link '" << iid << "'";
     TRI_set_errno(TRI_ERROR_ARANGO_VIEW_NOT_FOUND);
   } catch (std::exception const& e) {
-    LOG_TOPIC(WARN, Logger::DEVEL) << "error creating view link '" << iid << "'" << e.what();
+    LOG_TOPIC(WARN, Logger::DEVEL) << "caught exception while creating view link '" << iid << "'" << e.what();
   } catch (...) {
-    LOG_TOPIC(WARN, Logger::DEVEL) << "error creating view link '" << iid << "'";
+    LOG_TOPIC(WARN, Logger::DEVEL) << "caught exception while creating view link '" << iid << "'";
   }
 
   return nullptr;
@@ -408,6 +422,9 @@ void IResearchLink::toVelocyPack(
 
   if (_view) {
     builder.add(VIEW_NAME_FIELD, VPackValue(_view->name()));
+  } else if (!_defaultName.empty()) { // empty _defaultName == no view name in source jSON
+  // } else if (!_defaultName.empty() && forPersistence) { // MMFilesCollection::saveIndex(...) does not set 'forPersistence'
+    builder.add(VIEW_NAME_FIELD, VPackValue(_defaultName));
   }
 
   if (withFigures) {
