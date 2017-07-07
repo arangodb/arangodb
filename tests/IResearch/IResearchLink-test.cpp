@@ -128,6 +128,21 @@ SECTION("test_defaults") {
     CHECK((true == !link));
   }
 
+  // view specified without registration
+  {
+    // 'skipViewRegistration' attribute as defined in IResearchLink.cpp SKIP_VIEW_REGISTRATION_FIELD
+    auto json = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testView\", \"skipViewRegistration\": null }");
+    auto link = arangodb::iresearch::IResearchLink::make(1, nullptr, json->slice());
+    CHECK((false == !link));
+    auto builder = link->toVelocyPack(false);
+    auto slice = builder->slice();
+    CHECK((
+      slice.hasKey("name")
+      && slice.get("name").isString()
+      && std::string("testView") == slice.get("name").copyString()
+    ));
+  }
+
   // valid link creation
   {
     TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "testVocbase");
