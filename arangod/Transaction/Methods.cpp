@@ -652,36 +652,6 @@ std::string transaction::Methods::extractIdString(VPackSlice slice) {
   return transaction::helpers::extractIdString(resolver(), slice, VPackSlice());
 }
 
-/// @brief quick access to the _key attribute in a database document
-/// the document must have at least two attributes, and _key is supposed to
-/// be the first one
-VPackSlice transaction::helpers::extractKeyFromDocument(VPackSlice slice) {
-  if (slice.isExternal()) {
-    slice = slice.resolveExternal();
-  }
-  TRI_ASSERT(slice.isObject());
-
-  if (slice.isEmptyObject()) {
-    return VPackSlice();
-  }
-  // a regular document must have at least the three attributes
-  // _key, _id and _rev (in this order). _key must be the first attribute
-  // however this method may also be called for remove markers, which only
-  // have _key and _rev. therefore the only assertion that we can make
-  // here is that the document at least has two attributes
-
-  uint8_t const* p = slice.begin() + slice.findDataOffset(slice.head());
-
-  if (*p == basics::VelocyPackHelper::KeyAttribute) {
-    // the + 1 is required so that we can skip over the attribute name
-    // and point to the attribute value
-    return VPackSlice(p + 1);
-  }
-
-  // fall back to the regular lookup method
-  return slice.get(StaticStrings::KeyString);
-}
-
 /// @brief build a VPack object with _id, _key and _rev, the result is
 /// added to the builder in the argument as a single object.
 void transaction::Methods::buildDocumentIdentity(
