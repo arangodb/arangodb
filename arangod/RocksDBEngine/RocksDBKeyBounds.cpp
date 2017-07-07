@@ -196,8 +196,9 @@ uint64_t RocksDBKeyBounds::objectId() const {
     default:
       THROW_ARANGO_EXCEPTION(TRI_ERROR_TYPE_ERROR);
   }
-#endif
+#else
   return uint64FromPersistent(_internals.buffer().data());
+#endif
 }
 
 rocksdb::ColumnFamilyHandle* RocksDBKeyBounds::columnFamily() const {
