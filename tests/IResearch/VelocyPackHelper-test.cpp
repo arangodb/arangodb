@@ -87,11 +87,13 @@ SECTION("test_getstring") {
     auto slice = json->slice();
     std::string buf0;
     irs::string_ref buf1;
-    bool seen;
+    bool seen = true;
 
     CHECK((arangodb::iresearch::getString(buf0, slice, "key", seen, "abc")));
     CHECK((!seen));
     CHECK((buf0 == "abc"));
+    
+    seen = true;
 
     CHECK((arangodb::iresearch::getString(buf1, slice, "key", seen, "abc")));
     CHECK((!seen));
