@@ -631,7 +631,7 @@ def testStep(edition, os, mode, engine) {
         node(testJenkins[os]) {
             def buildName = "${edition}-${os}"
 
-            if (buildsSuccess.containsKey(buildName) && buildsSuccess[buildName]) {
+            if (buildsSuccess[buildName]) {
                 def name = "${edition}-${os}-${mode}-${engine}"
 
                 try {
