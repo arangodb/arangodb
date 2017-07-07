@@ -646,6 +646,16 @@ def testStep(edition, os, mode, engine) {
                     throw exc
                 }
             }
+            else {
+                def result = ""
+
+                for (kv in buildsSuccess) {
+                    result += "BUILD ${kv.key}: ${kv.value}\n"
+                }
+
+                echo result
+                echo (buildsSuccess[buildName] ? "true" : "false")
+            }
         }
     }
 }
