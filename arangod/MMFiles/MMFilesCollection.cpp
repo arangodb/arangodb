@@ -144,11 +144,11 @@ arangodb::Result MMFilesCollection::updateProperties(VPackSlice const& slice,
   auto journalSlice = slice.get("journalSize");
 
   if (journalSlice.isNone()) {
-    // In some apis maximalSize is allowed instead
+    // In some APIs maximalSize is allowed instead
     journalSlice = slice.get("maximalSize");
   }
 
-  if (!journalSlice.isNone()) {
+  if (!journalSlice.isNone() && journalSlice.isNumber()) {
     TRI_voc_size_t toUpdate = journalSlice.getNumericValue<TRI_voc_size_t>();
     if (toUpdate < TRI_JOURNAL_MINIMAL_SIZE) {
       return {TRI_ERROR_BAD_PARAMETER, "<properties>.journalSize too small"};
