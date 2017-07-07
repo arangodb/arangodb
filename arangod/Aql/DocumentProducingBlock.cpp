@@ -38,8 +38,12 @@ DocumentProducingBlock::DocumentProducingBlock(DocumentProducingNode const* node
     : _trxPtr(trx),
       _node(node),
       _produceResult(dynamic_cast<ExecutionNode const*>(_node)->isVarUsedLater(_node->outVariable())),
-      _useRawDocumentPointers(EngineSelectorFeature::ENGINE->useRawDocumentPointers()),
-      _documentProducer(buildCallback()) {}
+      _useRawDocumentPointers(false && EngineSelectorFeature::ENGINE->useRawDocumentPointers()),
+      _documentProducer(buildCallback()) {
+  // TODO: FIXME: we want to optimize here. however, if we do not copy the
+  // data out, some other places turn it into a VPackValueType::External,
+  // and many other functions will fail as a consequence
+}
 
 DocumentProducingBlock::DocumentProducingFunction DocumentProducingBlock::buildCallback() const {
   if (!_produceResult) {
@@ -55,24 +59,43 @@ DocumentProducingBlock::DocumentProducingFunction DocumentProducingBlock::buildC
 
   auto const& projection = _node->projection();
 
-  if (projection.size() == 1 && projection[0] == "_id") {
-    // return _id attribute
-    return [this](AqlItemBlock* res, VPackSlice slice, size_t registerId, size_t& row) {
-      VPackSlice found = transaction::helpers::extractIdFromDocument(slice);
-      if (found.isCustom()) {
-        // _id as a custom type needs special treatment
-        res->setValue(row, static_cast<arangodb::aql::RegisterId>(registerId),
-                      AqlValue(transaction::helpers::extractIdString(_trxPtr->resolver(), found, slice)));
-      } else {
-        res->setValue(row, static_cast<arangodb::aql::RegisterId>(registerId),
-                      AqlValue(AqlValueHintCopy(found.begin())));
-      }
-      if (row > 0) {
-        // re-use already copied AQLValues
-        res->copyValuesFromFirstRow(row, static_cast<RegisterId>(registerId));
-      }
-      ++row;
-    };
+  if (projection.size() == 1) {
+    if (projection[0] == "_id") {
+      // return _id attribute
+      return [this](AqlItemBlock* res, VPackSlice slice, size_t registerId, size_t& row) {
+        VPackSlice found = transaction::helpers::extractIdFromDocument(slice);
+        if (found.isCustom()) {
+          // _id as a custom type needs special treatment
+          res->setValue(row, static_cast<arangodb::aql::RegisterId>(registerId),
+                        AqlValue(transaction::helpers::extractIdString(_trxPtr->resolver(), found, slice)));
+        } else {
+          res->setValue(row, static_cast<arangodb::aql::RegisterId>(registerId),
+                        AqlValue(AqlValueHintCopy(found.begin())));
+        }
+        if (row > 0) {
+          // re-use already copied AQLValues
+          res->copyValuesFromFirstRow(row, static_cast<RegisterId>(registerId));
+        }
+        ++row;
+      };
+    } else if (projection[0] == "_key") {
+      // return _key attribute
+      return [this](AqlItemBlock* res, VPackSlice slice, size_t registerId, size_t& row) {
+        VPackSlice found = transaction::helpers::extractKeyFromDocument(slice);
+        if (_useRawDocumentPointers) {
+          res->setValue(row, static_cast<arangodb::aql::RegisterId>(registerId),
+                        AqlValue(AqlValueHintNoCopy(found.begin())));
+        } else {
+          res->setValue(row, static_cast<arangodb::aql::RegisterId>(registerId),
+                        AqlValue(AqlValueHintCopy(found.begin())));
+        }
+        if (row > 0) {
+          // re-use already copied AQLValues
+          res->copyValuesFromFirstRow(row, static_cast<RegisterId>(registerId));
+        }
+        ++row;
+      };
+    }
   }
 
   if (!projection.empty()) {
@@ -85,11 +108,7 @@ DocumentProducingBlock::DocumentProducingFunction DocumentProducingBlock::buildC
                       AqlValue(VPackSlice::nullSlice()));
       } else {
         uint8_t const* vpack = slice.begin();
-        if (false && _useRawDocumentPointers) {
-          // TODO: FIXME: we want to optimize here. however, if we do not copy the
-          // data out, some other places turn it into a VPackValueType::External,
-          // and many other functions will fail as a consequence
-
+        if (_useRawDocumentPointers) {
           res->setValue(row, static_cast<arangodb::aql::RegisterId>(registerId),
                         AqlValue(AqlValueHintNoCopy(vpack)));
         } else {
