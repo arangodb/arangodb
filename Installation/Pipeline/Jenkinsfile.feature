@@ -630,20 +630,10 @@ def testName(edition, os, mode, engine, full) {
 def testStep(edition, os, mode, engine) {
     return {
         node(testJenkins[os]) {
-            def name = "${edition}-${os}-${mode}-${engine}"
+            def buildName = "${edition}-${os}"
 
-            result = ""
-            
-            for (kv in buildsSuccess) {
-                result += "BUILD ${kv.key}: ${kv.value}\n"
-            }
-
-            echo result
-            echo buildsSuccess.containsKey(name)
-            echo buildsSuccess[name]
-
-            if (buildsSuccess.containsKey(name) && buildsSuccess[name]) {
-                echo "Running ${mode} ${edition} ${engine} ${os} test"
+            if (buildsSuccess.containsKey(buildName) && buildsSuccess[buildName]) {
+                def name = "${edition}-${os}-${mode}-${engine}"
 
                 try {
                     unstashBinaries(edition, os)
@@ -741,10 +731,10 @@ def testResilienceName(os, engine, foxx, full) {
 def testResilienceStep(os, engine, foxx) {
     return {
         node(testJenkins[os]) {
-            def name = "${os}-${engine}-${foxx}"
+            def buildName = "${edition}-${os}"
 
-            if (buildsSuccess.containsKey(name) && buildsSuccess[name]) {
-                echo "Running ${foxx} ${engine} ${os} resilience test"
+            if (buildsSuccess.containsKey(buildName) && buildsSuccess[buildName]) {
+                def name = "${os}-${engine}-${foxx}"
 
                 try {
                     unstashBinaries('community', os)
