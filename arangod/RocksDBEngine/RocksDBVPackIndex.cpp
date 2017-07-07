@@ -86,7 +86,7 @@ RocksDBVPackIndexIterator::RocksDBVPackIndexIterator(
       _index(index),
       _cmp(index->comparator()),
       _reverse(reverse),
-      _bounds(bounds) {
+      _bounds(std::move(bounds)) {
   TRI_ASSERT(index->columnFamily() == RocksDBColumnFamily::vpack()); 
 
   RocksDBMethods* mthds = RocksDBTransactionState::toMethods(trx);
