@@ -1519,7 +1519,6 @@ arangodb::Result RocksDBCollection::lookupRevisionVPack(
   TRI_ASSERT(_objectId != 0);
 
   auto key = RocksDBKey::Document(_objectId, revisionId);
-  std::string value;
 
   if (withCache && useCache()) {
     TRI_ASSERT(_cache != nullptr);
@@ -1527,30 +1526,31 @@ arangodb::Result RocksDBCollection::lookupRevisionVPack(
     auto f = _cache->find(key.string().data(),
                           static_cast<uint32_t>(key.string().size()));
     if (f.found()) {
-      value.append(reinterpret_cast<char const*>(f.value()->value()),
-                   static_cast<size_t>(f.value()->valueSize));
-      mdr.setManaged(std::move(value), revisionId);
+      std::string* value = mdr.prepareStringUsage();
+      value->append(reinterpret_cast<char const*>(f.value()->value()),
+                    static_cast<size_t>(f.value()->valueSize));
+      mdr.setManagedAfterStringUsage(revisionId);
       return {TRI_ERROR_NO_ERROR};
     }
   }
 
   RocksDBMethods* mthd = RocksDBTransactionState::toMethods(trx);
-  Result res = mthd->Get(RocksDBColumnFamily::documents(), key, &value);
-  TRI_ASSERT(value.data());
+  std::string* value = mdr.prepareStringUsage();
+  Result res = mthd->Get(RocksDBColumnFamily::documents(), key, value);
   if (res.ok()) {
     if (withCache && useCache()) {
       TRI_ASSERT(_cache != nullptr);
       // write entry back to cache
       auto entry = cache::CachedValue::construct(
           key.string().data(), static_cast<uint32_t>(key.string().size()),
-          value.data(), static_cast<uint64_t>(value.size()));
+          value->data(), static_cast<uint64_t>(value->size()));
       auto status = _cache->insert(entry);
       if (status.fail()) {
         delete entry;
       }
     }
 
-    mdr.setManaged(std::move(value), revisionId);
+    mdr.setManagedAfterStringUsage(revisionId);
   } else {
     LOG_TOPIC(ERR, Logger::FIXME)
         << "NOT FOUND rev: " << revisionId << " trx: " << trx->state()->id()

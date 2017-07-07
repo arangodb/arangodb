@@ -49,7 +49,7 @@ class ManagedDocumentResult {
   ManagedDocumentResult& operator=(ManagedDocumentResult const& other) = delete;
 
   ManagedDocumentResult& operator=(ManagedDocumentResult&& other) {
-    if (other._useString){
+    if (other._useString) {
       setManaged(std::move(other._string), other._lastRevisionId);
       other._managed = false;
       other.reset();
@@ -81,6 +81,14 @@ class ManagedDocumentResult {
   inline TRI_voc_rid_t lastRevisionId() const { return _lastRevisionId; }
   
   void reset() noexcept;
+
+  std::string* prepareStringUsage() { 
+    reset();
+    _useString = true;
+    return &_string; 
+  }
+  
+  void setManagedAfterStringUsage(TRI_voc_rid_t revisionId);
   
   inline uint8_t const* vpack() const {
     TRI_ASSERT(_vpack != nullptr);

@@ -70,6 +70,15 @@ void ManagedDocumentResult::setManaged(uint8_t const* vpack, TRI_voc_rid_t revis
   _managed = true;
 }
 
+void ManagedDocumentResult::setManagedAfterStringUsage(TRI_voc_rid_t revisionId) {
+  TRI_ASSERT(!_string.empty());
+  TRI_ASSERT(_useString);
+  
+  _vpack = reinterpret_cast<uint8_t*>(const_cast<char*>(_string.data()));
+  _lastRevisionId = revisionId;
+  _useString = true;
+}
+
 void ManagedDocumentResult::setManaged(std::string&& str, TRI_voc_rid_t revisionId) {
   reset();
   _string = std::move(str);
@@ -79,16 +88,16 @@ void ManagedDocumentResult::setManaged(std::string&& str, TRI_voc_rid_t revision
 }
 
 void ManagedDocumentResult::reset() noexcept {
-  if(_managed) {
+  if (_managed) {
     delete[] _vpack;
   }
   _managed = false;
   _length = 0;
 
-  if(_useString){
+  if (_useString) {
     _string.clear();
+    _useString = false;
   }
-  _useString = false;
 
   _lastRevisionId = 0;
   _vpack = nullptr;
