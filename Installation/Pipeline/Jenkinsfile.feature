@@ -435,7 +435,9 @@ def buildEdition(edition, os) {
     }
     finally {
         stashBuild(edition, os)
-        archiveArtifacts allowEmptyArchive: true, artifacts: 'log-output/**', defaultExcludes: false
+        archiveArtifacts allowEmptyArchive: true,
+                         artifacts: 'log-output/**, *.log, tmp/**/log, tmp/**/log0, tmp/**/log1, tmp/**/log2'',
+                         defaultExcludes: false
     }
 }
 
