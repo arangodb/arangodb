@@ -205,6 +205,7 @@ RocksDBKey::RocksDBKey(RocksDBEntryType type,
                        RocksDBSettingsType st) : _type(type), _buffer() {
   switch (_type) {
     case RocksDBEntryType::SettingsValue: {
+      _buffer.reserve(2);
       _buffer.push_back(static_cast<char>(_type));
       _buffer.push_back(static_cast<char>(st));
       break;
@@ -223,8 +224,7 @@ RocksDBKey::RocksDBKey(RocksDBEntryType type, uint64_t first)
     case RocksDBEntryType::IndexEstimateValue:
     case RocksDBEntryType::KeyGeneratorValue:
     case RocksDBEntryType::ReplicationApplierConfig: {
-      size_t length = sizeof(char) + sizeof(uint64_t);
-      _buffer.reserve(length);
+      _buffer.reserve(sizeof(char) + sizeof(uint64_t));
       _buffer.push_back(static_cast<char>(_type));
       uint64ToPersistent(_buffer, first);  // databaseId
       break;
@@ -240,12 +240,11 @@ RocksDBKey::RocksDBKey(RocksDBEntryType type, uint64_t first,
     : _type(type), _buffer() {
   switch (_type) {
     case RocksDBEntryType::UniqueVPackIndexValue: {
-      size_t l = sizeof(uint64_t) + static_cast<size_t>(slice.byteSize());
-      _buffer.reserve(l);
+      size_t const byteSize = static_cast<size_t>(slice.byteSize());
+      _buffer.reserve(sizeof(uint64_t) + byteSize);
       uint64ToPersistent(_buffer, first);
-      _buffer.append(reinterpret_cast<char const*>(slice.begin()),
-                     static_cast<size_t>(slice.byteSize()));
-      TRI_ASSERT(_buffer.size() == l);
+      _buffer.append(reinterpret_cast<char const*>(slice.begin()), byteSize);
+      TRI_ASSERT(_buffer.size() == sizeof(uint64_t) + byteSize);
       break;
     }
 
@@ -267,7 +266,7 @@ RocksDBKey::RocksDBKey(RocksDBEntryType type, uint64_t first, uint64_t second)
       
     case RocksDBEntryType::Collection:
     case RocksDBEntryType::View: {
-      _buffer.reserve(sizeof(char) + (2 * sizeof(uint64_t)));
+      _buffer.reserve(sizeof(char) + 2 * sizeof(uint64_t));
       _buffer.push_back(static_cast<char>(_type));
       uint64ToPersistent(_buffer, first);   // databaseId
       uint64ToPersistent(_buffer, second);  // collectionId
@@ -288,10 +287,10 @@ RocksDBKey::RocksDBKey(RocksDBEntryType type, uint64_t first,
       // - Key: 8-byte object ID of index + VPack array with index value(s)
       // + revisionID
       // - Value: empty
-      _buffer.reserve(2 * sizeof(uint64_t) + second.byteSize());
+      size_t const byteSize = static_cast<size_t>(second.byteSize());
+      _buffer.reserve(2 * sizeof(uint64_t) + byteSize);
       uint64ToPersistent(_buffer, first);
-      _buffer.append(reinterpret_cast<char const*>(second.begin()),
-                     static_cast<size_t>(second.byteSize()));
+      _buffer.append(reinterpret_cast<char const*>(second.begin()), byteSize);
       uint64ToPersistent(_buffer, third);
       break;
     }
