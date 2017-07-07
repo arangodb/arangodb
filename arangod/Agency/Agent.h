@@ -40,6 +40,7 @@ struct TRI_vocbase_t;
 
 namespace arangodb {
 namespace consensus {
+
 class Agent : public arangodb::Thread,
               public AgentInterface {
 
@@ -58,10 +59,16 @@ class Agent : public arangodb::Thread,
 
   /// @brief Vote request
   priv_rpc_ret_t requestVote(term_t, std::string const&, index_t, index_t,
-                             query_t const&);
+                             query_t const&, int64_t timeoutMult);
 
   /// @brief Provide configuration
   config_t const config() const;
+
+  /// @brief Get timeoutMult:
+  int64_t getTimeoutMult() const;
+
+  /// @brief Adjust timeoutMult:
+  void adjustTimeoutMult(int64_t timeoutMult);
 
   /// @brief Start thread
   bool start();
@@ -360,7 +367,6 @@ class Agent : public arangodb::Thread,
 
   // lock for _ongoingTrxs
   arangodb::Mutex _trxsLock;
-
 };
 }
 }

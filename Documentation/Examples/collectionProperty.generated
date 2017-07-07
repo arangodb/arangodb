@@ -7,7 +7,8 @@ arangosh&gt; db.example.properties({ <span class="hljs-attr">waitForSync</span> 
   <span class="hljs-string">"waitForSync"</span> : <span class="hljs-literal">true</span>, 
   <span class="hljs-string">"keyOptions"</span> : { 
     <span class="hljs-string">"type"</span> : <span class="hljs-string">"traditional"</span>, 
-    <span class="hljs-string">"allowUserKeys"</span> : <span class="hljs-literal">true</span> 
+    <span class="hljs-string">"allowUserKeys"</span> : <span class="hljs-literal">true</span>, 
+    <span class="hljs-string">"lastValue"</span> : <span class="hljs-number">0</span> 
   }, 
   <span class="hljs-string">"indexBuckets"</span> : <span class="hljs-number">8</span> 
 }

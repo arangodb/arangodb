@@ -33,6 +33,7 @@ config_t::config_t()
       _poolSize(0),
       _minPing(0.0),
       _maxPing(0.0),
+      _timeoutMult(1),
       _endpoint(defaultEndpointStr),
       _supervision(false),
       _waitForSync(true),
@@ -55,6 +56,7 @@ config_t::config_t(size_t as, size_t ps, double minp, double maxp,
       _poolSize(ps),
       _minPing(minp),
       _maxPing(maxp),
+      _timeoutMult(1),
       _endpoint(e),
       _gossipPeers(g),
       _supervision(s),
@@ -78,6 +80,7 @@ config_t::config_t(config_t&& other)
       _poolSize(std::move(other._poolSize)),
       _minPing(std::move(other._minPing)),
       _maxPing(std::move(other._maxPing)),
+      _timeoutMult(std::move(other._timeoutMult)),
       _endpoint(std::move(other._endpoint)),
       _pool(std::move(other._pool)),
       _gossipPeers(std::move(other._gossipPeers)),
@@ -102,6 +105,7 @@ config_t& config_t::operator=(config_t const& other) {
   _poolSize = other._poolSize;
   _minPing = other._minPing;
   _maxPing = other._maxPing;
+  _timeoutMult = other._timeoutMult;
   _endpoint = other._endpoint;
   _pool = other._pool;
   _gossipPeers = other._gossipPeers;
@@ -125,6 +129,7 @@ config_t& config_t::operator=(config_t&& other) {
   _poolSize = std::move(other._poolSize);
   _minPing = std::move(other._minPing);
   _maxPing = std::move(other._maxPing);
+  _timeoutMult = std::move(other._timeoutMult);
   _endpoint = std::move(other._endpoint);
   _pool = std::move(other._pool);
   _gossipPeers = std::move(other._gossipPeers);
@@ -167,11 +172,24 @@ double config_t::maxPing() const {
   return _maxPing;
 }
 
+int64_t config_t::timeoutMult() const {
+  READ_LOCKER(readLocker, _lock);
+  return _timeoutMult;
+}
+
 void config_t::pingTimes(double minPing, double maxPing) {
   WRITE_LOCKER(writeLocker, _lock);
   if (_minPing != minPing || _maxPing != maxPing ) {
     _minPing = minPing;
     _maxPing = maxPing;
+    ++_version;
+  }
+}
+
+void config_t::setTimeoutMult(int64_t m) {
+  WRITE_LOCKER(writeLocker, _lock);
+  if (_timeoutMult != m) {
+    _timeoutMult = m;
     ++_version;
   }
 }
@@ -390,6 +408,7 @@ void config_t::update(query_t const& message) {
   }
   double minPing = slice.get(minPingStr).getNumber<double>();
   double maxPing = slice.get(maxPingStr).getNumber<double>();
+  int64_t timeoutMult = slice.get(timeoutMultStr).getNumber<int64_t>();
   WRITE_LOCKER(writeLocker, _lock);
   if (pool != _pool) {
     _pool = pool;
@@ -405,6 +424,10 @@ void config_t::update(query_t const& message) {
   }
   if (maxPing != _maxPing) {
     _maxPing = maxPing;
+    changed=true;
+  }
+  if (timeoutMult != _timeoutMult) {
+    _timeoutMult = timeoutMult;
     changed=true;
   }
   if (changed) {
@@ -441,6 +464,13 @@ void config_t::override(VPackSlice const& conf) {
     _maxPing = conf.get(maxPingStr).getNumber<double>();
   } else {
     LOG_TOPIC(ERR, Logger::AGENCY) << "Failed to override " << maxPingStr
+                                   << " from " << conf.toJson();
+  }
+
+  if (conf.hasKey(timeoutMultStr) && conf.get(timeoutMultStr).isInteger()) {
+    _timeoutMult = conf.get(timeoutMultStr).getNumber<int64_t>();
+  } else {
+    LOG_TOPIC(ERR, Logger::AGENCY) << "Failed to override " << timeoutMultStr
                                    << " from " << conf.toJson();
   }
 
@@ -540,6 +570,7 @@ query_t config_t::toBuilder() const {
     ret->add(endpointStr, VPackValue(_endpoint));
     ret->add(minPingStr, VPackValue(_minPing));
     ret->add(maxPingStr, VPackValue(_maxPing));
+    ret->add(timeoutMultStr, VPackValue(_timeoutMult));
     ret->add(supervisionStr, VPackValue(_supervision));
     ret->add(supervisionFrequencyStr, VPackValue(_supervisionFrequency));
     ret->add(compactionStepSizeStr, VPackValue(_compactionStepSize));
@@ -650,7 +681,7 @@ bool config_t::merge(VPackSlice const& conf) {
       _minPing = conf.get(minPingStr).getNumber<double>();
       ss << _minPing << " (persisted)";
     } else {
-      _minPing = 0.5;
+      _minPing = 1.0;
       ss << _minPing << " (default)";
     }
   } else {
@@ -666,7 +697,7 @@ bool config_t::merge(VPackSlice const& conf) {
       _maxPing = conf.get(maxPingStr).getNumber<double>();
       ss << _maxPing << " (persisted)";
     } else {
-      _maxPing = 2.5;
+      _maxPing = 5.0;
       ss << _maxPing << " (default)";
     }
   } else {

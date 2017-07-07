@@ -332,8 +332,8 @@ void RocksDBRestReplicationHandler::handleCommandLoggerState() {
   VPackBuilder builder;
   auto res = globalRocksEngine()->createLoggerState(_vocbase, builder);
   if (res.fail()) {
-    LOG_TOPIC(DEBUG, Logger::REPLICATION)
-        << "failed to create logger-state" << res.errorMessage();
+    LOG_TOPIC(DEBUG, Logger::REPLICATION) << "failed to create logger-state"
+                                          << res.errorMessage();
     generateError(rest::ResponseCode::BAD, res.errorNumber(),
                   res.errorMessage());
     return;
@@ -368,7 +368,8 @@ void RocksDBRestReplicationHandler::handleCommandBatch() {
     // VelocyPackHelper::getNumericValue<double>(input->slice(), "ttl", 0);
     RocksDBReplicationContext* ctx = _manager->createContext();
     if (ctx == nullptr) {
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "unable to create replication context");
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
+                                     "unable to create replication context");
     }
     RocksDBReplicationContextGuard(_manager, ctx);
     ctx->bind(_vocbase);  // create transaction+snapshot
@@ -649,7 +650,7 @@ void RocksDBRestReplicationHandler::handleCommandLoggerFollow() {
 
     cid = c->cid();
   }
-  
+
   std::shared_ptr<transaction::Context> transactionContext =
       transaction::StandaloneContext::Create(_vocbase);
 
@@ -659,17 +660,16 @@ void RocksDBRestReplicationHandler::handleCommandLoggerFollow() {
                         cid, builder);
   builder.close();
   auto data = builder.slice();
-  
+
   uint64_t const latest = latestSequenceNumber();
 
   if (result.fail()) {
-    generateError(GeneralResponse::responseCode(result.errorNumber()), result.errorNumber(),
-                  result.errorMessage());
+    generateError(GeneralResponse::responseCode(result.errorNumber()),
+                  result.errorNumber(), result.errorMessage());
     return;
   }
 
-  bool const checkMore =
-      (result.maxTick() > 0 && result.maxTick() < latest);
+  bool const checkMore = (result.maxTick() > 0 && result.maxTick() < latest);
 
   // generate the result
   size_t length = data.length();
@@ -689,7 +689,8 @@ void RocksDBRestReplicationHandler::handleCommandLoggerFollow() {
   _response->setHeaderNC(
       TRI_REPLICATION_HEADER_LASTINCLUDED,
       StringUtils::itoa((length == 0) ? 0 : result.maxTick()));
-  _response->setHeaderNC(TRI_REPLICATION_HEADER_LASTTICK, StringUtils::itoa(latest));
+  _response->setHeaderNC(TRI_REPLICATION_HEADER_LASTTICK,
+                         StringUtils::itoa(latest));
   _response->setHeaderNC(TRI_REPLICATION_HEADER_ACTIVE, "true");
   _response->setHeaderNC(TRI_REPLICATION_HEADER_FROMPRESENT,
                          result.fromTickIncluded() ? "true" : "false");
@@ -2402,16 +2403,16 @@ int RocksDBRestReplicationHandler::processRestoreCollectionCoordinator(
       }
 
       if (res != TRI_ERROR_NO_ERROR) {
-        errorMsg = "unable to drop collection '" + name +
-                   "': " + std::string(TRI_errno_string(res));
+        errorMsg = "unable to drop collection '" + name + "': " +
+                   std::string(TRI_errno_string(res));
 
         return res;
       }
     } else {
       int res = TRI_ERROR_ARANGO_DUPLICATE_NAME;
 
-      errorMsg = "unable to create collection '" + name +
-                 "': " + std::string(TRI_errno_string(res));
+      errorMsg = "unable to create collection '" + name + "': " +
+                 std::string(TRI_errno_string(res));
 
       return res;
     }

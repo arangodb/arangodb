@@ -253,6 +253,10 @@ void Constituent::lead(term_t term) {
 
     LOG_TOPIC(INFO, Logger::AGENCY) << _id << ": leading in term " << _term;
     _leaderID = _id;
+
+    // Keep track of this election time:
+    MUTEX_LOCKER(locker, _recentElectionsMutex);
+    _recentElections.push_back(readSystemClock());
   }
 
   // we need to start work as leader
@@ -272,6 +276,10 @@ void Constituent::candidate() {
   if (_role != CANDIDATE) {
     _role = CANDIDATE;
     LOG_TOPIC(INFO, Logger::AGENCY) << _id << ": candidating in term " << _term;
+
+    // Keep track of this election time:
+    MUTEX_LOCKER(locker, _recentElectionsMutex);
+    _recentElections.push_back(readSystemClock());
   }
 }
 
@@ -340,6 +348,13 @@ bool Constituent::checkLeader(
     LOG_TOPIC(DEBUG, Logger::AGENCY)
       << "Set _leaderID to " << id << " in term " << _term;
     _leaderID = id;
+
+    // Recall time of this leadership change:
+    {
+      MUTEX_LOCKER(locker, _recentElectionsMutex);
+      _recentElections.push_back(readSystemClock());
+    }
+
     TRI_ASSERT(_leaderID != _id);
     if (_role != FOLLOWER) {
       followNoLock(term);
@@ -420,7 +435,8 @@ void Constituent::callElection() {
 
   using namespace std::chrono;
   auto timeout = steady_clock::now() +
-    duration<double>(_agent->config().minPing());
+    duration<double>(_agent->config().minPing() *
+                     _agent->config().timeoutMult());
   
   std::vector<std::string> active = _agent->config().active();
   CoordTransactionID coordinatorTransactionID = TRI_NewTickServer();
@@ -440,9 +456,22 @@ void Constituent::callElection() {
   std::string body;
   std::stringstream path;
 
+  int64_t electionEventCount = countRecentElectionEvents(3600);
+  if (electionEventCount <= 0) {
+    electionEventCount = 1;
+  } else if (electionEventCount > 10) {
+    electionEventCount = 10;
+  }
+  if (_agent->getTimeoutMult() != electionEventCount) {
+    _agent->adjustTimeoutMult(electionEventCount);
+    LOG_TOPIC(WARN, Logger::AGENCY) << "Candidate: setting timeout multiplier "
+      "to " << electionEventCount << " for next term...";
+  }
+
   path << "/_api/agency_priv/requestVote?term=" << savedTerm
        << "&candidateId=" << _id << "&prevLogIndex=" << _agent->lastLog().index
-       << "&prevLogTerm=" << _agent->lastLog().term;
+       << "&prevLogTerm=" << _agent->lastLog().term
+       << "&timeoutMult=" << electionEventCount;
 
   auto cc = ClusterComm::instance();
 
@@ -456,7 +485,8 @@ void Constituent::callElection() {
           "", coordinatorTransactionID, _agent->config().poolAt(i),
           rest::RequestType::GET, path.str(),
           std::make_shared<std::string>(body), headerFields,
-          nullptr, 0.9 * _agent->config().minPing(), true);
+          nullptr, 0.9 * _agent->config().minPing() *
+                         _agent->config().timeoutMult(), true);
       }
     }
   }
@@ -623,8 +653,10 @@ void Constituent::run() {
     while (!this->isStopping()) {
       if (_role == FOLLOWER) {
         static double const M = 1.0e6;
-        int64_t a = static_cast<int64_t>(M * _agent->config().minPing());
-        int64_t b = static_cast<int64_t>(M * _agent->config().maxPing());
+        int64_t a = static_cast<int64_t>(M * _agent->config().minPing() *
+                                         _agent->config().timeoutMult());
+        int64_t b = static_cast<int64_t>(M * _agent->config().maxPing() *
+                                         _agent->config().timeoutMult());
         int64_t randTimeout = RandomGenerator::interval(a, b);
         int64_t randWait = randTimeout;
 
@@ -678,7 +710,8 @@ void Constituent::run() {
         callElection();  // Run for office
       } else {
         int32_t left =
-          static_cast<int32_t>(100000.0 * _agent->config().minPing());
+          static_cast<int32_t>(100000.0 * _agent->config().minPing() *
+                               _agent->config().timeoutMult());
         long randTimeout = static_cast<long>(left);
         {
           CONDITION_LOCKER(guardv, _cv);
@@ -687,4 +720,23 @@ void Constituent::run() {
       }
     }
   }
+}
+
+int64_t Constituent::countRecentElectionEvents(double threshold) {
+  // This discards all election events that are older than `threshold`
+  // seconds and returns the number of more recent ones.
+
+  auto now = readSystemClock();
+  MUTEX_LOCKER(locker, _recentElectionsMutex);
+  int64_t count = 0;
+  for (auto iter = _recentElections.begin(); iter != _recentElections.end(); ) {
+    if (now - *iter > threshold) {
+      // If event is more then 15 minutes ago, discard
+      iter = _recentElections.erase(iter);  // moves to the next one in list
+    } else {
+      ++count;
+      ++iter;
+    }
+  }
+  return count;
 }

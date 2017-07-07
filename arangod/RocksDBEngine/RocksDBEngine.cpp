@@ -40,11 +40,11 @@
 #include "Logger/Logger.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
+#include "Rest/Version.h"
 #include "RestHandler/RestHandlerCreator.h"
 #include "RestServer/DatabasePathFeature.h"
 #include "RestServer/ServerIdFeature.h"
 #include "RestServer/ViewTypesFeature.h"
-#include "Rest/Version.h"
 #include "RocksDBEngine/RocksDBAqlFunctions.h"
 #include "RocksDBEngine/RocksDBBackgroundThread.h"
 #include "RocksDBEngine/RocksDBCollection.h"
@@ -97,25 +97,25 @@ namespace arangodb {
 std::string const RocksDBEngine::EngineName("rocksdb");
 std::string const RocksDBEngine::FeatureName("RocksDBEngine");
 
+rocksdb::ColumnFamilyHandle* RocksDBColumnFamily::_definitions(nullptr);
 rocksdb::ColumnFamilyHandle* RocksDBColumnFamily::_documents(nullptr);
 rocksdb::ColumnFamilyHandle* RocksDBColumnFamily::_primary(nullptr);
 rocksdb::ColumnFamilyHandle* RocksDBColumnFamily::_edge(nullptr);
+rocksdb::ColumnFamilyHandle* RocksDBColumnFamily::_vpack(nullptr);
 rocksdb::ColumnFamilyHandle* RocksDBColumnFamily::_geo(nullptr);
 rocksdb::ColumnFamilyHandle* RocksDBColumnFamily::_fulltext(nullptr);
-rocksdb::ColumnFamilyHandle* RocksDBColumnFamily::_other(nullptr);
-rocksdb::ColumnFamilyHandle* RocksDBColumnFamily::_index(nullptr);
-rocksdb::ColumnFamilyHandle* RocksDBColumnFamily::_uniqueIndex(nullptr);
-rocksdb::ColumnFamilyHandle* RocksDBColumnFamily::_views(nullptr);
 std::vector<rocksdb::ColumnFamilyHandle*> RocksDBColumnFamily::_allHandles;
 
 // create the storage engine
 RocksDBEngine::RocksDBEngine(application_features::ApplicationServer* server)
     : StorageEngine(server, EngineName, FeatureName, new RocksDBIndexFactory()),
       _db(nullptr),
-      _vpackCmp(new RocksDBComparator()),
+      _vpackCmp(new RocksDBVPackComparator()),
       _maxTransactionSize(transaction::Options::defaultMaxTransactionSize),
-      _intermediateCommitSize(transaction::Options::defaultIntermediateCommitSize),
-      _intermediateCommitCount(transaction::Options::defaultIntermediateCommitCount),
+      _intermediateCommitSize(
+          transaction::Options::defaultIntermediateCommitSize),
+      _intermediateCommitCount(
+          transaction::Options::defaultIntermediateCommitCount),
       _pruneWaitTime(10.0) {
   // inherits order from StorageEngine but requires "RocksDBOption" that is used
   // to configure this engine and the MMFiles PersistentIndexFeature
@@ -137,32 +137,34 @@ void RocksDBEngine::collectOptions(
                      "transaction size limit (in bytes)",
                      new UInt64Parameter(&_maxTransactionSize));
 
-  options->addOption(
-      "--rocksdb.intermediate-commit-size",
-      "an intermediate commit will be performed automatically when a transaction "
-      "has accumulated operations of this size (in bytes)",
-      new UInt64Parameter(&_intermediateCommitSize));
+  options->addOption("--rocksdb.intermediate-commit-size",
+                     "an intermediate commit will be performed automatically "
+                     "when a transaction "
+                     "has accumulated operations of this size (in bytes)",
+                     new UInt64Parameter(&_intermediateCommitSize));
 
-  options->addOption(
-      "--rocksdb.intermediate-commit-count",
-      "an intermediate commit will be performed automatically when this number of "
-      "operations is reached in a transaction",
-      new UInt64Parameter(&_intermediateCommitCount));
+  options->addOption("--rocksdb.intermediate-commit-count",
+                     "an intermediate commit will be performed automatically "
+                     "when this number of "
+                     "operations is reached in a transaction",
+                     new UInt64Parameter(&_intermediateCommitCount));
 
   options->addOption("--rocksdb.wal-file-timeout",
                      "timeout after which unused WAL files are deleted",
                      new DoubleParameter(&_pruneWaitTime));
 
 #ifdef USE_ENTERPRISE
-   collectEnterpriseOptions(options);
+  collectEnterpriseOptions(options);
 #endif
 }
 
 // validate the storage engine's specific options
-void RocksDBEngine::validateOptions(std::shared_ptr<options::ProgramOptions> options) {
-  transaction::Options::setLimits(_maxTransactionSize, _intermediateCommitSize, _intermediateCommitCount);
+void RocksDBEngine::validateOptions(
+    std::shared_ptr<options::ProgramOptions> options) {
+  transaction::Options::setLimits(_maxTransactionSize, _intermediateCommitSize,
+                                  _intermediateCommitCount);
 #ifdef USE_ENTERPRISE
-   validateEnterpriseOptions(options);
+  validateEnterpriseOptions(options);
 #endif
 }
 
@@ -188,7 +190,9 @@ void RocksDBEngine::start() {
     return;
   }
 
-  LOG_TOPIC(TRACE, arangodb::Logger::ENGINES) << "rocksdb version " << rest::Version::getRocksDBVersion() << ", supported compression types: " << getCompressionSupport();
+  LOG_TOPIC(TRACE, arangodb::Logger::ENGINES)
+      << "rocksdb version " << rest::Version::getRocksDBVersion()
+      << ", supported compression types: " << getCompressionSupport();
 
   // set the database sub-directory for RocksDB
   auto* databasePathFeature =
@@ -260,8 +264,7 @@ void RocksDBEngine::start() {
       static_cast<int>(opts->_baseBackgroundCompactions);
   _options.max_background_compactions =
       static_cast<int>(opts->_maxBackgroundCompactions);
-  _options.max_subcompactions =
-      static_cast<int>(opts->_maxSubcompactions);
+  _options.max_subcompactions = static_cast<int>(opts->_maxSubcompactions);
   _options.max_background_flushes = static_cast<int>(opts->_maxFlushes);
   _options.use_fsync = opts->_useFSync;
 
@@ -269,22 +272,26 @@ void RocksDBEngine::start() {
   _options.compression_per_level.resize(_options.num_levels);
   for (int level = 0; level < _options.num_levels; ++level) {
     _options.compression_per_level[level] =
-        (((uint64_t) level >= opts->_numUncompressedLevels) ? rocksdb::kSnappyCompression
-                                                 : rocksdb::kNoCompression);
+        (((uint64_t)level >= opts->_numUncompressedLevels)
+             ? rocksdb::kSnappyCompression
+             : rocksdb::kNoCompression);
   }
 
   // Number of files to trigger level-0 compaction. A value <0 means that
   // level-0 compaction will not be triggered by number of files at all.
   // Default: 4
-  _options.level0_file_num_compaction_trigger = static_cast<int>(opts->_level0CompactionTrigger);
+  _options.level0_file_num_compaction_trigger =
+      static_cast<int>(opts->_level0CompactionTrigger);
 
   // Soft limit on number of level-0 files. We start slowing down writes at this
   // point. A value <0 means that no writing slow down will be triggered by
   // number of files in level-0.
-  _options.level0_slowdown_writes_trigger = static_cast<int>(opts->_level0SlowdownTrigger);
+  _options.level0_slowdown_writes_trigger =
+      static_cast<int>(opts->_level0SlowdownTrigger);
 
   // Maximum number of level-0 files.  We stop writes at this point.
-  _options.level0_stop_writes_trigger = static_cast<int>(opts->_level0StopTrigger);
+  _options.level0_stop_writes_trigger =
+      static_cast<int>(opts->_level0StopTrigger);
 
   _options.recycle_log_file_num = static_cast<size_t>(opts->_recycleLogFileNum);
   _options.compaction_readahead_size =
@@ -331,40 +338,58 @@ void RocksDBEngine::start() {
   // WAL_ttl_seconds needs to be bigger than the sync interval of the count
   // manager. Should be several times bigger counter_sync_seconds
   _options.WAL_ttl_seconds = 60 * 60 * 24 * 30;  // we manage WAL file deletion
-                                                 // ourselves, don't let RocksDB
-                                                 // garbage collect them
+  // ourselves, don't let RocksDB
+  // garbage collect them
   _options.WAL_size_limit_MB = 0;
-
-  _options.prefix_extractor.reset(new RocksDBPrefixExtractor());
   _options.memtable_prefix_bloom_size_ratio = 0.2;  // TODO: pick better value?
   // TODO: enable memtable_insert_with_hint_prefix_extractor?
   _options.bloom_locality = 1;
 
+  // cf options for definitons (dbs, collections, views, ...)
+  rocksdb::ColumnFamilyOptions definitionsCF(_options);
+  
+  // cf options with fixed 8 byte object id prefix for documents
+  rocksdb::ColumnFamilyOptions fixedPrefCF(_options);
+  fixedPrefCF.prefix_extractor = std::shared_ptr<rocksdb::SliceTransform const>(rocksdb::NewFixedPrefixTransform(RocksDBKey::objectIdSize()));
+  
+  // construct column family options with prefix containing indexed value
+  rocksdb::ColumnFamilyOptions dynamicPrefCF(_options);
+  dynamicPrefCF.prefix_extractor = std::make_shared<RocksDBPrefixExtractor>();
+  // also use hash-search based SST file format
+  rocksdb::BlockBasedTableOptions tblo(table_options);
+  tblo.index_type = rocksdb::BlockBasedTableOptions::IndexType::kHashSearch;
+  dynamicPrefCF.table_factory = std::shared_ptr<rocksdb::TableFactory>(
+      rocksdb::NewBlockBasedTableFactory(tblo));
+  
+  // velocypack based index variants with custom comparator
+  rocksdb::ColumnFamilyOptions vpackFixedPrefCF(fixedPrefCF);
+  vpackFixedPrefCF.comparator = _vpackCmp.get();
+
   // create column families
-  std::vector<rocksdb::ColumnFamilyDescriptor> columFamilies;
-  rocksdb::ColumnFamilyOptions cfOptions1(_options);
-  columFamilies.emplace_back(rocksdb::kDefaultColumnFamilyName, cfOptions1); // 0
-  columFamilies.emplace_back("Documents", cfOptions1); // 1
-  columFamilies.emplace_back("PrimaryIndex", cfOptions1); // 2
-  columFamilies.emplace_back("EdgeIndex", cfOptions1); // 3
-  columFamilies.emplace_back("GeoIndex", cfOptions1); // 4
-  columFamilies.emplace_back("FulltextIndex", cfOptions1); // 5
-  rocksdb::ColumnFamilyOptions cfOptions2(_options);
-  cfOptions2.comparator = _vpackCmp.get();
-  columFamilies.emplace_back("IndexValue", cfOptions2); // 6
-  columFamilies.emplace_back("UniqueIndexValue", cfOptions2); // 7
-  columFamilies.emplace_back("Views", cfOptions2); // 8
+  std::vector<rocksdb::ColumnFamilyDescriptor> cfFamilies;
+  // no prefix families for default column family (Has to be there)
+  cfFamilies.emplace_back(rocksdb::kDefaultColumnFamilyName,
+                          definitionsCF);                       // 0
+  cfFamilies.emplace_back("Documents", fixedPrefCF);            // 1
+  cfFamilies.emplace_back("PrimaryIndex", fixedPrefCF);         // 2
+  cfFamilies.emplace_back("EdgeIndex", dynamicPrefCF);         // 3
+  cfFamilies.emplace_back("VPackIndex", vpackFixedPrefCF);      // 4
+  cfFamilies.emplace_back("GeoIndex", fixedPrefCF);             // 5
+  cfFamilies.emplace_back("FulltextIndex", fixedPrefCF);        // 6
   // DO NOT FORGET TO DESTROY THE CFs ON CLOSE
 
   std::vector<rocksdb::ColumnFamilyHandle*> cfHandles;
-  size_t const numberOfColumnFamilies = RocksDBColumnFamily::minNumberOfColumnFamilies;
+  size_t const numberOfColumnFamilies =
+      RocksDBColumnFamily::minNumberOfColumnFamilies;
+  bool dbExisted = false;
   {
     rocksdb::Options testOptions;
     testOptions.create_if_missing = false;
     testOptions.create_missing_column_families = false;
     testOptions.env = _options.env;
     std::vector<std::string> existingColumnFamilies;
-    rocksdb::Status status = rocksdb::DB::ListColumnFamilies(testOptions, _path, &existingColumnFamilies);
+    rocksdb::Status status = rocksdb::DB::ListColumnFamilies(
+        testOptions, _path, &existingColumnFamilies);
     if (!status.ok()) {
       // check if we have found the database directory or not
       Result res = rocksutils::convertStatus(status);
@@ -377,6 +402,7 @@ void RocksDBEngine::start() {
     }
 
     if (status.ok()) {
+      dbExisted = true;
       // we were able to open the database.
       // now check which column families are present in the db
       std::string names;
@@ -387,55 +413,91 @@ void RocksDBEngine::start() {
         names.append(it);
       }
 
-      LOG_TOPIC(DEBUG, arangodb::Logger::STARTUP) << "found existing column families: " << names;
+      LOG_TOPIC(DEBUG, arangodb::Logger::STARTUP)
+          << "found existing column families: " << names;
+
+      for (auto const& it : cfFamilies) {
+        auto it2 = std::find(existingColumnFamilies.begin(), existingColumnFamilies.end(), it.name);
+      
+        if (it2 == existingColumnFamilies.end()) {
+          LOG_TOPIC(FATAL, arangodb::Logger::STARTUP)
+              << "column family '" << it.name << "' is missing in database"
+              << ". if you are upgrading from an earlier alpha or beta version of ArangoDB 3.2, "
+              << "it is required to restart with a new database directory and "
+                 "re-import data";
+          FATAL_ERROR_EXIT();
+        }
+        
+      }
 
       if (existingColumnFamilies.size() < numberOfColumnFamilies) {
         LOG_TOPIC(FATAL, arangodb::Logger::STARTUP)
-            << "unexpected number of column families found in database (" << cfHandles.size() << "). "
+            << "unexpected number of column families found in database ("
+            << cfHandles.size() << "). "
             << "expecting at least " << numberOfColumnFamilies
-            << ". if you are upgrading from an alpha version of ArangoDB 3.2, "
-            << "it is required to restart with a new database directory and re-import data";
+            << ". if you are upgrading from an earlier alpha or beta version of ArangoDB 3.2, "
+            << "it is required to restart with a new database directory and "
+               "re-import data";
         FATAL_ERROR_EXIT();
       }
     }
   }
 
   rocksdb::Status status = rocksdb::TransactionDB::Open(
-      _options, transactionOptions, _path, columFamilies, &cfHandles, &_db);
+      _options, transactionOptions, _path, cfFamilies, &cfHandles, &_db);
 
   if (!status.ok()) {
     LOG_TOPIC(FATAL, arangodb::Logger::STARTUP)
         << "unable to initialize RocksDB engine: " << status.ToString();
     FATAL_ERROR_EXIT();
   }
-  if (columFamilies.size() != cfHandles.size()) {
+  if (cfFamilies.size() != cfHandles.size()) {
     LOG_TOPIC(FATAL, arangodb::Logger::STARTUP)
         << "unable to initialize RocksDB column families";
     FATAL_ERROR_EXIT();
   }
-
   if (cfHandles.size() < numberOfColumnFamilies) {
     LOG_TOPIC(FATAL, arangodb::Logger::STARTUP)
         << "unexpected number of column families found in database. "
-        << "got " << cfHandles.size() << ", expecting at least " << numberOfColumnFamilies;
+        << "got " << cfHandles.size() << ", expecting at least "
+        << numberOfColumnFamilies;
     FATAL_ERROR_EXIT();
   }
 
-  TRI_ASSERT(cfHandles.size() >= numberOfColumnFamilies);
-
   // set our column families
-  RocksDBColumnFamily::_other = cfHandles[0];
+  RocksDBColumnFamily::_definitions = cfHandles[0];
   RocksDBColumnFamily::_documents = cfHandles[1];
   RocksDBColumnFamily::_primary = cfHandles[2];
   RocksDBColumnFamily::_edge = cfHandles[3];
-  RocksDBColumnFamily::_geo = cfHandles[4];
-  RocksDBColumnFamily::_fulltext = cfHandles[5];
-  RocksDBColumnFamily::_index = cfHandles[6];
-  RocksDBColumnFamily::_uniqueIndex = cfHandles[7];
-  RocksDBColumnFamily::_views = cfHandles[8];
+  RocksDBColumnFamily::_vpack = cfHandles[4];
+  RocksDBColumnFamily::_geo = cfHandles[5];
+  RocksDBColumnFamily::_fulltext = cfHandles[6];
   RocksDBColumnFamily::_allHandles = cfHandles;
-  TRI_ASSERT(RocksDBColumnFamily::_other->GetID() == 0);
-
+  TRI_ASSERT(RocksDBColumnFamily::_definitions->GetID() == 0);
+  
+  // try to find version
+  const char version = rocksDBFormatVersion();
+  auto key = RocksDBKey::SettingsValue(RocksDBSettingsType::Version);
+  rocksdb::PinnableSlice oldVersion;
+  rocksdb::Status s = _db->Get(rocksdb::ReadOptions(), cfHandles[0],
+                               key.string(), &oldVersion);
+  if (dbExisted) {
+    if (s.IsNotFound() || oldVersion.data()[0] < version) {
+      LOG_TOPIC(ERR, Logger::ENGINES)
+      << "Your db directory is in an old format. Please delete the directory.";
+      FATAL_ERROR_EXIT();
+    } else if (oldVersion.data()[0] > version) {
+      LOG_TOPIC(ERR, Logger::ENGINES)
+      << "You are using an old version of ArangoDB, please update "
+      << "before opening this dir.";
+      FATAL_ERROR_EXIT();
+    }
+  }
+  // store current version
+  s = _db->Put(rocksdb::WriteOptions(), RocksDBColumnFamily::definitions(), key.string(),
+               rocksdb::Slice(&version, sizeof(char)));
+  TRI_ASSERT(s.ok());
+  
   // only enable logger after RocksDB start
   logger->enable();
 
@@ -550,8 +612,8 @@ void RocksDBEngine::getDatabases(arangodb::velocypack::Builder& result) {
   LOG_TOPIC(TRACE, Logger::STARTUP) << "getting existing databases";
 
   rocksdb::ReadOptions readOptions;
-  std::unique_ptr<rocksdb::Iterator> iter(_db->NewIterator(readOptions,
-                                                           RocksDBColumnFamily::other()));
+  std::unique_ptr<rocksdb::Iterator> iter(
+      _db->NewIterator(readOptions, RocksDBColumnFamily::definitions()));
   result.openArray();
   auto rSlice = rocksDBSlice(RocksDBEntryType::Database);
   for (iter->Seek(rSlice); iter->Valid() && iter->key().starts_with(rSlice);
@@ -606,7 +668,7 @@ void RocksDBEngine::getCollectionInfo(TRI_vocbase_t* vocbase, TRI_voc_cid_t cid,
   auto key = RocksDBKey::Collection(vocbase->id(), cid);
   rocksdb::PinnableSlice value;
   rocksdb::ReadOptions options;
-  rocksdb::Status res = _db->Get(options, RocksDBColumnFamily::other(),
+  rocksdb::Status res = _db->Get(options, RocksDBColumnFamily::definitions(),
                                  key.string(), &value);
   auto result = rocksutils::convertStatus(res);
 
@@ -644,8 +706,8 @@ int RocksDBEngine::getCollectionsAndIndexes(
     TRI_vocbase_t* vocbase, arangodb::velocypack::Builder& result,
     bool wasCleanShutdown, bool isUpgrade) {
   rocksdb::ReadOptions readOptions;
-  std::unique_ptr<rocksdb::Iterator> iter(_db->NewIterator(readOptions,
-                                                           RocksDBColumnFamily::other()));
+  std::unique_ptr<rocksdb::Iterator> iter(
+      _db->NewIterator(readOptions, RocksDBColumnFamily::definitions()));
 
   result.openArray();
   auto rSlice = rocksDBSlice(RocksDBEntryType::Collection);
@@ -672,8 +734,8 @@ int RocksDBEngine::getCollectionsAndIndexes(
 int RocksDBEngine::getViews(TRI_vocbase_t* vocbase,
                             arangodb::velocypack::Builder& result) {
   rocksdb::ReadOptions readOptions;
-  std::unique_ptr<rocksdb::Iterator> iter(_db->NewIterator(readOptions,
-                                                           RocksDBColumnFamily::other()));
+  std::unique_ptr<rocksdb::Iterator> iter(
+      _db->NewIterator(readOptions, RocksDBColumnFamily::definitions()));
 
   result.openArray();
   auto bounds = RocksDBKeyBounds::DatabaseViews(vocbase->id());
@@ -721,7 +783,7 @@ RocksDBEngine::getReplicationApplierConfiguration(TRI_vocbase_t* vocbase,
 
   auto db = rocksutils::globalRocksDB();
   auto opts = rocksdb::ReadOptions();
-  auto s = db->Get(opts, RocksDBColumnFamily::other(), key.string(), &value);
+  auto s = db->Get(opts, RocksDBColumnFamily::definitions(), key.string(), &value);
   if (!s.ok()) {
     status = TRI_ERROR_FILE_NOT_FOUND;
     return std::shared_ptr<arangodb::velocypack::Builder>();
@@ -738,7 +800,8 @@ int RocksDBEngine::removeReplicationApplierConfiguration(
     TRI_vocbase_t* vocbase) {
   auto key = RocksDBKey::ReplicationApplierConfig(vocbase->id());
 
-  auto status = rocksutils::globalRocksDBRemove(key.string());
+  auto status = rocksutils::globalRocksDBRemove(RocksDBColumnFamily::definitions(),
+                                                key.string());
   if (!status.ok()) {
     return status.errorNumber();
   }
@@ -751,7 +814,8 @@ int RocksDBEngine::saveReplicationApplierConfiguration(
   auto key = RocksDBKey::ReplicationApplierConfig(vocbase->id());
   auto value = RocksDBValue::ReplicationApplierConfig(slice);
 
-  auto status = rocksutils::globalRocksDBPut(key.string(), value.string());
+  auto status = rocksutils::globalRocksDBPut(RocksDBColumnFamily::definitions(),
+                                             key.string(), value.string());
   if (!status.ok()) {
     return status.errorNumber();
   }
@@ -788,7 +852,7 @@ int RocksDBEngine::writeCreateDatabaseMarker(TRI_voc_tick_t id,
   auto value = RocksDBValue::Database(slice);
   rocksdb::WriteOptions options;  // TODO: check which options would make sense
 
-  rocksdb::Status res = _db->Put(options, RocksDBColumnFamily::other(),
+  rocksdb::Status res = _db->Put(options, RocksDBColumnFamily::definitions(),
                                  key.string(), value.string());
   auto result = rocksutils::convertStatus(res);
   return result.errorNumber();
@@ -805,7 +869,7 @@ int RocksDBEngine::writeCreateCollectionMarker(TRI_voc_tick_t databaseId,
   // Write marker + key into RocksDB inside one batch
   rocksdb::WriteBatch batch;
   batch.PutLogData(logValue.slice());
-  batch.Put(key.string(), value.string());
+  batch.Put(RocksDBColumnFamily::definitions(), key.string(), value.string());
   rocksdb::Status res = _db->Write(options, &batch);
 
   auto result = rocksutils::convertStatus(res);
@@ -933,7 +997,7 @@ arangodb::Result RocksDBEngine::dropCollection(
       RocksDBLogValue::CollectionDrop(vocbase->id(), collection->cid());
   rocksdb::WriteBatch batch;
   batch.PutLogData(logValue.slice());
-  batch.Delete(
+  batch.Delete(RocksDBColumnFamily::definitions(),
       RocksDBKey::Collection(vocbase->id(), collection->cid()).string());
   rocksdb::Status res = _db->Write(options, &batch);
 
@@ -958,8 +1022,7 @@ arangodb::Result RocksDBEngine::dropCollection(
   // delete documents
   RocksDBKeyBounds bounds =
       RocksDBKeyBounds::CollectionDocuments(coll->objectId());
-  arangodb::Result result = rocksutils::removeLargeRange(_db, bounds);
-
+  auto result = rocksutils::removeLargeRange(_db, bounds);
   // TODO FAILURE Simulate result.fail()
   if (result.fail()) {
     // We try to remove all documents.
@@ -1043,7 +1106,8 @@ void RocksDBEngine::createView(TRI_vocbase_t* vocbase, TRI_voc_cid_t id,
   auto key = RocksDBKey::View(vocbase->id(), id);
   auto value = RocksDBValue::View(VPackSlice::emptyObjectSlice());
 
-  auto status = rocksutils::globalRocksDBPut(key.string(), value.string());
+  auto status = rocksutils::globalRocksDBPut(RocksDBColumnFamily::definitions(),
+                                             key.string(), value.string());
   if (!status.ok()) {
     THROW_ARANGO_EXCEPTION(status.errorNumber());
   }
@@ -1223,7 +1287,10 @@ void RocksDBEngine::pruneWalFiles() {
     // check if WAL file is expired
     if ((*it).second < TRI_microtime()) {
       auto s = _db->DeleteFile((*it).first);
-      if (s.ok()) {
+      // apparently there is a case where a file was already deleted
+      // but is still in _prunableWalFiles. In this case we get an invalid
+      // argument response.
+      if (s.ok() || s.IsInvalidArgument()) {
         it = _prunableWalFiles.erase(it);
         continue;
       }
@@ -1241,7 +1308,8 @@ Result RocksDBEngine::dropDatabase(TRI_voc_tick_t id) {
 
   // remove views
   for (auto const& val : viewKVPairs(id)) {
-    res = globalRocksDBRemove(val.first.string(), options);
+    res = globalRocksDBRemove(RocksDBColumnFamily::definitions(),
+                              val.first.string(), options);
     if (res.fail()) {
       return res;
     }
@@ -1256,19 +1324,20 @@ Result RocksDBEngine::dropDatabase(TRI_voc_tick_t id) {
         // delete index documents
         uint64_t objectId =
             basics::VelocyPackHelper::stringUInt64(it, "objectId");
-        RocksDBKeyBounds bounds = RocksDBKeyBounds::IndexEntries(objectId);
+        TRI_ASSERT(it.get("type").isString());
+        Index::IndexType type = Index::type(it.get("type").copyString());
+        bool unique =
+            basics::VelocyPackHelper::getBooleanValue(it, "unique", false);
+        RocksDBKeyBounds bounds =
+            RocksDBIndex::getBounds(type, objectId, unique);
+
         res = rocksutils::removeLargeRange(_db, bounds);
-        if (res.fail()) {
-          return res;
-        }
-        // delete index
-        res = globalRocksDBRemove(val.first.string(), options);
         if (res.fail()) {
           return res;
         }
       }
     }
-
+    
     uint64_t objectId =
         basics::VelocyPackHelper::stringUInt64(val.second.slice(), "objectId");
     // delete documents
@@ -1279,7 +1348,8 @@ Result RocksDBEngine::dropDatabase(TRI_voc_tick_t id) {
     }
     // delete Collection
     _counterManager->removeCounter(objectId);
-    res = globalRocksDBRemove(val.first.string(), options);
+    res = globalRocksDBRemove(RocksDBColumnFamily::definitions(),
+                              val.first.string(), options);
     if (res.fail()) {
       return res;
     }
@@ -1290,7 +1360,8 @@ Result RocksDBEngine::dropDatabase(TRI_voc_tick_t id) {
   // Cleanup thread does it in MMFiles
 
   auto key = RocksDBKey::Database(id);
-  res = rocksutils::globalRocksDBRemove(key.string(), options);
+  res = rocksutils::globalRocksDBRemove(RocksDBColumnFamily::definitions(),
+                                        key.string(), options);
 
   // remove VERSION file for database. it's not a problem when this fails
   // because it will simply remain there and be ignored on subsequent starts
@@ -1500,11 +1571,13 @@ void RocksDBEngine::getStatistics(VPackBuilder& builder) const {
       builder.add(stat.second, VPackValue(_options.statistics->getTickerCount(stat.first)));
     } 
   }
-
   if (_options.table_factory) {
     void* options = _options.table_factory->GetOptions();
     if (options != nullptr) {
-      builder.add("rocksdb.block-cache-used", VPackValue(static_cast<rocksdb::BlockBasedTableOptions*>(options)->block_cache->GetUsage()));
+      builder.add(
+          "rocksdb.block-cache-used",
+          VPackValue(static_cast<rocksdb::BlockBasedTableOptions*>(options)
+                         ->block_cache->GetUsage()));
     }
   }
 
@@ -1516,15 +1589,13 @@ void RocksDBEngine::getStatistics(VPackBuilder& builder) const {
   builder.add("cache.hit-rate-recent", VPackValue(rates.second));
   
   builder.add("rocksdb.cfstats", VPackValue(VPackValueType::Object));
-  addCf("other", RocksDBColumnFamily::other());
+  addCf("definitions", RocksDBColumnFamily::definitions());
   addCf("documents", RocksDBColumnFamily::documents());
   addCf("primary", RocksDBColumnFamily::primary());
   addCf("edge", RocksDBColumnFamily::edge());
+  addCf("vpack", RocksDBColumnFamily::vpack());
   addCf("geo", RocksDBColumnFamily::geo());
   addCf("fulltext", RocksDBColumnFamily::fulltext());
-  addCf("index", RocksDBColumnFamily::index());
-  addCf("uniqueIndex", RocksDBColumnFamily::uniqueIndex());
-  addCf("views", RocksDBColumnFamily::views());
   builder.close();
 
   builder.close();
