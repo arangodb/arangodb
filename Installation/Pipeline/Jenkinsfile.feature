@@ -400,6 +400,12 @@ def unstashBinaries(edition, os) {
 // --SECTION--                                                     SCRIPTS BUILD
 // -----------------------------------------------------------------------------
 
+buildJenkins = [
+    "linux": "linux && build",
+    "mac" : "mac",
+    "windows": "windows"
+]
+
 buildsSuccess = [:]
 allBuildsSuccessful = true
 
@@ -464,7 +470,7 @@ def buildStepCheck(edition, os, full) {
 def buildStep(edition, os) {
     return {
         lock("${env.BRANCH_NAME}-build-${edition}-${os}") {
-            node(os) {
+            node(buildJenkins[os]) {
                 def name = "${edition}-${os}"
 
                 try {
@@ -539,6 +545,12 @@ def jslintStep() {
 // --SECTION--                                                     SCRIPTS TESTS
 // -----------------------------------------------------------------------------
 
+testJenkins = [
+    "linux": "linux && build",
+    "mac" : "mac",
+    "windows": "windows"
+]
+
 testsSuccess = [:]
 allTestsSuccessful = true
 numberTestsSuccessful = 0
@@ -573,10 +585,6 @@ def testEdition(edition, os, mode, engine) {
 
 def testCheck(edition, os, mode, engine, full) {
     def name = "${edition}-${os}"
-
-    // if (! (buildsSuccess.containsKey(name) && buildsSuccess[name])) {
-    //     return false
-    // }
 
     if (! runTests) {
         return false
@@ -621,21 +629,23 @@ def testName(edition, os, mode, engine, full) {
 
 def testStep(edition, os, mode, engine) {
     return {
-        node(os) {
-            echo "Running ${mode} ${edition} ${engine} ${os} test"
+        node(testJenkins[os]) {
+            if (buildsSuccess.containsKey(name) && buildsSuccess[name]) {
+                echo "Running ${mode} ${edition} ${engine} ${os} test"
 
-            def name = "${edition}-${os}-${mode}-${engine}"
+                def name = "${edition}-${os}-${mode}-${engine}"
 
-            try {
-                unstashBinaries(edition, os)
-                testEdition(edition, os, mode, engine)
-                testsSuccess[name] = true
-            }
-            catch (exc) {
-                echo exc.toString()
-                testsSuccess[name] = false
-                allTestsSuccessful = false
-                throw exc
+                try {
+                    unstashBinaries(edition, os)
+                    testEdition(edition, os, mode, engine)
+                    testsSuccess[name] = true
+                }
+                catch (exc) {
+                    echo exc.toString()
+                    testsSuccess[name] = false
+                    allTestsSuccessful = false
+                    throw exc
+                }
             }
         }
     }
@@ -685,10 +695,6 @@ def testResilience(os, engine, foxx) {
 def testResilienceCheck(os, engine, foxx, full) {
     def name = "community-${os}"
 
-    // if (! (buildsSuccess.containsKey(name) && buildsSuccess[name])) {
-    //     return false
-    // }
-
     if (! runResilience) {
         return false
     }
@@ -724,19 +730,21 @@ def testResilienceName(os, engine, foxx, full) {
 
 def testResilienceStep(os, engine, foxx) {
     return {
-        node(os) {
-            echo "Running ${foxx} ${engine} ${os} test"
+        node(testJenkins[os]) {
+            if (buildsSuccess.containsKey(name) && buildsSuccess[name]) {
+                echo "Running ${foxx} ${engine} ${os} resilience test"
 
-            def name = "${os}-${engine}-${foxx}"
+                def name = "${os}-${engine}-${foxx}"
 
-            try {
-                unstashBinaries('community', os)
-                testResilience(os, engine, foxx)
-            }
-            catch (exc) {
-                resiliencesSuccess[name] = false
-                allResiliencesSuccessful = false
-                throw exc
+                try {
+                    unstashBinaries('community', os)
+                    testResilience(os, engine, foxx)
+                }
+                catch (exc) {
+                    resiliencesSuccess[name] = false
+                    allResiliencesSuccessful = false
+                    throw exc
+                }
             }
         }
     }
