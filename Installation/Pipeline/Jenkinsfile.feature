@@ -646,16 +646,6 @@ def testStep(edition, os, mode, engine) {
                     throw exc
                 }
             }
-            else {
-                def result = ""
-
-                for (kv in buildsSuccess) {
-                    result += "BUILD ${kv.key}: ${kv.value}\n"
-                }
-
-                echo result
-                echo (buildsSuccess[buildName] ? "true" : "false")
-            }
         }
     }
 }
@@ -742,7 +732,7 @@ def testResilienceStep(os, engine, foxx) {
         node(testJenkins[os]) {
             def buildName = "${edition}-${os}"
 
-            if (buildsSuccess.containsKey(buildName) && buildsSuccess[buildName]) {
+            if (buildsSuccess[buildName]) {
                 def name = "${os}-${engine}-${foxx}"
 
                 try {
