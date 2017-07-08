@@ -117,7 +117,6 @@ class Communicator {
 
   int work_once();
   void wait();
-  std::vector<RequestInProgress const*> requestsInProgress();
   void abortRequest(Ticket ticketId);
   void abortRequests();
   void disable() { _enabled = false; };
@@ -137,7 +136,10 @@ class Communicator {
  private:
   Mutex _newRequestsLock;
   std::vector<NewRequest> _newRequests;
+
+  Mutex _handlesLock;
   std::unordered_map<uint64_t, std::unique_ptr<CurlHandle>> _handlesInProgress;
+  
   CURLM* _curl;
   CURLMcode _mc;
   curl_waitfd _wakeup;
@@ -149,6 +151,8 @@ class Communicator {
   bool _enabled;
 
  private:
+  void abortRequestInternal(Ticket ticketId);
+  std::vector<RequestInProgress const*> requestsInProgress();
   void createRequestInProgress(NewRequest const& newRequest);
   void handleResult(CURL*, CURLcode);
   void transformResult(CURL*, HeadersInProgress&&,

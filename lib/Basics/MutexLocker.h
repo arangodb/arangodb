@@ -132,8 +132,8 @@ class MutexLocker {
   /// @brief unlocks the mutex if we own it
   bool unlock() {
     if (_isLocked) {
-      _mutex->unlock();
       _isLocked = false;
+      _mutex->unlock();
       return true;
     }
     return false;
