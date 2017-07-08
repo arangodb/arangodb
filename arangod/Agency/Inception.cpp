@@ -339,7 +339,7 @@ bool Inception::restartingActiveAgent() {
             if (!this->isStopping()) {
               LOG_TOPIC(FATAL, Logger::AGENCY)
                 << "Assumed active RAFT peer has no active agency list: "
-                << e.what() << "Administrative intervention needed.";
+                << e.what() << ", administrative intervention needed.";
               FATAL_ERROR_EXIT();
             }
             return false;
