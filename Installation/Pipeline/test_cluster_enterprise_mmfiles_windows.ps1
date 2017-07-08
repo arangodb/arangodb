@@ -75,7 +75,7 @@ WorkFlow RunTests {
   }
 }
 
-MoveItem -force .\build\bin\RelWithDebInfo\* .\build\bin\
+Move-Item -force .\build\bin\RelWithDebInfo\* .\build\bin\
 
 RunTests -port $port
 $result = $LastExitCode
