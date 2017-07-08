@@ -56,7 +56,7 @@ class RestAgencyPrivHandler : public arangodb::RestBaseHandler {
       return false;
     } else {
       try {
-        val = std::stoul(val_str);
+        val = std::stoull(val_str);
       } catch (std::invalid_argument const&) {
         LOG_TOPIC(WARN, Logger::AGENCY)
             << "Value for query string " << name
