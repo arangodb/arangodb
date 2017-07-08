@@ -65,9 +65,7 @@ WorkFlow RunTests {
         $maxPort = $USING:minPort + $USING:portInterval - 1
 
         Set-Location $USING:workspace
-        Start-Transcript -Path $USING:log
-        .\build\bin\arangosh.exe --log.level warning --javascript.execute UnitTests\unittest.js $USING:test -- --cluster true --storageEngine rocksdb --minPort $USING:minPort --maxPort $USING:maxPort --skipNondeterministic true --skipTimeCritical true  --configDir etc/jenkins --skipLogAnalysis true $USING:testargs
-        Stop-Transcript
+        .\build\bin\arangosh.exe --log.level warning --javascript.execute UnitTests\unittest.js $USING:test -- --cluster true --storageEngine rocksdb --minPort $USING:minPort --maxPort $USING:maxPort --skipNondeterministic true --skipTimeCritical true  --configDir etc/jenkins --skipLogAnalysis true $USING:testargs > log-output\$USING:log
       }
 
       Invoke-Command -ScriptBlock $testscript
@@ -77,7 +75,8 @@ WorkFlow RunTests {
   }
 }
 
-move .\build\bin\RelWithDebInfo\* .\build\bin\
+Remove-Item -force .\build\bin\*
+MoveItem .\build\bin\RelWithDebInfo\* .\build\bin\
 
 RunTests -port $port
 $result = $LastExitCode
