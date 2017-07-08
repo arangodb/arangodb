@@ -559,10 +559,10 @@ allTestsSuccessful = true
 def testEdition(edition, os, mode, engine) {
     try {
         if (os == 'linux') {
-            sh "./Installation/Pipeline/test_${mode}_${edition}_${engine}_${os}.sh 10"
+            sh "./Installation/Pipeline/test_${mode}_${edition}_${engine}_${os}.sh 5"
         }
         else if (os == 'mac') {
-            sh "./Installation/Pipeline/test_${mode}_${edition}_${engine}_${os}.sh 10"
+            sh "./Installation/Pipeline/test_${mode}_${edition}_${engine}_${os}.sh 5"
         }
         else if (os == 'windows') {
             PowerShell(". .\\Installation\\Pipeline\\test_${mode}_${edition}_${engine}_${os}.ps1")
