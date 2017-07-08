@@ -65,7 +65,7 @@ WorkFlow RunTests {
         $maxPort = $USING:minPort + $USING:portInterval - 1
 
         Set-Location $USING:workspace
-        .\build\bin\arangosh.exe --log.level warning --javascript.execute UnitTests\unittest.js $USING:test -- --cluster true --minPort $USING:minPort --maxPort $USING:maxPort --skipNondeterministic true --skipTimeCritical true  --configDir etc/jenkins --skipLogAnalysis true $USING:testargs > log-output\$USING:log
+        .\build\bin\arangosh.exe --log.level warning --javascript.execute UnitTests\unittest.js $USING:test -- --cluster true --minPort $USING:minPort --maxPort $USING:maxPort --skipNondeterministic true --skipTimeCritical true  --configDir etc/jenkins --skipLogAnalysis true $USING:testargs > $USING:log
       }
 
       Invoke-Command -ScriptBlock $testscript
