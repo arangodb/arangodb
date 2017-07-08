@@ -570,7 +570,7 @@ def testEdition(edition, os, mode, engine) {
     }
     catch (exc) {
         archiveArtifacts allowEmptyArchive: true,
-                         artifacts: 'core.*, build/bin/arangod',
+                         artifacts: 'core*, build/bin/arangod',
                          defaultExcludes: false
 
         throw exc
@@ -742,6 +742,11 @@ def testResilienceStep(os, engine, foxx) {
                 catch (exc) {
                     resiliencesSuccess[name] = false
                     allResiliencesSuccessful = false
+
+                    archiveArtifacts allowEmptyArchive: true,
+                                     artifacts: 'core*, build/bin/arangod',
+                                     defaultExcludes: false
+
                     throw exc
                 }
                 finally {
