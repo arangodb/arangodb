@@ -170,7 +170,12 @@ std::string Agent::leaderID() const {
 
 /// Are we leading?
 bool Agent::leading() const {
-  return _preparing || _constituent.leading();
+  // When we become leader, we first are officially still a follower, but
+  // prepare for the leading. This is indicated by the _preparing flag in the
+  // Agent, the Constituent stays with role FOLLOWER for now. The agent has
+  // to send out AppendEntriesRPC calls immediately, but only when we are
+  // properly leading (with initialized stores etc.) can we execute requests.
+  return (_preparing && _constituent.following()) || _constituent.leading();
 }
 
 /// Start constituent personality
@@ -555,6 +560,7 @@ void Agent::sendAppendEntriesRPC() {
       // Really leading?
       if (challengeLeadership()) {
         _constituent.candidate();
+        _preparing = false;
         return;
       }
       
@@ -815,6 +821,7 @@ trans_ret_t Agent::transact(query_t const& queries) {
     // Only leader else redirect
     if (challengeLeadership()) {
       _constituent.candidate();
+      _preparing = false;
       return trans_ret_t(false, NO_LEADER);
     }
     
@@ -872,6 +879,7 @@ trans_ret_t Agent::transient(query_t const& queries) {
     // Only leader else redirect
     if (challengeLeadership()) {
       _constituent.candidate();
+      _preparing = false;
       return trans_ret_t(false, NO_LEADER);
     }
 
@@ -982,6 +990,7 @@ write_ret_t Agent::write(query_t const& query, bool discardStartup) {
     // Only leader else redirect
     if (multihost && challengeLeadership()) {
       _constituent.candidate();
+      _preparing = false;
       return write_ret_t(false, NO_LEADER);
     }
     
@@ -1027,6 +1036,7 @@ read_ret_t Agent::read(query_t const& query) {
   // Only leader else redirect
   if (challengeLeadership()) {
     _constituent.candidate();
+    _preparing = false;
     return read_ret_t(false, NO_LEADER);
   }
 
@@ -1382,13 +1392,13 @@ void Agent::notify(query_t const& message) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_AGENCY_INFORM_MUST_CONTAIN_POOL);
   }
   if (!slice.hasKey("min ping") || !slice.get("min ping").isNumber()) {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_AGENCY_INFORM_MUST_CONTAIN_POOL);
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_AGENCY_INFORM_MUST_CONTAIN_MIN_PING);
   }
   if (!slice.hasKey("max ping") || !slice.get("max ping").isNumber()) {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_AGENCY_INFORM_MUST_CONTAIN_POOL);
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_AGENCY_INFORM_MUST_CONTAIN_MAX_PING);
   }
   if (!slice.hasKey("timeoutMult") || !slice.get("timeoutMult").isInteger()) {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_AGENCY_INFORM_MUST_CONTAIN_POOL);
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_AGENCY_INFORM_MUST_CONTAIN_TIMEOUT_MULT);
   }
 
   _config.update(message);

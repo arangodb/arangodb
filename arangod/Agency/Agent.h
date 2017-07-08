@@ -97,6 +97,11 @@ class Agent : public arangodb::Thread,
   /// @brief Prepare leadership
   bool prepareLead();
 
+  /// @brief Unprepare for leadership, needed when we resign during preparation
+  void unprepareLead() {
+    _preparing = false;
+  }
+
   /// @brief Load persistent state
   void load();
 
