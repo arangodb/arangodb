@@ -117,13 +117,13 @@ collection *data* nor create new collections in the database *example*.
 
 ## Granting Access Levels
 
-In order to grant an access level to a user, you can assign one of three
-access levels for each database and one of three levels for each
-collection in a database. The server category access level for the user
-follows from the database access level in the `_system` database, it is
+In order to grant an access level to a user, you can assign one of
+three access levels for each database and one of three levels for each
+collection in a database. The server access level for the user follows
+from the database access level in the `_system` database, it is
 *Administrate* if and only if the database access level is
-*Administrate*. Note that this means that database access level *Access*
-does not grant a user server access level *Administrate*.
+*Administrate*. Note that this means that database access level
+*Access* does not grant a user server access level *Administrate*.
 
 ### Default Database Access Level
 
@@ -237,10 +237,9 @@ database and go to the "Users" section. Select a user and go to the
 *Access levels* tab. You will see a list of databases and their
 corresponding database access level for that user.
 
-Please note that server category access level follows from the access
-level on the database *_system*. Furthermore, the default database
-access level for this user appear in the artificial row with the
-database name `*`.
+Please note that server access level follows from the access level on
+the database *_system*. Furthermore, the default database access level
+for this user appear in the artificial row with the database name `*`.
 
 Below this table is another one for the collection category access
 levels. At first, it shows the list of databases, too. If you click on a
