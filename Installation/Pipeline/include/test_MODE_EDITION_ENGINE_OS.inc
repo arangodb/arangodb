@@ -83,7 +83,7 @@ if [ "$mode" == singleserver ]; then
     scripts/unittest ssl_server                                   --minPort `expr $PORT01 + 240` --maxPort `expr $PORT01 + 249` $OPTS 2>&1
     scripts/unittest upgrade                                      --minPort `expr $PORT01 + 250` --maxPort `expr $PORT01 + 259` $OPTS 2>&1
     $ENTERPRISE_TESTS
-    " | parallel --header 1 --results log-output --files --no-notice --load 10 --jobs $concurrency > log-output/${type}.log
+    " | parallel --verbose --header 1 --results log-output --files --no-notice --load 10 --jobs $concurrency > log-output/${type}.log
 
 elif [ "$mode" == cluster ]; then
     OPTS="$OPTS --cluster true"
@@ -112,7 +112,7 @@ elif [ "$mode" == cluster ]; then
     scripts/unittest ssl_server                                   --minPort `expr $PORT01 + 640` --maxPort `expr $PORT01 + 679` $OPTS 2>&1
     scripts/unittest upgrade                                      --minPort `expr $PORT01 + 680` --maxPort `expr $PORT01 + 719` $OPTS 2>&1
     $ENTERPRISE_TESTS
-    " | parallel --header 1 --results log-output --files --no-notice --load 10 --jobs $concurrency > log-output/${type}.log
+    " | parallel --verbose --header 1 --results log-output --files --no-notice --load 10 --jobs $concurrency > log-output/${type}.log
 fi
 
 . ./Installation/Pipeline/include/test_check_result.inc $?
