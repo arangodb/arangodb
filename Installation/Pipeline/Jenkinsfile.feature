@@ -182,6 +182,9 @@ def checkoutCommunity() {
             checkout scm
             sh 'git clean -f -d -x'
         }
+        catch (hudson.AbortException ae) {
+            throw ae
+        }
         catch (exc) {
             echo "GITHUB checkout failed, retrying in 5min"
             echo exc.toString()
@@ -414,6 +417,9 @@ def buildEdition(edition, os) {
         try {
             unstashBuild(edition, os)
         }
+        catch (hudson.AbortException ae) {
+            throw ae
+        }
         catch (exc) {
             echo "no stashed build environment, starting clean build"
         }
@@ -429,9 +435,6 @@ def buildEdition(edition, os) {
         else if (os == 'windows') {
             PowerShell(". .\\Installation\\Pipeline\\build_${edition}_${os}.ps1")
         }
-    }
-    catch (exc) {
-        throw exc
     }
     finally {
         stashBuild(edition, os)
@@ -481,6 +484,9 @@ def buildStep(edition, os) {
                     stashBinaries(edition, os)
                     buildsSuccess[name] = true
                 }
+                catch (hudson.AbortException ae) {
+                    throw ae
+                }
                 catch (exc) {
                     buildsSuccess[name] = false
                     allBuildsSuccessful = false
@@ -520,6 +526,9 @@ jslintSuccessful = true
 def jslint() {
     try {
         sh './Installation/Pipeline/test_jslint.sh'
+    }
+    catch (hudson.AbortException ae) {
+        throw ae
     }
     catch (exc) {
         jslintSuccessful = false
@@ -567,6 +576,9 @@ def testEdition(edition, os, mode, engine) {
         else if (os == 'windows') {
             PowerShell(". .\\Installation\\Pipeline\\test_${mode}_${edition}_${engine}_${os}.ps1")
         }
+    }
+    catch (hudson.AbortException ae) {
+        throw ae
     }
     catch (exc) {
         archiveArtifacts allowEmptyArchive: true,
@@ -638,6 +650,9 @@ def testStep(edition, os, mode, engine) {
                     unstashBinaries(edition, os)
                     testEdition(edition, os, mode, engine)
                     testsSuccess[name] = true
+                }
+                catch (hudson.AbortException ae) {
+                    throw ae
                 }
                 catch (exc) {
                     echo exc.toString()
@@ -739,6 +754,9 @@ def testResilienceStep(os, engine, foxx) {
                     unstashBinaries('community', os)
                     testResilience(os, engine, foxx)
                 }
+                catch (hudson.AbortException ae) {
+                    throw ae
+                }
                 catch (exc) {
                     resiliencesSuccess[name] = false
                     allResiliencesSuccessful = false
@@ -807,6 +825,9 @@ try {
         }
     }
 }
+catch (hudson.AbortException ae) {
+    throw ae
+}
 catch (exc) {
     echo exc.toString()
 }
@@ -821,6 +842,9 @@ try {
         }
     }
 }
+catch (hudson.AbortException ae) {
+    throw ae
+}
 catch (exc) {
     echo exc.toString()
 }
@@ -833,6 +857,9 @@ if (! fullParallel) {
             }
         }
     }
+    catch (hudson.AbortException ae) {
+        throw ae
+    }
     catch (exc) {
         echo exc.toString()
     }
@@ -843,6 +870,9 @@ if (! fullParallel) {
                 testStepParallel(['mac'], ['cluster', 'singleserver'])
             }
         }
+    }
+    catch (hudson.AbortException ae) {
+        throw ae
     }
     catch (exc) {
         echo exc.toString()
@@ -855,6 +885,9 @@ if (! fullParallel) {
             }
         }
     }
+    catch (hudson.AbortException ae) {
+        throw ae
+    }
     catch (exc) {
         echo exc.toString()
     }
@@ -865,6 +898,9 @@ if (! fullParallel) {
                 testStepParallel(['windows'], ['cluster', 'singleserver'])
             }
         }
+    }
+    catch (hudson.AbortException ae) {
+        throw ae
     }
     catch (exc) {
         echo exc.toString()
@@ -877,6 +913,9 @@ try {
             testResilienceParallel();
         }
     }
+}
+catch (hudson.AbortException ae) {
+    throw ae
 }
 catch (exc) {
     echo exc.toString()
