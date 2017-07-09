@@ -264,12 +264,14 @@ void Agent::reportIn(std::string const& peerId, index_t index, size_t toLog) {
         LOG_TOPIC(TRACE, Logger::AGENCY)
           << "Critical mass for commiting " << _commitIndex + 1
           << " through " << index << " to read db";
+        {
+          MUTEX_LOCKER(mutexLocker, _compactionLock);
+          _readDB.applyLogEntries(
+            _state.slices(
+              _commitIndex + 1, index), _commitIndex, _constituent.term(),
+              true /* inform others by callbacks */ );
+        }
 
-        _readDB.applyLogEntries(
-          _state.slices(
-            _commitIndex + 1, index), _commitIndex, _constituent.term(),
-            true /* inform others by callbacks */ );
-        
         MUTEX_LOCKER(liLocker, _liLock);
         _commitIndex = index;
         if (_commitIndex >= _nextCompactionAfter) {
@@ -647,6 +649,7 @@ query_t Agent::activate(query_t const& everything) {
           _readDB = compact.get("readDB");
         }
         commitIndex = _commitIndex;
+        // no need to lock via _readDB._compactionLock here
         _readDB.applyLogEntries(batch, commitIndex, _constituent.term(),
                                 false  /* do not perform callbacks */);
         _spearhead = _readDB;
@@ -1422,9 +1425,12 @@ arangodb::consensus::index_t Agent::rebuildDBs() {
     << "Rebuilding key-value stores from index "
     << lastCompactionIndex << " to " << _commitIndex << " " << _state;
 
-  auto logs = _state.slices(lastCompactionIndex+1, _commitIndex);
-  _readDB.applyLogEntries(logs, _commitIndex, _constituent.term(),
-      false  /* do not send callbacks */);
+  {
+    MUTEX_LOCKER(mutexLocker, _compactionLock);
+    auto logs = _state.slices(lastCompactionIndex+1, _commitIndex);
+    _readDB.applyLogEntries(logs, _commitIndex, _constituent.term(),
+        false  /* do not send callbacks */);
+  }
   _spearhead = _readDB;
 
   LOG_TOPIC(TRACE, Logger::AGENCY) << "ReadDB: " << _readDB;
@@ -1680,11 +1686,14 @@ query_t Agent::buildDB(arangodb::consensus::index_t index) {
   }
   
   std::vector<VPackSlice> logs;
-  if (index > oldIndex) {
-    logs = _state.slices(oldIndex+1, index);
+  {
+    MUTEX_LOCKER(mutexLocker, _compactionLock);
+    if (index > oldIndex) {
+      logs = _state.slices(oldIndex+1, index);
+    }
+    store.applyLogEntries(logs, index, term,
+                          false  /* do not perform callbacks */);
   }
-  store.applyLogEntries(logs, index, term,
-                        false  /* do not perform callbacks */);
 
   auto builder = std::make_shared<VPackBuilder>();
   store.toBuilder(*builder);
