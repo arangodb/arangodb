@@ -24,16 +24,17 @@
 #ifndef ARANGOD_VOC_BASE_AUTH_USER_H
 #define ARANGOD_VOC_BASE_AUTH_USER_H 1
 
+#include "Basics/Common.h"
+
 #include <velocypack/Builder.h>
 #include <velocypack/Slice.h>
-#include <unordered_map>
 
 namespace arangodb {
 
 enum class AuthLevel { NONE, RO, RW };
 
 AuthLevel convertToAuthLevel(velocypack::Slice grants);
-AuthLevel convertToAuthLevel(std::string grant);
+AuthLevel convertToAuthLevel(std::string const& grant);
 std::string convertFromAuthLevel(AuthLevel lvl);
 
 enum class AuthSource { COLLECTION, LDAP };
@@ -77,7 +78,6 @@ class AuthUserEntry {
 
  private:
   std::string _key;
-  bool _active = true;
   AuthSource _source = AuthSource::COLLECTION;
 
   std::string _username;

@@ -49,6 +49,12 @@ REST API
   * GET /_api/query/current
   * GET /_api/query/slow
 
+* The REST API for retrieving indexes (GET /_api/index) now returns the *deduplicate*
+  attribute for each index
+
+* The REST API for creating indexes (POST /_api/index) now accepts the optional *deduplicate*
+  attribute
+
 
 JavaScript API
 --------------
@@ -56,6 +62,10 @@ JavaScript API
 * change undocumented behaviour in case of invalid revision ids in
   JavaScript document operations from returning error code 1239 ("illegal document revision")
   to returning error code 1200 ("conflict").
+
+* the `collection.getIndexes()` function now returns the *deduplicate* attribute for each index
+
+* the `collection.ensureIndex()` function now accepts the optional *deduplicate* attribute
 
 
 Foxx

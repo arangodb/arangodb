@@ -1116,12 +1116,18 @@ int ClusterInfo::createCollectionCoordinator(std::string const& databaseName,
     return setErrormsg(TRI_ERROR_CLUSTER_COLLECTION_ID_EXISTS, errorMsg);
   }
 
-  std::shared_ptr<int> dbServerResult = std::make_shared<int>(-1);
-  std::shared_ptr<std::string> errMsg = std::make_shared<std::string>();
+  // The following three are used for synchronization between the callback
+  // closure and the main thread executing this function. Note that it can
+  // happen that the callback is called only after we return from this
+  // function!
+  auto dbServerResult = std::make_shared<int>(-1);
+  auto errMsg = std::make_shared<std::string>();
+  auto cacheMutex = std::make_shared<Mutex>();
 
   auto dbServers = getCurrentDBServers();
   std::function<bool(VPackSlice const& result)> dbServerChanged =
       [=](VPackSlice const& result) {
+        MUTEX_LOCKER(locker, *cacheMutex);
         if (result.isObject() && result.length() == (size_t)numberOfShards) {
           std::string tmpError = "";
           for (auto const& p : VPackObjectIterator(result)) {
@@ -1215,56 +1221,64 @@ int ClusterInfo::createCollectionCoordinator(std::string const& databaseName,
   transaction.transactions.push_back(
     AgencyGeneralTransaction::TransactionType(opers,precs));
   
-  auto res = ac.sendTransactionWithFailover(transaction);
-  auto result = res.slice();
+  { // we hold this mutex from now on until we have updated our cache
+    // using loadPlan, this is necessary for the callback closure to 
+    // see the new planned state for this collection. Otherwise it cannot
+    // recognize completion of the create collection operation properly:
+    MUTEX_LOCKER(locker, *cacheMutex);
 
-  // Only if not precondition failed
-  if (!res.successful()) {
-    if (res.httpCode() ==
-        (int)arangodb::rest::ResponseCode::PRECONDITION_FAILED) {
-      AgencyCommResult ag = ac.getValues("/");
+    auto res = ac.sendTransactionWithFailover(transaction);
+    auto result = res.slice();
 
-      if (result.isArray() && result.length() > 0) {
-        if (result[0].isObject()) {
-          auto tres = result[0];
-          if (tres.hasKey(
-              std::vector<std::string>(
-                {AgencyCommManager::path(), "Supervision"}))) {
-            for (const auto& s :
-                   VPackObjectIterator(
-                     tres.get(
-                       std::vector<std::string>(
-                         {AgencyCommManager::path(), "Supervision","Shards"})))) {
-              errorMsg += std::string("Shard ") + s.key.copyString();
-              errorMsg += " of prototype collection is blocked by supervision job ";
-              errorMsg += s.value.copyString();
+    // Only if not precondition failed
+    if (!res.successful()) {
+      if (res.httpCode() ==
+          (int)arangodb::rest::ResponseCode::PRECONDITION_FAILED) {
+        AgencyCommResult ag = ac.getValues("/");
+
+        if (result.isArray() && result.length() > 0) {
+          if (result[0].isObject()) {
+            auto tres = result[0];
+            if (tres.hasKey(
+                std::vector<std::string>(
+                  {AgencyCommManager::path(), "Supervision"}))) {
+              for (const auto& s :
+                     VPackObjectIterator(
+                       tres.get(
+                         std::vector<std::string>(
+                           {AgencyCommManager::path(), "Supervision","Shards"})))) {
+                errorMsg += std::string("Shard ") + s.key.copyString();
+                errorMsg += " of prototype collection is blocked by supervision job ";
+                errorMsg += s.value.copyString();
+              }
             }
+            return TRI_ERROR_CLUSTER_COULD_NOT_CREATE_COLLECTION_IN_PLAN;
           }
-          return TRI_ERROR_CLUSTER_COULD_NOT_CREATE_COLLECTION_IN_PLAN;
         }
-      }
 
-      if (ag.successful()) {
-        LOG_TOPIC(ERR, Logger::CLUSTER) << "Agency dump:\n"
-                                        << ag.slice().toJson();
+        if (ag.successful()) {
+          LOG_TOPIC(ERR, Logger::CLUSTER) << "Agency dump:\n"
+                                          << ag.slice().toJson();
+        } else {
+          LOG_TOPIC(ERR, Logger::CLUSTER) << "Could not get agency dump!";
+        }
       } else {
-        LOG_TOPIC(ERR, Logger::CLUSTER) << "Could not get agency dump!";
+        errorMsg += std::string("\nClientId ") + res._clientId;
+        errorMsg += std::string("\n") + __FILE__ + std::to_string(__LINE__);
+        errorMsg += std::string("\n") + res.errorMessage();
+        errorMsg += std::string("\n") + res.errorDetails();
+        errorMsg += std::string("\n") + res.body();
+        events::CreateCollection(
+          name, TRI_ERROR_CLUSTER_COULD_NOT_CREATE_COLLECTION_IN_PLAN);
+        return TRI_ERROR_CLUSTER_COULD_NOT_CREATE_COLLECTION_IN_PLAN;
       }
-    } else {
-      errorMsg += std::string("\nClientId ") + res._clientId;
-      errorMsg += std::string("\n") + __FILE__ + std::to_string(__LINE__);
-      errorMsg += std::string("\n") + res.errorMessage();
-      errorMsg += std::string("\n") + res.errorDetails();
-      errorMsg += std::string("\n") + res.body();
-      events::CreateCollection(
-        name, TRI_ERROR_CLUSTER_COULD_NOT_CREATE_COLLECTION_IN_PLAN);
-      return TRI_ERROR_CLUSTER_COULD_NOT_CREATE_COLLECTION_IN_PLAN;
+      
     }
-    
+
+    // Update our cache:
+    loadPlan();
   }
 
-  // Update our cache:
-  loadPlan();
   if (numberOfShards == 0) {
     loadCurrent();
     events::CreateCollection(name, TRI_ERROR_NO_ERROR);
@@ -1362,6 +1376,7 @@ int ClusterInfo::dropCollectionCoordinator(
 
   auto dbServerResult = std::make_shared<int>(-1);
   auto errMsg = std::make_shared<std::string>();
+
   std::function<bool(VPackSlice const& result)> dbServerChanged =
       [=](VPackSlice const& result) {
         if (result.isObject() && result.length() == 0) {
@@ -1735,8 +1750,10 @@ int ClusterInfo::ensureIndexCoordinatorWithoutRollback(
 
     std::shared_ptr<VPackBuilder> tmp = std::make_shared<VPackBuilder>();
     c->getIndexesVPack(*(tmp.get()), false, false);
-    MUTEX_LOCKER(guard, *numberOfShardsMutex);
-    { *numberOfShards = c->numberOfShards(); }
+    { 
+      MUTEX_LOCKER(guard, *numberOfShardsMutex);
+      *numberOfShards = c->numberOfShards();
+    }
     VPackSlice const indexes = tmp->slice();
 
     if (indexes.isArray()) {
@@ -1834,14 +1851,10 @@ int ClusterInfo::ensureIndexCoordinatorWithoutRollback(
 
   std::function<bool(VPackSlice const& result)> dbServerChanged = [=](
       VPackSlice const& result) {
-    int localNumberOfShards;
-    {
-      MUTEX_LOCKER(guard, *numberOfShardsMutex);
-      localNumberOfShards = *numberOfShards;
-    }
+    MUTEX_LOCKER(guard, *numberOfShardsMutex);
 
     // mop: uhhhh....we didn't even set the plan yet :O
-    if (localNumberOfShards == 0) {
+    if (*numberOfShards == 0) {
       return false;
     }
 
@@ -1960,11 +1973,14 @@ int ClusterInfo::ensureIndexCoordinatorWithoutRollback(
 
   loadPlan();
 
-  if (*numberOfShards == 0) {
-    errorMsg = *errMsg;
-    resultBuilder = *resBuilder;
-    loadCurrent();
-    return TRI_ERROR_NO_ERROR;
+  {
+    MUTEX_LOCKER(guard, *numberOfShardsMutex);
+    if (*numberOfShards == 0) {
+      errorMsg = *errMsg;
+      resultBuilder = *resBuilder;
+      loadCurrent();
+      return TRI_ERROR_NO_ERROR;
+    }
   }
 
   {
@@ -2037,14 +2053,9 @@ int ClusterInfo::dropIndexCoordinator(std::string const& databaseName,
   auto errMsg = std::make_shared<std::string>();
   std::function<bool(VPackSlice const& result)> dbServerChanged =
       [=](VPackSlice const& current) {
-        int localNumberOfShards;
+        MUTEX_LOCKER(guard, *numberOfShardsMutex);
 
-        {
-          MUTEX_LOCKER(guard, *numberOfShardsMutex);
-          localNumberOfShards = *numberOfShards;
-        }
-
-        if (localNumberOfShards == 0) {
+        if (*numberOfShards  == 0) {
           return false;
         }
 
@@ -2054,7 +2065,7 @@ int ClusterInfo::dropIndexCoordinator(std::string const& databaseName,
 
         VPackObjectIterator shards(current);
 
-        if (shards.size() == (size_t)localNumberOfShards) {
+        if (shards.size() == (size_t)(*numberOfShards)) {
           bool found = false;
           for (auto const& shard : shards) {
             VPackSlice const indexes = shard.value.get("indexes");
@@ -2202,14 +2213,12 @@ int ClusterInfo::dropIndexCoordinator(std::string const& databaseName,
 
   // load our own cache:
   loadPlan();
-  if (*numberOfShards == 0) {
-    loadCurrent();
-    return TRI_ERROR_NO_ERROR;
-  }
-
   {
     MUTEX_LOCKER(guard, *numberOfShardsMutex);
-    TRI_ASSERT(*numberOfShards > 0);
+    if (*numberOfShards == 0) {
+      loadCurrent();
+      return TRI_ERROR_NO_ERROR;
+    }
   }
 
   {

@@ -23,8 +23,6 @@
 
 #include "AuthUserEntry.h"
 
-#include "Aql/Query.h"
-#include "Aql/QueryString.h"
 #include "Basics/ReadLocker.h"
 #include "Basics/StringRef.h"
 #include "Basics/VelocyPackHelper.h"
@@ -64,7 +62,7 @@ AuthLevel arangodb::convertToAuthLevel(velocypack::Slice grants) {
   return _convertToAuthLevel(StringRef(grants));
 }
 
-AuthLevel arangodb::convertToAuthLevel(std::string grants) {
+AuthLevel arangodb::convertToAuthLevel(std::string const& grants) {
   return _convertToAuthLevel(StringRef(grants));
 }
 
