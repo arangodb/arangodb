@@ -845,10 +845,15 @@ bool State::compact(index_t cind) {
     return true;  // already have snapshot for this index
   } else {  // now we know index < cind
     // Apply log entries to snapshot up to and including index cind:
+    MUTEX_LOCKER(mutexLocker, _agent->_compactionLock);
+    
     auto logs = slices(index + 1, cind);
     log_t last = at(cind);
     snapshot.applyLogEntries(logs, cind, last.term,
         false  /* do not perform callbacks */);
+
+    mutexLocker.unlock();
+
     if (!persistCompactionSnapshot(cind, last.term, snapshot)) {
       LOG_TOPIC(ERR, Logger::AGENCY)
         << "Could not persist compaction snapshot.";

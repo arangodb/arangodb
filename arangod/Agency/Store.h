@@ -143,7 +143,7 @@ class Store : public arangodb::Thread {
 
   /// @brief Apply single slice
   bool applies(arangodb::velocypack::Slice const&);
-
+ 
  private:
 
   /// @brief Remove time to live entries for uri
@@ -165,13 +165,14 @@ class Store : public arangodb::Thread {
   /// @brief Run thread
   void run() override final;
 
+ private:
   /// @brief Condition variable guarding removal of expired entries
   mutable arangodb::basics::ConditionVariable _cv;
 
   /// @brief Read/Write mutex on database
   /// guard _node, _timeTable, _observerTable, _observedTable
   mutable arangodb::Mutex _storeLock;
-
+ 
   /// @brief My own agent
   Agent* _agent;
 
