@@ -125,7 +125,6 @@ follows from the database access level in the `_system` database, it is
 *Administrate*. Note that this means that database access level *Access*
 does not grant a user server access level *Administrate*.
 
-
 ### Default Database Access Level
 
 With the above definition, one must define the database access level for
@@ -139,6 +138,8 @@ access level for all databases that have no explicitly defined
 access level. Note that this includes databases which will be created
 in the future and for which no explicit access levels are set for that
 user!
+
+If you delete the default, it is handled as if *No Access* was defined.
 
 *Example*
 
@@ -170,6 +171,8 @@ This level is used for all collections pairs without an explicitly
 defined collection access level. Note that this includes collections
 which will be created in the future and for which no explicit access
 levels are set for a that user!
+
+If you delete the default, it is handled as if *No Access* was defined.
 
 *Example*
 
@@ -212,6 +215,20 @@ Database "somehing", collection "else" does not match a defined access
 level. The database "something" also does have a direct matches.
 Therefore the default database is selected. The level is *Read/Write*.
 
+### System Collections
+
+The access level for system collections cannot be changed.
+
+No user has access to the *_users* collection in the *_system*
+database. All changes to the access levels must be done using the
+*@arangodb/users* module.
+
+All user have *Read/Write* access to the *\_frontend* collection in
+databases they have either *Access* or *Administrate* access level.
+
+All other system collections have access level *Read/Write* if the
+user has *Administrate* access to the database. They have access level
+*Read/Only* if the user has *Access* to the database.
 
 ## Managing Users in the Web Interface
 
