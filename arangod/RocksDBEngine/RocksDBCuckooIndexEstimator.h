@@ -143,7 +143,6 @@ class RocksDBCuckooIndexEstimator {
   };
 
  public:
-
   static bool isFormatSupported(StringRef serialized) {
     switch (serialized.front()) {
       case SerializeFormat::NOCOMPRESSION:
@@ -238,7 +237,7 @@ class RocksDBCuckooIndexEstimator {
          sizeof(_nrUsed) + sizeof(_nrCuckood) + sizeof(_nrTotal) +
          sizeof(_niceSize) + sizeof(_logSize) +
          (_size * _slotSize * SlotsPerBucket)) +
-         (_size * _counterSize * SlotsPerBucket);
+        (_size * _counterSize * SlotsPerBucket);
 
     serialized.reserve(sizeof(uint64_t) + serialLength);
     // We always prepend the length, so parsing is easier
@@ -260,20 +259,19 @@ class RocksDBCuckooIndexEstimator {
       // Size is as follows: nrOfBuckets * SlotsPerBucket * SlotSize
       TRI_ASSERT((_size * _slotSize * SlotsPerBucket) <= _slotAllocSize);
 
-      for (uint64_t i = 0;
-           i < (_size * _slotSize * SlotsPerBucket) ; i += _slotSize) {
+      for (uint64_t i = 0; i < (_size * _slotSize * SlotsPerBucket);
+           i += _slotSize) {
         rocksutils::uint16ToPersistent(
             serialized, *(reinterpret_cast<uint16_t*>(_base + i)));
       }
 
       TRI_ASSERT((_size * _counterSize * SlotsPerBucket) <= _counterAllocSize);
 
-      for (uint64_t i = 0;
-           i < (_size * _counterSize * SlotsPerBucket) ; i += _counterSize) {
+      for (uint64_t i = 0; i < (_size * _counterSize * SlotsPerBucket);
+           i += _counterSize) {
         rocksutils::uint32ToPersistent(
             serialized, *(reinterpret_cast<uint32_t*>(_counters + i)));
       }
-
     }
   }
 
@@ -566,14 +564,15 @@ class RocksDBCuckooIndexEstimator {
   }
 
   Slot findSlot(uint64_t pos, uint64_t slot) const {
-    TRI_ASSERT(_slotSize * (pos * SlotsPerBucket + slot) <= _slotAllocSize );
+    TRI_ASSERT(_slotSize * (pos * SlotsPerBucket + slot) <= _slotAllocSize);
     char* address = _base + _slotSize * (pos * SlotsPerBucket + slot);
     auto ret = reinterpret_cast<uint16_t*>(address);
     return Slot(ret);
   }
 
   uint32_t* findCounter(uint64_t pos, uint64_t slot) const {
-    TRI_ASSERT(_counterSize * (pos * SlotsPerBucket + slot) <= _counterAllocSize );
+    TRI_ASSERT(_counterSize * (pos * SlotsPerBucket + slot) <=
+               _counterAllocSize);
     char* address = _counters + _counterSize * (pos * SlotsPerBucket + slot);
     return reinterpret_cast<uint32_t*>(address);
   }
@@ -645,14 +644,14 @@ class RocksDBCuckooIndexEstimator {
                 sizeof(_nrUsed) + sizeof(_nrCuckood) + sizeof(_nrTotal) +
                 sizeof(_niceSize) + sizeof(_logSize) +
                 (_size * _slotSize * SlotsPerBucket)) +
-                (_size * _counterSize * SlotsPerBucket));
+                   (_size * _counterSize * SlotsPerBucket));
 
     // Insert the raw data
     // Size is as follows: nrOfBuckets * SlotsPerBucket * SlotSize
     TRI_ASSERT((_size * _slotSize * SlotsPerBucket) <= _slotAllocSize);
 
-    for (uint64_t i = 0;
-         i < (_size * _slotSize * SlotsPerBucket) ; i += _slotSize) {
+    for (uint64_t i = 0; i < (_size * _slotSize * SlotsPerBucket);
+         i += _slotSize) {
       *(reinterpret_cast<uint16_t*>(_base + i)) =
           rocksutils::uint16FromPersistent(current);
       current += _slotSize;
@@ -660,13 +659,12 @@ class RocksDBCuckooIndexEstimator {
 
     TRI_ASSERT((_size * _counterSize * SlotsPerBucket) <= _counterAllocSize);
 
-    for (uint64_t i = 0;
-         i < (_size * _counterSize * SlotsPerBucket); i += _counterSize) {
+    for (uint64_t i = 0; i < (_size * _counterSize * SlotsPerBucket);
+         i += _counterSize) {
       *(reinterpret_cast<uint32_t*>(_counters + i)) =
           rocksutils::uint32FromPersistent(current);
       current += _counterSize;
     }
-
   }
 
   void initializeDefault() {

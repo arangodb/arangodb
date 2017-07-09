@@ -148,11 +148,9 @@ VPackBuilder RocksDBRestExportHandler::buildOptions(VPackSlice const& slice) {
     std::string typeString = type.copyString();
 
     if (typeString == "include") {
-      _restrictions.type =
-          CollectionExport::Restrictions::RESTRICTION_INCLUDE;
+      _restrictions.type = CollectionExport::Restrictions::RESTRICTION_INCLUDE;
     } else if (typeString == "exclude") {
-      _restrictions.type =
-          CollectionExport::Restrictions::RESTRICTION_EXCLUDE;
+      _restrictions.type = CollectionExport::Restrictions::RESTRICTION_EXCLUDE;
     } else {
       THROW_ARANGO_EXCEPTION_MESSAGE(
           TRI_ERROR_BAD_PARAMETER,
@@ -240,8 +238,8 @@ void RocksDBRestExportHandler::createCursor() {
   Cursor* c = nullptr;
   {
     auto cursor = std::make_unique<RocksDBExportCursor>(
-        _vocbase, name, _restrictions, TRI_NewTickServer(), limit, batchSize, ttl,
-        count);
+        _vocbase, name, _restrictions, TRI_NewTickServer(), limit, batchSize,
+        ttl, count);
 
     cursor->use();
     c = cursors->addCursor(std::move(cursor));

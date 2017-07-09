@@ -45,44 +45,40 @@ class TransactionDB;
 class DB;
 struct ReadOptions;
 class Comparator;
+class ColumnFamilyHandle;
 }
 
 namespace arangodb {
 
 class RocksDBOperationResult : public Result {
- public:
+public:
   explicit RocksDBOperationResult() : Result(), _keySize(0) {}
-
-  RocksDBOperationResult(Result const& other)
-      : _keySize(0) {
+  
+  RocksDBOperationResult(Result const& other) : _keySize(0) {
     cloneData(other);
   }
-
+  
   RocksDBOperationResult(Result&& other) : _keySize(0) {
     cloneData(std::move(other));
   }
-
+  
   uint64_t keySize() const { return _keySize; }
   void keySize(uint64_t s) { _keySize = s; }
-
- protected:
+  
+protected:
   uint64_t _keySize;
 };
 
-class TransactionState;
-class RocksDBTransactionState;
 class RocksDBMethods;
 class RocksDBKeyBounds;
 class RocksDBEngine;
-namespace transaction {
-class Methods;
-}
+  
 namespace rocksutils {
 
 //// to persistent
 template <typename T>
-typename std::enable_if<std::is_integral<T>::value,void>::type
-toPersistent(T in, char*& out){
+typename std::enable_if<std::is_integral<T>::value, void>::type toPersistent(
+    T in, char*& out) {
   in = basics::hostToLittle(in);
   using TT = typename std::decay<T>::type;
   std::memcpy(out, &in, sizeof(TT));
@@ -91,9 +87,10 @@ toPersistent(T in, char*& out){
 
 //// from persistent
 template <typename T,
-          typename std::enable_if<std::is_integral<typename std::remove_reference<T>::type>::value, int>::type = 0
-         >
-typename std::decay<T>::type fromPersistent(char const*& in){
+          typename std::enable_if<
+              std::is_integral<typename std::remove_reference<T>::type>::value,
+              int>::type = 0>
+typename std::decay<T>::type fromPersistent(char const*& in) {
   using TT = typename std::decay<T>::type;
   TT out;
   std::memcpy(&out, in, sizeof(TT));
@@ -101,11 +98,12 @@ typename std::decay<T>::type fromPersistent(char const*& in){
   return basics::littleToHost(out);
 }
 
-//we need this overload or the template will match
+// we need this overload or the template will match
 template <typename T,
-          typename std::enable_if<std::is_integral<typename std::remove_reference<T>::type>::value, int>::type = 1
-         >
-typename std::decay<T>::type fromPersistent(char *& in){
+          typename std::enable_if<
+              std::is_integral<typename std::remove_reference<T>::type>::value,
+              int>::type = 1>
+typename std::decay<T>::type fromPersistent(char*& in) {
   using TT = typename std::decay<T>::type;
   TT out;
   std::memcpy(&out, in, sizeof(TT));
@@ -114,22 +112,23 @@ typename std::decay<T>::type fromPersistent(char *& in){
 }
 
 template <typename T, typename StringLike,
-          typename std::enable_if<std::is_integral<typename std::remove_reference<T>::type>::value, int>::type = 2
-         >
-typename std::decay<T>::type fromPersistent(StringLike& in){
+          typename std::enable_if<
+              std::is_integral<typename std::remove_reference<T>::type>::value,
+              int>::type = 2>
+typename std::decay<T>::type fromPersistent(StringLike& in) {
   using TT = typename std::decay<T>::type;
   TT out;
   std::memcpy(&out, in.data(), sizeof(TT));
   return basics::littleToHost(out);
 }
 
-inline uint64_t doubleToInt(double d){
+inline uint64_t doubleToInt(double d) {
   uint64_t i;
   std::memcpy(&i, &d, sizeof(i));
   return i;
 }
 
-inline double intToDouble(uint64_t i){
+inline double intToDouble(uint64_t i) {
   double d;
   std::memcpy(&d, &i, sizeof(i));
   return d;
@@ -147,16 +146,15 @@ uint16_t uint16FromPersistent(char const* p);
 void uint16ToPersistent(char* p, uint16_t value);
 void uint16ToPersistent(std::string& out, uint16_t value);
 
-RocksDBTransactionState* toRocksTransactionState(transaction::Methods* trx);
-RocksDBMethods* toRocksMethods(transaction::Methods* trx);
-
 rocksdb::TransactionDB* globalRocksDB();
 RocksDBEngine* globalRocksEngine();
 arangodb::Result globalRocksDBPut(
+    rocksdb::ColumnFamilyHandle *cf,
     rocksdb::Slice const& key, rocksdb::Slice const& value,
     rocksdb::WriteOptions const& = rocksdb::WriteOptions{});
 
 arangodb::Result globalRocksDBRemove(
+    rocksdb::ColumnFamilyHandle *cf,
     rocksdb::Slice const& key,
     rocksdb::WriteOptions const& = rocksdb::WriteOptions{});
 
@@ -172,26 +170,27 @@ std::size_t countKeyRange(rocksdb::DB*, rocksdb::ReadOptions const&,
 /// @brief helper method to remove large ranges of data
 /// Should mainly be used to implement the drop() call
 Result removeLargeRange(rocksdb::TransactionDB* db,
-                        RocksDBKeyBounds const& bounds);
+                        RocksDBKeyBounds const& bounds,
+                        bool prefix_same_as_start = true);
 
 std::vector<std::pair<RocksDBKey, RocksDBValue>> collectionKVPairs(
     TRI_voc_tick_t databaseId);
 std::vector<std::pair<RocksDBKey, RocksDBValue>> viewKVPairs(
     TRI_voc_tick_t databaseId);
 
-// optional switch to std::function to reduce amount of includes and to avoid
-// template
+// optional switch to std::function to reduce amount of includes and
+// to avoid template
 // this helper is not meant for transactional usage!
 template <typename T>  // T is a invokeable that takes a rocksdb::Iterator*
-void iterateBounds(
-    RocksDBKeyBounds const& bounds, T callback,
-    rocksdb::ColumnFamilyHandle* handle,
-    rocksdb::ReadOptions options = rocksdb::ReadOptions()) {
+void iterateBounds(RocksDBKeyBounds const& bounds, T callback,
+                   rocksdb::ColumnFamilyHandle* handle,
+                   rocksdb::ReadOptions options = rocksdb::ReadOptions()) {
   rocksdb::Slice const end = bounds.end();
-  options.iterate_upper_bound = &end;// save to use on rocksb::DB directly
+  options.iterate_upper_bound = &end;  // save to use on rocksb::DB directly
   options.prefix_same_as_start = true;
   options.verify_checksums = false;
-  std::unique_ptr<rocksdb::Iterator> it(globalRocksDB()->NewIterator(options, handle));
+  std::unique_ptr<rocksdb::Iterator> it(
+      globalRocksDB()->NewIterator(options, handle));
   for (it->Seek(bounds.start()); it->Valid(); it->Next()) {
     callback(it.get());
   }

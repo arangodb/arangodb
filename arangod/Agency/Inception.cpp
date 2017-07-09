@@ -304,10 +304,11 @@ bool Inception::restartingActiveAgent() {
               agency->openObject();
               agency->add("term", theirConfig.get("term"));
               agency->add("id", VPackValue(theirLeaderId));
-              agency->add("active",   tcc.get("active"));
-              agency->add("pool",     tcc.get("pool"));
-              agency->add("min ping", tcc.get("min ping"));
-              agency->add("max ping", tcc.get("max ping"));
+              agency->add("active",      tcc.get("active"));
+              agency->add("pool",        tcc.get("pool"));
+              agency->add("min ping",    tcc.get("min ping"));
+              agency->add("max ping",    tcc.get("max ping"));
+              agency->add("timeoutMult", tcc.get("timeoutMult"));
               agency->close();
               _agent->notify(agency);
               return true;
@@ -338,7 +339,7 @@ bool Inception::restartingActiveAgent() {
             if (!this->isStopping()) {
               LOG_TOPIC(FATAL, Logger::AGENCY)
                 << "Assumed active RAFT peer has no active agency list: "
-                << e.what() << "Administrative intervention needed.";
+                << e.what() << ", administrative intervention needed.";
               FATAL_ERROR_EXIT();
             }
             return false;

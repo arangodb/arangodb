@@ -82,8 +82,8 @@ This is value ORed together of
 NUMA
 ----
 
-Multi-prozessor systems often have non-uniform Access Memory (NUMA). ArangoDB
-should be started with interleave on such system. This can be archived using
+Multi-processor systems often have non-uniform Access Memory (NUMA). ArangoDB
+should be started with interleave on such system. This can be achieved using
 
     numactl --interleave=all arangod ...
 
