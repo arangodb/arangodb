@@ -1304,28 +1304,27 @@ void Agent::notifyInactive() const {
   std::string path = "/_api/agency_priv/inform";
 
   Builder out;
-  { VPackObjectBuilder o(&out);
+  {
+    VPackObjectBuilder o(&out);
     out.add("term", VPackValue(term()));
     out.add("id", VPackValue(id()));
     out.add("active", _config.activeToBuilder()->slice());
     out.add("pool", _config.poolToBuilder()->slice());
     out.add("min ping", VPackValue(_config.minPing()));
-    out.add("max ping", VPackValue(_config.maxPing())); }
+    out.add("max ping", VPackValue(_config.maxPing()));
     out.add("timeoutMult", VPackValue(_config.timeoutMult()));
+  }
 
   for (auto const& p : pool) {
     if (p.first != id()) {
       auto headerFields =
-        std::make_unique<std::unordered_map<std::string, std::string>>();
-      cc->asyncRequest(
-        "1", 1, p.second, arangodb::rest::RequestType::POST,
-        path, std::make_shared<std::string>(out.toJson()), headerFields,
-        nullptr, 1.0, true);
+          std::make_unique<std::unordered_map<std::string, std::string>>();
+      cc->asyncRequest("1", 1, p.second, arangodb::rest::RequestType::POST,
+                       path, std::make_shared<std::string>(out.toJson()),
+                       headerFields, nullptr, 1.0, true);
     }
   }
-
 }
-
 
 void Agent::updatePeerEndpoint(query_t const& message) {
 
