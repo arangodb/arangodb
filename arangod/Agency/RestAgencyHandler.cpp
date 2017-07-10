@@ -131,10 +131,11 @@ RestStatus RestAgencyHandler::handleTransient() {
   
   // Leadership established?
   auto s = std::chrono::system_clock::now();
-  std::chrono::duration<double> timeout(_agent->config().minPing());
+  //std::chrono::duration<double> timeout(_agent->config().minPing());
   // We only take minPing here and do not multiply by timeoutMult, because
   // our client cannot know the multiplicator. Therefore, it is better to
   // return 503 occasionally. The client will retry in this case anyway.
+  std::chrono::duration<double> timeout(0.1);
   while (_agent->size() > 1 && _agent->leaderID() == NO_LEADER) {
     if ((std::chrono::system_clock::now() - s) > timeout) {
       Builder body;
@@ -291,8 +292,9 @@ RestStatus RestAgencyHandler::handleWrite() {
 
   // Leadership established?
   auto s = std::chrono::system_clock::now();
-  std::chrono::duration<double> timeout(_agent->config().minPing() *
-                                        _agent->config().timeoutMult());
+  //std::chrono::duration<double> timeout(_agent->config().minPing() *
+  //                                      _agent->config().timeoutMult());
+  std::chrono::duration<double> timeout(0.1);
   while (_agent->size() > 1 && _agent->leaderID() == NO_LEADER) {
     if ((std::chrono::system_clock::now() - s) > timeout) {
       Builder body;
@@ -444,8 +446,9 @@ RestStatus RestAgencyHandler::handleTransact() {
 
   // Leadership established?
   auto s = std::chrono::system_clock::now();
-  std::chrono::duration<double> timeout(_agent->config().minPing() *
-                                        _agent->config().timeoutMult());
+  //std::chrono::duration<double> timeout(_agent->config().minPing() *
+  //                                      _agent->config().timeoutMult());
+  std::chrono::duration<double> timeout(0.1);
   while (_agent->size() > 1 && _agent->leaderID() == NO_LEADER) {
     if ((std::chrono::system_clock::now() - s) > timeout) {
       Builder body;
@@ -526,8 +529,9 @@ inline RestStatus RestAgencyHandler::handleInquire() {
   
   // Leadership established?
   auto s = std::chrono::system_clock::now();  
-  std::chrono::duration<double> timeout(_agent->config().minPing() *
-                                        _agent->config().timeoutMult());
+  //std::chrono::duration<double> timeout(_agent->config().minPing() *
+  //                                      _agent->config().timeoutMult());
+  std::chrono::duration<double> timeout(0.1);
   while (_agent->size() > 1 && _agent->leaderID() == NO_LEADER) {
     if ((std::chrono::system_clock::now() - s) > timeout) {
       Builder body;
@@ -591,8 +595,9 @@ inline RestStatus RestAgencyHandler::handleRead() {
     }
 
     auto s = std::chrono::system_clock::now();  // Leadership established?
-    std::chrono::duration<double> timeout(_agent->config().minPing() *
-                                          _agent->config().timeoutMult());
+    //std::chrono::duration<double> timeout(_agent->config().minPing() *
+    //                                      _agent->config().timeoutMult());
+    std::chrono::duration<double> timeout(0.1);
     while (_agent->size() > 1 && _agent->leaderID() == NO_LEADER) {
       if ((std::chrono::system_clock::now() - s) > timeout) {
         Builder body;
