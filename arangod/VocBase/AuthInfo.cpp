@@ -643,7 +643,6 @@ AuthResult AuthInfo::checkPassword(std::string const& username,
       }
       AuthUserEntry const& auth = it->second;
       if (auth.isActive()) {
-        result._mustChange = auth.mustChangePassword();
         result._authorized = auth.checkPassword(password);
       }
       return result;
