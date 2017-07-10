@@ -56,13 +56,13 @@ function optimizerQuantifiersTestSuite () {
       var query = "[] ALL == '1'", result;
       
       result = AQL_EXECUTE("RETURN (" + query + ")").json[0];
-      assertEqual(false, result);
+      assertEqual(true, result);
 
       result = AQL_EXECUTE("RETURN NOOPT(" + query + ")").json[0];
-      assertEqual(false, result);
+      assertEqual(true, result);
       
       result = AQL_EXECUTE("RETURN V8(" + query + ")").json[0];
-      assertEqual(false, result);
+      assertEqual(true, result);
     },
     
     testAnyEmpty : function () {

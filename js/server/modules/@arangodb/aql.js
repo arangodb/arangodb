@@ -1307,7 +1307,7 @@ function RELATIONAL_ARRAY_FUNC (lhs, rhs, quantifier, func) {
   } else if (quantifier === 2) {
     // ALL
     if (n === 0) {
-      return false;
+      return true;
     }
     min = max = n;
   } else if (quantifier === 3) {
