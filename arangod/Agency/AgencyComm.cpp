@@ -1396,8 +1396,7 @@ AgencyCommResult AgencyComm::sendWithFailover(
     }
     
     // break on a watch timeout (drop connection)
-    if (!clientId.empty() && result._sent &&
-        (result._statusCode == 0 || result._statusCode == 503)) {
+    if (!clientId.empty() && result._sent && result._statusCode == 0) {
       
       VPackBuilder b;
       {
@@ -1502,7 +1501,7 @@ AgencyCommResult AgencyComm::sendWithFailover(
         << " (" << elapsed << "s). Network checks advised.";
     }
 
-    if (conTimeout < 7.0) {
+    if (conTimeout < 15.0) {  // double until we hit 16s
       conTimeout *= 2;
     }
     
