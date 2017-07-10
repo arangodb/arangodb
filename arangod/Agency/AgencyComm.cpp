@@ -1326,8 +1326,7 @@ AgencyCommResult AgencyComm::sendWithFailover(
 
   std::chrono::duration<double> waitInterval (.0); // seconds
   auto started = std::chrono::steady_clock::now();
-  auto timeOut = std::chrono::steady_clock::now() +
-    std::chrono::duration<double>(timeout);
+  auto timeOut = started + std::chrono::duration<double>(timeout);
   double conTimeout = 1.0;
   
   int tries = 0;
