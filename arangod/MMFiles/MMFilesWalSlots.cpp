@@ -286,7 +286,7 @@ MMFilesWalSlotInfo MMFilesWalSlots::nextUnused(TRI_voc_tick_t databaseId, TRI_vo
         }
 
         // only in this case we return a valid slot
-        slot->setUsed(static_cast<void*>(mem), size, _logfile->id(), handout());
+        slot->setUsed(static_cast<void*>(mem), size, _logfile, handout());
 
         return MMFilesWalSlotInfo(slot);
       }
@@ -322,11 +322,14 @@ int MMFilesWalSlots::returnUsed(MMFilesWalSlotInfo& slotInfo, bool wakeUpSynchro
   TRI_ASSERT(!waitUntilSyncDone || waitForSyncRequested);
 
   MMFilesWalSlot::TickType tick = slotInfo.slot->tick();
+  MMFilesMarker const* marker = reinterpret_cast<MMFilesMarker const*>(slotInfo.slot->mem());
+  MMFilesWalLogfile const* logfile = slotInfo.logfile;
 
   TRI_ASSERT(tick > 0);
 
   {
     MUTEX_LOCKER(mutexLocker, _lock);
+    TRI_UpdateTicksDatafile(logfile->df(), marker);
     slotInfo.slot->setReturned(waitForSyncRequested);
     if (waitForSyncRequested) {
       ++_numEventsSync;
@@ -639,8 +642,9 @@ int MMFilesWalSlots::writeHeader(MMFilesWalSlot* slot) {
 
   auto* mem = static_cast<void*>(_logfile->reserve(size));
   TRI_ASSERT(mem != nullptr);
+  TRI_ASSERT(_logfile != nullptr);
 
-  slot->setUsed(mem, static_cast<uint32_t>(size), _logfile->id(), handout());
+  slot->setUsed(mem, static_cast<uint32_t>(size), _logfile, handout());
   slot->fill(&header.base, size);
   slot->setReturned(false);  // no sync
 
@@ -659,8 +663,9 @@ int MMFilesWalSlots::writePrologue(MMFilesWalSlot* slot, void* mem, TRI_voc_tick
   TRI_ASSERT(size == PrologueSize);
 
   TRI_ASSERT(mem != nullptr);
+  TRI_ASSERT(_logfile != nullptr);
 
-  slot->setUsed(mem, static_cast<uint32_t>(size), _logfile->id(), handout());
+  slot->setUsed(mem, static_cast<uint32_t>(size), _logfile, handout());
   slot->fill(&header.base, size);
   slot->setReturned(false);  // no sync
 
@@ -676,8 +681,9 @@ int MMFilesWalSlots::writeFooter(MMFilesWalSlot* slot) {
 
   auto* mem = static_cast<void*>(_logfile->reserve(size));
   TRI_ASSERT(mem != nullptr);
+  TRI_ASSERT(_logfile != nullptr);
 
-  slot->setUsed(mem, static_cast<uint32_t>(size), _logfile->id(), handout());
+  slot->setUsed(mem, static_cast<uint32_t>(size), _logfile, handout());
   slot->fill(&footer.base, size);
   slot->setReturned(true);  // sync
   
