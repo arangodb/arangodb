@@ -56,7 +56,7 @@ USE_MICROTIME="false"
 GOSSIP_MODE=0
 START_DELAYS=0
 INTERACTIVE_MODE=""
-XTERM="xterm"
+XTERM="xterm -fa Mono -fs 10 -geometry \"180x40\""
 XTERMOPTIONS=""
 BUILD="build"
 

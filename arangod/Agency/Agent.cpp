@@ -740,17 +740,27 @@ bool Agent::challengeLeadership() {
 query_t Agent::lastAckedAgo() const {
   
   std::map<std::string, TimePoint> lastAcked;
+  std::map<std::string, index_t> lastConfirmed;
   {
     MUTEX_LOCKER(ioLocker, _ioLock);
     lastAcked = _lastAcked;
+    lastConfirmed = _confirmed;
   }
   
   auto ret = std::make_shared<Builder>();
   ret->openObject();
   if (leading()) {
     for (auto const& i : lastAcked) {
-      ret->add(i.first, VPackValue(1.0e-2 * std::floor((i.first!=id() ?
-        duration<double>(system_clock::now()-i.second).count()*100.0 : 0.0))));
+      ret->add(VPackValue(i.first));
+      {
+        VPackObjectBuilder o(ret.get());
+        ret->add(std::to_string(_confirmed.at(i.first)),
+                 VPackValue(
+                   1.0e-2 * std::floor(
+                     (i.first!=id() ?
+                      duration<double>(
+                        system_clock::now()-i.second).count()*100.0 : 0.0))));
+      }
     }
   }
   ret->close();
@@ -963,7 +973,10 @@ write_ret_t Agent::write(query_t const& query, WriteMode const& wmode) {
     indices.insert(indices.end(), tmp.begin(), tmp.end());
 
     if (wmode.privileged()) {
-      _lastReconfiguration = indices.back();
+      TRI_ASSERT(indices.size() == 1);
+      _lastReconfiguration = indices.front();
+      LOG_TOPIC(INFO, Logger::AGENCY)
+        << "Agency reconfiguration at index " << _lastReconfiguration;
     }
     
   }
@@ -1455,53 +1468,60 @@ void Agent::join() {
   CONDITION_LOCKER(cuard, _waitForCV);
 
   while (true) {
-    if (comres != nullptr && comres->sendWasComplete == true) {
+
+    if (comres != nullptr &&
+        comres->sendWasComplete == true && comres->result != nullptr) {
       if (comres->result->getHttpReturnCode() == 307) {
         try {
           std::string location = comres->result->getHeaderFields().at("location");
-          auto pos = location.find(':');        
-          auto ssl = (location[pos-1]=='s');
-          pos += 3;
+          auto pos  = location.find(':') + 3;        
+          auto ssl  = (location[pos-4]=='s');
           auto host = location.substr(pos, location.find('/',pos)-pos);
-          ep  = ssl ? "ssl://" : "tcp://";
-          ep += host;
+          ep  = std::string(ssl ? "ssl://" : "tcp://") + host;
         } catch (...) {
+          _waitForCV.wait(1000000);
           ep.clear();
         }
       } 
+    } else {
+      _waitForCV.wait(1000000);
+      ep.clear();
     }
 
     if (ep.empty()) {
-      ep = pool.valueAt(0).copyString();
+      ep = pool.valueAt(rand() % size()).copyString();
     }
 
     LOG_TOPIC(INFO, Logger::AGENCY)
       << "Have response code while trying to join agency "
-      << ((comres != nullptr) ? comres->result->getHttpReturnCode() : 0)
+      << ((comres != nullptr && comres->result != nullptr) ?
+          comres->result->getHttpReturnCode() : 0)
       << ". Contacting " << ep << " next ...";
     
     if (cc == nullptr) {
       break;
     }
+    
     comres = cc->syncRequest(
       id(), 1, ep, rest::RequestType::POST, path, addServerBody.toJson(),
       std::unordered_map<std::string, std::string>(), 5.0);
+    
     if (comres->status == CL_COMM_SENT) {
-      LOG_TOPIC(DEBUG, Logger::AGENCY)
-        << "Handling add-server request with headers("
-        << comres->result->getHeaderFields() << ") and httpCode("
-        << comres->result->getHttpReturnCode() << ")";
-      
-      if (comres->result->getHttpReturnCode() == 200) {
-        auto const newconfig =
-          comres->result->getBodyVelocyPack()->slice().get("configuration");
-        updateConfiguration(newconfig);
-        break;
+      if (comres->result != nullptr) {
+        LOG_TOPIC(DEBUG, Logger::AGENCY)
+          << "Handling add-server request with headers("
+          << comres->result->getHeaderFields() << ") and httpCode("
+          << comres->result->getHttpReturnCode() << ")";
+        
+        if (comres->result->getHttpReturnCode() == 200) {
+          auto const newconfig =
+            comres->result->getBodyVelocyPack()->slice().get("configuration");
+          updateConfiguration(newconfig);
+          break;
+        }
       } 
     }
 
-    _waitForCV.wait(1000000);
-    
   }
 }
 
@@ -1784,11 +1804,12 @@ write_ret_t Agent::reconfigure(query_t const payload) {
   if (operation == "add-server") {
     MUTEX_LOCKER(ioLocker, _ioLock);
     for (auto const& i : _config.active()) {
-      if (i != id() && _lastReconfiguration > _confirmed[i]) {
-        LOG_TOPIC(INFO, Logger::AGENCY) << i;
-        result.reset(
-          1, "Cannot add new server to agency. An other reconfiguration is still pending");
-        break;
+      if (i != id()) {
+        if (_lastReconfiguration > _confirmed[i]) {
+          result.reset(
+            1, "Cannot add new server to agency. An other reconfiguration is still pending");
+          break;
+        } 
       }
     }
     if (result.ok()) {
@@ -1797,12 +1818,14 @@ write_ret_t Agent::reconfigure(query_t const payload) {
   } else if (operation == "remove-server") {
     MUTEX_LOCKER(ioLocker, _ioLock);
     for (auto const& i : _config.active()) {
-      if (i != id() && _lastReconfiguration > _confirmed[i]) {
-        result.reset(
-          1, std::string("Cannot remove server from agency.") 
-          + std::string("An other reconfiguration is still pending. Only server ")
-          + i + ",  may be removed as it is lagging behind.");
-        break;
+      if (i != id()) {
+        if (_lastReconfiguration > _confirmed[i] && i != opVal.get("id").copyString()) {
+          result.reset(
+            1, std::string("Cannot remove server from agency.") 
+            + std::string("An other reconfiguration is still pending. Only server ")
+            + i + ",  may be removed as it is lagging behind.");
+          break;
+        }
       }
     }
     if (result.ok()) {

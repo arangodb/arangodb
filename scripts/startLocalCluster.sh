@@ -194,11 +194,12 @@ if [ "$SECONDARIES" == "1" ] ; then
     PORTTOPSE=`expr $SE_BASE + $NRDBSERVERS - 1` 
     for PORT in `seq $SE_BASE $PORTTOPSE` ; do
         mkdir cluster/data$PORT
+
+        ind=$(printf "%04d" $index)
+        CLUSTER_ID="Secondary$ind"
         
-        CLUSTER_ID="Secondary$index"
-        
-        echo Registering secondary $CLUSTER_ID for "DBServer$index"
-        curl -f -X PUT --data "{\"primary\": \"DBServer$index\", \"oldSecondary\": \"none\", \"newSecondary\": \"$CLUSTER_ID\"}" -H "Content-Type: application/json" $ADDRESS:$CO_BASE/_admin/cluster/replaceSecondary
+        echo Registering secondary $CLUSTER_ID for "DBServer$ind"
+        curl -f -X PUT --data "{\"primary\": \"DBServer$ind\", \"oldSecondary\": \"none\", \"newSecondary\": \"$CLUSTER_ID\"}" -H "Content-Type: application/json" $ADDRESS:$CO_BASE/_admin/cluster/replaceSecondary
         echo Starting Secondary $CLUSTER_ID on port $PORT
         ${BUILD}/bin/arangod \
             -c none \
@@ -206,7 +207,6 @@ if [ "$SECONDARIES" == "1" ] ; then
             --cluster.agency-endpoint $TRANSPORT://$ADDRESS:$AG_BASE \
             --cluster.my-address $TRANSPORT://$ADDRESS:$PORT \
             --server.endpoint $TRANSPORT://$ENDPOINT:$PORT \
-            --cluster.my-id $CLUSTER_ID \
             --log.file cluster/$PORT.log \
             --server.statistics true \
             --javascript.startup-directory $SRC_DIR/js \
