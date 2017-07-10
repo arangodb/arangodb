@@ -9,13 +9,11 @@
 The name of the user as a string. This is mandatory.
 
 @RESTBODYPARAM{passwd,string,required,string}
-The user password as a string. If no password is specified, the empty
-string will be used. If you pass the special value
-*ARANGODB_DEFAULT_ROOT_PASSWORD*, the password will be set the value
-stored in the environment variable
+The user password as a string. If no password is specified, the empty string
+will be used. If you pass the special value *ARANGODB_DEFAULT_ROOT_PASSWORD*,
+the password will be set the value stored in the environment variable
 `ARANGODB_DEFAULT_ROOT_PASSWORD`. This can be used to pass an instance
-variable into ArangoDB. For example, the instance identifier from
-Amazon.
+variable into ArangoDB. For example, the instance identifier from Amazon.
 
 @RESTBODYPARAM{active,boolean,optional,boolean}
 An optional flag that specifies whether the user is active.  If not
@@ -26,9 +24,8 @@ An optional JSON object with arbitrary extra data about the user.
 
 @RESTDESCRIPTION
 
-Create a new user. This user will not have access to any database. You
-need permission to the *_system* database in order to execute this
-REST call.
+Create a new user. You need the *Administrate* server access level in
+order to execute this REST call.
 
 @RESTRETURNCODES
 
@@ -38,6 +35,13 @@ Returned if the user can be added by the server
 @RESTRETURNCODE{400}
 If the JSON representation is malformed or mandatory data is missing
 from the request.
+
+@RESTRETURNCODE{401}
+Returned if you have *No access* database access level to the *_system*
+database.
+
+@RESTRETURNCODE{403}
+Returned if you have *No access* server access level.
 
 @RESTRETURNCODE{409}
 Returned if a user with the same name already exists.
@@ -68,6 +72,11 @@ Returned if a user with the same name already exists.
 @RESTBODYPARAM{grant,string,required,string}
 Use "rw" to grant read and write access rights, or "ro" to
 grant read-only access right. To explicitly disallow access, use "none".
+Use "rw" to grant *Administrate* as database access level.
+
+Use "ro" to grant *Access* as database access level.
+
+Use "none" to grant *No access* as database access level.
 
 @RESTURLPARAMETERS
 
@@ -79,9 +88,9 @@ The name of the database.
 
 @RESTDESCRIPTION
 
-Grants or revokes access to the database *dbname* for user *user*. You
-need permission to the *_system* database in order to execute this
-REST call.
+Grants or revokes access levels to the database *dbname* for user *user*. You
+need the *Administrate* server access level in order to execute this REST
+call.
 
 @RESTRETURNCODES
 
@@ -91,6 +100,13 @@ Returned if the access permissions were changed successfully.
 @RESTRETURNCODE{400}
 If the JSON representation is malformed or mandatory data is missing
 from the request.
+
+@RESTRETURNCODE{401}
+Returned if you have *No access* database access level to the *_system*
+database.
+
+@RESTRETURNCODE{403}
+Returned if you have *No access* server access level.
 
 @EXAMPLES
 
@@ -119,8 +135,11 @@ from the request.
 @RESTHEADER{PUT /_api/user/{user}/database/{dbname}/{collection}, Grant or disallow collection access}
 
 @RESTBODYPARAM{grant,string,required,string}
-Use "rw" to grant read and write access rights, or "ro" to
-grant read-only access right. To explicitly disallow access, use "none".
+Use "rw" to grant *Read/Write* as database access level.
+
+Use "ro" to grant *Read Only* as database access level.
+
+Use "none" to grant *No access* as database access level.
 
 @RESTURLPARAMETERS
 
@@ -135,9 +154,9 @@ The name of the collection.
 
 @RESTDESCRIPTION
 
-Grants or revokes access to the collection *collection* in the database *dbname* for user *user*. You
-need permission to the *_system* database in order to execute this
-REST call.
+Grants or revokes access level to the collection *collection* in the database
+*dbname* for user *user*. You need the *Administrate* server access level in
+order to execute this REST call.
 
 @RESTRETURNCODES
 
@@ -147,6 +166,13 @@ Returned if the access permissions were changed successfully.
 @RESTRETURNCODE{400}
 If the JSON representation is malformed or mandatory data is missing
 from the request.
+
+@RESTRETURNCODE{401}
+Returned if you have *No access* database access level to the *_system*
+database.
+
+@RESTRETURNCODE{403}
+Returned if you have *No access* server access level.
 
 @EXAMPLES
 
@@ -283,13 +309,12 @@ The name of the user for which you want to query the databases.
 @RESTQUERYPARAMETERS
 
 @RESTQUERYPARAM{full,boolean,optional}
-Return the full set of permissions for all databases and all collections.
+Return the full set of access levels for all databases and all collections.
 
 @RESTDESCRIPTION
 
-Fetch the list of databases available to the specified *user*. You
-need permission to the *_system* database in order to execute this
-REST call.
+Fetch the list of databases available to the specified *user*. You need
+*Administrate* for the server access level in order to execute this REST call.
 
 The call will return a JSON object with the per-database access
 privileges for the specified user. The *result* object will contain
@@ -297,8 +322,7 @@ the databases names as object keys, and the associated privileges
 for the database as values.
 
 In case you specified *full*, the result will contain the permissions
-for the databases as well as the permissions for the 
-
+for the databases as well as the permissions for the collections.
 
 @RESTRETURNCODES
 
@@ -307,6 +331,13 @@ Returned if the list of available databases can be returned.
 
 @RESTRETURNCODE{400}
 If the access privileges are not right etc.
+
+@RESTRETURNCODE{401}
+Returned if you have *No access* database access level to the *_system*
+database.
+
+@RESTRETURNCODE{403}
+Returned if you have *No access* server access level.
 
 @EXAMPLES
 
@@ -363,7 +394,6 @@ The name of the database to query
 
 Fetch the permission level for a specific database
 
-
 @RESTRETURNCODES
 
 @RESTRETURNCODE{200}
@@ -371,6 +401,13 @@ Returned if the acccess level can be returned
 
 @RESTRETURNCODE{400}
 If the access privileges are not right etc.
+
+@RESTRETURNCODE{401}
+Returned if you have *No access* database access level to the *_system*
+database.
+
+@RESTRETURNCODE{403}
+Returned if you have *No access* server access level.
 
 @EXAMPLES
 
@@ -409,7 +446,6 @@ The name of the database to query
 @RESTURLPARAM{collection,string,required}
 The name of the collection
 
-
 @RESTDESCRIPTION
 
 Fetch the permission level for a specific collection
@@ -421,6 +457,13 @@ Returned if the acccess level can be returned
 
 @RESTRETURNCODE{400}
 If the access privileges are not right etc.
+
+@RESTRETURNCODE{401}
+Returned if you have *No access* database access level to the *_system*
+database.
+
+@RESTRETURNCODE{403}
+Returned if you have *No access* server access level.
 
 @EXAMPLES
 
@@ -480,6 +523,13 @@ Is returned if the user data can be replaced by the server
 @RESTRETURNCODE{400}
 The JSON representation is malformed or mandatory data is missing from the request
 
+@RESTRETURNCODE{401}
+Returned if you have *No access* database access level to the *_system*
+database.
+
+@RESTRETURNCODE{403}
+Returned if you have *No access* server access level.
+
 @RESTRETURNCODE{404}
 The specified user does not exist
 
@@ -527,11 +577,10 @@ An optional JSON object with arbitrary extra data about the user.
 
 @RESTDESCRIPTION
 
-Partially updates the data of an existing user. The name of an existing
-user must be specified in *user*. When authentication is turned on in the
-server, only users that have read and write permissions for the *_system*
-database can change other users' data. Additionally, a user can change 
-his/her own data.
+Partially updates the data of an existing user. The name of an existing user
+must be specified in *user*. When authentication is turned on in the server,
+only users that have *Administrate* server access level can change other
+users' data. Additionally, a user can change his/her own data.
 
 @RESTRETURNCODES
 
@@ -540,6 +589,13 @@ Is returned if the user data can be replaced by the server
 
 @RESTRETURNCODE{400}
 The JSON representation is malformed or mandatory data is missing from the request
+
+@RESTRETURNCODE{401}
+Returned if you have *No access* database access level to the *_system*
+database.
+
+@RESTRETURNCODE{403}
+Returned if you have *No access* server access level.
 
 @RESTRETURNCODE{404}
 The specified user does not exist
@@ -579,13 +635,20 @@ The name of the user
 
 @RESTDESCRIPTION
 
-Removes an existing user, identified by *user*. You need access to the
-*_system* database.
+Removes an existing user, identified by *user*.  You need *Administrate* for
+the server access level in order to execute this REST call.
 
 @RESTRETURNCODES
 
 @RESTRETURNCODE{202}
 Is returned if the user was removed by the server
+
+@RESTRETURNCODE{401}
+Returned if you have *No access* database access level to the *_system*
+database.
+
+@RESTRETURNCODE{403}
+Returned if you have *No access* server access level.
 
 @RESTRETURNCODE{404}
 The specified user does not exist
@@ -621,14 +684,21 @@ The name of the user
 
 @RESTDESCRIPTION
 
-Fetches data about the specified user. You can fetch information about yourself
-or you need permission to the *_system* database in order to execute this
-REST call.
+Fetches data about the specified user. You can fetch information about
+yourself or you need the *Administrate* server access level in order to
+execute this REST call.
 
 @RESTRETURNCODES
 
 @RESTRETURNCODE{200}
 The user was found.
+
+@RESTRETURNCODE{401}
+Returned if you have *No access* database access level to the *_system*
+database.
+
+@RESTRETURNCODE{403}
+Returned if you have *No access* server access level.
 
 @RESTRETURNCODE{404}
 The user with the specified name does not exist.
@@ -660,9 +730,9 @@ The user with the specified name does not exist.
 
 @RESTDESCRIPTION
 
-Fetches data about all users. You can only execute this call if you
-have access to the *_system* database. Otherwise, you will only
-get information about yourself.
+Fetches data about all users.  You need the *Administrate* server access level
+in order to execute this REST call.  Otherwise, you will only get information
+about yourself.
 
 The call will return a JSON object with at least the following
 attributes on success:
@@ -675,6 +745,13 @@ attributes on success:
 
 @RESTRETURNCODE{200}
 The users that were found.
+
+@RESTRETURNCODE{401}
+Returned if you have *No access* database access level to the *_system*
+database.
+
+@RESTRETURNCODE{403}
+Returned if you have *No access* server access level.
 
 @EXAMPLES
 
