@@ -85,7 +85,6 @@ class AuthUserEntry {
   std::string _passwordMethod;
   std::string _passwordSalt;
   std::string _passwordHash;
-  bool _active = true;
   std::unordered_map<std::string, std::shared_ptr<AuthContext>> _authContexts;
 };
 }
