@@ -557,7 +557,7 @@ def jslintStep() {
 // -----------------------------------------------------------------------------
 
 testJenkins = [
-    "linux": "linux && test",
+    "linux": "linux && tests",
     "mac" : "mac",
     "windows": "windows"
 ]
