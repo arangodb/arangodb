@@ -59,7 +59,8 @@ class V8DealerFeature final : public application_features::ApplicationFeature {
   std::vector<std::string> _moduleDirectory;
   uint64_t _nrMaxContexts;  // maximum number of contexts to create
   uint64_t _nrMinContexts; // minimum number of contexts to keep
-  uint64_t _nrInflightContexts; // number of contexts currently in creation 
+  uint64_t _nrInflightContexts; // number of contexts currently in creation
+  bool _allowAdminExecute;
 
  public:
   JSLoader* startupLoader() { return &_startupLoader; };

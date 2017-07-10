@@ -1,7 +1,10 @@
 devel
 -----
 
+* allow /_admin/execute for testing
+
 * enabled permissions on database and collection level
+
 * Removed "changePassword" parameter in all response bodies of the user API
 
 * added "deduplicate" attribute for array indexes, which controls whether inserting
