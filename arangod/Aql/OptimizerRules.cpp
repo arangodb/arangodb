@@ -3751,6 +3751,144 @@ void arangodb::aql::optimizeTraversalsRule(Optimizer* opt,
   opt->addPlan(std::move(plan), rule, modified);
 }
 
+// remove filter nodes already covered by a traversal
+void arangodb::aql::removeFiltersCoveredByTraversal(Optimizer* opt, std::unique_ptr<ExecutionPlan> plan,
+                                                   OptimizerRule const* rule) {
+  SmallVector<ExecutionNode*>::allocator_type::arena_type a;
+  SmallVector<ExecutionNode*> fNodes{a};
+  plan->findNodesOfType(fNodes, EN::FILTER, true);
+  if (fNodes.empty()) {
+    // no filters present
+    opt->addPlan(std::move(plan), rule, false);
+    return;
+  }
+  
+  bool modified = false;
+  std::unordered_set<ExecutionNode*> toUnlink;
+  
+  for (auto const& node : fNodes) {
+    auto fn = static_cast<FilterNode const*>(node);
+    // find the node with the filter expression
+    auto inVar = fn->getVariablesUsedHere();
+    TRI_ASSERT(inVar.size() == 1);
+    
+    auto setter = plan->getVarSetBy(inVar[0]->id);
+    if (setter == nullptr || setter->getType() != EN::CALCULATION) {
+      continue;
+    }
+    
+    auto calculationNode = static_cast<CalculationNode*>(setter);
+    auto conditionNode = calculationNode->expression()->node();
+    
+    // build the filter condition
+    auto condition = std::make_unique<Condition>(plan->getAst());
+    condition->andCombine(conditionNode);
+    condition->normalize(plan.get());
+    
+    if (condition->root() == nullptr) {
+      continue;
+    }
+    
+    size_t const n = condition->root()->numMembers();
+    
+    if (n != 1) {
+      // either no condition or multiple ORed conditions...
+      continue;
+    }
+    
+    bool handled = false;
+    auto current = node;
+    while (current != nullptr) {
+      if (current->getType() == EN::TRAVERSAL) {
+        auto traversalNode = static_cast<TraversalNode const*>(current);
+        
+        // found a traversal node, now check if the expression
+        // is covered by the traversal
+        auto traversalCondition = traversalNode->condition();
+        
+        if (traversalCondition != nullptr && !traversalCondition->isEmpty()) {
+          /*auto const& indexesUsed = traversalNode->get //indexNode->getIndexes();
+          
+          if (indexesUsed.size() == 1) {*/
+            // single index. this is something that we can handle
+          Variable const* outVariable = traversalNode->pathOutVariable();
+          std::unordered_set<Variable const*> varsUsedByCondition;
+          Ast::getReferencedVariables(condition->root(), varsUsedByCondition);
+          if (outVariable != nullptr &&
+              varsUsedByCondition.find(outVariable) != varsUsedByCondition.end()) {
+            
+            auto newNode = condition->removeTraversalCondition(plan.get(), outVariable, traversalCondition->root());
+            if (newNode == nullptr) {
+              // no condition left...
+              // FILTER node can be completely removed
+              toUnlink.emplace(node);
+              // note: we must leave the calculation node intact, in case it is
+              // still used by other nodes in the plan
+              modified = true;
+              handled = true;
+            } else if (newNode != condition->root()) {
+              // some condition is left, but it is a different one than
+              // the one from the FILTER node
+              auto expr = std::make_unique<Expression>(plan->getAst(), newNode);
+              CalculationNode* cn =
+              new CalculationNode(plan.get(), plan->nextId(), expr.get(),
+                                  calculationNode->outVariable());
+              expr.release();
+              plan->registerNode(cn);
+              plan->replaceNode(setter, cn);
+              modified = true;
+              handled = true;
+            }
+          }
+        }
+        
+        if (handled) {
+          break;
+        }
+      }
+      
+      if (handled || current->getType() == EN::LIMIT ||
+          !current->hasDependency()) {
+        break;
+      }
+      current = current->getFirstDependency();
+    }
+  }
+  
+  if (!toUnlink.empty()) {
+    plan->unlinkNodes(toUnlink);
+  }
+  
+  opt->addPlan(std::move(plan), rule, modified);
+}
+
+/// @brief removes redundant path variables, after applying
+/// `removeFiltersCoveredByTraversal`. Should significantly reduce overhead
+void arangodb::aql::removeTraversalPathVariable(Optimizer* opt,
+                                           std::unique_ptr<ExecutionPlan> plan,
+                                           OptimizerRule const* rule) {
+  SmallVector<ExecutionNode*>::allocator_type::arena_type a;
+  SmallVector<ExecutionNode*> tNodes{a};
+  plan->findNodesOfType(tNodes, EN::TRAVERSAL, true);
+  
+  bool modified = false;
+  // first make a pass over all traversal nodes and remove unused
+  // variables from them
+  for (auto const& n : tNodes) {
+    TraversalNode* traversal = static_cast<TraversalNode*>(n);
+    
+    auto varsUsedLater = n->getVarsUsedLater();
+    auto outVariable = traversal->pathOutVariable();
+    if (outVariable != nullptr &&
+        varsUsedLater.find(outVariable) == varsUsedLater.end()) {
+      // traversal path outVariable not used later
+      traversal->setPathOutput(nullptr);
+      modified = true;
+    }
+  }
+  opt->addPlan(std::move(plan), rule, modified);
+}
+
 /// @brief prepares traversals for execution (hidden rule)
 void arangodb::aql::prepareTraversalsRule(Optimizer* opt,
                                           std::unique_ptr<ExecutionPlan> plan,
