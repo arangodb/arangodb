@@ -90,6 +90,7 @@
       'click .closeProfile': 'closeProfile',
       'keydown #arangoBindParamTable input': 'updateBindParams',
       'change #arangoBindParamTable input': 'updateBindParams',
+      'change #querySize': 'storeQuerySize',
       'click #arangoMyQueriesTable tbody tr': 'showQueryPreview',
       'dblclick #arangoMyQueriesTable tbody tr': 'selectQueryFromTable',
       'click #arangoMyQueriesTable #copyQuery': 'selectQueryFromTable',
@@ -111,6 +112,20 @@
           $(elem).fadeOut('fast').remove();
         }
       });
+    },
+
+    storeQuerySize: function (e) {
+      if (typeof (Storage) !== 'undefined') {
+        localStorage.setItem('querySize', $(e.currentTarget).val());
+      }
+    },
+
+    restoreQuerySize: function () {
+      if (typeof (Storage) !== 'undefined') {
+        if (localStorage.getItem('querySize')) {
+          $('#querySize').val(localStorage.getItem('querySize'));
+        }
+      }
     },
 
     toggleBindParams: function () {
@@ -720,6 +735,7 @@
       this.renderBindParamTable(true);
       this.restoreCachedQueries();
       this.delegateEvents();
+      this.restoreQuerySize();
     },
 
     cleanupGraphs: function () {
@@ -1986,8 +2002,10 @@
             self.tmpQueryResult[key] = val;
           } else {
             _.each(data.result, function (d) {
-              if (self.tmpQueryResult.result.length <= userLimit || userLimit) {
-                self.tmpQueryResult.result.push(d);
+              if (self.tmpQueryResult.result.length <= userLimit || userLimit === true) {
+                if (self.tmpQueryResult.result.length < userLimit || userLimit === true) {
+                  self.tmpQueryResult.result.push(d);
+                }
               } else {
                 self.tmpQueryResult.complete = false;
               }
@@ -2012,7 +2030,9 @@
             // query finished, now fetch results using cursor
             var flag = true;
             if (self.tmpQueryResult && self.tmpQueryResult.result && self.tmpQueryResult.result.length) {
-              if (self.tmpQueryResult.result.length <= userLimit || userLimit) {
+              if (self.tmpQueryResult.result.length < userLimit || userLimit === true) {
+                flag = true;
+              } else {
                 flag = false;
               }
             }
@@ -2024,6 +2044,7 @@
                 // continue to fetch result
                 checkQueryStatus(data.id);
               } else {
+                // finished fetching
                 pushQueryResults(data);
                 self.renderQueryResult(self.tmpQueryResult, counter, false, queryID);
                 self.tmpQueryResult = null;

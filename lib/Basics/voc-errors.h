@@ -720,6 +720,12 @@
 ///   The inform message in the agency must contain an array 'active'.
 /// - 20015: @LIT{Inform message must contain object 'pool'}
 ///   The inform message in the agency must contain an object 'pool'.
+/// - 20016: @LIT{Inform message must contain object 'min ping'}
+///   The inform message in the agency must contain an object 'min ping'.
+/// - 20017: @LIT{Inform message must contain object 'max ping'}
+///   The inform message in the agency must contain an object 'max ping'.
+/// - 20018: @LIT{Inform message must contain object 'timeoutMult'}
+///   The inform message in the agency must contain an object 'timeoutMult'.
 /// - 20020: @LIT{Inquiry failed}
 ///   Inquiry by clientId failed
 /// - 20021: @LIT{Cannot rebuild readDB and spearHead}
@@ -3828,6 +3834,36 @@ void TRI_InitializeErrorMessages ();
 ////////////////////////////////////////////////////////////////////////////////
 
 #define TRI_ERROR_AGENCY_INFORM_MUST_CONTAIN_POOL                         (20015)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 20016: ERROR_AGENCY_INFORM_MUST_CONTAIN_MIN_PING
+///
+/// Inform message must contain object 'min ping'
+///
+/// The inform message in the agency must contain an object 'min ping'.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_AGENCY_INFORM_MUST_CONTAIN_MIN_PING                     (20016)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 20017: ERROR_AGENCY_INFORM_MUST_CONTAIN_MAX_PING
+///
+/// Inform message must contain object 'max ping'
+///
+/// The inform message in the agency must contain an object 'max ping'.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_AGENCY_INFORM_MUST_CONTAIN_MAX_PING                     (20017)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 20018: ERROR_AGENCY_INFORM_MUST_CONTAIN_TIMEOUT_MULT
+///
+/// Inform message must contain object 'timeoutMult'
+///
+/// The inform message in the agency must contain an object 'timeoutMult'.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_AGENCY_INFORM_MUST_CONTAIN_TIMEOUT_MULT                 (20018)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 20020: ERROR_AGENCY_INQUIRE_CLIENT_ID_MUST_BE_STRING

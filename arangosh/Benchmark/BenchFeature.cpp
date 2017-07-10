@@ -133,11 +133,9 @@ void BenchFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
                                            "multi-collection",
                                            "aqlinsert",
                                            "aqlv8"};
-  std::vector<std::string> casesVector(cases.begin(), cases.end());
-  std::string casesJoined = StringUtils::join(casesVector, ", ");
 
   options->addOption(
-      "--test-case", "test case to use (possible values: " + casesJoined + ")",
+      "--test-case", "test case to use",
       new DiscreteValuesParameter<StringParameter>(&_testCase, cases));
 
   options->addOption("--complexity", "complexity parameter for the test",

@@ -786,6 +786,51 @@ describe ArangoDB do
 ################################################################################
 
     context "properties:" do
+      it "changing the journalSize to null" do
+        cn = "UnitTestsCollectionBasics"
+        ArangoDB.drop_collection(cn)
+        cid = ArangoDB.create_collection(cn)
+
+        cmd = api + "/" + cn + "/properties"
+        body = "{ \"journalSize\" : 1048576 }"
+        doc = ArangoDB.log_put("#{prefix}-properties-journalSize", cmd, :body => body)
+        doc.code.should eq(200)
+
+        doc = ArangoDB.log_get("#{prefix}-properties-journalSize", cmd)
+        doc.code.should eq(200)
+        doc.parsed_response['error'].should eq(false)
+        doc.parsed_response['journalSize'].should eq(1048576)
+        
+        body = "{ \"journalSize\" : 8388608 }"
+        doc = ArangoDB.log_put("#{prefix}-properties-journalSize", cmd, :body => body)
+        doc.code.should eq(200)
+
+        doc = ArangoDB.log_get("#{prefix}-properties-journalSize", cmd)
+        doc.code.should eq(200)
+        doc.parsed_response['error'].should eq(false)
+        doc.parsed_response['journalSize'].should eq(8388608)
+        
+        body = "{ \"journalSize\" : null }"
+        doc = ArangoDB.log_put("#{prefix}-properties-journalSize", cmd, :body => body)
+        doc.code.should eq(200)
+
+        doc = ArangoDB.log_get("#{prefix}-properties-journalSize", cmd)
+        doc.code.should eq(200)
+        doc.parsed_response['error'].should eq(false)
+        doc.parsed_response['journalSize'].should eq(8388608)
+        
+        body = "{ }"
+        doc = ArangoDB.log_put("#{prefix}-properties-journalSize", cmd, :body => body)
+        doc.code.should eq(200)
+
+        doc = ArangoDB.log_get("#{prefix}-properties-journalSize", cmd)
+        doc.code.should eq(200)
+        doc.parsed_response['error'].should eq(false)
+        doc.parsed_response['journalSize'].should eq(8388608)
+
+        ArangoDB.drop_collection(cn)
+      end
+
       it "changing the properties of a collection by identifier" do
         cn = "UnitTestsCollectionBasics"
         ArangoDB.drop_collection(cn)

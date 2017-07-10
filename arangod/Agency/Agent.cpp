@@ -136,7 +136,13 @@ std::string Agent::endpoint() const {
 /// Handle voting
 priv_rpc_ret_t Agent::requestVote(
     term_t termOfPeer, std::string const& id, index_t lastLogIndex,
-    index_t lastLogTerm, query_t const& query) {
+    index_t lastLogTerm, query_t const& query, int64_t timeoutMult) {
+
+  if (timeoutMult != -1 && timeoutMult != _config._timeoutMult) {
+    adjustTimeoutMult(timeoutMult);
+    LOG_TOPIC(WARN, Logger::AGENCY) << "Voter: setting timeout multiplier to "
+      << timeoutMult << " for next term.";
+  }
 
   bool doIVote = _constituent.vote(termOfPeer, id, lastLogIndex, lastLogTerm);
   return priv_rpc_ret_t(doIVote, this->term());
@@ -147,6 +153,16 @@ config_t const Agent::config() const {
   return _config;
 }
 
+/// Adjust timeoutMult:
+void Agent::adjustTimeoutMult(int64_t timeoutMult) {
+  _config.setTimeoutMult(timeoutMult);
+}
+
+/// Get timeoutMult:
+int64_t Agent::getTimeoutMult() const {
+  return _config.timeoutMult();
+}
+
 /// Leader's id
 std::string Agent::leaderID() const {
   return _constituent.leaderID();
@@ -154,7 +170,12 @@ std::string Agent::leaderID() const {
 
 /// Are we leading?
 bool Agent::leading() const {
-  return _preparing || _constituent.leading();
+  // When we become leader, we first are officially still a follower, but
+  // prepare for the leading. This is indicated by the _preparing flag in the
+  // Agent, the Constituent stays with role FOLLOWER for now. The agent has
+  // to send out AppendEntriesRPC calls immediately, but only when we are
+  // properly leading (with initialized stores etc.) can we execute requests.
+  return (_preparing && _constituent.following()) || _constituent.leading();
 }
 
 /// Start constituent personality
@@ -213,7 +234,13 @@ void Agent::reportIn(std::string const& peerId, index_t index, size_t toLog) {
     MUTEX_LOCKER(ioLocker, _ioLock);
 
     // Update last acknowledged answer
-    _lastAcked[peerId] = system_clock::now();
+    auto t = system_clock::now();
+    std::chrono::duration<double> d = t - _lastAcked[peerId];
+    if (peerId != id() && d.count() > _config._minPing * _config._timeoutMult) {
+      LOG_TOPIC(WARN, Logger::AGENCY) << "Last confirmation from peer "
+        << peerId << " was received more than minPing ago: " << d.count();
+    }
+    _lastAcked[peerId] = t;
 
     if (index > _confirmed[peerId]) {  // progress this follower?
       _confirmed[peerId] = index;
@@ -237,12 +264,14 @@ void Agent::reportIn(std::string const& peerId, index_t index, size_t toLog) {
         LOG_TOPIC(TRACE, Logger::AGENCY)
           << "Critical mass for commiting " << _commitIndex + 1
           << " through " << index << " to read db";
+        {
+          MUTEX_LOCKER(mutexLocker, _compactionLock);
+          _readDB.applyLogEntries(
+            _state.slices(
+              _commitIndex + 1, index), _commitIndex, _constituent.term(),
+              true /* inform others by callbacks */ );
+        }
 
-        _readDB.applyLogEntries(
-          _state.slices(
-            _commitIndex + 1, index), _commitIndex, _constituent.term(),
-            true /* inform others by callbacks */ );
-        
         MUTEX_LOCKER(liLocker, _liLock);
         _commitIndex = index;
         if (_commitIndex >= _nextCompactionAfter) {
@@ -439,9 +468,21 @@ void Agent::sendAppendEntriesRPC() {
 
       if (highest == _lastHighest[followerId] &&
           m.count() < 0.25 * _config.minPing()) {
+        // I intentionally left here _config.minPing() without the
+        // _config.timeoutMult(), if things are getting tight on the
+        // system, we still send out empty heartbeats every 1/4 minpings,
+        // even if we increase tolerance by a multiplier.
         continue;
       }
 
+      if (m.count() > _config.minPing() &&
+          _lastSent[followerId].time_since_epoch().count() != 0) {
+        LOG_TOPIC(WARN, Logger::AGENCY) << "Oops, sent out last heartbeat "
+          << "to follower " << followerId << " more than minPing ago: " 
+          << m.count() << " lastAcked: "
+          << timepointToString(_lastAcked[followerId])
+          << " lastSent: " << timepointToString(_lastSent[followerId]);
+      }
       index_t lowest = unconfirmed.front().index;
 
       bool needSnapshot = false;
@@ -483,7 +524,8 @@ void Agent::sendAppendEntriesRPC() {
       }
       path << "/_api/agency_priv/appendEntries?term=" << t << "&leaderId="
            << id() << "&prevLogIndex=" << prevLogIndex
-           << "&prevLogTerm=" << prevLogTerm << "&leaderCommit=" << commitIndex;
+           << "&prevLogTerm=" << prevLogTerm << "&leaderCommit=" << commitIndex
+           << "&senderTimeStamp=" << std::llround(readSystemClock() * 1000);
       
       size_t toLog = 0;
       // Body
@@ -520,6 +562,7 @@ void Agent::sendAppendEntriesRPC() {
       // Really leading?
       if (challengeLeadership()) {
         _constituent.candidate();
+        _preparing = false;
         return;
       }
       
@@ -542,7 +585,8 @@ void Agent::sendAppendEntriesRPC() {
         std::make_shared<std::string>(builder.toJson()), headerFields,
         std::make_shared<AgentCallback>(
           this, followerId, (toLog) ? highest : 0, toLog),
-        std::max(1.0e-3 * toLog * dt.count(), _config.minPing()), true);
+        std::max(1.0e-3 * toLog * dt.count(), 
+                 _config.minPing() * _config.timeoutMult()), true);
 
       // _lastSent, _lastHighest: local and single threaded access
       _lastSent[followerId]        = system_clock::now();
@@ -605,6 +649,7 @@ query_t Agent::activate(query_t const& everything) {
           _readDB = compact.get("readDB");
         }
         commitIndex = _commitIndex;
+        // no need to lock via _readDB._compactionLock here
         _readDB.applyLogEntries(batch, commitIndex, _constituent.term(),
                                 false  /* do not perform callbacks */);
         _spearhead = _readDB;
@@ -715,7 +760,7 @@ bool Agent::challengeLeadership() {
   
   for (auto const& i : _lastAcked) {
     duration<double> m = system_clock::now() - i.second;
-    if (0.9 * _config.minPing() > m.count()) {
+    if (0.9 * _config.minPing() * _config.timeoutMult() > m.count()) {
       ++good;
     }
   }
@@ -779,6 +824,7 @@ trans_ret_t Agent::transact(query_t const& queries) {
     // Only leader else redirect
     if (challengeLeadership()) {
       _constituent.candidate();
+      _preparing = false;
       return trans_ret_t(false, NO_LEADER);
     }
     
@@ -836,6 +882,7 @@ trans_ret_t Agent::transient(query_t const& queries) {
     // Only leader else redirect
     if (challengeLeadership()) {
       _constituent.candidate();
+      _preparing = false;
       return trans_ret_t(false, NO_LEADER);
     }
 
@@ -946,6 +993,7 @@ write_ret_t Agent::write(query_t const& query, bool discardStartup) {
     // Only leader else redirect
     if (multihost && challengeLeadership()) {
       _constituent.candidate();
+      _preparing = false;
       return write_ret_t(false, NO_LEADER);
     }
     
@@ -991,6 +1039,7 @@ read_ret_t Agent::read(query_t const& query) {
   // Only leader else redirect
   if (challengeLeadership()) {
     _constituent.candidate();
+    _preparing = false;
     return read_ret_t(false, NO_LEADER);
   }
 
@@ -1021,6 +1070,8 @@ void Agent::run() {
 
       // Don't panic
       _appendCV.wait(static_cast<uint64_t>(4.e3*_config.minPing()));
+      // Again, we leave minPing here without the multiplier to run this
+      // loop often enough in cases of high load.
       
       // Detect faulty agent and replace
       // if possible and only if not already activating
@@ -1090,6 +1141,7 @@ void Agent::persistConfiguration(term_t t) {
           agency->add("active", _config.activeToBuilder()->slice());
           agency->add("pool", _config.poolToBuilder()->slice());
           agency->add("size", VPackValue(size()));
+          agency->add("timeoutMult", VPackValue(_config.timeoutMult()));
         }}}}
   
   // In case we've lost leadership, no harm will arise as the failed write
@@ -1252,27 +1304,27 @@ void Agent::notifyInactive() const {
   std::string path = "/_api/agency_priv/inform";
 
   Builder out;
-  { VPackObjectBuilder o(&out);
+  {
+    VPackObjectBuilder o(&out);
     out.add("term", VPackValue(term()));
     out.add("id", VPackValue(id()));
     out.add("active", _config.activeToBuilder()->slice());
     out.add("pool", _config.poolToBuilder()->slice());
     out.add("min ping", VPackValue(_config.minPing()));
-    out.add("max ping", VPackValue(_config.maxPing())); }
+    out.add("max ping", VPackValue(_config.maxPing()));
+    out.add("timeoutMult", VPackValue(_config.timeoutMult()));
+  }
 
   for (auto const& p : pool) {
     if (p.first != id()) {
       auto headerFields =
-        std::make_unique<std::unordered_map<std::string, std::string>>();
-      cc->asyncRequest(
-        "1", 1, p.second, arangodb::rest::RequestType::POST,
-        path, std::make_shared<std::string>(out.toJson()), headerFields,
-        nullptr, 1.0, true);
+          std::make_unique<std::unordered_map<std::string, std::string>>();
+      cc->asyncRequest("1", 1, p.second, arangodb::rest::RequestType::POST,
+                       path, std::make_shared<std::string>(out.toJson()),
+                       headerFields, nullptr, 1.0, true);
     }
   }
-
 }
-
 
 void Agent::updatePeerEndpoint(query_t const& message) {
 
@@ -1342,10 +1394,13 @@ void Agent::notify(query_t const& message) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_AGENCY_INFORM_MUST_CONTAIN_POOL);
   }
   if (!slice.hasKey("min ping") || !slice.get("min ping").isNumber()) {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_AGENCY_INFORM_MUST_CONTAIN_POOL);
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_AGENCY_INFORM_MUST_CONTAIN_MIN_PING);
   }
   if (!slice.hasKey("max ping") || !slice.get("max ping").isNumber()) {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_AGENCY_INFORM_MUST_CONTAIN_POOL);
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_AGENCY_INFORM_MUST_CONTAIN_MAX_PING);
+  }
+  if (!slice.hasKey("timeoutMult") || !slice.get("timeoutMult").isInteger()) {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_AGENCY_INFORM_MUST_CONTAIN_TIMEOUT_MULT);
   }
 
   _config.update(message);
@@ -1370,9 +1425,12 @@ arangodb::consensus::index_t Agent::rebuildDBs() {
     << "Rebuilding key-value stores from index "
     << lastCompactionIndex << " to " << _commitIndex << " " << _state;
 
-  auto logs = _state.slices(lastCompactionIndex+1, _commitIndex);
-  _readDB.applyLogEntries(logs, _commitIndex, _constituent.term(),
-      false  /* do not send callbacks */);
+  {
+    MUTEX_LOCKER(mutexLocker, _compactionLock);
+    auto logs = _state.slices(lastCompactionIndex+1, _commitIndex);
+    _readDB.applyLogEntries(logs, _commitIndex, _constituent.term(),
+        false  /* do not send callbacks */);
+  }
   _spearhead = _readDB;
 
   LOG_TOPIC(TRACE, Logger::AGENCY) << "ReadDB: " << _readDB;
@@ -1628,11 +1686,14 @@ query_t Agent::buildDB(arangodb::consensus::index_t index) {
   }
   
   std::vector<VPackSlice> logs;
-  if (index > oldIndex) {
-    logs = _state.slices(oldIndex+1, index);
+  {
+    MUTEX_LOCKER(mutexLocker, _compactionLock);
+    if (index > oldIndex) {
+      logs = _state.slices(oldIndex+1, index);
+    }
+    store.applyLogEntries(logs, index, term,
+                          false  /* do not perform callbacks */);
   }
-  store.applyLogEntries(logs, index, term,
-                        false  /* do not perform callbacks */);
 
   auto builder = std::make_shared<VPackBuilder>();
   store.toBuilder(*builder);
