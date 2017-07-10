@@ -225,6 +225,7 @@ static void ConvertLegacyFormat(VPackSlice doc, VPackBuilder& result) {
 }
 
 // private, will acquire _authInfoLock in write-mode and release it.
+// will also aquire _loadFromDBLock and release it
 void AuthInfo::loadFromDB() {
   if (!_outdated) {
     return;
@@ -643,7 +644,6 @@ AuthResult AuthInfo::checkPassword(std::string const& username,
       }
       AuthUserEntry const& auth = it->second;
       if (auth.isActive()) {
-        result._mustChange = auth.mustChangePassword();
         result._authorized = auth.checkPassword(password);
       }
       return result;
@@ -970,12 +970,7 @@ std::string AuthInfo::generateJwt(VPackBuilder const& payload) {
 
 std::shared_ptr<AuthContext> AuthInfo::getAuthContext(
     std::string const& username, std::string const& database) {
-  if (_outdated) {
-    MUTEX_LOCKER(locker, _loadFromDBLock);
-    if (_outdated) {
-      loadFromDB();
-    }
-  }
+  loadFromDB();
 
   READ_LOCKER(guard, _authInfoLock);
   auto it = _authInfo.find(username);
