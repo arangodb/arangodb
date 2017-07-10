@@ -1,5 +1,5 @@
 /* jshint globalstrict:true, strict:true, maxlen: 5000 */
-/* global describe, before, after, it, require, print */
+/* global describe, before, after, it, require*/
 
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief tests for user access rights
@@ -109,8 +109,6 @@ describe('User Rights Management', () => {
             const rootDropCollection = () => {
               if (rootTestCollection(false)) {
                 db._drop(testColName);
-                print("Dropping. Still there: " + rootTestCollection(false));
-                print(db._collections(true), testColName);
               }
               switchUser(name, dbName);
             };
@@ -122,29 +120,59 @@ describe('User Rights Management', () => {
               switchUser(name, dbName);
             };
 
-            before(() => {
-              db._useDatabase(dbName);
-              rootDropCollection();
-            });
+            describe('create a', () => {
 
-            after(() => {
-              rootDropCollection();
-            });
+              before(() => {
+                db._useDatabase(dbName);
+                rootDropCollection();
+              });
 
-            it('create collection', () => {
-              expect(rootTestCollection()).to.equal(false, `Precondition failed, the collection still exists`);
-              if (activeUsers.has(name) && dbLevel['rw'].has(name)) {
-                // User needs rw on database
-                db._create(testColName);
-                expect(rootTestCollection()).to.equal(true, `Collection creation reported success, but collection was not found afterwards.`);
-              } else {
-                try {
+              after(() => {
+                rootDropCollection();
+              });
+
+              it('collection', () => {
+                expect(rootTestCollection()).to.equal(false, `Precondition failed, the collection still exists`);
+                if (activeUsers.has(name) && dbLevel['rw'].has(name)) {
+                  // User needs rw on database
                   db._create(testColName);
-                } catch (e) {
-                  expect(e.errorNum).to.equal(errors.ERROR_FORBIDDEN.code);
+                  expect(rootTestCollection()).to.equal(true, `Collection creation reported success, but collection was not found afterwards.`);
+                } else {
+                  try {
+                    db._create(testColName);
+                  } catch (e) {
+                    expect(e.errorNum).to.equal(errors.ERROR_FORBIDDEN.code);
+                  }
+                  expect(rootTestCollection()).to.equal(false, `${name} was able to create a collection with insufficent rights`);
                 }
-                expect(rootTestCollection()).to.equal(false, `${name} was able to create a collection with insufficent rights`);
-              }
+              });
+            });
+
+            describe('drop a', () => {
+              before(() => {
+                db._useDatabase(dbName);
+                rootCreateCollection();
+              });
+
+              after(() => {
+                rootDropCollection();
+              });
+
+              it('collection', () => {
+                expect(rootTestCollection()).to.equal(true, `Precondition failed, the collection does not exist`);
+                if (activeUsers.has(name) && dbLevel['rw'].has(name)) {
+                  // User needs rw on database
+                  db._drop(testColName);
+                  expect(rootTestCollection()).to.equal(false, `Collection drop reported success, but collection was still found afterwards.`);
+                } else {
+                  try {
+                    db._drop(testColName);
+                  } catch (e) {
+                    expect(e.errorNum).to.equal(errors.ERROR_FORBIDDEN.code);
+                  }
+                  expect(rootTestCollection()).to.equal(true, `${name} was able to drop a collection with insufficent rights`);
+                }
+              });
             });
 
           });
