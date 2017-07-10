@@ -55,7 +55,15 @@ class MMFilesWalSlot {
   inline MMFilesWalSlot::TickType tick() const { return _tick; }
 
   /// @brief return the logfile id assigned to the slot
-  inline MMFilesWalLogfile::IdType logfileId() const { return _logfileId; }
+  inline MMFilesWalLogfile::IdType logfileId() const { 
+    if (_logfile != nullptr) {
+      return _logfile->id(); 
+    }
+    return 0;
+  }
+  
+  /// @brief return the logfile assigned to the slot
+  inline MMFilesWalLogfile* logfile() const { return _logfile; } 
 
   /// @brief return the raw memory pointer assigned to the slot
   inline void* mem() const { return _mem; }
@@ -96,7 +104,7 @@ class MMFilesWalSlot {
   void setUnused();
 
   /// @brief mark as slot as used
-  void setUsed(void*, uint32_t, MMFilesWalLogfile::IdType, MMFilesWalSlot::TickType);
+  void setUsed(void*, uint32_t, MMFilesWalLogfile*, MMFilesWalSlot::TickType);
 
   /// @brief mark as slot as returned
   void setReturned(bool waitForSync);
@@ -105,8 +113,8 @@ class MMFilesWalSlot {
   /// @brief slot tick
   MMFilesWalSlot::TickType _tick;
 
-  /// @brief slot logfile id
-  MMFilesWalLogfile::IdType _logfileId;
+  /// @brief slot logfile
+  MMFilesWalLogfile* _logfile;
 
   /// @brief slot raw memory pointer
   void* _mem;
