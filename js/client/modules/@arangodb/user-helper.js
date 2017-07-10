@@ -60,11 +60,18 @@ for (let l of rightLevels) {
 // d == DEFAULT
 
 exports.removeAllUsers = () => {
-  for (let u of userSet) {
-    try { 
-      users.remove(name);
-    } catch (e) {
-      // If the user does not exist
+  for (let sys of rightLevels) {
+    for (let db of rightLevels) {
+      for (let col of rightLevels) {
+        for (let active of [true, false]) {
+          let name = `${namePrefix}_${sys}_${db}_${col}_${active}`;
+          try {
+            users.remove(name);
+          } catch (e) {
+            // If the user does not exist
+          }
+        }
+      }
     }
   }
   try {
@@ -75,6 +82,18 @@ exports.removeAllUsers = () => {
 };
 
 exports.generateAllUsers = () => {
+  let dbs = db._databases();
+  let create = true;
+  for (let d of dbs) {
+    if (d === dbName) {
+      // We got it, do not create
+      create = false;
+      break;
+    }
+  }
+  if (create) {
+    db._createDatabase(dbName);
+  }
   for (let sys of rightLevels) {
     for (let db of rightLevels) {
       for (let col of rightLevels) {
