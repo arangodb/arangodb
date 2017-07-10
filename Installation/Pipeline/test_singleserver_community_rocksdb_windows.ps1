@@ -4,8 +4,8 @@ New-Item -ItemType Directory -Force -Path tmp
 
 $env:TEMP=".\tmp"
 
-$timeLimit = (Get-Date).AddDays(-1) 
-Get-ChildItem C:\ports | ? { $_.PSIsContainer -and $_.LastWriteTime -lt $timeLimit } | Remove-Item
+$timeLimit = (Get-Date).AddMinutes(-480)
+Get-ChildItem C:\ports | ? { $_.LastWriteTime -lt $timeLimit } | Remove-Item
 
 $port = 15000
 $portIncrement = 2000
