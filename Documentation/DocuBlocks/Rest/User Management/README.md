@@ -11,7 +11,7 @@ The name of the user as a string. This is mandatory.
 @RESTBODYPARAM{passwd,string,required,string}
 The user password as a string. If no password is specified, the empty string
 will be used. If you pass the special value *ARANGODB_DEFAULT_ROOT_PASSWORD*,
-the password will be set the value stored in the environment variable
+then the password will be set the value stored in the environment variable
 `ARANGODB_DEFAULT_ROOT_PASSWORD`. This can be used to pass an instance
 variable into ArangoDB. For example, the instance identifier from Amazon.
 
@@ -24,8 +24,8 @@ An optional JSON object with arbitrary extra data about the user.
 
 @RESTDESCRIPTION
 
-Create a new user. You need the *Administrate* server access level in
-order to execute this REST call.
+Create a new user. You need server access level *Administrate* in order to
+execute this REST call.
 
 @RESTRETURNCODES
 
@@ -65,18 +65,16 @@ Returned if a user with the same name already exists.
 <!-- ---------------------------------------------------------------------- -->
 
 @startDocuBlock UserHandling_grantDatabase
-@brief Grant or disallow access to a database.
+@brief Set the database access level.
 
-@RESTHEADER{PUT /_api/user/{user}/database/{dbname}, Grant or disallow database access}
+@RESTHEADER{PUT /_api/user/{user}/database/{dbname}, Set the database access level}
 
 @RESTBODYPARAM{grant,string,required,string}
-Use "rw" to grant read and write access rights, or "ro" to
-grant read-only access right. To explicitly disallow access, use "none".
-Use "rw" to grant *Administrate* as database access level.
+Use "rw" to set the database access level to *Administrate* .
 
-Use "ro" to grant *Access* as database access level.
+Use "ro" to set the database access level to *Access*.
 
-Use "none" to grant *No access* as database access level.
+Use "none" to set the database access level to *No access*.
 
 @RESTURLPARAMETERS
 
@@ -88,14 +86,14 @@ The name of the database.
 
 @RESTDESCRIPTION
 
-Grants or revokes access levels to the database *dbname* for user *user*. You
+Sets the database access levels for the database *dbname* of user *user*. You
 need the *Administrate* server access level in order to execute this REST
 call.
 
 @RESTRETURNCODES
 
 @RESTRETURNCODE{200}
-Returned if the access permissions were changed successfully.
+Returned if the access level was changed successfully.
 
 @RESTRETURNCODE{400}
 If the JSON representation is malformed or mandatory data is missing
@@ -129,17 +127,66 @@ Returned if you have *No access* server access level.
 
 <!-- ---------------------------------------------------------------------- -->
 
-@startDocuBlock UserHandling_grantCollection
-@brief Grant or disallow access to a collection.
+@startDocuBlock UserHandling_revokeDatabase
+@brief Clear the database access level, revert back to the default access level
 
-@RESTHEADER{PUT /_api/user/{user}/database/{dbname}/{collection}, Grant or disallow collection access}
+@RESTHEADER{DELETE /_api/user/{user}/database/{dbname}, Clear the database access level}
+
+@RESTURLPARAMETERS
+
+@RESTURLPARAM{user,string,required}
+The name of the user.
+
+@RESTURLPARAM{dbname,string,required}
+The name of the database.
+
+@RESTDESCRIPTION
+
+Clears the database access level for the database *dbname* of user *user*. As
+consequence the default database access level is used. If there is no defined
+default database access level, it defaults to *No access*. You need permission
+to the *_system* database in order to execute this REST call.
+
+@RESTRETURNCODES
+
+@RESTRETURNCODE{200}
+Returned if the access permissions were changed successfully.
+
+@RESTRETURNCODE{400}
+If the JSON representation is malformed or mandatory data is missing
+from the request.
+
+@EXAMPLES
+
+@EXAMPLE_ARANGOSH_RUN{RestRevokeDatabase}
+var users = require("@arangodb/users");
+var theUser = "admin@myapp";
+users.save(theUser, "secret")
+
+var url = "/_api/user/" + theUser + "/database/_system";
+var response = logCurlRequest('DELETE', url);
+
+assert(response.code === 200);
+
+logJsonResponse(response);
+users.remove(theUser);
+@END_EXAMPLE_ARANGOSH_RUN
+
+@endDocuBlock
+
+<!-- ---------------------------------------------------------------------- -->
+
+@startDocuBlock UserHandling_grantCollection
+@brief Set the collection access level.
+
+@RESTHEADER{PUT /_api/user/{user}/database/{dbname}/{collection}, Set the collection access level}
 
 @RESTBODYPARAM{grant,string,required,string}
-Use "rw" to grant *Read/Write* as database access level.
+Use "rw" to set the collection level access to *Read/Write*.
 
-Use "ro" to grant *Read Only* as database access level.
+Use "ro" to set the collection level access to  *Read Only*.
 
-Use "none" to grant *No access* as database access level.
+Use "none" to set the collection level access to *No access*.
 
 @RESTURLPARAMETERS
 
@@ -154,9 +201,9 @@ The name of the collection.
 
 @RESTDESCRIPTION
 
-Grants or revokes access level to the collection *collection* in the database
-*dbname* for user *user*. You need the *Administrate* server access level in
-order to execute this REST call.
+Sets the collection access level for the *collection* in the database *dbname*
+for user *user*. You need the *Administrate* server access level in order to
+execute this REST call.
 
 @RESTRETURNCODES
 
@@ -195,58 +242,10 @@ Returned if you have *No access* server access level.
 
 <!-- ---------------------------------------------------------------------- -->
 
-@startDocuBlock UserHandling_revokeDatabase
-@brief Revoke access to a database, rights will revert back to the default access level
-
-@RESTHEADER{DELETE /_api/user/{user}/database/{dbname}, Revoke database access}
-
-@RESTURLPARAMETERS
-
-@RESTURLPARAM{user,string,required}
-The name of the user.
-
-@RESTURLPARAM{dbname,string,required}
-The name of the database.
-
-@RESTDESCRIPTION
-
-Revokes access to the database *dbname* for user *user*. If there is no default access level
-for databases set, the default is no access. You
-need permission to the *_system* database in order to execute this REST call.
-
-@RESTRETURNCODES
-
-@RESTRETURNCODE{200}
-Returned if the access permissions were changed successfully.
-
-@RESTRETURNCODE{400}
-If the JSON representation is malformed or mandatory data is missing
-from the request.
-
-@EXAMPLES
-
-@EXAMPLE_ARANGOSH_RUN{RestRevokeDatabase}
-var users = require("@arangodb/users");
-var theUser = "admin@myapp";
-users.save(theUser, "secret")
-
-var url = "/_api/user/" + theUser + "/database/_system";
-var response = logCurlRequest('DELETE', url);
-
-assert(response.code === 200);
-
-logJsonResponse(response);
-users.remove(theUser);
-@END_EXAMPLE_ARANGOSH_RUN
-
-@endDocuBlock
-
-<!-- ---------------------------------------------------------------------- -->
-
 @startDocuBlock UserHandling_revokeCollection
-@brief Revoke access to a collection.
+@brief Clear the collection access level, revert back to the default access level
 
-@RESTHEADER{DELETE /_api/user/{user}/database/{dbname}/{collection}, Revoke collection access}
+@RESTHEADER{DELETE /_api/user/{user}/database/{dbname}/{collection}, Clear the collection access level}
 
 @RESTURLPARAMETERS
 
@@ -261,10 +260,11 @@ The name of the collection.
 
 @RESTDESCRIPTION
 
-Revokes access to the collection *collection* in the database *dbname* for user *user*. 
-If there is no default access level for databases set, the default is no access.
-You need permission to the *_system* database in order to execute this
-REST call.
+Clears the collection access level for the collection *collection* in the
+database *dbname* of user *user*.  As consequence the default collection
+access level is used. If there is no defined default collection access level,
+it defaults to *No access*.  You need permission to the *_system* database in
+order to execute this REST call.
 
 @RESTRETURNCODES
 
@@ -297,9 +297,9 @@ users.remove(theUser);
 <!-- ---------------------------------------------------------------------- -->
 
 @startDocuBlock UserHandling_fetchDatabaseList
-@brief List available database to the specified user
+@brief List accessible databases for the specified user
 
-@RESTHEADER{GET /_api/user/{user}/database/, List the databases available to a User}
+@RESTHEADER{GET /_api/user/{user}/database/, List the accessible databases for a user}
 
 @RESTURLPARAMETERS
 
@@ -378,9 +378,9 @@ users.remove(theUser);
 <!-- ---------------------------------------------------------------------- -->
 
 @startDocuBlock UserHandling_fetchDatabasePermission
-@brief Get specific database permissions
+@brief Get specific database access level
 
-@RESTHEADER{GET /_api/user/{user}/database/{database}, Get the db permission level}
+@RESTHEADER{GET /_api/user/{user}/database/{database}, Get the database access level}
 
 @RESTURLPARAMETERS
 
@@ -392,7 +392,7 @@ The name of the database to query
 
 @RESTDESCRIPTION
 
-Fetch the permission level for a specific database
+Fetch the database access level for a specific database
 
 @RESTRETURNCODES
 
@@ -431,9 +431,9 @@ users.remove(theUser);
 <!-- ---------------------------------------------------------------------- -->
 
 @startDocuBlock UserHandling_fetchCollectionPermission
-@brief Get specific collection permissions
+@brief Get the collection access level
 
-@RESTHEADER{GET /_api/user/{user}/database/{database}/{collection}, Get the collection permission level}
+@RESTHEADER{GET /_api/user/{user}/database/{database}/{collection}, Get the specific collection access level}
 
 @RESTURLPARAMETERS
 
@@ -448,7 +448,7 @@ The name of the collection
 
 @RESTDESCRIPTION
 
-Fetch the permission level for a specific collection
+Returns the collection access level for a specific collection
 
 @RESTRETURNCODES
 
@@ -487,7 +487,7 @@ users.remove(theUser);
 <!-- ---------------------------------------------------------------------- -->
 
 @startDocuBlock UserHandling_replace
-@brief replace an existing user with a new one.
+@brief Replace an existing user.
 
 @RESTHEADER{PUT /_api/user/{user}, Replace User}
 
@@ -509,16 +509,14 @@ An optional JSON object with arbitrary extra data about the user.
 
 @RESTDESCRIPTION
 
-Replaces the data of an existing user. The name of an existing user
-must be specified in *user*. When authentication is turned on in the
-server, only users that have read and write permissions for the *_system*
-database can change other users' data. Additionally, a user can change 
-his/her own data.
+Replaces the data of an existing user. The name of an existing user must be
+specified in *user*. You need server access level *Administrate* in order to
+execute this REST call. Additionally, a user can change his/her own data.
 
 @RESTRETURNCODES
 
 @RESTRETURNCODE{200}
-Is returned if the user data can be replaced by the server
+Is returned if the user data can be replaced by the server.
 
 @RESTRETURNCODE{400}
 The JSON representation is malformed or mandatory data is missing from the request
@@ -555,9 +553,9 @@ The specified user does not exist
 <!-- ---------------------------------------------------------------------- -->
 
 @startDocuBlock UserHandling_modify
-@brief modify attributes of an existing user
+@brief Modify attributes of an existing user
 
-@RESTHEADER{PATCH /_api/user/{user}, Update User}
+@RESTHEADER{PATCH /_api/user/{user}, Modify User}
 
 @RESTURLPARAMETERS
 
@@ -578,17 +576,17 @@ An optional JSON object with arbitrary extra data about the user.
 @RESTDESCRIPTION
 
 Partially updates the data of an existing user. The name of an existing user
-must be specified in *user*. When authentication is turned on in the server,
-only users that have *Administrate* server access level can change other
-users' data. Additionally, a user can change his/her own data.
+must be specified in *user*. You need server access level *Administrate* in
+order to execute this REST call. Additionally, a user can change his/her own
+data.
 
 @RESTRETURNCODES
 
 @RESTRETURNCODE{200}
-Is returned if the user data can be replaced by the server
+Is returned if the user data can be replaced by the server.
 
 @RESTRETURNCODE{400}
-The JSON representation is malformed or mandatory data is missing from the request
+The JSON representation is malformed or mandatory data is missing from the request.
 
 @RESTRETURNCODE{401}
 Returned if you have *No access* database access level to the *_system*
