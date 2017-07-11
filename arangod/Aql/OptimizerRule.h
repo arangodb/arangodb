@@ -153,14 +153,19 @@ struct OptimizerRule {
     
     // merge filters into graph traversals
     optimizeTraversalsRule_pass6,
+    // remove redundant filters statements
+    removeFiltersCoveredByTraversal_pass6,
+    
+    // remove calculations that are redundant
+    // needs to run after filter removal
+    removeUnnecessaryCalculationsRule_pass6,
+    // remove now obsolete path variables
+    removeTraversalPathVariable_pass6,
     prepareTraversalsRule_pass6,
 
     // simplify an EnumerationCollectionNode that fetches an
     // entire document to a projection of this document
     reduceExtractionToProjectionRule_pass6,
-
-    // remove calculations that are never necessary
-    removeUnnecessaryCalculationsRule_pass6,
 
     /// Pass 9: push down calculations beyond FILTERs and LIMITs
     moveCalculationsDownRule_pass9,

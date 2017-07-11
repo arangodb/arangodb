@@ -303,6 +303,9 @@ void TRI_InitializeErrorMessages () {
   REG_ERROR(ERROR_AGENCY_INFORM_MUST_CONTAIN_ID, "Inform message must contain string parameter 'id'");
   REG_ERROR(ERROR_AGENCY_INFORM_MUST_CONTAIN_ACTIVE, "Inform message must contain array 'active'");
   REG_ERROR(ERROR_AGENCY_INFORM_MUST_CONTAIN_POOL, "Inform message must contain object 'pool'");
+  REG_ERROR(ERROR_AGENCY_INFORM_MUST_CONTAIN_MIN_PING, "Inform message must contain object 'min ping'");
+  REG_ERROR(ERROR_AGENCY_INFORM_MUST_CONTAIN_MAX_PING, "Inform message must contain object 'max ping'");
+  REG_ERROR(ERROR_AGENCY_INFORM_MUST_CONTAIN_TIMEOUT_MULT, "Inform message must contain object 'timeoutMult'");
   REG_ERROR(ERROR_AGENCY_INQUIRE_CLIENT_ID_MUST_BE_STRING, "Inquiry failed");
   REG_ERROR(ERROR_AGENCY_CANNOT_REBUILD_DBS, "Cannot rebuild readDB and spearHead");
   REG_ERROR(ERROR_SUPERVISION_GENERAL_FAILURE, "general supervision failure");
