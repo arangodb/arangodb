@@ -746,7 +746,7 @@ static void JS_ParseAql(v8::FunctionCallbackInfo<v8::Value> const& args) {
     for (auto const& elem : parseResult.bindParameters) {
       bindVars->Set(i++, TRI_V8_STD_STRING((elem)));
     }
-    result->Set(TRI_V8_ASCII_STRING("parameters"), bindVars);
+    result->Set(TRI_V8_ASCII_STRING("bindVars"), bindVars);
   }
 
   result->Set(TRI_V8_ASCII_STRING("ast"),
