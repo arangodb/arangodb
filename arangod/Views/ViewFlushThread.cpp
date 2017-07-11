@@ -53,6 +53,7 @@ void ViewFlushThread::run() {
   while (!isStopping()) {
     try {
       // TODO: implement flush logic here
+      // LOG_TOPIC(ERR, Logger::FIXME) << "view flush ping";
 
       // sleep if nothing to do
       CONDITION_LOCKER(guard, _condition);

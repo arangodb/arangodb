@@ -23,8 +23,10 @@
 #include "ViewTypesFeature.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
-
+#include "ProgramOptions/ProgramOptions.h"
+#include "ProgramOptions/Section.h"
 #include "Views/LoggerView.h"
+#include "Views/ViewFlushThread.h"
 
 using namespace arangodb;
 using namespace arangodb::application_features;
@@ -35,15 +37,56 @@ std::unordered_map<std::string, arangodb::ViewCreator>
     ViewTypesFeature::_viewCreators;
 
 ViewTypesFeature::ViewTypesFeature(ApplicationServer* server)
-    : ApplicationFeature(server, "ViewTypes") {
+    : ApplicationFeature(server, "ViewTypes"),
+      _syncInterval(1000000) {
   setOptional(false);
   requiresElevatedPrivileges(false);
   startsAfter("WorkMonitor");
 }
 
+void ViewTypesFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
+  options->addSection(
+      Section("views", "Configure views", "view", false, false));
+  options->addOption(
+      "--views.flush-interval",
+      "interval (in microseconds) for flushing view data",
+      new UInt64Parameter(&_syncInterval));
+}
+
+void ViewTypesFeature::validateOptions(std::shared_ptr<options::ProgramOptions> options) {
+  if (_syncInterval < 1000) {
+    // do not go below 1000 microseconds
+    _syncInterval = 1000;
+  }
+}
+
 void ViewTypesFeature::prepare() {
   // register the "logger" example view type
   registerViewImplementation(LoggerView::type, LoggerView::creator);
+}
+
+void ViewTypesFeature::start() {
+  _flushThread.reset(new ViewFlushThread(_syncInterval));
+
+  if (!_flushThread->start()) {
+    LOG_TOPIC(FATAL, Logger::FIXME) << "unable to start ViewFlushThread";
+    FATAL_ERROR_ABORT();
+  }
+}
+
+void ViewTypesFeature::beginShutdown() {
+  // pass on the shutdown signal
+  _flushThread->beginShutdown();
+}
+
+void ViewTypesFeature::stop() {
+  LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "stopping ViewFlushThread";
+  // wait until thread is fully finished
+  while (_flushThread->isRunning()) {
+    usleep(10000);
+  }
+  
+  _flushThread.reset();
 }
 
 void ViewTypesFeature::unprepare() { _viewCreators.clear(); }

@@ -36,6 +36,7 @@ class ViewFlushThread final : public Thread {
   ViewFlushThread& operator=(ViewFlushThread const&) = delete;
 
  public:
+  /// sync interval in microseconds
   explicit ViewFlushThread(uint64_t syncInterval);
   ~ViewFlushThread() { shutdown(); }
 
@@ -52,7 +53,7 @@ class ViewFlushThread final : public Thread {
   /// @brief condition variable for the thread
   basics::ConditionVariable _condition;
 
-  /// @brief wait interval for the flusher thread when idle
+  /// @brief wait interval for the flusher thread when idle (in microseconds)
   uint64_t const _syncInterval;
 };
 

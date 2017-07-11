@@ -27,6 +27,8 @@
 #include "VocBase/ViewImplementation.h"
 
 namespace arangodb {
+class ViewFlushThread;
+
 class ViewTypesFeature final
     : public application_features::ApplicationFeature {
  public:
@@ -34,7 +36,13 @@ class ViewTypesFeature final
       application_features::ApplicationServer* server);
 
  public:
+  void collectOptions(
+      std::shared_ptr<options::ProgramOptions> options) override final;
+  void validateOptions(std::shared_ptr<options::ProgramOptions>) override final;
   void prepare() override final;
+  void start() override final;
+  void beginShutdown() override final;
+  void stop() override final;
   void unprepare() override final;
 
   static void registerViewImplementation(std::string const& type, ViewCreator creator);
@@ -45,6 +53,10 @@ class ViewTypesFeature final
 
  private:
   static std::unordered_map<std::string, arangodb::ViewCreator> _viewCreators;
+
+  std::unique_ptr<ViewFlushThread> _flushThread;
+
+  uint64_t _syncInterval;
 };
 }
 
