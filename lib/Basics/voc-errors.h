@@ -414,6 +414,9 @@
 /// - 1491: @LIT{a (former) shard leader refuses to perform an operation, because it has resigned in the meantime}
 ///   Will be raised if a non-replication operation is refused by a former
 ///   shard leader that has found out that it is no longer the leader.
+/// - 1492: @LIT{some agency operation failed}
+///   Will be raised if after various retries an agency operation could not be
+///   performed successfully.
 /// - 1500: @LIT{query killed}
 ///   Will be raised when a running query is killed by an explicit admin
 ///   command.
@@ -2446,6 +2449,17 @@ void TRI_InitializeErrorMessages ();
 ////////////////////////////////////////////////////////////////////////////////
 
 #define TRI_ERROR_CLUSTER_SHARD_LEADER_RESIGNED                           (1491)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 1492: ERROR_CLUSTER_AGENCY_COMMUNICATION_FAILED
+///
+/// some agency operation failed
+///
+/// Will be raised if after various retries an agency operation could not be
+/// performed successfully.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_CLUSTER_AGENCY_COMMUNICATION_FAILED                     (1492)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1500: ERROR_QUERY_KILLED
