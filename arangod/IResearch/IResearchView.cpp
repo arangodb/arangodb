@@ -211,7 +211,6 @@ class ViewIteratorBase: public arangodb::ViewIterator {
     arangodb::DocumentIdentifierToken const& token,
     arangodb::ManagedDocumentResult& result
   ) const override;
-  virtual void skip(uint64_t count, uint64_t& skipped) override;
   virtual char const* typeName() const override;
 
  protected:
@@ -326,11 +325,6 @@ bool ViewIteratorBase::readDocument(
   return collection->readDocument(_trx, colToken, result);
 }
 
-void ViewIteratorBase::skip(uint64_t count, uint64_t& skipped) {
-  // shut up compiler warning...
-  // FIXME TODO: implementation
-}
-
 irs::doc_id_t ViewIteratorBase::subDocId(
   arangodb::DocumentIdentifierToken const& token
 ) const noexcept {
@@ -361,6 +355,7 @@ class OrderedViewIterator: public ViewIteratorBase {
   );
   virtual bool next(TokenCallback const& callback, size_t limit) override;
   virtual void reset() override;
+  virtual void skip(uint64_t count, uint64_t& skipped) override;
 
  private:
   struct State {
@@ -370,6 +365,8 @@ class OrderedViewIterator: public ViewIteratorBase {
   irs::filter::prepared::ptr _filter;
   irs::order::prepared _order;
   State _state; // previous iteration state
+
+  void next(TokenCallback const& callback, size_t limit, bool sort);
 };
 
 OrderedViewIterator::OrderedViewIterator(
@@ -465,6 +462,37 @@ void OrderedViewIterator::reset() {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief skip 'count' records from the next call to next
+////////////////////////////////////////////////////////////////////////////////
+void OrderedViewIterator::skip(uint64_t count, uint64_t& skipped) {
+  auto skip = _state._skip;
+  arangodb::DocumentIdentifierToken tmpToken;
+
+  skipped = 0;
+
+  for (size_t i = 0, readerCount = _reader.size(); i < readerCount; ++i) {
+    auto& segmentReader = _reader[i];
+    auto itr = _filter->execute(segmentReader);
+
+    while (count > skipped && itr->next()) {
+      if (!loadToken(tmpToken, i, itr->value())) {
+        LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "failed to generate document identifier token while iterating iResearch view, ignoring: reader_id '" << i << "', doc_id '" << itr->value() << "'";
+
+        continue; // if here then there is probably a bug in IResearchView while indexing
+      }
+
+      if (skip) {
+        --skip;
+      } else {
+        ++skipped;
+      }
+    }
+  }
+
+  _state._skip += skipped;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief iterator for unordered set of query results from iResearch View
 ////////////////////////////////////////////////////////////////////////////////
 class UnorderedViewIterator: public ViewIteratorBase {
@@ -477,6 +505,7 @@ class UnorderedViewIterator: public ViewIteratorBase {
   );
   virtual bool next(TokenCallback const& callback, size_t limit) override;
   virtual void reset() override;
+  virtual void skip(uint64_t count, uint64_t& skipped) override;
 
  private:
   struct State {
@@ -540,6 +569,17 @@ bool UnorderedViewIterator::next(TokenCallback const& callback, size_t limit) {
 void UnorderedViewIterator::reset() {
   _state._itr.reset();
   _state._readerOffset = 0;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief skip 'count' records from the next call to next
+////////////////////////////////////////////////////////////////////////////////
+void UnorderedViewIterator::skip(uint64_t count, uint64_t& skipped) {
+  skipped = 0;
+  next(
+    [&skipped](arangodb::DocumentIdentifierToken const&)->void { ++skipped; },
+    count
+  );
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1722,22 +1762,35 @@ bool IResearchView::linkRegister(LinkPtr& ptr) {
 
   // do not allow duplicate registration
   if (registered) {
-    auto res = _logicalView->getPhysical()->persistProperties(); // persist '_meta' definition
+    auto* server = arangodb::application_features::ApplicationServer::server;
 
-    if (res.ok()) {
-      ptr->_view = this;
+    if (server
+        && arangodb::application_features::ServerState::IN_WAIT == server->state()) {
+      auto res = _logicalView->getPhysical()->persistProperties(); // persist '_meta' definition
 
-      return true;
+      if (res.ok()) {
+        ptr->_view = this;
+
+        return true;
+      }
     }
 
+    LOG_TOPIC(WARN, Logger::FIXME) << "failed to persist iResearch view definition during new iResearch link registration for iResearch view '" << name() <<"' cid '" << ptr->collection()->cid() << "' iid '" << ptr->id() << "'";
+
     _meta._collections.erase(ptr->collection()->cid()); // revert state
+  } else if (!itr.second) {
+    // first time an IResearchLink object was seen for the specified cid
+    // e.g. this happends during startup when links initially register with the view
+    ptr->_view = this;
+
+    return true;
+  } else {
+    LOG_TOPIC(WARN, Logger::FIXME) << "duplicate iResearch link registration detected for iResearch view '" << name() <<"' cid '" << ptr->collection()->cid() << "' iid '" << ptr->id() << "'";
   }
 
   if (itr.second) {
     _links.erase(itr.first); // revert state
   }
-
-  LOG_TOPIC(WARN, Logger::FIXME) << "duplicate iResearch link registration detected for iResearch view '" << name() <<"' cid '" << ptr->collection()->cid() << "' iid '" << ptr->id() << "'";
 
   return false;
 }
