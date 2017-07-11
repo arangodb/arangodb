@@ -120,7 +120,6 @@ struct IResearchViewSetup {
     features.push_back(std::make_pair(new arangodb::RandomFeature(&server), false)); // required by AuthenticationFeature
     features.push_back(std::make_pair(new arangodb::AuthenticationFeature(arangodb::application_features::ApplicationServer::server), true));
     features.push_back(std::make_pair(new arangodb::DatabaseFeature(arangodb::application_features::ApplicationServer::server), false));
-    features.push_back(std::make_pair(new arangodb::DatabasePathFeature(arangodb::application_features::ApplicationServer::server), false));
     features.push_back(std::make_pair(new arangodb::iresearch::IResearchFeature(&server), true));
 
     arangodb::ViewTypesFeature::registerViewImplementation(
@@ -360,14 +359,13 @@ SECTION("test_open") {
     auto namedJson = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testView\" }");
     auto json = arangodb::velocypack::Parser::fromJson("{ \
       \"name\": \"testView\", \
-      \"properties\": { \"name\" : \"testView\", \
       \"dataPath\": \"" + arangodb::basics::StringUtils::replace(dataPath, "\\", "/") + "\" \
-      } \
     }");
 
     CHECK((false == TRI_IsDirectory(dataPath.c_str())));
     auto view = arangodb::iresearch::IResearchView::make(nullptr, json->slice(), false);
-    REQUIRE(false == (!view));
+
+    REQUIRE((false == !view));
     CHECK((false == TRI_IsDirectory(dataPath.c_str())));
     view->open();
     CHECK((true == TRI_IsDirectory(dataPath.c_str())));
