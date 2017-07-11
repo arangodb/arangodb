@@ -55,18 +55,3 @@ Upon registering with the agency during startup the cluster will assign an ID to
 Should you ever have to restart a task, simply reuse the same value for `--cluster.my-local-info` and the same ID will be picked.
 
 You have now launched a complete ArangoDB cluster and can contact its coordinator at the endpoint `tcp://127.0.0.1:8531`, which means that you can reach the web UI under `http://127.0.0.1:8531`.
-
-
-### Secondaries
-
-Secondaries need a bit more work. Secondaries need to have some primary assigned. To do that there is a special route. To register a secondary you must first find out the Server-ID of the primary server. Then generate your own ID for the secondary you are about to start and call one of the coordinators like this (replace the value of "newSecondary" in the command):
-
-    curl -f -X PUT --data '{"primary": "DBServer001", "oldSecondary": "none", "newSecondary": "Secondary001"}' -H "Content-Type: application/json" http://127.0.0.1:8531/_admin/cluster/replaceSecondary
-
-If that call was successful you can start the secondary. Instead of providing `--cluster.my-local-info` you should now provide the Id in the curl call above via `--cluster.my-id`. You can omit the `--cluster.my-role` in this case. The secondary will find out from the agency about its role.
-
-To sum it up:
-
-    curl -f -X PUT --data '{"primary": "DBServer001", "oldSecondary": "none", "newSecondary": "Secondary001"}' -H "Content-Type: application/json" http://127.0.0.1:8531/_admin/cluster/replaceSecondary && arangod --server.authentication=false --server.endpoint tcp://0.0.0.0:8629 --cluster.my-id Secondary001 --cluster.my-address tcp://127.0.0.1:8629 --cluster.agency-endpoint tcp://127.0.0.1:5001 --cluster.agency-endpoint tcp://127.0.0.1:5002 --cluster.agency-endpoint tcp://127.0.0.1:5003 secondary1 &
-    curl -f -X PUT --data '{"primary": "DBServer002", "oldSecondary": "none", "newSecondary": "Secondary002"}' -H "Content-Type: application/json" http://127.0.0.1:8531/_admin/cluster/replaceSecondary && arangod --server.authentication=false --server.endpoint tcp://0.0.0.0:8630 --cluster.my-id Secondary002 --cluster.my-address tcp://127.0.0.1:8630 --cluster.agency-endpoint tcp://127.0.0.1:5001 --cluster.agency-endpoint tcp://127.0.0.1:5002 --cluster.agency-endpoint tcp://127.0.0.1:5003 secondary2 &
-
