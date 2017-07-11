@@ -10,6 +10,7 @@ properties(
 def defaultLinux = true
 def defaultMac = false
 def defaultWindows = false
+def defaultBuild = true
 def defaultCleanBuild = false
 def defaultCommunity = true
 def defaultEnterprise = false
@@ -50,6 +51,11 @@ properties([
             name: 'fullParallel'
         ),
         booleanParam(
+            defaultValue: defaultBuild,
+            description: 'build executables',
+            name: 'build'
+        ),
+        booleanParam(
             defaultValue: defaultCleanBuild,
             description: 'clean build directories',
             name: 'cleanBuild'
@@ -86,6 +92,9 @@ properties([
         )
     ])
 ])
+
+// build executable
+buildExecutable = params.build
 
 // start with empty build directory
 cleanBuild = params.cleanBuild
@@ -820,12 +829,14 @@ stage('checkout') {
 }
 
 try {
-    stage('build') {
-        if (fullParallel) {
-            buildStepParallel(['linux', 'mac', 'windows'])
-        }
-        else {
-            buildStepParallel(['linux'])
+    if (buildExecutable) {
+        stage('build') {
+            if (fullParallel) {
+                buildStepParallel(['linux', 'mac', 'windows'])
+            }
+            else {
+                buildStepParallel(['linux'])
+            }
         }
     }
 }
