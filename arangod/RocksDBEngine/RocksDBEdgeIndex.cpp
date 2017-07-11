@@ -848,7 +848,7 @@ int RocksDBEdgeIndex::cleanup() {
   rocksdb::CompactRangeOptions opts;
   RocksDBKeyBounds bounds = RocksDBKeyBounds::EdgeIndex(_objectId);
   rocksdb::Slice b = bounds.start(), e = bounds.end();
-  db->CompactRange(opts, &b, &e);
+  db->CompactRange(opts, bounds.columnFamily(), &b, &e);
   return TRI_ERROR_NO_ERROR;
 }
 

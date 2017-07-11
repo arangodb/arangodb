@@ -1709,7 +1709,7 @@ void RocksDBCollection::compact() {
   rocksdb::CompactRangeOptions opts;
   RocksDBKeyBounds bounds = RocksDBKeyBounds::CollectionDocuments(_objectId);
   rocksdb::Slice b = bounds.start(), e = bounds.end();
-  db->CompactRange(opts, &b, &e);
+  db->CompactRange(opts, bounds.columnFamily(), &b, &e);
 
   READ_LOCKER(guard, _indexesLock);
   for (std::shared_ptr<Index> i : _indexes) {
