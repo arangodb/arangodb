@@ -190,10 +190,21 @@ AqlItemBlock* EnumerateCollectionBlock::getSome(size_t,  // atLeast,
     TRI_IF_FAILURE("EnumerateCollectionBlock::moreDocuments") {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
     }
-    
-    bool tmp = _cursor->nextDocument([&](DocumentIdentifierToken const&, VPackSlice slice) {
-      _documentProducer(res.get(), slice, curRegs, send);
-    }, atMost);
+   
+    bool tmp;
+    if (produceResult()) {
+      // properly build up results by fetching the actual documents
+      // using nextDocument()
+      tmp = _cursor->nextDocument([&](DocumentIdentifierToken const&, VPackSlice slice) {
+        _documentProducer(res.get(), slice, curRegs, send);
+      }, atMost);
+    } else {
+      // performance optimization: we do not need the documents at all,
+      // so just call next()
+      tmp = _cursor->next([&](DocumentIdentifierToken const&) {
+        _documentProducer(res.get(), VPackSlice::nullSlice(), curRegs, send);
+      }, atMost);
+    }
     if (!tmp) {
       TRI_ASSERT(!_cursor->hasMore());
     }

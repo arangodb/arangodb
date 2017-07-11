@@ -47,6 +47,9 @@ class DocumentProducingBlock {
   DocumentProducingBlock(DocumentProducingNode const* node, transaction::Methods* trx);
   virtual ~DocumentProducingBlock() = default;
 
+ public:
+  bool produceResult() const { return _produceResult; }
+
  private:
   DocumentProducingFunction buildCallback() const;
 
