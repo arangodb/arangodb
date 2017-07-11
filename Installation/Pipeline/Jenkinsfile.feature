@@ -548,14 +548,12 @@ def jslint() {
 def jslintStep(edition) {
     def os = 'linux'
 
-    if (runJslint) {
-        return {
-            node(os) {
-                echo "Running jslint test"
+    return {
+        node(os) {
+            echo "Running jslint test"
 
-                unstashBinaries(edition, os)
-                jslint()
-            }
+            unstashBinaries(edition, os)
+            jslint()
         }
     }
 }
@@ -841,6 +839,7 @@ try {
     }
 }
 catch (hudson.AbortException ae) {
+    echo exc.toString()
     throw ae
 }
 catch (exc) {
@@ -858,6 +857,7 @@ try {
     }
 }
 catch (hudson.AbortException ae) {
+    echo exc.toString()
     throw ae
 }
 catch (exc) {
@@ -873,6 +873,7 @@ if (! fullParallel) {
         }
     }
     catch (hudson.AbortException ae) {
+        echo exc.toString()
         throw ae
     }
     catch (exc) {
@@ -887,6 +888,7 @@ if (! fullParallel) {
         }
     }
     catch (hudson.AbortException ae) {
+        echo exc.toString()
         throw ae
     }
     catch (exc) {
@@ -901,6 +903,7 @@ if (! fullParallel) {
         }
     }
     catch (hudson.AbortException ae) {
+        echo exc.toString()
         throw ae
     }
     catch (exc) {
@@ -915,6 +918,7 @@ if (! fullParallel) {
         }
     }
     catch (hudson.AbortException ae) {
+        echo exc.toString()
         throw ae
     }
     catch (exc) {
@@ -930,6 +934,7 @@ try {
     }
 }
 catch (hudson.AbortException ae) {
+    echo exc.toString()
     throw ae
 }
 catch (exc) {
