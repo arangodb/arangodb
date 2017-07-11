@@ -1452,13 +1452,11 @@ OperationResult transaction::Methods::insertLocal(
   }
 
   if (res.ok() && _state->isDBServer()) {
-    // Now see whether or not we have to do synchronous replication:
-    bool doingSynchronousReplication = false;
-
     // Now replicate the same operation on all followers:
     auto const& followerInfo = collection->followers();
     std::shared_ptr<std::vector<ServerID> const> followers = followerInfo->get();
-    doingSynchronousReplication = !isFollower && followers->size() > 0;
+    // Now see whether or not we have to do synchronous replication:
+    bool doingSynchronousReplication = !isFollower && followers->size() > 0;
 
     if (doingSynchronousReplication) {
       // In the multi babies case res is always TRI_ERROR_NO_ERROR if we
@@ -1800,11 +1798,10 @@ OperationResult transaction::Methods::modifyLocal(
 
   // Now see whether or not we have to do synchronous replication:
   if (res.ok() && _state->isDBServer()) {
-    bool doingSynchronousReplication = false;
     // Now replicate the same operation on all followers:
     auto const& followerInfo = collection->followers();
     std::shared_ptr<std::vector<ServerID> const> followers = followerInfo->get();
-    doingSynchronousReplication = !isFollower && followers->size() > 0;
+    bool doingSynchronousReplication = !isFollower && followers->size() > 0;
 
     if (doingSynchronousReplication) {
       // In the multi babies case res is always TRI_ERROR_NO_ERROR if we
@@ -2083,10 +2080,9 @@ OperationResult transaction::Methods::removeLocal(
   // Now see whether or not we have to do synchronous replication:
   if (res.ok() && _state->isDBServer()) {
     // Now replicate the same operation on all followers:
-    bool doingSynchronousReplication = false;
     auto const& followerInfo = collection->followers();
     std::shared_ptr<std::vector<ServerID> const> followers = followerInfo->get();
-    doingSynchronousReplication = !isFollower && followers->size() > 0;
+    bool doingSynchronousReplication = !isFollower && followers->size() > 0;
 
     if (doingSynchronousReplication) {
       // In the multi babies case res is always TRI_ERROR_NO_ERROR if we
