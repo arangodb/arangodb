@@ -683,10 +683,10 @@ def testStepParallel(osList, modeList) {
     }
 
     if (runJslint && osList.contains('linux')) {
-        if (modeList.contains('enterprise') {
+        if (modeList.contains('enterprise')) {
             branches['jslint'] = jslintStep('enterprise')
         }
-        else if (modeList.contains('community') {
+        else if (modeList.contains('community')) {
             branches['jslint'] = jslintStep('community')
         }
     }
