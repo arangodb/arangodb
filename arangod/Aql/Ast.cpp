@@ -2112,7 +2112,8 @@ bool Ast::populateSingleAttributeAccess(AstNode const* node,
 }
 
 /// @brief checks if the only references to the specified variable are
-/// attribute accesses to the specified attribute
+/// attribute accesses to the specified attribute. all other variables
+/// used in the expression are ignored and will not influence the result!
 bool Ast::variableOnlyUsedForSingleAttributeAccess(AstNode const* node,
                                                    Variable const* variable,
                                                    std::vector<std::string> const& attributeName) {
@@ -2141,10 +2142,7 @@ bool Ast::variableOnlyUsedForSingleAttributeAccess(AstNode const* node,
         THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
       }
 
-      if (v->id != variable->id) {
-        // not our variable
-        result = false;
-      } else {
+      if (v->id == variable->id) {
         // the variable we are looking for
         if (attributePath.size() != attributeName.size()) {
           // different attribute

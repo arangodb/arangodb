@@ -100,9 +100,6 @@ void useIndexesRule(Optimizer*, std::unique_ptr<ExecutionPlan>, OptimizerRule co
 /// @brief try to use the index for sorting
 void useIndexForSortRule(Optimizer*, std::unique_ptr<ExecutionPlan>, OptimizerRule const*);
 
-// simplify an EnumerationCollectionNode that fetches an entire document to a projection of this document
-void reduceExtractionToProjectionRule(Optimizer*, std::unique_ptr<ExecutionPlan>, OptimizerRule const*);
-
 /// @brief try to remove filters which are covered by indexes
 void removeFiltersCoveredByIndexRule(Optimizer*, std::unique_ptr<ExecutionPlan>,
                                      OptimizerRule const*);

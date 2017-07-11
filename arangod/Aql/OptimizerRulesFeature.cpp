@@ -204,11 +204,6 @@ void OptimizerRulesFeature::addRules() {
   registerRule("use-index-for-sort", useIndexForSortRule,
                OptimizerRule::useIndexForSortRule_pass6, DoesNotCreateAdditionalPlans, CanBeDisabled);
   
-  // simplify an EnumerationCollectionNode that fetches an
-  // entire document to a projection of this document
-  registerRule("reduce-extraction-to-projection", reduceExtractionToProjectionRule, OptimizerRule::reduceExtractionToProjectionRule_pass6,
-               DoesNotCreateAdditionalPlans, CanBeDisabled);
-
   // sort in-values in filters (note: must come after
   // remove-filter-covered-by-index rule)
   registerRule("sort-in-values", sortInValuesRule, OptimizerRule::sortInValuesRule_pass6,

@@ -38,11 +38,8 @@ DocumentProducingBlock::DocumentProducingBlock(DocumentProducingNode const* node
     : _trxPtr(trx),
       _node(node),
       _produceResult(dynamic_cast<ExecutionNode const*>(_node)->isVarUsedLater(_node->outVariable())),
-      _useRawDocumentPointers(false && EngineSelectorFeature::ENGINE->useRawDocumentPointers()),
+      _useRawDocumentPointers(EngineSelectorFeature::ENGINE->useRawDocumentPointers()),
       _documentProducer(buildCallback()) {
-  // TODO: FIXME: we want to optimize here. however, if we do not copy the
-  // data out, some other places turn it into a VPackValueType::External,
-  // and many other functions will fail as a consequence
 }
 
 DocumentProducingBlock::DocumentProducingFunction DocumentProducingBlock::buildCallback() const {

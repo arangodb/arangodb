@@ -1131,29 +1131,6 @@ void arangodb::aql::moveFiltersUpRule(Optimizer* opt,
   opt->addPlan(std::move(plan), rule, modified);
 }
 
-class AttributeAccessReplacer final : public WalkerWorker<ExecutionNode> {
- public:
-  AttributeAccessReplacer(Variable const* variable, std::vector<std::string> const& attribute)
-      : _variable(variable), _attribute(attribute) {
-    TRI_ASSERT(_variable != nullptr);
-    TRI_ASSERT(!_attribute.empty());
-  }
-
-  bool before(ExecutionNode* en) override final {
-    if (en->getType() == EN::CALCULATION) {
-      auto node = static_cast<CalculationNode*>(en);
-      node->expression()->replaceAttributeAccess(_variable, _attribute);
-    }
-
-    // always continue
-    return false;
-  }
-
- private:
-  Variable const* _variable;
-  std::vector<std::string> _attribute;
-};
-
 class arangodb::aql::RedundantCalculationsReplacer final
     : public WalkerWorker<ExecutionNode> {
  public:
@@ -1950,108 +1927,6 @@ void arangodb::aql::useIndexForSortRule(Optimizer* opt,
     }
   }
 
-  opt->addPlan(std::move(plan), rule, modified);
-}
-
-// simplify an EnumerationCollectionNode that fetches an entire document to a projection of this document
-void arangodb::aql::reduceExtractionToProjectionRule(Optimizer* opt, 
-                                                     std::unique_ptr<ExecutionPlan> plan, 
-                                                     OptimizerRule const* rule) {
-  // These are all the nodes where we start traversing (including all
-  // subqueries)
-  SmallVector<ExecutionNode*>::allocator_type::arena_type a;
-  SmallVector<ExecutionNode*> nodes{a};
-  
-  std::vector<ExecutionNode::NodeType> const types = {ExecutionNode::ENUMERATE_COLLECTION}; //ENUMERATE_COLLECTION, ExecutionNode::INDEX}; 
-  plan->findNodesOfType(nodes, types, true);
-
-  bool modified = false;
-  std::unordered_set<Variable const*> vars;
-  std::vector<std::string> attributeNames;
-
-  for (auto const& n : nodes) {
-    bool stop = false;
-    bool optimize = false;
-    attributeNames.clear();
-    DocumentProducingNode* e = dynamic_cast<DocumentProducingNode*>(n);
-    if (e == nullptr) {
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "cannot convert node to DocumentProducingNode");
-    }
-
-    Variable const* v = e->outVariable();
-    Variable const* replaceVar = nullptr;
-
-    ExecutionNode* current = n->getFirstParent();
-    while (current != nullptr) {
-      if (current->getType() == EN::CALCULATION) {
-        Expression* exp = static_cast<CalculationNode*>(current)->expression();
-
-        if (exp != nullptr) {
-          AstNode const* node = exp->node();
-          vars.clear();
-          current->getVariablesUsedHere(vars);
-            
-          if (vars.find(v) != vars.end()) {
-            if (attributeNames.empty()) {
-              vars.clear();
-              current->getVariablesUsedHere(vars);
-              
-              if (node != nullptr) {
-                if (Ast::populateSingleAttributeAccess(node, v, attributeNames)) {
-                  replaceVar = static_cast<CalculationNode*>(current)->outVariable();
-                  optimize = true;
-                  TRI_ASSERT(!attributeNames.empty());
-                } else {
-                  stop = true;
-                  break;
-                }
-              } else {
-                stop = true;
-                break;
-              }
-            } else if (node != nullptr) {
-              if (!Ast::variableOnlyUsedForSingleAttributeAccess(node, v, attributeNames)) {
-                stop = true;
-                break;
-              }
-            } else {
-            // don't know what to do
-              stop = true;
-              break;
-            }
-          }
-        }
-      } else {
-        vars.clear();
-        current->getVariablesUsedHere(vars);
-
-        if (vars.find(v) != vars.end()) {
-          // original variable is still used here
-          stop = true;
-          break;
-        }
-      }
-
-      if (stop) {
-        break;
-      }
-
-      current = current->getFirstParent();
-    }
-
-    if (optimize && !stop) {
-      TRI_ASSERT(replaceVar != nullptr);
-
-      AttributeAccessReplacer finder(v, attributeNames);
-      plan->root()->walk(&finder);
-      
-      std::reverse(attributeNames.begin(), attributeNames.end());
-      e->setProjection(std::move(attributeNames));
-
-      modified = true;
-    }
-  }
-    
   opt->addPlan(std::move(plan), rule, modified);
 }
 
