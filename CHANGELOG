@@ -1,3 +1,11 @@
+v3.1.25 (2017-07-11)
+--------------------
+
+* fixed ID lookup for secondaries
+
+* removed secondaries from local and distributed cluster deployments
+
+
 v3.1.24 (2017-07-04)
 --------------------
 

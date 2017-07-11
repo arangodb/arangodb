@@ -35,6 +35,7 @@ var actions = require('@arangodb/actions');
 var cluster = require('@arangodb/cluster');
 //var internal = require('internal');
 var _ = require('lodash');
+var fetchKey = require('@arangodb/cluster').fetchKey;
 
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief was docuBlock JSF_cluster_test_GET
@@ -512,13 +513,42 @@ actions.defineHttp({
       return;
     }
 
+    let dbservers = ArangoAgency.get('Plan/DBServers/' + body.primary).arango.Plan.DBservers;
+    let sIDs = ArangoAgency.get('Target/MapUniqueToShortID').arango.Target.MapUniqueToShortID;
+
+    let id = body.primary;
+    let nid = body.newSecondary;
+
+    if (fetchKey(dbservers, id) === undefined) {
+      for (var sid in sIDs) {
+        if(sIDs[sid].ShortName === id) {
+          id = sid;
+          break;
+        }
+      }
+      actions.resultError(req, res, actions.HTTP_NOT_FOUND, 0,
+        'Primary with the given ID is not configured in Agency.');
+      return;
+    }
+
+    if (fetchKey(dbservers, nid) === undefined) {
+      for (sid in sIDs) {
+        if(sIDs[sid].ShortName === nid) {
+          nid = sid;
+          break;
+        }
+      }
+      actions.resultError(req, res, actions.HTTP_NOT_FOUND, 0,
+        'Primary with the given ID is not configured in Agency.');
+      return;
+    }
+
     try {
       var oldValue;
       try {
-        oldValue = ArangoAgency.get('Plan/DBServers/' + body.primary, false,
-                                    false);
-        if (oldValue.arango.Plan.DBServers.hasOwnProperty(body.primary)) {
-          oldValue = oldValue.arango.Plan.DBServers[body.primary];
+        oldValue = ArangoAgency.get('Plan/DBServers/' + id, false, false);
+        if (oldValue.arango.Plan.DBServers.hasOwnProperty(id)) {
+          oldValue = oldValue.arango.Plan.DBServers[id];
         } else {
           throw true;
         }
@@ -535,8 +565,7 @@ actions.defineHttp({
         return;
       }
       try {
-        ArangoAgency.set('Plan/DBServers/' + body.primary, body.newSecondary,
-          0);
+        ArangoAgency.set('Plan/DBServers/' + id, nid, 0);
       } catch (e2) {
         actions.resultError(req, res, actions.HTTP_SERVER_ERROR, 0,
           'Cannot change secondary of given primary.');
@@ -693,41 +722,71 @@ actions.defineHttp({
       return;
     }
 
+    let dbservers = ArangoAgency.get('Plan/DBServers/' + body.primary).arango.Plan.DBservers;
+    let sIDs = ArangoAgency.get('Target/MapUniqueToShortID').arango.Target.MapUniqueToShortID;
+
+    let id = body.primary;
+    let secid = body.secondary;
+
+    if (fetchKey(dbservers, id) === undefined) {
+      for (var sid in sIDs) {
+        if(sIDs[sid].ShortName === id) {
+          id = sid;
+          break;
+        }
+      }
+      actions.resultError(req, res, actions.HTTP_NOT_FOUND, 0,
+        'Primary with the given ID is not configured in Agency.');
+      return;
+    }
+
+    if (fetchKey(dbservers, secid) === undefined) {
+      for (sid in sIDs) {
+        if(sIDs[sid].ShortName === secid) {
+          secid = sid;
+          break;
+        }
+      }
+      actions.resultError(req, res, actions.HTTP_NOT_FOUND, 0,
+        'Primary with the given ID is not configured in Agency.');
+      return;
+    }
+    
     try {
       var oldValue;
       try {
-        oldValue = ArangoAgency.get('Plan/DBServers/' + body.primary, false,
+        oldValue = ArangoAgency.get('Plan/DBServers/' + id, false,
           false);
-        oldValue = oldValue.arango.Plan.DBservers[body.primary];
+        oldValue = oldValue.arango.Plan.DBservers[id];
       } catch (e1) {
         actions.resultError(req, res, actions.HTTP_NOT_FOUND, 0,
           'Primary with the given ID is not configured in Agency.');
         return;
       }
-      oldValue = oldValue['Plan/DBServers/' + body.primary];
-      if (oldValue !== body.secondary) {
+      oldValue = oldValue['Plan/DBServers/' + id];
+      if (oldValue !== secid) {
         actions.resultError(req, res, actions.HTTP_PRECONDITION_FAILED, 0,
           'Primary does not have the given secondary as ' +
           'its secondary, current value: ' + oldValue);
         return;
       }
       try {
-        ArangoAgency.remove('Plan/DBServers/' + body.primary, false);
+        ArangoAgency.remove('Plan/DBServers/' + id, false);
       } catch (e2) {
         actions.resultError(req, res, actions.HTTP_SERVER_ERROR, 0,
           'Cannot remove old primary entry.');
         return;
       }
       try {
-        ArangoAgency.set('Plan/DBServers/' + body.secondary,
-          body.primary, 0);
+        ArangoAgency.set('Plan/DBServers/' + secid,
+          id, 0);
       } catch (e3) {
         actions.resultError(req, res, actions.HTTP_SERVER_ERROR, 0,
           'Cannot set secondary as primary.');
         // Try to reset the old primary:
         try {
-          ArangoAgency.set('Plan/DBServers/' + body.primary,
-            body.secondary, 0);
+          ArangoAgency.set('Plan/DBServers/' + id,
+            secid, 0);
         } catch (e4) {
           actions.resultError(req, res, actions.HTTP_SERVER_ERROR, 0,
             'Cannot set secondary as primary, could not ' +
@@ -738,16 +797,16 @@ actions.defineHttp({
 
       try {
         // Now change all responsibilities for shards to the "new" primary
-        // body.secondary:
-        changeAllShardReponsibilities(body.primary, body.secondary);
+        // secid:
+        changeAllShardReponsibilities(id, secid);
       } catch (e5) {
         actions.resultError(req, res, actions.HTTP_SERVER_ERROR, 0,
           'Could not change responsibilities for shards.');
         // Try to reset the old primary:
         try {
-          ArangoAgency.set('Plan/DBServers/' + body.primary,
-            body.secondary, 0);
-          ArangoAgency.remove('Plan/DBServers/' + body.secondary);
+          ArangoAgency.set('Plan/DBServers/' + id,
+            secid, 0);
+          ArangoAgency.remove('Plan/DBServers/' + secid);
         } catch (e4) {
           actions.resultError(req, res, actions.HTTP_SERVER_ERROR, 0,
             'Cannot change responsibility for shards and ' +
@@ -764,8 +823,7 @@ actions.defineHttp({
         return;
       }
 
-      actions.resultOk(req, res, actions.HTTP_OK, {primary: body.secondary,
-      secondary: body.primary});
+      actions.resultOk(req, res, actions.HTTP_OK, {primary: secid, secondary: id});
     } finally {
       ArangoAgency.unlockWrite('Plan', timeout);
     }

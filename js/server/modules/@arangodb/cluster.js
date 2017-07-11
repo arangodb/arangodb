@@ -2113,6 +2113,7 @@ exports.moveShard = moveShard;
 exports.supervisionState = supervisionState;
 exports.waitForSyncRepl = waitForSyncRepl;
 exports.endpoints = endpoints;
+exports.fetchKey = fetchKey;
 
 exports.executePlanForDatabases = executePlanForDatabases;
 exports.executePlanForCollections = executePlanForCollections;
