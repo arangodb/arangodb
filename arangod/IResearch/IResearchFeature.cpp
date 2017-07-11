@@ -36,7 +36,8 @@ using namespace arangodb::iresearch;
 using namespace arangodb::options;
 
 IResearchFeature::IResearchFeature(arangodb::application_features::ApplicationServer* server)
-    : ApplicationFeature(server, "IResearch") {
+  : ApplicationFeature(server, "IResearch"),
+    _running(false) {
   setOptional(true);
   requiresElevatedPrivileges(false);
   startsAfter("ViewTypes");
@@ -50,13 +51,20 @@ IResearchFeature::IResearchFeature(arangodb::application_features::ApplicationSe
   startsAfter("TransactionManager");
 }
 
-void IResearchFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
+void IResearchFeature::beginShutdown() {
+  _running = false;
+  ApplicationFeature::beginShutdown();
 }
 
-void IResearchFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
+void IResearchFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
+  _running = false;
+  ApplicationFeature::collectOptions(options);
 }
 
 void IResearchFeature::prepare() {
+  _running = false;
+  ApplicationFeature::prepare();
+
   // load all known codecs
   ::iresearch::formats::init();
 
@@ -67,8 +75,35 @@ void IResearchFeature::prepare() {
   ViewTypesFeature::registerViewImplementation(
      IResearchView::type(),
      IResearchView::make
-   );
+  );
+}
+
+bool IResearchFeature::running() const noexcept {
+  return _running;
 }
 
 void IResearchFeature::start() {
+  ApplicationFeature::start();
+  _running = true;
 }
+
+void IResearchFeature::stop() {
+  _running = false;
+  ApplicationFeature::stop();
+}
+
+void IResearchFeature::unprepare() {
+  _running = false;
+  ApplicationFeature::unprepare();
+}
+
+void IResearchFeature::validateOptions(
+    std::shared_ptr<ProgramOptions> options
+) {
+  _running = false;
+  ApplicationFeature::validateOptions(options);
+}
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                       END-OF-FILE
+// -----------------------------------------------------------------------------
