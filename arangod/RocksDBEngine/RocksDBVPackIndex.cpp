@@ -1407,7 +1407,7 @@ int RocksDBVPackIndex::cleanup() {
   RocksDBKeyBounds bounds = getBounds();
   rocksdb::Slice b = bounds.start(), e = bounds.end();
   LOG_TOPIC(DEBUG, Logger::FIXME) << "compacting index range " << bounds;
-  db->CompactRange(opts, &b, &e);
+  db->CompactRange(opts, bounds.columnFamily(), &b, &e);
   return TRI_ERROR_NO_ERROR;
 }
 
