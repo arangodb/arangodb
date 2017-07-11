@@ -441,14 +441,26 @@ void Agent::sendAppendEntriesRPC() {
       term_t t(0);
 
       index_t lastConfirmed, commitIndex;
+      auto startTime = system_clock::now();
       {
         MUTEX_LOCKER(ioLocker, _ioLock);
         t = this->term();
         lastConfirmed = _confirmed[followerId];
         commitIndex = _commitIndex;
       }
+      duration<double> lockTime = system_clock::now() - startTime;
+      if (lockTime.count() > 0.1) {
+        LOG_TOPIC(WARN, Logger::AGENCY)
+          << "Reading lastConfirmed took too long: " << lockTime.count();
+      }
 
       std::vector<log_t> unconfirmed = _state.get(lastConfirmed);
+
+      lockTime = system_clock::now() - startTime;
+      if (lockTime.count() > 0.2) {
+        LOG_TOPIC(WARN, Logger::AGENCY)
+          << "Finding unconfirmed entries took too long: " << lockTime.count();
+      }
 
       // Note that despite compaction this vector can never be empty, since
       // any compaction keeps at least one active log entry!
