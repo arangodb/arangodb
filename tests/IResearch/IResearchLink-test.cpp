@@ -29,6 +29,7 @@
 #include "utils/utf8_path.hpp"
 
 #include "Basics/files.h"
+#include "IResearch/IResearchFeature.h"
 #include "IResearch/IResearchLink.h"
 #include "Logger/Logger.h"
 #include "Logger/LogTopic.h"
@@ -59,15 +60,22 @@ struct IResearchLinkSetup {
     arangodb::application_features::ApplicationServer::server->addFeature(
       feature = new arangodb::ViewTypesFeature(arangodb::application_features::ApplicationServer::server)
     );
-    feature->start();
     feature->prepare();
+    feature->start();
 
     // QueryRegistryFeature
     arangodb::application_features::ApplicationServer::server->addFeature(
       feature = new arangodb::QueryRegistryFeature(&server)
     );
-    feature->start();
     feature->prepare();
+    feature->start();
+
+    // IResearchFeature
+    arangodb::application_features::ApplicationServer::server->addFeature(
+      feature = new arangodb::iresearch::IResearchFeature(&server)
+    );
+    feature->prepare();
+    feature->start();
 
     arangodb::ViewTypesFeature::registerViewImplementation(
       arangodb::iresearch::IResearchView::type(),

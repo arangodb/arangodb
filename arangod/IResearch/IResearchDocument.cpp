@@ -880,7 +880,7 @@ bool fromFCall(
 ) {
   TRI_ASSERT(arangodb::aql::NODE_TYPE_ARRAY == args.type);
   irs::sort::ptr scorer;
-std::string n = name;
+
   switch (args.numMembers()) {
     case 0:
       scorer = irs::scorers::get(name, irs::string_ref::nil);

@@ -32,6 +32,7 @@
 #include "utils/utf8_path.hpp"
 
 #include "IResearchDocument.h"
+#include "IResearchFeature.h"
 #include "IResearchLink.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
@@ -1762,10 +1763,9 @@ bool IResearchView::linkRegister(LinkPtr& ptr) {
 
   // do not allow duplicate registration
   if (registered) {
-    auto* server = arangodb::application_features::ApplicationServer::server;
+    auto* feature = arangodb::application_features::ApplicationServer::getFeature<arangodb::iresearch::IResearchFeature>("IResearch");
 
-    if (server
-        && arangodb::application_features::ServerState::IN_WAIT == server->state()) {
+    if (feature && feature->running()) {
       auto res = _logicalView->getPhysical()->persistProperties(); // persist '_meta' definition
 
       if (res.ok()) {

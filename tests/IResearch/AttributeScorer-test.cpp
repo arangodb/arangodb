@@ -29,6 +29,7 @@
 #include "Aql/SortCondition.h"
 #include "GeneralServer/AuthenticationFeature.h"
 #include "IResearch/AttributeScorer.h"
+#include "IResearch/IResearchFeature.h"
 #include "IResearch/IResearchKludge.h"
 #include "IResearch/IResearchView.h"
 #include "RestServer/AqlFeature.h"
@@ -137,6 +138,7 @@ struct IResearchAttributeScorerSetup {
     features.emplace_back(new arangodb::AuthenticationFeature(arangodb::application_features::ApplicationServer::server), true);
     features.emplace_back(new arangodb::DatabaseFeature(arangodb::application_features::ApplicationServer::server), false);
     features.emplace_back(new arangodb::FeatureCacheFeature(arangodb::application_features::ApplicationServer::server), true);
+    features.emplace_back(new arangodb::iresearch::IResearchFeature(arangodb::application_features::ApplicationServer::server), true);
     features.emplace_back(new arangodb::ViewTypesFeature(arangodb::application_features::ApplicationServer::server), true);
 
     arangodb::ViewTypesFeature::registerViewImplementation(
