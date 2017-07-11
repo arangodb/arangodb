@@ -429,6 +429,9 @@ ERROR_AGENCY_INFORM_MUST_CONTAIN_TERM,20012,"Inform message must contain uint pa
 ERROR_AGENCY_INFORM_MUST_CONTAIN_ID,20013,"Inform message must contain string parameter 'id'","The inform message in the agency must contain a string parameter 'id'."
 ERROR_AGENCY_INFORM_MUST_CONTAIN_ACTIVE,20014,"Inform message must contain array 'active'","The inform message in the agency must contain an array 'active'."
 ERROR_AGENCY_INFORM_MUST_CONTAIN_POOL,20015,"Inform message must contain object 'pool'","The inform message in the agency must contain an object 'pool'."
+ERROR_AGENCY_INFORM_MUST_CONTAIN_MIN_PING,20016,"Inform message must contain object 'min ping'","The inform message in the agency must contain an object 'min ping'."
+ERROR_AGENCY_INFORM_MUST_CONTAIN_MAX_PING,20017,"Inform message must contain object 'max ping'","The inform message in the agency must contain an object 'max ping'."
+ERROR_AGENCY_INFORM_MUST_CONTAIN_TIMEOUT_MULT,20018,"Inform message must contain object 'timeoutMult'","The inform message in the agency must contain an object 'timeoutMult'."
 ERROR_AGENCY_INQUIRE_CLIENT_ID_MUST_BE_STRING,20020,"Inquiry failed","Inquiry by clientId failed"
 ERROR_AGENCY_CANNOT_REBUILD_DBS,20021,"Cannot rebuild readDB and spearHead","Will be raised if the readDB or the spearHead cannot be rebuilt from the replicated log."
 

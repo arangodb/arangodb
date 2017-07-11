@@ -25,6 +25,14 @@ are [sparse](WhichIndex.md) by definition.
 
 **unique** can be *true* or *false* and is supported by *hash* or *skiplist*
 
+**deduplicate** can be *true* or *false* and is supported by array indexes of
+type *hash* or *skiplist*. It controls whether inserting duplicate index values 
+from the same document into a unique array index will lead to a unique constraint
+error or not. The default value is *true*, so only a single instance of each
+non-unique index value will be inserted into the index per document. Trying to
+insert a value into the index that already exists in the index will always fail,
+regardless of the value of this attribute.
+
 Calling this method returns an index object. Whether or not the index
 object existed before the call is indicated in the return attribute
 *isNewlyCreated*.

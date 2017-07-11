@@ -56,7 +56,7 @@ struct Options;
 }
 class TransactionCollection;
 class RocksDBMethods;
-  
+
 /// @brief transaction type
 class RocksDBTransactionState final : public TransactionState {
   friend class RocksDBMethods;
@@ -64,7 +64,7 @@ class RocksDBTransactionState final : public TransactionState {
   friend class RocksDBGlobalMethods;
   friend class RocksDBTrxMethods;
   friend class RocksDBBatchedMethods;
-  
+
  public:
   RocksDBTransactionState(TRI_vocbase_t* vocbase, transaction::Options const&);
   ~RocksDBTransactionState();
@@ -106,9 +106,22 @@ class RocksDBTransactionState final : public TransactionState {
   RocksDBMethods* rocksdbMethods();
 
   uint64_t sequenceNumber() const;
-  
-private:
-  
+
+  static RocksDBTransactionState* toState(transaction::Methods* trx) {
+    TRI_ASSERT(trx != nullptr);
+    TransactionState* state = trx->state();
+    TRI_ASSERT(state != nullptr);
+    return static_cast<RocksDBTransactionState*>(state);
+  }
+
+  static RocksDBMethods* toMethods(transaction::Methods* trx) {
+    TRI_ASSERT(trx != nullptr);
+    TransactionState* state = trx->state();
+    TRI_ASSERT(state != nullptr);
+    return static_cast<RocksDBTransactionState*>(state)->rocksdbMethods();
+  }
+
+ private:
   void createTransaction();
   arangodb::Result internalCommit();
 
@@ -135,7 +148,7 @@ private:
   /// Last collection used for transaction
   TRI_voc_cid_t _lastUsedCollection;
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-  /// store the number of log entries in WAL 
+  /// store the number of log entries in WAL
   uint64_t _numLogdata = 0;
 #endif
 };

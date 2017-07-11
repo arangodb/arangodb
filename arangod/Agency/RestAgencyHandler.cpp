@@ -131,7 +131,8 @@ RestStatus RestAgencyHandler::handleTransient() {
   
   // Leadership established?
   auto s = std::chrono::system_clock::now();
-  std::chrono::duration<double> timeout(_agent->config().maxPing());
+  std::chrono::duration<double> timeout(_agent->config().minPing() *
+                                        _agent->config().timeoutMult());
   while (_agent->size() > 1 && _agent->leaderID() == NO_LEADER) {
     if ((std::chrono::system_clock::now() - s) > timeout) {
       Builder body;
@@ -288,7 +289,8 @@ RestStatus RestAgencyHandler::handleWrite() {
 
   // Leadership established?
   auto s = std::chrono::system_clock::now();
-  std::chrono::duration<double> timeout(_agent->config().maxPing());
+  std::chrono::duration<double> timeout(_agent->config().minPing() *
+                                        _agent->config().timeoutMult());
   while (_agent->size() > 1 && _agent->leaderID() == NO_LEADER) {
     if ((std::chrono::system_clock::now() - s) > timeout) {
       Builder body;
@@ -448,7 +450,8 @@ RestStatus RestAgencyHandler::handleTransact() {
 
   // Leadership established?
   auto s = std::chrono::system_clock::now();
-  std::chrono::duration<double> timeout(_agent->config().maxPing());
+  std::chrono::duration<double> timeout(_agent->config().minPing() *
+                                        _agent->config().timeoutMult());
   while (_agent->size() > 1 && _agent->leaderID() == NO_LEADER) {
     if ((std::chrono::system_clock::now() - s) > timeout) {
       Builder body;
@@ -529,7 +532,8 @@ inline RestStatus RestAgencyHandler::handleInquire() {
   
   // Leadership established?
   auto s = std::chrono::system_clock::now();  
-  std::chrono::duration<double> timeout(_agent->config().maxPing());
+  std::chrono::duration<double> timeout(_agent->config().minPing() *
+                                        _agent->config().timeoutMult());
   while (_agent->size() > 1 && _agent->leaderID() == NO_LEADER) {
     if ((std::chrono::system_clock::now() - s) > timeout) {
       Builder body;
@@ -593,7 +597,8 @@ inline RestStatus RestAgencyHandler::handleRead() {
     }
 
     auto s = std::chrono::system_clock::now();  // Leadership established?
-    std::chrono::duration<double> timeout(_agent->config().maxPing());
+    std::chrono::duration<double> timeout(_agent->config().minPing() *
+                                          _agent->config().timeoutMult());
     while (_agent->size() > 1 && _agent->leaderID() == NO_LEADER) {
       if ((std::chrono::system_clock::now() - s) > timeout) {
         Builder body;

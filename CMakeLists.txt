@@ -461,7 +461,6 @@ else ()
   set(BASE_FLAGS "${Vc_COMPILE_FLAGS} ${BASE_FLAGS}")
 endif ()
 
-
 ################################################################################
 ## BACKTRACE
 ################################################################################
@@ -514,6 +513,9 @@ option(USE_MAINTAINER_MODE
 
 if (USE_MAINTAINER_MODE)
   add_definitions("-DARANGODB_ENABLE_MAINTAINER_MODE=1")
+  if (CMAKE_COMPILER_IS_GNUCC)
+    add_definitions("-D_FORTIFY_SOURCE=2")
+  endif()
 
   find_package(FLEX)
   find_package(BISON)

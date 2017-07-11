@@ -8,6 +8,23 @@
     background: rgba(0, 0, 0, .1) !important;
   }
 
+  input {
+    margin-top: 0;
+  }
+
+  .collection-label {
+    background-color: $c-bluegrey-dark;
+    color: $c-white;
+  }
+
+  .collection-label-first {
+    border-top-left-radius: 3px;
+  }
+
+  .collection-label-last {
+    border-top-right-radius: 3px;
+  }
+
   .pure-table-row {
     border-bottom: 1px solid rgba(255, 255, 255, 1) !important;
 
@@ -22,6 +39,7 @@
   }
 
   .collName {
+    color: $c-bluegrey-dark;
     margin-left: 20px;
   }
 }

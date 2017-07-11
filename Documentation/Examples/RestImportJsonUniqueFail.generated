@@ -9,7 +9,7 @@ x-content-type-options: nosniff
 
 { 
   <span class="hljs-string">"error"</span> : <span class="hljs-literal">true</span>, 
-  <span class="hljs-string">"errorMessage"</span> : <span class="hljs-string">"cannot create document, unique constraint violated"</span>, 
+  <span class="hljs-string">"errorMessage"</span> : <span class="hljs-string">"unique constraint violated"</span>, 
   <span class="hljs-string">"code"</span> : <span class="hljs-number">409</span>, 
   <span class="hljs-string">"errorNum"</span> : <span class="hljs-number">1210</span> 
 }

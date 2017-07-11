@@ -102,6 +102,8 @@ RestStatus RestAgencyPrivHandler::execute() {
         if (_request->requestType() != rest::RequestType::POST) {
           return reportMethodNotAllowed();
         }
+        int64_t senderTimeStamp = 0;
+        readValue("senderTimeStamp", senderTimeStamp);  // ignore if not given
         if (readValue("term", term) && readValue("leaderId", id) &&
             readValue("prevLogIndex", prevLogIndex) &&
             readValue("prevLogTerm", prevLogTerm) &&
@@ -110,15 +112,19 @@ RestStatus RestAgencyPrivHandler::execute() {
               term, id, prevLogIndex, prevLogTerm, leaderCommit,
               _request->toVelocyPackBuilderPtr());
           result.add("success", VPackValue(ret));
+          result.add("senderTimeStamp", VPackValue(senderTimeStamp));
         } else {
           return reportBadQuery();  // bad query
         }
       } else if (suffixes[0] == "requestVote") {  // requestVote
+        int64_t timeoutMult = 1;
+        readValue("timeoutMult", timeoutMult);
         if (readValue("term", term) && readValue("candidateId", id) &&
             readValue("prevLogIndex", prevLogIndex) &&
             readValue("prevLogTerm", prevLogTerm)) {
           priv_rpc_ret_t ret =
-              _agent->requestVote(term, id, prevLogIndex, prevLogTerm, nullptr);
+              _agent->requestVote(term, id, prevLogIndex, prevLogTerm, nullptr,
+                                  timeoutMult);
           result.add("term", VPackValue(ret.term));
           result.add("voteGranted", VPackValue(ret.success));
         }
@@ -128,7 +134,7 @@ RestStatus RestAgencyPrivHandler::execute() {
         }
         if (readValue("term", term) && readValue("agencyId", id)) {
           priv_rpc_ret_t ret = _agent->requestVote(
-              term, id, 0, 0, _request->toVelocyPackBuilderPtr());
+              term, id, 0, 0, _request->toVelocyPackBuilderPtr(), -1);
           result.add("term", VPackValue(ret.term));
           result.add("voteGranted", VPackValue(ret.success));
         } else {

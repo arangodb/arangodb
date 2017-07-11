@@ -31,6 +31,8 @@
 namespace arangodb {
 namespace aql {
 class Optimizer;
+class ExecutionNode;
+class SubqueryNode;
 
 /// @brief adds a SORT operation for IN right-hand side operands
 void sortInValuesRule(Optimizer*, std::unique_ptr<ExecutionPlan>, OptimizerRule const*);
@@ -121,8 +123,12 @@ void distributeInClusterRule(Optimizer*, std::unique_ptr<ExecutionPlan>,
                              OptimizerRule const*);
 
 #ifdef USE_ENTERPRISE
-void distributeInClusterRuleSmartEdgeCollection(Optimizer*, std::unique_ptr<ExecutionPlan>,
-                             OptimizerRule const*);
+void distributeInClusterRuleSmartEdgeCollection(
+    ExecutionPlan*,
+    SubqueryNode* snode,
+    ExecutionNode* node,
+    ExecutionNode* originalParent,
+    bool& wasModified);
 
 /// @brief remove scatter/gather and remote nodes for satellite collections
 void removeSatelliteJoinsRule(Optimizer*, std::unique_ptr<ExecutionPlan>, OptimizerRule const*);
@@ -191,6 +197,15 @@ void patchUpdateStatementsRule(Optimizer*, std::unique_ptr<ExecutionPlan>,
 /// merges filter nodes into graph traversal nodes
 void optimizeTraversalsRule(Optimizer* opt, std::unique_ptr<ExecutionPlan> plan,
                             OptimizerRule const* rule);
+  
+/// @brief removes filter nodes already covered by the traversal and removes unused variables
+void removeFiltersCoveredByTraversal(Optimizer* opt, std::unique_ptr<ExecutionPlan> plan,
+                                     OptimizerRule const* rule);
+
+/// @brief removes redundant path variables, after applying
+/// `removeFiltersCoveredByTraversal`. Should significantly reduce overhead
+void removeTraversalPathVariable(Optimizer* opt, std::unique_ptr<ExecutionPlan> plan,
+                                 OptimizerRule const* rule);
 
 /// @brief prepares traversals for execution (hidden rule)
 void prepareTraversalsRule(Optimizer* opt, std::unique_ptr<ExecutionPlan> plan,

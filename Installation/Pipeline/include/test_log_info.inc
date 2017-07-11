@@ -9,7 +9,5 @@ if [ "$os" == linux ]; then
     echo "CORE PATTERN: `cat /proc/sys/kernel/core_pattern`"
 fi
 
-echo "CORE LIMIT: `ulimit -c`"
-
 echo
 echo "ARANGOD VERSION: `build/bin/arangod --version`"

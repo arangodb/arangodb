@@ -757,25 +757,34 @@ actions.defineHttp({
     let sID = ArangoAgency.get('Target/MapUniqueToShortID').arango.Target.MapUniqueToShortID;
 
     let id = body.primary;
+    let nid = body.newSecondary;
 
     if (fetchKey(dbservers, id) === undefined) {
-
       for (sid in sID) {
         if(sID[sid].ShortName == id) {
           id = sid;
           break;
         }
       }
+      actions.resultError(req, res, actions.HTTP_NOT_FOUND, 0,
+        'Primary with the given ID is not configured in Agency.');
+      return;
+    }
 
-      if (fetchKey(dbservers, id)) {
-        actions.resultError(req, res, actions.HTTP_NOT_FOUND, 0,
-          'Primary with the given ID is not configured in Agency.');
-        return;
-      } 
+    if (fetchKey(dbservers, nid) === undefined) {
+      for (sid in sID) {
+        if(sID[sid].ShortName == nid) {
+          nid = sid;
+          break;
+        }
+      }
+      actions.resultError(req, res, actions.HTTP_NOT_FOUND, 0,
+        'Primary with the given ID is not configured in Agency.');
+      return;
     }
 
     let operations = {};
-    operations['/arango/Plan/DBServers/' + id] = body.newSecondary;
+    operations['/arango/Plan/DBServers/' + id] = nid;
     operations['/arango/Plan/Version'] = {'op': 'increment'};
 
     let preconditions = {};

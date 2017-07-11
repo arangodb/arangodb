@@ -96,7 +96,7 @@ bool AuthInfo::parseUsers(VPackSlice const& slice) {
   _authInfo.clear();
   _authBasicCache.clear();
   for (VPackSlice const& authSlice : VPackArrayIterator(slice)) {
-    VPackSlice const& s = authSlice.resolveExternal();
+    VPackSlice s = authSlice.resolveExternal();
 
     if (s.hasKey("source") && s.get("source").isString() &&
         s.get("source").copyString() == "LDAP") {
@@ -107,9 +107,14 @@ bool AuthInfo::parseUsers(VPackSlice const& slice) {
     }
 
     AuthUserEntry auth = AuthUserEntry::fromDocument(s);
+    // we also need to insert inactive users into the cache here
+    // otherwise all following update/replace/remove operations on the
+    // user will fail
+    // if (auth.isActive()) {
     _authInfo.emplace(auth.username(), std::move(auth));
+    // }
   }
-
+  
   return true;
 }
 
@@ -188,7 +193,7 @@ static VPackBuilder QueryUser(aql::QueryRegistry* queryRegistry,
         (queryResult.code == TRI_ERROR_QUERY_KILLED)) {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_REQUEST_CANCELED);
     }
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_FAILED, "query error");
+    THROW_ARANGO_EXCEPTION_MESSAGE(queryResult.code, "query error");
   }
 
   VPackSlice usersSlice = queryResult.result->slice();
@@ -239,22 +244,21 @@ void AuthInfo::loadFromDB() {
         FeatureCacheFeature::instance()->authenticationFeature()->getHandler());
   }
 
-  {
-    WRITE_LOCKER(writeLocker, _authInfoLock);
-    insertInitial();
-  }
-
   TRI_ASSERT(_queryRegistry != nullptr);
   std::shared_ptr<VPackBuilder> builder = QueryAllUsers(_queryRegistry);
+    
+  WRITE_LOCKER(writeLocker, _authInfoLock);
+  
   if (builder) {
     VPackSlice usersSlice = builder->slice();
-    WRITE_LOCKER(writeLocker, _authInfoLock);
     if (usersSlice.length() == 0) {
       insertInitial();
     } else {
       parseUsers(usersSlice);
     }
     _outdated = false;
+  } else {
+    insertInitial();
   }
 }
 
@@ -281,7 +285,7 @@ void AuthInfo::insertInitial() {
 }
 
 // private, must be called with _authInfoLock in write mode
-// this method can only be called by users with access to the _syste collection
+// this method can only be called by users with access to the _system collection
 Result AuthInfo::storeUserInternal(AuthUserEntry const& entry, bool replace) {
   VPackBuilder data = entry.toVPackBuilder();
 
@@ -293,6 +297,7 @@ Result AuthInfo::storeUserInternal(AuthUserEntry const& entry, bool replace) {
       new transaction::StandaloneContext(vocbase));
   SingleCollectionTransaction trx(ctx, TRI_COL_NAME_USERS,
                                   AccessMode::Type::WRITE);
+  trx.addHint(transaction::Hints::Hint::SINGLE_OPERATION);
 
   Result res = trx.begin();
   if (res.ok()) {
@@ -309,7 +314,11 @@ Result AuthInfo::storeUserInternal(AuthUserEntry const& entry, bool replace) {
       if (userDoc.isExternal()) {
         userDoc = userDoc.resolveExternal();
       }
-      _authInfo.emplace(entry.username(), AuthUserEntry::fromDocument(userDoc));
+      if (!_authInfo.emplace(entry.username(), AuthUserEntry::fromDocument(userDoc)).second) {
+        // insertion should always succeed, but...
+        _authInfo.erase(entry.username());
+        _authInfo.emplace(entry.username(), AuthUserEntry::fromDocument(userDoc));
+      }
     }
   }
   return res;
@@ -416,7 +425,7 @@ static Result UpdateUser(VPackSlice const& user) {
   if (vocbase == nullptr) {
     return Result(TRI_ERROR_INTERNAL);
   }
-
+  
   // we cannot set this execution context, otherwise the transaction
   // will ask us again for permissions and we get a deadlock
   ExecContext* oldExe = ExecContext::CURRENT_EXECCONTEXT;
@@ -427,6 +436,7 @@ static Result UpdateUser(VPackSlice const& user) {
       new transaction::StandaloneContext(vocbase));
   SingleCollectionTransaction trx(ctx, TRI_COL_NAME_USERS,
                                   AccessMode::Type::WRITE);
+  trx.addHint(transaction::Hints::Hint::SINGLE_OPERATION);
 
   Result res = trx.begin();
   if (res.ok()) {
@@ -504,6 +514,7 @@ Result AuthInfo::removeUser(std::string const& user) {
       new transaction::StandaloneContext(vocbase));
   SingleCollectionTransaction trx(ctx, TRI_COL_NAME_USERS,
                                   AccessMode::Type::WRITE);
+  trx.addHint(transaction::Hints::Hint::SINGLE_OPERATION);
 
   Result res = trx.begin();
   if (res.ok()) {
@@ -513,14 +524,14 @@ Result AuthInfo::removeUser(std::string const& user) {
       builder.add(StaticStrings::KeyString, VPackValue(it->second.key()));
       // TODO maybe protect with a revision ID?
     }
-
+  
     OperationResult result =
         trx.remove(TRI_COL_NAME_USERS, builder.slice(), OperationOptions());
     res = trx.finish(result.code);
     if (res.ok()) {
       _authInfo.erase(it);
       reloadAllUsers();
-    }
+    } 
   }
   return res;
 }
@@ -578,7 +589,7 @@ AuthResult AuthInfo::checkPassword(std::string const& username,
     }
   }
 
-  READ_LOCKER(JobGuard, _authInfoLock);
+  READ_LOCKER(readLocker, _authInfoLock);
   AuthResult result(username);
   auto it = _authInfo.find(username);
 
@@ -592,8 +603,10 @@ AuthResult AuthInfo::checkPassword(std::string const& username,
 
     // user authed, add to _authInfo and _users
     if (authResult.source() == AuthSource::LDAP) {
-      READ_UNLOCKER(unlock, _authInfoLock);
-      WRITE_LOCKER(writeGuard, _authInfoLock);
+      // upgrade read-lock to a write-lock
+      readLocker.unlock();
+
+      WRITE_LOCKER(writeLocker, _authInfoLock);
 
       AuthUserEntry entry =
           AuthUserEntry::newUser(username, password, AuthSource::LDAP);
@@ -608,6 +621,12 @@ AuthResult AuthInfo::checkPassword(std::string const& username,
         }
         it = r.first;
       }
+      AuthUserEntry const& auth = it->second;
+      if (auth.isActive()) {
+        result._mustChange = auth.mustChangePassword();
+        result._authorized = auth.checkPassword(password);
+      }
+      return result;
     }  // AuthSource::LDAP
   }
 
