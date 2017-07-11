@@ -536,8 +536,7 @@ def jslint() {
     }
 }
 
-def jslintStep() {
-    def edition = 'community'
+def jslintStep(edition) {
     def os = 'linux'
 
     if (runJslint) {
@@ -683,8 +682,13 @@ def testStepParallel(osList, modeList) {
         }
     }
 
-    if (runJslint && osList.contains('Linux') && modeList.contains('Community')) {
-        branches['jslint'] = jslintStep()
+    if (runJslint && osList.contains('linux')) {
+        if (modeList.contains('enterprise') {
+            branches['jslint'] = jslintStep('enterprise')
+        }
+        else if (modeList.contains('community') {
+            branches['jslint'] = jslintStep('community')
+        }
     }
 
     if (branches.size() > 1) {
