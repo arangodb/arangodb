@@ -79,7 +79,7 @@ struct IResearchViewSetup {
     features.push_back(std::make_pair(new arangodb::RandomFeature(&server), false)); // required by AuthenticationFeature
     features.push_back(std::make_pair(new arangodb::AuthenticationFeature(arangodb::application_features::ApplicationServer::server), true));
     features.push_back(std::make_pair(new arangodb::DatabaseFeature(arangodb::application_features::ApplicationServer::server), false));
-    features.push_back(std::make_pair(new arangodb::DatabasePathFeature(arangodb::application_features::ApplicationServer::server), true));
+    features.push_back(std::make_pair(new arangodb::DatabasePathFeature(arangodb::application_features::ApplicationServer::server), false));
 
     arangodb::ViewTypesFeature::registerViewImplementation(
       arangodb::iresearch::IResearchView::type(),
