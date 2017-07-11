@@ -299,6 +299,7 @@ JOB_NAME: ${env.JOB_NAME}
 Linux: ${useLinux}
 Mac: ${useMac}
 Windows: ${useWindows}
+Build: ${buildExecutable}
 Clean Build: ${cleanBuild}
 Building Community: ${useCommunity}
 Building Enterprise: ${useEnterprise}
@@ -816,6 +817,19 @@ def testResilienceParallel() {
 // --SECTION--                                                          PIPELINE
 // -----------------------------------------------------------------------------
 
+def runStage(stage) {
+    try {
+        stage()
+    }
+    catch (hudson.AbortException ae) {
+        echo exc.toString()
+        throw ae
+    }
+    catch (exc) {
+        echo exc.toString()
+    }
+}
+
 stage('checkout') {
     node('master') {
         checkoutCommunity()
@@ -826,7 +840,7 @@ stage('checkout') {
     }
 }
 
-try {
+runStage {
     if (buildExecutable) {
         stage('build') {
             if (fullParallel) {
@@ -838,15 +852,8 @@ try {
         }
     }
 }
-catch (hudson.AbortException ae) {
-    echo exc.toString()
-    throw ae
-}
-catch (exc) {
-    echo exc.toString()
-}
 
-try {
+runStage {
     stage('tests') {
         if (fullParallel) {
             testStepParallel(['linux', 'mac', 'windows'], ['cluster', 'singleserver'])
@@ -856,89 +863,47 @@ try {
         }
     }
 }
-catch (hudson.AbortException ae) {
-    echo exc.toString()
-    throw ae
-}
-catch (exc) {
-    echo exc.toString()
-}
 
 if (! fullParallel) {
-    try {
+    runStage {
         stage('build mac') {
             if (allBuildsSuccessful) {
                 buildStepParallel(['mac'])
             }
         }
     }
-    catch (hudson.AbortException ae) {
-        echo exc.toString()
-        throw ae
-    }
-    catch (exc) {
-        echo exc.toString()
-    }
 
-    try {
+    runStage {
         stage('tests mac') {
             if (allTestsSuccessful || ! skipTestsOnError) {
                 testStepParallel(['mac'], ['cluster', 'singleserver'])
             }
         }
     }
-    catch (hudson.AbortException ae) {
-        echo exc.toString()
-        throw ae
-    }
-    catch (exc) {
-        echo exc.toString()
-    }
 
-    try {
+    runStage {
         stage('build windows') {
             if (allBuildsSuccessful) {
                 buildStepParallel(['windows'])
             }
         }
     }
-    catch (hudson.AbortException ae) {
-        echo exc.toString()
-        throw ae
-    }
-    catch (exc) {
-        echo exc.toString()
-    }
 
-    try {
+    runStage {
         stage('tests windows') {
             if (allTestsSuccessful || ! skipTestsOnError) {
                 testStepParallel(['windows'], ['cluster', 'singleserver'])
             }
         }
     }
-    catch (hudson.AbortException ae) {
-        echo exc.toString()
-        throw ae
-    }
-    catch (exc) {
-        echo exc.toString()
-    }
 }
 
-try {
+runStage {
     stage('resilience') {
         if (allTestsSuccessful) {
             testResilienceParallel();
         }
     }
-}
-catch (hudson.AbortException ae) {
-    echo exc.toString()
-    throw ae
-}
-catch (exc) {
-    echo exc.toString()
 }
 
 stage('result') {
