@@ -148,15 +148,15 @@ SECTION("test_defaults") {
     TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "testVocbase");
     auto linkJson = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testView\" }");
     auto collectionJson = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testCollection\" }");
-    auto viewJson = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testView\", \"type\": \"iresearch\" }");
+    auto viewJson = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testView\", \"type\": \"iresearch\", \"properties\": { \"name\" : \"testView\" } }");
     auto* logicalCollection = vocbase.createCollection(collectionJson->slice());
-    CHECK((nullptr != logicalCollection));
+    REQUIRE((nullptr != logicalCollection));
     auto logicalView = vocbase.createView(viewJson->slice(), 0);
-    CHECK((false == !logicalView));
+    REQUIRE((false == !logicalView));
 
     bool created;
     auto link = logicalCollection->createIndex(nullptr, linkJson->slice(), created);
-    CHECK((false == !link && created));
+    REQUIRE((false == !link && created));
     CHECK((true == link->allowExpansion()));
     CHECK((true == link->canBeDropped()));
     CHECK((logicalCollection == link->collection()));
@@ -206,14 +206,16 @@ SECTION("test_write") {
   auto viewJson = arangodb::velocypack::Parser::fromJson("{ \
     \"name\": \"testView\", \
     \"type\": \"iresearch\", \
+    \"properties\": { \"name\": \"testView\", \
     \"dataPath\": \"" + arangodb::basics::StringUtils::replace(dataPath, "\\", "/") + "\" \
+    } \
   }");
   auto* logicalCollection = vocbase.createCollection(collectionJson->slice());
-  CHECK((nullptr != logicalCollection));
+  REQUIRE((nullptr != logicalCollection));
   auto logicalView = vocbase.createView(viewJson->slice(), 0);
-  CHECK((false == !logicalView));
+  REQUIRE((false == !logicalView));
   auto* view = dynamic_cast<arangodb::iresearch::IResearchView*>(logicalView->getImplementation());
-  CHECK((false == !view));
+  REQUIRE((false == !view));
   view->open();
 
   irs::fs_directory directory(dataPath);

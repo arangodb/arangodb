@@ -94,13 +94,12 @@ std::unique_ptr<ViewImplementation> LoggerView::creator(
 LoggerView::LoggerView(ConstructionGuard const&, LogicalView* logical,
                        arangodb::velocypack::Slice const& info, bool isNew)
     : ViewImplementation(logical, info) {
-  VPackSlice properties = info.get("properties");
-  if (!properties.isObject()) {
+  if (!info.isObject()) {
     _level = LogLevel::TRACE;
     return;
   }
 
-  VPackSlice levelSlice = properties.get("level");
+  VPackSlice levelSlice = info.get("level");
   if (!levelSlice.isString()) {
     _level = LogLevel::TRACE;
     return;

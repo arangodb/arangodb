@@ -79,6 +79,7 @@ struct IResearchViewSetup {
     features.push_back(std::make_pair(new arangodb::RandomFeature(&server), false)); // required by AuthenticationFeature
     features.push_back(std::make_pair(new arangodb::AuthenticationFeature(arangodb::application_features::ApplicationServer::server), true));
     features.push_back(std::make_pair(new arangodb::DatabaseFeature(arangodb::application_features::ApplicationServer::server), false));
+    features.push_back(std::make_pair(new arangodb::DatabasePathFeature(arangodb::application_features::ApplicationServer::server), true));
 
     arangodb::ViewTypesFeature::registerViewImplementation(
       arangodb::iresearch::IResearchView::type(),
@@ -248,8 +249,10 @@ SECTION("test_drop") {
   auto json = arangodb::velocypack::Parser::fromJson("{ \
     \"name\": \"testView\", \
     \"type\": \"iresearch\", \
+    \"properties\": { \"name\": \"testView\", \
     \"links\": { \"testCollection\": {} }, \
     \"dataPath\": \"" + arangodb::basics::StringUtils::replace(dataPath, "\\", "/") + "\" \
+    } \
   }");
 
   CHECK((false == TRI_IsDirectory(dataPath.c_str())));
@@ -261,9 +264,9 @@ SECTION("test_drop") {
   CHECK((true == !vocbase.lookupView("testView")));
   CHECK((true == logicalCollection->getIndexes().empty()));
   auto logicalView = vocbase.createView(json->slice(), 0);
-  CHECK((false == !logicalView));
+  REQUIRE((false == !logicalView));
   auto view = logicalView->getImplementation();
-  CHECK((false == !view));
+  REQUIRE((false == !view));
 
   CHECK((false == logicalCollection->getIndexes().empty()));
   CHECK((false == !vocbase.lookupView("testView")));
@@ -283,7 +286,9 @@ SECTION("test_move_datapath") {
   auto createJson = arangodb::velocypack::Parser::fromJson("{ \
     \"name\": \"testView\", \
     \"type\": \"iresearch\", \
+    \"properties\": { \"name\": \"testView\", \
     \"dataPath\": \"" + arangodb::basics::StringUtils::replace(createDataPath, "\\", "/") + "\" \
+    } \
   }");
   auto updateJson = arangodb::velocypack::Parser::fromJson("{ \
     \"dataPath\": \"" + arangodb::basics::StringUtils::replace(updateDataPath, "\\", "/") + "\" \
@@ -294,9 +299,9 @@ SECTION("test_move_datapath") {
 
   TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "testVocbase");
   auto logicalView = vocbase.createView(createJson->slice(), 0);
-  CHECK((false == !logicalView));
+  REQUIRE((false == !logicalView));
   auto view = logicalView->getImplementation();
-  CHECK((false == !view));
+  REQUIRE((false == !view));
 
   CHECK((false == TRI_IsDirectory(createDataPath.c_str())));
   view->open();
@@ -313,12 +318,14 @@ SECTION("test_open") {
     auto namedJson = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testView\" }");
     auto json = arangodb::velocypack::Parser::fromJson("{ \
       \"name\": \"testView\", \
+      \"properties\": { \"name\" : \"testView\", \
       \"dataPath\": \"" + arangodb::basics::StringUtils::replace(dataPath, "\\", "/") + "\" \
+      } \
     }");
 
     CHECK((false == TRI_IsDirectory(dataPath.c_str())));
     auto view = arangodb::iresearch::IResearchView::make(nullptr, json->slice(), false);
-    CHECK(false == (!view));
+    REQUIRE(false == (!view));
     CHECK((false == TRI_IsDirectory(dataPath.c_str())));
     view->open();
     CHECK((true == TRI_IsDirectory(dataPath.c_str())));
@@ -377,7 +384,8 @@ SECTION("test_open") {
 SECTION("test_query") {
   auto createJson = arangodb::velocypack::Parser::fromJson("{ \
     \"name\": \"testView\", \
-    \"type\": \"iresearch\" \
+    \"type\": \"iresearch\", \
+    \"properties\": { \"name\": \"testView\" } \
   }");
   static std::vector<std::string> const EMPTY;
   arangodb::aql::AstNode noop(arangodb::aql::AstNodeType::NODE_TYPE_FILTER);
@@ -389,9 +397,9 @@ SECTION("test_query") {
   {
     TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "testVocbase");
     auto logicalView = vocbase.createView(createJson->slice(), 0);
-    CHECK((false == !logicalView));
+    REQUIRE((false == !logicalView));
     auto view = logicalView->getImplementation();
-    CHECK((false == !view));
+    REQUIRE((false == !view));
 
     CHECK((nullptr == dynamic_cast<arangodb::iresearch::IResearchView*>(view)->iteratorForCondition(nullptr, &noop, nullptr, nullptr)));
   }
@@ -400,9 +408,9 @@ SECTION("test_query") {
   {
     TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "testVocbase");
     auto logicalView = vocbase.createView(createJson->slice(), 0);
-    CHECK((false == !logicalView));
+    REQUIRE((false == !logicalView));
     auto view = logicalView->getImplementation();
-    CHECK((false == !view));
+    REQUIRE((false == !view));
 
     arangodb::transaction::Options options;
     options.waitForSync = false;
@@ -416,9 +424,9 @@ SECTION("test_query") {
   {
     TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "testVocbase");
     auto logicalView = vocbase.createView(createJson->slice(), 0);
-    CHECK((false == !logicalView));
+    REQUIRE((false == !logicalView));
     auto* view = logicalView->getImplementation();
-    CHECK((false == !view));
+    REQUIRE((false == !view));
 
     std::vector<std::pair<arangodb::aql::Variable const*, bool>> sorts;
     std::vector<std::vector<arangodb::basics::AttributeName>> constAttributes;
@@ -460,9 +468,9 @@ SECTION("test_query") {
   {
     TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "testVocbase");
     auto logicalView = vocbase.createView(createJson->slice(), 0);
-    CHECK((false == !logicalView));
+    REQUIRE((false == !logicalView));
     auto* view = logicalView->getImplementation();
-    CHECK((false == !view));
+    REQUIRE((false == !view));
 
     arangodb::transaction::Options options;
     options.waitForSync = false;
@@ -492,9 +500,9 @@ SECTION("test_query") {
   {
     TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "testVocbase");
     auto logicalView = vocbase.createView(createJson->slice(), 0);
-    CHECK((false == !logicalView));
+    REQUIRE((false == !logicalView));
     auto* view = logicalView->getImplementation();
-    CHECK((false == !view));
+    REQUIRE((false == !view));
 
     arangodb::transaction::Options options;
     options.waitForSync = false;
@@ -541,16 +549,17 @@ SECTION("test_query") {
 SECTION("test_update_overwrite") {
   auto createJson = arangodb::velocypack::Parser::fromJson("{ \
     \"name\": \"testView\", \
-    \"type\": \"iresearch\" \
+    \"type\": \"iresearch\", \
+    \"properties\": { \"name\": \"testView\" } \
   }");
 
   // modify meta params
   {
     TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "testVocbase");
     auto logicalView = vocbase.createView(createJson->slice(), 0);
-    CHECK((false == !logicalView));
+    REQUIRE((false == !logicalView));
     auto view = logicalView->getImplementation();
-    CHECK((false == !view));
+    REQUIRE((false == !view));
 
     // initial update (overwrite)
     {
@@ -619,16 +628,17 @@ SECTION("test_update_overwrite") {
 SECTION("test_update_partial") {
   auto createJson = arangodb::velocypack::Parser::fromJson("{ \
     \"name\": \"testView\", \
-    \"type\": \"iresearch\" \
+    \"type\": \"iresearch\", \
+    \"properties\": { \"name\": \"testView\" } \
   }");
 
   // modify meta params
   {
     TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "testVocbase");
     auto logicalView = vocbase.createView(createJson->slice(), 0);
-    CHECK((false == !logicalView));
+    REQUIRE((false == !logicalView));
     auto view = logicalView->getImplementation();
-    CHECK((false == !view));
+    REQUIRE((false == !view));
 
     arangodb::iresearch::IResearchViewMeta expectedMeta;
     auto updateJson = arangodb::velocypack::Parser::fromJson("{ \
@@ -665,9 +675,9 @@ SECTION("test_update_partial") {
   {
     TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "testVocbase");
     auto logicalView = vocbase.createView(createJson->slice(), 0);
-    CHECK((false == !logicalView));
+    REQUIRE((false == !logicalView));
     auto view = logicalView->getImplementation();
-    CHECK((false == !view));
+    REQUIRE((false == !view));
 
     std::string dataPath = (irs::utf8_path()/s.testFilesystemPath/std::string("deleteme")).utf8();
     auto res = TRI_CreateDatafile(dataPath, 1); // create a file where the data path directory should be
@@ -703,9 +713,9 @@ SECTION("test_update_partial") {
   {
     TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "testVocbase");
     auto logicalView = vocbase.createView(createJson->slice(), 0);
-    CHECK((false == !logicalView));
+    REQUIRE((false == !logicalView));
     auto view = logicalView->getImplementation();
-    CHECK((false == !view));
+    REQUIRE((false == !view));
 
     arangodb::iresearch::IResearchViewMeta expectedMeta;
     auto updateJson = arangodb::velocypack::Parser::fromJson("{ \
@@ -741,11 +751,11 @@ SECTION("test_update_partial") {
     TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "testVocbase");
     auto collectionJson = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testCollection\" }");
     auto* logicalCollection = vocbase.createCollection(collectionJson->slice());
-    CHECK((nullptr != logicalCollection));
+    REQUIRE((nullptr != logicalCollection));
     auto logicalView = vocbase.createView(createJson->slice(), 0);
-    CHECK((false == !logicalView));
+    REQUIRE((false == !logicalView));
     auto view = logicalView->getImplementation();
-    CHECK((false == !view));
+    REQUIRE((false == !view));
 
     arangodb::iresearch::IResearchViewMeta expectedMeta;
     std::unordered_map<std::string, arangodb::iresearch::IResearchLinkMeta> expectedLinkMeta;
@@ -798,9 +808,9 @@ SECTION("test_update_partial") {
   {
     TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "testVocbase");
     auto logicalView = vocbase.createView(createJson->slice(), 0);
-    CHECK((false == !logicalView));
+    REQUIRE((false == !logicalView));
     auto view = logicalView->getImplementation();
-    CHECK((false == !view));
+    REQUIRE((false == !view));
 
     arangodb::iresearch::IResearchViewMeta expectedMeta;
     auto updateJson = arangodb::velocypack::Parser::fromJson("{ \
@@ -833,11 +843,11 @@ SECTION("test_update_partial") {
     TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "testVocbase");
     auto collectionJson = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testCollection\" }");
     auto* logicalCollection = vocbase.createCollection(collectionJson->slice());
-    CHECK((nullptr != logicalCollection));
+    REQUIRE((nullptr != logicalCollection));
     auto logicalView = vocbase.createView(createJson->slice(), 0);
-    CHECK((false == !logicalView));
+    REQUIRE((false == !logicalView));
     auto view = logicalView->getImplementation();
-    CHECK((false == !view));
+    REQUIRE((false == !view));
 
     arangodb::iresearch::IResearchViewMeta expectedMeta;
 
@@ -900,9 +910,9 @@ SECTION("test_update_partial") {
   {
     TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "testVocbase");
     auto logicalView = vocbase.createView(createJson->slice(), 0);
-    CHECK((false == !logicalView));
+    REQUIRE((false == !logicalView));
     auto view = logicalView->getImplementation();
-    CHECK((false == !view));
+    REQUIRE((false == !view));
 
     arangodb::iresearch::IResearchViewMeta expectedMeta;
     auto updateJson = arangodb::velocypack::Parser::fromJson("{ \
@@ -935,11 +945,11 @@ SECTION("test_update_partial") {
     TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "testVocbase");
     auto collectionJson = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testCollection\" }");
     auto* logicalCollection = vocbase.createCollection(collectionJson->slice());
-    CHECK((nullptr != logicalCollection));
+    REQUIRE((nullptr != logicalCollection));
     auto logicalView = vocbase.createView(createJson->slice(), 0);
-    CHECK((false == !logicalView));
+    REQUIRE((false == !logicalView));
     auto view = logicalView->getImplementation();
-    CHECK((false == !view));
+    REQUIRE((false == !view));
 
     auto updateJson = arangodb::velocypack::Parser::fromJson("{ \
       \"links\": { \

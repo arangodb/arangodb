@@ -192,14 +192,16 @@ SECTION("test_query") {
   auto viewJson = arangodb::velocypack::Parser::fromJson("{ \
     \"name\": \"testView\", \
     \"type\": \"iresearch\", \
+    \"properties\": { \"name\" : \"testView\", \
     \"links\": { \"testCollection\": { \"includeAllFields\": true } } \
+    } \
   }");
   auto* logicalCollection = vocbase.createCollection(collectionJson->slice());
-  CHECK((nullptr != logicalCollection));
+  REQUIRE((nullptr != logicalCollection));
   auto logicalView = vocbase.createView(viewJson->slice(), 0);
-  CHECK((false == !logicalView));
+  REQUIRE((false == !logicalView));
   auto* view = logicalView->getImplementation();
-  CHECK((false == !view));
+  REQUIRE((false == !view));
 
   // fill with test data
   {
