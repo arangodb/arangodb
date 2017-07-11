@@ -222,7 +222,7 @@ SECTION("test_write") {
   auto reader = irs::directory_reader::open(directory);
   bool created;
   auto link = logicalCollection->createIndex(nullptr, linkJson->slice(), created);
-  CHECK((false == !link && created));
+  REQUIRE((false == !link && created));
   CHECK((0 == reader.reopen().live_docs_count()));
 // FIXME TODO for use by iresearch::kludge, remove once checkpoint ids are implemented
 #if 1
