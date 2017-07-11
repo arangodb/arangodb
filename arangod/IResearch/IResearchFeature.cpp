@@ -41,6 +41,9 @@ IResearchFeature::IResearchFeature(arangodb::application_features::ApplicationSe
   requiresElevatedPrivileges(false);
   startsAfter("ViewTypes");
   startsAfter("Logger");
+  startsAfter("Database");
+  startsAfter("MMFilesLogfileManager");
+  startsAfter("TransactionManager");
 }
 
 void IResearchFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
