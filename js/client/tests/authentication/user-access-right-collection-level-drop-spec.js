@@ -146,7 +146,7 @@ describe('User Rights Management', () => {
                 } else {
                   let hasReadAccess = (activeUsers.has(name) &&
                     (dbLevel['rw'].has(name) || dbLevel['ro'].has(name)) &&
-                    (colLevel['rw'].has(name) || colLevel['ro'].has(name));
+                    (colLevel['rw'].has(name) || colLevel['ro'].has(name)));
                   try {
                     if (hasReadAccess) {
                       expect(col.document('123')._key).to.equal('123', `Precondition failed, document does not exist.`);
@@ -177,7 +177,7 @@ describe('User Rights Management', () => {
                 } else {
                   let hasReadAccess = (activeUsers.has(name) &&
                     (dbLevel['rw'].has(name) || dbLevel['ro'].has(name)) &&
-                    (colLevel['rw'].has(name) || colLevel['ro'].has(name));
+                    (colLevel['rw'].has(name) || colLevel['ro'].has(name)));
 
                   try {
                     let res = db._query(q).toArray();

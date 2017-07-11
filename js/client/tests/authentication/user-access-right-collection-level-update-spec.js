@@ -148,7 +148,7 @@ describe('User Rights Management', () => {
                 } else {
                   let hasReadAccess = (activeUsers.has(name) &&
                     (dbLevel['rw'].has(name) || dbLevel['ro'].has(name)) &&
-                    (colLevel['rw'].has(name) || colLevel['ro'].has(name));
+                    (colLevel['rw'].has(name) || colLevel['ro'].has(name)));
                   try {
                     if (hasReadAccess) {
                       expect(col.document('123').foo).to.not.equal('bar', `Precondition failed, document already has the attribute set.`);
@@ -187,14 +187,14 @@ describe('User Rights Management', () => {
                   expect(res[0].foo).to.equal('bar', `Did not update the document properly`);
                   expect(col.document('123').foo).to.not.equal('bar', `${name} managed to update the document with insufficient rights`);
 
-                  res = db._query(q1).toArray();
+                  res = db._query(q2).toArray();
                   expect(res.length).to.equal(1, `Could not replace a document by aql, with sufficient rights`);
                   expect(res[0].foo).to.equal('baz', `Did not update the document properly`);
                   expect(col.document('123').foo).to.not.equal('baz', `${name} managed to replace the document with insufficient rights`);
                 } else {
                   let hasReadAccess = (activeUsers.has(name) &&
                     (dbLevel['rw'].has(name) || dbLevel['ro'].has(name)) &&
-                    (colLevel['rw'].has(name) || colLevel['ro'].has(name));
+                    (colLevel['rw'].has(name) || colLevel['ro'].has(name)));
 
                   try {
                     let res = db._query(q).toArray();
@@ -209,7 +209,7 @@ describe('User Rights Management', () => {
                   }
 
                   try {
-                    let res = db._query(q1).toArray();
+                    let res = db._query(q2).toArray();
                     expect(res.length).to.equal(1, `Could replace a document by aql, with sufficient rights`);
                     expect(res[0].foo).to.equal('baz', `${name} did update the document with insufficient rights`);
                   } catch (e) {

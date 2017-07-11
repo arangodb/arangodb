@@ -143,7 +143,7 @@ describe('User Rights Management', () => {
                   expect(col.document('123')._key).to.equal('123', `Could not read a document by key, with sufficient rights`);
                 } else {
                   try {
-                    let c = col.count()
+                    let c = col.count();
                     expect(c).to.equal(-123, `${name} is allowed to COUNT with insufficient rights`);
                   } catch (e1) {
                     expect(e1.errorNum).to.equal(errors.ERROR_FORBIDDEN.code);
@@ -160,7 +160,7 @@ describe('User Rights Management', () => {
               it('by aql', () => {
                 expect(rootTestCollection()).to.equal(true, `Precondition failed, the collection does not exist`);
                 let col = db._collection(testColName);
-                let q = `FOR x IN ${testColName} RETURN x`
+                let q = `FOR x IN ${testColName} RETURN x`;
                 if (activeUsers.has(name) &&
                    (dbLevel['rw'].has(name) || dbLevel['ro'].has(name)) &&
                    (colLevel['rw'].has(name) || colLevel['ro'].has(name))) {
