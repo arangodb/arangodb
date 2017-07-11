@@ -42,6 +42,10 @@ IResearchFeature::IResearchFeature(arangodb::application_features::ApplicationSe
   startsAfter("ViewTypes");
   startsAfter("Logger");
   startsAfter("Database");
+  // TODO FIXME: we need the MMFilesLogfileManager to be available here if we
+  // use the MMFiles engine. But it does not feel right to have such storage engine-
+  // specific dependency here. Better create a "StorageEngineFeature" and make 
+  // ourselves start after it!
   startsAfter("MMFilesLogfileManager");
   startsAfter("TransactionManager");
 }
