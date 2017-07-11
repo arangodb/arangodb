@@ -717,7 +717,8 @@ Store& Store::operator=(VPackSlice const& slice) {
   TRI_ASSERT(slice.length() == 4);
 
   MUTEX_LOCKER(storeLocker, _storeLock);
-  //clear();               // Reset
+  clear();               // Reset
+  LOG_TOPIC(ERR, Logger::AGENCY) << _node;
   _node.applies(slice[0]); // Apply incoming
 
   TRI_ASSERT(slice[1].isObject());

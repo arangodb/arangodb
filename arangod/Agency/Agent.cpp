@@ -1209,6 +1209,8 @@ void Agent::beginShutdown() {
 
 
 bool Agent::prepareLead() {
+
+  LOG_TOPIC(ERR, Logger::AGENCY) <<  "Preparing lead";
   
   // Key value stores
   try {
@@ -1391,11 +1393,14 @@ arangodb::consensus::index_t Agent::rebuildDBs() {
 
   MUTEX_LOCKER(ioLocker, _ioLock);
 
-  index_t lastCompactionIndex;
+  index_t lastCompactionIndex = 0;
   term_t term;
+
+  _readDB.clear();
+
   if (!_state.loadLastCompactedSnapshot(_readDB, lastCompactionIndex, term)) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_AGENCY_CANNOT_REBUILD_DBS);
-  }
+  } 
 
   // Apply logs from last applied index to leader's commit index
   LOG_TOPIC(DEBUG, Logger::AGENCY)
@@ -1411,7 +1416,8 @@ arangodb::consensus::index_t Agent::rebuildDBs() {
 
   _spearhead = _readDB;
 
-  LOG_TOPIC(TRACE, Logger::AGENCY) << "ReadDB: " << _readDB;
+  LOG_TOPIC(ERR, Logger::AGENCY) << "State: " << _state;
+  LOG_TOPIC(ERR, Logger::AGENCY) << "ReadDB: " << _readDB;
     
   MUTEX_LOCKER(liLocker, _liLock);
   _lastApplied = _commitIndex;
