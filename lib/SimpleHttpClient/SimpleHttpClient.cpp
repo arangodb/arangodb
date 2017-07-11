@@ -327,7 +327,7 @@ SimpleHttpResult* SimpleHttpClient::doRequest(
 
           if (_state == IN_READ_HEADER) {
             processHeader();
-	  }
+          }
 
           if (_state == IN_READ_BODY && !_result->hasContentLength()) {
             // If we are reading the body and no content length was
@@ -337,18 +337,18 @@ SimpleHttpResult* SimpleHttpClient::doRequest(
             // process the body one more time:
             _result->setContentLength(_readBuffer.length() - _readBufferOffset);
             processBody();
-	  } else if (_state == IN_READ_BODY) {
-	    processBody();
-	  }
-
-	  if (_state != FINISHED) {
-	    // If the body was not fully found we give up:
-	    this->close();
-	    _state = DEAD;
-	    setErrorMessage("Got unexpected response from remote");
+          } else if (_state == IN_READ_BODY) {
+            processBody();
           }
 
-	  break;
+          if (_state != FINISHED) {
+            // If the body was not fully found we give up:
+            this->close();
+            _state = DEAD;
+            setErrorMessage("Got unexpected response from remote");
+          }
+
+          break;
         }
 
         // the connection is still alive:

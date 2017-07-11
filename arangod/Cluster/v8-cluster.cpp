@@ -289,7 +289,7 @@ static void JS_APIAgency(std::string const& envelope,
     comm.sendWithFailover(
       arangodb::rest::RequestType::POST,
       AgencyCommManager::CONNECTION_OPTIONS._requestTimeout,
-      std::string("/_api/agency/") + envelope, builder.toJson());
+      std::string("/_api/agency/") + envelope, builder.slice());
 
   if (!result.successful()) {
     THROW_AGENCY_EXCEPTION(result);
