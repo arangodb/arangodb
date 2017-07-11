@@ -20,32 +20,33 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_REST_SERVER_VIEW_TYPES_FEATURE_H
-#define ARANGODB_REST_SERVER_VIEW_TYPES_FEATURE_H 1
+#ifndef ARANGODB_REST_SERVER_FLUSH_FEATURE_H
+#define ARANGODB_REST_SERVER_FLUSH_FEATURE_H 1
 
 #include "ApplicationFeatures/ApplicationFeature.h"
-#include "VocBase/ViewImplementation.h"
 
 namespace arangodb {
+class FlushThread;
 
-class ViewTypesFeature final
+class FlushFeature final
     : public application_features::ApplicationFeature {
  public:
-  explicit ViewTypesFeature(
+  explicit FlushFeature(
       application_features::ApplicationServer* server);
 
  public:
+  void collectOptions(
+      std::shared_ptr<options::ProgramOptions> options) override final;
+  void validateOptions(std::shared_ptr<options::ProgramOptions>) override final;
   void prepare() override final;
+  void start() override final;
+  void beginShutdown() override final;
+  void stop() override final;
   void unprepare() override final;
 
-  static void registerViewImplementation(std::string const& type, ViewCreator creator);
-
-  bool isValidType(std::string const& type) const;
-
-  ViewCreator& creator(std::string const& type) const;
-
  private:
-  static std::unordered_map<std::string, arangodb::ViewCreator> _viewCreators;
+  uint64_t _flushInterval;
+  std::unique_ptr<FlushThread> _flushThread;
 };
 }
 

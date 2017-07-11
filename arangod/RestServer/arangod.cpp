@@ -65,6 +65,7 @@
 #include "RestServer/EndpointFeature.h"
 #include "RestServer/FeatureCacheFeature.h"
 #include "RestServer/FileDescriptorsFeature.h"
+#include "RestServer/FlushFeature.h"
 #include "RestServer/FrontendFeature.h"
 #include "RestServer/InitDatabaseFeature.h"
 #include "RestServer/LockfileFeature.h"
@@ -152,6 +153,7 @@ static int runServer(int argc, char** argv, ArangoGlobalContext &context) {
     server.addFeature(new EnvironmentFeature(&server));
     server.addFeature(new FeatureCacheFeature(&server));
     server.addFeature(new FileDescriptorsFeature(&server));
+    server.addFeature(new FlushFeature(&server));
     server.addFeature(new FoxxQueuesFeature(&server));
     server.addFeature(new FrontendFeature(&server));
     server.addFeature(new GeneralServerFeature(&server));
