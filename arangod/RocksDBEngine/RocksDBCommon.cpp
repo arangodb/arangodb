@@ -182,6 +182,27 @@ std::pair<TRI_voc_tick_t, TRI_voc_cid_t> mapObjectToCollection(
   return rocks->mapObjectToCollection(objectId);
 }
 
+/// @brief count all keys in the given column family
+std::size_t countKeys(rocksdb::DB* db, rocksdb::ColumnFamilyHandle* cf) {
+  TRI_ASSERT(cf != nullptr);
+
+  rocksdb::ReadOptions opts;
+  opts.fill_cache = false;
+  opts.total_order_seek = true;
+
+  std::unique_ptr<rocksdb::Iterator> it(db->NewIterator(opts, cf));
+  std::size_t count = 0;
+
+  rocksdb::Slice lower("\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00", 16);
+  it->Seek(lower);
+  while (it->Valid()) {
+    ++count;
+    it->Next();
+  }
+  return count;
+}
+
+/// @brief iterate over all keys in range and count them
 std::size_t countKeyRange(rocksdb::DB* db, rocksdb::ReadOptions const& opts,
                           RocksDBKeyBounds const& bounds) {
   rocksdb::ColumnFamilyHandle* cf = bounds.columnFamily();
@@ -204,8 +225,10 @@ std::size_t countKeyRange(rocksdb::DB* db, rocksdb::ReadOptions const& opts,
 Result removeLargeRange(rocksdb::TransactionDB* db,
                         RocksDBKeyBounds const& bounds,
                         bool prefix_same_as_start) {
+  LOG_TOPIC(DEBUG, Logger::ROCKSDB) << "removing large range: " << bounds;
+  
   rocksdb::ColumnFamilyHandle* cf = bounds.columnFamily();
-  LOG_TOPIC(DEBUG, Logger::FIXME) << "removing large range: " << bounds;
+
   try {
     // delete files in range lower..upper
     rocksdb::Slice lower(bounds.start());
@@ -216,8 +239,9 @@ Result removeLargeRange(rocksdb::TransactionDB* db,
       if (!status.ok()) {
         // if file deletion failed, we will still iterate over the remaining
         // keys, so we don't need to abort and raise an error here
-        LOG_TOPIC(WARN, arangodb::Logger::FIXME)
-            << "RocksDB file deletion failed";
+        arangodb::Result r = rocksutils::convertStatus(status);
+        LOG_TOPIC(WARN, arangodb::Logger::ROCKSDB)
+            << "RocksDB file deletion failed: " << r.errorMessage();
       }
     }
 
@@ -231,14 +255,16 @@ Result removeLargeRange(rocksdb::TransactionDB* db,
     readOptions.iterate_upper_bound = &upper;
     std::unique_ptr<rocksdb::Iterator> it(db->NewIterator(readOptions, cf));
 
+    size_t total = 0;
     size_t counter = 0;
     for (it->Seek(lower); it->Valid(); it->Next()) {
       TRI_ASSERT(cmp->Compare(it->key(), lower) > 0);
       TRI_ASSERT(cmp->Compare(it->key(), upper) < 0);
-      counter++;
+      ++total;
+      ++counter;
       batch.Delete(cf, it->key());
       if (counter == 1000) {
-        LOG_TOPIC(DEBUG, Logger::FIXME) << "Intermediate delete write";
+        LOG_TOPIC(DEBUG, Logger::FIXME) << "intermediate delete write";
         // Persist deletes all 1000 documents
         rocksdb::Status status = db->Write(rocksdb::WriteOptions(), &batch);
         if (!status.ok()) {
@@ -250,9 +276,11 @@ Result removeLargeRange(rocksdb::TransactionDB* db,
         counter = 0;
       }
     }
+  
+    LOG_TOPIC(DEBUG, Logger::ROCKSDB) << "removing large range deleted in total: " << total;
 
     if (counter > 0) {
-      LOG_TOPIC(DEBUG, Logger::FIXME) << "Remove large batch from bounds";
+      LOG_TOPIC(DEBUG, Logger::FIXME) << "intermediate delete write";
       // We still have sth to write
       // now apply deletion batch
       rocksdb::Status status = db->Write(rocksdb::WriteOptions(), &batch);

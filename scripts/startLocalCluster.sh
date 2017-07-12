@@ -194,12 +194,13 @@ if [ "$SECONDARIES" == "1" ] ; then
     PORTTOPSE=`expr $SE_BASE + $NRDBSERVERS - 1` 
     for PORT in `seq $SE_BASE $PORTTOPSE` ; do
         mkdir cluster/data$PORT
-
-        ind=$(printf "%04d" $index)
-        CLUSTER_ID="Secondary$ind"
+        UUID=SCND-$(uuidgen)
+        zfindex=$(printf "%04d" $index)
+        CLUSTER_ID="Secondary$zfindex"
         
-        echo Registering secondary $CLUSTER_ID for "DBServer$ind"
-        curl -f -X PUT --data "{\"primary\": \"DBServer$ind\", \"oldSecondary\": \"none\", \"newSecondary\": \"$CLUSTER_ID\"}" -H "Content-Type: application/json" $ADDRESS:$CO_BASE/_admin/cluster/replaceSecondary
+        echo Registering secondary $CLUSTER_ID for "DBServer$zfindex"
+        curl -f -X PUT --data "{\"primary\": \"DBServer$zfindex\", \"oldSecondary\": \"none\", \"newSecondary\": \"$CLUSTER_ID\"}" -H "Content-Type: application/json" $ADDRESS:$CO_BASE/_admin/cluster/replaceSecondary
+
         echo Starting Secondary $CLUSTER_ID on port $PORT
         ${BUILD}/bin/arangod \
             -c none \

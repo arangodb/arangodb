@@ -1,6 +1,8 @@
 devel
 -----
 
+* documentation and js fixes for secondaries
+
 * enabled permissions on database and collection level
 
 * added "deduplicate" attribute for array indexes, which controls whether inserting
@@ -13,7 +15,7 @@ devel
       db.test.insert({ tags: ["a", "b"] });
       db.test.insert({ tags: ["c", "d", "c"] }); // will work, because deduplicate = true
       db.test.insert({ tags: ["a"] }); // will fail
-      
+
       // with deduplicate = false
       db._create("test");
       db.test.ensureIndex({ type: "hash", fields: ["tags[*]"], deduplicate: false });
@@ -29,7 +31,7 @@ devel
 * Debian/Ubuntu installer: make messages about future package upgrades more clear
 
 * fix a hangup in VST
-    
+
   The problem happened when the two first chunks of a VST message arrived
   together on a connection that was newly switched to VST.
 
@@ -41,7 +43,7 @@ devel
 * changed VM overcommit recommendation for user-friendliness
 
 * fix a shutdown bug in the cluster: a destroyed query could still be active
- 
+
 * do not terminate the entire server process if a temp file cannot be created 
   (Windows only)
 

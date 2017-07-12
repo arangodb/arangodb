@@ -760,8 +760,8 @@ actions.defineHttp({
     let nid = body.newSecondary;
 
     if (fetchKey(dbservers, id) === undefined) {
-      for (sid in sID) {
-        if(sID[sid].ShortName == id) {
+      for (var sid in sID) {
+        if(sID[sid].ShortName === id) {
           id = sid;
           break;
         }
@@ -773,7 +773,7 @@ actions.defineHttp({
 
     if (fetchKey(dbservers, nid) === undefined) {
       for (sid in sID) {
-        if(sID[sid].ShortName == nid) {
+        if(sID[sid].ShortName === nid) {
           nid = sid;
           break;
         }
