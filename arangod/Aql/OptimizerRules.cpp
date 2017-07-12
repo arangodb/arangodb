@@ -28,7 +28,6 @@
 #include "Aql/CollectOptions.h"
 #include "Aql/Collection.h"
 #include "Aql/ConditionFinder.h"
-#include "Aql/DocumentProducingNode.h"
 #include "Aql/ExecutionEngine.h"
 #include "Aql/ExecutionNode.h"
 #include "Aql/ExecutionPlan.h"
@@ -1508,7 +1507,7 @@ void arangodb::aql::removeUnnecessaryCalculationsRule(
         // in this case we must not perform the replacements
         while (current != nullptr) {
           if (current->getType() == EN::COLLECT) {
-            if (static_cast<CollectNode const*>(current)->hasOutVariableButNoCount()) {
+            if (static_cast<CollectNode const*>(current)->hasOutVariable()) {
               hasCollectWithOutVariable = true;
               break;
             }
@@ -1539,7 +1538,7 @@ void arangodb::aql::removeUnnecessaryCalculationsRule(
         current->getVariablesUsedHere(vars);
         if (vars.find(outvars[0]) != vars.end()) {
           if (current->getType() == EN::COLLECT) {
-            if (static_cast<CollectNode const*>(current)->hasOutVariableButNoCount()) {
+            if (static_cast<CollectNode const*>(current)->hasOutVariable()) {
               // COLLECT with an INTO variable will collect all variables from
               // the scope, so we shouldn't try to remove or change the meaning
               // of variables

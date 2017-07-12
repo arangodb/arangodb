@@ -26,7 +26,6 @@
 #define ARANGOD_VOCBASE_LOGICAL_COLLECTION_H 1
 
 #include "Basics/Common.h"
-#include "Indexes/IndexIterator.h"
 #include "VocBase/voc-types.h"
 #include "VocBase/vocbase.h"
 
@@ -279,10 +278,6 @@ class LogicalCollection {
   bool readDocument(transaction::Methods* trx,
                     DocumentIdentifierToken const& token,
                     ManagedDocumentResult& result);
-  
-  bool readDocumentWithCallback(transaction::Methods* trx,
-                                DocumentIdentifierToken const& token,
-                                IndexIterator::DocumentCallback const& cb);
 
   /// @brief Persist the connected physical collection.
   ///        This should be called AFTER the collection is successfully

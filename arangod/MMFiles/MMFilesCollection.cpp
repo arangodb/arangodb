@@ -1927,19 +1927,6 @@ bool MMFilesCollection::readDocument(transaction::Methods* trx,
   return false;
 }
 
-bool MMFilesCollection::readDocumentWithCallback(transaction::Methods* trx,
-                                                 DocumentIdentifierToken const& token,
-                                                 IndexIterator::DocumentCallback const& cb) {
-  auto tkn = static_cast<MMFilesToken const*>(&token);
-  TRI_voc_rid_t revisionId = tkn->revisionId();
-  uint8_t const* vpack = lookupRevisionVPack(revisionId);
-  if (vpack != nullptr) {
-    cb(token, VPackSlice(vpack));
-    return true;
-  }
-  return false;
-}
-
 bool MMFilesCollection::readDocumentConditional(
     transaction::Methods* trx, DocumentIdentifierToken const& token,
     TRI_voc_tick_t maxTick, ManagedDocumentResult& result) {

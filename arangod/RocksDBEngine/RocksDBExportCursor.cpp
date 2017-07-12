@@ -129,11 +129,12 @@ void RocksDBExportCursor::dump(VPackBuilder& builder) {
     builder.add("result", VPackValue(VPackValueType::Array));
     size_t const n = batchSize();
 
-    auto cb = [&, this](DocumentIdentifierToken const& token, VPackSlice slice) {
+    auto cb = [&, this](ManagedDocumentResult const& mdr) {
       if (_position == _size) {
         return false;
       }
       builder.openObject();
+      VPackSlice const slice(mdr.vpack());
       // Copy over shaped values
       for (auto const& entry : VPackObjectIterator(slice)) {
         std::string key(entry.key.copyString());

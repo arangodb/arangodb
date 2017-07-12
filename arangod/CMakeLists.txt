@@ -120,8 +120,6 @@ SET(ARANGOD_SOURCES
   Aql/Collections.cpp
   Aql/Condition.cpp
   Aql/ConditionFinder.cpp
-  Aql/DocumentProducingBlock.cpp
-  Aql/DocumentProducingNode.cpp
   Aql/EnumerateCollectionBlock.cpp
   Aql/EnumerateListBlock.cpp
   Aql/ExecutionBlock.cpp
@@ -238,7 +236,6 @@ SET(ARANGOD_SOURCES
   Graph/TraverserDocumentCache.cpp
   Indexes/Index.cpp
   Indexes/IndexIterator.cpp
-  Indexes/IndexLookupContext.cpp
   Indexes/SimpleAttributeEqualityMatcher.cpp
   InternalRestHandler/InternalRestTraverserHandler.cpp
   Pregel/AggregatorHandler.cpp

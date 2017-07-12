@@ -48,7 +48,6 @@ using namespace arangodb::aql;
 
 IndexBlock::IndexBlock(ExecutionEngine* engine, IndexNode const* en)
     : ExecutionBlock(engine, en),
-      DocumentProducingBlock(en, _trx),
       _collection(en->collection()),
       _currentIndex(0),
       _indexes(en->getIndexes()),
@@ -503,29 +502,46 @@ AqlItemBlock* IndexBlock::getSome(size_t atLeast, size_t atMost) {
   IndexIterator::DocumentCallback callback;
   if (_indexes.size() > 1) {
     // Activate uniqueness checks
-    callback = [&](DocumentIdentifierToken const& token, VPackSlice slice) {
+    callback = [&](ManagedDocumentResult const& mdr) {
       TRI_ASSERT(res.get() != nullptr);
       if (!_isLastIndex) {
         // insert & check for duplicates in one go
-        if (!_alreadyReturned.emplace(token._data).second) {
+        if (!_alreadyReturned.emplace(mdr.lastRevisionId()).second) {
           // Document already in list. Skip this
           return;
         }
       } else {
         // only check for duplicates
-        if (_alreadyReturned.find(token._data) != _alreadyReturned.end()) {
+        if (_alreadyReturned.find(mdr.lastRevisionId()) != _alreadyReturned.end()) {
           // Document found, skip
           return;
         }
       }
-      
-      _documentProducer(res.get(), slice, curRegs, _returned);
+      res->setValue(_returned,
+                    static_cast<arangodb::aql::RegisterId>(curRegs),
+                    mdr.createAqlValue());
+
+      if (_returned > 0) {
+        // re-use already copied AqlValues
+        res->copyValuesFromFirstRow(_returned,
+                                    static_cast<RegisterId>(curRegs));
+      }
+      ++_returned;
     };
   } else {
     // No uniqueness checks
-    callback = [&](DocumentIdentifierToken const& token, VPackSlice slice) {
+    callback = [&](ManagedDocumentResult const& mdr) {
       TRI_ASSERT(res.get() != nullptr);
-      _documentProducer(res.get(), slice, curRegs, _returned);
+      res->setValue(_returned,
+                    static_cast<arangodb::aql::RegisterId>(curRegs),
+                    mdr.createAqlValue());
+
+      if (_returned > 0) {
+        // re-use already copied AqlValues
+        res->copyValuesFromFirstRow(_returned,
+                                    static_cast<RegisterId>(curRegs));
+      }
+      ++_returned;
     };
   }
 

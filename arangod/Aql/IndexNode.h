@@ -26,7 +26,6 @@
 
 #include "Basics/Common.h"
 #include "Aql/Ast.h"
-#include "Aql/DocumentProducingNode.h"
 #include "Aql/ExecutionNode.h"
 #include "Aql/types.h"
 #include "Aql/Variable.h"
@@ -46,7 +45,7 @@ class ExecutionPlan;
 struct Index;
 
 /// @brief class IndexNode
-class IndexNode : public ExecutionNode, public DocumentProducingNode {
+class IndexNode : public ExecutionNode {
   friend class ExecutionBlock;
   friend class IndexBlock;
 
@@ -68,6 +67,9 @@ class IndexNode : public ExecutionNode, public DocumentProducingNode {
 
   /// @brief return the collection
   Collection const* collection() const { return _collection; }
+
+  /// @brief return out variable
+  Variable const* outVariable() const { return _outVariable; }
 
   /// @brief return the condition for the node
   Condition* condition() const { return _condition; }
@@ -110,6 +112,9 @@ class IndexNode : public ExecutionNode, public DocumentProducingNode {
 
   /// @brief collection
   Collection const* _collection;
+
+  /// @brief output variable
+  Variable const* _outVariable;
 
   /// @brief the index
   std::vector<transaction::Methods::IndexHandle> _indexes;

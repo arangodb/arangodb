@@ -111,7 +111,7 @@ class RocksDBValue {
   RocksDBValue(RocksDBEntryType type, rocksdb::Slice slice)
       : _type(type), _buffer(slice.data(), slice.size()) {}
 
-  RocksDBValue(RocksDBValue&& other) noexcept
+  RocksDBValue(RocksDBValue&& other)
       : _type(other._type), _buffer(std::move(other._buffer)) {}
 
  private:

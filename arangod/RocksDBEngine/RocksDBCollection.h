@@ -29,7 +29,7 @@
 #include "Indexes/IndexLookupContext.h"
 #include "RocksDBEngine/RocksDBCommon.h"
 #include "StorageEngine/PhysicalCollection.h"
-#include "VocBase/LogicalCollection.h"
+#include "VocBase/KeyGenerator.h"
 #include "VocBase/ManagedDocumentResult.h"
 
 namespace rocksdb {
@@ -139,10 +139,10 @@ class RocksDBCollection final : public PhysicalCollection {
   bool readDocument(transaction::Methods* trx,
                     DocumentIdentifierToken const& token,
                     ManagedDocumentResult& result) override;
-  
-  bool readDocumentWithCallback(transaction::Methods* trx,
-                                DocumentIdentifierToken const& token,
-                                IndexIterator::DocumentCallback const& cb) override;
+
+  bool readDocumentNoCache(transaction::Methods* trx,
+                           DocumentIdentifierToken const& token,
+                           ManagedDocumentResult& result);
 
   Result insert(arangodb::transaction::Methods* trx,
                 arangodb::velocypack::Slice const newSlice,
@@ -243,10 +243,6 @@ class RocksDBCollection final : public PhysicalCollection {
 
   arangodb::Result lookupRevisionVPack(TRI_voc_rid_t, transaction::Methods*,
                                        arangodb::ManagedDocumentResult&,
-                                       bool withCache) const;
-  
-  arangodb::Result lookupRevisionVPack(TRI_voc_rid_t, transaction::Methods*,
-                                       IndexIterator::DocumentCallback const& cb,
                                        bool withCache) const;
 
   void recalculateIndexEstimates(std::vector<std::shared_ptr<Index>>& indexes);

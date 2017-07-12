@@ -24,7 +24,6 @@
 #ifndef ARANGOD_AQL_ENUMERATE_COLLECTION_BLOCK_H
 #define ARANGOD_AQL_ENUMERATE_COLLECTION_BLOCK_H 1
 
-#include "Aql/DocumentProducingBlock.h"
 #include "Aql/ExecutionBlock.h"
 #include "Aql/ExecutionNode.h"
 
@@ -42,7 +41,7 @@ class AqlItemBlock;
 struct Collection;
 class ExecutionEngine;
 
-class EnumerateCollectionBlock final : public ExecutionBlock, public DocumentProducingBlock {
+class EnumerateCollectionBlock final : public ExecutionBlock {
  public:
   EnumerateCollectionBlock(ExecutionEngine* engine,
                            EnumerateCollectionNode const* ep);
@@ -71,6 +70,9 @@ class EnumerateCollectionBlock final : public ExecutionBlock, public DocumentPro
 
   /// @brief cursor
   std::unique_ptr<OperationCursor> _cursor;
+  
+  /// @brief whether or not the enumerated documents need to be stored
+  bool _mustStoreResult;
 };
 
 }  // namespace arangodb::aql

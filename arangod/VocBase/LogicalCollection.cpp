@@ -1170,12 +1170,6 @@ bool LogicalCollection::readDocument(transaction::Methods* trx,
   return getPhysical()->readDocument(trx, token, result);
 }
 
-bool LogicalCollection::readDocumentWithCallback(transaction::Methods* trx,
-                                                 DocumentIdentifierToken const& token,
-                                                 IndexIterator::DocumentCallback const& cb) {
-  return getPhysical()->readDocumentWithCallback(trx, token, cb);
-}
-
 /// @brief a method to skip certain documents in AQL write operations,
 /// this is only used in the enterprise edition for smart graphs
 #ifndef USE_ENTERPRISE

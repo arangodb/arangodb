@@ -25,7 +25,6 @@
 
 #include "Basics/StaticStrings.h"
 #include "Basics/ReadLocker.h"
-#include "Basics/StringRef.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/WriteLocker.h"
 #include "Basics/encoding.h"
@@ -106,11 +105,11 @@ void PhysicalCollection::mergeObjectsForUpdate(
   VPackSlice fromSlice;
   VPackSlice toSlice;
 
-  std::unordered_map<StringRef, VPackSlice> newValues;
+  std::unordered_map<std::string, VPackSlice> newValues;
   {
     VPackObjectIterator it(newValue, true);
     while (it.valid()) {
-      StringRef key(it.key());
+      std::string key = it.key().copyString();
       if (!key.empty() && key[0] == '_' &&
           (key == StaticStrings::KeyString || key == StaticStrings::IdString ||
            key == StaticStrings::RevString ||
@@ -124,7 +123,7 @@ void PhysicalCollection::mergeObjectsForUpdate(
         }  // else do nothing
       } else {
         // regular attribute
-        newValues.emplace(key, it.value());
+        newValues.emplace(std::move(key), it.value());
       }
 
       it.next();
@@ -164,7 +163,7 @@ void PhysicalCollection::mergeObjectsForUpdate(
   {
     VPackObjectIterator it(oldValue, true);
     while (it.valid()) {
-      StringRef key(it.key());
+      std::string key = it.key().copyString();
       // exclude system attributes in old value now
       if (!key.empty() && key[0] == '_' &&
           (key == StaticStrings::KeyString || key == StaticStrings::IdString ||
@@ -179,7 +178,7 @@ void PhysicalCollection::mergeObjectsForUpdate(
 
       if (found == newValues.end()) {
         // use old value
-        b.add(key.data(), key.size(), it.value());
+        b.add(key, it.value());
       } else if (mergeObjects && it.value().isObject() &&
                  (*found).second.isObject()) {
         // merge both values
@@ -187,7 +186,7 @@ void PhysicalCollection::mergeObjectsForUpdate(
         if (keepNull || (!value.isNone() && !value.isNull())) {
           VPackBuilder sub =
               VPackCollection::merge(it.value(), value, true, !keepNull);
-          b.add(key.data(), key.size(), sub.slice());
+          b.add(key, sub.slice());
         }
         // clear the value in the map so its not added again
         (*found).second = VPackSlice();
@@ -195,7 +194,7 @@ void PhysicalCollection::mergeObjectsForUpdate(
         // use new value
         auto& value = (*found).second;
         if (keepNull || (!value.isNone() && !value.isNull())) {
-          b.add(key.data(), key.size(), value);
+          b.add(key, value);
         }
         // clear the value in the map so its not added again
         (*found).second = VPackSlice();
@@ -213,7 +212,7 @@ void PhysicalCollection::mergeObjectsForUpdate(
     if (!keepNull && s.isNull()) {
       continue;
     }
-    b.add(it.first.data(), it.first.size(), s);
+    b.add(it.first, s);
   }
 
   b.close();

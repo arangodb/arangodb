@@ -81,9 +81,9 @@ bool RocksDBReadOnlyMethods::Exists(rocksdb::ColumnFamilyHandle* cf,
                                     RocksDBKey const& key) {
   TRI_ASSERT(cf != nullptr);
   std::string val;  // do not care about value
-  bool mayExist = _db->KeyMayExist(_state->_rocksReadOptions, cf, key.string(),
+  bool mayExists = _db->KeyMayExist(_state->_rocksReadOptions, cf, key.string(),
                                     &val, nullptr);
-  if (mayExist) {
+  if (mayExists) {
     rocksdb::Status s =
         _db->Get(_state->_rocksReadOptions, cf, key.string(), &val);
     return !s.IsNotFound();

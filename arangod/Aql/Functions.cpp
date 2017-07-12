@@ -1846,7 +1846,9 @@ AqlValue Functions::Hash(arangodb::aql::Query* query,
   // without precision loss when storing in JavaScript etc.
   uint64_t hash = value.hash(trx) & 0x0007ffffffffffffULL;
 
-  return AqlValue(hash);
+  transaction::BuilderLeaser builder(trx);
+  builder->add(VPackValue(hash));
+  return AqlValue(builder.get());
 }
 
 /// @brief function UNIQUE

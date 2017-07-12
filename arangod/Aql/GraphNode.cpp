@@ -288,6 +288,9 @@ GraphNode::GraphNode(ExecutionPlan* plan,
     _directions.emplace_back(d);
   }
 
+  // TODO SP differs from here:
+
+  // TODO: Can we remove this?
   // Graph Information. Do we need to reload the graph here?
   std::string graphName;
   if (base.hasKey("graph") && (base.get("graph").isString())) {
@@ -337,18 +340,20 @@ GraphNode::GraphNode(ExecutionPlan* plan,
         std::make_unique<aql::Collection>(v, _vocbase, AccessMode::Type::READ));
   }
 
+  // ENDOF TODO SP differs
+
   // Out variables
   if (base.hasKey("vertexOutVariable")) {
     _vertexOutVariable =
-        Variable::varFromVPack(plan->getAst(), base, "vertexOutVariable");
+        varFromVPack(plan->getAst(), base, "vertexOutVariable");
   }
   if (base.hasKey("edgeOutVariable")) {
-    _edgeOutVariable = Variable::varFromVPack(plan->getAst(), base, "edgeOutVariable");
+    _edgeOutVariable = varFromVPack(plan->getAst(), base, "edgeOutVariable");
   }
 
   // Temporary Filter Objects
   TRI_ASSERT(base.hasKey("tmpObjVariable"));
-  _tmpObjVariable = Variable::varFromVPack(plan->getAst(), base, "tmpObjVariable");
+  _tmpObjVariable = varFromVPack(plan->getAst(), base, "tmpObjVariable");
 
   TRI_ASSERT(base.hasKey("tmpObjVarNode"));
   _tmpObjVarNode = new AstNode(plan->getAst(), base.get("tmpObjVarNode"));

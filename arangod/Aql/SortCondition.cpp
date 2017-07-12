@@ -27,11 +27,9 @@
 
 using namespace arangodb::aql;
 
-namespace {
-
 /// @brief whether or not an attribute is contained in a vector
-static bool isContained(std::vector<std::vector<arangodb::basics::AttributeName>> const& attributes,
-                        std::vector<arangodb::basics::AttributeName> const& attribute) {
+static bool IsContained (std::vector<std::vector<arangodb::basics::AttributeName>> const& attributes,
+                         std::vector<arangodb::basics::AttributeName> const& attribute) {
   for (auto const& it : attributes) {
     if (arangodb::basics::AttributeName::isIdentical(it, attribute, false)) {
       return true;
@@ -39,8 +37,6 @@ static bool isContained(std::vector<std::vector<arangodb::basics::AttributeName>
   }
 
   return false;
-}
-
 }
 
 /// @brief create an empty condition
@@ -168,8 +164,8 @@ size_t SortCondition::coveredAttributes(
     // no match
     bool isConstant = false;
 
-    if (isContained(indexAttributes, field.second) &&
-        isContained(_constAttributes, field.second)) {
+    if (IsContained(indexAttributes, field.second) &&
+        IsContained(_constAttributes, field.second)) {
       // no field match, but a constant attribute
       isConstant = true;
       ++fieldsPosition;
@@ -177,7 +173,7 @@ size_t SortCondition::coveredAttributes(
     }
     
     if (!isConstant &&
-        isContained(_constAttributes, indexAttributes[i])) {
+        IsContained(_constAttributes, indexAttributes[i])) {
       // no field match, but a constant attribute
       isConstant = true;
       ++i; // next index field

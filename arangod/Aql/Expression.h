@@ -37,6 +37,7 @@ namespace arangodb {
 namespace transaction {
 class Methods;
 }
+;
 
 namespace basics {
 class StringBuffer;
@@ -70,7 +71,7 @@ class Expression {
   ~Expression();
  
   /// @brief replace the root node
-  void replaceNode (AstNode* node) {
+  inline void replaceNode (AstNode* node) {
     _node = node;
     invalidate();
   }
@@ -195,10 +196,9 @@ class Expression {
 
   /// @brief replace a variable reference in the expression with another
   /// expression (e.g. inserting c = `a + b` into expression `c + 1` so the
-  /// latter becomes `a + b + 1`
+  /// latter
+  /// becomes `a + b + 1`
   void replaceVariableReference(Variable const*, AstNode const*);
-  
-  void replaceAttributeAccess(Variable const*, std::vector<std::string> const& attribute);
 
   /// @brief invalidates an expression
   /// this only has an effect for V8-based functions, which need to be created,

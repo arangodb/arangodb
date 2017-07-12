@@ -243,35 +243,6 @@ void Expression::replaceVariableReference(Variable const* variable,
   _hasDeterminedAttributes = false;
 }
 
-void Expression::replaceAttributeAccess(Variable const* variable,
-                                        std::vector<std::string> const& attribute) {
-  _node = _ast->clone(_node);
-  TRI_ASSERT(_node != nullptr);
-
-  _node = _ast->replaceAttributeAccess(const_cast<AstNode*>(_node), variable, attribute);
-  invalidate();
-
-  if (_type == ATTRIBUTE_SYSTEM || _type == ATTRIBUTE_DYNAMIC) {
-    if (_built) {
-      delete _accessor;
-      _accessor = nullptr;
-      _built = false;
-    }
-    // must even set back the expression type so the expression will be analyzed
-    // again
-    _type = UNPROCESSED;
-  } else if (_type == SIMPLE) {
-    // must rebuild the expression completely, as it may have changed drastically
-    _built = false;
-    _type = UNPROCESSED;
-    _node->clearFlagsRecursive(); // recursively delete the node's flags
-  }
-
-  const_cast<AstNode*>(_node)->clearFlags();
-  _attributes.clear();
-  _hasDeterminedAttributes = false;
-}
-
 /// @brief invalidates an expression
 /// this only has an effect for V8-based functions, which need to be created,
 /// used and destroyed in the same context. when a V8 function is used across
@@ -686,6 +657,7 @@ AqlValue Expression::executeSimpleExpressionArray(
     auto member = node->getMemberUnchecked(i);
     bool localMustDestroy = false;
     AqlValue result = executeSimpleExpression(member, trx, localMustDestroy, false);
+
     AqlValueGuard guard(result, localMustDestroy);
     result.toVelocyPack(trx, *builder.get(), false);
   }

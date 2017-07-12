@@ -44,6 +44,90 @@
 namespace arangodb {
 namespace rocksutils {
 
+uint64_t uint64FromPersistent(char const* p) {
+  uint64_t value = 0;
+  uint64_t x = 0;
+  uint8_t const* ptr = reinterpret_cast<uint8_t const*>(p);
+  uint8_t const* end = ptr + sizeof(uint64_t);
+  do {
+    value += static_cast<uint64_t>(*ptr++) << x;
+    x += 8;
+  } while (ptr < end);
+  return value;
+}
+
+void uint64ToPersistent(char* p, uint64_t value) {
+  char* end = p + sizeof(uint64_t);
+  do {
+    *p++ = static_cast<uint8_t>(value & 0xffU);
+    value >>= 8;
+  } while (p < end);
+}
+
+void uint64ToPersistent(std::string& p, uint64_t value) {
+  size_t len = 0;
+  do {
+    p.push_back(static_cast<char>(value & 0xffU));
+    value >>= 8;
+  } while (++len < sizeof(uint64_t));
+}
+
+uint32_t uint32FromPersistent(char const* p) {
+  uint32_t value = 0;
+  uint32_t x = 0;
+  uint8_t const* ptr = reinterpret_cast<uint8_t const*>(p);
+  uint8_t const* end = ptr + sizeof(uint32_t);
+  do {
+    value += static_cast<uint16_t>(*ptr++) << x;
+    x += 8;
+  } while (ptr < end);
+  return value;
+}
+
+void uint32ToPersistent(char* p, uint32_t value) {
+  char* end = p + sizeof(uint32_t);
+  do {
+    *p++ = static_cast<uint8_t>(value & 0xffU);
+    value >>= 8;
+  } while (p < end);
+}
+
+void uint32ToPersistent(std::string& p, uint32_t value) {
+  size_t len = 0;
+  do {
+    p.push_back(static_cast<char>(value & 0xffU));
+    value >>= 8;
+  } while (++len < sizeof(uint32_t));
+}
+
+uint16_t uint16FromPersistent(char const* p) {
+  uint16_t value = 0;
+  uint16_t x = 0;
+  uint8_t const* ptr = reinterpret_cast<uint8_t const*>(p);
+  uint8_t const* end = ptr + sizeof(uint16_t);
+  do {
+    value += static_cast<uint16_t>(*ptr++) << x;
+    x += 8;
+  } while (ptr < end);
+  return value;
+}
+
+void uint16ToPersistent(char* p, uint16_t value) {
+  char* end = p + sizeof(uint16_t);
+  do {
+    *p++ = static_cast<uint8_t>(value & 0xffU);
+    value >>= 8;
+  } while (p < end);
+}
+
+void uint16ToPersistent(std::string& p, uint16_t value) {
+  size_t len = 0;
+  do {
+    p.push_back(static_cast<char>(value & 0xffU));
+    value >>= 8;
+  } while (++len < sizeof(uint16_t));
+}
+
 rocksdb::TransactionDB* globalRocksDB() {
   StorageEngine* engine = EngineSelectorFeature::ENGINE;
   TRI_ASSERT(engine != nullptr);
