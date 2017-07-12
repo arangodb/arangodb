@@ -159,9 +159,13 @@ static void AddAuthLevel(VPackBuilder& builder, AuthLevel lvl) {
 }
 
 static AuthLevel AuthLevelFromSlice(VPackSlice const& slice) {
-  if (slice.hasKey("write") && slice.get("write").isTrue()) {
+  TRI_ASSERT(slice.isObject());
+  VPackSlice v = slice.get("write");
+  if (v.isBool() && v.isTrue()) {
     return AuthLevel::RW;
-  } else if (slice.hasKey("read") && slice.get("read").isTrue()) {
+  }
+  v = slice.get("read");
+  if (v.isBool() && v.isTrue()) {
     return AuthLevel::RO;
   }
   return AuthLevel::NONE;
@@ -454,10 +458,11 @@ void AuthUserEntry::grantDatabase(std::string const& dbname, AuthLevel level) {
   if (it != _authContexts.end()) {
     it->second->_databaseAuthLevel = level;
   } else {
-    _authContexts.emplace(
-        dbname,
-        std::make_shared<AuthContext>(
-            level, std::unordered_map<std::string, AuthLevel>({{"*", level}})));
+    // grantDatabase is not supposed to change any rights on the collection level
+    // code which relies on the old behaviour will need to be adjusted
+    _authContexts.emplace(dbname,
+                          std::make_shared<AuthContext>(
+                          level, std::unordered_map<std::string, AuthLevel>()));
   }
   if (dbname == StaticStrings::SystemDatabase ||
       (dbname == "*" &&

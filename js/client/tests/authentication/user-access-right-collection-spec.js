@@ -55,10 +55,9 @@ for (let l of rightLevels) {
   colLevel[l] = new Set();
 }
 
-const switchUser = (user, db) => {
-  arango.reconnect(arango.getEndpoint(), db, user, '');
+const switchUser = (user, dbname) => {
+  arango.reconnect(arango.getEndpoint(), dbname, user, '');
 };
-
 
 switchUser('root', '_system');
 helper.removeAllUsers();

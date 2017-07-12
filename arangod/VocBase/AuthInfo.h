@@ -118,9 +118,10 @@ class AuthInfo {
 
   std::shared_ptr<AuthContext> noneAuthContext() { return _noneAuthContext; }
   
-  static AuthLevel checkSystemCollectionAccess(std::string const& name,
+  static AuthLevel checkSystemCollectionAccess(bool isSystem,
+                                               std::string const& name,
                                                AuthLevel lvl) {
-    if (name == "_system") {
+    if (isSystem && name == "_system") {
       return AuthLevel::NONE;
     } else if (name == "_frontend") {
       return AuthLevel::RW;

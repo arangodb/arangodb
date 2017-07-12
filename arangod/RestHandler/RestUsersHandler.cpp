@@ -325,14 +325,15 @@ RestStatus RestUsersHandler::putRequest(AuthInfo* authInfo) {
         return RestStatus::DONE;
       }
       
-      AuthLevel lvl = AuthLevel::RW;
-      if (parsedBody->slice().isObject()) {
-        VPackSlice grant = parsedBody->slice().get("grant");
-        if (grant.isString()) {
-          lvl = convertToAuthLevel(grant);
-        }
+      if (!parsedBody->slice().isObject() ||
+          !parsedBody->slice().get("grant").isString()) {
+        generateError(rest::ResponseCode::BAD, TRI_ERROR_BAD_PARAMETER);
+        return RestStatus::DONE;
       }
-
+      
+      VPackSlice grant = parsedBody->slice().get("grant");
+      AuthLevel lvl = convertToAuthLevel(grant);;
+      
       // contains response in case of success
       VPackBuilder b;
       b(VPackValue(VPackValueType::Object));

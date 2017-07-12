@@ -168,7 +168,7 @@ var response = logCurlRequest('DELETE', url);
 
 assert(response.code === 200);
 
-logJsonResponse(response);
+logRawResponse(response);
 users.remove(theUser);
 @END_EXAMPLE_ARANGOSH_RUN
 
@@ -263,7 +263,7 @@ The name of the collection.
 Clears the collection access level for the collection *collection* in the
 database *dbname* of user *user*.  As consequence the default collection
 access level is used. If there is no defined default collection access level,
-it defaults to *No access*.  You need permission to the *_system* database in
+it defaults to *No access*.  You need permissions to the *_system* database in
 order to execute this REST call.
 
 @RESTRETURNCODES
@@ -272,23 +272,22 @@ order to execute this REST call.
 Returned if the access permissions were changed successfully.
 
 @RESTRETURNCODE{400}
-If the JSON representation is malformed or mandatory data is missing
-from the request.
+If there was an error
 
 @EXAMPLES
 
-@EXAMPLE_ARANGOSH_RUN{RestGrantCollection}
+@EXAMPLE_ARANGOSH_RUN{RestRevokeCollection}
 var users = require("@arangodb/users");
 var theUser = "admin@myapp";
 users.save(theUser, "secret")
+users.grantCollection(theUser, "_system", "reports", "rw");
 
 var url = "/_api/user/" + theUser + "/database/_system/reports";
-var data = { grant: "rw" };
-var response = logCurlRequest('PUT', url, data);
+var response = logCurlRequest('DELETE', url);
 
 assert(response.code === 200);
 
-logJsonResponse(response);
+logRawResponse(response);
 users.remove(theUser);
 @END_EXAMPLE_ARANGOSH_RUN
 

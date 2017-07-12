@@ -364,8 +364,6 @@ VPackBuilder AuthInfo::allUsers() {
 
 /// Trigger eventual reload, user facing API call
 void AuthInfo::reloadAllUsers() {
-  _outdated = true;
-
   if (!ServerState::instance()->isCoordinator()) {
     // will reload users on next suitable query
     return;

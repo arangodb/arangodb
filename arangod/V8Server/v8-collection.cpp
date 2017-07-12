@@ -3022,6 +3022,8 @@ static void JS_CollectionsVocbase(
     if (auth->isActive() && ExecContext::CURRENT_EXECCONTEXT != nullptr) {
       AuthLevel level = auth->canUseCollection(ExecContext::CURRENT_EXECCONTEXT->user(),
                              vocbase->name(), collection->name());
+      level = AuthInfo::checkSystemCollectionAccess(vocbase->isSystem(),
+                                                    collection->name(), level);
       if (level == AuthLevel::NONE) {
         continue;
       }
