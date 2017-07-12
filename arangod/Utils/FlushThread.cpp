@@ -23,9 +23,11 @@
 
 #include "FlushThread.h"
 
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/ConditionLocker.h"
 #include "Basics/Exceptions.h"
 #include "Logger/Logger.h"
+#include "RestServer/FlushFeature.h"
 
 using namespace arangodb;
   
@@ -50,10 +52,12 @@ void FlushThread::wakeup() {
 
 /// @brief main loop
 void FlushThread::run() {
+  FlushFeature* flushFeature = application_features::ApplicationServer::getFeature<FlushFeature>("Flush");
+  TRI_ASSERT(flushFeature != nullptr);
+
   while (!isStopping()) {
     try {
-      // TODO: implement flush logic here
-      // LOG_TOPIC(ERR, Logger::FIXME) << "flush ping";
+      flushFeature->executeCallbacks();
 
       // sleep if nothing to do
       CONDITION_LOCKER(guard, _condition);

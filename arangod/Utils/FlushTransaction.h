@@ -21,39 +21,33 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_UTILS_FLUSH_THREAD_H
-#define ARANGOD_UTILS_FLUSH_THREAD_H 1
+#ifndef ARANGOD_UTILS_FLUSH_TRANSACTION_H
+#define ARANGOD_UTILS_FLUSH_TRANSACTION_H 1
 
 #include "Basics/Common.h"
-#include "Basics/ConditionVariable.h"
-#include "Basics/Thread.h"
 
 namespace arangodb {
-class FlushThread final : public Thread {
- private:
-  FlushThread(FlushThread const&) = delete;
-  FlushThread& operator=(FlushThread const&) = delete;
 
+class FlushTransaction {
  public:
-  /// flush interval in microseconds
-  explicit FlushThread(uint64_t flushInterval);
-  ~FlushThread() { shutdown(); }
+  FlushTransaction(FlushTransaction const&) = delete;
+  FlushTransaction& operator=(FlushTransaction const&) = delete;
 
- public:
-  void beginShutdown() override;
-
-  /// @brief wake up the flush thread
-  void wakeup();
+  virtual ~FlushTransaction();
   
- private:
-  void run() override;
+  // return the type name of the flush transaction
+  // this is used when logging error messages about failed flush commits
+  // so users know what exactly went wrong
+  virtual char const* name() {
+    return "unknown";
+  }
 
- private:
-  /// @brief condition variable for the thread
-  basics::ConditionVariable _condition;
-
-  /// @brief wait interval for the flusher thread when idle (in microseconds)
-  uint64_t const _flushInterval;
+  // finally commit the prepared flush transaction 
+  // should return an int with the error code (as in errors.dat). 
+  // - int == 0 (TRI_ERROR_NO_ERROR) means "success"
+  // - int != 0 means "failure"
+  virtual int commit() = 0;
+  
 };
 
 }

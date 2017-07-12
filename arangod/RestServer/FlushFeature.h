@@ -24,29 +24,40 @@
 #define ARANGODB_REST_SERVER_FLUSH_FEATURE_H 1
 
 #include "ApplicationFeatures/ApplicationFeature.h"
+#include "Basics/ReadWriteLock.h"
 
 namespace arangodb {
 class FlushThread;
+class FlushTransaction;
 
 class FlushFeature final
     : public application_features::ApplicationFeature {
+ public:
+  typedef std::function<std::unique_ptr<FlushTransaction>()> FlushCallback;
+
  public:
   explicit FlushFeature(
       application_features::ApplicationServer* server);
 
  public:
   void collectOptions(
-      std::shared_ptr<options::ProgramOptions> options) override final;
-  void validateOptions(std::shared_ptr<options::ProgramOptions>) override final;
-  void prepare() override final;
-  void start() override final;
-  void beginShutdown() override final;
-  void stop() override final;
-  void unprepare() override final;
+      std::shared_ptr<options::ProgramOptions> options) override;
+  void validateOptions(std::shared_ptr<options::ProgramOptions>) override;
+  void prepare() override;
+  void start() override;
+  void beginShutdown() override;
+  void stop() override;
+  void unprepare() override;
+
+  void registerCallback(FlushFeature::FlushCallback const& cb);
+  void executeCallbacks();
 
  private:
   uint64_t _flushInterval;
   std::unique_ptr<FlushThread> _flushThread;
+
+  basics::ReadWriteLock _callbacksLock; 
+  std::vector<FlushCallback> _callbacks;
 };
 }
 

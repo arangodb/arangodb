@@ -23,10 +23,13 @@
 #include "FlushFeature.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
+#include "Basics/ReadLocker.h"
+#include "Basics/WriteLocker.h"
 #include "Logger/Logger.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
 #include "Utils/FlushThread.h"
+#include "Utils/FlushTransaction.h"
 
 using namespace arangodb;
 using namespace arangodb::application_features;
@@ -85,4 +88,39 @@ void FlushFeature::stop() {
   _flushThread.reset();
 }
 
-void FlushFeature::unprepare() { }
+void FlushFeature::unprepare() { 
+  WRITE_LOCKER(locker, _callbacksLock);
+  _callbacks.clear();
+}
+
+void FlushFeature::registerCallback(FlushFeature::FlushCallback const& cb) {
+  WRITE_LOCKER(locker, _callbacksLock);
+  _callbacks.emplace_back(std::move(cb));
+}
+
+void FlushFeature::executeCallbacks() {
+  std::vector<std::unique_ptr<FlushTransaction>> transactions;
+
+  READ_LOCKER(locker, _callbacksLock);
+  
+  transactions.reserve(_callbacks.size());
+
+  // execute all callbacks. this will create as many transactions as
+  // there are callbacks
+  for (auto const& cb : _callbacks) {
+    transactions.emplace_back(std::move(cb()));
+  }
+
+  // TODO: make sure all data is synced
+
+
+  // commit all transactions
+  for (auto const& trx : transactions) {
+    int res = trx->commit();
+
+    if (res != TRI_ERROR_NO_ERROR) {
+      LOG_TOPIC(ERR, Logger::FIXME) << "could not commit flush for type '" << trx->name() << "'"; 
+    }
+    // TODO: honor the commit results here
+  }
+}
