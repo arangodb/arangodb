@@ -117,6 +117,16 @@ class AuthInfo {
                                               std::string const& database);
 
   std::shared_ptr<AuthContext> noneAuthContext() { return _noneAuthContext; }
+  
+  static AuthLevel checkSystemCollectionAccess(std::string const& name,
+                                               AuthLevel lvl) {
+    if (name == "_system") {
+      return AuthLevel::NONE;
+    } else if (name == "_frontend") {
+      return AuthLevel::RW;
+    }
+    return lvl;
+  }
 
  private:
   void loadFromDB();

@@ -515,8 +515,11 @@ Result AuthInfo::removeUser(std::string const& user) {
   if (user.empty()) {
     return TRI_ERROR_USER_NOT_FOUND;
   }
-  loadFromDB();
+  if (user == "root") {
+    return TRI_ERROR_FORBIDDEN;
+  }
   
+  loadFromDB();
   WRITE_LOCKER(guard, _authInfoLock);
   auto it = _authInfo.find(user);
   if (it == _authInfo.end()) {

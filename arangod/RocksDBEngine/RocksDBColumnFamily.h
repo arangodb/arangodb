@@ -57,6 +57,32 @@ struct RocksDBColumnFamily {
 
   static rocksdb::ColumnFamilyHandle* fulltext() { return _fulltext; }
 
+  static char const* columnFamilyName(rocksdb::ColumnFamilyHandle* cf) {
+    if (cf == _definitions) {
+      return "definitions";
+    } 
+    if (cf == _documents) {
+      return "documents";
+    }
+    if (cf == _primary) {
+      return "primary";
+    }
+    if (cf == _edge) {
+      return "edge";
+    } 
+    if (cf == _vpack) {
+      return "vpack";
+    }
+    if (cf == _geo) {
+      return "geo";
+    }
+    if (cf == _fulltext) {
+      return "fulltext";
+    }
+    TRI_ASSERT(false);
+    return "unknown";
+  }
+
  private:
   static rocksdb::ColumnFamilyHandle* _definitions;
   static rocksdb::ColumnFamilyHandle* _documents;

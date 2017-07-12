@@ -281,7 +281,7 @@ static void JS_RevokeDatabase(v8::FunctionCallbackInfo<v8::Value> const& args) {
   std::string db = TRI_ObjectToString(args[1]);
   Result r = authentication->authInfo()->updateUser(
       username,
-      [&](AuthUserEntry& entry) { entry.grantDatabase(db, AuthLevel::NONE); });
+      [&](AuthUserEntry& entry) { entry.removeDatabase(db); });
   if (!r.ok()) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(r.errorNumber(), r.errorMessage());
   }
@@ -352,7 +352,7 @@ static void JS_RevokeCollection(
 
   Result r = authentication->authInfo()->updateUser(
       username, [&](AuthUserEntry& entry) {
-        entry.grantCollection(db, coll, AuthLevel::NONE);
+        entry.removeCollection(db, coll);
       });
   if (!r.ok()) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(r.errorNumber(), r.errorMessage());

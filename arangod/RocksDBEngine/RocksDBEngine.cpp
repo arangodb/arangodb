@@ -973,7 +973,7 @@ arangodb::Result RocksDBEngine::dropCollection(
 
   rocksdb::WriteOptions options;  // TODO: check which options would make sense
 
-  // If we get here the collection is save to drop.
+  // If we get here the collection is safe to drop.
   //
   // This uses the following workflow:
   // 1. Persist the drop.
@@ -1033,6 +1033,8 @@ arangodb::Result RocksDBEngine::dropCollection(
 
   // delete indexes
   std::vector<std::shared_ptr<Index>> vecShardIndex = coll->getIndexes();
+  TRI_ASSERT(!vecShardIndex.empty());
+
   for (auto& index : vecShardIndex) {
     int dropRes = index->drop();
     // TODO FAILURE Simulate dropRes != TRI_ERROR_NO_ERROR
@@ -1040,6 +1042,7 @@ arangodb::Result RocksDBEngine::dropCollection(
       // We try to remove all indexed values.
       // If it does not work they cannot be accessed any more and leaked.
       // User View remains consistent.
+      LOG_TOPIC(ERR, Logger::FIXME) << "unable to drop index: " << TRI_errno_string(dropRes);
       return TRI_ERROR_NO_ERROR;
     }
   }
@@ -1532,9 +1535,25 @@ void RocksDBEngine::getStatistics(VPackBuilder& builder) const {
   // add column family properties
   auto addCf = [&](std::string const& name, rocksdb::ColumnFamilyHandle* c) {
     std::string v;
+    builder.add(name, VPackValue(VPackValueType::Object));
     if (_db->GetProperty(c, rocksdb::DB::Properties::kCFStats, &v)) {
-      builder.add(name, VPackValue(v));
+      builder.add("dbstats", VPackValue(v));
     }
+
+    // re-add this line to count all keys in the column family (slow!!!)
+    // builder.add("keys", VPackValue(rocksutils::countKeys(_db, c)));
+  
+    // estimate size on disk and in memtables
+    uint64_t out = 0;
+    rocksdb::Range r(rocksdb::Slice("\x00\x00\x00\x00\x00\x00\x00\x00", 8), rocksdb::Slice("\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff", 16));
+
+    _db->GetApproximateSizes(c, &r, 1, &out,
+      static_cast<uint8_t>(
+          rocksdb::DB::SizeApproximationFlags::INCLUDE_MEMTABLES |
+          rocksdb::DB::SizeApproximationFlags::INCLUDE_FILES));
+    
+    builder.add("memory", VPackValue(out));
+    builder.close();
   };
   
   builder.openObject();
@@ -1588,7 +1607,8 @@ void RocksDBEngine::getStatistics(VPackBuilder& builder) const {
   builder.add("cache.hit-rate-lifetime", VPackValue(rates.first));
   builder.add("cache.hit-rate-recent", VPackValue(rates.second));
   
-  builder.add("rocksdb.cfstats", VPackValue(VPackValueType::Object));
+  // print column family statistics
+  builder.add("columnFamilies", VPackValue(VPackValueType::Object));
   addCf("definitions", RocksDBColumnFamily::definitions());
   addCf("documents", RocksDBColumnFamily::documents());
   addCf("primary", RocksDBColumnFamily::primary());

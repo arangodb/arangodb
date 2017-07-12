@@ -53,6 +53,8 @@ class ExecContext {
   ExecContext(std::string const& user, std::string const& database,
               std::shared_ptr<AuthContext> authContext)
       : _user(user), _database(database), _auth(authContext) {}
+  
+  ExecContext(ExecContext const&) = delete;
 
   static thread_local ExecContext* CURRENT_EXECCONTEXT;
 

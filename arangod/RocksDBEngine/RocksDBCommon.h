@@ -52,7 +52,7 @@ namespace arangodb {
 
 class RocksDBOperationResult : public Result {
 public:
-  explicit RocksDBOperationResult() : Result(), _keySize(0) {}
+  RocksDBOperationResult() : Result(), _keySize(0) {}
   
   RocksDBOperationResult(Result const& other) : _keySize(0) {
     cloneData(other);
@@ -163,7 +163,10 @@ uint64_t latestSequenceNumber();
 void addCollectionMapping(uint64_t, TRI_voc_tick_t, TRI_voc_cid_t);
 std::pair<TRI_voc_tick_t, TRI_voc_cid_t> mapObjectToCollection(uint64_t);
 
-/// Iterator over all keys in range and count them
+/// @brief count all keys in the given column family
+std::size_t countKeys(rocksdb::DB*, rocksdb::ColumnFamilyHandle* cf);
+
+/// @brief iterate over all keys in range and count them
 std::size_t countKeyRange(rocksdb::DB*, rocksdb::ReadOptions const&,
                           RocksDBKeyBounds const&);
 

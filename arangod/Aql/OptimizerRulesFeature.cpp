@@ -154,6 +154,15 @@ void OptimizerRulesFeature::addRules() {
   // merge filters into traversals
   registerRule("optimize-traversals", optimizeTraversalsRule,
                OptimizerRule::optimizeTraversalsRule_pass6, DoesNotCreateAdditionalPlans, CanBeDisabled);
+  
+  // optimize unneccessary filters already applied by the traversal
+  registerRule("remove-filter-covered-by-traversal", removeFiltersCoveredByTraversal,
+               OptimizerRule::removeFiltersCoveredByTraversal_pass6, DoesNotCreateAdditionalPlans, CanBeDisabled);
+  
+  // optimize unneccessary filters already applied by the traversal. Only ever does something if previous
+  // rule remove all filters using the path variable
+  registerRule("remove-redundant-path-var", removeTraversalPathVariable,
+               OptimizerRule::removeTraversalPathVariable_pass6, DoesNotCreateAdditionalPlans, CanBeDisabled);
 
   // prepare traversal info
   registerRule("prepare-traversals", prepareTraversalsRule,

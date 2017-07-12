@@ -278,7 +278,7 @@ int RocksDBVPackIndex::fillElement(VPackBuilder& leased, TRI_voc_rid_t revId,
                                    std::vector<RocksDBKey>& elements,
                                    std::vector<uint64_t>& hashes) {
   if (doc.isNone()) {
-    LOG_TOPIC(ERR, arangodb::Logger::ROCKSDB)
+    LOG_TOPIC(ERR, arangodb::Logger::FIXME)
         << "encountered invalid marker with slice of type None";
     return TRI_ERROR_INTERNAL;
   }
@@ -543,8 +543,10 @@ Result RocksDBVPackIndex::insertInternal(transaction::Methods* trx,
 
   size_t const count = elements.size();
   for (size_t i = 0; i < count; ++i) {
-    RocksDBKey const& key = elements[i];
+    RocksDBKey& key = elements[i];
     if (_unique) {
+      RocksDBValue existing =
+          RocksDBValue::Empty(RocksDBEntryType::UniqueVPackIndexValue);
       if (mthds->Exists(_cf, key)) {
         res = TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED;
       }
@@ -563,6 +565,12 @@ Result RocksDBVPackIndex::insertInternal(transaction::Methods* trx,
     if (res != TRI_ERROR_NO_ERROR) {
       for (size_t j = 0; j < i; ++j) {
         mthds->Delete(_cf, elements[j]);
+      }
+
+      if (res == TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED && !_unique) {
+        // We ignore unique_constraint violated if we are not unique
+        res = TRI_ERROR_NO_ERROR;
+        // TODO: remove this? seems dangerous...
       }
       break;
     }
@@ -602,8 +610,7 @@ Result RocksDBVPackIndex::removeInternal(transaction::Methods* trx,
 
   size_t const count = elements.size();
   for (size_t i = 0; i < count; ++i) {
-    RocksDBKey const& key = elements[i];
-    arangodb::Result r = mthds->Delete(_cf, key);
+    arangodb::Result r = mthds->Delete(_cf, elements[i]);
     if (!r.ok()) {
       res = r.errorNumber();
     }
@@ -1399,8 +1406,8 @@ int RocksDBVPackIndex::cleanup() {
   rocksdb::CompactRangeOptions opts;
   RocksDBKeyBounds bounds = getBounds();
   rocksdb::Slice b = bounds.start(), e = bounds.end();
-  LOG_TOPIC(DEBUG, Logger::ROCKSDB) << "compacting index range " << bounds;
-  db->CompactRange(opts, &b, &e);
+  LOG_TOPIC(DEBUG, Logger::FIXME) << "compacting index range " << bounds;
+  db->CompactRange(opts, bounds.columnFamily(), &b, &e);
   return TRI_ERROR_NO_ERROR;
 }
 

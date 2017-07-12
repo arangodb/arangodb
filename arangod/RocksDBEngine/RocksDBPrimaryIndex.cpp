@@ -159,7 +159,7 @@ int RocksDBPrimaryIndex::cleanup() {
   rocksdb::CompactRangeOptions opts;
   RocksDBKeyBounds bounds = RocksDBKeyBounds::PrimaryIndex(_objectId);
   rocksdb::Slice b = bounds.start(), e = bounds.end();
-  db->CompactRange(opts, &b, &e);
+  db->CompactRange(opts, bounds.columnFamily(), &b, &e);
   return TRI_ERROR_NO_ERROR;
 }
 

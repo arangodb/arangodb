@@ -753,31 +753,54 @@ actions.defineHttp({
         '"newSecondary" are given in body and are strings');
       return;
     }
-    let agency = ArangoAgency.get('Plan/DBServers/' + body.primary);
+    let dbservers = ArangoAgency.get('Plan/DBServers/' + body.primary).arango.Plan.DBservers;
+    let sID = ArangoAgency.get('Target/MapUniqueToShortID').arango.Target.MapUniqueToShortID;
 
-    if (fetchKey(agency, 'arango', 'Plan', 'DBServers', body.primary) === undefined) {
+    let id = body.primary;
+    let nid = body.newSecondary;
+
+    if (fetchKey(dbservers, id) === undefined) {
+      for (var sid in sID) {
+        if(sID[sid].ShortName === id) {
+          id = sid;
+          break;
+        }
+      }
+      actions.resultError(req, res, actions.HTTP_NOT_FOUND, 0,
+        'Primary with the given ID is not configured in Agency.');
+      return;
+    }
+
+    if (fetchKey(dbservers, nid) === undefined) {
+      for (sid in sID) {
+        if(sID[sid].ShortName === nid) {
+          nid = sid;
+          break;
+        }
+      }
       actions.resultError(req, res, actions.HTTP_NOT_FOUND, 0,
         'Primary with the given ID is not configured in Agency.');
       return;
     }
 
     let operations = {};
-    operations['/arango/Plan/DBServers/' + body.primary] = body.newSecondary;
+    operations['/arango/Plan/DBServers/' + id] = nid;
     operations['/arango/Plan/Version'] = {'op': 'increment'};
 
     let preconditions = {};
-    preconditions['/arango/Plan/DBServers/' + body.primary] = {'old': body.oldSecondary};
+    preconditions['/arango/Plan/DBServers/' + id] = {'old': body.oldSecondary};
 
     try {
+      require('internal').print([[operations, preconditions]]);
       global.ArangoAgency.write([[operations, preconditions]]);
     } catch (e) {
       if (e.code === 412) {
-        let oldValue = ArangoAgency.get('Plan/DBServers/' + body.primary);
+        let oldValue = ArangoAgency.get('Plan/DBServers/' + id);
         actions.resultError(req, res, actions.HTTP_PRECONDITION_FAILED, 0,
           'Primary does not have the given oldSecondary as ' +
           'its secondary, current value: '
           + JSON.stringify(
-            fetchKey(oldValue, 'arango', 'Plan', 'DBServers', body.primary)
+            fetchKey(oldValue, 'arango', 'Plan', 'DBServers', id)
           ));
         return;
       }
