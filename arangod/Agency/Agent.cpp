@@ -1646,8 +1646,11 @@ query_t Agent::gossip(query_t const& in, bool isCallback, size_t version) {
     }
   }
   
-  LOG_TOPIC(TRACE, Logger::AGENCY) << "Answering with gossip "
-                                   << out->slice().toJson();
+  if (!isCallback) {
+    LOG_TOPIC(TRACE, Logger::AGENCY) << "Answering with gossip "
+                                     << out->slice().toJson();
+  }
+
   return out;
 }
 
