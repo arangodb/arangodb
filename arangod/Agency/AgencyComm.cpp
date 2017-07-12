@@ -1446,6 +1446,17 @@ AgencyCommResult AgencyComm::sendWithFailover(
         break;
       }
 
+
+      // Note that in case of a timeout or 503 we do not know whether the
+      // operation has been executed. In this case we should inquire about
+      // the operation. If it actually was done, we are good. If not, we
+      // can retry. If in doubt, we have to retry inquire until the global
+      // timeout is reached.
+      if (!clientId.empty() && result._sent &&
+          (result._statusCode == 0 || result._statusCode == 503)) {
+        isInquiry = true;
+      }
+
       // This leaves the redirect, timeout and 503 cases, which are handled
       // below.
     } else {
@@ -1545,16 +1556,6 @@ AgencyCommResult AgencyComm::sendWithFailover(
       AgencyCommManager::MANAGER->failed(std::move(connection), endpoint);
       endpoint.clear();
       connection = AgencyCommManager::MANAGER->acquire(endpoint);
-    }
-
-    // Note that in case of a timeout or 503 we do not know whether the
-    // operation has been executed. In this case we should inquire about
-    // the operation. If it actually was done, we are good. If not, we
-    // can retry. If in doubt, we have to retry inquire until the global
-    // timeout is reached.
-    if (!clientId.empty() && result._sent &&
-        (result._statusCode == 0 || result._statusCode == 503)) {
-      isInquiry = true;
     }
   }
 
