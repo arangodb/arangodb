@@ -1,6 +1,8 @@
 devel
 -----
 
+* ui: added index deduplicate options
+
 * ui: fixed renaming of collections based on rocksdb storage engine
 
 * documentation and js fixes for secondaries
