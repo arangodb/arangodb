@@ -1,7 +1,7 @@
 arangosh&gt; db.users.firstExample(<span class="hljs-string">"name"</span>, <span class="hljs-string">"Angela"</span>);
 { 
-  <span class="hljs-string">"_key"</span> : <span class="hljs-string">"14698"</span>, 
-  <span class="hljs-string">"_id"</span> : <span class="hljs-string">"users/14698"</span>, 
-  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_VPISPkG---"</span>, 
+  <span class="hljs-string">"_key"</span> : <span class="hljs-string">"14659"</span>, 
+  <span class="hljs-string">"_id"</span> : <span class="hljs-string">"users/14659"</span>, 
+  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_VRZS34O---"</span>, 
   <span class="hljs-string">"name"</span> : <span class="hljs-string">"Angela"</span> 
 }

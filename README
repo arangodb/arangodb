@@ -10,7 +10,7 @@ programming language or try one of our ArangoDB_Cookbook_recipes.
 For the impatient: download and install ArangoDB. Start the server arangod and
 point your browser to http://127.0.0.1:8529/.
 ***** Key Features in ArangoDB *****
-    * Multi-Model: Documents, graphs and key-value pairs â model your data as
+    * Multi-Model: Documents, graphs and key-value pairs — model your data as
       you see fit for your application.
     * Joins: Conveniently join what belongs together for flexible ad-hoc
       querying, less data redundancy.
@@ -54,7 +54,7 @@ Other features of ArangoDB include:
     * It is open source (Apache License 2.0)
 For more in-depth information read the design_goals_of_ArangoDB
 ***** Latest Release - ArangoDB 3.0 *****
-The What’s_new_in_ArangoDB_3.0 can be found in the documentation.
+The What's_new_in_ArangoDB_3.0 can be found in the documentation.
 Key features of the 3.0 release are:
     * Use of VelocyPack as internal storage format
     * AQL improvements

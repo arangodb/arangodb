@@ -1,12 +1,12 @@
-shell> curl --dump - http://localhost:8529/_api/replication/logger-follow?from=10614&chunkSize=400
+shell> curl --dump - http://localhost:8529/_api/replication/logger-follow?from=10573&chunkSize=400
 
 HTTP/1.1 200 OK
+x-arango-replication-lastincluded: 10575
+content-type: application/x-arango-dump; charset=utf-8
+x-arango-replication-lasttick: 10585
 x-arango-replication-checkmore: true
-x-arango-replication-lastincluded: 10616
-x-arango-replication-active: true
 x-arango-replication-frompresent: true
 x-content-type-options: nosniff
-x-arango-replication-lasttick: 10626
-content-type: application/x-arango-dump; charset=utf-8
+x-arango-replication-active: true
 
-"{\"tick\":\"10616\",\"type\":2000,\"database\":\"1\",\"cid\":\"10615\",\"cname\":\"products\",\"data\":{\"allowUserKeys\":true,\"cid\":\"10615\",\"count\":0,\"deleted\":false,\"doCompact\":true,\"id\":\"10615\",\"indexBuckets\":8,\"indexes\":[{\"fields\":[\"_key\"],\"id\":\"0\",\"selectivityEstimate\":1,\"sparse\":false,\"type\":\"primary\",\"unique\":true}],\"isSystem\":false,\"isVolatile\":false,\"journalSize\":33554432,\"keyOptions\":{\"allowUserKeys\":true,\"type\":\"traditional\"},\"name\":\"products\",\"numberOfShards\":1,\"planId\":\"10615\",\"replicationFactor\":1,\"shardKeys\":[\"_key\"],\"shards\":{},\"status\":3,\"type\":2,\"version\":6,\"waitForSync\":false}}\n"
+"{\"tick\":\"10575\",\"type\":2000,\"database\":\"1\",\"cid\":\"10574\",\"cname\":\"products\",\"data\":{\"allowUserKeys\":true,\"cid\":\"10574\",\"count\":0,\"deleted\":false,\"doCompact\":true,\"id\":\"10574\",\"indexBuckets\":8,\"indexes\":[{\"fields\":[\"_key\"],\"id\":\"0\",\"selectivityEstimate\":1,\"sparse\":false,\"type\":\"primary\",\"unique\":true}],\"isSystem\":false,\"isVolatile\":false,\"journalSize\":33554432,\"keyOptions\":{\"allowUserKeys\":true,\"type\":\"traditional\"},\"name\":\"products\",\"numberOfShards\":1,\"planId\":\"10574\",\"replicationFactor\":1,\"shardKeys\":[\"_key\"],\"shards\":{},\"status\":3,\"type\":2,\"version\":6,\"waitForSync\":false}}\n"
