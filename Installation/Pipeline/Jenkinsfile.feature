@@ -763,6 +763,7 @@ def testResilienceName(os, engine, foxx, full) {
 def testResilienceStep(os, engine, foxx) {
     return {
         node(testJenkins[os]) {
+            def edition = "community"
             def buildName = "${edition}-${os}"
 
             if (buildsSuccess[buildName]) {
@@ -771,7 +772,7 @@ def testResilienceStep(os, engine, foxx) {
 
                 try {
                     try {
-                        unstashBinaries('community', os)
+                        unstashBinaries(edition, os)
                         testResilience(os, engine, foxx)
                     }
                     finally {
