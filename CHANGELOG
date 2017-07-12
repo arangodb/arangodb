@@ -1,6 +1,8 @@
 v3.1.25 (2017-07-11)
 --------------------
 
+* fixed parallel access to list of failed servers
+
 * fixed ID lookup for secondaries
 
 * removed secondaries from local and distributed cluster deployments
