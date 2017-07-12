@@ -62,7 +62,8 @@ router.get('/config.js', function (req, res) {
       db: req.database,
       isEnterprise: isEnterprise,
       authenticationEnabled: internal.authenticationEnabled(),
-      isCluster: cluster.isCluster()
+      isCluster: cluster.isCluster(),
+      engine: db._engine().name
     })}`
   );
 })
