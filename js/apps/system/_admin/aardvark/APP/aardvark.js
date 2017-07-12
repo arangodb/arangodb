@@ -47,7 +47,7 @@ const router = createRouter();
 module.exports = router;
 
 router.get('/index.html', (req, res) => {
-  res.sendFile(module.context.fileName('frontend/build/index.html'));
+  res.sendFile(module.context.fileName('frontend/build/index-min.html'));
   res.set('X-Frame-Options', 'DENY');
   res.set('X-XSS-Protection', '1; mode=block');
 });
