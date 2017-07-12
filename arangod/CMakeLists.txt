@@ -351,6 +351,7 @@ SET(ARANGOD_SOURCES
   RestServer/EndpointFeature.cpp
   RestServer/FeatureCacheFeature.cpp
   RestServer/FileDescriptorsFeature.cpp
+  RestServer/FlushFeature.cpp
   RestServer/FrontendFeature.cpp
   RestServer/InitDatabaseFeature.cpp
   RestServer/LockfileFeature.cpp
@@ -397,6 +398,7 @@ SET(ARANGOD_SOURCES
   Utils/Cursor.cpp
   Utils/CursorRepository.cpp
   Utils/ExecContext.cpp
+  Utils/FlushThread.cpp
   Utils/OperationCursor.cpp
   Utils/SingleCollectionTransaction.cpp
   Utils/WorkMonitorArangod.cpp

@@ -20,32 +20,44 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_REST_SERVER_VIEW_TYPES_FEATURE_H
-#define ARANGODB_REST_SERVER_VIEW_TYPES_FEATURE_H 1
+#ifndef ARANGODB_REST_SERVER_FLUSH_FEATURE_H
+#define ARANGODB_REST_SERVER_FLUSH_FEATURE_H 1
 
 #include "ApplicationFeatures/ApplicationFeature.h"
-#include "VocBase/ViewImplementation.h"
+#include "Basics/ReadWriteLock.h"
 
 namespace arangodb {
+class FlushThread;
+class FlushTransaction;
 
-class ViewTypesFeature final
+class FlushFeature final
     : public application_features::ApplicationFeature {
  public:
-  explicit ViewTypesFeature(
+  typedef std::function<std::unique_ptr<FlushTransaction>()> FlushCallback;
+
+ public:
+  explicit FlushFeature(
       application_features::ApplicationServer* server);
 
  public:
-  void prepare() override final;
-  void unprepare() override final;
+  void collectOptions(
+      std::shared_ptr<options::ProgramOptions> options) override;
+  void validateOptions(std::shared_ptr<options::ProgramOptions>) override;
+  void prepare() override;
+  void start() override;
+  void beginShutdown() override;
+  void stop() override;
+  void unprepare() override;
 
-  static void registerViewImplementation(std::string const& type, ViewCreator creator);
-
-  bool isValidType(std::string const& type) const;
-
-  ViewCreator& creator(std::string const& type) const;
+  void registerCallback(FlushFeature::FlushCallback const& cb);
+  void executeCallbacks();
 
  private:
-  static std::unordered_map<std::string, arangodb::ViewCreator> _viewCreators;
+  uint64_t _flushInterval;
+  std::unique_ptr<FlushThread> _flushThread;
+
+  basics::ReadWriteLock _callbacksLock; 
+  std::vector<FlushCallback> _callbacks;
 };
 }
 

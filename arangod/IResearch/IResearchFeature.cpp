@@ -36,20 +36,35 @@ using namespace arangodb::iresearch;
 using namespace arangodb::options;
 
 IResearchFeature::IResearchFeature(arangodb::application_features::ApplicationServer* server)
-    : ApplicationFeature(server, "IResearch") {
+  : ApplicationFeature(server, "IResearch"),
+    _running(false) {
   setOptional(true);
   requiresElevatedPrivileges(false);
   startsAfter("ViewTypes");
   startsAfter("Logger");
+  startsAfter("Database");
+  // TODO FIXME: we need the MMFilesLogfileManager to be available here if we
+  // use the MMFiles engine. But it does not feel right to have such storage engine-
+  // specific dependency here. Better create a "StorageEngineFeature" and make 
+  // ourselves start after it!
+  startsAfter("MMFilesLogfileManager");
+  startsAfter("TransactionManager");
+}
+
+void IResearchFeature::beginShutdown() {
+  _running = false;
+  ApplicationFeature::beginShutdown();
 }
 
 void IResearchFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
-}
-
-void IResearchFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
+  _running = false;
+  ApplicationFeature::collectOptions(options);
 }
 
 void IResearchFeature::prepare() {
+  _running = false;
+  ApplicationFeature::prepare();
+
   // load all known codecs
   ::iresearch::formats::init();
 
@@ -60,8 +75,35 @@ void IResearchFeature::prepare() {
   ViewTypesFeature::registerViewImplementation(
      IResearchView::type(),
      IResearchView::make
-   );
+  );
+}
+
+bool IResearchFeature::running() const noexcept {
+  return _running;
 }
 
 void IResearchFeature::start() {
+  ApplicationFeature::start();
+  _running = true;
 }
+
+void IResearchFeature::stop() {
+  _running = false;
+  ApplicationFeature::stop();
+}
+
+void IResearchFeature::unprepare() {
+  _running = false;
+  ApplicationFeature::unprepare();
+}
+
+void IResearchFeature::validateOptions(
+    std::shared_ptr<ProgramOptions> options
+) {
+  _running = false;
+  ApplicationFeature::validateOptions(options);
+}
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                       END-OF-FILE
+// -----------------------------------------------------------------------------

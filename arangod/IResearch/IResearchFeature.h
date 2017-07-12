@@ -33,15 +33,20 @@ class IResearchFeature final : public application_features::ApplicationFeature {
  public:
   IResearchFeature(application_features::ApplicationServer* server);
 
- public:
-  void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
-  void validateOptions(std::shared_ptr<options::ProgramOptions>) override final;
-  void prepare() override final;
-  void start() override final;
+  void beginShutdown() override;
+  void collectOptions(std::shared_ptr<options::ProgramOptions>) override;
+  void prepare() override;
+  bool running() const noexcept;
+  void start() override;
+  void stop() override;
+  void unprepare() override;
+  void validateOptions(std::shared_ptr<options::ProgramOptions>) override;
+
+ private:
+  bool _running;
 };
 
 } // iresearch
 } // arangodb
 
 #endif
-

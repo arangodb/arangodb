@@ -270,7 +270,7 @@ void LogicalView::persistPhysicalView() {
 void LogicalView::spawnImplementation(
     ViewCreator creator, arangodb::velocypack::Slice const& parameters,
     bool isNew) {
-  _implementation = creator(this, parameters, isNew);
+  _implementation = creator(this, parameters.get("properties"), isNew);
 }
 
 bool LogicalView::supportsFilterCondition(

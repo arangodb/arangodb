@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -20,33 +21,41 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_REST_SERVER_VIEW_TYPES_FEATURE_H
-#define ARANGODB_REST_SERVER_VIEW_TYPES_FEATURE_H 1
+#ifndef ARANGOD_UTILS_FLUSH_THREAD_H
+#define ARANGOD_UTILS_FLUSH_THREAD_H 1
 
-#include "ApplicationFeatures/ApplicationFeature.h"
-#include "VocBase/ViewImplementation.h"
+#include "Basics/Common.h"
+#include "Basics/ConditionVariable.h"
+#include "Basics/Thread.h"
 
 namespace arangodb {
-
-class ViewTypesFeature final
-    : public application_features::ApplicationFeature {
- public:
-  explicit ViewTypesFeature(
-      application_features::ApplicationServer* server);
+class FlushThread final : public Thread {
+ private:
+  FlushThread(FlushThread const&) = delete;
+  FlushThread& operator=(FlushThread const&) = delete;
 
  public:
-  void prepare() override final;
-  void unprepare() override final;
+  /// flush interval in microseconds
+  explicit FlushThread(uint64_t flushInterval);
+  ~FlushThread() { shutdown(); }
 
-  static void registerViewImplementation(std::string const& type, ViewCreator creator);
+ public:
+  void beginShutdown() override;
 
-  bool isValidType(std::string const& type) const;
-
-  ViewCreator& creator(std::string const& type) const;
+  /// @brief wake up the flush thread
+  void wakeup();
+  
+ private:
+  void run() override;
 
  private:
-  static std::unordered_map<std::string, arangodb::ViewCreator> _viewCreators;
+  /// @brief condition variable for the thread
+  basics::ConditionVariable _condition;
+
+  /// @brief wait interval for the flusher thread when idle (in microseconds)
+  uint64_t const _flushInterval;
 };
+
 }
 
 #endif

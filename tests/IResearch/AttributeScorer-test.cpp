@@ -28,6 +28,7 @@
 #include "Aql/Query.h"
 #include "Aql/SortCondition.h"
 #include "GeneralServer/AuthenticationFeature.h"
+#include "IResearch/IResearchFeature.h"
 #include "IResearch/AttributeScorer.h"
 #include "IResearch/IResearchView.h"
 #include "RestServer/AqlFeature.h"
@@ -136,6 +137,7 @@ struct IResearchAttributeScorerSetup {
     features.emplace_back(new arangodb::AuthenticationFeature(arangodb::application_features::ApplicationServer::server), true);
     features.emplace_back(new arangodb::DatabaseFeature(arangodb::application_features::ApplicationServer::server), false);
     features.emplace_back(new arangodb::FeatureCacheFeature(arangodb::application_features::ApplicationServer::server), true);
+    features.emplace_back(new arangodb::iresearch::IResearchFeature(arangodb::application_features::ApplicationServer::server), true);
     features.emplace_back(new arangodb::ViewTypesFeature(arangodb::application_features::ApplicationServer::server), true);
 
     arangodb::ViewTypesFeature::registerViewImplementation(
@@ -191,14 +193,16 @@ SECTION("test_query") {
   auto viewJson = arangodb::velocypack::Parser::fromJson("{ \
     \"name\": \"testView\", \
     \"type\": \"iresearch\", \
+    \"properties\": { \"name\" : \"testView\", \
     \"links\": { \"testCollection\": { \"includeAllFields\": true } } \
+    } \
   }");
   auto* logicalCollection = vocbase.createCollection(collectionJson->slice());
-  CHECK((nullptr != logicalCollection));
+  REQUIRE((nullptr != logicalCollection));
   auto logicalView = vocbase.createView(viewJson->slice(), 0);
-  CHECK((false == !logicalView));
+  REQUIRE((false == !logicalView));
   auto* view = logicalView->getImplementation();
-  CHECK((false == !view));
+  REQUIRE((false == !view));
 
   // fill with test data
   {

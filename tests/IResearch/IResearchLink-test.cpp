@@ -29,6 +29,7 @@
 #include "utils/utf8_path.hpp"
 
 #include "Basics/files.h"
+#include "IResearch/IResearchFeature.h"
 #include "IResearch/IResearchLink.h"
 #include "Logger/Logger.h"
 #include "Logger/LogTopic.h"
@@ -59,15 +60,22 @@ struct IResearchLinkSetup {
     arangodb::application_features::ApplicationServer::server->addFeature(
       feature = new arangodb::ViewTypesFeature(arangodb::application_features::ApplicationServer::server)
     );
-    feature->start();
     feature->prepare();
+    feature->start();
 
     // QueryRegistryFeature
     arangodb::application_features::ApplicationServer::server->addFeature(
       feature = new arangodb::QueryRegistryFeature(&server)
     );
-    feature->start();
     feature->prepare();
+    feature->start();
+
+    // IResearchFeature
+    arangodb::application_features::ApplicationServer::server->addFeature(
+      feature = new arangodb::iresearch::IResearchFeature(&server)
+    );
+    feature->prepare();
+    feature->start();
 
     arangodb::ViewTypesFeature::registerViewImplementation(
       arangodb::iresearch::IResearchView::type(),
@@ -148,15 +156,15 @@ SECTION("test_defaults") {
     TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "testVocbase");
     auto linkJson = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testView\" }");
     auto collectionJson = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testCollection\" }");
-    auto viewJson = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testView\", \"type\": \"iresearch\" }");
+    auto viewJson = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testView\", \"type\": \"iresearch\", \"properties\": { \"name\" : \"testView\" } }");
     auto* logicalCollection = vocbase.createCollection(collectionJson->slice());
-    CHECK((nullptr != logicalCollection));
+    REQUIRE((nullptr != logicalCollection));
     auto logicalView = vocbase.createView(viewJson->slice(), 0);
-    CHECK((false == !logicalView));
+    REQUIRE((false == !logicalView));
 
     bool created;
     auto link = logicalCollection->createIndex(nullptr, linkJson->slice(), created);
-    CHECK((false == !link && created));
+    REQUIRE((false == !link && created));
     CHECK((true == link->allowExpansion()));
     CHECK((true == link->canBeDropped()));
     CHECK((logicalCollection == link->collection()));
@@ -206,21 +214,23 @@ SECTION("test_write") {
   auto viewJson = arangodb::velocypack::Parser::fromJson("{ \
     \"name\": \"testView\", \
     \"type\": \"iresearch\", \
+    \"properties\": { \"name\": \"testView\", \
     \"dataPath\": \"" + arangodb::basics::StringUtils::replace(dataPath, "\\", "/") + "\" \
+    } \
   }");
   auto* logicalCollection = vocbase.createCollection(collectionJson->slice());
-  CHECK((nullptr != logicalCollection));
+  REQUIRE((nullptr != logicalCollection));
   auto logicalView = vocbase.createView(viewJson->slice(), 0);
-  CHECK((false == !logicalView));
+  REQUIRE((false == !logicalView));
   auto* view = dynamic_cast<arangodb::iresearch::IResearchView*>(logicalView->getImplementation());
-  CHECK((false == !view));
+  REQUIRE((false == !view));
   view->open();
 
   irs::fs_directory directory(dataPath);
   auto reader = irs::directory_reader::open(directory);
   bool created;
   auto link = logicalCollection->createIndex(nullptr, linkJson->slice(), created);
-  CHECK((false == !link && created));
+  REQUIRE((false == !link && created));
   CHECK((0 == reader.reopen().live_docs_count()));
   CHECK((TRI_ERROR_BAD_PARAMETER == link->insert(nullptr, 1, doc0->slice(), false).errorNumber()));
   {

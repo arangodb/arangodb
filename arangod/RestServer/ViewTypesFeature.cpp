@@ -23,7 +23,8 @@
 #include "ViewTypesFeature.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
-
+#include "ProgramOptions/ProgramOptions.h"
+#include "ProgramOptions/Section.h"
 #include "Views/LoggerView.h"
 
 using namespace arangodb;
