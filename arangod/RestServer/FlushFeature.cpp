@@ -75,17 +75,22 @@ void FlushFeature::start() {
 
 void FlushFeature::beginShutdown() {
   // pass on the shutdown signal
-  _flushThread->beginShutdown();
+  if (_flushThread != nullptr) {
+    _flushThread->beginShutdown();
+  }
 }
 
 void FlushFeature::stop() {
   LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "stopping FlushThread";
   // wait until thread is fully finished
-  while (_flushThread->isRunning()) {
-    usleep(10000);
-  }
   
-  _flushThread.reset();
+  if (_flushThread != nullptr) {
+    while (_flushThread->isRunning()) {
+      usleep(10000);
+    }
+  
+    _flushThread.reset();
+  }
 }
 
 void FlushFeature::unprepare() { 

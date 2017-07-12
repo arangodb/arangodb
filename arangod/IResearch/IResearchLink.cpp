@@ -45,18 +45,18 @@ static const std::string LINK_TYPE("iresearch");
 static const std::string LINK_TYPE_FIELD("type");
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief the name of the field in the iResearch Link definition denoting the
-///        corresponding iResearch View
-////////////////////////////////////////////////////////////////////////////////
-static const std::string VIEW_NAME_FIELD("name");
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief a flag in the iResearch Link definition, if present, denoting the
 ///        need to skip registration with the corresponding iResearch View
 ///        during construction if the object
 ///        this field is not persisted
 ////////////////////////////////////////////////////////////////////////////////
 static const std::string SKIP_VIEW_REGISTRATION_FIELD("skipViewRegistration");
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief the id of the field in the iResearch Link definition denoting the
+///        corresponding iResearch View
+////////////////////////////////////////////////////////////////////////////////
+static const std::string VIEW_ID_FIELD("view");
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief return a reference to a static VPackSlice of an empty index definition
@@ -91,6 +91,7 @@ IResearchLink::IResearchLink(
   arangodb::LogicalCollection* collection,
   IResearchLinkMeta&& meta
 ) : Index(iid, collection, emptyParentSlice()),
+    _defaultId(0), // 0 is never a valid id
     _meta(std::move(meta)),
     _view(nullptr) {
   _unique = false; // cannot be unique since multiple fields are indexed
@@ -98,7 +99,7 @@ IResearchLink::IResearchLink(
 }
 
 bool IResearchLink::operator==(IResearchView const& view) const noexcept {
-  return _view && _view->name() == view.name();
+  return _view && _view->id() == view.id();
 }
 
 bool IResearchLink::operator!=(IResearchView const& view) const noexcept {
@@ -212,31 +213,31 @@ bool IResearchLink::isSorted() const {
 
     if (definition.hasKey(SKIP_VIEW_REGISTRATION_FIELD)) {
       // TODO FIXME find a better way to remember view name for use with toVelocyPack(...)
-      if (definition.hasKey(VIEW_NAME_FIELD)) {
-        auto name = definition.get(VIEW_NAME_FIELD);
+      if (definition.hasKey(VIEW_ID_FIELD)) {
+        auto identifier = definition.get(VIEW_ID_FIELD);
 
-        if (!name.isString()) {
-          LOG_TOPIC(WARN, Logger::FIXME) << "error parsing view name for link '" << iid << "'";
+        if (!identifier.isNumber() || uint64_t(identifier.getInt()) != identifier.getUInt()) {
+          LOG_TOPIC(WARN, Logger::FIXME) << "error parsing identifier name for link '" << iid << "'";
           TRI_set_errno(TRI_ERROR_BAD_PARAMETER);
 
           return nullptr;
         }
 
-        ptr->_defaultName = name.copyString();
+        ptr->_defaultId = identifier.getUInt();
       }
 
       return ptr;
     }
 
-    if (collection && definition.hasKey(VIEW_NAME_FIELD)) {
-      auto name = definition.get(VIEW_NAME_FIELD);
+    if (collection && definition.hasKey(VIEW_ID_FIELD)) {
+      auto identifier = definition.get(VIEW_ID_FIELD);
       auto vocbase = collection->vocbase();
 
-      if (vocbase && name.isString()) {
-        auto viewName = name.copyString();
+      if (vocbase && identifier.isNumber() && uint64_t(identifier.getInt()) == identifier.getUInt()) {
+        auto viewId = identifier.getUInt();
 
         // NOTE: this will cause a deadlock if registering a link while view is being created
-        auto logicalView = vocbase->lookupView(viewName);
+        auto logicalView = vocbase->lookupView(viewId);
 
         if (!logicalView || !logicalView->getPhysical() || IResearchView::type() != logicalView->type()) {
           return nullptr; // no such view
@@ -251,7 +252,7 @@ bool IResearchLink::isSorted() const {
 
         // on success this call will set the '_view' pointer
         if (!view || !view->linkRegister(ptr)) {
-          LOG_TOPIC(WARN, Logger::FIXME) << "error finding view: '" << viewName << "' for link '" << iid << "'";
+          LOG_TOPIC(WARN, Logger::FIXME) << "error finding view: '" << viewId << "' for link '" << iid << "'";
 
           return nullptr;
         }
@@ -272,17 +273,14 @@ bool IResearchLink::isSorted() const {
 }
 
 bool IResearchLink::matchesDefinition(VPackSlice const& slice) const {
-  if (slice.hasKey(VIEW_NAME_FIELD)) {
+  if (slice.hasKey(VIEW_ID_FIELD)) {
     if (!_view) {
-      return false; // slice has 'name' but the current object does not
+      return false; // slice has identifier but the current object does not
     }
 
-    auto name = slice.get(VIEW_NAME_FIELD);
-    VPackValueLength nameLength;
-    auto nameValue = name.getString(nameLength);
-    irs::string_ref sliceName(nameValue, nameLength);
+    auto identifier = slice.get(VIEW_ID_FIELD);
 
-    if (sliceName != _view->name()) {
+    if (!identifier.isNumber() || uint64_t(identifier.getInt()) != identifier.getUInt() || identifier.getUInt() != _view->id()) {
       return false; // iResearch View names of current object and slice do not match
     }
   } else if (_view) {
@@ -326,22 +324,8 @@ Result IResearchLink::remove(
   return _view->remove(*trx, _collection->cid(), rid);
 }
 
-/*static*/ bool IResearchLink::setName(
-  arangodb::velocypack::Builder& builder,
-  std::string const& value
-) {
-  if (!builder.isOpenObject()) {
-    return false;
-  }
-
-  builder.add(VIEW_NAME_FIELD, arangodb::velocypack::Value(value));
-
-  return true;
-}
-
 /*static*/ bool IResearchLink::setSkipViewRegistration(
-  arangodb::velocypack::Builder& builder,
-  std::string const& value
+  arangodb::velocypack::Builder& builder
 ) {
   if (!builder.isOpenObject()) {
     return false;
@@ -362,6 +346,19 @@ Result IResearchLink::remove(
   return true;
 }
 
+/*static*/ bool IResearchLink::setView(
+  arangodb::velocypack::Builder& builder,
+  TRI_voc_cid_t value
+) {
+  if (!builder.isOpenObject()) {
+    return false;
+  }
+
+  builder.add(VIEW_ID_FIELD, arangodb::velocypack::Value(value));
+
+  return true;
+}
+
 void IResearchLink::toVelocyPack(
     VPackBuilder& builder,
     bool withFigures,
@@ -375,10 +372,10 @@ void IResearchLink::toVelocyPack(
   builder.add(LINK_TYPE_FIELD, VPackValue(typeName()));
 
   if (_view) {
-    builder.add(VIEW_NAME_FIELD, VPackValue(_view->name()));
-  } else if (!_defaultName.empty()) { // empty _defaultName == no view name in source jSON
-  // } else if (!_defaultName.empty() && forPersistence) { // MMFilesCollection::saveIndex(...) does not set 'forPersistence'
-    builder.add(VIEW_NAME_FIELD, VPackValue(_defaultName));
+    builder.add(VIEW_ID_FIELD, VPackValue(_view->id()));
+  } else if (_defaultId) { // '0' _defaultId == no view name in source jSON
+  // } else if (_defaultId && forPersistence) { // MMFilesCollection::saveIndex(...) does not set 'forPersistence'
+    builder.add(VIEW_ID_FIELD, VPackValue(_defaultId));
   }
 
   if (withFigures) {
@@ -428,8 +425,8 @@ int EnhanceJsonIResearchLink(
       return TRI_ERROR_BAD_PARAMETER;
     }
 
-    if (definition.hasKey(VIEW_NAME_FIELD)) {
-      builder.add(VIEW_NAME_FIELD, definition.get(VIEW_NAME_FIELD)); // copy over iResearch View name
+    if (definition.hasKey(VIEW_ID_FIELD)) {
+      builder.add(VIEW_ID_FIELD, definition.get(VIEW_ID_FIELD)); // copy over iResearch View identifier
     }
 
     return meta.json(builder) ? TRI_ERROR_NO_ERROR : TRI_ERROR_BAD_PARAMETER;
