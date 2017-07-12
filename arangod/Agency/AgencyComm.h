@@ -574,6 +574,10 @@ class AgencyCommManager {
   void failedNonLocking(std::unique_ptr<httpclient::GeneralClientConnection>,
               std::string const& endpoint);
 
+  // caller must hold lock
+  void releaseNonLocking(std::unique_ptr<httpclient::GeneralClientConnection>,
+                         std::string const& endpoint);
+
   // caller must hold _lock
   std::unique_ptr<httpclient::GeneralClientConnection> createNewConnection();
 

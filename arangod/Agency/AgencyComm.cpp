@@ -558,7 +558,12 @@ void AgencyCommManager::release(
     std::unique_ptr<httpclient::GeneralClientConnection> connection,
     std::string const& endpoint) {
   MUTEX_LOCKER(locker, _lock);
+  releaseNonLocking(std::move(connection), endpoint);
+}
 
+void AgencyCommManager::releaseNonLocking(
+    std::unique_ptr<httpclient::GeneralClientConnection> connection,
+    std::string const& endpoint) {
   if (_endpoints.front() == endpoint) {
     LOG_TOPIC(TRACE, Logger::AGENCYCOMM)
       << "releasing agency connection '" << connection.get()
@@ -647,7 +652,7 @@ std::string AgencyCommManager::redirect(
     LOG_TOPIC(DEBUG, Logger::AGENCYCOMM)
       << "ignoring an agency redirect to '" << specification
       << "' from inactive endpoint '" << endpoint << "'";
-    release(std::move(connection), endpoint);
+    releaseNonLocking(std::move(connection), endpoint);
     return "";
   }
 
