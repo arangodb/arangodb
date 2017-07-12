@@ -117,9 +117,7 @@ struct IResearchViewMeta {
     bool _commitBulk;
     bool _commitItem;
     bool _dataPath;
-    bool _iid;
     bool _locale;
-    bool _name;
     bool _scorers;
     bool _threadsMaxIdle;
     bool _threadsMaxTotal;
@@ -131,9 +129,7 @@ struct IResearchViewMeta {
   CommitItemMeta _commitItem;
   std::string _dataPath; // data file path
   irs::flags _features; // non-persisted dynamic value based on scorers
-  TRI_idx_iid_t _iid;
   std::locale _locale;
-  std::string _name; // IResearch view name
   irs::iql::order_functions _scorers; // supported scorers
   size_t _threadsMaxIdle; // maximum idle number of threads for single-run tasks
   size_t _threadsMaxTotal; // maximum total number of threads for single-run tasks
@@ -205,7 +201,7 @@ struct IResearchViewMeta {
   /// @brief amount of memory in bytes occupied by this iResearch Link meta
   ////////////////////////////////////////////////////////////////////////////////
   size_t memory() const;
-
+/*
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief set the 'name' field in the builder to the specified value
   /// @return success
@@ -214,6 +210,7 @@ struct IResearchViewMeta {
     arangodb::velocypack::Builder& builder,
     std::string const& value
   );
+  */
 };
 
 NS_END // iresearch

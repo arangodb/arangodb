@@ -196,12 +196,8 @@ TEST_CASE("IResearchViewTest", "[iresearch][iresearch-view]") {
 
 SECTION("test_defaults") {
   auto namedJson = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testView\" }");
-  auto json = arangodb::velocypack::Parser::fromJson("{ \
-    \"name\": \"testView\" \
-  }");
+  auto json = arangodb::velocypack::Parser::fromJson("{}");
   arangodb::iresearch::IResearchViewMeta expectedMeta;
-
-  expectedMeta._name = "testView";
 
   // existing view definition
   {
@@ -218,7 +214,7 @@ SECTION("test_defaults") {
     arangodb::iresearch::IResearchViewMeta meta;
     std::string error;
 
-    CHECK((9U == slice.length()));
+    CHECK((7U == slice.length()));
     CHECK((meta.init(slice, error) && expectedMeta == meta));
   }
 
@@ -238,7 +234,7 @@ SECTION("test_defaults") {
     arangodb::iresearch::IResearchViewMeta meta;
     std::string error;
 
-    CHECK((10U == slice.length()));
+    CHECK((8U == slice.length()));
     CHECK((meta.init(slice, error) && expectedMeta == meta));
   }
 
@@ -257,7 +253,7 @@ SECTION("test_defaults") {
     arangodb::iresearch::IResearchViewMeta meta;
     std::string error;
 
-    CHECK((9U == slice.length()));
+    CHECK((7U == slice.length()));
     CHECK((meta.init(slice, error) && expectedMeta == meta));
   }
 
@@ -277,7 +273,7 @@ SECTION("test_defaults") {
     arangodb::iresearch::IResearchViewMeta meta;
     std::string error;
 
-    CHECK((10U == slice.length()));
+    CHECK((8U == slice.length()));
     CHECK((meta.init(slice, error) && expectedMeta == meta));
 
     auto tmpSlice = slice.get("links");
@@ -290,9 +286,9 @@ SECTION("test_drop") {
   auto json = arangodb::velocypack::Parser::fromJson("{ \
     \"name\": \"testView\", \
     \"type\": \"iresearch\", \
-    \"properties\": { \"name\": \"testView\", \
-    \"links\": { \"testCollection\": {} }, \
-    \"dataPath\": \"" + arangodb::basics::StringUtils::replace(dataPath, "\\", "/") + "\" \
+    \"properties\": { \
+      \"links\": { \"testCollection\": {} }, \
+      \"dataPath\": \"" + arangodb::basics::StringUtils::replace(dataPath, "\\", "/") + "\" \
     } \
   }");
 
@@ -327,8 +323,8 @@ SECTION("test_move_datapath") {
   auto createJson = arangodb::velocypack::Parser::fromJson("{ \
     \"name\": \"testView\", \
     \"type\": \"iresearch\", \
-    \"properties\": { \"name\": \"testView\", \
-    \"dataPath\": \"" + arangodb::basics::StringUtils::replace(createDataPath, "\\", "/") + "\" \
+    \"properties\": { \
+      \"dataPath\": \"" + arangodb::basics::StringUtils::replace(createDataPath, "\\", "/") + "\" \
     } \
   }");
   auto updateJson = arangodb::velocypack::Parser::fromJson("{ \
@@ -358,7 +354,6 @@ SECTION("test_open") {
     std::string dataPath = (irs::utf8_path()/s.testFilesystemPath/std::string("deleteme")).utf8();
     auto namedJson = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testView\" }");
     auto json = arangodb::velocypack::Parser::fromJson("{ \
-      \"name\": \"testView\", \
       \"dataPath\": \"" + arangodb::basics::StringUtils::replace(dataPath, "\\", "/") + "\" \
     }");
 
@@ -387,7 +382,6 @@ SECTION("test_open") {
     std::string dataPath = (irs::utf8_path()/s.testFilesystemPath/std::string("databases")/std::string("deleteme")).utf8();
     auto namedJson = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testView\" }");
     auto json = arangodb::velocypack::Parser::fromJson("{ \
-      \"name\": \"testView\", \
       \"dataPath\": \"deleteme\" \
     }");
 
@@ -408,9 +402,7 @@ SECTION("test_open") {
 
     std::string dataPath = (irs::utf8_path()/s.testFilesystemPath/std::string("databases")/std::string("iresearch-0")).utf8();
     auto namedJson = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testView\" }");
-    auto json = arangodb::velocypack::Parser::fromJson("{ \
-      \"name\": \"testView\" \
-    }");
+    auto json = arangodb::velocypack::Parser::fromJson("{}");
 
     CHECK((false == TRI_IsDirectory(dataPath.c_str())));
     auto view = arangodb::iresearch::IResearchView::make(nullptr, json->slice(), false);
@@ -424,8 +416,7 @@ SECTION("test_open") {
 SECTION("test_query") {
   auto createJson = arangodb::velocypack::Parser::fromJson("{ \
     \"name\": \"testView\", \
-    \"type\": \"iresearch\", \
-    \"properties\": { \"name\": \"testView\" } \
+    \"type\": \"iresearch\" \
   }");
   static std::vector<std::string> const EMPTY;
   arangodb::aql::AstNode noop(arangodb::aql::AstNodeType::NODE_TYPE_FILTER);
@@ -676,8 +667,7 @@ SECTION("test_register_link") {
 SECTION("test_update_overwrite") {
   auto createJson = arangodb::velocypack::Parser::fromJson("{ \
     \"name\": \"testView\", \
-    \"type\": \"iresearch\", \
-    \"properties\": { \"name\": \"testView\" } \
+    \"type\": \"iresearch\" \
   }");
 
   // modify meta params
@@ -693,12 +683,10 @@ SECTION("test_update_overwrite") {
       arangodb::iresearch::IResearchViewMeta expectedMeta;
       auto updateJson = arangodb::velocypack::Parser::fromJson("{ \
         \"locale\": \"en\", \
-        \"name\": \"<invalid and ignored>\", \
         \"threadsMaxIdle\": 10, \
         \"threadsMaxTotal\": 20 \
       }");
 
-      expectedMeta._name = "testView";
       expectedMeta._locale = irs::locale_utils::locale("en", true);
       expectedMeta._threadsMaxIdle = 10;
       expectedMeta._threadsMaxTotal = 20;
@@ -714,7 +702,7 @@ SECTION("test_update_overwrite") {
       arangodb::iresearch::IResearchViewMeta meta;
       std::string error;
 
-      CHECK((10U == slice.length()));
+      CHECK((8U == slice.length()));
       CHECK((meta.init(slice, error) && expectedMeta == meta));
 
       auto tmpSlice = slice.get("links");
@@ -725,11 +713,9 @@ SECTION("test_update_overwrite") {
     {
       arangodb::iresearch::IResearchViewMeta expectedMeta;
       auto updateJson = arangodb::velocypack::Parser::fromJson("{ \
-        \"locale\": \"ru\", \
-        \"name\": \"<invalid and ignored>\" \
+        \"locale\": \"ru\" \
       }");
 
-      expectedMeta._name = "testView";
       expectedMeta._locale = irs::locale_utils::locale("ru", true);
       CHECK((view->updateProperties(updateJson->slice(), false, false).ok()));
 
@@ -743,7 +729,7 @@ SECTION("test_update_overwrite") {
       arangodb::iresearch::IResearchViewMeta meta;
       std::string error;
 
-      CHECK((10U == slice.length()));
+      CHECK((8U == slice.length()));
       CHECK((meta.init(slice, error) && expectedMeta == meta));
 
       auto tmpSlice = slice.get("links");
@@ -755,8 +741,7 @@ SECTION("test_update_overwrite") {
 SECTION("test_update_partial") {
   auto createJson = arangodb::velocypack::Parser::fromJson("{ \
     \"name\": \"testView\", \
-    \"type\": \"iresearch\", \
-    \"properties\": { \"name\": \"testView\" } \
+    \"type\": \"iresearch\" \
   }");
 
   // modify meta params
@@ -770,12 +755,10 @@ SECTION("test_update_partial") {
     arangodb::iresearch::IResearchViewMeta expectedMeta;
     auto updateJson = arangodb::velocypack::Parser::fromJson("{ \
       \"locale\": \"en\", \
-      \"name\": \"<invalid and ignored>\", \
       \"threadsMaxIdle\": 10, \
       \"threadsMaxTotal\": 20 \
     }");
 
-    expectedMeta._name = "testView";
     expectedMeta._locale = irs::locale_utils::locale("en", true);
     expectedMeta._threadsMaxIdle = 10;
     expectedMeta._threadsMaxTotal = 20;
@@ -791,7 +774,7 @@ SECTION("test_update_partial") {
     arangodb::iresearch::IResearchViewMeta meta;
     std::string error;
 
-    CHECK((10U == slice.length()));
+    CHECK((8U == slice.length()));
     CHECK((meta.init(slice, error) && expectedMeta == meta));
 
     auto tmpSlice = slice.get("links");
@@ -816,7 +799,6 @@ SECTION("test_update_partial") {
       \"threadsMaxTotal\": 20 \
     }");
 
-    expectedMeta._name = "testView";
     CHECK((TRI_ERROR_BAD_PARAMETER == view->updateProperties(updateJson->slice(), true, false).errorNumber()));
 
     arangodb::velocypack::Builder builder;
@@ -829,7 +811,7 @@ SECTION("test_update_partial") {
     arangodb::iresearch::IResearchViewMeta meta;
     std::string error;
 
-    CHECK((10U == slice.length()));
+    CHECK((8U == slice.length()));
     CHECK((meta.init(slice, error) && expectedMeta == meta));
 
     auto tmpSlice = slice.get("links");
@@ -851,7 +833,6 @@ SECTION("test_update_partial") {
       \"threadsMaxTotal\": 20 \
     }");
 
-    expectedMeta._name = "testView";
     PhysicalViewMock::persistPropertiesResult = TRI_ERROR_INTERNAL; // test fail
     CHECK((TRI_ERROR_INTERNAL == view->updateProperties(updateJson->slice(), true, false).errorNumber()));
     PhysicalViewMock::persistPropertiesResult = TRI_ERROR_NO_ERROR; // revert to valid
@@ -866,7 +847,7 @@ SECTION("test_update_partial") {
     arangodb::iresearch::IResearchViewMeta meta;
     std::string error;
 
-    CHECK((10U == slice.length()));
+    CHECK((8U == slice.length()));
     CHECK((meta.init(slice, error) && expectedMeta == meta));
 
     auto tmpSlice = slice.get("links");
@@ -892,7 +873,6 @@ SECTION("test_update_partial") {
       }}");
 
     expectedMeta._collections.insert(logicalCollection->cid());
-    expectedMeta._name = "testView";
     expectedLinkMeta["testCollection"]; // use defaults
     CHECK((view->updateProperties(updateJson->slice(), true, false).ok()));
 
@@ -906,7 +886,7 @@ SECTION("test_update_partial") {
     arangodb::iresearch::IResearchViewMeta meta;
     std::string error;
 
-    CHECK((10U == slice.length()));
+    CHECK((8U == slice.length()));
     CHECK((meta.init(slice, error) && expectedMeta == meta));
 
     auto tmpSlice = slice.get("links");
@@ -945,7 +925,6 @@ SECTION("test_update_partial") {
         \"testCollection\": {} \
       }}");
 
-    expectedMeta._name = "testView";
     CHECK((TRI_ERROR_BAD_PARAMETER == view->updateProperties(updateJson->slice(), true, false).errorNumber()));
 
     arangodb::velocypack::Builder builder;
@@ -958,7 +937,7 @@ SECTION("test_update_partial") {
     arangodb::iresearch::IResearchViewMeta meta;
     std::string error;
 
-    CHECK((10U == slice.length()));
+    CHECK((8U == slice.length()));
     CHECK((meta.init(slice, error) && expectedMeta == meta));
 
     auto tmpSlice = slice.get("links");
@@ -979,7 +958,6 @@ SECTION("test_update_partial") {
     arangodb::iresearch::IResearchViewMeta expectedMeta;
 
     expectedMeta._collections.insert(logicalCollection->cid());
-    expectedMeta._name = "testView";
 
     {
       auto updateJson = arangodb::velocypack::Parser::fromJson("{ \
@@ -999,7 +977,7 @@ SECTION("test_update_partial") {
       arangodb::iresearch::IResearchViewMeta meta;
       std::string error;
 
-      CHECK((10U == slice.length()));
+      CHECK((8U == slice.length()));
       CHECK((meta.init(slice, error) && expectedMeta == meta));
 
       auto tmpSlice = slice.get("links");
@@ -1025,7 +1003,7 @@ SECTION("test_update_partial") {
       arangodb::iresearch::IResearchViewMeta meta;
       std::string error;
 
-      CHECK((10U == slice.length()));
+      CHECK((8U == slice.length()));
       CHECK((meta.init(slice, error) && expectedMeta == meta));
 
       auto tmpSlice = slice.get("links");
@@ -1047,7 +1025,6 @@ SECTION("test_update_partial") {
         \"testCollection\": null \
       }}");
 
-    expectedMeta._name = "testView";
     CHECK((TRI_ERROR_BAD_PARAMETER == view->updateProperties(updateJson->slice(), true, false).errorNumber()));
 
     arangodb::velocypack::Builder builder;
@@ -1060,7 +1037,7 @@ SECTION("test_update_partial") {
     arangodb::iresearch::IResearchViewMeta meta;
     std::string error;
 
-    CHECK((10U == slice.length()));
+    CHECK((8U == slice.length()));
     CHECK((meta.init(slice, error) && expectedMeta == meta));
 
     auto tmpSlice = slice.get("links");
@@ -1084,8 +1061,6 @@ SECTION("test_update_partial") {
     }}");
     arangodb::iresearch::IResearchViewMeta expectedMeta;
 
-    expectedMeta._name = "testView";
-
     CHECK((view->updateProperties(updateJson->slice(), true, false).ok()));
 
     arangodb::velocypack::Builder builder;
@@ -1098,7 +1073,7 @@ SECTION("test_update_partial") {
     arangodb::iresearch::IResearchViewMeta meta;
     std::string error;
 
-    CHECK((10U == slice.length()));
+    CHECK((8U == slice.length()));
     CHECK((meta.init(slice, error) && expectedMeta == meta));
 
     auto tmpSlice = slice.get("links");

@@ -35,12 +35,6 @@
 NS_LOCAL
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief the name of the field in the iResearch View definition denoting the
-///        name of the iResearch View
-////////////////////////////////////////////////////////////////////////////////
-static const std::string VIEW_NAME_FIELD("name");
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief functrs for initializing scorers
 ////////////////////////////////////////////////////////////////////////////////
 struct ScorerMeta {
@@ -466,9 +460,7 @@ IResearchViewMeta::Mask::Mask(bool mask /*=false*/) noexcept
     _commitBulk(mask),
     _commitItem(mask),
     _dataPath(mask),
-    _iid(mask),
     _locale(mask),
-    _name(mask),
     _scorers(mask),
     _threadsMaxIdle(mask),
     _threadsMaxTotal(mask) {
@@ -476,9 +468,7 @@ IResearchViewMeta::Mask::Mask(bool mask /*=false*/) noexcept
 
 IResearchViewMeta::IResearchViewMeta()
   : _dataPath(""),
-    _iid(0),
     _locale(std::locale::classic()),
-    _name(""),
     _threadsMaxIdle(5),
     _threadsMaxTotal(5) {
   _commitBulk._cleanupIntervalStep = 10;
@@ -518,9 +508,7 @@ IResearchViewMeta& IResearchViewMeta::operator=(IResearchViewMeta&& other) noexc
     _commitItem = std::move(other._commitItem);
     _dataPath = std::move(other._dataPath);
     _features = std::move(other._features);
-    _iid = std::move(other._iid);
     _locale = std::move(other._locale);
-    _name = std::move(other._name);
     _scorers = std::move(other._scorers);
     _threadsMaxIdle = std::move(other._threadsMaxIdle);
     _threadsMaxTotal = std::move(other._threadsMaxTotal);
@@ -536,9 +524,7 @@ IResearchViewMeta& IResearchViewMeta::operator=(IResearchViewMeta const& other) 
     _commitItem = other._commitItem;
     _dataPath = other._dataPath;
     _features = other._features;
-    _iid = other._iid;
     _locale = other._locale;
-    _name = other._name;
     _scorers = other._scorers;
     _threadsMaxIdle = other._threadsMaxIdle;
     _threadsMaxTotal = other._threadsMaxTotal;
@@ -568,17 +554,9 @@ bool IResearchViewMeta::operator==(IResearchViewMeta const& other) const noexcep
     return false; // values do not match
   }
 
-  if (_iid != other._iid) {
-    return false; // values do not match
-  }
-
   if (irs::locale_utils::language(_locale) != irs::locale_utils::language(other._locale)
       || irs::locale_utils::country(_locale) != irs::locale_utils::country(other._locale)
       || irs::locale_utils::encoding(_locale) != irs::locale_utils::encoding(other._locale)) {
-    return false; // values do not match
-  }
-
-  if (_name != other._name) {
     return false; // values do not match
   }
 
@@ -760,36 +738,6 @@ bool IResearchViewMeta::init(
   }
 
   {
-    // optional string-encoded uint64
-    static const std::string fieldName("id");
-    irs::string_ref iid;
-
-    if (!getString(iid, slice, fieldName, mask->_iid, "")) {
-      errorField = fieldName;
-
-      return false;
-    }
-
-    if (!mask->_iid) {
-      _iid = defaults._iid;
-    } else if (!iid.c_str()[iid.size()] != 0) {
-      errorField = fieldName;
-
-      return false; // parsing this value would cause a buffer overrun since no \0
-    } else {
-      char* suffix;
-
-      _iid = std::strtoull(iid.c_str(), &suffix, 10);
-
-      if (!suffix[0]) { // if suffix then value not parsed as a whole
-        errorField = fieldName;
-
-        return false;
-      }
-    }
-  }
-
-  {
     // optional locale name
     static const std::string fieldName("locale");
 
@@ -813,29 +761,6 @@ bool IResearchViewMeta::init(
         ? std::locale::classic()
         : irs::locale_utils::locale(locale, true);
     }
-  }
-
-  {
-    // required string
-    static const std::string fieldName(VIEW_NAME_FIELD);
-
-    mask->_name = slice.hasKey(fieldName);
-
-    if (!mask->_name) {
-      errorField = fieldName;
-
-      return false;
-    }
-
-    auto field = slice.get(fieldName);
-
-    if (!field.isString()) {
-      errorField = fieldName;
-
-      return false;
-    }
-
-    _name = field.copyString();
   }
 
   {
@@ -984,16 +909,8 @@ bool IResearchViewMeta::json(
     builder.add("dataPath", arangodb::velocypack::Value(_dataPath));
   }
 
-  if ((!ignoreEqual || _iid != ignoreEqual->_iid) && (!mask || mask->_iid)) {
-    builder.add("id", arangodb::velocypack::Value(arangodb::basics::StringUtils::itoa(_iid)));
-  }
-
   if ((!ignoreEqual || _locale != ignoreEqual->_locale) && (!mask || mask->_locale)) {
     builder.add("locale", arangodb::velocypack::Value(irs::locale_utils::name(_locale)));
-  }
-
-  if ((!ignoreEqual || _name != ignoreEqual->_name) && (!mask || mask->_name)) {
-    builder.add(VIEW_NAME_FIELD, arangodb::velocypack::Value(_name));
   }
 
   if ((!ignoreEqual || _scorers != ignoreEqual->_scorers) && (!mask || mask->_scorers)) {
@@ -1035,26 +952,12 @@ size_t IResearchViewMeta::memory() const {
   size += sizeof(TRI_voc_cid_t) * _collections.size();
   size += _dataPath.size();
   size += sizeof(irs::flags::type_map::key_type) * _features.size();
-  size += _name.length();
 
   for (auto& scorer: _scorers) {
     size += scorer.first.length() + sizeof(scorer.second);
   }
 
   return size;
-}
-
-/*static*/ bool IResearchViewMeta::setName(
-    arangodb::velocypack::Builder& builder,
-    std::string const& value
-) {
-  if (!builder.isOpenObject()) {
-    return false;
-  }
-
-  builder.add(VIEW_NAME_FIELD, arangodb::velocypack::Value(value));
-
-  return true;
 }
 
 NS_END // iresearch

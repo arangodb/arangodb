@@ -127,25 +127,12 @@ class IResearchLink final: public Index {
   Result remove(transaction::Methods* trx, TRI_voc_rid_t rid);
 
   ////////////////////////////////////////////////////////////////////////////////
-  /// @brief set the iResearch view 'name' field in the builder to the specified
-  ///        value
-  /// @return success
-  ////////////////////////////////////////////////////////////////////////////////
-  static bool setName(
-    arangodb::velocypack::Builder& builder,
-    std::string const& value
-  );
-
-  ////////////////////////////////////////////////////////////////////////////////
   /// @brief set a flag in the builder to prevent registration with the
   ///        corresponding iResearch View during construction of the object
   ///        NOTE: required to avoid deadlock when looking-up view in vocbase
   /// @return success
   ////////////////////////////////////////////////////////////////////////////////
-  static bool setSkipViewRegistration(
-    arangodb::velocypack::Builder& builder,
-    std::string const& value
-  );
+  static bool setSkipViewRegistration(arangodb::velocypack::Builder& builder);
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief set the iResearch link 'type' field in the builder to the proper
@@ -153,6 +140,16 @@ class IResearchLink final: public Index {
   /// @return success
   ////////////////////////////////////////////////////////////////////////////////
   static bool setType(arangodb::velocypack::Builder& builder);
+
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief set the iResearch view identifier field in the builder to the
+  ///        specified value
+  /// @return success
+  ////////////////////////////////////////////////////////////////////////////////
+  static bool setView(
+    arangodb::velocypack::Builder& builder,
+    TRI_voc_cid_t value
+  );
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief fill and return a JSON description of a IResearchLink object
@@ -187,7 +184,7 @@ class IResearchLink final: public Index {
 
  private:
   friend bool IResearchView::linkRegister(LinkPtr&);
-  std::string _defaultName; // the name of the desired view (iff _view == nullptr)
+  TRI_voc_cid_t _defaultId; // the identifier of the desired view (iff _view == nullptr)
   IResearchLinkMeta _meta; // how this collection should be indexed
   IResearchView* _view; // effectively the index itself (nullptr == not associated)
 
