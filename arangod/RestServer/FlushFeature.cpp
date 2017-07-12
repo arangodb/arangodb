@@ -93,9 +93,21 @@ void FlushFeature::unprepare() {
   _callbacks.clear();
 }
 
-void FlushFeature::registerCallback(FlushFeature::FlushCallback const& cb) {
+void FlushFeature::registerCallback(void* ptr, FlushFeature::FlushCallback const& cb) {
   WRITE_LOCKER(locker, _callbacksLock);
-  _callbacks.emplace_back(std::move(cb));
+  _callbacks.emplace(ptr, std::move(cb));
+}
+
+bool FlushFeature::unregisterCallback(void* ptr) {
+  WRITE_LOCKER(locker, _callbacksLock);
+
+  auto it = _callbacks.find(ptr);
+  if (it == _callbacks.end()) {
+    return false;
+  }
+
+  _callbacks.erase(it);
+  return true;
 }
 
 void FlushFeature::executeCallbacks() {
@@ -108,7 +120,7 @@ void FlushFeature::executeCallbacks() {
   // execute all callbacks. this will create as many transactions as
   // there are callbacks
   for (auto const& cb : _callbacks) {
-    transactions.emplace_back(std::move(cb()));
+    transactions.emplace_back(std::move(cb.second()));
   }
 
   // TODO: make sure all data is synced
