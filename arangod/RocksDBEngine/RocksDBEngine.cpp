@@ -1593,10 +1593,19 @@ void RocksDBEngine::getStatistics(VPackBuilder& builder) const {
   if (_options.table_factory) {
     void* options = _options.table_factory->GetOptions();
     if (options != nullptr) {
-      builder.add(
-          "rocksdb.block-cache-used",
-          VPackValue(static_cast<rocksdb::BlockBasedTableOptions*>(options)
-                         ->block_cache->GetUsage()));
+      auto* bto = static_cast<rocksdb::BlockBasedTableOptions*>(options);
+
+      if (bto != nullptr && bto->block_cache != nullptr) {
+        // block cache is present
+        builder.add(
+            "rocksdb.block-cache-used",
+            VPackValue(bto->block_cache->GetUsage()));
+      } else {
+        // no block cache present
+        builder.add(
+            "rocksdb.block-cache-used",
+            VPackValue(0));
+      }
     }
   }
 

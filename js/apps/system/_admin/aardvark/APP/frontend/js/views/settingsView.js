@@ -123,22 +123,26 @@
 
             if (status === 'loaded') {
               var journalSize;
-              try {
-                journalSize = JSON.parse($('#change-collection-size').val() * 1024 * 1024);
-              } catch (e) {
-                arangoHelper.arangoError('Please enter a valid number');
-                return 0;
+              if (frontendConfig.engine !== 'rocksdb') {
+                try {
+                  journalSize = JSON.parse($('#change-collection-size').val() * 1024 * 1024);
+                } catch (e) {
+                  arangoHelper.arangoError('Please enter a valid journal size number.');
+                  return 0;
+                }
               }
 
               var indexBuckets;
-              try {
-                indexBuckets = JSON.parse($('#change-index-buckets').val());
-                if (indexBuckets < 1 || parseInt(indexBuckets, 10) !== Math.pow(2, Math.log2(indexBuckets))) {
-                  throw new Error('invalid indexBuckets value');
+              if (frontendConfig.engine !== 'rocksdb') {
+                try {
+                  indexBuckets = JSON.parse($('#change-index-buckets').val());
+                  if (indexBuckets < 1 || parseInt(indexBuckets, 10) !== Math.pow(2, Math.log2(indexBuckets))) {
+                    throw new Error('invalid indexBuckets value');
+                  }
+                } catch (e) {
+                  arangoHelper.arangoError('Please enter a valid number of index buckets.');
+                  return 0;
                 }
-              } catch (e) {
-                arangoHelper.arangoError('Please enter a valid number of index buckets');
-                return 0;
               }
               var callbackChange = function (error) {
                 if (error) {
