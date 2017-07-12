@@ -43,6 +43,7 @@
 #include "Logger/Logger.h"
 #include "Logger/LogMacros.h"
 #include "RestServer/DatabasePathFeature.h"
+#include "RestServer/FlushFeature.h"
 #include "Transaction/StandaloneContext.h"
 #include "Utils/CollectionNameResolver.h"
 #include "Transaction/UserTransaction.h"
@@ -70,6 +71,23 @@ const std::string LINKS_FIELD("links");
 
 typedef irs::async_utils::read_write_mutex::read_mutex ReadMutex;
 typedef irs::async_utils::read_write_mutex::write_mutex WriteMutex;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief generates user-friendly description of the specified view
+////////////////////////////////////////////////////////////////////////////////
+std::string toString(arangodb::iresearch::IResearchView const& view) {
+  std::string str(arangodb::iresearch::IResearchView::type());
+  str += ":";
+//  str += view.name(); // FIXME use id instead
+  return str;
+}
+
+arangodb::FlushFeature& getFlushFeature() {
+  auto* flush = arangodb::application_features::ApplicationServer::getFeature<arangodb::FlushFeature>("Flush");
+  TRI_ASSERT(flush); // getFeature throws in case of fail
+
+  return *flush;
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief index reader implementation over multiple directory readers
@@ -1020,12 +1038,20 @@ IResearchView::SyncState::SyncState(
   }
 }
 
+IResearchView::FlushTransactionPtr IResearchView::flushTransaction() noexcept {
+  return IResearchView::FlushTransactionPtr(
+    &_flushTrx,
+    [](arangodb::FlushTransaction*){} // empty deleter
+  );
+}
+
 IResearchView::IResearchView(
   arangodb::LogicalView* view,
   arangodb::velocypack::Slice const& info
 ) : ViewImplementation(view, info),
    _asyncMetaRevision(1),
    _asyncTerminate(false),
+   _flushTrx(*this),
    _threadPool(0, 0) { // 0 == create pool with no threads, i.e. not running anything
   // initialize transaction callback
   _transactionCallback = [this](transaction::Methods* trx)->void {
@@ -1134,6 +1160,8 @@ IResearchView::~IResearchView() {
 
   _threadPool.max_threads_delta(int(std::max(size_t(std::numeric_limits<int>::max()), _threadPool.tasks_pending()))); // finish ASAP
   _threadPool.stop();
+
+  _flushCallback.reset(); // unregister flush callback from flush thread
 
   WriteMutex mutex(_mutex); // '_meta' can be asynchronously read
   SCOPED_LOCK(mutex);
@@ -1519,6 +1547,8 @@ int IResearchView::insert(
 
   // only register a callback if it has not been registered before
   if (storeItr.second) {
+    // FIXME trx copies the provided callback inside,
+    // probably it's better to store just references instead
     trx.registerCallback(_transactionCallback);
   }
 
@@ -1565,6 +1595,8 @@ int IResearchView::insert(
 
   // only register a callback if it has not been registered before
   if (storeItr.second) {
+    // FIXME trx copies the provided callback inside,
+    // probably it's better to store just references instead
     trx.registerCallback(_transactionCallback);
   }
 
@@ -1917,6 +1949,8 @@ void IResearchView::open() {
         }
       }
     }
+
+    registerFlushCallback();
   } catch (std::exception& e) {
     LOG_TOPIC(WARN, Logger::FIXME) << "caught exception while opening iResearch view '" << name() << "': " << e.what();
     IR_EXCEPTION();
@@ -2282,6 +2316,33 @@ arangodb::Result IResearchView::updateProperties(
   }
 
   return res;
+}
+
+void IResearchView::registerFlushCallback() {
+  getFlushFeature().registerCallback(this, [this](){ return nullptr; });
+
+  // noexcept
+  _flushCallback.reset(this); // mark for future unregistration
+}
+
+void IResearchView::FlushCallbackUnregisterer::operator()(IResearchView* view) const noexcept {
+  if (!view) {
+    return;
+  }
+
+  try {
+    getFlushFeature().unregisterCallback(view);
+  } catch (...) {
+    // suppress all errors
+  }
+}
+
+IResearchFlushTransaction::IResearchFlushTransaction(IResearchView& view)
+  : FlushTransaction(toString(view)), _view(&view) {
+}
+
+arangodb::Result IResearchFlushTransaction::commit() {
+  return arangodb::Result(_view->finish());
 }
 
 NS_END // iresearch

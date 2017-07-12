@@ -33,6 +33,7 @@
 #include "IResearch/IResearchView.h"
 #include "RestServer/AqlFeature.h"
 #include "MMFiles/MMFilesDocumentPosition.h"
+#include "RestServer/FlushFeature.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/FeatureCacheFeature.h"
 #include "RestServer/TraverserEngineRegistryFeature.h"
@@ -139,6 +140,7 @@ struct IResearchAttributeScorerSetup {
     features.emplace_back(new arangodb::FeatureCacheFeature(arangodb::application_features::ApplicationServer::server), true);
     features.emplace_back(new arangodb::iresearch::IResearchFeature(arangodb::application_features::ApplicationServer::server), true);
     features.emplace_back(new arangodb::ViewTypesFeature(arangodb::application_features::ApplicationServer::server), true);
+    features.emplace_back(new arangodb::FlushFeature(arangodb::application_features::ApplicationServer::server), false); // do not start the thread
 
     arangodb::ViewTypesFeature::registerViewImplementation(
       arangodb::iresearch::IResearchView::type(),

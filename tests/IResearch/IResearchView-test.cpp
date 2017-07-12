@@ -45,6 +45,7 @@
 #include "Logger/LogTopic.h"
 #include "Random/RandomFeature.h"
 #include "RestServer/DatabaseFeature.h"
+#include "RestServer/FlushFeature.h"
 #include "RestServer/DatabasePathFeature.h"
 #include "RestServer/FeatureCacheFeature.h"
 #include "RestServer/QueryRegistryFeature.h"
@@ -121,6 +122,7 @@ struct IResearchViewSetup {
     features.push_back(std::make_pair(new arangodb::AuthenticationFeature(arangodb::application_features::ApplicationServer::server), true));
     features.push_back(std::make_pair(new arangodb::DatabaseFeature(arangodb::application_features::ApplicationServer::server), false));
     features.push_back(std::make_pair(new arangodb::iresearch::IResearchFeature(&server), true));
+    features.push_back(std::make_pair(new arangodb::FlushFeature(&server), false)); // do not start the thread
 
     arangodb::ViewTypesFeature::registerViewImplementation(
       arangodb::iresearch::IResearchView::type(),

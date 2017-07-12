@@ -33,7 +33,11 @@ class FlushTransaction;
 class FlushFeature final
     : public application_features::ApplicationFeature {
  public:
-  typedef std::function<std::unique_ptr<FlushTransaction>()> FlushCallback;
+  typedef std::unique_ptr<
+      FlushTransaction, std::function<void(FlushTransaction*)>
+  > FlushTransactionPtr;
+
+  typedef std::function<FlushTransactionPtr()> FlushCallback;
 
  public:
   explicit FlushFeature(

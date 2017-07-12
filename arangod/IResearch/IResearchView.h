@@ -27,6 +27,7 @@
 #include "IResearchViewMeta.h"
 
 #include "VocBase/ViewImplementation.h"
+#include "Utils/FlushTransaction.h"
 
 #include "store/directory.hpp"
 #include "index/index_writer.hpp"
@@ -57,12 +58,32 @@ NS_END // arangodb
 NS_BEGIN(arangodb)
 NS_BEGIN(iresearch)
 
-class IResearchLink; // forward declaration
-struct IResearchLinkMeta; // forward declaration
+///////////////////////////////////////////////////////////////////////////////
+/// --SECTION--                                            Forward declarations
+///////////////////////////////////////////////////////////////////////////////
+
+class IResearchLink;
+struct IResearchLinkMeta;
+class IResearchView;
 
 ///////////////////////////////////////////////////////////////////////////////
-/// --SECTION--                                              ViewImplementation
+/// --SECTION--                                       IResearchFlushTransaction
 ///////////////////////////////////////////////////////////////////////////////
+
+class IResearchFlushTransaction : public arangodb::FlushTransaction {
+ public:
+  explicit IResearchFlushTransaction(IResearchView& view);
+
+  arangodb::Result commit() override;
+
+ private:
+  IResearchView* _view;
+};
+
+///////////////////////////////////////////////////////////////////////////////
+/// --SECTION--                                                   IResearchView
+///////////////////////////////////////////////////////////////////////////////
+
 class IResearchView final: public arangodb::ViewImplementation {
  public:
   typedef std::unique_ptr<arangodb::ViewImplementation> ptr;
@@ -309,18 +330,28 @@ class IResearchView final: public arangodb::ViewImplementation {
     MemoryStore _store;
   };
 
+  struct FlushCallbackUnregisterer {
+    void operator()(IResearchView* view) const noexcept;
+  };
+
   typedef std::unordered_map<TRI_voc_tid_t, TidStore> MemoryStoreByTid;
+  typedef std::unique_ptr<IResearchView, FlushCallbackUnregisterer> FlushCallback;
+  typedef std::unique_ptr<
+    arangodb::FlushTransaction, std::function<void(arangodb::FlushTransaction*)>
+  > FlushTransactionPtr;
 
   std::condition_variable _asyncCondition; // trigger reload of timeout settings for async jobs
   std::atomic<size_t> _asyncMetaRevision; // arbitrary meta modification id, async jobs should reload if different
   std::mutex _asyncMutex; // mutex used with '_asyncCondition' and associated timeouts
   std::atomic<bool> _asyncTerminate; // trigger termination of long-running async jobs
+  IResearchFlushTransaction _flushTrx;
   std::unordered_set<LinkPtr> _links;
   IResearchViewMeta _meta;
   mutable irs::async_utils::read_write_mutex _mutex; // for use with member maps/sets and '_meta'
-  MemoryStoreByTid _storeByTid;
   MemoryStore _memoryStore;
+  MemoryStoreByTid _storeByTid;
   DataStore _storePersisted;
+  FlushCallback _flushCallback; // responsible for flush callback unregistration
   irs::async_utils::thread_pool _threadPool;
   std::function<void(transaction::Methods* trx)> _transactionCallback;
 
@@ -342,6 +373,18 @@ class IResearchView final: public arangodb::ViewImplementation {
   /// @return success
   ////////////////////////////////////////////////////////////////////////////////
   bool sync(SyncState& state, size_t maxMsec = 0);
+
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief registers a callback for flush feature
+  ////////////////////////////////////////////////////////////////////////////////
+  void registerFlushCallback();
+
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief opens a flush transaction and returns a control object to be used
+  ///        by FlushThread spawned by FlushFeature
+  /// @returns empty object if something's gone wrong
+  ////////////////////////////////////////////////////////////////////////////////
+  FlushTransactionPtr flushTransaction() noexcept;
 
   MemoryStore& activeMemoryStore();
 };

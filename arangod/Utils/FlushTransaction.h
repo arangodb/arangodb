@@ -36,7 +36,7 @@ class FlushTransaction {
 
   explicit FlushTransaction(std::string const& name) : _name(name) {}
 
-  virtual ~FlushTransaction();
+  virtual ~FlushTransaction() = default;
   
   // return the type name of the flush transaction
   // this is used when logging error messages about failed flush commits

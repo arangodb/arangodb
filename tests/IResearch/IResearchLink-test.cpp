@@ -34,6 +34,7 @@
 #include "Logger/Logger.h"
 #include "Logger/LogTopic.h"
 #include "RestServer/ViewTypesFeature.h"
+#include "RestServer/FlushFeature.h"
 #include "RestServer/QueryRegistryFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "Transaction/StandaloneContext.h"
@@ -76,6 +77,12 @@ struct IResearchLinkSetup {
     );
     feature->prepare();
     feature->start();
+
+    // FlushFeature
+    arangodb::application_features::ApplicationServer::server->addFeature(
+      feature = new arangodb::FlushFeature(&server)
+    );
+    feature->prepare();
 
     arangodb::ViewTypesFeature::registerViewImplementation(
       arangodb::iresearch::IResearchView::type(),

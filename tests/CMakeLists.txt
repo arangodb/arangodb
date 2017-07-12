@@ -27,6 +27,7 @@ endif ()
 add_executable(
   arangodbtests
 #  ../lib/Basics/WorkMonitorDummy.cpp
+  ${CMAKE_SOURCE_DIR}/arangod/RestServer/FlushFeature.cpp
   Agency/AddFollowerTest.cpp
   Agency/CleanOutServerTest.cpp
   Agency/FailedFollowerTest.cpp

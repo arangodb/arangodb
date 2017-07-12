@@ -111,7 +111,7 @@ bool FlushFeature::unregisterCallback(void* ptr) {
 }
 
 void FlushFeature::executeCallbacks() {
-  std::vector<std::unique_ptr<FlushTransaction>> transactions;
+  std::vector<FlushTransactionPtr> transactions;
 
   READ_LOCKER(locker, _callbacksLock);
   
