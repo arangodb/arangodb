@@ -46,6 +46,12 @@ API_DOCS.basePath = `/_db/${encodeURIComponent(db._name())}`;
 const router = createRouter();
 module.exports = router;
 
+router.get('/index.html', (req, res) => {
+  res.sendFile(module.context.fileName('frontend/build/index.html'));
+  res.set('X-Frame-Options', 'DENY');
+  res.set('X-XSS-Protection', '1; mode=block');
+});
+
 router.get('/config.js', function (req, res) {
   const scriptName = req.get('x-script-name');
   const basePath = req.trustProxy && scriptName || '';
@@ -56,7 +62,8 @@ router.get('/config.js', function (req, res) {
       db: req.database,
       isEnterprise: isEnterprise,
       authenticationEnabled: internal.authenticationEnabled(),
-      isCluster: cluster.isCluster()
+      isCluster: cluster.isCluster(),
+      engine: db._engine().name
     })}`
   );
 })

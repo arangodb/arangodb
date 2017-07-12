@@ -36,10 +36,6 @@
   },
 
   "files": {
-    "/index.html": {
-      "path": "frontend/build/index-min.html",
-      "gzip": true
-    },
     "/css/sass.css": {
       "path": "frontend/build/style-minified.css",
       "gzip": true
