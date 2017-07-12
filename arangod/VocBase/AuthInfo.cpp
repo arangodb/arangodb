@@ -300,6 +300,13 @@ Result AuthInfo::storeUserInternal(AuthUserEntry const& entry, bool replace) {
   if (vocbase == nullptr) {
     return Result(TRI_ERROR_INTERNAL);
   }
+  
+  // we cannot set this execution context, otherwise the transaction
+  // will ask us again for permissions and we get a deadlock
+  ExecContext* oldExe = ExecContext::CURRENT_EXECCONTEXT;
+  ExecContext::CURRENT_EXECCONTEXT = nullptr;
+  TRI_DEFER(ExecContext::CURRENT_EXECCONTEXT = oldExe);
+  
   std::shared_ptr<transaction::Context> ctx(
       new transaction::StandaloneContext(vocbase));
   SingleCollectionTransaction trx(ctx, TRI_COL_NAME_USERS,
@@ -669,7 +676,10 @@ AuthLevel AuthInfo::canUseDatabase(std::string const& username,
 AuthLevel AuthInfo::canUseCollection(std::string const& username,
                                      std::string const& dbname,
                                      std::string const& coll) {
-  return getAuthContext(username, dbname)->collectionAuthLevel(coll);
+  AuthLevel level = getAuthContext(username, dbname)->collectionAuthLevel(coll);
+  return level;
+  //return AuthInfo::checkSystemCollectionAccess(dbname == TRI_VOC_SYSTEM_DATABASE,
+  //                                            coll, level);
 }
 
 // public called from VocbaseContext.cpp

@@ -38,7 +38,7 @@ const namePrefix = helper.namePrefix;
 const dbName = helper.dbName;
 const colName = helper.colName;
 const rightLevels = helper.rightLevels;
-const testColName = `${namePrefix}ColNew`;
+const testColName = colName;//`${namePrefix}ColNew`;
 
 const userSet = helper.userSet;
 const systemLevel = helper.systemLevel;
@@ -62,10 +62,10 @@ const switchUser = (user, dbname) => {
 
 switchUser('root', '_system');
 helper.removeAllUsers();
-helper.generateAllUsers();
 
 describe('User Rights Management', () => {
 
+  before(helper.generateAllUsers);
   after(helper.removeAllUsers);
 
   it('should check if all users are created', () => {
@@ -158,12 +158,14 @@ describe('User Rights Management', () => {
                   col.truncate();
                   expect(rootCount()).to.equal(0, `${name} could not truncate the collection with sufficient rights`);
                 } else {
+                  var success = false;
                   try {
                     col.truncate();
-                    expect(true).to.be(false, `${name} succeeded with truncate without getting an error (insufficent rights)`);
+                    success = true;
                   } catch (e) {
-                    expect(e.errorNum).to.equal(errors.ERROR_FORBIDDEN.code);
+                    expect(e.errorNum).to.equal(errors.ERROR_FORBIDDEN.code, `${name} getting an unexpected error code`);
                   }
+                  expect(success).to.equal(false, `${name} succeeded with truncate without getting an error (insufficent rights)`);
                   expect(rootCount()).to.equal(6, `${name} could not truncate the collection with sufficient rights`);
                 }
               });

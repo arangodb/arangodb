@@ -61,10 +61,10 @@ const switchUser = (user, dbname) => {
 
 switchUser('root', '_system');
 helper.removeAllUsers();
-helper.generateAllUsers();
 
 describe('User Rights Management', () => {
 
+  before(helper.generateAllUsers);
   after(helper.removeAllUsers);
 
   it('should check if all users are created', () => {

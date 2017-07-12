@@ -59,14 +59,11 @@ for (let l of rightLevels) {
 const switchUser = (user) => {
   arango.reconnect(arango.getEndpoint(), '_system', user, '');
 };
+helper.removeAllUsers();
 
 describe('User Rights Management', () => {
 
-  before(() => {
-    helper.removeAllUsers();
-    helper.generateAllUsers();
-  });
-
+  before(helper.generateAllUsers);
   after(helper.removeAllUsers);
 
   it('should test rights for', () => {

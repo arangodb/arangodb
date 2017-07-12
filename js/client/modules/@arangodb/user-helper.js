@@ -29,6 +29,8 @@
 
 'use strict';
 
+const internal = require("internal");
+
 const users = require('@arangodb/users');
 const namePrefix = `UnitTest`;
 const dbName = `${namePrefix}DB`;
@@ -109,6 +111,11 @@ exports.generateAllUsers = () => {
 
           if (sys !== 'default') {
             users.grantDatabase(name, '_system', sys);
+            var a = users.permission(name, '_system');
+            if (sys != a) {
+              internal.print("Wrong sys permissions for user " + name);
+              internal.print(sys + " != " + a);
+            }
           } else {
             users.revokeDatabase(name, '_system');
           }
@@ -116,6 +123,11 @@ exports.generateAllUsers = () => {
 
           if (db !== 'default') {
             users.grantDatabase(name, dbName, db);
+            var a =  users.permission(name, dbName);
+            if (db != a) {
+              internal.print("Wrong db permissions for user " + name);
+              internal.print(db + " != " + a);
+            }
           } else {
             users.revokeDatabase(name, dbName);
           }
@@ -123,6 +135,11 @@ exports.generateAllUsers = () => {
 
           if (col !== 'default') {
             users.grantCollection(name, dbName, colName, col);
+            var a =  users.permission(name, dbName, colName);
+            if (col != a) {
+              internal.print("Wrong collection permissions for user " + name);
+              internal.print(col + " != " + a);
+            }
           } else {
             users.revokeCollection(name, dbName, colName);
           }

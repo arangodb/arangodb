@@ -143,6 +143,7 @@ function AuthSuite () {
     testPasswordCase : function () {
       users.save("hackers@arangodb.com", "FooBar");
       users.grantDatabase('hackers@arangodb.com', db._name());
+      users.grantCollection('hackers@arangodb.com', db._name(), "*", "ro");
       users.reload();
 
       arango.reconnect(arango.getEndpoint(), db._name(), "hackers@arangodb.com", "FooBar");
@@ -194,6 +195,7 @@ function AuthSuite () {
     testColon : function () {
       users.save("hackers@arangodb.com", "fuxx::bar");
       users.grantDatabase('hackers@arangodb.com', db._name());
+      users.grantCollection('hackers@arangodb.com', db._name(), "*", "ro");
       users.reload();
 
       arango.reconnect(arango.getEndpoint(), db._name(), "hackers@arangodb.com", "fuxx::bar");
@@ -244,6 +246,7 @@ function AuthSuite () {
     testSpecialChars : function () {
       users.save("hackers@arangodb.com", ":\\abc'def:foobar@04. x-a");
       users.grantDatabase('hackers@arangodb.com', db._name());
+      users.grantCollection('hackers@arangodb.com', db._name(), "*", "ro");
       users.reload();
 
       arango.reconnect(arango.getEndpoint(), db._name(), "hackers@arangodb.com", ":\\abc'def:foobar@04. x-a");
