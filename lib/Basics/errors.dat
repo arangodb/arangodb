@@ -207,6 +207,7 @@ ERROR_CLUSTER_COULD_NOT_DROP_FOLLOWER,1488,"a follower could not be dropped in a
 ERROR_CLUSTER_SHARD_LEADER_REFUSES_REPLICATION,1489,"a shard leader refuses to perform a replication operation","Will be raised if a replication operation is refused by a shard leader."
 ERROR_CLUSTER_SHARD_FOLLOWER_REFUSES_OPERATION,1490,"a shard follower refuses to perform an operation that is not a replication","Will be raised if a non-replication operation is refused by a shard follower."
 ERROR_CLUSTER_SHARD_LEADER_RESIGNED,1491,"a (former) shard leader refuses to perform an operation, because it has resigned in the meantime","Will be raised if a non-replication operation is refused by a former shard leader that has found out that it is no longer the leader."
+ERROR_CLUSTER_AGENCY_COMMUNICATION_FAILED,1492,"some agency operation failed","Will be raised if after various retries an agency operation could not be performed successfully."
 
 ################################################################################
 ## ArangoDB query errors
