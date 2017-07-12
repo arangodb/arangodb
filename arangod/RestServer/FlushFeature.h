@@ -49,7 +49,14 @@ class FlushFeature final
   void stop() override;
   void unprepare() override;
 
-  void registerCallback(FlushFeature::FlushCallback const& cb);
+  /// @brief register the callback, using ptr as key
+  void registerCallback(void* ptr, FlushFeature::FlushCallback const& cb);
+
+  /// @brief unregister the callback, by ptr
+  /// if the callback is unknown, returns false.
+  bool unregisterCallback(void* ptr);
+
+  /// @brief executes all callbacks. the order in which they are executed is undefined
   void executeCallbacks();
 
  private:
@@ -57,7 +64,7 @@ class FlushFeature final
   std::unique_ptr<FlushThread> _flushThread;
 
   basics::ReadWriteLock _callbacksLock; 
-  std::vector<FlushCallback> _callbacks;
+  std::unordered_map<void*, FlushCallback> _callbacks;
 };
 }
 
