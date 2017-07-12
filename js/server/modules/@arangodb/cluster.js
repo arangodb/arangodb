@@ -621,7 +621,7 @@ function synchronizeOneShard (database, shard, planId, leader) {
       let logLevel = 'error';
       // ignore failures of jobs where the database to sync has been removed on the leader
       // {"errorNum":1400,"errorMessage":"cannot sync from remote endpoint: job not found on master at tcp://127.0.0.1:15179. last progress message was 'send batch finish command to url /_api/replication/batch/2103395': no response"}
-      if (err2 && err2.errorNum === 1400) {
+      if (err2 && (err2.errorNum === 1203 || err2.errorNum === 1400)) {
         logLevel = 'debug';
       } else if (err2 && err2.errorNum === 1402 && err2.errorMessage.match(/HTTP 404/)) {
         logLevel = 'debug';
