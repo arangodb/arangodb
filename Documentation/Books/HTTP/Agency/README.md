@@ -5,8 +5,12 @@ HTTP Interface for Agency feature
 
 At all times, i.e. regardless of the state of the agents and the current health of the RAFT consensus, one can invoke the configuration API:
 
-    http://server:port/_api/agency/config
+    curl http://$SERVER:$PORT/_api/agency/config
 
+Here, and in all subsequent calls, we assume that `$SERVER` is
+replaced by the server name and `$PORT` is replaced by the port
+number. We use `curl` throughout for the examples, but any client
+library performing HTTP requests should do.
 The output might look somewhat like this
 
 ```js
@@ -56,7 +60,7 @@ Consider the following write operation into a prestine agency:
 
 
 ```
-curl -L http://server:port/write -d '[[{"a":{"b":{"c":[1,2,3]},"e":12},"d":false}]]'
+curl -L http://$SERVER:$PORT/_api/agency/write -d '[[{"a":{"op":"set","new":{"b":{"c":[1,2,3]},"e":12}},"d":{"op":"set","new":false}}]]'
 ```
 ```js
 [{results:[1]}]
@@ -66,7 +70,7 @@ curl -L http://server:port/write -d '[[{"a":{"b":{"c":[1,2,3]},"e":12},"d":false
 And the subsequent read operation 
 
 ```
-curl -L http://server:port/read -d '[["/"]]'
+curl -L http://$SERVER:$PORT/_api/agency/read -d '[["/"]]'
 ```
 ```js
 [
@@ -93,7 +97,7 @@ Let's dig in some deeper.
 Let's start with the above initialised key-value store in the following. Let us visit the following read operations:
 
 ```
-curl -L http://server:port/read -d '[["/a/b"]]'
+curl -L http://$SERVER:$PORT/_api/agency/read -d '[["/a/b"]]'
 ```
 ```js
 [
@@ -110,7 +114,7 @@ curl -L http://server:port/read -d '[["/a/b"]]'
 And
 
 ```
-curl -L http://server:port/read -d '[["/a/b/c"]]'
+curl -L http://$SERVER:$PORT/_api/agency/read -d '[["/a/b/c"]]'
 ```
 ```js
 [
@@ -129,7 +133,7 @@ Note that the above results are identical, meaning that results obtained from th
 The second outer array brackets in read operations correspond to transactions, meaning that the result is guaranteed to have been acquired without a write transaction in between:
 
 ```
-curl -L http://server:port/read -d '[["/a/e"],["/d","/a/b"]]'
+curl -L http://$SERVER:$PORT/_api/agency/read -d '[["/a/e"],["/d","/a/b"]]'
 ```
 ```js
 [
@@ -155,7 +159,7 @@ While the first transaction consists of a single read access to the key-value-st
 Let's try to fetch a value from the key-value-store, which does not exist:
 
 ```
-curl -L http://server:port/read -d '[["/a/b/d"]]'
+curl -L http://$SERVER:$PORT/_api/agency/read -d '[["/a/b/d"]]'
 ```
 ```js
 [
@@ -170,7 +174,7 @@ curl -L http://server:port/read -d '[["/a/b/d"]]'
 The result returns the cross section of the requested path and the key-value-store contents. `"/a/b"` exists, but there is no key `"/a/b/d"`. Thus the following transaction will yield:
 
 ```
-curl -L http://server:port/read -d '[["/a/b/d","/d"]]'
+curl -L http://$SERVER:$PORT/_api/agency/read -d '[["/a/b/d","/d"]]'
 ```
 ```js
 [
@@ -186,7 +190,7 @@ curl -L http://server:port/read -d '[["/a/b/d","/d"]]'
 And this last read operation should return:
 
 ```
-curl -L http://server:port/read -d '[["/a/b/c"],["/a/b/d"],["/a/x/y"],["/y"],["/a/b","/a/x" ]]'
+curl -L http://$SERVER:$PORT/_api/agency/read -d '[["/a/b/c"],["/a/b/d"],["/a/x/y"],["/y"],["/a/b","/a/x" ]]'
 ```
 ```js
 [
@@ -219,7 +223,7 @@ is a precondition specifying that the previous value of the key `"/a/b/c"` key m
 Consider the agency in initialised as above let's review the responses from the agency as follows:
 
 ```
-curl -L http://server:port/write -d '[[{"/a/b/c":[1,2,3,4],"/a/b/pi"},{"/a/b/c":[1,2,3]}]]'
+curl -L http://$SERVER:$PORT/_api/agency/write -d '[[{"/a/b/c":{"op":"set","new":[1,2,3,4]},"/a/b/pi":{"op":"set","new":"some text"}},{"/a/b/c":{"old":[1,2,3]}}]]'
 ```
 ```js
 {
@@ -348,7 +352,7 @@ In order to observe any future modification below say `"/a/b/c"`, a observer is 
 ```js
 [ { "/a/b/c": 
     { "op":  "observe", 
-     "url": "http://<host>:<port>/<path>" 
+      "url": "http://<host>:<port>/<path>" 
     }
   } ]
 ```
