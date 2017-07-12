@@ -94,7 +94,7 @@ class IResearchView final: public arangodb::ViewImplementation {
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief persist the specified WAL file into permanent storage
   ////////////////////////////////////////////////////////////////////////////////
-  int finish(TRI_voc_fid_t const& fid);
+  int finish();
 
   ///////////////////////////////////////////////////////////////////////////////
   /// @brief fill and return a JSON description of a IResearchView object
@@ -107,7 +107,6 @@ class IResearchView final: public arangodb::ViewImplementation {
   ///        to be done in the scope of transaction 'tid' and 'meta'
   ////////////////////////////////////////////////////////////////////////////////
   int insert(
-    TRI_voc_fid_t fid,
     transaction::Methods& trx,
     TRI_voc_cid_t cid,
     TRI_voc_rid_t rid,
@@ -123,7 +122,6 @@ class IResearchView final: public arangodb::ViewImplementation {
   ///        terminate on first failure
   ////////////////////////////////////////////////////////////////////////////////
   int insert(
-    TRI_voc_fid_t fid,
     transaction::Methods& trx,
     TRI_voc_cid_t cid,
     std::vector<std::pair<TRI_voc_rid_t, arangodb::velocypack::Slice>> const& batch,
@@ -288,8 +286,6 @@ class IResearchView final: public arangodb::ViewImplementation {
     MemoryStore(); // initialize _directory and _writer during allocation
   };
 
-  typedef std::unordered_map<TRI_voc_fid_t, MemoryStore> MemoryStoreByFid;
-
   struct SyncState {
     struct PolicyState {
       size_t _intervalCount;
@@ -310,7 +306,7 @@ class IResearchView final: public arangodb::ViewImplementation {
   struct TidStore {
     mutable std::mutex _mutex; // for use with '_removals' (allow use in const functions)
     std::vector<std::shared_ptr<irs::filter>> _removals; // removal filters to be applied to during merge
-    MemoryStoreByFid _storeByFid;
+    MemoryStore _store;
   };
 
   typedef std::unordered_map<TRI_voc_tid_t, TidStore> MemoryStoreByTid;
@@ -323,7 +319,7 @@ class IResearchView final: public arangodb::ViewImplementation {
   IResearchViewMeta _meta;
   mutable irs::async_utils::read_write_mutex _mutex; // for use with member maps/sets and '_meta'
   MemoryStoreByTid _storeByTid;
-  MemoryStoreByFid _storeByWalFid;
+  MemoryStore _memoryStore;
   DataStore _storePersisted;
   irs::async_utils::thread_pool _threadPool;
   std::function<void(transaction::Methods* trx)> _transactionCallback;
@@ -346,6 +342,8 @@ class IResearchView final: public arangodb::ViewImplementation {
   /// @return success
   ////////////////////////////////////////////////////////////////////////////////
   bool sync(SyncState& state, size_t maxMsec = 0);
+
+  MemoryStore& activeMemoryStore();
 };
 
 NS_END // iresearch

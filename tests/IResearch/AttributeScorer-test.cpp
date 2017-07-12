@@ -29,7 +29,6 @@
 #include "Aql/SortCondition.h"
 #include "GeneralServer/AuthenticationFeature.h"
 #include "IResearch/AttributeScorer.h"
-#include "IResearch/IResearchKludge.h"
 #include "IResearch/IResearchView.h"
 #include "RestServer/AqlFeature.h"
 #include "MMFiles/MMFilesDocumentPosition.h"
@@ -222,29 +221,17 @@ SECTION("test_query") {
     arangodb::transaction::UserTransaction trx(arangodb::transaction::StandaloneContext::Create(&vocbase), EMPTY, EMPTY, EMPTY, arangodb::transaction::Options());
     CHECK((trx.begin().ok()));
     CHECK((logicalCollection->insert(&trx, doc0->slice(), tmpResult, options, tmpResultTick, false)).ok());
-    arangodb::iresearch::kludge::insertDocument(trx, *logicalCollection, arangodb::MMFilesDocumentPosition(tmpResult.lastRevisionId(), doc0->data(), 1, false));
     CHECK((logicalCollection->insert(&trx, doc1->slice(), tmpResult, options, tmpResultTick, false)).ok());
-    arangodb::iresearch::kludge::insertDocument(trx, *logicalCollection, arangodb::MMFilesDocumentPosition(tmpResult.lastRevisionId(), doc1->data(), 1, false));
     CHECK((logicalCollection->insert(&trx, doc2->slice(), tmpResult, options, tmpResultTick, false)).ok());
-    arangodb::iresearch::kludge::insertDocument(trx, *logicalCollection, arangodb::MMFilesDocumentPosition(tmpResult.lastRevisionId(), doc2->data(), 1, false));
     CHECK((logicalCollection->insert(&trx, doc3->slice(), tmpResult, options, tmpResultTick, false)).ok());
-    arangodb::iresearch::kludge::insertDocument(trx, *logicalCollection, arangodb::MMFilesDocumentPosition(tmpResult.lastRevisionId(), doc3->data(), 1, false));
     CHECK((logicalCollection->insert(&trx, doc4->slice(), tmpResult, options, tmpResultTick, false)).ok());
-    arangodb::iresearch::kludge::insertDocument(trx, *logicalCollection, arangodb::MMFilesDocumentPosition(tmpResult.lastRevisionId(), doc4->data(), 1, false));
     CHECK((logicalCollection->insert(&trx, doc5->slice(), tmpResult, options, tmpResultTick, false)).ok());
-    arangodb::iresearch::kludge::insertDocument(trx, *logicalCollection, arangodb::MMFilesDocumentPosition(tmpResult.lastRevisionId(), doc5->data(), 1, false));
     CHECK((logicalCollection->insert(&trx, doc6->slice(), tmpResult, options, tmpResultTick, false)).ok());
-    arangodb::iresearch::kludge::insertDocument(trx, *logicalCollection, arangodb::MMFilesDocumentPosition(tmpResult.lastRevisionId(), doc6->data(), 1, false));
     CHECK((logicalCollection->insert(&trx, doc7->slice(), tmpResult, options, tmpResultTick, false)).ok());
-    arangodb::iresearch::kludge::insertDocument(trx, *logicalCollection, arangodb::MMFilesDocumentPosition(tmpResult.lastRevisionId(), doc7->data(), 1, false));
     CHECK((logicalCollection->insert(&trx, doc8->slice(), tmpResult, options, tmpResultTick, false)).ok());
-    arangodb::iresearch::kludge::insertDocument(trx, *logicalCollection, arangodb::MMFilesDocumentPosition(tmpResult.lastRevisionId(), doc8->data(), 1, false));
     CHECK((logicalCollection->insert(&trx, doc9->slice(), tmpResult, options, tmpResultTick, false)).ok());
-    arangodb::iresearch::kludge::insertDocument(trx, *logicalCollection, arangodb::MMFilesDocumentPosition(tmpResult.lastRevisionId(), doc9->data(), 1, false));
     CHECK((logicalCollection->insert(&trx, doc10->slice(), tmpResult, options, tmpResultTick, false)).ok());
-    arangodb::iresearch::kludge::insertDocument(trx, *logicalCollection, arangodb::MMFilesDocumentPosition(tmpResult.lastRevisionId(), doc10->data(), 1, false));
     CHECK((logicalCollection->insert(&trx, doc11->slice(), tmpResult, options, tmpResultTick, false)).ok());
-    arangodb::iresearch::kludge::insertDocument(trx, *logicalCollection, arangodb::MMFilesDocumentPosition(tmpResult.lastRevisionId(), doc11->data(), 1, false));
     CHECK((trx.commit().ok()));
     dynamic_cast<arangodb::iresearch::IResearchView*>(view)->sync();
   }

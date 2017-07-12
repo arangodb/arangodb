@@ -89,7 +89,15 @@ void PhysicalCollectionMock::getPropertiesVPackCoordinator(arangodb::velocypack:
 
 arangodb::Result PhysicalCollectionMock::insert(arangodb::transaction::Methods* trx, arangodb::velocypack::Slice const newSlice, arangodb::ManagedDocumentResult& result, arangodb::OperationOptions& options, TRI_voc_tick_t& resultMarkerTick, bool lock) {
   documents.emplace_back(newSlice);
-  result.setUnmanaged(documents.back().data(), documents.size() - 1);
+
+  const TRI_voc_rid_t revId = documents.size() - 1;
+  result.setUnmanaged(documents.back().data(), revId);
+
+  for (auto& index : _indexes) {
+    if (!index->insert(trx, revId, newSlice, false).ok()) {
+      return arangodb::Result(TRI_ERROR_BAD_PARAMETER);
+    }
+  }
 
   return arangodb::Result();
 }

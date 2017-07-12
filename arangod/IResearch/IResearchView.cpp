@@ -1114,25 +1114,22 @@ bool IResearchView::cleanup(size_t maxMsec /*= 0*/) {
     SCOPED_LOCK(mutex);
 
     for (auto& tidStore: _storeByTid) {
-      for (auto& fidStore: tidStore.second._storeByFid) {
-        LOG_TOPIC(DEBUG, Logger::FIXME) << "starting transaction-store cleanup for iResearch view '" << name() << "' tid '" << tidStore.first << "'" << "' fid '" << fidStore.first << "'";
-        irs::directory_utils::remove_all_unreferenced(*(fidStore.second._directory));
-        LOG_TOPIC(DEBUG, Logger::FIXME) << "finished transaction-store cleanup for iResearch view '" << name() << "' tid '" << tidStore.first << "'" << "' fid '" << fidStore.first << "'";
-
-        if (maxMsec && TRI_microtime() >= thresholdSec) {
-          return true; // skip if timout exceeded
-        }
-      }
-    }
-
-    for (auto& fidStore: _storeByWalFid) {
-      LOG_TOPIC(DEBUG, Logger::FIXME) << "starting memory-store cleanup for iResearch view '" << name() << "' fid '" << fidStore.first << "'";
-      fidStore.second._writer->commit();
-      LOG_TOPIC(DEBUG, Logger::FIXME) << "finished memory-store cleanup for iResearch view '" << name() << "' fid '" << fidStore.first << "'";
+      LOG_TOPIC(DEBUG, Logger::FIXME) << "starting transaction-store cleanup for iResearch view '" << name() << "' tid '" << tidStore.first << "'";
+      irs::directory_utils::remove_all_unreferenced(*tidStore.second._store._directory);
+      LOG_TOPIC(DEBUG, Logger::FIXME) << "finished transaction-store cleanup for iResearch view '" << name() << "' tid '" << tidStore.first << "'";
 
       if (maxMsec && TRI_microtime() >= thresholdSec) {
         return true; // skip if timout exceeded
       }
+    }
+
+    LOG_TOPIC(DEBUG, Logger::FIXME) << "starting memory-store cleanup for iResearch view '" << name() << "'";
+    auto& memoryStore = activeMemoryStore();
+    memoryStore._writer->commit();
+    LOG_TOPIC(DEBUG, Logger::FIXME) << "finished memory-store cleanup for iResearch view '" << name() << "'";
+
+    if (maxMsec && TRI_microtime() >= thresholdSec) {
+      return true; // skip if timout exceeded
     }
 
     if (_storePersisted) {
@@ -1198,7 +1195,12 @@ void IResearchView::drop() {
   // ...........................................................................
   try {
     _storeByTid.clear();
-    _storeByWalFid.clear();
+
+    auto& memoryStore = activeMemoryStore();
+    memoryStore._writer->close();
+    memoryStore._writer.reset();
+    memoryStore._directory->close();
+    memoryStore._directory.reset();
 
     if (_storePersisted) {
       _storePersisted._writer->close();
@@ -1232,7 +1234,7 @@ int IResearchView::drop(TRI_voc_cid_t cid) {
 
   auto& metaStore = *(_logicalView->getPhysical());
   std::shared_ptr<irs::filter> shared_filter(iresearch::FilterFactory::filter(cid));
-  WriteMutex mutex(_mutex); // '_storeByTid' & '_storeByWalFid' can be asynchronously updated
+  WriteMutex mutex(_mutex); // '_storeByTid' can be asynchronously updated
   SCOPED_LOCK(mutex);
 
   _meta._collections.erase(cid); // will no longer be fully indexed
@@ -1251,14 +1253,11 @@ int IResearchView::drop(TRI_voc_cid_t cid) {
   // ...........................................................................
   try {
     for (auto& tidStore: _storeByTid) {
-      for (auto& fidStore: tidStore.second._storeByFid) {
-        fidStore.second._writer->remove(shared_filter);
-      }
+      tidStore.second._store._writer->remove(shared_filter);
     }
 
-    for (auto& fidStore: _storeByWalFid) {
-      fidStore.second._writer->remove(shared_filter);
-    }
+    auto& memoryStore = activeMemoryStore();
+    memoryStore._writer->remove(shared_filter);
 
     if (_storePersisted) {
       _storePersisted._writer->remove(shared_filter);
@@ -1277,7 +1276,7 @@ int IResearchView::drop(TRI_voc_cid_t cid) {
 }
 
 int IResearchView::finish(TRI_voc_tid_t tid, bool commit) {
-  WriteMutex mutex(_mutex); // '_storeByTid' & '_storeByWalFid' can be asynchronously updated
+  WriteMutex mutex(_mutex); // '_storeByTid' can be asynchronously updated
   SCOPED_LOCK(mutex);
   auto tidStoreItr = _storeByTid.find(tid);
 
@@ -1291,34 +1290,18 @@ int IResearchView::finish(TRI_voc_tid_t tid, bool commit) {
     return TRI_ERROR_NO_ERROR; // nothing more to do
   }
 
-  std::vector<std::pair<MemoryStore*, MemoryStore*>> trxToWalStores;
-
-  // reserve memory for import source/destination pointers
-  trxToWalStores.reserve(tidStoreItr->second._storeByFid.size());
-
-  // reserve memory for new fid stores before processing transaction
-  for (auto& entry: tidStoreItr->second._storeByFid) {
-    _storeByWalFid[entry.first];
-  }
-
   // no need to lock TidStore::_mutex since have write-lock on IResearchView::_mutex
   auto removals = std::move(tidStoreItr->second._removals);
-  auto storeByFid = std::move(tidStoreItr->second._storeByFid);
+  auto trxStore = std::move(tidStoreItr->second._store);
 
   _storeByTid.erase(tidStoreItr);
   mutex.unlock(true); // downgrade to a read-lock
 
-  // track import source/destination pointers
-  for (auto& entry: storeByFid) {
-    trxToWalStores.emplace_back(&(entry.second), &(_storeByWalFid[entry.first]));
-  }
-
   try {
     // transfer filters first since they only apply to pre-merge data
-    for (auto& entry: _storeByWalFid) {
-      for (auto& filter: removals) {
-        entry.second._writer->remove(filter);
-      }
+    auto& memoryStore = activeMemoryStore();
+    for (auto& filter: removals) {
+      memoryStore._writer->remove(filter);
     }
 
     // transfer filters to persisted store as well otherwise query resuts will be incorrect
@@ -1329,13 +1312,8 @@ int IResearchView::finish(TRI_voc_tid_t tid, bool commit) {
       }
     }
 
-    for (auto& entry: trxToWalStores) {
-      auto& src = *(entry.first);
-      auto& dst = *(entry.second);
-
-      src._writer->commit(); // ensure have latest view in reader
-      dst._writer->import(src._reader.reopen());
-    }
+    trxStore._writer->commit(); // ensure have latest view in reader
+    memoryStore._writer->import(trxStore._reader.reopen()); // FIXME
 
     return TRI_ERROR_NO_ERROR;
   } catch (std::exception& e) {
@@ -1349,18 +1327,13 @@ int IResearchView::finish(TRI_voc_tid_t tid, bool commit) {
   return TRI_ERROR_INTERNAL;
 }
 
-int IResearchView::finish(TRI_voc_fid_t const& fid) {
-  WriteMutex mutex(_mutex); // '_storeByWalFid' & '_storePersisted' can be asynchronously updated
+int IResearchView::finish() {
+  WriteMutex mutex(_mutex); // '_storePersisted' can be asynchronously updated
   SCOPED_LOCK(mutex);
-  auto fidStoreItr = _storeByWalFid.find(fid);
 
-  if (fidStoreItr == _storeByWalFid.end()) {
-    return TRI_ERROR_NO_ERROR; // nothing to finish
-  }
+  auto memoryStore = std::move(activeMemoryStore());
+  activeMemoryStore() = MemoryStore();
 
-  auto store = std::move(fidStoreItr->second);
-
-  _storeByWalFid.erase(fidStoreItr);
   mutex.unlock(true); // downgrade to a read-lock
 
   if (!_storePersisted) {
@@ -1369,16 +1342,16 @@ int IResearchView::finish(TRI_voc_fid_t const& fid) {
 
   try {
     if (_storePersisted) {
-      store._writer->commit(); // ensure have latest view in reader
-      _storePersisted._writer->import(store._reader.reopen());
+      memoryStore._writer->commit(); // ensure have latest view in reader
+      _storePersisted._writer->import(memoryStore._reader.reopen());
     }
 
     return TRI_ERROR_NO_ERROR;
   } catch (std::exception& e) {
-    LOG_TOPIC(ERR, Logger::FIXME) << "caught exception while committing WAL for iResearch view '" << name() << "', fid '" << fid << "': " << e.what();
+    LOG_TOPIC(ERR, Logger::FIXME) << "caught exception while committing WAL for iResearch view '" << name() << "': " << e.what();
     IR_EXCEPTION();
   } catch (...) {
-    LOG_TOPIC(ERR, Logger::FIXME) << "caught exception while committing WAL for iResearch view '" << name() << "', fid '" << fid << "'";
+    LOG_TOPIC(ERR, Logger::FIXME) << "caught exception while committing WAL for iResearch view '" << name();
     IR_EXCEPTION();
   }
 
@@ -1482,7 +1455,6 @@ void IResearchView::getPropertiesVPack(
 }
 
 int IResearchView::insert(
-    TRI_voc_fid_t fid,
     transaction::Methods& trx,
     TRI_voc_cid_t cid,
     TRI_voc_rid_t rid,
@@ -1500,7 +1472,7 @@ int IResearchView::insert(
     return TRI_ERROR_NO_ERROR;
   }
 
-  WriteMutex mutex(_mutex); // '_storeByTid' & '_storeByFid' can be asynchronously updated
+  WriteMutex mutex(_mutex); // '_storeByTid' can be asynchronously updated
   SCOPED_LOCK(mutex);
   auto storeItr = irs::map_utils::try_emplace(_storeByTid, trx.state()->id());
 
@@ -1509,9 +1481,9 @@ int IResearchView::insert(
     trx.registerCallback(_transactionCallback);
   }
 
-  auto& store = storeItr.first->second._storeByFid[fid];
-
   mutex.unlock(true); // downgrade to a read-lock
+
+  auto& store = storeItr.first->second._store;
 
   auto insert = [&body, cid, rid] (irs::index_writer::document& doc) {
     insertDocument(doc, body, cid, rid);
@@ -1537,7 +1509,6 @@ int IResearchView::insert(
 }
 
 int IResearchView::insert(
-    TRI_voc_fid_t fid,
     transaction::Methods& trx,
     TRI_voc_cid_t cid,
     std::vector<std::pair<TRI_voc_rid_t, arangodb::velocypack::Slice>> const& batch,
@@ -1547,7 +1518,7 @@ int IResearchView::insert(
     return TRI_ERROR_BAD_PARAMETER; // 'trx' and transaction id required
   }
 
-  WriteMutex mutex(_mutex); // '_storeByTid' & '_storeByFid' can be asynchronously updated
+  WriteMutex mutex(_mutex); // '_storeByTid' can be asynchronously updated
   SCOPED_LOCK(mutex); // '_meta' can be asynchronously updated
   auto storeItr = irs::map_utils::try_emplace(_storeByTid, trx.state()->id());
 
@@ -1556,11 +1527,12 @@ int IResearchView::insert(
     trx.registerCallback(_transactionCallback);
   }
 
-  auto& store = storeItr.first->second._storeByFid[fid];
   const size_t commitBatch = _meta._commitBulk._commitIntervalBatchSize;
   SyncState state = SyncState(_meta._commitBulk);
 
   mutex.unlock(true); // downgrade to a read-lock
+
+  auto& store = storeItr.first->second._store;
 
   size_t batchCount = 0;
   auto begin = batch.begin();
@@ -1645,15 +1617,14 @@ arangodb::ViewIterator* IResearchView::iteratorForCondition(
     return nullptr;
   }
 
-  CompoundReader compoundReader;
+  CompoundReader compoundReader; // FIXME remove add method
 
   try {
-    for (auto& fidStore: _storeByWalFid) {
-      auto reader = fidStore.second._reader.reopen(); // refresh to latest version
+    auto& memoryStore = activeMemoryStore();
+    auto reader = memoryStore._reader.reopen();
 
-      compoundReader.add(reader);
-      fidStore.second._reader = reader; // cache reopened reader for reuse by other queries
-    }
+    compoundReader.add(reader); // refresh to latest version
+    memoryStore._reader = reader; // cache reopened reader for reuse by other queries
 
     if (_storePersisted) {
       auto reader = _storePersisted._reader.reopen(); // refresh to latest version
@@ -1838,21 +1809,15 @@ size_t IResearchView::memory() const {
 
   for (auto& tidEntry: _storeByTid) {
     size += sizeof(tidEntry.first) + sizeof(tidEntry.second);
-
-    for (auto& fidEntry: tidEntry.second._storeByFid) {
-      size += sizeof(fidEntry.first) + sizeof(fidEntry.second);
-      size += directoryMemory(*(fidEntry.second._directory), name());
-    }
+    size += directoryMemory(*tidEntry.second._store._directory, name());
 
     // no way to determine size of actual filter
     SCOPED_LOCK(tidEntry.second._mutex);
     size += tidEntry.second._removals.size() * (sizeof(decltype(tidEntry.second._removals)::pointer) + sizeof(decltype(tidEntry.second._removals)::value_type));
   }
 
-  for (auto& fidEntry: _storeByWalFid) {
-    size += sizeof(fidEntry.first) + sizeof(fidEntry.second);
-    size += directoryMemory(*(fidEntry.second._directory), name());
-  }
+  size += sizeof(_memoryStore);
+  size += directoryMemory(*_memoryStore._directory, name());
 
   if (_storePersisted) {
     size += directoryMemory(*(_storePersisted._directory), name());
@@ -1932,18 +1897,16 @@ int IResearchView::remove(
     trx.registerCallback(_transactionCallback);
   }
 
-  auto& store = storeItr.first->second;
-
   mutex.unlock(true); // downgrade to a read-lock
+
+  auto& store = storeItr.first->second;
 
   // ...........................................................................
   // if an exception occurs below than the transaction is droped including all
   // all of its fid stores, no impact to iResearch View data integrity
   // ...........................................................................
   try {
-    for (auto& fidStore: store._storeByFid) {
-      fidStore.second._writer->remove(shared_filter);
-    }
+    store._store._writer->remove(shared_filter);
 
     SCOPED_LOCK(store._mutex); // '_removals' can be asynchronously updated
     store._removals.emplace_back(shared_filter);
@@ -1992,6 +1955,10 @@ bool IResearchView::supportsSortCondition(
   return sortCondition && OrderFactory::order(nullptr, *sortCondition, _meta);
 }
 
+IResearchView::MemoryStore& IResearchView::activeMemoryStore() {
+  return _memoryStore;
+}
+
 bool IResearchView::sync(size_t maxMsec /*= 0*/) {
   ReadMutex mutex(_mutex);
   auto thresholdSec = TRI_microtime() + maxMsec/1000.0;
@@ -2000,25 +1967,22 @@ bool IResearchView::sync(size_t maxMsec /*= 0*/) {
     SCOPED_LOCK(mutex);
 
     for (auto& tidStore: _storeByTid) {
-      for (auto& fidStore: tidStore.second._storeByFid) {
-        LOG_TOPIC(DEBUG, Logger::FIXME) << "starting transaction-store sync for iResearch view '" << name() << "' tid '" << tidStore.first << "'" << "' fid '" << fidStore.first << "'";
-        fidStore.second._writer->commit();
-        LOG_TOPIC(DEBUG, Logger::FIXME) << "finished transaction-store sync for iResearch view '" << name() << "' tid '" << tidStore.first << "'" << "' fid '" << fidStore.first << "'";
-
-        if (maxMsec && TRI_microtime() >= thresholdSec) {
-          return true; // skip if timout exceeded
-        }
-      }
-    }
-
-    for (auto& fidStore: _storeByWalFid) {
-      LOG_TOPIC(DEBUG, Logger::FIXME) << "starting memory-store sync for iResearch view '" << name() << "' fid '" << fidStore.first << "'";
-      fidStore.second._writer->commit();
-      LOG_TOPIC(DEBUG, Logger::FIXME) << "finished memory-store sync for iResearch view '" << name() << "' fid '" << fidStore.first << "'";
+      LOG_TOPIC(DEBUG, Logger::FIXME) << "starting transaction-store sync for iResearch view '" << name() << "' tid '" << tidStore.first << "'";
+      tidStore.second._store._writer->commit();
+      LOG_TOPIC(DEBUG, Logger::FIXME) << "finished transaction-store sync for iResearch view '" << name() << "' tid '" << tidStore.first << "'";
 
       if (maxMsec && TRI_microtime() >= thresholdSec) {
         return true; // skip if timout exceeded
       }
+    }
+
+    LOG_TOPIC(DEBUG, Logger::FIXME) << "starting memory-store sync for iResearch view '" << name() << "'";
+    auto& memoryStore = activeMemoryStore();
+    memoryStore._writer->commit();
+    LOG_TOPIC(DEBUG, Logger::FIXME) << "finished memory-store sync for iResearch view '" << name() << "'";
+
+    if (maxMsec && TRI_microtime() >= thresholdSec) {
+      return true; // skip if timout exceeded
     }
 
     if (_storePersisted) {
@@ -2042,7 +2006,7 @@ bool IResearchView::sync(size_t maxMsec /*= 0*/) {
 bool IResearchView::sync(SyncState& state, size_t maxMsec /*= 0*/) {
   char runId = 0; // value not used
   auto thresholdMsec = TRI_microtime() * 1000 + maxMsec;
-  ReadMutex mutex(_mutex); // '_storeByTid'/'_storeByWalFid'/'_storePersisted' can be asynchronously modified
+  ReadMutex mutex(_mutex); // '_storeByTid'/'_storePersisted' can be asynchronously modified
 
   LOG_TOPIC(DEBUG, Logger::FIXME) << "starting flush for iResearch view '" << name() << "' run id '" << size_t(&runId) << "'";
 
@@ -2061,14 +2025,11 @@ bool IResearchView::sync(SyncState& state, size_t maxMsec /*= 0*/) {
       SCOPED_LOCK(mutex);
 
       for (auto& tidStore: _storeByTid) {
-        for (auto& fidStore: tidStore.second._storeByFid) {
-          fidStore.second._writer->consolidate(entry._policy, false);
-        }
+        tidStore.second._store._writer->consolidate(entry._policy, false);
       }
 
-      for (auto& fidStore: _storeByWalFid) {
-        fidStore.second._writer->consolidate(entry._policy, false);
-      }
+      auto& memoryStore = activeMemoryStore();
+      memoryStore._writer->consolidate(entry._policy, false);
 
       if (_storePersisted) {
         _storePersisted._writer->consolidate(entry._policy, false);

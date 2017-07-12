@@ -24,8 +24,6 @@
 #ifndef ARANGOD_IRESEARCH__IRESEARCH_KLUDGE_H
 #define ARANGOD_IRESEARCH__IRESEARCH_KLUDGE_H 1
 
-#include "VocBase/voc-types.h"
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief common place for all kludges and temporary workarounds required for
 ///        integration if the IResearch library with ArangoDB
@@ -34,43 +32,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 namespace arangodb {
-  class LogicalCollection; // forward declaration
-  class MMFilesDocumentPosition; // forward declaration
-} // arangodb
-
-namespace arangodb {
-namespace transaction {
-  class Methods; // forward declaration
-} // transaction
-} // arangodb
-
-namespace arangodb {
 namespace iresearch {
 namespace kludge {
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief insert a document into all IResearchLinks in the collection
-////////////////////////////////////////////////////////////////////////////////
-void insertDocument(
-  arangodb::transaction::Methods& trx,
-  arangodb::LogicalCollection& collection,
-  arangodb::MMFilesDocumentPosition doc
-) noexcept;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief persist records mrked with the specified WAL ID into permanent
-///        storage in all the IResearchView instances
-////////////////////////////////////////////////////////////////////////////////
-void persistFid(TRI_voc_fid_t fid) noexcept;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief insert a document into all IResearchLinks in the collection
-////////////////////////////////////////////////////////////////////////////////
-void removeDocument(
-  arangodb::transaction::Methods& trx,
-  arangodb::LogicalCollection& collection,
-  TRI_voc_rid_t rid
-) noexcept;
 
 } // kludge
 } // iresearch

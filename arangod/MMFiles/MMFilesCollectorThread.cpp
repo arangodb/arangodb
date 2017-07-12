@@ -51,10 +51,6 @@
 #include "Transaction/Hints.h"
 #include "VocBase/LogicalCollection.h"
 
-#ifdef USE_IRESEARCH
-  #include "IResearch/IResearchKludge.h"
-#endif
-
 using namespace arangodb;
 
 /// @brief state that is built up when scanning a WAL logfile
@@ -405,10 +401,6 @@ int MMFilesCollectorThread::collectLogfiles(bool& worked) {
       MMFilesPersistentIndexFeature::syncWal();
 
       _logfileManager->setCollectionDone(logfile);
-
-      #ifdef USE_IRESEARCH
-        iresearch::kludge::persistFid(logfile->df()->fid()); // TODO FIXME remove once checkpoint ids are implemented
-      #endif
     } else {
       // return the logfile to the logfile manager in case of errors
       _logfileManager->forceStatus(logfile, MMFilesWalLogfile::StatusType::SEALED);

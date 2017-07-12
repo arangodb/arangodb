@@ -138,8 +138,7 @@ void IResearchLink::batchInsert(
     return;
   }
 
-  TRI_voc_fid_t fid = 0; // FIXME TODO find proper fid
-  auto res = _view->insert(fid, *trx, _collection->cid(), batch, _meta);
+  auto res = _view->insert(*trx, _collection->cid(), batch, _meta);
 
   if (TRI_ERROR_NO_ERROR != res) {
     queue->setStatus(res);
@@ -168,34 +167,6 @@ bool IResearchLink::hasSelectivityEstimate() const {
   return false; // selectivity can only be determined per query since multiple fields are indexed
 }
 
-// FIXME TODO for use by iresearch::kludge, remove once checkpoint ids are implemented
-#if 1
-Result IResearchLink::insert(
-    transaction::Methods* trx,
-    TRI_voc_rid_t rid,
-    VPackSlice const& doc,
-    bool isRollback
-) {
-  return TRI_ERROR_NO_ERROR; // NOOP because handled by iresearch::kludge::insert(...)
-}
-
-Result IResearchLink::insert(
-    transaction::Methods* trx,
-    TRI_voc_fid_t fid,
-    TRI_voc_rid_t rid,
-    VPackSlice const& doc
-) {
-  if (!_collection || !_view) {
-    return TRI_ERROR_ARANGO_COLLECTION_NOT_LOADED; // '_collection' and '_view' required
-  }
-
-  if (!trx) {
-    return TRI_ERROR_BAD_PARAMETER; // 'trx' required
-  }
-
-  return _view->insert(fid, *trx, _collection->cid(), rid, doc, _meta);
-}
-#else
 Result IResearchLink::insert(
   transaction::Methods* trx,
   TRI_voc_rid_t rid,
@@ -210,11 +181,8 @@ Result IResearchLink::insert(
     return TRI_ERROR_BAD_PARAMETER; // 'trx' required
   }
 
-  TRI_voc_fid_t fid = 0; // FIXME TODO find proper fid
-
-  return _view->insert(fid, *trx, _collection->cid(), rid, doc, _meta);
+  return _view->insert(*trx, _collection->cid(), rid, doc, _meta);
 }
-#endif
 
 bool IResearchLink::isPersistent() const {
   return true; // records persisted into the iResearch view
@@ -340,26 +308,12 @@ size_t IResearchLink::memory() const {
   return size;
 }
 
-// FIXME TODO for use by iresearch::kludge, remove once checkpoint ids are implemented
-#if 1
-Result IResearchLink::remove(
-    transaction::Methods* trx,
-    TRI_voc_rid_t rid,
-    VPackSlice const& doc,
-    bool isRollback
-) {
-  return TRI_ERROR_NO_ERROR; // NOOP because handled by iresearch::kludge::remove(...)
-}
-
-Result IResearchLink::remove(transaction::Methods* trx, TRI_voc_rid_t rid) {
-#else
 Result IResearchLink::remove(
   transaction::Methods* trx,
   TRI_voc_rid_t rid,
   VPackSlice const& doc,
   bool isRollback
 ) {
-#endif
   if (!_collection || !_view) {
     return TRI_ERROR_ARANGO_COLLECTION_NOT_LOADED; // '_collection' and '_view' required
   }

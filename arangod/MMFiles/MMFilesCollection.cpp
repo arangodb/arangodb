@@ -67,10 +67,6 @@
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/ticks.h"
 
-#ifdef USE_IRESEARCH
-  #include "IResearch/IResearchKludge.h"
-#endif
-
 using namespace arangodb;
 using Helper = arangodb::basics::VelocyPackHelper;
 
@@ -1656,17 +1652,6 @@ int MMFilesCollection::fillIndexes(
     if (queue->status() == TRI_ERROR_NO_ERROR && !documents.empty()) {
       insertInAllIndexes();
     }
-
-    #ifdef USE_IRESEARCH
-      arangodb::basics::BucketPosition position;
-      uint64_t total = 0;
-
-      for (MMFilesSimpleIndexElement element;
-           true == (element = primaryIdx->lookupSequential(trx, position, total));
-          ) {
-        iresearch::kludge::insertDocument(*trx, *_logicalCollection, lookupRevision(element.revisionId())); // TODO FIXME remove once checkpoint ids are implemented
-      }
-    #endif
   } catch (arangodb::basics::Exception const& ex) {
     queue->setStatus(ex.code());
     LOG_TOPIC(WARN, arangodb::Logger::FIXME)
@@ -3142,9 +3127,6 @@ Result MMFilesCollection::insertDocument(arangodb::transaction::Methods* trx,
     auto res = static_cast<MMFilesTransactionState*>(trx->state())
       ->addOperation(revisionId, operation, marker, waitForSync);
     //this->lookupRevision(revisionId)
-    #ifdef USE_IRESEARCH
-      iresearch::kludge::insertDocument(*trx, *_logicalCollection, lookupRevision(revisionId)); // TODO FIXME remove once checkpoint ids are implemented
-    #endif
     return res;
   } catch(...) {
     throw;
@@ -3536,9 +3518,6 @@ Result MMFilesCollection::remove(arangodb::transaction::Methods* trx,
     res =
         static_cast<MMFilesTransactionState*>(trx->state())
             ->addOperation(revisionId, operation, marker, options.waitForSync);
-    #ifdef USE_IRESEARCH
-      iresearch::kludge::removeDocument(*trx, *_logicalCollection, revisionId); // TODO FIXME remove once checkpoint ids are implemented
-    #endif
   } catch (basics::Exception const& ex) {
     res = Result(ex.code());
   } catch (std::bad_alloc const&) {
@@ -3701,9 +3680,6 @@ Result MMFilesCollection::removeFastPath(arangodb::transaction::Methods* trx,
     res =
         static_cast<MMFilesTransactionState*>(trx->state())
             ->addOperation(revisionId, operation, marker, options.waitForSync);
-    #ifdef USE_IRESEARCH
-      iresearch::kludge::removeDocument(*trx, *_logicalCollection, revisionId); // TODO FIXME remove once checkpoint ids are implemented
-    #endif
   } catch (basics::Exception const& ex) {
     res = Result(ex.code());
   } catch (std::bad_alloc const&) {
@@ -3803,10 +3779,6 @@ Result MMFilesCollection::updateDocument(
   try {
     auto res = static_cast<MMFilesTransactionState*>(trx->state())
       ->addOperation(newRevisionId, operation, marker, waitForSync);
-    #ifdef USE_IRESEARCH
-      iresearch::kludge::removeDocument(*trx, *_logicalCollection, oldRevisionId); // TODO FIXME remove once checkpoint ids are implemented
-      iresearch::kludge::insertDocument(*trx, *_logicalCollection, lookupRevision(newRevisionId)); // TODO FIXME remove once checkpoint ids are implemented
-    #endif
     return res;
   } catch(...) {
     throw;
