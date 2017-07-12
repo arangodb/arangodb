@@ -700,21 +700,7 @@
         // version + license
         this.renderStatisticBox('Version', frontendConfig.version.version);
         this.renderStatisticBox('Edition', frontendConfig.version.license);
-
-        // engine status
-        $.ajax({
-          type: 'GET',
-          cache: false,
-          url: arangoHelper.databaseUrl('/_api/engine'),
-          contentType: 'application/json',
-          processData: false,
-          success: function (data) {
-            self.renderStatisticBox('Engine', data.name);
-          },
-          error: function () {
-            self.renderStatisticBox('Engine', 'Error');
-          }
-        });
+        this.renderStatisticBox('Engine', frontendConfig.engine);
 
         // uptime status
         $.ajax({
