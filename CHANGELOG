@@ -1,3 +1,10 @@
+v3.1.26 (2017-XX-XX)
+--------------------
+
+* fixed one medium priority and two low priority security user interface
+  issues found by owasp zap.
+
+
 v3.1.25 (2017-07-11)
 --------------------
 
