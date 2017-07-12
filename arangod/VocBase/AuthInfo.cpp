@@ -677,9 +677,8 @@ AuthLevel AuthInfo::canUseCollection(std::string const& username,
                                      std::string const& dbname,
                                      std::string const& coll) {
   AuthLevel level = getAuthContext(username, dbname)->collectionAuthLevel(coll);
-  return level;
-  //return AuthInfo::checkSystemCollectionAccess(dbname == TRI_VOC_SYSTEM_DATABASE,
-  //                                            coll, level);
+  return AuthInfo::checkSystemCollectionAccess(dbname == TRI_VOC_SYSTEM_DATABASE,
+                                              coll, level);
 }
 
 // public called from VocbaseContext.cpp
