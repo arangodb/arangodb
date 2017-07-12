@@ -163,7 +163,7 @@ class IndexBlock final : public ExecutionBlock, public DocumentProducingBlock {
 
   /// @brief Counter how many documents have been returned/skipped
   ///        during one call.
-  uint64_t _returned;
+  size_t _returned;
 
   /// @brief Collect several AQLItemsBlocks
   BlockCollector _collector;
