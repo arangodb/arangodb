@@ -9,6 +9,7 @@
                 <th class="collectionInfoTh">Type</th>
                 <th class="collectionInfoTh">Unique</th>
                 <th class="collectionInfoTh">Sparse</th>
+                <th class="collectionInfoTh">Deduplicate</th>
                 <th class="collectionInfoTh">Selectivity Est.</th>
                 <th class="collectionInfoTh">Fields</th>
                 <th class="collectionInfoTh">Action</th>
@@ -18,6 +19,7 @@
             </tbody>
             <tfoot>
               <tr>
+                <td></td>
                 <td></td>
                 <td></td>
                 <td></td>
@@ -123,6 +125,19 @@
                     </div>
                   </th>
                 </tr>
+                <tr>
+                  <th class="collectionTh">Deduplicate:</th>
+                  <th>
+                    <input id="newPersistentDeduplicate" type="checkbox" name="newPersistentDeduplicate" value="true">
+                  </th>
+                  <th class="tooltipInfoTh">
+                    <div>
+                      <a class="index-tooltip" data-toggle="tooltip" data-placement="left" title="Duplicate index values from the same document into a unique array index will lead to an error or not.">
+                        <span rel="tooltip" class="arangoicon icon_arangodb_info"></span>
+                      </a>
+                    </div>
+                  </th>
+                </tr>
               </table>
             </div>
             <div id="newIndexTypeHash" class="newIndexClass" style="display:none">
@@ -159,6 +174,19 @@
                   <th class="tooltipInfoTh">
                     <div>
                       <a class="index-tooltip" data-toggle="tooltip" data-placement="left" title="If true, then create a sparse index.">
+                        <span rel="tooltip" class="arangoicon icon_arangodb_info"></span>
+                      </a>
+                    </div>
+                  </th>
+                </tr>
+                <tr>
+                  <th class="collectionTh">Deduplicate:</th>
+                  <th>
+                    <input id="newHashDeduplicate" type="checkbox" name="newHashDeduplicate" value="true">
+                  </th>
+                  <th class="tooltipInfoTh">
+                    <div>
+                      <a class="index-tooltip" data-toggle="tooltip" data-placement="left" title="Duplicate index values from the same document into a unique array index will lead to an error or not.">
                         <span rel="tooltip" class="arangoicon icon_arangodb_info"></span>
                       </a>
                     </div>
@@ -227,6 +255,19 @@
                   <th class="tooltipInfoTh">
                     <div>
                       <a class="index-tooltip" data-toggle="tooltip" data-placement="left" title="If true, then create a sparse index.">
+                        <span rel="tooltip" class="arangoicon icon_arangodb_info"></span>
+                      </a>
+                    </div>
+                  </th>
+                </tr>
+                <tr>
+                  <th class="collectionTh">Deduplicate:</th>
+                  <th>
+                    <input id="newSkiplistDeduplicate" type="checkbox" name="newSkiplistDeduplicate" value="true">
+                  </th>
+                  <th class="tooltipInfoTh">
+                    <div>
+                      <a class="index-tooltip" data-toggle="tooltip" data-placement="left" title="Duplicate index values from the same document into a unique array index will lead to an error or not.">
                         <span rel="tooltip" class="arangoicon icon_arangodb_info"></span>
                       </a>
                     </div>
