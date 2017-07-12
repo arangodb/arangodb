@@ -22,32 +22,52 @@
 
 #include "ExecContext.h"
 #include "Logger/Logger.h"
+#include "VocBase/vocbase.h"
 
 using namespace arangodb;
 
 thread_local ExecContext* ExecContext::CURRENT_EXECCONTEXT = nullptr;
 
 AuthContext::AuthContext(
-    AuthLevel authLevel,
+    std::string const& database, AuthLevel authLevel,
     std::unordered_map<std::string, AuthLevel>&& collectionAccess)
-    : _databaseAuthLevel(authLevel),
+    : _isSystemDB(database == TRI_VOC_SYSTEM_DATABASE),
+      _databaseAuthLevel(authLevel),
       _systemAuthLevel(AuthLevel::NONE),
       _collectionAccess(std::move(collectionAccess)) {}
 
 AuthLevel AuthContext::collectionAuthLevel(
     std::string const& collectionName) const {
+  // disallow access to _system/_users for everyone
+  if (collectionName.empty()) {
+    return AuthLevel::NONE;
+  } else if (_isSystemDB && collectionName == TRI_COL_NAME_USERS) {
+    return AuthLevel::NONE;
+  }
+
+  AuthLevel lvl = AuthLevel::NONE;
   auto const& it = _collectionAccess.find(collectionName);
   if (it != _collectionAccess.end()) {
-    return it->second;
+    lvl = it->second;
+  } else {
+    auto const& it2 = _collectionAccess.find("*");
+    if (it2 != _collectionAccess.end()) {
+      lvl = it2->second;
+    }
   }
-  auto const& it2 = _collectionAccess.find("*");
-  if (it2 != _collectionAccess.end()) {
-    return it2->second;
+
+  if (!collectionName.empty() && collectionName[0] == '_') {
+    if (collectionName == "_frontend") {
+      return AuthLevel::RW;
+    } else if (lvl == AuthLevel::NONE) {
+      lvl = AuthLevel::RO;  // at least ro for all system collections
+    }
   }
-  return AuthLevel::NONE;
+  return lvl;
 }
 
-bool AuthContext::hasSpecificCollection(std::string const& collectionName) const {
+bool AuthContext::hasSpecificCollection(
+    std::string const& collectionName) const {
   return _collectionAccess.find(collectionName) != _collectionAccess.end();
 }
 

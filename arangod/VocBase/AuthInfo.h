@@ -74,7 +74,7 @@ class AuthInfo {
     TRI_ASSERT(registry != nullptr);
     _queryRegistry = registry;
   }
-  
+
   /// Tells coordinator to reload his data. Only call in HearBeat thread
   void outdate() { _outdated = true; }
 
@@ -117,17 +117,6 @@ class AuthInfo {
                                               std::string const& database);
 
   std::shared_ptr<AuthContext> noneAuthContext() { return _noneAuthContext; }
-  
-  static AuthLevel checkSystemCollectionAccess(bool isSystem,
-                                               std::string const& coll,
-                                               AuthLevel lvl) {
-    if (isSystem && coll == "_users") {
-      return AuthLevel::NONE;
-    } else if (coll == "_frontend") {
-      return AuthLevel::RW;
-    }
-    return lvl;
-  }
 
  private:
   void loadFromDB();

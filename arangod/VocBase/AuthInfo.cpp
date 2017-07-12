@@ -58,8 +58,8 @@ using namespace arangodb::rest;
 AuthInfo::AuthInfo(std::unique_ptr<AuthenticationHandler>&& handler)
     : _outdated(true),
       _noneAuthContext(std::make_shared<AuthContext>(
-          AuthLevel::NONE, std::unordered_map<std::string, AuthLevel>(
-                               {{"*", AuthLevel::NONE}}))),
+          "", AuthLevel::NONE, std::unordered_map<std::string, AuthLevel>(
+                                   {{"*", AuthLevel::NONE}}))),
       _authJwtCache(16384),
       _jwtSecret(""),
       _queryRegistry(nullptr),
@@ -236,7 +236,7 @@ void AuthInfo::loadFromDB() {
   if (!_outdated) {
     return;
   }
-  
+
   auto role = ServerState::instance()->getRole();
   if (role != ServerState::ROLE_SINGLE &&
       role != ServerState::ROLE_COORDINATOR) {
@@ -251,9 +251,9 @@ void AuthInfo::loadFromDB() {
 
   TRI_ASSERT(_queryRegistry != nullptr);
   std::shared_ptr<VPackBuilder> builder = QueryAllUsers(_queryRegistry);
-    
+
   WRITE_LOCKER(writeLocker, _authInfoLock);
-  
+
   if (builder) {
     VPackSlice usersSlice = builder->slice();
     if (usersSlice.length() == 0) {
@@ -300,13 +300,13 @@ Result AuthInfo::storeUserInternal(AuthUserEntry const& entry, bool replace) {
   if (vocbase == nullptr) {
     return Result(TRI_ERROR_INTERNAL);
   }
-  
+
   // we cannot set this execution context, otherwise the transaction
   // will ask us again for permissions and we get a deadlock
   ExecContext* oldExe = ExecContext::CURRENT_EXECCONTEXT;
   ExecContext::CURRENT_EXECCONTEXT = nullptr;
   TRI_DEFER(ExecContext::CURRENT_EXECCONTEXT = oldExe);
-  
+
   std::shared_ptr<transaction::Context> ctx(
       new transaction::StandaloneContext(vocbase));
   SingleCollectionTransaction trx(ctx, TRI_COL_NAME_USERS,
@@ -337,9 +337,7 @@ Result AuthInfo::storeUserInternal(AuthUserEntry const& entry, bool replace) {
       TRI_ASSERT(created.passwordHash() == entry.passwordHash());
       TRI_ASSERT(!replace || created.key() == entry.key());
 
-      if (!_authInfo
-          .emplace(entry.username(), std::move(created))
-               .second) {
+      if (!_authInfo.emplace(entry.username(), std::move(created)).second) {
         // insertion should always succeed, but...
         _authInfo.erase(entry.username());
         _authInfo.emplace(entry.username(),
@@ -414,7 +412,7 @@ Result AuthInfo::storeUser(bool replace, std::string const& user,
     return TRI_ERROR_USER_INVALID_NAME;
   }
   loadFromDB();
-  
+
   WRITE_LOCKER(writeGuard, _authInfoLock);
   auto const& it = _authInfo.find(user);
   if (replace && it == _authInfo.end()) {
@@ -443,7 +441,7 @@ static Result UpdateUser(VPackSlice const& user) {
   if (vocbase == nullptr) {
     return Result(TRI_ERROR_INTERNAL);
   }
-  
+
   // we cannot set this execution context, otherwise the transaction
   // will ask us again for permissions and we get a deadlock
   ExecContext* oldExe = ExecContext::CURRENT_EXECCONTEXT;
@@ -523,7 +521,7 @@ Result AuthInfo::removeUser(std::string const& user) {
   if (user == "root") {
     return TRI_ERROR_FORBIDDEN;
   }
-  
+
   loadFromDB();
   WRITE_LOCKER(guard, _authInfoLock);
   auto it = _authInfo.find(user);
@@ -536,13 +534,13 @@ Result AuthInfo::removeUser(std::string const& user) {
   if (vocbase == nullptr) {
     return Result(TRI_ERROR_INTERNAL);
   }
-  
+
   // we cannot set this execution context, otherwise the transaction
   // will ask us again for permissions and we get a deadlock
   ExecContext* oldExe = ExecContext::CURRENT_EXECCONTEXT;
   ExecContext::CURRENT_EXECCONTEXT = nullptr;
   TRI_DEFER(ExecContext::CURRENT_EXECCONTEXT = oldExe);
-  
+
   std::shared_ptr<transaction::Context> ctx(
       new transaction::StandaloneContext(vocbase));
   SingleCollectionTransaction trx(ctx, TRI_COL_NAME_USERS,
@@ -558,14 +556,14 @@ Result AuthInfo::removeUser(std::string const& user) {
       builder.add(StaticStrings::KeyString, VPackValue(it->second.key()));
       // TODO maybe protect with a revision ID?
     }
-  
+
     OperationResult result =
         trx.remove(TRI_COL_NAME_USERS, builder.slice(), OperationOptions());
     res = trx.finish(result.code);
     if (res.ok()) {
       _authInfo.erase(it);
       reloadAllUsers();
-    } 
+    }
   }
   return res;
 }
@@ -676,9 +674,7 @@ AuthLevel AuthInfo::canUseDatabase(std::string const& username,
 AuthLevel AuthInfo::canUseCollection(std::string const& username,
                                      std::string const& dbname,
                                      std::string const& coll) {
-  AuthLevel level = getAuthContext(username, dbname)->collectionAuthLevel(coll);
-  return AuthInfo::checkSystemCollectionAccess(dbname == TRI_VOC_SYSTEM_DATABASE,
-                                              coll, level);
+  return getAuthContext(username, dbname)->collectionAuthLevel(coll);
 }
 
 // public called from VocbaseContext.cpp
@@ -692,7 +688,7 @@ AuthResult AuthInfo::checkAuthentication(AuthenticationMethod authType,
 
     case AuthenticationMethod::JWT:
       return checkAuthenticationJWT(secret);
-      
+
     default:
       return AuthResult();
   }

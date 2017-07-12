@@ -138,9 +138,9 @@ int TransactionState::addCollection(TRI_voc_cid_t cid,
       level = auth->canUseCollection(ExecContext::CURRENT_EXECCONTEXT->user(),
                                      _vocbase->name(), colName);
     }
+    
+    auto ctx = ExecContext::CURRENT_EXECCONTEXT;
 
-    level = auth->authInfo()->checkSystemCollectionAccess(_vocbase->isSystem(),
-                                                          colName, level);
     if (level == AuthLevel::NONE) {
       LOG_TOPIC(DEBUG, Logger::AUTHORIZATION) << "collection AuthLevel::NONE";
       return TRI_ERROR_FORBIDDEN;

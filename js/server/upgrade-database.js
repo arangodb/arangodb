@@ -563,7 +563,7 @@
 
               try {
                 userManager.grantDatabase(user.username, oldDbname, 'rw');
-                userManager.grantCollection(user.username, "*", 'rw');
+                userManager.grantCollection(user.username, oldDbname, "*", 'rw');
               } catch (err) {
                 logger.warn("could not grant access to database user '" + user.username + "': " +
                   String(err) + ' ' +

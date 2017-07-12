@@ -297,8 +297,9 @@ AuthUserEntry AuthUserEntry::fromDocument(VPackSlice const& slice) {
           }  // for
         }    // if
 
-        authContexts.emplace(dbName, std::make_shared<AuthContext>(
-                                         databaseAuth, std::move(collections)));
+        authContexts.emplace(
+            dbName, std::make_shared<AuthContext>(dbName, databaseAuth,
+                                                  std::move(collections)));
 
       } else {
         LOG_TOPIC(INFO, arangodb::Logger::CONFIG)
@@ -308,18 +309,18 @@ AuthUserEntry AuthUserEntry::fromDocument(VPackSlice const& slice) {
         char const* value = obj.value.getString(length);
 
         if (TRI_CaseEqualString(value, "rw", 2)) {
-          authContexts.emplace(
-              obj.key.copyString(),
-              std::make_shared<AuthContext>(
-                  AuthLevel::RW, std::unordered_map<std::string, AuthLevel>(
-                                     {{"*", AuthLevel::RW}})));
+          authContexts.emplace(dbName,
+                               std::make_shared<AuthContext>(
+                                   dbName, AuthLevel::RW,
+                                   std::unordered_map<std::string, AuthLevel>(
+                                       {{"*", AuthLevel::RW}})));
 
         } else if (TRI_CaseEqualString(value, "ro", 2)) {
-          authContexts.emplace(
-              obj.key.copyString(),
-              std::make_shared<AuthContext>(
-                  AuthLevel::RO, std::unordered_map<std::string, AuthLevel>(
-                                     {{"*", AuthLevel::RO}})));
+          authContexts.emplace(dbName,
+                               std::make_shared<AuthContext>(
+                                   dbName, AuthLevel::RO,
+                                   std::unordered_map<std::string, AuthLevel>(
+                                       {{"*", AuthLevel::RO}})));
         }
       }
     }  // for
@@ -421,7 +422,7 @@ VPackBuilder AuthUserEntry::toVPackBuilder() const {
     for (auto const& dbCtxPair : _authContexts) {
       TRI_ASSERT(dbCtxPair.first != StaticStrings::SystemDatabase ||
                  dbCtxPair.second->databaseAuthLevel() ==
-                 dbCtxPair.second->systemAuthLevel());
+                     dbCtxPair.second->systemAuthLevel());
 
       VPackObjectBuilder o3(&builder, dbCtxPair.first, true);
       {  // permissions
@@ -458,11 +459,13 @@ void AuthUserEntry::grantDatabase(std::string const& dbname, AuthLevel level) {
   if (it != _authContexts.end()) {
     it->second->_databaseAuthLevel = level;
   } else {
-    // grantDatabase is not supposed to change any rights on the collection level
+    // grantDatabase is not supposed to change any rights on the collection
+    // level
     // code which relies on the old behaviour will need to be adjusted
-    _authContexts.emplace(dbname,
-                          std::make_shared<AuthContext>(
-                          level, std::unordered_map<std::string, AuthLevel>()));
+    _authContexts.emplace(
+        dbname,
+        std::make_shared<AuthContext>(
+            dbname, level, std::unordered_map<std::string, AuthLevel>()));
   }
   if (dbname == StaticStrings::SystemDatabase ||
       (dbname == "*" &&
@@ -511,8 +514,8 @@ void AuthUserEntry::grantCollection(std::string const& dbname,
     }
     _authContexts.emplace(
         dbname, std::make_shared<AuthContext>(
-                    dbLevel, std::unordered_map<std::string, AuthLevel>(
-                                 {{coll, level}})));
+                    dbname, dbLevel, std::unordered_map<std::string, AuthLevel>(
+                                         {{coll, level}})));
     if (dbname == StaticStrings::SystemDatabase) {
       _authContexts[dbname]->_systemAuthLevel = dbLevel;
     }
