@@ -191,9 +191,9 @@ def checkoutCommunity() {
             checkout scm
             sh 'git clean -f -d -x'
         }
-        catch (hudson.AbortException ae) {
-            throw ae
-        }
+        // catch (hudson.AbortException ae) {
+        //     throw ae
+        // }
         catch (exc) {
             echo "GITHUB checkout failed, retrying in 5min"
             echo exc.toString()
@@ -427,9 +427,9 @@ def buildEdition(edition, os) {
         try {
             unstashBuild(edition, os)
         }
-        catch (hudson.AbortException ae) {
-            throw ae
-        }
+        // catch (hudson.AbortException ae) {
+        //     throw ae
+        // }
         catch (exc) {
             echo "no stashed build environment, starting clean build"
         }
@@ -494,9 +494,9 @@ def buildStep(edition, os) {
                     stashBinaries(edition, os)
                     buildsSuccess[name] = true
                 }
-                catch (hudson.AbortException ae) {
-                    throw ae
-                }
+                // catch (hudson.AbortException ae) {
+                //     throw ae
+                // }
                 catch (exc) {
                     buildsSuccess[name] = false
                     allBuildsSuccessful = false
@@ -537,9 +537,9 @@ def jslint() {
     try {
         sh './Installation/Pipeline/test_jslint.sh'
     }
-    catch (hudson.AbortException ae) {
-        throw ae
-    }
+    // catch (hudson.AbortException ae) {
+    //     throw ae
+    // }
     catch (exc) {
         jslintSuccessful = false
         throw exc
@@ -573,30 +573,36 @@ testsSuccess = [:]
 allTestsSuccessful = true
 
 def testEdition(edition, os, mode, engine) {
-    try {
-        if (os == 'linux') {
-            sh "./Installation/Pipeline/test_${mode}_${edition}_${engine}_${os}.sh 5"
-        }
-        else if (os == 'mac') {
-            sh "./Installation/Pipeline/test_${mode}_${edition}_${engine}_${os}.sh 5"
-        }
-        else if (os == 'windows') {
-            PowerShell(". .\\Installation\\Pipeline\\test_${mode}_${edition}_${engine}_${os}.ps1")
-        }
-    }
-    catch (hudson.AbortException ae) {
-        throw ae
-    }
-    catch (exc) {
-        archiveArtifacts allowEmptyArchive: true,
-                         artifacts: 'core*, build/bin/arangod',
-                         defaultExcludes: false
+    def arch = "test_${mode}_${edition}_${engine}_${os}"
 
-        throw exc
+    try {
+        try {
+            if (os == 'linux') {
+                sh "./Installation/Pipeline/test_${mode}_${edition}_${engine}_${os}.sh 5"
+            }
+            else if (os == 'mac') {
+                sh "./Installation/Pipeline/test_${mode}_${edition}_${engine}_${os}.sh 5"
+            }
+            else if (os == 'windows') {
+                PowerShell(". .\\Installation\\Pipeline\\test_${mode}_${edition}_${engine}_${os}.ps1")
+            }
+        }
+        finally {
+            if (os == 'linux' || os == 'mac') {
+                sh "mkdir -p ${arch}"
+                sh "mv -f build ${arch}"
+                sh "mv -f log-output ${arch}"
+                sh "mv -f resilience/core* ${arch}"
+                sh "mv -f tmp ${arch}"
+            }
+        }
     }
+    // catch (hudson.AbortException ae) {
+    //     throw ae
+    // }
     finally {
         archiveArtifacts allowEmptyArchive: true,
-                         artifacts: 'log-output/**, *.log, tmp/**/log, tmp/**/log0, tmp/**/log1, tmp/**/log2',
+                         artifacts: "${arch}",
                          defaultExcludes: false
     }
 }
@@ -658,9 +664,9 @@ def testStep(edition, os, mode, engine) {
                     testEdition(edition, os, mode, engine)
                     testsSuccess[name] = true
                 }
-                catch (hudson.AbortException ae) {
-                    throw ae
-                }
+                // catch (hudson.AbortException ae) {
+                //     throw ae
+                // }
                 catch (exc) {
                     echo exc.toString()
                     testsSuccess[name] = false
@@ -761,27 +767,36 @@ def testResilienceStep(os, engine, foxx) {
 
             if (buildsSuccess[buildName]) {
                 def name = "${os}-${engine}-${foxx}"
+                def arch = "resilience_${foxx}_${engine}_${os}"
 
                 try {
-                    unstashBinaries('community', os)
-                    testResilience(os, engine, foxx)
+                    try {
+                        unstashBinaries('community', os)
+                        testResilience(os, engine, foxx)
+                    }
+                    finally {
+                        if (os == 'linux' || os == 'mac') {
+
+                            sh "mkdir -p ${arch}"
+                            sh "mv -f build ${arch}"
+                            sh "mv -f log-output ${arch}"
+                            sh "mv -f resilience/core* ${arch}"
+                            sh "mv -f tmp ${arch}"
+                        }
+                    }
                 }
-                catch (hudson.AbortException ae) {
-                    throw ae
-                }
+                // catch (hudson.AbortException ae) {
+                //     throw ae
+                // }
                 catch (exc) {
                     resiliencesSuccess[name] = false
                     allResiliencesSuccessful = false
-
-                    archiveArtifacts allowEmptyArchive: true,
-                                     artifacts: 'core*, build/bin/arangod',
-                                     defaultExcludes: false
 
                     throw exc
                 }
                 finally {
                     archiveArtifacts allowEmptyArchive: true,
-                                     artifacts: 'log-output/**, *.log, tmp/**/log, tmp/**/log0, tmp/**/log1, tmp/**/log2',
+                                     artifacts: "${arch}",
                                      defaultExcludes: false
                 }
             }
@@ -821,10 +836,10 @@ def runStage(stage) {
     try {
         stage()
     }
-    catch (hudson.AbortException ae) {
-        echo exc.toString()
-        throw ae
-    }
+    // catch (hudson.AbortException ae) {
+    //     echo exc.toString()
+    //     throw ae
+    // }
     catch (exc) {
         echo exc.toString()
     }
