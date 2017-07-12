@@ -53,7 +53,7 @@ class single_instance_lock : public index_lock {
     : name(name), parent(parent) {
     assert(parent);
   }
-  
+
   virtual bool lock() override {
     SCOPED_LOCK(parent->llock_);
     return parent->locks_.insert(name).second;
@@ -99,8 +99,14 @@ memory_index_input::memory_index_input(const memory_file& file) NOEXCEPT
 }
 
 index_input::ptr memory_index_input::dup() const NOEXCEPT {
-  PTR_NAMED(memory_index_input, ptr, *this);
-  return ptr;
+  try {
+    PTR_NAMED(memory_index_input, ptr, *this);
+    return ptr;
+  } catch(...) {
+    IR_EXCEPTION();
+  }
+
+  return nullptr;
 }
 
 bool memory_index_input::eof() const {
@@ -252,7 +258,8 @@ attribute_store& memory_directory::attributes() NOEXCEPT {
 }
 
 void memory_directory::close() NOEXCEPT {
-  SCOPED_LOCK(flock_);
+  async_utils::read_write_mutex::write_mutex mutex(flock_);
+  SCOPED_LOCK(mutex);
 
   files_.clear();
 }
@@ -260,7 +267,8 @@ void memory_directory::close() NOEXCEPT {
 bool memory_directory::exists(
   bool& result, const std::string& name
 ) const NOEXCEPT {
-  SCOPED_LOCK(flock_);
+  async_utils::read_write_mutex::read_mutex mutex(flock_);
+  SCOPED_LOCK(mutex);
 
   result = files_.find(name) != files_.end();
 
@@ -271,7 +279,8 @@ index_output::ptr memory_directory::create(const std::string& name) NOEXCEPT {
   typedef checksum_index_output<boost::crc_32_type> checksum_output_t;
 
   try {
-    SCOPED_LOCK(flock_);
+    async_utils::read_write_mutex::write_mutex mutex(flock_);
+    SCOPED_LOCK(mutex);
 
     auto res = files_.emplace(
       std::piecewise_construct,
@@ -298,10 +307,12 @@ index_output::ptr memory_directory::create(const std::string& name) NOEXCEPT {
 }
 
 bool memory_directory::length(
-  uint64_t& result, const std::string& name
+    uint64_t& result, const std::string& name
 ) const NOEXCEPT {
-  SCOPED_LOCK(flock_);
-  file_map::const_iterator it = files_.find(name);
+  async_utils::read_write_mutex::read_mutex mutex(flock_);
+  SCOPED_LOCK(mutex);
+
+  const auto it = files_.find(name);
 
   if (it == files_.end() || !it->second) {
     return false;
@@ -312,21 +323,27 @@ bool memory_directory::length(
   return true;
 }
 
-index_lock::ptr memory_directory::make_lock(const std::string& name) NOEXCEPT {
+index_lock::ptr memory_directory::make_lock(
+    const std::string& name
+) NOEXCEPT {
   try {
     return index_lock::make<single_instance_lock>(name, this);
   } catch (...) {
     IR_EXCEPTION();
   }
 
+  assert(false);
   return nullptr;
 }
 
 bool memory_directory::mtime(
-  std::time_t& result, const std::string& name
+    std::time_t& result,
+    const std::string& name
 ) const NOEXCEPT {
-  SCOPED_LOCK(flock_);
-  file_map::const_iterator it = files_.find(name);
+  async_utils::read_write_mutex::read_mutex mutex(flock_);
+  SCOPED_LOCK(mutex);
+
+  const auto it = files_.find(name);
 
   if (it == files_.end() || !it->second) {
     return false;
@@ -338,12 +355,13 @@ bool memory_directory::mtime(
 }
 
 index_input::ptr memory_directory::open(
-  const std::string& name
+    const std::string& name
 ) const NOEXCEPT {
   try {
-    SCOPED_LOCK(flock_);
+    async_utils::read_write_mutex::read_mutex mutex(flock_);
+    SCOPED_LOCK(mutex);
 
-    file_map::const_iterator it = files_.find(name);
+    const auto it = files_.find(name);
 
     if (it != files_.end()) {
       return index_input::make<memory_index_input>(*it->second);
@@ -361,7 +379,8 @@ index_input::ptr memory_directory::open(
 
 bool memory_directory::remove(const std::string& name) NOEXCEPT {
   try {
-    SCOPED_LOCK(flock_);
+    async_utils::read_write_mutex::write_mutex mutex(flock_);
+    SCOPED_LOCK(mutex);
 
     return files_.erase(name) > 0;
   } catch (...) {
@@ -372,17 +391,18 @@ bool memory_directory::remove(const std::string& name) NOEXCEPT {
 }
 
 bool memory_directory::rename(
-  const std::string& src, const std::string& dst
+    const std::string& src, const std::string& dst
 ) NOEXCEPT {
   try {
-    SCOPED_LOCK(flock_);
-    file_map::iterator it = files_.find(src);
+    async_utils::read_write_mutex::write_mutex mutex(flock_);
+    SCOPED_LOCK(mutex);
+
+    auto it = files_.find(src);
 
     if (it == files_.end()) {
       return false;
     }
 
-    // noexcept
     files_.erase(dst); // emplace() will not overwrite as per spec
     files_.emplace(dst, std::move(it->second));
     files_.erase(it);
@@ -402,7 +422,9 @@ bool memory_directory::sync(const std::string& /*name*/) NOEXCEPT {
 bool memory_directory::visit(const directory::visitor_f& visitor) const {
   std::string filename;
 
-  SCOPED_LOCK(flock_);
+  // note that using non const functions in 'visitor' will cuase deadlock
+  async_utils::read_write_mutex::read_mutex mutex(flock_);
+  SCOPED_LOCK(mutex);
 
   for (auto& entry : files_) {
     filename = entry.first;

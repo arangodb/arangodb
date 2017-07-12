@@ -16,6 +16,7 @@
 #include "utils/attributes.hpp"
 #include "utils/container_utils.hpp"
 #include "utils/string.hpp"
+#include "utils/async_utils.hpp"
 
 #include <mutex>
 #include <unordered_map>
@@ -242,7 +243,7 @@ class IRESEARCH_API memory_directory final : public directory {
   typedef std::unordered_set<std::string> lock_map;
 
   IRESEARCH_API_PRIVATE_VARIABLES_BEGIN
-  mutable std::mutex flock_;
+  mutable async_utils::read_write_mutex flock_;
   std::mutex llock_;
   attribute_store attributes_;
   file_map files_;
