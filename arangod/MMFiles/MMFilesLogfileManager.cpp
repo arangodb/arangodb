@@ -1977,6 +1977,7 @@ void MMFilesLogfileManager::stopMMFilesCollectorThread() {
 
         if (status == MMFilesWalLogfile::StatusType::SEAL_REQUESTED) {
           canAbort = false;
+          break;
         }
       }
     }

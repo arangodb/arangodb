@@ -86,6 +86,8 @@ class MMFilesEngine final : public StorageEngine {
   void stop() override;
   
   bool supportsDfdb() const override { return true; }
+  
+  bool useRawDocumentPointers() override { return true; }
 
   std::shared_ptr<arangodb::velocypack::Builder>
   getReplicationApplierConfiguration(TRI_vocbase_t* vocbase,

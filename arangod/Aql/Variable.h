@@ -27,7 +27,6 @@
 #include "Basics/Common.h"
 #include "Aql/types.h"
 
-
 namespace arangodb {
 namespace velocypack {
 class Builder;
@@ -35,9 +34,9 @@ class Slice;
 }
 
 namespace aql {
+class Ast;
 
 struct Variable {
-
   /// @brief create the variable
   Variable(std::string const&, VariableId);
 
@@ -74,6 +73,10 @@ struct Variable {
   /// @brief replace a variable by another
   static Variable const* replace(
       Variable const*, std::unordered_map<VariableId, Variable const*> const&);
+
+  /// @brief factory for (optional) variables from VPack
+  static Variable* varFromVPack(Ast* ast, arangodb::velocypack::Slice const& base,
+                                char const* variableName, bool optional = false);
 
   /// @brief variable name
   std::string name;

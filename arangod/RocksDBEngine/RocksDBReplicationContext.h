@@ -29,6 +29,7 @@
 #include "RocksDBEngine/RocksDBReplicationCommon.h"
 #include "RocksDBEngine/RocksDBToken.h"
 #include "Transaction/Methods.h"
+#include "VocBase/ManagedDocumentResult.h"
 #include "VocBase/vocbase.h"
 
 #include <velocypack/Builder.h>

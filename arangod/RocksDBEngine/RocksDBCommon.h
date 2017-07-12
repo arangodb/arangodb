@@ -40,6 +40,13 @@
 #include <rocksdb/options.h>
 #include <rocksdb/status.h>
 
+#undef TRI_USE_FAST_UNALIGNED_DATA_ACCESS
+#ifdef TRI_UNALIGNED_ACCESS
+#if __BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__
+#define TRI_USE_FAST_UNALIGNED_DATA_ACCESS
+#endif
+#endif
+
 namespace rocksdb {
 class TransactionDB;
 class DB;
@@ -134,17 +141,81 @@ inline double intToDouble(uint64_t i) {
   return d;
 }
 
-uint64_t uint64FromPersistent(char const* p);
-void uint64ToPersistent(char* p, uint64_t value);
-void uint64ToPersistent(std::string& out, uint64_t value);
+template<typename T> 
+inline T uintFromPersistent(char const* p) {
+#ifdef TRI_USE_FAST_UNALIGNED_DATA_ACCESS
+  return *reinterpret_cast<T const*>(p);
+#else
+  T value = 0;
+  T x = 0;
+  uint8_t const* ptr = reinterpret_cast<uint8_t const*>(p);
+  uint8_t const* end = ptr + sizeof(T);
+  do {
+    value += static_cast<T>(*ptr++) << x;
+    x += 8;
+  } while (ptr < end);
+  return value;
+#endif 
+}
 
-uint32_t uint32FromPersistent(char const* p);
-void uint32ToPersistent(char* p, uint32_t value);
-void uint32ToPersistent(std::string& out, uint32_t value);
+inline uint64_t uint64FromPersistent(char const* p) { 
+  return uintFromPersistent<uint64_t>(p);
+}
 
-uint16_t uint16FromPersistent(char const* p);
-void uint16ToPersistent(char* p, uint16_t value);
-void uint16ToPersistent(std::string& out, uint16_t value);
+inline uint32_t uint32FromPersistent(char const* p) {
+  return uintFromPersistent<uint32_t>(p); 
+}
+
+inline uint16_t uint16FromPersistent(char const* p) {
+  return uintFromPersistent<uint16_t>(p); 
+}
+
+template<typename T>
+inline void uintToPersistent(char* p, T value) {
+#ifdef TRI_USE_FAST_UNALIGNED_DATA_ACCESS
+  *reinterpret_cast<T*>(p) = value;
+#else
+  char* end = p + sizeof(T);
+  do {
+    *p++ = static_cast<uint8_t>(value & 0xffU);
+    value >>= 8;
+  } while (p < end);
+#endif
+}
+
+inline void uint64ToPersistent(char* p, uint64_t value) {
+  return uintToPersistent<uint64_t>(p, value);
+}
+
+inline void uint32ToPersistent(char* p, uint32_t value) {
+  return uintToPersistent<uint32_t>(p, value);
+}
+
+inline void uint16ToPersistent(char* p, uint16_t value) {
+  return uintToPersistent<uint16_t>(p, value);
+}
+
+template<typename T>
+inline void uintToPersistent(std::string& p, T value) {
+  size_t len = 0;
+  do {
+    p.push_back(static_cast<char>(value & 0xffU));
+    value >>= 8;
+  } while (++len < sizeof(T));
+}
+
+inline void uint64ToPersistent(std::string& out, uint64_t value) {
+  return uintToPersistent<uint64_t>(out, value);
+}
+
+inline void uint32ToPersistent(std::string& out, uint32_t value) {
+  return uintToPersistent<uint32_t>(out, value);
+}
+
+inline void uint16ToPersistent(std::string& out, uint16_t value) {
+  return uintToPersistent<uint16_t>(out, value);
+}
+
 
 rocksdb::TransactionDB* globalRocksDB();
 RocksDBEngine* globalRocksEngine();
