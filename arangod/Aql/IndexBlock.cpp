@@ -406,7 +406,11 @@ bool IndexBlock::skipIndex(size_t atMost) {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
     }
 
-    if (_cursor->skip(atMost - _returned, _returned)) {
+    uint64_t returned = (uint64_t) _returned;
+    bool ok = _cursor->skip(atMost - returned, returned);
+    _returned = (size_t) returned;
+
+    if (ok) {
       // We have skipped enough.
       // And this index could return more.
       // We are good.
