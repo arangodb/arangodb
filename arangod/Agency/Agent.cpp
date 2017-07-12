@@ -229,6 +229,8 @@ AgentInterface::raft_commit_t Agent::waitFor(index_t index, double timeout) {
 //  AgentCallback reports id of follower and its highest processed index
 void Agent::reportIn(std::string const& peerId, index_t index, size_t toLog) {
 
+  auto startTime = system_clock::now();
+
   {
     // Enforce _lastCommitIndex, _readDB and compaction to progress atomically
     MUTEX_LOCKER(ioLocker, _ioLock);
@@ -283,11 +285,16 @@ void Agent::reportIn(std::string const& peerId, index_t index, size_t toLog) {
     }
   } // MUTEX_LOCKER
 
+  duration<double> reportInTime = system_clock::now() - startTime;
+  if (reportInTime.count() > 0.1) {
+    LOG_TOPIC(WARN, Logger::AGENCY)
+      << "reportIn took too long: " << reportInTime.count();
+  }
+
   { // Wake up rest handler
     CONDITION_LOCKER(guard, _waitForCV);
     guard.broadcast();
   }
-
 }
 
 /// Followers' append entries
