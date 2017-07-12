@@ -219,7 +219,7 @@ is a precondition specifying that the previous value of the key `"/a/b/c"` key m
 Consider the agency in initialised as above let's review the responses from the agency as follows:
 
 ```
-curl -L http://server:port/write -d '[[{"/a/b/c":[1,2,3,4],"/a/b/pi"},{"/a/b/c":[1,2,3]}]]'
+curl -L http://server:port/write -d '[[{"/a/b/c":[1,2,3,4],"/a/b/pi":"some text"},{"/a/b/c":[1,2,3]}]]'
 ```
 ```js
 {
