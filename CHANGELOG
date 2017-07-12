@@ -1,6 +1,8 @@
 devel
 -----
 
+* ui: added index deduplicate options
+
 * documentation and js fixes for secondaries
 
 * enabled permissions on database and collection level
