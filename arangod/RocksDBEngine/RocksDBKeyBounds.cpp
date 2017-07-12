@@ -405,7 +405,7 @@ RocksDBKeyBounds::RocksDBKeyBounds(RocksDBEntryType type, uint64_t first,
 namespace arangodb {
 
 std::ostream& operator<<(std::ostream& stream, RocksDBKeyBounds const& bounds) {
-  stream << "[bound " << arangodb::rocksDBEntryTypeName(bounds.type()) << ": ";
+  stream << "[bounds cf: " << RocksDBColumnFamily::columnFamilyName(bounds.columnFamily()) << " type: " << arangodb::rocksDBEntryTypeName(bounds.type()) << " ";
 
   auto dump = [&stream](rocksdb::Slice const& slice) {
     size_t const n = slice.size();
