@@ -114,7 +114,7 @@
         value = 'undefined';
       }
 
-      if (db === '_system' && value === 'none' || db === '_system' && value === 'ro') {
+      if (db === '_system') {
         // special case, ask if user really want to revoke persmission here
         var buttons = []; var tableContent = [];
 
@@ -122,19 +122,19 @@
           window.modalView.createReadOnlyEntry(
             'db-system-revoke-button',
             'Caution',
-            'You are changing your permissions to _system database. Really continue?',
+            'You are changing the _system database permission. Really continue?',
             undefined,
             undefined,
             false
           )
         );
         buttons.push(
-          window.modalView.createSuccessButton('Revoke', this.sendDBPermission.bind(this, this.currentUser.get('user'), db, value))
+          window.modalView.createSuccessButton('Ok', this.sendDBPermission.bind(this, this.currentUser.get('user'), db, value))
         );
         buttons.push(
           window.modalView.createCloseButton('Cancel', this.rollbackInputButton.bind(this, db))
         );
-        window.modalView.show('modalTable.ejs', 'Revoke _system Database Permission', buttons, tableContent);
+        window.modalView.show('modalTable.ejs', 'Change _system Database Permission', buttons, tableContent);
       } else {
         this.sendDBPermission(this.currentUser.get('user'), db, value);
       }
@@ -153,6 +153,7 @@
       } else {
         this.render();
       }
+      window.modalView.hide();
     },
 
     sendCollPermission: function (user, db, collection, value) {
@@ -326,6 +327,7 @@
       } else {
         someFunction(permissions);
       }
+      window.modalView.hide();
     },
 
     breadcrumb: function () {

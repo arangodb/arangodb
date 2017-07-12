@@ -100,7 +100,7 @@
             </div>
             <% if (db.charAt(0) !== '*') { %>
               <div class="<%= genClass2 %> mid">
-                <input class="dbCheckbox useDefault" type="radio" name="<%= db %>" permission="undefined">
+                <input class="dbCheckbox useDefault" type="radio" name="<%= db %>" permission="undefined" checked>
               </div>
             <% } else { %>
               <div class="<%= genClass2 %> mid"></div>
@@ -192,7 +192,7 @@
                       </div>
                       <% if (collectionName.charAt(0) !== '*') { %>
                         <div class="<%= genClass %> mid inner">
-                          <input class="collCheckbox useDefault" type="radio" db="<%= db %>" name="<%=db%>-<%=collectionName%>" collection="<%= collectionName %>" permission="<%= collectionName %>">
+                          <input class="collCheckbox useDefault" type="radio" db="<%= db %>" name="<%=db%>-<%=collectionName%>" collection="<%= collectionName %>" permission="<%= collectionName %>" checked>
                         </div>
                       <% } else { %>
                         <div class="<%= genClass %> mid inner"></div>
