@@ -260,7 +260,7 @@ void HeartbeatThread::runDBServer() {
   while (!isStopping()) {
 
     try {
-      LOG_TOPIC(DEBUG, Logger::HEARTBEAT) << "sending heartbeat to agency";
+      LOG_TOPIC(TRACE, Logger::HEARTBEAT) << "sending heartbeat to agency";
 
       double const start = TRI_microtime();
       // send our state to the agency.
@@ -425,7 +425,7 @@ void HeartbeatThread::runCoordinator() {
 
   while (!isStopping()) {
     try {
-      LOG_TOPIC(DEBUG, Logger::HEARTBEAT) << "sending heartbeat to agency";
+      LOG_TOPIC(TRACE, Logger::HEARTBEAT) << "sending heartbeat to agency";
 
       double const start = TRI_microtime();
       // send our state to the agency.
