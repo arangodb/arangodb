@@ -56,7 +56,7 @@ Optimization rules applied:
   3   move-calculations-up-2
   4   move-filters-up-2
   5   optimize-traversals
-  6   remove-filters-covered-by-traversal
+  6   remove-filter-covered-by-traversal
   7   remove-unnecessary-calculations-2
   8   remove-redundant-path-var
 
