@@ -1416,6 +1416,11 @@ arangodb::consensus::index_t Agent::rebuildDBs() {
 
   index_t lastCompactionIndex;
   term_t term;
+
+  // We must go back to clean sheet
+  _readDB.clear();
+  _spearhead.clear();
+  
   if (!_state.loadLastCompactedSnapshot(_readDB, lastCompactionIndex, term)) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_AGENCY_CANNOT_REBUILD_DBS);
   }
@@ -1433,8 +1438,6 @@ arangodb::consensus::index_t Agent::rebuildDBs() {
   }
   _spearhead = _readDB;
 
-  LOG_TOPIC(TRACE, Logger::AGENCY) << "ReadDB: " << _readDB;
-    
   MUTEX_LOCKER(liLocker, _liLock);
   _lastApplied = _commitIndex;
   
@@ -1510,7 +1513,8 @@ Agent& Agent::operator=(VPackSlice const& compaction) {
 
   // Catch up with commit
   try {
-    _commitIndex = std::stoul(compaction.get("_key").copyString());
+    _commitIndex = arangodb::basics::StringUtils::uint64(
+      compaction.get("_key").copyString());
     MUTEX_LOCKER(liLocker, _liLock);
     _lastApplied = _commitIndex;
   } catch (std::exception const& e) {

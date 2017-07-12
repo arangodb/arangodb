@@ -1,4 +1,4 @@
-////////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
 /// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
@@ -22,12 +22,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Job.h"
+#include "Basics/StringUtils.h"
 #include "Random/RandomGenerator.h"
 
 #include <numeric>
 
 static std::string const DBServer = "DBServer";
 
+using namespace arangodb::basics;
 using namespace arangodb::consensus;
 
 Job::Job(JOB_STATUS status, Node const& snapshot, AgentInterface* agent,
@@ -232,7 +234,7 @@ std::vector<std::string> sortedShardList(Node const& shards) {
   std::vector<size_t> sids;
   auto const& shardMap = shards.children();
   for (const auto& shard : shardMap) {
-    sids.push_back(std::stoul(shard.first.substr(1)));
+    sids.push_back(StringUtils::uint64(shard.first.substr(1)));
   }
 
   std::vector<size_t> idx(idxsort(sids));
