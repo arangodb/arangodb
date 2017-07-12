@@ -37,7 +37,7 @@ trap "$PORTTRAP" EXIT
     ln -s ../etc .
     ln -s ../js .
 
-    npm install > ../log-output/npm-install.log 2>&1
+    npm install > ../log-output/${type}/npm-install.log 2>&1
 
     if [ "$foxx" == yes ]; then
         TESTS=$(find test/* -name "*foxx*")
