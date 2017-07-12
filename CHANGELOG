@@ -1,6 +1,9 @@
 devel
 -----
 
+* fixed one medium priority and two low priority security user interface
+  issues found by owasp zap.
+
 * ui: added index deduplicate options
 
 * ui: fixed renaming of collections based on rocksdb storage engine
