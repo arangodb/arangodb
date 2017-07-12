@@ -25,6 +25,7 @@
 #define ARANGOD_UTILS_FLUSH_TRANSACTION_H 1
 
 #include "Basics/Common.h"
+#include "Basics/Result.h"
 
 namespace arangodb {
 
@@ -33,20 +34,22 @@ class FlushTransaction {
   FlushTransaction(FlushTransaction const&) = delete;
   FlushTransaction& operator=(FlushTransaction const&) = delete;
 
+  explicit FlushTransaction(std::string const& name) : _name(name) {}
+
   virtual ~FlushTransaction();
   
   // return the type name of the flush transaction
   // this is used when logging error messages about failed flush commits
   // so users know what exactly went wrong
-  virtual char const* name() {
-    return "unknown";
-  }
+  std::string const& name() { return _name; }
 
   // finally commit the prepared flush transaction 
-  // should return an int with the error code (as in errors.dat). 
-  // - int == 0 (TRI_ERROR_NO_ERROR) means "success"
-  // - int != 0 means "failure"
-  virtual int commit() = 0;
+  virtual Result commit() = 0;
+
+ private:
+  // the name of the flush transaction. used for error logging and
+  // diagnostics
+  std::string const _name;
   
 };
 

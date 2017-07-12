@@ -116,10 +116,12 @@ void FlushFeature::executeCallbacks() {
 
   // commit all transactions
   for (auto const& trx : transactions) {
-    int res = trx->commit();
+    LOG_TOPIC(DEBUG, Logger::FIXME) << "commiting flush transaction '" << trx->name() << "'";
+    
+    Result res = trx->commit();
 
-    if (res != TRI_ERROR_NO_ERROR) {
-      LOG_TOPIC(ERR, Logger::FIXME) << "could not commit flush for type '" << trx->name() << "'"; 
+    if (!res.ok()) {
+      LOG_TOPIC(ERR, Logger::FIXME) << "could not commit flush transaction '" << trx->name() << "': " << res.errorMessage(); 
     }
     // TODO: honor the commit results here
   }
