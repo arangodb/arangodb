@@ -59,11 +59,11 @@ this can be an update or replace operation.
 
 `truncate collection`: deletes all documents of a given collection.
 
-For the server category, a user needs the following access level
-to perform an action. The access levels are *Administrate* and
+To perform actions on the server level the user needs at least the following
+access levels. The access levels are *Administrate* and
 *No access*:
 
-| action                    | server level |
+| server action             | server level |
 |---------------------------|--------------|
 | create a database         | Administrate |
 | drop a database           | Administrate |
@@ -72,26 +72,30 @@ to perform an action. The access levels are *Administrate* and
 | update user access level  | Administrate |
 | drop a user               | Administrate |
 
-For the database category, a user needs the following access
-level to the given database to perform an action. The access levels
-are *Administrate*, *Access* and *No access*.
+To perform actions in a specific database (like creating or dropping collections),
+a user needs at least the following access level.
+The possible access levels for databases are *Administrate*, *Access* and *No access*.
+The access levels for collections are *Read/Write*, *Read Only* and *No Access*. 
 
-| action                | database level |
-|-----------------------|----------------|
-| create a collection   | Administrate   |
-| update a collection   | Administrate   |
-| drop a collection     | Administrate   |
-| create an index       | Administrate   |
-| drop an index         | Administrate   |
+| database action          | database level | collection level |
+|--------------------------|----------------|------------------|
+| create collection        | Administrate   | Read/Write       |
+| list  collections        | Access         | Read Only        |
+| rename collection        | Administrate   | Read/Write       |
+| modify collection properties  | Administrate   | Read/Write       |
+| read properties          | Access         | Read Only        |
+| drop collection          | Administrate   | Read/Write       |
+| create an index          | Administrate   | Read/Write       |
+| drop an index            | Administrate   | Read/Write       |
+| see index definition     | Access         | Read Only        |
 
-Note that the access level *Access* for a database is relevant for the
-collection category below!
+Note that the access level *Access* for a database is always required to perform
+any action on a collection in that database.
 
-For the collection category, a user needs the following access
+For collections a user needs the following access
 levels to the given database and the given collection. The access levels for
 the database are *Administrate*, *Access* and *No access*. The access levels
 for the collection are *Read/Write*, *Read Only* and *No Access*.
-
 
 | action                | collection level        | database level         |
 |-----------------------|-------------------------|------------------------|
