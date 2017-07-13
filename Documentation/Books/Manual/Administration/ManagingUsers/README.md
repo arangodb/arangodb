@@ -76,13 +76,14 @@ For the database category, a user needs the following access
 level to the given database to perform an action. The access levels
 are *Administrate*, *Access* and *No access*.
 
-| action                | database level |
-|-----------------------|----------------|
-| create a collection   | Administrate   |
-| update a collection   | Administrate   |
-| drop a collection     | Administrate   |
-| create an index       | Administrate   |
-| drop an index         | Administrate   |
+| collection action     | database level | collection level |
+|-----------------------|----------------|------------------|
+| create collection     | Administrate   | Read/Write       |
+| rename collection     | Administrate   | Read/Write       |
+| modify properties     | Administrate   | Read/Write       |
+| drop collection       | Administrate   | Read/Write       |
+| create an index       | Administrate   | Read/Write       |
+| drop an index         | Administrate   | Read/Write       |
 
 Note that the access level *Access* for a database is relevant for the
 collection category below!
