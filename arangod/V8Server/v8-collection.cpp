@@ -972,20 +972,21 @@ static void DropVocbaseColCoordinator(
 static void JS_DropVocbaseCol(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
-
-  if (ExecContext::CURRENT_EXECCONTEXT != nullptr) {
-    AuthLevel level = ExecContext::CURRENT_EXECCONTEXT->authContext()->databaseAuthLevel();
-    if (level != AuthLevel::RW) {
-      TRI_V8_THROW_EXCEPTION(TRI_ERROR_FORBIDDEN);
-    }
-  }
-
+  
   arangodb::LogicalCollection* collection =
-      TRI_UnwrapClass<arangodb::LogicalCollection>(args.Holder(), WRP_VOCBASE_COL_TYPE);
+  TRI_UnwrapClass<arangodb::LogicalCollection>(args.Holder(), WRP_VOCBASE_COL_TYPE);
   if (collection == nullptr) {
     TRI_V8_THROW_EXCEPTION_INTERNAL("cannot extract collection");
   }
 
+  if (ExecContext::CURRENT_EXECCONTEXT != nullptr) {
+    AuthLevel level = ExecContext::CURRENT_EXECCONTEXT->authContext()->databaseAuthLevel();
+    AuthLevel level2 = ExecContext::CURRENT_EXECCONTEXT->authContext()->collectionAuthLevel(collection->name());
+    if (level != AuthLevel::RW || level2 != AuthLevel::RW) {
+      TRI_V8_THROW_EXCEPTION(TRI_ERROR_FORBIDDEN);
+    }
+  }
+  
   PREVENT_EMBEDDED_TRANSACTION();
   
   std::string const dbname = collection->dbName();
@@ -1632,14 +1633,14 @@ static void JS_RenameVocbaseCol(
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_CLUSTER_UNSUPPORTED);
   }
   
+  std::string const name = TRI_ObjectToString(args[0]);
   if (ExecContext::CURRENT_EXECCONTEXT != nullptr) {
     AuthLevel level = ExecContext::CURRENT_EXECCONTEXT->authContext()->databaseAuthLevel();
-    if (level != AuthLevel::RW) {
+    AuthLevel level2 = ExecContext::CURRENT_EXECCONTEXT->authContext()->collectionAuthLevel(name);
+    if (level != AuthLevel::RW || level2 != AuthLevel::RW) {
       TRI_V8_THROW_EXCEPTION(TRI_ERROR_FORBIDDEN);
     }
   }
-
-  std::string const name = TRI_ObjectToString(args[0]);
 
   // second parameter "override" is to override renaming restrictions, e.g.
   // renaming from a system collection name to a non-system collection name and
@@ -2103,6 +2104,7 @@ static void JS_PregelStart(v8::FunctionCallbackInfo<v8::Value> const& args) {
   if (ss->isRunningInCluster() && !ss->isCoordinator()) {
     TRI_V8_THROW_EXCEPTION_USAGE("Only call on coordinator or in single server mode");
   }
+  
 
   // check the arguments
   uint32_t const argLength = args.Length();
@@ -2152,6 +2154,9 @@ static void JS_PregelStart(v8::FunctionCallbackInfo<v8::Value> const& args) {
           TRI_V8_THROW_EXCEPTION(res);
       }
   }
+  
+  VPackSlice storeSlice = paramBuilder.slice().get("store");
+  bool storeResults = !storeSlice.isBool() || storeSlice.getBool();
 
   TRI_vocbase_t* vocbase = GetContextVocBase(isolate);
   for (std::string const& name : paramVertices) {
