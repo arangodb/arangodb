@@ -45,6 +45,7 @@
 #include <velocypack/velocypack-aliases.h>
 
 #include <algorithm>
+#include <numeric>
 #include <vector>
 
 using namespace arangodb::basics;
