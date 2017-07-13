@@ -590,7 +590,7 @@ def testEdition(edition, os, mode, engine) {
         finally {
             if (os == 'linux' || os == 'mac') {
                 sh "mkdir -p ${arch}"
-                sh "find . resilience '(' -name build -o -name log-output -o -name 'core*' -o -name tmp ')' -prune -exec mv '{}' '${arch}' ';'"
+                sh "for i in build log-output core* tmp resilience/core*; do test -e $i && mv $i ${arch}; done"
             }
         }
     }
@@ -775,7 +775,7 @@ def testResilienceStep(os, engine, foxx) {
                     finally {
                         if (os == 'linux' || os == 'mac') {
                             sh "mkdir -p ${arch}"
-                            sh "find . resilience '(' -name build -o -name log-output -o -name 'core*' -o -name tmp ')' -prune -exec mv '{}' '${arch}' ';'"
+                            sh "for i in build log-output core* tmp resilience/core*; do test -e $i && mv $i ${arch}; done"
                         }
                     }
                 }
