@@ -511,9 +511,18 @@ function ahuacatlMiscFunctionsTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testCurrentUser : function () {
+      var expected = null;
+      if (internal.getCurrentRequest) {
+        var req = internal.getCurrentRequest();
+
+        if (typeof req === 'object') {
+          expected = req.user;
+        }
+      }
+
       var actual = getQueryResults("RETURN CURRENT_USER()");
       // there is no current user in the non-request context
-      assertEqual([ null ], actual);
+      assertEqual([ expected ], actual);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
