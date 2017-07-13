@@ -66,25 +66,18 @@ class IResearchLink;
 struct IResearchLinkMeta;
 class IResearchView;
 
-///////////////////////////////////////////////////////////////////////////////
-/// --SECTION--                                       IResearchFlushTransaction
-///////////////////////////////////////////////////////////////////////////////
 
-class IResearchFlushTransaction : public arangodb::FlushTransaction {
- public:
-  explicit IResearchFlushTransaction(IResearchView& view);
-
-  arangodb::Result commit() override;
-
- private:
-  IResearchView* _view;
-};
 
 ///////////////////////////////////////////////////////////////////////////////
 /// --SECTION--                                                   IResearchView
 ///////////////////////////////////////////////////////////////////////////////
 
-class IResearchView final: public arangodb::ViewImplementation {
+// Note, that currenly ArangoDB uses only 1 FlushThread for flushing the views
+// In case if number of threads will be increased each thread has to receive
+// it's own FlushTransaction object
+
+class IResearchView final: public arangodb::ViewImplementation,
+                           public arangodb::FlushTransaction {
  public:
   typedef std::unique_ptr<arangodb::ViewImplementation> ptr;
   typedef std::shared_ptr<IResearchLink> LinkPtr;
@@ -291,6 +284,8 @@ class IResearchView final: public arangodb::ViewImplementation {
     bool doSync
   ) override;
 
+  arangodb::Result commit() override;
+
  private:
   struct DataStore {
     irs::directory::ptr _directory;
@@ -324,6 +319,11 @@ class IResearchView final: public arangodb::ViewImplementation {
   };
 
   struct TidStore {
+    TidStore(
+      transaction::Methods& trx,
+      std::function<void(transaction::Methods*)> const& trxCallback
+    );
+
     mutable std::mutex _mutex; // for use with '_removals' (allow use in const functions)
     std::vector<std::shared_ptr<irs::filter>> _removals; // removal filters to be applied to during merge
     MemoryStore _store;
@@ -331,6 +331,11 @@ class IResearchView final: public arangodb::ViewImplementation {
 
   struct FlushCallbackUnregisterer {
     void operator()(IResearchView* view) const noexcept;
+  };
+
+  struct MemoryStoreNode {
+    MemoryStore _store;
+    MemoryStoreNode* _next; // pointer to the next MemoryStore
   };
 
   typedef std::unordered_map<TRI_voc_tid_t, TidStore> MemoryStoreByTid;
@@ -343,11 +348,12 @@ class IResearchView final: public arangodb::ViewImplementation {
   std::atomic<size_t> _asyncMetaRevision; // arbitrary meta modification id, async jobs should reload if different
   std::mutex _asyncMutex; // mutex used with '_asyncCondition' and associated timeouts
   std::atomic<bool> _asyncTerminate; // trigger termination of long-running async jobs
-  IResearchFlushTransaction _flushTrx;
   std::unordered_set<LinkPtr> _links;
   IResearchViewMeta _meta;
   mutable irs::async_utils::read_write_mutex _mutex; // for use with member maps/sets and '_meta'
-  MemoryStore _memoryStore;
+  MemoryStoreNode _memoryNodes[2]; // 2 because we just swap them
+  MemoryStoreNode* _memoryNode; // points to the current memory store
+  MemoryStoreNode* _toFlush; // points to memory store to be flushed
   MemoryStoreByTid _storeByTid;
   DataStore _storePersisted;
   FlushCallback _flushCallback; // responsible for flush callback unregistration
@@ -385,9 +391,10 @@ class IResearchView final: public arangodb::ViewImplementation {
   ////////////////////////////////////////////////////////////////////////////////
   FlushTransactionPtr flushTransaction() noexcept;
 
-  MemoryStore& activeMemoryStore();
+  MemoryStore& activeMemoryStore() const;
 };
 
 NS_END // iresearch
 NS_END // arangodb
+
 #endif

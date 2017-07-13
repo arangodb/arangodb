@@ -82,6 +82,9 @@ std::string toString(arangodb::iresearch::IResearchView const& view) {
   return str;
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @returns 'Flush' feature from AppicationServer
+////////////////////////////////////////////////////////////////////////////////
 arangodb::FlushFeature& getFlushFeature() {
   auto* flush = arangodb::application_features::ApplicationServer::getFeature<arangodb::FlushFeature>("Flush");
   TRI_ASSERT(flush); // getFeature throws in case of fail
@@ -1040,20 +1043,50 @@ IResearchView::SyncState::SyncState(
 }
 
 IResearchView::FlushTransactionPtr IResearchView::flushTransaction() noexcept {
+  WriteMutex mutex(_mutex); // make sure that _memoryNode->_store is not in use
+  SCOPED_LOCK(mutex);
+
+  _toFlush = _memoryNode; // memory store to be flushed into the persisted store
+  _memoryNode = _memoryNode->_next; // switch to the next node
+
+  mutex.unlock(true); // downgrade to a read-lock
+
   return IResearchView::FlushTransactionPtr(
-    &_flushTrx,
+    this,
     [](arangodb::FlushTransaction*){} // empty deleter
   );
+}
+
+
+IResearchView::TidStore::TidStore(
+    transaction::Methods& trx,
+    std::function<void(transaction::Methods*)> const& trxCallback
+) {
+  // FIXME trx copies the provided callback inside,
+  // probably it's better to store just references instead
+
+  // register callback for newly created transactions
+  trx.registerCallback(trxCallback);
 }
 
 IResearchView::IResearchView(
   arangodb::LogicalView* view,
   arangodb::velocypack::Slice const& info
 ) : ViewImplementation(view, info),
+    FlushTransaction(toString(*this)),
    _asyncMetaRevision(1),
    _asyncTerminate(false),
-   _flushTrx(*this),
+   _memoryNode(_memoryNodes), // set current memory node
+   _toFlush(_memoryNodes),
    _threadPool(0, 0) { // 0 == create pool with no threads, i.e. not running anything
+
+  // initialize round-robin memory store chain
+  auto it = _memoryNodes;
+  for (auto next = it + 1, end = std::end(_memoryNodes); next < end; ++it, ++next) {
+    it->_next = next;
+  }
+  it->_next = _memoryNodes;
+
   // initialize transaction callback
   _transactionCallback = [this](transaction::Methods* trx)->void {
     if (!trx || !trx->state()) {
@@ -1182,16 +1215,6 @@ bool IResearchView::cleanup(size_t maxMsec /*= 0*/) {
 
   try {
     SCOPED_LOCK(mutex);
-
-    for (auto& tidStore: _storeByTid) {
-      LOG_TOPIC(DEBUG, Logger::FIXME) << "starting transaction-store cleanup for iResearch view '" << id() << "' tid '" << tidStore.first << "'";
-      irs::directory_utils::remove_all_unreferenced(*tidStore.second._store._directory);
-      LOG_TOPIC(DEBUG, Logger::FIXME) << "finished transaction-store cleanup for iResearch view '" << id() << "' tid '" << tidStore.first << "'";
-
-      if (maxMsec && TRI_microtime() >= thresholdSec) {
-        return true; // skip if timout exceeded
-      }
-    }
 
     LOG_TOPIC(DEBUG, Logger::FIXME) << "starting memory-store cleanup for iResearch view '" << id() << "'";
     auto& memoryStore = activeMemoryStore();
@@ -1383,7 +1406,7 @@ int IResearchView::finish(TRI_voc_tid_t tid, bool commit) {
     }
 
     trxStore._writer->commit(); // ensure have latest view in reader
-    memoryStore._writer->import(trxStore._reader.reopen()); // FIXME
+    memoryStore._writer->import(trxStore._reader.reopen());
 
     return TRI_ERROR_NO_ERROR;
   } catch (std::exception& e) {
@@ -1398,30 +1421,36 @@ int IResearchView::finish(TRI_voc_tid_t tid, bool commit) {
 }
 
 int IResearchView::finish() {
-  WriteMutex mutex(_mutex); // '_storePersisted' can be asynchronously updated
+  MemoryStore tmp; // new clear store
+
+  ReadMutex mutex(_mutex); // '_storePersisted' can be asynchronously updated
   SCOPED_LOCK(mutex);
-
-  auto memoryStore = std::move(activeMemoryStore());
-  activeMemoryStore() = MemoryStore();
-
-  mutex.unlock(true); // downgrade to a read-lock
 
   if (!_storePersisted) {
     return TRI_ERROR_NO_ERROR; // nothing more to do
   }
 
+  auto& memoryStore = _toFlush->_store;
+
   try {
-    if (_storePersisted) {
-      memoryStore._writer->commit(); // ensure have latest view in reader
-      _storePersisted._writer->import(memoryStore._reader.reopen());
+    memoryStore._writer->commit(); // ensure have latest view in reader
+
+    // merge memory store into persisted
+    if (!_storePersisted._writer->import(memoryStore._reader.reopen())) {
+      return TRI_ERROR_INTERNAL;
     }
+
+    _storePersisted._writer->commit(); // finishing flush transaction
+
+    // noexcept
+    memoryStore = std::move(tmp); // FIXME find a better way to clear the store
 
     return TRI_ERROR_NO_ERROR;
   } catch (std::exception& e) {
-    LOG_TOPIC(ERR, Logger::FIXME) << "caught exception while committing WAL for iResearch view '" << id() << "': " << e.what();
+    LOG_TOPIC(ERR, Logger::FIXME) << "caught exception while committing memory store for iResearch view '" << id() << "': " << e.what();
     IR_EXCEPTION();
   } catch (...) {
-    LOG_TOPIC(ERR, Logger::FIXME) << "caught exception while committing WAL for iResearch view '" << id();
+    LOG_TOPIC(ERR, Logger::FIXME) << "caught exception while committing memory store for iResearch view '" << id();
     IR_EXCEPTION();
   }
 
@@ -1548,14 +1577,10 @@ int IResearchView::insert(
 
   WriteMutex mutex(_mutex); // '_storeByTid' can be asynchronously updated
   SCOPED_LOCK(mutex);
-  auto storeItr = irs::map_utils::try_emplace(_storeByTid, trx.state()->id());
 
-  // only register a callback if it has not been registered before
-  if (storeItr.second) {
-    // FIXME trx copies the provided callback inside,
-    // probably it's better to store just references instead
-    trx.registerCallback(_transactionCallback);
-  }
+  auto storeItr = irs::map_utils::try_emplace(
+    _storeByTid, trx.state()->id(), trx, _transactionCallback
+  );
 
   mutex.unlock(true); // downgrade to a read-lock
 
@@ -1596,14 +1621,10 @@ int IResearchView::insert(
 
   WriteMutex mutex(_mutex); // '_storeByTid' can be asynchronously updated
   SCOPED_LOCK(mutex); // '_meta' can be asynchronously updated
-  auto storeItr = irs::map_utils::try_emplace(_storeByTid, trx.state()->id());
 
-  // only register a callback if it has not been registered before
-  if (storeItr.second) {
-    // FIXME trx copies the provided callback inside,
-    // probably it's better to store just references instead
-    trx.registerCallback(_transactionCallback);
-  }
+  auto storeItr = irs::map_utils::try_emplace(
+    _storeByTid, trx.state()->id(), trx, _transactionCallback
+  );
 
   const size_t commitBatch = _meta._commitBulk._commitIntervalBatchSize;
   SyncState state = SyncState(_meta._commitBulk);
@@ -1907,8 +1928,8 @@ size_t IResearchView::memory() const {
     size += tidEntry.second._removals.size() * (sizeof(decltype(tidEntry.second._removals)::pointer) + sizeof(decltype(tidEntry.second._removals)::value_type));
   }
 
-  size += sizeof(_memoryStore);
-  size += directoryMemory(*_memoryStore._directory, id());
+  size += sizeof(_memoryNode) + sizeof(_memoryNodes);
+  size += directoryMemory(*activeMemoryStore()._directory, id());
 
   if (_storePersisted) {
     size += directoryMemory(*(_storePersisted._directory), id());
@@ -1976,12 +1997,10 @@ int IResearchView::remove(
   std::shared_ptr<irs::filter> shared_filter(FilterFactory::filter(cid, rid));
   WriteMutex mutex(_mutex); // '_storeByTid' can be asynchronously updated
   SCOPED_LOCK(mutex);
-  auto storeItr = irs::map_utils::try_emplace(_storeByTid, trx.state()->id());
 
-  // only register a callback if it has not been registered before
-  if (storeItr.second) {
-    trx.registerCallback(_transactionCallback);
-  }
+  auto storeItr = irs::map_utils::try_emplace(
+    _storeByTid, trx.state()->id(), trx, _transactionCallback
+  );
 
   mutex.unlock(true); // downgrade to a read-lock
 
@@ -2041,8 +2060,8 @@ bool IResearchView::supportsSortCondition(
   return sortCondition && OrderFactory::order(nullptr, *sortCondition, _meta);
 }
 
-IResearchView::MemoryStore& IResearchView::activeMemoryStore() {
-  return _memoryStore;
+IResearchView::MemoryStore& IResearchView::activeMemoryStore() const {
+  return _memoryNode->_store;
 }
 
 bool IResearchView::sync(size_t maxMsec /*= 0*/) {
@@ -2051,16 +2070,6 @@ bool IResearchView::sync(size_t maxMsec /*= 0*/) {
 
   try {
     SCOPED_LOCK(mutex);
-
-    for (auto& tidStore: _storeByTid) {
-      LOG_TOPIC(DEBUG, Logger::FIXME) << "starting transaction-store sync for iResearch view '" << id() << "' tid '" << tidStore.first << "'";
-      tidStore.second._store._writer->commit();
-      LOG_TOPIC(DEBUG, Logger::FIXME) << "finished transaction-store sync for iResearch view '" << id() << "' tid '" << tidStore.first << "'";
-
-      if (maxMsec && TRI_microtime() >= thresholdSec) {
-        return true; // skip if timout exceeded
-      }
-    }
 
     LOG_TOPIC(DEBUG, Logger::FIXME) << "starting memory-store sync for iResearch view '" << id() << "'";
     auto& memoryStore = activeMemoryStore();
@@ -2092,7 +2101,7 @@ bool IResearchView::sync(size_t maxMsec /*= 0*/) {
 bool IResearchView::sync(SyncState& state, size_t maxMsec /*= 0*/) {
   char runId = 0; // value not used
   auto thresholdMsec = TRI_microtime() * 1000 + maxMsec;
-  ReadMutex mutex(_mutex); // '_storeByTid'/'_storePersisted' can be asynchronously modified
+  ReadMutex mutex(_mutex); // '_memoryStore'/'_storePersisted' can be asynchronously modified
 
   LOG_TOPIC(DEBUG, Logger::FIXME) << "starting flush for iResearch view '" << id() << "' run id '" << size_t(&runId) << "'";
 
@@ -2109,10 +2118,6 @@ bool IResearchView::sync(SyncState& state, size_t maxMsec /*= 0*/) {
 
     try {
       SCOPED_LOCK(mutex);
-
-      for (auto& tidStore: _storeByTid) {
-        tidStore.second._store._writer->consolidate(entry._policy, false);
-      }
 
       auto& memoryStore = activeMemoryStore();
       memoryStore._writer->consolidate(entry._policy, false);
@@ -2303,7 +2308,9 @@ arangodb::Result IResearchView::updateProperties(
 }
 
 void IResearchView::registerFlushCallback() {
-  getFlushFeature().registerCallback(this, [this](){ return nullptr; });
+  getFlushFeature().registerCallback(this, [this](){
+    return flushTransaction();
+  });
 
   // noexcept
   _flushCallback.reset(this); // mark for future unregistration
@@ -2321,12 +2328,9 @@ void IResearchView::FlushCallbackUnregisterer::operator()(IResearchView* view) c
   }
 }
 
-IResearchFlushTransaction::IResearchFlushTransaction(IResearchView& view)
-  : FlushTransaction(toString(view)), _view(&view) {
-}
-
-arangodb::Result IResearchFlushTransaction::commit() {
-  return arangodb::Result(_view->finish());
+arangodb::Result IResearchView::commit() {
+  // FIMXE handle fails
+  return arangodb::Result(finish());
 }
 
 NS_END // iresearch
