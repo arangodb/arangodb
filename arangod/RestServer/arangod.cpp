@@ -111,12 +111,6 @@ static int runServer(int argc, char** argv, ArangoGlobalContext &context) {
     context.runStartupChecks();
 
     std::string name = context.binaryName();
-    
-    usleep(1000000);
-    usleep(1000000);
-    usleep(1000000);
-    usleep(1000000);
-    usleep(1000000);
 
     auto options = std::make_shared<options::ProgramOptions>(
         argv[0], "Usage: " + name + " [<options>]", "For more information use:",
