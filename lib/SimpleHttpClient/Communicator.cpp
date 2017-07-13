@@ -404,6 +404,7 @@ void Communicator::handleResult(CURL* handle, CURLcode rc) {
         << prefix << "Curl error details: " << rip->_errorBuffer;
   }
 
+  MUTEX_LOCKER(guard, _handlesLock);
   switch (rc) {
     case CURLE_OK: {
       int httpStatusCode = 200;
@@ -441,7 +442,6 @@ void Communicator::handleResult(CURL* handle, CURLcode rc) {
       break;
   } 
     
-  MUTEX_LOCKER(guard, _handlesLock);
   _handlesInProgress.erase(rip->_ticketId);
 }
 

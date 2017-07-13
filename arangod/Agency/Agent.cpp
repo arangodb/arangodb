@@ -229,6 +229,8 @@ AgentInterface::raft_commit_t Agent::waitFor(index_t index, double timeout) {
 //  AgentCallback reports id of follower and its highest processed index
 void Agent::reportIn(std::string const& peerId, index_t index, size_t toLog) {
 
+  auto startTime = system_clock::now();
+
   {
     // Enforce _lastCommitIndex, _readDB and compaction to progress atomically
     MUTEX_LOCKER(ioLocker, _ioLock);
@@ -283,11 +285,16 @@ void Agent::reportIn(std::string const& peerId, index_t index, size_t toLog) {
     }
   } // MUTEX_LOCKER
 
+  duration<double> reportInTime = system_clock::now() - startTime;
+  if (reportInTime.count() > 0.1) {
+    LOG_TOPIC(WARN, Logger::AGENCY)
+      << "reportIn took too long: " << reportInTime.count();
+  }
+
   { // Wake up rest handler
     CONDITION_LOCKER(guard, _waitForCV);
     guard.broadcast();
   }
-
 }
 
 /// Followers' append entries
@@ -441,14 +448,26 @@ void Agent::sendAppendEntriesRPC() {
       term_t t(0);
 
       index_t lastConfirmed, commitIndex;
+      auto startTime = system_clock::now();
       {
         MUTEX_LOCKER(ioLocker, _ioLock);
         t = this->term();
         lastConfirmed = _confirmed[followerId];
         commitIndex = _commitIndex;
       }
+      duration<double> lockTime = system_clock::now() - startTime;
+      if (lockTime.count() > 0.1) {
+        LOG_TOPIC(WARN, Logger::AGENCY)
+          << "Reading lastConfirmed took too long: " << lockTime.count();
+      }
 
       std::vector<log_t> unconfirmed = _state.get(lastConfirmed);
+
+      lockTime = system_clock::now() - startTime;
+      if (lockTime.count() > 0.2) {
+        LOG_TOPIC(WARN, Logger::AGENCY)
+          << "Finding unconfirmed entries took too long: " << lockTime.count();
+      }
 
       // Note that despite compaction this vector can never be empty, since
       // any compaction keeps at least one active log entry!
@@ -1416,6 +1435,11 @@ arangodb::consensus::index_t Agent::rebuildDBs() {
 
   index_t lastCompactionIndex;
   term_t term;
+
+  // We must go back to clean sheet
+  _readDB.clear();
+  _spearhead.clear();
+  
   if (!_state.loadLastCompactedSnapshot(_readDB, lastCompactionIndex, term)) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_AGENCY_CANNOT_REBUILD_DBS);
   }
@@ -1433,8 +1457,6 @@ arangodb::consensus::index_t Agent::rebuildDBs() {
   }
   _spearhead = _readDB;
 
-  LOG_TOPIC(TRACE, Logger::AGENCY) << "ReadDB: " << _readDB;
-    
   MUTEX_LOCKER(liLocker, _liLock);
   _lastApplied = _commitIndex;
   
@@ -1510,7 +1532,8 @@ Agent& Agent::operator=(VPackSlice const& compaction) {
 
   // Catch up with commit
   try {
-    _commitIndex = std::stoul(compaction.get("_key").copyString());
+    _commitIndex = arangodb::basics::StringUtils::uint64(
+      compaction.get("_key").copyString());
     MUTEX_LOCKER(liLocker, _liLock);
     _lastApplied = _commitIndex;
   } catch (std::exception const& e) {
@@ -1634,8 +1657,11 @@ query_t Agent::gossip(query_t const& in, bool isCallback, size_t version) {
     }
   }
   
-  LOG_TOPIC(TRACE, Logger::AGENCY) << "Answering with gossip "
-                                   << out->slice().toJson();
+  if (!isCallback) {
+    LOG_TOPIC(TRACE, Logger::AGENCY) << "Answering with gossip "
+                                     << out->slice().toJson();
+  }
+
   return out;
 }
 
