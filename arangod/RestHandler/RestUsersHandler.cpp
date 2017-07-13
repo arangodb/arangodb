@@ -83,19 +83,6 @@ bool RestUsersHandler::canAccessUser(std::string const& user) const {
   return isSystemUser();
 }
 
-/// check if the currently authenticated user is allowed to modify
-/// the collections in this particular database
-bool RestUsersHandler::canModifyDB(std::string const& dbname) const {
-  auto auth = FeatureCacheFeature::instance()->authenticationFeature();
-  TRI_ASSERT(auth != nullptr);
-  AuthInfo* authInfo = auth->authInfo();
-  if (_request->authorized() && !_request->user().empty()) {
-    auto lvl = authInfo->canUseDatabase(_request->user(), dbname);
-    return lvl == AuthLevel::RW;
-  }
-  return isSystemUser();
-}
-
 /// helper to generate a compliant response for individual user requests
 void RestUsersHandler::generateUserResult(rest::ResponseCode code,
                                           VPackBuilder const& doc) {
@@ -320,7 +307,7 @@ RestStatus RestUsersHandler::putRequest(AuthInfo* authInfo) {
       // update a user's permissions
       std::string const& db = suffixes[2];
       std::string coll = suffixes.size() == 4 ? suffixes[3] : "";
-      if (!(!coll.empty() && canModifyDB(db)) && !isSystemUser()) {
+      if (!isSystemUser()) {
         generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_FORBIDDEN);
         return RestStatus::DONE;
       }
@@ -449,7 +436,7 @@ RestStatus RestUsersHandler::deleteRequest(AuthInfo* authInfo) {
       // revoke a user's permissions
       std::string const& db = suffixes[2];
       std::string coll = suffixes.size() == 4 ? suffixes[3] : "";
-      if (!(!coll.empty() && canModifyDB(db)) && !isSystemUser()) {
+      if (!isSystemUser()) {
         generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_FORBIDDEN);
         return RestStatus::DONE;
       }

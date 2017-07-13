@@ -499,37 +499,7 @@
       }
     });
 
-    // addDefaultUser for system database
-    addTask({
-      name: 'addDefaultUserSystem',
-      description: 'add default root user for system database',
-
-      system: DATABASE_SYSTEM,
-      cluster: [CLUSTER_NONE, CLUSTER_COORDINATOR_GLOBAL],
-      database: [DATABASE_INIT],
-
-      task: function () {
-        const users = getCollection('_users');
-
-        if (!users) {
-          return false;
-        }
-
-        // only add account if user has not created his/her own accounts already
-        try {
-          userManager.save('root', defaultRootPW, true);
-        } catch (e) {
-          if (e.errorNum !== errors.ERROR_USER_DUPLICATE.code) {
-            throw e;
-          }
-        }
-        userManager.grantDatabase('root', '*', 'rw');
-
-        return true;
-      }
-    });
-
-    // addDefaultUser for system database
+    // add users defined for this database
     addTask({
       name: 'addDefaultUserOther',
       description: 'add default users',
@@ -543,11 +513,6 @@
 
         try {
           db._useDatabase('_system');
-          const users = getCollection('_users');
-
-          if (!users) {
-            return false;
-          }
 
           if (args && args.users) {
             args.users.forEach(function (user) {
