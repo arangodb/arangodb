@@ -2885,7 +2885,9 @@ void LogicalCollection::sizeHint(Transaction* trx, int64_t hint) {
     return;
   }
 
-  _revisionsCache->sizeHint(hint);
+  if (_revisionsCache) {
+    _revisionsCache->sizeHint(hint);
+  }
 }
 
 /// @brief initializes an index with all existing documents
@@ -3858,6 +3860,7 @@ void LogicalCollection::newObjectForRemove(Transaction* trx,
 bool LogicalCollection::readRevision(Transaction* trx,
                                      ManagedDocumentResult& result,
                                      TRI_voc_rid_t revisionId) {
+  ensureRevisionsCache();
   TRI_ASSERT(_revisionsCache != nullptr);
   return _revisionsCache->lookupRevision(trx, result, revisionId,
                                          !_isInitialIteration);
@@ -3868,6 +3871,7 @@ bool LogicalCollection::readRevisionConditional(Transaction* trx,
                                                 TRI_voc_rid_t revisionId,
                                                 TRI_voc_tick_t maxTick,
                                                 bool excludeWal) {
+  ensureRevisionsCache();
   TRI_ASSERT(_revisionsCache != nullptr);
   return _revisionsCache->lookupRevisionConditional(trx, result, revisionId,
                                                     maxTick, excludeWal, true);
@@ -3911,6 +3915,7 @@ void LogicalCollection::removeRevision(TRI_voc_rid_t revisionId,
 
 void LogicalCollection::removeRevisionCacheEntry(TRI_voc_rid_t revisionId) {
   // clean up cache entry
+  ensureRevisionsCache();
   TRI_ASSERT(_revisionsCache);
   _revisionsCache->removeRevision(revisionId); 
 }
