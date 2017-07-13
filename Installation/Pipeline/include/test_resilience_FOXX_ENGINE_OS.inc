@@ -53,6 +53,6 @@ trap "$PORTTRAP" EXIT
     MAX_PORT=`expr $PORT01 + 1999` \
     PORT_OFFSET=10 \
     RESILIENCE_ARANGO_BASEPATH=. \
-    ARANGO_STORAGE_ENGINE=rocksdb \
+    ARANGO_STORAGE_ENGINE=$engine \
             npm run test-jenkins -- $TESTS
 )

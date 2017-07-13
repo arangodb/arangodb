@@ -614,15 +614,15 @@ bool State::loadLastCompactedSnapshot(Store& store, index_t& index,
   }
 
   VPackSlice result = queryResult.result->slice();
-
+  
   if (result.isArray()) {
     if (result.length() == 1) {
       VPackSlice i = result[0];
       VPackSlice ii = i.resolveExternals();
       try {
         store = ii.get("readDB");
-        index = std::stoul(ii.get("_key").copyString());
-        term = static_cast<term_t>(ii.get("term").getDouble());
+        index = basics::StringUtils::uint64(ii.get("_key").copyString());
+        term = ii.get("term").getNumber<uint64_t>();
         return true;
       } catch (std::exception const& e) {
         LOG_TOPIC(ERR, Logger::AGENCY) << e.what() << " " << __FILE__
@@ -634,6 +634,11 @@ bool State::loadLastCompactedSnapshot(Store& store, index_t& index,
       term = 0;
       return true;
     }
+  } else {
+    // We should never be here! Just die!
+    LOG_TOPIC(FATAL, Logger::AGENCY)
+      << "Error retrieving last persisted compaction. The result was not an Array";
+    FATAL_ERROR_EXIT();
   }
 
   return false;
@@ -665,7 +670,7 @@ bool State::loadCompacted() {
       buffer_t tmp = std::make_shared<arangodb::velocypack::Buffer<uint8_t>>();
       (*_agent) = ii;
       try {
-        _cur = std::stoul(ii.get("_key").copyString());
+        _cur = basics::StringUtils::uint64(ii.get("_key").copyString());
       } catch (std::exception const& e) {
         LOG_TOPIC(ERR, Logger::AGENCY) << e.what() << " " << __FILE__
                                        << __LINE__;
@@ -798,13 +803,15 @@ bool State::loadRemaining() {
 
         try {
           _log.push_back(
-            log_t(std::stoi(ii.get(StaticStrings::KeyString).copyString()),
-                  static_cast<term_t>(ii.get("term").getUInt()), tmp, clientId));
+            log_t(
+              basics::StringUtils::uint64(
+                ii.get(StaticStrings::KeyString).copyString()),
+              ii.get("term").getNumber<uint64_t>(), tmp, clientId));
         } catch (std::exception const& e) {
           LOG_TOPIC(ERR, Logger::AGENCY)
             << "Failed to convert " +
             ii.get(StaticStrings::KeyString).copyString() +
-            " to integer via std::stoi."
+            " to integer."
             << e.what();
         }
       }

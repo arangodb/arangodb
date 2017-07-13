@@ -836,7 +836,8 @@ void ClusterCommThread::beginShutdown() {
 
 size_t ClusterComm::performRequests(std::vector<ClusterCommRequest>& requests,
                                     ClusterCommTimeout timeout, size_t& nrDone,
-                                    arangodb::LogTopic const& logTopic) {
+                                    arangodb::LogTopic const& logTopic,
+                                    bool retryOnCollNotFound) {
   if (requests.size() == 0) {
     nrDone = 0;
     return 0;
@@ -929,6 +930,23 @@ size_t ClusterComm::performRequests(std::vector<ClusterCommRequest>& requests,
         continue;
       }
       size_t index = it->second;
+
+      if (retryOnCollNotFound) {
+        // If this flag is set we treat a 404 collection not found as
+        // a CL_COMM_BACKEND_UNAVAILABLE, which leads to a retry:
+        if (res.status == CL_COMM_RECEIVED &&
+            res.answer_code == rest::ResponseCode::NOT_FOUND) {
+          VPackSlice payload = res.answer->payload();
+          VPackSlice errorNum = payload.get("errorNum");
+          if (errorNum.isInteger() &&
+              errorNum.getInt() == TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND) {
+            res.status = CL_COMM_BACKEND_UNAVAILABLE;
+            // This is a fake, but it will lead to a retry. If we timeout
+            // here and now, then the customer will get this result.
+          }
+        }
+      }
+
       if (res.status == CL_COMM_RECEIVED) {
         requests[index].result = res;
         requests[index].done = true;

@@ -36,9 +36,6 @@
 #include <velocypack/Builder.h>
 #include <velocypack/Slice.h>
 
-namespace v8 {
-class Isolate;
-}
 namespace arangodb {
 
 class LogicalCollection;
@@ -81,14 +78,11 @@ class StorageEngine : public application_features::ApplicationFeature {
 
     startsAfter("CacheManager");
     startsAfter("DatabasePath");
-    startsAfter("EngineSelector");
     startsAfter("FileDescriptors");
+    startsAfter("StorageEngine");
     startsAfter("Temp");
     startsAfter("TransactionManager");
   }
-
-  virtual void start() {}
-  virtual void stop() {}
 
   virtual bool supportsDfdb() const = 0;
 
