@@ -63,13 +63,14 @@ For the server category, a user needs the following access level
 to perform an action. The access levels are *Administrate* and
 *No access*:
 
-| action                | server level |
-|-----------------------|--------------|
-| create a database     | Administrate |
-| drop a database       | Administrate |
-| create a user         | Administrate |
-| update a user         | Administrate |
-| drop a user           | Administrate |
+| action                    | server level |
+|---------------------------|--------------|
+| create a database         | Administrate |
+| drop a database           | Administrate |
+| create a user             | Administrate |
+| update a user             | Administrate |
+| update user access level  | Administrate |
+| drop a user               | Administrate |
 
 For the database category, a user needs the following access
 level to the given database to perform an action. The access levels
