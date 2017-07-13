@@ -170,7 +170,12 @@ std::string Agent::leaderID() const {
 
 /// Are we leading?
 bool Agent::leading() const {
-  return _preparing || _constituent.leading();
+  // When we become leader, we first are officially still a follower, but
+  // prepare for the leading. This is indicated by the _preparing flag in the
+  // Agent, the Constituent stays with role FOLLOWER for now. The agent has
+  // to send out AppendEntriesRPC calls immediately, but only when we are
+  // properly leading (with initialized stores etc.) can we execute requests.
+  return (_preparing && _constituent.following()) || _constituent.leading();
 }
 
 /// Start constituent personality
@@ -224,6 +229,8 @@ AgentInterface::raft_commit_t Agent::waitFor(index_t index, double timeout) {
 //  AgentCallback reports id of follower and its highest processed index
 void Agent::reportIn(std::string const& peerId, index_t index, size_t toLog) {
 
+  auto startTime = system_clock::now();
+
   {
     // Enforce _lastCommitIndex, _readDB and compaction to progress atomically
     MUTEX_LOCKER(ioLocker, _ioLock);
@@ -259,12 +266,14 @@ void Agent::reportIn(std::string const& peerId, index_t index, size_t toLog) {
         LOG_TOPIC(TRACE, Logger::AGENCY)
           << "Critical mass for commiting " << _commitIndex + 1
           << " through " << index << " to read db";
+        {
+          MUTEX_LOCKER(mutexLocker, _compactionLock);
+          _readDB.applyLogEntries(
+            _state.slices(
+              _commitIndex + 1, index), _commitIndex, _constituent.term(),
+              true /* inform others by callbacks */ );
+        }
 
-        _readDB.applyLogEntries(
-          _state.slices(
-            _commitIndex + 1, index), _commitIndex, _constituent.term(),
-            true /* inform others by callbacks */ );
-        
         MUTEX_LOCKER(liLocker, _liLock);
         _commitIndex = index;
         if (_commitIndex >= _nextCompactionAfter) {
@@ -276,11 +285,16 @@ void Agent::reportIn(std::string const& peerId, index_t index, size_t toLog) {
     }
   } // MUTEX_LOCKER
 
+  duration<double> reportInTime = system_clock::now() - startTime;
+  if (reportInTime.count() > 0.1) {
+    LOG_TOPIC(WARN, Logger::AGENCY)
+      << "reportIn took too long: " << reportInTime.count();
+  }
+
   { // Wake up rest handler
     CONDITION_LOCKER(guard, _waitForCV);
     guard.broadcast();
   }
-
 }
 
 /// Followers' append entries
@@ -434,14 +448,26 @@ void Agent::sendAppendEntriesRPC() {
       term_t t(0);
 
       index_t lastConfirmed, commitIndex;
+      auto startTime = system_clock::now();
       {
         MUTEX_LOCKER(ioLocker, _ioLock);
         t = this->term();
         lastConfirmed = _confirmed[followerId];
         commitIndex = _commitIndex;
       }
+      duration<double> lockTime = system_clock::now() - startTime;
+      if (lockTime.count() > 0.1) {
+        LOG_TOPIC(WARN, Logger::AGENCY)
+          << "Reading lastConfirmed took too long: " << lockTime.count();
+      }
 
       std::vector<log_t> unconfirmed = _state.get(lastConfirmed);
+
+      lockTime = system_clock::now() - startTime;
+      if (lockTime.count() > 0.2) {
+        LOG_TOPIC(WARN, Logger::AGENCY)
+          << "Finding unconfirmed entries took too long: " << lockTime.count();
+      }
 
       // Note that despite compaction this vector can never be empty, since
       // any compaction keeps at least one active log entry!
@@ -555,6 +581,7 @@ void Agent::sendAppendEntriesRPC() {
       // Really leading?
       if (challengeLeadership()) {
         _constituent.candidate();
+        _preparing = false;
         return;
       }
       
@@ -641,6 +668,7 @@ query_t Agent::activate(query_t const& everything) {
           _readDB = compact.get("readDB");
         }
         commitIndex = _commitIndex;
+        // no need to lock via _readDB._compactionLock here
         _readDB.applyLogEntries(batch, commitIndex, _constituent.term(),
                                 false  /* do not perform callbacks */);
         _spearhead = _readDB;
@@ -815,6 +843,7 @@ trans_ret_t Agent::transact(query_t const& queries) {
     // Only leader else redirect
     if (challengeLeadership()) {
       _constituent.candidate();
+      _preparing = false;
       return trans_ret_t(false, NO_LEADER);
     }
     
@@ -872,6 +901,7 @@ trans_ret_t Agent::transient(query_t const& queries) {
     // Only leader else redirect
     if (challengeLeadership()) {
       _constituent.candidate();
+      _preparing = false;
       return trans_ret_t(false, NO_LEADER);
     }
 
@@ -982,6 +1012,7 @@ write_ret_t Agent::write(query_t const& query, bool discardStartup) {
     // Only leader else redirect
     if (multihost && challengeLeadership()) {
       _constituent.candidate();
+      _preparing = false;
       return write_ret_t(false, NO_LEADER);
     }
     
@@ -1027,6 +1058,7 @@ read_ret_t Agent::read(query_t const& query) {
   // Only leader else redirect
   if (challengeLeadership()) {
     _constituent.candidate();
+    _preparing = false;
     return read_ret_t(false, NO_LEADER);
   }
 
@@ -1291,28 +1323,27 @@ void Agent::notifyInactive() const {
   std::string path = "/_api/agency_priv/inform";
 
   Builder out;
-  { VPackObjectBuilder o(&out);
+  {
+    VPackObjectBuilder o(&out);
     out.add("term", VPackValue(term()));
     out.add("id", VPackValue(id()));
     out.add("active", _config.activeToBuilder()->slice());
     out.add("pool", _config.poolToBuilder()->slice());
     out.add("min ping", VPackValue(_config.minPing()));
-    out.add("max ping", VPackValue(_config.maxPing())); }
+    out.add("max ping", VPackValue(_config.maxPing()));
     out.add("timeoutMult", VPackValue(_config.timeoutMult()));
+  }
 
   for (auto const& p : pool) {
     if (p.first != id()) {
       auto headerFields =
-        std::make_unique<std::unordered_map<std::string, std::string>>();
-      cc->asyncRequest(
-        "1", 1, p.second, arangodb::rest::RequestType::POST,
-        path, std::make_shared<std::string>(out.toJson()), headerFields,
-        nullptr, 1.0, true);
+          std::make_unique<std::unordered_map<std::string, std::string>>();
+      cc->asyncRequest("1", 1, p.second, arangodb::rest::RequestType::POST,
+                       path, std::make_shared<std::string>(out.toJson()),
+                       headerFields, nullptr, 1.0, true);
     }
   }
-
 }
-
 
 void Agent::updatePeerEndpoint(query_t const& message) {
 
@@ -1382,13 +1413,13 @@ void Agent::notify(query_t const& message) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_AGENCY_INFORM_MUST_CONTAIN_POOL);
   }
   if (!slice.hasKey("min ping") || !slice.get("min ping").isNumber()) {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_AGENCY_INFORM_MUST_CONTAIN_POOL);
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_AGENCY_INFORM_MUST_CONTAIN_MIN_PING);
   }
   if (!slice.hasKey("max ping") || !slice.get("max ping").isNumber()) {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_AGENCY_INFORM_MUST_CONTAIN_POOL);
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_AGENCY_INFORM_MUST_CONTAIN_MAX_PING);
   }
   if (!slice.hasKey("timeoutMult") || !slice.get("timeoutMult").isInteger()) {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_AGENCY_INFORM_MUST_CONTAIN_POOL);
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_AGENCY_INFORM_MUST_CONTAIN_TIMEOUT_MULT);
   }
 
   _config.update(message);
@@ -1404,6 +1435,11 @@ arangodb::consensus::index_t Agent::rebuildDBs() {
 
   index_t lastCompactionIndex;
   term_t term;
+
+  // We must go back to clean sheet
+  _readDB.clear();
+  _spearhead.clear();
+  
   if (!_state.loadLastCompactedSnapshot(_readDB, lastCompactionIndex, term)) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_AGENCY_CANNOT_REBUILD_DBS);
   }
@@ -1413,13 +1449,14 @@ arangodb::consensus::index_t Agent::rebuildDBs() {
     << "Rebuilding key-value stores from index "
     << lastCompactionIndex << " to " << _commitIndex << " " << _state;
 
-  auto logs = _state.slices(lastCompactionIndex+1, _commitIndex);
-  _readDB.applyLogEntries(logs, _commitIndex, _constituent.term(),
-      false  /* do not send callbacks */);
+  {
+    MUTEX_LOCKER(mutexLocker, _compactionLock);
+    auto logs = _state.slices(lastCompactionIndex+1, _commitIndex);
+    _readDB.applyLogEntries(logs, _commitIndex, _constituent.term(),
+        false  /* do not send callbacks */);
+  }
   _spearhead = _readDB;
 
-  LOG_TOPIC(TRACE, Logger::AGENCY) << "ReadDB: " << _readDB;
-    
   MUTEX_LOCKER(liLocker, _liLock);
   _lastApplied = _commitIndex;
   
@@ -1495,7 +1532,8 @@ Agent& Agent::operator=(VPackSlice const& compaction) {
 
   // Catch up with commit
   try {
-    _commitIndex = std::stoul(compaction.get("_key").copyString());
+    _commitIndex = arangodb::basics::StringUtils::uint64(
+      compaction.get("_key").copyString());
     MUTEX_LOCKER(liLocker, _liLock);
     _lastApplied = _commitIndex;
   } catch (std::exception const& e) {
@@ -1619,8 +1657,11 @@ query_t Agent::gossip(query_t const& in, bool isCallback, size_t version) {
     }
   }
   
-  LOG_TOPIC(TRACE, Logger::AGENCY) << "Answering with gossip "
-                                   << out->slice().toJson();
+  if (!isCallback) {
+    LOG_TOPIC(TRACE, Logger::AGENCY) << "Answering with gossip "
+                                     << out->slice().toJson();
+  }
+
   return out;
 }
 
@@ -1671,11 +1712,14 @@ query_t Agent::buildDB(arangodb::consensus::index_t index) {
   }
   
   std::vector<VPackSlice> logs;
-  if (index > oldIndex) {
-    logs = _state.slices(oldIndex+1, index);
+  {
+    MUTEX_LOCKER(mutexLocker, _compactionLock);
+    if (index > oldIndex) {
+      logs = _state.slices(oldIndex+1, index);
+    }
+    store.applyLogEntries(logs, index, term,
+                          false  /* do not perform callbacks */);
   }
-  store.applyLogEntries(logs, index, term,
-                        false  /* do not perform callbacks */);
 
   auto builder = std::make_shared<VPackBuilder>();
   store.toBuilder(*builder);

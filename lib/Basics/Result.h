@@ -56,7 +56,7 @@ class Result {
   void reset(int errorNumber = TRI_ERROR_NO_ERROR) {
     _errorNumber = errorNumber;
 
-    if(errorNumber != TRI_ERROR_NO_ERROR) {
+    if (errorNumber != TRI_ERROR_NO_ERROR) {
       _errorMessage = TRI_errno_string(errorNumber);
     } else {
       _errorMessage.clear();

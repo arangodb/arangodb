@@ -618,7 +618,7 @@ int Conductor::_initializeWorkers(std::string const& suffix,
   std::shared_ptr<ClusterComm> cc = ClusterComm::instance();
   size_t nrDone = 0;
   size_t nrGood = cc->performRequests(requests, 5.0 * 60.0, nrDone,
-                                      LogTopic("Pregel Conductor"));
+                                      LogTopic("Pregel Conductor"), false);
   Utils::printResponses(requests);
   return nrGood == requests.size() ? TRI_ERROR_NO_ERROR : TRI_ERROR_FAILED;
 }
@@ -752,7 +752,7 @@ int Conductor::_sendToAllDBServers(std::string const& path,
 
   size_t nrDone = 0;
   size_t nrGood = cc->performRequests(requests, 5.0 * 60.0, nrDone,
-                                      LogTopic("Pregel Conductor"));
+                                      LogTopic("Pregel Conductor"), false);
   LOG_TOPIC(TRACE, Logger::PREGEL) << "Send " << path << " to " << nrDone
                                    << " servers";
   Utils::printResponses(requests);

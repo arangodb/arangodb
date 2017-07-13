@@ -421,8 +421,10 @@ The following optimizer rules may appear in the `rules` attribute of a plan:
 * `use-indexes`: will appear when an index is used to iterate over a collection.
   As a consequence, an *EnumerateCollectionNode* was replaced with an
   *IndexNode* in the plan.
-* `remove-filters-covered-by-index`: will appear if a *FilterNode* was removed or replaced
+* `remove-filter-covered-by-index`: will appear if a *FilterNode* was removed or replaced
   because the filter condition is already covered by an *IndexNode*.
+* `remove-filter-covered-by-traversal`: will appear if a *FilterNode* was removed or replaced
+  because the filter condition is already covered by an *TraversalNode*.
 * `use-index-for-sort`: will appear if an index can be used to avoid a *SORT*
   operation. If the rule was applied, a *SortNode* was removed from the plan.
 * `move-calculations-down`: will appear if a *CalculationNode* was moved down in a plan.

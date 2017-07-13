@@ -1549,7 +1549,7 @@ OperationResult transaction::Methods::insertLocal(
         // nullptr only happens on controlled shutdown
         size_t nrDone = 0;
         size_t nrGood = cc->performRequests(requests, chooseTimeout(count),
-                                            nrDone, Logger::REPLICATION);
+                                            nrDone, Logger::REPLICATION, false);
         if (nrGood < followers->size()) {
           // If any would-be-follower refused to follow there must be a
           // new leader in the meantime, in this case we must not allow
@@ -1900,7 +1900,7 @@ OperationResult transaction::Methods::modifyLocal(
         }
         size_t nrDone = 0;
         size_t nrGood = cc->performRequests(requests, chooseTimeout(count),
-                                            nrDone, Logger::REPLICATION);
+                                            nrDone, Logger::REPLICATION, false);
         if (nrGood < followers->size()) {
           // If any would-be-follower refused to follow there must be a
           // new leader in the meantime, in this case we must not allow
@@ -2182,7 +2182,7 @@ OperationResult transaction::Methods::removeLocal(
         }
         size_t nrDone = 0;
         size_t nrGood = cc->performRequests(requests, chooseTimeout(count),
-                                            nrDone, Logger::REPLICATION);
+                                            nrDone, Logger::REPLICATION, false);
         if (nrGood < followers->size()) {
           // If any would-be-follower refused to follow there must be a
           // new leader in the meantime, in this case we must not allow
@@ -2399,7 +2399,7 @@ OperationResult transaction::Methods::truncateLocal(
         }
         size_t nrDone = 0;
         size_t nrGood = cc->performRequests(requests, TRX_FOLLOWER_TIMEOUT,
-                                            nrDone, Logger::REPLICATION);
+                                            nrDone, Logger::REPLICATION, false);
         if (nrGood < followers->size()) {
           // If any would-be-follower refused to follow there must be a
           // new leader in the meantime, in this case we must not allow

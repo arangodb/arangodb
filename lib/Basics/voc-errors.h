@@ -414,6 +414,9 @@
 /// - 1491: @LIT{a (former) shard leader refuses to perform an operation, because it has resigned in the meantime}
 ///   Will be raised if a non-replication operation is refused by a former
 ///   shard leader that has found out that it is no longer the leader.
+/// - 1492: @LIT{some agency operation failed}
+///   Will be raised if after various retries an agency operation could not be
+///   performed successfully.
 /// - 1500: @LIT{query killed}
 ///   Will be raised when a running query is killed by an explicit admin
 ///   command.
@@ -720,6 +723,12 @@
 ///   The inform message in the agency must contain an array 'active'.
 /// - 20015: @LIT{Inform message must contain object 'pool'}
 ///   The inform message in the agency must contain an object 'pool'.
+/// - 20016: @LIT{Inform message must contain object 'min ping'}
+///   The inform message in the agency must contain an object 'min ping'.
+/// - 20017: @LIT{Inform message must contain object 'max ping'}
+///   The inform message in the agency must contain an object 'max ping'.
+/// - 20018: @LIT{Inform message must contain object 'timeoutMult'}
+///   The inform message in the agency must contain an object 'timeoutMult'.
 /// - 20020: @LIT{Inquiry failed}
 ///   Inquiry by clientId failed
 /// - 20021: @LIT{Cannot rebuild readDB and spearHead}
@@ -2442,6 +2451,17 @@ void TRI_InitializeErrorMessages ();
 #define TRI_ERROR_CLUSTER_SHARD_LEADER_RESIGNED                           (1491)
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief 1492: ERROR_CLUSTER_AGENCY_COMMUNICATION_FAILED
+///
+/// some agency operation failed
+///
+/// Will be raised if after various retries an agency operation could not be
+/// performed successfully.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_CLUSTER_AGENCY_COMMUNICATION_FAILED                     (1492)
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief 1500: ERROR_QUERY_KILLED
 ///
 /// query killed
@@ -3828,6 +3848,36 @@ void TRI_InitializeErrorMessages ();
 ////////////////////////////////////////////////////////////////////////////////
 
 #define TRI_ERROR_AGENCY_INFORM_MUST_CONTAIN_POOL                         (20015)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 20016: ERROR_AGENCY_INFORM_MUST_CONTAIN_MIN_PING
+///
+/// Inform message must contain object 'min ping'
+///
+/// The inform message in the agency must contain an object 'min ping'.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_AGENCY_INFORM_MUST_CONTAIN_MIN_PING                     (20016)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 20017: ERROR_AGENCY_INFORM_MUST_CONTAIN_MAX_PING
+///
+/// Inform message must contain object 'max ping'
+///
+/// The inform message in the agency must contain an object 'max ping'.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_AGENCY_INFORM_MUST_CONTAIN_MAX_PING                     (20017)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 20018: ERROR_AGENCY_INFORM_MUST_CONTAIN_TIMEOUT_MULT
+///
+/// Inform message must contain object 'timeoutMult'
+///
+/// The inform message in the agency must contain an object 'timeoutMult'.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_AGENCY_INFORM_MUST_CONTAIN_TIMEOUT_MULT                 (20018)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 20020: ERROR_AGENCY_INQUIRE_CLIENT_ID_MUST_BE_STRING

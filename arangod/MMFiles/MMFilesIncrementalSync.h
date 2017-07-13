@@ -135,8 +135,7 @@ int handleSyncKeysMMFiles(arangodb::InitialSyncer& syncer,
     Result res = trx.begin();
 
     if (!res.ok()) {
-      errorMsg =
-          std::string("unable to start transaction: ") + res.errorMessage();
+      errorMsg = std::string("unable to start transaction (") + std::string(__FILE__) + std::string(":") + std::to_string(__LINE__) + std::string("): ") + res.errorMessage();
       res.reset(res.errorNumber(), errorMsg);
       return res.errorNumber();
     }
@@ -164,8 +163,7 @@ int handleSyncKeysMMFiles(arangodb::InitialSyncer& syncer,
     Result res = trx.begin();
 
     if (!res.ok()) {
-      errorMsg =
-          std::string("unable to start transaction: ") + res.errorMessage();
+      errorMsg =std::string("unable to start transaction (") + std::string(__FILE__) + std::string(":") + std::to_string(__LINE__) + std::string("): ") + res.errorMessage();
       res.reset(res.errorNumber(), errorMsg);
       return res.errorNumber();
     }
@@ -314,8 +312,7 @@ int handleSyncKeysMMFiles(arangodb::InitialSyncer& syncer,
     Result res = trx.begin();
 
     if (!res.ok()) {
-      errorMsg =
-          std::string("unable to start transaction: ") + res.errorMessage();
+      errorMsg = std::string("unable to start transaction (") + std::string(__FILE__) + std::string(":") + std::to_string(__LINE__) + std::string("): ") + res.errorMessage();
       res.reset(res.errorNumber(), errorMsg);
       return res.errorNumber();
     }
@@ -389,8 +386,7 @@ int handleSyncKeysMMFiles(arangodb::InitialSyncer& syncer,
     Result res = trx.begin();
 
     if (!res.ok()) {
-      errorMsg =
-          std::string("unable to start transaction: ") + res.errorMessage();
+      errorMsg =std::string("unable to start transaction (") + std::string(__FILE__) + std::string(":") + std::to_string(__LINE__) + std::string("): ") + res.errorMessage();
       res.reset(res.errorNumber(), res.errorMessage());
       return res.errorNumber();
     }

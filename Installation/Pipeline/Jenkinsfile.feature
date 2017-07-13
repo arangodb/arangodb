@@ -400,6 +400,12 @@ def unstashBinaries(edition, os) {
 // --SECTION--                                                     SCRIPTS BUILD
 // -----------------------------------------------------------------------------
 
+buildJenkins = [
+    "linux": "linux && build",
+    "mac" : "mac",
+    "windows": "windows"
+]
+
 buildsSuccess = [:]
 allBuildsSuccessful = true
 
@@ -429,7 +435,9 @@ def buildEdition(edition, os) {
     }
     finally {
         stashBuild(edition, os)
-        archiveArtifacts allowEmptyArchive: true, artifacts: 'log-output/**', defaultExcludes: false
+        archiveArtifacts allowEmptyArchive: true,
+                         artifacts: 'log-output/**, *.log, tmp/**/log, tmp/**/log0, tmp/**/log1, tmp/**/log2',
+                         defaultExcludes: false
     }
 }
 
@@ -464,7 +472,7 @@ def buildStepCheck(edition, os, full) {
 def buildStep(edition, os) {
     return {
         lock("${env.BRANCH_NAME}-build-${edition}-${os}") {
-            node(os) {
+            node(buildJenkins[os]) {
                 def name = "${edition}-${os}"
 
                 try {
@@ -539,27 +547,30 @@ def jslintStep() {
 // --SECTION--                                                     SCRIPTS TESTS
 // -----------------------------------------------------------------------------
 
+testJenkins = [
+    "linux": "linux && build",
+    "mac" : "mac",
+    "windows": "windows"
+]
+
 testsSuccess = [:]
 allTestsSuccessful = true
-numberTestsSuccessful = 0
 
 def testEdition(edition, os, mode, engine) {
     try {
         if (os == 'linux') {
-            sh "./Installation/Pipeline/test_${mode}_${edition}_${engine}_${os}.sh 10"
+            sh "./Installation/Pipeline/test_${mode}_${edition}_${engine}_${os}.sh 5"
         }
         else if (os == 'mac') {
-            sh "./Installation/Pipeline/test_${mode}_${edition}_${engine}_${os}.sh 10"
+            sh "./Installation/Pipeline/test_${mode}_${edition}_${engine}_${os}.sh 5"
         }
         else if (os == 'windows') {
             PowerShell(". .\\Installation\\Pipeline\\test_${mode}_${edition}_${engine}_${os}.ps1")
         }
-
-        numberTestsSuccessful += 1
     }
     catch (exc) {
         archiveArtifacts allowEmptyArchive: true,
-                         artifacts: 'core.*, build/bin/arangod',
+                         artifacts: 'core*, build/bin/arangod',
                          defaultExcludes: false
 
         throw exc
@@ -573,10 +584,6 @@ def testEdition(edition, os, mode, engine) {
 
 def testCheck(edition, os, mode, engine, full) {
     def name = "${edition}-${os}"
-
-    // if (! (buildsSuccess.containsKey(name) && buildsSuccess[name])) {
-    //     return false
-    // }
 
     if (! runTests) {
         return false
@@ -621,21 +628,23 @@ def testName(edition, os, mode, engine, full) {
 
 def testStep(edition, os, mode, engine) {
     return {
-        node(os) {
-            echo "Running ${mode} ${edition} ${engine} ${os} test"
+        node(testJenkins[os]) {
+            def buildName = "${edition}-${os}"
 
-            def name = "${edition}-${os}-${mode}-${engine}"
+            if (buildsSuccess[buildName]) {
+                def name = "${edition}-${os}-${mode}-${engine}"
 
-            try {
-                unstashBinaries(edition, os)
-                testEdition(edition, os, mode, engine)
-                testsSuccess[name] = true
-            }
-            catch (exc) {
-                echo exc.toString()
-                testsSuccess[name] = false
-                allTestsSuccessful = false
-                throw exc
+                try {
+                    unstashBinaries(edition, os)
+                    testEdition(edition, os, mode, engine)
+                    testsSuccess[name] = true
+                }
+                catch (exc) {
+                    echo exc.toString()
+                    testsSuccess[name] = false
+                    allTestsSuccessful = false
+                    throw exc
+                }
             }
         }
     }
@@ -685,10 +694,6 @@ def testResilience(os, engine, foxx) {
 def testResilienceCheck(os, engine, foxx, full) {
     def name = "community-${os}"
 
-    // if (! (buildsSuccess.containsKey(name) && buildsSuccess[name])) {
-    //     return false
-    // }
-
     if (! runResilience) {
         return false
     }
@@ -724,19 +729,31 @@ def testResilienceName(os, engine, foxx, full) {
 
 def testResilienceStep(os, engine, foxx) {
     return {
-        node(os) {
-            echo "Running ${foxx} ${engine} ${os} test"
+        node(testJenkins[os]) {
+            def buildName = "${edition}-${os}"
 
-            def name = "${os}-${engine}-${foxx}"
+            if (buildsSuccess[buildName]) {
+                def name = "${os}-${engine}-${foxx}"
 
-            try {
-                unstashBinaries('community', os)
-                testResilience(os, engine, foxx)
-            }
-            catch (exc) {
-                resiliencesSuccess[name] = false
-                allResiliencesSuccessful = false
-                throw exc
+                try {
+                    unstashBinaries('community', os)
+                    testResilience(os, engine, foxx)
+                }
+                catch (exc) {
+                    resiliencesSuccess[name] = false
+                    allResiliencesSuccessful = false
+
+                    archiveArtifacts allowEmptyArchive: true,
+                                     artifacts: 'core*, build/bin/arangod',
+                                     defaultExcludes: false
+
+                    throw exc
+                }
+                finally {
+                    archiveArtifacts allowEmptyArchive: true,
+                                     artifacts: 'log-output/**, *.log, tmp/**/log, tmp/**/log0, tmp/**/log1, tmp/**/log2',
+                                     defaultExcludes: false
+                }
             }
         }
     }

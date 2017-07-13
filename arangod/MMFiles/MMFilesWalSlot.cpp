@@ -30,7 +30,7 @@ using namespace arangodb;
 /// @brief create a slot
 MMFilesWalSlot::MMFilesWalSlot()
     : _tick(0),
-      _logfileId(0),
+      _logfile(nullptr),
       _mem(nullptr),
       _size(0),
       _status(StatusType::UNUSED) {}
@@ -66,6 +66,7 @@ void MMFilesWalSlot::finalize(MMFilesWalMarker const* marker) {
   TRI_ASSERT(_mem != nullptr);
   TRI_ASSERT(size == _size);
   TRI_ASSERT(size >= sizeof(MMFilesMarker));
+  TRI_ASSERT(_logfile != nullptr);
 
   MMFilesMarker* dfm = static_cast<MMFilesMarker*>(_mem);
 
@@ -95,6 +96,7 @@ void MMFilesWalSlot::finalize(MMFilesWalMarker const* marker) {
 void MMFilesWalSlot::fill(void* src, size_t size) {
   TRI_ASSERT(size == _size);
   TRI_ASSERT(src != nullptr);
+  TRI_ASSERT(_logfile != nullptr);
 
   MMFilesMarker* marker = static_cast<MMFilesMarker*>(src);
 
@@ -124,19 +126,21 @@ void MMFilesWalSlot::fill(void* src, size_t size) {
 /// @brief mark as slot as used
 void MMFilesWalSlot::setUnused() {
   TRI_ASSERT(isReturned());
+  TRI_ASSERT(_logfile != nullptr);
   _tick = 0;
-  _logfileId = 0;
+  _logfile = nullptr;
   _mem = nullptr;
   _size = 0;
   _status = StatusType::UNUSED;
 }
 
 /// @brief mark as slot as used
-void MMFilesWalSlot::setUsed(void* mem, uint32_t size, MMFilesWalLogfile::IdType logfileId,
+void MMFilesWalSlot::setUsed(void* mem, uint32_t size, MMFilesWalLogfile* logfile,
                    MMFilesWalSlot::TickType tick) {
   TRI_ASSERT(isUnused());
+  TRI_ASSERT(logfile != nullptr);
   _tick = tick;
-  _logfileId = logfileId;
+  _logfile = logfile;
   _mem = mem;
   _size = size;
   _status = StatusType::USED;
@@ -144,6 +148,7 @@ void MMFilesWalSlot::setUsed(void* mem, uint32_t size, MMFilesWalLogfile::IdType
 
 /// @brief mark as slot as returned
 void MMFilesWalSlot::setReturned(bool waitForSync) {
+  TRI_ASSERT(_logfile != nullptr);
   TRI_ASSERT(isUsed());
   if (waitForSync) {
     _status = StatusType::RETURNED_WFS;
