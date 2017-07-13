@@ -1458,6 +1458,14 @@ static void JS_PropertiesVocbaseCol(
     v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
+  
+  bool const isModification = (args.Length() != 0);
+  if (ExecContext::CURRENT_EXECCONTEXT != nullptr) {
+    auto level = ExecContext::CURRENT_EXECCONTEXT->authContext()->databaseAuthLevel();
+    if ((isModification && level != AuthLevel::RW) || level == AuthLevel::NONE) {
+      TRI_V8_THROW_EXCEPTION(TRI_ERROR_FORBIDDEN);
+    }
+  }
 
   arangodb::LogicalCollection* collection =
       TRI_UnwrapClass<arangodb::LogicalCollection>(args.Holder(), WRP_VOCBASE_COL_TYPE);
@@ -1510,7 +1518,6 @@ static void JS_PropertiesVocbaseCol(
     TRI_V8_RETURN(result);
   }
 
-  bool const isModification = (args.Length() != 0);
   SingleCollectionTransaction trx(
       transaction::V8Context::Create(collection->vocbase(), true),
       collection->cid(),
@@ -2950,9 +2957,16 @@ static void JS_CollectionVocbase(
 
   v8::Handle<v8::Value> val = args[0];
   arangodb::LogicalCollection const* collection = nullptr;
+  
+  std::string const name = TRI_ObjectToString(val);
+  if (ExecContext::CURRENT_EXECCONTEXT != nullptr) {
+    auto level = ExecContext::CURRENT_EXECCONTEXT->authContext()->collectionAuthLevel(name);
+    if (level == AuthLevel::NONE) {
+      TRI_V8_THROW_EXCEPTION(TRI_ERROR_FORBIDDEN);
+    }
+  }
 
   if (ServerState::instance()->isCoordinator()) {
-    std::string const name = TRI_ObjectToString(val);
     try {
       std::shared_ptr<LogicalCollection> const ci =
           ClusterInfo::instance()->getCollection(vocbase->name(), name);
