@@ -59,9 +59,9 @@ void StoreUser(v8::FunctionCallbackInfo<v8::Value> const& args, bool replace) {
   } else if (!args[0]->IsString()) {
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_USER_INVALID_NAME);
   }
-  if (ExecContext::CURRENT_EXECCONTEXT != nullptr) {
+  if (ExecContext::CURRENT != nullptr) {
     AuthLevel level =
-        ExecContext::CURRENT_EXECCONTEXT->authContext()->systemAuthLevel();
+        ExecContext::CURRENT->systemAuthLevel();
     if (level != AuthLevel::RW) {
       TRI_V8_THROW_EXCEPTION(TRI_ERROR_FORBIDDEN);
     }
@@ -94,7 +94,7 @@ void StoreUser(v8::FunctionCallbackInfo<v8::Value> const& args, bool replace) {
     authentication->authInfo()->setUserData(username, extras.slice());
   }
 
-  VPackBuilder result = authentication->authInfo()->getUser(username);
+  VPackBuilder result = authentication->authInfo()->serializeUser(username);
   if (!result.isEmpty()) {
     TRI_V8_RETURN(TRI_VPackToV8(isolate, result.slice()));
   }
@@ -118,9 +118,9 @@ static void JS_UpdateUser(v8::FunctionCallbackInfo<v8::Value> const& args) {
     TRI_V8_THROW_EXCEPTION_USAGE(
         "update(username[, password, active, userData])");
   }
-  if (ExecContext::CURRENT_EXECCONTEXT != nullptr) {
+  if (ExecContext::CURRENT != nullptr) {
     AuthLevel level =
-        ExecContext::CURRENT_EXECCONTEXT->authContext()->systemAuthLevel();
+        ExecContext::CURRENT->systemAuthLevel();
     if (level != AuthLevel::RW) {
       TRI_V8_THROW_EXCEPTION(TRI_ERROR_FORBIDDEN);
     }
@@ -159,9 +159,9 @@ static void JS_RemoveUser(v8::FunctionCallbackInfo<v8::Value> const& args) {
   if (args.Length() < 1 || !args[0]->IsString()) {
     TRI_V8_THROW_EXCEPTION_USAGE("remove(username)");
   }
-  if (ExecContext::CURRENT_EXECCONTEXT != nullptr) {
+  if (ExecContext::CURRENT != nullptr) {
     AuthLevel level =
-        ExecContext::CURRENT_EXECCONTEXT->authContext()->systemAuthLevel();
+        ExecContext::CURRENT->systemAuthLevel();
     if (level != AuthLevel::RW) {
       TRI_V8_THROW_EXCEPTION(TRI_ERROR_FORBIDDEN);
     }
@@ -185,9 +185,9 @@ static void JS_GetUser(v8::FunctionCallbackInfo<v8::Value> const& args) {
   if (args.Length() < 1 || !args[0]->IsString()) {
     TRI_V8_THROW_EXCEPTION_USAGE("document(username)");
   }
-  if (ExecContext::CURRENT_EXECCONTEXT != nullptr) {
+  if (ExecContext::CURRENT != nullptr) {
     AuthLevel level =
-        ExecContext::CURRENT_EXECCONTEXT->authContext()->systemAuthLevel();
+        ExecContext::CURRENT->systemAuthLevel();
     if (level != AuthLevel::RW) {
       TRI_V8_THROW_EXCEPTION(TRI_ERROR_FORBIDDEN);
     }
@@ -196,7 +196,7 @@ static void JS_GetUser(v8::FunctionCallbackInfo<v8::Value> const& args) {
   auto authentication =
       FeatureCacheFeature::instance()->authenticationFeature();
   std::string username = TRI_ObjectToString(args[0]);
-  VPackBuilder result = authentication->authInfo()->getUser(username);
+  VPackBuilder result = authentication->authInfo()->serializeUser(username);
   if (!result.isEmpty()) {
     TRI_V8_RETURN(TRI_VPackToV8(isolate, result.slice()));
   }
@@ -211,9 +211,9 @@ static void JS_ReloadAuthData(v8::FunctionCallbackInfo<v8::Value> const& args) {
   if (args.Length() > 0) {
     TRI_V8_THROW_EXCEPTION_USAGE("reload()");
   }
-  if (ExecContext::CURRENT_EXECCONTEXT != nullptr) {
+  if (ExecContext::CURRENT != nullptr) {
     AuthLevel level =
-        ExecContext::CURRENT_EXECCONTEXT->authContext()->systemAuthLevel();
+        ExecContext::CURRENT->systemAuthLevel();
     if (level != AuthLevel::RW) {
       TRI_V8_THROW_EXCEPTION(TRI_ERROR_FORBIDDEN);
     }
@@ -233,9 +233,9 @@ static void JS_GrantDatabase(v8::FunctionCallbackInfo<v8::Value> const& args) {
   if (args.Length() < 2 || !args[0]->IsString() || !args[1]->IsString()) {
     TRI_V8_THROW_EXCEPTION_USAGE("grantDatabase(username, database, type)");
   }
-  if (ExecContext::CURRENT_EXECCONTEXT != nullptr) {
+  if (ExecContext::CURRENT != nullptr) {
     AuthLevel level =
-        ExecContext::CURRENT_EXECCONTEXT->authContext()->systemAuthLevel();
+        ExecContext::CURRENT->systemAuthLevel();
     if (level != AuthLevel::RW) {
       TRI_V8_THROW_EXCEPTION(TRI_ERROR_FORBIDDEN);
     }
@@ -267,9 +267,9 @@ static void JS_RevokeDatabase(v8::FunctionCallbackInfo<v8::Value> const& args) {
   if (args.Length() < 2 || !args[0]->IsString() || !args[1]->IsString()) {
     TRI_V8_THROW_EXCEPTION_USAGE("revokeDatabase(username,  database)");
   }
-  if (ExecContext::CURRENT_EXECCONTEXT != nullptr) {
+  if (ExecContext::CURRENT != nullptr) {
     AuthLevel level =
-        ExecContext::CURRENT_EXECCONTEXT->authContext()->systemAuthLevel();
+        ExecContext::CURRENT->systemAuthLevel();
     if (level != AuthLevel::RW) {
       TRI_V8_THROW_EXCEPTION(TRI_ERROR_FORBIDDEN);
     }
@@ -298,9 +298,9 @@ static void JS_GrantCollection(
       !args[2]->IsString()) {
     TRI_V8_THROW_EXCEPTION_USAGE("grantCollection(username, db, coll[, type])");
   }
-  if (ExecContext::CURRENT_EXECCONTEXT != nullptr) {
+  if (ExecContext::CURRENT != nullptr) {
     AuthLevel level =
-        ExecContext::CURRENT_EXECCONTEXT->authContext()->databaseAuthLevel();
+        ExecContext::CURRENT->systemAuthLevel();
     if (level != AuthLevel::RW) {
       TRI_V8_THROW_EXCEPTION(TRI_ERROR_FORBIDDEN);
     }
@@ -336,9 +336,9 @@ static void JS_RevokeCollection(
       !args[2]->IsString()) {
     TRI_V8_THROW_EXCEPTION_USAGE("revokeCollection(username, db, coll)");
   }
-  if (ExecContext::CURRENT_EXECCONTEXT != nullptr) {
+  if (ExecContext::CURRENT != nullptr) {
     AuthLevel level =
-        ExecContext::CURRENT_EXECCONTEXT->authContext()->databaseAuthLevel();
+        ExecContext::CURRENT->systemAuthLevel();
     if (level != AuthLevel::RW) {
       TRI_V8_THROW_EXCEPTION(TRI_ERROR_FORBIDDEN);
     }

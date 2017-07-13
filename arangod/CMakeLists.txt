@@ -210,7 +210,6 @@ SET(ARANGOD_SOURCES
   Cluster/v8-cluster.cpp
   GeneralServer/AsyncJobManager.cpp
   GeneralServer/AuthenticationFeature.cpp
-  GeneralServer/AuthenticationHandler.cpp
   GeneralServer/GeneralCommTask.cpp
   GeneralServer/GeneralListenTask.cpp
   GeneralServer/GeneralServer.cpp
@@ -345,6 +344,7 @@ SET(ARANGOD_SOURCES
   Transaction/Options.cpp
   Transaction/StandaloneContext.cpp
   Transaction/V8Context.cpp
+  Utils/Authentication.cpp
   Utils/CollectionKeys.cpp
   Utils/CollectionKeysRepository.cpp
   Utils/CollectionNameResolver.cpp

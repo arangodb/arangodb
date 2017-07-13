@@ -976,9 +976,12 @@ static void JS_DropVocbaseCol(v8::FunctionCallbackInfo<v8::Value> const& args) {
     TRI_V8_THROW_EXCEPTION_INTERNAL("cannot extract collection");
   }
 
-  if (ExecContext::CURRENT_EXECCONTEXT != nullptr) {
-    AuthLevel level = ExecContext::CURRENT_EXECCONTEXT->authContext()->databaseAuthLevel();
-    AuthLevel level2 = ExecContext::CURRENT_EXECCONTEXT->authContext()->collectionAuthLevel(collection->name());
+  AuthenticationFeature* auth = AuthenticationFeature::INSTANCE;
+  TRI_ASSERT(auth != nullptr);
+  if (ExecContext::CURRENT != nullptr && auth->isActive()) {
+    AuthLevel level = ExecContext::CURRENT->databaseAuthLevel();
+    AuthLevel level2 = auth->canUseCollection(ExecContext::CURRENT->user(),
+                                              ExecContext::CURRENT->database(), collection->name());
     if (level != AuthLevel::RW || level2 != AuthLevel::RW) {
       TRI_V8_THROW_EXCEPTION(TRI_ERROR_FORBIDDEN);
     }
@@ -1023,7 +1026,6 @@ static void JS_DropVocbaseCol(v8::FunctionCallbackInfo<v8::Value> const& args) {
     }
   }
   
-  AuthenticationFeature* auth = FeatureCacheFeature::instance()->authenticationFeature();
   if (auth->isActive()) {
     auth->authInfo()->enumerateUsers([&](AuthUserEntry& entry) {
       entry.removeCollection(dbname, collName);
@@ -1458,8 +1460,8 @@ static void JS_PropertiesVocbaseCol(
   v8::HandleScope scope(isolate);
   
   bool const isModification = (args.Length() != 0);
-  if (ExecContext::CURRENT_EXECCONTEXT != nullptr) {
-    auto level = ExecContext::CURRENT_EXECCONTEXT->authContext()->databaseAuthLevel();
+  if (ExecContext::CURRENT != nullptr) {
+    auto level = ExecContext::CURRENT->databaseAuthLevel();
     if ((isModification && level != AuthLevel::RW) || level == AuthLevel::NONE) {
       TRI_V8_THROW_EXCEPTION(TRI_ERROR_FORBIDDEN);
     }
@@ -1631,9 +1633,13 @@ static void JS_RenameVocbaseCol(
   }
   
   std::string const name = TRI_ObjectToString(args[0]);
-  if (ExecContext::CURRENT_EXECCONTEXT != nullptr) {
-    AuthLevel level = ExecContext::CURRENT_EXECCONTEXT->authContext()->databaseAuthLevel();
-    AuthLevel level2 = ExecContext::CURRENT_EXECCONTEXT->authContext()->collectionAuthLevel(name);
+  if (ExecContext::CURRENT != nullptr) {
+    AuthenticationFeature* auth = AuthenticationFeature::INSTANCE;
+    TRI_ASSERT(auth != nullptr);
+    AuthLevel level = ExecContext::CURRENT->databaseAuthLevel();
+    AuthLevel level2 = auth->canUseCollection(ExecContext::CURRENT->user(),
+                                              ExecContext::CURRENT->database(),
+                                              name);
     if (level != AuthLevel::RW || level2 != AuthLevel::RW) {
       TRI_V8_THROW_EXCEPTION(TRI_ERROR_FORBIDDEN);
     }
@@ -2741,10 +2747,10 @@ static void JS_TruncateVocbaseCol(
   }
 
   AuthenticationFeature* auth = FeatureCacheFeature::instance()->authenticationFeature();
-  if (auth->isActive() && ExecContext::CURRENT_EXECCONTEXT != nullptr) {
+  if (auth->isActive() && ExecContext::CURRENT != nullptr) {
     CollectionNameResolver resolver(collection->vocbase());
     std::string const cName = resolver.getCollectionNameCluster(collection->cid());
-    AuthLevel level = auth->canUseCollection(ExecContext::CURRENT_EXECCONTEXT->user(),
+    AuthLevel level = auth->canUseCollection(ExecContext::CURRENT->user(),
                                              collection->vocbase()->name(), cName);
     if (level != AuthLevel::RW) {
       TRI_V8_THROW_EXCEPTION(TRI_ERROR_FORBIDDEN);
@@ -2961,8 +2967,12 @@ static void JS_CollectionVocbase(
   arangodb::LogicalCollection const* collection = nullptr;
   
   std::string const name = TRI_ObjectToString(val);
-  if (ExecContext::CURRENT_EXECCONTEXT != nullptr) {
-    auto level = ExecContext::CURRENT_EXECCONTEXT->authContext()->collectionAuthLevel(name);
+  if (ExecContext::CURRENT != nullptr) {
+    AuthenticationFeature* auth = AuthenticationFeature::INSTANCE;
+    TRI_ASSERT(auth != nullptr);
+    AuthLevel level = auth->canUseCollection(ExecContext::CURRENT->user(),
+                                             ExecContext::CURRENT->database(),
+                                             name);
     if (level == AuthLevel::NONE) {
       TRI_V8_THROW_EXCEPTION(TRI_ERROR_FORBIDDEN);
     }
@@ -3035,8 +3045,8 @@ static void JS_CollectionsVocbase(
   for (size_t i = 0; i < n; ++i) {
     auto collection = colls[i];
   
-    if (auth->isActive() && ExecContext::CURRENT_EXECCONTEXT != nullptr) {
-      AuthLevel level = auth->canUseCollection(ExecContext::CURRENT_EXECCONTEXT->user(),
+    if (auth->isActive() && ExecContext::CURRENT != nullptr) {
+      AuthLevel level = auth->canUseCollection(ExecContext::CURRENT->user(),
                              vocbase->name(), collection->name());
       if (level == AuthLevel::NONE) {
         continue;

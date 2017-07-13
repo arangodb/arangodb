@@ -69,8 +69,7 @@ RestStatus RestUsersHandler::execute() {
 
 bool RestUsersHandler::isSystemUser() const {
   if (_request->execContext() != nullptr) {
-    return _request->execContext()->authContext()->systemAuthLevel() ==
-           AuthLevel::RW;
+    return _request->execContext()->systemAuthLevel() == AuthLevel::RW;
   }
   // if authentication is deactivated authorize anyway
   return !FeatureCacheFeature::instance()->authenticationFeature()->isActive();
@@ -105,7 +104,7 @@ RestStatus RestUsersHandler::getRequest(AuthInfo* authInfo) {
   } else if (suffixes.size() == 1) {
     std::string const& user = suffixes[0];
     if (canAccessUser(user)) {
-      VPackBuilder doc = authInfo->getUser(user);
+      VPackBuilder doc = authInfo->serializeUser(user);
       generateUserResult(ResponseCode::OK, doc);
     } else {
       generateError(ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN);
@@ -128,40 +127,45 @@ RestStatus RestUsersHandler::getRequest(AuthInfo* authInfo) {
         // return list of databases
         VPackBuilder data;
         data.openObject();
-        DatabaseFeature::DATABASE->enumerateDatabases([&](
-            TRI_vocbase_t* vocbase) {
-          std::shared_ptr<AuthContext> context =
-              authInfo->getAuthContext(user, vocbase->name());
-          AuthLevel lvl = authInfo->canUseDatabase(user, vocbase->name());
-          std::string str = "undefined";
-          if (context != authInfo->noneAuthContext()) {
-            str = convertFromAuthLevel(lvl);
-          }
+        authInfo->accessUser(user, [&](AuthUserEntry const& entry) {
+          DatabaseFeature::DATABASE->enumerateDatabases([&](
+              TRI_vocbase_t* vocbase) {
 
+            AuthLevel lvl = entry.databaseAuthLevel(vocbase->name());
+            std::string str = "undefined";
+            if (entry.hasSpecificDatabase(vocbase->name())) {
+              str = convertFromAuthLevel(lvl);
+            }
+
+            if (full) {
+              VPackObjectBuilder b(&data, vocbase->name(), true);
+              data.add("permission", VPackValue(str));
+              VPackObjectBuilder b2(&data, "collections", true);
+              methods::Collections::enumerateCollections(
+                  vocbase, [&](LogicalCollection* c) {
+                    if (entry.hasSpecificCollection(vocbase->name(),
+                                                    c->name())) {
+                      lvl =
+                          entry.collectionAuthLevel(vocbase->name(), c->name());
+                      data.add(c->name(),
+                               VPackValue(convertFromAuthLevel(lvl)));
+                    } else {
+                      data.add(c->name(), VPackValue("undefined"));
+                    }
+                  });
+              lvl = authInfo->canUseCollection(user, vocbase->name(), "*");
+              data.add("*", VPackValue(convertFromAuthLevel(lvl)));
+            } else if (lvl != AuthLevel::NONE) {  // hide db's without access
+              data.add(vocbase->name(), VPackValue(str));
+            }
+          });
           if (full) {
-            VPackObjectBuilder b(&data, vocbase->name(), true);
-            data.add("permission", VPackValue(str));
-            VPackObjectBuilder b2(&data, "collections", true);
-            methods::Collections::enumerateCollections(
-                vocbase, [&](LogicalCollection* c) {
-                  if (context->hasSpecificCollection(c->name())) {
-                    lvl = context->collectionAuthLevel(c->name());
-                    data.add(c->name(), VPackValue(convertFromAuthLevel(lvl)));
-                  } else {
-                    data.add(c->name(), VPackValue("undefined"));
-                  }
-                });
-            lvl = authInfo->canUseCollection(user, vocbase->name(), "*");
-            data.add("*", VPackValue(convertFromAuthLevel(lvl)));
-          } else if (lvl != AuthLevel::NONE) {  // hide db's without access
-            data.add(vocbase->name(), VPackValue(str));
+            AuthLevel lvl = authInfo->canUseDatabase(user, "*");
+            data("*", VPackValue(VPackValueType::Object))(
+                "permission", VPackValue(convertFromAuthLevel(lvl)))();
           }
         });
-        if (full) {
-          AuthLevel lvl = authInfo->canUseDatabase(user, "*");
-          data("*", VPackValue(VPackValueType::Object))(
-              "permission", VPackValue(convertFromAuthLevel(lvl)))();
-        }
+
         data.close();
         generateSuccess(ResponseCode::OK, data.slice());
       } else if (suffixes.size() == 3) {
@@ -248,7 +252,7 @@ RestStatus RestUsersHandler::postRequest(AuthInfo* authInfo) {
       // create user
       Result r = StoreUser(authInfo, 0, user, parsedBody->slice());
       if (r.ok()) {
-        VPackBuilder doc = authInfo->getUser(user);
+        VPackBuilder doc = authInfo->serializeUser(user);
         generateUserResult(ResponseCode::CREATED, doc);
       } else {
         generateError(r);
@@ -292,7 +296,7 @@ RestStatus RestUsersHandler::putRequest(AuthInfo* authInfo) {
     if (canAccessUser(user)) {
       Result r = StoreUser(authInfo, 1, user, parsedBody->slice());
       if (r.ok()) {
-        VPackBuilder doc = authInfo->getUser(user);
+        VPackBuilder doc = authInfo->serializeUser(user);
         generateUserResult(ResponseCode::OK, doc);
       } else {
         generateError(r);
@@ -311,16 +315,17 @@ RestStatus RestUsersHandler::putRequest(AuthInfo* authInfo) {
         generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_FORBIDDEN);
         return RestStatus::DONE;
       }
-      
+
       if (!parsedBody->slice().isObject() ||
           !parsedBody->slice().get("grant").isString()) {
         generateError(rest::ResponseCode::BAD, TRI_ERROR_BAD_PARAMETER);
         return RestStatus::DONE;
       }
-      
+
       VPackSlice grant = parsedBody->slice().get("grant");
-      AuthLevel lvl = convertToAuthLevel(grant);;
-      
+      AuthLevel lvl = convertToAuthLevel(grant);
+      ;
+
       // contains response in case of success
       VPackBuilder b;
       b(VPackValue(VPackValueType::Object));
@@ -384,7 +389,7 @@ RestStatus RestUsersHandler::patchRequest(AuthInfo* authInfo) {
       // update a user
       Result r = StoreUser(authInfo, 2, user, parsedBody->slice());
       if (r.ok()) {
-        VPackBuilder doc = authInfo->getUser(user);
+        VPackBuilder doc = authInfo->serializeUser(user);
         generateUserResult(ResponseCode::OK, doc);
       } else {
         generateError(r);
@@ -406,7 +411,7 @@ RestStatus RestUsersHandler::deleteRequest(AuthInfo* authInfo) {
       generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_FORBIDDEN);
       return RestStatus::DONE;
     }
-    
+
     std::string const& user = suffixes[0];
     Result r = authInfo->removeUser(user);
     if (r.ok()) {
@@ -440,7 +445,7 @@ RestStatus RestUsersHandler::deleteRequest(AuthInfo* authInfo) {
         generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_FORBIDDEN);
         return RestStatus::DONE;
       }
-      
+
       Result r = authInfo->updateUser(user, [&](AuthUserEntry& entry) {
         if (coll.empty()) {
           entry.removeDatabase(db);

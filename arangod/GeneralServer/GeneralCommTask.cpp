@@ -360,16 +360,20 @@ rest::ResponseCode GeneralCommTask::canAccessPath(GeneralRequest* request) const
   }
   
   std::string const& path = request->requestPath();
-  rest::ResponseCode result = request->authorized() ?rest::ResponseCode::OK :
+  rest::ResponseCode result = request->authorized() ? rest::ResponseCode::OK :
     rest::ResponseCode::UNAUTHORIZED;
   
   // mop: inside authenticateRequest() request->user will be populated
   bool forceOpen = false;  
   if (request->authorized() && !request->user().empty()) {
-    auto authContext = _authentication->authInfo()->getAuthContext(
-                            request->user(), request->databaseName());
+    AuthLevel sysLevel = _authentication->canUseDatabase(request->user(),
+                                                         TRI_VOC_SYSTEM_DATABASE);
+    AuthLevel dbLevel = _authentication->canUseDatabase(request->user(),
+                                                        request->databaseName());
     request->setExecContext(new ExecContext(request->user(),
-                                            request->databaseName(), authContext));
+                                            request->databaseName(),
+                                            sysLevel,
+                                            dbLevel));
   }
   
   if (!request->authorized()) {

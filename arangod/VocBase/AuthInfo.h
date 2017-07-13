@@ -31,8 +31,8 @@
 #include "Basics/Mutex.h"
 #include "Basics/ReadWriteLock.h"
 #include "Basics/Result.h"
-#include "GeneralServer/AuthenticationHandler.h"
 #include "Rest/CommonDefines.h"
+#include "Utils/Authentication.h"
 #include "Utils/ExecContext.h"
 #include "VocBase/AuthUserEntry.h"
 
@@ -41,8 +41,6 @@
 #include <chrono>
 
 namespace arangodb {
-
-class AuthContext;
 
 class AuthResult {
  public:
@@ -88,7 +86,9 @@ class AuthInfo {
   Result enumerateUsers(std::function<void(AuthUserEntry&)> const& func);
   Result updateUser(std::string const& username,
                     std::function<void(AuthUserEntry&)> const&);
-  velocypack::Builder getUser(std::string const& user);
+  Result accessUser(std::string const& username,
+                  std::function<void(AuthUserEntry const&)> const&);
+  velocypack::Builder serializeUser(std::string const& user);
   Result removeUser(std::string const& user);
 
   velocypack::Builder getConfigData(std::string const& user);
@@ -112,11 +112,9 @@ class AuthInfo {
   std::string jwtSecret();
   std::string generateJwt(VPackBuilder const&);
   std::string generateRawJwt(VPackBuilder const&);
-
-  std::shared_ptr<AuthContext> getAuthContext(std::string const& username,
-                                              std::string const& database);
-
-  std::shared_ptr<AuthContext> noneAuthContext() { return _noneAuthContext; }
+  /*
+    std::shared_ptr<AuthContext> getAuthContext(std::string const& username,
+                                                std::string const& database);*/
 
  private:
   void loadFromDB();
@@ -139,7 +137,6 @@ class AuthInfo {
   std::atomic<bool> _outdated;
 
   std::unordered_map<std::string, AuthUserEntry> _authInfo;
-  std::shared_ptr<AuthContext> _noneAuthContext;
   std::unordered_map<std::string, arangodb::AuthResult> _authBasicCache;
   arangodb::basics::LruCache<std::string, arangodb::AuthJwtResult>
       _authJwtCache;

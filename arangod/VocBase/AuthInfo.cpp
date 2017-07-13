@@ -38,7 +38,6 @@
 #include "Logger/Logger.h"
 #include "Random/UniformCharacter.h"
 #include "RestServer/DatabaseFeature.h"
-#include "RestServer/FeatureCacheFeature.h"
 #include "Ssl/SslInterface.h"
 #include "Transaction/StandaloneContext.h"
 #include "Utils/OperationOptions.h"
@@ -57,9 +56,6 @@ using namespace arangodb::rest;
 
 AuthInfo::AuthInfo(std::unique_ptr<AuthenticationHandler>&& handler)
     : _outdated(true),
-      _noneAuthContext(std::make_shared<AuthContext>(
-          "", AuthLevel::NONE, std::unordered_map<std::string, AuthLevel>(
-                                   {{"*", AuthLevel::NONE}}))),
       _authJwtCache(16384),
       _jwtSecret(""),
       _queryRegistry(nullptr),
@@ -129,9 +125,9 @@ static std::shared_ptr<VPackBuilder> QueryAllUsers(
 
   // we cannot set this execution context, otherwise the transaction
   // will ask us again for permissions and we get a deadlock
-  ExecContext* oldExe = ExecContext::CURRENT_EXECCONTEXT;
-  ExecContext::CURRENT_EXECCONTEXT = nullptr;
-  TRI_DEFER(ExecContext::CURRENT_EXECCONTEXT = oldExe);
+  ExecContext* oldExe = ExecContext::CURRENT;
+  ExecContext::CURRENT = nullptr;
+  TRI_DEFER(ExecContext::CURRENT = oldExe);
 
   std::string const queryStr("FOR user IN _users RETURN user");
   auto emptyBuilder = std::make_shared<VPackBuilder>();
@@ -172,9 +168,9 @@ static VPackBuilder QueryUser(aql::QueryRegistry* queryRegistry,
 
   // we cannot set this execution context, otherwise the transaction
   // will ask us again for permissions and we get a deadlock
-  ExecContext* oldExe = ExecContext::CURRENT_EXECCONTEXT;
-  ExecContext::CURRENT_EXECCONTEXT = nullptr;
-  TRI_DEFER(ExecContext::CURRENT_EXECCONTEXT = oldExe);
+  ExecContext* oldExe = ExecContext::CURRENT;
+  ExecContext::CURRENT = nullptr;
+  TRI_DEFER(ExecContext::CURRENT = oldExe);
 
   std::string const queryStr("FOR u IN _users FILTER u.user == @name RETURN u");
   auto emptyBuilder = std::make_shared<VPackBuilder>();
@@ -303,9 +299,9 @@ Result AuthInfo::storeUserInternal(AuthUserEntry const& entry, bool replace) {
 
   // we cannot set this execution context, otherwise the transaction
   // will ask us again for permissions and we get a deadlock
-  ExecContext* oldExe = ExecContext::CURRENT_EXECCONTEXT;
-  ExecContext::CURRENT_EXECCONTEXT = nullptr;
-  TRI_DEFER(ExecContext::CURRENT_EXECCONTEXT = oldExe);
+  ExecContext* oldExe = ExecContext::CURRENT;
+  ExecContext::CURRENT = nullptr;
+  TRI_DEFER(ExecContext::CURRENT = oldExe);
 
   std::shared_ptr<transaction::Context> ctx(
       new transaction::StandaloneContext(vocbase));
@@ -444,9 +440,9 @@ static Result UpdateUser(VPackSlice const& user) {
 
   // we cannot set this execution context, otherwise the transaction
   // will ask us again for permissions and we get a deadlock
-  ExecContext* oldExe = ExecContext::CURRENT_EXECCONTEXT;
-  ExecContext::CURRENT_EXECCONTEXT = nullptr;
-  TRI_DEFER(ExecContext::CURRENT_EXECCONTEXT = oldExe);
+  ExecContext* oldExe = ExecContext::CURRENT;
+  ExecContext::CURRENT = nullptr;
+  TRI_DEFER(ExecContext::CURRENT = oldExe);
 
   std::shared_ptr<transaction::Context> ctx(
       new transaction::StandaloneContext(vocbase));
@@ -466,14 +462,16 @@ static Result UpdateUser(VPackSlice const& user) {
 Result AuthInfo::enumerateUsers(
     std::function<void(AuthUserEntry&)> const& func) {
   // we require an consisten view on the user object
-  WRITE_LOCKER(guard, _authInfoLock);
-  for (auto& it : _authInfo) {
-    TRI_ASSERT(!it.second.key().empty());
-    func(it.second);
-    VPackBuilder data = it.second.toVPackBuilder();
-    Result r = UpdateUser(data.slice());
-    if (!r.ok()) {
-      return r;
+  {
+    WRITE_LOCKER(guard, _authInfoLock);
+    for (auto& it : _authInfo) {
+      TRI_ASSERT(!it.second.key().empty());
+      func(it.second);
+      VPackBuilder data = it.second.toVPackBuilder();
+      Result r = UpdateUser(data.slice());
+      if (!r.ok()) {
+        return r;
+      }
     }
   }
   // we need to reload data after the next callback
@@ -499,13 +497,25 @@ Result AuthInfo::updateUser(std::string const& user,
   }
 
   Result r = UpdateUser(data.slice());
-
   // we need to reload data after the next callback
-  reloadAllUsers();
+  if (r.ok()) {
+    reloadAllUsers();
+  }
   return r;
 }
 
-VPackBuilder AuthInfo::getUser(std::string const& user) {
+Result AuthInfo::accessUser(std::string const& user,
+                            std::function<void(AuthUserEntry const&)> const& func) {
+  READ_LOCKER(guard, _authInfoLock);
+  auto it = _authInfo.find(user);
+  if (it != _authInfo.end()) {
+    func(it->second);
+    return TRI_ERROR_NO_ERROR;
+  }
+  return TRI_ERROR_USER_NOT_FOUND;
+}
+
+VPackBuilder AuthInfo::serializeUser(std::string const& user) {
   VPackBuilder doc = QueryUser(_queryRegistry, user);
   VPackBuilder result;
   if (!doc.isEmpty()) {
@@ -521,8 +531,8 @@ Result AuthInfo::removeUser(std::string const& user) {
   if (user == "root") {
     return TRI_ERROR_FORBIDDEN;
   }
-
   loadFromDB();
+
   WRITE_LOCKER(guard, _authInfoLock);
   auto it = _authInfo.find(user);
   if (it == _authInfo.end()) {
@@ -537,9 +547,9 @@ Result AuthInfo::removeUser(std::string const& user) {
 
   // we cannot set this execution context, otherwise the transaction
   // will ask us again for permissions and we get a deadlock
-  ExecContext* oldExe = ExecContext::CURRENT_EXECCONTEXT;
-  ExecContext::CURRENT_EXECCONTEXT = nullptr;
-  TRI_DEFER(ExecContext::CURRENT_EXECCONTEXT = oldExe);
+  ExecContext* oldExe = ExecContext::CURRENT;
+  ExecContext::CURRENT = nullptr;
+  TRI_DEFER(ExecContext::CURRENT = oldExe);
 
   std::shared_ptr<transaction::Context> ctx(
       new transaction::StandaloneContext(vocbase));
@@ -668,16 +678,28 @@ AuthResult AuthInfo::checkPassword(std::string const& username,
 // public
 AuthLevel AuthInfo::canUseDatabase(std::string const& username,
                                    std::string const& dbname) {
-  return getAuthContext(username, dbname)->databaseAuthLevel();
+  loadFromDB();
+  READ_LOCKER(guard, _authInfoLock);
+  auto it = _authInfo.find(username);
+  if (it != _authInfo.end()) {
+    return it->second.databaseAuthLevel(dbname);
+  }
+  return AuthLevel::NONE;
 }
 
 AuthLevel AuthInfo::canUseCollection(std::string const& username,
                                      std::string const& dbname,
                                      std::string const& coll) {
-  return getAuthContext(username, dbname)->collectionAuthLevel(coll);
+  loadFromDB();
+  READ_LOCKER(guard, _authInfoLock);
+  auto it = _authInfo.find(username);
+  if (it != _authInfo.end()) {
+    return it->second.collectionAuthLevel(dbname, coll);
+  }
+  return AuthLevel::NONE;
 }
 
-// public called from VocbaseContext.cpp
+// public called from HttpCommTask.cpp and VstCommTask.cpp
 AuthResult AuthInfo::checkAuthentication(AuthenticationMethod authType,
                                          std::string const& secret) {
   loadFromDB();
@@ -972,17 +994,4 @@ std::string AuthInfo::generateJwt(VPackBuilder const& payload) {
     }
   }
   return generateRawJwt(bodyBuilder);
-}
-
-std::shared_ptr<AuthContext> AuthInfo::getAuthContext(
-    std::string const& username, std::string const& database) {
-  loadFromDB();
-
-  READ_LOCKER(guard, _authInfoLock);
-  auto it = _authInfo.find(username);
-  if (it == _authInfo.end()) {
-    return _noneAuthContext;
-  }
-  std::shared_ptr<AuthContext> c = it->second.getAuthContext(database);
-  return c ? c : _noneAuthContext;
 }

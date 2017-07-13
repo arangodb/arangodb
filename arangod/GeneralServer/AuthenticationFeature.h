@@ -26,7 +26,6 @@
 #include "ApplicationFeatures/ApplicationFeature.h"
 #include "VocBase/AuthInfo.h"
 
-
 namespace arangodb {
 class AuthenticationFeature final
     : public application_features::ApplicationFeature {
@@ -36,6 +35,7 @@ class AuthenticationFeature final
  public:
   explicit AuthenticationFeature(application_features::ApplicationServer*);
   ~AuthenticationFeature();
+  static AuthenticationFeature* INSTANCE;
 
  public:
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
@@ -44,11 +44,11 @@ class AuthenticationFeature final
   void start() override final;
   void stop() override final;
   void unprepare() override final;
-      
+
   bool isActive() const { return _active && isEnabled(); }
 
  private:
-  AuthInfo *_authInfo;
+  AuthInfo* _authInfo;
   bool _authenticationUnixSockets;
   bool _authenticationSystemOnly;
 
@@ -61,10 +61,14 @@ class AuthenticationFeature final
   std::string jwtSecret() { return authInfo()->jwtSecret(); }
   std::string generateNewJwtSecret();
   bool hasUserdefinedJwt() { return !_jwtSecretProgramOption.empty(); }
-  void setJwtSecret(std::string const& jwtSecret) { authInfo()->setJwtSecret(jwtSecret); }
+  void setJwtSecret(std::string const& jwtSecret) {
+    authInfo()->setJwtSecret(jwtSecret);
+  }
   AuthInfo* authInfo();
-  AuthLevel canUseDatabase(std::string const& username, std::string const& dbname);
-  AuthLevel canUseCollection(std::string const& username, std::string const& dbname,
+  AuthLevel canUseDatabase(std::string const& username,
+                           std::string const& dbname);
+  AuthLevel canUseCollection(std::string const& username,
+                             std::string const& dbname,
                              std::string const& collection);
 };
 };

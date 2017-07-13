@@ -23,19 +23,21 @@
 #include "AuthenticationFeature.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
-#include "GeneralServer/AuthenticationHandler.h"
 #include "Logger/Logger.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "Random/RandomGenerator.h"
 #include "RestServer/QueryRegistryFeature.h"
+#include "Utils/Authentication.h"
 
 #if USE_ENTERPRISE
-#include "Enterprise/Ldap/LdapFeature.h"
 #include "Enterprise/Ldap/LdapAuthenticationHandler.h"
+#include "Enterprise/Ldap/LdapFeature.h"
 #endif
 
 using namespace arangodb;
 using namespace arangodb::options;
+
+AuthenticationFeature* AuthenticationFeature::INSTANCE = nullptr;
 
 AuthenticationFeature::AuthenticationFeature(
     application_features::ApplicationServer* server)
@@ -45,7 +47,6 @@ AuthenticationFeature::AuthenticationFeature(
       _authenticationSystemOnly(true),
       _jwtSecretProgramOption(""),
       _active(true) {
-
   setOptional(true);
   requiresElevatedPrivileges(false);
   startsAfter("Random");
@@ -54,9 +55,7 @@ AuthenticationFeature::AuthenticationFeature(
 #endif
 }
 
-AuthenticationFeature::~AuthenticationFeature() {
-  delete _authInfo;
-}
+AuthenticationFeature::~AuthenticationFeature() { delete _authInfo; }
 
 void AuthenticationFeature::collectOptions(
     std::shared_ptr<ProgramOptions> options) {
@@ -94,14 +93,13 @@ void AuthenticationFeature::collectOptions(
   options->addOption("--server.jwt-secret",
                      "secret to use when doing jwt authentication",
                      new StringParameter(&_jwtSecretProgramOption));
-
 }
 
 void AuthenticationFeature::validateOptions(std::shared_ptr<ProgramOptions>) {
   if (!_jwtSecretProgramOption.empty()) {
     if (_jwtSecretProgramOption.length() > _maxSecretLength) {
-      LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "Given JWT secret too long. Max length is "
-               << _maxSecretLength;
+      LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+          << "Given JWT secret too long. Max length is " << _maxSecretLength;
       FATAL_ERROR_EXIT();
     }
   }
@@ -121,7 +119,8 @@ void AuthenticationFeature::prepare() {
   if (isEnabled()) {
     std::unique_ptr<AuthenticationHandler> handler;
 #if USE_ENTERPRISE
-    if (application_features::ApplicationServer::getFeature<LdapFeature>("Ldap")->isEnabled()) {
+    if (application_features::ApplicationServer::getFeature<LdapFeature>("Ldap")
+            ->isEnabled()) {
       handler.reset(new LdapAuthenticationHandler());
     } else {
       handler.reset(new DefaultAuthenticationHandler());
@@ -130,7 +129,7 @@ void AuthenticationFeature::prepare() {
     handler.reset(new DefaultAuthenticationHandler());
 #endif
     _authInfo = new AuthInfo(std::move(handler));
-    
+
     std::string jwtSecret = _jwtSecretProgramOption;
     if (jwtSecret.empty()) {
       jwtSecret = generateNewJwtSecret();
@@ -140,13 +139,16 @@ void AuthenticationFeature::prepare() {
 }
 
 void AuthenticationFeature::start() {
+  INSTANCE = this;
+
   std::ostringstream out;
 
   out << "Authentication is turned " << (_active ? "on" : "off");
 
   if (isEnabled()) {
     auto queryRegistryFeature =
-      application_features::ApplicationServer::getFeature<QueryRegistryFeature>("QueryRegistry");
+        application_features::ApplicationServer::getFeature<
+            QueryRegistryFeature>("QueryRegistry");
     _authInfo->setQueryRegistry(queryRegistryFeature->queryRegistry());
 
     if (_active && _authenticationSystemOnly) {
@@ -177,17 +179,12 @@ AuthLevel AuthenticationFeature::canUseCollection(std::string const& username,
   if (!isActive()) {
     return AuthLevel::RW;
   }
-  
+
   return authInfo()->canUseCollection(username, dbname, coll);
 }
 
-AuthInfo* AuthenticationFeature::authInfo() {
-  return _authInfo;
-}
+AuthInfo* AuthenticationFeature::authInfo() { return _authInfo; }
 
-void AuthenticationFeature::unprepare() {
-}
+void AuthenticationFeature::unprepare() {}
 
-void AuthenticationFeature::stop() {
-}
-
+void AuthenticationFeature::stop() { INSTANCE = nullptr; }

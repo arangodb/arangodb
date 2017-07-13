@@ -32,7 +32,6 @@
 #include "Cluster/ClusterComm.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ServerState.h"
-#include "GeneralServer/AuthenticationFeature.h"
 #include "Rest/HttpRequest.h"
 #include "RestServer/DatabaseFeature.h"
 //#include "V8/v8-conv.h"
@@ -289,9 +288,9 @@ Result Indexes::ensureIndexCoordinator(
 Result Indexes::ensureIndex(arangodb::LogicalCollection* collection,
                             VPackSlice const& definition, bool create,
                             VPackBuilder& output) {
-  if (ExecContext::CURRENT_EXECCONTEXT != nullptr) {
+  if (ExecContext::CURRENT != nullptr) {
     AuthLevel level =
-        ExecContext::CURRENT_EXECCONTEXT->authContext()->databaseAuthLevel();
+        ExecContext::CURRENT->databaseAuthLevel();
     if (level != AuthLevel::RW) {
       return TRI_ERROR_FORBIDDEN;
     }
@@ -475,9 +474,9 @@ Result Indexes::extractHandle(arangodb::LogicalCollection const* collection,
 
 arangodb::Result Indexes::drop(arangodb::LogicalCollection const* collection,
                                VPackSlice const& indexArg) {
-  if (ExecContext::CURRENT_EXECCONTEXT != nullptr) {
+  if (ExecContext::CURRENT != nullptr) {
     AuthLevel level =
-        ExecContext::CURRENT_EXECCONTEXT->authContext()->databaseAuthLevel();
+        ExecContext::CURRENT->databaseAuthLevel();
     if (level != AuthLevel::RW) {
       return TRI_ERROR_FORBIDDEN;
     }
