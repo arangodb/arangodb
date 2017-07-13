@@ -319,6 +319,7 @@ arangodb::Result Databases::create(std::string const& dbName,
       auth->authInfo()->updateUser(ExecContext::CURRENT->user(),
                                    [&](AuthUserEntry& entry) {
                                      entry.grantDatabase(dbName, AuthLevel::RW);
+                                     entry.grantCollection(dbName, "*", AuthLevel::RW);
                                    });
     }
 
