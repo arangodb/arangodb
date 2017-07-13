@@ -129,7 +129,7 @@ function replicationStatic (options) {
           var users = require("@arangodb/users");
           users.save("replicator-user", "replicator-password", true);
           users.grantDatabase("replicator-user", "_system");
-          users.grantCollection("replicator-user", "_system", "*");
+          users.grantCollection("replicator-user", "_system", "*", "rw");
           users.reload();
           `
         ]);
