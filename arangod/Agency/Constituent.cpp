@@ -705,6 +705,7 @@ void Constituent::run() {
         if (isTimeout) {
           LOG_TOPIC(TRACE, Logger::AGENCY) << "timeout, calling an election";
           candidate();
+          _agent->unprepareLead();
         }
       } else if (_role == CANDIDATE) {
         callElection();  // Run for office

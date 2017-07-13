@@ -783,7 +783,7 @@ int countOnCoordinator(std::string const& dbname, std::string const& collname,
                           StringUtils::urlEncode(p.first) + "/count", body);
   }
   size_t nrDone = 0;
-  cc->performRequests(requests, CL_DEFAULT_TIMEOUT, nrDone, Logger::QUERIES);
+  cc->performRequests(requests, CL_DEFAULT_TIMEOUT, nrDone, Logger::QUERIES, true);
   for (auto& req : requests) {
     auto& res = req.result;
     if (res.status == CL_COMM_RECEIVED) {
@@ -921,7 +921,7 @@ int createDocumentOnCoordinator(
   
   // Perform the requests
   size_t nrDone = 0;
-  cc->performRequests(requests, CL_DEFAULT_TIMEOUT, nrDone, Logger::COMMUNICATION);
+  cc->performRequests(requests, CL_DEFAULT_TIMEOUT, nrDone, Logger::COMMUNICATION, true);
 
   // Now listen to the results:
   if (!useMultiple) {
@@ -1085,7 +1085,7 @@ int deleteDocumentOnCoordinator(
 
     // Perform the requests
     size_t nrDone = 0;
-    cc->performRequests(requests, CL_DEFAULT_TIMEOUT, nrDone, Logger::COMMUNICATION);
+    cc->performRequests(requests, CL_DEFAULT_TIMEOUT, nrDone, Logger::COMMUNICATION, true);
 
     // Now listen to the results:
     if (!useMultiple) {
@@ -1134,7 +1134,7 @@ int deleteDocumentOnCoordinator(
 
   // Perform the requests
   size_t nrDone = 0;
-  cc->performRequests(requests, CL_DEFAULT_TIMEOUT, nrDone, Logger::COMMUNICATION);
+  cc->performRequests(requests, CL_DEFAULT_TIMEOUT, nrDone, Logger::COMMUNICATION, true);
 
   // Now listen to the results:
   if (!useMultiple) {
@@ -1381,7 +1381,7 @@ int getDocumentOnCoordinator(
 
     // Perform the requests
     size_t nrDone = 0;
-    cc->performRequests(requests, CL_DEFAULT_TIMEOUT, nrDone, Logger::COMMUNICATION);
+    cc->performRequests(requests, CL_DEFAULT_TIMEOUT, nrDone, Logger::COMMUNICATION, true);
 
     // Now listen to the results:
     if (!useMultiple) {
@@ -1451,7 +1451,7 @@ int getDocumentOnCoordinator(
 
   // Perform the requests
   size_t nrDone = 0;
-  cc->performRequests(requests, CL_DEFAULT_TIMEOUT, nrDone, Logger::COMMUNICATION);
+  cc->performRequests(requests, CL_DEFAULT_TIMEOUT, nrDone, Logger::COMMUNICATION, true);
 
   // Now listen to the results:
   if (!useMultiple) {
@@ -1565,7 +1565,7 @@ int fetchEdgesFromEngines(
 
   // Perform the requests
   size_t nrDone = 0;
-  cc->performRequests(requests, CL_DEFAULT_TIMEOUT, nrDone, Logger::COMMUNICATION);
+  cc->performRequests(requests, CL_DEFAULT_TIMEOUT, nrDone, Logger::COMMUNICATION, false);
 
   result.clear();
   // Now listen to the results:
@@ -1657,7 +1657,7 @@ void fetchVerticesFromEngines(
 
   // Perform the requests
   size_t nrDone = 0;
-  cc->performRequests(requests, CL_DEFAULT_TIMEOUT, nrDone, Logger::COMMUNICATION);
+  cc->performRequests(requests, CL_DEFAULT_TIMEOUT, nrDone, Logger::COMMUNICATION, false);
 
   // Now listen to the results:
   for (auto const& req : requests) {
@@ -1756,7 +1756,7 @@ void fetchVerticesFromEngines(
 
   // Perform the requests
   size_t nrDone = 0;
-  cc->performRequests(requests, CL_DEFAULT_TIMEOUT, nrDone, Logger::COMMUNICATION);
+  cc->performRequests(requests, CL_DEFAULT_TIMEOUT, nrDone, Logger::COMMUNICATION, false);
 
   // Now listen to the results:
   for (auto const& req : requests) {
@@ -1857,7 +1857,7 @@ int getFilteredEdgesOnCoordinator(
 
   // Perform the requests
   size_t nrDone = 0;
-  cc->performRequests(requests, CL_DEFAULT_TIMEOUT, nrDone, Logger::COMMUNICATION);
+  cc->performRequests(requests, CL_DEFAULT_TIMEOUT, nrDone, Logger::COMMUNICATION, true);
 
   size_t filtered = 0;
   size_t scannedIndex = 0;
@@ -2070,7 +2070,7 @@ int modifyDocumentOnCoordinator(
 
     // Perform the requests
     size_t nrDone = 0;
-    cc->performRequests(requests, CL_DEFAULT_TIMEOUT, nrDone, Logger::COMMUNICATION);
+    cc->performRequests(requests, CL_DEFAULT_TIMEOUT, nrDone, Logger::COMMUNICATION, true);
 
     // Now listen to the results:
     if (!useMultiple) {
@@ -2124,7 +2124,7 @@ int modifyDocumentOnCoordinator(
 
   // Perform the requests
   size_t nrDone = 0;
-  cc->performRequests(requests, CL_DEFAULT_TIMEOUT, nrDone, Logger::COMMUNICATION);
+  cc->performRequests(requests, CL_DEFAULT_TIMEOUT, nrDone, Logger::COMMUNICATION, true);
 
   // Now listen to the results:
   if (!useMultiple) {
@@ -2487,7 +2487,7 @@ int fetchEdgesFromEngines(
 
   // Perform the requests
   size_t nrDone = 0;
-  cc->performRequests(requests, CL_DEFAULT_TIMEOUT, nrDone, Logger::COMMUNICATION);
+  cc->performRequests(requests, CL_DEFAULT_TIMEOUT, nrDone, Logger::COMMUNICATION, false);
 
   result.clear();
   // Now listen to the results:

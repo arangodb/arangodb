@@ -1535,7 +1535,7 @@ int ClusterInfo::setCollectionPropertiesCoordinator(
     loadPlan();
     return TRI_ERROR_NO_ERROR;
   } else {
-    return TRI_ERROR_ARANGO_DATABASE_NOT_FOUND;
+    return TRI_ERROR_CLUSTER_AGENCY_COMMUNICATION_FAILED;
   }
 
   return TRI_ERROR_INTERNAL;
@@ -1604,7 +1604,7 @@ int ClusterInfo::setCollectionStatusCoordinator(
     loadPlan();
     return TRI_ERROR_NO_ERROR;
   } else {
-    return TRI_ERROR_ARANGO_DATABASE_NOT_FOUND;
+    return TRI_ERROR_CLUSTER_AGENCY_COMMUNICATION_FAILED;
   }
 
   return TRI_ERROR_INTERNAL;

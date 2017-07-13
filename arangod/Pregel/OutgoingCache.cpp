@@ -132,7 +132,8 @@ void ArrayOutCache<M>::flushMessages() {
   }
   size_t nrDone = 0;
   ClusterComm::instance()->performRequests(requests, 120, nrDone,
-                                           LogTopic("Pregel message transfer"));
+                                           LogTopic("Pregel message transfer"),
+                                           false);
   Utils::printResponses(requests);
   this->_removeContainedMessages();
 }
@@ -233,7 +234,7 @@ void CombiningOutCache<M>::flushMessages() {
   }
   size_t nrDone = 0;
   ClusterComm::instance()->performRequests(requests, 180, nrDone,
-                                           LogTopic("Pregel"));
+                                           LogTopic("Pregel"), false);
   Utils::printResponses(requests);
   _removeContainedMessages();
 }

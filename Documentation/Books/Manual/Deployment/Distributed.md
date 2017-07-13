@@ -50,16 +50,4 @@ arangod --server.authentication=false --server.endpoint tcp://0.0.0.0:8531 --clu
 
 Obviously, it would no longer be necessary to use different port numbers on different servers. We have chosen to keep all port numbers in comparison to the local setup to minimize the necessary changes.
 
-If you want to setup secondaries, the following commands will do the job:
-
-On 192.168.1.2:
-
-    curl -f -X PUT --data '{"primary": "DBServer001", "oldSecondary": "none", "newSecondary": "Secondary001"}' -H "Content-Type: application/json" http://192.168.1.3:8531/_admin/cluster/replaceSecondary && arangod --server.authentication=false --server.endpoint tcp://0.0.0.0:8629 --cluster.my-id Secondary001 --cluster.my-address tcp://192.168.1.2:8629 --cluster.agency-endpoint tcp://192.168.1.1:5001 --cluster.agency-endpoint tcp://192.168.1.2:5001 --cluster.agency-endpoint tcp://192.168.1.3:5001 --database.directory secondary1 &
-
-On 192.168.1.1:
-
-    curl -f -X PUT --data '{"primary": "DBServer002", "oldSecondary": "none", "newSecondary": "Secondary002"}' -H "Content-Type: application/json" http://localhost:8531/_admin/cluster/replaceSecondary && arangod --server.authentication=false --server.endpoint tcp://0.0.0.0:8630 --cluster.my-id Secondary002 --cluster.my-address tcp://192.168.1.1:8630 --cluster.agency-endpoint tcp://192.168.1.1:5001 --cluster.agency-endpoint tcp://192.168.1.2:5001 --cluster.agency-endpoint tcp://192.168.1.3:5001 --database.directory secondary2 &
-
-Note that we have started the `Secondary002` on the same machine as `DBServer001` and `Secondary001` on the same machine as `DBServer002` to avoid that a complete pair is lost when a machine fails. Furthermore, note that ArangoDB does not yet perform automatic failover to the secondary, if a primary fails. This only works in the Apache Mesos setting. For synchronous replication, automatic failover always works and you do not need to setup secondaries for this.
-
 After having swallowed these longish commands, we hope that you appreciate the simplicity of the setup with Apache Mesos and DC/OS.
