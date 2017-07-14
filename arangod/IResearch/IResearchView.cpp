@@ -1053,22 +1053,6 @@ IResearchView::SyncState::SyncState(
   }
 }
 
-IResearchView::FlushTransactionPtr IResearchView::flushTransaction() noexcept {
-  WriteMutex mutex(_mutex); // ensure that _memoryNode->_store is not in use
-  SCOPED_LOCK(mutex);
-
-  _toFlush = _memoryNode; // memory store to be flushed into the persisted store
-  _memoryNode = _memoryNode->_next; // switch to the next node
-
-  mutex.unlock(true); // downgrade to a read-lock
-
-  return IResearchView::FlushTransactionPtr(
-    this,
-    [](arangodb::FlushTransaction*){} // empty deleter
-  );
-}
-
-
 IResearchView::TidStore::TidStore(
     transaction::Methods& trx,
     std::function<void(transaction::Methods*)> const& trxCallback
@@ -2324,8 +2308,24 @@ arangodb::Result IResearchView::updateProperties(
 }
 
 void IResearchView::registerFlushCallback() {
-  getFlushFeature().registerCallback(this, [this](){
-    return flushTransaction();
+  getFlushFeature().registerCallback(this, [this]() noexcept {
+    ////////////////////////////////////////////////////////////////////////////////
+    /// @brief opens a flush transaction and returns a control object to be used
+    ///        by FlushThread spawned by FlushFeature
+    /// @returns empty object if something's gone wrong
+    ////////////////////////////////////////////////////////////////////////////////
+    WriteMutex mutex(_mutex); // ensure that _memoryNode->_store is not in use
+    SCOPED_LOCK(mutex);
+
+    _toFlush = _memoryNode; // memory store to be flushed into the persisted store
+    _memoryNode = _memoryNode->_next; // switch to the next node
+
+    mutex.unlock(true); // downgrade to a read-lock
+
+    return IResearchView::FlushTransactionPtr(
+      this,
+      [](arangodb::FlushTransaction*){} // empty deleter
+    );
   });
 
   // noexcept

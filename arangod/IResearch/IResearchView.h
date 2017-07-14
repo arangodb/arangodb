@@ -384,13 +384,6 @@ class IResearchView final: public arangodb::ViewImplementation,
   ////////////////////////////////////////////////////////////////////////////////
   void registerFlushCallback();
 
-  ////////////////////////////////////////////////////////////////////////////////
-  /// @brief opens a flush transaction and returns a control object to be used
-  ///        by FlushThread spawned by FlushFeature
-  /// @returns empty object if something's gone wrong
-  ////////////////////////////////////////////////////////////////////////////////
-  FlushTransactionPtr flushTransaction() noexcept;
-
   MemoryStore& activeMemoryStore() const;
 };
 
