@@ -303,7 +303,7 @@ build-book:
 	else \
 		cd ppbooks/$(NAME); gitbook install -g ; \
 	fi
-	cd ppbooks/$(NAME) && gitbook build ./ ./../../books/$(NAME)
+	cd ppbooks/$(NAME) && gitbook $${GITBOOK_ARGS} build ./ ./../../books/$(NAME)
 	rm -f ./books/$(NAME)/HEADER.html
 	rm -f ./books/$(NAME)/FOOTER.html
 	find ./books/$(NAME)/ -type f -name "*.md" -delete
@@ -314,7 +314,7 @@ build-book:
 build-book-dist:
 	cd ppbooks/${NAME}; for ext in ${OTHER_MIME}; do \
 		OUTPUT="${OUTPUT_DIR}/ArangoDB_${NAME}_${newVersionNumber}.$${ext}"; \
-		if gitbook $${ext} ./ $${OUTPUT}; then \
+		if gitbook $${GITBOOK_ARGS} $${ext} ./ $${OUTPUT}; then \
 			echo "success building $${OUTPUT}"; \
 		else \
 			exit 1; \
