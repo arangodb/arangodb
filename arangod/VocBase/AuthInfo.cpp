@@ -801,14 +801,14 @@ AuthResult AuthInfo::checkAuthenticationJWT(std::string const& jwt) {
   std::string const& signature = parts[2];
 
   if (!validateJwtHeader(header)) {
-    LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "Couldn't validate jwt header "
+    LOG_TOPIC(TRACE, arangodb::Logger::AUTHENTICATION) << "Couldn't validate jwt header "
                                               << header;
     return AuthResult();
   }
 
   AuthJwtResult result = validateJwtBody(body);
   if (!result._authorized) {
-    LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "Couldn't validate jwt body "
+    LOG_TOPIC(TRACE, arangodb::Logger::AUTHENTICATION) << "Couldn't validate jwt body "
                                               << body;
     return AuthResult();
   }
@@ -816,7 +816,7 @@ AuthResult AuthInfo::checkAuthenticationJWT(std::string const& jwt) {
   std::string const message = header + "." + body;
 
   if (!validateJwtHMAC256Signature(message, signature)) {
-    LOG_TOPIC(TRACE, arangodb::Logger::FIXME)
+    LOG_TOPIC(TRACE, arangodb::Logger::AUTHENTICATION)
         << "Couldn't validate jwt signature " << signature << " " << _jwtSecret;
     return AuthResult();
   }
