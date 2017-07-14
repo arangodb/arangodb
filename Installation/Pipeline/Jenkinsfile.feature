@@ -449,7 +449,7 @@ def buildEdition(edition, os) {
         }
     }
 
-    def arch = "build_${edition}_${os}"
+    def arch = "LOG_build_${edition}_${os}"
 
     try {
         try {
@@ -466,7 +466,7 @@ def buildEdition(edition, os) {
         finally {
             if (os == 'linux' || os == 'mac') {
                 sh "mkdir -p ${arch}"
-                sh "for i in log-output/*.log; do test -e \$i && mv \$i ${arch}; done"
+                sh "for i in log-output; do test -e \$i && mv \$i ${arch}; done"
             }
         }
     }
@@ -597,7 +597,7 @@ testsSuccess = [:]
 allTestsSuccessful = true
 
 def testEdition(edition, os, mode, engine) {
-    def arch = "test_${mode}_${edition}_${engine}_${os}"
+    def arch = "LOG_test_${mode}_${edition}_${engine}_${os}"
 
     try {
         try {
@@ -789,7 +789,7 @@ def testResilienceStep(os, engine, foxx) {
 
             if (buildsSuccess[buildName]) {
                 def name = "${os}-${engine}-${foxx}"
-                def arch = "resilience_${foxx}_${engine}_${os}"
+                def arch = "LOG_resilience_${foxx}_${engine}_${os}"
 
                 try {
                     try {
