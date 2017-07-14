@@ -337,9 +337,11 @@ def unstashSourceCode(os) {
 
     if (os == 'linux' || os == 'mac') {
         sh 'unzip -o -q source.zip'
+        sh 'rm -f source.zip'
     }
     else if (os == 'windows') {
         bat 'c:\\cmake\\bin\\cmake -E tar xf source.zip'
+        bat 'del /q /f source.zip'
     }
 }
 
@@ -351,7 +353,7 @@ def stashBuild(edition, os) {
         sh "zip -r -1 -y -q ${name} build-${edition}"
     }
     else if (os == 'windows') {
-        bat "del /F /q ${name}"
+        bat "del /F /Q ${name}"
         bat "c:\\cmake\\bin\\cmake -E tar cf ${name} build"
     }
 
@@ -369,9 +371,11 @@ def unstashBuild(edition, os) {
 
     if (os == 'linux' || os == 'mac') {
         sh "unzip -o -q ${name}"
+        sh "rm -f ${name}"
     }
     else if (os == 'windows') {
         bat "c:\\cmake\\bin\\cmake -E tar xf ${name}"
+        bat "del /F /Q ${name}"
     }
 }
 
@@ -396,16 +400,26 @@ def stashBinaries(edition, os) {
 }
 
 def unstashBinaries(edition, os) {
-    def name = 'binaries-' + edition + '-' + os + '.zip'
+    def name = "binaries-${edition}-${os}.zip"
 
     if (os == 'linux' || os == 'mac') {
         sh 'rm -rf *'
+    }
+    else if (os == 'windows') {
+        bat 'del /F /Q *'
+    }
 
-        lock("${env.BRANCH_NAME}-cache") {
-            scpFromMaster(os, name, name)
-        }
+    lock("${env.BRANCH_NAME}-cache") {
+        scpFromMaster(os, name, name)
+    }
 
-        sh 'unzip -o -q ' + name
+    if (os == 'linux' || os == 'mac') {
+        sh "unzip -o -q  ${name}"
+        sh "del /F /Q ${name}"
+    }
+    else if (os == 'windows') {
+        bat "c:\\cmake\\bin\\cmake -E tar xf ${name}"
+        bat "del /F /Q ${name}"
     }
 }
 
@@ -435,21 +449,31 @@ def buildEdition(edition, os) {
         }
     }
 
+    def arch = "build_${edition}_${os}"
+
     try {
-        if (os == 'linux') {
-            sh "./Installation/Pipeline/build_${edition}_${os}.sh 64"
+        try {
+            if (os == 'linux') {
+                sh "./Installation/Pipeline/build_${edition}_${os}.sh 64"
+            }
+            else if (os == 'mac') {
+                sh "./Installation/Pipeline/build_${edition}_${os}.sh 20"
+            }
+            else if (os == 'windows') {
+                PowerShell(". .\\Installation\\Pipeline\\build_${edition}_${os}.ps1")
+            }
         }
-        else if (os == 'mac') {
-            sh "./Installation/Pipeline/build_${edition}_${os}.sh 20"
-        }
-        else if (os == 'windows') {
-            PowerShell(". .\\Installation\\Pipeline\\build_${edition}_${os}.ps1")
+        finally {
+            if (os == 'linux' || os == 'mac') {
+                sh "mkdir -p ${arch}"
+                sh "for i in log-output/*.log; do test -e \$i && mv \$i ${arch}; done"
+            }
         }
     }
     finally {
         stashBuild(edition, os)
         archiveArtifacts allowEmptyArchive: true,
-                         artifacts: 'log-output/**, *.log, tmp/**/log, tmp/**/log0, tmp/**/log1, tmp/**/log2',
+                         artifacts: "${arch}/**"
                          defaultExcludes: false
     }
 }
@@ -590,7 +614,7 @@ def testEdition(edition, os, mode, engine) {
         finally {
             if (os == 'linux' || os == 'mac') {
                 sh "mkdir -p ${arch}"
-                sh "for i in build log-output core* tmp resilience/core*; do test -e \$i && mv \$i ${arch}; done"
+                sh "for i in build core* logs log-output tmp; do test -e \$i && mv \$i ${arch}; done"
             }
         }
     }
@@ -599,7 +623,7 @@ def testEdition(edition, os, mode, engine) {
     // }
     finally {
         archiveArtifacts allowEmptyArchive: true,
-                         artifacts: "${arch}",
+                         artifacts: "${arch}/**",
                          defaultExcludes: false
     }
 }
@@ -790,7 +814,7 @@ def testResilienceStep(os, engine, foxx) {
                 }
                 finally {
                     archiveArtifacts allowEmptyArchive: true,
-                                     artifacts: "${arch}",
+                                     artifacts: "${arch}/**",
                                      defaultExcludes: false
                 }
             }

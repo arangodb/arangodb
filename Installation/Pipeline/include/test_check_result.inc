@@ -24,4 +24,6 @@ for file in log-output/*/*/stdout; do
     fi
 done
 
+rm -rf "log-output/${base}"
+
 exit $result
