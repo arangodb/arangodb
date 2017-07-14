@@ -467,7 +467,6 @@ AuthLevel AuthUserEntry::collectionAuthLevel(
     std::string const& dbname, std::string const& collectionName) const {
   // disallow access to _system/_users for everyone
   if (collectionName.empty()) {
-    LOG_TOPIC(ERR, Logger::FIXME) << "sdssd";
     return AuthLevel::NONE;
   } else if (dbname == TRI_VOC_SYSTEM_DATABASE &&
              collectionName == TRI_COL_NAME_USERS) {
