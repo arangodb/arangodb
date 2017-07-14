@@ -20,7 +20,7 @@ for file in log-output/*/*/stdout; do
         echo "FAIL: $short"
         mv -- "$filename" "FAILED_${base}_${short}.log"
     else
-        mv -- "$filename" "OK_${base}_${short}.log"
+        mv -- "$filename" "log-output/OK_${base}_${short}.log"
     fi
 done
 
