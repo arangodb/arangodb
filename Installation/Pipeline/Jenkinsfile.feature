@@ -465,6 +465,7 @@ def buildEdition(edition, os) {
         }
         finally {
             if (os == 'linux' || os == 'mac') {
+                sh "rm -rf ${arch}"
                 sh "mkdir -p ${arch}"
                 sh "for i in log-output; do test -e \$i && mv \$i ${arch}; done"
             }
@@ -613,6 +614,7 @@ def testEdition(edition, os, mode, engine) {
         }
         finally {
             if (os == 'linux' || os == 'mac') {
+                sh "rm -rf ${arch}"
                 sh "mkdir -p ${arch}"
                 sh "for i in build core* logs log-output tmp; do test -e \$i && mv \$i ${arch}; done"
             }
@@ -798,6 +800,7 @@ def testResilienceStep(os, engine, foxx) {
                     }
                     finally {
                         if (os == 'linux' || os == 'mac') {
+                            sh "rm -rf ${arch}"
                             sh "mkdir -p ${arch}"
                             sh "for i in build log-output core* tmp resilience/core*; do test -e \$i && mv \$i ${arch}; done"
                         }
