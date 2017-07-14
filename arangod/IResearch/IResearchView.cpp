@@ -1965,12 +1965,18 @@ void IResearchView::open() {
           _threadPool.max_idle(_meta._threadsMaxIdle);
           _threadPool.max_threads(_meta._threadsMaxTotal); // start pool
 
-          return; // success
+          _storePersisted._reader
+            = irs::directory_reader::open(*(_storePersisted._directory));
+
+          if (_storePersisted._reader) {
+            registerFlushCallback();
+            return; // success
+          }
+
+          _storePersisted._writer.reset(); // unlock the directory
         }
       }
     }
-
-    registerFlushCallback();
   } catch (std::exception& e) {
     LOG_TOPIC(WARN, Logger::FIXME) << "caught exception while opening iResearch view '" << id() << "': " << e.what();
     IR_EXCEPTION();
@@ -2125,8 +2131,6 @@ bool IResearchView::sync(SyncState& state, size_t maxMsec /*= 0*/) {
       if (_storePersisted) {
         _storePersisted._writer->consolidate(entry._policy, false);
       }
-
-      _storePersisted._writer->consolidate(entry._policy, false);
     } catch (std::exception& e) {
       LOG_TOPIC(WARN, Logger::FIXME) << "caught exception while consolidating iResearch view '" << id() << "': " << e.what();
       IR_EXCEPTION();
@@ -2257,6 +2261,14 @@ arangodb::Result IResearchView::updateProperties(
         return arangodb::Result(
           TRI_ERROR_BAD_PARAMETER,
           std::string("error opening iResearch view '") + std::to_string(id()) + "' data path '" + meta._dataPath + "'"
+        );
+      }
+
+      if (!storePersisted._reader) {
+        LOG_TOPIC(WARN, Logger::FIXME) << "error while opening reader for iResearch view '" << id() << "' data path '" + meta._dataPath + "'";
+        return arangodb::Result(
+          TRI_ERROR_BAD_PARAMETER,
+          std::string("error opening reader for iResearch view '") + std::to_string(id()) + "' data path '" + meta._dataPath + "'"
         );
       }
     }
