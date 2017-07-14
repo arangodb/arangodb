@@ -81,12 +81,14 @@ static std::vector<arangodb::basics::AttributeName> const KeyAttribute{
 RocksDBVPackIndexIterator::RocksDBVPackIndexIterator(
     LogicalCollection* collection, transaction::Methods* trx,
     ManagedDocumentResult* mmdr, arangodb::RocksDBVPackIndex const* index,
-    bool reverse, RocksDBKeyBounds&& bounds)
+    bool reverse, bool singleElementFetch,
+    RocksDBKeyBounds&& bounds)
     : IndexIterator(collection, trx, mmdr, index),
       _index(index),
       _cmp(index->comparator()),
       _reverse(reverse),
-      _bounds(bounds) {
+      _singleElementFetch(singleElementFetch),
+      _bounds(std::move(bounds)) {
   TRI_ASSERT(index->columnFamily() == RocksDBColumnFamily::vpack()); 
 
   RocksDBMethods* mthds = RocksDBTransactionState::toMethods(trx);
@@ -145,6 +147,13 @@ bool RocksDBVPackIndexIterator::next(TokenCallback const& cb, size_t limit) {
             ? RocksDBValue::revisionId(_iterator->value())
             : RocksDBKey::revisionId(_bounds.type(), _iterator->key());
     cb(RocksDBToken(revisionId));
+
+    if (_singleElementFetch) {
+      // we only need to fetch a single element from the index and are done then
+      // this is a useful optimization because seeking forwards or backwards with the
+      // iterator can be very expensive
+      return false;
+    }
 
     --limit;
     if (_reverse) {
@@ -738,13 +747,15 @@ RocksDBVPackIndexIterator* RocksDBVPackIndex::lookup(
       }
     }
   }
+  
+  bool const singleElementFetch = (_unique && lastNonEq.isNone() && searchValues.length() == _fields.size());
 
   RocksDBKeyBounds bounds = _unique ? RocksDBKeyBounds::UniqueVPackIndex(
                                           _objectId, leftBorder, rightBorder)
                                     : RocksDBKeyBounds::VPackIndex(
                                           _objectId, leftBorder, rightBorder);
   return new RocksDBVPackIndexIterator(_collection, trx, mmdr, this, reverse,
-                                       std::move(bounds));
+                                       singleElementFetch, std::move(bounds));
 }
 
 bool RocksDBVPackIndex::accessFitsIndex(

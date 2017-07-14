@@ -21,40 +21,54 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_INDEXES_INDEX_LOOKUP_CONTEXT_H
-#define ARANGOD_INDEXES_INDEX_LOOKUP_CONTEXT_H 1
+#ifndef ARANGOD_AQL_DOCUMENT_PRODUCING_BLOCK_H
+#define ARANGOD_AQL_DOCUMENT_PRODUCING_BLOCK_H 1
 
 #include "Basics/Common.h"
-#include "StorageEngine/DocumentIdentifierToken.h"
-#include "VocBase/vocbase.h"
+
+#include <velocypack/Slice.h>
+
+#include <functional>
 
 namespace arangodb {
-class LogicalCollection;
-class ManagedDocumentResult;
-
 namespace transaction {
 class Methods;
 }
 
-class IndexLookupContext {
+namespace aql {
+class AqlItemBlock;
+class DocumentProducingNode;
+struct Variable;
+  
+class DocumentProducingBlock {
  public:
-  IndexLookupContext() = delete;
-  IndexLookupContext(transaction::Methods* trx, LogicalCollection* collection, ManagedDocumentResult* result, size_t numFields);
-  ~IndexLookupContext() {}
+  typedef std::function<void(AqlItemBlock*, arangodb::velocypack::Slice, size_t, size_t&)> DocumentProducingFunction;
 
-  uint8_t const* lookup(DocumentIdentifierToken token);
+  DocumentProducingBlock(DocumentProducingNode const* node, transaction::Methods* trx);
+  virtual ~DocumentProducingBlock() = default;
 
-  ManagedDocumentResult* result() { return _result; }
-
-  inline size_t numFields() const { return _numFields; }
+ public:
+  bool produceResult() const { return _produceResult; }
 
  private:
-  transaction::Methods* _trx;
-  LogicalCollection* _collection;
-  ManagedDocumentResult* _result;
-  size_t const _numFields;
+  DocumentProducingFunction buildCallback() const;
+
+ private:
+  transaction::Methods* _trxPtr;
+  
+  DocumentProducingNode const* _node;
+
+  /// @brief hether or not we want to build a result
+  bool const _produceResult;
+
+  /// @brief whether or not we are allowed to pass documents via raw pointers only
+  bool const _useRawDocumentPointers;
+
+ protected:  
+  DocumentProducingFunction const _documentProducer;
 };
 
+}
 }
 
 #endif

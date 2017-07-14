@@ -26,6 +26,8 @@
 #include "Cluster/ServerState.h"
 #include "Indexes/Index.h"
 #include "Utils/CollectionNameResolver.h"
+#include "VocBase/LogicalCollection.h"
+#include "VocBase/ManagedDocumentResult.h"
 
 using namespace arangodb;
   
@@ -57,9 +59,7 @@ bool IndexIterator::hasExtra() const {
 
 bool IndexIterator::nextDocument(DocumentCallback const& cb, size_t limit) {
   return next([this, &cb](DocumentIdentifierToken const& token) {
-    if (_collection->readDocument(_trx, token, *_mmdr)) {
-      cb(*_mmdr);
-    }
+    _collection->readDocumentWithCallback(_trx, token, cb);
   }, limit);
 }
 

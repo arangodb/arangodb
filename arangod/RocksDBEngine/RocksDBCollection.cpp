@@ -59,6 +59,7 @@
 #include "Utils/Events.h"
 #include "Utils/OperationOptions.h"
 #include "Utils/SingleCollectionTransaction.h"
+#include "VocBase/KeyGenerator.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/ticks.h"
 #include "VocBase/voc-types.h"
@@ -754,15 +755,18 @@ bool RocksDBCollection::readDocument(transaction::Methods* trx,
   return false;
 }
 
-// read using a token, bypassing the cache
-bool RocksDBCollection::readDocumentNoCache(
-    transaction::Methods* trx, DocumentIdentifierToken const& token,
-    ManagedDocumentResult& result) {
+// read using a token!
+bool RocksDBCollection::readDocumentWithCallback(transaction::Methods* trx,
+                                                 DocumentIdentifierToken const& token,
+                                                 IndexIterator::DocumentCallback const& cb) {
   // TODO: why do we have read(), readDocument() and lookupKey()?
-  auto tkn = static_cast<RocksDBToken const*>(&token);
+  RocksDBToken const* tkn = static_cast<RocksDBToken const*>(&token);
   TRI_voc_rid_t revisionId = tkn->revisionId();
-  auto res = lookupRevisionVPack(revisionId, trx, result, false);
-  return res.ok();
+  if (revisionId != 0) {
+    auto res = lookupRevisionVPack(revisionId, trx, cb, true);
+    return res.ok();
+  }
+  return false;
 }
 
 Result RocksDBCollection::insert(arangodb::transaction::Methods* trx,
@@ -1247,10 +1251,9 @@ arangodb::Result RocksDBCollection::fillIndexes(
   RocksDBBatchedMethods batched(state, &batch);
 
   arangodb::Result res;
-  auto cb = [&](ManagedDocumentResult const& mdr) {
+  auto cb = [&](DocumentIdentifierToken const& token, VPackSlice slice) {
     if (res.ok()) {
-      res = ridx->insertInternal(trx, &batched, mdr.lastRevisionId(),
-                            VPackSlice(mdr.vpack()));
+      res = ridx->insertInternal(trx, &batched, token._data, slice);
       if (res.ok()) {
         numDocsWritten++;
       }
@@ -1516,7 +1519,6 @@ arangodb::Result RocksDBCollection::lookupRevisionVPack(
   TRI_ASSERT(_objectId != 0);
 
   auto key = RocksDBKey::Document(_objectId, revisionId);
-  std::string value;
 
   if (withCache && useCache()) {
     TRI_ASSERT(_cache != nullptr);
@@ -1524,14 +1526,63 @@ arangodb::Result RocksDBCollection::lookupRevisionVPack(
     auto f = _cache->find(key.string().data(),
                           static_cast<uint32_t>(key.string().size()));
     if (f.found()) {
-      value.append(reinterpret_cast<char const*>(f.value()->value()),
-                   static_cast<size_t>(f.value()->valueSize));
-      mdr.setManaged(std::move(value), revisionId);
+      std::string* value = mdr.prepareStringUsage();
+      value->append(reinterpret_cast<char const*>(f.value()->value()),
+                    static_cast<size_t>(f.value()->valueSize));
+      mdr.setManagedAfterStringUsage(revisionId);
       return {TRI_ERROR_NO_ERROR};
     }
   }
 
   RocksDBMethods* mthd = RocksDBTransactionState::toMethods(trx);
+  std::string* value = mdr.prepareStringUsage();
+  Result res = mthd->Get(RocksDBColumnFamily::documents(), key, value);
+  if (res.ok()) {
+    if (withCache && useCache()) {
+      TRI_ASSERT(_cache != nullptr);
+      // write entry back to cache
+      auto entry = cache::CachedValue::construct(
+          key.string().data(), static_cast<uint32_t>(key.string().size()),
+          value->data(), static_cast<uint64_t>(value->size()));
+      auto status = _cache->insert(entry);
+      if (status.fail()) {
+        delete entry;
+      }
+    }
+
+    mdr.setManagedAfterStringUsage(revisionId);
+  } else {
+    LOG_TOPIC(ERR, Logger::FIXME)
+        << "NOT FOUND rev: " << revisionId << " trx: " << trx->state()->id()
+        << " seq: " << mthd->readOptions().snapshot->GetSequenceNumber()
+        << " objectID " << _objectId << " name: " << _logicalCollection->name();
+    mdr.reset();
+  }
+  return res;
+}
+
+arangodb::Result RocksDBCollection::lookupRevisionVPack(
+    TRI_voc_rid_t revisionId, transaction::Methods* trx,
+    IndexIterator::DocumentCallback const& cb, bool withCache) const {
+  TRI_ASSERT(trx->state()->isRunning());
+  TRI_ASSERT(_objectId != 0);
+
+  auto key = RocksDBKey::Document(_objectId, revisionId);
+
+  if (withCache && useCache()) {
+    TRI_ASSERT(_cache != nullptr);
+    // check cache first for fast path
+    auto f = _cache->find(key.string().data(),
+                          static_cast<uint32_t>(key.string().size()));
+    if (f.found()) {
+      cb(RocksDBToken(revisionId), VPackSlice(reinterpret_cast<char const*>(f.value()->value())));
+      return {TRI_ERROR_NO_ERROR};
+    }
+  }
+
+  std::string value;
+  auto state = RocksDBTransactionState::toState(trx);
+  RocksDBMethods* mthd = state->rocksdbMethods();
   Result res = mthd->Get(RocksDBColumnFamily::documents(), key, &value);
   TRI_ASSERT(value.data());
   if (res.ok()) {
@@ -1547,13 +1598,12 @@ arangodb::Result RocksDBCollection::lookupRevisionVPack(
       }
     }
 
-    mdr.setManaged(std::move(value), revisionId);
+    cb(RocksDBToken(revisionId), VPackSlice(value.data()));
   } else {
     LOG_TOPIC(ERR, Logger::FIXME)
         << "NOT FOUND rev: " << revisionId << " trx: " << trx->state()->id()
         << " seq: " << mthd->readOptions().snapshot->GetSequenceNumber()
         << " objectID " << _objectId << " name: " << _logicalCollection->name();
-    mdr.reset();
   }
   return res;
 }

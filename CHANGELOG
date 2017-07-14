@@ -1,6 +1,8 @@
 devel
 -----
 
+* added function `db._parse(query)` for parse an AQL query and return information about it
+
 * fixed one medium priority and two low priority security user interface
   issues found by owasp zap.
 

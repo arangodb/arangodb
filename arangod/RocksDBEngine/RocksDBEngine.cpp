@@ -57,6 +57,7 @@
 #include "RocksDBEngine/RocksDBIndexFactory.h"
 #include "RocksDBEngine/RocksDBKey.h"
 #include "RocksDBEngine/RocksDBLogValue.h"
+#include "RocksDBEngine/RocksDBOptimizerRules.h"
 #include "RocksDBEngine/RocksDBPrefixExtractor.h"
 #include "RocksDBEngine/RocksDBReplicationManager.h"
 #include "RocksDBEngine/RocksDBReplicationTailing.h"
@@ -1153,8 +1154,7 @@ void RocksDBEngine::addAqlFunctions() {
 
 /// @brief Add engine-specific optimizer rules
 void RocksDBEngine::addOptimizerRules() {
-  // there are no specific optimizer rules here
-  // TODO: add geo index optimization once there is the geo index
+  RocksDBOptimizerRules::registerResources();
 }
 
 /// @brief Add engine-specific V8 functions

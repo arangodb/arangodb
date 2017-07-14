@@ -823,6 +823,13 @@ function processQuery (query, explain) {
     return results[0];
   };
 
+  var projection = function (node) {
+    if (node.projection && node.projection.length > 0) {
+      return ', projection: `' + node.projection.join('`.`') + '`';
+    }
+    return '';
+  };
+
   var label = function (node) {
     var rc, v, e, edgeCols;
     var parts = [];
@@ -833,7 +840,7 @@ function processQuery (query, explain) {
         return keyword('EMPTY') + '   ' + annotation('/* empty result set */');
       case 'EnumerateCollectionNode':
         collectionVariables[node.outVariable.id] = node.collection;
-        return keyword('FOR') + ' ' + variableName(node.outVariable) + ' ' + keyword('IN') + ' ' + collection(node.collection) + '   ' + annotation('/* full collection scan' + (node.random ? ', random order' : '') + (node.satellite ? ', satellite' : '') + ' */');
+        return keyword('FOR') + ' ' + variableName(node.outVariable) +  ' ' + keyword('IN') + ' ' + collection(node.collection) + '   ' + annotation('/* full collection scan' + (node.random ? ', random order' : '') + projection(node) + (node.satellite ? ', satellite' : '') + ' */');
       case 'EnumerateListNode':
         return keyword('FOR') + ' ' + variableName(node.outVariable) + ' ' + keyword('IN') + ' ' + variableName(node.inVariable) + '   ' + annotation('/* list iteration */');
       case 'IndexNode':
@@ -853,7 +860,7 @@ function processQuery (query, explain) {
           }
           indexes.push(idx);
         });
-        return keyword('FOR') + ' ' + variableName(node.outVariable) + ' ' + keyword('IN') + ' ' + collection(node.collection) + '   ' + annotation('/* ' + types.join(', ') + (node.satellite ? ', satellite' : '') + ' */');
+        return keyword('FOR') + ' ' + variableName(node.outVariable) + ' ' + keyword('IN') + ' ' + collection(node.collection) + '   ' + annotation('/* ' + types.join(', ') + projection(node) + (node.satellite ? ', satellite' : '') + ' */');
       case 'IndexRangeNode':
         collectionVariables[node.outVariable.id] = node.collection;
         var index = node.index;

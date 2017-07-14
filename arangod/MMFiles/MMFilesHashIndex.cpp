@@ -265,18 +265,16 @@ static bool IsEqualKeyElementMulti(void* userData, VPackSlice const* left,
   TRI_ASSERT(context != nullptr);
 
   // TODO: is it a performance improvement to compare the hash values first?
-  size_t const n = left->length();
+  VPackArrayIterator it(*left);
 
-  for (size_t i = 0; i < n; ++i) {
-    VPackSlice const leftVPack = left->at(i);
-    VPackSlice const rightVPack = right->slice(context, i);
-
-    int res = arangodb::basics::VelocyPackHelper::compare(leftVPack, rightVPack,
-                                                          false);
+  while (it.valid()) {
+    int res = arangodb::basics::VelocyPackHelper::compare(it.value(), right->slice(context, it.index()), false);
 
     if (res != 0) {
       return false;
     }
+
+    it.next();
   }
 
   return true;
