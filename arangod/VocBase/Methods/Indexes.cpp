@@ -293,7 +293,7 @@ Result Indexes::ensureIndex(arangodb::LogicalCollection* collection,
     AuthLevel lvl2 = auth->canUseCollection(ExecContext::CURRENT->user(),
                                               ExecContext::CURRENT->database(),
                                               collection->name());
-    if ((create && (lvl1 != AuthLevel::RW || lvl2 != AuthLevel::RO)) ||
+    if ((create && (lvl1 != AuthLevel::RW || lvl2 != AuthLevel::RW)) ||
         lvl1 == AuthLevel::NONE || lvl2 == AuthLevel::NONE) {
       return TRI_ERROR_FORBIDDEN;
     }
