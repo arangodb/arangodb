@@ -1,5 +1,5 @@
 /* jshint strict: false, unused: false */
-/* global TRANSACTION */
+/* global TRANSACTION, AQL_PARSE */
 
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief ArangoDatabase
