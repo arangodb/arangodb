@@ -52,13 +52,15 @@ Agent::Agent(config_t const& config)
     _readDB(this),
     _transient(this),
     _nextCompactionAfter(_config.compactionStepSize()),
-    _inception(std::make_unique<Inception>(this)),
     _activator(nullptr),
     _compactor(this),
     _ready(false),
     _preparing(false) {
   _state.configure(this);
   _constituent.configure(this);
+  if (size() > 1) {
+    _inception = std::make_unique<Inception>(this);
+  }
 }
 
 /// This agent's id
@@ -764,7 +766,7 @@ void Agent::load() {
     _supervision.start(this);
   }
 
-  if (size() > 1) {
+  if (_inception != nullptr) { // resilient agency only
     _inception->start();
   } else {
     _spearhead = _readDB;
@@ -1225,7 +1227,7 @@ void Agent::beginShutdown() {
   }
 
   // Stop inception process
-  if (_inception != nullptr) {
+  if (_inception != nullptr) { // resilient agency only
     _inception->beginShutdown();
   } 
 
@@ -1579,7 +1581,7 @@ query_t Agent::gossip(query_t const& in, bool isCallback, size_t version) {
         20003, "Gossip message must contain string parameter 'endpoint'");
   }
   std::string endpoint = slice.get("endpoint").copyString();
-  if (isCallback) {
+  if ( _inception != nullptr && isCallback) {
     _inception->reportVersionForEp(endpoint, version);
   }
 
