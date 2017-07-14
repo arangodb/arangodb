@@ -98,9 +98,7 @@ if (USE_IRESEARCH)
     endif()
   endforeach()
 
-  if (MSVC)
-    set(IRESEARCH_EXCLUDE_STATIC_THIRD_PARTY_LIBS TRUE) # disable linking in of 3rd party libraries automatically
-  endif()
+  set(IRESEARCH_EXCLUDE_STATIC_THIRD_PARTY_LIBS TRUE) # disable linking in of 3rd party libraries automatically
 
   if (MSVC)
     set(BOOST_LIBRARYDIR

@@ -236,6 +236,7 @@ void collect_terms_from(
       ? terms.value() : iresearch::bytes_ref::nil
     ;
     iresearch::bstring end_term_copy;
+    auto is_most_granular_term = exact_min_term == &(current_min_term_itr->second);
 
     // need a copy of the term since bytes_ref changes on terms.seek(...)
     if (!end_term.null()) {
@@ -247,7 +248,8 @@ void collect_terms_from(
       states, sr, tr, terms, prefix_size, scorer,
       current_min_term_itr->second, // the min term for the current granularity level
       end_term, // the min term for the previous lesser granularity level
-      min_term_inclusive && exact_min_term == &(current_min_term_itr->second), false // add min_term if requested
+      min_term_inclusive && is_most_granular_term, // add min_term if requested
+      end_term.null() && is_most_granular_term // add end term if required (for most granular)
     );
   }
 }
