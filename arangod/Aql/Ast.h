@@ -387,6 +387,19 @@ class Ast {
   /// @brief determines the top-level attributes in an expression, grouped by
   /// variable
   static TopLevelAttributes getReferencedAttributes(AstNode const*, bool&);
+  
+  static bool populateSingleAttributeAccess(AstNode const* node,
+                                            Variable const* variable,
+                                            std::vector<std::string>& attributeName);
+
+  static bool variableOnlyUsedForSingleAttributeAccess(AstNode const* node,
+                                                       Variable const* variable,
+                                                       std::vector<std::string> const& attributeName);
+  
+  /// @brief replace an attribute access with just the variable
+  static AstNode* replaceAttributeAccess(AstNode* node,
+                                         Variable const* variable,
+                                         std::vector<std::string> const& attributeName);
 
   /// @brief recursively clone a node
   AstNode* clone(AstNode const*);

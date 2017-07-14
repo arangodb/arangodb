@@ -35,6 +35,7 @@
 #include "Transaction/Helpers.h"
 #include "Transaction/Methods.h"
 #include "VocBase/LogicalCollection.h"
+#include "VocBase/ManagedDocumentResult.h"
 
 #include <velocypack/Iterator.h>
 #include <velocypack/velocypack-aliases.h>
@@ -448,18 +449,22 @@ void MMFilesSkiplistInLookupBuilder::buildSearchValues() {
     _upperBuilder->clear();
     _upperBuilder->openArray();
 
-    for (size_t i = 0; i < data.length() - 1; ++i) {
+    size_t const n = data.length();
+
+    for (size_t i = 0; i < n - 1; ++i) {
       if (inPos != _inPositions.end() && i == inPos->field) {
-        _lowerBuilder->add(data.at(i).at(inPos->current));
-        _upperBuilder->add(data.at(i).at(inPos->current));
+        VPackSlice s = data.at(i).at(inPos->current);
+        _lowerBuilder->add(s);
+        _upperBuilder->add(s);
         inPos++;
       } else {
-        _lowerBuilder->add(data.at(i));
-        _upperBuilder->add(data.at(i));
+        VPackSlice s = data.at(i);
+        _lowerBuilder->add(s);
+        _upperBuilder->add(s);
       }
     }
 
-    VPackSlice bounds = data.at(data.length() - 1);
+    VPackSlice bounds = data.at(n - 1);
     TRI_ASSERT(bounds.isArray());
     TRI_ASSERT(bounds.length() == 2);
     VPackSlice b = bounds.at(0);
@@ -477,7 +482,9 @@ void MMFilesSkiplistInLookupBuilder::buildSearchValues() {
     _upperBuilder->close();
     _upperSlice = _upperBuilder->slice();
   } else {
-    for (size_t i = 0; i < data.length(); ++i) {
+    size_t const n = data.length();
+
+    for (size_t i = 0; i < n; ++i) {
       if (inPos != _inPositions.end() && i == inPos->field) {
         _lowerBuilder->add(data.at(i).at(inPos->current));
         inPos++;
