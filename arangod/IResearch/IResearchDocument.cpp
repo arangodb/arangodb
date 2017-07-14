@@ -163,6 +163,11 @@ inline bool inObjectFiltered(
     arangodb::iresearch::IResearchLinkMeta const*& context,
     arangodb::iresearch::IteratorValue const& value
 ) {
+  // FIXME
+  if (!value.key.isString()) {
+    return false;
+  }
+
   auto const key = arangodb::iresearch::getStringRef(value.key);
 
   auto const* meta = findMeta(key, context);
@@ -182,6 +187,11 @@ inline bool inObject(
     arangodb::iresearch::IResearchLinkMeta const*& context,
     arangodb::iresearch::IteratorValue const& value
 ) {
+  // FIXME
+  if (!value.key.isString()) {
+    return false;
+  }
+
   auto const key = arangodb::iresearch::getStringRef(value.key);
 
   buffer.append(key.c_str(), key.size());
@@ -992,7 +1002,10 @@ bool fromValue(
     bool reverse,
     arangodb::iresearch::IResearchViewMeta const& meta
 ) {
-  TRI_ASSERT(arangodb::aql::NODE_TYPE_VALUE == node.type);
+  TRI_ASSERT(
+    arangodb::aql::NODE_TYPE_ATTRIBUTE_ACCESS == node.type
+    || arangodb::aql::NODE_TYPE_VALUE == node.type
+  );
 
   if (node.value.type != arangodb::aql::VALUE_TYPE_STRING) {
     return false; // unsupported value
@@ -1371,6 +1384,7 @@ bool DocumentPrimaryKey::write(irs::data_output& out) const {
       case arangodb::aql::NODE_TYPE_FCALL_USER: // user function call
         result = fromFCallUser(ctx, *expression, !ascending, meta);
         break;
+      case arangodb::aql::NODE_TYPE_ATTRIBUTE_ACCESS:
       case arangodb::aql::NODE_TYPE_VALUE:
         result = fromValue(ctx, *expression, !ascending, meta);
         break;
