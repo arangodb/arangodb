@@ -1225,7 +1225,7 @@ void Agent::beginShutdown() {
   }
 
   // Stop inception process
-  if (_inception != nullptr) {
+  if (size() > 1 && _inception != nullptr) {
     _inception->beginShutdown();
   } 
 
