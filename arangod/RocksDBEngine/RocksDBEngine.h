@@ -82,6 +82,7 @@ class RocksDBEngine final : public StorageEngine {
   void unprepare() override;
 
   bool supportsDfdb() const override { return false; }
+  bool useRawDocumentPointers() override { return false; }
 
   TransactionManager* createTransactionManager() override;
   transaction::ContextData* createTransactionContextData() override;

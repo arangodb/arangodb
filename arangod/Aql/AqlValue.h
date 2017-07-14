@@ -74,14 +74,31 @@ namespace arangodb {
 namespace transaction {
 class Methods;
 }
-;
 
 namespace aql {
 class AqlItemBlock;
 
-// no-op struct used only in an internal API to signal we want
-// to construct from an externally managed document
-struct AqlValueFromManagedDocument {};
+// no-op struct used only internally to indicate that we want
+// to copy the data behind the passed pointer
+struct AqlValueHintCopy {
+  explicit AqlValueHintCopy(uint8_t const* ptr) : ptr(ptr) {}
+  uint8_t const* ptr;
+};
+
+// no-op struct used only internally to indicate that we want
+// to NOT copy the data behind the passed pointer
+struct AqlValueHintNoCopy {
+  explicit AqlValueHintNoCopy(uint8_t const* ptr) : ptr(ptr) {}
+  uint8_t const* ptr;
+};
+
+// no-op struct used only internally to indicate that we want
+// to pass the ownership of the data behind the passed pointer
+// to the callee
+struct AqlValueHintTransferOwnership {
+  explicit AqlValueHintTransferOwnership(uint8_t* ptr) : ptr(ptr) {}
+  uint8_t* ptr;
+};
 
 struct AqlValue final {
  friend struct std::hash<arangodb::aql::AqlValue>;
@@ -94,6 +111,7 @@ struct AqlValue final {
   enum AqlValueType : uint8_t { 
     VPACK_SLICE_POINTER, // contains a pointer to a vpack document, memory is not managed!
     VPACK_INLINE, // contains vpack data, inline
+    VPACK_MANAGED_SLICE, // contains vpack, via pointer to a managed uint8_t slice
     VPACK_MANAGED_BUFFER, // contains vpack, via pointer to a managed buffer
     DOCVEC, // a vector of blocks of results coming from a subquery, managed
     RANGE // a pointer to a range remembering lower and upper bound, managed
@@ -109,6 +127,9 @@ struct AqlValue final {
   /// VPACK_INLINE: VPack values with a size less than 16 bytes can be stored 
   /// directly inside the data.internal structure. All data is stored inline, 
   /// so there is no need for memory management.
+  /// VPACK_MANAGED_SLICE: all values of a larger size will be stored in 
+  /// _data.slice via a managed uint8_t* object. The uint8_t* points to a VPack
+  /// data and is managed by the AqlValue.
   /// VPACK_MANAGED_BUFFER: all values of a larger size will be stored in 
   /// _data.external via a managed VPackBuffer object. The Buffer is managed
   /// by the AqlValue.
@@ -119,6 +140,7 @@ struct AqlValue final {
   union {
     uint8_t internal[16];
     uint8_t const* pointer;
+    uint8_t* slice;
     arangodb::velocypack::Buffer<uint8_t>* buffer;
     std::vector<AqlItemBlock*>* docvec;
     Range const* range;
@@ -131,12 +153,6 @@ struct AqlValue final {
     // construct a slice of type None
     _data.internal[0] = '\x00';
     setType(AqlValueType::VPACK_INLINE);
-  }
-  
-  // construct from mptr, not copying!
-  AqlValue(uint8_t const* pointer, AqlValueFromManagedDocument const&) noexcept {
-    setPointer<true>(pointer);
-    TRI_ASSERT(!VPackSlice(_data.pointer).isExternal());
   }
   
   // construct from pointer, not copying!
@@ -253,20 +269,22 @@ struct AqlValue final {
     } else if (length <= 126) {
       // short string... cannot store inline, but we don't need to
       // create a full-featured Builder object here
-      _data.buffer = new arangodb::velocypack::Buffer<uint8_t>(length + 1);
-      _data.buffer->push_back(static_cast<char>(0x40 + length));
-      _data.buffer->append(value, length);
-      setType(AqlValueType::VPACK_MANAGED_BUFFER);
+      _data.slice = new uint8_t[length + 1];
+      _data.slice[0] = static_cast<uint8_t>(0x40U + length);
+      memcpy(&_data.slice[1], value, length);
+      setType(AqlValueType::VPACK_MANAGED_SLICE);
     } else {
       // long string
-      // create a big enough Buffer object
-      auto buffer = std::make_unique<VPackBuffer<uint8_t>>(8 + length);
-      // add string to Builder
-      VPackBuilder builder(*buffer.get());
-      builder.add(VPackValuePair(value, length, VPackValueType::String));
-      // steal Buffer. now we have ownership
-      _data.buffer = buffer.release();
-      setType(AqlValueType::VPACK_MANAGED_BUFFER);
+      // create a big enough uint8_t buffer
+      _data.slice = new uint8_t[length + 9];
+      _data.slice[0] = static_cast<uint8_t>(0xbfU);
+      uint64_t v = length;
+      for (uint64_t i = 0; i < 8; ++i) {
+        _data.slice[i + 1] = v & 0xffU;
+        v >>= 8;
+      }
+      memcpy(&_data.slice[9], value, length);
+      setType(AqlValueType::VPACK_MANAGED_SLICE);
     }
   }
   
@@ -297,11 +315,23 @@ struct AqlValue final {
     }
   }
   
-  // construct from Buffer, taking over its ownership
-  explicit AqlValue(arangodb::velocypack::Buffer<uint8_t>* buffer) {
-    TRI_ASSERT(buffer != nullptr);
-    _data.buffer = buffer;
-    setType(AqlValueType::VPACK_MANAGED_BUFFER);
+  // construct from pointer, not copying!
+  explicit AqlValue(AqlValueHintNoCopy const& ptr) noexcept {
+    setPointer<true>(ptr.ptr);
+    TRI_ASSERT(!VPackSlice(_data.pointer).isExternal());
+  }
+  
+  // construct from pointer, copying the data behind the pointer
+  explicit AqlValue(AqlValueHintCopy const& ptr) {
+    TRI_ASSERT(ptr.ptr != nullptr);
+    initFromSlice(VPackSlice(ptr.ptr));
+  }
+  
+  // construct from pointer, taking over the ownership
+  explicit AqlValue(AqlValueHintTransferOwnership const& ptr) {
+    TRI_ASSERT(ptr.ptr != nullptr);
+    _data.slice = ptr.ptr;
+    setType(AqlValueType::VPACK_MANAGED_SLICE);
   }
   
   // construct from Builder, copying contents
@@ -309,7 +339,7 @@ struct AqlValue final {
     TRI_ASSERT(builder.isClosed());
     initFromSlice(builder.slice());
   }
-  
+
   // construct from Builder, copying contents
   explicit AqlValue(arangodb::velocypack::Builder const* builder) {
     TRI_ASSERT(builder->isClosed());
@@ -467,8 +497,8 @@ struct AqlValue final {
                        bool resolveExternals) const;
 
   /// @brief return the slice for the value
-  /// this will throw if the value type is not VPACK_SLICE_POINTER, VPACK_INLINE or
-  /// VPACK_MANAGED_BUFFER
+  /// this will throw if the value type is not VPACK_SLICE_POINTER, VPACK_INLINE,
+  /// VPACK_MANAGED_SLICE or VPACK_MANAGED_BUFFER
   arangodb::velocypack::Slice slice() const;
   
   /// @brief clone a value
@@ -490,6 +520,8 @@ struct AqlValue final {
       case VPACK_SLICE_POINTER:
       case VPACK_INLINE:
         return 0;
+      case VPACK_MANAGED_SLICE:
+        return VPackSlice(_data.slice).byteSize();
       case VPACK_MANAGED_BUFFER:
         return _data.buffer->size();
       case DOCVEC:
@@ -538,10 +570,10 @@ struct AqlValue final {
       memcpy(_data.internal, slice.begin(), static_cast<size_t>(length));
       setType(AqlValueType::VPACK_INLINE);
     } else {
-      // Use managed buffer
-      _data.buffer = new arangodb::velocypack::Buffer<uint8_t>(length);
-      _data.buffer->append(reinterpret_cast<char const*>(slice.begin()), length);
-      setType(AqlValueType::VPACK_MANAGED_BUFFER);
+      // Use managed slice
+      _data.slice = new uint8_t[length];
+      memcpy(&_data.slice[0], slice.begin(), length);
+      setType(AqlValueType::VPACK_MANAGED_SLICE);
     }
   }
   
@@ -667,6 +699,9 @@ struct hash<arangodb::aql::AqlValue> {
       case arangodb::aql::AqlValue::VPACK_INLINE: {
         return res ^ static_cast<size_t>(arangodb::velocypack::Slice(&x._data.internal[0]).hash());
       }
+      case arangodb::aql::AqlValue::VPACK_MANAGED_SLICE: {
+        return res ^ ptrHash(x._data.slice);
+      }
       case arangodb::aql::AqlValue::VPACK_MANAGED_BUFFER: {
         return res ^ ptrHash(x._data.buffer);
       }
@@ -697,6 +732,9 @@ struct equal_to<arangodb::aql::AqlValue> {
       }
       case arangodb::aql::AqlValue::VPACK_INLINE: {
         return arangodb::velocypack::Slice(&a._data.internal[0]).equals(arangodb::velocypack::Slice(&b._data.internal[0]));
+      }
+      case arangodb::aql::AqlValue::VPACK_MANAGED_SLICE: {
+        return a._data.slice == b._data.slice;
       }
       case arangodb::aql::AqlValue::VPACK_MANAGED_BUFFER: {
         return a._data.buffer == b._data.buffer;

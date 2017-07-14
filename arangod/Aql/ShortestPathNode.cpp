@@ -136,7 +136,7 @@ ShortestPathNode::ShortestPathNode(ExecutionPlan* plan,
       _toCondition(nullptr) {
   // Start Vertex
   if (base.hasKey("startInVariable")) {
-    _inStartVariable = varFromVPack(plan->getAst(), base, "startInVariable");
+    _inStartVariable = Variable::varFromVPack(plan->getAst(), base, "startInVariable");
   } else {
     VPackSlice v = base.get("startVertexId");
     if (!v.isString()) {
@@ -153,7 +153,7 @@ ShortestPathNode::ShortestPathNode(ExecutionPlan* plan,
 
   // Target Vertex
   if (base.hasKey("targetInVariable")) {
-    _inTargetVariable = varFromVPack(plan->getAst(), base, "targetInVariable");
+    _inTargetVariable = Variable::varFromVPack(plan->getAst(), base, "targetInVariable");
   } else {
     VPackSlice v = base.get("targetVertexId");
     if (!v.isString()) {

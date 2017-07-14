@@ -41,15 +41,48 @@ IndexNode::IndexNode(ExecutionPlan* plan, size_t id, TRI_vocbase_t* vocbase,
             std::vector<transaction::Methods::IndexHandle> const& indexes,
             Condition* condition, bool reverse)
       : ExecutionNode(plan, id),
+        DocumentProducingNode(outVariable),
         _vocbase(vocbase),
         _collection(collection),
-        _outVariable(outVariable),
         _indexes(indexes),
         _condition(condition),
         _reverse(reverse) {
   TRI_ASSERT(_vocbase != nullptr);
   TRI_ASSERT(_collection != nullptr);
-  TRI_ASSERT(_outVariable != nullptr);
+  TRI_ASSERT(_condition != nullptr);
+}
+
+/// @brief constructor for IndexNode 
+IndexNode::IndexNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& base) 
+    : ExecutionNode(plan, base),
+      DocumentProducingNode(plan, base),
+      _vocbase(plan->getAst()->query()->vocbase()),
+      _collection(plan->getAst()->query()->collections()->get(
+          base.get("collection").copyString())),
+      _indexes(),
+      _condition(nullptr),
+      _reverse(base.get("reverse").getBoolean()) {
+  VPackSlice indexes = base.get("indexes");
+
+  if (!indexes.isArray()) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "\"indexes\" attribute should be an array");
+  }
+
+  _indexes.reserve(indexes.length());
+
+  auto trx = plan->getAst()->query()->trx();
+  for (auto const& it : VPackArrayIterator(indexes)) {
+    std::string iid  = it.get("id").copyString();
+    _indexes.emplace_back(trx->getIndexByIdentifier(_collection->getName(), iid));
+  }
+
+  VPackSlice condition = base.get("condition");
+  if (!condition.isObject()) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "\"condition\" attribute should be an object");
+  }
+
+  _condition = Condition::fromVPack(plan, condition);
+
   TRI_ASSERT(_condition != nullptr);
 }
 
@@ -62,9 +95,10 @@ void IndexNode::toVelocyPackHelper(VPackBuilder& nodes, bool verbose) const {
   nodes.add("database", VPackValue(_vocbase->name()));
   nodes.add("collection", VPackValue(_collection->getName()));
   nodes.add("satellite", VPackValue(_collection->isSatellite()));
-  nodes.add(VPackValue("outVariable"));
-  _outVariable->toVelocyPack(nodes);
-
+  
+  // add outvariable and projection
+  DocumentProducingNode::toVelocyPack(nodes);
+  
   nodes.add(VPackValue("indexes"));
   {
     VPackArrayBuilder guard(&nodes);
@@ -94,40 +128,6 @@ ExecutionNode* IndexNode::clone(ExecutionPlan* plan, bool withDependencies,
   cloneHelper(c, plan, withDependencies, withProperties);
 
   return static_cast<ExecutionNode*>(c);
-}
-
-/// @brief constructor for IndexNode 
-IndexNode::IndexNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& base) 
-    : ExecutionNode(plan, base),
-      _vocbase(plan->getAst()->query()->vocbase()),
-      _collection(plan->getAst()->query()->collections()->get(
-          base.get("collection").copyString())),
-      _outVariable(varFromVPack(plan->getAst(), base, "outVariable")),
-      _indexes(),
-      _condition(nullptr),
-      _reverse(base.get("reverse").getBoolean()) {
-  VPackSlice indexes = base.get("indexes");
-
-  if (!indexes.isArray()) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "\"indexes\" attribute should be an array");
-  }
-
-  _indexes.reserve(indexes.length());
-
-  auto trx = plan->getAst()->query()->trx();
-  for (auto const& it : VPackArrayIterator(indexes)) {
-    std::string iid  = it.get("id").copyString();
-    _indexes.emplace_back(trx->getIndexByIdentifier(_collection->getName(), iid));
-  }
-
-  VPackSlice condition = base.get("condition");
-  if (!condition.isObject()) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "\"condition\" attribute should be an object");
-  }
-
-  _condition = Condition::fromVPack(plan, condition);
-
-  TRI_ASSERT(_condition != nullptr);
 }
 
 /// @brief destroy the IndexNode

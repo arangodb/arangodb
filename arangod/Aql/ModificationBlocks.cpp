@@ -641,7 +641,7 @@ AqlItemBlock* UpdateBlock::work(std::vector<AqlItemBlock*>& blocks) {
             if (isMultiple) {
               object.add(tmp.slice());
             } else {
-              object = tmp;
+              object = std::move(tmp);
             }
           }
           else {
@@ -1079,7 +1079,7 @@ AqlItemBlock* ReplaceBlock::work(std::vector<AqlItemBlock*>& blocks) {
             if (isMultiple) {
               object.add(tmp.slice());
             } else {
-              object = tmp;
+              object = std::move(tmp);
             }
           } else {
             // Use the original slice for updating

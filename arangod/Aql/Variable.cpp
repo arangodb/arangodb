@@ -22,8 +22,11 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Variable.h"
+#include "Aql/Ast.h"
+#include "Aql/VariableGenerator.h"
 #include "Basics/VelocyPackHelper.h"
 
+#include <velocypack/Slice.h>
 #include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb::aql;
@@ -72,3 +75,23 @@ Variable const* Variable::replace(
 
   return variable;
 }
+
+/// @brief factory for (optional) variables from VPack
+Variable* Variable::varFromVPack(Ast* ast,
+                                 arangodb::velocypack::Slice const& base,
+                                 char const* variableName, bool optional) {
+  VPackSlice variable = base.get(variableName);
+
+  if (variable.isNone()) {
+    if (optional) {
+      return nullptr;
+    }
+
+    std::string msg;
+    msg +=
+        "mandatory variable \"" + std::string(variableName) + "\" not found.";
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, msg);
+  }
+  return ast->variables()->createVariable(variable);
+}
+

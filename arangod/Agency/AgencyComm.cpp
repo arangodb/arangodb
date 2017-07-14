@@ -1341,7 +1341,7 @@ AgencyCommResult AgencyComm::sendWithFailover(
     AgencyCommManager::MANAGER->acquire(endpoint);
 
   AgencyCommResult result;
-  std::string url = initialUrl;
+  std::string url;
 
   std::chrono::duration<double> waitInterval (.0); // seconds
   auto started = std::chrono::steady_clock::now();
@@ -1426,6 +1426,7 @@ AgencyCommResult AgencyComm::sendWithFailover(
         if (!body.isNone()) {
           bodyString = body.toJson();
         }
+        url = initialUrl;  // Attention: overwritten by redirect below!
         result = send(connection.get(), method, conTimeout, url, bodyString,
                       clientId);
       } catch (...) {
@@ -1475,9 +1476,9 @@ AgencyCommResult AgencyComm::sendWithFailover(
         "Failed agency comm (" << result._statusCode << ")! " <<
         "Inquiring about clientId " << clientId << ".";
 
+      url = "/_api/agency/inquire";  // attention: overwritten by redirect!
       result = send(
-          connection.get(), method, conTimeout, "/_api/agency/inquire",
-          b.toJson(), "");
+          connection.get(), method, conTimeout, url, b.toJson(), "");
 
       if (result.successful()) {
         std::shared_ptr<VPackBuilder> bodyBuilder
@@ -1539,6 +1540,7 @@ AgencyCommResult AgencyComm::sendWithFailover(
     // in this case we have to pick it up and use the new location returned
     if (result._statusCode ==
         (int)arangodb::rest::ResponseCode::TEMPORARY_REDIRECT) {
+      // Note that this may overwrite url, but we do not care.
       endpoint = AgencyCommManager::MANAGER->redirect(
         std::move(connection), endpoint, result._location, url);
       connection = AgencyCommManager::MANAGER->acquire(endpoint);
