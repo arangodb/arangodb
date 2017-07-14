@@ -183,7 +183,10 @@ AuthLevel AuthenticationFeature::canUseCollection(std::string const& username,
   return authInfo()->canUseCollection(username, dbname, coll);
 }
 
-AuthInfo* AuthenticationFeature::authInfo() { return _authInfo; }
+AuthInfo* AuthenticationFeature::authInfo() {
+  TRI_ASSERT(_authInfo != nullptr);  
+  return _authInfo;
+}
 
 void AuthenticationFeature::unprepare() {}
 

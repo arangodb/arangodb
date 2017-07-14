@@ -467,6 +467,7 @@ AuthLevel AuthUserEntry::collectionAuthLevel(
     std::string const& dbname, std::string const& collectionName) const {
   // disallow access to _system/_users for everyone
   if (collectionName.empty()) {
+    LOG_TOPIC(ERR, Logger::FIXME) << "sdssd";
     return AuthLevel::NONE;
   } else if (dbname == TRI_VOC_SYSTEM_DATABASE &&
              collectionName == TRI_COL_NAME_USERS) {
@@ -488,8 +489,7 @@ AuthLevel AuthUserEntry::collectionAuthLevel(
     }
   }
 
-  if (lvl == AuthLevel::NONE && !collectionName.empty() &&
-      collectionName[0] == '_') {
+  if (lvl == AuthLevel::NONE && collectionName[0] == '_') {
     // at least ro for all system collections
     return AuthLevel::RO;
   }
@@ -512,47 +512,14 @@ bool AuthUserEntry::hasSpecificCollection(
 
 AuthLevel AuthUserEntry::DBAuthContext::collectionAuthLevel(
     std::string const& collectionName) const {
-  AuthLevel lvl = AuthLevel::NONE;
-  auto const& pair = _collectionAccess.find(collectionName);
+  std::unordered_map<std::string, AuthLevel>::const_iterator pair =
+    _collectionAccess.find(collectionName);
   if (pair != _collectionAccess.end()) {
-    lvl = pair->second;
-  } else {
-    auto const& pair2 = _collectionAccess.find("*");
-    if (pair2 != _collectionAccess.end()) {
-      lvl = pair2->second;
-    }
+    return pair->second;
   }
-  return lvl;
+  pair = _collectionAccess.find("*");
+  if (pair != _collectionAccess.end()) {
+    return pair->second;
+  }
+  return AuthLevel::NONE;
 }
-/*
- bool AuthContext::hasSpecificCollection(
- std::string const& collectionName) const {
- return _collectionAccess.find(collectionName) != _collectionAccess.end();
- }
-
- void AuthContext::dump() {
- LOG_TOPIC(DEBUG, arangodb::Logger::AUTHENTICATION)
- << "Dump AuthContext rights";
-
- if (_databaseAuthLevel == AuthLevel::RO) {
- LOG_TOPIC(DEBUG, arangodb::Logger::AUTHENTICATION) << "database level RO";
- }
- if (_databaseAuthLevel == AuthLevel::RW) {
- LOG_TOPIC(DEBUG, arangodb::Logger::AUTHENTICATION) << "database level RW";
- }
-
- if (_systemAuthLevel == AuthLevel::RO) {
- LOG_TOPIC(DEBUG, arangodb::Logger::AUTHENTICATION) << "_system level RO";
- }
- if (_systemAuthLevel == AuthLevel::RW) {
- LOG_TOPIC(DEBUG, arangodb::Logger::AUTHENTICATION) << "_system level RW";
- }
-
- for (auto const& it : _collectionAccess) {
- if (it.second == AuthLevel::RO)
- LOG_TOPIC(DEBUG, arangodb::Logger::AUTHENTICATION) << it.first << " RO";
- if (it.second == AuthLevel::RW)
- LOG_TOPIC(DEBUG, arangodb::Logger::AUTHENTICATION) << it.first << " RW";
- }
- }
- */
