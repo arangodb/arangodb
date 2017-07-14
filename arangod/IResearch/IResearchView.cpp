@@ -227,7 +227,7 @@ class ViewIteratorBase: public arangodb::ViewIterator {
     CompoundReader&& reader
   );
   virtual bool hasExtra() const override;
-  virtual bool hasMore() const override;
+  virtual bool hasMore() const override; // FIXME remove
   virtual bool nextExtra(ExtraCallback const& callback, size_t limit) override;
   virtual bool readDocument(
     arangodb::DocumentIdentifierToken const& token,
@@ -278,7 +278,7 @@ bool ViewIteratorBase::hasExtra() const {
   return false;
 }
 
-bool ViewIteratorBase::hasMore() const {
+bool ViewIteratorBase::hasMore() const { // FIXME remove
   // shut up compiler warning...
   // FIXME TODO: implementation
   return false;
@@ -378,6 +378,9 @@ class OrderedViewIterator: public ViewIteratorBase {
   virtual bool next(TokenCallback const& callback, size_t limit) override;
   virtual void reset() override;
   virtual void skip(uint64_t count, uint64_t& skipped) override;
+  virtual bool hasMore() const override { // FIXME remove
+    return _hasMore;
+  }
 
  private:
   struct State {
@@ -387,6 +390,7 @@ class OrderedViewIterator: public ViewIteratorBase {
   irs::filter::prepared::ptr _filter;
   irs::order::prepared _order;
   State _state; // previous iteration state
+  bool _hasMore{ true };
 
   void next(TokenCallback const& callback, size_t limit, bool sort);
 };
@@ -473,7 +477,8 @@ bool OrderedViewIterator::next(TokenCallback const& callback, size_t limit) {
     --limit;
   }
 
-  return limit == 0; // exceeded limit
+  _hasMore = (limit == 0);
+  return _hasMore; // exceeded limit
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -529,6 +534,10 @@ class UnorderedViewIterator: public ViewIteratorBase {
   virtual void reset() override;
   virtual void skip(uint64_t count, uint64_t& skipped) override;
 
+  virtual bool hasMore() const override { // FIXME remove
+    return _hasMore;
+  }
+
  private:
   struct State {
     irs::doc_iterator::ptr _itr;
@@ -537,6 +546,7 @@ class UnorderedViewIterator: public ViewIteratorBase {
 
   irs::filter::prepared::ptr _filter;
   State _state; // previous iteration state
+  mutable bool _hasMore{true};
 };
 
 UnorderedViewIterator::UnorderedViewIterator(
@@ -582,7 +592,8 @@ bool UnorderedViewIterator::next(TokenCallback const& callback, size_t limit) {
     }
   }
 
-  return limit == 0; // exceeded limit
+  _hasMore = (limit == 0); // exceeded limit
+  return _hasMore;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1043,7 +1054,7 @@ IResearchView::SyncState::SyncState(
 }
 
 IResearchView::FlushTransactionPtr IResearchView::flushTransaction() noexcept {
-  WriteMutex mutex(_mutex); // make sure that _memoryNode->_store is not in use
+  WriteMutex mutex(_mutex); // ensure that _memoryNode->_store is not in use
   SCOPED_LOCK(mutex);
 
   _toFlush = _memoryNode; // memory store to be flushed into the persisted store
@@ -1407,6 +1418,11 @@ int IResearchView::finish(TRI_voc_tid_t tid, bool commit) {
 
     trxStore._writer->commit(); // ensure have latest view in reader
     memoryStore._writer->import(trxStore._reader.reopen());
+
+    // FIXME remove it from here, once
+    // view will be initialized properly in runtime
+    // (currently _thread_pool doesn't start)
+    memoryStore._writer->commit();
 
     return TRI_ERROR_NO_ERROR;
   } catch (std::exception& e) {
@@ -1807,7 +1823,7 @@ bool IResearchView::linkRegister(LinkPtr& ptr) {
     LOG_TOPIC(WARN, Logger::FIXME) << "failed to persist iResearch view definition during new iResearch link registration for iResearch view '" << id() <<"' cid '" << ptr->collection()->cid() << "' iid '" << ptr->id() << "'";
 
     _meta._collections.erase(ptr->collection()->cid()); // revert state
-  } else if (!itr.second) {
+  } else if (itr.second) {
     // first time an IResearchLink object was seen for the specified cid
     // e.g. this happends during startup when links initially register with the view
     ptr->_view = this;
