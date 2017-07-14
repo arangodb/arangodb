@@ -415,7 +415,7 @@ def unstashBinaries(edition, os) {
 
     if (os == 'linux' || os == 'mac') {
         sh "unzip -o -q  ${name}"
-        sh "del /F /Q ${name}"
+        sh "rm -f ${name}"
     }
     else if (os == 'windows') {
         bat "c:\\cmake\\bin\\cmake -E tar xf ${name}"
