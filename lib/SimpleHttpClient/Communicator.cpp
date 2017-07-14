@@ -407,7 +407,7 @@ void Communicator::handleResult(CURL* handle, CURLcode rc) {
   MUTEX_LOCKER(guard, _handlesLock);
   switch (rc) {
     case CURLE_OK: {
-      int httpStatusCode = 200;
+      long httpStatusCode = 200;
       curl_easy_getinfo(handle, CURLINFO_RESPONSE_CODE, &httpStatusCode);
 
       std::unique_ptr<GeneralResponse> response(
