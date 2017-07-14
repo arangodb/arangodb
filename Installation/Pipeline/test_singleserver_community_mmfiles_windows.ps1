@@ -4,7 +4,7 @@
 
 Move-Item -force .\build\bin\RelWithDebInfo\* .\build\bin\
 
-RunTests -port $port -engine mmfiles
+RunTests -port $port -engine mmfiles -edition community --mode singleserver
 $result = $LastExitCode
 
 del $portFile
