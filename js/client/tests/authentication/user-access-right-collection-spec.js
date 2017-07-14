@@ -159,7 +159,9 @@ describe('User Rights Management', () => {
 
               it('collection', () => {
                 expect(rootTestCollection()).to.equal(true, `Precondition failed, the collection does not exist`);
-                if (activeUsers.has(name) && dbLevel['rw'].has(name)) {
+                if (activeUsers.has(name) && 
+                  dbLevel['rw'].has(name) && 
+                  colLevel['rw'].has(name)) {
                   // User needs rw on database
                   db._drop(testColName);
                   expect(rootTestCollection()).to.equal(false, `Collection drop reported success, but collection was still found afterwards.`);

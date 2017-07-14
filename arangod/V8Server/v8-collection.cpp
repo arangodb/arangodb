@@ -1459,19 +1459,25 @@ static void JS_PropertiesVocbaseCol(
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
   
-  bool const isModification = (args.Length() != 0);
-  if (ExecContext::CURRENT != nullptr) {
-    auto level = ExecContext::CURRENT->databaseAuthLevel();
-    if ((isModification && level != AuthLevel::RW) || level == AuthLevel::NONE) {
-      TRI_V8_THROW_EXCEPTION(TRI_ERROR_FORBIDDEN);
-    }
-  }
-
+  
   arangodb::LogicalCollection* collection =
-      TRI_UnwrapClass<arangodb::LogicalCollection>(args.Holder(), WRP_VOCBASE_COL_TYPE);
-
+  TRI_UnwrapClass<arangodb::LogicalCollection>(args.Holder(), WRP_VOCBASE_COL_TYPE);
+  
   if (collection == nullptr) {
     TRI_V8_THROW_EXCEPTION_INTERNAL("cannot extract collection");
+  }
+  
+  bool const isModification = (args.Length() != 0);
+  if (ExecContext::CURRENT != nullptr) {
+    AuthenticationFeature *auth = AuthenticationFeature::INSTANCE;
+    auto level = ExecContext::CURRENT->databaseAuthLevel();
+    auto level2 = auth->canUseCollection(ExecContext::CURRENT->user(),
+                                         ExecContext::CURRENT->database(),
+                                         collection->name());
+    if ((isModification && (level != AuthLevel::RW || level2 != AuthLevel::RW)) ||
+        level == AuthLevel::NONE) {
+      TRI_V8_THROW_EXCEPTION(TRI_ERROR_FORBIDDEN);
+    }
   }
 
   if (ServerState::instance()->isCoordinator()) {

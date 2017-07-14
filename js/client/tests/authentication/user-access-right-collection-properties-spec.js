@@ -136,7 +136,9 @@ describe('User Rights Management', () => {
                 let col = db._collection(testColName);
                 let origIdxCount = col.getIndexes().length;
                 expect(origIdxCount).to.equal(1); // Only primary index
-                if (activeUsers.has(name) && dbLevel['rw'].has(name)) {
+                if (activeUsers.has(name) && 
+                  dbLevel['rw'].has(name) && 
+                  colLevel['rw'].has(name)) {
                   // User needs rw on database
                   let idx = col.ensureHashIndex('foo');
                   expect(col.getIndexes().length).to.equal(origIdxCount + 1, `Ensure Index reported success, but collection does not show it.`);
@@ -169,7 +171,9 @@ describe('User Rights Management', () => {
                 expect(rootTestCollection()).to.equal(true, `Precondition failed, the collection does not exist`);
                 let col = db._collection(testColName);
                 let wfs = col.properties().waitForSync;
-                if (activeUsers.has(name) && dbLevel['rw'].has(name)) {
+                if (activeUsers.has(name) && 
+                    dbLevel['rw'].has(name) &&
+                    colLevel['rw'].has(name)) {
                   // User needs rw on database
                   col.properties({waitForSync: !wfs})
                   expect(col.properties().waitForSync).to.equal(!wfs, `Change properties reported success, but collection did not change it.`);
