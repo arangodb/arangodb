@@ -21,40 +21,25 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_INDEXES_INDEX_LOOKUP_CONTEXT_H
-#define ARANGOD_INDEXES_INDEX_LOOKUP_CONTEXT_H 1
+#ifndef ARANGOD_ROCKSDB_ROCKSDB_OPTIMIZER_RULES_H
+#define ARANGOD_ROCKSDB_ROCKSDB_OPTIMIZER_RULES_H 1
 
 #include "Basics/Common.h"
-#include "StorageEngine/DocumentIdentifierToken.h"
-#include "VocBase/vocbase.h"
 
 namespace arangodb {
-class LogicalCollection;
-class ManagedDocumentResult;
-
-namespace transaction {
-class Methods;
+namespace aql {
+class ExecutionPlan;
+class Optimizer;
+struct OptimizerRule;
 }
 
-class IndexLookupContext {
- public:
-  IndexLookupContext() = delete;
-  IndexLookupContext(transaction::Methods* trx, LogicalCollection* collection, ManagedDocumentResult* result, size_t numFields);
-  ~IndexLookupContext() {}
-
-  uint8_t const* lookup(DocumentIdentifierToken token);
-
-  ManagedDocumentResult* result() { return _result; }
-
-  inline size_t numFields() const { return _numFields; }
-
- private:
-  transaction::Methods* _trx;
-  LogicalCollection* _collection;
-  ManagedDocumentResult* _result;
-  size_t const _numFields;
+struct RocksDBOptimizerRules {
+  static void registerResources();
+  
+  // simplify an EnumerationCollectionNode that fetches an entire document to a projection of this document
+  static void reduceExtractionToProjectionRule(aql::Optimizer* opt, std::unique_ptr<aql::ExecutionPlan> plan, aql::OptimizerRule const* rule);
 };
 
-}
+} // namespace arangodb
 
 #endif

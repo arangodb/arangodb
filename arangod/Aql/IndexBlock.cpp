@@ -48,6 +48,7 @@ using namespace arangodb::aql;
 
 IndexBlock::IndexBlock(ExecutionEngine* engine, IndexNode const* en)
     : ExecutionBlock(engine, en),
+      DocumentProducingBlock(en, _trx),
       _collection(en->collection()),
       _currentIndex(0),
       _indexes(en->getIndexes()),
@@ -405,7 +406,11 @@ bool IndexBlock::skipIndex(size_t atMost) {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
     }
 
-    if (_cursor->skip(atMost - _returned, _returned)) {
+    uint64_t returned = (uint64_t) _returned;
+    bool ok = _cursor->skip(atMost - returned, returned);
+    _returned = (size_t) returned;
+
+    if (ok) {
       // We have skipped enough.
       // And this index could return more.
       // We are good.
@@ -502,46 +507,29 @@ AqlItemBlock* IndexBlock::getSome(size_t atLeast, size_t atMost) {
   IndexIterator::DocumentCallback callback;
   if (_indexes.size() > 1) {
     // Activate uniqueness checks
-    callback = [&](ManagedDocumentResult const& mdr) {
+    callback = [&](DocumentIdentifierToken const& token, VPackSlice slice) {
       TRI_ASSERT(res.get() != nullptr);
       if (!_isLastIndex) {
         // insert & check for duplicates in one go
-        if (!_alreadyReturned.emplace(mdr.lastRevisionId()).second) {
+        if (!_alreadyReturned.emplace(token._data).second) {
           // Document already in list. Skip this
           return;
         }
       } else {
         // only check for duplicates
-        if (_alreadyReturned.find(mdr.lastRevisionId()) != _alreadyReturned.end()) {
+        if (_alreadyReturned.find(token._data) != _alreadyReturned.end()) {
           // Document found, skip
           return;
         }
       }
-      res->setValue(_returned,
-                    static_cast<arangodb::aql::RegisterId>(curRegs),
-                    mdr.createAqlValue());
-
-      if (_returned > 0) {
-        // re-use already copied AqlValues
-        res->copyValuesFromFirstRow(_returned,
-                                    static_cast<RegisterId>(curRegs));
-      }
-      ++_returned;
+      
+      _documentProducer(res.get(), slice, curRegs, _returned);
     };
   } else {
     // No uniqueness checks
-    callback = [&](ManagedDocumentResult const& mdr) {
+    callback = [&](DocumentIdentifierToken const& token, VPackSlice slice) {
       TRI_ASSERT(res.get() != nullptr);
-      res->setValue(_returned,
-                    static_cast<arangodb::aql::RegisterId>(curRegs),
-                    mdr.createAqlValue());
-
-      if (_returned > 0) {
-        // re-use already copied AqlValues
-        res->copyValuesFromFirstRow(_returned,
-                                    static_cast<RegisterId>(curRegs));
-      }
-      ++_returned;
+      _documentProducer(res.get(), slice, curRegs, _returned);
     };
   }
 

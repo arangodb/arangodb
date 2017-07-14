@@ -152,9 +152,7 @@ void HttpCommTask::addResponse(HttpResponse* response,
   }
 
   // reserve a buffer with some spare capacity
-  WriteBuffer buffer(
-      new StringBuffer(TRI_UNKNOWN_MEM_ZONE, responseBodyLength + 128, false),
-      stat);
+  WriteBuffer buffer(leaseStringBuffer(responseBodyLength + 128), stat);
 
   // write header
   response->writeHeader(buffer._buffer);

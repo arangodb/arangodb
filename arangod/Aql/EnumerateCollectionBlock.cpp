@@ -31,6 +31,8 @@
 #include "Cluster/FollowerInfo.h"
 #include "Cluster/ServerState.h"
 #include "StorageEngine/DocumentIdentifierToken.h"
+#include "Transaction/Helpers.h"
+#include "Transaction/Methods.h"
 #include "Utils/OperationCursor.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/ManagedDocumentResult.h"
@@ -40,22 +42,20 @@ using namespace arangodb::aql;
 
 EnumerateCollectionBlock::EnumerateCollectionBlock(
     ExecutionEngine* engine, EnumerateCollectionNode const* ep)
-    : ExecutionBlock(engine, ep),
+    : ExecutionBlock(engine, ep), 
+      DocumentProducingBlock(ep, _trx),
       _collection(ep->_collection),
       _mmdr(new ManagedDocumentResult),
       _cursor(
           _trx->indexScan(_collection->getName(),
                           (ep->_random ? transaction::Methods::CursorType::ANY
                                        : transaction::Methods::CursorType::ALL),
-                          _mmdr.get(), 0, UINT64_MAX, 1000, false)),
-      _mustStoreResult(true) {
+                          _mmdr.get(), 0, UINT64_MAX, 1000, false)) {
   TRI_ASSERT(_cursor->successful());
 }
 
 int EnumerateCollectionBlock::initialize() {
   DEBUG_BEGIN_BLOCK();
-  auto ep = static_cast<EnumerateCollectionNode const*>(_exeNode);
-  _mustStoreResult = ep->isVarUsedLater(ep->_outVariable);
 
   if (_collection->isSatellite()) {
     auto logicalCollection = _collection->getCollection();
@@ -135,7 +135,7 @@ AqlItemBlock* EnumerateCollectionBlock::getSome(size_t,  // atLeast,
     traceGetSomeEnd(nullptr);
     return nullptr;
   }
-
+    
   bool needMore;
   AqlItemBlock* cur = nullptr;
   size_t send = 0;
@@ -185,35 +185,26 @@ AqlItemBlock* EnumerateCollectionBlock::getSome(size_t,  // atLeast,
     // only copy 1st row of registers inherited from previous frame(s)
     inheritRegisters(cur, res.get(), _pos);
 
-    IndexIterator::DocumentCallback cb;
-    if (_mustStoreResult) {
-      cb = [&](ManagedDocumentResult const& mdr) {
-        res->setValue(send,
-                      static_cast<arangodb::aql::RegisterId>(curRegs),
-                      mdr.createAqlValue());
-        if (send > 0) {
-          // re-use already copied AQLValues
-          res->copyValuesFromFirstRow(send, static_cast<RegisterId>(curRegs));
-        }
-        ++send;
-      };
-    } else {
-      cb = [&](ManagedDocumentResult const& mdr) {
-        if (send > 0) {
-          // re-use already copied AQLValues
-          res->copyValuesFromFirstRow(send, static_cast<RegisterId>(curRegs));
-        }
-        ++send;
-      };
-    }
-
     throwIfKilled();  // check if we were aborted
     
     TRI_IF_FAILURE("EnumerateCollectionBlock::moreDocuments") {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
     }
-
-    bool tmp = _cursor->nextDocument(cb, atMost);
+   
+    bool tmp;
+    if (produceResult()) {
+      // properly build up results by fetching the actual documents
+      // using nextDocument()
+      tmp = _cursor->nextDocument([&](DocumentIdentifierToken const&, VPackSlice slice) {
+        _documentProducer(res.get(), slice, curRegs, send);
+      }, atMost);
+    } else {
+      // performance optimization: we do not need the documents at all,
+      // so just call next()
+      tmp = _cursor->next([&](DocumentIdentifierToken const&) {
+        _documentProducer(res.get(), VPackSlice::nullSlice(), curRegs, send);
+      }, atMost);
+    }
     if (!tmp) {
       TRI_ASSERT(!_cursor->hasMore());
     }

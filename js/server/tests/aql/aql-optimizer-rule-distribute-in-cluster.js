@@ -40,9 +40,9 @@ function optimizerRuleTestSuite () {
   var ruleName = "distribute-in-cluster";
   // various choices to control the optimizer: 
   var rulesNone        = { optimizer: { rules: [ "-all" ] } };
-  var rulesAll         = { optimizer: { rules: [ "+all" ] } };
+  var rulesAll         = { optimizer: { rules: [ "+all", "-reduce-extraction-to-projection" ] } };
   var thisRuleEnabled  = { optimizer: { rules: [ "-all", "+" + ruleName ] } };
-  var thisRuleDisabled = { optimizer: { rules: [ "+all", "-" + ruleName ] } };
+  var thisRuleDisabled = { optimizer: { rules: [ "+all", "-reduce-extraction-to-projection", "-" + ruleName ] } };
   var maxPlans         = { optimizer: { rules: [ "-all" ] }, maxNumberOfPlans: 1 };
 
   var cn1 = "UnitTestsAqlOptimizerRuleUndist1";

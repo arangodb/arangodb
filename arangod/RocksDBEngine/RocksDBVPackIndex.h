@@ -66,7 +66,8 @@ class RocksDBVPackIndexIterator final : public IndexIterator {
                             transaction::Methods* trx,
                             ManagedDocumentResult* mmdr,
                             arangodb::RocksDBVPackIndex const* index,
-                            bool reverse, RocksDBKeyBounds&& bounds);
+                            bool reverse, bool singleElementFetch,
+                            RocksDBKeyBounds&& bounds);
 
   ~RocksDBVPackIndexIterator() = default;
 
@@ -88,6 +89,7 @@ class RocksDBVPackIndexIterator final : public IndexIterator {
   rocksdb::Comparator const* _cmp;
   std::unique_ptr<rocksdb::Iterator> _iterator;
   bool const _reverse;
+  bool const _singleElementFetch;
   RocksDBKeyBounds _bounds;
   rocksdb::Slice _upperBound;  // used for iterate_upper_bound
 };

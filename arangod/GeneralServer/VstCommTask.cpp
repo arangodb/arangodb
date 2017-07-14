@@ -105,9 +105,11 @@ void VstCommTask::addResponse(VstResponse* response, RequestStatistics* stat) {
   uint64_t const id = response_message._id;
 
   std::vector<VPackSlice> slices;
-  slices.push_back(response_message._header);
 
   if (response->generateBody()) {
+    slices.reserve(1 + response_message._payloads.size());
+    slices.push_back(response_message._header);
+
     for (auto& payload : response_message._payloads) {
       LOG_TOPIC(DEBUG, Logger::REQUESTS) << "\"vst-request-result\",\""
                                          << (void*)this << "/" << id << "\","
@@ -115,6 +117,9 @@ void VstCommTask::addResponse(VstResponse* response, RequestStatistics* stat) {
 
       slices.push_back(payload);
     }
+  } else {
+    // header only
+    slices.push_back(response_message._header);
   }
 
   // set some sensible maxchunk size and compression

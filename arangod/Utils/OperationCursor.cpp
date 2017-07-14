@@ -95,7 +95,7 @@ bool OperationCursor::next(IndexIterator::TokenCallback const& callback, uint64_
 }
 
 bool OperationCursor::nextDocument(IndexIterator::DocumentCallback const& callback,
-                  uint64_t batchSize) {
+                                   uint64_t batchSize) {
   if (!hasMore()) {
     return false;
   }
@@ -110,9 +110,9 @@ bool OperationCursor::nextDocument(IndexIterator::DocumentCallback const& callba
   // We add wrapper around Callback that validates that
   // the callback has been called at least once.
   bool called = false;
-  auto cb = [&](ManagedDocumentResult const& mdr) {
+  auto cb = [&](DocumentIdentifierToken const& token, VPackSlice slice) {
     called = true;
-    callback(mdr);
+    callback(token, slice);
   };
   _hasMore = _indexIterator->nextDocument(cb, atMost);
   if (_hasMore) {
