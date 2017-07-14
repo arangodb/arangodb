@@ -348,19 +348,21 @@ RestStatus RestUsersHandler::putRequest(AuthInfo* authInfo) {
       // update internal config data, used in the admin dashboard
       if (canAccessUser(user)) {
         std::string const& key = suffixes[2];
-        VPackBuilder conf = authInfo->getConfigData(user);
-        if (!parsedBody->isEmpty()) {
-          VPackBuilder b;
-          b(VPackValue(VPackValueType::Object))(key, parsedBody->slice())();
-          conf = conf.slice().isObject()
-                     ? VPackCollection::merge(conf.slice(), b.slice(), false)
-                     : b;
+        Result r;
+        VPackBuilder conf = authInfo->getConfigData(user), b;
+        b(VPackValue(VPackValueType::Object))(key, parsedBody->slice())();
+        if (conf.isEmpty() || !conf.slice().isObject()) {
+          r = authInfo->setConfigData(user, b.slice());
+        } else {
+          VPackBuilder newConf = VPackCollection::merge(conf.slice(), b.slice(), false);
+          if (VelocyPackHelper::compare(conf.slice(), newConf.slice(), true) != 0) {
+            conf = std::move(newConf);
+            r = authInfo->setConfigData(user, conf.slice());
+          }
         }
-
-        Result r = authInfo->setConfigData(user, conf.slice());
+        
         if (r.ok()) {
           resetResponse(ResponseCode::OK);
-
         } else {
           generateError(r);
         }

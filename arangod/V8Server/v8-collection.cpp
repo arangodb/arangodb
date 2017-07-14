@@ -2164,8 +2164,26 @@ static void JS_PregelStart(v8::FunctionCallbackInfo<v8::Value> const& args) {
       }
   }
   
-  VPackSlice storeSlice = paramBuilder.slice().get("store");
-  bool storeResults = !storeSlice.isBool() || storeSlice.getBool();
+  // now check the access rights to collections
+  if (ExecContext::CURRENT != nullptr) {
+    VPackSlice storeSlice = paramBuilder.slice().get("store");
+    bool storeResults = !storeSlice.isBool() || storeSlice.getBool();
+    AuthenticationFeature *auth = AuthenticationFeature::INSTANCE;
+    for (std::string const& ec : paramVertices) {
+      AuthLevel lvl = auth->canUseCollection(ExecContext::CURRENT->user(),
+                                             ExecContext::CURRENT->database(), ec);
+      if ((storeResults && lvl != AuthLevel::RW) || lvl != AuthLevel::RO) {
+        THROW_ARANGO_EXCEPTION(TRI_ERROR_FORBIDDEN);
+      }
+    }
+    for (std::string const& ec : paramEdges) {
+      AuthLevel lvl = auth->canUseCollection(ExecContext::CURRENT->user(),
+                                             ExecContext::CURRENT->database(), ec);
+      if ((storeResults && lvl != AuthLevel::RW) || lvl != AuthLevel::RO) {
+        THROW_ARANGO_EXCEPTION(TRI_ERROR_FORBIDDEN);
+      }
+    }
+  }
 
   TRI_vocbase_t* vocbase = GetContextVocBase(isolate);
   for (std::string const& name : paramVertices) {
@@ -2177,10 +2195,6 @@ static void JS_PregelStart(v8::FunctionCallbackInfo<v8::Value> const& args) {
           TRI_V8_THROW_EXCEPTION_USAGE(
                                        "Cannot use pregel on system collection");
         }
-        //if (!coll->usesDefaultShardKeys()) {
-        //  TRI_V8_THROW_EXCEPTION_USAGE(
-        //                               "Vertex collection needs to be shared after '_key'");
-        //}
         if (coll->status() == TRI_VOC_COL_STATUS_DELETED || coll->deleted()) {
           TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND, name);
         }
