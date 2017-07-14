@@ -465,6 +465,10 @@ def buildEdition(edition, os) {
                 PowerShell(". .\\Installation\\Pipeline\\build_${edition}_${os}.ps1")
             }
         }
+        catch (exc) {
+            arch = "${arch}_FAILED"
+            throw exc
+        }
         finally {
             if (os == 'linux' || os == 'mac') {
                 sh "rm -rf ${arch}"
