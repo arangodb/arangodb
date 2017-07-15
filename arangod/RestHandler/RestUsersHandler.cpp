@@ -348,19 +348,36 @@ RestStatus RestUsersHandler::putRequest(AuthInfo* authInfo) {
       // update internal config data, used in the admin dashboard
       if (canAccessUser(user)) {
         std::string const& key = suffixes[2];
-        Result r;
-        VPackBuilder conf = authInfo->getConfigData(user), b;
-        b(VPackValue(VPackValueType::Object))(key, parsedBody->slice())();
-        if (conf.isEmpty() || !conf.slice().isObject()) {
-          r = authInfo->setConfigData(user, b.slice());
-        } else {
-          VPackBuilder newConf = VPackCollection::merge(conf.slice(), b.slice(), false);
-          if (VelocyPackHelper::compare(conf.slice(), newConf.slice(), true) != 0) {
-            conf = std::move(newConf);
-            r = authInfo->setConfigData(user, conf.slice());
+        VPackBuilder conf = authInfo->getConfigData(user);
+        // The API expects: { value : <toStore> }
+        // If we get sth else than the above it is translated
+        // to a remove of the config option.
+        if (!parsedBody->isEmpty()) {
+          VPackSlice newVal = parsedBody->slice();
+          VPackSlice oldConf = conf.slice();
+          if (!newVal.isObject() || !newVal.hasKey("value")) {
+            if (!oldConf.isObject() || !oldConf.hasKey(key)) {
+              // Nothing to do. We do not have a config yet.
+              // so we do not create a new empty one.
+              resetResponse(ResponseCode::OK);
+              return RestStatus::DONE;
+            }
+            conf = VPackCollection::remove(oldConf, std::unordered_set<std::string>{key});
+          } else {
+            // We need to merge the new key into the config
+            newVal = newVal.get("value");
+            VPackBuilder b;
+            b.openObject();
+            b.add(key, newVal);
+            b.close();
+            conf = oldConf.isObject()
+                       ? VPackCollection::merge(oldConf, b.slice(), false)
+                       : b;
           }
         }
         
+        Result r = authInfo->setConfigData(user, conf.slice());
+
         if (r.ok()) {
           resetResponse(ResponseCode::OK);
         } else {
