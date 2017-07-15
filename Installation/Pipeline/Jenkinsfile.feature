@@ -240,6 +240,7 @@ def checkoutResilience() {
 def checkCommitMessages() {
     def changeLogSets = currentBuild.changeSets
     def seenCommit = false
+    def skip = false
 
     for (int i = 0; i < changeLogSets.size(); i++) {
         def entries = changeLogSets[i].items
@@ -263,10 +264,7 @@ def checkCommitMessages() {
 
             if (msg ==~ /(?i).*\[ci:[^\]]*skip[ \]].*/) {
                 echo "skipping everything because message contained 'skip'"
-                cleanBuild = false
-                useLinux = false
-                useMac = false
-                useWindows = false
+                skip = true
             }
 
             def files = new ArrayList(entry.affectedFiles)
@@ -281,7 +279,18 @@ def checkCommitMessages() {
         }
     }
 
-    if (seenCommit) {
+    if (skip) {
+        useLinux = false
+        useMac = false
+        useWindows = false
+        buildExecutable = false
+        useCommunity = false
+        useEnterprise = false
+        runJslint = false
+        runResilience = false
+        runTests = false
+    }
+    else if (seenCommit) {
         if (env.BRANCH_NAME == "devel") {
             useLinux = true
             useMac = true
@@ -330,6 +339,7 @@ Mac: ${useMac}
 Windows: ${useWindows}
 Build: ${buildExecutable}
 Clean Build: ${cleanBuild}
+Full Parallel: ${fullParallel}
 Building Community: ${useCommunity}
 Building Enterprise: ${useEnterprise}
 Running Jslint: ${runJslint}
@@ -943,13 +953,11 @@ stage('checkout') {
 
 runStage {
     if (buildExecutable) {
-        if (fullParallel) {
-            stage('full') {
+        stage('build') {
+            if (fullParallel) {
                 buildStepParallel(['linux', 'mac', 'windows'])
             }
-        }
-        else {
-            stage('build') {
+            else {
                 buildStepParallel(['linux'])
             }
         }
