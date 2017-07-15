@@ -64,7 +64,7 @@ WorkFlow RunTests {
     )
   }
 
-  foreach -parallel -throttlelimit 3 ($testdef in $tests) {
+  foreach -parallel -throttlelimit 5 ($testdef in $tests) {
     $testargs = ""
 
     if ($testdef -isnot [system.array]) {

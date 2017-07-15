@@ -595,7 +595,7 @@ def testEdition(edition, os, mode, engine) {
     try {
         try {
             if (os == 'linux') {
-                sh "./Installation/Pipeline/test_${mode}_${edition}_${engine}_${os}.sh 5"
+                sh "./Installation/Pipeline/test_${mode}_${edition}_${engine}_${os}.sh 10"
             }
             else if (os == 'mac') {
                 sh "./Installation/Pipeline/test_${mode}_${edition}_${engine}_${os}.sh 5"
