@@ -91,9 +91,6 @@ buildExecutable = params.build
 // start with empty build directory
 cleanBuild = params.cleanBuild
 
-// build all combinations
-buildFull = false
-
 // skip tests on previous error
 skipTestsOnError = params.skipTestsOnError
 
@@ -558,10 +555,6 @@ def testCheck(edition, os, mode, engine, full) {
         return false
     }
 
-    if (full && ! buildFull) {
-        return false
-    }
-
     if (os == 'linux' && ! useLinux) {
         return false
     }
@@ -847,10 +840,6 @@ def buildEdition(edition, os) {
 }
 
 def buildStepCheck(edition, os, full) {
-    if (full && ! buildFull) {
-        return false
-    }
-
     if (os == 'linux' && ! useLinux) {
         return false
     }
