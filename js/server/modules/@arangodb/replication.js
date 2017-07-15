@@ -329,7 +329,7 @@ function syncCollectionFinalize (database, collname, from, config, sourceServer)
   }
 
   while (true) {
-    var chunk = request(url + from);
+    var chunk = request({url: url + from, timeout: 60});
     if (chunk.statusCode !== 200 &&
       chunk.statusCode !== 204) {
       return {error: true, errorMessage: 'could not contact leader',
