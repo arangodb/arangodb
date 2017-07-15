@@ -885,11 +885,11 @@ def buildStep(edition, os) {
                     throw exc
                 }
             }
+        }
 
-            if (fullParallel) {
-                testStepParallel([edition], [os], ['cluster', 'singleserver'])
-                testResilienceParallel([os])
-            }
+        if (fullParallel) {
+            testStepParallel([edition], [os], ['cluster', 'singleserver'])
+            testResilienceParallel([os])
         }
     }
 }
