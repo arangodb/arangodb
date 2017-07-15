@@ -492,7 +492,6 @@ def buildEdition(edition, os) {
             else if (os == 'windows') {
                 bat "del /F /Q ${arch}"
                 powershell "New-Item -ItemType Directory -Force -Path ${arch}"
-                bat "move log-output ${arch}"
             }
         }
     }
