@@ -951,8 +951,8 @@ stage('checkout') {
     }
 }
 
-runStage {
-    if (buildExecutable) {
+if (buildExecutable) {
+    runStage {
         stage('build') {
             if (fullParallel) {
                 buildStepParallel(['linux', 'mac', 'windows'])
