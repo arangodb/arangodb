@@ -183,7 +183,7 @@ def scpFromMaster(os, from, to) {
 
 def checkoutCommunity() {
     if (cleanBuild) {
-       sh 'rm -rf *'
+        deleteDir()
     }
 
     retry(3) {
@@ -741,7 +741,9 @@ resiliencesSuccess = [:]
 allResiliencesSuccessful = true
 
 def testResilience(os, engine, foxx) {
-    sh "./Installation/Pipeline/test_resilience_${foxx}_${engine}_${os}.sh"
+    withEnv(['LOG_COMMUNICATION=debug', 'LOG_REQUESTS=trace', 'LOG_AGENCY=trace']) {
+        sh "./Installation/Pipeline/test_resilience_${foxx}_${engine}_${os}.sh"
+    }
 }
 
 def testResilienceCheck(os, engine, foxx, full) {
