@@ -72,6 +72,32 @@ Export XGMML
 
 [XGMML](https://en.wikipedia.org/wiki/XGMML) is an XML application based on [GML](https://en.wikipedia.org/wiki/Graph_Modelling_Language). To view the XGMML file you can use for example [Cytoscape](http://cytoscape.org).
 
+## important note
+If you export all attributes (*--xgmml-label-only false*) keep in mind that a atrribute names type have to be the same type for all documents. It wont work if you have a attribute named rank that is in one document a string and in another document a integer.
+
+Bad
+
+    // doc1
+    {
+        "rank": 1
+    }
+    // doc2
+    {
+        "rank": "2"
+    }
+
+Good
+
+    // doc1
+    {
+        "rank": 1
+    }
+    // doc2
+    {
+        "rank": 2
+    }
+
+
 ## XGMML specific options
 
 *--xgmml-label-attribute* specify the name of the attribute that will become the label in the xgmml file.
