@@ -443,7 +443,7 @@ def unstashBinaries(edition, os) {
 }
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                                     SCRIPTS BUILD
+// --SECTION--                                                         VARIABLES
 // -----------------------------------------------------------------------------
 
 buildJenkins = [
@@ -455,137 +455,20 @@ buildJenkins = [
 buildsSuccess = [:]
 allBuildsSuccessful = true
 
-def buildEdition(edition, os) {
-    if (! cleanBuild) {
-        try {
-            unstashBuild(edition, os)
-        }
-        // catch (hudson.AbortException ae) {
-        //     throw ae
-        // }
-        catch (exc) {
-            echo "no stashed build environment, starting clean build"
-        }
-    }
+jslintSuccessful = true
 
-    def arch = "LOG_build_${edition}_${os}"
+testJenkins = [
+    "linux": "linux && tests",
+    "mac" : "mac",
+    "windows": "windows"
+]
 
-    try {
-        try {
-            if (os == 'linux') {
-                sh "./Installation/Pipeline/build_${edition}_${os}.sh 64"
-            }
-            else if (os == 'mac') {
-                sh "./Installation/Pipeline/build_${edition}_${os}.sh 20"
-            }
-            else if (os == 'windows') {
-                powershell ". .\\Installation\\Pipeline\\build_${edition}_${os}.ps1"
-            }
-        }
-        finally {
-            if (os == 'linux' || os == 'mac') {
-                sh "rm -rf ${arch}"
-                sh "mkdir -p ${arch}"
-                sh "find log-output -name 'FAILED_*' -exec cp '{}' ${arch} ';'"
-                sh "for i in log-output; do test -e \$i && mv \$i ${arch} || true; done"
-            }
-            else if (os == 'windows') {
-                bat "del /F /Q ${arch}"
-                powershell "New-Item -ItemType Directory -Force -Path ${arch}"
-            }
-        }
-    }
-    finally {
-        stashBuild(edition, os)
-        archiveArtifacts allowEmptyArchive: true,
-                         artifacts: "${arch}/**"
-                         defaultExcludes: false
-    }
-}
-
-def buildStepCheck(edition, os, full) {
-    if (full && ! buildFull) {
-        return false
-    }
-
-    if (os == 'linux' && ! useLinux) {
-        return false
-    }
-
-    if (os == 'mac' && ! useMac) {
-        return false
-    }
-
-    if (os == 'windows' && ! useWindows) {
-        return false
-    }
-
-    if (edition == 'enterprise' && ! useEnterprise) {
-        return false
-    }
-
-    if (edition == 'community' && ! useCommunity) {
-        return false
-    }
-
-    return true
-}
-
-def buildStep(edition, os) {
-    return {
-        lock("${env.BRANCH_NAME}-build-${edition}-${os}") {
-            node(buildJenkins[os]) {
-                def name = "${edition}-${os}"
-
-                try {
-                    unstashSourceCode(os)
-                    buildEdition(edition, os)
-                    stashBinaries(edition, os)
-                    buildsSuccess[name] = true
-                }
-                // catch (hudson.AbortException ae) {
-                //     throw ae
-                // }
-                catch (exc) {
-                    buildsSuccess[name] = false
-                    allBuildsSuccessful = false
-                    throw exc
-                }
-            }
-
-            if (fullParallel) {
-                testStepParallel([edition], [os], ['cluster', 'singleserver'])
-                testResilienceParallel([os])
-            }
-        }
-    }
-}
-
-def buildStepParallel(osList) {
-    def branches = [:]
-    def full = false
-
-    for (edition in ['community', 'enterprise']) {
-        for (os in osList) {
-            if (buildStepCheck(edition, os, full)) {
-                branches["build-${edition}-${os}"] = buildStep(edition, os)
-            }
-        }
-    }
-
-    if (branches.size() > 1) {
-        parallel branches
-    }
-    else if (branches.size() == 1) {
-        branches.values()[0]()
-    }
-}
+testsSuccess = [:]
+allTestsSuccessful = true
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                    SCRIPTS JSLINT
 // -----------------------------------------------------------------------------
-
-jslintSuccessful = true
 
 def jslint() {
     try {
@@ -616,15 +499,6 @@ def jslintStep(edition) {
 // -----------------------------------------------------------------------------
 // --SECTION--                                                     SCRIPTS TESTS
 // -----------------------------------------------------------------------------
-
-testJenkins = [
-    "linux": "linux && tests",
-    "mac" : "mac",
-    "windows": "windows"
-]
-
-testsSuccess = [:]
-allTestsSuccessful = true
 
 def testEdition(edition, os, mode, engine) {
     def arch = "LOG_test_${mode}_${edition}_${engine}_${os}"
@@ -898,6 +772,136 @@ def testResilienceParallel(osList) {
 
                     branches[name] = testResilienceStep(os, engine, foxx)
                 }
+            }
+        }
+    }
+
+    if (branches.size() > 1) {
+        parallel branches
+    }
+    else if (branches.size() == 1) {
+        branches.values()[0]()
+    }
+}
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                     SCRIPTS BUILD
+// -----------------------------------------------------------------------------
+
+def buildEdition(edition, os) {
+    if (! cleanBuild) {
+        try {
+            unstashBuild(edition, os)
+        }
+        // catch (hudson.AbortException ae) {
+        //     throw ae
+        // }
+        catch (exc) {
+            echo "no stashed build environment, starting clean build"
+        }
+    }
+
+    def arch = "LOG_build_${edition}_${os}"
+
+    try {
+        try {
+            if (os == 'linux') {
+                sh "./Installation/Pipeline/build_${edition}_${os}.sh 64"
+            }
+            else if (os == 'mac') {
+                sh "./Installation/Pipeline/build_${edition}_${os}.sh 20"
+            }
+            else if (os == 'windows') {
+                powershell ". .\\Installation\\Pipeline\\build_${edition}_${os}.ps1"
+            }
+        }
+        finally {
+            if (os == 'linux' || os == 'mac') {
+                sh "rm -rf ${arch}"
+                sh "mkdir -p ${arch}"
+                sh "find log-output -name 'FAILED_*' -exec cp '{}' ${arch} ';'"
+                sh "for i in log-output; do test -e \$i && mv \$i ${arch} || true; done"
+            }
+            else if (os == 'windows') {
+                bat "del /F /Q ${arch}"
+                powershell "New-Item -ItemType Directory -Force -Path ${arch}"
+            }
+        }
+    }
+    finally {
+        stashBuild(edition, os)
+        archiveArtifacts allowEmptyArchive: true,
+                         artifacts: "${arch}/**"
+                         defaultExcludes: false
+    }
+}
+
+def buildStepCheck(edition, os, full) {
+    if (full && ! buildFull) {
+        return false
+    }
+
+    if (os == 'linux' && ! useLinux) {
+        return false
+    }
+
+    if (os == 'mac' && ! useMac) {
+        return false
+    }
+
+    if (os == 'windows' && ! useWindows) {
+        return false
+    }
+
+    if (edition == 'enterprise' && ! useEnterprise) {
+        return false
+    }
+
+    if (edition == 'community' && ! useCommunity) {
+        return false
+    }
+
+    return true
+}
+
+def buildStep(edition, os) {
+    return {
+        lock("${env.BRANCH_NAME}-build-${edition}-${os}") {
+            node(buildJenkins[os]) {
+                def name = "${edition}-${os}"
+
+                try {
+                    unstashSourceCode(os)
+                    buildEdition(edition, os)
+                    stashBinaries(edition, os)
+                    buildsSuccess[name] = true
+                }
+                // catch (hudson.AbortException ae) {
+                //     throw ae
+                // }
+                catch (exc) {
+                    buildsSuccess[name] = false
+                    allBuildsSuccessful = false
+                    throw exc
+                }
+            }
+
+            if (fullParallel) {
+                testStepParallel([edition], [os], ['cluster', 'singleserver'])
+                testResilienceParallel([os])
+            }
+        }
+    }
+}
+
+def buildStepParallel(osList) {
+    def branches = [:]
+    def full = false
+
+    for (edition in ['community', 'enterprise']) {
+        for (os in osList) {
+            if (buildStepCheck(edition, os, full)) {
+                branches["build-${edition}-${os}"] = buildStep(edition, os)
             }
         }
     }
