@@ -500,7 +500,7 @@ actions.defineHttp({
 // / @brief was docuBlock JSF_post_admin_execute
 // //////////////////////////////////////////////////////////////////////////////
 
-if (ALLOW_ADMIN_EXECUTE) {
+if (global.ALLOW_ADMIN_EXECUTE) {
   actions.defineHttp({
     url: '_admin/execute',
     prefix: false,
@@ -526,4 +526,4 @@ if (ALLOW_ADMIN_EXECUTE) {
   });
 }
 
-delete ALLOW_ADMIN_EXECUTE;
+delete global.ALLOW_ADMIN_EXECUTE;

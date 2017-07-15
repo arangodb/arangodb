@@ -175,11 +175,11 @@ describe('User Rights Management', () => {
                     dbLevel['rw'].has(name) &&
                     colLevel['rw'].has(name)) {
                   // User needs rw on database
-                  col.properties({waitForSync: !wfs})
+                  col.properties({waitForSync: !wfs});
                   expect(col.properties().waitForSync).to.equal(!wfs, `Change properties reported success, but collection did not change it.`);
                 } else {
                   try {
-                    col.properties({waitForSync: !wfs})
+                    col.properties({waitForSync: !wfs});
                   } catch (e) {
                     expect(e.errorNum).to.equal(errors.ERROR_FORBIDDEN.code);
                   }

@@ -44,6 +44,8 @@ const colLevel = {};
 const activeUsers = new Set();
 const inactiveUsers = new Set();
 
+const db = internal.db;
+
 for (let l of rightLevels) {
   systemLevel[l] = new Set();
   dbLevel[l] = new Set();
@@ -111,10 +113,10 @@ exports.generateAllUsers = () => {
 
           if (sys !== 'default') {
             users.grantDatabase(name, '_system', sys);
-            var a = users.permission(name, '_system');
-            if (sys != a) {
+            let a = users.permission(name, '_system');
+            if (sys !== a) {
               internal.print("Wrong sys permissions for user " + name);
-              internal.print(sys + " != " + a);
+              internal.print(sys + " !== " + a);
             }
           } else {
             users.revokeDatabase(name, '_system');
@@ -123,10 +125,10 @@ exports.generateAllUsers = () => {
 
           if (db !== 'default') {
             users.grantDatabase(name, dbName, db);
-            var a =  users.permission(name, dbName);
-            if (db != a) {
+            let a = users.permission(name, dbName);
+            if (db !== a) {
               internal.print("Wrong db permissions for user " + name);
-              internal.print(db + " != " + a);
+              internal.print(db + " !== " + a);
             }
           } else {
             users.revokeDatabase(name, dbName);
@@ -135,10 +137,10 @@ exports.generateAllUsers = () => {
 
           if (col !== 'default') {
             users.grantCollection(name, dbName, colName, col);
-            var a =  users.permission(name, dbName, colName);
-            if (col != a) {
+            let a = users.permission(name, dbName, colName);
+            if (col !== a) {
               internal.print("Wrong collection permissions for user " + name);
-              internal.print(col + " != " + a);
+              internal.print(col + " !== " + a);
             }
           } else {
             users.revokeCollection(name, dbName, colName);
