@@ -457,7 +457,7 @@ def buildEdition(edition, os) {
             if (os == 'linux' || os == 'mac') {
                 sh "rm -rf ${arch}"
                 sh "mkdir -p ${arch}"
-                sh "for i in log-output; do test -e \$i && mv \$i ${arch}; done"
+                sh "for i in log-output; do test -e \$i && mv \$i ${arch} || true; done"
                 sh "find log-output -name 'FAILED_*' -exec cp '{}' ${arch} ';'"
             }
         }
@@ -607,7 +607,7 @@ def testEdition(edition, os, mode, engine) {
             if (os == 'linux' || os == 'mac') {
                 sh "rm -rf ${arch}"
                 sh "mkdir -p ${arch}"
-                sh "for i in build core* logs log-output tmp; do test -e \$i && mv \$i ${arch}; done"
+                sh "for i in build core* logs log-output tmp; do test -e \$i && mv \$i ${arch} || true; done"
             }
         }
     }
