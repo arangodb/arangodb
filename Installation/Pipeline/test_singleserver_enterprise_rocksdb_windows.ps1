@@ -4,8 +4,7 @@
 
 Move-Item -force .\build\bin\RelWithDebInfo\* .\build\bin\
 
-RunTests -port $port -engine rocksdb -edition enterprise -mode singleserver
-$result = $LastExitCode
+$result = RunTests -port $port -engine rocksdb -edition enterprise -mode singleserver
 
 del $portFile
 
