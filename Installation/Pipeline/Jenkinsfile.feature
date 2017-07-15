@@ -943,11 +943,13 @@ stage('checkout') {
 
 runStage {
     if (buildExecutable) {
-        stage('build') {
-            if (fullParallel) {
+        if (fullParallel) {
+            stage('full') {
                 buildStepParallel(['linux', 'mac', 'windows'])
             }
-            else {
+        }
+        else {
+            stage('build') {
                 buildStepParallel(['linux'])
             }
         }
@@ -957,9 +959,7 @@ runStage {
 if (! fullParallel) {
     runStage {
         stage('tests') {
-            testStepParallel(['community', 'enterprise'],
-                             ['linux'],
-                             ['cluster', 'singleserver'])
+            testStepParallel(['community', 'enterprise'], ['linux'], ['cluster', 'singleserver'])
         }
     }
 }
