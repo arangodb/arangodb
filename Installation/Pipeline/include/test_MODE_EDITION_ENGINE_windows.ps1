@@ -82,8 +82,12 @@ WorkFlow RunTests {
       $testscript = {
         $maxPort = $USING:minPort + $USING:portInterval - 1
 
+        echo "Starting $USING:name"
+
         Set-Location $USING:workspace
         .\build\bin\arangosh.exe --log.level warning --javascript.execute UnitTests\unittest.js $USING:test -- --cluster $USING:cluster --storageEngine $USING:engine --minPort $USING:minPort --maxPort $USING:maxPort --skipNondeterministic true --skipTimeCritical true  --configDir etc/jenkins --skipLogAnalysis true $USING:testargs *> $USING:log
+
+        echo "Finished $USING:name"
       }
 
       Invoke-Command -ScriptBlock $testscript
