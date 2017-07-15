@@ -152,11 +152,6 @@ credentials = '8d893d23-6714-4f35-a239-c847c798e080'
 // jenkins cache
 cacheDir = '/vol/cache/' + env.JOB_NAME.replaceAll('%', '_')
 
-// execute a powershell
-def PowerShell(psCmd) {
-    bat "powershell.exe -NonInteractive -ExecutionPolicy Bypass -Command \"\$ErrorActionPreference='Stop';[Console]::OutputEncoding=[System.Text.Encoding]::UTF8;$psCmd;EXIT \$global:LastExitCode\""
-}
-
 // copy data to master cache
 def scpToMaster(os, from, to) {
     if (os == 'linux' || os == 'mac') {
@@ -454,11 +449,17 @@ def buildEdition(edition, os) {
             }
         }
         finally {
+
             if (os == 'linux' || os == 'mac') {
                 sh "rm -rf ${arch}"
                 sh "mkdir -p ${arch}"
                 sh "for i in log-output; do test -e \$i && mv \$i ${arch} || true; done"
                 sh "find log-output -name 'FAILED_*' -exec cp '{}' ${arch} ';'"
+            }
+            else if (os == 'windows') {
+                bat "del /F /Q ${arch}"
+                bat "New-Item -ItemType Directory -Force -Path ${arch}"
+                bat "move log-output ${arch}"
             }
         }
     }
@@ -739,7 +740,15 @@ allResiliencesSuccessful = true
 
 def testResilience(os, engine, foxx) {
     withEnv(['LOG_COMMUNICATION=debug', 'LOG_REQUESTS=trace', 'LOG_AGENCY=trace']) {
-        sh "./Installation/Pipeline/test_resilience_${foxx}_${engine}_${os}.sh"
+        if (os == 'linux') {
+            sh "./Installation/Pipeline/test_resilience_${foxx}_${engine}_${os}.sh"
+        }
+        else if (os == 'mac') {
+            sh "./Installation/Pipeline/test_resilience_${foxx}_${engine}_${os}.sh"
+        }
+        else if (os == 'windows') {
+            powershell "./Installation/Pipeline/test_resilience_${foxx}_${engine}_${os}.ps1"
+        }
     }
 }
 
@@ -800,6 +809,12 @@ def testResilienceStep(os, engine, foxx) {
                             sh "mkdir -p ${arch}"
                             sh "for i in build log-output core* tmp resilience/core*; do test -e \$i && mv \$i ${arch}; done"
                         }
+                        else if (os == 'windows') {
+                            bat "del /F /Q ${arch}"
+                            bat "New-Item -ItemType Directory -Force -Path ${arch}"
+                            bat "move log-output ${arch}"
+                        }
+                        
                     }
                 }
                 // catch (hudson.AbortException ae) {
