@@ -900,6 +900,7 @@ def buildStepParallel(osList) {
     for (edition in ['community', 'enterprise']) {
         for (os in osList) {
             if (buildStepCheck(edition, os, full)) {
+                echo "HERE 10 ${edition}-${os}"
                 branches["build-${edition}-${os}"] = buildStep(edition, os)
             }
         }
@@ -942,8 +943,11 @@ stage('checkout') {
 
 if (buildExecutable) {
     runStage {
+        echo "HERE 2"
         stage('build') {
+            echo "HERE 3 ${fullParallel}"
             if (fullParallel) {
+                echo "HERE 1"
                 buildStepParallel(['linux', 'mac', 'windows'])
             }
             else {
