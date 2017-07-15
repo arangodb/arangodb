@@ -292,6 +292,7 @@ def checkCommitMessages() {
             runJslint = true
             runResilience = true
             runTests = true
+            fullParallel = true
         }
         else if (env.BRANCH_NAME =~ /^PR-/) {
             useLinux = true
@@ -303,6 +304,7 @@ def checkCommitMessages() {
             runJslint = true
             runResilience = true
             runTests = true
+            fullParallel = true
         }
         else {
             useLinux = true
@@ -314,6 +316,7 @@ def checkCommitMessages() {
             runJslint = true
             runResilience = false
             runTests = false
+            fullParallel = true
         }
     }
 
