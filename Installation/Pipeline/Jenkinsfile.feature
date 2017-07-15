@@ -326,12 +326,7 @@ def stashSourceCode() {
 }
 
 def unstashSourceCode(os) {
-    if (os == 'linux' || os == 'mac') {
-        sh 'rm -rf *'
-    }
-    else if (os == 'windows') {
-        bat 'del /F /Q *'
-    }
+    deleteDir()
 
     lock("${env.BRANCH_NAME}-cache") {
         scpFromMaster(os, 'source.zip', 'source.zip')
@@ -404,12 +399,7 @@ def stashBinaries(edition, os) {
 def unstashBinaries(edition, os) {
     def name = "binaries-${edition}-${os}.zip"
 
-    if (os == 'linux' || os == 'mac') {
-        sh 'rm -rf *'
-    }
-    else if (os == 'windows') {
-        bat 'del /F /Q *'
-    }
+    deleteDir()
 
     lock("${env.BRANCH_NAME}-cache") {
         scpFromMaster(os, name, name)
@@ -462,7 +452,7 @@ def buildEdition(edition, os) {
                 sh "./Installation/Pipeline/build_${edition}_${os}.sh 20"
             }
             else if (os == 'windows') {
-                PowerShell(". .\\Installation\\Pipeline\\build_${edition}_${os}.ps1")
+                powershell ". .\\Installation\\Pipeline\\build_${edition}_${os}.ps1"
             }
         }
         catch (exc) {
@@ -615,7 +605,7 @@ def testEdition(edition, os, mode, engine) {
                 sh "./Installation/Pipeline/test_${mode}_${edition}_${engine}_${os}.sh 5"
             }
             else if (os == 'windows') {
-                PowerShell(". .\\Installation\\Pipeline\\test_${mode}_${edition}_${engine}_${os}.ps1")
+                powershell ". .\\Installation\\Pipeline\\test_${mode}_${edition}_${engine}_${os}.ps1"
             }
         }
         finally {
@@ -702,6 +692,9 @@ def testStep(edition, os, mode, engine) {
                     allTestsSuccessful = false
                     throw exc
                 }
+            }
+            else {
+                error "build failed, cannot test"
             }
         }
     }
@@ -826,6 +819,9 @@ def testResilienceStep(os, engine, foxx) {
                                      artifacts: "${arch}/**",
                                      defaultExcludes: false
                 }
+            }
+            else {
+                error "build failed, cannot test"
             }
         }
     }
