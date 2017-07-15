@@ -79,7 +79,6 @@ WorkFlow RunTests {
     }
 
     $log = "log-output\" + $name + ".log"
-    $ok = True
 
     $myport = $WORKFLOW:minPort
     $WORKFLOW:minPort += $portInterval
