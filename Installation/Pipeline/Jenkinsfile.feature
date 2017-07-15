@@ -887,8 +887,13 @@ def buildStep(edition, os) {
         }
 
         if (fullParallel) {
-            testStepParallel([edition], [os], ['cluster', 'singleserver'])
-            testResilienceParallel([os])
+            step {
+                testStepParallel([edition], [os], ['cluster', 'singleserver'])
+            }
+
+            step {
+                testResilienceParallel([os])
+            }
         }
     }
 }
