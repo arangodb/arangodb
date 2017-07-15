@@ -291,8 +291,6 @@ def checkCommitMessages() {
         }
     }
 
-    sh "env | sort"
-
     echo """BRANCH_NAME: ${env.BRANCH_NAME}
 CHANGE_ID: ${env.CHANGE_ID}
 CHANGE_TARGET: ${env.CHANGE_TARGET}
