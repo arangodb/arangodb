@@ -453,15 +453,12 @@ def buildEdition(edition, os) {
                 powershell ". .\\Installation\\Pipeline\\build_${edition}_${os}.ps1"
             }
         }
-        catch (exc) {
-            arch = "${arch}_FAILED"
-            throw exc
-        }
         finally {
             if (os == 'linux' || os == 'mac') {
                 sh "rm -rf ${arch}"
                 sh "mkdir -p ${arch}"
                 sh "for i in log-output; do test -e \$i && mv \$i ${arch}; done"
+                sh "find log-output -name 'FAILED_*' -exec cp '{}' ${arch} ';'"
             }
         }
     }
