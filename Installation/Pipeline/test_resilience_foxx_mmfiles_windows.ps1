@@ -3,6 +3,8 @@
 
 cd resilience
 npm install
+New-Item -ItemType Directory -Force -Path build
+New-Item -ItemType Directory -Force -Path build\bin
 Move-Item ..\build\bin\RelWithDebInfo\* .\build\bin\ -Force
 Move-Item ..\etc . -Force
 Move-Item ..\js . -Force
