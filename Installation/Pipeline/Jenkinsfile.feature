@@ -8,25 +8,17 @@ properties(
 )
 
 def defaultLinux = true
-def defaultMac = false
-def defaultWindows = false
+def defaultMac = true
+def defaultWindows = true
 def defaultBuild = true
 def defaultCleanBuild = false
 def defaultCommunity = true
-def defaultEnterprise = false
+def defaultEnterprise = true
 def defaultJslint = true
 def defaultRunResilience = false
-def defaultRunTests = true
+def defaultRunTests = false
 def defaultSkipTestsOnError = true
 def defaultFullParallel = false
-
-if (env.BRANCH_NAME == "devel") {
-    defaultMac = false
-    defaultWindows = false
-    defaultEnterprise = false
-    defaultRunResilience = false
-    defaultSkipTestsOnError = false
-}
 
 properties([
     parameters([
@@ -247,11 +239,14 @@ def checkoutResilience() {
 
 def checkCommitMessages() {
     def changeLogSets = currentBuild.changeSets
+    def seenCommit = false
 
     for (int i = 0; i < changeLogSets.size(); i++) {
         def entries = changeLogSets[i].items
 
         for (int j = 0; j < entries.length; j++) {
+            seenCommit = true
+
             def entry = entries[j]
 
             def author = entry.author
@@ -283,6 +278,45 @@ def checkCommitMessages() {
 
                 echo "File " + file + ", path " + path
             }
+        }
+    }
+
+    if (seenCommit) {
+        if (env.BRANCH_NAME == "devel") {
+            useLinux = true
+            useMac = true
+            useWindows = true
+            buildExecutable = true
+            useCommunity = true
+            useEnterprise = true
+            runJslint = true
+            runResilience = true
+            runTests = true
+            fullParallel = true
+        }
+        else if (env.BRANCH_NAME =~ /^PR-/) {
+            useLinux = true
+            useMac = true
+            useWindows = true
+            buildExecutable = true
+            useCommunity = true
+            useEnterprise = true
+            runJslint = true
+            runResilience = true
+            runTests = true
+            fullParallel = true
+        }
+        else {
+            useLinux = true
+            useMac = true
+            useWindows = true
+            buildExecutable = true
+            useCommunity = true
+            useEnterprise = true
+            runJslint = true
+            runResilience = false
+            runTests = false
+            fullParallel = true
         }
     }
 
@@ -449,7 +483,6 @@ def buildEdition(edition, os) {
             }
         }
         finally {
-
             if (os == 'linux' || os == 'mac') {
                 sh "rm -rf ${arch}"
                 sh "mkdir -p ${arch}"
@@ -458,7 +491,7 @@ def buildEdition(edition, os) {
             }
             else if (os == 'windows') {
                 bat "del /F /Q ${arch}"
-                bat "New-Item -ItemType Directory -Force -Path ${arch}"
+                powershell "New-Item -ItemType Directory -Force -Path ${arch}"
                 bat "move log-output ${arch}"
             }
         }
@@ -519,6 +552,11 @@ def buildStep(edition, os) {
                     allBuildsSuccessful = false
                     throw exc
                 }
+            }
+
+            if (fullParallel) {
+                testStepParallel([edition], [os], ['cluster', 'singleserver'])
+                testResilienceParallel([os])
             }
         }
     }
@@ -604,11 +642,19 @@ def testEdition(edition, os, mode, engine) {
                 powershell ". .\\Installation\\Pipeline\\test_${mode}_${edition}_${engine}_${os}.ps1"
             }
         }
+        catch (exc) {
+            if (os == 'linux' || os == 'mac') {
+                sh "for i in build core* tmp; do test -e \$i && mv \$i ${arch} || true; done"
+            }
+
+            throw exc
+        }
         finally {
             if (os == 'linux' || os == 'mac') {
                 sh "rm -rf ${arch}"
                 sh "mkdir -p ${arch}"
-                sh "for i in build core* logs log-output tmp; do test -e \$i && mv \$i ${arch} || true; done"
+                sh "find log-output -name 'FAILED_*' -exec cp '{}' ${arch} ';'"
+                sh "for i in logs log-output; do test -e \$i && mv \$i ${arch} || true; done"
             }
         }
     }
@@ -696,11 +742,11 @@ def testStep(edition, os, mode, engine) {
     }
 }
 
-def testStepParallel(osList, modeList) {
+def testStepParallel(editionList, osList, modeList) {
     def branches = [:]
     def full = false
 
-    for (edition in ['community', 'enterprise']) {
+    for (edition in editionList) {
         for (os in osList) {
             for (mode in modeList) {
                 for (engine in ['mmfiles', 'rocksdb']) {
@@ -803,15 +849,22 @@ def testResilienceStep(os, engine, foxx) {
                         unstashBinaries(edition, os)
                         testResilience(os, engine, foxx)
                     }
+                    catch (exc) {
+                        if (os == 'linux' || os == 'mac') {
+                            sh "for i in build core* tmp; do test -e \$i && mv \$i ${arch} || true; done"
+                        }
+
+                        throw exc
+                    }
                     finally {
                         if (os == 'linux' || os == 'mac') {
                             sh "rm -rf ${arch}"
                             sh "mkdir -p ${arch}"
-                            sh "for i in build log-output core* tmp resilience/core*; do test -e \$i && mv \$i ${arch}; done"
+                            sh "for i in log-output resilience/core*; do test -e \$i && mv \$i ${arch}; done"
                         }
                         else if (os == 'windows') {
                             bat "del /F /Q ${arch}"
-                            bat "New-Item -ItemType Directory -Force -Path ${arch}"
+                            powershell "New-Item -ItemType Directory -Force -Path ${arch}"
                             bat "move log-output ${arch}"
                         }
                         
@@ -839,12 +892,12 @@ def testResilienceStep(os, engine, foxx) {
     }
 }
 
-def testResilienceParallel() {
+def testResilienceParallel(osList) {
     def branches = [:]
     def full = false
 
     for (foxx in ['foxx', 'nofoxx']) {
-        for (os in ['linux', 'mac', 'windows']) {
+        for (os in osList) {
             for (engine in ['mmfiles', 'rocksdb']) {
                 if (testResilienceCheck(os, engine, foxx, full)) {
                     def name = testResilienceName(os, engine, foxx, full)
@@ -903,13 +956,12 @@ runStage {
     }
 }
 
-runStage {
-    stage('tests') {
-        if (fullParallel) {
-            testStepParallel(['linux', 'mac', 'windows'], ['cluster', 'singleserver'])
-        }
-        else {
-            testStepParallel(['linux'], ['cluster', 'singleserver'])
+if (! fullParallel) {
+    runStage {
+        stage('tests') {
+            testStepParallel(['community', 'enterprise'],
+                             ['linux'],
+                             ['cluster', 'singleserver'])
         }
     }
 }
@@ -948,10 +1000,12 @@ if (! fullParallel) {
     }
 }
 
-runStage {
-    stage('resilience') {
-        if (allTestsSuccessful) {
-            testResilienceParallel();
+if (! fullParallel) {
+    runStage {
+        stage('resilience') {
+            if (allTestsSuccessful) {
+                testResilienceParallel(['linux', 'mac', 'windows'])
+            }
         }
     }
 }
