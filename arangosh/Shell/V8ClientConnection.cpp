@@ -408,7 +408,7 @@ static void ClientConnection_reconnect(
   client->setDatabaseName(databaseName);
   client->setUsername(username);
   client->setPassword(password);
-
+  
   try {
     v8connection->reconnect(client);
   } catch (std::string const& errorMessage) {
@@ -417,6 +417,10 @@ static void ClientConnection_reconnect(
     std::string errorMessage = "error in '" + endpoint + "'";
     TRI_V8_THROW_EXCEPTION_PARAMETER(errorMessage.c_str());
   }
+  
+  TRI_ExecuteJavaScriptString(isolate, isolate->GetCurrentContext(),
+                              TRI_V8_STRING("require('internal').db._flushCache();"),
+                              TRI_V8_ASCII_STRING("reload db object"), false);
 
   TRI_V8_RETURN_TRUE();
 }

@@ -64,8 +64,9 @@ class HttpCommTask final : public GeneralCommTask {
   bool checkContentLength(HttpRequest*, bool expectContentLength);
 
   std::string authenticationRealm() const;
-  rest::ResponseCode authenticateRequest(HttpRequest*);
-
+  ResponseCode authenticateRequest(HttpRequest*);
+  ResponseCode handleAuthHeader(HttpRequest* request) const;
+  
  private:
   size_t _readPosition;       // current read position
   size_t _startPosition;      // start position of current request

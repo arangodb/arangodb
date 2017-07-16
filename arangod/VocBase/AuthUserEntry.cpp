@@ -46,36 +46,6 @@ using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
 
-static AuthLevel _convertToAuthLevel(arangodb::StringRef ref) {
-  if (ref.compare("rw") == 0) {
-    return AuthLevel::RW;
-  } else if (ref.compare("ro") == 0) {
-    return AuthLevel::RO;
-  } else if (ref.compare("none") == 0 || ref.empty()) {
-    return AuthLevel::NONE;
-  }
-  THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
-                                 "expecting access type 'rw', 'ro' or 'none'");
-}
-
-AuthLevel arangodb::convertToAuthLevel(velocypack::Slice grants) {
-  return _convertToAuthLevel(StringRef(grants));
-}
-
-AuthLevel arangodb::convertToAuthLevel(std::string const& grants) {
-  return _convertToAuthLevel(StringRef(grants));
-}
-
-std::string arangodb::convertFromAuthLevel(AuthLevel lvl) {
-  if (lvl == AuthLevel::RW) {
-    return "rw";
-  } else if (lvl == AuthLevel::RO) {
-    return "ro";
-  } else {
-    return "none";
-  }
-}
-
 // private hash function
 static int HexHashFromData(std::string const& hashMethod,
                            std::string const& str, std::string& outHash) {
@@ -159,15 +129,19 @@ static void AddAuthLevel(VPackBuilder& builder, AuthLevel lvl) {
 }
 
 static AuthLevel AuthLevelFromSlice(VPackSlice const& slice) {
-  if (slice.hasKey("write") && slice.get("write").isTrue()) {
+  TRI_ASSERT(slice.isObject());
+  VPackSlice v = slice.get("write");
+  if (v.isBool() && v.isTrue()) {
     return AuthLevel::RW;
-  } else if (slice.hasKey("read") && slice.get("read").isTrue()) {
+  }
+  v = slice.get("read");
+  if (v.isBool() && v.isTrue()) {
     return AuthLevel::RO;
   }
   return AuthLevel::NONE;
 }
 
-// ============= public ==================
+// ============= static ==================
 
 AuthUserEntry AuthUserEntry::newUser(std::string const& user,
                                      std::string const& password,
@@ -189,8 +163,6 @@ AuthUserEntry AuthUserEntry::newUser(std::string const& user,
 
   entry._passwordSalt = salt;
   entry._passwordHash = hash;
-  entry._passwordChangeToken = std::string();
-  entry._changePassword = false;
 
   // build authentication entry
   return entry;
@@ -240,30 +212,23 @@ AuthUserEntry AuthUserEntry::fromDocument(VPackSlice const& slice) {
   }
 
   // extract "active" attribute
-  bool active;
   VPackSlice const activeSlice = authDataSlice.get("active");
-
   if (!activeSlice.isBoolean()) {
     LOG_TOPIC(DEBUG, arangodb::Logger::FIXME) << "cannot extract active flag";
     return AuthUserEntry();
   }
-  active = activeSlice.getBool();
 
-  // extract "changePassword" attribute
-  bool mustChange =
-      VelocyPackHelper::getBooleanValue(authDataSlice, "changePassword", false);
-
-  // extract "passwordToken"
-  VPackSlice passwordTokenSlice = authDataSlice.get("passwordToken");
-  if (!passwordTokenSlice.isString()) {
-    passwordTokenSlice = VelocyPackHelper::EmptyString();
-  }
+  AuthUserEntry entry;
+  entry._key = keySlice.copyString();
+  entry._active = activeSlice.getBool();
+  entry._source = AuthSource::COLLECTION;
+  entry._username = userSlice.copyString();
+  entry._passwordMethod = methodSlice.copyString();
+  entry._passwordSalt = saltSlice.copyString();
+  entry._passwordHash = hashSlice.copyString();
 
   // extract "databases" attribute
   VPackSlice const databasesSlice = slice.get("databases");
-
-  std::unordered_map<std::string, std::shared_ptr<AuthContext>> authContexts;
-
   if (databasesSlice.isObject()) {
     for (auto const& obj : VPackObjectIterator(databasesSlice)) {
       std::string const dbName = obj.key.copyString();
@@ -278,13 +243,13 @@ AuthUserEntry AuthUserEntry::fromDocument(VPackSlice const& slice) {
       }
 
       if (obj.value.isObject()) {
-        std::unordered_map<std::string, AuthLevel> collections;
         AuthLevel databaseAuth = AuthLevel::NONE;
 
         auto const permissionsSlice = obj.value.get("permissions");
         if (permissionsSlice.isObject()) {
           databaseAuth = AuthLevelFromSlice(permissionsSlice);
         }
+        entry.grantDatabase(dbName, databaseAuth);
 
         VPackSlice collectionsSlice = obj.value.get("collections");
         if (collectionsSlice.isObject()) {
@@ -297,16 +262,13 @@ AuthUserEntry AuthUserEntry::fromDocument(VPackSlice const& slice) {
             if (exists) {
               auto const permissionsSlice = collection.value.get("permissions");
               if (permissionsSlice.isObject()) {
-                collections.emplace(cName,
-                                    AuthLevelFromSlice(permissionsSlice));
+                entry.grantCollection(dbName, cName,
+                                      AuthLevelFromSlice(permissionsSlice));
               }  // if
             }    // if
 
           }  // for
         }    // if
-
-        authContexts.emplace(dbName, std::make_shared<AuthContext>(
-                                         databaseAuth, std::move(collections)));
 
       } else {
         LOG_TOPIC(INFO, arangodb::Logger::CONFIG)
@@ -316,51 +278,15 @@ AuthUserEntry AuthUserEntry::fromDocument(VPackSlice const& slice) {
         char const* value = obj.value.getString(length);
 
         if (TRI_CaseEqualString(value, "rw", 2)) {
-          authContexts.emplace(
-              obj.key.copyString(),
-              std::make_shared<AuthContext>(
-                  AuthLevel::RW, std::unordered_map<std::string, AuthLevel>(
-                                     {{"*", AuthLevel::RW}})));
-
+          entry.grantDatabase(dbName, AuthLevel::RW);
+          entry.grantCollection(dbName, "*", AuthLevel::RW);
         } else if (TRI_CaseEqualString(value, "ro", 2)) {
-          authContexts.emplace(
-              obj.key.copyString(),
-              std::make_shared<AuthContext>(
-                  AuthLevel::RO, std::unordered_map<std::string, AuthLevel>(
-                                     {{"*", AuthLevel::RO}})));
+          entry.grantDatabase(dbName, AuthLevel::RO);
+          entry.grantCollection(dbName, "*", AuthLevel::RO);
         }
       }
     }  // for
   }    // if
-
-  AuthLevel systemDatabaseLevel = AuthLevel::RO;
-  for (auto const& dbName : std::vector<std::string>{"_system", "*"}) {
-    auto const& it = authContexts.find(dbName);
-    if (it != authContexts.end()) {
-      systemDatabaseLevel = it->second->databaseAuthLevel();
-      break;
-    }
-  }
-
-  for (auto const& ctx : authContexts) {
-    LOG_TOPIC(DEBUG, arangodb::Logger::AUTHENTICATION)
-        << userSlice.copyString() << " Database " << ctx.first;
-    ctx.second->_systemAuthLevel = systemDatabaseLevel;
-    ctx.second->dump();
-  }
-
-  AuthUserEntry entry;
-  entry._key = keySlice.copyString();
-  entry._active = active;
-  entry._source = AuthSource::COLLECTION;
-
-  entry._username = userSlice.copyString();
-  entry._passwordMethod = methodSlice.copyString();
-  entry._passwordSalt = saltSlice.copyString();
-  entry._passwordHash = hashSlice.copyString();
-  entry._passwordChangeToken = passwordTokenSlice.copyString();
-  entry._changePassword = mustChange;
-  entry._authContexts = std::move(authContexts);
 
   // ensure the root user always has the right to change permissions
   if (entry._username == "root") {
@@ -371,6 +297,8 @@ AuthUserEntry AuthUserEntry::fromDocument(VPackSlice const& slice) {
   // build authentication entry
   return entry;
 }
+
+// ======================= Methods ==========================
 
 bool AuthUserEntry::checkPassword(std::string const& password) const {
   std::string hash;
@@ -392,19 +320,6 @@ void AuthUserEntry::updatePassword(std::string const& password) {
   _passwordHash = hash;
 }
 
-std::shared_ptr<AuthContext> AuthUserEntry::getAuthContext(
-    std::string const& dbname) const {
-  auto const& it = _authContexts.find(dbname);
-  if (it != _authContexts.end()) {
-    return it->second;
-  }
-  auto const& it2 = _authContexts.find("*");
-  if (it2 != _authContexts.end()) {
-    return it2->second;
-  }
-  return std::shared_ptr<AuthContext>();
-}
-
 VPackBuilder AuthUserEntry::toVPackBuilder() const {
   TRI_ASSERT(!_username.empty());
 
@@ -419,12 +334,6 @@ VPackBuilder AuthUserEntry::toVPackBuilder() const {
   {  // authData sub-object
     VPackObjectBuilder o2(&builder, "authData", true);
     builder.add("active", VPackValue(_active));
-    if (!_passwordChangeToken.empty()) {
-      builder.add("changePassword", VPackValue(_changePassword));
-    }
-    if (_changePassword) {
-      builder.add("changePassword", VPackValue(_changePassword));
-    }
     if (_source == AuthSource::COLLECTION) {
       VPackObjectBuilder o3(&builder, "simple", true);
       builder.add("hash", VPackValue(_passwordHash));
@@ -434,20 +343,16 @@ VPackBuilder AuthUserEntry::toVPackBuilder() const {
   }
   {  // databases sub-object
     VPackObjectBuilder o2(&builder, "databases", true);
-    for (auto const& dbCtxPair : _authContexts) {
-      TRI_ASSERT(dbCtxPair.first != StaticStrings::SystemDatabase ||
-                 dbCtxPair.second->databaseAuthLevel() ==
-                 dbCtxPair.second->systemAuthLevel());
-
+    for (auto const& dbCtxPair : _dbAccess) {
       VPackObjectBuilder o3(&builder, dbCtxPair.first, true);
       {  // permissions
         VPackObjectBuilder o4(&builder, "permissions", true);
-        AuthLevel lvl = dbCtxPair.second->databaseAuthLevel();
+        AuthLevel lvl = dbCtxPair.second._databaseAuthLevel;
         AddAuthLevel(builder, lvl);
       }
       {  // collections
         VPackObjectBuilder o4(&builder, "collections", true);
-        for (auto const& colAccessPair : dbCtxPair.second->_collectionAccess) {
+        for (auto const& colAccessPair : dbCtxPair.second._collectionAccess) {
           VPackObjectBuilder o4(&builder, colAccessPair.first, true);
           VPackObjectBuilder o5(&builder, "permissions", true);
           AddAuthLevel(builder, colAccessPair.second);
@@ -470,20 +375,16 @@ void AuthUserEntry::grantDatabase(std::string const& dbname, AuthLevel level) {
         TRI_ERROR_FORBIDDEN, "Cannot lower access level of 'root' to _system");
   }
 
-  auto it = _authContexts.find(dbname);
-  if (it != _authContexts.end()) {
-    it->second->_databaseAuthLevel = level;
+  auto it = _dbAccess.find(dbname);
+  if (it != _dbAccess.end()) {
+    it->second._databaseAuthLevel = level;
   } else {
-    _authContexts.emplace(
+    // grantDatabase is not supposed to change any rights on the collection
+    // level
+    // code which relies on the old behaviour will need to be adjusted
+    _dbAccess.emplace(
         dbname,
-        std::make_shared<AuthContext>(
-            level, std::unordered_map<std::string, AuthLevel>({{"*", level}})));
-  }
-  if (dbname == StaticStrings::SystemDatabase ||
-      (dbname == "*" &&
-       _authContexts.find(StaticStrings::SystemDatabase) ==
-           _authContexts.end())) {
-    _authContexts[dbname]->_systemAuthLevel = level;
+        DBAuthContext(level, std::unordered_map<std::string, AuthLevel>()));
   }
 }
 
@@ -496,7 +397,7 @@ void AuthUserEntry::removeDatabase(std::string const& dbname) {
     THROW_ARANGO_EXCEPTION_MESSAGE(
         TRI_ERROR_FORBIDDEN, "Cannot remove access level of 'root' to _system");
   }
-  _authContexts.erase(dbname);
+  _dbAccess.erase(dbname);
 }
 
 void AuthUserEntry::grantCollection(std::string const& dbname,
@@ -513,24 +414,20 @@ void AuthUserEntry::grantCollection(std::string const& dbname,
                                    "Cannot lower access level of 'root' to "
                                    " a system collection");
   }
-  auto it = _authContexts.find(dbname);
-  if (it != _authContexts.end()) {
-    it->second->_collectionAccess[coll] = level;
+  auto it = _dbAccess.find(dbname);
+  if (it != _dbAccess.end()) {
+    it->second._collectionAccess[coll] = level;
   } else {
     // do not overwrite wildcard access to a database, by granting more
     // specific rights to a collection in a specific db
     AuthLevel dbLevel = level;
-    it = _authContexts.find("*");
-    if (it != _authContexts.end()) {
-      dbLevel = it->second->databaseAuthLevel();
+    it = _dbAccess.find("*");
+    if (it != _dbAccess.end()) {
+      dbLevel = it->second._databaseAuthLevel;
     }
-    _authContexts.emplace(
-        dbname, std::make_shared<AuthContext>(
-                    dbLevel, std::unordered_map<std::string, AuthLevel>(
-                                 {{coll, level}})));
-    if (dbname == StaticStrings::SystemDatabase) {
-      _authContexts[dbname]->_systemAuthLevel = dbLevel;
-    }
+    _dbAccess.emplace(dbname, DBAuthContext(
+                          dbLevel, std::unordered_map<std::string, AuthLevel>(
+                                       {{coll, level}})));
   }
 }
 
@@ -547,8 +444,81 @@ void AuthUserEntry::removeCollection(std::string const& dbname,
                                    "Cannot lower access level of 'root' to "
                                    " a collection in _system");
   }
-  auto it = _authContexts.find(dbname);
-  if (it != _authContexts.end()) {
-    it->second->_collectionAccess.erase(coll);
+  auto it = _dbAccess.find(dbname);
+  if (it != _dbAccess.end()) {
+    it->second._collectionAccess.erase(coll);
   }
+}
+
+AuthLevel AuthUserEntry::databaseAuthLevel(std::string const& dbname) const {
+  auto it = _dbAccess.find(dbname);
+  if (it != _dbAccess.end()) {
+    return it->second._databaseAuthLevel;
+  }
+  it = _dbAccess.find("*");
+  if (it != _dbAccess.end()) {
+    return it->second._databaseAuthLevel;
+  }
+  return AuthLevel::NONE;
+}
+
+/// Find the access level for a collection. Will automatically try to fall back
+AuthLevel AuthUserEntry::collectionAuthLevel(
+    std::string const& dbname, std::string const& collectionName) const {
+  // disallow access to _system/_users for everyone
+  if (collectionName.empty()) {
+    return AuthLevel::NONE;
+  } else if (dbname == TRI_VOC_SYSTEM_DATABASE &&
+             collectionName == TRI_COL_NAME_USERS) {
+    return AuthLevel::NONE;
+  }
+  if (collectionName == "_frontend") {
+    return AuthLevel::RW;
+  }
+
+  AuthLevel lvl = AuthLevel::NONE;
+  auto it = _dbAccess.find(dbname);
+  if (it != _dbAccess.end()) {
+    lvl = it->second.collectionAuthLevel(collectionName);
+  }
+  if (lvl == AuthLevel::NONE) {
+    it = _dbAccess.find("*");
+    if (it != _dbAccess.end()) {
+      lvl = it->second.collectionAuthLevel(collectionName);
+    }
+  }
+
+  if (lvl == AuthLevel::NONE && collectionName[0] == '_') {
+    // at least ro for all system collections
+    return AuthLevel::RO;
+  }
+  return lvl;
+}
+
+bool AuthUserEntry::hasSpecificDatabase(std::string const& dbname) const {
+  return _dbAccess.find(dbname) != _dbAccess.end();
+}
+
+bool AuthUserEntry::hasSpecificCollection(
+    std::string const& dbname, std::string const& collectionName) const {
+  auto it = _dbAccess.find(dbname);
+  if (it != _dbAccess.end()) {
+    return it->second._collectionAccess.find(collectionName) !=
+           it->second._collectionAccess.end();
+  }
+  return false;
+}
+
+AuthLevel AuthUserEntry::DBAuthContext::collectionAuthLevel(
+    std::string const& collectionName) const {
+  std::unordered_map<std::string, AuthLevel>::const_iterator pair =
+    _collectionAccess.find(collectionName);
+  if (pair != _collectionAccess.end()) {
+    return pair->second;
+  }
+  pair = _collectionAccess.find("*");
+  if (pair != _collectionAccess.end()) {
+    return pair->second;
+  }
+  return AuthLevel::NONE;
 }
