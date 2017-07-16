@@ -5,9 +5,9 @@ arangosh&gt; db._routing.save({
 ........&gt;    }
 ........&gt; });
 { 
-  <span class="hljs-string">"_id"</span> : <span class="hljs-string">"_routing/9080"</span>, 
-  <span class="hljs-string">"_key"</span> : <span class="hljs-string">"9080"</span>, 
-  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_VReq-u----"</span> 
+  <span class="hljs-string">"_id"</span> : <span class="hljs-string">"_routing/9070"</span>, 
+  <span class="hljs-string">"_key"</span> : <span class="hljs-string">"9070"</span>, 
+  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_VSqpdp----"</span> 
 }
 arangosh&gt; db._routing.save({
 ........&gt;    url: <span class="hljs-string">"/subdirectory/ourtest/2"</span>,
@@ -16,9 +16,9 @@ arangosh&gt; db._routing.save({
 ........&gt;    }
 ........&gt; });
 { 
-  <span class="hljs-string">"_id"</span> : <span class="hljs-string">"_routing/9083"</span>, 
-  <span class="hljs-string">"_key"</span> : <span class="hljs-string">"9083"</span>, 
-  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_VReq-uC---"</span> 
+  <span class="hljs-string">"_id"</span> : <span class="hljs-string">"_routing/9073"</span>, 
+  <span class="hljs-string">"_key"</span> : <span class="hljs-string">"9073"</span>, 
+  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_VSqpdp---_"</span> 
 }
 arangosh&gt; db._routing.save({
 ........&gt;    url: <span class="hljs-string">"/subdirectory/ourtest/3"</span>,
@@ -27,8 +27,8 @@ arangosh&gt; db._routing.save({
 ........&gt;    }
 ........&gt; });
 { 
-  <span class="hljs-string">"_id"</span> : <span class="hljs-string">"_routing/9086"</span>, 
-  <span class="hljs-string">"_key"</span> : <span class="hljs-string">"9086"</span>, 
-  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_VReq-uC--_"</span> 
+  <span class="hljs-string">"_id"</span> : <span class="hljs-string">"_routing/9076"</span>, 
+  <span class="hljs-string">"_key"</span> : <span class="hljs-string">"9076"</span>, 
+  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_VSqpdpC---"</span> 
 }
 arangosh&gt; <span class="hljs-built_in">require</span>(<span class="hljs-string">"internal"</span>).reloadRouting()

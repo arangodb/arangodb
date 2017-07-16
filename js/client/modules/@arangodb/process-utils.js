@@ -919,8 +919,9 @@ function startInstanceCluster (instanceInfo, protocol, options,
   httpOptions.returnBodyOnError = true;
 
   // scrape the jwt token
-  if (addArgs['server.jwt-secret'] && !options['server.jwt-secret']) {
-    options['server.jwt-secret'] = addArgs['server.jwt-secret'];
+  let authOpts = _.clone(options);
+  if (addArgs['server.jwt-secret'] && !authOpts['server.jwt-secret']) {
+    authOpts['server.jwt-secret'] = addArgs['server.jwt-secret'];
   }
 
   let count = 0;
@@ -935,8 +936,7 @@ function startInstanceCluster (instanceInfo, protocol, options,
       throw new Error('cluster startup timed out! bailing out!');
     }
     instanceInfo.arangods.forEach(arangod => {
-      const reply = download(arangod.url + '/_api/version', '', makeAuthorizationHeaders(options));
-      // accept a 401 or a 200 response as a 'upAndRunning' server
+      const reply = download(arangod.url + '/_api/version', '', makeAuthorizationHeaders(authOpts));
       if (!reply.error && reply.code === 200) {
         arangod.upAndRunning = true;
         return true;
@@ -962,6 +962,13 @@ function startInstanceCluster (instanceInfo, protocol, options,
     });
     if (upAndRunning === instanceInfo.arangods.length) {
       break;
+    }
+
+    // Didn't startup in 10 minutes? kill it, give up.
+    if (count > 1200) {
+      killExternal(instanceInfo.pid, abortSignal);
+      analyzeServerCrash(instanceInfo, options, 'startup timeout; forcefully terminating ' + instanceInfo.role + ' with pid: ' + instanceInfo.pid);
+      throw new Error("startup timed out!");
     }
   }
   arango.reconnect(instanceInfo.endpoint, '_system', 'root', '');

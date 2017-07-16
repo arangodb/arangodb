@@ -3,7 +3,7 @@ arangosh&gt; graph._addVertexCollection(<span class="hljs-string">"customer"</sp
 arangosh&gt; graph._addVertexCollection(<span class="hljs-string">"pet"</span>);
 arangosh&gt; graph;
 {[Graph] 
-  <span class="hljs-string">"shop"</span> : [ArangoCollection <span class="hljs-number">15578</span>, <span class="hljs-string">"shop"</span> (type <span class="hljs-built_in">document</span>, status loaded)], 
-  <span class="hljs-string">"customer"</span> : [ArangoCollection <span class="hljs-number">15583</span>, <span class="hljs-string">"customer"</span> (type <span class="hljs-built_in">document</span>, status loaded)], 
-  <span class="hljs-string">"pet"</span> : [ArangoCollection <span class="hljs-number">15588</span>, <span class="hljs-string">"pet"</span> (type <span class="hljs-built_in">document</span>, status loaded)] 
+  <span class="hljs-string">"shop"</span> : [ArangoCollection <span class="hljs-number">15531</span>, <span class="hljs-string">"shop"</span> (type <span class="hljs-built_in">document</span>, status loaded)], 
+  <span class="hljs-string">"customer"</span> : [ArangoCollection <span class="hljs-number">15536</span>, <span class="hljs-string">"customer"</span> (type <span class="hljs-built_in">document</span>, status loaded)], 
+  <span class="hljs-string">"pet"</span> : [ArangoCollection <span class="hljs-number">15541</span>, <span class="hljs-string">"pet"</span> (type <span class="hljs-built_in">document</span>, status loaded)] 
 }
