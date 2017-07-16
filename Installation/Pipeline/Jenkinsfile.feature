@@ -121,6 +121,9 @@ runResilience = params.runResilience
 // run tests
 runTests = params.runTests
 
+// restrict builds
+restrictions = []
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                             CONSTANTS AND HELPERS
 // -----------------------------------------------------------------------------
@@ -323,6 +326,15 @@ def checkCommitMessages() {
             runResilience = false
             runTests = false
             fullParallel = true
+
+            restrictions = [
+                "build-enterprise-linux",
+                "build-community-mac",
+                "build-community-windows",
+                "test-cluster-enterprise-rocksdb-linux",
+                "test-singleserver-community-mmfiles-mac",
+                "test-singleserver-community-rocksdb-windows"
+            ]
         }
     }
 
@@ -578,16 +590,6 @@ def testCheck(edition, os, mode, engine, full) {
     return true
 }
 
-def testName(edition, os, mode, engine, full) {
-    def name = "test-${mode}-${edition}-${engine}-${os}";
-
-    if (! testCheck(edition, os, mode, engine, full)) {
-        name = "DISABLED-${name}"
-    }
-
-    return name 
-}
-
 def testStep(edition, os, mode, engine) {
     return {
         node(testJenkins[os]) {
@@ -627,7 +629,7 @@ def testStepParallel(editionList, osList, modeList) {
             for (mode in modeList) {
                 for (engine in ['mmfiles', 'rocksdb']) {
                     if (testCheck(edition, os, mode, engine, full)) {
-                        def name = testName(edition, os, mode, engine, full)
+                        def name = "test-${mode}-${edition}-${engine}-${os}";
 
                         branches[name] = testStep(edition, os, mode, engine)
                     }
