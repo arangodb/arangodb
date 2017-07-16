@@ -32,6 +32,6 @@ struct RocksDBV8Functions {
   static void registerResources();
 };
 
-} // namespace arangodb
+}  // namespace arangodb
 
 #endif

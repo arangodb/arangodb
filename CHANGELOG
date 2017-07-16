@@ -1,5 +1,22 @@
+v3.2.beta5 (2017-07-16)
+-----------------------
+
+* numerous bugfixes
+
+
 v3.2.beta4 (2017-07-04)
 -----------------------
+
+* added function `db._parse(query)` for parse an AQL query and return information about it
+
+* fixed one medium priority and two low priority security user interface
+  issues found by owasp zap.
+
+* ui: added index deduplicate options
+
+* ui: fixed renaming of collections based on rocksdb storage engine
+
+* documentation and js fixes for secondaries
 
 * enabled permissions on database and collection level
 
@@ -20,6 +37,9 @@ v3.2.beta4 (2017-07-04)
       db.test.insert({ tags: ["a", "b"] });
       db.test.insert({ tags: ["c", "d", "c"] }); // will not work, because deduplicate = false
       db.test.insert({ tags: ["a"] }); // will fail
+
+  The "deduplicate" attribute is now also accepted by the index creation HTTP
+  API endpoint POST /_api/index and is returned by GET /_api/index.
 
 * added optimizer rule "remove-filters-covered-by-traversal"
 

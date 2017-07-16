@@ -255,6 +255,9 @@ class HeartbeatThread : public Thread,
   //////////////////////////////////////////////////////////////////////////////
   
   bool _launchAnotherBackgroundJob;
+
+  // when was the javascript sync routine last run?
+  double _lastSyncTime;
 };
 }
 

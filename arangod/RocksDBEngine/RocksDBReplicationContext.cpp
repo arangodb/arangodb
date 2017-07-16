@@ -26,14 +26,17 @@
 #include "Basics/StringBuffer.h"
 #include "Basics/StringRef.h"
 #include "Basics/VPackStringBufferAdapter.h"
+#include "Logger/Logger.h"
 #include "RocksDBEngine/RocksDBCollection.h"
 #include "RocksDBEngine/RocksDBCommon.h"
 #include "RocksDBEngine/RocksDBIterators.h"
 #include "RocksDBEngine/RocksDBTransactionState.h"
+#include "RocksDBEngine/RocksDBMethods.h"
 #include "Transaction/Helpers.h"
 #include "Transaction/StandaloneContext.h"
 #include "Transaction/UserTransaction.h"
 #include "Utils/DatabaseGuard.h"
+#include "Utils/ExecContext.h"
 #include "VocBase/replication-common.h"
 #include "VocBase/ticks.h"
 
@@ -82,8 +85,8 @@ void RocksDBReplicationContext::bind(TRI_vocbase_t* vocbase) {
   if ((_trx.get() == nullptr) || (_trx->vocbase() != vocbase)) {
     releaseDumpingResources();
     _trx = createTransaction(vocbase);
-    TRI_ASSERT(_trx);
-    _lastTick = toRocksTransactionState(_trx.get())->sequenceNumber();
+    auto state = RocksDBTransactionState::toState(_trx.get());
+    _lastTick = state->sequenceNumber();
   }
 }
 
@@ -96,6 +99,14 @@ int RocksDBReplicationContext::bindCollection(
     if (_collection == nullptr) {
       return TRI_ERROR_BAD_PARAMETER;
     }
+    
+    // we are getting into trouble during the dumping of "_users"
+    // this workaround avoids the auth check in addCollectionAtRuntime
+    ExecContext *old = ExecContext::CURRENT;
+    if (old != nullptr && old->systemAuthLevel() == AuthLevel::RW) {
+      ExecContext::CURRENT = nullptr;
+    }
+    TRI_DEFER(ExecContext::CURRENT = old);
 
     _trx->addCollectionAtRuntime(collectionName);
     _iter = static_cast<RocksDBCollection*>(_collection->getPhysical())
@@ -206,7 +217,7 @@ arangodb::Result RocksDBReplicationContext::dumpKeyChunks(VPackBuilder& b,
                                                           uint64_t chunkSize) {
   TRI_ASSERT(_trx);
   TRI_ASSERT(_iter);
-  
+
   std::string lowKey;
   VPackSlice highKey;  // FIXME: no good keeping this
   uint64_t hash = 0x012345678;

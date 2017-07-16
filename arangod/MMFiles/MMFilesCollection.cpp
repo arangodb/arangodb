@@ -144,11 +144,11 @@ arangodb::Result MMFilesCollection::updateProperties(VPackSlice const& slice,
   auto journalSlice = slice.get("journalSize");
 
   if (journalSlice.isNone()) {
-    // In some apis maximalSize is allowed instead
+    // In some APIs maximalSize is allowed instead
     journalSlice = slice.get("maximalSize");
   }
 
-  if (!journalSlice.isNone()) {
+  if (!journalSlice.isNone() && journalSlice.isNumber()) {
     TRI_voc_size_t toUpdate = journalSlice.getNumericValue<TRI_voc_size_t>();
     if (toUpdate < TRI_JOURNAL_MINIMAL_SIZE) {
       return {TRI_ERROR_BAD_PARAMETER, "<properties>.journalSize too small"};
@@ -1922,6 +1922,19 @@ bool MMFilesCollection::readDocument(transaction::Methods* trx,
   uint8_t const* vpack = lookupRevisionVPack(revisionId);
   if (vpack != nullptr) {
     result.setUnmanaged(vpack, revisionId);
+    return true;
+  }
+  return false;
+}
+
+bool MMFilesCollection::readDocumentWithCallback(transaction::Methods* trx,
+                                                 DocumentIdentifierToken const& token,
+                                                 IndexIterator::DocumentCallback const& cb) {
+  auto tkn = static_cast<MMFilesToken const*>(&token);
+  TRI_voc_rid_t revisionId = tkn->revisionId();
+  uint8_t const* vpack = lookupRevisionVPack(revisionId);
+  if (vpack != nullptr) {
+    cb(token, VPackSlice(vpack));
     return true;
   }
   return false;

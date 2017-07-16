@@ -10,16 +10,16 @@ arangosh&gt; graph._commonNeighbors(
     <span class="hljs-string">"left"</span> : <span class="hljs-string">"germanCity/Hamburg"</span>, 
     <span class="hljs-string">"right"</span> : <span class="hljs-string">"germanCity/Cologne"</span>, 
     <span class="hljs-string">"neighbors"</span> : [ 
-      <span class="hljs-string">"frenchCity/Paris"</span>, 
-      <span class="hljs-string">"frenchCity/Lyon"</span> 
+      <span class="hljs-string">"frenchCity/Lyon"</span>, 
+      <span class="hljs-string">"frenchCity/Paris"</span> 
     ] 
   }, 
   { 
     <span class="hljs-string">"left"</span> : <span class="hljs-string">"germanCity/Hamburg"</span>, 
     <span class="hljs-string">"right"</span> : <span class="hljs-string">"germanCity/Berlin"</span>, 
     <span class="hljs-string">"neighbors"</span> : [ 
-      <span class="hljs-string">"frenchCity/Paris"</span>, 
       <span class="hljs-string">"frenchCity/Lyon"</span>, 
+      <span class="hljs-string">"frenchCity/Paris"</span>, 
       <span class="hljs-string">"germanCity/Cologne"</span> 
     ] 
   }, 

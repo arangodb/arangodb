@@ -31,7 +31,8 @@
 #include "Basics/Mutex.h"
 #include "Basics/ReadWriteLock.h"
 #include "Basics/Result.h"
-#include "GeneralServer/AuthenticationHandler.h"
+#include "Rest/CommonDefines.h"
+#include "Utils/Authentication.h"
 #include "Utils/ExecContext.h"
 #include "VocBase/AuthUserEntry.h"
 
@@ -41,18 +42,15 @@
 
 namespace arangodb {
 
-class AuthContext;
-
 class AuthResult {
  public:
-  AuthResult() : _authorized(false), _mustChange(false) {}
+  AuthResult() : _authorized(false) {}
 
   explicit AuthResult(std::string const& username)
-      : _username(username), _authorized(false), _mustChange(false) {}
+      : _username(username), _authorized(false) {}
 
   std::string _username;
   bool _authorized;
-  bool _mustChange;
 };
 
 class AuthJwtResult : public AuthResult {
@@ -66,10 +64,7 @@ class AuthenticationHandler;
 
 class AuthInfo {
  public:
-  enum class AuthType { BASIC, JWT };
-
- public:
-  AuthInfo();
+  AuthInfo(std::unique_ptr<AuthenticationHandler>&&);
   ~AuthInfo();
 
  public:
@@ -87,11 +82,13 @@ class AuthInfo {
   VPackBuilder allUsers();
   /// Add user from arangodb, do not use for LDAP  users
   Result storeUser(bool replace, std::string const& user,
-                   std::string const& pass, bool active, bool changePassword);
+                   std::string const& pass, bool active);
   Result enumerateUsers(std::function<void(AuthUserEntry&)> const& func);
   Result updateUser(std::string const& username,
                     std::function<void(AuthUserEntry&)> const&);
-  velocypack::Builder getUser(std::string const& user);
+  Result accessUser(std::string const& username,
+                  std::function<void(AuthUserEntry const&)> const&);
+  velocypack::Builder serializeUser(std::string const& user);
   Result removeUser(std::string const& user);
 
   velocypack::Builder getConfigData(std::string const& user);
@@ -102,7 +99,8 @@ class AuthInfo {
   AuthResult checkPassword(std::string const& username,
                            std::string const& password);
 
-  AuthResult checkAuthentication(AuthType authType, std::string const& secret);
+  AuthResult checkAuthentication(arangodb::rest::AuthenticationMethod authType,
+                                 std::string const& secret);
 
   AuthLevel canUseDatabase(std::string const& username,
                            std::string const& dbname);
@@ -114,11 +112,9 @@ class AuthInfo {
   std::string jwtSecret();
   std::string generateJwt(VPackBuilder const&);
   std::string generateRawJwt(VPackBuilder const&);
-
-  std::shared_ptr<AuthContext> getAuthContext(std::string const& username,
-                                              std::string const& database);
-
-  std::shared_ptr<AuthContext> noneAuthContext() { return _noneAuthContext; }
+  /*
+    std::shared_ptr<AuthContext> getAuthContext(std::string const& username,
+                                                std::string const& database);*/
 
  private:
   void loadFromDB();
@@ -141,7 +137,6 @@ class AuthInfo {
   std::atomic<bool> _outdated;
 
   std::unordered_map<std::string, AuthUserEntry> _authInfo;
-  std::shared_ptr<AuthContext> _noneAuthContext;
   std::unordered_map<std::string, arangodb::AuthResult> _authBasicCache;
   arangodb::basics::LruCache<std::string, arangodb::AuthJwtResult>
       _authJwtCache;

@@ -821,7 +821,8 @@ void LogicalCollection::toVelocyPack(VPackBuilder& result, bool translateCids,
   result.add("numberOfShards", VPackValue(_numberOfShards));
   result.add(VPackValue("shards"));
   result.openObject();
-  for (auto const& shards : *_shardIds) {
+  auto tmpShards = _shardIds;
+  for (auto const& shards : *tmpShards) {
     result.add(VPackValue(shards.first));
     result.openArray();
     for (auto const& servers : shards.second) {
@@ -1167,6 +1168,12 @@ bool LogicalCollection::readDocument(transaction::Methods* trx,
                                      DocumentIdentifierToken const& token,
                                      ManagedDocumentResult& result) {
   return getPhysical()->readDocument(trx, token, result);
+}
+
+bool LogicalCollection::readDocumentWithCallback(transaction::Methods* trx,
+                                                 DocumentIdentifierToken const& token,
+                                                 IndexIterator::DocumentCallback const& cb) {
+  return getPhysical()->readDocumentWithCallback(trx, token, cb);
 }
 
 /// @brief a method to skip certain documents in AQL write operations,

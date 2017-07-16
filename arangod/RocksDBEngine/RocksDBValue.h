@@ -50,8 +50,8 @@ class RocksDBValue {
   static RocksDBValue Document(VPackSlice const& data);
   static RocksDBValue PrimaryIndexValue(TRI_voc_rid_t revisionId);
   static RocksDBValue EdgeIndexValue(arangodb::StringRef const& vertexId);
-  static RocksDBValue IndexValue();
-  static RocksDBValue UniqueIndexValue(TRI_voc_rid_t revisionId);
+  static RocksDBValue VPackIndexValue();
+  static RocksDBValue UniqueVPackIndexValue(TRI_voc_rid_t revisionId);
   static RocksDBValue View(VPackSlice const& data);
   static RocksDBValue ReplicationApplierConfig(VPackSlice const& data);
   static RocksDBValue KeyGeneratorValue(VPackSlice const& data);
@@ -111,7 +111,7 @@ class RocksDBValue {
   RocksDBValue(RocksDBEntryType type, rocksdb::Slice slice)
       : _type(type), _buffer(slice.data(), slice.size()) {}
 
-  RocksDBValue(RocksDBValue&& other)
+  RocksDBValue(RocksDBValue&& other) noexcept
       : _type(other._type), _buffer(std::move(other._buffer)) {}
 
  private:

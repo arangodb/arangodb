@@ -32,14 +32,11 @@
 #include "Cluster/ClusterComm.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ServerState.h"
+#include "Indexes/Index.h"
+#include "Indexes/IndexFactory.h"
 #include "GeneralServer/AuthenticationFeature.h"
 #include "Rest/HttpRequest.h"
 #include "RestServer/DatabaseFeature.h"
-//#include "V8/v8-conv.h"
-//#include "V8/v8-utils.h"
-//#include "V8/v8-vpack.h"
-#include "Indexes/Index.h"
-#include "Indexes/IndexFactory.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
 #include "Transaction/Helpers.h"
@@ -289,10 +286,15 @@ Result Indexes::ensureIndexCoordinator(
 Result Indexes::ensureIndex(arangodb::LogicalCollection* collection,
                             VPackSlice const& definition, bool create,
                             VPackBuilder& output) {
-  if (ExecContext::CURRENT_EXECCONTEXT != nullptr) {
-    AuthLevel level =
-        ExecContext::CURRENT_EXECCONTEXT->authContext()->databaseAuthLevel();
-    if (level != AuthLevel::RW) {
+  // can read indexes with RO on db and collection. Modifications require RW/RW
+  if (ExecContext::CURRENT != nullptr) {
+    AuthenticationFeature* auth = AuthenticationFeature::INSTANCE;
+    AuthLevel lvl1 = ExecContext::CURRENT->databaseAuthLevel();
+    AuthLevel lvl2 = auth->canUseCollection(ExecContext::CURRENT->user(),
+                                              ExecContext::CURRENT->database(),
+                                              collection->name());
+    if ((create && (lvl1 != AuthLevel::RW || lvl2 != AuthLevel::RW)) ||
+        lvl1 == AuthLevel::NONE || lvl2 == AuthLevel::NONE) {
       return TRI_ERROR_FORBIDDEN;
     }
   }
@@ -475,10 +477,13 @@ Result Indexes::extractHandle(arangodb::LogicalCollection const* collection,
 
 arangodb::Result Indexes::drop(arangodb::LogicalCollection const* collection,
                                VPackSlice const& indexArg) {
-  if (ExecContext::CURRENT_EXECCONTEXT != nullptr) {
-    AuthLevel level =
-        ExecContext::CURRENT_EXECCONTEXT->authContext()->databaseAuthLevel();
-    if (level != AuthLevel::RW) {
+
+  AuthenticationFeature* auth = AuthenticationFeature::INSTANCE;
+  if (ExecContext::CURRENT != nullptr) {
+    if (ExecContext::CURRENT->databaseAuthLevel() != AuthLevel::RW ||
+        auth->canUseCollection(ExecContext::CURRENT->user(),
+                               ExecContext::CURRENT->database(),
+                               collection->name()) != AuthLevel::RW) {
       return TRI_ERROR_FORBIDDEN;
     }
   }

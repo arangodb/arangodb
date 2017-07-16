@@ -216,7 +216,9 @@ void RocksDBGeoIndexIterator::replaceCursor(::GeoCursor* c) {
 
 void RocksDBGeoIndexIterator::createCursor(double lat, double lon) {
   _coor = GeoCoordinate{lat, lon, 0};
-  GeoIndex_setRocksMethods(_index->_geoIndex, rocksutils::toRocksMethods(_trx));
+  // GeoIndex is always exclusively write-locked with rocksdb
+  GeoIndex_setRocksMethods(_index->_geoIndex,
+                           RocksDBTransactionState::toMethods(_trx));
   replaceCursor(::GeoIndex_NewCursor(_index->_geoIndex, &_coor));
 }
 
@@ -319,7 +321,11 @@ size_t RocksDBGeoIndex::memory() const {
   RocksDBKeyBounds bounds = RocksDBKeyBounds::GeoIndex(_objectId);
   rocksdb::Range r(bounds.start(), bounds.end());
   uint64_t out;
-  db->GetApproximateSizes(RocksDBColumnFamily::geo(), &r, 1, &out, static_cast<uint8_t>(rocksdb::DB::SizeApproximationFlags::INCLUDE_MEMTABLES | rocksdb::DB::SizeApproximationFlags::INCLUDE_FILES));
+  db->GetApproximateSizes(
+      RocksDBColumnFamily::geo(), &r, 1, &out,
+      static_cast<uint8_t>(
+          rocksdb::DB::SizeApproximationFlags::INCLUDE_MEMTABLES |
+          rocksdb::DB::SizeApproximationFlags::INCLUDE_FILES));
   return static_cast<size_t>(out);
 }
 
@@ -413,8 +419,14 @@ bool RocksDBGeoIndex::matchesDefinition(VPackSlice const& info) const {
 }
 
 /// internal insert function, set batch or trx before calling
-int RocksDBGeoIndex::internalInsert(TRI_voc_rid_t revisionId,
-                                    velocypack::Slice const& doc) {
+Result RocksDBGeoIndex::insertInternal(transaction::Methods* trx,
+                                       RocksDBMethods* mthd,
+                                       TRI_voc_rid_t revisionId,
+                                       velocypack::Slice const& doc) {
+  // GeoIndex is always exclusively write-locked with rocksdb
+  GeoIndex_setRocksMethods(_geoIndex, mthd);
+  TRI_DEFER(GeoIndex_clearRocks(_geoIndex));
+
   double latitude;
   double longitude;
 
@@ -422,13 +434,13 @@ int RocksDBGeoIndex::internalInsert(TRI_voc_rid_t revisionId,
     VPackSlice lat = doc.get(_latitude);
     if (!lat.isNumber()) {
       // Invalid, no insert. Index is sparse
-      return TRI_ERROR_NO_ERROR;
+      return IndexResult(TRI_ERROR_NO_ERROR, this);
     }
 
     VPackSlice lon = doc.get(_longitude);
     if (!lon.isNumber()) {
       // Invalid, no insert. Index is sparse
-      return TRI_ERROR_NO_ERROR;
+      return IndexResult(TRI_ERROR_NO_ERROR, this);
     }
     latitude = lat.getNumericValue<double>();
     longitude = lon.getNumericValue<double>();
@@ -436,17 +448,17 @@ int RocksDBGeoIndex::internalInsert(TRI_voc_rid_t revisionId,
     VPackSlice loc = doc.get(_location);
     if (!loc.isArray() || loc.length() < 2) {
       // Invalid, no insert. Index is sparse
-      return TRI_ERROR_NO_ERROR;
+      return IndexResult(TRI_ERROR_NO_ERROR, this);
     }
     VPackSlice first = loc.at(0);
     if (!first.isNumber()) {
       // Invalid, no insert. Index is sparse
-      return TRI_ERROR_NO_ERROR;
+      return IndexResult(TRI_ERROR_NO_ERROR, this);
     }
     VPackSlice second = loc.at(1);
     if (!second.isNumber()) {
       // Invalid, no insert. Index is sparse
-      return TRI_ERROR_NO_ERROR;
+      return IndexResult(TRI_ERROR_NO_ERROR, this);
     }
     if (_geoJson) {
       longitude = first.getNumericValue<double>();
@@ -467,39 +479,27 @@ int RocksDBGeoIndex::internalInsert(TRI_voc_rid_t revisionId,
   if (res == -1) {
     LOG_TOPIC(WARN, arangodb::Logger::FIXME)
         << "found duplicate entry in geo-index, should not happen";
-    return TRI_set_errno(TRI_ERROR_INTERNAL);
+    return IndexResult(TRI_set_errno(TRI_ERROR_INTERNAL), this);
   } else if (res == -2) {
-    return TRI_set_errno(TRI_ERROR_OUT_OF_MEMORY);
+    return IndexResult(TRI_set_errno(TRI_ERROR_OUT_OF_MEMORY), this);
   } else if (res == -3) {
     LOG_TOPIC(DEBUG, arangodb::Logger::FIXME)
         << "illegal geo-coordinates, ignoring entry";
   } else if (res < 0) {
-    return TRI_set_errno(TRI_ERROR_INTERNAL);
+    return IndexResult(TRI_set_errno(TRI_ERROR_INTERNAL), this);
   }
-  return TRI_ERROR_NO_ERROR;
-}
-
-Result RocksDBGeoIndex::insert(transaction::Methods* trx,
-                               TRI_voc_rid_t revisionId,
-                               VPackSlice const& doc, bool isRollback) {
-  // acquire rocksdb transaction
-  GeoIndex_setRocksMethods(_geoIndex, rocksutils::toRocksMethods(trx));
-  int res = this->internalInsert(revisionId, doc);
-  GeoIndex_clearRocks(_geoIndex);
-  return IndexResult(res, this);
-}
-
-int RocksDBGeoIndex::insertRaw(RocksDBMethods* batch, TRI_voc_rid_t revisionId,
-                               arangodb::velocypack::Slice const& doc) {
-  GeoIndex_setRocksMethods(_geoIndex, batch);
-  int res = this->internalInsert(revisionId, doc);
-  GeoIndex_clearRocks(_geoIndex);
-  return res;
+  return IndexResult(TRI_ERROR_NO_ERROR, this);
 }
 
 /// internal remove function, set batch or trx before calling
-int RocksDBGeoIndex::internalRemove(TRI_voc_rid_t revisionId,
-                                    velocypack::Slice const& doc) {
+Result RocksDBGeoIndex::removeInternal(transaction::Methods* trx,
+                                       RocksDBMethods* mthd,
+                                       TRI_voc_rid_t revisionId,
+                                       velocypack::Slice const& doc) {
+  // GeoIndex is always exclusively write-locked with rocksdb
+  GeoIndex_setRocksMethods(_geoIndex, RocksDBTransactionState::toMethods(trx));
+  TRI_DEFER(GeoIndex_clearRocks(_geoIndex));
+
   double latitude = 0.0;
   double longitude = 0.0;
   bool ok = true;
@@ -542,37 +542,16 @@ int RocksDBGeoIndex::internalRemove(TRI_voc_rid_t revisionId,
     }
   }
 
-  if (!ok) {
-    return TRI_ERROR_NO_ERROR;
+  if (ok) {
+    GeoCoordinate gc;
+    gc.latitude = latitude;
+    gc.longitude = longitude;
+    gc.data = static_cast<uint64_t>(revisionId);
+    // ignore non-existing elements in geo-index
+    GeoIndex_remove(_geoIndex, &gc);
   }
 
-  GeoCoordinate gc;
-  gc.latitude = latitude;
-  gc.longitude = longitude;
-  gc.data = static_cast<uint64_t>(revisionId);
-
-  // ignore non-existing elements in geo-index
-  GeoIndex_remove(_geoIndex, &gc);
-
-  return TRI_ERROR_NO_ERROR;
-}
-
-Result RocksDBGeoIndex::remove(transaction::Methods* trx,
-                               TRI_voc_rid_t revisionId,
-                               VPackSlice const& doc, bool isRollback) {
-  // acquire rocksdb methods
-  GeoIndex_setRocksMethods(_geoIndex, rocksutils::toRocksMethods(trx));
-  int res = this->internalRemove(revisionId, doc);
-  GeoIndex_clearRocks(_geoIndex);
-  return IndexResult(res, this);
-}
-
-int RocksDBGeoIndex::removeRaw(RocksDBMethods* batch, TRI_voc_rid_t revisionId,
-                               arangodb::velocypack::Slice const& doc) {
-  GeoIndex_setRocksMethods(_geoIndex, batch);
-  int res = this->internalRemove(revisionId, doc);
-  GeoIndex_clearRocks(_geoIndex);
-  return res;
+  return IndexResult(TRI_ERROR_NO_ERROR, this);
 }
 
 int RocksDBGeoIndex::unload() {
@@ -601,8 +580,8 @@ GeoCoordinates* RocksDBGeoIndex::withinQuery(transaction::Methods* trx,
   GeoCoordinate gc;
   gc.latitude = lat;
   gc.longitude = lon;
-
-  GeoIndex_setRocksMethods(_geoIndex, rocksutils::toRocksMethods(trx));
+  // GeoIndex is always exclusively write-locked with rocksdb
+  GeoIndex_setRocksMethods(_geoIndex, RocksDBTransactionState::toMethods(trx));
   GeoCoordinates* coords = GeoIndex_PointsWithinRadius(_geoIndex, &gc, radius);
   GeoIndex_clearRocks(_geoIndex);
   return coords;
@@ -615,8 +594,8 @@ GeoCoordinates* RocksDBGeoIndex::nearQuery(transaction::Methods* trx,
   GeoCoordinate gc;
   gc.latitude = lat;
   gc.longitude = lon;
-
-  GeoIndex_setRocksMethods(_geoIndex, rocksutils::toRocksMethods(trx));
+  // GeoIndex is always exclusively write-locked with rocksdb
+  GeoIndex_setRocksMethods(_geoIndex, RocksDBTransactionState::toMethods(trx));
   GeoCoordinates* coords =
       GeoIndex_NearestCountPoints(_geoIndex, &gc, static_cast<int>(count));
   GeoIndex_clearRocks(_geoIndex);

@@ -177,6 +177,7 @@ Builder& Builder::closeEmptyArrayOrObject(ValueLength tos, bool isArray) {
 
 bool Builder::closeCompactArrayOrObject(ValueLength tos, bool isArray,
                                         std::vector<ValueLength> const& index) {
+
   // use compact notation
   ValueLength nLen =
       getVariableValueLength(static_cast<ValueLength>(index.size()));
@@ -222,30 +223,36 @@ bool Builder::closeCompactArrayOrObject(ValueLength tos, bool isArray,
 }
 
 Builder& Builder::closeArray(ValueLength tos, std::vector<ValueLength>& index) {
+  VELOCYPACK_ASSERT(!index.empty());
+
   // fix head byte in case a compact Array was originally requested:
   _start[tos] = 0x06;
 
   bool needIndexTable = true;
   bool needNrSubs = true;
+
   if (index.size() == 1) {
+    // just one array entry
     needIndexTable = false;
     needNrSubs = false;
   } else if ((_pos - tos) - index[0] == index.size() * (index[1] - index[0])) {
     // In this case it could be that all entries have the same length
     // and we do not need an offset table at all:
-    bool noTable = true;
+    bool buildIndexTable = false;
     ValueLength const subLen = index[1] - index[0];
     if ((_pos - tos) - index[index.size() - 1] != subLen) {
-      noTable = false;
+      buildIndexTable = true;
     } else {
       for (size_t i = 1; i < index.size() - 1; i++) {
         if (index[i + 1] - index[i] != subLen) {
-          noTable = false;
+          // different lengths
+          buildIndexTable = true;
           break;
         }
       }
     }
-    if (noTable) {
+        
+    if (!buildIndexTable) {
       needIndexTable = false;
       needNrSubs = false;
     }
@@ -273,22 +280,35 @@ Builder& Builder::closeArray(ValueLength tos, std::vector<ValueLength>& index) {
 
   // Maybe we need to move down data:
   if (offsetSize == 1) {
-    ValueLength targetPos = 3;
-    if (!needIndexTable) {
-      targetPos = 2;
-    }
-    if (_pos > (tos + 9)) {
-      ValueLength len = _pos - (tos + 9);
-      memmove(_start + tos + targetPos, _start + tos + 9, checkOverflow(len));
-    }
-    ValueLength const diff = 9 - targetPos;
-    _pos -= diff;
-    if (needIndexTable) {
-      size_t const n = index.size();
-      for (size_t i = 0; i < n; i++) {
-        index[i] -= diff;
+    // check if one of the first entries in the array is ValueType::None 
+    // (0x00). in this case, we could not distinguish between a None (0x00) 
+    // and the optional padding. so we must prevent the memmove here
+    bool allowMemMove = true;
+    size_t const n = (std::min)(size_t(6), index.size());
+    for (size_t i = 0; i < n; i++) {
+      if (_start[tos + index[i]] == 0x00) {
+        allowMemMove = false;
+        break;
       }
-    }  // Note: if !needIndexTable the index array is now wrong!
+    }
+    if (allowMemMove) {
+      ValueLength targetPos = 3;
+      if (!needIndexTable) {
+        targetPos = 2;
+      }
+      if (_pos > (tos + 9)) {
+        ValueLength len = _pos - (tos + 9);
+        memmove(_start + tos + targetPos, _start + tos + 9, checkOverflow(len));
+      }
+      ValueLength const diff = 9 - targetPos;
+      _pos -= diff;
+      if (needIndexTable) {
+        size_t const n = index.size();
+        for (size_t i = 0; i < n; i++) {
+          index[i] -= diff;
+        }
+      }  // Note: if !needIndexTable the index array is now wrong!
+    }
   }
   // One could move down things in the offsetSize == 2 case as well,
   // since we only need 4 bytes in the beginning. However, saving these

@@ -1760,7 +1760,7 @@ int MMFilesRestReplicationHandler::processRestoreIndexes(
     Result res = trx.begin();
 
     if (!res.ok()) {
-      errorMsg = "unable to start transaction: " + res.errorMessage();
+      errorMsg = std::string("unable to start transaction (") + std::string(__FILE__) + std::string(":") + std::to_string(__LINE__) + std::string("): ") + res.errorMessage();
       res.reset(res.errorNumber(), errorMsg);
       THROW_ARANGO_EXCEPTION(res);
     }
@@ -2263,7 +2263,7 @@ int MMFilesRestReplicationHandler::processRestoreData(
   Result res = trx.begin();
 
   if (!res.ok()) {
-    errorMsg = "unable to start transaction: " + res.errorMessage();
+    errorMsg = std::string("unable to start transaction (") + std::string(__FILE__) + std::string(":") + std::to_string(__LINE__) + std::string("): ") + res.errorMessage();
     res.reset(res.errorNumber(), errorMsg);
     return res.errorNumber();
   }

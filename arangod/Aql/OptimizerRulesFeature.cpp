@@ -154,10 +154,19 @@ void OptimizerRulesFeature::addRules() {
   // merge filters into traversals
   registerRule("optimize-traversals", optimizeTraversalsRule,
                OptimizerRule::optimizeTraversalsRule_pass6, DoesNotCreateAdditionalPlans, CanBeDisabled);
+  
+  // optimize unneccessary filters already applied by the traversal
+  registerRule("remove-filter-covered-by-traversal", removeFiltersCoveredByTraversal,
+               OptimizerRule::removeFiltersCoveredByTraversal_pass6, DoesNotCreateAdditionalPlans, CanBeDisabled);
+  
+  // optimize unneccessary filters already applied by the traversal. Only ever does something if previous
+  // rule remove all filters using the path variable
+  registerRule("remove-redundant-path-var", removeTraversalPathVariable,
+               OptimizerRule::removeTraversalPathVariable_pass6, DoesNotCreateAdditionalPlans, CanBeDisabled);
 
   // prepare traversal info
-  registerRule("prepare-traversals", prepareTraversalsRule,
-               OptimizerRule::prepareTraversalsRule_pass6, DoesNotCreateAdditionalPlans, CanNotBeDisabled, CanBeDisabled);
+  registerHiddenRule("prepare-traversals", prepareTraversalsRule,
+                     OptimizerRule::prepareTraversalsRule_pass6, DoesNotCreateAdditionalPlans, CanNotBeDisabled);
 
   /// "Pass 5": try to remove redundant or unnecessary nodes (second try)
   // remove filters from the query that are not necessary at all
@@ -203,12 +212,12 @@ void OptimizerRulesFeature::addRules() {
   // try to find sort blocks which are superseeded by indexes
   registerRule("use-index-for-sort", useIndexForSortRule,
                OptimizerRule::useIndexForSortRule_pass6, DoesNotCreateAdditionalPlans, CanBeDisabled);
-
+  
   // sort in-values in filters (note: must come after
   // remove-filter-covered-by-index rule)
   registerRule("sort-in-values", sortInValuesRule, OptimizerRule::sortInValuesRule_pass6,
                DoesNotCreateAdditionalPlans, CanBeDisabled);
-
+  
   // remove calculations that are never necessary
   registerRule("remove-unnecessary-calculations-2",
                removeUnnecessaryCalculationsRule,

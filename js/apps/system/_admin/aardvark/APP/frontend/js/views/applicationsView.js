@@ -5,6 +5,7 @@
 
   window.ApplicationsView = Backbone.View.extend({
     el: '#content',
+    readOnly: false,
 
     template: templateEngine.createTemplate('applicationsView.ejs'),
 
@@ -108,7 +109,15 @@
 
     createInstallModal: function (event) {
       event.preventDefault();
-      window.foxxInstallView.install(this.reload.bind(this));
+      if (!this.readOnly) {
+        window.foxxInstallView.install(this.reload.bind(this));
+      }
+    },
+
+    setReadOnly: function () {
+      this.readOnly = true;
+      $('#addApp').parent().parent().addClass('disabled');
+      $('#addApp').addClass('disabled');
     },
 
     render: function () {
@@ -131,6 +140,7 @@
       });
 
       arangoHelper.fixTooltips('icon_arangodb', 'left');
+      arangoHelper.checkDatabasePermissions(this.setReadOnly.bind(this));
       return this;
     }
 

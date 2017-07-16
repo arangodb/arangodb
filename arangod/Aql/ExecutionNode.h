@@ -34,13 +34,16 @@
 //   5   LimitNode                    5       - LIMIT 0, 5
 //   6   ReturnNode                   5       - RETURN d
 //
-// Even though the Singleton Node has a comment saying it is the "ROOT" node
-// you receive a pointer to LimitNode by calling getFirstParent on the SortNode
-// (effectively going down the list). If you want to go up from 5 to 4 you need
-// to call getFirstDependency to get a pointer to the SortNode.
+// Even though the Singleton Node has a label saying it is the "ROOT" node it
+// is not in our definiton. Root Nodes are leaf nodes (at the bottom of the list).
+// 
+// To get down (direction to root) from 4 to 5 you need to clla getFirst Parent
+// on the SortNode(4) to receive a pointer to the LimitNode(5). If you want to
+// go up from 5 to 4 (away form root) you need to call getFirstDependency at
+// the LimitNode (5) to get a pointer to the SortNode(4).
 //
-// For most maybe all operations you will only need to operate on the Dependencies
-// the parents will be updated automatically.
+// For most maybe all operations you will only need to operate on the
+// Dependencies the parents will be updated automatically.
 //
 // If you wish to unlink (remove) or replace a node you should to it by using
 // one of the plans operations.
@@ -53,6 +56,7 @@
 
 #include "Basics/Common.h"
 #include "Aql/types.h"
+#include "Aql/DocumentProducingNode.h"
 #include "Aql/Expression.h"
 #include "Aql/Variable.h"
 #include "Aql/WalkerWorker.h"
@@ -573,9 +577,6 @@ class ExecutionNode {
   ExecutionNode const* getLoop() const;
 
  protected:
-  static Variable* varFromVPack(Ast* ast, arangodb::velocypack::Slice const& base,
-                                char const* variableName, bool optional = false);
-
   /// @brief factory for sort elements
   static void getSortElements(SortElementVector& elements, ExecutionPlan* plan,
                               arangodb::velocypack::Slice const& slice,
@@ -679,7 +680,7 @@ class SingletonNode : public ExecutionNode {
 };
 
 /// @brief class EnumerateCollectionNode
-class EnumerateCollectionNode : public ExecutionNode {
+class EnumerateCollectionNode : public ExecutionNode, public DocumentProducingNode {
   friend class ExecutionNode;
   friend class ExecutionBlock;
   friend class EnumerateCollectionBlock;
@@ -690,18 +691,17 @@ class EnumerateCollectionNode : public ExecutionNode {
                           TRI_vocbase_t* vocbase, Collection* collection,
                           Variable const* outVariable, bool random)
       : ExecutionNode(plan, id),
+        DocumentProducingNode(outVariable),
         _vocbase(vocbase),
         _collection(collection),
-        _outVariable(outVariable),
         _random(random) {
     TRI_ASSERT(_vocbase != nullptr);
     TRI_ASSERT(_collection != nullptr);
-    TRI_ASSERT(_outVariable != nullptr);
   }
 
   EnumerateCollectionNode(ExecutionPlan* plan,
                           arangodb::velocypack::Slice const& base);
-
+  
   /// @brief return the type of the node
   NodeType getType() const override final { return ENUMERATE_COLLECTION; }
 
@@ -735,18 +735,12 @@ class EnumerateCollectionNode : public ExecutionNode {
   /// @brief return the collection
   Collection const* collection() const { return _collection; }
 
-  /// @brief return the out variable
-  Variable const* outVariable() const { return _outVariable; }
-
  private:
   /// @brief the database
   TRI_vocbase_t* _vocbase;
 
   /// @brief collection
   Collection* _collection;
-
-  /// @brief output variable
-  Variable const* _outVariable;
 
   /// @brief whether or not we want random iteration
   bool _random;

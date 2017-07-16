@@ -21,58 +21,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "ExecContext.h"
-#include "Logger/Logger.h"
 
 using namespace arangodb;
 
-thread_local ExecContext* ExecContext::CURRENT_EXECCONTEXT = nullptr;
-
-AuthContext::AuthContext(
-    AuthLevel authLevel,
-    std::unordered_map<std::string, AuthLevel>&& collectionAccess)
-    : _databaseAuthLevel(authLevel),
-      _systemAuthLevel(AuthLevel::NONE),
-      _collectionAccess(std::move(collectionAccess)) {}
-
-AuthLevel AuthContext::collectionAuthLevel(
-    std::string const& collectionName) const {
-  auto const& it = _collectionAccess.find(collectionName);
-  if (it != _collectionAccess.end()) {
-    return it->second;
-  }
-  auto const& it2 = _collectionAccess.find("*");
-  if (it2 != _collectionAccess.end()) {
-    return it2->second;
-  }
-  return AuthLevel::NONE;
-}
-
-bool AuthContext::hasSpecificCollection(std::string const& collectionName) const {
-  return _collectionAccess.find(collectionName) != _collectionAccess.end();
-}
-
-void AuthContext::dump() {
-  LOG_TOPIC(DEBUG, arangodb::Logger::AUTHENTICATION)
-      << "Dump AuthContext rights";
-
-  if (_databaseAuthLevel == AuthLevel::RO) {
-    LOG_TOPIC(DEBUG, arangodb::Logger::AUTHENTICATION) << "database level RO";
-  }
-  if (_databaseAuthLevel == AuthLevel::RW) {
-    LOG_TOPIC(DEBUG, arangodb::Logger::AUTHENTICATION) << "database level RW";
-  }
-
-  if (_systemAuthLevel == AuthLevel::RO) {
-    LOG_TOPIC(DEBUG, arangodb::Logger::AUTHENTICATION) << "_system level RO";
-  }
-  if (_systemAuthLevel == AuthLevel::RW) {
-    LOG_TOPIC(DEBUG, arangodb::Logger::AUTHENTICATION) << "_system level RW";
-  }
-
-  for (auto const& it : _collectionAccess) {
-    if (it.second == AuthLevel::RO)
-      LOG_TOPIC(DEBUG, arangodb::Logger::AUTHENTICATION) << it.first << " RO";
-    if (it.second == AuthLevel::RW)
-      LOG_TOPIC(DEBUG, arangodb::Logger::AUTHENTICATION) << it.first << " RW";
-  }
-}
+thread_local ExecContext* ExecContext::CURRENT = nullptr;

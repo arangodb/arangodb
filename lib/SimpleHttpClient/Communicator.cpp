@@ -377,7 +377,11 @@ void Communicator::createRequestInProgress(NewRequest const& newRequest) {
   }
 
   handleInProgress->_rip->_startTime = TRI_microtime();
-  _handlesInProgress.emplace(newRequest._ticketId, std::move(handleInProgress));
+ 
+  { 
+    MUTEX_LOCKER(guard, _handlesLock);
+    _handlesInProgress.emplace(newRequest._ticketId, std::move(handleInProgress));
+  }
   curl_multi_add_handle(_curl, handle);
 }
 
@@ -400,9 +404,10 @@ void Communicator::handleResult(CURL* handle, CURLcode rc) {
         << prefix << "Curl error details: " << rip->_errorBuffer;
   }
 
+  MUTEX_LOCKER(guard, _handlesLock);
   switch (rc) {
     case CURLE_OK: {
-      int httpStatusCode = 200;
+      long httpStatusCode = 200;
       curl_easy_getinfo(handle, CURLINFO_RESPONSE_CODE, &httpStatusCode);
 
       std::unique_ptr<GeneralResponse> response(
@@ -435,7 +440,8 @@ void Communicator::handleResult(CURL* handle, CURLcode rc) {
       LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "Curl return " << rc;
       rip->_callbacks._onError(TRI_ERROR_INTERNAL, {nullptr});
       break;
-  }
+  } 
+    
   _handlesInProgress.erase(rip->_ticketId);
 }
 
@@ -563,6 +569,40 @@ std::string Communicator::createSafeDottedCurlUrl(
 }
 
 void Communicator::abortRequest(Ticket ticketId) {
+  MUTEX_LOCKER(guard, _handlesLock);
+
+  abortRequestInternal(ticketId);
+}
+
+void Communicator::abortRequests() {
+  MUTEX_LOCKER(guard, _handlesLock);
+
+  for (auto& request : requestsInProgress()) {
+    abortRequestInternal(request->_ticketId);
+  }
+}
+
+// needs _handlesLock! 
+std::vector<RequestInProgress const*> Communicator::requestsInProgress() {
+  _handlesLock.assertLockedByCurrentThread();
+
+  std::vector<RequestInProgress const*> vec;
+    
+  vec.reserve(_handlesInProgress.size());
+
+  for (auto& handle : _handlesInProgress) {
+    RequestInProgress* rip = nullptr;
+    curl_easy_getinfo(handle.second->_handle, CURLINFO_PRIVATE, &rip);
+    TRI_ASSERT(rip != nullptr);
+    vec.push_back(rip);
+  }
+  return vec;
+}
+
+// needs _handlesLock! 
+void Communicator::abortRequestInternal(Ticket ticketId) {
+  _handlesLock.assertLockedByCurrentThread();
+
   auto handle = _handlesInProgress.find(ticketId);
   if (handle == _handlesInProgress.end()) {
     return;
@@ -575,21 +615,3 @@ void Communicator::abortRequest(Ticket ticketId) {
   _handlesInProgress.erase(ticketId);
 }
 
-void Communicator::abortRequests() {
-  for (auto& request : requestsInProgress()) {
-    abortRequest(request->_ticketId);
-  }
-}
-
-std::vector<RequestInProgress const*> Communicator::requestsInProgress() {
-  std::vector<RequestInProgress const*> vec;
-  vec.reserve(_handlesInProgress.size());
-
-  for (auto& handle : _handlesInProgress) {
-    RequestInProgress* rip = nullptr;
-    curl_easy_getinfo(handle.second->_handle, CURLINFO_PRIVATE, &rip);
-    TRI_ASSERT(rip != nullptr);
-    vec.push_back(rip);
-  }
-  return vec;
-}

@@ -1,4 +1,3 @@
-load=32
 concurrency=$1
 edition=$2
 os=$3
@@ -18,8 +17,10 @@ fi
 
 if [ "$os" == linux ]; then
     type="${type}_linux"
+    load=20
 elif [ "$os" == mac ]; then
     type="${type}_mac"
+    load=5
 else
     echo "$0: unknown os '$os', expecting 'linux' or 'mac'"
     exit 1
@@ -47,9 +48,9 @@ cd $GENPATH
 
 echo "GENPATH: `pwd`"
 
-rm -rf log-output/$type.log
+rm -rf log-output
 mkdir -p log-output
-touch log-output/$type.log
+touch log-output/build.log
 
 (
     cd build-$edition
@@ -63,10 +64,10 @@ touch log-output/$type.log
             -DUSE_FAILURE_TESTS=On \
             -DDEBUG_SYNC_REPLICATION=On \
             $ENTERPRISE \
-            .. >> ../log-output/$type.log 2>&1
+            .. >> ../log-output/build.log 2>&1
 
     if [ "$?" != 0 ]; then
-        if fgrep 'Re-run cmake with a different source directory' ../log-output/$type.log; then
+        if fgrep 'Re-run cmake with a different source directory' ../log-output/build.log; then
             mv location ..
             rm -rf *
             mv ../location .
@@ -79,14 +80,14 @@ touch log-output/$type.log
                     -DUSE_FAILURE_TESTS=On \
                     -DDEBUG_SYNC_REPLICATION=On \
                     $ENTERPRISE \
-                    .. >> ../log-output/$type.log 2>&1 || exit 1
+                    .. >> ../log-output/build.log 2>&1 || exit 1
         else
             exit 1
         fi
     fi
 
     echo "`date +%T` building..."
-    make -j $concurrency -l $load >> ../log-output/$type.log 2>&1 || exit 1
+    make -j $concurrency -l $load >> ../log-output/build.log 2>&1 || exit 1
 ) || exit 1
 
 # copy binaries to preserve them

@@ -74,17 +74,18 @@ void RocksDBBackgroundThread::run() {
                 }
               }
             });
-
       }
-     
-      // determine which WAL files can be pruned 
+
+      // determine which WAL files can be pruned
       _engine->determinePrunableWalFiles(minTick);
       // and then prune them when they expired
       _engine->pruneWalFiles();
     } catch (std::exception const& ex) {
-      LOG_TOPIC(WARN, Logger::FIXME) << "caught exception in rocksdb background thread: " << ex.what();
+      LOG_TOPIC(WARN, Logger::FIXME)
+          << "caught exception in rocksdb background thread: " << ex.what();
     } catch (...) {
-      LOG_TOPIC(WARN, Logger::FIXME) << "caught unknown exception in rocksdb background";
+      LOG_TOPIC(WARN, Logger::FIXME)
+          << "caught unknown exception in rocksdb background";
     }
   }
   _engine->counterManager()->sync(true);  // final write on shutdown

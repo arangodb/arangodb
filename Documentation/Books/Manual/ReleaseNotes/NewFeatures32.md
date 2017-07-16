@@ -358,8 +358,7 @@ Authorization
 * added read only mode for users
 * collection level authorization rights
 
-Read more in the [overview](../Administration/ManagingUsers/README.md)
-and about the new [authorization Model](../Administration/ManagingUsers/AuthorizationModel.md)
+Read more in the [overview](../Administration/ManagingUsers/README.md).
 
 
 Foxx

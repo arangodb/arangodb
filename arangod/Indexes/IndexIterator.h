@@ -62,7 +62,8 @@ class Methods;
 class IndexIterator {
  public:
   typedef std::function<void(DocumentIdentifierToken const& token)> TokenCallback;
-  typedef std::function<void(ManagedDocumentResult const& mdr)> DocumentCallback;
+  typedef std::function<void(DocumentIdentifierToken const& token,
+                             velocypack::Slice extra)> DocumentCallback;
   typedef std::function<void(DocumentIdentifierToken const& token,
                              velocypack::Slice extra)> ExtraCallback;
 

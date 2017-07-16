@@ -111,20 +111,6 @@ class RocksDBEdgeIndex final : public RocksDBIndex {
 
   void toVelocyPack(VPackBuilder&, bool, bool) const override;
 
-  Result insert(transaction::Methods*, TRI_voc_rid_t,
-             arangodb::velocypack::Slice const&, bool isRollback) override;
-
-  int insertRaw(RocksDBMethods*, TRI_voc_rid_t, VPackSlice const&) override;
-
-  Result remove(transaction::Methods*, TRI_voc_rid_t,
-             arangodb::velocypack::Slice const&, bool isRollback) override;
-
-  /// optimization for truncateNoTrx, never called in fillIndex
-  int removeRaw(RocksDBMethods*, TRI_voc_rid_t,
-                arangodb::velocypack::Slice const&) override;
-
-  Result postprocessRemove(transaction::Methods* trx, rocksdb::Slice const& key,
-                           rocksdb::Slice const& value) override;
   void batchInsert(
       transaction::Methods*,
       std::vector<std::pair<TRI_voc_rid_t, arangodb::velocypack::Slice>> const&,
@@ -164,6 +150,15 @@ class RocksDBEdgeIndex final : public RocksDBIndex {
 
   void recalculateEstimates() override;
 
+  Result insertInternal(transaction::Methods*, RocksDBMethods*, TRI_voc_rid_t,
+                        arangodb::velocypack::Slice const&) override;
+
+  Result removeInternal(transaction::Methods*, RocksDBMethods*, TRI_voc_rid_t,
+                        arangodb::velocypack::Slice const&) override;
+
+ protected:
+  Result postprocessRemove(transaction::Methods* trx, rocksdb::Slice const& key,
+                           rocksdb::Slice const& value) override;
 
  private:
   /// @brief create the iterator

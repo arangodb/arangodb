@@ -40,6 +40,7 @@
 #include "Basics/WorkMonitor.h"
 #include "Basics/fasthash.h"
 #include "Cluster/ServerState.h"
+#include "GeneralServer/AuthenticationFeature.h"
 #include "Logger/Logger.h"
 #include "RestServer/AqlFeature.h"
 #include "StorageEngine/TransactionState.h"
@@ -536,11 +537,12 @@ QueryResult Query::execute(QueryRegistry* registry) {
 
       if (cacheEntry != nullptr) {
         // got a result from the query cache
-        if(ExecContext::CURRENT_EXECCONTEXT != nullptr) {
-          auto const& authContext = ExecContext::CURRENT_EXECCONTEXT->authContext();
-
+        if(ExecContext::CURRENT != nullptr) {
+          AuthInfo* info = AuthenticationFeature::INSTANCE->authInfo();
           for (std::string const& collectionName : cacheEntry->_collections) {
-            if (authContext->collectionAuthLevel(collectionName) == AuthLevel::NONE) {
+            if (info->canUseCollection(ExecContext::CURRENT->user(),
+                                       ExecContext::CURRENT->database(),
+                                       collectionName) == AuthLevel::NONE) {
               THROW_ARANGO_EXCEPTION(TRI_ERROR_FORBIDDEN);
             }
           }
@@ -734,11 +736,12 @@ QueryResultV8 Query::executeV8(v8::Isolate* isolate, QueryRegistry* registry) {
 
       if (cacheEntry != nullptr) {
         // got a result from the query cache
-        if(ExecContext::CURRENT_EXECCONTEXT != nullptr) {
-          auto const& authContext = ExecContext::CURRENT_EXECCONTEXT->authContext();
-
+        if(ExecContext::CURRENT != nullptr) {
+          AuthInfo* info = AuthenticationFeature::INSTANCE->authInfo();
           for (std::string const& collectionName : cacheEntry->_collections) {
-            if (authContext->collectionAuthLevel(collectionName) == AuthLevel::NONE) {
+            if (info->canUseCollection(ExecContext::CURRENT->user(),
+                                       ExecContext::CURRENT->database(),
+                                       collectionName) == AuthLevel::NONE) {
               THROW_ARANGO_EXCEPTION(TRI_ERROR_FORBIDDEN);
             }
           }

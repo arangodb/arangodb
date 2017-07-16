@@ -3,7 +3,7 @@ rm -rf tmp && mkdir tmp
 export TMPDIR=$(pwd)/tmp
 export TEMPDIR=$(pwd)/tmp
 
-mkdir -p log-output
-rm -rf log-output/$type
+rm -rf "log-output"
+mkdir -p "log-output"
 
 echo "TMPDIR: $TMPDIR"

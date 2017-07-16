@@ -347,10 +347,10 @@ first argument.
 `collection.document(array)`
 
 This variant allows to perform the operation on a whole array of arguments.
-The behavior is exactly as if *document* would have been called on all
-members of the array and all results are returned in an array. If an error
-occurs with any of the documents, the operation stops immediately returning
-only an error object.
+The behavior is exactly as if *document* would have been called on all members
+of the array separately and all results are returned in an array. If an error
+occurs with any of the documents, no exception is risen! Instead of a document
+an error object is returned in the result array.
 
 *Examples*
 
@@ -463,7 +463,7 @@ first argument.
 
 This variant allows to perform the operation on a whole array of arguments.
 The behavior is exactly as if *exists* would have been called on all
-members of the array and all results are returned in an array. If an error
+members of the array separately and all results are returned in an array. If an error
 occurs with any of the documents, the operation stops immediately returning
 only an error object.
 
@@ -553,11 +553,11 @@ Note: since ArangoDB 2.2, *insert* is an alias for *save*.
 `collection.insert(array, options)`
 
 These two variants allow to perform the operation on a whole array of
-arguments. The behavior is exactly as if *insert* would have been
-called on all members of the array and all results are returned in an
-array. If an error occurs with any of the documents, the operation stops
-immediately returning only an error object. The options behave exactly
-as before.
+arguments. The behavior is exactly as if *insert* would have been called on all
+members of the array separately and all results are returned in an array. If an
+error occurs with any of the documents, no exception is risen! Instead of a
+document an error object is returned in the result array. The options behave
+exactly as before.
 
 #### Changes in 3.0 from 2.8:
 
@@ -652,15 +652,14 @@ first argument. No revision precondition is tested.
 
 `collection.replace(selectorarray, dataarray, options)`
 
-These two variants allow to perform the operation on a whole array
-of selector/data pairs. The two arrays given as *selectorarray* and
-*dataarray* must have the same length. The behavior is exactly as if
-*replace* would have been called on all respective members of the two
-arrays and all results are returned in an array. If an error occurs with
-any of the documents, the operation stops immediately returning only an
-error object. The options behave exactly as before.
-
-
+These two variants allow to perform the operation on a whole array of
+selector/data pairs. The two arrays given as *selectorarray* and *dataarray*
+must have the same length. The behavior is exactly as if *replace* would have
+been called on all respective members of the two arrays and all results are
+returned in an array. If an error occurs with any of the documents, no
+exception is risen! Instead of a document an error object is returned in the
+result array. The options behave exactly as before.
+ 
 **Examples**
 
 
@@ -768,13 +767,13 @@ first argument. No revision precondition is tested.
 
 `collection.update(selectorarray, dataarray, options)`
 
-These two variants allow to perform the operation on a whole array
-of selector/data pairs. The two arrays given as *selectorarray* and
-*dataarray* must have the same length. The behavior is exactly as if
-*update* would have been called on all respective members of the two
-arrays and all results are returned in an array. If an error occurs with
-any of the documents, the operation stops immediately returning only an
-error object. The options behave exactly as before.
+These two variants allow to perform the operation on a whole array of
+selector/data pairs. The two arrays given as *selectorarray* and *dataarray*
+must have the same length. The behavior is exactly as if *update* would have
+been called on all respective members of the two arrays and all results are
+returned in an array. If an error occurs with any of the documents, no
+exception is risen! Instead of a document an error object is returned in the
+result array. The options behave exactly as before.
 
 *Examples*
 
@@ -911,11 +910,11 @@ first argument. No revision check is performed.
 `collection.remove(selectorarray,options)`
 
 These two variants allow to perform the operation on a whole array of
-selectors. The behavior is exactly as if *remove* would have been
-called on all members of the array and all results are returned in an
-array. If an error occurs with any of the documents, the operation stops
-immediately returning only an error object. The options behave exactly
-as before.
+selectors. The behavior is exactly as if *remove* would have been called on all
+members of the array separately and all results are returned in an array. If an
+error occurs with any of the documents, no exception is risen! Instead of a
+document an error object is returned in the result array. The options behave
+exactly as before.
 
 **Examples**
 

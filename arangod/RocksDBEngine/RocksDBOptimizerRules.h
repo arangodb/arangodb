@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2017 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -17,14 +18,28 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Manuel Baesler
+/// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "AuthenticationHandler.h"
-#include "Logger/Logger.h"
+#ifndef ARANGOD_ROCKSDB_ROCKSDB_OPTIMIZER_RULES_H
+#define ARANGOD_ROCKSDB_ROCKSDB_OPTIMIZER_RULES_H 1
 
-using namespace arangodb;
+#include "Basics/Common.h"
 
-AuthenticationResult DefaultAuthenticationHandler::authenticate(std::string const& username, std::string const& password) {
-  return AuthenticationResult(TRI_ERROR_USER_NOT_FOUND, AuthSource::COLLECTION);
+namespace arangodb {
+namespace aql {
+class ExecutionPlan;
+class Optimizer;
+struct OptimizerRule;
 }
+
+struct RocksDBOptimizerRules {
+  static void registerResources();
+  
+  // simplify an EnumerationCollectionNode that fetches an entire document to a projection of this document
+  static void reduceExtractionToProjectionRule(aql::Optimizer* opt, std::unique_ptr<aql::ExecutionPlan> plan, aql::OptimizerRule const* rule);
+};
+
+} // namespace arangodb
+
+#endif

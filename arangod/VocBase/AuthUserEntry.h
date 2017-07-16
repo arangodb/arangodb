@@ -24,24 +24,26 @@
 #ifndef ARANGOD_VOC_BASE_AUTH_USER_H
 #define ARANGOD_VOC_BASE_AUTH_USER_H 1
 
+#include "Basics/Common.h"
+#include "Utils/Authentication.h"
+
 #include <velocypack/Builder.h>
 #include <velocypack/Slice.h>
-#include <unordered_map>
 
 namespace arangodb {
 
-enum class AuthLevel { NONE, RO, RW };
-
-AuthLevel convertToAuthLevel(velocypack::Slice grants);
-AuthLevel convertToAuthLevel(std::string grant);
-std::string convertFromAuthLevel(AuthLevel lvl);
-
-enum class AuthSource { COLLECTION, LDAP };
-
-class AuthContext;
-
+/// This class represents a 'user' entry. It contains structures
+/// to store the access levels for databases and collections.
+/// The user object must be serialized via `toVPackBuilder()` and
+/// written to the _users collection after modifying it.
+///
 class AuthUserEntry {
   friend class AuthInfo;
+
+ public:
+  static AuthUserEntry newUser(std::string const& user, std::string const& pass,
+                               AuthSource source);
+  static AuthUserEntry fromDocument(velocypack::Slice const&);
 
  public:
   std::string const& key() const { return _key; }
@@ -50,46 +52,66 @@ class AuthUserEntry {
   std::string const& passwordSalt() const { return _passwordSalt; }
   std::string const& passwordHash() const { return _passwordHash; }
   bool isActive() const { return _active; }
-  bool mustChangePassword() const { return _changePassword; }
   AuthSource source() const { return _source; }
 
   bool checkPassword(std::string const& password) const;
   void updatePassword(std::string const& password);
 
-  std::shared_ptr<AuthContext> getAuthContext(
-      std::string const& database) const;
   velocypack::Builder toVPackBuilder() const;
 
   void setActive(bool active) { _active = active; }
-  void changePassword(bool c) { _changePassword = c; }
 
+  /// grant specific access rights for db. The default "*"
+  /// is also a valid database name
   void grantDatabase(std::string const& dbname, AuthLevel level);
+  /// Removes the entry.
   void removeDatabase(std::string const& dbname);
+  /// Grant collection rights, "*" is a valid parameter for dbname and
+  /// collection.
+  /// The combination of "*"/"*" is automatically used for the root user
   void grantCollection(std::string const& dbname, std::string const& collection,
                        AuthLevel level);
   void removeCollection(std::string const& dbname,
                         std::string const& collection);
 
-  static AuthUserEntry newUser(std::string const& user, std::string const& pass,
-                               AuthSource source);
-  static AuthUserEntry fromDocument(velocypack::Slice const&);
+  /// Resolve the access level for this database. Might fall back to
+  /// the special '*' entry if the specific database is not found
+  AuthLevel databaseAuthLevel(std::string const& dbname) const;
+  /// Resolve rights for the specified collection. Falls back to the
+  /// special '*' entry if either the database or collection is not
+  /// found.
+  AuthLevel collectionAuthLevel(std::string const& dbname,
+                                std::string const& collectionName) const;
+
+  bool hasSpecificDatabase(std::string const& dbname) const;
+  bool hasSpecificCollection(std::string const& dbname,
+                             std::string const& collectionName) const;
 
  private:
   AuthUserEntry() {}
 
+  struct DBAuthContext {
+    DBAuthContext(AuthLevel dbLvl,
+                  std::unordered_map<std::string, AuthLevel> coll)
+        : _databaseAuthLevel(dbLvl), _collectionAccess(coll) {}
+
+    AuthLevel collectionAuthLevel(std::string const& collectionName) const;
+
+   public:
+    AuthLevel _databaseAuthLevel;
+    std::unordered_map<std::string, AuthLevel> _collectionAccess;
+  };
+
  private:
   std::string _key;
-  bool _active = true;
+  bool _active;
   AuthSource _source = AuthSource::COLLECTION;
 
   std::string _username;
   std::string _passwordMethod;
   std::string _passwordSalt;
   std::string _passwordHash;
-  std::string _passwordChangeToken;
-  bool _changePassword;
-
-  std::unordered_map<std::string, std::shared_ptr<AuthContext>> _authContexts;
+  std::unordered_map<std::string, DBAuthContext> _dbAccess;
 };
 }
 

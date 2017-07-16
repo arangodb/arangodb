@@ -79,8 +79,8 @@ class RocksDBPrimaryIndex final : public RocksDBIndex {
  public:
   RocksDBPrimaryIndex() = delete;
 
-  explicit RocksDBPrimaryIndex(arangodb::LogicalCollection*,
-                               VPackSlice const& info);
+  RocksDBPrimaryIndex(arangodb::LogicalCollection*,
+                      VPackSlice const& info);
 
   ~RocksDBPrimaryIndex();
 
@@ -111,19 +111,6 @@ class RocksDBPrimaryIndex final : public RocksDBIndex {
   RocksDBToken lookupKey(transaction::Methods* trx,
                          arangodb::StringRef key) const;
 
-  Result insert(transaction::Methods*, TRI_voc_rid_t,
-                arangodb::velocypack::Slice const&, bool isRollback) override;
-
-  int insertRaw(RocksDBMethods*, TRI_voc_rid_t,
-                arangodb::velocypack::Slice const&) override;
-
-  Result remove(transaction::Methods*, TRI_voc_rid_t,
-                arangodb::velocypack::Slice const&, bool isRollback) override;
-
-  /// optimization for truncateNoTrx, never called in fillIndex
-  int removeRaw(RocksDBMethods*, TRI_voc_rid_t,
-                arangodb::velocypack::Slice const&) override;
-
   int drop() override;
 
   bool supportsFilterCondition(arangodb::aql::AstNode const*,
@@ -144,6 +131,15 @@ class RocksDBPrimaryIndex final : public RocksDBIndex {
       std::function<bool(DocumentIdentifierToken const&)> callback) const;
 
   int cleanup() override;
+
+  /// insert index elements into the specified write batch.
+  Result insertInternal(transaction::Methods* trx, RocksDBMethods*,
+                        TRI_voc_rid_t,
+                        arangodb::velocypack::Slice const&) override;
+
+  /// remove index elements and put it in the specified write batch.
+  Result removeInternal(transaction::Methods*, RocksDBMethods*, TRI_voc_rid_t,
+                        arangodb::velocypack::Slice const&) override;
 
  protected:
   Result postprocessRemove(transaction::Methods* trx, rocksdb::Slice const& key,
