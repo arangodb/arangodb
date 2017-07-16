@@ -296,7 +296,7 @@ users.remove(theUser);
 <!-- ---------------------------------------------------------------------- -->
 
 @startDocuBlock UserHandling_fetchDatabaseList
-@brief List accessible databases for the specified user
+@brief List the accessible databases for a user
 
 @RESTHEADER{GET /_api/user/{user}/database/, List the accessible databases for a user}
 
