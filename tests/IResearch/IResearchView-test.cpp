@@ -820,7 +820,7 @@ SECTION("test_register_link") {
     CHECK((!feature->running()));
     CHECK((0 == view->linkCount()));
     auto link = arangodb::iresearch::IResearchLink::make(1, logicalCollection, linkJson->slice());
-    CHECK((false == link));
+    CHECK((nullptr == link));
     CHECK((0 == view->linkCount()));
   }
 

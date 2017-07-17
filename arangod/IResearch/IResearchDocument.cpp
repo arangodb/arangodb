@@ -902,7 +902,7 @@ bool fromGroup(
 }
 
 // EXISTS(<attribute>)
-bool fromFuncPhrase(
+bool fromFuncExists(
     irs::boolean_filter* filter,
     arangodb::aql::AstNode const& args
 ) {
@@ -1021,7 +1021,7 @@ bool fromFCallUser(
 
   static std::map<irs::string_ref, ConvertionHandler> convHandlers {
     { "IR::PHRASE", fromFuncPhrase },
-    { "IR::STARTS_WITH", fromFuncStartsWith }
+    { "IR::STARTS_WITH", fromFuncStartsWith },
     { "IR::EXISTS", fromFuncExists }
 //  { "MIN_MATCH", fromFuncMinMatch } // add when AQL will support filters as the function parameters
   };
