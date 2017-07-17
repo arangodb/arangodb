@@ -39,6 +39,7 @@
 #include "Basics/files.h"
 #include "GeneralServer/AuthenticationFeature.h"
 #include "IResearch/IResearchFeature.h"
+#include "IResearch/IResearchLink.h"
 #include "IResearch/IResearchLinkMeta.h"
 #include "IResearch/IResearchView.h"
 #include "Logger/Logger.h"
@@ -204,7 +205,7 @@ SECTION("test_defaults") {
   // existing view definition
   {
     auto view = arangodb::iresearch::IResearchView::make(nullptr, json->slice(), false);
-    CHECK(false == (!view));
+    CHECK((false == !view));
 
     arangodb::velocypack::Builder builder;
 
@@ -224,7 +225,7 @@ SECTION("test_defaults") {
   {
     arangodb::LogicalView logicalView(nullptr, namedJson->slice());
     auto view = arangodb::iresearch::IResearchView::make(&logicalView, json->slice(), false);
-    CHECK(false == (!view));
+    CHECK((false == !view));
 
     arangodb::velocypack::Builder builder;
 
@@ -243,7 +244,7 @@ SECTION("test_defaults") {
   // new view definition
   {
     auto view = arangodb::iresearch::IResearchView::make(nullptr, json->slice(), true);
-    CHECK(false == (!view));
+    CHECK((false == !view));
 
     arangodb::velocypack::Builder builder;
 
@@ -263,7 +264,7 @@ SECTION("test_defaults") {
   {
     arangodb::LogicalView logicalView(nullptr, namedJson->slice());
     auto view = arangodb::iresearch::IResearchView::make(&logicalView, json->slice(), true);
-    CHECK(false == (!view));
+    CHECK((false == !view));
 
     arangodb::velocypack::Builder builder;
 
@@ -389,7 +390,7 @@ SECTION("test_open") {
 
     CHECK((false == TRI_IsDirectory(dataPath.c_str())));
     auto view = arangodb::iresearch::IResearchView::make(nullptr, json->slice(), false);
-    CHECK(false == (!view));
+    CHECK((false == !view));
     CHECK((false == TRI_IsDirectory(dataPath.c_str())));
     view->open();
     CHECK((true == TRI_IsDirectory(dataPath.c_str())));
@@ -408,7 +409,7 @@ SECTION("test_open") {
 
     CHECK((false == TRI_IsDirectory(dataPath.c_str())));
     auto view = arangodb::iresearch::IResearchView::make(nullptr, json->slice(), false);
-    CHECK(false == (!view));
+    CHECK((false == !view));
     CHECK((false == TRI_IsDirectory(dataPath.c_str())));
     view->open();
     CHECK((true == TRI_IsDirectory(dataPath.c_str())));
@@ -759,27 +760,87 @@ SECTION("test_query") {
   }
 
   // FIXME TODO implement
+  // add tests for filter
 }
 
 SECTION("test_register_link") {
-  // ApplicationServer in IN_WAIT (known link)
+  auto collectionJson = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testCollection\", \"id\": 100 }");
+  auto viewJson0 = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testView\", \"type\": \"iresearch\", \"id\": 101 }");
+  auto viewJson1 = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testView\", \"type\": \"iresearch\", \"id\": 101, \"properties\": { \"collections\": [ 100 ] } }");
+  auto linkJson  = arangodb::velocypack::Parser::fromJson("{ \"view\": 101 }");
+  auto* feature = arangodb::application_features::ApplicationServer::getFeature<arangodb::iresearch::IResearchFeature>("IResearch");
+  CHECK((nullptr != feature));
+
+  // IResearchFeature started (new link)
   {
-    // FIXME TODO implement
+    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "testVocbase");
+    auto* logicalCollection = vocbase.createCollection(collectionJson->slice());
+    auto logicalView = vocbase.createView(viewJson0->slice(), 0);
+    REQUIRE((false == !logicalView));
+    auto* view = dynamic_cast<arangodb::iresearch::IResearchView*>(logicalView->getImplementation());
+    REQUIRE((false == !view));
+
+    CHECK((feature->running()));
+    CHECK((0 == view->linkCount()));
+    auto link = arangodb::iresearch::IResearchLink::make(1, logicalCollection, linkJson->slice());
+    CHECK((false == !link));
+    CHECK((1 == view->linkCount()));
   }
 
-  // ApplicationServer in IN_WAIT (new link)
+  // IResearchFeature started (known link)
   {
-    // FIXME TODO implement
+    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "testVocbase");
+    auto* logicalCollection = vocbase.createCollection(collectionJson->slice());
+    auto logicalView = vocbase.createView(viewJson1->slice(), 0);
+    REQUIRE((false == !logicalView));
+    auto* view = dynamic_cast<arangodb::iresearch::IResearchView*>(logicalView->getImplementation());
+    REQUIRE((false == !view));
+
+    CHECK((feature->running()));
+    CHECK((1 == view->linkCount()));
+    auto link0 = arangodb::iresearch::IResearchLink::make(1, logicalCollection, linkJson->slice());
+    CHECK((false == !link0));
+    CHECK((1 == view->linkCount()));
+    auto link1 = arangodb::iresearch::IResearchLink::make(1, logicalCollection, linkJson->slice());
+    CHECK((true == !link1));
+    CHECK((1 == view->linkCount()));
   }
 
-  // ApplicationServer not in IN_WAIT (known link)
+  feature->stop();
+
+  // IResearchFeature not started (new link)
   {
-    // FIXME TODO implement
+    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "testVocbase");
+    auto* logicalCollection = vocbase.createCollection(collectionJson->slice());
+    auto logicalView = vocbase.createView(viewJson0->slice(), 0);
+    REQUIRE((false == !logicalView));
+    auto* view = dynamic_cast<arangodb::iresearch::IResearchView*>(logicalView->getImplementation());
+    REQUIRE((false == !view));
+
+    CHECK((!feature->running()));
+    CHECK((0 == view->linkCount()));
+    auto link = arangodb::iresearch::IResearchLink::make(1, logicalCollection, linkJson->slice());
+    CHECK((false == link));
+    CHECK((0 == view->linkCount()));
   }
 
-  // ApplicationServer not in IN_WAIT (new link)
+  // IResearchFeature not started (known link)
   {
-    // FIXME TODO implement
+    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "testVocbase");
+    auto* logicalCollection = vocbase.createCollection(collectionJson->slice());
+    auto logicalView = vocbase.createView(viewJson1->slice(), 0);
+    REQUIRE((false == !logicalView));
+    auto* view = dynamic_cast<arangodb::iresearch::IResearchView*>(logicalView->getImplementation());
+    REQUIRE((false == !view));
+
+    CHECK((!feature->running()));
+    CHECK((1 == view->linkCount()));
+    auto link0 = arangodb::iresearch::IResearchLink::make(1, logicalCollection, linkJson->slice());
+    CHECK((false == !link0));
+    CHECK((1 == view->linkCount()));
+    auto link1 = arangodb::iresearch::IResearchLink::make(1, logicalCollection, linkJson->slice());
+    CHECK((true == !link1));
+    CHECK((1 == view->linkCount()));
   }
 }
 

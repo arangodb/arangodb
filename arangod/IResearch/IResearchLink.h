@@ -171,10 +171,10 @@ class IResearchLink final: public Index {
   int unload() override;
 
  private:
-  friend bool IResearchView::linkRegister(LinkPtr&);
+  friend bool IResearchView::linkRegister(IResearchLink&);
   TRI_voc_cid_t _defaultId; // the identifier of the desired view (iff _view == nullptr)
   IResearchLinkMeta _meta; // how this collection should be indexed
-  IResearchView* _view; // effectively the index itself (nullptr == not associated)
+  std::shared_ptr<IResearchView> _view; // effectively the index itself (nullptr == not associated)
 
   IResearchLink(
     TRI_idx_iid_t iid,
