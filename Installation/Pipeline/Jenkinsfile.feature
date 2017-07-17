@@ -836,7 +836,7 @@ def buildEdition(edition, os) {
     finally {
         stashBuild(edition, os)
         archiveArtifacts allowEmptyArchive: true,
-                         artifacts: "${arch}/**"
+                         artifacts: "${arch}/**",
                          defaultExcludes: false
     }
 }
