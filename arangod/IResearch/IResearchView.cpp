@@ -575,6 +575,7 @@ bool UnorderedViewIterator::next(TokenCallback const& callback, size_t limit) {
        ++_state._readerOffset, _state._itr.reset()
   ) {
     auto& segmentReader = _reader[_state._readerOffset];
+    auto done = false;
 
     if (!_state._itr) {
       _state._itr = _filter->execute(segmentReader);
@@ -588,7 +589,11 @@ bool UnorderedViewIterator::next(TokenCallback const& callback, size_t limit) {
       }
 
       callback(tmpToken);
-      --limit;
+      done = 0 ==--limit;
+    }
+
+    if (done) {
+      break; // do not change iterator if already reached limit
     }
   }
 

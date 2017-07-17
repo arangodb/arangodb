@@ -422,7 +422,7 @@ SECTION("test_query") {
   }");
   static std::vector<std::string> const EMPTY;
   arangodb::aql::AstNode noop(arangodb::aql::AstNodeType::NODE_TYPE_FILTER);
-  arangodb::aql::AstNode noopChild(arangodb::aql::AstNodeType::NODE_TYPE_OPERATOR_BINARY_OR);
+  arangodb::aql::AstNode noopChild(true, arangodb::aql::AstNodeValueType::VALUE_TYPE_BOOL); // all
 
   noop.addMember(&noopChild);
 
@@ -609,7 +609,7 @@ SECTION("test_query") {
     {
       std::vector<size_t> const expected = { 1, 2, 3, 4, 5, 6, 7, 8, 9, 10 };
       size_t next = 0;
-      CHECK((true == itr->next([&expected, &next](arangodb::DocumentIdentifierToken const& token)->void{ CHECK((token._data == expected[next++]));}, 10)));
+      CHECK((true == itr->next([&expected, &next](arangodb::DocumentIdentifierToken const& token)->void{ CHECK((token._data == expected[next++])); }, 10)));
       CHECK((expected.size() == next));
     }
 
@@ -621,7 +621,7 @@ SECTION("test_query") {
     {
       std::vector<size_t> const expected = { 6, 7, 8, 9, 10, 11, 12 };
       size_t next = 0;
-      CHECK((false == itr->next([&expected, &next](arangodb::DocumentIdentifierToken const& token)->void{ CHECK((token._data == expected[next++])); std::cerr << ", " << token._data;  }, 10)));
+      CHECK((false == itr->next([&expected, &next](arangodb::DocumentIdentifierToken const& token)->void{ CHECK((token._data == expected[next++])); }, 10)));
       CHECK((expected.size() == next));
     }
 
@@ -633,12 +633,129 @@ SECTION("test_query") {
 
   // unordered iterator (nullptr sort condition)
   {
-    // FIXME TODO implement
+    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "testVocbase");
+    auto logicalView = vocbase.createView(createJson->slice(), 0);
+    CHECK((false == !logicalView));
+    auto* view = dynamic_cast<arangodb::iresearch::IResearchView*>(logicalView->getImplementation());
+    CHECK((false == !view));
+
+    // fill with test data
+    {
+      auto doc = arangodb::velocypack::Parser::fromJson("{ \"key\": 1 }");
+      arangodb::iresearch::IResearchLinkMeta meta;
+      meta._includeAllFields = true;
+      arangodb::transaction::UserTransaction trx(arangodb::transaction::StandaloneContext::Create(&vocbase), EMPTY, EMPTY, EMPTY, arangodb::transaction::Options());
+      CHECK((trx.begin().ok()));
+
+      for (size_t i = 0; i < 12; ++i) {
+        view->insert(trx, 1, i, doc->slice(), meta);
+      }
+
+      CHECK((trx.commit().ok()));
+      view->sync();
+    }
+
+    arangodb::transaction::UserTransaction trx(arangodb::transaction::StandaloneContext::Create(&vocbase), EMPTY, EMPTY, EMPTY, arangodb::transaction::Options());
+    CHECK((trx.begin().ok()));
+    std::unique_ptr<arangodb::ViewIterator> itr(dynamic_cast<arangodb::iresearch::IResearchView*>(view)->iteratorForCondition(&trx, &noop, nullptr, nullptr));
+
+    CHECK((false == !itr));
+    CHECK((std::string("iresearch-unordered-iterator") == itr->typeName()));
+    CHECK((&trx == itr->transaction()));
+    CHECK((view == itr->view()));
+    CHECK((false == itr->hasExtra()));
+    CHECK_THROWS(itr->nextExtra([](arangodb::DocumentIdentifierToken const&, arangodb::velocypack::Slice)->void{}, 42));
+
+    std::vector<size_t> actual;
+
+    {
+      std::set<size_t> expected = { 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12 };
+      CHECK((true == itr->next([&expected, &actual](arangodb::DocumentIdentifierToken const& token)->void{ CHECK((1 == expected.erase(token._data))); actual.emplace_back(token._data); }, 10)));
+      CHECK((10 == actual.size()));
+    }
+
+    CHECK_NOTHROW((itr->reset()));
+    uint64_t skipped = 0;
+    CHECK_NOTHROW((itr->skip(5, skipped)));
+    CHECK((5 == skipped));
+
+    {
+      std::vector<size_t> expected0(actual.begin() += 5, actual.end()); // skip first 5, order must be same for rest
+      std::unordered_set<size_t> expected1 = { 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12 };
+      for (auto& entry: actual) expected1.erase(entry);
+      size_t next = 0;
+      CHECK((false == itr->next([&expected0, &expected1, &next](arangodb::DocumentIdentifierToken const& token)->void{ CHECK(((next < expected0.size() && expected0[next++] == token._data) || (next >= expected0.size() && 1 == expected1.erase(token._data)))); }, 10)));
+      CHECK((expected0.size() == next && expected1.empty()));
+    }
+
+    CHECK_NOTHROW((itr->skip(5, skipped)));
+    CHECK((0 == skipped));
+
+    CHECK_NOTHROW((itr->reset()));
   }
 
   // unordered iterator (empty sort condition)
   {
-    // FIXME TODO implement
+    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "testVocbase");
+    auto logicalView = vocbase.createView(createJson->slice(), 0);
+    CHECK((false == !logicalView));
+    auto* view = dynamic_cast<arangodb::iresearch::IResearchView*>(logicalView->getImplementation());
+    CHECK((false == !view));
+
+    // fill with test data
+    {
+      auto doc = arangodb::velocypack::Parser::fromJson("{ \"key\": 1 }");
+      arangodb::iresearch::IResearchLinkMeta meta;
+      meta._includeAllFields = true;
+      arangodb::transaction::UserTransaction trx(arangodb::transaction::StandaloneContext::Create(&vocbase), EMPTY, EMPTY, EMPTY, arangodb::transaction::Options());
+      CHECK((trx.begin().ok()));
+
+      for (size_t i = 0; i < 12; ++i) {
+        view->insert(trx, 1, i, doc->slice(), meta);
+      }
+
+      CHECK((trx.commit().ok()));
+      view->sync();
+    }
+
+    arangodb::aql::SortCondition order;
+    arangodb::transaction::UserTransaction trx(arangodb::transaction::StandaloneContext::Create(&vocbase), EMPTY, EMPTY, EMPTY, arangodb::transaction::Options());
+    CHECK((trx.begin().ok()));
+    std::unique_ptr<arangodb::ViewIterator> itr(dynamic_cast<arangodb::iresearch::IResearchView*>(view)->iteratorForCondition(&trx, &noop, nullptr, &order));
+
+    CHECK((false == !itr));
+    CHECK((std::string("iresearch-unordered-iterator") == itr->typeName()));
+    CHECK((&trx == itr->transaction()));
+    CHECK((view == itr->view()));
+    CHECK((false == itr->hasExtra()));
+    CHECK_THROWS(itr->nextExtra([](arangodb::DocumentIdentifierToken const&, arangodb::velocypack::Slice)->void{}, 42));
+
+    std::vector<size_t> actual;
+
+    {
+      std::set<size_t> expected = { 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12 };
+      CHECK((true == itr->next([&expected, &actual](arangodb::DocumentIdentifierToken const& token)->void{ CHECK((1 == expected.erase(token._data))); actual.emplace_back(token._data); }, 10)));
+      CHECK((10 == actual.size()));
+    }
+
+    CHECK_NOTHROW((itr->reset()));
+    uint64_t skipped = 0;
+    CHECK_NOTHROW((itr->skip(5, skipped)));
+    CHECK((5 == skipped));
+
+    {
+      std::vector<size_t> expected0(actual.begin() += 5, actual.end()); // skip first 5, order must be same for rest
+      std::unordered_set<size_t> expected1 = { 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12 };
+      for (auto& entry: actual) expected1.erase(entry);
+      size_t next = 0;
+      CHECK((false == itr->next([&expected0, &expected1, &next](arangodb::DocumentIdentifierToken const& token)->void{ CHECK(((next < expected0.size() && expected0[next++] == token._data) || (next >= expected0.size() && 1 == expected1.erase(token._data)))); }, 10)));
+      CHECK((expected0.size() == next && expected1.empty()));
+    }
+
+    CHECK_NOTHROW((itr->skip(5, skipped)));
+    CHECK((0 == skipped));
+
+    CHECK_NOTHROW((itr->reset()));
   }
 
   // FIXME TODO implement
