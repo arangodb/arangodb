@@ -887,16 +887,6 @@ def buildStep(edition, os) {
                 }
             }
         }
-
-        if (fullParallel) {
-            step {
-                testStepParallel([edition], [os], ['cluster', 'singleserver'])
-            }
-
-            step {
-                testResilienceParallel([os])
-            }
-        }
     }
 }
 
@@ -960,9 +950,13 @@ if (buildExecutable) {
     }
 }
 
-if (! fullParallel) {
-    runStage {
-        stage('tests') {
+runStage {
+    stage('tests') {
+        if (fullParallel) {
+            testStepParallel(['community', 'enterprise'], ['linux', 'mac', 'windows'], ['cluster', 'singleserver'])
+            testResilienceParallel(['linux', 'mac', 'windows'])
+        }
+        else {
             testStepParallel(['community', 'enterprise'], ['linux'], ['cluster', 'singleserver'])
         }
     }
