@@ -291,7 +291,7 @@ def checkCommitMessages() {
         runTests = false
     }
     else if (seenCommit) {
-        if (env.BRANCH_NAME == "devel") {
+        if (env.BRANCH_NAME == "devel" || env.BRANCH_NAME == "3.2") {
             useLinux = true
             useMac = true
             useWindows = true
@@ -301,7 +301,6 @@ def checkCommitMessages() {
             runJslint = true
             runResilience = true
             runTests = true
-            fullParallel = true
         }
         else if (env.BRANCH_NAME =~ /^PR-/) {
             useLinux = true
@@ -313,7 +312,6 @@ def checkCommitMessages() {
             runJslint = true
             runResilience = true
             runTests = true
-            fullParallel = true
         }
         else {
             useLinux = true
@@ -325,7 +323,6 @@ def checkCommitMessages() {
             runJslint = true
             runResilience = false
             runTests = false
-            fullParallel = true
 
             restrictions = [
                 "build-enterprise-linux",
@@ -994,9 +991,7 @@ if (! fullParallel) {
             }
         }
     }
-}
 
-if (! fullParallel) {
     runStage {
         stage('resilience') {
             if (allTestsSuccessful) {
