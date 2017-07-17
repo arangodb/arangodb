@@ -405,6 +405,10 @@ int IResearchLink::load() {
 }
 
 int IResearchLink::unload() {
+  if (_view) {
+    _defaultId = _view->id(); // remember view ID just in case (e.g. call to toVelocyPack(...) after unload())
+  }
+
   _view = nullptr; // release reference to the iResearch View
 
   return TRI_ERROR_NO_ERROR;
