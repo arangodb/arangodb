@@ -282,7 +282,7 @@ void AgencyFeature::stop() {
     return;
   }
 
-  if (_agent->inception() != nullptr) {
+  if (_agent->inception() != nullptr) { // can only exist in resilient agents
     int counter = 0;
     while (_agent->inception()->isRunning()) {
       usleep(100000);

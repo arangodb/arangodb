@@ -252,6 +252,10 @@ function performTests (options, testList, testname, runFn, serverOptions, startS
     }
   }
 
+  // pass on JWT secret
+  if (serverOptions['server.jwt-secret'] && !options['server.jwt-secret']) {
+    options['server.jwt-secret'] = serverOptions['server.jwt-secret'];
+  }
   pu.shutdownInstance(instanceInfo, options, forceTerminate);
 
   if (startStopHandlers !== undefined && startStopHandlers.hasOwnProperty('postStop')) {

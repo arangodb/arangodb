@@ -85,13 +85,9 @@ VstCommTask::VstCommTask(EventLoop loop, GeneralServer* server,
     : Task(loop, "VstCommTask"),
       GeneralCommTask(loop, server, std::move(socket), std::move(info), timeout,
                       skipInit),
+      _authorized(false),
       _authenticatedUser(),
-      _authentication(nullptr),
       _protocolVersion(protocolVersion) {
-  _authentication = application_features::ApplicationServer::getFeature<
-      AuthenticationFeature>("Authentication");
-  TRI_ASSERT(_authentication != nullptr);
-
   _protocol = "vst";
 
   // ATTENTION <- this is required so we do not lose information during a resize
@@ -109,9 +105,11 @@ void VstCommTask::addResponse(VstResponse* response, RequestStatistics* stat) {
   uint64_t const id = response_message._id;
 
   std::vector<VPackSlice> slices;
-  slices.push_back(response_message._header);
 
   if (response->generateBody()) {
+    slices.reserve(1 + response_message._payloads.size());
+    slices.push_back(response_message._header);
+
     for (auto& payload : response_message._payloads) {
       LOG_TOPIC(DEBUG, Logger::REQUESTS) << "\"vst-request-result\",\""
                                          << (void*)this << "/" << id << "\","
@@ -119,6 +117,9 @@ void VstCommTask::addResponse(VstResponse* response, RequestStatistics* stat) {
 
       slices.push_back(payload);
     }
+  } else {
+    // header only
+    slices.push_back(response_message._header);
   }
 
   // set some sensible maxchunk size and compression
@@ -240,37 +241,38 @@ bool VstCommTask::isChunkComplete(char* start) {
   return true;
 }
 
-void VstCommTask::handleAuthentication(VPackSlice const& header,
+void VstCommTask::handleAuthHeader(VPackSlice const& header,
                                        uint64_t messageId) {
-  bool authOk = false;
-  if (!_authentication->isActive()) {
-    authOk = true;
-  } else {
-    std::string auth;
-    AuthInfo::AuthType authType;
-    std::string user;
+  _authorized = false;
+  if (_authentication->isActive()) {
+    std::string auth, user;
+    AuthenticationMethod authType = AuthenticationMethod::NONE;
 
     std::string encryption = header.at(2).copyString();
-    if (encryption != "jwt") {
+    if (encryption == "jwt") {// doing JWT
+      auth = header.at(3).copyString();
+      authType = AuthenticationMethod::JWT;
+    } else if (encryption == "plain") {
       user = header.at(3).copyString();
       std::string pass = header.at(4).copyString();
       auth = basics::StringUtils::encodeBase64(user + ":" + pass);
-      authType = AuthInfo::AuthType::BASIC;
-    } else {   // doing JWT
-      auth = header.at(3).copyString();
-      authType = AuthInfo::AuthType::JWT;
+      authType = AuthenticationMethod::BASIC;
+    } else {
+      LOG_TOPIC(ERR, Logger::REQUESTS) << "Unknown VST encryption type";
     }
     AuthResult result = _authentication->authInfo()->checkAuthentication(
         authType, auth);
 
-    authOk = result._authorized;
-    if (authOk) {
+    _authorized = result._authorized;
+    if (_authorized) {
       _authenticatedUser = std::move(result._username);
     }
+  } else {
+    _authorized = true;
   }
   
  VstRequest fakeRequest( _connectionInfo, VstInputMessage{}, 0, true /*fakeRequest*/);
-  if (authOk) {
+  if (_authorized) {
     // mop: hmmm...user should be completely ignored if there is no auth IMHO
     // obi: user who sends authentication expects a reply
     handleSimpleError(rest::ResponseCode::OK, fakeRequest, TRI_ERROR_NO_ERROR,
@@ -359,52 +361,53 @@ bool VstCommTask::processRead(double startTime) {
 
     // handle request types
     if (type == 1000) {
-      handleAuthentication(header, chunkHeader._messageID);
+      handleAuthHeader(header, chunkHeader._messageID);
     } else {
       // the handler will take ownership of this pointer
       std::unique_ptr<VstRequest> request(new VstRequest(
           _connectionInfo, std::move(message), chunkHeader._messageID));
-      GeneralServerFeature::HANDLER_FACTORY->setRequestContext(request.get());
+      request->setAuthorized(_authorized);
       request->setUser(_authenticatedUser);
-
-      // check authentication
-      AuthLevel level = AuthLevel::RW;
-      if (_authentication->isActive()) {  // only check authorization if
-                                           // authentication is enabled
-        std::string const& path = request->requestPath();
-        if (!StringUtils::isPrefix(path, "/_open/") &&
-            !StringUtils::isPrefix(path, "/_api/user/")) {
-          std::string const& dbname = request->databaseName();
-          if (!(_authenticatedUser.empty() && dbname.empty())) {
-            level = _authentication->canUseDatabase(_authenticatedUser, dbname);
-          }
-        }
-      }
-
-      if (level != AuthLevel::RW) {
-        events::NotAuthorized(request.get());
-        handleSimpleError(rest::ResponseCode::UNAUTHORIZED, *request, TRI_ERROR_FORBIDDEN,
-                          "not authorized to execute this request",
+      GeneralServerFeature::HANDLER_FACTORY->setRequestContext(request.get());
+      
+      if (request->requestContext() == nullptr) {
+        handleSimpleError(
+                          rest::ResponseCode::NOT_FOUND, *request,
+                          TRI_ERROR_ARANGO_DATABASE_NOT_FOUND,
+                          TRI_errno_string(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND),
                           chunkHeader._messageID);
       } else {
-        // now that we are authorized we do the request
-        // make sure we have a database
-        if (request->requestContext() == nullptr) {
-          handleSimpleError(
-              rest::ResponseCode::NOT_FOUND, *request,
-              TRI_ERROR_ARANGO_DATABASE_NOT_FOUND,
-              TRI_errno_string(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND),
-              chunkHeader._messageID);
+        request->setClientTaskId(_taskId);
+
+        // will determine if the user can access this path.
+        // checks db permissions and contains exceptions for the
+        // users API to allow logins
+        rest::ResponseCode code = GeneralCommTask::canAccessPath(request.get());
+        if (code != rest::ResponseCode::OK) {
+          events::NotAuthorized(request.get());
+          handleSimpleError(rest::ResponseCode::UNAUTHORIZED, *request, TRI_ERROR_FORBIDDEN,
+                            "not authorized to execute this request",
+                            chunkHeader._messageID);
         } else {
-          request->setClientTaskId(_taskId);
-
-          // temporarily release the mutex
-          MUTEX_UNLOCKER(locker, _lock);
-
-          std::unique_ptr<VstResponse> response(new VstResponse(
-              rest::ResponseCode::SERVER_ERROR, chunkHeader._messageID));
-          response->setContentTypeRequested(request->contentTypeResponse());
-          executeRequest(std::move(request), std::move(response));
+          // now that we are authorized we do the request
+          // make sure we have a database
+          if (request->requestContext() == nullptr) {
+            handleSimpleError(
+                              rest::ResponseCode::NOT_FOUND, *request,
+                              TRI_ERROR_ARANGO_DATABASE_NOT_FOUND,
+                              TRI_errno_string(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND),
+                              chunkHeader._messageID);
+          } else {
+            request->setClientTaskId(_taskId);
+            
+            // temporarily release the mutex
+            MUTEX_UNLOCKER(locker, _lock);
+            
+            std::unique_ptr<VstResponse> response(new VstResponse(
+                 rest::ResponseCode::SERVER_ERROR, chunkHeader._messageID));
+            response->setContentTypeRequested(request->contentTypeResponse());
+            executeRequest(std::move(request), std::move(response));
+          }
         }
       }
     }
@@ -434,25 +437,6 @@ void VstCommTask::closeTask(rest::ResponseCode code) {
 
   _incompleteMessages.clear();
   closeStream();
-}
-
-rest::ResponseCode VstCommTask::authenticateRequest(GeneralRequest* request) {
-  auto context = (request == nullptr) ? nullptr : request->requestContext();
-
-  if (context == nullptr && request != nullptr) {
-    bool res =
-        GeneralServerFeature::HANDLER_FACTORY->setRequestContext(request);
-
-    if (!res) {
-      return rest::ResponseCode::NOT_FOUND;
-    }
-    context = request->requestContext();
-  }
-
-  if (context == nullptr) {
-    return rest::ResponseCode::SERVER_ERROR;
-  }
-  return context->authenticate();
 }
 
 std::unique_ptr<GeneralResponse> VstCommTask::createResponse(

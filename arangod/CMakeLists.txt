@@ -120,6 +120,8 @@ SET(ARANGOD_SOURCES
   Aql/Collections.cpp
   Aql/Condition.cpp
   Aql/ConditionFinder.cpp
+  Aql/DocumentProducingBlock.cpp
+  Aql/DocumentProducingNode.cpp
   Aql/EnumerateCollectionBlock.cpp
   Aql/EnumerateListBlock.cpp
   Aql/ExecutionBlock.cpp
@@ -210,7 +212,6 @@ SET(ARANGOD_SOURCES
   Cluster/v8-cluster.cpp
   GeneralServer/AsyncJobManager.cpp
   GeneralServer/AuthenticationFeature.cpp
-  GeneralServer/AuthenticationHandler.cpp
   GeneralServer/GeneralCommTask.cpp
   GeneralServer/GeneralListenTask.cpp
   GeneralServer/GeneralServer.cpp
@@ -236,6 +237,7 @@ SET(ARANGOD_SOURCES
   Graph/TraverserDocumentCache.cpp
   Indexes/Index.cpp
   Indexes/IndexIterator.cpp
+  Indexes/IndexLookupContext.cpp
   Indexes/SimpleAttributeEqualityMatcher.cpp
   InternalRestHandler/InternalRestTraverserHandler.cpp
   Pregel/AggregatorHandler.cpp
@@ -345,6 +347,7 @@ SET(ARANGOD_SOURCES
   Transaction/Options.cpp
   Transaction/StandaloneContext.cpp
   Transaction/V8Context.cpp
+  Utils/Authentication.cpp
   Utils/CollectionKeys.cpp
   Utils/CollectionKeysRepository.cpp
   Utils/CollectionNameResolver.cpp

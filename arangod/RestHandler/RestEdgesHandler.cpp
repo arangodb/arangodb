@@ -27,10 +27,11 @@
 #include "Aql/Variable.h"
 #include "Basics/ScopeGuard.h"
 #include "Cluster/ClusterMethods.h"
+#include "Transaction/StandaloneContext.h"
 #include "Utils/CollectionNameResolver.h"
 #include "Utils/OperationCursor.h"
 #include "Utils/SingleCollectionTransaction.h"
-#include "Transaction/StandaloneContext.h"
+#include "VocBase/ManagedDocumentResult.h"
 
 #include <velocypack/Iterator.h>
 #include <velocypack/velocypack-aliases.h>

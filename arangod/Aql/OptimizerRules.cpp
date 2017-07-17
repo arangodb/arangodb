@@ -28,6 +28,7 @@
 #include "Aql/CollectOptions.h"
 #include "Aql/Collection.h"
 #include "Aql/ConditionFinder.h"
+#include "Aql/DocumentProducingNode.h"
 #include "Aql/ExecutionEngine.h"
 #include "Aql/ExecutionNode.h"
 #include "Aql/ExecutionPlan.h"
@@ -1507,7 +1508,7 @@ void arangodb::aql::removeUnnecessaryCalculationsRule(
         // in this case we must not perform the replacements
         while (current != nullptr) {
           if (current->getType() == EN::COLLECT) {
-            if (static_cast<CollectNode const*>(current)->hasOutVariable()) {
+            if (static_cast<CollectNode const*>(current)->hasOutVariableButNoCount()) {
               hasCollectWithOutVariable = true;
               break;
             }
@@ -1538,7 +1539,7 @@ void arangodb::aql::removeUnnecessaryCalculationsRule(
         current->getVariablesUsedHere(vars);
         if (vars.find(outvars[0]) != vars.end()) {
           if (current->getType() == EN::COLLECT) {
-            if (static_cast<CollectNode const*>(current)->hasOutVariable()) {
+            if (static_cast<CollectNode const*>(current)->hasOutVariableButNoCount()) {
               // COLLECT with an INTO variable will collect all variables from
               // the scope, so we shouldn't try to remove or change the meaning
               // of variables
@@ -2364,9 +2365,8 @@ void arangodb::aql::scatterInClusterRule(Optimizer* opt,
 void arangodb::aql::distributeInClusterRule(Optimizer* opt,
                                             std::unique_ptr<ExecutionPlan> plan,
                                             OptimizerRule const* rule) {
-  bool wasModified = false;
-
   if (arangodb::ServerState::instance()->isCoordinator()) {
+    bool wasModified = false;
     // we are a coordinator, we replace the root if it is a modification node
 
     // only replace if it is the last node in the plan

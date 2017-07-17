@@ -39,6 +39,7 @@
 #include "Transaction/Methods.h"
 #include "Utils/OperationCursor.h"
 #include "V8/v8-globals.h"
+#include "VocBase/ManagedDocumentResult.h"
 #include "VocBase/SingleServerTraverser.h"
 #include "VocBase/ticks.h"
 

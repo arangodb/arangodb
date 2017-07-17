@@ -31,6 +31,7 @@
 #include <list>
 
 #include "Basics/Mutex.h"
+#include "Basics/SmallVector.h"
 #include "Basics/StringBuffer.h"
 #include "Basics/asio-helper.h"
 #include "Endpoint/ConnectionInfo.h"
@@ -123,6 +124,18 @@ class SocketTask : virtual public Task {
         _statistics = nullptr;
       }
     }
+    
+    void release(SocketTask* task) {
+      if (_buffer != nullptr) {
+        task->returnStringBuffer(_buffer);
+        _buffer = nullptr;
+      }
+
+      if (_statistics != nullptr) {
+        _statistics->release();
+        _statistics = nullptr;
+      }
+    }
   };
 
   // will acquire the _lock
@@ -139,12 +152,18 @@ class SocketTask : virtual public Task {
 
   // caller must hold the _lock
   void cancelKeepAlive();
+      
+  basics::StringBuffer* leaseStringBuffer(size_t length);
+  void returnStringBuffer(basics::StringBuffer*);
   
  protected:
   Mutex _lock;
   ConnectionStatistics* _connectionStatistics;
   ConnectionInfo _connectionInfo;
   basics::StringBuffer _readBuffer; // needs _lock
+  
+  SmallVector<basics::StringBuffer*, 32>::allocator_type::arena_type _stringBuffersArena;
+  SmallVector<basics::StringBuffer*, 32> _stringBuffers; // needs _lock
 
  private:
   void writeWriteBuffer();

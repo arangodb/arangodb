@@ -357,6 +357,7 @@
     setReadOnly: function () {
       this.readOnly = true;
       $('#createGraph').parent().parent().addClass('disabled');
+      $('#createGraph').addClass('disabled');
     },
 
     setFromAndTo: function (e) {

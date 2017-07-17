@@ -119,7 +119,8 @@ arangodb::Result Databases::info(TRI_vocbase_t* vocbase, VPackBuilder& result) {
       } else if (value.get("id").isNumber()) {
         result.add("id", VPackValue(std::to_string(value.get("id").getUInt())));
       } else {
-        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "unexpected type for 'id' attribute");
+        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
+                                       "unexpected type for 'id' attribute");
       }
       result.add("path", value.get("none"));
       result.add("isSystem", VPackValue(name[0] == '_'));
@@ -135,15 +136,14 @@ arangodb::Result Databases::info(TRI_vocbase_t* vocbase, VPackBuilder& result) {
 }
 
 arangodb::Result Databases::create(std::string const& dbName,
-                                  VPackSlice const& inUsers,
-                                  VPackSlice const& inOptions) {
+                                   VPackSlice const& inUsers,
+                                   VPackSlice const& inOptions) {
   if (TRI_GetOperationModeServer() == TRI_VOCBASE_MODE_NO_CREATE) {
     return Result(TRI_ERROR_ARANGO_READ_ONLY);
   }
   auto auth = FeatureCacheFeature::instance()->authenticationFeature();
-  if (auth->isActive() && ExecContext::CURRENT_EXECCONTEXT != nullptr) {
-    AuthLevel level =
-        ExecContext::CURRENT_EXECCONTEXT->authContext()->systemAuthLevel();
+  if (auth->isActive() && ExecContext::CURRENT != nullptr) {
+    AuthLevel level = ExecContext::CURRENT->systemAuthLevel();
 
     if (level != AuthLevel::RW) {
       return TRI_ERROR_FORBIDDEN;
@@ -260,13 +260,15 @@ arangodb::Result Databases::create(std::string const& dbName,
     TRI_DEFER(vocbase->release());
     TRI_ASSERT(vocbase->id() == id);
     TRI_ASSERT(vocbase->name() == dbName);
-    
+
     // we need to add the permissions before running the upgrade script
-    if (auth->isActive() && ExecContext::CURRENT_EXECCONTEXT != nullptr) {
+    if (auth->isActive() && ExecContext::CURRENT != nullptr) {
       // ignore errors here Result r =
-      auth->authInfo()->updateUser(ExecContext::CURRENT_EXECCONTEXT->user(), [&](AuthUserEntry& entry) {
-        entry.grantDatabase(dbName, AuthLevel::RW);
-      });
+      auth->authInfo()->updateUser(
+          ExecContext::CURRENT->user(), [&](AuthUserEntry& entry) {
+            entry.grantDatabase(dbName, AuthLevel::RW);
+            entry.grantCollection(dbName, "*", AuthLevel::RW);
+          });
     }
 
     V8Context* ctx = V8DealerFeature::DEALER->enterContext(vocbase, true);
@@ -310,13 +312,15 @@ arangodb::Result Databases::create(std::string const& dbName,
     }
     TRI_ASSERT(vocbase != nullptr);
     TRI_ASSERT(!vocbase->isDangling());
-    
+
     // we need to add the permissions before running the upgrade script
-    if (auth->isActive() && ExecContext::CURRENT_EXECCONTEXT != nullptr) {
+    if (auth->isActive() && ExecContext::CURRENT != nullptr) {
       // ignore errors here Result r =
-      auth->authInfo()->updateUser(ExecContext::CURRENT_EXECCONTEXT->user(), [&](AuthUserEntry& entry) {
-        entry.grantDatabase(dbName, AuthLevel::RW);
-      });
+      auth->authInfo()->updateUser(ExecContext::CURRENT->user(),
+                                   [&](AuthUserEntry& entry) {
+                                     entry.grantDatabase(dbName, AuthLevel::RW);
+                                     entry.grantCollection(dbName, "*", AuthLevel::RW);
+                                   });
     }
 
     V8Context* ctx = V8DealerFeature::DEALER->enterContext(vocbase, true);
@@ -371,16 +375,15 @@ arangodb::Result Databases::create(std::string const& dbName,
       }
     }
   }
-  
+
   return Result();
 }
 
 arangodb::Result Databases::drop(TRI_vocbase_t* systemVocbase,
-                                std::string const& dbName) {
+                                 std::string const& dbName) {
   TRI_ASSERT(systemVocbase->isSystem());
-  if (ExecContext::CURRENT_EXECCONTEXT != nullptr) {
-    AuthLevel level =
-        ExecContext::CURRENT_EXECCONTEXT->authContext()->systemAuthLevel();
+  if (ExecContext::CURRENT != nullptr) {
+    AuthLevel level = ExecContext::CURRENT->systemAuthLevel();
 
     if (level != AuthLevel::RW) {
       return TRI_ERROR_FORBIDDEN;
@@ -458,12 +461,11 @@ arangodb::Result Databases::drop(TRI_vocbase_t* systemVocbase,
                             "reloadRouting')"),
         TRI_V8_ASCII_STRING("reload routing"), false);
   }
-  
+
   auto auth = FeatureCacheFeature::instance()->authenticationFeature();
   if (auth->isActive()) {
-    auth->authInfo()->enumerateUsers([&](AuthUserEntry& entry) {
-      entry.removeDatabase(dbName);
-    });
+    auth->authInfo()->enumerateUsers(
+        [&](AuthUserEntry& entry) { entry.removeDatabase(dbName); });
   }
   return Result();
 }

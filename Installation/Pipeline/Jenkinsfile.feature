@@ -8,24 +8,17 @@ properties(
 )
 
 def defaultLinux = true
-def defaultMac = false
-def defaultWindows = false
+def defaultMac = true
+def defaultWindows = true
+def defaultBuild = true
 def defaultCleanBuild = false
 def defaultCommunity = true
-def defaultEnterprise = false
+def defaultEnterprise = true
 def defaultJslint = true
 def defaultRunResilience = false
-def defaultRunTests = true
+def defaultRunTests = false
 def defaultSkipTestsOnError = true
 def defaultFullParallel = false
-
-if (env.BRANCH_NAME == "devel") {
-    defaultMac = false
-    defaultWindows = false
-    defaultEnterprise = false
-    defaultRunResilience = false
-    defaultSkipTestsOnError = false
-}
 
 properties([
     parameters([
@@ -48,6 +41,11 @@ properties([
             defaultValue: defaultFullParallel,
             description: 'build all os in parallel',
             name: 'fullParallel'
+        ),
+        booleanParam(
+            defaultValue: defaultBuild,
+            description: 'build executables',
+            name: 'build'
         ),
         booleanParam(
             defaultValue: defaultCleanBuild,
@@ -87,11 +85,11 @@ properties([
     ])
 ])
 
+// build executable
+buildExecutable = params.build
+
 // start with empty build directory
 cleanBuild = params.cleanBuild
-
-// build all combinations
-buildFull = false
 
 // skip tests on previous error
 skipTestsOnError = params.skipTestsOnError
@@ -143,11 +141,6 @@ credentials = '8d893d23-6714-4f35-a239-c847c798e080'
 // jenkins cache
 cacheDir = '/vol/cache/' + env.JOB_NAME.replaceAll('%', '_')
 
-// execute a powershell
-def PowerShell(psCmd) {
-    bat "powershell.exe -NonInteractive -ExecutionPolicy Bypass -Command \"\$ErrorActionPreference='Stop';[Console]::OutputEncoding=[System.Text.Encoding]::UTF8;$psCmd;EXIT \$global:LastExitCode\""
-}
-
 // copy data to master cache
 def scpToMaster(os, from, to) {
     if (os == 'linux' || os == 'mac') {
@@ -174,7 +167,7 @@ def scpFromMaster(os, from, to) {
 
 def checkoutCommunity() {
     if (cleanBuild) {
-       sh 'rm -rf *'
+        deleteDir()
     }
 
     retry(3) {
@@ -182,6 +175,9 @@ def checkoutCommunity() {
             checkout scm
             sh 'git clean -f -d -x'
         }
+        // catch (hudson.AbortException ae) {
+        //     throw ae
+        // }
         catch (exc) {
             echo "GITHUB checkout failed, retrying in 5min"
             echo exc.toString()
@@ -240,11 +236,15 @@ def checkoutResilience() {
 
 def checkCommitMessages() {
     def changeLogSets = currentBuild.changeSets
+    def seenCommit = false
+    def skip = false
 
     for (int i = 0; i < changeLogSets.size(); i++) {
         def entries = changeLogSets[i].items
 
         for (int j = 0; j < entries.length; j++) {
+            seenCommit = true
+
             def entry = entries[j]
 
             def author = entry.author
@@ -261,10 +261,7 @@ def checkCommitMessages() {
 
             if (msg ==~ /(?i).*\[ci:[^\]]*skip[ \]].*/) {
                 echo "skipping everything because message contained 'skip'"
-                cleanBuild = false
-                useLinux = false
-                useMac = false
-                useWindows = false
+                skip = true
             }
 
             def files = new ArrayList(entry.affectedFiles)
@@ -279,7 +276,57 @@ def checkCommitMessages() {
         }
     }
 
-echo """BRANCH_NAME: ${env.BRANCH_NAME}
+    if (skip) {
+        useLinux = false
+        useMac = false
+        useWindows = false
+        buildExecutable = false
+        useCommunity = false
+        useEnterprise = false
+        runJslint = false
+        runResilience = false
+        runTests = false
+    }
+    else if (seenCommit) {
+        if (env.BRANCH_NAME == "devel") {
+            useLinux = true
+            useMac = true
+            useWindows = true
+            buildExecutable = true
+            useCommunity = true
+            useEnterprise = true
+            runJslint = true
+            runResilience = true
+            runTests = true
+            fullParallel = true
+        }
+        else if (env.BRANCH_NAME =~ /^PR-/) {
+            useLinux = true
+            useMac = true
+            useWindows = true
+            buildExecutable = true
+            useCommunity = true
+            useEnterprise = true
+            runJslint = true
+            runResilience = true
+            runTests = true
+            fullParallel = true
+        }
+        else {
+            useLinux = true
+            useMac = true
+            useWindows = true
+            buildExecutable = true
+            useCommunity = true
+            useEnterprise = true
+            runJslint = true
+            runResilience = false
+            runTests = false
+            fullParallel = true
+        }
+    }
+
+    echo """BRANCH_NAME: ${env.BRANCH_NAME}
 CHANGE_ID: ${env.CHANGE_ID}
 CHANGE_TARGET: ${env.CHANGE_TARGET}
 JOB_NAME: ${env.JOB_NAME}
@@ -287,7 +334,9 @@ JOB_NAME: ${env.JOB_NAME}
 Linux: ${useLinux}
 Mac: ${useMac}
 Windows: ${useWindows}
+Build: ${buildExecutable}
 Clean Build: ${cleanBuild}
+Full Parallel: ${fullParallel}
 Building Community: ${useCommunity}
 Building Enterprise: ${useEnterprise}
 Running Jslint: ${runJslint}
@@ -311,12 +360,7 @@ def stashSourceCode() {
 }
 
 def unstashSourceCode(os) {
-    if (os == 'linux' || os == 'mac') {
-        sh 'rm -rf *'
-    }
-    else if (os == 'windows') {
-        bat 'del /F /Q *'
-    }
+    deleteDir()
 
     lock("${env.BRANCH_NAME}-cache") {
         scpFromMaster(os, 'source.zip', 'source.zip')
@@ -324,9 +368,11 @@ def unstashSourceCode(os) {
 
     if (os == 'linux' || os == 'mac') {
         sh 'unzip -o -q source.zip'
+        sh 'rm -f source.zip'
     }
     else if (os == 'windows') {
         bat 'c:\\cmake\\bin\\cmake -E tar xf source.zip'
+        bat 'del /q /f source.zip'
     }
 }
 
@@ -338,7 +384,7 @@ def stashBuild(edition, os) {
         sh "zip -r -1 -y -q ${name} build-${edition}"
     }
     else if (os == 'windows') {
-        bat "del /F /q ${name}"
+        bat "del /F /Q ${name}"
         bat "c:\\cmake\\bin\\cmake -E tar cf ${name} build"
     }
 
@@ -356,9 +402,11 @@ def unstashBuild(edition, os) {
 
     if (os == 'linux' || os == 'mac') {
         sh "unzip -o -q ${name}"
+        sh "rm -f ${name}"
     }
     else if (os == 'windows') {
         bat "c:\\cmake\\bin\\cmake -E tar xf ${name}"
+        bat "del /F /Q ${name}"
     }
 }
 
@@ -383,21 +431,26 @@ def stashBinaries(edition, os) {
 }
 
 def unstashBinaries(edition, os) {
-    def name = 'binaries-' + edition + '-' + os + '.zip'
+    def name = "binaries-${edition}-${os}.zip"
+
+    deleteDir()
+
+    lock("${env.BRANCH_NAME}-cache") {
+        scpFromMaster(os, name, name)
+    }
 
     if (os == 'linux' || os == 'mac') {
-        sh 'rm -rf *'
-
-        lock("${env.BRANCH_NAME}-cache") {
-            scpFromMaster(os, name, name)
-        }
-
-        sh 'unzip -o -q ' + name
+        sh "unzip -o -q  ${name}"
+        sh "rm -f ${name}"
+    }
+    else if (os == 'windows') {
+        bat "c:\\cmake\\bin\\cmake -E tar xf ${name}"
+        bat "del /F /Q ${name}"
     }
 }
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                                     SCRIPTS BUILD
+// --SECTION--                                                         VARIABLES
 // -----------------------------------------------------------------------------
 
 buildJenkins = [
@@ -409,136 +462,43 @@ buildJenkins = [
 buildsSuccess = [:]
 allBuildsSuccessful = true
 
-def buildEdition(edition, os) {
-    if (! cleanBuild) {
-        try {
-            unstashBuild(edition, os)
-        }
-        catch (exc) {
-            echo "no stashed build environment, starting clean build"
-        }
-    }
+jslintSuccessful = true
 
-    try {
-        if (os == 'linux') {
-            sh "./Installation/Pipeline/build_${edition}_${os}.sh 64"
-        }
-        else if (os == 'mac') {
-            sh "./Installation/Pipeline/build_${edition}_${os}.sh 20"
-        }
-        else if (os == 'windows') {
-            PowerShell(". .\\Installation\\Pipeline\\build_${edition}_${os}.ps1")
-        }
-    }
-    catch (exc) {
-        throw exc
-    }
-    finally {
-        stashBuild(edition, os)
-        archiveArtifacts allowEmptyArchive: true,
-                         artifacts: 'log-output/**, *.log, tmp/**/log, tmp/**/log0, tmp/**/log1, tmp/**/log2',
-                         defaultExcludes: false
-    }
-}
+testJenkins = [
+    "linux": "linux && tests",
+    "mac" : "mac",
+    "windows": "windows"
+]
 
-def buildStepCheck(edition, os, full) {
-    if (full && ! buildFull) {
-        return false
-    }
-
-    if (os == 'linux' && ! useLinux) {
-        return false
-    }
-
-    if (os == 'mac' && ! useMac) {
-        return false
-    }
-
-    if (os == 'windows' && ! useWindows) {
-        return false
-    }
-
-    if (edition == 'enterprise' && ! useEnterprise) {
-        return false
-    }
-
-    if (edition == 'community' && ! useCommunity) {
-        return false
-    }
-
-    return true
-}
-
-def buildStep(edition, os) {
-    return {
-        lock("${env.BRANCH_NAME}-build-${edition}-${os}") {
-            node(buildJenkins[os]) {
-                def name = "${edition}-${os}"
-
-                try {
-                    unstashSourceCode(os)
-                    buildEdition(edition, os)
-                    stashBinaries(edition, os)
-                    buildsSuccess[name] = true
-                }
-                catch (exc) {
-                    buildsSuccess[name] = false
-                    allBuildsSuccessful = false
-                    throw exc
-                }
-            }
-        }
-    }
-}
-
-def buildStepParallel(osList) {
-    def branches = [:]
-    def full = false
-
-    for (edition in ['community', 'enterprise']) {
-        for (os in osList) {
-            if (buildStepCheck(edition, os, full)) {
-                branches["build-${edition}-${os}"] = buildStep(edition, os)
-            }
-        }
-    }
-
-    if (branches.size() > 1) {
-        parallel branches
-    }
-    else if (branches.size() == 1) {
-        branches.values()[0]()
-    }
-}
+testsSuccess = [:]
+allTestsSuccessful = true
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                    SCRIPTS JSLINT
 // -----------------------------------------------------------------------------
 
-jslintSuccessful = true
-
 def jslint() {
     try {
         sh './Installation/Pipeline/test_jslint.sh'
     }
+    // catch (hudson.AbortException ae) {
+    //     throw ae
+    // }
     catch (exc) {
         jslintSuccessful = false
         throw exc
     }
 }
 
-def jslintStep() {
-    def edition = 'community'
+def jslintStep(edition) {
     def os = 'linux'
 
-    if (runJslint) {
-        return {
-            node(os) {
-                echo "Running jslint test"
+    return {
+        node(os) {
+            echo "Running jslint test"
 
-                unstashBinaries(edition, os)
-                jslint()
-            }
+            unstashBinaries(edition, os)
+            jslint()
         }
     }
 }
@@ -547,37 +507,43 @@ def jslintStep() {
 // --SECTION--                                                     SCRIPTS TESTS
 // -----------------------------------------------------------------------------
 
-testJenkins = [
-    "linux": "linux && build",
-    "mac" : "mac",
-    "windows": "windows"
-]
-
-testsSuccess = [:]
-allTestsSuccessful = true
-
 def testEdition(edition, os, mode, engine) {
-    try {
-        if (os == 'linux') {
-            sh "./Installation/Pipeline/test_${mode}_${edition}_${engine}_${os}.sh 5"
-        }
-        else if (os == 'mac') {
-            sh "./Installation/Pipeline/test_${mode}_${edition}_${engine}_${os}.sh 5"
-        }
-        else if (os == 'windows') {
-            PowerShell(". .\\Installation\\Pipeline\\test_${mode}_${edition}_${engine}_${os}.ps1")
-        }
-    }
-    catch (exc) {
-        archiveArtifacts allowEmptyArchive: true,
-                         artifacts: 'core*, build/bin/arangod',
-                         defaultExcludes: false
+    def arch = "LOG_test_${mode}_${edition}_${engine}_${os}"
 
-        throw exc
+    try {
+        try {
+            if (os == 'linux') {
+                sh "./Installation/Pipeline/test_${mode}_${edition}_${engine}_${os}.sh 10"
+            }
+            else if (os == 'mac') {
+                sh "./Installation/Pipeline/test_${mode}_${edition}_${engine}_${os}.sh 5"
+            }
+            else if (os == 'windows') {
+                powershell ". .\\Installation\\Pipeline\\test_${mode}_${edition}_${engine}_${os}.ps1"
+            }
+        }
+        catch (exc) {
+            if (os == 'linux' || os == 'mac') {
+                sh "for i in build core* tmp; do test -e \$i && mv \$i ${arch} || true; done"
+            }
+
+            throw exc
+        }
+        finally {
+            if (os == 'linux' || os == 'mac') {
+                sh "rm -rf ${arch}"
+                sh "mkdir -p ${arch}"
+                sh "find log-output -name 'FAILED_*' -exec cp '{}' ${arch} ';'"
+                sh "for i in logs log-output; do test -e \$i && mv \$i ${arch} || true; done"
+            }
+        }
     }
+    // catch (hudson.AbortException ae) {
+    //     throw ae
+    // }
     finally {
         archiveArtifacts allowEmptyArchive: true,
-                         artifacts: 'log-output/**, *.log, tmp/**/log, tmp/**/log0, tmp/**/log1, tmp/**/log2',
+                         artifacts: "${arch}/**",
                          defaultExcludes: false
     }
 }
@@ -586,10 +552,6 @@ def testCheck(edition, os, mode, engine, full) {
     def name = "${edition}-${os}"
 
     if (! runTests) {
-        return false
-    }
-
-    if (full && ! buildFull) {
         return false
     }
 
@@ -639,6 +601,9 @@ def testStep(edition, os, mode, engine) {
                     testEdition(edition, os, mode, engine)
                     testsSuccess[name] = true
                 }
+                // catch (hudson.AbortException ae) {
+                //     throw ae
+                // }
                 catch (exc) {
                     echo exc.toString()
                     testsSuccess[name] = false
@@ -646,15 +611,18 @@ def testStep(edition, os, mode, engine) {
                     throw exc
                 }
             }
+            else {
+                error "build failed, cannot test"
+            }
         }
     }
 }
 
-def testStepParallel(osList, modeList) {
+def testStepParallel(editionList, osList, modeList) {
     def branches = [:]
     def full = false
 
-    for (edition in ['community', 'enterprise']) {
+    for (edition in editionList) {
         for (os in osList) {
             for (mode in modeList) {
                 for (engine in ['mmfiles', 'rocksdb']) {
@@ -668,8 +636,8 @@ def testStepParallel(osList, modeList) {
         }
     }
 
-    if (runJslint && osList.contains('Linux') && modeList.contains('Community')) {
-        branches['jslint'] = jslintStep()
+    if (runJslint && osList.contains('linux') && useLinux && useCommunity) {
+        branches['jslint'] = jslintStep('community')
     }
 
     if (branches.size() > 1) {
@@ -688,7 +656,17 @@ resiliencesSuccess = [:]
 allResiliencesSuccessful = true
 
 def testResilience(os, engine, foxx) {
-    sh "./Installation/Pipeline/test_resilience_${foxx}_${engine}_${os}.sh"
+    withEnv(['LOG_COMMUNICATION=debug', 'LOG_REQUESTS=trace', 'LOG_AGENCY=trace']) {
+        if (os == 'linux') {
+            sh "./Installation/Pipeline/test_resilience_${foxx}_${engine}_${os}.sh"
+        }
+        else if (os == 'mac') {
+            sh "./Installation/Pipeline/test_resilience_${foxx}_${engine}_${os}.sh"
+        }
+        else if (os == 'windows') {
+            powershell "./Installation/Pipeline/test_resilience_${foxx}_${engine}_${os}.ps1"
+        }
+    }
 }
 
 def testResilienceCheck(os, engine, foxx, full) {
@@ -730,41 +708,67 @@ def testResilienceName(os, engine, foxx, full) {
 def testResilienceStep(os, engine, foxx) {
     return {
         node(testJenkins[os]) {
+            def edition = "community"
             def buildName = "${edition}-${os}"
 
             if (buildsSuccess[buildName]) {
                 def name = "${os}-${engine}-${foxx}"
+                def arch = "LOG_resilience_${foxx}_${engine}_${os}"
 
                 try {
-                    unstashBinaries('community', os)
-                    testResilience(os, engine, foxx)
+                    try {
+                        unstashBinaries(edition, os)
+                        testResilience(os, engine, foxx)
+                    }
+                    catch (exc) {
+                        if (os == 'linux' || os == 'mac') {
+                            sh "for i in build core* tmp; do test -e \$i && mv \$i ${arch} || true; done"
+                        }
+
+                        throw exc
+                    }
+                    finally {
+                        if (os == 'linux' || os == 'mac') {
+                            sh "rm -rf ${arch}"
+                            sh "mkdir -p ${arch}"
+                            sh "for i in log-output resilience/core*; do test -e \$i && mv \$i ${arch}; done"
+                        }
+                        else if (os == 'windows') {
+                            bat "del /F /Q ${arch}"
+                            powershell "New-Item -ItemType Directory -Force -Path ${arch}"
+                            bat "move log-output ${arch}"
+                        }
+                        
+                    }
                 }
+                // catch (hudson.AbortException ae) {
+                //     throw ae
+                // }
                 catch (exc) {
                     resiliencesSuccess[name] = false
                     allResiliencesSuccessful = false
-
-                    archiveArtifacts allowEmptyArchive: true,
-                                     artifacts: 'core*, build/bin/arangod',
-                                     defaultExcludes: false
 
                     throw exc
                 }
                 finally {
                     archiveArtifacts allowEmptyArchive: true,
-                                     artifacts: 'log-output/**, *.log, tmp/**/log, tmp/**/log0, tmp/**/log1, tmp/**/log2',
+                                     artifacts: "${arch}/**",
                                      defaultExcludes: false
                 }
+            }
+            else {
+                error "build failed, cannot test"
             }
         }
     }
 }
 
-def testResilienceParallel() {
+def testResilienceParallel(osList) {
     def branches = [:]
     def full = false
 
     for (foxx in ['foxx', 'nofoxx']) {
-        for (os in ['linux', 'mac', 'windows']) {
+        for (os in osList) {
             for (engine in ['mmfiles', 'rocksdb']) {
                 if (testResilienceCheck(os, engine, foxx, full)) {
                     def name = testResilienceName(os, engine, foxx, full)
@@ -784,8 +788,152 @@ def testResilienceParallel() {
 }
 
 // -----------------------------------------------------------------------------
+// --SECTION--                                                     SCRIPTS BUILD
+// -----------------------------------------------------------------------------
+
+def buildEdition(edition, os) {
+    if (! cleanBuild) {
+        try {
+            unstashBuild(edition, os)
+        }
+        // catch (hudson.AbortException ae) {
+        //     throw ae
+        // }
+        catch (exc) {
+            echo "no stashed build environment, starting clean build"
+        }
+    }
+
+    def arch = "LOG_build_${edition}_${os}"
+
+    try {
+        try {
+            if (os == 'linux') {
+                sh "./Installation/Pipeline/build_${edition}_${os}.sh 64"
+            }
+            else if (os == 'mac') {
+                sh "./Installation/Pipeline/build_${edition}_${os}.sh 20"
+            }
+            else if (os == 'windows') {
+                powershell ". .\\Installation\\Pipeline\\build_${edition}_${os}.ps1"
+            }
+        }
+        finally {
+            if (os == 'linux' || os == 'mac') {
+                sh "rm -rf ${arch}"
+                sh "mkdir -p ${arch}"
+                sh "find log-output -name 'FAILED_*' -exec cp '{}' ${arch} ';'"
+                sh "for i in log-output; do test -e \$i && mv \$i ${arch} || true; done"
+            }
+            else if (os == 'windows') {
+                bat "del /F /Q ${arch}"
+                powershell "New-Item -ItemType Directory -Force -Path ${arch}"
+            }
+        }
+    }
+    finally {
+        stashBuild(edition, os)
+        archiveArtifacts allowEmptyArchive: true,
+                         artifacts: "${arch}/**"
+                         defaultExcludes: false
+    }
+}
+
+def buildStepCheck(edition, os, full) {
+    if (os == 'linux' && ! useLinux) {
+        return false
+    }
+
+    if (os == 'mac' && ! useMac) {
+        return false
+    }
+
+    if (os == 'windows' && ! useWindows) {
+        return false
+    }
+
+    if (edition == 'enterprise' && ! useEnterprise) {
+        return false
+    }
+
+    if (edition == 'community' && ! useCommunity) {
+        return false
+    }
+
+    return true
+}
+
+def buildStep(edition, os) {
+    return {
+        lock("${env.BRANCH_NAME}-build-${edition}-${os}") {
+            node(buildJenkins[os]) {
+                def name = "${edition}-${os}"
+
+                try {
+                    unstashSourceCode(os)
+                    buildEdition(edition, os)
+                    stashBinaries(edition, os)
+                    buildsSuccess[name] = true
+                }
+                // catch (hudson.AbortException ae) {
+                //     throw ae
+                // }
+                catch (exc) {
+                    buildsSuccess[name] = false
+                    allBuildsSuccessful = false
+                    throw exc
+                }
+            }
+        }
+
+        if (fullParallel) {
+            step {
+                testStepParallel([edition], [os], ['cluster', 'singleserver'])
+            }
+
+            step {
+                testResilienceParallel([os])
+            }
+        }
+    }
+}
+
+def buildStepParallel(osList) {
+    def branches = [:]
+    def full = false
+
+    for (edition in ['community', 'enterprise']) {
+        for (os in osList) {
+            if (buildStepCheck(edition, os, full)) {
+                branches["build-${edition}-${os}"] = buildStep(edition, os)
+            }
+        }
+    }
+
+    if (branches.size() > 1) {
+        parallel branches
+    }
+    else if (branches.size() == 1) {
+        branches.values()[0]()
+    }
+}
+
+// -----------------------------------------------------------------------------
 // --SECTION--                                                          PIPELINE
 // -----------------------------------------------------------------------------
+
+def runStage(stage) {
+    try {
+        stage()
+    }
+    // catch (hudson.AbortException ae) {
+    //     echo exc.toString()
+    //     throw ae
+    // }
+    catch (exc) {
+        echo exc.toString()
+    }
+}
 
 stage('checkout') {
     node('master') {
@@ -797,89 +945,69 @@ stage('checkout') {
     }
 }
 
-try {
-    stage('build') {
-        if (fullParallel) {
-            buildStepParallel(['linux', 'mac', 'windows'])
-        }
-        else {
-            buildStepParallel(['linux'])
-        }
-    }
-}
-catch (exc) {
-    echo exc.toString()
-}
-
-try {
-    stage('tests') {
-        if (fullParallel) {
-            testStepParallel(['linux', 'mac', 'windows'], ['cluster', 'singleserver'])
-        }
-        else {
-            testStepParallel(['linux'], ['cluster', 'singleserver'])
+if (buildExecutable) {
+    runStage {
+        stage('build') {
+            if (fullParallel) {
+                buildStepParallel(['linux', 'mac', 'windows'])
+            }
+            else {
+                buildStepParallel(['linux'])
+            }
         }
     }
-}
-catch (exc) {
-    echo exc.toString()
 }
 
 if (! fullParallel) {
-    try {
+    runStage {
+        stage('tests') {
+            testStepParallel(['community', 'enterprise'], ['linux'], ['cluster', 'singleserver'])
+        }
+    }
+}
+
+if (! fullParallel) {
+    runStage {
         stage('build mac') {
             if (allBuildsSuccessful) {
                 buildStepParallel(['mac'])
             }
         }
     }
-    catch (exc) {
-        echo exc.toString()
-    }
 
-    try {
+    runStage {
         stage('tests mac') {
             if (allTestsSuccessful || ! skipTestsOnError) {
-                testStepParallel(['mac'], ['cluster', 'singleserver'])
+                testStepParallel(['community', 'enterprise'], ['mac'], ['cluster', 'singleserver'])
             }
         }
     }
-    catch (exc) {
-        echo exc.toString()
-    }
 
-    try {
+    runStage {
         stage('build windows') {
             if (allBuildsSuccessful) {
                 buildStepParallel(['windows'])
             }
         }
     }
-    catch (exc) {
-        echo exc.toString()
-    }
 
-    try {
+    runStage {
         stage('tests windows') {
             if (allTestsSuccessful || ! skipTestsOnError) {
-                testStepParallel(['windows'], ['cluster', 'singleserver'])
+                testStepParallel(['community', 'enterprise'], ['windows'], ['cluster', 'singleserver'])
             }
         }
     }
-    catch (exc) {
-        echo exc.toString()
-    }
 }
 
-try {
-    stage('resilience') {
-        if (allTestsSuccessful) {
-            testResilienceParallel();
+if (! fullParallel) {
+    runStage {
+        stage('resilience') {
+            if (allTestsSuccessful) {
+                testResilienceParallel(['linux', 'mac', 'windows'])
+            }
         }
     }
-}
-catch (exc) {
-    echo exc.toString()
 }
 
 stage('result') {

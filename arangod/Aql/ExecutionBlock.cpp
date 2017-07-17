@@ -38,14 +38,14 @@ ExecutionBlock::ExecutionBlock(ExecutionEngine* engine, ExecutionNode const* ep)
       _exeNode(ep),
       _pos(0),
       _done(false),
-      _tracing(engine->getQuery()->queryOptions().tracing) {}
+      _tracing(engine->getQuery()->queryOptions().tracing) {
+  TRI_ASSERT(_trx != nullptr);
+}
 
 ExecutionBlock::~ExecutionBlock() {
   for (auto& it : _buffer) {
     delete it;
   }
-
-  _buffer.clear();
 }
 
 /// @brief returns the register id for a variable id

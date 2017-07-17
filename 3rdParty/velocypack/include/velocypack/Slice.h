@@ -261,6 +261,46 @@ class Slice {
 
   // check if slice is any Number-type object
   bool isNumber() const noexcept { return isInteger() || isDouble(); }
+ 
+  // check if slice is convertible to a variable of a certain
+  // number type 
+  template<typename T>
+  bool isNumber() const noexcept {
+    try { 
+      if (std::is_integral<T>()) {
+        if (std::is_signed<T>()) {
+          // signed integral type
+          if (isDouble()) {
+            auto v = getDouble();
+            return (v >= static_cast<double>((std::numeric_limits<T>::min)()) &&
+                    v <= static_cast<double>((std::numeric_limits<T>::max)()));
+          }
+
+          int64_t v = getInt();
+          return (v >= static_cast<int64_t>((std::numeric_limits<T>::min)()) &&
+                  v <= static_cast<int64_t>((std::numeric_limits<T>::max)()));
+        } else {
+          // unsigned integral type
+          if (isDouble()) {
+            auto v = getDouble();
+            return (v >= 0.0 && v <= static_cast<double>(UINT64_MAX) &&
+                    v <= static_cast<double>((std::numeric_limits<T>::max)()));
+          }
+
+          // may throw if value is < 0
+          uint64_t v = getUInt();
+          return (v <= static_cast<uint64_t>((std::numeric_limits<T>::max)()));
+        }
+      }
+      
+      // floating point type
+      return isNumber();
+    } catch (...) {
+      // something went wrong
+      return false;
+    }
+  }
+
 
   bool isSorted() const noexcept {
     auto const h = head();
@@ -516,7 +556,7 @@ class Slice {
 
   // return the value for a SmallInt object
   int64_t getSmallInt() const;
-
+  
   template <typename T>
   T getNumber() const {
     if (std::is_integral<T>()) {
@@ -548,6 +588,7 @@ class Slice {
           return static_cast<T>(v);
         }
 
+        // may fail if number is < 0!
         uint64_t v = getUInt();
         if (v > static_cast<uint64_t>((std::numeric_limits<T>::max)())) {
           throw Exception(Exception::NumberOutOfRange);

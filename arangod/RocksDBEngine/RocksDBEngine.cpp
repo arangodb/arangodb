@@ -57,6 +57,7 @@
 #include "RocksDBEngine/RocksDBIndexFactory.h"
 #include "RocksDBEngine/RocksDBKey.h"
 #include "RocksDBEngine/RocksDBLogValue.h"
+#include "RocksDBEngine/RocksDBOptimizerRules.h"
 #include "RocksDBEngine/RocksDBPrefixExtractor.h"
 #include "RocksDBEngine/RocksDBReplicationManager.h"
 #include "RocksDBEngine/RocksDBReplicationTailing.h"
@@ -1153,8 +1154,7 @@ void RocksDBEngine::addAqlFunctions() {
 
 /// @brief Add engine-specific optimizer rules
 void RocksDBEngine::addOptimizerRules() {
-  // there are no specific optimizer rules here
-  // TODO: add geo index optimization once there is the geo index
+  RocksDBOptimizerRules::registerResources();
 }
 
 /// @brief Add engine-specific V8 functions
@@ -1593,10 +1593,19 @@ void RocksDBEngine::getStatistics(VPackBuilder& builder) const {
   if (_options.table_factory) {
     void* options = _options.table_factory->GetOptions();
     if (options != nullptr) {
-      builder.add(
-          "rocksdb.block-cache-used",
-          VPackValue(static_cast<rocksdb::BlockBasedTableOptions*>(options)
-                         ->block_cache->GetUsage()));
+      auto* bto = static_cast<rocksdb::BlockBasedTableOptions*>(options);
+
+      if (bto != nullptr && bto->block_cache != nullptr) {
+        // block cache is present
+        builder.add(
+            "rocksdb.block-cache-used",
+            VPackValue(bto->block_cache->GetUsage()));
+      } else {
+        // no block cache present
+        builder.add(
+            "rocksdb.block-cache-used",
+            VPackValue(0));
+      }
     }
   }
 

@@ -34,8 +34,6 @@
 
 namespace arangodb {
 
-class AuthenticationFeature;
-
 namespace rest {
 
 class VstCommTask final : public GeneralCommTask {
@@ -68,7 +66,7 @@ class VstCommTask final : public GeneralCommTask {
   std::unique_ptr<GeneralResponse> createResponse(
       rest::ResponseCode, uint64_t messageId) override final;
 
-  void handleAuthentication(VPackSlice const& header, uint64_t messageId);
+  void handleAuthHeader(VPackSlice const& header, uint64_t messageId);
 
   void handleSimpleError(rest::ResponseCode code, GeneralRequest const& req, uint64_t id) override {
     VstResponse response(code, id);
@@ -88,7 +86,6 @@ class VstCommTask final : public GeneralCommTask {
   void closeTask(rest::ResponseCode code = rest::ResponseCode::SERVER_ERROR);
 
   void addResponse(VstResponse*, RequestStatistics* stat);
-  rest::ResponseCode authenticateRequest(GeneralRequest* request);
 
  private:
   using MessageID = uint64_t;
@@ -146,8 +143,9 @@ class VstCommTask final : public GeneralCommTask {
       ChunkHeader const& chunkHeader, VstInputMessage& message, bool& doExecute,
       char const* vpackBegin, char const* chunkEnd);
 
+  /// Is the current user authorized
+  bool _authorized;
   std::string _authenticatedUser;
-  AuthenticationFeature* _authentication;
   ProtocolVersion _protocolVersion;
   uint32_t _maxChunkSize;
 };

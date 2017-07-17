@@ -100,6 +100,7 @@ function agencyTestSuite () {
         break;
       } else {
         require('console').warn('Waiting for leader ... ');
+        wait(1.0);
       }
     }
     try {

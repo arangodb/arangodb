@@ -22,7 +22,6 @@
 
 #include "GraphStore.h"
 
-#include <algorithm>
 #include "Basics/Common.h"
 #include "Basics/MutexLocker.h"
 #include "Pregel/CommonFormats.h"
@@ -40,6 +39,7 @@
 #include "Utils/OperationOptions.h"
 #include "VocBase/EdgeCollectionInfo.h"
 #include "VocBase/LogicalCollection.h"
+#include "VocBase/ManagedDocumentResult.h"
 #include "VocBase/ticks.h"
 #include "VocBase/vocbase.h"
 
@@ -48,6 +48,8 @@
 #else
 #include <unistd.h>
 #endif
+
+#include <algorithm>
 
 using namespace arangodb;
 using namespace arangodb::pregel;
@@ -431,13 +433,12 @@ void GraphStore<V, E>::_loadEdges(transaction::Methods* trx,
                                   documentID.c_str(), edgeShard.c_str());
   }
 
-  auto cb = [&](ManagedDocumentResult const& mdr) {
-    VPackSlice document(mdr.vpack());
-    if (document.isExternal()) {
-      document = document.resolveExternal();
+  auto cb = [&](DocumentIdentifierToken const& token, VPackSlice slice) {
+    if (slice.isExternal()) {
+      slice = slice.resolveExternal();
     }
 
-    std::string toValue = document.get(StaticStrings::ToString).copyString();
+    std::string toValue = slice.get(StaticStrings::ToString).copyString();
     std::size_t pos = toValue.find('/');
     std::string collectionName = toValue.substr(0, pos);
 
@@ -466,7 +467,7 @@ void GraphStore<V, E>::_loadEdges(transaction::Methods* trx,
     if (res == TRI_ERROR_NO_ERROR) {
       // PregelShard sourceShard = (PregelShard)_config->shardId(edgeShard);
       edge->_targetShard = (PregelShard)_config->shardId(responsibleShard);
-      _graphFormat->copyEdgeData(document, edge->data(), sizeof(E));
+      _graphFormat->copyEdgeData(slice, edge->data(), sizeof(E));
       if (edge->_targetShard != (PregelShard)-1) {
         added++;
         offset++;

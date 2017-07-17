@@ -27,6 +27,7 @@
 #include "Basics/Common.h"
 #include "Basics/ReadWriteLock.h"
 #include "Indexes/Index.h"
+#include "Indexes/IndexIterator.h"
 #include "VocBase/voc-types.h"
 
 #include <velocypack/Builder.h>
@@ -145,6 +146,10 @@ class PhysicalCollection {
   virtual bool readDocument(transaction::Methods* trx,
                             DocumentIdentifierToken const& token,
                             ManagedDocumentResult& result) = 0;
+  
+  virtual bool readDocumentWithCallback(transaction::Methods* trx,
+                                        DocumentIdentifierToken const& token,
+                                        IndexIterator::DocumentCallback const& cb) = 0;
 
   virtual Result insert(arangodb::transaction::Methods* trx,
                         arangodb::velocypack::Slice const newSlice,

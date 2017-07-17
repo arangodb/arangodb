@@ -41,9 +41,12 @@
   db._createDatabase("UnitTestsDumpSrc");
 
   // create user in _system database
-  require("@arangodb/users").save("foobaruser", "foobarpasswd", true);
-  require("@arangodb/users").grantDatabase("foobaruser", "_system");
-  require("@arangodb/users").grantDatabase("foobaruser", "UnitTestsDumpSrc");
+  var users = require("@arangodb/users");
+  users.save("foobaruser", "foobarpasswd", true);
+  users.grantDatabase("foobaruser", "_system");
+  users.grantCollection("foobaruser", "_system", "*");
+  users.grantDatabase("foobaruser", "UnitTestsDumpSrc");
+  users.grantCollection("foobaruser", "UnitTestsDumpSrc", "*");
   db._useDatabase("UnitTestsDumpSrc");
 
   var endpoint = arango.getEndpoint();

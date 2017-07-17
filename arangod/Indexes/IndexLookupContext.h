@@ -25,36 +25,24 @@
 #define ARANGOD_INDEXES_INDEX_LOOKUP_CONTEXT_H 1
 
 #include "Basics/Common.h"
-#include "Logger/Logger.h"
-#include "Transaction/Methods.h"
 #include "StorageEngine/DocumentIdentifierToken.h"
-#include "VocBase/LogicalCollection.h"
-#include "VocBase/ManagedDocumentResult.h"
 #include "VocBase/vocbase.h"
 
 namespace arangodb {
+class LogicalCollection;
+class ManagedDocumentResult;
+
+namespace transaction {
+class Methods;
+}
 
 class IndexLookupContext {
  public:
   IndexLookupContext() = delete;
-  IndexLookupContext(transaction::Methods* trx, LogicalCollection* collection, ManagedDocumentResult* result, size_t numFields) 
-      : _trx(trx), _collection(collection), _result(result), _numFields(numFields) {
-    TRI_ASSERT(_trx != nullptr);
-    TRI_ASSERT(_collection != nullptr);
-    TRI_ASSERT(_result != nullptr);
-  }
-
+  IndexLookupContext(transaction::Methods* trx, LogicalCollection* collection, ManagedDocumentResult* result, size_t numFields);
   ~IndexLookupContext() {}
 
-  uint8_t const* lookup(DocumentIdentifierToken token) {
-    try {
-      if (_collection->readDocument(_trx, token, *_result)) {
-        return _result->vpack();
-      } 
-    } catch (...) {
-    }
-    return nullptr;
-  }
+  uint8_t const* lookup(DocumentIdentifierToken token);
 
   ManagedDocumentResult* result() { return _result; }
 

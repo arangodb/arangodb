@@ -49,7 +49,7 @@ class Methods;
 
 namespace helpers {
   /// @brief extract the _key attribute from a slice
-  StringRef extractKeyPart(VPackSlice const);
+  StringRef extractKeyPart(VPackSlice);
   
   std::string extractIdString(CollectionNameResolver const*, 
                               VPackSlice, VPackSlice const&);

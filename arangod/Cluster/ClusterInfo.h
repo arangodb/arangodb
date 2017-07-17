@@ -507,7 +507,7 @@ class ClusterInfo {
 
   std::shared_ptr<VPackBuilder> getCurrent();
 
-  std::vector<std::string> const& getFailedServers() { MUTEX_LOCKER(guard, _failedServersMutex); return _failedServers; }
+  std::vector<std::string> getFailedServers() { MUTEX_LOCKER(guard, _failedServersMutex); return _failedServers; }
   void setFailedServers(std::vector<std::string> const& failedServers) { MUTEX_LOCKER(guard, _failedServersMutex); _failedServers = failedServers; }
 
   std::unordered_map<ServerID, std::string> getServerAliases();
