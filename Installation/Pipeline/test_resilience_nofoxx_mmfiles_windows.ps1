@@ -20,4 +20,8 @@ $env:FORCE_WINDOWS_TTY="1"
 # $env:LOG_IMMEDIATE="1"
 # $env:ARANGO_EXTRA_ARGS="--log.level=cluster=trace --log.level=communication=trace --log.level=requests=debug"
 npm run test-jenkins-windows -- (Get-ChildItem -Path .\test\ -Exclude *foxx*).Fullname
-exit $LastExitCode
+$result = $?
+
+del $portFile
+
+exit $result
