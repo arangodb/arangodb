@@ -201,16 +201,6 @@ struct IResearchViewMeta {
   /// @brief amount of memory in bytes occupied by this iResearch Link meta
   ////////////////////////////////////////////////////////////////////////////////
   size_t memory() const;
-/*
-  ////////////////////////////////////////////////////////////////////////////////
-  /// @brief set the 'name' field in the builder to the specified value
-  /// @return success
-  ////////////////////////////////////////////////////////////////////////////////
-  static bool setName(
-    arangodb::velocypack::Builder& builder,
-    std::string const& value
-  );
-  */
 };
 
 NS_END // iresearch

@@ -39,6 +39,7 @@
 #include "Basics/files.h"
 #include "GeneralServer/AuthenticationFeature.h"
 #include "IResearch/IResearchFeature.h"
+#include "IResearch/IResearchLink.h"
 #include "IResearch/IResearchLinkMeta.h"
 #include "IResearch/IResearchView.h"
 #include "Logger/Logger.h"
@@ -204,7 +205,7 @@ SECTION("test_defaults") {
   // existing view definition
   {
     auto view = arangodb::iresearch::IResearchView::make(nullptr, json->slice(), false);
-    CHECK(false == (!view));
+    CHECK((false == !view));
 
     arangodb::velocypack::Builder builder;
 
@@ -224,7 +225,7 @@ SECTION("test_defaults") {
   {
     arangodb::LogicalView logicalView(nullptr, namedJson->slice());
     auto view = arangodb::iresearch::IResearchView::make(&logicalView, json->slice(), false);
-    CHECK(false == (!view));
+    CHECK((false == !view));
 
     arangodb::velocypack::Builder builder;
 
@@ -243,7 +244,7 @@ SECTION("test_defaults") {
   // new view definition
   {
     auto view = arangodb::iresearch::IResearchView::make(nullptr, json->slice(), true);
-    CHECK(false == (!view));
+    CHECK((false == !view));
 
     arangodb::velocypack::Builder builder;
 
@@ -263,7 +264,7 @@ SECTION("test_defaults") {
   {
     arangodb::LogicalView logicalView(nullptr, namedJson->slice());
     auto view = arangodb::iresearch::IResearchView::make(&logicalView, json->slice(), true);
-    CHECK(false == (!view));
+    CHECK((false == !view));
 
     arangodb::velocypack::Builder builder;
 
@@ -389,7 +390,7 @@ SECTION("test_open") {
 
     CHECK((false == TRI_IsDirectory(dataPath.c_str())));
     auto view = arangodb::iresearch::IResearchView::make(nullptr, json->slice(), false);
-    CHECK(false == (!view));
+    CHECK((false == !view));
     CHECK((false == TRI_IsDirectory(dataPath.c_str())));
     view->open();
     CHECK((true == TRI_IsDirectory(dataPath.c_str())));
@@ -408,7 +409,7 @@ SECTION("test_open") {
 
     CHECK((false == TRI_IsDirectory(dataPath.c_str())));
     auto view = arangodb::iresearch::IResearchView::make(nullptr, json->slice(), false);
-    CHECK(false == (!view));
+    CHECK((false == !view));
     CHECK((false == TRI_IsDirectory(dataPath.c_str())));
     view->open();
     CHECK((true == TRI_IsDirectory(dataPath.c_str())));
@@ -422,7 +423,7 @@ SECTION("test_query") {
   }");
   static std::vector<std::string> const EMPTY;
   arangodb::aql::AstNode noop(arangodb::aql::AstNodeType::NODE_TYPE_FILTER);
-  arangodb::aql::AstNode noopChild(arangodb::aql::AstNodeType::NODE_TYPE_OPERATOR_BINARY_OR);
+  arangodb::aql::AstNode noopChild(true, arangodb::aql::AstNodeValueType::VALUE_TYPE_BOOL); // all
 
   noop.addMember(&noopChild);
 
@@ -609,7 +610,7 @@ SECTION("test_query") {
     {
       std::vector<size_t> const expected = { 1, 2, 3, 4, 5, 6, 7, 8, 9, 10 };
       size_t next = 0;
-      CHECK((true == itr->next([&expected, &next](arangodb::DocumentIdentifierToken const& token)->void{ CHECK((token._data == expected[next++]));}, 10)));
+      CHECK((true == itr->next([&expected, &next](arangodb::DocumentIdentifierToken const& token)->void{ CHECK((token._data == expected[next++])); }, 10)));
       CHECK((expected.size() == next));
     }
 
@@ -621,7 +622,7 @@ SECTION("test_query") {
     {
       std::vector<size_t> const expected = { 6, 7, 8, 9, 10, 11, 12 };
       size_t next = 0;
-      CHECK((false == itr->next([&expected, &next](arangodb::DocumentIdentifierToken const& token)->void{ CHECK((token._data == expected[next++])); std::cerr << ", " << token._data;  }, 10)));
+      CHECK((false == itr->next([&expected, &next](arangodb::DocumentIdentifierToken const& token)->void{ CHECK((token._data == expected[next++])); }, 10)));
       CHECK((expected.size() == next));
     }
 
@@ -633,36 +634,213 @@ SECTION("test_query") {
 
   // unordered iterator (nullptr sort condition)
   {
-    // FIXME TODO implement
+    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "testVocbase");
+    auto logicalView = vocbase.createView(createJson->slice(), 0);
+    CHECK((false == !logicalView));
+    auto* view = dynamic_cast<arangodb::iresearch::IResearchView*>(logicalView->getImplementation());
+    CHECK((false == !view));
+
+    // fill with test data
+    {
+      auto doc = arangodb::velocypack::Parser::fromJson("{ \"key\": 1 }");
+      arangodb::iresearch::IResearchLinkMeta meta;
+      meta._includeAllFields = true;
+      arangodb::transaction::UserTransaction trx(arangodb::transaction::StandaloneContext::Create(&vocbase), EMPTY, EMPTY, EMPTY, arangodb::transaction::Options());
+      CHECK((trx.begin().ok()));
+
+      for (size_t i = 0; i < 12; ++i) {
+        view->insert(trx, 1, i, doc->slice(), meta);
+      }
+
+      CHECK((trx.commit().ok()));
+      view->sync();
+    }
+
+    arangodb::transaction::UserTransaction trx(arangodb::transaction::StandaloneContext::Create(&vocbase), EMPTY, EMPTY, EMPTY, arangodb::transaction::Options());
+    CHECK((trx.begin().ok()));
+    std::unique_ptr<arangodb::ViewIterator> itr(dynamic_cast<arangodb::iresearch::IResearchView*>(view)->iteratorForCondition(&trx, &noop, nullptr, nullptr));
+
+    CHECK((false == !itr));
+    CHECK((std::string("iresearch-unordered-iterator") == itr->typeName()));
+    CHECK((&trx == itr->transaction()));
+    CHECK((view == itr->view()));
+    CHECK((false == itr->hasExtra()));
+    CHECK_THROWS(itr->nextExtra([](arangodb::DocumentIdentifierToken const&, arangodb::velocypack::Slice)->void{}, 42));
+
+    std::vector<size_t> actual;
+
+    {
+      std::set<size_t> expected = { 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12 };
+      CHECK((true == itr->next([&expected, &actual](arangodb::DocumentIdentifierToken const& token)->void{ CHECK((1 == expected.erase(token._data))); actual.emplace_back(token._data); }, 10)));
+      CHECK((10 == actual.size()));
+    }
+
+    CHECK_NOTHROW((itr->reset()));
+    uint64_t skipped = 0;
+    CHECK_NOTHROW((itr->skip(5, skipped)));
+    CHECK((5 == skipped));
+
+    {
+      std::vector<size_t> expected0(actual.begin() += 5, actual.end()); // skip first 5, order must be same for rest
+      std::unordered_set<size_t> expected1 = { 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12 };
+      for (auto& entry: actual) expected1.erase(entry);
+      size_t next = 0;
+      CHECK((false == itr->next([&expected0, &expected1, &next](arangodb::DocumentIdentifierToken const& token)->void{ CHECK(((next < expected0.size() && expected0[next++] == token._data) || (next >= expected0.size() && 1 == expected1.erase(token._data)))); }, 10)));
+      CHECK((expected0.size() == next && expected1.empty()));
+    }
+
+    CHECK_NOTHROW((itr->skip(5, skipped)));
+    CHECK((0 == skipped));
+
+    CHECK_NOTHROW((itr->reset()));
   }
 
   // unordered iterator (empty sort condition)
   {
-    // FIXME TODO implement
+    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "testVocbase");
+    auto logicalView = vocbase.createView(createJson->slice(), 0);
+    CHECK((false == !logicalView));
+    auto* view = dynamic_cast<arangodb::iresearch::IResearchView*>(logicalView->getImplementation());
+    CHECK((false == !view));
+
+    // fill with test data
+    {
+      auto doc = arangodb::velocypack::Parser::fromJson("{ \"key\": 1 }");
+      arangodb::iresearch::IResearchLinkMeta meta;
+      meta._includeAllFields = true;
+      arangodb::transaction::UserTransaction trx(arangodb::transaction::StandaloneContext::Create(&vocbase), EMPTY, EMPTY, EMPTY, arangodb::transaction::Options());
+      CHECK((trx.begin().ok()));
+
+      for (size_t i = 0; i < 12; ++i) {
+        view->insert(trx, 1, i, doc->slice(), meta);
+      }
+
+      CHECK((trx.commit().ok()));
+      view->sync();
+    }
+
+    arangodb::aql::SortCondition order;
+    arangodb::transaction::UserTransaction trx(arangodb::transaction::StandaloneContext::Create(&vocbase), EMPTY, EMPTY, EMPTY, arangodb::transaction::Options());
+    CHECK((trx.begin().ok()));
+    std::unique_ptr<arangodb::ViewIterator> itr(dynamic_cast<arangodb::iresearch::IResearchView*>(view)->iteratorForCondition(&trx, &noop, nullptr, &order));
+
+    CHECK((false == !itr));
+    CHECK((std::string("iresearch-unordered-iterator") == itr->typeName()));
+    CHECK((&trx == itr->transaction()));
+    CHECK((view == itr->view()));
+    CHECK((false == itr->hasExtra()));
+    CHECK_THROWS(itr->nextExtra([](arangodb::DocumentIdentifierToken const&, arangodb::velocypack::Slice)->void{}, 42));
+
+    std::vector<size_t> actual;
+
+    {
+      std::set<size_t> expected = { 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12 };
+      CHECK((true == itr->next([&expected, &actual](arangodb::DocumentIdentifierToken const& token)->void{ CHECK((1 == expected.erase(token._data))); actual.emplace_back(token._data); }, 10)));
+      CHECK((10 == actual.size()));
+    }
+
+    CHECK_NOTHROW((itr->reset()));
+    uint64_t skipped = 0;
+    CHECK_NOTHROW((itr->skip(5, skipped)));
+    CHECK((5 == skipped));
+
+    {
+      std::vector<size_t> expected0(actual.begin() += 5, actual.end()); // skip first 5, order must be same for rest
+      std::unordered_set<size_t> expected1 = { 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12 };
+      for (auto& entry: actual) expected1.erase(entry);
+      size_t next = 0;
+      CHECK((false == itr->next([&expected0, &expected1, &next](arangodb::DocumentIdentifierToken const& token)->void{ CHECK(((next < expected0.size() && expected0[next++] == token._data) || (next >= expected0.size() && 1 == expected1.erase(token._data)))); }, 10)));
+      CHECK((expected0.size() == next && expected1.empty()));
+    }
+
+    CHECK_NOTHROW((itr->skip(5, skipped)));
+    CHECK((0 == skipped));
+
+    CHECK_NOTHROW((itr->reset()));
   }
 
   // FIXME TODO implement
+  // add tests for filter
 }
 
 SECTION("test_register_link") {
-  // ApplicationServer in IN_WAIT (known link)
+  auto collectionJson = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testCollection\", \"id\": 100 }");
+  auto viewJson0 = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testView\", \"type\": \"iresearch\", \"id\": 101 }");
+  auto viewJson1 = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testView\", \"type\": \"iresearch\", \"id\": 101, \"properties\": { \"collections\": [ 100 ] } }");
+  auto linkJson  = arangodb::velocypack::Parser::fromJson("{ \"view\": 101 }");
+  auto* feature = arangodb::application_features::ApplicationServer::getFeature<arangodb::iresearch::IResearchFeature>("IResearch");
+  CHECK((nullptr != feature));
+
+  // IResearchFeature started (new link)
   {
-    // FIXME TODO implement
+    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "testVocbase");
+    auto* logicalCollection = vocbase.createCollection(collectionJson->slice());
+    auto logicalView = vocbase.createView(viewJson0->slice(), 0);
+    REQUIRE((false == !logicalView));
+    auto* view = dynamic_cast<arangodb::iresearch::IResearchView*>(logicalView->getImplementation());
+    REQUIRE((false == !view));
+
+    CHECK((feature->running()));
+    CHECK((0 == view->linkCount()));
+    auto link = arangodb::iresearch::IResearchLink::make(1, logicalCollection, linkJson->slice());
+    CHECK((false == !link));
+    CHECK((1 == view->linkCount()));
   }
 
-  // ApplicationServer in IN_WAIT (new link)
+  // IResearchFeature started (known link)
   {
-    // FIXME TODO implement
+    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "testVocbase");
+    auto* logicalCollection = vocbase.createCollection(collectionJson->slice());
+    auto logicalView = vocbase.createView(viewJson1->slice(), 0);
+    REQUIRE((false == !logicalView));
+    auto* view = dynamic_cast<arangodb::iresearch::IResearchView*>(logicalView->getImplementation());
+    REQUIRE((false == !view));
+
+    CHECK((feature->running()));
+    CHECK((1 == view->linkCount()));
+    auto link0 = arangodb::iresearch::IResearchLink::make(1, logicalCollection, linkJson->slice());
+    CHECK((false == !link0));
+    CHECK((1 == view->linkCount()));
+    auto link1 = arangodb::iresearch::IResearchLink::make(1, logicalCollection, linkJson->slice());
+    CHECK((true == !link1));
+    CHECK((1 == view->linkCount()));
   }
 
-  // ApplicationServer not in IN_WAIT (known link)
+  feature->stop();
+
+  // IResearchFeature not started (new link)
   {
-    // FIXME TODO implement
+    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "testVocbase");
+    auto* logicalCollection = vocbase.createCollection(collectionJson->slice());
+    auto logicalView = vocbase.createView(viewJson0->slice(), 0);
+    REQUIRE((false == !logicalView));
+    auto* view = dynamic_cast<arangodb::iresearch::IResearchView*>(logicalView->getImplementation());
+    REQUIRE((false == !view));
+
+    CHECK((!feature->running()));
+    CHECK((0 == view->linkCount()));
+    auto link = arangodb::iresearch::IResearchLink::make(1, logicalCollection, linkJson->slice());
+    CHECK((false == link));
+    CHECK((0 == view->linkCount()));
   }
 
-  // ApplicationServer not in IN_WAIT (new link)
+  // IResearchFeature not started (known link)
   {
-    // FIXME TODO implement
+    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "testVocbase");
+    auto* logicalCollection = vocbase.createCollection(collectionJson->slice());
+    auto logicalView = vocbase.createView(viewJson1->slice(), 0);
+    REQUIRE((false == !logicalView));
+    auto* view = dynamic_cast<arangodb::iresearch::IResearchView*>(logicalView->getImplementation());
+    REQUIRE((false == !view));
+
+    CHECK((!feature->running()));
+    CHECK((1 == view->linkCount()));
+    auto link0 = arangodb::iresearch::IResearchLink::make(1, logicalCollection, linkJson->slice());
+    CHECK((false == !link0));
+    CHECK((1 == view->linkCount()));
+    auto link1 = arangodb::iresearch::IResearchLink::make(1, logicalCollection, linkJson->slice());
+    CHECK((true == !link1));
+    CHECK((1 == view->linkCount()));
   }
 }
 

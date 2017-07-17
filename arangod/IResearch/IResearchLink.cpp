@@ -155,8 +155,6 @@ int IResearchLink::drop() {
     return TRI_ERROR_ARANGO_COLLECTION_NOT_LOADED; // '_collection' and '_view' required
   }
 
-  _view->linkUnregister(_collection->cid());
-
   return _view->drop(_collection->cid());
 }
 
@@ -239,7 +237,7 @@ bool IResearchLink::isSorted() const {
         // NOTE: this will cause a deadlock if registering a link while view is being created
         auto logicalView = vocbase->lookupView(viewId);
 
-        if (!logicalView || !logicalView->getPhysical() || IResearchView::type() != logicalView->type()) {
+        if (!logicalView || IResearchView::type() != logicalView->type()) {
           return nullptr; // no such view
         }
 
@@ -251,7 +249,7 @@ bool IResearchLink::isSorted() const {
         #endif
 
         // on success this call will set the '_view' pointer
-        if (!view || !view->linkRegister(ptr)) {
+        if (!view || !view->linkRegister(*ptr)) {
           LOG_TOPIC(WARN, Logger::FIXME) << "error finding view: '" << viewId << "' for link '" << iid << "'";
 
           return nullptr;

@@ -206,7 +206,77 @@ SECTION("test_defaults") {
       && slice.get("figures").get("memory").isNumber()
       && 0 < slice.get("figures").get("memory").getUInt()
     ));
+
     CHECK((logicalCollection->dropIndex(link->id()) && logicalCollection->getIndexes().empty()));
+  }
+
+  // ensure jSON is still valid after unload()
+  {
+    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "testVocbase");
+    auto linkJson = arangodb::velocypack::Parser::fromJson("{ \"view\": 42 }");
+    auto collectionJson = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testCollection\" }");
+    auto viewJson = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testView\", \"id\": 42, \"type\": \"iresearch\" }");
+    auto* logicalCollection = vocbase.createCollection(collectionJson->slice());
+    REQUIRE((nullptr != logicalCollection));
+    auto logicalView = vocbase.createView(viewJson->slice(), 0);
+    REQUIRE((false == !logicalView));
+
+    bool created;
+    auto link = logicalCollection->createIndex(nullptr, linkJson->slice(), created);
+    REQUIRE((false == !link && created));
+    CHECK((true == link->allowExpansion()));
+    CHECK((true == link->canBeDropped()));
+    CHECK((logicalCollection == link->collection()));
+    CHECK((link->fieldNames().empty()));
+    CHECK((link->fields().empty()));
+    CHECK((true == link->hasBatchInsert()));
+    CHECK((false == link->hasExpansion()));
+    CHECK((false == link->hasSelectivityEstimate()));
+    CHECK((false == link->implicitlyUnique()));
+    CHECK((true == link->isPersistent()));
+    CHECK((false == link->isSorted()));
+    CHECK((0 < link->memory()));
+    CHECK((true == link->sparse()));
+    CHECK((arangodb::Index::IndexType::TRI_IDX_TYPE_IRESEARCH_LINK == link->type()));
+    CHECK((std::string("iresearch") == link->typeName()));
+    CHECK((false == link->unique()));
+
+    {
+      arangodb::iresearch::IResearchLinkMeta actualMeta;
+      arangodb::iresearch::IResearchLinkMeta expectedMeta;
+      auto builder = link->toVelocyPack(true);
+      std::string error;
+
+      CHECK((actualMeta.init(builder->slice(), error) && expectedMeta == actualMeta));
+      auto slice = builder->slice();
+      CHECK((
+        slice.hasKey("view")
+        && slice.get("view").isNumber()
+        && TRI_voc_cid_t(42) == slice.get("view").getNumber<TRI_voc_cid_t>()
+        && slice.hasKey("figures")
+        && slice.get("figures").isObject()
+        && slice.get("figures").hasKey("memory")
+        && slice.get("figures").get("memory").isNumber()
+        && 0 < slice.get("figures").get("memory").getUInt()
+      ));
+    }
+
+    // ensure jSON is still valid after unload()
+    {
+      CHECK((TRI_ERROR_NO_ERROR == link->unload()));
+      auto builder = link->toVelocyPack(true);
+      auto slice = builder->slice();
+      CHECK((
+        slice.hasKey("view")
+        && slice.get("view").isNumber()
+        && TRI_voc_cid_t(42) == slice.get("view").getNumber<TRI_voc_cid_t>()
+        && slice.hasKey("figures")
+        && slice.get("figures").isObject()
+        && slice.get("figures").hasKey("memory")
+        && slice.get("figures").get("memory").isNumber()
+        && 0 < slice.get("figures").get("memory").getUInt()
+      ));
+    }
   }
 }
 

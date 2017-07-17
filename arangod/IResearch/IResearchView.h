@@ -66,8 +66,6 @@ class IResearchLink;
 struct IResearchLinkMeta;
 class IResearchView;
 
-
-
 ///////////////////////////////////////////////////////////////////////////////
 /// --SECTION--                                                   IResearchView
 ///////////////////////////////////////////////////////////////////////////////
@@ -80,7 +78,7 @@ class IResearchView final: public arangodb::ViewImplementation,
                            public arangodb::FlushTransaction {
  public:
   typedef std::unique_ptr<arangodb::ViewImplementation> ptr;
-  typedef std::shared_ptr<IResearchLink> LinkPtr;
+  typedef std::shared_ptr<IResearchView> sptr;
 
   ///////////////////////////////////////////////////////////////////////////////
   /// @brief destructor to clean up resources
@@ -172,13 +170,7 @@ class IResearchView final: public arangodb::ViewImplementation,
   ///        on success this call will set the '_view' pointer in the link
   /// @return new registration was successful
   ///////////////////////////////////////////////////////////////////////////////
-  bool linkRegister(LinkPtr& ptr);
-
-  ///////////////////////////////////////////////////////////////////////////////
-  /// @brief unregister an iResearch Link from the specified view
-  /// @return the specified iResearch Link was previously registered
-  ///////////////////////////////////////////////////////////////////////////////
-  bool linkUnregister(TRI_voc_cid_t cid);
+  bool linkRegister(IResearchLink& link);
 
   ///////////////////////////////////////////////////////////////////////////////
   /// @brief view factory
@@ -348,11 +340,11 @@ class IResearchView final: public arangodb::ViewImplementation,
   std::atomic<size_t> _asyncMetaRevision; // arbitrary meta modification id, async jobs should reload if different
   std::mutex _asyncMutex; // mutex used with '_asyncCondition' and associated timeouts
   std::atomic<bool> _asyncTerminate; // trigger termination of long-running async jobs
-  std::unordered_set<LinkPtr> _links;
   IResearchViewMeta _meta;
   mutable irs::async_utils::read_write_mutex _mutex; // for use with member maps/sets and '_meta'
   MemoryStoreNode _memoryNodes[2]; // 2 because we just swap them
   MemoryStoreNode* _memoryNode; // points to the current memory store
+  std::unordered_set<TRI_voc_cid_t> _registeredLinks; // links that have been registered with this view (used for duplicate registration detection)
   MemoryStoreNode* _toFlush; // points to memory store to be flushed
   MemoryStoreByTid _storeByTid;
   DataStore _storePersisted;
@@ -389,5 +381,4 @@ class IResearchView final: public arangodb::ViewImplementation,
 
 NS_END // iresearch
 NS_END // arangodb
-
 #endif

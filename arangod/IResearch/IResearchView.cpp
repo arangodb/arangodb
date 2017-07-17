@@ -575,6 +575,7 @@ bool UnorderedViewIterator::next(TokenCallback const& callback, size_t limit) {
        ++_state._readerOffset, _state._itr.reset()
   ) {
     auto& segmentReader = _reader[_state._readerOffset];
+    auto done = false;
 
     if (!_state._itr) {
       _state._itr = _filter->execute(segmentReader);
@@ -588,7 +589,11 @@ bool UnorderedViewIterator::next(TokenCallback const& callback, size_t limit) {
       }
 
       callback(tmpToken);
-      --limit;
+      done = 0 ==--limit;
+    }
+
+    if (done) {
+      break; // do not change iterator if already reached limit
     }
   }
 
@@ -918,10 +923,8 @@ arangodb::Result updateLinks(
           auto* ptr = static_cast<arangodb::iresearch::IResearchLink*>(linkPtr.get());
         #endif
 
-        // convert to pointer type registerable with IResearchView, and hold a reference to the original
-        auto irsLinkPtr = arangodb::iresearch::IResearchView::LinkPtr(ptr, [linkPtr](arangodb::iresearch::IResearchLink*)->void{});
-
-        state._valid = linkPtr && isNew && view.linkRegister(irsLinkPtr);
+        // do not -re-register a link if it was not created here
+        state._valid = ptr && isNew && view.linkRegister(*ptr);
       }
     }
 
@@ -1274,7 +1277,7 @@ void IResearchView::drop() {
   SCOPED_LOCK(mutex);
 
   // ArangoDB global consistency check, no known dangling links
-  if (!_meta._collections.empty() || !_links.empty()) {
+  if (!_meta._collections.empty() || !_registeredLinks.empty()) {
     throw std::runtime_error(std::string("links still present while removing iResearch view '") + std::to_string(id()) + "'");
   }
 
@@ -1477,14 +1480,8 @@ void IResearchView::getPropertiesVPack(
   }
 
   // add CIDs of registered collections to list
-  for (auto& entry: _links) {
-    if (entry) {
-      auto* collection = entry->collection();
-
-      if (collection) {
-        collections.emplace_back(arangodb::basics::StringUtils::itoa(collection->cid()));
-      }
-    }
+  for (auto& cid: _registeredLinks) {
+    collections.emplace_back(std::to_string(cid));
   }
 
   arangodb::velocypack::Builder linksBuilder;
@@ -1747,14 +1744,8 @@ arangodb::ViewIterator* IResearchView::iteratorForCondition(
   }
 
   // add CIDs of registered collections to transaction
-  for (auto& entry: _links) {
-    if (entry) {
-      auto* collection = entry->collection();
-
-      if (collection) {
-        trx->addCollectionAtRuntime(arangodb::basics::StringUtils::itoa(collection->cid()));
-      }
-    }
+  for (auto& cid: _registeredLinks) {
+    trx->addCollectionAtRuntime(std::to_string(cid));
   }
 
   if (order.empty()) {
@@ -1775,8 +1766,8 @@ size_t IResearchView::linkCount() const noexcept {
   return _meta._collections.size();
 }
 
-bool IResearchView::linkRegister(LinkPtr& ptr) {
-  if (!ptr || !ptr->collection()) {
+bool IResearchView::linkRegister(IResearchLink& link) {
+  if (!link.collection()) {
     return false; // do not register empty pointers
   }
 
@@ -1787,90 +1778,47 @@ bool IResearchView::linkRegister(LinkPtr& ptr) {
   WriteMutex mutex(_mutex); // '_links' can be asynchronously updated
   SCOPED_LOCK(mutex);
 
-  auto itr = _links.emplace(ptr);
-  auto registered = _meta._collections.emplace(ptr->collection()->cid()).second;
+  auto cid = link.collection()->cid();
 
   // do not allow duplicate registration
-  if (registered) {
-    auto* feature = arangodb::application_features::ApplicationServer::getFeature<arangodb::iresearch::IResearchFeature>("IResearch");
+  if (!_registeredLinks.emplace(cid).second) {
+    LOG_TOPIC(WARN, Logger::FIXME) << "duplicate iResearch link registration detected for iResearch view '" << id() <<"' cid '" << link.collection()->cid() << "' iid '" << link.id() << "'";
 
-    if (feature && feature->running()) {
-      auto res = _logicalView->getPhysical()->persistProperties(); // persist '_meta' definition
+    return false;
+  }
 
-      if (res.ok()) {
-        ptr->_view = this;
-
-        return true;
-      }
+  auto unregistrar = [cid](IResearchView* ptr)->void {
+    if (ptr) {
+      WriteMutex mutex(ptr->_mutex); // '_registredLinks' can be asynchronously updated
+      SCOPED_LOCK(mutex);
+      ptr->_registeredLinks.erase(cid);
     }
+  };
 
-    LOG_TOPIC(WARN, Logger::FIXME) << "failed to persist iResearch view definition during new iResearch link registration for iResearch view '" << id() <<"' cid '" << ptr->collection()->cid() << "' iid '" << ptr->id() << "'";
-
-    _meta._collections.erase(ptr->collection()->cid()); // revert state
-  } else if (itr.second) {
+  if (!_meta._collections.emplace(cid).second) {
     // first time an IResearchLink object was seen for the specified cid
     // e.g. this happends during startup when links initially register with the view
-    ptr->_view = this;
+    link._view = sptr(this, std::move(unregistrar));
 
     return true;
-  } else {
-    LOG_TOPIC(WARN, Logger::FIXME) << "duplicate iResearch link registration detected for iResearch view '" << id() <<"' cid '" << ptr->collection()->cid() << "' iid '" << ptr->id() << "'";
   }
 
-  if (itr.second) {
-    _links.erase(itr.first); // revert state
-  }
+  auto* feature = arangodb::application_features::ApplicationServer::getFeature<arangodb::iresearch::IResearchFeature>("IResearch");
 
-  return false;
-}
+  if (feature && feature->running()) {
+    auto res = _logicalView->getPhysical()->persistProperties(); // persist '_meta' definition
 
-bool IResearchView::linkUnregister(TRI_voc_cid_t cid) {
-  if (!_logicalView || !_logicalView->getPhysical()) {
-    LOG_TOPIC(WARN, Logger::FIXME) << "failed to find meta-store while unregistering collection from iResearch view '" << id() <<"' cid '" << cid << "'";
+    if (res.ok()) {
+      link._view = sptr(this, std::move(unregistrar));
 
-    return false;
-  }
-
-  WriteMutex mutex(_mutex); // '_links' can be asynchronously updated
-  SCOPED_LOCK(mutex);
-  LinkPtr ptr;
-
-  for (auto itr = _links.begin(); itr != _links.end();) {
-    if (!*itr || !(*itr)->collection()) {
-      itr = _links.erase(itr); // remove stale links
-
-      continue;
+      return true;
     }
-
-    if ((*itr)->collection()->cid() == cid) {
-      ptr = *itr;
-      itr = _links.erase(itr);
-
-      continue;
-    }
-
-    ++itr;
   }
 
-  auto unregistered = _meta._collections.erase(cid) > 0;
+  LOG_TOPIC(WARN, Logger::FIXME) << "failed to persist iResearch view definition during new iResearch link registration for iResearch view '" << id() <<"' cid '" << link.collection()->cid() << "' iid '" << link.id() << "'";
 
-  if (!unregistered) {
-    return false;
-  }
-
-  auto res = _logicalView->getPhysical()->persistProperties(); // persist '_meta' definition
-
-  if (res.ok()) {
-    return true;
-  }
-
-  if (ptr) {
-    _links.emplace(ptr); // revert state
-  }
-
-  if (unregistered) {
-    _meta._collections.emplace(cid); // revert state
-  }
+  _meta._collections.erase(cid); // revert state
+  _registeredLinks.erase(cid); // revert state
 
   return false;
 }
@@ -1913,10 +1861,7 @@ size_t IResearchView::memory() const {
   SCOPED_LOCK(mutex);
   size_t size = sizeof(IResearchView);
 
-  for (auto& entry: _links) {
-    size += sizeof(entry.get()) + sizeof(*(entry.get())); // link contents are not part of size calculation
-  }
-
+  size += sizeof(TRI_voc_cid_t) * _registeredLinks.size();
   size += _meta.memory();
 
   for (auto& tidEntry: _storeByTid) {
