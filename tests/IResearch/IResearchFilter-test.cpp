@@ -39,6 +39,7 @@
 #include "analysis/token_streams.hpp"
 #include "analysis/token_attributes.hpp"
 #include "search/term_filter.hpp"
+#include "search/prefix_filter.hpp"
 #include "search/range_filter.hpp"
 #include "search/granular_range_filter.hpp"
 #include "search/boolean_filter.hpp"
@@ -1056,6 +1057,72 @@ SECTION("Value") {
   }
 }
 
+SECTION("StartsWith") {
+  // without scoring limit
+  {
+    std::string const queryString = "FOR d IN VIEW myView FILTER ir::starts_with(d.name, 'abc') RETURN d";
+
+    irs::Or expected;
+    auto& prefix = expected.add<irs::by_prefix>();
+    prefix.field("name").term("abc");
+    prefix.scored_terms_limit(128);
+
+    assertFilterSuccess(queryString, expected);
+  }
+
+  // without scoring limit, complex name
+  {
+    std::string const queryString = "FOR d IN VIEW myView FILTER ir::starts_with(d.obj.properties.name, 'abc') RETURN d";
+
+    irs::Or expected;
+    auto& prefix = expected.add<irs::by_prefix>();
+    prefix.field("obj.properties.name").term("abc");
+    prefix.scored_terms_limit(128);
+
+    assertFilterSuccess(queryString, expected);
+  }
+
+  // with scoring limit (int)
+  {
+    std::string const queryString = "FOR d IN VIEW myView FILTER ir::starts_with(d.name, 'abc', 1024) RETURN d";
+
+    irs::Or expected;
+    auto& prefix = expected.add<irs::by_prefix>();
+    prefix.field("name").term("abc");
+    prefix.scored_terms_limit(1024);
+
+    assertFilterSuccess(queryString, expected);
+  }
+
+  // with scoring limit (double)
+  {
+    std::string const queryString = "FOR d IN VIEW myView FILTER ir::starts_with(d.name, 'abc', 100.5) RETURN d";
+
+    irs::Or expected;
+    auto& prefix = expected.add<irs::by_prefix>();
+    prefix.field("name").term("abc");
+    prefix.scored_terms_limit(100);
+
+    assertFilterSuccess(queryString, expected);
+  }
+
+  // invalid attribute access
+  assertFilterFail("FOR d IN VIEW myView FILTER ir::starts_with(d, 'abc') RETURN d");
+  assertFilterFail("FOR d IN VIEW myView FILTER ir::starts_with('d.name', 'abc') RETURN d");
+
+  // invalid value
+  assertFilterFail("FOR d IN VIEW myView FILTER ir::starts_with(d.name, 1) RETURN d");
+  assertFilterFail("FOR d IN VIEW myView FILTER ir::starts_with(d.name, 1.5) RETURN d");
+  assertFilterFail("FOR d IN VIEW myView FILTER ir::starts_with(d.name, true) RETURN d");
+  assertFilterFail("FOR d IN VIEW myView FILTER ir::starts_with(d.name, false) RETURN d");
+  assertFilterFail("FOR d IN VIEW myView FILTER ir::starts_with(d.name, null) RETURN d");
+
+  // invalid scoring limit
+  assertFilterFail("FOR d IN VIEW myView FILTER ir::starts_with(d.name, 'abc', '1024') RETURN d");
+  assertFilterFail("FOR d IN VIEW myView FILTER ir::starts_with(d.name, 'abc', true) RETURN d");
+  assertFilterFail("FOR d IN VIEW myView FILTER ir::starts_with(d.name, 'abc', false) RETURN d");
+  assertFilterFail("FOR d IN VIEW myView FILTER ir::starts_with(d.name, 'abc', null) RETURN d");
+}
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief generate tests
 ////////////////////////////////////////////////////////////////////////////////

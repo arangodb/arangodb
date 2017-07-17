@@ -33,6 +33,7 @@
 
 #include "search/boolean_filter.hpp"
 #include "search/term_filter.hpp"
+#include "search/prefix_filter.hpp"
 #include "search/range_filter.hpp"
 #include "search/granular_range_filter.hpp"
 
@@ -46,6 +47,10 @@
    (((val) << 40) & UINT64_C(0x00FF000000000000)) | (((val) << 56) & UINT64_C(0xFF00000000000000)) )
 
 NS_LOCAL
+
+// ----------------------------------------------------------------------------
+// --SECTION--                                       FieldIterator dependencies
+// ----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief the delimiter used to separate jSON nesting levels when generating
@@ -98,7 +103,7 @@ struct AnyFactory {
   }
 }; // AnyFactory
 
-const size_t DEFAULT_POOL_SIZE = 8; // arbitrary value
+size_t const DEFAULT_POOL_SIZE = 8; // arbitrary value
 irs::unbounded_object_pool<AnyFactory<std::string>> BufferPool(DEFAULT_POOL_SIZE);
 irs::unbounded_object_pool<AnyFactory<irs::string_token_stream>> StringStreamPool(DEFAULT_POOL_SIZE);
 irs::unbounded_object_pool<AnyFactory<irs::null_token_stream>> NullStreamPool(DEFAULT_POOL_SIZE);
@@ -404,10 +409,6 @@ bool visit(arangodb::aql::AstNode const& root, Visitor visitor) {
     return false;
   }
 
-  if (Preorder && !visitor(root)) {
-    return false;
-  }
-
   size_t const n = root.numMembers();
 
   for (size_t i = 0; i < n; ++i) {
@@ -424,20 +425,57 @@ bool visit(arangodb::aql::AstNode const& root, Visitor visitor) {
   }
 
   return true;
-};
-
-inline irs::bytes_ref toBytesRef(arangodb::aql::AstNode const& node) {
-  TRI_ASSERT(arangodb::aql::NODE_TYPE_VALUE == node.type
-             && arangodb::aql::VALUE_TYPE_STRING == node.value.type);
-
-  return irs::bytes_ref(
-    reinterpret_cast<irs::byte_type const*>(node.getStringValue()),
-    node.getStringLength()
-  );
 }
 
-inline bool checkAttributeAccess(arangodb::aql::AstNode const& node) {
-  return arangodb::aql::NODE_TYPE_ATTRIBUTE_ACCESS == node.type;
+inline arangodb::aql::AstNode const* getNode(
+    arangodb::aql::AstNode const& node,
+    size_t idx,
+    arangodb::aql::AstNodeType expectedType
+) {
+  TRI_ASSERT(idx < node.numMembers());
+
+  auto const* subNode = node.getMemberUnchecked(idx);
+  TRI_ASSERT(subNode);
+
+  return subNode->type != expectedType ? nullptr : subNode;
+}
+
+bool parseValue(size_t& value, arangodb::aql::AstNode const& node) {
+  switch (node.value.type) {
+    case arangodb::aql::VALUE_TYPE_NULL:
+    case arangodb::aql::VALUE_TYPE_BOOL:
+      return false;
+    case arangodb::aql::VALUE_TYPE_INT:
+    case arangodb::aql::VALUE_TYPE_DOUBLE:
+      value = node.getIntValue();
+      return true;
+    case arangodb::aql::VALUE_TYPE_STRING:
+      return false;
+  }
+
+  return false;
+}
+
+template<typename Char>
+bool parseValue(
+    irs::basic_string_ref<Char>& value,
+    arangodb::aql::AstNode const& node
+) {
+  switch (node.value.type) {
+    case arangodb::aql::VALUE_TYPE_NULL:
+    case arangodb::aql::VALUE_TYPE_BOOL:
+    case arangodb::aql::VALUE_TYPE_INT:
+    case arangodb::aql::VALUE_TYPE_DOUBLE:
+      return false;
+    case arangodb::aql::VALUE_TYPE_STRING:
+      value = irs::basic_string_ref<Char>(
+        reinterpret_cast<Char const*>(node.getStringValue()),
+        node.getStringLength()
+      );
+      return true;
+  }
+
+  return false;
 }
 
 // generates field name from the specified 'node' and value 'type'
@@ -472,7 +510,7 @@ std::string nameFromAttributeAccess(
       mangleNumeric(name);
       break;
     case arangodb::aql::VALUE_TYPE_STRING:
-      // FIXME TODO enable for string field comparison to work
+      // FIXME TODO enable for string field comparison
       //mangleStringField(name);
       break;
   }
@@ -515,9 +553,11 @@ irs::by_term& byTerm(
 
       filter.term(term->value());
      } break;
-    case arangodb::aql::VALUE_TYPE_STRING:
-      filter.term(toBytesRef(valueNode));
-      break;
+    case arangodb::aql::VALUE_TYPE_STRING: {
+      irs::bytes_ref value;
+      parseValue(value, valueNode);
+      filter.term(value);
+    } break;
   }
 
   filter.field(
@@ -525,6 +565,37 @@ irs::by_term& byTerm(
   );
 
   return filter;
+}
+
+bool byPrefix(
+    irs::boolean_filter* filter,
+    arangodb::aql::AstNode const& attributeNode,
+    arangodb::aql::AstNode const& valueNode,
+    arangodb::aql::AstNode const* scoringLimitNode) {
+  size_t scoringLimit = 128; // FIXME make configurable
+
+  if (scoringLimitNode && !parseValue(scoringLimit, *scoringLimitNode)) {
+    // can't parse scoring limit
+    return false;
+  }
+
+  switch (valueNode.value.type) {
+    case arangodb::aql::VALUE_TYPE_NULL:
+    case arangodb::aql::VALUE_TYPE_BOOL:
+    case arangodb::aql::VALUE_TYPE_INT:
+    case arangodb::aql::VALUE_TYPE_DOUBLE:
+      break;
+    case arangodb::aql::VALUE_TYPE_STRING: {
+      if (filter) {
+        auto& prefixFilter = filter->add<irs::by_prefix>();
+        byTerm(prefixFilter, attributeNode, valueNode);
+        prefixFilter.scored_terms_limit(scoringLimit);
+      }
+      return true;
+    }
+  }
+
+  return false;
 }
 
 template<irs::Bound Bound, bool Include>
@@ -577,8 +648,11 @@ bool byRange(
       if (filter) {
         auto& range = filter->add<irs::by_range>();
 
+        irs::bytes_ref value;
+        parseValue(value, valueNode);
+
         range.field(nameFromAttributeAccess(attributeNode, valueNode.value.type));
-        range.term<Bound>(toBytesRef(valueNode));
+        range.term<Bound>(value);
         range.include<Bound>(Include);
       }
 
@@ -605,7 +679,7 @@ bool fromInterval(
   auto const* attributeNode = node.getMemberUnchecked(0);
   TRI_ASSERT(attributeNode);
 
-  if (!checkAttributeAccess(*attributeNode)) {
+  if (arangodb::aql::NODE_TYPE_ATTRIBUTE_ACCESS != attributeNode->type) {
     return false;
   }
 
@@ -631,7 +705,7 @@ bool fromBinaryEq(
   auto* attributeNode = node.getMemberUnchecked(0);
   TRI_ASSERT(attributeNode);
 
-  if (!checkAttributeAccess(*attributeNode)) {
+  if (arangodb::aql::NODE_TYPE_ATTRIBUTE_ACCESS != attributeNode->type) {
     return false;
   }
 
@@ -685,7 +759,7 @@ bool fromArrayIn(
   auto* attributeNode = node.getMemberUnchecked(0);
   TRI_ASSERT(attributeNode);
 
-  if (!checkAttributeAccess(*attributeNode)) {
+  if (arangodb::aql::NODE_TYPE_ATTRIBUTE_ACCESS != attributeNode->type) {
     return false;
   }
 
@@ -827,6 +901,184 @@ bool fromGroup(
   return true;
 }
 
+// EXISTS(<attribute>)
+bool fromFuncPhrase(
+    irs::boolean_filter* filter,
+    arangodb::aql::AstNode const& args
+) {
+  auto const argc = args.numMembers();
+
+  if (argc != 1) {
+    // wrong number of arguments
+    return false;
+  }
+
+  // 1st argument defines a field
+  auto const* field = getNode(args, 0, arangodb::aql::NODE_TYPE_ATTRIBUTE_ACCESS);
+
+  if (!field) {
+    return false;
+  }
+
+  // FIXME TODO
+
+  return false;
+}
+
+// PHRASE(<attribute>, <value> [, <offset>, <value>, ...] [, <locale>])
+bool fromFuncPhrase(
+    irs::boolean_filter* filter,
+    arangodb::aql::AstNode const& args
+) {
+  auto const argc = args.numMembers();
+
+  if (argc < 2) {
+    // wrong number of arguments
+    return false;
+  }
+
+  // 1st argument defines a field
+  auto const* field = getNode(args, 0, arangodb::aql::NODE_TYPE_ATTRIBUTE_ACCESS);
+
+  if (!field) {
+    return false;
+  }
+
+  // 2nd argument defines a value
+  auto const* value = getNode(args, 1, arangodb::aql::NODE_TYPE_VALUE);
+
+  if (!value) {
+    return false;
+  }
+
+  // if custom locale is present as the last argument then use it
+  const bool hasLocale = argc & 1;
+
+  for (size_t idx = 2, end = argc - hasLocale; idx < end; ++idx) {
+
+  }
+
+  // FIXME
+  return false;
+}
+
+// STARTS_WITH(<attribute>, <prefix>, [<scoring-limit>])
+bool fromFuncStartsWith(
+    irs::boolean_filter* filter,
+    arangodb::aql::AstNode const& args
+) {
+  auto const argc = args.numMembers();
+
+  if (argc < 2) {
+    // wrong number of arguments
+    return false;
+  }
+
+  // 1st argument defines a field
+  auto const* field = getNode(args, 0, arangodb::aql::NODE_TYPE_ATTRIBUTE_ACCESS);
+
+  if (!field) {
+    return false;
+  }
+
+  // 2nd argument defines a value
+  auto const* prefix = getNode(args, 1, arangodb::aql::NODE_TYPE_VALUE);
+
+  if (!prefix) {
+    return false;
+  }
+
+  // 3rd (optional) argument defines a number of scored terms
+  decltype(prefix) scoringLimit = nullptr;
+
+  if (argc > 2) {
+    scoringLimit = getNode(args, 2, arangodb::aql::NODE_TYPE_VALUE);
+  }
+
+  return byPrefix(filter, *field, *prefix, scoringLimit);
+}
+
+bool fromFCallUser(
+    irs::boolean_filter* filter,
+    arangodb::aql::AstNode const& node
+) {
+  TRI_ASSERT(arangodb::aql::NODE_TYPE_FCALL_USER == node.type);
+
+  if (node.numMembers() != 1) {
+    // invalid number of members
+    return false;
+  }
+
+  auto const* args = getNode(node, 0, arangodb::aql::NODE_TYPE_ARRAY);
+
+  if (!args) {
+    return false; // invalid args
+  }
+
+  typedef std::function<
+    bool(irs::boolean_filter*, arangodb::aql::AstNode const&)
+  > ConvertionHandler;
+
+  static std::map<irs::string_ref, ConvertionHandler> convHandlers {
+    { "IR::PHRASE", fromFuncPhrase },
+    { "IR::STARTS_WITH", fromFuncStartsWith }
+    { "IR::EXISTS", fromFuncExists }
+//  { "MIN_MATCH", fromFuncMinMatch } // add when AQL will support filters as the function parameters
+  };
+
+  irs::string_ref name;
+
+  if (!parseValue(name, node)) {
+    // unable to parse value as string
+    return false;
+  }
+
+  auto const entry = convHandlers.find(name);
+
+  if (entry == convHandlers.end()) {
+    // user function is not registered
+    return false;
+  }
+
+  return entry->second(filter, *args);
+}
+
+bool fromFCall(
+    irs::boolean_filter* filter,
+    arangodb::aql::AstNode const& node
+) {
+  TRI_ASSERT(arangodb::aql::NODE_TYPE_FCALL == node.type);
+
+  typedef std::function<
+    bool(irs::boolean_filter*, arangodb::aql::AstNode const&)
+  > ConvertionHandler;
+
+  static std::map<irs::string_ref, ConvertionHandler> convHandlers;
+
+  auto const* fn = static_cast<arangodb::aql::Function*>(node.getData());
+
+  if (!fn || 1 != node.numMembers()) {
+    return false; // no function
+  }
+
+  auto const* args = getNode(node, 0, arangodb::aql::NODE_TYPE_ARRAY);
+
+  if (!args) {
+    return false; // invalid args
+  }
+
+  const irs::string_ref name = fn->externalName;
+
+  auto const entry = convHandlers.find(name);
+
+  if (entry == convHandlers.end()) {
+    // system function is not registered
+    return false;
+  }
+
+  return entry->second(filter, *args);
+}
+
 bool processSubnode(
     irs::boolean_filter* filter,
     arangodb::aql::AstNode const& node
@@ -858,11 +1110,9 @@ bool processSubnode(
     case arangodb::aql::NODE_TYPE_ARRAY: // array
       return fromValue(filter, node);
     case arangodb::aql::NODE_TYPE_FCALL: // function call
-      // FIXME TODO
-      break;
+      return fromFCall(filter, node);
     case arangodb::aql::NODE_TYPE_FCALL_USER: // user function call
-      // FIXME TODO
-      break;
+      return fromFCallUser(filter, node);
     case arangodb::aql::NODE_TYPE_RANGE: // range
       return fromRange(filter, node);
     case arangodb::aql::NODE_TYPE_OPERATOR_NARY_AND: // n-ary and
