@@ -58,8 +58,7 @@ IndexBlock::IndexBlock(ExecutionEngine* engine, IndexNode const* en)
       _hasV8Expression(false),
       _indexesExhausted(false),
       _isLastIndex(false),
-      _returned(0),
-      _collector(&_engine->_itemBlockManager) {
+      _returned(0) {
   _mmdr.reset(new ManagedDocumentResult);
 
   if (_condition != nullptr) {
@@ -473,7 +472,6 @@ bool IndexBlock::readIndex(
 
 int IndexBlock::initializeCursor(AqlItemBlock* items, size_t pos) {
   DEBUG_BEGIN_BLOCK();
-  _collector.clear();
   int res = ExecutionBlock::initializeCursor(items, pos);
 
   if (res != TRI_ERROR_NO_ERROR) {
@@ -496,13 +494,21 @@ AqlItemBlock* IndexBlock::getSome(size_t atLeast, size_t atMost) {
   traceGetSomeBegin();
   if (_done) {
     traceGetSomeEnd(nullptr);
-    return _collector.steal();
+    return nullptr;
   }
 
   TRI_ASSERT(atMost > 0);
   size_t curRegs;
 
-  std::unique_ptr<AqlItemBlock> res;
+  std::unique_ptr<AqlItemBlock> res(
+      requestBlock(atMost,
+      getPlanNode()->getRegisterPlan()->nrRegs[getPlanNode()->getDepth()]));
+  _returned = 0;   // here we count how many of this AqlItemBlock we have
+                   // already filled
+  size_t copyFromRow;  // The row to copy values from
+
+  // The following callbacks write one index lookup result into res at
+  // position _returned:
 
   IndexIterator::DocumentCallback callback;
   if (_indexes.size() > 1) {
@@ -523,19 +529,17 @@ AqlItemBlock* IndexBlock::getSome(size_t atLeast, size_t atMost) {
         }
       }
       
-      _documentProducer(res.get(), slice, curRegs, _returned);
+      _documentProducer(res.get(), slice, curRegs, _returned, copyFromRow);
     };
   } else {
     // No uniqueness checks
     callback = [&](DocumentIdentifierToken const& token, VPackSlice slice) {
       TRI_ASSERT(res.get() != nullptr);
-      _documentProducer(res.get(), slice, curRegs, _returned);
+      _documentProducer(res.get(), slice, curRegs, _returned, copyFromRow);
     };
   }
 
-  size_t found = 0;
   do {
-    _returned = 0;
     if (_buffer.empty()) {
       size_t toFetch = (std::min)(DefaultBatchSize(), atMost);
       if (!ExecutionBlock::getBlock(toFetch, toFetch) || (!initIndexes())) {
@@ -571,47 +575,26 @@ AqlItemBlock* IndexBlock::getSome(size_t atLeast, size_t atMost) {
     AqlItemBlock* cur = _buffer.front();
     curRegs = cur->getNrRegs();
    
-    TRI_ASSERT(atMost >= found);
-
-    res.reset(requestBlock(
-        atMost - found,
-        getPlanNode()->getRegisterPlan()->nrRegs[getPlanNode()->getDepth()]));
-
     TRI_ASSERT(curRegs <= res->getNrRegs());
 
     // only copy 1st row of registers inherited from previous frame(s)
-    inheritRegisters(cur, res.get(), _pos);
+    inheritRegisters(cur, res.get(), _pos, _returned);
+    copyFromRow = _returned;
 
-    // Read the next (atMost - j) many elements from the indexes
-    _indexesExhausted = !readIndex(atMost - found, callback);
-    if (_returned > 0) {
-      if (_returned < atMost - found) {
-        // We have prepared too many entries, we could only fill less.
-        // Shrink the block
-        res->shrink(_returned, false);
+    // Read the next elements from the indexes
+    auto saveReturned = _returned;
+    _indexesExhausted = !readIndex(atMost, callback);
+    if (_returned == saveReturned) {
+      // No results. Kill the registers:
+      for (size_t i = 0; i < curRegs; ++i) {
+        res->destroyValue(_returned, i);
       }
-      _collector.add(std::move(res));
     } else {
-      // No results. Kill the registers
-      res.reset();
+      // Update statistics
+      _engine->_stats.scannedIndex += _returned - saveReturned;
     }
-    TRI_ASSERT(res.get() == nullptr);
 
-    // Update statistics
-    _engine->_stats.scannedIndex += _returned;
-    found += _returned;
-    _returned = 0;
-  } while (found < atMost);
-
-  TRI_ASSERT(found == _collector.totalSize());
-
-  if (found == 0) {
-    // We have not found anything at all.
-    // Return a nullptr.
-    return _collector.steal();
-  }
-
-  res.reset(_collector.steal());
+  } while (_returned < atMost);
 
   // Clear out registers no longer needed later:
   clearRegisters(res.get());
