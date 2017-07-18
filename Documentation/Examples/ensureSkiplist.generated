@@ -4,7 +4,7 @@ arangosh&gt; db.names.ensureIndex({ <span class="hljs-attr">type</span>: <span c
   <span class="hljs-string">"fields"</span> : [ 
     <span class="hljs-string">"first"</span> 
   ], 
-  <span class="hljs-string">"id"</span> : <span class="hljs-string">"names/15272"</span>, 
+  <span class="hljs-string">"id"</span> : <span class="hljs-string">"names/15283"</span>, 
   <span class="hljs-string">"isNewlyCreated"</span> : <span class="hljs-literal">true</span>, 
   <span class="hljs-string">"sparse"</span> : <span class="hljs-literal">false</span>, 
   <span class="hljs-string">"type"</span> : <span class="hljs-string">"skiplist"</span>, 
@@ -13,31 +13,31 @@ arangosh&gt; db.names.ensureIndex({ <span class="hljs-attr">type</span>: <span c
 }
 arangosh&gt; db.names.save({ <span class="hljs-string">"first"</span> : <span class="hljs-string">"Tim"</span> });
 { 
-  <span class="hljs-string">"_id"</span> : <span class="hljs-string">"names/15275"</span>, 
-  <span class="hljs-string">"_key"</span> : <span class="hljs-string">"15275"</span>, 
-  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_VSqqNmm---"</span> 
+  <span class="hljs-string">"_id"</span> : <span class="hljs-string">"names/15286"</span>, 
+  <span class="hljs-string">"_key"</span> : <span class="hljs-string">"15286"</span>, 
+  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_VTcU5-y---"</span> 
 }
 arangosh&gt; db.names.save({ <span class="hljs-string">"first"</span> : <span class="hljs-string">"Tom"</span> });
 { 
-  <span class="hljs-string">"_id"</span> : <span class="hljs-string">"names/15279"</span>, 
-  <span class="hljs-string">"_key"</span> : <span class="hljs-string">"15279"</span>, 
-  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_VSqqNmq---"</span> 
+  <span class="hljs-string">"_id"</span> : <span class="hljs-string">"names/15290"</span>, 
+  <span class="hljs-string">"_key"</span> : <span class="hljs-string">"15290"</span>, 
+  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_VTcU5-y--_"</span> 
 }
 arangosh&gt; db.names.save({ <span class="hljs-string">"first"</span> : <span class="hljs-string">"John"</span> });
 { 
-  <span class="hljs-string">"_id"</span> : <span class="hljs-string">"names/15282"</span>, 
-  <span class="hljs-string">"_key"</span> : <span class="hljs-string">"15282"</span>, 
-  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_VSqqNmq--_"</span> 
+  <span class="hljs-string">"_id"</span> : <span class="hljs-string">"names/15293"</span>, 
+  <span class="hljs-string">"_key"</span> : <span class="hljs-string">"15293"</span>, 
+  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_VTcU5-2---"</span> 
 }
 arangosh&gt; db.names.save({ <span class="hljs-string">"first"</span> : <span class="hljs-string">"Tim"</span> });
 { 
-  <span class="hljs-string">"_id"</span> : <span class="hljs-string">"names/15285"</span>, 
-  <span class="hljs-string">"_key"</span> : <span class="hljs-string">"15285"</span>, 
-  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_VSqqNmq--A"</span> 
+  <span class="hljs-string">"_id"</span> : <span class="hljs-string">"names/15296"</span>, 
+  <span class="hljs-string">"_key"</span> : <span class="hljs-string">"15296"</span>, 
+  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_VTcU5-2--_"</span> 
 }
 arangosh&gt; db.names.save({ <span class="hljs-string">"first"</span> : <span class="hljs-string">"Tom"</span> });
 { 
-  <span class="hljs-string">"_id"</span> : <span class="hljs-string">"names/15288"</span>, 
-  <span class="hljs-string">"_key"</span> : <span class="hljs-string">"15288"</span>, 
-  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_VSqqNmu---"</span> 
+  <span class="hljs-string">"_id"</span> : <span class="hljs-string">"names/15299"</span>, 
+  <span class="hljs-string">"_key"</span> : <span class="hljs-string">"15299"</span>, 
+  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_VTcU5-2--A"</span> 
 }

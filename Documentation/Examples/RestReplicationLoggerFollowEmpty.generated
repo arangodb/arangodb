@@ -1,9 +1,9 @@
-shell> curl --dump - http://localhost:8529/_api/replication/logger-follow?from=10554
+shell> curl --dump - http://localhost:8529/_api/replication/logger-follow?from=10556
 
 HTTP/1.1 204 No Content
 x-arango-replication-lastincluded: 0
 content-type: application/x-arango-dump; charset=utf-8
-x-arango-replication-lasttick: 10554
+x-arango-replication-lasttick: 10556
 x-arango-replication-checkmore: false
 x-arango-replication-frompresent: true
 x-content-type-options: nosniff
