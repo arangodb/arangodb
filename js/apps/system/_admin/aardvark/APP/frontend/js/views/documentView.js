@@ -57,9 +57,9 @@
       }
     },
 
-    addDocument: function () {
+    addDocument: function (e) {
       if (!this.readOnly) {
-        window.App.documentsView.addDocumentModal();
+        window.App.documentsView.addDocumentModal(e);
       }
     },
 
