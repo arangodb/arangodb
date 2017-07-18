@@ -228,7 +228,7 @@ void AuthInfo::loadFromDB() {
   }
 
   MUTEX_LOCKER(locker, _loadFromDBLock);
-
+  // double check to be sure
   if (!_outdated) {
     return;
   }
@@ -240,7 +240,7 @@ void AuthInfo::loadFromDB() {
     return;
   }
 
-  {
+  if (_authInfo.empty()) {
     WRITE_LOCKER(writeLocker, _authInfoLock);
     insertInitial();
   }
@@ -257,10 +257,10 @@ void AuthInfo::loadFromDB() {
     } else {
       parseUsers(usersSlice);
     }
-    _outdated = false;
   } else {
     insertInitial();
   }
+  _outdated = false;
 }
 
 // private, must be called with _authInfoLock in write mode
@@ -524,6 +524,42 @@ VPackBuilder AuthInfo::serializeUser(std::string const& user) {
   return result;
 }
 
+static Result removeUserInternal(AuthUserEntry const& entry) {
+  TRI_ASSERT(!entry.key().empty());
+  TRI_vocbase_t* vocbase = DatabaseFeature::DATABASE->systemDatabase();
+  if (vocbase == nullptr) {
+    return Result(TRI_ERROR_INTERNAL);
+  }
+  
+  // we cannot set this execution context, otherwise the transaction
+  // will ask us again for permissions and we get a deadlock
+  ExecContext* oldExe = ExecContext::CURRENT;
+  ExecContext::CURRENT = nullptr;
+  TRI_DEFER(ExecContext::CURRENT = oldExe);
+  
+  std::shared_ptr<transaction::Context> ctx(
+                                            new transaction::StandaloneContext(vocbase));
+  SingleCollectionTransaction trx(ctx, TRI_COL_NAME_USERS,
+                                  AccessMode::Type::WRITE);
+  
+  trx.addHint(transaction::Hints::Hint::SINGLE_OPERATION);
+  
+  Result res = trx.begin();
+  if (res.ok()) {
+    VPackBuilder builder;
+    {
+      VPackObjectBuilder guard(&builder);
+      builder.add(StaticStrings::KeyString, VPackValue(entry.key()));
+      // TODO maybe protect with a revision ID?
+    }
+    
+    OperationResult result =
+    trx.remove(TRI_COL_NAME_USERS, builder.slice(), OperationOptions());
+    res = trx.finish(result.code);
+  }
+  return res;
+}
+
 Result AuthInfo::removeUser(std::string const& user) {
   if (user.empty()) {
     return TRI_ERROR_USER_NOT_FOUND;
@@ -534,51 +570,38 @@ Result AuthInfo::removeUser(std::string const& user) {
   loadFromDB();
 
   WRITE_LOCKER(guard, _authInfoLock);
-  auto it = _authInfo.find(user);
+  auto const& it = _authInfo.find(user);
   if (it == _authInfo.end()) {
-    return Result(TRI_ERROR_USER_NOT_FOUND);
+    return TRI_ERROR_USER_NOT_FOUND;
   }
-  TRI_ASSERT(!it->second.key().empty());
-
-  TRI_vocbase_t* vocbase = DatabaseFeature::DATABASE->systemDatabase();
-  if (vocbase == nullptr) {
-    return Result(TRI_ERROR_INTERNAL);
-  }
-
-  // we cannot set this execution context, otherwise the transaction
-  // will ask us again for permissions and we get a deadlock
-  ExecContext* oldExe = ExecContext::CURRENT;
-  ExecContext::CURRENT = nullptr;
-  TRI_DEFER(ExecContext::CURRENT = oldExe);
-
-  std::shared_ptr<transaction::Context> ctx(
-      new transaction::StandaloneContext(vocbase));
-  SingleCollectionTransaction trx(ctx, TRI_COL_NAME_USERS,
-                                  AccessMode::Type::WRITE);
-
-  trx.addHint(transaction::Hints::Hint::SINGLE_OPERATION);
-
-  Result res = trx.begin();
+  
+  Result res = removeUserInternal(it->second);
   if (res.ok()) {
-    VPackBuilder builder;
-    {
-      VPackObjectBuilder guard(&builder);
-      builder.add(StaticStrings::KeyString, VPackValue(it->second.key()));
-      // TODO maybe protect with a revision ID?
-    }
-
-    OperationResult result =
-        trx.remove(TRI_COL_NAME_USERS, builder.slice(), OperationOptions());
-    res = trx.finish(result.code);
-    if (res.ok()) {
-      _authInfo.erase(it);
-      reloadAllUsers();
-    }
+    _authInfo.erase(it);
+    reloadAllUsers();
   }
   return res;
 }
 
+Result AuthInfo::removeAllUsers() {
+  loadFromDB();
+  
+  WRITE_LOCKER(guard, _authInfoLock);
+  Result res;
+  for (auto const& pair : _authInfo) {
+    res = removeUserInternal(pair.second);
+    if (!res.ok()) {
+      break;
+    }
+  }
+  _authInfo.clear();
+  _outdated = true;
+  reloadAllUsers();
+  return res;
+}
+
 VPackBuilder AuthInfo::getConfigData(std::string const& username) {
+  loadFromDB();
   VPackBuilder bb = QueryUser(_queryRegistry, username);
   return VPackBuilder(bb.slice().get("configData"));
 }
@@ -601,6 +624,7 @@ Result AuthInfo::setConfigData(std::string const& user,
 }
 
 VPackBuilder AuthInfo::getUserData(std::string const& username) {
+  loadFromDB();
   VPackBuilder bb = QueryUser(_queryRegistry, username);
   return VPackBuilder(bb.slice().get("userData"));
 }
