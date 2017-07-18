@@ -304,8 +304,11 @@ static void CreateVocBase(v8::FunctionCallbackInfo<v8::Value> const& args,
   if (result.IsEmpty()) {
     TRI_V8_THROW_EXCEPTION_MEMORY();
   }
+  
   // in case of success we grant the creating user RW access
-  if (auth->isActive() && ExecContext::CURRENT != nullptr) {
+  if (auth->isActive() && ExecContext::CURRENT != nullptr &&
+      (ServerState::instance()->isCoordinator() ||
+       !ServerState::instance()->isRunningInCluster())) {
     // this should not fail, we can not get here without database RW access
     auth->authInfo()->updateUser(ExecContext::CURRENT->user(),
                                  [&](AuthUserEntry& entry) {
