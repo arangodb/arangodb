@@ -228,12 +228,14 @@ void AuthInfo::loadFromDB() {
   }
 
   MUTEX_LOCKER(locker, _loadFromDBLock);
-  // double check to be sure
+
+  // double check to be sure after we got the lock
   if (!_outdated) {
     return;
   }
 
   auto role = ServerState::instance()->getRole();
+
   if (role != ServerState::ROLE_SINGLE &&
       role != ServerState::ROLE_COORDINATOR) {
     TRI_ASSERT(false);
@@ -257,9 +259,11 @@ void AuthInfo::loadFromDB() {
       parseUsers(usersSlice);
     }
   }
+
   if (_authInfo.empty()) {
     insertInitial();
   }
+
   _outdated = false;
 }
 

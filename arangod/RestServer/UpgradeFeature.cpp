@@ -103,11 +103,12 @@ void UpgradeFeature::start() {
   auto init =
       ApplicationServer::getFeature<InitDatabaseFeature>("InitDatabase");
   AuthInfo *ai = AuthenticationFeature::INSTANCE->authInfo();
-  
+
   // upgrade the database
   if (_upgradeCheck) {
     upgradeDatabase();
-    if (!init->defaultPassword().empty()) {
+
+    if (!init->restoreAdmin() && !init->defaultPassword().empty()) {
       ai->updateUser("root", [&](AuthUserEntry& entry) {
         entry.updatePassword(init->defaultPassword());
       });
@@ -116,10 +117,30 @@ void UpgradeFeature::start() {
 
   // change admin user
   if (init->restoreAdmin()) {
-    ai->removeAllUsers();
-    ai->updateUser("root", [&](AuthUserEntry& entry) {
-      entry.updatePassword(init->defaultPassword());
-    });
+    Result res;
+
+    res = ai->removeAllUsers();
+
+    if (res.fail()) {
+      LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "failed to create clear users: "
+                                               << res.errorMessage();
+      *_result = EXIT_FAILURE;
+      return;
+    }
+
+    res = ai->storeUser(true, "root", init->defaultPassword(), true);
+
+    if (res.fail() && res.errorNumber() == TRI_ERROR_USER_NOT_FOUND) {
+      res = ai->storeUser(false, "root", init->defaultPassword(), true);
+    }
+
+    if (res.fail()) {
+      LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "failed to create root user: "
+                                               << res.errorMessage();
+      *_result = EXIT_FAILURE;
+      return;
+    }
+
     *_result = EXIT_SUCCESS;
   }
 
@@ -128,7 +149,7 @@ void UpgradeFeature::start() {
     if (init->isInitDatabase()) {
       *_result = EXIT_SUCCESS;
     }
-    
+
     server()->beginShutdown();
   }
 }
