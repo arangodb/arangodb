@@ -236,11 +236,12 @@ void AuthInfo::loadFromDB() {
   auto role = ServerState::instance()->getRole();
   if (role != ServerState::ROLE_SINGLE &&
       role != ServerState::ROLE_COORDINATOR) {
+    TRI_ASSERT(false);
     _outdated = false;
     return;
   }
 
-  if (_authInfo.empty()) {
+  if (_authInfo.empty()) {// should only work once
     WRITE_LOCKER(writeLocker, _authInfoLock);
     insertInitial();
   }
@@ -252,12 +253,11 @@ void AuthInfo::loadFromDB() {
 
   if (builder) {
     VPackSlice usersSlice = builder->slice();
-    if (usersSlice.length() == 0) {
-      insertInitial();
-    } else {
+    if (usersSlice.length() != 0) {
       parseUsers(usersSlice);
     }
-  } else {
+  }
+  if (_authInfo.empty()) {
     insertInitial();
   }
   _outdated = false;
@@ -740,8 +740,6 @@ AuthLevel AuthInfo::canUseCollection(std::string const& username,
 // public called from HttpCommTask.cpp and VstCommTask.cpp
 AuthResult AuthInfo::checkAuthentication(AuthenticationMethod authType,
                                          std::string const& secret) {
-  loadFromDB();
-
   switch (authType) {
     case AuthenticationMethod::BASIC:
       return checkAuthenticationBasic(secret);
@@ -756,10 +754,15 @@ AuthResult AuthInfo::checkAuthentication(AuthenticationMethod authType,
 
 // private
 AuthResult AuthInfo::checkAuthenticationBasic(std::string const& secret) {
+  auto role = ServerState::instance()->getRole();
+  if (role != ServerState::ROLE_SINGLE &&
+      role != ServerState::ROLE_COORDINATOR) {
+    return AuthResult();
+  }
+  
   {
     READ_LOCKER(guard, _authInfoLock);
     auto const& it = _authBasicCache.find(secret);
-
     if (it != _authBasicCache.end()) {
       return it->second;
     }
@@ -767,9 +770,8 @@ AuthResult AuthInfo::checkAuthenticationBasic(std::string const& secret) {
 
   std::string const up = StringUtils::decodeBase64(secret);
   std::string::size_type n = up.find(':', 0);
-
   if (n == std::string::npos || n == 0 || n + 1 > up.size()) {
-    LOG_TOPIC(TRACE, arangodb::Logger::FIXME)
+    LOG_TOPIC(TRACE, arangodb::Logger::AUTHENTICATION)
         << "invalid authentication data found, cannot extract "
            "username/password";
     return AuthResult();
@@ -779,7 +781,6 @@ AuthResult AuthInfo::checkAuthenticationBasic(std::string const& secret) {
   std::string password = up.substr(n + 1);
 
   AuthResult result = checkPassword(username, password);
-
   {
     WRITE_LOCKER(guard, _authInfoLock);
 

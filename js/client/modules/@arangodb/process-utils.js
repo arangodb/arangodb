@@ -972,7 +972,6 @@ function startInstanceCluster (instanceInfo, protocol, options,
     }
   }
 
-  print(require('process').env);
   arango.reconnect(instanceInfo.endpoint, '_system', 'root', '');
   return true;
 }
