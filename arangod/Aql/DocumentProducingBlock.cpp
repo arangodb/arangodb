@@ -88,7 +88,7 @@ DocumentProducingBlock::DocumentProducingFunction DocumentProducingBlock::buildC
           res->setValue(row, static_cast<arangodb::aql::RegisterId>(registerId),
                         AqlValue(AqlValueHintCopy(found.begin())));
         }
-        if (row > 0) {
+        if (row != fromRow) {
           // re-use already copied AQLValues
           res->copyValuesFromRow(row, static_cast<RegisterId>(registerId), fromRow);
         }
@@ -115,7 +115,7 @@ DocumentProducingBlock::DocumentProducingFunction DocumentProducingBlock::buildC
                         AqlValue(AqlValueHintCopy(vpack)));
         }
       }
-      if (row > 0) {
+      if (row != fromRow) {
         // re-use already copied AQLValues
         res->copyValuesFromRow(row, static_cast<RegisterId>(registerId), fromRow);
       }
@@ -133,7 +133,7 @@ DocumentProducingBlock::DocumentProducingFunction DocumentProducingBlock::buildC
       res->setValue(row, static_cast<arangodb::aql::RegisterId>(registerId),
                     AqlValue(AqlValueHintCopy(vpack)));
     }
-    if (row > 0) {
+    if (row != fromRow) {
       // re-use already copied AQLValues
       res->copyValuesFromRow(row, static_cast<RegisterId>(registerId), fromRow);
     }
