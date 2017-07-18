@@ -461,6 +461,7 @@ static Result UpdateUser(VPackSlice const& user) {
 
 Result AuthInfo::enumerateUsers(
     std::function<void(AuthUserEntry&)> const& func) {
+  loadFromDB();
   // we require an consisten view on the user object
   {
     WRITE_LOCKER(guard, _authInfoLock);
@@ -484,6 +485,7 @@ Result AuthInfo::updateUser(std::string const& user,
   if (user.empty()) {
     return TRI_ERROR_USER_NOT_FOUND;
   }
+  loadFromDB();
   VPackBuilder data;
   {  // we require an consisten view on the user object
     WRITE_LOCKER(guard, _authInfoLock);
@@ -506,6 +508,7 @@ Result AuthInfo::updateUser(std::string const& user,
 
 Result AuthInfo::accessUser(std::string const& user,
                             std::function<void(AuthUserEntry const&)> const& func) {
+  loadFromDB();
   READ_LOCKER(guard, _authInfoLock);
   auto it = _authInfo.find(user);
   if (it != _authInfo.end()) {
@@ -516,6 +519,7 @@ Result AuthInfo::accessUser(std::string const& user,
 }
 
 VPackBuilder AuthInfo::serializeUser(std::string const& user) {
+  loadFromDB();
   VPackBuilder doc = QueryUser(_queryRegistry, user);
   VPackBuilder result;
   if (!doc.isEmpty()) {
@@ -594,8 +598,12 @@ Result AuthInfo::removeAllUsers() {
       break;
     }
   }
-  _authInfo.clear();
-  _outdated = true;
+  
+  {// do not get into race conditions with loadFromDB
+    MUTEX_LOCKER(locker, _loadFromDBLock);
+    _authInfo.clear();
+    _outdated = true;
+  }
   reloadAllUsers();
   return res;
 }
@@ -608,6 +616,9 @@ VPackBuilder AuthInfo::getConfigData(std::string const& username) {
 
 Result AuthInfo::setConfigData(std::string const& user,
                                velocypack::Slice const& data) {
+  loadFromDB();
+  
+  READ_LOCKER(guard, _authInfoLock);
   auto it = _authInfo.find(user);
   if (it == _authInfo.end()) {
     return Result(TRI_ERROR_USER_NOT_FOUND);
@@ -631,6 +642,9 @@ VPackBuilder AuthInfo::getUserData(std::string const& username) {
 
 Result AuthInfo::setUserData(std::string const& user,
                              velocypack::Slice const& data) {
+  loadFromDB();
+  
+  READ_LOCKER(guard, _authInfoLock);
   auto it = _authInfo.find(user);
   if (it == _authInfo.end()) {
     return Result(TRI_ERROR_USER_NOT_FOUND);
