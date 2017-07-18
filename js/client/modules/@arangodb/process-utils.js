@@ -971,6 +971,8 @@ function startInstanceCluster (instanceInfo, protocol, options,
       throw new Error("startup timed out!");
     }
   }
+
+  print(require('process').env);
   arango.reconnect(instanceInfo.endpoint, '_system', 'root', '');
   return true;
 }
