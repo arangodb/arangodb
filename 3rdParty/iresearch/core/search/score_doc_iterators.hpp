@@ -51,7 +51,6 @@ class basic_score_iterator final : public score_doc_iterator_base {
      cost::cost_t estimation) NOEXCEPT;
 
   virtual void score() override {
-    scr_->clear();
     scorers_.score(*ord_, scr_->leak());
   }
 

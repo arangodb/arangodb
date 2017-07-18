@@ -45,6 +45,7 @@ class IRESEARCH_API score : public attribute {
 
     attr->order_ = &ord;
     attr->value_.resize(ord.size());
+    attr->clear();
 
     return attr.get();
   }

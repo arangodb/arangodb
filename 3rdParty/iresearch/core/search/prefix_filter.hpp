@@ -16,7 +16,7 @@
 
 NS_ROOT
 
-class IRESEARCH_API by_prefix : public by_term {
+class IRESEARCH_API by_prefix final : public by_term {
  public:
   DECLARE_FILTER_TYPE();
   DECLARE_FACTORY_DEFAULT();
@@ -51,6 +51,11 @@ class IRESEARCH_API by_prefix : public by_term {
   size_t scored_terms_limit() const {
     return scored_terms_limit_;
   }
+
+  virtual size_t hash() const override;
+
+ protected:
+  virtual bool equals(const filter& rhs) const override;
 
  private:
   size_t scored_terms_limit_{1024};
