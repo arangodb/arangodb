@@ -97,7 +97,7 @@ describe('Foxx Manager', function () {
         }
       });
 
-      it('should not conatins in _apps', function () {
+      it('should not contains in _apps', function () {
         FoxxManager.install(setupTeardownApp, mount);
         FoxxManager.uninstall(mount);
         const s = db._query(aql`
