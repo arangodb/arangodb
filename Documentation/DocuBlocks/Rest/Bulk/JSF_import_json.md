@@ -101,8 +101,6 @@ The response is a JSON object with the following attributes:
   contain a `details` attribute which is an array with more detailed
   information about which documents could not be inserted.
 
-Note: this API is currently not supported on cluster coordinators.
-
 @RESTRETURNCODES
 
 @RESTRETURNCODE{201}
