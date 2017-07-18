@@ -1109,6 +1109,11 @@ SECTION("StartsWith") {
   // invalid attribute access
   assertFilterFail("FOR d IN VIEW myView FILTER ir::starts_with(d, 'abc') RETURN d");
   assertFilterFail("FOR d IN VIEW myView FILTER ir::starts_with('d.name', 'abc') RETURN d");
+  assertFilterFail("FOR d IN VIEW myView FILTER ir::starts_with(123, 'abc') RETURN d");
+  assertFilterFail("FOR d IN VIEW myView FILTER ir::starts_with(123.5, 'abc') RETURN d");
+  assertFilterFail("FOR d IN VIEW myView FILTER ir::starts_with(null, 'abc') RETURN d");
+  assertFilterFail("FOR d IN VIEW myView FILTER ir::starts_with(true, 'abc') RETURN d");
+  assertFilterFail("FOR d IN VIEW myView FILTER ir::starts_with(false, 'abc') RETURN d");
 
   // invalid value
   assertFilterFail("FOR d IN VIEW myView FILTER ir::starts_with(d.name, 1) RETURN d");
