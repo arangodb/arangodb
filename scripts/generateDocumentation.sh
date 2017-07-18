@@ -51,6 +51,10 @@ test_tools(){
         echo "the latest version."
         exit 1
     fi
+    if test $(whoami) != "root"; then
+        cp -a /root/.gitbook/ ~/
+        cp -a /root/.npm/ ~/
+    fi
 }
 
 main(){
@@ -75,6 +79,13 @@ main(){
         ./utils/generateExamples.sh
     fi
     ./utils/generateSwagger.sh
+
+    INSTALLED_GITBOOK_VERSION=$(gitbook ls |grep '*'|sed "s;.*\* ;;")
+    if test -z "${INSTALLED_GITBOOK_VERSION}"; then
+        echo "your container doesn't come with a preloaded version of gitbook, please update it."
+        exit 1
+    fi
+    export GITBOOK_ARGS="--gitbook ${INSTALLED_GITBOOK_VERSION}"
 
     cd Documentation/Books
 

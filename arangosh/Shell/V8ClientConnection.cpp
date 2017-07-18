@@ -982,8 +982,12 @@ static void ClientConnection_importCsv(
     TRI_V8_RETURN(result);
   }
 
-  TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_FAILED,
-                                 ih.getErrorMessage().c_str());
+  std::string error = "error messages:";
+  for (std::string const& msg : ih.getErrorMessages()) {
+    error.append(msg + ";\t");
+  }
+  
+  TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_FAILED, error.c_str());
   TRI_V8_TRY_CATCH_END
 }
 
@@ -1046,9 +1050,13 @@ static void ClientConnection_importJson(
 
     TRI_V8_RETURN(result);
   }
+  
+  std::string error = "error messages:";
+  for (std::string const& msg : ih.getErrorMessages()) {
+    error.append(msg + ";\t");
+  }
 
-  TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_FAILED,
-                                 ih.getErrorMessage().c_str());
+  TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_FAILED, error.c_str());
   TRI_V8_TRY_CATCH_END
 }
 

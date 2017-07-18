@@ -1026,7 +1026,8 @@ static void JS_DropVocbaseCol(v8::FunctionCallbackInfo<v8::Value> const& args) {
     }
   }
   
-  if (auth->isActive()) {
+  if (auth->isActive() && (ServerState::instance()->isCoordinator() ||
+                           !ServerState::instance()->isRunningInCluster())) {
     auth->authInfo()->enumerateUsers([&](AuthUserEntry& entry) {
       entry.removeCollection(dbname, collName);
     });
@@ -2764,17 +2765,6 @@ static void JS_TruncateVocbaseCol(
 
   if (collection == nullptr) {
     TRI_V8_THROW_EXCEPTION_INTERNAL("cannot extract collection");
-  }
-
-  AuthenticationFeature* auth = FeatureCacheFeature::instance()->authenticationFeature();
-  if (auth->isActive() && ExecContext::CURRENT != nullptr) {
-    CollectionNameResolver resolver(collection->vocbase());
-    std::string const cName = resolver.getCollectionNameCluster(collection->cid());
-    AuthLevel level = auth->canUseCollection(ExecContext::CURRENT->user(),
-                                             collection->vocbase()->name(), cName);
-    if (level != AuthLevel::RW) {
-      TRI_V8_THROW_EXCEPTION(TRI_ERROR_FORBIDDEN);
-    }
   }
 
   // optionally specify non trx remove

@@ -121,6 +121,9 @@ runResilience = params.runResilience
 // run tests
 runTests = params.runTests
 
+// restrict builds
+restrictions = []
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                             CONSTANTS AND HELPERS
 // -----------------------------------------------------------------------------
@@ -288,7 +291,7 @@ def checkCommitMessages() {
         runTests = false
     }
     else if (seenCommit) {
-        if (env.BRANCH_NAME == "devel") {
+        if (env.BRANCH_NAME == "devel" || env.BRANCH_NAME == "3.2") {
             useLinux = true
             useMac = true
             useWindows = true
@@ -298,7 +301,6 @@ def checkCommitMessages() {
             runJslint = true
             runResilience = true
             runTests = true
-            fullParallel = true
         }
         else if (env.BRANCH_NAME =~ /^PR-/) {
             useLinux = true
@@ -310,7 +312,6 @@ def checkCommitMessages() {
             runJslint = true
             runResilience = true
             runTests = true
-            fullParallel = true
         }
         else {
             useLinux = true
@@ -322,7 +323,15 @@ def checkCommitMessages() {
             runJslint = true
             runResilience = false
             runTests = false
-            fullParallel = true
+
+            restrictions = [
+                "build-enterprise-linux",
+                "build-community-mac",
+                "build-community-windows",
+                "test-cluster-enterprise-rocksdb-linux",
+                "test-singleserver-community-mmfiles-mac",
+                "test-singleserver-community-rocksdb-windows"
+            ]
         }
     }
 
@@ -578,16 +587,6 @@ def testCheck(edition, os, mode, engine, full) {
     return true
 }
 
-def testName(edition, os, mode, engine, full) {
-    def name = "test-${mode}-${edition}-${engine}-${os}";
-
-    if (! testCheck(edition, os, mode, engine, full)) {
-        name = "DISABLED-${name}"
-    }
-
-    return name 
-}
-
 def testStep(edition, os, mode, engine) {
     return {
         node(testJenkins[os]) {
@@ -627,7 +626,7 @@ def testStepParallel(editionList, osList, modeList) {
             for (mode in modeList) {
                 for (engine in ['mmfiles', 'rocksdb']) {
                     if (testCheck(edition, os, mode, engine, full)) {
-                        def name = testName(edition, os, mode, engine, full)
+                        def name = "test-${mode}-${edition}-${engine}-${os}";
 
                         branches[name] = testStep(edition, os, mode, engine)
                     }
@@ -885,16 +884,6 @@ def buildStep(edition, os) {
                 }
             }
         }
-
-        if (fullParallel) {
-            step {
-                testStepParallel([edition], [os], ['cluster', 'singleserver'])
-            }
-
-            step {
-                testResilienceParallel([os])
-            }
-        }
     }
 }
 
@@ -958,9 +947,13 @@ if (buildExecutable) {
     }
 }
 
-if (! fullParallel) {
-    runStage {
-        stage('tests') {
+runStage {
+    stage('tests') {
+        if (fullParallel) {
+            testStepParallel(['community', 'enterprise'], ['linux', 'mac', 'windows'], ['cluster', 'singleserver'])
+            testResilienceParallel(['linux', 'mac', 'windows'])
+        }
+        else {
             testStepParallel(['community', 'enterprise'], ['linux'], ['cluster', 'singleserver'])
         }
     }
@@ -998,9 +991,7 @@ if (! fullParallel) {
             }
         }
     }
-}
 
-if (! fullParallel) {
     runStage {
         stage('resilience') {
             if (allTestsSuccessful) {

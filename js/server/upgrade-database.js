@@ -44,9 +44,7 @@
   const db = internal.db;
   const shallowCopy = require('@arangodb/util').shallowCopy;
 
-  const defaultRootPW = args.password || '';
-
-  function upgrade () {
+  function upgrade () { 
 
     // default replication factor for system collections
     const DEFAULT_REPLICATION_FACTOR_SYSTEM = internal.DEFAULT_REPLICATION_FACTOR_SYSTEM;
