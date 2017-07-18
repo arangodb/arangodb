@@ -36,6 +36,7 @@
 #include "search/prefix_filter.hpp"
 #include "search/range_filter.hpp"
 #include "search/granular_range_filter.hpp"
+#include "search/phrase_filter.hpp"
 
 #include "utils/log.hpp"
 #include "utils/numeric_utils.hpp"
@@ -489,6 +490,7 @@ std::string nameFromAttributeAccess(
 
   auto visitor = [&name](arangodb::aql::AstNode const& node) mutable {
     if (arangodb::aql::NODE_TYPE_ATTRIBUTE_ACCESS == node.type) {
+      TRI_ASSERT(arangodb::aql::VALUE_TYPE_STRING == node.value.type);
       name.append(node.getStringValue(), node.getStringLength());
       name += '.';
     }
@@ -938,28 +940,80 @@ bool fromFuncPhrase(
   }
 
   // 1st argument defines a field
-  auto const* field = getNode(args, 0, arangodb::aql::NODE_TYPE_ATTRIBUTE_ACCESS);
+  auto const* fieldArg = getNode(args, 0, arangodb::aql::NODE_TYPE_ATTRIBUTE_ACCESS);
 
-  if (!field) {
+  if (!fieldArg) {
+    // wrong node type
     return false;
   }
 
   // 2nd argument defines a value
-  auto const* value = getNode(args, 1, arangodb::aql::NODE_TYPE_VALUE);
+  auto const* valueArg = getNode(args, 1, arangodb::aql::NODE_TYPE_VALUE);
 
-  if (!value) {
+  if (!valueArg) {
+    // wrong node type
     return false;
   }
 
-  // if custom locale is present as the last argument then use it
-  const bool hasLocale = argc & 1;
+  irs::bytes_ref value;
 
-  for (size_t idx = 2, end = argc - hasLocale; idx < end; ++idx) {
-
+  if (!parseValue(value, *valueArg)) {
+    // unable to parse value as string
+    return false;
   }
 
-  // FIXME
-  return false;
+  // if custom locale is present 
+  // as the last argument then use it
+  const bool hasLocale = argc & 1;
+
+  if (hasLocale) {
+    decltype(fieldArg) analyzerArg = getNode(args, argc - 1, arangodb::aql::NODE_TYPE_VALUE);
+
+    if (!analyzerArg) {
+      // wrong node type
+      return false;
+    }
+
+    irs::string_ref analyzerName;
+
+    if (!parseValue(analyzerName, *analyzerArg)) {
+      // unable to parse value as string
+      return false;
+    }
+  }
+
+  irs::by_phrase* phrase = nullptr;
+
+  if (filter) {
+    phrase = &filter->add<irs::by_phrase>();
+    phrase->field(nameFromAttributeAccess(*fieldArg, arangodb::aql::VALUE_TYPE_STRING));
+    phrase->push_back(value); // FIXME push tokens produced by analyzer
+  }
+
+  // check nodes
+  decltype(fieldArg) offsetArg = nullptr;
+  size_t offset;
+  for (size_t idx = 2, end = argc - hasLocale; idx < end; idx += 2) {
+    offsetArg = getNode(args, idx, arangodb::aql::NODE_TYPE_VALUE);
+
+    if (!offsetArg || !parseValue(offset, *offsetArg)) {
+      // unable to parse offset value
+      return false;
+    }
+
+    valueArg = getNode(args, idx + 1, arangodb::aql::NODE_TYPE_VALUE);
+
+    if (!valueArg || !parseValue(value, *valueArg)) {
+      // unable to parse phrase value
+      return false;
+    }
+
+    if (phrase) {
+      phrase->push_back(value, offset); // FIXME push tokens produced by analyzer
+    }
+  }
+
+  return true;
 }
 
 // STARTS_WITH(<attribute>, <prefix>, [<scoring-limit>])
