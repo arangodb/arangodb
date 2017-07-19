@@ -34,17 +34,22 @@ using namespace arangodb::pregel::algos;
 struct MyComputation : public VertexComputation<int64_t, int64_t, int64_t> {
   MyComputation() {}
   void compute(MessageIterator<int64_t> const& messages) override {
-    int64_t currentComponent = vertexData();
-    for (const int64_t* msg : messages) {
-      if (*msg < currentComponent) {
-        currentComponent = *msg;
-      };
-    }
-
-    if (currentComponent != vertexData()) {
-      sendMessageToAllNeighbours(currentComponent);
-    }
-    voteHalt();
+    if (localSuperstep() == 0) {
+      sendMessageToAllNeighbours(vertexData());
+    } else {
+      int64_t currentComponent = vertexData();
+      for (const int64_t* msg : messages) {
+        if (*msg < currentComponent) {
+          currentComponent = *msg;
+        };
+      }
+      
+      if (currentComponent != vertexData()) {
+        *mutableVertexData() = currentComponent;
+        sendMessageToAllNeighbours(currentComponent);
+      }
+      voteHalt();
+    }    
   }
 };
 
