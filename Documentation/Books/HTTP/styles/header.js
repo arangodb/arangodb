@@ -123,14 +123,21 @@ function appendHeader() {
   
   $(".arangodb-version-switcher").on("change", function(e) {
     var urlSplit = gitbook.state.root.split("/");
-    if (urlSplit.length == 6) {
-      urlSplit.pop(); // ""
-      var currentBook = urlSplit.pop(); // e.g. "Manual"
-      var version = urlSplit.pop() // e.g. "3.0"
-      window.location.href = urlSplit.join("/") + "/" + e.target.value + "/" + currentBook + "/";
+    urlSplit.pop(); // ""
+    var currentBook = urlSplit.pop(); // e.g. "Manual"
+    var version = urlSplit.pop() // e.g. "3.0"
+    if (e.target.value == "2.8") {
+      var legacyMap = {
+        "Manual": "",
+        "AQL": "/Aql",
+        "HTTP": "/HttpApi",
+        "cookbook": "/cookbook"
+      };
+      currentBook = legacyMap[currentBook];
     } else {
-      window.location.href = "https://docs.arangodb.com/" + e.target.value;
+      currentBook = "/" + currentBook;
     }
+    window.location.href = urlSplit.join("/") + "/" + e.target.value + currentBook + "/index.html";
   });
 
 });
