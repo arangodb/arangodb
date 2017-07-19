@@ -1,6 +1,11 @@
 devel
 -----
 
+* ui: fixed document view _from and _to linking issue for special characters
+
+* ARANGODB_DEFAULT_ROOT_PASSWORD is not longer support in a cluster setup, you need
+  to set the password using the arangodb shell
+
 * added function `db._parse(query)` for parse an AQL query and return information about it
 
 * fixed one medium priority and two low priority security user interface
