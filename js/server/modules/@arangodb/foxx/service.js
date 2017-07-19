@@ -318,7 +318,7 @@ module.exports =
         if (this.isDevelopment) {
           e.codeFrame = codeFrame(e, this.basePath);
         }
-        console.errorStack(e, dd`
+        console.errorStackOneLine(e, dd`
           Failed to build API documentation for "${this.mount}"!
           This is likely a bug in your Foxx service.
           Check the route methods you are using to document your API.

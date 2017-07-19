@@ -269,7 +269,7 @@ exports.routeService = function (service, throwOnErrors) {
         service.main.exports = service.run(service.manifest.main);
       } catch (e) {
         e.codeFrame = codeFrame(e.cause || e, service.basePath);
-        console.errorStack(
+        console.errorStackOneLine(
           e,
           `Service "${service.mount}" encountered an error while being mounted`
         );
