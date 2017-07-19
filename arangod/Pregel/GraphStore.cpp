@@ -85,7 +85,7 @@ GraphStore<V, E>::~GraphStore() {
 }
 
 template <typename V, typename E>
-std::map<ShardID, uint64_t> GraphStore<V, E>::_allocateMemory() {
+void GraphStore<V, E>::_preallocateMemory() {
   if (_vertexData || _edges) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
                                    "Only allocate messages once");
@@ -94,7 +94,7 @@ std::map<ShardID, uint64_t> GraphStore<V, E>::_allocateMemory() {
 
   double t = TRI_microtime();
   std::unique_ptr<transaction::Methods> countTrx(_createTransaction());
-  std::map<ShardID, uint64_t> shardSizes;
+  std::unordered_map<ShardID, uint64_t> shardSizes;
   LOG_TOPIC(DEBUG, Logger::PREGEL) << "Allocating memory";
   uint64_t totalMemory = TRI_totalSystemMemory();
 
@@ -105,6 +105,7 @@ std::map<ShardID, uint64_t> GraphStore<V, E>::_allocateMemory() {
     if (opResult.failed() || _destroyed) {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_BAD_PARAMETER);
     }
+    _shardOffsets[shard] = 0;
     shardSizes[shard] = opResult.slice().getUInt();
     count += opResult.slice().getUInt();
   }
@@ -124,6 +125,7 @@ std::map<ShardID, uint64_t> GraphStore<V, E>::_allocateMemory() {
     if (opResult.failed() || _destroyed) {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_BAD_PARAMETER);
     }
+    _shardOffsets[shard] = 0;
     shardSizes[shard] = opResult.slice().getUInt();
     count += opResult.slice().getUInt();
   }
@@ -148,7 +150,8 @@ template <typename V, typename E>
 void GraphStore<V, E>::loadShards(WorkerConfig* config,
                                   std::function<void()> callback) {
   _config = config;
-  std::map<ShardID, uint64_t> shardSizes(_allocateMemory());
+  
+  std::map<ShardID, uint64_t> shardSizes = _preallocateMemory();
   uint64_t vertexOffset = 0, edgeOffset = 0;
   // Contains the shards located on this db server in the right order
   std::map<CollectionID, std::vector<ShardID>> const& vertexCollMap =
