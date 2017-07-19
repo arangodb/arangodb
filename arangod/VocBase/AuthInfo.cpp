@@ -639,7 +639,11 @@ Result AuthInfo::setConfigData(std::string const& user,
   partial.add("configData", data);
   partial.close();
 
-  return UpdateUser(partial.slice());
+  Result res = UpdateUser(partial.slice());
+  if (res.ok()) {
+    reloadAllUsers();
+  }
+  return res;
 }
 
 VPackBuilder AuthInfo::getUserData(std::string const& username) {
@@ -665,7 +669,11 @@ Result AuthInfo::setUserData(std::string const& user,
   partial.add("userData", data);
   partial.close();
 
-  return UpdateUser(partial.slice());
+  Result res = UpdateUser(partial.slice());
+  if (res.ok()) {
+    reloadAllUsers();
+  }
+  return res;
 }
 
 AuthResult AuthInfo::checkPassword(std::string const& username,

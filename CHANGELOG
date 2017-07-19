@@ -13,6 +13,8 @@ v3.2.beta5 (2017-07-16)
 v3.2.beta4 (2017-07-04)
 -----------------------
 
+* ui: fixed document view _from and _to linking issue for special characters
+
 * added function `db._parse(query)` for parse an AQL query and return information about it
 
 * fixed one medium priority and two low priority security user interface
@@ -24,7 +26,19 @@ v3.2.beta4 (2017-07-04)
 
 * documentation and js fixes for secondaries
 
+* RocksDB storage format was changed, users of the previous beta/alpha versions
+  must delete the database directory and re-import their data
+
 * enabled permissions on database and collection level
+
+* added and changed some user related REST APIs
+    * added `PUT /_api/user/{user}/database/{database}/{collection}` to change collection permission
+    * added `GET /_api/user/{user}/database/{database}/{collection}`
+    * added optional `full` parameter to the `GET /_api/user/{user}/database/` REST call
+
+* added user functions in the arangoshell `@arangodb/users` module
+    * added `grantCollection` and `revokeCollection` functions
+    * added `permission(user, database, collection)` to retrieve collection specific rights 
 
 * added "deduplicate" attribute for array indexes, which controls whether inserting
   duplicate index values from the same document into a unique array index will lead to
