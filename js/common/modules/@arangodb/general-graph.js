@@ -1945,6 +1945,7 @@ exports._create = function (graphName, edgeDefinitions, orphanCollections, optio
   if (!Array.isArray(orphanCollections)) {
     orphanCollections = [];
   }
+  options = options || {};
   let gdb = getGraphCollection();
   let graphAlreadyExists = true;
   if (!graphName) {
