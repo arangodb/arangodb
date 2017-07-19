@@ -33,12 +33,12 @@ suite_all(){
     local count="$1"
     shift 1
     local args="$@"
-    local args_default=( )
+    local args_default=( '--cluster' 'false' )
 
     local tests=""
     case $count in
         num)
-            echo "11"
+            echo "12"
             return
         ;;
         name)
@@ -56,30 +56,94 @@ suite_all(){
             tests="shell_client"
         ;;
         3)
-            tests="shell_server_aql"
+            tests="shell_server_aql --testBuckets 2/0"
         ;;
         4)
-            tests="http_server"
+            tests="shell_server_aql --testBuckets 2/1"
         ;;
         5)
-            tests="server_http"
+            tests="http_server"
         ;;
         6)
-            tests="dump importing"
+            tests="server_http"
         ;;
         7)
-            tests="export arangobench upgrade"
+            tests="dump importing"
         ;;
         8)
-            tests="replication_sync replication_static"
+            tests="export arangobench upgrade"
         ;;
         9)
-            tests="replication_ongoing http_replication shell_replication"
+            tests="replication_sync replication_static"
         ;;
         10)
+            tests="replication_ongoing http_replication shell_replication"
+        ;;
+        11)
             tests="agency cluster_sync"
         ;;
         *)
+    esac
+
+    echo "./scripts/unittest $tests ${args_default[@]} ${args[@]} && exit 0"
+}
+
+suite_all_cluster(){
+    local count="$1"
+    shift 1
+    local args="$@"
+    local args_default=( '--cluster' 'true' )
+
+    local tests=""
+    case $count in
+        num)
+            echo "12"
+            return
+        ;;
+        name)
+            echo "test_all_cluster"
+            return
+        ;;
+        0)
+            echo "./scripts/quickieTest.sh ${args[@]} && exit 0"
+            return
+        ;;
+        1)
+            tests="shell_server"
+        ;;
+        2)
+            tests="shell_client"
+        ;;
+        3)
+            tests="shell_server_aql --testBuckets 3/0"
+        ;;
+        4)
+            tests="shell_server_aql --testBuckets 3/1"
+        ;;
+        5)
+            tests="shell_server_aql --testBuckets 3/2"
+        ;;
+        6)
+            tests="http_server"
+        ;;
+        7)
+            tests="ssl_server"
+        ;;
+        8)
+            tests="server_http"
+        ;;
+        9)
+            tests="dump"
+        ;;
+        10)
+            tests="agency"
+        ;;
+        11)
+            tests="resilience"
+        ;;
+        *)
+            echo "exit 0"
+            return
     esac
 
     echo "./scripts/unittest $tests ${args_default[@]} ${args[@]} && exit 0"
@@ -101,6 +165,21 @@ suite_all_rocksdb(){
     esac
 }
 
+suite_all_rocksdb_cluster(){
+    local count="$1"
+    shift 1
+    local args="$@"
+
+    case $count in
+        name)
+            echo "test_all_rocksdb_cluster"
+            return
+        ;;
+        *)
+            suite_all_cluster "$count" "--storageEngine rocksdb" "${args[@]}"
+        ;;
+    esac
+}
 # tmux
 kill_old_session(){
     local session_name="$1"
