@@ -1,6 +1,8 @@
 devel
 -----
 
+* ui: fixed document view _from and _to linking issue for special characters
+
 * added function `db._parse(query)` for parse an AQL query and return information about it
 
 * fixed one medium priority and two low priority security user interface
