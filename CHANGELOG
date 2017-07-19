@@ -12,7 +12,14 @@ devel
 
 * documentation and js fixes for secondaries
 
+* RocksDB storage format was changed, users of the previous beta/alpha versions
+  must delete the database directory and re-import their data
+
 * enabled permissions on database and collection level
+
+* Added `grantCollection` function in the `@arangodb/users` module
+
+* Added `full` parameter to the `GET /_api/user/{user}/database/` REST call
 
 * added "deduplicate" attribute for array indexes, which controls whether inserting
   duplicate index values from the same document into a unique array index will lead to
