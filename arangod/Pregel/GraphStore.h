@@ -84,8 +84,8 @@ class GraphStore {
   void storeResults(WorkerConfig* config, std::function<void()> callback);
   
 private:
-  void _preallocateMemory();
-  void _loadVertices(ShardID const& vertexShard,
+  std::unordered_map<ShardID, uint64_t> _preallocateMemory();
+  void _loadVertices(size_t i, ShardID const& vertexShard,
                      std::vector<ShardID> const& edgeShards,
                      uint64_t vertexOffset);
   void _loadEdges(transaction::Methods* trx, ShardID const& shard,
@@ -108,8 +108,10 @@ private:
   
   // cache the amount of vertices
   std::set<ShardID> _loadedShards;
-  // hold the current offsets in their respective memory blocks
-  std::unordered_map<ShardID, uint64_t> _shardOffsets;
+  // hold the current position where the ith vertex shard can
+  // start to write its data. At the end the offset should equal the
+  // sum of the counts of all ith edge shards
+  std::unordered_map<uint64_t, uint64_t> _edgeShardsOffset;
   
   // actual count of loaded vertices / edges
   std::atomic<uint64_t> _localVerticeCount;
