@@ -596,6 +596,19 @@ AqlItemBlock* IndexBlock::getSome(size_t atLeast, size_t atMost) {
 
   } while (_returned < atMost);
 
+  // Now there are three cases:
+  //   (1) The AqlItemBlock is empty (no result for any input or index)
+  //   (2) The AqlItemBlock is half-full (0 < _returned < atMost)
+  //   (3) The AqlItemBlock is full (_returned == atMost)
+  if (_returned == 0) {
+    AqlItemBlock* dummy = res.release();
+    returnBlock(dummy);
+    return nullptr;
+  }
+  if (_returned < atMost) {
+    res->shrink(_returned, false);
+  }
+
   // Clear out registers no longer needed later:
   clearRegisters(res.get());
   traceGetSomeEnd(res.get());
