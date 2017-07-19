@@ -31,6 +31,7 @@ function appendHeader() {
     '  </div>\n' +
     '  <select class="arangodb-version-switcher">\n' +
     '    <option value="devel">devel</option>\n' +
+    '    <option value="3.2">v3.2</option>\n' +
     '    <option value="3.1">v3.1</option>\n' +
     '    <option value="3.0">v3.0</option>\n' +
     '    <option value="2.8">v2.8</option>\n' +
