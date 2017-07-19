@@ -2173,14 +2173,14 @@ static void JS_PregelStart(v8::FunctionCallbackInfo<v8::Value> const& args) {
     for (std::string const& ec : paramVertices) {
       AuthLevel lvl = auth->canUseCollection(ExecContext::CURRENT->user(),
                                              ExecContext::CURRENT->database(), ec);
-      if ((storeResults && lvl != AuthLevel::RW) || lvl != AuthLevel::RO) {
+      if (!(storeResults && lvl == AuthLevel::RW) || lvl == AuthLevel::NONE) {
         THROW_ARANGO_EXCEPTION(TRI_ERROR_FORBIDDEN);
       }
     }
     for (std::string const& ec : paramEdges) {
       AuthLevel lvl = auth->canUseCollection(ExecContext::CURRENT->user(),
                                              ExecContext::CURRENT->database(), ec);
-      if ((storeResults && lvl != AuthLevel::RW) || lvl != AuthLevel::RO) {
+      if (!(storeResults && lvl == AuthLevel::RW) || lvl == AuthLevel::NONE) {
         THROW_ARANGO_EXCEPTION(TRI_ERROR_FORBIDDEN);
       }
     }
