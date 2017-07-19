@@ -232,6 +232,9 @@ First Steps with ArangoDB:
 Upgrading ArangoDB:
   https://docs.arangodb.com/Installing/Upgrading.html
 
+Configuring the storage Engine:
+  https://docs.arangodb.com/3.2/Manual/Administration/Configuration/GeneralArangod.html#storage-engine
+
 Upgrading ArangoDB database files:
   > /etc/init.d/arangodb3 upgrade
 
