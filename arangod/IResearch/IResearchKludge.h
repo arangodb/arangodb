@@ -35,6 +35,10 @@ namespace arangodb {
 namespace iresearch {
 namespace kludge {
 
+void mangleNull(std::string& name);
+void mangleBool(std::string& name);
+void mangleNumeric(std::string& name);
+
 } // kludge
 } // iresearch
 } // arangodb

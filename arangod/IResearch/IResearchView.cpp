@@ -32,6 +32,8 @@
 #include "utils/utf8_path.hpp"
 
 #include "IResearchDocument.h"
+#include "IResearchOrderFactory.h"
+#include "IResearchFilterFactory.h"
 #include "IResearchFeature.h"
 #include "IResearchLink.h"
 

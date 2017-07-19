@@ -30,7 +30,7 @@
 #include "Aql/Query.h"
 #include "Aql/SortCondition.h"
 #include "IResearch/AttributeScorer.h"
-#include "IResearch/IResearchDocument.h"
+#include "IResearch/IResearchOrderFactory.h"
 #include "IResearch/IResearchViewMeta.h"
 #include "RestServer/AqlFeature.h"
 #include "RestServer/QueryRegistryFeature.h"

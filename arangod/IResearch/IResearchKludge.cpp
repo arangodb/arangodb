@@ -37,6 +37,21 @@ NS_BEGIN(arangodb)
 NS_BEGIN(iresearch)
 NS_BEGIN(kludge)
 
+void mangleNull(std::string& name) {
+  static irs::string_ref const SUFFIX("\0_n", 3);
+  name.append(SUFFIX.c_str(), SUFFIX.size());
+}
+
+void mangleBool(std::string& name) {
+  static irs::string_ref const SUFFIX("\0_b", 3);
+  name.append(SUFFIX.c_str(), SUFFIX.size());
+}
+
+void mangleNumeric(std::string& name) {
+  static irs::string_ref const SUFFIX("\0_d", 3);
+  name.append(SUFFIX.c_str(), SUFFIX.size());
+}
+
 NS_END // kludge
 NS_END // iresearch
 NS_END // arangodb

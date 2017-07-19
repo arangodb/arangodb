@@ -218,7 +218,14 @@ class FieldIterator : public std::iterator<std::forward_iterator_tag, Field cons
 ////////////////////////////////////////////////////////////////////////////////
 class DocumentPrimaryKey {
  public:
-  static irs::string_ref const& PK();
+  static irs::string_ref const& PK(); // stored primary key column
+  static irs::string_ref const& CID(); // stored collection id column
+  static irs::string_ref const& RID(); // stored revision id column
+
+  // Encodes the specified value in a proper way
+  // and retuns corresponding encoded representation
+  // Note, that the provided value may change
+  static irs::bytes_ref encode(uint64_t& value);
 
   DocumentPrimaryKey() = default;
   DocumentPrimaryKey(TRI_voc_cid_t cid, TRI_voc_rid_t rid) noexcept;
@@ -237,37 +244,6 @@ class DocumentPrimaryKey {
   // FIXME: define storage format (LE or BE)
   uint64_t _keys[2]{}; // TRI_voc_cid_t + TRI_voc_rid_t
 }; // DocumentPrimaryKey
-
-struct FilterFactory {
-  static irs::filter::ptr filter(TRI_voc_cid_t cid);
-  static irs::filter::ptr filter(TRI_voc_cid_t cid, TRI_voc_rid_t rid);
-
-  ////////////////////////////////////////////////////////////////////////////////
-  /// @brief determine if the 'node' can be converted into an iresearch filter
-  ///        if 'filter' != nullptr then also append the iresearch filter there
-  ////////////////////////////////////////////////////////////////////////////////
-  static bool filter(
-    irs::boolean_filter* filter,
-    arangodb::aql::AstNode const& node
-  );
-}; // FilterFactory
-
-struct OrderFactory {
-  struct OrderContext {
-    irs::order& order;
-    arangodb::transaction::Methods& trx;
-  };
-
-  ////////////////////////////////////////////////////////////////////////////////
-  /// @brief determine if the 'node' can be converted into an iresearch order
-  ///        if 'order' != nullptr then also append the iresearch order there
-  ////////////////////////////////////////////////////////////////////////////////
-  static bool order(
-    OrderContext* ctx,
-    arangodb::aql::SortCondition const& node,
-    IResearchViewMeta const& meta
-  );
-};
 
 NS_END // iresearch
 NS_END // arangodb

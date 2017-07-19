@@ -24,7 +24,7 @@
 #include "catch.hpp"
 #include "StorageEngineMock.h"
 
-#include "IResearch/IResearchDocument.h"
+#include "IResearch/IResearchFilterFactory.h"
 #include "IResearch/IResearchLinkMeta.h"
 #include "IResearch/IResearchViewMeta.h"
 
