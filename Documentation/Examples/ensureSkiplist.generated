@@ -4,7 +4,7 @@ arangosh&gt; db.names.ensureIndex({ <span class="hljs-attr">type</span>: <span c
   <span class="hljs-string">"fields"</span> : [ 
     <span class="hljs-string">"first"</span> 
   ], 
-  <span class="hljs-string">"id"</span> : <span class="hljs-string">"names/15283"</span>, 
+  <span class="hljs-string">"id"</span> : <span class="hljs-string">"names/15273"</span>, 
   <span class="hljs-string">"isNewlyCreated"</span> : <span class="hljs-literal">true</span>, 
   <span class="hljs-string">"sparse"</span> : <span class="hljs-literal">false</span>, 
   <span class="hljs-string">"type"</span> : <span class="hljs-string">"skiplist"</span>, 
@@ -13,31 +13,31 @@ arangosh&gt; db.names.ensureIndex({ <span class="hljs-attr">type</span>: <span c
 }
 arangosh&gt; db.names.save({ <span class="hljs-string">"first"</span> : <span class="hljs-string">"Tim"</span> });
 { 
-  <span class="hljs-string">"_id"</span> : <span class="hljs-string">"names/15286"</span>, 
-  <span class="hljs-string">"_key"</span> : <span class="hljs-string">"15286"</span>, 
-  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_VTcU5-y---"</span> 
+  <span class="hljs-string">"_id"</span> : <span class="hljs-string">"names/15276"</span>, 
+  <span class="hljs-string">"_key"</span> : <span class="hljs-string">"15276"</span>, 
+  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_VTxTPaW---"</span> 
 }
 arangosh&gt; db.names.save({ <span class="hljs-string">"first"</span> : <span class="hljs-string">"Tom"</span> });
 { 
-  <span class="hljs-string">"_id"</span> : <span class="hljs-string">"names/15290"</span>, 
-  <span class="hljs-string">"_key"</span> : <span class="hljs-string">"15290"</span>, 
-  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_VTcU5-y--_"</span> 
+  <span class="hljs-string">"_id"</span> : <span class="hljs-string">"names/15280"</span>, 
+  <span class="hljs-string">"_key"</span> : <span class="hljs-string">"15280"</span>, 
+  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_VTxTPaa---"</span> 
 }
 arangosh&gt; db.names.save({ <span class="hljs-string">"first"</span> : <span class="hljs-string">"John"</span> });
 { 
-  <span class="hljs-string">"_id"</span> : <span class="hljs-string">"names/15293"</span>, 
-  <span class="hljs-string">"_key"</span> : <span class="hljs-string">"15293"</span>, 
-  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_VTcU5-2---"</span> 
+  <span class="hljs-string">"_id"</span> : <span class="hljs-string">"names/15283"</span>, 
+  <span class="hljs-string">"_key"</span> : <span class="hljs-string">"15283"</span>, 
+  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_VTxTPaa--_"</span> 
 }
 arangosh&gt; db.names.save({ <span class="hljs-string">"first"</span> : <span class="hljs-string">"Tim"</span> });
 { 
-  <span class="hljs-string">"_id"</span> : <span class="hljs-string">"names/15296"</span>, 
-  <span class="hljs-string">"_key"</span> : <span class="hljs-string">"15296"</span>, 
-  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_VTcU5-2--_"</span> 
+  <span class="hljs-string">"_id"</span> : <span class="hljs-string">"names/15286"</span>, 
+  <span class="hljs-string">"_key"</span> : <span class="hljs-string">"15286"</span>, 
+  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_VTxTPae---"</span> 
 }
 arangosh&gt; db.names.save({ <span class="hljs-string">"first"</span> : <span class="hljs-string">"Tom"</span> });
 { 
-  <span class="hljs-string">"_id"</span> : <span class="hljs-string">"names/15299"</span>, 
-  <span class="hljs-string">"_key"</span> : <span class="hljs-string">"15299"</span>, 
-  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_VTcU5-2--A"</span> 
+  <span class="hljs-string">"_id"</span> : <span class="hljs-string">"names/15289"</span>, 
+  <span class="hljs-string">"_key"</span> : <span class="hljs-string">"15289"</span>, 
+  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_VTxTPae--_"</span> 
 }

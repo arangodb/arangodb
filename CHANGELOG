@@ -1,3 +1,13 @@
+v3.2.0 (2017-07-20)
+-------------------
+
+* fixed UI issued
+
+* fixed pregel multi-threaded
+
+* fixed foxx resilience
+
+
 v3.2.beta6 (2017-07-18)
 -----------------------
 
