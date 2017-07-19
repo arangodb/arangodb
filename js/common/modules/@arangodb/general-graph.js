@@ -75,14 +75,22 @@ var isValidCollectionsParameter = function (x) {
 // / @brief find or create a collection by name
 // //////////////////////////////////////////////////////////////////////////////
 
-var findOrCreateCollectionByName = function (name, type, noCreate) {
+var findOrCreateCollectionByName = function (name, type, noCreate, options) {
   let col = db._collection(name);
   let res = false;
   if (col === null && !noCreate) {
     if (type === ArangoCollection.TYPE_DOCUMENT) {
-      col = db._create(name);
+      if (options) {
+        col = db._create(name, options);
+      } else {
+        col = db._create(name);
+      }
     } else {
-      col = db._createEdgeCollection(name);
+      if (options) {
+        col = db._createEdgeCollection(name, options);
+      } else {
+        col = db._createEdgeCollection(name);
+      }
     }
     res = true;
   } else if (!(col instanceof ArangoCollection)) {
@@ -103,7 +111,7 @@ var findOrCreateCollectionByName = function (name, type, noCreate) {
 // / @brief find or create a collection by name
 // //////////////////////////////////////////////////////////////////////////////
 
-var findOrCreateCollectionsByEdgeDefinitions = function (edgeDefinitions, noCreate) {
+var findOrCreateCollectionsByEdgeDefinitions = function (edgeDefinitions, noCreate, options) {
   let vertexCollections = {};
   let edgeCollections = {};
   edgeDefinitions.forEach(function (e) {
@@ -119,15 +127,15 @@ var findOrCreateCollectionsByEdgeDefinitions = function (edgeDefinitions, noCrea
     }
 
     e.from.forEach(function (v) {
-      findOrCreateCollectionByName(v, ArangoCollection.TYPE_DOCUMENT, noCreate);
+      findOrCreateCollectionByName(v, ArangoCollection.TYPE_DOCUMENT, noCreate, options);
       vertexCollections[v] = db[v];
     });
     e.to.forEach(function (v) {
-      findOrCreateCollectionByName(v, ArangoCollection.TYPE_DOCUMENT, noCreate);
+      findOrCreateCollectionByName(v, ArangoCollection.TYPE_DOCUMENT, noCreate, options);
       vertexCollections[v] = db[v];
     });
 
-    findOrCreateCollectionByName(e.collection, ArangoCollection.TYPE_EDGE, noCreate);
+    findOrCreateCollectionByName(e.collection, ArangoCollection.TYPE_EDGE, noCreate, options);
     edgeCollections[e.collection] = db[e.collection];
   });
   return [
@@ -685,7 +693,6 @@ class Graph {
   constructor (info) {
     // We assume well-formedness of the input.
     // User cannot directly call this constructor.
-
     let vertexCollections = {};
     let edgeCollections = {};
 
@@ -721,6 +728,11 @@ class Graph {
     createHiddenProperty(this, '__id', info._id);
     createHiddenProperty(this, '__rev', info._rev);
     createHiddenProperty(this, '__orphanCollections', info.orphanCollections || []);
+
+    if (info.numberOfShards) {
+      createHiddenProperty(this, '__numberOfShards', info.numberOfShards);
+    }
+    createHiddenProperty(this, '__replicationFactor', info.replicationFactor || 1);
 
     // Create Hidden Functions
     createHiddenProperty(this, '__updateBindCollections', updateBindCollections);
@@ -2004,10 +2016,10 @@ exports._create = function (graphName, edgeDefinitions, orphanCollections, optio
   }
 
   db._flushCache();
-  let collections = findOrCreateCollectionsByEdgeDefinitions(edgeDefinitions, false);
+  let collections = findOrCreateCollectionsByEdgeDefinitions(edgeDefinitions, false, options);
   orphanCollections.forEach(
-    (oC) => {
-      findOrCreateCollectionByName(oC, ArangoCollection.TYPE_DOCUMENT);
+    (oC, options) => {
+      findOrCreateCollectionByName(oC, ArangoCollection.TYPE_DOCUMENT, false, options);
     }
   );
 
@@ -2022,7 +2034,9 @@ exports._create = function (graphName, edgeDefinitions, orphanCollections, optio
   var data = gdb.save({
     'orphanCollections': orphanCollections,
     'edgeDefinitions': edgeDefinitions,
-    '_key': graphName
+    '_key': graphName,
+    'numberOfShards': options.numberOfShards || 1,
+    'replicationFactor': options.replicationFactor || 1
   }, options);
   data.orphanCollections = orphanCollections;
   data.edgeDefinitions = edgeDefinitions;
