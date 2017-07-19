@@ -1316,6 +1316,9 @@ std::shared_ptr<arangodb::LogicalView> TRI_vocbase_t::createViewWorker(
     // Let's try to persist it.
     view->persistPhysicalView();
 
+    // And lets open it.
+    view->getImplementation()->open();
+
     events::CreateView(name, TRI_ERROR_NO_ERROR);
     return view;
   } catch (...) {
