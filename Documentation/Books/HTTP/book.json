@@ -38,7 +38,7 @@
     "sitemap-general": {
       "prefix": "https://docs.arangodb.com/3.1/HTTP/",
       "changefreq": "weekly",
-      "priority": 0.8
+      "priority": 0.2
     },
     "ga": {
       "token": "UA-81053435-2"
