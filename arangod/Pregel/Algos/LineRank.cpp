@@ -76,7 +76,7 @@ struct LRComputation : public VertexComputation<float, float, float> {
     float* vertexValue = mutableVertexData();
     if (localSuperstep() == 0) {
       *vertexValue = ctx->startAtNodeProb;
-       sendMessageToAllNeighbours(*vertexValue);
+      sendMessageToAllNeighbours(*vertexValue);
     } else {
       float newScore = 0.0f;
       for (const float* msg : messages) {
