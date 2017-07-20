@@ -34,6 +34,13 @@
 NS_BEGIN(arangodb)
 NS_BEGIN(iresearch)
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief a cache of IResearch analyzer instances
+///        and a provider of AQL TOKENS(<data>, <analyzer>) function
+///        NOTE: deallocation of an IResearchAnalyzerFeature instance
+///              invalidates all AnalyzerPool instances previously provided by
+///              the deallocated feature instance
+////////////////////////////////////////////////////////////////////////////////
 class IResearchAnalyzerFeature final: public arangodb::application_features::ApplicationFeature {
  public:
   // thread-safe analyzer pool
@@ -74,6 +81,7 @@ class IResearchAnalyzerFeature final: public arangodb::application_features::App
     irs::string_ref const& properties
   ) noexcept;
   AnalyzerPool get(irs::string_ref const& name) const noexcept;
+  void prepare() override;
   size_t remove(irs::string_ref const& name) noexcept;
   void start() override;
   void stop() override;
