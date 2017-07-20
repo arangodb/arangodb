@@ -11,6 +11,7 @@ if (USE_IRESEARCH)
     IResearch/common.cpp
     IResearch/AttributeScorer-test.cpp
     IResearch/Containers-test.cpp
+    IResearch/IResearchAnalyzerFeature-test.cpp
     IResearch/IResearchLink-test.cpp
     IResearch/IResearchLinkMeta-test.cpp
     IResearch/IResearchOrder-test.cpp
