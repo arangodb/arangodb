@@ -1312,6 +1312,10 @@ std::shared_ptr<arangodb::LogicalView> TRI_vocbase_t::createViewWorker(
 
     // now let's actually create the backing implementation
     view->spawnImplementation(creator, parameters, true);
+    if (view->getImplementation() == nullptr) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "could not spawn view "
+        "implementation");
+    }
 
     // Let's try to persist it.
     view->persistPhysicalView();
