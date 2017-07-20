@@ -25,7 +25,11 @@
 #include "common.h"
 #include "StorageEngineMock.h"
 
+#include "analysis/token_attributes.hpp"
+
+#include "Aql/AqlFunctionFeature.h"
 #include "IResearch/IResearchAnalyzerFeature.h"
+#include "IResearch/VelocyPackHelper.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 
 NS_LOCAL
@@ -38,17 +42,30 @@ struct TestAttribute: public irs::attribute {
 DEFINE_ATTRIBUTE_TYPE(TestAttribute);
 DEFINE_FACTORY_DEFAULT(TestAttribute);
 
+struct TestTermAttribute: public irs::term_attribute {
+ public:
+  iresearch::bytes_ref value_;
+  DECLARE_FACTORY_DEFAULT();
+  virtual ~TestTermAttribute() {}
+  void clear() override { value_ = irs::bytes_ref::nil; }
+  virtual const irs::bytes_ref& value() const override { return value_; }
+};
+
+DEFINE_FACTORY_DEFAULT(TestTermAttribute);
+
 class TestAnalyzer: public irs::analysis::analyzer {
 public:
   DECLARE_ANALYZER_TYPE();
-  TestAnalyzer(): irs::analysis::analyzer(TestAnalyzer::type()) { _attrs.emplace<TestAttribute>(); }
+  TestAnalyzer(): irs::analysis::analyzer(TestAnalyzer::type()), _term(_attrs.emplace<TestTermAttribute>()) { _attrs.emplace<TestAttribute>(); }
   virtual irs::attribute_store const& attributes() const NOEXCEPT override { return _attrs; }
   static ptr make(irs::string_ref const& args) { if (args.null()) throw std::exception(); if (args.empty()) return nullptr; PTR_NAMED(TestAnalyzer, ptr); return ptr; }
-  virtual bool next() override { return false; }
-  virtual bool reset(irs::string_ref const& data) override { return true; }
+  virtual bool next() override { if (_data.empty()) return false; _term->value_ = irs::bytes_ref(_data.c_str(), 1); _data = irs::bytes_ref(_data.c_str() + 1, _data.size() - 1); return true; }
+  virtual bool reset(irs::string_ref const& data) override { _data = irs::ref_cast<irs::byte_type>(data); return true; }
 
 private:
   irs::attribute_store _attrs;
+  irs::bytes_ref _data;
+  irs::attribute_store::ref<TestTermAttribute>& _term;
 };
 
 DEFINE_ANALYZER_TYPE_NAMED(TestAnalyzer, "TestAnalyzer");
@@ -63,17 +80,50 @@ NS_END
 struct IResearchAnalyzerFeatureSetup {
   StorageEngineMock engine;
   arangodb::application_features::ApplicationServer server;
+  std::vector<std::pair<arangodb::application_features::ApplicationFeature*, bool>> features;
 
   IResearchAnalyzerFeatureSetup(): server(nullptr, nullptr) {
     arangodb::EngineSelectorFeature::ENGINE = &engine;
-    arangodb::application_features::ApplicationFeature* feature;
 
     arangodb::tests::init();
+
+    // setup required application features
+    features.push_back(std::make_pair(new arangodb::aql::AqlFunctionFeature(&server), true));
+
+    for (auto& f : features) {
+      arangodb::application_features::ApplicationServer::server->addFeature(f.first);
+    }
+
+    for (auto& f : features) {
+      f.first->prepare();
+    }
+
+    for (auto& f : features) {
+      if (f.second) {
+        f.first->start();
+      }
+    }
+
+    // suppress log messages since tests check error conditions
+    arangodb::LogTopic::setLogLevel(arangodb::Logger::FIXME.name(), arangodb::LogLevel::FATAL);
+    irs::logger::output_le(iresearch::logger::IRL_FATAL, stderr);
   }
 
   ~IResearchAnalyzerFeatureSetup() {
+    arangodb::LogTopic::setLogLevel(arangodb::Logger::FIXME.name(), arangodb::LogLevel::DEFAULT);
     arangodb::application_features::ApplicationServer::server = nullptr;
     arangodb::EngineSelectorFeature::ENGINE = nullptr;
+
+    // destroy application features 
+    for (auto& f : features) {
+      if (f.second) {
+        f.first->stop();
+      }
+    }
+
+    for (auto& f : features) {
+      f.first->unprepare();
+    }
   }
 };
 
@@ -96,7 +146,7 @@ SECTION("test_emplace") {
     CHECK((false == !feature.emplace("test_analyzer", "TestAnalyzer", "abc")));
     auto pool = feature.get("test_analyzer");
     CHECK((false == !pool));
-    CHECK((irs::flags({TestAttribute::type()}) == pool.features()));
+    CHECK((irs::flags({TestAttribute::type(), irs::term_attribute::type()}) == pool.features()));
   }
 
   // add duplicate valid (same name+type+properties)
@@ -105,7 +155,7 @@ SECTION("test_emplace") {
     CHECK((false == !feature.emplace("test_analyzer", "TestAnalyzer", "abc")));
     auto pool = feature.get("test_analyzer");
     CHECK((false == !pool));
-    CHECK((irs::flags({TestAttribute::type()}) == pool.features()));
+    CHECK((irs::flags({TestAttribute::type(), irs::term_attribute::type()}) == pool.features()));
     CHECK((false == !feature.emplace("test_analyzer", "TestAnalyzer", "abc")));
     CHECK((false == !feature.get("test_analyzer")));
   }
@@ -116,7 +166,7 @@ SECTION("test_emplace") {
     CHECK((false == !feature.emplace("test_analyzer", "TestAnalyzer", "abc")));
     auto pool = feature.get("test_analyzer");
     CHECK((false == !pool));
-    CHECK((irs::flags({TestAttribute::type()}) == pool.features()));
+    CHECK((irs::flags({TestAttribute::type(), irs::term_attribute::type()}) == pool.features()));
     CHECK((true == !feature.emplace("test_analyzer", "TestAnalyzer", "abcd")));
     CHECK((false == !feature.get("test_analyzer")));
   }
@@ -127,7 +177,7 @@ SECTION("test_emplace") {
     CHECK((false == !feature.emplace("test_analyzer", "TestAnalyzer", "abc")));
     auto pool = feature.get("test_analyzer");
     CHECK((false == !pool));
-    CHECK((irs::flags({TestAttribute::type()}) == pool.features()));
+    CHECK((irs::flags({TestAttribute::type(), irs::term_attribute::type()}) == pool.features()));
     CHECK((true == !feature.emplace("test_analyzer", "invalid", "abc")));
     CHECK((false == !feature.get("test_analyzer")));
   }
@@ -164,7 +214,7 @@ SECTION("test_emplace") {
       arangodb::iresearch::IResearchAnalyzerFeature feature(nullptr);
       auto pool = feature.get("test_analyzer");
       CHECK((false == !pool));
-      CHECK((irs::flags({TestAttribute::type()}) == pool.features()));
+      CHECK((irs::flags({TestAttribute::type(), irs::term_attribute::type()}) == pool.features()));
     }
   }
 */
@@ -179,7 +229,7 @@ SECTION("test_get") {
   {
     auto pool = feature.get("test_analyzer");
     CHECK((false == !pool));
-    CHECK((irs::flags({TestAttribute::type()}) == pool.features()));
+    CHECK((irs::flags({TestAttribute::type(), irs::term_attribute::type()}) == pool.features()));
     auto analyzer = pool.get();
     CHECK((false == !analyzer));
   }
@@ -228,6 +278,124 @@ SECTION("test_remove") {
     }
   }
 */
+}
+
+SECTION("test_tokens") {
+  // create a new instance of an ApplicationServer and fill it with the required features
+  // cannot use the existing server since its features already have some state
+  std::shared_ptr<arangodb::application_features::ApplicationServer> originalServer(
+    arangodb::application_features::ApplicationServer::server,
+    [](arangodb::application_features::ApplicationServer* ptr)->void {
+      arangodb::application_features::ApplicationServer::server = ptr;
+    }
+  );
+  arangodb::application_features::ApplicationServer server(nullptr, nullptr);
+  auto* analyzers = new arangodb::iresearch::IResearchAnalyzerFeature(&server);
+  auto* functions = new arangodb::aql::AqlFunctionFeature(&server);
+
+  arangodb::application_features::ApplicationServer::server->addFeature(analyzers);
+  arangodb::application_features::ApplicationServer::server->addFeature(functions);
+  analyzers->emplace("test_analyzer", "TestAnalyzer", "abc");
+
+  // test function registration
+  {
+    arangodb::iresearch::IResearchAnalyzerFeature feature(nullptr);
+
+    // AqlFunctionFeature::byName(..) throws exception instead of returning a nullptr
+    CHECK_THROWS((functions->byName("TOKENS")));
+
+    feature.start();
+    CHECK((nullptr != functions->byName("TOKENS")));
+  }
+
+  // test tokenization
+  {
+    auto* function = functions->byName("TOKENS");
+    CHECK((nullptr != functions->byName("TOKENS")));
+    auto& impl = function->implementation;
+    CHECK((false == !impl));
+
+    irs::string_ref analyzer("test_analyzer");
+    irs::string_ref data("abcdefghijklmnopqrstuvwxyz");
+    arangodb::SmallVector<arangodb::aql::AqlValue>::allocator_type::arena_type arena;
+    arangodb::aql::VPackFunctionParameters args{arena};
+    args.emplace_back(data.c_str(), data.size());
+    args.emplace_back(analyzer.c_str(), analyzer.size());
+    auto result = impl(nullptr, nullptr, args);
+    CHECK((result.isArray()));
+    CHECK((26 == result.length()));
+
+    for (int64_t i = 0; i < 26; ++i) {
+      bool mustDestroy;
+      auto entry = result.at(nullptr, i, mustDestroy, false);
+      CHECK((entry.isString()));
+      auto value = arangodb::iresearch::getStringRef(entry.slice());
+      CHECK((1 == value.size()));
+      CHECK(('a' + i == value.c_str()[0]));
+    }
+  }
+
+  // test invalid arg count
+  {
+    auto* function = functions->byName("TOKENS");
+    CHECK((nullptr != functions->byName("TOKENS")));
+    auto& impl = function->implementation;
+    CHECK((false == !impl));
+
+    arangodb::SmallVector<arangodb::aql::AqlValue>::allocator_type::arena_type arena;
+    arangodb::aql::VPackFunctionParameters args{arena};
+    auto result = impl(nullptr, nullptr, args);
+    CHECK((result.isNone()));
+  }
+
+  // test invalid data type
+  {
+    auto* function = functions->byName("TOKENS");
+    CHECK((nullptr != functions->byName("TOKENS")));
+    auto& impl = function->implementation;
+    CHECK((false == !impl));
+
+    irs::string_ref data("abcdefghijklmnopqrstuvwxyz");
+    arangodb::SmallVector<arangodb::aql::AqlValue>::allocator_type::arena_type arena;
+    arangodb::aql::VPackFunctionParameters args{arena};
+    args.emplace_back(data.c_str(), data.size());
+    args.emplace_back(123.4);
+    auto result = impl(nullptr, nullptr, args);
+    CHECK((result.isNone()));
+  }
+
+  // test invalid analyzer type
+  {
+    auto* function = functions->byName("TOKENS");
+    CHECK((nullptr != functions->byName("TOKENS")));
+    auto& impl = function->implementation;
+    CHECK((false == !impl));
+
+    irs::string_ref analyzer("test_analyzer");
+    arangodb::SmallVector<arangodb::aql::AqlValue>::allocator_type::arena_type arena;
+    arangodb::aql::VPackFunctionParameters args{arena};
+    args.emplace_back(123.4);
+    args.emplace_back(analyzer.c_str(), analyzer.size());
+    auto result = impl(nullptr, nullptr, args);
+    CHECK((result.isNone()));
+  }
+
+  // test invalid analyzer
+  {
+    auto* function = functions->byName("TOKENS");
+    CHECK((nullptr != functions->byName("TOKENS")));
+    auto& impl = function->implementation;
+    CHECK((false == !impl));
+
+    irs::string_ref analyzer("invalid");
+    irs::string_ref data("abcdefghijklmnopqrstuvwxyz");
+    arangodb::SmallVector<arangodb::aql::AqlValue>::allocator_type::arena_type arena;
+    arangodb::aql::VPackFunctionParameters args{arena};
+    args.emplace_back(data.c_str(), data.size());
+    args.emplace_back(analyzer.c_str(), analyzer.size());
+    auto result = impl(nullptr, nullptr, args);
+    CHECK((result.isNone()));
+  }
 }
 
 SECTION("test_visit") {

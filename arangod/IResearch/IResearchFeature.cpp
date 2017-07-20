@@ -27,13 +27,8 @@
 
 #include "RestServer/ViewTypesFeature.h"
 
-#include "Logger/Logger.h"
-
-#include "formats/formats.hpp"
-#include "analysis/analyzers.hpp"
-
-using namespace arangodb::iresearch;
-using namespace arangodb::options;
+NS_BEGIN(arangodb)
+NS_BEGIN(iresearch)
 
 IResearchFeature::IResearchFeature(arangodb::application_features::ApplicationServer* server)
   : ApplicationFeature(server, "IResearch"),
@@ -43,6 +38,7 @@ IResearchFeature::IResearchFeature(arangodb::application_features::ApplicationSe
   startsAfter("ViewTypes");
   startsAfter("Logger");
   startsAfter("Database");
+  startsAfter("IResearchAnalyzer"); // used for retrieving IResearch analyzers for functions
   // TODO FIXME: we need the MMFilesLogfileManager to be available here if we
   // use the MMFiles engine. But it does not feel right to have such storage engine-
   // specific dependency here. Better create a "StorageEngineFeature" and make 
@@ -56,7 +52,9 @@ void IResearchFeature::beginShutdown() {
   ApplicationFeature::beginShutdown();
 }
 
-void IResearchFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
+void IResearchFeature::collectOptions(
+    std::shared_ptr<arangodb::options::ProgramOptions> options
+) {
   _running = false;
   ApplicationFeature::collectOptions(options);
 }
@@ -67,9 +65,6 @@ void IResearchFeature::prepare() {
 
   // load all known codecs
   ::iresearch::formats::init();
-
-  // load all known analyzers
-  ::iresearch::analysis::analyzers::init();
 
   // register 'iresearch' view
   ViewTypesFeature::registerViewImplementation(
@@ -98,11 +93,14 @@ void IResearchFeature::unprepare() {
 }
 
 void IResearchFeature::validateOptions(
-    std::shared_ptr<ProgramOptions> options
+    std::shared_ptr<arangodb::options::ProgramOptions> options
 ) {
   _running = false;
   ApplicationFeature::validateOptions(options);
 }
+
+NS_END // iresearch
+NS_END // arangodb
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE

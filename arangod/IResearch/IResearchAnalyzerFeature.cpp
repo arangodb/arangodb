@@ -21,6 +21,11 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
+#include "analysis/token_attributes.hpp"
+
+#include "VelocyPackHelper.h"
+
+#include "Aql/AqlFunctionFeature.h"
 #include "Logger/Logger.h"
 #include "Logger/LogMacros.h"
 
@@ -29,6 +34,114 @@
 NS_LOCAL
 
 static const size_t DEFAULT_POOL_SIZE = 8; // arbitrary value
+
+void addFunctions(arangodb::aql::AqlFunctionFeature& functions) {
+  static auto tokens_impl = [](
+      arangodb::aql::Query* query,
+      arangodb::transaction::Methods* trx,
+      arangodb::aql::VPackFunctionParameters const& args
+  )->arangodb::aql::AqlValue {
+    if (2 != args.size() || !args[0].isString() || !args[1].isString()) {
+      LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "invalid arguments passed while computing result for function 'TOKENS'";
+      TRI_set_errno(TRI_ERROR_BAD_PARAMETER);
+
+      return arangodb::aql::AqlValue();
+    }
+
+    auto data = arangodb::iresearch::getStringRef(args[0].slice());
+    auto name = arangodb::iresearch::getStringRef(args[1].slice());
+
+    #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+      auto* analyzers = dynamic_cast<arangodb::iresearch::IResearchAnalyzerFeature*>(
+        arangodb::application_features::ApplicationServer::lookupFeature("IResearchAnalyzer")
+      );
+    #else
+      auto* analyzers = static_cast<arangodb::iresearch::IResearchAnalyzerFeature*>(
+        arangodb::application_features::ApplicationServer::lookupFeature("IResearchAnalyzer")
+      );
+    #endif
+
+    if (!analyzers) {
+      LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "failure to find feature 'IResearch' while computing result for function 'TOKENS'";
+      TRI_set_errno(TRI_ERROR_INTERNAL);
+
+      return arangodb::aql::AqlValue();
+    }
+
+    auto pool = analyzers->get(name);
+
+    if (!pool) {
+      LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "failure to find IResearch analyzer pool name '" << name << "' while computing result for function 'TOKENS'";
+      TRI_set_errno(TRI_ERROR_BAD_PARAMETER);
+
+      return arangodb::aql::AqlValue();
+    }
+
+    auto analyzer = pool.get();
+
+    if (!analyzer) {
+      LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "failure to find IResearch analyzer name '" << name << "' while computing result for function 'TOKENS'";
+      TRI_set_errno(TRI_ERROR_BAD_PARAMETER);
+
+      return arangodb::aql::AqlValue();
+    }
+
+    if (!analyzer->reset(data)) {
+      LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "failure to reset IResearch analyzer name '" << name << "' while computing result for function 'TOKENS'";
+      TRI_set_errno(TRI_ERROR_INTERNAL);
+
+      return arangodb::aql::AqlValue();
+    }
+
+    auto& values = analyzer->attributes().get<irs::term_attribute>();
+
+    if (!values) {
+      LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "failure to retrieve values from IResearch analyzer name '" << name << "' while computing result for function 'TOKENS'";
+      TRI_set_errno(TRI_ERROR_INTERNAL);
+
+      return arangodb::aql::AqlValue();
+    }
+
+    auto buffer = irs::memory::make_unique<arangodb::velocypack::Buffer<uint8_t>>();
+
+    if (!buffer) {
+      LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "failure to allocate result buffer while computing result for function 'TOKENS'";
+
+      return arangodb::aql::AqlValue();
+    }
+
+    arangodb::velocypack::Builder builder(*buffer);
+
+    builder.openArray();
+
+    while (analyzer->next()) {
+      auto value = values->value();
+
+      builder.add(arangodb::velocypack::ValuePair(
+        value.c_str(),
+        value.size(),
+        arangodb::velocypack::ValueType::String
+      ));
+    }
+
+    builder.close();
+
+    return arangodb::aql::AqlValue(buffer.release());
+  };
+  arangodb::aql::Function tokens(
+    "TOKENS", // external name (AQL function external names are always in upper case)
+    "tokens", // internal name
+    "data analyzer", // argument variable names
+    false, // cacheable
+    false, // deterministic
+    true, // can throw
+    true, // can be run on server
+    true, // can pass arguments by reference
+    tokens_impl
+  );
+
+  functions.add(tokens);
+}
 
 NS_END
 
@@ -82,6 +195,9 @@ irs::analysis::analyzer::ptr IResearchAnalyzerFeature::AnalyzerPool::get() const
 IResearchAnalyzerFeature::IResearchAnalyzerFeature(
     arangodb::application_features::ApplicationServer* server
 ): ApplicationFeature(server, "IResearchAnalyzer"), _started(false) {
+  setOptional(true);
+  requiresElevatedPrivileges(false);
+  startsAfter("AQLFunctions"); // used for registering IResearch analyzer functions
 }
 
 IResearchAnalyzerFeature::AnalyzerPool IResearchAnalyzerFeature::emplace(
@@ -204,11 +320,28 @@ std::shared_ptr<IResearchAnalyzerFeature::AnalyzerPool::Cache> IResearchAnalyzer
   return pool;
 }
 
+void IResearchAnalyzerFeature::prepare() {
+  ApplicationFeature::prepare();
+
+  // load all known analyzers
+  ::iresearch::analysis::analyzers::init();
+}
+
 void IResearchAnalyzerFeature::start() {
   ApplicationFeature::start();
-  _started = true;
 
   // FIXME TODO load persisted mappings
+
+  auto* functions =
+    arangodb::application_features::ApplicationServer::getFeature<arangodb::aql::AqlFunctionFeature>("AQLFunctions");
+
+  if (functions) {
+    addFunctions(*functions);
+  } else {
+    LOG_TOPIC(WARN, Logger::FIXME) << "failure to find feature 'AQLFunctions' while registering IResearch functions";
+  }
+
+  _started = true;
 }
 
 void IResearchAnalyzerFeature::stop() {
