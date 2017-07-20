@@ -162,6 +162,12 @@ if [ "$LINT" == "1" ]; then
     ./utils/jslint.sh
 fi
 
+# we utilize https://developer.github.com/v3/repos/ to get the newest release of the arangodb starter:
+curl -s https://api.github.com/repos/arangodb-helper/arangodb/releases | \
+                         grep tag_name | \
+                         head -n 1 | \
+                         ${SED} -e "s;.*: ;;" -e 's;";;g' -e 's;,;;' > STARTER_REV
+
 git add -f \
     README \
     arangod/Aql/tokens.cpp \
@@ -171,7 +177,8 @@ git add -f \
     lib/Basics/voc-errors.h \
     lib/Basics/voc-errors.cpp \
     js/common/bootstrap/errors.js \
-    CMakeLists.txt
+    CMakeLists.txt \
+    STARTER_REV
 
 if [ "$EXAMPLES" == "1" ];  then
     echo "EXAMPLES"
