@@ -194,7 +194,7 @@ void GraphStore<V, E>::loadShards(WorkerConfig* config,
         
         _loadedShards.insert(vertexShard);
         _runningThreads++;
-        scheduler->post([this, i, &vertexShard, edgeLookups, vertexOffset] {
+        scheduler->post([this, i, vertexShard, edgeLookups, vertexOffset] {
           _loadVertices(i, vertexShard, edgeLookups, vertexOffset);
           _runningThreads--;
         });
@@ -375,10 +375,13 @@ void GraphStore<V, E>::_loadVertices(size_t i,
   _graphFormat->willLoadVertices(number);
 
   auto cb = [&](DocumentIdentifierToken const& token, VPackSlice slice) {
+    if (_destroyed) {
+      LOG_TOPIC(WARN, Logger::PREGEL) << "Aborted loading graph";
+      return;
+    }
     if (slice.isExternal()) {
       slice = slice.resolveExternal();
     }
-
     VertexEntry& ventry = _index[vertexOffset];
     ventry._shard = sourceShard;
     ventry._key = transaction::helpers::extractKeyFromDocument(slice).copyString();
@@ -398,7 +401,12 @@ void GraphStore<V, E>::_loadVertices(size_t i,
     vertexOffset++;
     _edgeShardsOffset[i] += ventry._edgeCount;
   };
-  cursor->allDocuments(cb);
+  while (cursor->nextDocument(cb, 1000)) {
+    if (_destroyed) {
+      LOG_TOPIC(WARN, Logger::PREGEL) << "Aborted loading graph";
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
+    }
+  }
   
   // Add all new vertices
   _localVerticeCount += (vertexOffset - originalVertexOffset);
@@ -474,7 +482,12 @@ void GraphStore<V, E>::_loadEdges(transaction::Methods* trx,
           << "Could not resolve target shard of edge";
     }
   };
-  cursor->allDocuments(cb);
+  while (cursor->nextDocument(cb, 1000)) {
+    if (_destroyed) {
+      LOG_TOPIC(WARN, Logger::PREGEL) << "Aborted loading graph";
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
+    }
+  }
 
   // Add up all added elements
   vertexEntry._edgeCount += added;
