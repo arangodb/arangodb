@@ -38,6 +38,7 @@
 #include "Logger/Logger.h"
 #include "Random/UniformCharacter.h"
 #include "RestServer/DatabaseFeature.h"
+#include "RestServer/InitDatabaseFeature.h"
 #include "Ssl/SslInterface.h"
 #include "Transaction/StandaloneContext.h"
 #include "Utils/OperationOptions.h"
@@ -238,7 +239,6 @@ void AuthInfo::loadFromDB() {
 
   if (role != ServerState::ROLE_SINGLE &&
       role != ServerState::ROLE_COORDINATOR) {
-    TRI_ASSERT(false);
     _outdated = false;
     return;
   }
@@ -277,8 +277,12 @@ void AuthInfo::insertInitial() {
     // Attention:
     // the root user needs to have a specific rights grant
     // to the "_system" database, otherwise things break
+    auto initDatabaseFeature =
+        application_features::ApplicationServer::getFeature<InitDatabaseFeature>(
+            "InitDatabase");
+
     AuthUserEntry entry =
-        AuthUserEntry::newUser("root", "", AuthSource::COLLECTION);
+        AuthUserEntry::newUser("root", initDatabaseFeature->defaultPassword(), AuthSource::COLLECTION);
     entry.setActive(true);
     entry.grantDatabase(StaticStrings::SystemDatabase, AuthLevel::RW);
     entry.grantDatabase("*", AuthLevel::RW);
@@ -635,7 +639,11 @@ Result AuthInfo::setConfigData(std::string const& user,
   partial.add("configData", data);
   partial.close();
 
-  return UpdateUser(partial.slice());
+  Result res = UpdateUser(partial.slice());
+  if (res.ok()) {
+    reloadAllUsers();
+  }
+  return res;
 }
 
 VPackBuilder AuthInfo::getUserData(std::string const& username) {
@@ -661,7 +669,11 @@ Result AuthInfo::setUserData(std::string const& user,
   partial.add("userData", data);
   partial.close();
 
-  return UpdateUser(partial.slice());
+  Result res = UpdateUser(partial.slice());
+  if (res.ok()) {
+    reloadAllUsers();
+  }
+  return res;
 }
 
 AuthResult AuthInfo::checkPassword(std::string const& username,

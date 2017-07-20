@@ -235,12 +235,32 @@ router.post('/', function (req, res) {
         {waitForSync, numberOfShards, smartGraphAttribute}
       );
     } else {
-      g = Graph._create(
-        req.body.name,
-        req.body.edgeDefinitions,
-        req.body.orphanCollections,
-        {waitForSync}
-      );
+      if (req.body.options && req.body.options.numberOfShards && cluster.isCluster()) {
+        const numberOfShards = req.body.options.numberOfShards || 1;
+        const replicationFactor = req.body.options.replicationFactor || 1;
+        g = Graph._create(
+          req.body.name,
+          req.body.edgeDefinitions,
+          req.body.orphanCollections,
+          {waitForSync, numberOfShards, replicationFactor}
+        );
+      } else if (req.body.options && req.body.options.replicationFactor && cluster.isCluster()) {
+        const numberOfShards = req.body.options.numberOfShards || 1;
+        const replicationFactor = req.body.options.replicationFactor || 1;
+        g = Graph._create(
+          req.body.name,
+          req.body.edgeDefinitions,
+          req.body.orphanCollections,
+          {waitForSync, numberOfShards, replicationFactor}
+        );
+      } else {
+        g = Graph._create(
+          req.body.name,
+          req.body.edgeDefinitions,
+          req.body.orphanCollections,
+          {waitForSync}
+        );
+      }
     }
   } catch (e) {
     if (e.isArangoError) {
@@ -277,7 +297,8 @@ router.post('/', function (req, res) {
     isSmart: joi.boolean().optional(),
     options: joi.object({
       smartGraphAttribute: joi.string().optional(),
-      numberOfShards: joi.number().integer().greater(0).required()
+      replicationFactor: joi.number().integer().greater(0).optional(),
+      numberOfShards: joi.number().integer().greater(0).optional()
     }).optional()
   }).required(), 'The required information for a graph')
   .error('bad request', 'Graph creation error.')
