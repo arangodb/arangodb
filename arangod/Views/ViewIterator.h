@@ -66,8 +66,6 @@ class ViewIterator {
   // if no more results are available, the method must return `false`.
   virtual bool next(TokenCallback const& callback, size_t limit) = 0;
 
-  virtual bool hasMore() const = 0;
-
   // reset the iterator to its beginning
   virtual void reset() = 0;
 

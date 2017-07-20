@@ -229,7 +229,6 @@ class ViewIteratorBase: public arangodb::ViewIterator {
     CompoundReader&& reader
   );
   virtual bool hasExtra() const override;
-  virtual bool hasMore() const override; // FIXME remove
   virtual bool nextExtra(ExtraCallback const& callback, size_t limit) override;
   virtual bool readDocument(
     arangodb::DocumentIdentifierToken const& token,
@@ -275,12 +274,6 @@ ViewIteratorBase::ViewIteratorBase(
 }
 
 bool ViewIteratorBase::hasExtra() const {
-  // shut up compiler warning...
-  // FIXME TODO: implementation
-  return false;
-}
-
-bool ViewIteratorBase::hasMore() const { // FIXME remove
   // shut up compiler warning...
   // FIXME TODO: implementation
   return false;
@@ -380,9 +373,6 @@ class OrderedViewIterator: public ViewIteratorBase {
   virtual bool next(TokenCallback const& callback, size_t limit) override;
   virtual void reset() override;
   virtual void skip(uint64_t count, uint64_t& skipped) override;
-  virtual bool hasMore() const override { // FIXME remove
-    return _hasMore;
-  }
 
  private:
   struct State {
@@ -392,7 +382,6 @@ class OrderedViewIterator: public ViewIteratorBase {
   irs::filter::prepared::ptr _filter;
   irs::order::prepared _order;
   State _state; // previous iteration state
-  bool _hasMore{ true };
 
   void next(TokenCallback const& callback, size_t limit, bool sort);
 };
@@ -479,8 +468,7 @@ bool OrderedViewIterator::next(TokenCallback const& callback, size_t limit) {
     --limit;
   }
 
-  _hasMore = (limit == 0);
-  return _hasMore; // exceeded limit
+  return (limit == 0); // exceeded limit
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -536,10 +524,6 @@ class UnorderedViewIterator: public ViewIteratorBase {
   virtual void reset() override;
   virtual void skip(uint64_t count, uint64_t& skipped) override;
 
-  virtual bool hasMore() const override { // FIXME remove
-    return _hasMore;
-  }
-
  private:
   struct State {
     irs::doc_iterator::ptr _itr;
@@ -548,7 +532,6 @@ class UnorderedViewIterator: public ViewIteratorBase {
 
   irs::filter::prepared::ptr _filter;
   State _state; // previous iteration state
-  mutable bool _hasMore{true};
 };
 
 UnorderedViewIterator::UnorderedViewIterator(
@@ -599,8 +582,7 @@ bool UnorderedViewIterator::next(TokenCallback const& callback, size_t limit) {
     }
   }
 
-  _hasMore = (limit == 0); // exceeded limit
-  return _hasMore;
+  return (limit == 0);
 }
 
 ////////////////////////////////////////////////////////////////////////////////

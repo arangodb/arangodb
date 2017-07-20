@@ -84,6 +84,7 @@ AqlItemBlock* EnumerateViewBlock::getSome(size_t, size_t atMost) {
   }
 
   bool needMore;
+  bool hasMore = true;
   AqlItemBlock* cur = nullptr;
   size_t send = 0;
   std::unique_ptr<AqlItemBlock> res;
@@ -104,8 +105,9 @@ AqlItemBlock* EnumerateViewBlock::getSome(size_t, size_t atMost) {
       // If we get here, we do have _buffer.front()
       cur = _buffer.front();
 
-      if (!_iter->hasMore()) {
+      if (!hasMore) {
         needMore = true;
+        hasMore = true;
         // we have exhausted this cursor
         // re-initialize fetching of documents
         _iter->reset();
@@ -118,7 +120,6 @@ AqlItemBlock* EnumerateViewBlock::getSome(size_t, size_t atMost) {
     } while (needMore);
 
     TRI_ASSERT(cur != nullptr);
-    TRI_ASSERT(_iter->hasMore());
 
     size_t curRegs = cur->getNrRegs();
 
@@ -164,10 +165,7 @@ AqlItemBlock* EnumerateViewBlock::getSome(size_t, size_t atMost) {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
     }
 
-    bool tmp = _iter->next(cb, atMost);
-    if (!tmp) {
-      TRI_ASSERT(!_iter->hasMore());
-    }
+    hasMore = _iter->next(cb, atMost);
 
     // If the collection is actually empty we cannot forward an empty block
   } while (send == 0);
@@ -214,14 +212,11 @@ size_t EnumerateViewBlock::skipSome(size_t atLeast, size_t atMost) {
     AqlItemBlock* cur = _buffer.front();
     uint64_t skippedHere = 0;
 
-    if (_iter->hasMore()) {
-      _iter->skip(atMost - skipped, skippedHere);
-    }
+    _iter->skip(atMost - skipped, skippedHere);
 
     skipped += skippedHere;
 
     if (skipped < atLeast) {
-      TRI_ASSERT(!_iter->hasMore());
       // not skipped enough re-initialize fetching of documents
       _iter->reset();
       if (++_pos >= cur->size()) {
