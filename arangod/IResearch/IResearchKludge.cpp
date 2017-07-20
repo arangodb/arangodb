@@ -21,17 +21,9 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "IResearchView.h"
-
 #include "IResearchKludge.h"
-#include "IResearchLink.h"
-#include "Indexes/Index.h"
-#include "Logger/Logger.h"
-#include "Logger/LogMacros.h"
-#include "MMFiles/MMFilesDocumentPosition.h"
-#include "RestServer/DatabaseFeature.h"
-#include "VocBase/LogicalCollection.h"
-#include "VocBase/LogicalView.h"
+
+#include "Basics/Common.h"
 
 NS_BEGIN(arangodb)
 NS_BEGIN(iresearch)
@@ -50,6 +42,20 @@ void mangleBool(std::string& name) {
 void mangleNumeric(std::string& name) {
   static irs::string_ref const SUFFIX("\0_d", 3);
   name.append(SUFFIX.c_str(), SUFFIX.size());
+}
+
+void mangleStringField(std::string& name, TokenizerPoolPtr pool) {
+  name += '\0';
+  name += pool->name();
+  name += pool->args();
+}
+
+void unmangleStringField(std::string& name, TokenizerPoolPtr pool) {
+  // +1 for preceding '\0'
+  auto const suffixSize = 1 + pool->name().size() + pool->args().size();
+
+  TRI_ASSERT(name.size() >= suffixSize);
+  name.resize(name.size() - suffixSize);
 }
 
 NS_END // kludge

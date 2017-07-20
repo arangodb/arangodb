@@ -31,13 +31,20 @@
 ///        NOTE2: all functionality in this file is to be considered deprecated
 ////////////////////////////////////////////////////////////////////////////////
 
+#include "IResearchLinkMeta.h"
+
 namespace arangodb {
 namespace iresearch {
 namespace kludge {
 
+typedef iresearch::IResearchLinkMeta::TokenizerPool const* TokenizerPoolPtr;
+
 void mangleNull(std::string& name);
 void mangleBool(std::string& name);
 void mangleNumeric(std::string& name);
+
+void mangleStringField(std::string& name, TokenizerPoolPtr pool);
+void unmangleStringField(std::string& name, TokenizerPoolPtr pool);
 
 } // kludge
 } // iresearch

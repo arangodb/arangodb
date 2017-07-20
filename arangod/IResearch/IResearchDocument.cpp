@@ -231,8 +231,6 @@ inline Filter getFilter(
    ];
 }
 
-typedef arangodb::iresearch::IResearchLinkMeta::TokenizerPool const* TokenizerPoolPtr;
-
 void setNullValue(
     VPackSlice const& value,
     std::string& name,
@@ -293,37 +291,17 @@ void setNumericValue(
   field._features = &NumericStreamFeatures;
 }
 
-void mangleStringField(
-    std::string& name,
-    TokenizerPoolPtr pool
-) {
-  name += '\0';
-  name += pool->name();
-  name += pool->args();
-}
-
-void unmangleStringField(
-    std::string& name,
-    TokenizerPoolPtr pool
-) {
-  // +1 for preceding '\0'
-  auto const suffixSize = 1 + pool->name().size() + pool->args().size();
-
-  TRI_ASSERT(name.size() >= suffixSize);
-  name.resize(name.size() - suffixSize);
-}
-
 bool setStringValue(
     VPackSlice const& value,
     std::string& name,
     arangodb::iresearch::Field& field,
-    TokenizerPoolPtr pool
+    arangodb::iresearch::IResearchLinkMeta::TokenizerPool const* pool
 ) {
   TRI_ASSERT(value.isString());
 
   // it's important to unconditionally mangle name
   // since we unconditionally unmangle it in 'next'
-  mangleStringField(name, pool);
+  arangodb::iresearch::kludge::mangleStringField(name, pool);
 
   // init stream
   auto analyzer = pool->tokenizer();
@@ -568,7 +546,7 @@ void FieldIterator::next() {
     auto& name = nameBuffer();
 
     // remove previous suffix
-    unmangleStringField(name, prev);
+    arangodb::iresearch::kludge::unmangleStringField(name, prev);
 
     // can have multiple tokenizers for string values only
     if (setStringValue(topValue().value, name, _value, _begin)) {
