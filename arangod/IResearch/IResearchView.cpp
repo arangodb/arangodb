@@ -1408,11 +1408,6 @@ int IResearchView::finish(TRI_voc_tid_t tid, bool commit) {
     trxStore._writer->commit(); // ensure have latest view in reader
     memoryStore._writer->import(trxStore._reader.reopen());
 
-    // FIXME remove it from here, once
-    // view will be initialized properly in runtime
-    // (currently _thread_pool doesn't start)
-    memoryStore._writer->commit();
-
     return TRI_ERROR_NO_ERROR;
   } catch (std::exception& e) {
     LOG_TOPIC(ERR, Logger::FIXME) << "caught exception while committing transaction for iResearch view '" << id() << "', tid '" << tid << "': " << e.what();
