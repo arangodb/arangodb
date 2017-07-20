@@ -638,7 +638,15 @@ bool appendAbsolutePersistedDataPath(
     return true;
   }
 
-  auto* feature = arangodb::application_features::ApplicationServer::getFeature<arangodb::DatabasePathFeature>("DatabasePath");
+  #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+    auto* feature = dynamic_cast<arangodb::DatabasePathFeature*>(
+      arangodb::application_features::ApplicationServer::lookupFeature("DatabasePath")
+    );
+  #else
+    auto* feature = static_cast<arangodb::DatabasePathFeature*>(
+      arangodb::application_features::ApplicationServer::lookupFeature("DatabasePath")
+    );
+  #endif
 
   if (!feature) {
     return false;
