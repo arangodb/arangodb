@@ -136,11 +136,11 @@ void DatabaseManagerThread::run() {
           // not possible that another thread has seen this very database
           // and tries to free it at the same time!
         }
-  
+
         if (database->type() != TRI_VOCBASE_TYPE_COORDINATOR) {
           // regular database
           // ---------------------------
-  
+
           TRI_ASSERT(!database->isSystem());
 
           // remove apps directory for database
@@ -158,7 +158,7 @@ void DatabaseManagerThread::run() {
               TRI_RemoveDirectory(path.c_str());
             }
           }
-          
+
           engine->dropDatabase(database);
         }
 
@@ -237,8 +237,8 @@ DatabaseFeature::DatabaseFeature(ApplicationServer* server)
   startsAfter("DatabasePath");
   startsAfter("EngineSelector");
   startsAfter("InitDatabase");
-  startsAfter("MMFilesPersistentIndex"); // TODO: remove from here!
   startsAfter("RocksDBEngine");
+  startsAfter("MMFilesEngine");
   startsAfter("Scheduler");
   startsAfter("StorageEngine");
 }
@@ -293,16 +293,16 @@ void DatabaseFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
           &_check30Revisions,
           std::unordered_set<std::string>{"true", "false", "fail"}));
 
-  // the following option was removed in 3.2 
+  // the following option was removed in 3.2
   // index-creation is now automatically parallelized via the Boost ASIO thread pool
   options->addObsoleteOption(
       "--database.index-threads",
       "threads to start for parallel background index creation", true);
-  
+
   // the following options were removed in 3.2
-  options->addObsoleteOption("--database.revision-cache-chunk-size", 
+  options->addObsoleteOption("--database.revision-cache-chunk-size",
       "chunk size (in bytes) for the document revisions cache", true);
-  options->addObsoleteOption("--database.revision-cache-target-size", 
+  options->addObsoleteOption("--database.revision-cache-target-size",
       "total target size (in bytes) for the document revisions cache", true);
 }
 
@@ -394,15 +394,15 @@ void DatabaseFeature::beginShutdown() {
 void DatabaseFeature::stop() {
   auto unuser(_databasesProtector.use());
   auto theLists = _databasesLists.load();
-  
+
   for (auto& p : theLists->_databases) {
     TRI_vocbase_t* vocbase = p.second;
     // iterate over all databases
     TRI_ASSERT(vocbase != nullptr);
     TRI_ASSERT(vocbase->type() == TRI_VOCBASE_TYPE_NORMAL);
 
-    vocbase->processCollections([](LogicalCollection* collection) { 
-      collection->close(); 
+    vocbase->processCollections([](LogicalCollection* collection) {
+      collection->close();
     }, true);
   }
 }
@@ -746,8 +746,8 @@ int DatabaseFeature::dropDatabase(std::string const& name, bool waitForDeletion,
     _databasesLists = newLists;
     _databasesProtector.scan();
     delete oldLists;
-       
-    TRI_ASSERT(!vocbase->isSystem()); 
+
+    TRI_ASSERT(!vocbase->isSystem());
     bool result = vocbase->markAsDropped();
     TRI_ASSERT(result);
 
@@ -1006,7 +1006,7 @@ TRI_vocbase_t* DatabaseFeature::lookupDatabase(std::string const& name) {
 void DatabaseFeature::enumerateDatabases(std::function<void(TRI_vocbase_t*)> func) {
   auto unuser(_databasesProtector.use());
   auto theLists = _databasesLists.load();
-  
+
   for (auto& p : theLists->_databases) {
     TRI_vocbase_t* vocbase = p.second;
     // iterate over all databases
@@ -1036,8 +1036,8 @@ void DatabaseFeature::updateContexts() {
         TRI_InitV8Queries(isolate, context);
         TRI_InitV8Cluster(isolate, context);
         TRI_InitV8Agency(isolate, context);
-      
-        StorageEngine* engine = EngineSelectorFeature::ENGINE; 
+
+        StorageEngine* engine = EngineSelectorFeature::ENGINE;
         TRI_ASSERT(engine != nullptr); // Engine not loaded. Startup broken
         engine->addV8Functions();
       },
@@ -1331,4 +1331,3 @@ void DatabaseFeature::enableDeadlockDetection() {
     vocbase->_deadlockDetector.enabled(true);
   }
 }
-
