@@ -23,6 +23,7 @@
 
 #include "analysis/token_attributes.hpp"
 
+#include "ApplicationServerHelper.h"
 #include "VelocyPackHelper.h"
 
 #include "Aql/AqlFunctionFeature.h"
@@ -50,16 +51,7 @@ void addFunctions(arangodb::aql::AqlFunctionFeature& functions) {
 
     auto data = arangodb::iresearch::getStringRef(args[0].slice());
     auto name = arangodb::iresearch::getStringRef(args[1].slice());
-
-    #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-      auto* analyzers = dynamic_cast<arangodb::iresearch::IResearchAnalyzerFeature*>(
-        arangodb::application_features::ApplicationServer::lookupFeature("IResearchAnalyzer")
-      );
-    #else
-      auto* analyzers = static_cast<arangodb::iresearch::IResearchAnalyzerFeature*>(
-        arangodb::application_features::ApplicationServer::lookupFeature("IResearchAnalyzer")
-      );
-    #endif
+    auto analyzers = arangodb::iresearch::getFeature<arangodb::iresearch::IResearchAnalyzerFeature>("IResearchAnalyzer");
 
     if (!analyzers) {
       LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "failure to find feature 'IResearch' while computing result for function 'TOKENS'";

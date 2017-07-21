@@ -31,6 +31,7 @@
 #include "utils/misc.hpp"
 #include "utils/utf8_path.hpp"
 
+#include "ApplicationServerHelper.h"
 #include "IResearchDocument.h"
 #include "IResearchOrderFactory.h"
 #include "IResearchFilterFactory.h"
@@ -620,15 +621,7 @@ bool appendAbsolutePersistedDataPath(
     return true;
   }
 
-  #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-    auto* feature = dynamic_cast<arangodb::DatabasePathFeature*>(
-      arangodb::application_features::ApplicationServer::lookupFeature("DatabasePath")
-    );
-  #else
-    auto* feature = static_cast<arangodb::DatabasePathFeature*>(
-      arangodb::application_features::ApplicationServer::lookupFeature("DatabasePath")
-    );
-  #endif
+  auto* feature = arangodb::iresearch::getFeature<arangodb::DatabasePathFeature>("DatabasePath");
 
   if (!feature) {
     return false;
@@ -837,18 +830,12 @@ arangodb::Result updateLinks(
     }
 
     static std::vector<std::string> const EMPTY;
-
-    // use default lock timeout
-    arangodb::transaction::Options options;
-    options.allowImplicitCollections = false;
-    options.waitForSync = false;
-
     arangodb::transaction::UserTransaction trx(
       arangodb::transaction::StandaloneContext::Create(&vocbase),
       EMPTY, // readCollections
       EMPTY, // writeCollections
       collectionsToLock, // exclusiveCollections
-      options
+      arangodb::transaction::Options() // use default lock timeout
     );
     auto res = trx.begin();
 
@@ -1187,15 +1174,26 @@ IResearchView::~IResearchView() {
 
   _flushCallback.reset(); // unregister flush callback from flush thread
 
-  WriteMutex mutex(_mutex); // '_meta' can be asynchronously read
-  SCOPED_LOCK(mutex);
+  std::vector<sptr> viewPointers;
 
-  if (_storePersisted) {
-    _storePersisted._writer->commit();
-    _storePersisted._writer->close();
-    _storePersisted._writer.reset();
-    _storePersisted._directory->close();
-    _storePersisted._directory.reset();
+  {
+    WriteMutex mutex(_mutex); // '_meta' can be asynchronously read
+    SCOPED_LOCK(mutex);
+
+    // unregister all registred links from view and retain a copy so that can call destructor outside of lock
+    for (auto& entry: _registeredLinks) {
+      if (entry.second) {
+        viewPointers.emplace_back(entry.second->updateView(nullptr));
+      }
+    }
+
+    if (_storePersisted) {
+      _storePersisted._writer->commit();
+      _storePersisted._writer->close();
+      _storePersisted._writer.reset();
+      _storePersisted._directory->close();
+      _storePersisted._directory.reset();
+    }
   }
 }
 
@@ -1467,8 +1465,8 @@ void IResearchView::getPropertiesVPack(
   }
 
   // add CIDs of registered collections to list
-  for (auto& cid: _registeredLinks) {
-    collections.emplace_back(std::to_string(cid));
+  for (auto& entry: _registeredLinks) {
+    collections.emplace_back(std::to_string(entry.first));
   }
 
   arangodb::velocypack::Builder linksBuilder;
@@ -1731,8 +1729,8 @@ arangodb::ViewIterator* IResearchView::iteratorForCondition(
   }
 
   // add CIDs of registered collections to transaction
-  for (auto& cid: _registeredLinks) {
-    trx->addCollectionAtRuntime(std::to_string(cid));
+  for (auto& entry: _registeredLinks) {
+    trx->addCollectionAtRuntime(std::to_string(entry.first));
   }
 
   if (order.empty()) {
@@ -1762,13 +1760,13 @@ bool IResearchView::linkRegister(IResearchLink& link) {
     return false; // cannot persist view
   }
 
+  auto cid = link.collection()->cid();
+
   WriteMutex mutex(_mutex); // '_links' can be asynchronously updated
   SCOPED_LOCK(mutex);
 
-  auto cid = link.collection()->cid();
-
   // do not allow duplicate registration
-  if (!_registeredLinks.emplace(cid).second) {
+  if (!_registeredLinks.emplace(cid, &link).second) {
     LOG_TOPIC(WARN, Logger::FIXME) << "duplicate iResearch link registration detected for iResearch view '" << id() <<"' cid '" << link.collection()->cid() << "' iid '" << link.id() << "'";
 
     return false;
@@ -1785,7 +1783,7 @@ bool IResearchView::linkRegister(IResearchLink& link) {
   if (!_meta._collections.emplace(cid).second) {
     // first time an IResearchLink object was seen for the specified cid
     // e.g. this happends during startup when links initially register with the view
-    link._view = sptr(this, std::move(unregistrar));
+    link.updateView(sptr(this, std::move(unregistrar))); // will non deadlock since checked for duplicate cid above
 
     return true;
   }
@@ -1796,7 +1794,7 @@ bool IResearchView::linkRegister(IResearchLink& link) {
     auto res = _logicalView->getPhysical()->persistProperties(); // persist '_meta' definition
 
     if (res.ok()) {
-      link._view = sptr(this, std::move(unregistrar));
+      link.updateView(sptr(this, std::move(unregistrar))); // will non deadlock since checked for duplicate cid above
 
       return true;
     }
@@ -1848,7 +1846,7 @@ size_t IResearchView::memory() const {
   SCOPED_LOCK(mutex);
   size_t size = sizeof(IResearchView);
 
-  size += sizeof(TRI_voc_cid_t) * _registeredLinks.size();
+  size += sizeof(decltype(_registeredLinks)::value_type) * _registeredLinks.size();
   size += _meta.memory();
 
   for (auto& tidEntry: _storeByTid) {

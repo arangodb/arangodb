@@ -28,14 +28,16 @@
 #include "utils/log.hpp"
 #include "utils/utf8_path.hpp"
 
+#include "ApplicationFeatures/JemallocFeature.h"
 #include "Basics/files.h"
 #include "IResearch/IResearchFeature.h"
 #include "IResearch/IResearchLink.h"
 #include "Logger/Logger.h"
 #include "Logger/LogTopic.h"
-#include "RestServer/ViewTypesFeature.h"
+#include "RestServer/DatabasePathFeature.h"
 #include "RestServer/FlushFeature.h"
 #include "RestServer/QueryRegistryFeature.h"
+#include "RestServer/ViewTypesFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "Transaction/StandaloneContext.h"
 #include "Transaction/UserTransaction.h"
@@ -51,43 +53,33 @@
 struct IResearchLinkSetup {
   StorageEngineMock engine;
   arangodb::application_features::ApplicationServer server;
+  std::vector<std::pair<arangodb::application_features::ApplicationFeature*, bool>> features;
   std::string testFilesystemPath;
 
   IResearchLinkSetup(): server(nullptr, nullptr) {
     arangodb::EngineSelectorFeature::ENGINE = &engine;
-    arangodb::application_features::ApplicationFeature* feature;
 
-    // ViewTypesFeature
-    arangodb::application_features::ApplicationServer::server->addFeature(
-      feature = new arangodb::ViewTypesFeature(arangodb::application_features::ApplicationServer::server)
-    );
-    feature->prepare();
-    feature->start();
+    // setup required application features
+    features.emplace_back(new arangodb::ViewTypesFeature(&server), true);
+    features.emplace_back(new arangodb::QueryRegistryFeature(&server), false);
+    features.emplace_back(new arangodb::DatabasePathFeature(&server), false);
+    features.emplace_back(new arangodb::JemallocFeature(&server), false); // required for DatabasePathFeature
+    features.emplace_back(new arangodb::iresearch::IResearchFeature(&server), true);
+    features.emplace_back(new arangodb::FlushFeature(&server), false); // do not start the thread
 
-    // QueryRegistryFeature
-    arangodb::application_features::ApplicationServer::server->addFeature(
-      feature = new arangodb::QueryRegistryFeature(&server)
-    );
-    feature->prepare();
-    feature->start();
+    for (auto& f : features) {
+      arangodb::application_features::ApplicationServer::server->addFeature(f.first);
+    }
 
-    // IResearchFeature
-    arangodb::application_features::ApplicationServer::server->addFeature(
-      feature = new arangodb::iresearch::IResearchFeature(&server)
-    );
-    feature->prepare();
-    feature->start();
+    for (auto& f : features) {
+      f.first->prepare();
+    }
 
-    // FlushFeature
-    arangodb::application_features::ApplicationServer::server->addFeature(
-      feature = new arangodb::FlushFeature(&server)
-    );
-    feature->prepare();
-
-    arangodb::ViewTypesFeature::registerViewImplementation(
-      arangodb::iresearch::IResearchView::type(),
-      arangodb::iresearch::IResearchView::make
-    );
+    for (auto& f : features) {
+      if (f.second) {
+        f.first->start();
+      }
+    }
 
     PhysicalViewMock::persistPropertiesResult = TRI_ERROR_NO_ERROR;
     TransactionStateMock::abortTransactionCount = 0;
@@ -113,6 +105,17 @@ struct IResearchLinkSetup {
     arangodb::LogTopic::setLogLevel(arangodb::Logger::FIXME.name(), arangodb::LogLevel::DEFAULT);
     arangodb::application_features::ApplicationServer::server = nullptr;
     arangodb::EngineSelectorFeature::ENGINE = nullptr;
+
+    // destroy application features
+    for (auto& f : features) {
+      if (f.second) {
+        f.first->stop();
+      }
+    }
+
+    for (auto& f : features) {
+      f.first->unprepare();
+    }
   }
 };
 
