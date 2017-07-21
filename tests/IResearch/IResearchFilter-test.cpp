@@ -164,34 +164,28 @@ TEST_CASE("IResearchFilterTest", "[iresearch][iresearch-filter]") {
 SECTION("BinaryIn") {
   // simple attribute
   {
-    std::string const queryString = "FOR d IN collection FILTER d.a in ['1','2','3'] RETURN d";
-
     irs::Or expected;
     auto& root = expected.add<irs::Or>();
     root.add<irs::by_term>().field("a").term("1");
     root.add<irs::by_term>().field("a").term("2");
     root.add<irs::by_term>().field("a").term("3");
 
-    assertFilterSuccess(queryString, expected);
+    assertFilterSuccess("FOR d IN collection FILTER d.a in ['1','2','3'] RETURN d", expected);
   }
 
   // complex attribute name
   {
-    std::string const queryString = "FOR d IN collection FILTER d.a.b.c.e.f in ['1','2','3'] RETURN d";
-
     irs::Or expected;
     auto& root = expected.add<irs::Or>();
     root.add<irs::by_term>().field("a.b.c.e.f").term("1");
     root.add<irs::by_term>().field("a.b.c.e.f").term("2");
     root.add<irs::by_term>().field("a.b.c.e.f").term("3");
 
-    assertFilterSuccess(queryString, expected);
+    assertFilterSuccess("FOR d IN collection FILTER d.a.b.c.e.f in ['1','2','3'] RETURN d", expected);
   }
 
   // heterogeneous array values
   {
-    std::string const queryString = "FOR d IN collection FILTER d.quick.brown.fox in ['1',null,true,false,2] RETURN d";
-
     irs::Or expected;
     auto& root = expected.add<irs::Or>();
     root.add<irs::by_term>().field("quick.brown.fox").term("1");
@@ -206,17 +200,15 @@ SECTION("BinaryIn") {
       root.add<irs::by_term>().field(mangleNumeric("quick.brown.fox")).term(term->value());
     }
 
-    assertFilterSuccess(queryString, expected);
+    assertFilterSuccess("FOR d IN collection FILTER d.quick.brown.fox in ['1',null,true,false,2] RETURN d", expected);
   }
 
   // empty array
   {
-    std::string const queryString = "FOR d IN collection FILTER d.quick.brown.fox in [] RETURN d";
-
     irs::Or expected;
     auto& root = expected.add<irs::empty>();
 
-    assertFilterSuccess(queryString, expected);
+    assertFilterSuccess("FOR d IN collection FILTER d.quick.brown.fox in [] RETURN d", expected);
   }
 
   // invalid attribute access
@@ -234,8 +226,6 @@ SECTION("BinaryIn") {
 
   // numeric range
   {
-    std::string const queryString = "FOR d IN collection FILTER d.a.b.c.e.f in 4..5 RETURN d";
-
     irs::numeric_token_stream minTerm; minTerm.reset(4.0);
     irs::numeric_token_stream maxTerm; maxTerm.reset(5.0);
 
@@ -245,13 +235,11 @@ SECTION("BinaryIn") {
     range.include<irs::Bound::MIN>(true).insert<irs::Bound::MIN>(minTerm);
     range.include<irs::Bound::MAX>(true).insert<irs::Bound::MAX>(maxTerm);
 
-    assertFilterSuccess(queryString, expected);
+    assertFilterSuccess("FOR d IN collection FILTER d.a.b.c.e.f in 4..5 RETURN d", expected);
   }
 
   // numeric floating range
   {
-    std::string const queryString = "FOR d IN collection FILTER d.a.b.c.e.f in 4.5..5.0 RETURN d";
-
     irs::numeric_token_stream minTerm; minTerm.reset(4.5);
     irs::numeric_token_stream maxTerm; maxTerm.reset(5.0);
 
@@ -261,13 +249,11 @@ SECTION("BinaryIn") {
     range.include<irs::Bound::MIN>(true).insert<irs::Bound::MIN>(minTerm);
     range.include<irs::Bound::MAX>(true).insert<irs::Bound::MAX>(maxTerm);
 
-    assertFilterSuccess(queryString, expected);
+    assertFilterSuccess("FOR d IN collection FILTER d.a.b.c.e.f in 4.5..5.0 RETURN d", expected);
   }
 
   // numeric int-float range
   {
-    std::string const queryString = "FOR d IN collection FILTER d.a.b.c.e.f in 4..5.0 RETURN d";
-
     irs::numeric_token_stream minTerm; minTerm.reset(4.0);
     irs::numeric_token_stream maxTerm; maxTerm.reset(5.0);
 
@@ -277,46 +263,40 @@ SECTION("BinaryIn") {
     range.include<irs::Bound::MIN>(true).insert<irs::Bound::MIN>(minTerm);
     range.include<irs::Bound::MAX>(true).insert<irs::Bound::MAX>(maxTerm);
 
-    assertFilterSuccess(queryString, expected);
+    assertFilterSuccess("FOR d IN collection FILTER d.a.b.c.e.f in 4..5.0 RETURN d", expected);
   }
 
   // string range
   {
-    std::string const queryString = "FOR d IN collection FILTER d.a.b.c.e.f in '4'..'5' RETURN d";
-
     irs::Or expected;
     auto& range = expected.add<irs::by_range>();
     range.field("a.b.c.e.f");
     range.include<irs::Bound::MIN>(true).term<irs::Bound::MIN>("4");
     range.include<irs::Bound::MAX>(true).term<irs::Bound::MAX>("5");
 
-    assertFilterSuccess(queryString, expected);
+    assertFilterSuccess("FOR d IN collection FILTER d.a.b.c.e.f in '4'..'5' RETURN d", expected);
   }
 
   // boolean range
   {
-    std::string const queryString = "FOR d IN collection FILTER d.a.b.c.e.f in false..true RETURN d";
-
     irs::Or expected;
     auto& range = expected.add<irs::by_range>();
     range.field(mangleBool("a.b.c.e.f"));
     range.include<irs::Bound::MIN>(true).term<irs::Bound::MIN>(irs::boolean_token_stream::value_false());
     range.include<irs::Bound::MAX>(true).term<irs::Bound::MAX>(irs::boolean_token_stream::value_true());
 
-    assertFilterSuccess(queryString, expected);
+    assertFilterSuccess("FOR d IN collection FILTER d.a.b.c.e.f in false..true RETURN d", expected);
   }
 
   // null range
   {
-    std::string const queryString = "FOR d IN collection FILTER d.a.b.c.e.f in null..null RETURN d";
-
     irs::Or expected;
     auto& range = expected.add<irs::by_range>();
     range.field(mangleNull("a.b.c.e.f"));
     range.include<irs::Bound::MIN>(true).term<irs::Bound::MIN>(irs::null_token_stream::value_null());
     range.include<irs::Bound::MAX>(true).term<irs::Bound::MAX>(irs::null_token_stream::value_null());
 
-    assertFilterSuccess(queryString, expected);
+    assertFilterSuccess("FOR d IN collection FILTER d.a.b.c.e.f in null..null RETURN d", expected);
   }
 
   // invalid attribute access
@@ -332,6 +312,11 @@ SECTION("BinaryIn") {
   assertFilterFail("FOR d IN VIEW myView FILTER d.a in 1..null RETURN d");
   assertFilterFail("FOR d IN VIEW myView FILTER d.a in false..5.5 RETURN d");
 
+  // inverted 'in' node node
+  assertFilterFail("FOR d IN VIEW myView FILTER 4..5 in d.a RETURN d");
+  assertFilterFail("FOR d IN VIEW myView FILTER [1,2,'3'] in d.a RETURN d");
+  assertFilterFail("FOR d IN VIEW myView FILTER 4 in d.a RETURN d");
+
   // invalid range (supported by AQL)
   assertFilterFail("FOR d IN VIEW myView FILTER d.a in 1..4..5 RETURN d");
 }
@@ -339,34 +324,28 @@ SECTION("BinaryIn") {
 SECTION("BinaryNotIn") {
   // simple attribute
   {
-    std::string const queryString = "FOR d IN collection FILTER d.a not in ['1','2','3'] RETURN d";
-
     irs::Or expected;
     auto& root = expected.add<irs::Not>().filter<irs::And>();
     root.add<irs::by_term>().field("a").term("1");
     root.add<irs::by_term>().field("a").term("2");
     root.add<irs::by_term>().field("a").term("3");
 
-    assertFilterSuccess(queryString, expected);
+    assertFilterSuccess("FOR d IN collection FILTER d.a not in ['1','2','3'] RETURN d", expected);
   }
 
   // complex attribute name
   {
-    std::string const queryString = "FOR d IN collection FILTER d.a.b.c.e.f not in ['1','2','3'] RETURN d";
-
     irs::Or expected;
     auto& root = expected.add<irs::Not>().filter<irs::And>();
     root.add<irs::by_term>().field("a.b.c.e.f").term("1");
     root.add<irs::by_term>().field("a.b.c.e.f").term("2");
     root.add<irs::by_term>().field("a.b.c.e.f").term("3");
 
-    assertFilterSuccess(queryString, expected);
+    assertFilterSuccess("FOR d IN collection FILTER d.a.b.c.e.f not in ['1','2','3'] RETURN d", expected);
   }
 
   // heterogeneous array values
   {
-    std::string const queryString = "FOR d IN collection FILTER d.quick.brown.fox not in ['1',null,true,false,2] RETURN d";
-
     irs::Or expected;
     auto& root = expected.add<irs::Not>().filter<irs::And>();
     root.add<irs::by_term>().field("quick.brown.fox").term("1");
@@ -381,17 +360,15 @@ SECTION("BinaryNotIn") {
       root.add<irs::by_term>().field(mangleNumeric("quick.brown.fox")).term(term->value());
     }
 
-    assertFilterSuccess(queryString, expected);
+    assertFilterSuccess("FOR d IN collection FILTER d.quick.brown.fox not in ['1',null,true,false,2] RETURN d", expected);
   }
 
   // empty array
   {
-    std::string const queryString = "FOR d IN collection FILTER d.quick.brown.fox not in [] RETURN d";
-
     irs::Or expected;
     auto& root = expected.add<irs::all>();
 
-    assertFilterSuccess(queryString, expected);
+    assertFilterSuccess("FOR d IN collection FILTER d.quick.brown.fox not in [] RETURN d", expected);
   }
 
   // invalid attribute access
@@ -410,8 +387,6 @@ SECTION("BinaryNotIn") {
 
   // numeric range
   {
-    std::string const queryString = "FOR d IN collection FILTER d.a.b.c.e.f not in 4..5 RETURN d";
-
     irs::numeric_token_stream minTerm; minTerm.reset(4.0);
     irs::numeric_token_stream maxTerm; maxTerm.reset(5.0);
 
@@ -421,13 +396,11 @@ SECTION("BinaryNotIn") {
     range.include<irs::Bound::MIN>(true).insert<irs::Bound::MIN>(minTerm);
     range.include<irs::Bound::MAX>(true).insert<irs::Bound::MAX>(maxTerm);
 
-    assertFilterSuccess(queryString, expected);
+    assertFilterSuccess("FOR d IN collection FILTER d.a.b.c.e.f not in 4..5 RETURN d", expected);
   }
 
   // numeric floating range
   {
-    std::string const queryString = "FOR d IN collection FILTER d.a.b.c.e.f not in 4.5..5.0 RETURN d";
-
     irs::numeric_token_stream minTerm; minTerm.reset(4.5);
     irs::numeric_token_stream maxTerm; maxTerm.reset(5.0);
 
@@ -437,13 +410,11 @@ SECTION("BinaryNotIn") {
     range.include<irs::Bound::MIN>(true).insert<irs::Bound::MIN>(minTerm);
     range.include<irs::Bound::MAX>(true).insert<irs::Bound::MAX>(maxTerm);
 
-    assertFilterSuccess(queryString, expected);
+    assertFilterSuccess("FOR d IN collection FILTER d.a.b.c.e.f not in 4.5..5.0 RETURN d", expected);
   }
 
   // numeric int-float range
   {
-    std::string const queryString = "FOR d IN collection FILTER d.a.b.c.e.f not in 4..5.0 RETURN d";
-
     irs::numeric_token_stream minTerm; minTerm.reset(4.0);
     irs::numeric_token_stream maxTerm; maxTerm.reset(5.0);
 
@@ -453,46 +424,40 @@ SECTION("BinaryNotIn") {
     range.include<irs::Bound::MIN>(true).insert<irs::Bound::MIN>(minTerm);
     range.include<irs::Bound::MAX>(true).insert<irs::Bound::MAX>(maxTerm);
 
-    assertFilterSuccess(queryString, expected);
+    assertFilterSuccess("FOR d IN collection FILTER d.a.b.c.e.f not in 4..5.0 RETURN d", expected);
   }
 
   // string range
   {
-    std::string const queryString = "FOR d IN collection FILTER d.a.b.c.e.f not in '4'..'5' RETURN d";
-
     irs::Or expected;
     auto& range = expected.add<irs::Not>().filter<irs::Or>().add<irs::by_range>();
     range.field("a.b.c.e.f");
     range.include<irs::Bound::MIN>(true).term<irs::Bound::MIN>("4");
     range.include<irs::Bound::MAX>(true).term<irs::Bound::MAX>("5");
 
-    assertFilterSuccess(queryString, expected);
+    assertFilterSuccess("FOR d IN collection FILTER d.a.b.c.e.f not in '4'..'5' RETURN d", expected);
   }
 
   // boolean range
   {
-    std::string const queryString = "FOR d IN collection FILTER d.a.b.c.e.f not in false..true RETURN d";
-
     irs::Or expected;
     auto& range = expected.add<irs::Not>().filter<irs::Or>().add<irs::by_range>();
     range.field(mangleBool("a.b.c.e.f"));
     range.include<irs::Bound::MIN>(true).term<irs::Bound::MIN>(irs::boolean_token_stream::value_false());
     range.include<irs::Bound::MAX>(true).term<irs::Bound::MAX>(irs::boolean_token_stream::value_true());
 
-    assertFilterSuccess(queryString, expected);
+    assertFilterSuccess("FOR d IN collection FILTER d.a.b.c.e.f not in false..true RETURN d", expected);
   }
 
   // null range
   {
-    std::string const queryString = "FOR d IN collection FILTER d.a.b.c.e.f not in null..null RETURN d";
-
     irs::Or expected;
     auto& range = expected.add<irs::Not>().filter<irs::Or>().add<irs::by_range>();
     range.field(mangleNull("a.b.c.e.f"));
     range.include<irs::Bound::MIN>(true).term<irs::Bound::MIN>(irs::null_token_stream::value_null());
     range.include<irs::Bound::MAX>(true).term<irs::Bound::MAX>(irs::null_token_stream::value_null());
 
-    assertFilterSuccess(queryString, expected);
+    assertFilterSuccess("FOR d IN collection FILTER d.a.b.c.e.f not in null..null RETURN d", expected);
   }
 
   // invalid attribute access
@@ -513,60 +478,53 @@ SECTION("BinaryNotIn") {
 }
 
 SECTION("BinaryEq") {
-  // simple string attribute
+  // simple attribute, string
   {
-    std::string const queryString = "FOR d IN collection FILTER d.a == '1' RETURN d";
-
     irs::Or expected;
     expected.add<irs::by_term>().field("a").term("1");
 
-    assertFilterSuccess(queryString, expected);
+    assertFilterSuccess("FOR d IN collection FILTER d.a == '1' RETURN d", expected);
+    assertFilterSuccess("FOR d IN collection FILTER '1' == d.a RETURN d", expected);
   }
 
-  // complex attribute name, string
+  // complex attribute, string
   {
-    std::string const queryString = "FOR d IN collection FILTER d.a.b.c == '1' RETURN d";
-
     irs::Or expected;
     expected.add<irs::by_term>().field("a.b.c").term("1");
 
-    assertFilterSuccess(queryString, expected);
+    assertFilterSuccess("FOR d IN collection FILTER d.a.b.c == '1' RETURN d", expected);
+    assertFilterSuccess("FOR d IN collection FILTER '1' == d.a.b.c RETURN d", expected);
   }
 
-  // complex boolean attribute, true
+  // complex attribute, true
   {
-    std::string const queryString = "FOR d IN collection FILTER d.a.b.c == true RETURN d";
-
     irs::Or expected;
     expected.add<irs::by_term>().field(mangleBool("a.b.c")).term(irs::boolean_token_stream::value_true());
 
-    assertFilterSuccess(queryString, expected);
+    assertFilterSuccess("FOR d IN collection FILTER d.a.b.c == true RETURN d", expected);
+    assertFilterSuccess("FOR d IN collection FILTER true == d.a.b.c RETURN d", expected);
   }
 
-  // complex boolean attribute, false
+  // complex attribute, false
   {
-    std::string const queryString = "FOR d IN collection FILTER d.a.b.c.bool == false RETURN d";
-
     irs::Or expected;
     expected.add<irs::by_term>().field(mangleBool("a.b.c.bool")).term(irs::boolean_token_stream::value_false());
 
-    assertFilterSuccess(queryString, expected);
+    assertFilterSuccess("FOR d IN collection FILTER d.a.b.c.bool == false RETURN d", expected);
+    assertFilterSuccess("FOR d IN collection FILTER false == d.a.b.c.bool RETURN d", expected);
   }
 
-  // complex boolean attribute, null
+  // complex attribute, null
   {
-    std::string const queryString = "FOR d IN collection FILTER d.a.b.c.bool == null RETURN d";
-
     irs::Or expected;
     expected.add<irs::by_term>().field(mangleNull("a.b.c.bool")).term(irs::null_token_stream::value_null());
 
-    assertFilterSuccess(queryString, expected);
+    assertFilterSuccess("FOR d IN collection FILTER d.a.b.c.bool == null RETURN d", expected);
+    assertFilterSuccess("FOR d IN collection FILTER null == d.a.b.c.bool RETURN d", expected);
   }
 
-  // complex boolean attribute, numeric
+  // complex attribute, numeric
   {
-    std::string const queryString = "FOR d IN collection FILTER d.a.b.c.numeric == 3 RETURN d";
-
     irs::numeric_token_stream stream;
     stream.reset(3.);
     CHECK(stream.next());
@@ -575,68 +533,76 @@ SECTION("BinaryEq") {
     irs::Or expected;
     expected.add<irs::by_term>().field(mangleNumeric("a.b.c.numeric")).term(term->value());
 
-    assertFilterSuccess(queryString, expected);
+    assertFilterSuccess("FOR d IN collection FILTER d.a.b.c.numeric == 3 RETURN d", expected);
+    assertFilterSuccess("FOR d IN collection FILTER d.a.b.c.numeric == 3.0 RETURN d", expected);
+    assertFilterSuccess("FOR d IN collection FILTER 3 == d.a.b.c.numeric RETURN d", expected);
+    assertFilterSuccess("FOR d IN collection FILTER 3.0 == d.a.b.c.numeric RETURN d", expected);
   }
 
   // invalid attribute access
   assertFilterFail("FOR d IN collection FILTER d == '1' RETURN d");
+  assertFilterFail("FOR d IN collection FILTER '1' == d RETURN d");
+
+  // unsupported node types
+  assertFilterFail("FOR d IN collection FILTER d.a == {} RETURN d");
+  assertFilterFail("FOR d IN collection FILTER {} == d.a RETURN d");
+  assertFilterFail("FOR d IN collection FILTER d.a == 1..2 RETURN d");
+  assertFilterFail("FOR d IN collection FILTER 1..2 == d.a RETURN d");
+
+  // invalid equality (supported by AQL)
+  assertFilterFail("FOR d IN collection FILTER 2 == d.a.b.c.numeric == 3 RETURN d");
+  assertFilterFail("FOR d IN collection FILTER d.a.b.c.numeric == 2 == 3 RETURN d");
+  assertFilterFail("FOR d IN collection FILTER 3 == 2 == d.a.b.c.numeric RETURN d");
 }
 
 SECTION("BinaryNotEq") {
   // simple string attribute
   {
-    std::string const queryString = "FOR d IN collection FILTER d.a != '1' RETURN d";
-
     irs::Or expected;
     expected.add<irs::Not>().filter<irs::by_term>().field("a").term("1");
 
-    assertFilterSuccess(queryString, expected);
+    assertFilterSuccess("FOR d IN collection FILTER d.a != '1' RETURN d", expected);
+    assertFilterSuccess("FOR d IN collection FILTER '1' != d.a RETURN d", expected);
   }
 
   // complex attribute name, string
   {
-    std::string const queryString = "FOR d IN collection FILTER d.a.b.c != '1' RETURN d";
-
     irs::Or expected;
     expected.add<irs::Not>().filter<irs::by_term>().field("a.b.c").term("1");
 
-    assertFilterSuccess(queryString, expected);
+    assertFilterSuccess("FOR d IN collection FILTER d.a.b.c != '1' RETURN d", expected);
+    assertFilterSuccess("FOR d IN collection FILTER '1' != d.a.b.c RETURN d", expected);
   }
 
   // complex boolean attribute, true
   {
-    std::string const queryString = "FOR d IN collection FILTER d.a.b.c != true RETURN d";
-
     irs::Or expected;
     expected.add<irs::Not>().filter<irs::by_term>().field(mangleBool("a.b.c")).term(irs::boolean_token_stream::value_true());
 
-    assertFilterSuccess(queryString, expected);
+    assertFilterSuccess("FOR d IN collection FILTER d.a.b.c != true RETURN d", expected);
+    assertFilterSuccess("FOR d IN collection FILTER true != d.a.b.c RETURN d", expected);
   }
 
   // complex boolean attribute, false
   {
-    std::string const queryString = "FOR d IN collection FILTER d.a.b.c.bool != false RETURN d";
-
     irs::Or expected;
     expected.add<irs::Not>().filter<irs::by_term>().field(mangleBool("a.b.c.bool")).term(irs::boolean_token_stream::value_false());
 
-    assertFilterSuccess(queryString, expected);
+    assertFilterSuccess("FOR d IN collection FILTER d.a.b.c.bool != false RETURN d", expected);
+    assertFilterSuccess("FOR d IN collection FILTER false != d.a.b.c.bool RETURN d", expected);
   }
 
   // complex boolean attribute, null
   {
-    std::string const queryString = "FOR d IN collection FILTER d.a.b.c.bool != null RETURN d";
-
     irs::Or expected;
     expected.add<irs::Not>().filter<irs::by_term>().field(mangleNull("a.b.c.bool")).term(irs::null_token_stream::value_null());
 
-    assertFilterSuccess(queryString, expected);
+    assertFilterSuccess("FOR d IN collection FILTER d.a.b.c.bool != null RETURN d", expected);
+    assertFilterSuccess("FOR d IN collection FILTER null != d.a.b.c.bool RETURN d", expected);
   }
 
   // complex boolean attribute, numeric
   {
-    std::string const queryString = "FOR d IN collection FILTER d.a.b.c.numeric != 3 RETURN d";
-
     irs::numeric_token_stream stream;
     stream.reset(3.);
     CHECK(stream.next());
@@ -645,78 +611,88 @@ SECTION("BinaryNotEq") {
     irs::Or expected;
     expected.add<irs::Not>().filter<irs::by_term>().field(mangleNumeric("a.b.c.numeric")).term(term->value());
 
-    assertFilterSuccess(queryString, expected);
+    assertFilterSuccess("FOR d IN collection FILTER d.a.b.c.numeric != 3 RETURN d", expected);
+    assertFilterSuccess("FOR d IN collection FILTER d.a.b.c.numeric != 3.0 RETURN d", expected);
+    assertFilterSuccess("FOR d IN collection FILTER 3 != d.a.b.c.numeric RETURN d", expected);
+    assertFilterSuccess("FOR d IN collection FILTER 3.0 != d.a.b.c.numeric RETURN d", expected);
   }
 
   // invalid attribute access
   assertFilterFail("FOR d IN collection FILTER d != '1' RETURN d");
+  assertFilterFail("FOR d IN collection FILTER '1' != d RETURN d");
+
+  // unsupported node types
+  assertFilterFail("FOR d IN collection FILTER d.a != {} RETURN d");
+  assertFilterFail("FOR d IN collection FILTER {} != d.a RETURN d");
+  assertFilterFail("FOR d IN collection FILTER d.a != 1..2 RETURN d");
+  assertFilterFail("FOR d IN collection FILTER 1..2 != d.a RETURN d");
+
+  // invalid inequality (supported by AQL)
+  assertFilterFail("FOR d IN collection FILTER 2 != d.a.b.c.numeric != 3 RETURN d");
+  assertFilterFail("FOR d IN collection FILTER 2 == d.a.b.c.numeric != 3 RETURN d");
+  assertFilterFail("FOR d IN collection FILTER d.a.b.c.numeric != 2 != 3 RETURN d");
+  assertFilterFail("FOR d IN collection FILTER d.a.b.c.numeric != 2 == 3 RETURN d");
+  assertFilterFail("FOR d IN collection FILTER 3 != 2 != d.a.b.c.numeric RETURN d");
 }
 
 SECTION("BinaryGE") {
   // simple string attribute
   {
-    std::string const queryString = "FOR d IN collection FILTER d.a >= '1' RETURN d";
-
     irs::Or expected;
     expected.add<irs::by_range>()
             .field("a")
             .include<irs::Bound::MIN>(true).term<irs::Bound::MIN>("1");
 
-    assertFilterSuccess(queryString, expected);
+    assertFilterSuccess("FOR d IN collection FILTER d.a >= '1' RETURN d", expected);
+    assertFilterSuccess("FOR d IN collection FILTER '1' <= d.a RETURN d", expected);
   }
 
   // complex attribute name, string
   {
-    std::string const queryString = "FOR d IN collection FILTER d.a.b.c >= '1' RETURN d";
-
     irs::Or expected;
     expected.add<irs::by_range>()
             .field("a.b.c")
             .include<irs::Bound::MIN>(true).term<irs::Bound::MIN>("1");
 
-    assertFilterSuccess(queryString, expected);
+    assertFilterSuccess("FOR d IN collection FILTER d.a.b.c >= '1' RETURN d", expected);
+    assertFilterSuccess("FOR d IN collection FILTER '1' <= d.a.b.c RETURN d", expected);
   }
 
   // complex boolean attribute, true
   {
-    std::string const queryString = "FOR d IN collection FILTER d.a.b.c >= true RETURN d";
-
     irs::Or expected;
     expected.add<irs::by_range>()
             .field(mangleBool("a.b.c"))
             .include<irs::Bound::MIN>(true).term<irs::Bound::MIN>(irs::boolean_token_stream::value_true());
 
-    assertFilterSuccess(queryString, expected);
+    assertFilterSuccess("FOR d IN collection FILTER d.a.b.c >= true RETURN d", expected);
+    assertFilterSuccess("FOR d IN collection FILTER true <= d.a.b.c RETURN d", expected);
   }
 
   // complex boolean attribute, false
   {
-    std::string const queryString = "FOR d IN collection FILTER d.a.b.c.bool >= false RETURN d";
-
     irs::Or expected;
     expected.add<irs::by_range>()
             .field(mangleBool("a.b.c.bool"))
             .include<irs::Bound::MIN>(true).term<irs::Bound::MIN>(irs::boolean_token_stream::value_false());
 
-    assertFilterSuccess(queryString, expected);
+    assertFilterSuccess("FOR d IN collection FILTER d.a.b.c.bool >= false RETURN d", expected);
+    assertFilterSuccess("FOR d IN collection FILTER false <= d.a.b.c.bool RETURN d", expected);
   }
 
   // complex boolean attribute, null
   {
-    std::string const queryString = "FOR d IN collection FILTER d.a.b.c.nil >= null RETURN d";
-
     irs::Or expected;
     expected.add<irs::by_range>()
             .field(mangleNull("a.b.c.nil"))
             .include<irs::Bound::MIN>(true).term<irs::Bound::MIN>(irs::null_token_stream::value_null());
 
-    assertFilterSuccess(queryString, expected);
+    assertFilterSuccess("FOR d IN collection FILTER d.a.b.c.nil >= null RETURN d", expected);
+    assertFilterSuccess("FOR d IN collection FILTER null <= d.a.b.c.nil RETURN d", expected);
   }
 
   // complex boolean attribute, numeric
   {
-    std::string const queryString = "FOR d IN collection FILTER d.a.b.c.numeric >= 13 RETURN d";
-
     irs::numeric_token_stream stream;
     stream.reset(13.);
 
@@ -725,78 +701,87 @@ SECTION("BinaryGE") {
             .field(mangleNumeric("a.b.c.numeric"))
             .include<irs::Bound::MIN>(true).insert<irs::Bound::MIN>(stream);
 
-    assertFilterSuccess(queryString, expected);
+    assertFilterSuccess("FOR d IN collection FILTER d.a.b.c.numeric >= 13 RETURN d", expected);
+    assertFilterSuccess("FOR d IN collection FILTER d.a.b.c.numeric >= 13.0 RETURN d", expected);
+    assertFilterSuccess("FOR d IN collection FILTER 13 <= d.a.b.c.numeric RETURN d", expected);
+    assertFilterSuccess("FOR d IN collection FILTER 13.0 <= d.a.b.c.numeric RETURN d", expected);
   }
 
   // invalid attribute access
   assertFilterFail("FOR d IN collection FILTER d >= '1' RETURN d");
+  assertFilterFail("FOR d IN collection FILTER '1' <= d RETURN d");
+
+  // unsupported node types
+  assertFilterFail("FOR d IN collection FILTER d.a >= {} RETURN d");
+  assertFilterFail("FOR d IN collection FILTER {} <= d.a RETURN d");
+  assertFilterFail("FOR d IN collection FILTER d.a >= 1..2 RETURN d");
+  assertFilterFail("FOR d IN collection FILTER 1..2 <= d.a RETURN d");
+
+  // invalid comparison (supported by AQL)
+  assertFilterFail("FOR d IN collection FILTER 2 >= d.a.b.c.numeric >= 3 RETURN d");
+  assertFilterFail("FOR d IN collection FILTER d.a.b.c.numeric >= 2 >= 3 RETURN d");
+  assertFilterFail("FOR d IN collection FILTER d.a.b.c.numeric >= 2 >= 3 RETURN d");
+  assertFilterFail("FOR d IN collection FILTER 3 >= 2 >= d.a.b.c.numeric RETURN d");
 }
 
 SECTION("BinaryGT") {
   // simple string attribute
   {
-    std::string const queryString = "FOR d IN collection FILTER d.a > '1' RETURN d";
-
     irs::Or expected;
     expected.add<irs::by_range>()
             .field("a")
             .include<irs::Bound::MIN>(false).term<irs::Bound::MIN>("1");
 
-    assertFilterSuccess(queryString, expected);
+    assertFilterSuccess("FOR d IN collection FILTER d.a > '1' RETURN d", expected);
+    assertFilterSuccess("FOR d IN collection FILTER '1' < d.a RETURN d", expected);
   }
 
   // complex attribute name, string
   {
-    std::string const queryString = "FOR d IN collection FILTER d.a.b.c > '1' RETURN d";
-
     irs::Or expected;
     expected.add<irs::by_range>()
             .field("a.b.c")
             .include<irs::Bound::MIN>(false).term<irs::Bound::MIN>("1");
 
-    assertFilterSuccess(queryString, expected);
+    assertFilterSuccess("FOR d IN collection FILTER d.a.b.c > '1' RETURN d", expected);
+    assertFilterSuccess("FOR d IN collection FILTER '1' < d.a.b.c RETURN d", expected);
   }
 
   // complex boolean attribute, true
   {
-    std::string const queryString = "FOR d IN collection FILTER d.a.b.c > true RETURN d";
-
     irs::Or expected;
     expected.add<irs::by_range>()
             .field(mangleBool("a.b.c"))
             .include<irs::Bound::MIN>(false).term<irs::Bound::MIN>(irs::boolean_token_stream::value_true());
 
-    assertFilterSuccess(queryString, expected);
+    assertFilterSuccess("FOR d IN collection FILTER d.a.b.c > true RETURN d", expected);
+    assertFilterSuccess("FOR d IN collection FILTER true < d.a.b.c RETURN d", expected);
   }
 
   // complex boolean attribute, false
   {
-    std::string const queryString = "FOR d IN collection FILTER d.a.b.c.bool > false RETURN d";
-
     irs::Or expected;
     expected.add<irs::by_range>()
             .field(mangleBool("a.b.c.bool"))
             .include<irs::Bound::MIN>(false).term<irs::Bound::MIN>(irs::boolean_token_stream::value_false());
 
-    assertFilterSuccess(queryString, expected);
+    assertFilterSuccess("FOR d IN collection FILTER d.a.b.c.bool > false RETURN d", expected);
+    assertFilterSuccess("FOR d IN collection FILTER false < d.a.b.c.bool RETURN d", expected);
   }
 
   // complex boolean attribute, null
   {
-    std::string const queryString = "FOR d IN collection FILTER d.a.b.c.nil > null RETURN d";
-
     irs::Or expected;
     expected.add<irs::by_range>()
             .field(mangleNull("a.b.c.nil"))
             .include<irs::Bound::MIN>(false).term<irs::Bound::MIN>(irs::null_token_stream::value_null());
 
-    assertFilterSuccess(queryString, expected);
+    assertFilterSuccess("FOR d IN collection FILTER d.a.b.c.nil > null RETURN d", expected);
+    assertFilterSuccess("FOR d IN collection FILTER null < d.a.b.c.nil RETURN d", expected);
   }
 
   // complex boolean attribute, numeric
   {
-    std::string const queryString = "FOR d IN collection FILTER d.a.b.c.numeric > 13 RETURN d";
-
     irs::numeric_token_stream stream;
     stream.reset(13.);
 
@@ -805,13 +790,14 @@ SECTION("BinaryGT") {
             .field(mangleNumeric("a.b.c.numeric"))
             .include<irs::Bound::MIN>(false).insert<irs::Bound::MIN>(stream);
 
-    assertFilterSuccess(queryString, expected);
+    assertFilterSuccess("FOR d IN collection FILTER d.a.b.c.numeric > 13 RETURN d", expected);
+    assertFilterSuccess("FOR d IN collection FILTER d.a.b.c.numeric > 13.0 RETURN d", expected);
+    assertFilterSuccess("FOR d IN collection FILTER 13 < d.a.b.c.numeric RETURN d", expected);
+    assertFilterSuccess("FOR d IN collection FILTER 13.0 < d.a.b.c.numeric RETURN d", expected);
   }
 
   // complex boolean attribute, floating
   {
-    std::string const queryString = "FOR d IN collection FILTER d.a.b.c.numeric > 13.5 RETURN d";
-
     irs::numeric_token_stream stream;
     stream.reset(13.5);
 
@@ -820,78 +806,85 @@ SECTION("BinaryGT") {
             .field(mangleNumeric("a.b.c.numeric"))
             .include<irs::Bound::MIN>(false).insert<irs::Bound::MIN>(stream);
 
-    assertFilterSuccess(queryString, expected);
+    assertFilterSuccess("FOR d IN collection FILTER d.a.b.c.numeric > 13.5 RETURN d", expected);
+    assertFilterSuccess("FOR d IN collection FILTER 13.5 < d.a.b.c.numeric RETURN d", expected);
   }
 
   // invalid attribute access
   assertFilterFail("FOR d IN collection FILTER d > '1' RETURN d");
+  assertFilterFail("FOR d IN collection FILTER '1' < d RETURN d");
+
+  // unsupported node types
+  assertFilterFail("FOR d IN collection FILTER d.a > {} RETURN d");
+  assertFilterFail("FOR d IN collection FILTER {} < d.a RETURN d");
+  assertFilterFail("FOR d IN collection FILTER d.a > 1..2 RETURN d");
+  assertFilterFail("FOR d IN collection FILTER 1..2 < d.a RETURN d");
+
+  // invalid comparison (supported by AQL)
+  assertFilterFail("FOR d IN collection FILTER 2 > d.a.b.c.numeric > 3 RETURN d");
+  assertFilterFail("FOR d IN collection FILTER d.a.b.c.numeric > 2 > 3 RETURN d");
+  assertFilterFail("FOR d IN collection FILTER d.a.b.c.numeric > 2 > 3 RETURN d");
+  assertFilterFail("FOR d IN collection FILTER 3 > 2 > d.a.b.c.numeric RETURN d");
 }
 
 SECTION("BinaryLE") {
   // simple string attribute
   {
-    std::string const queryString = "FOR d IN collection FILTER d.a <= '1' RETURN d";
-
     irs::Or expected;
     expected.add<irs::by_range>()
             .field("a")
             .include<irs::Bound::MAX>(true).term<irs::Bound::MAX>("1");
 
-    assertFilterSuccess(queryString, expected);
+    assertFilterSuccess("FOR d IN collection FILTER d.a <= '1' RETURN d", expected);
+    assertFilterSuccess("FOR d IN collection FILTER '1' >= d.a RETURN d", expected);
   }
 
   // complex attribute name, string
   {
-    std::string const queryString = "FOR d IN collection FILTER d.a.b.c <= '1' RETURN d";
-
     irs::Or expected;
     expected.add<irs::by_range>()
             .field("a.b.c")
             .include<irs::Bound::MAX>(true).term<irs::Bound::MAX>("1");
 
-    assertFilterSuccess(queryString, expected);
+    assertFilterSuccess("FOR d IN collection FILTER d.a.b.c <= '1' RETURN d", expected);
+    assertFilterSuccess("FOR d IN collection FILTER '1' >= d.a.b.c RETURN d", expected);
   }
 
   // complex boolean attribute, true
   {
-    std::string const queryString = "FOR d IN collection FILTER d.a.b.c <= true RETURN d";
-
     irs::Or expected;
     expected.add<irs::by_range>()
             .field(mangleBool("a.b.c"))
             .include<irs::Bound::MAX>(true).term<irs::Bound::MAX>(irs::boolean_token_stream::value_true());
 
-    assertFilterSuccess(queryString, expected);
+    assertFilterSuccess("FOR d IN collection FILTER d.a.b.c <= true RETURN d", expected);
+    assertFilterSuccess("FOR d IN collection FILTER true >= d.a.b.c RETURN d", expected);
   }
 
   // complex boolean attribute, false
   {
-    std::string const queryString = "FOR d IN collection FILTER d.a.b.c.bool <= false RETURN d";
-
     irs::Or expected;
     expected.add<irs::by_range>()
             .field(mangleBool("a.b.c.bool"))
             .include<irs::Bound::MAX>(true).term<irs::Bound::MAX>(irs::boolean_token_stream::value_false());
 
-    assertFilterSuccess(queryString, expected);
+    assertFilterSuccess("FOR d IN collection FILTER d.a.b.c.bool <= false RETURN d", expected);
+    assertFilterSuccess("FOR d IN collection FILTER false >= d.a.b.c.bool RETURN d", expected);
   }
 
   // complex boolean attribute, null
   {
-    std::string const queryString = "FOR d IN collection FILTER d.a.b.c.nil <= null RETURN d";
-
     irs::Or expected;
     expected.add<irs::by_range>()
             .field(mangleNull("a.b.c.nil"))
             .include<irs::Bound::MAX>(true).term<irs::Bound::MAX>(irs::null_token_stream::value_null());
 
-    assertFilterSuccess(queryString, expected);
+    assertFilterSuccess("FOR d IN collection FILTER d.a.b.c.nil <= null RETURN d", expected);
+    assertFilterSuccess("FOR d IN collection FILTER null >= d.a.b.c.nil RETURN d", expected);
   }
 
   // complex boolean attribute, numeric
   {
-    std::string const queryString = "FOR d IN collection FILTER d.a.b.c.numeric <= 13 RETURN d";
-
     irs::numeric_token_stream stream;
     stream.reset(13.);
 
@@ -900,78 +893,87 @@ SECTION("BinaryLE") {
             .field(mangleNumeric("a.b.c.numeric"))
             .include<irs::Bound::MAX>(true).insert<irs::Bound::MAX>(stream);
 
-    assertFilterSuccess(queryString, expected);
+    assertFilterSuccess("FOR d IN collection FILTER d.a.b.c.numeric <= 13 RETURN d", expected);
+    assertFilterSuccess("FOR d IN collection FILTER d.a.b.c.numeric <= 13.0 RETURN d", expected);
+    assertFilterSuccess("FOR d IN collection FILTER 13 >= d.a.b.c.numeric RETURN d", expected);
+    assertFilterSuccess("FOR d IN collection FILTER 13.0 >= d.a.b.c.numeric RETURN d", expected);
   }
 
   // invalid attribute access
   assertFilterFail("FOR d IN collection FILTER d <= '1' RETURN d");
+  assertFilterFail("FOR d IN collection FILTER '1' >= d RETURN d");
+
+  // unsupported node types
+  assertFilterFail("FOR d IN collection FILTER d.a <= {} RETURN d");
+  assertFilterFail("FOR d IN collection FILTER {} >= d.a RETURN d");
+  assertFilterFail("FOR d IN collection FILTER d.a <= 1..2 RETURN d");
+  assertFilterFail("FOR d IN collection FILTER 1..2 >= d.a RETURN d");
+
+  // invalid comparison (supported by AQL)
+  assertFilterFail("FOR d IN collection FILTER 2 <= d.a.b.c.numeric <= 3 RETURN d");
+  assertFilterFail("FOR d IN collection FILTER d.a.b.c.numeric <= 2 <= 3 RETURN d");
+  assertFilterFail("FOR d IN collection FILTER d.a.b.c.numeric <= 2 <= 3 RETURN d");
+  assertFilterFail("FOR d IN collection FILTER 3 <= 2 <= d.a.b.c.numeric RETURN d");
 }
 
 SECTION("BinaryLT") {
   // simple string attribute
   {
-    std::string const queryString = "FOR d IN collection FILTER d.a < '1' RETURN d";
-
     irs::Or expected;
     expected.add<irs::by_range>()
             .field("a")
             .include<irs::Bound::MAX>(false).term<irs::Bound::MAX>("1");
 
-    assertFilterSuccess(queryString, expected);
+    assertFilterSuccess("FOR d IN collection FILTER d.a < '1' RETURN d", expected);
+    assertFilterSuccess("FOR d IN collection FILTER '1' > d.a RETURN d", expected);
   }
 
   // complex attribute name, string
   {
-    std::string const queryString = "FOR d IN collection FILTER d.a.b.c < '1' RETURN d";
-
     irs::Or expected;
     expected.add<irs::by_range>()
             .field("a.b.c")
             .include<irs::Bound::MAX>(false).term<irs::Bound::MAX>("1");
 
-    assertFilterSuccess(queryString, expected);
+    assertFilterSuccess("FOR d IN collection FILTER d.a.b.c < '1' RETURN d", expected);
+    assertFilterSuccess("FOR d IN collection FILTER '1' > d.a.b.c RETURN d", expected);
   }
 
   // complex boolean attribute, true
   {
-    std::string const queryString = "FOR d IN collection FILTER d.a.b.c < true RETURN d";
-
     irs::Or expected;
     expected.add<irs::by_range>()
             .field(mangleBool("a.b.c"))
             .include<irs::Bound::MAX>(false).term<irs::Bound::MAX>(irs::boolean_token_stream::value_true());
 
-    assertFilterSuccess(queryString, expected);
+    assertFilterSuccess("FOR d IN collection FILTER d.a.b.c < true RETURN d", expected);
+    assertFilterSuccess("FOR d IN collection FILTER true > d.a.b.c RETURN d", expected);
   }
 
   // complex boolean attribute, false
   {
-    std::string const queryString = "FOR d IN collection FILTER d.a.b.c.bool < false RETURN d";
-
     irs::Or expected;
     expected.add<irs::by_range>()
             .field(mangleBool("a.b.c.bool"))
             .include<irs::Bound::MAX>(false).term<irs::Bound::MAX>(irs::boolean_token_stream::value_false());
 
-    assertFilterSuccess(queryString, expected);
+    assertFilterSuccess("FOR d IN collection FILTER d.a.b.c.bool < false RETURN d", expected);
+    assertFilterSuccess("FOR d IN collection FILTER false > d.a.b.c.bool RETURN d", expected);
   }
 
   // complex boolean attribute, null
   {
-    std::string const queryString = "FOR d IN collection FILTER d.a.b.c.nil < null RETURN d";
-
     irs::Or expected;
     expected.add<irs::by_range>()
             .field(mangleNull("a.b.c.nil"))
             .include<irs::Bound::MAX>(false).term<irs::Bound::MAX>(irs::null_token_stream::value_null());
 
-    assertFilterSuccess(queryString, expected);
+    assertFilterSuccess("FOR d IN collection FILTER d.a.b.c.nil < null RETURN d", expected);
+    assertFilterSuccess("FOR d IN collection FILTER null > d.a.b.c.nil RETURN d", expected);
   }
 
   // complex boolean attribute, numeric
   {
-    std::string const queryString = "FOR d IN collection FILTER d.a.b.c.numeric < 13 RETURN d";
-
     irs::numeric_token_stream stream;
     stream.reset(13.);
 
@@ -980,30 +982,45 @@ SECTION("BinaryLT") {
             .field(mangleNumeric("a.b.c.numeric"))
             .include<irs::Bound::MAX>(false).insert<irs::Bound::MAX>(stream);
 
-    assertFilterSuccess(queryString, expected);
+    assertFilterSuccess("FOR d IN collection FILTER d.a.b.c.numeric < 13 RETURN d", expected);
+    assertFilterSuccess("FOR d IN collection FILTER d.a.b.c.numeric < 13.0 RETURN d", expected);
+    assertFilterSuccess("FOR d IN collection FILTER 13 > d.a.b.c.numeric RETURN d", expected);
+    assertFilterSuccess("FOR d IN collection FILTER 13.0 > d.a.b.c.numeric RETURN d", expected);
   }
 
   // invalid attribute access
   assertFilterFail("FOR d IN collection FILTER d < '1' RETURN d");
+  assertFilterFail("FOR d IN collection FILTER '1' > d RETURN d");
+
+  // unsupported node types
+  assertFilterFail("FOR d IN collection FILTER d.a < {} RETURN d");
+  assertFilterFail("FOR d IN collection FILTER {} > d.a RETURN d");
+  assertFilterFail("FOR d IN collection FILTER d.a < 1..2 RETURN d");
+  assertFilterFail("FOR d IN collection FILTER 1..2 > d.a RETURN d");
+
+  // invalid comparison (supported by AQL)
+  assertFilterFail("FOR d IN collection FILTER 2 < d.a.b.c.numeric < 3 RETURN d");
+  assertFilterFail("FOR d IN collection FILTER d.a.b.c.numeric < 2 < 3 RETURN d");
+  assertFilterFail("FOR d IN collection FILTER d.a.b.c.numeric < 2 < 3 RETURN d");
+  assertFilterFail("FOR d IN collection FILTER 3 < 2 < d.a.b.c.numeric RETURN d");
 }
 
 SECTION("BinaryOr") {
   // string and string
   {
-    std::string const queryString = "FOR d IN collection FILTER d.a == '1' or d.b == '2' RETURN d";
-
     irs::Or expected;
     auto& root = expected.add<irs::Or>();
     root.add<irs::by_term>().field("a").term("1");
     root.add<irs::by_term>().field("b").term("2");
 
-    assertFilterSuccess(queryString, expected);
+    assertFilterSuccess("FOR d IN collection FILTER d.a == '1' or d.b == '2' RETURN d", expected);
+    assertFilterSuccess("FOR d IN collection FILTER d.a == '1' or '2' == d.b RETURN d", expected);
+    assertFilterSuccess("FOR d IN collection FILTER '1' == d.a or d.b == '2' RETURN d", expected);
+    assertFilterSuccess("FOR d IN collection FILTER '1' == d.a or '2' == d.b RETURN d", expected);
   }
 
   // string or string
   {
-    std::string const queryString = "FOR d IN collection FILTER d.a.b.c < '1' or d.c.b.a == '2' RETURN d";
-
     irs::Or expected;
     auto& root = expected.add<irs::Or>();
     root.add<irs::by_range>()
@@ -1011,13 +1028,14 @@ SECTION("BinaryOr") {
         .include<irs::Bound::MAX>(false).term<irs::Bound::MAX>("1");
     root.add<irs::by_term>().field("c.b.a").term("2");
 
-    assertFilterSuccess(queryString, expected);
+    assertFilterSuccess("FOR d IN collection FILTER d.a.b.c < '1' or d.c.b.a == '2' RETURN d", expected);
+    assertFilterSuccess("FOR d IN collection FILTER d.a.b.c < '1' or '2' == d.c.b.a RETURN d", expected);
+    assertFilterSuccess("FOR d IN collection FILTER '1' > d.a.b.c or d.c.b.a == '2' RETURN d", expected);
+    assertFilterSuccess("FOR d IN collection FILTER '1' > d.a.b.c or '2' == d.c.b.a RETURN d", expected);
   }
 
   // bool and null
   {
-    std::string const queryString = "FOR d IN collection FILTER k.b.c > false or d.a.b.c == null RETURN d";
-
     irs::Or expected;
     auto& root = expected.add<irs::Or>();
     root.add<irs::by_range>()
@@ -1025,13 +1043,14 @@ SECTION("BinaryOr") {
         .include<irs::Bound::MIN>(false).term<irs::Bound::MIN>(irs::boolean_token_stream::value_false());
     root.add<irs::by_term>().field(mangleNull("a.b.c")).term(irs::null_token_stream::value_null());
 
-    assertFilterSuccess(queryString, expected);
+    assertFilterSuccess("FOR d IN collection FILTER k.b.c > false or d.a.b.c == null RETURN d", expected);
+    assertFilterSuccess("FOR d IN collection FILTER false < k.b.c or d.a.b.c == null RETURN d", expected);
+    assertFilterSuccess("FOR d IN collection FILTER k.b.c > false or null == d.a.b.c RETURN d", expected);
+    assertFilterSuccess("FOR d IN collection FILTER false < k.b.c or null == d.a.b.c RETURN d", expected);
   }
 
   // numeric range
   {
-    std::string const queryString = "FOR d IN collection FILTER d.a.b.c > 15 or d.a.b.c < 40 RETURN d";
-
     irs::numeric_token_stream minTerm; minTerm.reset(15.);
     irs::numeric_token_stream maxTerm; maxTerm.reset(40.);
 
@@ -1044,13 +1063,18 @@ SECTION("BinaryOr") {
         .field(mangleNumeric("a.b.c"))
         .include<irs::Bound::MAX>(false).insert<irs::Bound::MAX>(maxTerm);
 
-    assertFilterSuccess(queryString, expected);
+    assertFilterSuccess("FOR d IN collection FILTER d.a.b.c > 15 or d.a.b.c < 40 RETURN d", expected);
+    assertFilterSuccess("FOR d IN collection FILTER 15 < d.a.b.c or d.a.b.c < 40 RETURN d", expected);
+    assertFilterSuccess("FOR d IN collection FILTER d.a.b.c > 15 or 40 > d.a.b.c RETURN d", expected);
+    assertFilterSuccess("FOR d IN collection FILTER 15 < d.a.b.c or 40 > d.a.b.c RETURN d", expected);
+    assertFilterSuccess("FOR d IN collection FILTER d.a.b.c > 15.0 or d.a.b.c < 40.0 RETURN d", expected);
+    assertFilterSuccess("FOR d IN collection FILTER 15.0 < d.a.b.c or d.a.b.c < 40.0 RETURN d", expected);
+    assertFilterSuccess("FOR d IN collection FILTER d.a.b.c > 15.0 or 40.0 > d.a.b.c RETURN d", expected);
+    assertFilterSuccess("FOR d IN collection FILTER 15.0 < d.a.b.c or 40.0 > d.a.b.c RETURN d", expected);
   }
 
   // numeric range
   {
-    std::string const queryString = "FOR d IN collection FILTER d.a.b.c >= 15 or d.a.b.c < 40 RETURN d";
-
     irs::numeric_token_stream minTerm; minTerm.reset(15.);
     irs::numeric_token_stream maxTerm; maxTerm.reset(40.);
 
@@ -1063,13 +1087,18 @@ SECTION("BinaryOr") {
         .field(mangleNumeric("a.b.c"))
         .include<irs::Bound::MAX>(false).insert<irs::Bound::MAX>(maxTerm);
 
-    assertFilterSuccess(queryString, expected);
+    assertFilterSuccess("FOR d IN collection FILTER d.a.b.c >= 15 or d.a.b.c < 40 RETURN d", expected);
+    assertFilterSuccess("FOR d IN collection FILTER 15 <= d.a.b.c or d.a.b.c < 40 RETURN d", expected);
+    assertFilterSuccess("FOR d IN collection FILTER d.a.b.c >= 15 or 40 > d.a.b.c RETURN d", expected);
+    assertFilterSuccess("FOR d IN collection FILTER 15 <= d.a.b.c or 40 > d.a.b.c RETURN d", expected);
+    assertFilterSuccess("FOR d IN collection FILTER d.a.b.c >= 15.0 or d.a.b.c < 40.0 RETURN d", expected);
+    assertFilterSuccess("FOR d IN collection FILTER 15.0 <= d.a.b.c or d.a.b.c < 40.0 RETURN d", expected);
+    assertFilterSuccess("FOR d IN collection FILTER d.a.b.c >= 15.0 or 40.0 > d.a.b.c RETURN d", expected);
+    assertFilterSuccess("FOR d IN collection FILTER 15.0 <= d.a.b.c or 40.0 > d.a.b.c RETURN d", expected);
   }
 
   // numeric range
   {
-    std::string const queryString = "FOR d IN collection FILTER d.a.b.c >= 15 or d.a.b.c <= 40 RETURN d";
-
     irs::numeric_token_stream minTerm; minTerm.reset(15.);
     irs::numeric_token_stream maxTerm; maxTerm.reset(40.);
 
@@ -1082,13 +1111,18 @@ SECTION("BinaryOr") {
         .field(mangleNumeric("a.b.c"))
         .include<irs::Bound::MAX>(true).insert<irs::Bound::MAX>(maxTerm);
 
-    assertFilterSuccess(queryString, expected);
+    assertFilterSuccess("FOR d IN collection FILTER d.a.b.c >= 15 or d.a.b.c <= 40 RETURN d", expected);
+    assertFilterSuccess("FOR d IN collection FILTER 15 <= d.a.b.c or d.a.b.c <= 40 RETURN d", expected);
+    assertFilterSuccess("FOR d IN collection FILTER d.a.b.c >= 15 or 40 >= d.a.b.c RETURN d", expected);
+    assertFilterSuccess("FOR d IN collection FILTER 15 <= d.a.b.c or 40 >= d.a.b.c RETURN d", expected);
+    assertFilterSuccess("FOR d IN collection FILTER d.a.b.c >= 15.0 or d.a.b.c <= 40.0 RETURN d", expected);
+    assertFilterSuccess("FOR d IN collection FILTER 15.0 <= d.a.b.c or d.a.b.c <= 40.0 RETURN d", expected);
+    assertFilterSuccess("FOR d IN collection FILTER d.a.b.c >= 15.0 or 40.0 >= d.a.b.c RETURN d", expected);
+    assertFilterSuccess("FOR d IN collection FILTER 15.0 <= d.a.b.c or 40.0 >= d.a.b.c RETURN d", expected);
   }
 
   // numeric range
   {
-    std::string const queryString = "FOR d IN collection FILTER d.a.b.c > 15 or d.a.b.c <= 40 RETURN d";
-
     irs::numeric_token_stream minTerm; minTerm.reset(15.);
     irs::numeric_token_stream maxTerm; maxTerm.reset(40.);
 
@@ -1101,27 +1135,33 @@ SECTION("BinaryOr") {
         .field(mangleNumeric("a.b.c"))
         .include<irs::Bound::MAX>(true).insert<irs::Bound::MAX>(maxTerm);
 
-    assertFilterSuccess(queryString, expected);
+    assertFilterSuccess("FOR d IN collection FILTER d.a.b.c > 15 or d.a.b.c <= 40 RETURN d", expected);
+    assertFilterSuccess("FOR d IN collection FILTER 15 < d.a.b.c or d.a.b.c <= 40 RETURN d", expected);
+    assertFilterSuccess("FOR d IN collection FILTER d.a.b.c > 15 or 40 >= d.a.b.c RETURN d", expected);
+    assertFilterSuccess("FOR d IN collection FILTER 15 < d.a.b.c or 40 >= d.a.b.c RETURN d", expected);
+    assertFilterSuccess("FOR d IN collection FILTER d.a.b.c > 15.0 or d.a.b.c <= 40.0 RETURN d", expected);
+    assertFilterSuccess("FOR d IN collection FILTER 15.0 < d.a.b.c or d.a.b.c <= 40.0 RETURN d", expected);
+    assertFilterSuccess("FOR d IN collection FILTER d.a.b.c > 15.0 or 40.0 >= d.a.b.c RETURN d", expected);
+    assertFilterSuccess("FOR d IN collection FILTER 15.0 < d.a.b.c or 40.0 >= d.a.b.c RETURN d", expected);
   }
 }
 
 SECTION("BinaryAnd") {
   // string and string
   {
-    std::string const queryString = "FOR d IN collection FILTER d.a == '1' and d.b == '2' RETURN d";
-
     irs::Or expected;
     auto& root = expected.add<irs::And>();
     root.add<irs::by_term>().field("a").term("1");
     root.add<irs::by_term>().field("b").term("2");
 
-    assertFilterSuccess(queryString, expected);
+    assertFilterSuccess("FOR d IN collection FILTER d.a == '1' and d.b == '2' RETURN d", expected);
+    assertFilterSuccess("FOR d IN collection FILTER d.a == '1' and '2' == d.b RETURN d", expected);
+    assertFilterSuccess("FOR d IN collection FILTER '1' == d.a and d.b == '2' RETURN d", expected);
+    assertFilterSuccess("FOR d IN collection FILTER '1' == d.a and '2' == d.b RETURN d", expected);
   }
 
   // string and string
   {
-    std::string const queryString = "FOR d IN collection FILTER d.a.b.c < '1' and d.c.b.a == '2' RETURN d";
-
     irs::Or expected;
     auto& root = expected.add<irs::And>();
     root.add<irs::by_range>()
@@ -1129,13 +1169,14 @@ SECTION("BinaryAnd") {
         .include<irs::Bound::MAX>(false).term<irs::Bound::MAX>("1");
     root.add<irs::by_term>().field("c.b.a").term("2");
 
-    assertFilterSuccess(queryString, expected);
+    assertFilterSuccess("FOR d IN collection FILTER d.a.b.c < '1' and d.c.b.a == '2' RETURN d", expected);
+    assertFilterSuccess("FOR d IN collection FILTER d.a.b.c < '1' and '2' == d.c.b.a RETURN d", expected);
+    assertFilterSuccess("FOR d IN collection FILTER '1' > d.a.b.c and d.c.b.a == '2' RETURN d", expected);
+    assertFilterSuccess("FOR d IN collection FILTER '1' > d.a.b.c and '2' == d.c.b.a RETURN d", expected);
   }
 
   // bool and null
   {
-    std::string const queryString = "FOR d IN collection FILTER k.b.c > false and d.a.b.c == null RETURN d";
-
     irs::Or expected;
     auto& root = expected.add<irs::And>();
     root.add<irs::by_range>()
@@ -1143,13 +1184,14 @@ SECTION("BinaryAnd") {
         .include<irs::Bound::MIN>(false).term<irs::Bound::MIN>(irs::boolean_token_stream::value_false());
     root.add<irs::by_term>().field(mangleNull("a.b.c")).term(irs::null_token_stream::value_null());
 
-    assertFilterSuccess(queryString, expected);
+    assertFilterSuccess("FOR d IN collection FILTER k.b.c > false and d.a.b.c == null RETURN d", expected);
+    assertFilterSuccess("FOR d IN collection FILTER false < k.b.c and d.a.b.c == null RETURN d", expected);
+    assertFilterSuccess("FOR d IN collection FILTER k.b.c > false and null == d.a.b.c RETURN d", expected);
+    assertFilterSuccess("FOR d IN collection FILTER false < k.b.c and null == d.a.b.c RETURN d", expected);
   }
 
   // numeric range
   {
-    std::string const queryString = "FOR d IN collection FILTER d.a.b.c > 15 and d.a.b.c < 40 RETURN d";
-
     irs::numeric_token_stream minTerm; minTerm.reset(15.);
     irs::numeric_token_stream maxTerm; maxTerm.reset(40.);
 
@@ -1159,13 +1201,18 @@ SECTION("BinaryAnd") {
         .include<irs::Bound::MIN>(false).insert<irs::Bound::MIN>(minTerm)
         .include<irs::Bound::MAX>(false).insert<irs::Bound::MAX>(maxTerm);
 
-    assertFilterSuccess(queryString, expected);
+    assertFilterSuccess("FOR d IN collection FILTER d.a.b.c > 15 and d.a.b.c < 40 RETURN d", expected);
+    assertFilterSuccess("FOR d IN collection FILTER 15 < d.a.b.c and d.a.b.c < 40 RETURN d", expected);
+    assertFilterSuccess("FOR d IN collection FILTER d.a.b.c > 15 and 40 > d.a.b.c RETURN d", expected);
+    assertFilterSuccess("FOR d IN collection FILTER 15 < d.a.b.c and 40 > d.a.b.c RETURN d", expected);
+    assertFilterSuccess("FOR d IN collection FILTER d.a.b.c > 15.0 and d.a.b.c < 40.0 RETURN d", expected);
+    assertFilterSuccess("FOR d IN collection FILTER 15.0 < d.a.b.c and d.a.b.c < 40.0 RETURN d", expected);
+    assertFilterSuccess("FOR d IN collection FILTER d.a.b.c > 15.0 and 40.0 > d.a.b.c RETURN d", expected);
+    assertFilterSuccess("FOR d IN collection FILTER 15.0 < d.a.b.c and 40.0 > d.a.b.c RETURN d", expected);
   }
 
   // numeric range
   {
-    std::string const queryString = "FOR d IN collection FILTER d.a.b.c >= 15 and d.a.b.c < 40 RETURN d";
-
     irs::numeric_token_stream minTerm; minTerm.reset(15.);
     irs::numeric_token_stream maxTerm; maxTerm.reset(40.);
 
@@ -1175,13 +1222,18 @@ SECTION("BinaryAnd") {
         .include<irs::Bound::MIN>(true).insert<irs::Bound::MIN>(minTerm)
         .include<irs::Bound::MAX>(false).insert<irs::Bound::MAX>(maxTerm);
 
-    assertFilterSuccess(queryString, expected);
+    assertFilterSuccess("FOR d IN collection FILTER d.a.b.c >= 15 and d.a.b.c < 40 RETURN d", expected);
+    assertFilterSuccess("FOR d IN collection FILTER 15 <= d.a.b.c and d.a.b.c < 40 RETURN d", expected);
+    assertFilterSuccess("FOR d IN collection FILTER d.a.b.c >= 15 and 40 > d.a.b.c RETURN d", expected);
+    assertFilterSuccess("FOR d IN collection FILTER 15 <= d.a.b.c and 40 > d.a.b.c RETURN d", expected);
+    assertFilterSuccess("FOR d IN collection FILTER d.a.b.c >= 15.0 and d.a.b.c < 40.0 RETURN d", expected);
+    assertFilterSuccess("FOR d IN collection FILTER 15.0 <= d.a.b.c and d.a.b.c < 40.0 RETURN d", expected);
+    assertFilterSuccess("FOR d IN collection FILTER d.a.b.c >= 15.0 and 40.0 > d.a.b.c RETURN d", expected);
+    assertFilterSuccess("FOR d IN collection FILTER 15.0 <= d.a.b.c and 40.0 > d.a.b.c RETURN d", expected);
   }
 
   // numeric range
   {
-    std::string const queryString = "FOR d IN collection FILTER d.a.b.c >= 15 and d.a.b.c <= 40 RETURN d";
-
     irs::numeric_token_stream minTerm; minTerm.reset(15.);
     irs::numeric_token_stream maxTerm; maxTerm.reset(40.);
 
@@ -1191,13 +1243,18 @@ SECTION("BinaryAnd") {
         .include<irs::Bound::MIN>(true).insert<irs::Bound::MIN>(minTerm)
         .include<irs::Bound::MAX>(true).insert<irs::Bound::MAX>(maxTerm);
 
-    assertFilterSuccess(queryString, expected);
+    assertFilterSuccess("FOR d IN collection FILTER d.a.b.c >= 15 and d.a.b.c <= 40 RETURN d", expected);
+    assertFilterSuccess("FOR d IN collection FILTER 15 <= d.a.b.c and d.a.b.c <= 40 RETURN d", expected);
+    assertFilterSuccess("FOR d IN collection FILTER d.a.b.c >= 15 and 40 >= d.a.b.c RETURN d", expected);
+    assertFilterSuccess("FOR d IN collection FILTER 15 <= d.a.b.c and 40 >= d.a.b.c RETURN d", expected);
+    assertFilterSuccess("FOR d IN collection FILTER d.a.b.c >= 15.0 and d.a.b.c <= 40.0 RETURN d", expected);
+    assertFilterSuccess("FOR d IN collection FILTER 15.0 <= d.a.b.c and d.a.b.c <= 40.0 RETURN d", expected);
+    assertFilterSuccess("FOR d IN collection FILTER d.a.b.c >= 15.0 and 40.0 >= d.a.b.c RETURN d", expected);
+    assertFilterSuccess("FOR d IN collection FILTER 15.0 <= d.a.b.c and 40.0 >= d.a.b.c RETURN d", expected);
   }
 
   // numeric range
   {
-    std::string const queryString = "FOR d IN collection FILTER d.a.b.c > 15 and d.a.b.c <= 40 RETURN d";
-
     irs::numeric_token_stream minTerm; minTerm.reset(15.);
     irs::numeric_token_stream maxTerm; maxTerm.reset(40.);
 
@@ -1207,65 +1264,74 @@ SECTION("BinaryAnd") {
         .include<irs::Bound::MIN>(false).insert<irs::Bound::MIN>(minTerm)
         .include<irs::Bound::MAX>(true).insert<irs::Bound::MAX>(maxTerm);
 
-    assertFilterSuccess(queryString, expected);
+    assertFilterSuccess("FOR d IN collection FILTER d.a.b.c > 15 and d.a.b.c <= 40 RETURN d", expected);
+    assertFilterSuccess("FOR d IN collection FILTER 15 < d.a.b.c and d.a.b.c <= 40 RETURN d", expected);
+    assertFilterSuccess("FOR d IN collection FILTER d.a.b.c > 15 and 40 >= d.a.b.c RETURN d", expected);
+    assertFilterSuccess("FOR d IN collection FILTER 15 < d.a.b.c and 40 >= d.a.b.c RETURN d", expected);
+    assertFilterSuccess("FOR d IN collection FILTER d.a.b.c > 15.0 and d.a.b.c <= 40.0 RETURN d", expected);
+    assertFilterSuccess("FOR d IN collection FILTER 15.0 < d.a.b.c and d.a.b.c <= 40.0 RETURN d", expected);
+    assertFilterSuccess("FOR d IN collection FILTER d.a.b.c > 15.0 and 40.0 >= d.a.b.c RETURN d", expected);
+    assertFilterSuccess("FOR d IN collection FILTER 15.0 < d.a.b.c and 40.0 >= d.a.b.c RETURN d", expected);
   }
 
   // string range
   {
-    std::string const queryString = "FOR d IN collection FILTER d.a.b.c > '15' and d.a.b.c < '40' RETURN d";
-
     irs::Or expected;
     auto& range = expected.add<irs::by_range>();
     range.field("a.b.c")
         .include<irs::Bound::MIN>(false).term<irs::Bound::MIN>("15")
         .include<irs::Bound::MAX>(false).term<irs::Bound::MAX>("40");
 
-    assertFilterSuccess(queryString, expected);
+    assertFilterSuccess("FOR d IN collection FILTER d.a.b.c > '15' and d.a.b.c < '40' RETURN d", expected);
+    assertFilterSuccess("FOR d IN collection FILTER '15' < d.a.b.c and d.a.b.c < '40' RETURN d", expected);
+    assertFilterSuccess("FOR d IN collection FILTER d.a.b.c > '15' and '40' > d.a.b.c RETURN d", expected);
+    assertFilterSuccess("FOR d IN collection FILTER '15' < d.a.b.c and '40' > d.a.b.c RETURN d", expected);
   }
 
   // string range
   {
-    std::string const queryString = "FOR d IN collection FILTER d.a.b.c >= '15' and d.a.b.c < '40' RETURN d";
-
     irs::Or expected;
     auto& range = expected.add<irs::by_range>();
     range.field("a.b.c")
         .include<irs::Bound::MIN>(true).term<irs::Bound::MIN>("15")
         .include<irs::Bound::MAX>(false).term<irs::Bound::MAX>("40");
 
-    assertFilterSuccess(queryString, expected);
+    assertFilterSuccess("FOR d IN collection FILTER d.a.b.c >= '15' and d.a.b.c < '40' RETURN d", expected);
+    assertFilterSuccess("FOR d IN collection FILTER '15' <= d.a.b.c and d.a.b.c < '40' RETURN d", expected);
+    assertFilterSuccess("FOR d IN collection FILTER d.a.b.c >= '15' and '40' > d.a.b.c RETURN d", expected);
+    assertFilterSuccess("FOR d IN collection FILTER '15' <= d.a.b.c and '40' > d.a.b.c RETURN d", expected);
   }
 
   // string range
   {
-    std::string const queryString = "FOR d IN collection FILTER d.a.b.c >= '15' and d.a.b.c <= '40' RETURN d";
-
     irs::Or expected;
     auto& range = expected.add<irs::by_range>();
     range.field("a.b.c")
         .include<irs::Bound::MIN>(true).term<irs::Bound::MIN>("15")
         .include<irs::Bound::MAX>(true).term<irs::Bound::MAX>("40");
 
-    assertFilterSuccess(queryString, expected);
+    assertFilterSuccess("FOR d IN collection FILTER d.a.b.c >= '15' and d.a.b.c <= '40' RETURN d", expected);
+    assertFilterSuccess("FOR d IN collection FILTER '15' <= d.a.b.c and d.a.b.c <= '40' RETURN d", expected);
+    assertFilterSuccess("FOR d IN collection FILTER d.a.b.c >= '15' and '40' >= d.a.b.c RETURN d", expected);
+    assertFilterSuccess("FOR d IN collection FILTER '15' <= d.a.b.c and '40' >= d.a.b.c RETURN d", expected);
   }
 
   // string range
   {
-    std::string const queryString = "FOR d IN collection FILTER d.a.b.c > '15' and d.a.b.c <= '40' RETURN d";
-
     irs::Or expected;
     auto& range = expected.add<irs::by_range>();
     range.field("a.b.c")
         .include<irs::Bound::MIN>(false).term<irs::Bound::MIN>("15")
         .include<irs::Bound::MAX>(true).term<irs::Bound::MAX>("40");
 
-    assertFilterSuccess(queryString, expected);
+    assertFilterSuccess("FOR d IN collection FILTER d.a.b.c > '15' and d.a.b.c <= '40' RETURN d", expected);
+    assertFilterSuccess("FOR d IN collection FILTER '15' < d.a.b.c and d.a.b.c <= '40' RETURN d", expected);
+    assertFilterSuccess("FOR d IN collection FILTER d.a.b.c > '15' and '40' >= d.a.b.c RETURN d", expected);
+    assertFilterSuccess("FOR d IN collection FILTER '15' < d.a.b.c and '40' >= d.a.b.c RETURN d", expected);
   }
 
   // heterogeneous range
   {
-    std::string const queryString = "FOR d IN collection FILTER d.a.b.c >= '15' and d.a.b.c < 40 RETURN d";
-
     irs::numeric_token_stream maxTerm; maxTerm.reset(40.);
 
     irs::Or expected;
@@ -1277,13 +1343,18 @@ SECTION("BinaryAnd") {
         .field(mangleNumeric("a.b.c"))
         .include<irs::Bound::MAX>(false).insert<irs::Bound::MAX>(maxTerm);
 
-    assertFilterSuccess(queryString, expected);
+    assertFilterSuccess("FOR d IN collection FILTER d.a.b.c >= '15' and d.a.b.c < 40 RETURN d", expected);
+    assertFilterSuccess("FOR d IN collection FILTER '15' <= d.a.b.c and d.a.b.c < 40 RETURN d", expected);
+    assertFilterSuccess("FOR d IN collection FILTER d.a.b.c >= '15' and 40 > d.a.b.c RETURN d", expected);
+    assertFilterSuccess("FOR d IN collection FILTER '15' <= d.a.b.c and 40 > d.a.b.c RETURN d", expected);
+    assertFilterSuccess("FOR d IN collection FILTER d.a.b.c >= '15' and d.a.b.c < 40.0 RETURN d", expected);
+    assertFilterSuccess("FOR d IN collection FILTER '15' <= d.a.b.c and d.a.b.c < 40.0 RETURN d", expected);
+    assertFilterSuccess("FOR d IN collection FILTER d.a.b.c >= '15' and 40.0 > d.a.b.c RETURN d", expected);
+    assertFilterSuccess("FOR d IN collection FILTER '15' <= d.a.b.c and 40.0 > d.a.b.c RETURN d", expected);
   }
 
   // heterogeneous range
   {
-    std::string const queryString = "FOR d IN collection FILTER d.a.b.c > 15 and d.a.b.c <= '40' RETURN d";
-
     irs::numeric_token_stream minTerm; minTerm.reset(15.);
     irs::numeric_token_stream maxTerm; maxTerm.reset(40.);
 
@@ -1296,13 +1367,18 @@ SECTION("BinaryAnd") {
         .field("a.b.c")
         .include<irs::Bound::MAX>(true).term<irs::Bound::MAX>("40");
 
-    assertFilterSuccess(queryString, expected);
+    assertFilterSuccess("FOR d IN collection FILTER d.a.b.c > 15 and d.a.b.c <= '40' RETURN d", expected);
+    assertFilterSuccess("FOR d IN collection FILTER 15 < d.a.b.c and d.a.b.c <= '40' RETURN d", expected);
+    assertFilterSuccess("FOR d IN collection FILTER d.a.b.c > 15 and '40' >= d.a.b.c RETURN d", expected);
+    assertFilterSuccess("FOR d IN collection FILTER 15 < d.a.b.c and '40' >= d.a.b.c RETURN d", expected);
+    assertFilterSuccess("FOR d IN collection FILTER d.a.b.c > 15.0 and d.a.b.c <= '40' RETURN d", expected);
+    assertFilterSuccess("FOR d IN collection FILTER 15.0 < d.a.b.c and d.a.b.c <= '40' RETURN d", expected);
+    assertFilterSuccess("FOR d IN collection FILTER d.a.b.c > 15.0 and '40' >= d.a.b.c RETURN d", expected);
+    assertFilterSuccess("FOR d IN collection FILTER 15.0 < d.a.b.c and '40' >= d.a.b.c RETURN d", expected);
   }
 
   // heterogeneous range
   {
-    std::string const queryString = "FOR d IN collection FILTER d.a.b.c >= false and d.a.b.c <= 40 RETURN d";
-
     irs::numeric_token_stream maxTerm; maxTerm.reset(40.);
 
     irs::Or expected;
@@ -1314,13 +1390,18 @@ SECTION("BinaryAnd") {
         .field(mangleNumeric("a.b.c"))
         .include<irs::Bound::MAX>(true).insert<irs::Bound::MAX>(maxTerm);
 
-    assertFilterSuccess(queryString, expected);
+    assertFilterSuccess("FOR d IN collection FILTER d.a.b.c >= false and d.a.b.c <= 40 RETURN d", expected);
+    assertFilterSuccess("FOR d IN collection FILTER false <= d.a.b.c and d.a.b.c <= 40 RETURN d", expected);
+    assertFilterSuccess("FOR d IN collection FILTER d.a.b.c >= false and 40 >= d.a.b.c RETURN d", expected);
+    assertFilterSuccess("FOR d IN collection FILTER false <= d.a.b.c and 40 >= d.a.b.c RETURN d", expected);
+    assertFilterSuccess("FOR d IN collection FILTER d.a.b.c >= false and d.a.b.c <= 40.0 RETURN d", expected);
+    assertFilterSuccess("FOR d IN collection FILTER false <= d.a.b.c and d.a.b.c <= 40.0 RETURN d", expected);
+    assertFilterSuccess("FOR d IN collection FILTER d.a.b.c >= false and 40.0 >= d.a.b.c RETURN d", expected);
+    assertFilterSuccess("FOR d IN collection FILTER false <= d.a.b.c and 40.0 >= d.a.b.c RETURN d", expected);
   }
 
   // heterogeneous range
   {
-    std::string const queryString = "FOR d IN collection FILTER d.a.b.c > null and d.a.b.c <= 40.5 RETURN d";
-
     irs::numeric_token_stream maxTerm; maxTerm.reset(40.5);
 
     irs::Or expected;
@@ -1332,13 +1413,14 @@ SECTION("BinaryAnd") {
         .field(mangleNumeric("a.b.c"))
         .include<irs::Bound::MAX>(true).insert<irs::Bound::MAX>(maxTerm);
 
-    assertFilterSuccess(queryString, expected);
+    assertFilterSuccess("FOR d IN collection FILTER d.a.b.c > null and d.a.b.c <= 40.5 RETURN d", expected);
+    assertFilterSuccess("FOR d IN collection FILTER null < d.a.b.c and d.a.b.c <= 40.5 RETURN d", expected);
+    assertFilterSuccess("FOR d IN collection FILTER d.a.b.c > null and 40.5 >= d.a.b.c RETURN d", expected);
+    assertFilterSuccess("FOR d IN collection FILTER null < d.a.b.c and 40.5 >= d.a.b.c RETURN d", expected);
   }
 
   // range with different references
   {
-    std::string const queryString = "FOR d IN collection FILTER d.a.b.c >= '15' and k.a.b.c < 40 RETURN d";
-
     irs::numeric_token_stream maxTerm; maxTerm.reset(40.);
 
     irs::Or expected;
@@ -1350,13 +1432,18 @@ SECTION("BinaryAnd") {
         .field(mangleNumeric("a.b.c"))
         .include<irs::Bound::MAX>(false).insert<irs::Bound::MAX>(maxTerm);
 
-    assertFilterSuccess(queryString, expected);
+    assertFilterSuccess("FOR d IN collection FILTER d.a.b.c >= '15' and k.a.b.c < 40 RETURN d", expected);
+    assertFilterSuccess("FOR d IN collection FILTER '15' <= d.a.b.c and k.a.b.c < 40 RETURN d", expected);
+    assertFilterSuccess("FOR d IN collection FILTER d.a.b.c >= '15' and 40 > k.a.b.c RETURN d", expected);
+    assertFilterSuccess("FOR d IN collection FILTER '15' <= d.a.b.c and 40 > k.a.b.c RETURN d", expected);
+    assertFilterSuccess("FOR d IN collection FILTER d.a.b.c >= '15' and k.a.b.c < 40.0 RETURN d", expected);
+    assertFilterSuccess("FOR d IN collection FILTER '15' <= d.a.b.c and k.a.b.c < 40.0 RETURN d", expected);
+    assertFilterSuccess("FOR d IN collection FILTER d.a.b.c >= '15' and 40.0 > k.a.b.c RETURN d", expected);
+    assertFilterSuccess("FOR d IN collection FILTER '15' <= d.a.b.c and 40.0 > k.a.b.c RETURN d", expected);
   }
 
   // range with different references
   {
-    std::string const queryString = "FOR d IN collection FILTER k.a.b.c > 15 and d.a.b.c <= '40' RETURN d";
-
     irs::numeric_token_stream minTerm; minTerm.reset(15.);
     irs::numeric_token_stream maxTerm; maxTerm.reset(40.);
 
@@ -1369,13 +1456,18 @@ SECTION("BinaryAnd") {
         .field("a.b.c")
         .include<irs::Bound::MAX>(true).term<irs::Bound::MAX>("40");
 
-    assertFilterSuccess(queryString, expected);
+    assertFilterSuccess("FOR d IN collection FILTER k.a.b.c > 15 and d.a.b.c <= '40' RETURN d", expected);
+    assertFilterSuccess("FOR d IN collection FILTER 15 < k.a.b.c and d.a.b.c <= '40' RETURN d", expected);
+    assertFilterSuccess("FOR d IN collection FILTER k.a.b.c > 15 and '40' >= d.a.b.c RETURN d", expected);
+    assertFilterSuccess("FOR d IN collection FILTER 15 < k.a.b.c and '40' >= d.a.b.c RETURN d", expected);
+    assertFilterSuccess("FOR d IN collection FILTER k.a.b.c > 15.0 and d.a.b.c <= '40' RETURN d", expected);
+    assertFilterSuccess("FOR d IN collection FILTER 15.0 < k.a.b.c and d.a.b.c <= '40' RETURN d", expected);
+    assertFilterSuccess("FOR d IN collection FILTER k.a.b.c > 15.0 and '40' >= d.a.b.c RETURN d", expected);
+    assertFilterSuccess("FOR d IN collection FILTER 15.0 < k.a.b.c and '40' >= d.a.b.c RETURN d", expected);
   }
 
   // range with different references
   {
-    std::string const queryString = "FOR d IN collection FILTER d.a.b.c >= false and k.a.b.c <= 40 RETURN d";
-
     irs::numeric_token_stream maxTerm; maxTerm.reset(40.);
 
     irs::Or expected;
@@ -1387,13 +1479,18 @@ SECTION("BinaryAnd") {
         .field(mangleNumeric("a.b.c"))
         .include<irs::Bound::MAX>(true).insert<irs::Bound::MAX>(maxTerm);
 
-    assertFilterSuccess(queryString, expected);
+    assertFilterSuccess("FOR d IN collection FILTER d.a.b.c >= false and k.a.b.c <= 40 RETURN d", expected);
+    assertFilterSuccess("FOR d IN collection FILTER false <= d.a.b.c and k.a.b.c <= 40 RETURN d", expected);
+    assertFilterSuccess("FOR d IN collection FILTER d.a.b.c >= false and 40 >= k.a.b.c RETURN d", expected);
+    assertFilterSuccess("FOR d IN collection FILTER false <= d.a.b.c and 40 >= k.a.b.c RETURN d", expected);
+    assertFilterSuccess("FOR d IN collection FILTER d.a.b.c >= false and k.a.b.c <= 40.0 RETURN d", expected);
+    assertFilterSuccess("FOR d IN collection FILTER false <= d.a.b.c and k.a.b.c <= 40.0 RETURN d", expected);
+    assertFilterSuccess("FOR d IN collection FILTER d.a.b.c >= false and 40.0 >= k.a.b.c RETURN d", expected);
+    assertFilterSuccess("FOR d IN collection FILTER false <= d.a.b.c and 40.0 >= k.a.b.c RETURN d", expected);
   }
 
   // range with different references
   {
-    std::string const queryString = "FOR d IN collection FILTER k.a.b.c > null and d.a.b.c <= 40.5 RETURN d";
-
     irs::numeric_token_stream maxTerm; maxTerm.reset(40.5);
 
     irs::Or expected;
@@ -1405,129 +1502,108 @@ SECTION("BinaryAnd") {
         .field(mangleNumeric("a.b.c"))
         .include<irs::Bound::MAX>(true).insert<irs::Bound::MAX>(maxTerm);
 
-    assertFilterSuccess(queryString, expected);
+    assertFilterSuccess("FOR d IN collection FILTER k.a.b.c > null and d.a.b.c <= 40.5 RETURN d", expected);
+    assertFilterSuccess("FOR d IN collection FILTER null < k.a.b.c and d.a.b.c <= 40.5 RETURN d", expected);
+    assertFilterSuccess("FOR d IN collection FILTER k.a.b.c > null and 40.5 >= d.a.b.c RETURN d", expected);
+    assertFilterSuccess("FOR d IN collection FILTER null < k.a.b.c and 40.5 >= d.a.b.c RETURN d", expected);
   }
 }
 
 SECTION("Value") {
   // string value == true
   {
-    std::string const queryString = "FOR d IN collection FILTER '1' RETURN d";
-
     irs::Or expected;
     expected.add<irs::all>();
 
-    assertFilterSuccess(queryString, expected);
+    assertFilterSuccess("FOR d IN collection FILTER '1' RETURN d", expected);
   }
 
   // true value
   {
-    std::string const queryString = "FOR d IN collection FILTER true RETURN d";
-
     irs::Or expected;
     expected.add<irs::all>();
 
-    assertFilterSuccess(queryString, expected);
+    assertFilterSuccess("FOR d IN collection FILTER true RETURN d", expected);
   }
 
   // string empty value == false
   {
-    std::string const queryString = "FOR d IN collection FILTER '' RETURN d";
-
     irs::Or expected;
     expected.add<irs::empty>();
 
-    assertFilterSuccess(queryString, expected);
+    assertFilterSuccess("FOR d IN collection FILTER '' RETURN d", expected);
   }
 
   // false
   {
-    std::string const queryString = "FOR d IN collection FILTER false RETURN d";
-
     irs::Or expected;
     expected.add<irs::empty>();
 
-    assertFilterSuccess(queryString, expected);
+    assertFilterSuccess("FOR d IN collection FILTER false RETURN d", expected);
   }
 
   // null == value
   {
-    std::string const queryString = "FOR d IN collection FILTER null RETURN d";
-
     irs::Or expected;
     expected.add<irs::empty>();
 
-    assertFilterSuccess(queryString, expected);
+    assertFilterSuccess("FOR d IN collection FILTER null RETURN d", expected);
   }
 
   // non zero numeric value
   {
-    std::string const queryString = "FOR d IN collection FILTER 1 RETURN d";
-
     irs::Or expected;
     expected.add<irs::all>();
 
-    assertFilterSuccess(queryString, expected);
+    assertFilterSuccess("FOR d IN collection FILTER 1 RETURN d", expected);
   }
 
   // zero numeric value
   {
-    std::string const queryString = "FOR d IN collection FILTER 0 RETURN d";
-
     irs::Or expected;
     expected.add<irs::empty>();
 
-    assertFilterSuccess(queryString, expected);
+    assertFilterSuccess("FOR d IN collection FILTER 0 RETURN d", expected);
   }
 
   // zero floating value
   {
-    std::string const queryString = "FOR d IN collection FILTER 0.0 RETURN d";
-
     irs::Or expected;
     expected.add<irs::empty>();
 
-    assertFilterSuccess(queryString, expected);
+    assertFilterSuccess("FOR d IN collection FILTER 0.0 RETURN d", expected);
   }
 
   // non zero floating value
   {
-    std::string const queryString = "FOR d IN collection FILTER 0.1 RETURN d";
-
     irs::Or expected;
     expected.add<irs::all>();
 
-    assertFilterSuccess(queryString, expected);
+    assertFilterSuccess("FOR d IN collection FILTER 0.1 RETURN d", expected);
   }
 
   // Array == true
   {
-    std::string const queryString = "FOR d IN collection FILTER [] RETURN d";
-
     irs::Or expected;
     expected.add<irs::all>();
 
-    assertFilterSuccess(queryString, expected);
+    assertFilterSuccess("FOR d IN collection FILTER [] RETURN d", expected);
   }
 
   // Range == true
   {
-    std::string const queryString = "FOR d IN collection FILTER 1..2 RETURN d";
-
     irs::Or expected;
     expected.add<irs::all>();
 
-    assertFilterSuccess(queryString, expected);
+    assertFilterSuccess("FOR d IN collection FILTER 1..2 RETURN d", expected);
   }
 
   // Object == true
   {
-    std::string const queryString = "FOR d IN collection FILTER {} RETURN d";
-
     irs::Or expected;
     expected.add<irs::all>();
 
-    assertFilterSuccess(queryString, expected);
+    assertFilterSuccess("FOR d IN collection FILTER {} RETURN d", expected);
   }
 
   // reference
@@ -1538,13 +1614,11 @@ SECTION("Phrase") {
   // without offset
   // quick
   {
-    std::string const queryString = "FOR d IN VIEW myView FILTER ir::phrase(d.name, 'quick') RETURN d";
-
     irs::Or expected;
     auto& phrase = expected.add<irs::by_phrase>();
     phrase.field("name").push_back("quick");
 
-    assertFilterSuccess(queryString, expected);
+    assertFilterSuccess("FOR d IN VIEW myView FILTER ir::phrase(d.name, 'quick') RETURN d", expected);
 
     // invalid attribute access
     assertFilterFail("FOR d IN VIEW myView FILTER ir::phrase(d, 'quick') RETURN d");
@@ -1559,13 +1633,11 @@ SECTION("Phrase") {
   // with offset
   // quick brown
   {
-    std::string const queryString = "FOR d IN VIEW myView FILTER ir::phrase(d.name, 'quick', 0, 'brown') RETURN d";
-
     irs::Or expected;
     auto& phrase = expected.add<irs::by_phrase>();
     phrase.field("name").push_back("quick").push_back("brown");
 
-    assertFilterSuccess(queryString, expected);
+    assertFilterSuccess("FOR d IN VIEW myView FILTER ir::phrase(d.name, 'quick', 0, 'brown') RETURN d", expected);
 
     // wrong offset argument
     assertFilterFail("FOR d IN VIEW myView FILTER ir::phrase(d.name, 'quick', '0', 'brown') RETURN d");
@@ -1578,32 +1650,26 @@ SECTION("Phrase") {
   // with offset, complex name
   // quick <...> <...> <...> <...> <...> brown
   {
-    std::string const queryString = "FOR d IN VIEW myView FILTER ir::phrase(d.obj.name, 'quick', 5, 'brown') RETURN d";
-
     irs::Or expected;
     auto& phrase = expected.add<irs::by_phrase>();
     phrase.field("obj.name").push_back("quick").push_back("brown", 5);
 
-    assertFilterSuccess(queryString, expected);
+    assertFilterSuccess("FOR d IN VIEW myView FILTER ir::phrase(d.obj.name, 'quick', 5, 'brown') RETURN d", expected);
   }
 
   // with floating offset, complex name
   // quick <...> <...> <...> <...> <...> brown
   {
-    std::string const queryString = "FOR d IN VIEW myView FILTER ir::phrase(d.obj.name, 'quick', 5.5, 'brown') RETURN d";
-
     irs::Or expected;
     auto& phrase = expected.add<irs::by_phrase>();
     phrase.field("obj.name").push_back("quick").push_back("brown", 5);
 
-    assertFilterSuccess(queryString, expected);
+    assertFilterSuccess("FOR d IN VIEW myView FILTER ir::phrase(d.obj.name, 'quick', 5.5, 'brown') RETURN d", expected);
   }
 
   // multiple offsets, complex name
   // quick <...> <...> <...> brown <...> <...> fox jumps
   {
-    std::string const queryString = "FOR d IN VIEW myView FILTER ir::phrase(d.obj.properties.id.name, 'quick', 3, 'brown', 2, 'fox', 0, 'jumps') RETURN d";
-
     irs::Or expected;
     auto& phrase = expected.add<irs::by_phrase>();
     phrase.field("obj.properties.id.name")
@@ -1612,7 +1678,7 @@ SECTION("Phrase") {
           .push_back("fox", 2)
           .push_back("jumps");
 
-    assertFilterSuccess(queryString, expected);
+    assertFilterSuccess("FOR d IN VIEW myView FILTER ir::phrase(d.obj.properties.id.name, 'quick', 3, 'brown', 2, 'fox', 0, 'jumps') RETURN d", expected);
 
     // wrong value
     assertFilterFail("FOR d IN VIEW myView FILTER ir::phrase(d.obj.properties.id.name, 'quick', 3, d.brown, 2, 'fox', 0, 'jumps') RETURN d");
@@ -1637,50 +1703,42 @@ SECTION("Phrase") {
 SECTION("StartsWith") {
   // without scoring limit
   {
-    std::string const queryString = "FOR d IN VIEW myView FILTER ir::starts_with(d.name, 'abc') RETURN d";
-
     irs::Or expected;
     auto& prefix = expected.add<irs::by_prefix>();
     prefix.field("name").term("abc");
     prefix.scored_terms_limit(128);
 
-    assertFilterSuccess(queryString, expected);
+    assertFilterSuccess("FOR d IN VIEW myView FILTER ir::starts_with(d.name, 'abc') RETURN d", expected);
   }
 
   // without scoring limit, complex name
   {
-    std::string const queryString = "FOR d IN VIEW myView FILTER ir::starts_with(d.obj.properties.name, 'abc') RETURN d";
-
     irs::Or expected;
     auto& prefix = expected.add<irs::by_prefix>();
     prefix.field("obj.properties.name").term("abc");
     prefix.scored_terms_limit(128);
 
-    assertFilterSuccess(queryString, expected);
+    assertFilterSuccess("FOR d IN VIEW myView FILTER ir::starts_with(d.obj.properties.name, 'abc') RETURN d", expected);
   }
 
   // with scoring limit (int)
   {
-    std::string const queryString = "FOR d IN VIEW myView FILTER ir::starts_with(d.name, 'abc', 1024) RETURN d";
-
     irs::Or expected;
     auto& prefix = expected.add<irs::by_prefix>();
     prefix.field("name").term("abc");
     prefix.scored_terms_limit(1024);
 
-    assertFilterSuccess(queryString, expected);
+    assertFilterSuccess("FOR d IN VIEW myView FILTER ir::starts_with(d.name, 'abc', 1024) RETURN d", expected);
   }
 
   // with scoring limit (double)
   {
-    std::string const queryString = "FOR d IN VIEW myView FILTER ir::starts_with(d.name, 'abc', 100.5) RETURN d";
-
     irs::Or expected;
     auto& prefix = expected.add<irs::by_prefix>();
     prefix.field("name").term("abc");
     prefix.scored_terms_limit(100);
 
-    assertFilterSuccess(queryString, expected);
+    assertFilterSuccess("FOR d IN VIEW myView FILTER ir::starts_with(d.name, 'abc', 100.5) RETURN d", expected);
   }
 
   // invalid attribute access

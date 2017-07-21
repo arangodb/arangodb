@@ -41,6 +41,22 @@ NS_LOCAL
 // --SECTION--                                        FilerFactory dependencies
 // ----------------------------------------------------------------------------
 
+template<arangodb::aql::AstNodeType Max>
+constexpr bool checkAdjacency() {
+  return true;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @returns true if values from the specified range [Min;Max] are adjacent
+////////////////////////////////////////////////////////////////////////////////
+template<
+  arangodb::aql::AstNodeType Max,
+  arangodb::aql::AstNodeType Min,
+  arangodb::aql::AstNodeType... Types
+> constexpr bool checkAdjacency() {
+  return (Max > Min) && (1 == (Max - Min)) && checkAdjacency<Min, Types...>();
+}
+
 template<bool Preorder, typename Visitor>
 bool visit(arangodb::aql::AstNode const& root, Visitor visitor) {
   if (Preorder && !visitor(root)) {
@@ -61,6 +77,69 @@ bool visit(arangodb::aql::AstNode const& root, Visitor visitor) {
   if (!Preorder && !visitor(root)) {
     return false;
   }
+
+  return true;
+}
+
+struct NormalizedCmpNode {
+  arangodb::aql::AstNode const* attribute;
+  arangodb::aql::AstNode const* value;
+  arangodb::aql::AstNodeType cmp;
+};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief normalizes input binary comparison node (==, !=, <, <=, >, >=) and
+///        fills the specified struct
+////////////////////////////////////////////////////////////////////////////////
+bool normalizeCmpNode(arangodb::aql::AstNode const& in, NormalizedCmpNode& out) {
+  static_assert(checkAdjacency<
+    arangodb::aql::NODE_TYPE_OPERATOR_BINARY_GE, arangodb::aql::NODE_TYPE_OPERATOR_BINARY_GT,
+    arangodb::aql::NODE_TYPE_OPERATOR_BINARY_LE, arangodb::aql::NODE_TYPE_OPERATOR_BINARY_LT,
+    arangodb::aql::NODE_TYPE_OPERATOR_BINARY_NE, arangodb::aql::NODE_TYPE_OPERATOR_BINARY_EQ>(),
+    "Values are not adjacent"
+  );
+
+  auto cmp = in.type;
+
+  if (cmp < arangodb::aql::NODE_TYPE_OPERATOR_BINARY_EQ
+      || cmp > arangodb::aql::NODE_TYPE_OPERATOR_BINARY_GE
+      || in.numMembers() != 2) {
+    // wrong 'in' type
+    return false;
+  }
+
+  auto const* attributeNode = in.getMemberUnchecked(0);
+  TRI_ASSERT(attributeNode);
+  auto const* valueNode = in.getMemberUnchecked(1);
+  TRI_ASSERT(valueNode);
+
+  if (attributeNode->type != arangodb::aql::NODE_TYPE_ATTRIBUTE_ACCESS) {
+    if (valueNode->type != arangodb::aql::NODE_TYPE_ATTRIBUTE_ACCESS) {
+      // no attribute access node found
+      return false;
+    }
+
+    static arangodb::aql::AstNodeType const CmpMap[] {
+      arangodb::aql::NODE_TYPE_OPERATOR_BINARY_EQ, // NODE_TYPE_OPERATOR_BINARY_EQ: 3 == a <==> a == 3
+      arangodb::aql::NODE_TYPE_OPERATOR_BINARY_NE, // NODE_TYPE_OPERATOR_BINARY_NE: 3 != a <==> a != 3
+      arangodb::aql::NODE_TYPE_OPERATOR_BINARY_GT, // NODE_TYPE_OPERATOR_BINARY_GT: 3 < a  <==> a > 3
+      arangodb::aql::NODE_TYPE_OPERATOR_BINARY_GE, // NODE_TYPE_OPERATOR_BINARY_GE: 3 <= a <==> a >= 3
+      arangodb::aql::NODE_TYPE_OPERATOR_BINARY_LT, // NODE_TYPE_OPERATOR_BINARY_LT: 3 > a  <==> a < 3
+      arangodb::aql::NODE_TYPE_OPERATOR_BINARY_LE  // NODE_TYPE_OPERATOR_BINARY_LE: 3 >= a <==> a <= 3
+    };
+
+    std::swap(attributeNode, valueNode);
+    cmp = CmpMap[cmp - arangodb::aql::NODE_TYPE_OPERATOR_BINARY_EQ];
+  }
+
+  if (valueNode->type != arangodb::aql::NODE_TYPE_VALUE || !valueNode->isConstant()) {
+    // can't handle non-constant values
+    return false;
+  }
+
+  out.attribute = attributeNode;
+  out.value = valueNode;
+  out.cmp = cmp;
 
   return true;
 }
@@ -384,11 +463,12 @@ bool byRange(
   return false;
 }
 
-template<irs::Bound Bound, bool Include>
+template<irs::Bound Bound>
 bool byRange(
     irs::boolean_filter* filter,
     arangodb::aql::AstNode const& attributeNode,
-    arangodb::aql::AstNode const& valueNode
+    arangodb::aql::AstNode const& valueNode,
+    bool const incl
 ) {
   if (!valueNode.isConstant()) {
     // can't process non constant nodes
@@ -402,7 +482,7 @@ bool byRange(
 
         range.field(nameFromAttributeAccess(attributeNode, valueNode.value.type));
         range.term<Bound>(irs::null_token_stream::value_null());
-        range.include<Bound>(Include);;
+        range.include<Bound>(incl);
       }
 
       return true;
@@ -416,7 +496,7 @@ bool byRange(
 
         range.field(nameFromAttributeAccess(attributeNode, valueNode.value.type));
         range.term<Bound>(value);
-        range.include<Bound>(Include);
+        range.include<Bound>(incl);
       }
 
       return true;
@@ -430,7 +510,7 @@ bool byRange(
         stream.reset(valueNode.getDoubleValue());
         range.field(nameFromAttributeAccess(attributeNode, valueNode.value.type));
         range.insert<Bound>(stream);
-        range.include<Bound>(Include);
+        range.include<Bound>(incl);
       }
 
       return true;
@@ -448,7 +528,7 @@ bool byRange(
 
         range.field(nameFromAttributeAccess(attributeNode, valueNode.value.type));
         range.term<Bound>(value);
-        range.include<Bound>(Include);
+        range.include<Bound>(incl);
       }
 
       return true;
@@ -458,38 +538,32 @@ bool byRange(
   return false;
 }
 
-template<irs::Bound Bound, bool Include>
 bool fromInterval(
     irs::boolean_filter* filter,
     arangodb::aql::AstNode const& node
 ) {
   TRI_ASSERT(
-    (arangodb::aql::NODE_TYPE_OPERATOR_BINARY_LT == node.type && irs::Bound::MAX == Bound && !Include)
-     || (arangodb::aql::NODE_TYPE_OPERATOR_BINARY_LE == node.type && irs::Bound::MAX == Bound && Include)
-     || (arangodb::aql::NODE_TYPE_OPERATOR_BINARY_GT == node.type && irs::Bound::MIN == Bound && !Include)
-     || (arangodb::aql::NODE_TYPE_OPERATOR_BINARY_GE == node.type && irs::Bound::MIN == Bound && Include)
+    arangodb::aql::NODE_TYPE_OPERATOR_BINARY_LT == node.type
+    || arangodb::aql::NODE_TYPE_OPERATOR_BINARY_LE == node.type
+    || arangodb::aql::NODE_TYPE_OPERATOR_BINARY_GT == node.type
+    || arangodb::aql::NODE_TYPE_OPERATOR_BINARY_GE == node.type
   );
 
-  if (node.numMembers() != 2) {
-    // wrong number of members
+  NormalizedCmpNode normNode;
+
+  if (!normalizeCmpNode(node, normNode)) {
+    // unable to normalize node
     return false;
   }
 
-  auto const* attributeNode = getNode(node, 0, arangodb::aql::NODE_TYPE_ATTRIBUTE_ACCESS);
+  bool const incl = arangodb::aql::NODE_TYPE_OPERATOR_BINARY_GE == normNode.cmp
+                 || arangodb::aql::NODE_TYPE_OPERATOR_BINARY_LE == normNode.cmp;
 
-  if (!attributeNode) {
-    // wrong attribute node type
-    return false;
-  }
+  bool const min = arangodb::aql::NODE_TYPE_OPERATOR_BINARY_GT == normNode.cmp
+                || arangodb::aql::NODE_TYPE_OPERATOR_BINARY_GE == normNode.cmp;
 
-  auto const* valueNode = node.getMemberUnchecked(1);
-  TRI_ASSERT(attributeNode);
-
-  if (!valueNode->isConstant()) {
-    return false;
-  }
-
-  return byRange<Bound, Include>(filter, *attributeNode, *valueNode);
+  return min ? byRange<irs::Bound::MIN>(filter, *normNode.attribute, *normNode.value, incl)
+             : byRange<irs::Bound::MAX>(filter, *normNode.attribute, *normNode.value, incl);
 }
 
 bool fromBinaryEq(
@@ -500,22 +574,10 @@ bool fromBinaryEq(
     arangodb::aql::NODE_TYPE_OPERATOR_BINARY_EQ == node.type
     || arangodb::aql::NODE_TYPE_OPERATOR_BINARY_NE == node.type);
 
-  if (node.numMembers() != 2) {
-    // wrong number of members
-    return false;
-  }
+  NormalizedCmpNode normalized;
 
-  auto const* attributeNode = getNode(node, 0, arangodb::aql::NODE_TYPE_ATTRIBUTE_ACCESS);
-
-  if (!attributeNode) {
-    // wrong attribute node type
-    return false;
-  }
-
-  auto* valueNode = node.getMemberUnchecked(1);
-  TRI_ASSERT(attributeNode);
-
-  if (!valueNode->isConstant()) {
+  if (!normalizeCmpNode(node, normalized)) {
+    // unable to normalize node
     return false;
   }
 
@@ -524,7 +586,7 @@ bool fromBinaryEq(
                      ? filter->add<irs::Not>().filter<irs::by_term>()
                      : filter->add<irs::by_term>();
 
-    byTerm(termFilter, *attributeNode, *valueNode);
+    byTerm(termFilter, *normalized.attribute, *normalized.value);
   }
 
   return true;
@@ -699,49 +761,26 @@ bool fromBinaryAnd(
   auto const* rhsNode = node.getMemberUnchecked(1);
   TRI_ASSERT(rhsNode);
 
-  bool const lhsInclude = arangodb::aql::NODE_TYPE_OPERATOR_BINARY_GE == lhsNode->type;
-  bool const rhsInclude = arangodb::aql::NODE_TYPE_OPERATOR_BINARY_LE == rhsNode->type;
+  NormalizedCmpNode lhsNormNode, rhsNormNode;
 
-  if ((lhsInclude || arangodb::aql::NODE_TYPE_OPERATOR_BINARY_GT == lhsNode->type)
-       && (rhsInclude || arangodb::aql::NODE_TYPE_OPERATOR_BINARY_LT == rhsNode->type)) {
-    if (lhsNode->numMembers() != 2 || rhsNode->numMembers() != 2) {
-      // wrong number of members
-      return false;
-    }
+  if (normalizeCmpNode(*lhsNode, lhsNormNode) && normalizeCmpNode(*rhsNode, rhsNormNode)) {
+    bool const lhsInclude = arangodb::aql::NODE_TYPE_OPERATOR_BINARY_GE == lhsNormNode.cmp;
+    bool const rhsInclude = arangodb::aql::NODE_TYPE_OPERATOR_BINARY_LE == rhsNormNode.cmp;
 
-    auto const* lhsAttribute = getNode(*lhsNode, 0, arangodb::aql::NODE_TYPE_ATTRIBUTE_ACCESS);
+    if ((lhsInclude || arangodb::aql::NODE_TYPE_OPERATOR_BINARY_GT == lhsNormNode.cmp)
+         && (rhsInclude || arangodb::aql::NODE_TYPE_OPERATOR_BINARY_LT == rhsNormNode.cmp)) {
 
-    if (!lhsAttribute) {
-      // wrong attribute node type
-      return false;
-    }
+      auto const* lhsAttr = lhsNormNode.attribute;
+      auto const* rhsAttr = rhsNormNode.attribute;
 
-    auto const* rhsAttribute = getNode(*rhsNode, 0, arangodb::aql::NODE_TYPE_ATTRIBUTE_ACCESS);
+      if (attributeAccessEqual(lhsAttr, rhsAttr)) {
+        auto const* lhsValue = lhsNormNode.value;
+        auto const* rhsValue = rhsNormNode.value;
 
-    if (!rhsAttribute) {
-      // wrong attribute node type
-      return false;
-    }
-
-    if (attributeAccessEqual(lhsAttribute, rhsAttribute)) {
-      // range case
-      auto const* lhsValue = getNode(*lhsNode, 1, arangodb::aql::NODE_TYPE_VALUE);
-
-      if (!lhsValue) {
-        // wrong value node type
-        return false;
-      }
-
-      auto const* rhsValue = getNode(*rhsNode, 1, arangodb::aql::NODE_TYPE_VALUE);
-
-      if (!rhsValue) {
-        // wrong value node type
-        return false;
-      }
-
-      if (byRange(filter, *lhsAttribute, *lhsValue, lhsInclude, *rhsValue, rhsInclude)) {
-        // successsfully parsed as range
-        return true;
+        if (byRange(filter, *lhsAttr, *lhsValue, lhsInclude, *rhsValue, rhsInclude)) {
+          // successsfully parsed as range
+          return true;
+        }
       }
     }
   }
@@ -1028,13 +1067,10 @@ bool processSubnode(
     case arangodb::aql::NODE_TYPE_OPERATOR_BINARY_NE: // compare !=
       return fromBinaryEq(filter, node);
     case arangodb::aql::NODE_TYPE_OPERATOR_BINARY_LT: // compare <
-      return fromInterval<irs::Bound::MAX, false>(filter, node);
     case arangodb::aql::NODE_TYPE_OPERATOR_BINARY_LE: // compare <=
-      return fromInterval<irs::Bound::MAX, true>(filter, node);
     case arangodb::aql::NODE_TYPE_OPERATOR_BINARY_GT: // compare >
-      return fromInterval<irs::Bound::MIN, false>(filter, node);
     case arangodb::aql::NODE_TYPE_OPERATOR_BINARY_GE: // compare >=
-      return fromInterval<irs::Bound::MIN, true>(filter, node);
+      return fromInterval(filter, node);
     case arangodb::aql::NODE_TYPE_OPERATOR_BINARY_IN: // compare in
     case arangodb::aql::NODE_TYPE_OPERATOR_BINARY_NIN: // compare not in
       return fromIn(filter, node);
