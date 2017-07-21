@@ -88,11 +88,8 @@ std::string toString(arangodb::iresearch::IResearchView const& view) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @returns 'Flush' feature from AppicationServer
 ////////////////////////////////////////////////////////////////////////////////
-arangodb::FlushFeature& getFlushFeature() {
-  auto* flush = arangodb::application_features::ApplicationServer::getFeature<arangodb::FlushFeature>("Flush");
-  TRI_ASSERT(flush); // getFeature throws in case of fail
-
-  return *flush;
+inline arangodb::FlushFeature* getFlushFeature() noexcept {
+  return arangodb::iresearch::getFeature<arangodb::FlushFeature>("Flush");
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2250,7 +2247,14 @@ arangodb::Result IResearchView::updateProperties(
 }
 
 void IResearchView::registerFlushCallback() {
-  getFlushFeature().registerCallback(this, [this]() noexcept {
+  auto* flush = getFlushFeature();
+
+  if (!flush) {
+    // feature not registered
+    return;
+  }
+
+  flush->registerCallback(this, [this]() noexcept {
     ////////////////////////////////////////////////////////////////////////////////
     /// @brief opens a flush transaction and returns a control object to be used
     ///        by FlushThread spawned by FlushFeature
@@ -2275,12 +2279,14 @@ void IResearchView::registerFlushCallback() {
 }
 
 void IResearchView::FlushCallbackUnregisterer::operator()(IResearchView* view) const noexcept {
-  if (!view) {
+  arangodb::FlushFeature* flush = nullptr;
+
+  if (!view || !(flush = getFlushFeature())) {
     return;
   }
 
   try {
-    getFlushFeature().unregisterCallback(view);
+    flush->unregisterCallback(view);
   } catch (...) {
     // suppress all errors
   }
