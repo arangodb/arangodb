@@ -577,6 +577,9 @@ SECTION("BinaryEq") {
 
     assertFilterSuccess(queryString, expected);
   }
+
+  // invalid attribute access
+  assertFilterFail("FOR d IN collection FILTER d == '1' RETURN d");
 }
 
 SECTION("BinaryNotEq") {
@@ -644,6 +647,9 @@ SECTION("BinaryNotEq") {
 
     assertFilterSuccess(queryString, expected);
   }
+
+  // invalid attribute access
+  assertFilterFail("FOR d IN collection FILTER d != '1' RETURN d");
 }
 
 SECTION("BinaryGE") {
@@ -721,6 +727,9 @@ SECTION("BinaryGE") {
 
     assertFilterSuccess(queryString, expected);
   }
+
+  // invalid attribute access
+  assertFilterFail("FOR d IN collection FILTER d >= '1' RETURN d");
 }
 
 SECTION("BinaryGT") {
@@ -798,6 +807,24 @@ SECTION("BinaryGT") {
 
     assertFilterSuccess(queryString, expected);
   }
+
+  // complex boolean attribute, floating
+  {
+    std::string const queryString = "FOR d IN collection FILTER d.a.b.c.numeric > 13.5 RETURN d";
+
+    irs::numeric_token_stream stream;
+    stream.reset(13.5);
+
+    irs::Or expected;
+    expected.add<irs::by_granular_range>()
+            .field(mangleNumeric("a.b.c.numeric"))
+            .include<irs::Bound::MIN>(false).insert<irs::Bound::MIN>(stream);
+
+    assertFilterSuccess(queryString, expected);
+  }
+
+  // invalid attribute access
+  assertFilterFail("FOR d IN collection FILTER d > '1' RETURN d");
 }
 
 SECTION("BinaryLE") {
@@ -875,6 +902,9 @@ SECTION("BinaryLE") {
 
     assertFilterSuccess(queryString, expected);
   }
+
+  // invalid attribute access
+  assertFilterFail("FOR d IN collection FILTER d <= '1' RETURN d");
 }
 
 SECTION("BinaryLT") {
@@ -952,6 +982,9 @@ SECTION("BinaryLT") {
 
     assertFilterSuccess(queryString, expected);
   }
+
+  // invalid attribute access
+  assertFilterFail("FOR d IN collection FILTER d < '1' RETURN d");
 }
 
 SECTION("BinaryOr") {
@@ -1002,7 +1035,6 @@ SECTION("BinaryOr") {
     irs::numeric_token_stream minTerm; minTerm.reset(15.);
     irs::numeric_token_stream maxTerm; maxTerm.reset(40.);
 
-    // FIXME
     irs::Or expected;
     auto& root = expected.add<irs::Or>();
     root.add<irs::by_granular_range>()
@@ -1022,7 +1054,6 @@ SECTION("BinaryOr") {
     irs::numeric_token_stream minTerm; minTerm.reset(15.);
     irs::numeric_token_stream maxTerm; maxTerm.reset(40.);
 
-    // FIXME
     irs::Or expected;
     auto& root = expected.add<irs::Or>();
     root.add<irs::by_granular_range>()
@@ -1042,7 +1073,6 @@ SECTION("BinaryOr") {
     irs::numeric_token_stream minTerm; minTerm.reset(15.);
     irs::numeric_token_stream maxTerm; maxTerm.reset(40.);
 
-    // FIXME
     irs::Or expected;
     auto& root = expected.add<irs::Or>();
     root.add<irs::by_granular_range>()
@@ -1062,7 +1092,6 @@ SECTION("BinaryOr") {
     irs::numeric_token_stream minTerm; minTerm.reset(15.);
     irs::numeric_token_stream maxTerm; maxTerm.reset(40.);
 
-    // FIXME
     irs::Or expected;
     auto& root = expected.add<irs::Or>();
     root.add<irs::by_granular_range>()
@@ -1124,14 +1153,10 @@ SECTION("BinaryAnd") {
     irs::numeric_token_stream minTerm; minTerm.reset(15.);
     irs::numeric_token_stream maxTerm; maxTerm.reset(40.);
 
-    // FIXME
     irs::Or expected;
-    auto& root = expected.add<irs::And>();
-    root.add<irs::by_granular_range>()
-        .field(mangleNumeric("a.b.c"))
-        .include<irs::Bound::MIN>(false).insert<irs::Bound::MIN>(minTerm);
-    root.add<irs::by_granular_range>()
-        .field(mangleNumeric("a.b.c"))
+    auto& range = expected.add<irs::by_granular_range>();
+    range.field(mangleNumeric("a.b.c"))
+        .include<irs::Bound::MIN>(false).insert<irs::Bound::MIN>(minTerm)
         .include<irs::Bound::MAX>(false).insert<irs::Bound::MAX>(maxTerm);
 
     assertFilterSuccess(queryString, expected);
@@ -1144,14 +1169,10 @@ SECTION("BinaryAnd") {
     irs::numeric_token_stream minTerm; minTerm.reset(15.);
     irs::numeric_token_stream maxTerm; maxTerm.reset(40.);
 
-    // FIXME
     irs::Or expected;
-    auto& root = expected.add<irs::And>();
-    root.add<irs::by_granular_range>()
-        .field(mangleNumeric("a.b.c"))
-        .include<irs::Bound::MIN>(true).insert<irs::Bound::MIN>(minTerm);
-    root.add<irs::by_granular_range>()
-        .field(mangleNumeric("a.b.c"))
+    auto& range = expected.add<irs::by_granular_range>();
+    range.field(mangleNumeric("a.b.c"))
+        .include<irs::Bound::MIN>(true).insert<irs::Bound::MIN>(minTerm)
         .include<irs::Bound::MAX>(false).insert<irs::Bound::MAX>(maxTerm);
 
     assertFilterSuccess(queryString, expected);
@@ -1164,14 +1185,10 @@ SECTION("BinaryAnd") {
     irs::numeric_token_stream minTerm; minTerm.reset(15.);
     irs::numeric_token_stream maxTerm; maxTerm.reset(40.);
 
-    // FIXME
     irs::Or expected;
-    auto& root = expected.add<irs::And>();
-    root.add<irs::by_granular_range>()
-        .field(mangleNumeric("a.b.c"))
-        .include<irs::Bound::MIN>(true).insert<irs::Bound::MIN>(minTerm);
-    root.add<irs::by_granular_range>()
-        .field(mangleNumeric("a.b.c"))
+    auto& range = expected.add<irs::by_granular_range>();
+    range.field(mangleNumeric("a.b.c"))
+        .include<irs::Bound::MIN>(true).insert<irs::Bound::MIN>(minTerm)
         .include<irs::Bound::MAX>(true).insert<irs::Bound::MAX>(maxTerm);
 
     assertFilterSuccess(queryString, expected);
@@ -1184,12 +1201,206 @@ SECTION("BinaryAnd") {
     irs::numeric_token_stream minTerm; minTerm.reset(15.);
     irs::numeric_token_stream maxTerm; maxTerm.reset(40.);
 
-    // FIXME
+    irs::Or expected;
+    auto& range = expected.add<irs::by_granular_range>();
+    range.field(mangleNumeric("a.b.c"))
+        .include<irs::Bound::MIN>(false).insert<irs::Bound::MIN>(minTerm)
+        .include<irs::Bound::MAX>(true).insert<irs::Bound::MAX>(maxTerm);
+
+    assertFilterSuccess(queryString, expected);
+  }
+
+  // string range
+  {
+    std::string const queryString = "FOR d IN collection FILTER d.a.b.c > '15' and d.a.b.c < '40' RETURN d";
+
+    irs::Or expected;
+    auto& range = expected.add<irs::by_range>();
+    range.field("a.b.c")
+        .include<irs::Bound::MIN>(false).term<irs::Bound::MIN>("15")
+        .include<irs::Bound::MAX>(false).term<irs::Bound::MAX>("40");
+
+    assertFilterSuccess(queryString, expected);
+  }
+
+  // string range
+  {
+    std::string const queryString = "FOR d IN collection FILTER d.a.b.c >= '15' and d.a.b.c < '40' RETURN d";
+
+    irs::Or expected;
+    auto& range = expected.add<irs::by_range>();
+    range.field("a.b.c")
+        .include<irs::Bound::MIN>(true).term<irs::Bound::MIN>("15")
+        .include<irs::Bound::MAX>(false).term<irs::Bound::MAX>("40");
+
+    assertFilterSuccess(queryString, expected);
+  }
+
+  // string range
+  {
+    std::string const queryString = "FOR d IN collection FILTER d.a.b.c >= '15' and d.a.b.c <= '40' RETURN d";
+
+    irs::Or expected;
+    auto& range = expected.add<irs::by_range>();
+    range.field("a.b.c")
+        .include<irs::Bound::MIN>(true).term<irs::Bound::MIN>("15")
+        .include<irs::Bound::MAX>(true).term<irs::Bound::MAX>("40");
+
+    assertFilterSuccess(queryString, expected);
+  }
+
+  // string range
+  {
+    std::string const queryString = "FOR d IN collection FILTER d.a.b.c > '15' and d.a.b.c <= '40' RETURN d";
+
+    irs::Or expected;
+    auto& range = expected.add<irs::by_range>();
+    range.field("a.b.c")
+        .include<irs::Bound::MIN>(false).term<irs::Bound::MIN>("15")
+        .include<irs::Bound::MAX>(true).term<irs::Bound::MAX>("40");
+
+    assertFilterSuccess(queryString, expected);
+  }
+
+  // heterogeneous range
+  {
+    std::string const queryString = "FOR d IN collection FILTER d.a.b.c >= '15' and d.a.b.c < 40 RETURN d";
+
+    irs::numeric_token_stream maxTerm; maxTerm.reset(40.);
+
+    irs::Or expected;
+    auto& root = expected.add<irs::And>();
+    root.add<irs::by_range>()
+        .field("a.b.c")
+        .include<irs::Bound::MIN>(true).term<irs::Bound::MIN>("15");
+    root.add<irs::by_granular_range>()
+        .field(mangleNumeric("a.b.c"))
+        .include<irs::Bound::MAX>(false).insert<irs::Bound::MAX>(maxTerm);
+
+    assertFilterSuccess(queryString, expected);
+  }
+
+  // heterogeneous range
+  {
+    std::string const queryString = "FOR d IN collection FILTER d.a.b.c > 15 and d.a.b.c <= '40' RETURN d";
+
+    irs::numeric_token_stream minTerm; minTerm.reset(15.);
+    irs::numeric_token_stream maxTerm; maxTerm.reset(40.);
+
     irs::Or expected;
     auto& root = expected.add<irs::And>();
     root.add<irs::by_granular_range>()
         .field(mangleNumeric("a.b.c"))
         .include<irs::Bound::MIN>(false).insert<irs::Bound::MIN>(minTerm);
+    root.add<irs::by_range>()
+        .field("a.b.c")
+        .include<irs::Bound::MAX>(true).term<irs::Bound::MAX>("40");
+
+    assertFilterSuccess(queryString, expected);
+  }
+
+  // heterogeneous range
+  {
+    std::string const queryString = "FOR d IN collection FILTER d.a.b.c >= false and d.a.b.c <= 40 RETURN d";
+
+    irs::numeric_token_stream maxTerm; maxTerm.reset(40.);
+
+    irs::Or expected;
+    auto& root = expected.add<irs::And>();
+    root.add<irs::by_range>()
+        .field(mangleBool("a.b.c"))
+        .include<irs::Bound::MIN>(true).term<irs::Bound::MIN>(irs::boolean_token_stream::value_false());
+    root.add<irs::by_granular_range>()
+        .field(mangleNumeric("a.b.c"))
+        .include<irs::Bound::MAX>(true).insert<irs::Bound::MAX>(maxTerm);
+
+    assertFilterSuccess(queryString, expected);
+  }
+
+  // heterogeneous range
+  {
+    std::string const queryString = "FOR d IN collection FILTER d.a.b.c > null and d.a.b.c <= 40.5 RETURN d";
+
+    irs::numeric_token_stream maxTerm; maxTerm.reset(40.5);
+
+    irs::Or expected;
+    auto& root = expected.add<irs::And>();
+    root.add<irs::by_range>()
+        .field(mangleNull("a.b.c"))
+        .include<irs::Bound::MIN>(false).term<irs::Bound::MIN>(irs::null_token_stream::value_null());
+    root.add<irs::by_granular_range>()
+        .field(mangleNumeric("a.b.c"))
+        .include<irs::Bound::MAX>(true).insert<irs::Bound::MAX>(maxTerm);
+
+    assertFilterSuccess(queryString, expected);
+  }
+
+  // range with different references
+  {
+    std::string const queryString = "FOR d IN collection FILTER d.a.b.c >= '15' and k.a.b.c < 40 RETURN d";
+
+    irs::numeric_token_stream maxTerm; maxTerm.reset(40.);
+
+    irs::Or expected;
+    auto& root = expected.add<irs::And>();
+    root.add<irs::by_range>()
+        .field("a.b.c")
+        .include<irs::Bound::MIN>(true).term<irs::Bound::MIN>("15");
+    root.add<irs::by_granular_range>()
+        .field(mangleNumeric("a.b.c"))
+        .include<irs::Bound::MAX>(false).insert<irs::Bound::MAX>(maxTerm);
+
+    assertFilterSuccess(queryString, expected);
+  }
+
+  // range with different references
+  {
+    std::string const queryString = "FOR d IN collection FILTER k.a.b.c > 15 and d.a.b.c <= '40' RETURN d";
+
+    irs::numeric_token_stream minTerm; minTerm.reset(15.);
+    irs::numeric_token_stream maxTerm; maxTerm.reset(40.);
+
+    irs::Or expected;
+    auto& root = expected.add<irs::And>();
+    root.add<irs::by_granular_range>()
+        .field(mangleNumeric("a.b.c"))
+        .include<irs::Bound::MIN>(false).insert<irs::Bound::MIN>(minTerm);
+    root.add<irs::by_range>()
+        .field("a.b.c")
+        .include<irs::Bound::MAX>(true).term<irs::Bound::MAX>("40");
+
+    assertFilterSuccess(queryString, expected);
+  }
+
+  // range with different references
+  {
+    std::string const queryString = "FOR d IN collection FILTER d.a.b.c >= false and k.a.b.c <= 40 RETURN d";
+
+    irs::numeric_token_stream maxTerm; maxTerm.reset(40.);
+
+    irs::Or expected;
+    auto& root = expected.add<irs::And>();
+    root.add<irs::by_range>()
+        .field(mangleBool("a.b.c"))
+        .include<irs::Bound::MIN>(true).term<irs::Bound::MIN>(irs::boolean_token_stream::value_false());
+    root.add<irs::by_granular_range>()
+        .field(mangleNumeric("a.b.c"))
+        .include<irs::Bound::MAX>(true).insert<irs::Bound::MAX>(maxTerm);
+
+    assertFilterSuccess(queryString, expected);
+  }
+
+  // range with different references
+  {
+    std::string const queryString = "FOR d IN collection FILTER k.a.b.c > null and d.a.b.c <= 40.5 RETURN d";
+
+    irs::numeric_token_stream maxTerm; maxTerm.reset(40.5);
+
+    irs::Or expected;
+    auto& root = expected.add<irs::And>();
+    root.add<irs::by_range>()
+        .field(mangleNull("a.b.c"))
+        .include<irs::Bound::MIN>(false).term<irs::Bound::MIN>(irs::null_token_stream::value_null());
     root.add<irs::by_granular_range>()
         .field(mangleNumeric("a.b.c"))
         .include<irs::Bound::MAX>(true).insert<irs::Bound::MAX>(maxTerm);
@@ -1318,6 +1529,9 @@ SECTION("Value") {
 
     assertFilterSuccess(queryString, expected);
   }
+
+  // reference
+  assertFilterFail("FOR d IN collection FILTER d RETURN d");
 }
 
 SECTION("Phrase") {
@@ -1491,9 +1705,6 @@ SECTION("StartsWith") {
   assertFilterFail("FOR d IN VIEW myView FILTER ir::starts_with(d.name, 'abc', false) RETURN d");
   assertFilterFail("FOR d IN VIEW myView FILTER ir::starts_with(d.name, 'abc', null) RETURN d");
 }
-////////////////////////////////////////////////////////////////////////////////
-/// @brief generate tests
-////////////////////////////////////////////////////////////////////////////////
 
 }
 

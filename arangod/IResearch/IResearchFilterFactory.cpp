@@ -65,6 +65,52 @@ bool visit(arangodb::aql::AstNode const& root, Visitor visitor) {
   return true;
 }
 
+bool attributeAccessEqual(
+    arangodb::aql::AstNode const* lhs,
+    arangodb::aql::AstNode const* rhs
+) {
+  TRI_ASSERT(lhs && rhs);
+
+  auto comparer = [rhs](arangodb::aql::AstNode const& node) mutable {
+    auto const type = node.type;
+
+    if (type != rhs->type) {
+      // type mismatch
+      return false;
+    }
+
+    if (type == arangodb::aql::NODE_TYPE_ATTRIBUTE_ACCESS) {
+      if (node.numMembers() != 1 || rhs->numMembers() != 1) {
+        // wrong and different number of members
+        return false;
+      }
+
+      irs::string_ref const lhsValue(node.getStringValue(), node.getStringLength());
+      irs::string_ref const rhsValue(rhs->getStringValue(), rhs->getStringLength());
+
+      if (lhsValue != rhsValue) {
+        // values are not equal
+        return false;
+      }
+
+      rhs = rhs->getMemberUnchecked(0);
+      return true;
+    } else if (type == arangodb::aql::NODE_TYPE_REFERENCE) {
+      if (node.numMembers() != 0 || rhs->numMembers() != 0) {
+        // wrong and different number of members
+        return false;
+      }
+
+      // equality means refering to the same memory location
+      return node.value.value._data == rhs->value.value._data;
+    }
+
+    return false;
+  };
+
+  return visit<true>(*lhs, comparer);
+}
+
 inline arangodb::aql::AstNode const* getNode(
     arangodb::aql::AstNode const& node,
     size_t idx,
@@ -656,8 +702,8 @@ bool fromBinaryAnd(
   bool const lhsInclude = arangodb::aql::NODE_TYPE_OPERATOR_BINARY_GE == lhsNode->type;
   bool const rhsInclude = arangodb::aql::NODE_TYPE_OPERATOR_BINARY_LE == rhsNode->type;
 
-  if ((lhsInclude || arangodb::aql::NODE_TYPE_OPERATOR_BINARY_ARRAY_GT == lhsNode->type)
-       && (rhsInclude || arangodb::aql::NODE_TYPE_OPERATOR_BINARY_ARRAY_LT == rhsNode->type)) {
+  if ((lhsInclude || arangodb::aql::NODE_TYPE_OPERATOR_BINARY_GT == lhsNode->type)
+       && (rhsInclude || arangodb::aql::NODE_TYPE_OPERATOR_BINARY_LT == rhsNode->type)) {
     if (lhsNode->numMembers() != 2 || rhsNode->numMembers() != 2) {
       // wrong number of members
       return false;
@@ -677,7 +723,7 @@ bool fromBinaryAnd(
       return false;
     }
 
-    if (0 == 1) {//arangodb::aql::CompareAstNodes(lhsAttribute, rhsAttribute, true)) {
+    if (attributeAccessEqual(lhsAttribute, rhsAttribute)) {
       // range case
       auto const* lhsValue = getNode(*lhsNode, 1, arangodb::aql::NODE_TYPE_VALUE);
 
@@ -693,7 +739,10 @@ bool fromBinaryAnd(
         return false;
       }
 
-      return byRange(filter, *lhsAttribute, *lhsValue, lhsInclude, *rhsValue, rhsInclude);
+      if (byRange(filter, *lhsAttribute, *lhsValue, lhsInclude, *rhsValue, rhsInclude)) {
+        // successsfully parsed as range
+        return true;
+      }
     }
   }
 
