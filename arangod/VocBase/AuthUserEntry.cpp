@@ -468,30 +468,35 @@ AuthLevel AuthUserEntry::collectionAuthLevel(
   // disallow access to _system/_users for everyone
   if (collectionName.empty()) {
     return AuthLevel::NONE;
-  } else if (dbname == TRI_VOC_SYSTEM_DATABASE &&
-             collectionName == TRI_COL_NAME_USERS) {
-    return AuthLevel::NONE;
   }
-  if (collectionName == "_frontend") {
-    return AuthLevel::RW;
-  }
-
-  AuthLevel lvl = AuthLevel::NONE;
-  auto it = _dbAccess.find(dbname);
-  if (it != _dbAccess.end()) {
-    lvl = it->second.collectionAuthLevel(collectionName);
-  }
-  if (lvl == AuthLevel::NONE) {
-    it = _dbAccess.find("*");
-    if (it != _dbAccess.end()) {
-      lvl = it->second.collectionAuthLevel(collectionName);
+  bool isSystem = collectionName[0] == '_';
+  if (isSystem) {
+    if (dbname == TRI_VOC_SYSTEM_DATABASE &&
+        collectionName == TRI_COL_NAME_USERS) {
+      return AuthLevel::NONE;
+    } else if (collectionName == "_frontend") {
+      return AuthLevel::RW;
     }
   }
 
-  if (lvl == AuthLevel::NONE && collectionName[0] == '_') {
-    // at least ro for all system collections
-    return AuthLevel::RO;
+  bool notFound = false;
+  AuthLevel lvl = AuthLevel::NONE;
+  auto it = _dbAccess.find(dbname);
+  if (it != _dbAccess.end()) {
+    if (isSystem) {
+      return it->second._databaseAuthLevel;
+    }
+    lvl = it->second.collectionAuthLevel(collectionName, notFound);
   }
+  // the lookup into the default database is only allowed if there were
+  // no rights for it defined in the database
+  if (notFound) {
+    it = _dbAccess.find("*");
+    if (it != _dbAccess.end()) {
+      lvl = it->second.collectionAuthLevel(collectionName, notFound);
+    }
+  }
+
   return lvl;
 }
 
@@ -510,7 +515,7 @@ bool AuthUserEntry::hasSpecificCollection(
 }
 
 AuthLevel AuthUserEntry::DBAuthContext::collectionAuthLevel(
-    std::string const& collectionName) const {
+    std::string const& collectionName, bool& notFound) const {
   std::unordered_map<std::string, AuthLevel>::const_iterator pair =
     _collectionAccess.find(collectionName);
   if (pair != _collectionAccess.end()) {
@@ -520,5 +525,6 @@ AuthLevel AuthUserEntry::DBAuthContext::collectionAuthLevel(
   if (pair != _collectionAccess.end()) {
     return pair->second;
   }
+  notFound = true;
   return AuthLevel::NONE;
 }
