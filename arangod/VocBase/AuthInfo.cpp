@@ -243,11 +243,6 @@ void AuthInfo::loadFromDB() {
     return;
   }
 
-  if (_authInfo.empty()) {// should only work once
-    WRITE_LOCKER(writeLocker, _authInfoLock);
-    insertInitial();
-  }
-
   TRI_ASSERT(_queryRegistry != nullptr);
   std::shared_ptr<VPackBuilder> builder = QueryAllUsers(_queryRegistry);
 
@@ -263,7 +258,6 @@ void AuthInfo::loadFromDB() {
   if (_authInfo.empty()) {
     insertInitial();
   }
-
   _outdated = false;
 }
 
@@ -440,6 +434,7 @@ Result AuthInfo::storeUser(bool replace, std::string const& user,
   return r;
 }
 
+/// Update user document in the dbserver
 static Result UpdateUser(VPackSlice const& user) {
   TRI_vocbase_t* vocbase = DatabaseFeature::DATABASE->systemDatabase();
   if (vocbase == nullptr) {
@@ -494,6 +489,7 @@ Result AuthInfo::updateUser(std::string const& user,
     return TRI_ERROR_USER_NOT_FOUND;
   }
   loadFromDB();
+  Result r;
   VPackBuilder data;
   {  // we require an consisten view on the user object
     WRITE_LOCKER(guard, _authInfoLock);
@@ -504,9 +500,9 @@ Result AuthInfo::updateUser(std::string const& user,
     TRI_ASSERT(!it->second.key().empty());
     func(it->second);
     data = it->second.toVPackBuilder();
+    r = UpdateUser(data.slice());
   }
 
-  Result r = UpdateUser(data.slice());
   // we need to reload data after the next callback
   if (r.ok()) {
     reloadAllUsers();
@@ -527,7 +523,8 @@ Result AuthInfo::accessUser(std::string const& user,
 }
 
 VPackBuilder AuthInfo::serializeUser(std::string const& user) {
-  loadFromDB();
+  // loadFromDB();
+  // READ_LOCKER(guard, _authInfoLock)
   VPackBuilder doc = QueryUser(_queryRegistry, user);
   VPackBuilder result;
   if (!doc.isEmpty()) {
@@ -536,7 +533,7 @@ VPackBuilder AuthInfo::serializeUser(std::string const& user) {
   return result;
 }
 
-static Result removeUserInternal(AuthUserEntry const& entry) {
+static Result RemoveUserInternal(AuthUserEntry const& entry) {
   TRI_ASSERT(!entry.key().empty());
   TRI_vocbase_t* vocbase = DatabaseFeature::DATABASE->systemDatabase();
   if (vocbase == nullptr) {
@@ -580,37 +577,39 @@ Result AuthInfo::removeUser(std::string const& user) {
     return TRI_ERROR_FORBIDDEN;
   }
   loadFromDB();
-
-  WRITE_LOCKER(guard, _authInfoLock);
-  auto const& it = _authInfo.find(user);
-  if (it == _authInfo.end()) {
-    return TRI_ERROR_USER_NOT_FOUND;
+  Result res;
+  {
+    WRITE_LOCKER(guard, _authInfoLock);
+    auto const& it = _authInfo.find(user);
+    if (it == _authInfo.end()) {
+      return TRI_ERROR_USER_NOT_FOUND;
+    }
+    
+    res = RemoveUserInternal(it->second);
+    if (res.ok()) {
+      _authInfo.erase(it);
+    }
   }
-  
-  Result res = removeUserInternal(it->second);
-  if (res.ok()) {
-    _authInfo.erase(it);
-    reloadAllUsers();
-  }
+  reloadAllUsers();
   return res;
 }
 
 Result AuthInfo::removeAllUsers() {
   loadFromDB();
-  
-  WRITE_LOCKER(guard, _authInfoLock);
   Result res;
-  for (auto const& pair : _authInfo) {
-    res = removeUserInternal(pair.second);
-    if (!res.ok()) {
-      break;
+  {
+    WRITE_LOCKER(guard, _authInfoLock);
+    for (auto const& pair : _authInfo) {
+      res = RemoveUserInternal(pair.second);
+      if (!res.ok()) {
+        break;
+      }
     }
-  }
-  
-  {// do not get into race conditions with loadFromDB
-    MUTEX_LOCKER(locker, _loadFromDBLock);
-    _authInfo.clear();
-    _outdated = true;
+    {// do not get into race conditions with loadFromDB
+      MUTEX_LOCKER(locker, _loadFromDBLock);
+      _authInfo.clear();
+      _outdated = true;
+    }
   }
   reloadAllUsers();
   return res;
@@ -639,11 +638,7 @@ Result AuthInfo::setConfigData(std::string const& user,
   partial.add("configData", data);
   partial.close();
 
-  Result res = UpdateUser(partial.slice());
-  if (res.ok()) {
-    reloadAllUsers();
-  }
-  return res;
+  return UpdateUser(partial.slice());;
 }
 
 VPackBuilder AuthInfo::getUserData(std::string const& username) {
@@ -669,11 +664,7 @@ Result AuthInfo::setUserData(std::string const& user,
   partial.add("userData", data);
   partial.close();
 
-  Result res = UpdateUser(partial.slice());
-  if (res.ok()) {
-    reloadAllUsers();
-  }
-  return res;
+  return UpdateUser(partial.slice());
 }
 
 AuthResult AuthInfo::checkPassword(std::string const& username,
@@ -694,13 +685,13 @@ AuthResult AuthInfo::checkPassword(std::string const& username,
 
     // user authed, add to _authInfo and _users
     if (authResult.source() == AuthSource::LDAP) {
+      
+      AuthUserEntry entry =
+      AuthUserEntry::newUser(username, password, AuthSource::LDAP);
+      
       // upgrade read-lock to a write-lock
       readLocker.unlock();
-
       WRITE_LOCKER(writeLocker, _authInfoLock);
-
-      AuthUserEntry entry =
-          AuthUserEntry::newUser(username, password, AuthSource::LDAP);
 
       it = _authInfo.find(username);
       if (it != _authInfo.end()) {

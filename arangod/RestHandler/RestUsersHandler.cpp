@@ -324,7 +324,6 @@ RestStatus RestUsersHandler::putRequest(AuthInfo* authInfo) {
 
       VPackSlice grant = parsedBody->slice().get("grant");
       AuthLevel lvl = convertToAuthLevel(grant);
-      ;
 
       // contains response in case of success
       VPackBuilder b;

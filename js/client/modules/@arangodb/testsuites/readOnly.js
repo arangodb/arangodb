@@ -130,6 +130,7 @@ const requests = [
   [403, 'post', '/_db/testdb2/_api/document/testcol3', 'test2', {_key:'wxyz'}],
 
   [200, 'get', '/_db/testdb2/_api/document/testcol2/wxyz', 'test', {}],
+  [403, 'delete', '/_db/testdb2/_api/document/testcol2/wxyz', 'test', {}]
 ];
 
   const run = (tests) => {
@@ -168,6 +169,7 @@ const requests = [
           users.save('test', '', true);
           users.save('test2', '', true);
           users.grantDatabase('test', '_system', 'ro');
+          users.grantCollection('test', '_system', 'testcol', 'ro');
 
           db._createDatabase('testdb2');
           db._useDatabase('testdb2');
@@ -179,8 +181,7 @@ const requests = [
           users.grantCollection('test2', 'testdb2', 'testcol2', 'rw');
           db._useDatabase('_system');
           /* let res = db._query("for u in _users filter u.user == 'test' return u").toArray();
-          print(res); */
-          users.reload();`
+          print(res); */`
         ]);
 
   let bodies = run(requests.splice(0,4));

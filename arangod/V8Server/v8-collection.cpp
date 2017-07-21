@@ -2767,6 +2767,18 @@ static void JS_TruncateVocbaseCol(
     TRI_V8_THROW_EXCEPTION_INTERNAL("cannot extract collection");
   }
 
+  // Manually check this here, because truncate messes up the return code
+  AuthenticationFeature* auth = FeatureCacheFeature::instance()->authenticationFeature();
+  if (auth->isActive() && ExecContext::CURRENT != nullptr) {
+    CollectionNameResolver resolver(collection->vocbase());
+    std::string const cName = resolver.getCollectionNameCluster(collection->cid());
+    AuthLevel level = auth->canUseCollection(ExecContext::CURRENT->user(),
+                                             collection->vocbase()->name(), cName);
+    if (level != AuthLevel::RW) {
+      TRI_V8_THROW_EXCEPTION(TRI_ERROR_FORBIDDEN);
+    }
+  }
+  
   // optionally specify non trx remove
   bool unsafeTruncate = false;
   if (args.Length() > 0) {
