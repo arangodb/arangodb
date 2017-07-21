@@ -344,7 +344,7 @@ class IResearchView final: public arangodb::ViewImplementation,
   mutable irs::async_utils::read_write_mutex _mutex; // for use with member maps/sets and '_meta'
   MemoryStoreNode _memoryNodes[2]; // 2 because we just swap them
   MemoryStoreNode* _memoryNode; // points to the current memory store
-  std::unordered_set<TRI_voc_cid_t> _registeredLinks; // links that have been registered with this view (used for duplicate registration detection)
+  std::unordered_map<TRI_voc_cid_t, IResearchLink*> _registeredLinks; // links that have been registered with this view (used for duplicate registration detection)
   MemoryStoreNode* _toFlush; // points to memory store to be flushed
   MemoryStoreByTid _storeByTid;
   DataStore _storePersisted;

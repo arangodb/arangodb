@@ -39,8 +39,11 @@ arangodb::PhysicalCollection* PhysicalCollectionMock::clone(arangodb::LogicalCol
 }
 
 int PhysicalCollectionMock::close() {
-  TRI_ASSERT(false);
-  return TRI_ERROR_INTERNAL;
+  for (auto& index: _indexes) {
+    index->unload();
+  }
+
+  return TRI_ERROR_NO_ERROR; // assume close successful
 }
 
 std::shared_ptr<arangodb::Index> PhysicalCollectionMock::createIndex(arangodb::transaction::Methods* trx, arangodb::velocypack::Slice const& info, bool& created) {
@@ -50,7 +53,7 @@ std::shared_ptr<arangodb::Index> PhysicalCollectionMock::createIndex(arangodb::t
 }
 
 void PhysicalCollectionMock::deferDropCollection(std::function<bool(arangodb::LogicalCollection*)> callback) {
-  TRI_ASSERT(false);
+  callback(_logicalCollection); // assume noone is using this collection (drop immediately)
 }
 
 bool PhysicalCollectionMock::dropIndex(TRI_idx_iid_t iid) {
@@ -192,8 +195,7 @@ arangodb::Result PhysicalCollectionMock::update(arangodb::transaction::Methods* 
 }
 
 arangodb::Result PhysicalCollectionMock::updateProperties(arangodb::velocypack::Slice const& slice, bool doSync) {
-  TRI_ASSERT(false);
-  return arangodb::Result(TRI_ERROR_INTERNAL);
+  return arangodb::Result(TRI_ERROR_NO_ERROR); // assume mock collection updated OK
 }
 
 int PhysicalViewMock::persistPropertiesResult;
@@ -257,7 +259,7 @@ void StorageEngineMock::addV8Functions() {
 }
 
 void StorageEngineMock::changeCollection(TRI_vocbase_t* vocbase, TRI_voc_cid_t id, arangodb::LogicalCollection const* parameters, bool doSync) {
-  TRI_ASSERT(false);
+  // NOOP, assume physical collection changed OK
 }
 
 void StorageEngineMock::changeView(TRI_vocbase_t* vocbase, TRI_voc_cid_t id, arangodb::LogicalView const*, bool doSync) {
@@ -328,7 +330,7 @@ std::string StorageEngineMock::databasePath(TRI_vocbase_t const* vocbase) const 
 }
 
 void StorageEngineMock::destroyCollection(TRI_vocbase_t* vocbase, arangodb::LogicalCollection* collection) {
-  TRI_ASSERT(false);
+  // NOOP, assume physical collection destroyed OK
 }
 
 void StorageEngineMock::destroyView(TRI_vocbase_t* vocbase, arangodb::LogicalView*) {
@@ -336,8 +338,7 @@ void StorageEngineMock::destroyView(TRI_vocbase_t* vocbase, arangodb::LogicalVie
 }
 
 arangodb::Result StorageEngineMock::dropCollection(TRI_vocbase_t* vocbase, arangodb::LogicalCollection* collection) {
-  TRI_ASSERT(false);
-  return arangodb::Result(TRI_ERROR_INTERNAL);
+  return arangodb::Result(TRI_ERROR_NO_ERROR); // assume physical collection dropped OK
 }
 
 arangodb::Result StorageEngineMock::dropDatabase(TRI_vocbase_t*) {
@@ -355,7 +356,16 @@ arangodb::Result StorageEngineMock::firstTick(uint64_t&) {
 }
 
 void StorageEngineMock::getCollectionInfo(TRI_vocbase_t* vocbase, TRI_voc_cid_t cid, arangodb::velocypack::Builder& result, bool includeIndexes, TRI_voc_tick_t maxTick) {
-  TRI_ASSERT(false);
+  arangodb::velocypack::Builder parameters;
+
+  parameters.openObject();
+  parameters.close();
+
+  result.openObject();
+  result.add("parameters", parameters.slice()); // required entry of type object
+  result.close();
+
+  // nothing more required, assume info used for PhysicalCollectionMock
 }
 
 int StorageEngineMock::getCollectionsAndIndexes(TRI_vocbase_t* vocbase, arangodb::velocypack::Builder& result, bool wasCleanShutdown, bool isUpgrade) {
@@ -424,7 +434,7 @@ int StorageEngineMock::shutdownDatabase(TRI_vocbase_t* vocbase) {
 }
 
 void StorageEngineMock::signalCleanup(TRI_vocbase_t* vocbase) {
-  TRI_ASSERT(false);
+  // NOOP, assume cleanup thread signaled OK
 }
 
 bool StorageEngineMock::supportsDfdb() const {

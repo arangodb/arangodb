@@ -24,6 +24,7 @@
 #include "catch.hpp"
 #include "StorageEngineMock.h"
 
+#include "ApplicationFeatures/JemallocFeature.h"
 #include "Aql/Ast.h"
 #include "Aql/Query.h"
 #include "Aql/SortCondition.h"
@@ -35,6 +36,7 @@
 #include "MMFiles/MMFilesDocumentPosition.h"
 #include "RestServer/FlushFeature.h"
 #include "RestServer/DatabaseFeature.h"
+#include "RestServer/DatabasePathFeature.h"
 #include "RestServer/FeatureCacheFeature.h"
 #include "RestServer/TraverserEngineRegistryFeature.h"
 #include "RestServer/ViewTypesFeature.h"
@@ -132,20 +134,18 @@ struct IResearchAttributeScorerSetup {
   IResearchAttributeScorerSetup(): server(nullptr, nullptr) {
     arangodb::EngineSelectorFeature::ENGINE = &engine;
 
+    // setup required application features
     features.emplace_back(new arangodb::QueryRegistryFeature(&server), false); // must be first
     features.emplace_back(new arangodb::TraverserEngineRegistryFeature(&server), false); // must be before AqlFeature
     features.emplace_back(new arangodb::AqlFeature(&server), true);
-    features.emplace_back(new arangodb::AuthenticationFeature(arangodb::application_features::ApplicationServer::server), true);
-    features.emplace_back(new arangodb::DatabaseFeature(arangodb::application_features::ApplicationServer::server), false);
-    features.emplace_back(new arangodb::FeatureCacheFeature(arangodb::application_features::ApplicationServer::server), true);
-    features.emplace_back(new arangodb::iresearch::IResearchFeature(arangodb::application_features::ApplicationServer::server), true);
-    features.emplace_back(new arangodb::ViewTypesFeature(arangodb::application_features::ApplicationServer::server), true);
-    features.emplace_back(new arangodb::FlushFeature(arangodb::application_features::ApplicationServer::server), false); // do not start the thread
-
-    arangodb::ViewTypesFeature::registerViewImplementation(
-      arangodb::iresearch::IResearchView::type(),
-      arangodb::iresearch::IResearchView::make
-    );
+    features.emplace_back(new arangodb::AuthenticationFeature(&server), true);
+    features.emplace_back(new arangodb::DatabaseFeature(&server), false);
+    features.emplace_back(new arangodb::DatabasePathFeature(&server), false);
+    features.emplace_back(new arangodb::JemallocFeature(&server), false); // required for DatabasePathFeature
+    features.emplace_back(new arangodb::FeatureCacheFeature(&server), true);
+    features.emplace_back(new arangodb::iresearch::IResearchFeature(&server), true);
+    features.emplace_back(new arangodb::ViewTypesFeature(&server), true);
+    features.emplace_back(new arangodb::FlushFeature(&server), false); // do not start the thread
 
     for (auto& entry: features) {
       arangodb::application_features::ApplicationServer::server->addFeature(entry.first);

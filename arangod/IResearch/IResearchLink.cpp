@@ -58,6 +58,9 @@ static const std::string SKIP_VIEW_REGISTRATION_FIELD("skipViewRegistration");
 ////////////////////////////////////////////////////////////////////////////////
 static const std::string VIEW_ID_FIELD("view");
 
+typedef irs::async_utils::read_write_mutex::read_mutex ReadMutex;
+typedef irs::async_utils::read_write_mutex::write_mutex WriteMutex;
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief return a reference to a static VPackSlice of an empty index definition
 ////////////////////////////////////////////////////////////////////////////////
@@ -98,7 +101,14 @@ IResearchLink::IResearchLink(
   _sparse = true;  // always sparse
 }
 
+IResearchLink::~IResearchLink() {
+  unload(); // disassociate from view if it has not been done yet
+}
+
 bool IResearchLink::operator==(IResearchView const& view) const noexcept {
+  ReadMutex mutex(_mutex); // '_view' can be asynchronously modified
+  SCOPED_LOCK(mutex);
+
   return _view && _view->id() == view.id();
 }
 
@@ -127,6 +137,9 @@ void IResearchLink::batchInsert(
     throw std::runtime_error(std::string("failed to report status during batch insert for iResearch link '") + arangodb::basics::StringUtils::itoa(id()) + "'");
   }
 
+  ReadMutex mutex(_mutex); // '_view' can be asynchronously modified
+  SCOPED_LOCK(mutex);
+
   if (!_collection || !_view) {
     queue->setStatus(TRI_ERROR_ARANGO_COLLECTION_NOT_LOADED); // '_collection' and '_view' required
 
@@ -151,6 +164,9 @@ bool IResearchLink::canBeDropped() const {
 }
 
 int IResearchLink::drop() {
+  ReadMutex mutex(_mutex); // '_view' can be asynchronously modified
+  SCOPED_LOCK(mutex);
+
   if (!_collection || !_view) {
     return TRI_ERROR_ARANGO_COLLECTION_NOT_LOADED; // '_collection' and '_view' required
   }
@@ -172,6 +188,9 @@ Result IResearchLink::insert(
   VPackSlice const& doc,
   bool isRollback
 ) {
+  ReadMutex mutex(_mutex); // '_view' can be asynchronously modified
+  SCOPED_LOCK(mutex);
+
   if (!_collection || !_view) {
     return TRI_ERROR_ARANGO_COLLECTION_NOT_LOADED; // '_collection' and '_view' required
   }
@@ -271,6 +290,9 @@ bool IResearchLink::isSorted() const {
 }
 
 bool IResearchLink::matchesDefinition(VPackSlice const& slice) const {
+  ReadMutex mutex(_mutex); // '_view' can be asynchronously modified
+  SCOPED_LOCK(mutex);
+
   if (slice.hasKey(VIEW_ID_FIELD)) {
     if (!_view) {
       return false; // slice has identifier but the current object does not
@@ -296,6 +318,10 @@ size_t IResearchLink::memory() const {
 
   size += _meta.memory();
 
+  ReadMutex mutex(_mutex); // '_view' can be asynchronously modified
+  SCOPED_LOCK(mutex);
+
+
   if (_view) {
     // <iResearch View size> / <number of link instances>
     size += _view->memory() / std::max(size_t(1), _view->linkCount());
@@ -310,6 +336,9 @@ Result IResearchLink::remove(
   VPackSlice const& doc,
   bool isRollback
 ) {
+  ReadMutex mutex(_mutex); // '_view' can be asynchronously modified
+  SCOPED_LOCK(mutex);
+
   if (!_collection || !_view) {
     return TRI_ERROR_ARANGO_COLLECTION_NOT_LOADED; // '_collection' and '_view' required
   }
@@ -369,11 +398,16 @@ void IResearchLink::toVelocyPack(
   builder.add("id", VPackValue(std::to_string(_iid)));
   builder.add(LINK_TYPE_FIELD, VPackValue(typeName()));
 
-  if (_view) {
-    builder.add(VIEW_ID_FIELD, VPackValue(_view->id()));
-  } else if (_defaultId) { // '0' _defaultId == no view name in source jSON
-  // } else if (_defaultId && forPersistence) { // MMFilesCollection::saveIndex(...) does not set 'forPersistence'
-    builder.add(VIEW_ID_FIELD, VPackValue(_defaultId));
+  {
+    ReadMutex mutex(_mutex); // '_view' can be asynchronously modified
+    SCOPED_LOCK(mutex);
+
+    if (_view) {
+      builder.add(VIEW_ID_FIELD, VPackValue(_view->id()));
+    } else if (_defaultId) { // '0' _defaultId == no view name in source jSON
+    // } else if (_defaultId && forPersistence) { // MMFilesCollection::saveIndex(...) does not set 'forPersistence'
+      builder.add(VIEW_ID_FIELD, VPackValue(_defaultId));
+    }
   }
 
   if (withFigures) {
@@ -402,9 +436,35 @@ int IResearchLink::load() {
   return TRI_ERROR_NO_ERROR;
 }
 
+IResearchView::sptr IResearchLink::updateView(IResearchView::sptr const& view) {
+  WriteMutex mutex(_mutex); // '_view' can be asynchronously read
+  SCOPED_LOCK(mutex);
+  auto previous = _view;
+
+  _view = view;
+
+  return previous;
+}
+
 int IResearchLink::unload() {
+  WriteMutex mutex(_mutex); // '_view' can be asynchronously read
+  SCOPED_LOCK(mutex);
+
   if (_view) {
     _defaultId = _view->id(); // remember view ID just in case (e.g. call to toVelocyPack(...) after unload())
+
+    auto* col = collection();
+
+    if (!col) {
+      LOG_TOPIC(WARN, Logger::FIXME) << "error finding collection while unloading IResearch link '" << _iid << "'";
+
+      return TRI_ERROR_ARANGO_COLLECTION_NOT_LOADED; // '_collection' required
+    }
+
+    // if the collection is in the process of being removed then drop it from the view
+    if (col->deleted()) {
+      _view->drop(col->cid());
+    }
   }
 
   _view = nullptr; // release reference to the iResearch View

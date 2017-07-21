@@ -36,6 +36,8 @@ class IResearchLink final: public Index {
  public:
   typedef std::shared_ptr<IResearchLink> ptr;
 
+  virtual ~IResearchLink();
+
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief does this iResearch Link reference the supplied view
   ////////////////////////////////////////////////////////////////////////////////
@@ -171,16 +173,23 @@ class IResearchLink final: public Index {
   int unload() override;
 
  private:
-  friend bool IResearchView::linkRegister(IResearchLink&);
+  friend bool IResearchView::linkRegister(IResearchLink&); // to call updateView(...)
+  friend IResearchView::~IResearchView(); // to call updateView(...)
   TRI_voc_cid_t _defaultId; // the identifier of the desired view (iff _view == nullptr)
   IResearchLinkMeta _meta; // how this collection should be indexed
-  std::shared_ptr<IResearchView> _view; // effectively the index itself (nullptr == not associated)
+  mutable irs::async_utils::read_write_mutex _mutex; // for use with _view to allow asynchronous disassociation
+  IResearchView::sptr _view; // effectively the index itself (nullptr == not associated)
 
   IResearchLink(
     TRI_idx_iid_t iid,
     arangodb::LogicalCollection* collection,
     IResearchLinkMeta&& meta
   );
+
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief update the '_view' pointer under lock and return the original value
+  ////////////////////////////////////////////////////////////////////////////////
+  IResearchView::sptr updateView(IResearchView::sptr const& view);
 }; // IResearchLink
 
 ////////////////////////////////////////////////////////////////////////////////
