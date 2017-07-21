@@ -1,258 +1,243 @@
 Managing Users
 ==============
 
-The user management in ArangoDB 3 is similar to the ones found in
-MySQL, Postgres, or other database systems.
+The user management in ArangoDB 3 is similar to the ones found in MySQL,
+PostgreSQL, or other database systems.
 
-An ArangoDB server contains a list of users. Each user can have access
-to one or more databases (or none for that matter).
+User management is possible in the [web interface](../WebInterface/Users.md)
+and in [arangosh](InArangosh.md) while logged on to the *\_system* database.
 
-In order to manage users use the web interface. Log into the *_system*
-database and go to the "User" section.
+Actions and Access Levels
+-------------------------
 
-Using the ArangoDB shell
-------------------------
+An ArangoDB server contains a list of users. It also defines various
+access levels that can be assigned to a user (for details, see below)
+and that are needed to perform certain actions. These actions can be grouped
+into three categories:
 
-Alternatively, you can use the ArangoDB shell. Fire up *arangosh*
-and require the users module.
+- server actions
+- database actions
+- collection actions
 
-```
-arangosh> var users = require('@arangodb/users');
-arangosh> users.save('admin@testapp', 'mypassword');
-```
+The **server actions** are
 
-Creates an user call *admin@testapp*. This user will have no access
-at all.
+- **create user**: allows to create a new user.
 
-```
-arangosh> users.grantDatabase('admin@testapp', 'testdb', 'rw');
-```
+- **update user**: allows to change the access levels and details of an existing
+user.
 
-This grants the user read write access to the database
-*testdb*. `revokeDatabase` will revoke the right.
+- **drop user**: allows to delete an existing user.
 
-**Note**: Be aware that from 3.2 the `grantDatabase` will not automatically
-grant users the right to write or read collections in a database.  If you grant
-read only rights on a database `testdb` you will need to explicitly grant access
-rights to individual collections via `grantCollection`.
+- **create database**: allows to create a new database.
 
-```
-arangosh> users.grantCollection('admin@testapp', 'testdb', 'testcoll', 'rw');
-```
+- **drop database**: allows to delete an existing database.
 
-### Save
+The **database actions** are tied to a given database, and access
+levels must be set
+for each database individually. For a given database the actions are
 
-`users.save(user, passwd, active, extra)`
+- **create collection**: allows to create a new collection in the given database.
 
-This will create a new ArangoDB user. The username must be specified in
-*user* and must not be empty.
+- **update collection**: allows to update properties of an existing collection.
 
-The password must be given as a string, too, but can be left empty if required.
-If you pass the special value *ARANGODB_DEFAULT_ROOT_PASSWORD*, the password
-will be set the value stored in the environment variable
-`ARANGODB_DEFAULT_ROOT_PASSWORD`. This can be used to pass an instance variable
-into ArangoDB. For example, the instance identifier from Amazon.
+- **drop collection**: allows to delete an existing collection.
 
-If the *active* attribute is not specified, it defaults to *true*. The
-*extra* attribute can be used to save custom data with the user.
+- **create index**: allows to create an index for an existing collection in the
+given database.
 
-This method will fail if either the username or the passwords are not specified
-or given in a wrong format, or there already exists a user with the specified
-name.
-
-**Note**: The user will not have permission to access any database. You need to
-grant the access rights for one or more databases using
-[grantDatabase](#grant-database).
-
-*Examples*
-
-    @startDocuBlockInline USER_02_saveUser
-    @EXAMPLE_ARANGOSH_OUTPUT{USER_02_saveUser}
-    require('@arangodb/users').save('my-user', 'my-secret-password');
-    @END_EXAMPLE_ARANGOSH_OUTPUT
-    @endDocuBlock USER_02_saveUser
-
-### Grant Database
-
-`users.grantDatabase(user, database, type)`
-
-This grants *type* ('rw' or 'ro') access to the *database* for the *user*.
-
-If a user has access rights to the *_system* database, he is considered a superuser
-with the right to create and drop users and databases.
-
-### Revoke Database
-
-`users.revokeDatabase(user, database)`
-
-This revokes read/write access to the *database* for the *user*.
-
-### Grant Collection
-
-`users.grantCollection(user, database, collection, type)`
-
-This grants *type* ('rw' or 'ro') access to the *collection* in *database* for the *user*.
-
-### Revoke Collection
-
-`users.revokeCollection(user, database)`
-
-This revokes read/write access to the *collection* for the *user*.
-
-### Replace
-
-`users.replace(user, passwd, active, extra)`
-
-This will look up an existing ArangoDB user and replace its user data.
-
-The username must be specified in *user*, and a user with the specified name
-must already exist in the database.
-
-The password must be given as a string, too, but can be left empty if required.
-
-If the *active* attribute is not specified, it defaults to *true*.  The
-*extra* attribute can be used to save custom data with the user.
-
-This method will fail if either the username or the passwords are not specified
-or given in a wrong format, or if the specified user cannot be found in the
+- **drop index**: allows to delete an index of an existing collection in the given
 database.
 
-**Note**: this function will not work from within the web interface
+The **collection actions** are tied to a given collection of a given
+database, and access levels must be set for each collection individually.
+For a given collection the actions are
 
-*Examples*
+- **read document**: read a document of the given collection.
 
-    @startDocuBlockInline USER_03_replaceUser
-    @EXAMPLE_ARANGOSH_OUTPUT{USER_03_replaceUser}
-    require("@arangodb/users").replace("my-user", "my-changed-password");
-    @END_EXAMPLE_ARANGOSH_OUTPUT
-    @endDocuBlock USER_03_replaceUser
+- **create document**: creates a new document in the given collection.
 
-### Update
+- **modify document**: modifies an existing document of the given collection,
+this can be an update or replace operation.
 
-`users.update(user, passwd, active, extra)`
+- **drop document**: deletes an existing document of the given collection.
 
-This will update an existing ArangoDB user with a new password and other data.
+- **truncate collection**: deletes all documents of a given collection.
 
-The username must be specified in *user* and the user must already exist in
-the database.
+To perform actions on the server level the user needs at least the following
+access levels. The access levels are *Administrate* and
+*No access*:
 
-The password must be given as a string, too, but can be left empty if required.
+| server action             | server level |
+|---------------------------|--------------|
+| create a database         | Administrate |
+| drop a database           | Administrate |
+| create a user             | Administrate |
+| update a user             | Administrate |
+| update user access level  | Administrate |
+| drop a user               | Administrate |
 
-If the *active* attribute is not specified, the current value saved for the
-user will not be changed. The same is true for the *extra* attribute.
+To perform actions in a specific database (like creating or dropping collections),
+a user needs at least the following access level.
+The possible access levels for databases are *Administrate*, *Access* and *No access*.
+The access levels for collections are *Read/Write*, *Read Only* and *No Access*. 
 
-This method will fail if either the username or the passwords are not specified
-or given in a wrong format, or if the specified user cannot be found in the
-database.
+| database action              | database level | collection level |
+|------------------------------|----------------|------------------|
+| create collection            | Administrate   | Read/Write       |
+| list  collections            | Access         | Read Only        |
+| rename collection            | Administrate   | Read/Write       |
+| modify collection properties | Administrate   | Read/Write       |
+| read properties              | Access         | Read Only        |
+| drop collection              | Administrate   | Read/Write       |
+| create an index              | Administrate   | Read/Write       |
+| drop an index                | Administrate   | Read/Write       |
+| see index definition         | Access         | Read Only        |
 
-*Examples*
+Note that the access level *Access* for a database is always required to perform
+any action on a collection in that database.
 
-    @startDocuBlockInline USER_04_updateUser
-    @EXAMPLE_ARANGOSH_OUTPUT{USER_04_updateUser}
-    require("@arangodb/users").update("my-user", "my-secret-password");
-    @END_EXAMPLE_ARANGOSH_OUTPUT
-    @endDocuBlock USER_04_updateUser
+For collections a user needs the following access
+levels to the given database and the given collection. The access levels for
+the database are *Administrate*, *Access* and *No access*. The access levels
+for the collection are *Read/Write*, *Read Only* and *No Access*.
 
-### isValid
+| action                | collection level        | database level         |
+|-----------------------|-------------------------|------------------------|
+| read a document       | Read/Write or Read Only | Administrate or Access |
+| create a document     | Read/Write              | Administrate or Access |
+| modify a document     | Read/Write              | Administrate or Access |
+| drop a document       | Read/Write              | Administrate or Access |
+| truncate a collection | Read/Write              | Administrate or Access |
 
-`users.isValid(user, password)`
 
-Checks whether the given combination of username and password is valid.  The
-function will return a boolean value if the combination of username and password
-is valid.
+*Example*
 
-Each call to this function is penalized by the server sleeping a random
-amount of time.
+For example, given
 
-*Examples*
+- a database *example*
+- a collection *data* in the database *example*
+- a user *JohnSmith*
 
-    @startDocuBlockInline USER_05_isValidUser
-    @EXAMPLE_ARANGOSH_OUTPUT{USER_05_isValidUser}
-    require("@arangodb/users").isValid("my-user", "my-secret-password");
-    @END_EXAMPLE_ARANGOSH_OUTPUT
-    @endDocuBlock USER_05_isValidUser
+If the user *JohnSmith* is assigned the access level *Access* for the database
+*example* and the level *Read/Write* for the collection *data*, then the user
+is allowed to read, create, modify or delete documents in the collection
+*data*. But the user is, for example, not allowed to create indexes for the
+collection *data* nor create new collections in the database *example*.
 
-### Remove
+Granting Access Levels
+----------------------
 
-`users.remove(user)`
+Access levels can be managed via the [web interface] or in [arangosh].
 
-Removes an existing ArangoDB user from the database.
+In order to grant an access level to a user, you can assign one of
+three access levels for each database and one of three levels for each
+collection in a database. The server access level for the user follows
+from the database access level in the `_system` database, it is
+*Administrate* if and only if the database access level is
+*Administrate*. Note that this means that database access level
+*Access* does not grant a user server access level *Administrate*.
 
-The username must be specified in *User* and the specified user must exist in
-the database.
+### Default Database Access Level
 
-This method will fail if the user cannot be found in the database.
+With the above definition, one must define the database access level for
+all database/user pairs in the server, which would be very tedious. In
+order to simplify this process, it is possible to define, for a user,
+a default database access level. This default is used if the database
+access level is *not* explicitly defined for a certain database.
 
-*Examples*
+Changing the default database access level for a user will change the
+access level for all databases that have no explicitly defined
+access level. Note that this includes databases which will be created
+in the future and for which no explicit access levels are set for that
+user!
 
-    @startDocuBlockInline USER_07_removeUser
-    @EXAMPLE_ARANGOSH_OUTPUT{USER_07_removeUser}
-    require("@arangodb/users").remove("my-user");
-    @END_EXAMPLE_ARANGOSH_OUTPUT
-    @endDocuBlock USER_07_removeUser
+If you delete the default, it is handled as if *No Access* was defined.
 
-### Document
+*Example*
 
-`users.document(user)`
+Assume user *JohnSmith* has the following database access levels:
 
-Fetches an existing ArangoDB user from the database.
+|                  | access level |
+|------------------|--------------|
+| database `*`     | Access       |
+| database `shop1` | Administrate |
+| database `shop2` | No Access    |
 
-The username must be specified in *user*.
+This will give the user *JohnSmith* the following database level access:
 
-This method will fail if the user cannot be found in the database.
+- database `shop1`: *Administrate*
+- database `shop2`: *No Access*
+- database `something`: *Access*
 
-*Examples*
+If the default `*` is changed from *Access* to *No Access* then the
+permissions will change as follows:
 
-    @startDocuBlockInline USER_04_documentUser
-    @EXAMPLE_ARANGOSH_OUTPUT{USER_04_documentUser}
-    require("@arangodb/users").document("my-user");
-    @END_EXAMPLE_ARANGOSH_OUTPUT
-    @endDocuBlock USER_04_documentUser
+- database `shop1`: *Administrate*
+- database `shop2`: *No Access*
+- database `something`: *No Access*
 
-### all()
+### Default Collection Access Level
 
-`users.all()`
+For each user and database there is a default collection access level.
+This level is used for all collections pairs without an explicitly
+defined collection access level. Note that this includes collections
+which will be created in the future and for which no explicit access
+levels are set for a that user!
 
-Fetches all existing ArangoDB users from the database.
+If you delete the default, it is handled as if *No Access* was defined.
 
-*Examples*
+*Example*
 
-    @startDocuBlockInline USER_06_AllUsers
-    @EXAMPLE_ARANGOSH_OUTPUT{USER_06_AllUsers}
-    require("@arangodb/users").all();
-    @END_EXAMPLE_ARANGOSH_OUTPUT
-    @endDocuBlock USER_06_AllUsers
+Assume user *JohnSmith* has the following database access levels:
 
-### Reload
+|              | access level |
+|--------------|--------------|
+| database `*` | Access       |
 
-`users.reload()`
+and collection access levels:
 
-Reloads the user authentication data on the server
+|                                         | access level |
+|-----------------------------------------|--------------|
+| database `*`, collection `*`            | Read/Write   |
+| database `shop1`, collection `products` | Read-Only    |
+| database `shop1`, collection `*`        | No Access    |
+| database `shop2`, collection `*`        | Read-Only    |
 
-All user authentication data is loaded by the server once on startup only and is
-cached after that. When users get added or deleted, a cache flush is done
-automatically, and this can be performed by called this method.
+Then the user *doe* will get the following collection access levels:
 
-*Examples*
+- database `shop1`, collection `products`: *Read-Only*
+- database `shop1`, collection `customers`: *No Access*
+- database `shop2`, collection `reviews`: *Read-Only*
+- database `something`, collection `else`: *Read/Write*
 
-    @startDocuBlockInline USER_03_reloadUser
-    @EXAMPLE_ARANGOSH_OUTPUT{USER_03_reloadUser}
-    require("@arangodb/users").reload();
-    @END_EXAMPLE_ARANGOSH_OUTPUT
-    @endDocuBlock USER_03_reloadUser
+Explanation:
 
-Comparison to ArangoDB 2
-------------------------
+Database `shop1`, collection `products` directly matches a defined
+access level. This level is defined as *Read-Only*.
 
-ArangoDB 2 contained separate users per database. It was not possible
-to give an user access to two or more databases. This proved
-impractical.  Therefore we switch to a more common user model in
-ArangoDB 3.
+Database `shop1`, collection `customers` does not match a defined access
+level. However, database `shop1` matches and the default in this
+database for collection level is *No Access*.
 
-### Command-Line Options for the Authentication and Authorization
+Database `shop2`, collection `reviews` does not match a defined access
+level. However, database `shop2` matches and the default in this
+database for collection level is *Read-Only*.
 
-<!-- arangod/RestServer/ArangoServer.h -->
-@startDocuBlock server_authentication
+Database `somehing`, collection `else` does not match a defined access
+level. The database `something` also does have a direct matches.
+Therefore the default database is selected. The level is *Read/Write*.
 
-<!-- arangod/RestServer/ArangoServer.h -->
-@startDocuBlock serverAuthenticateSystemOnly
+### System Collections
+
+The access level for system collections cannot be changed.
+
+No user has access to the *\_users* collection in the *\_system*
+database. All changes to the access levels must be done using the
+*@arangodb/users* module or the web interface.
+
+All user have *Read/Write* access to the *\_frontend* collection in
+databases they have either *Access* or *Administrate* access level.
+
+All other system collections have access level *Read/Write* if the
+user has *Administrate* access to the database. They have access level
+*Read/Only* if the user has *Access* to the database.

@@ -252,7 +252,12 @@ function performTests (options, testList, testname, runFn, serverOptions, startS
     }
   }
 
-  pu.shutdownInstance(instanceInfo, options, forceTerminate);
+  // pass on JWT secret
+  let clonedOpts = _.clone(options);
+  if (serverOptions['server.jwt-secret'] && !clonedOpts['server.jwt-secret']) {
+    clonedOpts['server.jwt-secret'] = serverOptions['server.jwt-secret'];
+  }
+  pu.shutdownInstance(instanceInfo, clonedOpts, forceTerminate);
 
   if (startStopHandlers !== undefined && startStopHandlers.hasOwnProperty('postStop')) {
     customInstanceInfos['postStop'] = startStopHandlers.postStop(options,

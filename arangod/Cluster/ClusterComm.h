@@ -508,11 +508,20 @@ class ClusterComm {
   /// The method returns the number of successful requests and puts the
   /// number of finished ones in nrDone. Thus, the timeout was triggered
   /// if and only if nrDone < requests.size().
+  /// The last argument is a flag that indicates whether or not a "collection
+  /// not found" error should lead to a retry (with a potentially different
+  /// responsible server for a shard) or not. In some cases, leadership
+  /// for a shard might have moved on and a "collection not found" is just
+  /// a harmless way to notice that, in which case `retryOnCollNotFound`
+  /// should be set to true. In other cases, a "collection not found" should
+  /// be treated as a genuine error that is immediately reported to the
+  /// client.
   //////////////////////////////////////////////////////////////////////////////
 
   size_t performRequests(std::vector<ClusterCommRequest>& requests,
                          ClusterCommTimeout timeout, size_t& nrDone,
-                         arangodb::LogTopic const& logTopic);
+                         arangodb::LogTopic const& logTopic,
+                         bool retryOnCollNotFound);
 
   std::shared_ptr<communicator::Communicator> communicator() {
     return _communicator;

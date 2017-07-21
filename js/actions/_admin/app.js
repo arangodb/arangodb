@@ -500,26 +500,30 @@ actions.defineHttp({
 // / @brief was docuBlock JSF_post_admin_execute
 // //////////////////////////////////////////////////////////////////////////////
 
-actions.defineHttp({
-  url: '_admin/execute',
-  prefix: false,
+if (global.ALLOW_ADMIN_EXECUTE) {
+  actions.defineHttp({
+    url: '_admin/execute',
+    prefix: false,
 
-  callback: function (req, res) {
-    /* jshint evil: true */
-    var body = req.requestBody;
-    var result;
+    callback: function (req, res) {
+      /* jshint evil: true */
+      var body = req.requestBody;
+      var result;
 
-    console.warn("about to execute: '%s'", body);
+      console.warn("about to execute: '%s'", body);
 
-    if (body !== '') {
-      result = eval('(function() {' + body + '}());');
+      if (body !== '') {
+        result = eval('(function() {' + body + '}());');
+      }
+
+      if (req.parameters.hasOwnProperty('returnAsJSON') &&
+        req.parameters.returnAsJSON === 'true') {
+        actions.resultOk(req, res, actions.HTTP_OK, result);
+      } else {
+        actions.resultOk(req, res, actions.HTTP_OK, JSON.stringify(result));
+      }
     }
+  });
+}
 
-    if (req.parameters.hasOwnProperty('returnAsJSON') &&
-      req.parameters.returnAsJSON === 'true') {
-      actions.resultOk(req, res, actions.HTTP_OK, result);
-    } else {
-      actions.resultOk(req, res, actions.HTTP_OK, JSON.stringify(result));
-    }
-  }
-});
+delete global.ALLOW_ADMIN_EXECUTE;

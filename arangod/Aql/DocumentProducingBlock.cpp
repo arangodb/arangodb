@@ -32,6 +32,7 @@
 #include "StorageEngine/StorageEngine.h"
 #include "Transaction/Helpers.h"
       
+using namespace arangodb;
 using namespace arangodb::aql;
 
 DocumentProducingBlock::DocumentProducingBlock(DocumentProducingNode const* node, transaction::Methods* trx)

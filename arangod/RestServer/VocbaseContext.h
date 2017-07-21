@@ -54,22 +54,6 @@ class VocbaseContext final : public arangodb::RequestContext {
  public:
   TRI_vocbase_t* vocbase() const { return _vocbase; }
 
- public:
-  rest::ResponseCode authenticate() override final;
-
- private:
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief checks the authentication (basic)
-  //////////////////////////////////////////////////////////////////////////////
-
-  rest::ResponseCode basicAuthentication(char const*);
-  
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief checks the authentication (jwt)
-  //////////////////////////////////////////////////////////////////////////////
-
-  rest::ResponseCode jwtAuthentication(std::string const&);
-
  private: 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief checks the authentication header and sets user if successful
@@ -79,8 +63,6 @@ class VocbaseContext final : public arangodb::RequestContext {
 
  private:
   TRI_vocbase_t* _vocbase;
-  AuthenticationFeature* _authentication;
-
 };
 }
 

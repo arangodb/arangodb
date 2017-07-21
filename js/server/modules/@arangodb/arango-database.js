@@ -1,5 +1,5 @@
 /* jshint strict: false, unused: false */
-/* global TRANSACTION */
+/* global TRANSACTION, AQL_PARSE */
 
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief ArangoDatabase
@@ -108,6 +108,18 @@ ArangoDatabase.prototype._explain = function (query, bindVars, options) {
   }
 
   require('@arangodb/aql/explainer').explain(query);
+};
+
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief parses a query
+// //////////////////////////////////////////////////////////////////////////////
+
+ArangoDatabase.prototype._parse = function (query) {
+  if (typeof query === 'object' && typeof query.toAQL === 'function') {
+    query = query.toAQL();
+  }
+
+  return AQL_PARSE(query);
 };
 
 // //////////////////////////////////////////////////////////////////////////////

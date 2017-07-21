@@ -2365,9 +2365,8 @@ void arangodb::aql::scatterInClusterRule(Optimizer* opt,
 void arangodb::aql::distributeInClusterRule(Optimizer* opt,
                                             std::unique_ptr<ExecutionPlan> plan,
                                             OptimizerRule const* rule) {
-  bool wasModified = false;
-
   if (arangodb::ServerState::instance()->isCoordinator()) {
+    bool wasModified = false;
     // we are a coordinator, we replace the root if it is a modification node
 
     // only replace if it is the last node in the plan

@@ -81,6 +81,7 @@
       var fields;
       var unique;
       var sparse;
+      var deduplicate;
 
       switch (indexType) {
         case 'Geo':
@@ -97,22 +98,26 @@
           fields = $('#newPersistentFields').val();
           unique = self.checkboxToValue('#newPersistentUnique');
           sparse = self.checkboxToValue('#newPersistentSparse');
+          deduplicate = self.checkboxToValue('#newPersistentDeduplicate');
           postParameter = {
             type: 'persistent',
             fields: self.stringToArray(fields),
             unique: unique,
-            sparse: sparse
+            sparse: sparse,
+            deduplicate: deduplicate
           };
           break;
         case 'Hash':
           fields = $('#newHashFields').val();
           unique = self.checkboxToValue('#newHashUnique');
           sparse = self.checkboxToValue('#newHashSparse');
+          deduplicate = self.checkboxToValue('#newHashDeduplicate');
           postParameter = {
             type: 'hash',
             fields: self.stringToArray(fields),
             unique: unique,
-            sparse: sparse
+            sparse: sparse,
+            deduplicate: deduplicate
           };
           break;
         case 'Fulltext':
@@ -128,11 +133,13 @@
           fields = $('#newSkiplistFields').val();
           unique = self.checkboxToValue('#newSkiplistUnique');
           sparse = self.checkboxToValue('#newSkiplistSparse');
+          deduplicate = self.checkboxToValue('#newSkiplistDeduplicate');
           postParameter = {
             type: 'skiplist',
             fields: self.stringToArray(fields),
             unique: unique,
-            sparse: sparse
+            sparse: sparse,
+            deduplicate: deduplicate
           };
           break;
       }
@@ -338,6 +345,7 @@
             : 'n/a'
           );
           var sparse = (v.hasOwnProperty('sparse') ? v.sparse : 'n/a');
+          var deduplicate = (v.hasOwnProperty('deduplicate') ? v.deduplicate : 'n/a');
 
           $('#collectionEditIndexTable').append(
             '<tr>' +
@@ -345,6 +353,7 @@
             '<th class=' + JSON.stringify(cssClass) + '>' + v.type + '</th>' +
             '<th class=' + JSON.stringify(cssClass) + '>' + v.unique + '</th>' +
             '<th class=' + JSON.stringify(cssClass) + '>' + sparse + '</th>' +
+            '<th class=' + JSON.stringify(cssClass) + '>' + deduplicate + '</th>' +
             '<th class=' + JSON.stringify(cssClass) + '>' + selectivity + '</th>' +
             '<th class=' + JSON.stringify(cssClass) + '>' + fieldString + '</th>' +
             '<th class=' + JSON.stringify(cssClass) + '>' + actionString + '</th>' +
@@ -387,6 +396,7 @@
           $('#createIndex').detach().appendTo(elem);
         }
 
+        arangoHelper.createTooltips('.index-tooltip');
         arangoHelper.fixTooltips('.icon_arangodb, .arangoicon', 'right');
         this.resetIndexForms();
       }

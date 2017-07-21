@@ -1452,13 +1452,11 @@ OperationResult transaction::Methods::insertLocal(
   }
 
   if (res.ok() && _state->isDBServer()) {
-    // Now see whether or not we have to do synchronous replication:
-    bool doingSynchronousReplication = false;
-
     // Now replicate the same operation on all followers:
     auto const& followerInfo = collection->followers();
     std::shared_ptr<std::vector<ServerID> const> followers = followerInfo->get();
-    doingSynchronousReplication = !isFollower && followers->size() > 0;
+    // Now see whether or not we have to do synchronous replication:
+    bool doingSynchronousReplication = !isFollower && followers->size() > 0;
 
     if (doingSynchronousReplication) {
       // In the multi babies case res is always TRI_ERROR_NO_ERROR if we
@@ -1518,7 +1516,7 @@ OperationResult transaction::Methods::insertLocal(
           // nullptr only happens on controlled shutdown
           size_t nrDone = 0;
           size_t nrGood = cc->performRequests(requests, chooseTimeout(count),
-              nrDone, Logger::REPLICATION);
+                                              nrDone, Logger::REPLICATION, false);
           if (nrGood < followers->size()) {
             // If any would-be-follower refused to follow there must be a
             // new leader in the meantime, in this case we must not allow
@@ -1800,11 +1798,10 @@ OperationResult transaction::Methods::modifyLocal(
 
   // Now see whether or not we have to do synchronous replication:
   if (res.ok() && _state->isDBServer()) {
-    bool doingSynchronousReplication = false;
     // Now replicate the same operation on all followers:
     auto const& followerInfo = collection->followers();
     std::shared_ptr<std::vector<ServerID> const> followers = followerInfo->get();
-    doingSynchronousReplication = !isFollower && followers->size() > 0;
+    bool doingSynchronousReplication = !isFollower && followers->size() > 0;
 
     if (doingSynchronousReplication) {
       // In the multi babies case res is always TRI_ERROR_NO_ERROR if we
@@ -1868,7 +1865,7 @@ OperationResult transaction::Methods::modifyLocal(
           }
           size_t nrDone = 0;
           size_t nrGood = cc->performRequests(requests, chooseTimeout(count),
-              nrDone, Logger::REPLICATION);
+                                              nrDone, Logger::REPLICATION, false);
           if (nrGood < followers->size()) {
             // If any would-be-follower refused to follow there must be a
             // new leader in the meantime, in this case we must not allow
@@ -2083,10 +2080,9 @@ OperationResult transaction::Methods::removeLocal(
   // Now see whether or not we have to do synchronous replication:
   if (res.ok() && _state->isDBServer()) {
     // Now replicate the same operation on all followers:
-    bool doingSynchronousReplication = false;
     auto const& followerInfo = collection->followers();
     std::shared_ptr<std::vector<ServerID> const> followers = followerInfo->get();
-    doingSynchronousReplication = !isFollower && followers->size() > 0;
+    bool doingSynchronousReplication = !isFollower && followers->size() > 0;
 
     if (doingSynchronousReplication) {
       // In the multi babies case res is always TRI_ERROR_NO_ERROR if we
@@ -2149,7 +2145,7 @@ OperationResult transaction::Methods::removeLocal(
           }
           size_t nrDone = 0;
           size_t nrGood = cc->performRequests(requests, chooseTimeout(count),
-              nrDone, Logger::REPLICATION);
+                                              nrDone, Logger::REPLICATION, false);
           if (nrGood < followers->size()) {
             // If any would-be-follower refused to follow there must be a
             // new leader in the meantime, in this case we must not allow
@@ -2365,7 +2361,7 @@ OperationResult transaction::Methods::truncateLocal(
         }
         size_t nrDone = 0;
         size_t nrGood = cc->performRequests(requests, TRX_FOLLOWER_TIMEOUT,
-                                            nrDone, Logger::REPLICATION);
+                                            nrDone, Logger::REPLICATION, false);
         if (nrGood < followers->size()) {
           // If any would-be-follower refused to follow there must be a
           // new leader in the meantime, in this case we must not allow

@@ -1,9 +1,32 @@
 devel
 -----
 
+* ui: fixed document view _from and _to linking issue for special characters
+
+* added function `db._parse(query)` for parse an AQL query and return information about it
+
+* fixed one medium priority and two low priority security user interface
+  issues found by owasp zap.
+
+* ui: added index deduplicate options
+
+* ui: fixed renaming of collections based on rocksdb storage engine
+
 * documentation and js fixes for secondaries
 
+* RocksDB storage format was changed, users of the previous beta/alpha versions
+  must delete the database directory and re-import their data
+
 * enabled permissions on database and collection level
+
+* added and changed some user related REST APIs
+    * added `PUT /_api/user/{user}/database/{database}/{collection}` to change collection permission
+    * added `GET /_api/user/{user}/database/{database}/{collection}`
+    * added optional `full` parameter to the `GET /_api/user/{user}/database/` REST call
+
+* added user functions in the arangoshell `@arangodb/users` module
+    * added `grantCollection` and `revokeCollection` functions
+    * added `permission(user, database, collection)` to retrieve collection specific rights 
 
 * added "deduplicate" attribute for array indexes, which controls whether inserting
   duplicate index values from the same document into a unique array index will lead to
@@ -37,14 +60,14 @@ devel
 
 * fix deletion of outdated WAL files in RocksDB engine
 
-* make use of selectivity estimates in hash, skiplist and persistent indexes 
+* make use of selectivity estimates in hash, skiplist and persistent indexes
   in RocksDB engine
 
 * changed VM overcommit recommendation for user-friendliness
 
 * fix a shutdown bug in the cluster: a destroyed query could still be active
 
-* do not terminate the entire server process if a temp file cannot be created 
+* do not terminate the entire server process if a temp file cannot be created
   (Windows only)
 
 * fix log output in the front-end, it stopped in case of too many messages

@@ -46,6 +46,21 @@ API_DOCS.basePath = `/_db/${encodeURIComponent(db._name())}`;
 const router = createRouter();
 module.exports = router;
 
+router.get('/index.html', (req, res) => {
+  let encoding = req.headers['accept-encoding'];
+  if (encoding && encoding.indexOf('gzip') >= 0) {
+    // gzip-encode?
+    res.set('Content-Encoding', 'gzip');
+    res.set('Content-Type', 'text/html');
+    res.sendFile(module.context.fileName('frontend/build/index-min.html.gz'));
+  } else {
+    res.sendFile(module.context.fileName('frontend/build/index-min.html'));
+  }
+  res.set('X-Frame-Options', 'DENY');
+  res.set('X-XSS-Protection', '1; mode=block');
+})
+.response(['text/html']);
+
 router.get('/config.js', function (req, res) {
   const scriptName = req.get('x-script-name');
   const basePath = req.trustProxy && scriptName || '';
@@ -56,7 +71,8 @@ router.get('/config.js', function (req, res) {
       db: req.database,
       isEnterprise: isEnterprise,
       authenticationEnabled: internal.authenticationEnabled(),
-      isCluster: cluster.isCluster()
+      isCluster: cluster.isCluster(),
+      engine: db._engine().name
     })}`
   );
 })
