@@ -27,11 +27,21 @@
 
 #include "RestServer/ViewTypesFeature.h"
 
+NS_LOCAL
+
+static std::string const FEATURE_NAME("IResearch");
+
+NS_END
+
 NS_BEGIN(arangodb)
 NS_BEGIN(iresearch)
 
+/* static */ std::string const& IResearchFeature::name() {
+  return FEATURE_NAME;
+}
+
 IResearchFeature::IResearchFeature(arangodb::application_features::ApplicationServer* server)
-  : ApplicationFeature(server, "IResearch"),
+  : ApplicationFeature(server, IResearchFeature::name()),
     _running(false) {
   setOptional(true);
   requiresElevatedPrivileges(false);

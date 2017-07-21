@@ -34,7 +34,8 @@
 
 NS_LOCAL
 
-static const size_t DEFAULT_POOL_SIZE = 8; // arbitrary value
+static size_t const DEFAULT_POOL_SIZE = 8; // arbitrary value
+static std::string const FEATURE_NAME("IResearchAnalyzer");
 
 void addFunctions(arangodb::aql::AqlFunctionFeature& functions) {
   static auto tokens_impl = [](
@@ -140,6 +141,10 @@ NS_END
 NS_BEGIN(arangodb)
 NS_BEGIN(iresearch)
 
+/* static */ std::string const& IResearchAnalyzerFeature::name() {
+  return FEATURE_NAME;
+}
+
 /*static*/ IResearchAnalyzerFeature::AnalyzerPool::Builder::ptr IResearchAnalyzerFeature::AnalyzerPool::Builder::make(
     irs::string_ref const& type,
     irs::string_ref const& properties
@@ -186,7 +191,7 @@ irs::analysis::analyzer::ptr IResearchAnalyzerFeature::AnalyzerPool::get() const
 
 IResearchAnalyzerFeature::IResearchAnalyzerFeature(
     arangodb::application_features::ApplicationServer* server
-): ApplicationFeature(server, "IResearchAnalyzer"), _started(false) {
+): ApplicationFeature(server, IResearchAnalyzerFeature::name()), _started(false) {
   setOptional(true);
   requiresElevatedPrivileges(false);
   startsAfter("AQLFunctions"); // used for registering IResearch analyzer functions
@@ -324,8 +329,7 @@ void IResearchAnalyzerFeature::start() {
 
   // FIXME TODO load persisted mappings
 
-  auto* functions =
-    arangodb::application_features::ApplicationServer::getFeature<arangodb::aql::AqlFunctionFeature>("AQLFunctions");
+  auto* functions = getFeature<arangodb::aql::AqlFunctionFeature>("AQLFunctions");
 
   if (functions) {
     addFunctions(*functions);

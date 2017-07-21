@@ -31,6 +31,8 @@ namespace iresearch {
 
 class IResearchFeature final : public application_features::ApplicationFeature {
  public:
+  static std::string const& name();
+
   IResearchFeature(application_features::ApplicationServer* server);
 
   void beginShutdown() override;

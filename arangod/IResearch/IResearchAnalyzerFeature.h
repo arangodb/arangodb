@@ -43,6 +43,8 @@ NS_BEGIN(iresearch)
 ////////////////////////////////////////////////////////////////////////////////
 class IResearchAnalyzerFeature final: public arangodb::application_features::ApplicationFeature {
  public:
+  static std::string const& name();
+
   // thread-safe analyzer pool
   class AnalyzerPool {
    public:
