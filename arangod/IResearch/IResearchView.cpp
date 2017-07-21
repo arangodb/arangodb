@@ -31,6 +31,7 @@
 #include "utils/misc.hpp"
 #include "utils/utf8_path.hpp"
 
+#include "ApplicationServerHelper.h"
 #include "IResearchDocument.h"
 #include "IResearchOrderFactory.h"
 #include "IResearchFilterFactory.h"
@@ -620,15 +621,7 @@ bool appendAbsolutePersistedDataPath(
     return true;
   }
 
-  #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-    auto* feature = dynamic_cast<arangodb::DatabasePathFeature*>(
-      arangodb::application_features::ApplicationServer::lookupFeature("DatabasePath")
-    );
-  #else
-    auto* feature = static_cast<arangodb::DatabasePathFeature*>(
-      arangodb::application_features::ApplicationServer::lookupFeature("DatabasePath")
-    );
-  #endif
+  auto* feature = arangodb::iresearch::getFeature<arangodb::DatabasePathFeature>("DatabasePath");
 
   if (!feature) {
     return false;
@@ -1187,7 +1180,7 @@ IResearchView::~IResearchView() {
     WriteMutex mutex(_mutex); // '_meta' can be asynchronously read
     SCOPED_LOCK(mutex);
 
-    // unregistere all registred links from view and retain a copy so that can call destructor outside of lock
+    // unregister all registred links from view and retain a copy so that can call destructor outside of lock
     for (auto& entry: _registeredLinks) {
       if (entry.second) {
         viewPointers.emplace_back(entry.second->updateView(nullptr));
