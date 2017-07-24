@@ -27,6 +27,7 @@
 #include "IResearch/IResearchFilterFactory.h"
 #include "IResearch/IResearchLinkMeta.h"
 #include "IResearch/IResearchViewMeta.h"
+#include "IResearch/IResearchAnalyzerFeature.h"
 
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "RestServer/AqlFeature.h"
@@ -46,6 +47,46 @@
 #include "search/phrase_filter.hpp"
 
 namespace {
+
+struct TestAttribute: public irs::attribute {
+  DECLARE_ATTRIBUTE_TYPE();
+  DECLARE_FACTORY_DEFAULT();
+};
+
+DEFINE_ATTRIBUTE_TYPE(TestAttribute);
+DEFINE_FACTORY_DEFAULT(TestAttribute);
+
+struct TestTermAttribute: public irs::term_attribute {
+ public:
+  DECLARE_FACTORY_DEFAULT();
+
+  virtual ~TestTermAttribute() {}
+  void clear() override { value_ = irs::bytes_ref::nil; }
+  virtual const irs::bytes_ref& value() const override { return value_; }
+
+  iresearch::bytes_ref value_;
+};
+
+DEFINE_FACTORY_DEFAULT(TestTermAttribute);
+
+class TestAnalyzer: public irs::analysis::analyzer {
+ public:
+  DECLARE_ANALYZER_TYPE();
+
+  TestAnalyzer(): irs::analysis::analyzer(TestAnalyzer::type()), _term(_attrs.emplace<TestTermAttribute>()) { _attrs.emplace<TestAttribute>(); }
+  virtual irs::attribute_store const& attributes() const NOEXCEPT override { return _attrs; }
+  static ptr make(irs::string_ref const& args) { if (args.null()) throw std::exception(); if (args.empty()) return nullptr; PTR_NAMED(TestAnalyzer, ptr); return ptr; }
+  virtual bool next() override { if (_data.empty()) return false; _term->value_ = irs::bytes_ref(_data.c_str(), 1); _data = irs::bytes_ref(_data.c_str() + 1, _data.size() - 1); return true; }
+  virtual bool reset(irs::string_ref const& data) override { _data = irs::ref_cast<irs::byte_type>(data); return true; }
+
+ private:
+  irs::attribute_store _attrs;
+  irs::bytes_ref _data;
+  irs::attribute_store::ref<TestTermAttribute>& _term;
+};
+
+DEFINE_ANALYZER_TYPE_NAMED(TestAnalyzer, "TestAnalyzer");
+REGISTER_ANALYZER(TestAnalyzer);
 
 std::string mangleName(irs::string_ref const& name, irs::string_ref const& suffix) {
   std::string mangledName(name.c_str(), name.size());
@@ -140,6 +181,18 @@ struct IResearchFilterSetup {
     );
     feature->start();
     feature->prepare();
+
+    // IResearchAnalyzerFeature
+    arangodb::application_features::ApplicationServer::server->addFeature(
+      feature = new arangodb::iresearch::IResearchAnalyzerFeature(&server)
+    );
+    feature->start();
+    feature->prepare();
+
+    // register analyzer
+    CHECK(bool(dynamic_cast<arangodb::iresearch::IResearchAnalyzerFeature&>(*feature).emplace(
+      "test_analyzer", "TestAnalyzer", "abc"
+    )));
   }
 
   ~IResearchFilterSetup() {
@@ -1611,7 +1664,7 @@ SECTION("Value") {
 }
 
 SECTION("Phrase") {
-  // without offset
+  // without offset, default analyzer
   // quick
   {
     irs::Or expected;
@@ -1630,7 +1683,7 @@ SECTION("Phrase") {
     assertFilterFail("FOR d IN VIEW myView FILTER ir::phrase(false, 'quick') RETURN d");
   }
 
-  // with offset
+  // with offset, default analyzer
   // quick brown
   {
     irs::Or expected;
@@ -1638,6 +1691,8 @@ SECTION("Phrase") {
     phrase.field("name").push_back("quick").push_back("brown");
 
     assertFilterSuccess("FOR d IN VIEW myView FILTER ir::phrase(d.name, 'quick', 0, 'brown') RETURN d", expected);
+    assertFilterSuccess("FOR d IN VIEW myView FILTER ir::phrase(d.name, 'quick', 0.0, 'brown') RETURN d", expected);
+    assertFilterSuccess("FOR d IN VIEW myView FILTER ir::phrase(d.name, 'quick', 0.1, 'brown') RETURN d", expected);
 
     // wrong offset argument
     assertFilterFail("FOR d IN VIEW myView FILTER ir::phrase(d.name, 'quick', '0', 'brown') RETURN d");
@@ -1647,7 +1702,7 @@ SECTION("Phrase") {
     assertFilterFail("FOR d IN VIEW myView FILTER ir::phrase(d.name, 'quick', d.name, 'brown') RETURN d");
   }
 
-  // with offset, complex name
+  // with offset, complex name, default analyzer
   // quick <...> <...> <...> <...> <...> brown
   {
     irs::Or expected;
@@ -1655,19 +1710,11 @@ SECTION("Phrase") {
     phrase.field("obj.name").push_back("quick").push_back("brown", 5);
 
     assertFilterSuccess("FOR d IN VIEW myView FILTER ir::phrase(d.obj.name, 'quick', 5, 'brown') RETURN d", expected);
-  }
-
-  // with floating offset, complex name
-  // quick <...> <...> <...> <...> <...> brown
-  {
-    irs::Or expected;
-    auto& phrase = expected.add<irs::by_phrase>();
-    phrase.field("obj.name").push_back("quick").push_back("brown", 5);
-
+    assertFilterSuccess("FOR d IN VIEW myView FILTER ir::phrase(d.obj.name, 'quick', 5.0, 'brown') RETURN d", expected);
     assertFilterSuccess("FOR d IN VIEW myView FILTER ir::phrase(d.obj.name, 'quick', 5.5, 'brown') RETURN d", expected);
   }
 
-  // multiple offsets, complex name
+  // multiple offsets, complex name, default analyzer
   // quick <...> <...> <...> brown <...> <...> fox jumps
   {
     irs::Or expected;
@@ -1679,6 +1726,9 @@ SECTION("Phrase") {
           .push_back("jumps");
 
     assertFilterSuccess("FOR d IN VIEW myView FILTER ir::phrase(d.obj.properties.id.name, 'quick', 3, 'brown', 2, 'fox', 0, 'jumps') RETURN d", expected);
+    assertFilterSuccess("FOR d IN VIEW myView FILTER ir::phrase(d.obj.properties.id.name, 'quick', 3.0, 'brown', 2, 'fox', 0.5, 'jumps') RETURN d", expected);
+    assertFilterSuccess("FOR d IN VIEW myView FILTER ir::phrase(d.obj.properties.id.name, 'quick', 3.0, 'brown', 2.0, 'fox', 0.5, 'jumps') RETURN d", expected);
+    assertFilterSuccess("FOR d IN VIEW myView FILTER ir::phrase(d.obj.properties.id.name, 'quick', 3.5, 'brown', 2.0, 'fox', 0.5, 'jumps') RETURN d", expected);
 
     // wrong value
     assertFilterFail("FOR d IN VIEW myView FILTER ir::phrase(d.obj.properties.id.name, 'quick', 3, d.brown, 2, 'fox', 0, 'jumps') RETURN d");
@@ -1696,8 +1746,110 @@ SECTION("Phrase") {
     assertFilterFail("FOR d IN VIEW myView FILTER ir::phrase(d.obj.properties.id.name, 'quick', 3, 'brown', false, 'fox', 0, 'jumps') RETURN d");
   }
 
-  // wrong number of arguments
+  // without offset, custom analyzer
+  // quick
+  {
+    irs::Or expected;
+    auto& phrase = expected.add<irs::by_phrase>();
+    phrase.field("name");
+    phrase.push_back("q").push_back("u").push_back("i").push_back("c").push_back("k");
+
+    assertFilterSuccess("FOR d IN VIEW myView FILTER ir::phrase(d.name, 'quick', 'test_analyzer') RETURN d", expected);
+
+    // invalid attribute access
+    assertFilterFail("FOR d IN VIEW myView FILTER ir::phrase(d, 'quick', 'test_analyzer') RETURN d");
+    assertFilterFail("FOR d IN VIEW myView FILTER ir::phrase('d.name', 'quick', 'test_analyzer') RETURN d");
+    assertFilterFail("FOR d IN VIEW myView FILTER ir::phrase(123, 'quick', 'test_analyzer') RETURN d");
+    assertFilterFail("FOR d IN VIEW myView FILTER ir::phrase(123.5, 'quick', 'test_analyzer') RETURN d");
+    assertFilterFail("FOR d IN VIEW myView FILTER ir::phrase(null, 'quick', 'test_analyzer') RETURN d");
+    assertFilterFail("FOR d IN VIEW myView FILTER ir::phrase(true, 'quick', 'test_analyzer') RETURN d");
+    assertFilterFail("FOR d IN VIEW myView FILTER ir::phrase(false, 'quick', 'test_analyzer') RETURN d");
+  }
+
+  // with offset, custom analyzer
+  // quick brown
+  {
+    irs::Or expected;
+    auto& phrase = expected.add<irs::by_phrase>();
+    phrase.field("name");
+    phrase.push_back("q").push_back("u").push_back("i").push_back("c").push_back("k");
+    phrase.push_back("b").push_back("r").push_back("o").push_back("w").push_back("n");
+
+    assertFilterSuccess("FOR d IN VIEW myView FILTER ir::phrase(d.name, 'quick', 0, 'brown', 'test_analyzer') RETURN d", expected);
+    assertFilterSuccess("FOR d IN VIEW myView FILTER ir::phrase(d.name, 'quick', 0.0, 'brown', 'test_analyzer') RETURN d", expected);
+    assertFilterSuccess("FOR d IN VIEW myView FILTER ir::phrase(d.name, 'quick', 0.5, 'brown', 'test_analyzer') RETURN d", expected);
+
+    // wrong offset argument
+    assertFilterFail("FOR d IN VIEW myView FILTER ir::phrase(d.name, 'quick', '0', 'brown', 'test_analyzer') RETURN d");
+    assertFilterFail("FOR d IN VIEW myView FILTER ir::phrase(d.name, 'quick', null, 'brown', 'test_analyzer') RETURN d");
+    assertFilterFail("FOR d IN VIEW myView FILTER ir::phrase(d.name, 'quick', true, 'brown', 'test_analyzer') RETURN d");
+    assertFilterFail("FOR d IN VIEW myView FILTER ir::phrase(d.name, 'quick', false, 'brown', 'test_analyzer') RETURN d");
+    assertFilterFail("FOR d IN VIEW myView FILTER ir::phrase(d.name, 'quick', d.name, 'brown', 'test_analyzer') RETURN d");
+  }
+
+  // with offset, complex name, custom analyzer
+  // quick <...> <...> <...> <...> <...> brown
+  {
+    irs::Or expected;
+    auto& phrase = expected.add<irs::by_phrase>();
+    phrase.field("obj.name");
+    phrase.push_back("q").push_back("u").push_back("i").push_back("c").push_back("k");
+    phrase.push_back("b", 5).push_back("r").push_back("o").push_back("w").push_back("n");
+
+    assertFilterSuccess("FOR d IN VIEW myView FILTER ir::phrase(d.obj.name, 'quick', 5, 'brown', 'test_analyzer') RETURN d", expected);
+    assertFilterSuccess("FOR d IN VIEW myView FILTER ir::phrase(d.obj.name, 'quick', 5.0, 'brown', 'test_analyzer') RETURN d", expected);
+    assertFilterSuccess("FOR d IN VIEW myView FILTER ir::phrase(d.obj.name, 'quick', 5.6, 'brown', 'test_analyzer') RETURN d", expected);
+  }
+
+  // multiple offsets, complex name, custom analyzer
+  // quick <...> <...> <...> brown <...> <...> fox jumps
+  {
+    irs::Or expected;
+    auto& phrase = expected.add<irs::by_phrase>();
+    phrase.field("obj.properties.id.name");
+    phrase.push_back("q").push_back("u").push_back("i").push_back("c").push_back("k");
+    phrase.push_back("b", 3).push_back("r").push_back("o").push_back("w").push_back("n");
+    phrase.push_back("f", 2).push_back("o").push_back("x");
+    phrase.push_back("j").push_back("u").push_back("m").push_back("p").push_back("s");
+
+    assertFilterSuccess("FOR d IN VIEW myView FILTER ir::phrase(d.obj.properties.id.name, 'quick', 3, 'brown', 2, 'fox', 0, 'jumps', 'test_analyzer') RETURN d", expected);
+    assertFilterSuccess("FOR d IN VIEW myView FILTER ir::phrase(d.obj.properties.id.name, 'quick', 3.0, 'brown', 2, 'fox', 0, 'jumps', 'test_analyzer') RETURN d", expected);
+    assertFilterSuccess("FOR d IN VIEW myView FILTER ir::phrase(d.obj.properties.id.name, 'quick', 3.6, 'brown', 2, 'fox', 0, 'jumps', 'test_analyzer') RETURN d", expected);
+    assertFilterSuccess("FOR d IN VIEW myView FILTER ir::phrase(d.obj.properties.id.name, 'quick', 3, 'brown', 2.0, 'fox', 0, 'jumps', 'test_analyzer') RETURN d", expected);
+    assertFilterSuccess("FOR d IN VIEW myView FILTER ir::phrase(d.obj.properties.id.name, 'quick', 3, 'brown', 2.5, 'fox', 0.0, 'jumps', 'test_analyzer') RETURN d", expected);
+    assertFilterSuccess("FOR d IN VIEW myView FILTER ir::phrase(d.obj.properties.id.name, 'quick', 3.2, 'brown', 2.0, 'fox', 0.0, 'jumps', 'test_analyzer') RETURN d", expected);
+
+    // wrong value
+    assertFilterFail("FOR d IN VIEW myView FILTER ir::phrase(d.obj.properties.id.name, 'quick', 3, d.brown, 2, 'fox', 0, 'jumps', 'test_analyzer') RETURN d");
+    assertFilterFail("FOR d IN VIEW myView FILTER ir::phrase(d.obj.properties.id.name, 'quick', 3, 2, 2, 'fox', 0, 'jumps', 'test_analyzer') RETURN d");
+    assertFilterFail("FOR d IN VIEW myView FILTER ir::phrase(d.obj.properties.id.name, 'quick', 3, 2.5, 2, 'fox', 0, 'jumps', 'test_analyzer') RETURN d");
+    assertFilterFail("FOR d IN VIEW myView FILTER ir::phrase(d.obj.properties.id.name, 'quick', 3, null, 2, 'fox', 0, 'jumps', 'test_analyzer') RETURN d");
+    assertFilterFail("FOR d IN VIEW myView FILTER ir::phrase(d.obj.properties.id.name, 'quick', 3, true, 2, 'fox', 0, 'jumps', 'test_analyzer') RETURN d");
+    assertFilterFail("FOR d IN VIEW myView FILTER ir::phrase(d.obj.properties.id.name, 'quick', 3, false, 2, 'fox', 0, 'jumps', 'test_analyzer') RETURN d");
+    assertFilterFail("FOR d IN VIEW myView FILTER ir::phrase(d.obj.properties.id.name, 'quick', 3, 'brown', 2, 'fox', 0, d, 'test_analyzer') RETURN d");
+
+    // wrong offset argument
+    assertFilterFail("FOR d IN VIEW myView FILTER ir::phrase(d.obj.properties.id.name, 'quick', 3, 'brown', '2', 'fox', 0, 'jumps', 'test_analyzer') RETURN d");
+    assertFilterFail("FOR d IN VIEW myView FILTER ir::phrase(d.obj.properties.id.name, 'quick', 3, 'brown', null, 'fox', 0, 'jumps', 'test_analyzer') RETURN d");
+    assertFilterFail("FOR d IN VIEW myView FILTER ir::phrase(d.obj.properties.id.name, 'quick', 3, 'brown', true, 'fox', 0, 'jumps', 'test_analyzer') RETURN d");
+    assertFilterFail("FOR d IN VIEW myView FILTER ir::phrase(d.obj.properties.id.name, 'quick', 3, 'brown', false, 'fox', 0, 'jumps', 'test_analyzer') RETURN d");
+  }
+
+  // wrong analylzer
+  assertFilterFail("FOR d IN VIEW myView FILTER ir::phrase(d.name, 'quick', d) RETURN d");
   assertFilterFail("FOR d IN VIEW myView FILTER ir::phrase(d.name, 'quick', 3) RETURN d");
+  assertFilterFail("FOR d IN VIEW myView FILTER ir::phrase(d.name, 'quick', 3.0) RETURN d");
+  assertFilterFail("FOR d IN VIEW myView FILTER ir::phrase(d.name, 'quick', true) RETURN d");
+  assertFilterFail("FOR d IN VIEW myView FILTER ir::phrase(d.name, 'quick', false) RETURN d");
+  assertFilterFail("FOR d IN VIEW myView FILTER ir::phrase(d.name, 'quick', null) RETURN d");
+  assertFilterFail("FOR d IN VIEW myView FILTER ir::phrase(d.name, 'quick', 'invalidAnalyzer') RETURN d");
+  assertFilterFail("FOR d IN VIEW myView FILTER ir::phrase(d.name, 'quick', 3, 'brown', d) RETURN d");
+  assertFilterFail("FOR d IN VIEW myView FILTER ir::phrase(d.name, 'quick', 3, 'brown', 3) RETURN d");
+  assertFilterFail("FOR d IN VIEW myView FILTER ir::phrase(d.name, 'quick', 3, 'brown', 3.0) RETURN d");
+  assertFilterFail("FOR d IN VIEW myView FILTER ir::phrase(d.name, 'quick', 3, 'brown', true) RETURN d");
+  assertFilterFail("FOR d IN VIEW myView FILTER ir::phrase(d.name, 'quick', 3, 'brown', false) RETURN d");
+  assertFilterFail("FOR d IN VIEW myView FILTER ir::phrase(d.name, 'quick', 3, 'brown', null) RETURN d");
+  assertFilterFail("FOR d IN VIEW myView FILTER ir::phrase(d.name, 'quick', 3, 'brown', 'invalidAnalyzer') RETURN d");
 }
 
 SECTION("StartsWith") {

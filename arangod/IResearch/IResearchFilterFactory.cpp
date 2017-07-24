@@ -23,7 +23,9 @@
 
 #include "IResearchFilterFactory.h"
 #include "IResearchDocument.h"
+#include "IResearchAnalyzerFeature.h"
 #include "IResearchKludge.h"
+#include "ApplicationServerHelper.h"
 
 #include "Aql/AstNode.h"
 #include "Aql/Function.h"
@@ -57,6 +59,10 @@ template<
   return (Max > Min) && (1 == (Max - Min)) && checkAdjacency<Min, Types...>();
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief visits the specified node using the provided 'visitor' according
+///        to the specified visiting strategy (preorder/postorder)
+////////////////////////////////////////////////////////////////////////////////
 template<bool Preorder, typename Visitor>
 bool visit(arangodb::aql::AstNode const& root, Visitor visitor) {
   if (Preorder && !visitor(root)) {
@@ -90,6 +96,8 @@ struct NormalizedCmpNode {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief normalizes input binary comparison node (==, !=, <, <=, >, >=) and
 ///        fills the specified struct
+/// @returns true if the specified 'in' nodes has been successfully normalized,
+///          false otherwise
 ////////////////////////////////////////////////////////////////////////////////
 bool normalizeCmpNode(arangodb::aql::AstNode const& in, NormalizedCmpNode& out) {
   static_assert(checkAdjacency<
@@ -108,13 +116,13 @@ bool normalizeCmpNode(arangodb::aql::AstNode const& in, NormalizedCmpNode& out) 
     return false;
   }
 
-  auto const* attributeNode = in.getMemberUnchecked(0);
-  TRI_ASSERT(attributeNode);
-  auto const* valueNode = in.getMemberUnchecked(1);
-  TRI_ASSERT(valueNode);
+  auto const* attribute = in.getMemberUnchecked(0);
+  TRI_ASSERT(attribute);
+  auto const* value = in.getMemberUnchecked(1);
+  TRI_ASSERT(value);
 
-  if (attributeNode->type != arangodb::aql::NODE_TYPE_ATTRIBUTE_ACCESS) {
-    if (valueNode->type != arangodb::aql::NODE_TYPE_ATTRIBUTE_ACCESS) {
+  if (attribute->type != arangodb::aql::NODE_TYPE_ATTRIBUTE_ACCESS) {
+    if (value->type != arangodb::aql::NODE_TYPE_ATTRIBUTE_ACCESS) {
       // no attribute access node found
       return false;
     }
@@ -122,28 +130,32 @@ bool normalizeCmpNode(arangodb::aql::AstNode const& in, NormalizedCmpNode& out) 
     static arangodb::aql::AstNodeType const CmpMap[] {
       arangodb::aql::NODE_TYPE_OPERATOR_BINARY_EQ, // NODE_TYPE_OPERATOR_BINARY_EQ: 3 == a <==> a == 3
       arangodb::aql::NODE_TYPE_OPERATOR_BINARY_NE, // NODE_TYPE_OPERATOR_BINARY_NE: 3 != a <==> a != 3
-      arangodb::aql::NODE_TYPE_OPERATOR_BINARY_GT, // NODE_TYPE_OPERATOR_BINARY_GT: 3 < a  <==> a > 3
-      arangodb::aql::NODE_TYPE_OPERATOR_BINARY_GE, // NODE_TYPE_OPERATOR_BINARY_GE: 3 <= a <==> a >= 3
-      arangodb::aql::NODE_TYPE_OPERATOR_BINARY_LT, // NODE_TYPE_OPERATOR_BINARY_LT: 3 > a  <==> a < 3
-      arangodb::aql::NODE_TYPE_OPERATOR_BINARY_LE  // NODE_TYPE_OPERATOR_BINARY_LE: 3 >= a <==> a <= 3
+      arangodb::aql::NODE_TYPE_OPERATOR_BINARY_GT, // NODE_TYPE_OPERATOR_BINARY_LT: 3 < a  <==> a > 3
+      arangodb::aql::NODE_TYPE_OPERATOR_BINARY_GE, // NODE_TYPE_OPERATOR_BINARY_LE: 3 <= a <==> a >= 3
+      arangodb::aql::NODE_TYPE_OPERATOR_BINARY_LT, // NODE_TYPE_OPERATOR_BINARY_GT: 3 > a  <==> a < 3
+      arangodb::aql::NODE_TYPE_OPERATOR_BINARY_LE  // NODE_TYPE_OPERATOR_BINARY_GE: 3 >= a <==> a <= 3
     };
 
-    std::swap(attributeNode, valueNode);
+    std::swap(attribute, value);
     cmp = CmpMap[cmp - arangodb::aql::NODE_TYPE_OPERATOR_BINARY_EQ];
   }
 
-  if (valueNode->type != arangodb::aql::NODE_TYPE_VALUE || !valueNode->isConstant()) {
+  if (value->type != arangodb::aql::NODE_TYPE_VALUE || !value->isConstant()) {
     // can't handle non-constant values
     return false;
   }
 
-  out.attribute = attributeNode;
-  out.value = valueNode;
+  out.attribute = attribute;
+  out.value = value;
   out.cmp = cmp;
 
   return true;
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief checks 2 nodes of type NODE_TYPE_ATTRIBUTE_ACCESS for equality
+/// @returns true if the specified nodes are equal, false otherwise
+////////////////////////////////////////////////////////////////////////////////
 bool attributeAccessEqual(
     arangodb::aql::AstNode const* lhs,
     arangodb::aql::AstNode const* rhs
@@ -280,6 +292,27 @@ std::string nameFromAttributeAccess(
   }
 
   return name;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief appends value tokens to a phrase filter
+////////////////////////////////////////////////////////////////////////////////
+void appendTerms(
+    irs::by_phrase& filter,
+    irs::string_ref const& value,
+    irs::analysis::analyzer& stream,
+    size_t firstOffset) {
+  // reset stream
+  stream.reset(value);
+
+  // get token attribute
+  irs::term_attribute const& token = *stream.attributes().get<irs::term_attribute>();
+
+  // add tokens
+  while (stream.next()) {
+    filter.push_back(token.value(), firstOffset);
+    firstOffset = 0;
+  }
 }
 
 bool processSubnode(
@@ -874,18 +907,31 @@ bool fromFuncPhrase(
     return false;
   }
 
-  irs::bytes_ref value;
+  irs::string_ref value;
 
   if (!parseValue(value, *valueArg)) {
     // unable to parse value as string
     return false;
   }
 
-  // if custom locale is present 
+  // if custom analyzer is present
   // as the last argument then use it
-  const bool hasLocale = argc & 1;
+  bool const hasAnalyzer = argc & 1;
 
-  if (hasLocale) {
+  irs::analysis::analyzer::ptr analyzer;
+
+  auto* analyzerFeature = arangodb::iresearch::getFeature<
+    arangodb::iresearch::IResearchAnalyzerFeature
+  >();
+
+  if (!analyzerFeature) {
+    // analyzer feature not registered
+    return false;
+  }
+
+  irs::string_ref analyzerName = analyzerFeature->identity();
+
+  if (hasAnalyzer) {
     decltype(fieldArg) analyzerArg = getNode(args, argc - 1, arangodb::aql::NODE_TYPE_VALUE);
 
     if (!analyzerArg) {
@@ -893,12 +939,24 @@ bool fromFuncPhrase(
       return false;
     }
 
-    irs::string_ref analyzerName;
-
     if (!parseValue(analyzerName, *analyzerArg)) {
       // unable to parse value as string
       return false;
     }
+  }
+
+  auto pool = analyzerFeature->get(analyzerName);
+
+  if (!pool) {
+    // analyzer with the specified name not registered
+    return false;
+  }
+
+  analyzer = pool.get(); // get analyzer from pool
+
+  if (!analyzer) {
+    // unable to create analyzer with the specified name
+    return false;
   }
 
   irs::by_phrase* phrase = nullptr;
@@ -906,13 +964,13 @@ bool fromFuncPhrase(
   if (filter) {
     phrase = &filter->add<irs::by_phrase>();
     phrase->field(nameFromAttributeAccess(*fieldArg, arangodb::aql::VALUE_TYPE_STRING));
-    phrase->push_back(value); // FIXME push tokens produced by analyzer
+
+    appendTerms(*phrase, value, *analyzer, 0);
   }
 
-  // check nodes
   decltype(fieldArg) offsetArg = nullptr;
   size_t offset;
-  for (size_t idx = 2, end = argc - hasLocale; idx < end; idx += 2) {
+  for (size_t idx = 2, end = argc - hasAnalyzer; idx < end; idx += 2) {
     offsetArg = getNode(args, idx, arangodb::aql::NODE_TYPE_VALUE);
 
     if (!offsetArg || !parseValue(offset, *offsetArg)) {
@@ -928,7 +986,7 @@ bool fromFuncPhrase(
     }
 
     if (phrase) {
-      phrase->push_back(value, offset); // FIXME push tokens produced by analyzer
+      appendTerms(*phrase, value, *analyzer, offset);
     }
   }
 
