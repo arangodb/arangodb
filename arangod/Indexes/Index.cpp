@@ -418,6 +418,10 @@ void Index::toVelocyPack(VPackBuilder& builder, bool withFigures, bool) const {
     builder.add("selectivityEstimate", VPackValue(selectivityEstimate()));
   }
 
+  if (ServerState::instance()->isCoordinator()) {
+    LOG_TOPIC(ERR, Logger::FIXME) << "try to get selectivityEstimate on coordinator";
+  }
+
   if (withFigures) {
     builder.add("figures", VPackValue(VPackValueType::Object));
     toVelocyPackFigures(builder);
