@@ -97,6 +97,73 @@ portrange() {
     local portOffset=20
     echo "--minPort $(( portStart + count * portOffset )) --maxPort $(( portStart + (count + 1) * portOffset - 1))"
 }
+
+## suite_all_cluster(){
+##     local count="$1"
+##     shift 1
+##     local args="$@"
+##     local args_default=( '--cluster' 'true' )
+## 
+##     local tests=""
+##     case $count in
+##         num)
+##             echo "12"
+##             return
+##         ;;
+##         name)
+##             echo "test_all_cluster"
+##             return
+##         ;;
+##         delay)
+##             echo "10"
+##             return
+##         ;;
+##         0)
+##             echo "./scripts/quickieTest.sh ${args[@]} && exit 0"
+##             return
+##         ;;
+##         1)
+##             tests="shell_server $(portrange $count)"
+##         ;;
+##         2)
+##             tests="shell_client $(portrange $count)"
+##         ;;
+##         3)
+##             tests="shell_server_aql --testBuckets 3/0 $(portrange $count)"
+##         ;;
+##         4)
+##             tests="shell_server_aql --testBuckets 3/1 $(portrange $count)"
+##         ;;
+##         5)
+##             tests="shell_server_aql --testBuckets 3/2 $(portrange $count)"
+##         ;;
+##         6)
+##             tests="http_server $(portrange $count)"
+##         ;;
+##         7)
+##             tests="ssl_server $(portrange $count)"
+##         ;;
+##         8)
+##             tests="server_http $(portrange $count)"
+##         ;;
+##         9)
+##             tests="dump $(portrange $count)"
+##         ;;
+##         10)
+##             tests="agency $(portrange $count)"
+##         ;;
+##         11)
+##             tests="resilience $(portrange $count)"
+##         ;;
+##         *)
+##             echo "exit 0"
+##             return
+##     esac
+## 
+##     echo "./scripts/unittest $tests ${args_default[@]} ${args[@]} && exit 0"
+## }
+
+
 suite_all_cluster(){
     local count="$1"
     shift 1
@@ -106,7 +173,7 @@ suite_all_cluster(){
     local tests=""
     case $count in
         num)
-            echo "12"
+            echo "6"
             return
         ;;
         name)
@@ -114,7 +181,7 @@ suite_all_cluster(){
             return
         ;;
         delay)
-            echo "5"
+            echo "10"
             return
         ;;
         0)
@@ -128,31 +195,13 @@ suite_all_cluster(){
             tests="shell_client $(portrange $count)"
         ;;
         3)
-            tests="shell_server_aql --testBuckets 3/0 $(portrange $count)"
+            tests="shell_server_aql $(portrange $count)"
         ;;
         4)
-            tests="shell_server_aql --testBuckets 3/1 $(portrange $count)"
+            tests="http_server ssl_server server_http $(portrange $count)"
         ;;
         5)
-            tests="shell_server_aql --testBuckets 3/2 $(portrange $count)"
-        ;;
-        6)
-            tests="http_server $(portrange $count)"
-        ;;
-        7)
-            tests="ssl_server $(portrange $count)"
-        ;;
-        8)
-            tests="server_http $(portrange $count)"
-        ;;
-        9)
-            tests="dump $(portrange $count)"
-        ;;
-        10)
-            tests="agency $(portrange $count)"
-        ;;
-        11)
-            tests="resilience $(portrange $count)"
+            tests="dump agency resilience $(portrange $count)"
         ;;
         *)
             echo "exit 0"
