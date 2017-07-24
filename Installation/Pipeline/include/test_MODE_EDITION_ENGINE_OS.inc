@@ -112,7 +112,6 @@ elif [ "$mode" == cluster ]; then
     scripts/unittest shell_server_aql          --testBuckets 4/3  --minPort `expr $PORT01 + 600` --maxPort `expr $PORT01 + 639` $OPTS 2>&1
     scripts/unittest ssl_server                                   --minPort `expr $PORT01 + 640` --maxPort `expr $PORT01 + 679` $OPTS 2>&1
     scripts/unittest upgrade                                      --minPort `expr $PORT01 + 680` --maxPort `expr $PORT01 + 719` $OPTS 2>&1
-    scripts/unittest readOnly                                     --minPort `expr $PORT01 + 720` --maxPort `expr $PORT01 + 759` $OPTS 2>&1
     $ENTERPRISE_TESTS
     " | parallel --verbose --header 1 --results log-output --files --no-notice --load 10 --jobs $concurrency > log-output/tests.log
 fi

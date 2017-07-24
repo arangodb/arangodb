@@ -76,6 +76,7 @@ function readOnly (options) {
   const conf = {
         'server.authentication': true,
         'server.authentication-system-only': false,
+        'server.jwt-secret': 'haxxmann'
       };
 
   print(CYAN + 'readOnly tests...' + RESET);
