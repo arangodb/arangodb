@@ -60,6 +60,7 @@ if (USE_IRESEARCH)
     IResearch/IResearchFilterFactory.cpp IResearch/IResearchFilterFactory.h
     IResearch/IResearchOrderFactory.cpp IResearch/IResearchOrderFactory.h
     IResearch/VelocyPackHelper.cpp IResearch/VelocyPackHelper.h
+    IResearch/AstHelper.cpp IResearch/AstHelper.h
   )
 
   target_include_directories(${LIB_ARANGO_IRESEARCH}
