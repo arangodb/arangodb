@@ -178,7 +178,9 @@ const requests = [
           db._createDocumentCollection('testcol3');
           db.testcol2.save({_key:'one'});
           db.testcol3.save({_key:'one'});
+          users.grantDatabase('test', 'testdb2', 'ro');
           users.grantCollection('test', 'testdb2', 'testcol2', 'ro');
+          users.grantDatabase('test2', 'testdb2', 'ro');
           users.grantCollection('test2', 'testdb2', 'testcol2', 'rw');
           db._useDatabase('_system');
           /* let res = db._query("for u in _users filter u.user == 'test' return u").toArray();
