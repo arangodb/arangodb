@@ -43,11 +43,13 @@ NS_BEGIN(iresearch)
 ////////////////////////////////////////////////////////////////////////////////
 class IResearchAnalyzerFeature final: public arangodb::application_features::ApplicationFeature {
  public:
-  static std::string const& name();
-
   // thread-safe analyzer pool
   class AnalyzerPool {
    public:
+    AnalyzerPool(AnalyzerPool const& other);
+    AnalyzerPool(AnalyzerPool&& other) noexcept;
+    AnalyzerPool& operator=(AnalyzerPool const& other);
+    AnalyzerPool& operator=(AnalyzerPool&& other) noexcept;
     explicit operator bool() const noexcept;
     irs::flags const& features() const noexcept;
     irs::analysis::analyzer::ptr get() const noexcept; // nullptr == error creating analyzer
@@ -67,12 +69,11 @@ class IResearchAnalyzerFeature final: public arangodb::application_features::App
     };
     typedef irs::unbounded_object_pool<Builder> Cache;
 
-    Meta const& _meta;
+    Meta const* _meta; // ptr to allow assignment operator (never null)
     mutable std::shared_ptr<Cache> _pool; // cache of irs::analysis::analyzer (constructed via AnalyzerBuilder::make(...))
 
     AnalyzerPool();
     AnalyzerPool(Meta const& meta, std::shared_ptr<Cache> const& pool);
-    static Meta const& emptyMeta() noexcept;
   };
 
   IResearchAnalyzerFeature(application_features::ApplicationServer* server);
@@ -83,8 +84,12 @@ class IResearchAnalyzerFeature final: public arangodb::application_features::App
     irs::string_ref const& properties
   ) noexcept;
   AnalyzerPool get(irs::string_ref const& name) const noexcept;
+  irs::string_ref const& identity() const noexcept; // the identity analyzer name
+  static std::string const& name();
   void prepare() override;
-  size_t remove(irs::string_ref const& name) noexcept;
+  bool release(AnalyzerPool const& pool) noexcept; // release a persistent registration for a specific pool
+  size_t remove(irs::string_ref const& name, bool force = false) noexcept;
+  bool reserve(AnalyzerPool const& pool) noexcept; // register a persistent user for a specific pool
   void start() override;
   void stop() override;
   bool visit(std::function<bool(irs::string_ref const& name, irs::string_ref const& type, irs::string_ref const& properties)> const& visitor);

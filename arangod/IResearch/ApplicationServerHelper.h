@@ -30,6 +30,17 @@ namespace arangodb {
 namespace iresearch {
 
 template<typename T>
+T* getFeature() {
+  auto* feature = arangodb::application_features::ApplicationServer::lookupFeature(T::name());
+
+  #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+    return dynamic_cast<T*>(feature);
+  #else
+    return static_cast<T*>(feature);
+  #endif
+}
+
+template<typename T>
 T* getFeature(std::string const& name) {
   auto* feature = arangodb::application_features::ApplicationServer::lookupFeature(name);
 

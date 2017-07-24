@@ -36,6 +36,82 @@ NS_LOCAL
 
 static size_t const DEFAULT_POOL_SIZE = 8; // arbitrary value
 static std::string const FEATURE_NAME("IResearchAnalyzer");
+static irs::string_ref const IDENTITY_TOKENIZER_NAME("identity");
+
+class IdentityValue: public irs::term_attribute {
+public:
+  DECLARE_FACTORY_DEFAULT();
+
+  virtual ~IdentityValue() {}
+
+  virtual void clear() override {
+    _value = irs::bytes_ref::nil;
+  }
+
+  virtual const irs::bytes_ref& value() const {
+    return _value;
+  }
+
+  void value(irs::bytes_ref const& data) {
+    _value = data;
+  }
+
+ private:
+  iresearch::bytes_ref _value;
+};
+
+DEFINE_FACTORY_DEFAULT(IdentityValue);
+
+class IdentityTokenizer: public irs::analysis::analyzer {
+ public:
+  DECLARE_ANALYZER_TYPE();
+  DECLARE_FACTORY_DEFAULT(irs::string_ref const& args); // args ignored
+
+  IdentityTokenizer();
+  virtual irs::attribute_store const& attributes() const NOEXCEPT override;
+  virtual bool next() override;
+  virtual bool reset(irs::string_ref const& data) override;
+
+ private:
+  irs::attribute_store _attrs;
+  bool _empty;
+  irs::string_ref _value;
+};
+
+DEFINE_ANALYZER_TYPE_NAMED(IdentityTokenizer, IDENTITY_TOKENIZER_NAME);
+REGISTER_ANALYZER(IdentityTokenizer);
+
+/*static*/ irs::analysis::analyzer::ptr IdentityTokenizer::make(irs::string_ref const& args) {
+  PTR_NAMED(IdentityTokenizer, ptr);
+  return ptr;
+}
+
+IdentityTokenizer::IdentityTokenizer()
+  : irs::analysis::analyzer(IdentityTokenizer::type()), _empty(true) {
+  _attrs.emplace<IdentityValue>();
+  _attrs.emplace<irs::increment>();
+}
+
+irs::attribute_store const& IdentityTokenizer::attributes() const NOEXCEPT {
+  return _attrs;
+}
+
+bool IdentityTokenizer::next() {
+  auto empty = _empty;
+
+  const_cast<const irs::attribute_store&>(_attrs).get<IdentityValue>()->value(irs::ref_cast<irs::byte_type>(_value));
+  _empty = true;
+  _value = irs::string_ref::nil;
+
+  return !empty;
+}
+
+bool IdentityTokenizer::reset(irs::string_ref const& data) {
+  _empty = false;
+  _value = data;
+
+  return !_empty;
+}
 
 void addFunctions(arangodb::aql::AqlFunctionFeature& functions) {
   static auto tokens_impl = [](
@@ -141,10 +217,6 @@ NS_END
 NS_BEGIN(arangodb)
 NS_BEGIN(iresearch)
 
-/* static */ std::string const& IResearchAnalyzerFeature::name() {
-  return FEATURE_NAME;
-}
-
 /*static*/ IResearchAnalyzerFeature::AnalyzerPool::Builder::ptr IResearchAnalyzerFeature::AnalyzerPool::Builder::make(
     irs::string_ref const& type,
     irs::string_ref const& properties
@@ -152,37 +224,71 @@ NS_BEGIN(iresearch)
   return irs::analysis::analyzers::get(type, properties);
 }
 
-IResearchAnalyzerFeature::AnalyzerPool::AnalyzerPool(): _meta(emptyMeta()) {
+IResearchAnalyzerFeature::AnalyzerPool::AnalyzerPool() {
+  static const Meta meta;
+  _meta = (&meta);
 }
 
 IResearchAnalyzerFeature::AnalyzerPool::AnalyzerPool(
     Meta const& meta,
     std::shared_ptr<Cache>const& pool
-): _meta(meta), _pool(pool) {
+): _meta(&meta), _pool(pool) {
+}
+
+IResearchAnalyzerFeature::AnalyzerPool::AnalyzerPool(
+    AnalyzerPool const& other
+) {
+  *this = other;
+}
+
+IResearchAnalyzerFeature::AnalyzerPool::AnalyzerPool(
+    AnalyzerPool&& other
+) noexcept {
+  *this = std::move(other);
+}
+
+IResearchAnalyzerFeature::AnalyzerPool& IResearchAnalyzerFeature::AnalyzerPool::operator=(
+    AnalyzerPool const& other
+) {
+  if (this != &other) {
+    _meta = other._meta;
+    _pool = other._pool;
+  }
+
+  return *this;
+}
+
+IResearchAnalyzerFeature::AnalyzerPool& IResearchAnalyzerFeature::AnalyzerPool::operator=(
+    AnalyzerPool&& other
+) noexcept {
+  if (this != &other) {
+    _meta = std::move(other._meta);
+    _pool = std::move(other._pool);
+  }
+
+  return *this;
 }
 
 IResearchAnalyzerFeature::AnalyzerPool::operator bool() const noexcept {
   return false == !_pool;
 }
 
-/*static*/ IResearchAnalyzerFeature::AnalyzerPool::Meta const& IResearchAnalyzerFeature::AnalyzerPool::emptyMeta() noexcept {
-  static const Meta meta;
-
-  return meta;
-}
-
 irs::flags const& IResearchAnalyzerFeature::AnalyzerPool::features() const noexcept {
-  return _meta._features;
+  assert(_meta);
+
+  return _meta->_features;
 }
 
 irs::analysis::analyzer::ptr IResearchAnalyzerFeature::AnalyzerPool::get() const noexcept {
+  assert(_meta);
+
   try {
-    return _pool->emplace(_meta._type, _meta._properties);
+    return _pool->emplace(_meta->_type, _meta->_properties);
   } catch (std::exception& e) {
-    LOG_TOPIC(WARN, Logger::FIXME) << "caught exception while instantiating an IResearch analizer type '" << _meta._type << "' properties '" << _meta._properties << "': " << e.what();
+    LOG_TOPIC(WARN, Logger::FIXME) << "caught exception while instantiating an IResearch analizer type '" << _meta->_type << "' properties '" << _meta->_properties << "': " << e.what();
     IR_EXCEPTION();
   } catch (...) {
-    LOG_TOPIC(WARN, Logger::FIXME) << "caught exception while instantiating an IResearch analizer type '" << _meta._type << "' properties '" << _meta._properties << "'";
+    LOG_TOPIC(WARN, Logger::FIXME) << "caught exception while instantiating an IResearch analizer type '" << _meta->_type << "' properties '" << _meta->_properties << "'";
     IR_EXCEPTION();
   }
 
@@ -317,6 +423,14 @@ std::shared_ptr<IResearchAnalyzerFeature::AnalyzerPool::Cache> IResearchAnalyzer
   return pool;
 }
 
+irs::string_ref const& IResearchAnalyzerFeature::identity() const noexcept {
+  return IDENTITY_TOKENIZER_NAME;
+}
+
+/*static*/ std::string const& IResearchAnalyzerFeature::name() {
+  return FEATURE_NAME;
+}
+
 void IResearchAnalyzerFeature::prepare() {
   ApplicationFeature::prepare();
 
@@ -346,9 +460,11 @@ void IResearchAnalyzerFeature::stop() {
 }
 
 size_t IResearchAnalyzerFeature::remove(
-    irs::string_ref const& name
+    irs::string_ref const& name,
+    bool force /*= false*/
 ) noexcept {
   try {
+    // FIXME TODO do not remove name if it is still referenced (unless force)
     // FIXME TODO remove definition from persisted mappings
     irs::async_utils::read_write_mutex::write_mutex mutex(_mutex);
     SCOPED_LOCK(mutex);
