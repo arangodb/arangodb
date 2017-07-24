@@ -1668,6 +1668,16 @@ SECTION("Value") {
   assertFilterFail("FOR d IN collection FILTER d RETURN d");
 }
 
+SECTION("UnsupportedUserFunctions") {
+  assertFilterFail("FOR d IN VIEW myView FILTER ir::unknownFunction() RETURN d");
+  assertFilterFail("FOR d IN VIEW myView FILTER ir::unknownFunction1(d) RETURN d");
+  assertFilterFail("FOR d IN VIEW myView FILTER ir::unknownFunction2(d, 'quick') RETURN d");
+}
+
+SECTION("UnsupportedSystemFunctions") {
+  // FIXME TODO
+}
+
 SECTION("Phrase") {
   // without offset, default analyzer
   // quick
@@ -1677,6 +1687,7 @@ SECTION("Phrase") {
     phrase.field("name").push_back("quick");
 
     assertFilterSuccess("FOR d IN VIEW myView FILTER ir::phrase(d.name, 'quick') RETURN d", expected);
+    assertFilterSuccess("FOR d IN VIEW myView FILTER iR::phRase(d.name, 'quick') RETURN d", expected);
 
     // invalid attribute access
     assertFilterFail("FOR d IN VIEW myView FILTER ir::phrase(d, 'quick') RETURN d");
