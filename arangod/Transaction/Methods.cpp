@@ -2865,7 +2865,7 @@ std::vector<std::shared_ptr<Index>>
 transaction::Methods::indexesForCollectionCoordinator(
     std::string const& name) const {
   auto clusterInfo = arangodb::ClusterInfo::instance();
-  auto collectionInfo = clusterInfo->getCollection(databaseName(), name);
+  std::shared_ptr<LogicalCollection> collectionInfo(clusterInfo->getCollection(databaseName(), name));
   return collectionInfo->getIndexes();
 }
 
