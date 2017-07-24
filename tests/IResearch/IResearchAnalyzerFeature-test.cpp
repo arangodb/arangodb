@@ -241,6 +241,14 @@ SECTION("test_get") {
 }
 
 SECTION("test_remove") {
+  // FIXME TODO test 'identity'
+}
+
+SECTION("test_remove") {
+  // FIXME TODO test registration
+}
+
+SECTION("test_remove") {
   // remove existing
   {
     arangodb::iresearch::IResearchAnalyzerFeature feature(nullptr);
@@ -256,6 +264,9 @@ SECTION("test_remove") {
     CHECK((true == !feature.get("test_analyzer")));
     CHECK((0 == feature.remove("test_analyzer")));
   }
+
+  // FIXME TODO test force flag
+
 /* FIXME TODO implement persistence
   // test persisted config
   {
