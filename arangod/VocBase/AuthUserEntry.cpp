@@ -404,12 +404,13 @@ void AuthUserEntry::grantCollection(std::string const& dbname,
                                     std::string const& coll,
                                     AuthLevel const level) {
   if (dbname.empty() || coll.empty()) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(
-        TRI_ERROR_BAD_PARAMETER,
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
         "Cannot set rights for empty db / collection name");
-  }
-  if (_username == "root" && dbname == StaticStrings::SystemDatabase &&
-      (coll[0] == '_' || coll == "*") && level != AuthLevel::RW) {
+  } else if (coll[0] == '_') {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
+        "Cannot set rights for system collections");
+  } else if (_username == "root" && dbname == StaticStrings::SystemDatabase &&
+      coll == "*" && level != AuthLevel::RW) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN,
                                    "Cannot lower access level of 'root' to "
                                    " a system collection");
@@ -420,7 +421,7 @@ void AuthUserEntry::grantCollection(std::string const& dbname,
   } else {
     // do not overwrite wildcard access to a database, by granting more
     // specific rights to a collection in a specific db
-    AuthLevel dbLevel = level;
+    AuthLevel dbLevel = AuthLevel::NONE;
     it = _dbAccess.find("*");
     if (it != _dbAccess.end()) {
       dbLevel = it->second._databaseAuthLevel;
