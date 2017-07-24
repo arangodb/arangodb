@@ -82,6 +82,7 @@ if [ "$mode" == singleserver ]; then
     scripts/unittest shell_server_aql          --testBuckets 4/3  --minPort `expr $PORT01 + 230` --maxPort `expr $PORT01 + 239` $OPTS 2>&1
     scripts/unittest ssl_server                                   --minPort `expr $PORT01 + 240` --maxPort `expr $PORT01 + 249` $OPTS 2>&1
     scripts/unittest upgrade                                      --minPort `expr $PORT01 + 250` --maxPort `expr $PORT01 + 259` $OPTS 2>&1
+    scripts/unittest readOnly                                     --minPort `expr $PORT01 + 260` --maxPort `expr $PORT01 + 269` $OPTS 2>&1
     $ENTERPRISE_TESTS
     " | parallel --verbose --header 1 --results log-output --files --no-notice --load 10 --jobs $concurrency > log-output/tests.log
 
@@ -111,6 +112,7 @@ elif [ "$mode" == cluster ]; then
     scripts/unittest shell_server_aql          --testBuckets 4/3  --minPort `expr $PORT01 + 600` --maxPort `expr $PORT01 + 639` $OPTS 2>&1
     scripts/unittest ssl_server                                   --minPort `expr $PORT01 + 640` --maxPort `expr $PORT01 + 679` $OPTS 2>&1
     scripts/unittest upgrade                                      --minPort `expr $PORT01 + 680` --maxPort `expr $PORT01 + 719` $OPTS 2>&1
+    scripts/unittest readOnly                                     --minPort `expr $PORT01 + 720` --maxPort `expr $PORT01 + 759` $OPTS 2>&1
     $ENTERPRISE_TESTS
     " | parallel --verbose --header 1 --results log-output --files --no-notice --load 10 --jobs $concurrency > log-output/tests.log
 fi
