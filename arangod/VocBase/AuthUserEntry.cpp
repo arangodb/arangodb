@@ -493,6 +493,9 @@ AuthLevel AuthUserEntry::collectionAuthLevel(
   if (notFound) {
     it = _dbAccess.find("*");
     if (it != _dbAccess.end()) {
+      if (isSystem) {
+        return it->second._databaseAuthLevel;
+      }
       lvl = it->second.collectionAuthLevel(collectionName, notFound);
     }
   }
