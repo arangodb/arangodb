@@ -28,6 +28,7 @@
 #include "IResearch/IResearchLinkMeta.h"
 #include "IResearch/IResearchViewMeta.h"
 #include "IResearch/IResearchAnalyzerFeature.h"
+#include "IResearch/IResearchKludge.h"
 
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "RestServer/AqlFeature.h"
@@ -88,16 +89,20 @@ class TestAnalyzer: public irs::analysis::analyzer {
 DEFINE_ANALYZER_TYPE_NAMED(TestAnalyzer, "TestAnalyzer");
 REGISTER_ANALYZER(TestAnalyzer);
 
-std::string mangleName(irs::string_ref const& name, irs::string_ref const& suffix) {
-  std::string mangledName(name.c_str(), name.size());
-  mangledName += '\0';
-  mangledName.append(suffix.c_str(), suffix.size());
-  return mangledName;
+std::string mangleBool(std::string name) {
+  arangodb::iresearch::kludge::mangleBool(name);
+  return name;
 }
 
-std::string mangleBool(irs::string_ref const& name) { return mangleName(name, "_b"); }
-std::string mangleNull(irs::string_ref const& name) { return mangleName(name, "_n"); }
-std::string mangleNumeric(irs::string_ref const& name) { return mangleName(name, "_d"); }
+std::string mangleNull(std::string name) {
+  arangodb::iresearch::kludge::mangleNull(name);
+  return name;
+}
+
+std::string mangleNumeric(std::string name) {
+  arangodb::iresearch::kludge::mangleNumeric(name);
+  return name;
+}
 
 void assertFilterSuccess(std::string const& queryString, irs::filter const& expected) {
   TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "testVocbase");
