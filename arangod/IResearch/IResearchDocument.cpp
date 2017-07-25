@@ -295,20 +295,26 @@ bool setStringValue(
     VPackSlice const& value,
     std::string& name,
     arangodb::iresearch::Field& field,
-    arangodb::iresearch::IResearchAnalyzerFeature::AnalyzerPool const* pool
+    arangodb::iresearch::IResearchAnalyzerFeature::AnalyzerPool::ptr const* pool
 ) {
   TRI_ASSERT(value.isString());
+
+  if (!pool || !*pool) {
+    LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "got nullptr tokenizer factory";
+
+    return false;
+  }
 
   // it's important to unconditionally mangle name
   // since we unconditionally unmangle it in 'next'
   arangodb::iresearch::kludge::mangleStringField(name, pool);
 
   // init stream
-  auto analyzer = pool->get();
+  auto analyzer = (*pool)->get();
 
   if (!analyzer) {
     LOG_TOPIC(WARN, arangodb::Logger::FIXME)
-      << "got nullptr from tokenizer factory, name '" << pool->name() <<  "'";
+      << "got nullptr from tokenizer factory, name '" << (*pool)->name() <<  "'";
     return false;
   }
 
@@ -318,7 +324,7 @@ bool setStringValue(
   // set field properties
   field._name = name;
   field._tokenizer =  analyzer;
-  field._features = &(pool->features());
+  field._features = &((*pool)->features());
 
   return true;
 }

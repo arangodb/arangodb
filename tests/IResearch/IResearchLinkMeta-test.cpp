@@ -141,8 +141,9 @@ SECTION("test_defaults") {
   CHECK(false == meta._includeAllFields);
   CHECK(false == meta._nestListValues);
   CHECK(1U == meta._tokenizers.size());
-  CHECK("identity" == meta._tokenizers.begin()->name());
-  CHECK((irs::flags({irs::term_attribute::type(), irs::increment::type()}) == meta._tokenizers.begin()->features()));
+  CHECK((*(meta._tokenizers.begin())));
+  CHECK(("identity" == (*(meta._tokenizers.begin()))->name()));
+  CHECK((irs::flags({irs::term_attribute::type(), irs::increment::type()}) == (*(meta._tokenizers.begin()))->features()));
   CHECK(false == !meta._tokenizers.begin()->get());
 }
 
@@ -183,8 +184,9 @@ SECTION("test_inheritDefaults") {
         CHECK(false == actual._includeAllFields);
         CHECK(false == actual._nestListValues);
         CHECK(1U == actual._tokenizers.size());
-        CHECK("identity" == actual._tokenizers.begin()->name());
-        CHECK((irs::flags({irs::term_attribute::type(), irs::increment::type()}) == actual._tokenizers.begin()->features()));
+        CHECK((*(actual._tokenizers.begin())));
+        CHECK(("identity" == (*(actual._tokenizers.begin()))->name()));
+        CHECK((irs::flags({irs::term_attribute::type(), irs::increment::type()}) == (*(actual._tokenizers.begin()))->features()));
         CHECK(false == !actual._tokenizers.begin()->get());
       }
     }
@@ -196,8 +198,9 @@ SECTION("test_inheritDefaults") {
   CHECK(true == meta._nestListValues);
 
   CHECK(1U == meta._tokenizers.size());
-  CHECK("empty" == meta._tokenizers.begin()->name());
-  CHECK((irs::flags({TestAttribute::type()}) == meta._tokenizers.begin()->features()));
+  CHECK((*(meta._tokenizers.begin())));
+  CHECK(("empty" == (*(meta._tokenizers.begin()))->name()));
+  CHECK((irs::flags({TestAttribute::type()}) == (*(meta._tokenizers.begin()))->features()));
   CHECK(false == !meta._tokenizers.begin()->get());
 }
 
@@ -212,8 +215,9 @@ SECTION("test_readDefaults") {
   CHECK(false == meta._includeAllFields);
   CHECK(false == meta._nestListValues);
   CHECK(1U == meta._tokenizers.size());
-  CHECK("identity" == meta._tokenizers.begin()->name());
-  CHECK((irs::flags({irs::term_attribute::type(), irs::increment::type()}) == meta._tokenizers.begin()->features()));
+  CHECK((*(meta._tokenizers.begin())));
+  CHECK(("identity" == (*(meta._tokenizers.begin()))->name()));
+  CHECK((irs::flags({irs::term_attribute::type(), irs::increment::type()}) == (*(meta._tokenizers.begin()))->features()));
   CHECK(false == !meta._tokenizers.begin()->get());
 }
 
@@ -261,8 +265,9 @@ SECTION("test_readCustomizedValues") {
           CHECK(false == actual._includeAllFields);
           CHECK(false == actual._nestListValues);
           CHECK(1U == actual._tokenizers.size());
-          CHECK("identity" == actual._tokenizers.begin()->name());
-          CHECK((irs::flags({irs::term_attribute::type(), irs::increment::type()}) == actual._tokenizers.begin()->features()));
+          CHECK((*(actual._tokenizers.begin())));
+          CHECK(("identity" == (*(actual._tokenizers.begin()))->name()));
+          CHECK((irs::flags({irs::term_attribute::type(), irs::increment::type()}) == (*(actual._tokenizers.begin()))->features()));
           CHECK(false == !actual._tokenizers.begin()->get());
         } else if ("all" == fieldOverride.key()) {
           CHECK(11. == actual._boost);
@@ -272,8 +277,9 @@ SECTION("test_readCustomizedValues") {
           CHECK(true == actual._includeAllFields);
           CHECK(true == actual._nestListValues);
           CHECK(1U == actual._tokenizers.size());
-          CHECK("empty" == actual._tokenizers.begin()->name());
-          CHECK((irs::flags({TestAttribute::type()}) == actual._tokenizers.begin()->features()));
+          CHECK((*(actual._tokenizers.begin())));
+          CHECK(("empty" == (*(actual._tokenizers.begin()))->name()));
+          CHECK((irs::flags({TestAttribute::type()}) == (*(actual._tokenizers.begin()))->features()));
           CHECK(false == !actual._tokenizers.begin()->get());
         } else if ("some" == fieldOverride.key()) {
           CHECK(12. == actual._boost);
@@ -282,12 +288,14 @@ SECTION("test_readCustomizedValues") {
           CHECK(true == actual._nestListValues);
           CHECK(2U == actual._tokenizers.size());
           auto itr = actual._tokenizers.begin();
-          CHECK("empty" == itr->name());
-          CHECK((irs::flags({TestAttribute::type()}) == itr->features()));
+          CHECK((*itr));
+          CHECK(("empty" == (*itr)->name()));
+          CHECK((irs::flags({TestAttribute::type()}) == (*itr)->features()));
           CHECK(false == !itr->get());
           ++itr;
-          CHECK("identity" == itr->name());
-          CHECK((irs::flags({irs::term_attribute::type(), irs::increment::type()}) == itr->features()));
+          CHECK((*itr));
+          CHECK(("identity" == (*itr)->name()));
+          CHECK((irs::flags({irs::term_attribute::type(), irs::increment::type()}) == (*itr)->features()));
           CHECK(false == !itr->get());
         } else if ("none" == fieldOverride.key()) {
           CHECK(10. == actual._boost); // inherited
@@ -295,12 +303,14 @@ SECTION("test_readCustomizedValues") {
           CHECK(true == actual._includeAllFields); // inherited
           CHECK(true == actual._nestListValues); // inherited
           auto itr = actual._tokenizers.begin();
-          CHECK("empty" == itr->name());
-          CHECK((irs::flags({TestAttribute::type()}) == itr->features()));
+          CHECK((*itr));
+          CHECK(("empty" == (*itr)->name()));
+          CHECK((irs::flags({TestAttribute::type()}) == (*itr)->features()));
           CHECK(false == !itr->get());
           ++itr;
-          CHECK("identity" == itr->name());
-          CHECK((irs::flags({irs::term_attribute::type(), irs::increment::type()}) == itr->features()));
+          CHECK((*itr));
+          CHECK(("identity" == (*itr)->name()));
+          CHECK((irs::flags({irs::term_attribute::type(), irs::increment::type()}) == (*itr)->features()));
           CHECK(false == !itr->get());
         }
       }
@@ -311,12 +321,14 @@ SECTION("test_readCustomizedValues") {
     CHECK(true == meta._includeAllFields);
     CHECK(true == meta._nestListValues);
     auto itr = meta._tokenizers.begin();
-    CHECK("empty" == itr->name());
-    CHECK((irs::flags({TestAttribute::type()}) == itr->features()));
+    CHECK((*itr));
+    CHECK(("empty" == (*itr)->name()));
+    CHECK((irs::flags({TestAttribute::type()}) == (*itr)->features()));
     CHECK(false == !itr->get());
     ++itr;
-    CHECK("identity" == itr->name());
-    CHECK((irs::flags({irs::term_attribute::type(), irs::increment::type()}) == itr->features()));
+    CHECK((*itr));
+    CHECK(("identity" == (*itr)->name()));
+    CHECK((irs::flags({irs::term_attribute::type(), irs::increment::type()}) == (*itr)->features()));
     CHECK(false == !itr->get());
   }
 }

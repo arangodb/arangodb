@@ -37,7 +37,7 @@ NS_BEGIN(arangodb)
 NS_BEGIN(iresearch)
 NS_BEGIN(kludge)
 
-typedef arangodb::iresearch::IResearchAnalyzerFeature::AnalyzerPool const* TokenizerPoolPtr;
+typedef arangodb::iresearch::IResearchAnalyzerFeature::AnalyzerPool::ptr const* TokenizerPoolPtr;
 
 void mangleNull(std::string& name);
 void mangleBool(std::string& name);

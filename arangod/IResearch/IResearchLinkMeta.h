@@ -76,7 +76,7 @@ struct IResearchLinkMeta {
   };
 
   typedef UnorderedRefKeyMap<char, UniqueHeapInstance<IResearchLinkMeta>> Fields;
-  typedef std::vector<IResearchAnalyzerFeature::AnalyzerPool> Tokenizers;
+  typedef std::vector<IResearchAnalyzerFeature::AnalyzerPool::ptr> Tokenizers;
 
   float_t _boost;
   Fields _fields;

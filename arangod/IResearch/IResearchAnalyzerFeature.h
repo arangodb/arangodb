@@ -27,6 +27,7 @@
 #include "analysis/analyzer.hpp"
 #include "utils/async_utils.hpp"
 #include "utils/hash_utils.hpp"
+#include "utils/object_pool.hpp"
 
 #include "ApplicationFeatures/ApplicationFeature.h"
 
@@ -49,71 +50,55 @@ NS_BEGIN(iresearch)
 class IResearchAnalyzerFeature final: public arangodb::application_features::ApplicationFeature {
  public:
   // thread-safe analyzer pool
-  class AnalyzerPool {
+  class AnalyzerPool: private irs::util::noncopyable {
    public:
-    AnalyzerPool(AnalyzerPool const& other);
-    AnalyzerPool(AnalyzerPool&& other) noexcept;
-    AnalyzerPool& operator=(AnalyzerPool const& other);
-    AnalyzerPool& operator=(AnalyzerPool&& other) noexcept;
-    explicit operator bool() const noexcept;
+    DECLARE_SPTR(AnalyzerPool);
     irs::flags const& features() const noexcept;
     irs::analysis::analyzer::ptr get() const noexcept; // nullptr == error creating analyzer
     std::string const& name() const noexcept;
 
    private:
-    friend IResearchAnalyzerFeature;
+    friend IResearchAnalyzerFeature; // required for calling AnalyzerPool::init()
 
     // 'make(...)' method wrapper for irs::analysis::analyzer types
     struct Builder {
       typedef irs::analysis::analyzer::ptr ptr;
       DECLARE_FACTORY_DEFAULT(irs::string_ref const& type, irs::string_ref const& properties);
     };
-    struct Meta {
-      irs::flags _features; // cached analyzer features
-      std::string _name;
-      std::string _properties;
-      std::string _type;
-    };
-    typedef irs::unbounded_object_pool<Builder> Cache;
 
-    Meta const* _meta; // ptr to allow assignment operator (never null)
-    mutable std::shared_ptr<Cache> _pool; // cache of irs::analysis::analyzer (constructed via AnalyzerBuilder::make(...))
+    mutable irs::unbounded_object_pool<Builder> _cache; // cache of irs::analysis::analyzer (constructed via AnalyzerBuilder::make(...))
+    irs::flags _features; // cached analyzer features
+    std::string _name;
+    std::string _properties;
+    std::string _type;
 
-    AnalyzerPool();
-    AnalyzerPool(Meta const& meta, std::shared_ptr<Cache> const& pool);
+    AnalyzerPool(irs::string_ref const& name);
+    bool init(irs::string_ref const& type, irs::string_ref const& properties) noexcept;
   };
 
   IResearchAnalyzerFeature(application_features::ApplicationServer* server);
 
-  std::pair<AnalyzerPool, bool> emplace(
+  std::pair<AnalyzerPool::ptr, bool> emplace(
     irs::string_ref const& name,
     irs::string_ref const& type,
     irs::string_ref const& properties
   ) noexcept;
-  AnalyzerPool get(irs::string_ref const& name) const noexcept;
-  static AnalyzerPool identity() noexcept; // the identity analyzer
+  AnalyzerPool::ptr get(irs::string_ref const& name) const noexcept;
+  static AnalyzerPool::ptr identity() noexcept; // the identity analyzer
   static std::string const& name();
   void prepare() override;
-  bool release(AnalyzerPool const& pool) noexcept; // release a persistent registration for a specific pool
+  bool release(AnalyzerPool::ptr const& pool) noexcept; // release a persistent registration for a specific pool
   size_t remove(irs::string_ref const& name, bool force = false) noexcept;
-  bool reserve(AnalyzerPool const& pool) noexcept; // register a persistent user for a specific pool
+  bool reserve(AnalyzerPool::ptr const& pool) noexcept; // register a persistent user for a specific pool
   void start() override;
   void stop() override;
   bool visit(std::function<bool(irs::string_ref const& name, irs::string_ref const& type, irs::string_ref const& properties)> const& visitor);
 
  private:
-  struct AnalyzerEntry {
-    AnalyzerPool::Meta _meta;
-    mutable std::mutex _mutex;
-    mutable std::weak_ptr<AnalyzerPool::Cache> _pool;
-  };
-
   // map of caches of irs::analysis::analyzer pools indexed by analyzer name and their associated metas
-  std::unordered_map<irs::hashed_string_ref, AnalyzerEntry> _analyzers;
+  std::unordered_map<irs::hashed_string_ref, AnalyzerPool::ptr> _analyzers;
   mutable irs::async_utils::read_write_mutex _mutex;
   bool _started;
-
-  std::shared_ptr<AnalyzerPool::Cache> get(AnalyzerEntry const& entry) const;
 };
 
 NS_END // iresearch

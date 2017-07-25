@@ -149,7 +149,7 @@ void addFunctions(arangodb::aql::AqlFunctionFeature& functions) {
       return arangodb::aql::AqlValue();
     }
 
-    auto analyzer = pool.get();
+    auto analyzer = pool->get();
 
     if (!analyzer) {
       LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "failure to find IResearch analyzer name '" << name << "' while computing result for function 'TOKENS'";
@@ -215,6 +215,9 @@ void addFunctions(arangodb::aql::AqlFunctionFeature& functions) {
   functions.add(tokens);
 }
 
+typedef irs::async_utils::read_write_mutex::read_mutex ReadMutex;
+typedef irs::async_utils::read_write_mutex::write_mutex WriteMutex;
+
 NS_END
 
 NS_BEGIN(arangodb)
@@ -227,71 +230,53 @@ NS_BEGIN(iresearch)
   return irs::analysis::analyzers::get(type, properties);
 }
 
-IResearchAnalyzerFeature::AnalyzerPool::AnalyzerPool() {
-  static const Meta meta;
-  _meta = (&meta);
+IResearchAnalyzerFeature::AnalyzerPool::AnalyzerPool(
+    irs::string_ref const& name
+): _cache(DEFAULT_POOL_SIZE), _name(name) {
 }
 
-IResearchAnalyzerFeature::AnalyzerPool::AnalyzerPool(
-    Meta const& meta,
-    std::shared_ptr<Cache>const& pool
-): _meta(&meta), _pool(pool) {
-}
-
-IResearchAnalyzerFeature::AnalyzerPool::AnalyzerPool(
-    AnalyzerPool const& other
-) {
-  *this = other;
-}
-
-IResearchAnalyzerFeature::AnalyzerPool::AnalyzerPool(
-    AnalyzerPool&& other
+bool IResearchAnalyzerFeature::AnalyzerPool::init(
+    irs::string_ref const& type,
+    irs::string_ref const& properties
 ) noexcept {
-  *this = std::move(other);
-}
+  try {
+    _cache.clear(); // reset for new type/properties
 
-IResearchAnalyzerFeature::AnalyzerPool& IResearchAnalyzerFeature::AnalyzerPool::operator=(
-    AnalyzerPool const& other
-) {
-  if (this != &other) {
-    _meta = other._meta;
-    _pool = other._pool;
+    auto instance = _cache.emplace(type, properties);
+
+    if (instance) {
+      _type = type;
+      _properties = properties;
+      _features = instance->attributes().features();
+
+      return true;
+    }
+  } catch (std::exception& e) {
+    LOG_TOPIC(WARN, Logger::FIXME) << "caught exception while initializing an IResearch analizer type '" << _type << "' properties '" << _properties << "': " << e.what();
+    IR_EXCEPTION();
+  } catch (...) {
+    LOG_TOPIC(WARN, Logger::FIXME) << "caught exception while initializing an IResearch analizer type '" << _type << "' properties '" << _properties << "'";
+    IR_EXCEPTION();
   }
 
-  return *this;
+  _type.clear(); // set as uninitialized
+  _properties.clear(); // set as uninitialized
+  _features.clear(); // set as uninitialized
+
+  return false;
 }
-
-IResearchAnalyzerFeature::AnalyzerPool& IResearchAnalyzerFeature::AnalyzerPool::operator=(
-    AnalyzerPool&& other
-) noexcept {
-  if (this != &other) {
-    _meta = std::move(other._meta);
-    _pool = std::move(other._pool);
-  }
-
-  return *this;
-}
-
-IResearchAnalyzerFeature::AnalyzerPool::operator bool() const noexcept {
-  return false == !_pool;
-}
-
 irs::flags const& IResearchAnalyzerFeature::AnalyzerPool::features() const noexcept {
-  assert(_meta);
-
-  return _meta->_features;
+  return _features;
 }
 
 irs::analysis::analyzer::ptr IResearchAnalyzerFeature::AnalyzerPool::get() const noexcept {
-  assert(_meta);
-
   try {
-    return _pool ? _pool->emplace(_meta->_type, _meta->_properties) : nullptr;
+    return _cache.emplace(_type, _properties);
   } catch (std::exception& e) {
-    LOG_TOPIC(WARN, Logger::FIXME) << "caught exception while instantiating an IResearch analizer type '" << _meta->_type << "' properties '" << _meta->_properties << "': " << e.what();
+    LOG_TOPIC(WARN, Logger::FIXME) << "caught exception while instantiating an IResearch analizer type '" << _type << "' properties '" << _properties << "': " << e.what();
     IR_EXCEPTION();
   } catch (...) {
-    LOG_TOPIC(WARN, Logger::FIXME) << "caught exception while instantiating an IResearch analizer type '" << _meta->_type << "' properties '" << _meta->_properties << "'";
+    LOG_TOPIC(WARN, Logger::FIXME) << "caught exception while instantiating an IResearch analizer type '" << _type << "' properties '" << _properties << "'";
     IR_EXCEPTION();
   }
 
@@ -299,9 +284,7 @@ irs::analysis::analyzer::ptr IResearchAnalyzerFeature::AnalyzerPool::get() const
 }
 
 std::string const& IResearchAnalyzerFeature::AnalyzerPool::name() const noexcept {
-  assert(_meta);
-
-  return _meta->_name;
+  return _name;
 };
 
 IResearchAnalyzerFeature::IResearchAnalyzerFeature(
@@ -312,22 +295,22 @@ IResearchAnalyzerFeature::IResearchAnalyzerFeature(
   startsAfter("AQLFunctions"); // used for registering IResearch analyzer functions
 }
 
-std::pair<IResearchAnalyzerFeature::AnalyzerPool, bool> IResearchAnalyzerFeature::emplace(
+std::pair<IResearchAnalyzerFeature::AnalyzerPool::ptr, bool> IResearchAnalyzerFeature::emplace(
   irs::string_ref const& name,
   irs::string_ref const& type,
   irs::string_ref const& properties
 ) noexcept {
   try {
-    irs::async_utils::read_write_mutex::write_mutex mutex(_mutex);
+    WriteMutex mutex(_mutex);
     SCOPED_LOCK(mutex);
 
     static auto generator = [](
         irs::hashed_string_ref const& key,
-        AnalyzerEntry const& value
+        AnalyzerPool::ptr const& value
     )->irs::hashed_string_ref {
-      auto& meta = const_cast<AnalyzerPool::Meta&>(value._meta);
-      meta._name.assign(key.c_str(), key.size()); // use current key as '_name' for '_meta'
-      return irs::hashed_string_ref(key.hash(), meta._name); // reuse hash but point ref at value
+      PTR_NAMED(AnalyzerPool, pool, key);
+      const_cast<AnalyzerPool::ptr&>(value) = pool;// lazy-instantiate pool
+      return pool ? irs::hashed_string_ref(key.hash(), pool->name()) : key; // reuse hash but point ref at value in pool
     };
     auto itr = irs::map_utils::try_emplace_update_key(
       _analyzers,
@@ -341,43 +324,27 @@ std::pair<IResearchAnalyzerFeature::AnalyzerPool, bool> IResearchAnalyzerFeature
       }
     });
 
-    auto& entry = itr.first->second;
-    auto pool = get(entry);
+    auto pool = itr.first->second;
 
-    if (!pool) {
-      LOG_TOPIC(WARN, Logger::FIXME) << "failure to get IResearch analyzer name '" << name << "' type '" << type << "' properties '" << properties << "'";
-      TRI_set_errno(TRI_ERROR_INTERNAL);
-
-      return std::make_pair(AnalyzerPool(), false);
-    }
-
-    if (itr.second) {
-      entry._meta._properties = properties;
-      entry._meta._type = type;
-
-      AnalyzerPool analyzer(entry._meta, pool);
-      auto instance = analyzer.get();
-
-      if (!instance) {
+    if (itr.second) { // new pool
+      if (!pool || !pool->init(type, properties)) {
         LOG_TOPIC(WARN, Logger::FIXME) << "failure creating an IResearch analyzer instance for name '" << name << "' type '" << type << "' properties '" << properties << "'";
         TRI_set_errno(TRI_ERROR_BAD_PARAMETER);
 
-        return std::make_pair(AnalyzerPool(), false);
+        return std::make_pair(AnalyzerPool::ptr(), false);
       }
-
-      entry._meta._features = instance->attributes().features();
 
       // FIXME TODO store definition in persisted mappings
 
       erase = false;
-    } else if (type != entry._meta._type || properties != entry._meta._properties) {
-      LOG_TOPIC(WARN, Logger::FIXME) << "name collision detected while registering an IResearch analizer name '" << name << "' type '" << type << "' properties '" << properties << "', previous registration type '" << entry._meta._type << "' properties '" << entry._meta._properties << "'";
+    } else if (type != pool->_type || properties != pool->_properties) {
+      LOG_TOPIC(WARN, Logger::FIXME) << "name collision detected while registering an IResearch analizer name '" << name << "' type '" << type << "' properties '" << properties << "', previous registration type '" << pool->_type << "' properties '" << pool->_properties << "'";
       TRI_set_errno(TRI_ERROR_BAD_PARAMETER);
 
-      return std::make_pair(AnalyzerPool(), false);
+      return std::make_pair(AnalyzerPool::ptr(), false);
     }
 
-    return std::make_pair(AnalyzerPool(entry._meta, pool), itr.second);
+    return std::make_pair(pool, itr.second);
   } catch (std::exception& e) {
     LOG_TOPIC(WARN, Logger::FIXME) << "caught exception while registering an IResearch analizer name '" << name << "' type '" << type << "' properties '" << properties << "': " << e.what();
     IR_EXCEPTION();
@@ -386,34 +353,31 @@ std::pair<IResearchAnalyzerFeature::AnalyzerPool, bool> IResearchAnalyzerFeature
     IR_EXCEPTION();
   }
 
-  return std::make_pair(AnalyzerPool(), false);
+  return std::make_pair(AnalyzerPool::ptr(), false);
 }
 
-IResearchAnalyzerFeature::AnalyzerPool IResearchAnalyzerFeature::get(
+IResearchAnalyzerFeature::AnalyzerPool::ptr IResearchAnalyzerFeature::get(
     irs::string_ref const& name
 ) const noexcept {
   try {
-    irs::async_utils::read_write_mutex::read_mutex mutex(_mutex);
+    ReadMutex mutex(_mutex);
     SCOPED_LOCK(mutex);
     auto itr = _analyzers.find(irs::make_hashed_ref(name, std::hash<irs::string_ref>()));
 
     if (itr == _analyzers.end()) {
       LOG_TOPIC(WARN, Logger::FIXME) << "failure to find IResearch analyzer name '" << name << "'";
 
-      return AnalyzerPool();
+      return nullptr;
     }
 
-    auto& entry = itr->second;
-    auto pool = get(entry);
+    auto pool = itr->second;
 
-    if (!pool) {
-      LOG_TOPIC(WARN, Logger::FIXME) << "failure to get IResearch analyzer name '" << name << "' type '" << entry._meta._type << "' properties '" << entry._meta._properties << "'";
-      TRI_set_errno(TRI_ERROR_INTERNAL);
-
-      return AnalyzerPool();
+    if (pool) {
+      return pool;
     }
 
-    return AnalyzerPool(entry._meta, pool);
+    LOG_TOPIC(WARN, Logger::FIXME) << "failure to get IResearch analyzer name '" << name << "'";
+    TRI_set_errno(TRI_ERROR_INTERNAL);
   } catch (std::exception& e) {
     LOG_TOPIC(WARN, Logger::FIXME) << "caught exception while retrieving an IResearch analizer name '" << name << "': " << e.what();
     IR_EXCEPTION();
@@ -422,34 +386,28 @@ IResearchAnalyzerFeature::AnalyzerPool IResearchAnalyzerFeature::get(
     IR_EXCEPTION();
   }
 
-  return AnalyzerPool();
+  return nullptr;
 }
 
-std::shared_ptr<IResearchAnalyzerFeature::AnalyzerPool::Cache> IResearchAnalyzerFeature::get(
-    AnalyzerEntry const& entry
-) const {
-  SCOPED_LOCK(entry._mutex); // no thread safety between lock() and update of weak_ptr
-  auto pool = entry._pool.lock();
+/*static*/ IResearchAnalyzerFeature::AnalyzerPool::ptr IResearchAnalyzerFeature::identity() noexcept {
+  struct Identity {
+    AnalyzerPool::ptr instance;
+    Identity() {
+      PTR_NAMED(AnalyzerPool, ptr, IDENTITY_TOKENIZER_NAME);
 
-  if (!pool) {
-    pool = irs::memory::make_unique<AnalyzerPool::Cache>(DEFAULT_POOL_SIZE);
-    entry._pool = pool;
-  }
+      // name (use same as 'type' for convenience)
+      if (!ptr || !ptr->init(IDENTITY_TOKENIZER_NAME, irs::string_ref::nil)) {
+        LOG_TOPIC(FATAL, Logger::FIXME) << "failed to initialize 'identity' analyzer";
 
-  return pool;
-}
+        throw irs::illegal_state(); // this should never happen, treat as an assertion failure
+      }
 
-/*static*/ IResearchAnalyzerFeature::AnalyzerPool IResearchAnalyzerFeature::identity() noexcept {
-  static const AnalyzerPool::Meta meta{
-    irs::analysis::analyzers::get(IDENTITY_TOKENIZER_NAME, "")->attributes().features(),
-    IDENTITY_TOKENIZER_NAME, // name (use same as 'type' for convenience)
-    "", // parameters
-    IDENTITY_TOKENIZER_NAME // type
+      instance = ptr;
+    }
   };
-  static const std::shared_ptr<AnalyzerPool::Cache> pool =
-    irs::memory::make_unique<AnalyzerPool::Cache>(DEFAULT_POOL_SIZE);
+  static const Identity identity;
 
-  return AnalyzerPool(meta, pool);
+  return identity.instance;
 }
 
 /*static*/ std::string const& IResearchAnalyzerFeature::name() {
@@ -463,7 +421,7 @@ void IResearchAnalyzerFeature::prepare() {
   ::iresearch::analysis::analyzers::init();
 }
 
-bool IResearchAnalyzerFeature::release(AnalyzerPool const& pool) noexcept {
+bool IResearchAnalyzerFeature::release(AnalyzerPool::ptr const& pool) noexcept {
   // FIXME TODO update persisted mappings
   return true;
 }
@@ -475,7 +433,7 @@ size_t IResearchAnalyzerFeature::remove(
   try {
     // FIXME TODO do not remove name if it is still referenced (unless force)
     // FIXME TODO remove definition from persisted mappings
-    irs::async_utils::read_write_mutex::write_mutex mutex(_mutex);
+    WriteMutex mutex(_mutex);
     SCOPED_LOCK(mutex);
 
     return _analyzers.erase(irs::make_hashed_ref(name, std::hash<irs::string_ref>()));
@@ -490,7 +448,7 @@ size_t IResearchAnalyzerFeature::remove(
   return 0;
 }
 
-bool IResearchAnalyzerFeature::reserve(AnalyzerPool const& pool) noexcept {
+bool IResearchAnalyzerFeature::reserve(AnalyzerPool::ptr const& pool) noexcept {
   // FIXME TODO update persisted mappings
   return true;
 }
@@ -522,11 +480,11 @@ void IResearchAnalyzerFeature::stop() {
 bool IResearchAnalyzerFeature::visit(
     std::function<bool(irs::string_ref const& name, irs::string_ref const& type, irs::string_ref const& properties)> const& visitor
 ) {
-  irs::async_utils::read_write_mutex::read_mutex mutex(_mutex);
+  ReadMutex mutex(_mutex);
   SCOPED_LOCK(mutex);
 
   for (auto& entry: _analyzers) {
-    if (!visitor(entry.first, entry.second._meta._type, entry.second._meta._properties)) {
+    if (entry.second && !visitor(entry.first, entry.second->_type, entry.second->_properties)) {
       return false;
     }
   }

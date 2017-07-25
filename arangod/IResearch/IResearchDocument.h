@@ -146,7 +146,7 @@ class FieldIterator : public std::iterator<std::forward_iterator_tag, Field cons
   );
 
  private:
-  typedef IResearchAnalyzerFeature::AnalyzerPool const* TokenizerIterator;
+  typedef IResearchAnalyzerFeature::AnalyzerPool::ptr const* TokenizerIterator;
 
   typedef bool(*Filter)(
     std::string& buffer,

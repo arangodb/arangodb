@@ -50,11 +50,11 @@ bool equalTokenizers(
   std::unordered_multiset<irs::string_ref> expected;
 
   for (auto& entry: lhs) {
-    expected.emplace(entry.name());
+    expected.emplace(entry ? irs::string_ref(entry->name()) : irs::string_ref::nil);
   }
 
   for (auto& entry: rhs) {
-    auto itr = expected.find(entry.name());
+    auto itr = expected.find(entry ? irs::string_ref(entry->name()) : irs::string_ref::nil);
 
     if (itr == expected.end()) {
       return false; // values do not match
@@ -396,7 +396,9 @@ bool IResearchLinkMeta::json(
     tokenizersBuilder.openArray();
 
     for (auto& entry: _tokenizers) {
-      tokenizersBuilder.add(arangodb::velocypack::Value(entry.name()));
+      if (entry) { // skip null tokenizers
+        tokenizersBuilder.add(arangodb::velocypack::Value(entry->name()));
+      }
     }
 
     tokenizersBuilder.close();

@@ -754,7 +754,8 @@ bool fromFuncPhrase(
   // as the last argument then use it
   bool const customAnalyzer = argc & 1;
 
-  irs::string_ref analyzerName = analyzerFeature->identity().name();
+  auto identity = analyzerFeature->identity();
+  auto analyzerName = identity ? irs::string_ref(identity->name()) : irs::string_ref::nil;
   irs::analysis::analyzer::ptr analyzer;
 
   if (customAnalyzer) {
@@ -775,7 +776,7 @@ bool fromFuncPhrase(
     return false;
   }
 
-  analyzer = pool.get(); // get analyzer from pool
+  analyzer = pool->get(); // get analyzer from pool
 
   if (!analyzer) {
     LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "'PHRASE' AQL function: Unable to instantiate analyzer '" << analyzerName << "'";

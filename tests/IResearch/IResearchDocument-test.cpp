@@ -1275,15 +1275,13 @@ SECTION("FieldIterator_nullptr_tokenizer") {
   auto const slice = json->slice();
 
   // register analizers with feature
-  //{
+  {
     // ensure that there will be no exception on 'emplace'
     InvalidTokenizer::returnNullFromMake = false;
 
-    auto x = // FIXME TODO remove
     analyzers.emplace("empty", "iresearch-document-empty", "en");
-    auto y = // FIXME TODO remove
     analyzers.emplace("invalid", "iresearch-document-invalid", "en");
-  //}
+  }
 
   // last tokenizer invalid
   {
@@ -1293,7 +1291,7 @@ SECTION("FieldIterator_nullptr_tokenizer") {
     linkMeta._includeAllFields = true; // include all fields
 
     // acquire tokenizer, another one should be created
-    auto tokenizer = linkMeta._tokenizers.back().get(); // cached instance should have been acquired
+    auto tokenizer = linkMeta._tokenizers.back()->get(); // cached instance should have been acquired
 
     arangodb::iresearch::FieldIterator it(slice, linkMeta);
     REQUIRE(it.valid());
@@ -1343,7 +1341,7 @@ SECTION("FieldIterator_nullptr_tokenizer") {
     linkMeta._includeAllFields = true; // include all fields
 
     // acquire tokenizer, another one should be created
-    auto tokenizer = linkMeta._tokenizers.front().get(); // cached instance should have been aquired
+    auto tokenizer = linkMeta._tokenizers.front()->get(); // cached instance should have been aquired
 
     arangodb::iresearch::FieldIterator it(slice, linkMeta);
     REQUIRE(it.valid());
