@@ -429,11 +429,21 @@ global.DEFINE_MODULE('console', (function () {
     }
     let err = e;
     while (err) {
-      exports.errorLines(
-        !msg && err === e
-        ? err.stack
-        : `via ${err.stack}`
-      );
+      if (!msg && err === e) {
+        if (err.hasOwnProperty('errorNum')) {
+          let stacktrace = err.stack.replace(/^ArangoError/, '');
+          exports.errorLines('ArangoError ' + err.errorNum + stacktrace);
+        }
+        else {
+          exports.errorLines(
+            err.stack
+          )
+        }
+      } else {
+        exports.errorLines(
+          `via ${err.stack}`
+        );
+      }
       err = err.cause;
     }
   };
@@ -447,11 +457,21 @@ global.DEFINE_MODULE('console', (function () {
     }
     let err = e;
     while (err) {
-      exports.warnLines(
-        !msg && err === e
-        ? err.stack
-        : `via ${err.stack}`
-      );
+      if (!msg && err === e) {
+        if (err.hasOwnProperty('errorNum')) {
+          let stacktrace = err.stack.replace(/^ArangoError/, '');
+          exports.warnLines('ArangoError ' + err.errorNum + stacktrace);
+        }
+        else {
+          exports.warnLines(
+            err.stack
+          )
+        }
+      } else {
+        exports.warnLines(
+          `via ${err.stack}`
+        );
+      }
       err = err.cause;
     }
   };
@@ -465,11 +485,21 @@ global.DEFINE_MODULE('console', (function () {
     }
     let err = e;
     while (err) {
-      exports.infoLines(
-        !msg && err === e
-        ? err.stack
-        : `via ${err.stack}`
-      );
+      if (!msg && err === e) {
+        if (err.hasOwnProperty('errorNum')) {
+          let stacktrace = err.stack.replace(/^ArangoError/, '');
+          exports.infoLines('ArangoError ' + err.errorNum + stacktrace);
+        }
+        else {
+          exports.infoLines(
+            err.stack
+          )
+        }
+      } else {
+        exports.infoLines(
+          `via ${err.stack}`
+        );
+      }
       err = err.cause;
     }
   };
@@ -483,11 +513,21 @@ global.DEFINE_MODULE('console', (function () {
     }
     let err = e;
     while (err) {
-      exports.debugLines(
-        !msg && err === e
-        ? err.stack
-        : `via ${err.stack}`
-      );
+      if (!msg && err === e) {
+        if (err.hasOwnProperty('errorNum')) {
+          let stacktrace = err.stack.replace(/^ArangoError/, '');
+          exports.debugLines('ArangoError ' + err.errorNum + stacktrace);
+        }
+        else {
+          exports.debugLines(
+            err.stack
+          )
+        }
+      } else {
+        exports.debugLines(
+          `via ${err.stack}`
+        );
+      }
       err = err.cause;
     }
   };
