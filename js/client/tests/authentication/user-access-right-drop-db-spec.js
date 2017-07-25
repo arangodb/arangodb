@@ -43,8 +43,6 @@ const userSet = helper.userSet;
 const systemLevel = helper.systemLevel;
 const dbLevel = helper.dbLevel;
 const colLevel = helper.colLevel;
-const activeUsers = helper.activeUsers;
-const inactiveUsers = helper.inactiveUsers;
 
 const arango = require('internal').arango;
 const db = require('internal').db;
@@ -126,7 +124,7 @@ describe('User Rights Management', () => {
             });
 
             it('drop database', () => {
-              if (activeUsers.has(name) && systemLevel['rw'].has(name)) {
+              if (systemLevel['rw'].has(name)) {
                 // User needs rw on _system
                 db._dropDatabase(testDBName);
                 expect(rootTestDB()).to.equal(false, `DB drop reported success, but DB was still found afterwards.`);

@@ -43,8 +43,6 @@ const userSet = helper.userSet;
 const systemLevel = helper.systemLevel;
 const dbLevel = helper.dbLevel;
 const colLevel = helper.colLevel;
-const activeUsers = helper.activeUsers;
-const inactiveUsers = helper.inactiveUsers;
 
 const arango = require('internal').arango;
 const db = require('internal').db;
@@ -128,7 +126,7 @@ describe('User Rights Management', () => {
             });
 
             it('create database', () => {
-              if (activeUsers.has(name) && systemLevel['rw'].has(name)) {
+              if (systemLevel['rw'].has(name)) {
                 // User needs rw on _system
                 db._createDatabase(testDBName);
                 expect(rootTestDB()).to.equal(true, `DB creation reported success, but DB was not found afterwards.`);

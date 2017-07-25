@@ -44,8 +44,6 @@ const userSet = helper.userSet;
 const systemLevel = helper.systemLevel;
 const dbLevel = helper.dbLevel;
 const colLevel = helper.colLevel;
-const activeUsers = helper.activeUsers;
-const inactiveUsers = helper.inactiveUsers;
 const testUser = `${namePrefix}TestUser`;
 
 const arango = require('internal').arango;
@@ -120,7 +118,7 @@ describe('User Rights Management', () => {
             });
 
             it('create a user', () => {
-              if (activeUsers.has(name) && systemLevel['rw'].has(name)) {
+              if (systemLevel['rw'].has(name)) {
                 // User needs rw on _system
                 users.save('UnitTestTestUser', '', true);
                 expect(rootTestUser()).to.equal(true, `User creation reported success, but User was not found afterwards.`);

@@ -43,8 +43,6 @@ const userSet = helper.userSet;
 const systemLevel = helper.systemLevel;
 const dbLevel = helper.dbLevel;
 const colLevel = helper.colLevel;
-const activeUsers = helper.activeUsers;
-const inactiveUsers = helper.inactiveUsers;
 const testUser = `${namePrefix}TestUser`;
 
 const arango = require('internal').arango;
@@ -129,7 +127,7 @@ describe('User Rights Management', () => {
             });
 
             it('update a user', () => {
-              if (activeUsers.has(name) && systemLevel['rw'].has(name)) {
+              if (systemLevel['rw'].has(name)) {
                 // User needs rw on _system
                 users.grantDatabase(testUser, '_system', 'rw');
               } else {

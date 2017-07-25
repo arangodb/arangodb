@@ -34,18 +34,14 @@ const expect = require('chai').expect;
 const users = require('@arangodb/users');
 const helper = require('@arangodb/user-helper');
 const errors = require('@arangodb').errors;
-const namePrefix = helper.namePrefix;
 const dbName = helper.dbName;
 const colName = helper.colName;
 const rightLevels = helper.rightLevels;
-const testColName = colName;//`${namePrefix}ColNew`;
 
 const userSet = helper.userSet;
 const systemLevel = helper.systemLevel;
 const dbLevel = helper.dbLevel;
 const colLevel = helper.colLevel;
-const activeUsers = helper.activeUsers;
-const inactiveUsers = helper.inactiveUsers;
 
 const arango = require('internal').arango;
 const db = require('internal').db;
@@ -59,25 +55,22 @@ const switchUser = (user, dbname) => {
   arango.reconnect(arango.getEndpoint(), dbname, user, '');
 };
 
-
 switchUser('root', '_system');
 helper.removeAllUsers();
 
 describe('User Rights Management', () => {
-
   before(helper.generateAllUsers);
   after(helper.removeAllUsers);
 
   it('should check if all users are created', () => {
     switchUser('root', '_system');
-    expect(userSet.size).to.equal(4 * 4 * 4 * 2);
+    expect(userSet.size).to.equal(helper.userCount);
     for (let name of userSet) {
       expect(users.document(name), `Could not find user: ${name}`).to.not.be.undefined;
     }
   });
 
-  describe('should test rights for', () => {
-
+  it('should test rights for', () => {
     for (let name of userSet) {
       let canUse = false;
       try {
@@ -88,40 +81,31 @@ describe('User Rights Management', () => {
       }
 
       if (canUse) {
-
         describe(`user ${name}`, () => {
-
           before(() => {
             switchUser(name, dbName);
           });
 
           describe('update on collection level', () => {
-
             const rootTestCollection = (switchBack = true) => {
               switchUser('root', dbName);
-              let col = db._collection(testColName);
+              let col = db._collection(colName);
               if (switchBack) {
                 switchUser(name, dbName);
               }
               return col !== null;
             };
 
-            const rootDropCollection = () => {
+            const rootPrepareCollection = () => {
               if (rootTestCollection(false)) {
-                db._drop(testColName);
-              }
-              switchUser(name, dbName);
-            };
-
-            const rootCreateCollection = () => {
-              if (!rootTestCollection(false)) {
-                let col = db._create(testColName);
-                col.save({_key: "123"});
-                col.save({_key: "456"});
-                col.save({_key: "789"});
-                col.save({_key: "987"});
-                col.save({_key: "654"});
-                col.save({_key: "321"});
+                const col = db._collection(colName);
+                col.truncate();
+                col.save({_key: '123'});
+                col.save({_key: '456'});
+                col.save({_key: '789'});
+                col.save({_key: '987'});
+                col.save({_key: '654'});
+                col.save({_key: '321'});
               }
               switchUser(name, dbName);
             };
@@ -129,37 +113,30 @@ describe('User Rights Management', () => {
             const rootCount = () => {
               let count = -1;
               if (rootTestCollection(false)) {
-                count = db._collection(testColName).count();
+                count = db._collection(colName).count();
               }
-              // else: Collection not there
               switchUser(name, dbName);
               return count;
             };
 
-
             describe('truncate a collection', () => {
               before(() => {
                 db._useDatabase(dbName);
-                rootCreateCollection();
-              });
-
-              after(() => {
-                rootDropCollection();
+                rootPrepareCollection();
               });
 
               it('via js', () => {
-                expect(rootTestCollection()).to.equal(true, `Precondition failed, the collection does not exist`);
-                let col = db._collection(testColName);
-                expect(rootCount()).to.equal(6, `Precondition failed, too few documents.`);
-                if (activeUsers.has(name) &&
-                   (dbLevel['rw'].has(name) || dbLevel['ro'].has(name)) &&
+                expect(rootTestCollection()).to.equal(true, 'Precondition failed, the collection does not exist');
+                expect(rootCount()).to.equal(6, 'Precondition failed, too few documents.');
+                if ((dbLevel['rw'].has(name) || dbLevel['ro'].has(name)) &&
                    colLevel['rw'].has(name)) {
-                  // User needs ro on database
+                  let col = db._collection(colName);
                   col.truncate();
                   expect(rootCount()).to.equal(0, `${name} could not truncate the collection with sufficient rights`);
                 } else {
                   var success = false;
                   try {
+                    let col = db._collection(colName);
                     col.truncate();
                     success = true;
                   } catch (e) {
@@ -176,5 +153,3 @@ describe('User Rights Management', () => {
     }
   });
 });
-
-

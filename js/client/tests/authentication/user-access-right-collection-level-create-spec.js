@@ -1,5 +1,5 @@
 /* jshint globalstrict:true, strict:true, maxlen: 5000 */
-/* global describe, before, after, it, require*/
+/* global describe, before, after, it, require, beforeEach*/
 
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief tests for user access rights
@@ -34,18 +34,14 @@ const expect = require('chai').expect;
 const users = require('@arangodb/users');
 const helper = require('@arangodb/user-helper');
 const errors = require('@arangodb').errors;
-const namePrefix = helper.namePrefix;
 const dbName = helper.dbName;
 const colName = helper.colName;
 const rightLevels = helper.rightLevels;
-const testColName = `${namePrefix}ColNew`;
 
 const userSet = helper.userSet;
 const systemLevel = helper.systemLevel;
 const dbLevel = helper.dbLevel;
 const colLevel = helper.colLevel;
-const activeUsers = helper.activeUsers;
-const inactiveUsers = helper.inactiveUsers;
 
 const arango = require('internal').arango;
 const db = require('internal').db;
@@ -59,7 +55,6 @@ const switchUser = (user, dbname) => {
   arango.reconnect(arango.getEndpoint(), dbname, user, '');
 };
 
-
 switchUser('root', '_system');
 helper.removeAllUsers();
 
@@ -70,14 +65,13 @@ describe('User Rights Management', () => {
 
   it('should check if all users are created', () => {
     switchUser('root', '_system');
-    expect(userSet.size).to.equal(4 * 4 * 4 * 2);
+    expect(userSet.size).to.equal(helper.userCount);
     for (let name of userSet) {
       expect(users.document(name), `Could not find user: ${name}`).to.not.be.undefined;
     }
   });
 
-  describe('should test rights for', () => {
-
+  it('should test rights for', () => {
     for (let name of userSet) {
       let canUse = false;
       try {
@@ -90,108 +84,113 @@ describe('User Rights Management', () => {
       if (canUse) {
 
         describe(`user ${name}`, () => {
-
           before(() => {
             switchUser(name, dbName);
           });
 
           describe('update on collection level', () => {
-
             const rootTestCollection = (switchBack = true) => {
               switchUser('root', dbName);
-              let col = db._collection(testColName);
+              let col = db._collection(colName);
               if (switchBack) {
                 switchUser(name, dbName);
               }
               return col !== null;
             };
 
-            const rootDropCollection = () => {
+            const rootTruncateCollection = () => {
               if (rootTestCollection(false)) {
-                db._drop(testColName);
+                db._collection(colName).truncate();
               }
               switchUser(name, dbName);
             };
-
-            const rootCreateCollection = () => {
-              if (!rootTestCollection(false)) {
-                db._create(testColName);
-              }
-              switchUser(name, dbName);
-            };
-
 
             describe('create a document', () => {
               before(() => {
                 db._useDatabase(dbName);
-                rootCreateCollection();
-              });
-
-              after(() => {
-                rootDropCollection();
+                rootTruncateCollection();
               });
 
               it('by key', () => {
-                expect(rootTestCollection()).to.equal(true, `Precondition failed, the collection does not exist`);
-                let col = db._collection(testColName);
-                if (activeUsers.has(name) &&
-                   (dbLevel['rw'].has(name) || dbLevel['ro'].has(name)) &&
+                expect(rootTestCollection()).to.equal(true, 'Precondition failed, the collection does not exist');
+                if ((dbLevel['rw'].has(name) || dbLevel['ro'].has(name)) &&
                    colLevel['rw'].has(name)) {
-                  // User needs ro on database
+                  let col = db._collection(colName);
+                  try {
+                    col.document('123');
+                    expect(false).to.equal(true, 'Precondition failed, document already inserted.');
+                  } catch (e) {}
 
-                  expect(col.document('123')._key).to.not.equal('123', `Precondition failed, document already inserted.`);
-
-                  db._collection(testColName).save({_key: '123'});
-
-                  col.save({_key: '123', foo: 'bar'});
+                  col.save({
+                    _key: '123',
+                    foo: 'bar'
+                  });
                   expect(col.document('123').foo).to.equal('bar', `${name} the create did not pass through...`);
                 } else {
-                  let hasReadAccess = (activeUsers.has(name) &&
-                    (dbLevel['rw'].has(name) || dbLevel['ro'].has(name)) &&
+                  let hasReadAccess = ((dbLevel['rw'].has(name) || dbLevel['ro'].has(name)) &&
                     (colLevel['rw'].has(name) || colLevel['ro'].has(name)));
                   if (hasReadAccess) {
-                    expect(col.document('123')._key).to.not.equal('123', `Precondition failed, document already inserted.`);
+                    let col = db._collection(colName);
+                    try {
+                      col.document('123');
+                      expect(false).to.equal(true, 'Precondition failed, document already inserted.');
+                    } catch (e) {}
                   }
                   try {
-                    col.save({_key: '123', foo: 'bar'});
+                    let col = db._collection(colName);
+                    col.save({
+                      _key: '123',
+                      foo: 'bar'
+                    });
                     expect(true).to.be(false, `${name} created a document with insufficient rights.`);
                   } catch (e) {
-                    expect(e.errorNum).to.equal(errors.ERROR_FORBIDDEN.code);
+                    if (hasReadAccess) {
+                      expect(e.errorNum).to.equal(errors.ERROR_ARANGO_READ_ONLY.code);
+                    } else {
+                      expect(e.errorNum).to.equal(errors.ERROR_FORBIDDEN.code);
+                    }
                   }
 
                   if (hasReadAccess) {
-                    expect(col.document('123').foo).to.not.equal('bar', `${name} managed to create the document with insufficient rights`);
+                    let col = db._collection(colName);
+                    try {
+                      expect(col.document('123').foo).to.not.equal('bar', `${name} managed to create the document with insufficient rights`);
+                    } catch (e) {}
                   }
                 }
               });
 
               it('by aql', () => {
                 expect(rootTestCollection()).to.equal(true, `Precondition failed, the collection does not exist`);
-                let col = db._collection(testColName);
-                let q = `INSERT {_key: '456', foo: 'bar'} IN ${testColName} RETURN NEW`;
-                if (activeUsers.has(name) &&
-                   (dbLevel['rw'].has(name) || dbLevel['ro'].has(name)) &&
-                   (colLevel['rw'].has(name) || colLevel['ro'].has(name))) {
-                  // User needs rw on database
+                let q = `INSERT {_key: '456', foo: 'bar'} IN ${colName} RETURN NEW`;
+                if ((dbLevel['rw'].has(name) || dbLevel['ro'].has(name)) &&
+                   colLevel['rw'].has(name)) {
+                  let col = db._collection(colName);
                   let res = db._query(q).toArray();
-                  expect(res.length).to.equal(1, `Could not create a document by aql, with sufficient rights`);
-                  expect(res[0].foo).to.equal('bar', `Did not create the document properly`);
+                  expect(res.length).to.equal(1, 'Could not create a document by aql, with sufficient rights');
+                  expect(res[0].foo).to.equal('bar', 'Did not create the document properly');
                   expect(col.document('456').foo).to.equal('bar', `${name} managed to create the document with sufficient rights`);
                 } else {
-                  let hasReadAccess = (activeUsers.has(name) &&
-                    (dbLevel['rw'].has(name) || dbLevel['ro'].has(name)) &&
+                  let hasReadAccess = ((dbLevel['rw'].has(name) || dbLevel['ro'].has(name)) &&
                     (colLevel['rw'].has(name) || colLevel['ro'].has(name)));
 
                   try {
                     let res = db._query(q).toArray();
-                    expect(res.length).to.equal(0, `Could create a document by aql, with insufficient rights`);
+                    expect(res.length).to.equal(0, 'Could create a document by aql, with insufficient rights');
                     expect(res[0].foo).to.not.equal('bar', `${name} did create the document with insufficient rights`);
                   } catch (e) {
-                    expect(e.errorNum).to.equal(errors.ERROR_FORBIDDEN.code);
+                    if (hasReadAccess) {
+                      expect(e.errorNum).to.equal(errors.ERROR_ARANGO_READ_ONLY.code);
+                    } else {
+                      expect(e.errorNum).to.equal(errors.ERROR_FORBIDDEN.code);
+                    }
                   }
 
                   if (hasReadAccess) {
-                    expect(col.document('456').foo).to.not.equal('bar', `${name} managed to create the document with insufficient rights`);
+                    let col = db._collection(colName);
+                    try {
+                      expect(col.document('456').foo).to.not.equal('bar', `${name} managed to create the document with insufficient rights`);
+                    } catch (e) {}
                   }
                 }
               });
