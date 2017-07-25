@@ -585,7 +585,7 @@ std::unique_ptr<FollowerInfo> const& LogicalCollection::followers() const {
 void LogicalCollection::setDeleted(bool newValue) { _isDeleted = newValue; }
 
 // SECTION: Indexes
-std::vector<std::pair<std::string, double>> LogicalCollection::clusterIndexEstimates(bool doNotUpdate){
+std::unordered_map<std::string, double> LogicalCollection::clusterIndexEstimates(bool doNotUpdate){
   READ_LOCKER(readlock, _clusterEstimatesLock);
   if (doNotUpdate) {
     return _clusterEstimates;
@@ -615,7 +615,7 @@ std::vector<std::pair<std::string, double>> LogicalCollection::clusterIndexEstim
   return _clusterEstimates;
 }
 
-void LogicalCollection::clusterIndexEstimates(std::vector<std::pair<std::string, double>>&& estimates){
+void LogicalCollection::clusterIndexEstimates(std::unordered_map<std::string, double>&& estimates){
   WRITE_LOCKER(lock, _clusterEstimatesLock);
   _clusterEstimates = std::move(estimates);
 }

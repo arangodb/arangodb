@@ -865,13 +865,7 @@ std::pair<bool,double> Index::getClusterEstimate(double defaultValue) const {
   std::pair<bool,double> rv(false,defaultValue);
 
   auto estimates = _collection->clusterIndexEstimates();
-  std::string iid = std::to_string(_iid);
-  auto found = std::find_if(estimates.begin()
-                          ,estimates.end()
-                          ,[iid](std::pair<std::string,double>& v){
-                             return iid == v.first;
-                           }
-                          );
+  auto found = estimates.find(std::to_string(_iid));
 
   if( found != estimates.end()){
     rv.first = true;

@@ -109,7 +109,7 @@ arangodb::Result Indexes::getAll(arangodb::LogicalCollection const* collection,
     auto c = ClusterInfo::instance()->getCollection(databaseName, cid);
 
     // add code for estimates here
-    std::vector<std::pair<std::string,double>> estimates;
+    std::unordered_map<std::string,double> estimates;
 
     int rv = selectivityEstimatesOnCoordinator(databaseName,cid,estimates);
     if (rv != TRI_ERROR_NO_ERROR){

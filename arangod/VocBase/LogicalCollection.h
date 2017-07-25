@@ -182,8 +182,8 @@ class LogicalCollection {
   //// SECTION: Indexes
 
   // Estimates
-  std::vector<std::pair<std::string, double>> clusterIndexEstimates(bool doNotUpdate=false);
-  void clusterIndexEstimates(std::vector<std::pair<std::string, double>>&& estimates);
+  std::unordered_map<std::string, double> clusterIndexEstimates(bool doNotUpdate=false);
+  void clusterIndexEstimates(std::unordered_map<std::string, double>&& estimates);
 
   double clusterIndexEstimatesTTL(){
     return _clusterEstimateTTL;
@@ -402,7 +402,7 @@ class LogicalCollection {
 
   mutable basics::ReadWriteLock _infoLock;  // lock protecting the info
 
-  std::vector<std::pair<std::string, double>> _clusterEstimates;
+  std::unordered_map<std::string, double> _clusterEstimates;
   double _clusterEstimateTTL; //only valid if above vector is not empty
   basics::ReadWriteLock _clusterEstimatesLock;
 };

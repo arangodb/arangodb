@@ -818,7 +818,7 @@ int countOnCoordinator(std::string const& dbname, std::string const& collname,
 int selectivityEstimatesOnCoordinator(
   std::string const& dbname,
   std::string const& collname,
-  std::vector<std::pair<std::string, double>>& result) {
+  std::unordered_map<std::string, double>& result) {
 
   // Set a few variables needed for our work:
   ClusterInfo* ci = ClusterInfo::instance();
@@ -921,7 +921,7 @@ int selectivityEstimatesOnCoordinator(
   };
 
   for (auto const& p : indexEstimates){
-    result.push_back({p.first, aggregate_indexes(p.second)});
+    result[p.first] = aggregate_indexes(p.second);
   }
 
   return TRI_ERROR_NO_ERROR;

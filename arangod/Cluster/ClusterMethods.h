@@ -90,7 +90,7 @@ int countOnCoordinator(std::string const& dbname, std::string const& collname,
                        std::vector<std::pair<std::string, uint64_t>>& result);
 
 int selectivityEstimatesOnCoordinator(std::string const& dbname, std::string const& collname,
-                                      std::vector<std::pair<std::string, double>>& result);
+                                      std::unordered_map<std::string, double>& result);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates a document in a coordinator
