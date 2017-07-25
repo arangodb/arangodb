@@ -30,6 +30,7 @@
 #include "analysis/token_attributes.hpp"
 #include "utils/locale_utils.hpp"
 
+#include "Aql/AqlFunctionFeature.h"
 #include "IResearch/ApplicationServerHelper.h"
 #include "IResearch/IResearchLinkMeta.h"
 #include "StorageEngine/EngineSelectorFeature.h"
@@ -80,6 +81,7 @@ struct IResearchLinkMetaSetup {
     arangodb::tests::init();
 
     // setup required application features
+    features.emplace_back(new arangodb::aql::AqlFunctionFeature(&server), true); // required for IResearchAnalyzerFeature
     features.emplace_back(new arangodb::iresearch::IResearchAnalyzerFeature(&server), true);
 
     for (auto& f : features) {

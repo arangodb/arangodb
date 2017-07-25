@@ -26,6 +26,7 @@
 
 #include "StorageEngineMock.h"
 
+#include "Aql/AqlFunctionFeature.h"
 #include "IResearch/ApplicationServerHelper.h"
 #include "IResearch/IResearchAnalyzerFeature.h"
 #include "IResearch/IResearchDocument.h"
@@ -119,6 +120,7 @@ struct IResearchDocumentSetup {
     arangodb::tests::init();
 
     // setup required application features
+    features.emplace_back(new arangodb::aql::AqlFunctionFeature(&server), true); // required for IResearchAnalyzerFeature
     features.emplace_back(new arangodb::iresearch::IResearchAnalyzerFeature(&server), true);
 
     for (auto& f : features) {
@@ -136,6 +138,9 @@ struct IResearchDocumentSetup {
     }
 
     auto* analyzers = arangodb::iresearch::getFeature<arangodb::iresearch::IResearchAnalyzerFeature>();
+
+    // ensure that there will be no exception on 'emplace'
+    InvalidTokenizer::returnNullFromMake = false;
 
     analyzers->emplace("iresearch-document-empty", "iresearch-document-empty", "en"); // cache analyzer
     analyzers->emplace("iresearch-document-invalid", "iresearch-document-invalid", "en"); // cache analyzer

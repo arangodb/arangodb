@@ -24,6 +24,8 @@
 #include "catch.hpp"
 #include "StorageEngineMock.h"
 
+#include "Aql/AqlFunctionFeature.h"
+#include "IResearch/ApplicationServerHelper.h"
 #include "IResearch/IResearchFilterFactory.h"
 #include "IResearch/IResearchLinkMeta.h"
 #include "IResearch/IResearchViewMeta.h"
@@ -162,43 +164,30 @@ NS_END
 struct IResearchFilterSetup {
   StorageEngineMock engine;
   arangodb::application_features::ApplicationServer server;
+  std::vector<std::pair<arangodb::application_features::ApplicationFeature*, bool>> features;
 
   IResearchFilterSetup(): server(nullptr, nullptr) {
     arangodb::EngineSelectorFeature::ENGINE = &engine;
-    arangodb::application_features::ApplicationFeature* feature;
 
-    // AqlFeature
-    arangodb::application_features::ApplicationServer::server->addFeature(
-      feature = new arangodb::AqlFeature(&server)
-    );
-    feature->start();
-    feature->prepare();
+    // setup required application features
+    features.emplace_back(new arangodb::QueryRegistryFeature(&server), false); // must be first
+    features.emplace_back(new arangodb::TraverserEngineRegistryFeature(&server), false); // must be before AqlFeature
+    features.emplace_back(new arangodb::AqlFeature(&server), true);
+    features.emplace_back(new arangodb::aql::AqlFunctionFeature(&server), true); // required for IResearchAnalyzerFeature
+    features.emplace_back(new arangodb::iresearch::IResearchAnalyzerFeature(&server), true);
 
-    // QueryRegistryFeature
-    arangodb::application_features::ApplicationServer::server->addFeature(
-      feature = new arangodb::QueryRegistryFeature(&server)
-    );
-    feature->start();
-    feature->prepare();
+    for (auto& entry: features) {
+      arangodb::application_features::ApplicationServer::server->addFeature(entry.first);
+      entry.first->prepare();
 
-    // TraverserEngineRegistryFeature (required for AqlFeature::stop() to work)
-    arangodb::application_features::ApplicationServer::server->addFeature(
-      feature = new arangodb::TraverserEngineRegistryFeature(&server)
-    );
-    feature->start();
-    feature->prepare();
+      if (entry.second) {
+        entry.first->start();
+      }
+    }
 
-    // IResearchAnalyzerFeature
-    arangodb::application_features::ApplicationServer::server->addFeature(
-      feature = new arangodb::iresearch::IResearchAnalyzerFeature(&server)
-    );
-    feature->start();
-    feature->prepare();
+    auto* analyzers = arangodb::iresearch::getFeature<arangodb::iresearch::IResearchAnalyzerFeature>();
 
-    // register analyzer
-    CHECK(false == !dynamic_cast<arangodb::iresearch::IResearchAnalyzerFeature&>(*feature).emplace(
-      "test_analyzer", "TestAnalyzer", "abc"
-    ).first);
+    analyzers->emplace("test_analyzer", "TestAnalyzer", "abc"); // cache analyzer
 
     // suppress log messages since tests check error conditions
     arangodb::LogTopic::setLogLevel(arangodb::Logger::FIXME.name(), arangodb::LogLevel::FATAL);
@@ -210,6 +199,17 @@ struct IResearchFilterSetup {
     arangodb::LogTopic::setLogLevel(arangodb::Logger::FIXME.name(), arangodb::LogLevel::DEFAULT);
     arangodb::application_features::ApplicationServer::server = nullptr;
     arangodb::EngineSelectorFeature::ENGINE = nullptr;
+
+    // destroy application features
+    for (auto itr = features.rbegin(), end = features.rend(); itr != end; ++itr) {
+      auto& entry = *itr;
+
+      if (entry.second) {
+        entry.first->stop();
+      }
+
+      entry.first->unprepare();
+    }
   }
 }; // IResearchFilterSetup
 

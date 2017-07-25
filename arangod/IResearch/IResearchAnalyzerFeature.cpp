@@ -116,90 +116,91 @@ bool IdentityTokenizer::reset(irs::string_ref const& data) {
   return !_empty;
 }
 
+arangodb::aql::AqlValue aqlFnTokens(
+    arangodb::aql::Query* query,
+    arangodb::transaction::Methods* trx,
+    arangodb::aql::VPackFunctionParameters const& args
+) {
+  if (2 != args.size() || !args[0].isString() || !args[1].isString()) {
+    LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "invalid arguments passed while computing result for function 'TOKENS'";
+    TRI_set_errno(TRI_ERROR_BAD_PARAMETER);
+
+    return arangodb::aql::AqlValue();
+  }
+
+  auto data = arangodb::iresearch::getStringRef(args[0].slice());
+  auto name = arangodb::iresearch::getStringRef(args[1].slice());
+  auto analyzers = arangodb::iresearch::getFeature<arangodb::iresearch::IResearchAnalyzerFeature>("IResearchAnalyzer");
+
+  if (!analyzers) {
+    LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "failure to find feature 'IResearch' while computing result for function 'TOKENS'";
+    TRI_set_errno(TRI_ERROR_INTERNAL);
+
+    return arangodb::aql::AqlValue();
+  }
+
+  auto pool = analyzers->get(name);
+
+  if (!pool) {
+    LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "failure to find IResearch analyzer pool name '" << name << "' while computing result for function 'TOKENS'";
+    TRI_set_errno(TRI_ERROR_BAD_PARAMETER);
+
+    return arangodb::aql::AqlValue();
+  }
+
+  auto analyzer = pool->get();
+
+  if (!analyzer) {
+    LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "failure to find IResearch analyzer name '" << name << "' while computing result for function 'TOKENS'";
+    TRI_set_errno(TRI_ERROR_BAD_PARAMETER);
+
+    return arangodb::aql::AqlValue();
+  }
+
+  if (!analyzer->reset(data)) {
+    LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "failure to reset IResearch analyzer name '" << name << "' while computing result for function 'TOKENS'";
+    TRI_set_errno(TRI_ERROR_INTERNAL);
+
+    return arangodb::aql::AqlValue();
+  }
+
+  auto& values = analyzer->attributes().get<irs::term_attribute>();
+
+  if (!values) {
+    LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "failure to retrieve values from IResearch analyzer name '" << name << "' while computing result for function 'TOKENS'";
+    TRI_set_errno(TRI_ERROR_INTERNAL);
+
+    return arangodb::aql::AqlValue();
+  }
+
+  auto buffer = irs::memory::make_unique<arangodb::velocypack::Buffer<uint8_t>>();
+
+  if (!buffer) {
+    LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "failure to allocate result buffer while computing result for function 'TOKENS'";
+
+    return arangodb::aql::AqlValue();
+  }
+
+  arangodb::velocypack::Builder builder(*buffer);
+
+  builder.openArray();
+
+  while (analyzer->next()) {
+    auto value = values->value();
+
+    builder.add(arangodb::velocypack::ValuePair(
+      value.c_str(),
+      value.size(),
+      arangodb::velocypack::ValueType::String
+    ));
+  }
+
+  builder.close();
+
+  return arangodb::aql::AqlValue(buffer.release());
+}
+
 void addFunctions(arangodb::aql::AqlFunctionFeature& functions) {
-  static auto tokens_impl = [](
-      arangodb::aql::Query* query,
-      arangodb::transaction::Methods* trx,
-      arangodb::aql::VPackFunctionParameters const& args
-  )->arangodb::aql::AqlValue {
-    if (2 != args.size() || !args[0].isString() || !args[1].isString()) {
-      LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "invalid arguments passed while computing result for function 'TOKENS'";
-      TRI_set_errno(TRI_ERROR_BAD_PARAMETER);
-
-      return arangodb::aql::AqlValue();
-    }
-
-    auto data = arangodb::iresearch::getStringRef(args[0].slice());
-    auto name = arangodb::iresearch::getStringRef(args[1].slice());
-    auto analyzers = arangodb::iresearch::getFeature<arangodb::iresearch::IResearchAnalyzerFeature>("IResearchAnalyzer");
-
-    if (!analyzers) {
-      LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "failure to find feature 'IResearch' while computing result for function 'TOKENS'";
-      TRI_set_errno(TRI_ERROR_INTERNAL);
-
-      return arangodb::aql::AqlValue();
-    }
-
-    auto pool = analyzers->get(name);
-
-    if (!pool) {
-      LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "failure to find IResearch analyzer pool name '" << name << "' while computing result for function 'TOKENS'";
-      TRI_set_errno(TRI_ERROR_BAD_PARAMETER);
-
-      return arangodb::aql::AqlValue();
-    }
-
-    auto analyzer = pool->get();
-
-    if (!analyzer) {
-      LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "failure to find IResearch analyzer name '" << name << "' while computing result for function 'TOKENS'";
-      TRI_set_errno(TRI_ERROR_BAD_PARAMETER);
-
-      return arangodb::aql::AqlValue();
-    }
-
-    if (!analyzer->reset(data)) {
-      LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "failure to reset IResearch analyzer name '" << name << "' while computing result for function 'TOKENS'";
-      TRI_set_errno(TRI_ERROR_INTERNAL);
-
-      return arangodb::aql::AqlValue();
-    }
-
-    auto& values = analyzer->attributes().get<irs::term_attribute>();
-
-    if (!values) {
-      LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "failure to retrieve values from IResearch analyzer name '" << name << "' while computing result for function 'TOKENS'";
-      TRI_set_errno(TRI_ERROR_INTERNAL);
-
-      return arangodb::aql::AqlValue();
-    }
-
-    auto buffer = irs::memory::make_unique<arangodb::velocypack::Buffer<uint8_t>>();
-
-    if (!buffer) {
-      LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "failure to allocate result buffer while computing result for function 'TOKENS'";
-
-      return arangodb::aql::AqlValue();
-    }
-
-    arangodb::velocypack::Builder builder(*buffer);
-
-    builder.openArray();
-
-    while (analyzer->next()) {
-      auto value = values->value();
-
-      builder.add(arangodb::velocypack::ValuePair(
-        value.c_str(),
-        value.size(),
-        arangodb::velocypack::ValueType::String
-      ));
-    }
-
-    builder.close();
-
-    return arangodb::aql::AqlValue(buffer.release());
-  };
   arangodb::aql::Function tokens(
     "TOKENS", // external name (AQL function external names are always in upper case)
     "tokens", // internal name
@@ -209,7 +210,7 @@ void addFunctions(arangodb::aql::AqlFunctionFeature& functions) {
     true, // can throw
     true, // can be run on server
     true, // can pass arguments by reference
-    tokens_impl
+    aqlFnTokens // function implementation
   );
 
   functions.add(tokens);

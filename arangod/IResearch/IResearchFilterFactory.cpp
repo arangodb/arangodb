@@ -753,10 +753,8 @@ bool fromFuncPhrase(
   // if custom analyzer is present
   // as the last argument then use it
   bool const customAnalyzer = argc & 1;
-
-  auto identity = analyzerFeature->identity();
-  auto analyzerName = identity ? irs::string_ref(identity->name()) : irs::string_ref::nil;
-  irs::analysis::analyzer::ptr analyzer;
+  auto pool = arangodb::iresearch::IResearchAnalyzerFeature::identity(); // default
+  irs::string_ref analyzerName("<default>");
 
   if (customAnalyzer) {
     decltype(fieldArg) analyzerArg = arangodb::iresearch::getNode(
@@ -767,16 +765,16 @@ bool fromFuncPhrase(
       LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "'PHRASE' AQL function: Unable to parse analyzer value";
       return false;
     }
-  }
 
-  auto pool = analyzerFeature->get(analyzerName);
+    pool = analyzerFeature->get(analyzerName);
+  }
 
   if (!pool) {
     LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "'PHRASE' AQL function: Unable to load requested analyzer '" << analyzerName << "'";
     return false;
   }
 
-  analyzer = pool->get(); // get analyzer from pool
+  auto analyzer = pool->get(); // get analyzer from pool
 
   if (!analyzer) {
     LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "'PHRASE' AQL function: Unable to instantiate analyzer '" << analyzerName << "'";

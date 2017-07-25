@@ -29,6 +29,7 @@
 #include "utils/utf8_path.hpp"
 
 #include "ApplicationFeatures/JemallocFeature.h"
+#include "Aql/AqlFunctionFeature.h"
 #include "Basics/files.h"
 #include "IResearch/IResearchAnalyzerFeature.h"
 #include "IResearch/IResearchFeature.h"
@@ -65,6 +66,7 @@ struct IResearchLinkSetup {
     features.emplace_back(new arangodb::QueryRegistryFeature(&server), false);
     features.emplace_back(new arangodb::DatabasePathFeature(&server), false);
     features.emplace_back(new arangodb::JemallocFeature(&server), false); // required for DatabasePathFeature
+    features.emplace_back(new arangodb::aql::AqlFunctionFeature(&server), true); // required for IResearchAnalyzerFeature
     features.emplace_back(new arangodb::iresearch::IResearchAnalyzerFeature(&server), true);
     features.emplace_back(new arangodb::iresearch::IResearchFeature(&server), true);
     features.emplace_back(new arangodb::FlushFeature(&server), false); // do not start the thread

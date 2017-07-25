@@ -26,6 +26,7 @@
 
 #include "ApplicationFeatures/JemallocFeature.h"
 #include "Aql/Ast.h"
+#include "Aql/AqlFunctionFeature.h"
 #include "Aql/Query.h"
 #include "Aql/SortCondition.h"
 #include "GeneralServer/AuthenticationFeature.h"
@@ -144,6 +145,7 @@ struct IResearchAttributeScorerSetup {
     features.emplace_back(new arangodb::DatabasePathFeature(&server), false);
     features.emplace_back(new arangodb::JemallocFeature(&server), false); // required for DatabasePathFeature
     features.emplace_back(new arangodb::FeatureCacheFeature(&server), true);
+    features.emplace_back(new arangodb::aql::AqlFunctionFeature(&server), true); // required for IResearchAnalyzerFeature
     features.emplace_back(new arangodb::iresearch::IResearchAnalyzerFeature(&server), true);
     features.emplace_back(new arangodb::iresearch::IResearchFeature(&server), true);
     features.emplace_back(new arangodb::ViewTypesFeature(&server), true);

@@ -241,11 +241,55 @@ SECTION("test_get") {
   }
 }
 
-SECTION("test_remove") {
-  // FIXME TODO test 'identity'
+SECTION("test_identity") {
+  // test static 'identity'
+  {
+    auto pool = arangodb::iresearch::IResearchAnalyzerFeature::identity();
+    CHECK((false == !pool));
+    CHECK((irs::flags({irs::increment::type(), irs::term_attribute::type()}) == pool->features()));
+    CHECK(("identity" == pool->name()));
+    auto analyzer = pool->get();
+    CHECK((false == !analyzer));
+    auto& term = analyzer->attributes().get<irs::term_attribute>();
+    CHECK((false == !term));
+    CHECK((!analyzer->next()));
+    CHECK((analyzer->reset("abc def ghi")));
+    CHECK((analyzer->next()));
+    CHECK((irs::ref_cast<irs::byte_type>(irs::string_ref("abc def ghi")) == term->value()));
+    CHECK((!analyzer->next()));
+    CHECK((analyzer->reset("123 456")));
+    CHECK((analyzer->next()));
+    CHECK((irs::ref_cast<irs::byte_type>(irs::string_ref("123 456")) == term->value()));
+    CHECK((!analyzer->next()));
+  }
+
+  // test registered 'identity'
+  {
+    arangodb::iresearch::IResearchAnalyzerFeature feature(nullptr);
+    auto pool = feature.get("identity");
+    CHECK((true == !pool));
+    feature.start();
+    pool = feature.get("identity");
+    CHECK((false == !pool));
+    CHECK((irs::flags({irs::increment::type(), irs::term_attribute::type()}) == pool->features()));
+    CHECK(("identity" == pool->name()));
+    auto analyzer = pool->get();
+    CHECK((false == !analyzer));
+    auto& term = analyzer->attributes().get<irs::term_attribute>();
+    CHECK((false == !term));
+    CHECK((!analyzer->next()));
+    CHECK((analyzer->reset("abc def ghi")));
+    CHECK((analyzer->next()));
+    CHECK((irs::ref_cast<irs::byte_type>(irs::string_ref("abc def ghi")) == term->value()));
+    CHECK((!analyzer->next()));
+    CHECK((analyzer->reset("123 456")));
+    CHECK((analyzer->next()));
+    CHECK((irs::ref_cast<irs::byte_type>(irs::string_ref("123 456")) == term->value()));
+    CHECK((!analyzer->next()));
+  }
 }
 
-SECTION("test_remove") {
+SECTION("test_registration") {
   // FIXME TODO test registration
 }
 
