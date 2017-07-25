@@ -114,28 +114,6 @@ static v8::Handle<v8::Object> WrapClass(
   return scope.Escape<v8::Object>(result);
 }
 
-static std::string getDetailErrorMsg(v8::TryCatch &tryCatch) {
-  std::string actionError;
-
-  actionError += *v8::String::Utf8Value(tryCatch.Message()->Get());
-  actionError += " - ";
-
-  std::string message(*v8::String::Utf8Value(tryCatch.StackTrace()));
-  const std::string searchAnon("<anonymous>");
-  const std::string searchEval("eval ");
-
-  size_t pos = message.find(searchEval);
-  size_t pos2 = message.find(searchAnon);
-  while (pos != std::string::npos) {
-    message.replace(pos, pos2 - pos + searchAnon.length(), "[posted transaction source code]");
-    pos = message.find(searchEval, pos);
-    pos2 = message.find(searchAnon);
-  }
-
-  actionError += message;
-  return actionError;
-}
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief executes a transaction
 ////////////////////////////////////////////////////////////////////////////////
@@ -189,11 +167,11 @@ static void JS_Transaction(v8::FunctionCallbackInfo<v8::Value> const& args) {
   }
 
   // "collections"
-  static std::string const collectionError =
-      "missing/invalid collections definition for transaction";
-
+  static std::string collectionError;
+  
   if (!object->Has(TRI_V8_ASCII_STRING("collections")) ||
       !object->Get(TRI_V8_ASCII_STRING("collections"))->IsObject()) {
+    collectionError = "missing/invalid collections definition for transaction";
     TRI_V8_THROW_EXCEPTION_PARAMETER(collectionError);
   }
 
@@ -202,6 +180,9 @@ static void JS_Transaction(v8::FunctionCallbackInfo<v8::Value> const& args) {
       object->Get(TRI_V8_ASCII_STRING("collections")));
 
   if (collections.IsEmpty()) {
+    collectionError =
+      "empty collections definition for transaction";
+
     TRI_V8_THROW_EXCEPTION_PARAMETER(collectionError);
   }
 
@@ -227,11 +208,10 @@ static void JS_Transaction(v8::FunctionCallbackInfo<v8::Value> const& args) {
         object->Get(TRI_V8_ASCII_STRING("intermediateCommitCount")), true);
   }
 
-  std::string collectionErrors;
   auto getCollections = [&isolate](v8::Handle<v8::Object> obj,
                                    std::vector<std::string>& collections,
                                    char const* attributeName,
-                                   std::string &collectionErrors) -> bool {
+                                   std::string &collectionError) -> bool {
     if (obj->Has(TRI_V8_ASCII_STRING(attributeName))) {
       if (obj->Get(TRI_V8_ASCII_STRING(attributeName))->IsArray()) {
         v8::Handle<v8::Array> names = v8::Handle<v8::Array>::Cast(
@@ -240,11 +220,9 @@ static void JS_Transaction(v8::FunctionCallbackInfo<v8::Value> const& args) {
         for (uint32_t i = 0; i < names->Length(); ++i) {
           v8::Handle<v8::Value> collection = names->Get(i);
           if (!collection->IsString()) {
-            if(collectionErrors.length() > 0) {
-              collectionErrors += ",";
-            }
-            collectionErrors += std::string("Array in ") + attributeName +
-              std::string("Not a string: ") + std::to_string(i);
+            collectionError += std::string(" Collection name #") +
+              std::to_string(i) + " in array '"+ attributeName +
+              std::string("' is not a string");
             return false;
           }
 
@@ -254,10 +232,7 @@ static void JS_Transaction(v8::FunctionCallbackInfo<v8::Value> const& args) {
         collections.emplace_back(
           TRI_ObjectToString(obj->Get(TRI_V8_ASCII_STRING(attributeName))));
       } else {
-        if(collectionErrors.length() > 0) {
-          collectionErrors += ",";
-        }
-        collectionErrors += std::string("There is no array in ") + attributeName;
+        collectionError += std::string(" There is no array in '") + attributeName + "'";
         return false;
       }
       // fallthrough intentional
@@ -265,14 +240,15 @@ static void JS_Transaction(v8::FunctionCallbackInfo<v8::Value> const& args) {
     return true;
   };
 
+  collectionError = "invalid collection definition for transaction: ";
   // collections.read
   bool isValid = 
-    (getCollections(collections, readCollections, "read", collectionErrors) &&
-     getCollections(collections, writeCollections, "write", collectionErrors) &&
-     getCollections(collections, exclusiveCollections, "exclusive", collectionErrors));
+    (getCollections(collections, readCollections, "read", collectionError) &&
+     getCollections(collections, writeCollections, "write", collectionError) &&
+     getCollections(collections, exclusiveCollections, "exclusive", collectionError));
   
   if (!isValid) {
-    TRI_V8_THROW_EXCEPTION_PARAMETER(collectionError + "[" + collectionErrors + "]");
+    TRI_V8_THROW_EXCEPTION_PARAMETER(collectionError);
   }
 
   // extract the "action" property
@@ -313,6 +289,11 @@ static void JS_Transaction(v8::FunctionCallbackInfo<v8::Value> const& args) {
   if (object->Get(TRI_V8_ASCII_STRING("action"))->IsFunction()) {
     action = v8::Handle<v8::Function>::Cast(
         object->Get(TRI_V8_ASCII_STRING("action")));
+    v8::Local<v8::Value> v8_fnname = action->GetName();
+    std::string fnname = TRI_ObjectToString(v8_fnname);
+    if (fnname.length() == 0) {
+      action->SetName(TRI_V8_ASCII_STRING("userTransactionFunction"));
+    }
   } else if (object->Get(TRI_V8_ASCII_STRING("action"))->IsString()) {
     v8::TryCatch tryCatch;
     // get built-in Function constructor (see ECMA-262 5th edition 15.3.2)
@@ -330,12 +311,16 @@ static void JS_Transaction(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
     action = v8::Local<v8::Function>::Cast(function);
     if (tryCatch.HasCaught()) {
-      actionError += " - " + getDetailErrorMsg(tryCatch);
+      actionError += " - ";
+      actionError += *v8::String::Utf8Value(tryCatch.Message()->Get());
+      actionError += " - ";
+      actionError += *v8::String::Utf8Value(tryCatch.StackTrace());
 
       TRI_CreateErrorObject(isolate, TRI_ERROR_BAD_PARAMETER, actionError, false);
       tryCatch.ReThrow();
       return;
     }
+    action->SetName(TRI_V8_ASCII_STRING("userTransactionSource"));
   } else {
     TRI_V8_THROW_EXCEPTION_PARAMETER(actionError);
   }
@@ -365,19 +350,6 @@ static void JS_Transaction(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
     if (tryCatch.HasCaught()) {
       trx.abort();
-
-      actionError = getDetailErrorMsg(tryCatch);
-
-      int64_t errorNum = TRI_ERROR_INTERNAL;
-
-      v8::Local<v8::Object> errorobj = v8::Local<v8::Object>::Cast(tryCatch.Exception());
-      if (errorobj->Has(TRI_V8_ASCII_STRING("errorNum"))) {
-        errorNum = TRI_ObjectToInt64(errorobj->Get(TRI_V8_ASCII_STRING("errorNum")));
-      }
-      else if (errorobj->Has(TRI_V8_ASCII_STRING("code"))) {
-        errorNum = TRI_ObjectToInt64(errorobj->Get(TRI_V8_ASCII_STRING("code")));
-      }
-      TRI_CreateErrorObject(isolate, errorNum, actionError, false);
 
       if (tryCatch.CanContinue()) {
         tryCatch.ReThrow();
