@@ -866,6 +866,9 @@ AqlValue Functions::ToArray(arangodb::aql::Query* query,
 AqlValue Functions::Length(arangodb::aql::Query* query,
                            transaction::Methods* trx,
                            VPackFunctionParameters const& parameters) {
+
+  ValidateParameters(parameters, "LENGTH", 1, 1);
+
   transaction::BuilderLeaser builder(trx);
 
   AqlValue value = ExtractFunctionParameterValue(trx, parameters, 0);
@@ -3710,6 +3713,23 @@ AqlValue Functions::IsSameCollection(
   RegisterWarning(query, "IS_SAME_COLLECTION",
                   TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
   return AqlValue(arangodb::basics::VelocyPackHelper::NullValue());
+}
+
+AqlValue Functions::CharLength(arangodb::aql::Query* query,
+                                    transaction::Methods* trx,
+                                    VPackFunctionParameters const& parameters) {
+  ValidateParameters(parameters, "CHAR_LENGTH", 1, 1);
+  AqlValue value = ExtractFunctionParameterValue(trx, parameters, 0);
+
+  transaction::BuilderLeaser builder(trx);
+  VPackValueLength l;
+  char const* p = value.slice().getString(l);
+  size_t length = TRI_CharLengthUtf8String(p, l);
+
+  builder->add(VPackValue(static_cast<uint64_t>(length)));
+
+  return AqlValue(builder.get());
+//  return AqlValue(arangodb::basics::VelocyPackHelper::FalseValue());
 }
 
 #include "Pregel/PregelFeature.h"
