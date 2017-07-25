@@ -299,6 +299,9 @@ class Index {
  protected:
   static size_t sortWeight(arangodb::aql::AstNode const* node);
 
+  //returns estimate for index in cluster - the bool is true if the index was found
+  std::pair<bool,double> getClusterEstimate(double defaultValue = 0.1) const;
+
  private:
   /// @brief set fields from slice
   void setFields(VPackSlice const& slice, bool allowExpansion);

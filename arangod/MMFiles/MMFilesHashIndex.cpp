@@ -488,12 +488,19 @@ double MMFilesHashIndex::selectivityEstimate(StringRef const*) const {
     return 1.0;
   }
 
-  if (_multiArray == nullptr || ServerState::instance()->isCoordinator()) {
-    // use hard-coded selectivity estimate in case of cluster coordinator
-    return 0.1;
+  double estimate = 0.1;
+  if (ServerState::instance()->isCoordinator()) {
+    auto boolEstimatePair = getClusterEstimate();
+    if (boolEstimatePair.first){
+      estimate = boolEstimatePair.second;
+    }
+  } else {
+    if (_multiArray == nullptr) {
+      return 0.1;
+    }
+    estimate = _multiArray->_hashArray->selectivity();
   }
 
-  double estimate = _multiArray->_hashArray->selectivity();
   TRI_ASSERT(estimate >= 0.0 &&
              estimate <= 1.00001);  // floating-point tolerance
   return estimate;

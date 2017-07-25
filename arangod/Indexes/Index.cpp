@@ -418,10 +418,6 @@ void Index::toVelocyPack(VPackBuilder& builder, bool withFigures, bool) const {
     builder.add("selectivityEstimate", VPackValue(selectivityEstimate()));
   }
 
-  if (ServerState::instance()->isCoordinator()) {
-    LOG_TOPIC(ERR, Logger::FIXME) << "try to get selectivityEstimate on coordinator";
-  }
-
   if (withFigures) {
     builder.add("figures", VPackValue(VPackValueType::Object));
     toVelocyPackFigures(builder);
@@ -844,6 +840,32 @@ void Index::warmup(arangodb::transaction::Methods*) {
   // Do nothing. If an index needs some warmup
   // it has to explicitly implement it.
 }
+
+std::pair<bool,double> Index::getClusterEstimate(double defaultValue) const {
+  // try to receive an selectivity estimate for the index
+  // from indexEstimates stored in the logical collection.
+
+  std::pair<bool,double> rv(false,defaultValue);
+
+  auto estimates = _collection->clusterIndexEstimates();
+  std::string iid = std::to_string(_iid);
+  auto found = std::find_if(estimates.begin()
+                          ,estimates.end()
+                          ,[iid](std::pair<std::string,double>& v){
+                             return iid == v.first;
+                           }
+                          );
+
+  if( found != estimates.end()){
+    rv.first = true;
+    rv.second = found->second;
+    LOG_TOPIC(ERR, Logger::FIXME) << "    cluster found selectivity for: " << iid << " (" << rv.second << ")";
+  } else {
+    LOG_TOPIC(ERR, Logger::FIXME) << "cluster found not selectivity for: " << iid << " (default:" << rv.second << ")";
+  }
+
+  return rv;
+};
 
 /// @brief append the index description to an output stream
 std::ostream& operator<<(std::ostream& stream, arangodb::Index const* index) {

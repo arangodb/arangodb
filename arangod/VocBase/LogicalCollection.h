@@ -26,6 +26,7 @@
 #define ARANGOD_VOCBASE_LOGICAL_COLLECTION_H 1
 
 #include "Basics/Common.h"
+#include "Basics/ReadWriteLock.h"
 #include "Indexes/IndexIterator.h"
 #include "VocBase/voc-types.h"
 #include "VocBase/vocbase.h"
@@ -179,6 +180,9 @@ class LogicalCollection {
       std::function<bool(DocumentIdentifierToken const&)> callback);
 
   // SECTION: Indexes
+  std::vector<std::pair<std::string, double>> clusterIndexEstimates();
+  void clusterIndexEstimates(std::vector<std::pair<std::string, double>>&& estimates);
+
   std::vector<std::shared_ptr<Index>> getIndexes() const;
 
   void getIndexesVPack(velocypack::Builder&, bool withFigures, bool forPersistence) const;
@@ -386,6 +390,9 @@ class LogicalCollection {
   mutable basics::ReadWriteLock _lock;  // lock protecting the status and name
 
   mutable basics::ReadWriteLock _infoLock;  // lock protecting the info
+
+  std::vector<std::pair<std::string, double>> _clusterEstimates;
+  basics::ReadWriteLock _clusterEstimatesLock;
 };
 
 }  // namespace arangodb
