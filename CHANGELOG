@@ -1,6 +1,9 @@
 devel
 -----
 
+* ui: allows now to edit default access level for collections in database
+  _system for all users except the root user.
+
 * ui: fixed document view _from and _to linking issue for special characters
 
 * added function `db._parse(query)` for parse an AQL query and return information about it
