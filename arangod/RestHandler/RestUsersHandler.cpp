@@ -441,8 +441,8 @@ RestStatus RestUsersHandler::deleteRequest(AuthInfo* authInfo) {
       generateError(r);
     }
   } else if (suffixes.size() == 2) {
-    if (suffixes[1] == "config") {
-      std::string const& user = suffixes[0];
+    std::string const& user = suffixes[0];
+    if (suffixes[1] == "config" && canAccessUser(user)) {
       Result r = authInfo->setConfigData(user, VPackSlice::emptyObjectSlice());
       if (r.ok()) {
         resetResponse(ResponseCode::OK);
