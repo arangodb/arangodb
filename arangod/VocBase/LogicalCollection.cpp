@@ -584,7 +584,16 @@ void LogicalCollection::setDeleted(bool newValue) { _isDeleted = newValue; }
 
 // SECTION: Indexes
 std::vector<std::pair<std::string, double>> LogicalCollection::clusterIndexEstimates(){
-  READ_LOCKER(lock, _clusterEstimatesLock);
+  READ_LOCKER(readlock, _clusterEstimatesLock);
+  if (_clusterEstimates.empty()){ //test should be unter lock
+    readlock.unlock();
+    WRITE_LOCKER(writelock, _clusterEstimatesLock);
+    if(_clusterEstimates.empty()){
+      LOG_TOPIC(ERR, Logger::FIXME) << "updating estimates in cluster";
+      selectivityEstimatesOnCoordinator(_vocbase->name(), name(), _clusterEstimates);
+    }
+    return _clusterEstimates;
+  }
   return _clusterEstimates;
 }
 

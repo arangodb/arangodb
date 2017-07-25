@@ -2868,16 +2868,7 @@ transaction::Methods::indexesForCollectionCoordinator(
 
   auto dbname = databaseName();
   auto clusterInfo = arangodb::ClusterInfo::instance();
-  std::shared_ptr<LogicalCollection> collectionInfo(clusterInfo->getCollection(databaseName(), name));
-
-  // TODO do not always update
-  //collectionInfo->clusterIndexEstimates(); // do we need to update the estimates
-
-  std::vector<std::pair<std::string,double>> estimates;
-  selectivityEstimatesOnCoordinator(dbname,name,estimates);
-  collectionInfo->clusterIndexEstimates(std::move(estimates));
-
-  return collectionInfo->getIndexes();
+  return clusterInfo->getCollection(databaseName(), name)->getIndexes();
 }
 
 /// @brief get the index by it's identifier. Will either throw or

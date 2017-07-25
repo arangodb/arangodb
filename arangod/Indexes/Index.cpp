@@ -508,10 +508,7 @@ double Index::selectivityEstimate(StringRef const* extra) const {
   if(!ServerState::instance()->isCoordinator()){
     estimate = selectivityEstimateLocal(extra);
   } else {
-    auto boolEstimatePair = getClusterEstimate();
-    if (boolEstimatePair.first){
-      estimate = boolEstimatePair.second;
-    }
+    estimate = getClusterEstimate(estimate /*as default*/).second;
   }
 
   TRI_ASSERT(estimate >= 0.0 &&
@@ -879,9 +876,6 @@ std::pair<bool,double> Index::getClusterEstimate(double defaultValue) const {
   if( found != estimates.end()){
     rv.first = true;
     rv.second = found->second;
-    LOG_TOPIC(ERR, Logger::FIXME) << "    cluster found selectivity for: " << iid << " (" << rv.second << ")";
-  } else {
-    LOG_TOPIC(ERR, Logger::FIXME) << "cluster found not selectivity for: " << iid << " (default:" << rv.second << ")";
   }
 
   return rv;

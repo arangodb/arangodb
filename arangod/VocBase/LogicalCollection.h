@@ -392,6 +392,7 @@ class LogicalCollection {
   mutable basics::ReadWriteLock _infoLock;  // lock protecting the info
 
   std::vector<std::pair<std::string, double>> _clusterEstimates;
+  uint64_t _clusterEstimateTTL; //only valid if above vector is not empty
   basics::ReadWriteLock _clusterEstimatesLock;
 };
 
