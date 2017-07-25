@@ -29,7 +29,7 @@ using namespace arangodb::aql;
 /// @brief create the function
 Function::Function(std::string const& externalName,
                    std::string const& internalName,
-                   std::string const& arguments, bool isCacheable,
+                   char const* arguments, bool isCacheable,
                    bool isDeterministic, bool canThrow, bool canRunOnDBServer,
                    bool canPassArgumentsByReference,
                    FunctionImplementation implementation,
@@ -66,7 +66,7 @@ void Function::initializeArguments() {
   bool inOptional = false;
   bool foundArg = false;
 
-  char const* p = arguments.c_str();
+  char const* p = arguments;
   while (true) {
     char const c = *p++;
 
@@ -125,7 +125,7 @@ void Function::initializeArguments() {
         foundArg = true;
         break;
 
-      default:
+      case '.':
         // we found any other parameter
 
         // set the conversion info for the position
@@ -138,6 +138,13 @@ void Function::initializeArguments() {
         }
         foundArg = true;
         break;
+      
+      default: {
+        // unknown parameter type
+        std::string message("unknown function signature parameter type for AQL function '");
+        message += externalName + "': " + c;
+        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, message);
+      } 
     }
   }
 }
