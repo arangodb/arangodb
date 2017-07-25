@@ -499,7 +499,27 @@ bool Index::matchesDefinition(VPackSlice const& info) const {
 }
 
 /// @brief default implementation for selectivityEstimate
-double Index::selectivityEstimate(StringRef const*) const {
+double Index::selectivityEstimate(StringRef const* extra) const {
+  if (_unique) {
+    return 1.0;
+  }
+
+  double estimate = 0.1; //default
+  if(!ServerState::instance()->isCoordinator()){
+    estimate = selectivityEstimateLocal(extra);
+  } else {
+    auto boolEstimatePair = getClusterEstimate();
+    if (boolEstimatePair.first){
+      estimate = boolEstimatePair.second;
+    }
+  }
+
+  TRI_ASSERT(estimate >= 0.0 &&
+             estimate <= 1.00001);  // floating-point tolerance
+  return estimate;
+}
+
+double Index::selectivityEstimateLocal(StringRef const* extra) const {
   THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
 }
 

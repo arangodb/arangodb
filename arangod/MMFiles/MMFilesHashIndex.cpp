@@ -483,27 +483,11 @@ MMFilesHashIndex::~MMFilesHashIndex() {
 }
 
 /// @brief returns a selectivity estimate for the index
-double MMFilesHashIndex::selectivityEstimate(StringRef const*) const {
-  if (_unique) {
-    return 1.0;
+double MMFilesHashIndex::selectivityEstimateLocal(StringRef const*) const {
+  if (_multiArray == nullptr) {
+    return 0.1;
   }
-
-  double estimate = 0.1;
-  if (ServerState::instance()->isCoordinator()) {
-    auto boolEstimatePair = getClusterEstimate();
-    if (boolEstimatePair.first){
-      estimate = boolEstimatePair.second;
-    }
-  } else {
-    if (_multiArray == nullptr) {
-      return 0.1;
-    }
-    estimate = _multiArray->_hashArray->selectivity();
-  }
-
-  TRI_ASSERT(estimate >= 0.0 &&
-             estimate <= 1.00001);  // floating-point tolerance
-  return estimate;
+  return _multiArray->_hashArray->selectivity();
 }
 
 /// @brief returns the index memory usage

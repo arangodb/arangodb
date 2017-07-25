@@ -225,8 +225,14 @@ class Index {
 
   /// @brief return the selectivity estimate of the index
   /// must only be called if hasSelectivityEstimate() returns true
-  virtual double selectivityEstimate(
-      arangodb::StringRef const* = nullptr) const;
+  ///
+  /// The extra StringRef is only used in the edge index as direction
+  /// attribute attribute, a Slice would be more flexible.
+  double selectivityEstimate(
+      arangodb::StringRef const* extra = nullptr) const;
+  
+  virtual double selectivityEstimateLocal(
+      arangodb::StringRef const* extra) const;
 
   /// @brief whether or not the index is implicitly unique
   /// this can be the case if the index is not declared as unique,
