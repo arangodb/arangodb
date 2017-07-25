@@ -167,7 +167,7 @@ static void JS_Transaction(v8::FunctionCallbackInfo<v8::Value> const& args) {
   }
 
   // "collections"
-  static std::string collectionError;
+  std::string collectionError;
   
   if (!object->Has(TRI_V8_ASCII_STRING("collections")) ||
       !object->Get(TRI_V8_ASCII_STRING("collections"))->IsObject()) {
