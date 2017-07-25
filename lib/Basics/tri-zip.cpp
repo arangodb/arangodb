@@ -94,13 +94,12 @@ static int ExtractCurrentFile(unzFile uf, void* buffer, size_t const bufferSize,
       fullPath = TRI_Concatenate2File(outPath, filenameInZip);
       int res =
           TRI_CreateRecursiveDirectory(fullPath, systemError, errorMessage);
+        
+      TRI_Free(TRI_CORE_MEM_ZONE, fullPath);
 
       if (res != TRI_ERROR_NO_ERROR) {
-        TRI_Free(TRI_CORE_MEM_ZONE, fullPath);
         return res;
       }
-
-      TRI_Free(TRI_CORE_MEM_ZONE, fullPath);
     }
   }
 
@@ -142,13 +141,12 @@ static int ExtractCurrentFile(unzFile uf, void* buffer, size_t const bufferSize,
       // create target directory recursively
       char* d = TRI_Concatenate2File(outPath, filenameInZip);
       int res = TRI_CreateRecursiveDirectory(d, systemError, errorMessage);
+        
+      TRI_Free(TRI_CORE_MEM_ZONE, d);
 
       if (res != TRI_ERROR_NO_ERROR) {
-        TRI_Free(TRI_CORE_MEM_ZONE, d);
         return res;
       }
-
-      TRI_Free(TRI_CORE_MEM_ZONE, d);
 
       *(filenameWithoutPath - 1) = c;
 
@@ -160,22 +158,21 @@ static int ExtractCurrentFile(unzFile uf, void* buffer, size_t const bufferSize,
       // strip filename so we only have the directory name
       char* dir = TRI_Dirname(d);
       int res = TRI_CreateRecursiveDirectory(dir, systemError, errorMessage);
+        
+      TRI_Free(TRI_CORE_MEM_ZONE, d);
+      TRI_Free(TRI_CORE_MEM_ZONE, dir);
 
       if (res != TRI_ERROR_NO_ERROR) {
-        TRI_Free(TRI_CORE_MEM_ZONE, d);
-        TRI_Free(TRI_CORE_MEM_ZONE, dir);
         return res;
       }
 
-      TRI_Free(TRI_CORE_MEM_ZONE, d);
-      TRI_Free(TRI_CORE_MEM_ZONE, dir);
       // try again
       fout = fopen(fullPath, "wb");
     }
 
     if (fout == NULL) {
-      errorMessage = std::string("failed to open file for writing: ") +
-                     fullPath + " - " + strerror(errno);
+      errorMessage = std::string("failed to open file '") +
+                     fullPath + "' for writing: " + strerror(errno);
       TRI_Free(TRI_CORE_MEM_ZONE, fullPath);
       return TRI_ERROR_CANNOT_WRITE_FILE;
     }
@@ -184,8 +181,7 @@ static int ExtractCurrentFile(unzFile uf, void* buffer, size_t const bufferSize,
       int result = unzReadCurrentFile(uf, buffer, (unsigned int)bufferSize);
 
       if (result < 0) {
-        errorMessage = std::string("failed to write file ") + fullPath + " - " +
-                       strerror(errno);
+        errorMessage = std::string("failed to read from zip file: ") + strerror(errno);
         fclose(fout);
         TRI_Free(TRI_CORE_MEM_ZONE, fullPath);
         return TRI_ERROR_CANNOT_WRITE_FILE;
@@ -209,7 +205,10 @@ static int ExtractCurrentFile(unzFile uf, void* buffer, size_t const bufferSize,
     fclose(fout);
   }
 
-  unzCloseCurrentFile(uf);
+  int ret = unzCloseCurrentFile(uf);
+  if (ret < 0) {
+    return TRI_ERROR_CANNOT_WRITE_FILE;
+  }
 
   return TRI_ERROR_NO_ERROR;
 }
@@ -433,6 +432,7 @@ int TRI_Adler32(char const* filename, uint32_t& checksum) {
 int TRI_UnzipFile(char const* filename, char const* outPath,
                   bool skipPaths, bool overwrite,
                   char const* password, std::string& errorMessage) {
+
 #ifdef USEWIN32IOAPI
   zlib_filefunc64_def ffunc;
 #endif
