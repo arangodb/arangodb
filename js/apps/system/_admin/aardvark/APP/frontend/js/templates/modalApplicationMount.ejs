@@ -27,7 +27,7 @@
     <li><a href="#newApp" data-toggle="tab" id="tab-new">New Service</a></li>
     <li class="active"><a href="#appstore" data-toggle="tab" id="tab-store"><img src="img/arangodb_logo_small.png" alt="ArangoDB" class="tab-icon" />Store</a></li>
     <li><a href="#github" data-toggle="tab" id="tab-git">Github</a></li>
-    <li><a href="#zip" data-toggle="tab" id="tab-zip">Zip</a></li>
+    <li><a href="#zip" data-toggle="tab" id="tab-zip">Upload</a></li>
   </ul>
 
   <div class="tab-content" id="tab-content-application-info">
@@ -152,12 +152,15 @@
     <div class="tab-pane" id="zip">
       <div>
         <p>
-          Upload a ZIP-packed foxx application to ArangoDB.
+          1. Upload a ZIP-packed foxx application to ArangoDB.
           The ZIP file has to be created from the folder containing the manifest.json file of your Service, do not include the databases folder structure created by ArangoDB.
           This is also compatible with the download format for ZIP files on <a href="https://www.github.com">github.com</a>.
           Remember to change to a new version number in the manifest.json when uploading an update.
         </p>
         <table>
+        <p>
+          2. Or upload a single JavaScript-based file to ArangoDB.
+        </p>
           <tr class="tableRow">
             <th class="collectionInfoTh">
               Enable Legacy Mode:
@@ -172,7 +175,7 @@
           </tr>
         </table>
       </div>
-      <div id="upload-foxx-zip">Upload Foxx.zip</div>
+      <div id="upload-foxx-zip">Upload File</div>
     </div>
   </div>
 </script>
