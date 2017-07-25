@@ -33,11 +33,11 @@
 
 #include "IResearchLinkMeta.h"
 
-namespace arangodb {
-namespace iresearch {
-namespace kludge {
+NS_BEGIN(arangodb)
+NS_BEGIN(iresearch)
+NS_BEGIN(kludge)
 
-typedef iresearch::IResearchLinkMeta::TokenizerPool const* TokenizerPoolPtr;
+typedef arangodb::iresearch::IResearchAnalyzerFeature::AnalyzerPool const* TokenizerPoolPtr;
 
 void mangleNull(std::string& name);
 void mangleBool(std::string& name);
@@ -46,8 +46,8 @@ void mangleNumeric(std::string& name);
 void mangleStringField(std::string& name, TokenizerPoolPtr pool);
 void unmangleStringField(std::string& name, TokenizerPoolPtr pool);
 
-} // kludge
-} // iresearch
-} // arangodb
+NS_END // kludge
+NS_END // iresearch
+NS_END // arangodb
 
 #endif

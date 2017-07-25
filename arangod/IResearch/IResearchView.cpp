@@ -1780,7 +1780,7 @@ bool IResearchView::linkRegister(IResearchLink& link) {
   if (!_meta._collections.emplace(cid).second) {
     // first time an IResearchLink object was seen for the specified cid
     // e.g. this happends during startup when links initially register with the view
-    link.updateView(sptr(this, std::move(unregistrar))); // will non deadlock since checked for duplicate cid above
+    link.updateView(sptr(this, std::move(unregistrar))); // will not deadlock since checked for duplicate cid above
 
     return true;
   }
@@ -1791,14 +1791,13 @@ bool IResearchView::linkRegister(IResearchLink& link) {
     auto res = _logicalView->getPhysical()->persistProperties(); // persist '_meta' definition
 
     if (res.ok()) {
-      link.updateView(sptr(this, std::move(unregistrar))); // will non deadlock since checked for duplicate cid above
+      link.updateView(sptr(this, std::move(unregistrar)), true); // will not deadlock since checked for duplicate cid above
 
       return true;
     }
   }
 
   LOG_TOPIC(WARN, Logger::FIXME) << "failed to persist iResearch view definition during new iResearch link registration for iResearch view '" << id() <<"' cid '" << link.collection()->cid() << "' iid '" << link.id() << "'";
-
   _meta._collections.erase(cid); // revert state
   _registeredLinks.erase(cid); // revert state
 

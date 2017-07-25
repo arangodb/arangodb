@@ -21,7 +21,10 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
+#include "analysis/analyzers.hpp"
 #include "analysis/token_attributes.hpp"
+#include "utils/hash_utils.hpp"
+#include "utils/object_pool.hpp"
 
 #include "ApplicationServerHelper.h"
 #include "VelocyPackHelper.h"
@@ -283,7 +286,7 @@ irs::analysis::analyzer::ptr IResearchAnalyzerFeature::AnalyzerPool::get() const
   assert(_meta);
 
   try {
-    return _pool->emplace(_meta->_type, _meta->_properties);
+    return _pool ? _pool->emplace(_meta->_type, _meta->_properties) : nullptr;
   } catch (std::exception& e) {
     LOG_TOPIC(WARN, Logger::FIXME) << "caught exception while instantiating an IResearch analizer type '" << _meta->_type << "' properties '" << _meta->_properties << "': " << e.what();
     IR_EXCEPTION();
@@ -295,6 +298,12 @@ irs::analysis::analyzer::ptr IResearchAnalyzerFeature::AnalyzerPool::get() const
   return nullptr;
 }
 
+std::string const& IResearchAnalyzerFeature::AnalyzerPool::name() const noexcept {
+  assert(_meta);
+
+  return _meta->_name;
+};
+
 IResearchAnalyzerFeature::IResearchAnalyzerFeature(
     arangodb::application_features::ApplicationServer* server
 ): ApplicationFeature(server, IResearchAnalyzerFeature::name()), _started(false) {
@@ -303,7 +312,7 @@ IResearchAnalyzerFeature::IResearchAnalyzerFeature(
   startsAfter("AQLFunctions"); // used for registering IResearch analyzer functions
 }
 
-IResearchAnalyzerFeature::AnalyzerPool IResearchAnalyzerFeature::emplace(
+std::pair<IResearchAnalyzerFeature::AnalyzerPool, bool> IResearchAnalyzerFeature::emplace(
   irs::string_ref const& name,
   irs::string_ref const& type,
   irs::string_ref const& properties
@@ -312,12 +321,19 @@ IResearchAnalyzerFeature::AnalyzerPool IResearchAnalyzerFeature::emplace(
     irs::async_utils::read_write_mutex::write_mutex mutex(_mutex);
     SCOPED_LOCK(mutex);
 
-    auto itr = _analyzers.emplace(
-      std::piecewise_construct,
-      std::forward_as_tuple(irs::make_hashed_ref(name, std::hash<irs::string_ref>())),
-      std::forward_as_tuple()
+    static auto generator = [](
+        irs::hashed_string_ref const& key,
+        AnalyzerEntry const& value
+    )->irs::hashed_string_ref {
+      auto& meta = const_cast<AnalyzerPool::Meta&>(value._meta);
+      meta._name.assign(key.c_str(), key.size()); // use current key as '_name' for '_meta'
+      return irs::hashed_string_ref(key.hash(), meta._name); // reuse hash but point ref at value
+    };
+    auto itr = irs::map_utils::try_emplace_update_key(
+      _analyzers,
+      generator,
+      irs::make_hashed_ref(name, std::hash<irs::string_ref>())
     );
-
     bool erase = itr.second;
     auto cleanup = irs::make_finally([&erase, this, &itr]()->void {
       if (erase) {
@@ -332,7 +348,7 @@ IResearchAnalyzerFeature::AnalyzerPool IResearchAnalyzerFeature::emplace(
       LOG_TOPIC(WARN, Logger::FIXME) << "failure to get IResearch analyzer name '" << name << "' type '" << type << "' properties '" << properties << "'";
       TRI_set_errno(TRI_ERROR_INTERNAL);
 
-      return AnalyzerPool();
+      return std::make_pair(AnalyzerPool(), false);
     }
 
     if (itr.second) {
@@ -346,7 +362,7 @@ IResearchAnalyzerFeature::AnalyzerPool IResearchAnalyzerFeature::emplace(
         LOG_TOPIC(WARN, Logger::FIXME) << "failure creating an IResearch analyzer instance for name '" << name << "' type '" << type << "' properties '" << properties << "'";
         TRI_set_errno(TRI_ERROR_BAD_PARAMETER);
 
-        return AnalyzerPool();
+        return std::make_pair(AnalyzerPool(), false);
       }
 
       entry._meta._features = instance->attributes().features();
@@ -358,10 +374,10 @@ IResearchAnalyzerFeature::AnalyzerPool IResearchAnalyzerFeature::emplace(
       LOG_TOPIC(WARN, Logger::FIXME) << "name collision detected while registering an IResearch analizer name '" << name << "' type '" << type << "' properties '" << properties << "', previous registration type '" << entry._meta._type << "' properties '" << entry._meta._properties << "'";
       TRI_set_errno(TRI_ERROR_BAD_PARAMETER);
 
-      return AnalyzerPool();
+      return std::make_pair(AnalyzerPool(), false);
     }
 
-    return AnalyzerPool(entry._meta, pool);
+    return std::make_pair(AnalyzerPool(entry._meta, pool), itr.second);
   } catch (std::exception& e) {
     LOG_TOPIC(WARN, Logger::FIXME) << "caught exception while registering an IResearch analizer name '" << name << "' type '" << type << "' properties '" << properties << "': " << e.what();
     IR_EXCEPTION();
@@ -370,7 +386,7 @@ IResearchAnalyzerFeature::AnalyzerPool IResearchAnalyzerFeature::emplace(
     IR_EXCEPTION();
   }
 
-  return AnalyzerPool();
+  return std::make_pair(AnalyzerPool(), false);
 }
 
 IResearchAnalyzerFeature::AnalyzerPool IResearchAnalyzerFeature::get(
@@ -423,8 +439,17 @@ std::shared_ptr<IResearchAnalyzerFeature::AnalyzerPool::Cache> IResearchAnalyzer
   return pool;
 }
 
-irs::string_ref const& IResearchAnalyzerFeature::identity() const noexcept {
-  return IDENTITY_TOKENIZER_NAME;
+/*static*/ IResearchAnalyzerFeature::AnalyzerPool IResearchAnalyzerFeature::identity() noexcept {
+  static const AnalyzerPool::Meta meta{
+    irs::analysis::analyzers::get(IDENTITY_TOKENIZER_NAME, "")->attributes().features(),
+    IDENTITY_TOKENIZER_NAME, // name (use same as 'type' for convenience)
+    "", // parameters
+    IDENTITY_TOKENIZER_NAME // type
+  };
+  static const std::shared_ptr<AnalyzerPool::Cache> pool =
+    irs::memory::make_unique<AnalyzerPool::Cache>(DEFAULT_POOL_SIZE);
+
+  return AnalyzerPool(meta, pool);
 }
 
 /*static*/ std::string const& IResearchAnalyzerFeature::name() {
@@ -438,25 +463,9 @@ void IResearchAnalyzerFeature::prepare() {
   ::iresearch::analysis::analyzers::init();
 }
 
-void IResearchAnalyzerFeature::start() {
-  ApplicationFeature::start();
-
-  // FIXME TODO load persisted mappings
-
-  auto* functions = getFeature<arangodb::aql::AqlFunctionFeature>("AQLFunctions");
-
-  if (functions) {
-    addFunctions(*functions);
-  } else {
-    LOG_TOPIC(WARN, Logger::FIXME) << "failure to find feature 'AQLFunctions' while registering IResearch functions";
-  }
-
-  _started = true;
-}
-
-void IResearchAnalyzerFeature::stop() {
-  _started = false;
-  ApplicationFeature::stop();
+bool IResearchAnalyzerFeature::release(AnalyzerPool const& pool) noexcept {
+  // FIXME TODO update persisted mappings
+  return true;
 }
 
 size_t IResearchAnalyzerFeature::remove(
@@ -479,6 +488,35 @@ size_t IResearchAnalyzerFeature::remove(
   }
 
   return 0;
+}
+
+bool IResearchAnalyzerFeature::reserve(AnalyzerPool const& pool) noexcept {
+  // FIXME TODO update persisted mappings
+  return true;
+}
+
+void IResearchAnalyzerFeature::start() {
+  ApplicationFeature::start();
+
+  // register the indentity analyzer
+  emplace(IDENTITY_TOKENIZER_NAME, IDENTITY_TOKENIZER_NAME, irs::string_ref::nil);
+
+  // FIXME TODO load persisted mappings
+
+  auto* functions = getFeature<arangodb::aql::AqlFunctionFeature>("AQLFunctions");
+
+  if (functions) {
+    addFunctions(*functions);
+  } else {
+    LOG_TOPIC(WARN, Logger::FIXME) << "failure to find feature 'AQLFunctions' while registering IResearch functions";
+  }
+
+  _started = true;
+}
+
+void IResearchAnalyzerFeature::stop() {
+  _started = false;
+  ApplicationFeature::stop();
 }
 
 bool IResearchAnalyzerFeature::visit(

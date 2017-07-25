@@ -47,12 +47,11 @@ void mangleNumeric(std::string& name) {
 void mangleStringField(std::string& name, TokenizerPoolPtr pool) {
   name += '\0';
   name += pool->name();
-  name += pool->args();
 }
 
 void unmangleStringField(std::string& name, TokenizerPoolPtr pool) {
   // +1 for preceding '\0'
-  auto const suffixSize = 1 + pool->name().size() + pool->args().size();
+  auto const suffixSize = 1 + pool->name().size();
 
   TRI_ASSERT(name.size() >= suffixSize);
   name.resize(name.size() - suffixSize);

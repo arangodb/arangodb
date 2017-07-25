@@ -24,12 +24,17 @@
 #ifndef ARANGOD_IRESEARCH__IRESEARCH_ANALYZER_FEATURE_H
 #define ARANGOD_IRESEARCH__IRESEARCH_ANALYZER_FEATURE_H 1
 
-#include "analysis/analyzers.hpp"
+#include "analysis/analyzer.hpp"
 #include "utils/async_utils.hpp"
 #include "utils/hash_utils.hpp"
-#include "utils/object_pool.hpp"
 
 #include "ApplicationFeatures/ApplicationFeature.h"
+
+NS_BEGIN(iresearch)
+
+template<typename> class unbounded_object_pool; // forward declaration
+
+NS_END // iresearch
 
 NS_BEGIN(arangodb)
 NS_BEGIN(iresearch)
@@ -53,6 +58,7 @@ class IResearchAnalyzerFeature final: public arangodb::application_features::App
     explicit operator bool() const noexcept;
     irs::flags const& features() const noexcept;
     irs::analysis::analyzer::ptr get() const noexcept; // nullptr == error creating analyzer
+    std::string const& name() const noexcept;
 
    private:
     friend IResearchAnalyzerFeature;
@@ -64,6 +70,7 @@ class IResearchAnalyzerFeature final: public arangodb::application_features::App
     };
     struct Meta {
       irs::flags _features; // cached analyzer features
+      std::string _name;
       std::string _properties;
       std::string _type;
     };
@@ -78,13 +85,13 @@ class IResearchAnalyzerFeature final: public arangodb::application_features::App
 
   IResearchAnalyzerFeature(application_features::ApplicationServer* server);
 
-  AnalyzerPool emplace(
+  std::pair<AnalyzerPool, bool> emplace(
     irs::string_ref const& name,
     irs::string_ref const& type,
     irs::string_ref const& properties
   ) noexcept;
   AnalyzerPool get(irs::string_ref const& name) const noexcept;
-  irs::string_ref const& identity() const noexcept; // the identity analyzer name
+  static AnalyzerPool identity() noexcept; // the identity analyzer
   static std::string const& name();
   void prepare() override;
   bool release(AnalyzerPool const& pool) noexcept; // release a persistent registration for a specific pool

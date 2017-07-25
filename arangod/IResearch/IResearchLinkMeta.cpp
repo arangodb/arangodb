@@ -29,6 +29,7 @@
 #include "utils/hash_utils.hpp"
 #include "utils/locale_utils.hpp"
 
+#include "ApplicationServerHelper.h"
 #include "VelocyPackHelper.h"
 #include "Basics/StringUtils.h"
 #include "velocypack/Builder.h"
@@ -38,99 +39,6 @@
 
 NS_LOCAL
 
-static const size_t DEFAULT_POOL_SIZE = 8; // arbitrary value
-static const irs::string_ref IDENTITY_TOKENIZER_NAME("identity");
-
-class IdentityValue: public irs::term_attribute {
-public:
-  DECLARE_FACTORY_DEFAULT();
-
-  virtual ~IdentityValue() {}
-
-  virtual void clear() override {
-    _value = irs::bytes_ref::nil;
-  }
-
-  virtual const irs::bytes_ref& value() const {
-    return _value;
-  }
-
-  void value(irs::bytes_ref const& data) {
-    _value = data;
-  }
-
- private:
-  iresearch::bytes_ref _value;
-};
-
-DEFINE_FACTORY_DEFAULT(IdentityValue);
-
-class IdentityTokenizer: public irs::analysis::analyzer {
- public:
-  DECLARE_ANALYZER_TYPE();
-  DECLARE_FACTORY_DEFAULT(irs::string_ref const& args); // args ignored
-
-  IdentityTokenizer();
-  virtual irs::attribute_store const& attributes() const NOEXCEPT override;
-  virtual bool next() override;
-  virtual bool reset(irs::string_ref const& data) override;
-
- private:
-  irs::attribute_store _attrs;
-  bool _empty;
-  irs::string_ref _value;
-};
-
-DEFINE_ANALYZER_TYPE_NAMED(IdentityTokenizer, IDENTITY_TOKENIZER_NAME);
-REGISTER_ANALYZER(IdentityTokenizer);
-
-/*static*/ irs::analysis::analyzer::ptr IdentityTokenizer::make(irs::string_ref const& args) {
-  PTR_NAMED(IdentityTokenizer, ptr);
-  return ptr;
-}
-
-IdentityTokenizer::IdentityTokenizer()
-  : irs::analysis::analyzer(IdentityTokenizer::type()), _empty(true) {
-  _attrs.emplace<IdentityValue>();
-  _attrs.emplace<irs::increment>();
-}
-
-irs::attribute_store const& IdentityTokenizer::attributes() const NOEXCEPT {
-  return _attrs;
-}
-
-bool IdentityTokenizer::next() {
-  auto empty = _empty;
-
-  const_cast<const irs::attribute_store&>(_attrs).get<IdentityValue>()->value(irs::ref_cast<irs::byte_type>(_value));
-  _empty = true;
-  _value = irs::string_ref::nil;
-
-  return !empty;
-}
-
-bool IdentityTokenizer::reset(irs::string_ref const& data) {
-  _empty = false;
-  _value = data;
-
-  return !_empty;
-}
-
-struct PairHash {
-  template<typename First, typename Second>
-  size_t operator()(std::pair<First, Second> const& value) const;
-};
-
-template<>
-size_t PairHash::operator()<std::string, std::string>(std::pair<std::string, std::string> const& value) const {
-  return irs::hash_utils::hash(value.first) ^ irs::hash_utils::hash(value.second);
-}
-
-template<>
-size_t PairHash::operator()<irs::string_ref, irs::string_ref>(std::pair<irs::string_ref, irs::string_ref> const& value) const {
-  return irs::hash_utils::hash(value.first) ^ irs::hash_utils::hash(value.second);
-}
-
 bool equalTokenizers(
   arangodb::iresearch::IResearchLinkMeta::Tokenizers const& lhs,
   arangodb::iresearch::IResearchLinkMeta::Tokenizers const& rhs
@@ -139,14 +47,14 @@ bool equalTokenizers(
     return false;
   }
 
-  std::unordered_multiset<std::pair<irs::string_ref, irs::string_ref>, PairHash> expected;
+  std::unordered_multiset<irs::string_ref> expected;
 
   for (auto& entry: lhs) {
-    expected.emplace(entry.name(), entry.args());
+    expected.emplace(entry.name());
   }
 
   for (auto& entry: rhs) {
-    auto itr = expected.find(std::make_pair(entry.name(), entry.args()));
+    auto itr = expected.find(entry.name());
 
     if (itr == expected.end()) {
       return false; // values do not match
@@ -156,25 +64,6 @@ bool equalTokenizers(
   }
 
   return true;
-}
-
-typedef irs::unbounded_object_pool<arangodb::iresearch::IResearchLinkMeta::TokenizerPool::TokenizerBuilder> TokenizerBuilderPool;
-
-std::shared_ptr<TokenizerBuilderPool> getTokenizerPool(
-  std::string const& name, std::string const& args
-) {
-  static std::unordered_map<std::pair<std::string, std::string>, std::weak_ptr<TokenizerBuilderPool>, PairHash> cache;
-  std::mutex mutex;
-  SCOPED_LOCK(mutex);
-  auto& poolPtr = cache[std::make_pair(name, args)];
-  auto pool = poolPtr.lock();
-
-  if (!pool) {
-    pool = irs::memory::make_unique<TokenizerBuilderPool>(DEFAULT_POOL_SIZE);
-    poolPtr = pool;
-  }
-
-  return pool;
 }
 
 NS_END
@@ -190,103 +79,17 @@ IResearchLinkMeta::Mask::Mask(bool mask /*= false*/) noexcept
     _tokenizers(mask) {
 }
 
-size_t IResearchLinkMeta::TokenizerPool::Hash::operator()(TokenizerPool const& value) const {
-  return irs::hash_utils::hash(value._name) ^ irs::hash_utils::hash(value._args);
-}
-
-/*static*/ IResearchLinkMeta::TokenizerPool::TokenizerBuilder::ptr IResearchLinkMeta::TokenizerPool::TokenizerBuilder::make(
-    irs::string_ref const& name, irs::string_ref const& args
-) {
-  return irs::analysis::analyzers::get(name, args);
-}
-
-IResearchLinkMeta::TokenizerPool::TokenizerPool(
-  std::string const& name, std::string const& args
-): _args(args),
-   _name(name),
-   _pool(getTokenizerPool(name, args)) {
-  auto instance = tokenizer();
-
-  if (!instance) {
-    throw std::runtime_error(std::string("failed to get iResearch tokenizer instance for name '") + name + "' args '" + args + "'");
-  }
-
-  _features = instance->attributes().features();
-}
-
-IResearchLinkMeta::TokenizerPool::TokenizerPool(
-  IResearchLinkMeta::TokenizerPool const& other
-): _args(other._args),
-   _features(other._features),
-   _name(other._name),
-   _pool(other._pool) {
-}
-
-IResearchLinkMeta::TokenizerPool::TokenizerPool(
-  IResearchLinkMeta::TokenizerPool&& other
-) noexcept
- : _args(std::move(other._args)),
-   _features(std::move(other._features)),
-   _name(std::move(other._name)),
-   _pool(std::move(other._pool)) {
-}
-
-IResearchLinkMeta::TokenizerPool& IResearchLinkMeta::TokenizerPool::operator=(
-  IResearchLinkMeta::TokenizerPool const& other
-) {
-  if (this != &other) {
-    _args = other._args;
-    _features = other._features;
-    _name = other._name;
-    _pool = other._pool;
-  }
-
-  return *this;
-}
-
-IResearchLinkMeta::TokenizerPool& IResearchLinkMeta::TokenizerPool::operator=(
-  IResearchLinkMeta::TokenizerPool&& other
-) noexcept {
-  if (this != &other) {
-    _args = std::move(other._args);
-    _features = std::move(other._features);
-    _name = std::move(other._name);
-    _pool = std::move(other._pool);
-  }
-
-  return *this;
-}
-
-bool IResearchLinkMeta::TokenizerPool::operator==(TokenizerPool const& other) const noexcept {
-  return _name == other._name && _args == other._args;
-}
-
-std::string const& IResearchLinkMeta::TokenizerPool::args() const noexcept {
-  return _args;
-}
-
-irs::flags const& IResearchLinkMeta::TokenizerPool::features() const noexcept {
-  return _features;
-}
-
-std::string const& IResearchLinkMeta::TokenizerPool::name() const noexcept {
-  return _name;
-}
-
-irs::analysis::analyzer::ptr IResearchLinkMeta::TokenizerPool::tokenizer() const noexcept {
-  try {
-    return _pool->emplace(_name, _args);
-  } catch (...) {
-    return nullptr;
-  }
-}
-
 IResearchLinkMeta::IResearchLinkMeta()
   : _boost(1.0), // no boosting of field preference in view ordering
     //_fields(<empty>), // empty map to match all encounteredfields
     _includeAllFields(false), // true to match all encountered fields, false match only fields in '_fields'
     _nestListValues(false) { // treat '_nestListValues' as SQL-IN
-  _tokenizers.emplace_back(IDENTITY_TOKENIZER_NAME, ""); // identity-only tokenization
+  auto analyzer = IResearchAnalyzerFeature::identity();
+
+  // identity-only tokenization
+  if (analyzer) {
+    _tokenizers.emplace_back(analyzer);
+  }
 }
 
 IResearchLinkMeta::IResearchLinkMeta(IResearchLinkMeta const& other) {
@@ -439,7 +242,7 @@ bool IResearchLinkMeta::init(
   }
 
   {
-    // optional enum string map<name, args>
+    // optional string list
     static const std::string fieldName("tokenizers");
 
     mask->_tokenizers = slice.hasKey(fieldName);
@@ -447,9 +250,10 @@ bool IResearchLinkMeta::init(
     if (!mask->_tokenizers) {
       _tokenizers = defaults._tokenizers;
     } else {
+      auto* analyzers = getFeature<IResearchAnalyzerFeature>();
       auto field = slice.get(fieldName);
 
-      if (!field.isObject()) {
+      if (!analyzers || !field.isArray()) {
         errorField = fieldName;
 
         return false;
@@ -457,8 +261,8 @@ bool IResearchLinkMeta::init(
 
       _tokenizers.clear(); // reset to match read values exactly
 
-      for (arangodb::velocypack::ObjectIterator itr(field); itr.valid(); ++itr) {
-        auto key = itr.key();
+      for (arangodb::velocypack::ArrayIterator itr(field); itr.valid(); ++itr) {
+        auto key = *itr;
 
         if (!key.isString()) {
           errorField = fieldName + "=>[" + arangodb::basics::StringUtils::itoa(itr.index()) + "]";
@@ -466,35 +270,17 @@ bool IResearchLinkMeta::init(
           return false;
         }
 
-        auto name = key.copyString();
-        auto value = itr.value();
+        auto name = getStringRef(key);
+        auto analyzer = analyzers->get(name);
 
-        if (!value.isArray()) {
-          errorField = fieldName + "=>" + name;
+        if (!analyzer) {
+          errorField = fieldName + "=>" + name.c_str();
 
           return false;
         }
 
-        // inserting two identical values for name+args is a poor-man's boost multiplier
-        for (arangodb::velocypack::ArrayIterator entryItr(value); entryItr.valid(); ++entryItr) {
-          auto entry = entryItr.value();
-
-          try {
-            if (entry.isString()) {
-              _tokenizers.emplace_back(name, entry.copyString());
-            } else if (entry.isObject()) {
-              _tokenizers.emplace_back(name, entry.toJson());
-            } else {
-              errorField = fieldName + "=>" + name + "=>[" + arangodb::basics::StringUtils::itoa(entryItr.index()) + "]";
-
-              return false;
-            }
-          } catch (...) {
-            errorField = fieldName + "=>" + name + "=>[" + arangodb::basics::StringUtils::itoa(entryItr.index()) + "]";
-
-            return false;
-          }
-        }
+        // inserting two identical values for name is a poor-man's boost multiplier
+        _tokenizers.emplace_back(analyzer);
       }
     }
   }
@@ -504,7 +290,7 @@ bool IResearchLinkMeta::init(
   // .............................................................................
 
   {
-    // optional string list
+    // optional string map<name, overrides>
     static const std::string fieldName("fields");
 
     mask->_fields = slice.hasKey(fieldName);
@@ -605,39 +391,15 @@ bool IResearchLinkMeta::json(
   }
 
   if ((!ignoreEqual || !equalTokenizers(_tokenizers, ignoreEqual->_tokenizers)) && (!mask || mask->_tokenizers)) {
-    std::multimap<irs::string_ref, irs::string_ref> tokenizers;
     arangodb::velocypack::Builder tokenizersBuilder;
 
+    tokenizersBuilder.openArray();
+
     for (auto& entry: _tokenizers) {
-      tokenizers.emplace(entry.name(), entry.args());
+      tokenizersBuilder.add(arangodb::velocypack::Value(entry.name()));
     }
 
-    {
-      arangodb::velocypack::ObjectBuilder tokenizersBuilderWrapper(&tokenizersBuilder);
-      arangodb::velocypack::Builder tokenizerBuilder;
-      irs::string_ref lastKey = irs::string_ref::nil;
-
-      tokenizerBuilder.openArray();
-
-      for (auto& entry: tokenizers) {
-        if (!lastKey.null() && lastKey != entry.first) {
-          tokenizerBuilder.close();
-          tokenizersBuilderWrapper->add(lastKey, tokenizerBuilder.slice());
-          tokenizerBuilder.clear();
-          tokenizerBuilder.openArray();
-        }
-
-        lastKey = entry.first;
-        tokenizerBuilder.add(arangodb::velocypack::Value(entry.second));
-      }
-
-      // add last key
-      if (!lastKey.null()) {
-        tokenizerBuilder.close();
-        tokenizersBuilderWrapper->add(lastKey, tokenizerBuilder.slice());
-      }
-    }
-
+    tokenizersBuilder.close();
     builder.add("tokenizers", tokenizersBuilder.slice());
   }
 
@@ -663,12 +425,6 @@ size_t IResearchLinkMeta::memory() const {
   }
 
   size += _tokenizers.size() * sizeof(decltype(_tokenizers)::value_type);
-
-  for (auto& entry: _tokenizers) {
-    size += entry.name().size();
-    size += entry.args().size();
-    size += DEFAULT_POOL_SIZE * sizeof(irs::analysis::analyzer::ptr); // don't know size of actual implementation
-  }
 
   return size;
 }

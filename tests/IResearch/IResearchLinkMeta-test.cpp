@@ -22,12 +22,17 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "catch.hpp"
+#include "common.h"
+
+#include "StorageEngineMock.h"
 
 #include "analysis/analyzers.hpp"
 #include "analysis/token_attributes.hpp"
 #include "utils/locale_utils.hpp"
 
+#include "IResearch/ApplicationServerHelper.h"
 #include "IResearch/IResearchLinkMeta.h"
+#include "StorageEngine/EngineSelectorFeature.h"
 #include "velocypack/Builder.h"
 #include "velocypack/Iterator.h"
 #include "velocypack/Parser.h"
@@ -64,7 +69,57 @@ NS_END
 // --SECTION--                                                 setup / tear-down
 // -----------------------------------------------------------------------------
 
-struct IResearchLinkMetaSetup { };
+struct IResearchLinkMetaSetup {
+  StorageEngineMock engine;
+  arangodb::application_features::ApplicationServer server;
+  std::vector<std::pair<arangodb::application_features::ApplicationFeature*, bool>> features;
+
+  IResearchLinkMetaSetup(): server(nullptr, nullptr) {
+    arangodb::EngineSelectorFeature::ENGINE = &engine;
+
+    arangodb::tests::init();
+
+    // setup required application features
+    features.emplace_back(new arangodb::iresearch::IResearchAnalyzerFeature(&server), true);
+
+    for (auto& f : features) {
+      arangodb::application_features::ApplicationServer::server->addFeature(f.first);
+    }
+
+    for (auto& f : features) {
+      f.first->prepare();
+    }
+
+    for (auto& f : features) {
+      if (f.second) {
+        f.first->start();
+      }
+    }
+
+    auto* analyzers = arangodb::iresearch::getFeature<arangodb::iresearch::IResearchAnalyzerFeature>();
+
+    analyzers->emplace("empty", "empty", "en"); // cache the 'empty' analyzer
+
+    // suppress log messages since tests check error conditions
+    irs::logger::output_le(iresearch::logger::IRL_FATAL, stderr);
+  }
+
+  ~IResearchLinkMetaSetup() {
+    arangodb::application_features::ApplicationServer::server = nullptr;
+    arangodb::EngineSelectorFeature::ENGINE = nullptr;
+
+    // destroy application features
+    for (auto& f : features) {
+      if (f.second) {
+        f.first->stop();
+      }
+    }
+
+    for (auto& f : features) {
+      f.first->unprepare();
+    }
+  }
+};
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                        test suite
@@ -87,24 +142,26 @@ SECTION("test_defaults") {
   CHECK(false == meta._nestListValues);
   CHECK(1U == meta._tokenizers.size());
   CHECK("identity" == meta._tokenizers.begin()->name());
-  CHECK("" == meta._tokenizers.begin()->args());
   CHECK((irs::flags({irs::term_attribute::type(), irs::increment::type()}) == meta._tokenizers.begin()->features()));
-  CHECK(false == !meta._tokenizers.begin()->tokenizer());
+  CHECK(false == !meta._tokenizers.begin()->get());
 }
 
 SECTION("test_inheritDefaults") {
+  arangodb::iresearch::IResearchAnalyzerFeature analyzers(nullptr);
   arangodb::iresearch::IResearchLinkMeta defaults;
   arangodb::iresearch::IResearchLinkMeta meta;
   std::unordered_set<std::string> expectedFields = { "abc" };
   std::unordered_set<std::string> expectedOverrides = { "xyz" };
   std::string tmpString;
 
+  analyzers.emplace("empty", "empty", "");
+
   defaults._boost = 3.14f;
   defaults._fields["abc"] = std::move(arangodb::iresearch::IResearchLinkMeta());
   defaults._includeAllFields = true;
   defaults._nestListValues = true;
   defaults._tokenizers.clear();
-  defaults._tokenizers.emplace_back("empty", "en");
+  defaults._tokenizers.emplace_back(analyzers.get("empty"));
   defaults._fields["abc"]->_fields["xyz"] = std::move(arangodb::iresearch::IResearchLinkMeta());
 
   auto json = arangodb::velocypack::Parser::fromJson("{}");
@@ -127,9 +184,8 @@ SECTION("test_inheritDefaults") {
         CHECK(false == actual._nestListValues);
         CHECK(1U == actual._tokenizers.size());
         CHECK("identity" == actual._tokenizers.begin()->name());
-        CHECK("" == actual._tokenizers.begin()->args());
         CHECK((irs::flags({irs::term_attribute::type(), irs::increment::type()}) == actual._tokenizers.begin()->features()));
-        CHECK(false == !actual._tokenizers.begin()->tokenizer());
+        CHECK(false == !actual._tokenizers.begin()->get());
       }
     }
   }
@@ -141,9 +197,8 @@ SECTION("test_inheritDefaults") {
 
   CHECK(1U == meta._tokenizers.size());
   CHECK("empty" == meta._tokenizers.begin()->name());
-  CHECK("en" == meta._tokenizers.begin()->args());
   CHECK((irs::flags({TestAttribute::type()}) == meta._tokenizers.begin()->features()));
-  CHECK(false == !meta._tokenizers.begin()->tokenizer());
+  CHECK(false == !meta._tokenizers.begin()->get());
 }
 
 SECTION("test_readDefaults") {
@@ -158,9 +213,8 @@ SECTION("test_readDefaults") {
   CHECK(false == meta._nestListValues);
   CHECK(1U == meta._tokenizers.size());
   CHECK("identity" == meta._tokenizers.begin()->name());
-  CHECK("" == meta._tokenizers.begin()->args());
   CHECK((irs::flags({irs::term_attribute::type(), irs::increment::type()}) == meta._tokenizers.begin()->features()));
-  CHECK(false == !meta._tokenizers.begin()->tokenizer());
+  CHECK(false == !meta._tokenizers.begin()->get());
 }
 
 SECTION("test_readCustomizedValues") {
@@ -178,8 +232,8 @@ SECTION("test_readCustomizedValues") {
         \"b\": {}, \
         \"c\": { \
           \"fields\": { \
-            \"default\": { \"boost\": 1, \"fields\": {}, \"includeAllFields\": false, \"nestListValues\": false, \"tokenizers\": { \"identity\": [\"\"] } }, \
-            \"all\": { \"boost\": 11, \"fields\": {\"d\": {}, \"e\": {}}, \"includeAllFields\": true, \"nestListValues\": true, \"tokenizers\": { \"empty\": [\"en\"] } }, \
+            \"default\": { \"boost\": 1, \"fields\": {}, \"includeAllFields\": false, \"nestListValues\": false, \"tokenizers\": [ \"identity\" ] }, \
+            \"all\": { \"boost\": 11, \"fields\": {\"d\": {}, \"e\": {}}, \"includeAllFields\": true, \"nestListValues\": true, \"tokenizers\": [ \"empty\" ] }, \
             \"some\": { \"boost\": 12, \"nestListValues\": true }, \
             \"none\": {} \
           } \
@@ -187,7 +241,7 @@ SECTION("test_readCustomizedValues") {
       }, \
       \"includeAllFields\": true, \
       \"nestListValues\": true, \
-      \"tokenizers\": { \"empty\": [\"en\"], \"identity\": [\"\"] } \
+      \"tokenizers\": [ \"empty\", \"identity\" ] \
     }");
     CHECK(true == meta.init(json->slice(), tmpString));
     CHECK(10.f == meta._boost);
@@ -208,9 +262,8 @@ SECTION("test_readCustomizedValues") {
           CHECK(false == actual._nestListValues);
           CHECK(1U == actual._tokenizers.size());
           CHECK("identity" == actual._tokenizers.begin()->name());
-          CHECK("" == actual._tokenizers.begin()->args());
           CHECK((irs::flags({irs::term_attribute::type(), irs::increment::type()}) == actual._tokenizers.begin()->features()));
-          CHECK(false == !actual._tokenizers.begin()->tokenizer());
+          CHECK(false == !actual._tokenizers.begin()->get());
         } else if ("all" == fieldOverride.key()) {
           CHECK(11. == actual._boost);
           CHECK(2U == actual._fields.size());
@@ -220,9 +273,8 @@ SECTION("test_readCustomizedValues") {
           CHECK(true == actual._nestListValues);
           CHECK(1U == actual._tokenizers.size());
           CHECK("empty" == actual._tokenizers.begin()->name());
-          CHECK("en" == actual._tokenizers.begin()->args());
           CHECK((irs::flags({TestAttribute::type()}) == actual._tokenizers.begin()->features()));
-          CHECK(false == !actual._tokenizers.begin()->tokenizer());
+          CHECK(false == !actual._tokenizers.begin()->get());
         } else if ("some" == fieldOverride.key()) {
           CHECK(12. == actual._boost);
           CHECK(true == actual._fields.empty()); // not inherited
@@ -231,14 +283,12 @@ SECTION("test_readCustomizedValues") {
           CHECK(2U == actual._tokenizers.size());
           auto itr = actual._tokenizers.begin();
           CHECK("empty" == itr->name());
-          CHECK("en" == itr->args());
           CHECK((irs::flags({TestAttribute::type()}) == itr->features()));
-          CHECK(false == !itr->tokenizer());
+          CHECK(false == !itr->get());
           ++itr;
           CHECK("identity" == itr->name());
-          CHECK("" == itr->args());
           CHECK((irs::flags({irs::term_attribute::type(), irs::increment::type()}) == itr->features()));
-          CHECK(false == !itr->tokenizer());
+          CHECK(false == !itr->get());
         } else if ("none" == fieldOverride.key()) {
           CHECK(10. == actual._boost); // inherited
           CHECK(true == actual._fields.empty()); // not inherited
@@ -246,14 +296,12 @@ SECTION("test_readCustomizedValues") {
           CHECK(true == actual._nestListValues); // inherited
           auto itr = actual._tokenizers.begin();
           CHECK("empty" == itr->name());
-          CHECK("en" == itr->args());
           CHECK((irs::flags({TestAttribute::type()}) == itr->features()));
-          CHECK(false == !itr->tokenizer());
+          CHECK(false == !itr->get());
           ++itr;
           CHECK("identity" == itr->name());
-          CHECK("" == itr->args());
           CHECK((irs::flags({irs::term_attribute::type(), irs::increment::type()}) == itr->features()));
-          CHECK(false == !itr->tokenizer());
+          CHECK(false == !itr->get());
         }
       }
     }
@@ -264,14 +312,12 @@ SECTION("test_readCustomizedValues") {
     CHECK(true == meta._nestListValues);
     auto itr = meta._tokenizers.begin();
     CHECK("empty" == itr->name());
-    CHECK("en" == itr->args());
     CHECK((irs::flags({TestAttribute::type()}) == itr->features()));
-    CHECK(false == !itr->tokenizer());
+    CHECK(false == !itr->get());
     ++itr;
     CHECK("identity" == itr->name());
-    CHECK("" == itr->args());
     CHECK((irs::flags({irs::term_attribute::type(), irs::increment::type()}) == itr->features()));
-    CHECK(false == !itr->tokenizer());
+    CHECK(false == !itr->get());
   }
 }
 
@@ -296,26 +342,26 @@ SECTION("test_writeDefaults") {
   tmpSlice = slice.get("tokenizers");
   CHECK((
     true ==
-    tmpSlice.isObject() &&
+    tmpSlice.isArray() &&
     1 == tmpSlice.length() &&
-    tmpSlice.keyAt(0).isString() &&
-    std::string("identity") == tmpSlice.keyAt(0).copyString() &&
-    tmpSlice.valueAt(0).isArray() &&
-    1 == tmpSlice.valueAt(0).length() &&
-    tmpSlice.valueAt(0).at(0).isString() &&
-    std::string("") == tmpSlice.valueAt(0).at(0).copyString()
+    tmpSlice.at(0).isString() &&
+    std::string("identity") == tmpSlice.at(0).copyString()
   ));
 }
 
 SECTION("test_writeCustomizedValues") {
+  arangodb::iresearch::IResearchAnalyzerFeature analyzers(nullptr);
   arangodb::iresearch::IResearchLinkMeta meta;
+
+  analyzers.emplace("identity", "identity", "");
+  analyzers.emplace("empty", "empty", "en");
 
   meta._boost = 10.;
   meta._includeAllFields = true;
   meta._nestListValues = true;
   meta._tokenizers.clear();
-  meta._tokenizers.emplace_back("identity", "");
-  meta._tokenizers.emplace_back("empty", "en");
+  meta._tokenizers.emplace_back(analyzers.get("identity"));
+  meta._tokenizers.emplace_back(analyzers.get("empty"));
   meta._fields["a"] = meta; // copy from meta
   meta._fields["a"]->_fields.clear(); // do not inherit fields to match jSon inheritance
   meta._fields["b"] = meta; // copy from meta
@@ -339,7 +385,7 @@ SECTION("test_writeCustomizedValues") {
   overrideAll._includeAllFields = false;
   overrideAll._nestListValues = false;
   overrideAll._tokenizers.clear();
-  overrideAll._tokenizers.emplace_back("empty", "en");
+  overrideAll._tokenizers.emplace_back(analyzers.get("empty"));
   overrideSome._boost = 12;
   overrideSome._fields.clear(); // do not inherit fields to match jSon inheritance
   overrideSome._nestListValues = false;
@@ -390,14 +436,10 @@ SECTION("test_writeCustomizedValues") {
         tmpSlice = sliceOverride.get("tokenizers");
         CHECK((
           true ==
-          tmpSlice.isObject() &&
+          tmpSlice.isArray() &&
           1 == tmpSlice.length() &&
-          tmpSlice.keyAt(0).isString() &&
-          std::string("identity") == tmpSlice.keyAt(0).copyString() &&
-          tmpSlice.valueAt(0).isArray() &&
-          1 == tmpSlice.valueAt(0).length() &&
-          tmpSlice.valueAt(0).at(0).isString() &&
-          std::string("") == tmpSlice.valueAt(0).at(0).copyString()
+          tmpSlice.at(0).isString() &&
+          std::string("identity") == tmpSlice.at(0).copyString()
         ));
       } else if ("all" == fieldOverride.copyString()) {
         std::unordered_set<std::string> expectedFields = { "x", "y" };
@@ -417,14 +459,10 @@ SECTION("test_writeCustomizedValues") {
         tmpSlice = sliceOverride.get("tokenizers");
         CHECK((
           true ==
-          tmpSlice.isObject() &&
+          tmpSlice.isArray() &&
           1 == tmpSlice.length() &&
-          tmpSlice.keyAt(0).isString() &&
-          std::string("empty") == tmpSlice.keyAt(0).copyString() &&
-          tmpSlice.valueAt(0).isArray() &&
-          1 == tmpSlice.valueAt(0).length() &&
-          tmpSlice.valueAt(0).at(0).isString() &&
-          std::string("en") == tmpSlice.valueAt(0).at(0).copyString()
+          tmpSlice.at(0).isString() &&
+          std::string("empty") == tmpSlice.at(0).copyString()
         ));
       } else if ("some" == fieldOverride.copyString()) {
         CHECK(2U == sliceOverride.length());
@@ -445,22 +483,11 @@ SECTION("test_writeCustomizedValues") {
   tmpSlice = slice.get("nestListValues");
   CHECK((true == tmpSlice.isBool() && true == tmpSlice.getBool()));
   tmpSlice = slice.get("tokenizers");
-  CHECK((true == tmpSlice.isObject() && 2 == tmpSlice.length()));
+  CHECK((true == tmpSlice.isArray() && 2 == tmpSlice.length()));
 
-  for (arangodb::velocypack::ObjectIterator tokenizersItr(tmpSlice); tokenizersItr.valid(); ++tokenizersItr) {
-    auto key = tokenizersItr.key();
-    auto value = tokenizersItr.value();
+  for (arangodb::velocypack::ArrayIterator tokenizersItr(tmpSlice); tokenizersItr.valid(); ++tokenizersItr) {
+    auto key = *tokenizersItr;
     CHECK((true == key.isString() && 1 == expectedTokenizers.erase(key.copyString())));
-
-    auto args = key.copyString() == "empty" ? "en" : "";
-
-    CHECK((
-      true ==
-      value.isArray() &&
-      1 == value.length() &&
-      value.at(0).isString() &&
-      std::string(args) == value.at(0).copyString()
-    ));
   }
 
   CHECK(true == expectedTokenizers.empty());
@@ -476,7 +503,7 @@ SECTION("test_readMaskAll") {
     \"fields\": { \"a\": {} }, \
     \"includeAllFields\": true, \
     \"nestListValues\": true, \
-    \"tokenizers\": {} \
+    \"tokenizers\": [] \
   }");
   CHECK(true == meta.init(json->slice(), tmpString, arangodb::iresearch::IResearchLinkMeta::DEFAULT(), &mask));
   CHECK(true == mask._boost);

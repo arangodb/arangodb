@@ -295,7 +295,7 @@ bool setStringValue(
     VPackSlice const& value,
     std::string& name,
     arangodb::iresearch::Field& field,
-    arangodb::iresearch::IResearchLinkMeta::TokenizerPool const* pool
+    arangodb::iresearch::IResearchAnalyzerFeature::AnalyzerPool const* pool
 ) {
   TRI_ASSERT(value.isString());
 
@@ -304,13 +304,11 @@ bool setStringValue(
   arangodb::iresearch::kludge::mangleStringField(name, pool);
 
   // init stream
-  auto analyzer = pool->tokenizer();
+  auto analyzer = pool->get();
 
   if (!analyzer) {
     LOG_TOPIC(WARN, arangodb::Logger::FIXME)
-      << "got nullptr from tokenizer factory, name='"
-      << pool->name() << "', args='"
-      << pool->args() << "'";
+      << "got nullptr from tokenizer factory, name '" << pool->name() <<  "'";
     return false;
   }
 

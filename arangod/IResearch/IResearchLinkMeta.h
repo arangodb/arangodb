@@ -32,12 +32,7 @@
 #include "utils/object_pool.hpp"
 
 #include "Containers.h"
-
-NS_BEGIN(iresearch)
-
-template<typename> class unbounded_object_pool; // forward declaration
-
-NS_END // iresearch
+#include "IResearchAnalyzerFeature.h"
 
 NS_BEGIN(arangodb)
 NS_BEGIN(velocypack)
@@ -80,37 +75,8 @@ struct IResearchLinkMeta {
     Mask(bool mask = false) noexcept;
   };
 
-  // a thread-safe tokenizer pool
-  class TokenizerPool {
-   public:
-    struct Hash {
-      size_t operator()(TokenizerPool const& value) const;
-    };
-    struct TokenizerBuilder {
-      typedef irs::analysis::analyzer::ptr ptr;
-      DECLARE_FACTORY_DEFAULT(irs::string_ref const& name, irs::string_ref const& args);
-    };
-
-    TokenizerPool(std::string const& name, std::string const& args);
-    TokenizerPool(TokenizerPool const& other);
-    TokenizerPool(TokenizerPool&& other) noexcept;
-    TokenizerPool& operator=(TokenizerPool const& other);
-    TokenizerPool& operator=(TokenizerPool&& other) noexcept;
-    bool operator==(TokenizerPool const& other) const noexcept;
-    std::string const& args() const noexcept;
-    std::string const& name() const noexcept;
-    irs::flags const& features() const noexcept;
-    irs::analysis::analyzer::ptr tokenizer() const noexcept; // nullptr == error creating tokenizer
-
-   private:
-    std::string _args;
-    irs::flags _features;
-    std::string _name;
-    mutable std::shared_ptr<irs::unbounded_object_pool<TokenizerBuilder>> _pool;
-  };
-
   typedef UnorderedRefKeyMap<char, UniqueHeapInstance<IResearchLinkMeta>> Fields;
-  typedef std::vector<TokenizerPool> Tokenizers;
+  typedef std::vector<IResearchAnalyzerFeature::AnalyzerPool> Tokenizers;
 
   float_t _boost;
   Fields _fields;

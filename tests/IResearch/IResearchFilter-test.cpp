@@ -29,7 +29,8 @@
 #include "IResearch/IResearchViewMeta.h"
 #include "IResearch/IResearchAnalyzerFeature.h"
 #include "IResearch/IResearchKludge.h"
-
+#include "Logger/Logger.h"
+#include "Logger/LogTopic.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "RestServer/AqlFeature.h"
 #include "RestServer/QueryRegistryFeature.h"
@@ -47,7 +48,7 @@
 #include "search/boolean_filter.hpp"
 #include "search/phrase_filter.hpp"
 
-namespace {
+NS_LOCAL
 
 struct TestAttribute: public irs::attribute {
   DECLARE_ATTRIBUTE_TYPE();
@@ -152,7 +153,7 @@ void assertFilterFail(std::string const& queryString) {
   CHECK((!arangodb::iresearch::FilterFactory::filter(&actual, *filterNode)));
 }
 
-}
+NS_END
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 setup / tear-down
@@ -195,13 +196,18 @@ struct IResearchFilterSetup {
     feature->prepare();
 
     // register analyzer
-    CHECK(bool(dynamic_cast<arangodb::iresearch::IResearchAnalyzerFeature&>(*feature).emplace(
+    CHECK(false == !dynamic_cast<arangodb::iresearch::IResearchAnalyzerFeature&>(*feature).emplace(
       "test_analyzer", "TestAnalyzer", "abc"
-    )));
+    ).first);
+
+    // suppress log messages since tests check error conditions
+    arangodb::LogTopic::setLogLevel(arangodb::Logger::FIXME.name(), arangodb::LogLevel::FATAL);
+    irs::logger::output_le(iresearch::logger::IRL_FATAL, stderr);
   }
 
   ~IResearchFilterSetup() {
     arangodb::AqlFeature(&server).stop(); // unset singleton instance
+    arangodb::LogTopic::setLogLevel(arangodb::Logger::FIXME.name(), arangodb::LogLevel::DEFAULT);
     arangodb::application_features::ApplicationServer::server = nullptr;
     arangodb::EngineSelectorFeature::ENGINE = nullptr;
   }

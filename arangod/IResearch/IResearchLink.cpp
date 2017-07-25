@@ -21,6 +21,9 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
+#include "ApplicationServerHelper.h"
+#include "IResearchAnalyzerFeature.h"
+
 #include "Basics/LocalTaskQueue.h"
 #include "Logger/Logger.h"
 #include "Logger/LogMacros.h"
@@ -82,6 +85,58 @@ VPackSlice const& emptyParentSlice() {
   } emptySlice;
 
   return emptySlice._slice;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief reserve in IResearchAnalyzerFeature all tokenizers regsitered with
+///        the IResearchLinkMeta
+/// @return success
+////////////////////////////////////////////////////////////////////////////////
+bool reserveAnalyzers(
+    arangodb::iresearch::IResearchLinkMeta const& meta,
+    TRI_voc_cid_t cid,
+    TRI_idx_iid_t iid
+) {
+  auto* analyzers = arangodb::iresearch::getFeature<arangodb::iresearch::IResearchAnalyzerFeature>();
+
+  if (!analyzers) {
+    LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "failed to retrieve Analyzer Feature while registering analyzers for IResearch view '" << cid << "' IResearch link '" << iid << "'";
+
+    return false;
+  }
+
+  // reserve all tokenizers registered by link meta
+  for (auto& entry: meta._tokenizers) {
+    analyzers->release(entry);
+  }
+
+  return true;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief release from IResearchAnalyzerFeature all tokenizers regsitered with
+///        the IResearchLinkMeta
+/// @return success
+////////////////////////////////////////////////////////////////////////////////
+bool releaseAnalyzers(
+    arangodb::iresearch::IResearchLinkMeta const& meta,
+    TRI_voc_cid_t cid,
+    TRI_idx_iid_t iid
+) {
+  auto* analyzers = arangodb::iresearch::getFeature<arangodb::iresearch::IResearchAnalyzerFeature>();
+
+  if (!analyzers) {
+    LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "failed to retrieve Analyzer Feature while unregistering analyzers for IResearch view '" << cid << "' IResearch link '" << iid << "'";
+
+    return false;
+  }
+
+  // release all tokenizers reserved by link meta
+  for (auto& entry: meta._tokenizers) {
+    analyzers->release(entry);
+  }
+
+  return true;
 }
 
 NS_END
@@ -171,6 +226,12 @@ int IResearchLink::drop() {
     return TRI_ERROR_ARANGO_COLLECTION_NOT_LOADED; // '_collection' and '_view' required
   }
 
+  if (!releaseAnalyzers(_meta, _view->id(), _iid)) {
+    LOG_TOPIC(WARN, Logger::FIXME) << "failed to release tokenizers while dropping IResearch link '" << _iid << "' for IResearch view '" << _view->id() << "'";
+
+    return TRI_ERROR_INTERNAL;
+  }
+
   return _view->drop(_collection->cid());
 }
 
@@ -208,6 +269,11 @@ bool IResearchLink::isPersistent() const {
 
 bool IResearchLink::isSorted() const {
   return false; // iResearch does not provide a fixed default sort order
+}
+
+int IResearchLink::load() {
+  // NOOP
+  return TRI_ERROR_NO_ERROR;
 }
 
 /*static*/ IResearchLink::ptr IResearchLink::make(
@@ -430,22 +496,6 @@ char const* IResearchLink::typeName() const {
   return LINK_TYPE.c_str();
 }
 
-int IResearchLink::load() {
-  // TODO FIXME implement
-
-  return TRI_ERROR_NO_ERROR;
-}
-
-IResearchView::sptr IResearchLink::updateView(IResearchView::sptr const& view) {
-  WriteMutex mutex(_mutex); // '_view' can be asynchronously read
-  SCOPED_LOCK(mutex);
-  auto previous = _view;
-
-  _view = view;
-
-  return previous;
-}
-
 int IResearchLink::unload() {
   WriteMutex mutex(_mutex); // '_view' can be asynchronously read
   SCOPED_LOCK(mutex);
@@ -464,12 +514,35 @@ int IResearchLink::unload() {
     // if the collection is in the process of being removed then drop it from the view
     if (col->deleted()) {
       _view->drop(col->cid());
+
+      if (!releaseAnalyzers(_meta, _view->id(), _iid)) {
+        LOG_TOPIC(WARN, Logger::FIXME) << "failed to release tokenizers while unloading dropped IResearch link '" << _iid << "' for IResearch view '" << _view->id() << "'";
+
+        return TRI_ERROR_INTERNAL;
+      }
     }
   }
 
   _view = nullptr; // release reference to the iResearch View
 
   return TRI_ERROR_NO_ERROR;
+}
+
+IResearchView::sptr IResearchLink::updateView(
+    IResearchView::sptr const& view,
+    bool isNew /*= false*/
+) {
+  WriteMutex mutex(_mutex); // '_view' can be asynchronously read
+  SCOPED_LOCK(mutex);
+  auto previous = _view;
+
+  _view = view;
+
+  if (isNew && _view) {
+    reserveAnalyzers(_meta, _view->id(), _iid);
+  }
+
+  return previous;
 }
 
 int EnhanceJsonIResearchLink(

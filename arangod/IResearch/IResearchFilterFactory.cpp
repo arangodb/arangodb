@@ -754,7 +754,7 @@ bool fromFuncPhrase(
   // as the last argument then use it
   bool const customAnalyzer = argc & 1;
 
-  irs::string_ref analyzerName = analyzerFeature->identity();
+  irs::string_ref analyzerName = analyzerFeature->identity().name();
   irs::analysis::analyzer::ptr analyzer;
 
   if (customAnalyzer) {

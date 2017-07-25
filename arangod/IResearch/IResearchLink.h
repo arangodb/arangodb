@@ -188,8 +188,12 @@ class IResearchLink final: public Index {
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief update the '_view' pointer under lock and return the original value
+  /// @param isNew this is a new instance of the link for the view
   ////////////////////////////////////////////////////////////////////////////////
-  IResearchView::sptr updateView(IResearchView::sptr const& view);
+  IResearchView::sptr updateView(
+      IResearchView::sptr const& view,
+      bool isNew = false
+  );
 }; // IResearchLink
 
 ////////////////////////////////////////////////////////////////////////////////

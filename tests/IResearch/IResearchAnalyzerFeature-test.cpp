@@ -25,6 +25,7 @@
 #include "common.h"
 #include "StorageEngineMock.h"
 
+#include "analysis/analyzers.hpp"
 #include "analysis/token_attributes.hpp"
 
 #include "Aql/AqlFunctionFeature.h"
@@ -143,7 +144,7 @@ SECTION("test_emplace") {
   // add valid
   {
     arangodb::iresearch::IResearchAnalyzerFeature feature(nullptr);
-    CHECK((false == !feature.emplace("test_analyzer", "TestAnalyzer", "abc")));
+    CHECK((false == !feature.emplace("test_analyzer", "TestAnalyzer", "abc").first));
     auto pool = feature.get("test_analyzer");
     CHECK((false == !pool));
     CHECK((irs::flags({TestAttribute::type(), irs::term_attribute::type()}) == pool.features()));
@@ -152,54 +153,54 @@ SECTION("test_emplace") {
   // add duplicate valid (same name+type+properties)
   {
     arangodb::iresearch::IResearchAnalyzerFeature feature(nullptr);
-    CHECK((false == !feature.emplace("test_analyzer", "TestAnalyzer", "abc")));
+    CHECK((false == !feature.emplace("test_analyzer", "TestAnalyzer", "abc").first));
     auto pool = feature.get("test_analyzer");
     CHECK((false == !pool));
     CHECK((irs::flags({TestAttribute::type(), irs::term_attribute::type()}) == pool.features()));
-    CHECK((false == !feature.emplace("test_analyzer", "TestAnalyzer", "abc")));
+    CHECK((false == !feature.emplace("test_analyzer", "TestAnalyzer", "abc").first));
     CHECK((false == !feature.get("test_analyzer")));
   }
 
   // add duplicate invalid (same name+type different properties)
   {
     arangodb::iresearch::IResearchAnalyzerFeature feature(nullptr);
-    CHECK((false == !feature.emplace("test_analyzer", "TestAnalyzer", "abc")));
+    CHECK((false == !feature.emplace("test_analyzer", "TestAnalyzer", "abc").first));
     auto pool = feature.get("test_analyzer");
     CHECK((false == !pool));
     CHECK((irs::flags({TestAttribute::type(), irs::term_attribute::type()}) == pool.features()));
-    CHECK((true == !feature.emplace("test_analyzer", "TestAnalyzer", "abcd")));
+    CHECK((true == !feature.emplace("test_analyzer", "TestAnalyzer", "abcd").first));
     CHECK((false == !feature.get("test_analyzer")));
   }
   
   // add duplicate invalid (same name+properties different type)
   {
     arangodb::iresearch::IResearchAnalyzerFeature feature(nullptr);
-    CHECK((false == !feature.emplace("test_analyzer", "TestAnalyzer", "abc")));
+    CHECK((false == !feature.emplace("test_analyzer", "TestAnalyzer", "abc").first));
     auto pool = feature.get("test_analyzer");
     CHECK((false == !pool));
     CHECK((irs::flags({TestAttribute::type(), irs::term_attribute::type()}) == pool.features()));
-    CHECK((true == !feature.emplace("test_analyzer", "invalid", "abc")));
+    CHECK((true == !feature.emplace("test_analyzer", "invalid", "abc").first));
     CHECK((false == !feature.get("test_analyzer")));
   }
 
   // add invalid (instance creation failure)
   {
     arangodb::iresearch::IResearchAnalyzerFeature feature(nullptr);
-    CHECK((true == !feature.emplace("test_analyzer", "TestAnalyzer", "")));
+    CHECK((true == !feature.emplace("test_analyzer", "TestAnalyzer", "").first));
     CHECK((true == !feature.get("test_analyzer")));
   }
 
   // add invalid (instance creation exception)
   {
     arangodb::iresearch::IResearchAnalyzerFeature feature(nullptr);
-    CHECK((true == !feature.emplace("test_analyzer", "TestAnalyzer", irs::string_ref::nil)));
+    CHECK((true == !feature.emplace("test_analyzer", "TestAnalyzer", irs::string_ref::nil).first));
     CHECK((true == !feature.get("test_analyzer")));
   }
 
   // add invalid (not registred)
   {
     arangodb::iresearch::IResearchAnalyzerFeature feature(nullptr);
-    CHECK((true == !feature.emplace("test_analyzer", "invalid", irs::string_ref::nil)));
+    CHECK((true == !feature.emplace("test_analyzer", "invalid", irs::string_ref::nil).first));
     CHECK((true == !feature.get("test_analyzer")));
   }
 /* FIXME TODO implement persistence
@@ -207,7 +208,7 @@ SECTION("test_emplace") {
   {
     {
       arangodb::iresearch::IResearchAnalyzerFeature feature(nullptr);
-      CHECK((false == !feature.emplace("test_analyzer", "TestAnalyzer", "abc")));
+      CHECK((false == !feature.emplace("test_analyzer", "TestAnalyzer", "abc").first));
     }
 
     {
@@ -252,7 +253,7 @@ SECTION("test_remove") {
   // remove existing
   {
     arangodb::iresearch::IResearchAnalyzerFeature feature(nullptr);
-    CHECK((false == !feature.emplace("test_analyzer", "TestAnalyzer", "abc")));
+    CHECK((false == !feature.emplace("test_analyzer", "TestAnalyzer", "abc").first));
     CHECK((false == !feature.get("test_analyzer")));
     CHECK((1 == feature.remove("test_analyzer")));
     CHECK((true == !feature.get("test_analyzer")));
@@ -272,7 +273,7 @@ SECTION("test_remove") {
   {
     {
       arangodb::iresearch::IResearchAnalyzerFeature feature(nullptr);
-      CHECK((false == !feature.emplace("test_analyzer", "TestAnalyzer", "abc")));
+      CHECK((false == !feature.emplace("test_analyzer", "TestAnalyzer", "abc").first));
       CHECK((false == !feature.get("test_analyzer")));
     }
 
