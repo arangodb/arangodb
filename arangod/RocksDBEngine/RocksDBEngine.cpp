@@ -214,16 +214,17 @@ void RocksDBEngine::start() {
       FATAL_ERROR_EXIT();
     }
   }
-
+  
+  // options imported set by RocksDBOptionFeature
+  auto const* opts =
+  ApplicationServer::getFeature<arangodb::RocksDBOptionFeature>(
+                                                                "RocksDBOption");
+  
   rocksdb::TransactionDBOptions transactionOptions;
   // number of locks per column_family
   transactionOptions.num_stripes = TRI_numberProcessors();
+  transactionOptions.transaction_lock_timeout = opts->_transactionLockTimeout;
 
-  // options imported set by RocksDBOptionFeature
-  auto const* opts =
-      ApplicationServer::getFeature<arangodb::RocksDBOptionFeature>(
-          "RocksDBOption");
-  
   _options.enable_pipelined_write = opts->_enablePipelinedWrite;
   _options.write_buffer_size = static_cast<size_t>(opts->_writeBufferSize);
   _options.max_write_buffer_number =
@@ -261,12 +262,8 @@ void RocksDBEngine::start() {
     _options.wal_recovery_mode = rocksdb::WALRecoveryMode::kPointInTimeRecovery;
   }
 
-  _options.base_background_compactions =
-      static_cast<int>(opts->_baseBackgroundCompactions);
-  _options.max_background_compactions =
-      static_cast<int>(opts->_maxBackgroundCompactions);
+  _options.max_background_jobs = static_cast<int>(opts->_maxBackgroundJobs);
   _options.max_subcompactions = static_cast<int>(opts->_maxSubcompactions);
-  _options.max_background_flushes = static_cast<int>(opts->_maxFlushes);
   _options.use_fsync = opts->_useFSync;
 
   // only compress levels >= 2
@@ -324,14 +321,16 @@ void RocksDBEngine::start() {
   if (opts->_blockCacheSize > 0) {
     table_options.block_cache = rocksdb::NewLRUCache(opts->_blockCacheSize,
                                       static_cast<int>(opts->_blockCacheShardBits));
+    table_options.cache_index_and_filter_blocks = opts->_compactionReadaheadSize > 0;
   } else {
     table_options.no_block_cache = true;
   }
   table_options.block_size = opts->_tableBlockSize;
   table_options.filter_policy.reset(rocksdb::NewBloomFilterPolicy(10, true));
+  
   _options.table_factory.reset(
       rocksdb::NewBlockBasedTableFactory(table_options));
-
+  
   _options.create_if_missing = true;
   _options.create_missing_column_families = true;
   _options.max_open_files = -1;

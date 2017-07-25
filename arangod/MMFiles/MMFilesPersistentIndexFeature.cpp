@@ -120,9 +120,7 @@ void MMFilesPersistentIndexFeature::start() {
   _options.max_bytes_for_level_multiplier = static_cast<int>(opts->_maxBytesForLevelMultiplier);
   _options.optimize_filters_for_hits = opts->_optimizeFiltersForHits;
 
-  _options.base_background_compactions = static_cast<int>(opts->_baseBackgroundCompactions);
-  _options.max_background_compactions = static_cast<int>(opts->_maxBackgroundCompactions);
-
+  _options.max_background_jobs = static_cast<int>(opts->_maxBackgroundJobs);
   _options.compaction_readahead_size = static_cast<size_t>(opts->_compactionReadaheadSize);
 
   if (_options.base_background_compactions > 1 || _options.max_background_compactions > 1) {

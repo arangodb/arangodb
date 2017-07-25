@@ -33,6 +33,7 @@
 
 #include <rocksdb/options.h>
 #include <rocksdb/table.h>
+#include <rocksdb/utilities/transaction_db.h>
 
 #include <thread>
 
@@ -41,6 +42,7 @@ using namespace arangodb::application_features;
 using namespace arangodb::options;
 
 namespace {
+rocksdb::TransactionDBOptions rocksDBTrxDefaults;
 rocksdb::Options rocksDBDefaults;
 rocksdb::BlockBasedTableOptions rocksDBTableOptionsDefaults;
 }
@@ -48,6 +50,7 @@ rocksdb::BlockBasedTableOptions rocksDBTableOptionsDefaults;
 RocksDBOptionFeature::RocksDBOptionFeature(
     application_features::ApplicationServer* server)
     : application_features::ApplicationFeature(server, "RocksDBOption"),
+      _transactionLockTimeout(rocksDBTrxDefaults.transaction_lock_timeout),
       _writeBufferSize(rocksDBDefaults.write_buffer_size),
       _maxWriteBufferNumber(rocksDBDefaults.max_write_buffer_number),
       _maxTotalWalSize(80 << 20),
@@ -59,10 +62,8 @@ RocksDBOptionFeature::RocksDBOptionFeature(
       _maxBytesForLevelBase(rocksDBDefaults.max_bytes_for_level_base),
       _maxBytesForLevelMultiplier(
           rocksDBDefaults.max_bytes_for_level_multiplier),
-      _baseBackgroundCompactions(rocksDBDefaults.base_background_compactions),
-      _maxBackgroundCompactions(rocksDBDefaults.max_background_compactions),
+      _maxBackgroundJobs(rocksDBDefaults.max_background_jobs),
       _maxSubcompactions(rocksDBDefaults.max_subcompactions),
-      _maxFlushes(rocksDBDefaults.max_background_flushes),
       _numThreadsHigh(0),
       _numThreadsLow(0),
       _blockCacheSize((TRI_PhysicalMemory >= (static_cast<uint64_t>(4) << 30))
@@ -71,7 +72,7 @@ RocksDBOptionFeature::RocksDBOptionFeature(
       _blockCacheShardBits(0),
       _tableBlockSize(std::max(rocksDBTableOptionsDefaults.block_size, static_cast<decltype(rocksDBTableOptionsDefaults.block_size)>(16 * 1024))),
       _recycleLogFileNum(rocksDBDefaults.recycle_log_file_num),
-      _compactionReadaheadSize(rocksDBDefaults.compaction_readahead_size),
+      _compactionReadaheadSize(2 * 1024 * 1024),//rocksDBDefaults.compaction_readahead_size
       _level0CompactionTrigger(2),
       _level0SlowdownTrigger(rocksDBDefaults.level0_slowdown_writes_trigger),
       _level0StopTrigger(rocksDBDefaults.level0_stop_writes_trigger),
@@ -87,6 +88,11 @@ RocksDBOptionFeature::RocksDBOptionFeature(
   while (testSize > 0) {
     _blockCacheShardBits++;
     testSize >>= 1;
+  }
+  // setting the number of background jobs to
+  size_t procs = TRI_numberProcessors();
+  if (procs > 0) {
+    _maxBackgroundJobs = procs;
   }
 
   setOptional(true);
@@ -109,6 +115,12 @@ void RocksDBOptionFeature::collectOptions(
                      "optional path to the RocksDB WAL directory. "
                      "If not set, the WAL directory will be located inside the regular data directory",
                      new StringParameter(&_walDirectory));
+  
+  options->addOption("--rocksdb.transaction-lock-timeout",
+                     "If positive, specifies the wait timeout in milliseconds when "
+                     " a transaction attempts to lock a document. Defaults is 1000. A negative value "
+                     "is not recommended as it can lead to deadlocks (0 = no waiting, < 0 no timeout)",
+                     new Int64Parameter(&_transactionLockTimeout));
 
   options->addOption("--rocksdb.write-buffer-size",
                      "amount of data to build up in memory before converting "
@@ -195,22 +207,14 @@ void RocksDBOptionFeature::collectOptions(
                            new BooleanParameter(&_useFSync));
 
   options->addHiddenOption(
-      "--rocksdb.base-background-compactions",
-      "suggested number of concurrent background compaction jobs",
-      new Int64Parameter(&_baseBackgroundCompactions));
-
-  options->addOption("--rocksdb.max-background-compactions",
-                     "maximum number of concurrent background compaction jobs",
-                     new UInt64Parameter(&_maxBackgroundCompactions));
+      "--rocksdb.max-background-jobs",
+      "Maximum number of concurrent background jobs (compactions and flushes)",
+      new Int32Parameter(&_maxBackgroundJobs));
 
   options->addOption("--rocksdb.max-subcompactions",
                      "maximum number of concurrent subjobs for a background "
                      "compaction",
                      new UInt64Parameter(&_maxSubcompactions));
-
-  options->addOption("--rocksdb.max-background-flushes",
-                     "maximum number of concurrent flush operations",
-                     new Int64Parameter(&_maxFlushes));
 
   options->addOption("--rocksdb.level0-compaction-trigger",
                      "number of level-0 files that triggers a compaction",
@@ -281,22 +285,13 @@ void RocksDBOptionFeature::validateOptions(
     FATAL_ERROR_EXIT();
   }
 
-  if (_baseBackgroundCompactions != -1 &&
-      (_baseBackgroundCompactions < 1 || _baseBackgroundCompactions > 64)) {
+  if (_maxBackgroundJobs != -1 &&
+      (_maxBackgroundJobs < 1 || _maxBackgroundJobs > 128)) {
     LOG_TOPIC(FATAL, arangodb::Logger::FIXME)
-        << "invalid value for '--rocksdb.base-background-compactions'";
+        << "invalid value for '--rocksdb.max-background-jobs'";
     FATAL_ERROR_EXIT();
   }
-  if (static_cast<int64_t>(_maxBackgroundCompactions) < _baseBackgroundCompactions) {
-    _maxBackgroundCompactions = _baseBackgroundCompactions;
-  }
-
-  if (_maxFlushes == -1) { /*we are good */ }
-  else if (_maxFlushes < 1 || _maxFlushes > 64) {
-    LOG_TOPIC(FATAL, arangodb::Logger::FIXME)
-        << "invalid value for '--rocksdb.max-background-flushes'";
-    FATAL_ERROR_EXIT();
-  }
+  
   if (_numThreadsHigh > 64) {
     LOG_TOPIC(FATAL, arangodb::Logger::FIXME)
         << "invalid value for '--rocksdb.num-threads-priority-high'";
@@ -318,12 +313,12 @@ void RocksDBOptionFeature::validateOptions(
 }
 
 void RocksDBOptionFeature::start() {
+  // lets test this out
   if (_numThreadsHigh == 0) {
-    _numThreadsHigh = rocksDBDefaults.max_background_flushes;
+    _numThreadsHigh = _maxBackgroundJobs / 2;
   }
-
   if (_numThreadsLow == 0) {
-    _numThreadsLow = rocksDBDefaults.max_background_compactions;
+    _numThreadsLow = _maxBackgroundJobs / 2;
   }
 
   LOG_TOPIC(TRACE, Logger::ROCKSDB) << "using RocksDB options:"
@@ -337,10 +332,8 @@ void RocksDBOptionFeature::start() {
                                     << ", num_uncompressed_levels: " << _numUncompressedLevels
                                     << ", max_bytes_for_level_base: " << _maxBytesForLevelBase
                                     << ", max_bytes_for_level_multiplier: " << _maxBytesForLevelMultiplier
-                                    << ", base_background_compactions: " << _baseBackgroundCompactions
-                                    << ", max_background_compactions: " << _maxBackgroundCompactions
+                                    << ", max_background_jobs: " << _maxBackgroundJobs
                                     << ", max_sub_compactions: " << _maxSubcompactions
-                                    << ", max_flushes: " << _maxFlushes
                                     << ", num_threads_high: " << _numThreadsHigh
                                     << ", num_threads_low: " << _numThreadsLow
                                     << ", block_cache_size: " << _blockCacheSize
