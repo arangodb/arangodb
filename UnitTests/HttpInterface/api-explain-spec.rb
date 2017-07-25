@@ -23,6 +23,16 @@ describe ArangoDB do
         doc.parsed_response['error'].should eq(true)
         doc.parsed_response['code'].should eq(400)
       end
+      
+      it "returns an error for an invalid path" do
+        cmd = api + "/foo"
+        body = "{ \"query\" : \"RETURN 1\" }"
+        doc = ArangoDB.log_post("#{prefix}-invalid-path", cmd, :body => body)
+        doc.code.should eq(404)
+        doc.headers['content-type'].should eq("application/json; charset=utf-8")
+        doc.parsed_response['error'].should eq(true)
+        doc.parsed_response['code'].should eq(404)
+      end
 
       it "returns an error if collection is unknown" do
         cmd = api
