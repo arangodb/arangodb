@@ -1,6 +1,8 @@
 devel
 -----
 
+* ui: now supports single js file upload for foxx services in addition to zip files
+
 * ui: fixed document view _from and _to linking issue for special characters
 
 * added function `db._parse(query)` for parse an AQL query and return information about it
