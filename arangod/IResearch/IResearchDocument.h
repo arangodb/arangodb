@@ -86,8 +86,8 @@ struct Field {
   }
 
   irs::token_stream& get_tokens() const {
-    TRI_ASSERT(_tokenizer);
-    return *_tokenizer;
+    TRI_ASSERT(_analyzer);
+    return *_analyzer;
   }
 
   float_t boost() const {
@@ -99,7 +99,7 @@ struct Field {
   }
 
   irs::flags const* _features{ &irs::flags::empty_instance() };
-  std::shared_ptr<irs::token_stream>_tokenizer;
+  std::shared_ptr<irs::token_stream> _analyzer;
   irs::string_ref _name;
   float_t _boost{1.f};
 }; // Field
@@ -125,7 +125,7 @@ class FieldIterator : public std::iterator<std::forward_iterator_tag, Field cons
   }
 
   // We don't support postfix increment since it requires
-  // deep copy of all buffers and tokenizers which is quite
+  // deep copy of all buffers and analyzers which is quite
   // expensive and useless
 
   bool valid() const noexcept {
@@ -146,7 +146,7 @@ class FieldIterator : public std::iterator<std::forward_iterator_tag, Field cons
   );
 
  private:
-  typedef IResearchAnalyzerFeature::AnalyzerPool::ptr const* TokenizerIterator;
+  typedef IResearchAnalyzerFeature::AnalyzerPool::ptr const* AnalyzerIterator;
 
   typedef bool(*Filter)(
     std::string& buffer,
@@ -200,14 +200,14 @@ class FieldIterator : public std::iterator<std::forward_iterator_tag, Field cons
   bool push(arangodb::velocypack::Slice slice, IResearchLinkMeta const*& topMeta);
   bool setValue(arangodb::velocypack::Slice const& value, IResearchLinkMeta const& context);
 
-  void resetTokenizers(IResearchLinkMeta const& context) {
-    auto const& tokenizers = context._tokenizers;
-    _begin = tokenizers.data();
-    _end = _begin + tokenizers.size();
+  void resetAnalyzers(IResearchLinkMeta const& context) {
+    auto const& analyzers = context._tokenizers;
+    _begin = analyzers.data();
+    _end = _begin + analyzers.size();
   }
 
-  TokenizerIterator _begin{};
-  TokenizerIterator _end{};
+  AnalyzerIterator _begin{};
+  AnalyzerIterator _end{};
   std::vector<Level> _stack;
   std::shared_ptr<std::string> _name; // buffer for field name
   Field _value; // iterator's value

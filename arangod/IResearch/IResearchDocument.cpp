@@ -247,7 +247,7 @@ void setNullValue(
 
   // set field properties
   field._name = name;
-  field._tokenizer =  stream;
+  field._analyzer = stream;
   field._features = &irs::flags::empty_instance();
 }
 
@@ -267,7 +267,7 @@ void setBoolValue(
 
   // set field properties
   field._name = name;
-  field._tokenizer =  stream;
+  field._analyzer = stream;
   field._features = &irs::flags::empty_instance();
 }
 
@@ -287,7 +287,7 @@ void setNumericValue(
 
   // set field properties
   field._name = name;
-  field._tokenizer =  stream;
+  field._analyzer = stream;
   field._features = &NumericStreamFeatures;
 }
 
@@ -295,12 +295,12 @@ bool setStringValue(
     VPackSlice const& value,
     std::string& name,
     arangodb::iresearch::Field& field,
-    arangodb::iresearch::IResearchAnalyzerFeature::AnalyzerPool::ptr const* pool
+    arangodb::iresearch::IResearchAnalyzerFeature::AnalyzerPool::ptr const& pool
 ) {
   TRI_ASSERT(value.isString());
 
-  if (!pool || !*pool) {
-    LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "got nullptr tokenizer factory";
+  if (!pool) {
+    LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "got nullptr analyzer factory";
 
     return false;
   }
@@ -310,11 +310,11 @@ bool setStringValue(
   arangodb::iresearch::kludge::mangleStringField(name, pool);
 
   // init stream
-  auto analyzer = (*pool)->get();
+  auto analyzer = pool->get();
 
   if (!analyzer) {
     LOG_TOPIC(WARN, arangodb::Logger::FIXME)
-      << "got nullptr from tokenizer factory, name '" << (*pool)->name() <<  "'";
+      << "got nullptr from analyzer factory, name '" << pool->name() <<  "'";
     return false;
   }
 
@@ -323,20 +323,20 @@ bool setStringValue(
 
   // set field properties
   field._name = name;
-  field._tokenizer =  analyzer;
-  field._features = &((*pool)->features());
+  field._analyzer =  analyzer;
+  field._features = &(pool->features());
 
   return true;
 }
 
 void setIdValue(
     uint64_t& value,
-    irs::token_stream& tokenizer
+    irs::token_stream& analyzer
 ) {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-  auto& sstream = dynamic_cast<irs::string_token_stream&>(tokenizer);
+  auto& sstream = dynamic_cast<irs::string_token_stream&>(analyzer);
 #else
-  auto& sstream = static_cast<irs::string_token_stream&>(tokenizer);
+  auto& sstream = static_cast<irs::string_token_stream&>(analyzer);
 #endif
 
   sstream.reset(arangodb::iresearch::DocumentPrimaryKey::encode(value));
@@ -353,7 +353,7 @@ NS_BEGIN(iresearch)
 
 /*static*/ void Field::setCidValue(Field& field, TRI_voc_cid_t& cid) {
   field._name = CID_FIELD;
-  setIdValue(cid, *field._tokenizer);
+  setIdValue(cid, *field._analyzer);
   field._boost = 1.f;
   field._features = &irs::flags::empty_instance();
 }
@@ -363,13 +363,13 @@ NS_BEGIN(iresearch)
     TRI_voc_cid_t& cid,
     Field::init_stream_t
 ) {
-  field._tokenizer = StringStreamPool.emplace();
+  field._analyzer = StringStreamPool.emplace();
   setCidValue(field, cid);
 }
 
 /*static*/ void Field::setRidValue(Field& field, TRI_voc_rid_t& rid) {
   field._name = RID_FIELD;
-  setIdValue(rid, *field._tokenizer);
+  setIdValue(rid, *field._analyzer);
   field._boost = 1.f;
   field._features = &irs::flags::empty_instance();
 }
@@ -379,13 +379,13 @@ NS_BEGIN(iresearch)
     TRI_voc_rid_t& rid,
     Field::init_stream_t
 ) {
-  field._tokenizer = StringStreamPool.emplace();
+  field._analyzer = StringStreamPool.emplace();
   setRidValue(field, rid);
 }
 
 Field::Field(Field&& rhs)
   : _features(rhs._features),
-    _tokenizer(std::move(rhs._tokenizer)),
+    _analyzer(std::move(rhs._analyzer)),
     _name(std::move(rhs._name)),
     _boost(rhs._boost) {
   rhs._features = nullptr;
@@ -394,7 +394,7 @@ Field::Field(Field&& rhs)
 Field& Field::operator=(Field&& rhs) {
   if (this != &rhs) {
     _features = rhs._features;
-    _tokenizer = std::move(rhs._tokenizer);
+    _analyzer = std::move(rhs._analyzer);
     _name = std::move(rhs._name);
     _boost= rhs._boost;
     rhs._features = nullptr;
@@ -423,7 +423,7 @@ void FieldIterator::reset(
     VPackSlice const& doc,
     IResearchLinkMeta const& linkMeta
 ) {
-  // set surrogate tokenizers
+  // set surrogate analyzers
   _begin = nullptr;
   _end = 1 + _begin;
   // clear stack
@@ -499,7 +499,7 @@ bool FieldIterator::setValue(
     IResearchLinkMeta const& context
 ) {
   _begin = nullptr;
-  _end = 1 + _begin;               // set surrogate tokenizers
+  _end = 1 + _begin;               // set surrogate analyzers
   _value._boost = context._boost;  // set boost
 
   switch (value.type()) {
@@ -529,8 +529,8 @@ bool FieldIterator::setValue(
       setNumericValue(value, nameBuffer(), _value);
       return true;
     case VPackValueType::String:
-      resetTokenizers(context); // reset string tokenizers
-      return setStringValue(value, nameBuffer(), _value, _begin);
+      resetAnalyzers(context); // reset string analyzers
+      return setStringValue(value, nameBuffer(), _value, *_begin);
     case VPackValueType::Binary:
     case VPackValueType::BCD:
     case VPackValueType::Custom:
@@ -544,7 +544,7 @@ bool FieldIterator::setValue(
 void FieldIterator::next() {
   TRI_ASSERT(valid());
 
-  TokenizerIterator const prev = _begin;
+  auto const& prev = *_begin;
 
   while (++_begin != _end) {
     auto& name = nameBuffer();
@@ -552,8 +552,8 @@ void FieldIterator::next() {
     // remove previous suffix
     arangodb::iresearch::kludge::unmangleStringField(name, prev);
 
-    // can have multiple tokenizers for string values only
-    if (setStringValue(topValue().value, name, _value, _begin)) {
+    // can have multiple analyzers for string values only
+    if (setStringValue(topValue().value, name, _value, *_begin)) {
       return;
     }
   }

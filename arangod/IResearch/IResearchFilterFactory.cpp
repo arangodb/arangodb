@@ -124,7 +124,10 @@ irs::by_term& byTerm(
       filter.term(term->value());
      } break;
     case arangodb::aql::VALUE_TYPE_STRING: {
-      // FIXME mangle string
+      arangodb::iresearch::kludge::mangleStringField(
+         name,
+         arangodb::iresearch::IResearchAnalyzerFeature::identity()
+      );
 
       irs::bytes_ref value;
       arangodb::iresearch::parseValue(value, valueNode);
@@ -270,8 +273,12 @@ bool byRange(
       if (filter) {
         auto& range = filter->add<irs::by_range>();
 
-        // FIXME mangle identity string
+        arangodb::iresearch::kludge::mangleStringField(
+          name,
+          arangodb::iresearch::IResearchAnalyzerFeature::identity()
+        );
         range.field(std::move(name));
+
         range.term<irs::Bound::MIN>(minValue);
         range.include<irs::Bound::MIN>(minInclude);
         range.term<irs::Bound::MAX>(maxValue);
@@ -354,7 +361,10 @@ bool byRange(
       if (filter) {
         auto& range = filter->add<irs::by_range>();
 
-        // FIXME mangle identity string
+        arangodb::iresearch::kludge::mangleStringField(
+          name,
+          arangodb::iresearch::IResearchAnalyzerFeature::identity()
+        );
         range.field(std::move(name));
         range.term<Bound>(value);
         range.include<Bound>(incl);
@@ -777,7 +787,7 @@ bool fromFuncPhrase(
   auto analyzer = pool->get(); // get analyzer from pool
 
   if (!analyzer) {
-    LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "'PHRASE' AQL function: Unable to instantiate analyzer '" << analyzerName << "'";
+    LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "'PHRASE' AQL function: Unable to instantiate analyzer '" << pool->name() << "'";
     return false;
   }
 
@@ -787,7 +797,7 @@ bool fromFuncPhrase(
     phrase = &filter->add<irs::by_phrase>();
 
     auto name = arangodb::iresearch::nameFromAttributeAccess(*fieldArg);
-    // FIXME mangle string
+    arangodb::iresearch::kludge::mangleStringField(name, pool);
     phrase->field(std::move(name));
 
     appendTerms(*phrase, value, *analyzer, 0);

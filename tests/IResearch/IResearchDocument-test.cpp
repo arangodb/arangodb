@@ -189,7 +189,7 @@ SECTION("Field_setCid") {
   // reset field
   field._boost = 25;
   field._features = &features;
-  field._tokenizer = nullptr;
+  field._analyzer = nullptr;
 
   // check CID value
   {
@@ -199,7 +199,7 @@ SECTION("Field_setCid") {
     CHECK("@_CID" == field._name);
     CHECK(&irs::flags::empty_instance() == field._features);
 
-    auto* stream = dynamic_cast<irs::string_token_stream*>(field._tokenizer.get());
+    auto* stream = dynamic_cast<irs::string_token_stream*>(field._analyzer.get());
     REQUIRE(nullptr != stream);
     CHECK(stream->next());
     CHECK(!stream->next());
@@ -208,7 +208,7 @@ SECTION("Field_setCid") {
     CHECK(1.f == field._boost);
     CHECK("@_CID" == field._name);
     CHECK(&irs::flags::empty_instance() == field._features);
-    CHECK(stream == field._tokenizer.get());
+    CHECK(stream == field._analyzer.get());
     CHECK(stream->next());
     CHECK(!stream->next());
   }
@@ -216,7 +216,7 @@ SECTION("Field_setCid") {
   // reset field
   field._boost = 25;
   field._features = &features;
-  field._tokenizer = nullptr;
+  field._analyzer = nullptr;
 
   // check RID value
   {
@@ -226,7 +226,7 @@ SECTION("Field_setCid") {
     CHECK("@_REV" == field._name);
     CHECK(&irs::flags::empty_instance() == field._features);
 
-    auto* stream = dynamic_cast<irs::string_token_stream*>(field._tokenizer.get());
+    auto* stream = dynamic_cast<irs::string_token_stream*>(field._analyzer.get());
     REQUIRE(nullptr != stream);
     CHECK(stream->next());
     CHECK(!stream->next());
@@ -235,7 +235,7 @@ SECTION("Field_setCid") {
     CHECK(1.f == field._boost);
     CHECK("@_REV" == field._name);
     CHECK(&irs::flags::empty_instance() == field._features);
-    CHECK(stream == field._tokenizer.get());
+    CHECK(stream == field._analyzer.get());
     CHECK(stream->next());
     CHECK(!stream->next());
   }

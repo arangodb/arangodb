@@ -44,16 +44,16 @@ void mangleNumeric(std::string& name) {
   name.append(SUFFIX.c_str(), SUFFIX.size());
 }
 
-void mangleStringField(std::string& name, TokenizerPoolPtr pool) {
-  TRI_ASSERT(pool && *pool);
+void mangleStringField(std::string& name, AnalyzerPoolPtr const& pool) {
+  TRI_ASSERT(pool);
   name += '\0';
-  name += (*pool)->name();
+  name += pool->name();
 }
 
-void unmangleStringField(std::string& name, TokenizerPoolPtr pool) {
-  TRI_ASSERT(pool && *pool);
+void unmangleStringField(std::string& name, AnalyzerPoolPtr const& pool) {
+  TRI_ASSERT(pool);
   // +1 for preceding '\0'
-  auto const suffixSize = 1 + (*pool)->name().size();
+  auto const suffixSize = 1 + pool->name().size();
 
   TRI_ASSERT(name.size() >= suffixSize);
   name.resize(name.size() - suffixSize);

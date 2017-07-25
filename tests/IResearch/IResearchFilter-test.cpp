@@ -107,6 +107,20 @@ std::string mangleNumeric(std::string name) {
   return name;
 }
 
+std::string mangleString(std::string name, std::string suffix) {
+  name += '\0';
+  name += suffix;
+  return name;
+}
+
+std::string mangleStringIdentity(std::string name) {
+  arangodb::iresearch::kludge::mangleStringField(
+    name,
+    arangodb::iresearch::IResearchAnalyzerFeature::identity()
+  );
+  return name;
+}
+
 void assertFilterSuccess(std::string const& queryString, irs::filter const& expected) {
   TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "testVocbase");
 
@@ -230,9 +244,9 @@ SECTION("BinaryIn") {
   {
     irs::Or expected;
     auto& root = expected.add<irs::Or>();
-    root.add<irs::by_term>().field("a").term("1");
-    root.add<irs::by_term>().field("a").term("2");
-    root.add<irs::by_term>().field("a").term("3");
+    root.add<irs::by_term>().field(mangleStringIdentity("a")).term("1");
+    root.add<irs::by_term>().field(mangleStringIdentity("a")).term("2");
+    root.add<irs::by_term>().field(mangleStringIdentity("a")).term("3");
 
     assertFilterSuccess("FOR d IN collection FILTER d.a in ['1','2','3'] RETURN d", expected);
   }
@@ -241,9 +255,9 @@ SECTION("BinaryIn") {
   {
     irs::Or expected;
     auto& root = expected.add<irs::Or>();
-    root.add<irs::by_term>().field("a.b.c.e.f").term("1");
-    root.add<irs::by_term>().field("a.b.c.e.f").term("2");
-    root.add<irs::by_term>().field("a.b.c.e.f").term("3");
+    root.add<irs::by_term>().field(mangleStringIdentity("a.b.c.e.f")).term("1");
+    root.add<irs::by_term>().field(mangleStringIdentity("a.b.c.e.f")).term("2");
+    root.add<irs::by_term>().field(mangleStringIdentity("a.b.c.e.f")).term("3");
 
     assertFilterSuccess("FOR d IN collection FILTER d.a.b.c.e.f in ['1','2','3'] RETURN d", expected);
   }
@@ -252,7 +266,7 @@ SECTION("BinaryIn") {
   {
     irs::Or expected;
     auto& root = expected.add<irs::Or>();
-    root.add<irs::by_term>().field("quick.brown.fox").term("1");
+    root.add<irs::by_term>().field(mangleStringIdentity("quick.brown.fox")).term("1");
     root.add<irs::by_term>().field(mangleNull("quick.brown.fox")).term(irs::null_token_stream::value_null());
     root.add<irs::by_term>().field(mangleBool("quick.brown.fox")).term(irs::boolean_token_stream::value_true());
     root.add<irs::by_term>().field(mangleBool("quick.brown.fox")).term(irs::boolean_token_stream::value_false());
@@ -334,7 +348,7 @@ SECTION("BinaryIn") {
   {
     irs::Or expected;
     auto& range = expected.add<irs::by_range>();
-    range.field("a.b.c.e.f");
+    range.field(mangleStringIdentity("a.b.c.e.f"));
     range.include<irs::Bound::MIN>(true).term<irs::Bound::MIN>("4");
     range.include<irs::Bound::MAX>(true).term<irs::Bound::MAX>("5");
 
@@ -390,9 +404,9 @@ SECTION("BinaryNotIn") {
   {
     irs::Or expected;
     auto& root = expected.add<irs::Not>().filter<irs::And>();
-    root.add<irs::by_term>().field("a").term("1");
-    root.add<irs::by_term>().field("a").term("2");
-    root.add<irs::by_term>().field("a").term("3");
+    root.add<irs::by_term>().field(mangleStringIdentity("a")).term("1");
+    root.add<irs::by_term>().field(mangleStringIdentity("a")).term("2");
+    root.add<irs::by_term>().field(mangleStringIdentity("a")).term("3");
 
     assertFilterSuccess("FOR d IN collection FILTER d.a not in ['1','2','3'] RETURN d", expected);
   }
@@ -401,9 +415,9 @@ SECTION("BinaryNotIn") {
   {
     irs::Or expected;
     auto& root = expected.add<irs::Not>().filter<irs::And>();
-    root.add<irs::by_term>().field("a.b.c.e.f").term("1");
-    root.add<irs::by_term>().field("a.b.c.e.f").term("2");
-    root.add<irs::by_term>().field("a.b.c.e.f").term("3");
+    root.add<irs::by_term>().field(mangleStringIdentity("a.b.c.e.f")).term("1");
+    root.add<irs::by_term>().field(mangleStringIdentity("a.b.c.e.f")).term("2");
+    root.add<irs::by_term>().field(mangleStringIdentity("a.b.c.e.f")).term("3");
 
     assertFilterSuccess("FOR d IN collection FILTER d.a.b.c.e.f not in ['1','2','3'] RETURN d", expected);
   }
@@ -412,7 +426,7 @@ SECTION("BinaryNotIn") {
   {
     irs::Or expected;
     auto& root = expected.add<irs::Not>().filter<irs::And>();
-    root.add<irs::by_term>().field("quick.brown.fox").term("1");
+    root.add<irs::by_term>().field(mangleStringIdentity("quick.brown.fox")).term("1");
     root.add<irs::by_term>().field(mangleNull("quick.brown.fox")).term(irs::null_token_stream::value_null());
     root.add<irs::by_term>().field(mangleBool("quick.brown.fox")).term(irs::boolean_token_stream::value_true());
     root.add<irs::by_term>().field(mangleBool("quick.brown.fox")).term(irs::boolean_token_stream::value_false());
@@ -495,7 +509,7 @@ SECTION("BinaryNotIn") {
   {
     irs::Or expected;
     auto& range = expected.add<irs::Not>().filter<irs::Or>().add<irs::by_range>();
-    range.field("a.b.c.e.f");
+    range.field(mangleStringIdentity("a.b.c.e.f"));
     range.include<irs::Bound::MIN>(true).term<irs::Bound::MIN>("4");
     range.include<irs::Bound::MAX>(true).term<irs::Bound::MAX>("5");
 
@@ -545,7 +559,7 @@ SECTION("BinaryEq") {
   // simple attribute, string
   {
     irs::Or expected;
-    expected.add<irs::by_term>().field("a").term("1");
+    expected.add<irs::by_term>().field(mangleStringIdentity("a")).term("1");
 
     assertFilterSuccess("FOR d IN collection FILTER d.a == '1' RETURN d", expected);
     assertFilterSuccess("FOR d IN collection FILTER '1' == d.a RETURN d", expected);
@@ -554,7 +568,7 @@ SECTION("BinaryEq") {
   // complex attribute, string
   {
     irs::Or expected;
-    expected.add<irs::by_term>().field("a.b.c").term("1");
+    expected.add<irs::by_term>().field(mangleStringIdentity("a.b.c")).term("1");
 
     assertFilterSuccess("FOR d IN collection FILTER d.a.b.c == '1' RETURN d", expected);
     assertFilterSuccess("FOR d IN collection FILTER '1' == d.a.b.c RETURN d", expected);
@@ -623,7 +637,7 @@ SECTION("BinaryNotEq") {
   // simple string attribute
   {
     irs::Or expected;
-    expected.add<irs::Not>().filter<irs::by_term>().field("a").term("1");
+    expected.add<irs::Not>().filter<irs::by_term>().field(mangleStringIdentity("a")).term("1");
 
     assertFilterSuccess("FOR d IN collection FILTER d.a != '1' RETURN d", expected);
     assertFilterSuccess("FOR d IN collection FILTER '1' != d.a RETURN d", expected);
@@ -632,7 +646,7 @@ SECTION("BinaryNotEq") {
   // complex attribute name, string
   {
     irs::Or expected;
-    expected.add<irs::Not>().filter<irs::by_term>().field("a.b.c").term("1");
+    expected.add<irs::Not>().filter<irs::by_term>().field(mangleStringIdentity("a.b.c")).term("1");
 
     assertFilterSuccess("FOR d IN collection FILTER d.a.b.c != '1' RETURN d", expected);
     assertFilterSuccess("FOR d IN collection FILTER '1' != d.a.b.c RETURN d", expected);
@@ -704,7 +718,7 @@ SECTION("BinaryGE") {
   {
     irs::Or expected;
     expected.add<irs::by_range>()
-            .field("a")
+            .field(mangleStringIdentity("a"))
             .include<irs::Bound::MIN>(true).term<irs::Bound::MIN>("1");
 
     assertFilterSuccess("FOR d IN collection FILTER d.a >= '1' RETURN d", expected);
@@ -715,7 +729,7 @@ SECTION("BinaryGE") {
   {
     irs::Or expected;
     expected.add<irs::by_range>()
-            .field("a.b.c")
+            .field(mangleStringIdentity("a.b.c"))
             .include<irs::Bound::MIN>(true).term<irs::Bound::MIN>("1");
 
     assertFilterSuccess("FOR d IN collection FILTER d.a.b.c >= '1' RETURN d", expected);
@@ -793,7 +807,7 @@ SECTION("BinaryGT") {
   {
     irs::Or expected;
     expected.add<irs::by_range>()
-            .field("a")
+            .field(mangleStringIdentity("a"))
             .include<irs::Bound::MIN>(false).term<irs::Bound::MIN>("1");
 
     assertFilterSuccess("FOR d IN collection FILTER d.a > '1' RETURN d", expected);
@@ -804,7 +818,7 @@ SECTION("BinaryGT") {
   {
     irs::Or expected;
     expected.add<irs::by_range>()
-            .field("a.b.c")
+            .field(mangleStringIdentity("a.b.c"))
             .include<irs::Bound::MIN>(false).term<irs::Bound::MIN>("1");
 
     assertFilterSuccess("FOR d IN collection FILTER d.a.b.c > '1' RETURN d", expected);
@@ -896,7 +910,7 @@ SECTION("BinaryLE") {
   {
     irs::Or expected;
     expected.add<irs::by_range>()
-            .field("a")
+            .field(mangleStringIdentity("a"))
             .include<irs::Bound::MAX>(true).term<irs::Bound::MAX>("1");
 
     assertFilterSuccess("FOR d IN collection FILTER d.a <= '1' RETURN d", expected);
@@ -907,7 +921,7 @@ SECTION("BinaryLE") {
   {
     irs::Or expected;
     expected.add<irs::by_range>()
-            .field("a.b.c")
+            .field(mangleStringIdentity("a.b.c"))
             .include<irs::Bound::MAX>(true).term<irs::Bound::MAX>("1");
 
     assertFilterSuccess("FOR d IN collection FILTER d.a.b.c <= '1' RETURN d", expected);
@@ -985,7 +999,7 @@ SECTION("BinaryLT") {
   {
     irs::Or expected;
     expected.add<irs::by_range>()
-            .field("a")
+            .field(mangleStringIdentity("a"))
             .include<irs::Bound::MAX>(false).term<irs::Bound::MAX>("1");
 
     assertFilterSuccess("FOR d IN collection FILTER d.a < '1' RETURN d", expected);
@@ -996,7 +1010,7 @@ SECTION("BinaryLT") {
   {
     irs::Or expected;
     expected.add<irs::by_range>()
-            .field("a.b.c")
+            .field(mangleStringIdentity("a.b.c"))
             .include<irs::Bound::MAX>(false).term<irs::Bound::MAX>("1");
 
     assertFilterSuccess("FOR d IN collection FILTER d.a.b.c < '1' RETURN d", expected);
@@ -1074,8 +1088,8 @@ SECTION("BinaryOr") {
   {
     irs::Or expected;
     auto& root = expected.add<irs::Or>();
-    root.add<irs::by_term>().field("a").term("1");
-    root.add<irs::by_term>().field("b").term("2");
+    root.add<irs::by_term>().field(mangleStringIdentity("a")).term("1");
+    root.add<irs::by_term>().field(mangleStringIdentity("b")).term("2");
 
     assertFilterSuccess("FOR d IN collection FILTER d.a == '1' or d.b == '2' RETURN d", expected);
     assertFilterSuccess("FOR d IN collection FILTER d.a == '1' or '2' == d.b RETURN d", expected);
@@ -1088,9 +1102,9 @@ SECTION("BinaryOr") {
     irs::Or expected;
     auto& root = expected.add<irs::Or>();
     root.add<irs::by_range>()
-        .field("a.b.c")
+        .field(mangleStringIdentity("a.b.c"))
         .include<irs::Bound::MAX>(false).term<irs::Bound::MAX>("1");
-    root.add<irs::by_term>().field("c.b.a").term("2");
+    root.add<irs::by_term>().field(mangleStringIdentity("c.b.a")).term("2");
 
     assertFilterSuccess("FOR d IN collection FILTER d.a.b.c < '1' or d.c.b.a == '2' RETURN d", expected);
     assertFilterSuccess("FOR d IN collection FILTER d.a.b.c < '1' or '2' == d.c.b.a RETURN d", expected);
@@ -1215,8 +1229,8 @@ SECTION("BinaryAnd") {
   {
     irs::Or expected;
     auto& root = expected.add<irs::And>();
-    root.add<irs::by_term>().field("a").term("1");
-    root.add<irs::by_term>().field("b").term("2");
+    root.add<irs::by_term>().field(mangleStringIdentity("a")).term("1");
+    root.add<irs::by_term>().field(mangleStringIdentity("b")).term("2");
 
     assertFilterSuccess("FOR d IN collection FILTER d.a == '1' and d.b == '2' RETURN d", expected);
     assertFilterSuccess("FOR d IN collection FILTER d.a == '1' and '2' == d.b RETURN d", expected);
@@ -1229,9 +1243,9 @@ SECTION("BinaryAnd") {
     irs::Or expected;
     auto& root = expected.add<irs::And>();
     root.add<irs::by_range>()
-        .field("a.b.c")
+        .field(mangleStringIdentity("a.b.c"))
         .include<irs::Bound::MAX>(false).term<irs::Bound::MAX>("1");
-    root.add<irs::by_term>().field("c.b.a").term("2");
+    root.add<irs::by_term>().field(mangleStringIdentity("c.b.a")).term("2");
 
     assertFilterSuccess("FOR d IN collection FILTER d.a.b.c < '1' and d.c.b.a == '2' RETURN d", expected);
     assertFilterSuccess("FOR d IN collection FILTER d.a.b.c < '1' and '2' == d.c.b.a RETURN d", expected);
@@ -1342,7 +1356,7 @@ SECTION("BinaryAnd") {
   {
     irs::Or expected;
     auto& range = expected.add<irs::by_range>();
-    range.field("a.b.c")
+    range.field(mangleStringIdentity("a.b.c"))
         .include<irs::Bound::MIN>(false).term<irs::Bound::MIN>("15")
         .include<irs::Bound::MAX>(false).term<irs::Bound::MAX>("40");
 
@@ -1356,7 +1370,7 @@ SECTION("BinaryAnd") {
   {
     irs::Or expected;
     auto& range = expected.add<irs::by_range>();
-    range.field("a.b.c")
+    range.field(mangleStringIdentity("a.b.c"))
         .include<irs::Bound::MIN>(true).term<irs::Bound::MIN>("15")
         .include<irs::Bound::MAX>(false).term<irs::Bound::MAX>("40");
 
@@ -1370,7 +1384,7 @@ SECTION("BinaryAnd") {
   {
     irs::Or expected;
     auto& range = expected.add<irs::by_range>();
-    range.field("a.b.c")
+    range.field(mangleStringIdentity("a.b.c"))
         .include<irs::Bound::MIN>(true).term<irs::Bound::MIN>("15")
         .include<irs::Bound::MAX>(true).term<irs::Bound::MAX>("40");
 
@@ -1384,7 +1398,7 @@ SECTION("BinaryAnd") {
   {
     irs::Or expected;
     auto& range = expected.add<irs::by_range>();
-    range.field("a.b.c")
+    range.field(mangleStringIdentity("a.b.c"))
         .include<irs::Bound::MIN>(false).term<irs::Bound::MIN>("15")
         .include<irs::Bound::MAX>(true).term<irs::Bound::MAX>("40");
 
@@ -1401,7 +1415,7 @@ SECTION("BinaryAnd") {
     irs::Or expected;
     auto& root = expected.add<irs::And>();
     root.add<irs::by_range>()
-        .field("a.b.c")
+        .field(mangleStringIdentity("a.b.c"))
         .include<irs::Bound::MIN>(true).term<irs::Bound::MIN>("15");
     root.add<irs::by_granular_range>()
         .field(mangleNumeric("a.b.c"))
@@ -1428,7 +1442,7 @@ SECTION("BinaryAnd") {
         .field(mangleNumeric("a.b.c"))
         .include<irs::Bound::MIN>(false).insert<irs::Bound::MIN>(minTerm);
     root.add<irs::by_range>()
-        .field("a.b.c")
+        .field(mangleStringIdentity("a.b.c"))
         .include<irs::Bound::MAX>(true).term<irs::Bound::MAX>("40");
 
     assertFilterSuccess("FOR d IN collection FILTER d.a.b.c > 15 and d.a.b.c <= '40' RETURN d", expected);
@@ -1490,7 +1504,7 @@ SECTION("BinaryAnd") {
     irs::Or expected;
     auto& root = expected.add<irs::And>();
     root.add<irs::by_range>()
-        .field("a.b.c")
+        .field(mangleStringIdentity("a.b.c"))
         .include<irs::Bound::MIN>(true).term<irs::Bound::MIN>("15");
     root.add<irs::by_granular_range>()
         .field(mangleNumeric("a.b.c"))
@@ -1517,7 +1531,7 @@ SECTION("BinaryAnd") {
         .field(mangleNumeric("a.b.c"))
         .include<irs::Bound::MIN>(false).insert<irs::Bound::MIN>(minTerm);
     root.add<irs::by_range>()
-        .field("a.b.c")
+        .field(mangleStringIdentity("a.b.c"))
         .include<irs::Bound::MAX>(true).term<irs::Bound::MAX>("40");
 
     assertFilterSuccess("FOR d IN collection FILTER k.a.b.c > 15 and d.a.b.c <= '40' RETURN d", expected);
@@ -1690,7 +1704,7 @@ SECTION("Phrase") {
   {
     irs::Or expected;
     auto& phrase = expected.add<irs::by_phrase>();
-    phrase.field("name").push_back("quick");
+    phrase.field(mangleStringIdentity("name")).push_back("quick");
 
     assertFilterSuccess("FOR d IN VIEW myView FILTER ir::phrase(d.name, 'quick') RETURN d", expected);
     assertFilterSuccess("FOR d IN VIEW myView FILTER iR::phRase(d.name, 'quick') RETURN d", expected);
@@ -1710,7 +1724,7 @@ SECTION("Phrase") {
   {
     irs::Or expected;
     auto& phrase = expected.add<irs::by_phrase>();
-    phrase.field("name").push_back("quick").push_back("brown");
+    phrase.field(mangleStringIdentity("name")).push_back("quick").push_back("brown");
 
     assertFilterSuccess("FOR d IN VIEW myView FILTER ir::phrase(d.name, 'quick', 0, 'brown') RETURN d", expected);
     assertFilterSuccess("FOR d IN VIEW myView FILTER ir::phrase(d.name, 'quick', 0.0, 'brown') RETURN d", expected);
@@ -1729,7 +1743,7 @@ SECTION("Phrase") {
   {
     irs::Or expected;
     auto& phrase = expected.add<irs::by_phrase>();
-    phrase.field("obj.name").push_back("quick").push_back("brown", 5);
+    phrase.field(mangleStringIdentity("obj.name")).push_back("quick").push_back("brown", 5);
 
     assertFilterSuccess("FOR d IN VIEW myView FILTER ir::phrase(d.obj.name, 'quick', 5, 'brown') RETURN d", expected);
     assertFilterSuccess("FOR d IN VIEW myView FILTER ir::phrase(d.obj.name, 'quick', 5.0, 'brown') RETURN d", expected);
@@ -1741,7 +1755,7 @@ SECTION("Phrase") {
   {
     irs::Or expected;
     auto& phrase = expected.add<irs::by_phrase>();
-    phrase.field("obj.properties.id.name")
+    phrase.field(mangleStringIdentity("obj.properties.id.name"))
           .push_back("quick")
           .push_back("brown", 3)
           .push_back("fox", 2)
@@ -1773,7 +1787,7 @@ SECTION("Phrase") {
   {
     irs::Or expected;
     auto& phrase = expected.add<irs::by_phrase>();
-    phrase.field("name");
+    phrase.field(mangleString("name", "test_analyzer"));
     phrase.push_back("q").push_back("u").push_back("i").push_back("c").push_back("k");
 
     assertFilterSuccess("FOR d IN VIEW myView FILTER ir::phrase(d.name, 'quick', 'test_analyzer') RETURN d", expected);
@@ -1793,7 +1807,7 @@ SECTION("Phrase") {
   {
     irs::Or expected;
     auto& phrase = expected.add<irs::by_phrase>();
-    phrase.field("name");
+    phrase.field(mangleString("name", "test_analyzer"));
     phrase.push_back("q").push_back("u").push_back("i").push_back("c").push_back("k");
     phrase.push_back("b").push_back("r").push_back("o").push_back("w").push_back("n");
 
@@ -1814,7 +1828,7 @@ SECTION("Phrase") {
   {
     irs::Or expected;
     auto& phrase = expected.add<irs::by_phrase>();
-    phrase.field("obj.name");
+    phrase.field(mangleString("obj.name", "test_analyzer"));
     phrase.push_back("q").push_back("u").push_back("i").push_back("c").push_back("k");
     phrase.push_back("b", 5).push_back("r").push_back("o").push_back("w").push_back("n");
 
@@ -1828,7 +1842,7 @@ SECTION("Phrase") {
   {
     irs::Or expected;
     auto& phrase = expected.add<irs::by_phrase>();
-    phrase.field("obj.properties.id.name");
+    phrase.field(mangleString("obj.properties.id.name", "test_analyzer"));
     phrase.push_back("q").push_back("u").push_back("i").push_back("c").push_back("k");
     phrase.push_back("b", 3).push_back("r").push_back("o").push_back("w").push_back("n");
     phrase.push_back("f", 2).push_back("o").push_back("x");
@@ -1879,7 +1893,7 @@ SECTION("StartsWith") {
   {
     irs::Or expected;
     auto& prefix = expected.add<irs::by_prefix>();
-    prefix.field("name").term("abc");
+    prefix.field(mangleStringIdentity("name")).term("abc");
     prefix.scored_terms_limit(128);
 
     assertFilterSuccess("FOR d IN VIEW myView FILTER ir::starts_with(d.name, 'abc') RETURN d", expected);
@@ -1889,7 +1903,7 @@ SECTION("StartsWith") {
   {
     irs::Or expected;
     auto& prefix = expected.add<irs::by_prefix>();
-    prefix.field("obj.properties.name").term("abc");
+    prefix.field(mangleStringIdentity("obj.properties.name")).term("abc");
     prefix.scored_terms_limit(128);
 
     assertFilterSuccess("FOR d IN VIEW myView FILTER ir::starts_with(d.obj.properties.name, 'abc') RETURN d", expected);
@@ -1899,7 +1913,7 @@ SECTION("StartsWith") {
   {
     irs::Or expected;
     auto& prefix = expected.add<irs::by_prefix>();
-    prefix.field("name").term("abc");
+    prefix.field(mangleStringIdentity("name")).term("abc");
     prefix.scored_terms_limit(1024);
 
     assertFilterSuccess("FOR d IN VIEW myView FILTER ir::starts_with(d.name, 'abc', 1024) RETURN d", expected);
@@ -1909,7 +1923,7 @@ SECTION("StartsWith") {
   {
     irs::Or expected;
     auto& prefix = expected.add<irs::by_prefix>();
-    prefix.field("name").term("abc");
+    prefix.field(mangleStringIdentity("name")).term("abc");
     prefix.scored_terms_limit(100);
 
     assertFilterSuccess("FOR d IN VIEW myView FILTER ir::starts_with(d.name, 'abc', 100.5) RETURN d", expected);
