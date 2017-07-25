@@ -164,7 +164,8 @@ LogicalCollection::LogicalCollection(LogicalCollection const& other)
       _vocbase(other.vocbase()),
       _keyOptions(other._keyOptions),
       _keyGenerator(KeyGenerator::factory(VPackSlice(keyOptions()))),
-      _physical(other.getPhysical()->clone(this, other.getPhysical())) {
+      _physical(other.getPhysical()->clone(this, other.getPhysical())),
+      _clusterEstimateTTL(0) {
   TRI_ASSERT(_physical != nullptr);
   if (ServerState::instance()->isDBServer() ||
       !ServerState::instance()->isRunningInCluster()) {
@@ -203,7 +204,8 @@ LogicalCollection::LogicalCollection(TRI_vocbase_t* vocbase,
       _keyOptions(nullptr),
       _keyGenerator(),
       _physical(
-          EngineSelectorFeature::ENGINE->createPhysicalCollection(this, info)) {
+          EngineSelectorFeature::ENGINE->createPhysicalCollection(this, info)),
+      _clusterEstimateTTL(0) {
   // add keyoptions from slice
   TRI_ASSERT(info.isObject());
   VPackSlice keyOpts = info.get("keyOptions");
@@ -583,19 +585,28 @@ std::unique_ptr<FollowerInfo> const& LogicalCollection::followers() const {
 void LogicalCollection::setDeleted(bool newValue) { _isDeleted = newValue; }
 
 // SECTION: Indexes
-
-
-std::vector<std::pair<std::string, double>> LogicalCollection::clusterIndexEstimates(){
-  double ctime = TRI_microtime();
-  auto needEstimateUpdate = [this,ctime](){
-    return _clusterEstimates.empty() || ctime - _clusterEstimateTTL > 10.0;
-  };
+std::vector<std::pair<std::string, double>> LogicalCollection::clusterIndexEstimates(bool doNotUpdate){
   READ_LOCKER(readlock, _clusterEstimatesLock);
+  if (doNotUpdate) {
+    return _clusterEstimates;
+  }
+
+  double ctime = TRI_microtime(); // in seconds
+  auto needEstimateUpdate = [this,ctime](){
+    if(_clusterEstimates.empty()) {
+      LOG_TOPIC(TRACE, Logger::CLUSTER) << "update because estimate is not availabe";
+      return true;
+    } else if (ctime - _clusterEstimateTTL > 10.0) {
+      LOG_TOPIC(TRACE, Logger::CLUSTER) << "update because estimate is too old: " << ctime - _clusterEstimateTTL;
+      return true;
+    }
+    return false;
+  };
+
   if (needEstimateUpdate()){
     readlock.unlock();
     WRITE_LOCKER(writelock, _clusterEstimatesLock);
     if(needEstimateUpdate()){
-      LOG_TOPIC(ERR, Logger::FIXME) << "updating estimates in cluster";
       selectivityEstimatesOnCoordinator(_vocbase->name(), name(), _clusterEstimates);
       _clusterEstimateTTL = TRI_microtime();
     }

@@ -179,9 +179,20 @@ class LogicalCollection {
       transaction::Methods* trx,
       std::function<bool(DocumentIdentifierToken const&)> callback);
 
-  // SECTION: Indexes
-  std::vector<std::pair<std::string, double>> clusterIndexEstimates();
+  //// SECTION: Indexes
+
+  // Estimates
+  std::vector<std::pair<std::string, double>> clusterIndexEstimates(bool doNotUpdate=false);
   void clusterIndexEstimates(std::vector<std::pair<std::string, double>>&& estimates);
+
+  double clusterIndexEstimatesTTL(){
+    return _clusterEstimateTTL;
+  }
+
+  void clusterIndexEstimatesTTL(double ttl){
+    _clusterEstimateTTL = ttl;
+  }
+  // End - Estimates
 
   std::vector<std::shared_ptr<Index>> getIndexes() const;
 
