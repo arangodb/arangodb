@@ -321,7 +321,7 @@ void RocksDBEngine::start() {
   if (opts->_blockCacheSize > 0) {
     table_options.block_cache = rocksdb::NewLRUCache(opts->_blockCacheSize,
                                       static_cast<int>(opts->_blockCacheShardBits));
-    table_options.cache_index_and_filter_blocks = opts->_compactionReadaheadSize > 0;
+    //table_options.cache_index_and_filter_blocks = opts->_compactionReadaheadSize > 0;
   } else {
     table_options.no_block_cache = true;
   }

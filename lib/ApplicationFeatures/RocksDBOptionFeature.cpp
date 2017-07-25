@@ -254,7 +254,7 @@ void RocksDBOptionFeature::collectOptions(
                            "number of log files to keep around for recycling",
                            new UInt64Parameter(&_recycleLogFileNum));
 
-  options->addHiddenOption(
+  options->addOption(
       "--rocksdb.compaction-read-ahead-size",
       "if non-zero, we perform bigger reads when doing compaction. If you're "
       "running RocksDB on spinning disks, you should set this to at least 2MB. "
