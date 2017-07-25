@@ -1083,6 +1083,87 @@ SECTION("BinaryLT") {
   assertFilterFail("FOR d IN collection FILTER 3 < 2 < d.a.b.c.numeric RETURN d");
 }
 
+SECTION("UnaryNot") {
+  // simple attribute, string
+  {
+    irs::Or expected;
+    expected.add<irs::Not>()
+            .filter<irs::And>()
+            .add<irs::by_term>().field(mangleStringIdentity("a")).term("1");
+
+    assertFilterSuccess("FOR d IN collection FILTER not (d.a == '1') RETURN d", expected);
+    assertFilterSuccess("FOR d IN collection FILTER not ('1' == d.a) RETURN d", expected);
+  }
+
+  // complex attribute, string
+  {
+    irs::Or expected;
+    expected.add<irs::Not>()
+            .filter<irs::And>()
+            .add<irs::by_term>().field(mangleStringIdentity("a.b.c")).term("1");
+
+    assertFilterSuccess("FOR d IN collection FILTER not (d.a.b.c == '1') RETURN d", expected);
+    assertFilterSuccess("FOR d IN collection FILTER not ('1' == d.a.b.c) RETURN d", expected);
+  }
+
+  // complex attribute, true
+  {
+    irs::Or expected;
+    expected.add<irs::Not>()
+            .filter<irs::And>()
+            .add<irs::by_term>().field(mangleBool("a.b.c")).term(irs::boolean_token_stream::value_true());
+
+    assertFilterSuccess("FOR d IN collection FILTER not (d.a.b.c == true) RETURN d", expected);
+    assertFilterSuccess("FOR d IN collection FILTER not (true == d.a.b.c) RETURN d", expected);
+  }
+
+  // complex attribute, false
+  {
+    irs::Or expected;
+    expected.add<irs::Not>()
+            .filter<irs::And>()
+            .add<irs::by_term>().field(mangleBool("a.b.c.bool")).term(irs::boolean_token_stream::value_false());
+
+    assertFilterSuccess("FOR d IN collection FILTER not (d.a.b.c.bool == false) RETURN d", expected);
+    assertFilterSuccess("FOR d IN collection FILTER not (false == d.a.b.c.bool) RETURN d", expected);
+  }
+
+  // complex attribute, null
+  {
+    irs::Or expected;
+    expected.add<irs::Not>()
+            .filter<irs::And>()
+            .add<irs::by_term>().field(mangleNull("a.b.c.bool")).term(irs::null_token_stream::value_null());
+
+    assertFilterSuccess("FOR d IN collection FILTER not (d.a.b.c.bool == null) RETURN d", expected);
+    assertFilterSuccess("FOR d IN collection FILTER not (null == d.a.b.c.bool) RETURN d", expected);
+  }
+
+  // complex attribute, numeric
+  {
+    irs::numeric_token_stream stream;
+    stream.reset(3.);
+    CHECK(stream.next());
+    auto& term = stream.attributes().get<irs::term_attribute>();
+
+    irs::Or expected;
+    expected.add<irs::Not>()
+            .filter<irs::And>()
+            .add<irs::by_term>().field(mangleNumeric("a.b.c.numeric")).term(term->value());
+
+    assertFilterSuccess("FOR d IN collection FILTER not (d.a.b.c.numeric == 3) RETURN d", expected);
+    assertFilterSuccess("FOR d IN collection FILTER not (d.a.b.c.numeric == 3.0) RETURN d", expected);
+    assertFilterSuccess("FOR d IN collection FILTER not (3 == d.a.b.c.numeric) RETURN d", expected);
+    assertFilterSuccess("FOR d IN collection FILTER not (3.0 == d.a.b.c.numeric) RETURN d", expected);
+  }
+
+  // invalid unary not usage
+  assertFilterFail("FOR d IN collection FILTER not d.a == '1' RETURN d");
+  assertFilterFail("FOR d IN collection FILTER d.a == not '1' RETURN d");
+  assertFilterFail("FOR d IN collection FILTER '1' == not d.a RETURN d");
+  assertFilterFail("FOR d IN collection FILTER not '1' == not d.a RETURN d");
+}
+
 SECTION("BinaryOr") {
   // string and string
   {
@@ -1251,6 +1332,25 @@ SECTION("BinaryAnd") {
     assertFilterSuccess("FOR d IN collection FILTER d.a.b.c < '1' and '2' == d.c.b.a RETURN d", expected);
     assertFilterSuccess("FOR d IN collection FILTER '1' > d.a.b.c and d.c.b.a == '2' RETURN d", expected);
     assertFilterSuccess("FOR d IN collection FILTER '1' > d.a.b.c and '2' == d.c.b.a RETURN d", expected);
+  }
+
+  // string and not string
+  {
+    irs::Or expected;
+    auto& root = expected.add<irs::And>();
+    root.add<irs::by_range>()
+        .field(mangleStringIdentity("a.b.c"))
+        .include<irs::Bound::MAX>(false).term<irs::Bound::MAX>("1");
+    root.add<irs::Not>()
+        .filter<irs::And>()
+        .add<irs::by_term>().field(mangleStringIdentity("c.b.a")).term("2");
+
+    assertFilterSuccess("FOR d IN collection FILTER d.a.b.c < '1' and not (d.c.b.a == '2') RETURN d", expected);
+    assertFilterSuccess("FOR d IN collection FILTER d.a.b.c < '1' and not ('2' == d.c.b.a) RETURN d", expected);
+    assertFilterSuccess("FOR d IN collection FILTER '1' > d.a.b.c and not (d.c.b.a == '2') RETURN d", expected);
+    assertFilterSuccess("FOR d IN collection FILTER '1' > d.a.b.c and not ('2' == d.c.b.a) RETURN d", expected);
+
+    assertFilterFail("FOR d IN collection FILTER d.a.b.c < '1' and not d.c.b.a == '2' RETURN d");
   }
 
   // bool and null

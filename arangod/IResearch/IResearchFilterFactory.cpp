@@ -977,8 +977,8 @@ bool processSubnode(
     case arangodb::aql::NODE_TYPE_OPERATOR_TERNARY: // ternary
       break;
     case arangodb::aql::NODE_TYPE_VALUE : // value
-    case arangodb::aql::NODE_TYPE_ARRAY: // array
-    case arangodb::aql::NODE_TYPE_OBJECT: // array
+    case arangodb::aql::NODE_TYPE_ARRAY:  // array
+    case arangodb::aql::NODE_TYPE_OBJECT: // object
       return fromValue(filter, node);
     case arangodb::aql::NODE_TYPE_FCALL: // function call
       return fromFCall(filter, node);

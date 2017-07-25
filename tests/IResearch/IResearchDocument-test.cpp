@@ -196,7 +196,7 @@ SECTION("Field_setCid") {
     TRI_voc_cid_t cid = 10;
     arangodb::iresearch::Field::setCidValue(field, cid, arangodb::iresearch::Field::init_stream_t());
     CHECK(1.f == field._boost);
-    CHECK("@_CID" == field._name);
+    CHECK(arangodb::iresearch::DocumentPrimaryKey::CID() == field._name);
     CHECK(&irs::flags::empty_instance() == field._features);
 
     auto* stream = dynamic_cast<irs::string_token_stream*>(field._analyzer.get());
@@ -206,7 +206,7 @@ SECTION("Field_setCid") {
 
     arangodb::iresearch::Field::setCidValue(field, cid);
     CHECK(1.f == field._boost);
-    CHECK("@_CID" == field._name);
+    CHECK(arangodb::iresearch::DocumentPrimaryKey::CID() == field._name);
     CHECK(&irs::flags::empty_instance() == field._features);
     CHECK(stream == field._analyzer.get());
     CHECK(stream->next());
@@ -223,7 +223,7 @@ SECTION("Field_setCid") {
     TRI_voc_rid_t rid = 10;
     arangodb::iresearch::Field::setRidValue(field, rid, arangodb::iresearch::Field::init_stream_t());
     CHECK(1.f == field._boost);
-    CHECK("@_REV" == field._name);
+    CHECK(arangodb::iresearch::DocumentPrimaryKey::RID() == field._name);
     CHECK(&irs::flags::empty_instance() == field._features);
 
     auto* stream = dynamic_cast<irs::string_token_stream*>(field._analyzer.get());
@@ -233,7 +233,7 @@ SECTION("Field_setCid") {
 
     arangodb::iresearch::Field::setRidValue(field, rid);
     CHECK(1.f == field._boost);
-    CHECK("@_REV" == field._name);
+    CHECK(arangodb::iresearch::DocumentPrimaryKey::RID() == field._name);
     CHECK(&irs::flags::empty_instance() == field._features);
     CHECK(stream == field._analyzer.get());
     CHECK(stream->next());
