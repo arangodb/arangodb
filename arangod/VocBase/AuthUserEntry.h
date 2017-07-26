@@ -92,8 +92,12 @@ class AuthUserEntry {
 
   struct DBAuthContext {
     DBAuthContext(AuthLevel dbLvl,
-                  std::unordered_map<std::string, AuthLevel> coll)
+                  std::unordered_map<std::string, AuthLevel> const& coll)
         : _databaseAuthLevel(dbLvl), _collectionAccess(coll) {}
+    
+    DBAuthContext(AuthLevel dbLvl,
+                  std::unordered_map<std::string, AuthLevel>&& coll)
+        : _databaseAuthLevel(dbLvl), _collectionAccess(std::move(coll)) {}
 
     AuthLevel collectionAuthLevel(std::string const& collectionName, bool& notFound) const;
 
