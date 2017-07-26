@@ -182,8 +182,15 @@ void CheckVersionFeature::checkVersion() {
   if (*_result == 1) {
     *_result = EXIT_SUCCESS;
   } else if (*_result > 1) {
-    *_result = EXIT_FAILURE;
-    LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << "Database version check failed";
-    FATAL_ERROR_EXIT();
+    if (*_result == 2) {
+      // downgrade needed
+      LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << "Database version check failed: downgrade needed";
+    } else if (*_result == 3) {
+      LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << "Database version check failed: upgrade needed";
+    } else {
+      LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << "Database version check failed";
+      *_result = EXIT_FAILURE;
+    }
+    FATAL_ERROR_EXIT_CODE(*_result);
   }
 }
