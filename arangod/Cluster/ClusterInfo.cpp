@@ -538,7 +538,7 @@ void ClusterInfo::loadPlan() {
                 collectionPairSlice.key.copyString();
 
             decltype(vocbase->lookupCollection(collectionId)->clusterIndexEstimates()) selectivityEstimates;
-            double selectivityTTL;
+            double selectivityTTL = 0;
             if (isCoordinator) {
               auto collection = _plannedCollections[databaseName][collectionId];
               if(collection){
@@ -573,6 +573,9 @@ void ClusterInfo::loadPlan() {
                 LOG_TOPIC(TRACE, Logger::CLUSTER) << "copy index estimates";
                 newCollection->clusterIndexEstimates(std::move(selectivityEstimates));
                 newCollection->clusterIndexEstimatesTTL(selectivityTTL);
+                for(auto i : newCollection->getIndexes()){
+                  i->updateClusterEstimate();
+                }
               }
               // mop: register with name as well as with id
               databaseCollections.emplace(

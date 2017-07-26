@@ -42,6 +42,9 @@
 
 using namespace arangodb;
 
+// If the Index is on a coordinator instance the index may not access the
+// logical collection because it could be gone!
+
 Index::Index(
     TRI_idx_iid_t iid, arangodb::LogicalCollection* collection,
     std::vector<std::vector<arangodb::basics::AttributeName>> const& fields,
@@ -50,7 +53,8 @@ Index::Index(
       _collection(collection),
       _fields(fields),
       _unique(unique),
-      _sparse(sparse) {
+      _sparse(sparse),
+      _clusterSelectivity(0.1) {
   // note: _collection can be a nullptr in the cluster coordinator case!!
 }
 
@@ -62,7 +66,8 @@ Index::Index(TRI_idx_iid_t iid, arangodb::LogicalCollection* collection,
       _unique(arangodb::basics::VelocyPackHelper::getBooleanValue(
           slice, "unique", false)),
       _sparse(arangodb::basics::VelocyPackHelper::getBooleanValue(
-          slice, "sparse", false)) {
+          slice, "sparse", false)),
+      _clusterSelectivity(0.1) {
   VPackSlice const fields = slice.get("fields");
   setFields(fields,
             Index::allowExpansion(Index::type(slice.get("type").copyString())));
@@ -508,7 +513,11 @@ double Index::selectivityEstimate(StringRef const* extra) const {
   if(!ServerState::instance()->isCoordinator()){
     estimate = selectivityEstimateLocal(extra);
   } else {
-    estimate = getClusterEstimate(estimate /*as default*/).second;
+    // getClusterEstimate can not be called from within the index
+    // as _collection is not always vaild
+
+    //estimate = getClusterEstimate(estimate /*as default*/).second;
+    estimate=_clusterSelectivity;
   }
 
   TRI_ASSERT(estimate >= 0.0 &&
@@ -858,9 +867,11 @@ void Index::warmup(arangodb::transaction::Methods*) {
   // it has to explicitly implement it.
 }
 
-std::pair<bool,double> Index::getClusterEstimate(double defaultValue) const {
+std::pair<bool,double> Index::updateClusterEstimate(double defaultValue) {
   // try to receive an selectivity estimate for the index
   // from indexEstimates stored in the logical collection.
+  // the caller has to guarantee that the _collection is valid.
+  // on the coordinator _collection is not always vaild!
 
   std::pair<bool,double> rv(false,defaultValue);
 
@@ -870,8 +881,8 @@ std::pair<bool,double> Index::getClusterEstimate(double defaultValue) const {
   if( found != estimates.end()){
     rv.first = true;
     rv.second = found->second;
+    _clusterSelectivity = rv.second;
   }
-
   return rv;
 };
 

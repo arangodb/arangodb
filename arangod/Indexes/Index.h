@@ -302,11 +302,14 @@ class Index {
 
   virtual void warmup(arangodb::transaction::Methods* trx);
 
+  // needs to be called when the _colllection is guaranteed to be valid!
+  // unfortunatly access the logical collection on the coordinator is not always safe!
+  std::pair<bool,double> updateClusterEstimate(double defaultValue = 0.1);
+
  protected:
   static size_t sortWeight(arangodb::aql::AstNode const* node);
 
   //returns estimate for index in cluster - the bool is true if the index was found
-  std::pair<bool,double> getClusterEstimate(double defaultValue = 0.1) const;
 
  private:
   /// @brief set fields from slice
@@ -322,6 +325,8 @@ class Index {
   mutable bool _unique;
 
   mutable bool _sparse;
+  
+  double _clusterSelectivity;
 };
 }
 
