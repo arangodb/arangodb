@@ -760,12 +760,13 @@ extern int ZEXPORT unzClose(unzFile file) {
   unz64_s* s;
   if (file == NULL) return UNZ_PARAMERROR;
   s = (unz64_s*)file;
+  int ret = UNZ_OK;
 
-  if (s->pfile_in_zip_read != NULL) unzCloseCurrentFile(file);
+  if (s->pfile_in_zip_read != NULL) ret = unzCloseCurrentFile(file);
 
   ZCLOSE64(s->z_filefunc, s->filestream);
   TRYFREE(s);
-  return UNZ_OK;
+  return ret;
 }
 
 /*
@@ -1390,7 +1391,12 @@ extern int ZEXPORT unzOpenCurrentFile3(unzFile file, int* method, int* level,
   s = (unz64_s*)file;
   if (!s->current_file_ok) return UNZ_PARAMERROR;
 
-  if (s->pfile_in_zip_read != NULL) unzCloseCurrentFile(file);
+  if (s->pfile_in_zip_read != NULL) {
+    int ret = unzCloseCurrentFile(file);
+    if (ret != UNZ_OK) {
+      return ret;
+    }
+  }
 
   if (unz64local_CheckCurrentFileCoherencyHeader(
           s, &iSizeVar, &offset_local_extrafield, &size_local_extrafield) !=
