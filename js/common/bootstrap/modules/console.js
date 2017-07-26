@@ -402,7 +402,6 @@ global.DEFINE_MODULE('console', (function () {
   // //////////////////////////////////////////////////////////////////////////////
   // / @brief warnLines
   // //////////////////////////////////////////////////////////////////////////////
-
   exports.warnLines = function () {
     var msg;
 
@@ -420,116 +419,65 @@ global.DEFINE_MODULE('console', (function () {
     }
   };
 
-  exports.errorStack = function (e, msg) {
+  // //////////////////////////////////////////////////////////////////////////////
+  // / @brief warn per level
+  // //////////////////////////////////////////////////////////////////////////////
+  exports.logLvlLines = function (lvl, lines) {
+    var msg;
+
+    try {
+      msg = sprintf.apply(sprintf, prepareArgs(lines));
+    } catch (e) {
+      msg = `${e}: ${lines}`;
+    }
+
+    var a = msg.split('\n');
+    var i;
+
+    for (i = 0; i < a.length; ++i) {
+      logGroup(lvl, a[i]);
+    }
+  };
+
+  exports.levelStack = function (lvl, e, msg) {
+    let logStrings = [];
     if (msg) {
-      exports.errorLines(msg);
+      logStrings.push(msg);
     }
     if (e.codeFrame) {
-      exports.errorLines(e.codeFrame);
+      logStrings.push(e.codeFrame);
     }
     let err = e;
     while (err) {
       if (!msg && err === e) {
         if (err.hasOwnProperty('errorNum')) {
           let stacktrace = err.stack.replace(/^ArangoError/, '');
-          exports.errorLines('ArangoError ' + err.errorNum + stacktrace);
-        }
-        else {
-          exports.errorLines(
-            err.stack
-          )
+          logStrings.push('ArangoError ' + err.errorNum + stacktrace);
+        } else {
+          logStrings.push(err.stack);
         }
       } else {
-        exports.errorLines(
-          `via ${err.stack}`
-        );
+        logStrings.push(`via ${err.stack}`);
       }
       err = err.cause;
     }
+    exports.logLvlLines(lvl, logStrings);
+  };
+
+  exports.errorStack = function (e, msg) {
+    exports.levelStack('=error', e, msg);
   };
 
   exports.warnStack = function (e, msg) {
-    if (msg) {
-      exports.warnLines(msg);
-    }
-    if (e.codeFrame) {
-      exports.warnLines(e.codeFrame);
-    }
-    let err = e;
-    while (err) {
-      if (!msg && err === e) {
-        if (err.hasOwnProperty('errorNum')) {
-          let stacktrace = err.stack.replace(/^ArangoError/, '');
-          exports.warnLines('ArangoError ' + err.errorNum + stacktrace);
-        }
-        else {
-          exports.warnLines(
-            err.stack
-          )
-        }
-      } else {
-        exports.warnLines(
-          `via ${err.stack}`
-        );
-      }
-      err = err.cause;
-    }
+    exports.levelStack('=warning', e, msg);
   };
 
   exports.infoStack = function (e, msg) {
-    if (msg) {
-      exports.infoLines(msg);
-    }
-    if (e.codeFrame) {
-      exports.infoLines(e.codeFrame);
-    }
-    let err = e;
-    while (err) {
-      if (!msg && err === e) {
-        if (err.hasOwnProperty('errorNum')) {
-          let stacktrace = err.stack.replace(/^ArangoError/, '');
-          exports.infoLines('ArangoError ' + err.errorNum + stacktrace);
-        }
-        else {
-          exports.infoLines(
-            err.stack
-          )
-        }
-      } else {
-        exports.infoLines(
-          `via ${err.stack}`
-        );
-      }
-      err = err.cause;
-    }
+    exports.levelStack('=info', e, msg);
   };
 
   exports.debugStack = function (e, msg) {
-    if (msg) {
-      exports.debugLines(msg);
-    }
-    if (e.codeFrame) {
-      exports.debugLines(e.codeFrame);
-    }
-    let err = e;
-    while (err) {
-      if (!msg && err === e) {
-        if (err.hasOwnProperty('errorNum')) {
-          let stacktrace = err.stack.replace(/^ArangoError/, '');
-          exports.debugLines('ArangoError ' + err.errorNum + stacktrace);
-        }
-        else {
-          exports.debugLines(
-            err.stack
-          )
-        }
-      } else {
-        exports.debugLines(
-          `via ${err.stack}`
-        );
-      }
-      err = err.cause;
-    }
+    exports.levelStack('=debug', e, msg);
   };
 
   return exports;
