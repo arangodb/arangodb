@@ -92,6 +92,9 @@ const executeJS = (code) => {
     httpOptions);
 };
 
+switchUser('root', '_system');
+helper.removeAllUsers();
+
 describe('User Rights Management', () => {
   before(helper.generateAllUsers);
   after(helper.removeAllUsers);

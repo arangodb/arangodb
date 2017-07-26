@@ -29,10 +29,12 @@
 
 #include "Basics/StringUtils.h"
 #include "Basics/tri-strings.h"
+#include "GeneralServer/AuthenticationFeature.h"
 #include "Logger/Logger.h"
 #include "Scheduler/JobGuard.h"
 #include "Scheduler/Scheduler.h"
 #include "Scheduler/SchedulerFeature.h"
+#include "Utils/ExecContext.h"
 #include "V8/v8-conv.h"
 #include "V8/v8-utils.h"
 #include "V8/v8-vpack.h"
@@ -93,6 +95,7 @@ class V8Task : public std::enable_shared_from_this<V8Task> {
   std::string const _id;
   std::string const _name;
   double const _created;
+  std::unique_ptr<ExecContext> _execContext;
 
   std::unique_ptr<boost::asio::steady_timer> _timer;
 
@@ -256,6 +259,14 @@ V8Task::callbackFunction() {
       V8Task::unregisterTask(_id, false);
       return;
     }
+    
+    if (_execContext) { // permissions may have changed since creating V8Task
+      AuthenticationFeature* auth = AuthenticationFeature::INSTANCE;
+      _execContext->setSysAuthLevel(auth->canUseDatabase(_execContext->user(),
+                                                         TRI_VOC_SYSTEM_DATABASE));
+      _execContext->setDBAuthLevel(auth->canUseDatabase(_execContext->user(),
+                                                        _execContext->database()));
+    }
 
     // now do the work:
     work();
@@ -272,12 +283,14 @@ V8Task::callbackFunction() {
 }
 
 void V8Task::start(boost::asio::io_service* ioService) {
+  if (ExecContext::CURRENT != nullptr) {
+    _execContext.reset(ExecContext::CURRENT->copy());
+  }
+  
   _timer.reset(new boost::asio::steady_timer(*ioService));
-
   if (_offset.count() <= 0) {
     _offset = std::chrono::microseconds(1);
   }
-
   _timer->expires_from_now(_offset);
   _timer->async_wait(callbackFunction());
 }
@@ -363,10 +376,13 @@ void V8Task::work() {
 
       // call the function within a try/catch
       try {
+        if (_execContext) {
+          ExecContext::CURRENT = _execContext.get();
+        }
+        TRI_DEFER(ExecContext::CURRENT = nullptr);
+        
         v8::TryCatch tryCatch;
-
         action->Call(current, 1, &fArgs);
-
         if (tryCatch.HasCaught()) {
           if (tryCatch.CanContinue()) {
             TRI_LogV8Exception(isolate, &tryCatch);
