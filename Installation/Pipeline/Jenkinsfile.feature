@@ -8,8 +8,8 @@ properties(
 )
 
 def defaultLinux = true
-def defaultMac = true
-def defaultWindows = true
+def defaultMac = false
+def defaultWindows = false
 def defaultBuild = true
 def defaultCleanBuild = false
 def defaultCommunity = true
@@ -522,13 +522,13 @@ def testEdition(edition, os, mode, engine) {
     try {
         try {
             if (os == 'linux') {
-                sh "./Installation/Pipeline/test_${mode}_${edition}_${engine}_${os}.sh 10"
+                sh "./Installation/Pipeline/linux/test_${mode}_${edition}_${engine}_${os}.sh 10"
             }
             else if (os == 'mac') {
-                sh "./Installation/Pipeline/test_${mode}_${edition}_${engine}_${os}.sh 5"
+                sh "./Installation/Pipeline/mac/test_${mode}_${edition}_${engine}_${os}.sh 5"
             }
             else if (os == 'windows') {
-                powershell ". .\\Installation\\Pipeline\\test_${mode}_${edition}_${engine}_${os}.ps1"
+                powershell ". .\\Installation\\Pipeline\\windows\\test_${mode}_${edition}_${engine}_${os}.ps1"
             }
         }
         catch (exc) {
@@ -657,13 +657,13 @@ allResiliencesSuccessful = true
 def testResilience(os, engine, foxx) {
     withEnv(['LOG_COMMUNICATION=debug', 'LOG_REQUESTS=trace', 'LOG_AGENCY=trace']) {
         if (os == 'linux') {
-            sh "./Installation/Pipeline/test_resilience_${foxx}_${engine}_${os}.sh"
+            sh "./Installation/Pipeline/linux/test_resilience_${foxx}_${engine}_${os}.sh"
         }
         else if (os == 'mac') {
-            sh "./Installation/Pipeline/test_resilience_${foxx}_${engine}_${os}.sh"
+            sh "./Installation/Pipeline/mac/test_resilience_${foxx}_${engine}_${os}.sh"
         }
         else if (os == 'windows') {
-            powershell "./Installation/Pipeline/test_resilience_${foxx}_${engine}_${os}.ps1"
+            powershell ".\\Installation\\Pipeline\\test_resilience_${foxx}_${engine}_${os}.ps1"
         }
     }
 }
@@ -808,13 +808,13 @@ def buildEdition(edition, os) {
     try {
         try {
             if (os == 'linux') {
-                sh "./Installation/Pipeline/build_${edition}_${os}.sh 64"
+                sh "./Installation/Pipeline/linux/build_${edition}_${os}.sh 64"
             }
             else if (os == 'mac') {
-                sh "./Installation/Pipeline/build_${edition}_${os}.sh 20"
+                sh "./Installation/Pipeline/mac/build_${edition}_${os}.sh 20"
             }
             else if (os == 'windows') {
-                powershell ". .\\Installation\\Pipeline\\build_${edition}_${os}.ps1"
+                powershell ". .\\Installation\\Pipeline\\windows\\build_${edition}_${os}.ps1"
             }
         }
         finally {
@@ -1031,7 +1031,7 @@ stage('result') {
             && allTestsSuccessful
             && allResiliencesSuccessful
             && jslintSuccessful)) {
-            currentBuild.result = 'FAILURE'
+            error "run failed"
         }
     }
 }
