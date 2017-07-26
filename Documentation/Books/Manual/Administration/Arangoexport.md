@@ -134,3 +134,8 @@ This exports the named graph mygraph into the xgmml file *mygraph.xgmml* with a 
 
 Export via AQL query
 --------------------
+
+    unix> arangoexport --type jsonl --query "for book in books filter book.sells > 100 return book"
+
+Export via an aql query allows you to export the returned data as the type specified with *--type*.
+The example exports all books as jsonl that are sold more than 100 times.
