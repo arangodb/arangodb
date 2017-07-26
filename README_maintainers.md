@@ -518,7 +518,7 @@ Generate users documentation
 ============================
 If you've edited examples, see below how to regenerate them with `./utils/generateExamples.sh`.
 If you've edited REST (AKA HTTP) documentation, first invoke `./utils/generateSwagger.sh`.
-Run `arangodb/Documentation/Books/build.sh` to generate it.
+Run `cd Documentation/Books && ./build.sh` to generate it.
 The documentation will be generated in subfolders in `arangodb/Documentation/Books/books` -
 use your favorite browser to read it.
 
