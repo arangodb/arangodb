@@ -237,11 +237,12 @@ void SupervisorFeature::daemonize() {
 
             if (t < MIN_TIME_ALIVE_IN_SEC) {
               LOG_TOPIC(ERR, Logger::STARTUP)
-                    << "child process " << _clientPid << " terminated unexpectedly, exit status"
+                    << "child process " << _clientPid << " terminated unexpectedly, exit status "
                     << WEXITSTATUS(status) << ". the child process only survived for " << t
                     << " seconds. this is lower than the minimum threshold value of " << MIN_TIME_ALIVE_IN_SEC
                     << " s. " << noRestartMessage << ". " << fixErrorMessage;
 
+              TRI_ASSERT(horrible);
               done = true;
             } else {
               LOG_TOPIC(ERR, Logger::STARTUP)
@@ -337,8 +338,8 @@ void SupervisorFeature::daemonize() {
       return;
     }
   }
-    
-  LOG_TOPIC(DEBUG, Logger::STARTUP) << "supervisor mode: finished";
+
+  LOG_TOPIC(DEBUG, Logger::STARTUP) << "supervisor mode: finished (exit " << result << ")";
 
   Logger::flush();
   Logger::shutdown();
