@@ -432,11 +432,8 @@ global.DEFINE_MODULE('console', (function () {
     }
 
     var a = msg.split('\n');
-    var i;
 
-    for (i = 0; i < a.length; ++i) {
-      logGroup(lvl, a[i]);
-    }
+    log(lvl, a);
   };
 
   exports.levelStack = function (lvl, e, msg) {
