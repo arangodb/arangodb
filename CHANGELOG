@@ -6,14 +6,14 @@ devel
 
 * ui: fixed document view _from and _to linking issue for special characters
 
-* added function `db._parse(query)` for parse an AQL query and return information about it
+* added function `db._parse(query)` for parsing an AQL query and returning information about it
 
 * fixed one medium priority and two low priority security user interface
   issues found by owasp zap.
 
 * ui: added index deduplicate options
 
-* ui: fixed renaming of collections based on rocksdb storage engine
+* ui: fixed renaming of collections for the rocksdb storage engine
 
 * documentation and js fixes for secondaries
 
