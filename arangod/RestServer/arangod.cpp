@@ -97,7 +97,8 @@
 #endif
 
 #ifdef USE_IRESEARCH
-#include "IResearch/IResearchFeature.h"
+  #include "IResearch/IResearchAnalyzerFeature.h"
+  #include "IResearch/IResearchFeature.h"
 #endif
 
 // storage engines
@@ -208,7 +209,8 @@ static int runServer(int argc, char** argv, ArangoGlobalContext &context) {
 #endif
 
 #ifdef USE_IRESEARCH
-    server.addFeature(new iresearch::IResearchFeature(&server));
+    server.addFeature(new arangodb::iresearch::IResearchAnalyzerFeature(&server));
+    server.addFeature(new arangodb::iresearch::IResearchFeature(&server));
 #endif
 
     // storage engines
