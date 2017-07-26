@@ -116,13 +116,13 @@ int TransactionState::addCollection(TRI_voc_cid_t cid,
                                      _vocbase->name(), colName);
     
     if (level == AuthLevel::NONE) {
-      LOG_TOPIC(WARN, Logger::AUTHORIZATION) << "User " << ExecContext::CURRENT->user()
+      LOG_TOPIC(TRACE, Logger::AUTHORIZATION) << "User " << ExecContext::CURRENT->user()
                                              << " has collection AuthLevel::NONE";
       return TRI_ERROR_FORBIDDEN;
     }
     bool collectionWillWrite = AccessMode::isWriteOrExclusive(accessType);
     if (level == AuthLevel::RO && collectionWillWrite) {
-      LOG_TOPIC(WARN, Logger::AUTHORIZATION) << "User " << ExecContext::CURRENT->user()
+      LOG_TOPIC(TRACE, Logger::AUTHORIZATION) << "User " << ExecContext::CURRENT->user()
                                               << "has no write right for collection " << colName;
       return TRI_ERROR_ARANGO_READ_ONLY;
     }

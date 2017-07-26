@@ -271,9 +271,6 @@ AuthUserEntry AuthUserEntry::fromDocument(VPackSlice const& slice) {
         }    // if
 
       } else {
-        LOG_TOPIC(INFO, arangodb::Logger::CONFIG)
-            << "Deprecation Warning: Update access rights for user '"
-            << userSlice.copyString() << "'";
         VPackValueLength length;
         char const* value = obj.value.getString(length);
 
