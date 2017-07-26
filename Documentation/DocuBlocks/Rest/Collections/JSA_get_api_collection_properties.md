@@ -11,16 +11,19 @@ The name of the collection.
 
 @RESTDESCRIPTION
 In addition to the above, the result will always contain the
-*waitForSync*, *doCompact*, *journalSize*, and *isVolatile* attributes.
+*waitForSync* attribute, and the *doCompact*, *journalSize*, 
+and *isVolatile* attributes for the MMFiles storage engine.
 This is achieved by forcing a load of the underlying collection.
 
 - *waitForSync*: If *true* then creating, changing or removing
   documents will wait until the data has been synchronized to disk.
 
 - *doCompact*: Whether or not the collection will be compacted.
+  This option is only present for the MMFiles storage engine.
 
 - *journalSize*: The maximal size setting for journals / datafiles
   in bytes.
+  This option is only present for the MMFiles storage engine.
 
 - *keyOptions*: JSON object which contains key generation options:
   - *type*: specifies the type of the key generator. The currently
@@ -34,6 +37,7 @@ This is achieved by forcing a load of the underlying collection.
 - *isVolatile*: If *true* then the collection data will be
   kept in memory only and ArangoDB will not write or sync the data
   to disk.
+  This option is only present for the MMFiles storage engine.
 
 In a cluster setup, the result will also contain the following attributes:
 - *numberOfShards*: the number of shards of the collection.
