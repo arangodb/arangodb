@@ -543,7 +543,7 @@ def testEdition(edition, os, mode, engine) {
                 sh "rm -rf ${arch}"
                 sh "mkdir -p ${arch}"
                 sh "find log-output -name 'FAILED_*' -exec cp '{}' . ';'"
-                sh "for i in logs log-output; do test -e \$i && mv \$i ${arch} || true; done"
+                sh "for i in logs log-output core*; do test -e \$i && mv \$i ${arch} || true; done"
             }
         }
     }
@@ -825,7 +825,6 @@ def buildEdition(edition, os) {
             if (os == 'linux' || os == 'mac') {
                 sh "rm -rf ${arch}"
                 sh "mkdir -p ${arch}"
-                sh "find log-output -name 'FAILED_*' -exec cp '{}' . ';'"
                 sh "for i in log-output; do test -e \$i && mv \$i ${arch} || true; done"
             }
             else if (os == 'windows') {
@@ -839,10 +838,6 @@ def buildEdition(edition, os) {
 
         archiveArtifacts allowEmptyArchive: true,
                          artifacts: "${arch}/**",
-                         defaultExcludes: false
-
-        archiveArtifacts allowEmptyArchive: true,
-                         artifacts: "FAILED_*",
                          defaultExcludes: false
     }
 }
