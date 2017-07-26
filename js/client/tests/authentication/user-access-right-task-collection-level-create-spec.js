@@ -69,6 +69,10 @@ const createKeySpace = (keySpaceId) => {
   return executeJS(`return global.KEYSPACE_CREATE('${keySpaceId}', 128, true);`).body === 'true';
 };
 
+const setKeySpace = (keySpaceId, name) => {
+  return executeJS(`global.KEY_SET('${keySpaceId}', '${name}', false);`);
+};
+
 const dropKeySpace = (keySpaceId) => {
   executeJS(`global.KEYSPACE_DROP('${keySpaceId}');`);
 };
@@ -119,11 +123,6 @@ describe('User Rights Management', () => {
         describe(`user ${name}`, () => {
           before(() => {
             switchUser(name, dbName);
-            expect(createKeySpace(keySpaceId)).to.equal(true, 'keySpace creation failed!');
-          });
-
-          after(() => {
-            dropKeySpace(keySpaceId);
           });
 
           describe('update on collection level', () => {
@@ -147,6 +146,8 @@ describe('User Rights Management', () => {
               before(() => {
                 db._useDatabase(dbName);
                 rootTruncateCollection();
+                dropKeySpace(keySpaceId);
+                expect(createKeySpace(keySpaceId)).to.equal(true, 'keySpace creation failed!');
               });
 
               it('by key', () => {
@@ -207,6 +208,7 @@ describe('User Rights Management', () => {
                 expect(rootTestCollection()).to.equal(true, 'Precondition failed, the collection does not exist');
                 const taskId = 'task_collection_level_create_by_aql' + name;
                 let q = `INSERT {_key: '456', foo: 'bar'} IN ${colName} RETURN NEW`;
+                setKeySpace(keySpaceId, name);
                 const task = {
                   id: taskId,
                   name: taskId,
@@ -217,7 +219,7 @@ describe('User Rights Management', () => {
                       global.KEY_SET('${keySpaceId}', '${name}_status', true);
                     } catch (e) {
                       global.KEY_SET('${keySpaceId}', '${name}_status', false);
-                    }finally {
+                    } finally {
                       global.KEY_SET('${keySpaceId}', '${name}', true);
                     }
                   })(params);`
@@ -227,8 +229,9 @@ describe('User Rights Management', () => {
                   let col = db._collection(colName);
                   tasks.register(task);
                   wait(keySpaceId, name);
-                  expect(col.document('456').foo).to.equal('bar', `${name}  the create did not pass through...`);
                   expect(getKey(keySpaceId, `${name}_status`)).to.equal(true, `${name} the create did not pass through...`);
+                  let doc = col.document('456');
+                  expect(doc.foo).to.equal('bar', `${name}  the create did not pass through...`);
                 } else {
                   let hasReadAccess = ((dbLevel['rw'].has(name) || dbLevel['ro'].has(name)) &&
                     (colLevel['rw'].has(name) || colLevel['ro'].has(name)));

@@ -70,6 +70,10 @@ const createKeySpace = (keySpaceId) => {
   return executeJS(`return global.KEYSPACE_CREATE('${keySpaceId}', 128, true);`).body === 'true';
 };
 
+const setKeySpace = (keySpaceId, name) => {
+  return executeJS(`global.KEY_SET('${keySpaceId}', '${name}', false);`);
+};
+
 const dropKeySpace = (keySpaceId) => {
   executeJS(`global.KEYSPACE_DROP('${keySpaceId}');`);
 };
@@ -154,6 +158,7 @@ describe('User Rights Management', () => {
 
               it('by key', () => {
                 expect(rootTestCollection()).to.equal(true, 'Precondition failed, the collection does not exist');
+                setKeySpace(keySpaceId, name + '_update');
                 const taskIdUpdate = 'task_collection_level_update_by_key' + name;
                 const taskUpdate = {
                   id: taskIdUpdate,
@@ -170,7 +175,8 @@ describe('User Rights Management', () => {
                     }
                   })(params);`
                 };
-                const taskIdReplace = 'task_collection_level_replace_by_key' + name;
+                setKeySpace(keySpaceId, name + '_replace');
+                const taskIdReplace = 'task_collection_level_replace_by_key' + name;           
                 const taskReplace = {
                   id: taskIdReplace,
                   name: taskIdReplace,
@@ -229,6 +235,7 @@ describe('User Rights Management', () => {
                 let q = `FOR x IN ${colName} UPDATE x WITH {foo: 'bar'} IN ${colName} RETURN NEW`;
                 let q2 = `FOR x IN ${colName} REPLACE x WITH {foo: 'baz'} IN ${colName} RETURN NEW`;
                 const taskIdUpdate = 'task_collection_level_update_by_aql' + name;
+                setKeySpace(keySpaceId, name + '_update');
                 const taskUpdate = {
                   id: taskIdUpdate,
                   name: taskIdUpdate,
@@ -245,6 +252,7 @@ describe('User Rights Management', () => {
                   })(params);`
                 };
                 const taskIdReplace = 'task_collection_level_replace_by_aql' + name;
+                setKeySpace(keySpaceId, name + '_replace');
                 const taskReplace = {
                   id: taskIdReplace,
                   name: taskIdReplace,
@@ -255,7 +263,7 @@ describe('User Rights Management', () => {
                       global.KEY_SET('${keySpaceId}', '${name}_replace_status', true);
                     } catch (e) {
                       global.KEY_SET('${keySpaceId}', '${name}_replace_status', false);
-                    }finally {
+                    } finally {
                       global.KEY_SET('${keySpaceId}', '${name}_replace', true);
                     }
                   })(params);`

@@ -247,6 +247,7 @@ void AuthInfo::loadFromDB() {
   std::shared_ptr<VPackBuilder> builder = QueryAllUsers(_queryRegistry);
 
   WRITE_LOCKER(writeLocker, _authInfoLock);
+  _authBasicCache.clear();
 
   if (builder) {
     VPackSlice usersSlice = builder->slice();
@@ -477,6 +478,7 @@ Result AuthInfo::enumerateUsers(
         return r;
       }
     }
+    _authBasicCache.clear();
   }
   // we need to reload data after the next callback
   reloadAllUsers();
@@ -501,12 +503,11 @@ Result AuthInfo::updateUser(std::string const& user,
     func(it->second);
     data = it->second.toVPackBuilder();
     r = UpdateUser(data.slice());
+    _authBasicCache.clear();
   }
 
   // we need to reload data after the next callback
-  if (r.ok()) {
-    reloadAllUsers();
-  }
+  reloadAllUsers();
   return r;
 }
 
@@ -588,6 +589,7 @@ Result AuthInfo::removeUser(std::string const& user) {
     res = RemoveUserInternal(it->second);
     if (res.ok()) {
       _authInfo.erase(it);
+      _authBasicCache.clear();
     }
   }
   reloadAllUsers();
@@ -608,6 +610,7 @@ Result AuthInfo::removeAllUsers() {
     {// do not get into race conditions with loadFromDB
       MUTEX_LOCKER(locker, _loadFromDBLock);
       _authInfo.clear();
+      _authBasicCache.clear();
       _outdated = true;
     }
   }
