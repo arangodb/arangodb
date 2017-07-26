@@ -445,6 +445,19 @@ This option only has an effect if the query cache mode is set to either *on* or
 *demand*.
 
 
+### JavaScript code execution
+
+`--javascript.allow-admin-execute`
+
+This option can be used to control whether user-defined JavaScript code
+is allowed to be executed on server by sending via HTTP to the API endpoint
+`/_admin/execute`  with an authenticated user account. 
+The default value is *false*, which disables the execution of user-defined
+code. This is also the recommended setting for production. In test environments,
+it may be convenient to turn the option on in order to send arbitrary setup
+or teardown commands for execution on the server.
+
+
 ### V8 contexts
 
 `--javascript.v8-contexts number`
