@@ -131,3 +131,6 @@ This exports the named graph mygraph into the xgmml file *mygraph.xgmml* without
     unix> arangoexport --type xgmml --graph-name mygraph --xgmml-label-attribute name
 
 This exports the named graph mygraph into the xgmml file *mygraph.xgmml* with a label from documents attribute *name* instead of the default attribute *label*.
+
+Export via AQL query
+--------------------
