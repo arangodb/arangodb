@@ -29,9 +29,16 @@
 #include "analysis/token_attributes.hpp"
 
 #include "Aql/AqlFunctionFeature.h"
+#include "IResearch/ApplicationServerHelper.h"
 #include "IResearch/IResearchAnalyzerFeature.h"
 #include "IResearch/VelocyPackHelper.h"
+#include "RestServer/DatabaseFeature.h"
+#include "RestServer/QueryRegistryFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
+#include "Utils/OperationOptions.h"
+#include "V8Server/V8DealerFeature.h"
+#include "VocBase/LogicalCollection.h"
+#include "VocBase/ManagedDocumentResult.h"
 
 NS_LOCAL
 
@@ -89,6 +96,9 @@ struct IResearchAnalyzerFeatureSetup {
     arangodb::tests::init();
 
     // setup required application features
+    features.emplace_back(new arangodb::DatabaseFeature(&server), false); // FIXME TODO start() to set system
+    features.emplace_back(new arangodb::QueryRegistryFeature(&server), false); // required for TRI_vocbase_t
+    features.emplace_back(new arangodb::V8DealerFeature(&server), false); // required for DatabaseFeature
     features.emplace_back(new arangodb::aql::AqlFunctionFeature(&server), true);
 
     for (auto& f : features) {
@@ -144,8 +154,9 @@ SECTION("test_emplace") {
   // add valid
   {
     arangodb::iresearch::IResearchAnalyzerFeature feature(nullptr);
-    CHECK((false == !feature.emplace("test_analyzer", "TestAnalyzer", "abc").first));
-    auto pool = feature.get("test_analyzer");
+    feature.start();
+    CHECK((false == !feature.emplace("test_analyzer0", "TestAnalyzer", "abc").first));
+    auto pool = feature.get("test_analyzer0");
     CHECK((false == !pool));
     CHECK((irs::flags({TestAttribute::type(), irs::term_attribute::type()}) == pool->features()));
   }
@@ -153,72 +164,69 @@ SECTION("test_emplace") {
   // add duplicate valid (same name+type+properties)
   {
     arangodb::iresearch::IResearchAnalyzerFeature feature(nullptr);
-    CHECK((false == !feature.emplace("test_analyzer", "TestAnalyzer", "abc").first));
-    auto pool = feature.get("test_analyzer");
+    feature.start();
+    CHECK((false == !feature.emplace("test_analyzer1", "TestAnalyzer", "abc").first));
+    auto pool = feature.get("test_analyzer1");
     CHECK((false == !pool));
     CHECK((irs::flags({TestAttribute::type(), irs::term_attribute::type()}) == pool->features()));
-    CHECK((false == !feature.emplace("test_analyzer", "TestAnalyzer", "abc").first));
-    CHECK((false == !feature.get("test_analyzer")));
+    CHECK((false == !feature.emplace("test_analyzer1", "TestAnalyzer", "abc").first));
+    CHECK((false == !feature.get("test_analyzer1")));
   }
 
   // add duplicate invalid (same name+type different properties)
   {
     arangodb::iresearch::IResearchAnalyzerFeature feature(nullptr);
-    CHECK((false == !feature.emplace("test_analyzer", "TestAnalyzer", "abc").first));
-    auto pool = feature.get("test_analyzer");
+    feature.start();
+    CHECK((false == !feature.emplace("test_analyzer2", "TestAnalyzer", "abc").first));
+    auto pool = feature.get("test_analyzer2");
     CHECK((false == !pool));
     CHECK((irs::flags({TestAttribute::type(), irs::term_attribute::type()}) == pool->features()));
-    CHECK((true == !feature.emplace("test_analyzer", "TestAnalyzer", "abcd").first));
-    CHECK((false == !feature.get("test_analyzer")));
+    CHECK((true == !feature.emplace("test_analyzer2", "TestAnalyzer", "abcd").first));
+    CHECK((false == !feature.get("test_analyzer2")));
   }
   
   // add duplicate invalid (same name+properties different type)
   {
     arangodb::iresearch::IResearchAnalyzerFeature feature(nullptr);
-    CHECK((false == !feature.emplace("test_analyzer", "TestAnalyzer", "abc").first));
-    auto pool = feature.get("test_analyzer");
+    feature.start();
+    CHECK((false == !feature.emplace("test_analyzer3", "TestAnalyzer", "abc").first));
+    auto pool = feature.get("test_analyzer3");
     CHECK((false == !pool));
     CHECK((irs::flags({TestAttribute::type(), irs::term_attribute::type()}) == pool->features()));
-    CHECK((true == !feature.emplace("test_analyzer", "invalid", "abc").first));
-    CHECK((false == !feature.get("test_analyzer")));
+    CHECK((true == !feature.emplace("test_analyzer3", "invalid", "abc").first));
+    CHECK((false == !feature.get("test_analyzer3")));
   }
 
   // add invalid (instance creation failure)
   {
     arangodb::iresearch::IResearchAnalyzerFeature feature(nullptr);
-    CHECK((true == !feature.emplace("test_analyzer", "TestAnalyzer", "").first));
-    CHECK((true == !feature.get("test_analyzer")));
+    feature.start();
+    CHECK((true == !feature.emplace("test_analyzer4", "TestAnalyzer", "").first));
+    CHECK((true == !feature.get("test_analyzer4")));
   }
 
   // add invalid (instance creation exception)
   {
     arangodb::iresearch::IResearchAnalyzerFeature feature(nullptr);
-    CHECK((true == !feature.emplace("test_analyzer", "TestAnalyzer", irs::string_ref::nil).first));
-    CHECK((true == !feature.get("test_analyzer")));
+    feature.start();
+    CHECK((true == !feature.emplace("test_analyzer5", "TestAnalyzer", irs::string_ref::nil).first));
+    CHECK((true == !feature.get("test_analyzer5")));
   }
 
   // add invalid (not registred)
   {
     arangodb::iresearch::IResearchAnalyzerFeature feature(nullptr);
-    CHECK((true == !feature.emplace("test_analyzer", "invalid", irs::string_ref::nil).first));
-    CHECK((true == !feature.get("test_analyzer")));
+    feature.start();
+    CHECK((true == !feature.emplace("test_analyzer6", "invalid", irs::string_ref::nil).first));
+    CHECK((true == !feature.get("test_analyzer6")));
   }
-/* FIXME TODO implement persistence
-  // test persisted config
-  {
-    {
-      arangodb::iresearch::IResearchAnalyzerFeature feature(nullptr);
-      CHECK((false == !feature.emplace("test_analyzer", "TestAnalyzer", "abc").first));
-    }
 
-    {
-      arangodb::iresearch::IResearchAnalyzerFeature feature(nullptr);
-      auto pool = feature.get("test_analyzer");
-      CHECK((false == !pool));
-      CHECK((irs::flags({TestAttribute::type(), irs::term_attribute::type()}) == pool->features()));
-    }
+  // add invalalid (feature not started)
+  {
+    arangodb::iresearch::IResearchAnalyzerFeature feature(nullptr);
+    CHECK((true == !feature.emplace("test_analyzer7", "invalid", irs::string_ref::nil).first));
+    CHECK((true == !feature.get("test_analyzer7")));
   }
-*/
 }
 
 SECTION("test_get") {
@@ -229,7 +237,7 @@ SECTION("test_get") {
   // get valid
   {
     auto pool = feature.get("test_analyzer");
-    CHECK((false == !pool));
+    REQUIRE((false == !pool));
     CHECK((irs::flags({TestAttribute::type(), irs::term_attribute::type()}) == pool->features()));
     auto analyzer = pool.get();
     CHECK((false == !analyzer));
@@ -270,7 +278,7 @@ SECTION("test_identity") {
     CHECK((true == !pool));
     feature.start();
     pool = feature.get("identity");
-    CHECK((false == !pool));
+    REQUIRE((false == !pool));
     CHECK((irs::flags({irs::increment::type(), irs::term_attribute::type()}) == pool->features()));
     CHECK(("identity" == pool->name()));
     auto analyzer = pool->get();
@@ -288,18 +296,318 @@ SECTION("test_identity") {
     CHECK((!analyzer->next()));
   }
 }
+/*FIXME TODO enable
+SECTION("test_persistence") {
+  auto* database = arangodb::iresearch::getFeature<arangodb::DatabaseFeature>("Database");
+  auto* vocbase = database->systemDatabase();
 
-SECTION("test_registration") {
-  // FIXME TODO test registration
+  // ensure there is an empty configuration collection
+  {
+    auto* collection = vocbase->lookupCollection("_iresearch_analyzers");
+
+    if (collection) {
+      vocbase->dropCollection(collection, true, -1);
+    }
+
+    collection = vocbase->lookupCollection("_iresearch_analyzers");
+    CHECK((nullptr == collection));
+    arangodb::iresearch::IResearchAnalyzerFeature feature(nullptr);
+    feature.start();
+    collection = vocbase->lookupCollection("_iresearch_analyzers");
+    CHECK((nullptr != collection));
+  }
+
+  // read invalid configuration (missing attributes)
+  {
+    {
+      arangodb::OperationOptions options;
+      arangodb::ManagedDocumentResult result;
+      TRI_voc_tick_t resultMarkerTick;
+      auto* collection = vocbase->lookupCollection("_iresearch_analyzers");
+      collection->truncate(nullptr, options);
+      collection->insert(nullptr, arangodb::velocypack::Parser::fromJson("{}")->slice(), result, options, resultMarkerTick, false);
+      collection->insert(nullptr, arangodb::velocypack::Parser::fromJson("{                        \"type\": \"identity\", \"properties\": null, \"ref_count\": 42}")->slice(), result, options, resultMarkerTick, false);
+      collection->insert(nullptr, arangodb::velocypack::Parser::fromJson("{\"name\": 12345,        \"type\": \"identity\", \"properties\": null, \"ref_count\": 42}")->slice(), result, options, resultMarkerTick, false);
+      collection->insert(nullptr, arangodb::velocypack::Parser::fromJson("{\"name\": \"invalid1\",                         \"properties\": null, \"ref_count\": 42}")->slice(), result, options, resultMarkerTick, false);
+      collection->insert(nullptr, arangodb::velocypack::Parser::fromJson("{\"name\": \"invalid2\", \"type\": 12345,        \"properties\": null, \"ref_count\": 42}")->slice(), result, options, resultMarkerTick, false);
+      collection->insert(nullptr, arangodb::velocypack::Parser::fromJson("{\"name\": \"invalid3\", \"type\": \"identity\", \"properties\": null                   }")->slice(), result, options, resultMarkerTick, false);
+      collection->insert(nullptr, arangodb::velocypack::Parser::fromJson("{\"name\": \"invalid4\", \"type\": \"identity\", \"properties\": null, \"ref_count\": -1}")->slice(), result, options, resultMarkerTick, false);
+    }
+
+    arangodb::iresearch::IResearchAnalyzerFeature feature(nullptr);
+    feature.start();
+    feature.visit([](irs::string_ref const& name, irs::string_ref const& type, irs::string_ref const& properties)->bool {
+      CHECK((false));
+      return true;
+    });
+  }
+
+  // read invalid configuration (duplicate records)
+  {
+    {
+      arangodb::OperationOptions options;
+      arangodb::ManagedDocumentResult result;
+      TRI_voc_tick_t resultMarkerTick;
+      auto* collection = vocbase->lookupCollection("_iresearch_analyzers");
+      collection->truncate(nullptr, options);
+      collection->insert(nullptr, arangodb::velocypack::Parser::fromJson("{\"name\": \"valid\", \"type\": \"identity\", \"properties\": null, \"ref_count\": 42\"}")->slice(), result, options, resultMarkerTick, false);
+      collection->insert(nullptr, arangodb::velocypack::Parser::fromJson("{\"name\": \"valid\", \"type\": \"identity\", \"properties\": null, \"ref_count\": 52\"}")->slice(), result, options, resultMarkerTick, false);
+    }
+
+    std::map<irs::string_ref, std::pair<irs::string_ref, irs::string_ref>> expected = {
+      { "valid", { "identity", irs::string_ref::nil } },
+    };
+    arangodb::iresearch::IResearchAnalyzerFeature feature(nullptr);
+    feature.start();
+    feature.visit([&expected](irs::string_ref const& name, irs::string_ref const& type, irs::string_ref const& properties)->bool {
+      auto itr = expected.find(name);
+      CHECK((itr != expected.end()));
+      CHECK((itr->second.first == type));
+      CHECK((itr->second.second == properties));
+      expected.erase(itr);
+      return true;
+    });
+    CHECK((expected.empty()));
+  }
+
+  // read valid configuration (different parameter options
+  {
+    {
+      arangodb::OperationOptions options;
+      arangodb::ManagedDocumentResult result;
+      TRI_voc_tick_t resultMarkerTick;
+      auto* collection = vocbase->lookupCollection("_iresearch_analyzers");
+      collection->truncate(nullptr, options);
+      collection->insert(nullptr, arangodb::velocypack::Parser::fromJson("{\"name\": \"valid0\", \"type\": \"identity\", \"properties\": null,                       \"ref_count\": 42\"}")->slice(), result, options, resultMarkerTick, false);
+      collection->insert(nullptr, arangodb::velocypack::Parser::fromJson("{\"name\": \"valid1\", \"type\": \"identity\", \"properties\": true,                       \"ref_count\": 42\"}")->slice(), result, options, resultMarkerTick, false);
+      collection->insert(nullptr, arangodb::velocypack::Parser::fromJson("{\"name\": \"valid2\", \"type\": \"identity\", \"properties\": \"abc\",                    \"ref_count\": 42\"}")->slice(), result, options, resultMarkerTick, false);
+      collection->insert(nullptr, arangodb::velocypack::Parser::fromJson("{\"name\": \"valid3\", \"type\": \"identity\", \"properties\": 3.14,                       \"ref_count\": 42\"}")->slice(), result, options, resultMarkerTick, false);
+      collection->insert(nullptr, arangodb::velocypack::Parser::fromJson("{\"name\": \"valid4\", \"type\": \"identity\", \"properties\": [ 1, \"abc\" ],             \"ref_count\": 42\"}")->slice(), result, options, resultMarkerTick, false);
+      collection->insert(nullptr, arangodb::velocypack::Parser::fromJson("{\"name\": \"valid5\", \"type\": \"identity\", \"properties\": { \"a\": 7, \"b\": \"c\" }, \"ref_count\": 42\"}")->slice(), result, options, resultMarkerTick, false);
+    }
+
+    std::map<irs::string_ref, std::pair<irs::string_ref, irs::string_ref>> expected = {
+      { "valid0", { "identity", irs::string_ref::nil } },
+      { "valid1", { "identity", "true" } },
+      { "valid2", { "identity", "abc" } },
+      { "valid3", { "identity", "3.14" } },
+      { "valid4", { "identity", "[ 1, \"abc\" ]" } },
+      { "valid5", { "identity", "{ \"a\": 7, \"b\": \"c\" }" } },
+    };
+    arangodb::iresearch::IResearchAnalyzerFeature feature(nullptr);
+    feature.start();
+    feature.visit([&expected](irs::string_ref const& name, irs::string_ref const& type, irs::string_ref const& properties)->bool {
+      auto itr = expected.find(name);
+      CHECK((itr != expected.end()));
+      CHECK((itr->second.first == type));
+      CHECK((itr->second.second == properties));
+      expected.erase(itr);
+      return true;
+    });
+    CHECK((expected.empty()));
+  }
+
+  // add new records
+  {
+    {
+      arangodb::OperationOptions options;
+      arangodb::ManagedDocumentResult result;
+      TRI_voc_tick_t resultMarkerTick;
+      auto* collection = vocbase->lookupCollection("_iresearch_analyzers");
+      collection->truncate(nullptr, options);
+    }
+
+    {
+      arangodb::iresearch::IResearchAnalyzerFeature feature(nullptr);
+      auto result = feature.emplace("valid", "identity", "abc");
+      CHECK((result.first));
+      CHECK((result.second));
+    }
+
+    {
+      std::map<irs::string_ref, std::pair<irs::string_ref, irs::string_ref>> expected = {
+        { "valid", { "identity", "abc" } },
+      };
+      arangodb::iresearch::IResearchAnalyzerFeature feature(nullptr);
+      feature.start();
+      feature.visit([&expected](irs::string_ref const& name, irs::string_ref const& type, irs::string_ref const& properties)->bool {
+        auto itr = expected.find(name);
+        CHECK((itr != expected.end()));
+        CHECK((itr->second.first == type));
+        CHECK((itr->second.second == properties));
+        expected.erase(itr);
+        return true;
+      });
+      CHECK((expected.empty()));
+    }
+  }
+
+  // remove existing records
+  {
+    {
+      arangodb::OperationOptions options;
+      arangodb::ManagedDocumentResult result;
+      TRI_voc_tick_t resultMarkerTick;
+      auto* collection = vocbase->lookupCollection("_iresearch_analyzers");
+      collection->truncate(nullptr, options);
+      collection->insert(nullptr, arangodb::velocypack::Parser::fromJson("{\"name\": \"valid0\", \"type\": \"identity\", \"properties\": null, \"ref_count\": 0\"}")->slice(), result, options, resultMarkerTick, false);
+      collection->insert(nullptr, arangodb::velocypack::Parser::fromJson("{\"name\": \"valid1\", \"type\": \"identity\", \"properties\": null, \"ref_count\": 1\"}")->slice(), result, options, resultMarkerTick, false);
+    }
+
+    {
+      std::map<irs::string_ref, std::pair<irs::string_ref, irs::string_ref>> expected = {
+        { "valid0", { "identity", irs::string_ref::nil } },
+        { "valid1", { "identity", irs::string_ref::nil } },
+      };
+      arangodb::iresearch::IResearchAnalyzerFeature feature(nullptr);
+      feature.start();
+      feature.visit([&expected](irs::string_ref const& name, irs::string_ref const& type, irs::string_ref const& properties)->bool {
+        auto itr = expected.find(name);
+        CHECK((itr != expected.end()));
+        CHECK((itr->second.first == type));
+        CHECK((itr->second.second == properties));
+        expected.erase(itr);
+        return true;
+      });
+      CHECK((expected.empty()));
+      CHECK((1 == feature.erase("valid0")));
+      CHECK((0 == feature.erase("valid1")));
+      CHECK((1 == feature.erase("valid1", true))); // force removal
+    }
+
+    {
+      arangodb::iresearch::IResearchAnalyzerFeature feature(nullptr);
+      feature.start();
+      feature.visit([](irs::string_ref const& name, irs::string_ref const& type, irs::string_ref const& properties)->bool {
+        CHECK((false));
+        return true;
+      });
+    }
+  }
+
+  // update records (reserve/remove pool)
+  {
+    {
+      arangodb::OperationOptions options;
+      arangodb::ManagedDocumentResult result;
+      TRI_voc_tick_t resultMarkerTick;
+      auto* collection = vocbase->lookupCollection("_iresearch_analyzers");
+      collection->truncate(nullptr, options);
+      collection->insert(nullptr, arangodb::velocypack::Parser::fromJson("{\"name\": \"valid0\", \"type\": \"identity\", \"properties\": null, \"ref_count\": 0\"}")->slice(), result, options, resultMarkerTick, false);
+      collection->insert(nullptr, arangodb::velocypack::Parser::fromJson("{\"name\": \"valid1\", \"type\": \"identity\", \"properties\": null, \"ref_count\": 1\"}")->slice(), result, options, resultMarkerTick, false);
+      collection->insert(nullptr, arangodb::velocypack::Parser::fromJson("{\"name\": \"valid2\", \"type\": \"identity\", \"properties\": null, \"ref_count\": 2\"}")->slice(), result, options, resultMarkerTick, false);
+    }
+
+    {
+      arangodb::iresearch::IResearchAnalyzerFeature feature(nullptr);
+      feature.start();
+      auto pool = feature.get("valid0");
+      CHECK((false != pool));
+      CHECK((feature.reserve(pool)));
+      pool = feature.get("valid1");
+      CHECK((false != pool));
+      CHECK((feature.release(pool)));
+      CHECK((!feature.release(pool))); // no more references
+    }
+
+    // test reserve (remove failure)
+    {
+      arangodb::iresearch::IResearchAnalyzerFeature feature(nullptr);
+      feature.start();
+      CHECK((0 == feature.erase("valid0")));
+      CHECK((1 == feature.erase("valid1")));
+      auto pool = feature.get("valid0");
+      CHECK((false != pool));
+      CHECK((feature.release(pool)));
+    }
+
+    // test remove (remove allowed)
+    {
+      arangodb::iresearch::IResearchAnalyzerFeature feature(nullptr);
+      feature.start();
+      CHECK((1 == feature.erase("valid0")));
+    }
+  }
 }
 
+SECTION("test_registration") {
+  auto* database = arangodb::iresearch::getFeature<arangodb::DatabaseFeature>("Database");
+  auto* vocbase = database->systemDatabase();
+
+  // ensure there is no configuration collection
+  {
+    auto* collection = vocbase->lookupCollection("_iresearch_analyzers");
+
+    if (collection) {
+      vocbase->dropCollection(collection, true, -1);
+    }
+
+    collection = vocbase->lookupCollection("_iresearch_analyzers");
+    CHECK((nullptr == collection));
+  }
+
+  // reserve pool (persistance failure)
+  {
+    arangodb::iresearch::IResearchAnalyzerFeature feature(nullptr);
+    auto entry = feature.emplace("valid", "identity", nullptr);
+    CHECK((entry.first));
+    CHECK((!feature.reserve(entry.first)));
+    CHECK((1 == feature.erase("valid"))); // remove allowed
+  }
+
+  // release pool (persistence failure)
+  {
+    arangodb::iresearch::IResearchAnalyzerFeature feature(nullptr);
+    feature.start(); // create configuration collection
+    auto entry = feature.emplace("valid", "identity", nullptr);
+    CHECK((false != entry.first));
+    CHECK((entry.second));
+    CHECK((feature.reserve(entry.first)));
+    auto* collection = vocbase->lookupCollection("_iresearch_analyzers");
+    vocbase->dropCollection(collection, true, -1); // drop configuration collection
+    CHECK((!feature.release(entry.first)));
+    CHECK((0 == feature.erase("valid"))); // remove not allowed
+  }
+
+  // reserve/release pool (persisted OK)
+  {
+    {
+      arangodb::iresearch::IResearchAnalyzerFeature feature(nullptr);
+      feature.start();
+      auto entry = feature.emplace("valid", "identity", nullptr);
+      CHECK((false != entry.first));
+      CHECK((entry.second));
+      CHECK((!feature.release(entry.first)));
+      CHECK((feature.reserve(entry.first)));
+      CHECK((0 == feature.erase("valid"))); // remove denied
+    }
+
+    {
+      arangodb::iresearch::IResearchAnalyzerFeature feature(nullptr);
+      feature.start();
+      auto pool = feature.get("valid");
+      CHECK((false != pool));
+      CHECK((feature.release(pool)));
+    }
+
+    {
+      arangodb::iresearch::IResearchAnalyzerFeature feature(nullptr);
+      feature.start();
+      auto pool = feature.get("valid");
+      CHECK((false != pool));
+      CHECK((!feature.release(pool)));
+      CHECK((1 == feature.erase("valid"))); // remove allowed
+    }
+  }
+}
+*/
 SECTION("test_remove") {
   // remove existing
   {
     arangodb::iresearch::IResearchAnalyzerFeature feature(nullptr);
     CHECK((false == !feature.emplace("test_analyzer", "TestAnalyzer", "abc").first));
     CHECK((false == !feature.get("test_analyzer")));
-    CHECK((1 == feature.remove("test_analyzer")));
+    CHECK((1 == feature.erase("test_analyzer")));
     CHECK((true == !feature.get("test_analyzer")));
   }
 
@@ -307,33 +615,8 @@ SECTION("test_remove") {
   {
     arangodb::iresearch::IResearchAnalyzerFeature feature(nullptr);
     CHECK((true == !feature.get("test_analyzer")));
-    CHECK((0 == feature.remove("test_analyzer")));
+    CHECK((0 == feature.erase("test_analyzer")));
   }
-
-  // FIXME TODO test force flag
-
-/* FIXME TODO implement persistence
-  // test persisted config
-  {
-    {
-      arangodb::iresearch::IResearchAnalyzerFeature feature(nullptr);
-      CHECK((false == !feature.emplace("test_analyzer", "TestAnalyzer", "abc").first));
-      CHECK((false == !feature.get("test_analyzer")));
-    }
-
-    {
-      arangodb::iresearch::IResearchAnalyzerFeature feature(nullptr);
-      CHECK((false == !feature.get("test_analyzer")));
-      CHECK((1 == feature.remove("test_analyzer")));
-      CHECK((true == !feature.get("test_analyzer")));
-    }
-
-    {
-      arangodb::iresearch::IResearchAnalyzerFeature feature(nullptr);
-      CHECK((true == !feature.get("test_analyzer")));
-    }
-  }
-*/
 }
 
 SECTION("test_tokens") {

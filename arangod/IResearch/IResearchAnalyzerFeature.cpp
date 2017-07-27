@@ -32,11 +32,18 @@
 #include "Aql/AqlFunctionFeature.h"
 #include "Logger/Logger.h"
 #include "Logger/LogMacros.h"
+#include "RestServer/DatabaseFeature.h"
+#include "StorageEngine/DocumentIdentifierToken.h"
+#include "Transaction/StandaloneContext.h"
+#include "Utils/SingleCollectionTransaction.h"
+#include "VocBase/LogicalCollection.h"
+#include "VocBase/ManagedDocumentResult.h"
 
 #include "IResearchAnalyzerFeature.h"
 
 NS_LOCAL
 
+static std::string const ANALYZER_COLLECTION_NAME("_iresearch_analyzers");
 static size_t const DEFAULT_POOL_SIZE = 8; // arbitrary value
 static std::string const FEATURE_NAME("IResearchAnalyzer");
 static irs::string_ref const IDENTITY_TOKENIZER_NAME("identity");
@@ -200,6 +207,25 @@ arangodb::aql::AqlValue aqlFnTokens(
   return arangodb::aql::AqlValue(buffer.release());
 }
 
+void addFunction(
+    arangodb::aql::AqlFunctionFeature& functions,
+    arangodb::aql::Function const& function
+) {
+  // check that a function by the given name is not registred to avoid
+  // triggering an assert inside AqlFunctionFeature::add(...)
+  try {
+    if (functions.byName(function.externalName)) {
+      return; // already have a function with this name
+    }
+  } catch (arangodb::basics::Exception& e) {
+    if (TRI_ERROR_QUERY_FUNCTION_NAME_UNKNOWN != e.code()) {
+      throw; // not a duplicate instance exception
+    }
+  }
+
+  functions.add(function);
+}
+
 void addFunctions(arangodb::aql::AqlFunctionFeature& functions) {
   arangodb::aql::Function tokens(
     "TOKENS", // external name (AQL function external names are always in upper case)
@@ -213,7 +239,20 @@ void addFunctions(arangodb::aql::AqlFunctionFeature& functions) {
     aqlFnTokens // function implementation
   );
 
-  functions.add(tokens);
+  addFunction(functions, tokens);
+}
+
+void ensureConfigCollection(TRI_vocbase_t& vocbase) {
+  static const std::string json =
+    std::string("{\"isSystem\": true, \"name\": \"") + ANALYZER_COLLECTION_NAME + "\"}";
+
+  try {
+    vocbase.createCollection(arangodb::velocypack::Parser::fromJson(json)->slice());
+  } catch(arangodb::basics::Exception& e) {
+    if (TRI_ERROR_ARANGO_DUPLICATE_NAME != e.code()) {
+      throw e;
+    }
+  }
 }
 
 typedef irs::async_utils::read_write_mutex::read_mutex ReadMutex;
@@ -233,7 +272,10 @@ NS_BEGIN(iresearch)
 
 IResearchAnalyzerFeature::AnalyzerPool::AnalyzerPool(
     irs::string_ref const& name
-): _cache(DEFAULT_POOL_SIZE), _name(name) {
+): _cache(DEFAULT_POOL_SIZE),
+   _name(name),
+   _refCount(0), // no references yet
+   _rid(0) { // no rid int the persisted configuration yet
 }
 
 bool IResearchAnalyzerFeature::AnalyzerPool::init(
@@ -294,12 +336,25 @@ IResearchAnalyzerFeature::IResearchAnalyzerFeature(
   setOptional(true);
   requiresElevatedPrivileges(false);
   startsAfter("AQLFunctions"); // used for registering IResearch analyzer functions
+  startsAfter("Database"); // used for getting the system database containing the persisted configuration
 }
 
 std::pair<IResearchAnalyzerFeature::AnalyzerPool::ptr, bool> IResearchAnalyzerFeature::emplace(
   irs::string_ref const& name,
   irs::string_ref const& type,
   irs::string_ref const& properties
+) noexcept {
+  /* FIXME TODO enable persistence
+  return emplace(name, type, properties, true);
+  */
+  return emplace(name, type, properties, false);
+}
+
+std::pair<IResearchAnalyzerFeature::AnalyzerPool::ptr, bool> IResearchAnalyzerFeature::emplace(
+  irs::string_ref const& name,
+  irs::string_ref const& type,
+  irs::string_ref const& properties,
+  bool persist
 ) noexcept {
   try {
     WriteMutex mutex(_mutex);
@@ -328,6 +383,13 @@ std::pair<IResearchAnalyzerFeature::AnalyzerPool::ptr, bool> IResearchAnalyzerFe
     auto pool = itr.first->second;
 
     if (itr.second) { // new pool
+      if (!_started && persist) {
+        LOG_TOPIC(WARN, Logger::FIXME) << "cannot garantee collision-free persistance while creating an IResearch analyzer instance for name '" << name << "' type '" << type << "' properties '" << properties << "'";
+        TRI_set_errno(TRI_ERROR_ARANGO_ILLEGAL_STATE);
+
+        return std::make_pair(AnalyzerPool::ptr(), false);
+      }
+
       if (!pool || !pool->init(type, properties)) {
         LOG_TOPIC(WARN, Logger::FIXME) << "failure creating an IResearch analyzer instance for name '" << name << "' type '" << type << "' properties '" << properties << "'";
         TRI_set_errno(TRI_ERROR_BAD_PARAMETER);
@@ -335,7 +397,9 @@ std::pair<IResearchAnalyzerFeature::AnalyzerPool::ptr, bool> IResearchAnalyzerFe
         return std::make_pair(AnalyzerPool::ptr(), false);
       }
 
-      // FIXME TODO store definition in persisted mappings
+      if (persist) {
+        // FIXME TODO store definition in persisted mappings
+      }
 
       erase = false;
     } else if (type != pool->_type || properties != pool->_properties) {
@@ -355,6 +419,28 @@ std::pair<IResearchAnalyzerFeature::AnalyzerPool::ptr, bool> IResearchAnalyzerFe
   }
 
   return std::make_pair(AnalyzerPool::ptr(), false);
+}
+
+size_t IResearchAnalyzerFeature::erase(
+    irs::string_ref const& name,
+    bool force /*= false*/
+) noexcept {
+  try {
+    // FIXME TODO do not remove name if it is still referenced (unless force)
+    // FIXME TODO remove definition from persisted mappings
+    WriteMutex mutex(_mutex);
+    SCOPED_LOCK(mutex);
+
+    return _analyzers.erase(irs::make_hashed_ref(name, std::hash<irs::string_ref>()));
+  } catch (std::exception& e) {
+    LOG_TOPIC(WARN, Logger::FIXME) << "caught exception while removing an IResearch analizer name '" << name << "': " << e.what();
+    IR_EXCEPTION();
+  } catch (...) {
+    LOG_TOPIC(WARN, Logger::FIXME) << "caught exception while removing an IResearch analizer name '" << name << "'";
+    IR_EXCEPTION();
+  }
+
+  return 0;
 }
 
 IResearchAnalyzerFeature::AnalyzerPool::ptr IResearchAnalyzerFeature::get(
@@ -411,6 +497,104 @@ IResearchAnalyzerFeature::AnalyzerPool::ptr IResearchAnalyzerFeature::get(
   return identity.instance;
 }
 
+void IResearchAnalyzerFeature::loadConfiguration() {
+  auto* database = getFeature<arangodb::DatabaseFeature>("Database");
+
+  if (!database) {
+    LOG_TOPIC(WARN, Logger::FIXME) << "failure to find feature 'Database' while loading IResearch analyzer persisted configuration";
+
+    return;
+  }
+
+  auto* vocbase = database->systemDatabase();
+
+  if (!vocbase) {
+    LOG_TOPIC(WARN, Logger::FIXME) << "failure to get system database while loading IResearch analyzer persisted configuration";
+
+    return;
+  }
+
+  // ensure that the configuration collection is present before using it in a transaction
+  ensureConfigCollection(*vocbase); // assume the collection is not dropped before transaction uses it
+
+  arangodb::SingleCollectionTransaction trx(
+    arangodb::transaction::StandaloneContext::Create(vocbase),
+    ANALYZER_COLLECTION_NAME,
+    arangodb::AccessMode::Type::WRITE
+  );
+  auto res = trx.begin();
+
+  if (!res.ok()) {
+    LOG_TOPIC(WARN, Logger::FIXME) << "failure to start transaction while loading IResearch analyzer persisted configuration";
+
+    return;
+  }
+
+  auto* collection = trx.documentCollection();
+
+  if (!collection) {
+    LOG_TOPIC(WARN, Logger::FIXME) << "failure to get collection while loading IResearch analyzer persisted configuration";
+    trx.abort();
+
+    return;
+  }
+
+  collection->invokeOnAllElements(
+    &trx,
+    [this, &trx, collection](
+        DocumentIdentifierToken const& token
+    )->bool {
+      ManagedDocumentResult result;
+
+      if (!collection->readDocument(&trx, token, result)) {
+        LOG_TOPIC(WARN, Logger::FIXME) << "skipping failed read of an IResearch analyzer persisted configuration token: " << token._data;
+
+        return true; // failed to read document, skip
+      }
+
+      auto rid = result.lastRevisionId();
+      arangodb::velocypack::Slice slice(result.vpack());
+
+      if (!slice.isObject()
+          || !slice.hasKey("name") || !slice.get("name").isString()
+          || !slice.hasKey("type") || !slice.get("type").isString()
+          || !slice.hasKey("properties")
+          || !slice.hasKey("ref_count") || !slice.get("ref_count").isNumber<uint64_t>()) {
+        LOG_TOPIC(WARN, Logger::FIXME) << "skipping invalid IResearch analyzer persisted configuration entry: " << slice.toJson();
+
+        return true; // not a valid configuration, skip
+      }
+
+      auto name = getStringRef(slice.get("name"));
+      auto type = getStringRef(slice.get("type"));
+      auto properties = slice.get("properties").toJson();
+      // FIXME TODO check how toJson() converts 'null' and plain string values
+      auto count = slice.get("ref_count").getNumber<uint64_t>();
+      auto entry = emplace(name, type, properties, false); // do not persit since this config is already coming from the persisted store
+
+      if (!entry.first) {
+        LOG_TOPIC(WARN, Logger::FIXME) << "skipping failed caching of an IResearch analyzer persisted configuration entry: " << slice.toJson();
+
+        return true; // analizer configuration already in cache, skip duplicate
+      }
+
+      WriteMutex mutex(_mutex);
+      SCOPED_LOCK(mutex); // the cache could return the same pool asynchronously before '_rid'/'_refCount' updated below
+
+      if (!entry.second) {
+        LOG_TOPIC(WARN, Logger::FIXME) << "skipping duplicate IResearch analyzer persisted configuration entry: " << slice.toJson();
+
+        return true; // analizer configuration already in cache, skip duplicate
+      }
+
+      entry.first->_rid = rid;
+      entry.first->_refCount = count;
+
+      return true; // process next
+    }
+  );
+}
+
 /*static*/ std::string const& IResearchAnalyzerFeature::name() {
   return FEATURE_NAME;
 }
@@ -427,28 +611,6 @@ bool IResearchAnalyzerFeature::release(AnalyzerPool::ptr const& pool) noexcept {
   return true;
 }
 
-size_t IResearchAnalyzerFeature::remove(
-    irs::string_ref const& name,
-    bool force /*= false*/
-) noexcept {
-  try {
-    // FIXME TODO do not remove name if it is still referenced (unless force)
-    // FIXME TODO remove definition from persisted mappings
-    WriteMutex mutex(_mutex);
-    SCOPED_LOCK(mutex);
-
-    return _analyzers.erase(irs::make_hashed_ref(name, std::hash<irs::string_ref>()));
-  } catch (std::exception& e) {
-    LOG_TOPIC(WARN, Logger::FIXME) << "caught exception while removing an IResearch analizer name '" << name << "': " << e.what();
-    IR_EXCEPTION();
-  } catch (...) {
-    LOG_TOPIC(WARN, Logger::FIXME) << "caught exception while removing an IResearch analizer name '" << name << "'";
-    IR_EXCEPTION();
-  }
-
-  return 0;
-}
-
 bool IResearchAnalyzerFeature::reserve(AnalyzerPool::ptr const& pool) noexcept {
   // FIXME TODO update persisted mappings
   return true;
@@ -457,11 +619,17 @@ bool IResearchAnalyzerFeature::reserve(AnalyzerPool::ptr const& pool) noexcept {
 void IResearchAnalyzerFeature::start() {
   ApplicationFeature::start();
 
-  // register the indentity analyzer
-  emplace(IDENTITY_TOKENIZER_NAME, IDENTITY_TOKENIZER_NAME, irs::string_ref::nil);
-
-  // FIXME TODO load persisted mappings
-
+  // register the indentity analyzer (before loading configuration)
+  emplace(
+    IdentityTokenizer::type().name(), // use name same as type for convenience
+    IdentityTokenizer::type().name(),
+    irs::string_ref::nil,
+    false // do not persist since it's a static analyzer always available after start()
+  );
+/* FIXME TODO
+  // load persisted configuration
+  loadConfiguration();
+*/
   auto* functions = getFeature<arangodb::aql::AqlFunctionFeature>("AQLFunctions");
 
   if (functions) {
@@ -470,12 +638,27 @@ void IResearchAnalyzerFeature::start() {
     LOG_TOPIC(WARN, Logger::FIXME) << "failure to find feature 'AQLFunctions' while registering IResearch functions";
   }
 
+  WriteMutex mutex(_mutex);
+  SCOPED_LOCK(mutex); // '_started' can be asynchronously read
+
   _started = true;
 }
 
 void IResearchAnalyzerFeature::stop() {
-  _started = false;
+  {
+    WriteMutex mutex(_mutex);
+    SCOPED_LOCK(mutex); // '_analyzers'/'_started' can be asynchronously read
+
+    _started = false;
+    _analyzers.clear(); // clear cache
+  }
+
   ApplicationFeature::stop();
+}
+
+bool IResearchAnalyzerFeature::storeConfiguration(AnalyzerPool const& pool) {
+  // FIXME TODO implement
+  return false;
 }
 
 bool IResearchAnalyzerFeature::visit(

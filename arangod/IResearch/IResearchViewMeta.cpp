@@ -809,7 +809,7 @@ bool IResearchViewMeta::init(
         _scorers.clear(); // reset to match read values exactly
 
         // ensure default scorers and their features are always present
-        for (auto& scorer: allKnownScorers()) {
+        for (auto& scorer: knownScorers) {
           if (scorer.second._isDefault) {
             _features |= scorer.second._features;
             _scorers.emplace(scorer.first, scorer.second._scorer);

@@ -29,13 +29,9 @@
 #include "utils/hash_utils.hpp"
 #include "utils/object_pool.hpp"
 
+#include "VocBase/voc-types.h"
+
 #include "ApplicationFeatures/ApplicationFeature.h"
-
-NS_BEGIN(iresearch)
-
-template<typename> class unbounded_object_pool; // forward declaration
-
-NS_END // iresearch
 
 NS_BEGIN(arangodb)
 NS_BEGIN(iresearch)
@@ -70,6 +66,8 @@ class IResearchAnalyzerFeature final: public arangodb::application_features::App
     irs::flags _features; // cached analyzer features
     std::string _name;
     std::string _properties;
+    uint64_t _refCount; // number of references held to this pool across reboots
+    TRI_voc_rid_t _rid; // the revision id of the persisted configuration for this pool
     std::string _type;
 
     AnalyzerPool(irs::string_ref const& name);
@@ -83,12 +81,12 @@ class IResearchAnalyzerFeature final: public arangodb::application_features::App
     irs::string_ref const& type,
     irs::string_ref const& properties
   ) noexcept;
+  size_t erase(irs::string_ref const& name, bool force = false) noexcept;
   AnalyzerPool::ptr get(irs::string_ref const& name) const noexcept;
   static AnalyzerPool::ptr identity() noexcept; // the identity analyzer
   static std::string const& name();
   void prepare() override;
   bool release(AnalyzerPool::ptr const& pool) noexcept; // release a persistent registration for a specific pool
-  size_t remove(irs::string_ref const& name, bool force = false) noexcept;
   bool reserve(AnalyzerPool::ptr const& pool) noexcept; // register a persistent user for a specific pool
   void start() override;
   void stop() override;
@@ -99,6 +97,15 @@ class IResearchAnalyzerFeature final: public arangodb::application_features::App
   std::unordered_map<irs::hashed_string_ref, AnalyzerPool::ptr> _analyzers;
   mutable irs::async_utils::read_write_mutex _mutex;
   bool _started;
+
+  std::pair<AnalyzerPool::ptr, bool> emplace(
+    irs::string_ref const& name,
+    irs::string_ref const& type,
+    irs::string_ref const& properties,
+    bool persist
+  ) noexcept;
+  void loadConfiguration();
+  bool storeConfiguration(AnalyzerPool const& pool);
 };
 
 NS_END // iresearch

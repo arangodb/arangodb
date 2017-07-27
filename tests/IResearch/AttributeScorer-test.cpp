@@ -22,6 +22,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "catch.hpp"
+#include "common.h"
 #include "StorageEngineMock.h"
 
 #include "ApplicationFeatures/JemallocFeature.h"
@@ -135,6 +136,8 @@ struct IResearchAttributeScorerSetup {
 
   IResearchAttributeScorerSetup(): server(nullptr, nullptr) {
     arangodb::EngineSelectorFeature::ENGINE = &engine;
+
+    arangodb::tests::init();
 
     // setup required application features
     features.emplace_back(new arangodb::QueryRegistryFeature(&server), false); // must be first
