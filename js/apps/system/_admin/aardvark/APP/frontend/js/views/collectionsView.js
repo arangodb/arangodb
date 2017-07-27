@@ -506,16 +506,18 @@
               this.submitCreateCollection.bind(this)
             )
           );
-          if (window.App.isCluster && frontendConfig.isEnterprise) {
-            advancedTableContent.push(
-              window.modalView.createSelectEntry(
-                'is-satellite-collection',
-                'Satellite collection',
-                '',
-                'Create satellite collection? This will disable replication factor.',
-                [{value: false, label: 'No'}, {value: true, label: 'Yes'}]
-              )
-            );
+          if (window.App.isCluster) {
+            if (frontendConfig.isEnterprise) {
+              advancedTableContent.push(
+                window.modalView.createSelectEntry(
+                  'is-satellite-collection',
+                  'Satellite collection',
+                  '',
+                  'Create satellite collection? This will disable replication factor.',
+                  [{value: false, label: 'No'}, {value: true, label: 'Yes'}]
+                )
+              );
+            }
             advancedTableContent.push(
               window.modalView.createTextEntry(
                 'new-replication-factor',

@@ -19,6 +19,7 @@ to the [naming conventions](../NamingConventions/README.md).
   configuration parameter: The maximal
   size of a journal or datafile.  Note that this also limits the maximal
   size of a single object. Must be at least 1MB.
+  This option is meaningful for the MMFiles storage engine only.
 
 * *isSystem* (optional, default is *false*): If *true*, create a
   system collection. In this case *collection-name* should start with
@@ -34,6 +35,21 @@ to the [naming conventions](../NamingConventions/README.md).
   slightly faster than regular collections because ArangoDB does not
   enforce any synchronization to disk and does not calculate any CRC
   checksums for datafiles (as there are no datafiles).
+  This option is meaningful for the MMFiles storage engine only.
+
+* *indexBuckets* (optional, default is *16*): The number of buckets 
+  into which indexes using a hash table are split. The default is 16 and 
+  this number has to be a power of 2 and less than or equal to 1024. 
+
+  For very large collections one should increase this to avoid long pauses 
+  when the hash table has to be initially built or resized, since buckets 
+  are resized individually and can be initially built in parallel. For 
+  example, 64 might be a sensible value for a collection with 100
+  000 000 documents. Currently, only the edge index respects this
+  value, but other index types might follow in future ArangoDB versions. 
+  Changes (see below) are applied when the collection is loaded the next 
+  time.
+  This option is meaningful for the MMFiles storage engine only.
 
 * *keyOptions* (optional): additional options for key generation. If
   specified, then *keyOptions* should be a JSON array containing the
