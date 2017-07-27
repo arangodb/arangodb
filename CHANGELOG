@@ -1,6 +1,8 @@
 devel
 -----
 
+* arangoexport: added --query; pass a aql query to export the result
+
 * ui: allows now to edit default access level for collections in database
   _system for all users except the root user.
 
