@@ -6,7 +6,7 @@ devel
 
 * added new option "--rocksdb.max-background-jobs"
 
-* removed options "--rocksdb.max-background-compactions" and "--rocksdb.max-background-flushes"
+* removed options "--rocksdb.max-background-compactions", "--rocksdb.base-background-compactions" and "--rocksdb.max-background-flushes"
 
 * option "--rocksdb.compaction-read-ahead-size" now defaults to 2MB
 
