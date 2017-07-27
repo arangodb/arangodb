@@ -199,6 +199,16 @@ int TransactionState::addCollection(TRI_voc_cid_t cid,
 Result TransactionState::ensureCollections(int nestingLevel) {
   return useCollections(nestingLevel);
 }
+  
+/// @brief run a callback on all collections
+void TransactionState::allCollections(std::function<bool(TransactionCollection*)> const& cb) {
+  for (auto& trxCollection : _collections) {
+    if (!cb(trxCollection)) {
+      // abort early
+      return;
+    }
+  }
+}
 
 /// @brief use all participating collections of a transaction
 Result TransactionState::useCollections(int nestingLevel) {

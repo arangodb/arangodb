@@ -478,8 +478,22 @@ int MMFilesTransactionState::writeCommitMarker() {
     TRI_IF_FAILURE("TransactionWriteCommitMarkerNoRocksSync") { return TRI_ERROR_NO_ERROR; }
 
     if (_options.waitForSync) {
-      // also sync RocksDB WAL
-      MMFilesPersistentIndexFeature::syncWal();
+      // also sync RocksDB WAL if required
+      bool hasPersistentIndex = false;
+      allCollections([&hasPersistentIndex](TransactionCollection* collection) {
+        auto c = static_cast<MMFilesTransactionCollection*>(collection);
+        if (c->canAccess(AccessMode::Type::WRITE) && 
+            c->collection()->getPhysical()->hasIndexOfType(arangodb::Index::TRI_IDX_TYPE_PERSISTENT_INDEX)) {
+          hasPersistentIndex = true;
+          // abort iteration
+          return false;
+        }
+
+        return true;
+      });
+      if (hasPersistentIndex) {
+        MMFilesPersistentIndexFeature::syncWal();
+      }
     }
     
     TRI_IF_FAILURE("TransactionWriteCommitMarkerThrow") { 

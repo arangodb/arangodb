@@ -113,3 +113,18 @@ Command-line options changed
 
   the minimum number of V8 contexts to create at startup can be configured via
   the new startup option `--javascript.v8-contexts-minimum`.
+
+* added command-line option `--javascript.allow-admin-execute`
+
+  This option can be used to control whether user-defined JavaScript code
+  is allowed to be executed on server by sending via HTTP to the API endpoint
+  `/_admin/execute`  with an authenticated user account. 
+  The default value is `false`, which disables the execution of user-defined
+  code. This is also the recommended setting for production. In test environments,
+  it may be convenient to turn the option on in order to send arbitrary setup
+  or teardown commands for execution on the server.
+
+  The introduction of this option changes the default behavior of ArangoDB 3.2:
+  3.2 now by default disables the execution of JavaScript code via this API,
+  whereas earlier versions allowed it. To restore the old behavior, it is
+  necessary to set the option to `true`.

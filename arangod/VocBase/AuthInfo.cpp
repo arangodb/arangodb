@@ -503,6 +503,8 @@ Result AuthInfo::updateUser(std::string const& user,
     func(it->second);
     data = it->second.toVPackBuilder();
     r = UpdateUser(data.slice());
+    // must also clear the basic cache here because the secret may be invalid now
+    // if the password was changed
     _authBasicCache.clear();
   }
 
@@ -589,6 +591,7 @@ Result AuthInfo::removeUser(std::string const& user) {
     res = RemoveUserInternal(it->second);
     if (res.ok()) {
       _authInfo.erase(it);
+      // must also clear the basic cache here because the secret is invalid now
       _authBasicCache.clear();
     }
   }
