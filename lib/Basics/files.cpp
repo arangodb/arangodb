@@ -469,7 +469,7 @@ int TRI_CreateRecursiveDirectory(char const* path, long& systemError,
   char* copy;
   char* p;
   char* s;
-
+          
   int res = TRI_ERROR_NO_ERROR;
   p = s = copy = TRI_DuplicateString(path);
 
@@ -486,7 +486,8 @@ int TRI_CreateRecursiveDirectory(char const* path, long& systemError,
         *p = '\0';
         res = TRI_CreateDirectory(copy, systemError, systemErrorStr);
 
-        if ((res == TRI_ERROR_FILE_EXISTS) || (res == TRI_ERROR_NO_ERROR)) {
+        if (res == TRI_ERROR_FILE_EXISTS || res == TRI_ERROR_NO_ERROR) {
+          systemErrorStr.clear();
           res = TRI_ERROR_NO_ERROR;
           *p = TRI_DIR_SEPARATOR_CHAR;
           s = p + 1;
@@ -499,15 +500,19 @@ int TRI_CreateRecursiveDirectory(char const* path, long& systemError,
     p++;
   }
 
-  if (((res == TRI_ERROR_FILE_EXISTS) || (res == TRI_ERROR_NO_ERROR)) &&
+  if ((res == TRI_ERROR_FILE_EXISTS || res == TRI_ERROR_NO_ERROR) &&
       (p - s > 0)) {
     res = TRI_CreateDirectory(copy, systemError, systemErrorStr);
+        
     if (res == TRI_ERROR_FILE_EXISTS) {
+      systemErrorStr.clear();
       res = TRI_ERROR_NO_ERROR;
     }
   }
 
   TRI_Free(TRI_CORE_MEM_ZONE, copy);
+
+  TRI_ASSERT(res != TRI_ERROR_FILE_EXISTS);
 
   return res;
 }
@@ -519,12 +524,11 @@ int TRI_CreateRecursiveDirectory(char const* path, long& systemError,
 int TRI_CreateDirectory(char const* path, long& systemError,
                         std::string& systemErrorStr) {
   TRI_ERRORBUF;
-  int res;
 
   // reset error flag
   TRI_set_errno(TRI_ERROR_NO_ERROR);
 
-  res = TRI_MKDIR(path, 0777);
+  int res = TRI_MKDIR(path, 0777);
 
   if (res == TRI_ERROR_NO_ERROR) {
     return res;
@@ -534,7 +538,7 @@ int TRI_CreateDirectory(char const* path, long& systemError,
   TRI_SYSTEM_ERROR();
   res = errno;
   if (res != TRI_ERROR_NO_ERROR) {
-    systemErrorStr = std::string("Failed to create directory [") + path + "] " +
+    systemErrorStr = std::string("failed to create directory '") + path + "': " +
                      TRI_GET_ERRORBUF;
     systemError = res;
 

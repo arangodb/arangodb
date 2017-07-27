@@ -631,12 +631,16 @@ if test -n "${ENTERPRISE_GIT_URL}" ; then
 fi
 
 if test "${DOWNLOAD_STARTER}" == 1; then
-    # we utilize https://developer.github.com/v3/repos/ to get the newest release:
-    STARTER_REV=$(curl -s https://api.github.com/repos/arangodb-helper/arangodb/releases | \
-                         grep tag_name | \
-                         head -n 1 | \
-                         ${SED} -e "s;.*: ;;" -e 's;";;g' -e 's;,;;'
-               )
+    if test -f ${SRC}/STARTER_REV; then
+        STARTER_REV=$(cat ${SRC}/STARTER_REV)
+    else
+        # we utilize https://developer.github.com/v3/repos/ to get the newest release:
+        STARTER_REV=$(curl -s https://api.github.com/repos/arangodb-helper/arangodb/releases | \
+                             grep tag_name | \
+                             head -n 1 | \
+                             ${SED} -e "s;.*: ;;" -e 's;";;g' -e 's;,;;'
+                   )
+    fi
     STARTER_URL=$(curl -s "https://api.github.com/repos/arangodb-helper/arangodb/releases/tags/${STARTER_REV}" | \
                          grep browser_download_url | \
                          grep "${OSNAME}" | \
