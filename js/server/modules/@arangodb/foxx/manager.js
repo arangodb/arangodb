@@ -217,7 +217,7 @@ function selfHeal () {
         try {
           bundleCollection._binaryInsert({_key: checksum}, bundlePath);
         } catch (e) {
-          console.warnStack(e, `Failed to store missing service bundle for service at "${mount}"`);
+          console.warnStackOneLine(e, `Failed to store missing service bundle for service at "${mount}"`);
         }
       }
     } else if (bundleExists) {
@@ -229,7 +229,7 @@ function selfHeal () {
         extractServiceBundle(bundlePath, basePath);
         modified = true;
       } catch (e) {
-        console.errorStack(e, `Failed to load service bundle for service at "${mount}"`);
+        console.errorStackOneLine(e, `Failed to load service bundle for service at "${mount}"`);
       }
     }
   }
@@ -250,7 +250,7 @@ function selfHeal () {
         fs.removeDirectoryRecursive(basePath, true);
         console.debug(`Deleted orphaned service folder ${basePath}`);
       } catch (e) {
-        console.warnStack(e, `Failed to delete orphaned service folder ${basePath}`);
+        console.warnStackOneLine(e, `Failed to delete orphaned service folder ${basePath}`);
       }
     }
   }
@@ -266,7 +266,7 @@ function selfHeal () {
         fs.remove(bundlePath);
         console.debug(`Deleted orphaned service bundle ${bundlePath}`);
       } catch (e) {
-        console.warnStack(e, `Failed to delete orphaned service bundle ${bundlePath}`);
+        console.warnStackOneLine(e, `Failed to delete orphaned service bundle ${bundlePath}`);
       }
     }
   }
@@ -286,7 +286,7 @@ function startup () {
           db._useDatabase(name);
           upsertSystemServices();
         } catch (e) {
-          console.warnStack(e);
+          console.warnStackOneLine(e);
         }
       }
     } finally {
@@ -352,7 +352,7 @@ function commitLocalState (replace) {
         collection.save(service.toJSON());
         modified = true;
       } catch (e) {
-        console.errorStack(e);
+        console.errorStackOneLine(e);
       }
     } else {
       const checksum = safeChecksum(mount);
@@ -558,7 +558,7 @@ function _prepareService (serviceInfo, options = {}) {
         try {
           store.update();
         } catch (e) {
-          console.warnStack(e);
+          console.warnStackOneLine(e);
         }
       }
       const info = store.installationInfo(serviceInfo);
@@ -578,7 +578,7 @@ function _prepareService (serviceInfo, options = {}) {
         try {
           fs.remove(storeBundle);
         } catch (e) {
-          console.warnStack(e, `Cannot remove temporary file "${storeBundle}"`);
+          console.warnStackOneLine(e, `Cannot remove temporary file "${storeBundle}"`);
         }
       }
       patchManifestFile(tempServicePath, info.manifest);
@@ -627,7 +627,7 @@ function _deleteServiceFromPath (mount, options) {
       if (!options.force) {
         throw e;
       }
-      console.warnStack(e);
+      console.warnStackOneLine(e);
     }
   }
   const bundlePath = FoxxService.bundlePath(mount);
@@ -638,7 +638,7 @@ function _deleteServiceFromPath (mount, options) {
       if (!options.force) {
         throw e;
       }
-      console.warnStack(e);
+      console.warnStackOneLine(e);
     }
   }
 }
@@ -660,7 +660,7 @@ function _install (mount, options = {}) {
       _deleteServiceFromPath(mount, options);
       throw e;
     } else {
-      console.warnStack(e);
+      console.warnStackOneLine(e);
     }
   }
   service.updateChecksum();
@@ -682,7 +682,7 @@ function _install (mount, options = {}) {
     ensureServiceExecuted(service, true);
   } catch (e) {
     if (!options.force) {
-      console.errorStack(e);
+      console.errorStackOneLine(e);
     } else {
       console.warnStack(e);
     }

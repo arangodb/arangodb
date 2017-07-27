@@ -131,7 +131,7 @@ function createCallbackFromActionCallbackString (callback, parentModule, route) 
   try {
     actionModule._compile(`module.exports = ${callback}`, route.name);
   } catch (e) {
-    console.errorStack(e);
+    console.errorStackOneLine(e);
     return notImplementedFunction(route, util.format(
       "could not generate callback for '%s'",
       callback
@@ -995,7 +995,7 @@ function foxxRouting (req, res, options, next) {
       ]));
     }
   } catch (e) {
-    console.errorStack(e, `Failed to load Foxx service mounted at "${mount}"`);
+    console.errorStackOneLine(e, `Failed to load Foxx service mounted at "${mount}"`);
     options.error = {
       code: exports.HTTP_SERVICE_UNAVAILABLE,
       num: e.errorNum || arangodb.ERROR_HTTP_SERVICE_UNAVAILABLE,
@@ -1855,7 +1855,7 @@ function resultException (req, res, err, headers, verbose) {
   var info = {};
 
   if (verbose !== false) {
-    console.errorStack(err);
+    console.errorStackOneLine(err);
     if (typeof verbose === 'string') {
       msg = verbose;
     }

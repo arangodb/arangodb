@@ -420,6 +420,27 @@ global.DEFINE_MODULE('console', (function () {
     }
   };
 
+  exports.errorStackOneLine = function (e, msg) {
+    var lines = [];
+    if (msg) {
+      line.push(msg);
+    }
+    if (e.codeFrame) {
+      lines.push(e.codeFrame);
+    }
+    let err = e;
+    while (err) {
+      if (!msg && err === e) {
+        lines.push(err.stack);
+      }
+      else {
+        lines.push(`via ${err.stack}`.replace(/(?:\r\n|\r|\n)/g,'\\n'));
+      }
+      err = err.cause;
+    }
+    exports.error(lines.join("\\n"));
+  };
+
   exports.errorStack = function (e, msg) {
     if (msg) {
       exports.errorLines(msg);
@@ -436,6 +457,27 @@ global.DEFINE_MODULE('console', (function () {
       );
       err = err.cause;
     }
+  };
+
+  exports.warnStackOneLine = function (e, msg) {
+    var lines = [];
+    if (msg) {
+      line.push(msg);
+    }
+    if (e.codeFrame) {
+      lines.push(e.codeFrame);
+    }
+    let err = e;
+    while (err) {
+      if (!msg && err === e) {
+        lines.push(err.stack);
+      }
+      else {
+        lines.push(`via ${err.stack}`.replace(/(?:\r\n|\r|\n)/g,'\\n'));
+      }
+      err = err.cause;
+    }
+    exports.warn(lines.join("\\n"));
   };
 
   exports.warnStack = function (e, msg) {
