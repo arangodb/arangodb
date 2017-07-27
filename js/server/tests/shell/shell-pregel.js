@@ -62,7 +62,7 @@ function testAlgo(a, p) {
       break;
     }
   } while(i-- >= 0);
-  if (i == 0) {
+  if (i === 0) {
     assertTrue(false, "timeout in pregel execution");
   }
 }
@@ -187,7 +187,7 @@ function exampleTestSuite () {
           break;
         }
       } while(i-- >= 0);
-      if (i == 0) {
+      if (i === 0) {
         assertTrue(false, "timeout in pregel execution");
       }
     }
