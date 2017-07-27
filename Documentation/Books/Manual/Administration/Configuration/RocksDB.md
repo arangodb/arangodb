@@ -101,7 +101,7 @@ compaction to catch up. Default: 36.
 
 ### File I/O
 
-`--rocksdb.compaction-read-ahead-size` (Hidden)
+`--rocksdb.compaction-read-ahead-size`
 
 If non-zero, we perform bigger reads when doing compaction. If you're  running
 RocksDB on spinning disks, you should set this to at least 2MiB. That way
@@ -123,30 +123,19 @@ If set, issue an `fsync` call when writing to disk (set to false to issue
 
 ### Background tasks
 
-`--rocksdb.base-background-compactions` (Hidden)
-
-Suggested number of concurrent background compaction jobs, submitted to the low
-priority thread pool. Default: 1.
-
-`--rocksdb.max-background-compactions`
+`--rocksdb.max-background-jobs`
 
 Maximum number of concurrent background compaction jobs, submitted to the low
-priority thread pool. Default: 1.
-
-`--rocksdb.max-background-flushes`
-
-Maximum number of concurrent flush operations, submitted to the high priority
-thread pool. Default: 1.
+priority thread pool. Default: number of processors.
 
 `--rocksdb.num-threads-priority-high`
 
 Number of threads for high priority operations (e.g. flush). We recommend
-setting this equal to `max-background-flushes`. Default: 1.
+setting this equal to `max-background-flushes`. Default: number of processors / 2.
 
 `--rocksdb.num-threads-priority-low`
 
-Number of threads for low priority operations (e.g. compaction). We recommend
-setting this equal to `max-background-compactions`. Default: 1.
+Number of threads for low priority operations (e.g. compaction). Default: number of processors / 2.
 
 ### Caching
 
