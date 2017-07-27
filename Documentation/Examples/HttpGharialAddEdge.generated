@@ -7,8 +7,8 @@ shell> curl -X POST --data-binary @- --dump - http://localhost:8529/_api/gharial
 EOF
 
 HTTP/<span class="hljs-number">1.1</span> <span class="hljs-number">202</span> Accepted
+etag: _VWLlPGC---
 content-type: application/json; charset=utf<span class="hljs-number">-8</span>
-etag: _VRZRUdm---
 x-content-type-options: nosniff
 
 { 
@@ -16,7 +16,7 @@ x-content-type-options: nosniff
   <span class="hljs-string">"edge"</span> : { 
     <span class="hljs-string">"_id"</span> : <span class="hljs-string">"relation/7701"</span>, 
     <span class="hljs-string">"_key"</span> : <span class="hljs-string">"7701"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_VRZRUdm---"</span> 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_VWLlPGC---"</span> 
   }, 
   <span class="hljs-string">"code"</span> : <span class="hljs-number">202</span> 
 }

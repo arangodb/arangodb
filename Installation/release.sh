@@ -14,6 +14,42 @@ EXAMPLES=1
 LINT=1
 PARALLEL=8
 
+SED=sed
+isMac=0
+if test "$(uname)" == "Darwin"; then
+    isMac=1
+    SED=gsed
+    OSNAME=darwin
+fi
+
+if flex --version; then
+    echo "flex found."
+else
+    echo "flex missing from your system"
+    exit 1
+fi
+
+if npm --version; then
+    echo "npm found."
+else
+    echo "npm missing from your system"
+    exit 1
+fi
+
+if grunt --version; then
+    echo "grunt found."
+else
+    echo "grunt missing from your system"
+    exit 1
+fi
+
+if gitbook --version; then
+    echo "gitbook found."
+else
+    echo "gitbook missing from your system"
+    exit 1
+fi
+
 if [ "$#" -lt 1 ];  then
     echo "usage: $0 <major>.<minor>.<revision>"
     exit 1
