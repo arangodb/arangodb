@@ -325,8 +325,7 @@ void StorageEngineMock::createView(TRI_vocbase_t* vocbase, TRI_voc_cid_t id, ara
 }
 
 std::string StorageEngineMock::databasePath(TRI_vocbase_t const* vocbase) const {
-  TRI_ASSERT(false);
-  return nullptr;
+  return ""; // no valid path filesystem persisted, return empty string
 }
 
 void StorageEngineMock::destroyCollection(TRI_vocbase_t* vocbase, arangodb::LogicalCollection* collection) {
@@ -374,11 +373,21 @@ int StorageEngineMock::getCollectionsAndIndexes(TRI_vocbase_t* vocbase, arangodb
 }
 
 void StorageEngineMock::getDatabases(arangodb::velocypack::Builder& result) {
-  TRI_ASSERT(false);
+  arangodb::velocypack::Builder system;
+
+  system.openObject();
+  system.add("name", arangodb::velocypack::Value(TRI_VOC_SYSTEM_DATABASE));
+  system.close();
+
+  // array expected
+  result.openArray();
+  result.add(system.slice());
+  result.close();
 }
 
-std::shared_ptr<arangodb::velocypack::Builder> StorageEngineMock::getReplicationApplierConfiguration(TRI_vocbase_t*, int&) {
-  TRI_ASSERT(false);
+std::shared_ptr<arangodb::velocypack::Builder> StorageEngineMock::getReplicationApplierConfiguration(TRI_vocbase_t* vocbase, int& result) {
+  result = TRI_ERROR_FILE_NOT_FOUND; // assume no ReplicationApplierConfiguration for vocbase
+
   return nullptr;
 }
 
@@ -398,8 +407,21 @@ arangodb::Result StorageEngineMock::lastLogger(TRI_vocbase_t*, std::shared_ptr<a
 }
 
 TRI_vocbase_t* StorageEngineMock::openDatabase(arangodb::velocypack::Slice const& args, bool isUpgrade, int& status) {
-  TRI_ASSERT(false);
-  return nullptr;
+  if (!args.isObject() || !args.hasKey("name") || !args.get("name").isString()) {
+    status = TRI_ERROR_ARANGO_DATABASE_NAME_INVALID;
+
+    return nullptr;
+  }
+
+  auto vocbase = irs::memory::make_unique<TRI_vocbase_t>(
+    TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
+    vocbases.size(),
+    args.get("name").copyString()
+  );
+
+  vocbases.emplace_back(std::move(vocbase));
+
+  return vocbases.back().get();
 }
 
 arangodb::Result StorageEngineMock::persistCollection(TRI_vocbase_t* vocbase, arangodb::LogicalCollection const* collection) {

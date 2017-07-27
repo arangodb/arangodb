@@ -125,6 +125,8 @@ class TransactionStateMock: public arangodb::TransactionState {
 
 class StorageEngineMock: public arangodb::StorageEngine {
  public:
+  std::vector<std::unique_ptr<TRI_vocbase_t>> vocbases; // must allocate on heap because TRI_vocbase_t does not have a 'noexcept' move constructor
+
   StorageEngineMock();
   virtual void addAqlFunctions() override;
   virtual void addOptimizerRules() override;
@@ -155,7 +157,7 @@ class StorageEngineMock: public arangodb::StorageEngine {
   virtual void getCollectionInfo(TRI_vocbase_t* vocbase, TRI_voc_cid_t cid, arangodb::velocypack::Builder& result, bool includeIndexes, TRI_voc_tick_t maxTick) override;
   virtual int getCollectionsAndIndexes(TRI_vocbase_t* vocbase, arangodb::velocypack::Builder& result, bool wasCleanShutdown, bool isUpgrade) override;
   virtual void getDatabases(arangodb::velocypack::Builder& result) override;
-  virtual std::shared_ptr<arangodb::velocypack::Builder> getReplicationApplierConfiguration(TRI_vocbase_t*, int&) override;
+  virtual std::shared_ptr<arangodb::velocypack::Builder> getReplicationApplierConfiguration(TRI_vocbase_t* vocbase, int& result) override;
   virtual int getViews(TRI_vocbase_t* vocbase, arangodb::velocypack::Builder& result) override;
   virtual int handleSyncKeys(arangodb::InitialSyncer&, arangodb::LogicalCollection*, std::string const&, std::string const&, std::string const&, TRI_voc_tick_t, std::string&) override;
   virtual arangodb::Result lastLogger(TRI_vocbase_t*, std::shared_ptr<arangodb::transaction::Context>, uint64_t, uint64_t, std::shared_ptr<VPackBuilder>&) override;
