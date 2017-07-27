@@ -472,6 +472,8 @@ AuthLevel AuthUserEntry::collectionAuthLevel(
     if (dbname == TRI_VOC_SYSTEM_DATABASE &&
         collectionName == TRI_COL_NAME_USERS) {
       return AuthLevel::NONE;
+    } else if (collectionName == "_queues") {
+      return AuthLevel::RO;
     } else if (collectionName == "_frontend") {
       return AuthLevel::RW;
     }

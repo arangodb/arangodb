@@ -27,6 +27,7 @@ const isCluster = require("@arangodb/cluster").isCluster();
 const isAgent = global.ArangoAgent.enabled();
 
 var _ = require('lodash');
+var internal = require('internal');
 var flatten = require('internal').flatten;
 var arangodb = require('@arangodb');
 var joi = require('joi');
@@ -100,17 +101,8 @@ function getQueue (key) {
 }
 
 function createQueue (key, maxWorkers) {
-  try {
-    db._queues.save({_key: key, maxWorkers: maxWorkers || 1});
-  } catch (err) {
-    if (!(err instanceof arangodb.ArangoError) ||
-      err.errorNum !== arangodb.ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED) {
-      throw err;
-    }
-    if (maxWorkers) {
-      db._queues.update(key, {maxWorkers: maxWorkers});
-    }
-  }
+  internal.createQueue({_key: key, maxWorkers: maxWorkers || 1});
+  
   var databaseName = db._name();
   var cache = queueCache[databaseName];
   if (!cache) {
@@ -122,17 +114,12 @@ function createQueue (key, maxWorkers) {
 
 function deleteQueue (key) {
   var result = false;
-  db._executeTransaction({
-    collections: {
-      exclusive: ['_queues']
-    },
-    action() {
-      if (db._queues.exists(key)) {
-        db._queues.remove(key);
-        result = true;
-      }
-    }
-  });
+  try {
+    internal.deleteQueue(key);
+    result = true;
+  } catch(e) {
+    internal.print("Deleting queue failed: " + e.message);
+  }
   return result;
 }
 
