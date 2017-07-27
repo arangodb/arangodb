@@ -110,7 +110,7 @@ function clusterRequest(req) {
   }
 
   const headers = {};
-  if (ArangoServerState.role() == 'PRIMARY') {
+  if (global.ArangoServerState.role() === 'PRIMARY') {
     headers['x-arango-source'] = global.ArangoServerState.id();
   }
 
