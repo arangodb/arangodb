@@ -123,6 +123,9 @@ class TransactionState {
   /// @brief use all participating collections of a transaction
   Result useCollections(int nestingLevel);
 
+  /// @brief run a callback on all collections
+  void allCollections(std::function<bool(TransactionCollection*)> const& cb);
+
   /// @brief release collection locks for a transaction
   int unuseCollections(int nestingLevel);
 
