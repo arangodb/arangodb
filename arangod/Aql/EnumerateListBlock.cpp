@@ -212,16 +212,18 @@ size_t EnumerateListBlock::skipSome(size_t atLeast, size_t atMost) {
     if (atMost < sizeInVar - _index) {
       // eat just enough of inVariable . . .
       _index += atMost;
-      skipped = atMost;
+      skipped += atMost;
     } else {
       // eat the whole of the current inVariable and proceed . . .
       skipped += (sizeInVar - _index);
       _index = 0;
       _thisBlock = 0;
       _seen = 0;
-      returnBlock(cur);
-      _buffer.pop_front();
-      _pos = 0;
+      if (++_pos == cur->size()) {
+        returnBlock(cur);
+        _buffer.pop_front();  // does not throw
+        _pos = 0;
+      }
     }
   }
   return skipped;
