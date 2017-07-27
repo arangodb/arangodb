@@ -164,7 +164,7 @@ LogicalCollection::LogicalCollection(LogicalCollection const& other)
       _vocbase(other.vocbase()),
       _keyOptions(other._keyOptions),
       _keyGenerator(KeyGenerator::factory(VPackSlice(keyOptions()))),
-      _physical(other.getPhysical()->clone(this, other.getPhysical())),
+      _physical(other.getPhysical()->clone(this)),
       _clusterEstimateTTL(0) {
   TRI_ASSERT(_physical != nullptr);
   if (ServerState::instance()->isDBServer() ||

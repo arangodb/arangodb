@@ -203,9 +203,8 @@ arangodb::Result MMFilesCollection::persistProperties() {
   return res;
 }
 
-PhysicalCollection* MMFilesCollection::clone(LogicalCollection* logical,
-                                             PhysicalCollection* physical) {
-  return new MMFilesCollection(logical, physical);
+PhysicalCollection* MMFilesCollection::clone(LogicalCollection* logical) {
+  return new MMFilesCollection(logical, this);
 }
 
 /// @brief process a document (or edge) marker when opening a collection

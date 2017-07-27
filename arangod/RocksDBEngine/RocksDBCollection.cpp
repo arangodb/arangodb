@@ -146,9 +146,8 @@ arangodb::Result RocksDBCollection::persistProperties() {
   return arangodb::Result{};
 }
 
-PhysicalCollection* RocksDBCollection::clone(LogicalCollection* logical,
-                                             PhysicalCollection* physical) {
-  return new RocksDBCollection(logical, physical);
+PhysicalCollection* RocksDBCollection::clone(LogicalCollection* logical) {
+  return new RocksDBCollection(logical, this);
 }
 
 void RocksDBCollection::getPropertiesVPack(velocypack::Builder& result) const {
