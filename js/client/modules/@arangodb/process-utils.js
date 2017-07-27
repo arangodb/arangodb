@@ -523,24 +523,25 @@ function runArangoImp (options, instanceInfo, what) {
 // / @brief runs arangodump or arangorestore
 // //////////////////////////////////////////////////////////////////////////////
 
-function runArangoDumpRestore (options, instanceInfo, which, database, rootDir) {
+function runArangoDumpRestore (options, instanceInfo, which, database, rootDir, dumpDir = 'dump', includeSystem = true) {
   let args = {
     'configuration': fs.join(CONFIG_DIR, (which === 'dump' ? 'arangodump.conf' : 'arangorestore.conf')),
     'server.username': options.username,
     'server.password': options.password,
     'server.endpoint': instanceInfo.endpoint,
     'server.database': database,
-    'include-system-collections': 'true'
+    'include-system-collections': includeSystem ? 'true' : 'false'
   };
 
   let exe;
+  rootDir = rootDir || instanceInfo.rootDir;
 
   if (which === 'dump') {
-    args['output-directory'] = fs.join(instanceInfo.rootDir, 'dump');
+    args['output-directory'] = fs.join(rootDir, dumpDir);
     exe = ARANGODUMP_BIN;
   } else {
     args['create-database'] = 'true';
-    args['input-directory'] = fs.join(instanceInfo.rootDir, 'dump');
+    args['input-directory'] = fs.join(rootDir, dumpDir);
     exe = ARANGORESTORE_BIN;
   }
 
@@ -549,7 +550,7 @@ function runArangoDumpRestore (options, instanceInfo, which, database, rootDir) 
     print(args);
   }
 
-  return executeAndWait(exe, toArgv(args), options, 'arangorestore', instanceInfo.rootDir);
+  return executeAndWait(exe, toArgv(args), options, 'arangorestore', rootDir);
 }
 
 // //////////////////////////////////////////////////////////////////////////////

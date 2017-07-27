@@ -30,6 +30,7 @@
 
 var internal = require("internal");
 var jsunity = require("jsunity");
+let users = require("@arangodb/users");
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite
@@ -148,6 +149,20 @@ function dumpTestSuite () {
       assertEqual(1, c.getIndexes().length); // just primary index
       assertEqual("primary", c.getIndexes()[0].type);
       assertEqual(3, c.count());
+    },
+
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test the users
+////////////////////////////////////////////////////////////////////////////////
+
+    testUsers : function () {
+      let uName = "foobaruser";
+
+      assertTrue(users.exists(uName));
+      assertEqual(users.permission(uName, "_system"), 'rw');
+      assertEqual(users.permission(uName, "UnitTestsDumpSrc"), 'rw');
+      assertEqual(users.permission(uName, "UnitTestsDumpEmpty"), 'none');
     }
 
   };

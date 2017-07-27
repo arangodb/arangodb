@@ -278,3 +278,15 @@ exports.permission = function (username, dbName, coll) {
 
   return arangosh.checkRequestResult(requestResult).result;
 };
+
+exports.exists = function (username) {
+  try {
+    exports.document(username);
+    return true;
+  } catch (e) {
+    if (e.errorNum === arangodb.errors.ERROR_USER_NOT_FOUND.code) {
+      return false;
+    }
+    throw e;
+  }
+};
