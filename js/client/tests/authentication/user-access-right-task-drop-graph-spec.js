@@ -264,7 +264,7 @@ describe('User Rights Management', () => {
                   })(params);`
                 };
                 if (dbLevel['rw'].has(name)) {
-                  if (dbLevel['rw'].has(name) && (colLevel['rw'].has(name) || colLevel['ro'].has(name))) {
+                  if (dbLevel['rw'].has(name) && colLevel['rw'].has(name)) {
                     tasks.register(task);
                     wait(keySpaceId, `${name}_specified_collection_access`);
                     expect(!rootTestGraph()).to.equal(true, 'Graph drop reported success, but graph was found afterwards.');
