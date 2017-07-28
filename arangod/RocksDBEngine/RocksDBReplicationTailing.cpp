@@ -42,6 +42,9 @@ using namespace arangodb::velocypack;
 // define to INFO to see the WAL output
 #define _LOG TRACE
 
+namespace {
+static std::string const emptyString;
+
 /// an incomplete convert function, basically only use for DDL ops
 static TRI_replication_operation_e convertLogType(RocksDBLogType t) {
   switch (t) {
@@ -69,11 +72,13 @@ static TRI_replication_operation_e convertLogType(RocksDBLogType t) {
   }
 }
 
+}
+
 /// WAL parser
 class WALParser : public rocksdb::WriteBatch::Handler {
  public:
-  explicit WALParser(TRI_vocbase_t* vocbase, bool includeSystem,
-                     TRI_voc_cid_t collectionId, VPackBuilder& builder)
+  WALParser(TRI_vocbase_t* vocbase, bool includeSystem,
+            TRI_voc_cid_t collectionId, VPackBuilder& builder)
       : _documentsCF(RocksDBColumnFamily::documents()->GetID()),
         _definitionsCF(RocksDBColumnFamily::definitions()->GetID()),
         _vocbase(vocbase),
@@ -239,13 +244,20 @@ class WALParser : public rocksdb::WriteBatch::Handler {
       _builder.add("type", VPackValue(convertLogType(_lastLogType)));
       _builder.add("database", VPackValue(std::to_string(_currentDbId)));
       _builder.add("cid", VPackValue(std::to_string(_currentCollectionId)));
-      _builder.add("cname", collectionData.get("name"));
+
+      VPackSlice cname = collectionData.get("name");
+      if (cname.isString()) {
+        _builder.add("cname", cname);
+
+        // set name in cache              
+        _collectionNames[_currentCollectionId] = cname.copyString();
+      }
 
       if (_lastLogType == RocksDBLogType::CollectionRename) {
         _builder.add("data", VPackValue(VPackValueType::Object));
         _builder.add("id", VPackValue(std::to_string(_currentCollectionId)));
         _builder.add("oldName", VPackValue(_oldCollectionName));
-        _builder.add("name", collectionData.get("name"));
+        _builder.add("name", cname);
         _builder.close();
       } else {  // change and create need full data
         _builder.add("data", collectionData);
@@ -268,7 +280,12 @@ class WALParser : public rocksdb::WriteBatch::Handler {
       // auto containers = getContainerIds(key);
       _builder.add("database", VPackValue(std::to_string(_currentDbId)));
       _builder.add("cid", VPackValue(std::to_string(_currentCollectionId)));
-      if (_singleOp) {  // single op is defined to 0
+      // collection name
+      std::string const& cname = nameFromCid(_currentCollectionId);
+      if (!cname.empty()) {
+        _builder.add("cname", VPackValue(cname));
+      }
+      if (_singleOp) {  // single op is defined to have a transaction id of 0
         _builder.add("tid", VPackValue("0"));
         _singleOp = false;
       } else {
@@ -304,6 +321,9 @@ class WALParser : public rocksdb::WriteBatch::Handler {
       if (_lastLogType == RocksDBLogType::CollectionDrop) {
         TRI_ASSERT(_currentDbId != 0 && _currentCollectionId != 0);
         LOG_TOPIC(_LOG, Logger::ROCKSDB) << "CID: " << _currentCollectionId;
+
+        // reset name in collection name cache        
+        _collectionNames.erase(_currentCollectionId);
 
         _builder.openObject();
         _builder.add("tick", VPackValue(std::to_string(_currentSequence)));
@@ -341,6 +361,10 @@ class WALParser : public rocksdb::WriteBatch::Handler {
           "type", VPackValue(static_cast<uint64_t>(REPLICATION_MARKER_REMOVE)));
       _builder.add("database", VPackValue(std::to_string(_currentDbId)));
       _builder.add("cid", VPackValue(std::to_string(_currentCollectionId)));
+      std::string const& cname = nameFromCid(_currentCollectionId);
+      if (!cname.empty()) {
+        _builder.add("cname", VPackValue(cname));
+      }
       if (_singleOp) {  // single op is defined to 0
         _builder.add("tid", VPackValue("0"));
         _singleOp = false;
@@ -445,10 +469,37 @@ class WALParser : public rocksdb::WriteBatch::Handler {
     return true;
   }
 
+  /// @brief translate a (local) collection id into a collection name
+  std::string const& nameFromCid(TRI_voc_cid_t cid) {
+    auto it = _collectionNames.find(cid);
+
+    if (it != _collectionNames.end()) {
+      // collection name is in cache already
+      return (*it).second;
+    }
+
+    // collection name not in cache yet
+    std::string name(_vocbase->collectionName(cid));
+
+    if (!name.empty()) {
+      // insert into cache
+      try {
+        _collectionNames.emplace(cid, std::move(name));
+      } catch (...) {
+        return emptyString;
+      }
+
+      // and look it up again
+      return nameFromCid(cid);
+    }
+
+    return emptyString;
+  }
+
  private:
   uint32_t const _documentsCF;
   uint32_t const _definitionsCF;
-
+  
   // these parameters are relevant to determine if we can print
   // a specific marker from the WAL
   TRI_vocbase_t* const _vocbase;
@@ -456,6 +507,8 @@ class WALParser : public rocksdb::WriteBatch::Handler {
   TRI_voc_cid_t const _onlyCollectionId;
   /// result builder
   VPackBuilder& _builder;
+  // collection name cache
+  std::unordered_map<TRI_voc_cid_t, std::string> _collectionNames;
 
   // Various state machine flags
   rocksdb::SequenceNumber _startSequence;
