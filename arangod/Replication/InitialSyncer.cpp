@@ -607,7 +607,7 @@ int InitialSyncer::handleCollectionDump(arangodb::LogicalCollection* col,
     setProgress(progress);
 
     // use async mode for first batch
-    std::unordered_map<std::string, std::string> headers;
+    auto headers = createHeaders();
     if (batch == 1) {
       headers["X-Arango-Async"] = "store";
     }
@@ -805,7 +805,7 @@ int InitialSyncer::handleCollectionSync(arangodb::LogicalCollection* col,
   // sending this request in a blocking fashion may require very long to
   // complete,
   // so we're sending the x-arango-async header here
-  std::unordered_map<std::string, std::string> headers;
+  auto headers = createHeaders();
   headers["X-Arango-Async"] = "store";
   std::unique_ptr<SimpleHttpResult> response(
       _client->retryRequest(rest::RequestType::POST, url, nullptr, 0, headers));
