@@ -264,14 +264,30 @@ V8Task::callbackFunction() {
       }
       return;
     }
+    
+    // get the permissions to be used by this task
+    AuthLevel dbLvl = AuthLevel::RW;
+    std::unique_ptr<ExecContext> execContext;
+    if (!_user.empty()) { // not superuser
+      AuthenticationFeature* auth = AuthenticationFeature::INSTANCE;
+      std::string const& dbname = _vocbaseGuard->vocbase()->name();
+      dbLvl = auth->canUseDatabase(_user, dbname);
+      execContext.reset(new ExecContext(_user, dbname,
+                                        auth->canUseDatabase(_user, TRI_VOC_SYSTEM_DATABASE),
+                                        dbLvl));
+      ExecContext::CURRENT = execContext.get();
+    }
 
-    if (SchedulerFeature::SCHEDULER->isStopping()) {
+    // permissions might have changed since starting this task
+    if (SchedulerFeature::SCHEDULER->isStopping() || dbLvl != AuthLevel::RW) {
       V8Task::unregisterTask(_id, false);
       return;
     }
     
     // now do the work:
     work();
+    
+    ExecContext::CURRENT = nullptr; // reset the pointer, should not really matter
     
     if (_periodic && !SchedulerFeature::SCHEDULER->isStopping()) {
       _timer->expires_from_now(_interval);
@@ -376,17 +392,6 @@ void V8Task::work() {
 
       // call the function within a try/catch
       try {
-        std::unique_ptr<ExecContext> execContext;
-        TRI_DEFER(ExecContext::CURRENT = nullptr);
-        if (!_user.empty()) {
-          AuthenticationFeature* auth = AuthenticationFeature::INSTANCE;
-          std::string const& dbname = _vocbaseGuard->vocbase()->name();
-          execContext.reset(new ExecContext(_user, dbname,
-                             auth->canUseDatabase(_user, TRI_VOC_SYSTEM_DATABASE),
-                             auth->canUseDatabase(_user, dbname)));
-          ExecContext::CURRENT = execContext.get();
-        }
-        
         v8::TryCatch tryCatch;
         action->Call(current, 1, &fArgs);
         if (tryCatch.HasCaught()) {
@@ -464,6 +469,12 @@ static void JS_RegisterTask(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   if (args.Length() != 1 || !args[0]->IsObject()) {
     TRI_V8_THROW_EXCEPTION_USAGE("register(<task>)");
+  }
+  
+  if (ExecContext::CURRENT != nullptr &&
+      ExecContext::CURRENT->databaseAuthLevel() != AuthLevel::RW) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN,
+                                   "registerTask() needs db RW permissions");
   }
 
   v8::Handle<v8::Object> obj = args[0].As<v8::Object>();
@@ -607,6 +618,12 @@ static void JS_UnregisterTask(v8::FunctionCallbackInfo<v8::Value> const& args) {
   if (args.Length() != 1) {
     TRI_V8_THROW_EXCEPTION_USAGE("unregister(<id>)");
   }
+  
+  if (ExecContext::CURRENT != nullptr &&
+      ExecContext::CURRENT->databaseAuthLevel() != AuthLevel::RW) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN,
+                                   "unregisterTask() needs db RW permissions");
+  }
 
   int res = V8Task::unregisterTask(GetTaskId(isolate, args[0]), true);
 
@@ -646,6 +663,7 @@ static void JS_GetTask(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_END
 }
 
+/// creates a new object in _queues
 static void JS_CreateQueue(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
@@ -654,20 +672,28 @@ static void JS_CreateQueue(v8::FunctionCallbackInfo<v8::Value> const& args) {
     TRI_V8_THROW_EXCEPTION_USAGE("createQueue(<id>)");
   }
   
-  VPackBuilder builder;
+  std::string runAsUser;
+  if (ExecContext::CURRENT != nullptr) {
+    if (ExecContext::CURRENT->databaseAuthLevel() != AuthLevel::RW) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN,
+                                     "createQueue() needs db RW permissions");
+    }
+    runAsUser = ExecContext::CURRENT->user();
+  }
+  // stupid trick to force superuser rights
+  ExecContext *exe = ExecContext::CURRENT;
+  ExecContext::CURRENT = nullptr;
+  TRI_DEFER(ExecContext::CURRENT = exe);
+  
+  VPackBuilder docs;
   {
-    int res = TRI_V8ToVPack(isolate, builder, args[0], true);
+    int res = TRI_V8ToVPack(isolate, docs, args[0], true);
     if (res != TRI_ERROR_NO_ERROR) {
       TRI_V8_THROW_EXCEPTION(res);
     }
   }
-  
-  std::string runAsUser;
-  if (ExecContext::CURRENT != nullptr) {
-    runAsUser = ExecContext::CURRENT->user();
-  }
-  builder.add("runAsUser", VPackValue(runAsUser));
-  builder.close();
+  docs.add("runAsUser", VPackValue(runAsUser));
+  docs.close();
   
   TRI_GET_GLOBALS();
   
@@ -681,10 +707,10 @@ static void JS_CreateQueue(v8::FunctionCallbackInfo<v8::Value> const& args) {
   }
   
   OperationOptions opts;
-  OperationResult result = trx.insert("_queues", builder.slice(), opts);
+  OperationResult result = trx.insert("_queues", docs.slice(), opts);
   if (!result.successful() &&
       result.code == TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED) {
-    result = trx.replace("_queues", builder.slice(), opts);
+    result = trx.replace("_queues", docs.slice(), opts);
   }
   res = trx.finish(result.code);
   if (!res.ok()) {
@@ -705,6 +731,15 @@ static void JS_DeleteQueue(v8::FunctionCallbackInfo<v8::Value> const& args) {
   std::string key = TRI_ObjectToString(args[0]);
   VPackBuilder keyB;
   keyB(VPackValue(VPackValueType::Object))(StaticStrings::KeyString, VPackValue(key))();
+  
+  ExecContext *exe = ExecContext::CURRENT;
+  if (exe != nullptr && exe->databaseAuthLevel() != AuthLevel::RW) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN,
+                                   "deleteQueue() needs db RW permissions");
+  }
+  // stupid trick to force superuser rights
+  ExecContext::CURRENT = nullptr;
+  TRI_DEFER(ExecContext::CURRENT = exe);
   
   TRI_GET_GLOBALS();
   
