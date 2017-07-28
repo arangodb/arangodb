@@ -1,6 +1,8 @@
 devel
 -----
 
+* arangoexport: added --query; pass a aql query to export the result
+
 * fixed issue #2879: No result when querying for the last record of a query
 
 * ui: allows now to edit default access level for collections in database
