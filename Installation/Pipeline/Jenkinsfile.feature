@@ -144,6 +144,14 @@ credentials = '8d893d23-6714-4f35-a239-c847c798e080'
 // jenkins cache
 cacheDir = '/vol/cache/' + env.JOB_NAME.replaceAll('%', '_')
 
+// source branch for pull requests
+sourceBranchLabel = env.BRANCH_NAME
+
+if (env.BRANCH_NAME =~ /^PR-/) {
+  def prUrl = new URL("https://api.github.com/repos/arangodb/arangodb/pulls/${env.CHANGE_ID}")
+  sourceBranchLabel = new groovy.json.JsonSlurper().parseText(prUrl.text).head.label
+}
+
 // copy data to master cache
 def scpToMaster(os, from, to) {
     if (os == 'linux' || os == 'mac') {
@@ -167,13 +175,6 @@ def scpFromMaster(os, from, to) {
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       SCRIPTS SCM
 // -----------------------------------------------------------------------------
-
-sourceBranchLabel = env.BRANCH_NAME
-
-if (env.BRANCH_NAME =~ /^PR-/) {
-  def prUrl = new URL("<a href="https://api.github.com/repos/arangodb/arangodb/pulls/${env.CHANGE_ID}">https://api.github.com/repos/arangodb/arangodb/pulls/${env.CHANGE_ID}")
-  sourceBranchLabel = new groovy.json.JsonSlurper().parseText(prUrl.text).head.label
-}
 
 def checkoutCommunity() {
     if (cleanBuild) {
