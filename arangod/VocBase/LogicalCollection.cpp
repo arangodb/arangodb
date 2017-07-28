@@ -26,6 +26,7 @@
 
 #include "Aql/PlanCache.h"
 #include "Aql/QueryCache.h"
+#include "Basics/fasthash.h"
 #include "Basics/LocalTaskQueue.h"
 #include "Basics/PerformanceLogScope.h"
 #include "Basics/ReadLocker.h"
@@ -1193,4 +1194,135 @@ VPackSlice LogicalCollection::keyOptions() const {
     return arangodb::basics::VelocyPackHelper::NullValue();
   }
   return VPackSlice(_keyOptions->data());
+}
+
+ChecksumResult LogicalCollection::checksum(bool withRevisions, bool withData) const {
+  auto transactionContext =
+    std::make_shared<transaction::StandaloneContext>(vocbase());
+  SingleCollectionTransaction trx(transactionContext, cid(), AccessMode::Type::READ);
+
+  Result res = trx.begin();
+
+  if (!res.ok()) {
+    return ChecksumResult(res);
+  }
+
+  trx.pinData(_cid); // will throw when it fails
+  
+  // get last tick
+  LogicalCollection* collection = trx.documentCollection();
+  auto physical = collection->getPhysical();
+  TRI_ASSERT(physical != nullptr);
+  std::string const revisionId = TRI_RidToString(physical->revision(&trx));
+  uint64_t hash = 0;
+        
+  ManagedDocumentResult mmdr;
+  trx.invokeOnAllElements(name(), [&hash, &withData, &withRevisions, &trx, &collection, &mmdr](DocumentIdentifierToken const& token) {
+      if (collection->readDocument(&trx, token, mmdr)) {
+      VPackSlice const slice(mmdr.vpack());
+
+      uint64_t localHash = transaction::helpers::extractKeyFromDocument(slice).hashString(); 
+
+      if (withRevisions) {
+      localHash += transaction::helpers::extractRevSliceFromDocument(slice).hash();
+      }
+
+      if (withData) {
+      // with data
+      uint64_t const n = slice.length() ^ 0xf00ba44ba5;
+      uint64_t seed = fasthash64_uint64(n, 0xdeadf054);
+
+      for (auto const& it : VPackObjectIterator(slice, false)) {
+      // loop over all attributes, but exclude _rev, _id and _key
+      // _id is different for each collection anyway, _rev is covered by withRevisions, and _key
+      // was already handled before
+      VPackValueLength keyLength;
+      char const* key = it.key.getString(keyLength);
+      if (keyLength >= 3 && 
+          key[0] == '_' &&
+          ((keyLength == 3 && memcmp(key, "_id", 3) == 0) ||
+           (keyLength == 4 && (memcmp(key, "_key", 4) == 0 || memcmp(key, "_rev", 4) == 0)))) {
+        // exclude attribute
+        continue;
+      }
+
+      localHash ^= it.key.hash(seed) ^ 0xba5befd00d; 
+      localHash += it.value.normalizedHash(seed) ^ 0xd4129f526421; 
+      }
+      }
+
+      hash ^= localHash;
+      }
+    return true;
+  });
+
+  trx.finish(res);
+
+  std::string const hashString = std::to_string(hash);
+
+  VPackBuilder b;
+  {
+    VPackObjectBuilder o(&b);
+    b.add("checksum", VPackValue(hashString));
+    b.add("revision", VPackValue(revisionId));
+  }
+
+  return ChecksumResult(b);
+}
+
+Result LogicalCollection::compareChecksums(VPackSlice checksumSlice) const {
+  if (!checksumSlice.isObject()) {
+    auto typeName = checksumSlice.typeName();
+    return Result(
+      TRI_ERROR_REPLICATION_WRONG_CHECKSUM_FORMAT,
+      std::string("Checksum must be an object but is ") + typeName
+    );
+  }
+
+  auto revision = checksumSlice.get("revision");
+  auto checksum = checksumSlice.get("checksum");
+
+  if (!revision.isString()) {
+    return Result(
+      TRI_ERROR_REPLICATION_WRONG_CHECKSUM_FORMAT,
+      "Property `revisionId` must be a string"
+    );
+  }
+  if (!checksum.isString()) {
+    return Result(
+      TRI_ERROR_REPLICATION_WRONG_CHECKSUM_FORMAT,
+      "Property `checksum` must be a string"
+    );
+  }
+
+  auto result = this->checksum(false, false);
+
+  if (!result.ok()) {
+    return Result(result);
+  }
+
+  auto referenceChecksumSlice = result.slice();
+  auto referenceChecksum = referenceChecksumSlice.get("checksum");
+  auto referenceRevision = referenceChecksumSlice.get("revision");
+  TRI_ASSERT(referenceChecksum.isString());
+  TRI_ASSERT(referenceRevision.isString());
+
+  if (!checksum.isEqualString(referenceChecksum.copyString())) {
+    return Result(
+      TRI_ERROR_REPLICATION_WRONG_CHECKSUM,
+      "`checksum` property is wrong. Expected: "
+        + referenceChecksum.copyString()
+        + ". Actual: " + checksum.copyString()
+    );
+  }
+ 
+  if (!revision.isEqualString(referenceRevision.copyString())) {
+    return Result(
+      TRI_ERROR_REPLICATION_WRONG_CHECKSUM,
+      "`checksum` property is wrong. Expected: "
+        + revision.copyString()
+        + ". Actual: " + referenceRevision.copyString()
+    );
+  }
+  return Result();
 }
