@@ -1153,6 +1153,58 @@ AqlValue Functions::ConcatSeparator(arangodb::aql::Query* query,
   }
 }
 
+/// @brief function CHAR_LENGTH
+AqlValue Functions::CharLength(arangodb::aql::Query* query,
+                                    transaction::Methods* trx,
+                                    VPackFunctionParameters const& parameters) {
+  ValidateParameters(parameters, "CHAR_LENGTH", 1, 1);
+
+  transaction::BuilderLeaser builder(trx);
+
+  AqlValue value = ExtractFunctionParameterValue(trx, parameters, 0);
+  size_t length = 0;
+
+  if (value.isArray() || value.isObject()) {
+    AqlValueMaterializer materializer(trx);
+    VPackSlice slice = materializer.slice(value, false);
+
+    transaction::StringBufferLeaser buffer(trx);
+    arangodb::basics::VPackStringBufferAdapter adapter(buffer->stringBuffer());
+
+    VPackDumper dumper(&adapter, trx->transactionContextPtr()->getVPackOptions());
+    dumper.dump(slice);
+
+    length = buffer->length();
+
+  } else if (value.isNull(true)) {
+    length = 4;
+
+  } else if (value.isBoolean()) {
+    if (value.toBoolean()) {
+      length = 4;
+    } else {
+      length = 5;
+    }
+
+  } else if (value.isNumber()) {
+    double tmp = value.toDouble(trx);
+    if (std::isnan(tmp) || !std::isfinite(tmp)) {
+      length = 0;
+    } else {
+      char buffer[24];
+      length = static_cast<size_t>(fpconv_dtoa(tmp, buffer));
+    }
+
+  } else if (value.isString()) {
+    VPackValueLength l;
+    char const* p = value.slice().getString(l);
+    length = TRI_CharLengthUtf8String(p, l);
+  }
+
+  builder->add(VPackValue(static_cast<uint64_t>(length)));
+  return AqlValue(builder.get());
+}
+
 /// @brief function LIKE
 AqlValue Functions::Like(arangodb::aql::Query* query,
                          transaction::Methods* trx,
@@ -3713,23 +3765,6 @@ AqlValue Functions::IsSameCollection(
   RegisterWarning(query, "IS_SAME_COLLECTION",
                   TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
   return AqlValue(arangodb::basics::VelocyPackHelper::NullValue());
-}
-
-AqlValue Functions::CharLength(arangodb::aql::Query* query,
-                                    transaction::Methods* trx,
-                                    VPackFunctionParameters const& parameters) {
-  ValidateParameters(parameters, "CHAR_LENGTH", 1, 1);
-  AqlValue value = ExtractFunctionParameterValue(trx, parameters, 0);
-
-  transaction::BuilderLeaser builder(trx);
-  VPackValueLength l;
-  char const* p = value.slice().getString(l);
-  size_t length = TRI_CharLengthUtf8String(p, l);
-
-  builder->add(VPackValue(static_cast<uint64_t>(length)));
-
-  return AqlValue(builder.get());
-//  return AqlValue(arangodb::basics::VelocyPackHelper::FalseValue());
 }
 
 #include "Pregel/PregelFeature.h"

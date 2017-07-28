@@ -235,6 +235,8 @@ void AqlFunctionFeature::addStringFunctions() {
        &Functions::Concat});
   add({"CONCAT_SEPARATOR", "AQL_CONCAT_SEPARATOR", ".,.|+", true, true, false,
        true, true, &Functions::ConcatSeparator});
+  add({"CHAR_LENGTH", "AQL_CHAR_LENGTH", ".", true, true, false, true, true,
+       &Functions::CharLength});
   add({"LOWER", "AQL_LOWER", ".", true, true, false, true, true});
   add({"UPPER", "AQL_UPPER", ".", true, true, false, true, true});
   add({"SUBSTRING", "AQL_SUBSTRING", ".,.|.", true, true, false, true, true});
@@ -327,8 +329,6 @@ void AqlFunctionFeature::addListFunctions() {
   add({"LENGTH", "AQL_LENGTH", ".", true, true, false, true, true,
        &Functions::Length});
   add({"COUNT", "AQL_LENGTH", ".", true, true, false, true, true,
-       &Functions::Length});  // alias for LENGTH()
-  add({"CHAR_LENGTH", "AQL_LENGTH", ".", true, true, false, true, true,
        &Functions::Length});  // alias for LENGTH()
   add({"MIN", "AQL_MIN", ".", true, true, false, true, true, &Functions::Min});
   add({"MAX", "AQL_MAX", ".", true, true, false, true, true, &Functions::Max});
