@@ -127,7 +127,7 @@ RestStatus RestUsersHandler::getRequest(AuthInfo* authInfo) {
         // return list of databases
         VPackBuilder data;
         data.openObject();
-        authInfo->accessUser(user, [&](AuthUserEntry const& entry) {
+        Result res = authInfo->accessUser(user, [&](AuthUserEntry const& entry) {
           DatabaseFeature::DATABASE->enumerateDatabases([&](
               TRI_vocbase_t* vocbase) {
 
@@ -165,9 +165,13 @@ RestStatus RestUsersHandler::getRequest(AuthInfo* authInfo) {
                 "permission", VPackValue(convertFromAuthLevel(lvl)))();
           }
         });
-
         data.close();
-        generateSuccess(ResponseCode::OK, data.slice());
+        if (res.ok()) {
+          generateSuccess(ResponseCode::OK, data.slice());
+        } else {
+          generateError(res);
+        }
+        
       } else if (suffixes.size() == 3) {
         // return specific database
         AuthLevel lvl = authInfo->canUseDatabase(user, suffixes[2]);

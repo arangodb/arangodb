@@ -2989,17 +2989,6 @@ static void JS_CollectionVocbase(
   arangodb::LogicalCollection const* collection = nullptr;
   
   std::string const name = TRI_ObjectToString(val);
-  if (ExecContext::CURRENT != nullptr) {
-    AuthenticationFeature* auth = AuthenticationFeature::INSTANCE;
-    TRI_ASSERT(auth != nullptr);
-    AuthLevel level = auth->canUseCollection(ExecContext::CURRENT->user(),
-                                             ExecContext::CURRENT->database(),
-                                             name);
-    if (level == AuthLevel::NONE) {
-      TRI_V8_THROW_EXCEPTION(TRI_ERROR_FORBIDDEN);
-    }
-  }
-
   if (ServerState::instance()->isCoordinator()) {
     try {
       std::shared_ptr<LogicalCollection> const ci =
@@ -3017,9 +3006,20 @@ static void JS_CollectionVocbase(
   if (collection == nullptr) {
     TRI_V8_RETURN_NULL();
   }
+  
+  if (ExecContext::CURRENT != nullptr) {
+    AuthenticationFeature* auth = AuthenticationFeature::INSTANCE;
+    TRI_ASSERT(auth != nullptr);
+    AuthLevel level = auth->canUseCollection(ExecContext::CURRENT->user(),
+                                             ExecContext::CURRENT->database(),
+                                             name);
+    if (level == AuthLevel::NONE) {
+      TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN,
+                                     "No access to collection");
+    }
+  }
 
   v8::Handle<v8::Value> result = WrapCollection(isolate, collection);
-
   if (result.IsEmpty()) {
     TRI_V8_THROW_EXCEPTION_MEMORY();
   }
