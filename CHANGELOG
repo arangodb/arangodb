@@ -1,6 +1,8 @@
 devel
 -----
 
+* fixed issue #2868: cname missing from logger-follow results in rocksdb
+
 * fixed issue #2889: Traversal query using incorrect collection id
 
 * fixed issue #2884: AQL traversal uniqueness constraints "propagating" to other traversals? Weird results
