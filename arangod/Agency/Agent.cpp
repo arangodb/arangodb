@@ -1874,6 +1874,9 @@ Inception const* Agent::inception() const {
 
 write_ret_t Agent::reconfigure(query_t const payload) {
 
+  static std::string const addServer("add-server");
+  static std::string const removeServer("remove-server");
+
   if (challengeLeadership()) {
     return write_ret_t(false, leaderID());
   }
@@ -1893,7 +1896,7 @@ write_ret_t Agent::reconfigure(query_t const payload) {
   auto config = _config;
   Result result;
   
-  if (operation == "add-server") {
+  if (operation == addServer) {
     MUTEX_LOCKER(ioLocker, _ioLock);
     for (auto const& i : _config.active()) {
       if (i != id()) {
@@ -1907,7 +1910,7 @@ write_ret_t Agent::reconfigure(query_t const payload) {
     if (result.ok()) {
       result = config.addServer(opVal);
     }
-  } else if (operation == "remove-server") {
+  } else if (operation == removeServer) {
     MUTEX_LOCKER(ioLocker, _ioLock);
     for (auto const& i : _config.active()) {
       if (i != id()) {
@@ -1926,7 +1929,7 @@ write_ret_t Agent::reconfigure(query_t const payload) {
   } else {
     result.reset(3, "Unknown agency reconfiguration operation");
   }
-
+  
   if (!result.ok()) {
     THROW_ARANGO_EXCEPTION_MESSAGE(result.errorNumber(), result.errorMessage());
   }
