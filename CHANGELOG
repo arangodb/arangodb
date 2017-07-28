@@ -3,6 +3,14 @@ devel
 
 * fixed issue #2876: wrong skiplist index usage in edge collection
 
+* fixed issue #2889: Traversal query using incorrect collection id
+
+* fixed issue #2884: AQL traversal uniqueness constraints "propagating" to other traversals? Weird results
+
+* arangoexport: added --query; pass a aql query to export the result
+
+* fixed issue #2879: No result when querying for the last record of a query
+
 * ui: allows now to edit default access level for collections in database
   _system for all users except the root user.
 
@@ -11,6 +19,7 @@ devel
 * removed options "--rocksdb.max-background-compactions", "--rocksdb.base-background-compactions" and "--rocksdb.max-background-flushes"
 
 * option "--rocksdb.compaction-read-ahead-size" now defaults to 2MB
+
 
 v3.2.0 (2017-07-20)
 -------------------

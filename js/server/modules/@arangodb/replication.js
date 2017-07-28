@@ -220,6 +220,7 @@ function syncCollectionFinalize (database, collname, from, config, sourceServer)
   var transactions = {};
 
   function apply (entry) {
+    console.topic('replication=trace', 'Applying entry', JSON.stringify(entry));
     var todo;
 
     function tryPostpone (entry) {
@@ -243,13 +244,13 @@ function syncCollectionFinalize (database, collname, from, config, sourceServer)
                                  isSynchronousReplication: sourceServer});
         return;
       } catch (err) {
-        console.debug('syncCollectionFinalize: insert1', entry, JSON.stringify(err));
+        console.topic('replication=debug','syncCollectionFinalize: insert1', entry, JSON.stringify(err));
       }
       try {
         coll.replace(entry.data._key, entry.data,
           {isRestore: true, isSynchronousReplication: sourceServer});
       } catch (errx) {
-        console.error('syncCollectionFinalize: replace1', entry, JSON.stringify(errx));
+        console.topic('replication=debug','syncCollectionFinalize: replace1', entry, JSON.stringify(errx));
         throw errx;
       }
     } else if (entry.type === mType.REPLICATION_MARKER_EDGE) {
@@ -261,13 +262,13 @@ function syncCollectionFinalize (database, collname, from, config, sourceServer)
           {isRestore: true, isSynchronousReplication: sourceServer});
         return;
       } catch (err) {
-        console.debug('syncCollectionFinalize: insert2', entry, JSON.stringify(err));
+        console.topic('replication=debug','syncCollectionFinalize: insert2', entry, JSON.stringify(err));
       }
       try {
         coll.replace(entry.data._key, entry.data,
           {isRestore: true, isSynchronousReplication: sourceServer});
       } catch (errx) {
-        console.error('syncCollectionFinalize: replace2', entry, JSON.stringify(errx));
+        console.topic('replication=debug','syncCollectionFinalize: replace2', entry, JSON.stringify(errx));
         throw errx;
       }
     } else if (entry.type === mType.REPLICATION_MARKER_REMOVE) {
@@ -277,7 +278,7 @@ function syncCollectionFinalize (database, collname, from, config, sourceServer)
       try {
         coll.remove(entry.data._key, {isSynchronousReplication: sourceServer});
       } catch (errx) {
-        console.error('syncCollectionFinalize: remove', entry, JSON.stringify(errx));
+        console.topic('replication=debug','syncCollectionFinalize: remove', entry, JSON.stringify(errx));
         if (errx.errorNum !== ERRORS.ERROR_ARANGO_DOCUMENT_NOT_FOUND.code) {
           throw errx;
         }
@@ -304,21 +305,21 @@ function syncCollectionFinalize (database, collname, from, config, sourceServer)
       try {
         coll.ensureIndex(entry.data);
       } catch(errx) {
-        console.error('syncCollectionFinalize: ensureIndex', entry, JSON.stringify(errx));
+        console.topic('replication=debug','syncCollectionFinalize: ensureIndex', entry, JSON.stringify(errx));
         throw errx;
       }
     } else if (entry.type === mType.REPLICATION_INDEX_DROP) {
       try {
         coll.dropIndex(entry.data.id);
       } catch(errx) {
-        console.error('syncCollectionFinalize: dropIndex', entry, JSON.stringify(errx));
+        console.topic('replication=debug','syncCollectionFinalize: dropIndex', entry, JSON.stringify(errx));
         throw errx;
       }
     } else if (entry.type === mType.REPLICATION_COLLECTION_CHANGE) {
       try {
         coll.properties(entry.data);
       } catch(errx) {
-        console.error('syncCollectionFinalize: properties', entry, JSON.stringify(errx));
+        console.topic('replication=debug','syncCollectionFinalize: properties', entry, JSON.stringify(errx));
         throw errx;
       }
     } else {

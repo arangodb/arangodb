@@ -110,6 +110,9 @@ function clusterRequest(req) {
   }
 
   const headers = {};
+  if (global.ArangoServerState.role() === 'PRIMARY') {
+    headers['x-arango-source'] = global.ArangoServerState.id();
+  }
 
   if (contentType) {
     headers['content-type'] = contentType;
