@@ -41,6 +41,7 @@ const namePrefix = helper.namePrefix;
 const dbName = helper.dbName;
 const rightLevels = helper.rightLevels;
 const testColName = `${namePrefix}ColNew`;
+const errors = require('@arangodb').errors;
 const keySpaceId = 'task_collection_keyspace';
 
 const userSet = helper.userSet;
@@ -156,7 +157,7 @@ describe('User Rights Management', () => {
             it('create a task which creates a collection', () => {
               expect(rootTestCollection()).to.equal(false, 'Precondition failed, the collection still exists');
               const taskId = 'task_collection_' + name;
-              tasks.register({
+              const task = {
                 id: taskId,
                 name: taskId,
                 command: `(function (params) {
@@ -167,12 +168,22 @@ describe('User Rights Management', () => {
                     global.KEY_SET('${keySpaceId}', '${name}', true);
                   }
                 })(params);`
-              });
-              wait(keySpaceId, name);
+              };
               if (dbLevel['rw'].has(name)) {
-                expect(rootTestCollection()).to.equal(true, 'Collection creation reported success, but collection was not found afterwards.');
+                tasks.register(task);
+                wait(keySpaceId, name);
+                if (dbLevel['rw'].has(name)) {
+                  expect(rootTestCollection()).to.equal(true, 'Collection creation reported success, but collection was not found afterwards.');
+                } else {
+                  expect(rootTestCollection()).to.equal(false, `${name} was able to create a collection with insufficent rights`);
+                }
               } else {
-                expect(rootTestCollection()).to.equal(false, `${name} was able to create a collection with insufficent rights`);
+                try {
+                  tasks.register(task);
+                  expect(false).to.equal(true, `${name} managed to register a task with insufficient rights`);
+                } catch (e) {
+                  expect(e.errorNum).to.equal(errors.ERROR_FORBIDDEN.code);
+                }
               }
             });
           });

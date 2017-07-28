@@ -39,6 +39,7 @@ const download = require('internal').download;
 const dbName = helper.dbName;
 const colName = helper.colName;
 const rightLevels = helper.rightLevels;
+const errors = require('@arangodb').errors;
 const keySpaceId = 'task_collection_level_create_keyspace';
 
 const userSet = helper.userSet;
@@ -171,35 +172,44 @@ describe('User Rights Management', () => {
                     }
                   })(params);`
                 };
-                if ((dbLevel['rw'].has(name) || dbLevel['ro'].has(name)) &&
-                   colLevel['rw'].has(name)) {
-                  let col = db._collection(colName);
-                  try {
-                    col.document('123');
-                    expect(false).to.equal(true, 'Precondition failed, document already inserted.');
-                  } catch (e) {}
-                  tasks.register(task);
-                  wait(keySpaceId, name);
-                  expect(getKey(keySpaceId, `${name}_status`)).to.equal(true, `${name} the create did not pass through...`);
-                  expect(col.document('123').foo).to.equal('bar', `${name} the create did not pass through...`);
-                } else {
-                  let hasReadAccess = ((dbLevel['rw'].has(name) || dbLevel['ro'].has(name)) &&
-                    (colLevel['rw'].has(name) || colLevel['ro'].has(name)));
-                  if (hasReadAccess) {
+                if (dbLevel['rw'].has(name)) {
+                  if ((dbLevel['rw'].has(name) || dbLevel['ro'].has(name)) &&
+                    colLevel['rw'].has(name)) {
                     let col = db._collection(colName);
                     try {
                       col.document('123');
                       expect(false).to.equal(true, 'Precondition failed, document already inserted.');
                     } catch (e) {}
+                    tasks.register(task);
+                    wait(keySpaceId, name);
+                    expect(getKey(keySpaceId, `${name}_status`)).to.equal(true, `${name} the create did not pass through...`);
+                    expect(col.document('123').foo).to.equal('bar', `${name} the create did not pass through...`);
+                  } else {
+                    let hasReadAccess = ((dbLevel['rw'].has(name) || dbLevel['ro'].has(name)) &&
+                      (colLevel['rw'].has(name) || colLevel['ro'].has(name)));
+                    if (hasReadAccess) {
+                      let col = db._collection(colName);
+                      try {
+                        col.document('123');
+                        expect(false).to.equal(true, 'Precondition failed, document already inserted.');
+                      } catch (e) {}
+                    }
+                    tasks.register(task);
+                    wait(keySpaceId, name);
+                    expect(getKey(keySpaceId, `${name}_status`)).to.not.equal(true, `${name} managed to create the document with insufficient rights`);
+                    if (hasReadAccess) {
+                      let col = db._collection(colName);
+                      try {
+                        expect(col.document('123').foo).to.not.equal('bar', `${name} managed to create the document with insufficient rights`);
+                      } catch (e) {}
+                    }
                   }
-                  tasks.register(task);
-                  wait(keySpaceId, name);
-                  expect(getKey(keySpaceId, `${name}_status`)).to.not.equal(true, `${name} managed to create the document with insufficient rights`);
-                  if (hasReadAccess) {
-                    let col = db._collection(colName);
-                    try {
-                      expect(col.document('123').foo).to.not.equal('bar', `${name} managed to create the document with insufficient rights`);
-                    } catch (e) {}
+                } else {
+                  try {
+                    tasks.register(task);
+                    expect(false).to.equal(true, `${name} managed to register a task with insufficient rights`);
+                  } catch (e) {
+                    expect(e.errorNum).to.equal(errors.ERROR_FORBIDDEN.code);
                   }
                 }
               });
@@ -224,25 +234,34 @@ describe('User Rights Management', () => {
                     }
                   })(params);`
                 };
-                if ((dbLevel['rw'].has(name) || dbLevel['ro'].has(name)) &&
-                   colLevel['rw'].has(name)) {
-                  let col = db._collection(colName);
-                  tasks.register(task);
-                  wait(keySpaceId, name);
-                  expect(getKey(keySpaceId, `${name}_status`)).to.equal(true, `${name} the create did not pass through...`);
-                  let doc = col.document('456');
-                  expect(doc.foo).to.equal('bar', `${name}  the create did not pass through...`);
-                } else {
-                  let hasReadAccess = ((dbLevel['rw'].has(name) || dbLevel['ro'].has(name)) &&
-                    (colLevel['rw'].has(name) || colLevel['ro'].has(name)));
-                  tasks.register(task);
-                  wait(keySpaceId, name);
-                  expect(getKey(keySpaceId, `${name}_status`)).to.not.equal(true, `${name} managed to create the document with insufficient rights`);
-                  if (hasReadAccess) {
+                if (dbLevel['rw'].has(name)) {
+                  if ((dbLevel['rw'].has(name) || dbLevel['ro'].has(name)) &&
+                    colLevel['rw'].has(name)) {
                     let col = db._collection(colName);
-                    try {
-                      expect(col.document('456').foo).to.not.equal('bar', `${name} managed to create the document with insufficient rights`);
-                    } catch (e) {}
+                    tasks.register(task);
+                    wait(keySpaceId, name);
+                    expect(getKey(keySpaceId, `${name}_status`)).to.equal(true, `${name} the create did not pass through...`);
+                    let doc = col.document('456');
+                    expect(doc.foo).to.equal('bar', `${name}  the create did not pass through...`);
+                  } else {
+                    let hasReadAccess = ((dbLevel['rw'].has(name) || dbLevel['ro'].has(name)) &&
+                      (colLevel['rw'].has(name) || colLevel['ro'].has(name)));
+                    tasks.register(task);
+                    wait(keySpaceId, name);
+                    expect(getKey(keySpaceId, `${name}_status`)).to.not.equal(true, `${name} managed to create the document with insufficient rights`);
+                    if (hasReadAccess) {
+                      let col = db._collection(colName);
+                      try {
+                        expect(col.document('456').foo).to.not.equal('bar', `${name} managed to create the document with insufficient rights`);
+                      } catch (e) {}
+                    }
+                  }
+                } else {
+                  try {
+                    tasks.register(task);
+                    expect(false).to.equal(true, `${name} managed to register a task with insufficient rights`);
+                  } catch (e) {
+                    expect(e.errorNum).to.equal(errors.ERROR_FORBIDDEN.code);
                   }
                 }
               });

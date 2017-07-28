@@ -39,6 +39,7 @@ const download = require('internal').download;
 const dbName = helper.dbName;
 const colName = helper.colName;
 const rightLevels = helper.rightLevels;
+const errors = require('@arangodb').errors;
 const keySpaceId = 'task_collection_level_truncate_keyspace';
 
 const userSet = helper.userSet;
@@ -184,17 +185,26 @@ describe('User Rights Management', () => {
                     }
                   })(params);`
                 };
-                if ((dbLevel['rw'].has(name) || dbLevel['ro'].has(name)) &&
-                   colLevel['rw'].has(name)) {
-                  tasks.register(task);
-                  wait(keySpaceId, name);
-                  expect(getKey(keySpaceId, `${name}_status`)).to.equal(true, `${name} could not truncate the collection with sufficient rights`);
-                  expect(rootCount()).to.equal(0, `${name} could not truncate the collection with sufficient rights`);
+                if (dbLevel['rw'].has(name)) {
+                  if ((dbLevel['rw'].has(name) || dbLevel['ro'].has(name)) &&
+                    colLevel['rw'].has(name)) {
+                    tasks.register(task);
+                    wait(keySpaceId, name);
+                    expect(getKey(keySpaceId, `${name}_status`)).to.equal(true, `${name} could not truncate the collection with sufficient rights`);
+                    expect(rootCount()).to.equal(0, `${name} could not truncate the collection with sufficient rights`);
+                  } else {
+                    tasks.register(task);
+                    wait(keySpaceId, name);
+                    expect(getKey(keySpaceId, `${name}_status`)).to.not.equal(true, `${name} managed to truncate the collection with insufficient rights`);
+                    expect(rootCount()).to.equal(6, `${name} managed to truncate the collection with insufficient rights`);
+                  }
                 } else {
-                  tasks.register(task);
-                  wait(keySpaceId, name);
-                  expect(getKey(keySpaceId, `${name}_status`)).to.not.equal(true, `${name} managed to truncate the collection with insufficient rights`);
-                  expect(rootCount()).to.equal(6, `${name} managed to truncate the collection with insufficient rights`);
+                  try {
+                    tasks.register(task);
+                    expect(false).to.equal(true, `${name} managed to register a task with insufficient rights`);
+                  } catch (e) {
+                    expect(e.errorNum).to.equal(errors.ERROR_FORBIDDEN.code);
+                  }
                 }
               });
             });

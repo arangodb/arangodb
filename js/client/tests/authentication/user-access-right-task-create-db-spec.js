@@ -38,6 +38,7 @@ const download = require('internal').download;
 const namePrefix = helper.namePrefix;
 const rightLevels = helper.rightLevels;
 const testDBName = `${namePrefix}DBNew`;
+const errors = require('@arangodb').errors;
 const keySpaceId = 'task_create_db_keyspace';
 
 const userSet = helper.userSet;
@@ -164,12 +165,21 @@ describe('User Rights Management', () => {
                   }
                 })(params);`
               };
-              tasks.register(task);
-              wait(keySpaceId, name);
               if (systemLevel['rw'].has(name)) {
-                expect(rootTestDB()).to.equal(true, 'DB creation reported success, but DB was not found afterwards.');
+                tasks.register(task);
+                wait(keySpaceId, name);
+                if (systemLevel['rw'].has(name)) {
+                  expect(rootTestDB()).to.equal(true, 'DB creation reported success, but DB was not found afterwards.');
+                } else {
+                  expect(rootTestDB()).to.equal(false, `${name} was able to create a database with insufficent rights`);
+                }
               } else {
-                expect(rootTestDB()).to.equal(false, `${name} was able to create a database with insufficent rights`);
+                try {
+                  tasks.register(task);
+                  expect(false).to.equal(true, `${name} managed to register a task with insufficient rights`);
+                } catch (e) {
+                  expect(e.errorNum).to.equal(errors.ERROR_FORBIDDEN.code);
+                }
               }
             });
           });

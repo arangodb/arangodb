@@ -38,6 +38,7 @@ const download = require('internal').download;
 const namePrefix = helper.namePrefix;
 const rightLevels = helper.rightLevels;
 const testDBName = `${namePrefix}DBNew`;
+const errors = require('@arangodb').errors;
 const keySpaceId = 'task_drop_db_keyspace';
 
 const userSet = helper.userSet;
@@ -157,25 +158,34 @@ describe('User Rights Management', () => {
             });
 
             it('drop database', () => {
+              const taskId = 'task_db_create' + name;
+              const task = {
+                id: taskId,
+                name: taskId,
+                command: `(function (params) {
+                  try {
+                    const db = require('@arangodb').db;
+                    db._dropDatabase('${testDBName}');
+                  } finally {
+                    global.KEY_SET('${keySpaceId}', '${name}', true);
+                  }
+                })(params);`
+              };
               if (systemLevel['rw'].has(name)) {
-                const taskId = 'task_db_create' + name;
-                const task = {
-                  id: taskId,
-                  name: taskId,
-                  command: `(function (params) {
-                    try {
-                      const db = require('@arangodb').db;
-                      db._dropDatabase('${testDBName}');
-                    } finally {
-                      global.KEY_SET('${keySpaceId}', '${name}', true);
-                    }
-                  })(params);`
-                };
                 tasks.register(task);
                 wait(keySpaceId, name);
-                expect(rootTestDB()).to.equal(false, 'DB drop reported success, but DB was still found afterwards.');
+                if (systemLevel['rw'].has(name)) {
+                  expect(rootTestDB()).to.equal(false, 'DB drop reported success, but DB was still found afterwards.');
+                } else {
+                  expect(rootTestDB()).to.equal(true, `${name} was able to drop a database with insufficient rights`);
+                }
               } else {
-                expect(rootTestDB()).to.equal(true, `${name} was able to drop a database with insufficient rights`);
+                try {
+                  tasks.register(task);
+                  expect(false).to.equal(true, `${name} managed to register a task with insufficient rights`);
+                } catch (e) {
+                  expect(e.errorNum).to.equal(errors.ERROR_FORBIDDEN.code);
+                }
               }
             });
           });

@@ -39,6 +39,7 @@ const download = require('internal').download;
 const dbName = helper.dbName;
 const colName = helper.colName;
 const rightLevels = helper.rightLevels;
+const errors = require('@arangodb').errors;
 const keySpaceId = 'task_collection_level_read_keyspace';
 
 const userSet = helper.userSet;
@@ -168,15 +169,24 @@ describe('User Rights Management', () => {
                     }
                   })(params);`
                 };
-                if ((dbLevel['rw'].has(name) || dbLevel['ro'].has(name)) &&
-                   (colLevel['rw'].has(name) || colLevel['ro'].has(name))) {
-                  tasks.register(task);
-                  wait(keySpaceId, name);
-                  expect(getKey(keySpaceId, `${name}_status`)).to.equal(true, `${name} could not read the document with sufficient rights`);
+                if (dbLevel['rw'].has(name)) {
+                  if ((dbLevel['rw'].has(name) || dbLevel['ro'].has(name)) &&
+                    (colLevel['rw'].has(name) || colLevel['ro'].has(name))) {
+                    tasks.register(task);
+                    wait(keySpaceId, name);
+                    expect(getKey(keySpaceId, `${name}_status`)).to.equal(true, `${name} could not read the document with sufficient rights`);
+                  } else {
+                    tasks.register(task);
+                    wait(keySpaceId, name);
+                    expect(getKey(keySpaceId, `${name}_status`)).to.not.equal(true, `${name} managed to read the document with insufficient rights`);
+                  }
                 } else {
-                  tasks.register(task);
-                  wait(keySpaceId, name);
-                  expect(getKey(keySpaceId, `${name}_status`)).to.not.equal(true, `${name} managed to read the document with insufficient rights`);
+                  try {
+                    tasks.register(task);
+                    expect(false).to.equal(true, `${name} managed to register a task with insufficient rights`);
+                  } catch (e) {
+                    expect(e.errorNum).to.equal(errors.ERROR_FORBIDDEN.code);
+                  }
                 }
               });
 
@@ -199,15 +209,24 @@ describe('User Rights Management', () => {
                     }
                   })(params);`
                 };
-                if ((dbLevel['rw'].has(name) || dbLevel['ro'].has(name)) &&
-                   (colLevel['rw'].has(name) || colLevel['ro'].has(name))) {
-                  tasks.register(task);
-                  wait(keySpaceId, name);
-                  expect(getKey(keySpaceId, `${name}_status`)).to.equal(true, `${name} could not read the document with sufficient rights`);
+                if (dbLevel['rw'].has(name)) {
+                  if ((dbLevel['rw'].has(name) || dbLevel['ro'].has(name)) &&
+                    (colLevel['rw'].has(name) || colLevel['ro'].has(name))) {
+                    tasks.register(task);
+                    wait(keySpaceId, name);
+                    expect(getKey(keySpaceId, `${name}_status`)).to.equal(true, `${name} could not read the document with sufficient rights`);
+                  } else {
+                    tasks.register(task);
+                    wait(keySpaceId, name);
+                    expect(getKey(keySpaceId, `${name}_status`)).to.not.equal(true, `${name} managed to read the document with insufficient rights`);
+                  }
                 } else {
-                  tasks.register(task);
-                  wait(keySpaceId, name);
-                  expect(getKey(keySpaceId, `${name}_status`)).to.not.equal(true, `${name} managed to read the document with insufficient rights`);
+                  try {
+                    tasks.register(task);
+                    expect(false).to.equal(true, `${name} managed to register a task with insufficient rights`);
+                  } catch (e) {
+                    expect(e.errorNum).to.equal(errors.ERROR_FORBIDDEN.code);
+                  }
                 }
               });
             });

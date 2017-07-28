@@ -37,8 +37,8 @@ const tasks = require('@arangodb/tasks');
 const pu = require('@arangodb/process-utils');
 const download = require('internal').download;
 const namePrefix = helper.namePrefix;
-const dbName = helper.dbName;
 const rightLevels = helper.rightLevels;
+const errors = require('@arangodb').errors;
 const keySpaceId = 'task_create_user_keyspace';
 
 const userSet = helper.userSet;
@@ -157,7 +157,7 @@ describe('User Rights Management', () => {
 
             it('create a user', () => {
               const taskId = 'task_create_user_' + name;
-              tasks.register({
+              const task = {
                 id: taskId,
                 name: taskId,
                 command: `(function (params) {
@@ -167,12 +167,22 @@ describe('User Rights Management', () => {
                     global.KEY_SET('${keySpaceId}', '${name}', true);
                   }
                 })(params);`
-              });
-              wait(keySpaceId, name);
+              };
               if (systemLevel['rw'].has(name)) {
-                expect(rootTestUser()).to.equal(true, 'User creation reported success, but User was not found afterwards.');
+                tasks.register(task);
+                wait(keySpaceId, name);
+                if (systemLevel['rw'].has(name)) {
+                  expect(rootTestUser()).to.equal(true, 'User creation reported success, but User was not found afterwards.');
+                } else {
+                  expect(rootTestUser()).to.equal(false, `${name} was able to create a user with insufficent rights`);
+                }
               } else {
-                expect(rootTestUser()).to.equal(false, `${name} was able to create a user with insufficent rights`);
+                try {
+                  tasks.register(task);
+                  expect(false).to.equal(true, `${name} managed to register a task with insufficient rights`);
+                } catch (e) {
+                  expect(e.errorNum).to.equal(errors.ERROR_FORBIDDEN.code);
+                }
               }
             });
           });
