@@ -1489,7 +1489,7 @@ void RocksDBRestReplicationHandler::handleCommandMakeSlave() {
   std::string errorMsg = "";
   {
     InitialSyncer syncer(_vocbase, &config, config._restrictCollections,
-                         restrictType, false);
+                         restrictType, false, false);
 
     res = TRI_ERROR_NO_ERROR;
 
@@ -1607,7 +1607,7 @@ void RocksDBRestReplicationHandler::handleCommandSync() {
   config._useCollectionId = useCollectionId;
 
   InitialSyncer syncer(_vocbase, &config, restrictCollections, restrictType,
-                       verbose);
+                       verbose, false);
 
   std::string errorMsg = "";
 
