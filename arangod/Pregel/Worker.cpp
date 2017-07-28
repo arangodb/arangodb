@@ -401,13 +401,13 @@ bool Worker<V, E, M>::_processVertices(
       }
     }
     if (_state != WorkerState::COMPUTING) {
-      LOG_TOPIC(WARN, Logger::PREGEL) << "Execution aborted prematurely.";
       break;
     }
   }
   // ==================== send messages to other shards ====================
   outCache->flushMessages();
-  if (!_writeCache) {  // ~Worker was called
+  if (TRI_UNLIKELY(!_writeCache)) {  // ~Worker was called
+    LOG_TOPIC(WARN, Logger::PREGEL) << "Execution aborted prematurely.";
     return false;
   }
   if (vertexComputation->_enterNextGSS) {

@@ -504,6 +504,9 @@ Result AuthInfo::updateUser(std::string const& user,
     TRI_ASSERT(!it->second.key().empty());
     func(it->second);
     data = it->second.toVPackBuilder();
+    // must also clear the basic cache here because the secret may be invalid now
+    // if the password was changed
+    _authBasicCache.clear();
   }
 
   Result r = UpdateUser(data.slice());
@@ -590,6 +593,9 @@ Result AuthInfo::removeUser(std::string const& user) {
   Result res = removeUserInternal(it->second);
   if (res.ok()) {
     _authInfo.erase(it);
+    // must also clear the basic cache here because the secret is invalid now
+    _authBasicCache.clear();
+
     reloadAllUsers();
   }
   return res;
@@ -610,6 +616,7 @@ Result AuthInfo::removeAllUsers() {
   {// do not get into race conditions with loadFromDB
     MUTEX_LOCKER(locker, _loadFromDBLock);
     _authInfo.clear();
+    _authBasicCache.clear();
     _outdated = true;
   }
   reloadAllUsers();
