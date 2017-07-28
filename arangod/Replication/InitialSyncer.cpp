@@ -65,7 +65,7 @@ InitialSyncer::InitialSyncer(
     TRI_vocbase_t* vocbase,
     TRI_replication_applier_configuration_t const* configuration,
     std::unordered_map<std::string, bool> const& restrictCollections,
-    std::string const& restrictType, bool verbose)
+    std::string const& restrictType, bool verbose, bool skipCreateDrop)
     : Syncer(vocbase, configuration),
       _progress("not started"),
       _restrictCollections(restrictCollections),
@@ -77,7 +77,8 @@ InitialSyncer::InitialSyncer(
       _includeSystem(false),
       _chunkSize(configuration->_chunkSize),
       _verbose(verbose),
-      _hasFlushed(false) {
+      _hasFlushed(false),
+      _skipCreateDrop(skipCreateDrop) {
   if (_chunkSize == 0) {
     _chunkSize = (uint64_t)2 * 1024 * 1024;  // 2 mb
   } else if (_chunkSize < 128 * 1024) {
@@ -1132,6 +1133,10 @@ int InitialSyncer::handleCollection(VPackSlice const& parameters,
           }
         } else {
           // regular collection
+          if (_skipCreateDrop) {
+            setProgress("dropping " + collectionMsg + " skipped because of configuration");
+            return TRI_ERROR_NO_ERROR;
+          }
           setProgress("dropping " + collectionMsg);
 
           int res = _vocbase->dropCollection(col, true, -1.0);
@@ -1160,7 +1165,13 @@ int InitialSyncer::handleCollection(VPackSlice const& parameters,
       }
     }
 
-    std::string const progress = "creating " + collectionMsg;
+    std::string progress = "creating " + collectionMsg;
+    if (_skipCreateDrop) {
+      progress += " skipped because of configuration";
+      setProgress(progress.c_str());
+      return TRI_ERROR_NO_ERROR;
+    }
+    
     setProgress(progress.c_str());
 
     int res = createCollection(parameters, &col);
