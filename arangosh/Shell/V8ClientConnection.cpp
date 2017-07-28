@@ -426,6 +426,24 @@ static void ClientConnection_reconnect(
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief ClientConnection method "connectedUser"
+////////////////////////////////////////////////////////////////////////////////
+
+static void ClientConnection_connectedUser(
+    v8::FunctionCallbackInfo<v8::Value> const& args) {
+  v8::Isolate* isolate = args.GetIsolate();
+  v8::HandleScope scope(isolate);
+
+  v8::Local<v8::External> wrap = v8::Local<v8::External>::Cast(args.Data());
+  ClientFeature* client = static_cast<ClientFeature*>(wrap->Value());
+  if (client == nullptr) {
+    TRI_V8_THROW_EXCEPTION_INTERNAL("connection class corrupted");
+  }
+
+  TRI_V8_RETURN(TRI_V8_STD_STRING(client->username()));
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief ClientConnection method "GET" helper
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -1670,6 +1688,10 @@ void V8ClientConnection::initServer(v8::Isolate* isolate,
   connection_proto->Set(
       isolate, "reconnect",
       v8::FunctionTemplate::New(isolate, ClientConnection_reconnect, v8client));
+  
+  connection_proto->Set(
+      isolate, "connectedUser",
+      v8::FunctionTemplate::New(isolate, ClientConnection_connectedUser, v8client));
 
   connection_proto->Set(
       isolate, "toString",

@@ -229,15 +229,24 @@ Therefore the wildcard is selected. The level is *Read/Write*.
 
 ### System Collections
 
-The access level for system collections cannot be changed.
+The access level for system collections cannot be changed. They follow 
+different rules than user defined collections and may change without further
+notice. Currently the system collections follow these rules:
 
-No user has access to the *\_users* collection in the *\_system*
-database. All changes to the access levels must be done using the
-*@arangodb/users* module or the web interface.
-
-All user have *Read/Write* access to the *\_frontend* collection in
-databases they have either *Access* or *Administrate* access level.
+| collection            | access level |
+|-----------------------|--------------|
+| `_users` (in _system) | No Access    |
+| `_queues`             | Read-Only    |
+| `_frontend`           | Read/Write   |
+| `*`                   | *same as db* |
 
 All other system collections have access level *Read/Write* if the
 user has *Administrate* access to the database. They have access level
 *Read/Only* if the user has *Access* to the database.
+
+To modify these system collections you should always use the 
+specialized APIs provided by ArangoDB. For example
+no user has access to the *\_users* collection in the *\_system*
+database. All changes to the access levels must be done using the
+*@arangodb/users* module, the `/_users/` API or the web interface.
+

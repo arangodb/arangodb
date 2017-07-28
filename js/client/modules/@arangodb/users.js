@@ -27,16 +27,16 @@
 // / @author Copyright 2012-2014, triAGENS GmbH, Cologne, Germany
 // //////////////////////////////////////////////////////////////////////////////
 
-var internal = require('internal');
-var arangodb = require('@arangodb');
-var arangosh = require('@arangodb/arangosh');
+const internal = require('internal');
+const arangodb = require('@arangodb');
+const arangosh = require('@arangodb/arangosh');
 
 // creates a new user
 exports.save = function (user, passwd, active, extra, changePassword) {
-  var db = internal.db;
+  let db = internal.db;
 
-  var uri = '_api/user/';
-  var data = {user: user};
+  let uri = '_api/user/';
+  let data = {user: user};
 
   if (passwd !== undefined) {
     data.passwd = passwd;
@@ -54,7 +54,7 @@ exports.save = function (user, passwd, active, extra, changePassword) {
     data.changePassword = changePassword;
   }
 
-  var requestResult = db._connection.POST(uri, JSON.stringify(data));
+  let requestResult = db._connection.POST(uri, JSON.stringify(data));
   return arangosh.checkRequestResult(requestResult);
 };
 
@@ -278,3 +278,7 @@ exports.permission = function (username, dbName, coll) {
 
   return arangosh.checkRequestResult(requestResult).result;
 };
+
+exports.currentUser = function() {
+  return internal.arango.connectedUser();
+}

@@ -54,6 +54,7 @@ exports.revokeCollection = ArangoUsers.revokeCollection;
 exports.updateConfigData = ArangoUsers.updateConfigData;
 exports.configData = ArangoUsers.configData;
 exports.permission = ArangoUsers.permission;
+exports.currentUser = ArangoUsers.currentUser;
 exports.exists = function (username) {
   try {
     exports.document(username);

@@ -454,6 +454,20 @@ static void JS_GetPermission(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_END
 }
 
+
+static void JS_CurrentUser(v8::FunctionCallbackInfo<v8::Value> const& args) {
+  TRI_V8_TRY_CATCH_BEGIN(isolate);
+  v8::HandleScope scope(isolate);
+  if (args.Length() != 0 ) {
+    TRI_V8_THROW_EXCEPTION_USAGE("currentUser()");
+  }
+  if (ExecContext::CURRENT != nullptr) {
+    TRI_V8_RETURN(TRI_V8_STD_STRING(ExecContext::CURRENT->user()));
+  }
+  TRI_V8_RETURN_UNDEFINED();
+  TRI_V8_TRY_CATCH_END
+}
+
 void TRI_InitV8Users(v8::Handle<v8::Context> context, TRI_vocbase_t* vocbase,
                      TRI_v8_global_t* v8g, v8::Isolate* isolate) {
   v8::Handle<v8::ObjectTemplate> rt;
@@ -490,6 +504,8 @@ void TRI_InitV8Users(v8::Handle<v8::Context> context, TRI_vocbase_t* vocbase,
                        JS_GetConfigData);
   TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING("permission"),
                        JS_GetPermission);
+  TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING("currentUser"),
+                       JS_CurrentUser);
 
   v8g->UsersTempl.Reset(isolate, rt);
   ft->SetClassName(TRI_V8_ASCII_STRING("ArangoUsersCtor"));
