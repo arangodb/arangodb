@@ -58,6 +58,23 @@ namespace transaction {
 class Methods;
 }
 
+class ChecksumResult: public Result {
+ public:
+  ChecksumResult(Result result) : Result(result) {}
+  ChecksumResult(VPackBuilder builder): Result(TRI_ERROR_NO_ERROR), _builder(builder) {}
+
+  VPackBuilder builder() {
+    return _builder;
+  }
+
+  VPackSlice slice() {
+    return _builder.slice();
+  }
+
+ private:
+  VPackBuilder _builder;
+};
+
 class LogicalCollection {
   friend struct ::TRI_vocbase_t;
 
@@ -304,6 +321,10 @@ class LogicalCollection {
   // Get a reference to this KeyGenerator.
   // Caller is not allowed to free it.
   inline KeyGenerator* keyGenerator() const { return _keyGenerator.get(); }
+
+  ChecksumResult checksum(bool, bool) const;
+
+  Result compareChecksums(velocypack::Slice) const;
 
  private:
   void prepareIndexes(velocypack::Slice indexesSlice);

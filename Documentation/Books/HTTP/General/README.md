@@ -172,7 +172,7 @@ Upon success the endpoint will return a 200 OK and an answer containing the JWT 
 encoded object like so:
 
 ```
-{"jwt":"eyJhbGciOiJIUzI1NiI..x6EfI","must_change_password":false}
+{"jwt":"eyJhbGciOiJIUzI1NiI..x6EfI"}
 ```
 
 This JWT should then be used within the Authorization HTTP header in subsequent requests:

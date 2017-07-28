@@ -1005,15 +1005,28 @@ TRI_vocbase_t* DatabaseFeature::lookupDatabase(std::string const& name) {
 }
 
 void DatabaseFeature::enumerateDatabases(std::function<void(TRI_vocbase_t*)> func) {
-  auto unuser(_databasesProtector.use());
-  auto theLists = _databasesLists.load();
-  
-  for (auto& p : theLists->_databases) {
-    TRI_vocbase_t* vocbase = p.second;
-    // iterate over all databases
-    TRI_ASSERT(vocbase != nullptr);
-    TRI_ASSERT(vocbase->type() == TRI_VOCBASE_TYPE_NORMAL);
-    func(vocbase);
+  if (ServerState::instance()->isCoordinator()) {
+    auto unuser(_databasesProtector.use());
+    auto theLists = _databasesLists.load();
+    
+    for (auto& p : theLists->_coordinatorDatabases) {
+      TRI_vocbase_t* vocbase = p.second;
+      // iterate over all databases
+      TRI_ASSERT(vocbase != nullptr);
+      TRI_ASSERT(vocbase->type() == TRI_VOCBASE_TYPE_COORDINATOR);
+      func(vocbase);
+    }
+  } else {
+    auto unuser(_databasesProtector.use());
+    auto theLists = _databasesLists.load();
+    
+    for (auto& p : theLists->_databases) {
+      TRI_vocbase_t* vocbase = p.second;
+      // iterate over all databases
+      TRI_ASSERT(vocbase != nullptr);
+      TRI_ASSERT(vocbase->type() == TRI_VOCBASE_TYPE_NORMAL);
+      func(vocbase);
+    }
   }
 }
 

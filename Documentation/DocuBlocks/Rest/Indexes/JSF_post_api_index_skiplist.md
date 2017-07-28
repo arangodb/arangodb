@@ -21,6 +21,9 @@ if *true*, then create a unique index.
 @RESTBODYPARAM{sparse,boolean,required,}
 if *true*, then create a sparse index.
 
+@RESTBODYPARAM{deduplicate,boolean,optional,boolean}
+if *false*, the deduplication of array values is turned off.
+
 @RESTDESCRIPTION
 
 Creates a skip-list index for the collection *collection-name*, if

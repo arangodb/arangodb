@@ -25,6 +25,7 @@
 #include "HttpCommTask.h"
 
 #include "Basics/HybridLogicalClock.h"
+#include "Basics/tri-strings.h"
 #include "GeneralServer/GeneralServer.h"
 #include "GeneralServer/GeneralServerFeature.h"
 #include "GeneralServer/RestHandler.h"
@@ -33,6 +34,7 @@
 #include "Meta/conversion.h"
 #include "Rest/HttpRequest.h"
 #include "Statistics/ConnectionStatistics.h"
+#include "Utils/Events.h"
 #include "VocBase/ticks.h"
 
 using namespace arangodb;
@@ -791,22 +793,86 @@ void HttpCommTask::resetState() {
 }
 
 rest::ResponseCode HttpCommTask::authenticateRequest(HttpRequest* request) {
-  auto context = request->requestContext();
-
-  if (context == nullptr) {
-    bool res =
-        GeneralServerFeature::HANDLER_FACTORY->setRequestContext(request);
-
-    if (!res) {
-      return rest::ResponseCode::NOT_FOUND;
+  // first scape the auth headers and try to authenticate the user
+  ResponseCode code = handleAuthHeader(request);
+  if (code != ResponseCode::SERVER_ERROR) {
+    // now populate the VocbaseContext
+    if (request->requestContext() == nullptr) {
+      bool res =
+      GeneralServerFeature::HANDLER_FACTORY->setRequestContext(request);
+      if (!res) {
+        return rest::ResponseCode::NOT_FOUND;
+      }
+      if (request->requestContext() == nullptr) {
+        return rest::ResponseCode::SERVER_ERROR;
+      }
     }
-
-    context = request->requestContext();
+    
+    
+    // will determine if the user can access this path
+    // checks db permissions and contains exceptions for the
+    // users API to allow logins
+    return GeneralCommTask::canAccessPath(request);
   }
-
-  if (context == nullptr) {
-    return rest::ResponseCode::SERVER_ERROR;
+  return code;
+}
+  
+ResponseCode HttpCommTask::handleAuthHeader(HttpRequest* request) const {
+  bool found;
+  std::string const& authStr =
+  request->header(StaticStrings::Authorization, found);
+  
+  if (!found) {
+    events::CredentialsMissing(request);
+    return rest::ResponseCode::UNAUTHORIZED;
   }
-
-  return context->authenticate();
+  
+  size_t methodPos = authStr.find_first_of(' ');
+  
+  if (methodPos != std::string::npos) {
+    // skip over authentication method
+    char const* auth = authStr.c_str() + methodPos;
+    while (*auth == ' ') {
+      ++auth;
+    }
+    
+    LOG_TOPIC(DEBUG, arangodb::Logger::REQUESTS) << "Authorization header: " << authStr;
+    try {
+      // note that these methods may throw in case of an error
+      AuthenticationMethod authMethod = AuthenticationMethod::NONE;
+      if (TRI_CaseEqualString(authStr.c_str(), "basic ", 6)) {
+        authMethod = AuthenticationMethod::BASIC;
+      } else if (TRI_CaseEqualString(authStr.c_str(), "bearer ", 7)) {
+        authMethod = AuthenticationMethod::JWT;
+      }
+      
+      if (authMethod != AuthenticationMethod::NONE) {
+        AuthResult result = _authentication->authInfo()->
+        checkAuthentication(authMethod, auth);
+        
+        request->setAuthorized(result._authorized);
+        if (result._authorized) {
+          request->setUser(std::move(result._username));
+          
+          events::Authenticated(request, authMethod);
+          return rest::ResponseCode::OK;
+        }
+        events::CredentialsBad(request, authMethod);
+        return rest::ResponseCode::UNAUTHORIZED;
+      }
+      
+      // intentional fallthrough
+    } catch (arangodb::basics::Exception const& ex) {
+      // translate error
+      if (ex.code() == TRI_ERROR_USER_NOT_FOUND) {
+        return rest::ResponseCode::UNAUTHORIZED;
+      }
+      return GeneralResponse::responseCode(ex.what());
+    } catch (...) {
+      return rest::ResponseCode::SERVER_ERROR;
+    }
+  }
+  
+  events::UnknownAuthenticationMethod(request);
+  return rest::ResponseCode::UNAUTHORIZED;
 }

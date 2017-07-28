@@ -118,6 +118,7 @@ function exportTest (options) {
   results.exportJson.failed = results.exportJson.status ? 0 : 1;
 
   try {
+    JSON.parse(fs.read(fs.join(tmpPath, 'UnitTestsExport.json')));
     results.parseJson = {
       failed: 0,
       status: true
@@ -136,11 +137,10 @@ function exportTest (options) {
   results.exportJsonl = pu.executeAndWait(pu.ARANGOEXPORT_BIN, toArgv(args), options, 'arangosh', tmpPath);
   results.exportJsonl.failed = results.exportJsonl.status ? 0 : 1;
   try {
-    const filesContent = fs.read(fs.join(tmpPath, 'UnitTestsExport.jsonl')).split('\n');
-    for (const line of filesContent) {
-      if (line.trim() === '') continue;
-      JSON.parse(line);
-    }
+    fs.read(fs.join(tmpPath, 'UnitTestsExport.jsonl')).split('\n')
+    .filter(line => line.trim() !== '')
+    .forEach(line => JSON.parse(line));
+
     results.parseJsonl = {
       failed: 0,
       status: true
@@ -177,6 +177,31 @@ function exportTest (options) {
   } catch (e) {
     results.failed += 1;
     results.parseXgmml = {
+      failed: 1,
+      status: false,
+      message: e
+    };
+  }
+
+  print(CYAN + Date() + ': Export query (xgmml)' + RESET);
+  args['type'] = 'jsonl';
+  args['query'] = 'FOR doc IN UnitTestsExport RETURN doc';
+  delete args['graph-name'];
+  delete args['collection'];
+  results.exportQuery = pu.executeAndWait(pu.ARANGOEXPORT_BIN, toArgv(args), options, 'arangosh', tmpPath);
+  results.exportQuery.failed = results.exportQuery.status ? 0 : 1;
+  try {
+    fs.read(fs.join(tmpPath, 'query.jsonl')).split('\n')
+    .filter(line => line.trim() !== '')
+    .forEach(line => JSON.parse(line));
+    results.parseQueryResult = {
+      failed: 0,
+      status: true
+    };
+  } catch (e) {
+    print(e);
+    results.failed += 1;
+    results.parseQueryResult = {
       failed: 1,
       status: false,
       message: e

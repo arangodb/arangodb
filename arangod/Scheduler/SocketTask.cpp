@@ -264,13 +264,13 @@ StringBuffer* SocketTask::leaseStringBuffer(size_t length) {
 
   TRI_ASSERT(buffer != nullptr);
   
-  // should not happen. but still check for safety reasons
-  if (buffer->capacity() < length) {
-    delete buffer;
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
+  // still check for safety reasons
+  if (buffer->capacity() >= length) {
+    return buffer;
   }
 
-  return buffer;
+  delete buffer;
+  THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
 }
   
 void SocketTask::returnStringBuffer(StringBuffer* buffer) {

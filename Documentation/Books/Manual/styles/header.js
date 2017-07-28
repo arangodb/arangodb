@@ -31,6 +31,7 @@ function appendHeader() {
     '  </div>\n' +
     '  <select class="arangodb-version-switcher">\n' +
     '    <option value="devel">devel</option>\n' +
+    '    <option value="3.2">v3.2</option>\n' +
     '    <option value="3.1">v3.1</option>\n' +
     '    <option value="3.0">v3.0</option>\n' +
     '    <option value="2.8">v2.8</option>\n' +
@@ -122,17 +123,21 @@ function appendHeader() {
   
   $(".arangodb-version-switcher").on("change", function(e) {
     var urlSplit = gitbook.state.root.split("/");
-    if (urlSplit.length == 6) {
-      urlSplit.pop(); // ""
-      var currentBook = urlSplit.pop(); // e.g. "Manual"
-      var version = urlSplit.pop() // e.g. "3.0"
-      if (version < "2.9") {
-        currentBook = "Users";
-      }
-      window.location.href = urlSplit.join("/") + "/" + e.target.value + "/" + currentBook + "/";
+    urlSplit.pop(); // ""
+    var currentBook = urlSplit.pop(); // e.g. "Manual"
+    urlSplit.pop() // e.g. "3.0"
+    if (e.target.value == "2.8") {
+      var legacyMap = {
+        "Manual": "",
+        "AQL": "/Aql",
+        "HTTP": "/HttpApi",
+        "cookbook": "/cookbook"
+      };
+      currentBook = legacyMap[currentBook];
     } else {
-      window.location.href = "https://docs.arangodb.com/" + e.target.value;
+      currentBook = "/" + currentBook;
     }
+    window.location.href = urlSplit.join("/") + "/" + e.target.value + currentBook + "/index.html";
   });
 
 });

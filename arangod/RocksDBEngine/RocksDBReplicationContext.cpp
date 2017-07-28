@@ -36,6 +36,7 @@
 #include "Transaction/StandaloneContext.h"
 #include "Transaction/UserTransaction.h"
 #include "Utils/DatabaseGuard.h"
+#include "Utils/ExecContext.h"
 #include "VocBase/replication-common.h"
 #include "VocBase/ticks.h"
 
@@ -98,6 +99,14 @@ int RocksDBReplicationContext::bindCollection(
     if (_collection == nullptr) {
       return TRI_ERROR_BAD_PARAMETER;
     }
+    
+    // we are getting into trouble during the dumping of "_users"
+    // this workaround avoids the auth check in addCollectionAtRuntime
+    ExecContext *old = ExecContext::CURRENT;
+    if (old != nullptr && old->systemAuthLevel() == AuthLevel::RW) {
+      ExecContext::CURRENT = nullptr;
+    }
+    TRI_DEFER(ExecContext::CURRENT = old);
 
     _trx->addCollectionAtRuntime(collectionName);
     _iter = static_cast<RocksDBCollection*>(_collection->getPhysical())

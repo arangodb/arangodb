@@ -85,7 +85,7 @@ int RestHandler::prepareEngine() {
   // set end immediately so we do not get netative statistics
   RequestStatistics::SET_REQUEST_END(_statistics);
 
-  ExecContext::CURRENT_EXECCONTEXT = _request->execContext();
+  ExecContext::CURRENT = _request->execContext();
   if (_canceled) {
     _engine.setState(RestEngine::State::DONE);
     RequestStatistics::SET_EXECUTE_ERROR(_statistics);
@@ -160,7 +160,7 @@ int RestHandler::finalizeEngine() {
     _storeResult(this);
   }
 
-  ExecContext::CURRENT_EXECCONTEXT = nullptr;
+  ExecContext::CURRENT = nullptr;
 
   return res;
 }

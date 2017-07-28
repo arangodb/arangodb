@@ -3258,7 +3258,7 @@ AstNode* Ast::traverseAndModify(
       AstNode* result =
           traverseAndModify(member, preVisitor, visitor, postVisitor, data);
 
-      if (result != node) {
+      if (result != member) {
         TRI_ASSERT(node != nullptr);
         node->changeMember(i, result);
       }
@@ -3271,6 +3271,7 @@ AstNode* Ast::traverseAndModify(
 }
 
 /// @brief traverse the AST, using a depth-first visitor
+/// Note that the starting node is not replaced!
 AstNode* Ast::traverseAndModify(
     AstNode* node, std::function<AstNode*(AstNode*, void*)> visitor,
     void* data) {
@@ -3286,7 +3287,7 @@ AstNode* Ast::traverseAndModify(
     if (member != nullptr) {
       AstNode* result = traverseAndModify(member, visitor, data);
 
-      if (result != node) {
+      if (result != member) {
         node->changeMember(i, result);
       }
     }

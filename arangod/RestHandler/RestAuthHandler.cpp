@@ -104,7 +104,6 @@ RestStatus RestAuthHandler::execute() {
       VPackObjectBuilder b(&resultBuilder);
       std::string jwt = generateJwt(_username, password);
       resultBuilder.add("jwt", VPackValue(jwt));
-      resultBuilder.add("must_change_password", VPackValue(auth._mustChange));
     }
 
     _isValid = true;

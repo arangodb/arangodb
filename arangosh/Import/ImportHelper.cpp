@@ -173,7 +173,7 @@ ImportHelper::ImportHelper(ClientFeature const* client,
   while (true) {
     uint32_t numReady = 0;
     for (auto const& t : _senderThreads) {
-      if (t->isReady()) {
+      if (t->isIdle()) {
         numReady++;
       }
     }
@@ -200,7 +200,7 @@ bool ImportHelper::importDelimited(std::string const& collectionName,
   _firstLine = "";
   _outputBuffer.clear();
   _lineBuffer.clear();
-  _errorMessage = "";
+  _errorMessages.clear();
   _hasError = false;
 
   // read and convert
@@ -217,7 +217,7 @@ bool ImportHelper::importDelimited(std::string const& collectionName,
     fd = TRI_TRACKED_OPEN_FILE(fileName.c_str(), O_RDONLY | TRI_O_CLOEXEC);
 
     if (fd < 0) {
-      _errorMessage = TRI_LAST_ERROR_STR;
+      _errorMessages.push_back(TRI_LAST_ERROR_STR);
       return false;
     }
   }
@@ -235,8 +235,7 @@ bool ImportHelper::importDelimited(std::string const& collectionName,
     if (fd != STDIN_FILENO) {
       TRI_TRACKED_CLOSE_FILE(fd);
     }
-
-    _errorMessage = "out of memory";
+    _errorMessages.push_back("out of memory");
     return false;
   }
 
@@ -270,7 +269,7 @@ bool ImportHelper::importDelimited(std::string const& collectionName,
       if (fd != STDIN_FILENO) {
         TRI_TRACKED_CLOSE_FILE(fd);
       }
-      _errorMessage = TRI_LAST_ERROR_STR;
+      _errorMessages.push_back(TRI_LAST_ERROR_STR);
       return false;
     } else if (n == 0) {
       // we have read the entire file
@@ -311,7 +310,7 @@ bool ImportHelper::importJson(std::string const& collectionName,
   _collectionName = collectionName;
   _firstLine = "";
   _outputBuffer.clear();
-  _errorMessage = "";
+  _errorMessages.clear();
   _hasError = false;
 
   // read and convert
@@ -328,7 +327,7 @@ bool ImportHelper::importJson(std::string const& collectionName,
     fd = TRI_TRACKED_OPEN_FILE(fileName.c_str(), O_RDONLY | TRI_O_CLOEXEC);
 
     if (fd < 0) {
-      _errorMessage = TRI_LAST_ERROR_STR;
+      _errorMessages.push_back(TRI_LAST_ERROR_STR);
       return false;
     }
   }
@@ -350,7 +349,7 @@ bool ImportHelper::importJson(std::string const& collectionName,
   while (!_hasError) {
     // reserve enough room to read more data
     if (_outputBuffer.reserve(BUFFER_SIZE) == TRI_ERROR_OUT_OF_MEMORY) {
-      _errorMessage = TRI_errno_string(TRI_ERROR_OUT_OF_MEMORY);
+      _errorMessages.push_back(TRI_errno_string(TRI_ERROR_OUT_OF_MEMORY));
 
       if (fd != STDIN_FILENO) {
         TRI_TRACKED_CLOSE_FILE(fd);
@@ -362,7 +361,7 @@ bool ImportHelper::importJson(std::string const& collectionName,
     ssize_t n = TRI_READ(fd, _outputBuffer.end(), BUFFER_SIZE - 1);
 
     if (n < 0) {
-      _errorMessage = TRI_LAST_ERROR_STR;
+      _errorMessages.push_back(TRI_LAST_ERROR_STR);
       if (fd != STDIN_FILENO) {
         TRI_TRACKED_CLOSE_FILE(fd);
       }
@@ -398,10 +397,9 @@ bool ImportHelper::importJson(std::string const& collectionName,
         if (fd != STDIN_FILENO) {
           TRI_TRACKED_CLOSE_FILE(fd);
         }
-        _errorMessage =
-            "import file is too big. please increase the value of --batch-size "
-            "(currently " +
-            StringUtils::itoa(_maxUploadSize) + ")";
+        _errorMessages.push_back("import file is too big. please increase the value of --batch-size "
+                                 "(currently " +
+                                 StringUtils::itoa(_maxUploadSize) + ")");
         return false;
       }
 
@@ -750,7 +748,7 @@ bool ImportHelper::truncateCollection() {
       << "unable to truncate collection '" << _collectionName
       << "', server returned status code: " << static_cast<int>(code);
   _hasError = true;
-  _errorMessage = "Unable to overwrite collection";
+  _errorMessages.push_back("Unable to overwrite collection");
   return false;
 }
 
@@ -832,7 +830,7 @@ SenderThread* ImportHelper::findSender() {
     for (auto const& t : _senderThreads) {
       if (t->hasError()) {
         _hasError = true;
-        _errorMessage = t->errorMessage();
+        _errorMessages.push_back(t->errorMessage());
         return nullptr;
       } else if (t->isIdle()) {
         return t.get();

@@ -40,6 +40,7 @@
 #include "Basics/WorkMonitor.h"
 #include "Basics/fasthash.h"
 #include "Cluster/ServerState.h"
+#include "GeneralServer/AuthenticationFeature.h"
 #include "Logger/Logger.h"
 #include "RestServer/AqlFeature.h"
 #include "StorageEngine/TransactionState.h"
@@ -536,11 +537,12 @@ QueryResult Query::execute(QueryRegistry* registry) {
 
       if (cacheEntry != nullptr) {
         // got a result from the query cache
-        if(ExecContext::CURRENT_EXECCONTEXT != nullptr) {
-          auto const& authContext = ExecContext::CURRENT_EXECCONTEXT->authContext();
-
+        if(ExecContext::CURRENT != nullptr) {
+          AuthInfo* info = AuthenticationFeature::INSTANCE->authInfo();
           for (std::string const& collectionName : cacheEntry->_collections) {
-            if (authContext->collectionAuthLevel(collectionName) == AuthLevel::NONE) {
+            if (info->canUseCollection(ExecContext::CURRENT->user(),
+                                       ExecContext::CURRENT->database(),
+                                       collectionName) == AuthLevel::NONE) {
               THROW_ARANGO_EXCEPTION(TRI_ERROR_FORBIDDEN);
             }
           }
@@ -694,7 +696,7 @@ QueryResult Query::execute(QueryRegistry* registry) {
   } catch (arangodb::basics::Exception const& ex) {
     setExecutionTime();
     cleanupPlanAndEngine(ex.code());
-    return QueryResult(ex.code(), ex.message() + QueryExecutionState::toStringWithPrefix(_state));
+    return QueryResult(ex.code(), "AQL: " + ex.message() + QueryExecutionState::toStringWithPrefix(_state));
   } catch (std::bad_alloc const&) {
     setExecutionTime();
     cleanupPlanAndEngine(TRI_ERROR_OUT_OF_MEMORY);
@@ -734,11 +736,12 @@ QueryResultV8 Query::executeV8(v8::Isolate* isolate, QueryRegistry* registry) {
 
       if (cacheEntry != nullptr) {
         // got a result from the query cache
-        if(ExecContext::CURRENT_EXECCONTEXT != nullptr) {
-          auto const& authContext = ExecContext::CURRENT_EXECCONTEXT->authContext();
-
+        if(ExecContext::CURRENT != nullptr) {
+          AuthInfo* info = AuthenticationFeature::INSTANCE->authInfo();
           for (std::string const& collectionName : cacheEntry->_collections) {
-            if (authContext->collectionAuthLevel(collectionName) == AuthLevel::NONE) {
+            if (info->canUseCollection(ExecContext::CURRENT->user(),
+                                       ExecContext::CURRENT->database(),
+                                       collectionName) == AuthLevel::NONE) {
               THROW_ARANGO_EXCEPTION(TRI_ERROR_FORBIDDEN);
             }
           }
@@ -893,7 +896,7 @@ QueryResultV8 Query::executeV8(v8::Isolate* isolate, QueryRegistry* registry) {
   } catch (arangodb::basics::Exception const& ex) {
     setExecutionTime();
     cleanupPlanAndEngine(ex.code());
-    return QueryResultV8(ex.code(), ex.message() + QueryExecutionState::toStringWithPrefix(_state));
+    return QueryResultV8(ex.code(), "AQL: " + ex.message() + QueryExecutionState::toStringWithPrefix(_state));
   } catch (std::bad_alloc const&) {
     setExecutionTime();
     cleanupPlanAndEngine(TRI_ERROR_OUT_OF_MEMORY);
