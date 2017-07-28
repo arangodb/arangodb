@@ -25,16 +25,20 @@
 #include "StorageEngineMock.h"
 
 #include "Aql/AqlFunctionFeature.h"
+#include "GeneralServer/AuthenticationFeature.h"
 #include "IResearch/ApplicationServerHelper.h"
 #include "IResearch/IResearchFilterFactory.h"
 #include "IResearch/IResearchLinkMeta.h"
 #include "IResearch/IResearchViewMeta.h"
 #include "IResearch/IResearchAnalyzerFeature.h"
 #include "IResearch/IResearchKludge.h"
+#include "IResearch/SystemDatabaseFeature.h"
 #include "Logger/Logger.h"
 #include "Logger/LogTopic.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "RestServer/AqlFeature.h"
+#include "RestServer/DatabaseFeature.h"
+#include "RestServer/FeatureCacheFeature.h"
 #include "RestServer/QueryRegistryFeature.h"
 #include "RestServer/TraverserEngineRegistryFeature.h"
 #include "Aql/Ast.h"
@@ -178,24 +182,36 @@ NS_END
 struct IResearchFilterSetup {
   StorageEngineMock engine;
   arangodb::application_features::ApplicationServer server;
+  std::unique_ptr<TRI_vocbase_t> system;
   std::vector<std::pair<arangodb::application_features::ApplicationFeature*, bool>> features;
 
   IResearchFilterSetup(): server(nullptr, nullptr) {
     arangodb::EngineSelectorFeature::ENGINE = &engine;
 
     // setup required application features
+    features.emplace_back(new arangodb::AuthenticationFeature(&server), true); // required for FeatureCacheFeature
+    features.emplace_back(new arangodb::DatabaseFeature(&server), false); // required for FeatureCacheFeature
+    features.emplace_back(new arangodb::FeatureCacheFeature(&server), true); // required for IResearchAnalyzerFeature
     features.emplace_back(new arangodb::QueryRegistryFeature(&server), false); // must be first
+    arangodb::application_features::ApplicationServer::server->addFeature(features.back().first);
+    system = irs::memory::make_unique<TRI_vocbase_t>(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 0, TRI_VOC_SYSTEM_DATABASE);
     features.emplace_back(new arangodb::TraverserEngineRegistryFeature(&server), false); // must be before AqlFeature
     features.emplace_back(new arangodb::AqlFeature(&server), true);
     features.emplace_back(new arangodb::aql::AqlFunctionFeature(&server), true); // required for IResearchAnalyzerFeature
     features.emplace_back(new arangodb::iresearch::IResearchAnalyzerFeature(&server), true);
+    features.emplace_back(new arangodb::iresearch::SystemDatabaseFeature(&server, system.get()), false); // required for IResearchAnalyzerFeature
 
-    for (auto& entry: features) {
-      arangodb::application_features::ApplicationServer::server->addFeature(entry.first);
-      entry.first->prepare();
+    for (auto& f : features) {
+      arangodb::application_features::ApplicationServer::server->addFeature(f.first);
+    }
 
-      if (entry.second) {
-        entry.first->start();
+    for (auto& f : features) {
+      f.first->prepare();
+    }
+
+    for (auto& f : features) {
+      if (f.second) {
+        f.first->start();
       }
     }
 
@@ -209,21 +225,24 @@ struct IResearchFilterSetup {
   }
 
   ~IResearchFilterSetup() {
+    system.reset(); // destroy before reseting the 'ENGINE'
     arangodb::AqlFeature(&server).stop(); // unset singleton instance
     arangodb::LogTopic::setLogLevel(arangodb::Logger::FIXME.name(), arangodb::LogLevel::DEFAULT);
     arangodb::application_features::ApplicationServer::server = nullptr;
     arangodb::EngineSelectorFeature::ENGINE = nullptr;
 
     // destroy application features
-    for (auto itr = features.rbegin(), end = features.rend(); itr != end; ++itr) {
-      auto& entry = *itr;
-
-      if (entry.second) {
-        entry.first->stop();
+    for (auto& f : features) {
+      if (f.second) {
+        f.first->stop();
       }
-
-      entry.first->unprepare();
     }
+
+    for (auto& f : features) {
+      f.first->unprepare();
+    }
+
+    arangodb::FeatureCacheFeature::reset();
   }
 }; // IResearchFilterSetup
 

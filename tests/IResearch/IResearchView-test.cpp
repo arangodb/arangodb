@@ -43,6 +43,7 @@
 #include "IResearch/IResearchLink.h"
 #include "IResearch/IResearchLinkMeta.h"
 #include "IResearch/IResearchView.h"
+#include "IResearch/SystemDatabaseFeature.h"
 #include "Logger/Logger.h"
 #include "Logger/LogTopic.h"
 #include "Random/RandomFeature.h"
@@ -107,6 +108,7 @@ NS_END
 struct IResearchViewSetup {
   StorageEngineMock engine;
   arangodb::application_features::ApplicationServer server;
+  std::unique_ptr<TRI_vocbase_t> system;
   std::vector<std::pair<arangodb::application_features::ApplicationFeature*, bool>> features;
   std::string testFilesystemPath;
 
@@ -119,6 +121,8 @@ struct IResearchViewSetup {
     features.emplace_back(new arangodb::V8DealerFeature(&server), false);
     features.emplace_back(new arangodb::ViewTypesFeature(&server), true);
     features.emplace_back(new arangodb::QueryRegistryFeature(&server), false);
+    arangodb::application_features::ApplicationServer::server->addFeature(features.back().first);
+    system = irs::memory::make_unique<TRI_vocbase_t>(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 0, TRI_VOC_SYSTEM_DATABASE);
     features.emplace_back(new arangodb::FeatureCacheFeature(&server), true);
     features.emplace_back(new arangodb::RandomFeature(&server), false); // required by AuthenticationFeature
     features.emplace_back(new arangodb::AuthenticationFeature(&server), true);
@@ -128,6 +132,7 @@ struct IResearchViewSetup {
     features.emplace_back(new arangodb::aql::AqlFunctionFeature(&server), true); // required for IResearchAnalyzerFeature
     features.emplace_back(new arangodb::iresearch::IResearchAnalyzerFeature(&server), true);
     features.emplace_back(new arangodb::iresearch::IResearchFeature(&server), true);
+    features.emplace_back(new arangodb::iresearch::SystemDatabaseFeature(&server, system.get()), false); // required for IResearchAnalyzerFeature
     features.emplace_back(new arangodb::FlushFeature(&server), false); // do not start the thread
 
     for (auto& f : features) {
@@ -164,6 +169,7 @@ struct IResearchViewSetup {
   }
 
   ~IResearchViewSetup() {
+    system.reset(); // destroy before reseting the 'ENGINE'
     TRI_RemoveDirectory(testFilesystemPath.c_str());
     arangodb::LogTopic::setLogLevel(arangodb::Logger::FIXME.name(), arangodb::LogLevel::DEFAULT);
     arangodb::application_features::ApplicationServer::server = nullptr;

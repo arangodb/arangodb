@@ -35,8 +35,9 @@
 #include "IResearch/IResearchFeature.h"
 #include "IResearch/AttributeScorer.h"
 #include "IResearch/IResearchView.h"
-#include "RestServer/AqlFeature.h"
+#include "IResearch/SystemDatabaseFeature.h"
 #include "MMFiles/MMFilesDocumentPosition.h"
+#include "RestServer/AqlFeature.h"
 #include "RestServer/FlushFeature.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/DatabasePathFeature.h"
@@ -132,6 +133,7 @@ NS_END
 struct IResearchAttributeScorerSetup {
   StorageEngineMock engine;
   arangodb::application_features::ApplicationServer server;
+  std::unique_ptr<TRI_vocbase_t> system;
   std::vector<std::pair<arangodb::application_features::ApplicationFeature*, bool>> features;
 
   IResearchAttributeScorerSetup(): server(nullptr, nullptr) {
@@ -141,6 +143,8 @@ struct IResearchAttributeScorerSetup {
 
     // setup required application features
     features.emplace_back(new arangodb::QueryRegistryFeature(&server), false); // must be first
+    arangodb::application_features::ApplicationServer::server->addFeature(features.back().first);
+    system = irs::memory::make_unique<TRI_vocbase_t>(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 0, TRI_VOC_SYSTEM_DATABASE);
     features.emplace_back(new arangodb::TraverserEngineRegistryFeature(&server), false); // must be before AqlFeature
     features.emplace_back(new arangodb::AqlFeature(&server), true);
     features.emplace_back(new arangodb::AuthenticationFeature(&server), true);
@@ -151,32 +155,39 @@ struct IResearchAttributeScorerSetup {
     features.emplace_back(new arangodb::aql::AqlFunctionFeature(&server), true); // required for IResearchAnalyzerFeature
     features.emplace_back(new arangodb::iresearch::IResearchAnalyzerFeature(&server), true);
     features.emplace_back(new arangodb::iresearch::IResearchFeature(&server), true);
+    features.emplace_back(new arangodb::iresearch::SystemDatabaseFeature(&server, system.get()), false); // required for IResearchAnalyzerFeature
     features.emplace_back(new arangodb::ViewTypesFeature(&server), true);
     features.emplace_back(new arangodb::FlushFeature(&server), false); // do not start the thread
 
-    for (auto& entry: features) {
-      arangodb::application_features::ApplicationServer::server->addFeature(entry.first);
-      entry.first->prepare();
+    for (auto& f : features) {
+      arangodb::application_features::ApplicationServer::server->addFeature(f.first);
+    }
 
-      if (entry.second) {
-        entry.first->start();
+    for (auto& f : features) {
+      f.first->prepare();
+    }
+
+    for (auto& f : features) {
+      if (f.second) {
+        f.first->start();
       }
     }
   }
 
   ~IResearchAttributeScorerSetup() {
+    system.reset(); // destroy before reseting the 'ENGINE'
     arangodb::application_features::ApplicationServer::server = nullptr;
     arangodb::EngineSelectorFeature::ENGINE = nullptr;
 
     // destroy application features
-    for (auto itr = features.rbegin(), end = features.rend(); itr != end; ++itr) {
-      auto& entry = *itr;
-
-      if (entry.second) {
-        entry.first->stop();
+    for (auto& f : features) {
+      if (f.second) {
+        f.first->stop();
       }
+    }
 
-      entry.first->unprepare();
+    for (auto& f : features) {
+      f.first->unprepare();
     }
 
     arangodb::FeatureCacheFeature::reset();

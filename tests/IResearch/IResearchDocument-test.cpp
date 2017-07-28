@@ -27,12 +27,17 @@
 #include "StorageEngineMock.h"
 
 #include "Aql/AqlFunctionFeature.h"
+#include "GeneralServer/AuthenticationFeature.h"
 #include "IResearch/ApplicationServerHelper.h"
 #include "IResearch/IResearchAnalyzerFeature.h"
 #include "IResearch/IResearchDocument.h"
 #include "IResearch/IResearchLinkMeta.h"
+#include "IResearch/SystemDatabaseFeature.h"
 #include "Logger/Logger.h"
 #include "Logger/LogTopic.h"
+#include "RestServer/DatabaseFeature.h"
+#include "RestServer/FeatureCacheFeature.h"
+#include "RestServer/QueryRegistryFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 
 #include "velocypack/Iterator.h"
@@ -112,6 +117,7 @@ NS_END
 struct IResearchDocumentSetup {
   StorageEngineMock engine;
   arangodb::application_features::ApplicationServer server;
+  std::unique_ptr<TRI_vocbase_t> system;
   std::vector<std::pair<arangodb::application_features::ApplicationFeature*, bool>> features;
 
   IResearchDocumentSetup(): server(nullptr, nullptr) {
@@ -120,8 +126,15 @@ struct IResearchDocumentSetup {
     arangodb::tests::init();
 
     // setup required application features
+    features.emplace_back(new arangodb::AuthenticationFeature(&server), true); // required for FeatureCacheFeature
+    features.emplace_back(new arangodb::DatabaseFeature(&server), false); // required for FeatureCacheFeature
+    features.emplace_back(new arangodb::FeatureCacheFeature(&server), true); // required for IResearchAnalyzerFeature
+    features.emplace_back(new arangodb::QueryRegistryFeature(&server), false); // required for constructing TRI_vocbase_t
+    arangodb::application_features::ApplicationServer::server->addFeature(features.back().first);
+    system = irs::memory::make_unique<TRI_vocbase_t>(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 0, TRI_VOC_SYSTEM_DATABASE);
     features.emplace_back(new arangodb::aql::AqlFunctionFeature(&server), true); // required for IResearchAnalyzerFeature
     features.emplace_back(new arangodb::iresearch::IResearchAnalyzerFeature(&server), true);
+    features.emplace_back(new arangodb::iresearch::SystemDatabaseFeature(&server, system.get()), false); // required for IResearchAnalyzerFeature
 
     for (auto& f : features) {
       arangodb::application_features::ApplicationServer::server->addFeature(f.first);
@@ -151,6 +164,7 @@ struct IResearchDocumentSetup {
   }
 
   ~IResearchDocumentSetup() {
+    system.reset(); // destroy before reseting the 'ENGINE'
     arangodb::LogTopic::setLogLevel(arangodb::Logger::FIXME.name(), arangodb::LogLevel::DEFAULT);
     arangodb::application_features::ApplicationServer::server = nullptr;
     arangodb::EngineSelectorFeature::ENGINE = nullptr;
@@ -165,6 +179,8 @@ struct IResearchDocumentSetup {
     for (auto& f : features) {
       f.first->unprepare();
     }
+
+    arangodb::FeatureCacheFeature::reset();
   }
 };
 

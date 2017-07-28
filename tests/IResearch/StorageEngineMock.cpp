@@ -106,7 +106,15 @@ arangodb::Result PhysicalCollectionMock::insert(arangodb::transaction::Methods* 
 }
 
 void PhysicalCollectionMock::invokeOnAllElements(arangodb::transaction::Methods*, std::function<bool(arangodb::DocumentIdentifierToken const&)> callback) {
-  TRI_ASSERT(false);
+  arangodb::DocumentIdentifierToken token;
+
+  for (size_t i = 0, count = documents.size(); i < count; ++i) {
+    token._data = i;
+
+    if (!callback(token)) {
+      return;
+    }
+  }
 }
 
 std::shared_ptr<arangodb::Index> PhysicalCollectionMock::lookupIndex(arangodb::velocypack::Slice const&) const {

@@ -29,14 +29,16 @@
 #include "analysis/token_attributes.hpp"
 
 #include "Aql/AqlFunctionFeature.h"
+#include "GeneralServer/AuthenticationFeature.h"
 #include "IResearch/ApplicationServerHelper.h"
 #include "IResearch/IResearchAnalyzerFeature.h"
+#include "IResearch/SystemDatabaseFeature.h"
 #include "IResearch/VelocyPackHelper.h"
 #include "RestServer/DatabaseFeature.h"
+#include "RestServer/FeatureCacheFeature.h"
 #include "RestServer/QueryRegistryFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "Utils/OperationOptions.h"
-#include "V8Server/V8DealerFeature.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/ManagedDocumentResult.h"
 
@@ -88,6 +90,7 @@ NS_END
 struct IResearchAnalyzerFeatureSetup {
   StorageEngineMock engine;
   arangodb::application_features::ApplicationServer server;
+  std::unique_ptr<TRI_vocbase_t> system;
   std::vector<std::pair<arangodb::application_features::ApplicationFeature*, bool>> features;
 
   IResearchAnalyzerFeatureSetup(): server(nullptr, nullptr) {
@@ -96,10 +99,14 @@ struct IResearchAnalyzerFeatureSetup {
     arangodb::tests::init();
 
     // setup required application features
-    features.emplace_back(new arangodb::DatabaseFeature(&server), false); // FIXME TODO start() to set system
-    features.emplace_back(new arangodb::QueryRegistryFeature(&server), false); // required for TRI_vocbase_t
-    features.emplace_back(new arangodb::V8DealerFeature(&server), false); // required for DatabaseFeature
-    features.emplace_back(new arangodb::aql::AqlFunctionFeature(&server), true);
+    features.emplace_back(new arangodb::AuthenticationFeature(&server), true); // required for FeatureCacheFeature
+    features.emplace_back(new arangodb::DatabaseFeature(&server), false); // required for FeatureCacheFeature
+    features.emplace_back(new arangodb::FeatureCacheFeature(&server), true); // required for IResearchAnalyzerFeature
+    features.emplace_back(new arangodb::QueryRegistryFeature(&server), false); // required for constructing TRI_vocbase_t
+    arangodb::application_features::ApplicationServer::server->addFeature(features.back().first);
+    system = irs::memory::make_unique<TRI_vocbase_t>(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 0, TRI_VOC_SYSTEM_DATABASE);
+    features.emplace_back(new arangodb::aql::AqlFunctionFeature(&server), true); // required for IResearchAnalyzerFeature
+    features.emplace_back(new arangodb::iresearch::SystemDatabaseFeature(&server, system.get()), false); // required for IResearchAnalyzerFeature
 
     for (auto& f : features) {
       arangodb::application_features::ApplicationServer::server->addFeature(f.first);
@@ -121,6 +128,7 @@ struct IResearchAnalyzerFeatureSetup {
   }
 
   ~IResearchAnalyzerFeatureSetup() {
+    system.reset(); // destroy before reseting the 'ENGINE'
     arangodb::LogTopic::setLogLevel(arangodb::Logger::FIXME.name(), arangodb::LogLevel::DEFAULT);
     arangodb::application_features::ApplicationServer::server = nullptr;
     arangodb::EngineSelectorFeature::ENGINE = nullptr;
@@ -135,6 +143,8 @@ struct IResearchAnalyzerFeatureSetup {
     for (auto& f : features) {
       f.first->unprepare();
     }
+
+    arangodb::FeatureCacheFeature::reset();
   }
 };
 
@@ -631,9 +641,11 @@ SECTION("test_tokens") {
   arangodb::application_features::ApplicationServer server(nullptr, nullptr);
   auto* analyzers = new arangodb::iresearch::IResearchAnalyzerFeature(&server);
   auto* functions = new arangodb::aql::AqlFunctionFeature(&server);
+  auto* systemdb = new arangodb::iresearch::SystemDatabaseFeature(&server, s.system.get());
 
   arangodb::application_features::ApplicationServer::server->addFeature(analyzers);
   arangodb::application_features::ApplicationServer::server->addFeature(functions);
+  arangodb::application_features::ApplicationServer::server->addFeature(systemdb);
   analyzers->emplace("test_analyzer", "TestAnalyzer", "abc");
 
   // test function registration

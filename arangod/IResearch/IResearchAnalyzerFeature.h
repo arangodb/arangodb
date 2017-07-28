@@ -84,7 +84,7 @@ class IResearchAnalyzerFeature final: public arangodb::application_features::App
   size_t erase(irs::string_ref const& name, bool force = false) noexcept;
   AnalyzerPool::ptr get(irs::string_ref const& name) const noexcept;
   static AnalyzerPool::ptr identity() noexcept; // the identity analyzer
-  static std::string const& name();
+  static std::string const& name() noexcept;
   void prepare() override;
   bool release(AnalyzerPool::ptr const& pool) noexcept; // release a persistent registration for a specific pool
   bool reserve(AnalyzerPool::ptr const& pool) noexcept; // register a persistent user for a specific pool

@@ -59,6 +59,7 @@ if (USE_IRESEARCH)
     IResearch/IResearchDocument.cpp IResearch/IResearchDocument.h
     IResearch/IResearchFilterFactory.cpp IResearch/IResearchFilterFactory.h
     IResearch/IResearchOrderFactory.cpp IResearch/IResearchOrderFactory.h
+    IResearch/SystemDatabaseFeature.cpp IResearch/SystemDatabaseFeature.h
     IResearch/VelocyPackHelper.cpp IResearch/VelocyPackHelper.h
     IResearch/AstHelper.cpp IResearch/AstHelper.h
   )

@@ -274,7 +274,7 @@ bool IResearchLinkMeta::init(
         auto analyzer = analyzers->get(name);
 
         if (!analyzer) {
-          errorField = fieldName + "=>" + name.c_str();
+          errorField = fieldName + "=>" + std::string(name);
 
           return false;
         }

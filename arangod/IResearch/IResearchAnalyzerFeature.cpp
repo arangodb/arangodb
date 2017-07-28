@@ -30,14 +30,15 @@
 #include "VelocyPackHelper.h"
 
 #include "Aql/AqlFunctionFeature.h"
+#include "IResearch/SystemDatabaseFeature.h"
 #include "Logger/Logger.h"
 #include "Logger/LogMacros.h"
-#include "RestServer/DatabaseFeature.h"
 #include "StorageEngine/DocumentIdentifierToken.h"
 #include "Transaction/StandaloneContext.h"
 #include "Utils/SingleCollectionTransaction.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/ManagedDocumentResult.h"
+#include "VocBase/vocbase.h"
 
 #include "IResearchAnalyzerFeature.h"
 
@@ -336,7 +337,9 @@ IResearchAnalyzerFeature::IResearchAnalyzerFeature(
   setOptional(true);
   requiresElevatedPrivileges(false);
   startsAfter("AQLFunctions"); // used for registering IResearch analyzer functions
-  startsAfter("Database"); // used for getting the system database containing the persisted configuration
+/*FIXME TODO enable
+  startsAfter("SystemDatabase"); // used for getting the system database containing the persisted configuration
+*/
 }
 
 std::pair<IResearchAnalyzerFeature::AnalyzerPool::ptr, bool> IResearchAnalyzerFeature::emplace(
@@ -498,15 +501,15 @@ IResearchAnalyzerFeature::AnalyzerPool::ptr IResearchAnalyzerFeature::get(
 }
 
 void IResearchAnalyzerFeature::loadConfiguration() {
-  auto* database = getFeature<arangodb::DatabaseFeature>("Database");
+  auto* database = getFeature<arangodb::iresearch::SystemDatabaseFeature>();
 
   if (!database) {
-    LOG_TOPIC(WARN, Logger::FIXME) << "failure to find feature 'Database' while loading IResearch analyzer persisted configuration";
+    LOG_TOPIC(WARN, Logger::FIXME) << "failure to find feature 'SystemDatabase' while loading IResearch analyzer persisted configuration";
 
     return;
   }
 
-  auto* vocbase = database->systemDatabase();
+  auto vocbase = database->use();
 
   if (!vocbase) {
     LOG_TOPIC(WARN, Logger::FIXME) << "failure to get system database while loading IResearch analyzer persisted configuration";
@@ -518,7 +521,7 @@ void IResearchAnalyzerFeature::loadConfiguration() {
   ensureConfigCollection(*vocbase); // assume the collection is not dropped before transaction uses it
 
   arangodb::SingleCollectionTransaction trx(
-    arangodb::transaction::StandaloneContext::Create(vocbase),
+    arangodb::transaction::StandaloneContext::Create(vocbase.get()),
     ANALYZER_COLLECTION_NAME,
     arangodb::AccessMode::Type::WRITE
   );
@@ -595,7 +598,7 @@ void IResearchAnalyzerFeature::loadConfiguration() {
   );
 }
 
-/*static*/ std::string const& IResearchAnalyzerFeature::name() {
+/*static*/ std::string const& IResearchAnalyzerFeature::name() noexcept {
   return FEATURE_NAME;
 }
 
