@@ -256,7 +256,7 @@ retry:
       try {
         InitialSyncer syncer(
             _vocbase, &_configuration, _configuration._restrictCollections,
-            _configuration._restrictType, _configuration._verbose);
+            _configuration._restrictType, _configuration._verbose, false);
 
         res = syncer.run(errorMsg, _configuration._incremental);
 

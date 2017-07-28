@@ -532,13 +532,10 @@ Result RocksDBVPackIndex::insertInternal(transaction::Methods* trx,
   std::vector<RocksDBKey> elements;
   std::vector<uint64_t> hashes;
   int res;
-  try {
+  {
+    // rethrow all types of exceptions from here...
     transaction::BuilderLeaser leased(trx);
     res = fillElement(*(leased.get()), revisionId, doc, elements, hashes);
-  } catch (basics::Exception const& ex) {
-    res = ex.code();
-  } catch (...) {
-    res = TRI_ERROR_OUT_OF_MEMORY;
   }
 
   if (res != TRI_ERROR_NO_ERROR) {
@@ -604,14 +601,11 @@ Result RocksDBVPackIndex::removeInternal(transaction::Methods* trx,
   std::vector<uint64_t> hashes;
 
   int res;
-  try {
+  {
+    // rethrow all types of exceptions from here...
     transaction::BuilderLeaser leased(trx);
     res = fillElement(*(leased.get()), revisionId, doc, elements, hashes);
-  } catch (basics::Exception const& ex) {
-    res = ex.code();
-  } catch (...) {
-    res = TRI_ERROR_OUT_OF_MEMORY;
-  }
+  } 
 
   if (res != TRI_ERROR_NO_ERROR) {
     return IndexResult(res, this);
