@@ -983,8 +983,22 @@ bool RocksDBVPackIndex::supportsFilterCondition(
 
   if (attributesCoveredByEquality == _fields.size() && unique()) {
     // index is unique and condition covers all attributes by equality
+    if (itemsInIndex == 0) {
+      estimatedItems = 0;
+      estimatedCost = 0.0;
+      return true;
+    }
     estimatedItems = values;
     estimatedCost = 0.995 * values;
+    if (values > 0) {
+      if (useCache()) {
+        estimatedCost = static_cast<double>(estimatedItems  * values);
+      } else {
+        estimatedCost = (std::max)(static_cast<double>(1), std::log2(static_cast<double>(itemsInIndex)) * values);
+      }
+    }
+    // cost is already low... now slightly prioritize unique indexes
+    estimatedCost *= 0.995 - 0.05 * (_fields.size() - 1);
     return true;
   }
 
@@ -1006,11 +1020,19 @@ bool RocksDBVPackIndex::supportsFilterCondition(
         estimatedItems = static_cast<size_t>(1.0 / estimate);
       }
     }
-    estimatedCost = static_cast<double>(estimatedItems);
+    if (itemsInIndex == 0) {
+      estimatedCost = 0.0;
+    } else {
+      if (useCache()) {
+        estimatedCost = static_cast<double>(estimatedItems * values);
+      } else {
+        estimatedCost = (std::max)(static_cast<double>(1), std::log2(static_cast<double>(itemsInIndex)) * values);
+      }
+    }
     return true;
   }
 
-  // no condition
+  // index does not help for this condition
   estimatedItems = itemsInIndex;
   estimatedCost = static_cast<double>(estimatedItems);
   return false;
