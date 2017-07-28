@@ -172,6 +172,8 @@
     "ERROR_CLUSTER_SHARD_FOLLOWER_REFUSES_OPERATION" : { "code" : 1490, "message" : "a shard follower refuses to perform an operation that is not a replication" },
     "ERROR_CLUSTER_SHARD_LEADER_RESIGNED" : { "code" : 1491, "message" : "a (former) shard leader refuses to perform an operation, because it has resigned in the meantime" },
     "ERROR_CLUSTER_AGENCY_COMMUNICATION_FAILED" : { "code" : 1492, "message" : "some agency operation failed" },
+    "ERROR_CLUSTER_DISTRIBUTE_SHARDS_LIKE_REPLICATION_FACTOR" : { "code" : 1493, "message" : "conflicting replication factor with distributeShardsLike parameter assignment" },
+    "ERROR_CLUSTER_DISTRIBUTE_SHARDS_LIKE_NUMBER_OF_SHARDS" : { "code" : 1494, "message" : "conflicting shard number with distributeShardsLike parameter assignment" },
     "ERROR_QUERY_KILLED"           : { "code" : 1500, "message" : "query killed" },
     "ERROR_QUERY_PARSE"            : { "code" : 1501, "message" : "%s" },
     "ERROR_QUERY_EMPTY"            : { "code" : 1502, "message" : "query is empty" },
