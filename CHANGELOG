@@ -1,6 +1,13 @@
 devel
 -----
 
+* disallow the usage of volatile collections in the RocksDB engine 
+  by throwing an error when a collection is created with attribute 
+  `isVolatile` set to `true`. 
+  Volatile collections are unsupported by the RocksDB engine, so 
+  creating them should not succeed and silently create a non-volatile
+  collection 
+
 * fixed issue #2889: Traversal query using incorrect collection id
 
 * fixed issue #2884: AQL traversal uniqueness constraints "propagating" to other traversals? Weird results
