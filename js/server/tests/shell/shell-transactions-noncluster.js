@@ -362,7 +362,7 @@ function transactionInvocationSuite () {
         { collections: { }, action: true },
         { collections: { } },
         { collections: true, action: function () { } },
-        { collections: { read: true }, action: function () { } },
+        { collections: { read: true }, action: function () { }, exErr: 1652 },
         { collections: { }, lockTimeout: -1, action: function () { } },
         { collections: { }, lockTimeout: -30.0, action: function () { } },
         { collections: { }, lockTimeout: null, action: function () { } },
@@ -383,7 +383,11 @@ function transactionInvocationSuite () {
           fail();
         }
         catch (err) {
-          assertEqual(internal.errors.ERROR_BAD_PARAMETER.code, err.errorNum);
+          var expected = internal.errors.ERROR_BAD_PARAMETER.code;
+          if(test && test.hasOwnProperty("exErr")){
+              expected = test.exErr;
+          }
+          assertEqual(expected, err.errorNum);
         }
       });
     },
