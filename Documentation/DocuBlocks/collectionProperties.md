@@ -9,10 +9,12 @@ Returns an object containing all collection properties.
   after the data was synced to disk.
 
 * *journalSize* : The size of the journal in bytes.
+  This option is meaningful for the MMFiles storage engine only.
 
 * *isVolatile*: If *true* then the collection data will be
   kept in memory only and ArangoDB will not write or sync the data
   to disk.
+  This option is meaningful for the MMFiles storage engine only.
 
 * *keyOptions* (optional) additional options for key generation. This is
   a JSON array containing the following attributes (note: some of the
@@ -31,6 +33,7 @@ Returns an object containing all collection properties.
 * *indexBuckets*: number of buckets into which indexes using a hash
   table are split. The default is 16 and this number has to be a
   power of 2 and less than or equal to 1024.
+  This option is meaningful for the MMFiles storage engine only.
 
   For very large collections one should increase this to avoid long pauses
   when the hash table has to be initially built or resized, since buckets
@@ -57,9 +60,11 @@ one or more of the following attribute(s):
   after the data was synced to disk.
 
 * *journalSize* : The size of the journal in bytes.
+  This option is meaningful for the MMFiles storage engine only.
 
 * *indexBuckets* : See above, changes are only applied when the
   collection is loaded the next time.
+  This option is meaningful for the MMFiles storage engine only.
 
 *Note*: it is not possible to change the journal size after the journal or
 datafile has been created. Changing this parameter will only effect newly

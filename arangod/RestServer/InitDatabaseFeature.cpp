@@ -22,15 +22,16 @@
 
 #include "InitDatabaseFeature.h"
 
+#include <iostream>
+
 #include "Basics/FileUtils.h"
 #include "Basics/terminal-utils.h"
+#include "Cluster/ServerState.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerFeature.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
 #include "RestServer/DatabasePathFeature.h"
-
-#include <iostream>
 
 using namespace arangodb;
 using namespace arangodb::application_features;
@@ -71,6 +72,7 @@ void InitDatabaseFeature::validateOptions(
 
   if (_initDatabase || _restoreAdmin) {
     ApplicationServer::forceDisableFeatures(_nonServerFeatures);
+    ServerState::instance()->setRole(ServerState::ROLE_SINGLE);
   }
 }
 
@@ -140,7 +142,7 @@ std::string InitDatabaseFeature::readPassword(std::string const& message) {
 void InitDatabaseFeature::checkEmptyDatabase() {
   auto database = ApplicationServer::getFeature<DatabasePathFeature>("DatabasePath");
   std::string path = database->directory();
-  std::string journals = database->subdirectoryName("journals");
+  std::string serverFile = database->subdirectoryName("SERVER");
 
   bool empty = false;
   std::string message;
@@ -153,10 +155,10 @@ void InitDatabaseFeature::checkEmptyDatabase() {
       goto doexit;
     }
 
-    if (FileUtils::exists(journals)) {
-      if (!FileUtils::isDirectory(journals)) {
+    if (FileUtils::exists(serverFile)) {
+      if (FileUtils::isDirectory(serverFile)) {
         message =
-            "database journals path '" + journals + "' is not a directory";
+            "database SERVER '" + serverFile + "' is not a file";
         code = EXIT_FAILURE;
         goto doexit;
       }
@@ -168,7 +170,7 @@ void InitDatabaseFeature::checkEmptyDatabase() {
   }
 
   if (!empty) {
-    message = "database already initialized, refusing to change root user";
+    message = "database already initialized, refusing to initialize it again";
     goto doexit;
   }
 

@@ -8,8 +8,8 @@ properties(
 )
 
 def defaultLinux = true
-def defaultMac = true
-def defaultWindows = true
+def defaultMac = false
+def defaultWindows = false
 def defaultBuild = true
 def defaultCleanBuild = false
 def defaultCommunity = true
@@ -120,6 +120,9 @@ runResilience = params.runResilience
 
 // run tests
 runTests = params.runTests
+
+// restrict builds
+restrictions = []
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                             CONSTANTS AND HELPERS
@@ -288,7 +291,7 @@ def checkCommitMessages() {
         runTests = false
     }
     else if (seenCommit) {
-        if (env.BRANCH_NAME == "devel") {
+        if (env.BRANCH_NAME == "devel" || env.BRANCH_NAME == "3.2") {
             useLinux = true
             useMac = true
             useWindows = true
@@ -298,7 +301,6 @@ def checkCommitMessages() {
             runJslint = true
             runResilience = true
             runTests = true
-            fullParallel = true
         }
         else if (env.BRANCH_NAME =~ /^PR-/) {
             useLinux = true
@@ -310,7 +312,6 @@ def checkCommitMessages() {
             runJslint = true
             runResilience = true
             runTests = true
-            fullParallel = true
         }
         else {
             useLinux = true
@@ -322,7 +323,15 @@ def checkCommitMessages() {
             runJslint = true
             runResilience = false
             runTests = false
-            fullParallel = true
+
+            restrictions = [
+                "build-enterprise-linux",
+                "build-community-mac",
+                "build-community-windows",
+                "test-cluster-enterprise-rocksdb-linux",
+                "test-singleserver-community-mmfiles-mac",
+                "test-singleserver-community-rocksdb-windows"
+            ]
         }
     }
 
@@ -513,13 +522,13 @@ def testEdition(edition, os, mode, engine) {
     try {
         try {
             if (os == 'linux') {
-                sh "./Installation/Pipeline/test_${mode}_${edition}_${engine}_${os}.sh 10"
+                sh "./Installation/Pipeline/linux/test_${mode}_${edition}_${engine}_${os}.sh 10"
             }
             else if (os == 'mac') {
-                sh "./Installation/Pipeline/test_${mode}_${edition}_${engine}_${os}.sh 5"
+                sh "./Installation/Pipeline/mac/test_${mode}_${edition}_${engine}_${os}.sh 5"
             }
             else if (os == 'windows') {
-                powershell ". .\\Installation\\Pipeline\\test_${mode}_${edition}_${engine}_${os}.ps1"
+                powershell ". .\\Installation\\Pipeline\\windows\\test_${mode}_${edition}_${engine}_${os}.ps1"
             }
         }
         catch (exc) {
@@ -533,8 +542,8 @@ def testEdition(edition, os, mode, engine) {
             if (os == 'linux' || os == 'mac') {
                 sh "rm -rf ${arch}"
                 sh "mkdir -p ${arch}"
-                sh "find log-output -name 'FAILED_*' -exec cp '{}' ${arch} ';'"
-                sh "for i in logs log-output; do test -e \$i && mv \$i ${arch} || true; done"
+                sh "find log-output -name 'FAILED_*' -exec cp '{}' . ';'"
+                sh "for i in logs log-output core*; do test -e \$i && mv \$i ${arch} || true; done"
             }
         }
     }
@@ -544,6 +553,10 @@ def testEdition(edition, os, mode, engine) {
     finally {
         archiveArtifacts allowEmptyArchive: true,
                          artifacts: "${arch}/**",
+                         defaultExcludes: false
+
+        archiveArtifacts allowEmptyArchive: true,
+                         artifacts: "FAILED_*",
                          defaultExcludes: false
     }
 }
@@ -576,16 +589,6 @@ def testCheck(edition, os, mode, engine, full) {
     }
 
     return true
-}
-
-def testName(edition, os, mode, engine, full) {
-    def name = "test-${mode}-${edition}-${engine}-${os}";
-
-    if (! testCheck(edition, os, mode, engine, full)) {
-        name = "DISABLED-${name}"
-    }
-
-    return name 
 }
 
 def testStep(edition, os, mode, engine) {
@@ -627,7 +630,7 @@ def testStepParallel(editionList, osList, modeList) {
             for (mode in modeList) {
                 for (engine in ['mmfiles', 'rocksdb']) {
                     if (testCheck(edition, os, mode, engine, full)) {
-                        def name = testName(edition, os, mode, engine, full)
+                        def name = "test-${mode}-${edition}-${engine}-${os}";
 
                         branches[name] = testStep(edition, os, mode, engine)
                     }
@@ -658,13 +661,13 @@ allResiliencesSuccessful = true
 def testResilience(os, engine, foxx) {
     withEnv(['LOG_COMMUNICATION=debug', 'LOG_REQUESTS=trace', 'LOG_AGENCY=trace']) {
         if (os == 'linux') {
-            sh "./Installation/Pipeline/test_resilience_${foxx}_${engine}_${os}.sh"
+            sh "./Installation/Pipeline/linux/test_resilience_${foxx}_${engine}_${os}.sh"
         }
         else if (os == 'mac') {
-            sh "./Installation/Pipeline/test_resilience_${foxx}_${engine}_${os}.sh"
+            sh "./Installation/Pipeline/mac/test_resilience_${foxx}_${engine}_${os}.sh"
         }
         else if (os == 'windows') {
-            powershell "./Installation/Pipeline/test_resilience_${foxx}_${engine}_${os}.ps1"
+            powershell ".\\Installation\\Pipeline\\test_resilience_${foxx}_${engine}_${os}.ps1"
         }
     }
 }
@@ -809,20 +812,19 @@ def buildEdition(edition, os) {
     try {
         try {
             if (os == 'linux') {
-                sh "./Installation/Pipeline/build_${edition}_${os}.sh 64"
+                sh "./Installation/Pipeline/linux/build_${edition}_${os}.sh 64"
             }
             else if (os == 'mac') {
-                sh "./Installation/Pipeline/build_${edition}_${os}.sh 20"
+                sh "./Installation/Pipeline/mac/build_${edition}_${os}.sh 20"
             }
             else if (os == 'windows') {
-                powershell ". .\\Installation\\Pipeline\\build_${edition}_${os}.ps1"
+                powershell ". .\\Installation\\Pipeline\\windows\\build_${edition}_${os}.ps1"
             }
         }
         finally {
             if (os == 'linux' || os == 'mac') {
                 sh "rm -rf ${arch}"
                 sh "mkdir -p ${arch}"
-                sh "find log-output -name 'FAILED_*' -exec cp '{}' ${arch} ';'"
                 sh "for i in log-output; do test -e \$i && mv \$i ${arch} || true; done"
             }
             else if (os == 'windows') {
@@ -833,8 +835,9 @@ def buildEdition(edition, os) {
     }
     finally {
         stashBuild(edition, os)
+
         archiveArtifacts allowEmptyArchive: true,
-                         artifacts: "${arch}/**"
+                         artifacts: "${arch}/**",
                          defaultExcludes: false
     }
 }
@@ -883,16 +886,6 @@ def buildStep(edition, os) {
                     allBuildsSuccessful = false
                     throw exc
                 }
-            }
-        }
-
-        if (fullParallel) {
-            step {
-                testStepParallel([edition], [os], ['cluster', 'singleserver'])
-            }
-
-            step {
-                testResilienceParallel([os])
             }
         }
     }
@@ -958,9 +951,13 @@ if (buildExecutable) {
     }
 }
 
-if (! fullParallel) {
-    runStage {
-        stage('tests') {
+runStage {
+    stage('tests') {
+        if (fullParallel) {
+            testStepParallel(['community', 'enterprise'], ['linux', 'mac', 'windows'], ['cluster', 'singleserver'])
+            testResilienceParallel(['linux', 'mac', 'windows'])
+        }
+        else {
             testStepParallel(['community', 'enterprise'], ['linux'], ['cluster', 'singleserver'])
         }
     }
@@ -998,9 +995,7 @@ if (! fullParallel) {
             }
         }
     }
-}
 
-if (! fullParallel) {
     runStage {
         stage('resilience') {
             if (allTestsSuccessful) {
@@ -1040,7 +1035,7 @@ stage('result') {
             && allTestsSuccessful
             && allResiliencesSuccessful
             && jslintSuccessful)) {
-            currentBuild.result = 'FAILURE'
+            error "run failed"
         }
     }
 }

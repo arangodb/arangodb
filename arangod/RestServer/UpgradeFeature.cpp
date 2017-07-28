@@ -23,6 +23,7 @@
 #include "UpgradeFeature.h"
 
 #include "Cluster/ClusterFeature.h"
+#include "GeneralServer/AuthenticationFeature.h"
 #include "Logger/Logger.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
@@ -101,15 +102,46 @@ void UpgradeFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
 void UpgradeFeature::start() {
   auto init =
       ApplicationServer::getFeature<InitDatabaseFeature>("InitDatabase");
+  AuthInfo *ai = AuthenticationFeature::INSTANCE->authInfo();
 
   // upgrade the database
   if (_upgradeCheck) {
-    upgradeDatabase(init->defaultPassword());
+    upgradeDatabase();
+
+    if (!init->restoreAdmin() && !init->defaultPassword().empty()) {
+      ai->updateUser("root", [&](AuthUserEntry& entry) {
+        entry.updatePassword(init->defaultPassword());
+      });
+    }
   }
 
   // change admin user
   if (init->restoreAdmin()) {
-    changeAdminPassword(init->defaultPassword());
+    Result res;
+
+    res = ai->removeAllUsers();
+
+    if (res.fail()) {
+      LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "failed to create clear users: "
+                                               << res.errorMessage();
+      *_result = EXIT_FAILURE;
+      return;
+    }
+
+    res = ai->storeUser(true, "root", init->defaultPassword(), true);
+
+    if (res.fail() && res.errorNumber() == TRI_ERROR_USER_NOT_FOUND) {
+      res = ai->storeUser(false, "root", init->defaultPassword(), true);
+    }
+
+    if (res.fail()) {
+      LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "failed to create root user: "
+                                               << res.errorMessage();
+      *_result = EXIT_FAILURE;
+      return;
+    }
+
+    *_result = EXIT_SUCCESS;
   }
 
   // and force shutdown
@@ -117,71 +149,12 @@ void UpgradeFeature::start() {
     if (init->isInitDatabase()) {
       *_result = EXIT_SUCCESS;
     }
-    
+
     server()->beginShutdown();
   }
 }
 
-void UpgradeFeature::changeAdminPassword(std::string const& defaultPassword) {
-  LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "starting to restore admin user";
-
-  auto* systemVocbase = DatabaseFeature::DATABASE->systemDatabase();
-
-  // enter context and isolate
-  {
-    V8Context* context =
-        V8DealerFeature::DEALER->enterContext(systemVocbase, true, 0);
-
-    if (context == nullptr) {
-      LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << "could not enter context #0";
-      FATAL_ERROR_EXIT();
-    }
-
-    TRI_DEFER(V8DealerFeature::DEALER->exitContext(context));
-
-    {
-      v8::HandleScope scope(context->_isolate);
-      auto localContext =
-          v8::Local<v8::Context>::New(context->_isolate, context->_context);
-      localContext->Enter();
-
-      {
-        v8::Context::Scope contextScope(localContext);
-
-        // run upgrade script
-        LOG_TOPIC(DEBUG, arangodb::Logger::FIXME) << "running admin recreation script";
-
-        // special check script to be run just once in first thread (not in
-        // all) but for all databases
-        v8::HandleScope scope(context->_isolate);
-
-        v8::Handle<v8::Object> args = v8::Object::New(context->_isolate);
-
-        args->Set(TRI_V8_ASCII_STRING2(context->_isolate, "password"),
-                  TRI_V8_STD_STRING2(context->_isolate, defaultPassword));
-
-        localContext->Global()->Set(
-            TRI_V8_ASCII_STRING2(context->_isolate, "UPGRADE_ARGS"), args);
-
-        auto startupLoader = V8DealerFeature::DEALER->startupLoader();
-
-        startupLoader->executeGlobalScript(context->_isolate, localContext,
-                                           "server/restore-admin-user.js");
-      }
-
-      // finally leave the context. otherwise v8 will crash with assertion
-      // failure when we delete the context locker below
-      localContext->Exit();
-    }
-  }
-
-  // and return from the context
-  LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "finished to restore admin user";
-
-  *_result = EXIT_SUCCESS;
-}
-
-void UpgradeFeature::upgradeDatabase(std::string const& defaultPassword) {
+void UpgradeFeature::upgradeDatabase() {
   LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "starting database init/upgrade";
 
   DatabaseFeature* databaseFeature = application_features::ApplicationServer::getFeature<DatabaseFeature>("Database");
@@ -224,8 +197,6 @@ void UpgradeFeature::upgradeDatabase(std::string const& defaultPassword) {
           args->Set(TRI_V8_ASCII_STRING2(context->_isolate, "upgrade"),
                     v8::Boolean::New(context->_isolate, _upgrade));
 
-          args->Set(TRI_V8_ASCII_STRING2(context->_isolate, "password"),
-                    TRI_V8_STD_STRING2(context->_isolate, defaultPassword));
 
           localContext->Global()->Set(
               TRI_V8_ASCII_STRING2(context->_isolate, "UPGRADE_ARGS"), args);
