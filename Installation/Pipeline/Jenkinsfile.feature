@@ -150,6 +150,9 @@ sourceBranchLabel = env.BRANCH_NAME
 if (env.BRANCH_NAME =~ /^PR-/) {
   def prUrl = new URL("https://api.github.com/repos/arangodb/arangodb/pulls/${env.CHANGE_ID}")
   sourceBranchLabel = new groovy.json.JsonSlurper().parseText(prUrl.text).head.label
+
+  def reg = ~/^arangodb:/
+  sourceBranchLabel = sourceBranchLabel - reg
 }
 
 // copy data to master cache
