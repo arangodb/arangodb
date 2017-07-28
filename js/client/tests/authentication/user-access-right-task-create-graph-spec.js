@@ -25,6 +25,7 @@
 // / Copyright holder is ArangoDB GmbH, Cologne, Germany
 // /
 // / @author Michael Hackstein
+// / @author Mark Vollmary
 // / @author Copyright 2017, ArangoDB GmbH, Cologne, Germany
 // //////////////////////////////////////////////////////////////////////////////
 
@@ -43,6 +44,7 @@ const rightLevels = helper.rightLevels;
 const testGraphName = `${namePrefix}GraphNew`;
 const testEdgeColName = `${namePrefix}EdgeColNew`;
 const testVertexColName = `${namePrefix}VertexColNew`;
+const errors = require('@arangodb').errors;
 const keySpaceId = 'task_create_graph_keyspace';
 
 const userSet = helper.userSet;
@@ -214,15 +216,24 @@ describe('User Rights Management', () => {
                   })(params);`
                 };
                 if (dbLevel['rw'].has(name)) {
-                  tasks.register(task);
-                  wait(keySpaceId, name);
-                  expect(rootTestGraph()).to.equal(true, 'Graph creation reported success, but graph was not found afterwards.');
-                  expect(rootTestCollection(testEdgeColName)).to.equal(true, 'Graph creation reported success, but edge colleciton was not found afterwards.');
-                  expect(rootTestCollection(testVertexColName)).to.equal(true, 'Graph creation reported success, but vertex colleciton was not found afterwards.');
+                  if (dbLevel['rw'].has(name)) {
+                    tasks.register(task);
+                    wait(keySpaceId, name);
+                    expect(rootTestGraph()).to.equal(true, 'Graph creation reported success, but graph was not found afterwards.');
+                    expect(rootTestCollection(testEdgeColName)).to.equal(true, 'Graph creation reported success, but edge colleciton was not found afterwards.');
+                    expect(rootTestCollection(testVertexColName)).to.equal(true, 'Graph creation reported success, but vertex colleciton was not found afterwards.');
+                  } else {
+                    tasks.register(task);
+                    wait(keySpaceId, name);
+                    expect(rootTestGraph()).to.equal(false, `${name} was able to create a graph with insufficent rights`);
+                  }
                 } else {
-                  tasks.register(task);
-                  wait(keySpaceId, name);
-                  expect(rootTestGraph()).to.equal(false, `${name} was able to create a graph with insufficent rights`);
+                  try {
+                    tasks.register(task);
+                    expect(false).to.equal(true, `${name} managed to register a task with insufficient rights`);
+                  } catch (e) {
+                    expect(e.errorNum).to.equal(errors.ERROR_FORBIDDEN.code);
+                  }
                 }
               });
 
@@ -248,16 +259,25 @@ describe('User Rights Management', () => {
                     }
                   })(params);`
                 };
-                if (dbLevel['rw'].has(name) && (colLevel['rw'].has(name) || colLevel['ro'].has(name))) {
-                  tasks.register(task);
-                  wait(keySpaceId, `${name}_existing_collections`);
-                  expect(rootTestGraph()).to.equal(true, 'Graph creation reported success, but graph was not found afterwards.');
-                  expect(rootTestCollection(testEdgeColName)).to.equal(true, 'Graph creation reported success, but edge colleciton was not found afterwards.');
-                  expect(rootTestCollection(testVertexColName)).to.equal(true, 'Graph creation reported success, but vertex colleciton was not found afterwards.');
+                if (dbLevel['rw'].has(name)) {
+                  if (dbLevel['rw'].has(name) && (colLevel['rw'].has(name) || colLevel['ro'].has(name))) {
+                    tasks.register(task);
+                    wait(keySpaceId, `${name}_existing_collections`);
+                    expect(rootTestGraph()).to.equal(true, 'Graph creation reported success, but graph was not found afterwards.');
+                    expect(rootTestCollection(testEdgeColName)).to.equal(true, 'Graph creation reported success, but edge colleciton was not found afterwards.');
+                    expect(rootTestCollection(testVertexColName)).to.equal(true, 'Graph creation reported success, but vertex colleciton was not found afterwards.');
+                  } else {
+                    tasks.register(task);
+                    wait(keySpaceId, `${name}_existing_collections`);
+                    expect(rootTestGraph()).to.equal(false, `${name} was able to create a graph with insufficent rights`);
+                  }
                 } else {
-                  tasks.register(task);
-                  wait(keySpaceId, `${name}_existing_collections`);
-                  expect(rootTestGraph()).to.equal(false, `${name} was able to create a graph with insufficent rights`);
+                  try {
+                    tasks.register(task);
+                    expect(false).to.equal(true, `${name} managed to register a task with insufficient rights`);
+                  } catch (e) {
+                    expect(e.errorNum).to.equal(errors.ERROR_FORBIDDEN.code);
+                  }
                 }
               });
             });

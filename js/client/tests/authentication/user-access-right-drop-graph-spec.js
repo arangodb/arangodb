@@ -25,6 +25,7 @@
 // / Copyright holder is ArangoDB GmbH, Cologne, Germany
 // /
 // / @author Michael Hackstein
+// / @author Mark Vollmary
 // / @author Copyright 2017, ArangoDB GmbH, Cologne, Germany
 // //////////////////////////////////////////////////////////////////////////////
 
@@ -191,7 +192,7 @@ describe('User Rights Management', () => {
                 expect(rootTestGraph()).to.equal(true, 'Precondition failed, the graph still not exists');
                 expect(rootTestCollection(testEdgeColName)).to.equal(true, 'Precondition failed, the edge collection still not exists');
                 expect(rootTestCollection(testVertexColName)).to.equal(true, 'Precondition failed, the vertex collection still not exists');
-                if (dbLevel['rw'].has(name) && (colLevel['rw'].has(name) || colLevel['ro'].has(name))) {
+                if (dbLevel['rw'].has(name) && colLevel['rw'].has(name)) {
                   graphModule._drop(testGraphName, true);
                   expect(!rootTestGraph()).to.equal(true, 'Graph drop reported success, but graph was found afterwards.');
                   expect(!rootTestCollection(testEdgeColName)).to.equal(true, 'Graph drop reported success, but edge collection was found afterwards.');

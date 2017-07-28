@@ -1,5 +1,5 @@
 /* jshint globalstrict:true, strict:true, maxlen: 5000 */
-/* global describe, before, after, it, require, print, afterEach, beforeEach */
+/* global describe, before, after, it, require, afterEach, beforeEach */
 
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief tests for user access rights
@@ -25,6 +25,7 @@
 // / Copyright holder is ArangoDB GmbH, Cologne, Germany
 // /
 // / @author Michael Hackstein
+// / @author Mark Vollmary
 // / @author Copyright 2017, ArangoDB GmbH, Cologne, Germany
 // //////////////////////////////////////////////////////////////////////////////
 
@@ -38,6 +39,7 @@ const pu = require('@arangodb/process-utils');
 const download = require('internal').download;
 const namePrefix = helper.namePrefix;
 const rightLevels = helper.rightLevels;
+const errors = require('@arangodb').errors;
 const keySpaceId = 'task_drop_user_keyspace';
 
 const userSet = helper.userSet;
@@ -158,27 +160,34 @@ describe('User Rights Management', () => {
             });
 
             it('drop a user', () => {
+              const taskId = 'task_drop_user_' + name;
+              const task = {
+                id: taskId,
+                name: taskId,
+                command: `(function (params) {
+                  try {
+                    require('@arangodb/users').remove('${testUser}');
+                  } finally {
+                    global.KEY_SET('${keySpaceId}', '${name}', true);
+                  }
+                })(params);`
+              };
               if (systemLevel['rw'].has(name)) {
-                const taskId = 'task_drop_user_' + name;
-                tasks.register({
-                  id: taskId,
-                  name: taskId,
-                  command: `(function (params) {
-                    try {
-                      require('@arangodb/users').remove('${testUser}');
-                    } finally {
-                      global.KEY_SET('${keySpaceId}', '${name}', true);
-                    }
-                  })(params);`
-                });
-                wait(keySpaceId, name);
-                expect(rootTestUser()).to.equal(false, 'Drop user stated success, but user still found.');
+                if (systemLevel['rw'].has(name)) {
+                  tasks.register(task);
+                  wait(keySpaceId, name);
+                  expect(rootTestUser()).to.equal(false, 'Drop user stated success, but user still found.');
+                } else {
+                  tasks.register(task);
+                  wait(keySpaceId, name);
+                  expect(rootTestUser()).to.equal(true, 'managed to drop user with insufficient rights');
+                }
               } else {
                 try {
-                  users.remove(testUser);
-                  expect(rootTestUser()).to.equal(true, `${name} was able to drop a user with insufficient rights.`);
+                  tasks.register(task);
+                  expect(false).to.equal(true, `${name} managed to register a task with insufficient rights`);
                 } catch (e) {
-                  print(e);
+                  expect(e.errorNum).to.equal(errors.ERROR_FORBIDDEN.code);
                 }
               }
             });

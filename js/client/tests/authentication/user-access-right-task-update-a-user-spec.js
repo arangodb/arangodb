@@ -1,5 +1,5 @@
 /* jshint globalstrict:true, strict:true, maxlen: 5000 */
-/* global describe, before, after, it, require, print, afterEach, beforeEach */
+/* global describe, before, after, it, require, afterEach, beforeEach */
 
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief tests for user access rights
@@ -25,6 +25,7 @@
 // / Copyright holder is ArangoDB GmbH, Cologne, Germany
 // /
 // / @author Michael Hackstein
+// / @author Mark Vollmary
 // / @author Copyright 2017, ArangoDB GmbH, Cologne, Germany
 // //////////////////////////////////////////////////////////////////////////////
 
@@ -38,6 +39,7 @@ const pu = require('@arangodb/process-utils');
 const download = require('internal').download;
 const namePrefix = helper.namePrefix;
 const rightLevels = helper.rightLevels;
+const errors = require('@arangodb').errors;
 const keySpaceId = 'task_update_user_keyspace';
 
 const userSet = helper.userSet;
@@ -159,7 +161,7 @@ describe('User Rights Management', () => {
 
             it('update a user', () => {
               const taskId = 'task_drop_user_' + name;
-              tasks.register({
+              const task = {
                 id: taskId,
                 name: taskId,
                 command: `(function (params) {
@@ -172,12 +174,22 @@ describe('User Rights Management', () => {
                     global.KEY_SET('${keySpaceId}', '${name}', true);
                   }
                 })(params);`
-              });
-              wait(keySpaceId, name);
+              };
               if (systemLevel['rw'].has(name)) {
-                expect(getKey(keySpaceId, `${name}_status`)).to.equal(true, `${name} was not able to update a user with sufficient rights`);
+                tasks.register(task);
+                wait(keySpaceId, name);
+                if (systemLevel['rw'].has(name)) {
+                  expect(getKey(keySpaceId, `${name}_status`)).to.equal(true, `${name} was not able to update a user with sufficient rights`);
+                } else {
+                  expect(getKey(keySpaceId, `${name}_status`)).to.not.equal(true, `${name} was able to update a user with insufficient rights.`);
+                }
               } else {
-                expect(getKey(keySpaceId, `${name}_status`)).to.not.equal(true, `${name} was able to update a user with insufficient rights.`);
+                try {
+                  tasks.register(task);
+                  expect(false).to.equal(true, `${name} managed to register a task with insufficient rights`);
+                } catch (e) {
+                  expect(e.errorNum).to.equal(errors.ERROR_FORBIDDEN.code);
+                }
               }
             });
           });

@@ -25,6 +25,7 @@
 // / Copyright holder is ArangoDB GmbH, Cologne, Germany
 // /
 // / @author Michael Hackstein
+// / @author Mark Vollmary
 // / @author Copyright 2017, ArangoDB GmbH, Cologne, Germany
 // //////////////////////////////////////////////////////////////////////////////
 
@@ -122,7 +123,6 @@ describe('User Rights Management', () => {
 
       if (canUse) {
         describe(`user ${name}`, () => {
-
           before(() => {
             switchUser(name, dbName);
             expect(createKeySpace(keySpaceId)).to.equal(true, 'keySpace creation failed!');
@@ -176,7 +176,7 @@ describe('User Rights Management', () => {
                   })(params);`
                 };
                 setKeySpace(keySpaceId, name + '_replace');
-                const taskIdReplace = 'task_collection_level_replace_by_key' + name;           
+                const taskIdReplace = 'task_collection_level_replace_by_key' + name;
                 const taskReplace = {
                   id: taskIdReplace,
                   name: taskIdReplace,
@@ -192,40 +192,50 @@ describe('User Rights Management', () => {
                     }
                   })(params);`
                 };
-                if ((dbLevel['rw'].has(name) || dbLevel['ro'].has(name)) &&
-                   colLevel['rw'].has(name)) {
-                  let col = db._collection(colName);
-                  expect(col.document('123').foo).to.not.equal('bar', 'Precondition failed, document already has the attribute set.');
-                  tasks.register(taskUpdate);
-                  wait(keySpaceId, `${name}_update`);
-                  expect(getKey(keySpaceId, `${name}_update_status`)).to.equal(true, `${name} the update did not pass through...`);
-                  expect(col.document('123').foo).to.equal('bar', `${name} the update did not pass through...`);
-
-                  tasks.register(taskReplace);
-                  wait(keySpaceId, `${name}_replace`);
-                  expect(getKey(keySpaceId, `${name}_replace_status`)).to.equal(true, `${name} the update did not pass through...`);
-                  expect(col.document('123').foo).to.equal('baz', `${name} the replace did not pass through...`);
-                } else {
-                  let hasReadAccess = ((dbLevel['rw'].has(name) || dbLevel['ro'].has(name)) &&
-                    (colLevel['rw'].has(name) || colLevel['ro'].has(name)));
-                  if (hasReadAccess) {
+                if (dbLevel['rw'].has(name)) {
+                  if ((dbLevel['rw'].has(name) || dbLevel['ro'].has(name)) &&
+                    colLevel['rw'].has(name)) {
                     let col = db._collection(colName);
                     expect(col.document('123').foo).to.not.equal('bar', 'Precondition failed, document already has the attribute set.');
-                  }
-                  tasks.register(taskUpdate);
-                  wait(keySpaceId, `${name}_update`);
-                  expect(getKey(keySpaceId, `${name}_update_status`)).to.not.equal(true, `${name} managed to update the document with insufficient rights`);
-                  if (hasReadAccess) {
-                    let col = db._collection(colName);
-                    expect(col.document('123').foo).to.not.equal('bar', `${name} managed to update the document with insufficient rights`);
-                  }
+                    tasks.register(taskUpdate);
+                    wait(keySpaceId, `${name}_update`);
+                    expect(getKey(keySpaceId, `${name}_update_status`)).to.equal(true, `${name} the update did not pass through...`);
+                    expect(col.document('123').foo).to.equal('bar', `${name} the update did not pass through...`);
 
-                  tasks.register(taskReplace);
-                  wait(keySpaceId, `${name}_replace`);
-                  expect(getKey(keySpaceId, `${name}_replace_status`)).to.not.equal(true, `${name} managed to replace the document with insufficient rights`);
-                  if (hasReadAccess) {
-                    let col = db._collection(colName);
-                    expect(col.document('123').foo).to.not.equal('baz', `${name} managed to replace the document with insufficient rights`);
+                    tasks.register(taskReplace);
+                    wait(keySpaceId, `${name}_replace`);
+                    expect(getKey(keySpaceId, `${name}_replace_status`)).to.equal(true, `${name} the update did not pass through...`);
+                    expect(col.document('123').foo).to.equal('baz', `${name} the replace did not pass through...`);
+                  } else {
+                    let hasReadAccess = ((dbLevel['rw'].has(name) || dbLevel['ro'].has(name)) &&
+                      (colLevel['rw'].has(name) || colLevel['ro'].has(name)));
+                    if (hasReadAccess) {
+                      let col = db._collection(colName);
+                      expect(col.document('123').foo).to.not.equal('bar', 'Precondition failed, document already has the attribute set.');
+                    }
+                    tasks.register(taskUpdate);
+                    wait(keySpaceId, `${name}_update`);
+                    expect(getKey(keySpaceId, `${name}_update_status`)).to.not.equal(true, `${name} managed to update the document with insufficient rights`);
+                    if (hasReadAccess) {
+                      let col = db._collection(colName);
+                      expect(col.document('123').foo).to.not.equal('bar', `${name} managed to update the document with insufficient rights`);
+                    }
+
+                    tasks.register(taskReplace);
+                    wait(keySpaceId, `${name}_replace`);
+                    expect(getKey(keySpaceId, `${name}_replace_status`)).to.not.equal(true, `${name} managed to replace the document with insufficient rights`);
+                    if (hasReadAccess) {
+                      let col = db._collection(colName);
+                      expect(col.document('123').foo).to.not.equal('baz', `${name} managed to replace the document with insufficient rights`);
+                    }
+                  }
+                } else {
+                  try {
+                    tasks.register(taskUpdate);
+                    tasks.register(taskReplace);
+                    expect(false).to.equal(true, `${name} managed to register a task with insufficient rights`);
+                  } catch (e) {
+                    expect(e.errorNum).to.equal(errors.ERROR_FORBIDDEN.code);
                   }
                 }
               });
@@ -268,37 +278,47 @@ describe('User Rights Management', () => {
                     }
                   })(params);`
                 };
-                if ((dbLevel['rw'].has(name) || dbLevel['ro'].has(name)) &&
-                   (colLevel['rw'].has(name))) {
-                  let col = db._collection(colName);
-                  tasks.register(taskUpdate);
-                  wait(keySpaceId, `${name}_update`);
-                  expect(getKey(keySpaceId, `${name}_update_status`)).to.equal(true, `${name} the update did not pass through...`);
-                  expect(col.document('123').foo).to.equal('bar');
-
-                  tasks.register(taskReplace);
-                  wait(keySpaceId, `${name}_replace`);
-                  expect(getKey(keySpaceId, `${name}_replace_status`)).to.equal(true, `${name} the update did not pass through...`);
-                  expect(col.document('123').foo).to.equal('baz');
-                } else {
-                  let hasReadAccess = ((dbLevel['rw'].has(name) || dbLevel['ro'].has(name)) &&
-                    (colLevel['rw'].has(name) || colLevel['ro'].has(name)));
-                  tasks.register(taskUpdate);
-                  wait(keySpaceId, `${name}_update`);
-                  expect(getKey(keySpaceId, `${name}_update_status`)).to.not.equal(true, `${name} managed to update the document with insufficient rights`);
-
-                  if (hasReadAccess) {
+                if (dbLevel['rw'].has(name)) {
+                  if ((dbLevel['rw'].has(name) || dbLevel['ro'].has(name)) &&
+                    (colLevel['rw'].has(name))) {
                     let col = db._collection(colName);
-                    expect(col.document('123').foo).to.not.equal('bar', `${name} managed to update the document with insufficient rights`);
+                    tasks.register(taskUpdate);
+                    wait(keySpaceId, `${name}_update`);
+                    expect(getKey(keySpaceId, `${name}_update_status`)).to.equal(true, `${name} the update did not pass through...`);
+                    expect(col.document('123').foo).to.equal('bar');
+
+                    tasks.register(taskReplace);
+                    wait(keySpaceId, `${name}_replace`);
+                    expect(getKey(keySpaceId, `${name}_replace_status`)).to.equal(true, `${name} the update did not pass through...`);
+                    expect(col.document('123').foo).to.equal('baz');
+                  } else {
+                    let hasReadAccess = ((dbLevel['rw'].has(name) || dbLevel['ro'].has(name)) &&
+                      (colLevel['rw'].has(name) || colLevel['ro'].has(name)));
+                    tasks.register(taskUpdate);
+                    wait(keySpaceId, `${name}_update`);
+                    expect(getKey(keySpaceId, `${name}_update_status`)).to.not.equal(true, `${name} managed to update the document with insufficient rights`);
+
+                    if (hasReadAccess) {
+                      let col = db._collection(colName);
+                      expect(col.document('123').foo).to.not.equal('bar', `${name} managed to update the document with insufficient rights`);
+                    }
+
+                    tasks.register(taskReplace);
+                    wait(keySpaceId, `${name}_replace`);
+                    expect(getKey(keySpaceId, `${name}_replace_status`)).to.not.equal(true, `${name} managed to replace the document with insufficient rights`);
+
+                    if (hasReadAccess) {
+                      let col = db._collection(colName);
+                      expect(col.document('123').foo).to.not.equal('baz', `${name} managed to replace the document with insufficient rights`);
+                    }
                   }
-
-                  tasks.register(taskReplace);
-                  wait(keySpaceId, `${name}_replace`);
-                  expect(getKey(keySpaceId, `${name}_replace_status`)).to.not.equal(true, `${name} managed to replace the document with insufficient rights`);
-
-                  if (hasReadAccess) {
-                    let col = db._collection(colName);
-                    expect(col.document('123').foo).to.not.equal('baz', `${name} managed to replace the document with insufficient rights`);
+                } else {
+                  try {
+                    tasks.register(taskUpdate);
+                    tasks.register(taskReplace);
+                    expect(false).to.equal(true, `${name} managed to register a task with insufficient rights`);
+                  } catch (e) {
+                    expect(e.errorNum).to.equal(errors.ERROR_FORBIDDEN.code);
                   }
                 }
               });
