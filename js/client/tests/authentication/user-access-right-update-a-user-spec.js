@@ -25,6 +25,7 @@
 // / Copyright holder is ArangoDB GmbH, Cologne, Germany
 // /
 // / @author Michael Hackstein
+// / @author Mark Vollmary
 // / @author Copyright 2017, ArangoDB GmbH, Cologne, Germany
 // //////////////////////////////////////////////////////////////////////////////
 
@@ -34,10 +35,7 @@ const expect = require('chai').expect;
 const users = require('@arangodb/users');
 const helper = require('@arangodb/user-helper');
 const namePrefix = helper.namePrefix;
-const dbName = helper.dbName;
-const colName = helper.colName;
 const rightLevels = helper.rightLevels;
-const testDBName = `${namePrefix}DBNew`;
 
 const userSet = helper.userSet;
 const systemLevel = helper.systemLevel;
@@ -59,14 +57,11 @@ const switchUser = (user) => {
 helper.removeAllUsers();
 
 describe('User Rights Management', () => {
-
   before(helper.generateAllUsers);
   after(helper.removeAllUsers);
 
   it('should test rights for', () => {
-
     for (let name of userSet) {
-
       let canUse = false;
       try {
         switchUser(name);
@@ -77,13 +72,11 @@ describe('User Rights Management', () => {
 
       if (canUse) {
         describe(`user ${name}`, () => {
-
           before(() => {
             switchUser(name);
           });
 
           describe('administrate on server level', () => {
-
             const rootTestUser = (switchBack = true) => {
               switchUser('root');
               try {
@@ -114,12 +107,10 @@ describe('User Rights Management', () => {
               switchUser(name);
             };
 
-
             beforeEach(() => {
               db._useDatabase('_system');
               rootDropUser();
               rootCreateUser();
-
             });
 
             afterEach(() => {
@@ -139,7 +130,6 @@ describe('User Rights Management', () => {
                 }
               }
             });
-
           });
         });
       }

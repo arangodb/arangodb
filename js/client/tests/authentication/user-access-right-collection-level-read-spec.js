@@ -25,6 +25,7 @@
 // / Copyright holder is ArangoDB GmbH, Cologne, Germany
 // /
 // / @author Michael Hackstein
+// / @author Mark Vollmary
 // / @author Copyright 2017, ArangoDB GmbH, Cologne, Germany
 // //////////////////////////////////////////////////////////////////////////////
 
@@ -59,7 +60,6 @@ switchUser('root', '_system');
 helper.removeAllUsers();
 
 describe('User Rights Management', () => {
-
   before(helper.generateAllUsers);
   after(helper.removeAllUsers);
 
@@ -82,7 +82,6 @@ describe('User Rights Management', () => {
       }
 
       if (canUse) {
-
         describe(`user ${name}`, () => {
           before(() => {
             switchUser(name, dbName);

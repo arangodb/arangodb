@@ -1,5 +1,5 @@
 /* jshint globalstrict:true, strict:true, maxlen: 5000 */
-/* global describe, before, after, it, require, print, afterEach, beforeEach */
+/* global describe, before, after, it, require, beforeEach */
 
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief tests for user access rights
@@ -25,18 +25,17 @@
 // / Copyright holder is ArangoDB GmbH, Cologne, Germany
 // /
 // / @author Michael Hackstein
+// / @author Mark Vollmary
 // / @author Copyright 2017, ArangoDB GmbH, Cologne, Germany
 // //////////////////////////////////////////////////////////////////////////////
 
 'use strict';
 
 const expect = require('chai').expect;
-const users = require('@arangodb/users');
 const helper = require('@arangodb/user-helper');
 const tasks = require('@arangodb/tasks');
 const pu = require('@arangodb/process-utils');
 const download = require('internal').download;
-const namePrefix = helper.namePrefix;
 const rightLevels = helper.rightLevels;
 const keySpaceId = 'task_update_user_keyspace';
 

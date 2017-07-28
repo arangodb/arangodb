@@ -1,5 +1,5 @@
 /* jshint globalstrict:true, strict:true, maxlen: 5000 */
-/* global describe, before, after, it, require, arangodb */
+/* global describe, before, after, it, require */
 
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief tests for user access rights
@@ -25,6 +25,7 @@
 // / Copyright holder is ArangoDB GmbH, Cologne, Germany
 // /
 // / @author Michael Hackstein
+// / @author Mark Vollmary
 // / @author Copyright 2017, ArangoDB GmbH, Cologne, Germany
 // //////////////////////////////////////////////////////////////////////////////
 
@@ -93,12 +94,10 @@ const switchUser = (user) => {
 helper.removeAllUsers();
 
 describe('User Rights Management', () => {
-
   before(helper.generateAllUsers);
   after(helper.removeAllUsers);
 
   it('should test rights for', () => {
-
     for (let name of userSet) {
       let canUse = false;
       try {
@@ -110,7 +109,6 @@ describe('User Rights Management', () => {
 
       if (canUse) {
         describe(`user ${name}`, () => {
-
           before(() => {
             // What are defaults if unchanged?
             switchUser(name);
@@ -122,7 +120,6 @@ describe('User Rights Management', () => {
           });
 
           describe('administrate on server level', () => {
-
             const rootTestUser = (switchBack = true) => {
               switchUser('root');
               try {

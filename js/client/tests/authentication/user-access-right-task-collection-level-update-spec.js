@@ -25,6 +25,7 @@
 // / Copyright holder is ArangoDB GmbH, Cologne, Germany
 // /
 // / @author Michael Hackstein
+// / @author Mark Vollmary
 // / @author Copyright 2017, ArangoDB GmbH, Cologne, Germany
 // //////////////////////////////////////////////////////////////////////////////
 
@@ -122,7 +123,6 @@ describe('User Rights Management', () => {
 
       if (canUse) {
         describe(`user ${name}`, () => {
-
           before(() => {
             switchUser(name, dbName);
             expect(createKeySpace(keySpaceId)).to.equal(true, 'keySpace creation failed!');
