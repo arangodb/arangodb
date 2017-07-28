@@ -34,7 +34,6 @@ var db = require("@arangodb").db;
 var graph_module = require("@arangodb/general-graph");
 var internal = require("internal");
 var console = require("console");
-
 var EPS = 0.0001;
 
 var graphName = "UnitTest_pregel";
@@ -42,9 +41,9 @@ var vColl = "UnitTest_pregel_v", eColl = "UnitTest_pregel_e";
 
 function testAlgo(a, p) {
   var key = db._pregelStart(a, vColl, eColl, p);
-  var i = 1000;
+  var i = 10000;
   do {
-    internal.wait(1);
+    internal.wait(0.2);
     var stats = db._pregelStatus(key);
     if (stats.state !== "running") {
       assertEqual(stats.vertexCount, 11, stats);
@@ -52,7 +51,7 @@ function testAlgo(a, p) {
 
       db[vColl].all().toArray()
       .forEach(function(d) {
-                 if (d[a] !== -1) {
+                 if (d[a] && d[a] !== -1) {
                    var diff = Math.abs(d[a] - d.result);
                    if (diff > EPS) {
                      console.log("Error on " + JSON.stringify(d));
@@ -63,9 +62,12 @@ function testAlgo(a, p) {
       break;
     }
   } while(i-- >= 0);
+  if (i === 0) {
+    assertTrue(false, "timeout in pregel execution");
+  }
 }
 
-function clientTestSuite () {
+function basicTestSuite () {
   'use strict';
   return {
     
@@ -149,6 +151,50 @@ function clientTestSuite () {
   };
 };
 
-jsunity.run(clientTestSuite);
+
+function exampleTestSuite () {
+  'use strict';
+  return {
+    
+    ////////////////////////////////////////////////////////////////////////////////
+    /// @brief set up
+    ////////////////////////////////////////////////////////////////////////////////
+    
+    setUp : function () {
+      var examples = require("@arangodb/graph-examples/example-graph.js"); 
+      var graph = examples.loadGraph("social");
+    },
+    
+    ////////////////////////////////////////////////////////////////////////////////
+    /// @brief tear down
+    ////////////////////////////////////////////////////////////////////////////////
+    
+    tearDown : function () {
+      graph_module._drop("social", true);
+    },
+    
+    testSocial: function () {
+      var key = db._pregelStart("effectivecloseness", 
+                                ['female', 'male'], ['relation'], 
+                                {resultField: "closeness"});
+      var i = 10000;
+      do {
+        internal.wait(0.2);
+        var stats = db._pregelStatus(key);
+        if (stats.state !== "running") {
+          assertEqual(stats.vertexCount, 4, stats);
+          assertEqual(stats.edgeCount, 4, stats);
+          break;
+        }
+      } while(i-- >= 0);
+      if (i === 0) {
+        assertTrue(false, "timeout in pregel execution");
+      }
+    }
+  };
+};
+
+jsunity.run(basicTestSuite);
+jsunity.run(exampleTestSuite);
 
 return jsunity.done();
