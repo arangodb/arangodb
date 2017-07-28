@@ -147,6 +147,7 @@ template <typename V, typename E>
 void GraphStore<V, E>::loadShards(WorkerConfig* config,
                                   std::function<void()> callback) {
   _config = config;
+  TRI_ASSERT(_runningThreads == 0);
   LOG_TOPIC(DEBUG, Logger::PREGEL) << "Using "
   << config->localVertexShardIDs().size()
   << " threads to load data";
@@ -166,6 +167,12 @@ void GraphStore<V, E>::loadShards(WorkerConfig* config,
     // starting offset for all i+1 edge shards
     for (auto const& pair : edgeCollMap) {
       std::vector<ShardID> const& edgeShards = pair.second;
+      if (_edgeShardsOffset.size() == 0) {
+        _edgeShardsOffset.resize(edgeShards.size()+1);
+        std::fill(_edgeShardsOffset.begin(), _edgeShardsOffset.end(), 0);
+      } else {
+        TRI_ASSERT(_edgeShardsOffset.size() == edgeShards.size()+1);
+      }
       for (size_t i = 0; i < edgeShards.size(); i++) {
         _edgeShardsOffset[i+1] += shardSizes[edgeShards[i]];
       }
@@ -194,9 +201,9 @@ void GraphStore<V, E>::loadShards(WorkerConfig* config,
         
         _loadedShards.insert(vertexShard);
         _runningThreads++;
-        scheduler->post([this, i, &vertexShard, edgeLookups, vertexOffset] {
+        scheduler->post([this, i, vertexShard, edgeLookups, vertexOffset] {
+          TRI_DEFER(_runningThreads--);// exception safe
           _loadVertices(i, vertexShard, edgeLookups, vertexOffset);
-          _runningThreads--;
         });
         // update to next offset
         vertexOffset += shardSizes[vertexShard];
@@ -205,7 +212,6 @@ void GraphStore<V, E>::loadShards(WorkerConfig* config,
       while (_runningThreads > 0) {
         usleep(5000);
       }
-      
     }
     scheduler->post(callback);
   });
@@ -378,7 +384,6 @@ void GraphStore<V, E>::_loadVertices(size_t i,
     if (slice.isExternal()) {
       slice = slice.resolveExternal();
     }
-
     VertexEntry& ventry = _index[vertexOffset];
     ventry._shard = sourceShard;
     ventry._key = transaction::helpers::extractKeyFromDocument(slice).copyString();
@@ -398,7 +403,12 @@ void GraphStore<V, E>::_loadVertices(size_t i,
     vertexOffset++;
     _edgeShardsOffset[i] += ventry._edgeCount;
   };
-  cursor->allDocuments(cb);
+  while (cursor->nextDocument(cb, 1000)) {
+    if (_destroyed) {
+      LOG_TOPIC(WARN, Logger::PREGEL) << "Aborted loading graph";
+      break;
+    }
+  }
   
   // Add all new vertices
   _localVerticeCount += (vertexOffset - originalVertexOffset);
@@ -474,7 +484,12 @@ void GraphStore<V, E>::_loadEdges(transaction::Methods* trx,
           << "Could not resolve target shard of edge";
     }
   };
-  cursor->allDocuments(cb);
+  while (cursor->nextDocument(cb, 1000)) {
+    if (_destroyed) {
+      LOG_TOPIC(WARN, Logger::PREGEL) << "Aborted loading graph";
+      break;
+    }
+  }
 
   // Add up all added elements
   vertexEntry._edgeCount += added;

@@ -111,7 +111,7 @@ private:
   // hold the current position where the ith vertex shard can
   // start to write its data. At the end the offset should equal the
   // sum of the counts of all ith edge shards
-  std::unordered_map<uint64_t, uint64_t> _edgeShardsOffset;
+  std::vector<uint64_t> _edgeShardsOffset;
   
   // actual count of loaded vertices / edges
   std::atomic<uint64_t> _localVerticeCount;

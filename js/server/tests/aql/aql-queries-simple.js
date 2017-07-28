@@ -1297,6 +1297,37 @@ function ahuacatlQuerySimpleTestSuite () {
 
       actual = getQueryResults("FOR value IN " + JSON.stringify(data) + " SORT value.city ASC COLLECT order = value.order INTO cities SORT order DESC RETURN { order: order, cities: cities[*].value.city }");
       assertEqual(expected, actual);
+    },
+
+
+    testLimitForLists: function () {
+      var queries = [
+        ["FOR doc1 IN [[1],[2],[3]] FOR doc2 IN doc1 LIMIT 0 RETURN doc2", []], 
+        ["FOR doc1 IN [[1],[2],[3]] FOR doc2 IN doc1 LIMIT 1 RETURN doc2", [1]], 
+        ["FOR doc1 IN [[1],[2],[3]] FOR doc2 IN doc1 LIMIT 2 RETURN doc2", [1,2]], 
+        ["FOR doc1 IN [[1],[2],[3]] FOR doc2 IN doc1 LIMIT 3 RETURN doc2", [1,2,3]], 
+        ["FOR doc1 IN [[1],[2],[3]] FOR doc2 IN doc1 LIMIT 4 RETURN doc2", [1,2,3]], 
+        ["FOR doc1 IN [[1],[2],[3]] FOR doc2 IN doc1 LIMIT 1,0 RETURN doc2", []], 
+        ["FOR doc1 IN [[1],[2],[3]] FOR doc2 IN doc1 LIMIT 1,1 RETURN doc2", [2]], 
+        ["FOR doc1 IN [[1],[2],[3]] FOR doc2 IN doc1 LIMIT 1,2 RETURN doc2", [2,3]], 
+        ["FOR doc1 IN [[1],[2],[3]] FOR doc2 IN doc1 LIMIT 1,3 RETURN doc2", [2,3]], 
+        ["FOR doc1 IN [[1],[2],[3]] FOR doc2 IN doc1 LIMIT 1,4 RETURN doc2", [2,3]], 
+        ["FOR doc1 IN [[1],[2],[3]] FOR doc2 IN doc1 LIMIT 2,0 RETURN doc2", []], 
+        ["FOR doc1 IN [[1],[2],[3]] FOR doc2 IN doc1 LIMIT 2,1 RETURN doc2", [3]], 
+        ["FOR doc1 IN [[1],[2],[3]] FOR doc2 IN doc1 LIMIT 2,2 RETURN doc2", [3]], 
+        ["FOR doc1 IN [[1],[2],[3]] FOR doc2 IN doc1 LIMIT 2,3 RETURN doc2", [3]], 
+        ["FOR doc1 IN [[1],[2],[3]] FOR doc2 IN doc1 LIMIT 2,4 RETURN doc2", [3]], 
+        ["FOR doc1 IN [[1],[2],[3]] FOR doc2 IN doc1 LIMIT 3,0 RETURN doc2", []], 
+        ["FOR doc1 IN [[1],[2],[3]] FOR doc2 IN doc1 LIMIT 3,1 RETURN doc2", []], 
+        ["FOR doc1 IN [[1],[2],[3]] FOR doc2 IN doc1 LIMIT 3,2 RETURN doc2", []], 
+        ["FOR doc1 IN [[1],[2],[3]] FOR doc2 IN doc1 LIMIT 3,3 RETURN doc2", []], 
+        ["FOR doc1 IN [[1],[2],[3]] FOR doc2 IN doc1 LIMIT 3,4 RETURN doc2", []] 
+      ];
+
+      queries.forEach(function(query) {
+        var actual = getQueryResults(query[0]);
+        assertEqual(query[1], actual);
+      });
     }
 
   };

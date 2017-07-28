@@ -25,6 +25,7 @@
 #define ARANGOD_REPLICATION_INITIAL_SYNCER_H 1
 
 #include "Basics/Common.h"
+#include "Basics/StaticStrings.h"
 #include "Logger/Logger.h"
 #include "Replication/Syncer.h"
 #include "Utils/SingleCollectionTransaction.h"
@@ -252,6 +253,10 @@ class InitialSyncer : public Syncer {
       std::vector<std::pair<arangodb::velocypack::Slice,
                             arangodb::velocypack::Slice>> const&,
       bool, std::string&, sync_phase_e);
+
+  std::unordered_map<std::string, std::string> createHeaders() {
+    return { {StaticStrings::ClusterCommSource, ServerState::instance()->getId()} };
+  }
 
  private:
   //////////////////////////////////////////////////////////////////////////////
