@@ -3317,6 +3317,27 @@ void MMFilesRestReplicationHandler::handleCommandAddFollower() {
     return;
   }
 
+  VPackSlice const checksum = body.get("checksum");
+  // optional while intoroducing this bugfix. should definately be required with 3.4
+  // and throw a 400 then
+  if (checksum.isObject()) {
+    auto result = col->compareChecksums(checksum);
+
+    if (result.fail()) {
+      auto errorNumber = result.errorNumber();
+      rest::ResponseCode code;
+      if (errorNumber == TRI_ERROR_REPLICATION_WRONG_CHECKSUM ||
+          errorNumber == TRI_ERROR_REPLICATION_WRONG_CHECKSUM_FORMAT) {
+        code = rest::ResponseCode::BAD;
+      } else {
+        code = rest::ResponseCode::SERVER_ERROR;
+      }
+      generateError(code,
+        errorNumber, result.errorMessage());
+      return;
+    }
+  }
+
   col->followers()->add(followerId.copyString());
 
   VPackBuilder b;

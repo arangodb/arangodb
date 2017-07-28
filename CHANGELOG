@@ -3,19 +3,62 @@ devel
 
 * arangoexport: added --query; pass a aql query to export the result
 
+* fixed issue #2879: No result when querying for the last record of a query
+
 * ui: allows now to edit default access level for collections in database
   _system for all users except the root user.
 
+* added new option "--rocksdb.max-background-jobs"
+
+* removed options "--rocksdb.max-background-compactions", "--rocksdb.base-background-compactions" and "--rocksdb.max-background-flushes"
+
+* option "--rocksdb.compaction-read-ahead-size" now defaults to 2MB
+
+v3.2.0 (2017-07-20)
+-------------------
+
+* fixed UI issues
+
+* fixed multi-threading issues in Pregel
+
+* fixed Foxx resilience
+
+* added command-line option `--javascript.allow-admin-execute`
+
+  This option can be used to control whether user-defined JavaScript code
+  is allowed to be executed on server by sending via HTTP to the API endpoint
+  `/_admin/execute`  with an authenticated user account. 
+  The default value is `false`, which disables the execution of user-defined
+  code. This is also the recommended setting for production. In test environments,
+  it may be convenient to turn the option on in order to send arbitrary setup
+  or teardown commands for execution on the server.
+
+
+v3.2.beta6 (2017-07-18)
+-----------------------
+
+* various bugfixes
+
+
+v3.2.beta5 (2017-07-16)
+-----------------------
+
+* numerous bugfixes
+
+
+v3.2.beta4 (2017-07-04)
+-----------------------
+
 * ui: fixed document view _from and _to linking issue for special characters
 
-* added function `db._parse(query)` for parse an AQL query and return information about it
+* added function `db._parse(query)` for parsing an AQL query and returning information about it
 
 * fixed one medium priority and two low priority security user interface
   issues found by owasp zap.
 
 * ui: added index deduplicate options
 
-* ui: fixed renaming of collections based on rocksdb storage engine
+* ui: fixed renaming of collections for the rocksdb storage engine
 
 * documentation and js fixes for secondaries
 
