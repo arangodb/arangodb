@@ -1,6 +1,10 @@
 v3.1.27 (XXXX-XX-XX)
 --------------------
 
+* fixed issue #2889: Traversal query using incorrect collection id
+
+* fixed issue #2884: AQL traversal uniqueness constraints "propagating" to other traversals? Weird results
+
 * fixed issue #2879
 
 

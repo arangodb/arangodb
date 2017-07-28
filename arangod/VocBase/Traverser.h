@@ -326,6 +326,7 @@ class Traverser {
   ///        If it returns false it is guaranteed that there are no more paths.
   //////////////////////////////////////////////////////////////////////////////
 
+  void done() { _done = true; }
   bool hasMore() { return !_done; }
 
   bool edgeMatchesConditions(arangodb::velocypack::Slice,
