@@ -2312,7 +2312,7 @@ std::unique_ptr<LogicalCollection> ClusterMethods::createCollectionOnCoordinator
     // It is not used anywhere and will be cleaned up after this call.
     // Persist collection will return the real object.
   return persistCollectionInAgency(
-    col, ignoreDistributeShardsLikeErrors, waitForSyncReplication, parameters);
+    col.get(), ignoreDistributeShardsLikeErrors, waitForSyncReplication, parameters);
 }
 #endif
 
