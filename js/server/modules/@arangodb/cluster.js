@@ -999,6 +999,11 @@ function executePlanForCollections(plannedCollections) {
 
             try {
               db._drop(collection, {timeout:1.0});
+              console.topic('heartbeat=debug', "dropping local shard '%s/%s' of '%s/%s => SUCCESS",
+                    database,
+                    collection,
+                    database,
+                    collections[collection].planId);
             }
             catch (err) {
               console.topic('heartbeat=debug', "could not drop local shard '%s/%s' of '%s/%s within 1 second, trying again later",
