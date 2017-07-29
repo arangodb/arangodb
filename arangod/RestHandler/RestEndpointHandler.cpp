@@ -63,18 +63,22 @@ void RestEndpointHandler::retrieveEndpoints() {
   if (_vocbase == nullptr) {
     generateError(rest::ResponseCode::NOT_FOUND,
       TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
+    return;
   }
 
   if (!_vocbase->isSystem()) {
-    generateError(rest::ResponseCode::BAD,
+    generateError(rest::ResponseCode::FORBIDDEN,
       TRI_ERROR_ARANGO_USE_SYSTEM_DATABASE);
+    return;
   }
 
   VPackBuilder result;
   result.openArray();
 
   for (auto const& it : server->httpEndpoints()) {
-    result.add(VPackValue(it));
+    result.openObject();
+    result.add("endpoint", VPackValue(it));
+    result.close();
   }
 
   result.close();

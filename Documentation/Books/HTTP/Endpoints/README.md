@@ -18,8 +18,5 @@ the default database (*_system*) and none of the other databases.
 Asking about Endpoints via HTTP
 ---------------------------
 
-<!-- js/actions/api-endpoint.js -->
-@startDocuBlock JSF_get_api_endpoint
-
 <!-- js/actions/api-cluster.js -->
 @startDocuBlock JSF_get_api_cluster_endpoints
