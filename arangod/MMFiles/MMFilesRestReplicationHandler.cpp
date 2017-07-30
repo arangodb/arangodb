@@ -1464,6 +1464,7 @@ int MMFilesRestReplicationHandler::processRestoreCollection(
     return TRI_ERROR_NO_ERROR;
   }
 
+  grantTemporaryRights();
   arangodb::LogicalCollection* col = nullptr;
 
   if (reuseId) {
@@ -1747,6 +1748,7 @@ int MMFilesRestReplicationHandler::processRestoreIndexes(
 
   READ_LOCKER(readLocker, _vocbase->_inventoryLock);
 
+  grantTemporaryRights();
   // look up the collection
   try {
     CollectionGuard guard(_vocbase, name.c_str());
@@ -2255,6 +2257,8 @@ int MMFilesRestReplicationHandler::processRestoreDataBatch(
 int MMFilesRestReplicationHandler::processRestoreData(
     std::string const& colName, bool useRevision, bool force,
     std::string& errorMsg) {
+
+  grantTemporaryRights();
   SingleCollectionTransaction trx(
       transaction::StandaloneContext::Create(_vocbase), colName,
       AccessMode::Type::WRITE);
@@ -3638,6 +3642,19 @@ void MMFilesRestReplicationHandler::handleCommandGetIdForReadLockCollection() {
   }
 
   generateResult(rest::ResponseCode::OK, b.slice());
+}
+
+void MMFilesRestReplicationHandler::grantTemporaryRights() {
+  AuthenticationFeature* auth =
+      FeatureCacheFeature::instance()->authenticationFeature();
+  if (auth->isActive() && ExecContext::CURRENT != nullptr) {
+    AuthLevel level = auth->canUseDatabase(ExecContext::CURRENT->user(), _vocbase->name());
+    if (level == AuthLevel::RW) {
+      // If you have administrative access on this database,
+      // we grant you everything for restore.
+      ExecContext::CURRENT = nullptr;
+    }
+  }
 }
 
 //////////////////////////////////////////////////////////////////////////////

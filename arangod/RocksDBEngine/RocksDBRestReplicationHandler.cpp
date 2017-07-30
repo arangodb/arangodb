@@ -2283,6 +2283,7 @@ int RocksDBRestReplicationHandler::processRestoreCollection(
     return TRI_ERROR_NO_ERROR;
   }
 
+  grantTemporaryRights();
   arangodb::LogicalCollection* col = nullptr;
 
   if (reuseId) {
@@ -2662,6 +2663,7 @@ int RocksDBRestReplicationHandler::processRestoreIndexes(
 
   int res = TRI_ERROR_NO_ERROR;
 
+  grantTemporaryRights();
   READ_LOCKER(readLocker, _vocbase->_inventoryLock);
 
   // look up the collection
@@ -2924,7 +2926,37 @@ int RocksDBRestReplicationHandler::processRestoreDataBatch(
   // Now try to insert all keys for which the last marker was a document
   // marker, note that these could still be replace markers!
   builder.clear();
-  {
+  if (collectionName == "_users") {
+    VPackArrayBuilder guard(&builder);
+
+    for (auto const& p : latest) {
+      VPackSlice const marker = allMarkersSlice.at(p.second);
+      VPackSlice const typeSlice = marker.get("type");
+      TRI_replication_operation_e type = REPLICATION_INVALID;
+      if (typeSlice.isNumber()) {
+        int typeInt = typeSlice.getNumericValue<int>();
+        if (typeInt == 2301) {  // pre-3.0 type for edges
+          type = REPLICATION_MARKER_DOCUMENT;
+        } else {
+          type = static_cast<TRI_replication_operation_e>(typeInt);
+        }
+      }
+      if (type == REPLICATION_MARKER_DOCUMENT) {
+        VPackSlice const doc = marker.get("data");
+        TRI_ASSERT(doc.isObject());
+        // In the _users case we silently remove the _key value.
+        builder.openObject();
+        for (auto const& it : VPackObjectIterator(doc)) {
+          if (StringRef(it.key) != StaticStrings::KeyString) {
+            builder.add(it.key);
+            builder.add(it.value);
+          }
+        }
+        builder.close();
+        builder.add(doc);
+      }
+    }
+  } else {
     VPackArrayBuilder guard(&builder);
 
     for (auto const& p : latest) {
@@ -3022,6 +3054,8 @@ int RocksDBRestReplicationHandler::processRestoreDataBatch(
 int RocksDBRestReplicationHandler::processRestoreData(
     std::string const& colName, bool useRevision, bool force,
     std::string& errorMsg) {
+
+  grantTemporaryRights();
   SingleCollectionTransaction trx(
       transaction::StandaloneContext::Create(_vocbase), colName,
       AccessMode::Type::WRITE);
@@ -3152,6 +3186,20 @@ uint64_t RocksDBRestReplicationHandler::determineChunkSize() const {
 
   return chunkSize;
 }
+
+void RocksDBRestReplicationHandler::grantTemporaryRights() {
+  AuthenticationFeature* auth =
+      FeatureCacheFeature::instance()->authenticationFeature();
+  if (auth->isActive() && ExecContext::CURRENT != nullptr) {
+    AuthLevel level = auth->canUseDatabase(ExecContext::CURRENT->user(), _vocbase->name());
+    if (level == AuthLevel::RW) {
+      // If you have administrative access on this database,
+      // we grant you everything for restore.
+      ExecContext::CURRENT = nullptr;
+    }
+  }
+}
+
 
 //////////////////////////////////////////////////////////////////////////////
 /// @brief condition locker to wake up holdReadLockCollection jobs
