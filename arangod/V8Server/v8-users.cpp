@@ -419,20 +419,24 @@ static void JS_GetConfigData(v8::FunctionCallbackInfo<v8::Value> const& args) {
 static void JS_GetPermission(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
-  if (args.Length() < 1 || !args[0]->IsString() ||
-      (args.Length() > 1 && !args[1]->IsString())) {
+  
+  bool isString = true;
+  for (int i = 0; i < args.Length(); i++) {
+    isString = isString && args[i]->IsString();
+  }
+  if (args.Length() > 3 || args.Length() == 0 || !isString) {
     TRI_V8_THROW_EXCEPTION_USAGE("permission(username[, database, collection])");
   }
 
   auto authentication =
       FeatureCacheFeature::instance()->authenticationFeature();
-  std::string username = TRI_ObjectToString(args[0]);
+  std::string username = TRI_ObjectToString(isolate, args[0]);
 
   if (args.Length() > 1) {
-    std::string dbname = TRI_ObjectToString(args[1]);
+    std::string dbname = TRI_ObjectToString(isolate, args[1]);
     AuthLevel lvl;
-    if (args.Length() >= 2) {
-      std::string collection = TRI_ObjectToString(args[2]);
+    if (args.Length() == 3) {
+      std::string collection = TRI_ObjectToString(isolate, args[2]);
       lvl = authentication->authInfo()->canUseCollection(username, dbname, collection);
     } else {
       lvl = authentication->authInfo()->canUseDatabase(username, dbname);

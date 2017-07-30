@@ -572,13 +572,16 @@ var updateBindCollections = function (graph) {
 };
 
 var checkRWPermission = function (c) {
-  let p = users.permission(users.currentUser(), db._name(), c);
-  //print(`${users.currentUser()}: ${db._name()}/${c}  =  + ${p}`);
-  if (p !== 'rw') {
-    var err = new ArangoError();
-    err.errorNum = arangodb.errors.ERROR_FORBIDDEN.code;
-    err.errorMessage = arangodb.errors.ERROR_FORBIDDEN.message;
-    throw err;
+  let user = users.currentUser();
+  if (user) {
+    let p = users.permission(user, db._name(), c);
+    //print(`${user}: ${db._name()}/${c}  =  + ${p}`);
+    if (p !== 'rw') {
+      var err = new ArangoError();
+      err.errorNum = arangodb.errors.ERROR_FORBIDDEN.code;
+      err.errorMessage = arangodb.errors.ERROR_FORBIDDEN.message;
+      throw err;
+    }
   }
 }
 
