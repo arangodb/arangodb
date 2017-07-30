@@ -136,15 +136,16 @@ const allBackupTests = (options) => {
     return path;
   }
 
+  let res;
   log("Switch off Authentication");
 
-  log("Test restore _system excl system collections");
-  let res = backupTest(options, '_system', path, syssys, 'backup-system-incl-system.js', false);
+  log("Test restore _system incl system collections");
+  res = backupTest(options, '_system', path, syssys, 'backup-system-incl-system.js', false);
   if (res.failed === 1) {
     return res;
   }
 
-  log("Test restore _system incl system collections");
+  log("Test restore _system excl system collections");
   res = backupTest(options, '_system', path, sysNoSys, 'backup-system-excl-system.js', false);
   if (res.failed === 1) {
     return res;
@@ -152,17 +153,19 @@ const allBackupTests = (options) => {
 
   log("Switch on Authentication");
 
-  log("Test restore _system excl system collections");
+  log("Test restore _system incl system collections");
   res = backupTest(options, '_system', path, syssys, 'backup-system-incl-system.js', true, asRoot);
   if (res.failed === 1) {
     return res;
   }
 
-  log("Test restore _system incl system collections");
+  log("Test restore _system excl system collections");
   res = backupTest(options, '_system', path, sysNoSys, 'backup-system-excl-system.js', true, asRoot);
   if (res.failed === 1) {
     return res;
   }
+
+  return res;
 };
 
 

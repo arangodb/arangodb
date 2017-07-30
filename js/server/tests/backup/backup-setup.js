@@ -62,7 +62,7 @@ const generateUsers = () => {
 
 const createCollections = () => {
   clearCollections();
-  db._create(colname, {numberOfShards: 4, shardKeys: ['foo'], replicationFactor: 3});
+  db._create(colname, {numberOfShards: 4, shardKeys: ['_key'], replicationFactor: 2});
 };
 
 const fillCollections = () => {

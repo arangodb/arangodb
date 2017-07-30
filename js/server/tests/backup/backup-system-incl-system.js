@@ -61,8 +61,8 @@ function backupTestSuite() {
       const props = col.properties();
       if (isCluster) {
         assertEqual(props.numberOfShards, 4);
-        assertEqual(props.shardKeys, ['foo']);
-        assertEqual(props.replactionFactor, 3);
+        assertEqual(props.shardKeys, ['_key']);
+        assertEqual(props.replicationFactor, 2);
       }
     },
 
@@ -113,7 +113,7 @@ function backupTestSuite() {
         const props = ecol.properties();
         assertEqual(props.numberOfShards, 4);
         assertEqual(props.shardKeys, ['_key']);
-        assertEqual(props.replactionFactor, 2);
+        assertEqual(props.replicationFactor, 2);
       }
 
       let vcol = db._collection('UnitTestVertices');
@@ -122,7 +122,7 @@ function backupTestSuite() {
         const props = vcol.properties();
         assertEqual(props.numberOfShards, 4);
         assertEqual(props.shardKeys, ['_key']);
-        assertEqual(props.replactionFactor, 2);
+        assertEqual(props.replicationFactor, 2);
       }
     }
   };
