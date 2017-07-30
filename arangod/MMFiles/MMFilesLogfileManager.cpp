@@ -115,7 +115,6 @@ MMFilesLogfileManager::MMFilesLogfileManager(ApplicationServer* server)
       _idLock(),
       _writeThrottled(false),
       _shutdown(0) {
-  LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "creating WAL logfile manager";
   TRI_ASSERT(!_allowWrites);
 
   setOptional(true);
@@ -131,8 +130,6 @@ MMFilesLogfileManager::MMFilesLogfileManager(ApplicationServer* server)
 
 // destroy the logfile manager
 MMFilesLogfileManager::~MMFilesLogfileManager() {
-  LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "shutting down WAL logfile manager";
-
   for (auto& it : _barriers) {
     delete it.second;
   }
@@ -152,7 +149,7 @@ MMFilesLogfileManager::~MMFilesLogfileManager() {
 
 void MMFilesLogfileManager::collectOptions(std::shared_ptr<ProgramOptions> options) {
   options->addSection(
-      Section("wal", "Configure the WAL", "wal", false, false));
+      Section("wal", "Configure the WAL of the MMFiles engine", "wal", false, false));
 
   options->addHiddenOption(
       "--wal.allow-oversize-entries",
@@ -455,15 +452,21 @@ bool MMFilesLogfileManager::open() {
 
   return true;
 }
-    
+
+void MMFilesLogfileManager::beginShutdown() {
+  if (!isEnabled()) {
+    return;
+  }
+  throttleWhenPending(0); // deactivate write-throttling on shutdown
+}
+
 void MMFilesLogfileManager::stop() { 
+  if (!isEnabled()) {
+    return;
+  }
   // deactivate write-throttling (again) on shutdown in case it was set again
   // after beginShutdown
   throttleWhenPending(0); 
-}
-
-void MMFilesLogfileManager::beginShutdown() {
-  throttleWhenPending(0); // deactivate write-throttling on shutdown
 }
 
 void MMFilesLogfileManager::unprepare() {
@@ -520,13 +523,17 @@ void MMFilesLogfileManager::unprepare() {
     _removerThread = nullptr;
   }
 
-  if (_collectorThread != nullptr) {
-    LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "stopping collector thread";
-    while (_collectorThread->isRunning()) {
-      usleep(10000);
+  {
+    WRITE_LOCKER(locker, _collectorThreadLock);
+
+    if (_collectorThread != nullptr) {
+      LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "stopping collector thread";
+      while (_collectorThread->isRunning()) {
+        usleep(10000);
+      }
+      delete _collectorThread;
+      _collectorThread = nullptr;
     }
-    delete _collectorThread;
-    _collectorThread = nullptr;
   }
 
   if (_synchronizerThread != nullptr) {
@@ -799,7 +806,19 @@ MMFilesWalSlotInfoCopy MMFilesLogfileManager::writeSlot(MMFilesWalSlotInfo& slot
 int MMFilesLogfileManager::waitForCollectorQueue(TRI_voc_cid_t cid, double timeout) {
   double const end = TRI_microtime() + timeout;
 
-  while (_collectorThread->hasQueuedOperations(cid)) {
+  while (true) {
+    READ_LOCKER(locker, _collectorThreadLock);
+
+    if (_collectorThread == nullptr) {
+      break;
+    }
+    
+    if (!_collectorThread->hasQueuedOperations(cid)) {
+      break;
+    }
+
+    // sleep without holding the lock
+    locker.unlock();
     usleep(10000);
 
     if (TRI_microtime() > end) {
@@ -1500,7 +1519,11 @@ void MMFilesLogfileManager::setCollectionRequested(MMFilesWalLogfile* logfile) {
 
   if (!_inRecovery) {
     // to start collection
-    _collectorThread->signal();
+    READ_LOCKER(locker, _collectorThreadLock);
+
+    if (_collectorThread != nullptr) {
+      _collectorThread->signal();
+    }
   }
 }
 
@@ -1530,7 +1553,12 @@ void MMFilesLogfileManager::setCollectionDone(MMFilesWalLogfile* logfile) {
 
   if (!_inRecovery) {
     // to start removal of unneeded datafiles
-    _collectorThread->signal();
+    {
+      READ_LOCKER(locker, _collectorThreadLock);
+      if (_collectorThread != nullptr) {
+        _collectorThread->signal();
+      }
+    }
     writeShutdownInfo(false);
   }
 }
@@ -1649,11 +1677,19 @@ void MMFilesLogfileManager::removeLogfile(MMFilesWalLogfile* logfile) {
 }
 
 void MMFilesLogfileManager::waitForCollector() {
-  if (_collectorThread == nullptr) {
-    return;
-  }
+  while (true) {
+    READ_LOCKER(locker, _collectorThreadLock);
 
-  while (_collectorThread->hasQueuedOperations()) {
+    if (_collectorThread == nullptr) {
+      return;
+    }
+
+    if (!_collectorThread->hasQueuedOperations()) {
+      return;
+    }
+
+    locker.unlock();
+
     LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "waiting for WAL collector";
     usleep(50000);
   }
@@ -1663,10 +1699,16 @@ void MMFilesLogfileManager::waitForCollector() {
 // queued. This is used in the DatabaseManagerThread when dropping
 // a database to avoid existence of ditches of type DOCUMENT.
 bool MMFilesLogfileManager::executeWhileNothingQueued(std::function<void()> const& cb) {
-  if (_collectorThread == nullptr) {
-    return true;
+  READ_LOCKER(locker, _collectorThreadLock);
+
+  if (_collectorThread != nullptr) {
+    return _collectorThread->executeWhileNothingQueued(cb);
   }
-  return _collectorThread->executeWhileNothingQueued(cb);
+
+  locker.unlock();
+
+  cb();
+  return true;
 }
 
 // wait until a specific logfile has been collected
@@ -1686,7 +1728,15 @@ int MMFilesLogfileManager::waitForCollector(MMFilesWalLogfile::IdType logfileId,
       return TRI_ERROR_NO_ERROR;
     }
 
+    READ_LOCKER(locker, _collectorThreadLock);
+
+    if (_collectorThread == nullptr) {
+      return TRI_ERROR_NO_ERROR;
+    }
+
     int res = _collectorThread->waitForResult(50 * 1000);
+
+    locker.unlock();
 
     // LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "still waiting for collector. logfileId: " << logfileId <<
     // " lastCollected: " << _lastCollectedId << ", result: " << res;
@@ -1941,6 +1991,8 @@ void MMFilesLogfileManager::stopMMFilesAllocatorThread() {
 
 // start the collector thread
 int MMFilesLogfileManager::startMMFilesCollectorThread() {
+  WRITE_LOCKER(locker, _collectorThreadLock);
+
   _collectorThread = new MMFilesCollectorThread(this);
 
   if (!_collectorThread->start()) {

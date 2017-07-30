@@ -514,6 +514,9 @@ class MMFilesLogfileManager final : public application_features::ApplicationFeat
 
   // the collector thread
   MMFilesCollectorThread* _collectorThread;
+  
+  // lock protecting the destruction of the collector thread
+  basics::ReadWriteLock _collectorThreadLock;
 
   // the logfile remover thread
   MMFilesRemoverThread* _removerThread;
