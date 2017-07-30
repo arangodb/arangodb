@@ -1,6 +1,9 @@
 devel
 -----
 
+* fixed an isse with restoring of system collections and user rights.
+  It was not possible to restore users into an authenticated server.
+
 * fixed issue #2889: Traversal query using incorrect collection id
 
 * fixed issue #2884: AQL traversal uniqueness constraints "propagating" to other traversals? Weird results
