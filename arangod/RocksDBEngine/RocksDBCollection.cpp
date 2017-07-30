@@ -389,7 +389,7 @@ static std::shared_ptr<Index> findIndex(
 
   if (!value.isString()) {
     // Compatibility with old v8-vocindex.
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "invalid index type definition");
   }
 
   std::string tmp = value.copyString();
@@ -1377,7 +1377,7 @@ RocksDBOperationResult RocksDBCollection::insertDocument(
   for (std::shared_ptr<Index> const& idx : _indexes) {
     innerRes.reset(idx->insert(trx, revisionId, doc, false));
 
-    // in case of no-memory, return immediately
+    // in case of OOM return immediately
     if (innerRes.is(TRI_ERROR_OUT_OF_MEMORY)) {
       return innerRes;
     }
@@ -1441,7 +1441,7 @@ RocksDBOperationResult RocksDBCollection::removeDocument(
     Result tmpres = idx->remove(trx, revisionId, doc, false);
     resInner.reset(tmpres);
 
-    // in case of no-memory, return immediately
+    // in case of OOM return immediately
     if (resInner.is(TRI_ERROR_OUT_OF_MEMORY)) {
       return resInner;
     }
