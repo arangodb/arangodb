@@ -981,9 +981,11 @@ static void JS_DropVocbaseCol(v8::FunctionCallbackInfo<v8::Value> const& args) {
   if (ExecContext::CURRENT != nullptr && auth->isActive()) {
     AuthLevel level = ExecContext::CURRENT->databaseAuthLevel();
     AuthLevel level2 = auth->canUseCollection(ExecContext::CURRENT->user(),
-                                              ExecContext::CURRENT->database(), collection->name());
+                                              ExecContext::CURRENT->database(),
+                                              collection->name());
     if (level != AuthLevel::RW || level2 != AuthLevel::RW) {
-      TRI_V8_THROW_EXCEPTION(TRI_ERROR_FORBIDDEN);
+      TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN,
+                                     "Insufficient rights to drop collection");
     }
   }
   
@@ -1476,7 +1478,7 @@ static void JS_PropertiesVocbaseCol(
                                          ExecContext::CURRENT->database(),
                                          collection->name());
     if ((isModification && (level != AuthLevel::RW || level2 != AuthLevel::RW)) ||
-        level == AuthLevel::NONE) {
+        level == AuthLevel::NONE || level2 == AuthLevel::NONE) {
       TRI_V8_THROW_EXCEPTION(TRI_ERROR_FORBIDDEN);
     }
   }

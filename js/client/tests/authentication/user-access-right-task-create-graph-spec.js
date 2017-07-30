@@ -238,6 +238,8 @@ describe('User Rights Management', () => {
               });
 
               it('graph with existing collections', () => {
+                rootDropGraph();
+
                 rootCreateCollection(testEdgeColName, true);
                 rootCreateCollection(testVertexColName, false);
                 expect(rootTestGraph()).to.equal(false, 'Precondition failed, the graph still exists');

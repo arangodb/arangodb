@@ -142,6 +142,7 @@ describe('User Rights Management', () => {
                   'from': [ testVertexColName ],
                   'to': [ testVertexColName ]
                 }]);
+
               }
               switchUser(name, dbName);
             };
@@ -150,6 +151,8 @@ describe('User Rights Management', () => {
               before(() => {
                 db._useDatabase(dbName);
                 rootDropGraph();
+                rootCreateCollection(testEdgeColName, true);
+                rootCreateCollection(testVertexColName, false);
                 rootCreateGraph();
               });
 
@@ -158,9 +161,12 @@ describe('User Rights Management', () => {
               });
 
               it('graph', () => {
-                expect(!rootTestGraph()).to.equal(false, 'Precondition failed, the graph still not exists');
-                if (dbLevel['rw'].has(name)) {
+                expect(!rootTestGraph()).to.equal(false, 'Precondition failed, the graph does not exists');
+                if (dbLevel['rw'].has(name) && colLevel['rw'].has(name)) {
                   graphModule._drop(testGraphName, true);
+                  print("Stuff " + name);
+                  print(db._collection(testEdgeColName));
+
                   expect(!rootTestGraph()).to.equal(true, 'Graph drop reported success, but graph was found afterwards.');
                   expect(!rootTestCollection(testEdgeColName)).to.equal(true, 'Graph drop reported success, but edge collection was found afterwards.');
                   expect(!rootTestCollection(testVertexColName)).to.equal(true, 'Graph drop reported success, but vertex collection was found afterwards.');
@@ -168,9 +174,11 @@ describe('User Rights Management', () => {
                   try {
                     graphModule._drop(testGraphName, true);
                   } catch (e) {
-                    expect(e.errorNum).to.equal(errors.ERROR_ARANGO_READ_ONLY.code);
+                    expect(e.errorNum).to.equal(errors.ERROR_FORBIDDEN.code);
                   }
                   expect(!rootTestGraph()).to.equal(false, `${name} was able to drop a graph with insufficent rights`);
+                  expect(!rootTestCollection(testEdgeColName)).to.equal(false, 'Graph drop reported error, but edge collection was not found afterwards.');
+                  expect(!rootTestCollection(testVertexColName)).to.equal(false, 'Graph drop reported error, but vertex collection was not found afterwards.');
                 }
               });
             });
@@ -194,6 +202,9 @@ describe('User Rights Management', () => {
                 expect(rootTestCollection(testVertexColName)).to.equal(true, 'Precondition failed, the vertex collection still not exists');
                 if (dbLevel['rw'].has(name) && colLevel['rw'].has(name)) {
                   graphModule._drop(testGraphName, true);
+                  print("Stuff " + name);
+                  print(db._collection(testEdgeColName));
+
                   expect(!rootTestGraph()).to.equal(true, 'Graph drop reported success, but graph was found afterwards.');
                   expect(!rootTestCollection(testEdgeColName)).to.equal(true, 'Graph drop reported success, but edge collection was found afterwards.');
                   expect(!rootTestCollection(testVertexColName)).to.equal(true, 'Graph drop reported success, but vertex collection was found afterwards.');
@@ -201,7 +212,7 @@ describe('User Rights Management', () => {
                   try {
                     graphModule._drop(testGraphName, true);
                   } catch (e) {
-                    expect(e.errorNum).to.equal(errors.ERROR_ARANGO_READ_ONLY.code);
+                    expect(e.errorNum).to.equal(errors.ERROR_FORBIDDEN.code);
                   }
                   expect(!rootTestGraph()).to.equal(false, `${name} was able to drop a graph with insufficent rights`);
                 }

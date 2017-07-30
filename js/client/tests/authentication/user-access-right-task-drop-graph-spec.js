@@ -71,6 +71,10 @@ const createKeySpace = (keySpaceId) => {
   return executeJS(`return global.KEYSPACE_CREATE('${keySpaceId}', 128, true);`).body === 'true';
 };
 
+const setKeySpace = (keySpaceId, name) => {
+  return executeJS(`global.KEY_SET('${keySpaceId}', '${name}', false);`);
+};
+
 const dropKeySpace = (keySpaceId) => {
   executeJS(`global.KEYSPACE_DROP('${keySpaceId}');`);
 };
@@ -191,6 +195,8 @@ describe('User Rights Management', () => {
               before(() => {
                 db._useDatabase(dbName);
                 rootDropGraph();
+                rootCreateCollection(testEdgeColName, true);
+                rootCreateCollection(testVertexColName, false);
                 rootCreateGraph();
               });
 
@@ -200,28 +206,33 @@ describe('User Rights Management', () => {
 
               it('graph', () => {
                 expect(!rootTestGraph()).to.equal(false, 'Precondition failed, the graph still not exists');
+                setKeySpace(keySpaceId, name);
                 const taskId = 'task_create_graph_' + name;
                 const task = {
                   id: taskId,
                   name: taskId,
                   command: `(function (params) {
                     try {
-                      require('@arangodb/general-graph').graphModule._drop('${testGraphName}', true);
+                      require('@arangodb/general-graph')._drop('${testGraphName}', true);
+                    } catch(e) {
+                       global.KEY_SET('${keySpaceId}', 'testtest', JSON.stringify(e));
                     } finally {
                       global.KEY_SET('${keySpaceId}', '${name}', true);
                     }
                   })(params);`
                 };
                 if (dbLevel['rw'].has(name)) {
-                  if (dbLevel['rw'].has(name)) {
-                    tasks.register(task);
-                    wait(keySpaceId, name);
+                  tasks.register(task);
+                  wait(keySpaceId, name);
+                  if (colLevel['rw'].has(name)) {
                     expect(!rootTestGraph()).to.equal(true, 'Graph drop reported success, but graph was found afterwards.');
                     expect(!rootTestCollection(testEdgeColName)).to.equal(true, 'Graph drop reported success, but edge collection was found afterwards.');
                     expect(!rootTestCollection(testVertexColName)).to.equal(true, 'Graph drop reported success, but vertex collection was found afterwards.');
                   } else {
-                    tasks.register(task);
-                    wait(keySpaceId, name);
+                    if(rootTestGraph()) {
+                      print("dssdsds")
+                      print(getKey(keySpaceId, "testtest"));
+                    }
                     expect(!rootTestGraph()).to.equal(false, `${name} was able to drop a graph with insufficent rights`);
                   }
                 } else {
@@ -252,28 +263,29 @@ describe('User Rights Management', () => {
                 expect(rootTestGraph()).to.equal(true, 'Precondition failed, the graph still not exists');
                 expect(rootTestCollection(testEdgeColName)).to.equal(true, 'Precondition failed, the edge collection still not exists');
                 expect(rootTestCollection(testVertexColName)).to.equal(true, 'Precondition failed, the vertex collection still not exists');
+                setKeySpace(keySpaceId, name + '_specified_collection_access');
                 const taskId = 'task_create_graph_specified_collection_access' + name;
                 const task = {
                   id: taskId,
                   name: taskId,
                   command: `(function (params) {
                     try {
-                      require('@arangodb/general-graph').graphModule._drop('${testGraphName}', true);
+                      require('@arangodb/general-graph')._drop('${testGraphName}', true);
+                    } catch(e) {
+                       global.KEY_SET('${keySpaceId}', 'testtest', JSON.stringify(e));
                     } finally {
                       global.KEY_SET('${keySpaceId}', '${name}_specified_collection_access', true);
                     }
                   })(params);`
                 };
                 if (dbLevel['rw'].has(name)) {
-                  if (dbLevel['rw'].has(name) && colLevel['rw'].has(name)) {
-                    tasks.register(task);
-                    wait(keySpaceId, `${name}_specified_collection_access`);
+                  tasks.register(task);
+                  wait(keySpaceId, `${name}_specified_collection_access`);
+                  if (colLevel['rw'].has(name)) {
                     expect(!rootTestGraph()).to.equal(true, 'Graph drop reported success, but graph was found afterwards.');
                     expect(!rootTestCollection(testEdgeColName)).to.equal(true, 'Graph drop reported success, but edge collection was found afterwards.');
                     expect(!rootTestCollection(testVertexColName)).to.equal(true, 'Graph drop reported success, but vertex collection was found afterwards.');
                   } else {
-                    tasks.register(task);
-                    wait(keySpaceId, `${name}_specified_collection_access`);
                     expect(!rootTestGraph()).to.equal(false, `${name} was able to drop a graph with insufficent rights`);
                   }
                 } else {

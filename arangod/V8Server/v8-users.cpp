@@ -421,7 +421,7 @@ static void JS_GetPermission(v8::FunctionCallbackInfo<v8::Value> const& args) {
   v8::HandleScope scope(isolate);
   if (args.Length() < 1 || !args[0]->IsString() ||
       (args.Length() > 1 && !args[1]->IsString())) {
-    TRI_V8_THROW_EXCEPTION_USAGE("permission(username[, key])");
+    TRI_V8_THROW_EXCEPTION_USAGE("permission(username[, database, collection])");
   }
 
   auto authentication =
@@ -429,8 +429,15 @@ static void JS_GetPermission(v8::FunctionCallbackInfo<v8::Value> const& args) {
   std::string username = TRI_ObjectToString(args[0]);
 
   if (args.Length() > 1) {
-    std::string key = TRI_ObjectToString(args[1]);
-    AuthLevel lvl = authentication->authInfo()->canUseDatabase(username, key);
+    std::string dbname = TRI_ObjectToString(args[1]);
+    AuthLevel lvl;
+    if (args.Length() >= 2) {
+      std::string collection = TRI_ObjectToString(args[2]);
+      lvl = authentication->authInfo()->canUseCollection(username, dbname, collection);
+    } else {
+      lvl = authentication->authInfo()->canUseDatabase(username, dbname);
+    }
+    
     if (lvl == AuthLevel::RO) {
       TRI_V8_RETURN(TRI_V8_STRING("ro"));
     } else if (lvl == AuthLevel::RW) {
@@ -464,7 +471,7 @@ static void JS_CurrentUser(v8::FunctionCallbackInfo<v8::Value> const& args) {
   if (ExecContext::CURRENT != nullptr) {
     TRI_V8_RETURN(TRI_V8_STD_STRING(ExecContext::CURRENT->user()));
   }
-  TRI_V8_RETURN_UNDEFINED();
+  TRI_V8_RETURN_NULL();
   TRI_V8_TRY_CATCH_END
 }
 
