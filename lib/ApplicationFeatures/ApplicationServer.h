@@ -228,6 +228,13 @@ class ApplicationServer {
     _startupCallbacks.emplace_back(callback);
   }
 
+  void registerFailCallback(std::function<void(std::string const&)> const& callback) {
+    fail = callback;
+  }
+  
+  // setup and validate all feature dependencies, determine feature order
+  void setupDependencies(bool failOnMissing);
+
  private:
   // throws an exception that a requested feature was not found
   static void throwFeatureNotFoundException(std::string const& name);
@@ -237,9 +244,6 @@ class ApplicationServer {
 
   static void disableFeatures(std::vector<std::string> const& names,
                               bool force);
-
-  // fail and abort with the specified message
-  void fail(std::string const& message);
 
   // walks over all features and runs a callback function for them
   void apply(std::function<void(ApplicationFeature*)>, bool enabledOnly);
@@ -253,9 +257,6 @@ class ApplicationServer {
 
   // allows features to cross-validate their program options
   void validateOptions();
-
-  // setup and validate all feature dependencies, determine feature order
-  void setupDependencies(bool failOnMissing);
 
   // allows process control
   void daemonize();
@@ -320,6 +321,9 @@ class ApplicationServer {
 
   // the install directory of this program:
   char const* _binaryPath;
+
+  // fail callback
+  std::function<void(std::string const&)> fail;
 };
 }
 }
