@@ -12,7 +12,7 @@ Return the number of characters in *value* (not byte length).
 |input|length|
 |---|---|
 |String|number of unicode characters|
-|Number|number of characters that represent the number|
+|Number|number of unicode characters that represent the number|
 |Array / Object|number of unicode characters from the resulting stringification|
 |true| 4 |
 |false| 5 |

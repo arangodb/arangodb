@@ -116,7 +116,7 @@ collection and the [character length](String.md#length) of a string.
 |input|length|
 |---|---|
 |String|number of unicode characters|
-|Number|number of characters that represent the number|
+|Number|number of unicode characters that represent the number|
 |Array|number of elements|
 |Object|number of first level elements|
 |true|1|
