@@ -8,7 +8,6 @@ For string processing, AQL offers the following functions:
 `CHAR_LENGTH(value) → length`
 
 Return the number of characters in *value* (not byte length).
-This is a synonym for [LENGTH()](#length).
 
 |input|length|
 |---|---|
