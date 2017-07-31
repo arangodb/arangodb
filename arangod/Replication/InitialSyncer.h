@@ -98,7 +98,7 @@ class InitialSyncer : public Syncer {
  public:
   InitialSyncer(TRI_vocbase_t*, TRI_replication_applier_configuration_t const*,
                 std::unordered_map<std::string, bool> const&,
-                std::string const&, bool verbose);
+                std::string const&, bool verbose, bool skipCreateDrop);
 
   ~InitialSyncer();
 
@@ -330,6 +330,11 @@ class InitialSyncer : public Syncer {
   //////////////////////////////////////////////////////////////////////////////
 
   static size_t const MaxChunkSize;
+
+  // in the cluster case it is a total NOGO to create or drop collections
+  // because this HAS to be handled in the schmutz. otherwise it forgets who
+  // the leader was etc.
+  bool _skipCreateDrop;
 
 };
 }
