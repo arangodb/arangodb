@@ -29,6 +29,7 @@
 #include "StorageEngine/TransactionState.h"
 #include "StorageEngine/PhysicalCollection.h"
 #include "StorageEngine/DocumentIdentifierToken.h"
+#include "Transaction/ContextData.h"
 #include "VocBase/PhysicalView.h"
 
 namespace arangodb {
@@ -37,10 +38,18 @@ class TransactionManager;
 
 } // arangodb
 
+class ContextDataMock: public arangodb::transaction::ContextData {
+ public:
+  std::set<TRI_voc_cid_t> pinned;
+
+  void pinData(arangodb::LogicalCollection* collection) override;
+  bool isPinned(TRI_voc_cid_t cid) const override;
+};
+
 class PhysicalCollectionMock: public arangodb::PhysicalCollection {
  public:
   std::string physicalPath;
-  std::vector<arangodb::velocypack::Builder> documents;
+  std::vector<std::pair<arangodb::velocypack::Builder, bool>> documents; // std::pair<jSON, valid>
 
   PhysicalCollectionMock(arangodb::LogicalCollection* collection, arangodb::velocypack::Slice const& info);
   virtual PhysicalCollection* clone(arangodb::LogicalCollection*, PhysicalCollection*) override;
@@ -95,14 +104,16 @@ class PhysicalViewMock: public arangodb::PhysicalView {
 
 class TransactionCollectionMock: public arangodb::TransactionCollection {
  public:
+  arangodb::AccessMode::Type lockType;
+
   TransactionCollectionMock(arangodb::TransactionState* state, TRI_voc_cid_t cid);
   virtual bool canAccess(arangodb::AccessMode::Type accessType) const override;
   virtual void freeOperations(arangodb::transaction::Methods* activeTrx, bool mustRollback) override;
   virtual bool hasOperations() const override;
   virtual bool isLocked() const override;
-  virtual bool isLocked(arangodb::AccessMode::Type, int nestingLevel) const override;
+  virtual bool isLocked(arangodb::AccessMode::Type type, int nestingLevel) const override;
   virtual int lock() override;
-  virtual int lock(arangodb::AccessMode::Type, int nestingLevel) override;
+  virtual int lock(arangodb::AccessMode::Type type, int nestingLevel) override;
   virtual void release() override;
   virtual int unlock(arangodb::AccessMode::Type, int nestingLevel) override;
   virtual int updateUsage(arangodb::AccessMode::Type accessType, int nestingLevel) override;
