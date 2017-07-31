@@ -10,6 +10,15 @@ For string processing, AQL offers the following functions:
 Return the number of characters in *value* (not byte length).
 This is a synonym for [LENGTH()](#length).
 
+|input|length|
+|---|---|
+|String|number of unicode characters|
+|Number|number of characters that represent the number|
+|Array / Object|number of unicode characters from the resulting stringification|
+|true| 4 |
+|false| 5 |
+|null| 4 |
+
 ### CONCAT()
 
 `CONCAT(value1, value2, ... valueN) → str`
