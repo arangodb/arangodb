@@ -490,6 +490,8 @@ AuthLevel AuthUserEntry::collectionAuthLevel(
       return it->second._databaseAuthLevel;
     }
     lvl = it->second.collectionAuthLevel(collectionName, notFound);
+  } else {
+    notFound = true;
   }
   // the lookup into the default database is only allowed if there were
   // no rights for it defined in the database

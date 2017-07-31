@@ -3008,7 +3008,7 @@ static void JS_CollectionVocbase(
   if (collection == nullptr) {
     TRI_V8_RETURN_NULL();
   }
-  
+
   if (ExecContext::CURRENT != nullptr) {
     AuthenticationFeature* auth = AuthenticationFeature::INSTANCE;
     TRI_ASSERT(auth != nullptr);
