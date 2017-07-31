@@ -287,9 +287,9 @@ exports.isAuthActive = function() {
   let active = false;
   try {
     let c = internal.db._collection("_users");
-    print(c.properties());
+    internal.print(c.properties());
   } catch(e) {
     active = true;
   }
   return active;
-}
+};
