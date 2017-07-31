@@ -265,8 +265,6 @@ static void CreateVocBase(v8::FunctionCallbackInfo<v8::Value> const& args,
 
   infoSlice = builder.slice();
 
-  LOG_TOPIC(ERR, Logger::CLUSTER) << infoSlice.toJson();
-
   v8::Handle<v8::Value> result;
   if (ServerState::instance()->isCoordinator()) {
     bool createWaitsForSyncReplication =
