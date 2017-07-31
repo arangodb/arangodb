@@ -108,6 +108,7 @@ V8DealerFeature::V8DealerFeature(
   setOptional(false);
   requiresElevatedPrivileges(false);
   startsAfter("Action");
+  startsAfter("Authentication");
   startsAfter("Database");
   startsAfter("Random");
   startsAfter("MMFilesWalRecovery");
