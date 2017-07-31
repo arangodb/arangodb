@@ -235,7 +235,7 @@ exports.updateConfigData = function (username, key, value) {
   arangosh.checkRequestResult(requestResult);
 };
 
-// one config data (key != null) or all (key == null)    
+// one config data (key != null) or all (key == null)
 exports.configData = function (username, key) {
   var db = internal.db;
   var requestResult;
@@ -256,7 +256,7 @@ exports.configData = function (username, key) {
   return arangosh.checkRequestResult(requestResult).result;
 };
 
-// one db permission data (key != null) or all (key == null)    
+// one db permission data (key != null) or all (key == null)
 exports.permission = function (username, dbName, coll) {
   var db = internal.db;
   var requestResult;
@@ -281,4 +281,4 @@ exports.permission = function (username, dbName, coll) {
 
 exports.currentUser = function() {
   return internal.arango.connectedUser();
-}
+};
