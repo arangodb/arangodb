@@ -1231,8 +1231,6 @@ void Agent::beginShutdown() {
 
 bool Agent::prepareLead() {
 
-  LOG_TOPIC(ERR, Logger::AGENCY) <<  "Preparing lead";
-  
   // Key value stores
   try {
     rebuildDBs();
@@ -1568,7 +1566,12 @@ void Agent::join() {
           _waitForCV.wait(1000000);
           ep.clear();
         }
-      } 
+      } if (comres->result->getHttpReturnCode() == 400) {
+        LOG_TOPIC(FATAL, Logger::AGENCY)
+          << "Failed to join agency with response 400: "
+          << comres->result->getBody().c_str();
+          FATAL_ERROR_EXIT();
+      }
     } else {
       _waitForCV.wait(1000000);
       ep.clear();
