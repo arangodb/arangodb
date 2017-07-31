@@ -425,8 +425,7 @@ static void JS_GetPermission(v8::FunctionCallbackInfo<v8::Value> const& args) {
     TRI_V8_THROW_EXCEPTION_USAGE("permission(username[, database, collection])");
   }
 
-  auto authentication =
-      FeatureCacheFeature::instance()->authenticationFeature();
+  auto authentication = AuthenticationFeature::INSTANCE;
   std::string username = TRI_ObjectToString(isolate, args[0]);
 
   if (args.Length() > 1) {
@@ -434,9 +433,9 @@ static void JS_GetPermission(v8::FunctionCallbackInfo<v8::Value> const& args) {
     AuthLevel lvl;
     if (args.Length() == 3) {
       std::string collection = TRI_ObjectToString(isolate, args[2]);
-      lvl = authentication->canUseCollection(username, dbname, collection);
+      lvl = authentication->authInfo()->canUseCollection(username, dbname, collection);
     } else {
-      lvl = authentication->canUseDatabase(username, dbname);
+      lvl = authentication->authInfo()->canUseDatabase(username, dbname);
     }
     
     if (lvl == AuthLevel::RO) {
@@ -462,6 +461,16 @@ static void JS_GetPermission(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_END
 }
 
+static void JS_AuthIsActive(v8::FunctionCallbackInfo<v8::Value> const& args) {
+  TRI_V8_TRY_CATCH_BEGIN(isolate);
+  auto authentication = AuthenticationFeature::INSTANCE;
+  if (authentication->isActive()) {
+    TRI_V8_RETURN_TRUE();
+  } else {
+    TRI_V8_RETURN_FALSE();
+  }
+  TRI_V8_TRY_CATCH_END
+}
 
 static void JS_CurrentUser(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
@@ -514,6 +523,8 @@ void TRI_InitV8Users(v8::Handle<v8::Context> context, TRI_vocbase_t* vocbase,
                        JS_GetPermission);
   TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING("currentUser"),
                        JS_CurrentUser);
+  TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING("isAuthActive"),
+                       JS_AuthIsActive);
 
   v8g->UsersTempl.Reset(isolate, rt);
   ft->SetClassName(TRI_V8_ASCII_STRING("ArangoUsersCtor"));

@@ -109,7 +109,7 @@ RestStatus RestUsersHandler::getRequest(AuthInfo* authInfo) {
     } else {
       generateError(ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN);
     }
-  } else if (suffixes.size() >= 2) {
+  } else {
     std::string const& user = suffixes[0];
     if (!canAccessUser(user)) {
       generateError(ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN);
@@ -118,61 +118,15 @@ RestStatus RestUsersHandler::getRequest(AuthInfo* authInfo) {
 
     if (suffixes[1] == "database") {
       if (suffixes.size() == 2) {
+        //_api/user/<user>/database?full=<true/false>
         bool full = false;
         std::string const& param = _request->value("full", full);
         if (full) {
           full = StringUtils::boolean(param);
         }
-
-        // return list of databases
-        VPackBuilder data;
-        data.openObject();
-        Result res = authInfo->accessUser(user, [&](AuthUserEntry const& entry) {
-          DatabaseFeature::DATABASE->enumerateDatabases([&](
-              TRI_vocbase_t* vocbase) {
-
-            AuthLevel lvl = entry.databaseAuthLevel(vocbase->name());
-            std::string str = "undefined";
-            if (entry.hasSpecificDatabase(vocbase->name())) {
-              str = convertFromAuthLevel(lvl);
-            }
-
-            if (full) {
-              VPackObjectBuilder b(&data, vocbase->name(), true);
-              data.add("permission", VPackValue(str));
-              VPackObjectBuilder b2(&data, "collections", true);
-              methods::Collections::enumerateCollections(
-                  vocbase, [&](LogicalCollection* c) {
-                    if (entry.hasSpecificCollection(vocbase->name(),
-                                                    c->name())) {
-                      lvl =
-                          entry.collectionAuthLevel(vocbase->name(), c->name());
-                      data.add(c->name(),
-                               VPackValue(convertFromAuthLevel(lvl)));
-                    } else {
-                      data.add(c->name(), VPackValue("undefined"));
-                    }
-                  });
-              lvl = authInfo->canUseCollection(user, vocbase->name(), "*");
-              data.add("*", VPackValue(convertFromAuthLevel(lvl)));
-            } else if (lvl != AuthLevel::NONE) {  // hide db's without access
-              data.add(vocbase->name(), VPackValue(str));
-            }
-          });
-          if (full) {
-            AuthLevel lvl = authInfo->canUseDatabase(user, "*");
-            data("*", VPackValue(VPackValueType::Object))(
-                "permission", VPackValue(convertFromAuthLevel(lvl)))();
-          }
-        });
-        data.close();
-        if (res.ok()) {
-          generateSuccess(ResponseCode::OK, data.slice());
-        } else {
-          generateError(res);
-        }
-        
+        generateDatabaseResult(authInfo, user, full);
       } else if (suffixes.size() == 3) {
+        //_api/user/<user>/database/<dbname>
         // return specific database
         AuthLevel lvl = authInfo->canUseDatabase(user, suffixes[2]);
         VPackBuilder data;
@@ -180,6 +134,7 @@ RestStatus RestUsersHandler::getRequest(AuthInfo* authInfo) {
         generateSuccess(ResponseCode::OK, data.slice());
 
       } else if (suffixes.size() == 4) {
+        //_api/user/<user>/database/<dbname>/<collection>
         AuthLevel lvl =
             authInfo->canUseCollection(user, suffixes[2], suffixes[3]);
         VPackBuilder data;
@@ -188,19 +143,71 @@ RestStatus RestUsersHandler::getRequest(AuthInfo* authInfo) {
       } else {
         generateError(ResponseCode::BAD, TRI_ERROR_BAD_PARAMETER);
       }
+
     } else if (suffixes[1] == "config") {
+      //_api/user/<user>//config
       VPackBuilder data = authInfo->getConfigData(user);
       if (suffixes.size() == 3) {
         generateSuccess(ResponseCode::OK, data.slice().get(suffixes[2]));
       } else {
         generateSuccess(ResponseCode::OK, data.slice());
       }
+
     } else {
       generateError(ResponseCode::BAD, TRI_ERROR_BAD_PARAMETER);
     }
   }
 
   return RestStatus::DONE;
+}
+
+/// generate response for /_api/user/database?full=true/false
+void RestUsersHandler::generateDatabaseResult(AuthInfo* authInfo,
+                                              std::string const& user,
+                                              bool full) {
+  // return list of databases
+  VPackBuilder data;
+  data.openObject();
+  Result res = authInfo->accessUser(user, [&](AuthUserEntry const& entry) {
+    DatabaseFeature::DATABASE->enumerateDatabases([&](TRI_vocbase_t* vocbase) {
+
+      AuthLevel lvl = entry.databaseAuthLevel(vocbase->name());
+      std::string str = "undefined";
+      if (entry.hasSpecificDatabase(vocbase->name())) {
+        str = convertFromAuthLevel(lvl);
+      }
+
+      if (full) {
+        VPackObjectBuilder b(&data, vocbase->name(), true);
+        data.add("permission", VPackValue(str));
+        VPackObjectBuilder b2(&data, "collections", true);
+        methods::Collections::enumerateCollections(
+            vocbase, [&](LogicalCollection* c) {
+              if (entry.hasSpecificCollection(vocbase->name(), c->name())) {
+                lvl = entry.collectionAuthLevel(vocbase->name(), c->name());
+                data.add(c->name(), VPackValue(convertFromAuthLevel(lvl)));
+              } else {
+                data.add(c->name(), VPackValue("undefined"));
+              }
+            });
+        lvl = authInfo->canUseCollection(user, vocbase->name(), "*");
+        data.add("*", VPackValue(convertFromAuthLevel(lvl)));
+      } else if (lvl != AuthLevel::NONE) {  // hide db's without access
+        data.add(vocbase->name(), VPackValue(str));
+      }
+    });
+    if (full) {
+      AuthLevel lvl = authInfo->canUseDatabase(user, "*");
+      data("*", VPackValue(VPackValueType::Object))(
+          "permission", VPackValue(convertFromAuthLevel(lvl)))();
+    }
+  });
+  data.close();
+  if (res.ok()) {
+    generateSuccess(ResponseCode::OK, data.slice());
+  } else {
+    generateError(res);
+  }
 }
 
 /// helper to create(0), replace(1), update(2) a user
@@ -365,7 +372,8 @@ RestStatus RestUsersHandler::putRequest(AuthInfo* authInfo) {
               resetResponse(ResponseCode::OK);
               return RestStatus::DONE;
             }
-            conf = VPackCollection::remove(oldConf, std::unordered_set<std::string>{key});
+            conf = VPackCollection::remove(
+                oldConf, std::unordered_set<std::string>{key});
           } else {
             // We need to merge the new key into the config
             newVal = newVal.get("value");
@@ -378,7 +386,7 @@ RestStatus RestUsersHandler::putRequest(AuthInfo* authInfo) {
                        : b;
           }
         }
-        
+
         Result r = authInfo->setConfigData(user, conf.slice());
 
         if (r.ok()) {

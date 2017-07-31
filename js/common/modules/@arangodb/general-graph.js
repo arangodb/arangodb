@@ -572,6 +572,10 @@ var updateBindCollections = function (graph) {
 };
 
 var checkRWPermission = function (c) {
+  if (!users.isAuthActive()) {
+    return;
+  }
+
   let user = users.currentUser();
   if (user) {
     let p = users.permission(user, db._name(), c);

@@ -282,3 +282,14 @@ exports.permission = function (username, dbName, coll) {
 exports.currentUser = function() {
   return internal.arango.connectedUser();
 };
+
+exports.isAuthActive = function() {
+  let active = false;
+  try {
+    let c = internal.db._collection("_users");
+    print(c.properties());
+  } catch(e) {
+    active = true;
+  }
+  return active;
+}
