@@ -584,7 +584,7 @@ var checkRWPermission = function (c) {
       throw err;
     }
   }
-}
+};
 
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief internal function for editing edge definitions
@@ -2085,7 +2085,7 @@ exports._drop = function (graphId, dropCollections) {
     throw err;
   }
 
-  checkRWPermission("_graphs")
+  checkRWPermission("_graphs");
   var graph = gdb.document(graphId);
   if (dropCollections === true) {
     graphs = exports._listObjects();
@@ -2129,7 +2129,7 @@ exports._drop = function (graphId, dropCollections) {
       } catch (e) {
         internal.print("Failed to Drop: '" + c + "' reason: " + e.message);
       }
-    }
+    };
     leaderCollections.forEach(dropColl);
     followerCollections.forEach(dropColl);
   }
