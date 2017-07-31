@@ -2134,8 +2134,8 @@ exports._drop = function (graphId, dropCollections) {
         internal.print("Failed to Drop: '" + c + "' reason: " + e.message);
       }
     };
-    leaderCollections.forEach(dropColl);
     followerCollections.forEach(dropColl);
+    leaderCollections.forEach(dropColl);
   }
 
   gdb.remove(graphId);
