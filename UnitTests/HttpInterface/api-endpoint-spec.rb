@@ -67,7 +67,6 @@ describe ArangoDB do
         doc.headers['content-type'].should eq("application/json; charset=utf-8")
         response = doc.parsed_response
         response[0]["endpoint"].should be_kind_of(String)
-        response[0]["endpoint"].should start_with("http://")
       end
 
     end
