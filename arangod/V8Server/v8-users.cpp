@@ -420,8 +420,8 @@ static void JS_GetPermission(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
   if (args.Length() > 3 || args.Length() == 0 || !args[0]->IsString() ||
-      !(args.Length() > 1 && args[1]->IsString()) ||
-      !(args.Length() == 3 && args[2]->IsString())) {
+      (args.Length() > 1 && !args[1]->IsString()) ||
+      (args.Length() > 2 && !args[2]->IsString())) {
     TRI_V8_THROW_EXCEPTION_USAGE("permission(username[, database, collection])");
   }
 
