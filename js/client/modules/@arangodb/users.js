@@ -258,9 +258,9 @@ exports.configData = function (username, key) {
 
 // one db permission data (key != null) or all (key == null)    
 exports.permission = function (username, dbName, coll) {
-  var db = internal.db;
-  var requestResult;
-  var uri;
+  let db = internal.db;
+  let requestResult;
+  let uri;
 
   if (dbName === undefined || dbName === null) {
     uri = '_api/user/' + encodeURIComponent(username)
@@ -281,4 +281,17 @@ exports.permission = function (username, dbName, coll) {
 
 exports.currentUser = function() {
   return internal.arango.connectedUser();
+}
+
+var authIsActive = null;
+exports.isAuthActive = function() {
+  if (authIsActive === null) {
+    try {
+      let c = internal.db._collection("_users");
+      authIsActive = false;
+    } catch(ignored) {
+      authIsActive = true;
+    }
+  }  
+  return authIsActive;
 }

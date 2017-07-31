@@ -462,6 +462,7 @@ static void JS_GetPermission(v8::FunctionCallbackInfo<v8::Value> const& args) {
     TRI_V8_RETURN(result);
   }
   TRI_V8_RETURN_UNDEFINED();
+  
   TRI_V8_TRY_CATCH_END
 }
 

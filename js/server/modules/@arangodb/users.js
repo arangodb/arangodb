@@ -66,3 +66,12 @@ exports.exists = function (username) {
     throw e;
   }
 };
+exports.isAuthActive = function() {
+  let isActive = false;
+  try {
+    let c = internal.db._collection("_users");
+  } catch(ignored) {
+    isActive = true;
+  }
+  return isActive;
+}
