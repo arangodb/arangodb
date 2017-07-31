@@ -38,7 +38,10 @@
 #include "RestServer/FeatureCacheFeature.h"
 #include "RestServer/QueryRegistryFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
+#include "Transaction/StandaloneContext.h"
 #include "Utils/OperationOptions.h"
+#include "Utils/SingleCollectionTransaction.h"
+#include "VocBase/KeyGenerator.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/ManagedDocumentResult.h"
 
@@ -121,6 +124,8 @@ struct IResearchAnalyzerFeatureSetup {
         f.first->start();
       }
     }
+
+    arangodb::KeyGenerator::Initialize(); // ensure document keys can be generated/validated correctly
 
     // suppress log messages since tests check error conditions
     arangodb::LogTopic::setLogLevel(arangodb::Logger::FIXME.name(), arangodb::LogLevel::FATAL);
@@ -308,8 +313,8 @@ SECTION("test_identity") {
 }
 /*FIXME TODO enable
 SECTION("test_persistence") {
-  auto* database = arangodb::iresearch::getFeature<arangodb::DatabaseFeature>("Database");
-  auto* vocbase = database->systemDatabase();
+  auto* database = arangodb::iresearch::getFeature<arangodb::iresearch::SystemDatabaseFeature>();
+  auto vocbase = database->use();
 
   // ensure there is an empty configuration collection
   {
@@ -330,42 +335,27 @@ SECTION("test_persistence") {
   // read invalid configuration (missing attributes)
   {
     {
+      std::string collection("_iresearch_analyzers");
       arangodb::OperationOptions options;
-      arangodb::ManagedDocumentResult result;
-      TRI_voc_tick_t resultMarkerTick;
-      auto* collection = vocbase->lookupCollection("_iresearch_analyzers");
-      collection->truncate(nullptr, options);
-      collection->insert(nullptr, arangodb::velocypack::Parser::fromJson("{}")->slice(), result, options, resultMarkerTick, false);
-      collection->insert(nullptr, arangodb::velocypack::Parser::fromJson("{                        \"type\": \"identity\", \"properties\": null, \"ref_count\": 42}")->slice(), result, options, resultMarkerTick, false);
-      collection->insert(nullptr, arangodb::velocypack::Parser::fromJson("{\"name\": 12345,        \"type\": \"identity\", \"properties\": null, \"ref_count\": 42}")->slice(), result, options, resultMarkerTick, false);
-      collection->insert(nullptr, arangodb::velocypack::Parser::fromJson("{\"name\": \"invalid1\",                         \"properties\": null, \"ref_count\": 42}")->slice(), result, options, resultMarkerTick, false);
-      collection->insert(nullptr, arangodb::velocypack::Parser::fromJson("{\"name\": \"invalid2\", \"type\": 12345,        \"properties\": null, \"ref_count\": 42}")->slice(), result, options, resultMarkerTick, false);
-      collection->insert(nullptr, arangodb::velocypack::Parser::fromJson("{\"name\": \"invalid3\", \"type\": \"identity\", \"properties\": null                   }")->slice(), result, options, resultMarkerTick, false);
-      collection->insert(nullptr, arangodb::velocypack::Parser::fromJson("{\"name\": \"invalid4\", \"type\": \"identity\", \"properties\": null, \"ref_count\": -1}")->slice(), result, options, resultMarkerTick, false);
-    }
-
-    arangodb::iresearch::IResearchAnalyzerFeature feature(nullptr);
-    feature.start();
-    feature.visit([](irs::string_ref const& name, irs::string_ref const& type, irs::string_ref const& properties)->bool {
-      CHECK((false));
-      return true;
-    });
-  }
-
-  // read invalid configuration (duplicate records)
-  {
-    {
-      arangodb::OperationOptions options;
-      arangodb::ManagedDocumentResult result;
-      TRI_voc_tick_t resultMarkerTick;
-      auto* collection = vocbase->lookupCollection("_iresearch_analyzers");
-      collection->truncate(nullptr, options);
-      collection->insert(nullptr, arangodb::velocypack::Parser::fromJson("{\"name\": \"valid\", \"type\": \"identity\", \"properties\": null, \"ref_count\": 42\"}")->slice(), result, options, resultMarkerTick, false);
-      collection->insert(nullptr, arangodb::velocypack::Parser::fromJson("{\"name\": \"valid\", \"type\": \"identity\", \"properties\": null, \"ref_count\": 52\"}")->slice(), result, options, resultMarkerTick, false);
+      arangodb::SingleCollectionTransaction trx(
+        arangodb::transaction::StandaloneContext::Create(vocbase.get()),
+        collection,
+        arangodb::AccessMode::Type::WRITE
+      );
+      trx.begin();
+      trx.truncate(collection, options);
+      trx.insert(collection, arangodb::velocypack::Parser::fromJson("{}")->slice(), options);
+      trx.insert(collection, arangodb::velocypack::Parser::fromJson("{                        \"type\": \"identity\", \"properties\": null, \"ref_count\": 42}")->slice(), options);
+      trx.insert(collection, arangodb::velocypack::Parser::fromJson("{\"name\": 12345,        \"type\": \"identity\", \"properties\": null, \"ref_count\": 42}")->slice(), options);
+      trx.insert(collection, arangodb::velocypack::Parser::fromJson("{\"name\": \"invalid1\",                         \"properties\": null, \"ref_count\": 42}")->slice(), options);
+      trx.insert(collection, arangodb::velocypack::Parser::fromJson("{\"name\": \"invalid2\", \"type\": 12345,        \"properties\": null, \"ref_count\": 42}")->slice(), options);
+      trx.insert(collection, arangodb::velocypack::Parser::fromJson("{\"name\": \"invalid3\", \"type\": \"identity\", \"properties\": null                   }")->slice(), options);
+      trx.insert(collection, arangodb::velocypack::Parser::fromJson("{\"name\": \"invalid4\", \"type\": \"identity\", \"properties\": null, \"ref_count\": -1}")->slice(), options);
+      trx.commit();
     }
 
     std::map<irs::string_ref, std::pair<irs::string_ref, irs::string_ref>> expected = {
-      { "valid", { "identity", irs::string_ref::nil } },
+      { "identity", { "identity", irs::string_ref::nil } },
     };
     arangodb::iresearch::IResearchAnalyzerFeature feature(nullptr);
     feature.start();
@@ -380,29 +370,69 @@ SECTION("test_persistence") {
     CHECK((expected.empty()));
   }
 
-  // read valid configuration (different parameter options
+  // read invalid configuration (duplicate records)
   {
     {
+      std::string collection("_iresearch_analyzers");
       arangodb::OperationOptions options;
-      arangodb::ManagedDocumentResult result;
-      TRI_voc_tick_t resultMarkerTick;
-      auto* collection = vocbase->lookupCollection("_iresearch_analyzers");
-      collection->truncate(nullptr, options);
-      collection->insert(nullptr, arangodb::velocypack::Parser::fromJson("{\"name\": \"valid0\", \"type\": \"identity\", \"properties\": null,                       \"ref_count\": 42\"}")->slice(), result, options, resultMarkerTick, false);
-      collection->insert(nullptr, arangodb::velocypack::Parser::fromJson("{\"name\": \"valid1\", \"type\": \"identity\", \"properties\": true,                       \"ref_count\": 42\"}")->slice(), result, options, resultMarkerTick, false);
-      collection->insert(nullptr, arangodb::velocypack::Parser::fromJson("{\"name\": \"valid2\", \"type\": \"identity\", \"properties\": \"abc\",                    \"ref_count\": 42\"}")->slice(), result, options, resultMarkerTick, false);
-      collection->insert(nullptr, arangodb::velocypack::Parser::fromJson("{\"name\": \"valid3\", \"type\": \"identity\", \"properties\": 3.14,                       \"ref_count\": 42\"}")->slice(), result, options, resultMarkerTick, false);
-      collection->insert(nullptr, arangodb::velocypack::Parser::fromJson("{\"name\": \"valid4\", \"type\": \"identity\", \"properties\": [ 1, \"abc\" ],             \"ref_count\": 42\"}")->slice(), result, options, resultMarkerTick, false);
-      collection->insert(nullptr, arangodb::velocypack::Parser::fromJson("{\"name\": \"valid5\", \"type\": \"identity\", \"properties\": { \"a\": 7, \"b\": \"c\" }, \"ref_count\": 42\"}")->slice(), result, options, resultMarkerTick, false);
+      arangodb::SingleCollectionTransaction trx(
+        arangodb::transaction::StandaloneContext::Create(vocbase.get()),
+        collection,
+        arangodb::AccessMode::Type::WRITE
+      );
+      trx.begin();
+      trx.truncate(collection, options);
+      trx.insert(collection, arangodb::velocypack::Parser::fromJson("{\"name\": \"valid\", \"type\": \"identity\", \"properties\": null, \"ref_count\": 42}")->slice(), options);
+      trx.insert(collection, arangodb::velocypack::Parser::fromJson("{\"name\": \"valid\", \"type\": \"identity\", \"properties\": null, \"ref_count\": 52}")->slice(), options);
+      trx.commit();
     }
 
     std::map<irs::string_ref, std::pair<irs::string_ref, irs::string_ref>> expected = {
-      { "valid0", { "identity", irs::string_ref::nil } },
+      { "identity", { "identity", irs::string_ref::nil } },
+      { "valid", { "identity", "null" } },
+    };
+    arangodb::iresearch::IResearchAnalyzerFeature feature(nullptr);
+    feature.start();
+    feature.visit([&expected](irs::string_ref const& name, irs::string_ref const& type, irs::string_ref const& properties)->bool {
+      auto itr = expected.find(name);
+      CHECK((itr != expected.end()));
+      CHECK((itr->second.first == type));
+      CHECK((itr->second.second == properties));
+      expected.erase(itr);
+      return true;
+    });
+    CHECK((expected.empty()));
+  }
+
+  // read valid configuration (different parameter options)
+  {
+    {
+      std::string collection("_iresearch_analyzers");
+      arangodb::OperationOptions options;
+      arangodb::SingleCollectionTransaction trx(
+        arangodb::transaction::StandaloneContext::Create(vocbase.get()),
+        collection,
+        arangodb::AccessMode::Type::WRITE
+      );
+      trx.begin();
+      trx.truncate(collection, options);
+      trx.insert(collection, arangodb::velocypack::Parser::fromJson("{\"name\": \"valid0\", \"type\": \"identity\", \"properties\": null,                       \"ref_count\": 42}")->slice(), options);
+      trx.insert(collection, arangodb::velocypack::Parser::fromJson("{\"name\": \"valid1\", \"type\": \"identity\", \"properties\": true,                       \"ref_count\": 42}")->slice(), options);
+      trx.insert(collection, arangodb::velocypack::Parser::fromJson("{\"name\": \"valid2\", \"type\": \"identity\", \"properties\": \"abc\",                    \"ref_count\": 42}")->slice(), options);
+      trx.insert(collection, arangodb::velocypack::Parser::fromJson("{\"name\": \"valid3\", \"type\": \"identity\", \"properties\": 3.14,                       \"ref_count\": 42}")->slice(), options);
+      trx.insert(collection, arangodb::velocypack::Parser::fromJson("{\"name\": \"valid4\", \"type\": \"identity\", \"properties\": [ 1, \"abc\" ],             \"ref_count\": 42}")->slice(), options);
+      trx.insert(collection, arangodb::velocypack::Parser::fromJson("{\"name\": \"valid5\", \"type\": \"identity\", \"properties\": { \"a\": 7, \"b\": \"c\" }, \"ref_count\": 42}")->slice(), options);
+      trx.commit();
+    }
+
+    std::map<irs::string_ref, std::pair<irs::string_ref, irs::string_ref>> expected = {
+      { "identity", { "identity", irs::string_ref::nil } },
+      { "valid0", { "identity", "null" } },
       { "valid1", { "identity", "true" } },
-      { "valid2", { "identity", "abc" } },
+      { "valid2", { "identity", "\"abc\"" } },
       { "valid3", { "identity", "3.14" } },
-      { "valid4", { "identity", "[ 1, \"abc\" ]" } },
-      { "valid5", { "identity", "{ \"a\": 7, \"b\": \"c\" }" } },
+      { "valid4", { "identity", "[1,\"abc\"]" } },
+      { "valid5", { "identity", "{\"a\":7,\"b\":\"c\"}" } },
     };
     arangodb::iresearch::IResearchAnalyzerFeature feature(nullptr);
     feature.start();
@@ -429,6 +459,7 @@ SECTION("test_persistence") {
 
     {
       arangodb::iresearch::IResearchAnalyzerFeature feature(nullptr);
+      feature.start();
       auto result = feature.emplace("valid", "identity", "abc");
       CHECK((result.first));
       CHECK((result.second));
@@ -436,7 +467,8 @@ SECTION("test_persistence") {
 
     {
       std::map<irs::string_ref, std::pair<irs::string_ref, irs::string_ref>> expected = {
-        { "valid", { "identity", "abc" } },
+        { "identity", { "identity", irs::string_ref::nil } },
+        { "valid", { "identity", "\"abc\"" } },
       };
       arangodb::iresearch::IResearchAnalyzerFeature feature(nullptr);
       feature.start();
@@ -455,19 +487,25 @@ SECTION("test_persistence") {
   // remove existing records
   {
     {
+      std::string collection("_iresearch_analyzers");
       arangodb::OperationOptions options;
-      arangodb::ManagedDocumentResult result;
-      TRI_voc_tick_t resultMarkerTick;
-      auto* collection = vocbase->lookupCollection("_iresearch_analyzers");
-      collection->truncate(nullptr, options);
-      collection->insert(nullptr, arangodb::velocypack::Parser::fromJson("{\"name\": \"valid0\", \"type\": \"identity\", \"properties\": null, \"ref_count\": 0\"}")->slice(), result, options, resultMarkerTick, false);
-      collection->insert(nullptr, arangodb::velocypack::Parser::fromJson("{\"name\": \"valid1\", \"type\": \"identity\", \"properties\": null, \"ref_count\": 1\"}")->slice(), result, options, resultMarkerTick, false);
+      arangodb::SingleCollectionTransaction trx(
+        arangodb::transaction::StandaloneContext::Create(vocbase.get()),
+        collection,
+        arangodb::AccessMode::Type::WRITE
+      );
+      trx.begin();
+      trx.truncate(collection, options);
+      trx.insert(collection, arangodb::velocypack::Parser::fromJson("{\"name\": \"valid0\", \"type\": \"identity\", \"properties\": null, \"ref_count\": 0}")->slice(), options);
+      trx.insert(collection, arangodb::velocypack::Parser::fromJson("{\"name\": \"valid1\", \"type\": \"identity\", \"properties\": null, \"ref_count\": 1}")->slice(), options);
+      trx.commit();
     }
 
     {
       std::map<irs::string_ref, std::pair<irs::string_ref, irs::string_ref>> expected = {
-        { "valid0", { "identity", irs::string_ref::nil } },
-        { "valid1", { "identity", irs::string_ref::nil } },
+        { "identity", { "identity", irs::string_ref::nil } },
+        { "valid0", { "identity", "null" } },
+        { "valid1", { "identity", "null" } },
       };
       arangodb::iresearch::IResearchAnalyzerFeature feature(nullptr);
       feature.start();
@@ -486,26 +524,39 @@ SECTION("test_persistence") {
     }
 
     {
+      std::map<irs::string_ref, std::pair<irs::string_ref, irs::string_ref>> expected = {
+        { "identity", { "identity", irs::string_ref::nil } },
+      };
       arangodb::iresearch::IResearchAnalyzerFeature feature(nullptr);
       feature.start();
-      feature.visit([](irs::string_ref const& name, irs::string_ref const& type, irs::string_ref const& properties)->bool {
-        CHECK((false));
+      feature.visit([&expected](irs::string_ref const& name, irs::string_ref const& type, irs::string_ref const& properties)->bool {
+        auto itr = expected.find(name);
+        CHECK((itr != expected.end()));
+        CHECK((itr->second.first == type));
+        CHECK((itr->second.second == properties));
+        expected.erase(itr);
         return true;
       });
+      CHECK((expected.empty()));
     }
   }
 
   // update records (reserve/remove pool)
   {
     {
+      std::string collection("_iresearch_analyzers");
       arangodb::OperationOptions options;
-      arangodb::ManagedDocumentResult result;
-      TRI_voc_tick_t resultMarkerTick;
-      auto* collection = vocbase->lookupCollection("_iresearch_analyzers");
-      collection->truncate(nullptr, options);
-      collection->insert(nullptr, arangodb::velocypack::Parser::fromJson("{\"name\": \"valid0\", \"type\": \"identity\", \"properties\": null, \"ref_count\": 0\"}")->slice(), result, options, resultMarkerTick, false);
-      collection->insert(nullptr, arangodb::velocypack::Parser::fromJson("{\"name\": \"valid1\", \"type\": \"identity\", \"properties\": null, \"ref_count\": 1\"}")->slice(), result, options, resultMarkerTick, false);
-      collection->insert(nullptr, arangodb::velocypack::Parser::fromJson("{\"name\": \"valid2\", \"type\": \"identity\", \"properties\": null, \"ref_count\": 2\"}")->slice(), result, options, resultMarkerTick, false);
+      arangodb::SingleCollectionTransaction trx(
+        arangodb::transaction::StandaloneContext::Create(vocbase.get()),
+        collection,
+        arangodb::AccessMode::Type::WRITE
+      );
+      trx.begin();
+      trx.truncate(collection, options);
+      trx.insert(collection, arangodb::velocypack::Parser::fromJson("{\"name\": \"valid0\", \"type\": \"identity\", \"properties\": null, \"ref_count\": 0}")->slice(), options);
+      trx.insert(collection, arangodb::velocypack::Parser::fromJson("{\"name\": \"valid1\", \"type\": \"identity\", \"properties\": null, \"ref_count\": 1}")->slice(), options);
+      trx.insert(collection, arangodb::velocypack::Parser::fromJson("{\"name\": \"valid2\", \"type\": \"identity\", \"properties\": null, \"ref_count\": 2}")->slice(), options);
+      trx.commit();
     }
 
     {
@@ -539,10 +590,10 @@ SECTION("test_persistence") {
     }
   }
 }
-
+*/
 SECTION("test_registration") {
-  auto* database = arangodb::iresearch::getFeature<arangodb::DatabaseFeature>("Database");
-  auto* vocbase = database->systemDatabase();
+  auto* database = arangodb::iresearch::getFeature<arangodb::iresearch::SystemDatabaseFeature>();
+  auto vocbase = database->use();
 
   // ensure there is no configuration collection
   {
@@ -564,7 +615,7 @@ SECTION("test_registration") {
     CHECK((!feature.reserve(entry.first)));
     CHECK((1 == feature.erase("valid"))); // remove allowed
   }
-
+/*FIXME TODO enable
   // release pool (persistence failure)
   {
     arangodb::iresearch::IResearchAnalyzerFeature feature(nullptr);
@@ -609,8 +660,9 @@ SECTION("test_registration") {
       CHECK((1 == feature.erase("valid"))); // remove allowed
     }
   }
-}
 */
+}
+
 SECTION("test_remove") {
   // remove existing
   {
@@ -646,7 +698,7 @@ SECTION("test_tokens") {
   arangodb::application_features::ApplicationServer::server->addFeature(analyzers);
   arangodb::application_features::ApplicationServer::server->addFeature(functions);
   arangodb::application_features::ApplicationServer::server->addFeature(systemdb);
-  analyzers->emplace("test_analyzer", "TestAnalyzer", "abc");
+  REQUIRE((false == !analyzers->emplace("test_analyzer", "TestAnalyzer", "abc").first));
 
   // test function registration
   {

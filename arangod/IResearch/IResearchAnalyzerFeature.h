@@ -64,10 +64,10 @@ class IResearchAnalyzerFeature final: public arangodb::application_features::App
 
     mutable irs::unbounded_object_pool<Builder> _cache; // cache of irs::analysis::analyzer (constructed via AnalyzerBuilder::make(...))
     irs::flags _features; // cached analyzer features
+    std::string _key; // the key of the persisted configuration for this pool
     std::string _name;
     std::string _properties;
     uint64_t _refCount; // number of references held to this pool across reboots
-    TRI_voc_rid_t _rid; // the revision id of the persisted configuration for this pool
     std::string _type;
 
     AnalyzerPool(irs::string_ref const& name);
@@ -105,7 +105,8 @@ class IResearchAnalyzerFeature final: public arangodb::application_features::App
     bool persist
   ) noexcept;
   void loadConfiguration();
-  bool storeConfiguration(AnalyzerPool const& pool);
+  bool storeConfiguration(AnalyzerPool& pool);
+  bool updateConfiguration(AnalyzerPool& pool, bool increment);
 };
 
 NS_END // iresearch
