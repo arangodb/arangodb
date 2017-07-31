@@ -254,6 +254,11 @@ static void JS_SynchronizeReplication(
     verbose = TRI_ObjectToBoolean(object->Get(TRI_V8_ASCII_STRING("verbose")));
   }
 
+  bool skipCreateDrop = false;
+  if (object->Has(TRI_V8_ASCII_STRING("skipCreateDrop"))) {
+    skipCreateDrop = TRI_ObjectToBoolean(object->Get(TRI_V8_ASCII_STRING("skipCreateDrop")));
+  }
+
   if (endpoint.empty()) {
     TRI_V8_THROW_EXCEPTION_PARAMETER("<endpoint> must be a valid endpoint");
   }
@@ -319,7 +324,7 @@ static void JS_SynchronizeReplication(
 
   std::string errorMsg = "";
   InitialSyncer syncer(vocbase, &config, restrictCollections, restrictType,
-                       verbose);
+                       verbose, skipCreateDrop);
   if (!leaderId.empty()) {
     syncer.setLeaderId(leaderId);
   }

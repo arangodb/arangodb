@@ -2897,7 +2897,7 @@ void MMFilesRestReplicationHandler::handleCommandMakeSlave() {
   std::string errorMsg = "";
   {
     InitialSyncer syncer(_vocbase, &config, config._restrictCollections,
-                         restrictType, false);
+                         restrictType, false, false);
 
     res = TRI_ERROR_NO_ERROR;
 
@@ -3018,7 +3018,7 @@ void MMFilesRestReplicationHandler::handleCommandSync() {
   MMFilesLogfileManager::instance()->waitForSync(5.0);
 
   InitialSyncer syncer(_vocbase, &config, restrictCollections, restrictType,
-                       verbose);
+                       verbose, false);
 
   std::string errorMsg = "";
 
