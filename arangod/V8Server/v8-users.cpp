@@ -419,12 +419,9 @@ static void JS_GetConfigData(v8::FunctionCallbackInfo<v8::Value> const& args) {
 static void JS_GetPermission(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
-  
-  bool isString = true;
-  for (int i = 0; i < args.Length(); i++) {
-    isString = isString && args[i]->IsString();
-  }
-  if (args.Length() > 3 || args.Length() == 0 || !isString) {
+  if (args.Length() > 3 || args.Length() == 0 || !args[0]->IsString() ||
+      !(args.Length() > 1 && args[1]->IsString()) ||
+      !(args.Length() == 3 && args[2]->IsString())) {
     TRI_V8_THROW_EXCEPTION_USAGE("permission(username[, database, collection])");
   }
 
@@ -437,9 +434,9 @@ static void JS_GetPermission(v8::FunctionCallbackInfo<v8::Value> const& args) {
     AuthLevel lvl;
     if (args.Length() == 3) {
       std::string collection = TRI_ObjectToString(isolate, args[2]);
-      lvl = authentication->authInfo()->canUseCollection(username, dbname, collection);
+      lvl = authentication->canUseCollection(username, dbname, collection);
     } else {
-      lvl = authentication->authInfo()->canUseDatabase(username, dbname);
+      lvl = authentication->canUseDatabase(username, dbname);
     }
     
     if (lvl == AuthLevel::RO) {
@@ -462,7 +459,6 @@ static void JS_GetPermission(v8::FunctionCallbackInfo<v8::Value> const& args) {
     TRI_V8_RETURN(result);
   }
   TRI_V8_RETURN_UNDEFINED();
-  
   TRI_V8_TRY_CATCH_END
 }
 

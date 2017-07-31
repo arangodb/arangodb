@@ -164,7 +164,6 @@ describe('User Rights Management', () => {
                 expect(!rootTestGraph()).to.equal(false, 'Precondition failed, the graph does not exists');
                 if (dbLevel['rw'].has(name) && colLevel['rw'].has(name)) {
                   graphModule._drop(testGraphName, true);
-                  print("Stuff " + name);
                   print(db._collection(testEdgeColName));
 
                   expect(!rootTestGraph()).to.equal(true, 'Graph drop reported success, but graph was found afterwards.');
@@ -202,7 +201,6 @@ describe('User Rights Management', () => {
                 expect(rootTestCollection(testVertexColName)).to.equal(true, 'Precondition failed, the vertex collection still not exists');
                 if (dbLevel['rw'].has(name) && colLevel['rw'].has(name)) {
                   graphModule._drop(testGraphName, true);
-                  print("Stuff " + name);
                   print(db._collection(testEdgeColName));
 
                   expect(!rootTestGraph()).to.equal(true, 'Graph drop reported success, but graph was found afterwards.');
