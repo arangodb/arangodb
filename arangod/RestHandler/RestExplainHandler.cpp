@@ -34,7 +34,7 @@ using namespace arangodb::basics;
 using namespace arangodb::rest;
 
 RestExplainHandler::RestExplainHandler(GeneralRequest* request,
-                                         GeneralResponse* response)
+                                       GeneralResponse* response)
     : RestVocbaseBaseHandler(request, response) {}
 
 RestStatus RestExplainHandler::execute() {
@@ -46,7 +46,7 @@ RestStatus RestExplainHandler::execute() {
     case rest::RequestType::POST:
       explainQuery();
       break;
-  default: { generateNotImplemented("Unsupported method"); }
+    default: { generateNotImplemented("Unsupported method"); }
   }
 
   // this handler is done
@@ -83,8 +83,9 @@ void RestExplainHandler::explainQuery() {
   };
 
   if (!body.isObject() || body.length() < 1 || body.length() > 3) {
-    badParamError("expected usage: AQL_EXPLAIN(<queryString>, <bindVars>, "
-                  "<options>)");
+    badParamError(
+        "expected usage: AQL_EXPLAIN(<queryString>, <bindVars>, "
+        "<options>)");
     return;
   }
 
@@ -122,7 +123,7 @@ void RestExplainHandler::explainQuery() {
   if (queryResult.code != TRI_ERROR_NO_ERROR) {
     auto code = rest::ResponseCode::BAD;
 
-    switch(queryResult.code) {
+    switch (queryResult.code) {
       case TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND:
         code = rest::ResponseCode::NOT_FOUND;
         break;
@@ -143,7 +144,7 @@ void RestExplainHandler::explainQuery() {
   }
 
   if (queryResult.warnings == nullptr) {
-    result.add("warnings", VPackSlice::noneSlice());
+    result.add("warnings", VPackSlice::emptyArraySlice());
   } else {
     result.add("warnings", queryResult.warnings->slice());
   }
@@ -158,7 +159,10 @@ void RestExplainHandler::explainQuery() {
     result.add("stats", VPackSlice::noneSlice());
   }
 
+  result.add("error", VPackValue(false));
+  result.add("code", VPackValue(static_cast<int>(rest::ResponseCode::OK)));
+
   result.close();
 
-  generateSuccess(rest::ResponseCode::OK, result.slice());
+  generateResult(rest::ResponseCode::OK, result.slice());
 }
