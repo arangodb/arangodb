@@ -7,6 +7,8 @@ AQL supports the following functions to operate on array values:
   regardless of their values. If *array* is a collection, returns the number of documents
   in it.
 
+  Note: In v8 mode, this functions returns the number of utf8 code points not the number of characters.
+
 - *FLATTEN(array, depth)*: Turns an array of arrays into a flat array. All 
   array elements in *array* will be expanded in the result array. Non-array elements 
   are added as they are. The function will recurse into sub-arrays up to a depth of

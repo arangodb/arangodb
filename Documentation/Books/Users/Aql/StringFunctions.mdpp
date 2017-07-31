@@ -23,8 +23,9 @@ For string processing, AQL offers the following functions:
       /* "foo, bar, baz" */
       CONCAT_SEPARATOR(', ', [ 'foo', 'bar', 'baz' ])
 
-- *CHAR_LENGTH(value)*: Return the number of characters in *value*. This is
-  a synonym for *LENGTH(value)*
+- *CHAR_LENGTH(value)*: Return the number of characters in *value*.
+
+  Note: This functions returns the number of utf8 code points not the number of characters.
 
 - *LOWER(value)*: Lower-case *value*
 
