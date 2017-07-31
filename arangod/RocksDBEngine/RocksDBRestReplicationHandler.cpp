@@ -1489,7 +1489,7 @@ void RocksDBRestReplicationHandler::handleCommandMakeSlave() {
   std::string errorMsg = "";
   {
     InitialSyncer syncer(_vocbase, &config, config._restrictCollections,
-                         restrictType, false);
+                         restrictType, false, false);
 
     res = TRI_ERROR_NO_ERROR;
 
@@ -1607,7 +1607,7 @@ void RocksDBRestReplicationHandler::handleCommandSync() {
   config._useCollectionId = useCollectionId;
 
   InitialSyncer syncer(_vocbase, &config, restrictCollections, restrictType,
-                       verbose);
+                       verbose, false);
 
   std::string errorMsg = "";
 
@@ -1909,6 +1909,27 @@ void RocksDBRestReplicationHandler::handleCommandAddFollower() {
                   TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND,
                   "did not find collection");
     return;
+  }
+
+  VPackSlice const checksum = body.get("checksum");
+  // optional while intoroducing this bugfix. should definately be required with 3.4
+  // and throw a 400 then
+  if (checksum.isObject()) {
+    auto result = col->compareChecksums(checksum);
+
+    if (result.fail()) {
+      auto errorNumber = result.errorNumber();
+      rest::ResponseCode code;
+      if (errorNumber == TRI_ERROR_REPLICATION_WRONG_CHECKSUM ||
+          errorNumber == TRI_ERROR_REPLICATION_WRONG_CHECKSUM_FORMAT) {
+        code = rest::ResponseCode::BAD;
+      } else {
+        code = rest::ResponseCode::SERVER_ERROR;
+      }
+      generateError(code,
+        errorNumber, result.errorMessage());
+      return;
+    }
   }
 
   col->followers()->add(followerId.copyString());
