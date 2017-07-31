@@ -38,7 +38,6 @@ class RestAdminRoutingHandler : public RestVocbaseBaseHandler {
 
  protected:
   void reloadRouting();
-  void routingTree();
 };
 }
 

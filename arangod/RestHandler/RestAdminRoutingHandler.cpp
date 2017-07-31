@@ -36,16 +36,9 @@ RestAdminRoutingHandler::RestAdminRoutingHandler(GeneralRequest* request,
 
 RestStatus RestAdminRoutingHandler::execute() {
   std::vector<std::string> const& suffixes = _request->suffixes();
-  if (suffixes.size() == 1) {
-    if (suffixes[0] == "reload") {
-      reloadRouting();
-      return RestStatus::DONE;
-    }
-
-    if (suffixes[0] == "routes") {
-      routingTree();
-      return RestStatus::DONE;
-    }
+  if (suffixes.size() == 1 && suffixes[0] == "reload") {
+    reloadRouting();
+    return RestStatus::DONE;
   }
 
   generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_HTTP_NOT_FOUND);
@@ -55,48 +48,11 @@ RestStatus RestAdminRoutingHandler::execute() {
 }
 
 void RestAdminRoutingHandler::reloadRouting() {
-  auto context = V8DealerFeature::DEALER->enterContext(_vocbase, false);
-
-  // note: the context might be 0 in case of shut-down
-  if (context == nullptr) {
+  if (!V8DealerFeature::DEALER->addGlobalContextMethod("reloadRouting")) {
+    generateError(rest::ResponseCode::SERVER_ERROR, TRI_ERROR_INTERNAL,
+                  "invalid action definition");
     return;
-  }
-
-  TRI_DEFER(V8DealerFeature::DEALER->exitContext(context));
-
-  // now execute the function within this context
-  {
-    auto isolate = context->_isolate;
-    v8::HandleScope scope(isolate);
-
-    // execute following JS:
-    // internal.executeGlobalContextFunction('reloadRouting');
-    // console.debug('about to flush the routing cache');
   }
 
   generateOk();
-}
-
-void RestAdminRoutingHandler::routingTree() {
-  auto context = V8DealerFeature::DEALER->enterContext(_vocbase, false);
-
-  // note: the context might be 0 in case of shut-down
-  if (context == nullptr) {
-    return;
-  }
-
-  TRI_DEFER(V8DealerFeature::DEALER->exitContext(context));
-
-  VPackBuilder result;
-  // now execute the function within this context
-  {
-    auto isolate = context->_isolate;
-    v8::HandleScope scope(isolate);
-
-    // execute following JS:
-    // result = actions.routingTree()
-    // copy result to VPackBuilder
-  }
-
-  generateResult(rest::ResponseCode::OK, result.slice());
 }
