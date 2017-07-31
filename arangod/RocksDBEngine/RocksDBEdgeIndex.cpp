@@ -38,6 +38,8 @@
 #include "Transaction/Helpers.h"
 #include "Transaction/Methods.h"
 #include "VocBase/LogicalCollection.h"
+#include "Scheduler/Scheduler.h"
+#include "Scheduler/SchedulerFeature.h"
 
 #include "RocksDBEngine/RocksDBCollection.h"
 #include "RocksDBEngine/RocksDBCommon.h"
@@ -650,10 +652,20 @@ void RocksDBEdgeIndex::warmup(arangodb::transaction::Methods* trx) {
   VPackBuilder builder;
   ManagedDocumentResult mmdr;
   bool needsInsert = false;
+  
+  auto scheduler = SchedulerFeature::SCHEDULER;
+  auto bounds = RocksDBKeyBounds::EdgeIndex(_objectId);
+  std::string middle = bounds.start().ToString();
+  size_t min = std::min(bounds.start().size(), bounds.end().size());
+  for (size_t i = 0; i < min; i++) {
+    middle[i] = (bounds.end().data()[i] + middle[i]) / 2;
+  }
+  
+  scheduler->post(std)
+  
 
   // intentional copy of the read options
   auto* mthds = RocksDBTransactionState::toMethods(trx);
-  auto bounds = RocksDBKeyBounds::EdgeIndex(_objectId);
   rocksdb::Slice const end = bounds.end();
   rocksdb::ReadOptions options = mthds->readOptions();
   options.iterate_upper_bound = &end;  // save to use on rocksb::DB directly
