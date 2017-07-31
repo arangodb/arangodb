@@ -113,6 +113,16 @@ Determine the number of elements in an array.
 of an object / document, the [amount of documents](Miscellaneous.md#length) in a
 collection and the [character length](String.md#length) of a string.
 
+|input|count|
+|---|---|
+|String|number of unicode characters|
+|Number|number of characters that represent the number|
+|true|1|
+|false|0|
+|null|0|
+|Array|number of elements|
+|Object|number of first level elements|
+
 ### MINUS()
 
 `MINUS(array1, array2, ... arrayN) → newArray`
