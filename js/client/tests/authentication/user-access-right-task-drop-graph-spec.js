@@ -214,8 +214,6 @@ describe('User Rights Management', () => {
                   command: `(function (params) {
                     try {
                       require('@arangodb/general-graph')._drop('${testGraphName}', true);
-                    } catch(e) {
-                       global.KEY_SET('${keySpaceId}', 'testtest', JSON.stringify(e));
                     } finally {
                       global.KEY_SET('${keySpaceId}', '${name}', true);
                     }
@@ -229,10 +227,6 @@ describe('User Rights Management', () => {
                     expect(!rootTestCollection(testEdgeColName)).to.equal(true, 'Graph drop reported success, but edge collection was found afterwards.');
                     expect(!rootTestCollection(testVertexColName)).to.equal(true, 'Graph drop reported success, but vertex collection was found afterwards.');
                   } else {
-                    if(rootTestGraph()) {
-                      print("dssdsds")
-                      print(getKey(keySpaceId, "testtest"));
-                    }
                     expect(!rootTestGraph()).to.equal(false, `${name} was able to drop a graph with insufficent rights`);
                   }
                 } else {
@@ -271,8 +265,6 @@ describe('User Rights Management', () => {
                   command: `(function (params) {
                     try {
                       require('@arangodb/general-graph')._drop('${testGraphName}', true);
-                    } catch(e) {
-                       global.KEY_SET('${keySpaceId}', 'testtest', JSON.stringify(e));
                     } finally {
                       global.KEY_SET('${keySpaceId}', '${name}_specified_collection_access', true);
                     }

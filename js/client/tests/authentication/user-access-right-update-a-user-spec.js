@@ -126,7 +126,7 @@ describe('User Rights Management', () => {
                   users.grantDatabase(testUser, '_system', 'rw');
                   expect(false).to.equal(true, `${name} was able to update a user with insufficient rights.`);
                 } catch (e) {
-                  print(e);
+                  //print(e);
                 }
               }
             });
