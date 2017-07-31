@@ -91,18 +91,25 @@ const removeUser = (user) => {
 };
 
 describe('User Rights Management', () => {
-  before(createUsers);
+  before(() => {
+    console.error("Before");
+    createUsers();
+    createDBs();
+  });
+
+  after(() => {
+    console.error("After");
+    dropDBs();
+  });
 
   it('should test permission for', () => {
     for (const user of userSet) {
       describe(`user ${user.name}`, () => {
         before(() => {
-          createDBs();
           createUser(user);
         });
         after(() => {
           removeUser(user);
-          dropDBs();
         });
         it('on database', () => {
           const permission = users.permission(user.name, dbName);

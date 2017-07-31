@@ -72,7 +72,12 @@ const setKey = (keySpaceId, key) => {
 };
 
 const getKey = (keySpaceId, key) => {
-  return Number(executeJS(`return global.KEY_GET('${keySpaceId}', '${key}');`).body);
+  let res = executeJS(`return global.KEY_GET('${keySpaceId}', '${key}');`).body;
+  let num = Number(res);
+  if (isNaN(num)) {
+    console.error(res);
+  }
+  return num;
 };
 
 const executeJS = (code) => {
@@ -113,7 +118,6 @@ describe('User Rights Management', () => {
           before(() => {
             switchUser(name);
             expect(createKeySpace(keySpaceId)).to.equal(true, 'keySpace creation failed!');
-            setKey(keySpaceId, name);
           });
 
           after(() => {
@@ -131,6 +135,7 @@ describe('User Rights Management', () => {
 
             it('update a user', () => {
               if (systemLevel['rw'].has(name)) {
+                setKey(keySpaceId, name);
                 tasks.register({
                   id: taskId,
                   name: taskId,

@@ -48,9 +48,6 @@ class ExecContext {
   AuthLevel systemAuthLevel() const { return _systemAuthLevel; };
   AuthLevel databaseAuthLevel() const { return _databaseAuthLevel; };
   ExecContext* copy();
-
-  void setSysAuthLevel(AuthLevel lvl) {_systemAuthLevel = lvl;}
-  void setDBAuthLevel(AuthLevel lvl) {_databaseAuthLevel = lvl;}
   
  protected:
   std::string _user;
