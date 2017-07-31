@@ -174,7 +174,8 @@ class RocksDBEdgeIndex final : public RocksDBIndex {
   void handleValNode(VPackBuilder* keys,
                      arangodb::aql::AstNode const* valNode) const;
   
-  void warmupInternal(rocksdb::Slice const& lower, rocksdb::Slice const& upper);
+  void warmupInternal(transaction::Methods* trx,
+                      rocksdb::Slice const& lower, rocksdb::Slice const& upper);
   
  private:
 

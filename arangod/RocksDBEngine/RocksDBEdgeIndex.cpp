@@ -638,7 +638,7 @@ void RocksDBEdgeIndex::expandInSearchValues(VPackSlice const slice,
   builder.close();
 }
 
-void RocksDBEdgeIndex::warmup(arangodb::transaction::Methods* trx) {
+void RocksDBEdgeIndex::warmup(transaction::Methods* trx) {
   if (!_useCache || !_cache) {
     return;
   }
@@ -648,10 +648,6 @@ void RocksDBEdgeIndex::warmup(arangodb::transaction::Methods* trx) {
 
   // Prepare the cache to be resized for this amount of objects to be inserted.
   _cache->sizeHint(expectedCount);
-  std::string previous = "";
-  VPackBuilder builder;
-  ManagedDocumentResult mmdr;
-  bool needsInsert = false;
   
   auto scheduler = SchedulerFeature::SCHEDULER;
   auto bounds = RocksDBKeyBounds::EdgeIndex(_objectId);
@@ -661,12 +657,28 @@ void RocksDBEdgeIndex::warmup(arangodb::transaction::Methods* trx) {
     middle[i] = (bounds.end().data()[i] + middle[i]) / 2;
   }
   
-  scheduler->post(std)
-  
+  bool done = false;
+  scheduler->post([&] {
+    TRI_DEFER(done = true); // middle is excluded
+    this->warmupInternal(trx, bounds.start(), middle);
+  });
+  this->warmupInternal(trx, middle, bounds.end());
+  while (!done) {
+    usleep(10000);
+  }
+}
 
+void RocksDBEdgeIndex::warmupInternal(transaction::Methods* trx, rocksdb::Slice const& lower,
+                                      rocksdb::Slice const& upper) {
+  auto rocksColl = toRocksDBCollection(_collection);
+  ManagedDocumentResult mmdr;
+  bool needsInsert = false;
+  std::string previous = "";
+  VPackBuilder builder;
+  
   // intentional copy of the read options
   auto* mthds = RocksDBTransactionState::toMethods(trx);
-  rocksdb::Slice const end = bounds.end();
+  rocksdb::Slice const end = upper;
   rocksdb::ReadOptions options = mthds->readOptions();
   options.iterate_upper_bound = &end;  // save to use on rocksb::DB directly
   options.prefix_same_as_start = false;
@@ -674,10 +686,10 @@ void RocksDBEdgeIndex::warmup(arangodb::transaction::Methods* trx) {
   options.verify_checksums = false;
   options.fill_cache = EdgeIndexFillBlockCache;
   std::unique_ptr<rocksdb::Iterator> it(
-      rocksutils::globalRocksDB()->NewIterator(options, _cf));
-
+                                        rocksutils::globalRocksDB()->NewIterator(options, _cf));
+  
   cache::Cache* cc = _cache.get();
-  for (it->Seek(bounds.start()); it->Valid(); it->Next()) {
+  for (it->Seek(lower); it->Valid(); it->Next()) {
     rocksdb::Slice key = it->key();
     StringRef v = RocksDBKey::vertexId(key);
     if (previous.empty()) {
@@ -690,30 +702,30 @@ void RocksDBEdgeIndex::warmup(arangodb::transaction::Methods* trx) {
         if (finding.found()) {
           needsInsert = false;
         } else if (  // shouldTry if failed lookup was just a lock timeout
-            finding.result().errorNumber() != TRI_ERROR_LOCK_TIMEOUT) {
+                   finding.result().errorNumber() != TRI_ERROR_LOCK_TIMEOUT) {
           shouldTry = false;
           needsInsert = true;
           builder.openArray(true);
         }
       }
     }
-
+    
     if (v != previous) {
       if (needsInsert) {
         // Switch to next vertex id.
         // Store what we have.
         builder.close();
-
+        
         while (cc->isResizing() || cc->isMigrating()) {
           // We should wait here, the cache will reject
           // any inserts anyways.
           usleep(10000);
         }
-
+        
         auto entry = cache::CachedValue::construct(
-            previous.data(), static_cast<uint32_t>(previous.size()),
-            builder.slice().start(),
-            static_cast<uint64_t>(builder.slice().byteSize()));
+                                                   previous.data(), static_cast<uint32_t>(previous.size()),
+                                                   builder.slice().start(),
+                                                   static_cast<uint64_t>(builder.slice().byteSize()));
         bool inserted = false;
         for (size_t attempts = 0; attempts < 10; attempts++) {
           auto status = cc->insert(entry);
@@ -742,15 +754,15 @@ void RocksDBEdgeIndex::warmup(arangodb::transaction::Methods* trx) {
     }
     if (needsInsert) {
       TRI_voc_rid_t revId =
-          RocksDBKey::revisionId(RocksDBEntryType::EdgeIndexValue, key);
+      RocksDBKey::revisionId(RocksDBEntryType::EdgeIndexValue, key);
       RocksDBToken token(revId);
       if (rocksColl->readDocument(trx, token, mmdr)) {
         builder.add(VPackValue(token.revisionId()));
-
+        
         VPackSlice doc(mmdr.vpack());
         VPackSlice toFrom =
-            _isFromIndex ? transaction::helpers::extractToFromDocument(doc)
-                         : transaction::helpers::extractFromFromDocument(doc);
+        _isFromIndex ? transaction::helpers::extractToFromDocument(doc)
+        : transaction::helpers::extractFromFromDocument(doc);
         TRI_ASSERT(toFrom.isString());
         builder.add(toFrom);
 #ifdef USE_MAINTAINER_MODE
@@ -762,15 +774,15 @@ void RocksDBEdgeIndex::warmup(arangodb::transaction::Methods* trx) {
       }
     }
   }
-
+  
   if (!previous.empty() && needsInsert) {
     // We still have something to store
     builder.close();
-
+    
     auto entry = cache::CachedValue::construct(
-        previous.data(), static_cast<uint32_t>(previous.size()),
-        builder.slice().start(),
-        static_cast<uint64_t>(builder.slice().byteSize()));
+                                               previous.data(), static_cast<uint32_t>(previous.size()),
+                                               builder.slice().start(),
+                                               static_cast<uint64_t>(builder.slice().byteSize()));
     bool inserted = false;
     for (size_t attempts = 0; attempts < 10; attempts++) {
       auto status = cc->insert(entry);
