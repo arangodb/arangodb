@@ -531,7 +531,7 @@ def testEdition(edition, os, mode, engine) {
                 powershell ". .\\Installation\\Pipeline\\windows\\test_${mode}_${edition}_${engine}_${os}.ps1"
             }
 
-            if ((findFiles glob: 'core*').length > 0) {
+            if (findFiles(glob: 'core*').length > 0) {
                error("found core file")
             }
         }
@@ -727,7 +727,7 @@ def testResilienceStep(os, engine, foxx) {
                         unstashBinaries(edition, os)
                         testResilience(os, engine, foxx)
 
-                        if ((findFiles glob: 'resilience/core*').length > 0) {
+                        if (findFiles(glob: 'resilience/core*').length > 0) {
                           error("found core file")
                         }
                     }
