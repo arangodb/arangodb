@@ -62,22 +62,13 @@ function authentication (options) {
     };
   }
 
-  if (options.cluster) {
-    print('skipping Authentication tests on cluster!');
-    return {
-      authentication: {
-        status: true,
-        skipped: true
-      }
-    };
-  }
-
   print(CYAN + 'Authentication tests...' + RESET);
   let testCases = tu.scanTestPath('js/client/tests/authentication');
 
   return tu.performTests(options, testCases, 'authentication', tu.runInArangosh, {
     'server.authentication': 'true',
-    'server.jwt-secret': 'haxxmann'
+    'server.jwt-secret': 'haxxmann',
+    'cluster.create-waits-for-sync-replication': false
   });
 }
 

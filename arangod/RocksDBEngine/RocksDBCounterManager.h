@@ -71,6 +71,8 @@ class RocksDBCounterManager {
     TRI_voc_rid_t revisionId() const { return _revisionId; }
   };
 
+  void runRecovery();
+
   /// Thread-Safe load a counter
   CounterAdjustment loadCounter(uint64_t objectId) const;
 

@@ -20,9 +20,8 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "Indexes.h"
-#include "Basics/Common.h"
 
+#include "Basics/Common.h"
 #include "Basics/ReadLocker.h"
 #include "Basics/StringUtils.h"
 #include "Basics/StringUtils.h"
@@ -31,15 +30,14 @@
 #include "Basics/tri-strings.h"
 #include "Cluster/ClusterComm.h"
 #include "Cluster/ClusterInfo.h"
+#include "Cluster/ClusterMethods.h"
 #include "Cluster/ServerState.h"
 #include "GeneralServer/AuthenticationFeature.h"
-#include "Rest/HttpRequest.h"
-#include "RestServer/DatabaseFeature.h"
-//#include "V8/v8-conv.h"
-//#include "V8/v8-utils.h"
-//#include "V8/v8-vpack.h"
+#include "Indexes.h"
 #include "Indexes/Index.h"
 #include "Indexes/IndexFactory.h"
+#include "Rest/HttpRequest.h"
+#include "RestServer/DatabaseFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
 #include "Transaction/Helpers.h"
@@ -101,13 +99,47 @@ Result Indexes::getIndex(arangodb::LogicalCollection const* collection,
 
 arangodb::Result Indexes::getAll(arangodb::LogicalCollection const* collection,
                                  bool withFigures, VPackBuilder& result) {
+
   VPackBuilder tmp;
   if (ServerState::instance()->isCoordinator()) {
     std::string const databaseName(collection->dbName());
-    std::string const cid = collection->cid_as_string();
+    //std::string const cid = collection->cid_as_string();
+    std::string const& cid = collection->name();
 
     auto c = ClusterInfo::instance()->getCollection(databaseName, cid);
-    c->getIndexesVPack(tmp, withFigures, false);
+
+    // add code for estimates here
+    std::unordered_map<std::string,double> estimates;
+
+    int rv = selectivityEstimatesOnCoordinator(databaseName,cid,estimates);
+    if (rv != TRI_ERROR_NO_ERROR){
+      return Result(rv, "could not retrieve estimates");
+    }
+
+    VPackBuilder tmpInner;
+    c->getIndexesVPack(tmpInner, withFigures, false);
+
+    tmp.openArray();
+    for(VPackSlice const& s : VPackArrayIterator(tmpInner.slice())){
+      auto id = StringRef(s.get("id"));
+      auto found = std::find_if(estimates.begin(),
+                                estimates.end(),
+                                [&id](std::pair<std::string,double> const& v){
+                                  return id == v.first;
+                                }
+                               );
+      if(found == estimates.end()){
+        tmp.add(s); // just copy
+      } else {
+        tmp.openObject();
+        for(auto const& i : VPackObjectIterator(s)){
+          tmp.add(i.key.copyString(), i.value);
+        }
+        tmp.add("selectivityEstimate", VPackValue(found->second));
+        tmp.close();
+      }
+    }
+    tmp.close();
 
   } else {
     // add locks for consistency
@@ -289,10 +321,15 @@ Result Indexes::ensureIndexCoordinator(
 Result Indexes::ensureIndex(arangodb::LogicalCollection* collection,
                             VPackSlice const& definition, bool create,
                             VPackBuilder& output) {
-  if (ExecContext::CURRENT_EXECCONTEXT != nullptr) {
-    AuthLevel level =
-        ExecContext::CURRENT_EXECCONTEXT->authContext()->databaseAuthLevel();
-    if (level != AuthLevel::RW) {
+  // can read indexes with RO on db and collection. Modifications require RW/RW
+  if (ExecContext::CURRENT != nullptr) {
+    AuthenticationFeature* auth = AuthenticationFeature::INSTANCE;
+    AuthLevel lvl1 = ExecContext::CURRENT->databaseAuthLevel();
+    AuthLevel lvl2 = auth->canUseCollection(ExecContext::CURRENT->user(),
+                                              ExecContext::CURRENT->database(),
+                                              collection->name());
+    if ((create && (lvl1 != AuthLevel::RW || lvl2 != AuthLevel::RW)) ||
+        lvl1 == AuthLevel::NONE || lvl2 == AuthLevel::NONE) {
       return TRI_ERROR_FORBIDDEN;
     }
   }
@@ -475,10 +512,13 @@ Result Indexes::extractHandle(arangodb::LogicalCollection const* collection,
 
 arangodb::Result Indexes::drop(arangodb::LogicalCollection const* collection,
                                VPackSlice const& indexArg) {
-  if (ExecContext::CURRENT_EXECCONTEXT != nullptr) {
-    AuthLevel level =
-        ExecContext::CURRENT_EXECCONTEXT->authContext()->databaseAuthLevel();
-    if (level != AuthLevel::RW) {
+
+  AuthenticationFeature* auth = AuthenticationFeature::INSTANCE;
+  if (ExecContext::CURRENT != nullptr) {
+    if (ExecContext::CURRENT->databaseAuthLevel() != AuthLevel::RW ||
+        auth->canUseCollection(ExecContext::CURRENT->user(),
+                               ExecContext::CURRENT->database(),
+                               collection->name()) != AuthLevel::RW) {
       return TRI_ERROR_FORBIDDEN;
     }
   }

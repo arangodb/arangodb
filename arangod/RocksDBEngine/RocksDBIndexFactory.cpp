@@ -36,6 +36,7 @@
 #include "RocksDBEngine/RocksDBPrimaryIndex.h"
 #include "RocksDBEngine/RocksDBSkiplistIndex.h"
 #include "StorageEngine/EngineSelectorFeature.h"
+#include "VocBase/LogicalCollection.h"
 #include "VocBase/ticks.h"
 #include "VocBase/voc-types.h"
 
@@ -60,42 +61,38 @@ static int ProcessIndexFields(VPackSlice const definition,
   TRI_ASSERT(builder.isOpenObject());
   std::unordered_set<StringRef> fields;
 
-  try {
-    VPackSlice fieldsSlice = definition.get("fields");
-    builder.add(VPackValue("fields"));
-    builder.openArray();
-    if (fieldsSlice.isArray()) {
-      // "fields" is a list of fields
-      for (auto const& it : VPackArrayIterator(fieldsSlice)) {
-        if (!it.isString()) {
-          return TRI_ERROR_BAD_PARAMETER;
-        }
-
-        StringRef f(it);
-
-        if (f.empty() || (create && f == StaticStrings::IdString)) {
-          // accessing internal attributes is disallowed
-          return TRI_ERROR_BAD_PARAMETER;
-        }
-
-        if (fields.find(f) != fields.end()) {
-          // duplicate attribute name
-          return TRI_ERROR_BAD_PARAMETER;
-        }
-
-        fields.insert(f);
-        builder.add(it);
+  VPackSlice fieldsSlice = definition.get("fields");
+  builder.add(VPackValue("fields"));
+  builder.openArray();
+  if (fieldsSlice.isArray()) {
+    // "fields" is a list of fields
+    for (auto const& it : VPackArrayIterator(fieldsSlice)) {
+      if (!it.isString()) {
+        return TRI_ERROR_BAD_PARAMETER;
       }
-    }
 
-    if (fields.empty() || (numFields > 0 && (int)fields.size() != numFields)) {
-      return TRI_ERROR_BAD_PARAMETER;
-    }
+      StringRef f(it);
 
-    builder.close();
-  } catch (...) {
-    return TRI_ERROR_OUT_OF_MEMORY;
+      if (f.empty() || (create && f == StaticStrings::IdString)) {
+        // accessing internal attributes is disallowed
+        return TRI_ERROR_BAD_PARAMETER;
+      }
+
+      if (fields.find(f) != fields.end()) {
+        // duplicate attribute name
+        return TRI_ERROR_BAD_PARAMETER;
+      }
+
+      fields.insert(f);
+      builder.add(it);
+    }
   }
+
+  if (fields.empty() || (numFields > 0 && (int)fields.size() != numFields)) {
+    return TRI_ERROR_BAD_PARAMETER;
+  }
+
+  builder.close();
   return TRI_ERROR_NO_ERROR;
 }
 
@@ -296,83 +293,71 @@ int RocksDBIndexFactory::enhanceIndexDefinition(VPackSlice const definition,
   }
 
   TRI_ASSERT(enhanced.isEmpty());
+
+  VPackObjectBuilder b(&enhanced);
+  current = definition.get("id");
+  uint64_t id = 0;
+  if (current.isNumber()) {
+    id = current.getNumericValue<uint64_t>();
+  } else if (current.isString()) {
+    id = basics::StringUtils::uint64(current.copyString());
+  }
+  if (id > 0) {
+    enhanced.add("id", VPackValue(std::to_string(id)));
+  }
+
+  if (create && !isCoordinator) {
+    if (!definition.hasKey("objectId")) {
+      enhanced.add("objectId",
+                    VPackValue(std::to_string(TRI_NewTickServer())));
+    }
+  }
+
+  enhanced.add("type", VPackValue(Index::oldtypeName(type)));
+
   int res = TRI_ERROR_INTERNAL;
 
-  try {
-    VPackObjectBuilder b(&enhanced);
-    current = definition.get("id");
-    uint64_t id = 0;
-    if (current.isNumber()) {
-      id = current.getNumericValue<uint64_t>();
-    } else if (current.isString()) {
-      id = basics::StringUtils::uint64(current.copyString());
-    }
-    if (id > 0) {
-      enhanced.add("id", VPackValue(std::to_string(id)));
+  switch (type) {
+    case Index::TRI_IDX_TYPE_PRIMARY_INDEX:
+    case Index::TRI_IDX_TYPE_EDGE_INDEX: {
+      break;
     }
 
-    if (create && !isCoordinator) {
-      if (!definition.hasKey("objectId")) {
-        enhanced.add("objectId",
-                     VPackValue(std::to_string(TRI_NewTickServer())));
-      }
-    }
-    // breaks lookupIndex()
-    /*else {
-      if (!definition.hasKey("objectId")) {
-        // objectId missing, but must be present
-        return TRI_ERROR_INTERNAL;
-      }
-    }*/
+    case Index::TRI_IDX_TYPE_GEO1_INDEX:
+      res = EnhanceJsonIndexGeo1(definition, enhanced, create);
+      break;
 
-    enhanced.add("type", VPackValue(Index::oldtypeName(type)));
+    case Index::TRI_IDX_TYPE_GEO2_INDEX:
+      res = EnhanceJsonIndexGeo2(definition, enhanced, create);
+      break;
 
-    switch (type) {
-      case Index::TRI_IDX_TYPE_PRIMARY_INDEX:
-      case Index::TRI_IDX_TYPE_EDGE_INDEX: {
-        break;
-      }
+    case Index::TRI_IDX_TYPE_HASH_INDEX:
+      res = EnhanceJsonIndexHash(definition, enhanced, create);
+      break;
 
-      case Index::TRI_IDX_TYPE_GEO1_INDEX:
-        res = EnhanceJsonIndexGeo1(definition, enhanced, create);
-        break;
+    case Index::TRI_IDX_TYPE_SKIPLIST_INDEX:
+      res = EnhanceJsonIndexSkiplist(definition, enhanced, create);
+      break;
 
-      case Index::TRI_IDX_TYPE_GEO2_INDEX:
-        res = EnhanceJsonIndexGeo2(definition, enhanced, create);
-        break;
+    case Index::TRI_IDX_TYPE_PERSISTENT_INDEX:
+      res = EnhanceJsonIndexPersistent(definition, enhanced, create);
+      break;
 
-      case Index::TRI_IDX_TYPE_HASH_INDEX:
-        res = EnhanceJsonIndexHash(definition, enhanced, create);
-        break;
-
-      case Index::TRI_IDX_TYPE_SKIPLIST_INDEX:
-        res = EnhanceJsonIndexSkiplist(definition, enhanced, create);
-        break;
-
-      case Index::TRI_IDX_TYPE_PERSISTENT_INDEX:
-        res = EnhanceJsonIndexPersistent(definition, enhanced, create);
-        break;
-
-      case Index::TRI_IDX_TYPE_FULLTEXT_INDEX:
-        res = EnhanceJsonIndexFulltext(definition, enhanced, create);
-        break;
+    case Index::TRI_IDX_TYPE_FULLTEXT_INDEX:
+      res = EnhanceJsonIndexFulltext(definition, enhanced, create);
+      break;
 
 #ifdef USE_IRESEARCH
-      case Index::TRI_IDX_TYPE_IRESEARCH_LINK:
-        res = arangodb::iresearch::EnhanceJsonIResearchLink(definition, enhanced, create);
-        break;
+    case Index::TRI_IDX_TYPE_IRESEARCH_LINK:
+      res = arangodb::iresearch::EnhanceJsonIResearchLink(definition, enhanced, create);
+      break;
 #endif
 
-      case Index::TRI_IDX_TYPE_UNKNOWN:
-      default: {
-        res = TRI_ERROR_BAD_PARAMETER;
-        break;
-      }
+    case Index::TRI_IDX_TYPE_UNKNOWN:
+    default: {
+      res = TRI_ERROR_BAD_PARAMETER;
+      break;
     }
-
-  } catch (...) {
-    // TODO Check for different type of Errors
-    return TRI_ERROR_OUT_OF_MEMORY;
   }
 
   return res;

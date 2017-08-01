@@ -150,10 +150,10 @@ struct OptimizerRule {
 
     // try to find sort blocks which are superseeded by indexes
     useIndexForSortRule_pass6,
-
+    
     // sort values used in IN comparisons of remaining filters
     sortInValuesRule_pass6,
-
+    
     // merge filters into graph traversals
     optimizeTraversalsRule_pass6,
     // remove redundant filters statements
@@ -165,6 +165,10 @@ struct OptimizerRule {
     // remove now obsolete path variables
     removeTraversalPathVariable_pass6,
     prepareTraversalsRule_pass6,
+
+    // simplify an EnumerationCollectionNode that fetches an
+    // entire document to a projection of this document
+    reduceExtractionToProjectionRule_pass6,
 
     /// Pass 9: push down calculations beyond FILTERs and LIMITs
     moveCalculationsDownRule_pass9,

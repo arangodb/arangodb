@@ -57,12 +57,12 @@ class ArrayIterator {
         _current(other._current) {}
 
   ArrayIterator& operator=(ArrayIterator const& other) = delete;
-  ArrayIterator& operator=(ArrayIterator && other) = default;
+  ArrayIterator& operator=(ArrayIterator&& other) = default;
 
   // prefix ++
   ArrayIterator& operator++() {
     ++_position;
-    if (_position <= _size && _current != nullptr) {
+    if (_position < _size && _current != nullptr) {
       _current += Slice(_current).byteSize();
     } else {
       _current = nullptr;
@@ -210,12 +210,12 @@ class ObjectIterator {
         _useSequentialIteration(other._useSequentialIteration) {}
 
   ObjectIterator& operator=(ObjectIterator const& other) = delete;
-  ObjectIterator& operator=(ObjectIterator && other) = default;
+  ObjectIterator& operator=(ObjectIterator&& other) = default;
 
   // prefix ++
   ObjectIterator& operator++() {
     ++_position;
-    if (_position <= _size && _current != nullptr) {
+    if (_position < _size && _current != nullptr) {
       // skip over key
       _current += Slice(_current).byteSize();
       // skip over value

@@ -47,7 +47,7 @@ class RocksDBKey {
   RocksDBKey(RocksDBKey const& other)
       : _type(other._type), _buffer(other._buffer) {}
 
-  RocksDBKey(RocksDBKey&& other)
+  RocksDBKey(RocksDBKey&& other) noexcept
       : _type(other._type), _buffer(std::move(other._buffer)) {}
 
   RocksDBKey& operator=(RocksDBKey const& other) = delete;

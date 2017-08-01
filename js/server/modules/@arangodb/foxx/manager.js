@@ -383,11 +383,15 @@ function reloadRouting () {
 }
 
 function propagateSelfHeal () {
-  parallelClusterRequests(function * () {
-    for (const coordId of getPeerCoordinatorIds()) {
-      yield [coordId, 'POST', '/_api/foxx/_local/heal'];
-    }
-  }());
+  try {
+    parallelClusterRequests(function * () {
+      for (const coordId of getPeerCoordinatorIds()) {
+        yield [coordId, 'POST', '/_api/foxx/_local/heal'];
+      }
+    }());
+  } catch (e) {
+    console.errorStack(e, 'Failure during propagate self heal');
+  }
   reloadRouting();
 }
 

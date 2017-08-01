@@ -56,6 +56,7 @@
 
 #include "Basics/Common.h"
 #include "Aql/types.h"
+#include "Aql/DocumentProducingNode.h"
 #include "Aql/Expression.h"
 #include "Aql/Variable.h"
 #include "Aql/WalkerWorker.h"
@@ -578,9 +579,6 @@ class ExecutionNode {
   ExecutionNode const* getLoop() const;
 
  protected:
-  static Variable* varFromVPack(Ast* ast, arangodb::velocypack::Slice const& base,
-                                char const* variableName, bool optional = false);
-
   /// @brief factory for sort elements
   static void getSortElements(SortElementVector& elements, ExecutionPlan* plan,
                               arangodb::velocypack::Slice const& slice,
@@ -684,7 +682,7 @@ class SingletonNode : public ExecutionNode {
 };
 
 /// @brief class EnumerateCollectionNode
-class EnumerateCollectionNode : public ExecutionNode {
+class EnumerateCollectionNode : public ExecutionNode, public DocumentProducingNode {
   friend class ExecutionNode;
   friend class ExecutionBlock;
   friend class EnumerateCollectionBlock;
@@ -695,18 +693,17 @@ class EnumerateCollectionNode : public ExecutionNode {
                           TRI_vocbase_t* vocbase, Collection* collection,
                           Variable const* outVariable, bool random)
       : ExecutionNode(plan, id),
+        DocumentProducingNode(outVariable),
         _vocbase(vocbase),
         _collection(collection),
-        _outVariable(outVariable),
         _random(random) {
     TRI_ASSERT(_vocbase != nullptr);
     TRI_ASSERT(_collection != nullptr);
-    TRI_ASSERT(_outVariable != nullptr);
   }
 
   EnumerateCollectionNode(ExecutionPlan* plan,
                           arangodb::velocypack::Slice const& base);
-
+  
   /// @brief return the type of the node
   NodeType getType() const override final { return ENUMERATE_COLLECTION; }
 
@@ -740,18 +737,12 @@ class EnumerateCollectionNode : public ExecutionNode {
   /// @brief return the collection
   Collection const* collection() const { return _collection; }
 
-  /// @brief return the out variable
-  Variable const* outVariable() const { return _outVariable; }
-
  private:
   /// @brief the database
   TRI_vocbase_t* _vocbase;
 
   /// @brief collection
   Collection* _collection;
-
-  /// @brief output variable
-  Variable const* _outVariable;
 
   /// @brief whether or not we want random iteration
   bool _random;

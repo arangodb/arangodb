@@ -39,6 +39,7 @@
 #include "Transaction/Methods.h"
 #include "Utils/OperationCursor.h"
 #include "V8/v8-globals.h"
+#include "VocBase/ManagedDocumentResult.h"
 #include "VocBase/SingleServerTraverser.h"
 #include "VocBase/ticks.h"
 
@@ -188,6 +189,7 @@ int TraversalBlock::initializeCursor(AqlItemBlock* items, size_t pos) {
   _posInPaths = 0;
   _usedConstant = false;
   freeCaches();
+  _traverser->done();
   return ExecutionBlock::initializeCursor(items, pos);
 }
 

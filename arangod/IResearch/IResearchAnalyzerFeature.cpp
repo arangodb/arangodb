@@ -182,16 +182,8 @@ arangodb::aql::AqlValue aqlFnTokens(
 
     return arangodb::aql::AqlValue();
   }
-
-  auto buffer = irs::memory::make_unique<arangodb::velocypack::Buffer<uint8_t>>();
-
-  if (!buffer) {
-    LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "failure to allocate result buffer while computing result for function 'TOKENS'";
-
-    return arangodb::aql::AqlValue();
-  }
-
-  arangodb::velocypack::Builder builder(*buffer);
+  
+  arangodb::velocypack::Builder builder;
 
   builder.openArray();
 
@@ -207,7 +199,7 @@ arangodb::aql::AqlValue aqlFnTokens(
 
   builder.close();
 
-  return arangodb::aql::AqlValue(buffer.release());
+  return arangodb::aql::AqlValue(builder);
 }
 
 void addFunction(
@@ -233,7 +225,7 @@ void addFunctions(arangodb::aql::AqlFunctionFeature& functions) {
   arangodb::aql::Function tokens(
     "TOKENS", // external name (AQL function external names are always in upper case)
     "tokens", // internal name
-    "data analyzer", // argument variable names
+    ".,.", // argument variable names
     false, // cacheable
     false, // deterministic
     true, // can throw

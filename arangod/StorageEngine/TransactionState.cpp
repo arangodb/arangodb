@@ -104,40 +104,16 @@ int TransactionState::addCollection(TRI_voc_cid_t cid,
 
   AuthenticationFeature* auth =
       FeatureCacheFeature::instance()->authenticationFeature();
-  if (auth->isActive() && ExecContext::CURRENT_EXECCONTEXT != nullptr) {
+  if (auth->isActive() && ExecContext::CURRENT != nullptr) {
     std::string const colName = _resolver->getCollectionNameCluster(cid);
 
-    if (Logger::logLevel() >= LogLevel::DEBUG) {
-      LOG_TOPIC(DEBUG, Logger::AUTHORIZATION)
-          << " Rights for user '" << ExecContext::CURRENT_EXECCONTEXT->user()
-          << "' at database '" << ExecContext::CURRENT_EXECCONTEXT->database();
-      ExecContext::CURRENT_EXECCONTEXT->authContext()->dump();
-
-      LOG_TOPIC(DEBUG, Logger::AUTHORIZATION) << "collection: " << colName;
-      if (accessType == AccessMode::Type::NONE)
-        LOG_TOPIC(DEBUG, Logger::AUTHORIZATION) << "AccessMode::Type::NONE";
-      else if (accessType == AccessMode::Type::READ)
-        LOG_TOPIC(DEBUG, Logger::AUTHORIZATION) << "AccessMode::Type::READ";
-      else if (accessType == AccessMode::Type::WRITE)
-        LOG_TOPIC(DEBUG, Logger::AUTHORIZATION) << "AccessMode::Type::WRITE";
-      else if (accessType == AccessMode::Type::EXCLUSIVE)
-        LOG_TOPIC(DEBUG, Logger::AUTHORIZATION)
-            << "AccessMode::Type::EXCLUSIVE";
-    }
     // only valid on coordinator or single server
     TRI_ASSERT(ServerState::instance()->isCoordinator() ||
                !ServerState::instance()->isRunningInCluster());
     // avoid extra lookups of auth context, if we use the same db as stored
     // in the execution context initialized by RestServer/VocbaseContext
-    AuthLevel level;
-    if (ExecContext::CURRENT_EXECCONTEXT->database() == _vocbase->name()) {
-      level =
-          ExecContext::CURRENT_EXECCONTEXT->authContext()->collectionAuthLevel(
-              colName);
-    } else {
-      level = auth->canUseCollection(ExecContext::CURRENT_EXECCONTEXT->user(),
+    AuthLevel level = auth->canUseCollection(ExecContext::CURRENT->user(),
                                      _vocbase->name(), colName);
-    }
 
     if (level == AuthLevel::NONE) {
       LOG_TOPIC(DEBUG, Logger::AUTHORIZATION) << "collection AuthLevel::NONE";
@@ -221,6 +197,16 @@ int TransactionState::addCollection(TRI_voc_cid_t cid,
 /// @brief make sure all declared collections are used & locked
 Result TransactionState::ensureCollections(int nestingLevel) {
   return useCollections(nestingLevel);
+}
+  
+/// @brief run a callback on all collections
+void TransactionState::allCollections(std::function<bool(TransactionCollection*)> const& cb) {
+  for (auto& trxCollection : _collections) {
+    if (!cb(trxCollection)) {
+      // abort early
+      return;
+    }
+  }
 }
 
 /// @brief use all participating collections of a transaction

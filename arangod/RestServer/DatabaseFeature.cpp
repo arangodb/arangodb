@@ -237,8 +237,9 @@ DatabaseFeature::DatabaseFeature(ApplicationServer* server)
   startsAfter("DatabasePath");
   startsAfter("EngineSelector");
   startsAfter("InitDatabase");
-  startsAfter("RocksDBEngine");
   startsAfter("MMFilesEngine");
+  startsAfter("MMFilesPersistentIndex"); // TODO: remove from here!
+  startsAfter("RocksDBEngine");
   startsAfter("Scheduler");
   startsAfter("StorageEngine");
 }
@@ -362,8 +363,6 @@ void DatabaseFeature::start() {
     FATAL_ERROR_EXIT();
   }
 
-  // TODO: handle _upgrade and _checkVersion here
-
   // activate deadlock detection in case we're not running in cluster mode
   if (!arangodb::ServerState::instance()->isRunningInCluster()) {
     enableDeadlockDetection();
@@ -439,8 +438,10 @@ void DatabaseFeature::unprepare() {
 }
 
 /// @brief will be called when the recovery phase has run
-/// this will start the compactors and replication appliers for all databases
-int DatabaseFeature::recoveryDone() {
+/// this will call the engine-specific recoveryDone() procedures
+/// and will execute engine-unspecific operations (such as starting
+/// the replication appliers) for all databases
+void DatabaseFeature::recoveryDone() {
   StorageEngine* engine = EngineSelectorFeature::ENGINE;
 
   TRI_ASSERT(engine && !engine->inRecovery());
@@ -455,7 +456,7 @@ int DatabaseFeature::recoveryDone() {
                 << TRI_errno_string(result.errorNumber()) << "' message: "
                 << result.errorMessage();
 
-      return result.errorNumber();
+      THROW_ARANGO_EXCEPTION_MESSAGE(result.errorNumber(), result.errorMessage());
     }
   }
 
@@ -470,10 +471,10 @@ int DatabaseFeature::recoveryDone() {
     TRI_ASSERT(vocbase != nullptr);
     TRI_ASSERT(vocbase->type() == TRI_VOCBASE_TYPE_NORMAL);
 
-    // start the compactor for the database
+    // execute the engine-specific callbacks on successful recovery
     engine->recoveryDone(vocbase);
 
-    // start the replication applier
+    // start the replication applier, which is engine-unspecific
     TRI_ASSERT(vocbase->replicationApplier() != nullptr);
 
     if (vocbase->replicationApplier()->_configuration._autoStart) {
@@ -490,8 +491,6 @@ int DatabaseFeature::recoveryDone() {
       }
     }
   }
-
-  return TRI_ERROR_NO_ERROR;
 }
 
 Result DatabaseFeature::registerPostRecoveryCallback(
@@ -1037,15 +1036,28 @@ TRI_vocbase_t* DatabaseFeature::lookupDatabase(std::string const& name) {
 }
 
 void DatabaseFeature::enumerateDatabases(std::function<void(TRI_vocbase_t*)> func) {
-  auto unuser(_databasesProtector.use());
-  auto theLists = _databasesLists.load();
-
-  for (auto& p : theLists->_databases) {
-    TRI_vocbase_t* vocbase = p.second;
-    // iterate over all databases
-    TRI_ASSERT(vocbase != nullptr);
-    TRI_ASSERT(vocbase->type() == TRI_VOCBASE_TYPE_NORMAL);
-    func(vocbase);
+  if (ServerState::instance()->isCoordinator()) {
+    auto unuser(_databasesProtector.use());
+    auto theLists = _databasesLists.load();
+    
+    for (auto& p : theLists->_coordinatorDatabases) {
+      TRI_vocbase_t* vocbase = p.second;
+      // iterate over all databases
+      TRI_ASSERT(vocbase != nullptr);
+      TRI_ASSERT(vocbase->type() == TRI_VOCBASE_TYPE_COORDINATOR);
+      func(vocbase);
+    }
+  } else {
+    auto unuser(_databasesProtector.use());
+    auto theLists = _databasesLists.load();
+    
+    for (auto& p : theLists->_databases) {
+      TRI_vocbase_t* vocbase = p.second;
+      // iterate over all databases
+      TRI_ASSERT(vocbase != nullptr);
+      TRI_ASSERT(vocbase->type() == TRI_VOCBASE_TYPE_NORMAL);
+      func(vocbase);
+    }
   }
 }
 

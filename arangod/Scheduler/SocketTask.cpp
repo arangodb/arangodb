@@ -53,6 +53,7 @@ SocketTask::SocketTask(arangodb::EventLoop loop,
       _connectionStatistics(nullptr),
       _connectionInfo(std::move(connectionInfo)),
       _readBuffer(TRI_UNKNOWN_MEM_ZONE, READ_BLOCK_SIZE + 1, false),
+      _stringBuffers{_stringBuffersArena},
       _writeBuffer(nullptr, nullptr),
       _peer(std::move(socket)),
       _keepAliveTimeout(static_cast<long>(keepAliveTimeout * 1000)),
@@ -92,6 +93,11 @@ SocketTask::~SocketTask() {
 
   if (_peer) {
     _peer->close(err);
+  }
+
+  // delete all string buffers we have allocated
+  for (auto& it : _stringBuffers) {
+    delete it;
   }
 }
 
@@ -235,13 +241,63 @@ void SocketTask::writeWriteBuffer() {
                       }
                     });
 }
+    
+StringBuffer* SocketTask::leaseStringBuffer(size_t length) {
+  _lock.assertLockedByCurrentThread();
+
+  StringBuffer* buffer = nullptr;
+  if (!_stringBuffers.empty()) {
+    buffer = _stringBuffers.back();
+    TRI_ASSERT(buffer != nullptr);
+    TRI_ASSERT(buffer->length() == 0);
+
+    size_t const n = buffer->capacity();
+    if (n < length) {
+      if (buffer->reserve(length) != TRI_ERROR_NO_ERROR) {
+        THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
+      }
+    }
+    _stringBuffers.pop_back();
+  } else {
+    buffer = new StringBuffer(TRI_UNKNOWN_MEM_ZONE, length, false);
+  }
+
+  TRI_ASSERT(buffer != nullptr);
+  
+  // still check for safety reasons
+  if (buffer->capacity() >= length) {
+    return buffer;
+  }
+
+  delete buffer;
+  THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
+}
+  
+void SocketTask::returnStringBuffer(StringBuffer* buffer) {
+  TRI_ASSERT(buffer != nullptr);
+  _lock.assertLockedByCurrentThread();
+
+  if (_stringBuffers.size() > 4 || buffer->capacity() >= 4 * 1024 * 1024) {
+    // don't keep too many buffers around and don't hog too much memory
+    delete buffer;
+    return;
+  }
+
+  try {
+    buffer->reset();
+    _stringBuffers.emplace_back(buffer);
+  } catch (...) {
+    delete buffer;
+  }
+}
 
 // caller must hold the _lock
 bool SocketTask::completedWriteBuffer() {
   _lock.assertLockedByCurrentThread();
 
   RequestStatistics::SET_WRITE_END(_writeBuffer._statistics);
-  _writeBuffer.release();
+  // try to recycle the string buffer
+  _writeBuffer.release(this);
 
   if (_writeBuffers.empty()) {
     if (_closeRequested) {

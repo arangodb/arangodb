@@ -31,6 +31,7 @@ const fs = require('fs');
 const yaml = require('js-yaml');
 const toArgv = require('internal').toArgv;
 const crashUtils = require('@arangodb/crash-utils');
+const crypto = require('@arangodb/crypto');
 
 /* Functions: */
 const executeExternal = require('internal').executeExternal;
@@ -255,12 +256,24 @@ function getCleanupDBDirectories () {
 // //////////////////////////////////////////////////////////////////////////////
 
 function makeAuthorizationHeaders (options) {
-  return {
-    'headers': {
-      'Authorization': 'Basic ' + base64Encode(options.username + ':' +
-          options.password)
-    }
-  };
+  if (options['server.jwt-secret']) {
+    var jwt = crypto.jwtEncode(options['server.jwt-secret'], 
+                             {"server_id": "none", 
+                              "iss": "arangodb"}, 'HS256');
+    //print("Using jwt token:     " + jwt);
+    return {
+      'headers': {
+        'Authorization': 'bearer ' + jwt
+      }
+    };
+  } else {
+    return {
+      'headers': {
+        'Authorization': 'Basic ' + base64Encode(options.username + ':' +
+            options.password)
+      }
+    };
+  }
 }
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -715,7 +728,8 @@ function shutdownArangod (arangod, options, forceTerminate) {
       const requestOptions = makeAuthorizationHeaders(options);
       requestOptions.method = 'DELETE';
       print(arangod.url + '/_admin/shutdown');
-      download(arangod.url + '/_admin/shutdown', '', requestOptions);
+      const reply = download(arangod.url + '/_admin/shutdown', '', requestOptions);
+      //print("Shutdown response: " + JSON.stringify(reply));
     }
   } else {
     print('Server already dead, doing nothing.');
@@ -740,7 +754,19 @@ function shutdownInstance (instanceInfo, options, forceTerminate) {
 
   let nonagencies = instanceInfo.arangods
     .filter(arangod => arangod.role !== 'agent');
-  nonagencies.forEach(arangod => shutdownArangod(arangod, options, forceTerminate));
+  nonagencies.sort((a, b) => {
+    if (a.role === b.role) return 0;
+    if (a.role === 'coordinator' && 
+        b.role === 'dbserver') return -1;
+    if (b.role === 'coordinator' && 
+        a.role === 'dbserver') return 1;
+    return 0;
+  });
+  print("Shutdown order " + JSON.stringify(nonagencies));
+  nonagencies.forEach(arangod => {
+    wait(0.025);
+    shutdownArangod(arangod, options, forceTerminate);
+  });
 
   let agentsKilled = false;
   let nrAgents = n - nonagencies.length;
@@ -832,12 +858,14 @@ function shutdownInstance (instanceInfo, options, forceTerminate) {
 function startInstanceCluster (instanceInfo, protocol, options,
   addArgs, rootDir) {
   let makeArgs = function (name, role, args) {
-    args = args || options.extraArgs;
+    args = args || {};
 
     let subDir = fs.join(rootDir, name);
     fs.makeDirectoryRecursive(subDir);
 
     let subArgs = makeArgsArangod(options, fs.join(subDir, 'apps'), role);
+    // FIXME: someone should decide on the order of preferences
+    subArgs = Object.assign(subArgs, addArgs);
     subArgs = Object.assign(subArgs, args);
 
     return [subArgs, subDir];
@@ -890,6 +918,12 @@ function startInstanceCluster (instanceInfo, protocol, options,
   httpOptions.method = 'POST';
   httpOptions.returnBodyOnError = true;
 
+  // scrape the jwt token
+  let authOpts = _.clone(options);
+  if (addArgs['server.jwt-secret'] && !authOpts['server.jwt-secret']) {
+    authOpts['server.jwt-secret'] = addArgs['server.jwt-secret'];
+  }
+
   let count = 0;
   while (true) {
     ++count;
@@ -902,8 +936,7 @@ function startInstanceCluster (instanceInfo, protocol, options,
       throw new Error('cluster startup timed out! bailing out!');
     }
     instanceInfo.arangods.forEach(arangod => {
-      const reply = download(arangod.url + '/_api/version', '', makeAuthorizationHeaders(options));
-
+      const reply = download(arangod.url + '/_api/version', '', makeAuthorizationHeaders(authOpts));
       if (!reply.error && reply.code === 200) {
         arangod.upAndRunning = true;
         return true;
@@ -930,9 +963,16 @@ function startInstanceCluster (instanceInfo, protocol, options,
     if (upAndRunning === instanceInfo.arangods.length) {
       break;
     }
-  }
-  arango.reconnect(instanceInfo.endpoint, '_system', 'root', '');
 
+    // Didn't startup in 10 minutes? kill it, give up.
+    if (count > 1200) {
+      killExternal(instanceInfo.pid, abortSignal);
+      analyzeServerCrash(instanceInfo, options, 'startup timeout; forcefully terminating ' + instanceInfo.role + ' with pid: ' + instanceInfo.pid);
+      throw new Error("startup timed out!");
+    }
+  }
+
+  arango.reconnect(instanceInfo.endpoint, '_system', 'root', '');
   return true;
 }
 

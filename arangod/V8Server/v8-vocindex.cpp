@@ -134,7 +134,7 @@ static void JS_DropIndexVocbaseCol(
   v8::HandleScope scope(isolate);
 
   PREVENT_EMBEDDED_TRANSACTION();
-
+  
   arangodb::LogicalCollection* collection =
       TRI_UnwrapClass<arangodb::LogicalCollection>(args.Holder(),
                                                    WRP_VOCBASE_COL_TYPE);
@@ -214,8 +214,8 @@ static void CreateVocBase(v8::FunctionCallbackInfo<v8::Value> const& args,
   }
   
   AuthenticationFeature* auth = FeatureCacheFeature::instance()->authenticationFeature();
-  if (auth->isActive() && ExecContext::CURRENT_EXECCONTEXT != nullptr) {
-    AuthLevel level = auth->canUseDatabase(ExecContext::CURRENT_EXECCONTEXT->user(),
+  if (auth->isActive() && ExecContext::CURRENT != nullptr) {
+    AuthLevel level = auth->canUseDatabase(ExecContext::CURRENT->user(),
                                            vocbase->name());
     if (level != AuthLevel::RW) {
       TRI_V8_THROW_EXCEPTION(TRI_ERROR_FORBIDDEN);
@@ -304,10 +304,13 @@ static void CreateVocBase(v8::FunctionCallbackInfo<v8::Value> const& args,
   if (result.IsEmpty()) {
     TRI_V8_THROW_EXCEPTION_MEMORY();
   }
+  
   // in case of success we grant the creating user RW access
-  if (auth->isActive() && ExecContext::CURRENT_EXECCONTEXT != nullptr) {
+  if (auth->isActive() && ExecContext::CURRENT != nullptr &&
+      (ServerState::instance()->isCoordinator() ||
+       !ServerState::instance()->isRunningInCluster())) {
     // this should not fail, we can not get here without database RW access
-    auth->authInfo()->updateUser(ExecContext::CURRENT_EXECCONTEXT->user(),
+    auth->authInfo()->updateUser(ExecContext::CURRENT->user(),
                                  [&](AuthUserEntry& entry) {
       entry.grantCollection(vocbase->name(), name, AuthLevel::RW);
     });

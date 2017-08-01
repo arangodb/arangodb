@@ -31,6 +31,7 @@
 #include "Aql/ExecutionPlan.h"
 #include "Aql/Query.h"
 #include "Aql/SortCondition.h"
+#include "Aql/Variable.h"
 #include "Cluster/ClusterComm.h"
 #include "Graph/BaseOptions.h"
 #include "Indexes/Index.h"
@@ -170,7 +171,7 @@ TraversalNode::TraversalNode(ExecutionPlan* plan,
       _toCondition(nullptr) {
   // In Vertex
   if (base.hasKey("inVariable")) {
-    _inVariable = varFromVPack(plan->getAst(), base, "inVariable");
+    _inVariable = Variable::varFromVPack(plan->getAst(), base, "inVariable");
   } else {
     VPackSlice v = base.get("vertexId");
     if (!v.isString()) {
@@ -203,7 +204,7 @@ TraversalNode::TraversalNode(ExecutionPlan* plan,
 
   // Out variables
  if (base.hasKey("pathOutVariable")) {
-    _pathOutVariable = varFromVPack(plan->getAst(), base, "pathOutVariable");
+    _pathOutVariable = Variable::varFromVPack(plan->getAst(), base, "pathOutVariable");
   }
 
   // Filter Condition Parts

@@ -81,12 +81,14 @@ static std::vector<arangodb::basics::AttributeName> const KeyAttribute{
 RocksDBVPackIndexIterator::RocksDBVPackIndexIterator(
     LogicalCollection* collection, transaction::Methods* trx,
     ManagedDocumentResult* mmdr, arangodb::RocksDBVPackIndex const* index,
-    bool reverse, RocksDBKeyBounds&& bounds)
+    bool reverse, bool singleElementFetch,
+    RocksDBKeyBounds&& bounds)
     : IndexIterator(collection, trx, mmdr, index),
       _index(index),
       _cmp(index->comparator()),
       _reverse(reverse),
-      _bounds(bounds) {
+      _singleElementFetch(singleElementFetch),
+      _bounds(std::move(bounds)) {
   TRI_ASSERT(index->columnFamily() == RocksDBColumnFamily::vpack()); 
 
   RocksDBMethods* mthds = RocksDBTransactionState::toMethods(trx);
@@ -145,6 +147,13 @@ bool RocksDBVPackIndexIterator::next(TokenCallback const& cb, size_t limit) {
             ? RocksDBValue::revisionId(_iterator->value())
             : RocksDBKey::revisionId(_bounds.type(), _iterator->key());
     cb(RocksDBToken(revisionId));
+
+    if (_singleElementFetch) {
+      // we only need to fetch a single element from the index and are done then
+      // this is a useful optimization because seeking forwards or backwards with the
+      // iterator can be very expensive
+      return false;
+    }
 
     --limit;
     if (_reverse) {
@@ -205,15 +214,8 @@ RocksDBVPackIndex::RocksDBVPackIndex(TRI_idx_iid_t iid,
 /// @brief destroy the index
 RocksDBVPackIndex::~RocksDBVPackIndex() {}
 
-double RocksDBVPackIndex::selectivityEstimate(
+double RocksDBVPackIndex::selectivityEstimateLocal(
     arangodb::StringRef const*) const {
-  if (_unique) {
-    return 1.0;  // only valid if unique
-  }
-  if (ServerState::instance()->isCoordinator()) {
-    // Coordinator has no idea of estimates. Just return a hard-coded value
-    return 0.1;
-  }
   TRI_ASSERT(_estimator);
   return _estimator->computeEstimate();
 }
@@ -523,13 +525,10 @@ Result RocksDBVPackIndex::insertInternal(transaction::Methods* trx,
   std::vector<RocksDBKey> elements;
   std::vector<uint64_t> hashes;
   int res;
-  try {
+  {
+    // rethrow all types of exceptions from here...
     transaction::BuilderLeaser leased(trx);
     res = fillElement(*(leased.get()), revisionId, doc, elements, hashes);
-  } catch (basics::Exception const& ex) {
-    res = ex.code();
-  } catch (...) {
-    res = TRI_ERROR_OUT_OF_MEMORY;
   }
 
   if (res != TRI_ERROR_NO_ERROR) {
@@ -595,14 +594,11 @@ Result RocksDBVPackIndex::removeInternal(transaction::Methods* trx,
   std::vector<uint64_t> hashes;
 
   int res;
-  try {
+  {
+    // rethrow all types of exceptions from here...
     transaction::BuilderLeaser leased(trx);
     res = fillElement(*(leased.get()), revisionId, doc, elements, hashes);
-  } catch (basics::Exception const& ex) {
-    res = ex.code();
-  } catch (...) {
-    res = TRI_ERROR_OUT_OF_MEMORY;
-  }
+  } 
 
   if (res != TRI_ERROR_NO_ERROR) {
     return IndexResult(res, this);
@@ -738,13 +734,15 @@ RocksDBVPackIndexIterator* RocksDBVPackIndex::lookup(
       }
     }
   }
+  
+  bool const singleElementFetch = (_unique && lastNonEq.isNone() && searchValues.length() == _fields.size());
 
   RocksDBKeyBounds bounds = _unique ? RocksDBKeyBounds::UniqueVPackIndex(
                                           _objectId, leftBorder, rightBorder)
                                     : RocksDBKeyBounds::VPackIndex(
                                           _objectId, leftBorder, rightBorder);
   return new RocksDBVPackIndexIterator(_collection, trx, mmdr, this, reverse,
-                                       std::move(bounds));
+                                       singleElementFetch, std::move(bounds));
 }
 
 bool RocksDBVPackIndex::accessFitsIndex(
@@ -972,8 +970,22 @@ bool RocksDBVPackIndex::supportsFilterCondition(
 
   if (attributesCoveredByEquality == _fields.size() && unique()) {
     // index is unique and condition covers all attributes by equality
+    if (itemsInIndex == 0) {
+      estimatedItems = 0;
+      estimatedCost = 0.0;
+      return true;
+    }
     estimatedItems = values;
     estimatedCost = 0.995 * values;
+    if (values > 0) {
+      if (useCache()) {
+        estimatedCost = static_cast<double>(estimatedItems  * values);
+      } else {
+        estimatedCost = (std::max)(static_cast<double>(1), std::log2(static_cast<double>(itemsInIndex)) * values);
+      }
+    }
+    // cost is already low... now slightly prioritize unique indexes
+    estimatedCost *= 0.995 - 0.05 * (_fields.size() - 1);
     return true;
   }
 
@@ -995,11 +1007,19 @@ bool RocksDBVPackIndex::supportsFilterCondition(
         estimatedItems = static_cast<size_t>(1.0 / estimate);
       }
     }
-    estimatedCost = static_cast<double>(estimatedItems);
+    if (itemsInIndex == 0) {
+      estimatedCost = 0.0;
+    } else {
+      if (useCache()) {
+        estimatedCost = static_cast<double>(estimatedItems * values);
+      } else {
+        estimatedCost = (std::max)(static_cast<double>(1), std::log2(static_cast<double>(itemsInIndex)) * values);
+      }
+    }
     return true;
   }
 
-  // no condition
+  // index does not help for this condition
   estimatedItems = itemsInIndex;
   estimatedCost = static_cast<double>(estimatedItems);
   return false;

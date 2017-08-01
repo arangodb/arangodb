@@ -86,11 +86,21 @@ RocksDBCounterManager::RocksDBCounterManager(rocksdb::DB* db)
   readIndexEstimates();
 
   readCounterValues();
+}
+
+/// parse recent RocksDB WAL entries and notify the
+/// DatabaseFeature about the successful recovery
+void RocksDBCounterManager::runRecovery() {
   if (!_counters.empty()) {
     if (parseRocksWAL()) {
+      // TODO: what do we do if parseRocksWAL returns false?
       sync(false);
     }
   }
+
+  // notify everyone that recovery is now done
+  auto databaseFeature = ApplicationServer::getFeature<DatabaseFeature>("Database");
+  databaseFeature->recoveryDone();
 }
 
 RocksDBCounterManager::CounterAdjustment RocksDBCounterManager::loadCounter(

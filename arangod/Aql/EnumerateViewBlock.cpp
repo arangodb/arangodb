@@ -142,13 +142,10 @@ AqlItemBlock* EnumerateViewBlock::getSome(size_t, size_t atMost) {
         uint8_t const* vpack = _mmdr->vpack();
         if (_mmdr->canUseInExternal()) {
           res->setValue(send, static_cast<arangodb::aql::RegisterId>(curRegs),
-                        AqlValue(vpack, AqlValueFromManagedDocument()));
+                        AqlValue(AqlValueHintNoCopy(vpack)));
         } else {
-          AqlValue a(_mmdr->createAqlValue());
-          AqlValueGuard guard(a, true);
           res->setValue(send, static_cast<arangodb::aql::RegisterId>(curRegs),
-                        a);
-          guard.steal();
+                        AqlValue(AqlValueHintCopy(vpack)));
         }
       }
 

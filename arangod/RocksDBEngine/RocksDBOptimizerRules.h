@@ -1,10 +1,8 @@
-/*jshint -W051:true, -W069:true */
-'use strict';
-
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -20,18 +18,28 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Frank Celler
-/// @author Copyright 2016, ArangoDB GmbH, Cologne, Germany
+/// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-(function() {
-  var args = global.UPGRADE_ARGS;
-  delete global.UPGRADE_ARGS;
+#ifndef ARANGOD_ROCKSDB_ROCKSDB_OPTIMIZER_RULES_H
+#define ARANGOD_ROCKSDB_ROCKSDB_OPTIMIZER_RULES_H 1
+
+#include "Basics/Common.h"
+
+namespace arangodb {
+namespace aql {
+class ExecutionPlan;
+class Optimizer;
+struct OptimizerRule;
+}
+
+struct RocksDBOptimizerRules {
+  static void registerResources();
   
-  require("internal").db._users.truncate();
+  // simplify an EnumerationCollectionNode that fetches an entire document to a projection of this document
+  static void reduceExtractionToProjectionRule(aql::Optimizer* opt, std::unique_ptr<aql::ExecutionPlan> plan, aql::OptimizerRule const* rule);
+};
 
-  const users = require("@arangodb/users");
+} // namespace arangodb
 
-  users.save("root", args.password, true);
-  users.grantDatabase("root", "*", "rw");
-}());
+#endif

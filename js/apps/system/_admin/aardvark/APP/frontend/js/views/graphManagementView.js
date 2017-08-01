@@ -54,6 +54,7 @@
 
     hideSmartGraphOptions: function () {
       $('#row_general-numberOfShards').show();
+      $('#row_general-replicationFactor').show();
       $('#smartGraphInfo').hide();
       $('#row_new-numberOfShards').hide();
       $('#row_new-smartGraphAttribute').hide();
@@ -61,6 +62,7 @@
 
     showSmartGraphOptions: function () {
       $('#row_general-numberOfShards').hide();
+      $('#row_general-replicationFactor').hide();
       $('#smartGraphInfo').show();
       $('#row_new-numberOfShards').show();
       $('#row_new-smartGraphAttribute').show();
@@ -357,6 +359,7 @@
     setReadOnly: function () {
       this.readOnly = true;
       $('#createGraph').parent().parent().addClass('disabled');
+      $('#createGraph').addClass('disabled');
     },
 
     setFromAndTo: function (e) {
@@ -661,6 +664,15 @@
               numberOfShards: $('#general-numberOfShards').val()
             };
           }
+          if ($('#general-replicationFactor').val().length > 0) {
+            if (newCollectionObject.options) {
+              newCollectionObject.options.replicationFactor = $('#general-replicationFactor').val();
+            } else {
+              newCollectionObject.options = {
+                replicationFactor: $('#general-replicationFactor').val()
+              };
+            }
+          }
         }
       }
 
@@ -839,6 +851,22 @@
                 'Shards',
                 '',
                 'Number of shards the graph is using.',
+                '',
+                false,
+                [
+                  {
+                    rule: Joi.string().allow('').optional().regex(/^[0-9]*$/),
+                    msg: 'Must be a number.'
+                  }
+                ]
+              )
+            );
+            tableContent.push(
+              window.modalView.createTextEntry(
+                'general-replicationFactor',
+                'Replication factor',
+                '',
+                'Numeric value. Must be at least 1. Total number of copies of the data in the cluster.',
                 '',
                 false,
                 [

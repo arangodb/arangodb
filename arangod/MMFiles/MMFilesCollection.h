@@ -26,6 +26,7 @@
 
 #include "Basics/Common.h"
 #include "Basics/ReadWriteLock.h"
+#include "Indexes/IndexIterator.h"
 #include "Indexes/IndexLookupContext.h"
 #include "MMFiles/MMFilesDatafileStatistics.h"
 #include "MMFiles/MMFilesDatafileStatisticsContainer.h"
@@ -34,6 +35,7 @@
 #include "MMFiles/MMFilesRevisionsCache.h"
 #include "StorageEngine/PhysicalCollection.h"
 #include "VocBase/KeyGenerator.h"
+#include "VocBase/LogicalCollection.h"
 #include "VocBase/ManagedDocumentResult.h"
 
 struct MMFilesDatafile;
@@ -126,8 +128,10 @@ class MMFilesCollection final : public PhysicalCollection {
                              PhysicalCollection*);  // use in cluster only!!!!!
 
   ~MMFilesCollection();
+  
+  static constexpr uint32_t defaultIndexBuckets = 8;
 
-  constexpr static double defaultLockTimeout = 10.0 * 60.0;
+  static constexpr double defaultLockTimeout = 10.0 * 60.0;
 
   std::string const& path() const override { return _path; };
 
@@ -137,8 +141,7 @@ class MMFilesCollection final : public PhysicalCollection {
                                     bool doSync) override;
   virtual arangodb::Result persistProperties() override;
 
-  virtual PhysicalCollection* clone(LogicalCollection*,
-                                    PhysicalCollection*) override;
+  virtual PhysicalCollection* clone(LogicalCollection*) override;
 
   TRI_voc_rid_t revision(arangodb::transaction::Methods* trx) const override;
   TRI_voc_rid_t revision() const;
@@ -328,6 +331,10 @@ class MMFilesCollection final : public PhysicalCollection {
   bool readDocument(transaction::Methods* trx,
                     DocumentIdentifierToken const& token,
                     ManagedDocumentResult& result) override;
+  
+  bool readDocumentWithCallback(transaction::Methods* trx,
+                                DocumentIdentifierToken const& token,
+                                IndexIterator::DocumentCallback const& cb) override;
 
   bool readDocumentConditional(transaction::Methods* trx,
                                DocumentIdentifierToken const& token,

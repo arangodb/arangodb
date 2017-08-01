@@ -233,7 +233,7 @@ class ImportHelper {
   /// @return string       get the error message
   //////////////////////////////////////////////////////////////////////////////
 
-  std::string getErrorMessage() { return _errorMessage; }
+  std::vector<std::string> getErrorMessages() { return _errorMessages; }
 
  private:
   static void ProcessCsvBegin(TRI_csv_parser_t*, size_t);
@@ -293,7 +293,7 @@ class ImportHelper {
   std::unordered_map<std::string, std::string> _translations;
 
   bool _hasError;
-  std::string _errorMessage;
+  std::vector<std::string> _errorMessages;
 
   static double const ProgressStep;
 };

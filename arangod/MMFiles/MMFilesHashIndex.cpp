@@ -265,18 +265,16 @@ static bool IsEqualKeyElementMulti(void* userData, VPackSlice const* left,
   TRI_ASSERT(context != nullptr);
 
   // TODO: is it a performance improvement to compare the hash values first?
-  size_t const n = left->length();
+  VPackArrayIterator it(*left);
 
-  for (size_t i = 0; i < n; ++i) {
-    VPackSlice const leftVPack = left->at(i);
-    VPackSlice const rightVPack = right->slice(context, i);
-
-    int res = arangodb::basics::VelocyPackHelper::compare(leftVPack, rightVPack,
-                                                          false);
+  while (it.valid()) {
+    int res = arangodb::basics::VelocyPackHelper::compare(it.value(), right->slice(context, it.index()), false);
 
     if (res != 0) {
       return false;
     }
+
+    it.next();
   }
 
   return true;
@@ -485,20 +483,11 @@ MMFilesHashIndex::~MMFilesHashIndex() {
 }
 
 /// @brief returns a selectivity estimate for the index
-double MMFilesHashIndex::selectivityEstimate(StringRef const*) const {
-  if (_unique) {
-    return 1.0;
-  }
-
-  if (_multiArray == nullptr || ServerState::instance()->isCoordinator()) {
-    // use hard-coded selectivity estimate in case of cluster coordinator
+double MMFilesHashIndex::selectivityEstimateLocal(StringRef const*) const {
+  if (_multiArray == nullptr) {
     return 0.1;
   }
-
-  double estimate = _multiArray->_hashArray->selectivity();
-  TRI_ASSERT(estimate >= 0.0 &&
-             estimate <= 1.00001);  // floating-point tolerance
-  return estimate;
+  return _multiArray->_hashArray->selectivity();
 }
 
 /// @brief returns the index memory usage

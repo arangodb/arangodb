@@ -32,6 +32,7 @@
 #include "velocypack/Iterator.h"
 #include "VocBase/KeyGenerator.h"
 #include "VocBase/LogicalCollection.h"
+#include "VocBase/ManagedDocumentResult.h"
 
 void ContextDataMock::pinData(arangodb::LogicalCollection* collection) {
   if (collection) {
@@ -49,7 +50,7 @@ PhysicalCollectionMock::PhysicalCollectionMock(arangodb::LogicalCollection* coll
   : PhysicalCollection(collection, info) {
 }
 
-arangodb::PhysicalCollection* PhysicalCollectionMock::clone(arangodb::LogicalCollection*, PhysicalCollection*) {
+arangodb::PhysicalCollection* PhysicalCollectionMock::clone(arangodb::LogicalCollection*) {
   before();
   TRI_ASSERT(false);
   return nullptr;
@@ -242,6 +243,24 @@ bool PhysicalCollectionMock::readDocument(arangodb::transaction::Methods* trx, a
   }
 
   result.setUnmanaged(entry.first.data(), token._data);
+
+  return true;
+}
+
+bool PhysicalCollectionMock::readDocumentWithCallback(arangodb::transaction::Methods* trx, arangodb::DocumentIdentifierToken const& token, arangodb::IndexIterator::DocumentCallback const& cb) {
+  before();
+
+  if (token._data > documents.size()) {
+    return false;
+  }
+
+  auto& entry = documents[token._data - 1]; // '_data' always > 0
+
+  if (!entry.second) {
+    return false; // removed document
+  }
+
+  cb(token, VPackSlice(entry.first.data()));
 
   return true;
 }

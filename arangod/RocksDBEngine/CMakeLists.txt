@@ -23,6 +23,7 @@ set(ROCKSDB_SOURCES
   RocksDBEngine/RocksDBKeyBounds.cpp
   RocksDBEngine/RocksDBLogValue.cpp
   RocksDBEngine/RocksDBMethods.cpp
+  RocksDBEngine/RocksDBOptimizerRules.cpp
   RocksDBEngine/RocksDBPrimaryIndex.cpp
   RocksDBEngine/RocksDBReplicationCommon.cpp
   RocksDBEngine/RocksDBReplicationContext.cpp

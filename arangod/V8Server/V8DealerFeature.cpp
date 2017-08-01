@@ -96,6 +96,7 @@ V8DealerFeature::V8DealerFeature(
       _nrMaxContexts(0),
       _nrMinContexts(0),
       _nrInflightContexts(0),
+      _allowAdminExecute(false),
       _ok(false),
       _nextId(0),
       _stopping(false),
@@ -107,6 +108,7 @@ V8DealerFeature::V8DealerFeature(
   setOptional(false);
   requiresElevatedPrivileges(false);
   startsAfter("Action");
+  startsAfter("Authentication");
   startsAfter("Database");
   startsAfter("Random");
   startsAfter("MMFilesWalRecovery");
@@ -150,6 +152,11 @@ void V8DealerFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
       "--javascript.v8-contexts-minimum",
       "minimum number of V8 contexts that keep available for executing JavaScript actions",
       new UInt64Parameter(&_nrMinContexts));
+
+  options->addHiddenOption(
+      "--javascript.allow-admin-execute",
+      "for testing purposes allow '_admin/execute', NEVER enable on production",
+      new BooleanParameter(&_allowAdminExecute));
 }
 
 void V8DealerFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
@@ -239,6 +246,7 @@ void V8DealerFeature::start() {
   LOG_TOPIC(DEBUG, Logger::V8) << "number of V8 contexts: min: " << _nrMinContexts << ", max: " << _nrMaxContexts;
 
   defineDouble("V8_CONTEXTS", static_cast<double>(_nrMaxContexts));
+  defineBoolean("ALLOW_ADMIN_EXECUTE", _allowAdminExecute);
 
   // setup instances
   {

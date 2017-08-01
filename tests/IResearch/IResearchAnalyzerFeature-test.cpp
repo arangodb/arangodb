@@ -800,6 +800,7 @@ SECTION("test_tokens") {
     args.emplace_back(data.c_str(), data.size());
     args.emplace_back(analyzer.c_str(), analyzer.size());
     auto result = impl(nullptr, nullptr, args);
+
     CHECK((result.isArray()));
     CHECK((26 == result.length()));
 

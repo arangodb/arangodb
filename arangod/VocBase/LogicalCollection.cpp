@@ -26,6 +26,7 @@
 
 #include "Aql/PlanCache.h"
 #include "Aql/QueryCache.h"
+#include "Basics/fasthash.h"
 #include "Basics/LocalTaskQueue.h"
 #include "Basics/PerformanceLogScope.h"
 #include "Basics/ReadLocker.h"
@@ -56,6 +57,7 @@
 #include "VocBase/KeyGenerator.h"
 #include "VocBase/ManagedDocumentResult.h"
 #include "VocBase/ticks.h"
+#include "VocBase/Methods/Indexes.h"
 
 #include <velocypack/Collection.h>
 #include <velocypack/Iterator.h>
@@ -163,7 +165,8 @@ LogicalCollection::LogicalCollection(LogicalCollection const& other)
       _vocbase(other.vocbase()),
       _keyOptions(other._keyOptions),
       _keyGenerator(KeyGenerator::factory(VPackSlice(keyOptions()))),
-      _physical(other.getPhysical()->clone(this, other.getPhysical())) {
+      _physical(other.getPhysical()->clone(this)),
+      _clusterEstimateTTL(0) {
   TRI_ASSERT(_physical != nullptr);
   if (ServerState::instance()->isDBServer() ||
       !ServerState::instance()->isRunningInCluster()) {
@@ -202,7 +205,8 @@ LogicalCollection::LogicalCollection(TRI_vocbase_t* vocbase,
       _keyOptions(nullptr),
       _keyGenerator(),
       _physical(
-          EngineSelectorFeature::ENGINE->createPhysicalCollection(this, info)) {
+          EngineSelectorFeature::ENGINE->createPhysicalCollection(this, info)),
+      _clusterEstimateTTL(0) {
   // add keyoptions from slice
   TRI_ASSERT(info.isObject());
   VPackSlice keyOpts = info.get("keyOptions");
@@ -582,6 +586,41 @@ std::unique_ptr<FollowerInfo> const& LogicalCollection::followers() const {
 void LogicalCollection::setDeleted(bool newValue) { _isDeleted = newValue; }
 
 // SECTION: Indexes
+std::unordered_map<std::string, double> LogicalCollection::clusterIndexEstimates(bool doNotUpdate){
+  READ_LOCKER(readlock, _clusterEstimatesLock);
+  if (doNotUpdate) {
+    return _clusterEstimates;
+  }
+
+  double ctime = TRI_microtime(); // in seconds
+  auto needEstimateUpdate = [this,ctime](){
+    if(_clusterEstimates.empty()) {
+      LOG_TOPIC(TRACE, Logger::CLUSTER) << "update because estimate is not availabe";
+      return true;
+    } else if (ctime - _clusterEstimateTTL > 10.0) {
+      LOG_TOPIC(TRACE, Logger::CLUSTER) << "update because estimate is too old: " << ctime - _clusterEstimateTTL;
+      return true;
+    }
+    return false;
+  };
+
+  if (needEstimateUpdate()){
+    readlock.unlock();
+    WRITE_LOCKER(writelock, _clusterEstimatesLock);
+    if(needEstimateUpdate()){
+      selectivityEstimatesOnCoordinator(_vocbase->name(), name(), _clusterEstimates);
+      _clusterEstimateTTL = TRI_microtime();
+    }
+    return _clusterEstimates;
+  }
+  return _clusterEstimates;
+}
+
+void LogicalCollection::clusterIndexEstimates(std::unordered_map<std::string, double>&& estimates){
+  WRITE_LOCKER(lock, _clusterEstimatesLock);
+  _clusterEstimates = std::move(estimates);
+}
+
 std::vector<std::shared_ptr<arangodb::Index>>
 LogicalCollection::getIndexes() const {
   return getPhysical()->getIndexes();
@@ -1170,6 +1209,12 @@ bool LogicalCollection::readDocument(transaction::Methods* trx,
   return getPhysical()->readDocument(trx, token, result);
 }
 
+bool LogicalCollection::readDocumentWithCallback(transaction::Methods* trx,
+                                                 DocumentIdentifierToken const& token,
+                                                 IndexIterator::DocumentCallback const& cb) {
+  return getPhysical()->readDocumentWithCallback(trx, token, cb);
+}
+
 /// @brief a method to skip certain documents in AQL write operations,
 /// this is only used in the enterprise edition for smart graphs
 #ifndef USE_ENTERPRISE
@@ -1187,4 +1232,135 @@ VPackSlice LogicalCollection::keyOptions() const {
     return arangodb::basics::VelocyPackHelper::NullValue();
   }
   return VPackSlice(_keyOptions->data());
+}
+
+ChecksumResult LogicalCollection::checksum(bool withRevisions, bool withData) const {
+  auto transactionContext =
+    std::make_shared<transaction::StandaloneContext>(vocbase());
+  SingleCollectionTransaction trx(transactionContext, cid(), AccessMode::Type::READ);
+
+  Result res = trx.begin();
+
+  if (!res.ok()) {
+    return ChecksumResult(res);
+  }
+
+  trx.pinData(_cid); // will throw when it fails
+  
+  // get last tick
+  LogicalCollection* collection = trx.documentCollection();
+  auto physical = collection->getPhysical();
+  TRI_ASSERT(physical != nullptr);
+  std::string const revisionId = TRI_RidToString(physical->revision(&trx));
+  uint64_t hash = 0;
+        
+  ManagedDocumentResult mmdr;
+  trx.invokeOnAllElements(name(), [&hash, &withData, &withRevisions, &trx, &collection, &mmdr](DocumentIdentifierToken const& token) {
+      if (collection->readDocument(&trx, token, mmdr)) {
+      VPackSlice const slice(mmdr.vpack());
+
+      uint64_t localHash = transaction::helpers::extractKeyFromDocument(slice).hashString(); 
+
+      if (withRevisions) {
+      localHash += transaction::helpers::extractRevSliceFromDocument(slice).hash();
+      }
+
+      if (withData) {
+      // with data
+      uint64_t const n = slice.length() ^ 0xf00ba44ba5;
+      uint64_t seed = fasthash64_uint64(n, 0xdeadf054);
+
+      for (auto const& it : VPackObjectIterator(slice, false)) {
+      // loop over all attributes, but exclude _rev, _id and _key
+      // _id is different for each collection anyway, _rev is covered by withRevisions, and _key
+      // was already handled before
+      VPackValueLength keyLength;
+      char const* key = it.key.getString(keyLength);
+      if (keyLength >= 3 && 
+          key[0] == '_' &&
+          ((keyLength == 3 && memcmp(key, "_id", 3) == 0) ||
+           (keyLength == 4 && (memcmp(key, "_key", 4) == 0 || memcmp(key, "_rev", 4) == 0)))) {
+        // exclude attribute
+        continue;
+      }
+
+      localHash ^= it.key.hash(seed) ^ 0xba5befd00d; 
+      localHash += it.value.normalizedHash(seed) ^ 0xd4129f526421; 
+      }
+      }
+
+      hash ^= localHash;
+      }
+    return true;
+  });
+
+  trx.finish(res);
+
+  std::string const hashString = std::to_string(hash);
+
+  VPackBuilder b;
+  {
+    VPackObjectBuilder o(&b);
+    b.add("checksum", VPackValue(hashString));
+    b.add("revision", VPackValue(revisionId));
+  }
+
+  return ChecksumResult(b);
+}
+
+Result LogicalCollection::compareChecksums(VPackSlice checksumSlice) const {
+  if (!checksumSlice.isObject()) {
+    auto typeName = checksumSlice.typeName();
+    return Result(
+      TRI_ERROR_REPLICATION_WRONG_CHECKSUM_FORMAT,
+      std::string("Checksum must be an object but is ") + typeName
+    );
+  }
+
+  auto revision = checksumSlice.get("revision");
+  auto checksum = checksumSlice.get("checksum");
+
+  if (!revision.isString()) {
+    return Result(
+      TRI_ERROR_REPLICATION_WRONG_CHECKSUM_FORMAT,
+      "Property `revisionId` must be a string"
+    );
+  }
+  if (!checksum.isString()) {
+    return Result(
+      TRI_ERROR_REPLICATION_WRONG_CHECKSUM_FORMAT,
+      "Property `checksum` must be a string"
+    );
+  }
+
+  auto result = this->checksum(false, false);
+
+  if (!result.ok()) {
+    return Result(result);
+  }
+
+  auto referenceChecksumSlice = result.slice();
+  auto referenceChecksum = referenceChecksumSlice.get("checksum");
+  auto referenceRevision = referenceChecksumSlice.get("revision");
+  TRI_ASSERT(referenceChecksum.isString());
+  TRI_ASSERT(referenceRevision.isString());
+
+  if (!checksum.isEqualString(referenceChecksum.copyString())) {
+    return Result(
+      TRI_ERROR_REPLICATION_WRONG_CHECKSUM,
+      "`checksum` property is wrong. Expected: "
+        + referenceChecksum.copyString()
+        + ". Actual: " + checksum.copyString()
+    );
+  }
+ 
+  if (!revision.isEqualString(referenceRevision.copyString())) {
+    return Result(
+      TRI_ERROR_REPLICATION_WRONG_CHECKSUM,
+      "`checksum` property is wrong. Expected: "
+        + revision.copyString()
+        + ". Actual: " + referenceRevision.copyString()
+    );
+  }
+  return Result();
 }

@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2017 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -17,14 +18,27 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Manuel Baesler
+/// @author Daniel H. Larkin
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "AuthenticationHandler.h"
-#include "Logger/Logger.h"
+#ifndef ARANGOD_REST_HANDLER_REST_ENDPOINT_HANDLER_H
+#define ARANGOD_REST_HANDLER_REST_ENDPOINT_HANDLER_H 1
 
-using namespace arangodb;
+#include "Basics/Common.h"
+#include "RestHandler/RestVocbaseBaseHandler.h"
 
-AuthenticationResult DefaultAuthenticationHandler::authenticate(std::string const& username, std::string const& password) {
-  return AuthenticationResult(TRI_ERROR_USER_NOT_FOUND, AuthSource::COLLECTION);
+namespace arangodb {
+class RestEndpointHandler : public RestVocbaseBaseHandler {
+ public:
+  RestEndpointHandler(GeneralRequest*, GeneralResponse*);
+
+ public:
+  RestStatus execute() override final;
+  char const* name() const override final { return "RestEndpointHandler"; }
+
+ protected:
+  void retrieveEndpoints();
+};
 }
+
+#endif

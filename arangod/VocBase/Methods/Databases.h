@@ -43,7 +43,6 @@ struct Databases {
                                  arangodb::velocypack::Slice const& options);
   static arangodb::Result drop(TRI_vocbase_t* systemVocbase,
                                std::string const&);
-  
 };
 }
 }

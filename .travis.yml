@@ -17,12 +17,13 @@ language: cpp
 cache: ccache
 compiler: g++
 sudo: false
+dist: trusty
 
 addons:
   apt:
     sources:
     - ubuntu-toolchain-r-test
-    - george-edison55-precise-backports
+    - george-edison55-trusty-backports
     packages:
     - g++-5
     - gcc-5
