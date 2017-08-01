@@ -409,13 +409,8 @@ RocksDBEdgeIndex::RocksDBEdgeIndex(TRI_idx_iid_t iid,
 RocksDBEdgeIndex::~RocksDBEdgeIndex() {}
 
 /// @brief return a selectivity estimate for the index
-double RocksDBEdgeIndex::selectivityEstimate(
+double RocksDBEdgeIndex::selectivityEstimateLocal(
     arangodb::StringRef const* attribute) const {
-  if (ServerState::instance()->isCoordinator()) {
-    // use hard-coded selectivity estimate in case of cluster coordinator
-    return 0.1;
-  }
-
   if (attribute != nullptr && attribute->compare(_directionAttr)) {
     return 0;
   }
