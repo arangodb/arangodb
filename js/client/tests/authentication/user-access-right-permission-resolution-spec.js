@@ -84,6 +84,7 @@ const createUser = (user) => {
   users.save(user.name, '', true);
   users.grantDatabase(user.name, user.db.name, user.db.permission);
   users.grantCollection(user.name, user.db.name, user.col.name, user.col.permission);
+  internal.wait(0.1);// workaround to fix test in cluster
 };
 
 const removeUser = (user) => {
