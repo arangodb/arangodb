@@ -443,6 +443,24 @@ void DatabaseFeature::unprepare() {
 int DatabaseFeature::recoveryDone() {
   StorageEngine* engine = EngineSelectorFeature::ENGINE;
 
+  TRI_ASSERT(engine && !engine->inRecovery());
+
+  // '_pendingRecoveryCallbacks' will not change because !StorageEngine.inRecovery()
+  for (auto& entry: _pendingRecoveryCallbacks) {
+    auto result = entry();
+
+    if (!result.ok()) {
+      LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+                << "recovery failure due to error from callback, error '"
+                << TRI_errno_string(result.errorNumber()) << "' message: "
+                << result.errorMessage();
+
+      return result.errorNumber();
+    }
+  }
+
+  _pendingRecoveryCallbacks.clear();
+
   auto unuser(_databasesProtector.use());
   auto theLists = _databasesLists.load();
 
@@ -474,6 +492,21 @@ int DatabaseFeature::recoveryDone() {
   }
 
   return TRI_ERROR_NO_ERROR;
+}
+
+Result DatabaseFeature::registerPostRecoveryCallback(
+    std::function<Result()>&& callback
+) {
+  StorageEngine* engine = EngineSelectorFeature::ENGINE;
+
+  if (!engine || !engine->inRecovery()) {
+    return callback(); // if no engine then can't be in recovery
+  }
+
+  // do not need a lock since single-thread access during recovery
+  _pendingRecoveryCallbacks.emplace_back(std::move(callback));
+
+  return Result();
 }
 
 /// @brief create a new database

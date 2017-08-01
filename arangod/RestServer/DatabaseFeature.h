@@ -78,6 +78,14 @@ class DatabaseFeature final : public application_features::ApplicationFeature {
 
   int recoveryDone();
 
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief register a callback
+  ///        if StorageEngine.inRecovery() -> call at start of recoveryDone() and
+  ///                                         fail recovery if callback !ok()
+  ///        if !StorageEngine.inRecovery() -> call immediately and return result
+  ////////////////////////////////////////////////////////////////////////////////
+  Result registerPostRecoveryCallback(std::function<Result()>&& callback);
+
  public:
 
   static constexpr uint32_t defaultIndexBuckets() { return 8; }
@@ -173,6 +181,7 @@ class DatabaseFeature final : public application_features::ApplicationFeature {
 
   /// @brief lock for serializing the creation of databases
   arangodb::Mutex _databaseCreateLock;
+  std::vector<std::function<Result()>> _pendingRecoveryCallbacks;
 };
 }
 
