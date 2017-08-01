@@ -2970,7 +2970,8 @@ function AQL_LENGTH (value) {
     return value ? 1 : 0;
   }
 
-  return AQL_TO_STRING(value).length;
+  // https://mathiasbynens.be/notes/javascript-unicode
+  return [...AQL_TO_STRING(value)].length;
 }
 
 // //////////////////////////////////////////////////////////////////////////////
