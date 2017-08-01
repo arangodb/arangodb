@@ -28,6 +28,7 @@
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
 #include "MMFiles/MMFilesLogfileManager.h"
+#include "RestServer/DatabaseFeature.h"
 
 using namespace arangodb;
 using namespace arangodb::application_features;
@@ -68,5 +69,9 @@ void MMFilesWalRecoveryFeature::start() {
     // if we got here, the MMFilesLogfileManager has already logged a fatal error and we can simply abort
     FATAL_ERROR_EXIT();
   }
+  
+  // notify everyone that recovery is now done
+  auto databaseFeature = ApplicationServer::getFeature<DatabaseFeature>("Database");
+  databaseFeature->recoveryDone();
 }
 

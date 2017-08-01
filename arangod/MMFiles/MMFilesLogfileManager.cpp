@@ -441,15 +441,6 @@ bool MMFilesLogfileManager::open() {
   // tell the allocator that the recovery is over now
   _allocatorThread->recoveryDone();
 
-  // start compactor threads etc.
-  auto databaseFeature = ApplicationServer::getFeature<DatabaseFeature>("Database");
-  res = databaseFeature->recoveryDone();
-
-  if (res != TRI_ERROR_NO_ERROR) {
-    LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << "could not initialize databases: " << TRI_errno_string(res);
-    return false;
-  }
-
   return true;
 }
 
