@@ -68,7 +68,7 @@ function authentication (options) {
   return tu.performTests(options, testCases, 'authentication', tu.runInArangosh, {
     'server.authentication': 'true',
     'server.jwt-secret': 'haxxmann',
-    'cluster.create-waits-for-sync-replication': false
+    'cluster.create-waits-for-sync-replication': true
   });
 }
 
