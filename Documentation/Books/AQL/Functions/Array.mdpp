@@ -113,6 +113,8 @@ Determine the number of elements in an array.
 of an object / document, the [amount of documents](Miscellaneous.md#length) in a
 collection and the [character length](String.md#length) of a string.
 
+Note: In v8 mode, this functions returns the number of utf8 code points not the number of characters.
+
 ### MINUS()
 
 `MINUS(array1, array2, ... arrayN) → newArray`
