@@ -40,6 +40,7 @@ const rightLevels = ['rw', 'ro', 'none'];
 const dbs = ['*', dbName];
 const cols = ['*', colName];
 const userSet = new Set();
+const internal = require('internal');
 
 const createDBs = () => {
   db._useDatabase('_system');
@@ -93,13 +94,11 @@ const removeUser = (user) => {
 
 describe('User Rights Management', () => {
   before(() => {
-    console.error("Before");
     createUsers();
     createDBs();
   });
 
   after(() => {
-    console.error("After");
     dropDBs();
   });
 
