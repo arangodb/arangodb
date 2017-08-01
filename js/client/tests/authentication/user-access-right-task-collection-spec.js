@@ -80,6 +80,10 @@ const getKey = (keySpaceId, key) => {
   return executeJS(`return global.KEY_GET('${keySpaceId}', '${key}');`).body === 'true';
 };
 
+const setKey = (keySpaceId, name) => {
+  return executeJS(`global.KEY_SET('${keySpaceId}', '${name}', false);`);
+};
+
 const executeJS = (code) => {
   let httpOptions = pu.makeAuthorizationHeaders({
     username: 'root',
@@ -156,6 +160,7 @@ describe('User Rights Management', () => {
 
             it('create a task which creates a collection', () => {
               expect(rootTestCollection()).to.equal(false, 'Precondition failed, the collection still exists');
+              setKey(keySpaceId, name);
               const taskId = 'task_collection_' + name;
               const task = {
                 id: taskId,

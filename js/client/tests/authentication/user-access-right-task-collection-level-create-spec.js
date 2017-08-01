@@ -154,6 +154,7 @@ describe('User Rights Management', () => {
 
               it('by key', () => {
                 expect(rootTestCollection()).to.equal(true, 'Precondition failed, the collection does not exist');
+                setKeySpace(keySpaceId, name);
                 const taskId = 'task_collection_level_create_by_key' + name;
                 const task = {
                   id: taskId,

@@ -74,6 +74,10 @@ const getKey = (keySpaceId, key) => {
   return executeJS(`return global.KEY_GET('${keySpaceId}', '${key}');`).body === 'true';
 };
 
+const setKey = (keySpaceId, name) => {
+  return executeJS(`global.KEY_SET('${keySpaceId}', '${name}', false);`);
+};
+
 const executeJS = (code) => {
   let httpOptions = pu.makeAuthorizationHeaders({
     username: 'root',
@@ -159,6 +163,7 @@ describe('User Rights Management', () => {
             });
 
             it('drop database', () => {
+              setKey(keySpaceId, name);
               const taskId = 'task_db_create' + name;
               const task = {
                 id: taskId,

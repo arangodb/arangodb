@@ -79,6 +79,10 @@ const getKey = (keySpaceId, key) => {
   return executeJS(`return global.KEY_GET('${keySpaceId}', '${key}');`).body === 'true';
 };
 
+const setKey = (keySpaceId, name) => {
+  return executeJS(`global.KEY_SET('${keySpaceId}', '${name}', false);`);
+};
+
 const executeJS = (code) => {
   let httpOptions = pu.makeAuthorizationHeaders({
     username: 'root',
@@ -199,6 +203,7 @@ describe('User Rights Management', () => {
                 expect(rootTestGraph()).to.equal(false, 'Precondition failed, the graph still exists');
                 expect(rootTestCollection(testEdgeColName)).to.equal(false, 'Precondition failed, the edge collection still exists');
                 expect(rootTestCollection(testVertexColName)).to.equal(false, 'Precondition failed, the vertex collection still exists');
+                setKey(keySpaceId, name);
                 const taskId = 'task_create_graph_' + name;
                 const task = {
                   id: taskId,
@@ -245,6 +250,7 @@ describe('User Rights Management', () => {
                 expect(rootTestGraph()).to.equal(false, 'Precondition failed, the graph still exists');
                 expect(rootTestCollection(testEdgeColName)).to.equal(true, 'Precondition failed, the edge collection still not exists');
                 expect(rootTestCollection(testVertexColName)).to.equal(true, 'Precondition failed, the vertex collection still not exists');
+                setKey(keySpaceId, name + '_existing_collections');
                 const taskId = 'task_create_graph_existing_collections' + name;
                 const task = {
                   id: taskId,

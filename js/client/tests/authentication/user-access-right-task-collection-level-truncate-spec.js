@@ -79,6 +79,10 @@ const getKey = (keySpaceId, key) => {
   return executeJS(`return global.KEY_GET('${keySpaceId}', '${key}');`).body === 'true';
 };
 
+const setKey = (keySpaceId, name) => {
+  return executeJS(`global.KEY_SET('${keySpaceId}', '${name}', false);`);
+};
+
 const executeJS = (code) => {
   let httpOptions = pu.makeAuthorizationHeaders({
     username: 'root',
@@ -170,6 +174,7 @@ describe('User Rights Management', () => {
               it('via js', () => {
                 expect(rootTestCollection()).to.equal(true, 'Precondition failed, the collection does not exist');
                 expect(rootCount()).to.equal(6, 'Precondition failed, too few documents.');
+                setKey(keySpaceId, name);
                 const taskId = 'task_collection_level_truncate' + name;
                 const task = {
                   id: taskId,
@@ -181,7 +186,7 @@ describe('User Rights Management', () => {
                       global.KEY_SET('${keySpaceId}', '${name}_status', true);
                     } catch (e) {
                       global.KEY_SET('${keySpaceId}', '${name}_status', false);
-                    }finally {
+                    } finally {
                       global.KEY_SET('${keySpaceId}', '${name}', true);
                     }
                   })(params);`

@@ -75,6 +75,10 @@ const getKey = (keySpaceId, key) => {
   return executeJS(`return global.KEY_GET('${keySpaceId}', '${key}');`).body === 'true';
 };
 
+const setKey = (keySpaceId, name) => {
+  return executeJS(`global.KEY_SET('${keySpaceId}', '${name}', false);`);
+};
+
 const executeJS = (code) => {
   let httpOptions = pu.makeAuthorizationHeaders({
     username: 'root',
@@ -153,6 +157,7 @@ describe('User Rights Management', () => {
             });
 
             it('create a user', () => {
+              setKey(keySpaceId, name);
               const taskId = 'task_create_user_' + name;
               const task = {
                 id: taskId,

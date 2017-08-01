@@ -79,6 +79,10 @@ const getKey = (keySpaceId, key) => {
   return executeJS(`return global.KEY_GET('${keySpaceId}', '${key}');`).body === 'true';
 };
 
+const setKey = (keySpaceId, name) => {
+  return executeJS(`global.KEY_SET('${keySpaceId}', '${name}', false);`);
+};
+
 const executeJS = (code) => {
   let httpOptions = pu.makeAuthorizationHeaders({
     username: 'root',
@@ -155,6 +159,7 @@ describe('User Rights Management', () => {
 
               it('by key', () => {
                 expect(rootTestCollection()).to.equal(true, 'Precondition failed, the collection does not exist.');
+                setKey(keySpaceId, name);
                 const taskId = 'task_collection_level_drop_by_key' + name;
                 const task = {
                   id: taskId,
@@ -166,7 +171,7 @@ describe('User Rights Management', () => {
                       global.KEY_SET('${keySpaceId}', '${name}_status', true);
                     } catch (e) {
                       global.KEY_SET('${keySpaceId}', '${name}_status', false);
-                    }finally {
+                    } finally {
                       global.KEY_SET('${keySpaceId}', '${name}', true);
                     }
                   })(params);`
@@ -213,6 +218,7 @@ describe('User Rights Management', () => {
               it('by aql', () => {
                 expect(rootTestCollection()).to.equal(true, 'Precondition failed, the collection does not exist');
                 let q = `REMOVE '456' IN ${colName} RETURN OLD`;
+                setKey(keySpaceId, name);
                 const taskId = 'task_collection_level_drop_by_key' + name;
                 const task = {
                   id: taskId,
