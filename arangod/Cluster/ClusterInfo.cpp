@@ -51,7 +51,6 @@
 #include <velocypack/Slice.h>
 #include <velocypack/velocypack-aliases.h>
 
-
 #ifdef _WIN32
 // turn off warnings about too long type name for debug symbols blabla in MSVC
 // only...
@@ -430,7 +429,11 @@ void ClusterInfo::loadPlan() {
 
     if (planSlice.isObject()) {
       decltype(_plannedDatabases) newDatabases;
-      decltype(_plannedCollections) newCollections;
+      decltype(_plannedCollections) newCollections; // map<string /*database id*/
+                                                    //    ,map<string /*collection id*/
+                                                    //        ,shared_ptr<LogicalCollection>
+                                                    //        >
+                                                    //    >
       decltype(_shards) newShards;
       decltype(_shardServers) newShardServers;
       decltype(_shardKeys) newShardKeys;
@@ -451,8 +454,58 @@ void ClusterInfo::loadPlan() {
 
       // mop: immediate children of collections are DATABASES, followed by their
       // collections
-      databasesSlice = planSlice.get("Collections");
+
+      //{
+      //  "_system": {
+      //    "3010001": {
+      //      "deleted": false,
+      //      "doCompact": true,
+      //      "id": "3010001",
+      //      "indexBuckets": 8,
+      //      "indexes": [
+      //        {
+      //          "fields": [
+      //            "_key"
+      //          ],
+      //          "id": "0",
+      //          "sparse": false,
+      //          "type": "primary",
+      //          "unique": true
+      //        }
+      //      ],
+      //      "isSmart": false,
+      //      "isSystem": true,
+      //      "isVolatile": false,
+      //      "journalSize": 1048576,
+      //      "keyOptions": {
+      //        "allowUserKeys": true,
+      //        "lastValue": 0,
+      //        "type": "traditional"
+      //      },
+      //      "name": "_graphs",
+      //      "numberOfSh ards": 1,
+      //      "path": "",
+      //      "replicationFactor": 2,
+      //      "shardKeys": [
+      //        "_key"
+      //      ],
+      //      "shards": {
+      //        "s3010002": [
+      //          "PRMR-bf44d6fe-e31c-4b09-a9bf-e2df6c627999",
+      //          "PRMR-11a29830-5aca-454b-a2c3-dac3a08baca1"
+      //        ]
+      //      },
+      //      "status": 3,
+      //      "statusString": "loaded",
+      //      "type": 2,
+      //      "waitForSync": false
+      //    },...
+      //  },...
+      //}
+      
+      databasesSlice = planSlice.get("Collections"); //format above
       if (databasesSlice.isObject()) {
+        bool isCoordinator = ServerState::instance()->isCoordinator();
         for (auto const& databasePairSlice :
              VPackObjectIterator(databasesSlice)) {
           VPackSlice const& collectionsSlice = databasePairSlice.value;
@@ -462,7 +515,7 @@ void ClusterInfo::loadPlan() {
           DatabaseCollections databaseCollections;
           std::string const databaseName = databasePairSlice.key.copyString();
           TRI_vocbase_t* vocbase = nullptr;
-          if (ServerState::instance()->isCoordinator()) {
+          if (isCoordinator) {
             vocbase = databaseFeature->lookupDatabaseCoordinator(databaseName);
           } else {
             vocbase = databaseFeature->lookupDatabase(databaseName);
@@ -483,6 +536,17 @@ void ClusterInfo::loadPlan() {
 
             std::string const collectionId =
                 collectionPairSlice.key.copyString();
+
+            decltype(vocbase->lookupCollection(collectionId)->clusterIndexEstimates()) selectivityEstimates;
+            double selectivityTTL = 0;
+            if (isCoordinator) {
+              auto collection = _plannedCollections[databaseName][collectionId];
+              if(collection){
+                selectivityEstimates = collection->clusterIndexEstimates(/*do not update*/ true);
+                selectivityTTL = collection->clusterIndexEstimatesTTL();
+              }
+            }
+
             try {
               std::shared_ptr<LogicalCollection> newCollection;
 #ifndef USE_ENTERPRISE
@@ -505,7 +569,14 @@ void ClusterInfo::loadPlan() {
               }
 #endif
               std::string const collectionName = newCollection->name();
-
+              if (isCoordinator && !selectivityEstimates.empty()){
+                LOG_TOPIC(TRACE, Logger::CLUSTER) << "copy index estimates";
+                newCollection->clusterIndexEstimates(std::move(selectivityEstimates));
+                newCollection->clusterIndexEstimatesTTL(selectivityTTL);
+                for(auto i : newCollection->getIndexes()){
+                  i->updateClusterEstimate();
+                }
+              }
               // mop: register with name as well as with id
               databaseCollections.emplace(
                   std::make_pair(collectionName, newCollection));
