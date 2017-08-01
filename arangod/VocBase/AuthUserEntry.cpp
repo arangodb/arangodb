@@ -233,15 +233,6 @@ AuthUserEntry AuthUserEntry::fromDocument(VPackSlice const& slice) {
     for (auto const& obj : VPackObjectIterator(databasesSlice)) {
       std::string const dbName = obj.key.copyString();
 
-      // check if database exists
-      TRI_vocbase_t* vocbase = nullptr;
-      if (dbName != "*") {
-        vocbase = methods::Databases::lookup(dbName);
-        if (vocbase == nullptr) {
-          continue;
-        }
-      }
-
       if (obj.value.isObject()) {
         AuthLevel databaseAuth = AuthLevel::NONE;
 
@@ -255,18 +246,11 @@ AuthUserEntry AuthUserEntry::fromDocument(VPackSlice const& slice) {
         if (collectionsSlice.isObject()) {
           for (auto const& collection : VPackObjectIterator(collectionsSlice)) {
             std::string const cName = collection.key.copyString();
-            // skip nonexisting collections
-            bool exists = dbName == "*" || cName == "*" ||
-                          methods::Collections::lookupCollection(
-                              vocbase, cName, [&](LogicalCollection*) {});
-            if (exists) {
-              auto const permissionsSlice = collection.value.get("permissions");
-              if (permissionsSlice.isObject()) {
-                entry.grantCollection(dbName, cName,
-                                      AuthLevelFromSlice(permissionsSlice));
-              }  // if
-            }    // if
-
+            auto const permissionsSlice = collection.value.get("permissions");
+            if (permissionsSlice.isObject()) {
+              entry.grantCollection(dbName, cName,
+                                    AuthLevelFromSlice(permissionsSlice));
+            }  // if
           }  // for
         }    // if
 

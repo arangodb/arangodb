@@ -34,28 +34,12 @@ const expect = require('chai').expect;
 const users = require('@arangodb/users');
 const db = require('@arangodb').db;
 
-const dbName = 'PermissionsTestDB';
 const colName = 'PermissionsTestCollection';
 const rightLevels = ['rw', 'ro', 'none'];
-const dbs = ['*', dbName];
+const dbs = ['*', '_system'];
 const cols = ['*', colName];
 const userSet = new Set();
 const internal = require('internal');
-
-const createDBs = () => {
-  db._useDatabase('_system');
-  db._createDatabase(dbName);
-  for (const d of [dbName, '_system']) {
-    db._useDatabase(d);
-    db._create(colName);
-  }
-};
-
-const dropDBs = () => {
-  db._useDatabase('_system');
-  db._dropDatabase(dbName);
-  db._drop(colName);
-};
 
 const createUsers = () => {
   db._useDatabase('_system');
@@ -85,7 +69,6 @@ const createUser = (user) => {
   users.save(user.name, '', true);
   users.grantDatabase(user.name, user.db.name, user.db.permission);
   users.grantCollection(user.name, user.db.name, user.col.name, user.col.permission);
-  internal.wait(0.1);// workaround to fix test in cluster
 };
 
 const removeUser = (user) => {
@@ -94,12 +77,15 @@ const removeUser = (user) => {
 
 describe('User Rights Management', () => {
   before(() => {
+    // only in-memory set of users
+    db._useDatabase('_system');
+    db._create(colName);
+    internal.wait(1);
     createUsers();
-    createDBs();
   });
 
   after(() => {
-    dropDBs();
+    db._drop(colName);
   });
 
   it('should test permission for', () => {
@@ -112,11 +98,12 @@ describe('User Rights Management', () => {
           removeUser(user);
         });
         it('on database', () => {
-          const permission = users.permission(user.name, dbName);
-          expect(permission).to.equal(user.db.permission);
+          const permission = users.permission(user.name, '_system');
+          expect(permission).to.equal(user.db.permission, 
+            "Expected different permission for _system");
         });
         it('on collection', () => {
-          const permission = users.permission(user.name, dbName, colName);
+          const permission = users.permission(user.name, '_system', colName);
           expect(permission).to.equal(user.col.permission);
         });
       });
