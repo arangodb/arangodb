@@ -21,6 +21,9 @@ if *true*, then create a unique index.
 @RESTBODYPARAM{sparse,boolean,required,}
 if *true*, then create a sparse index.
 
+@RESTBODYPARAM{deduplicate,boolean,optional,boolean}
+if *false*, the deduplication of array values is turned off.
+
 @RESTDESCRIPTION
 **NOTE** Swagger examples won't work due to the anchor.
 

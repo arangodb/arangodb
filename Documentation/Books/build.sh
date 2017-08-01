@@ -432,7 +432,7 @@ function build-book()
 	(cd "ppbooks/${NAME}"; gitbook install -g)
     fi
     echo "${STD_COLOR} - Building Book ${NAME} ${RESET}"
-    (cd "ppbooks/${NAME}" && gitbook build "./" "./../../books/${NAME}")
+    (cd "ppbooks/${NAME}" && gitbook ${GITBOOK_ARGS} build "./" "./../../books/${NAME}")
     rm -f "./books/${NAME}/HEADER.html"
     rm -f "./books/${NAME}/FOOTER.html"
     echo "${STD_COLOR} - deleting markdown files in output (gitbook 3.x bug)"
@@ -450,7 +450,7 @@ function build-book-dist()
     cd "ppbooks/${NAME}"
     for ext in ${OTHER_MIME}; do
 	OUTPUT="${OUTPUT_DIR}/ArangoDB_${NAME}_${newVersionNumber}.${ext}"
-	if gitbook "${ext}" ./ "${OUTPUT}"; then
+	if gitbook ${GITBOOK_ARGS} "${ext}" ./ "${OUTPUT}"; then
 	    echo "success building ${OUTPUT}"
 	else
 	    exit 1

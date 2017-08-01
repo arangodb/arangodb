@@ -13,6 +13,7 @@
   !include "nsDialogs.nsh"
   !include "WinMessages.nsh"
   !include "MUI2.nsh"
+  !include "StripSlashes.nsh"
 ;   !include "GetTime.nsh"
 ;--------------------------------
 ; get commandline parameters
@@ -723,8 +724,11 @@ Function UpgradeExisting
 
     ${If} $AUTOMATIC_BACKUP == "1"
       ; We should and we should keep a backup:
+      StrCpy $BackupPath "$DATADIR"
+      !insertmacro StripBackslash BackupPath
+      !insertmacro StripSlash BackupPath      
       ${GetTime} "" "L" $0 $1 $2 $3 $4 $5 $6
-      StrCpy $BackupPath "$DATADIR_$2-$1-$0_$4_$5_$6"
+      StrCpy $BackupPath "$BackupPath_$2-$1-$0_$4_$5_$6"
       CreateDirectory "$BackupPath"
       ClearErrors
       DetailPrint "Copying old database from $DATADIR to backup directory $BackupPath"

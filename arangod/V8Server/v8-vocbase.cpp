@@ -167,11 +167,11 @@ static void JS_Transaction(v8::FunctionCallbackInfo<v8::Value> const& args) {
   }
 
   // "collections"
-  static std::string const collectionError =
-      "missing/invalid collections definition for transaction";
-
+  std::string collectionError;
+  
   if (!object->Has(TRI_V8_ASCII_STRING("collections")) ||
       !object->Get(TRI_V8_ASCII_STRING("collections"))->IsObject()) {
+    collectionError = "missing/invalid collections definition for transaction";
     TRI_V8_THROW_EXCEPTION_PARAMETER(collectionError);
   }
 
@@ -180,6 +180,9 @@ static void JS_Transaction(v8::FunctionCallbackInfo<v8::Value> const& args) {
       object->Get(TRI_V8_ASCII_STRING("collections")));
 
   if (collections.IsEmpty()) {
+    collectionError =
+      "empty collections definition for transaction";
+
     TRI_V8_THROW_EXCEPTION_PARAMETER(collectionError);
   }
 
@@ -207,7 +210,8 @@ static void JS_Transaction(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   auto getCollections = [&isolate](v8::Handle<v8::Object> obj,
                                    std::vector<std::string>& collections,
-                                   char const* attributeName) -> bool {
+                                   char const* attributeName,
+                                   std::string &collectionError) -> bool {
     if (obj->Has(TRI_V8_ASCII_STRING(attributeName))) {
       if (obj->Get(TRI_V8_ASCII_STRING(attributeName))->IsArray()) {
         v8::Handle<v8::Array> names = v8::Handle<v8::Array>::Cast(
@@ -216,6 +220,9 @@ static void JS_Transaction(v8::FunctionCallbackInfo<v8::Value> const& args) {
         for (uint32_t i = 0; i < names->Length(); ++i) {
           v8::Handle<v8::Value> collection = names->Get(i);
           if (!collection->IsString()) {
+            collectionError += std::string(" Collection name #") +
+              std::to_string(i) + " in array '"+ attributeName +
+              std::string("' is not a string");
             return false;
           }
 
@@ -225,6 +232,7 @@ static void JS_Transaction(v8::FunctionCallbackInfo<v8::Value> const& args) {
         collections.emplace_back(
           TRI_ObjectToString(obj->Get(TRI_V8_ASCII_STRING(attributeName))));
       } else {
+        collectionError += std::string(" There is no array in '") + attributeName + "'";
         return false;
       }
       // fallthrough intentional
@@ -232,11 +240,12 @@ static void JS_Transaction(v8::FunctionCallbackInfo<v8::Value> const& args) {
     return true;
   };
 
+  collectionError = "invalid collection definition for transaction: ";
   // collections.read
   bool isValid = 
-    (getCollections(collections, readCollections, "read") &&
-     getCollections(collections, writeCollections, "write") &&
-     getCollections(collections, exclusiveCollections, "exclusive"));
+    (getCollections(collections, readCollections, "read", collectionError) &&
+     getCollections(collections, writeCollections, "write", collectionError) &&
+     getCollections(collections, exclusiveCollections, "exclusive", collectionError));
   
   if (!isValid) {
     TRI_V8_THROW_EXCEPTION_PARAMETER(collectionError);
@@ -280,6 +289,11 @@ static void JS_Transaction(v8::FunctionCallbackInfo<v8::Value> const& args) {
   if (object->Get(TRI_V8_ASCII_STRING("action"))->IsFunction()) {
     action = v8::Handle<v8::Function>::Cast(
         object->Get(TRI_V8_ASCII_STRING("action")));
+    v8::Local<v8::Value> v8_fnname = action->GetName();
+    std::string fnname = TRI_ObjectToString(v8_fnname);
+    if (fnname.length() == 0) {
+      action->SetName(TRI_V8_ASCII_STRING("userTransactionFunction"));
+    }
   } else if (object->Get(TRI_V8_ASCII_STRING("action"))->IsString()) {
     v8::TryCatch tryCatch;
     // get built-in Function constructor (see ECMA-262 5th edition 15.3.2)
@@ -306,6 +320,7 @@ static void JS_Transaction(v8::FunctionCallbackInfo<v8::Value> const& args) {
       tryCatch.ReThrow();
       return;
     }
+    action->SetName(TRI_V8_ASCII_STRING("userTransactionSource"));
   } else {
     TRI_V8_THROW_EXCEPTION_PARAMETER(actionError);
   }
@@ -746,7 +761,8 @@ static void JS_ParseAql(v8::FunctionCallbackInfo<v8::Value> const& args) {
     for (auto const& elem : parseResult.bindParameters) {
       bindVars->Set(i++, TRI_V8_STD_STRING((elem)));
     }
-    result->Set(TRI_V8_ASCII_STRING("parameters"), bindVars);
+    result->Set(TRI_V8_ASCII_STRING("parameters"), bindVars); // parameters is deprecated
+    result->Set(TRI_V8_ASCII_STRING("bindVars"), bindVars);
   }
 
   result->Set(TRI_V8_ASCII_STRING("ast"),

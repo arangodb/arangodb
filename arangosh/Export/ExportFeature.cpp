@@ -79,6 +79,9 @@ void ExportFeature::collectOptions(
       "--collection",
       "restrict to collection name (can be specified multiple times)",
       new VectorParameter<StringParameter>(&_collections));
+  
+  options->addOption("--query", "AQL query to run",
+                     new StringParameter(&_query));
 
   options->addOption("--graph-name", "name of a graph to export",
                      new StringParameter(&_graphName));
@@ -132,9 +135,15 @@ void ExportFeature::validateOptions(
     _outputDirectory.pop_back();
   }
 
-  if (_graphName.empty() && _collections.empty()) {
+  if (_graphName.empty() && _collections.empty() && _query.empty()) {
     LOG_TOPIC(FATAL, Logger::CONFIG)
-        << "expecting at least one collection or one graph name";
+        << "expecting at least one collection, a graph name or an AQL query";
+    FATAL_ERROR_EXIT();
+  }
+
+  if (!_query.empty() && (!_collections.empty() || !_graphName.empty())) {
+    LOG_TOPIC(FATAL, Logger::CONFIG)
+        << "expecting either a list of collections or an AQL query";
     FATAL_ERROR_EXIT();
   }
 
@@ -146,8 +155,8 @@ void ExportFeature::validateOptions(
 
   if ((_typeExport == "json" || _typeExport == "jsonl" ||
        _typeExport == "csv") &&
-      _collections.empty()) {
-    LOG_TOPIC(FATAL, Logger::CONFIG) << "expecting at least one collection";
+      _collections.empty() && _query.empty()) {
+    LOG_TOPIC(FATAL, Logger::CONFIG) << "expecting at least one collection or an AQL query";
     FATAL_ERROR_EXIT();
   }
 
@@ -267,6 +276,11 @@ void ExportFeature::start() {
           exportedSize += fileSize;
         }
       }
+    } else if (!_query.empty()) {
+      queryExport(httpClient.get());
+        
+      std::string filePath = _outputDirectory + TRI_DIR_SEPARATOR_STR + "query." + _typeExport;
+      exportedSize += TRI_SizeFile(filePath.c_str());
     }
   } else if (_typeExport == "xgmml" && _graphName.size()) {
     graphExport(httpClient.get());
@@ -330,43 +344,16 @@ void ExportFeature::collectionExport(SimpleHttpClient* httpClient) {
 
     TRI_DEFER(TRI_TRACKED_CLOSE_FILE(fd));
 
-    _firstLine = true;
-    if (_typeExport == "json") {
-      std::string openingBracket = "[";
-      writeToFile(fd, openingBracket, fileName);
+    writeFirstLine(fd, fileName, collection);
 
-    } else if (_typeExport == "xml") {
-      std::string xmlHeader =
-          "<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\"?>\n"
-          "<collection name=\"";
-      xmlHeader.append(encode_char_entities(collection));
-      xmlHeader.append("\">\n");
-      writeToFile(fd, xmlHeader, fileName);
-
-    } else if (_typeExport == "csv") {
-      std::string firstLine = "";
-      bool isFirstValue = true;
-      for (auto const& str : _csvFields) {
-        if (isFirstValue) {
-          firstLine += str;
-          isFirstValue = false;
-        } else {
-          firstLine += "," + str;
-        }
-      }
-      firstLine += "\n";
-      writeToFile(fd, firstLine, fileName);
-    }
-
-    writeCollectionBatch(fd, VPackArrayIterator(body.get("result")), fileName);
+    writeBatch(fd, VPackArrayIterator(body.get("result")), fileName);
 
     while (body.hasKey("id")) {
       std::string const url = "/_api/cursor/" + body.get("id").copyString();
       parsedBody = httpCall(httpClient, url, rest::RequestType::PUT);
       body = parsedBody->slice();
 
-      writeCollectionBatch(fd, VPackArrayIterator(body.get("result")),
-                           fileName);
+      writeBatch(fd, VPackArrayIterator(body.get("result")), fileName);
     }
 
     if (_typeExport == "json") {
@@ -379,8 +366,94 @@ void ExportFeature::collectionExport(SimpleHttpClient* httpClient) {
   }
 }
 
-void ExportFeature::writeCollectionBatch(int fd, VPackArrayIterator it,
-                                         std::string const& fileName) {
+void ExportFeature::queryExport(SimpleHttpClient* httpClient) {
+  std::string errorMsg;
+
+  if (_progress) {
+    std::cout << "# Running AQL query '" << _query << "'..." << std::endl;
+  }
+
+  std::string fileName = _outputDirectory + TRI_DIR_SEPARATOR_STR + "query." + _typeExport;
+
+  // remove an existing file first
+  if (TRI_ExistsFile(fileName.c_str())) {
+    TRI_UnlinkFile(fileName.c_str());
+  }
+
+  std::string const url = "_api/cursor";
+
+  VPackBuilder post;
+  post.openObject();
+  post.add("query", VPackValue(_query));
+  post.close();
+
+  std::shared_ptr<VPackBuilder> parsedBody =
+      httpCall(httpClient, url, rest::RequestType::POST, post.toJson());
+  VPackSlice body = parsedBody->slice();
+
+  int fd =
+      TRI_TRACKED_CREATE_FILE(fileName.c_str(), O_CREAT | O_EXCL | O_RDWR | TRI_O_CLOEXEC,
+                  S_IRUSR | S_IWUSR);
+
+  if (fd < 0) {
+    errorMsg = "cannot write to file '" + fileName + "'";
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_CANNOT_WRITE_FILE, errorMsg);
+  }
+
+  TRI_DEFER(TRI_TRACKED_CLOSE_FILE(fd));
+
+  writeFirstLine(fd, fileName, "");
+
+  writeBatch(fd, VPackArrayIterator(body.get("result")), fileName);
+
+  while (body.hasKey("id")) {
+    std::string const url = "/_api/cursor/" + body.get("id").copyString();
+    parsedBody = httpCall(httpClient, url, rest::RequestType::PUT);
+    body = parsedBody->slice();
+
+    writeBatch(fd, VPackArrayIterator(body.get("result")), fileName);
+  }
+
+  if (_typeExport == "json") {
+    std::string closingBracket = "\n]";
+    writeToFile(fd, closingBracket, fileName);
+  } else if (_typeExport == "xml") {
+    std::string xmlFooter = "</collection>";
+    writeToFile(fd, xmlFooter, fileName);
+  }
+}
+
+void ExportFeature::writeFirstLine(int fd, std::string const& fileName, std::string const& collection) {
+  _firstLine = true;
+  if (_typeExport == "json") {
+    std::string openingBracket = "[";
+    writeToFile(fd, openingBracket, fileName);
+
+  } else if (_typeExport == "xml") {
+    std::string xmlHeader =
+        "<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\"?>\n"
+        "<collection name=\"";
+    xmlHeader.append(encode_char_entities(collection));
+    xmlHeader.append("\">\n");
+    writeToFile(fd, xmlHeader, fileName);
+
+  } else if (_typeExport == "csv") {
+    std::string firstLine = "";
+    bool isFirstValue = true;
+    for (auto const& str : _csvFields) {
+      if (isFirstValue) {
+        firstLine += str;
+        isFirstValue = false;
+      } else {
+        firstLine += "," + str;
+      }
+    }
+    firstLine += "\n";
+    writeToFile(fd, firstLine, fileName);
+  }
+}
+
+void ExportFeature::writeBatch(int fd, VPackArrayIterator it, std::string const& fileName) {
   std::string line;
   line.reserve(1024);
 

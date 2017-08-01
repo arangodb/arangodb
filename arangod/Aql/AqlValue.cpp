@@ -992,7 +992,7 @@ void AqlValue::destroy() {
       return;
     }
     case VPACK_MANAGED_SLICE: {
-      delete _data.slice;
+      delete[] _data.slice;
       break;
     }
     case VPACK_MANAGED_BUFFER: {

@@ -81,8 +81,7 @@ struct LPComputation : public VertexComputation<LPValue, int8_t, uint64_t> {
       uint64_t newCommunity = mutableVertexData()->currentCommunity;
       if (messages.size() == 1) {
         newCommunity = std::min(**messages, newCommunity);
-      }
-      if (messages.size() > 1) {
+      } else if (messages.size() > 1) {
         newCommunity = mostFrequent(messages);
       }
 

@@ -1,10 +1,8 @@
-/*jshint -W051:true, -W069:true */
-'use strict';
-
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -20,18 +18,27 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Frank Celler
-/// @author Copyright 2016, ArangoDB GmbH, Cologne, Germany
+/// @author Daniel H. Larkin
 ////////////////////////////////////////////////////////////////////////////////
 
-(function() {
-  var args = global.UPGRADE_ARGS;
-  delete global.UPGRADE_ARGS;
-  
-  require("internal").db._users.truncate();
+#ifndef ARANGOD_REST_HANDLER_REST_ENDPOINT_HANDLER_H
+#define ARANGOD_REST_HANDLER_REST_ENDPOINT_HANDLER_H 1
 
-  const users = require("@arangodb/users");
+#include "Basics/Common.h"
+#include "RestHandler/RestVocbaseBaseHandler.h"
 
-  users.save("root", args.password, true);
-  users.grantDatabase("root", "*", "rw");
-}());
+namespace arangodb {
+class RestEndpointHandler : public RestVocbaseBaseHandler {
+ public:
+  RestEndpointHandler(GeneralRequest*, GeneralResponse*);
+
+ public:
+  RestStatus execute() override final;
+  char const* name() const override final { return "RestEndpointHandler"; }
+
+ protected:
+  void retrieveEndpoints();
+};
+}
+
+#endif

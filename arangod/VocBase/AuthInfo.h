@@ -90,6 +90,7 @@ class AuthInfo {
                   std::function<void(AuthUserEntry const&)> const&);
   velocypack::Builder serializeUser(std::string const& user);
   Result removeUser(std::string const& user);
+  Result removeAllUsers();
 
   velocypack::Builder getConfigData(std::string const& user);
   Result setConfigData(std::string const& user, velocypack::Slice const& data);
