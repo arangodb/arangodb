@@ -42,6 +42,7 @@
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
 #include "RestHandler/RestAdminLogHandler.h"
+#include "RestHandler/RestAdminRoutingHandler.h"
 #include "RestHandler/RestAqlFunctionsHandler.h"
 #include "RestHandler/RestAuthHandler.h"
 #include "RestHandler/RestBatchHandler.h"
@@ -491,6 +492,10 @@ void GeneralServerFeature::defineHandlers() {
   _handlerFactory->addPrefixHandler(
       "/_admin/log",
       RestHandlerCreator<arangodb::RestAdminLogHandler>::createNoData);
+
+  _handlerFactory->addPrefixHandler(
+      "/_admin/routing",
+      RestHandlerCreator<arangodb::RestAdminRoutingHandler>::createNoData);
 
   _handlerFactory->addPrefixHandler(
       "/_admin/work-monitor",
