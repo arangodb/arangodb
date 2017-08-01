@@ -60,8 +60,8 @@ class Methods;
 
 class ChecksumResult: public Result {
  public:
-  ChecksumResult(Result result) : Result(result) {}
-  ChecksumResult(VPackBuilder builder): Result(TRI_ERROR_NO_ERROR), _builder(builder) {}
+  explicit ChecksumResult(Result result) : Result(result) {}
+  explicit ChecksumResult(VPackBuilder&& builder): Result(TRI_ERROR_NO_ERROR), _builder(std::move(builder)) {}
 
   VPackBuilder builder() {
     return _builder;
