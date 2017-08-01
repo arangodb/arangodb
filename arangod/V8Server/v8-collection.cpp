@@ -2788,7 +2788,7 @@ static void JS_TruncateVocbaseCol(
   res = trx.finish(result.code);
 
   if (result.failed()) {
-    TRI_V8_THROW_EXCEPTION(result.code);
+    TRI_V8_THROW_EXCEPTION_MESSAGE(result.code, result.errorMessage);
   }
 
   if (!res.ok()) {
