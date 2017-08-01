@@ -193,7 +193,7 @@ MMFilesPrimaryIndex::MMFilesPrimaryIndex(
             std::vector<std::vector<arangodb::basics::AttributeName>>(
                 {{arangodb::basics::AttributeName(StaticStrings::KeyString,
                                                   false)}}),
-            true, false),
+            /*unique*/ true , /*sparse*/ false),
       _primaryIndex(nullptr) {
   size_t indexBuckets = 1;
 
