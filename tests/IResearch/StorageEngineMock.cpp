@@ -43,11 +43,11 @@ bool ContextDataMock::isPinned(TRI_voc_cid_t cid) const {
   return pinned.find(cid) != pinned.end();
 }
 
+std::function<void()> PhysicalCollectionMock::before = []()->void {};
+
 PhysicalCollectionMock::PhysicalCollectionMock(arangodb::LogicalCollection* collection, arangodb::velocypack::Slice const& info)
   : PhysicalCollection(collection, info) {
 }
-
-std::function<void()> PhysicalCollectionMock::before = []()->void {};
 
 arangodb::PhysicalCollection* PhysicalCollectionMock::clone(arangodb::LogicalCollection*, PhysicalCollection*) {
   before();
@@ -359,6 +359,7 @@ arangodb::Result PhysicalCollectionMock::updateProperties(arangodb::velocypack::
   return arangodb::Result(TRI_ERROR_NO_ERROR); // assume mock collection updated OK
 }
 
+std::function<void()> PhysicalViewMock::before = []()->void {};
 int PhysicalViewMock::persistPropertiesResult;
 
 PhysicalViewMock::PhysicalViewMock(arangodb::LogicalView* view, arangodb::velocypack::Slice const& info)
@@ -366,38 +367,50 @@ PhysicalViewMock::PhysicalViewMock(arangodb::LogicalView* view, arangodb::velocy
 }
 
 arangodb::PhysicalView* PhysicalViewMock::clone(arangodb::LogicalView*, arangodb::PhysicalView*) {
+  before();
   TRI_ASSERT(false);
   return nullptr;
 }
 
 void PhysicalViewMock::drop() {
+  before();
   // NOOP, assume physical view dropped OK
 }
 
 void PhysicalViewMock::getPropertiesVPack(arangodb::velocypack::Builder&, bool includeSystem /*= false*/) const {
+  before();
   TRI_ASSERT(false);
 }
 
 void PhysicalViewMock::open() {
+  before();
   TRI_ASSERT(false);
 }
 
 std::string const& PhysicalViewMock::path() const {
+  before();
+
   return physicalPath;
 }
 
 arangodb::Result PhysicalViewMock::persistProperties() {
+  before();
+
   return arangodb::Result(persistPropertiesResult);
 }
 
 void PhysicalViewMock::setPath(std::string const& value) {
+  before();
   physicalPath = value;
 }
 
 arangodb::Result PhysicalViewMock::updateProperties(arangodb::velocypack::Slice const& slice, bool doSync) {
+  before();
   TRI_ASSERT(false);
   return arangodb::Result(TRI_ERROR_INTERNAL);
 }
+
+bool StorageEngineMock::inRecoveryResult = false;
 
 StorageEngineMock::StorageEngineMock()
   : StorageEngine(nullptr, "", "", nullptr) {
@@ -559,6 +572,10 @@ int StorageEngineMock::getViews(TRI_vocbase_t* vocbase, arangodb::velocypack::Bu
 int StorageEngineMock::handleSyncKeys(arangodb::InitialSyncer&, arangodb::LogicalCollection*, std::string const&, std::string const&, std::string const&, TRI_voc_tick_t, std::string&) {
   TRI_ASSERT(false);
   return 0;
+}
+
+bool StorageEngineMock::inRecovery() {
+  return inRecoveryResult;
 }
 
 arangodb::Result StorageEngineMock::lastLogger(TRI_vocbase_t*, std::shared_ptr<arangodb::transaction::Context>, uint64_t, uint64_t, std::shared_ptr<VPackBuilder>&) {

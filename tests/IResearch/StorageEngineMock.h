@@ -89,6 +89,7 @@ class PhysicalCollectionMock: public arangodb::PhysicalCollection {
 
 class PhysicalViewMock: public arangodb::PhysicalView {
  public:
+  static std::function<void()> before;
   static int persistPropertiesResult;
   std::string physicalPath;
 
@@ -137,6 +138,7 @@ class TransactionStateMock: public arangodb::TransactionState {
 
 class StorageEngineMock: public arangodb::StorageEngine {
  public:
+  static bool inRecoveryResult;
   std::vector<std::unique_ptr<TRI_vocbase_t>> vocbases; // must allocate on heap because TRI_vocbase_t does not have a 'noexcept' move constructor
 
   StorageEngineMock();
@@ -172,6 +174,7 @@ class StorageEngineMock: public arangodb::StorageEngine {
   virtual std::shared_ptr<arangodb::velocypack::Builder> getReplicationApplierConfiguration(TRI_vocbase_t* vocbase, int& result) override;
   virtual int getViews(TRI_vocbase_t* vocbase, arangodb::velocypack::Builder& result) override;
   virtual int handleSyncKeys(arangodb::InitialSyncer&, arangodb::LogicalCollection*, std::string const&, std::string const&, std::string const&, TRI_voc_tick_t, std::string&) override;
+  virtual bool inRecovery() override;
   virtual arangodb::Result lastLogger(TRI_vocbase_t*, std::shared_ptr<arangodb::transaction::Context>, uint64_t, uint64_t, std::shared_ptr<VPackBuilder>&) override;
   virtual TRI_vocbase_t* openDatabase(arangodb::velocypack::Slice const& args, bool isUpgrade, int& status) override;
   virtual arangodb::Result persistCollection(TRI_vocbase_t* vocbase, arangodb::LogicalCollection const* collection) override;
