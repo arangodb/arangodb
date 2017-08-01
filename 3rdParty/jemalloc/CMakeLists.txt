@@ -4,7 +4,7 @@ project(jemalloc C)
 include(ExternalProject)
 
 # set version and paths
-set(JEMALLOC_VERSION "4.5.0")
+set(JEMALLOC_VERSION "5.0.1")
 # set(JEMALLOC_VERSION "3.6.0")
 set(JEMALLOC_SOURCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/v${JEMALLOC_VERSION}")
 set(JEMALLOC_BINARY_DIR "${CMAKE_CURRENT_BINARY_DIR}/v${JEMALLOC_VERSION}")
@@ -54,12 +54,12 @@ if (LINUX OR DARWIN)
         ${JEMALLOC_BINARY_DIR}/doc/jemalloc.html
         ${JEMALLOC_BINARY_DIR}/doc/jemalloc.3
     CONFIGURE_COMMAND
-      ./configure CC=${JEMALLOC_CC_TMP}
+      ./autogen.sh && ./configure CC=${JEMALLOC_CC_TMP}
                   CXX=${JEMALLOC_CXX_TMP}
                   CFLAGS=${JEMALLOC_CFLAGS_TMP}
                   CXXFLAGS=${JEMALLOC_CXXFLAGS_TMP}
-                  --enable-munmap
                   --prefix=${CMAKE_CURRENT_BINARY_DIR}
+                  --with-malloc-conf=background_thread:true
                   --with-version=${JEMALLOC_VERSION}-0-g0
     BUILD_COMMAND
       make build_lib_static
@@ -70,4 +70,6 @@ if (LINUX OR DARWIN)
            && mkdir -p ${CMAKE_CURRENT_BINARY_DIR}/lib
            && cp -a ${JEMALLOC_BINARY_DIR}/lib/libjemalloc.a ${CMAKE_CURRENT_BINARY_DIR}/lib
   )
+
+  set(JEMALLOC_LIB "${JEMALLOC_BINARY_DIR}/lib/libjemalloc.a" PARENT_SCOPE)
 endif ()
