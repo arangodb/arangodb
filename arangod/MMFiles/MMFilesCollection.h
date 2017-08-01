@@ -139,8 +139,7 @@ class MMFilesCollection final : public PhysicalCollection {
                                     bool doSync) override;
   virtual arangodb::Result persistProperties() override;
 
-  virtual PhysicalCollection* clone(LogicalCollection*,
-                                    PhysicalCollection*) override;
+  virtual PhysicalCollection* clone(LogicalCollection*) override;
 
   TRI_voc_rid_t revision(arangodb::transaction::Methods* trx) const override;
   TRI_voc_rid_t revision() const;

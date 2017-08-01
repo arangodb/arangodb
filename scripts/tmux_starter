@@ -88,7 +88,8 @@ suite_all(){
         *)
     esac
 
-    echo "./scripts/unittest $tests ${args_default[@]} ${args[@]} && exit 0"
+    echoerr "./scripts/unittest $tests ${args_default[@]} ${args[@]} && exit 0"
+    echo    "./scripts/unittest $tests ${args_default[@]} ${args[@]} && exit 0"
 }
 
 portrange() {
@@ -304,6 +305,8 @@ execute_tasks(){
 }
 
 # helper
+echoerr() { printf "%s\n" "$*" >&2; }
+
 die(){
     echo "FATAL: ${1-this should not happen}"
     exit 1

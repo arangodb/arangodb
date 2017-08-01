@@ -85,7 +85,7 @@ SET(ARANGOD_SOURCES
   Agency/GossipCallback.cpp
   Agency/Inception.cpp
   Agency/Job.cpp
-  Agency/JobContext.cpp  
+  Agency/JobContext.cpp
   Agency/MoveShard.cpp
   Agency/Node.cpp
   Agency/NotifyCallback.cpp
@@ -280,6 +280,7 @@ SET(ARANGOD_SOURCES
   RestHandler/RestDocumentHandler.cpp
   RestHandler/RestEchoHandler.cpp
   RestHandler/RestEdgesHandler.cpp
+  RestHandler/RestEndpointHandler.cpp
   RestHandler/RestEngineHandler.cpp
   RestHandler/RestImportHandler.cpp
   RestHandler/RestIndexHandler.cpp

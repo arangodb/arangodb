@@ -69,8 +69,7 @@ class RocksDBCollection final : public PhysicalCollection {
                                     bool doSync) override;
   virtual arangodb::Result persistProperties() override;
 
-  virtual PhysicalCollection* clone(LogicalCollection*,
-                                    PhysicalCollection*) override;
+  virtual PhysicalCollection* clone(LogicalCollection*) override;
 
   void getPropertiesVPack(velocypack::Builder&) const override;
   void getPropertiesVPackCoordinator(velocypack::Builder&) const override;
