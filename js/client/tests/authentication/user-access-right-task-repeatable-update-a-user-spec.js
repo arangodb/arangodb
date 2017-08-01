@@ -32,32 +32,15 @@
 'use strict';
 
 const expect = require('chai').expect;
-const helper = require('@arangodb/user-helper');
 const tasks = require('@arangodb/tasks');
 const pu = require('@arangodb/process-utils');
-const download = require('internal').download;
-const rightLevels = helper.rightLevels;
+const users = require('@arangodb/users');
+const internal = require('internal');
+const download = internal.download;
 const keySpaceId = 'task_update_user_keyspace';
-
-const userSet = helper.userSet;
-const systemLevel = helper.systemLevel;
-const dbLevel = helper.dbLevel;
-const colLevel = helper.colLevel;
-
-const arango = require('internal').arango;
-const db = require('internal').db;
-for (let l of rightLevels) {
-  systemLevel[l] = new Set();
-  dbLevel[l] = new Set();
-  colLevel[l] = new Set();
-}
-
-const wait = (keySpaceId, key, count) => {
-  for (let i = 0; i < 200; i++) {
-    if (getKey(keySpaceId, key) >= count) break;
-    require('internal').wait(0.1);
-  }
-};
+const taskId = "task_update_user_periodic";
+const arango = internal.arango;
+const db = internal.db;
 
 const createKeySpace = (keySpaceId) => {
   return executeJS(`return global.KEYSPACE_CREATE('${keySpaceId}', 128, true);`).body === 'true';
@@ -96,65 +79,52 @@ const executeJS = (code) => {
 const switchUser = (user) => {
   arango.reconnect(arango.getEndpoint(), '_system', user, '');
 };
-helper.removeAllUsers();
 
 describe('User Rights Management', () => {
-  before(helper.generateAllUsers);
-  after(helper.removeAllUsers);
+  before(() => {
+    users.save("bob");
+    users.grantDatabase("bob", "_system", "rw");
+    users.grantCollection("bob", "_system", "*", "rw");
 
-  it('should test rights for', () => {
-    for (let name of userSet) {
-      let canUse = false;
-      try {
-        switchUser(name);
-        canUse = true;
-      } catch (e) {
-        canUse = false;
-      }
+    switchUser("bob");
+    expect(createKeySpace(keySpaceId)).to.equal(true, 'keySpace creation failed!');
+  });
+  after(() => {
+    switchUser("root", "_system");
+    users.remove("bob");
+    dropKeySpace(keySpaceId);
+    try {
+      internal.print("Unregistering task");
+      tasks.unregister(taskId);
+    } catch (e) {}
+  });
 
-      if (canUse) {
-        describe(`user ${name}`, () => {
-          const taskId = 'task_drop_user_' + name;
-          before(() => {
-            switchUser(name);
-            expect(createKeySpace(keySpaceId)).to.equal(true, 'keySpace creation failed!');
-          });
+  it('test cancelling periodic tasks', () => {
+      switchUser("bob");
+      setKey(keySpaceId, "bob");
 
-          after(() => {
-            switchUser('root');
-            dropKeySpace(keySpaceId);
-            try {
-              tasks.unregister(taskId);
-            } catch (e) {}
-          });
+      tasks.register({
+        id: taskId,
+        name: taskId,
+        period: 0.3,
+        command: `(function (params) {
+          global.KEY_SET('${keySpaceId}', "bob", require('internal').time());
+        })(params);`
+      });
+      internal.print("Started task, now waiting...");
+      internal.wait(1);
 
-          describe('administrate on server level', () => {
-            beforeEach(() => {
-              db._useDatabase('_system');
-            });
+      expect(getKey(keySpaceId, "bob")).to.be.above(0, 
+        "Task must have run at least once");
 
-            it('update a user', () => {
-              if (systemLevel['rw'].has(name)) {
-                setKey(keySpaceId, name);
-                tasks.register({
-                  id: taskId,
-                  name: taskId,
-                  period: 0.3,
-                  command: `(function (params) {
-                    let count = global.KEY_GET('${keySpaceId}', '${name}');
-                    global.KEY_SET('${keySpaceId}', '${name}', ++count);
-                  })(params);`
-                });
-                wait(keySpaceId, name, 3);
-                require('@arangodb/users').grantDatabase(name, '_system', 'none');
-                require('internal').wait(1);
-                expect(getKey(keySpaceId, name)).to.be.below(6, `The repeatable task of ${name} was able run with insufficient rights`);
-              }
-            });
-          });
-        });
-      }
-    }
+      switchUser("root", "_system");
+      internal.print("Downgrading rights");
+      // should cause the task to stop eventually
+      users.grantDatabase("bob", '_system', 'ro');
+      internal.print("Waiting for task to stop");
+      internal.wait(1);
+      expect(getKey(keySpaceId, "bob")).to.be.below(internal.time() - 0.3, 
+      `The repeatable task was able run with insufficient rights`);
   });
 });
 
