@@ -105,7 +105,6 @@ GeneralServerFeature::GeneralServerFeature(
   startsAfter("Database");
   startsAfter("Endpoint");
   startsAfter("FoxxQueues");
-  startsAfter("MMFilesLogfileManager");
   startsAfter("Random");
   startsAfter("Scheduler");
   startsAfter("Server");

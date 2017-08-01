@@ -387,7 +387,7 @@ void ApplicationServer::setupDependencies(bool failOnMissing) {
         }
         continue;
       }
-
+/*
       if (failOnMissing &&
           it.second->isEnabled() && 
           !this->feature(other)->isEnabled()) {
@@ -395,7 +395,7 @@ void ApplicationServer::setupDependencies(bool failOnMissing) {
              "' depends on other feature '" + other +
              "', which is disabled");
       }
-
+*/
       this->feature(other)->startsAfter(it.second->name());
     }
   }
