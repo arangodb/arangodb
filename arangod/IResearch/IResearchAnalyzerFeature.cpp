@@ -338,9 +338,7 @@ IResearchAnalyzerFeature::IResearchAnalyzerFeature(
   setOptional(true);
   requiresElevatedPrivileges(false);
   startsAfter("AQLFunctions"); // used for registering IResearch analyzer functions
-/*FIXME TODO enable
   startsAfter("SystemDatabase"); // used for getting the system database containing the persisted configuration
-*/
 }
 
 std::pair<IResearchAnalyzerFeature::AnalyzerPool::ptr, bool> IResearchAnalyzerFeature::emplace(
@@ -348,17 +346,14 @@ std::pair<IResearchAnalyzerFeature::AnalyzerPool::ptr, bool> IResearchAnalyzerFe
   irs::string_ref const& type,
   irs::string_ref const& properties
 ) noexcept {
-  /* FIXME TODO enable persistence
   return emplace(name, type, properties, true);
-  */
-  return emplace(name, type, properties, false);
 }
 
 std::pair<IResearchAnalyzerFeature::AnalyzerPool::ptr, bool> IResearchAnalyzerFeature::emplace(
   irs::string_ref const& name,
   irs::string_ref const& type,
   irs::string_ref const& properties,
-  bool persist
+  bool initAndPersist
 ) noexcept {
   try {
     WriteMutex mutex(_mutex);
@@ -386,22 +381,29 @@ std::pair<IResearchAnalyzerFeature::AnalyzerPool::ptr, bool> IResearchAnalyzerFe
 
     auto pool = itr.first->second;
 
+    if (!pool) {
+      LOG_TOPIC(WARN, Logger::FIXME) << "failure creating an IResearch analyzer instance for name '" << name << "' type '" << type << "' properties '" << properties << "'";
+      TRI_set_errno(TRI_ERROR_BAD_PARAMETER);
+
+      return std::make_pair(AnalyzerPool::ptr(), false);
+    }
+
+    // skip initialization and persistance
+    if (!initAndPersist && pool) {
+      erase = false;
+
+      return std::make_pair(pool, itr.second);
+    }
+
     if (itr.second) { // new pool
-      if (!_started && persist) {
-        LOG_TOPIC(WARN, Logger::FIXME) << "cannot garantee collision-free persistance while creating an IResearch analyzer instance for name '" << name << "' type '" << type << "' properties '" << properties << "'";
-        TRI_set_errno(TRI_ERROR_ARANGO_ILLEGAL_STATE);
-
-        return std::make_pair(AnalyzerPool::ptr(), false);
-      }
-
-      if (!pool || !pool->init(type, properties)) {
-        LOG_TOPIC(WARN, Logger::FIXME) << "failure creating an IResearch analyzer instance for name '" << name << "' type '" << type << "' properties '" << properties << "'";
+      if (!pool->init(type, properties)) {
+        LOG_TOPIC(WARN, Logger::FIXME) << "failure initializing an IResearch analyzer instance for name '" << name << "' type '" << type << "' properties '" << properties << "'";
         TRI_set_errno(TRI_ERROR_BAD_PARAMETER);
 
         return std::make_pair(AnalyzerPool::ptr(), false);
       }
 
-      if (persist && !storeConfiguration(*pool)) {
+      if (!storeConfiguration(*pool)) {
         LOG_TOPIC(WARN, Logger::FIXME) << "failure persisting an IResearch analyzer instance for name '" << name << "' type '" << type << "' properties '" << properties << "'";
         TRI_set_errno(TRI_ERROR_BAD_PARAMETER);
 
@@ -497,7 +499,8 @@ size_t IResearchAnalyzerFeature::erase(
 
       auto result = trx.remove(ANALYZER_COLLECTION_NAME, builder.slice(), options);
 
-      if (!result.successful()) {
+      // stataic analyzers may be not persisted if their '_refCount' did not change
+      if (!result.successful() && TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND != result.code) {
         LOG_TOPIC(WARN, Logger::FIXME) << "failure to persist AnalyzerPool configuration while removing IResearch analyzer name '" << pool->name() << "'";
         trx.abort();
 
@@ -516,6 +519,7 @@ size_t IResearchAnalyzerFeature::erase(
       LOG_TOPIC(WARN, Logger::FIXME) << "outstanding reservation requests while removal of IResearch analizer name '" << name << "'";
     }
 
+    // OK to erase if !_started because on start() the persisted configuration will be loaded
     _analyzers.erase(itr);
 
     return 1;
@@ -533,6 +537,13 @@ size_t IResearchAnalyzerFeature::erase(
 IResearchAnalyzerFeature::AnalyzerPool::ptr IResearchAnalyzerFeature::get(
     irs::string_ref const& name
 ) const noexcept {
+    // insert dummy (uninitialized) placeholders if this feature has not been
+    // started to break the dependency loop on DatabaseFeature
+    // placeholders will be loaded/validation during start()/loadConfiguration()
+    if (!_started) {
+      return const_cast<IResearchAnalyzerFeature*>(this)->emplace(name, irs::string_ref::nil, irs::string_ref::nil, false).first;
+    }
+
   try {
     ReadMutex mutex(_mutex);
     SCOPED_LOCK(mutex);
@@ -584,7 +595,9 @@ IResearchAnalyzerFeature::AnalyzerPool::ptr IResearchAnalyzerFeature::get(
   return identity.instance;
 }
 
-void IResearchAnalyzerFeature::loadConfiguration() {
+void IResearchAnalyzerFeature::loadConfiguration(
+    std::unordered_set<irs::string_ref> const& preinitialized
+) {
   auto* database = getFeature<arangodb::iresearch::SystemDatabaseFeature>();
 
   if (!database) {
@@ -626,61 +639,154 @@ void IResearchAnalyzerFeature::loadConfiguration() {
     return;
   }
 
-  collection->invokeOnAllElements(
-    &trx,
-    [this, &trx, collection](
-        DocumentIdentifierToken const& token
-    )->bool {
-      ManagedDocumentResult result;
+  std::unordered_map<irs::string_ref, std::pair<AnalyzerPool::ptr, int64_t>> initialized;
+  auto visitor = [this, &trx, collection, &initialized, &preinitialized](
+      DocumentIdentifierToken const& token
+  )->bool {
+    ManagedDocumentResult result;
 
-      if (!collection->readDocument(&trx, token, result)) {
-        LOG_TOPIC(WARN, Logger::FIXME) << "skipping failed read of an IResearch analyzer persisted configuration token: " << token._data;
+    if (!collection->readDocument(&trx, token, result)) {
+      LOG_TOPIC(WARN, Logger::FIXME) << "skipping failed read of an IResearch analyzer persisted configuration token: " << token._data;
 
-        return true; // failed to read document, skip
-      }
-
-      arangodb::velocypack::Slice slice(result.vpack());
-
-      if (!slice.isObject()
-          || !slice.hasKey(arangodb::StaticStrings::KeyString)
-          || !slice.get(arangodb::StaticStrings::KeyString).isString()
-          || !slice.hasKey("name") || !slice.get("name").isString()
-          || !slice.hasKey("type") || !slice.get("type").isString()
-          || !slice.hasKey("properties")
-          || !slice.hasKey("ref_count") || !slice.get("ref_count").isNumber<uint64_t>()) {
-        LOG_TOPIC(WARN, Logger::FIXME) << "skipping invalid IResearch analyzer persisted configuration entry: " << slice.toJson();
-
-        return true; // not a valid configuration, skip
-      }
-
-      auto key = getStringRef(slice.get(StaticStrings::KeyString));
-      auto name = getStringRef(slice.get("name"));
-      auto type = getStringRef(slice.get("type"));
-      auto properties = slice.get("properties").toJson(); // format as jSON config
-      auto count = slice.get("ref_count").getNumber<uint64_t>();
-      auto entry = emplace(name, type, properties, false); // do not persit since this config is already coming from the persisted store
-
-      if (!entry.first) {
-        LOG_TOPIC(WARN, Logger::FIXME) << "skipping failed caching of an IResearch analyzer persisted configuration entry: " << slice.toJson();
-
-        return true; // analizer configuration already in cache, skip duplicate
-      }
-
-      WriteMutex mutex(_mutex);
-      SCOPED_LOCK(mutex); // the cache could return the same pool asynchronously before '_key'/'_refCount' updated below
-
-      if (!entry.second) {
-        LOG_TOPIC(WARN, Logger::FIXME) << "skipping duplicate IResearch analyzer persisted configuration entry: " << slice.toJson();
-
-        return true; // analizer configuration already in cache, skip duplicate
-      }
-
-      entry.first->_key = key;
-      entry.first->_refCount = count;
-
-      return true; // process next
+      return true; // failed to read document, skip
     }
-  );
+
+    arangodb::velocypack::Slice slice(result.vpack());
+
+    if (!slice.isObject()
+        || !slice.hasKey(arangodb::StaticStrings::KeyString)
+        || !slice.get(arangodb::StaticStrings::KeyString).isString()
+        || !slice.hasKey("name") || !slice.get("name").isString()
+        || !slice.hasKey("type") || !slice.get("type").isString()
+        || !slice.hasKey("properties")
+        || !slice.hasKey("ref_count") || !slice.get("ref_count").isNumber<uint64_t>()) {
+      LOG_TOPIC(WARN, Logger::FIXME) << "skipping invalid IResearch analyzer persisted configuration entry: " << slice.toJson();
+
+      return true; // not a valid configuration, skip
+    }
+
+    auto key = getStringRef(slice.get(StaticStrings::KeyString));
+    auto name = getStringRef(slice.get("name"));
+    auto type = getStringRef(slice.get("type"));
+    auto properties = slice.get("properties").toJson(); // format as jSON config
+    auto count = slice.get("ref_count").getNumber<uint64_t>();
+
+    WriteMutex mutex(_mutex);
+    SCOPED_LOCK(mutex); // the cache could return the same pool asynchronously before '_key'/'_refCount' updated below
+    auto entry = emplace(name, type, properties, false); // do not persit since this config is already coming from the persisted store
+    auto& pool = entry.first;
+
+    if (!pool) {
+      LOG_TOPIC(WARN, Logger::FIXME) << "failure creating an IResearch analyzer instance for name '" << name << "' type '" << type << "' properties '" << properties << "'";
+
+      THROW_ARANGO_EXCEPTION_MESSAGE(
+        TRI_ERROR_BAD_PARAMETER,
+        std::string("failure creating an IResearch analyzer instance for name '") + std::string(name) + "' type '" + std::string(type) + "' properties '" + properties + "'"
+      );
+    }
+
+    if (!entry.second && initialized.find(name) != initialized.end()) {
+      LOG_TOPIC(WARN, Logger::FIXME) << "name collision detected while registering an IResearch analizer name '" << name << "' type '" << type << "' properties '" << properties << "', previous registration type '" << pool->_type << "' properties '" << pool->_properties << "'";
+
+      THROW_ARANGO_EXCEPTION_MESSAGE(
+        TRI_ERROR_BAD_PARAMETER,
+        std::string("name collision detected while registering an IResearch analizer name '") + std::string(name) + "' type '" + std::string(type) + "' properties '" + properties + "', previous registration type '" + pool->_type + "' properties '" + pool->_properties + "'"
+      );
+    }
+
+    // check if able to add an int64_t 'count' to '_refCount'
+    if (pool->_refCount >= std::numeric_limits<int64_t>::max()) {
+      LOG_TOPIC(WARN, Logger::FIXME) << "overflow detected while registering an IResearch analyzer name '" << name << "' type '" << type << "' properties '" << properties << "', previous registration type '" << pool->_type << "' properties '" << pool->_properties << "'";
+
+      THROW_ARANGO_EXCEPTION_MESSAGE(
+        TRI_ERROR_INTERNAL,
+        std::string("overflow detected while registering an IResearch analyzer name '") + std::string(name) + "' type '" + std::string(type) + "' properties '" + properties + "', previous registration type '" + pool->_type + "' properties '" + pool->_properties + "'"
+      );
+    }
+
+    if (!entry.second && preinitialized.find(name) != preinitialized.end()) {
+      if (type != pool->_type || properties != pool->_properties) {
+        LOG_TOPIC(WARN, Logger::FIXME) << "name collision detected while registering an IResearch analizer name '" << name << "' type '" << type << "' properties '" << properties << "', previous registration type '" << pool->_type << "' properties '" << pool->_properties << "'";
+
+        THROW_ARANGO_EXCEPTION_MESSAGE(
+          TRI_ERROR_INTERNAL,
+          std::string("name collision detected while registering an IResearch analizer name '") + std::string(name) + "' type '" + std::string(type) + "' properties '" + properties + "', previous registration type '" + pool->_type + "' properties '" + pool->_properties + "'"
+        );
+      }
+    } else if (!pool->init(type, properties)) {
+      LOG_TOPIC(WARN, Logger::FIXME) << "failure initializing an IResearch analyzer instance for name '" << name << "' type '" << type << "' properties '" << properties << "'";
+
+      THROW_ARANGO_EXCEPTION_MESSAGE(
+        TRI_ERROR_BAD_PARAMETER,
+        std::string("failure initializing an IResearch analyzer instance for name '") + std::string(name) + "' type '" + std::string(type) + "' properties '" + properties + "'"
+      );
+    }
+
+    initialized.emplace(
+      std::piecewise_construct,
+      std::forward_as_tuple(pool->name()), // emplace with ref at sting in pool
+      std::forward_as_tuple(pool, int64_t(count))
+    );
+    pool->_key = key;
+    pool->_refCount += count; // for new entries refCount == 0, for dummy placeholder value should be summed and persisted
+
+    return true; // process next
+  };
+
+  try {
+    collection->invokeOnAllElements(&trx, visitor);
+
+    // ensure all records were initialized
+    for (auto& entry: _analyzers) {
+      if (initialized.find(entry.first) == initialized.end()
+          && preinitialized.find(entry.first) == preinitialized.end()) {
+        LOG_TOPIC(WARN, Logger::FIXME) << "uninitialized AnalyzerPool deletected while loading persisted configuration, IResearch analyzer name '" << entry.first << "'";
+
+        THROW_ARANGO_EXCEPTION_MESSAGE(
+          TRI_ERROR_INTERNAL,
+          std::string("uninitialized AnalyzerPool deletected while loading persisted configuration, IResearch analyzer name '") + std::string(entry.first) + "'"
+        );
+      }
+    }
+
+    // persist refCount changes
+    for (auto& entry: initialized) {
+      auto& name = entry.first;
+      auto count = entry.second.second;
+      auto& pool = entry.second.first;
+
+      if (count && (!pool || !updateConfiguration(trx, *pool, count))) {
+        LOG_TOPIC(WARN, Logger::FIXME) << "failure to persist AnalyzerPool configuration while updating ref_count of IResearch analyzer name '" << name << "'";
+
+        THROW_ARANGO_EXCEPTION_MESSAGE(
+          TRI_ERROR_INTERNAL,
+          std::string("failure to persist AnalyzerPool configuration while updating ref_count of IResearch analyzer name '") + std::string(name) + "'"
+        );
+      }
+    }
+
+    if (!trx.commit().ok()) {
+      LOG_TOPIC(WARN, Logger::FIXME) << "failure to commit AnalyzerPool configuration while updating ref_count of IResearch analyzer name '" << name << "'";
+      trx.abort();
+
+      THROW_ARANGO_EXCEPTION_MESSAGE(
+        TRI_ERROR_INTERNAL,
+        "failure to commit AnalyzerPool configuration while updating ref_count of IResearch analyzer"
+      );
+    }
+  } catch (...) {
+    for (auto& entry: initialized) {
+      auto& pool = entry.second.first;
+
+      if (pool) {
+        pool->_type.clear(); // noexcept
+        pool->_properties.clear(); // noexcept
+        pool->_refCount -= entry.second.second; // noexcept
+      }
+    }
+
+    throw;
+  }
 }
 
 /*static*/ std::string const& IResearchAnalyzerFeature::name() noexcept {
@@ -699,7 +805,17 @@ bool IResearchAnalyzerFeature::release(AnalyzerPool::ptr const& pool) noexcept {
     return false; // ignore release requests on uninitialized pools
   }
 
-  return updateConfiguration(*pool, false);
+  if (_started) {
+    return updateConfiguration(*pool, -1); // -1 for decrement
+  }
+
+  if (!pool->_refCount) {
+    return false;
+  }
+
+  --pool->_refCount;
+
+  return true;
 }
 
 bool IResearchAnalyzerFeature::reserve(AnalyzerPool::ptr const& pool) noexcept {
@@ -707,23 +823,36 @@ bool IResearchAnalyzerFeature::reserve(AnalyzerPool::ptr const& pool) noexcept {
     return false; // ignore reservation requests on uninitialized pools
   }
 
-  return updateConfiguration(*pool, true);
+  if (_started) {
+    return updateConfiguration(*pool, 1); // +1 for increment
+  }
+
+  ++pool->_refCount;
+
+  return true;
 }
 
 void IResearchAnalyzerFeature::start() {
   ApplicationFeature::start();
 
   // register the indentity analyzer (before loading configuration)
-  emplace(
+  auto identity = emplace(
     IdentityTokenizer::type().name(), // use name same as type for convenience
     IdentityTokenizer::type().name(),
     irs::string_ref::nil,
     false // do not persist since it's a static analyzer always available after start()
-  );
-/* FIXME TODO
+  ).first;
+  std::unordered_set<irs::string_ref> initialized;
+
+  // initialize the identity analyzer pool
+  if (identity
+      && identity->init(IdentityTokenizer::type().name(), irs::string_ref::nil)) {
+    initialized.emplace(identity->name());
+  }
+
   // load persisted configuration
-  loadConfiguration();
-*/
+  loadConfiguration(initialized);
+
   auto* functions = getFeature<arangodb::aql::AqlFunctionFeature>("AQLFunctions");
 
   if (functions) {
@@ -833,7 +962,7 @@ bool IResearchAnalyzerFeature::storeConfiguration(AnalyzerPool& pool) {
 
 bool IResearchAnalyzerFeature::updateConfiguration(
     AnalyzerPool& pool,
-    bool increment
+    int64_t delta
 ) {
   auto* database = getFeature<arangodb::iresearch::SystemDatabaseFeature>();
 
@@ -868,28 +997,8 @@ bool IResearchAnalyzerFeature::updateConfiguration(
     WriteMutex mutex(_mutex);
     SCOPED_LOCK(mutex);
 
-    if (!increment && !pool._refCount) {
-      LOG_TOPIC(WARN, Logger::FIXME) << "no pool reservations while releasing IResearch analyzer name '" << pool.name() << "'";
-      trx.abort();
-
-      return false;
-    }
-
-    auto refCount = pool._refCount + (increment ? 1 : -1);
-    arangodb::velocypack::Builder builder;
-    arangodb::OperationOptions options;
-
-    builder.openObject();
-    builder.add(arangodb::StaticStrings::KeyString, arangodb::velocypack::Value(pool._key));
-    builder.add("ref_count", arangodb::velocypack::Value(refCount));
-    builder.close();
-    options.waitForSync = true;
-    options.mergeObjects = true;
-
-    auto result = trx.update(ANALYZER_COLLECTION_NAME, builder.slice(), options);
-
-    if (!result.successful()) {
-      LOG_TOPIC(WARN, Logger::FIXME) << "failure to persist AnalyzerPool configuration while updating ref_count of IResearch analyzer name '" << pool.name() << "'";
+    if (!updateConfiguration(trx, pool, delta)) {
+      LOG_TOPIC(WARN, Logger::FIXME) << "failure to update AnalyzerPool configuration while updating ref_count of IResearch analyzer name '" << pool.name() << "'";
       trx.abort();
 
       return false;
@@ -902,9 +1011,7 @@ bool IResearchAnalyzerFeature::updateConfiguration(
       return false;
     }
 
-    pool._refCount += increment ? 1 : -1;
-
-    return true;
+    pool._refCount += delta;
   } catch (std::exception& e) {
     LOG_TOPIC(WARN, Logger::FIXME) << "caught exception during persist of an AnalyzerPool configuration while updating ref_count of IResearch analyzer name '" << pool.name() << "': " << e.what();
     IR_EXCEPTION();
@@ -914,6 +1021,31 @@ bool IResearchAnalyzerFeature::updateConfiguration(
   }
 
   return false;
+}
+
+bool IResearchAnalyzerFeature::updateConfiguration(
+    arangodb::transaction::Methods& trx,
+    AnalyzerPool& pool,
+    int64_t delta
+) {
+  if ((delta < 0 && decltype(pool._refCount)(0 - delta) > pool._refCount)
+      || (delta >0 && std::numeric_limits<decltype(pool._refCount)>::max() - pool._refCount < decltype(pool._refCount)(delta))) {
+    LOG_TOPIC(WARN, Logger::FIXME) << "overflow detected while updating ref_count of IResearch analyzer name '" << pool.name() << "'";
+
+    return false;
+  }
+
+  arangodb::velocypack::Builder builder;
+  arangodb::OperationOptions options;
+
+  builder.openObject();
+  builder.add(arangodb::StaticStrings::KeyString, arangodb::velocypack::Value(pool._key));
+  builder.add("ref_count", arangodb::velocypack::Value(pool._refCount + delta));
+  builder.close();
+  options.waitForSync = true;
+  options.mergeObjects = true;
+
+  return trx.update(ANALYZER_COLLECTION_NAME, builder.slice(), options).successful();
 }
 
 bool IResearchAnalyzerFeature::visit(

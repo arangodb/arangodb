@@ -48,6 +48,7 @@ class ContextDataMock: public arangodb::transaction::ContextData {
 
 class PhysicalCollectionMock: public arangodb::PhysicalCollection {
  public:
+  static std::function<void()> before;
   std::string physicalPath;
   std::vector<std::pair<arangodb::velocypack::Builder, bool>> documents; // std::pair<jSON, valid>
 

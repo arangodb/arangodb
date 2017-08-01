@@ -239,28 +239,56 @@ SECTION("test_emplace") {
   // add invalalid (feature not started)
   {
     arangodb::iresearch::IResearchAnalyzerFeature feature(nullptr);
-    CHECK((true == !feature.emplace("test_analyzer7", "invalid", irs::string_ref::nil).first));
-    CHECK((true == !feature.get("test_analyzer7")));
+    CHECK((true == !feature.emplace("test_analyzer7", "TestAnalyzer", irs::string_ref::nil).first));
+    auto pool = feature.get("test_analyzer");
+    REQUIRE((false == !pool));
+    CHECK((false == !feature.get("test_analyzer7")));
+    CHECK((irs::flags::empty_instance() == pool->features()));
+    auto analyzer = pool->get();
+    CHECK((true == !analyzer));
   }
 }
 
 SECTION("test_get") {
-  arangodb::iresearch::IResearchAnalyzerFeature feature(nullptr);
-
-  feature.emplace("test_analyzer", "TestAnalyzer", "abc");
-
-  // get valid
   {
-    auto pool = feature.get("test_analyzer");
-    REQUIRE((false == !pool));
-    CHECK((irs::flags({TestAttribute::type(), irs::term_attribute::type()}) == pool->features()));
-    auto analyzer = pool.get();
-    CHECK((false == !analyzer));
+    arangodb::iresearch::IResearchAnalyzerFeature feature(nullptr);
+
+    feature.emplace("test_analyzer", "TestAnalyzer", "abc");
+
+    // get valid (not started)
+    {
+      auto pool = feature.get("test_analyzer");
+      REQUIRE((false == !pool));
+      CHECK((irs::flags::empty_instance() == pool->features()));
+      auto analyzer = pool->get();
+      CHECK((true == !analyzer));
+    }
+
+    // get invalid (started)
+    {
+      CHECK((false == !feature.get("invalid")));
+    }
   }
 
-  // get invalid
   {
-    CHECK((true == !feature.get("invalid")));
+    arangodb::iresearch::IResearchAnalyzerFeature feature(nullptr);
+
+    feature.start();
+    feature.emplace("test_analyzer", "TestAnalyzer", "abc");
+
+    // get valid (started)
+    {
+      auto pool = feature.get("test_analyzer");
+      REQUIRE((false == !pool));
+      CHECK((irs::flags({TestAttribute::type(), irs::term_attribute::type()}) == pool->features()));
+      auto analyzer = pool.get();
+      CHECK((false == !analyzer));
+    }
+
+    // get invalid (started)
+    {
+      CHECK((true == !feature.get("invalid")));
+    }
   }
 }
 
@@ -290,7 +318,7 @@ SECTION("test_identity") {
   {
     arangodb::iresearch::IResearchAnalyzerFeature feature(nullptr);
     auto pool = feature.get("identity");
-    CHECK((true == !pool));
+    CHECK((false == !pool));
     feature.start();
     pool = feature.get("identity");
     REQUIRE((false == !pool));
@@ -595,24 +623,44 @@ SECTION("test_registration") {
   auto* database = arangodb::iresearch::getFeature<arangodb::iresearch::SystemDatabaseFeature>();
   auto vocbase = database->use();
 
-  // ensure there is no configuration collection
+  // reserve pool (not started)
   {
-    auto* collection = vocbase->lookupCollection("_iresearch_analyzers");
+    arangodb::iresearch::IResearchAnalyzerFeature feature(nullptr);
+    auto pool = feature.get("valid");
+    CHECK((false == !pool));
+    CHECK((feature.reserve(pool)));
+    CHECK((0 == feature.erase("valid"))); // remove not allowed
+  }
 
-    if (collection) {
-      vocbase->dropCollection(collection, true, -1);
-    }
-
-    collection = vocbase->lookupCollection("_iresearch_analyzers");
-    CHECK((nullptr == collection));
+  // release pool (not started)
+  {
+    arangodb::iresearch::IResearchAnalyzerFeature feature(nullptr);
+    auto pool = feature.get("valid");
+    CHECK((false == !pool));
+    CHECK((feature.reserve(pool)));
+    CHECK((feature.reserve(pool))); // 2nd time
+    CHECK((feature.release(pool)));
+    CHECK((0 == feature.erase("valid"))); // remove not allowed
+    CHECK((feature.release(pool)));
+    CHECK((1 == feature.erase("valid")));
   }
 
   // reserve pool (persistance failure)
   {
     arangodb::iresearch::IResearchAnalyzerFeature feature(nullptr);
+    feature.start(); // create configuration collection
     auto entry = feature.emplace("valid", "identity", nullptr);
     CHECK((entry.first));
-    CHECK((!feature.reserve(entry.first)));
+
+    {
+      // simulate temporary failure
+      auto before = PhysicalCollectionMock::before;
+      auto restore = irs::make_finally([before]()->void { PhysicalCollectionMock::before =before; });
+      PhysicalCollectionMock::before = []()->void { throw "exception"; };
+
+      CHECK((!feature.reserve(entry.first)));
+    }
+
     CHECK((1 == feature.erase("valid"))); // remove allowed
   }
 /*FIXME TODO enable
@@ -664,24 +712,37 @@ SECTION("test_registration") {
 }
 
 SECTION("test_remove") {
-  // remove existing
+  // remove (not started)
   {
     arangodb::iresearch::IResearchAnalyzerFeature feature(nullptr);
+    CHECK((0 == feature.erase("test_analyzer")));
+    CHECK((false == !feature.get("test_analyzer")));
+    CHECK((1 == feature.erase("test_analyzer")));
+  }
+
+  // remove existing (started)
+  {
+    arangodb::iresearch::IResearchAnalyzerFeature feature(nullptr);
+    feature.start();
     CHECK((false == !feature.emplace("test_analyzer", "TestAnalyzer", "abc").first));
     CHECK((false == !feature.get("test_analyzer")));
     CHECK((1 == feature.erase("test_analyzer")));
     CHECK((true == !feature.get("test_analyzer")));
   }
 
-  // remove invalid
+  // remove invalid (started)
   {
     arangodb::iresearch::IResearchAnalyzerFeature feature(nullptr);
+    feature.start();
     CHECK((true == !feature.get("test_analyzer")));
     CHECK((0 == feature.erase("test_analyzer")));
   }
 }
 
 SECTION("test_tokens") {
+  auto* database = arangodb::iresearch::getFeature<arangodb::iresearch::SystemDatabaseFeature>();
+  auto vocbase = database->use();
+
   // create a new instance of an ApplicationServer and fill it with the required features
   // cannot use the existing server since its features already have some state
   std::shared_ptr<arangodb::application_features::ApplicationServer> originalServer(
@@ -698,7 +759,18 @@ SECTION("test_tokens") {
   arangodb::application_features::ApplicationServer::server->addFeature(analyzers);
   arangodb::application_features::ApplicationServer::server->addFeature(functions);
   arangodb::application_features::ApplicationServer::server->addFeature(systemdb);
-  REQUIRE((false == !analyzers->emplace("test_analyzer", "TestAnalyzer", "abc").first));
+
+  // ensure there is no configuration collection
+  {
+    auto* collection = vocbase->lookupCollection("_iresearch_analyzers");
+
+    if (collection) {
+      vocbase->dropCollection(collection, true, -1);
+    }
+
+    collection = vocbase->lookupCollection("_iresearch_analyzers");
+    CHECK((nullptr == collection));
+  }
 
   // test function registration
   {
@@ -710,6 +782,9 @@ SECTION("test_tokens") {
     feature.start();
     CHECK((nullptr != functions->byName("TOKENS")));
   }
+
+  analyzers->start();
+  REQUIRE((false == !analyzers->emplace("test_analyzer", "TestAnalyzer", "abc").first));
 
   // test tokenization
   {
@@ -803,7 +878,8 @@ SECTION("test_tokens") {
 
 SECTION("test_visit") {
   arangodb::iresearch::IResearchAnalyzerFeature feature(nullptr);
-
+  feature.start();
+  feature.erase("identity"); // remove to simplify test implementation
   feature.emplace("test_analyzer0", "TestAnalyzer", "abc0");
   feature.emplace("test_analyzer1", "TestAnalyzer", "abc1");
   feature.emplace("test_analyzer2", "TestAnalyzer", "abc2");

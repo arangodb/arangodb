@@ -34,6 +34,14 @@
 #include "ApplicationFeatures/ApplicationFeature.h"
 
 NS_BEGIN(arangodb)
+NS_BEGIN(transaction)
+
+class Methods; // forward declaration
+
+NS_END // transaction
+NS_END // arangodb
+
+NS_BEGIN(arangodb)
 NS_BEGIN(iresearch)
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -102,11 +110,18 @@ class IResearchAnalyzerFeature final: public arangodb::application_features::App
     irs::string_ref const& name,
     irs::string_ref const& type,
     irs::string_ref const& properties,
-    bool persist
+    bool initAndPersist
   ) noexcept;
-  void loadConfiguration();
+  void loadConfiguration(
+    std::unordered_set<irs::string_ref> const& preinitialized
+  );
   bool storeConfiguration(AnalyzerPool& pool);
-  bool updateConfiguration(AnalyzerPool& pool, bool increment);
+  bool updateConfiguration(AnalyzerPool& pool, int64_t delta);
+  bool updateConfiguration(
+    arangodb::transaction::Methods& trx,
+    AnalyzerPool& pool,
+    int64_t delta
+  );
 };
 
 NS_END // iresearch
