@@ -530,6 +530,10 @@ def testEdition(edition, os, mode, engine) {
             else if (os == 'windows') {
                 powershell ". .\\Installation\\Pipeline\\windows\\test_${mode}_${edition}_${engine}_${os}.ps1"
             }
+
+            if (findFiles(glob: 'core*').length > 0) {
+               error("found core file")
+            }
         }
         catch (exc) {
             if (os == 'linux' || os == 'mac') {
@@ -543,7 +547,7 @@ def testEdition(edition, os, mode, engine) {
                 sh "rm -rf ${arch}"
                 sh "mkdir -p ${arch}"
                 sh "find log-output -name 'FAILED_*' -exec cp '{}' . ';'"
-                sh "for i in logs log-output core*; do test -e \$i && mv \$i ${arch} || true; done"
+                sh "for i in logs log-output; do test -e \$i && mv \$i ${arch} || true; done"
             }
         }
     }
@@ -722,10 +726,14 @@ def testResilienceStep(os, engine, foxx) {
                     try {
                         unstashBinaries(edition, os)
                         testResilience(os, engine, foxx)
+
+                        if (findFiles(glob: 'resilience/core*').length > 0) {
+                          error("found core file")
+                        }
                     }
                     catch (exc) {
                         if (os == 'linux' || os == 'mac') {
-                            sh "for i in build core* tmp; do test -e \$i && mv \$i ${arch} || true; done"
+                            sh "for i in build resilience/core* tmp; do test -e \$i && mv \$i ${arch} || true; done"
                         }
 
                         throw exc
@@ -734,7 +742,7 @@ def testResilienceStep(os, engine, foxx) {
                         if (os == 'linux' || os == 'mac') {
                             sh "rm -rf ${arch}"
                             sh "mkdir -p ${arch}"
-                            sh "for i in log-output resilience/core*; do test -e \$i && mv \$i ${arch}; done"
+                            sh "for i in log-output; do test -e \$i && mv \$i ${arch}; done"
                         }
                         else if (os == 'windows') {
                             bat "del /F /Q ${arch}"
