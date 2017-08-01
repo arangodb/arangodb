@@ -103,56 +103,54 @@ void Constituent::term(term_t t) {
   termNoLock(t);
 }
 
-void Constituent::persistTermAndVoteNoLock() {
-
-  Builder body;
-  { VPackObjectBuilder b(&body);
-    std::ostringstream i_str;
-    i_str << std::setw(20) << std::setfill('0') << _term;
-    body.add("_key", Value(i_str.str()));
-    body.add("term", Value(_term));
-    body.add("voted_for", Value(_votedFor)); }
-  
-  TRI_ASSERT(_vocbase != nullptr);
-  auto transactionContext =
-    std::make_shared<transaction::StandaloneContext>(_vocbase);
-  SingleCollectionTransaction trx(
-    transactionContext, "election", AccessMode::Type::WRITE);
-      
-  auto res = trx.begin();
-  if (!res.ok()) {
-    THROW_ARANGO_EXCEPTION(res);
-  }
-
-  OperationOptions options;
-  options.waitForSync = _agent->config().waitForSync();
-  options.silent = true;
-  OperationResult result;
-  
-  try {
-    result = trx.insert("election", body.slice(), options);
-  } catch (std::exception const& e) {
-    LOG_TOPIC(FATAL, Logger::AGENCY)
-      << "Failed to persist RAFT election ballot: " << e.what() << ". Bailing out."
-      << __FILE__ << ":" << __LINE__;
-    FATAL_ERROR_EXIT();
-  }
-
-  trx.finish(result.code);
-
-}
-
 void Constituent::termNoLock(term_t t) {
   // Only call this when you have the _castLock
   term_t tmp = _term;
   _term = t;
 
   if (tmp != t) {
-    LOG_TOPIC(DEBUG, Logger::AGENCY)
-      << _id << ": changing term, current role:" << roleStr[_role] << " new term " << t;
+    LOG_TOPIC(DEBUG, Logger::AGENCY) << _id << ": changing term, current role:"
+      << roleStr[_role] << " new term " << t;
+
     _cast = false;
+
     if (!_votedFor.empty()) {
-      persistTermAndVoteNoLock();
+      Builder body;
+      { VPackObjectBuilder b(&body);
+        std::ostringstream i_str;
+        i_str << std::setw(20) << std::setfill('0') << t;
+        body.add("_key", Value(i_str.str()));
+        body.add("term", Value(t));
+        body.add("voted_for", Value(_votedFor)); }
+      
+      TRI_ASSERT(_vocbase != nullptr);
+      auto transactionContext =
+        std::make_shared<transaction::StandaloneContext>(_vocbase);
+      SingleCollectionTransaction trx(transactionContext, "election",
+                                      AccessMode::Type::WRITE);
+      
+      auto res = trx.begin();
+      
+      if (!res.ok()) {
+        THROW_ARANGO_EXCEPTION(res);
+      }
+      
+      OperationOptions options;
+      options.waitForSync = _agent->config().waitForSync();
+      options.silent = true;
+      
+      OperationResult result;
+      try {
+        result = trx.insert("election", body.slice(), options);
+      } catch (std::exception const& e) {
+        LOG_TOPIC(FATAL, Logger::AGENCY)
+          << "Failed to persist RAFT election ballot: " << e.what() << ". Bailing out."
+          << __FILE__ << ":" << __LINE__;
+        FATAL_ERROR_EXIT();
+      }
+
+      res = trx.finish(result.code);
+
     }
   }
 }
@@ -255,7 +253,6 @@ void Constituent::lead(term_t term) {
 
     LOG_TOPIC(INFO, Logger::AGENCY) << _id << ": leading in term " << _term;
     _leaderID = _id;
-    _votedFor = _id;
 
     // Keep track of this election time:
     MUTEX_LOCKER(locker, _recentElectionsMutex);
@@ -351,7 +348,6 @@ bool Constituent::checkLeader(
     LOG_TOPIC(DEBUG, Logger::AGENCY)
       << "Set _leaderID to " << id << " in term " << _term;
     _leaderID = id;
-    _votedFor = id;
 
     // Recall time of this leadership change:
     {
@@ -386,13 +382,12 @@ bool Constituent::vote(term_t termOfPeer, std::string id, index_t prevLogIndex,
   MUTEX_LOCKER(guard, _castLock);
 
   if (termOfPeer > _term) {
-
     termNoLock(termOfPeer);
 
     if (_role != FOLLOWER) {
       followNoLock(_term);
     }
-    
+
     _cast = false;
     _votedFor = "";
   } else if (termOfPeer < _term) {
@@ -421,11 +416,10 @@ bool Constituent::vote(term_t termOfPeer, std::string id, index_t prevLogIndex,
   if (prevLogTerm > myLastLogEntry.term ||
       (prevLogTerm == myLastLogEntry.term &&
        prevLogIndex >= myLastLogEntry.index)) {
-    LOG_TOPIC(DEBUG, Logger::AGENCY) << "voting for " << id << " in term " << _term;
+    LOG_TOPIC(DEBUG, Logger::AGENCY) << "voting for " << id << " in term "
+      << _term;
     _cast = true;
     _votedFor = id;
-    persistTermAndVoteNoLock();
-    followNoLock(_term);
     return true;
   }
   LOG_TOPIC(DEBUG, Logger::AGENCY) << "not voting for " << id
@@ -450,14 +444,13 @@ void Constituent::callElection() {
   term_t savedTerm;
   {
     MUTEX_LOCKER(locker, _castLock);
-    _votedFor = _id;
     this->termNoLock(_term + 1);  // raise my term
     _cast     = true;
+    _votedFor = _id;
     savedTerm = _term;
     LOG_TOPIC(DEBUG, Logger::AGENCY) << "Set _leaderID to NO_LEADER"
       << " in term " << _term;
     _leaderID = NO_LEADER;
-    persistTermAndVoteNoLock();
   }
 
   std::string body;
@@ -499,7 +492,9 @@ void Constituent::callElection() {
   }
 
   // Collect ballots. I vote for myself.
-  size_t yea = 1 , nay = 0, majority = size() / 2 + 1;
+  size_t yea = 1;
+  size_t nay = 0;
+  size_t majority = size() / 2 + 1;
   
   // We collect votes, we leave the following loop when one of the following
   // conditions is met:
@@ -573,7 +568,6 @@ void Constituent::update(std::string const& leaderID, term_t t) {
       << "Constituent::update: setting _leaderID to " << leaderID
       << " in term " << _term;
     _leaderID = leaderID;
-    _votedFor = leaderID;
     _role = FOLLOWER;
   }
 }

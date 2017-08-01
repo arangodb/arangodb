@@ -1552,7 +1552,7 @@ void Agent::join() {
   CONDITION_LOCKER(cuard, _waitForCV);
 
   while (true) {
-
+    
     if (comres != nullptr &&
         comres->sendWasComplete == true && comres->result != nullptr) {
       if (comres->result->getHttpReturnCode() == 307) {
@@ -1563,17 +1563,14 @@ void Agent::join() {
           auto host = location.substr(pos, location.find('/',pos)-pos);
           ep  = std::string(ssl ? "ssl://" : "tcp://") + host;
         } catch (...) {
-          _waitForCV.wait(1000000);
           ep.clear();
         }
       } if (comres->result->getHttpReturnCode() == 400) {
-        LOG_TOPIC(FATAL, Logger::AGENCY)
+        LOG_TOPIC(ERR, Logger::AGENCY)
           << "Failed to join agency with response 400: "
           << comres->result->getBody().c_str();
-          FATAL_ERROR_EXIT();
       }
     } else {
-      _waitForCV.wait(1000000);
       ep.clear();
     }
 
@@ -1610,6 +1607,8 @@ void Agent::join() {
         }
       } 
     }
+
+    _waitForCV.wait(1000000);
 
   }
 }
