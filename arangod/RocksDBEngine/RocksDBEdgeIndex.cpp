@@ -649,20 +649,44 @@ void RocksDBEdgeIndex::warmup(transaction::Methods* trx) {
   // Prepare the cache to be resized for this amount of objects to be inserted.
   _cache->sizeHint(expectedCount);
   
-  auto scheduler = SchedulerFeature::SCHEDULER;
+  
   auto bounds = RocksDBKeyBounds::EdgeIndex(_objectId);
-  std::string middle = bounds.start().ToString();
-  size_t min = std::min(bounds.start().size(), bounds.end().size());
+  auto* mthds = RocksDBTransactionState::toMethods(trx);
+  rocksdb::ReadOptions options = mthds->readOptions();
+  options.prefix_same_as_start = false;
+  options.total_order_seek = true;
+  options.verify_checksums = false;
+  options.fill_cache = EdgeIndexFillBlockCache;
+  std::unique_ptr<rocksdb::Iterator> it(rocksutils::globalRocksDB()->NewIterator(options, _cf));
+  
+  // get the first and last actual key
+  it->Seek(bounds.start());
+  if (!it->Valid()) {
+    LOG_TOPIC(INFO, Logger::ROCKSDB) << "Edge index is empty";
+    return;
+  }
+  std::string firstKey = it->key().ToString();
+  it->SeekForPrev(bounds.end());
+  if (!it->Valid()) {
+    LOG_TOPIC(INFO, Logger::ROCKSDB) << "Edge index is empty";
+    return;
+  }
+  std::string lastKey = it->key().ToString();
+  it.reset();
+  
+  size_t min = std::min(firstKey.size(), lastKey.size());
+  std::string middle = std::string(min, '\0');
   for (size_t i = 0; i < min; i++) {
-    middle[i] = (bounds.end().data()[i] + middle[i]) / 2;
+    middle[i] = (firstKey.data()[i] + lastKey.data()[i]) / 2;
   }
   
   bool done = false;
+  auto scheduler = SchedulerFeature::SCHEDULER;
   scheduler->post([&] {
     TRI_DEFER(done = true); // middle is excluded
-    this->warmupInternal(trx, bounds.start(), middle);
+    this->warmupInternal(trx, firstKey, middle);
   });
-  this->warmupInternal(trx, middle, bounds.end());
+  this->warmupInternal(trx, middle, lastKey);
   while (!done) {
     usleep(10000);
   }
@@ -688,8 +712,12 @@ void RocksDBEdgeIndex::warmupInternal(transaction::Methods* trx, rocksdb::Slice 
   std::unique_ptr<rocksdb::Iterator> it(
                                         rocksutils::globalRocksDB()->NewIterator(options, _cf));
   
+  size_t n = 0;
+  
   cache::Cache* cc = _cache.get();
   for (it->Seek(lower); it->Valid(); it->Next()) {
+    n++;
+    
     rocksdb::Slice key = it->key();
     StringRef v = RocksDBKey::vertexId(key);
     if (previous.empty()) {
@@ -798,6 +826,8 @@ void RocksDBEdgeIndex::warmupInternal(transaction::Methods* trx, rocksdb::Slice 
       delete entry;
     }
   }
+  
+  LOG_TOPIC(ERR, Logger::ROCKSDB) << "Loaded " << n << " items";
 }
 
 // ===================== Helpers ==================
