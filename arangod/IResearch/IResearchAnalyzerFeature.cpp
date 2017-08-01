@@ -31,6 +31,7 @@
 
 #include "Aql/AqlFunctionFeature.h"
 #include "Basics/StaticStrings.h"
+#include "Cluster/ServerState.h"
 #include "IResearch/SystemDatabaseFeature.h"
 #include "Logger/Logger.h"
 #include "Logger/LogMacros.h"
@@ -330,6 +331,8 @@ IResearchAnalyzerFeature::IResearchAnalyzerFeature(
   setOptional(true);
   requiresElevatedPrivileges(false);
   startsAfter("AQLFunctions"); // used for registering IResearch analyzer functions
+  startsAfter("MMFilesEngine"); // used for getting the system database containing the persisted configuration
+  startsAfter("RocksDBEngine"); // used for getting the system database containing the persisted configuration
   startsAfter("SystemDatabase"); // used for getting the system database containing the persisted configuration
 }
 
@@ -590,6 +593,11 @@ IResearchAnalyzerFeature::AnalyzerPool::ptr IResearchAnalyzerFeature::get(
 void IResearchAnalyzerFeature::loadConfiguration(
     std::unordered_set<irs::string_ref> const& preinitialized
 ) {
+  if (arangodb::ServerState::instance()->isRunningInCluster()) {
+    // the following code will not be working in the cluster
+    return;
+  }
+
   auto* database = getFeature<arangodb::iresearch::SystemDatabaseFeature>();
 
   if (!database) {
@@ -665,7 +673,7 @@ void IResearchAnalyzerFeature::loadConfiguration(
 
     WriteMutex mutex(_mutex);
     SCOPED_LOCK(mutex); // the cache could return the same pool asynchronously before '_key'/'_refCount' updated below
-    auto entry = emplace(name, type, properties, false); // do not persit since this config is already coming from the persisted store
+    auto entry = emplace(name, type, properties, false); // do not persist since this config is already coming from the persisted store
     auto& pool = entry.first;
 
     if (!pool) {

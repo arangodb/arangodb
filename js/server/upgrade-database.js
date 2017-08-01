@@ -597,6 +597,25 @@
         });
       }
     });
+    
+    // setupAnalyzersConfig
+    addTask({
+      name: 'setupAnalyzers',
+      description: 'setup _iresearch_analyzers collection',
+
+      system: DATABASE_SYSTEM,
+      cluster: [CLUSTER_NONE, CLUSTER_COORDINATOR_GLOBAL],
+      database: [DATABASE_INIT, DATABASE_UPGRADE, DATABASE_EXISTING],
+
+      task: function () {
+        return createSystemCollection('_iresearch_analyzers', {
+          waitForSync: false,
+          journalSize: 4 * 1024 * 1024,
+          replicationFactor: DEFAULT_REPLICATION_FACTOR_SYSTEM,
+          distributeShardsLike: '_graphs'
+        });
+      }
+    });
 
     // _routing
     addTask({

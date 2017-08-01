@@ -237,11 +237,10 @@ DatabaseFeature::DatabaseFeature(ApplicationServer* server)
   startsAfter("DatabasePath");
   startsAfter("EngineSelector");
   startsAfter("InitDatabase");
-  startsAfter("MMFilesEngine");
+  startsAfter("MMFilesDBEngine");
   startsAfter("MMFilesPersistentIndex"); // TODO: remove from here!
   startsAfter("RocksDBEngine");
   startsAfter("Scheduler");
-  startsAfter("StorageEngine");
 }
 
 DatabaseFeature::~DatabaseFeature() {

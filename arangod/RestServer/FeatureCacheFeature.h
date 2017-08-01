@@ -32,6 +32,7 @@ class DatabaseFeature;
 class FeatureCacheFeature final : public application_features::ApplicationFeature {
  public:
   explicit FeatureCacheFeature(application_features::ApplicationServer*);
+  ~FeatureCacheFeature();
 
  public:
   void prepare() override final;

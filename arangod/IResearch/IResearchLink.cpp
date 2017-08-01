@@ -325,6 +325,7 @@ int IResearchLink::load() {
         auto logicalView = vocbase->lookupView(viewId);
 
         if (!logicalView || IResearchView::type() != logicalView->type()) {
+          LOG_TOPIC(WARN, Logger::FIXME) << "error looking up view '" << viewId << "': no such view";
           return nullptr; // no such view
         }
 
