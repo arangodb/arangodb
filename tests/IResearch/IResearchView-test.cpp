@@ -771,6 +771,11 @@ SECTION("test_query") {
 }
 
 SECTION("test_register_link") {
+  bool persisted = false;
+  auto before = PhysicalViewMock::before;
+  auto restore = irs::make_finally([before]()->void { PhysicalCollectionMock::before =before; });
+  PhysicalViewMock::before = [&persisted]()->void { persisted = true; };
+
   auto collectionJson = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testCollection\", \"id\": 100 }");
   auto viewJson0 = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testView\", \"type\": \"iresearch\", \"id\": 101 }");
   auto viewJson1 = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testView\", \"type\": \"iresearch\", \"id\": 101, \"properties\": { \"collections\": [ 100 ] } }");
@@ -778,7 +783,26 @@ SECTION("test_register_link") {
   auto* feature = arangodb::application_features::ApplicationServer::getFeature<arangodb::iresearch::IResearchFeature>("IResearch");
   CHECK((nullptr != feature));
 
-// FIXME TODO test in recovery
+  // IResearchFeature started (new link in recovery)
+  {
+    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "testVocbase");
+    auto* logicalCollection = vocbase.createCollection(collectionJson->slice());
+    auto logicalView = vocbase.createView(viewJson0->slice(), 0);
+    REQUIRE((false == !logicalView));
+    auto* view = dynamic_cast<arangodb::iresearch::IResearchView*>(logicalView->getImplementation());
+    REQUIRE((false == !view));
+
+    CHECK((feature->running()));
+    CHECK((0 == view->linkCount()));
+
+    StorageEngineMock::inRecoveryResult = true;
+    auto restore = irs::make_finally([]()->void { StorageEngineMock::inRecoveryResult = false; });
+    persisted = false;
+    auto link = arangodb::iresearch::IResearchLink::make(1, logicalCollection, linkJson->slice());
+    CHECK((false == persisted));
+    CHECK((false == !link));
+    CHECK((1 == view->linkCount()));
+  }
 
   // IResearchFeature started (new link)
   {
@@ -791,7 +815,9 @@ SECTION("test_register_link") {
 
     CHECK((feature->running()));
     CHECK((0 == view->linkCount()));
+    persisted = false;
     auto link = arangodb::iresearch::IResearchLink::make(1, logicalCollection, linkJson->slice());
+    CHECK((true == persisted));
     CHECK((false == !link));
     CHECK((1 == view->linkCount()));
   }
@@ -854,12 +880,40 @@ SECTION("test_register_link") {
 }
 
 SECTION("test_unregister_link") {
+  bool persisted = false;
+  auto before = PhysicalViewMock::before;
+  auto restore = irs::make_finally([before]()->void { PhysicalCollectionMock::before =before; });
+  PhysicalViewMock::before = [&persisted]()->void { persisted = true; };
+
   auto collectionJson = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testCollection\", \"id\": 100 }");
   auto viewJson = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testView\", \"type\": \"iresearch\", \"id\": 101, \"properties\": { \"links\": { \"testCollection\": {} } } }");
   auto* feature = arangodb::application_features::ApplicationServer::getFeature<arangodb::iresearch::IResearchFeature>("IResearch");
   CHECK((nullptr != feature));
 
-// FIXME TODO test in recovery
+  // link removed before view (in recovery)
+  {
+    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "testVocbase");
+    auto* logicalCollection = vocbase.createCollection(collectionJson->slice());
+    auto logicalView = vocbase.createView(viewJson->slice(), 0);
+    REQUIRE((false == !logicalView));
+    auto* view = dynamic_cast<arangodb::iresearch::IResearchView*>(logicalView->getImplementation());
+    REQUIRE((false == !view));
+
+    CHECK((feature->running()));
+    CHECK((1 == view->linkCount()));
+    CHECK((nullptr != vocbase.lookupCollection("testCollection")));
+
+    StorageEngineMock::inRecoveryResult = true;
+    auto restore = irs::make_finally([]()->void { StorageEngineMock::inRecoveryResult = false; });
+    persisted = false;
+    CHECK((TRI_ERROR_NO_ERROR == vocbase.dropCollection(logicalCollection, true, -1)));
+    CHECK((false == persisted));
+    CHECK((nullptr == vocbase.lookupCollection("testCollection")));
+    CHECK((0 == view->linkCount()));
+    CHECK((false == !vocbase.lookupView("testView")));
+    CHECK((TRI_ERROR_NO_ERROR == vocbase.dropView("testView")));
+    CHECK((true == !vocbase.lookupView("testView")));
+  }
 
   // link removed before view
   {
@@ -873,7 +927,9 @@ SECTION("test_unregister_link") {
     CHECK((feature->running()));
     CHECK((1 == view->linkCount()));
     CHECK((nullptr != vocbase.lookupCollection("testCollection")));
+    persisted = false;
     CHECK((TRI_ERROR_NO_ERROR == vocbase.dropCollection(logicalCollection, true, -1)));
+    CHECK((true == persisted));
     CHECK((nullptr == vocbase.lookupCollection("testCollection")));
     CHECK((0 == view->linkCount()));
     CHECK((false == !vocbase.lookupView("testView")));
