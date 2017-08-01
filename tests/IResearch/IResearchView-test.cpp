@@ -778,6 +778,8 @@ SECTION("test_register_link") {
   auto* feature = arangodb::application_features::ApplicationServer::getFeature<arangodb::iresearch::IResearchFeature>("IResearch");
   CHECK((nullptr != feature));
 
+// FIXME TODO test in recovery
+
   // IResearchFeature started (new link)
   {
     TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "testVocbase");
@@ -856,6 +858,8 @@ SECTION("test_unregister_link") {
   auto viewJson = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testView\", \"type\": \"iresearch\", \"id\": 101, \"properties\": { \"links\": { \"testCollection\": {} } } }");
   auto* feature = arangodb::application_features::ApplicationServer::getFeature<arangodb::iresearch::IResearchFeature>("IResearch");
   CHECK((nullptr != feature));
+
+// FIXME TODO test in recovery
 
   // link removed before view
   {
@@ -1012,6 +1016,11 @@ SECTION("test_update_partial") {
     \"name\": \"testView\", \
     \"type\": \"iresearch\" \
   }");
+  bool persisted = false;
+  auto before = PhysicalViewMock::before;
+  auto restore = irs::make_finally([before]()->void { PhysicalCollectionMock::before =before; });
+  PhysicalViewMock::before = [&persisted]()->void { persisted = true; };
+
 
   // modify meta params
   {
@@ -1123,6 +1132,41 @@ SECTION("test_update_partial") {
     CHECK((true == tmpSlice.isObject() && 0 == tmpSlice.length()));
   }
 
+  // add a new link (in recovery)
+  {
+    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "testVocbase");
+    auto collectionJson = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testCollection\" }");
+    auto* logicalCollection = vocbase.createCollection(collectionJson->slice());
+    REQUIRE((nullptr != logicalCollection));
+    auto logicalView = vocbase.createView(createJson->slice(), 0);
+    REQUIRE((false == !logicalView));
+    auto view = logicalView->getImplementation();
+    REQUIRE((false == !view));
+
+    auto updateJson = arangodb::velocypack::Parser::fromJson(
+      "{ \"links\": { \"testCollection\": {} } }"
+    );
+
+    StorageEngineMock::inRecoveryResult = true;
+    auto restore = irs::make_finally([]()->void { StorageEngineMock::inRecoveryResult = false; });
+    persisted = false;
+    CHECK((view->updateProperties(updateJson->slice(), true, false).ok()));
+    CHECK((false == persisted));
+
+    arangodb::velocypack::Builder builder;
+
+    builder.openObject();
+    view->getPropertiesVPack(builder);
+    builder.close();
+
+    auto slice = builder.slice();
+    CHECK((
+      true == slice.hasKey("links")
+      && slice.get("links").isObject()
+      && 1 == slice.get("links").length()
+    ));
+  }
+
   // add a new link
   {
     TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "testVocbase");
@@ -1143,7 +1187,9 @@ SECTION("test_update_partial") {
 
     expectedMeta._collections.insert(logicalCollection->cid());
     expectedLinkMeta["testCollection"]; // use defaults
+    persisted = false;
     CHECK((view->updateProperties(updateJson->slice(), true, false).ok()));
+    CHECK((true == persisted));
 
     arangodb::velocypack::Builder builder;
 
@@ -1211,6 +1257,65 @@ SECTION("test_update_partial") {
 
     auto tmpSlice = slice.get("links");
     CHECK((true == tmpSlice.isObject() && 0 == tmpSlice.length()));
+  }
+
+  // remove link (in recovery)
+  {
+    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "testVocbase");
+    auto collectionJson = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testCollection\" }");
+    auto* logicalCollection = vocbase.createCollection(collectionJson->slice());
+    REQUIRE((nullptr != logicalCollection));
+    auto logicalView = vocbase.createView(createJson->slice(), 0);
+    REQUIRE((false == !logicalView));
+    auto view = logicalView->getImplementation();
+    REQUIRE((false == !view));
+
+    {
+      auto updateJson = arangodb::velocypack::Parser::fromJson(
+        "{ \"links\": { \"testCollection\": {} } }"
+      );
+      persisted = false;
+      CHECK((view->updateProperties(updateJson->slice(), true, false).ok()));
+      CHECK((true == persisted));
+
+      arangodb::velocypack::Builder builder;
+
+      builder.openObject();
+      view->getPropertiesVPack(builder);
+      builder.close();
+
+      auto slice = builder.slice();
+      CHECK((
+        true == slice.hasKey("links")
+        && slice.get("links").isObject()
+        && 1 == slice.get("links").length()
+      ));
+    }
+
+    {
+      auto updateJson = arangodb::velocypack::Parser::fromJson(
+        "{ \"links\": { \"testCollection\": null } }"
+      );
+
+      StorageEngineMock::inRecoveryResult = true;
+      auto restore = irs::make_finally([]()->void { StorageEngineMock::inRecoveryResult = false; });
+      persisted = false;
+      CHECK((view->updateProperties(updateJson->slice(), true, false).ok()));
+      CHECK((false == persisted));
+
+      arangodb::velocypack::Builder builder;
+
+      builder.openObject();
+      view->getPropertiesVPack(builder);
+      builder.close();
+
+      auto slice = builder.slice();
+      CHECK((
+        true == slice.hasKey("links")
+        && slice.get("links").isObject()
+        && 0 == slice.get("links").length()
+      ));
+    }
   }
 
   // remove link

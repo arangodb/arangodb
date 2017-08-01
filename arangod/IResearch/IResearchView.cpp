@@ -45,6 +45,7 @@
 #include "Basics/files.h"
 #include "Logger/Logger.h"
 #include "Logger/LogMacros.h"
+#include "RestServer/DatabaseFeature.h"
 #include "RestServer/DatabasePathFeature.h"
 #include "RestServer/FlushFeature.h"
 #include "Transaction/StandaloneContext.h"
@@ -743,6 +744,21 @@ arangodb::iresearch::IResearchLink* findFirstMatchingLink(
   return nullptr;
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief register a callback to be called after recovery to persist properties
+////////////////////////////////////////////////////////////////////////////////
+arangodb::Result persistProperties(arangodb::PhysicalView& view) {
+  auto* feature = arangodb::iresearch::getFeature<arangodb::DatabaseFeature>("Database");
+
+  if (!feature) {
+    return view.persistProperties(); // database cannot be in recovery if there is no Database feature
+  }
+
+  return feature->registerPostRecoveryCallback([&view]()->arangodb::Result {
+    return view.persistProperties();
+  });
+}
+
 arangodb::Result updateLinks(
     TRI_vocbase_t& vocbase,
     arangodb::iresearch::IResearchView& view,
@@ -1318,7 +1334,7 @@ int IResearchView::drop(TRI_voc_cid_t cid) {
   _meta._collections.erase(cid); // will no longer be fully indexed
   mutex.unlock(true); // downgrade to a read-lock
 
-  auto res = metaStore.persistProperties(); // persist '_meta' definition
+  auto res = persistProperties(metaStore); // persist '_meta' definition
 
   if (!res.ok()) {
     LOG_TOPIC(WARN, Logger::FIXME) << "failed to persist view definition while dropping collection from iResearch view '" << id() << "' cid '" << cid << "'";
@@ -1785,10 +1801,11 @@ bool IResearchView::linkRegister(IResearchLink& link) {
     return true;
   }
 
-  auto* feature = arangodb::application_features::ApplicationServer::getFeature<arangodb::iresearch::IResearchFeature>("IResearch");
+  auto* feature = getFeature<IResearchFeature>();
 
   if (feature && feature->running()) {
-    auto res = _logicalView->getPhysical()->persistProperties(); // persist '_meta' definition
+    auto& metaStore = *(_logicalView->getPhysical());
+    auto res = persistProperties(metaStore); // persist '_meta' definition
 
     if (res.ok()) {
       link.updateView(sptr(this, std::move(unregistrar)), true); // will not deadlock since checked for duplicate cid above
@@ -2204,7 +2221,7 @@ arangodb::Result IResearchView::updateProperties(
     metaBackup = std::move(_meta);
     _meta = std::move(meta);
 
-    res = metaStore.persistProperties(); // persist '_meta' definition (so that on failure can revert meta)
+    res = persistProperties(metaStore); // persist '_meta' definition (so that on failure can revert meta)
 
     if (!res.ok()) {
       _meta = std::move(metaBackup); // revert to original meta
