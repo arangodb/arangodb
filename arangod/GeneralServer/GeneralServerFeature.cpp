@@ -55,6 +55,7 @@
 #include "RestHandler/RestEdgesHandler.h"
 #include "RestHandler/RestEndpointHandler.h"
 #include "RestHandler/RestEngineHandler.h"
+#include "RestHandler/RestExplainHandler.h"
 #include "RestHandler/RestHandlerCreator.h"
 #include "RestHandler/RestImportHandler.h"
 #include "RestHandler/RestIndexHandler.h"
@@ -421,6 +422,9 @@ void GeneralServerFeature::defineHandlers() {
   _handlerFactory->addPrefixHandler(
       "/_api/aql-builtin",
       RestHandlerCreator<RestAqlFunctionsHandler>::createNoData);
+
+  _handlerFactory->addPrefixHandler(
+      "/_api/explain", RestHandlerCreator<RestExplainHandler>::createNoData);
 
   _handlerFactory->addPrefixHandler(
       "/_api/query", RestHandlerCreator<RestQueryHandler>::createNoData);
