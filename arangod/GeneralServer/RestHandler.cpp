@@ -163,7 +163,7 @@ int RestHandler::finalizeEngine() {
 }
 
 int RestHandler::executeEngine() {
-  TRI_ASSERT(ExecContext::CURRENT == nullptr);
+  //TRI_ASSERT(ExecContext::CURRENT == nullptr);
   ExecContext::CURRENT = _request->execContext();
   TRI_DEFER(ExecContext::CURRENT = nullptr);
   
@@ -234,7 +234,7 @@ int RestHandler::executeEngine() {
 }
 
 int RestHandler::runEngine(bool synchron) {
-  TRI_ASSERT(ExecContext::CURRENT == nullptr);
+  //TRI_ASSERT(ExecContext::CURRENT == nullptr);
   ExecContext::CURRENT = _request->execContext();
   TRI_DEFER(ExecContext::CURRENT = nullptr);
   

@@ -41,6 +41,7 @@ const keySpaceId = 'task_update_user_keyspace';
 const taskId = "task_update_user_periodic";
 const arango = internal.arango;
 const db = internal.db;
+const taskPeriod = 0.3;
 
 const createKeySpace = (keySpaceId) => {
   return executeJS(`return global.KEYSPACE_CREATE('${keySpaceId}', 128, true);`).body === 'true';
@@ -58,7 +59,8 @@ const getKey = (keySpaceId, key) => {
   let res = executeJS(`return global.KEY_GET('${keySpaceId}', '${key}');`).body;
   let num = Number(res);
   if (isNaN(num)) {
-    console.error("KEY_GET response: "res);
+    console.error("KEY_GET response: " + res);
+    return 0;
   }
   return num;
 };
@@ -78,6 +80,33 @@ const executeJS = (code) => {
 
 const switchUser = (user) => {
   arango.reconnect(arango.getEndpoint(), '_system', user, '');
+};
+
+const waitForTaskStart = () => {
+  let i = 50;
+  while (--i > 0) {
+    internal.wait(0.1);
+    if (getKey(keySpaceId, "bob") !== 0) {
+      break;
+    }
+  }
+  expect(i).to.be.above(0,  "Task must have run at least once");
+};
+
+const waitForTaskStop = () => {
+  let i = 50;
+  let last = 0;
+  while (--i > 0) {
+    internal.wait(taskPeriod);
+    let current = getKey(keySpaceId, "bob");
+    expect(current).to.not.be.equal(0,  "Received invalid key");
+    if (current === last) {
+      break;
+    }
+    last = current;
+    internal.wait(taskPeriod);
+  }
+  expect(i).to.be.above(0,  "The repeatable task was able run with insufficient rights");
 };
 
 describe('User Rights Management', () => {
@@ -106,25 +135,22 @@ describe('User Rights Management', () => {
       tasks.register({
         id: taskId,
         name: taskId,
-        period: 0.3,
+        period: taskPeriod,
         command: `(function (params) {
           global.KEY_SET('${keySpaceId}', "bob", require('internal').time());
         })(params);`
       });
-      internal.print("Started task, now waiting...");
-      internal.wait(1);
 
-      expect(getKey(keySpaceId, "bob")).to.be.above(0, 
-        "Task must have run at least once");
+      internal.print("Started task, now waiting...");
+      waitForTaskStart();
 
       switchUser("root", "_system");
       internal.print("Downgrading rights");
+
       // should cause the task to stop eventually
       users.grantDatabase("bob", '_system', 'ro');
       internal.print("Waiting for task to stop");
-      internal.wait(1);
-      expect(getKey(keySpaceId, "bob")).to.be.below(internal.time() - 0.3, 
-      `The repeatable task was able run with insufficient rights`);
+      waitForTaskStop();
   });
 });
 

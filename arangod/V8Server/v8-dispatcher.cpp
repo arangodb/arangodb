@@ -268,6 +268,7 @@ V8Task::callbackFunction() {
     // get the permissions to be used by this task
     AuthLevel dbLvl = AuthLevel::RW;
     std::unique_ptr<ExecContext> execContext;
+    TRI_DEFER(ExecContext::CURRENT = nullptr);
     if (!_user.empty()) { // not superuser
       AuthenticationFeature* auth = AuthenticationFeature::INSTANCE;
       std::string const& dbname = _vocbaseGuard->vocbase()->name();
@@ -286,8 +287,6 @@ V8Task::callbackFunction() {
     
     // now do the work:
     work();
-    
-    ExecContext::CURRENT = nullptr; // reset the pointer, should not really matter
     
     if (_periodic && !SchedulerFeature::SCHEDULER->isStopping()) {
       _timer->expires_from_now(_interval);

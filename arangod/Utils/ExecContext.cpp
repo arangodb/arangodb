@@ -26,6 +26,6 @@ using namespace arangodb;
 
 thread_local ExecContext* ExecContext::CURRENT = nullptr;
 
-ExecContext* ExecContext::copy() {
+ExecContext* ExecContext::copy() const {
   return new ExecContext(_user, _database, _systemAuthLevel, _databaseAuthLevel);
 }
