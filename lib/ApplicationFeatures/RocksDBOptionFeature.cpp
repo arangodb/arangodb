@@ -314,16 +314,17 @@ void RocksDBOptionFeature::validateOptions(
 }
 
 void RocksDBOptionFeature::start() {
-  uint32_t min = _maxBackgroundJobs / 4;
+  uint32_t max = _maxBackgroundJobs / 4;
   if (ServerState::instance()->isCoordinator()) {
-    min = 4;
+    max = 4;
   }
+  uint32_t clamped = std::max(std::min((uint32_t)TRI_numberProcessors(), max), 1U);
   // lets test this out
   if (_numThreadsHigh == 0) {
-    _numThreadsHigh = std::min((uint32_t)TRI_numberProcessors(), min);
+    _numThreadsHigh = clamped;
   }
   if (_numThreadsLow == 0) {
-    _numThreadsLow = std::min((uint32_t)TRI_numberProcessors(), min);
+    _numThreadsLow = clamped;
   }
 
   LOG_TOPIC(TRACE, Logger::ROCKSDB) << "using RocksDB options:"
