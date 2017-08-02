@@ -6315,7 +6315,9 @@ class V8_EXPORT Isolate {
           create_histogram_callback(nullptr),
           add_histogram_sample_callback(nullptr),
           array_buffer_allocator(nullptr),
-          external_references(nullptr) {}
+          external_references(nullptr),
+          oom_error_callback(nullptr),
+          fatal_error_callback(nullptr) {}
 
     /**
      * The optional entry_hook allows the host application to provide the
@@ -6371,6 +6373,10 @@ class V8_EXPORT Isolate {
      * entire lifetime of the isolate.
      */
     intptr_t* external_references;
+
+    OOMErrorCallback oom_error_callback;
+    
+    FatalErrorCallback fatal_error_callback;
   };
 
 
