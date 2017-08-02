@@ -231,27 +231,32 @@ function walFailureSuite () {
         c.save({ a: i });
       } 
 
-      var fig = c.figures();
+      var fig;
       internal.wal.flush(true, true);
       
       // wait for the logfile manager to write and sync the updated status file
       var tries = 0; 
       while (++tries < 20) {
         fig = c.figures();
-        if (fig.uncollectedLogfileEntries === 0) {
+        if (fig.uncollectedLogfileEntries === 1005) {
           break;
         }
         internal.wait(1, false);
       }
 
       assertEqual(1005, c.count());
-      assertEqual(0, fig.uncollectedLogfileEntries);
+      assertEqual(1005, fig.uncollectedLogfileEntries);
+        
+      internal.wait(5, false);
+      fig = c.figures();
+      assertEqual(1005, fig.uncollectedLogfileEntries);
+      
+      internal.debugClearFailAt();
       
       for (i = 0; i < 1005; ++i) {
         c.save({ a: i });
       } 
 
-      fig = c.figures();
       internal.wal.flush(true, true);
       
       // wait for the logfile manager to write and sync the updated status file
@@ -266,8 +271,6 @@ function walFailureSuite () {
   
       assertEqual(2010, c.count());
       assertEqual(0, fig.uncollectedLogfileEntries);
-
-      internal.debugClearFailAt();
     }
 
   };
