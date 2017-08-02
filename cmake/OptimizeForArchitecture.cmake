@@ -17,7 +17,7 @@
 # macro will consequently disable the relevant features via compiler flags.
 
 #=============================================================================
-# Copyright 2010-2015 Matthias Kretz <kretz@kde.org>
+# Copyright 2010-2016 Matthias Kretz <kretz@kde.org>
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions are
@@ -98,6 +98,26 @@ macro(AutodetectHostArchitecture)
          # 17 1D       | Enhanced Intel Core microarchitecture
          # 0F          | Intel Core microarchitecture
          #
+         # Intel SDM Vol. 3C 35-1 / December 2016:
+         # 57          | Xeon Phi 3200, 5200, 7200  [Knights Landing]
+         # 85          | Future Xeon Phi
+         # 8E 9E       | 7th gen. Core              [Kaby Lake]
+         # 55          | Future Xeon                [Skylake w/ AVX512]
+         # 4E 5E       | 6th gen. Core / E3 v5      [Skylake w/o AVX512]
+         # 56          | Xeon D-1500                [Broadwell]
+         # 4F          | Xeon E5 v4, E7 v4, i7-69xx [Broadwell]
+         # 47          | 5th gen. Core / Xeon E3 v4 [Broadwell]
+         # 3D          | M-5xxx / 5th gen.          [Broadwell]
+         # 3F          | Xeon E5 v3, E7 v3, i7-59xx [Haswell-E]
+         # 3C 45 46    | 4th gen. Core, Xeon E3 v3  [Haswell]
+         # 3E          | Xeon E5 v2, E7 v2, i7-49xx [Ivy Bridge-E]
+         # 3A          | 3rd gen. Core, Xeon E3 v2  [Ivy Bridge]
+         # 2D          | Xeon E5, i7-39xx           [Sandy Bridge]
+         # 2F          | Xeon E7
+         # 2A          | Xeon E3, 2nd gen. Core     [Sandy Bridge]
+         # 2E          | Xeon 7500, 6500 series
+         # 25 2C       | Xeon 3600, 5600 series, Core i7, i5 and i3
+         #
          # Values from the Intel SDE:
          # 5C | Goldmont
          # 5A | Silvermont
@@ -107,19 +127,21 @@ macro(AutodetectHostArchitecture)
          # 4E | Skylake Client
          # 3C | Broadwell (likely a bug in the SDE)
          # 3C | Haswell
-         if(_cpu_model EQUAL 87)
+         if(_cpu_model EQUAL 87) # 57
             set(TARGET_ARCHITECTURE "knl")  # Knights Landing
          elseif(_cpu_model EQUAL 92)
             set(TARGET_ARCHITECTURE "goldmont")
-         elseif(_cpu_model EQUAL 90)
+         elseif(_cpu_model EQUAL 90 OR _cpu_model EQUAL 76)
             set(TARGET_ARCHITECTURE "silvermont")
          elseif(_cpu_model EQUAL 102)
             set(TARGET_ARCHITECTURE "cannonlake")
+         elseif(_cpu_model EQUAL 142 OR _cpu_model EQUAL 158) # 8E, 9E
+            set(TARGET_ARCHITECTURE "kaby-lake")
          elseif(_cpu_model EQUAL 85) # 55
             set(TARGET_ARCHITECTURE "skylake-avx512")
          elseif(_cpu_model EQUAL 78 OR _cpu_model EQUAL 94) # 4E, 5E
             set(TARGET_ARCHITECTURE "skylake")
-         elseif(_cpu_model EQUAL 61 OR _cpu_model EQUAL 71 OR _cpu_model EQUAL 86)
+         elseif(_cpu_model EQUAL 61 OR _cpu_model EQUAL 71 OR _cpu_model EQUAL 79 OR _cpu_model EQUAL 86) # 3D, 47, 4F, 56
             set(TARGET_ARCHITECTURE "broadwell")
          elseif(_cpu_model EQUAL 60 OR _cpu_model EQUAL 69 OR _cpu_model EQUAL 70 OR _cpu_model EQUAL 63)
             set(TARGET_ARCHITECTURE "haswell")
@@ -155,7 +177,9 @@ macro(AutodetectHostArchitecture)
          endif(_cpu_model GREATER 2)
       endif(_cpu_family EQUAL 6)
    elseif(_vendor_id STREQUAL "AuthenticAMD")
-      if(_cpu_family EQUAL 22) # 16h
+      if(_cpu_family EQUAL 23)
+         set(TARGET_ARCHITECTURE "zen")
+      elseif(_cpu_family EQUAL 22) # 16h
          set(TARGET_ARCHITECTURE "AMD 16h")
       elseif(_cpu_family EQUAL 21) # 15h
          if(_cpu_model LESS 2)
@@ -183,10 +207,10 @@ Using an incorrect setting here can result in crashes of the resulting binary be
 Setting the value to \"auto\" will try to optimize for the architecture where cmake is called. \
 Other supported values are: \"none\", \"generic\", \"core\", \"merom\" (65nm Core2), \
 \"penryn\" (45nm Core2), \"nehalem\", \"westmere\", \"sandy-bridge\", \"ivy-bridge\", \
-\"haswell\", \"broadwell\", \"skylake\", \"skylake-avx512\", \"cannonlake\", \"silvermont\", \
+\"haswell\", \"broadwell\", \"skylake\", \"skylake-xeon\", \"kaby-lake\", \"cannonlake\", \"silvermont\", \
 \"goldmont\", \"knl\" (Knights Landing), \"atom\", \"k8\", \"k8-sse3\", \"barcelona\", \
 \"istanbul\", \"magny-cours\", \"bulldozer\", \"interlagos\", \"piledriver\", \
-\"AMD 14h\", \"AMD 16h\".")
+\"AMD 14h\", \"AMD 16h\", \"zen\".")
    set(_force)
    if(NOT _last_target_arch STREQUAL "${TARGET_ARCHITECTURE}")
       message(STATUS "target changed from \"${_last_target_arch}\" to \"${TARGET_ARCHITECTURE}\"")
@@ -255,6 +279,15 @@ Other supported values are: \"none\", \"generic\", \"core\", \"merom\" (65nm Cor
       _broadwell()
       list(APPEND _available_vector_units_list "avx512f" "avx512pf" "avx512er" "avx512cd")
    endmacro()
+   macro(_silvermont)
+      list(APPEND _march_flag_list "silvermont")
+      _westmere()
+      list(APPEND _available_vector_units_list "rdrnd")
+   endmacro()
+   macro(_goldmont)
+      list(APPEND _march_flag_list "goldmont")
+      _silvermont()
+   endmacro()
 
    if(TARGET_ARCHITECTURE STREQUAL "core")
       list(APPEND _march_flag_list "core2")
@@ -278,6 +311,8 @@ Other supported values are: \"none\", \"generic\", \"core\", \"merom\" (65nm Cor
       _knightslanding()
    elseif(TARGET_ARCHITECTURE STREQUAL "cannonlake")
       _cannonlake()
+   elseif(TARGET_ARCHITECTURE STREQUAL "kaby-lake")
+      _skylake()
    elseif(TARGET_ARCHITECTURE STREQUAL "skylake-xeon" OR TARGET_ARCHITECTURE STREQUAL "skylake-avx512")
       _skylake_avx512()
    elseif(TARGET_ARCHITECTURE STREQUAL "skylake")
@@ -294,6 +329,10 @@ Other supported values are: \"none\", \"generic\", \"core\", \"merom\" (65nm Cor
       _westmere()
    elseif(TARGET_ARCHITECTURE STREQUAL "nehalem")
       _nehalem()
+   elseif(TARGET_ARCHITECTURE STREQUAL "goldmont")
+      _goldmont()
+   elseif(TARGET_ARCHITECTURE STREQUAL "silvermont")
+      _silvermont()
    elseif(TARGET_ARCHITECTURE STREQUAL "atom")
       list(APPEND _march_flag_list "atom")
       list(APPEND _march_flag_list "core2")
@@ -312,6 +351,10 @@ Other supported values are: \"none\", \"generic\", \"core\", \"merom\" (65nm Cor
    elseif(TARGET_ARCHITECTURE STREQUAL "AMD 14h")
       list(APPEND _march_flag_list "btver1")
       list(APPEND _available_vector_units_list "sse" "sse2" "sse3" "ssse3" "sse4a")
+   elseif(TARGET_ARCHITECTURE STREQUAL "zen")
+      list(APPEND _march_flag_list "znver1")
+      _skylake()
+      list(APPEND _available_vector_units_list "sse4a")
    elseif(TARGET_ARCHITECTURE STREQUAL "piledriver")
       list(APPEND _march_flag_list "bdver2")
       list(APPEND _march_flag_list "bdver1")
@@ -443,54 +486,33 @@ Other supported values are: \"none\", \"generic\", \"core\", \"merom\" (65nm Cor
             add_definitions("-D${_flag}")
          endforeach(_flag)
       elseif(CMAKE_CXX_COMPILER MATCHES "/(icpc|icc)$") # ICC (on Linux)
-         _my_find(_available_vector_units_list "avx2"    _found)
-         if(_found)
-            AddCompilerFlag("-xCORE-AVX2" CXX_FLAGS Vc_ARCHITECTURE_FLAGS)
-         else(_found)
-            _my_find(_available_vector_units_list "f16c"    _found)
-            if(_found)
-               AddCompilerFlag("-xCORE-AVX-I" CXX_FLAGS Vc_ARCHITECTURE_FLAGS)
-            else(_found)
-               _my_find(_available_vector_units_list "avx"    _found)
-               if(_found)
-                  AddCompilerFlag("-xAVX" CXX_FLAGS Vc_ARCHITECTURE_FLAGS)
-               else(_found)
-                  _my_find(_available_vector_units_list "sse4.2" _found)
-                  if(_found)
-                     AddCompilerFlag("-xSSE4.2" CXX_FLAGS Vc_ARCHITECTURE_FLAGS)
-                  else(_found)
-                     _my_find(_available_vector_units_list "sse4.1" _found)
-                     if(_found)
-                        AddCompilerFlag("-xSSE4.1" CXX_FLAGS Vc_ARCHITECTURE_FLAGS)
-                     else(_found)
-                        _my_find(_available_vector_units_list "ssse3"  _found)
-                        if(_found)
-                           AddCompilerFlag("-xSSSE3" CXX_FLAGS Vc_ARCHITECTURE_FLAGS)
-                        else(_found)
-                           _my_find(_available_vector_units_list "sse3"   _found)
-                           if(_found)
-                              # If the target host is an AMD machine then we still want to use -xSSE2 because the binary would refuse to run at all otherwise
-                              _my_find(_march_flag_list "barcelona" _found)
-                              if(NOT _found)
-                                 _my_find(_march_flag_list "k8-sse3" _found)
-                              endif(NOT _found)
-                              if(_found)
-                                 AddCompilerFlag("-xSSE2" CXX_FLAGS Vc_ARCHITECTURE_FLAGS)
-                              else(_found)
-                                 AddCompilerFlag("-xSSE3" CXX_FLAGS Vc_ARCHITECTURE_FLAGS)
-                              endif(_found)
-                           else(_found)
-                              _my_find(_available_vector_units_list "sse2"   _found)
-                              if(_found)
-                                 AddCompilerFlag("-xSSE2" CXX_FLAGS Vc_ARCHITECTURE_FLAGS)
-                              endif(_found)
-                           endif(_found)
-                        endif(_found)
-                     endif(_found)
-                  endif(_found)
-               endif(_found)
-            endif(_found)
-         endif(_found)
+         set(OFA_map_knl "-xMIC-AVX512")
+         set(OFA_map_cannonlake "-xCORE-AVX512")
+         set(OFA_map_skylake-avx512 "-xCORE-AVX512")
+         set(OFA_map_skylake "-xCORE-AVX2")
+         set(OFA_map_broadwell "-xCORE-AVX2")
+         set(OFA_map_haswell "-xCORE-AVX2")
+         set(OFA_map_ivybridge "-xCORE-AVX-I")
+         set(OFA_map_sandybridge "-xAVX")
+         set(OFA_map_westmere "-xSSE4.2")
+         set(OFA_map_nehalem "-xSSE4.2")
+         set(OFA_map_penryn "-xSSSE3")
+         set(OFA_map_merom "-xSSSE3")
+         set(OFA_map_core2 "-xSSE3")
+         set(_ok FALSE)
+         foreach(arch ${_march_flag_list})
+            if(DEFINED OFA_map_${arch})
+               AddCompilerFlag(${OFA_map_${arch}} CXX_FLAGS Vc_ARCHITECTURE_FLAGS CXX_RESULT _ok)
+               if(_ok)
+                  break()
+               endif()
+            endif()
+         endforeach()
+         if(NOT _ok)
+            # This is the Intel compiler, so SSE2 is a very reasonable baseline.
+            message(STATUS "Did not recognize the requested architecture flag, falling back to SSE2")
+            AddCompilerFlag("-xSSE2" CXX_FLAGS Vc_ARCHITECTURE_FLAGS)
+         endif()
       else() # not MSVC and not ICC => GCC, Clang, Open64
          foreach(_flag ${_march_flag_list})
             AddCompilerFlag("-march=${_flag}" CXX_RESULT _good CXX_FLAGS Vc_ARCHITECTURE_FLAGS)
