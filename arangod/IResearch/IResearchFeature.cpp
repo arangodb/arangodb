@@ -55,6 +55,8 @@ IResearchFeature::IResearchFeature(arangodb::application_features::ApplicationSe
   // ourselves start after it!
   startsAfter("MMFilesLogfileManager");
   startsAfter("TransactionManager");
+
+  startsBefore("GeneralServer");
 }
 
 void IResearchFeature::beginShutdown() {

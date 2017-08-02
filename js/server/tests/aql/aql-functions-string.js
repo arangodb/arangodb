@@ -1625,48 +1625,60 @@ function ahuacatlStringFunctionsTestSuite () {
 /// @brief test charlength function
 ////////////////////////////////////////////////////////////////////////////////
     
-    testCharLength1 : function () {
-      var expected = [ 13 ];
-      var actual = getQueryResults("FOR r IN [ 1 ] return CHAR_LENGTH('the quick fox')");
-      assertEqual(expected, actual);
+    testCharLength1 : () => {
+      assertEqual([ 7 ], getQueryResults("RETURN NOOPT(CHAR_LENGTH('äöüÄÖÜß'))"));
+      assertEqual([ 7 ], getQueryResults("RETURN NOOPT(V8(CHAR_LENGTH('äöüÄÖÜß')))"));
+
+      assertEqual([ 10 ], getQueryResults("RETURN NOOPT(CHAR_LENGTH('アボカド名称について'))"));
+      assertEqual([ 10 ], getQueryResults("RETURN NOOPT(V8(CHAR_LENGTH('アボカド名称について')))"));
+
+      assertEqual([ 13 ], getQueryResults("RETURN NOOPT(CHAR_LENGTH('the quick fox'))"));
+      assertEqual([ 13 ], getQueryResults("RETURN NOOPT(V8(CHAR_LENGTH('the quick fox')))"));
+
+      assertEqual([ 4 ], getQueryResults("RETURN NOOPT(CHAR_LENGTH(null))"));
+      assertEqual([ 4 ], getQueryResults("RETURN NOOPT(V8(CHAR_LENGTH(null)))"));
+
+      assertEqual([ 4 ], getQueryResults("RETURN NOOPT(CHAR_LENGTH(true))"));
+      assertEqual([ 4 ], getQueryResults("RETURN NOOPT(V8(CHAR_LENGTH(true)))"));
+
+      assertEqual([ 5 ], getQueryResults("RETURN NOOPT(CHAR_LENGTH(false))"));
+      assertEqual([ 5 ], getQueryResults("RETURN NOOPT(V8(CHAR_LENGTH(false)))"));
+
+      assertEqual([ 1 ], getQueryResults("RETURN NOOPT(CHAR_LENGTH(3))"));
+      assertEqual([ 1 ], getQueryResults("RETURN NOOPT(V8(CHAR_LENGTH(3)))"));
+
+      assertEqual([ 3 ], getQueryResults("RETURN NOOPT(CHAR_LENGTH(3.3))"));
+      assertEqual([ 3 ], getQueryResults("RETURN NOOPT(V8(CHAR_LENGTH(3.3)))"));
+
+      assertEqual([ 4 ], getQueryResults("RETURN NOOPT(CHAR_LENGTH('🥑😄👻👽'))"));
+      assertEqual([ 4 ], getQueryResults("RETURN NOOPT(V8(CHAR_LENGTH('🥑😄👻👽')))"));
+
+      assertEqual([ 2 ], getQueryResults("RETURN NOOPT(CHAR_LENGTH([ ]))"));
+      assertEqual([ 2 ], getQueryResults("RETURN NOOPT(V8(CHAR_LENGTH([ ])))"));
+
+      assertEqual([ 7 ], getQueryResults("RETURN NOOPT(CHAR_LENGTH([ 1, 2, 3 ]))"));
+      assertEqual([ 7 ], getQueryResults("RETURN NOOPT(V8(CHAR_LENGTH([ 1, 2, 3 ])))"));
+
+      assertEqual([ 2 ], getQueryResults("RETURN NOOPT(CHAR_LENGTH({ }))"));
+      assertEqual([ 2 ], getQueryResults("RETURN NOOPT(V8(CHAR_LENGTH({ })))"));
+
+      assertEqual([ 7 ], getQueryResults("RETURN NOOPT(CHAR_LENGTH({ a:1 }))"));
+      assertEqual([ 7 ], getQueryResults("RETURN NOOPT(V8(CHAR_LENGTH({ a:1 })))"));
+
+      assertEqual([ 11 ], getQueryResults("RETURN NOOPT(CHAR_LENGTH({ a: \"foo\" }))"));
+      assertEqual([ 11 ], getQueryResults("RETURN NOOPT(V8(CHAR_LENGTH({ a: \"foo\" })))"));
+
+      assertEqual([ 13 ], getQueryResults("RETURN NOOPT(CHAR_LENGTH({ a:1, b: 2 }))"));
+      assertEqual([ 13 ], getQueryResults("RETURN NOOPT(V8(CHAR_LENGTH({ a:1, b: 2 })))"));
     },
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test charlength function
 ////////////////////////////////////////////////////////////////////////////////
-    
-    testCharLength2 : function () {
-      var expected = [ 7 ];
-      var actual = getQueryResults("FOR r IN [ 1 ] return CHAR_LENGTH('äöüÄÖÜß')");
-      assertEqual(expected, actual);
-    },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test charlength function
-////////////////////////////////////////////////////////////////////////////////
-    
-    testCharLength3 : function () {
-      var expected = [ 10 ];
-      var actual = getQueryResults("FOR r IN [ 1 ] return CHAR_LENGTH('アボカド名称について')");
-      assertEqual(expected, actual);
-    },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test charlength function
-////////////////////////////////////////////////////////////////////////////////
-
-    testCharLengthInvalid : function () {
+    testCharLengthInvalid : () => {
       assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN CHAR_LENGTH()"); 
-      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN CHAR_LENGTH(\"yes\", \"yes\")"); 
-      assertEqual([ 0 ], getQueryResults("RETURN CHAR_LENGTH(null)"));
-      assertEqual([ 4 ], getQueryResults("RETURN CHAR_LENGTH(true)"));
-      assertEqual([ 1 ], getQueryResults("RETURN CHAR_LENGTH(3)"));
-      assertEqual([ 2 ], getQueryResults("RETURN CHAR_LENGTH([ ])"));
-      assertEqual([ 7 ], getQueryResults("RETURN CHAR_LENGTH([ 1, 2, 3 ])"));
-      assertEqual([ 2 ], getQueryResults("RETURN CHAR_LENGTH({ })"));
-      assertEqual([ 7 ], getQueryResults("RETURN CHAR_LENGTH({ a:1 })"));
-      assertEqual([ 11 ], getQueryResults("RETURN CHAR_LENGTH({ a: \"foo\" })"));
-      assertEqual([ 13 ], getQueryResults("RETURN CHAR_LENGTH({ a:1, b: 2 })"));
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN CHAR_LENGTH('yes', 'yes')");
     },
 
 ////////////////////////////////////////////////////////////////////////////////

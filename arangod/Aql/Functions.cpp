@@ -866,6 +866,9 @@ AqlValue Functions::ToArray(arangodb::aql::Query* query,
 AqlValue Functions::Length(arangodb::aql::Query* query,
                            transaction::Methods* trx,
                            VPackFunctionParameters const& parameters) {
+
+  ValidateParameters(parameters, "LENGTH", 1, 1);
+
   transaction::BuilderLeaser builder(trx);
 
   AqlValue value = ExtractFunctionParameterValue(trx, parameters, 0);
@@ -1148,6 +1151,58 @@ AqlValue Functions::ConcatSeparator(arangodb::aql::Query* query,
   } catch (...) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
   }
+}
+
+/// @brief function CHAR_LENGTH
+AqlValue Functions::CharLength(arangodb::aql::Query* query,
+                                    transaction::Methods* trx,
+                                    VPackFunctionParameters const& parameters) {
+  ValidateParameters(parameters, "CHAR_LENGTH", 1, 1);
+
+  transaction::BuilderLeaser builder(trx);
+
+  AqlValue value = ExtractFunctionParameterValue(trx, parameters, 0);
+  size_t length = 0;
+
+  if (value.isArray() || value.isObject()) {
+    AqlValueMaterializer materializer(trx);
+    VPackSlice slice = materializer.slice(value, false);
+
+    transaction::StringBufferLeaser buffer(trx);
+    arangodb::basics::VPackStringBufferAdapter adapter(buffer->stringBuffer());
+
+    VPackDumper dumper(&adapter, trx->transactionContextPtr()->getVPackOptions());
+    dumper.dump(slice);
+
+    length = buffer->length();
+
+  } else if (value.isNull(true)) {
+    length = 4;
+
+  } else if (value.isBoolean()) {
+    if (value.toBoolean()) {
+      length = 4;
+    } else {
+      length = 5;
+    }
+
+  } else if (value.isNumber()) {
+    double tmp = value.toDouble(trx);
+    if (std::isnan(tmp) || !std::isfinite(tmp)) {
+      length = 0;
+    } else {
+      char buffer[24];
+      length = static_cast<size_t>(fpconv_dtoa(tmp, buffer));
+    }
+
+  } else if (value.isString()) {
+    VPackValueLength l;
+    char const* p = value.slice().getString(l);
+    length = TRI_CharLengthUtf8String(p, l);
+  }
+
+  builder->add(VPackValue(static_cast<uint64_t>(length)));
+  return AqlValue(builder.get());
 }
 
 /// @brief function LIKE

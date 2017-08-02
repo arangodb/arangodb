@@ -353,7 +353,6 @@ int RocksDBIndexFactory::enhanceIndexDefinition(VPackSlice const definition,
       break;
 #endif
 
-    case Index::TRI_IDX_TYPE_UNKNOWN:
     default: {
       res = TRI_ERROR_BAD_PARAMETER;
       break;

@@ -44,6 +44,11 @@ MMFilesWalRecoveryFeature::MMFilesWalRecoveryFeature(ApplicationServer* server)
   startsAfter("MMFilesLogfileManager");
   startsAfter("MMFilesPersistentIndex");
   startsAfter("Scheduler");
+  
+  startsBefore("Agency");
+  startsBefore("Server");
+  startsBefore("Upgrade");
+  startsBefore("V8Dealer");
 
   onlyEnabledWith("MMFilesEngine");
   onlyEnabledWith("MMFilesLogfileManager");

@@ -2069,7 +2069,12 @@ function AQL_CONCAT_SEPARATOR () {
 function AQL_CHAR_LENGTH (value) {
   'use strict';
 
-  return AQL_TO_STRING(value).length;
+  if (value === undefined || value === null) {
+    return 4;
+  }
+
+  // https://mathiasbynens.be/notes/javascript-unicode
+  return [...AQL_TO_STRING(value)].length;
 }
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -2997,7 +3002,8 @@ function AQL_LENGTH (value) {
     return value ? 1 : 0;
   }
 
-  return AQL_TO_STRING(value).length;
+  // https://mathiasbynens.be/notes/javascript-unicode
+  return [...AQL_TO_STRING(value)].length;
 }
 
 // //////////////////////////////////////////////////////////////////////////////

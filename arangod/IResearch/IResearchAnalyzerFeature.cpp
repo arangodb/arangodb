@@ -331,8 +331,7 @@ IResearchAnalyzerFeature::IResearchAnalyzerFeature(
   setOptional(true);
   requiresElevatedPrivileges(false);
   startsAfter("AQLFunctions"); // used for registering IResearch analyzer functions
-  startsAfter("MMFilesEngine"); // used for getting the system database containing the persisted configuration
-  startsAfter("RocksDBEngine"); // used for getting the system database containing the persisted configuration
+  startsAfter("StorageEngine"); // used for getting the system database containing the persisted configuration
   startsAfter("SystemDatabase"); // used for getting the system database containing the persisted configuration
 }
 
