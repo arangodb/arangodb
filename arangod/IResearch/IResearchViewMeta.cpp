@@ -594,6 +594,7 @@ bool IResearchViewMeta::init(
   Mask* mask /*= nullptr*/
 ) noexcept {
   if (!slice.isObject()) {
+    errorField = "not an object";
     return false;
   }
 
