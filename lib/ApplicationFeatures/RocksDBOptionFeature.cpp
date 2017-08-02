@@ -26,6 +26,7 @@
 #include "Basics/FileUtils.h"
 #include "Basics/process-utils.h"
 #include "Basics/tri-strings.h"
+#include "Cluster/ServerState.h"
 #include "Logger/Logger.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
@@ -231,12 +232,12 @@ void RocksDBOptionFeature::collectOptions(
   options->addOption(
       "--rocksdb.num-threads-priority-high",
       "number of threads for high priority operations (e.g. flush)",
-      new UInt64Parameter(&_numThreadsHigh));
+      new UInt32Parameter(&_numThreadsHigh));
 
   options->addOption(
       "--rocksdb.num-threads-priority-low",
       "number of threads for low priority operations (e.g. compaction)",
-      new UInt64Parameter(&_numThreadsLow));
+      new UInt32Parameter(&_numThreadsLow));
 
   options->addOption("--rocksdb.block-cache-size",
                      "size of block cache in bytes",
@@ -313,12 +314,16 @@ void RocksDBOptionFeature::validateOptions(
 }
 
 void RocksDBOptionFeature::start() {
+  uint32_t min = _maxBackgroundJobs / 4;
+  if (ServerState::instance()->isCoordinator()) {
+    min = 4;
+  }
   // lets test this out
   if (_numThreadsHigh == 0) {
-    _numThreadsHigh = _maxBackgroundJobs / 2;
+    _numThreadsHigh = std::min((uint32_t)TRI_numberProcessors(), min);
   }
   if (_numThreadsLow == 0) {
-    _numThreadsLow = _maxBackgroundJobs / 2;
+    _numThreadsLow = std::min((uint32_t)TRI_numberProcessors(), min);
   }
 
   LOG_TOPIC(TRACE, Logger::ROCKSDB) << "using RocksDB options:"
