@@ -6,6 +6,7 @@
 #include "Transaction/V8Context.h"
 #include "V8/v8-conv.h"
 #include "V8/v8-vpack.h"
+#include "V8/v8-helper.h"
 #include "V8Server/V8Context.h"
 #include "V8Server/V8DealerFeature.h"
 #include "V8Server/v8-vocbaseprivate.h"
@@ -14,21 +15,27 @@
 
 namespace arangodb {
 
-// could go into basic lib
-static std::string valueToStr(v8::Isolate* isolate, v8::Handle<v8::Value> value) {
-  // function converts js object to sting using ghe build in JSON.stringify
-	if (value.IsEmpty()) {
-   return std::string{};
+class v8gHelper {
+  // raii helper
+  TRI_v8_global_t* _v8g;
+  v8::Isolate* _isolate;
+
+public:
+  v8gHelper(v8::Isolate* isolate
+           ,v8::Handle<v8::Value>& request)
+           : _isolate(isolate)
+  {
+    TRI_GET_GLOBALS();
+    _v8g = v8g;
+    _v8g->_currentRequest = request;
   }
-  v8::Local<v8::Object> json = isolate->GetCurrentContext()->Global()->Get(TRI_V8_ASCII_STRING("JSON"))->ToObject();
-  v8::Local<v8::Function> stringify = json->Get(TRI_V8_ASCII_STRING("stringify")).As<v8::Function>();
-  v8::Local<v8::Value> jsString = stringify->Call(json, 1, &value);
-  v8::String::Utf8Value const rv(jsString);
-  return std::string(*rv, rv.length());
-}
 
+  ~v8gHelper() {
+    _v8g->_currentRequest = v8::Undefined(_isolate);
+  }
+};
 
-Result executeTransaction(TRI_vocbase_t* database, VPackSlice slice, VPackBuilder& builder){
+Result executeTransaction(TRI_vocbase_t* database, VPackSlice slice, std::string portType, VPackBuilder& builder){
 
   Result rv;
 
@@ -52,11 +59,22 @@ Result executeTransaction(TRI_vocbase_t* database, VPackSlice slice, VPackBuilde
     v8::Handle<v8::Value> result;
     v8::TryCatch tryCatch;
     bool canContinue = true;
-    rv = executeTransactionJS(context->_isolate, in, result, tryCatch, canContinue);
 
+    TRI_GET_GLOBALS();
+    v8::Handle<v8::Object> request = v8::Object::New(isolate);
+    v8::Handle<v8::Value> jsPortTypeKey= TRI_V8_ASCII_STRING("portType");
+    v8::Handle<v8::Value> jsPortTypeValue = TRI_V8_ASCII_STRING(portType.c_str());
+    if (!request->Set(jsPortTypeKey, jsPortTypeValue)){
+      rv.reset(TRI_ERROR_INTERNAL, "could not set porttype");
+      return rv;
+    }
+    {
+      auto requestVal = v8::Handle<v8::Value>::Cast(request);
+      v8gHelper globalVars(isolate, requestVal);
+      rv = executeTransactionJS(context->_isolate, in, result, tryCatch, canContinue);
+    }
     if(!canContinue) {
       //we need to cancel the context
-      TRI_GET_GLOBALS();
       v8g->_canceled = true;
     }
 

@@ -44,9 +44,11 @@ RestStatus RestTransactionHandler::execute() {
     return RestStatus::DONE;
   }
 
+  std::string portType = _request->connectionInfo().portType();
+
   VPackBuilder result;
   try {
-    Result res = executeTransaction(_vocbase, _request->payload(), result);
+    Result res = executeTransaction(_vocbase, _request->payload(), portType, result);
     if (res.ok()){
       VPackSlice slice = result.slice();
       if (slice.isNone()) {

@@ -29,7 +29,7 @@
 namespace arangodb {
 
 inline std::string stringify(v8::Isolate* isolate, v8::Handle<v8::Value> value) {
-  // function converts js object to sting using JSON.stringify
+  // function converts js object to string using JSON.stringify
 	if (value.IsEmpty()) {
    return std::string{};
   }
