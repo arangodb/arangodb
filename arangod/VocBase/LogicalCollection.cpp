@@ -1309,7 +1309,7 @@ ChecksumResult LogicalCollection::checksum(bool withRevisions, bool withData) co
     b.add("revision", VPackValue(revisionId));
   }
 
-  return ChecksumResult(b);
+  return ChecksumResult(std::move(b));
 }
 
 Result LogicalCollection::compareChecksums(VPackSlice checksumSlice) const {

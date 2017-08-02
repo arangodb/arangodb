@@ -42,6 +42,7 @@
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
 #include "RestHandler/RestAdminLogHandler.h"
+#include "RestHandler/RestAdminRoutingHandler.h"
 #include "RestHandler/RestAqlFunctionsHandler.h"
 #include "RestHandler/RestAuthHandler.h"
 #include "RestHandler/RestBatchHandler.h"
@@ -54,6 +55,7 @@
 #include "RestHandler/RestEdgesHandler.h"
 #include "RestHandler/RestEndpointHandler.h"
 #include "RestHandler/RestEngineHandler.h"
+#include "RestHandler/RestExplainHandler.h"
 #include "RestHandler/RestHandlerCreator.h"
 #include "RestHandler/RestImportHandler.h"
 #include "RestHandler/RestIndexHandler.h"
@@ -104,7 +106,6 @@ GeneralServerFeature::GeneralServerFeature(
   startsAfter("Database");
   startsAfter("Endpoint");
   startsAfter("FoxxQueues");
-  startsAfter("MMFilesLogfileManager");
   startsAfter("Random");
   startsAfter("Scheduler");
   startsAfter("Server");
@@ -422,6 +423,9 @@ void GeneralServerFeature::defineHandlers() {
       RestHandlerCreator<RestAqlFunctionsHandler>::createNoData);
 
   _handlerFactory->addPrefixHandler(
+      "/_api/explain", RestHandlerCreator<RestExplainHandler>::createNoData);
+
+  _handlerFactory->addPrefixHandler(
       "/_api/query", RestHandlerCreator<RestQueryHandler>::createNoData);
 
   _handlerFactory->addPrefixHandler(
@@ -491,6 +495,10 @@ void GeneralServerFeature::defineHandlers() {
   _handlerFactory->addPrefixHandler(
       "/_admin/log",
       RestHandlerCreator<arangodb::RestAdminLogHandler>::createNoData);
+
+  _handlerFactory->addPrefixHandler(
+      "/_admin/routing",
+      RestHandlerCreator<arangodb::RestAdminRoutingHandler>::createNoData);
 
   _handlerFactory->addPrefixHandler(
       "/_admin/work-monitor",
