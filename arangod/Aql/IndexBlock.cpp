@@ -392,6 +392,7 @@ bool IndexBlock::readIndex(size_t atMost) {
     _documents.reserve(atMost);
   } else {
     _documents.clear();
+    _posInDocs = 0;
   }
 
   if (_cursor == nullptr) {
@@ -476,10 +477,12 @@ int IndexBlock::initializeCursor(AqlItemBlock* items, size_t pos) {
   if (res != TRI_ERROR_NO_ERROR) {
     return res;
   }
-  
+ 
+  _documents.clear();
   _alreadyReturned.clear();
   _pos = 0;
   _posInDocs = 0;
+  _currentIndex = 0;
 
   return TRI_ERROR_NO_ERROR;
 
@@ -518,7 +521,6 @@ AqlItemBlock* IndexBlock::getSome(size_t atLeast, size_t atMost) {
       readIndex(atMost);
     } else if (_posInDocs >= _documents.size()) {
       // we have exhausted our local documents buffer,
-
       if (!readIndex(atMost)) {  // no more output from this version of the
                                  // index
         AqlItemBlock* cur = _buffer.front();
@@ -551,7 +553,7 @@ AqlItemBlock* IndexBlock::getSome(size_t atLeast, size_t atMost) {
 
     size_t available = _documents.size() - _posInDocs;
     size_t toSend = (std::min)(atMost, available);
-
+ 
     if (toSend > 0) {
       // automatically freed should we throw
       res.reset(
@@ -629,6 +631,10 @@ size_t IndexBlock::skipSome(size_t atLeast, size_t atMost) {
 
     _posInDocs += toSkip;
     skipped += toSkip;
+      
+    if (skipped >= atLeast) { 
+      break;
+    }
 
     // Advance read position:
     if (_posInDocs >= _documents.size()) {
