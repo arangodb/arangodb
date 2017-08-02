@@ -51,6 +51,13 @@ class ConditionFinder : public WalkerWorker<ExecutionNode> {
 
   bool enterSubquery(ExecutionNode*, ExecutionNode*) override final;
 
+ protected:
+  bool handleFilterCondition(ExecutionNode* en,
+                             std::unique_ptr<Condition>& condition);
+  void handleSortCondition(ExecutionNode* en, Variable const* outVar,
+                           std::unique_ptr<Condition>& condition,
+                           std::unique_ptr<SortCondition>& sortCondition);
+
  private:
   ExecutionPlan* _plan;
   std::unordered_map<VariableId, AstNode const*> _variableDefinitions;
@@ -60,7 +67,7 @@ class ConditionFinder : public WalkerWorker<ExecutionNode> {
   std::unordered_map<size_t, ExecutionNode*>* _changes;
   bool* _hasEmptyResult;
 };
-}
-}
+}  // namespace aql
+}  // namespace arangodb
 
 #endif
