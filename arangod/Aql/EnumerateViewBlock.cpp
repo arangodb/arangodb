@@ -25,6 +25,7 @@
 #include "Aql/AqlItemBlock.h"
 #include "Aql/AqlValue.h"
 #include "Aql/Ast.h"
+#include "Aql/Condition.h"
 #include "Aql/ExecutionEngine.h"
 #include "Aql/Query.h"
 #include "Basics/Exceptions.h"
@@ -48,7 +49,8 @@ EnumerateViewBlock::EnumerateViewBlock(ExecutionEngine* engine,
   AstNode* boolVal = engine->getQuery()->ast()->createNodeValueBool(true);
   AstNode* filter = engine->getQuery()->ast()->createNodeFilter(boolVal);
   _iter.reset(_view->iteratorForCondition(
-      transaction(), en->filterNode() ? en->filterNode() : filter, _outVariable,
+      transaction(), en->condition() ? en->condition()->root() : filter,
+      _outVariable,
       en->sortCondition().get()));
   TRI_ASSERT(_iter != nullptr);
 }

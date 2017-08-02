@@ -1155,7 +1155,7 @@ double SingletonNode::estimateCost(size_t& nrItems) const {
 EnumerateCollectionNode::EnumerateCollectionNode(
     ExecutionPlan* plan, arangodb::velocypack::Slice const& base)
     : ExecutionNode(plan, base),
-      DocumentProducingNode(plan, base), 
+      DocumentProducingNode(plan, base),
       _vocbase(plan->getAst()->query()->vocbase()),
       _collection(plan->getAst()->query()->collections()->get(
           base.get("collection").copyString())),
@@ -1316,7 +1316,7 @@ EnumerateViewNode::EnumerateViewNode(ExecutionPlan* plan,
       _vocbase(plan->getAst()->query()->vocbase()),
       _view(_vocbase->lookupView(base.get("view").copyString())),
       _outVariable(Variable::varFromVPack(plan->getAst(), base, "outVariable")),
-      _filterNode(nullptr), // TODO
+      _condition(Condition::fromVPack(plan, base.get("condition"))),
       _sortCondition(SortCondition::fromVelocyPack(plan, base, "sortCondition")) {}
 
 /// @brief toVelocyPack, for EnumerateViewNode
@@ -1331,9 +1331,9 @@ void EnumerateViewNode::toVelocyPackHelper(VPackBuilder& nodes,
   nodes.add(VPackValue("outVariable"));
   _outVariable->toVelocyPack(nodes);
 
-  nodes.add(VPackValue("filterNode"));
-  if (_filterNode) {
-    _filterNode->toVelocyPack(nodes, verbose);
+  nodes.add(VPackValue("condition"));
+  if (_condition) {
+    _condition->toVelocyPack(nodes, verbose);
   } else {
     nodes.openObject();
     nodes.close();
@@ -1362,8 +1362,8 @@ ExecutionNode* EnumerateViewNode::clone(ExecutionPlan* plan,
   }
 
   auto c = new EnumerateViewNode(plan, _id, _vocbase, _view, outVariable,
-                                 _filterNode, _sortCondition);
-                                 // TODO clone filterNode and sortCondition?
+                                 _condition, _sortCondition);
+                                 // TODO clone condition and sortCondition?
 
   cloneHelper(c, plan, withDependencies, withProperties);
 

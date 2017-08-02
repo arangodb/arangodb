@@ -264,7 +264,7 @@ bool ConditionPart::isCoveredBy(ConditionPart const& other,
       other.valueNode->isConstant()) {
     return CompareAstNodes(other.valueNode, valueNode, false) == 0;
   }
-  
+
   bool a = operatorNode->isArrayComparisonOperator();
   bool b = other.operatorNode->isArrayComparisonOperator();
   if (a || b) {
@@ -273,7 +273,7 @@ bool ConditionPart::isCoveredBy(ConditionPart const& other,
     }
     TRI_ASSERT(operatorNode->numMembers() == 3 &&
                other.operatorNode->numMembers() == 3);
-    
+
     AstNode* q1 = operatorNode->getMemberUnchecked(2);
     TRI_ASSERT(q1->type == NODE_TYPE_QUANTIFIER);
     AstNode* q2 = other.operatorNode->getMemberUnchecked(2);
@@ -283,7 +283,7 @@ bool ConditionPart::isCoveredBy(ConditionPart const& other,
         q1->getIntValue() == Quantifier::ANY) {
       return false;
     }
-    
+
     if (isExpanded && other.isExpanded &&
         operatorType == NODE_TYPE_OPERATOR_BINARY_ARRAY_IN &&
         other.operatorType == NODE_TYPE_OPERATOR_BINARY_ARRAY_IN &&
@@ -408,6 +408,18 @@ std::pair<bool, bool> Condition::findIndexes(
   return trx->getBestIndexHandlesForFilterCondition(
       collectionName, _ast, _root, reference, sortCondition, itemsInIndex,
       usedIndexes, _isSorted);
+}
+
+std::pair<bool, bool> Condition::checkView(
+    EnumerateViewNode const* node, SortCondition const* sortCondition) {
+  Variable const* reference = node->outVariable();
+  std::string viewName = node->view()->name();
+
+  // TODO check sort condition?
+
+  // TODO check filter condition
+
+  return std::make_pair(false, false);
 }
 
 /// @brief get the attributes for a sub-condition that are const

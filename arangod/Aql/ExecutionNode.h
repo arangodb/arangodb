@@ -36,7 +36,7 @@
 //
 // Even though the Singleton Node has a label saying it is the "ROOT" node it
 // is not in our definiton. Root Nodes are leaf nodes (at the bottom of the list).
-// 
+//
 // To get down (direction to root) from 4 to 5 you need to clla getFirst Parent
 // on the SortNode(4) to receive a pointer to the LimitNode(5). If you want to
 // go up from 5 to 4 (away form root) you need to call getFirstDependency at
@@ -73,6 +73,7 @@ class Slice;
 namespace aql {
 class Ast;
 struct Collection;
+class Condition;
 class ExecutionBlock;
 class TraversalBlock;
 class ExecutionPlan;
@@ -703,7 +704,7 @@ class EnumerateCollectionNode : public ExecutionNode, public DocumentProducingNo
 
   EnumerateCollectionNode(ExecutionPlan* plan,
                           arangodb::velocypack::Slice const& base);
-  
+
   /// @brief return the type of the node
   NodeType getType() const override final { return ENUMERATE_COLLECTION; }
 
@@ -822,13 +823,13 @@ class EnumerateViewNode : public ExecutionNode {
   EnumerateViewNode(ExecutionPlan* plan, size_t id, TRI_vocbase_t* vocbase,
                     std::shared_ptr<LogicalView> view,
                     Variable const* outVariable,
-                    AstNode const* filterNode,
+                    Condition* condition,
                     std::shared_ptr<SortCondition> sortCondition)
       : ExecutionNode(plan, id),
         _vocbase(vocbase),
         _view(view),
         _outVariable(outVariable),
-        _filterNode(filterNode),
+        _condition(condition),
         _sortCondition(sortCondition) {
     TRI_ASSERT(_vocbase != nullptr);
     TRI_ASSERT(_view != nullptr);
@@ -866,7 +867,7 @@ class EnumerateViewNode : public ExecutionNode {
   std::shared_ptr<LogicalView> view() const { return _view; }
 
   /// @brief return the filter node
-  AstNode const* filterNode() const { return _filterNode; }
+  Condition* condition() const { return _condition; }
 
   /// @brief return the condition to pass to the view
   std::shared_ptr<SortCondition> sortCondition() const {
@@ -884,7 +885,7 @@ class EnumerateViewNode : public ExecutionNode {
   Variable const* _outVariable;
 
   /// @brief filter node to pass to view
-  AstNode const* _filterNode;
+  Condition* _condition;
 
   /// @brief sortCondition to pass to the view
   std::shared_ptr<SortCondition> _sortCondition;

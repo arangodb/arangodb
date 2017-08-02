@@ -36,6 +36,7 @@ namespace aql {
 
 class Ast;
 class EnumerateCollectionNode;
+class EnumerateViewNode;
 class ExecutionPlan;
 struct Index;
 class SortCondition;
@@ -230,7 +231,7 @@ class Condition {
 
   /// @brief removes condition parts from another
   AstNode* removeIndexCondition(ExecutionPlan const*, Variable const*, AstNode*);
-  
+
   /// @brief removes condition parts from another
   AstNode* removeTraversalCondition(ExecutionPlan const*, Variable const*, AstNode*);
 
@@ -243,6 +244,11 @@ class Condition {
   std::pair<bool, bool> findIndexes(EnumerateCollectionNode const*,
                                     std::vector<transaction::Methods::IndexHandle>&,
                                     SortCondition const*);
+
+  /// @brief check if view can be used for conditions
+  /// return value is a pair indicating whether the view can be used for
+  /// filtering(first) and sorting(second)
+  std::pair<bool, bool> checkView(EnumerateViewNode const*, SortCondition const*);
 
   /// @brief get the attributes for a sub-condition that are const
   /// (i.e. compared with equality)

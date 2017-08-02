@@ -2088,7 +2088,7 @@ struct SortToViewNode final : public WalkerWorker<ExecutionNode> {
       if (supported) {
         std::unique_ptr<ExecutionNode> newNode(new EnumerateViewNode(_plan,
           _plan->nextId(), enumerateViewNode->vocbase(), view, outVariable,
-          enumerateViewNode->filterNode(), sortCondition));
+          enumerateViewNode->condition(), sortCondition));
 
         auto n = newNode.release();
 
@@ -3963,53 +3963,53 @@ void arangodb::aql::removeFiltersCoveredByTraversal(Optimizer* opt, std::unique_
     opt->addPlan(std::move(plan), rule, false);
     return;
   }
-  
+
   bool modified = false;
   std::unordered_set<ExecutionNode*> toUnlink;
-  
+
   for (auto const& node : fNodes) {
     auto fn = static_cast<FilterNode const*>(node);
     // find the node with the filter expression
     auto inVar = fn->getVariablesUsedHere();
     TRI_ASSERT(inVar.size() == 1);
-    
+
     auto setter = plan->getVarSetBy(inVar[0]->id);
     if (setter == nullptr || setter->getType() != EN::CALCULATION) {
       continue;
     }
-    
+
     auto calculationNode = static_cast<CalculationNode*>(setter);
     auto conditionNode = calculationNode->expression()->node();
-    
+
     // build the filter condition
     auto condition = std::make_unique<Condition>(plan->getAst());
     condition->andCombine(conditionNode);
     condition->normalize(plan.get());
-    
+
     if (condition->root() == nullptr) {
       continue;
     }
-    
+
     size_t const n = condition->root()->numMembers();
-    
+
     if (n != 1) {
       // either no condition or multiple ORed conditions...
       continue;
     }
-    
+
     bool handled = false;
     auto current = node;
     while (current != nullptr) {
       if (current->getType() == EN::TRAVERSAL) {
         auto traversalNode = static_cast<TraversalNode const*>(current);
-        
+
         // found a traversal node, now check if the expression
         // is covered by the traversal
         auto traversalCondition = traversalNode->condition();
-        
+
         if (traversalCondition != nullptr && !traversalCondition->isEmpty()) {
           /*auto const& indexesUsed = traversalNode->get //indexNode->getIndexes();
-          
+
           if (indexesUsed.size() == 1) {*/
             // single index. this is something that we can handle
           Variable const* outVariable = traversalNode->pathOutVariable();
@@ -4017,7 +4017,7 @@ void arangodb::aql::removeFiltersCoveredByTraversal(Optimizer* opt, std::unique_
           Ast::getReferencedVariables(condition->root(), varsUsedByCondition);
           if (outVariable != nullptr &&
               varsUsedByCondition.find(outVariable) != varsUsedByCondition.end()) {
-            
+
             auto newNode = condition->removeTraversalCondition(plan.get(), outVariable, traversalCondition->root());
             if (newNode == nullptr) {
               // no condition left...
@@ -4042,12 +4042,12 @@ void arangodb::aql::removeFiltersCoveredByTraversal(Optimizer* opt, std::unique_
             }
           }
         }
-        
+
         if (handled) {
           break;
         }
       }
-      
+
       if (handled || current->getType() == EN::LIMIT ||
           !current->hasDependency()) {
         break;
@@ -4055,11 +4055,11 @@ void arangodb::aql::removeFiltersCoveredByTraversal(Optimizer* opt, std::unique_
       current = current->getFirstDependency();
     }
   }
-  
+
   if (!toUnlink.empty()) {
     plan->unlinkNodes(toUnlink);
   }
-  
+
   opt->addPlan(std::move(plan), rule, modified);
 }
 
@@ -4071,13 +4071,13 @@ void arangodb::aql::removeTraversalPathVariable(Optimizer* opt,
   SmallVector<ExecutionNode*>::allocator_type::arena_type a;
   SmallVector<ExecutionNode*> tNodes{a};
   plan->findNodesOfType(tNodes, EN::TRAVERSAL, true);
-  
+
   bool modified = false;
   // first make a pass over all traversal nodes and remove unused
   // variables from them
   for (auto const& n : tNodes) {
     TraversalNode* traversal = static_cast<TraversalNode*>(n);
-    
+
     auto varsUsedLater = n->getVarsUsedLater();
     auto outVariable = traversal->pathOutVariable();
     if (outVariable != nullptr &&

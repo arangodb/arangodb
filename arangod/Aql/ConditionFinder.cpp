@@ -33,7 +33,6 @@ using EN = arangodb::aql::ExecutionNode;
 bool ConditionFinder::before(ExecutionNode* en) {
   switch (en->getType()) {
     case EN::ENUMERATE_LIST:
-    case EN::ENUMERATE_VIEW:
     case EN::COLLECT:
     case EN::SCATTER:
     case EN::DISTRIBUTE:
@@ -147,6 +146,49 @@ bool ConditionFinder::before(ExecutionNode* en) {
             node->outVariable(), usedIndexes, condition.get(), reverse));
         condition.release();
         TRI_IF_FAILURE("ConditionFinder::insertIndexNode") {
+          THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+        }
+
+        // We keep this node's change
+        _changes->emplace(node->id(), newNode.get());
+        newNode.release();
+      }
+
+      break;
+    }
+
+  case EN::ENUMERATE_VIEW: {
+      auto node = static_cast<EnumerateViewNode const*>(en);
+      if (_changes->find(node->id()) != _changes->end()) {
+        // already optimized this node
+        break;
+      }
+
+      auto condition = std::make_unique<Condition>(_plan->getAst());
+      bool ok = handleFilterCondition(en, condition);
+      if (!ok) {
+        break;
+      }
+
+      std::unique_ptr<SortCondition> sortCondition;
+      handleSortCondition(en, node->outVariable(), condition, sortCondition);
+
+      if (condition->isEmpty() && sortCondition->isEmpty()) {
+        // no filter conditions left
+        break;
+      }
+
+      auto canUseView =
+          condition->checkView(node, sortCondition.get());
+
+      if (canUseView.first && canUseView.second) {
+        // We either can find indexes for everything or findIndexes will clear
+        // out usedIndexes
+        std::unique_ptr<ExecutionNode> newNode(new EnumerateViewNode(
+            _plan, _plan->nextId(), node->vocbase(), node->view(),
+            node->outVariable(), condition.get(), nullptr));
+        condition.release();
+        TRI_IF_FAILURE("ConditionFinder::insertViewNode") {
           THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
         }
 
