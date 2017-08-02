@@ -109,6 +109,8 @@ macro(AutodetectHostArchitecture)
          # 3C | Haswell
          if(_cpu_model EQUAL 87)
             set(TARGET_ARCHITECTURE "knl")  # Knights Landing
+         elseif(_cpu_model EQUAL 142 OR _cpu_model EQUAL 158)
+            set(TARGET_ARCHITECTURE "kabylake")
          elseif(_cpu_model EQUAL 92)
             set(TARGET_ARCHITECTURE "goldmont")
          elseif(_cpu_model EQUAL 90)
@@ -183,7 +185,7 @@ Using an incorrect setting here can result in crashes of the resulting binary be
 Setting the value to \"auto\" will try to optimize for the architecture where cmake is called. \
 Other supported values are: \"none\", \"generic\", \"core\", \"merom\" (65nm Core2), \
 \"penryn\" (45nm Core2), \"nehalem\", \"westmere\", \"sandy-bridge\", \"ivy-bridge\", \
-\"haswell\", \"broadwell\", \"skylake\", \"skylake-avx512\", \"cannonlake\", \"silvermont\", \
+\"haswell\", \"broadwell\", \"kabylake\", \"skylake\", \"skylake-avx512\", \"cannonlake\", \"silvermont\", \
 \"goldmont\", \"knl\" (Knights Landing), \"atom\", \"k8\", \"k8-sse3\", \"barcelona\", \
 \"istanbul\", \"magny-cours\", \"bulldozer\", \"interlagos\", \"piledriver\", \
 \"AMD 14h\", \"AMD 16h\".")
@@ -255,6 +257,10 @@ Other supported values are: \"none\", \"generic\", \"core\", \"merom\" (65nm Cor
       _broadwell()
       list(APPEND _available_vector_units_list "avx512f" "avx512pf" "avx512er" "avx512cd")
    endmacro()
+   macro(_kabylake)
+      list(APPEND _march_flag_list "kabylake")
+      _skylake()
+   endmacro()
 
    if(TARGET_ARCHITECTURE STREQUAL "core")
       list(APPEND _march_flag_list "core2")
@@ -276,6 +282,8 @@ Other supported values are: \"none\", \"generic\", \"core\", \"merom\" (65nm Cor
       endif()
    elseif(TARGET_ARCHITECTURE STREQUAL "knl")
       _knightslanding()
+   elseif(TARGET_ARCHITECTURE STREQUAL "kabylake")
+      _kabylake()
    elseif(TARGET_ARCHITECTURE STREQUAL "cannonlake")
       _cannonlake()
    elseif(TARGET_ARCHITECTURE STREQUAL "skylake-xeon" OR TARGET_ARCHITECTURE STREQUAL "skylake-avx512")
