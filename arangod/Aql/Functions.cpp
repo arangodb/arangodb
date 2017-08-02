@@ -1205,6 +1205,50 @@ AqlValue Functions::CharLength(arangodb::aql::Query* query,
   return AqlValue(builder.get());
 }
 
+// #include "unicode/utypes.h"
+// #include "unicode/uchar.h"
+// #include "unicode/locid.h"
+// #include "unicode/ustring.h"
+// #include "unicode/ucnv.h"
+#include "unicode/unistr.h"
+
+
+/// @brief function LOWER
+AqlValue Functions::Lower(arangodb::aql::Query* query,
+                                    transaction::Methods* trx,
+                                    VPackFunctionParameters const& parameters) {
+  ValidateParameters(parameters, "LOWER", 1, 1);
+
+  std::string utf8;
+  VPackValueLength l;
+  AqlValue value = ExtractFunctionParameterValue(trx, parameters, 0);
+  char const* p = value.slice().getString(l);
+
+  UnicodeString s(p, l);
+  s.toLower(NULL);
+  s.toUTF8String(utf8);
+
+  return AqlValue(utf8.c_str(), utf8.length());
+}
+
+/// @brief function UPPER
+AqlValue Functions::Upper(arangodb::aql::Query* query,
+                                    transaction::Methods* trx,
+                                    VPackFunctionParameters const& parameters) {
+  ValidateParameters(parameters, "UPPER", 1, 1);
+
+  std::string utf8;
+  VPackValueLength l;
+  AqlValue value = ExtractFunctionParameterValue(trx, parameters, 0);
+  char const* p = value.slice().getString(l);
+
+  UnicodeString s(p, l);
+  s.toUpper(NULL);
+  s.toUTF8String(utf8);
+
+  return AqlValue(utf8.c_str(), utf8.length());
+}
+
 /// @brief function LIKE
 AqlValue Functions::Like(arangodb::aql::Query* query,
                          transaction::Methods* trx,
