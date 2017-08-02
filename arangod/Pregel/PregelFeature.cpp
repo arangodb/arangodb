@@ -70,7 +70,6 @@ PregelFeature::~PregelFeature() {
 }
 
 PregelFeature* PregelFeature::instance() {
-  TRI_ASSERT(Instance != nullptr);
   return Instance;
 }
 
