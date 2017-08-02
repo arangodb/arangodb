@@ -125,6 +125,12 @@ MMFilesLogfileManager::MMFilesLogfileManager(ApplicationServer* server)
   startsAfter("FeatureCache");
   startsAfter("MMFilesEngine");
   
+  startsBefore("Aql");
+  startsBefore("Bootstrap");
+  startsBefore("GeneralServer");
+  startsBefore("QueryRegistry");
+  startsBefore("TraverserEngineRegistry");
+  
   onlyEnabledWith("MMFilesEngine");
 }
 
