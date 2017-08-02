@@ -1036,7 +1036,7 @@ void DatabaseFeature::enumerateDatabases(std::function<void(TRI_vocbase_t*)> fun
   if (ServerState::instance()->isCoordinator()) {
     auto unuser(_databasesProtector.use());
     auto theLists = _databasesLists.load();
-    
+
     for (auto& p : theLists->_coordinatorDatabases) {
       TRI_vocbase_t* vocbase = p.second;
       // iterate over all databases
@@ -1047,7 +1047,7 @@ void DatabaseFeature::enumerateDatabases(std::function<void(TRI_vocbase_t*)> fun
   } else {
     auto unuser(_databasesProtector.use());
     auto theLists = _databasesLists.load();
-    
+
     for (auto& p : theLists->_databases) {
       TRI_vocbase_t* vocbase = p.second;
       // iterate over all databases
