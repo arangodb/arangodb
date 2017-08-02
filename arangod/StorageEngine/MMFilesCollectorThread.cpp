@@ -649,6 +649,7 @@ int MMFilesCollectorThread::processCollectionOperations(MMFilesCollectorCache* c
   trx.addHint(TRI_TRANSACTION_HINT_NO_BEGIN_MARKER, true);
   trx.addHint(TRI_TRANSACTION_HINT_NO_ABORT_MARKER, true);
   trx.addHint(TRI_TRANSACTION_HINT_TRY_LOCK, true);
+  trx.addHint(TRI_TRANSACTION_HINT_NO_DLD, true); // disable deadlock detection
 
   int res = trx.begin();
 

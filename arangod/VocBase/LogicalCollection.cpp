@@ -2049,7 +2049,7 @@ int LogicalCollection::read(Transaction* trx, StringRef const& key,
   }
 
   bool const useDeadlockDetector =
-      (lock && !trx->isSingleOperationTransaction());
+      (lock && !trx->isSingleOperationTransaction() && !((int) trx->_hints & (int) TRI_TRANSACTION_HINT_NO_DLD));
   CollectionReadLocker collectionLocker(this, useDeadlockDetector, lock);
 
   int res = lookupDocument(trx, slice, result);
@@ -2183,7 +2183,7 @@ int LogicalCollection::insert(Transaction* trx, VPackSlice const slice,
   {
     // use lock?
     bool const useDeadlockDetector =
-        (lock && !trx->isSingleOperationTransaction());
+        (lock && !trx->isSingleOperationTransaction() && !((int) trx->_hints & (int) TRI_TRANSACTION_HINT_NO_DLD));
     try {
       arangodb::CollectionWriteLocker collectionLocker(this, useDeadlockDetector,
                                                       lock);
@@ -2275,7 +2275,7 @@ int LogicalCollection::update(Transaction* trx, VPackSlice const newSlice,
   TRI_IF_FAILURE("UpdateDocumentNoLock") { return TRI_ERROR_DEBUG; }
 
   bool const useDeadlockDetector =
-      (lock && !trx->isSingleOperationTransaction());
+      (lock && !trx->isSingleOperationTransaction() && !((int) trx->_hints & (int) TRI_TRANSACTION_HINT_NO_DLD));
   arangodb::CollectionWriteLocker collectionLocker(this, useDeadlockDetector,
                                                    lock);
 
@@ -2446,7 +2446,7 @@ int LogicalCollection::replace(Transaction* trx, VPackSlice const newSlice,
   }
 
   bool const useDeadlockDetector =
-      (lock && !trx->isSingleOperationTransaction());
+      (lock && !trx->isSingleOperationTransaction() && !((int) trx->_hints & (int) TRI_TRANSACTION_HINT_NO_DLD));
   arangodb::CollectionWriteLocker collectionLocker(this, useDeadlockDetector,
                                                    lock);
 
@@ -2628,7 +2628,7 @@ int LogicalCollection::remove(arangodb::Transaction* trx,
                                              TRI_VOC_DOCUMENT_OPERATION_REMOVE);
 
   bool const useDeadlockDetector =
-      (lock && !trx->isSingleOperationTransaction());
+      (lock && !trx->isSingleOperationTransaction() && !((int) trx->_hints & (int) TRI_TRANSACTION_HINT_NO_DLD));
   arangodb::CollectionWriteLocker collectionLocker(this, useDeadlockDetector,
                                                    lock);
 
@@ -2753,7 +2753,7 @@ int LogicalCollection::remove(arangodb::Transaction* trx,
                                              TRI_VOC_DOCUMENT_OPERATION_REMOVE);
 
   bool const useDeadlockDetector =
-      (lock && !trx->isSingleOperationTransaction());
+      (lock && !trx->isSingleOperationTransaction() && !((int) trx->_hints & (int) TRI_TRANSACTION_HINT_NO_DLD));
   arangodb::CollectionWriteLocker collectionLocker(this, useDeadlockDetector,
                                                    lock);
 
