@@ -79,9 +79,9 @@ class StorageEngine : public application_features::ApplicationFeature {
     startsAfter("CacheManager");
     startsAfter("DatabasePath");
     startsAfter("FileDescriptors");
-    startsAfter("StorageEngine");
     startsAfter("Temp");
     startsAfter("TransactionManager");
+    startsAfter("ViewTypes");
   }
 
   virtual bool supportsDfdb() const = 0;
@@ -94,7 +94,7 @@ class StorageEngine : public application_features::ApplicationFeature {
   // when a new collection is created, this method is called to augment the collection
   // creation data with engine-specific information
   virtual void addParametersForNewCollection(VPackBuilder& builder, VPackSlice info) {}
-  
+
   // when a new index is created, this method is called to augment the index
   // creation data with engine-specific information
   virtual void addParametersForNewIndex(VPackBuilder& builder, VPackSlice info) {}
@@ -129,9 +129,9 @@ class StorageEngine : public application_features::ApplicationFeature {
   // for each database
   virtual int getCollectionsAndIndexes(TRI_vocbase_t* vocbase, arangodb::velocypack::Builder& result,
                                        bool wasCleanShutdown, bool isUpgrade) = 0;
-  
+
   virtual int getViews(TRI_vocbase_t* vocbase, arangodb::velocypack::Builder& result) = 0;
-  
+
   // return the absolute path for the VERSION file of a database
   virtual std::string versionFilename(TRI_voc_tick_t id) const = 0;
 
@@ -151,7 +151,7 @@ class StorageEngine : public application_features::ApplicationFeature {
   // TODO add pre / post conditions for functions
 
   using CollectionView = LogicalCollection;
-    
+
   virtual void waitForSync(TRI_voc_tick_t tick) = 0;
 
   //// operations on databasea
@@ -294,7 +294,7 @@ class StorageEngine : public application_features::ApplicationFeature {
   // After this call data of this view is corrupted, only perform if
   // assured that no one is using the view anymore
   virtual void destroyView(TRI_vocbase_t* vocbase, arangodb::LogicalView*) = 0;
-  
+
   // asks the storage engine to change properties of the view as specified in
   // the VPack Slice object and persist them. If this operation fails
   // somewhere in the middle, the storage engine is required to fully revert the
@@ -337,20 +337,20 @@ class StorageEngine : public application_features::ApplicationFeature {
 
   /// @brief Add engine-specific AQL functions.
   virtual void addAqlFunctions() {}
-  
+
   /// @brief Add engine-specific optimizer rules
   virtual void addOptimizerRules() {}
-  
+
   /// @brief Add engine-specific V8 functions
   virtual void addV8Functions() {}
-  
+
   /// @brief Add engine-specific REST handlers
   virtual void addRestHandlers(rest::RestHandlerFactory*) {}
 
   // replication
   virtual std::shared_ptr<arangodb::velocypack::Builder> getReplicationApplierConfiguration(TRI_vocbase_t*, int& status) = 0;
   virtual int removeReplicationApplierConfiguration(TRI_vocbase_t* vocbase) = 0;
-  virtual int saveReplicationApplierConfiguration(TRI_vocbase_t* vocbase, arangodb::velocypack::Slice slice, bool doSync) = 0; 
+  virtual int saveReplicationApplierConfiguration(TRI_vocbase_t* vocbase, arangodb::velocypack::Slice slice, bool doSync) = 0;
 
   virtual int handleSyncKeys(arangodb::InitialSyncer& syncer,
                           arangodb::LogicalCollection* col,
@@ -384,7 +384,7 @@ class StorageEngine : public application_features::ApplicationFeature {
     builder.close(); // supports
     builder.close(); // object
   }
-  
+
   virtual void getStatistics(VPackBuilder& builder) const {
     builder.openObject();
     builder.close();
@@ -395,7 +395,7 @@ class StorageEngine : public application_features::ApplicationFeature {
                           arangodb::LogicalCollection* collection) {
     vocbase->registerCollection(true, collection);
   }
-  
+
   void registerView(TRI_vocbase_t* vocbase,
                     std::shared_ptr<arangodb::LogicalView> view) {
     vocbase->registerView(true, view);
