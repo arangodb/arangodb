@@ -153,7 +153,9 @@ bool RevisionCacheChunk::invalidate(std::vector<TRI_voc_rid_t>& revisions) {
   revisions.clear();
   revisions.reserve(8192);
 
-  findRevisions(revisions);
+  if (!findRevisions(revisions)) {
+    return false;
+  }
   invalidate();
   if (!revisions.empty()) {
     _collectionCache->removeRevisions(revisions);
@@ -163,7 +165,7 @@ bool RevisionCacheChunk::invalidate(std::vector<TRI_voc_rid_t>& revisions) {
   return true;
 }
 
-void RevisionCacheChunk::findRevisions(std::vector<TRI_voc_rid_t>& revisions) {
+bool RevisionCacheChunk::findRevisions(std::vector<TRI_voc_rid_t>& revisions) {
   // no need for write mutex here as the chunk is read-only once fully
   // written to
   uint8_t const* data = _data;
@@ -180,8 +182,10 @@ void RevisionCacheChunk::findRevisions(std::vector<TRI_voc_rid_t>& revisions) {
       revisions.emplace_back(rid);
     } catch (...) {
       // LOG(ERR) << "SLICE: " << slice.toJson();
+      return false;
     }
   }
+  return true;
 }
 
 void RevisionCacheChunk::invalidate() { 

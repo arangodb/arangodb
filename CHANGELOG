@@ -1,7 +1,9 @@
 v3.1.27 (XXXX-XX-XX)
 --------------------
 
-* fix potential deadlock errors in collector thread
+* fixed potential deadlock errors in collector thread
+
+* fixed revision cache cleanup behavior in out-of-memory situations
 
 * fixed issue #2889: Traversal query using incorrect collection id
 
