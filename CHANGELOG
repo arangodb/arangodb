@@ -1,6 +1,8 @@
 devel
 -----
 
+* fix potential deadlock errors in collector thread
+
 * fixed issue #2876: wrong skiplist index usage in edge collection
 
 * fixed issue #2868: cname missing from logger-follow results in rocksdb

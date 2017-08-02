@@ -658,6 +658,7 @@ int MMFilesCollectorThread::processCollectionOperations(MMFilesCollectorCache* c
   trx.addHint(transaction::Hints::Hint::NO_BEGIN_MARKER);
   trx.addHint(transaction::Hints::Hint::NO_ABORT_MARKER);
   trx.addHint(transaction::Hints::Hint::TRY_LOCK);
+  trx.addHint(transaction::Hints::Hint::NO_DLD);
 
   Result res = trx.begin();
 
