@@ -58,7 +58,7 @@ const getKey = (keySpaceId, key) => {
   let res = executeJS(`return global.KEY_GET('${keySpaceId}', '${key}');`).body;
   let num = Number(res);
   if (isNaN(num)) {
-    console.error(res);
+    console.error("KEY_GET response: "res);
   }
   return num;
 };

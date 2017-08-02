@@ -3009,9 +3009,8 @@ static void JS_CollectionVocbase(
     TRI_V8_RETURN_NULL();
   }
 
-  if (ExecContext::CURRENT != nullptr) {
-    AuthenticationFeature* auth = AuthenticationFeature::INSTANCE;
-    TRI_ASSERT(auth != nullptr);
+  AuthenticationFeature* auth = AuthenticationFeature::INSTANCE;
+  if (ExecContext::CURRENT != nullptr && auth != nullptr) {
     AuthLevel level = auth->canUseCollection(ExecContext::CURRENT->user(),
                                              ExecContext::CURRENT->database(),
                                              name);
