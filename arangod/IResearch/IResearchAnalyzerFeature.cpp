@@ -183,8 +183,18 @@ arangodb::aql::AqlValue aqlFnTokens(
 
     return arangodb::aql::AqlValue();
   }
-  
-  arangodb::velocypack::Builder builder;
+
+  // to avoid copying Builder's default buffer when initializing AqlValue
+  // create the buffer externally and pass ownership directly into AqlValue
+  auto buffer = irs::memory::make_unique<arangodb::velocypack::Buffer<uint8_t>>();
+
+  if (!buffer) {
+    LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "failure to allocate result buffer while computing result for function 'TOKENS'";
+
+    return arangodb::aql::AqlValue();
+  }
+
+  arangodb::velocypack::Builder builder(*buffer);
 
   builder.openArray();
 
@@ -200,7 +210,14 @@ arangodb::aql::AqlValue aqlFnTokens(
 
   builder.close();
 
-  return arangodb::aql::AqlValue(builder);
+  bool bufOwner = true; // out parameter from AqlValue denoting ownership aquisition (must be true initially)
+  auto release = irs::make_finally([&buffer, &bufOwner]()->void {
+    if (!bufOwner) {
+      buffer.release();
+    }
+  });
+
+  return arangodb::aql::AqlValue(buffer.get(), bufOwner);
 }
 
 void addFunction(
@@ -226,7 +243,7 @@ void addFunctions(arangodb::aql::AqlFunctionFeature& functions) {
   arangodb::aql::Function tokens(
     "TOKENS", // external name (AQL function external names are always in upper case)
     "tokens", // internal name
-    ".,.", // argument variable names
+    ".,.", // positional arguments (data,analyzer)
     false, // cacheable
     false, // deterministic
     true, // can throw
@@ -331,7 +348,6 @@ IResearchAnalyzerFeature::IResearchAnalyzerFeature(
   setOptional(true);
   requiresElevatedPrivileges(false);
   startsAfter("AQLFunctions"); // used for registering IResearch analyzer functions
-  startsAfter("StorageEngine"); // used for getting the system database containing the persisted configuration
   startsAfter("SystemDatabase"); // used for getting the system database containing the persisted configuration
 }
 
@@ -693,8 +709,8 @@ void IResearchAnalyzerFeature::loadConfiguration(
       );
     }
 
-    // check if able to add an int64_t 'count' to '_refCount'
-    if (pool->_refCount >= std::numeric_limits<int64_t>::max()) {
+    // check if able to convert 'count' to signed value for delta
+    if (count > std::numeric_limits<int64_t>::max()) {
       LOG_TOPIC(WARN, Logger::FIXME) << "overflow detected while registering an IResearch analyzer name '" << name << "' type '" << type << "' properties '" << properties << "', previous registration type '" << pool->_type << "' properties '" << pool->_properties << "'";
 
       THROW_ARANGO_EXCEPTION_MESSAGE(
@@ -804,15 +820,22 @@ bool IResearchAnalyzerFeature::release(AnalyzerPool::ptr const& pool) noexcept {
     return false; // ignore release requests on uninitialized pools
   }
 
-  if (_started) {
-    return updateConfiguration(*pool, -1); // -1 for decrement
+  // ensure that references are decremented on the pool from this feature (e.g. not on static pools)
+  auto localPool = emplace(pool->name(), pool->_type, pool->_properties).first;
+
+  if (!localPool) {
+    return false; // ignore reservation requests on uninitialized pools
   }
 
-  if (!pool->_refCount) {
+  if (_started) {
+    return updateConfiguration(*localPool, -1); // -1 for decrement
+  }
+
+  if (!localPool->_refCount) {
     return false;
   }
 
-  --pool->_refCount;
+  --localPool->_refCount;
 
   return true;
 }
@@ -822,11 +845,18 @@ bool IResearchAnalyzerFeature::reserve(AnalyzerPool::ptr const& pool) noexcept {
     return false; // ignore reservation requests on uninitialized pools
   }
 
-  if (_started) {
-    return updateConfiguration(*pool, 1); // +1 for increment
+  // ensure that references are incremented on the pool from this feature (e.g. not on static pools)
+  auto localPool = emplace(pool->name(), pool->_type, pool->_properties).first;
+
+  if (!localPool) {
+    return false; // ignore reservation requests on uninitialized pools
   }
 
-  ++pool->_refCount;
+  if (_started) {
+    return updateConfiguration(*localPool, 1); // +1 for increment
+  }
+
+  ++localPool->_refCount;
 
   return true;
 }
@@ -1011,6 +1041,8 @@ bool IResearchAnalyzerFeature::updateConfiguration(
     }
 
     pool._refCount += delta;
+
+    return true;
   } catch (std::exception& e) {
     LOG_TOPIC(WARN, Logger::FIXME) << "caught exception during persist of an AnalyzerPool configuration while updating ref_count of IResearch analyzer name '" << pool.name() << "': " << e.what();
     IR_EXCEPTION();
@@ -1027,8 +1059,10 @@ bool IResearchAnalyzerFeature::updateConfiguration(
     AnalyzerPool& pool,
     int64_t delta
 ) {
-  if ((delta < 0 && decltype(pool._refCount)(0 - delta) > pool._refCount)
-      || (delta >0 && std::numeric_limits<decltype(pool._refCount)>::max() - pool._refCount < decltype(pool._refCount)(delta))) {
+  typedef decltype(pool._refCount) CountType;
+
+  if ((delta < 0 && CountType(0 - delta) > pool._refCount)
+      || (delta > 0 && std::numeric_limits<CountType>::max() - pool._refCount < CountType(delta))) {
     LOG_TOPIC(WARN, Logger::FIXME) << "overflow detected while updating ref_count of IResearch analyzer name '" << pool.name() << "'";
 
     return false;
