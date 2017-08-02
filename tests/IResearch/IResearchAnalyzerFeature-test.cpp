@@ -138,7 +138,7 @@ struct IResearchAnalyzerFeatureSetup {
     arangodb::application_features::ApplicationServer::server = nullptr;
     arangodb::EngineSelectorFeature::ENGINE = nullptr;
 
-    // destroy application features 
+    // destroy application features
     for (auto& f : features) {
       if (f.second) {
         f.first->stop();
@@ -199,7 +199,7 @@ SECTION("test_emplace") {
     CHECK((true == !feature.emplace("test_analyzer2", "TestAnalyzer", "abcd").first));
     CHECK((false == !feature.get("test_analyzer2")));
   }
-  
+
   // add duplicate invalid (same name+properties different type)
   {
     arangodb::iresearch::IResearchAnalyzerFeature feature(nullptr);
@@ -578,10 +578,10 @@ SECTION("test_persistence") {
       arangodb::iresearch::IResearchAnalyzerFeature feature(nullptr);
       feature.start();
       auto pool = feature.get("valid0");
-      CHECK((false != pool));
+      CHECK((nullptr != pool));
       CHECK((feature.reserve(pool)));
       pool = feature.get("valid1");
-      CHECK((false != pool));
+      CHECK((nullptr != pool));
       CHECK((feature.release(pool)));
       CHECK((!feature.release(pool))); // no more references
     }
@@ -593,7 +593,7 @@ SECTION("test_persistence") {
       CHECK((0 == feature.erase("valid0")));
       CHECK((1 == feature.erase("valid1")));
       auto pool = feature.get("valid0");
-      CHECK((false != pool));
+      CHECK((nullptr != pool));
       CHECK((feature.release(pool)));
     }
 
@@ -625,7 +625,7 @@ SECTION("test_persistence") {
     {
       arangodb::iresearch::IResearchAnalyzerFeature feature(nullptr);
       auto pool = feature.get("valid");
-      CHECK((false != pool));
+      CHECK((nullptr != pool));
       CHECK((feature.reserve(pool)));
       CHECK_THROWS((feature.start()));
     }
@@ -652,7 +652,7 @@ SECTION("test_persistence") {
       arangodb::iresearch::IResearchAnalyzerFeature feature(nullptr);
       feature.start();
       auto pool = feature.get("valid");
-      CHECK((false != pool));
+      CHECK((nullptr != pool));
       CHECK((feature.reserve(pool)));
     }
 
@@ -747,7 +747,7 @@ SECTION("test_registration") {
       arangodb::iresearch::IResearchAnalyzerFeature feature(nullptr);
       feature.start();
       auto entry = feature.emplace("valid", "identity", nullptr);
-      CHECK((false != entry.first));
+      CHECK((nullptr != entry.first));
       CHECK((entry.second));
       CHECK((!feature.release(entry.first)));
       CHECK((feature.reserve(entry.first)));
@@ -758,7 +758,7 @@ SECTION("test_registration") {
       arangodb::iresearch::IResearchAnalyzerFeature feature(nullptr);
       feature.start();
       auto pool = feature.get("valid");
-      CHECK((false != pool));
+      CHECK((nullptr != pool));
       CHECK((feature.release(pool)));
     }
 
@@ -766,7 +766,7 @@ SECTION("test_registration") {
       arangodb::iresearch::IResearchAnalyzerFeature feature(nullptr);
       feature.start();
       auto pool = feature.get("valid");
-      CHECK((false != pool));
+      CHECK((nullptr != pool));
       CHECK((!feature.release(pool)));
       CHECK((1 == feature.erase("valid"))); // remove allowed
     }
