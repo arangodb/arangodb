@@ -119,7 +119,7 @@ class RevisionCacheChunk {
   
  private:
   
-  void findRevisions(std::vector<TRI_voc_rid_t>& revisions);
+  bool findRevisions(std::vector<TRI_voc_rid_t>& revisions);
   void invalidate();
 
   static inline uint32_t versionPart(uint64_t value) {
