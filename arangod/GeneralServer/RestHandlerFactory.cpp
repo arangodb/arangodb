@@ -99,7 +99,7 @@ RestHandler* RestHandlerFactory::createHandler(
   }
 
   // In the bootstrap phase, we would like that coordinators answer the
-  // following to endpoints, but not yet others:
+  // following endpoints, but not yet others:
   if (_maintenanceMode.load()) {
     if ((!ServerState::instance()->isCoordinator() &&
          path.find("/_api/agency/agency-callbacks") == std::string::npos) ||

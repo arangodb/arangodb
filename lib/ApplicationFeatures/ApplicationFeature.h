@@ -91,6 +91,11 @@ class ApplicationFeature {
 
   // whether the feature starts before another
   bool doesStartBefore(std::string const& other) const;
+  
+  // whether the feature starts after another
+  bool doesStartAfter(std::string const& other) const {
+    return !doesStartBefore(other);
+  }
 
   // add the feature's options to the global list of options. this method will
   // be called regardless of whether to feature is enabled or disabled
@@ -128,6 +133,16 @@ class ApplicationFeature {
 
   // shut down the feature
   virtual void unprepare();
+  
+  // return startup dependencies for feature
+  std::unordered_set<std::string> const& startsAfter() const {
+    return _startsAfter;
+  }
+
+  // return startup dependencies for feature
+  std::unordered_set<std::string> const& startsBefore() const {
+    return _startsBefore;
+  }
 
  protected:
   // return the ApplicationServer instance
@@ -144,11 +159,9 @@ class ApplicationFeature {
   // register a start dependency upon another feature
   void startsAfter(std::string const& other) { _startsAfter.emplace(other); }
 
-  // return startup dependencies for feature
-  std::unordered_set<std::string> const& startsAfter() const {
-    return _startsAfter;
-  }
-
+  // register a start dependency upon another feature
+  void startsBefore(std::string const& other) { _startsBefore.emplace(other); }
+  
   // determine all direct and indirect ancestors of a feature
   std::unordered_set<std::string> ancestors() const;
 
@@ -182,6 +195,9 @@ class ApplicationFeature {
 
   // a list of start dependencies for the feature
   std::unordered_set<std::string> _startsAfter;
+
+  // a list of start dependencies for the feature
+  std::unordered_set<std::string> _startsBefore;
 
   // list of direct and indirect ancestors of the feature
   std::unordered_set<std::string> _ancestors;
