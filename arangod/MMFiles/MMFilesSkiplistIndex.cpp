@@ -1281,6 +1281,7 @@ bool MMFilesSkiplistIndex::supportsFilterCondition(
     arangodb::aql::AstNode const* node,
     arangodb::aql::Variable const* reference, size_t itemsInIndex,
     size_t& estimatedItems, double& estimatedCost) const {
+
   std::unordered_map<size_t, std::vector<arangodb::aql::AstNode const*>> found;
   std::unordered_set<std::string> nonNullAttributes;
   size_t values = 0;
@@ -1349,12 +1350,19 @@ bool MMFilesSkiplistIndex::supportsFilterCondition(
   if (attributesCoveredByEquality == _fields.size() &&
       (unique() || implicitlyUnique())) {
     // index is unique and condition covers all attributes by equality
-    if (estimatedItems >= values) {
-      // reduce costs due to uniqueness
-      estimatedItems = values;
-      estimatedCost = static_cast<double>(estimatedItems);
+    if (itemsInIndex == 0) {
+      estimatedItems = 0;
+      estimatedCost = 0.0;
+      return true;
     }
-    // cost is already low... now slightly prioritize the unique index
+
+    if (estimatedItems >= values) {
+      TRI_ASSERT(itemsInIndex > 0);
+
+      estimatedItems = values;
+      estimatedCost = (std::max)(static_cast<double>(1), std::log2(static_cast<double>(itemsInIndex)) * values);
+    }
+    // cost is already low... now slightly prioritize unique indexes
     estimatedCost *= 0.995 - 0.05 * (_fields.size() - 1);
     return true;
   }
@@ -1367,11 +1375,15 @@ bool MMFilesSkiplistIndex::supportsFilterCondition(
     // sparse indexes are contained in Index::canUseConditionPart)
     estimatedItems = static_cast<size_t>((std::max)(
         static_cast<size_t>(estimatedCost * values), static_cast<size_t>(1)));
-    estimatedCost *= static_cast<double>(values);
+    if (itemsInIndex == 0) {
+      estimatedCost = 0.0;
+    } else {
+      estimatedCost = (std::max)(static_cast<double>(1), std::log2(static_cast<double>(itemsInIndex)) * values);
+    }
     return true;
   }
 
-  // no condition
+  // index does not help for this condition
   estimatedItems = itemsInIndex;
   estimatedCost = static_cast<double>(estimatedItems);
   return false;

@@ -32,13 +32,11 @@ traverser::TraverserEngineRegistry*
 TraverserEngineRegistryFeature::TraverserEngineRegistryFeature(
     ApplicationServer* server)
     : ApplicationFeature(server, "TraverserEngineRegistry") {
-      setOptional(false);
-      requiresElevatedPrivileges(false);
-      startsAfter("DatabasePath");
-      startsAfter("Database");
-      startsAfter("MMFilesLogfileManager");
-    }
-
+  setOptional(false);
+  requiresElevatedPrivileges(false);
+  startsAfter("DatabasePath");
+  startsAfter("Database");
+}
 
 void TraverserEngineRegistryFeature::collectOptions(
     std::shared_ptr<options::ProgramOptions> options) {

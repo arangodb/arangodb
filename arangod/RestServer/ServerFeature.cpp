@@ -56,7 +56,6 @@ ServerFeature::ServerFeature(application_features::ApplicationServer* server,
   startsAfter("Cluster");
   startsAfter("Database");
   startsAfter("FeatureCache");
-  startsAfter("MMFilesWalRecovery");
   startsAfter("Scheduler");
   startsAfter("Statistics");
   startsAfter("Upgrade");
