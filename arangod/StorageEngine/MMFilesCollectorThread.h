@@ -128,7 +128,7 @@ class MMFilesCollectorThread final : public Thread {
   bool _operationsQueueInUse;
 
   /// @brief number of pending operations in collector queue
-  uint64_t _numPendingOperations;
+  std::atomic<uint64_t> _numPendingOperations;
 
   /// @brief condition variable for the collector thread result
   basics::ConditionVariable _collectorResultCondition;
