@@ -61,6 +61,7 @@ MMFilesPersistentIndexFeature::MMFilesPersistentIndexFeature(
   setOptional(true);
   requiresElevatedPrivileges(false);
   startsAfter("RocksDBOption");
+  startsBefore("Database");
   onlyEnabledWith("MMFilesEngine");
 }
 

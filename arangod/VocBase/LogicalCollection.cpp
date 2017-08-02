@@ -57,6 +57,7 @@
 #include "VocBase/KeyGenerator.h"
 #include "VocBase/ManagedDocumentResult.h"
 #include "VocBase/ticks.h"
+#include "VocBase/Methods/Indexes.h"
 
 #include <velocypack/Collection.h>
 #include <velocypack/Iterator.h>
@@ -164,7 +165,8 @@ LogicalCollection::LogicalCollection(LogicalCollection const& other)
       _vocbase(other.vocbase()),
       _keyOptions(other._keyOptions),
       _keyGenerator(KeyGenerator::factory(VPackSlice(keyOptions()))),
-      _physical(other.getPhysical()->clone(this, other.getPhysical())) {
+      _physical(other.getPhysical()->clone(this)),
+      _clusterEstimateTTL(0) {
   TRI_ASSERT(_physical != nullptr);
   if (ServerState::instance()->isDBServer() ||
       !ServerState::instance()->isRunningInCluster()) {
@@ -203,7 +205,8 @@ LogicalCollection::LogicalCollection(TRI_vocbase_t* vocbase,
       _keyOptions(nullptr),
       _keyGenerator(),
       _physical(
-          EngineSelectorFeature::ENGINE->createPhysicalCollection(this, info)) {
+          EngineSelectorFeature::ENGINE->createPhysicalCollection(this, info)),
+      _clusterEstimateTTL(0) {
   // add keyoptions from slice
   TRI_ASSERT(info.isObject());
   VPackSlice keyOpts = info.get("keyOptions");
@@ -583,6 +586,41 @@ std::unique_ptr<FollowerInfo> const& LogicalCollection::followers() const {
 void LogicalCollection::setDeleted(bool newValue) { _isDeleted = newValue; }
 
 // SECTION: Indexes
+std::unordered_map<std::string, double> LogicalCollection::clusterIndexEstimates(bool doNotUpdate){
+  READ_LOCKER(readlock, _clusterEstimatesLock);
+  if (doNotUpdate) {
+    return _clusterEstimates;
+  }
+
+  double ctime = TRI_microtime(); // in seconds
+  auto needEstimateUpdate = [this,ctime](){
+    if(_clusterEstimates.empty()) {
+      LOG_TOPIC(TRACE, Logger::CLUSTER) << "update because estimate is not availabe";
+      return true;
+    } else if (ctime - _clusterEstimateTTL > 10.0) {
+      LOG_TOPIC(TRACE, Logger::CLUSTER) << "update because estimate is too old: " << ctime - _clusterEstimateTTL;
+      return true;
+    }
+    return false;
+  };
+
+  if (needEstimateUpdate()){
+    readlock.unlock();
+    WRITE_LOCKER(writelock, _clusterEstimatesLock);
+    if(needEstimateUpdate()){
+      selectivityEstimatesOnCoordinator(_vocbase->name(), name(), _clusterEstimates);
+      _clusterEstimateTTL = TRI_microtime();
+    }
+    return _clusterEstimates;
+  }
+  return _clusterEstimates;
+}
+
+void LogicalCollection::clusterIndexEstimates(std::unordered_map<std::string, double>&& estimates){
+  WRITE_LOCKER(lock, _clusterEstimatesLock);
+  _clusterEstimates = std::move(estimates);
+}
+
 std::vector<std::shared_ptr<arangodb::Index>>
 LogicalCollection::getIndexes() const {
   return getPhysical()->getIndexes();
@@ -1273,7 +1311,7 @@ ChecksumResult LogicalCollection::checksum(bool withRevisions, bool withData) co
     b.add("revision", VPackValue(revisionId));
   }
 
-  return ChecksumResult(b);
+  return ChecksumResult(std::move(b));
 }
 
 Result LogicalCollection::compareChecksums(VPackSlice checksumSlice) const {

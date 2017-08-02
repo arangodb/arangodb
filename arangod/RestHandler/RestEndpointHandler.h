@@ -18,29 +18,27 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Jan Steemann
-/// @author Jan Christoph Uhde
+/// @author Daniel H. Larkin
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_STORAGE_ENGINE_STORAGE_ENGINE_FEATURE_H
-#define ARANGOD_STORAGE_ENGINE_STORAGE_ENGINE_FEATURE_H 1
+#ifndef ARANGOD_REST_HANDLER_REST_ENDPOINT_HANDLER_H
+#define ARANGOD_REST_HANDLER_REST_ENDPOINT_HANDLER_H 1
 
 #include "Basics/Common.h"
-#include "ApplicationFeatures/ApplicationFeature.h"
+#include "RestHandler/RestVocbaseBaseHandler.h"
 
 namespace arangodb {
-// a stub class that other features can use to check whether a storage
-// engine (no matter what type) is ready
-class StorageEngineFeature : public application_features::ApplicationFeature {
+class RestEndpointHandler : public RestVocbaseBaseHandler {
+ public:
+  RestEndpointHandler(GeneralRequest*, GeneralResponse*);
 
  public:
-  StorageEngineFeature(application_features::ApplicationServer* server)
-      : application_features::ApplicationFeature(server, "StorageEngine") {
-    setOptional(false);
-  }
+  RestStatus execute() override final;
+  char const* name() const override final { return "RestEndpointHandler"; }
 
+ protected:
+  void retrieveEndpoints();
 };
-
 }
 
 #endif

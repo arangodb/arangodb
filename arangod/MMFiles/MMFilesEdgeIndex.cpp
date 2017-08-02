@@ -221,7 +221,7 @@ MMFilesEdgeIndex::~MMFilesEdgeIndex() {
 }
 
 /// @brief return a selectivity estimate for the index
-double MMFilesEdgeIndex::selectivityEstimate(
+double MMFilesEdgeIndex::selectivityEstimateLocal(
     arangodb::StringRef const* attribute) const {
   if (_edgesFrom == nullptr || _edgesTo == nullptr ||
       ServerState::instance()->isCoordinator()) {
