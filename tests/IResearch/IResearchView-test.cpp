@@ -64,8 +64,6 @@
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/LogicalView.h"
 
-#include <iostream>
-
 NS_LOCAL
 
 struct DocIdScorer: public irs::sort {
@@ -998,8 +996,6 @@ SECTION("test_unregister_link") {
     CHECK((true == !vocbase.lookupView("testView")));
   }
 
-  std::cout << __LINE__ << "\n";
-
   // view removed before link
   {
     TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "testVocbase");
@@ -1013,7 +1009,6 @@ SECTION("test_unregister_link") {
     auto links = arangodb::velocypack::Parser::fromJson("{ \
       \"links\": { \"testCollection\": {} } \
     }");
-  std::cout << __LINE__ << "\n";
 
     arangodb::Result res = logicalView->updateProperties(links->slice(), true, false);
     CHECK(true == res.ok());
@@ -1027,14 +1022,12 @@ SECTION("test_unregister_link") {
     CHECK((TRI_ERROR_NO_ERROR == vocbase.dropCollection(logicalCollection, true, -1)));
     CHECK((nullptr == vocbase.lookupCollection("testCollection")));
   }
-  std::cout << __LINE__ << "\n";
 
   // view deallocated before link removed
   {
     TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "testVocbase");
     auto* logicalCollection = vocbase.createCollection(collectionJson->slice());
 
-  std::cout << __LINE__ << "\n";
     {
       auto json = arangodb::velocypack::Parser::fromJson("{ \"links\": { } }");
       arangodb::LogicalView logicalView(&vocbase, viewJson->slice());
@@ -1042,22 +1035,8 @@ SECTION("test_unregister_link") {
       REQUIRE((false == !view));
       auto* viewImpl = dynamic_cast<arangodb::iresearch::IResearchView*>(view.get());
       REQUIRE((nullptr != viewImpl));
-  std::cout << __LINE__ << "\n";
-
-/*
-      CHECK((feature->running()));
-      auto links = arangodb::velocypack::Parser::fromJson("{ \
-        \"links\": { \"testCollection\": {} } \
-      }");
-
-  std::cout << __LINE__ << "\n";
-      arangodb::Result res = logicalView.updateProperties(links->slice(), true, false);
-      CHECK(true == res.ok());
-      CHECK((1 == viewImpl->linkCount()));
-      */
     }
 
-  std::cout << __LINE__ << "\n";
     // create a new view with same ID to validate links
     {
       auto json = arangodb::velocypack::Parser::fromJson("{}");
@@ -1075,7 +1054,6 @@ SECTION("test_unregister_link") {
         REQUIRE((*link != *viewImpl)); // check that link is unregistred from view
       }
     }
-  std::cout << __LINE__ << "\n";
   }
 }
 
