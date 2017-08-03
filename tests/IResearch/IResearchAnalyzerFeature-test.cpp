@@ -442,12 +442,8 @@ SECTION("test_persistence") {
 
     std::map<irs::string_ref, std::pair<irs::string_ref, irs::string_ref>> expected = {
       { "identity", { "identity", irs::string_ref::nil } },
-      { "valid0", { "identity", "null" } },
-      { "valid1", { "identity", "true" } },
-      { "valid2", { "identity", "\"abc\"" } },
-      { "valid3", { "identity", "3.14" } },
-      { "valid4", { "identity", "[1,\"abc\"]" } },
-      { "valid5", { "identity", "{\"a\":7,\"b\":\"c\"}" } },
+      { "valid0", { "identity", irs::string_ref::nil } },
+      { "valid2", { "identity", "abc" } },
     };
     arangodb::iresearch::IResearchAnalyzerFeature feature(nullptr);
     feature.start();
@@ -483,7 +479,7 @@ SECTION("test_persistence") {
     {
       std::map<irs::string_ref, std::pair<irs::string_ref, irs::string_ref>> expected = {
         { "identity", { "identity", irs::string_ref::nil } },
-        { "valid", { "identity", "\"abc\"" } },
+        { "valid", { "identity", "abc" } },
       };
       arangodb::iresearch::IResearchAnalyzerFeature feature(nullptr);
       feature.start();
@@ -519,8 +515,8 @@ SECTION("test_persistence") {
     {
       std::map<irs::string_ref, std::pair<irs::string_ref, irs::string_ref>> expected = {
         { "identity", { "identity", irs::string_ref::nil } },
-        { "valid0", { "identity", "null" } },
-        { "valid1", { "identity", "null" } },
+        { "valid0", { "identity", irs::string_ref::nil } },
+        { "valid1", { "identity", irs::string_ref::nil } },
       };
       arangodb::iresearch::IResearchAnalyzerFeature feature(nullptr);
       feature.start();
@@ -579,11 +575,11 @@ SECTION("test_persistence") {
       feature.start();
       auto pool = feature.get("valid0");
       CHECK((false == !pool));
-      CHECK((feature.reserve(pool)));
+      CHECK((feature.reserve("valid0")));
       pool = feature.get("valid1");
       CHECK((false == !pool));
-      CHECK((feature.release(pool)));
-      CHECK((!feature.release(pool))); // no more references
+      CHECK((feature.release("valid1")));
+      CHECK((!feature.release("valid1"))); // no more references
     }
 
     // test reserve (remove failure)
@@ -594,7 +590,7 @@ SECTION("test_persistence") {
       CHECK((1 == feature.erase("valid1")));
       auto pool = feature.get("valid0");
       CHECK((false == !pool));
-      CHECK((feature.release(pool)));
+      CHECK((feature.release("valid0")));
     }
 
     // test remove (remove allowed)
@@ -626,7 +622,7 @@ SECTION("test_persistence") {
       arangodb::iresearch::IResearchAnalyzerFeature feature(nullptr);
       auto pool = feature.get("valid");
       CHECK((false == !pool));
-      CHECK((feature.reserve(pool)));
+      CHECK((feature.reserve("valid")));
       CHECK_THROWS((feature.start()));
     }
   }
@@ -653,7 +649,7 @@ SECTION("test_persistence") {
       feature.start();
       auto pool = feature.get("valid");
       CHECK((false == !pool));
-      CHECK((feature.reserve(pool)));
+      CHECK((feature.reserve("valid")));
     }
 
     {
@@ -672,7 +668,7 @@ SECTION("test_registration") {
     arangodb::iresearch::IResearchAnalyzerFeature feature(nullptr);
     auto pool = feature.get("valid");
     CHECK((false == !pool));
-    CHECK((feature.reserve(pool)));
+    CHECK((feature.reserve("valid")));
     CHECK((0 == feature.erase("valid"))); // remove not allowed
   }
 
@@ -681,11 +677,11 @@ SECTION("test_registration") {
     arangodb::iresearch::IResearchAnalyzerFeature feature(nullptr);
     auto pool = feature.get("valid");
     CHECK((false == !pool));
-    CHECK((feature.reserve(pool)));
-    CHECK((feature.reserve(pool))); // 2nd time
-    CHECK((feature.release(pool)));
+    CHECK((feature.reserve("valid")));
+    CHECK((feature.reserve("valid"))); // 2nd time
+    CHECK((feature.release("valid")));
     CHECK((0 == feature.erase("valid"))); // remove not allowed
-    CHECK((feature.release(pool)));
+    CHECK((feature.release("valid")));
     CHECK((1 == feature.erase("valid")));
   }
 
@@ -702,7 +698,7 @@ SECTION("test_registration") {
       auto restore = irs::make_finally([before]()->void { PhysicalCollectionMock::before =before; });
       PhysicalCollectionMock::before = []()->void { throw "exception"; };
 
-      CHECK((!feature.reserve(entry.first)));
+      CHECK((!feature.reserve("valid")));
     }
 
     CHECK((1 == feature.erase("valid"))); // remove allowed
@@ -721,7 +717,7 @@ SECTION("test_registration") {
     auto entry = feature.emplace("valid", "identity", nullptr);
     CHECK((false == !entry.first));
     CHECK((entry.second));
-    CHECK((feature.reserve(entry.first)));
+    CHECK((feature.reserve("valid")));
 
     {
       // simulate temporary failure
@@ -729,7 +725,7 @@ SECTION("test_registration") {
       auto restore = irs::make_finally([before]()->void { PhysicalCollectionMock::before =before; });
       PhysicalCollectionMock::before = []()->void { throw "exception"; };
 
-      CHECK((!feature.release(entry.first)));
+      CHECK((!feature.release("valid")));
     }
 
     CHECK((0 == feature.erase("valid"))); // remove not allowed
@@ -749,8 +745,8 @@ SECTION("test_registration") {
       auto entry = feature.emplace("valid", "identity", nullptr);
       CHECK((false == !entry.first));
       CHECK((entry.second));
-      CHECK((!feature.release(entry.first)));
-      CHECK((feature.reserve(entry.first)));
+      CHECK((!feature.release("valid")));
+      CHECK((feature.reserve("valid")));
       CHECK((0 == feature.erase("valid"))); // remove denied
     }
 
@@ -759,7 +755,7 @@ SECTION("test_registration") {
       feature.start();
       auto pool = feature.get("valid");
       CHECK((false == !pool));
-      CHECK((feature.release(pool)));
+      CHECK((feature.release("valid")));
     }
 
     {
@@ -767,7 +763,7 @@ SECTION("test_registration") {
       feature.start();
       auto pool = feature.get("valid");
       CHECK((false == !pool));
-      CHECK((!feature.release(pool)));
+      CHECK((!feature.release("valid")));
       CHECK((1 == feature.erase("valid"))); // remove allowed
     }
   }
@@ -785,23 +781,23 @@ SECTION("test_registration") {
       feature.start();
       auto pool = feature.emplace("valid", "identity", nullptr).first;
       CHECK((false == !pool));
-      CHECK((feature.reserve(pool)));
+      CHECK((feature.reserve("valid")));
     }
 
     {
       arangodb::iresearch::IResearchAnalyzerFeature feature(nullptr);
       auto pool = feature.get("valid");
       CHECK((false == !pool));
-      CHECK((feature.reserve(pool)));
+      CHECK((feature.reserve("valid")));
       feature.start();
       CHECK((0 == feature.erase("valid"))); // remove denied
-      CHECK((feature.release(pool)));
+      CHECK((feature.release("valid")));
       CHECK((0 == feature.erase("valid"))); // remove denied
-      CHECK((feature.release(pool)));
+      CHECK((feature.release("valid")));
       CHECK((1 == feature.erase("valid"))); // remove allowed
     }
   }
-/* FIXME TODO store actual value as null or json string, load as json string
+
   // reserve identity not started + started
   {
     // ensure no persisted configuration present
@@ -815,23 +811,22 @@ SECTION("test_registration") {
       feature.start();
       auto pool = arangodb::iresearch::IResearchAnalyzerFeature::identity();
       CHECK((false == !pool));
-      CHECK((feature.reserve(pool)));
+      CHECK((feature.reserve(pool->name())));
     }
 
     {
       arangodb::iresearch::IResearchAnalyzerFeature feature(nullptr);
       auto pool = arangodb::iresearch::IResearchAnalyzerFeature::identity();
       CHECK((false == !pool));
-      CHECK((feature.reserve(pool)));
+      CHECK((feature.reserve(pool->name())));
       feature.start();
       CHECK((0 == feature.erase(pool->name()))); // remove denied
-      CHECK((feature.release(pool)));
+      CHECK((feature.release(pool->name())));
       CHECK((0 == feature.erase(pool->name()))); // remove denied
-      CHECK((feature.release(pool)));
+      CHECK((feature.release(pool->name())));
       CHECK((1 == feature.erase(pool->name()))); // remove allowed
     }
   }
-*/
 }
 
 SECTION("test_remove") {

@@ -74,6 +74,10 @@ arangodb::velocypack::Slice const& emptyObjectSlice();
 /// @return extracted string_ref
 //////////////////////////////////////////////////////////////////////////////
 inline irs::string_ref getStringRef(VPackSlice const& slice) {
+  if (slice.isNull()) {
+    return irs::string_ref::nil;
+  }
+
   TRI_ASSERT(slice.isString());
 
   size_t size;
@@ -203,6 +207,28 @@ bool mergeSlice(
   arangodb::velocypack::Builder& builder,
   arangodb::velocypack::Slice const& slice
 );
+
+//////////////////////////////////////////////////////////////////////////////
+/// @brief convert an irs::bytes_ref to an arangodb::velocypack::ValuePair
+//////////////////////////////////////////////////////////////////////////////
+inline arangodb::velocypack::ValuePair toValuePair(irs::bytes_ref const& ref) {
+  return arangodb::velocypack::ValuePair(
+    ref.c_str(),
+    ref.size(),
+    arangodb::velocypack::ValueType::Binary
+  );
+}
+
+//////////////////////////////////////////////////////////////////////////////
+/// @brief convert an irs::string_ref to an arangodb::velocypack::ValuePair
+//////////////////////////////////////////////////////////////////////////////
+inline arangodb::velocypack::ValuePair toValuePair(irs::string_ref const& ref) {
+  return arangodb::velocypack::ValuePair(
+    ref.c_str(),
+    ref.size(),
+    arangodb::velocypack::ValueType::String
+  );
+}
 
 ////////////////////////////////////////////////////////////////////////////
 /// @struct IteratorValue

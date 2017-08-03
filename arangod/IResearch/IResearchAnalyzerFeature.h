@@ -71,15 +71,17 @@ class IResearchAnalyzerFeature final: public arangodb::application_features::App
     };
 
     mutable irs::unbounded_object_pool<Builder> _cache; // cache of irs::analysis::analyzer (constructed via AnalyzerBuilder::make(...))
+    std::string _config; // non-null type + non-null properties + key
     irs::flags _features; // cached analyzer features
-    std::string _key; // the key of the persisted configuration for this pool
-    std::string _name;
-    std::string _properties;
+    irs::string_ref _key; // the key of the persisted configuration for this pool, null == not persisted
+    std::string _name; // ArangoDB alias for an IResearch analyzer configuration
+    irs::string_ref _properties; // IResearch analyzer configuration
     uint64_t _refCount; // number of references held to this pool across reboots
-    std::string _type;
+    irs::string_ref _type; // IResearch analyzer name
 
     AnalyzerPool(irs::string_ref const& name);
-    bool init(irs::string_ref const& type, irs::string_ref const& properties) noexcept;
+    bool init(irs::string_ref const& type, irs::string_ref const& properties);
+    void setKey(irs::string_ref const& type);
   };
 
   IResearchAnalyzerFeature(application_features::ApplicationServer* server);
@@ -90,12 +92,12 @@ class IResearchAnalyzerFeature final: public arangodb::application_features::App
     irs::string_ref const& properties
   ) noexcept;
   size_t erase(irs::string_ref const& name, bool force = false) noexcept;
-  AnalyzerPool::ptr get(irs::string_ref const& name) const noexcept;
+  AnalyzerPool::ptr get(irs::string_ref const& name) const;
   static AnalyzerPool::ptr identity() noexcept; // the identity analyzer
   static std::string const& name() noexcept;
   void prepare() override;
-  bool release(AnalyzerPool::ptr const& pool) noexcept; // release a persistent registration for a specific pool
-  bool reserve(AnalyzerPool::ptr const& pool) noexcept; // register a persistent user for a specific pool
+  bool release(irs::string_ref const& name); // release a persistent registration for a specific pool
+  bool reserve(irs::string_ref const& name); // register a persistent user for a specific pool
   void start() override;
   void stop() override;
   bool visit(std::function<bool(irs::string_ref const& name, irs::string_ref const& type, irs::string_ref const& properties)> const& visitor);

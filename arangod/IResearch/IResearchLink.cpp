@@ -107,8 +107,10 @@ bool reserveAnalyzers(
 
   // reserve all tokenizers registered by link meta
   for (auto& entry: meta._tokenizers) {
-    // FIXME TODO revert on failure or send iterator to reserve
-    analyzers->reserve(entry);
+    if (entry) {
+      // FIXME TODO revert on failure or send iterator to reserve
+      analyzers->reserve(entry->name());
+    }
   }
 
   return true;
@@ -134,8 +136,10 @@ bool releaseAnalyzers(
 
   // release all tokenizers reserved by link meta
   for (auto& entry: meta._tokenizers) {
-    // FIXME TODO revert on failure or send iterator to release
-    analyzers->release(entry);
+    if (entry) {
+      // FIXME TODO revert on failure or send iterator to release
+      analyzers->release(entry->name());
+    }
   }
 
   return true;
