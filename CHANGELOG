@@ -1,6 +1,9 @@
 devel
 -----
 
+* fixed issue #2943: loadIndexesIntoMemory not returning the same structure 
+  as the rest of the collection APIs
+
 * fix potential deadlock errors in collector thread
 
 * disallow the usage of volatile collections in the RocksDB engine 
