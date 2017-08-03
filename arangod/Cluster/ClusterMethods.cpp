@@ -2448,7 +2448,7 @@ std::unique_ptr<LogicalCollection> ClusterMethods::persistCollectionInAgency(
   size_t numberOfShards = col->numberOfShards();
   std::string const replicationFactorStr("replicationFactor");
   std::string const numberOfShardsStr("numberOfShards");
-  
+
   ClusterInfo* ci = ClusterInfo::instance();
   std::vector<std::string> dbServers;
   
@@ -2466,37 +2466,44 @@ std::unique_ptr<LogicalCollection> ClusterMethods::persistCollectionInAgency(
       std::string otherCidString 
         = arangodb::basics::StringUtils::itoa(otherCid);
 
+        VPackBuilder builder;
+        { VPackObjectBuilder a(&builder);
+          col->toVelocyPack(builder,false); }
+        
       try {
 
         std::shared_ptr<LogicalCollection> other =
           ci->getCollection(col->dbName(), otherCidString);
 
         size_t otherReplFactor = size_t(other->replicationFactor());
-        if (parameters.hasKey(replicationFactorStr)) {
-          replicationFactor = parameters.get(replicationFactorStr).getNumber<size_t>();
-          if (otherReplFactor != replicationFactor) {
+
+        if (!col->isSmart()) {
+          if (parameters.hasKey(replicationFactorStr)) {
+            replicationFactor = parameters.get(replicationFactorStr).getNumber<size_t>();
+            if (otherReplFactor != replicationFactor) {
+              replicationFactor = otherReplFactor;
+              col->replicationFactor(otherReplFactor);
+              //replicationFactorConflict = true;
+            }
+          } else {
             replicationFactor = otherReplFactor;
             col->replicationFactor(otherReplFactor);
-            //replicationFactorConflict = true;
           }
-        } else {
-          replicationFactor = otherReplFactor;
-          col->replicationFactor(otherReplFactor);
-        }
 
-        size_t otherNumOfShards = size_t(other->numberOfShards());
-        if (parameters.hasKey(numberOfShardsStr)) {
-          numberOfShards = parameters.get(numberOfShardsStr).getNumber<size_t>();
-          if (otherNumOfShards != numberOfShards) {
+          size_t otherNumOfShards = size_t(other->numberOfShards());
+          if (parameters.hasKey(numberOfShardsStr)) {
+            numberOfShards = parameters.get(numberOfShardsStr).getNumber<size_t>();
+            if (otherNumOfShards != numberOfShards) {
+              numberOfShards = otherNumOfShards;
+              col->replicationFactor(otherNumOfShards);
+              //numberOfShardsConflict = true;
+            }
+          } else {
             numberOfShards = otherNumOfShards;
             col->replicationFactor(otherNumOfShards);
-            //numberOfShardsConflict = true;
           }
-        } else {
-          numberOfShards = otherNumOfShards;
-          col->replicationFactor(otherNumOfShards);
-        }
         
+        }          
         if (!other->distributeShardsLike().empty()) {
           chainOfDistributeShardsLike = true;
         }
@@ -2512,6 +2519,8 @@ std::unique_ptr<LogicalCollection> ClusterMethods::persistCollectionInAgency(
             }
           }
         }
+
+        
         
       } catch (...) {}
 
