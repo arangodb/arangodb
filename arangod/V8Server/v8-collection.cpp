@@ -46,6 +46,7 @@
 #include "Pregel/Worker.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/FeatureCacheFeature.h"
+#include "Scheduler/SchedulerFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/PhysicalCollection.h"
 #include "StorageEngine/StorageEngine.h"
@@ -3285,12 +3286,19 @@ static void JS_WarmupVocbaseCol(
   if (!trxRes.ok()) {
     TRI_V8_THROW_EXCEPTION(trxRes);
   }
-
+  
   auto idxs = collection->getIndexes();
+  rest::Scheduler* schdler = SchedulerFeature::SCHEDULER;
+  std::atomic<size_t> numTrx(idxs.size());
 
   for (auto& idx : idxs) {
-    // multi threading?
-    idx->warmup(&trx);
+    schdler->post([&] {
+      TRI_DEFER(numTrx--);
+      idx->warmup(&trx);
+    });
+  }
+  while (numTrx > 0) {
+    usleep(50000);
   }
 
   trxRes = trx.commit();

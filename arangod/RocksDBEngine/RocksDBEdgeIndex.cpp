@@ -644,7 +644,6 @@ void RocksDBEdgeIndex::warmup(transaction::Methods* trx) {
   // Prepare the cache to be resized for this amount of objects to be inserted.
   _cache->sizeHint(expectedCount);
   
-  
   auto bounds = RocksDBKeyBounds::EdgeIndex(_objectId);
   auto* mthds = RocksDBTransactionState::toMethods(trx);
   rocksdb::ReadOptions options = mthds->readOptions();
@@ -669,19 +668,30 @@ void RocksDBEdgeIndex::warmup(transaction::Methods* trx) {
   std::string lastKey = it->key().ToString();
   it.reset();
   
+  // now that we do know the actual bounds calculate a
+  // bad approximation for the index median key
   size_t min = std::min(firstKey.size(), lastKey.size());
-  std::string middle = std::string(min, '\0');
+  std::string median = std::string(min, '\0');
   for (size_t i = 0; i < min; i++) {
-    middle[i] = (firstKey.data()[i] + lastKey.data()[i]) / 2;
+    median[i] = (firstKey.data()[i] + lastKey.data()[i]) / 2;
   }
+  
+  // now search the beginning of a new vertex ID
+  it->Seek(median);
+  TRI_ASSERT(it->Valid());
+  do {
+    median = it->key().ToString();
+    it->Next();
+  } while(RocksDBKey::vertexId(it->key()) == RocksDBKey::vertexId(median));
+  median = it->key().ToString();// median is exclusive upper bound
   
   bool done = false;
   auto scheduler = SchedulerFeature::SCHEDULER;
   scheduler->post([&] {
-    TRI_DEFER(done = true); // middle is excluded
-    this->warmupInternal(trx, firstKey, middle);
+    TRI_DEFER(done = true); // median is excluded
+    this->warmupInternal(trx, firstKey, median);
   });
-  this->warmupInternal(trx, middle, lastKey);
+  this->warmupInternal(trx, median, lastKey);
   while (!done) {
     usleep(10000);
   }
@@ -708,7 +718,6 @@ void RocksDBEdgeIndex::warmupInternal(transaction::Methods* trx, rocksdb::Slice 
                                         rocksutils::globalRocksDB()->NewIterator(options, _cf));
   
   size_t n = 0;
-  
   cache::Cache* cc = _cache.get();
   for (it->Seek(lower); it->Valid(); it->Next()) {
     n++;
