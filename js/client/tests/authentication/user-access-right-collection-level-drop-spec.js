@@ -25,6 +25,7 @@
 // / Copyright holder is ArangoDB GmbH, Cologne, Germany
 // /
 // / @author Michael Hackstein
+// / @author Mark Vollmary
 // / @author Copyright 2017, ArangoDB GmbH, Cologne, Germany
 // //////////////////////////////////////////////////////////////////////////////
 
@@ -34,18 +35,14 @@ const expect = require('chai').expect;
 const users = require('@arangodb/users');
 const helper = require('@arangodb/user-helper');
 const errors = require('@arangodb').errors;
-const namePrefix = helper.namePrefix;
 const dbName = helper.dbName;
 const colName = helper.colName;
 const rightLevels = helper.rightLevels;
-const testColName = `${namePrefix}ColNew`;
 
 const userSet = helper.userSet;
 const systemLevel = helper.systemLevel;
 const dbLevel = helper.dbLevel;
 const colLevel = helper.colLevel;
-const activeUsers = helper.activeUsers;
-const inactiveUsers = helper.inactiveUsers;
 
 const arango = require('internal').arango;
 const db = require('internal').db;
@@ -59,7 +56,6 @@ const switchUser = (user, dbname) => {
   arango.reconnect(arango.getEndpoint(), dbname, user, '');
 };
 
-
 switchUser('root', '_system');
 helper.removeAllUsers();
 
@@ -70,14 +66,13 @@ describe('User Rights Management', () => {
 
   it('should check if all users are created', () => {
     switchUser('root', '_system');
-    expect(userSet.size).to.equal(4 * 4 * 4 * 2);
+    expect(userSet.size).to.equal(helper.userCount);
     for (let name of userSet) {
       expect(users.document(name), `Could not find user: ${name}`).to.not.be.undefined;
     }
   });
 
-  describe('should test rights for', () => {
-
+  it('should test rights for', () => {
     for (let name of userSet) {
       let canUse = false;
       try {
@@ -88,7 +83,6 @@ describe('User Rights Management', () => {
       }
 
       if (canUse) {
-
         describe(`user ${name}`, () => {
 
           before(() => {
@@ -99,96 +93,99 @@ describe('User Rights Management', () => {
 
             const rootTestCollection = (switchBack = true) => {
               switchUser('root', dbName);
-              let col = db._collection(testColName);
+              let col = db._collection(colName);
               if (switchBack) {
                 switchUser(name, dbName);
               }
               return col !== null;
             };
 
-            const rootDropCollection = () => {
+            const rootPrepareCollection = () => {
               if (rootTestCollection(false)) {
-                db._drop(testColName);
+                db._collection(colName).truncate();
+                db._collection(colName).save({_key: '123'});
+                db._collection(colName).save({_key: '456'});
               }
               switchUser(name, dbName);
             };
-
-            const rootCreateCollection = () => {
-              if (!rootTestCollection(false)) {
-                db._create(testColName);
-                db._collection(testColName).save({_key: "123"});
-                db._collection(testColName).save({_key: "456"});
-              }
-              switchUser(name, dbName);
-            };
-
 
             describe('remove a document', () => {
               before(() => {
                 db._useDatabase(dbName);
-                rootCreateCollection();
-              });
-
-              after(() => {
-                rootDropCollection();
+                rootPrepareCollection();
               });
 
               it('by key', () => {
-                expect(rootTestCollection()).to.equal(true, `Precondition failed, the collection does not exist`);
-                let col = db._collection(testColName);
-                if (activeUsers.has(name) &&
-                   (dbLevel['rw'].has(name) || dbLevel['ro'].has(name)) &&
+                expect(rootTestCollection()).to.equal(true, 'Precondition failed, the collection does not exist.');
+                if ((dbLevel['rw'].has(name) || dbLevel['ro'].has(name)) &&
                    colLevel['rw'].has(name)) {
-                  // User needs ro on database
-                  expect(col.document('123')._key).to.equal('123', `Precondition failed, document does not exist.`);
+                  let col = db._collection(colName);
+                  expect(col.document('123')._key).to.equal('123', 'Precondition failed, document does not exist.');
                   col.remove('123');
-                  expect(col.document('123'), `${name} could not drop the document with sufficient rights`).to.be.undefined;
+                  try {
+                    col.document('123');
+                    expect(true).to.be(false, `${name} could not drop the document with sufficient rights`);
+                  } catch (e) {}
                 } else {
-                  let hasReadAccess = (activeUsers.has(name) &&
-                    (dbLevel['rw'].has(name) || dbLevel['ro'].has(name)) &&
+                  let hasReadAccess = ((dbLevel['rw'].has(name) || dbLevel['ro'].has(name)) &&
                     (colLevel['rw'].has(name) || colLevel['ro'].has(name)));
                   try {
+                    let col = db._collection(colName);
                     if (hasReadAccess) {
-                      expect(col.document('123')._key).to.equal('123', `Precondition failed, document does not exist.`);
+                      expect(col.document('123')._key).to.equal('123', 'Precondition failed, document does not exist.');
                     }
                     col.remove('123');
                     expect(true).to.be(false);
                   } catch (e) {
-                    expect(e.errorNum).to.equal(errors.ERROR_FORBIDDEN.code);
+                    if (hasReadAccess) {
+                      expect(e.errorNum).to.equal(errors.ERROR_ARANGO_READ_ONLY.code);
+                    } else {
+                      expect(e.errorNum).to.equal(errors.ERROR_FORBIDDEN.code);
+                    }
                   }
                   if (hasReadAccess) {
-                    expect(col.document('123')._key).to.equal('123', `${name} managed to remove the document with insufficient rights`);
+                    let col = db._collection(colName);
+                    try {
+                      expect(col.document('123')._key).to.equal('123', `${name} managed to remove the document with insufficient rights`);
+                    } catch (e) {}
                   }
                 }
               });
 
               it('by aql', () => {
-                expect(rootTestCollection()).to.equal(true, `Precondition failed, the collection does not exist`);
-                let col = db._collection(testColName);
-                let q = `REMOVE '456' IN ${testColName} RETURN OLD`;
-                if (activeUsers.has(name) &&
-                   (dbLevel['rw'].has(name) || dbLevel['ro'].has(name)) &&
-                   (colLevel['rw'].has(name) || colLevel['ro'].has(name))) {
-                  // User needs rw on database
+                expect(rootTestCollection()).to.equal(true, 'Precondition failed, the collection does not exist');
+                let q = `REMOVE '456' IN ${colName} RETURN OLD`;
+                if ((dbLevel['rw'].has(name) || dbLevel['ro'].has(name)) &&
+                   colLevel['rw'].has(name)) {
+                  let col = db._collection(colName);
                   let res = db._query(q).toArray();
-                  expect(res.length).to.equal(1, `Could not remove a document by aql, with sufficient rights`);
-                  expect(res[0]._key).to.equal('456', `Did not remove the document properly`);
-                  expect(col.document('456'), `Document still in collection after remove`).to.be.undefined;
+                  expect(res.length).to.equal(1, 'Could not remove a document by aql, with sufficient rights');
+                  expect(res[0]._key).to.equal('456', 'Did not remove the document properly');
+                  try {
+                    col.document('456');
+                    expect(true).to.be(false, 'Document still in collection after remove');
+                  } catch (e) {}
                 } else {
-                  let hasReadAccess = (activeUsers.has(name) &&
-                    (dbLevel['rw'].has(name) || dbLevel['ro'].has(name)) &&
+                  let hasReadAccess = ((dbLevel['rw'].has(name) || dbLevel['ro'].has(name)) &&
                     (colLevel['rw'].has(name) || colLevel['ro'].has(name)));
 
                   try {
                     let res = db._query(q).toArray();
-                    expect(res.length).to.equal(1, `Could remove a document by aql, with sufficient rights`);
+                    expect(res.length).to.equal(1, 'Could remove a document by aql, with sufficient rights');
                     expect(res[0]._key).to.equal('456', `${name} did remove the document with insufficient rights`);
                   } catch (e) {
-                    expect(e.errorNum).to.equal(errors.ERROR_FORBIDDEN.code);
+                    if (hasReadAccess) {
+                      expect(e.errorNum).to.equal(errors.ERROR_ARANGO_READ_ONLY.code);
+                    } else {
+                      expect(e.errorNum).to.equal(errors.ERROR_FORBIDDEN.code);
+                    }
                   }
 
                   if (hasReadAccess) {
-                    expect(col.document('456')._key).to.equal('456', `${name} managed to remove the document with insufficient rights`);
+                    let col = db._collection(colName);
+                    try {
+                      expect(col.document('456')._key).to.equal('456', `${name} managed to remove the document with insufficient rights`);
+                    } catch (e) {}
                   }
                 }
               });
@@ -199,5 +196,3 @@ describe('User Rights Management', () => {
     }
   });
 });
-
-

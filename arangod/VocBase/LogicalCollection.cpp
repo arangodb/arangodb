@@ -949,7 +949,11 @@ arangodb::Result LogicalCollection::updateProperties(VPackSlice const& slice,
 
   // The physical may first reject illegal properties.
   // After this call it either has thrown or the properties are stored
-  getPhysical()->updateProperties(slice, doSync);
+  Result res = getPhysical()->updateProperties(slice, doSync);
+
+  if (!res.ok()) {
+    return res;
+  }
 
   _waitForSync = Helper::getBooleanValue(slice, "waitForSync", _waitForSync);
 

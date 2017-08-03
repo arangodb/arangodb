@@ -539,6 +539,23 @@ function CollectionSuite () {
     },
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief creating with properties
+////////////////////////////////////////////////////////////////////////////////
+
+    testCreatingVolatile : function () {
+      var cn = "example";
+
+      db._drop(cn);
+      try {
+        db._create(cn, { isVolatile : true });
+        fail();
+      } catch (err) {
+        assertEqual(ERRORS.ERROR_BAD_PARAMETER.code, err.errorNum);
+      }
+      db._drop(cn);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief creating with type
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -870,8 +887,7 @@ function CollectionSuite () {
       try {
         c.drop();
         fail();
-      }
-      catch (err1) {
+      } catch (err1) {
         assertEqual(ERRORS.ERROR_FORBIDDEN.code, err1.errorNum);
       }
     }
