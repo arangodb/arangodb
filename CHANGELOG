@@ -1,6 +1,9 @@
 devel
 -----
 
+* fixed issue #2810: out of memory error when running UPDATE/REPLACE 
+  on medium-size collection
+
 * fix potential deadlock errors in collector thread
 
 * disallow the usage of volatile collections in the RocksDB engine 
