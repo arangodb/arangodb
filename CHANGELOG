@@ -3,6 +3,8 @@ devel
 
 * ui: now supports single js file upload for foxx services in addition to zip files
 
+* fixed issue #2928: Offset problems
+
 * fixed issue #2876: wrong skiplist index usage in edge collection
 
 * fixed issue #2868: cname missing from logger-follow results in rocksdb

@@ -279,7 +279,7 @@ class ClusterMethods {
 
   static std::unique_ptr<LogicalCollection> persistCollectionInAgency(
     LogicalCollection* col, bool ignoreDistributeShardsLikeErrors,
-    bool waitForSyncReplication);
+    bool waitForSyncReplication, arangodb::velocypack::Slice parameters);
 };
 
 }  // namespace arangodb
