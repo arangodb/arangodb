@@ -3,6 +3,8 @@ devel
 
 * prevent V8 from issuing SIGILL instructions when it runs out of memory
 
+* fixed issue #2928: Offset problems
+
 * fixed issue #2876: wrong skiplist index usage in edge collection
 
 * fixed issue #2868: cname missing from logger-follow results in rocksdb

@@ -202,6 +202,20 @@ class AqlItemBlock {
     }
   }
   
+  void copyValuesFromRow(size_t currentRow, RegisterId curRegs, size_t fromRow) {
+    TRI_ASSERT(currentRow != fromRow);
+
+    for (RegisterId i = 0; i < curRegs; i++) {
+      if (_data[currentRow * _nrRegs + i].isEmpty()) {
+        // First update the reference count, if this fails, the value is empty
+        if (_data[fromRow * _nrRegs + i].requiresDestruction()) {
+          ++_valueCount[_data[fromRow * _nrRegs + i]];
+        }
+        _data[currentRow * _nrRegs + i] = _data[fromRow * _nrRegs + i];
+      }
+    }
+  }
+  
   /// @brief valueCount
   /// this is used if the value is stolen and later released from elsewhere
   uint32_t valueCount(AqlValue const& v) const {

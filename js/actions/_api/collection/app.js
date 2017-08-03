@@ -221,6 +221,7 @@ function post_api_collection (req, res) {
         r.type = arangodb.ArangoCollection.TYPE_EDGE;
       }
     }
+
     if (r.type === arangodb.ArangoCollection.TYPE_EDGE) {
       collection = arangodb.db._createEdgeCollection(r.name, r.parameters, options);
     } else {
