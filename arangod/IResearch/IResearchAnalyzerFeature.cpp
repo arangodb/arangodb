@@ -27,15 +27,18 @@
 #include "utils/object_pool.hpp"
 
 #include "ApplicationServerHelper.h"
+#include "SystemDatabaseFeature.h"
 #include "VelocyPackHelper.h"
 
 #include "Aql/AqlFunctionFeature.h"
 #include "Basics/StaticStrings.h"
 #include "Cluster/ServerState.h"
-#include "IResearch/SystemDatabaseFeature.h"
 #include "Logger/Logger.h"
 #include "Logger/LogMacros.h"
+#include "RestServer/DatabaseFeature.h"
 #include "StorageEngine/DocumentIdentifierToken.h"
+#include "StorageEngine/EngineSelectorFeature.h"
+#include "StorageEngine/StorageEngine.h"
 #include "Transaction/StandaloneContext.h"
 #include "Utils/OperationOptions.h"
 #include "Utils/SingleCollectionTransaction.h"
@@ -255,6 +258,54 @@ void addFunctions(arangodb::aql::AqlFunctionFeature& functions) {
   addFunction(functions, tokens);
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return a pointer to the system database or nullptr on error
+////////////////////////////////////////////////////////////////////////////////
+arangodb::iresearch::SystemDatabaseFeature::ptr getSystemDatabase() {
+  auto* database = arangodb::iresearch::getFeature<arangodb::iresearch::SystemDatabaseFeature>();
+
+  if (!database) {
+    LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "failure to find feature 'SystemDatabase' while getting the system database";
+
+    return nullptr;
+  }
+
+  return database->use();
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief ensure all 'analyzers' are present in 'initialized1' or 'initialized2'
+///        on failure throw exception or return error code
+////////////////////////////////////////////////////////////////////////////////
+template<typename Initialized1, typename Initialized2>
+arangodb::Result ensureAnalyzersInitialized(
+    std::unordered_map<irs::hashed_string_ref, arangodb::iresearch::IResearchAnalyzerFeature::AnalyzerPool::ptr> const& analyzers,
+    Initialized1 const& initialized1,
+    Initialized2 const& initialized2,
+    bool throwException) {
+  // ensure all records were initialized
+  for (auto& entry: analyzers) {
+    if (initialized1.find(entry.first) == initialized1.end()
+        && initialized2.find(entry.first) == initialized2.end()) {
+      LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "uninitialized AnalyzerPool deletected while validating analyzers, IResearch analyzer name '" << entry.first << "'";
+
+      if (!throwException) {
+        return arangodb::Result(TRI_ERROR_INTERNAL);
+      }
+
+      THROW_ARANGO_EXCEPTION_MESSAGE(
+        TRI_ERROR_INTERNAL,
+        std::string("uninitialized AnalyzerPool deletected while validating analyzers, IResearch analyzer name '") + std::string(entry.first) + "'"
+      );
+    }
+  }
+
+  return arangodb::Result();
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief ensure configuration collection is present in the specified vocbase
+////////////////////////////////////////////////////////////////////////////////
 void ensureConfigCollection(TRI_vocbase_t& vocbase) {
   static const std::string json =
     std::string("{\"isSystem\": true, \"name\": \"") + ANALYZER_COLLECTION_NAME + "\"}";
@@ -470,15 +521,7 @@ size_t IResearchAnalyzerFeature::erase(
     }
 
     if (_started) {
-      auto* database = getFeature<arangodb::iresearch::SystemDatabaseFeature>();
-
-      if (!database) {
-        LOG_TOPIC(WARN, Logger::FIXME) << "failure to find feature 'SystemDatabase' while removing IResearch analyzer name '" << pool->name() << "'";
-
-        return false;
-      }
-
-      auto vocbase = database->use();
+      auto vocbase = getSystemDatabase();
 
       if (!vocbase) {
         LOG_TOPIC(WARN, Logger::FIXME) << "failure to get system database while removing IResearch analyzer name '" << pool->name() << "'";
@@ -613,24 +656,13 @@ void IResearchAnalyzerFeature::loadConfiguration(
     return;
   }
 
-  auto* database = getFeature<arangodb::iresearch::SystemDatabaseFeature>();
-
-  if (!database) {
-    LOG_TOPIC(WARN, Logger::FIXME) << "failure to find feature 'SystemDatabase' while loading IResearch analyzer persisted configuration";
-
-    return;
-  }
-
-  auto vocbase = database->use();
+  auto vocbase = getSystemDatabase();
 
   if (!vocbase) {
     LOG_TOPIC(WARN, Logger::FIXME) << "failure to get system database while loading IResearch analyzer persisted configuration";
 
     return;
   }
-
-  // ensure that the configuration collection is present before using it in a transaction
-  ensureConfigCollection(*vocbase); // assume the collection is not dropped before transaction uses it
 
   arangodb::SingleCollectionTransaction trx(
     arangodb::transaction::StandaloneContext::Create(vocbase.get()),
@@ -752,17 +784,7 @@ void IResearchAnalyzerFeature::loadConfiguration(
     collection->invokeOnAllElements(&trx, visitor);
 
     // ensure all records were initialized
-    for (auto& entry: _analyzers) {
-      if (initialized.find(entry.first) == initialized.end()
-          && preinitialized.find(entry.first) == preinitialized.end()) {
-        LOG_TOPIC(WARN, Logger::FIXME) << "uninitialized AnalyzerPool deletected while loading persisted configuration, IResearch analyzer name '" << entry.first << "'";
-
-        THROW_ARANGO_EXCEPTION_MESSAGE(
-          TRI_ERROR_INTERNAL,
-          std::string("uninitialized AnalyzerPool deletected while loading persisted configuration, IResearch analyzer name '") + std::string(entry.first) + "'"
-        );
-      }
-    }
+    ensureAnalyzersInitialized(_analyzers, initialized, preinitialized, true);
 
     // persist refCount changes
     for (auto& entry: initialized) {
@@ -864,6 +886,17 @@ bool IResearchAnalyzerFeature::reserve(AnalyzerPool::ptr const& pool) noexcept {
 void IResearchAnalyzerFeature::start() {
   ApplicationFeature::start();
 
+  // register analyzer functions
+  {
+    auto* functions = getFeature<arangodb::aql::AqlFunctionFeature>("AQLFunctions");
+
+    if (functions) {
+      addFunctions(*functions);
+    } else {
+      LOG_TOPIC(WARN, Logger::FIXME) << "failure to find feature 'AQLFunctions' while registering IResearch functions";
+    }
+  }
+
   // register the indentity analyzer (before loading configuration)
   auto identity = emplace(
     IdentityTokenizer::type().name(), // use name same as type for convenience
@@ -879,15 +912,71 @@ void IResearchAnalyzerFeature::start() {
     initialized.emplace(identity->name());
   }
 
-  // load persisted configuration
-  loadConfiguration(initialized);
+  // ensure that the configuration collection is present before loading configuration
+  // for the case of inRecovery() if there is no collection then obviously no
+  // custom analyzer configurations were persisted (so missing analyzer is failure)
+  // if there is a configuration collection then just load analizer configurations
+  {
+    auto vocbase = getSystemDatabase();
 
-  auto* functions = getFeature<arangodb::aql::AqlFunctionFeature>("AQLFunctions");
+    if (!vocbase) {
+      LOG_TOPIC(WARN, Logger::FIXME) << "failure to get system database while starting feature 'IResearchAnalyzer'";
+      // assume configuration collection exists
+    } else {
+      auto* collection = vocbase->lookupCollection(ANALYZER_COLLECTION_NAME);
 
-  if (functions) {
-    addFunctions(*functions);
-  } else {
-    LOG_TOPIC(WARN, Logger::FIXME) << "failure to find feature 'AQLFunctions' while registering IResearch functions";
+      if (!collection) {
+        auto* engine = arangodb::EngineSelectorFeature::ENGINE;
+
+        if (!engine) {
+          LOG_TOPIC(WARN, Logger::FIXME) << "failure to get storage engine while starting feature 'IResearchAnalyzer'";
+          // assume not inRecovery(), create collection immediately
+        } else if (engine->inRecovery()) {
+          auto* feature = getFeature<arangodb::DatabaseFeature>("Database");
+
+          if (!feature) {
+            LOG_TOPIC(WARN, Logger::FIXME) << "failure to find feature 'Database' while starting feature 'IResearchAnalyzer'";
+            // can't register post-recovery callback, create collection immediately
+          } else {
+            std::shared_ptr<TRI_vocbase_t> sharedVocbase(std::move(vocbase));
+
+            feature->registerPostRecoveryCallback([this, initialized, sharedVocbase]()->arangodb::Result {
+              ensureConfigCollection(*sharedVocbase); // ensure configuration collection exists
+
+              WriteMutex mutex(_mutex);
+              SCOPED_LOCK(mutex); // '_started' can be asynchronously read
+
+              // ensure all records were initialized
+              static const std::unordered_set<irs::string_ref> empty;
+              auto result = ensureAnalyzersInitialized(_analyzers, initialized, empty, false);
+
+              if (result.ok()) {
+                _started = true;
+              }
+
+              return result;
+            });
+
+            return; // nothing more to do while inRecovery()
+          }
+        }
+
+        ensureConfigCollection(*vocbase); // ensure configuration collection exists
+
+        WriteMutex mutex(_mutex);
+        SCOPED_LOCK(mutex); // '_analyzers' can be asynchronously modified, '_started' can be asynchronously read
+
+        // ensure all records were initialized
+        static const std::unordered_set<irs::string_ref> empty;
+        ensureAnalyzersInitialized(_analyzers, initialized, empty, true);
+
+        _started = true;
+
+        return; // no persisted configurations to load since just created collection
+      }
+    }
+
+    loadConfiguration(initialized); // load persisted configuration
   }
 
   WriteMutex mutex(_mutex);
@@ -909,15 +998,7 @@ void IResearchAnalyzerFeature::stop() {
 }
 
 bool IResearchAnalyzerFeature::storeConfiguration(AnalyzerPool& pool) {
-  auto* database = getFeature<arangodb::iresearch::SystemDatabaseFeature>();
-
-  if (!database) {
-    LOG_TOPIC(WARN, Logger::FIXME) << "failure to find feature 'SystemDatabase' while persisting configuration IResearch analyzer name '" << pool.name() << "'";
-
-    return false;
-  }
-
-  auto vocbase = database->use();
+  auto vocbase = getSystemDatabase();
 
   if (!vocbase) {
     LOG_TOPIC(WARN, Logger::FIXME) << "failure to get system database while persisting configuration IResearch analyzer name '" << pool.name() << "'";
@@ -993,15 +1074,7 @@ bool IResearchAnalyzerFeature::updateConfiguration(
     AnalyzerPool& pool,
     int64_t delta
 ) {
-  auto* database = getFeature<arangodb::iresearch::SystemDatabaseFeature>();
-
-  if (!database) {
-    LOG_TOPIC(WARN, Logger::FIXME) << "failure to find feature 'SystemDatabase' while updating ref_count of IResearch analyzer name '" << pool.name() << "'";
-
-    return false;
-  }
-
-  auto vocbase = database->use();
+  auto vocbase = getSystemDatabase();
 
   if (!vocbase) {
     LOG_TOPIC(WARN, Logger::FIXME) << "failure to get system database while updating ref_count of IResearch analyzer name '" << pool.name() << "'";

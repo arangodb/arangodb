@@ -578,10 +578,10 @@ SECTION("test_persistence") {
       arangodb::iresearch::IResearchAnalyzerFeature feature(nullptr);
       feature.start();
       auto pool = feature.get("valid0");
-      CHECK((nullptr != pool));
+      CHECK((false == !pool));
       CHECK((feature.reserve(pool)));
       pool = feature.get("valid1");
-      CHECK((nullptr != pool));
+      CHECK((false == !pool));
       CHECK((feature.release(pool)));
       CHECK((!feature.release(pool))); // no more references
     }
@@ -593,7 +593,7 @@ SECTION("test_persistence") {
       CHECK((0 == feature.erase("valid0")));
       CHECK((1 == feature.erase("valid1")));
       auto pool = feature.get("valid0");
-      CHECK((nullptr != pool));
+      CHECK((false == !pool));
       CHECK((feature.release(pool)));
     }
 
@@ -625,7 +625,7 @@ SECTION("test_persistence") {
     {
       arangodb::iresearch::IResearchAnalyzerFeature feature(nullptr);
       auto pool = feature.get("valid");
-      CHECK((nullptr != pool));
+      CHECK((false == !pool));
       CHECK((feature.reserve(pool)));
       CHECK_THROWS((feature.start()));
     }
@@ -652,7 +652,7 @@ SECTION("test_persistence") {
       arangodb::iresearch::IResearchAnalyzerFeature feature(nullptr);
       feature.start();
       auto pool = feature.get("valid");
-      CHECK((nullptr != pool));
+      CHECK((false == !pool));
       CHECK((feature.reserve(pool)));
     }
 
@@ -747,7 +747,7 @@ SECTION("test_registration") {
       arangodb::iresearch::IResearchAnalyzerFeature feature(nullptr);
       feature.start();
       auto entry = feature.emplace("valid", "identity", nullptr);
-      CHECK((nullptr != entry.first));
+      CHECK((false == !entry.first));
       CHECK((entry.second));
       CHECK((!feature.release(entry.first)));
       CHECK((feature.reserve(entry.first)));
@@ -758,7 +758,7 @@ SECTION("test_registration") {
       arangodb::iresearch::IResearchAnalyzerFeature feature(nullptr);
       feature.start();
       auto pool = feature.get("valid");
-      CHECK((nullptr != pool));
+      CHECK((false == !pool));
       CHECK((feature.release(pool)));
     }
 
@@ -766,7 +766,7 @@ SECTION("test_registration") {
       arangodb::iresearch::IResearchAnalyzerFeature feature(nullptr);
       feature.start();
       auto pool = feature.get("valid");
-      CHECK((nullptr != pool));
+      CHECK((false == !pool));
       CHECK((!feature.release(pool)));
       CHECK((1 == feature.erase("valid"))); // remove allowed
     }
@@ -859,6 +859,99 @@ SECTION("test_remove") {
     feature.start();
     CHECK((true == !feature.get("test_analyzer")));
     CHECK((0 == feature.erase("test_analyzer")));
+  }
+}
+
+SECTION("test_start") {
+  auto* database = arangodb::iresearch::getFeature<arangodb::iresearch::SystemDatabaseFeature>();
+  auto vocbase = database->use();
+
+  // test feature start load configuration (inRecovery, no configuration collection)
+  {
+    // ensure no configuration collection
+    {
+      auto* collection = vocbase->lookupCollection("_iresearch_analyzers");
+
+      if (collection) {
+        vocbase->dropCollection(collection, true, -1);
+      }
+
+      collection = vocbase->lookupCollection("_iresearch_analyzers");
+      CHECK((nullptr == collection));
+    }
+
+    // FIXME TODO implement
+  }
+
+  // test feature start load configuration (inRecovery, no configuration collection, uninitialized analyzers)
+  {
+    // ensure no configuration collection
+    {
+      auto* collection = vocbase->lookupCollection("_iresearch_analyzers");
+
+      if (collection) {
+        vocbase->dropCollection(collection, true, -1);
+      }
+
+      collection = vocbase->lookupCollection("_iresearch_analyzers");
+      CHECK((nullptr == collection));
+    }
+
+    // FIXME TODO implement
+  }
+
+  // test feature start load configuration (inRecovery, with configuration collection)
+  {
+    // FIXME TODO implement
+  }
+
+  // test feature start load configuration (inRecovery, with configuration collection, uninitialized analyzers)
+  {
+    // FIXME TODO implement
+  }
+
+  // test feature start load configuration (no configuration collection)
+  {
+    // ensure no configuration collection
+    {
+      auto* collection = vocbase->lookupCollection("_iresearch_analyzers");
+
+      if (collection) {
+        vocbase->dropCollection(collection, true, -1);
+      }
+
+      collection = vocbase->lookupCollection("_iresearch_analyzers");
+      CHECK((nullptr == collection));
+    }
+
+    // FIXME TODO implement
+  }
+
+  // test feature start load configuration (no configuration collection, uninitialized analyzers)
+  {
+    // ensure no configuration collection
+    {
+      auto* collection = vocbase->lookupCollection("_iresearch_analyzers");
+
+      if (collection) {
+        vocbase->dropCollection(collection, true, -1);
+      }
+
+      collection = vocbase->lookupCollection("_iresearch_analyzers");
+      CHECK((nullptr == collection));
+    }
+
+    // FIXME TODO implement
+  }
+
+  // test feature start load configuration (with configuration collection)
+  {
+    // FIXME TODO implement
+  }
+
+  // test feature start load configuration (with configuration collection, uninitialized analyzers)
+  {
+    // FIXME TODO implement
   }
 }
 
