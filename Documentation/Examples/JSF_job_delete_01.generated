@@ -2,8 +2,8 @@ shell> curl -X PUT --header 'x-arango-async: store' --dump - http://localhost:85
 
 HTTP/1.1 202 Accepted
 content-type: text/plain; charset=utf-8
+x-arango-async-id: 150176689084234
 x-content-type-options: nosniff
-x-arango-async-id: 150114816063679
 
 shell> curl -X DELETE --dump - http://localhost:8529/_api/job/all
 
