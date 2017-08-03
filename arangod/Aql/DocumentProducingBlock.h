@@ -42,7 +42,7 @@ struct Variable;
   
 class DocumentProducingBlock {
  public:
-  typedef std::function<void(AqlItemBlock*, arangodb::velocypack::Slice, size_t, size_t&)> DocumentProducingFunction;
+  typedef std::function<void(AqlItemBlock*, arangodb::velocypack::Slice, size_t, size_t&, size_t)> DocumentProducingFunction;
 
   DocumentProducingBlock(DocumentProducingNode const* node, transaction::Methods* trx);
   virtual ~DocumentProducingBlock() = default;
