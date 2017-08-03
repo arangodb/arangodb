@@ -287,10 +287,11 @@ arangodb::Result ensureAnalyzersInitialized(
   for (auto& entry: analyzers) {
     if (initialized1.find(entry.first) == initialized1.end()
         && initialized2.find(entry.first) == initialized2.end()) {
-      LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "uninitialized AnalyzerPool deletected while validating analyzers, IResearch analyzer name '" << entry.first << "'";
-
       if (!throwException) {
-        return arangodb::Result(TRI_ERROR_INTERNAL);
+        return arangodb::Result(
+          TRI_ERROR_INTERNAL,
+          std::string("uninitialized AnalyzerPool deletected while validating analyzers, IResearch analyzer name '") + std::string(entry.first) + "'"
+        );
       }
 
       THROW_ARANGO_EXCEPTION_MESSAGE(

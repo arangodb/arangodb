@@ -85,10 +85,6 @@ void IResearchFeature::prepare() {
   );
 }
 
-bool IResearchFeature::running() const noexcept {
-  return _running;
-}
-
 void IResearchFeature::start() {
   ApplicationFeature::start();
   _running = true;

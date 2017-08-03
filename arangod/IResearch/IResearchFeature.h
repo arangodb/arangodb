@@ -38,7 +38,6 @@ class IResearchFeature final : public application_features::ApplicationFeature {
   void beginShutdown() override;
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override;
   void prepare() override;
-  bool running() const noexcept;
   void start() override;
   void stop() override;
   void unprepare() override;

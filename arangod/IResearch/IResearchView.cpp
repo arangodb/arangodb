@@ -639,6 +639,27 @@ bool appendAbsolutePersistedDataPath(
   return true;
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief append link removal directives to the builder and return success
+////////////////////////////////////////////////////////////////////////////////
+bool appendLinkRemoval(
+    arangodb::velocypack::Builder& builder,
+    arangodb::iresearch::IResearchViewMeta const& meta
+) {
+  if (!builder.isOpenObject()) {
+    return false;
+  }
+
+  for (auto& entry: meta._collections) {
+    builder.add(
+      std::to_string(entry),
+      arangodb::velocypack::Value(arangodb::velocypack::ValueType::Null)
+    );
+  }
+
+  return true;
+}
+
 arangodb::Result createPersistedDataDirectory(
     irs::directory::ptr& dstDirectory, // out param
     irs::index_writer::ptr& dstWriter, // out param
@@ -750,8 +771,9 @@ arangodb::iresearch::IResearchLink* findFirstMatchingLink(
 arangodb::Result persistProperties(arangodb::PhysicalView& view) {
   auto* feature = arangodb::iresearch::getFeature<arangodb::DatabaseFeature>("Database");
 
-  // database feature must always be present
-  TRI_ASSERT(feature != nullptr);
+  if (!feature) {
+    return view.persistProperties(); // database cannot be in recovery if there is no Database feature
+  }
 
   return feature->registerPostRecoveryCallback([&view]()->arangodb::Result {
     return view.persistProperties();
@@ -1247,18 +1269,18 @@ void IResearchView::drop() {
   // drop all known links
   if (_logicalView && _logicalView->vocbase()) {
     arangodb::velocypack::Builder builder;
-    ReadMutex mutex(_mutex); // '_meta' can be asynchronously updated
 
     {
-      arangodb::velocypack::ObjectBuilder builderWrapper(&builder);
-      SCOPED_LOCK(mutex);
+      ReadMutex mutex(_mutex);
+      SCOPED_LOCK(mutex); // '_meta' can be asynchronously updated
 
-      for (auto& entry: _meta._collections) {
-        builderWrapper->add(
-          arangodb::basics::StringUtils::itoa(entry),
-          arangodb::velocypack::Value(arangodb::velocypack::ValueType::Null)
-        );
+      builder.openObject();
+
+      if (!appendLinkRemoval(builder, _meta)) {
+        throw std::runtime_error(std::string("failed to construct link removal directive while removing iResearch view '") + std::to_string(id()) + "'");
       }
+
+      builder.close();
     }
 
     if (!updateLinks(*(_logicalView->vocbase()), *this, builder.slice()).ok()) {
@@ -1831,35 +1853,8 @@ bool IResearchView::linkRegister(IResearchLink& link) {
 
     return nullptr;
   }
-  
-  if (isNew && json.hasKey(LINKS_FIELD)) {
-    auto field = json.get(LINKS_FIELD);
-    if (!field.isObject()) {
-      LOG_TOPIC(WARN, Logger::FIXME) << "failed to initialize iResearch view from definition, error: 'links' is not an object";
-      return nullptr;
-    }
 
-    if (field.length() > 0) {
-      LOG_TOPIC(WARN, Logger::FIXME) << "failed to initialize iResearch view from definition, error: 'links' is not an empty object";
-      return nullptr;
-    }
-  }
-
-  // skip link creation for previously created views or if no links were specified in the definition
-  if (!isNew || !json.hasKey(LINKS_FIELD)) {
-    return std::move(ptr);
-  }
-
-  if (!impl._logicalView || !impl._logicalView->vocbase()) {
-    LOG_TOPIC(WARN, Logger::FIXME) << "failed to find vocbase while updating links for iResearch view '" << impl.id() << "'";
-
-    return nullptr;
-  }
-
-  // create links for a new iresearch View instance
-  auto res = updateLinks(*(impl._logicalView->vocbase()), impl, json.get(LINKS_FIELD));
-
-  return res.ok() ? std::move(ptr) : nullptr;
+  return std::move(ptr);
 }
 
 size_t IResearchView::memory() const {
@@ -2264,7 +2259,24 @@ arangodb::Result IResearchView::updateProperties(
   // indexing of collections is done in different threads so no locks can be held and rollback is not possible
   // as a result it's also possible for links to be simultaneously modified via a different callflow (e.g. from collections)
   if (slice.hasKey(LINKS_FIELD)) {
-    res = updateLinks(*vocbase, *this, slice.get(LINKS_FIELD));
+    if (partialUpdate) {
+      res = updateLinks(*vocbase, *this, slice.get(LINKS_FIELD));
+    } else {
+      arangodb::velocypack::Builder builder;
+
+      builder.openObject();
+
+      if (!appendLinkRemoval(builder, _meta)
+          || !mergeSlice(builder, slice.get(LINKS_FIELD))) {
+        return arangodb::Result(
+          TRI_ERROR_INTERNAL,
+          std::string("failed to construct link update directive while updating iResearch view '") + std::to_string(id()) + "'"
+        );
+      }
+
+      builder.close();
+      res = updateLinks(*vocbase, *this, builder.slice());
+    }
   }
 
   return res;
