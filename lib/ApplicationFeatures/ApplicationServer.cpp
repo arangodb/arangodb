@@ -611,6 +611,7 @@ void ApplicationServer::start() {
         if (feature->state() == FeatureState::STARTED) {
           LOG_TOPIC(TRACE, Logger::STARTUP) << "forcefully stopping feature '" << feature->name() << "'";
           try {
+            feature->beginShutdown();
             feature->stop();
             feature->state(FeatureState::STOPPED);
           } catch (...) {

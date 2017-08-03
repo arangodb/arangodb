@@ -69,7 +69,9 @@ PregelFeature::~PregelFeature() {
   cleanupAll();
 }
 
-PregelFeature* PregelFeature::instance() { return Instance; }
+PregelFeature* PregelFeature::instance() {
+  return Instance;
+}
 
 size_t PregelFeature::availableParallelism() {
   const size_t procNum = TRI_numberProcessors();

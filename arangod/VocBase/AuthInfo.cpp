@@ -103,7 +103,6 @@ bool AuthInfo::parseUsers(VPackSlice const& slice) {
           << s.get("user").copyString();
       continue;
     }
-
     AuthUserEntry auth = AuthUserEntry::fromDocument(s);
 
     // we also need to insert inactive users into the cache here
@@ -243,15 +242,11 @@ void AuthInfo::loadFromDB() {
     return;
   }
 
-  if (_authInfo.empty()) {// should only work once
-    WRITE_LOCKER(writeLocker, _authInfoLock);
-    insertInitial();
-  }
-
   TRI_ASSERT(_queryRegistry != nullptr);
   std::shared_ptr<VPackBuilder> builder = QueryAllUsers(_queryRegistry);
 
   WRITE_LOCKER(writeLocker, _authInfoLock);
+  _authBasicCache.clear();
 
   if (builder) {
     VPackSlice usersSlice = builder->slice();
@@ -263,7 +258,6 @@ void AuthInfo::loadFromDB() {
   if (_authInfo.empty()) {
     insertInitial();
   }
-
   _outdated = false;
 }
 
@@ -278,11 +272,11 @@ void AuthInfo::insertInitial() {
     // the root user needs to have a specific rights grant
     // to the "_system" database, otherwise things break
     auto initDatabaseFeature =
-        application_features::ApplicationServer::getFeature<InitDatabaseFeature>(
-            "InitDatabase");
+        application_features::ApplicationServer::getFeature<
+            InitDatabaseFeature>("InitDatabase");
 
-    AuthUserEntry entry =
-        AuthUserEntry::newUser("root", initDatabaseFeature->defaultPassword(), AuthSource::COLLECTION);
+    AuthUserEntry entry = AuthUserEntry::newUser(
+        "root", initDatabaseFeature->defaultPassword(), AuthSource::COLLECTION);
     entry.setActive(true);
     entry.grantDatabase(StaticStrings::SystemDatabase, AuthLevel::RW);
     entry.grantDatabase("*", AuthLevel::RW);
@@ -355,6 +349,7 @@ Result AuthInfo::storeUserInternal(AuthUserEntry const& entry, bool replace) {
 // ================= public ==================
 
 VPackBuilder AuthInfo::allUsers() {
+  // will query db directly, no need for _authInfoLock
   std::shared_ptr<VPackBuilder> users;
   {
     TRI_ASSERT(_queryRegistry != nullptr);
@@ -440,6 +435,7 @@ Result AuthInfo::storeUser(bool replace, std::string const& user,
   return r;
 }
 
+/// Update user document in the dbserver
 static Result UpdateUser(VPackSlice const& user) {
   TRI_vocbase_t* vocbase = DatabaseFeature::DATABASE->systemDatabase();
   if (vocbase == nullptr) {
@@ -482,6 +478,7 @@ Result AuthInfo::enumerateUsers(
         return r;
       }
     }
+    _authBasicCache.clear();
   }
   // we need to reload data after the next callback
   reloadAllUsers();
@@ -494,6 +491,7 @@ Result AuthInfo::updateUser(std::string const& user,
     return TRI_ERROR_USER_NOT_FOUND;
   }
   loadFromDB();
+  Result r;
   VPackBuilder data;
   {  // we require an consisten view on the user object
     WRITE_LOCKER(guard, _authInfoLock);
@@ -504,21 +502,20 @@ Result AuthInfo::updateUser(std::string const& user,
     TRI_ASSERT(!it->second.key().empty());
     func(it->second);
     data = it->second.toVPackBuilder();
-    // must also clear the basic cache here because the secret may be invalid now
-    // if the password was changed
+    r = UpdateUser(data.slice());
+    // must also clear the basic cache here because the secret may be
+    // invalid now if the password was changed
     _authBasicCache.clear();
   }
 
-  Result r = UpdateUser(data.slice());
   // we need to reload data after the next callback
-  if (r.ok()) {
-    reloadAllUsers();
-  }
+  reloadAllUsers();
   return r;
 }
 
-Result AuthInfo::accessUser(std::string const& user,
-                            std::function<void(AuthUserEntry const&)> const& func) {
+Result AuthInfo::accessUser(
+    std::string const& user,
+    std::function<void(AuthUserEntry const&)> const& func) {
   loadFromDB();
   READ_LOCKER(guard, _authInfoLock);
   auto it = _authInfo.find(user);
@@ -530,7 +527,8 @@ Result AuthInfo::accessUser(std::string const& user,
 }
 
 VPackBuilder AuthInfo::serializeUser(std::string const& user) {
-  loadFromDB();
+  // loadFromDB();
+  // READ_LOCKER(guard, _authInfoLock)
   VPackBuilder doc = QueryUser(_queryRegistry, user);
   VPackBuilder result;
   if (!doc.isEmpty()) {
@@ -539,26 +537,26 @@ VPackBuilder AuthInfo::serializeUser(std::string const& user) {
   return result;
 }
 
-static Result removeUserInternal(AuthUserEntry const& entry) {
+static Result RemoveUserInternal(AuthUserEntry const& entry) {
   TRI_ASSERT(!entry.key().empty());
   TRI_vocbase_t* vocbase = DatabaseFeature::DATABASE->systemDatabase();
   if (vocbase == nullptr) {
     return Result(TRI_ERROR_INTERNAL);
   }
-  
+
   // we cannot set this execution context, otherwise the transaction
   // will ask us again for permissions and we get a deadlock
   ExecContext* oldExe = ExecContext::CURRENT;
   ExecContext::CURRENT = nullptr;
   TRI_DEFER(ExecContext::CURRENT = oldExe);
-  
+
   std::shared_ptr<transaction::Context> ctx(
-                                            new transaction::StandaloneContext(vocbase));
+      new transaction::StandaloneContext(vocbase));
   SingleCollectionTransaction trx(ctx, TRI_COL_NAME_USERS,
                                   AccessMode::Type::WRITE);
-  
+
   trx.addHint(transaction::Hints::Hint::SINGLE_OPERATION);
-  
+
   Result res = trx.begin();
   if (res.ok()) {
     VPackBuilder builder;
@@ -567,9 +565,9 @@ static Result removeUserInternal(AuthUserEntry const& entry) {
       builder.add(StaticStrings::KeyString, VPackValue(entry.key()));
       // TODO maybe protect with a revision ID?
     }
-    
+
     OperationResult result =
-    trx.remove(TRI_COL_NAME_USERS, builder.slice(), OperationOptions());
+        trx.remove(TRI_COL_NAME_USERS, builder.slice(), OperationOptions());
     res = trx.finish(result.code);
   }
   return res;
@@ -583,41 +581,42 @@ Result AuthInfo::removeUser(std::string const& user) {
     return TRI_ERROR_FORBIDDEN;
   }
   loadFromDB();
+  Result res;
+  {
+    WRITE_LOCKER(guard, _authInfoLock);
+    auto const& it = _authInfo.find(user);
+    if (it == _authInfo.end()) {
+      return TRI_ERROR_USER_NOT_FOUND;
+    }
 
-  WRITE_LOCKER(guard, _authInfoLock);
-  auto const& it = _authInfo.find(user);
-  if (it == _authInfo.end()) {
-    return TRI_ERROR_USER_NOT_FOUND;
+    res = RemoveUserInternal(it->second);
+    if (res.ok()) {
+      _authInfo.erase(it);
+      // must also clear the basic cache here because the secret is invalid now
+      _authBasicCache.clear();
+    }
   }
-  
-  Result res = removeUserInternal(it->second);
-  if (res.ok()) {
-    _authInfo.erase(it);
-    // must also clear the basic cache here because the secret is invalid now
-    _authBasicCache.clear();
-
-    reloadAllUsers();
-  }
+  reloadAllUsers();
   return res;
 }
 
 Result AuthInfo::removeAllUsers() {
   loadFromDB();
-  
-  WRITE_LOCKER(guard, _authInfoLock);
   Result res;
-  for (auto const& pair : _authInfo) {
-    res = removeUserInternal(pair.second);
-    if (!res.ok()) {
-      break;
+  {
+    WRITE_LOCKER(guard, _authInfoLock);
+    for (auto const& pair : _authInfo) {
+      res = RemoveUserInternal(pair.second);
+      if (!res.ok()) {
+        break;
+      }
     }
-  }
-  
-  {// do not get into race conditions with loadFromDB
-    MUTEX_LOCKER(locker, _loadFromDBLock);
-    _authInfo.clear();
-    _authBasicCache.clear();
-    _outdated = true;
+    {  // do not get into race conditions with loadFromDB
+      MUTEX_LOCKER(locker, _loadFromDBLock);
+      _authInfo.clear();
+      _authBasicCache.clear();
+      _outdated = true;
+    }
   }
   reloadAllUsers();
   return res;
@@ -632,7 +631,7 @@ VPackBuilder AuthInfo::getConfigData(std::string const& username) {
 Result AuthInfo::setConfigData(std::string const& user,
                                velocypack::Slice const& data) {
   loadFromDB();
-  
+
   READ_LOCKER(guard, _authInfoLock);
   auto it = _authInfo.find(user);
   if (it == _authInfo.end()) {
@@ -646,11 +645,8 @@ Result AuthInfo::setConfigData(std::string const& user,
   partial.add("configData", data);
   partial.close();
 
-  Result res = UpdateUser(partial.slice());
-  if (res.ok()) {
-    reloadAllUsers();
-  }
-  return res;
+  return UpdateUser(partial.slice());
+  ;
 }
 
 VPackBuilder AuthInfo::getUserData(std::string const& username) {
@@ -662,7 +658,7 @@ VPackBuilder AuthInfo::getUserData(std::string const& username) {
 Result AuthInfo::setUserData(std::string const& user,
                              velocypack::Slice const& data) {
   loadFromDB();
-  
+
   READ_LOCKER(guard, _authInfoLock);
   auto it = _authInfo.find(user);
   if (it == _authInfo.end()) {
@@ -676,11 +672,7 @@ Result AuthInfo::setUserData(std::string const& user,
   partial.add("userData", data);
   partial.close();
 
-  Result res = UpdateUser(partial.slice());
-  if (res.ok()) {
-    reloadAllUsers();
-  }
-  return res;
+  return UpdateUser(partial.slice());
 }
 
 AuthResult AuthInfo::checkPassword(std::string const& username,
@@ -701,13 +693,12 @@ AuthResult AuthInfo::checkPassword(std::string const& username,
 
     // user authed, add to _authInfo and _users
     if (authResult.source() == AuthSource::LDAP) {
-      // upgrade read-lock to a write-lock
-      readLocker.unlock();
-
-      WRITE_LOCKER(writeLocker, _authInfoLock);
-
       AuthUserEntry entry =
           AuthUserEntry::newUser(username, password, AuthSource::LDAP);
+
+      // upgrade read-lock to a write-lock
+      readLocker.unlock();
+      WRITE_LOCKER(writeLocker, _authInfoLock);
 
       it = _authInfo.find(username);
       if (it != _authInfo.end()) {
@@ -782,7 +773,7 @@ AuthResult AuthInfo::checkAuthenticationBasic(std::string const& secret) {
       role != ServerState::ROLE_COORDINATOR) {
     return AuthResult();
   }
-  
+
   {
     READ_LOCKER(guard, _authInfoLock);
     auto const& it = _authBasicCache.find(secret);
@@ -863,15 +854,15 @@ AuthResult AuthInfo::checkAuthenticationJWT(std::string const& jwt) {
   std::string const& signature = parts[2];
 
   if (!validateJwtHeader(header)) {
-    LOG_TOPIC(TRACE, arangodb::Logger::AUTHENTICATION) << "Couldn't validate jwt header "
-                                              << header;
+    LOG_TOPIC(TRACE, arangodb::Logger::AUTHENTICATION)
+        << "Couldn't validate jwt header " << header;
     return AuthResult();
   }
 
   AuthJwtResult result = validateJwtBody(body);
   if (!result._authorized) {
-    LOG_TOPIC(TRACE, arangodb::Logger::AUTHENTICATION) << "Couldn't validate jwt body "
-                                              << body;
+    LOG_TOPIC(TRACE, arangodb::Logger::AUTHENTICATION)
+        << "Couldn't validate jwt body " << body;
     return AuthResult();
   }
 
