@@ -931,11 +931,13 @@ def runStage(stage) {
 
 stage('checkout') {
     node('master') {
-        checkoutCommunity()
-        checkCommitMessages()
-        checkoutEnterprise()
-        checkoutResilience()
-        stashSourceCode()
+        timeout(10) {
+            checkoutCommunity()
+            checkCommitMessages()
+            checkoutEnterprise()
+            checkoutResilience()
+            stashSourceCode()
+        }
     }
 }
 
