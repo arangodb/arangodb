@@ -71,12 +71,12 @@ int main(int argc, char* argv[]) {
         ret = EXIT_SUCCESS;
       }
     } catch (std::exception const& ex) {
-      LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "arangoimp terminated because of an unhandled exception: "
-              << ex.what();
+      LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+        << "arangoimp terminated because of an unhandled exception: " << ex.what();
       ret = EXIT_FAILURE;
     } catch (...) {
-      LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "arangoimp terminated because of an unhandled exception of "
-                  "unknown type";
+      LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+        << "arangoimp terminated because of an unhandled exception of unknown type";
       ret = EXIT_FAILURE;
     }
 

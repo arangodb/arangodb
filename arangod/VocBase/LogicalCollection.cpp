@@ -635,10 +635,16 @@ void LogicalCollection::getIndexesVPack(VPackBuilder& result, bool withFigures,
 int LogicalCollection::replicationFactor() const {
   return static_cast<int>(_replicationFactor);
 }
+void LogicalCollection::replicationFactor(int r) {
+  _replicationFactor = static_cast<size_t>(r);
+}
 
 // SECTION: Sharding
 int LogicalCollection::numberOfShards() const {
   return static_cast<int>(_numberOfShards);
+}
+void LogicalCollection::numberOfShards(int n) {
+  _numberOfShards = static_cast<size_t>(n);
 }
 
 bool LogicalCollection::allowUserKeys() const { return _allowUserKeys; }

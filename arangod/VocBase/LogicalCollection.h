@@ -217,10 +217,12 @@ class LogicalCollection {
 
   // SECTION: Replication
   int replicationFactor() const;
+  void replicationFactor(int);
   bool isSatellite() const;
 
   // SECTION: Sharding
   int numberOfShards() const;
+  void numberOfShards(int);
   bool allowUserKeys() const;
   virtual bool usesDefaultShardKeys() const;
   std::vector<std::string> const& shardKeys() const;
