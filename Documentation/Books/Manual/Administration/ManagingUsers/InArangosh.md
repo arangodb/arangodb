@@ -36,8 +36,8 @@ database. If you grant access to a database `testdb` you will
 additionally need to explicitly grant access levels to individual
 collections via `grantCollection`.
 
-The upgrade procedure from 3.1 to 3.2 sets the default database access
-level for all users to *Administrate* and sets the default collection
+The upgrade procedure from 3.1 to 3.2 sets the wildcard database access
+level for all users to *Administrate* and sets the wildcard collection
 access level for all user/database pairs to *Read/Write*.
 
 ```
@@ -83,7 +83,7 @@ Grant Database
 `users.grantDatabase(user, database, type)`
 
 This grants *type* ('rw', 'ro' or 'none') access to the *database* for
-the *user*. If *database* is `"*"`, this sets the default database access
+the *user*. If *database* is `"*"`, this sets the wildcard database access
 level for the user *user*.
 
 The server access level follows from the access level for the database
@@ -94,8 +94,10 @@ Revoke Database
 
 `users.revokeDatabase(user, database)`
 
-This revokes the access level setting to the *database* for the *user*,
-the default database access setting for this user kicks in.
+This clears the access level setting to the *database* for the *user* and
+the wildcard database access setting for this user kicks in. In case no wildcard
+access was defined the default is *No Access*. This will also
+clear the access levels for all the collections in this database.
 
 Grant Collection
 ----------------
@@ -104,7 +106,7 @@ Grant Collection
 
 This grants *type* ('rw', 'ro' or 'none') access level to the *collection*
 in *database* for the *user*. If *collection* is `"*"` this sets the
-default collection access level for the user *user* in database
+wildcard collection access level for the user *user* in database
 *database*.
 
 Revoke Collection
@@ -112,8 +114,9 @@ Revoke Collection
 
 `users.revokeCollection(user, database)`
 
-This revokes the access level setting to the collection *collection* for the
-user *user*.
+This clears the access level setting to the collection *collection* for the
+user *user*. The system will either fallback to the wildcard collection access
+level or default to *No Access*
 
 Replace
 -------
@@ -263,3 +266,27 @@ automatically, and this can be performed by a call to this method.
     require("@arangodb/users").reload();
     @END_EXAMPLE_ARANGOSH_OUTPUT
     @endDocuBlock USER_03_reloadUser
+
+
+Permission
+--------
+
+`users.permission(user, database[, collection])`
+
+Fetches the access level to the database or a collection.
+
+The user and database name must be specified, optionally you can specify
+the collection name.
+
+This method will fail if the user cannot be found in the database.
+
+*Examples*
+
+    @startDocuBlockInline USER_05_permission
+    @EXAMPLE_ARANGOSH_OUTPUT{USER_05_permission}
+    ~ require("@arangodb/users").grantDatabase("my-user", "testdb");
+    require("@arangodb/users").permission("my-user", "testdb");
+    @END_EXAMPLE_ARANGOSH_OUTPUT
+    @endDocuBlock USER_05_permission
+
+

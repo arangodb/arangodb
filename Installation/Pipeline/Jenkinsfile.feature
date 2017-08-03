@@ -531,6 +531,15 @@ def jslintStep(edition) {
 def testEdition(edition, os, mode, engine) {
     def arch = "LOG_test_${mode}_${edition}_${engine}_${os}"
 
+    if (os == 'linux' || os == 'mac') {
+       sh "rm -rf ${arch}"
+       sh "mkdir -p ${arch}"
+    }
+    else if (os == 'windows') {
+        bat "del /F /Q ${arch}"
+        powershell "New-Item -ItemType Directory -Force -Path ${arch}"
+    }
+
     try {
         try {
             if (os == 'linux') {
@@ -542,6 +551,10 @@ def testEdition(edition, os, mode, engine) {
             else if (os == 'windows') {
                 powershell ". .\\Installation\\Pipeline\\windows\\test_${mode}_${edition}_${engine}_${os}.ps1"
             }
+
+            if (findFiles(glob: 'core*').length > 0) {
+               error("found core file")
+            }
         }
         catch (exc) {
             if (os == 'linux' || os == 'mac') {
@@ -552,10 +565,12 @@ def testEdition(edition, os, mode, engine) {
         }
         finally {
             if (os == 'linux' || os == 'mac') {
-                sh "rm -rf ${arch}"
-                sh "mkdir -p ${arch}"
                 sh "find log-output -name 'FAILED_*' -exec cp '{}' . ';'"
-                sh "for i in logs log-output core*; do test -e \$i && mv \$i ${arch} || true; done"
+                sh "for i in logs log-output; do test -e \$i && mv \$i ${arch} || true; done"
+            }
+            else if (os == 'windows') {
+                bat "move logs ${arch}"
+                bat "move log-output ${arch}"
             }
         }
     }
@@ -608,7 +623,7 @@ def testStep(edition, os, mode, engine) {
         node(testJenkins[os]) {
             def buildName = "${edition}-${os}"
 
-            if (buildsSuccess[buildName]) {
+            if (!buildExecutable || buildsSuccess[buildName]) {
                 def name = "${edition}-${os}-${mode}-${engine}"
 
                 try {
@@ -710,47 +725,46 @@ def testResilienceCheck(os, engine, foxx, full) {
     return true
 }
 
-def testResilienceName(os, engine, foxx, full) {
-    def name = "test-resilience-${foxx}-${engine}-${os}";
-
-    if (! testResilienceCheck(os, engine, foxx, full)) {
-        name = "DISABLED-${name}"
-    }
-
-    return name 
-}
-
 def testResilienceStep(os, engine, foxx) {
     return {
         node(testJenkins[os]) {
             def edition = "community"
             def buildName = "${edition}-${os}"
 
-            if (buildsSuccess[buildName]) {
+            if (!buildExecutable || buildsSuccess[buildName]) {
                 def name = "${os}-${engine}-${foxx}"
                 def arch = "LOG_resilience_${foxx}_${engine}_${os}"
+
+                if (os == 'linux' || os == 'mac') {
+                   sh "rm -rf ${arch}"
+                   sh "mkdir -p ${arch}"
+                }
+                else if (os == 'windows') {
+                    bat "del /F /Q ${arch}"
+                    powershell "New-Item -ItemType Directory -Force -Path ${arch}"
+                }
 
                 try {
                     try {
                         unstashBinaries(edition, os)
                         testResilience(os, engine, foxx)
+
+                        if (findFiles(glob: 'resilience/core*').length > 0) {
+                          error("found core file")
+                        }
                     }
                     catch (exc) {
                         if (os == 'linux' || os == 'mac') {
-                            sh "for i in build core* tmp; do test -e \$i && mv \$i ${arch} || true; done"
+                            sh "for i in build resilience/core* tmp; do test -e \$i && mv \$i ${arch} || true; done"
                         }
 
                         throw exc
                     }
                     finally {
                         if (os == 'linux' || os == 'mac') {
-                            sh "rm -rf ${arch}"
-                            sh "mkdir -p ${arch}"
-                            sh "for i in log-output resilience/core*; do test -e \$i && mv \$i ${arch}; done"
+                            sh "for i in log-output; do test -e \$i && mv \$i ${arch}; done"
                         }
                         else if (os == 'windows') {
-                            bat "del /F /Q ${arch}"
-                            powershell "New-Item -ItemType Directory -Force -Path ${arch}"
                             bat "move log-output ${arch}"
                         }
                         
@@ -786,7 +800,7 @@ def testResilienceParallel(osList) {
         for (os in osList) {
             for (engine in ['mmfiles', 'rocksdb']) {
                 if (testResilienceCheck(os, engine, foxx, full)) {
-                    def name = testResilienceName(os, engine, foxx, full)
+                    def name = "test-resilience-${foxx}-${engine}-${os}"
 
                     branches[name] = testResilienceStep(os, engine, foxx)
                 }
@@ -821,6 +835,15 @@ def buildEdition(edition, os) {
 
     def arch = "LOG_build_${edition}_${os}"
 
+    if (os == 'linux' || os == 'mac') {
+       sh "rm -rf ${arch}"
+       sh "mkdir -p ${arch}"
+    }
+    else if (os == 'windows') {
+        bat "del /F /Q ${arch}"
+        powershell "New-Item -ItemType Directory -Force -Path ${arch}"
+    }
+
     try {
         try {
             if (os == 'linux') {
@@ -835,13 +858,10 @@ def buildEdition(edition, os) {
         }
         finally {
             if (os == 'linux' || os == 'mac') {
-                sh "rm -rf ${arch}"
-                sh "mkdir -p ${arch}"
                 sh "for i in log-output; do test -e \$i && mv \$i ${arch} || true; done"
             }
             else if (os == 'windows') {
-                bat "del /F /Q ${arch}"
-                powershell "New-Item -ItemType Directory -Force -Path ${arch}"
+                bat "move log-output ${arch}"
             }
         }
     }

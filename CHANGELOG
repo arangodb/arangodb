@@ -1,6 +1,8 @@
 devel
 -----
 
+* Foxx queues and tasks now ensure that the scripts in them, run on same permissions as the Foxx code who started the task / queue 
+
 * fixed issue #2928: Offset problems
 
 * fixed issue #2876: wrong skiplist index usage in edge collection
