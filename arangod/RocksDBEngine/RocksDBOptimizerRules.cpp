@@ -147,9 +147,7 @@ void RocksDBOptimizerRules::reduceExtractionToProjectionRule(Optimizer* opt,
         }
       }
 
-      if (stop) {
-        break;
-      }
+      TRI_ASSERT(!stop);
 
       current = current->getFirstParent();
     }

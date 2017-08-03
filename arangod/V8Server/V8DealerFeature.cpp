@@ -111,7 +111,6 @@ V8DealerFeature::V8DealerFeature(
   startsAfter("Authentication");
   startsAfter("Database");
   startsAfter("Random");
-  startsAfter("MMFilesWalRecovery");
   startsAfter("Scheduler");
   startsAfter("V8Platform");
   startsAfter("WorkMonitor");
