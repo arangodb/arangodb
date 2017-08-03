@@ -412,14 +412,25 @@ std::pair<bool, bool> Condition::findIndexes(
 
 std::pair<bool, bool> Condition::checkView(
     EnumerateViewNode const* node, SortCondition const* sortCondition) {
-  Variable const* reference = node->outVariable();
-  std::string viewName = node->view()->name();
+  TRI_ASSERT(node != nullptr);
+  TRI_ASSERT(sortCondition != nullptr);
 
-  // TODO check sort condition?
+  auto view = node->view();
+  TRI_ASSERT(view != nullptr);
+  auto var = node->outVariable();
+  TRI_ASSERT(var != nullptr);
 
-  // TODO check filter condition
 
-  return std::make_pair(false, false);
+  size_t covered;
+  double cost;
+
+  bool handlesFilter = view->supportsFilterCondition(_root, var, covered, cost);
+
+  bool handlesSort = view->supportsSortCondition(sortCondition, var, cost,
+                                                 covered);
+  handlesSort = handlesSort && (covered == sortCondition->numAttributes());
+
+  return std::make_pair(handlesFilter, handlesSort);
 }
 
 /// @brief get the attributes for a sub-condition that are const

@@ -99,6 +99,10 @@ bool ConditionFinder::before(ExecutionNode* en) {
     }
 
     case EN::ENUMERATE_COLLECTION: {
+      if (_viewMode) {
+        break;
+      }
+      
       auto node = static_cast<EnumerateCollectionNode const*>(en);
       if (_changes->find(node->id()) != _changes->end()) {
         // already optimized this node
@@ -157,7 +161,10 @@ bool ConditionFinder::before(ExecutionNode* en) {
       break;
     }
 
-  case EN::ENUMERATE_VIEW: {
+    case EN::ENUMERATE_VIEW: {
+      if (!_viewMode) {
+        break;
+      }
       auto node = static_cast<EnumerateViewNode const*>(en);
       if (_changes->find(node->id()) != _changes->end()) {
         // already optimized this node
@@ -195,11 +202,15 @@ bool ConditionFinder::before(ExecutionNode* en) {
         // We keep this node's change
         _changes->emplace(node->id(), newNode.get());
         newNode.release();
+      } else {
+        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_QUERY_PARSE, "filter or sort "
+          "not yet supported with view");
       }
 
       break;
     }
   }
+
   return false;
 }
 

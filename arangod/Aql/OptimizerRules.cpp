@@ -1631,7 +1631,7 @@ void arangodb::aql::useIndexesRule(Optimizer* opt,
   TRI_DEFER(cleanupChanges());
   bool hasEmptyResult = false;
   for (auto const& n : nodes) {
-    ConditionFinder finder(plan.get(), &changes, &hasEmptyResult);
+    ConditionFinder finder(plan.get(), &changes, &hasEmptyResult, false);
     n->walk(&finder);
   }
 
@@ -3846,37 +3846,42 @@ void arangodb::aql::handleViewsRule(Optimizer* opt,
                                     std::unique_ptr<ExecutionPlan> plan,
                                     OptimizerRule const* rule) {
   bool modified = false;
-  SmallVector<ExecutionNode*>::allocator_type::arena_type a;
-  SmallVector<ExecutionNode*> viewNodes{a};
-  plan->findNodesOfType(viewNodes, EN::ENUMERATE_VIEW, true);
+  {
+    SmallVector<ExecutionNode*>::allocator_type::arena_type a;
+    SmallVector<ExecutionNode*> nodes{a};
+    plan->findEndNodes(nodes, true);
 
-  if (viewNodes.empty()) {
-    // no views present
-    opt->addPlan(std::move(plan), rule, false);
-    return;
-  }
+    std::unordered_map<size_t, ExecutionNode*> changes;
 
-  // make a pass over all view nodes
-  for (auto const& n : viewNodes) {
-    EnumerateViewNode* view = static_cast<EnumerateViewNode*>(n);
+    auto cleanupChanges = [&changes]() -> void {
+      for (auto& v : changes) {
+        delete v.second;
+      }
+      changes.clear();
+    };
 
-    LOG_TOPIC(ERR, Logger::FIXME) << "FOUND A VIEW REFERRING TO '" << view->view()->name() << "'";
+    TRI_DEFER(cleanupChanges());
+    for (auto const& n : nodes) {
+      ConditionFinder finder(plan.get(), &changes, &modified, true);
+      n->walk(&finder);
+    }
 
+    if (!changes.empty()) {
+      for (auto& it : changes) {
+        plan->registerNode(it.second);
+        plan->replaceNode(plan->getNodeById(it.first), it.second);
 
-    // TODO
-    // - find filter conditions south of the "view" node
-    // - check if the view can handle any of them using supportsSortCondition
-    //   or supportsFilterCondition
-    // - remove the filter conditions from the execution plan
-    //   if the view takes over
-
+        // prevent double deletion by cleanupChanges()
+        it.second = nullptr;
+      }
+      modified = true;
+    }
   }
 
   {
-    LOG_TOPIC(ERR, Logger::FIXME) << "LOOKING FOR SORT NODES TO COMBINE";
     SmallVector<ExecutionNode*>::allocator_type::arena_type a;
     SmallVector<ExecutionNode*> nodes{a};
-    plan->findNodesOfType(nodes, EN::SORT, true);
+    plan->findNodesOfType(nodes, EN::ENUMERATE_VIEW, true);
 
     for (auto const& n : nodes) {
       auto sortNode = static_cast<SortNode*>(n);

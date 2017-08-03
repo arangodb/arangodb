@@ -37,13 +37,14 @@ class ConditionFinder : public WalkerWorker<ExecutionNode> {
  public:
   ConditionFinder(ExecutionPlan* plan,
                   std::unordered_map<size_t, ExecutionNode*>* changes,
-                  bool* hasEmptyResult)
+                  bool* hasEmptyResult, bool viewMode)
       : _plan(plan),
         _variableDefinitions(),
         _filters(),
         _sorts(),
         _changes(changes),
-        _hasEmptyResult(hasEmptyResult){};
+        _hasEmptyResult(hasEmptyResult),
+        _viewMode(viewMode) {};
 
   ~ConditionFinder() {}
 
@@ -66,6 +67,7 @@ class ConditionFinder : public WalkerWorker<ExecutionNode> {
   // note: this class will never free the contents of this map
   std::unordered_map<size_t, ExecutionNode*>* _changes;
   bool* _hasEmptyResult;
+  bool _viewMode;
 };
 }  // namespace aql
 }  // namespace arangodb
