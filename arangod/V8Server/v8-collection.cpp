@@ -981,9 +981,11 @@ static void JS_DropVocbaseCol(v8::FunctionCallbackInfo<v8::Value> const& args) {
   if (ExecContext::CURRENT != nullptr && auth->isActive()) {
     AuthLevel level = ExecContext::CURRENT->databaseAuthLevel();
     AuthLevel level2 = auth->canUseCollection(ExecContext::CURRENT->user(),
-                                              ExecContext::CURRENT->database(), collection->name());
+                                              ExecContext::CURRENT->database(),
+                                              collection->name());
     if (level != AuthLevel::RW || level2 != AuthLevel::RW) {
-      TRI_V8_THROW_EXCEPTION(TRI_ERROR_FORBIDDEN);
+      TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN,
+                                     "Insufficient rights to drop collection");
     }
   }
   
@@ -1476,7 +1478,7 @@ static void JS_PropertiesVocbaseCol(
                                          ExecContext::CURRENT->database(),
                                          collection->name());
     if ((isModification && (level != AuthLevel::RW || level2 != AuthLevel::RW)) ||
-        level == AuthLevel::NONE) {
+        level == AuthLevel::NONE || level2 == AuthLevel::NONE) {
       TRI_V8_THROW_EXCEPTION(TRI_ERROR_FORBIDDEN);
     }
   }
@@ -2767,6 +2769,18 @@ static void JS_TruncateVocbaseCol(
     TRI_V8_THROW_EXCEPTION_INTERNAL("cannot extract collection");
   }
 
+  // Manually check this here, because truncate messes up the return code
+  AuthenticationFeature* auth = FeatureCacheFeature::instance()->authenticationFeature();
+  if (auth->isActive() && ExecContext::CURRENT != nullptr) {
+    CollectionNameResolver resolver(collection->vocbase());
+    std::string const cName = resolver.getCollectionNameCluster(collection->cid());
+    AuthLevel level = auth->canUseCollection(ExecContext::CURRENT->user(),
+                                             collection->vocbase()->name(), cName);
+    if (level != AuthLevel::RW) {
+      TRI_V8_THROW_EXCEPTION(TRI_ERROR_FORBIDDEN);
+    }
+  }
+  
   // optionally specify non trx remove
   bool unsafeTruncate = false;
   if (args.Length() > 0) {
@@ -2977,17 +2991,6 @@ static void JS_CollectionVocbase(
   arangodb::LogicalCollection const* collection = nullptr;
   
   std::string const name = TRI_ObjectToString(val);
-  if (ExecContext::CURRENT != nullptr) {
-    AuthenticationFeature* auth = AuthenticationFeature::INSTANCE;
-    TRI_ASSERT(auth != nullptr);
-    AuthLevel level = auth->canUseCollection(ExecContext::CURRENT->user(),
-                                             ExecContext::CURRENT->database(),
-                                             name);
-    if (level == AuthLevel::NONE) {
-      TRI_V8_THROW_EXCEPTION(TRI_ERROR_FORBIDDEN);
-    }
-  }
-
   if (ServerState::instance()->isCoordinator()) {
     try {
       std::shared_ptr<LogicalCollection> const ci =
@@ -3006,8 +3009,18 @@ static void JS_CollectionVocbase(
     TRI_V8_RETURN_NULL();
   }
 
-  v8::Handle<v8::Value> result = WrapCollection(isolate, collection);
+  AuthenticationFeature* auth = AuthenticationFeature::INSTANCE;
+  if (ExecContext::CURRENT != nullptr && auth != nullptr) {
+    AuthLevel level = auth->canUseCollection(ExecContext::CURRENT->user(),
+                                             ExecContext::CURRENT->database(),
+                                             name);
+    if (level == AuthLevel::NONE) {
+      TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN,
+                                     "No access to collection");
+    }
+  }
 
+  v8::Handle<v8::Value> result = WrapCollection(isolate, collection);
   if (result.IsEmpty()) {
     TRI_V8_THROW_EXCEPTION_MEMORY();
   }

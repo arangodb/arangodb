@@ -237,9 +237,6 @@ DatabaseFeature::DatabaseFeature(ApplicationServer* server)
   startsAfter("DatabasePath");
   startsAfter("EngineSelector");
   startsAfter("InitDatabase");
-  startsAfter("MMFilesEngine"); // TODO: remove from here! Currently, we need the _vocbase in systemDatabase()
-  startsAfter("MMFilesPersistentIndex"); // TODO: remove from here!
-  startsAfter("RocksDBEngine");
   startsAfter("Scheduler");
   startsAfter("StorageEngine");
 }
@@ -438,8 +435,10 @@ void DatabaseFeature::unprepare() {
 }
 
 /// @brief will be called when the recovery phase has run
-/// this will start the compactors and replication appliers for all databases
-int DatabaseFeature::recoveryDone() {
+/// this will call the engine-specific recoveryDone() procedures
+/// and will execute engine-unspecific operations (such as starting
+/// the replication appliers) for all databases
+void DatabaseFeature::recoveryDone() {
   StorageEngine* engine = EngineSelectorFeature::ENGINE;
 
   auto unuser(_databasesProtector.use());
@@ -451,10 +450,10 @@ int DatabaseFeature::recoveryDone() {
     TRI_ASSERT(vocbase != nullptr);
     TRI_ASSERT(vocbase->type() == TRI_VOCBASE_TYPE_NORMAL);
 
-    // start the compactor for the database
+    // execute the engine-specific callbacks on successful recovery
     engine->recoveryDone(vocbase);
 
-    // start the replication applier
+    // start the replication applier, which is engine-unspecific
     TRI_ASSERT(vocbase->replicationApplier() != nullptr);
 
     if (vocbase->replicationApplier()->_configuration._autoStart) {
@@ -471,8 +470,6 @@ int DatabaseFeature::recoveryDone() {
       }
     }
   }
-
-  return TRI_ERROR_NO_ERROR;
 }
 
 /// @brief create a new database

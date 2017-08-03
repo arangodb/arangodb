@@ -505,6 +505,8 @@ void RocksDBEngine::start() {
   _counterManager.reset(new RocksDBCounterManager(_db));
   _replicationManager.reset(new RocksDBReplicationManager());
 
+  _counterManager->runRecovery();
+
   double const counter_sync_seconds = 2.5;
   _backgroundThread.reset(
       new RocksDBBackgroundThread(this, counter_sync_seconds));

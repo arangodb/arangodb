@@ -61,8 +61,8 @@ class Methods;
 
 class ChecksumResult: public Result {
  public:
-  ChecksumResult(Result result) : Result(result) {}
-  ChecksumResult(VPackBuilder builder): Result(TRI_ERROR_NO_ERROR), _builder(builder) {}
+  explicit ChecksumResult(Result result) : Result(result) {}
+  explicit ChecksumResult(VPackBuilder&& builder): Result(TRI_ERROR_NO_ERROR), _builder(std::move(builder)) {}
 
   VPackBuilder builder() {
     return _builder;
@@ -217,10 +217,12 @@ class LogicalCollection {
 
   // SECTION: Replication
   int replicationFactor() const;
+  void replicationFactor(int);
   bool isSatellite() const;
 
   // SECTION: Sharding
   int numberOfShards() const;
+  void numberOfShards(int);
   bool allowUserKeys() const;
   virtual bool usesDefaultShardKeys() const;
   std::vector<std::string> const& shardKeys() const;
