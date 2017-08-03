@@ -35,11 +35,22 @@ using namespace arangodb::application_features;
 using namespace arangodb::basics;
 using namespace arangodb::options;
 
+namespace {
+// fail and abort with the specified message
+static void failCallback(std::string const& message) {
+  LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << "error. cannot proceed. reason: " << message;
+  FATAL_ERROR_EXIT();
+}
+}
+
 ApplicationServer* ApplicationServer::server = nullptr;
 
 ApplicationServer::ApplicationServer(std::shared_ptr<ProgramOptions> options,
     const char *binaryPath)
     : _options(options), _stopping(false), _binaryPath(binaryPath) {
+  // register callback function for failures
+  fail = failCallback;
+  
   if (ApplicationServer::server != nullptr) {
     LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "ApplicationServer initialized twice";
   }
@@ -275,12 +286,6 @@ VPackBuilder ApplicationServer::options(
   return _options->toVPack(false, excludes);
 }
 
-// fail and abort with the specified message
-void ApplicationServer::fail(std::string const& message) {
-  LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << "error. cannot proceed. reason: " << message;
-  FATAL_ERROR_EXIT();
-}
-
 // walks over all features and runs a callback function for them
 // the order in which features are visited is unspecified
 void ApplicationServer::apply(std::function<void(ApplicationFeature*)> callback,
@@ -371,6 +376,29 @@ void ApplicationServer::validateOptions() {
 void ApplicationServer::setupDependencies(bool failOnMissing) {
   LOG_TOPIC(TRACE, Logger::STARTUP)
       << "ApplicationServer::validateDependencies";
+
+  // apply all "startsBefore" values
+  for (auto& it : _features) {
+    for (auto const& other : it.second->startsBefore()) {
+      if (!this->exists(other)) {
+        if (failOnMissing) {
+          fail("feature '" + it.second->name() +
+               "' depends on unknown feature '" + other + "'");
+        }
+        continue;
+      }
+/*
+      if (failOnMissing &&
+          it.second->isEnabled() && 
+          !this->feature(other)->isEnabled()) {
+        fail("enabled feature '" + it.second->name() +
+             "' depends on other feature '" + other +
+             "', which is disabled");
+      }
+*/
+      this->feature(other)->startsAfter(it.second->name());
+    }
+  }
 
   // calculate ancestors for all features
   for (auto& it : _features) {
@@ -583,6 +611,7 @@ void ApplicationServer::start() {
         if (feature->state() == FeatureState::STARTED) {
           LOG_TOPIC(TRACE, Logger::STARTUP) << "forcefully stopping feature '" << feature->name() << "'";
           try {
+            feature->beginShutdown();
             feature->stop();
             feature->state(FeatureState::STOPPED);
           } catch (...) {

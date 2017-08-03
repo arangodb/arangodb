@@ -45,6 +45,7 @@
 #include <velocypack/velocypack-aliases.h>
 
 #include <algorithm>
+#include <numeric>
 #include <vector>
 
 using namespace arangodb::basics;
@@ -804,6 +805,123 @@ int countOnCoordinator(std::string const& dbname, std::string const& collname,
     } else {
       return TRI_ERROR_CLUSTER_BACKEND_UNAVAILABLE;
     }
+  }
+
+  return TRI_ERROR_NO_ERROR;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 
+////////////////////////////////////////////////////////////////////////////////
+
+
+int selectivityEstimatesOnCoordinator(
+  std::string const& dbname,
+  std::string const& collname,
+  std::unordered_map<std::string, double>& result) {
+
+  // Set a few variables needed for our work:
+  ClusterInfo* ci = ClusterInfo::instance();
+  auto cc = ClusterComm::instance();
+  if (cc == nullptr) {
+    // nullptr happens only during controlled shutdown
+    return TRI_ERROR_SHUTTING_DOWN;
+  }
+
+  result.clear();
+
+  // First determine the collection ID from the name:
+  std::shared_ptr<LogicalCollection> collinfo;
+  try {
+    collinfo = ci->getCollection(dbname, collname);
+  } catch (...) {
+    return TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND;
+  }
+  TRI_ASSERT(collinfo != nullptr);
+
+  auto shards = collinfo->shardIds();
+  std::vector<ClusterCommRequest> requests;
+  std::string requestsUrl;
+  auto body = std::make_shared<std::string>();
+  for (auto const& p : *shards) {
+    requestsUrl = "/_db/" + StringUtils::urlEncode(dbname) +
+                  "/_api/index?collection=" + StringUtils::urlEncode(p.first);
+    requests.emplace_back("shard:" + p.first,
+                          arangodb::rest::RequestType::GET,
+                          requestsUrl, body);
+  }
+
+  // format of expected answer:
+  // in identifiers is a map that has keys in the format
+  // s<shardid>/<indexid> and index information as value
+
+  // {"code":200
+  // ,"error":false
+  // ,"identifiers":{ "s10004/0"    :{"fields":["_key"]
+  //                                 ,"id":"s10004/0"
+  //                                 ,"selectivityEstimate":1
+  //                                 ,"sparse":false
+  //                                 ,"type":"primary"
+  //                                 ,"unique":true
+  //                                 }
+  //                 ,"s10004/10005":{"deduplicate":true
+  //                                 ,"fields":["user"]
+  //                                 ,"id":"s10004/10005"
+  //                                 ,"selectivityEstimate":1
+  //                                 ,"sparse":true
+  //                                 ,"type":"hash"
+  //                                 ,"unique":true
+  //                                 }
+  //                 }
+  // }
+
+  size_t nrDone = 0;
+  cc->performRequests(requests, CL_DEFAULT_TIMEOUT, nrDone, Logger::QUERIES, true);
+
+  std::map<std::string,std::vector<double>> indexEstimates;
+
+  for (auto& req : requests) {
+    auto& res = req.result;
+    if (res.status == CL_COMM_RECEIVED) {
+      if (res.answer_code == arangodb::rest::ResponseCode::OK) {
+        std::shared_ptr<VPackBuilder> answerBuilder = ExtractAnswer(res);
+        VPackSlice answer = answerBuilder->slice();
+
+        if (answer.isObject()) {
+          // add to the total
+          for(auto const& identifier : VPackObjectIterator(answer.get("identifiers"))){
+            if(identifier.value.hasKey("selectivityEstimate")) {
+              StringRef shard_index_id(identifier.key);
+              auto split_point = std::find(shard_index_id.begin(), shard_index_id.end(),'/');
+              std::string shard(shard_index_id.begin(), split_point );
+              std::string index(split_point + 1, shard_index_id.end());
+
+              double estimate = arangodb::basics::VelocyPackHelper::getNumericValue(
+                identifier.value, "selectivityEstimate", 0.0
+              );
+              indexEstimates[index].push_back(estimate);
+            }
+          }
+        } else {
+          return TRI_ERROR_INTERNAL;
+        }
+      } else {
+        return static_cast<int>(res.answer_code);
+      }
+    } else {
+      return TRI_ERROR_CLUSTER_BACKEND_UNAVAILABLE;
+    }
+  }
+
+  auto aggregate_indexes = [](std::vector<double> vec) -> double {
+    TRI_ASSERT(!vec.empty());
+    double rv = std::accumulate(vec.begin(),vec.end(), 0.0);
+    rv /= static_cast<double>(vec.size());
+    return rv;
+  };
+
+  for (auto const& p : indexEstimates){
+    result[p.first] = aggregate_indexes(p.second);
   }
 
   return TRI_ERROR_NO_ERROR;
@@ -2304,17 +2422,15 @@ std::unordered_map<std::string, std::vector<std::string>> distributeShards(
 }
 
 #ifndef USE_ENTERPRISE
-std::unique_ptr<LogicalCollection>
-ClusterMethods::createCollectionOnCoordinator(TRI_col_type_e collectionType,
-                                              TRI_vocbase_t* vocbase,
-                                              VPackSlice parameters,
-                                              bool ignoreDistributeShardsLikeErrors,
-                                              bool waitForSyncReplication) {
-  auto col = std::make_unique<LogicalCollection>(vocbase, parameters);
+std::unique_ptr<LogicalCollection> ClusterMethods::createCollectionOnCoordinator(
+  TRI_col_type_e collectionType, TRI_vocbase_t* vocbase, VPackSlice parameters,
+  bool ignoreDistributeShardsLikeErrors, bool waitForSyncReplication) {
+  auto col = std::make_unique<LogicalCollection>(vocbase, parameters);  
     // Collection is a temporary collection object that undergoes sanity checks etc.
     // It is not used anywhere and will be cleaned up after this call.
     // Persist collection will return the real object.
-  return persistCollectionInAgency(col.get(), ignoreDistributeShardsLikeErrors, waitForSyncReplication);
+  return persistCollectionInAgency(
+    col.get(), ignoreDistributeShardsLikeErrors, waitForSyncReplication, parameters);
 }
 #endif
 
@@ -2322,34 +2438,79 @@ ClusterMethods::createCollectionOnCoordinator(TRI_col_type_e collectionType,
 /// @brief Persist collection in Agency and trigger shard creation process
 ////////////////////////////////////////////////////////////////////////////////
 
-std::unique_ptr<LogicalCollection>
-ClusterMethods::persistCollectionInAgency(
-  LogicalCollection* col, bool ignoreDistributeShardsLikeErrors, bool waitForSyncReplication) {
+std::unique_ptr<LogicalCollection> ClusterMethods::persistCollectionInAgency(
+  LogicalCollection* col, bool ignoreDistributeShardsLikeErrors,
+  bool waitForSyncReplication, VPackSlice parameters) {
+  
   std::string distributeShardsLike = col->distributeShardsLike();
   std::vector<std::string> avoid = col->avoidServers();
   size_t replicationFactor = col->replicationFactor();
+  size_t numberOfShards = col->numberOfShards();
+  std::string const replicationFactorStr("replicationFactor");
+  std::string const numberOfShardsStr("numberOfShards");
 
   ClusterInfo* ci = ClusterInfo::instance();
   std::vector<std::string> dbServers;
+  
   if (!distributeShardsLike.empty()) {
+
     CollectionNameResolver resolver(col->vocbase());
     TRI_voc_cid_t otherCid =
       resolver.getCollectionIdCluster(distributeShardsLike);
-
+    
     if (otherCid != 0) {
-      bool chainOfDistributeShardsLike = false;
 
+      bool chainOfDistributeShardsLike = false;
+      bool numberOfShardsConflict = false;
+      bool replicationFactorConflict = false;
       std::string otherCidString 
         = arangodb::basics::StringUtils::itoa(otherCid);
 
+        VPackBuilder builder;
+        { VPackObjectBuilder a(&builder);
+          col->toVelocyPack(builder,false); }
+        
       try {
-        std::shared_ptr<LogicalCollection> collInfo =
-            ci->getCollection(col->dbName(), otherCidString);
-        if (!collInfo->distributeShardsLike().empty()) {
+
+        std::shared_ptr<LogicalCollection> other =
+          ci->getCollection(col->dbName(), otherCidString);
+
+        size_t otherReplFactor = size_t(other->replicationFactor());
+
+        if (!col->isSmart()) {
+          if (parameters.hasKey(replicationFactorStr)) {
+            replicationFactor = parameters.get(replicationFactorStr).getNumber<size_t>();
+            if (otherReplFactor != replicationFactor) {
+              replicationFactor = otherReplFactor;
+              col->replicationFactor(otherReplFactor);
+              //replicationFactorConflict = true;
+            }
+          } else {
+            replicationFactor = otherReplFactor;
+            col->replicationFactor(otherReplFactor);
+          }
+
+          size_t otherNumOfShards = size_t(other->numberOfShards());
+          if (parameters.hasKey(numberOfShardsStr)) {
+            numberOfShards = parameters.get(numberOfShardsStr).getNumber<size_t>();
+            if (otherNumOfShards != numberOfShards) {
+              numberOfShards = otherNumOfShards;
+              col->replicationFactor(otherNumOfShards);
+              //numberOfShardsConflict = true;
+            }
+          } else {
+            numberOfShards = otherNumOfShards;
+            col->replicationFactor(otherNumOfShards);
+          }
+        
+        }          
+        if (!other->distributeShardsLike().empty()) {
           chainOfDistributeShardsLike = true;
         }
-        auto shards = collInfo->shardIds();
+        
+        auto shards = other->shardIds();
         auto shardList = ci->getShardList(otherCidString);
+        
         for (auto const& s : *shardList) {
           auto it = shards->find(s);
           if (it != shards->end()) {
@@ -2358,11 +2519,25 @@ ClusterMethods::persistCollectionInAgency(
             }
           }
         }
+
+        
+        
       } catch (...) {}
 
+      if (replicationFactorConflict) {
+        THROW_ARANGO_EXCEPTION(
+          TRI_ERROR_CLUSTER_DISTRIBUTE_SHARDS_LIKE_REPLICATION_FACTOR);
+      }
+      
+      if (numberOfShardsConflict) {
+        THROW_ARANGO_EXCEPTION(
+          TRI_ERROR_CLUSTER_DISTRIBUTE_SHARDS_LIKE_NUMBER_OF_SHARDS);
+      }
+      
       if (chainOfDistributeShardsLike) {
         THROW_ARANGO_EXCEPTION(TRI_ERROR_CLUSTER_CHAIN_OF_DISTRIBUTESHARDSLIKE);
       }
+
       col->distributeShardsLike(otherCidString);
     } else {
       dbServers = ci->getCurrentDBServers();
@@ -2401,8 +2576,7 @@ ClusterMethods::persistCollectionInAgency(
   // Now create the shards:
   auto shards = std::make_shared<
       std::unordered_map<std::string, std::vector<std::string>>>(
-      arangodb::distributeShards(col->numberOfShards(),
-                                 col->replicationFactor(), dbServers));
+      arangodb::distributeShards(numberOfShards, replicationFactor, dbServers));
   if (shards->empty() && !col->isSmart()) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
                                    "no database servers found in cluster");
@@ -2419,7 +2593,7 @@ ClusterMethods::persistCollectionInAgency(
   std::string errorMsg;
   int myerrno = ci->createCollectionCoordinator(
       col->dbName(), col->cid_as_string(),
-      col->numberOfShards(), col->replicationFactor(), waitForSyncReplication, velocy.slice(), errorMsg, 240.0);
+      numberOfShards, replicationFactor, waitForSyncReplication, velocy.slice(), errorMsg, 240.0);
 
   if (myerrno != TRI_ERROR_NO_ERROR) {
     if (errorMsg.empty()) {

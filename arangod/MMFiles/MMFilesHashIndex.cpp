@@ -483,20 +483,11 @@ MMFilesHashIndex::~MMFilesHashIndex() {
 }
 
 /// @brief returns a selectivity estimate for the index
-double MMFilesHashIndex::selectivityEstimate(StringRef const*) const {
-  if (_unique) {
-    return 1.0;
-  }
-
-  if (_multiArray == nullptr || ServerState::instance()->isCoordinator()) {
-    // use hard-coded selectivity estimate in case of cluster coordinator
+double MMFilesHashIndex::selectivityEstimateLocal(StringRef const*) const {
+  if (_multiArray == nullptr) {
     return 0.1;
   }
-
-  double estimate = _multiArray->_hashArray->selectivity();
-  TRI_ASSERT(estimate >= 0.0 &&
-             estimate <= 1.00001);  // floating-point tolerance
-  return estimate;
+  return _multiArray->_hashArray->selectivity();
 }
 
 /// @brief returns the index memory usage

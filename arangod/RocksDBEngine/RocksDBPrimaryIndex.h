@@ -97,7 +97,7 @@ class RocksDBPrimaryIndex final : public RocksDBIndex {
 
   bool hasSelectivityEstimate() const override { return true; }
 
-  double selectivityEstimate(
+  double selectivityEstimateLocal(
       arangodb::StringRef const* = nullptr) const override {
     return 1.0;
   }

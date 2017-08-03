@@ -54,18 +54,16 @@ AgencyFeature::AgencyFeature(application_features::ApplicationServer* server)
       _compactionKeepSize(10000),
       _maxAppendSize(250),
       _supervisionGracePeriod(10.0),
-      _cmdLineTimings(false)
-{
+      _cmdLineTimings(false) {
   setOptional(true);
   requiresElevatedPrivileges(false);
+  startsAfter("Cluster");
   startsAfter("Database");
   startsAfter("Endpoint");
   startsAfter("QueryRegistry");
   startsAfter("Random");
-  startsAfter("MMFilesWalRecovery");
   startsAfter("Scheduler");
   startsAfter("Server");
-  startsAfter("Cluster");
 }
 
 AgencyFeature::~AgencyFeature() {}

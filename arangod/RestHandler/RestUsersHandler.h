@@ -44,6 +44,9 @@ class RestUsersHandler : public arangodb::RestBaseHandler {
   /// helper to generate a compliant response for individual user requests
   void generateUserResult(rest::ResponseCode code, VPackBuilder const& doc);
 
+  void generateDatabaseResult(AuthInfo* authInfo, std::string const& user,
+                              bool full);
+
   RestStatus getRequest(AuthInfo*);
   RestStatus postRequest(AuthInfo*);
   RestStatus putRequest(AuthInfo*);

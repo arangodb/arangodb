@@ -866,6 +866,9 @@ AqlValue Functions::ToArray(arangodb::aql::Query* query,
 AqlValue Functions::Length(arangodb::aql::Query* query,
                            transaction::Methods* trx,
                            VPackFunctionParameters const& parameters) {
+
+  ValidateParameters(parameters, "LENGTH", 1, 1);
+
   transaction::BuilderLeaser builder(trx);
 
   AqlValue value = ExtractFunctionParameterValue(trx, parameters, 0);
@@ -1148,6 +1151,108 @@ AqlValue Functions::ConcatSeparator(arangodb::aql::Query* query,
   } catch (...) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
   }
+}
+
+/// @brief function CHAR_LENGTH
+AqlValue Functions::CharLength(arangodb::aql::Query* query,
+                                    transaction::Methods* trx,
+                                    VPackFunctionParameters const& parameters) {
+  ValidateParameters(parameters, "CHAR_LENGTH", 1, 1);
+
+  transaction::BuilderLeaser builder(trx);
+
+  AqlValue value = ExtractFunctionParameterValue(trx, parameters, 0);
+  size_t length = 0;
+
+  if (value.isArray() || value.isObject()) {
+    AqlValueMaterializer materializer(trx);
+    VPackSlice slice = materializer.slice(value, false);
+
+    transaction::StringBufferLeaser buffer(trx);
+    arangodb::basics::VPackStringBufferAdapter adapter(buffer->stringBuffer());
+
+    VPackDumper dumper(&adapter, trx->transactionContextPtr()->getVPackOptions());
+    dumper.dump(slice);
+
+    length = buffer->length();
+
+  } else if (value.isNull(true)) {
+    length = 4;
+
+  } else if (value.isBoolean()) {
+    if (value.toBoolean()) {
+      length = 4;
+    } else {
+      length = 5;
+    }
+
+  } else if (value.isNumber()) {
+    double tmp = value.toDouble(trx);
+    if (std::isnan(tmp) || !std::isfinite(tmp)) {
+      length = 0;
+    } else {
+      char buffer[24];
+      length = static_cast<size_t>(fpconv_dtoa(tmp, buffer));
+    }
+
+  } else if (value.isString()) {
+    VPackValueLength l;
+    char const* p = value.slice().getString(l);
+    length = TRI_CharLengthUtf8String(p, l);
+  }
+
+  builder->add(VPackValue(static_cast<uint64_t>(length)));
+  return AqlValue(builder.get());
+}
+
+// #include "unicode/utypes.h"
+// #include "unicode/uchar.h"
+// #include "unicode/locid.h"
+// #include "unicode/ustring.h"
+// #include "unicode/ucnv.h"
+#include "unicode/unistr.h"
+
+
+/// @brief function LOWER
+AqlValue Functions::Lower(arangodb::aql::Query* query,
+                                    transaction::Methods* trx,
+                                    VPackFunctionParameters const& parameters) {
+  ValidateParameters(parameters, "LOWER", 1, 1);
+
+  std::string utf8;
+  AqlValue value = ExtractFunctionParameterValue(trx, parameters, 0);
+
+  transaction::StringBufferLeaser buffer(trx);
+  arangodb::basics::VPackStringBufferAdapter adapter(buffer->stringBuffer());
+
+  AppendAsString(trx, adapter, value);
+
+  UnicodeString s(buffer->c_str(), buffer->length());
+  s.toLower(NULL);
+  s.toUTF8String(utf8);
+
+  return AqlValue(utf8.c_str(), utf8.length());
+}
+
+/// @brief function UPPER
+AqlValue Functions::Upper(arangodb::aql::Query* query,
+                                    transaction::Methods* trx,
+                                    VPackFunctionParameters const& parameters) {
+  ValidateParameters(parameters, "UPPER", 1, 1);
+
+  std::string utf8;
+  AqlValue value = ExtractFunctionParameterValue(trx, parameters, 0);
+
+  transaction::StringBufferLeaser buffer(trx);
+  arangodb::basics::VPackStringBufferAdapter adapter(buffer->stringBuffer());
+
+  AppendAsString(trx, adapter, value);
+
+  UnicodeString s(buffer->c_str(), buffer->length());
+  s.toUpper(NULL);
+  s.toUTF8String(utf8);
+
+  return AqlValue(utf8.c_str(), utf8.length());
 }
 
 /// @brief function LIKE
