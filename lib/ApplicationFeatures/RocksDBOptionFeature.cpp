@@ -91,11 +91,8 @@ RocksDBOptionFeature::RocksDBOptionFeature(
     testSize >>= 1;
   }
   // setting the number of background jobs to
-  size_t procs = TRI_numberProcessors();
-  if (procs > 0) {
-    _maxBackgroundJobs = procs;
-  }
-
+  _maxBackgroundJobs = std::max((size_t)2,
+                                std::min(TRI_numberProcessors(), (size_t)8));
   setOptional(true);
   requiresElevatedPrivileges(false);
   startsAfter("Daemon");
@@ -314,10 +311,7 @@ void RocksDBOptionFeature::validateOptions(
 }
 
 void RocksDBOptionFeature::start() {
-  uint32_t max = _maxBackgroundJobs / 4;
-  if (ServerState::instance()->isCoordinator()) {
-    max = 4;
-  }
+  uint32_t max = _maxBackgroundJobs / 2;
   uint32_t clamped = std::max(std::min((uint32_t)TRI_numberProcessors(), max), 1U);
   // lets test this out
   if (_numThreadsHigh == 0) {
