@@ -1,6 +1,8 @@
 devel
 -----
 
+* fix potential deadlock errors in collector thread
+
 * disallow the usage of volatile collections in the RocksDB engine 
   by throwing an error when a collection is created with attribute 
   `isVolatile` set to `true`. 
