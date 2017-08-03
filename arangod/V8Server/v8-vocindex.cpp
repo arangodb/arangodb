@@ -306,8 +306,9 @@ static void CreateVocBase(v8::FunctionCallbackInfo<v8::Value> const& args,
     TRI_V8_THROW_EXCEPTION_MEMORY();
   }
   
+  // do not grant rights on system collections
   // in case of success we grant the creating user RW access
-  if (auth->isActive() && ExecContext::CURRENT != nullptr &&
+  if (name[0] != '_' && ExecContext::CURRENT != nullptr &&
       (ServerState::instance()->isCoordinator() ||
        !ServerState::instance()->isRunningInCluster())) {
     // this should not fail, we can not get here without database RW access

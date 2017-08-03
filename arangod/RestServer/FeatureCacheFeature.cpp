@@ -37,6 +37,14 @@ FeatureCacheFeature::FeatureCacheFeature(application_features::ApplicationServer
       _databaseFeature(nullptr) {
   setOptional(false);
   requiresElevatedPrivileges(false);
+
+  // reset it so it can be used in multiple tests
+  Instance = nullptr;
+}
+
+FeatureCacheFeature::~FeatureCacheFeature() {
+  // reset it so it can be used in multiple tests
+  Instance = nullptr;
 }
 
 void FeatureCacheFeature::prepare() {

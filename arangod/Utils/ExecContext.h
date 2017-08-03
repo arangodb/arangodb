@@ -47,12 +47,13 @@ class ExecContext {
   std::string const& database() const { return _database; }
   AuthLevel systemAuthLevel() const { return _systemAuthLevel; };
   AuthLevel databaseAuthLevel() const { return _databaseAuthLevel; };
-
- protected:
-  std::string _user;
+  ExecContext* copy() const;
+  
+ private:
+  std::string const _user;
   std::string _database;
-  AuthLevel _systemAuthLevel;
-  AuthLevel _databaseAuthLevel;
+  AuthLevel const _systemAuthLevel;
+  AuthLevel const _databaseAuthLevel;
 };
 }
 
