@@ -15,28 +15,8 @@
 
 namespace arangodb {
 
-class v8gHelper {
-  // raii helper
-  TRI_v8_global_t* _v8g;
-  v8::Isolate* _isolate;
-
-public:
-  v8gHelper(v8::Isolate* isolate
-           ,v8::Handle<v8::Value>& request)
-           : _isolate(isolate)
-  {
-    TRI_GET_GLOBALS();
-    _v8g = v8g;
-    _v8g->_currentRequest = request;
-  }
-
-  ~v8gHelper() {
-    _v8g->_currentRequest = v8::Undefined(_isolate);
-  }
-};
 
 Result executeTransaction(TRI_vocbase_t* database, VPackSlice slice, std::string portType, VPackBuilder& builder){
-
   Result rv;
 
   if(!slice.isObject()){
@@ -58,9 +38,7 @@ Result executeTransaction(TRI_vocbase_t* database, VPackSlice slice, std::string
 
     v8::Handle<v8::Value> result;
     v8::TryCatch tryCatch;
-    bool canContinue = true;
 
-    TRI_GET_GLOBALS();
     v8::Handle<v8::Object> request = v8::Object::New(isolate);
     v8::Handle<v8::Value> jsPortTypeKey= TRI_V8_ASCII_STRING("portType");
     v8::Handle<v8::Value> jsPortTypeValue = TRI_V8_ASCII_STRING(portType.c_str());
@@ -70,12 +48,9 @@ Result executeTransaction(TRI_vocbase_t* database, VPackSlice slice, std::string
     }
     {
       auto requestVal = v8::Handle<v8::Value>::Cast(request);
-      v8gHelper globalVars(isolate, requestVal);
-      rv = executeTransactionJS(context->_isolate, in, result, tryCatch, canContinue);
-    }
-    if(!canContinue) {
-      //we need to cancel the context
-      v8g->_canceled = true;
+      auto responseVal = v8::Handle<v8::Value>::Cast(v8::Undefined(isolate));
+      v8gHelper globalVars(isolate, tryCatch, requestVal, responseVal);
+      rv = executeTransactionJS(context->_isolate, in, result, tryCatch);
     }
 
     if (tryCatch.HasCaught()){
@@ -99,68 +74,14 @@ Result executeTransaction(TRI_vocbase_t* database, VPackSlice slice, std::string
   return rv;
 }
 
-// could go into basic lib
-std::tuple<bool,bool,Result> extractArangoError(v8::Isolate* isolate, v8::TryCatch& tryCatch){
-  // function tries to receive arango error form tryCatch Object
-  // return tuple:
-	//   bool - can continue
-  //   bool - could convert
-  //   result - extracted arango error
-  std::tuple<bool,bool,Result> rv = {};
-  std::get<0>(rv) = tryCatch.CanContinue();
-  std::get<1>(rv) = false;
-  v8::Handle<v8::Value> exception = tryCatch.Exception();
-  if(!exception->IsObject()){
-    return rv;
-  }
-
-  v8::Handle<v8::Object> object = v8::Handle<v8::Object>::Cast(exception);
-
-  try {
-
-    if(object->Has(TRI_V8_ASCII_STRING("errorNum")) &&
-       object->Has(TRI_V8_ASCII_STRING("errorMessage"))
-      )
-    {
-      std::uint64_t errorNum = TRI_ObjectToInt64(object->Get(TRI_V8_ASCII_STRING("errorNum")));
-      std::string  errorMessage = *v8::String::Utf8Value(object->Get(TRI_V8_ASCII_STRING("errorMessage")));
-      std::get<1>(rv) = true;
-      std::get<2>(rv).reset(errorNum,errorMessage);
-      tryCatch.Reset();
-      return rv;
-    }
-
-    if(object->Has(TRI_V8_ASCII_STRING("name")) &&
-       object->Has(TRI_V8_ASCII_STRING("message"))
-      )
-    {
-      std::string  name = *v8::String::Utf8Value(object->Get(TRI_V8_ASCII_STRING("name")));
-      std::string  message = *v8::String::Utf8Value(object->Get(TRI_V8_ASCII_STRING("message")));
-      if(name == "TypeError"){
-        std::get<2>(rv).reset(TRI_ERROR_TYPE_ERROR, message);
-      } else {
-        std::get<2>(rv).reset(TRI_ERROR_INTERNAL, name + ": " + message);
-      }
-      std::get<1>(rv) = true;
-      tryCatch.Reset();
-      return rv;
-    }
-  } catch (...) {
-    // fail to extract but do nothing about it
-  }
-
-  return rv;
-}
-
 Result executeTransactionJS(
     v8::Isolate* isolate,
     v8::Handle<v8::Value> const& arg,
     v8::Handle<v8::Value>& result,
-    v8::TryCatch& tryCatch,
-    bool& canContinue)
+    v8::TryCatch& tryCatch
+    )
 {
 
-  canContinue=true;
   Result rv;
 
   TRI_vocbase_t* vocbase = GetContextVocBase(isolate);
@@ -393,7 +314,6 @@ Result executeTransactionJS(
     if (tryCatch.HasCaught()) {
       trx.abort();
       std::tuple<bool,bool,Result> rvTuple = extractArangoError(isolate, tryCatch);
-      canContinue = std::get<0>(rvTuple);
       if (std::get<1>(rvTuple)){
         rv = std::get<2>(rvTuple);
       }

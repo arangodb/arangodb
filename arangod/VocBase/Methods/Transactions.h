@@ -15,7 +15,7 @@ namespace arangodb {
 Result executeTransaction(TRI_vocbase_t*, VPackSlice, std::string requestPortType, VPackBuilder&);
 
 Result executeTransactionJS(v8::Isolate*, v8::Handle<v8::Value> const& arg,
-    v8::Handle<v8::Value>& result, v8::TryCatch&, bool& failAtParsing);
+    v8::Handle<v8::Value>& result, v8::TryCatch&);
 
 }
 #endif

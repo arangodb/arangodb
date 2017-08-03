@@ -67,6 +67,7 @@
 #include "V8/JSLoader.h"
 #include "V8/V8LineEditor.h"
 #include "V8/v8-conv.h"
+#include "V8/v8-helper.h"
 #include "V8/v8-utils.h"
 #include "V8/v8-vpack.h"
 #include "V8Server/V8DealerFeature.h"
@@ -131,12 +132,10 @@ static void JS_Transaction(v8::FunctionCallbackInfo<v8::Value> const& args) {
   // filled by function
   v8::Handle<v8::Value> result;
   v8::TryCatch tryCatch;
-  bool canContinue = true;
-  Result rv = executeTransactionJS(isolate, args[0], result, tryCatch, canContinue);
+  Result rv = executeTransactionJS(isolate, args[0], result, tryCatch);
 
-  if(!canContinue){
-    TRI_GET_GLOBALS();
-    v8g->_canceled = true;
+  // do not rethrow if already canceled
+  if(isContextCanceled(isolate)){
     TRI_V8_RETURN(result);
   }
 
