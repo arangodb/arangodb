@@ -120,7 +120,7 @@
   }
 
   // we insert data and remove it
-  c = db._create("UnitTestsDumpTruncated", { isVolatile: true });
+  c = db._create("UnitTestsDumpTruncated", { isVolatile: db._engine().name === "mmfiles" });
   l = [];
   for (i = 0; i < 10000; ++i) {
     l.push({ _key: "test" + i, value1: i, value2: "this is a test", value3: "test" + i });

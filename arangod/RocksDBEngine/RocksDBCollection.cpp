@@ -90,6 +90,13 @@ RocksDBCollection::RocksDBCollection(LogicalCollection* collection,
       _cache(nullptr),
       _cachePresent(false),
       _useCache(false) {
+  
+  VPackSlice s = info.get("isVolatile");
+  if (s.isBoolean() && s.getBoolean()) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(
+          TRI_ERROR_BAD_PARAMETER,
+          "volatile collections are unsupported in the RocksDB engine");
+  }
   addCollectionMapping(_objectId, _logicalCollection->vocbase()->id(),
                        _logicalCollection->cid());
   if (_useCache) {
@@ -136,6 +143,7 @@ void RocksDBCollection::setPath(std::string const&) {
 
 arangodb::Result RocksDBCollection::updateProperties(VPackSlice const& slice,
                                                      bool doSync) {
+
   // nothing to do
   return arangodb::Result{};
 }
