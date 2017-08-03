@@ -288,7 +288,7 @@ static int LockCollection(TRI_transaction_collection_t* trxCollection,
     timeout = 0.00000001;
   }
   
-  bool const useDeadlockDetector = !IsSingleOperationTransaction(trx);
+  bool const useDeadlockDetector = (!IsSingleOperationTransaction(trx) && !HasHint(trx, TRI_TRANSACTION_HINT_NO_DLD));
 
   int res;
   if (type == TRI_TRANSACTION_READ) {
@@ -356,7 +356,7 @@ static int UnlockCollection(TRI_transaction_collection_t* trxCollection,
   }
 
   TRI_transaction_t* trx = trxCollection->_transaction;
-  bool const useDeadlockDetector = !IsSingleOperationTransaction(trx);
+  bool const useDeadlockDetector = (!IsSingleOperationTransaction(trx) && !HasHint(trx, TRI_TRANSACTION_HINT_NO_DLD));
 
   LogicalCollection* collection = trxCollection->_collection;
   TRI_ASSERT(collection != nullptr);
