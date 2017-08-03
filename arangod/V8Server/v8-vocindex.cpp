@@ -267,7 +267,8 @@ static void CreateVocBase(v8::FunctionCallbackInfo<v8::Value> const& args,
 
   v8::Handle<v8::Value> result;
   if (ServerState::instance()->isCoordinator()) {
-    bool createWaitsForSyncReplication = application_features::ApplicationServer::getFeature<ClusterFeature>("Cluster")->createWaitsForSyncReplication();
+    bool createWaitsForSyncReplication =
+      application_features::ApplicationServer::getFeature<ClusterFeature>("Cluster")->createWaitsForSyncReplication();
 
     if (args.Length() >= 3 && args[args.Length()-1]->IsObject()) {
       v8::Handle<v8::Object> obj = args[args.Length()-1]->ToObject();

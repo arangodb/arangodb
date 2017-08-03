@@ -144,6 +144,17 @@ credentials = '8d893d23-6714-4f35-a239-c847c798e080'
 // jenkins cache
 cacheDir = '/vol/cache/' + env.JOB_NAME.replaceAll('%', '_')
 
+// source branch for pull requests
+sourceBranchLabel = env.BRANCH_NAME
+
+if (env.BRANCH_NAME =~ /^PR-/) {
+  def prUrl = new URL("https://api.github.com/repos/arangodb/arangodb/pulls/${env.CHANGE_ID}")
+  sourceBranchLabel = new groovy.json.JsonSlurper().parseText(prUrl.text).head.label
+
+  def reg = ~/^arangodb:/
+  sourceBranchLabel = sourceBranchLabel - reg
+}
+
 // copy data to master cache
 def scpToMaster(os, from, to) {
     if (os == 'linux' || os == 'mac') {
@@ -191,21 +202,21 @@ def checkoutCommunity() {
 
 def checkoutEnterprise() {
     try {
-        echo "Trying enterprise branch ${env.BRANCH_NAME}"
+        echo "Trying enterprise branch ${sourceBranchLabel}"
 
         checkout(
             changelog: false,
             poll: false,
             scm: [
                 $class: 'GitSCM',
-                branches: [[name: "*/${env.BRANCH_NAME}"]],
+                branches: [[name: "*/${sourceBranchLabel}"]],
                 doGenerateSubmoduleConfigurations: false,
                 extensions: [[$class: 'RelativeTargetDirectory', relativeTargetDir: 'enterprise']],
                 submoduleCfg: [],
                 userRemoteConfigs: [[credentialsId: credentials, url: enterpriseRepo]]])
     }
     catch (exc) {
-        echo "Failed ${env.BRANCH_NAME}, trying enterprise branch devel"
+        echo "Failed ${sourceBranchLabel}, trying enterprise branch devel"
 
         checkout(
             changelog: false,
@@ -336,6 +347,7 @@ def checkCommitMessages() {
     }
 
     echo """BRANCH_NAME: ${env.BRANCH_NAME}
+SOURCE: ${sourceBranchLabel}
 CHANGE_ID: ${env.CHANGE_ID}
 CHANGE_TARGET: ${env.CHANGE_TARGET}
 JOB_NAME: ${env.JOB_NAME}
