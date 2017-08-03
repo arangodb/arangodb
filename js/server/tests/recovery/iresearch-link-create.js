@@ -43,12 +43,7 @@ function runSetup () {
 
   var meta = { links: { 'UnitTestsRecoveryDummy': { includeAllFields: true } } };
   db._dropView('UnitTestsRecoveryFail');
-  try {
-    db._createView('UnitTestsRecoveryFail', 'iresearch', meta);
-    fail();
-  } catch (err) {
-    // we are expecting an exception here
-  }
+  db._createView('UnitTestsRecoveryFail', 'iresearch', meta);
   
   db._dropView('UnitTestsRecoveryWithLink');
   db._createView('UnitTestsRecoveryWithLink', 'iresearch', {});
@@ -83,7 +78,10 @@ function recoverySuite () {
       assertEqual(v.properties().links, {});
 
       v = db._view('UnitTestsRecoveryFail');
-      assertNull(v);
+      assertEqual(v.name(), 'UnitTestsRecoveryFail');
+      assertEqual(v.type(), 'iresearch');
+      var p = v.properties().links;
+      assertEqual(v.properties().links, {});
 
       var meta = { links : { "UnitTestsRecoveryDummy" : { includeAllFields : true } } };
       v = db._view('UnitTestsRecoveryWithLink');
