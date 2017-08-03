@@ -1220,11 +1220,14 @@ AqlValue Functions::Lower(arangodb::aql::Query* query,
   ValidateParameters(parameters, "LOWER", 1, 1);
 
   std::string utf8;
-  VPackValueLength l;
   AqlValue value = ExtractFunctionParameterValue(trx, parameters, 0);
-  char const* p = value.slice().getString(l);
 
-  UnicodeString s(p, l);
+  transaction::StringBufferLeaser buffer(trx);
+  arangodb::basics::VPackStringBufferAdapter adapter(buffer->stringBuffer());
+
+  AppendAsString(trx, adapter, value);
+
+  UnicodeString s(buffer->c_str(), buffer->length());
   s.toLower(NULL);
   s.toUTF8String(utf8);
 
@@ -1238,11 +1241,14 @@ AqlValue Functions::Upper(arangodb::aql::Query* query,
   ValidateParameters(parameters, "UPPER", 1, 1);
 
   std::string utf8;
-  VPackValueLength l;
   AqlValue value = ExtractFunctionParameterValue(trx, parameters, 0);
-  char const* p = value.slice().getString(l);
 
-  UnicodeString s(p, l);
+  transaction::StringBufferLeaser buffer(trx);
+  arangodb::basics::VPackStringBufferAdapter adapter(buffer->stringBuffer());
+
+  AppendAsString(trx, adapter, value);
+
+  UnicodeString s(buffer->c_str(), buffer->length());
   s.toUpper(NULL);
   s.toUTF8String(utf8);
 
