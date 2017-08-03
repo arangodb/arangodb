@@ -44,6 +44,78 @@ class ArrayBufferAllocator : public v8::ArrayBuffer::Allocator {
   }
   virtual void Free(void* data, size_t) override { free(data); }
 };
+
+static void gcPrologueCallback(v8::Isolate* isolate, v8::GCType type,
+                               v8::GCCallbackFlags flags) {
+  // if (type != v8::kGCTypeMarkSweepCompact) {
+  //   return;
+  // }
+
+  v8::HeapStatistics h;
+  isolate->GetHeapStatistics(&h);
+
+  V8PlatformFeature::getIsolateData(isolate)->_heapSizeAtStart =
+      h.used_heap_size();
+}
+
+static void gcEpilogueCallback(v8::Isolate* isolate, v8::GCType type,
+                               v8::GCCallbackFlags flags) {
+  static size_t const LIMIT_ABS = 200 * 1024 * 1024;
+  size_t minFreed = LIMIT_ABS / 10;
+
+  if (type != v8::kGCTypeMarkSweepCompact) {
+    minFreed = 0;
+  }
+
+  v8::HeapStatistics h;
+  isolate->GetHeapStatistics(&h);
+
+  size_t freed = 0;
+  size_t heapSizeAtStop = h.used_heap_size();
+  size_t heapSizeAtStart =
+      V8PlatformFeature::getIsolateData(isolate)->_heapSizeAtStart;
+
+  if (heapSizeAtStop < heapSizeAtStart) {
+    freed = heapSizeAtStart - heapSizeAtStop;
+  }
+
+  size_t heapSizeLimit = h.heap_size_limit();
+  size_t usedHeadSize = h.used_heap_size();
+  size_t stillFree = heapSizeLimit - usedHeadSize;
+
+  if (stillFree <= LIMIT_ABS && freed <= minFreed) {
+    LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "reached heap-size limit, interrupting V8 execution ("
+              << "heap size limit " << heapSizeLimit << ", used "
+              << usedHeadSize << ")";
+
+    isolate->TerminateExecution();
+    V8PlatformFeature::setOutOfMemory(isolate);
+  }
+}
+
+// this callback is executed by V8 when it runs out of memory.
+// after the callback returns, V8 will call std::abort() and
+// terminate the entire process
+static void oomCallback(char const* location, bool isHeapOOM) {
+  if (isHeapOOM) {
+    LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << "out of heap hemory in V8 (" << location << ")";
+  } else {
+    LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << "out of memory in V8 (" << location << ")";
+  }
+  FATAL_ERROR_EXIT(); 
+}
+
+// this callback is executed by V8 when it encounters a fatal error.
+// after the callback returns, V8 will call std::abort() and
+// terminate the entire process
+static void fatalCallback(char const* location, char const* message) {
+  if (message == nullptr) {
+    message = "no message";
+  }
+  LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << "fatal error in V8 (" << location << "): " << message;
+  FATAL_ERROR_EXIT(); 
+}
+
 }
 
 V8PlatformFeature::V8PlatformFeature(
@@ -115,63 +187,19 @@ void V8PlatformFeature::unprepare() {
   _allocator.reset();
 }
 
-void gcPrologueCallback(v8::Isolate* isolate, v8::GCType type,
-                        v8::GCCallbackFlags flags) {
-  // if (type != v8::kGCTypeMarkSweepCompact) {
-  //   return;
-  // }
-
-  v8::HeapStatistics h;
-  isolate->GetHeapStatistics(&h);
-
-  V8PlatformFeature::getIsolateData(isolate)->_heapSizeAtStart =
-      h.used_heap_size();
-}
-
-void gcEpilogueCallback(v8::Isolate* isolate, v8::GCType type,
-                        v8::GCCallbackFlags flags) {
-  static size_t const LIMIT_ABS = 200 * 1024 * 1024;
-  size_t minFreed = LIMIT_ABS / 10;
-
-  if (type != v8::kGCTypeMarkSweepCompact) {
-    minFreed = 0;
-  }
-
-  v8::HeapStatistics h;
-  isolate->GetHeapStatistics(&h);
-
-  size_t freed = 0;
-  size_t heapSizeAtStop = h.used_heap_size();
-  size_t heapSizeAtStart =
-      V8PlatformFeature::getIsolateData(isolate)->_heapSizeAtStart;
-
-  if (heapSizeAtStop < heapSizeAtStart) {
-    freed = heapSizeAtStart - heapSizeAtStop;
-  }
-
-  size_t heapSizeLimit = h.heap_size_limit();
-  size_t usedHeadSize = h.used_heap_size();
-  size_t stillFree = heapSizeLimit - usedHeadSize;
-
-  if (stillFree <= LIMIT_ABS && freed <= minFreed) {
-    LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "reached heap-size limit, interrupting V8 execution ("
-              << "heap size limit " << heapSizeLimit << ", used "
-              << usedHeadSize << ")";
-
-    isolate->TerminateExecution();
-    V8PlatformFeature::setOutOfMemory(isolate);
-  }
-}
-
 v8::Isolate* V8PlatformFeature::createIsolate() {
   v8::Isolate::CreateParams createParams;
   createParams.array_buffer_allocator = _allocator.get();
+  createParams.oom_error_callback = oomCallback;
+  createParams.fatal_error_callback = fatalCallback;
 
   if (0 < _v8MaxHeap) {
     createParams.constraints.set_max_old_space_size(static_cast<int>(_v8MaxHeap));
   }
 
   auto isolate = v8::Isolate::New(createParams);
+  isolate->SetOOMErrorHandler(oomCallback);
+  isolate->SetFatalErrorHandler(fatalCallback);
   isolate->AddGCPrologueCallback(gcPrologueCallback);
   isolate->AddGCEpilogueCallback(gcEpilogueCallback);
 

@@ -287,11 +287,11 @@ void V8DealerFeature::start() {
 V8Context* V8DealerFeature::addContext() {
   V8Context* context = buildContext(nextId());
 
-  // apply context update is only run on contexts that no other
-  // threads can see (yet)
-  applyContextUpdate(context);
-
   try {
+    // apply context update is only run on contexts that no other
+    // threads can see (yet)
+    applyContextUpdate(context);
+
     DatabaseFeature* database =
         ApplicationServer::getFeature<DatabaseFeature>("Database");
 
@@ -1007,6 +1007,7 @@ void V8DealerFeature::applyContextUpdate(V8Context* context) {
     }
 
     enterContextInternal(vocbase, context, true);
+    TRI_DEFER(exitContextInternal(context));
 
     {
       v8::HandleScope scope(context->_isolate);
@@ -1022,7 +1023,6 @@ void V8DealerFeature::applyContextUpdate(V8Context* context) {
       localContext->Exit();
     }
 
-    exitContextInternal(context);
     LOG_TOPIC(TRACE, arangodb::Logger::V8) << "updated V8 context #" << context->_id;
   }
 }
