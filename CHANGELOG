@@ -1,6 +1,9 @@
 devel
 -----
 
+* potential fix for issue #2939: Segmentation fault when starting 
+  coordinator node  
+
 * fixed issue #2810: out of memory error when running UPDATE/REPLACE 
   on medium-size collection
 
