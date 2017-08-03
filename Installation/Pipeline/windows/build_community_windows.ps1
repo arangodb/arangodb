@@ -4,6 +4,7 @@ if (Get-Command docker -errorAction SilentlyContinue) {
   $volume = "$env:WORKSPACE"
   $volume += ":C:\arangodb"
   $build = @'
+$ErrorActionPreference="Stop"
 New-Item -ItemType Directory -Force -Path c:\arangodb\build
 cd c:\arangodb\build
 cmake .. -G "Visual Studio 14 2015 Win64" ${buildOptions}
@@ -14,6 +15,7 @@ exit $LastExitCode
 
   docker run --rm -v $volume m0ppers/build-container powershell C:\arangodb\buildscript.ps1
 } else {
+  $ErrorActionPreference="Stop"
   $env:GYP_MSVS_OVERRIDE_PATH='C:\Program Files (x86)\Microsoft Visual Studio\Shared\14.0\VC\bin'
   New-Item -ItemType Directory -Force -Path build
   cd build
