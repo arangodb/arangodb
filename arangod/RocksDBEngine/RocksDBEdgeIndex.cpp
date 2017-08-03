@@ -666,7 +666,6 @@ void RocksDBEdgeIndex::warmup(transaction::Methods* trx) {
     return;
   }
   std::string lastKey = it->key().ToString();
-  it.reset();
   
   // now that we do know the actual bounds calculate a
   // bad approximation for the index median key
@@ -684,6 +683,7 @@ void RocksDBEdgeIndex::warmup(transaction::Methods* trx) {
     it->Next();
   } while(RocksDBKey::vertexId(it->key()) == RocksDBKey::vertexId(median));
   median = it->key().ToString();// median is exclusive upper bound
+  it.reset();
   
   bool done = false;
   auto scheduler = SchedulerFeature::SCHEDULER;
