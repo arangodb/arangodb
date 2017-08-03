@@ -136,6 +136,9 @@ struct Functions {
    static AqlValue ConcatSeparator(arangodb::aql::Query*,
                                    transaction::Methods*,
                                    VPackFunctionParameters const&);
+   static AqlValue CharLength(arangodb::aql::Query*,
+                              transaction::Methods*,
+                              VPackFunctionParameters const&);
    static AqlValue Like(arangodb::aql::Query*, transaction::Methods*,
                         VPackFunctionParameters const&);
    static AqlValue RegexTest(arangodb::aql::Query*, transaction::Methods*,

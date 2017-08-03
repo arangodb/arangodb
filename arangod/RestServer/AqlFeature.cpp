@@ -42,13 +42,12 @@ AqlFeature::AqlFeature(
   setOptional(false);
   requiresElevatedPrivileges(false);
   startsAfter("CacheManager");
-  startsAfter("Scheduler");
-  startsAfter("MMFilesLogfileManager");
-  startsAfter("Database");
   startsAfter("Cluster");
+  startsAfter("Database");
+  startsAfter("QueryRegistry");
+  startsAfter("Scheduler");
   startsAfter("V8Platform");
   startsAfter("WorkMonitor");
-  startsAfter("QueryRegistry");
 }
 
 AqlFeature* AqlFeature::lease() {

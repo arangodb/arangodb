@@ -128,8 +128,10 @@ class MMFilesCollection final : public PhysicalCollection {
                              PhysicalCollection*);  // use in cluster only!!!!!
 
   ~MMFilesCollection();
+  
+  static constexpr uint32_t defaultIndexBuckets = 8;
 
-  constexpr static double defaultLockTimeout = 10.0 * 60.0;
+  static constexpr double defaultLockTimeout = 10.0 * 60.0;
 
   std::string const& path() const override { return _path; };
 
