@@ -196,13 +196,13 @@ AqlItemBlock* EnumerateCollectionBlock::getSome(size_t,  // atLeast,
       // properly build up results by fetching the actual documents
       // using nextDocument()
       tmp = _cursor->nextDocument([&](DocumentIdentifierToken const&, VPackSlice slice) {
-        _documentProducer(res.get(), slice, curRegs, send);
+        _documentProducer(res.get(), slice, curRegs, send, 0);
       }, atMost);
     } else {
       // performance optimization: we do not need the documents at all,
       // so just call next()
       tmp = _cursor->next([&](DocumentIdentifierToken const&) {
-        _documentProducer(res.get(), VPackSlice::nullSlice(), curRegs, send);
+        _documentProducer(res.get(), VPackSlice::nullSlice(), curRegs, send, 0);
       }, atMost);
     }
     if (!tmp) {
