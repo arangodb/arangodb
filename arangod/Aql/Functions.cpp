@@ -634,25 +634,17 @@ AqlValue Functions::MergeParameters(arangodb::aql::Query* query,
 
   if (initial.isArray() && n == 1) {
     // special case: a single array parameter
-    try {
-      // Create an empty document as start point
-      builder.openObject();
-      builder.close();
-    } catch (...) {
-      THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
-    }
+    // Create an empty document as start point
+    builder.openObject();
+    builder.close();
     // merge in all other arguments
     for (auto const& it : VPackArrayIterator(initialSlice)) {
       if (!it.isObject()) {
         RegisterInvalidArgumentWarning(query, funcName);
         return AqlValue(arangodb::basics::VelocyPackHelper::NullValue());
       }
-      try {
-        builder = arangodb::basics::VelocyPackHelper::merge(builder.slice(), it, false,
-                                                            recursive);
-      } catch (...) {
-        THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
-      }
+      builder = arangodb::basics::VelocyPackHelper::merge(builder.slice(), it, false,
+                                                          recursive);
     }
     return AqlValue(builder);
   }
@@ -674,13 +666,9 @@ AqlValue Functions::MergeParameters(arangodb::aql::Query* query,
     AqlValueMaterializer materializer(trx);
     VPackSlice slice = materializer.slice(param, false);
 
-    try {
-      builder = arangodb::basics::VelocyPackHelper::merge(initialSlice, slice, false,
-                                                          recursive);
-      initialSlice = builder.slice();
-    } catch (...) {
-      THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
-    }
+    builder = arangodb::basics::VelocyPackHelper::merge(initialSlice, slice, false,
+                                                        recursive);
+    initialSlice = builder.slice();
   }
   if (n == 1) {
     // only one parameter. now add original document
@@ -811,11 +799,7 @@ AqlValue Functions::ToString(arangodb::aql::Query* query,
 
   AppendAsString(trx, adapter, value);
   transaction::BuilderLeaser builder(trx);
-  try {
-    return AqlValue(buffer->begin(), buffer->length());
-  } catch (...) {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
-  }
+  return AqlValue(buffer->begin(), buffer->length());
 }
 
 /// @brief function TO_BOOL
@@ -1081,11 +1065,7 @@ AqlValue Functions::Concat(arangodb::aql::Query* query,
     AppendAsString(trx, adapter, member);
   }
 
-  try {
-    return AqlValue(buffer->c_str(), buffer->length());
-  } catch (...) {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
-  }
+  return AqlValue(buffer->c_str(), buffer->length());
 }
 
 /// @brief function CONCAT_SEPARATOR
@@ -1146,11 +1126,7 @@ AqlValue Functions::ConcatSeparator(arangodb::aql::Query* query,
     found = true;
   }
 
-  try {
-    return AqlValue(buffer->c_str(), buffer->length());
-  } catch (...) {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
-  }
+  return AqlValue(buffer->c_str(), buffer->length());
 }
 
 /// @brief function CHAR_LENGTH
@@ -1436,15 +1412,11 @@ AqlValue Functions::Unset(arangodb::aql::Query* query,
   std::unordered_set<std::string> names;
   ExtractKeys(names, query, trx, parameters, 1, "UNSET");
 
-  try {
-    AqlValueMaterializer materializer(trx);
-    VPackSlice slice = materializer.slice(value, false);
-    transaction::BuilderLeaser builder(trx);
-    UnsetOrKeep(trx, slice, names, true, false, *builder.get());
-    return AqlValue(builder.get());
-  } catch (...) {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
-  }
+  AqlValueMaterializer materializer(trx);
+  VPackSlice slice = materializer.slice(value, false);
+  transaction::BuilderLeaser builder(trx);
+  UnsetOrKeep(trx, slice, names, true, false, *builder.get());
+  return AqlValue(builder.get());
 }
 
 /// @brief function UNSET_RECURSIVE
@@ -1462,15 +1434,11 @@ AqlValue Functions::UnsetRecursive(arangodb::aql::Query* query,
   std::unordered_set<std::string> names;
   ExtractKeys(names, query, trx, parameters, 1, "UNSET_RECURSIVE");
 
-  try {
-    AqlValueMaterializer materializer(trx);
-    VPackSlice slice = materializer.slice(value, false);
-    transaction::BuilderLeaser builder(trx);
-    UnsetOrKeep(trx, slice, names, true, true, *builder.get());
-    return AqlValue(builder.get());
-  } catch (...) {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
-  }
+  AqlValueMaterializer materializer(trx);
+  VPackSlice slice = materializer.slice(value, false);
+  transaction::BuilderLeaser builder(trx);
+  UnsetOrKeep(trx, slice, names, true, true, *builder.get());
+  return AqlValue(builder.get());
 }
 
 /// @brief function KEEP
@@ -1489,15 +1457,11 @@ AqlValue Functions::Keep(arangodb::aql::Query* query,
 
   ExtractKeys(names, query, trx, parameters, 1, "KEEP");
 
-  try {
-    AqlValueMaterializer materializer(trx);
-    VPackSlice slice = materializer.slice(value, false);
-    transaction::BuilderLeaser builder(trx);
-    UnsetOrKeep(trx, slice, names, false, false, *builder.get());
-    return AqlValue(builder.get());
-  } catch (...) {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
-  }
+  AqlValueMaterializer materializer(trx);
+  VPackSlice slice = materializer.slice(value, false);
+  transaction::BuilderLeaser builder(trx);
+  UnsetOrKeep(trx, slice, names, false, false, *builder.get());
+  return AqlValue(builder.get());
 }
 
 /// @brief function MERGE
@@ -1934,16 +1898,12 @@ AqlValue Functions::Unique(arangodb::aql::Query* query,
   }
 
   transaction::BuilderLeaser builder(trx);
-  try {
-    builder->openArray();
-    for (auto const& it : values) {
-      builder->add(it);
-    }
-    builder->close();
-    return AqlValue(builder.get());
-  } catch (...) {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
+  builder->openArray();
+  for (auto const& it : values) {
+    builder->add(it);
   }
+  builder->close();
+  return AqlValue(builder.get());
 }
 
 /// @brief function SORTED_UNIQUE
@@ -1971,16 +1931,12 @@ AqlValue Functions::SortedUnique(arangodb::aql::Query* query,
   }
 
   transaction::BuilderLeaser builder(trx);
-  try {
-    builder->openArray();
-    for (auto const& it : values) {
-      builder->add(it);
-    }
-    builder->close();
-    return AqlValue(builder.get());
-  } catch (...) {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
+  builder->openArray();
+  for (auto const& it : values) {
+    builder->add(it);
   }
+  builder->close();
+  return AqlValue(builder.get());
 }
 
 /// @brief function UNION
@@ -1989,47 +1945,39 @@ AqlValue Functions::Union(arangodb::aql::Query* query,
                           VPackFunctionParameters const& parameters) {
   ValidateParameters(parameters, "UNION", 2);
 
-  try {
-    transaction::BuilderLeaser builder(trx);
-    builder->openArray();
-    size_t const n = parameters.size();
-    for (size_t i = 0; i < n; ++i) {
-      AqlValue value = ExtractFunctionParameterValue(trx, parameters, i);
+  transaction::BuilderLeaser builder(trx);
+  builder->openArray();
+  size_t const n = parameters.size();
+  for (size_t i = 0; i < n; ++i) {
+    AqlValue value = ExtractFunctionParameterValue(trx, parameters, i);
 
-      if (!value.isArray()) {
-        // not an array
-        RegisterInvalidArgumentWarning(query, "UNION");
-        return AqlValue(arangodb::basics::VelocyPackHelper::NullValue());
-      }
-
-      TRI_IF_FAILURE("AqlFunctions::OutOfMemory1") {
-        THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
-      }
-
-      AqlValueMaterializer materializer(trx);
-      VPackSlice slice = materializer.slice(value, false);
-
-      // this passes ownership for the JSON contens into result
-      for (auto const& it : VPackArrayIterator(slice)) {
-        builder->add(it);
-        TRI_IF_FAILURE("AqlFunctions::OutOfMemory2") {
-          THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
-        }
-      }
+    if (!value.isArray()) {
+      // not an array
+      RegisterInvalidArgumentWarning(query, "UNION");
+      return AqlValue(arangodb::basics::VelocyPackHelper::NullValue());
     }
-    builder->close();
-    TRI_IF_FAILURE("AqlFunctions::OutOfMemory3") {
+
+    TRI_IF_FAILURE("AqlFunctions::OutOfMemory1") {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
     }
 
-    return AqlValue(builder.get());
-  } catch (arangodb::basics::Exception const&) {
-    // Rethrow arangodb Errors
-    throw;
-  } catch (std::exception const&) {
-    // All other exceptions are OUT_OF_MEMORY
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
+    AqlValueMaterializer materializer(trx);
+    VPackSlice slice = materializer.slice(value, false);
+
+    // this passes ownership for the JSON contens into result
+    for (auto const& it : VPackArrayIterator(slice)) {
+      builder->add(it);
+      TRI_IF_FAILURE("AqlFunctions::OutOfMemory2") {
+        THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+      }
+    }
   }
+  builder->close();
+  TRI_IF_FAILURE("AqlFunctions::OutOfMemory3") {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+  }
+
+  return AqlValue(builder.get());
 }
 
 /// @brief function UNION_DISTINCT
@@ -2073,25 +2021,19 @@ AqlValue Functions::UnionDistinct(arangodb::aql::Query* query,
   TRI_IF_FAILURE("AqlFunctions::OutOfMemory2") {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
   }
-  try {
-    transaction::BuilderLeaser builder(trx);
-    builder->openArray();
-    for (auto const& it : values) {
-      builder->add(it);
-    }
-    builder->close();
- 
-    TRI_IF_FAILURE("AqlFunctions::OutOfMemory3") {
-      THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
-    }
-
-    return AqlValue(builder.get());
-  } catch (arangodb::basics::Exception const&) {
-    // Rethrow arangodb Errors
-    throw;
-  } catch (...) {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
+    
+  transaction::BuilderLeaser builder(trx);
+  builder->openArray();
+  for (auto const& it : values) {
+    builder->add(it);
   }
+  builder->close();
+
+  TRI_IF_FAILURE("AqlFunctions::OutOfMemory3") {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+  }
+
+  return AqlValue(builder.get());
 }
 
 /// @brief function INTERSECTION
@@ -2306,15 +2248,11 @@ AqlValue Functions::Flatten(arangodb::aql::Query* query,
   AqlValueMaterializer materializer(trx);
   VPackSlice listSlice = materializer.slice(list, false);
 
-  try {
-    transaction::BuilderLeaser builder(trx);
-    builder->openArray();
-    FlattenList(listSlice, maxDepth, 0, *builder.get());
-    builder->close();
-    return AqlValue(builder.get());
-  } catch (...) {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
-  }
+  transaction::BuilderLeaser builder(trx);
+  builder->openArray();
+  FlattenList(listSlice, maxDepth, 0, *builder.get());
+  builder->close();
+  return AqlValue(builder.get());
 }
 
 /// @brief function ZIP
@@ -2335,29 +2273,25 @@ AqlValue Functions::Zip(arangodb::aql::Query* query,
 
   VPackValueLength n = keys.length();
 
-  try {
-    AqlValueMaterializer keyMaterializer(trx);
-    VPackSlice keysSlice = keyMaterializer.slice(keys, false);
-    
-    AqlValueMaterializer valueMaterializer(trx);
-    VPackSlice valuesSlice = valueMaterializer.slice(values, false);
+  AqlValueMaterializer keyMaterializer(trx);
+  VPackSlice keysSlice = keyMaterializer.slice(keys, false);
+  
+  AqlValueMaterializer valueMaterializer(trx);
+  VPackSlice valuesSlice = valueMaterializer.slice(values, false);
 
-    transaction::BuilderLeaser builder(trx);
-    builder->openObject();
+  transaction::BuilderLeaser builder(trx);
+  builder->openObject();
 
-    // Buffer will temporarily hold the keys
-    transaction::StringBufferLeaser buffer(trx);
-    arangodb::basics::VPackStringBufferAdapter adapter(buffer->stringBuffer());
-    for (VPackValueLength i = 0; i < n; ++i) {
-      buffer->reset();
-      Stringify(trx, adapter, keysSlice.at(i));
-      builder->add(buffer->c_str(), buffer->length(), valuesSlice.at(i));
-    }
-    builder->close();
-    return AqlValue(builder.get());
-  } catch (...) {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
+  // Buffer will temporarily hold the keys
+  transaction::StringBufferLeaser buffer(trx);
+  arangodb::basics::VPackStringBufferAdapter adapter(buffer->stringBuffer());
+  for (VPackValueLength i = 0; i < n; ++i) {
+    buffer->reset();
+    Stringify(trx, adapter, keysSlice.at(i));
+    builder->add(buffer->c_str(), buffer->length(), valuesSlice.at(i));
   }
+  builder->close();
+  return AqlValue(builder.get());
 }
 
 /// @brief function JSON_STRINGIFY
@@ -2443,16 +2377,12 @@ AqlValue Functions::ParseIdentifier(
     return AqlValue(arangodb::basics::VelocyPackHelper::NullValue());
   }
 
-  try {
-    transaction::BuilderLeaser builder(trx);
-    builder->openObject();
-    builder->add("collection", VPackValue(parts[0]));
-    builder->add("key", VPackValue(parts[1]));
-    builder->close();
-    return AqlValue(builder.get());
-  } catch (...) {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
-  }
+  transaction::BuilderLeaser builder(trx);
+  builder->openObject();
+  builder->add("collection", VPackValue(parts[0]));
+  builder->add("key", VPackValue(parts[1]));
+  builder->close();
+  return AqlValue(builder.get());
 }
 
 /// @brief function Slice
@@ -2575,17 +2505,13 @@ AqlValue Functions::Minus(arangodb::aql::Query* query,
   }
 
   // We omit the normalize part from js, cannot occur here
-  try {
-    transaction::BuilderLeaser builder(trx);
-    builder->openArray();
-    for (auto const& it : contains) {
-      builder->add(it.first);
-    }
-    builder->close();
-    return AqlValue(builder.get());
-  } catch (...) {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
+  transaction::BuilderLeaser builder(trx);
+  builder->openArray();
+  for (auto const& it : contains) {
+    builder->add(it.first);
   }
+  builder->close();
+  return AqlValue(builder.get());
 }
 
 /// @brief function Document
@@ -3026,22 +2952,18 @@ AqlValue Functions::Pop(arangodb::aql::Query* query,
     return AqlValue(arangodb::basics::VelocyPackHelper::NullValue());
   }
 
-  try {
-    AqlValueMaterializer materializer(trx);
-    VPackSlice slice = materializer.slice(list, false);
+  AqlValueMaterializer materializer(trx);
+  VPackSlice slice = materializer.slice(list, false);
 
-    transaction::BuilderLeaser builder(trx);
-    builder->openArray();
-    auto iterator = VPackArrayIterator(slice);
-    while (iterator.valid() && !iterator.isLast()) {
-      builder->add(iterator.value());
-      iterator.next();
-    }
-    builder->close();
-    return AqlValue(builder.get());
-  } catch (...) {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
-  } 
+  transaction::BuilderLeaser builder(trx);
+  builder->openArray();
+  auto iterator = VPackArrayIterator(slice);
+  while (iterator.valid() && !iterator.isLast()) {
+    builder->add(iterator.value());
+    iterator.next();
+  }
+  builder->close();
+  return AqlValue(builder.get());
 }
 
 /// @brief function APPEND
@@ -3219,44 +3141,41 @@ AqlValue Functions::RemoveValue(arangodb::aql::Query* query,
   }
 
   auto options = trx->transactionContextPtr()->getVPackOptions();
-  try {
-    transaction::BuilderLeaser builder(trx);
-    builder->openArray();
-    bool useLimit = false;
-    int64_t limit = list.length();
+  
+  transaction::BuilderLeaser builder(trx);
+  builder->openArray();
+  bool useLimit = false;
+  int64_t limit = list.length();
 
-    if (parameters.size() == 3) {
-      AqlValue limitValue = ExtractFunctionParameterValue(trx, parameters, 2);
-      if (!limitValue.isNull(true)) {
-        limit = limitValue.toInt64(trx);
-        useLimit = true;
-      }
+  if (parameters.size() == 3) {
+    AqlValue limitValue = ExtractFunctionParameterValue(trx, parameters, 2);
+    if (!limitValue.isNull(true)) {
+      limit = limitValue.toInt64(trx);
+      useLimit = true;
     }
-    
-    AqlValue toRemove = ExtractFunctionParameterValue(trx, parameters, 1);
-    AqlValueMaterializer toRemoveMaterializer(trx);
-    VPackSlice r = toRemoveMaterializer.slice(toRemove, false);
-
-    AqlValueMaterializer materializer(trx);
-    VPackSlice v = materializer.slice(list, false);
-
-    for (auto const& it : VPackArrayIterator(v)) {
-      if (useLimit && limit == 0) {
-        // Just copy
-        builder->add(it);
-        continue;
-      }
-      if (arangodb::basics::VelocyPackHelper::compare(r, it, false, options) == 0) {
-        --limit;
-        continue;
-      }
-      builder->add(it);
-    }
-    builder->close();
-    return AqlValue(builder.get());
-  } catch (...) {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
   }
+  
+  AqlValue toRemove = ExtractFunctionParameterValue(trx, parameters, 1);
+  AqlValueMaterializer toRemoveMaterializer(trx);
+  VPackSlice r = toRemoveMaterializer.slice(toRemove, false);
+
+  AqlValueMaterializer materializer(trx);
+  VPackSlice v = materializer.slice(list, false);
+
+  for (auto const& it : VPackArrayIterator(v)) {
+    if (useLimit && limit == 0) {
+      // Just copy
+      builder->add(it);
+      continue;
+    }
+    if (arangodb::basics::VelocyPackHelper::compare(r, it, false, options) == 0) {
+      --limit;
+      continue;
+    }
+    builder->add(it);
+  }
+  builder->close();
+  return AqlValue(builder.get());
 }
 
 /// @brief function REMOVE_VALUES
@@ -3282,25 +3201,21 @@ AqlValue Functions::RemoveValues(arangodb::aql::Query* query,
   }
   
   auto options = trx->transactionContextPtr()->getVPackOptions();
-  try {
-    AqlValueMaterializer valuesMaterializer(trx);
-    VPackSlice v = valuesMaterializer.slice(values, false);
+  AqlValueMaterializer valuesMaterializer(trx);
+  VPackSlice v = valuesMaterializer.slice(values, false);
 
-    AqlValueMaterializer listMaterializer(trx);
-    VPackSlice l = listMaterializer.slice(list, false);
+  AqlValueMaterializer listMaterializer(trx);
+  VPackSlice l = listMaterializer.slice(list, false);
 
-    transaction::BuilderLeaser builder(trx);
-    builder->openArray();
-    for (auto const& it : VPackArrayIterator(l)) {
-      if (!ListContainsElement(options, v, it)) {
-        builder->add(it);
-      }
+  transaction::BuilderLeaser builder(trx);
+  builder->openArray();
+  for (auto const& it : VPackArrayIterator(l)) {
+    if (!ListContainsElement(options, v, it)) {
+      builder->add(it);
     }
-    builder->close();
-    return AqlValue(builder.get());
-  } catch (std::bad_alloc const&) {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
   }
+  builder->close();
+  return AqlValue(builder.get());
 }
 
 /// @brief function REMOVE_NTH
@@ -3332,25 +3247,21 @@ AqlValue Functions::RemoveNth(arangodb::aql::Query* query,
     p += count;
   }
 
-  try {
-    AqlValueMaterializer materializer(trx);
-    VPackSlice v = materializer.slice(list, false);
+  AqlValueMaterializer materializer(trx);
+  VPackSlice v = materializer.slice(list, false);
 
-    transaction::BuilderLeaser builder(trx);
-    size_t target = static_cast<size_t>(p);
-    size_t cur = 0;
-    builder->openArray();
-    for (auto const& it : VPackArrayIterator(v)) {
-      if (cur != target) {
-        builder->add(it);
-      }
-      cur++;
+  transaction::BuilderLeaser builder(trx);
+  size_t target = static_cast<size_t>(p);
+  size_t cur = 0;
+  builder->openArray();
+  for (auto const& it : VPackArrayIterator(v)) {
+    if (cur != target) {
+      builder->add(it);
     }
-    builder->close();
-    return AqlValue(builder.get());
-  } catch (...) {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
+    cur++;
   }
+  builder->close();
+  return AqlValue(builder.get());
 }
 
 /// @brief function NOT_NULL
@@ -3682,23 +3593,19 @@ AqlValue Functions::Range(arangodb::aql::Query* query,
     return AqlValue(arangodb::basics::VelocyPackHelper::NullValue());
   }
 
-  try {
-    transaction::BuilderLeaser builder(trx);
-    builder->openArray();
-    if (step < 0.0 && to <= from) {
-      for (; from >= to; from += step) {
-        builder->add(VPackValue(from));
-      }
-    } else {
-      for (; from <= to; from += step) {
-        builder->add(VPackValue(from));
-      }
+  transaction::BuilderLeaser builder(trx);
+  builder->openArray();
+  if (step < 0.0 && to <= from) {
+    for (; from >= to; from += step) {
+      builder->add(VPackValue(from));
     }
-    builder->close();
-    return AqlValue(builder.get());
-  } catch (...) {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
+  } else {
+    for (; from <= to; from += step) {
+      builder->add(VPackValue(from));
+    }
   }
+  builder->close();
+  return AqlValue(builder.get());
 }
 
 /// @brief function POSITION
