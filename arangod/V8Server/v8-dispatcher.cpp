@@ -301,7 +301,7 @@ V8Task::callbackFunction() {
 
 void V8Task::start(boost::asio::io_service* ioService) {
   TRI_ASSERT(ExecContext::CURRENT == nullptr ||
-             !_user.empty() && ExecContext::CURRENT->user() == _user);
+             (!_user.empty() && ExecContext::CURRENT->user() == _user));
   _timer.reset(new boost::asio::steady_timer(*ioService));
   if (_offset.count() <= 0) {
     _offset = std::chrono::microseconds(1);
