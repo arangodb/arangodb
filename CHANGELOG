@@ -21,6 +21,15 @@ devel
 
 * prevent V8 from issuing SIGILL instructions when it runs out of memory
 
+  Now arangod will attempt to log a FATAL error into its logfile in case V8 
+  runs out of memory. In case V8 runs out of memory, it will still terminate the 
+  entire process. But at least there should be something in the ArangoDB logs 
+  indicating what the problem was. Apart from that, the arangod process should
+  now be exited with SIGABRT rather than SIGILL as it shouldn't return into the 
+  V8 code that aborted the process with `__builtin_trap`.
+
+  this potentially fixes issue #2920: DBServer crashing automatically post upgrade to 3.2
+
 * Foxx queues and tasks now ensure that the scripts in them, run on same permissions as the Foxx code who started the task / queue 
 
 * fixed issue #2928: Offset problems
