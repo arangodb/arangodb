@@ -1,6 +1,9 @@
 devel
 -----
 
+* fixed issue #2874: Collection properties do not return `isVolatile` 
+  attribute
+
 * potential fix for issue #2939: Segmentation fault when starting 
   coordinator node  
 
