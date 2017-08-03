@@ -28,7 +28,8 @@
 // / @author Copyright 2012-2013, triAGENS GmbH, Cologne, Germany
 // //////////////////////////////////////////////////////////////////////////////
 
-var internal = require('internal');
+const internal = require('internal');
+const arango = internal.arango;
 
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief return a formatted type string for object

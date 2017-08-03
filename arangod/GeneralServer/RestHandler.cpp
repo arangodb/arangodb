@@ -85,7 +85,6 @@ int RestHandler::prepareEngine() {
   // set end immediately so we do not get netative statistics
   RequestStatistics::SET_REQUEST_END(_statistics);
 
-  ExecContext::CURRENT = _request->execContext();
   if (_canceled) {
     _engine.setState(RestEngine::State::DONE);
     RequestStatistics::SET_EXECUTE_ERROR(_statistics);
@@ -159,13 +158,15 @@ int RestHandler::finalizeEngine() {
     _engine.setState(RestEngine::State::FAILED);
     _storeResult(this);
   }
-
-  ExecContext::CURRENT = nullptr;
-
+  
   return res;
 }
 
 int RestHandler::executeEngine() {
+  TRI_ASSERT(ExecContext::CURRENT == nullptr);
+  ExecContext::CURRENT = _request->execContext();
+  TRI_DEFER(ExecContext::CURRENT = nullptr);
+  
   try {
     RestStatus result = execute();
 
@@ -233,6 +234,10 @@ int RestHandler::executeEngine() {
 }
 
 int RestHandler::runEngine(bool synchron) {
+  TRI_ASSERT(ExecContext::CURRENT == nullptr);
+  ExecContext::CURRENT = _request->execContext();
+  TRI_DEFER(ExecContext::CURRENT = nullptr);
+  
   try {
     while (_engine.hasSteps()) {
       std::shared_ptr<RestStatusElement> result = _engine.popStep();
