@@ -337,9 +337,13 @@ int IResearchLink::load() {
         #endif
 
         // on success this call will set the '_view' pointer
-        if (!view || !view->linkRegister(*ptr)) {
+        if (!view) {
           LOG_TOPIC(WARN, Logger::FIXME) << "error finding view: '" << viewId << "' for link '" << iid << "'";
+          return nullptr;
+        }
 
+        if (!view->linkRegister(*ptr)) {
+          LOG_TOPIC(WARN, Logger::FIXME) << "error registering link '" << iid << "' for view: '" << viewId;
           return nullptr;
         }
 

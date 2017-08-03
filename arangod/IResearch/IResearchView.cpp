@@ -750,9 +750,8 @@ arangodb::iresearch::IResearchLink* findFirstMatchingLink(
 arangodb::Result persistProperties(arangodb::PhysicalView& view) {
   auto* feature = arangodb::iresearch::getFeature<arangodb::DatabaseFeature>("Database");
 
-  if (!feature) {
-    return view.persistProperties(); // database cannot be in recovery if there is no Database feature
-  }
+  // database feature must always be present
+  TRI_ASSERT(feature != nullptr);
 
   return feature->registerPostRecoveryCallback([&view]()->arangodb::Result {
     return view.persistProperties();
@@ -1801,17 +1800,13 @@ bool IResearchView::linkRegister(IResearchLink& link) {
     return true;
   }
 
-  auto* feature = getFeature<IResearchFeature>();
+  auto& metaStore = *(_logicalView->getPhysical());
+  auto res = persistProperties(metaStore); // persist '_meta' definition
 
-  if (feature && feature->running()) {
-    auto& metaStore = *(_logicalView->getPhysical());
-    auto res = persistProperties(metaStore); // persist '_meta' definition
+  if (res.ok()) {
+    link.updateView(sptr(this, std::move(unregistrar)), true); // will not deadlock since checked for duplicate cid above
 
-    if (res.ok()) {
-      link.updateView(sptr(this, std::move(unregistrar)), true); // will not deadlock since checked for duplicate cid above
-
-      return true;
-    }
+    return true;
   }
 
   LOG_TOPIC(WARN, Logger::FIXME) << "failed to persist iResearch view definition during new iResearch link registration for iResearch view '" << id() <<"' cid '" << link.collection()->cid() << "' iid '" << link.id() << "'";
@@ -1835,6 +1830,19 @@ bool IResearchView::linkRegister(IResearchLink& link) {
     LOG_TOPIC(WARN, Logger::FIXME) << "failed to initialize iResearch view from definition, error: " << error;
 
     return nullptr;
+  }
+  
+  if (isNew && json.hasKey(LINKS_FIELD)) {
+    auto field = json.get(LINKS_FIELD);
+    if (!field.isObject()) {
+      LOG_TOPIC(WARN, Logger::FIXME) << "failed to initialize iResearch view from definition, error: 'links' is not an object";
+      return nullptr;
+    }
+
+    if (field.length() > 0) {
+      LOG_TOPIC(WARN, Logger::FIXME) << "failed to initialize iResearch view from definition, error: 'links' is not an empty object";
+      return nullptr;
+    }
   }
 
   // skip link creation for previously created views or if no links were specified in the definition

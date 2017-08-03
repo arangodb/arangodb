@@ -214,7 +214,7 @@ SECTION("test_query") {
     \"name\": \"testView\", \
     \"type\": \"iresearch\", \
     \"properties\": { \
-      \"links\": { \"testCollection\": { \"includeAllFields\": true } } \
+      \"links\": { } \
     } \
   }");
   auto* logicalCollection = vocbase.createCollection(collectionJson->slice());
@@ -223,6 +223,14 @@ SECTION("test_query") {
   REQUIRE((false == !logicalView));
   auto* view = logicalView->getImplementation();
   REQUIRE((false == !view));
+
+  auto links = arangodb::velocypack::Parser::fromJson("{ \
+    \"links\": { \"testCollection\": { \"includeAllFields\" : true } } \
+  }");
+
+  arangodb::Result res = logicalView->updateProperties(links->slice(), true, false);
+  CHECK(true == res.ok());
+  CHECK((false == logicalCollection->getIndexes().empty()));
 
   // fill with test data
   {

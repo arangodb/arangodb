@@ -36,14 +36,18 @@ function runSetup () {
   internal.debugClearFailAt();
 
   db._drop('UnitTestsRecoveryDummy');
+  db._drop('UnitTestsRecoveryDummy2');
+
   var c = db._create('UnitTestsRecoveryDummy');
 
   db._dropView('UnitTestsRecovery1');
+  var v = db._createView('UnitTestsRecovery1', 'iresearch', {});
   var meta = { links: { 'UnitTestsRecoveryDummy': { includeAllFields: true } } };
-  var v1 = db._createView('UnitTestsRecovery1', 'iresearch', meta);
+  v.properties(meta);
 
   c.drop();
-
+  
+  c = db._create('UnitTestsRecoveryDummy2');
   c.save({ _key: 'crashme' }, true);
 
   internal.debugSegfault('crashing server');

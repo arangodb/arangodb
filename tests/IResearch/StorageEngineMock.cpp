@@ -456,7 +456,7 @@ void StorageEngineMock::changeCollection(TRI_vocbase_t* vocbase, TRI_voc_cid_t i
 }
 
 void StorageEngineMock::changeView(TRI_vocbase_t* vocbase, TRI_voc_cid_t id, arangodb::LogicalView const*, bool doSync) {
-  TRI_ASSERT(false);
+  // does nothing
 }
 
 std::string StorageEngineMock::collectionPath(TRI_vocbase_t const* vocbase, TRI_voc_cid_t id) const {

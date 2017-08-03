@@ -245,9 +245,13 @@ arangodb::Result LogicalView::updateProperties(VPackSlice const& slice,
 
   if (implResult.ok()) {
     // after this call the properties are stored
-    getPhysical()->persistProperties();
-
     StorageEngine* engine = EngineSelectorFeature::ENGINE;
+    TRI_ASSERT(engine != nullptr);
+
+    if (!engine->inRecovery()) {
+      getPhysical()->persistProperties();
+    }
+
     engine->changeView(_vocbase, _id, this, doSync);
   }
 

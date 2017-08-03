@@ -1,5 +1,5 @@
 /* jshint globalstrict:false, strict:false, unused : false */
-/* global assertEqual, assertFalse */
+/* global assertEqual, assertTrue, assertFalse, assertNull, fail */
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief recovery tests for views
 // /
@@ -38,9 +38,22 @@ function runSetup () {
   db._drop('UnitTestsRecoveryDummy');
   var c = db._create('UnitTestsRecoveryDummy');
 
-  db._dropView('UnitTestsRecovery1');
+  db._dropView('UnitTestsRecoveryEmpty');
+  db._createView('UnitTestsRecoveryEmpty', 'iresearch', {});
+
   var meta = { links: { 'UnitTestsRecoveryDummy': { includeAllFields: true } } };
-  var v1 = db._createView('UnitTestsRecovery1', 'iresearch', meta);
+  db._dropView('UnitTestsRecoveryFail');
+  try {
+    db._createView('UnitTestsRecoveryFail', 'iresearch', meta);
+    fail();
+  } catch (err) {
+    // we are expecting an exception here
+  }
+  
+  db._dropView('UnitTestsRecoveryWithLink');
+  db._createView('UnitTestsRecoveryWithLink', 'iresearch', {});
+  // store link
+  db._view('UnitTestsRecoveryWithLink').properties(meta);
 
   c.save({ _key: 'crashme' }, true);
 
@@ -64,11 +77,21 @@ function recoverySuite () {
     // //////////////////////////////////////////////////////////////////////////////
 
     testLinks: function () {
+      var v = db._view('UnitTestsRecoveryEmpty');
+      assertEqual(v.name(), 'UnitTestsRecoveryEmpty');
+      assertEqual(v.type(), 'iresearch');
+      assertEqual(v.properties().links, {});
+
+      v = db._view('UnitTestsRecoveryFail');
+      assertNull(v);
+
       var meta = { links : { "UnitTestsRecoveryDummy" : { includeAllFields : true } } };
-      var v1 = db._view('UnitTestsRecovery1');
-      assertEqual(v1.name(), 'UnitTestsRecovery1');
-      assertEqual(v1.type(), 'iresearch');
-      assertEqual(v1.properties().links, meta.links);
+      v = db._view('UnitTestsRecoveryWithLink');
+      assertEqual(v.name(), 'UnitTestsRecoveryWithLink');
+      assertEqual(v.type(), 'iresearch');
+      var p = v.properties().links;
+      assertTrue(p.hasOwnProperty('UnitTestsRecoveryDummy'));
+      assertTrue(p.UnitTestsRecoveryDummy.includeAllFields);
     }
 
   };

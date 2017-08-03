@@ -477,7 +477,10 @@ std::shared_ptr<Index> MMFilesIndexFactory::prepareIndexFromSlice(
   }
 
   if (newIdx == nullptr) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "unable to create index");
+    std::string msg("unable to create index of type '");
+    msg.append(tmp);
+    msg.append("'");
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, msg);
   }
 
   return newIdx;

@@ -39,10 +39,14 @@ function runSetup () {
   var c = db._create('UnitTestsRecoveryDummy');
 
   db._dropView('UnitTestsRecovery1');
-  var meta = { links: { 'UnitTestsRecoveryDummy': { includeAllFields: true } } };
-  var v1 = db._createView('UnitTestsRecovery1', 'iresearch', meta);
+  var v = db._createView('UnitTestsRecovery1', 'iresearch', {});
 
-  v1.properties({ links: {} });
+  // setup link
+  var meta = { links: { 'UnitTestsRecoveryDummy': { includeAllFields: true } } };
+  v.properties(meta);
+
+  // remove link
+  v.properties({ links: {} });
 
   c.save({ _key: 'crashme' }, true);
 
