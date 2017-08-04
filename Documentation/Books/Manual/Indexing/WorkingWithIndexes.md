@@ -158,7 +158,7 @@ This function tries to cache all index entries
 of this collection into the main memory.
 Therefore it iterates over all indexes of the collection
 and stores the indexed values, not the entire document data,
-in Memory.
+in memory.
 All lookups that could be found in the cache are much faster
 than lookups not stored in the cache so you get a nice performance boost.
 It is also guaranteed that the cache is consistent with the stored data.
