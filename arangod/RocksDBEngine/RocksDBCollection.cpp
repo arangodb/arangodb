@@ -90,6 +90,13 @@ RocksDBCollection::RocksDBCollection(LogicalCollection* collection,
       _cache(nullptr),
       _cachePresent(false),
       _useCache(false) {
+  
+  VPackSlice s = info.get("isVolatile");
+  if (s.isBoolean() && s.getBoolean()) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(
+          TRI_ERROR_BAD_PARAMETER,
+          "volatile collections are unsupported in the RocksDB engine");
+  }
   addCollectionMapping(_objectId, _logicalCollection->vocbase()->id(),
                        _logicalCollection->cid());
   if (_useCache) {
@@ -136,6 +143,7 @@ void RocksDBCollection::setPath(std::string const&) {
 
 arangodb::Result RocksDBCollection::updateProperties(VPackSlice const& slice,
                                                      bool doSync) {
+
   // nothing to do
   return arangodb::Result{};
 }
@@ -1867,7 +1875,7 @@ void RocksDBCollection::recalculateIndexEstimates() {
 }
 
 void RocksDBCollection::recalculateIndexEstimates(
-    std::vector<std::shared_ptr<Index>>& indexes) {
+    std::vector<std::shared_ptr<Index>> const& indexes) {
   // start transaction to get a collection lock
   arangodb::SingleCollectionTransaction trx(
       arangodb::transaction::StandaloneContext::Create(
@@ -1880,6 +1888,7 @@ void RocksDBCollection::recalculateIndexEstimates(
 
   for (auto const& it : indexes) {
     auto idx = static_cast<RocksDBIndex*>(it.get());
+    TRI_ASSERT(idx != nullptr);
     idx->recalculateEstimates();
   }
   _needToPersistIndexEstimates = true;

@@ -65,12 +65,10 @@ function runArangodRecovery (instanceInfo, options, script, setup) {
 
   if (setup) {
     argv = argv.concat([
-      '--log.level', 'fatal',
       '--javascript.script-parameter', 'setup'
     ]);
   } else {
     argv = argv.concat([
-      '--log.level', 'info',
       '--wal.ignore-logfile-errors', 'true',
       '--javascript.script-parameter', 'recovery'
     ]);

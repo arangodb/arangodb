@@ -11,7 +11,7 @@ add_custom_target(examples
   WORKING_DIRECTORY ${PROJECT_SOURCE_DIR})
 
 # manual pages
-if (USE_MAINTAINER_MODE)
+if (USE_MAINTAINER_MODE AND NOT(MSVC))
   set(MAN_NAMES
     man1/arangobench.1
     man1/arangodump.1

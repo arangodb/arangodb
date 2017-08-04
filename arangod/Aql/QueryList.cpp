@@ -33,9 +33,12 @@
 #include "RestServer/QueryRegistryFeature.h"
 #include "VocBase/vocbase.h"
 
+#include <velocypack/Builder.h>
+#include <velocypack/Value.h>
+
 using namespace arangodb;
 using namespace arangodb::aql;
-
+  
 QueryEntryCopy::QueryEntryCopy(TRI_voc_tick_t id,
                                std::string&& queryString, 
                                std::shared_ptr<arangodb::velocypack::Builder> bindParameters,
@@ -50,9 +53,10 @@ QueryList::QueryList(TRI_vocbase_t*)
       _current(),
       _slow(),
       _slowCount(0),
-      _enabled(application_features::ApplicationServer::getFeature<arangodb::QueryRegistryFeature>("QueryRegistry")->queryTracking()),
-      _trackSlowQueries(application_features::ApplicationServer::getFeature<arangodb::QueryRegistryFeature>("QueryRegistry")->queryTracking()),
-      _slowQueryThreshold(application_features::ApplicationServer::getFeature<arangodb::QueryRegistryFeature>("QueryRegistry")->slowThreshold()),
+      _enabled(application_features::ApplicationServer::getFeature<arangodb::QueryRegistryFeature>("QueryRegistry")->trackSlowQueries()),
+      _trackSlowQueries(application_features::ApplicationServer::getFeature<arangodb::QueryRegistryFeature>("QueryRegistry")->trackSlowQueries()),
+      _trackBindVars(application_features::ApplicationServer::getFeature<arangodb::QueryRegistryFeature>("QueryRegistry")->trackBindVars()),
+      _slowQueryThreshold(application_features::ApplicationServer::getFeature<arangodb::QueryRegistryFeature>("QueryRegistry")->slowQueryThreshold()),
       _maxSlowQueries(defaultMaxSlowQueries),
       _maxQueryStringLength(defaultMaxQueryStringLength) {
   _current.reserve(64);
@@ -130,16 +134,29 @@ void QueryList::remove(Query* query) {
         loadTime = profile->timers[QueryExecutionState::toNumber(QueryExecutionState::ValueType::LOADING_COLLECTIONS)];
       }
 
+      std::string bindParameters;
+      if (_trackBindVars) {
+        // also log bind variables
+        auto bp = query->bindParameters();
+        if (bp != nullptr) {
+          bindParameters.append(", bind vars: ");
+          bindParameters.append(bp->slice().toJson());
+          if (bindParameters.size() > _maxQueryStringLength) {
+            bindParameters.resize(_maxQueryStringLength - 3);
+            bindParameters.append("...");
+          }
+        }
+      }
       if (loadTime >= 0.1) {
-        LOG_TOPIC(WARN, Logger::QUERIES) << "slow query: '" << q << "', took: " << Logger::FIXED(now - started) << ", loading took: " << Logger::FIXED(loadTime);
+        LOG_TOPIC(WARN, Logger::QUERIES) << "slow query: '" << q << bindParameters << ", took: " << Logger::FIXED(now - started) << ", loading took: " << Logger::FIXED(loadTime);
       } else {
-        LOG_TOPIC(WARN, Logger::QUERIES) << "slow query: '" << q << "', took: " << Logger::FIXED(now - started);
+        LOG_TOPIC(WARN, Logger::QUERIES) << "slow query: '" << q << bindParameters << ", took: " << Logger::FIXED(now - started);
       }
 
       _slow.emplace_back(QueryEntryCopy(
           query->id(),
           std::move(q),
-          query->bindParameters(),
+          _trackBindVars ? query->bindParameters() : nullptr,
           started, now - started,
           QueryExecutionState::ValueType::FINISHED));
 
@@ -198,9 +215,14 @@ std::vector<QueryEntryCopy> QueryList::listCurrent() {
   size_t const maxLength = _maxQueryStringLength;
 
   std::vector<QueryEntryCopy> result;
+  // reserve room for some queries outside of the lock already,
+  // so we reduce the possibility of having to reserve more room
+  // later
+  result.reserve(16);
 
   {
     READ_LOCKER(readLocker, _lock);
+    // reserve the actually needed space
     result.reserve(_current.size());
 
     for (auto const& it : _current) {
@@ -215,7 +237,7 @@ std::vector<QueryEntryCopy> QueryList::listCurrent() {
       result.emplace_back(
           QueryEntryCopy(query->id(),
                          extractQueryString(query, maxLength),
-                         query->bindParameters(),
+                         _trackBindVars ? query->bindParameters() : nullptr,
                          started, now - started,
                          query->state()));
     }
@@ -227,10 +249,16 @@ std::vector<QueryEntryCopy> QueryList::listCurrent() {
 /// @brief get the list of slow queries
 std::vector<QueryEntryCopy> QueryList::listSlow() {
   std::vector<QueryEntryCopy> result;
+  // reserve room for some queries outside of the lock already,
+  // so we reduce the possibility of having to reserve more room
+  // later
+  result.reserve(16);
 
   {
     READ_LOCKER(readLocker, _lock);
+    // reserve the actually needed space
     result.reserve(_slow.size());
+
     for (auto const& it : _slow) {
       result.emplace_back(it);
     }

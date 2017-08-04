@@ -210,6 +210,67 @@ function walFailureSuite () {
 
       internal.debugClearFailAt();
       assertEqual(1005, c.count());
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test write lock timeout issues
+////////////////////////////////////////////////////////////////////////////////
+
+    testLockTimeout : function () {
+      internal.debugClearFailAt();
+
+      db._drop(cn);
+      c = db._create(cn);
+
+      internal.wal.flush(true, true);
+      
+      internal.debugSetFailAt("CollectorThreadProcessCollectionOperationsLockTimeout");
+
+      var i;
+      for (i = 0; i < 1005; ++i) {
+        c.save({ a: i });
+      } 
+
+      var fig;
+      internal.wal.flush(true, true);
+      
+      // wait for the logfile manager to write and sync the updated status file
+      var tries = 0; 
+      while (++tries < 20) {
+        fig = c.figures();
+        if (fig.uncollectedLogfileEntries === 1005) {
+          break;
+        }
+        internal.wait(1, false);
+      }
+
+      assertEqual(1005, c.count());
+      fig = c.figures();
+      assertEqual(1005, fig.uncollectedLogfileEntries);
+        
+      internal.wait(5, false);
+      assertEqual(1005, fig.uncollectedLogfileEntries);
+      
+      internal.debugClearFailAt();
+      
+      for (i = 0; i < 1005; ++i) {
+        c.save({ a: i });
+      } 
+
+      internal.wal.flush(true, true);
+      
+      // wait for the logfile manager to write and sync the updated status file
+      tries = 0; 
+      while (++tries < 20) {
+        fig = c.figures();
+        if (fig.uncollectedLogfileEntries === 0) {
+          break;
+        }
+        internal.wait(1, false);
+      }
+  
+      assertEqual(2010, c.count());
+      assertEqual(0, fig.uncollectedLogfileEntries);
     }
 
   };
