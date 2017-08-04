@@ -890,35 +890,61 @@ arangodb::Result updateLinks(
       );
     }
 
-    // resolve corresponding collection and link
-    for (auto itr = linkModifications.begin(); itr != linkModifications.end();) {
-      auto& state = *itr;
-      auto& collectionName = collectionsToLock[state._collectionsToLockOffset];
+    {
+      std::unordered_set<TRI_voc_cid_t> collectionsToRemove; // track removal for potential reindex
 
-      state._collection = const_cast<arangodb::LogicalCollection*>(resolver->getCollectionStruct(collectionName));
+      // resolve corresponding collection and link
+      for (auto itr = linkModifications.begin(); itr != linkModifications.end();) {
+        auto& state = *itr;
+        auto& collectionName = collectionsToLock[state._collectionsToLockOffset];
 
-      if (!state._collection) {
-        return arangodb::Result(
-          TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND,
-          std::string("failed to get collection while updating iResearch view '") + std::to_string(view.id()) + "' collection '" + collectionName + "'"
-        );
+        state._collection = const_cast<arangodb::LogicalCollection*>(resolver->getCollectionStruct(collectionName));
+
+        if (!state._collection) {
+          return arangodb::Result(
+            TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND,
+            std::string("failed to get collection while updating iResearch view '") + std::to_string(view.id()) + "' collection '" + collectionName + "'"
+          );
+        }
+
+        state._link = findFirstMatchingLink(*(state._collection), view);
+
+        // remove modification state if removal of non-existant link
+        if (!state._link // links currently does not exist
+            && state._linkDefinitionsOffset >= linkDefinitions.size()) { // link removal request
+          itr = linkModifications.erase(itr);
+          continue;
+        }
+
+        if (state._link
+            && state._linkDefinitionsOffset >= linkDefinitions.size()) { // link removal request
+          collectionsToRemove.emplace(state._collection->cid());
+        }
+
+        ++itr;
       }
 
-      state._link = findFirstMatchingLink(*(state._collection), view);
+      // remove modification state if no change on existing link and reindex not requested
+      for (auto itr = linkModifications.begin(); itr != linkModifications.end();) {
+        auto& state = *itr;
 
-      // remove modification state if no change on existing link or removal of non-existant link
-      if ((state._link && state._linkDefinitionsOffset < linkDefinitions.size() && *(state._link) == linkDefinitions[state._linkDefinitionsOffset].second)
-        || (!state._link && state._linkDefinitionsOffset >= linkDefinitions.size())) {
-        itr = linkModifications.erase(itr);
-        continue;
+        // remove modification state if no change on existing link or
+        if (state._link // links currently exists
+            && state._linkDefinitionsOffset < linkDefinitions.size() // link creation request
+            && collectionsToRemove.find(state._collection->cid()) == collectionsToRemove.end() // not a reindex request
+            && *(state._link) == linkDefinitions[state._linkDefinitionsOffset].second) { // link meta not modified
+          itr = linkModifications.erase(itr);
+          continue;
+        }
+
+        ++itr;
       }
-
-      ++itr;
     }
 
     // execute removals
     for (auto& state: linkModifications) {
-      if (state._link) {
+      if (state._link
+          && state._linkDefinitionsOffset >= linkDefinitions.size()) { // link removal request
         state._valid = state._collection->dropIndex(state._link->id());
       }
     }

@@ -47,7 +47,7 @@ bool ContextDataMock::isPinned(TRI_voc_cid_t cid) const {
 std::function<void()> PhysicalCollectionMock::before = []()->void {};
 
 PhysicalCollectionMock::PhysicalCollectionMock(arangodb::LogicalCollection* collection, arangodb::velocypack::Slice const& info)
-  : PhysicalCollection(collection, info) {
+  : PhysicalCollection(collection, info), lastId(0) {
 }
 
 arangodb::PhysicalCollection* PhysicalCollectionMock::clone(arangodb::LogicalCollection*) {
@@ -69,7 +69,7 @@ int PhysicalCollectionMock::close() {
 std::shared_ptr<arangodb::Index> PhysicalCollectionMock::createIndex(arangodb::transaction::Methods* trx, arangodb::velocypack::Slice const& info, bool& created) {
   before();
 
-  _indexes.emplace_back(arangodb::iresearch::IResearchLink::make(1, _logicalCollection, info));
+  _indexes.emplace_back(arangodb::iresearch::IResearchLink::make(++lastId, _logicalCollection, info));
   created = true;
   return _indexes.back();
 }

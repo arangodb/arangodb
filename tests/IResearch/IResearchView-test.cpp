@@ -1229,7 +1229,6 @@ SECTION("test_update_partial") {
   auto restore = irs::make_finally([before]()->void { PhysicalCollectionMock::before =before; });
   PhysicalViewMock::before = [&persisted]()->void { persisted = true; };
 
-
   // modify meta params
   {
     TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "testVocbase");
@@ -1660,6 +1659,68 @@ SECTION("test_update_partial") {
 
     auto tmpSlice = slice.get("links");
     CHECK((true == tmpSlice.isObject() && 0 == tmpSlice.length()));
+  }
+
+  // remove + add link to same collection (reindex)
+  {
+    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "testVocbase");
+    auto collectionJson = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testCollection\" }");
+    auto* logicalCollection = vocbase.createCollection(collectionJson->slice());
+    REQUIRE((nullptr != logicalCollection));
+    auto logicalView = vocbase.createView(createJson->slice(), 0);
+    REQUIRE((false == !logicalView));
+    auto view = logicalView->getImplementation();
+    REQUIRE((false == !view));
+
+    // initial add of link
+    {
+      auto updateJson = arangodb::velocypack::Parser::fromJson(
+        "{ \"links\": { \"testCollection\": {} } }"
+      );
+      CHECK((view->updateProperties(updateJson->slice(), true, false).ok()));
+
+      arangodb::velocypack::Builder builder;
+
+      builder.openObject();
+      view->getPropertiesVPack(builder);
+      builder.close();
+
+      auto slice = builder.slice();
+      auto tmpSlice = slice.get("links");
+      CHECK((true == tmpSlice.isObject() && 1 == tmpSlice.length()));
+    }
+
+    // add + remove
+    {
+      auto updateJson = arangodb::velocypack::Parser::fromJson(
+        "{ \"links\": { \"testCollection\": null, \"testCollection\": {} } }"
+      );
+      std::unordered_set<TRI_idx_iid_t> initial;
+
+      for (auto& idx: logicalCollection->getIndexes()) {
+        initial.emplace(idx->id());
+      }
+
+      CHECK((!initial.empty()));
+      CHECK((view->updateProperties(updateJson->slice(), true, false).ok()));
+      arangodb::velocypack::Builder builder;
+
+      builder.openObject();
+      view->getPropertiesVPack(builder);
+      builder.close();
+
+      auto slice = builder.slice();
+      auto tmpSlice = slice.get("links");
+      CHECK((true == tmpSlice.isObject() && 1 == tmpSlice.length()));
+
+      std::unordered_set<TRI_idx_iid_t> actual;
+
+      for (auto& index: logicalCollection->getIndexes()) {
+        actual.emplace(index->id());
+      }
+
+      CHECK((initial != actual)); // a reindexing took place (link recreated)
+    }
   }
 }
 
