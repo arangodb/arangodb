@@ -111,10 +111,10 @@ describe('User Rights Management', () => {
                 `).toArray().length;
                 expect(size).to.equal(1, `${name} could not register foxx service with sufficient rights`);
               } catch (e) {
-                if (e.errorNum == errors.ERROR_ARANGO_READ_ONLY.code ||
-                    e.errorNum == errors.ERROR_FORBIDDEN.code) {
-                  expect(falsem).to.be.equal(true, `${name} could not register foxx service with sufficient rights`);
-                }// ignore all other errors for now
+                if (e.errorNum === errors.ERROR_ARANGO_READ_ONLY.code ||
+                    e.errorNum === errors.ERROR_FORBIDDEN.code) {
+                  expect(false).to.be.equal(true, `${name} could not register foxx service with sufficient rights`);
+                } // FIXME: workarkound ignore all other errors for now
               }
             } else {
               try {
