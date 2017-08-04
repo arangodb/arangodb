@@ -1407,4 +1407,5 @@ ArangoCollection.prototype.loadIndexesIntoMemory = function () {
   this._status = null;
 
   arangosh.checkRequestResult(requestResult);
+  return { result: true };
 };

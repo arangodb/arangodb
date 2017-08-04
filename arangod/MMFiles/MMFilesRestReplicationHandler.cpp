@@ -1248,6 +1248,10 @@ int MMFilesRestReplicationHandler::createCollection(
   // because the collection is effectively NEW
   VPackBuilder patch;
   patch.openObject();
+  if (!name.empty() && name[0] == '_' && !slice.hasKey("isSystem")) {
+    // system collection?
+    patch.add("isSystem", VPackValue(true));
+  }
   patch.add("version", VPackValue(LogicalCollection::VERSION_31));
   patch.close();
 
@@ -1663,6 +1667,10 @@ int MMFilesRestReplicationHandler::processRestoreCollectionCoordinator(
   // always use current version number when restoring a collection,
   // because the collection is effectively NEW
   toMerge.add("version", VPackValue(LogicalCollection::VERSION_31));
+  if (!name.empty() && name[0] == '_' && !parameters.hasKey("isSystem")) {
+    // system collection?
+    toMerge.add("isSystem", VPackValue(true));
+  }
   toMerge.close();  // TopLevel
 
   VPackSlice const type = parameters.get("type");
