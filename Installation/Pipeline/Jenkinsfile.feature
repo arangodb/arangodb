@@ -129,10 +129,10 @@ restrictions = []
 // -----------------------------------------------------------------------------
 
 // github repositiory for resilience tests
-resilienceRepo = 'https://github.com/arangodb/resilience-tests'
+resilienceRepo = 'http://c1:8088/github.com/arangodb/resilience-tests'
 
 // github repositiory for enterprise version
-enterpriseRepo = 'https://github.com/arangodb/enterprise'
+enterpriseRepo = 'http://c1:8088/github.com/arangodb/enterprise'
 
 // Jenkins credentials for enterprise repositiory
 credentials = '8d893d23-6714-4f35-a239-c847c798e080'
