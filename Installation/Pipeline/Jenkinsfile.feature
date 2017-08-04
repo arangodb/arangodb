@@ -161,7 +161,6 @@ def checkoutCommunity() {
     retry(3) {
         try {
             checkout scm
-            sh 'git clean -f -d -x'
         }
         catch (exc) {
             echo "GITHUB checkout failed, retrying in 5min"
