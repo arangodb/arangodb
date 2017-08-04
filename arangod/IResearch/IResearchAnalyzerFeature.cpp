@@ -755,7 +755,13 @@ void IResearchAnalyzerFeature::loadConfiguration(
         || !slice.get(arangodb::StaticStrings::KeyString).isString()
         || !slice.hasKey("name") || !slice.get("name").isString()
         || !slice.hasKey("type") || !slice.get("type").isString()
-        || !slice.hasKey("properties") || !(slice.get("properties").isNull() || slice.get("properties").isString())
+        || !slice.hasKey("properties")
+        || !(
+          slice.get("properties").isNull()
+          || slice.get("properties").isString()
+          || slice.get("properties").isArray()
+          || slice.get("properties").isObject()
+        )
         || !slice.hasKey("ref_count") || !slice.get("ref_count").isNumber<uint64_t>()) {
       LOG_TOPIC(WARN, Logger::FIXME) << "skipping invalid IResearch analyzer persisted configuration entry: " << slice.toJson();
 
@@ -765,8 +771,18 @@ void IResearchAnalyzerFeature::loadConfiguration(
     auto key = getStringRef(slice.get(StaticStrings::KeyString));
     auto name = getStringRef(slice.get("name"));
     auto type = getStringRef(slice.get("type"));
-    auto properties = getStringRef(slice.get("properties"));
+    irs::string_ref properties;
+    auto propertiesSlice = slice.get("properties");
     auto count = slice.get("ref_count").getNumber<uint64_t>();
+    std::string tmpString;
+
+    // encode jSON array/object as a string for analyzers that support jSON
+    if (propertiesSlice.isArray() || propertiesSlice.isObject()) {
+      tmpString = propertiesSlice.toJson(); // format as a jSON encoded string
+      properties = tmpString;
+    } else {
+      properties = getStringRef(propertiesSlice);
+    }
 
     WriteMutex mutex(_mutex);
     SCOPED_LOCK(mutex); // the cache could return the same pool asynchronously before '_key'/'_refCount' updated below

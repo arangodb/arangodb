@@ -444,6 +444,8 @@ SECTION("test_persistence") {
       { "identity", { "identity", irs::string_ref::nil } },
       { "valid0", { "identity", irs::string_ref::nil } },
       { "valid2", { "identity", "abc" } },
+      { "valid4", { "identity", "[1,\"abc\"]" } },
+      { "valid5", { "identity", "{\"a\":7,\"b\":\"c\"}" } },
     };
     arangodb::iresearch::IResearchAnalyzerFeature feature(nullptr);
     feature.start();
