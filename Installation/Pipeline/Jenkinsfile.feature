@@ -342,7 +342,7 @@ Running Tests: ${runTests}"""
 
 def stashSourceCode() {
     lock("${env.BRANCH_NAME}-cache") {
-        stash name: "source", excludes: "*tmp", ".git"
+        stash name: "source", excludes: "*tmp,.git"
     }
     
 }
@@ -371,7 +371,7 @@ def unstashBuild(edition, os) {
 
 def stashBinaries(edition, os) {
     lock("${env.BRANCH_NAME}-cache") {
-        stash name = "binaries-${edition}-${os}", includes: "build", "etc", "Installation/Pipeline", "js", "scripts", "UnitTests", "utils", "resilience", "source.zip"
+        stash name: "binaries-${edition}-${os}", includes: "build, etc, Installation/Pipeline, js, scripts, UnitTests, utils, resilience, source.zip"
     }
 }
 
@@ -381,7 +381,7 @@ def unstashBinaries(edition, os) {
     deleteDir()
 
     lock("${env.BRANCH_NAME}-cache") {
-        unstash name = "binaries-${edition}-${os}"
+        unstash name: "binaries-${edition}-${os}"
     }
 }
 
