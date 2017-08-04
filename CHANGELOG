@@ -1,6 +1,8 @@
 devel
 -----
 
+* fixed isuse #2949: ArangoError 1208: illegal name
+
 * fixed issue #2874: Collection properties do not return `isVolatile` 
   attribute
 
