@@ -216,9 +216,7 @@ Result RocksDBFulltextIndex::removeInternal(transaction::Methods* trx,
                                             VPackSlice const& doc) {
   std::set<std::string> words = wordlist(doc);
   if (words.empty()) {
-    // TODO: distinguish the cases "empty wordlist" and "out of memory"
-    // LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "could not build wordlist";
-    return IndexResult(TRI_ERROR_OUT_OF_MEMORY);
+    return IndexResult(TRI_ERROR_NO_ERROR);
   }
 
   // now we are going to construct the value to insert into rocksdb
@@ -265,20 +263,14 @@ static void ExtractWords(std::set<std::string>& words, VPackSlice const value,
 /// words to index for a specific document
 std::set<std::string> RocksDBFulltextIndex::wordlist(VPackSlice const& doc) {
   std::set<std::string> words;
-  try {
-    VPackSlice const value = doc.get(_attr);
+  VPackSlice const value = doc.get(_attr);
 
-    if (!value.isString() && !value.isArray() && !value.isObject()) {
-      // Invalid Input
-      return words;
-    }
-
-    ExtractWords(words, value, _minWordLength, 0);
-  } catch (...) {
-    // Backwards compatibility
-    // The pre-vpack impl. did just ignore all errors and returned nulltpr
+  if (!value.isString() && !value.isArray() && !value.isObject()) {
+    // Invalid Input
     return words;
   }
+
+  ExtractWords(words, value, _minWordLength, 0);
   return words;
 }
 

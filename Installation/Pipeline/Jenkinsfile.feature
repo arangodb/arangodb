@@ -189,9 +189,6 @@ def checkoutCommunity() {
             checkout scm
             sh 'git clean -f -d -x'
         }
-        // catch (hudson.AbortException ae) {
-        //     throw ae
-        // }
         catch (exc) {
             echo "GITHUB checkout failed, retrying in 5min"
             echo exc.toString()
@@ -389,11 +386,9 @@ def unstashSourceCode(os) {
 
     if (os == 'linux' || os == 'mac') {
         sh 'unzip -o -q source.zip'
-        sh 'rm -f source.zip'
     }
     else if (os == 'windows') {
         bat 'c:\\cmake\\bin\\cmake -E tar xf source.zip'
-        bat 'del /q /f source.zip'
     }
 }
 
@@ -433,7 +428,7 @@ def unstashBuild(edition, os) {
 
 def stashBinaries(edition, os) {
     def name = "binaries-${edition}-${os}.zip"
-    def dirs = 'build etc Installation/Pipeline js scripts UnitTests utils resilience'
+    def dirs = 'build etc Installation/Pipeline js scripts UnitTests utils resilience source.zip'
 
     if (edition == 'enterprise') {
         dirs = "${dirs} enterprise/js"
@@ -502,9 +497,6 @@ def jslint() {
     try {
         sh './Installation/Pipeline/test_jslint.sh'
     }
-    // catch (hudson.AbortException ae) {
-    //     throw ae
-    // }
     catch (exc) {
         jslintSuccessful = false
         throw exc
@@ -553,13 +545,17 @@ def testEdition(edition, os, mode, engine) {
             }
 
             if (findFiles(glob: 'core*').length > 0) {
-               error("found core file")
+                error("found core file")
             }
         }
         catch (exc) {
             if (os == 'linux' || os == 'mac') {
                 sh "for i in build core* tmp; do test -e \$i && mv \$i ${arch} || true; done"
             }
+
+            archiveArtifacts allowEmptyArchive: true,
+                             artifacts: "source.zip",
+                             defaultExcludes: false
 
             throw exc
         }
@@ -574,9 +570,6 @@ def testEdition(edition, os, mode, engine) {
             }
         }
     }
-    // catch (hudson.AbortException ae) {
-    //     throw ae
-    // }
     finally {
         archiveArtifacts allowEmptyArchive: true,
                          artifacts: "${arch}/**",
@@ -631,9 +624,6 @@ def testStep(edition, os, mode, engine) {
                     testEdition(edition, os, mode, engine)
                     testsSuccess[name] = true
                 }
-                // catch (hudson.AbortException ae) {
-                //     throw ae
-                // }
                 catch (exc) {
                     echo exc.toString()
                     testsSuccess[name] = false
@@ -750,13 +740,17 @@ def testResilienceStep(os, engine, foxx) {
                         testResilience(os, engine, foxx)
 
                         if (findFiles(glob: 'resilience/core*').length > 0) {
-                          error("found core file")
+                            error("found core file")
                         }
                     }
                     catch (exc) {
                         if (os == 'linux' || os == 'mac') {
                             sh "for i in build resilience/core* tmp; do test -e \$i && mv \$i ${arch} || true; done"
                         }
+
+                        archiveArtifacts allowEmptyArchive: true,
+                                         artifacts: "source.zip",
+                                         defaultExcludes: false
 
                         throw exc
                     }
@@ -770,9 +764,6 @@ def testResilienceStep(os, engine, foxx) {
                         
                     }
                 }
-                // catch (hudson.AbortException ae) {
-                //     throw ae
-                // }
                 catch (exc) {
                     resiliencesSuccess[name] = false
                     allResiliencesSuccessful = false
@@ -825,9 +816,6 @@ def buildEdition(edition, os) {
         try {
             unstashBuild(edition, os)
         }
-        // catch (hudson.AbortException ae) {
-        //     throw ae
-        // }
         catch (exc) {
             echo "no stashed build environment, starting clean build"
         }
@@ -910,9 +898,6 @@ def buildStep(edition, os) {
                     stashBinaries(edition, os)
                     buildsSuccess[name] = true
                 }
-                // catch (hudson.AbortException ae) {
-                //     throw ae
-                // }
                 catch (exc) {
                     buildsSuccess[name] = false
                     allBuildsSuccessful = false
@@ -951,10 +936,6 @@ def runStage(stage) {
     try {
         stage()
     }
-    // catch (hudson.AbortException ae) {
-    //     echo exc.toString()
-    //     throw ae
-    // }
     catch (exc) {
         echo exc.toString()
     }
@@ -962,11 +943,13 @@ def runStage(stage) {
 
 stage('checkout') {
     node('master') {
-        checkoutCommunity()
-        checkCommitMessages()
-        checkoutEnterprise()
-        checkoutResilience()
-        stashSourceCode()
+        timeout(30) {
+            checkoutCommunity()
+            checkCommitMessages()
+            checkoutEnterprise()
+            checkoutResilience()
+            stashSourceCode()
+        }
     }
 }
 

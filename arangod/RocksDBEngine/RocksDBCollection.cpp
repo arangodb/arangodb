@@ -1875,7 +1875,7 @@ void RocksDBCollection::recalculateIndexEstimates() {
 }
 
 void RocksDBCollection::recalculateIndexEstimates(
-    std::vector<std::shared_ptr<Index>>& indexes) {
+    std::vector<std::shared_ptr<Index>> const& indexes) {
   // start transaction to get a collection lock
   arangodb::SingleCollectionTransaction trx(
       arangodb::transaction::StandaloneContext::Create(
@@ -1888,6 +1888,7 @@ void RocksDBCollection::recalculateIndexEstimates(
 
   for (auto const& it : indexes) {
     auto idx = static_cast<RocksDBIndex*>(it.get());
+    TRI_ASSERT(idx != nullptr);
     idx->recalculateEstimates();
   }
   _needToPersistIndexEstimates = true;
