@@ -46,7 +46,7 @@ function runSetup () {
   v.properties(meta);
 
   // remove link
-  v.properties({ links: {} });
+  v.properties({ links: { 'UnitTestsRecoveryDummy': null } });
 
   c.save({ _key: 'crashme' }, true);
 
