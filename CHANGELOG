@@ -1,3 +1,9 @@
+v3.1.28 (XXXX-XX-XX)
+--------------------
+
+* used the required mutex in Store::clear to avoid races
+
+
 v3.1.27 (2017-08-03)
 --------------------
 

@@ -689,6 +689,7 @@ bool Store::applies(arangodb::velocypack::Slice const& transaction) {
 
 // Clear my data
 void Store::clear() {
+  MUTEX_LOCKER(otherLock, _storeLock); 
   _timeTable.clear();
   _observerTable.clear();
   _observedTable.clear();
