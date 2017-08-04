@@ -14,6 +14,10 @@ in the list of slow queries if their runtime exceeds the value set in
 *slowQueryThreshold*. In order for slow queries to be tracked, the *enabled*
 property must also be set to *true*.
 
+@RESTBODYPARAM{trackBindVars,boolean,required,}
+If set to *true*, then the bind variables used in queries will be tracked 
+along with queries.
+
 @RESTBODYPARAM{maxSlowQueries,integer,required,int64}
 The maximum number of slow queries to keep in the list
 of slow queries. If the list of slow queries is full, the oldest entry in

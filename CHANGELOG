@@ -1,6 +1,21 @@
 devel
 -----
 
+* added startup option `--query.tracking-with-bindvars` 
+
+  This option controls whether the list of currently running queries
+  and the list of slow queries should contain the bind variables used
+  in the queries or not.
+
+  The option can be changed at runtime using the commands
+
+      // enables tracking of bind variables
+      // set to false to turn tracking of bind variables off
+      var value = true; 
+      require("@arangodb/aql/queries").properties({ 
+        trackBindVars: value 
+      });
+
 * fix potential deadlock errors in collector thread
 
 * disallow the usage of volatile collections in the RocksDB engine 

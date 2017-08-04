@@ -44,14 +44,14 @@ class QueryRegistryFeature final : public application_features::ApplicationFeatu
   void unprepare() override final;
 
   bool trackSlowQueries() const { return _trackSlowQueries; }
-  bool trackSlowQueriesBindVars() const { return _trackSlowQueriesBindVars; }
+  bool trackBindVars() const { return _trackBindVars; }
   double slowQueryThreshold() const { return _slowQueryThreshold; }
   bool failOnWarning() const { return _failOnWarning; }
   uint64_t queryMemoryLimit() const { return _queryMemoryLimit; }
 
  private:
   bool _trackSlowQueries;
-  bool _trackSlowQueriesBindVars;
+  bool _trackBindVars;
   bool _failOnWarning;
   uint64_t _queryMemoryLimit;
   double _slowQueryThreshold;

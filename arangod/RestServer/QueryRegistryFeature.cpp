@@ -38,7 +38,7 @@ aql::QueryRegistry* QueryRegistryFeature::QUERY_REGISTRY = nullptr;
 QueryRegistryFeature::QueryRegistryFeature(ApplicationServer* server)
     : ApplicationFeature(server, "QueryRegistry"),
       _trackSlowQueries(true),
-      _trackSlowQueriesBindVars(true),
+      _trackBindVars(true),
       _failOnWarning(false),
       _queryMemoryLimit(0),
       _slowQueryThreshold(10.0),
@@ -65,8 +65,8 @@ void QueryRegistryFeature::collectOptions(
   options->addOption("--query.tracking", "whether to track slow AQL queries",
                      new BooleanParameter(&_trackSlowQueries));
   
-  options->addOption("--query.tracking-with-bindvars", "whether to track bind vars with slow AQL queries",
-                     new BooleanParameter(&_trackSlowQueriesBindVars));
+  options->addOption("--query.tracking-with-bindvars", "whether to track bind vars with AQL queries",
+                     new BooleanParameter(&_trackBindVars));
   
   options->addOption("--query.fail-on-warning", "whether AQL queries should fail with errors even for recoverable warnings",
                      new BooleanParameter(&_failOnWarning));

@@ -55,7 +55,7 @@ QueryList::QueryList(TRI_vocbase_t*)
       _slowCount(0),
       _enabled(application_features::ApplicationServer::getFeature<arangodb::QueryRegistryFeature>("QueryRegistry")->trackSlowQueries()),
       _trackSlowQueries(application_features::ApplicationServer::getFeature<arangodb::QueryRegistryFeature>("QueryRegistry")->trackSlowQueries()),
-      _trackSlowQueriesBindVars(application_features::ApplicationServer::getFeature<arangodb::QueryRegistryFeature>("QueryRegistry")->trackSlowQueriesBindVars()),
+      _trackBindVars(application_features::ApplicationServer::getFeature<arangodb::QueryRegistryFeature>("QueryRegistry")->trackBindVars()),
       _slowQueryThreshold(application_features::ApplicationServer::getFeature<arangodb::QueryRegistryFeature>("QueryRegistry")->slowQueryThreshold()),
       _maxSlowQueries(defaultMaxSlowQueries),
       _maxQueryStringLength(defaultMaxQueryStringLength) {
@@ -135,7 +135,7 @@ void QueryList::remove(Query* query) {
       }
 
       std::string bindParameters;
-      if (_trackSlowQueriesBindVars) {
+      if (_trackBindVars) {
         // also log bind variables
         auto bp = query->bindParameters();
         if (bp != nullptr) {
@@ -156,7 +156,7 @@ void QueryList::remove(Query* query) {
       _slow.emplace_back(QueryEntryCopy(
           query->id(),
           std::move(q),
-          _trackSlowQueriesBindVars ? query->bindParameters() : nullptr,
+          _trackBindVars ? query->bindParameters() : nullptr,
           started, now - started,
           QueryExecutionState::ValueType::FINISHED));
 
@@ -237,7 +237,7 @@ std::vector<QueryEntryCopy> QueryList::listCurrent() {
       result.emplace_back(
           QueryEntryCopy(query->id(),
                          extractQueryString(query, maxLength),
-                         _trackSlowQueriesBindVars ? query->bindParameters() : nullptr,
+                         _trackBindVars ? query->bindParameters() : nullptr,
                          started, now - started,
                          query->state()));
     }

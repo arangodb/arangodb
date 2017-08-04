@@ -1143,9 +1143,9 @@ static void JS_QueriesPropertiesAql(
       queryList->trackSlowQueries(TRI_ObjectToBoolean(
           obj->Get(TRI_V8_ASCII_STRING("trackSlowQueries"))));
     }
-    if (obj->Has(TRI_V8_ASCII_STRING("trackSlowQueriesBindVars"))) {
-      queryList->trackSlowQueriesBindVars(TRI_ObjectToBoolean(
-          obj->Get(TRI_V8_ASCII_STRING("trackSlowQueriesBindVars"))));
+    if (obj->Has(TRI_V8_ASCII_STRING("trackBindVars"))) {
+      queryList->trackBindVars(TRI_ObjectToBoolean(
+          obj->Get(TRI_V8_ASCII_STRING("trackBindVars"))));
     }
     if (obj->Has(TRI_V8_ASCII_STRING("maxSlowQueries"))) {
       queryList->maxSlowQueries(static_cast<size_t>(
@@ -1169,8 +1169,8 @@ static void JS_QueriesPropertiesAql(
               v8::Boolean::New(isolate, queryList->enabled()));
   result->Set(TRI_V8_ASCII_STRING("trackSlowQueries"),
               v8::Boolean::New(isolate, queryList->trackSlowQueries()));
-  result->Set(TRI_V8_ASCII_STRING("trackSlowQueriesBindVars"),
-              v8::Boolean::New(isolate, queryList->trackSlowQueriesBindVars()));
+  result->Set(TRI_V8_ASCII_STRING("trackBindVars"),
+              v8::Boolean::New(isolate, queryList->trackBindVars()));
   result->Set(TRI_V8_ASCII_STRING("maxSlowQueries"),
               v8::Number::New(
                   isolate, static_cast<double>(queryList->maxSlowQueries())));

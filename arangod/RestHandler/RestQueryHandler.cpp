@@ -86,7 +86,7 @@ bool RestQueryHandler::readQueryProperties() {
   result.add("code", VPackValue((int)rest::ResponseCode::OK));
   result.add("enabled", VPackValue(queryList->enabled()));
   result.add("trackSlowQueries", VPackValue(queryList->trackSlowQueries()));
-  result.add("trackSlowQueriesBindVars", VPackValue(queryList->trackSlowQueriesBindVars()));
+  result.add("trackBindVars", VPackValue(queryList->trackBindVars()));
   result.add("maxSlowQueries", VPackValue(queryList->maxSlowQueries()));
   result.add("slowQueryThreshold",
               VPackValue(queryList->slowQueryThreshold()));
@@ -243,7 +243,7 @@ bool RestQueryHandler::replaceProperties() {
 
   bool enabled = queryList->enabled();
   bool trackSlowQueries = queryList->trackSlowQueries();
-  bool trackSlowQueriesBindVars = queryList->trackSlowQueriesBindVars();
+  bool trackBindVars = queryList->trackBindVars();
   size_t maxSlowQueries = queryList->maxSlowQueries();
   double slowQueryThreshold = queryList->slowQueryThreshold();
   size_t maxQueryStringLength = queryList->maxQueryStringLength();
@@ -259,9 +259,9 @@ bool RestQueryHandler::replaceProperties() {
     trackSlowQueries = attribute.getBool();
   }
 
-  attribute = body.get("trackSlowQueriesBindVars");
+  attribute = body.get("trackBindVars");
   if (attribute.isBool()) {
-    trackSlowQueriesBindVars = attribute.getBool();
+    trackBindVars = attribute.getBool();
   }
 
   attribute = body.get("maxSlowQueries");
@@ -281,7 +281,7 @@ bool RestQueryHandler::replaceProperties() {
 
   queryList->enabled(enabled);
   queryList->trackSlowQueries(trackSlowQueries);
-  queryList->trackSlowQueriesBindVars(trackSlowQueriesBindVars);
+  queryList->trackBindVars(trackBindVars);
   queryList->maxSlowQueries(maxSlowQueries);
   queryList->slowQueryThreshold(slowQueryThreshold);
   queryList->maxQueryStringLength(maxQueryStringLength);
