@@ -865,7 +865,9 @@ stage('checkout') {
         timeout(30) {
             checkoutCommunity()
             checkCommitMessages()
-            checkoutEnterprise()
+            if (useEnterprise) {
+                checkoutEnterprise()
+            }
             checkoutResilience()
             stashSourceCode()
         }
