@@ -128,10 +128,6 @@ restrictions = []
 // --SECTION--                                             CONSTANTS AND HELPERS
 // -----------------------------------------------------------------------------
 
-// users
-jenkinsMaster = 'jenkins-master@c1'
-jenkinsSlave = 'jenkins'
-
 // github repositiory for resilience tests
 resilienceRepo = 'https://github.com/arangodb/resilience-tests'
 
@@ -140,9 +136,6 @@ enterpriseRepo = 'https://github.com/arangodb/enterprise'
 
 // Jenkins credentials for enterprise repositiory
 credentials = '8d893d23-6714-4f35-a239-c847c798e080'
-
-// jenkins cache
-cacheDir = '/vol/cache/' + env.JOB_NAME.replaceAll('%', '_')
 
 // source branch for pull requests
 sourceBranchLabel = env.BRANCH_NAME
@@ -155,25 +148,6 @@ if (env.BRANCH_NAME =~ /^PR-/) {
   sourceBranchLabel = sourceBranchLabel - reg
 }
 
-// copy data to master cache
-def scpToMaster(os, from, to) {
-    if (os == 'linux' || os == 'mac') {
-        sh "scp '${from}' '${jenkinsMaster}:${cacheDir}/${to}'"
-    }
-    else if (os == 'windows') {
-        bat "scp -F c:/Users/jenkins/ssh_config \"${from}\" \"${jenkinsMaster}:${cacheDir}/${to}\""
-    }
-}
-
-// copy data from master cache
-def scpFromMaster(os, from, to) {
-    if (os == 'linux' || os == 'mac') {
-        sh "scp '${jenkinsMaster}:${cacheDir}/${from}' '${to}'"
-    }
-    else if (os == 'windows') {
-        bat "scp -F c:/Users/jenkins/ssh_config \"${jenkinsMaster}:${cacheDir}/${from}\" \"${to}\""
-    }
-}
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       SCRIPTS SCM
@@ -367,45 +341,23 @@ Running Tests: ${runTests}"""
 // -----------------------------------------------------------------------------
 
 def stashSourceCode() {
-    sh 'rm -f source.*'
-    sh 'find -L . -type l -delete'
-    sh 'zip -r -1 -x "*tmp" -x ".git" -y -q source.zip *'
-
     lock("${env.BRANCH_NAME}-cache") {
-        sh 'mkdir -p ' + cacheDir
-        sh "mv -f source.zip ${cacheDir}/source.zip"
+        stash name: "source", excludes: "*tmp", ".git"
     }
+    
 }
 
 def unstashSourceCode(os) {
     deleteDir()
 
     lock("${env.BRANCH_NAME}-cache") {
-        scpFromMaster(os, 'source.zip', 'source.zip')
-    }
-
-    if (os == 'linux' || os == 'mac') {
-        sh 'unzip -o -q source.zip'
-    }
-    else if (os == 'windows') {
-        bat 'c:\\cmake\\bin\\cmake -E tar xf source.zip'
+        unstash name: "source"
     }
 }
 
 def stashBuild(edition, os) {
-    def name = "build-${edition}-${os}.zip"
-
-    if (os == 'linux' || os == 'mac') {
-        sh "rm -f ${name}"
-        sh "zip -r -1 -y -q ${name} build-${edition}"
-    }
-    else if (os == 'windows') {
-        bat "del /F /Q ${name}"
-        bat "c:\\cmake\\bin\\cmake -E tar cf ${name} build"
-    }
-
     lock("${env.BRANCH_NAME}-cache") {
-        scpToMaster(os, name, name)
+        stash name: "build-${edition}-${os}", includes: "build-${edition}"
     }
 }
 
@@ -413,36 +365,13 @@ def unstashBuild(edition, os) {
     def name = "build-${edition}-${os}.zip"
 
     lock("${env.BRANCH_NAME}-cache") {
-        scpFromMaster(os, name, name)
-    }
-
-    if (os == 'linux' || os == 'mac') {
-        sh "unzip -o -q ${name}"
-        sh "rm -f ${name}"
-    }
-    else if (os == 'windows') {
-        bat "c:\\cmake\\bin\\cmake -E tar xf ${name}"
-        bat "del /F /Q ${name}"
+        unstash name: "build-${edition}-${os}"
     }
 }
 
 def stashBinaries(edition, os) {
-    def name = "binaries-${edition}-${os}.zip"
-    def dirs = 'build etc Installation/Pipeline js scripts UnitTests utils resilience source.zip'
-
-    if (edition == 'enterprise') {
-        dirs = "${dirs} enterprise/js"
-    }
-
-    if (os == 'linux' || os == 'mac') {
-        sh "zip -r -1 -y -q ${name} ${dirs}"
-    }
-    else if (os == 'windows') {
-        bat "c:\\cmake\\bin\\cmake -E tar cf ${name} ${dirs}"
-    }
-
     lock("${env.BRANCH_NAME}-cache") {
-        scpToMaster(os, name, name)
+        stash name = "binaries-${edition}-${os}", includes: "build", "etc", "Installation/Pipeline", "js", "scripts", "UnitTests", "utils", "resilience", "source.zip"
     }
 }
 
@@ -452,16 +381,7 @@ def unstashBinaries(edition, os) {
     deleteDir()
 
     lock("${env.BRANCH_NAME}-cache") {
-        scpFromMaster(os, name, name)
-    }
-
-    if (os == 'linux' || os == 'mac') {
-        sh "unzip -o -q  ${name}"
-        sh "rm -f ${name}"
-    }
-    else if (os == 'windows') {
-        bat "c:\\cmake\\bin\\cmake -E tar xf ${name}"
-        bat "del /F /Q ${name}"
+        unstash name = "binaries-${edition}-${os}"
     }
 }
 
