@@ -862,12 +862,14 @@ def runStage(stage) {
 }
 
 stage('checkout') {
-    timeout(30) {
-        checkoutCommunity()
-        checkCommitMessages()
-        checkoutEnterprise()
-        checkoutResilience()
-        stashSourceCode()
+    node {
+        timeout(30) {
+            checkoutCommunity()
+            checkCommitMessages()
+            checkoutEnterprise()
+            checkoutResilience()
+            stashSourceCode()
+        }
     }
 }
 
