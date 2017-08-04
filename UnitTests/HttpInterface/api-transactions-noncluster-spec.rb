@@ -362,7 +362,7 @@ describe ArangoDB do
         doc.headers['content-type'].should eq("application/json; charset=utf-8")
         doc.parsed_response['error'].should eq(true)
         doc.parsed_response['code'].should eq(500)
-        doc.parsed_response['errorNum'].should eq(4)
+        doc.parsed_response['errorNum'].should eq(1650) #internal transactin error
       end
     end
 
@@ -448,7 +448,7 @@ describe ArangoDB do
         doc.headers['content-type'].should eq("application/json; charset=utf-8")
         doc.parsed_response['error'].should eq(true)
         doc.parsed_response['code'].should eq(500)
-        doc.parsed_response['errorNum'].should eq(4)
+        doc.parsed_response['errorNum'].should eq(1650) #internal transaction error
 
         ArangoDB.size_collection(@cn).should eq(0);
       end
@@ -547,7 +547,7 @@ describe ArangoDB do
         doc.headers['content-type'].should eq("application/json; charset=utf-8")
         doc.parsed_response['error'].should eq(true)
         doc.parsed_response['code'].should eq(500)
-        doc.parsed_response['errorNum'].should eq(4)
+        doc.parsed_response['errorNum'].should eq(1650) #internal transaction error
 
         ArangoDB.size_collection(@cn1).should eq(0);
         ArangoDB.size_collection(@cn2).should eq(0);

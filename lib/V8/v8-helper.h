@@ -62,11 +62,22 @@ public:
     _v8g->_currentRequest = request;
   }
 
+  void cancel(bool doCancel){
+    if(doCancel){
+      _v8g->_canceled=true;
+    }
+  }
+
   ~v8gHelper() {
-    _v8g->_currentRequest = v8::Undefined(_isolate);
-    _v8g->_currentResponse = v8::Undefined(_isolate);
+    if(_v8g->_canceled){
+      return;
+    }
+
     if(_tryCatch.HasCaught() && !_tryCatch.CanContinue()){
       _v8g->_canceled=true;
+    } else {
+      _v8g->_currentRequest = v8::Undefined(_isolate);
+      _v8g->_currentResponse = v8::Undefined(_isolate);
     }
   }
 };

@@ -12,64 +12,82 @@
 #include "V8Server/v8-vocbaseprivate.h"
 #include "Logger/Logger.h"
 #include <velocypack/Slice.h>
+#include "Basics/WriteLocker.h"
+#include "Basics/ReadLocker.h"
 
 namespace arangodb {
 
 
-Result executeTransaction(TRI_vocbase_t* database, VPackSlice slice, std::string portType, VPackBuilder& builder){
+Result executeTransaction(
+    v8::Isolate* isolate,
+    basics::ReadWriteLock& lock,
+    std::atomic<bool>& canceled,
+    VPackSlice slice,
+    std::string portType,
+    VPackBuilder& builder){
+
+  // YOU NEED A TRY CATCH BLOCK like:
+  //    TRI_V8_TRY_CATCH_BEGIN(isolate);
+  //    TRI_V8_TRY_CATCH_END
+  // outside of this function!
+
+  READ_LOCKER(readLock, lock);
   Result rv;
-
-  if(!slice.isObject()){
-    rv.reset(TRI_ERROR_BAD_PARAMETER, "body is not an object");
+  if(canceled){
+    rv.reset(TRI_ERROR_REQUEST_CANCELED,"handler canceled");
     return rv;
   }
 
-  V8Context* context = V8DealerFeature::DEALER->enterContext(database, true);
-  if (!context){
-    rv.reset(TRI_ERROR_INTERNAL, "unable to get v8 context");
+  v8::HandleScope scope(isolate);
+  v8::Handle<v8::Value> in = TRI_VPackToV8(isolate, slice);
+
+  v8::Handle<v8::Value> result;
+  v8::TryCatch tryCatch;
+
+  v8::Handle<v8::Object> request = v8::Object::New(isolate);
+  v8::Handle<v8::Value> jsPortTypeKey= TRI_V8_ASCII_STRING("portType");
+  v8::Handle<v8::Value> jsPortTypeValue = TRI_V8_ASCII_STRING(portType.c_str());
+  if (!request->Set(jsPortTypeKey, jsPortTypeValue)){
+    rv.reset(TRI_ERROR_INTERNAL, "could not set portType");
     return rv;
   }
-  TRI_DEFER(V8DealerFeature::DEALER->exitContext(context));
-
   {
-    v8::Isolate* isolate = context->_isolate;
-    v8::HandleScope scope(isolate);
-    v8::Handle<v8::Value> in = TRI_VPackToV8(isolate, slice);
+    auto requestVal = v8::Handle<v8::Value>::Cast(request);
+    auto responseVal = v8::Handle<v8::Value>::Cast(v8::Undefined(isolate));
+    v8gHelper globalVars(isolate, tryCatch, requestVal, responseVal);
+    readLock.unlock(); //unlock
+    rv = executeTransactionJS(isolate, in, result, tryCatch);
+    globalVars.cancel(canceled);
+  }
 
-    v8::Handle<v8::Value> result;
-    v8::TryCatch tryCatch;
+  //do not allow the manipulation of the isolate while we are messing here
+  WRITE_LOCKER(writeLock, lock);
 
-    v8::Handle<v8::Object> request = v8::Object::New(isolate);
-    v8::Handle<v8::Value> jsPortTypeKey= TRI_V8_ASCII_STRING("portType");
-    v8::Handle<v8::Value> jsPortTypeValue = TRI_V8_ASCII_STRING(portType.c_str());
-    if (!request->Set(jsPortTypeKey, jsPortTypeValue)){
-      rv.reset(TRI_ERROR_INTERNAL, "could not set porttype");
-      return rv;
-    }
-    {
-      auto requestVal = v8::Handle<v8::Value>::Cast(request);
-      auto responseVal = v8::Handle<v8::Value>::Cast(v8::Undefined(isolate));
-      v8gHelper globalVars(isolate, tryCatch, requestVal, responseVal);
-      rv = executeTransactionJS(context->_isolate, in, result, tryCatch);
-    }
 
-    if (tryCatch.HasCaught()){
-      //we have some javascript error that is not an arangoError
-      std::string msg = *v8::String::Utf8Value(tryCatch.Message()->Get());
-      rv.reset(TRI_ERROR_INTERNAL, msg);
-    }
-
-    if(rv.fail()){
-      return rv;
-    };
-
-    if(result->IsUndefined()){
-      // turn undefined to none
-      builder.add(VPackSlice::noneSlice());
+  if(canceled){ //if it was ok we would already have committed
+    if(rv.ok()){
+      rv.reset(TRI_ERROR_REQUEST_CANCELED,"handler canceled - result already committed");
     } else {
-      TRI_V8ToVPack(context->_isolate, builder, result, false);
+      rv.reset(TRI_ERROR_REQUEST_CANCELED,"handler canceled");
     }
+    return rv;
+  }
 
+  if(rv.fail()){ return rv; };
+
+  if (tryCatch.HasCaught()){
+    //we have some javascript error that is not an arangoError
+    std::string msg = *v8::String::Utf8Value(tryCatch.Message()->Get());
+    rv.reset(TRI_ERROR_INTERNAL, msg);
+  }
+
+  if(rv.fail()){ return rv; };
+
+  if(result->IsUndefined()){
+    // turn undefined to none
+    builder.add(VPackSlice::noneSlice());
+  } else {
+    TRI_V8ToVPack(isolate, builder, result, false);
   }
   return rv;
 }
@@ -81,9 +99,8 @@ Result executeTransactionJS(
     v8::TryCatch& tryCatch
     )
 {
-
+  // Locking within this function?
   Result rv;
-
   TRI_vocbase_t* vocbase = GetContextVocBase(isolate);
   if (vocbase == nullptr) {
     rv.reset(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);

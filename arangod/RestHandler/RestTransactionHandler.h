@@ -24,10 +24,22 @@
 #ifndef ARANGOD_REST_HANDLER_REST_TRANSACTION_HANDLER_H
 #define ARANGOD_REST_HANDLER_REST_TRANSACTION_HANDLER_H 1
 
+#include "Basics/ReadWriteLock.h"
 #include "RestHandler/RestVocbaseBaseHandler.h"
 
+namespace v8 {
+  class Isolate;
+}
+
 namespace arangodb {
+
+class V8Context;
+
 class RestTransactionHandler : public arangodb::RestVocbaseBaseHandler {
+  V8Context* _v8Context;
+  v8::Isolate* _isolate;
+  basics::ReadWriteLock _lock;
+
  public:
   RestTransactionHandler(GeneralRequest*, GeneralResponse*);
 
@@ -35,6 +47,7 @@ class RestTransactionHandler : public arangodb::RestVocbaseBaseHandler {
   char const* name() const override final { return "RestTransactionHandler"; }
   bool isDirect() const override { return false; }
   RestStatus execute() override;
+  bool cancel() override final;
 };
 }
 

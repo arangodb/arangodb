@@ -21,12 +21,16 @@
 /// @author Jan Christoph Uhde
 ////////////////////////////////////////////////////////////////////////////////
 
+#include "Basics/WriteLocker.h"
+#include "Basics/ReadLocker.h"
 #include "RestTransactionHandler.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "VocBase/Methods/Transactions.h"
 #include "Rest/HttpRequest.h"
 #include "Basics/voc-errors.h"
+#include "V8Server/V8Context.h"
+#include "V8Server/V8DealerFeature.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/velocypack-aliases.h>
@@ -36,11 +40,28 @@ using namespace arangodb::basics;
 using namespace arangodb::rest;
 
 RestTransactionHandler::RestTransactionHandler(GeneralRequest* request, GeneralResponse* response)
-  : RestVocbaseBaseHandler(request, response) {}
+  : RestVocbaseBaseHandler(request, response)
+  , _v8Context(nullptr)
+  , _isolate(nullptr)
+  , _lock()
+{}
 
 RestStatus RestTransactionHandler::execute() {
+  _v8Context = V8DealerFeature::DEALER->enterContext(_vocbase, true /*allow use database*/);
+  if (!_v8Context) {
+    generateError(GeneralResponse::responseCode(TRI_ERROR_INTERNAL),TRI_ERROR_INTERNAL, "could not acquire v8 context");
+    return RestStatus::DONE;
+  }
+  TRI_DEFER(V8DealerFeature::DEALER->exitContext(_v8Context));
+
   if (_request->requestType() != rest::RequestType::POST) {
     generateError(rest::ResponseCode::METHOD_NOT_ALLOWED, 405);
+    return RestStatus::DONE;
+  }
+
+  auto slice = _request->payload();
+  if(!slice.isObject()){
+    generateError(GeneralResponse::responseCode(TRI_ERROR_BAD_PARAMETER),TRI_ERROR_BAD_PARAMETER, "could not acquire v8 context");
     return RestStatus::DONE;
   }
 
@@ -48,11 +69,21 @@ RestStatus RestTransactionHandler::execute() {
 
   VPackBuilder result;
   try {
-    Result res = executeTransaction(_vocbase, _request->payload(), portType, result);
+
+    {
+      WRITE_LOCKER(lock, _lock);
+      if(_canceled){
+        generateCanceled();
+        return RestStatus::DONE;
+      }
+      _isolate = _v8Context->_isolate;
+    }
+
+    Result res = executeTransaction(_isolate, _lock, _canceled, slice , portType, result);
+
     if (res.ok()){
       VPackSlice slice = result.slice();
       if (slice.isNone()) {
-        //generateError(GeneralResponse::responseCode(TRI_ERROR_TYPE_ERROR), TRI_ERROR_TYPE_ERROR, "result is undefined");
         generateSuccess(rest::ResponseCode::OK, VPackSlice::nullSlice());
       } else {
         generateSuccess(rest::ResponseCode::OK, slice);
@@ -69,4 +100,19 @@ RestStatus RestTransactionHandler::execute() {
   }
 
   return RestStatus::DONE;
+}
+
+bool RestTransactionHandler::cancel() {
+  //cancel v8 transaction
+  if(_context){
+    _canceled.store(true);
+    WRITE_LOCKER(writeLock, _lock);
+    if (_isolate) {
+      if (!v8::V8::IsExecutionTerminating(_isolate)) {
+        v8::V8::TerminateExecution(_isolate);
+      }
+    }
+    return true;
+  }
+  return false;
 }
