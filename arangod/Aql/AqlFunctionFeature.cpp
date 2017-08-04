@@ -183,6 +183,7 @@ std::string const& AqlFunctionFeature::getOperatorName(
 //
 // . = argument of any type (except collection)
 // c = collection name, will be converted into list with documents
+// h = collection name, will be converted into string
 // , = next argument
 // | = separates mandatory from optional arguments
 // + = unlimited number of optional arguments of any type
