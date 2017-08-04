@@ -1,6 +1,8 @@
 devel
 -----
 
+* fixed isuse #2949: ArangoError 1208: illegal name
+
 * fix potential deadlock errors in collector thread
 
 * disallow the usage of volatile collections in the RocksDB engine 
