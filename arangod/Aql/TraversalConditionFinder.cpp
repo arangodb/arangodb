@@ -29,6 +29,7 @@
 #include "VocBase/TraverserOptions.h"
 
 using namespace arangodb::aql;
+using namespace arangodb::basics;
 using EN = arangodb::aql::ExecutionNode;
 
 static AstNodeType BuildSingleComparatorType (AstNode const* condition) {
@@ -645,8 +646,10 @@ bool TraversalConditionFinder::before(ExecutionNode* en) {
             // is in [0..maxDepth], if the depth is not a concrete value
             // then indexedAccessDepth would be INT64_MAX
             originalFilterConditions->andCombine(cloned);
-            // do not return paths shorter than the deepest path access
-            if ((int64_t)options->minDepth < indexedAccessDepth) {
+            
+            if ((int64_t)options->minDepth < indexedAccessDepth && !isTrueOnNull(cloned, 0)) {
+              // do not return paths shorter than the deepest path access
+              // Unless the condition evaluates to true on `null`.
               options->minDepth = indexedAccessDepth;
             }
           } // otherwise do not remove the filter statement
@@ -703,4 +706,78 @@ bool TraversalConditionFinder::before(ExecutionNode* en) {
 
 bool TraversalConditionFinder::enterSubquery(ExecutionNode*, ExecutionNode*) {
   return false;
+}
+
+bool TraversalConditionFinder::isTrueOnNull(AstNode* node, size_t nullIndex) const {
+  if (node->numMembers() != 2) {
+    // Too complicated to check for now...
+    return true;
+  }
+
+  VPackSlice other = node->getMemberUnchecked((nullIndex == 0 ? 1 : 0))->computeValue();
+  VPackSlice null = VelocyPackHelper::NullValue();
+
+  switch (node->type) {
+    case NODE_TYPE_OPERATOR_BINARY_EQ:
+      return VelocyPackHelper::compare(null, other, false) == 0;
+    case NODE_TYPE_OPERATOR_BINARY_NE:
+      return VelocyPackHelper::compare(null, other, false) != 0;
+    case NODE_TYPE_OPERATOR_BINARY_LT:
+      if (nullIndex == 0) {
+        return VelocyPackHelper::compare(null, other, false) < 0;
+      } else {
+        return VelocyPackHelper::compare(other, null, false) < 0;
+      }
+    case NODE_TYPE_OPERATOR_BINARY_LE:
+      if (nullIndex == 0) {
+        return VelocyPackHelper::compare(null, other, false) <= 0;
+      } else {
+        return VelocyPackHelper::compare(other, null, false) <= 0;
+      }
+    case NODE_TYPE_OPERATOR_BINARY_GT:
+      if (nullIndex == 0) {
+        return VelocyPackHelper::compare(null, other, false) > 0;
+      } else {
+        return VelocyPackHelper::compare(other, null, false) > 0;
+      }
+    case NODE_TYPE_OPERATOR_BINARY_GE:
+      if (nullIndex == 0) {
+        return VelocyPackHelper::compare(null, other, false) >= 0;
+      } else {
+        return VelocyPackHelper::compare(other, null, false) >= 0;
+      }
+    case NODE_TYPE_OPERATOR_BINARY_IN:
+      if (nullIndex != 0) {
+        // xyz IN p.edges nothing to optimize here.
+        return true;
+      }
+      if (!other.isArray()) {
+        return false;
+      }
+      for (auto const& it : VPackArrayIterator(other)) {
+        if (it.isNull()) {
+          // Null is included!
+          return true;
+        }
+      }
+      return false;
+    case NODE_TYPE_OPERATOR_BINARY_NIN:
+      if (nullIndex != 0) {
+        // xyz NIN p.edges nothing to optimize here.
+        return true;
+      }
+      if (!other.isArray()) {
+        // Null IS NOT IN a non array...
+        return true;
+      }
+      for (auto const& it : VPackArrayIterator(other)) {
+        if (it.isNull()) {
+          // Null is included!
+          return false;
+        }
+      }
+      return true;
+    default:
+      return true;
+  }
 }
