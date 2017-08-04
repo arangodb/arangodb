@@ -200,7 +200,6 @@ def checkoutEnterprise() {
                 userRemoteConfigs: [[credentialsId: credentials, url: enterpriseRepo]]])
     }
 
-    sh 'cd enterprise && git clean -f -d -x'
 }
 
 def checkoutResilience() {
@@ -215,7 +214,6 @@ def checkoutResilience() {
             submoduleCfg: [],
             userRemoteConfigs: [[credentialsId: credentials, url: resilienceRepo]]])
 
-    sh 'cd resilience && git clean -f -d -x'
 }
 
 def checkCommitMessages() {
