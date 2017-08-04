@@ -103,7 +103,7 @@
   c.ensureGeoIndex("a_la", "a_lo");
 
   // we insert data and remove it
-  c = db._create("UnitTestsDumpTruncated", { isVolatile: true });
+  c = db._create("UnitTestsDumpTruncated", { isVolatile: db._engine().name === "mmfiles" });
   for (i = 0; i < 10000; ++i) {
     c.save({ _key: "test" + i, value1: i, value2: "this is a test", value3: "test" + i });
   }

@@ -931,8 +931,8 @@ QueryResult Query::parse() {
     cleanupPlanAndEngine(TRI_ERROR_INTERNAL);
     return QueryResult(TRI_ERROR_INTERNAL, ex.what());
   } catch (...) {
-    return QueryResult(TRI_ERROR_OUT_OF_MEMORY,
-                       TRI_errno_string(TRI_ERROR_OUT_OF_MEMORY));
+    return QueryResult(TRI_ERROR_INTERNAL,
+                       "an unknown error occurred while parsing the query");
   }
 }
 
