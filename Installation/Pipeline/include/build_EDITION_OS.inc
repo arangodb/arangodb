@@ -99,5 +99,6 @@ mkdir -p build/tests
 cp -a build-$edition/bin                 build
 cp -a build-$edition/etc                 build
 cp -a build-$edition/tests/arangodbtests build/tests
+cp -a build-$edition/tests/icudtl.dat    build/tests
 
 echo "`date +%T` done..."

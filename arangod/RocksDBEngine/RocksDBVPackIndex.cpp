@@ -216,7 +216,9 @@ RocksDBVPackIndex::~RocksDBVPackIndex() {}
 
 double RocksDBVPackIndex::selectivityEstimateLocal(
     arangodb::StringRef const*) const {
-  TRI_ASSERT(_estimator);
+  TRI_ASSERT(!ServerState::instance()->isCoordinator());
+  TRI_ASSERT(!_unique);
+  TRI_ASSERT(_estimator != nullptr);
   return _estimator->computeEstimate();
 }
 
@@ -1440,8 +1442,7 @@ void RocksDBVPackIndex::serializeEstimate(std::string& output) const {
 }
 
 bool RocksDBVPackIndex::deserializeEstimate(RocksDBCounterManager* mgr) {
-  TRI_ASSERT(!ServerState::instance()->isCoordinator());
-  if (_unique) {
+  if (_unique || ServerState::instance()->isCoordinator()) {
     return true;
   }
   // We simply drop the current estimator and steal the one from recovery
@@ -1461,6 +1462,9 @@ bool RocksDBVPackIndex::deserializeEstimate(RocksDBCounterManager* mgr) {
 }
 
 void RocksDBVPackIndex::recalculateEstimates() {
+  if (ServerState::instance()->isCoordinator()) {
+    return;
+  }
   if (unique()) {
     return;
   }
@@ -1469,7 +1473,7 @@ void RocksDBVPackIndex::recalculateEstimates() {
 
   RocksDBKeyBounds bounds = getBounds();
   rocksutils::iterateBounds(bounds,
-                            [&](rocksdb::Iterator* it) {
+                            [this](rocksdb::Iterator* it) {
                               uint64_t hash =
                                   RocksDBVPackIndex::HashForKey(it->key());
                               _estimator->insert(hash);

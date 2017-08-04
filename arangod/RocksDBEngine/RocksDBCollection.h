@@ -248,7 +248,7 @@ class RocksDBCollection final : public PhysicalCollection {
                                        IndexIterator::DocumentCallback const& cb,
                                        bool withCache) const;
 
-  void recalculateIndexEstimates(std::vector<std::shared_ptr<Index>>& indexes);
+  void recalculateIndexEstimates(std::vector<std::shared_ptr<Index>> const& indexes);
 
   void createCache() const;
 

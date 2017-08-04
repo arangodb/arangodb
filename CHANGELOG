@@ -4,6 +4,17 @@ devel
 * fixed issue #2943: loadIndexesIntoMemory not returning the same structure 
   as the rest of the collection APIs
 
+* fixed isuse #2949: ArangoError 1208: illegal name
+
+* fixed issue #2874: Collection properties do not return `isVolatile` 
+  attribute
+
+* potential fix for issue #2939: Segmentation fault when starting 
+  coordinator node  
+
+* fixed issue #2810: out of memory error when running UPDATE/REPLACE 
+  on medium-size collection
+
 * fix potential deadlock errors in collector thread
 
 * disallow the usage of volatile collections in the RocksDB engine 
@@ -14,6 +25,15 @@ devel
   collection 
 
 * prevent V8 from issuing SIGILL instructions when it runs out of memory
+
+  Now arangod will attempt to log a FATAL error into its logfile in case V8 
+  runs out of memory. In case V8 runs out of memory, it will still terminate the 
+  entire process. But at least there should be something in the ArangoDB logs 
+  indicating what the problem was. Apart from that, the arangod process should
+  now be exited with SIGABRT rather than SIGILL as it shouldn't return into the 
+  V8 code that aborted the process with `__builtin_trap`.
+
+  this potentially fixes issue #2920: DBServer crashing automatically post upgrade to 3.2
 
 * Foxx queues and tasks now ensure that the scripts in them, run on same permissions as the Foxx code who started the task / queue 
 
