@@ -132,6 +132,9 @@ restrictions = []
 jenkinsMaster = 'jenkins-master@c1'
 jenkinsSlave = 'jenkins'
 
+// github proxy repositiory
+proxyRepo = 'http://c1:8088/github.com/arangodb/arangodb'
+
 // github repositiory for resilience tests
 resilienceRepo = 'https://github.com/arangodb/resilience-tests'
 
@@ -186,7 +189,16 @@ def checkoutCommunity() {
 
     retry(3) {
         try {
-            checkout scm
+            checkout(
+                changelog: false,
+                poll: false,
+                scm: [
+                    $class: 'GitSCM',
+                    branches: [[name: "*/${sourceBranchLabel}"]],
+                    doGenerateSubmoduleConfigurations: false,
+                    extensions: [],
+                    submoduleCfg: [],
+                    userRemoteConfigs: [[url: proxyRepo]]])
             sh 'git clean -f -d -x'
         }
         catch (exc) {
