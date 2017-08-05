@@ -1,6 +1,9 @@
 devel
 -----
 
+* fixed a multi-threading issue in the agency when callElection was called 
+  while the SuperVision was calling updateSnapshot 
+
 * added startup option `--query.tracking-with-bindvars` 
 
   This option controls whether the list of currently running queries

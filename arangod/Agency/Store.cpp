@@ -116,7 +116,7 @@ inline static bool endpointPathFromUrl(std::string const& url,
 Store::Store(Agent* agent, std::string const& name)
   : Thread(name), _agent(agent), _node(name, this) {}
 
-/// Move constructor
+/// Move constructor. note: this is not thread-safe!
 Store::Store(Store&& other)
   : Thread(other._node.name()),
     _agent(std::move(other._agent)),
@@ -141,6 +141,7 @@ Store& Store::operator=(Store const& rhs) {
 /// Move assignment operator
 Store& Store::operator=(Store&& rhs) {
   if (&rhs != this) {
+    MUTEX_LOCKER(otherLock, rhs._storeLock); 
     _agent = std::move(rhs._agent);
     _timeTable = std::move(rhs._timeTable);
     _observerTable = std::move(rhs._observerTable);
@@ -374,6 +375,8 @@ check_ret_t Store::check(VPackSlice const& slice, CheckMode mode) const {
   TRI_ASSERT(slice.isObject());
   check_ret_t ret;
   ret.open();
+
+  _storeLock.assertLockedByCurrentThread();
 
   for (auto const& precond : VPackObjectIterator(slice)) {  // Preconditions
 
@@ -671,6 +674,8 @@ bool Store::applies(arangodb::velocypack::Slice const& transaction) {
 
   sort(idx.begin(), idx.end(),
        [&abskeys](size_t i1, size_t i2) { return abskeys[i1] < abskeys[i2]; });
+  
+  _storeLock.assertLockedByCurrentThread();
 
   for (const auto& i : idx) {
     std::string const& key = keys.at(i);
@@ -689,6 +694,7 @@ bool Store::applies(arangodb::velocypack::Slice const& transaction) {
 
 // Clear my data
 void Store::clear() {
+  MUTEX_LOCKER(storeLocker, _storeLock);
   _timeTable.clear();
   _observerTable.clear();
   _observedTable.clear();
@@ -730,30 +736,42 @@ Store& Store::operator=(VPackSlice const& slice) {
 
 /// Put key value store in velocypack, guarded by caller
 void Store::toBuilder(Builder& b, bool showHidden) const {
+  _storeLock.assertLockedByCurrentThread();
   _node.toBuilder(b, showHidden); }
 
 /// Time table
-std::multimap<TimePoint, std::string>& Store::timeTable() { return _timeTable; }
+std::multimap<TimePoint, std::string>& Store::timeTable() { 
+  _storeLock.assertLockedByCurrentThread();
+  return _timeTable; 
+}
+
 /// Time table
-const std::multimap<TimePoint, std::string>& Store::timeTable() const {
+std::multimap<TimePoint, std::string> const& Store::timeTable() const {
+  _storeLock.assertLockedByCurrentThread();
   return _timeTable;
 }
 
 /// Observer table
 std::multimap<std::string, std::string>& Store::observerTable() {
+  _storeLock.assertLockedByCurrentThread();
   return _observerTable;
 }
+
 /// Observer table
 std::multimap<std::string, std::string> const& Store::observerTable() const {
+  _storeLock.assertLockedByCurrentThread();
   return _observerTable;
 }
 
 /// Observed table
 std::multimap<std::string, std::string>& Store::observedTable() {
+  _storeLock.assertLockedByCurrentThread();
   return _observedTable;
 }
+
 /// Observed table
 std::multimap<std::string, std::string> const& Store::observedTable() const {
+  _storeLock.assertLockedByCurrentThread();
   return _observedTable;
 }
 
@@ -771,6 +789,8 @@ bool Store::has(std::string const& path) const {
 
 /// Remove ttl entry for path, guarded by caller
 void Store::removeTTL(std::string const& uri) {
+  _storeLock.assertLockedByCurrentThread();
+
   if (!_timeTable.empty()) {
     for (auto it = _timeTable.cbegin(); it != _timeTable.cend();) {
       if (it->second == uri) {
