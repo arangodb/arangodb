@@ -2484,6 +2484,10 @@ int RocksDBRestReplicationHandler::processRestoreCollectionCoordinator(
   // always use current version number when restoring a collection,
   // because the collection is effectively NEW
   toMerge.add("version", VPackValue(LogicalCollection::VERSION_31));
+  if (!name.empty() && name[0] == '_' && !parameters.hasKey("isSystem")) {
+    // system collection?
+    toMerge.add("isSystem", VPackValue(true));
+  }
   toMerge.close();  // TopLevel
 
   VPackSlice const type = parameters.get("type");
@@ -2569,6 +2573,10 @@ int RocksDBRestReplicationHandler::createCollection(
   VPackBuilder patch;
   patch.openObject();
   patch.add("version", VPackValue(LogicalCollection::VERSION_31));
+  if (!name.empty() && name[0] == '_' && !slice.hasKey("isSystem")) {
+    // system collection?
+    patch.add("isSystem", VPackValue(true));
+  }
   StorageEngine* engine = EngineSelectorFeature::ENGINE;
   TRI_ASSERT(engine != nullptr);
   engine->addParametersForNewCollection(patch, slice);

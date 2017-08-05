@@ -60,6 +60,54 @@ function fulltextCreateSuite () {
     },
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief insert doc if index attribute is not present in it
+////////////////////////////////////////////////////////////////////////////////
+
+    testInsertDocumentWithoutAttribute : function () {
+      var idx = c.ensureIndex({ type: "fulltext", fields: ["foo"] });
+      c.insert({ _key: "test", value1: 1 });
+      var doc = c.document("test");
+      assertEqual(1, doc.value1);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief update doc if index attribute is not present in it
+////////////////////////////////////////////////////////////////////////////////
+
+    testUpdateDocumentWithoutAttribute : function () {
+      c.insert({ _key: "test", value1: 1 });
+      var idx = c.ensureIndex({ type: "fulltext", fields: ["foo"] });
+      c.update("test", { value2: "test" });
+      var doc = c.document("test");
+      assertEqual("test", doc.value2);
+      assertEqual(1, doc.value1);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief replace doc if index attribute is not present in it
+////////////////////////////////////////////////////////////////////////////////
+
+    testReplaceDocumentWithoutAttribute : function () {
+      c.insert({ _key: "test", value1: 1 });
+      var idx = c.ensureIndex({ type: "fulltext", fields: ["foo"] });
+      c.replace("test", { value2: "test" });
+      var doc = c.document("test");
+      assertEqual("test", doc.value2);
+      assertFalse(doc.hasOwnProperty("value1"));
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief remove doc if index attribute is not present in it
+////////////////////////////////////////////////////////////////////////////////
+
+    testRemoveDocumentWithoutAttribute : function () {
+      c.insert({ _key: "test", value1: 1 });
+      var idx = c.ensureIndex({ type: "fulltext", fields: ["foo"] });
+      c.remove("test");
+      assertFalse(c.exists("test"));
+    },
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief create with multiple fields
 ////////////////////////////////////////////////////////////////////////////////
 
