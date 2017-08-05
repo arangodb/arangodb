@@ -70,6 +70,33 @@ rocksdb::ReadOptions const& RocksDBMethods::readOptions() {
   return _state->_rocksReadOptions;
 }
 
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+std::size_t RocksDBMethods::countInBounds(RocksDBKeyBounds const& bounds, bool isElementInRange) {
+  std::size_t count = 0;
+  
+  //iterator is from read only / trx / writebatch
+  std::unique_ptr<rocksdb::Iterator> iter = this->NewIterator(this->readOptions(), bounds.columnFamily());
+  iter->Seek(bounds.start());
+  auto end = bounds.end();
+  rocksdb::Comparator const * cmp = bounds.columnFamily()->GetComparator();
+  
+  // extra check to aviod extra comparisons with isElementInRage later;
+  if (iter->Valid() && cmp->Compare(iter->key(), end) < 0) {
+    ++count;
+    if (isElementInRange) {
+      return count;
+    }
+    iter->Next();
+  }
+  
+  while (iter->Valid() && cmp->Compare(iter->key(), end) < 0) {
+    iter->Next();
+    ++count;
+  }
+  return count;
+};
+#endif
+
 // =================== RocksDBReadOnlyMethods ====================
 
 RocksDBReadOnlyMethods::RocksDBReadOnlyMethods(RocksDBTransactionState* state)

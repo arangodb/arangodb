@@ -381,6 +381,17 @@ default. Tracking of queries can be disabled by setting the option to *false*.
 The default is *true*.
 
 
+### Enable/disable tracking of bind variables in AQL queries 
+
+`--query.tracking-with-bindvars flag`
+
+If *true*, then the bind variables will be tracked for all running and slow
+AQL queries. This option only has an effect if `--query.tracking` was set to
+*true*. Tracking of bind variables can be disabled by setting the option to *false*.
+
+The default is *true*.
+
+
 ### Threshold for slow AQL queries
 
 `--query.slow-threshold value`
