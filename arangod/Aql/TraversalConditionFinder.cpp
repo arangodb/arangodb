@@ -220,6 +220,7 @@ static bool checkPathVariableAccessFeasible(Ast* ast, AstNode* parent,
                                             size_t testIndex, TraversalNode* tn,
                                             Variable const* pathVar,
                                             bool& conditionIsImpossible,
+                                            size_t& swappedIndex,
                                             int64_t& indexedAccessDepth) {
   AstNode* node = parent->getMemberUnchecked(testIndex);
   if (!IsSupportedNode(pathVar, node)) {
@@ -438,9 +439,13 @@ static bool checkPathVariableAccessFeasible(Ast* ast, AstNode* parent,
       }
       patternStep++;
     }
+    if (patternStep == 7) {
+      swappedIndex = i;
+      patternStep++;
+    }
   }
 
-  if (patternStep < 7) {
+  if (patternStep < 8) {
     // We found sth. that is not matching the pattern complete.
     // => Do not optimize
     return false;
@@ -622,10 +627,12 @@ bool TraversalConditionFinder::before(ExecutionNode* en) {
         AstNode* cloned = andNode->getMember(i - 1)->clone(_plan->getAst());
         int64_t indexedAccessDepth = -1;
         
+        size_t swappedIndex = 0;
         // If we get here we can optimize this condition
         if (!checkPathVariableAccessFeasible(_plan->getAst(), andNode, i - 1,
                                              node, pathVar,
                                              conditionIsImpossible,
+                                             swappedIndex,
                                              indexedAccessDepth)) {
           andNode->removeMemberUnchecked(i - 1);
           if (conditionIsImpossible) {
@@ -647,7 +654,8 @@ bool TraversalConditionFinder::before(ExecutionNode* en) {
             // then indexedAccessDepth would be INT64_MAX
             originalFilterConditions->andCombine(cloned);
             
-            if ((int64_t)options->minDepth < indexedAccessDepth && !isTrueOnNull(cloned, 0)) {
+            if ((int64_t)options->minDepth < indexedAccessDepth && !isTrueOnNull(cloned, swappedIndex)) {
+              LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "Increased MinDepth";
               // do not return paths shorter than the deepest path access
               // Unless the condition evaluates to true on `null`.
               options->minDepth = indexedAccessDepth;
@@ -709,6 +717,7 @@ bool TraversalConditionFinder::enterSubquery(ExecutionNode*, ExecutionNode*) {
 }
 
 bool TraversalConditionFinder::isTrueOnNull(AstNode* node, size_t nullIndex) const {
+  LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "NullIndex: " << nullIndex;
   if (node->numMembers() != 2) {
     // Too complicated to check for now...
     return true;
