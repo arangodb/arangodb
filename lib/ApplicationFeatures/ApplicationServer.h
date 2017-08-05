@@ -24,6 +24,7 @@
 #define ARANGODB_APPLICATION_FEATURES_APPLICATION_SERVER_H 1
 
 #include "Basics/Common.h"
+#include "Basics/ConditionVariable.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/velocypack-aliases.h>
@@ -300,6 +301,9 @@ class ApplicationServer {
 
   // features order for prepare/start
   std::vector<ApplicationFeature*> _orderedFeatures;
+  
+  // will be signalled when the application server is asked to shut down
+  basics::ConditionVariable _shutdownCondition;
 
   // stop flag. this is being changed by calling beginShutdown
   std::atomic<bool> _stopping;
