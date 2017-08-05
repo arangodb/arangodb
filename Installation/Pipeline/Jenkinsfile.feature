@@ -132,6 +132,9 @@ restrictions = []
 jenkinsMaster = 'jenkins-master@c1'
 jenkinsSlave = 'jenkins'
 
+// github proxy repositiory
+proxyRepo = 'http://c1:8088/github.com/arangodb/arangodb'
+
 // github repositiory for resilience tests
 resilienceRepo = 'https://github.com/arangodb/resilience-tests'
 
@@ -186,7 +189,16 @@ def checkoutCommunity() {
 
     retry(3) {
         try {
-            checkout scm
+            checkout(
+                changelog: false,
+                poll: false,
+                scm: [
+                    $class: 'GitSCM',
+                    branches: [[name: "*/${sourceBranchLabel}"]],
+                    doGenerateSubmoduleConfigurations: false,
+                    extensions: [],
+                    submoduleCfg: [],
+                    userRemoteConfigs: [[url: proxyRepo]]])
             sh 'git clean -f -d -x'
         }
         catch (exc) {
@@ -550,7 +562,7 @@ def testEdition(edition, os, mode, engine) {
         }
         catch (exc) {
             if (os == 'linux' || os == 'mac') {
-                sh "for i in build core* tmp; do test -e \$i && mv \$i ${arch} || true; done"
+                sh "for i in build core* tmp; do test -e \$i && mv \"\$i\" ${arch} || true; done"
             }
 
             archiveArtifacts allowEmptyArchive: true,
@@ -562,7 +574,7 @@ def testEdition(edition, os, mode, engine) {
         finally {
             if (os == 'linux' || os == 'mac') {
                 sh "find log-output -name 'FAILED_*' -exec cp '{}' . ';'"
-                sh "for i in logs log-output; do test -e \$i && mv \$i ${arch} || true; done"
+                sh "for i in logs log-output; do test -e \$i && mv \"\$i\" ${arch} || true; done"
             }
             else if (os == 'windows') {
                 bat "move logs ${arch}"
@@ -745,7 +757,7 @@ def testResilienceStep(os, engine, foxx) {
                     }
                     catch (exc) {
                         if (os == 'linux' || os == 'mac') {
-                            sh "for i in build resilience/core* tmp; do test -e \$i && mv \$i ${arch} || true; done"
+                            sh "for i in build resilience/core* tmp; do test -e \$i && mv \"\$i\" ${arch} || true; done"
                         }
 
                         archiveArtifacts allowEmptyArchive: true,
@@ -756,7 +768,7 @@ def testResilienceStep(os, engine, foxx) {
                     }
                     finally {
                         if (os == 'linux' || os == 'mac') {
-                            sh "for i in log-output; do test -e \$i && mv \$i ${arch}; done"
+                            sh "for i in log-output; do test -e \$i && mv \"\$i\" ${arch}; done"
                         }
                         else if (os == 'windows') {
                             bat "move log-output ${arch}"
@@ -846,7 +858,7 @@ def buildEdition(edition, os) {
         }
         finally {
             if (os == 'linux' || os == 'mac') {
-                sh "for i in log-output; do test -e \$i && mv \$i ${arch} || true; done"
+                sh "for i in log-output; do test -e \$i && mv \"\$i\" ${arch} || true; done"
             }
             else if (os == 'windows') {
                 bat "move log-output ${arch}"
