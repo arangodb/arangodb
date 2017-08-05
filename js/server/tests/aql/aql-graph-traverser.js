@@ -3704,6 +3704,15 @@ function exampleGraphsSuite () {
       assertEqual(res.count(), 3);
       let resArr = res.toArray().sort();
       assertEqual(resArr, ['B', 'C', 'D'].sort());
+
+      q = `FOR v,e,p IN 1..3 OUTBOUND 'circles/A' GRAPH 'traversalGraph'
+             FILTER p.vertices[1]._key != 'G'
+             FILTER 'left_blub' != p.edges[1].label
+             RETURN v._key`;
+      res = db._query(q);
+      assertEqual(res.count(), 3);
+      resArr = res.toArray().sort();
+      assertEqual(resArr, ['B', 'C', 'D'].sort());
     },
 
     testMinDepthFilterEq: () => {
@@ -3715,6 +3724,16 @@ function exampleGraphsSuite () {
       assertEqual(res.count(), 1);
       let resArr = res.toArray().sort();
       assertEqual(resArr, ['B'].sort());
+
+      q = `FOR v,e,p IN 1..3 OUTBOUND 'circles/A' GRAPH 'traversalGraph'
+             FILTER p.vertices[1]._key != 'G'
+             FILTER null == p.edges[1].label
+             RETURN v._key`;
+      res = db._query(q);
+      assertEqual(res.count(), 1);
+      resArr = res.toArray().sort();
+      assertEqual(resArr, ['B'].sort());
+ 
     },
 
     testMinDepthFilterIn: () => {
@@ -3737,6 +3756,16 @@ function exampleGraphsSuite () {
       assertEqual(res.count(), 3);
       let resArr = res.toArray().sort();
       assertEqual(resArr, ['B', 'C', 'D'].sort());
+
+      q = `FOR v,e,p IN 1..3 OUTBOUND 'circles/A' GRAPH 'traversalGraph'
+             FILTER p.vertices[1]._key != 'G'
+             FILTER 'left_blub' > p.edges[1].label
+             RETURN v._key`;
+      res = db._query(q);
+      assertEqual(res.count(), 3);
+      resArr = res.toArray().sort();
+      assertEqual(resArr, ['B', 'C', 'D'].sort());
+ 
     },
 
     testMinDepthFilterNIN: () => {
@@ -3760,6 +3789,17 @@ function exampleGraphsSuite () {
       assertEqual(res.count(), 3);
       let resArr = res.toArray().sort();
       assertEqual(resArr, ['B', 'C', 'D'].sort());
+
+      q = `LET condition = { value: 'left_blub' }
+           FOR v,e,p IN 1..3 OUTBOUND 'circles/A' GRAPH 'traversalGraph'
+             FILTER p.vertices[1]._key != 'G'
+             FILTER condition.value != p.edges[1].label
+             RETURN v._key`;
+      res = db._query(q);
+      assertEqual(res.count(), 3);
+      resArr = res.toArray().sort();
+      assertEqual(resArr, ['B', 'C', 'D'].sort());
+ 
     }
 
   };
