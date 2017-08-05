@@ -505,6 +505,8 @@ void RocksDBEngine::start() {
   _counterManager.reset(new RocksDBCounterManager(_db));
   _replicationManager.reset(new RocksDBReplicationManager());
 
+  _counterManager->runRecovery();
+
   double const counter_sync_seconds = 2.5;
   _backgroundThread.reset(
       new RocksDBBackgroundThread(this, counter_sync_seconds));
@@ -1030,11 +1032,20 @@ arangodb::Result RocksDBEngine::dropCollection(
     // User View remains consistent.
     return TRI_ERROR_NO_ERROR;
   }
+  
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  //check if documents have been deleted
+  rocksdb::ReadOptions readOptions;
+  readOptions.fill_cache = false;
+  size_t numDocs = rocksutils::countKeyRange(rocksutils::globalRocksDB(), readOptions, bounds);
+  if (numDocs) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "deletion check in drop collection failed - not all documents have been deleted");
+  }
+#endif
 
-  // delete indexes
+  // delete indexes, RocksDBIndex::drop() has its own check
   std::vector<std::shared_ptr<Index>> vecShardIndex = coll->getIndexes();
   TRI_ASSERT(!vecShardIndex.empty());
-
   for (auto& index : vecShardIndex) {
     int dropRes = index->drop();
     // TODO FAILURE Simulate dropRes != TRI_ERROR_NO_ERROR
@@ -1319,6 +1330,7 @@ Result RocksDBEngine::dropDatabase(TRI_voc_tick_t id) {
 
   // remove collections
   for (auto const& val : collectionKVPairs(id)) {
+    
     // remove indexes
     VPackSlice indexes = val.second.slice().get("indexes");
     if (indexes.isArray()) {
@@ -1337,6 +1349,15 @@ Result RocksDBEngine::dropDatabase(TRI_voc_tick_t id) {
         if (res.fail()) {
           return res;
         }
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+        //check if documents have been deleted
+        rocksdb::ReadOptions readOptions;
+        readOptions.fill_cache = false;
+        size_t numDocs = rocksutils::countKeyRange(rocksutils::globalRocksDB(), readOptions, bounds);
+        if (numDocs) {
+          THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "deletion check in drop collection failed - not all index documents have been deleted");
+        }
+#endif
       }
     }
     
@@ -1348,13 +1369,23 @@ Result RocksDBEngine::dropDatabase(TRI_voc_tick_t id) {
     if (res.fail()) {
       return res;
     }
-    // delete Collection
+    // delete collection meta-data
     _counterManager->removeCounter(objectId);
     res = globalRocksDBRemove(RocksDBColumnFamily::definitions(),
                               val.first.string(), options);
     if (res.fail()) {
       return res;
     }
+    
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+    //check if documents have been deleted
+    rocksdb::ReadOptions readOptions;
+    readOptions.fill_cache = false;
+    size_t numDocs = rocksutils::countKeyRange(rocksutils::globalRocksDB(), readOptions, bounds);
+    if (numDocs) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "deletion check in drop collection failed - not all documents have been deleted");
+    }
+#endif
   }
 
   // TODO

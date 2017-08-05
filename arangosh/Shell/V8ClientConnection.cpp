@@ -358,7 +358,7 @@ static void ClientConnection_ConstructorCallback(
 
 static void ClientConnection_reconnect(
     v8::FunctionCallbackInfo<v8::Value> const& args) {
-  v8::Isolate* isolate = args.GetIsolate();
+  TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
   V8ClientConnection* v8connection =
@@ -423,6 +423,27 @@ static void ClientConnection_reconnect(
                               TRI_V8_ASCII_STRING("reload db object"), false);
 
   TRI_V8_RETURN_TRUE();
+  TRI_V8_TRY_CATCH_END
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief ClientConnection method "connectedUser"
+////////////////////////////////////////////////////////////////////////////////
+
+static void ClientConnection_connectedUser(
+    v8::FunctionCallbackInfo<v8::Value> const& args) {
+  TRI_V8_TRY_CATCH_BEGIN(isolate);
+  v8::Isolate* isolate = args.GetIsolate();
+  v8::HandleScope scope(isolate);
+
+  v8::Local<v8::External> wrap = v8::Local<v8::External>::Cast(args.Data());
+  ClientFeature* client = static_cast<ClientFeature*>(wrap->Value());
+  if (client == nullptr) {
+    TRI_V8_THROW_EXCEPTION_INTERNAL("connection class corrupted");
+  }
+
+  TRI_V8_RETURN(TRI_V8_STD_STRING(client->username()));
+  TRI_V8_TRY_CATCH_END
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -431,7 +452,7 @@ static void ClientConnection_reconnect(
 
 static void ClientConnection_httpGetAny(
     v8::FunctionCallbackInfo<v8::Value> const& args, bool raw) {
-  v8::Isolate* isolate = args.GetIsolate();
+  TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
   // get the connection
@@ -456,6 +477,7 @@ static void ClientConnection_httpGetAny(
   }
 
   TRI_V8_RETURN(v8connection->getData(isolate, *url, headerFields, raw));
+  TRI_V8_TRY_CATCH_END
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1066,7 +1088,7 @@ static void ClientConnection_importJson(
 
 static void ClientConnection_lastHttpReturnCode(
     v8::FunctionCallbackInfo<v8::Value> const& args) {
-  v8::Isolate* isolate = args.GetIsolate();
+  TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
   // get the connection
@@ -1083,6 +1105,7 @@ static void ClientConnection_lastHttpReturnCode(
   }
 
   TRI_V8_RETURN(v8::Integer::New(isolate, v8connection->lastHttpReturnCode()));
+  TRI_V8_TRY_CATCH_END
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1091,7 +1114,7 @@ static void ClientConnection_lastHttpReturnCode(
 
 static void ClientConnection_lastErrorMessage(
     v8::FunctionCallbackInfo<v8::Value> const& args) {
-  v8::Isolate* isolate = args.GetIsolate();
+  TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
   // get the connection
@@ -1108,6 +1131,7 @@ static void ClientConnection_lastErrorMessage(
   }
 
   TRI_V8_RETURN_STD_STRING(v8connection->lastErrorMessage());
+  TRI_V8_TRY_CATCH_END
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1116,7 +1140,7 @@ static void ClientConnection_lastErrorMessage(
 
 static void ClientConnection_isConnected(
     v8::FunctionCallbackInfo<v8::Value> const& args) {
-  v8::Isolate* isolate = args.GetIsolate();
+  TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
   // get the connection
@@ -1135,6 +1159,7 @@ static void ClientConnection_isConnected(
     TRI_V8_RETURN_TRUE();
   } 
   TRI_V8_RETURN_FALSE();
+  TRI_V8_TRY_CATCH_END
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1143,7 +1168,7 @@ static void ClientConnection_isConnected(
 
 static void ClientConnection_toString(
     v8::FunctionCallbackInfo<v8::Value> const& args) {
-  v8::Isolate* isolate = args.GetIsolate();
+  TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
   // get the connection
@@ -1168,6 +1193,7 @@ static void ClientConnection_toString(
   }
 
   TRI_V8_RETURN_STD_STRING(result);
+  TRI_V8_TRY_CATCH_END
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1176,7 +1202,7 @@ static void ClientConnection_toString(
 
 static void ClientConnection_getVersion(
     v8::FunctionCallbackInfo<v8::Value> const& args) {
-  v8::Isolate* isolate = args.GetIsolate();
+  TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
   // get the connection
@@ -1192,6 +1218,7 @@ static void ClientConnection_getVersion(
   }
 
   TRI_V8_RETURN_STD_STRING(v8connection->version());
+  TRI_V8_TRY_CATCH_END
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1200,7 +1227,7 @@ static void ClientConnection_getVersion(
 
 static void ClientConnection_getMode(
     v8::FunctionCallbackInfo<v8::Value> const& args) {
-  v8::Isolate* isolate = args.GetIsolate();
+  TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
   // get the connection
@@ -1216,6 +1243,7 @@ static void ClientConnection_getMode(
   }
 
   TRI_V8_RETURN_STD_STRING(v8connection->mode());
+  TRI_V8_TRY_CATCH_END
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1224,7 +1252,7 @@ static void ClientConnection_getMode(
 
 static void ClientConnection_getDatabaseName(
     v8::FunctionCallbackInfo<v8::Value> const& args) {
-  v8::Isolate* isolate = args.GetIsolate();
+  TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
   // get the connection
@@ -1240,6 +1268,7 @@ static void ClientConnection_getDatabaseName(
   }
 
   TRI_V8_RETURN_STD_STRING(v8connection->databaseName());
+  TRI_V8_TRY_CATCH_END
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1248,7 +1277,7 @@ static void ClientConnection_getDatabaseName(
 
 static void ClientConnection_setDatabaseName(
     v8::FunctionCallbackInfo<v8::Value> const& args) {
-  v8::Isolate* isolate = args.GetIsolate();
+  TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
   // get the connection
@@ -1271,6 +1300,7 @@ static void ClientConnection_setDatabaseName(
   client->setDatabaseName(dbName);
 
   TRI_V8_RETURN_TRUE();
+  TRI_V8_TRY_CATCH_END
 }
 
 v8::Handle<v8::Value> V8ClientConnection::getData(
@@ -1670,6 +1700,10 @@ void V8ClientConnection::initServer(v8::Isolate* isolate,
   connection_proto->Set(
       isolate, "reconnect",
       v8::FunctionTemplate::New(isolate, ClientConnection_reconnect, v8client));
+  
+  connection_proto->Set(
+      isolate, "connectedUser",
+      v8::FunctionTemplate::New(isolate, ClientConnection_connectedUser, v8client));
 
   connection_proto->Set(
       isolate, "toString",

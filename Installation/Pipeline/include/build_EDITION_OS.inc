@@ -17,10 +17,10 @@ fi
 
 if [ "$os" == linux ]; then
     type="${type}_linux"
-    load=20
+    load=40
 elif [ "$os" == mac ]; then
     type="${type}_mac"
-    load=5
+    load=10
 else
     echo "$0: unknown os '$os', expecting 'linux' or 'mac'"
     exit 1
@@ -99,5 +99,6 @@ mkdir -p build/tests
 cp -a build-$edition/bin                 build
 cp -a build-$edition/etc                 build
 cp -a build-$edition/tests/arangodbtests build/tests
+cp -a build-$edition/tests/icudtl.dat    build/tests
 
 echo "`date +%T` done..."

@@ -291,7 +291,7 @@ describe ArangoDB do
           else
             doc.code.should eq(204)
 
-            doc.headers["x-arango-replication-checkmore"].should eq("false")
+# doc.headers["x-arango-replication-checkmore"].should eq("false")
             doc.headers["x-arango-replication-lastincluded"].should match(/^\d+$/)
             doc.headers["x-arango-replication-lastincluded"].should eq("0")
             doc.headers["content-type"].should eq("application/x-arango-dump; charset=utf-8")

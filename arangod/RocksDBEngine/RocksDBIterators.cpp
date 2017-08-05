@@ -277,6 +277,7 @@ RocksDBSortedAllIterator::RocksDBSortedAllIterator(
   auto options = mthds->readOptions();
   TRI_ASSERT(options.snapshot != nullptr);
   TRI_ASSERT(options.prefix_same_as_start);
+  options.fill_cache = false; // only used for incremental sync
   options.verify_checksums = false;
   _iterator = mthds->NewIterator(options, index->columnFamily());
   _iterator->Seek(_bounds.start());

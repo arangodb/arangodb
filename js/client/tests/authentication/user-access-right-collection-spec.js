@@ -25,6 +25,7 @@
 // / Copyright holder is ArangoDB GmbH, Cologne, Germany
 // /
 // / @author Michael Hackstein
+// / @author Mark Vollmary
 // / @author Copyright 2017, ArangoDB GmbH, Cologne, Germany
 // //////////////////////////////////////////////////////////////////////////////
 
@@ -36,7 +37,6 @@ const helper = require('@arangodb/user-helper');
 const errors = require('@arangodb').errors;
 const namePrefix = helper.namePrefix;
 const dbName = helper.dbName;
-const colName = helper.colName;
 const rightLevels = helper.rightLevels;
 const testColName = `${namePrefix}ColNew`;
 
@@ -44,8 +44,6 @@ const userSet = helper.userSet;
 const systemLevel = helper.systemLevel;
 const dbLevel = helper.dbLevel;
 const colLevel = helper.colLevel;
-const activeUsers = helper.activeUsers;
-const inactiveUsers = helper.inactiveUsers;
 
 const arango = require('internal').arango;
 const db = require('internal').db;
@@ -63,20 +61,18 @@ switchUser('root', '_system');
 helper.removeAllUsers();
 
 describe('User Rights Management', () => {
-
   before(helper.generateAllUsers);
   after(helper.removeAllUsers);
 
   it('should check if all users are created', () => {
     switchUser('root', '_system');
-    expect(userSet.size).to.equal(4 * 4 * 4 * 2);
+    expect(userSet.size).to.equal(helper.userCount);
     for (let name of userSet) {
       expect(users.document(name), `Could not find user: ${name}`).to.not.be.undefined;
     }
   });
 
-  describe('should test rights for', () => {
-
+  it('should test rights for', () => {
     for (let name of userSet) {
       let canUse = false;
       try {
@@ -87,15 +83,12 @@ describe('User Rights Management', () => {
       }
 
       if (canUse) {
-
         describe(`user ${name}`, () => {
-
           before(() => {
             switchUser(name, dbName);
           });
 
           describe('administrate on db level', () => {
-
             const rootTestCollection = (switchBack = true) => {
               switchUser('root', dbName);
               let col = db._collection(testColName);
@@ -115,12 +108,18 @@ describe('User Rights Management', () => {
             const rootCreateCollection = () => {
               if (!rootTestCollection(false)) {
                 db._create(testColName);
+                if (colLevel['none'].has(name)) {
+                  users.grantCollection(name, dbName, testColName, 'none');
+                } else if (colLevel['ro'].has(name)) {
+                  users.grantCollection(name, dbName, testColName, 'ro');
+                } else if (colLevel['rw'].has(name)) {
+                  users.grantCollection(name, dbName, testColName, 'rw');
+                }
               }
               switchUser(name, dbName);
             };
 
             describe('create a', () => {
-
               before(() => {
                 db._useDatabase(dbName);
                 rootDropCollection();
@@ -131,11 +130,10 @@ describe('User Rights Management', () => {
               });
 
               it('collection', () => {
-                expect(rootTestCollection()).to.equal(false, `Precondition failed, the collection still exists`);
-                if (activeUsers.has(name) && dbLevel['rw'].has(name)) {
-                  // User needs rw on database
+                expect(rootTestCollection()).to.equal(false, 'Precondition failed, the collection still exists');
+                if (dbLevel['rw'].has(name)) {
                   db._create(testColName);
-                  expect(rootTestCollection()).to.equal(true, `Collection creation reported success, but collection was not found afterwards.`);
+                  expect(rootTestCollection()).to.equal(true, 'Collection creation reported success, but collection was not found afterwards.');
                 } else {
                   try {
                     db._create(testColName);
@@ -158,13 +156,10 @@ describe('User Rights Management', () => {
               });
 
               it('collection', () => {
-                expect(rootTestCollection()).to.equal(true, `Precondition failed, the collection does not exist`);
-                if (activeUsers.has(name) && 
-                  dbLevel['rw'].has(name) && 
-                  colLevel['rw'].has(name)) {
-                  // User needs rw on database
+                expect(rootTestCollection()).to.equal(true, 'Precondition failed, the collection does not exist');
+                if (dbLevel['rw'].has(name) && colLevel['rw'].has(name)) {
                   db._drop(testColName);
-                  expect(rootTestCollection()).to.equal(false, `Collection drop reported success, but collection was still found afterwards.`);
+                  expect(rootTestCollection()).to.equal(false, 'Collection drop reported success, but collection was still found afterwards.');
                 } else {
                   try {
                     db._drop(testColName);
@@ -175,7 +170,6 @@ describe('User Rights Management', () => {
                 }
               });
             });
-
           });
         });
       }

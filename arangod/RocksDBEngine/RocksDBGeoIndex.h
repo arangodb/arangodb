@@ -130,9 +130,7 @@ class RocksDBGeoIndex final : public RocksDBIndex {
   bool isSorted() const override { return true; }
 
   bool hasSelectivityEstimate() const override { return false; }
-
-  size_t memory() const override;
-
+  
   void toVelocyPack(VPackBuilder&, bool, bool) const override;
   // Uses default toVelocyPackFigures
 

@@ -343,7 +343,6 @@ int RocksDBIndexFactory::enhanceIndexDefinition(VPackSlice const definition,
       res = EnhanceJsonIndexFulltext(definition, enhanced, create);
       break;
 
-    case Index::TRI_IDX_TYPE_UNKNOWN:
     default: {
       res = TRI_ERROR_BAD_PARAMETER;
       break;
@@ -365,12 +364,8 @@ std::shared_ptr<Index> RocksDBIndexFactory::prepareIndexFromSlice(
 
   if (!value.isString()) {
     // Compatibility with old v8-vocindex.
-    if (generateKey) {
-      THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
-    } else {
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
-                                     "invalid index type definition");
-    }
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
+                                   "invalid index type definition");
   }
 
   std::string const typeString = value.copyString();
