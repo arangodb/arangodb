@@ -287,6 +287,7 @@ exports.exists = function (username) {
     }
     throw e;
   }
+};
 
 exports.currentUser = function() {
   return internal.arango.connectedUser();
