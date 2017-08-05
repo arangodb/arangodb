@@ -144,6 +144,17 @@ credentials = '8d893d23-6714-4f35-a239-c847c798e080'
 // jenkins cache
 cacheDir = '/vol/cache/' + env.JOB_NAME.replaceAll('%', '_')
 
+// source branch for pull requests
+sourceBranchLabel = env.BRANCH_NAME
+
+if (env.BRANCH_NAME =~ /^PR-/) {
+  def prUrl = new URL("https://api.github.com/repos/arangodb/arangodb/pulls/${env.CHANGE_ID}")
+  sourceBranchLabel = new groovy.json.JsonSlurper().parseText(prUrl.text).head.label
+
+  def reg = ~/^arangodb:/
+  sourceBranchLabel = sourceBranchLabel - reg
+}
+
 // copy data to master cache
 def scpToMaster(os, from, to) {
     if (os == 'linux' || os == 'mac') {
@@ -178,9 +189,6 @@ def checkoutCommunity() {
             checkout scm
             sh 'git clean -f -d -x'
         }
-        // catch (hudson.AbortException ae) {
-        //     throw ae
-        // }
         catch (exc) {
             echo "GITHUB checkout failed, retrying in 5min"
             echo exc.toString()
@@ -191,21 +199,21 @@ def checkoutCommunity() {
 
 def checkoutEnterprise() {
     try {
-        echo "Trying enterprise branch ${env.BRANCH_NAME}"
+        echo "Trying enterprise branch ${sourceBranchLabel}"
 
         checkout(
             changelog: false,
             poll: false,
             scm: [
                 $class: 'GitSCM',
-                branches: [[name: "*/${env.BRANCH_NAME}"]],
+                branches: [[name: "*/${sourceBranchLabel}"]],
                 doGenerateSubmoduleConfigurations: false,
                 extensions: [[$class: 'RelativeTargetDirectory', relativeTargetDir: 'enterprise']],
                 submoduleCfg: [],
                 userRemoteConfigs: [[credentialsId: credentials, url: enterpriseRepo]]])
     }
     catch (exc) {
-        echo "Failed ${env.BRANCH_NAME}, trying enterprise branch devel"
+        echo "Failed ${sourceBranchLabel}, trying enterprise branch devel"
 
         checkout(
             changelog: false,
@@ -336,6 +344,7 @@ def checkCommitMessages() {
     }
 
     echo """BRANCH_NAME: ${env.BRANCH_NAME}
+SOURCE: ${sourceBranchLabel}
 CHANGE_ID: ${env.CHANGE_ID}
 CHANGE_TARGET: ${env.CHANGE_TARGET}
 JOB_NAME: ${env.JOB_NAME}
@@ -377,11 +386,9 @@ def unstashSourceCode(os) {
 
     if (os == 'linux' || os == 'mac') {
         sh 'unzip -o -q source.zip'
-        sh 'rm -f source.zip'
     }
     else if (os == 'windows') {
         bat 'c:\\cmake\\bin\\cmake -E tar xf source.zip'
-        bat 'del /q /f source.zip'
     }
 }
 
@@ -421,7 +428,7 @@ def unstashBuild(edition, os) {
 
 def stashBinaries(edition, os) {
     def name = "binaries-${edition}-${os}.zip"
-    def dirs = 'build etc Installation/Pipeline js scripts UnitTests utils resilience'
+    def dirs = 'build etc Installation/Pipeline js scripts UnitTests utils resilience source.zip'
 
     if (edition == 'enterprise') {
         dirs = "${dirs} enterprise/js"
@@ -490,9 +497,6 @@ def jslint() {
     try {
         sh './Installation/Pipeline/test_jslint.sh'
     }
-    // catch (hudson.AbortException ae) {
-    //     throw ae
-    // }
     catch (exc) {
         jslintSuccessful = false
         throw exc
@@ -519,6 +523,15 @@ def jslintStep(edition) {
 def testEdition(edition, os, mode, engine) {
     def arch = "LOG_test_${mode}_${edition}_${engine}_${os}"
 
+    if (os == 'linux' || os == 'mac') {
+       sh "rm -rf ${arch}"
+       sh "mkdir -p ${arch}"
+    }
+    else if (os == 'windows') {
+        bat "del /F /Q ${arch}"
+        powershell "New-Item -ItemType Directory -Force -Path ${arch}"
+    }
+
     try {
         try {
             if (os == 'linux') {
@@ -530,26 +543,33 @@ def testEdition(edition, os, mode, engine) {
             else if (os == 'windows') {
                 powershell ". .\\Installation\\Pipeline\\windows\\test_${mode}_${edition}_${engine}_${os}.ps1"
             }
+
+            if (findFiles(glob: 'core*').length > 0) {
+                error("found core file")
+            }
         }
         catch (exc) {
             if (os == 'linux' || os == 'mac') {
                 sh "for i in build core* tmp; do test -e \$i && mv \$i ${arch} || true; done"
             }
 
+            archiveArtifacts allowEmptyArchive: true,
+                             artifacts: "source.zip",
+                             defaultExcludes: false
+
             throw exc
         }
         finally {
             if (os == 'linux' || os == 'mac') {
-                sh "rm -rf ${arch}"
-                sh "mkdir -p ${arch}"
                 sh "find log-output -name 'FAILED_*' -exec cp '{}' . ';'"
-                sh "for i in logs log-output core*; do test -e \$i && mv \$i ${arch} || true; done"
+                sh "for i in logs log-output; do test -e \$i && mv \$i ${arch} || true; done"
+            }
+            else if (os == 'windows') {
+                bat "move logs ${arch}"
+                bat "move log-output ${arch}"
             }
         }
     }
-    // catch (hudson.AbortException ae) {
-    //     throw ae
-    // }
     finally {
         archiveArtifacts allowEmptyArchive: true,
                          artifacts: "${arch}/**",
@@ -596,7 +616,7 @@ def testStep(edition, os, mode, engine) {
         node(testJenkins[os]) {
             def buildName = "${edition}-${os}"
 
-            if (buildsSuccess[buildName]) {
+            if (!buildExecutable || buildsSuccess[buildName]) {
                 def name = "${edition}-${os}-${mode}-${engine}"
 
                 try {
@@ -604,9 +624,6 @@ def testStep(edition, os, mode, engine) {
                     testEdition(edition, os, mode, engine)
                     testsSuccess[name] = true
                 }
-                // catch (hudson.AbortException ae) {
-                //     throw ae
-                // }
                 catch (exc) {
                     echo exc.toString()
                     testsSuccess[name] = false
@@ -698,55 +715,55 @@ def testResilienceCheck(os, engine, foxx, full) {
     return true
 }
 
-def testResilienceName(os, engine, foxx, full) {
-    def name = "test-resilience-${foxx}-${engine}-${os}";
-
-    if (! testResilienceCheck(os, engine, foxx, full)) {
-        name = "DISABLED-${name}"
-    }
-
-    return name 
-}
-
 def testResilienceStep(os, engine, foxx) {
     return {
         node(testJenkins[os]) {
             def edition = "community"
             def buildName = "${edition}-${os}"
 
-            if (buildsSuccess[buildName]) {
+            if (!buildExecutable || buildsSuccess[buildName]) {
                 def name = "${os}-${engine}-${foxx}"
                 def arch = "LOG_resilience_${foxx}_${engine}_${os}"
+
+                if (os == 'linux' || os == 'mac') {
+                   sh "rm -rf ${arch}"
+                   sh "mkdir -p ${arch}"
+                }
+                else if (os == 'windows') {
+                    bat "del /F /Q ${arch}"
+                    powershell "New-Item -ItemType Directory -Force -Path ${arch}"
+                }
 
                 try {
                     try {
                         unstashBinaries(edition, os)
                         testResilience(os, engine, foxx)
+
+                        if (findFiles(glob: 'resilience/core*').length > 0) {
+                            error("found core file")
+                        }
                     }
                     catch (exc) {
                         if (os == 'linux' || os == 'mac') {
-                            sh "for i in build core* tmp; do test -e \$i && mv \$i ${arch} || true; done"
+                            sh "for i in build resilience/core* tmp; do test -e \$i && mv \$i ${arch} || true; done"
                         }
+
+                        archiveArtifacts allowEmptyArchive: true,
+                                         artifacts: "source.zip",
+                                         defaultExcludes: false
 
                         throw exc
                     }
                     finally {
                         if (os == 'linux' || os == 'mac') {
-                            sh "rm -rf ${arch}"
-                            sh "mkdir -p ${arch}"
-                            sh "for i in log-output resilience/core*; do test -e \$i && mv \$i ${arch}; done"
+                            sh "for i in log-output; do test -e \$i && mv \$i ${arch}; done"
                         }
                         else if (os == 'windows') {
-                            bat "del /F /Q ${arch}"
-                            powershell "New-Item -ItemType Directory -Force -Path ${arch}"
                             bat "move log-output ${arch}"
                         }
                         
                     }
                 }
-                // catch (hudson.AbortException ae) {
-                //     throw ae
-                // }
                 catch (exc) {
                     resiliencesSuccess[name] = false
                     allResiliencesSuccessful = false
@@ -774,7 +791,7 @@ def testResilienceParallel(osList) {
         for (os in osList) {
             for (engine in ['mmfiles', 'rocksdb']) {
                 if (testResilienceCheck(os, engine, foxx, full)) {
-                    def name = testResilienceName(os, engine, foxx, full)
+                    def name = "test-resilience-${foxx}-${engine}-${os}"
 
                     branches[name] = testResilienceStep(os, engine, foxx)
                 }
@@ -799,15 +816,21 @@ def buildEdition(edition, os) {
         try {
             unstashBuild(edition, os)
         }
-        // catch (hudson.AbortException ae) {
-        //     throw ae
-        // }
         catch (exc) {
             echo "no stashed build environment, starting clean build"
         }
     }
 
     def arch = "LOG_build_${edition}_${os}"
+
+    if (os == 'linux' || os == 'mac') {
+       sh "rm -rf ${arch}"
+       sh "mkdir -p ${arch}"
+    }
+    else if (os == 'windows') {
+        bat "del /F /Q ${arch}"
+        powershell "New-Item -ItemType Directory -Force -Path ${arch}"
+    }
 
     try {
         try {
@@ -823,13 +846,10 @@ def buildEdition(edition, os) {
         }
         finally {
             if (os == 'linux' || os == 'mac') {
-                sh "rm -rf ${arch}"
-                sh "mkdir -p ${arch}"
                 sh "for i in log-output; do test -e \$i && mv \$i ${arch} || true; done"
             }
             else if (os == 'windows') {
-                bat "del /F /Q ${arch}"
-                powershell "New-Item -ItemType Directory -Force -Path ${arch}"
+                bat "move log-output ${arch}"
             }
         }
     }
@@ -878,9 +898,6 @@ def buildStep(edition, os) {
                     stashBinaries(edition, os)
                     buildsSuccess[name] = true
                 }
-                // catch (hudson.AbortException ae) {
-                //     throw ae
-                // }
                 catch (exc) {
                     buildsSuccess[name] = false
                     allBuildsSuccessful = false
@@ -919,10 +936,6 @@ def runStage(stage) {
     try {
         stage()
     }
-    // catch (hudson.AbortException ae) {
-    //     echo exc.toString()
-    //     throw ae
-    // }
     catch (exc) {
         echo exc.toString()
     }
@@ -930,11 +943,13 @@ def runStage(stage) {
 
 stage('checkout') {
     node('master') {
-        checkoutCommunity()
-        checkCommitMessages()
-        checkoutEnterprise()
-        checkoutResilience()
-        stashSourceCode()
+        timeout(30) {
+            checkoutCommunity()
+            checkCommitMessages()
+            checkoutEnterprise()
+            checkoutResilience()
+            stashSourceCode()
+        }
     }
 }
 

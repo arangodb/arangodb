@@ -61,6 +61,7 @@ MMFilesPersistentIndexFeature::MMFilesPersistentIndexFeature(
   setOptional(true);
   requiresElevatedPrivileges(false);
   startsAfter("RocksDBOption");
+  startsBefore("Database");
   onlyEnabledWith("MMFilesEngine");
 }
 
@@ -122,10 +123,8 @@ void MMFilesPersistentIndexFeature::start() {
 
   _options.max_background_jobs = static_cast<int>(opts->_maxBackgroundJobs);
   _options.compaction_readahead_size = static_cast<size_t>(opts->_compactionReadaheadSize);
-
-  if (_options.base_background_compactions > 1 || _options.max_background_compactions > 1) {
-    _options.env->SetBackgroundThreads(
-      (std::max)(_options.base_background_compactions, _options.max_background_compactions),
+  if (_options.max_background_jobs > 1) {
+    _options.env->SetBackgroundThreads(std::max(1, _options.max_background_jobs),
       rocksdb::Env::Priority::LOW);
   }
 

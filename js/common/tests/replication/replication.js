@@ -191,7 +191,9 @@ function ReplicationLoggerSuite () {
       state = replication.logger.state().state;
       assertTrue(state.running);
 
-      assertEqual(tick, state.lastLogTick);
+      if (db._engine().name !== "rocksdb") {
+        assertEqual(tick, state.lastLogTick);
+      }
       assertTrue(typeof state.lastLogTick === 'string');
       assertMatch(/^\d+$/, state.lastLogTick);
       assertTrue(state.totalEvents >= 0);
