@@ -38,8 +38,7 @@ fi
 declare -a EXTRA_ARGS
 
 if [ `uname -s` == "Darwin" ]; then
-  EXEC_PATH="$(dirname "$(dirname "$(readlink "$0")")")"
-  [ -x "${ARANGOSH}" ] && ARANGOSH="$(readlink "${ARANGOSH}")"
+  EXEC_PATH="$(dirname "$(dirname "$0")")"
 else
   EXEC_PATH="$(dirname "$(dirname "$(readlink -m "$0")")")"
   [ -x "${ARANGOSH}" ] && ARANGOSH="$(readlink -m "${ARANGOSH}")"
