@@ -2332,7 +2332,7 @@ OperationResult transaction::Methods::truncateLocal(
     collection->truncate(this, options);
   } catch (basics::Exception const& ex) {
     unlock(trxCollection(cid), AccessMode::Type::WRITE);
-    return OperationResult(ex.code());
+    return OperationResult(ex.code(), ex.what());
   }
 
   // Now see whether or not we have to do synchronous replication:

@@ -43,6 +43,8 @@ namespace arangodb {
 class RocksDBCollection;
 class RocksDBPrimaryIndex;
 
+/// @brief iterator over all documents in the collection
+/// basically sorted after revision ID
 class RocksDBAllIndexIterator final : public IndexIterator {
  public:
   typedef std::function<void(DocumentIdentifierToken const& token,
@@ -99,6 +101,8 @@ class RocksDBAnyIndexIterator final : public IndexIterator {
   uint64_t _returned;
 };
 
+/// @brief iterates over the primary index and does lookups
+/// into the document store. E.g. used for incremental sync
 class RocksDBSortedAllIterator final : public IndexIterator {
  public:
   typedef std::function<void(DocumentIdentifierToken const& token,
