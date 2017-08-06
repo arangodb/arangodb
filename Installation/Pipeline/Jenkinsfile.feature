@@ -259,6 +259,7 @@ def checkoutResilience() {
 
 def checkCommitMessages() {
     def causes = currentBuild.rawBuild.getCauses()
+    def causeDescription = cause.getShortDescription();
     def changeLogSets = currentBuild.changeSets
     def seenCommit = false
     def skip = false
@@ -300,7 +301,10 @@ def checkCommitMessages() {
         }
     }
 
-    if (skip) {
+    if (causeDescription =~ /Started by user/) {
+        echo "build started by user"
+    }
+    else if (skip) {
         useLinux = false
         useMac = false
         useWindows = false
@@ -311,7 +315,7 @@ def checkCommitMessages() {
         runResilience = false
         runTests = false
     }
-    else if (seenCommit) {
+    else {
         if (env.BRANCH_NAME == "devel" || env.BRANCH_NAME == "3.2") {
             useLinux = true
             useMac = true
@@ -333,6 +337,23 @@ def checkCommitMessages() {
             runJslint = true
             runResilience = true
             runTests = true
+
+            restrictions = [
+                "build-community-linux",
+                "build-community-mac",
+                // "build-community-windows",
+                "build-enterprise-linux",
+                "build-enterprise-mac",
+                "build-enterprise-windows",
+                "test-cluster-community-mmfiles-linux",
+                "test-cluster-community-rocksdb-linux",
+                "test-cluster-enterprise-mmfiles-linux",
+                "test-cluster-enterprise-rocksdb-linux",
+                "test-singleserver-community-mmfiles-linux",
+                "test-singleserver-community-rocksdb-linux",
+                "test-singleserver-enterprise-mmfiles-linux",
+                "test-singleserver-enterprise-rocksdb-linux"
+            ]
         }
         else {
             useLinux = true
@@ -342,16 +363,16 @@ def checkCommitMessages() {
             useCommunity = true
             useEnterprise = true
             runJslint = true
-            runResilience = false
-            runTests = false
+            runResilience = true
+            runTests = true
 
             restrictions = [
-                "build-enterprise-linux",
                 "build-community-mac",
-                "build-community-windows",
+                // "build-community-windows",
+                "build-enterprise-linux",
                 "test-cluster-enterprise-rocksdb-linux",
-                "test-singleserver-community-mmfiles-mac",
-                "test-singleserver-community-rocksdb-windows"
+                "test-singleserver-community-mmfiles-mac"
+                // "test-singleserver-community-rocksdb-windows"
             ]
         }
     }
@@ -374,10 +395,6 @@ Running Jslint: ${runJslint}
 Running Resilience: ${runResilience}
 Running Tests: ${runTests}
 """
-
-    for (cause in causes) {
-        echo "CAUSE: ${cause.getShortDescription()}"
-    }
 }
 
 // -----------------------------------------------------------------------------
@@ -599,9 +616,7 @@ def testEdition(edition, os, mode, engine) {
     }
 }
 
-def testCheck(edition, os, mode, engine, full) {
-    def name = "${edition}-${os}"
-
+def testCheck(edition, os, mode, engine) {
     if (! runTests) {
         return false
     }
@@ -623,6 +638,10 @@ def testCheck(edition, os, mode, engine, full) {
     }
 
     if (edition == 'community' && ! useCommunity) {
+        return false
+    }
+
+    if (restrictions && ! "test-${mode}-${edition}-${engine}-${os}" in restrictions) {
         return false
     }
 
@@ -658,13 +677,12 @@ def testStep(edition, os, mode, engine) {
 
 def testStepParallel(editionList, osList, modeList) {
     def branches = [:]
-    def full = false
 
     for (edition in editionList) {
         for (os in osList) {
             for (mode in modeList) {
                 for (engine in ['mmfiles', 'rocksdb']) {
-                    if (testCheck(edition, os, mode, engine, full)) {
+                    if (testCheck(edition, os, mode, engine)) {
                         def name = "test-${mode}-${edition}-${engine}-${os}";
 
                         branches[name] = testStep(edition, os, mode, engine)
@@ -707,9 +725,7 @@ def testResilience(os, engine, foxx) {
     }
 }
 
-def testResilienceCheck(os, engine, foxx, full) {
-    def name = "community-${os}"
-
+def testResilienceCheck(os, engine, foxx) {
     if (! runResilience) {
         return false
     }
@@ -727,6 +743,10 @@ def testResilienceCheck(os, engine, foxx, full) {
     }
 
     if (! useCommunity) {
+        return false
+    }
+
+    if (restrictions && ! "test-resilience-${foxx}-${engine}-${os}" in restrictions) {
         return false
     }
 
@@ -803,12 +823,11 @@ def testResilienceStep(os, engine, foxx) {
 
 def testResilienceParallel(osList) {
     def branches = [:]
-    def full = false
 
     for (foxx in ['foxx', 'nofoxx']) {
         for (os in osList) {
             for (engine in ['mmfiles', 'rocksdb']) {
-                if (testResilienceCheck(os, engine, foxx, full)) {
+                if (testResilienceCheck(os, engine, foxx)) {
                     def name = "test-resilience-${foxx}-${engine}-${os}"
 
                     branches[name] = testResilienceStep(os, engine, foxx)
