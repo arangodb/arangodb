@@ -382,6 +382,7 @@ SOURCE: ${sourceBranchLabel}
 CHANGE_ID: ${env.CHANGE_ID}
 CHANGE_TARGET: ${env.CHANGE_TARGET}
 JOB_NAME: ${env.JOB_NAME}
+CAUSE: ${causeDescription}
 
 Linux: ${useLinux}
 Mac: ${useMac}
@@ -394,6 +395,8 @@ Building Enterprise: ${useEnterprise}
 Running Jslint: ${runJslint}
 Running Resilience: ${runResilience}
 Running Tests: ${runTests}
+
+Restrictions: ${restrictions.join(", ")}
 """
 }
 
