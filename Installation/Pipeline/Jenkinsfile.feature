@@ -645,7 +645,7 @@ def testCheck(edition, os, mode, engine) {
         return false
     }
 
-    if (restrictions && !("test-${mode}-${edition}-${engine}-${os}" in restrictions)) {
+    if (restrictions && ! restrictions.contains("test-${mode}-${edition}-${engine}-${os}")) {
         return false
     }
 
@@ -750,7 +750,7 @@ def testResilienceCheck(os, engine, foxx) {
         return false
     }
 
-    if (restrictions && !("test-resilience-${foxx}-${engine}-${os}" in restrictions)) {
+    if (restrictions && !restrictions.contains("test-resilience-${foxx}-${engine}-${os}")) {
         return false
     }
 
@@ -931,7 +931,7 @@ def buildStepCheck(edition, os, full) {
         return false
     }
 
-    if (restrictions && !("build-${edition}-${os}" in restrictions)) {
+    if (restrictions && !restrictions.contains("build-${edition}-${os}")) {
         echo "no restriction"
         return false
     }
