@@ -339,20 +339,20 @@ def checkCommitMessages() {
             runTests = true
 
             restrictions = [
-                "build-community-linux",
-                "build-community-mac",
-                // "build-community-windows",
-                "build-enterprise-linux",
-                "build-enterprise-mac",
-                "build-enterprise-windows",
-                "test-cluster-community-mmfiles-linux",
-                "test-cluster-community-rocksdb-linux",
-                "test-cluster-enterprise-mmfiles-linux",
-                "test-cluster-enterprise-rocksdb-linux",
-                "test-singleserver-community-mmfiles-linux",
-                "test-singleserver-community-rocksdb-linux",
-                "test-singleserver-enterprise-mmfiles-linux",
-                "test-singleserver-enterprise-rocksdb-linux"
+                "build-community-linux" : true,
+                "build-community-mac" : true,
+                // "build-community-windows" : true,
+                "build-enterprise-linux" : true,
+                "build-enterprise-mac" : true,
+                "build-enterprise-windows" : true,
+                "test-cluster-community-mmfiles-linux" : true,
+                "test-cluster-community-rocksdb-linux" : true,
+                "test-cluster-enterprise-mmfiles-linux" : true,
+                "test-cluster-enterprise-rocksdb-linux" : true,
+                "test-singleserver-community-mmfiles-linux" : true,
+                "test-singleserver-community-rocksdb-linux" : true,
+                "test-singleserver-enterprise-mmfiles-linux" : true,
+                "test-singleserver-enterprise-rocksdb-linux" : true
             ]
         }
         else {
@@ -368,12 +368,12 @@ def checkCommitMessages() {
             runTests = true
 
             restrictions = [
-                "build-community-mac",
-                // "build-community-windows",
-                "build-enterprise-linux",
-                "test-cluster-enterprise-rocksdb-linux",
-                "test-singleserver-community-mmfiles-mac"
-                // "test-singleserver-community-rocksdb-windows"
+                "build-community-mac" : true,
+                // "build-community-windows" : true,
+                "build-enterprise-linux" : true,
+                "test-cluster-enterprise-rocksdb-linux" : true,
+                "test-singleserver-community-mmfiles-mac" : true
+                // "test-singleserver-community-rocksdb-windows" : true
             ]
         }
     }
@@ -397,7 +397,7 @@ Running Jslint: ${runJslint}
 Running Resilience: ${runResilience}
 Running Tests: ${runTests}
 
-Restrictions: ${restrictions.join(", ")}
+Restrictions: ${restrictions.keySet().join(", ")}
 """
 }
 
@@ -645,7 +645,7 @@ def testCheck(edition, os, mode, engine) {
         return false
     }
 
-    if (restrictions && ! restrictions.contains("test-${mode}-${edition}-${engine}-${os}")) {
+    if (restrictions && !restrictions["test-${mode}-${edition}-${engine}-${os}"]) {
         return false
     }
 
@@ -750,7 +750,7 @@ def testResilienceCheck(os, engine, foxx) {
         return false
     }
 
-    if (restrictions && !restrictions.contains("test-resilience-${foxx}-${engine}-${os}")) {
+    if (restrictions && !restrictions["test-resilience-${foxx}-${engine}-${os}"]) {
         return false
     }
 
@@ -931,10 +931,12 @@ def buildStepCheck(edition, os, full) {
         return false
     }
 
-    if (restrictions && !restrictions.contains("build-${edition}-${os}")) {
+    if (restrictions && !restrictions["build-${edition}-${os}"]) {
         echo "no restriction"
-        echo "${restrictions.join(', ')}"
+        echo "${restrictions.keySet().join(', ')}"
         echo "build-${edition}-${os}"
+        def x = restrictions["build-${edition}-${os}"]
+        echo "contains ${x}"
         return false
     }
 
