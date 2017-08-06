@@ -923,6 +923,10 @@ def buildStepCheck(edition, os, full) {
         return false
     }
 
+    if (restrictions && ! "build-${edition}-${os}" in restrictions) {
+        return false
+    }
+
     return true
 }
 
