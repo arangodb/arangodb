@@ -259,7 +259,7 @@ def checkoutResilience() {
 
 def checkCommitMessages() {
     def causes = currentBuild.rawBuild.getCauses()
-    def causeDescription = cause.getShortDescription();
+    def causeDescription = causes[0].getShortDescription();
     def changeLogSets = currentBuild.changeSets
     def seenCommit = false
     def skip = false
