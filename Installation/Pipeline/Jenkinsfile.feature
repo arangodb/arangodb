@@ -202,9 +202,9 @@ def checkoutCommunity() {
             sh 'git clean -f -d -x'
         }
         catch (exc) {
-            echo "GITHUB checkout failed, retrying in 5min"
+            echo "GITHUB checkout failed, retrying in 1min"
             echo exc.toString()
-            sleep 300
+            sleep 60
         }
     }
 }
@@ -904,43 +904,29 @@ def buildEdition(edition, os) {
 }
 
 def buildStepCheck(edition, os, full) {
-    echo "testing build-${edition}-${os}"
-
     if (os == 'linux' && ! useLinux) {
-        echo "no linux"
         return false
     }
 
     if (os == 'mac' && ! useMac) {
-        echo "no mac"
         return false
     }
 
     if (os == 'windows' && ! useWindows) {
-        echo "no windows"
         return false
     }
 
     if (edition == 'enterprise' && ! useEnterprise) {
-        echo "no enterprise"
         return false
     }
 
     if (edition == 'community' && ! useCommunity) {
-        echo "no community"
         return false
     }
 
     if (restrictions && !restrictions["build-${edition}-${os}"]) {
-        echo "no restriction"
-        echo "${restrictions.keySet().join(', ')}"
-        echo "build-${edition}-${os}"
-        def x = restrictions["build-${edition}-${os}"]
-        echo "contains ${x}"
         return false
     }
-
-    echo "OK"
 
     return true
 }
