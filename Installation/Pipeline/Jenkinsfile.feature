@@ -879,7 +879,7 @@ def buildEdition(edition, os) {
                 sh "./Installation/Pipeline/linux/build_${edition}_${os}.sh 64"
             }
             else if (os == 'mac') {
-                sh "./Installation/Pipeline/mac/build_${edition}_${os}.sh 20"
+                sh "./Installation/Pipeline/mac/build_${edition}_${os}.sh 16"
             }
             else if (os == 'windows') {
                 powershell ". .\\Installation\\Pipeline\\windows\\build_${edition}_${os}.ps1"
