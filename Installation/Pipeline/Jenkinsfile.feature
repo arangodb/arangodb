@@ -933,6 +933,8 @@ def buildStepCheck(edition, os, full) {
 
     if (restrictions && !restrictions.contains("build-${edition}-${os}")) {
         echo "no restriction"
+        echo "${restrictions.join(', ')"
+        echo "build-${edition}-${os}"
         return false
     }
 
