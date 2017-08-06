@@ -376,7 +376,7 @@ Running Tests: ${runTests}
 """
 
     for (cause in causes) {
-        echo "CAUSE: ${cause}"
+        echo "CAUSE: ${cause.getShortDescription()}"
     }
 }
 
