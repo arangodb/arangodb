@@ -258,6 +258,7 @@ def checkoutResilience() {
 }
 
 def checkCommitMessages() {
+    def causes = currentBuild.rawBuild.getCauses()
     def changeLogSets = currentBuild.changeSets
     def seenCommit = false
     def skip = false
@@ -371,7 +372,12 @@ Building Community: ${useCommunity}
 Building Enterprise: ${useEnterprise}
 Running Jslint: ${runJslint}
 Running Resilience: ${runResilience}
-Running Tests: ${runTests}"""
+Running Tests: ${runTests}
+"""
+
+    for (cause in causes) {
+        echo "CAUSE: ${cause}"
+    }
 }
 
 // -----------------------------------------------------------------------------
