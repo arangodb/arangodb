@@ -144,6 +144,21 @@ bool RocksDBAllIndexIterator::nextDocument(
 
   return true;
 }
+  
+void RocksDBAllIndexIterator::skip(uint64_t count, uint64_t& skipped) {
+  TRI_ASSERT(_trx->state()->isRunning());
+
+  while (count > 0 && _iterator->Valid()) {
+    --count;
+    ++skipped;
+
+    if (_reverse) {
+      _iterator->Prev();
+    } else {
+      _iterator->Next();
+    }
+  }
+}
 
 void RocksDBAllIndexIterator::reset() {
   TRI_ASSERT(_trx->state()->isRunning());

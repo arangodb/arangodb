@@ -61,6 +61,7 @@ class RocksDBAllIndexIterator final : public IndexIterator {
 
   bool next(TokenCallback const& cb, size_t limit) override;
   bool nextDocument(DocumentCallback const& cb, size_t limit) override;
+  void skip(uint64_t count, uint64_t& skipped) override;
 
   void reset() override;
 
