@@ -550,7 +550,7 @@ def testEdition(edition, os, mode, engine) {
                 sh "./Installation/Pipeline/linux/test_${mode}_${edition}_${engine}_${os}.sh 10"
             }
             else if (os == 'mac') {
-                sh "./Installation/Pipeline/mac/test_${mode}_${edition}_${engine}_${os}.sh 5"
+                sh "./Installation/Pipeline/mac/test_${mode}_${edition}_${engine}_${os}.sh 3"
             }
             else if (os == 'windows') {
                 powershell ". .\\Installation\\Pipeline\\windows\\test_${mode}_${edition}_${engine}_${os}.ps1"
