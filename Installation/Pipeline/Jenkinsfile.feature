@@ -904,29 +904,39 @@ def buildEdition(edition, os) {
 }
 
 def buildStepCheck(edition, os, full) {
+    echo "testing build-${edition}-${os}"
+
     if (os == 'linux' && ! useLinux) {
+        echo "no linux"
         return false
     }
 
     if (os == 'mac' && ! useMac) {
+        echo "no mac"
         return false
     }
 
     if (os == 'windows' && ! useWindows) {
+        echo "no windows"
         return false
     }
 
     if (edition == 'enterprise' && ! useEnterprise) {
+        echo "no enterprise"
         return false
     }
 
     if (edition == 'community' && ! useCommunity) {
+        echo "no community"
         return false
     }
 
     if (restrictions && !("build-${edition}-${os}" in restrictions)) {
+        echo "no restriction"
         return false
     }
+
+    echo "OK"
 
     return true
 }
