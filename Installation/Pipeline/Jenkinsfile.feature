@@ -360,6 +360,7 @@ def checkCommitMessages() {
             useMac = true
             useWindows = true
             buildExecutable = true
+            fullParallel = true
             useCommunity = true
             useEnterprise = true
             runJslint = true
