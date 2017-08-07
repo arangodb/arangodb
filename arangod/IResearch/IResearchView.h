@@ -340,6 +340,7 @@ class IResearchView final: public arangodb::ViewImplementation,
   std::atomic<size_t> _asyncMetaRevision; // arbitrary meta modification id, async jobs should reload if different
   std::mutex _asyncMutex; // mutex used with '_asyncCondition' and associated timeouts
   std::atomic<bool> _asyncTerminate; // trigger termination of long-running async jobs
+  int (*_beforeInsert)(IResearchView&, arangodb::transaction::Methods&, TRI_voc_cid_t, TRI_voc_rid_t); // call before insertion
   IResearchViewMeta _meta;
   mutable irs::async_utils::read_write_mutex _mutex; // for use with member maps/sets and '_meta'
   MemoryStoreNode _memoryNodes[2]; // 2 because we just swap them

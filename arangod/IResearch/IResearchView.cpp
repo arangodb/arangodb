@@ -581,6 +581,7 @@ bool UnorderedViewIterator::next(TokenCallback const& callback, size_t limit) {
     }
   }
 
+  // FIXME TODO will still return 'true' if reached end of last iterator
   return (limit == 0);
 }
 
@@ -1118,6 +1119,40 @@ IResearchView::IResearchView(
    _toFlush(_memoryNodes),
    _threadPool(0, 0) { // 0 == create pool with no threads, i.e. not running anything
 
+  // set up in-recovery insertion hooks
+  {
+    struct BeforeInsert {
+      static int invoke(
+          IResearchView& view,
+          arangodb::transaction::Methods& trx,
+          TRI_voc_cid_t cid,
+          TRI_voc_rid_t rid
+      ) {
+        return view.remove(trx, cid, rid);
+      }
+      static int noop(
+          IResearchView& view,
+          arangodb::transaction::Methods& trx,
+          TRI_voc_cid_t cid,
+          TRI_voc_rid_t rid
+      ) {
+        return TRI_ERROR_NO_ERROR;
+      }
+    };
+
+    auto* feature = arangodb::iresearch::getFeature<arangodb::DatabaseFeature>("Database");
+
+    if (!feature) {
+      _beforeInsert = &BeforeInsert::noop; // database cannot be in recovery if there is no Database feature
+    } else {
+      _beforeInsert = &BeforeInsert::invoke;
+      feature->registerPostRecoveryCallback([this]()->arangodb::Result {
+        _beforeInsert = &BeforeInsert::noop; // remove in-recovery hook once recovery is complete
+        return arangodb::Result();
+      });
+    }
+  }
+
   // initialize round-robin memory store chain
   auto it = _memoryNodes;
   for (auto next = it + 1, end = std::end(_memoryNodes); next < end; ++it, ++next) {
@@ -1618,6 +1653,14 @@ int IResearchView::insert(
     return TRI_ERROR_NO_ERROR;
   }
 
+  auto res = _beforeInsert(*this, trx, cid, rid);
+
+  if (TRI_ERROR_NO_ERROR != res) {
+    LOG_TOPIC(WARN, Logger::FIXME) << "failed on pre-insert operation while inserting into iResearch view '" << id() << "', collection '" << cid << "', revision '" << rid << "'";
+
+    return res;
+  }
+
   WriteMutex mutex(_mutex); // '_storeByTid' can be asynchronously updated
   SCOPED_LOCK(mutex);
 
@@ -1660,6 +1703,16 @@ int IResearchView::insert(
 ) {
   if (!trx.state()) {
     return TRI_ERROR_BAD_PARAMETER; // 'trx' and transaction id required
+  }
+
+  for (auto& entry: batch) {
+    auto res = _beforeInsert(*this, trx, cid, entry.first);
+
+    if (TRI_ERROR_NO_ERROR != res) {
+      LOG_TOPIC(WARN, Logger::FIXME) << "failed on pre-insert operation while inserting batch into iResearch view '" << id() << "', collection '" << cid;
+
+      return res;
+    }
   }
 
   WriteMutex mutex(_mutex); // '_storeByTid' can be asynchronously updated
