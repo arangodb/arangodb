@@ -877,7 +877,23 @@ SECTION("test_start") {
       CHECK((nullptr == collection));
     }
 
-    // FIXME TODO implement
+    StorageEngineMock::inRecoveryResult = true;
+    arangodb::iresearch::IResearchAnalyzerFeature feature(nullptr);
+    feature.start();
+    CHECK((nullptr == vocbase->lookupCollection("_iresearch_analyzers")));
+
+    std::map<irs::string_ref, std::pair<irs::string_ref, irs::string_ref>> expected = {
+      { "identity", { "identity", irs::string_ref::nil } },
+    };
+    feature.visit([&expected](irs::string_ref const& name, irs::string_ref const& type, irs::string_ref const& properties)->bool {
+      auto itr = expected.find(name);
+      CHECK((itr != expected.end()));
+      CHECK((itr->second.first == type));
+      CHECK((itr->second.second == properties));
+      expected.erase(itr);
+      return true;
+    });
+    CHECK((expected.empty()));
   }
 
   // test feature start load configuration (inRecovery, no configuration collection, uninitialized analyzers)
@@ -894,17 +910,106 @@ SECTION("test_start") {
       CHECK((nullptr == collection));
     }
 
-    // FIXME TODO implement
+    StorageEngineMock::inRecoveryResult = true;
+    arangodb::iresearch::IResearchAnalyzerFeature feature(nullptr);
+    CHECK((false == !feature.get("test_analyzer")));
+    feature.start();
+    CHECK((nullptr == vocbase->lookupCollection("_iresearch_analyzers")));
+
+    std::map<irs::string_ref, std::pair<irs::string_ref, irs::string_ref>> expected = {
+      { "identity", { "identity", irs::string_ref::nil } },
+      { "test_analyzer", { irs::string_ref::nil, irs::string_ref::nil } },
+    };
+    feature.visit([&expected](irs::string_ref const& name, irs::string_ref const& type, irs::string_ref const& properties)->bool {
+      auto itr = expected.find(name);
+      CHECK((itr != expected.end()));
+      CHECK((itr->second.first == type));
+      CHECK((itr->second.second == properties));
+      expected.erase(itr);
+      return true;
+    });
+    CHECK((expected.empty()));
   }
 
   // test feature start load configuration (inRecovery, with configuration collection)
   {
-    // FIXME TODO implement
+    // ensure there is an empty configuration collection
+    {
+      auto* collection = vocbase->lookupCollection("_iresearch_analyzers");
+
+      if (collection) {
+        vocbase->dropCollection(collection, true, -1);
+      }
+
+      collection = vocbase->lookupCollection("_iresearch_analyzers");
+      CHECK((nullptr == collection));
+      StorageEngineMock::inRecoveryResult = false;
+      arangodb::iresearch::IResearchAnalyzerFeature feature(nullptr);
+      feature.start();
+      CHECK((false == !feature.emplace("test_analyzer", "identity", "abc").first));
+      collection = vocbase->lookupCollection("_iresearch_analyzers");
+      CHECK((nullptr != collection));
+    }
+
+    StorageEngineMock::inRecoveryResult = true;
+    arangodb::iresearch::IResearchAnalyzerFeature feature(nullptr);
+    feature.start();
+    CHECK((nullptr != vocbase->lookupCollection("_iresearch_analyzers")));
+
+    std::map<irs::string_ref, std::pair<irs::string_ref, irs::string_ref>> expected = {
+      { "identity", { "identity", irs::string_ref::nil } },
+      { "test_analyzer", { "identity", "abc" } },
+    };
+    feature.visit([&expected](irs::string_ref const& name, irs::string_ref const& type, irs::string_ref const& properties)->bool {
+      auto itr = expected.find(name);
+      CHECK((itr != expected.end()));
+      CHECK((itr->second.first == type));
+      CHECK((itr->second.second == properties));
+      expected.erase(itr);
+      return true;
+    });
+    CHECK((expected.empty()));
   }
 
   // test feature start load configuration (inRecovery, with configuration collection, uninitialized analyzers)
   {
-    // FIXME TODO implement
+    // ensure there is an empty configuration collection
+    {
+      auto* collection = vocbase->lookupCollection("_iresearch_analyzers");
+
+      if (collection) {
+        vocbase->dropCollection(collection, true, -1);
+      }
+
+      collection = vocbase->lookupCollection("_iresearch_analyzers");
+      CHECK((nullptr == collection));
+      StorageEngineMock::inRecoveryResult = false;
+      arangodb::iresearch::IResearchAnalyzerFeature feature(nullptr);
+      feature.start();
+      CHECK((false == !feature.emplace("test_analyzer", "identity", "abc").first));
+      collection = vocbase->lookupCollection("_iresearch_analyzers");
+      CHECK((nullptr != collection));
+    }
+
+    StorageEngineMock::inRecoveryResult = true;
+    arangodb::iresearch::IResearchAnalyzerFeature feature(nullptr);
+    CHECK((false == !feature.get("test_analyzer")));
+    feature.start();
+    CHECK((nullptr != vocbase->lookupCollection("_iresearch_analyzers")));
+
+    std::map<irs::string_ref, std::pair<irs::string_ref, irs::string_ref>> expected = {
+      { "identity", { "identity", irs::string_ref::nil } },
+      { "test_analyzer", { "identity", "abc" } },
+    };
+    feature.visit([&expected](irs::string_ref const& name, irs::string_ref const& type, irs::string_ref const& properties)->bool {
+      auto itr = expected.find(name);
+      CHECK((itr != expected.end()));
+      CHECK((itr->second.first == type));
+      CHECK((itr->second.second == properties));
+      expected.erase(itr);
+      return true;
+    });
+    CHECK((expected.empty()));
   }
 
   // test feature start load configuration (no configuration collection)
@@ -921,7 +1026,23 @@ SECTION("test_start") {
       CHECK((nullptr == collection));
     }
 
-    // FIXME TODO implement
+    StorageEngineMock::inRecoveryResult = false;
+    arangodb::iresearch::IResearchAnalyzerFeature feature(nullptr);
+    feature.start();
+    CHECK((nullptr != vocbase->lookupCollection("_iresearch_analyzers")));
+
+    std::map<irs::string_ref, std::pair<irs::string_ref, irs::string_ref>> expected = {
+      { "identity", { "identity", irs::string_ref::nil } },
+    };
+    feature.visit([&expected](irs::string_ref const& name, irs::string_ref const& type, irs::string_ref const& properties)->bool {
+      auto itr = expected.find(name);
+      CHECK((itr != expected.end()));
+      CHECK((itr->second.first == type));
+      CHECK((itr->second.second == properties));
+      expected.erase(itr);
+      return true;
+    });
+    CHECK((expected.empty()));
   }
 
   // test feature start load configuration (no configuration collection, uninitialized analyzers)
@@ -938,17 +1059,106 @@ SECTION("test_start") {
       CHECK((nullptr == collection));
     }
 
-    // FIXME TODO implement
+    StorageEngineMock::inRecoveryResult = false;
+    arangodb::iresearch::IResearchAnalyzerFeature feature(nullptr);
+    CHECK((false == !feature.get("identity")));
+    feature.start();
+    CHECK((nullptr != vocbase->lookupCollection("_iresearch_analyzers")));
+
+    std::map<irs::string_ref, std::pair<irs::string_ref, irs::string_ref>> expected = {
+      { "identity", { "identity", irs::string_ref::nil } },
+    };
+    feature.visit([&expected](irs::string_ref const& name, irs::string_ref const& type, irs::string_ref const& properties)->bool {
+      auto itr = expected.find(name);
+      CHECK((itr != expected.end()));
+      CHECK((itr->second.first == type));
+      CHECK((itr->second.second == properties));
+      expected.erase(itr);
+      return true;
+    });
+    CHECK((expected.empty()));
   }
 
   // test feature start load configuration (with configuration collection)
   {
-    // FIXME TODO implement
+    
+    // ensure there is an empty configuration collection
+    {
+      auto* collection = vocbase->lookupCollection("_iresearch_analyzers");
+
+      if (collection) {
+        vocbase->dropCollection(collection, true, -1);
+      }
+
+      collection = vocbase->lookupCollection("_iresearch_analyzers");
+      CHECK((nullptr == collection));
+      StorageEngineMock::inRecoveryResult = false;
+      arangodb::iresearch::IResearchAnalyzerFeature feature(nullptr);
+      feature.start();
+      CHECK((false == !feature.emplace("test_analyzer", "identity", "abc").first));
+      collection = vocbase->lookupCollection("_iresearch_analyzers");
+      CHECK((nullptr != collection));
+    }
+
+    StorageEngineMock::inRecoveryResult = false;
+    arangodb::iresearch::IResearchAnalyzerFeature feature(nullptr);
+    feature.start();
+    CHECK((nullptr != vocbase->lookupCollection("_iresearch_analyzers")));
+
+    std::map<irs::string_ref, std::pair<irs::string_ref, irs::string_ref>> expected = {
+      { "identity", { "identity", irs::string_ref::nil } },
+      { "test_analyzer", { "identity", "abc" } },
+    };
+    feature.visit([&expected](irs::string_ref const& name, irs::string_ref const& type, irs::string_ref const& properties)->bool {
+      auto itr = expected.find(name);
+      CHECK((itr != expected.end()));
+      CHECK((itr->second.first == type));
+      CHECK((itr->second.second == properties));
+      expected.erase(itr);
+      return true;
+    });
+    CHECK((expected.empty()));
   }
 
   // test feature start load configuration (with configuration collection, uninitialized analyzers)
   {
-    // FIXME TODO implement
+    // ensure there is an empty configuration collection
+    {
+      auto* collection = vocbase->lookupCollection("_iresearch_analyzers");
+
+      if (collection) {
+        vocbase->dropCollection(collection, true, -1);
+      }
+
+      collection = vocbase->lookupCollection("_iresearch_analyzers");
+      CHECK((nullptr == collection));
+      StorageEngineMock::inRecoveryResult = false;
+      arangodb::iresearch::IResearchAnalyzerFeature feature(nullptr);
+      feature.start();
+      CHECK((false == !feature.emplace("test_analyzer", "identity", "abc").first));
+      collection = vocbase->lookupCollection("_iresearch_analyzers");
+      CHECK((nullptr != collection));
+    }
+
+    StorageEngineMock::inRecoveryResult = false;
+    arangodb::iresearch::IResearchAnalyzerFeature feature(nullptr);
+    CHECK((false == !feature.get("test_analyzer")));
+    feature.start();
+    CHECK((nullptr != vocbase->lookupCollection("_iresearch_analyzers")));
+
+    std::map<irs::string_ref, std::pair<irs::string_ref, irs::string_ref>> expected = {
+      { "identity", { "identity", irs::string_ref::nil } },
+      { "test_analyzer", { "identity", "abc" } },
+    };
+    feature.visit([&expected](irs::string_ref const& name, irs::string_ref const& type, irs::string_ref const& properties)->bool {
+      auto itr = expected.find(name);
+      CHECK((itr != expected.end()));
+      CHECK((itr->second.first == type));
+      CHECK((itr->second.second == properties));
+      expected.erase(itr);
+      return true;
+    });
+    CHECK((expected.empty()));
   }
 }
 
