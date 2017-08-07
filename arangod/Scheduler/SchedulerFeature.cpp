@@ -153,8 +153,9 @@ void SchedulerFeature::stop() {
 
   // cancel signals
   if (_exitSignals != nullptr) {
-    _exitSignals->cancel();
+    auto exitSignals = _exitSignals;
     _exitSignals.reset();
+    exitSignals->cancel();
   }
 
 #ifndef WIN32
@@ -301,7 +302,12 @@ void SchedulerFeature::buildControlCHandler() {
 
     LOG_TOPIC(INFO, arangodb::Logger::FIXME) << "control-c received, beginning shut down sequence";
     server()->beginShutdown();
-    _exitSignals->async_wait(_exitHandler);
+
+    auto exitSignals = _exitSignals;
+
+    if (exitSignals.get() != nullptr) {
+      exitSignals->async_wait(_exitHandler);
+    }
   };
 
   _exitHandler = [](const boost::system::error_code& error, int number) {

@@ -29,20 +29,18 @@
 
 'use strict';
 
-const internal = require("internal");
+const internal = require('internal');
 
 const users = require('@arangodb/users');
-const namePrefix = `UnitTest`;
+const namePrefix = 'UnitTest';
 const dbName = `${namePrefix}DB`;
 const colName = `${namePrefix}Collection`;
-const rightLevels = ['rw', 'ro', 'none', 'default'];
+const rightLevels = ['rw', 'ro', 'none'];
 
 const userSet = new Set();
 const systemLevel = {};
 const dbLevel = {};
 const colLevel = {};
-const activeUsers = new Set();
-const inactiveUsers = new Set();
 
 const db = internal.db;
 
@@ -51,7 +49,6 @@ for (let l of rightLevels) {
   dbLevel[l] = new Set();
   colLevel[l] = new Set();
 }
-
 
 // The Naming Convention will be
 // UnitTest_server-level_db-level_col-level
@@ -67,13 +64,11 @@ exports.removeAllUsers = () => {
   for (let sys of rightLevels) {
     for (let db of rightLevels) {
       for (let col of rightLevels) {
-        for (let active of [true, false]) {
-          let name = `${namePrefix}_${sys}_${db}_${col}_${active}`;
-          try {
-            users.remove(name);
-          } catch (e) {
-            // If the user does not exist
-          }
+        let name = `${namePrefix}_${sys}_${db}_${col}`;
+        try {
+          users.remove(name);
+        } catch (e) {
+          // If the user does not exist
         }
       }
     }
@@ -97,56 +92,42 @@ exports.generateAllUsers = () => {
   }
   if (create) {
     db._createDatabase(dbName);
+    db._useDatabase(dbName);
+    if (db._collection(colName) === null) {
+      db._create(colName);
+    }
+    db._useDatabase('_system');
   }
   for (let sys of rightLevels) {
     for (let db of rightLevels) {
       for (let col of rightLevels) {
-        for (let active of [true, false]) {
-          let name = `${namePrefix}_${sys}_${db}_${col}_${active}`;
-          users.save(name, '', active); 
-          userSet.add(name);
-          if (active) {
-            activeUsers.add(name);
-          } else {
-            inactiveUsers.add(name);
-          }
+        let name = `${namePrefix}_${sys}_${db}_${col}`;
+        users.save(name, '', true);
+        userSet.add(name);
 
-          if (sys !== 'default') {
-            users.grantDatabase(name, '_system', sys);
-            let a = users.permission(name, '_system');
-            if (sys !== a) {
-              internal.print("Wrong sys permissions for user " + name);
-              internal.print(sys + " !== " + a);
-            }
-          } else {
-            users.revokeDatabase(name, '_system');
-          }
-          systemLevel[sys].add(name);
-
-          if (db !== 'default') {
-            users.grantDatabase(name, dbName, db);
-            let a = users.permission(name, dbName);
-            if (db !== a) {
-              internal.print("Wrong db permissions for user " + name);
-              internal.print(db + " !== " + a);
-            }
-          } else {
-            users.revokeDatabase(name, dbName);
-          }
-          dbLevel[db].add(name);
-
-          if (col !== 'default') {
-            users.grantCollection(name, dbName, colName, col);
-            let a = users.permission(name, dbName, colName);
-            if (col !== a) {
-              internal.print("Wrong collection permissions for user " + name);
-              internal.print(col + " !== " + a);
-            }
-          } else {
-            users.revokeCollection(name, dbName, colName);
-          }
-          colLevel[col].add(name); 
+        users.grantDatabase(name, '_system', sys);
+        let sysPerm = users.permission(name, '_system');
+        if (sys !== sysPerm) {
+          internal.print('Wrong sys permissions for user ' + name);
+          internal.print(sys + ' !== ' + sysPerm);
         }
+        systemLevel[sys].add(name);
+
+        users.grantDatabase(name, dbName, db);
+        let dbPerm = users.permission(name, dbName);
+        if (db !== dbPerm) {
+          internal.print('Wrong db permissions for user ' + name);
+          internal.print(db + ' !== ' + dbPerm);
+        }
+        dbLevel[db].add(name);
+
+        users.grantCollection(name, dbName, colName, col);
+        let colPerm = users.permission(name, dbName, colName);
+        if (col !== colPerm) {
+          internal.print('Wrong collection permissions for user ' + name);
+          internal.print(col + ' !== ' + colPerm);
+        }
+        colLevel[col].add(name);
       }
     }
   }
@@ -156,9 +137,8 @@ exports.systemLevel = systemLevel;
 exports.dbLevel = dbLevel;
 exports.colLevel = colLevel;
 exports.userSet = userSet;
-exports.activeUsers = activeUsers;
-exports.inactiveUsers = inactiveUsers;
 exports.namePrefix = namePrefix;
 exports.dbName = dbName;
 exports.colName = colName;
 exports.rightLevels = rightLevels;
+exports.userCount = 3 * 3 * 3;

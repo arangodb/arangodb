@@ -420,20 +420,6 @@ double RocksDBEdgeIndex::selectivityEstimateLocal(
   return _estimator->computeEstimate();
 }
 
-/// @brief return the memory usage for the index
-size_t RocksDBEdgeIndex::memory() const {
-  rocksdb::TransactionDB* db = rocksutils::globalRocksDB();
-  RocksDBKeyBounds bounds = RocksDBKeyBounds::EdgeIndex(_objectId);
-  rocksdb::Range r(bounds.start(), bounds.end());
-  uint64_t out;
-  db->GetApproximateSizes(
-      RocksDBColumnFamily::edge(), &r, 1, &out,
-      static_cast<uint8_t>(
-          rocksdb::DB::SizeApproximationFlags::INCLUDE_MEMTABLES |
-          rocksdb::DB::SizeApproximationFlags::INCLUDE_FILES));
-  return static_cast<size_t>(out);
-}
-
 /// @brief return a VelocyPack representation of the index
 void RocksDBEdgeIndex::toVelocyPack(VPackBuilder& builder, bool withFigures,
                                     bool forPersistence) const {
@@ -525,16 +511,6 @@ void RocksDBEdgeIndex::batchInsert(
       break;
     }
   }
-}
-
-/// @brief called when the index is dropped
-int RocksDBEdgeIndex::drop() {
-  // First drop the cache all indexes can work without it.
-  RocksDBIndex::drop();
-  return rocksutils::removeLargeRange(rocksutils::globalRocksDB(),
-                                      RocksDBKeyBounds::EdgeIndex(_objectId),
-                                      false)
-      .errorNumber();
 }
 
 /// @brief checks whether the index supports the condition
@@ -901,15 +877,6 @@ void RocksDBEdgeIndex::handleValNode(
   }
 }
 
-int RocksDBEdgeIndex::cleanup() {
-  rocksdb::TransactionDB* db = rocksutils::globalRocksDB();
-  rocksdb::CompactRangeOptions opts;
-  RocksDBKeyBounds bounds = RocksDBKeyBounds::EdgeIndex(_objectId);
-  rocksdb::Slice b = bounds.start(), e = bounds.end();
-  db->CompactRange(opts, bounds.columnFamily(), &b, &e);
-  return TRI_ERROR_NO_ERROR;
-}
-
 void RocksDBEdgeIndex::serializeEstimate(std::string& output) const {
   TRI_ASSERT(_estimator != nullptr);
   _estimator->serialize(output);
@@ -944,6 +911,7 @@ void RocksDBEdgeIndex::recalculateEstimates() {
   options.prefix_same_as_start = false;
   options.total_order_seek = true;
   options.verify_checksums = false;
+  options.fill_cache = EdgeIndexFillBlockCache;
   std::unique_ptr<rocksdb::Iterator> it(
       rocksutils::globalRocksDB()->NewIterator(options, _cf));
   for (it->Seek(bounds.start()); it->Valid(); it->Next()) {

@@ -25,17 +25,15 @@
 // / Copyright holder is ArangoDB GmbH, Cologne, Germany
 // /
 // / @author Michael Hackstein
+// / @author Mark Vollmary
 // / @author Copyright 2017, ArangoDB GmbH, Cologne, Germany
 // //////////////////////////////////////////////////////////////////////////////
 
 'use strict';
 
 const expect = require('chai').expect;
-const users = require('@arangodb/users');
 const helper = require('@arangodb/user-helper');
 const namePrefix = helper.namePrefix;
-const dbName = helper.dbName;
-const colName = helper.colName;
 const rightLevels = helper.rightLevels;
 const testDBName = `${namePrefix}DBNew`;
 
@@ -43,8 +41,6 @@ const userSet = helper.userSet;
 const systemLevel = helper.systemLevel;
 const dbLevel = helper.dbLevel;
 const colLevel = helper.colLevel;
-const activeUsers = helper.activeUsers;
-const inactiveUsers = helper.inactiveUsers;
 
 const arango = require('internal').arango;
 const db = require('internal').db;
@@ -61,12 +57,10 @@ const switchUser = (user) => {
 helper.removeAllUsers();
 
 describe('User Rights Management', () => {
-
   before(helper.generateAllUsers);
   after(helper.removeAllUsers);
 
   it('should test rights for', () => {
-
     for (let name of userSet) {
       let canUse = false;
       try {
@@ -77,16 +71,12 @@ describe('User Rights Management', () => {
       }
 
       if (canUse) {
-
-
         describe(`user ${name}`, () => {
-
           before(() => {
             switchUser(name);
           });
 
           describe('administrate on server level', () => {
-
             const rootTestDB = (switchBack = true) => {
               switchUser('root');
               const allDB = db._databases();
@@ -111,13 +101,6 @@ describe('User Rights Management', () => {
               switchUser(name);
             };
 
-            const rootCreateDB = () => {
-              if (!rootTestDB(false)) {
-                db._createDatabase(testDBName);
-              }
-              switchUser(name);
-            };
-
             before(() => {
               db._useDatabase('_system');
               rootDropDB();
@@ -128,10 +111,10 @@ describe('User Rights Management', () => {
             });
 
             it('create database', () => {
-              if (activeUsers.has(name) && systemLevel['rw'].has(name)) {
+              if (systemLevel['rw'].has(name)) {
                 // User needs rw on _system
                 db._createDatabase(testDBName);
-                expect(rootTestDB()).to.equal(true, `DB creation reported success, but DB was not found afterwards.`);
+                expect(rootTestDB()).to.equal(true, 'DB creation reported success, but DB was not found afterwards.');
               } else {
                 try {
                   db._createDatabase(testDBName);
@@ -141,11 +124,9 @@ describe('User Rights Management', () => {
                 expect(rootTestDB()).to.equal(false, `${name} was able to create a database with insufficent rights`);
               }
             });
-
           });
         });
       }
-
     }
   });
 });
