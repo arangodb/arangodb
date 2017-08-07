@@ -17,10 +17,15 @@ exit $LastExitCode
 } else {
   $ErrorActionPreference="Stop"
   $env:GYP_MSVS_OVERRIDE_PATH='C:\Program Files (x86)\Microsoft Visual Studio\Shared\14.0\VC\bin'
+  Write-Host "HAHA JAJA"
   New-Item -ItemType Directory -Force -Path build
   cd build
-  Invoke-Expression "cmake .. -G `"Visual Studio 15 2017 Win64`" ${buildOptions}"
-  cmake --build . --config RelWithDebInfo
+  Try {
+    Invoke-Expression "cmake .. -G `"Visual Studio 15 2017 Win64`" ${buildOptions}"
+    cmake --build . --config RelWithDebInfo
+  } Catch {
+    Write-Host "Broken ${_.Exception.Message}"
+  }
   cd ..
 }
 
