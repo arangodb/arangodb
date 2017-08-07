@@ -524,7 +524,13 @@ int IResearchLink::unload() {
 
     // if the collection is in the process of being removed then drop it from the view
     if (col->deleted()) {
-      _view->drop(col->cid());
+      auto res = _view->drop(col->cid());
+
+      if (TRI_ERROR_NO_ERROR != res) {
+        LOG_TOPIC(WARN, Logger::FIXME) << "failed to drop collection from view while unloading dropped IResearch link '" << _iid << "' for IResearch view '" << _view->id() << "'";
+
+        return res;
+      }
 
       if (!releaseAnalyzers(_meta, _view->id(), _iid)) {
         LOG_TOPIC(WARN, Logger::FIXME) << "failed to release tokenizers while unloading dropped IResearch link '" << _iid << "' for IResearch view '" << _view->id() << "'";

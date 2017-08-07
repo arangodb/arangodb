@@ -912,6 +912,7 @@ arangodb::Result updateLinks(
         // remove modification state if removal of non-existant link
         if (!state._link // links currently does not exist
             && state._linkDefinitionsOffset >= linkDefinitions.size()) { // link removal request
+          view.drop(state._collection->cid()); // drop any stale data for the specified collection
           itr = linkModifications.erase(itr);
           continue;
         }
