@@ -779,7 +779,7 @@ def buildEdition(edition, os) {
                 sh "for i in log-output; do test -e \"\$i\" && mv \"\$i\" ${arch} || true; done"
             }
             else if (os == 'windows') {
-                bat "move log-output ${arch}"
+                bat "if exist log-output (move log-output ${arch})"
             }
         }
     }

@@ -14,12 +14,12 @@ exit $LastExitCode
 '@
   $build > buildscript.ps1
 
-  docker run --rm -v $volume m0ppers/build-container powershell C:\arangodb\buildscript.ps1
+  docker run --rm -v $volume m0ppers/build-container powershell C:\arangodb\buildscript.ps1 | Set-Content -PassThru log-output
 } else {
   $env:GYP_MSVS_OVERRIDE_PATH='C:\Program Files (x86)\Microsoft Visual Studio\Shared\14.0\VC\bin'
   New-Item -ItemType Directory -Force -Path build
   cd build
-  Invoke-Expression "cmake .. -G `"Visual Studio 15 2017 Win64`" ${buildOptions}"
+  Invoke-Expression "cmake .. -G `"Visual Studio 15 2017 Win64`" ${buildOptions} | Set-Content -PassThru log-output"
   cmake --build . --config RelWithDebInfo
   cd ..
 }
