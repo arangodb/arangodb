@@ -156,7 +156,13 @@
 
     renderActive: function () {
       this.$el.html(this.templateActive.render({}));
-      $(this.id).append(this.table.render({content: this.tableDescription}));
+      $(this.id).append(this.table.render({
+        content: this.tableDescription,
+        type: {
+          1: 'pre',
+          2: 'pre'
+        }
+      }));
       $('#activequeries').addClass('arango-active-tab');
       this.addEvents();
     },
