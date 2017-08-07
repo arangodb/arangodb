@@ -164,9 +164,6 @@ class IndexBlock final : public ExecutionBlock, public DocumentProducingBlock {
   /// @brief Counter how many documents have been returned/skipped
   ///        during one call.
   size_t _returned;
-
-  /// @brief Collect several AQLItemsBlocks
-  BlockCollector _collector;
 };
 
 }  // namespace arangodb::aql

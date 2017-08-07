@@ -114,15 +114,16 @@ int TransactionState::addCollection(TRI_voc_cid_t cid,
     // in the execution context initialized by RestServer/VocbaseContext
     AuthLevel level = auth->canUseCollection(ExecContext::CURRENT->user(),
                                      _vocbase->name(), colName);
-
+    
     if (level == AuthLevel::NONE) {
-      LOG_TOPIC(DEBUG, Logger::AUTHORIZATION) << "collection AuthLevel::NONE";
+      LOG_TOPIC(TRACE, Logger::AUTHORIZATION) << "User " << ExecContext::CURRENT->user()
+                                             << " has collection AuthLevel::NONE";
       return TRI_ERROR_FORBIDDEN;
     }
     bool collectionWillWrite = AccessMode::isWriteOrExclusive(accessType);
     if (level == AuthLevel::RO && collectionWillWrite) {
-      LOG_TOPIC(DEBUG, Logger::AUTHORIZATION) << "no write right for collection "
-                                              << colName;
+      LOG_TOPIC(TRACE, Logger::AUTHORIZATION) << "User " << ExecContext::CURRENT->user()
+                                              << "has no write right for collection " << colName;
       return TRI_ERROR_ARANGO_READ_ONLY;
     }
   }
@@ -197,6 +198,16 @@ int TransactionState::addCollection(TRI_voc_cid_t cid,
 /// @brief make sure all declared collections are used & locked
 Result TransactionState::ensureCollections(int nestingLevel) {
   return useCollections(nestingLevel);
+}
+  
+/// @brief run a callback on all collections
+void TransactionState::allCollections(std::function<bool(TransactionCollection*)> const& cb) {
+  for (auto& trxCollection : _collections) {
+    if (!cb(trxCollection)) {
+      // abort early
+      return;
+    }
+  }
 }
 
 /// @brief use all participating collections of a transaction

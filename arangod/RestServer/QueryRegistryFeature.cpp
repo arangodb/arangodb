@@ -47,7 +47,6 @@ QueryRegistryFeature::QueryRegistryFeature(ApplicationServer* server)
   requiresElevatedPrivileges(false);
   startsAfter("DatabasePath");
   startsAfter("Database");
-  startsAfter("MMFilesLogfileManager");
   startsAfter("Cluster");
 }
 

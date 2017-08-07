@@ -25,6 +25,7 @@
 // / Copyright holder is ArangoDB GmbH, Cologne, Germany
 // /
 // / @author Michael Hackstein
+// / @author Mark Vollmary
 // / @author Copyright 2017, ArangoDB GmbH, Cologne, Germany
 // //////////////////////////////////////////////////////////////////////////////
 
@@ -34,18 +35,13 @@ const expect = require('chai').expect;
 const users = require('@arangodb/users');
 const helper = require('@arangodb/user-helper');
 const namePrefix = helper.namePrefix;
-const dbName = helper.dbName;
-const colName = helper.colName;
 const rightLevels = helper.rightLevels;
-const testDBName = `${namePrefix}DBNew`;
 const errors = require('@arangodb').errors;
 
 const userSet = helper.userSet;
 const systemLevel = helper.systemLevel;
 const dbLevel = helper.dbLevel;
 const colLevel = helper.colLevel;
-const activeUsers = helper.activeUsers;
-const inactiveUsers = helper.inactiveUsers;
 const testUser = `${namePrefix}TestUser`;
 
 const arango = require('internal').arango;
@@ -62,12 +58,10 @@ const switchUser = (user) => {
 helper.removeAllUsers();
 
 describe('User Rights Management', () => {
-
   before(helper.generateAllUsers);
   after(helper.removeAllUsers);
 
   it('should test rights for', () => {
-
     for (let name of userSet) {
       let canUse = false;
       try {
@@ -79,14 +73,12 @@ describe('User Rights Management', () => {
 
       if (canUse) {
         describe(`user ${name}`, () => {
-
           before(() => {
             // What are defaults if unchanged?
             switchUser(name);
           });
 
           describe('administrate on server level', () => {
-
             const rootTestUser = (switchBack = true) => {
               switchUser('root');
               try {
@@ -120,10 +112,10 @@ describe('User Rights Management', () => {
             });
 
             it('create a user', () => {
-              if (activeUsers.has(name) && systemLevel['rw'].has(name)) {
+              if (systemLevel['rw'].has(name)) {
                 // User needs rw on _system
                 users.save('UnitTestTestUser', '', true);
-                expect(rootTestUser()).to.equal(true, `User creation reported success, but User was not found afterwards.`);
+                expect(rootTestUser()).to.equal(true, 'User creation reported success, but User was not found afterwards.');
               } else {
                 try {
                   users.save('UnitTestTestUser', '', true);
@@ -133,7 +125,6 @@ describe('User Rights Management', () => {
                 expect(rootTestUser()).to.equal(false, `${name} was able to create a user with insufficent rights`);
               }
             });
-
           });
         });
       }

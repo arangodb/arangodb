@@ -35,6 +35,8 @@ are present in the MMFiles engine:
   - the `rotate` method on collections
   - the `flush` method for WAL files
 
+* the RocksDB storage engine does not support volatile collections
+
 * transactions are limited in size. Transactions that get too big (in terms of
   number of operations involved or the total size of data modified by the transaction)
   will be committed automatically. Effectively this means that big user transactions
@@ -78,9 +80,6 @@ The following known issues will be resolved in future releases:
   by the RocksDB engine but the operation has much higher algorithmic complexity than 
   in the MMFiles engine. It is therefore discouraged to call it for cases other than manual
   inspection of a few documents in a collection
-
-* the `autoincrement` key generator will not save the last assigned key permanently, so
-  it may assign an already used key after a server restart
 
 * AQL queries in the cluster still issue an extra locking HTTP request per shard though
   this would not be necessary for the RocksDB engine in most cases

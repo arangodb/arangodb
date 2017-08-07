@@ -233,15 +233,6 @@ AuthUserEntry AuthUserEntry::fromDocument(VPackSlice const& slice) {
     for (auto const& obj : VPackObjectIterator(databasesSlice)) {
       std::string const dbName = obj.key.copyString();
 
-      // check if database exists
-      TRI_vocbase_t* vocbase = nullptr;
-      if (dbName != "*") {
-        vocbase = methods::Databases::lookup(dbName);
-        if (vocbase == nullptr) {
-          continue;
-        }
-      }
-
       if (obj.value.isObject()) {
         AuthLevel databaseAuth = AuthLevel::NONE;
 
@@ -255,24 +246,17 @@ AuthUserEntry AuthUserEntry::fromDocument(VPackSlice const& slice) {
         if (collectionsSlice.isObject()) {
           for (auto const& collection : VPackObjectIterator(collectionsSlice)) {
             std::string const cName = collection.key.copyString();
-            // skip nonexisting collections
-            bool exists = dbName == "*" || cName == "*" ||
-                          methods::Collections::lookupCollection(
-                              vocbase, cName, [&](LogicalCollection*) {});
-            if (exists) {
-              auto const permissionsSlice = collection.value.get("permissions");
-              if (permissionsSlice.isObject()) {
-                entry.grantCollection(dbName, cName,
-                                      AuthLevelFromSlice(permissionsSlice));
-              }  // if
-            }    // if
-
+            auto const permissionsSlice = collection.value.get("permissions");
+            if (permissionsSlice.isObject()) {
+              entry.grantCollection(dbName, cName,
+                                    AuthLevelFromSlice(permissionsSlice));
+            }  // if
           }  // for
         }    // if
 
       } else {
-        LOG_TOPIC(INFO, arangodb::Logger::CONFIG)
-            << "Deprecation Warning: Update access rights for user '"
+        LOG_TOPIC(DEBUG, arangodb::Logger::CONFIG)
+            << "updating deprecated access rights struct for user '"
             << userSlice.copyString() << "'";
         VPackValueLength length;
         char const* value = obj.value.getString(length);
@@ -404,12 +388,13 @@ void AuthUserEntry::grantCollection(std::string const& dbname,
                                     std::string const& coll,
                                     AuthLevel const level) {
   if (dbname.empty() || coll.empty()) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(
-        TRI_ERROR_BAD_PARAMETER,
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
         "Cannot set rights for empty db / collection name");
-  }
-  if (_username == "root" && dbname == StaticStrings::SystemDatabase &&
-      (coll[0] == '_' || coll == "*") && level != AuthLevel::RW) {
+  } else if (coll[0] == '_') {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
+        "Cannot set rights for system collections");
+  } else if (_username == "root" && dbname == StaticStrings::SystemDatabase &&
+      coll == "*" && level != AuthLevel::RW) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN,
                                    "Cannot lower access level of 'root' to "
                                    " a system collection");
@@ -420,7 +405,7 @@ void AuthUserEntry::grantCollection(std::string const& dbname,
   } else {
     // do not overwrite wildcard access to a database, by granting more
     // specific rights to a collection in a specific db
-    AuthLevel dbLevel = level;
+    AuthLevel dbLevel = AuthLevel::NONE;
     it = _dbAccess.find("*");
     if (it != _dbAccess.end()) {
       dbLevel = it->second._databaseAuthLevel;
@@ -468,30 +453,42 @@ AuthLevel AuthUserEntry::collectionAuthLevel(
   // disallow access to _system/_users for everyone
   if (collectionName.empty()) {
     return AuthLevel::NONE;
-  } else if (dbname == TRI_VOC_SYSTEM_DATABASE &&
-             collectionName == TRI_COL_NAME_USERS) {
-    return AuthLevel::NONE;
   }
-  if (collectionName == "_frontend") {
-    return AuthLevel::RW;
-  }
-
-  AuthLevel lvl = AuthLevel::NONE;
-  auto it = _dbAccess.find(dbname);
-  if (it != _dbAccess.end()) {
-    lvl = it->second.collectionAuthLevel(collectionName);
-  }
-  if (lvl == AuthLevel::NONE) {
-    it = _dbAccess.find("*");
-    if (it != _dbAccess.end()) {
-      lvl = it->second.collectionAuthLevel(collectionName);
+  bool isSystem = collectionName[0] == '_';
+  if (isSystem) {
+    if (dbname == TRI_VOC_SYSTEM_DATABASE &&
+        collectionName == TRI_COL_NAME_USERS) {
+      return AuthLevel::NONE;
+    } else if (collectionName == "_queues") {
+      return AuthLevel::RO;
+    } else if (collectionName == "_frontend") {
+      return AuthLevel::RW;
     }
   }
 
-  if (lvl == AuthLevel::NONE && collectionName[0] == '_') {
-    // at least ro for all system collections
-    return AuthLevel::RO;
+  bool notFound = false;
+  AuthLevel lvl = AuthLevel::NONE;
+  auto it = _dbAccess.find(dbname);
+  if (it != _dbAccess.end()) {
+    if (isSystem) {
+      return it->second._databaseAuthLevel;
+    }
+    lvl = it->second.collectionAuthLevel(collectionName, notFound);
+  } else {
+    notFound = true;
   }
+  // the lookup into the default database is only allowed if there were
+  // no rights for it defined in the database
+  if (notFound) {
+    it = _dbAccess.find("*");
+    if (it != _dbAccess.end()) {
+      if (isSystem) {
+        return it->second._databaseAuthLevel;
+      }
+      lvl = it->second.collectionAuthLevel(collectionName, notFound);
+    }
+  }
+
   return lvl;
 }
 
@@ -510,7 +507,7 @@ bool AuthUserEntry::hasSpecificCollection(
 }
 
 AuthLevel AuthUserEntry::DBAuthContext::collectionAuthLevel(
-    std::string const& collectionName) const {
+    std::string const& collectionName, bool& notFound) const {
   std::unordered_map<std::string, AuthLevel>::const_iterator pair =
     _collectionAccess.find(collectionName);
   if (pair != _collectionAccess.end()) {
@@ -520,5 +517,6 @@ AuthLevel AuthUserEntry::DBAuthContext::collectionAuthLevel(
   if (pair != _collectionAccess.end()) {
     return pair->second;
   }
+  notFound = true;
   return AuthLevel::NONE;
 }

@@ -37,7 +37,7 @@ struct Function {
 
   /// @brief create the function
   Function(std::string const& externalName, std::string const& internalName,
-           std::string const& arguments, bool isCacheable, bool isDeterministic,
+           char const* arguments, bool isCacheable, bool isDeterministic,
            bool canThrow, bool canRunOnDBServer,
            bool canPassArgumentsByReference,
            FunctionImplementation implementation = nullptr,
@@ -77,7 +77,7 @@ struct Function {
   std::string const externalName;
 
   /// @brief function arguments
-  std::string const arguments;
+  char const* arguments;
 
   /// @brief whether or not the function results may be cached by the query
   /// cache

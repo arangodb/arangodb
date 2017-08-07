@@ -8,8 +8,8 @@ properties(
 )
 
 def defaultLinux = true
-def defaultMac = true
-def defaultWindows = true
+def defaultMac = false
+def defaultWindows = false
 def defaultBuild = true
 def defaultCleanBuild = false
 def defaultCommunity = true
@@ -144,6 +144,17 @@ credentials = '8d893d23-6714-4f35-a239-c847c798e080'
 // jenkins cache
 cacheDir = '/vol/cache/' + env.JOB_NAME.replaceAll('%', '_')
 
+// source branch for pull requests
+sourceBranchLabel = env.BRANCH_NAME
+
+if (env.BRANCH_NAME =~ /^PR-/) {
+  def prUrl = new URL("https://api.github.com/repos/arangodb/arangodb/pulls/${env.CHANGE_ID}")
+  sourceBranchLabel = new groovy.json.JsonSlurper().parseText(prUrl.text).head.label
+
+  def reg = ~/^arangodb:/
+  sourceBranchLabel = sourceBranchLabel - reg
+}
+
 // copy data to master cache
 def scpToMaster(os, from, to) {
     if (os == 'linux' || os == 'mac') {
@@ -191,21 +202,21 @@ def checkoutCommunity() {
 
 def checkoutEnterprise() {
     try {
-        echo "Trying enterprise branch ${env.BRANCH_NAME}"
+        echo "Trying enterprise branch ${sourceBranchLabel}"
 
         checkout(
             changelog: false,
             poll: false,
             scm: [
                 $class: 'GitSCM',
-                branches: [[name: "*/${env.BRANCH_NAME}"]],
+                branches: [[name: "*/${sourceBranchLabel}"]],
                 doGenerateSubmoduleConfigurations: false,
                 extensions: [[$class: 'RelativeTargetDirectory', relativeTargetDir: 'enterprise']],
                 submoduleCfg: [],
                 userRemoteConfigs: [[credentialsId: credentials, url: enterpriseRepo]]])
     }
     catch (exc) {
-        echo "Failed ${env.BRANCH_NAME}, trying enterprise branch devel"
+        echo "Failed ${sourceBranchLabel}, trying enterprise branch devel"
 
         checkout(
             changelog: false,
@@ -336,6 +347,7 @@ def checkCommitMessages() {
     }
 
     echo """BRANCH_NAME: ${env.BRANCH_NAME}
+SOURCE: ${sourceBranchLabel}
 CHANGE_ID: ${env.CHANGE_ID}
 CHANGE_TARGET: ${env.CHANGE_TARGET}
 JOB_NAME: ${env.JOB_NAME}
@@ -519,16 +531,29 @@ def jslintStep(edition) {
 def testEdition(edition, os, mode, engine) {
     def arch = "LOG_test_${mode}_${edition}_${engine}_${os}"
 
+    if (os == 'linux' || os == 'mac') {
+       sh "rm -rf ${arch}"
+       sh "mkdir -p ${arch}"
+    }
+    else if (os == 'windows') {
+        bat "del /F /Q ${arch}"
+        powershell "New-Item -ItemType Directory -Force -Path ${arch}"
+    }
+
     try {
         try {
             if (os == 'linux') {
-                sh "./Installation/Pipeline/test_${mode}_${edition}_${engine}_${os}.sh 10"
+                sh "./Installation/Pipeline/linux/test_${mode}_${edition}_${engine}_${os}.sh 10"
             }
             else if (os == 'mac') {
-                sh "./Installation/Pipeline/test_${mode}_${edition}_${engine}_${os}.sh 5"
+                sh "./Installation/Pipeline/mac/test_${mode}_${edition}_${engine}_${os}.sh 5"
             }
             else if (os == 'windows') {
-                powershell ". .\\Installation\\Pipeline\\test_${mode}_${edition}_${engine}_${os}.ps1"
+                powershell ". .\\Installation\\Pipeline\\windows\\test_${mode}_${edition}_${engine}_${os}.ps1"
+            }
+
+            if (findFiles(glob: 'core*').length > 0) {
+               error("found core file")
             }
         }
         catch (exc) {
@@ -540,10 +565,12 @@ def testEdition(edition, os, mode, engine) {
         }
         finally {
             if (os == 'linux' || os == 'mac') {
-                sh "rm -rf ${arch}"
-                sh "mkdir -p ${arch}"
-                sh "find log-output -name 'FAILED_*' -exec cp '{}' ${arch} ';'"
+                sh "find log-output -name 'FAILED_*' -exec cp '{}' . ';'"
                 sh "for i in logs log-output; do test -e \$i && mv \$i ${arch} || true; done"
+            }
+            else if (os == 'windows') {
+                bat "move logs ${arch}"
+                bat "move log-output ${arch}"
             }
         }
     }
@@ -553,6 +580,10 @@ def testEdition(edition, os, mode, engine) {
     finally {
         archiveArtifacts allowEmptyArchive: true,
                          artifacts: "${arch}/**",
+                         defaultExcludes: false
+
+        archiveArtifacts allowEmptyArchive: true,
+                         artifacts: "FAILED_*",
                          defaultExcludes: false
     }
 }
@@ -592,7 +623,7 @@ def testStep(edition, os, mode, engine) {
         node(testJenkins[os]) {
             def buildName = "${edition}-${os}"
 
-            if (buildsSuccess[buildName]) {
+            if (!buildExecutable || buildsSuccess[buildName]) {
                 def name = "${edition}-${os}-${mode}-${engine}"
 
                 try {
@@ -657,13 +688,13 @@ allResiliencesSuccessful = true
 def testResilience(os, engine, foxx) {
     withEnv(['LOG_COMMUNICATION=debug', 'LOG_REQUESTS=trace', 'LOG_AGENCY=trace']) {
         if (os == 'linux') {
-            sh "./Installation/Pipeline/test_resilience_${foxx}_${engine}_${os}.sh"
+            sh "./Installation/Pipeline/linux/test_resilience_${foxx}_${engine}_${os}.sh"
         }
         else if (os == 'mac') {
-            sh "./Installation/Pipeline/test_resilience_${foxx}_${engine}_${os}.sh"
+            sh "./Installation/Pipeline/mac/test_resilience_${foxx}_${engine}_${os}.sh"
         }
         else if (os == 'windows') {
-            powershell "./Installation/Pipeline/test_resilience_${foxx}_${engine}_${os}.ps1"
+            powershell ".\\Installation\\Pipeline\\test_resilience_${foxx}_${engine}_${os}.ps1"
         }
     }
 }
@@ -694,47 +725,46 @@ def testResilienceCheck(os, engine, foxx, full) {
     return true
 }
 
-def testResilienceName(os, engine, foxx, full) {
-    def name = "test-resilience-${foxx}-${engine}-${os}";
-
-    if (! testResilienceCheck(os, engine, foxx, full)) {
-        name = "DISABLED-${name}"
-    }
-
-    return name 
-}
-
 def testResilienceStep(os, engine, foxx) {
     return {
         node(testJenkins[os]) {
             def edition = "community"
             def buildName = "${edition}-${os}"
 
-            if (buildsSuccess[buildName]) {
+            if (!buildExecutable || buildsSuccess[buildName]) {
                 def name = "${os}-${engine}-${foxx}"
                 def arch = "LOG_resilience_${foxx}_${engine}_${os}"
+
+                if (os == 'linux' || os == 'mac') {
+                   sh "rm -rf ${arch}"
+                   sh "mkdir -p ${arch}"
+                }
+                else if (os == 'windows') {
+                    bat "del /F /Q ${arch}"
+                    powershell "New-Item -ItemType Directory -Force -Path ${arch}"
+                }
 
                 try {
                     try {
                         unstashBinaries(edition, os)
                         testResilience(os, engine, foxx)
+
+                        if (findFiles(glob: 'resilience/core*').length > 0) {
+                          error("found core file")
+                        }
                     }
                     catch (exc) {
                         if (os == 'linux' || os == 'mac') {
-                            sh "for i in build core* tmp; do test -e \$i && mv \$i ${arch} || true; done"
+                            sh "for i in build resilience/core* tmp; do test -e \$i && mv \$i ${arch} || true; done"
                         }
 
                         throw exc
                     }
                     finally {
                         if (os == 'linux' || os == 'mac') {
-                            sh "rm -rf ${arch}"
-                            sh "mkdir -p ${arch}"
-                            sh "for i in log-output resilience/core*; do test -e \$i && mv \$i ${arch}; done"
+                            sh "for i in log-output; do test -e \$i && mv \$i ${arch}; done"
                         }
                         else if (os == 'windows') {
-                            bat "del /F /Q ${arch}"
-                            powershell "New-Item -ItemType Directory -Force -Path ${arch}"
                             bat "move log-output ${arch}"
                         }
                         
@@ -770,7 +800,7 @@ def testResilienceParallel(osList) {
         for (os in osList) {
             for (engine in ['mmfiles', 'rocksdb']) {
                 if (testResilienceCheck(os, engine, foxx, full)) {
-                    def name = testResilienceName(os, engine, foxx, full)
+                    def name = "test-resilience-${foxx}-${engine}-${os}"
 
                     branches[name] = testResilienceStep(os, engine, foxx)
                 }
@@ -805,33 +835,39 @@ def buildEdition(edition, os) {
 
     def arch = "LOG_build_${edition}_${os}"
 
+    if (os == 'linux' || os == 'mac') {
+       sh "rm -rf ${arch}"
+       sh "mkdir -p ${arch}"
+    }
+    else if (os == 'windows') {
+        bat "del /F /Q ${arch}"
+        powershell "New-Item -ItemType Directory -Force -Path ${arch}"
+    }
+
     try {
         try {
             if (os == 'linux') {
-                sh "./Installation/Pipeline/build_${edition}_${os}.sh 64"
+                sh "./Installation/Pipeline/linux/build_${edition}_${os}.sh 64"
             }
             else if (os == 'mac') {
-                sh "./Installation/Pipeline/build_${edition}_${os}.sh 20"
+                sh "./Installation/Pipeline/mac/build_${edition}_${os}.sh 20"
             }
             else if (os == 'windows') {
-                powershell ". .\\Installation\\Pipeline\\build_${edition}_${os}.ps1"
+                powershell ". .\\Installation\\Pipeline\\windows\\build_${edition}_${os}.ps1"
             }
         }
         finally {
             if (os == 'linux' || os == 'mac') {
-                sh "rm -rf ${arch}"
-                sh "mkdir -p ${arch}"
-                sh "find log-output -name 'FAILED_*' -exec cp '{}' ${arch} ';'"
                 sh "for i in log-output; do test -e \$i && mv \$i ${arch} || true; done"
             }
             else if (os == 'windows') {
-                bat "del /F /Q ${arch}"
-                powershell "New-Item -ItemType Directory -Force -Path ${arch}"
+                bat "move log-output ${arch}"
             }
         }
     }
     finally {
         stashBuild(edition, os)
+
         archiveArtifacts allowEmptyArchive: true,
                          artifacts: "${arch}/**",
                          defaultExcludes: false
@@ -1031,7 +1067,7 @@ stage('result') {
             && allTestsSuccessful
             && allResiliencesSuccessful
             && jslintSuccessful)) {
-            currentBuild.result = 'FAILURE'
+            error "run failed"
         }
     }
 }

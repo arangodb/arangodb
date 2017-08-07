@@ -84,6 +84,7 @@ to the [naming conventions](../NamingConventions/README.md).
   slightly faster than regular collections because ArangoDB does not
   enforce any synchronization to disk and does not calculate any CRC
   checksums for datafiles (as there are no datafiles).
+  This option is meaningful for the MMFiles storage engine only.
 
 - *keyOptions* (optional): additional options for key generation. If
   specified, then *keyOptions* should be a JSON array containing the

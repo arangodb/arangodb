@@ -90,6 +90,13 @@ RocksDBCollection::RocksDBCollection(LogicalCollection* collection,
       _cache(nullptr),
       _cachePresent(false),
       _useCache(false) {
+  
+  VPackSlice s = info.get("isVolatile");
+  if (s.isBoolean() && s.getBoolean()) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(
+          TRI_ERROR_BAD_PARAMETER,
+          "volatile collections are unsupported in the RocksDB engine");
+  }
   addCollectionMapping(_objectId, _logicalCollection->vocbase()->id(),
                        _logicalCollection->cid());
   if (_useCache) {
@@ -136,6 +143,7 @@ void RocksDBCollection::setPath(std::string const&) {
 
 arangodb::Result RocksDBCollection::updateProperties(VPackSlice const& slice,
                                                      bool doSync) {
+
   // nothing to do
   return arangodb::Result{};
 }
@@ -146,9 +154,8 @@ arangodb::Result RocksDBCollection::persistProperties() {
   return arangodb::Result{};
 }
 
-PhysicalCollection* RocksDBCollection::clone(LogicalCollection* logical,
-                                             PhysicalCollection* physical) {
-  return new RocksDBCollection(logical, physical);
+PhysicalCollection* RocksDBCollection::clone(LogicalCollection* logical) {
+  return new RocksDBCollection(logical, this);
 }
 
 void RocksDBCollection::getPropertiesVPack(velocypack::Builder& result) const {
@@ -381,7 +388,7 @@ static std::shared_ptr<Index> findIndex(
 
   if (!value.isString()) {
     // Compatibility with old v8-vocindex.
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "invalid index type definition");
   }
 
   std::string tmp = value.copyString();
@@ -1369,7 +1376,7 @@ RocksDBOperationResult RocksDBCollection::insertDocument(
   for (std::shared_ptr<Index> const& idx : _indexes) {
     innerRes.reset(idx->insert(trx, revisionId, doc, false));
 
-    // in case of no-memory, return immediately
+    // in case of OOM return immediately
     if (innerRes.is(TRI_ERROR_OUT_OF_MEMORY)) {
       return innerRes;
     }
@@ -1433,7 +1440,7 @@ RocksDBOperationResult RocksDBCollection::removeDocument(
     Result tmpres = idx->remove(trx, revisionId, doc, false);
     resInner.reset(tmpres);
 
-    // in case of no-memory, return immediately
+    // in case of OOM return immediately
     if (resInner.is(TRI_ERROR_OUT_OF_MEMORY)) {
       return resInner;
     }

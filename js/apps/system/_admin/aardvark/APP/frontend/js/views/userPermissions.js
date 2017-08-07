@@ -276,8 +276,8 @@
     },
 
     checkRoot: function () {
-      // disable * in _system db, because it is not allowed to lower permissions there
-      if (window.App.currentUser === 'root') {
+      // disable * in _system db for root user, because it is not allowed to lower permissions there
+      if (this.currentUser.get('user') === 'root') {
         $('#_system-db #___-collection input').attr('disabled', 'true');
       }
     },
