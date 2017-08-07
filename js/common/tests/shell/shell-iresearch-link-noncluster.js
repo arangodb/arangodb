@@ -70,17 +70,13 @@ function IResearchLinkSuite () {
     },
 
     ////////////////////////////////////////////////////////////////////////////
-    /// @brief should not allow creation with links
+    /// @brief should ignore links specified at creation
     ////////////////////////////////////////////////////////////////////////////
-    testErrorHandlingCreateWithLinks : function () {
-      try {
-        var meta = { links: { 'testCollection' : { includeAllFields: true } } };
-        db._createView("badView", "iresearch", meta);
-        fail();
-      }
-      catch (err) {
-        assertEqual(ERRORS.ERROR_BAD_PARAMETER.code, err.errorNum);
-      }
+    testHandlingCreateWithLinks : function () {
+      var meta = { links: { 'testCollection' : { includeAllFields: true } } };
+      var view = db._createView("badView", "iresearch", meta);
+      var links = view.properties().links;
+      assertEqual(links['testCollection'], undefined);
     },
 
     ////////////////////////////////////////////////////////////////////////////
@@ -100,7 +96,7 @@ function IResearchLinkSuite () {
       links = view.properties().links;
       assertEqual(links['testCollection'], undefined);
 
-      db._dropView('testView');
+      view.drop();
       try {
         view = db._view('testView');
       } catch (err) {
