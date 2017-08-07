@@ -80,6 +80,7 @@ devel
 
 * option "--rocksdb.compaction-read-ahead-size" now defaults to 2MB
 
+* change windows build so that rocksdb doesn't enforce AVX optimizations by default
 
 v3.2.0 (2017-07-20)
 -------------------
