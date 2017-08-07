@@ -19,6 +19,9 @@ if `which numactl > /dev/null`; then
     NUMA="numactl --interleave=all"
 fi
 
+EXEC_PATH="$(dirname "$(dirname "$(readlink -m "$0")")")"
+declare -a EXTRA_ARGS
+
 if [ -z "${ARANGOSH}" ];  then
     if [ -x build/bin/arangosh ];  then
         ARANGOSH=build/bin/arangosh
@@ -27,16 +30,13 @@ if [ -z "${ARANGOSH}" ];  then
     elif [ -x usr/bin/arangosh ];  then
         ARANGOSH=usr/bin/arangosh
     else
-        ARANGOSH="$(find . -name arangosh -executable -type f | head -n 1)"
+        ARANGOSH="$(find "${EXEC_PATH}" -name arangosh -executable -type f | head -n 1)"
         [ -x "${ARANGOSH}" ] || {
           echo "$0: cannot locate arangosh"
           exit 1
         }
     fi
 fi
-
-EXEC_PATH="$(dirname "$(dirname "$(readlink -m "$0")")")"
-declare -a EXTRA_ARGS
 
 [ -x "${ARANGOSH}" ] && ARANGOSH="$(readlink -m "${ARANGOSH}")"
 
