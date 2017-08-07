@@ -740,7 +740,10 @@ def buildEdition(edition, os) {
             }
             else if (os == 'windows') {
                 bat "dir"
+                bat "dir ${arch}"
+                powershell "Write-Host ${arch}"
                 powershell "Move-Item -Path log-output -Force -Destination ${arch}"
+                bat "dir ${arch}"
             }
         }
     }
