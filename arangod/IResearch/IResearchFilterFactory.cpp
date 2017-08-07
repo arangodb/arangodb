@@ -952,11 +952,30 @@ bool fromFCall(
   return entry->second(filter, *args);
 }
 
+bool fromFilter(
+    irs::boolean_filter* filter,
+    arangodb::aql::AstNode const& node
+) {
+  TRI_ASSERT(arangodb::aql::NODE_TYPE_FILTER == node.type);
+
+  if (node.numMembers() != 1) {
+    logMalformedNode(node.type);
+    return false; // wrong number of members
+  }
+
+  auto const* member = node.getMemberUnchecked(0);
+
+  return member && processSubnode(filter, *member);
+}
+
+
 bool processSubnode(
     irs::boolean_filter* filter,
     arangodb::aql::AstNode const& node
 ) {
   switch (node.type) {
+    case arangodb::aql::NODE_TYPE_FILTER: // FILTER
+      return fromFilter(filter, node);
     case arangodb::aql::NODE_TYPE_OPERATOR_UNARY_NOT: // unary minus
       return fromNegation(filter, node);
     case arangodb::aql::NODE_TYPE_OPERATOR_BINARY_AND: // logical and
@@ -1047,26 +1066,7 @@ NS_BEGIN(iresearch)
     irs::boolean_filter* filter,
     arangodb::aql::AstNode const& node
 ) {
-  if (arangodb::aql::NODE_TYPE_FILTER != node.type) {
-    auto const* typeName = getNodeTypeName(node.type);
-
-    if (typeName) {
-      LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "Wrong type of 'FILTER' node passed, got '" << *typeName;
-    } else {
-      LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "Wrong type of 'FILTER' node passed, got '" << node.type;
-    }
-
-    return false; // wrong root node type
-  }
-
-  if (node.numMembers() != 1) {
-    logMalformedNode(node.type);
-    return false; // wrong number of members
-  }
-
-  auto const* member = node.getMemberUnchecked(0);
-
-  return member && processSubnode(filter, *member);
+  return processSubnode(filter, node);
 }
 
 NS_END // iresearch
