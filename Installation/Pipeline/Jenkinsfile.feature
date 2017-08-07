@@ -350,19 +350,6 @@ Running Tests: ${runTests}"""
 // --SECTION--                                                     SCRIPTS STASH
 // -----------------------------------------------------------------------------
 
-def stashSourceCode() {
-    lock("${env.BRANCH_NAME}-cache") {
-        stash name: "source", excludes: "*tmp,.git"
-    }
-    
-}
-
-def unstashSourceCode(os) {
-    lock("${env.BRANCH_NAME}-cache") {
-        unstash name: "source"
-    }
-}
-
 def stashBinaries(edition, os) {
     lock("${env.BRANCH_NAME}-cache") {
         stash name: "binaries-${edition}-${os}", includes: "build, etc, Installation/Pipeline, js, scripts, UnitTests, utils, resilience, source.zip"
@@ -371,8 +358,6 @@ def stashBinaries(edition, os) {
 
 def unstashBinaries(edition, os) {
     def name = "binaries-${edition}-${os}.zip"
-
-    deleteDir()
 
     lock("${env.BRANCH_NAME}-cache") {
         unstash name: "binaries-${edition}-${os}"
@@ -796,7 +781,15 @@ def buildStep(edition, os) {
                 def name = "${edition}-${os}"
 
                 try {
-                    unstashSourceCode(os)
+                    timeout(30) {
+                        checkoutCommunity()
+                        checkCommitMessages()
+                        if (useEnterprise) {
+                            checkoutEnterprise()
+                        }
+                        checkoutResilience()
+                        stashSourceCode()
+                    }
                     buildEdition(edition, os)
                     stashBinaries(edition, os)
                     buildsSuccess[name] = true
@@ -841,20 +834,6 @@ def runStage(stage) {
     }
     catch (exc) {
         echo exc.toString()
-    }
-}
-
-stage('checkout') {
-    node {
-        timeout(30) {
-            checkoutCommunity()
-            checkCommitMessages()
-            if (useEnterprise) {
-                checkoutEnterprise()
-            }
-            checkoutResilience()
-            stashSourceCode()
-        }
     }
 }
 
