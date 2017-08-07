@@ -20,8 +20,10 @@ exit $LastExitCode
   New-Item -ItemType Directory -Force -Path build
   cd build
   Invoke-Expression "cmake .. -G `"Visual Studio 15 2017 Win64`" ${buildOptions} | Set-Content -PassThru log-output"
-  cmake --build . --config RelWithDebInfo
+  cmake --build . --config RelWithDebInfo | Add-Content -PassThru log-output
   cd ..
 }
+
+copy .\build\bin\RelWithDebInfo\* bin
 
 exit $LastExitCode

@@ -739,7 +739,8 @@ def buildEdition(edition, os) {
                 sh "for i in log-output; do test -e \"\$i\" && mv \"\$i\" ${arch} || true; done"
             }
             else if (os == 'windows') {
-                bat "if exist log-output (move log-output ${arch})"
+                bat "dir"
+                powershell "Move-Item -Path log-output -Force -Destination ${arch}"
             }
         }
     }
