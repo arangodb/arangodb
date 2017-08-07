@@ -102,7 +102,7 @@ bool ConditionFinder::before(ExecutionNode* en) {
       if (_viewMode) {
         break;
       }
-      
+
       auto node = static_cast<EnumerateCollectionNode const*>(en);
       if (_changes->find(node->id()) != _changes->end()) {
         // already optimized this node
@@ -188,7 +188,7 @@ bool ConditionFinder::before(ExecutionNode* en) {
       auto canUseView =
           condition->checkView(node, sortCondition.get());
 
-      if (canUseView.first && canUseView.second) {
+      if (canUseView.first) {
         // We either can find indexes for everything or findIndexes will clear
         // out usedIndexes
         std::unique_ptr<ExecutionNode> newNode(new EnumerateViewNode(
@@ -203,7 +203,7 @@ bool ConditionFinder::before(ExecutionNode* en) {
         _changes->emplace(node->id(), newNode.get());
         newNode.release();
       } else {
-        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_QUERY_PARSE, "filter or sort "
+        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_QUERY_PARSE, "filter clause "
           "not yet supported with view");
       }
 

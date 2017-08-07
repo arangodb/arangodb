@@ -44,14 +44,10 @@ EnumerateViewBlock::EnumerateViewBlock(ExecutionEngine* engine,
 {
   TRI_ASSERT(_view != nullptr);
 
-  // TODO: this creates a dummy filter that is always true. fix it and
-  // replace it with the real filter condition
-  AstNode* boolVal = engine->getQuery()->ast()->createNodeValueBool(true);
-  AstNode* filter = engine->getQuery()->ast()->createNodeFilter(boolVal);
-  _iter.reset(_view->iteratorForCondition(
-      transaction(), en->condition() ? en->condition()->root() : filter,
-      _outVariable,
-      en->sortCondition().get()));
+  TRI_ASSERT(en->condition() != nullptr);
+  AstNode* filter = en->condition()->root();
+  _iter.reset(_view->iteratorForCondition(transaction(), filter, _outVariable,
+                                          en->sortCondition().get()));
   TRI_ASSERT(_iter != nullptr);
 }
 
