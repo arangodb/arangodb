@@ -918,6 +918,10 @@ static void JS_QueriesPropertiesAql(
       queryList->trackSlowQueries(TRI_ObjectToBoolean(
           obj->Get(TRI_V8_ASCII_STRING("trackSlowQueries"))));
     }
+    if (obj->Has(TRI_V8_ASCII_STRING("trackBindVars"))) {
+      queryList->trackBindVars(TRI_ObjectToBoolean(
+          obj->Get(TRI_V8_ASCII_STRING("trackBindVars"))));
+    }
     if (obj->Has(TRI_V8_ASCII_STRING("maxSlowQueries"))) {
       queryList->maxSlowQueries(static_cast<size_t>(
           TRI_ObjectToInt64(obj->Get(TRI_V8_ASCII_STRING("maxSlowQueries")))));
@@ -940,6 +944,8 @@ static void JS_QueriesPropertiesAql(
               v8::Boolean::New(isolate, queryList->enabled()));
   result->Set(TRI_V8_ASCII_STRING("trackSlowQueries"),
               v8::Boolean::New(isolate, queryList->trackSlowQueries()));
+  result->Set(TRI_V8_ASCII_STRING("trackBindVars"),
+              v8::Boolean::New(isolate, queryList->trackBindVars()));
   result->Set(TRI_V8_ASCII_STRING("maxSlowQueries"),
               v8::Number::New(
                   isolate, static_cast<double>(queryList->maxSlowQueries())));
@@ -976,7 +982,7 @@ static void JS_QueriesCurrentAql(
   TRI_ASSERT(queryList != nullptr);
 
   try {
-    auto const&& queries = queryList->listCurrent();
+    auto queries = queryList->listCurrent();
 
     uint32_t i = 0;
     auto result = v8::Array::New(isolate, static_cast<int>(queries.size()));
@@ -990,7 +996,7 @@ static void JS_QueriesCurrentAql(
       if (q.bindParameters != nullptr) {
         obj->Set(TRI_V8_ASCII_STRING("bindVars"), TRI_VPackToV8(isolate, q.bindParameters->slice()));
       } else {
-        obj->Set(TRI_V8_ASCII_STRING("started"), v8::Object::New(isolate));
+        obj->Set(TRI_V8_ASCII_STRING("bindVars"), v8::Object::New(isolate));
       }
       obj->Set(TRI_V8_ASCII_STRING("started"), TRI_V8_STD_STRING(timeString));
       obj->Set(TRI_V8_ASCII_STRING("runTime"),
@@ -1033,7 +1039,7 @@ static void JS_QueriesSlowAql(v8::FunctionCallbackInfo<v8::Value> const& args) {
   }
 
   try {
-    auto const&& queries = queryList->listSlow();
+    auto queries = queryList->listSlow();
 
     uint32_t i = 0;
     auto result = v8::Array::New(isolate, static_cast<int>(queries.size()));
@@ -1044,7 +1050,11 @@ static void JS_QueriesSlowAql(v8::FunctionCallbackInfo<v8::Value> const& args) {
       v8::Handle<v8::Object> obj = v8::Object::New(isolate);
       obj->Set(TRI_V8_ASCII_STRING("id"), TRI_V8UInt64String<TRI_voc_tick_t>(isolate, q.id));
       obj->Set(TRI_V8_ASCII_STRING("query"), TRI_V8_STD_STRING(q.queryString));
-      obj->Set(TRI_V8_ASCII_STRING("bindVars"), TRI_VPackToV8(isolate, q.bindParameters->slice()));
+      if (q.bindParameters != nullptr) {
+        obj->Set(TRI_V8_ASCII_STRING("bindVars"), TRI_VPackToV8(isolate, q.bindParameters->slice()));
+      } else {
+        obj->Set(TRI_V8_ASCII_STRING("bindVars"), v8::Object::New(isolate));
+      }
       obj->Set(TRI_V8_ASCII_STRING("started"), TRI_V8_STD_STRING(timeString));
       obj->Set(TRI_V8_ASCII_STRING("runTime"),
                v8::Number::New(isolate, q.runTime));

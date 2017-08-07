@@ -112,8 +112,6 @@ class RocksDBVPackIndex : public RocksDBIndex {
   double selectivityEstimateLocal(
       arangodb::StringRef const* = nullptr) const override;
 
-  size_t memory() const override;
-
   void toVelocyPack(VPackBuilder&, bool, bool) const override;
 
   bool allowExpansion() const override { return true; }
@@ -130,8 +128,6 @@ class RocksDBVPackIndex : public RocksDBIndex {
   bool implicitlyUnique() const override;
 
   static constexpr size_t minimalPrefixSize() { return sizeof(TRI_voc_tick_t); }
-
-  int drop() override;
 
   /// @brief attempts to locate an entry in the index
   ///
@@ -158,8 +154,6 @@ class RocksDBVPackIndex : public RocksDBIndex {
 
   arangodb::aql::AstNode* specializeCondition(
       arangodb::aql::AstNode*, arangodb::aql::Variable const*) const override;
-
-  int cleanup() override;
 
   void serializeEstimate(std::string& output) const override;
 

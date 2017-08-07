@@ -144,6 +144,21 @@ bool RocksDBAllIndexIterator::nextDocument(
 
   return true;
 }
+  
+void RocksDBAllIndexIterator::skip(uint64_t count, uint64_t& skipped) {
+  TRI_ASSERT(_trx->state()->isRunning());
+
+  while (count > 0 && _iterator->Valid()) {
+    --count;
+    ++skipped;
+
+    if (_reverse) {
+      _iterator->Prev();
+    } else {
+      _iterator->Next();
+    }
+  }
+}
 
 void RocksDBAllIndexIterator::reset() {
   TRI_ASSERT(_trx->state()->isRunning());
@@ -277,6 +292,7 @@ RocksDBSortedAllIterator::RocksDBSortedAllIterator(
   auto options = mthds->readOptions();
   TRI_ASSERT(options.snapshot != nullptr);
   TRI_ASSERT(options.prefix_same_as_start);
+  options.fill_cache = false; // only used for incremental sync
   options.verify_checksums = false;
   _iterator = mthds->NewIterator(options, index->columnFamily());
   _iterator->Seek(_bounds.start());

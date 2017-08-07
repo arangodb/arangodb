@@ -58,7 +58,7 @@ function ahuacatlQueryOptimizerLimitTestSuite () {
       collection = internal.db._create(cn);
 
       for (var i = 0; i < docCount; ++i) {
-        collection.save({ "value" : i });
+        collection.save({ _key: "test" + i, value : i });
       }
     },
 
@@ -747,6 +747,36 @@ function ahuacatlQueryOptimizerLimitTestSuite () {
 
       var actual = getQueryResults(query);
       assertEqual([ { i: 5, o: 1 }, { i: 6, o: 1 } ], actual);
+    },
+
+    testLimitForIndexLookups: function () {
+      var queries = [
+        ["FOR doc1 IN ['test1', 'test2', 'test3'] FOR doc2 IN " + collection.name() + " FILTER doc2._key == doc1 LIMIT 0 RETURN doc2.value", []], 
+        ["FOR doc1 IN ['test1', 'test2', 'test3'] FOR doc2 IN " + collection.name() + " FILTER doc2._key == doc1 LIMIT 1 RETURN doc2.value", [1]], 
+        ["FOR doc1 IN ['test1', 'test2', 'test3'] FOR doc2 IN " + collection.name() + " FILTER doc2._key == doc1 LIMIT 2 RETURN doc2.value", [1,2]], 
+        ["FOR doc1 IN ['test1', 'test2', 'test3'] FOR doc2 IN " + collection.name() + " FILTER doc2._key == doc1 LIMIT 3 RETURN doc2.value", [1,2,3]], 
+        ["FOR doc1 IN ['test1', 'test2', 'test3'] FOR doc2 IN " + collection.name() + " FILTER doc2._key == doc1 LIMIT 4 RETURN doc2.value", [1,2,3]], 
+        ["FOR doc1 IN ['test1', 'test2', 'test3'] FOR doc2 IN " + collection.name() + " FILTER doc2._key == doc1 LIMIT 1,0 RETURN doc2.value", []], 
+        ["FOR doc1 IN ['test1', 'test2', 'test3'] FOR doc2 IN " + collection.name() + " FILTER doc2._key == doc1 LIMIT 1,1 RETURN doc2.value", [2]], 
+        ["FOR doc1 IN ['test1', 'test2', 'test3'] FOR doc2 IN " + collection.name() + " FILTER doc2._key == doc1 LIMIT 1,2 RETURN doc2.value", [2,3]], 
+        ["FOR doc1 IN ['test1', 'test2', 'test3'] FOR doc2 IN " + collection.name() + " FILTER doc2._key == doc1 LIMIT 1,3 RETURN doc2.value", [2,3]], 
+        ["FOR doc1 IN ['test1', 'test2', 'test3'] FOR doc2 IN " + collection.name() + " FILTER doc2._key == doc1 LIMIT 1,4 RETURN doc2.value", [2,3]], 
+        ["FOR doc1 IN ['test1', 'test2', 'test3'] FOR doc2 IN " + collection.name() + " FILTER doc2._key == doc1 LIMIT 2,0 RETURN doc2.value", []], 
+        ["FOR doc1 IN ['test1', 'test2', 'test3'] FOR doc2 IN " + collection.name() + " FILTER doc2._key == doc1 LIMIT 2,1 RETURN doc2.value", [3]], 
+        ["FOR doc1 IN ['test1', 'test2', 'test3'] FOR doc2 IN " + collection.name() + " FILTER doc2._key == doc1 LIMIT 2,2 RETURN doc2.value", [3]], 
+        ["FOR doc1 IN ['test1', 'test2', 'test3'] FOR doc2 IN " + collection.name() + " FILTER doc2._key == doc1 LIMIT 2,3 RETURN doc2.value", [3]], 
+        ["FOR doc1 IN ['test1', 'test2', 'test3'] FOR doc2 IN " + collection.name() + " FILTER doc2._key == doc1 LIMIT 2,4 RETURN doc2.value", [3]], 
+        ["FOR doc1 IN ['test1', 'test2', 'test3'] FOR doc2 IN " + collection.name() + " FILTER doc2._key == doc1 LIMIT 3,0 RETURN doc2.value", []], 
+        ["FOR doc1 IN ['test1', 'test2', 'test3'] FOR doc2 IN " + collection.name() + " FILTER doc2._key == doc1 LIMIT 3,1 RETURN doc2.value", []], 
+        ["FOR doc1 IN ['test1', 'test2', 'test3'] FOR doc2 IN " + collection.name() + " FILTER doc2._key == doc1 LIMIT 3,2 RETURN doc2.value", []], 
+        ["FOR doc1 IN ['test1', 'test2', 'test3'] FOR doc2 IN " + collection.name() + " FILTER doc2._key == doc1 LIMIT 3,3 RETURN doc2.value", []], 
+        ["FOR doc1 IN ['test1', 'test2', 'test3'] FOR doc2 IN " + collection.name() + " FILTER doc2._key == doc1 LIMIT 3,4 RETURN doc2.value", []] 
+      ];
+
+      queries.forEach(function(query) {
+        var actual = getQueryResults(query[0]);
+        assertEqual(query[1], actual, query);
+      });
     }
 
   };

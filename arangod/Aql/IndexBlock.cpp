@@ -481,6 +481,7 @@ int IndexBlock::initializeCursor(AqlItemBlock* items, size_t pos) {
   _alreadyReturned.clear();
   _returned = 0;
   _pos = 0;
+  _currentIndex = 0;
 
   return TRI_ERROR_NO_ERROR;
 
