@@ -352,7 +352,7 @@ Running Tests: ${runTests}"""
 
 def stashBinaries(edition, os) {
     lock("${env.BRANCH_NAME}-cache") {
-        stash name: "binaries-${edition}-${os}", includes: "build, etc, Installation/Pipeline, js, scripts, UnitTests, utils, resilience, source.zip"
+        stash name: "binaries-${edition}-${os}", includes: "build"
     }
 }
 
@@ -739,11 +739,7 @@ def buildEdition(edition, os) {
                 sh "for i in log-output; do test -e \"\$i\" && mv \"\$i\" ${arch} || true; done"
             }
             else if (os == 'windows') {
-                bat "dir"
-                bat "dir ${arch}"
-                powershell "Write-Host ${arch}"
                 powershell "Move-Item -Path log-output -Force -Destination ${arch}"
-                bat "dir ${arch}"
             }
         }
     }
