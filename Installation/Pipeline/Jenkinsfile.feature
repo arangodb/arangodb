@@ -788,7 +788,6 @@ def buildStep(edition, os) {
                             checkoutEnterprise()
                         }
                         checkoutResilience()
-                        stashSourceCode()
                     }
                     buildEdition(edition, os)
                     stashBinaries(edition, os)
