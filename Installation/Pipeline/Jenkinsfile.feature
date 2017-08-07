@@ -352,17 +352,13 @@ Running Tests: ${runTests}"""
 
 def stashBinaries(edition, os) {
     echo "STASHING BINARIES"
-    lock("${env.BRANCH_NAME}-cache") {
-        stash name: "binaries-${edition}-${os}", includes: "build/**, etc/**, Installation/Pipeline/**, js/**, scripts/**, UnitTests/**, utils/**, resilience/**"
-    }
+    stash name: "binaries-${edition}-${os}", includes: "build/**, etc/**, Installation/Pipeline/**, js/**, scripts/**, UnitTests/**, utils/**, resilience/**"
 }
 
 def unstashBinaries(edition, os) {
     def name = "binaries-${edition}-${os}.zip"
 
-    lock("${env.BRANCH_NAME}-cache") {
-        unstash name: "binaries-${edition}-${os}"
-    }
+    unstash name: "binaries-${edition}-${os}"
 }
 
 // -----------------------------------------------------------------------------
@@ -777,28 +773,26 @@ def buildStepCheck(edition, os, full) {
 
 def buildStep(edition, os) {
     return {
-        lock("${env.BRANCH_NAME}-build-${edition}-${os}") {
-            node(buildJenkins[os]) {
-                def name = "${edition}-${os}"
+        node(buildJenkins[os]) {
+            def name = "${edition}-${os}"
 
-                try {
-                    timeout(30) {
-                        checkoutCommunity()
-                        checkCommitMessages()
-                        if (useEnterprise) {
-                            checkoutEnterprise()
-                        }
-                        checkoutResilience()
+            try {
+                timeout(30) {
+                    checkoutCommunity()
+                    checkCommitMessages()
+                    if (useEnterprise) {
+                        checkoutEnterprise()
                     }
-                    buildEdition(edition, os)
-                    stashBinaries(edition, os)
-                    buildsSuccess[name] = true
+                    checkoutResilience()
                 }
-                catch (exc) {
-                    buildsSuccess[name] = false
-                    allBuildsSuccessful = false
-                    throw exc
-                }
+                buildEdition(edition, os)
+                stashBinaries(edition, os)
+                buildsSuccess[name] = true
+            }
+            catch (exc) {
+                buildsSuccess[name] = false
+                allBuildsSuccessful = false
+                throw exc
             }
         }
     }
