@@ -48,6 +48,9 @@ class RestTransactionHandler : public arangodb::RestVocbaseBaseHandler {
   bool isDirect() const override { return false; }
   RestStatus execute() override;
   bool cancel() override final;
+
+ private:
+  void returnContext();
 };
 }
 

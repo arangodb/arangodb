@@ -42,18 +42,16 @@ using namespace arangodb::rest;
 RestTransactionHandler::RestTransactionHandler(GeneralRequest* request, GeneralResponse* response)
   : RestVocbaseBaseHandler(request, response)
   , _v8Context(nullptr)
-  , _isolate(nullptr)
   , _lock()
 {}
 
-RestStatus RestTransactionHandler::execute() {
-  _v8Context = V8DealerFeature::DEALER->enterContext(_vocbase, true /*allow use database*/);
-  if (!_v8Context) {
-    generateError(GeneralResponse::responseCode(TRI_ERROR_INTERNAL),TRI_ERROR_INTERNAL, "could not acquire v8 context");
-    return RestStatus::DONE;
-  }
-  TRI_DEFER(V8DealerFeature::DEALER->exitContext(_v8Context));
+void RestTransactionHandler::returnContext(){
+    WRITE_LOCKER(writeLock, _lock);
+    V8DealerFeature::DEALER->exitContext(_v8Context);
+    _v8Context = nullptr;
+}
 
+RestStatus RestTransactionHandler::execute() {
   if (_request->requestType() != rest::RequestType::POST) {
     generateError(rest::ResponseCode::METHOD_NOT_ALLOWED, 405);
     return RestStatus::DONE;
@@ -67,19 +65,25 @@ RestStatus RestTransactionHandler::execute() {
 
   std::string portType = _request->connectionInfo().portType();
 
+  _v8Context = V8DealerFeature::DEALER->enterContext(_vocbase, true /*allow use database*/);
+  if (!_v8Context) {
+    generateError(GeneralResponse::responseCode(TRI_ERROR_INTERNAL),TRI_ERROR_INTERNAL, "could not acquire v8 context");
+    return RestStatus::DONE;
+  }
+
+  TRI_DEFER(returnContext());
+
   VPackBuilder result;
   try {
-
     {
       WRITE_LOCKER(lock, _lock);
       if(_canceled){
         generateCanceled();
         return RestStatus::DONE;
       }
-      _isolate = _v8Context->_isolate;
     }
 
-    Result res = executeTransaction(_isolate, _lock, _canceled, slice , portType, result);
+    Result res = executeTransaction(_v8Context->_isolate, _lock, _canceled, slice , portType, result);
 
     if (res.ok()){
       VPackSlice slice = result.slice();
@@ -104,15 +108,11 @@ RestStatus RestTransactionHandler::execute() {
 
 bool RestTransactionHandler::cancel() {
   //cancel v8 transaction
-  if(_context){
-    _canceled.store(true);
-    WRITE_LOCKER(writeLock, _lock);
-    if (_isolate) {
-      if (!v8::V8::IsExecutionTerminating(_isolate)) {
-        v8::V8::TerminateExecution(_isolate);
-      }
-    }
-    return true;
+  WRITE_LOCKER(writeLock, _lock);
+  _canceled.store(true);
+  auto isolate = _v8Context->_isolate;
+  if (!v8::V8::IsExecutionTerminating(isolate)) {
+      v8::V8::TerminateExecution(isolate);
   }
-  return false;
+  return true;
 }

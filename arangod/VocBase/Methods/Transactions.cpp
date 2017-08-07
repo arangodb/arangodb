@@ -61,8 +61,7 @@ Result executeTransaction(
   }
 
   //do not allow the manipulation of the isolate while we are messing here
-  WRITE_LOCKER(writeLock, lock);
-
+  READ_LOCKER(readLock2, lock);
 
   if(canceled){ //if it was ok we would already have committed
     if(rv.ok()){
@@ -78,7 +77,7 @@ Result executeTransaction(
   if (tryCatch.HasCaught()){
     //we have some javascript error that is not an arangoError
     std::string msg = *v8::String::Utf8Value(tryCatch.Message()->Get());
-    rv.reset(TRI_ERROR_INTERNAL, msg);
+    rv.reset(TRI_ERROR_SERVER_ERROR, msg);
   }
 
   if(rv.fail()){ return rv; };
@@ -99,7 +98,6 @@ Result executeTransactionJS(
     v8::TryCatch& tryCatch
     )
 {
-  // Locking within this function?
   Result rv;
   TRI_vocbase_t* vocbase = GetContextVocBase(isolate);
   if (vocbase == nullptr) {
