@@ -24,6 +24,6 @@ exit $LastExitCode
   cd ..
 }
 
-copy .\build\bin\RelWithDebInfo\* bin
+copy .\build\bin\RelWithDebInfo\* .\build\bin\
 
 exit $LastExitCode
