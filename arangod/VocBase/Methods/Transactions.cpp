@@ -77,7 +77,7 @@ Result executeTransaction(
   if (tryCatch.HasCaught()){
     //we have some javascript error that is not an arangoError
     std::string msg = *v8::String::Utf8Value(tryCatch.Message()->Get());
-    rv.reset(TRI_ERROR_SERVER_ERROR, msg);
+    rv.reset(TRI_ERROR_HTTP_SERVER_ERROR, msg);
   }
 
   if(rv.fail()){ return rv; };
