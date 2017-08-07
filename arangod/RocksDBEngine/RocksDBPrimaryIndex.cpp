@@ -127,7 +127,7 @@ RocksDBPrimaryIndex::RocksDBPrimaryIndex(
                            StaticStrings::KeyString, false)}}),
                    true, false, RocksDBColumnFamily::primary(),
                    basics::VelocyPackHelper::stringUInt64(info, "objectId"),
-                   true) {
+                   false) {
   TRI_ASSERT(_cf == RocksDBColumnFamily::primary()); 
   TRI_ASSERT(_objectId != 0);
 }

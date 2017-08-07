@@ -89,7 +89,7 @@ RocksDBCollection::RocksDBCollection(LogicalCollection* collection,
       _hasGeoIndex(false),
       _cache(nullptr),
       _cachePresent(false),
-      _useCache(true) {
+      _useCache(false) {
   
   VPackSlice s = info.get("isVolatile");
   if (s.isBoolean() && s.getBoolean()) {
