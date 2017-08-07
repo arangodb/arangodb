@@ -1,6 +1,8 @@
 devel
 -----
 
+* ui: added bind parameter to slow query history view
+
 * fixed a multi-threading issue in the agency when callElection was called 
   while the SuperVision was calling updateSnapshot 
 
