@@ -96,19 +96,6 @@ RocksDBFulltextIndex::RocksDBFulltextIndex(
 
 RocksDBFulltextIndex::~RocksDBFulltextIndex() {}
 
-size_t RocksDBFulltextIndex::memory() const {
-  rocksdb::TransactionDB* db = rocksutils::globalRocksDB();
-  RocksDBKeyBounds bounds =
-      RocksDBKeyBounds::FulltextIndexPrefix(_objectId, StringRef());
-  rocksdb::Range r(bounds.start(), bounds.end());
-  uint64_t out;
-  uint8_t flags = rocksdb::DB::SizeApproximationFlags::INCLUDE_MEMTABLES |
-                  rocksdb::DB::SizeApproximationFlags::INCLUDE_FILES;
-  db->GetApproximateSizes(RocksDBColumnFamily::fulltext(), &r, 1, &out,
-                          static_cast<uint8_t>(flags));
-  return static_cast<size_t>(out);
-}
-
 /// @brief return a VelocyPack representation of the index
 void RocksDBFulltextIndex::toVelocyPack(VPackBuilder& builder, bool withFigures,
                                         bool forPersistence) const {
@@ -246,16 +233,6 @@ Result RocksDBFulltextIndex::removeInternal(transaction::Methods* trx,
     }
   }
   return IndexResult(res, this);
-}
-
-int RocksDBFulltextIndex::cleanup() {
-  rocksdb::TransactionDB* db = rocksutils::globalRocksDB();
-  rocksdb::CompactRangeOptions opts;
-  RocksDBKeyBounds bounds =
-      RocksDBKeyBounds::FulltextIndexPrefix(_objectId, StringRef());
-  rocksdb::Slice b = bounds.start(), e = bounds.end();
-  db->CompactRange(opts, bounds.columnFamily(), &b, &e);
-  return TRI_ERROR_NO_ERROR;
 }
 
 /// @brief walk over the attribute. Also Extract sub-attributes and elements in

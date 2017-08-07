@@ -1,6 +1,26 @@
 devel
 -----
 
+* fixed a multi-threading issue in the agency when callElection was called 
+  while the SuperVision was calling updateSnapshot 
+
+* added startup option `--query.tracking-with-bindvars` 
+
+  This option controls whether the list of currently running queries
+  and the list of slow queries should contain the bind variables used
+  in the queries or not.
+
+  The option can be changed at runtime using the commands
+
+      // enables tracking of bind variables
+      // set to false to turn tracking of bind variables off
+      var value = true; 
+      require("@arangodb/aql/queries").properties({ 
+        trackBindVars: value 
+      });
+
+* selectivity estimates are now available in the cluster
+
 * fixed issue #2943: loadIndexesIntoMemory not returning the same structure 
   as the rest of the collection APIs
 

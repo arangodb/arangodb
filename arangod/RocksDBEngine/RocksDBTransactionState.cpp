@@ -131,7 +131,7 @@ Result RocksDBTransactionState::beginTransaction(transaction::Hints hints) {
         CacheManagerFeature::MANAGER->beginTransaction(isReadOnlyTransaction());
 
     rocksdb::TransactionDB* db = rocksutils::globalRocksDB();
-    _rocksReadOptions.prefix_same_as_start = true;  // should always be true
+    _rocksReadOptions.prefix_same_as_start = true; // should always be true
 
     if (isReadOnlyTransaction()) {
       _snapshot =

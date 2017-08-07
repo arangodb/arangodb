@@ -102,16 +102,10 @@ class RocksDBPrimaryIndex final : public RocksDBIndex {
     return 1.0;
   }
 
-  size_t size() const;
-
-  size_t memory() const override;
-
   void toVelocyPack(VPackBuilder&, bool, bool) const override;
 
   RocksDBToken lookupKey(transaction::Methods* trx,
                          arangodb::StringRef key) const;
-
-  int drop() override;
 
   bool supportsFilterCondition(arangodb::aql::AstNode const*,
                                arangodb::aql::Variable const*, size_t, size_t&,
@@ -129,8 +123,6 @@ class RocksDBPrimaryIndex final : public RocksDBIndex {
   void invokeOnAllElements(
       transaction::Methods* trx,
       std::function<bool(DocumentIdentifierToken const&)> callback) const;
-
-  int cleanup() override;
 
   /// insert index elements into the specified write batch.
   Result insertInternal(transaction::Methods* trx, RocksDBMethods*,
