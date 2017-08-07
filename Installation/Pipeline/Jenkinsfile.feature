@@ -358,24 +358,8 @@ def stashSourceCode() {
 }
 
 def unstashSourceCode(os) {
-    deleteDir()
-
     lock("${env.BRANCH_NAME}-cache") {
         unstash name: "source"
-    }
-}
-
-def stashBuild(edition, os) {
-    lock("${env.BRANCH_NAME}-cache") {
-        stash name: "build-${edition}-${os}", includes: "build-${edition}"
-    }
-}
-
-def unstashBuild(edition, os) {
-    def name = "build-${edition}-${os}.zip"
-
-    lock("${env.BRANCH_NAME}-cache") {
-        unstash name: "build-${edition}-${os}"
     }
 }
 
@@ -742,15 +726,6 @@ def testResilienceParallel(osList) {
 // -----------------------------------------------------------------------------
 
 def buildEdition(edition, os) {
-    if (! cleanBuild) {
-        try {
-            unstashBuild(edition, os)
-        }
-        catch (exc) {
-            echo "no stashed build environment, starting clean build"
-        }
-    }
-
     def arch = "LOG_build_${edition}_${os}"
 
     if (os == 'linux' || os == 'mac') {
@@ -784,8 +759,6 @@ def buildEdition(edition, os) {
         }
     }
     finally {
-        stashBuild(edition, os)
-
         archiveArtifacts allowEmptyArchive: true,
                          artifacts: "${arch}/**",
                          defaultExcludes: false
