@@ -240,7 +240,11 @@ AuthUserEntry AuthUserEntry::fromDocument(VPackSlice const& slice) {
         if (permissionsSlice.isObject()) {
           databaseAuth = AuthLevelFromSlice(permissionsSlice);
         }
-        entry.grantDatabase(dbName, databaseAuth);
+        try {
+          entry.grantDatabase(dbName, databaseAuth);
+        } catch(arangodb::basics::Exception const& e) {
+          LOG_TOPIC(DEBUG, Logger::AUTHORIZATION) << e.message();
+        }
 
         VPackSlice collectionsSlice = obj.value.get("collections");
         if (collectionsSlice.isObject()) {
@@ -248,8 +252,12 @@ AuthUserEntry AuthUserEntry::fromDocument(VPackSlice const& slice) {
             std::string const cName = collection.key.copyString();
             auto const permissionsSlice = collection.value.get("permissions");
             if (permissionsSlice.isObject()) {
-              entry.grantCollection(dbName, cName,
+              try {
+                entry.grantCollection(dbName, cName,
                                     AuthLevelFromSlice(permissionsSlice));
+              } catch(arangodb::basics::Exception const& e) {
+                LOG_TOPIC(DEBUG, Logger::AUTHORIZATION) << e.message();
+              }
             }  // if
           }  // for
         }    // if

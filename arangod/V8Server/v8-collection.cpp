@@ -1028,8 +1028,8 @@ static void JS_DropVocbaseCol(v8::FunctionCallbackInfo<v8::Value> const& args) {
     }
   }
   
-  if (auth->isActive() && (ServerState::instance()->isCoordinator() ||
-                           !ServerState::instance()->isRunningInCluster())) {
+  if (ServerState::instance()->isCoordinator() ||
+      !ServerState::instance()->isRunningInCluster()) {
     auth->authInfo()->enumerateUsers([&](AuthUserEntry& entry) {
       entry.removeCollection(dbname, collName);
     });
