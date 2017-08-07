@@ -118,7 +118,7 @@ function recovery (options) {
     let filtered = {};
 
     if (tu.filterTestcaseByOptions(test, options, filtered)) {
-      let instanceInfo = {};
+      let instanceInfo = { rootDir: pu.TOP_DIR };
       count += 1;
 
       runArangodRecovery(instanceInfo, options, test, true);

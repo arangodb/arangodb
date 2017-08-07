@@ -149,7 +149,7 @@ MMFilesEngine::MMFilesEngine(application_features::ApplicationServer* server)
       _isUpgrade(false),
       _maxTick(0) {
   startsAfter("MMFilesPersistentIndex"); // yes, intentional!
-    
+
   server->addFeature(new MMFilesWalRecoveryFeature(server));
   server->addFeature(new MMFilesLogfileManager(server));
   server->addFeature(new MMFilesPersistentIndexFeature(server));
@@ -254,7 +254,7 @@ void MMFilesEngine::stop() {
     logfileManager->waitForCollector();
   }
 }
-  
+
 TransactionManager* MMFilesEngine::createTransactionManager() {
   return new MMFilesTransactionManager();
 }
@@ -568,7 +568,7 @@ int MMFilesEngine::getCollectionsAndIndexes(
 
       return TRI_ERROR_ARANGO_DATADIR_NOT_WRITABLE;
     }
-    
+
     std::vector<std::string> files = TRI_FilesDirectory(directory.c_str());
     if (files.empty()) {
       // the list always contains the empty string as its first element
@@ -713,7 +713,7 @@ TRI_vocbase_t* MMFilesEngine::openDatabase(
   bool const wasCleanShutdown =
       MMFilesLogfileManager::hasFoundLastTick();
   status = TRI_ERROR_NO_ERROR;
-      
+
   return openExistingDatabase(id, name, wasCleanShutdown, isUpgrade);
 }
 
@@ -2014,7 +2014,7 @@ TRI_vocbase_t* MMFilesEngine::openExistingDatabase(TRI_voc_tick_t id,
 
     VPackSlice slice = builder.slice();
     TRI_ASSERT(slice.isArray());
-  
+
     ViewTypesFeature* viewTypesFeature =
         application_features::ApplicationServer::getFeature<ViewTypesFeature>(
             "ViewTypes");
@@ -2031,7 +2031,7 @@ TRI_vocbase_t* MMFilesEngine::openExistingDatabase(TRI_voc_tick_t id,
 
       std::shared_ptr<LogicalView> view =
           std::make_shared<arangodb::LogicalView>(vocbase.get(), it);
-      
+
       StorageEngine::registerView(vocbase.get(), view);
 
       auto physical = static_cast<MMFilesView*>(view->getPhysical());
@@ -2040,7 +2040,7 @@ TRI_vocbase_t* MMFilesEngine::openExistingDatabase(TRI_voc_tick_t id,
       registerViewPath(vocbase->id(), view->id(), physical->path());
 
       view->spawnImplementation(creator, it, false);
-    
+
       if (view->getImplementation() == nullptr) {
         THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "unable to spawn view implementation");
       }
@@ -2287,10 +2287,10 @@ VPackBuilder MMFilesEngine::loadCollectionInfo(TRI_vocbase_t* vocbase,
       THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_ILLEGAL_PARAMETER_FILE);
     }
   }
-      
+
   std::shared_ptr<VPackBuilder> content;
   VPackSlice slice;
-  
+
   try {
     content =
       arangodb::basics::VelocyPackHelper::velocyPackFromFile(filename);
@@ -2305,7 +2305,7 @@ VPackBuilder MMFilesEngine::loadCollectionInfo(TRI_vocbase_t* vocbase,
         << "', collection parameters are not readable";
     THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_ILLEGAL_PARAMETER_FILE);
   }
-      
+
   if (filename.substr(filename.size() - 4, 4) == ".tmp") {
     // we got a tmp file. Now try saving the original file
     std::string const original(filename.substr(0, filename.size() - 4));
@@ -2317,7 +2317,7 @@ VPackBuilder MMFilesEngine::loadCollectionInfo(TRI_vocbase_t* vocbase,
           << "cannot store collection parameters in file '" << original << "'";
     }
   }
-  
+
   // fiddle "isSystem" value, which is not contained in the JSON file
   bool isSystemValue = false;
   if (slice.hasKey("name")) {
@@ -3253,7 +3253,7 @@ int MMFilesEngine::writeDropMarker(TRI_voc_tick_t id) {
 }
 
 bool MMFilesEngine::inRecovery() {
-  return MMFilesLogfileManager::instance()->isInRecovery();
+  return MMFilesLogfileManager::instance(true)->isInRecovery();
 }
 
 /// @brief writes a create-database marker into the log
@@ -3285,7 +3285,7 @@ int MMFilesEngine::writeCreateDatabaseMarker(TRI_voc_tick_t id,
 
   return res;
 }
-  
+
 std::shared_ptr<arangodb::velocypack::Builder> MMFilesEngine::getReplicationApplierConfiguration(TRI_vocbase_t* vocbase, int& status) {
   std::string const filename = arangodb::basics::FileUtils::buildFilename(databasePath(vocbase), "REPLICATION-APPLIER-CONFIG");
 
@@ -3305,7 +3305,7 @@ std::shared_ptr<arangodb::velocypack::Builder> MMFilesEngine::getReplicationAppl
           << "unable to read replication applier configuration from file '"
           << filename << "'";
       status = TRI_ERROR_REPLICATION_INVALID_APPLIER_CONFIGURATION;
-    } 
+    }
   } catch (...) {
     LOG_TOPIC(ERR, Logger::REPLICATION)
         << "unable to read replication applier configuration from file '"
@@ -3325,14 +3325,14 @@ int MMFilesEngine::removeReplicationApplierConfiguration(TRI_vocbase_t* vocbase)
 
   return TRI_ERROR_NO_ERROR;
 }
- 
-int MMFilesEngine::saveReplicationApplierConfiguration(TRI_vocbase_t* vocbase, arangodb::velocypack::Slice slice, bool doSync) { 
+
+int MMFilesEngine::saveReplicationApplierConfiguration(TRI_vocbase_t* vocbase, arangodb::velocypack::Slice slice, bool doSync) {
   std::string const filename = arangodb::basics::FileUtils::buildFilename(databasePath(vocbase), "REPLICATION-APPLIER-CONFIG");
 
   if (!VelocyPackHelper::velocyPackToFile(filename, slice, doSync)) {
     return TRI_errno();
-  } 
-  
+  }
+
   return TRI_ERROR_NO_ERROR;
 }
 
@@ -3345,7 +3345,7 @@ int MMFilesEngine::handleSyncKeys(arangodb::InitialSyncer& syncer,
                           std::string& errorMsg) {
   return handleSyncKeysMMFiles(syncer, col, keysId, cid, collectionName,maxTick, errorMsg);
 }
-  
+
 Result MMFilesEngine::createLoggerState(TRI_vocbase_t* vocbase, VPackBuilder& builder){
   MMFilesLogfileManagerState const s = MMFilesLogfileManager::instance()->state();
   builder.openObject();  // Base
