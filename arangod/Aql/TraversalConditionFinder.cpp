@@ -24,7 +24,9 @@
 #include "TraversalConditionFinder.h"
 #include "Aql/Ast.h"
 #include "Aql/ExecutionPlan.h"
+#include "Aql/Expression.h"
 #include "Aql/Quantifier.h"
+#include "Aql/Query.h"
 #include "Aql/TraversalNode.h"
 #include "VocBase/TraverserOptions.h"
 
@@ -654,8 +656,7 @@ bool TraversalConditionFinder::before(ExecutionNode* en) {
             // then indexedAccessDepth would be INT64_MAX
             originalFilterConditions->andCombine(cloned);
             
-            if ((int64_t)options->minDepth < indexedAccessDepth && !isTrueOnNull(cloned, swappedIndex)) {
-              LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "Increased MinDepth";
+            if ((int64_t)options->minDepth < indexedAccessDepth && !isTrueOnNull(cloned, pathVar)) {
               // do not return paths shorter than the deepest path access
               // Unless the condition evaluates to true on `null`.
               options->minDepth = indexedAccessDepth;
@@ -716,77 +717,28 @@ bool TraversalConditionFinder::enterSubquery(ExecutionNode*, ExecutionNode*) {
   return false;
 }
 
-bool TraversalConditionFinder::isTrueOnNull(AstNode* node, size_t nullIndex) const {
-  LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "NullIndex: " << nullIndex;
-  if (node->numMembers() != 2) {
-    // Too complicated to check for now...
-    return true;
+bool TraversalConditionFinder::isTrueOnNull(AstNode* node, Variable const* pathVar) const {
+  TRI_ASSERT(_plan->getAst() != nullptr);
+
+  bool mustDestroy = false;
+  Expression tmpExp(_plan->getAst(), node);
+
+  TRI_ASSERT(_plan->getAst()->query() != nullptr);
+  auto trx = _plan->getAst()->query()->trx();
+  TRI_ASSERT(trx != nullptr);
+
+  auto ctxt = std::make_unique<FixedVarExpressionContext>();
+  ctxt->setVariableValue(pathVar, {});
+  AqlValue res = tmpExp.execute(trx, ctxt.get(), mustDestroy);
+  TRI_ASSERT(res.isBoolean());
+
+  if (mustDestroy) {
+    // Slower case, first copy out the result, then destroy, then return copy.
+    bool result = res.toBoolean();
+    res.destroy();
+    return result;
   }
 
-  VPackSlice other = node->getMemberUnchecked((nullIndex == 0 ? 1 : 0))->computeValue();
-  VPackSlice null = VelocyPackHelper::NullValue();
-
-  switch (node->type) {
-    case NODE_TYPE_OPERATOR_BINARY_EQ:
-      return VelocyPackHelper::compare(null, other, false) == 0;
-    case NODE_TYPE_OPERATOR_BINARY_NE:
-      return VelocyPackHelper::compare(null, other, false) != 0;
-    case NODE_TYPE_OPERATOR_BINARY_LT:
-      if (nullIndex == 0) {
-        return VelocyPackHelper::compare(null, other, false) < 0;
-      } else {
-        return VelocyPackHelper::compare(other, null, false) < 0;
-      }
-    case NODE_TYPE_OPERATOR_BINARY_LE:
-      if (nullIndex == 0) {
-        return VelocyPackHelper::compare(null, other, false) <= 0;
-      } else {
-        return VelocyPackHelper::compare(other, null, false) <= 0;
-      }
-    case NODE_TYPE_OPERATOR_BINARY_GT:
-      if (nullIndex == 0) {
-        return VelocyPackHelper::compare(null, other, false) > 0;
-      } else {
-        return VelocyPackHelper::compare(other, null, false) > 0;
-      }
-    case NODE_TYPE_OPERATOR_BINARY_GE:
-      if (nullIndex == 0) {
-        return VelocyPackHelper::compare(null, other, false) >= 0;
-      } else {
-        return VelocyPackHelper::compare(other, null, false) >= 0;
-      }
-    case NODE_TYPE_OPERATOR_BINARY_IN:
-      if (nullIndex != 0) {
-        // xyz IN p.edges nothing to optimize here.
-        return true;
-      }
-      if (!other.isArray()) {
-        return false;
-      }
-      for (auto const& it : VPackArrayIterator(other)) {
-        if (it.isNull()) {
-          // Null is included!
-          return true;
-        }
-      }
-      return false;
-    case NODE_TYPE_OPERATOR_BINARY_NIN:
-      if (nullIndex != 0) {
-        // xyz NIN p.edges nothing to optimize here.
-        return true;
-      }
-      if (!other.isArray()) {
-        // Null IS NOT IN a non array...
-        return true;
-      }
-      for (auto const& it : VPackArrayIterator(other)) {
-        if (it.isNull()) {
-          // Null is included!
-          return false;
-        }
-      }
-      return true;
-    default:
-      return true;
-  }
+  // Opt Case directly return the outcome of the result.
+  return res.toBoolean();
 }

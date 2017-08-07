@@ -43,7 +43,7 @@ class TraversalConditionFinder : public WalkerWorker<ExecutionNode> {
   bool enterSubquery(ExecutionNode*, ExecutionNode*) override final;
 
  private:
-  bool isTrueOnNull(AstNode* condition, size_t nullIndex) const; 
+  bool isTrueOnNull(AstNode* condition, Variable const* pathVar) const; 
 
  private:
   ExecutionPlan* _plan;
