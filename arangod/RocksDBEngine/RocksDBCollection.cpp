@@ -769,7 +769,8 @@ bool RocksDBCollection::readDocument(transaction::Methods* trx,
   RocksDBToken const* tkn = static_cast<RocksDBToken const*>(&token);
   TRI_voc_rid_t revisionId = tkn->revisionId();
   if (revisionId != 0) {
-    auto res = lookupRevisionVPack(revisionId, trx, result, true);
+    bool useCache = _logicalCollection->type() != TRI_COL_TYPE_EDGE;
+    auto res = lookupRevisionVPack(revisionId, trx, result, useCache);
     return res.ok();
   }
   return false;
