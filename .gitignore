@@ -100,8 +100,6 @@ js/apps/system/_admin/aardvark/APP/frontend/build/libs.js.gz
 js/apps/system/_admin/aardvark/APP/frontend/build/style.css
 js/apps/system/_admin/aardvark/APP/frontend/build/scripts.html.part
 
-js/common/tests/shell/shell-database.js
-
 .gdb-history
 npm-debug.log
 

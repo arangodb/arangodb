@@ -94,9 +94,7 @@ CachedValue* TransactionalBucket::find(uint32_t hash, void const* key,
 
 void TransactionalBucket::insert(uint32_t hash, CachedValue* value) {
   TRI_ASSERT(isLocked());
-  if (isBlacklisted(hash)) {
-    return;
-  }
+  TRI_ASSERT(!isBlacklisted(hash));// checks needs to be done outside
 
   for (size_t i = 0; i < slotsData; i++) {
     if (_cachedData[i] == nullptr) {

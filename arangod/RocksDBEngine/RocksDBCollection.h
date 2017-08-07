@@ -181,9 +181,6 @@ class RocksDBCollection final : public PhysicalCollection {
   void adjustNumberDocuments(int64_t adjustment);
   uint64_t objectId() const { return _objectId; }
 
-  Result lookupDocumentToken(transaction::Methods* trx, arangodb::StringRef key,
-                             RocksDBToken& token) const;
-
   int lockWrite(double timeout = 0.0);
   int unlockWrite();
   int lockRead(double timeout = 0.0);

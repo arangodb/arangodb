@@ -89,7 +89,7 @@ RocksDBCollection::RocksDBCollection(LogicalCollection* collection,
       _hasGeoIndex(false),
       _cache(nullptr),
       _cachePresent(false),
-      _useCache(false) {
+      _useCache(true) {
   
   VPackSlice s = info.get("isVolatile");
   if (s.isBoolean() && s.getBoolean()) {
@@ -754,10 +754,8 @@ Result RocksDBCollection::read(transaction::Methods* trx,
   RocksDBToken token = primaryIndex()->lookupKey(trx, StringRef(key));
 
   if (token.revisionId()) {
-    if (readDocument(trx, token, result)) {
-      // found
-      return TRI_ERROR_NO_ERROR;
-    }
+    auto res = lookupRevisionVPack(token.revisionId(), trx, result, true);
+    return res;
   }
 
   // not found
@@ -1525,18 +1523,6 @@ RocksDBOperationResult RocksDBCollection::updateDocument(
 
   res = insertDocument(trx, newRevisionId, newDoc, waitForSync);
   return res;
-}
-
-Result RocksDBCollection::lookupDocumentToken(transaction::Methods* trx,
-                                              arangodb::StringRef key,
-                                              RocksDBToken& outToken) const {
-  TRI_ASSERT(_objectId != 0);
-
-  // TODO fix as soon as we got a real primary index
-  outToken = primaryIndex()->lookupKey(trx, key);
-  return outToken.revisionId() > 0
-             ? Result()
-             : Result(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND);
 }
 
 arangodb::Result RocksDBCollection::lookupRevisionVPack(
