@@ -89,7 +89,7 @@ RocksDBCollection::RocksDBCollection(LogicalCollection* collection,
       _hasGeoIndex(false),
       _cache(nullptr),
       _cachePresent(false),
-      _useCache(false) {
+      _useCache(true) {
   
   VPackSlice s = info.get("isVolatile");
   if (s.isBoolean() && s.getBoolean()) {
@@ -114,7 +114,7 @@ RocksDBCollection::RocksDBCollection(LogicalCollection* collection,
       _hasGeoIndex(false),
       _cache(nullptr),
       _cachePresent(false),
-      _useCache(false) {
+      _useCache(true) {
   addCollectionMapping(_objectId, _logicalCollection->vocbase()->id(),
                        _logicalCollection->cid());
   if (_useCache) {
