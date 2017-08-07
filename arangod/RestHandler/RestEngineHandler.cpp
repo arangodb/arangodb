@@ -62,10 +62,10 @@ void RestEngineHandler::handleGet() {
 
   if (suffixes.size() == 0) {
     getCapabilities();
-    return;
+  } else {
+    getStats();
   }
-
-  getStats();
+  
   return;
 }
 
