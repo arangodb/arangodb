@@ -19,8 +19,8 @@ exit $LastExitCode
   $env:GYP_MSVS_OVERRIDE_PATH='C:\Program Files (x86)\Microsoft Visual Studio\Shared\14.0\VC\bin'
   New-Item -ItemType Directory -Force -Path build
   cd build
-  Invoke-Expression "cmake .. -G `"Visual Studio 15 2017 Win64`" ${buildOptions} | Set-Content -PassThru log-output"
-  cmake --build . --config RelWithDebInfo | Add-Content -PassThru log-output
+  Invoke-Expression "cmake .. -G `"Visual Studio 15 2017 Win64`" ${buildOptions} | Set-Content -PassThru ..\log-output"
+  cmake --build . --config RelWithDebInfo | Add-Content -PassThru ..\log-output
   cd ..
 }
 
