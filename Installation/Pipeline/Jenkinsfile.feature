@@ -351,8 +351,10 @@ Running Tests: ${runTests}"""
 // -----------------------------------------------------------------------------
 
 def stashBinaries(edition, os) {
+    echo "STASHING BINARIES"
     lock("${env.BRANCH_NAME}-cache") {
-        stash name: "binaries-${edition}-${os}", includes: "build"
+        powershell "dir"
+        stash name: "binaries-${edition}-${os}", includes: "build/**, etc/**, Installation/Pipeline/**, js/**, scripts/**, UnitTests/**, utils/**, resilience/**"
     }
 }
 
