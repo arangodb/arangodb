@@ -1153,7 +1153,7 @@ AqlValue Functions::CharLength(arangodb::aql::Query* query,
     length = buffer->length();
 
   } else if (value.isNull(true)) {
-    length = 4;
+    length = 0;
 
   } else if (value.isBoolean()) {
     if (value.toBoolean()) {
