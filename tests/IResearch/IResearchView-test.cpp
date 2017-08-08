@@ -494,6 +494,40 @@ SECTION("test_insert") {
     CHECK((4 == count));
   }
 
+  // not in recovery (with waitForSync)
+  {
+    StorageEngineMock::inRecoveryResult = false;
+    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "testVocbase");
+    auto viewImpl = arangodb::iresearch::IResearchView::make(nullptr, json->slice(), false);
+    CHECK((false == !viewImpl));
+    auto* view = dynamic_cast<arangodb::iresearch::IResearchView*>(viewImpl.get());
+    CHECK((nullptr != view));
+
+    {
+      auto docJson = arangodb::velocypack::Parser::fromJson("{\"abc\": \"def\"}");
+      arangodb::iresearch::IResearchLinkMeta linkMeta;
+      arangodb::transaction::Options options;
+      options.waitForSync = true;
+      arangodb::transaction::UserTransaction trx(arangodb::transaction::StandaloneContext::Create(&vocbase), EMPTY, EMPTY, EMPTY, options);
+
+      linkMeta._includeAllFields = true;
+      CHECK((trx.begin().ok()));
+      CHECK((TRI_ERROR_NO_ERROR == view->insert(trx, 1, 1, docJson->slice(), linkMeta)));
+      CHECK((TRI_ERROR_NO_ERROR == view->insert(trx, 1, 2, docJson->slice(), linkMeta)));
+      CHECK((TRI_ERROR_NO_ERROR == view->insert(trx, 1, 1, docJson->slice(), linkMeta))); // 2nd time
+      CHECK((TRI_ERROR_NO_ERROR == view->insert(trx, 1, 2, docJson->slice(), linkMeta))); // 2nd time
+      CHECK((trx.commit().ok()));
+    }
+
+    arangodb::transaction::UserTransaction trx(arangodb::transaction::StandaloneContext::Create(&vocbase), EMPTY, EMPTY, EMPTY, arangodb::transaction::Options());
+    CHECK((trx.begin().ok()));
+    std::unique_ptr<arangodb::ViewIterator> itr(view->iteratorForCondition(&trx, &noop, nullptr, nullptr));
+    CHECK((false == !itr));
+    size_t count = 0;
+    CHECK((!itr->next([&count](arangodb::DocumentIdentifierToken const&)->void{ ++count; }, 10)));
+    CHECK((4 == count));
+  }
+
   // not in recovery batch
   {
     StorageEngineMock::inRecoveryResult = false;
@@ -518,6 +552,42 @@ SECTION("test_insert") {
       CHECK((TRI_ERROR_NO_ERROR == view->insert(trx, 1, batch, linkMeta))); // 2nd time
       CHECK((trx.commit().ok()));
       CHECK((view->sync()));
+    }
+
+    arangodb::transaction::UserTransaction trx(arangodb::transaction::StandaloneContext::Create(&vocbase), EMPTY, EMPTY, EMPTY, arangodb::transaction::Options());
+    CHECK((trx.begin().ok()));
+    std::unique_ptr<arangodb::ViewIterator> itr(view->iteratorForCondition(&trx, &noop, nullptr, nullptr));
+    CHECK((false == !itr));
+    size_t count = 0;
+    CHECK((!itr->next([&count](arangodb::DocumentIdentifierToken const&)->void{ ++count; }, 10)));
+    CHECK((4 == count));
+  }
+
+  // not in recovery batch (waitForSync)
+  {
+    StorageEngineMock::inRecoveryResult = false;
+    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "testVocbase");
+    auto viewImpl = arangodb::iresearch::IResearchView::make(nullptr, json->slice(), false);
+    CHECK((false == !viewImpl));
+    auto* view = dynamic_cast<arangodb::iresearch::IResearchView*>(viewImpl.get());
+    CHECK((nullptr != view));
+
+    {
+      auto docJson = arangodb::velocypack::Parser::fromJson("{\"abc\": \"def\"}");
+      arangodb::iresearch::IResearchLinkMeta linkMeta;
+      arangodb::transaction::Options options;
+      options.waitForSync = true;
+      arangodb::transaction::UserTransaction trx(arangodb::transaction::StandaloneContext::Create(&vocbase), EMPTY, EMPTY, EMPTY, options);
+      std::vector<std::pair<TRI_voc_rid_t, arangodb::velocypack::Slice>> batch = {
+        { 1, docJson->slice() },
+        { 2, docJson->slice() },
+      };
+
+      linkMeta._includeAllFields = true;
+      CHECK((trx.begin().ok()));
+      CHECK((TRI_ERROR_NO_ERROR == view->insert(trx, 1, batch, linkMeta)));
+      CHECK((TRI_ERROR_NO_ERROR == view->insert(trx, 1, batch, linkMeta))); // 2nd time
+      CHECK((trx.commit().ok()));
     }
 
     arangodb::transaction::UserTransaction trx(arangodb::transaction::StandaloneContext::Create(&vocbase), EMPTY, EMPTY, EMPTY, arangodb::transaction::Options());

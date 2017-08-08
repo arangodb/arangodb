@@ -98,6 +98,8 @@ inline arangodb::FlushFeature* getFlushFeature() noexcept {
 ////////////////////////////////////////////////////////////////////////////////
 class CompoundReader: public irs::index_reader {
  public:
+  CompoundReader(ReadMutex const& mutex);
+  CompoundReader(CompoundReader&& other) noexcept;
   irs::sub_reader const& operator[](size_t subReaderId) const;
   void add(irs::directory_reader const& reader);
   virtual reader_iterator begin() const override;
@@ -122,6 +124,8 @@ class CompoundReader: public irs::index_reader {
     SubReadersType::const_iterator _itr;
   };
 
+  std::unique_lock<ReadMutex> _lock;
+  ReadMutex _mutex;
   std::vector<irs::directory_reader> _readers;
   SubReadersType _subReaders;
 };
@@ -147,6 +151,18 @@ bool CompoundReader::IteratorImpl::operator==(
     reader_iterator_impl const& other
 ) {
   return static_cast<IteratorImpl const&>(other)._itr == _itr;
+}
+
+CompoundReader::CompoundReader(ReadMutex const& mutex): _mutex(mutex) {
+  //SCOPED_LOCK_NAMED(_mutex, lock); FIXME TODO implement proper locking
+  //_lock = std::move(lock);
+}
+
+CompoundReader::CompoundReader(CompoundReader&& other) noexcept
+  : _mutex(std::move(other._mutex)),
+    _readers(std::move(other._readers)),
+    _subReaders(std::move(other._subReaders)) {
+  //_lock = std::move(other._lock); FIXME TODO implement proper locking
 }
 
 irs::sub_reader const& CompoundReader::operator[](size_t subReaderId) const {
@@ -1168,12 +1184,26 @@ IResearchView::IResearchView(
     }
 
     switch (trx->status()) {
-     case transaction::Status::ABORTED:
-      finish(trx->state()->id(), false);
+     case transaction::Status::ABORTED: {
+      auto res = finish(trx->state()->id(), false);
+
+      if (TRI_ERROR_NO_ERROR != res) {
+        LOG_TOPIC(WARN, Logger::FIXME) << "failed to finish abort while processing transaction callback for iResearch view '" << id() << "'";
+      }
+
       return;
-     case transaction::Status::COMMITTED:
-      finish(trx->state()->id(), true);
+     }
+     case transaction::Status::COMMITTED: {
+      auto res = finish(trx->state()->id(), true);
+
+      if (TRI_ERROR_NO_ERROR != res) {
+        LOG_TOPIC(WARN, Logger::FIXME) << "failed to finish commit while processing transaction callback for iResearch view '" << id() << "'";
+      } else if (trx->state()->options().waitForSync && !sync()) {
+        LOG_TOPIC(WARN, Logger::FIXME) << "failed to sync while processing transaction callback for iResearch view '" << id() << "'";
+      }
+
       return;
+     }
      default:
       {} // NOOP
     }
@@ -1812,7 +1842,7 @@ arangodb::ViewIterator* IResearchView::iteratorForCondition(
     return nullptr;
   }
 
-  CompoundReader compoundReader; // FIXME remove add method
+  CompoundReader compoundReader(mutex); // FIXME remove add method
 
   try {
     auto& memoryStore = activeMemoryStore();
