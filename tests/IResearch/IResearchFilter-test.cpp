@@ -22,6 +22,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "catch.hpp"
+#include "common.h"
 #include "StorageEngineMock.h"
 
 #include "Aql/AqlFunctionFeature.h"
@@ -187,6 +188,8 @@ struct IResearchFilterSetup {
 
   IResearchFilterSetup(): server(nullptr, nullptr) {
     arangodb::EngineSelectorFeature::ENGINE = &engine;
+
+    arangodb::tests::init();
 
     // setup required application features
     features.emplace_back(new arangodb::AuthenticationFeature(&server), true); // required for FeatureCacheFeature
