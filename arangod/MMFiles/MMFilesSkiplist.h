@@ -512,7 +512,7 @@ class MMFilesSkiplist {
     // allocate enough memory for skiplist node plus all the next nodes in one
     // go
     void* ptr = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE,
-                             sizeof(Node) + sizeof(Node*) * height, false);
+                             sizeof(Node) + sizeof(Node*) * height);
 
     if (ptr == nullptr) {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);

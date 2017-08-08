@@ -54,7 +54,7 @@ int TRI_InitVector2(TRI_vector_t* vector, TRI_memory_zone_t* zone,
   if (initialCapacity != 0) {
     vector->_buffer = static_cast<char*>(TRI_Allocate(
         TRI_MemoryZone(vector->_memoryZoneX),
-        (initialCapacity * static_cast<size_t>(vector->_elementSizeX)), false));
+        (initialCapacity * static_cast<size_t>(vector->_elementSizeX))));
 
     if (vector->_buffer == nullptr) {
       return TRI_ERROR_OUT_OF_MEMORY;
@@ -262,7 +262,7 @@ int TRI_InsertVector(TRI_vector_t* vector, void const* element, size_t n) {
     TRI_ASSERT(newSize > n);
 
     auto newBuffer = static_cast<char*>(TRI_Allocate(
-        TRI_MemoryZone(vector->_memoryZoneX), newSize * elementSize, false));
+        TRI_MemoryZone(vector->_memoryZoneX), newSize * elementSize));
 
     if (newBuffer == nullptr) {
       return TRI_ERROR_OUT_OF_MEMORY;
