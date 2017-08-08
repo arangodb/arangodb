@@ -1635,8 +1635,8 @@ function ahuacatlStringFunctionsTestSuite () {
       assertEqual([ 13 ], getQueryResults("RETURN NOOPT(CHAR_LENGTH('the quick fox'))"));
       assertEqual([ 13 ], getQueryResults("RETURN NOOPT(V8(CHAR_LENGTH('the quick fox')))"));
 
-      assertEqual([ 4 ], getQueryResults("RETURN NOOPT(CHAR_LENGTH(null))"));
-      assertEqual([ 4 ], getQueryResults("RETURN NOOPT(V8(CHAR_LENGTH(null)))"));
+      assertEqual([ 0 ], getQueryResults("RETURN NOOPT(CHAR_LENGTH(null))"));
+      assertEqual([ 0 ], getQueryResults("RETURN NOOPT(V8(CHAR_LENGTH(null)))"));
 
       assertEqual([ 4 ], getQueryResults("RETURN NOOPT(CHAR_LENGTH(true))"));
       assertEqual([ 4 ], getQueryResults("RETURN NOOPT(V8(CHAR_LENGTH(true)))"));

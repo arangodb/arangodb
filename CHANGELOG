@@ -1,6 +1,12 @@
 devel
 -----
 
+* fixed docs for issue #2968
+
+* AQL CHAR_LENGTH(null) returns now 0. Since AQL TO_STRING(null) is '' (string of length 0)
+
+* ui: now supports single js file upload for foxx services in addition to zip files
+
 * fixed a multi-threading issue in the agency when callElection was called 
   while the SuperVision was calling updateSnapshot 
 
@@ -80,6 +86,7 @@ devel
 
 * option "--rocksdb.compaction-read-ahead-size" now defaults to 2MB
 
+* change windows build so that rocksdb doesn't enforce AVX optimizations by default
 
 v3.2.0 (2017-07-20)
 -------------------

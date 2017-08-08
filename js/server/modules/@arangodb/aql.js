@@ -2037,10 +2037,6 @@ function AQL_CONCAT_SEPARATOR () {
 function AQL_CHAR_LENGTH (value) {
   'use strict';
 
-  if (value === undefined || value === null) {
-    return 4;
-  }
-
   // https://mathiasbynens.be/notes/javascript-unicode
   return [...AQL_TO_STRING(value)].length;
 }

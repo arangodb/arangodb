@@ -16,7 +16,7 @@ Return the number of characters in *value* (not byte length).
 |Array / Object|number of unicode characters from the resulting stringification|
 |true| 4 |
 |false| 5 |
-|null| 4 |
+|null| 0 |
 
 ### CONCAT()
 
