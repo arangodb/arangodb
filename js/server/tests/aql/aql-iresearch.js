@@ -67,7 +67,7 @@ function iResearchAqlTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testAttributeEqualityFilter : function () {
-      var result = AQL_EXECUTE("FOR doc IN VIEW UnitTestsView FILTER doc.a == 'foo' RETURN doc", null, { });
+      var result = AQL_EXECUTE("FOR doc IN VIEW UnitTestsView FILTER doc.a == 'foo' RETURN doc", null, { }).json;
 
       assertEqual(result.length, 2);
       assertEqual(result[0].a, "foo");
