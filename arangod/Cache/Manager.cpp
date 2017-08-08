@@ -582,6 +582,8 @@ void Manager::shrinkOvergrownCaches(Manager::TaskEnvironment environment) {
     metadata->lock();
 
     if (metadata->allocatedSize > metadata->deservedSize) {
+      LOG_TOPIC(ERR, Logger::FIXME) << "Shrinking overgrown cache from allocated " << metadata->allocatedSize
+      << " to " << metadata->newLimit();
       resizeCache(environment, cache, metadata->newLimit());  // unlocks cache
     } else {
       metadata->unlock();
