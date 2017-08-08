@@ -215,8 +215,12 @@ RocksDBReplicationResult RocksDBReplicationContext::dump(
 
 arangodb::Result RocksDBReplicationContext::dumpKeyChunks(VPackBuilder& b,
                                                           uint64_t chunkSize) {
+  Result rv;
+
   TRI_ASSERT(_trx);
-  TRI_ASSERT(_iter);
+  if(!_iter){
+    return rv.reset(TRI_ERROR_BAD_PARAMETER, "the replication context interator has not been initialized");
+  }
 
   std::string lowKey;
   VPackSlice highKey;  // FIXME: no good keeping this
@@ -253,15 +257,16 @@ arangodb::Result RocksDBReplicationContext::dumpKeyChunks(VPackBuilder& b,
       b.close();
       lowKey.clear();  // reset string
     } catch (std::exception const&) {
-      return Result(TRI_ERROR_INTERNAL);
+      return rv.reset(TRI_ERROR_INTERNAL);
     }
   }
+
   b.close();
   // we will not call this method twice
   _iter->reset();
   _lastIteratorOffset = 0;
 
-  return Result();
+  return rv;
 }
 
 /// dump all keys from collection
@@ -269,7 +274,13 @@ arangodb::Result RocksDBReplicationContext::dumpKeys(
     VPackBuilder& b, size_t chunk, size_t chunkSize,
     std::string const& lowKey) {
   TRI_ASSERT(_trx);
-  TRI_ASSERT(_iter);
+
+  Result rv;
+
+  if(!_iter){
+    return rv.reset(TRI_ERROR_BAD_PARAMETER, "the replication context interator has not been initialized");
+  }
+
   RocksDBSortedAllIterator* primary =
       static_cast<RocksDBSortedAllIterator*>(_iter.get());
 
@@ -310,11 +321,11 @@ arangodb::Result RocksDBReplicationContext::dumpKeys(
     _hasMore = primary->nextWithKey(cb, chunkSize);
     _lastIteratorOffset++;
   } catch (std::exception const&) {
-    return Result(TRI_ERROR_INTERNAL);
+    return rv.reset(TRI_ERROR_INTERNAL);
   }
   b.close();
 
-  return Result();
+  return rv;
 }
 
 /// dump keys and document

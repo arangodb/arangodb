@@ -73,14 +73,15 @@ using namespace arangodb::basics;
 using namespace arangodb::rest;
 using namespace arangodb::rocksutils;
 
-static int restoreDataParser(char const* ptr, char const* pos,
-                             std::string const& invalidMsg, bool useRevision,
-                             std::string& errorMsg, std::string& key,
-                             VPackBuilder& builder, VPackSlice& doc,
-                             TRI_replication_operation_e& type);
-
+// globals
 uint64_t const RocksDBRestReplicationHandler::_defaultChunkSize = 128 * 1024;
 uint64_t const RocksDBRestReplicationHandler::_maxChunkSize = 128 * 1024 * 1024;
+
+static Result restoreDataParser(char const* ptr, char const* pos,
+                             std::string const& invalidMsg, bool useRevision,
+                             std::string& key, VPackBuilder& builder, VPackSlice& doc,
+                             TRI_replication_operation_e& type);
+
 
 RocksDBRestReplicationHandler::RocksDBRestReplicationHandler(
     GeneralRequest* request, GeneralResponse* response)
@@ -89,6 +90,7 @@ RocksDBRestReplicationHandler::RocksDBRestReplicationHandler(
 
 RocksDBRestReplicationHandler::~RocksDBRestReplicationHandler() {}
 
+//main function that dispactes the diferent routes and commands
 RestStatus RocksDBRestReplicationHandler::execute() {
   // extract the request type
   auto const type = _request->requestType();
@@ -118,12 +120,35 @@ RestStatus RocksDBRestReplicationHandler::execute() {
       }
       handleCommandDetermineOpenTransactions();
     } else if (command == "batch") {
+      // access batch context in context manager
+      // example call: curl -XPOST --dump - --data '{}'  http://localhost:5555/_api/replication/batch
+      // the object may contain a "ttl" for the context
+
+      // POST - create batch id / handle
+      // PUT  - extend batch id / handle
+      // DEL  - delete batchid
+
       if (ServerState::instance()->isCoordinator()) {
         handleTrampolineCoordinator();
       } else {
         handleCommandBatch();
       }
     } else if (command == "inventory") {
+			// get overview of collections and idexes followed by some extra data
+      // example call: curl --dump - http://localhost:5555/_api/replication/inventory?batchId=75
+
+      // {
+      //    collections : [ ... ],
+      //    "state" : {
+      //      "running" : true,
+      //      "lastLogTick" : "10528",
+      //      "lastUncommittedLogTick" : "10531",
+      //      "totalEvents" : 3782,
+      //      "time" : "2017-07-19T21:50:59Z"
+      //    },
+      //   "tick" : "10531"
+      // }
+
       if (type != rest::RequestType::GET) {
         goto BAD_CALL;
       }
@@ -133,7 +158,10 @@ RestStatus RocksDBRestReplicationHandler::execute() {
         handleCommandInventory();
       }
     } else if (command == "keys") {
-      if (type != rest::RequestType::GET && type != rest::RequestType::POST &&
+      // calling this route potentially crashes the server
+      // preconditions for calling this route are unclear and undocumented -- FIXME
+      if (type != rest::RequestType::GET &&
+          type != rest::RequestType::POST &&
           type != rest::RequestType::PUT &&
           type != rest::RequestType::DELETE_REQ) {
         goto BAD_CALL;
@@ -144,8 +172,10 @@ RestStatus RocksDBRestReplicationHandler::execute() {
       }
 
       if (type == rest::RequestType::POST) {
+        // example: curl -XPOST --dump - 'http://localhost:5555/_db/_system/_api/replication/keys?collection=test&batchId=123' ; echo
         handleCommandCreateKeys();
       } else if (type == rest::RequestType::GET) {
+        // curl --dump - 'http://localhost:5555/_db/_system/_api/replication/keys/123?collection=_users' ; echo < id is batchid
         handleCommandGetKeys();
       } else if (type == rest::RequestType::PUT) {
         handleCommandFetchKeys();
@@ -153,6 +183,14 @@ RestStatus RocksDBRestReplicationHandler::execute() {
         handleCommandRemoveKeys();
       }
     } else if (command == "dump") {
+      // works on collections
+      // example: curl --dump - 'http://localhost:5555/_db/_system/_api/replication/dump?collection=test&batchId=115'
+      // requires batch-id
+			// does internally an
+      //   - get inventory
+      //   - purge local
+      //   - dump remote to local
+
       if (type != rest::RequestType::GET) {
         goto BAD_CALL;
       }
@@ -363,14 +401,18 @@ void RocksDBRestReplicationHandler::handleCommandBatch() {
       return;
     }
 
-    // extract ttl
-    // double expires =
-    // VelocyPackHelper::getNumericValue<double>(input->slice(), "ttl", 0);
     RocksDBReplicationContext* ctx = _manager->createContext();
     if (ctx == nullptr) {
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
                                      "unable to create replication context");
     }
+
+    // extract ttl
+    if (input->slice().hasKey("ttl")){
+      double ttl = VelocyPackHelper::getNumericValue<double>(input->slice(), "ttl", RocksDBReplicationContext::DefaultTTL);
+      ctx->use(ttl);
+    }
+
     RocksDBReplicationContextGuard(_manager, ctx);
     ctx->bind(_vocbase);  // create transaction+snapshot
 
@@ -410,8 +452,7 @@ void RocksDBRestReplicationHandler::handleCommandBatch() {
     }
 
     // extract ttl
-    double expires =
-        VelocyPackHelper::getNumericValue<double>(input->slice(), "ttl", 0);
+    double expires = VelocyPackHelper::getNumericValue<double>(input->slice(), "ttl", 0);
 
     int res = TRI_ERROR_NO_ERROR;
     bool busy;
@@ -1128,15 +1169,25 @@ void RocksDBRestReplicationHandler::handleCommandGetKeys() {
     }
   }
 
+  //first suffix needs to be the batch id
   std::string const& id = suffixes[1];
   uint64_t batchId = arangodb::basics::StringUtils::uint64(id);
+
+  // get context
   bool busy;
   RocksDBReplicationContext* ctx = _manager->find(batchId, busy);
-  if (busy || ctx == nullptr) {
+  if (ctx == nullptr) {
     generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_CURSOR_NOT_FOUND,
-                  "batchId not specified");
+                  "batchId not specified, expired or invalid in another way");
     return;
   }
+  if (busy) {
+    generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_CURSOR_NOT_FOUND,
+                  "RequestContext is busy");
+    return;
+  }
+
+  //lock context
   RocksDBReplicationContextGuard(_manager, ctx);
 
   VPackBuilder b;
@@ -1276,8 +1327,14 @@ void RocksDBRestReplicationHandler::handleCommandRemoveKeys() {
 ////////////////////////////////////////////////////////////////////////////////
 
 void RocksDBRestReplicationHandler::handleCommandDump() {
+  LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "enter handleCommandDump";
+
   bool found = false;
   uint64_t contextId = 0;
+
+
+  // contains dump options that might need to be inspected
+  // VPackSlice options = _request->payload();
 
   // get collection Name
   std::string const& collection = _request->value("collection");
@@ -1301,12 +1358,20 @@ void RocksDBRestReplicationHandler::handleCommandDump() {
   bool isBusy = false;
   RocksDBReplicationContext* context = _manager->find(contextId, isBusy);
   RocksDBReplicationContextGuard(_manager, context);
-  if (context == nullptr || isBusy) {
+
+  if (context == nullptr) {
     generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_HTTP_BAD_PARAMETER,
-                  "replication dump - unable to acquire context");
+                  "replication dump - unable to find context (it could be expired)");
     return;
   }
 
+  if (isBusy) {
+    generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_HTTP_BAD_PARAMETER,
+                  "replication dump - context is busy");
+    return;
+  }
+
+  // check for 28 compatibility
   bool compat28 = false;
   std::string const& value8 = _request->value("compat28", found);
 
@@ -1319,6 +1384,7 @@ void RocksDBRestReplicationHandler::handleCommandDump() {
       << "requested collection dump for collection '" << collection
       << "' using contextId '" << context->id() << "'";
 
+
   // TODO needs to generalized || velocypacks needs to support multiple slices
   // per response!
   auto response = dynamic_cast<HttpResponse*>(_response.get());
@@ -1328,6 +1394,7 @@ void RocksDBRestReplicationHandler::handleCommandDump() {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "invalid response type");
   }
 
+  // do the work!
   auto result =
       context->dump(_vocbase, collection, dump, determineChunkSize(), compat28);
 
@@ -2824,6 +2891,7 @@ int RocksDBRestReplicationHandler::processRestoreDataBatch(
 
   VPackBuilder builder;
 
+  //FIXME -- will not work with velocystream
   HttpRequest* httpRequest = dynamic_cast<HttpRequest*>(_request.get());
   if (httpRequest == nullptr) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "invalid request type");
@@ -2859,10 +2927,10 @@ int RocksDBRestReplicationHandler::processRestoreDataBatch(
         VPackSlice doc;
         TRI_replication_operation_e type = REPLICATION_INVALID;
 
-        int res = restoreDataParser(ptr, pos, invalidMsg, useRevision, errorMsg,
+        Result res = restoreDataParser(ptr, pos, invalidMsg, useRevision,
                                     key, builder, doc, type);
-        if (res != TRI_ERROR_NO_ERROR) {
-          return res;
+        if (res.fail()) {
+          return res.errorNumber();
         }
 
         // Put into array of all parsed markers:
@@ -3051,45 +3119,52 @@ int RocksDBRestReplicationHandler::processRestoreData(
   return res.errorNumber();
 }
 
-int restoreDataParser(char const* ptr, char const* pos,
+Result restoreDataParser(char const* bodyPtr, char const* bodyPos,
                       std::string const& invalidMsg, bool useRevision,
-                      std::string& errorMsg, std::string& key,
+                      std::string& key,
                       VPackBuilder& builder, VPackSlice& doc,
                       TRI_replication_operation_e& type) {
-  builder.clear();
+  // tries to read vpack data from a http body and does some checking
+  // if the format is likely to be replication data
+
+  // TODO - a function with the same name is in mmfiles - could it be unified?
+  //      - the name is rather confusing a new parser is created there is no
+  //        resotre or reset (something like tryParseHttpBody) seems more
+  //        suitable - not changing now because of the above point
+
+
+  Result rv;
+  builder.clear();// clear builder
 
   try {
-    VPackParser parser(builder);
-    parser.parse(ptr, static_cast<size_t>(pos - ptr));
+    VPackParser parser(builder); // create new parser with cleared builder
+    parser.parse(bodyPtr, static_cast<size_t>(bodyPos - bodyPtr));
   } catch (VPackException const&) {
-    // Could not parse the given string
-    errorMsg = invalidMsg;
 
-    return TRI_ERROR_HTTP_CORRUPTED_JSON;
+    // Could not parse the given string
+    rv.reset(TRI_ERROR_HTTP_CORRUPTED_JSON, invalidMsg);
   } catch (std::exception const&) {
     // Could not even build the string
-    errorMsg = invalidMsg;
-
-    return TRI_ERROR_HTTP_CORRUPTED_JSON;
+    rv.reset(TRI_ERROR_HTTP_CORRUPTED_JSON, invalidMsg);
   } catch (...) {
-    return TRI_ERROR_INTERNAL;
+    rv.reset(TRI_ERROR_INTERNAL);
   }
+
+  if (rv.fail()) { return rv; }
 
   VPackSlice const slice = builder.slice();
 
   if (!slice.isObject()) {
-    errorMsg = invalidMsg;
-
-    return TRI_ERROR_HTTP_CORRUPTED_JSON;
+    rv.reset(TRI_ERROR_HTTP_CORRUPTED_JSON, invalidMsg);
+    return rv;
   }
 
   type = REPLICATION_INVALID;
 
   for (auto const& pair : VPackObjectIterator(slice, true)) {
     if (!pair.key.isString()) {
-      errorMsg = invalidMsg;
-
-      return TRI_ERROR_HTTP_CORRUPTED_JSON;
+      rv.reset(TRI_ERROR_HTTP_CORRUPTED_JSON, invalidMsg);
+      return rv;
     }
 
     std::string const attributeName = pair.key.copyString();
@@ -3124,21 +3199,20 @@ int restoreDataParser(char const* ptr, char const* pos,
   }
 
   if (type == REPLICATION_MARKER_DOCUMENT && !doc.isObject()) {
-    errorMsg = "got document marker without contents";
-    return TRI_ERROR_HTTP_BAD_PARAMETER;
+    rv.reset(TRI_ERROR_HTTP_BAD_PARAMETER, "got document marker without contents");
+    return rv;
   }
 
   if (key.empty()) {
-    errorMsg = invalidMsg;
-
-    return TRI_ERROR_HTTP_BAD_PARAMETER;
+    rv.reset(TRI_ERROR_HTTP_BAD_PARAMETER, invalidMsg);
+    return rv;
   }
 
-  return TRI_ERROR_NO_ERROR;
+  return rv;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief determine the chunk size
+/// @brief determine the chunk size - from query url
 ////////////////////////////////////////////////////////////////////////////////
 
 uint64_t RocksDBRestReplicationHandler::determineChunkSize() const {
