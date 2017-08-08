@@ -87,7 +87,7 @@ to the [naming conventions](../NamingConventions/README.md).
   This option is meaningful for the MMFiles storage engine only.
 
 - *keyOptions* (optional): additional options for key generation. If
-  specified, then *keyOptions* should be a JSON array containing the
+  specified, then *keyOptions* should be a JSON object containing the
   following attributes (**note**: some of them are optional):
   - *type*: specifies the type of the key generator. The currently
     available generators are *traditional* and *autoincrement*.
