@@ -1,6 +1,8 @@
 devel
 -----
 
+* ui: added bind parameters to slow query history view
+
 * ui: fixed a bug when moving multiple documents was not possible
 
 * ui: added bind parameters to slow query history view
