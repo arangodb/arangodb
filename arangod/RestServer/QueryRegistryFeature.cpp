@@ -37,17 +37,17 @@ aql::QueryRegistry* QueryRegistryFeature::QUERY_REGISTRY = nullptr;
 
 QueryRegistryFeature::QueryRegistryFeature(ApplicationServer* server)
     : ApplicationFeature(server, "QueryRegistry"),
-      _queryTracking(true),
+      _trackSlowQueries(true),
+      _trackBindVars(true),
       _failOnWarning(false),
       _queryMemoryLimit(0),
-      _slowThreshold(10.0),
+      _slowQueryThreshold(10.0),
       _queryCacheMode("off"),
       _queryCacheEntries(128) {
   setOptional(false);
   requiresElevatedPrivileges(false);
   startsAfter("DatabasePath");
   startsAfter("Database");
-  startsAfter("MMFilesLogfileManager");
   startsAfter("Cluster");
 }
 
@@ -63,13 +63,16 @@ void QueryRegistryFeature::collectOptions(
                      new UInt64Parameter(&_queryMemoryLimit));
 
   options->addOption("--query.tracking", "whether to track slow AQL queries",
-                     new BooleanParameter(&_queryTracking));
+                     new BooleanParameter(&_trackSlowQueries));
+  
+  options->addOption("--query.tracking-with-bindvars", "whether to track bind vars with AQL queries",
+                     new BooleanParameter(&_trackBindVars));
   
   options->addOption("--query.fail-on-warning", "whether AQL queries should fail with errors even for recoverable warnings",
                      new BooleanParameter(&_failOnWarning));
   
   options->addOption("--query.slow-threshold", "threshold for slow AQL queries (in seconds)",
-                     new DoubleParameter(&_slowThreshold));
+                     new DoubleParameter(&_slowQueryThreshold));
 
   options->addOption("--query.cache-mode",
                      "mode for the AQL query result cache (on, off, demand)",

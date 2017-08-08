@@ -83,6 +83,8 @@ class MMFilesAllIndexIterator final : public IndexIterator {
 
   bool next(TokenCallback const& cb, size_t limit) override;
 
+  void skip(uint64_t count, uint64_t& skipped) override;
+
   void reset() override;
 
  private:
@@ -139,7 +141,7 @@ class MMFilesPrimaryIndex final : public Index {
 
   bool hasSelectivityEstimate() const override { return true; }
 
-  double selectivityEstimate(
+  double selectivityEstimateLocal(
       arangodb::StringRef const* = nullptr) const override {
     return 1.0;
   }

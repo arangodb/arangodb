@@ -203,9 +203,8 @@ arangodb::Result MMFilesCollection::persistProperties() {
   return res;
 }
 
-PhysicalCollection* MMFilesCollection::clone(LogicalCollection* logical,
-                                             PhysicalCollection* physical) {
-  return new MMFilesCollection(logical, physical);
+PhysicalCollection* MMFilesCollection::clone(LogicalCollection* logical) {
+  return new MMFilesCollection(logical, this);
 }
 
 /// @brief process a document (or edge) marker when opening a collection
@@ -484,7 +483,7 @@ MMFilesCollection::MMFilesCollection(LogicalCollection* collection,
       _cleanupIndexes(0),
       _persistentIndexes(0),
       _indexBuckets(Helper::readNumericValue<uint32_t>(
-          info, "indexBuckets", DatabaseFeature::defaultIndexBuckets())),
+          info, "indexBuckets", defaultIndexBuckets)),
       _useSecondaryIndexes(true),
       _doCompact(Helper::readBooleanValue(info, "doCompact", true)),
       _maxTick(0) {

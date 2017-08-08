@@ -3669,11 +3669,22 @@ void arangodb::aql::patchUpdateStatementsRule(
           modified = false;
           break;
         } else {
+          if (modified) {
+            // already saw the collection... that means we have seen the same
+            // collection two times in two FOR loops
+            modified = false;
+            // abort
+            break;
+          }
+          // saw the same collection in FOR as in UPDATE
+          if (n->isVarUsedLater(collectionNode->outVariable())) {
+            // must abort, because the variable produced by the FOR loop is
+            // read after it is updated
+            break;
+          }
           modified = true;
         }
-      }
-
-      if (type == EN::TRAVERSAL || type == EN::SHORTEST_PATH) {
+      } else if (type == EN::TRAVERSAL || type == EN::SHORTEST_PATH) {
         // unclear what will be read by the traversal
         modified = false;
         break;

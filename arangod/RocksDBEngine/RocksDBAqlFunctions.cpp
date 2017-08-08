@@ -225,7 +225,7 @@ static AqlValue buildGeoResult(transaction::Methods* trx,
     }
   } catch (...) {
     GeoIndex_CoordinatesFree(cors);
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
+    throw;
   }
 
   GeoIndex_CoordinatesFree(cors);
@@ -237,38 +237,34 @@ static AqlValue buildGeoResult(transaction::Methods* trx,
               return left._distance < right._distance;
             });
 
-  try {
-    ManagedDocumentResult mmdr;
-    transaction::BuilderLeaser builder(trx);
-    builder->openArray();
-    if (!attributeName.empty()) {
-      // We have to copy the entire document
-      for (auto& it : distances) {
-        VPackObjectBuilder docGuard(builder.get());
-        builder->add(attributeName, VPackValue(it._distance));
-        if (collection->readDocument(trx, it._token, mmdr)) {
-          VPackSlice doc(mmdr.vpack());
-          for (auto const& entry : VPackObjectIterator(doc)) {
-            std::string key = entry.key.copyString();
-            if (key != attributeName) {
-              builder->add(key, entry.value);
-            }
+  ManagedDocumentResult mmdr;
+  transaction::BuilderLeaser builder(trx);
+  builder->openArray();
+  if (!attributeName.empty()) {
+    // We have to copy the entire document
+    for (auto& it : distances) {
+      VPackObjectBuilder docGuard(builder.get());
+      builder->add(attributeName, VPackValue(it._distance));
+      if (collection->readDocument(trx, it._token, mmdr)) {
+        VPackSlice doc(mmdr.vpack());
+        for (auto const& entry : VPackObjectIterator(doc)) {
+          std::string key = entry.key.copyString();
+          if (key != attributeName) {
+            builder->add(key, entry.value);
           }
         }
       }
+    }
 
-    } else {
-      for (auto& it : distances) {
-        if (collection->readDocument(trx, it._token, mmdr)) {
-          mmdr.addToBuilder(*builder.get(), true);
-        }
+  } else {
+    for (auto& it : distances) {
+      if (collection->readDocument(trx, it._token, mmdr)) {
+        mmdr.addToBuilder(*builder.get(), true);
       }
     }
-    builder->close();
-    return AqlValue(builder.get());
-  } catch (...) {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
   }
+  builder->close();
+  return AqlValue(builder.get());
 }
 
 /// @brief function NEAR

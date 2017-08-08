@@ -13,7 +13,7 @@ This route tries to cache all index entries
 of this collection into the main memory.
 Therefore it iterates over all indexes of the collection
 and stores the indexed values, not the entire document data,
-in Memory.
+in memory.
 All lookups that could be found in the cache are much faster
 than lookups not stored in the cache so you get a nice performance boost.
 It is also guaranteed that the cache is consistent with the stored data.
@@ -28,7 +28,7 @@ If the index is larger than your memory limit this function will fill up values
 up to this limit and for the time being there is no way to control which indexes
 of the collection should have priority over others.
 
-On sucess this function returns `true`
+On sucess this function returns an object with attribute `result` set to `true`
 
 @RESTRETURNCODES
 

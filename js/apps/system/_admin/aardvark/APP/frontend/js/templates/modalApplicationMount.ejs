@@ -27,7 +27,7 @@
     <li><a href="#newApp" data-toggle="tab" id="tab-new">New Service</a></li>
     <li class="active"><a href="#appstore" data-toggle="tab" id="tab-store"><img src="img/arangodb_logo_small.png" alt="ArangoDB" class="tab-icon" />Store</a></li>
     <li><a href="#github" data-toggle="tab" id="tab-git">Github</a></li>
-    <li><a href="#zip" data-toggle="tab" id="tab-zip">Zip</a></li>
+    <li><a href="#zip" data-toggle="tab" id="tab-zip">Upload</a></li>
   </ul>
 
   <div class="tab-content" id="tab-content-application-info">
@@ -114,7 +114,7 @@
     <div class="tab-pane" id="github">
       <div>
         <p>
-          Download a foxx application from a public <a href="https://www.github.com">github.com</a> repository. In order to define a version please add a <a href="https://git-scm.com/book/en/v2/Git-Basics-Tagging">git tag</a> to your repository using the following format: "v1.2.3". To connect to github your username and the name of the repository are sufficient.
+          Download a Foxx service from a public <a href="https://www.github.com">github.com</a> repository. In order to define a version please add a <a href="https://git-scm.com/book/en/v2/Git-Basics-Tagging">git tag</a> to your repository using the following format: "v1.2.3". To connect to github your username and the name of the repository are sufficient.
         </p>
         <table>
           <tr class="tableRow">
@@ -152,10 +152,7 @@
     <div class="tab-pane" id="zip">
       <div>
         <p>
-          Upload a ZIP-packed foxx application to ArangoDB.
-          The ZIP file has to be created from the folder containing the manifest.json file of your Service, do not include the databases folder structure created by ArangoDB.
-          This is also compatible with the download format for ZIP files on <a href="https://www.github.com">github.com</a>.
-          Remember to change to a new version number in the manifest.json when uploading an update.
+Upload a Foxx service bundle. The Foxx service bundle should be a zip archive containing all service files as a directory structure, including the manifest and any required <code style="padding: 0px 2px; font-weight: 10pt;">node_modules</code> dependencies. If your service doesn't have any dependencies, configuration or scripts you can also upload a single JavaScript file that will act as the service's entry point or "main" file.
         </p>
         <table>
           <tr class="tableRow">
@@ -172,7 +169,7 @@
           </tr>
         </table>
       </div>
-      <div id="upload-foxx-zip">Upload Foxx.zip</div>
+      <div id="upload-foxx-zip">Upload File</div>
     </div>
   </div>
 </script>

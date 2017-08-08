@@ -137,21 +137,21 @@ from the database access level in the `_system` database, it is
 *Administrate*. Note that this means that database access level
 *Access* does not grant a user server access level *Administrate*.
 
-### Default Database Access Level
+### Wildcard Database Access Level
 
 With the above definition, one must define the database access level for
 all database/user pairs in the server, which would be very tedious. In
 order to simplify this process, it is possible to define, for a user,
-a default database access level. This default is used if the database
+a wildcard database access level. This wildcard is used if the database
 access level is *not* explicitly defined for a certain database.
 
-Changing the default database access level for a user will change the
+Changing the wildcard database access level for a user will change the
 access level for all databases that have no explicitly defined
 access level. Note that this includes databases which will be created
 in the future and for which no explicit access levels are set for that
 user!
 
-If you delete the default, it is handled as if *No Access* was defined.
+If you delete the wildard, the default access level is defined as *No Access*.
 
 *Example*
 
@@ -169,22 +169,22 @@ This will give the user *JohnSmith* the following database level access:
 - database `shop2`: *No Access*
 - database `something`: *Access*
 
-If the default `*` is changed from *Access* to *No Access* then the
+If the wildcard `*` is changed from *Access* to *No Access* then the
 permissions will change as follows:
 
 - database `shop1`: *Administrate*
 - database `shop2`: *No Access*
 - database `something`: *No Access*
 
-### Default Collection Access Level
+### Wildcard Collection Access Level
 
-For each user and database there is a default collection access level.
+For each user and database there is a wildcard collection access level.
 This level is used for all collections pairs without an explicitly
 defined collection access level. Note that this includes collections
 which will be created in the future and for which no explicit access
 levels are set for a that user!
 
-If you delete the default, it is handled as if *No Access* was defined.
+If you delete the wildcard, the system defaults to *No Access*.
 
 *Example*
 
@@ -216,28 +216,37 @@ Database `shop1`, collection `products` directly matches a defined
 access level. This level is defined as *Read-Only*.
 
 Database `shop1`, collection `customers` does not match a defined access
-level. However, database `shop1` matches and the default in this
+level. However, database `shop1` matches and the wildcard in this
 database for collection level is *No Access*.
 
 Database `shop2`, collection `reviews` does not match a defined access
-level. However, database `shop2` matches and the default in this
+level. However, database `shop2` matches and the wildcard in this
 database for collection level is *Read-Only*.
 
 Database `somehing`, collection `else` does not match a defined access
 level. The database `something` also does have a direct matches.
-Therefore the default database is selected. The level is *Read/Write*.
+Therefore the wildcard is selected. The level is *Read/Write*.
 
 ### System Collections
 
-The access level for system collections cannot be changed.
+The access level for system collections cannot be changed. They follow 
+different rules than user defined collections and may change without further
+notice. Currently the system collections follow these rules:
 
-No user has access to the *\_users* collection in the *\_system*
-database. All changes to the access levels must be done using the
-*@arangodb/users* module or the web interface.
-
-All user have *Read/Write* access to the *\_frontend* collection in
-databases they have either *Access* or *Administrate* access level.
+| collection            | access level |
+|-----------------------|--------------|
+| `_users` (in _system) | No Access    |
+| `_queues`             | Read-Only    |
+| `_frontend`           | Read/Write   |
+| `*`                   | *same as db* |
 
 All other system collections have access level *Read/Write* if the
 user has *Administrate* access to the database. They have access level
 *Read/Only* if the user has *Access* to the database.
+
+To modify these system collections you should always use the 
+specialized APIs provided by ArangoDB. For example
+no user has access to the *\_users* collection in the *\_system*
+database. All changes to the access levels must be done using the
+*@arangodb/users* module, the `/_users/` API or the web interface.
+

@@ -90,6 +90,13 @@ RocksDBCollection::RocksDBCollection(LogicalCollection* collection,
       _cache(nullptr),
       _cachePresent(false),
       _useCache(false) {
+  
+  VPackSlice s = info.get("isVolatile");
+  if (s.isBoolean() && s.getBoolean()) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(
+          TRI_ERROR_BAD_PARAMETER,
+          "volatile collections are unsupported in the RocksDB engine");
+  }
   addCollectionMapping(_objectId, _logicalCollection->vocbase()->id(),
                        _logicalCollection->cid());
   if (_useCache) {
@@ -136,6 +143,7 @@ void RocksDBCollection::setPath(std::string const&) {
 
 arangodb::Result RocksDBCollection::updateProperties(VPackSlice const& slice,
                                                      bool doSync) {
+
   // nothing to do
   return arangodb::Result{};
 }
@@ -146,9 +154,8 @@ arangodb::Result RocksDBCollection::persistProperties() {
   return arangodb::Result{};
 }
 
-PhysicalCollection* RocksDBCollection::clone(LogicalCollection* logical,
-                                             PhysicalCollection* physical) {
-  return new RocksDBCollection(logical, physical);
+PhysicalCollection* RocksDBCollection::clone(LogicalCollection* logical) {
+  return new RocksDBCollection(logical, this);
 }
 
 void RocksDBCollection::getPropertiesVPack(velocypack::Builder& result) const {
@@ -594,13 +601,14 @@ bool RocksDBCollection::dropIndex(TRI_idx_iid_t iid) {
         _indexes.erase(_indexes.begin() + i);
         events::DropIndex("", std::to_string(iid), TRI_ERROR_NO_ERROR);
         // toVelocyPackIgnore will take a read lock and we don't need the
-        // lock anymore, we will always return
+        // lock anymore, this branch always returns
         guard.unlock();
 
         VPackBuilder builder = _logicalCollection->toVelocyPackIgnore(
             {"path", "statusString"}, true, true);
         StorageEngine* engine = EngineSelectorFeature::ENGINE;
 
+        // log this event in the WAL and in the collection meta-data
         int res =
             static_cast<RocksDBEngine*>(engine)->writeCreateCollectionMarker(
                 _logicalCollection->vocbase()->id(), _logicalCollection->cid(),
@@ -716,6 +724,21 @@ void RocksDBCollection::truncate(transaction::Methods* trx,
     rindex->truncate(trx);
   }
   _needToPersistIndexEstimates = true;
+  
+  
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  //check if documents have been deleted
+  if (mthd->countInBounds(documentBounds, true)) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "deletion check in collection truncate failed - not all documents have been deleted");
+  }
+  
+  for (std::shared_ptr<Index> const& index : _indexes) {
+    RocksDBIndex* rindex = static_cast<RocksDBIndex*>(index.get());
+    if (mthd->countInBounds(rindex->getBounds(),true)) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "deletion check in collection truncate failed - not all documents in an index have been deleted");
+    }
+  }
+#endif
 }
 
 DocumentIdentifierToken RocksDBCollection::lookupKey(transaction::Methods* trx,
@@ -745,7 +768,6 @@ Result RocksDBCollection::read(transaction::Methods* trx,
 bool RocksDBCollection::readDocument(transaction::Methods* trx,
                                      DocumentIdentifierToken const& token,
                                      ManagedDocumentResult& result) {
-  // TODO: why do we have read(), readDocument() and lookupKey()?
   RocksDBToken const* tkn = static_cast<RocksDBToken const*>(&token);
   TRI_voc_rid_t revisionId = tkn->revisionId();
   if (revisionId != 0) {
@@ -759,7 +781,6 @@ bool RocksDBCollection::readDocument(transaction::Methods* trx,
 bool RocksDBCollection::readDocumentWithCallback(transaction::Methods* trx,
                                                  DocumentIdentifierToken const& token,
                                                  IndexIterator::DocumentCallback const& cb) {
-  // TODO: why do we have read(), readDocument() and lookupKey()?
   RocksDBToken const* tkn = static_cast<RocksDBToken const*>(&token);
   TRI_voc_rid_t revisionId = tkn->revisionId();
   if (revisionId != 0) {
@@ -1235,7 +1256,10 @@ arangodb::Result RocksDBCollection::fillIndexes(
       break;
     }
   }
-  TRI_ASSERT(primIndex);
+  TRI_ASSERT(primIndex != nullptr);
+  // FIXME: assert for an exclusive lock on this collection
+  TRI_ASSERT(trx->state()->collection(_logicalCollection->cid(),
+                                      AccessMode::Type::EXCLUSIVE) != nullptr);
 
   ManagedDocumentResult mmdr;
   RocksDBIndex* ridx = static_cast<RocksDBIndex*>(added.get());
@@ -1243,7 +1267,10 @@ arangodb::Result RocksDBCollection::fillIndexes(
   std::unique_ptr<IndexIterator> it(new RocksDBAllIndexIterator(
       _logicalCollection, trx, &mmdr, primaryIndex(), false));
 
-  rocksdb::TransactionDB* db = globalRocksDB();
+  // fillindex can be non transactional
+  rocksdb::DB* db = globalRocksDB()->GetBaseDB();
+  TRI_ASSERT(db != nullptr);
+  
   uint64_t numDocsWritten = 0;
   // write batch will be reset each 5000 documents
   rocksdb::WriteBatchWithIndex batch(ridx->columnFamily()->GetComparator(),
@@ -1848,7 +1875,7 @@ void RocksDBCollection::recalculateIndexEstimates() {
 }
 
 void RocksDBCollection::recalculateIndexEstimates(
-    std::vector<std::shared_ptr<Index>>& indexes) {
+    std::vector<std::shared_ptr<Index>> const& indexes) {
   // start transaction to get a collection lock
   arangodb::SingleCollectionTransaction trx(
       arangodb::transaction::StandaloneContext::Create(
@@ -1861,6 +1888,7 @@ void RocksDBCollection::recalculateIndexEstimates(
 
   for (auto const& it : indexes) {
     auto idx = static_cast<RocksDBIndex*>(it.get());
+    TRI_ASSERT(idx != nullptr);
     idx->recalculateEstimates();
   }
   _needToPersistIndexEstimates = true;

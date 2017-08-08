@@ -104,10 +104,8 @@ class RocksDBEdgeIndex final : public RocksDBIndex {
 
   bool hasSelectivityEstimate() const override { return true; }
 
-  double selectivityEstimate(
+  double selectivityEstimateLocal(
       arangodb::StringRef const* = nullptr) const override;
-
-  size_t memory() const override;
 
   void toVelocyPack(VPackBuilder&, bool, bool) const override;
 
@@ -115,8 +113,6 @@ class RocksDBEdgeIndex final : public RocksDBIndex {
       transaction::Methods*,
       std::vector<std::pair<TRI_voc_rid_t, arangodb::velocypack::Slice>> const&,
       std::shared_ptr<arangodb::basics::LocalTaskQueue> queue) override;
-
-  int drop() override;
 
   bool hasBatchInsert() const override { return false; }
 
@@ -141,8 +137,6 @@ class RocksDBEdgeIndex final : public RocksDBIndex {
 
   /// @brief Warmup the index caches.
   void warmup(arangodb::transaction::Methods* trx) override;
-
-  int cleanup() override;
 
   void serializeEstimate(std::string& output) const override;
 

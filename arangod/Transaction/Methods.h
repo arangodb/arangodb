@@ -158,6 +158,7 @@ class Methods {
   }
 
   inline transaction::Context* transactionContextPtr() const {
+    TRI_ASSERT(_transactionContextPtr != nullptr);
     return _transactionContextPtr;
   }
 
