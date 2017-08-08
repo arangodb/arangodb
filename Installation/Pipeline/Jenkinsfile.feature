@@ -728,7 +728,7 @@ def buildEdition(edition, os) {
                 sh "for i in log-output; do test -e \"\$i\" && mv \"\$i\" ${arch} || true; done"
             }
             else if (os == 'windows') {
-                powershell "Move-Item -Path log-output -Force -Destination ${arch}"
+                powershell "Move-Item -ErrorAction SilentlyContinue -Path log-output -Force -Destination ${arch}"
             }
         }
     }
