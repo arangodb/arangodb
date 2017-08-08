@@ -43,11 +43,11 @@ WorkFlow RunTests {
     $cluster = "true"
 
     $tests = @(
-      "arangobench",
-      "arangosh",
-      "authentication",
-      "authentication_parameters",
-      "config",
+      #"arangobench",
+      #"arangosh",
+      #"authentication",
+      #"authentication_parameters",
+      #"config",
       #"dump",
       #"dump_authentication",
       "endpoints",
@@ -78,6 +78,7 @@ WorkFlow RunTests {
       $testargs = $testdef[2].Split(" ")
     }
 
+    Write-Host "Starting ${test}!"
     New-Item -Force loggi -type Directory
     $log = "loggi\" + $name + ".log"
 
@@ -95,6 +96,7 @@ WorkFlow RunTests {
 
       Invoke-Command -ScriptBlock $testscript
     }
+    Write-Host "Done with ${test}!"
 
     if (!$res) {
        $WORKFLOW:total++
