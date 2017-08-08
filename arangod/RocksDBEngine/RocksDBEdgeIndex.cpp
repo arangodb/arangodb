@@ -635,7 +635,6 @@ void RocksDBEdgeIndex::warmup(transaction::Methods* trx) {
     LOG_TOPIC(DEBUG, Logger::ROCKSDB)
         << "Cannot use multithreaded edge index warmup";
     this->warmupInternal(trx, bounds.start(), bounds.end());
-    ;
     return;
   }
   std::string firstKey = it->key().ToString();
@@ -644,7 +643,6 @@ void RocksDBEdgeIndex::warmup(transaction::Methods* trx) {
     LOG_TOPIC(DEBUG, Logger::ROCKSDB)
         << "Cannot use multithreaded edge index warmup";
     this->warmupInternal(trx, bounds.start(), bounds.end());
-    ;
     return;
   }
   std::string lastKey = it->key().ToString();
