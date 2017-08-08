@@ -722,7 +722,7 @@
     confirmMoveSelectedDocs: function () {
       var toMove = this.getSelectedDocs();
       var self = this;
-      var toCollection = $('.modal-body').last().find('#move-documents-to').val();
+      var toCollection = $('#move-documents-to').val();
 
       var callback = function () {
         this.collection.getDocuments(this.getDocsCallback.bind(this));

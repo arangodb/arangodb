@@ -1,9 +1,12 @@
 devel
 -----
 
-
 * fixed an isse with restoring of system collections and user rights.
   It was not possible to restore users into an authenticated server.
+
+* ui: fixed a bug when moving multiple documents was not possible
+
+* ui: added bind parameters to slow query history view
 
 * fixed docs for issue #2968
 
