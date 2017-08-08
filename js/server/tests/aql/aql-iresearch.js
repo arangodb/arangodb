@@ -49,10 +49,10 @@ function iResearchAqlTestSuite () {
       var meta = { links: { "UnitTestsCollection": { includeAllFields: true } } };
       v.properties(meta);
 
-      c.save({ a: "foo", b: "bar" });
-      c.save({ a: "foo", b: "baz" });
-      c.save({ a: "bar", b: "foo" });
-      c.save({ a: "baz", b: "foo" });
+      c.save({ a: "foo", b: "bar" }, { waitForSync: true });
+      c.save({ a: "foo", b: "baz" }, { waitForSync: true });
+      c.save({ a: "bar", b: "foo" }, { waitForSync: true });
+      c.save({ a: "baz", b: "foo" }, { waitForSync: true });
     },
 
     tearDown : function () {
