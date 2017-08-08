@@ -78,7 +78,8 @@ WorkFlow RunTests {
       $testargs = $testdef[2].Split(" ")
     }
 
-    $log = "log-output\" + $name + ".log"
+    New-Item -Force loggi -type Directory
+    $log = "loggi\" + $name + ".log"
 
     $myport = $WORKFLOW:minPort
     $WORKFLOW:minPort += $portInterval
