@@ -2955,7 +2955,8 @@ int RocksDBRestReplicationHandler::processRestoreDataBatch(
         // In the _users case we silently remove the _key value.
         builder.openObject();
         for (auto const& it : VPackObjectIterator(doc)) {
-          if (StringRef(it.key) != StaticStrings::KeyString) {
+          if (StringRef(it.key) != StaticStrings::KeyString && 
+              StringRef(it.key) != StaticStrings::IdString) {
             builder.add(it.key);
             builder.add(it.value);
           }

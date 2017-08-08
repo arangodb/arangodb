@@ -2170,22 +2170,51 @@ int MMFilesRestReplicationHandler::processRestoreDataBatch(
   {
     VPackArrayBuilder guard(&builder);
 
-    for (auto const& p : latest) {
-      VPackSlice const marker = allMarkersSlice.at(p.second);
-      VPackSlice const typeSlice = marker.get("type");
-      TRI_replication_operation_e type = REPLICATION_INVALID;
-      if (typeSlice.isNumber()) {
-        int typeInt = typeSlice.getNumericValue<int>();
-        if (typeInt == 2301) {  // pre-3.0 type for edges
-          type = REPLICATION_MARKER_DOCUMENT;
-        } else {
-          type = static_cast<TRI_replication_operation_e>(typeInt);
+    if (collectionName != "_users") {
+      for (auto const& p : latest) {
+        VPackSlice const marker = allMarkersSlice.at(p.second);
+        VPackSlice const typeSlice = marker.get("type");
+        TRI_replication_operation_e type = REPLICATION_INVALID;
+        if (typeSlice.isNumber()) {
+          int typeInt = typeSlice.getNumericValue<int>();
+          if (typeInt == 2301) {  // pre-3.0 type for edges
+            type = REPLICATION_MARKER_DOCUMENT;
+          } else {
+            type = static_cast<TRI_replication_operation_e>(typeInt);
+          }
+        }
+        if (type == REPLICATION_MARKER_DOCUMENT) {
+          VPackSlice const doc = marker.get("data");
+          TRI_ASSERT(doc.isObject());
+          builder.add(doc);
         }
       }
-      if (type == REPLICATION_MARKER_DOCUMENT) {
-        VPackSlice const doc = marker.get("data");
-        TRI_ASSERT(doc.isObject());
-        builder.add(doc);
+    } else {
+      // Special-case for _users, we need to remove the _key and _id from the marker
+      for (auto const& p : latest) {
+        VPackSlice const marker = allMarkersSlice.at(p.second);
+        VPackSlice const typeSlice = marker.get("type");
+        TRI_replication_operation_e type = REPLICATION_INVALID;
+        if (typeSlice.isNumber()) {
+          int typeInt = typeSlice.getNumericValue<int>();
+          if (typeInt == 2301) {  // pre-3.0 type for edges
+            type = REPLICATION_MARKER_DOCUMENT;
+          } else {
+            type = static_cast<TRI_replication_operation_e>(typeInt);
+          }
+        }
+        if (type == REPLICATION_MARKER_DOCUMENT) {
+          VPackSlice const doc = marker.get("data");
+          TRI_ASSERT(doc.isObject());
+          builder.openObject();
+          for (auto const& it : VPackObjectIterator(doc)) {
+            if (StringRef(it.key) != StaticStrings::KeyString && StringRef(it.key) != StaticStrings::IdString) {
+              builder.add(it.key);
+              builder.add(it.value);
+            }
+          }
+          builder.close();
+        }
       }
     }
   }
