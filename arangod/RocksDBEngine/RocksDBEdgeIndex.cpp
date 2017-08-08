@@ -632,13 +632,13 @@ void RocksDBEdgeIndex::warmup(transaction::Methods* trx) {
   // get the first and last actual key
   it->Seek(bounds.start());
   if (!it->Valid()) {
-    LOG_TOPIC(INFO, Logger::ROCKSDB) << "Edge index is empty";
+    LOG_TOPIC(DEBUG, Logger::ROCKSDB) << "Edge index is empty";
     return;
   }
   std::string firstKey = it->key().ToString();
   it->SeekForPrev(bounds.end());
   if (!it->Valid()) {
-    LOG_TOPIC(INFO, Logger::ROCKSDB) << "Edge index is empty";
+    LOG_TOPIC(DEBUG, Logger::ROCKSDB) << "Edge index is empty";
     return;
   }
   std::string lastKey = it->key().ToString();
@@ -665,10 +665,12 @@ void RocksDBEdgeIndex::warmup(transaction::Methods* trx) {
   auto scheduler = SchedulerFeature::SCHEDULER;
   scheduler->post([&] {
     TRI_DEFER(done = true); // median is excluded
-    this->warmupInternal(trx, firstKey, median);
+    if (!scheduler->isStopping()) {
+      this->warmupInternal(trx, firstKey, median);
+    }
   });
   this->warmupInternal(trx, median, lastKey);
-  while (!done) {
+  while (!done && !scheduler->isStopping()) {
     usleep(10000);
   }
 }

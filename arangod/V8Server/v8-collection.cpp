@@ -3311,7 +3311,7 @@ static void JS_WarmupVocbaseCol(
       idx->warmup(&trx);
     });
   }
-  while (numTrx > 0) {
+  while (numTrx > 0 && !schdler->isStopping()) {
     usleep(50000);
   }
 
