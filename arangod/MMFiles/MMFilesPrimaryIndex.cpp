@@ -156,6 +156,24 @@ bool MMFilesAllIndexIterator::next(TokenCallback const& cb, size_t limit) {
   return true;
 }
 
+// Skip the first count-many entries
+void MMFilesAllIndexIterator::skip(uint64_t count, uint64_t& skipped) {
+  while (count > 0) {
+    MMFilesSimpleIndexElement element;
+    if (_reverse) {
+      element = _index->findSequentialReverse(&_context, _position);
+    } else {
+      element = _index->findSequential(&_context, _position, _total);
+    }
+    if (element) {
+      ++skipped;
+      --count;
+    } else {
+      break;
+    }
+  }
+}
+
 void MMFilesAllIndexIterator::reset() { _position.reset(); }
 
 MMFilesAnyIndexIterator::MMFilesAnyIndexIterator(

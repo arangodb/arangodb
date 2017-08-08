@@ -134,35 +134,6 @@ RocksDBPrimaryIndex::RocksDBPrimaryIndex(
 
 RocksDBPrimaryIndex::~RocksDBPrimaryIndex() {}
 
-/// @brief return the number of documents from the index
-size_t RocksDBPrimaryIndex::size() const {
-  // TODO
-  return 0;
-}
-
-/// @brief return the memory usage of the index
-size_t RocksDBPrimaryIndex::memory() const {
-  rocksdb::TransactionDB* db = rocksutils::globalRocksDB();
-  RocksDBKeyBounds bounds = RocksDBKeyBounds::PrimaryIndex(_objectId);
-  rocksdb::Range r(bounds.start(), bounds.end());
-  uint64_t out;
-  db->GetApproximateSizes(
-      RocksDBColumnFamily::primary(), &r, 1, &out,
-      static_cast<uint8_t>(
-          rocksdb::DB::SizeApproximationFlags::INCLUDE_MEMTABLES |
-          rocksdb::DB::SizeApproximationFlags::INCLUDE_FILES));
-  return static_cast<size_t>(out);
-}
-
-int RocksDBPrimaryIndex::cleanup() {
-  rocksdb::TransactionDB* db = rocksutils::globalRocksDB();
-  rocksdb::CompactRangeOptions opts;
-  RocksDBKeyBounds bounds = RocksDBKeyBounds::PrimaryIndex(_objectId);
-  rocksdb::Slice b = bounds.start(), e = bounds.end();
-  db->CompactRange(opts, bounds.columnFamily(), &b, &e);
-  return TRI_ERROR_NO_ERROR;
-}
-
 /// @brief return a VelocyPack representation of the index
 void RocksDBPrimaryIndex::toVelocyPack(VPackBuilder& builder, bool withFigures,
                                        bool forPersistence) const {
@@ -251,15 +222,6 @@ Result RocksDBPrimaryIndex::removeInternal(transaction::Methods* trx,
   Result r = mthds->Delete(_cf, key);
   // rocksutils::convertStatus(status, rocksutils::StatusHint::index);
   return IndexResult(r.errorNumber(), this);
-}
-
-/// @brief called when the index is dropped
-int RocksDBPrimaryIndex::drop() {
-  // First drop the cache all indexes can work without it.
-  RocksDBIndex::drop();
-  return rocksutils::removeLargeRange(rocksutils::globalRocksDB(),
-                                      RocksDBKeyBounds::PrimaryIndex(_objectId))
-      .errorNumber();
 }
 
 /// @brief checks whether the index supports the condition
