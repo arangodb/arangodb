@@ -1,6 +1,8 @@
 devel
 -----
 
+* fixed issue #2977: Documentation for db._createDatabase is wrong
+
 * ui: added bind parameters to slow query history view
 
 * ui: fixed a bug when moving multiple documents was not possible
