@@ -737,6 +737,7 @@ def buildEdition(edition, os) {
                          artifacts: "${arch}/**",
                          defaultExcludes: false
     }
+    echo "PENG"
 }
 
 def buildStepCheck(edition, os, full) {
