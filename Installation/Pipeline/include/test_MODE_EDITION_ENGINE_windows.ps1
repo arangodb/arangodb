@@ -78,9 +78,8 @@ WorkFlow RunTests {
       $testargs = $testdef[2].Split(" ")
     }
 
-    Write-Host "Starting ${test}!"
-    New-Item -Force loggi -type Directory
-    $log = "loggi\" + $name + ".log"
+    New-Item -Force loggiaaa -type Directory
+    $log = "loggiaaa\" + $name + ".log"
 
     $myport = $WORKFLOW:minPort
     $WORKFLOW:minPort += $portInterval
@@ -96,7 +95,6 @@ WorkFlow RunTests {
 
       Invoke-Command -ScriptBlock $testscript
     }
-    Write-Host "Done with ${test}!"
 
     if (!$res) {
        $WORKFLOW:total++
