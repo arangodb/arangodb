@@ -560,7 +560,7 @@ bool Manager::rebalance(bool onlyCalculate) {
 
   if (!onlyCalculate) {
     
-    LOG_TOPIC(ERR, Logger) << "Rebalancing: _globalHighwaterMark " << _globalHighwaterMark;
+    LOG_TOPIC(ERR, Logger::FIXME) << "Rebalancing: _globalHighwaterMark " << _globalHighwaterMark;
     shrinkOvergrownCaches(TaskEnvironment::rebalancing);
 
     if (_rebalancingTasks.load() == 0) {
