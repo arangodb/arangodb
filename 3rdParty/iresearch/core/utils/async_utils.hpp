@@ -46,7 +46,7 @@ class IRESEARCH_API busywait_mutex final {
 class IRESEARCH_API read_write_mutex final {
  public:
   // for use with std::lock_guard/std::unique_lock for read operations
-  class read_mutex: private util::noncopyable {
+  class read_mutex {
    public:
     read_mutex(read_write_mutex& mutex): mutex_(mutex) {}
     void lock() { mutex_.lock_read(); }
@@ -57,7 +57,7 @@ class IRESEARCH_API read_write_mutex final {
   };
 
   // for use with std::lock_guard/std::unique_lock for write operations
-  class write_mutex: private util::noncopyable {
+  class write_mutex {
    public:
     write_mutex(read_write_mutex& mutex): mutex_(mutex) {}
     void lock() { mutex_.lock_write(); }
