@@ -206,6 +206,8 @@ bool Manager::resize(uint64_t newGlobalLimit) {
     _state.unlock();
     return false;
   }
+  
+  LOG_TOPIC(ERR, Logger::FIXME) << "Changing global manager size to " << newGlobalLimit;
 
   bool success = true;
 
@@ -557,6 +559,8 @@ bool Manager::rebalance(bool onlyCalculate) {
   }
 
   if (!onlyCalculate) {
+    
+    LOG_TOPIC(ERR, Logger) << "Rebalancing: _globalHighwaterMark " << _globalHighwaterMark;
     shrinkOvergrownCaches(TaskEnvironment::rebalancing);
 
     if (_rebalancingTasks.load() == 0) {
