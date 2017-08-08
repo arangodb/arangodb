@@ -27,16 +27,16 @@
 // / @author Copyright 2012-2014, triAGENS GmbH, Cologne, Germany
 // //////////////////////////////////////////////////////////////////////////////
 
-var internal = require('internal');
-var arangodb = require('@arangodb');
-var arangosh = require('@arangodb/arangosh');
+const internal = require('internal');
+const arangodb = require('@arangodb');
+const arangosh = require('@arangodb/arangosh');
 
 // creates a new user
 exports.save = function (user, passwd, active, extra, changePassword) {
-  var db = internal.db;
+  let db = internal.db;
 
-  var uri = '_api/user/';
-  var data = {user: user};
+  let uri = '_api/user/';
+  let data = {user: user};
 
   if (passwd !== undefined) {
     data.passwd = passwd;
@@ -54,7 +54,7 @@ exports.save = function (user, passwd, active, extra, changePassword) {
     data.changePassword = changePassword;
   }
 
-  var requestResult = db._connection.POST(uri, JSON.stringify(data));
+  let requestResult = db._connection.POST(uri, JSON.stringify(data));
   return arangosh.checkRequestResult(requestResult);
 };
 
@@ -235,7 +235,7 @@ exports.updateConfigData = function (username, key, value) {
   arangosh.checkRequestResult(requestResult);
 };
 
-// one config data (key != null) or all (key == null)    
+// one config data (key != null) or all (key == null)
 exports.configData = function (username, key) {
   var db = internal.db;
   var requestResult;
@@ -256,11 +256,11 @@ exports.configData = function (username, key) {
   return arangosh.checkRequestResult(requestResult).result;
 };
 
-// one db permission data (key != null) or all (key == null)    
+// one db permission data (key != null) or all (key == null)
 exports.permission = function (username, dbName, coll) {
-  var db = internal.db;
-  var requestResult;
-  var uri;
+  let db = internal.db;
+  let requestResult;
+  let uri;
 
   if (dbName === undefined || dbName === null) {
     uri = '_api/user/' + encodeURIComponent(username)
@@ -277,4 +277,19 @@ exports.permission = function (username, dbName, coll) {
   }
 
   return arangosh.checkRequestResult(requestResult).result;
+};
+
+exports.currentUser = function() {
+  return internal.arango.connectedUser();
+};
+
+exports.isAuthActive = function() {
+  let active = false;
+  try {
+    let c = internal.db._collection("_users");
+    internal.print(c.properties());
+  } catch(e) {
+    active = true;
+  }
+  return active;
 };

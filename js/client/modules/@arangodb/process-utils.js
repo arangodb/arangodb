@@ -927,14 +927,7 @@ function startInstanceCluster (instanceInfo, protocol, options,
   let count = 0;
   while (true) {
     ++count;
-    if (count === 500) {
-      instanceInfo.arangods.forEach(arangod => {
-        killExternal(arangod.pid, abortSignal);
-        analyzeServerCrash(arangod, options, 'startup timeout; forcefully terminating ' + arangod.role + ' with pid: ' + arangod.pid);
-      });
-
-      throw new Error('cluster startup timed out! bailing out!');
-    }
+    
     instanceInfo.arangods.forEach(arangod => {
       const reply = download(arangod.url + '/_api/version', '', makeAuthorizationHeaders(authOpts));
       if (!reply.error && reply.code === 200) {
@@ -948,7 +941,7 @@ function startInstanceCluster (instanceInfo, protocol, options,
           analyzeServerCrash(arangod, options, 'startup timeout; forcefully terminating ' + arangod.role + ' with pid: ' + arangod.pid);
         });
 
-        throw new Error('cluster startup failed! bailing out!');
+        throw new Error(`cluster startup: pid ${arangod.pid} no longer alive! bailing out!`);
       }
       wait(0.5, false);
       return true;
@@ -966,9 +959,11 @@ function startInstanceCluster (instanceInfo, protocol, options,
 
     // Didn't startup in 10 minutes? kill it, give up.
     if (count > 1200) {
-      killExternal(instanceInfo.pid, abortSignal);
-      analyzeServerCrash(instanceInfo, options, 'startup timeout; forcefully terminating ' + instanceInfo.role + ' with pid: ' + instanceInfo.pid);
-      throw new Error("startup timed out!");
+      instanceInfo.arangods.forEach(arangod => {
+        killExternal(arangod.pid, abortSignal);
+        analyzeServerCrash(arangod, options, 'startup timeout; forcefully terminating ' + arangod.role + ' with pid: ' + arangod.pid);
+      });
+      throw new Error("cluster startup timed out after 10 minutes!");
     }
   }
 

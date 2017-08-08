@@ -635,10 +635,16 @@ void LogicalCollection::getIndexesVPack(VPackBuilder& result, bool withFigures,
 int LogicalCollection::replicationFactor() const {
   return static_cast<int>(_replicationFactor);
 }
+void LogicalCollection::replicationFactor(int r) {
+  _replicationFactor = static_cast<size_t>(r);
+}
 
 // SECTION: Sharding
 int LogicalCollection::numberOfShards() const {
   return static_cast<int>(_numberOfShards);
+}
+void LogicalCollection::numberOfShards(int n) {
+  _numberOfShards = static_cast<size_t>(n);
 }
 
 bool LogicalCollection::allowUserKeys() const { return _allowUserKeys; }
@@ -943,7 +949,11 @@ arangodb::Result LogicalCollection::updateProperties(VPackSlice const& slice,
 
   // The physical may first reject illegal properties.
   // After this call it either has thrown or the properties are stored
-  getPhysical()->updateProperties(slice, doSync);
+  Result res = getPhysical()->updateProperties(slice, doSync);
+
+  if (!res.ok()) {
+    return res;
+  }
 
   _waitForSync = Helper::getBooleanValue(slice, "waitForSync", _waitForSync);
 

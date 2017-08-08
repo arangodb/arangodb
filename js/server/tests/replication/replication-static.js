@@ -1172,7 +1172,7 @@ function ReplicationSuite() {
       compare(
         function(state) {
           var c = db._create(cn, {
-            isVolatile: true,
+            isVolatile: mmfilesEngine,
             waitForSync: false,
             doCompact: false,
             journalSize: 1048576,
@@ -1377,7 +1377,7 @@ function ReplicationSuite() {
       compare(
         function(state) {
           var c = db._create(cn, {
-            isVolatile: true,
+            isVolatile: mmfilesEngine,
             waitForSync: false,
             doCompact: false,
             journalSize: 1048576

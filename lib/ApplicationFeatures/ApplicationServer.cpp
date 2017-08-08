@@ -24,6 +24,7 @@
 
 #include "ApplicationFeatures/ApplicationFeature.h"
 #include "ApplicationFeatures/PrivilegeFeature.h"
+#include "Basics/ConditionLocker.h"
 #include "Basics/StringUtils.h"
 #include "Basics/process-utils.h"
 #include "Logger/Logger.h"
@@ -273,8 +274,8 @@ void ApplicationServer::beginShutdown() {
     }
   }
 
-  // TODO: use condition variable for signaling shutdown
-  // to run method
+  CONDITION_LOCKER(guard, _shutdownCondition);
+  guard.signal();
 }
 
 void ApplicationServer::shutdownFatalError() {
@@ -694,8 +695,8 @@ void ApplicationServer::wait() {
   LOG_TOPIC(TRACE, Logger::STARTUP) << "ApplicationServer::wait";
 
   while (!_stopping) {
-    // TODO: use condition variable for waiting for shutdown
-    ::usleep(100000);
+    CONDITION_LOCKER(guard, _shutdownCondition);
+    guard.wait(100000);
   }
 }
 

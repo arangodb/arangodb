@@ -421,6 +421,12 @@
 /// - 1492: @LIT{some agency operation failed}
 ///   Will be raised if after various retries an agency operation could not be
 ///   performed successfully.
+/// - 1493: @LIT{conflicting replication factor with distributeShardsLike parameter assignment}
+///   Will be raised if intended replication factor does not match that of the
+///   prototype shard given in ditributeShardsLike parameter.
+/// - 1494: @LIT{conflicting shard number with distributeShardsLike parameter assignment}
+///   Will be raised if intended number of shards does not match that of the
+///   prototype shard given in ditributeShardsLike parameter.
 /// - 1500: @LIT{query killed}
 ///   Will be raised when a running query is killed by an explicit admin
 ///   command.
@@ -2484,6 +2490,29 @@ void TRI_InitializeErrorMessages ();
 ////////////////////////////////////////////////////////////////////////////////
 
 #define TRI_ERROR_CLUSTER_AGENCY_COMMUNICATION_FAILED                     (1492)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 1493: ERROR_CLUSTER_DISTRIBUTE_SHARDS_LIKE_REPLICATION_FACTOR
+///
+/// conflicting replication factor with distributeShardsLike parameter
+/// assignment
+///
+/// Will be raised if intended replication factor does not match that of the
+/// prototype shard given in ditributeShardsLike parameter.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_CLUSTER_DISTRIBUTE_SHARDS_LIKE_REPLICATION_FACTOR       (1493)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 1494: ERROR_CLUSTER_DISTRIBUTE_SHARDS_LIKE_NUMBER_OF_SHARDS
+///
+/// conflicting shard number with distributeShardsLike parameter assignment
+///
+/// Will be raised if intended number of shards does not match that of the
+/// prototype shard given in ditributeShardsLike parameter.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_CLUSTER_DISTRIBUTE_SHARDS_LIKE_NUMBER_OF_SHARDS         (1494)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1500: ERROR_QUERY_KILLED

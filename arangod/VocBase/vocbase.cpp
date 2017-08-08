@@ -968,7 +968,6 @@ arangodb::LogicalCollection* TRI_vocbase_t::createCollection(
     return nullptr;
   }
 
-  // TODO Review
   arangodb::Result res2 = engine->persistCollection(this, collection);
   // API compatibility, we always return the collection, even if creation
   // failed.
