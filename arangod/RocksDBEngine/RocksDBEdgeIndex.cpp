@@ -661,9 +661,16 @@ void RocksDBEdgeIndex::warmup(transaction::Methods* trx) {
   do {
     median = it->key().ToString();
     it->Next();
-  } while (RocksDBKey::vertexId(it->key()) == RocksDBKey::vertexId(median));
+  } while (it->Valid() &&
+           RocksDBKey::vertexId(it->key()) == RocksDBKey::vertexId(median));
+  if (!it->Valid()) {
+    LOG_TOPIC(DEBUG, Logger::ROCKSDB)
+        << "Cannot use multithreaded edge index warmup";
+    this->warmupInternal(trx, bounds.start(), bounds.end());
+    return;
+  }
   median = it->key().ToString();  // median is exclusive upper bound
-  it.reset();
+  it.reset();                     // do not waste memory with unused iterator
 
   bool done = false;
   auto scheduler = SchedulerFeature::SCHEDULER;
@@ -712,6 +719,7 @@ void RocksDBEdgeIndex::warmupInternal(transaction::Methods* trx,
       while (shouldTry) {
         auto finding = cc->find(previous.data(), (uint32_t)previous.size());
         if (finding.found()) {
+          shouldTry = false;
           needsInsert = false;
         } else if (  // shouldTry if failed lookup was just a lock timeout
             finding.result().errorNumber() != TRI_ERROR_LOCK_TIMEOUT) {
