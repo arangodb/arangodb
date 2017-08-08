@@ -1,6 +1,12 @@
 devel
 -----
 
+* ui: added bind parameters to slow query history view
+
+* ui: fixed a bug when moving multiple documents was not possible
+
+* ui: added bind parameters to slow query history view
+
 * fixed docs for issue #2968
 
 * AQL CHAR_LENGTH(null) returns now 0. Since AQL TO_STRING(null) is '' (string of length 0)

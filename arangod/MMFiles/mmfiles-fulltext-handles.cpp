@@ -46,7 +46,7 @@ static bool AllocateSlot(TRI_fulltext_handles_t* const handles,
   }
 
   auto slot = static_cast<TRI_fulltext_handle_slot_t*>(TRI_Allocate(
-      TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_fulltext_handle_slot_t), false));
+      TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_fulltext_handle_slot_t)));
 
   if (slot == nullptr) {
     return false;
@@ -55,22 +55,26 @@ static bool AllocateSlot(TRI_fulltext_handles_t* const handles,
   // allocate and clear
   slot->_documents = static_cast<TRI_voc_rid_t*>(
       TRI_Allocate(TRI_UNKNOWN_MEM_ZONE,
-                   sizeof(TRI_voc_rid_t) * handles->_slotSize, true));
+                   sizeof(TRI_voc_rid_t) * handles->_slotSize));
 
   if (slot->_documents == nullptr) {
     TRI_Free(TRI_UNKNOWN_MEM_ZONE, slot);
     return false;
   }
 
+  memset(slot->_documents, 0, sizeof(TRI_voc_rid_t) * handles->_slotSize);
+
   // allocate and clear deleted flags
   slot->_deleted = static_cast<uint8_t*>(TRI_Allocate(
-      TRI_UNKNOWN_MEM_ZONE, sizeof(uint8_t) * handles->_slotSize, true));
+      TRI_UNKNOWN_MEM_ZONE, sizeof(uint8_t) * handles->_slotSize));
 
   if (slot->_deleted == nullptr) {
     TRI_Free(TRI_UNKNOWN_MEM_ZONE, slot->_documents);
     TRI_Free(TRI_UNKNOWN_MEM_ZONE, slot);
     return false;
   }
+  
+  memset(slot->_deleted, 0, sizeof(uint8_t) * handles->_slotSize);
 
   // set initial statistics
   slot->_min = UINT32_MAX;  // yes, this is intentional
@@ -104,13 +108,14 @@ static bool AllocateSlotList(TRI_fulltext_handles_t* const handles,
   TRI_fulltext_handle_slot_t** slots =
       static_cast<TRI_fulltext_handle_slot_t**>(TRI_Allocate(
           TRI_UNKNOWN_MEM_ZONE,
-          sizeof(TRI_fulltext_handle_slot_t*) * targetNumber, true));
+          sizeof(TRI_fulltext_handle_slot_t*) * targetNumber));
 
   if (slots == nullptr) {
     // out of memory
     return false;
   }
 
+  memset(slots, 0, sizeof(TRI_fulltext_handle_slot_t*) * targetNumber);
   uint32_t currentNumber = handles->_numSlots;
 
   if (currentNumber > 0) {
@@ -137,7 +142,7 @@ static bool AllocateSlotList(TRI_fulltext_handles_t* const handles,
 TRI_fulltext_handles_t* TRI_CreateHandlesMMFilesFulltextIndex(uint32_t slotSize) {
   TRI_fulltext_handles_t* handles =
       static_cast<TRI_fulltext_handles_t*>(TRI_Allocate(
-          TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_fulltext_handles_t), false));
+          TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_fulltext_handles_t)));
 
   if (handles == nullptr) {
     return nullptr;
@@ -209,7 +214,7 @@ TRI_fulltext_handles_t* TRI_CompactHandleMMFilesFulltextIndex(
 
   TRI_fulltext_handle_t* map = static_cast<TRI_fulltext_handle_t*>(
       TRI_Allocate(TRI_UNKNOWN_MEM_ZONE,
-                   sizeof(TRI_fulltext_handle_t) * original->_next, false));
+                   sizeof(TRI_fulltext_handle_t) * original->_next));
 
   if (map == nullptr) {
     return nullptr;

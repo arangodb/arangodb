@@ -1560,7 +1560,7 @@ char* TRI_GetAbsolutePath(char const* fileName,
     // we do not require a backslash
     result = static_cast<char*>(
         TRI_Allocate(TRI_UNKNOWN_MEM_ZONE,
-                     (cwdLength + fileLength + 1) * sizeof(char), false));
+                     (cwdLength + fileLength + 1) * sizeof(char)));
     if (result == nullptr) {
       return nullptr;
     }
@@ -1571,7 +1571,7 @@ char* TRI_GetAbsolutePath(char const* fileName,
     // we do require a backslash
     result = static_cast<char*>(
         TRI_Allocate(TRI_UNKNOWN_MEM_ZONE,
-                     (cwdLength + fileLength + 2) * sizeof(char), false));
+                     (cwdLength + fileLength + 2) * sizeof(char)));
     if (result == nullptr) {
       return nullptr;
     }
@@ -1619,7 +1619,7 @@ char* TRI_GetAbsolutePath(char const* file, char const* cwd) {
 
   char* result = static_cast<char*>(
       TRI_Allocate(TRI_UNKNOWN_MEM_ZONE,
-                   (cwdLength + strlen(file) + 2) * sizeof(char), false));
+                   (cwdLength + strlen(file) + 2) * sizeof(char)));
 
   if (result != nullptr) {
     ptr = result;
@@ -1823,7 +1823,7 @@ static bool CopyFileContents(int srcFD, int dstFD, ssize_t fileSize,
     TRI_write_t nRead;
     TRI_read_t chunkRemain = fileSize;
     char* buf =
-        static_cast<char*>(TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, C128, false));
+        static_cast<char*>(TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, C128));
 
     if (buf == nullptr) {
       error = "failed to allocate temporary buffer";
@@ -2035,7 +2035,7 @@ int TRI_Crc32File(char const* path, uint32_t* crc) {
   *crc = TRI_InitialCrc32();
 
   bufferSize = 4096;
-  buffer = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, (size_t)bufferSize, false);
+  buffer = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, (size_t)bufferSize);
 
   if (buffer == nullptr) {
     return TRI_ERROR_OUT_OF_MEMORY;
@@ -2244,7 +2244,7 @@ std::string TRI_GetTempPath() {
     size_t j;
     size_t pathSize = _tcsclen(tempPathName);
     char* temp = static_cast<char*>(
-        TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, pathSize + 1, false));
+        TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, pathSize + 1));
 
     if (temp == nullptr) {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);

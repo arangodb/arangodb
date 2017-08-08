@@ -37,7 +37,6 @@
       if (this.activeUser === false || this.activeUser === null) {
         this.activeUser = 'root';
       }
-      console.log(response);
 
       if (response.user === self.activeUser) {
         try {
