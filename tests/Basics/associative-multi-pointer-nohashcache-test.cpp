@@ -181,9 +181,7 @@ SECTION("tst_insert_delete_many") {
   std::vector<void*>* res = nullptr;
 
   for (i = 0;i < MODULUS;i++) {
-    int* space = static_cast<int*>(TRI_Allocate(TRI_UNKNOWN_MEM_ZONE,
-                                    sizeof(int) * NUMBER_OF_ELEMENTS / MODULUS,
-                                    true));
+    int* space = new int[NUMBER_OF_ELEMENTS / MODULUS]();
     res = a1.lookupByKey(nullptr, &i);
     CHECK((int) res->size() ==
                       (int) (NUMBER_OF_ELEMENTS / MODULUS));
@@ -194,7 +192,7 @@ SECTION("tst_insert_delete_many") {
       CHECK(space[(q->value - i) / MODULUS] == 0);
       space[(q->value - i) / MODULUS] = 1;
     }
-    TRI_Free(TRI_UNKNOWN_MEM_ZONE, space);
+    delete[] space;
     delete res;
   }
 
