@@ -54,7 +54,7 @@ if (LINUX OR DARWIN)
         ${JEMALLOC_BINARY_DIR}/doc/jemalloc.html
         ${JEMALLOC_BINARY_DIR}/doc/jemalloc.3
     CONFIGURE_COMMAND
-      ./autogen.sh && ./configure CC=${JEMALLOC_CC_TMP}
+      ./configure CC=${JEMALLOC_CC_TMP}
                   CXX=${JEMALLOC_CXX_TMP}
                   CFLAGS=${JEMALLOC_CFLAGS_TMP}
                   CXXFLAGS=${JEMALLOC_CXXFLAGS_TMP}
