@@ -582,9 +582,7 @@ void Manager::shrinkOvergrownCaches(Manager::TaskEnvironment environment) {
     metadata->lock();
 
     if (metadata->allocatedSize > metadata->deservedSize) {
-      LOG_TOPIC(ERR, Logger::FIXME) << "Cache " << std::hex << ((size_t)cache.get())
-      << "Shrinking overgrown cache from allocated " << metadata->allocatedSize
-      << " to " << metadata->newLimit();
+      LOG_TOPIC(ERR, Logger::FIXME) << "Resizing overgrown Cache " << std::hex << ((size_t)cache.get());
       resizeCache(environment, cache, metadata->newLimit());  // unlocks cache
     } else {
       metadata->unlock();
@@ -624,6 +622,10 @@ void Manager::resizeCache(Manager::TaskEnvironment environment,
   TRI_ASSERT(metadata->isLocked());
 
   if (metadata->usage <= newLimit) {
+    LOG_TOPIC(ERR, Logger::FIXME) << "Cache " << std::hex << ((size_t)cache.get())
+    << "Shrinking cache from allocated " << metadata->allocatedSize
+    << " to " << metadata->newLimit();
+    
     uint64_t oldLimit = metadata->hardUsageLimit;
     bool success = metadata->adjustLimits(newLimit, newLimit);
     TRI_ASSERT(success);
@@ -634,6 +636,10 @@ void Manager::resizeCache(Manager::TaskEnvironment environment,
       _globalAllocation += (newLimit - oldLimit);
     }
     return;
+  } else {
+    LOG_TOPIC(ERR, Logger::FIXME) << "Cache " << std::hex << ((size_t)cache.get())
+    << " Growing cache from allocated " << metadata->allocatedSize
+    << " to " << newLimit;
   }
 
   bool success = metadata->adjustLimits(newLimit, metadata->hardUsageLimit);
