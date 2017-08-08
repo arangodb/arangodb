@@ -170,9 +170,13 @@ const allBackupTests = (options) => {
 
 
 const backupTest = (options, db, path, folder, testFile, useAuth, user = {}) => {
-  const auth = {
-    'server.authentication': useAuth ? 'true' : 'false'
-  };
+  const auth = { };
+  if (useAuth) {
+    auth['server.authentication'] = 'true';
+    auth['server.jwt-secret'] = 'haxxmann';
+  } else {
+    auth['server.authentication'] = 'false';
+  }
 
   log('Reboot fresh instance');
   let instanceInfo = pu.startInstance('tcp', options, auth, 'backup');
@@ -198,6 +202,10 @@ const backupTest = (options, db, path, folder, testFile, useAuth, user = {}) => 
     }
   } finally {
     log('Shutting down...');
+    if (useAuth) {
+      options['server.authentication'] = auth['server.authentication'];
+      options['server.jwt-secret'] = auth['server.jwt-secret'];
+    }
     if (isAlive(instanceInfo, options)) {
       pu.shutdownInstance(instanceInfo, options);
     }
