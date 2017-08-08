@@ -87,7 +87,7 @@ function recoverySuite () {
       v = db._view('UnitTestsRecoveryWithLink');
       assertEqual(v.name(), 'UnitTestsRecoveryWithLink');
       assertEqual(v.type(), 'iresearch');
-      var p = v.properties().links;
+      p = v.properties().links;
       assertTrue(p.hasOwnProperty('UnitTestsRecoveryDummy'));
       assertTrue(p.UnitTestsRecoveryDummy.includeAllFields);
     }

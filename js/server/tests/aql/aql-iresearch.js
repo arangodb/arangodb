@@ -70,9 +70,9 @@ function iResearchAqlTestSuite () {
       var result = AQL_EXECUTE("FOR doc IN VIEW UnitTestsView FILTER doc.a == 'foo' RETURN doc", null, { });
 
       assertEqual(result.length, 2);
-      assertEqual(result[0].a, "foo")
-      assertEqual(result[1].a, "foo")
-    },
+      assertEqual(result[0].a, "foo");
+      assertEqual(result[1].a, "foo");
+    }
 
 
 
