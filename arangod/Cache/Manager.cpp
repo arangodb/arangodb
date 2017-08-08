@@ -627,8 +627,8 @@ void Manager::resizeCache(Manager::TaskEnvironment environment,
 
   if (metadata->usage <= newLimit) {
     LOG_TOPIC(ERR, Logger::FIXME) << "Cache " << ((size_t)cache.get())
-    << " Growing cache from allocated " << metadata->allocatedSize
-    << " to " << metadata->newLimit();
+    << " Growing cache using " << metadata->usage
+    << " to " << newLimit;
     
     uint64_t oldLimit = metadata->hardUsageLimit;
     bool success = metadata->adjustLimits(newLimit, newLimit);
