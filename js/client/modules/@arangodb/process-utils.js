@@ -111,7 +111,11 @@ function setupBinaries (builddir, buildType, configDir) {
     }
   }
 
-  BIN_DIR = fs.join(TOP_DIR, builddir, 'bin');
+  BIN_DIR = fs.join(builddir, 'bin');
+  if(!fs.exists(BIN_DIR)){
+    BIN_DIR = fs.join(TOP_DIR, BIN_DIR);
+  }
+
   UNITTESTS_DIR = fs.join(TOP_DIR, fs.join(builddir, 'tests'));
 
   if (buildType !== '') {
