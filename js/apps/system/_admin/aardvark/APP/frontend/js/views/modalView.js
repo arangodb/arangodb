@@ -96,9 +96,7 @@
       // submit modal
       $(this.el).unbind('keydown');
       $(this.el).unbind('return');
-      $(this.el).bind('keydown', 'return', function () {
-        $('.createModalDialog .modal-footer .button-success').click();
-      });
+      // $(this.el).bind('keydown', 'return', function (e) {});
 
       $('.modal-body input').unbind('keydown');
       $('.modal-body input').unbind('return');
