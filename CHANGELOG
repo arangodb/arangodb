@@ -1,6 +1,8 @@
 devel
 -----
 
+* fixed docs for issue #2968
+
 * fixed a multi-threading issue in the agency when callElection was called 
   while the SuperVision was calling updateSnapshot 
 
