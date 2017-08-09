@@ -1,8 +1,40 @@
-WorkFlow RunTests {
-  Param ([int]$port, [string]$engine, [string]$edition, [string]$mode)
+function executeParallel {
+  Param(
+    [System.Object[]]
+    $jobs,
+    [int]$parallelity
+  )
+  Get-Job | Remove-Job -Force | Out-Null
 
+  $doneJobs = [System.Collections.ArrayList]$ArrayList = @()
+  $numJobs = $jobs.Count
+
+  $activeJobs = [System.Collections.ArrayList]$ArrayList = $()
+  $index = 0
+  while ($doneJobs.Count -lt $numJobs) {
+    $activeJobs = Get-Job
+    while ($index -lt $numJobs -and $activeJobs.Length -lt $parallelity) {
+      $job = $jobs[$index++]
+      Write-Host "Starting $($job.name)"
+      $j = Start-Job -Init ([ScriptBlock]::Create("Set-Location '$pwd'")) -Name $job.name -ScriptBlock $job.script -ArgumentList $job.args
+      $activeJobs = Get-Job
+    }
+    
+    $finishedJobs = $activeJobs | Wait-Job -Any
+    ForEach ($finishedJob in $finishedJobs) {
+      Write-Host "Job $($finishedJob.Name) $($finishedJob.State)"
+      Write-Host "========================"
+      echo $finishedJob.childJobs[0].Output 
+    }
+    $doneJobs += $finishedJobs
+    $finishedJobs | Remove-Job
+  }
+}
+
+
+function createTests {
+  Param ([int]$port, [string]$engine, [string]$edition, [string]$mode)
   $minPort = $port
-  $workspace = Get-Location
 
   if ($mode -eq "singleserver") {
     $portInterval = 10
@@ -64,42 +96,42 @@ WorkFlow RunTests {
     )
   }
 
-  $total = 0
-
-  foreach -parallel -throttlelimit 5 ($testdef in $tests) {
+  New-Item -Force log-output -type Directory | Out-Null 
+  $createTestScript = {
     $testargs = ""
 
-    if ($testdef -isnot [system.array]) {
-      $name = $testdef
-      $test = $testdef
+    if ($_ -isnot [system.array]) {
+      $name = $_
+      $test = $_
     } else {
-      $name = $testdef[0]
-      $test = $testdef[1]
-      $testargs = $testdef[2].Split(" ")
+      $name = $_[0]
+      $test = $_[1]
+      $testargs = $_[2].Split(" ")
     }
 
-    New-Item -Force loggiaaa -type Directory
-    $log = "loggiaaa\" + $name + ".log"
+    $log = "log-output\" + $name + ".log"
 
-    $myport = $WORKFLOW:minPort
-    $WORKFLOW:minPort += $portInterval
+    $myport = $minPort
+    $minPort += $portInterval
+    $maxPort = $minPort - 1 # minport was already increased
 
-    InlineScript {
-      $testscript = {
-        $maxPort = $USING:myport + $USING:portInterval - 1
+    return @{
+      name=$name
+      script={
+        param($name, $myport, $maxPort, $test, $cluster, $engine, $testArgs, $log)
 
-        Set-Location $USING:workspace
-        .\build\bin\arangosh.exe --log.level warning --javascript.execute UnitTests\unittest.js $USING:test -- --cluster $USING:cluster --storageEngine $USING:engine --minPort $USING:myport --maxPort $USING:maxPort --skipNondeterministic true --skipTimeCritical true  --configDir etc/jenkins --skipLogAnalysis true $USING:testargs | Set-Content -PassThru $USING:log
-        $?
+        .\build\bin\arangosh.exe --log.level warning --javascript.execute UnitTests\unittest.js $test -- --cluster $cluster --storageEngine $engine --minPort $myport --maxPort $maxPort --skipNondeterministic true --skipTimeCritical true  --configDir etc/jenkins --skipLogAnalysis true $testargs *>&1 | Set-Content -PassThru $log
       }
-
-      Invoke-Command -ScriptBlock $testscript
-    }
-
-    if (!$res) {
-       $WORKFLOW:total++
+      args=@($name, $myport, $maxPort, $test, $cluster, $engine, $testArgs, $log)
     }
   }
 
-  $total
+  $tests | % $createTestScript
+}
+
+
+function RunTests {
+  Param ([int]$port, [string]$engine, [string]$edition, [string]$mode)
+  $jobs = createTests -port 12000 -engine mmfiles -edition community -mode singleserver
+  executeParallel -jobs $jobs -parallelity 5
 }
