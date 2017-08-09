@@ -176,7 +176,7 @@ TRI_fulltext_list_t* TRI_CloneListMMFilesFulltextIndex(
 /// @brief create a new list
 TRI_fulltext_list_t* TRI_CreateListMMFilesFulltextIndex(uint32_t size) {
   TRI_fulltext_list_t* list =
-      TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, MemoryList(size), false);
+      TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, MemoryList(size));
 
   if (list == nullptr) {
     // out of memory

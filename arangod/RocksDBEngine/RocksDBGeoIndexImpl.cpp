@@ -498,7 +498,7 @@ GeoIdx* GeoIndex_new(uint64_t objectId, int numPots, int numSlots) {
   int i;
 
   gix = static_cast<GeoIx*>(
-      TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(GeoIx), false));
+      TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(GeoIx)));
 
   if (gix == nullptr) {
     return (GeoIdx*)gix;
@@ -887,11 +887,11 @@ GeoResults* GeoResultsCons(int alloc) {
   }
 
   gres = static_cast<GeoResults*>(
-      TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(GeoResults), false));
+      TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(GeoResults)));
   sa = static_cast<int*>(
-      TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, alloc * sizeof(int), false));
+      TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, alloc * sizeof(int)));
   dd = static_cast<double*>(
-      TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, alloc * sizeof(double), false));
+      TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, alloc * sizeof(double)));
   if ((gres == nullptr) || (sa == nullptr) || (dd == nullptr)) {
     if (gres != nullptr) {
       TRI_Free(TRI_UNKNOWN_MEM_ZONE, gres);
@@ -1050,9 +1050,9 @@ GeoCoordinates* GeoAnswers(GeoIx* gix, GeoResults* gr, bool returnDistances) {
   }
 
   ans = static_cast<GeoCoordinates*>(
-      TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(GeoCoordinates), false));
+      TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(GeoCoordinates)));
   gc = static_cast<GeoCoordinate*>(TRI_Allocate(
-      TRI_UNKNOWN_MEM_ZONE, gr->pointsct * sizeof(GeoCoordinate), false));
+      TRI_UNKNOWN_MEM_ZONE, gr->pointsct * sizeof(GeoCoordinate)));
 
   if ((ans == nullptr) || (gc == nullptr)) {
     if (ans != nullptr) {
