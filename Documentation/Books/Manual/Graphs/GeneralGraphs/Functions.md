@@ -40,7 +40,8 @@ Returns the vertex defined with the attribute *_from* of the edge with *edgeId* 
     @EXAMPLE_ARANGOSH_OUTPUT{generalGraphGetFromVertex}
       var examples = require("@arangodb/graph-examples/example-graph.js");
       var graph = examples.loadGraph("social");
-      graph._fromVertex("relation/aliceAndBob")
+      var any = require("@arangodb").db.relation.any();
+      graph._fromVertex("relation/" + any._key);
     ~ examples.dropGraph("social");
     @END_EXAMPLE_ARANGOSH_OUTPUT
     @endDocuBlock generalGraphGetFromVertex
@@ -71,7 +72,8 @@ Returns the vertex defined with the attribute *_to* of the edge with *edgeId* as
     @EXAMPLE_ARANGOSH_OUTPUT{generalGraphGetToVertex}
       var examples = require("@arangodb/graph-examples/example-graph.js");
       var graph = examples.loadGraph("social");
-      graph._toVertex("relation/aliceAndBob")
+      var any = require("@arangodb").db.relation.any();
+      graph._toVertex("relation/" + any._key);
     ~ examples.dropGraph("social");
     @END_EXAMPLE_ARANGOSH_OUTPUT
     @endDocuBlock generalGraphGetToVertex

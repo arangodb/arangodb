@@ -1,6 +1,13 @@
 devel
 -----
 
+* Now allowing to restore users in a sharded environment as well
+  It is still not possible to restore collections that are sharded
+  differently than by _key.
+
+* fixed an isse with restoring of system collections and user rights.
+  It was not possible to restore users into an authenticated server.
+
 * fixed issue #2977: Documentation for db._createDatabase is wrong
 
 * ui: added bind parameters to slow query history view
@@ -15,10 +22,10 @@ devel
 
 * ui: now supports single js file upload for Foxx services in addition to zip files
 
-* fixed a multi-threading issue in the agency when callElection was called 
-  while the Supervision was calling updateSnapshot 
+* fixed a multi-threading issue in the agency when callElection was called
+  while the Supervision was calling updateSnapshot
 
-* added startup option `--query.tracking-with-bindvars` 
+* added startup option `--query.tracking-with-bindvars`
 
   This option controls whether the list of currently running queries
   and the list of slow queries should contain the bind variables used
@@ -28,49 +35,49 @@ devel
 
       // enables tracking of bind variables
       // set to false to turn tracking of bind variables off
-      var value = true; 
-      require("@arangodb/aql/queries").properties({ 
-        trackBindVars: value 
+      var value = true;
+      require("@arangodb/aql/queries").properties({
+        trackBindVars: value
       });
 
 * index selectivity estimates are now available in the cluster as well
 
-* fixed issue #2943: loadIndexesIntoMemory not returning the same structure 
+* fixed issue #2943: loadIndexesIntoMemory not returning the same structure
   as the rest of the collection APIs
 
 * fixed issue #2949: ArangoError 1208: illegal name
 
-* fixed issue #2874: Collection properties do not return `isVolatile` 
+* fixed issue #2874: Collection properties do not return `isVolatile`
   attribute
 
-* potential fix for issue #2939: Segmentation fault when starting 
-  coordinator node  
+* potential fix for issue #2939: Segmentation fault when starting
+  coordinator node
 
-* fixed issue #2810: out of memory error when running UPDATE/REPLACE 
+* fixed issue #2810: out of memory error when running UPDATE/REPLACE
   on medium-size collection
 
 * fix potential deadlock errors in collector thread
 
-* disallow the usage of volatile collections in the RocksDB engine 
-  by throwing an error when a collection is created with attribute 
-  `isVolatile` set to `true`. 
-  Volatile collections are unsupported by the RocksDB engine, so 
+* disallow the usage of volatile collections in the RocksDB engine
+  by throwing an error when a collection is created with attribute
+  `isVolatile` set to `true`.
+  Volatile collections are unsupported by the RocksDB engine, so
   creating them should not succeed and silently create a non-volatile
-  collection 
+  collection
 
 * prevent V8 from issuing SIGILL instructions when it runs out of memory
 
-  Now arangod will attempt to log a FATAL error into its logfile in case V8 
-  runs out of memory. In case V8 runs out of memory, it will still terminate the 
-  entire process. But at least there should be something in the ArangoDB logs 
+  Now arangod will attempt to log a FATAL error into its logfile in case V8
+  runs out of memory. In case V8 runs out of memory, it will still terminate the
+  entire process. But at least there should be something in the ArangoDB logs
   indicating what the problem was. Apart from that, the arangod process should
-  now be exited with SIGABRT rather than SIGILL as it shouldn't return into the 
+  now be exited with SIGABRT rather than SIGILL as it shouldn't return into the
   V8 code that aborted the process with `__builtin_trap`.
 
   this potentially fixes issue #2920: DBServer crashing automatically post upgrade to 3.2
 
-* Foxx queues and tasks now ensure that the scripts in them run with the same 
-  permissions as the Foxx code who started the task / queue 
+* Foxx queues and tasks now ensure that the scripts in them run with the same
+  permissions as the Foxx code who started the task / queue
 
 * fixed issue #2928: Offset problems
 
@@ -99,6 +106,7 @@ devel
 
 * speed up RocksDB secondary index creation and dropping
 
+* removed RocksDB note in Geo index docs
 
 v3.2.0 (2017-07-20)
 -------------------
@@ -113,7 +121,7 @@ v3.2.0 (2017-07-20)
 
   This option can be used to control whether user-defined JavaScript code
   is allowed to be executed on server by sending via HTTP to the API endpoint
-  `/_admin/execute`  with an authenticated user account. 
+  `/_admin/execute`  with an authenticated user account.
   The default value is `false`, which disables the execution of user-defined
   code. This is also the recommended setting for production. In test environments,
   it may be convenient to turn the option on in order to send arbitrary setup
@@ -160,7 +168,7 @@ v3.2.beta4 (2017-07-04)
 
 * added user functions in the arangoshell `@arangodb/users` module
     * added `grantCollection` and `revokeCollection` functions
-    * added `permission(user, database, collection)` to retrieve collection specific rights 
+    * added `permission(user, database, collection)` to retrieve collection specific rights
 
 * added "deduplicate" attribute for array indexes, which controls whether inserting
   duplicate index values from the same document into a unique array index will lead to
