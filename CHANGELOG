@@ -1,6 +1,9 @@
 devel
 -----
 
+* Now allowing to restore users in a sharded environment as well
+  It is still not possible to restore collections that are sharded
+  differently than by _key.
 
 * fixed an isse with restoring of system collections and user rights.
   It was not possible to restore users into an authenticated server.
