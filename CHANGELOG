@@ -1,6 +1,8 @@
 devel
 -----
 
+* fixed issue #3011: Optimizer rule reduce-extraction-to-projection breaks queries
+
 * Now allowing to restore users in a sharded environment as well
   It is still not possible to restore collections that are sharded
   differently than by _key.
@@ -107,6 +109,7 @@ devel
 * speed up RocksDB secondary index creation and dropping
 
 * removed RocksDB note in Geo index docs
+
 
 v3.2.0 (2017-07-20)
 -------------------
