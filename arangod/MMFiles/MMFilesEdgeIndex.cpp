@@ -261,13 +261,10 @@ size_t MMFilesEdgeIndex::memory() const {
 void MMFilesEdgeIndex::toVelocyPack(VPackBuilder& builder, bool withFigures,
                                     bool forPersistence) const {
   builder.openObject();
-  {
-    Index::toVelocyPack(builder, withFigures, forPersistence);
-
-    // hard-coded
-    builder.add("unique", VPackValue(false));
-    builder.add("sparse", VPackValue(false));
-  }
+  Index::toVelocyPack(builder, withFigures, forPersistence);
+  // hard-coded
+  builder.add("unique", VPackValue(false));
+  builder.add("sparse", VPackValue(false));
   builder.close();
 }
 

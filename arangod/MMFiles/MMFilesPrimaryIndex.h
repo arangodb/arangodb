@@ -150,7 +150,7 @@ class MMFilesPrimaryIndex final : public Index {
 
   size_t memory() const override;
 
-  void toVelocyPack(VPackBuilder&, bool, bool) const override;
+  void toVelocyPack(VPackBuilder&, bool withFigures, bool forPersistence) const override;
   void toVelocyPackFigures(VPackBuilder&) const override;
 
   Result insert(transaction::Methods*, TRI_voc_rid_t,
