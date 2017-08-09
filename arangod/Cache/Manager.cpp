@@ -799,14 +799,15 @@ std::shared_ptr<Manager::PriorityList> Manager::priorityList() {
   totalAccesses = std::max((uint64_t)1, totalAccesses);
   LOG_TOPIC(ERR, Logger::FIXME) << "totalAccesses " << totalAccesses;
   
-  double usageFrac = 1.0 - std::max(1.0, static_cast<double>(_globalAllocation) /
+  double allocFrac = 1.0 - std::max(1.0, static_cast<double>(_globalAllocation) /
                                          static_cast<double>(_globalHighwaterMark));
+  LOG_TOPIC(ERR, Logger::FIXME) << "Allocated fraction " <<  allocFrac << "%";
   
   // gather all unaccessed caches at beginning of list
   for (auto it = _caches.begin(); it != _caches.end(); it++) {
     auto found = accessed.find(*it);
     if (found == accessed.end()) {
-      double weight = baseWeight + ((*it)->usage() / globalUsage) * usageFrac;
+      double weight = baseWeight + ((*it)->usage() / globalUsage) * allocFrac;
       LOG_TOPIC(ERR, Logger::FIXME) << "Cache (" << ((size_t)it->get()) << ") weight: " << weight;
       list->emplace_back(*it, weight);
     }
@@ -821,8 +822,8 @@ std::shared_ptr<Manager::PriorityList> Manager::priorityList() {
       double accessWeight = static_cast<double>(s.second) * normalizer;
       Metadata* metadata = cache->metadata();
       metadata->lock();
-      accessWeight = accessWeight * (1.0 - usageFrac) +
-                     (metadata->usage / globalUsage) * usageFrac;
+      accessWeight = accessWeight * (1.0 - allocFrac) +
+                     (metadata->usage / globalUsage) * allocFrac;
       metadata->unlock();
       
       TRI_ASSERT(accessWeight >= 0.0);
