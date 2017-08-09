@@ -49,10 +49,12 @@ function iResearchAqlTestSuite () {
       var meta = { links: { "UnitTestsCollection": { includeAllFields: true } } };
       v.properties(meta);
 
-      c.save({ a: "foo", b: "bar" }, { waitForSync: true });
-      c.save({ a: "foo", b: "baz" }, { waitForSync: true });
-      c.save({ a: "bar", b: "foo" }, { waitForSync: true });
-      c.save({ a: "baz", b: "foo" }, { waitForSync: true });
+      for (var i = 0; i < 5; i++) {
+        c.save({ a: "foo", b: "bar", c: i }, { waitForSync: true });
+        c.save({ a: "foo", b: "baz", c: i }, { waitForSync: true });
+        c.save({ a: "bar", b: "foo", c: i }, { waitForSync: true });
+        c.save({ a: "baz", b: "foo", c: i }, { waitForSync: true });
+      }
     },
 
     tearDown : function () {
@@ -69,12 +71,156 @@ function iResearchAqlTestSuite () {
     testAttributeEqualityFilter : function () {
       var result = AQL_EXECUTE("FOR doc IN VIEW UnitTestsView FILTER doc.a == 'foo' RETURN doc", null, { }).json;
 
+      assertEqual(result.length, 10);
+      result.forEach(function(res) {
+        assertEqual(res.a, "foo");
+      });
+    },
+
+    testMultipleAttributeEqualityFilter : function () {
+      var result = AQL_EXECUTE("FOR doc IN VIEW UnitTestsView FILTER doc.a == 'foo' && doc.b == 'bar' RETURN doc", null, { }).json;
+
+      assertEqual(result.length, 5);
+      result.forEach(function(res) {
+        assertEqual(res.a, "foo");
+        assertEqual(res.b, "bar");
+      });
+    },
+
+    testMultipleAttributeEqualityFilterSortAttribute : function () {
+      var result = AQL_EXECUTE("FOR doc IN VIEW UnitTestsView FILTER doc.a == 'foo' && doc.b == 'bar' SORT doc.c RETURN doc", null, { }).json;
+
+      assertEqual(result.length, 5);
+      var last = -1;
+      result.forEach(function(res) {
+        assertEqual(res.a, "foo");
+        assertEqual(res.b, "bar");
+        assertEqual(res.c, last + 1);
+        last = res.c;
+      });
+    },
+
+    testMultipleAttributeEqualityFilterSortAttributeDesc : function () {
+      var result = AQL_EXECUTE("FOR doc IN VIEW UnitTestsView FILTER doc.a == 'foo' AND doc.b == 'bar' SORT doc.c DESC RETURN doc", null, { }).json;
+
+      assertEqual(result.length, 5);
+      var last = 5;
+      result.forEach(function(res) {
+        assertEqual(res.a, "foo");
+        assertEqual(res.b, "bar");
+        assertEqual(res.c, last - 1);
+        last = res.c;
+      });
+    },
+
+    testAttributeLessFilter : function () {
+      var result = AQL_EXECUTE("FOR doc IN VIEW UnitTestsView FILTER doc.c < 2 RETURN doc", null, { }).json;
+
+      assertEqual(result.length, 8);
+      result.forEach(function(res) {
+        assertTrue(res.c < 2);
+      });
+    },
+
+    testAttributeLeqFilter : function () {
+      var result = AQL_EXECUTE("FOR doc IN VIEW UnitTestsView FILTER doc.c <= 2 RETURN doc", null, { }).json;
+
+      assertEqual(result.length, 12);
+      result.forEach(function(res) {
+        assertTrue(res.c <= 2);
+      });
+    },
+
+    testAttributeGeqFilter : function () {
+      var result = AQL_EXECUTE("FOR doc IN VIEW UnitTestsView FILTER doc.c >= 2 RETURN doc", null, { }).json;
+
+      assertEqual(result.length, 12);
+      result.forEach(function(res) {
+        assertTrue(res.c >= 2);
+      });
+    },
+
+    testAttributeGreaterFilter : function () {
+      var result = AQL_EXECUTE("FOR doc IN VIEW UnitTestsView FILTER doc.c > 2 RETURN doc", null, { }).json;
+
+      assertEqual(result.length, 8);
+      result.forEach(function(res) {
+        assertTrue(res.c > 2);
+      });
+    },
+
+    testAttributeOpenIntervalFilter : function () {
+      var result = AQL_EXECUTE("FOR doc IN VIEW UnitTestsView FILTER doc.c > 1 AND doc.c < 3 RETURN doc", null, { }).json;
+
+      assertEqual(result.length, 4);
+      result.forEach(function(res) {
+        assertTrue(res.c > 1 && res.c < 3);
+      });
+    },
+
+    testAttributeClosedIntervalFilter : function () {
+      var result = AQL_EXECUTE("FOR doc IN VIEW UnitTestsView FILTER doc.c >= 1 AND doc.c <= 3 RETURN doc", null, { }).json;
+
+      assertEqual(result.length, 12);
+      result.forEach(function(res) {
+        assertTrue(res.c >= 1 && res.c <= 3);
+      });
+    },
+
+    testAttributeIntervalExclusionFilter : function () {
+      var result = AQL_EXECUTE("FOR doc IN VIEW UnitTestsView FILTER doc.c < 1 OR doc.c > 3 RETURN doc", null, { }).json;
+
+      assertEqual(result.length, 8);
+      result.forEach(function(res) {
+        assertTrue(res.c < 1 || res.c > 3);
+      });
+    },
+
+    testAttributeNeqFilter : function () {
+      var result = AQL_EXECUTE("FOR doc IN VIEW UnitTestsView FILTER doc.a != 'foo'  RETURN doc", null, { }).json;
+
+      assertEqual(result.length, 10);
+      result.forEach(function(res) {
+        assertFalse(res.a == 'foo');
+      });
+    },
+
+    testAttributeNeqFilter : function () {
+      var result = AQL_EXECUTE("FOR doc IN VIEW UnitTestsView FILTER doc.a != 'foo'  RETURN doc", null, { }).json;
+
+      assertEqual(result.length, 10);
+      result.forEach(function(res) {
+        assertFalse(res.a == 'foo');
+      });
+    },
+
+    testStartsWithFilter : function () {
+      var result = AQL_EXECUTE("FOR doc IN VIEW UnitTestsView FILTER IR::STARTS_WITH(doc.a, 'fo') RETURN doc", null, { }).json;
+
+      assertEqual(result.length, 10);
+      result.forEach(function(res) {
+        assertEqual(res.a, 'foo');
+      });
+    },
+
+    testStartsWithFilter2 : function () {
+      var result = AQL_EXECUTE("FOR doc IN VIEW UnitTestsView FILTER IR::STARTS_WITH(doc.b, 'ba') RETURN doc", null, { }).json;
+
+      assertEqual(result.length, 10);
+      result.forEach(function(res) {
+        assertTrue(res.b === 'bar' || res.b === 'baz');
+      });
+    },
+
+    testStartsWithFilterSort : function () {
+      var result = AQL_EXECUTE("FOR doc IN VIEW UnitTestsView FILTER IR::STARTS_WITH(doc.b, 'ba') && doc.c == 0 SORT doc.b RETURN doc", null, { }).json;
+
       assertEqual(result.length, 2);
-      assertEqual(result[0].a, "foo");
-      assertEqual(result[1].a, "foo");
-    }
-
-
+      assertEqual(result[0].b, 'bar');
+      assertEqual(result[1].b, 'baz');
+      assertEqual(result[0].c, 0);
+      assertEqual(result[1].c, 0);
+    },
 
   };
 }
