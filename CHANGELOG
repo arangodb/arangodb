@@ -1,6 +1,8 @@
 devel
 -----
 
+* fixed issue #2835: UI detection of JWT token in case of server restart or upgrade
+
 * fixed issue #2977: Documentation for db._createDatabase is wrong
 
 * ui: added bind parameters to slow query history view
