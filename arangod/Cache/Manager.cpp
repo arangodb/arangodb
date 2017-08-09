@@ -556,7 +556,7 @@ bool Manager::rebalance(bool onlyCalculate) {
     metadata->lock();
     uint64_t fixed = metadata->fixedSize + metadata->tableSize + Manager::cacheRecordOverhead;
     if (newDeserved < fixed) {
-      LOG_TOPIC(ERR, Logger::FIXME) << "Setting deserved cache size " << newDeserved << " below old:" << metadata->deservedSize
+      LOG_TOPIC(ERR, Logger::FIXME) << "Setting deserved cache size " << newDeserved << " below usage: " << fixed
       << " ; Using weight  " << weight;
     }
     metadata->adjustDeserved(newDeserved);
@@ -630,8 +630,8 @@ void Manager::resizeCache(Manager::TaskEnvironment environment,
   TRI_ASSERT(metadata->isLocked());
 
   if (metadata->usage <= newLimit) {
-    LOG_TOPIC(ERR, Logger::FIXME) << "Cache " << ((size_t)cache.get())
-    << " Growing cache using " << metadata->usage
+    LOG_TOPIC(ERR, Logger::FIXME) << "Cache (" << ((size_t)cache.get())
+    << ") Growing cache using " << metadata->usage
     << " to " << newLimit;
     
     uint64_t oldLimit = metadata->hardUsageLimit;
@@ -645,8 +645,8 @@ void Manager::resizeCache(Manager::TaskEnvironment environment,
     }
     return;
   } else {
-    LOG_TOPIC(ERR, Logger::FIXME) << "Cache " << ((size_t)cache.get())
-    << " Shrinking cache from allocated " << metadata->allocatedSize
+    LOG_TOPIC(ERR, Logger::FIXME) << "Cache (" << ((size_t)cache.get())
+    << ") Shrinking cache from allocated " << metadata->allocatedSize
     << " to " << newLimit;
   }
 
@@ -749,6 +749,7 @@ bool Manager::increaseAllowed(uint64_t increase, bool privileged) const {
 
 std::shared_ptr<Manager::PriorityList> Manager::priorityList() {
   TRI_ASSERT(_state.isLocked());
+  LOG_TOPIC(ERR, Logger::FIXME) << "Cache count " << _caches.size();
   double minimumWeight = static_cast<double>(Manager::minCacheAllocation) /
                          static_cast<double>(_globalHighwaterMark);
   while (static_cast<uint64_t>(std::ceil(
@@ -757,7 +758,9 @@ std::shared_ptr<Manager::PriorityList> Manager::priorityList() {
     minimumWeight *= 1.001;  // bump by 0.1% until we fix precision issues
   }
   double uniformMarginalWeight = 0.1 / static_cast<double>(_caches.size());
+  LOG_TOPIC(ERR, Logger::FIXME) << "uniformMarginalWeight " << uniformMarginalWeight;
   double baseWeight = std::max(minimumWeight, uniformMarginalWeight);
+  LOG_TOPIC(ERR, Logger::FIXME) << "baseWeight " << baseWeight;
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   if (1.0 < (baseWeight * static_cast<double>(_caches.size()))) {
     LOG_TOPIC(FATAL, Logger::FIXME)
@@ -768,6 +771,7 @@ std::shared_ptr<Manager::PriorityList> Manager::priorityList() {
   double remainingWeight =
       1.0 - (baseWeight * static_cast<double>(_caches.size()));
   uint64_t totalAccesses = 0;
+  LOG_TOPIC(ERR, Logger::FIXME) << "remainingWeight " << baseWeight;
 
   // catalog accessed caches and count total accesses
   // to get basis for comparison
@@ -779,7 +783,6 @@ std::shared_ptr<Manager::PriorityList> Manager::priorityList() {
       totalAccesses += s.second;
     }
   }
-  totalAccesses = std::sqrt(totalAccesses);
 
   // gather all unaccessed caches at beginning of list
   std::shared_ptr<PriorityList> list(new PriorityList());
@@ -787,6 +790,7 @@ std::shared_ptr<Manager::PriorityList> Manager::priorityList() {
   for (auto it = _caches.begin(); it != _caches.end(); it++) {
     auto found = accessed.find(*it);
     if (found == accessed.end()) {
+      LOG_TOPIC(ERR, Logger::FIXME) << "Cache (" << ((size_t)it->get()) << ") weight: " << baseWeight;
       list->emplace_back(*it, baseWeight);
     }
   }
@@ -799,7 +803,8 @@ std::shared_ptr<Manager::PriorityList> Manager::priorityList() {
     if (auto cache = s.first.lock()) {
       double accessWeight = static_cast<double>(s.second) * normalizer;
       TRI_ASSERT(accessWeight >= 0.0);
-      list->emplace_back(cache, baseWeight + std::sqrt(accessWeight));
+      LOG_TOPIC(ERR, Logger::FIXME) << "Cache (" << ((size_t)cache.get()) << ") weight: " << baseWeight;
+      list->emplace_back(cache, baseWeight + accessWeight);
     }
   }
 
