@@ -158,7 +158,6 @@ RestStatus RocksDBRestReplicationHandler::execute() {
         handleCommandInventory();
       }
     } else if (command == "keys") {
-      // calling this route potentially crashes the server
       // preconditions for calling this route are unclear and undocumented -- FIXME
       if (type != rest::RequestType::GET &&
           type != rest::RequestType::POST &&
@@ -172,10 +171,16 @@ RestStatus RocksDBRestReplicationHandler::execute() {
       }
 
       if (type == rest::RequestType::POST) {
-        // example: curl -XPOST --dump - 'http://localhost:5555/_db/_system/_api/replication/keys?collection=test&batchId=123' ; echo
+        // has to be called first will bind the iterator to a collection
+
+        // xample: curl -XPOST --dump - 'http://localhost:5555/_db/_system/_api/replication/keys/?collection=_users&batchId=169' ; echo
+        // returns
+        // { "id": <context id - int>,
+        //   "count": <number of documents in collection - int> 
+        // }
         handleCommandCreateKeys();
       } else if (type == rest::RequestType::GET) {
-        // curl --dump - 'http://localhost:5555/_db/_system/_api/replication/keys/123?collection=_users' ; echo < id is batchid
+        // curl --dump - 'http://localhost:5555/_db/_system/_api/replication/keys/123?collection=_users' ; echo # id is batchid
         handleCommandGetKeys();
       } else if (type == rest::RequestType::PUT) {
         handleCommandFetchKeys();
@@ -1102,8 +1107,12 @@ void RocksDBRestReplicationHandler::handleCommandCreateKeys() {
   }
 
   RocksDBReplicationContext* ctx = nullptr;
+
+  //get batchId from url parameters
   bool found, busy;
   std::string batchId = _request->value("batchId", found);
+
+  // find context
   if (found) {
     ctx = _manager->find(StringUtils::uint64(batchId), busy);
   }
@@ -1114,6 +1123,8 @@ void RocksDBRestReplicationHandler::handleCommandCreateKeys() {
   }
   RocksDBReplicationContextGuard(_manager, ctx);
 
+  // to is ignored because the snapshot time is the latest point in time
+ 
   // TRI_voc_tick_t tickEnd = UINT64_MAX;
   // determine end tick for keys
   // std::string const& value = _request->value("to", found);
@@ -1125,6 +1136,7 @@ void RocksDBRestReplicationHandler::handleCommandCreateKeys() {
   // arangodb::CollectionGuard guard(_vocbase, c->cid(), false);
   // arangodb::LogicalCollection* col = guard.collection();
 
+  // bind collection to context - will initialize iterator
   int res = ctx->bindCollection(collection);
   if (res != TRI_ERROR_NO_ERROR) {
     generateError(rest::ResponseCode::NOT_FOUND,
