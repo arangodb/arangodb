@@ -758,7 +758,7 @@ std::shared_ptr<Manager::PriorityList> Manager::priorityList() {
          Manager::minCacheAllocation) {
     minimumWeight *= 1.001;  // bump by 0.1% until we fix precision issues
   }
-  double uniformMarginalWeight = 0.1 / static_cast<double>(_caches.size());
+  double uniformMarginalWeight = 0.2 / static_cast<double>(_caches.size());
   LOG_TOPIC(ERR, Logger::FIXME) << "uniformMarginalWeight " << uniformMarginalWeight;
   double baseWeight = std::max(minimumWeight, uniformMarginalWeight);
   LOG_TOPIC(ERR, Logger::FIXME) << "baseWeight " << baseWeight;
