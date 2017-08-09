@@ -98,7 +98,7 @@ inline arangodb::FlushFeature* getFlushFeature() noexcept {
 ////////////////////////////////////////////////////////////////////////////////
 class CompoundReader: public irs::index_reader {
  public:
-  CompoundReader(ReadMutex const& mutex);
+  CompoundReader(irs::async_utils::read_write_mutex& mutex);
   CompoundReader(CompoundReader&& other) noexcept;
   irs::sub_reader const& operator[](size_t subReaderId) const;
   void add(irs::directory_reader const& reader);
@@ -153,16 +153,18 @@ bool CompoundReader::IteratorImpl::operator==(
   return static_cast<IteratorImpl const&>(other)._itr == _itr;
 }
 
-CompoundReader::CompoundReader(ReadMutex const& mutex): _mutex(mutex) {
-  //SCOPED_LOCK_NAMED(_mutex, lock); FIXME TODO implement proper locking
-  //_lock = std::move(lock);
+CompoundReader::CompoundReader(irs::async_utils::read_write_mutex& mutex)
+  : _mutex(mutex) {
+  SCOPED_LOCK_NAMED(_mutex, lock);
+  _lock = std::move(lock);
 }
 
 CompoundReader::CompoundReader(CompoundReader&& other) noexcept
   : _mutex(std::move(other._mutex)),
     _readers(std::move(other._readers)),
     _subReaders(std::move(other._subReaders)) {
-  //_lock = std::move(other._lock); FIXME TODO implement proper locking
+  _lock = std::unique_lock<ReadMutex>(_mutex, std::adopt_lock);
+  other._lock.release();
 }
 
 irs::sub_reader const& CompoundReader::operator[](size_t subReaderId) const {
@@ -1833,16 +1835,13 @@ arangodb::ViewIterator* IResearchView::iteratorForCondition(
 
   irs::order order;
   OrderFactory::OrderContext orderCtx{ order, *trx };
-  ReadMutex mutex(_mutex); // members can be asynchronously updated
-  SCOPED_LOCK(mutex);
+  CompoundReader compoundReader(_mutex); // will aquire read-lock since members can be asynchronously updated
 
   if (sortCondition && !OrderFactory::order(&orderCtx, *sortCondition, _meta)) {
     LOG_TOPIC(WARN, Logger::FIXME) << "failed to build order while querying iResearch view '" << id() << "', query" << node->toVelocyPack(true)->toJson();
 
     return nullptr;
   }
-
-  CompoundReader compoundReader(mutex); // FIXME remove add method
 
   try {
     auto& memoryStore = activeMemoryStore();
