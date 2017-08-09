@@ -1,6 +1,10 @@
 devel
 -----
 
+* fixed issue #2977: Documentation for db._createDatabase is wrong
+
+* ui: added bind parameters to slow query history view
+
 * fixed issue #1751: Slow Query API should provide bind parameters, webui should display them
 
 * ui: fixed a bug when moving multiple documents was not possible
