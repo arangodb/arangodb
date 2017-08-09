@@ -123,9 +123,6 @@ class MMFilesPersistentIndex final : public MMFilesPathBasedIndex {
 
   size_t memory() const override;
 
-  void toVelocyPack(VPackBuilder&, bool, bool) const override;
-  void toVelocyPackFigures(VPackBuilder&) const override;
-
   static constexpr size_t minimalPrefixSize() { return sizeof(TRI_voc_tick_t); }
 
   static constexpr size_t keyPrefixSize() {

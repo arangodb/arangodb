@@ -502,21 +502,9 @@ size_t MMFilesHashIndex::memory() const {
                              _multiArray->_hashArray->memoryUsage());
 }
 
-/// @brief return a velocypack representation of the index
-void MMFilesHashIndex::toVelocyPack(VPackBuilder& builder, bool withFigures,
-                                    bool forPersistence) const {
-  builder.openObject();
-  Index::toVelocyPack(builder, withFigures, forPersistence);
-  builder.add("unique", VPackValue(_unique));
-  builder.add("sparse", VPackValue(_sparse));
-  builder.add("deduplicate", VPackValue(_deduplicate));
-  builder.close();
-}
-
 /// @brief return a velocypack representation of the index figures
 void MMFilesHashIndex::toVelocyPackFigures(VPackBuilder& builder) const {
-  TRI_ASSERT(builder.isOpenObject());
-  builder.add("memory", VPackValue(memory()));
+  MMFilesPathBasedIndex::toVelocyPackFigures(builder);
   if (_unique) {
     _uniqueArray->_hashArray->appendToVelocyPack(builder);
   } else {

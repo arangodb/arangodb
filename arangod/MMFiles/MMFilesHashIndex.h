@@ -159,7 +159,6 @@ class MMFilesHashIndex final : public MMFilesPathBasedIndex {
 
   size_t memory() const override;
 
-  void toVelocyPack(VPackBuilder&, bool, bool) const override;
   void toVelocyPackFigures(VPackBuilder&) const override;
 
   bool matchesDefinition(VPackSlice const& info) const override;

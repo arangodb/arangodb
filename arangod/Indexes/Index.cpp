@@ -396,9 +396,9 @@ std::string Index::context() const {
 
 /// @brief create a VelocyPack representation of the index
 /// base functionality (called from derived classes)
-std::shared_ptr<VPackBuilder> Index::toVelocyPack(bool withFigures) const {
+std::shared_ptr<VPackBuilder> Index::toVelocyPack(bool withFigures, bool forPersistence) const {
   auto builder = std::make_shared<VPackBuilder>();
-  toVelocyPack(*builder, withFigures, false);
+  toVelocyPack(*builder, withFigures, forPersistence);
   return builder;
 }
 

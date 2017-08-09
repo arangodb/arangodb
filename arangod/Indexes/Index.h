@@ -241,8 +241,8 @@ class Index {
 
   virtual size_t memory() const = 0;
 
-  virtual void toVelocyPack(arangodb::velocypack::Builder&, bool, bool) const;
-  std::shared_ptr<arangodb::velocypack::Builder> toVelocyPack(bool) const;
+  virtual void toVelocyPack(arangodb::velocypack::Builder&, bool withFigures, bool forPersistence) const;
+  std::shared_ptr<arangodb::velocypack::Builder> toVelocyPack(bool withFigures, bool forPersistence) const;
 
   virtual void toVelocyPackFigures(arangodb::velocypack::Builder&) const;
   std::shared_ptr<arangodb::velocypack::Builder> toVelocyPackFigures() const;
