@@ -3800,6 +3800,19 @@ function exampleGraphsSuite () {
       resArr = res.toArray().sort();
       assertEqual(resArr, ['B', 'C', 'D'].sort());
  
+    },
+
+    testMinDepthFilterReference: () => {
+      let q = `FOR snippet IN ['right']
+        LET test = CONCAT(snippet, '_blob')
+          FOR v, e, p IN 1..2 OUTBOUND 'circles/A' GRAPH 'traversalGraph'
+            FILTER p.edges[1].label != test 
+            RETURN v._key`;
+      
+      let res = db._query(q);
+      assertEqual(res.count(), 5);
+      let resArr = res.toArray().sort();
+      assertEqual(resArr, ["B", "C", "E", "G", "J"].sort());
     }
 
   };

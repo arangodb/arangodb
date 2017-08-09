@@ -718,6 +718,18 @@ bool TraversalConditionFinder::enterSubquery(ExecutionNode*, ExecutionNode*) {
 }
 
 bool TraversalConditionFinder::isTrueOnNull(AstNode* node, Variable const* pathVar) const {
+  std::unordered_set<Variable const*> vars;
+  Ast::getReferencedVariables(node, vars);
+  if (vars.size() > 1) {
+    // More then one variable.
+    // Too complex, would require to figure out all
+    // possible values for all others vars and play them through
+    // Do not opt.
+    return false;
+  }
+  TRI_ASSERT(vars.size() == 1);
+  TRI_ASSERT(vars.find(pathVar) != vars.end());
+
   TRI_ASSERT(_plan->getAst() != nullptr);
 
   bool mustDestroy = false;
