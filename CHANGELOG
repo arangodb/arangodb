@@ -1,27 +1,5 @@
-v3.2.0 (2017-07-20)
+v3.2.1 (2017-08-09)
 -------------------
-
-* fixed UI issued
-
-* fixed pregel multi-threaded
-
-* fixed foxx resilience
-
-
-v3.2.beta6 (2017-07-18)
------------------------
-
-* various bugfixes
-
-
-v3.2.beta5 (2017-07-16)
------------------------
-
-* numerous bugfixes
-
-
-v3.2.beta4 (2017-07-04)
------------------------
 
 * Now allowing to restore users in a sharded environment as well
   It is still not possible to restore collections that are sharded
@@ -130,12 +108,13 @@ v3.2.beta4 (2017-07-04)
 
 * removed RocksDB note in Geo index docs
 
+
 v3.2.0 (2017-07-20)
 -------------------
 
-* fixed UI issues
+* fixed UI issued
 
-* fixed multi-threading issues in Pregel
+* fixed pregel multi-threaded
 
 * fixed Foxx resilience
 
