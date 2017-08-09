@@ -36,7 +36,7 @@ TransactionManager::TransactionManager()
 Transaction* TransactionManager::begin(bool readOnly) {
   Transaction* tx = new Transaction(readOnly);
 
-  _state.lock();
+  _state.lock(false);
 
   if (readOnly) {
     _openReads++;
@@ -63,7 +63,7 @@ Transaction* TransactionManager::begin(bool readOnly) {
 
 void TransactionManager::end(Transaction* tx) {
   TRI_ASSERT(tx != nullptr);
-  _state.lock();
+  _state.lock(false);
   // if currently in sensitive phase, and transaction term is old, it was
   // upgraded to sensitive status
   if (((_term & static_cast<uint64_t>(1)) > 0) && (_term > tx->term)) {

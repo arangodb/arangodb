@@ -36,7 +36,7 @@ const uint32_t Table::minLogSize = 8;
 const uint32_t Table::maxLogSize = 32;
 
 bool Table::GenericBucket::lock(int64_t maxTries) {
-  return _state.lock(maxTries);
+  return _state.lock(false, maxTries);
 }
 
 void Table::GenericBucket::unlock() {
@@ -87,7 +87,7 @@ Table::Table(uint32_t logSize)
       _bucketClearer(defaultClearer),
       _slotsTotal(_size),
       _slotsUsed(static_cast<uint64_t>(0)) {
-  _state.lock();
+  _state.lock(false);
   _state.toggleFlag(State::Flag::disabled);
   memset(_buckets, 0, BUCKET_SIZE * _size);
   _state.unlock();
@@ -108,7 +108,7 @@ std::pair<void*, std::shared_ptr<Table>> Table::fetchAndLockBucket(
     uint32_t hash, int64_t maxTries) {
   GenericBucket* bucket = nullptr;
   std::shared_ptr<Table> source(nullptr);
-  bool ok = _state.lock(maxTries);
+  bool ok = _state.lock(true, maxTries);
   if (ok) {
     ok = !_state.isSet(State::Flag::disabled);
     if (ok) {
@@ -140,7 +140,7 @@ std::pair<void*, std::shared_ptr<Table>> Table::fetchAndLockBucket(
 std::shared_ptr<Table> Table::setAuxiliary(std::shared_ptr<Table> table) {
   std::shared_ptr<Table> result = table;
   if (table.get() != this) {
-    _state.lock();
+    _state.lock(false);
     if (table.get() == nullptr) {
       result = _auxiliary;
       _auxiliary = table;
@@ -169,7 +169,7 @@ std::unique_ptr<Table::Subtable> Table::auxiliaryBuckets(uint32_t index) {
   uint32_t mask;
   uint32_t shift;
 
-  _state.lock();
+  _state.lock(true);
   std::shared_ptr<Table> source = _auxiliary->shared_from_this();
   TRI_ASSERT(_auxiliary.get() != nullptr);
   if (_logSize > _auxiliary->_logSize) {
@@ -208,7 +208,7 @@ void Table::clear() {
 }
 
 void Table::disable() {
-  _state.lock();
+  _state.lock(false);
   if (!_state.isSet(State::Flag::disabled)) {
     _state.toggleFlag(State::Flag::disabled);
   }
@@ -216,7 +216,7 @@ void Table::disable() {
 }
 
 void Table::enable() {
-  _state.lock();
+  _state.lock(false);
   if (_state.isSet(State::Flag::disabled)) {
     _state.toggleFlag(State::Flag::disabled);
   }
@@ -224,7 +224,7 @@ void Table::enable() {
 }
 
 bool Table::isEnabled(int64_t maxTries) {
-  bool ok = _state.lock(maxTries);
+  bool ok = _state.lock(true, maxTries);
   if (ok) {
     ok = !_state.isSet(State::Flag::disabled);
     _state.unlock();
@@ -244,7 +244,7 @@ bool Table::slotEmptied() {
 }
 
 void Table::signalEvictions() {
-  bool ok = _state.lock(triesGuarantee);
+  bool ok = _state.lock(false, triesGuarantee);
   if (ok) {
     if (!_state.isSet(State::Flag::evictions)) {
       _state.toggleFlag(State::Flag::evictions);
@@ -254,7 +254,7 @@ void Table::signalEvictions() {
 }
 
 uint32_t Table::idealSize() {
-  bool ok = _state.lock(triesGuarantee);
+  bool ok = _state.lock(false, triesGuarantee);
   bool forceGrowth = false;
   if (ok) {
     forceGrowth = _state.isSet(State::Flag::evictions);

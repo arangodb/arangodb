@@ -60,7 +60,7 @@ TEST_CASE("cache::Metadata", "[cache]") {
     uint64_t overhead = 48;
     Metadata metadata(1024, 0, 0, 2048 + overhead);
 
-    metadata.lock();
+    metadata.lock(false);
 
     REQUIRE(metadata.adjustUsageIfAllowed(512));
     REQUIRE(metadata.adjustUsageIfAllowed(512));
@@ -97,7 +97,7 @@ TEST_CASE("cache::Metadata", "[cache]") {
     uint64_t overhead = 48;
     Metadata metadata(1024, 0, 512, 2048 + overhead);
 
-    metadata.lock();
+    metadata.lock(false);
 
     REQUIRE(!metadata.migrationAllowed(1024));
     REQUIRE(2048 + overhead == metadata.adjustDeserved(2048 + overhead));

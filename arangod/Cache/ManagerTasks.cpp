@@ -53,9 +53,9 @@ void FreeMemoryTask::run() {
   bool ran = _cache->freeMemory();
 
   if (ran) {
-    _manager->_state.lock();
+    _manager->_state.lock(false);
     Metadata* metadata = _cache->metadata();
-    metadata->lock();
+    metadata->lock(false);
     uint64_t reclaimed = metadata->hardUsageLimit - metadata->softUsageLimit;
     metadata->adjustLimits(metadata->softUsageLimit, metadata->softUsageLimit);
     metadata->toggleFlag(State::Flag::resizing);
@@ -96,7 +96,7 @@ void MigrateTask::run() {
 
   if (!ran) {
     Metadata* metadata = _cache->metadata();
-    metadata->lock();
+    metadata->lock(false);
     metadata->toggleFlag(State::Flag::migrating);
     metadata->unlock();
     _manager->reclaimTable(_table);

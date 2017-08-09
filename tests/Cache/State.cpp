@@ -47,51 +47,109 @@ TEST_CASE("cache::State", "[cache]") {
 
     // check lock without contention
     REQUIRE(!state.isLocked());
-    success = state.lock(-1, cb1);
+    success = state.lock(false, 10LL, cb1); // writer gets lock
     REQUIRE(success);
     REQUIRE(state.isLocked());
+    REQUIRE(state.isWriteLocked());
     REQUIRE(1UL == outsideState);
 
-    // check lock with contention
-    success = state.lock(10LL, cb2);
+    // check lock with "contention"
+    success = state.lock(false, 10LL, cb2); // another writer can't steal lock
     REQUIRE(!success);
     REQUIRE(state.isLocked());
+    REQUIRE(state.isWriteLocked());
+    REQUIRE(1UL == outsideState);
+
+    // check lock with "contention"
+    success = state.lock(true, 10LL, cb2); // writer blocks reader
+    REQUIRE(!success);
+    REQUIRE(state.isLocked());
+    REQUIRE(state.isWriteLocked());
     REQUIRE(1UL == outsideState);
 
     // check unlock
+    state.unlock(); // writer releases
+    REQUIRE(!state.isLocked());
+    REQUIRE(!state.isWriteLocked());
+
+    // check read locks
+    success = state.lock(true, 10LL, cb1);
+    REQUIRE(success);
+    REQUIRE(state.isLocked());
+    REQUIRE(!state.isWriteLocked());
+
+    success = state.lock(true, 10LL, cb2); // another reader should be fine
+    REQUIRE(success);
+    REQUIRE(state.isLocked());
+    REQUIRE(!state.isWriteLocked());
+
+    success = state.lock(false, 10LL, cb2); // but a writer is not okay
+    REQUIRE(!success);
+    REQUIRE(state.isLocked());
+    REQUIRE(!state.isWriteLocked());
+
+    state.unlock(); // reader1 releases
+    REQUIRE(state.isLocked());
+    state.unlock(); // reader2 releases
+    REQUIRE(!state.isLocked());
+  }
+
+  SECTION("test read-lock overflow") {
+    State state;
+    bool success;
+
+    for (size_t i = 0; i < 127; i++) {
+      success = state.lock(true, 10LL);
+      REQUIRE(success);
+      REQUIRE(state.isLocked());
+      REQUIRE(!state.isWriteLocked());
+    }
+
+    success = state.lock(true, 10LL);
+    REQUIRE(!success);
+    REQUIRE(state.isLocked());
+    REQUIRE(!state.isWriteLocked());
+
+    for (size_t i = 0; i < 126; i++) {
+      state.unlock();
+      REQUIRE(state.isLocked());
+      REQUIRE(!state.isWriteLocked());
+    }
+
     state.unlock();
     REQUIRE(!state.isLocked());
+    REQUIRE(!state.isWriteLocked());
   }
 
   SECTION("test methods for non-lock flags") {
     State state;
     bool success;
 
-    success = state.lock();
+    success = state.lock(true, 10LL);
     REQUIRE(success);
     REQUIRE(!state.isSet(State::Flag::migrated));
     state.unlock();
 
-    success = state.lock();
+    success = state.lock(false, 10LL);
     REQUIRE(success);
     REQUIRE(!state.isSet(State::Flag::migrated));
     state.toggleFlag(State::Flag::migrated);
     REQUIRE(state.isSet(State::Flag::migrated));
     state.unlock();
 
-    success = state.lock();
+    success = state.lock(true, 10LL);
     REQUIRE(success);
     REQUIRE(state.isSet(State::Flag::migrated));
     state.unlock();
 
-    success = state.lock();
+    success = state.lock(false, 10LL);
     REQUIRE(success);
     REQUIRE(state.isSet(State::Flag::migrated));
     state.toggleFlag(State::Flag::migrated);
     REQUIRE(!state.isSet(State::Flag::migrated));
     state.unlock();
 
-    success = state.lock();
+    success = state.lock(true, 10LL);
     REQUIRE(success);
     REQUIRE(!state.isSet(State::Flag::migrated));
     state.unlock();

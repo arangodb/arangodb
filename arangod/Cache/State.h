@@ -56,16 +56,18 @@ struct State {
   /// ascending order.
   //////////////////////////////////////////////////////////////////////////////
   enum class Flag : uint32_t {
-    locked = 0x00000001,
-    blacklisted = 0x00000002,
-    disabled = 0x00000004,
-    evictions = 0x00000008,
-    migrated = 0x00000010,
-    migrating = 0x00000020,
-    rebalancing = 0x00000040,
-    resizing = 0x00000080,
-    shutdown = 0x00000100,
-    shuttingDown = 0x00000200,
+    lockReadMask = 0x0000007f,
+    lockWriteMask = 0x00000080,
+    lockAnyMask = 0x000000ff,
+    blacklisted = 0x00000100,
+    disabled = 0x00000200,
+    evictions = 0x00000400,
+    migrated = 0x00000800,
+    migrating = 0x00001000,
+    rebalancing = 0x00002000,
+    resizing = 0x00004000,
+    shutdown = 0x00008000,
+    shuttingDown = 0x00010000,
   };
 
   //////////////////////////////////////////////////////////////////////////////
@@ -89,6 +91,11 @@ struct State {
   bool isLocked() const;
 
   //////////////////////////////////////////////////////////////////////////////
+  /// @brief Checks if state is locked for writing.
+  //////////////////////////////////////////////////////////////////////////////
+  bool isWriteLocked() const;
+
+  //////////////////////////////////////////////////////////////////////////////
   /// @brief Used to lock state. Returns true if locked, false otherwise.
   ///
   /// By default, it will try as many times as necessary to acquire the lock.
@@ -97,7 +104,7 @@ struct State {
   /// locked or not. The optional second parameter is a function which will be
   /// called upon successfully locking the state.
   //////////////////////////////////////////////////////////////////////////////
-  bool lock(int64_t maxTries = -1LL, State::CallbackType cb = []() -> void {});
+  bool lock(bool readOnly, int64_t maxTries = -1LL, State::CallbackType cb = []() -> void {});
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Unlocks the state. Requires state to be locked.

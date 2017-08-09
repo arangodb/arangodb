@@ -42,23 +42,60 @@ State& State::operator=(State const& other) {
 }
 
 bool State::isLocked() const {
-  return ((_state.load() & static_cast<uint32_t>(Flag::locked)) > 0);
+  return ((_state.load() & static_cast<uint32_t>(Flag::lockAnyMask)) > 0);
 }
 
-bool State::lock(int64_t maxTries, State::CallbackType cb) {
+bool State::isWriteLocked() const {
+  return ((_state.load() & static_cast<uint32_t>(Flag::lockAnyMask)) == static_cast<uint32_t>(Flag::lockWriteMask));
+}
+
+bool State::lock(bool readOnly, int64_t maxTries, State::CallbackType cb) {
   int64_t attempt = 0;
+  if (readOnly) {
+    // fast path for multiple concurrent readers
+    while (maxTries < 0 || attempt < maxTries) {
+      // expect not write-locked, not read-saturated
+      uint32_t expected = _state.load() & (~static_cast<uint32_t>(Flag::lockWriteMask));
+      uint32_t desired = expected + 1;
+      if ((desired & static_cast<uint32_t>(Flag::lockReadMask)) == 0) {
+        // read counter overflow, wait for someone else to unlock
+        attempt++;
+        continue;
+      }
+
+      bool success = _state.compare_exchange_strong(expected, desired);
+      if (success) {
+        cb();
+        return true;
+      }
+      attempt++;
+      // TODO: exponential back-off for failure?
+    }
+
+    return false;
+  }
+
+  // otherwise we are attempting to lock for writing
   while (maxTries < 0 || attempt < maxTries) {
-    // expect unlocked, but need to preserve migrating status
-    uint32_t expected = _state.load() & (~static_cast<uint32_t>(Flag::locked));
-    bool success = _state.compare_exchange_strong(
-        expected,
-        (expected | static_cast<uint32_t>(Flag::locked)));  // try to lock
+    // first try to set the write flag
+    uint32_t expected = _state.load() & (~static_cast<uint32_t>(Flag::lockWriteMask));
+    uint32_t desired = expected | static_cast<uint32_t>(Flag::lockWriteMask);
+    bool success = _state.compare_exchange_strong(expected, desired);
     if (success) {
+      // now wait for the readers to finish, ignore attempt limit
+      while ((_state.load() & static_cast<uint32_t>(Flag::lockReadMask)) > 0 && (maxTries < 0 || attempt < maxTries)) {
+        attempt++;
+        continue;
+      }
+      if ((_state.load() & static_cast<uint32_t>(Flag::lockReadMask)) > 0) {
+        // too many attempts, unset write flag and bail out
+        _state &= ~static_cast<uint32_t>(Flag::lockWriteMask);
+        return false;
+      }
       cb();
       return true;
     }
     attempt++;
-    // TODO: exponential back-off for failure?
   }
 
   return false;
@@ -66,7 +103,19 @@ bool State::lock(int64_t maxTries, State::CallbackType cb) {
 
 void State::unlock() {
   TRI_ASSERT(isLocked());
-  _state &= ~static_cast<uint32_t>(Flag::locked);
+  while (true) {
+    uint32_t expected = _state.load();
+    uint32_t desired = expected;
+    if ((expected & static_cast<uint32_t>(Flag::lockAnyMask)) == static_cast<uint32_t>(Flag::lockWriteMask)) {
+      desired &= ~static_cast<uint32_t>(Flag::lockAnyMask);
+    } else {
+      desired--;
+    }
+    bool success = _state.compare_exchange_strong(expected, desired);
+    if (success) {
+      break;
+    }
+  }
 }
 
 bool State::isSet(State::Flag flag) const {
@@ -80,11 +129,11 @@ bool State::isSet(State::Flag flag1, State::Flag flag2) const {
 }
 
 void State::toggleFlag(State::Flag flag) {
-  TRI_ASSERT(isLocked());
+  TRI_ASSERT(isWriteLocked());
   _state ^= static_cast<uint32_t>(flag);
 }
 
 void State::clear() {
-  TRI_ASSERT(isLocked());
-  _state = static_cast<uint32_t>(Flag::locked);
+  TRI_ASSERT(isWriteLocked());
+  _state = static_cast<uint32_t>(Flag::lockWriteMask);
 }

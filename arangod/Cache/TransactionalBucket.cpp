@@ -32,12 +32,12 @@
 using namespace arangodb::cache;
 
 TransactionalBucket::TransactionalBucket() {
-  _state.lock();
+  _state.lock(false);
   clear();
 }
 
 bool TransactionalBucket::lock(int64_t maxTries) {
-  return _state.lock(maxTries);
+  return _state.lock(false, maxTries);
 }
 
 void TransactionalBucket::unlock() {
@@ -94,7 +94,7 @@ CachedValue* TransactionalBucket::find(uint32_t hash, void const* key,
 
 void TransactionalBucket::insert(uint32_t hash, CachedValue* value) {
   TRI_ASSERT(isLocked());
-  TRI_ASSERT(!isBlacklisted(hash));// checks needs to be done outside
+  TRI_ASSERT(!isBlacklisted(hash)); // checks needs to be done outside
 
   for (size_t i = 0; i < slotsData; i++) {
     if (_cachedData[i] == nullptr) {

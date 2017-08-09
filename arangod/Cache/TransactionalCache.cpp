@@ -91,7 +91,7 @@ Result TransactionalCache::insert(CachedValue* value) {
           change -= candidate->size();
         }
 
-        _metadata.lock();
+        _metadata.lock(false);
         allowed = _metadata.adjustUsageIfAllowed(change);
         _metadata.unlock();
 
@@ -144,7 +144,7 @@ Result TransactionalCache::remove(void const* key, uint32_t keySize) {
     if (candidate != nullptr) {
       int64_t change = -static_cast<int64_t>(candidate->size());
 
-      _metadata.lock();
+      _metadata.lock(false);
       bool allowed = _metadata.adjustUsageIfAllowed(change);
       TRI_ASSERT(allowed);
       _metadata.unlock();
@@ -179,7 +179,7 @@ Result TransactionalCache::blacklist(void const* key, uint32_t keySize) {
     if (candidate != nullptr) {
       int64_t change = -static_cast<int64_t>(candidate->size());
 
-      _metadata.lock();
+      _metadata.lock(false);
       bool allowed = _metadata.adjustUsageIfAllowed(change);
       TRI_ASSERT(allowed);
       _metadata.unlock();
@@ -223,7 +223,7 @@ TransactionalCache::TransactionalCache(Cache::ConstructionGuard guard,
 }
 
 TransactionalCache::~TransactionalCache() {
-  _state.lock();
+  _state.lock(true);
   if (!_state.isSet(State::Flag::shutdown)) {
     _state.unlock();
     shutdown();
@@ -375,7 +375,7 @@ TransactionalCache::getBucket(uint32_t hash, int64_t maxTries,
   TransactionalBucket* bucket = nullptr;
   std::shared_ptr<Table> source(nullptr);
 
-  bool ok = _state.lock(maxTries);
+  bool ok = _state.lock(true, maxTries);
   if (ok) {
     bool started = false;
     ok = isOperational();
@@ -419,7 +419,7 @@ Table::BucketClearer TransactionalCache::bucketClearer(Metadata* metadata) {
       if (bucket->_cachedData[j] != nullptr) {
         uint64_t size = bucket->_cachedData[j]->size();
         freeValue(bucket->_cachedData[j]);
-        metadata->lock();
+        metadata->lock(false);
         metadata->adjustUsageIfAllowed(-static_cast<int64_t>(size));
         metadata->unlock();
       }
