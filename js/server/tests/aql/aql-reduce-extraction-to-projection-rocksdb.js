@@ -77,7 +77,11 @@ function optimizerRuleTestSuite () {
         "FOR doc IN @@cn FILTER doc.value1 == 1 RETURN doc",
         "FOR doc IN @@cn FILTER doc.value1 == 1 FILTER doc.value2 == 1 RETURN doc.value1",
         "FOR doc IN @@cn FILTER doc.value1 == 1 && doc.value2 == 1 RETURN doc.value2",
-        "FOR doc IN @@cn FILTER doc.value1 >= 132 && doc.value <= 134 SORT doc.value1 RETURN doc.value1"
+        "FOR doc IN @@cn FILTER doc.value1 >= 132 && doc.value <= 134 SORT doc.value1 RETURN doc.value1",
+        "FOR doc IN @@cn FILTER doc == { value1: 1 } RETURN doc",
+        "FOR doc IN @@cn FILTER doc.value1 == { value1: 1 } RETURN doc.value1",
+        "FOR doc IN @@cn FILTER doc && doc.value1 == 1 RETURN doc.value1",
+        "FOR doc IN @@cn INSERT MERGE(doc, { foo: doc.value }) INTO doc"
       ];
 
       queries.forEach(function(query) {

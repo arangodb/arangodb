@@ -1,6 +1,8 @@
 devel
 -----
 
+* fixed issue #3011: Optimizer rule reduce-extraction-to-projection breaks queries
+
 * fixed issue #2977: Documentation for db._createDatabase is wrong
 
 * ui: added bind parameters to slow query history view
