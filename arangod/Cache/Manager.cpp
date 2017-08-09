@@ -265,19 +265,19 @@ std::pair<double, double> Manager::globalHitRates() {
 
   if (_enableWindowedStats && _findStats.get() != nullptr) {
     auto stats = _findStats->getFrequencies();
-    if (stats->size() == 1) {
-      if ((*stats)[0].first == static_cast<uint8_t>(Stat::findHit)) {
+    if (stats.size() == 1) {
+      if (stats[0].first == static_cast<uint8_t>(Stat::findHit)) {
         windowedRate = 100.0;
       } else {
         windowedRate = 0.0;
       }
-    } else if (stats->size() == 2) {
-      if ((*stats)[0].first == static_cast<uint8_t>(Stat::findHit)) {
-        currentHits = (*stats)[0].second;
-        currentMisses = (*stats)[1].second;
+    } else if (stats.size() == 2) {
+      if (stats[0].first == static_cast<uint8_t>(Stat::findHit)) {
+        currentHits = stats[0].second;
+        currentMisses = stats[1].second;
       } else {
-        currentHits = (*stats)[1].second;
-        currentMisses = (*stats)[0].second;
+        currentHits = stats[1].second;
+        currentMisses = stats[0].second;
       }
       if (currentHits + currentMisses > 0) {
         windowedRate =
@@ -745,8 +745,6 @@ bool Manager::increaseAllowed(uint64_t increase, bool privileged) const {
 
 std::shared_ptr<Manager::PriorityList> Manager::priorityList() {
   TRI_ASSERT(_state.isLocked());
-  std::shared_ptr<PriorityList> list(new PriorityList());
-  list->reserve(_caches.size());
   double minimumWeight = static_cast<double>(Manager::minCacheAllocation) /
                          static_cast<double>(_globalHighwaterMark);
   while (static_cast<uint64_t>(std::ceil(
@@ -754,7 +752,7 @@ std::shared_ptr<Manager::PriorityList> Manager::priorityList() {
          Manager::minCacheAllocation) {
     minimumWeight *= 1.001;  // bump by 0.1% until we fix precision issues
   }
-  double uniformMarginalWeight = 0.5 / static_cast<double>(_caches.size());
+  double uniformMarginalWeight = 0.2 / static_cast<double>(_caches.size());
   double baseWeight = std::max(minimumWeight, uniformMarginalWeight);
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   if (1.0 < (baseWeight * static_cast<double>(_caches.size()))) {
@@ -765,17 +763,23 @@ std::shared_ptr<Manager::PriorityList> Manager::priorityList() {
 #endif
   double remainingWeight =
       1.0 - (baseWeight * static_cast<double>(_caches.size()));
+  uint64_t totalAccesses = 0;
 
-  // catalog accessed caches
-  auto stats = _accessStats.getFrequencies();
+  // catalog accessed caches and count total accesses
+  // to get basis for comparison
+  std::vector<std::pair<std::weak_ptr<Cache>, uint64_t>> stats = _accessStats.getFrequencies();
   std::set<std::shared_ptr<Cache>> accessed;
-  for (auto s : *stats) {
+  for (auto s : stats) {
     if (auto cache = s.first.lock()) {
       accessed.emplace(cache);
+      totalAccesses += s.second;
     }
   }
+  totalAccesses = std::sqrt(totalAccesses);
 
   // gather all unaccessed caches at beginning of list
+  std::shared_ptr<PriorityList> list(new PriorityList());
+  list->reserve(_caches.size());
   for (auto it = _caches.begin(); it != _caches.end(); it++) {
     auto found = accessed.find(*it);
     if (found == accessed.end()) {
@@ -783,21 +787,15 @@ std::shared_ptr<Manager::PriorityList> Manager::priorityList() {
     }
   }
 
-  // count total accesses to get basis for comparison
-  uint64_t totalAccesses = 0;
-  for (auto s : *stats) {
-    totalAccesses += s.second;
-  }
-
   double normalizer =
       remainingWeight / (std::max)(1.0, static_cast<double>(totalAccesses));
 
   // gather all accessed caches in order
-  for (auto s : *stats) {
+  for (auto s : stats) {
     if (auto cache = s.first.lock()) {
       double accessWeight = static_cast<double>(s.second) * normalizer;
       TRI_ASSERT(accessWeight >= 0.0);
-      list->emplace_back(cache, baseWeight + accessWeight);
+      list->emplace_back(cache, baseWeight + std::sqrt(accessWeight));
     }
   }
 

@@ -57,20 +57,20 @@ TEST_CASE("cache::FrequencyBuffer", "[cache]") {
     }
 
     auto frequencies = buffer.getFrequencies();
-    REQUIRE(static_cast<uint64_t>(2) == frequencies->size());
-    REQUIRE(one == (*frequencies)[0].first);
-    REQUIRE(static_cast<uint64_t>(2) == (*frequencies)[0].second);
-    REQUIRE(two == (*frequencies)[1].first);
-    REQUIRE(static_cast<uint64_t>(4) == (*frequencies)[1].second);
+    REQUIRE(static_cast<uint64_t>(2) == frequencies.size());
+    REQUIRE(one == frequencies[0].first);
+    REQUIRE(static_cast<uint64_t>(2) == frequencies[0].second);
+    REQUIRE(two == frequencies[1].first);
+    REQUIRE(static_cast<uint64_t>(4) == frequencies[1].second);
 
     for (size_t i = 0; i < 8; i++) {
       buffer.insertRecord(one);
     }
 
     frequencies = buffer.getFrequencies();
-    REQUIRE(static_cast<size_t>(1) == frequencies->size());
-    REQUIRE(one == (*frequencies)[0].first);
-    REQUIRE(static_cast<uint64_t>(8) == (*frequencies)[0].second);
+    REQUIRE(static_cast<size_t>(1) == frequencies.size());
+    REQUIRE(one == frequencies[0].first);
+    REQUIRE(static_cast<uint64_t>(8) == frequencies[0].second);
   }
 
   SECTION("test buffer with weak_ptr entries") {
@@ -114,10 +114,10 @@ TEST_CASE("cache::FrequencyBuffer", "[cache]") {
     }
 
     auto frequencies = buffer.getFrequencies();
-    REQUIRE(static_cast<uint64_t>(2) == frequencies->size());
-    REQUIRE(p2 == (*frequencies)[0].first.lock());
-    REQUIRE(static_cast<uint64_t>(2) == (*frequencies)[0].second);
-    REQUIRE(p1 == (*frequencies)[1].first.lock());
-    REQUIRE(static_cast<uint64_t>(4) == (*frequencies)[1].second);
+    REQUIRE(static_cast<uint64_t>(2) == frequencies.size());
+    REQUIRE(p2 == frequencies[0].first.lock());
+    REQUIRE(static_cast<uint64_t>(2) == frequencies[0].second);
+    REQUIRE(p1 == frequencies[1].first.lock());
+    REQUIRE(static_cast<uint64_t>(4) == frequencies[1].second);
   }
 }

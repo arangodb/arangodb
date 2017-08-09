@@ -116,7 +116,7 @@ class FrequencyBuffer {
   /// @brief Return a list of (event, count) pairs for each recorded event in
   /// ascending order.
   //////////////////////////////////////////////////////////////////////////////
-  std::shared_ptr<typename FrequencyBuffer::stats_t> getFrequencies() const {
+  typename FrequencyBuffer::stats_t getFrequencies() const {
     // calculate frequencies
     std::unordered_map<T, uint64_t, Hasher, Comparator> frequencies;
     for (size_t i = 0; i < _capacity; i++) {
@@ -127,17 +127,17 @@ class FrequencyBuffer {
     }
 
     // gather and sort frequencies
-    std::shared_ptr<stats_t> data(new stats_t());
-    data->reserve(frequencies.size());
+    stats_t data;
+    data.reserve(frequencies.size());
     for (auto f : frequencies) {
-      data->emplace_back(std::pair<T, uint64_t>(f.first, f.second));
+      data.emplace_back(std::pair<T, uint64_t>(f.first, f.second));
     }
-    std::sort(data->begin(), data->end(),
+    std::sort(data.begin(), data.end(),
               [](std::pair<T, uint64_t>& left, std::pair<T, uint64_t>& right) {
                 return left.second < right.second;
               });
 
-    return data;
+    return data; // RVO moves this out
   }
 
   //////////////////////////////////////////////////////////////////////////////

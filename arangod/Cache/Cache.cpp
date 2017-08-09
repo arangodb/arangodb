@@ -137,19 +137,19 @@ std::pair<double, double> Cache::hitRates() {
 
   if (_enableWindowedStats && _findStats.get() != nullptr) {
     auto stats = _findStats->getFrequencies();
-    if (stats->size() == 1) {
-      if ((*stats)[0].first == static_cast<uint8_t>(Stat::findHit)) {
+    if (stats.size() == 1) {
+      if (stats[0].first == static_cast<uint8_t>(Stat::findHit)) {
         windowedRate = 100.0;
       } else {
         windowedRate = 0.0;
       }
-    } else if (stats->size() == 2) {
-      if ((*stats)[0].first == static_cast<uint8_t>(Stat::findHit)) {
-        currentHits = (*stats)[0].second;
-        currentMisses = (*stats)[1].second;
+    } else if (stats.size() == 2) {
+      if (stats[0].first == static_cast<uint8_t>(Stat::findHit)) {
+        currentHits = stats[0].second;
+        currentMisses = stats[1].second;
       } else {
-        currentHits = (*stats)[1].second;
-        currentMisses = (*stats)[0].second;
+        currentHits = stats[1].second;
+        currentMisses = stats[0].second;
       }
       if (currentHits + currentMisses > 0) {
         windowedRate = 100 * (static_cast<double>(currentHits) /
