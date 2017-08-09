@@ -160,9 +160,6 @@ bool Metadata::adjustLimits(uint64_t softLimit, uint64_t hardLimit) {
 uint64_t Metadata::adjustDeserved(uint64_t deserved) {
   TRI_ASSERT(isLocked());
   deservedSize = std::min(deserved, maxSize);
-  if (deserved < usage) {
-    LOG_TOPIC(ERR, Logger::FIXME) << "Setting deserved cache size " << deserved << " below usage:" << usage;
-  }
   return deservedSize;
 }
 

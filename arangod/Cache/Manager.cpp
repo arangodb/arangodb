@@ -554,13 +554,17 @@ bool Manager::rebalance(bool onlyCalculate) {
 #endif
     Metadata* metadata = cache->metadata();
     metadata->lock();
+    uint64_t fixed = metadata->fixedSize + metadata->tableSize + Manager::cacheRecordOverhead;
+    if (newDeserved < fixed) {
+      LOG_TOPIC(ERR, Logger::FIXME) << "Setting deserved cache size " << newDeserved << " below old:" << metadata->deservedSize
+      << " ; Using weight  " << weight;
+    }
     metadata->adjustDeserved(newDeserved);
     metadata->unlock();
   }
 
   if (!onlyCalculate) {
     
-    LOG_TOPIC(ERR, Logger::FIXME) << "Rebalancing: _globalHighwaterMark " << _globalHighwaterMark;
     shrinkOvergrownCaches(TaskEnvironment::rebalancing);
 
     if (_rebalancingTasks.load() == 0) {
@@ -586,7 +590,7 @@ void Manager::shrinkOvergrownCaches(Manager::TaskEnvironment environment) {
     metadata->lock();
 
     if (metadata->allocatedSize > metadata->deservedSize) {
-      LOG_TOPIC(ERR, Logger::FIXME) << "Resizing overgrown Cache " << ((size_t)cache.get());
+      LOG_TOPIC(ERR, Logger::FIXME) << "Resizing overgrown Cache (" << ((size_t)cache.get()) << ")";
       resizeCache(environment, cache, metadata->newLimit());  // unlocks cache
     } else {
       metadata->unlock();
@@ -752,7 +756,7 @@ std::shared_ptr<Manager::PriorityList> Manager::priorityList() {
          Manager::minCacheAllocation) {
     minimumWeight *= 1.001;  // bump by 0.1% until we fix precision issues
   }
-  double uniformMarginalWeight = 0.2 / static_cast<double>(_caches.size());
+  double uniformMarginalWeight = 0.1 / static_cast<double>(_caches.size());
   double baseWeight = std::max(minimumWeight, uniformMarginalWeight);
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   if (1.0 < (baseWeight * static_cast<double>(_caches.size()))) {
