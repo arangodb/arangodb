@@ -1,6 +1,8 @@
 v3.2.1 (2017-08-09)
 -------------------
 
+* fixed issue #3011: Optimizer rule reduce-extraction-to-projection breaks queries
+
 * Now allowing to restore users in a sharded environment as well
   It is still not possible to restore collections that are sharded
   differently than by _key.
