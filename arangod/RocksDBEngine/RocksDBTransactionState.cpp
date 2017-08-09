@@ -141,7 +141,7 @@ Result RocksDBTransactionState::beginTransaction(transaction::Hints hints) {
       _rocksMethods.reset(new RocksDBReadOnlyMethods(this));
     } else {
       createTransaction();
-      bool readWrites = hasHint(transaction::Hints::Hint::READ_OWN_WRITES);
+      bool readWrites = hasHint(transaction::Hints::Hint::READ_WRITES);
       if (!readWrites) {
         _snapshot =
             db->GetSnapshot();  // we must call ReleaseSnapshot at some point
@@ -166,10 +166,8 @@ void RocksDBTransactionState::createTransaction() {
 
   // start rocks transaction
   rocksdb::TransactionDB* db = rocksutils::globalRocksDB();
-  rocksdb::TransactionOptions trxOpts;
-  trxOpts.deadlock_detect = !hasHint(transaction::Hints::Hint::NO_DLD);
-  
-  _rocksTransaction.reset(db->BeginTransaction(_rocksWriteOptions, trxOpts));
+  _rocksTransaction.reset(
+      db->BeginTransaction(_rocksWriteOptions, rocksdb::TransactionOptions()));
   _rocksTransaction->SetSnapshot();
   if (!hasHint(transaction::Hints::Hint::SINGLE_OPERATION)) {
     RocksDBLogValue header =
