@@ -29,25 +29,14 @@
 #include "ApplicationFeatures/ApplicationFeature.h"
 
 namespace arangodb {
-// a stub class that "real" storage engines can require as their predecessor
-// it should make sure that the most relevant other application features
-// are already loaded
+// a stub class that other features can use to check whether a storage
+// engine (no matter what type) is ready
 class StorageEngineFeature : public application_features::ApplicationFeature {
 
  public:
   StorageEngineFeature(application_features::ApplicationServer* server)
       : application_features::ApplicationFeature(server, "StorageEngine") {
     setOptional(false);
-    // storage engines must not use elevated privileges for files etc
-    requiresElevatedPrivileges(false);
-
-    // all the following features need to be present for a concrete storage engine
-    startsAfter("CacheManager");
-    startsAfter("DatabasePath");
-    startsAfter("EngineSelector");
-    startsAfter("FileDescriptors");
-    startsAfter("Temp");
-    startsAfter("TransactionManager");
   }
 
 };

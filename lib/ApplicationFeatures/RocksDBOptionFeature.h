@@ -47,6 +47,7 @@ class RocksDBOptionFeature final
   void validateOptions(std::shared_ptr<options::ProgramOptions>) override final;
   void start() override final;
 
+  int64_t _transactionLockTimeout;
   std::string _walDirectory;
   uint64_t _writeBufferSize;
   uint64_t _maxWriteBufferNumber;
@@ -57,12 +58,10 @@ class RocksDBOptionFeature final
   uint64_t _numUncompressedLevels;
   uint64_t _maxBytesForLevelBase;
   double _maxBytesForLevelMultiplier;
-  int64_t _baseBackgroundCompactions;
-  uint64_t _maxBackgroundCompactions;
+  int32_t _maxBackgroundJobs;
   uint64_t _maxSubcompactions;
-  int64_t _maxFlushes;
-  uint64_t _numThreadsHigh;
-  uint64_t _numThreadsLow;
+  uint32_t _numThreadsHigh;
+  uint32_t _numThreadsLow;
   uint64_t _blockCacheSize;
   uint64_t _blockCacheShardBits;
   uint64_t _tableBlockSize;

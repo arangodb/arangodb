@@ -25,6 +25,7 @@
 #define ARANGOD_REPLICATION_INITIAL_SYNCER_H 1
 
 #include "Basics/Common.h"
+#include "Basics/StaticStrings.h"
 #include "Logger/Logger.h"
 #include "Replication/Syncer.h"
 #include "Utils/SingleCollectionTransaction.h"
@@ -97,7 +98,7 @@ class InitialSyncer : public Syncer {
  public:
   InitialSyncer(TRI_vocbase_t*, TRI_replication_applier_configuration_t const*,
                 std::unordered_map<std::string, bool> const&,
-                std::string const&, bool verbose);
+                std::string const&, bool verbose, bool skipCreateDrop);
 
   ~InitialSyncer();
 
@@ -253,6 +254,10 @@ class InitialSyncer : public Syncer {
                             arangodb::velocypack::Slice>> const&,
       bool, std::string&, sync_phase_e);
 
+  std::unordered_map<std::string, std::string> createHeaders() {
+    return { {StaticStrings::ClusterCommSource, ServerState::instance()->getId()} };
+  }
+
  private:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief progress message
@@ -325,6 +330,11 @@ class InitialSyncer : public Syncer {
   //////////////////////////////////////////////////////////////////////////////
 
   static size_t const MaxChunkSize;
+
+  // in the cluster case it is a total NOGO to create or drop collections
+  // because this HAS to be handled in the schmutz. otherwise it forgets who
+  // the leader was etc.
+  bool _skipCreateDrop;
 
 };
 }

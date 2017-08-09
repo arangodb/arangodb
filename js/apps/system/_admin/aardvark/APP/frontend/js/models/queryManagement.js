@@ -6,6 +6,7 @@
     defaults: {
       id: '',
       query: '',
+      bindVars: '',
       started: '',
       runTime: ''
     }

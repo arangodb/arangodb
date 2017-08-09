@@ -55,6 +55,7 @@
 #include "Utils/SingleCollectionTransaction.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/ManagedDocumentResult.h"
+#include "VocBase/Methods/Indexes.h"
 #include "VocBase/ticks.h"
 
 #include <velocypack/Builder.h>
@@ -2331,7 +2332,7 @@ OperationResult transaction::Methods::truncateLocal(
     collection->truncate(this, options);
   } catch (basics::Exception const& ex) {
     unlock(trxCollection(cid), AccessMode::Type::WRITE);
-    return OperationResult(ex.code());
+    return OperationResult(ex.code(), ex.what());
   }
 
   // Now see whether or not we have to do synchronous replication:
@@ -2864,9 +2865,19 @@ std::shared_ptr<Index> transaction::Methods::indexForCollectionCoordinator(
 std::vector<std::shared_ptr<Index>>
 transaction::Methods::indexesForCollectionCoordinator(
     std::string const& name) const {
+
+  auto dbname = databaseName();
   auto clusterInfo = arangodb::ClusterInfo::instance();
-  auto collectionInfo = clusterInfo->getCollection(databaseName(), name);
-  return collectionInfo->getIndexes();
+  std::shared_ptr<LogicalCollection> collection = clusterInfo->getCollection(databaseName(), name);
+  std::vector<std::shared_ptr<Index>> indexes = collection->getIndexes();
+
+  collection->clusterIndexEstimates(); // update estiamtes in logical collection
+  // push updated values into indexes
+  for(auto i : indexes){
+    i->updateClusterEstimate();
+  }
+
+  return indexes;
 }
 
 /// @brief get the index by it's identifier. Will either throw or

@@ -63,7 +63,7 @@ static char* MakeValue(char const* value) {
   }
 
   char* delimited =
-      static_cast<char*>(TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, len + 3, false));
+      static_cast<char*>(TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, len + 3));
 
   if (delimited != nullptr) {
     memcpy(delimited + 1, value, len);
@@ -141,7 +141,7 @@ void TRI_AddFailurePointDebugging(char const* value) {
 
     if (FailurePoints == nullptr) {
       copy =
-          static_cast<char*>(TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, n + 1, false));
+          static_cast<char*>(TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, n + 1));
 
       if (copy == nullptr) {
         TRI_Free(TRI_UNKNOWN_MEM_ZONE, checkValue);
@@ -152,7 +152,7 @@ void TRI_AddFailurePointDebugging(char const* value) {
       copy[n] = '\0';
     } else {
       copy = static_cast<char*>(
-          TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, n + strlen(FailurePoints), false));
+          TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, n + strlen(FailurePoints)));
 
       if (copy == nullptr) {
         TRI_Free(TRI_UNKNOWN_MEM_ZONE, checkValue);
@@ -200,7 +200,7 @@ void TRI_RemoveFailurePointDebugging(char const* value) {
 
     char* copy = static_cast<char*>(
         TRI_Allocate(TRI_UNKNOWN_MEM_ZONE,
-                     strlen(FailurePoints) - strlen(checkValue) + 2, false));
+                     strlen(FailurePoints) - strlen(checkValue) + 2));
 
     if (copy == nullptr) {
       TRI_Free(TRI_UNKNOWN_MEM_ZONE, checkValue);

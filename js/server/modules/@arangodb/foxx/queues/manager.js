@@ -46,6 +46,10 @@ var runInDatabase = function () {
             busy = true;
             return;
           }
+          // should always call the user who called createQueue
+          // registerTask will throw a forbidden exception if anyone
+          // other than superroot uses this option
+          let runAsUser = queue.runAsUser || "";
 
           var jobs = db._createStatement({
             query: (
@@ -86,6 +90,7 @@ var runInDatabase = function () {
               },
               offset: 0,
               isSystem: true,
+              runAsUser: runAsUser,
               params: {
                 job: Object.assign({}, job, {
                   status: 'progress'

@@ -3669,11 +3669,22 @@ void arangodb::aql::patchUpdateStatementsRule(
           modified = false;
           break;
         } else {
+          if (modified) {
+            // already saw the collection... that means we have seen the same
+            // collection two times in two FOR loops
+            modified = false;
+            // abort
+            break;
+          }
+          // saw the same collection in FOR as in UPDATE
+          if (n->isVarUsedLater(collectionNode->outVariable())) {
+            // must abort, because the variable produced by the FOR loop is
+            // read after it is updated
+            break;
+          }
           modified = true;
         }
-      }
-
-      if (type == EN::TRAVERSAL || type == EN::SHORTEST_PATH) {
+      } else if (type == EN::TRAVERSAL || type == EN::SHORTEST_PATH) {
         // unclear what will be read by the traversal
         modified = false;
         break;
@@ -4141,6 +4152,8 @@ AstNode* isValueOrRefNode(AstNode* node) {
   return node;
 }
 
+// contains the AstNode* distanceNode a distance function?
+// if so return a valid GeoIndexInfo object
 GeoIndexInfo isDistanceFunction(AstNode* distanceNode,
                                 AstNode* expressionParent) {
   // the expression must exist and it must be a function call
@@ -4163,6 +4176,9 @@ GeoIndexInfo isDistanceFunction(AstNode* distanceNode,
   return rv;
 }
 
+
+// checks if a node contanis a geo index function a valid operator to from
+// a filter condition!
 GeoIndexInfo isGeoFilterExpression(AstNode* node, AstNode* expressionParent) {
   // binary compare must be on top
   bool dist_first = true;
@@ -4492,7 +4508,11 @@ void replaceGeoCondition(ExecutionPlan* plan, GeoIndexInfo& info) {
     plan->replaceNode(info.setter, newNode);
 
     bool done = false;
-    ast->traverseAndModify(
+
+    // Modifies the node in the following way: checks if a binary and node has
+    // a child that is a filter condition. if so it replaces the node with the
+    // other child effectively deleting the filter condition.
+    AstNode* modified = ast->traverseAndModify(
         newNode->expression()->nodeForModification(),
         [&done](AstNode* node, void* data) {
           if (done) {
@@ -4502,6 +4522,7 @@ void replaceGeoCondition(ExecutionPlan* plan, GeoIndexInfo& info) {
             for (std::size_t i = 0; i < node->numMembers(); i++) {
               if (isGeoFilterExpression(node->getMemberUnchecked(i), node)) {
                 done = true;
+                //select the other node - not the member containing the error message
                 return node->getMemberUnchecked(i ? 0 : 1);
               }
             }
@@ -4510,6 +4531,10 @@ void replaceGeoCondition(ExecutionPlan* plan, GeoIndexInfo& info) {
         },
         nullptr);
 
+    if (modified != newNode->expression()->node()){
+      newNode->expression()->replaceNode(modified);
+    }
+
     if (done) {
       return;
     }
@@ -4517,15 +4542,14 @@ void replaceGeoCondition(ExecutionPlan* plan, GeoIndexInfo& info) {
     auto replaceInfo = iterativePreorderWithCondition(
         EN::FILTER, newNode->expression()->nodeForModification(),
         &isGeoFilterExpression);
+
     if (newNode->expression()->nodeForModification() ==
         replaceInfo.expressionParent) {
       if (replaceInfo.expressionParent->type == NODE_TYPE_OPERATOR_BINARY_AND) {
         for (std::size_t i = 0; i < replaceInfo.expressionParent->numMembers();
              ++i) {
-          if (replaceInfo.expressionParent->getMember(i) !=
-              replaceInfo.expressionNode) {
-            newNode->expression()->replaceNode(
-                replaceInfo.expressionParent->getMember(i));
+          if (replaceInfo.expressionParent->getMember(i) != replaceInfo.expressionNode) {
+            newNode->expression()->replaceNode( replaceInfo.expressionParent->getMember(i));
             return;
           }
         }
@@ -4537,7 +4561,7 @@ void replaceGeoCondition(ExecutionPlan* plan, GeoIndexInfo& info) {
     //  if(replaceInfo.expressionParent->type == NODE_TYPE_OPERATOR_BINARY_AND){
     //    // delete ast node - we would need the parent of expression parent to
     //    delete the node
-    //    // we do not have it available here so we just replace the the node
+    //    // we do not have it available here so we just replace the node
     //    with true return;
     //  }
     //}

@@ -62,8 +62,14 @@ When creating a collection with the auto increment key generator and an incremen
 
 1, 6, 11, 16, 21, ...
 
+The auto-increment values are increased and handed out on each document insert 
+attempt. Even if an insert fails, the auto-increment value is never rolled back.
+That means there may exist gaps in the sequence of assigned auto-increment values
+if inserts fails.
+
 The basic operations (create, read, update, delete) for documents are mapped
 to the standard HTTP methods (*POST*, *GET*, *PUT*, *DELETE*). 
+
 
 Address of a Collection
 -----------------------

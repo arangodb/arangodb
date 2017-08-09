@@ -79,9 +79,10 @@ class StorageEngine : public application_features::ApplicationFeature {
     startsAfter("CacheManager");
     startsAfter("DatabasePath");
     startsAfter("FileDescriptors");
-    startsAfter("StorageEngine");
     startsAfter("Temp");
     startsAfter("TransactionManager");
+
+    startsBefore("StorageEngine"); // this is the StorageEngineFeature
   }
 
   virtual bool supportsDfdb() const = 0;

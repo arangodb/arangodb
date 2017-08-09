@@ -45,13 +45,11 @@ BootstrapFeature::BootstrapFeature(
   startsAfter("Endpoint");
   startsAfter("Scheduler");
   startsAfter("Server");
-  startsAfter("MMFilesLogfileManager");
   startsAfter("Database");
   startsAfter("Upgrade");
   startsAfter("CheckVersion");
   startsAfter("FoxxQueues");
   startsAfter("GeneralServer");
-  startsAfter("AQL");
 }
 
 void BootstrapFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {

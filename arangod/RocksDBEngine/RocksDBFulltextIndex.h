@@ -87,14 +87,10 @@ class RocksDBFulltextIndex final : public RocksDBIndex {
 
   bool hasSelectivityEstimate() const override { return false; }
 
-  size_t memory() const override;
-
   void toVelocyPack(VPackBuilder&, bool, bool) const override;
   // Uses default toVelocyPackFigures
 
   bool matchesDefinition(VPackSlice const&) const override;
-
-  int cleanup() override;
 
   bool isSame(std::string const& field, int minWordLength) const {
     std::string fieldString;

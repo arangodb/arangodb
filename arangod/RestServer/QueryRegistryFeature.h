@@ -43,16 +43,18 @@ class QueryRegistryFeature final : public application_features::ApplicationFeatu
   void start() override final;
   void unprepare() override final;
 
-  bool queryTracking() const { return _queryTracking; }
+  bool trackSlowQueries() const { return _trackSlowQueries; }
+  bool trackBindVars() const { return _trackBindVars; }
+  double slowQueryThreshold() const { return _slowQueryThreshold; }
   bool failOnWarning() const { return _failOnWarning; }
   uint64_t queryMemoryLimit() const { return _queryMemoryLimit; }
-  double slowThreshold() const { return _slowThreshold; }
 
  private:
-  bool _queryTracking;
+  bool _trackSlowQueries;
+  bool _trackBindVars;
   bool _failOnWarning;
   uint64_t _queryMemoryLimit;
-  double _slowThreshold;
+  double _slowQueryThreshold;
   std::string _queryCacheMode;
   uint64_t _queryCacheEntries;
 

@@ -871,7 +871,9 @@ if (USE_MAINTAINER_MODE)
   foreach (m IN LISTS ERROR_FILES)
     add_custom_command(
       OUTPUT ${CMAKE_SOURCE_DIR}/${m}
-      COMMAND ./utils/generateErrorfile.sh ./${ERRORS_DAT} ./${m}
+      COMMAND ${PYTHON_EXECUTABLE} ./utils/generateErrorfile.py ./${ERRORS_DAT} ./${m}.tmp
+      COMMAND ${CMAKE_COMMAND} -E copy_if_different ./${m}.tmp ./${m}
+      COMMAND ${CMAKE_COMMAND} -E remove ./${m}.tmp
       DEPENDS ${CMAKE_SOURCE_DIR}/${ERRORS_DAT}
       WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
       COMMENT  "Building errors files ${m}"
@@ -900,7 +902,9 @@ if (USE_MAINTAINER_MODE)
   foreach (m IN LISTS MIMETYPES_FILES)
     add_custom_command(
       OUTPUT ${CMAKE_SOURCE_DIR}/${m}
-      COMMAND ./utils/generateMimetypes.sh ./${MIMETYPES_DAT} ./${m}
+      COMMAND ${PYTHON_EXECUTABLE} ./utils/generateMimetypes.py ./${MIMETYPES_DAT} ./${m}.tmp
+      COMMAND ${CMAKE_COMMAND} -E copy_if_different ./${m}.tmp ./${m}
+      COMMAND ${CMAKE_COMMAND} -E remove ./${m}.tmp
       DEPENDS ${CMAKE_SOURCE_DIR}/${MIMETYPES_DAT}
       WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
       COMMENT "Building mimetypes files ${m}"

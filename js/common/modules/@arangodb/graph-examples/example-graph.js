@@ -39,21 +39,27 @@ var createTraversalExample = function () {
   var g = Graph._create('knows_graph',
     [Graph._relation('knows', 'persons', 'persons')]
   );
-  var a = g.persons.save({name: 'Alice', _key: 'alice'})._id;
-  var b = g.persons.save({name: 'Bob', _key: 'bob'})._id;
-  var c = g.persons.save({name: 'Charlie', _key: 'charlie'})._id;
-  var d = g.persons.save({name: 'Dave', _key: 'dave'})._id;
-  var e = g.persons.save({name: 'Eve', _key: 'eve'})._id;
-  g.knows.save(a, b, {});
-  g.knows.save(b, c, {});
-  g.knows.save(b, d, {});
-  g.knows.save(e, a, {});
-  g.knows.save(e, b, {});
+  var a = g.persons.save({name: 'Alice', _key: 'alice'});
+  var b = g.persons.save({name: 'Bob', _key: 'bob'});
+  var c = g.persons.save({name: 'Charlie', _key: 'charlie'});
+  var d = g.persons.save({name: 'Dave', _key: 'dave'});
+  var e = g.persons.save({name: 'Eve', _key: 'eve'});
+  g.knows.save(a._id, b._id, {vertex:a._key});
+  g.knows.save(b._id, c._id, {vertex:b._key});
+  g.knows.save(b._id, d._id, {vertex:b._key});
+  g.knows.save(e._id, a._id, {vertex:e._key});
+  g.knows.save(e._id, b._id, {vertex:e._key});
   return g;
 };
 
 // we create a graph with 'relation' pointing from 'female' to 'male' and 'male
 var createSocialGraph = function () {
+  db._create("female");
+  db._create("male", {distributeShardsLike:"female"});
+  db._createEdgeCollection("relation", {
+                            shardKeys:["vertex"],
+                            distributeShardsLike:"female"});
+
   var edgeDefinition = [];
   edgeDefinition.push(Graph._relation('relation', ['female', 'male'], ['female', 'male']));
   var g = Graph._create('social', edgeDefinition);
@@ -61,10 +67,10 @@ var createSocialGraph = function () {
   var b = g.male.save({name: 'Bob', _key: 'bob'});
   var c = g.male.save({name: 'Charly', _key: 'charly'});
   var d = g.female.save({name: 'Diana', _key: 'diana'});
-  g.relation.save(a._id, b._id, {type: 'married', _key: 'aliceAndBob'});
-  g.relation.save(a._id, c._id, {type: 'friend', _key: 'aliceAndCharly'});
-  g.relation.save(c._id, d._id, {type: 'married', _key: 'charlyAndDiana'});
-  g.relation.save(b._id, d._id, {type: 'friend', _key: 'bobAndDiana'});
+  g.relation.save(a._id, b._id, {type: 'married', vertex:a._key});
+  g.relation.save(a._id, c._id, {type: 'friend', vertex:a._key});
+  g.relation.save(c._id, d._id, {type: 'married', vertex:c._key});
+  g.relation.save(b._id, d._id, {type: 'friend', vertex:b._key});
   return g;
 };
 

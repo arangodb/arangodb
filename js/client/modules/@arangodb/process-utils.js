@@ -523,24 +523,25 @@ function runArangoImp (options, instanceInfo, what) {
 // / @brief runs arangodump or arangorestore
 // //////////////////////////////////////////////////////////////////////////////
 
-function runArangoDumpRestore (options, instanceInfo, which, database, rootDir) {
+function runArangoDumpRestore (options, instanceInfo, which, database, rootDir, dumpDir = 'dump', includeSystem = true) {
   let args = {
     'configuration': fs.join(CONFIG_DIR, (which === 'dump' ? 'arangodump.conf' : 'arangorestore.conf')),
     'server.username': options.username,
     'server.password': options.password,
     'server.endpoint': instanceInfo.endpoint,
     'server.database': database,
-    'include-system-collections': 'true'
+    'include-system-collections': includeSystem ? 'true' : 'false'
   };
 
   let exe;
+  rootDir = rootDir || instanceInfo.rootDir;
 
   if (which === 'dump') {
-    args['output-directory'] = fs.join(instanceInfo.rootDir, 'dump');
+    args['output-directory'] = fs.join(rootDir, dumpDir);
     exe = ARANGODUMP_BIN;
   } else {
     args['create-database'] = 'true';
-    args['input-directory'] = fs.join(instanceInfo.rootDir, 'dump');
+    args['input-directory'] = fs.join(rootDir, dumpDir);
     exe = ARANGORESTORE_BIN;
   }
 
@@ -549,7 +550,7 @@ function runArangoDumpRestore (options, instanceInfo, which, database, rootDir) 
     print(args);
   }
 
-  return executeAndWait(exe, toArgv(args), options, 'arangorestore', instanceInfo.rootDir);
+  return executeAndWait(exe, toArgv(args), options, 'arangorestore', rootDir);
 }
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -927,14 +928,7 @@ function startInstanceCluster (instanceInfo, protocol, options,
   let count = 0;
   while (true) {
     ++count;
-    if (count === 500) {
-      instanceInfo.arangods.forEach(arangod => {
-        killExternal(arangod.pid, abortSignal);
-        analyzeServerCrash(arangod, options, 'startup timeout; forcefully terminating ' + arangod.role + ' with pid: ' + arangod.pid);
-      });
-
-      throw new Error('cluster startup timed out! bailing out!');
-    }
+    
     instanceInfo.arangods.forEach(arangod => {
       const reply = download(arangod.url + '/_api/version', '', makeAuthorizationHeaders(authOpts));
       if (!reply.error && reply.code === 200) {
@@ -948,7 +942,7 @@ function startInstanceCluster (instanceInfo, protocol, options,
           analyzeServerCrash(arangod, options, 'startup timeout; forcefully terminating ' + arangod.role + ' with pid: ' + arangod.pid);
         });
 
-        throw new Error('cluster startup failed! bailing out!');
+        throw new Error(`cluster startup: pid ${arangod.pid} no longer alive! bailing out!`);
       }
       wait(0.5, false);
       return true;
@@ -966,9 +960,11 @@ function startInstanceCluster (instanceInfo, protocol, options,
 
     // Didn't startup in 10 minutes? kill it, give up.
     if (count > 1200) {
-      killExternal(instanceInfo.pid, abortSignal);
-      analyzeServerCrash(instanceInfo, options, 'startup timeout; forcefully terminating ' + instanceInfo.role + ' with pid: ' + instanceInfo.pid);
-      throw new Error("startup timed out!");
+      instanceInfo.arangods.forEach(arangod => {
+        killExternal(arangod.pid, abortSignal);
+        analyzeServerCrash(arangod, options, 'startup timeout; forcefully terminating ' + arangod.role + ' with pid: ' + arangod.pid);
+      });
+      throw new Error("cluster startup timed out after 10 minutes!");
     }
   }
 

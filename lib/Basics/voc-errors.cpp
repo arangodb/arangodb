@@ -125,6 +125,8 @@ void TRI_InitializeErrorMessages () {
   REG_ERROR(ERROR_REPLICATION_APPLIER_STOPPED, "replication stopped");
   REG_ERROR(ERROR_REPLICATION_NO_START_TICK, "no start tick");
   REG_ERROR(ERROR_REPLICATION_START_TICK_NOT_PRESENT, "start tick not present");
+  REG_ERROR(ERROR_REPLICATION_WRONG_CHECKSUM_FORMAT, "the checksum format is wrong");
+  REG_ERROR(ERROR_REPLICATION_WRONG_CHECKSUM, "wrong checksum");
   REG_ERROR(ERROR_CLUSTER_NO_AGENCY, "could not connect to agency");
   REG_ERROR(ERROR_CLUSTER_NO_COORDINATOR_HEADER, "missing coordinator header");
   REG_ERROR(ERROR_CLUSTER_COULD_NOT_LOCK_PLAN, "could not lock plan in agency");
@@ -167,6 +169,8 @@ void TRI_InitializeErrorMessages () {
   REG_ERROR(ERROR_CLUSTER_SHARD_LEADER_REFUSES_REPLICATION, "a shard leader refuses to perform a replication operation");
   REG_ERROR(ERROR_CLUSTER_SHARD_FOLLOWER_REFUSES_OPERATION, "a shard follower refuses to perform an operation that is not a replication");
   REG_ERROR(ERROR_CLUSTER_SHARD_LEADER_RESIGNED, "a (former) shard leader refuses to perform an operation, because it has resigned in the meantime");
+  REG_ERROR(ERROR_CLUSTER_DISTRIBUTE_SHARDS_LIKE_REPLICATION_FACTOR, "conflicting replication factor with distributeShardsLike parameter assignment");
+  REG_ERROR(ERROR_CLUSTER_DISTRIBUTE_SHARDS_LIKE_NUMBER_OF_SHARDS, "conflicting shard number with distributeShardsLike parameter assignment");
   REG_ERROR(ERROR_CLUSTER_AGENCY_COMMUNICATION_FAILED, "some agency operation failed");
   REG_ERROR(ERROR_QUERY_KILLED, "query killed");
   REG_ERROR(ERROR_QUERY_PARSE, "%s");

@@ -81,11 +81,21 @@ class QueryList {
   /// we're not using a lock here for performance reasons - thus concurrent
   /// modifications of this variable are possible but are considered unharmful
   inline bool trackSlowQueries() const { return _trackSlowQueries; }
-
+  
   /// @brief toggle slow query tracking
   /// we're not using a lock here for performance reasons - thus concurrent
   /// modifications of this variable are possible but are considered unharmful
   inline void trackSlowQueries(bool value) { _trackSlowQueries = value; }
+  
+  /// @brief whether or not bind vars are tracked with queries 
+  /// we're not using a lock here for performance reasons - thus concurrent
+  /// modifications of this variable are possible but are considered unharmful
+  inline bool trackBindVars() const { return _trackBindVars; }
+
+  /// @brief toggle query bind vars tracking
+  /// we're not using a lock here for performance reasons - thus concurrent
+  /// modifications of this variable are possible but are considered unharmful
+  inline void trackBindVars(bool value) { _trackBindVars = value; }
 
   /// @brief threshold for slow queries (in seconds)
   /// we're not using a lock here for performance reasons - thus concurrent
@@ -186,6 +196,9 @@ class QueryList {
 
   /// @brief whether or not slow queries are tracked
   bool _trackSlowQueries;
+  
+  /// @brief whether or not bind vars are also tracked with queries 
+  bool _trackBindVars;
 
   /// @brief threshold for slow queries (in seconds)
   double _slowQueryThreshold;

@@ -34,6 +34,19 @@
 #include "Zip/iowin32.h"
 #endif
 
+static char const* translateError(int err) {
+  switch (err) {
+    // UNZ_OK and UNZ_EOF have the same numeric value...
+    case UNZ_OK: return "no error";
+    case UNZ_END_OF_LIST_OF_FILE: return "end of list of file"; 
+    case UNZ_PARAMERROR: return "parameter error";
+    case UNZ_BADZIPFILE: return "bad zip file";
+    case UNZ_INTERNALERROR: return "internal error";
+    case UNZ_CRCERROR: return "crc error";
+    default: return "unknown error";
+  }
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief extracts the current file
 ////////////////////////////////////////////////////////////////////////////////
@@ -94,13 +107,12 @@ static int ExtractCurrentFile(unzFile uf, void* buffer, size_t const bufferSize,
       fullPath = TRI_Concatenate2File(outPath, filenameInZip);
       int res =
           TRI_CreateRecursiveDirectory(fullPath, systemError, errorMessage);
+        
+      TRI_Free(TRI_CORE_MEM_ZONE, fullPath);
 
       if (res != TRI_ERROR_NO_ERROR) {
-        TRI_Free(TRI_CORE_MEM_ZONE, fullPath);
         return res;
       }
-
-      TRI_Free(TRI_CORE_MEM_ZONE, fullPath);
     }
   }
 
@@ -142,13 +154,12 @@ static int ExtractCurrentFile(unzFile uf, void* buffer, size_t const bufferSize,
       // create target directory recursively
       char* d = TRI_Concatenate2File(outPath, filenameInZip);
       int res = TRI_CreateRecursiveDirectory(d, systemError, errorMessage);
+        
+      TRI_Free(TRI_CORE_MEM_ZONE, d);
 
       if (res != TRI_ERROR_NO_ERROR) {
-        TRI_Free(TRI_CORE_MEM_ZONE, d);
         return res;
       }
-
-      TRI_Free(TRI_CORE_MEM_ZONE, d);
 
       *(filenameWithoutPath - 1) = c;
 
@@ -160,22 +171,21 @@ static int ExtractCurrentFile(unzFile uf, void* buffer, size_t const bufferSize,
       // strip filename so we only have the directory name
       char* dir = TRI_Dirname(d);
       int res = TRI_CreateRecursiveDirectory(dir, systemError, errorMessage);
+        
+      TRI_Free(TRI_CORE_MEM_ZONE, d);
+      TRI_Free(TRI_CORE_MEM_ZONE, dir);
 
       if (res != TRI_ERROR_NO_ERROR) {
-        TRI_Free(TRI_CORE_MEM_ZONE, d);
-        TRI_Free(TRI_CORE_MEM_ZONE, dir);
         return res;
       }
 
-      TRI_Free(TRI_CORE_MEM_ZONE, d);
-      TRI_Free(TRI_CORE_MEM_ZONE, dir);
       // try again
       fout = fopen(fullPath, "wb");
     }
 
-    if (fout == NULL) {
-      errorMessage = std::string("failed to open file for writing: ") +
-                     fullPath + " - " + strerror(errno);
+    if (fout == nullptr) {
+      errorMessage = std::string("failed to open file '") +
+                     fullPath + "' for writing: " + strerror(errno);
       TRI_Free(TRI_CORE_MEM_ZONE, fullPath);
       return TRI_ERROR_CANNOT_WRITE_FILE;
     }
@@ -184,8 +194,7 @@ static int ExtractCurrentFile(unzFile uf, void* buffer, size_t const bufferSize,
       int result = unzReadCurrentFile(uf, buffer, (unsigned int)bufferSize);
 
       if (result < 0) {
-        errorMessage = std::string("failed to write file ") + fullPath + " - " +
-                       strerror(errno);
+        errorMessage = std::string("failed to read from zip file: ") + strerror(errno);
         fclose(fout);
         TRI_Free(TRI_CORE_MEM_ZONE, fullPath);
         return TRI_ERROR_CANNOT_WRITE_FILE;
@@ -209,7 +218,15 @@ static int ExtractCurrentFile(unzFile uf, void* buffer, size_t const bufferSize,
     fclose(fout);
   }
 
-  unzCloseCurrentFile(uf);
+  int ret = unzCloseCurrentFile(uf);
+  if (ret < 0 && ret != UNZ_PARAMERROR) {
+    // we must ignore UNZ_PARAMERROR here.
+    // this error is returned if some of the internal zip file structs are not 
+    // properly set up. but this is not a real error here
+    // we want to catch CRC errors here though
+    errorMessage = std::string("cannot read from zip file: ") + translateError(ret);
+    return TRI_ERROR_CANNOT_WRITE_FILE;
+  }
 
   return TRI_ERROR_NO_ERROR;
 }
@@ -229,7 +246,7 @@ static int UnzipFile(unzFile uf, void* buffer, size_t const bufferSize,
 
   err = unzGetGlobalInfo64(uf, &gi);
   if (err != UNZ_OK) {
-    errorMessage = "Failed to get info: " + std::to_string(err);
+    errorMessage = "failed to get info: " + std::to_string(err);
     return TRI_ERROR_INTERNAL;
   }
 
@@ -272,7 +289,7 @@ int TRI_ZipFile(char const* filename, char const* dir,
   }
 
   int bufferSize = 16384;
-  buffer = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, (size_t)bufferSize, false);
+  buffer = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, (size_t)bufferSize);
 
   if (buffer == nullptr) {
     return TRI_ERROR_OUT_OF_MEMORY;
@@ -394,7 +411,7 @@ int TRI_Adler32(char const* filename, uint32_t& checksum) {
 
   ssize_t chunkRemain = static_cast<TRI_read_t>(statbuf.st_size);
   char* buf =
-      static_cast<char*>(TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, 131072, false));
+      static_cast<char*>(TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, 131072));
 
   if (buf == nullptr) {
     return TRI_ERROR_OUT_OF_MEMORY;
@@ -433,11 +450,12 @@ int TRI_Adler32(char const* filename, uint32_t& checksum) {
 int TRI_UnzipFile(char const* filename, char const* outPath,
                   bool skipPaths, bool overwrite,
                   char const* password, std::string& errorMessage) {
+
 #ifdef USEWIN32IOAPI
   zlib_filefunc64_def ffunc;
 #endif
   size_t bufferSize = 16384;
-  void* buffer = (void*)TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, bufferSize, false);
+  void* buffer = (void*)TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, bufferSize);
 
   if (buffer == nullptr) {
     return TRI_ERROR_OUT_OF_MEMORY;
@@ -451,7 +469,7 @@ int TRI_UnzipFile(char const* filename, char const* outPath,
 #endif
   if (uf == nullptr) {
     TRI_Free(TRI_UNKNOWN_MEM_ZONE, buffer);
-    errorMessage = std::string("unable to open zip file ") + filename;
+    errorMessage = std::string("unable to open zip file '") + filename + "'";
     return TRI_ERROR_INTERNAL;
   }
 

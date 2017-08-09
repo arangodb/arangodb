@@ -83,7 +83,7 @@ static int AppendString(TRI_string_buffer_t* self, char const* str,
 /// @brief create a new string buffer and initialize it
 TRI_string_buffer_t* TRI_CreateStringBuffer(TRI_memory_zone_t* zone) {
   auto self = static_cast<TRI_string_buffer_t*>(TRI_Allocate(
-      zone, sizeof(TRI_string_buffer_t), false));
+      zone, sizeof(TRI_string_buffer_t)));
 
   if (self == nullptr) {
     return nullptr;
@@ -98,7 +98,7 @@ TRI_string_buffer_t* TRI_CreateStringBuffer(TRI_memory_zone_t* zone) {
 TRI_string_buffer_t* TRI_CreateSizedStringBuffer(TRI_memory_zone_t* zone,
                                                  size_t size) {
   auto self = static_cast<TRI_string_buffer_t*>(TRI_Allocate(
-      zone, sizeof(TRI_string_buffer_t), false));
+      zone, sizeof(TRI_string_buffer_t)));
 
   if (self == nullptr) {
     return nullptr;
@@ -187,7 +187,7 @@ int TRI_DeflateStringBuffer(TRI_string_buffer_t* self, size_t bufferSize) {
     return TRI_ERROR_OUT_OF_MEMORY;
   }
 
-  buffer = (char*)TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, bufferSize, false);
+  buffer = static_cast<char*>(TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, bufferSize));
 
   if (buffer == nullptr) {
     (void)deflateEnd(&strm);

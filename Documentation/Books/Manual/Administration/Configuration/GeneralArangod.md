@@ -381,6 +381,17 @@ default. Tracking of queries can be disabled by setting the option to *false*.
 The default is *true*.
 
 
+### Enable/disable tracking of bind variables in AQL queries 
+
+`--query.tracking-with-bindvars flag`
+
+If *true*, then the bind variables will be tracked for all running and slow
+AQL queries. This option only has an effect if `--query.tracking` was set to
+*true*. Tracking of bind variables can be disabled by setting the option to *false*.
+
+The default is *true*.
+
+
 ### Threshold for slow AQL queries
 
 `--query.slow-threshold value`
@@ -443,6 +454,19 @@ result will be removed from the cache.
 
 This option only has an effect if the query cache mode is set to either *on* or
 *demand*.
+
+
+### JavaScript code execution
+
+`--javascript.allow-admin-execute`
+
+This option can be used to control whether user-defined JavaScript code
+is allowed to be executed on server by sending via HTTP to the API endpoint
+`/_admin/execute`  with an authenticated user account. 
+The default value is *false*, which disables the execution of user-defined
+code. This is also the recommended setting for production. In test environments,
+it may be convenient to turn the option on in order to send arbitrary setup
+or teardown commands for execution on the server.
 
 
 ### V8 contexts
