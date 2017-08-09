@@ -289,7 +289,7 @@ int TRI_ZipFile(char const* filename, char const* dir,
   }
 
   int bufferSize = 16384;
-  buffer = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, (size_t)bufferSize, false);
+  buffer = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, (size_t)bufferSize);
 
   if (buffer == nullptr) {
     return TRI_ERROR_OUT_OF_MEMORY;
@@ -411,7 +411,7 @@ int TRI_Adler32(char const* filename, uint32_t& checksum) {
 
   ssize_t chunkRemain = static_cast<TRI_read_t>(statbuf.st_size);
   char* buf =
-      static_cast<char*>(TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, 131072, false));
+      static_cast<char*>(TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, 131072));
 
   if (buf == nullptr) {
     return TRI_ERROR_OUT_OF_MEMORY;
@@ -455,7 +455,7 @@ int TRI_UnzipFile(char const* filename, char const* outPath,
   zlib_filefunc64_def ffunc;
 #endif
   size_t bufferSize = 16384;
-  void* buffer = (void*)TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, bufferSize, false);
+  void* buffer = (void*)TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, bufferSize);
 
   if (buffer == nullptr) {
     return TRI_ERROR_OUT_OF_MEMORY;
