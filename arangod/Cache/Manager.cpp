@@ -790,17 +790,23 @@ std::shared_ptr<Manager::PriorityList> Manager::priorityList() {
     totalAccesses += s.second;
     if (auto cache = s.first.lock()) {
       accessed.emplace(cache);
-      globalUsage += cache->usage();
+      Metadata* metadata = cache->metadata();
+      metadata->lock();
+      globalUsage += metadata->usage;
+      metadata->unlock();
     }
   }
   totalAccesses = std::max((uint64_t)1, totalAccesses);
   LOG_TOPIC(ERR, Logger::FIXME) << "totalAccesses " << totalAccesses;
   
+  double usageFrac = 1.0 - std::max(1.0, static_cast<double>(_globalAllocation) /
+                                         static_cast<double>(_globalHighwaterMark));
+  
   // gather all unaccessed caches at beginning of list
   for (auto it = _caches.begin(); it != _caches.end(); it++) {
     auto found = accessed.find(*it);
     if (found == accessed.end()) {
-      double weight = baseWeight + ((*it)->usage() / globalUsage) * 0.3;
+      double weight = baseWeight + ((*it)->usage() / globalUsage) * usageFrac;
       LOG_TOPIC(ERR, Logger::FIXME) << "Cache (" << ((size_t)it->get()) << ") weight: " << weight;
       list->emplace_back(*it, weight);
     }
@@ -813,13 +819,16 @@ std::shared_ptr<Manager::PriorityList> Manager::priorityList() {
   for (auto s : stats) {
     if (auto cache = s.first.lock()) {
       double accessWeight = static_cast<double>(s.second) * normalizer;
-      double usageWeight = (cache->usage() / globalUsage);
-      double weight = baseWeight + accessWeight * 0.7 + usageWeight * 0.3;
+      Metadata* metadata = cache->metadata();
+      metadata->lock();
+      accessWeight = accessWeight * (1.0 - usageFrac) +
+                     (metadata->usage / globalUsage) * usageFrac;
+      metadata->unlock();
       
       TRI_ASSERT(accessWeight >= 0.0);
       LOG_TOPIC(ERR, Logger::FIXME) << "Cache (" << ((size_t)cache.get()) << ") accesses "<< s.second
-      << " weight: " << weight;
-      list->emplace_back(cache, weight);
+      << " weight: " << (baseWeight + accessWeight);
+      list->emplace_back(cache, (baseWeight + accessWeight));
     }
   }
 
