@@ -5,17 +5,17 @@ content-type: application/json; charset=utf<span class="hljs-number">-8</span>
 x-content-type-options: nosniff
 
 { 
-  <span class="hljs-string">"time"</span> : <span class="hljs-number">1500501048.364393</span>, 
+  <span class="hljs-string">"time"</span> : <span class="hljs-number">1502313698.046792</span>, 
   <span class="hljs-string">"enabled"</span> : <span class="hljs-literal">true</span>, 
   <span class="hljs-string">"system"</span> : { 
-    <span class="hljs-string">"minorPageFaults"</span> : <span class="hljs-number">63320</span>, 
-    <span class="hljs-string">"majorPageFaults"</span> : <span class="hljs-number">187</span>, 
-    <span class="hljs-string">"userTime"</span> : <span class="hljs-number">4.045753</span>, 
-    <span class="hljs-string">"systemTime"</span> : <span class="hljs-number">2.080628</span>, 
-    <span class="hljs-string">"numberOfThreads"</span> : <span class="hljs-number">26</span>, 
-    <span class="hljs-string">"residentSize"</span> : <span class="hljs-number">198197248</span>, 
-    <span class="hljs-string">"residentSizePercent"</span> : <span class="hljs-number">0.011536598205566406</span>, 
-    <span class="hljs-string">"virtualSize"</span> : <span class="hljs-number">4515946496</span> 
+    <span class="hljs-string">"minorPageFaults"</span> : <span class="hljs-number">63786</span>, 
+    <span class="hljs-string">"majorPageFaults"</span> : <span class="hljs-number">192</span>, 
+    <span class="hljs-string">"userTime"</span> : <span class="hljs-number">3.811431</span>, 
+    <span class="hljs-string">"systemTime"</span> : <span class="hljs-number">2.043499</span>, 
+    <span class="hljs-string">"numberOfThreads"</span> : <span class="hljs-number">30</span>, 
+    <span class="hljs-string">"residentSize"</span> : <span class="hljs-number">199675904</span>, 
+    <span class="hljs-string">"residentSizePercent"</span> : <span class="hljs-number">0.01162266731262207</span>, 
+    <span class="hljs-string">"virtualSize"</span> : <span class="hljs-number">4515631104</span> 
   }, 
   <span class="hljs-string">"client"</span> : { 
     <span class="hljs-string">"httpConnections"</span> : <span class="hljs-number">1</span>, 
@@ -30,36 +30,36 @@ x-content-type-options: nosniff
       ] 
     }, 
     <span class="hljs-string">"totalTime"</span> : { 
-      <span class="hljs-string">"sum"</span> : <span class="hljs-number">62.902262926101685</span>, 
-      <span class="hljs-string">"count"</span> : <span class="hljs-number">3797</span>, 
+      <span class="hljs-string">"sum"</span> : <span class="hljs-number">5.772632122039795</span>, 
+      <span class="hljs-string">"count"</span> : <span class="hljs-number">3899</span>, 
       <span class="hljs-string">"counts"</span> : [ 
-        <span class="hljs-number">3597</span>, 
-        <span class="hljs-number">191</span>, 
-        <span class="hljs-number">5</span>, 
-        <span class="hljs-number">1</span>, 
+        <span class="hljs-number">3691</span>, 
+        <span class="hljs-number">202</span>, 
+        <span class="hljs-number">4</span>, 
         <span class="hljs-number">0</span>, 
-        <span class="hljs-number">1</span>, 
-        <span class="hljs-number">2</span> 
+        <span class="hljs-number">0</span>, 
+        <span class="hljs-number">2</span>, 
+        <span class="hljs-number">0</span> 
       ] 
     }, 
     <span class="hljs-string">"requestTime"</span> : { 
-      <span class="hljs-string">"sum"</span> : <span class="hljs-number">30.101415395736694</span>, 
-      <span class="hljs-string">"count"</span> : <span class="hljs-number">3797</span>, 
+      <span class="hljs-string">"sum"</span> : <span class="hljs-number">0.030089378356933594</span>, 
+      <span class="hljs-string">"count"</span> : <span class="hljs-number">3899</span>, 
       <span class="hljs-string">"counts"</span> : [ 
-        <span class="hljs-number">3795</span>, 
+        <span class="hljs-number">3898</span>, 
         <span class="hljs-number">1</span>, 
         <span class="hljs-number">0</span>, 
         <span class="hljs-number">0</span>, 
         <span class="hljs-number">0</span>, 
         <span class="hljs-number">0</span>, 
-        <span class="hljs-number">1</span> 
+        <span class="hljs-number">0</span> 
       ] 
     }, 
     <span class="hljs-string">"queueTime"</span> : { 
-      <span class="hljs-string">"sum"</span> : <span class="hljs-number">0.0006525516510009766</span>, 
-      <span class="hljs-string">"count"</span> : <span class="hljs-number">10</span>, 
+      <span class="hljs-string">"sum"</span> : <span class="hljs-number">0.0002357959747314453</span>, 
+      <span class="hljs-string">"count"</span> : <span class="hljs-number">9</span>, 
       <span class="hljs-string">"counts"</span> : [ 
-        <span class="hljs-number">10</span>, 
+        <span class="hljs-number">9</span>, 
         <span class="hljs-number">0</span>, 
         <span class="hljs-number">0</span>, 
         <span class="hljs-number">0</span>, 
@@ -69,36 +69,36 @@ x-content-type-options: nosniff
       ] 
     }, 
     <span class="hljs-string">"ioTime"</span> : { 
-      <span class="hljs-string">"sum"</span> : <span class="hljs-number">32.80019497871399</span>, 
-      <span class="hljs-string">"count"</span> : <span class="hljs-number">3797</span>, 
+      <span class="hljs-string">"sum"</span> : <span class="hljs-number">5.74230694770813</span>, 
+      <span class="hljs-string">"count"</span> : <span class="hljs-number">3899</span>, 
       <span class="hljs-string">"counts"</span> : [ 
-        <span class="hljs-number">3599</span>, 
-        <span class="hljs-number">190</span>, 
-        <span class="hljs-number">5</span>, 
-        <span class="hljs-number">1</span>, 
+        <span class="hljs-number">3692</span>, 
+        <span class="hljs-number">201</span>, 
+        <span class="hljs-number">4</span>, 
         <span class="hljs-number">0</span>, 
-        <span class="hljs-number">1</span>, 
-        <span class="hljs-number">1</span> 
+        <span class="hljs-number">0</span>, 
+        <span class="hljs-number">2</span>, 
+        <span class="hljs-number">0</span> 
       ] 
     }, 
     <span class="hljs-string">"bytesSent"</span> : { 
-      <span class="hljs-string">"sum"</span> : <span class="hljs-number">1477172</span>, 
-      <span class="hljs-string">"count"</span> : <span class="hljs-number">3797</span>, 
+      <span class="hljs-string">"sum"</span> : <span class="hljs-number">1539603</span>, 
+      <span class="hljs-string">"count"</span> : <span class="hljs-number">3899</span>, 
       <span class="hljs-string">"counts"</span> : [ 
-        <span class="hljs-number">278</span>, 
-        <span class="hljs-number">3184</span>, 
-        <span class="hljs-number">329</span>, 
-        <span class="hljs-number">6</span>, 
+        <span class="hljs-number">276</span>, 
+        <span class="hljs-number">3290</span>, 
+        <span class="hljs-number">326</span>, 
+        <span class="hljs-number">7</span>, 
         <span class="hljs-number">0</span>, 
         <span class="hljs-number">0</span> 
       ] 
     }, 
     <span class="hljs-string">"bytesReceived"</span> : { 
-      <span class="hljs-string">"sum"</span> : <span class="hljs-number">825773</span>, 
-      <span class="hljs-string">"count"</span> : <span class="hljs-number">3797</span>, 
+      <span class="hljs-string">"sum"</span> : <span class="hljs-number">846499</span>, 
+      <span class="hljs-string">"count"</span> : <span class="hljs-number">3899</span>, 
       <span class="hljs-string">"counts"</span> : [ 
-        <span class="hljs-number">3510</span>, 
-        <span class="hljs-number">287</span>, 
+        <span class="hljs-number">3592</span>, 
+        <span class="hljs-number">307</span>, 
         <span class="hljs-number">0</span>, 
         <span class="hljs-number">0</span>, 
         <span class="hljs-number">0</span>, 
@@ -107,19 +107,19 @@ x-content-type-options: nosniff
     } 
   }, 
   <span class="hljs-string">"http"</span> : { 
-    <span class="hljs-string">"requestsTotal"</span> : <span class="hljs-number">3797</span>, 
-    <span class="hljs-string">"requestsAsync"</span> : <span class="hljs-number">10</span>, 
-    <span class="hljs-string">"requestsGet"</span> : <span class="hljs-number">786</span>, 
+    <span class="hljs-string">"requestsTotal"</span> : <span class="hljs-number">3899</span>, 
+    <span class="hljs-string">"requestsAsync"</span> : <span class="hljs-number">9</span>, 
+    <span class="hljs-string">"requestsGet"</span> : <span class="hljs-number">884</span>, 
     <span class="hljs-string">"requestsHead"</span> : <span class="hljs-number">0</span>, 
     <span class="hljs-string">"requestsPost"</span> : <span class="hljs-number">2794</span>, 
-    <span class="hljs-string">"requestsPut"</span> : <span class="hljs-number">66</span>, 
+    <span class="hljs-string">"requestsPut"</span> : <span class="hljs-number">70</span>, 
     <span class="hljs-string">"requestsPatch"</span> : <span class="hljs-number">3</span>, 
     <span class="hljs-string">"requestsDelete"</span> : <span class="hljs-number">148</span>, 
     <span class="hljs-string">"requestsOptions"</span> : <span class="hljs-number">0</span>, 
     <span class="hljs-string">"requestsOther"</span> : <span class="hljs-number">0</span> 
   }, 
   <span class="hljs-string">"server"</span> : { 
-    <span class="hljs-string">"uptime"</span> : <span class="hljs-number">37.31937599182129</span>, 
+    <span class="hljs-string">"uptime"</span> : <span class="hljs-number">38.12209892272949</span>, 
     <span class="hljs-string">"physicalMemory"</span> : <span class="hljs-number">17179869184</span> 
   }, 
   <span class="hljs-string">"error"</span> : <span class="hljs-literal">false</span>, 

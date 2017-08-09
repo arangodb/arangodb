@@ -15,7 +15,7 @@ arangosh&gt; stmt.explain({ <span class="hljs-attr">maxNumberOfPlans</span>: <sp
           <span class="hljs-number">1</span> 
         ], 
         <span class="hljs-string">"id"</span> : <span class="hljs-number">9</span>, 
-        <span class="hljs-string">"estimatedCost"</span> : <span class="hljs-number">51</span>, 
+        <span class="hljs-string">"estimatedCost"</span> : <span class="hljs-number">7.643856189774724</span>, 
         <span class="hljs-string">"estimatedNrItems"</span> : <span class="hljs-number">50</span>, 
         <span class="hljs-string">"database"</span> : <span class="hljs-string">"_system"</span>, 
         <span class="hljs-string">"collection"</span> : <span class="hljs-string">"test"</span>, 
@@ -26,7 +26,7 @@ arangosh&gt; stmt.explain({ <span class="hljs-attr">maxNumberOfPlans</span>: <sp
         }, 
         <span class="hljs-string">"indexes"</span> : [ 
           { 
-            <span class="hljs-string">"id"</span> : <span class="hljs-string">"7243"</span>, 
+            <span class="hljs-string">"id"</span> : <span class="hljs-string">"7282"</span>, 
             <span class="hljs-string">"type"</span> : <span class="hljs-string">"skiplist"</span>, 
             <span class="hljs-string">"fields"</span> : [ 
               <span class="hljs-string">"value"</span> 
@@ -74,7 +74,7 @@ arangosh&gt; stmt.explain({ <span class="hljs-attr">maxNumberOfPlans</span>: <sp
           <span class="hljs-number">9</span> 
         ], 
         <span class="hljs-string">"id"</span> : <span class="hljs-number">5</span>, 
-        <span class="hljs-string">"estimatedCost"</span> : <span class="hljs-number">101</span>, 
+        <span class="hljs-string">"estimatedCost"</span> : <span class="hljs-number">57.64385618977472</span>, 
         <span class="hljs-string">"estimatedNrItems"</span> : <span class="hljs-number">50</span>, 
         <span class="hljs-string">"expression"</span> : { 
           <span class="hljs-string">"type"</span> : <span class="hljs-string">"attribute access"</span>, 
@@ -100,7 +100,7 @@ arangosh&gt; stmt.explain({ <span class="hljs-attr">maxNumberOfPlans</span>: <sp
           <span class="hljs-number">5</span> 
         ], 
         <span class="hljs-string">"id"</span> : <span class="hljs-number">8</span>, 
-        <span class="hljs-string">"estimatedCost"</span> : <span class="hljs-number">151</span>, 
+        <span class="hljs-string">"estimatedCost"</span> : <span class="hljs-number">107.64385618977472</span>, 
         <span class="hljs-string">"estimatedNrItems"</span> : <span class="hljs-number">50</span>, 
         <span class="hljs-string">"inVariable"</span> : { 
           <span class="hljs-string">"id"</span> : <span class="hljs-number">4</span>, 
@@ -144,7 +144,7 @@ arangosh&gt; stmt.explain({ <span class="hljs-attr">maxNumberOfPlans</span>: <sp
         <span class="hljs-string">"name"</span> : <span class="hljs-string">"i"</span> 
       } 
     ], 
-    <span class="hljs-string">"estimatedCost"</span> : <span class="hljs-number">151</span>, 
+    <span class="hljs-string">"estimatedCost"</span> : <span class="hljs-number">107.64385618977472</span>, 
     <span class="hljs-string">"estimatedNrItems"</span> : <span class="hljs-number">50</span>, 
     <span class="hljs-string">"initialize"</span> : <span class="hljs-literal">true</span> 
   }, 
