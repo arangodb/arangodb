@@ -806,7 +806,8 @@ std::shared_ptr<Manager::PriorityList> Manager::priorityList() {
     if (auto cache = s.first.lock()) {
       double accessWeight = static_cast<double>(s.second) * normalizer;
       TRI_ASSERT(accessWeight >= 0.0);
-      LOG_TOPIC(ERR, Logger::FIXME) << "Cache (" << ((size_t)cache.get()) << ") baseWeight + accessWeight: " << (baseWeight + accessWeight);
+      LOG_TOPIC(ERR, Logger::FIXME) << "Cache (" << ((size_t)cache.get()) << ") accesses "<< s.second
+      << "baseWeight + accessWeight: " << (baseWeight + accessWeight);
       list->emplace_back(cache, baseWeight + accessWeight);
     }
   }
