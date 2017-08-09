@@ -34,6 +34,8 @@
 #include "Cache/TransactionalCache.h"
 #include "Indexes/IndexResult.h"
 #include "Indexes/SimpleAttributeEqualityMatcher.h"
+#include "Scheduler/Scheduler.h"
+#include "Scheduler/SchedulerFeature.h"
 #include "Transaction/Context.h"
 #include "Transaction/Helpers.h"
 #include "Transaction/Methods.h"
@@ -192,8 +194,8 @@ bool RocksDBEdgeIndexIterator::next(TokenCallback const& cb, size_t limit) {
           // Otherwise we do not know yet
           break;
         }
-      } // attempts
-    } // if (_cache)
+      }  // attempts
+    }    // if (_cache)
 
     if (needRocksLookup) {
       lookupInRocksDB(fromTo);
@@ -300,8 +302,8 @@ bool RocksDBEdgeIndexIterator::nextExtra(ExtraCallback const& cb,
           break;
         }
       }  // attempts
-    } // if (_cache)
-    
+    }    // if (_cache)
+
     if (needRocksLookup) {
       lookupInRocksDB(fromTo);
     }
@@ -386,8 +388,7 @@ RocksDBEdgeIndex::RocksDBEdgeIndex(TRI_idx_iid_t iid,
       _directionAttr(attr),
       _isFromIndex(attr == StaticStrings::FromString),
       _estimator(nullptr) {
-  
-  TRI_ASSERT(_cf == RocksDBColumnFamily::edge()); 
+  TRI_ASSERT(_cf == RocksDBColumnFamily::edge());
 
   if (!ServerState::instance()->isCoordinator()) {
     // We activate the estimator only on DBServers
@@ -607,7 +608,7 @@ void RocksDBEdgeIndex::expandInSearchValues(VPackSlice const slice,
   builder.close();
 }
 
-void RocksDBEdgeIndex::warmup(arangodb::transaction::Methods* trx) {
+void RocksDBEdgeIndex::warmup(transaction::Methods* trx) {
   if (!_useCache || !_cache) {
     return;
   }
@@ -617,15 +618,86 @@ void RocksDBEdgeIndex::warmup(arangodb::transaction::Methods* trx) {
 
   // Prepare the cache to be resized for this amount of objects to be inserted.
   _cache->sizeHint(expectedCount);
-  std::string previous = "";
-  VPackBuilder builder;
+
+  auto bounds = RocksDBKeyBounds::EdgeIndex(_objectId);
+  auto* mthds = RocksDBTransactionState::toMethods(trx);
+  rocksdb::ReadOptions options = mthds->readOptions();
+  options.prefix_same_as_start = false;
+  options.total_order_seek = true;
+  options.verify_checksums = false;
+  options.fill_cache = EdgeIndexFillBlockCache;
+  std::unique_ptr<rocksdb::Iterator> it(
+      rocksutils::globalRocksDB()->NewIterator(options, _cf));
+
+  // get the first and last actual key
+  it->Seek(bounds.start());
+  if (!it->Valid()) {
+    LOG_TOPIC(DEBUG, Logger::ROCKSDB)
+        << "Cannot use multithreaded edge index warmup";
+    this->warmupInternal(trx, bounds.start(), bounds.end());
+    return;
+  }
+  std::string firstKey = it->key().ToString();
+  it->SeekForPrev(bounds.end());
+  if (!it->Valid()) {
+    LOG_TOPIC(DEBUG, Logger::ROCKSDB)
+        << "Cannot use multithreaded edge index warmup";
+    this->warmupInternal(trx, bounds.start(), bounds.end());
+    return;
+  }
+  std::string lastKey = it->key().ToString();
+
+  // now that we do know the actual bounds calculate a
+  // bad approximation for the index median key
+  size_t min = std::min(firstKey.size(), lastKey.size());
+  std::string median = std::string(min, '\0');
+  for (size_t i = 0; i < min; i++) {
+    median[i] = (firstKey.data()[i] + lastKey.data()[i]) / 2;
+  }
+
+  // now search the beginning of a new vertex ID
+  it->Seek(median);
+  TRI_ASSERT(it->Valid());
+  do {
+    median = it->key().ToString();
+    it->Next();
+  } while (it->Valid() &&
+           RocksDBKey::vertexId(it->key()) == RocksDBKey::vertexId(median));
+  if (!it->Valid()) {
+    LOG_TOPIC(DEBUG, Logger::ROCKSDB)
+        << "Cannot use multithreaded edge index warmup";
+    this->warmupInternal(trx, bounds.start(), bounds.end());
+    return;
+  }
+  median = it->key().ToString();  // median is exclusive upper bound
+  it.reset();                     // do not waste memory with unused iterator
+
+  bool done = false;
+  auto scheduler = SchedulerFeature::SCHEDULER;
+  scheduler->post([&] {
+    TRI_DEFER(done = true);  // median is excluded
+    if (!scheduler->isStopping()) {
+      this->warmupInternal(trx, firstKey, median);
+    }
+  });
+  this->warmupInternal(trx, median, lastKey);
+  while (!done && !scheduler->isStopping()) {
+    usleep(10000);
+  }
+}
+
+void RocksDBEdgeIndex::warmupInternal(transaction::Methods* trx,
+                                      rocksdb::Slice const& lower,
+                                      rocksdb::Slice const& upper) {
+  auto rocksColl = toRocksDBCollection(_collection);
   ManagedDocumentResult mmdr;
   bool needsInsert = false;
+  std::string previous = "";
+  VPackBuilder builder;
 
   // intentional copy of the read options
   auto* mthds = RocksDBTransactionState::toMethods(trx);
-  auto bounds = RocksDBKeyBounds::EdgeIndex(_objectId);
-  rocksdb::Slice const end = bounds.end();
+  rocksdb::Slice const end = upper;
   rocksdb::ReadOptions options = mthds->readOptions();
   options.iterate_upper_bound = &end;  // save to use on rocksb::DB directly
   options.prefix_same_as_start = false;
@@ -636,7 +708,7 @@ void RocksDBEdgeIndex::warmup(arangodb::transaction::Methods* trx) {
       rocksutils::globalRocksDB()->NewIterator(options, _cf));
 
   cache::Cache* cc = _cache.get();
-  for (it->Seek(bounds.start()); it->Valid(); it->Next()) {
+  for (it->Seek(lower); it->Valid(); it->Next()) {
     rocksdb::Slice key = it->key();
     StringRef v = RocksDBKey::vertexId(key);
     if (previous.empty()) {
@@ -647,6 +719,7 @@ void RocksDBEdgeIndex::warmup(arangodb::transaction::Methods* trx) {
       while (shouldTry) {
         auto finding = cc->find(previous.data(), (uint32_t)previous.size());
         if (finding.found()) {
+          shouldTry = false;
           needsInsert = false;
         } else if (  // shouldTry if failed lookup was just a lock timeout
             finding.result().errorNumber() != TRI_ERROR_LOCK_TIMEOUT) {
