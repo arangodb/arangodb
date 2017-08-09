@@ -526,7 +526,10 @@ void Manager::unprepareTask(Manager::TaskEnvironment environment) {
 bool Manager::rebalance(bool onlyCalculate) {
   if (!onlyCalculate) {
     _state.lock();
-    if (!isOperational() || globalProcessRunning() || _caches.size() == 0) {
+    if (_caches.size() == 0
+        || !isOperational()
+        || globalProcessRunning()
+        || _globalAllocation < _globalHighwaterMark * 0.7) {
       _state.unlock();
       return false;
     }
@@ -752,12 +755,13 @@ std::shared_ptr<Manager::PriorityList> Manager::priorityList() {
   
   LOG_TOPIC(ERR, Logger::FIXME) << "Cache count " << _caches.size();
   double minimumWeight = static_cast<double>(Manager::minCacheAllocation) /
-                         static_cast<double>(_globalHighwaterMark);
+  static_cast<double>(_globalHighwaterMark);
   while (static_cast<uint64_t>(std::ceil(
-             minimumWeight * static_cast<double>(_globalHighwaterMark))) <
+                                         minimumWeight * static_cast<double>(_globalHighwaterMark))) <
          Manager::minCacheAllocation) {
     minimumWeight *= 1.001;  // bump by 0.1% until we fix precision issues
   }
+  
   double uniformMarginalWeight = 0.2 / static_cast<double>(_caches.size());
   LOG_TOPIC(ERR, Logger::FIXME) << "uniformMarginalWeight " << uniformMarginalWeight;
   double baseWeight = std::max(minimumWeight, uniformMarginalWeight);
@@ -765,50 +769,57 @@ std::shared_ptr<Manager::PriorityList> Manager::priorityList() {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   if (1.0 < (baseWeight * static_cast<double>(_caches.size()))) {
     LOG_TOPIC(FATAL, Logger::FIXME)
-        << "weight: " << baseWeight << ", count: " << _caches.size();
+    << "weight: " << baseWeight << ", count: " << _caches.size();
     TRI_ASSERT(1.0 >= (baseWeight * static_cast<double>(_caches.size())));
   }
 #endif
   double remainingWeight =
-      1.0 - (baseWeight * static_cast<double>(_caches.size()));
+  1.0 - (baseWeight * static_cast<double>(_caches.size()));
   LOG_TOPIC(ERR, Logger::FIXME) << "remainingWeight " << remainingWeight;
-
-  uint64_t totalAccesses = 0;
+  
+  std::shared_ptr<PriorityList> list(new PriorityList());
+  list->reserve(_caches.size());
 
   // catalog accessed caches and count total accesses
   // to get basis for comparison
   std::vector<std::pair<std::weak_ptr<Cache>, uint64_t>> stats = _accessStats.getFrequencies();
   std::set<std::shared_ptr<Cache>> accessed;
+  uint64_t totalAccesses = 0;
+  uint64_t globalUsage = 0;
   for (auto const& s : stats) {
     totalAccesses += s.second;
     if (auto cache = s.first.lock()) {
       accessed.emplace(cache);
+      globalUsage += cache->usage();
     }
   }
+  totalAccesses = std::max((uint64_t)1, totalAccesses);
   LOG_TOPIC(ERR, Logger::FIXME) << "totalAccesses " << totalAccesses;
-
+  
   // gather all unaccessed caches at beginning of list
-  std::shared_ptr<PriorityList> list(new PriorityList());
-  list->reserve(_caches.size());
   for (auto it = _caches.begin(); it != _caches.end(); it++) {
     auto found = accessed.find(*it);
     if (found == accessed.end()) {
-      LOG_TOPIC(ERR, Logger::FIXME) << "Cache (" << ((size_t)it->get()) << ") baseWeight: " << baseWeight;
-      list->emplace_back(*it, baseWeight);
+      double weight = baseWeight + ((*it)->usage() / globalUsage) * 0.3;
+      LOG_TOPIC(ERR, Logger::FIXME) << "Cache (" << ((size_t)it->get()) << ") weight: " << weight;
+      list->emplace_back(*it, weight);
     }
   }
-
+  
   double normalizer =
-      remainingWeight / (std::max)(1.0, static_cast<double>(totalAccesses));
-
+  remainingWeight / static_cast<double>(totalAccesses);
+  
   // gather all accessed caches in order
   for (auto s : stats) {
     if (auto cache = s.first.lock()) {
       double accessWeight = static_cast<double>(s.second) * normalizer;
+      double usageWeight = (cache->usage() / globalUsage);
+      double weight = baseWeight + accessWeight * 0.7 + usageWeight * 0.3;
+      
       TRI_ASSERT(accessWeight >= 0.0);
       LOG_TOPIC(ERR, Logger::FIXME) << "Cache (" << ((size_t)cache.get()) << ") accesses "<< s.second
-      << "baseWeight + accessWeight: " << (baseWeight + accessWeight);
-      list->emplace_back(cache, baseWeight + accessWeight);
+      << " weight: " << weight;
+      list->emplace_back(cache, weight);
     }
   }
 

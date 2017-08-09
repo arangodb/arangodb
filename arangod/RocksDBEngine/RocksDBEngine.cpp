@@ -1641,8 +1641,8 @@ void RocksDBEngine::getStatistics(VPackBuilder& builder) const {
 
   cache::Manager* manager = CacheManagerFeature::MANAGER;
   auto rates = manager->globalHitRates();
-  builder.add("cache.size", VPackValue(manager->globalLimit()));
-  builder.add("cache.used", VPackValue(manager->globalAllocation()));
+  builder.add("cache.limit", VPackValue(manager->globalLimit()));
+  builder.add("cache.allocated", VPackValue(manager->globalAllocation()));
   builder.add("cache.hit-rate-lifetime", VPackValue(rates.first));
   builder.add("cache.hit-rate-recent", VPackValue(rates.second));
   
