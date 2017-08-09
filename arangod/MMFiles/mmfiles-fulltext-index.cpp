@@ -237,7 +237,7 @@ static inline void* AllocateMemory(index__t* const idx, size_t const size) {
   TRI_ASSERT(size > 0);
 #endif
 
-  data = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, size, false);
+  data = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, size);
   if (data != nullptr) {
     idx->_memoryAllocated += size;
   }
@@ -1221,8 +1221,8 @@ void TRI_DeleteDocumentMMFilesFulltextIndex(TRI_fts_index_t* const ftx,
 /// - save redundant lookups of prefix nodes for adjacent words with shared
 ///   prefixes
 bool TRI_InsertWordsMMFilesFulltextIndex(TRI_fts_index_t* const ftx,
-                                         const TRI_voc_rid_t document,
-                                         std::set<std::string>& wordlist) {
+                                         TRI_voc_rid_t document,
+                                         std::set<std::string> const& wordlist) {
   index__t* idx;
   TRI_fulltext_handle_t handle;
   node_t* paths[MAX_WORD_BYTES + 4];
@@ -1241,7 +1241,6 @@ bool TRI_InsertWordsMMFilesFulltextIndex(TRI_fts_index_t* const ftx,
   // for words with common prefixes (which will be adjacent in the sorted list
   // of words)
   // The default comparator (<) is exactly what we need here
-  //std::sort(wordlist.begin(), wordlist.end());
 
   idx = static_cast<index__t*>(ftx);
 
