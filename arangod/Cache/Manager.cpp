@@ -771,19 +771,21 @@ std::shared_ptr<Manager::PriorityList> Manager::priorityList() {
 #endif
   double remainingWeight =
       1.0 - (baseWeight * static_cast<double>(_caches.size()));
-  uint64_t totalAccesses = 0;
   LOG_TOPIC(ERR, Logger::FIXME) << "remainingWeight " << remainingWeight;
+
+  uint64_t totalAccesses = 0;
 
   // catalog accessed caches and count total accesses
   // to get basis for comparison
   std::vector<std::pair<std::weak_ptr<Cache>, uint64_t>> stats = _accessStats.getFrequencies();
   std::set<std::shared_ptr<Cache>> accessed;
-  for (auto s : stats) {
+  for (auto const& s : stats) {
+    totalAccesses += s.second;
     if (auto cache = s.first.lock()) {
       accessed.emplace(cache);
-      totalAccesses += s.second;
     }
   }
+  LOG_TOPIC(ERR, Logger::FIXME) << "totalAccesses " << totalAccesses;
 
   // gather all unaccessed caches at beginning of list
   std::shared_ptr<PriorityList> list(new PriorityList());
