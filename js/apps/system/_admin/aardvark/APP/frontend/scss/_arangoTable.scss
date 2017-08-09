@@ -7,9 +7,9 @@
     th {
       border-bottom: 1px solid $c-c2grey;
       font-weight: 500;
-      text-align: left;
-      padding-left: 18px;
       height: 43px;
+      padding-left: 18px;
+      text-align: left;
     }
   }
 
@@ -25,6 +25,11 @@
 
     td {
       padding: 10px 18px;
+
+      pre {
+        background: none;
+        border: 0;
+      }
     }
   }
 }

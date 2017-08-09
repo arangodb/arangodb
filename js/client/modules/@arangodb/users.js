@@ -287,7 +287,7 @@ exports.isAuthActive = function() {
   let active = false;
   try {
     let c = internal.db._collection("_users");
-    internal.print(c.properties());
+    c.properties(); // we need to access c to trigger the exception
   } catch(e) {
     active = true;
   }

@@ -1,8 +1,22 @@
 devel
 -----
 
+* fixed issue #2977: Documentation for db._createDatabase is wrong
+
+* ui: added bind parameters to slow query history view
+
+* fixed issue #1751: Slow Query API should provide bind parameters, webui should display them
+
+* ui: fixed a bug when moving multiple documents was not possible
+
+* fixed docs for issue #2968: Collection _key autoincrement value increases on error
+
+* AQL CHAR_LENGTH(null) returns now 0. Since AQL TO_STRING(null) is '' (string of length 0)
+
+* ui: now supports single js file upload for Foxx services in addition to zip files
+
 * fixed a multi-threading issue in the agency when callElection was called 
-  while the SuperVision was calling updateSnapshot 
+  while the Supervision was calling updateSnapshot 
 
 * added startup option `--query.tracking-with-bindvars` 
 
@@ -19,12 +33,12 @@ devel
         trackBindVars: value 
       });
 
-* selectivity estimates are now available in the cluster
+* index selectivity estimates are now available in the cluster as well
 
 * fixed issue #2943: loadIndexesIntoMemory not returning the same structure 
   as the rest of the collection APIs
 
-* fixed isuse #2949: ArangoError 1208: illegal name
+* fixed issue #2949: ArangoError 1208: illegal name
 
 * fixed issue #2874: Collection properties do not return `isVolatile` 
   attribute
@@ -55,7 +69,8 @@ devel
 
   this potentially fixes issue #2920: DBServer crashing automatically post upgrade to 3.2
 
-* Foxx queues and tasks now ensure that the scripts in them, run on same permissions as the Foxx code who started the task / queue 
+* Foxx queues and tasks now ensure that the scripts in them run with the same 
+  permissions as the Foxx code who started the task / queue 
 
 * fixed issue #2928: Offset problems
 
@@ -67,7 +82,7 @@ devel
 
 * fixed issue #2884: AQL traversal uniqueness constraints "propagating" to other traversals? Weird results
 
-* arangoexport: added --query; pass a aql query to export the result
+* arangoexport: added `--query` option for passing an AQL query to export the result
 
 * fixed issue #2879: No result when querying for the last record of a query
 
@@ -79,6 +94,10 @@ devel
 * removed options "--rocksdb.max-background-compactions", "--rocksdb.base-background-compactions" and "--rocksdb.max-background-flushes"
 
 * option "--rocksdb.compaction-read-ahead-size" now defaults to 2MB
+
+* change Windows build so that RocksDB doesn't enforce AVX optimizations by default
+
+* speed up RocksDB secondary index creation and dropping
 
 
 v3.2.0 (2017-07-20)
@@ -1049,7 +1068,7 @@ v3.1.1 (2016-11-15)
 
 * display index usage of traversals in AQL explainer output (previously missing)
 
-* fixed isuse #2163
+* fixed issue #2163
 
 * preserve last-used HLC value across server starts
 

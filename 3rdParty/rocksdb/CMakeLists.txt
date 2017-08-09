@@ -26,6 +26,10 @@ endif ()
 # snappy settings
 #set(SNAPPY_HOME ${CMAKE_SOURCE_DIR}/3rdParty/snappy/google-snappy-d53de18/)
 
+if (WIN32)
+  option(PORTABLE_ROCKSDB "enable portable rocksdb build (disabling might yield better performance but break portability)" On)
+  set(PORTABLE ${PORTABLE_ROCKSDB})
+endif ()
 #if (WIN32)
 #  set(SNAPPY 1 CACHE BOOL "enable snappy")
 #  set(SNAPPY_INCLUDE ${SNAPPY_HOME};${CMAKE_BINARY_DIR}/3rdParty/snappy/google-snappy-d53de18/)
