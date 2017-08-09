@@ -720,9 +720,6 @@ function fulltextQuerySuite () {
       assertEqual(0, collection.fulltext("text", "tomatoes", idx).toArray().length);
       assertEqual(0, collection.fulltext("text", "others", idx).toArray().length);
 
-      require("console").log("waiting for compaction");
-      internal.wait(7);
-
       assertEqual(0, collection.fulltext("text", "bananas", idx).toArray().length);
       assertEqual(0, collection.fulltext("text", "some", idx).toArray().length);
       assertEqual(0, collection.fulltext("text", "tomatoes", idx).toArray().length);
@@ -735,9 +732,6 @@ function fulltextQuerySuite () {
 
       collection.remove(d2);
       
-      require("console").log("waiting for compaction");
-      internal.wait(7);
-      
       assertEqual(0, collection.fulltext("text", "several", idx).toArray().length);
       assertEqual(0, collection.fulltext("text", "oranges,hate", idx).toArray().length);
       assertEqual(0, collection.fulltext("text", "people", idx).toArray().length);
@@ -746,14 +740,8 @@ function fulltextQuerySuite () {
       
       collection.remove(d3);
       
-      require("console").log("waiting for compaction");
-      internal.wait(7);
-      
       assertEqual(0, collection.fulltext("text", "unrelated,text,index", idx).toArray().length);
       assertEqual(0, collection.fulltext("text", "index", idx).toArray().length);
-      
-      require("console").log("waiting for compaction");
-      internal.wait(7);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1015,9 +1003,6 @@ function fulltextQuerySuite () {
         collection.remove(docs[i]);
       }
 
-      require("console").log("waiting for compaction");
-      internal.wait(7);
-      
       assertEqual(750, collection.fulltext("text", "document", idx).toArray().length);
       assertEqual(750, collection.fulltext("text", "text", idx).toArray().length);
       assertEqual(250, collection.fulltext("text", "this", idx).toArray().length);

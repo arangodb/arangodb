@@ -170,7 +170,7 @@ class MMFilesPersistentIndex final : public MMFilesPathBasedIndex {
   Result remove(transaction::Methods*, TRI_voc_rid_t,
                 arangodb::velocypack::Slice const&, bool isRollback) override;
 
-  int unload() override;
+  void unload() override {}
 
   int drop() override;
 

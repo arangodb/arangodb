@@ -550,12 +550,6 @@ void Index::batchInsert(
   }
 }
 
-/// @brief default implementation for cleanup
-int Index::cleanup() {
-  // do nothing
-  return TRI_ERROR_NO_ERROR;
-}
-
 /// @brief default implementation for drop
 int Index::drop() {
   // do nothing

@@ -381,11 +381,9 @@ void MMFilesEdgeIndex::batchInsert(
 }
 
 /// @brief unload the index data from memory
-int MMFilesEdgeIndex::unload() {
+void MMFilesEdgeIndex::unload() {
   _edgesFrom->truncate([](MMFilesSimpleIndexElement const&) { return true; });
   _edgesTo->truncate([](MMFilesSimpleIndexElement const&) { return true; });
-
-  return TRI_ERROR_NO_ERROR;
 }
 
 /// @brief provides a size hint for the edge index

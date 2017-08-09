@@ -142,8 +142,8 @@ class MMFilesGeoIndex final : public Index {
   Result remove(transaction::Methods*, TRI_voc_rid_t,
                 arangodb::velocypack::Slice const&, bool isRollback) override;
 
-  int load() override { return 0; }
-  int unload() override;
+  void load() override {}
+  void unload() override;
 
   /// @brief looks up all points within a given radius
   GeoCoordinates* withinQuery(transaction::Methods*, double, double,

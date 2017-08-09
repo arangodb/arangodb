@@ -644,7 +644,7 @@ void MMFilesHashIndex::batchInsert(
   }
 }
 
-int MMFilesHashIndex::unload() {
+void MMFilesHashIndex::unload() {
   if (_unique) {
     _uniqueArray->_hashArray->truncate(
         [](MMFilesHashIndexElement*) -> bool { return true; });
@@ -653,7 +653,6 @@ int MMFilesHashIndex::unload() {
         [](MMFilesHashIndexElement*) -> bool { return true; });
   }
   _allocator->deallocateAll();
-  return TRI_ERROR_NO_ERROR;
 }
 
 /// @brief provides a size hint for the hash index

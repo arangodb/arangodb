@@ -824,9 +824,8 @@ Result MMFilesSkiplistIndex::remove(transaction::Methods* trx,
   return IndexResult(res, this);
 }
 
-int MMFilesSkiplistIndex::unload() {
+void MMFilesSkiplistIndex::unload() {
   _skiplistIndex->truncate(true);
-  return TRI_ERROR_NO_ERROR;
 }
 
 /// @brief Checks if the interval is valid. It is declared invalid if

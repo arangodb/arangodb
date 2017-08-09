@@ -76,14 +76,14 @@ class RocksDBIndex : public Index {
 
   int drop() override;
 
-  int load() override;
-  int unload() override;
+  void load() override;
+  void unload() override;
 
   virtual void truncate(transaction::Methods*);
 
   size_t memory() const override;
 
-  int cleanup() override;
+  void cleanup();
 
   /// @brief provides a size hint for the index
   int sizeHint(transaction::Methods* /*trx*/, size_t /*size*/) override final {
