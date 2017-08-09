@@ -36,15 +36,15 @@
       "css": ["styles/header.css"]
     },
     "sitemap-general": {
-      "prefix": "https://docs.arangodb.com/devel/HTTP/",
-      "changefreq": "daily",
-      "priority": 0.3
+      "prefix": "https://docs.arangodb.com/3.2/HTTP/",
+      "changefreq": "weekly",
+      "priority": 0.8
     },
     "ga": {
       "token": "UA-81053435-2"
     },
     "edit-link": {
-      "base": "https://github.com/arangodb/arangodb/edit/devel/Documentation/Books/HTTP",
+      "base": "https://github.com/arangodb/arangodb/edit/3.2/Documentation/Books/HTTP",
       "label": "Edit Page"
     },
     "localized-footer": {

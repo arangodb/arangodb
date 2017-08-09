@@ -1,12 +1,12 @@
-shell> curl --dump - http://localhost:8529/_api/replication/logger-follow?from=10561&chunkSize=400
+shell> curl --dump - http://localhost:8529/_api/replication/logger-follow?from=10533&chunkSize=400
 
 HTTP/1.1 200 OK
-x-arango-replication-lastincluded: 10563
-x-content-type-options: nosniff
+x-arango-replication-lastincluded: 10535
 content-type: application/x-arango-dump; charset=utf-8
+x-arango-replication-lasttick: 10554
 x-arango-replication-checkmore: true
 x-arango-replication-frompresent: true
+x-content-type-options: nosniff
 x-arango-replication-active: true
-x-arango-replication-lasttick: 10582
 
-"{\"tick\":\"10563\",\"type\":2000,\"database\":\"1\",\"cid\":\"10562\",\"cname\":\"products\",\"data\":{\"allowUserKeys\":true,\"cid\":\"10562\",\"count\":0,\"deleted\":false,\"doCompact\":true,\"id\":\"10562\",\"indexBuckets\":8,\"indexes\":[{\"fields\":[\"_key\"],\"id\":\"0\",\"selectivityEstimate\":1,\"sparse\":false,\"type\":\"primary\",\"unique\":true}],\"isSmart\":false,\"isSystem\":false,\"isVolatile\":false,\"journalSize\":33554432,\"keyOptions\":{\"allowUserKeys\":true,\"lastValue\":0,\"type\":\"traditional\"},\"name\":\"products\",\"numberOfShards\":1,\"planId\":\"10562\",\"replicationFactor\":1,\"shardKeys\":[\"_key\"],\"shards\":{},\"status\":3,\"type\":2,\"version\":6,\"waitForSync\":false}}\n"
+"{\"tick\":\"10535\",\"type\":2000,\"database\":\"1\",\"cid\":\"10534\",\"cname\":\"products\",\"data\":{\"allowUserKeys\":true,\"cid\":\"10534\",\"count\":0,\"deleted\":false,\"doCompact\":true,\"id\":\"10534\",\"indexBuckets\":8,\"indexes\":[{\"fields\":[\"_key\"],\"id\":\"0\",\"selectivityEstimate\":1,\"sparse\":false,\"type\":\"primary\",\"unique\":true}],\"isSmart\":false,\"isSystem\":false,\"isVolatile\":false,\"journalSize\":33554432,\"keyOptions\":{\"allowUserKeys\":true,\"lastValue\":0,\"type\":\"traditional\"},\"name\":\"products\",\"numberOfShards\":1,\"planId\":\"10534\",\"replicationFactor\":1,\"shardKeys\":[\"_key\"],\"shards\":{},\"status\":3,\"type\":2,\"version\":6,\"waitForSync\":false}}\n"
