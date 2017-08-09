@@ -170,7 +170,7 @@ SECTION("test_defaults") {
     auto json = arangodb::velocypack::Parser::fromJson("{ \"view\": 42, \"skipViewRegistration\": null }");
     auto link = arangodb::iresearch::IResearchLink::make(1, nullptr, json->slice());
     CHECK((false == !link));
-    auto builder = link->toVelocyPack(false);
+    auto builder = link->toVelocyPack(false, false);
     auto slice = builder->slice();
     CHECK((
       slice.hasKey("view")
@@ -212,7 +212,7 @@ SECTION("test_defaults") {
 
     arangodb::iresearch::IResearchLinkMeta actualMeta;
     arangodb::iresearch::IResearchLinkMeta expectedMeta;
-    auto builder = link->toVelocyPack(true);
+    auto builder = link->toVelocyPack(true, false);
     std::string error;
 
     CHECK((actualMeta.init(builder->slice(), error) && expectedMeta == actualMeta));
@@ -265,7 +265,7 @@ SECTION("test_defaults") {
     {
       arangodb::iresearch::IResearchLinkMeta actualMeta;
       arangodb::iresearch::IResearchLinkMeta expectedMeta;
-      auto builder = link->toVelocyPack(true);
+      auto builder = link->toVelocyPack(true, false);
       std::string error;
 
       CHECK((actualMeta.init(builder->slice(), error) && expectedMeta == actualMeta));
@@ -285,7 +285,7 @@ SECTION("test_defaults") {
     // ensure jSON is still valid after unload()
     {
       CHECK((TRI_ERROR_NO_ERROR == link->unload()));
-      auto builder = link->toVelocyPack(true);
+      auto builder = link->toVelocyPack(true, false);
       auto slice = builder->slice();
       CHECK((
         slice.hasKey("view")
