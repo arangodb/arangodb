@@ -749,6 +749,7 @@ bool Manager::increaseAllowed(uint64_t increase, bool privileged) const {
 
 std::shared_ptr<Manager::PriorityList> Manager::priorityList() {
   TRI_ASSERT(_state.isLocked());
+  
   LOG_TOPIC(ERR, Logger::FIXME) << "Cache count " << _caches.size();
   double minimumWeight = static_cast<double>(Manager::minCacheAllocation) /
                          static_cast<double>(_globalHighwaterMark);
@@ -771,7 +772,7 @@ std::shared_ptr<Manager::PriorityList> Manager::priorityList() {
   double remainingWeight =
       1.0 - (baseWeight * static_cast<double>(_caches.size()));
   uint64_t totalAccesses = 0;
-  LOG_TOPIC(ERR, Logger::FIXME) << "remainingWeight " << baseWeight;
+  LOG_TOPIC(ERR, Logger::FIXME) << "remainingWeight " << remainingWeight;
 
   // catalog accessed caches and count total accesses
   // to get basis for comparison
@@ -790,7 +791,7 @@ std::shared_ptr<Manager::PriorityList> Manager::priorityList() {
   for (auto it = _caches.begin(); it != _caches.end(); it++) {
     auto found = accessed.find(*it);
     if (found == accessed.end()) {
-      LOG_TOPIC(ERR, Logger::FIXME) << "Cache (" << ((size_t)it->get()) << ") weight: " << baseWeight;
+      LOG_TOPIC(ERR, Logger::FIXME) << "Cache (" << ((size_t)it->get()) << ") baseWeight: " << baseWeight;
       list->emplace_back(*it, baseWeight);
     }
   }
@@ -803,7 +804,7 @@ std::shared_ptr<Manager::PriorityList> Manager::priorityList() {
     if (auto cache = s.first.lock()) {
       double accessWeight = static_cast<double>(s.second) * normalizer;
       TRI_ASSERT(accessWeight >= 0.0);
-      LOG_TOPIC(ERR, Logger::FIXME) << "Cache (" << ((size_t)cache.get()) << ") weight: " << baseWeight;
+      LOG_TOPIC(ERR, Logger::FIXME) << "Cache (" << ((size_t)cache.get()) << ") baseWeight + accessWeight: " << baseWeight;
       list->emplace_back(cache, baseWeight + accessWeight);
     }
   }
