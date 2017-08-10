@@ -1,0 +1,51 @@
+<script id="serviceInstallView.ejs" type="text/template">
+<div class="headerBar">
+  <div class="headerButtonBar">
+    <ul class="headerButtonList">
+      <li>
+        <a id="foxxToggle" class="headerButton">
+          <span class="icon_arangodb_settings2" title="Settings"></span>
+        </a>
+      </li>
+    </ul>
+  </div>
+</div>
+
+<div id="foxxDropdownOut" class="headerDropdown">
+  <div id="foxxDropdown" class="dropdownInner">
+    <ul>
+      <li class="nav-header">Type</li>
+      <li><a href="#services">
+        <label class="checkbox checkboxLabel">
+          <input class="css-checkbox" type="checkbox" id="checkProduction"/>
+          <i class="fa"></i>
+          Production
+        </label>
+      </a></li>
+
+      <li><a href="#services">
+        <label class="checkbox checkboxLabel">
+          <input class="css-checkbox" type="checkbox" id="checkDevel"/>
+          <i class="fa"></i>
+          Development
+        </label>
+      </a></li>
+
+      <li><a href="#services">
+        <label class="checkbox checkboxLabel">
+          <input class="css-checkbox" id="checkSystem" type="checkbox"/>
+          <i class="fa"></i>
+          System Services
+        </label>
+      </a></li>
+    </ul>
+  </div>
+</div>
+
+<div class="contentDiv">
+  <div id="repositories">
+    <div id="availableFoxxes" class="tileList pure-u">
+    </div>
+  </div>
+</div>
+</script>

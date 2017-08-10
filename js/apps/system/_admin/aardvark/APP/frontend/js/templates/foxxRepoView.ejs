@@ -1,0 +1,14 @@
+<script id="foxxRepoView.ejs" type="text/template">
+  <div class="paddingBox">
+    <div class="foxxDesc">
+      <p><span class="foxxName"><%=model.name%></span></p>
+      <p><span class="foxxCategory"><%=model.category%></span></p>
+      <p><i class="fa fa-star"></i><span class="foxxStars">23</span></p>
+    </div>
+    <div class="foxxActions">
+      <button class="installFoxx button-success">Install</button>
+    </div>
+    <div class="borderBox"></div>
+    <img src="<%= model.thumbnailUrl %>" height="50" width="50" alt="Icon for Service" class="icon">
+  </div>
+</script>

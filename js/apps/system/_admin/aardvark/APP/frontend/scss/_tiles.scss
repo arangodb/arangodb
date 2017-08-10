@@ -464,3 +464,56 @@ div {
     }
   }
 }
+
+.foxxTile {
+  .paddingBox {
+    .foxxActions {
+      float: right;
+      margin-right: 5px;
+      margin-top: 67px;
+      position: relative;
+      z-index: 3;
+    }
+
+    .foxxDesc {
+      margin-left: 105px;
+      margin-top: 8px;
+      position: absolute;
+      z-index: 10;
+
+      p {
+        color: $c-dark-grey;
+        font-size: 12px;
+        font-weight: 100;
+        margin: 0;
+        margin-bottom: -2px;
+        text-align: left;
+
+        i {
+          margin-right: 5px;
+        }
+      }
+
+      p:first-child {
+        span {
+          color: $c-black;
+          font-size: 14px;
+          font-weight: 500;
+        }
+      }
+    }
+
+    .borderBox {
+      border-bottom: 1px solid rgba(64, 74, 83, .2);
+      height: 100px;
+    }
+
+    img.icon {
+      float: left;
+      height: 85px;
+      margin-left: 2px;
+      margin-top: -103px;
+      width: 85px;
+    }
+  }
+}

@@ -28,6 +28,7 @@
       'databases': 'databases',
       'settings': 'databases',
       'services': 'applications',
+      'services/install': 'installService',
       'service/:mount': 'applicationDetail',
       'graphs': 'graphManagement',
       'graphs/:name': 'showGraph',
@@ -189,10 +190,22 @@
       // This should be the only global object
       window.modalView = new window.ModalView();
 
+      // foxxes
       this.foxxList = new window.FoxxCollection();
       window.foxxInstallView = new window.FoxxInstallView({
         collection: this.foxxList
       });
+
+      // foxx repository
+      this.foxxRepo = new window.FoxxRepository();
+      this.foxxRepo.fetch({
+        success: function () {
+          if (self.serviceInstallView) {
+            self.serviceInstallView.collection = self.foxxRepo;
+          }
+        }
+      });
+
       window.progressView = new window.ProgressView();
 
       var self = this;
@@ -908,6 +921,21 @@
         });
       }
       this.applicationsView.reload();
+    },
+
+    installService: function (initialized) {
+      this.checkUser();
+      if (!initialized) {
+        this.waitForInit(this.installService.bind(this));
+        return;
+      }
+      if (this.serviceInstallView) {
+        this.serviceInstallView.remove();
+      }
+      this.serviceInstallView = new window.ServiceInstallView({
+        collection: this.foxxList
+      });
+      this.serviceInstallView.render();
     },
 
     handleSelectDatabase: function (initialized) {

@@ -145,31 +145,4 @@
     }
 
   });
-
-/* Info for mountpoint
- *
- *
-    window.modalView.createTextEntry(
-      "mount-point",
-      "Mount",
-      "",
-      "The path the app will be mounted. Has to start with /. Is not allowed to start with /_",
-      "/my/app",
-      true,
-      [
-        {
-          rule: Joi.string().required(),
-          msg: "No mountpoint given."
-        },
-        {
-          rule: Joi.string().regex(/^\/[^_]/),
-          msg: "Mountpoints with _ are reserved for internal use."
-        },
-        {
-          rule: Joi.string().regex(/^(\/[a-zA-Z0-9_\-%]+)+$/),
-          msg: "Mountpoints have to start with / and can only contain [a-zA-Z0-9_-%]"
-        }
-      ]
-    )
- */
 }());
