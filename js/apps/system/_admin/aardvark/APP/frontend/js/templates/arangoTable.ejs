@@ -1,5 +1,6 @@
 <script id="arangoTable.ejs" type="text/template">
   <div class="tableWrapper">
+    <% var type = type; %>
     <table class="arango-table" id="<%=content.id%>">
       <thead>
         <tr>
@@ -13,7 +14,15 @@
         <% _.each(content.rows, function(k) { var counter=0;%>
           <tr>
             <% _.each(k, function(x) { %>
-              <td class="arango-table-td table-cell<%=counter%>"><%=(content.unescaped && content.unescaped[counter] ? x : _.escape(x))%></td>
+              <% if (type && type[counter] === 'pre') { %>
+                <td class="arango-table-td table-cell<%=counter%>">
+                  <pre class="tablePre"> 
+                    <%=(content.unescaped && content.unescaped[counter] ? x : _.escape(x))%>
+                  </pre>
+                </td>
+              <% } else { %>
+                <td class="arango-table-td table-cell<%=counter%>"><%=(content.unescaped && content.unescaped[counter] ? x : _.escape(x))%></td>
+              <% } %>
             <% counter++;});%>
           </tr>
         <%});%>

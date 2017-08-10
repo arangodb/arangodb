@@ -21,8 +21,8 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_AQL_EXECUTOR_H
-#define ARANGOD_AQL_EXECUTOR_H 1
+#ifndef ARANGOD_AQL_V8EXECUTOR_H
+#define ARANGOD_AQL_V8EXECUTOR_H 1
 
 #include "Basics/Common.h"
 #include "Aql/AstNode.h"
@@ -44,13 +44,13 @@ struct Function;
 class Query;
 struct V8Expression;
 
-class Executor {
+class V8Executor {
  public:
   /// @brief create the executor
-  explicit Executor(int64_t);
+  explicit V8Executor(int64_t);
 
   /// @brief destroy the executor
-  ~Executor();
+  ~V8Executor();
 
  public:
   /// @brief generates an expression execution object

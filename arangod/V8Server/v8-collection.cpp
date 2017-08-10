@@ -1028,8 +1028,8 @@ static void JS_DropVocbaseCol(v8::FunctionCallbackInfo<v8::Value> const& args) {
     }
   }
   
-  if (auth->isActive() && (ServerState::instance()->isCoordinator() ||
-                           !ServerState::instance()->isRunningInCluster())) {
+  if (ServerState::instance()->isCoordinator() ||
+      !ServerState::instance()->isRunningInCluster()) {
     auth->authInfo()->enumerateUsers([&](AuthUserEntry& entry) {
       entry.removeCollection(dbname, collName);
     });
@@ -3045,14 +3045,27 @@ static void JS_CollectionsVocbase(
   }
 
   std::vector<LogicalCollection*> colls;
+  
+  // clean memory
+  std::function<void()> cleanup;
 
   // if we are a coordinator, we need to fetch the collection info from the
   // agency
   if (ServerState::instance()->isCoordinator()) {
+    cleanup = [&colls]() {
+      for (auto& it : colls) {
+        if (it != nullptr) {
+          delete it;
+        }
+      }
+    };
     colls = GetCollectionsCluster(vocbase);
   } else {
     colls = vocbase->collections(false);
   }
+
+  // make sure memory is cleaned up
+  TRI_DEFER(cleanup());
 
   std::sort(colls.begin(), colls.end(), [](LogicalCollection* lhs, LogicalCollection* rhs) -> bool {
     return StringUtils::tolower(lhs->name()) < StringUtils::tolower(rhs->name());
@@ -3066,7 +3079,7 @@ static void JS_CollectionsVocbase(
   size_t const n = colls.size();
   size_t x = 0;
   for (size_t i = 0; i < n; ++i) {
-    auto collection = colls[i];
+    auto& collection = colls[i];
   
     if (auth->isActive() && ExecContext::CURRENT != nullptr) {
       AuthLevel level = auth->canUseCollection(ExecContext::CURRENT->user(),
@@ -3081,6 +3094,8 @@ static void JS_CollectionsVocbase(
       error = true;
       break;
     }
+    // avoid duplicate deletion
+    collection = nullptr;
     result->Set(static_cast<uint32_t>(x++), c);
   }
 
