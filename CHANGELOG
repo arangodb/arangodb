@@ -1,6 +1,12 @@
 devel
 -----
 
+* fixed issue #2978: log something more obvious when you log a Buffer
+
+* fixed issue #2982: AQL parse error?
+
+* fixed docs for issue #2968: Collection _key autoincrement value increases on error 
+
 * fixed issue #3011: Optimizer rule reduce-extraction-to-projection breaks queries
 
 * Now allowing to restore users in a sharded environment as well

@@ -21,7 +21,7 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "Executor.h"
+#include "V8Executor.h"
 #include "Aql/AstNode.h"
 #include "Aql/AqlFunctionFeature.h"
 #include "Aql/Functions.h"
@@ -42,10 +42,10 @@ using namespace arangodb::aql;
 
 /// @brief minimum number of array members / object attributes for considering
 /// an array / object literal "big" and pulling it out of the expression
-size_t const Executor::DefaultLiteralSizeThreshold = 32;
+size_t const V8Executor::DefaultLiteralSizeThreshold = 32;
 
 /// @brief creates an executor
-Executor::Executor(int64_t literalSizeThreshold)
+V8Executor::V8Executor(int64_t literalSizeThreshold)
     : _buffer(nullptr),
       _constantRegisters(),
       _literalSizeThreshold(literalSizeThreshold >= 0
@@ -53,10 +53,10 @@ Executor::Executor(int64_t literalSizeThreshold)
                                 : DefaultLiteralSizeThreshold) {}
 
 /// @brief destroys an executor
-Executor::~Executor() { delete _buffer; }
+V8Executor::~V8Executor() { delete _buffer; }
 
 /// @brief generates an expression execution object
-V8Expression* Executor::generateExpression(AstNode const* node) {
+V8Expression* V8Executor::generateExpression(AstNode const* node) {
   ISOLATE;
   v8::HandleScope scope(isolate);
 
@@ -69,7 +69,7 @@ V8Expression* Executor::generateExpression(AstNode const* node) {
 
   generateCodeExpression(node);
 
-  // std::cout << "Executor::generateExpression: " <<
+  // std::cout << "V8Executor::generateExpression: " <<
   // std::string(_buffer->c_str(), _buffer->length()) << "\n";
   v8::Handle<v8::Object> constantValues = v8::Object::New(isolate);
   for (auto const& it : _constantRegisters) {
@@ -115,14 +115,14 @@ V8Expression* Executor::generateExpression(AstNode const* node) {
 /// @brief executes an expression directly
 /// this method is called during AST optimization and will be used to calculate
 /// values for constant expressions
-int Executor::executeExpression(Query* query, AstNode const* node, 
+int V8Executor::executeExpression(Query* query, AstNode const* node, 
                                 VPackBuilder& builder) {
   ISOLATE;
 
   _constantRegisters.clear();
   generateCodeExpression(node);
 
-  // std::cout << "Executor::ExecuteExpression: " <<
+  // std::cout << "V8Executor::ExecuteExpression: " <<
   // std::string(_buffer->c_str(), _buffer->length()) << "\n";
   v8::HandleScope scope(isolate);
   v8::TryCatch tryCatch;
@@ -180,13 +180,13 @@ int Executor::executeExpression(Query* query, AstNode const* node,
 }
 
 /// @brief returns a reference to a built-in function
-Function const* Executor::getFunctionByName(std::string const& name) {
+Function const* V8Executor::getFunctionByName(std::string const& name) {
   auto functions = AqlFunctionFeature::AQLFUNCTIONS;
   return functions->byName(name);
 }
 
 /// @brief traverse the expression and note all user-defined functions
-void Executor::detectUserFunctions(AstNode const* node) {
+void V8Executor::detectUserFunctions(AstNode const* node) {
   if (node == nullptr) {
     return;
   }
@@ -202,7 +202,7 @@ void Executor::detectUserFunctions(AstNode const* node) {
 }
 
 /// @brief traverse the expression and note all (big) array/object literals
-void Executor::detectConstantValues(AstNode const* node, AstNodeType previous) {
+void V8Executor::detectConstantValues(AstNode const* node, AstNodeType previous) {
   if (node == nullptr) {
     return;
   }
@@ -248,7 +248,7 @@ void Executor::detectConstantValues(AstNode const* node, AstNodeType previous) {
 }
 
 /// @brief convert an AST node to a V8 object
-v8::Handle<v8::Value> Executor::toV8(v8::Isolate* isolate,
+v8::Handle<v8::Value> V8Executor::toV8(v8::Isolate* isolate,
                                      AstNode const* node) const {
   if (node->type == NODE_TYPE_ARRAY) {
     size_t const n = node->numMembers();
@@ -295,7 +295,7 @@ v8::Handle<v8::Value> Executor::toV8(v8::Isolate* isolate,
 
 /// @brief checks if a V8 exception has occurred and throws an appropriate C++
 /// exception from it if so
-void Executor::HandleV8Error(v8::TryCatch& tryCatch,
+void V8Executor::HandleV8Error(v8::TryCatch& tryCatch,
                              v8::Handle<v8::Value>& result,
                              arangodb::basics::StringBuffer* const buffer,
                              bool duringCompile) {
@@ -391,7 +391,7 @@ void Executor::HandleV8Error(v8::TryCatch& tryCatch,
 }
 
 /// @brief generate JavaScript code for an arbitrary expression
-void Executor::generateCodeExpression(AstNode const* node) {
+void V8Executor::generateCodeExpression(AstNode const* node) {
   // initialize and/or clear the buffer
   initializeBuffer();
   TRI_ASSERT(_buffer != nullptr);
@@ -442,19 +442,19 @@ void Executor::generateCodeExpression(AstNode const* node) {
 }
 
 /// @brief generates code for a string value
-void Executor::generateCodeString(char const* value, size_t length) {
+void V8Executor::generateCodeString(char const* value, size_t length) {
   TRI_ASSERT(value != nullptr);
 
   _buffer->appendJsonEncoded(value, length);
 }
 
 /// @brief generates code for a string value
-void Executor::generateCodeString(std::string const& value) {
+void V8Executor::generateCodeString(std::string const& value) {
   _buffer->appendJsonEncoded(value.c_str(), value.size());
 }
 
 /// @brief generate JavaScript code for an array
-void Executor::generateCodeArray(AstNode const* node) {
+void V8Executor::generateCodeArray(AstNode const* node) {
   TRI_ASSERT(node != nullptr);
 
   size_t const n = node->numMembers();
@@ -484,7 +484,7 @@ void Executor::generateCodeArray(AstNode const* node) {
 }
 
 /// @brief generate JavaScript code for an array
-void Executor::generateCodeForcedArray(AstNode const* node, int64_t levels) {
+void V8Executor::generateCodeForcedArray(AstNode const* node, int64_t levels) {
   TRI_ASSERT(node != nullptr);
 
   if (levels > 1) {
@@ -523,7 +523,7 @@ void Executor::generateCodeForcedArray(AstNode const* node, int64_t levels) {
 }
 
 /// @brief generate JavaScript code for an object
-void Executor::generateCodeObject(AstNode const* node) {
+void V8Executor::generateCodeObject(AstNode const* node) {
   TRI_ASSERT(node != nullptr);
 
   if (node->containsDynamicAttributeName()) {
@@ -535,7 +535,7 @@ void Executor::generateCodeObject(AstNode const* node) {
 
 /// @brief generate JavaScript code for an object with dynamically named
 /// attributes
-void Executor::generateCodeDynamicObject(AstNode const* node) {
+void V8Executor::generateCodeDynamicObject(AstNode const* node) {
   size_t const n = node->numMembers();
   // very conservative minimum bound
   _buffer->reserve(64 + n * 10);
@@ -562,7 +562,7 @@ void Executor::generateCodeDynamicObject(AstNode const* node) {
 
 /// @brief generate JavaScript code for an object without dynamically named
 /// attributes
-void Executor::generateCodeRegularObject(AstNode const* node) {
+void V8Executor::generateCodeRegularObject(AstNode const* node) {
   TRI_ASSERT(node != nullptr);
 
   size_t const n = node->numMembers();
@@ -598,7 +598,7 @@ void Executor::generateCodeRegularObject(AstNode const* node) {
 }
 
 /// @brief generate JavaScript code for a unary operator
-void Executor::generateCodeUnaryOperator(AstNode const* node) {
+void V8Executor::generateCodeUnaryOperator(AstNode const* node) {
   TRI_ASSERT(node != nullptr);
   TRI_ASSERT(node->numMembers() == 1);
   auto functions = AqlFunctionFeature::AQLFUNCTIONS;
@@ -613,7 +613,7 @@ void Executor::generateCodeUnaryOperator(AstNode const* node) {
 }
 
 /// @brief generate JavaScript code for a binary operator
-void Executor::generateCodeBinaryOperator(AstNode const* node) {
+void V8Executor::generateCodeBinaryOperator(AstNode const* node) {
   TRI_ASSERT(node != nullptr);
   TRI_ASSERT(node->numMembers() == 2);
   auto functions = AqlFunctionFeature::AQLFUNCTIONS;
@@ -642,7 +642,7 @@ void Executor::generateCodeBinaryOperator(AstNode const* node) {
 }
 
 /// @brief generate JavaScript code for a binary array operator
-void Executor::generateCodeBinaryArrayOperator(AstNode const* node) {
+void V8Executor::generateCodeBinaryArrayOperator(AstNode const* node) {
   TRI_ASSERT(node != nullptr);
   TRI_ASSERT(node->numMembers() == 3);
   auto functions = AqlFunctionFeature::AQLFUNCTIONS;
@@ -667,7 +667,7 @@ void Executor::generateCodeBinaryArrayOperator(AstNode const* node) {
 }
 
 /// @brief generate JavaScript code for the ternary operator
-void Executor::generateCodeTernaryOperator(AstNode const* node) {
+void V8Executor::generateCodeTernaryOperator(AstNode const* node) {
   TRI_ASSERT(node != nullptr);
   TRI_ASSERT(node->numMembers() == 3);
   auto functions = AqlFunctionFeature::AQLFUNCTIONS;
@@ -686,7 +686,7 @@ void Executor::generateCodeTernaryOperator(AstNode const* node) {
 }
 
 /// @brief generate JavaScript code for a variable (read) access
-void Executor::generateCodeReference(AstNode const* node) {
+void V8Executor::generateCodeReference(AstNode const* node) {
   TRI_ASSERT(node != nullptr);
   TRI_ASSERT(node->numMembers() == 0);
 
@@ -698,7 +698,7 @@ void Executor::generateCodeReference(AstNode const* node) {
 }
 
 /// @brief generate JavaScript code for a variable
-void Executor::generateCodeVariable(AstNode const* node) {
+void V8Executor::generateCodeVariable(AstNode const* node) {
   TRI_ASSERT(node != nullptr);
   TRI_ASSERT(node->numMembers() == 0);
 
@@ -710,7 +710,7 @@ void Executor::generateCodeVariable(AstNode const* node) {
 }
 
 /// @brief generate JavaScript code for a full collection access
-void Executor::generateCodeCollection(AstNode const* node) {
+void V8Executor::generateCodeCollection(AstNode const* node) {
   TRI_ASSERT(node != nullptr);
   TRI_ASSERT(node->numMembers() == 0);
 
@@ -720,7 +720,7 @@ void Executor::generateCodeCollection(AstNode const* node) {
 }
 
 /// @brief generate JavaScript code for a call to a built-in function
-void Executor::generateCodeFunctionCall(AstNode const* node) {
+void V8Executor::generateCodeFunctionCall(AstNode const* node) {
   TRI_ASSERT(node != nullptr);
   TRI_ASSERT(node->numMembers() == 1);
 
@@ -775,7 +775,7 @@ void Executor::generateCodeFunctionCall(AstNode const* node) {
 }
 
 /// @brief generate JavaScript code for a call to a user-defined function
-void Executor::generateCodeUserFunctionCall(AstNode const* node) {
+void V8Executor::generateCodeUserFunctionCall(AstNode const* node) {
   TRI_ASSERT(node != nullptr);
   TRI_ASSERT(node->numMembers() == 1);
 
@@ -798,7 +798,7 @@ void Executor::generateCodeUserFunctionCall(AstNode const* node) {
 }
 
 /// @brief generate JavaScript code for an expansion (i.e. [*] operator)
-void Executor::generateCodeExpansion(AstNode const* node) {
+void V8Executor::generateCodeExpansion(AstNode const* node) {
   TRI_ASSERT(node != nullptr);
 
   TRI_ASSERT(node->numMembers() == 5);
@@ -856,7 +856,7 @@ void Executor::generateCodeExpansion(AstNode const* node) {
 }
 
 /// @brief generate JavaScript code for an expansion iterator
-void Executor::generateCodeExpansionIterator(AstNode const* node) {
+void V8Executor::generateCodeExpansionIterator(AstNode const* node) {
   TRI_ASSERT(node != nullptr);
   TRI_ASSERT(node->numMembers() == 2);
 
@@ -865,7 +865,7 @@ void Executor::generateCodeExpansionIterator(AstNode const* node) {
 }
 
 /// @brief generate JavaScript code for a range (i.e. 1..10)
-void Executor::generateCodeRange(AstNode const* node) {
+void V8Executor::generateCodeRange(AstNode const* node) {
   TRI_ASSERT(node != nullptr);
   TRI_ASSERT(node->numMembers() == 2);
 
@@ -877,7 +877,7 @@ void Executor::generateCodeRange(AstNode const* node) {
 }
 
 /// @brief generate JavaScript code for a named attribute access
-void Executor::generateCodeNamedAccess(AstNode const* node) {
+void V8Executor::generateCodeNamedAccess(AstNode const* node) {
   TRI_ASSERT(node != nullptr);
   TRI_ASSERT(node->numMembers() == 1);
 
@@ -889,7 +889,7 @@ void Executor::generateCodeNamedAccess(AstNode const* node) {
 }
 
 /// @brief generate JavaScript code for a bound attribute access
-void Executor::generateCodeBoundAccess(AstNode const* node) {
+void V8Executor::generateCodeBoundAccess(AstNode const* node) {
   TRI_ASSERT(node != nullptr);
   TRI_ASSERT(node->numMembers() == 2);
 
@@ -901,7 +901,7 @@ void Executor::generateCodeBoundAccess(AstNode const* node) {
 }
 
 /// @brief generate JavaScript code for an indexed attribute access
-void Executor::generateCodeIndexedAccess(AstNode const* node) {
+void V8Executor::generateCodeIndexedAccess(AstNode const* node) {
   TRI_ASSERT(node != nullptr);
   TRI_ASSERT(node->numMembers() == 2);
 
@@ -914,7 +914,7 @@ void Executor::generateCodeIndexedAccess(AstNode const* node) {
 }
 
 /// @brief generate JavaScript code for a node
-void Executor::generateCodeNode(AstNode const* node) {
+void V8Executor::generateCodeNode(AstNode const* node) {
   TRI_ASSERT(node != nullptr);
 
   switch (node->type) {
@@ -1028,7 +1028,7 @@ void Executor::generateCodeNode(AstNode const* node) {
 }
 
 /// @brief create the string buffer
-arangodb::basics::StringBuffer* Executor::initializeBuffer() {
+arangodb::basics::StringBuffer* V8Executor::initializeBuffer() {
   if (_buffer == nullptr) {
     _buffer = new arangodb::basics::StringBuffer(TRI_UNKNOWN_MEM_ZONE, 512, false);
 
