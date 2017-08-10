@@ -941,7 +941,6 @@ QueryResultV8 Query::executeV8(v8::Isolate* isolate, QueryRegistry* registry) {
     // patch executionTime stats value in place
     // we do this because "executionTime" should include the whole span of the execution and we have to set it at the very end
     basics::VelocyPackHelper::patchDouble(result.stats->slice().get("executionTime"), TRI_microtime() - _startTime);
-
     return result;
   } catch (arangodb::basics::Exception const& ex) {
     setExecutionTime();
@@ -960,8 +959,8 @@ QueryResultV8 Query::executeV8(v8::Isolate* isolate, QueryRegistry* registry) {
   } catch (...) {
     setExecutionTime();
     cleanupPlanAndEngine(TRI_ERROR_INTERNAL);
-    return QueryResult(TRI_ERROR_INTERNAL,
-                       TRI_errno_string(TRI_ERROR_INTERNAL) + getStateString());
+    return QueryResultV8(TRI_ERROR_INTERNAL,
+                         TRI_errno_string(TRI_ERROR_INTERNAL) + getStateString());
   }
 }
 

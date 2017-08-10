@@ -538,7 +538,9 @@ static void JS_FulltextQuery(v8::FunctionCallbackInfo<v8::Value> const& args) {
   aql::QueryResultV8 queryResult = AqlQuery(isolate, collection, queryString, bindVars);
 
   v8::Handle<v8::Object> result = v8::Object::New(isolate);
-  result->Set(TRI_V8_ASCII_STRING("documents"), queryResult.result);
+  if (!queryResult.result.IsEmpty()) {
+    result->Set(TRI_V8_ASCII_STRING("documents"), queryResult.result);
+  }
 
   TRI_V8_RETURN(result);
 
@@ -615,7 +617,9 @@ static void JS_NearQuery(v8::FunctionCallbackInfo<v8::Value> const& args) {
   aql::QueryResultV8 queryResult = AqlQuery(isolate, collection, queryString, bindVars);
 
   v8::Handle<v8::Object> result = v8::Object::New(isolate);
-  result->Set(TRI_V8_ASCII_STRING("documents"), queryResult.result);
+  if (!queryResult.result.IsEmpty()) {
+    result->Set(TRI_V8_ASCII_STRING("documents"), queryResult.result);
+  }
 
   TRI_V8_RETURN(result);
   TRI_V8_TRY_CATCH_END
@@ -691,7 +695,9 @@ static void JS_WithinQuery(v8::FunctionCallbackInfo<v8::Value> const& args) {
   aql::QueryResultV8 queryResult = AqlQuery(isolate, collection, queryString, bindVars);
 
   v8::Handle<v8::Object> result = v8::Object::New(isolate);
-  result->Set(TRI_V8_ASCII_STRING("documents"), queryResult.result);
+  if (!queryResult.result.IsEmpty()) {
+    result->Set(TRI_V8_ASCII_STRING("documents"), queryResult.result);
+  }
 
   TRI_V8_RETURN(result);
   TRI_V8_TRY_CATCH_END
@@ -740,7 +746,9 @@ static void JS_LookupByKeys(v8::FunctionCallbackInfo<v8::Value> const& args) {
   aql::QueryResultV8 queryResult = AqlQuery(isolate, collection, queryString, bindVars);
 
   v8::Handle<v8::Object> result = v8::Object::New(isolate);
-  result->Set(TRI_V8_ASCII_STRING("documents"), queryResult.result);
+  if (!queryResult.result.IsEmpty()) {
+    result->Set(TRI_V8_ASCII_STRING("documents"), queryResult.result);
+  }
 
   TRI_V8_RETURN(result);
   TRI_V8_TRY_CATCH_END
