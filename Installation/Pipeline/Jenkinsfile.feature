@@ -378,7 +378,6 @@ Restrictions: ${restrictions.keySet().join(", ")}
 // -----------------------------------------------------------------------------
 
 def stashBinaries(edition, os) {
-    echo "STASHING BINARIES"
     stash name: "binaries-${edition}-${os}", includes: "build/bin/*/**, etc/**, Installation/Pipeline/**, js/**, scripts/**, UnitTests/**, utils/**, resilience/**"
 }
 
@@ -552,7 +551,6 @@ def testStep(edition, os, mode, engine) {
                 catch (exc) {
                     echo "Exception while testing!"
                     echo exc.toString()
-                    echo exc.getCause()
                     exc.printStackTrace()
                     testsSuccess[name] = false
                     allTestsSuccessful = false
