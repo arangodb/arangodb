@@ -73,7 +73,7 @@ int TRI_RemoveWordsMMFilesFulltextIndex(TRI_fts_index_t*,
 
 /// @brief execute a query on the fulltext index
 /// note: this will free the query
-struct TRI_fulltext_result_s* TRI_QueryMMFilesFulltextIndex(
+std::set<TRI_voc_rid_t> TRI_QueryMMFilesFulltextIndex(
     TRI_fts_index_t* const, struct TRI_fulltext_query_s*);
 
 /// @brief return stats about the index

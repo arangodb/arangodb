@@ -34,6 +34,9 @@ typedef void TRI_fulltext_list_t;
 typedef TRI_voc_rid_t TRI_fulltext_list_entry_t;
 
 /// @brief clone a list
+void TRI_CloneListMMFilesFulltextIndex(TRI_fulltext_list_t const*,
+                                       std::set<TRI_voc_rid_t>& result);
+
 TRI_fulltext_list_t* TRI_CloneListMMFilesFulltextIndex(TRI_fulltext_list_t const*);
 
 /// @brief create a list

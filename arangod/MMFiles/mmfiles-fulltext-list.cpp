@@ -34,21 +34,7 @@
 /// @brief growth factor for lists
 #define GROWTH_FACTOR 1.2
 
-/// @brief compare two entries in a list
-static int CompareEntries(const void* lhs, const void* rhs) {
-  TRI_fulltext_list_entry_t l = (*(TRI_fulltext_list_entry_t*)lhs);
-  TRI_fulltext_list_entry_t r = (*(TRI_fulltext_list_entry_t*)rhs);
-
-  if (l < r) {
-    return -1;
-  }
-
-  if (l > r) {
-    return 1;
-  }
-
-  return 0;
-}
+#include "Logger/Logger.h"
 
 /// @brief return whether the list is sorted
 /// this will check the sorted bit at the start of the list
@@ -103,6 +89,102 @@ static inline uint32_t GetNumAllocated(TRI_fulltext_list_t const* list) {
   return (*head & ~SORTED_BIT);
 }
 
+static uint32_t FindInsertPos(TRI_fulltext_list_t* list,
+                              TRI_fulltext_list_entry_t* listEntries,
+                              uint32_t numEntries, 
+                              TRI_fulltext_list_entry_t entry) {
+  // binary search
+  uint32_t l = 0;
+  uint32_t r = numEntries - 1;
+
+  while (true) {
+    // determine midpoint
+    uint32_t m = l + ((r - l) / 2);
+    TRI_fulltext_list_entry_t value = listEntries[m];
+    if (value == entry) {
+      // already in list
+      return UINT32_MAX;
+    }
+
+    if (value > entry) {
+      if (m == 0) {
+        // we must abort because the following subtraction would
+        // make the uin32_t underflow to UINT32_MAX!
+        return m;
+      }
+      // this is safe
+      r = m - 1;
+    } else {
+      l = m + 1;
+    }
+
+    if (r < l) {
+      return numEntries;
+    }
+  }
+}
+  
+static uint32_t FindListEntry(TRI_fulltext_list_t* list,
+                              TRI_fulltext_list_entry_t* listEntries,
+                              uint32_t numEntries, 
+                              TRI_fulltext_list_entry_t entry) {
+  if (numEntries >= 10 && IsSorted(list)) {
+    // binary search
+    uint32_t l = 0;
+    uint32_t r = numEntries - 1;
+  
+    while (true) {
+      // determine midpoint
+      uint32_t m = l + ((r - l) / 2);
+      TRI_fulltext_list_entry_t value = listEntries[m];
+      if (value == entry) {
+        return m;
+      }
+
+      if (value > entry) {
+        if (m == 0) {
+          // we must abort because the following subtraction would
+          // make the uin32_t underflow to UINT32_MAX!
+          break;
+        }
+        // this is safe
+        r = m - 1;
+      } else {
+        l = m + 1;
+      }
+
+      if (r < l) {
+        break;
+      }
+    }
+  } else {
+    // linear search
+    for (uint32_t i = 0; i < numEntries; ++i) {
+      if (listEntries[i] == entry) {
+        return i;
+      }
+    }
+  }
+
+  return UINT32_MAX;
+}
+
+/// @brief compare two entries in a list
+static int CompareEntries(const void* lhs, const void* rhs) {
+  TRI_fulltext_list_entry_t l = (*(TRI_fulltext_list_entry_t*)lhs);
+  TRI_fulltext_list_entry_t r = (*(TRI_fulltext_list_entry_t*)rhs);
+
+  if (l < r) {
+    return -1;
+  }
+
+  if (l > r) {
+    return 1;
+  }
+
+  return 0;
+}
+
 /// @brief initialize a new list
 static void InitList(TRI_fulltext_list_t* list, uint32_t size) {
   uint32_t* head = (uint32_t*)list;
@@ -147,6 +229,21 @@ static TRI_fulltext_list_t* IncreaseList(TRI_fulltext_list_t* list,
   }
 
   return copy;
+}
+
+void TRI_CloneListMMFilesFulltextIndex(TRI_fulltext_list_t const* source,
+                                       std::set<TRI_voc_rid_t>& result) {
+  if (source == nullptr) {
+    return;
+  }
+  
+  uint32_t numEntries = GetNumEntries(source);
+  if (numEntries > 0) {
+    TRI_fulltext_list_entry_t* entries = GetStart(source);
+    for (uint32_t i = 0; i < numEntries; ++i) {
+      result.emplace(entries[i]);
+    }
+  }
 }
 
 /// @brief clone a list by copying an existing one
@@ -232,20 +329,39 @@ TRI_fulltext_list_t* TRI_UnioniseListMMFilesFulltextIndex(TRI_fulltext_list_t* l
     TRI_FreeListMMFilesFulltextIndex(rhs);
     return lhs;
   }
+  
+  SortList(lhs);
+  lhsEntries = GetStart(lhs);
+  SortList(rhs);
+  rhsEntries = GetStart(rhs);
 
-  list = TRI_CreateListMMFilesFulltextIndex(numLhs + numRhs);
+  if (numRhs == 1 && GetNumAllocated(lhs) > numLhs) {
+    // only one entry in rhs, and we still have room in lhs
+    uint32_t pos = FindInsertPos(lhs, lhsEntries, numLhs, rhsEntries[0]);
+    if (pos == UINT32_MAX) {
+      // rhs value already contained in lhs
+      TRI_FreeListMMFilesFulltextIndex(rhs);
+      return lhs;
+    }
+    /*
+    // patch lhs in place 
+    TRI_ASSERT(numLhs >= pos);
+    memmove(lhsEntries + pos + 1, lhsEntries + pos, sizeof(TRI_fulltext_list_entry_t) * (numLhs - pos));
+    lhsEntries[pos] = rhsEntries[0];
+    SetNumEntries(lhs, numLhs + 1);
+    TRI_FreeListMMFilesFulltextIndex(rhs);
+    return lhs;
+    */
+  }
+
+  list = TRI_CreateListMMFilesFulltextIndex(numLhs + numRhs + 16);
   if (list == nullptr) {
     TRI_FreeListMMFilesFulltextIndex(lhs);
     TRI_FreeListMMFilesFulltextIndex(rhs);
     return nullptr;
   }
 
-  SortList(lhs);
-  lhsEntries = GetStart(lhs);
   l = 0;
-
-  SortList(rhs);
-  rhsEntries = GetStart(rhs);
   r = 0;
 
   listPos = 0;
@@ -510,51 +626,6 @@ TRI_fulltext_list_t* TRI_InsertListMMFilesFulltextIndex(
   SetNumEntries(list, numEntries + 1);
 
   return list;
-}
-  
-static uint32_t FindListEntry(TRI_fulltext_list_t* list,
-                              TRI_fulltext_list_entry_t* listEntries,
-                              uint32_t numEntries, 
-                              TRI_fulltext_list_entry_t entry) {
-  if (numEntries >= 10 && IsSorted(list)) {
-    // binary search
-    uint32_t l = 0;
-    uint32_t r = numEntries - 1;
-  
-    while (true) {
-      // determine midpoint
-      uint32_t m = l + ((r - l) / 2);
-      TRI_fulltext_list_entry_t value = listEntries[m];
-      if (value == entry) {
-        return m;
-      }
-
-      if (value > entry) {
-        if (m == 0) {
-          // we must abort because the following subtraction would
-          // make the uin32_t underflow to UINT32_MAX!
-          break;
-        }
-        // this is safe
-        r = m - 1;
-      } else {
-        l = m + 1;
-      }
-
-      if (r < l) {
-        break;
-      }
-    }
-  } else {
-    // linear search
-    for (uint32_t i = 0; i < numEntries; ++i) {
-      if (listEntries[i] == entry) {
-        return i;
-      }
-    }
-  }
-
-  return UINT32_MAX;
 }
 
 /// @brief remove an element from a list

@@ -31,6 +31,9 @@
 #include "MMFiles/mmfiles-fulltext-result.h"
 #include "StorageEngine/DocumentIdentifierToken.h"
 
+#include <algorithm>
+#include <set>
+
 /// @brief use padding for pointers in binary data
 #ifndef TRI_UNALIGNED_ACCESS
 // must properly align memory on some architectures to prevent
@@ -614,60 +617,41 @@ static node_t* FindNode(const index__t* idx, char const* const key,
   return node;
 }
 
-/// @brief create a list with the handles of a node
-static TRI_fulltext_list_t* GetDirectNodeDocs(node_t const* node) {
-  return TRI_CloneListMMFilesFulltextIndex(node->_docs);
-}
-
 /// @brief recursively merge node and sub-node docs into the result list
-static TRI_fulltext_list_t* MergeSubNodeDocs(node_t const* node,
-                                             TRI_fulltext_list_t* list) {
-  node_t** followerNodes;
-  uint32_t numFollowers;
-  uint32_t i;
-
+static void MergeSubNodeDocs(node_t const* node,
+                             std::set<TRI_voc_rid_t>& result) {
 #if TRI_FULLTEXT_DEBUG
   TRI_ASSERT(node != nullptr);
 #endif
 
-  numFollowers = NodeNumFollowers(node);
+  uint32_t numFollowers = NodeNumFollowers(node);
   if (numFollowers == 0) {
-    return list;
+    return;
   }
 
-  followerNodes = NodeFollowersNodes(node);
+  node_t** followerNodes = NodeFollowersNodes(node);
 
-  for (i = 0; i < numFollowers; ++i) {
-    node_t* follower;
-
-    follower = followerNodes[i];
+  for (uint32_t i = 0; i < numFollowers; ++i) {
+    node_t* follower = followerNodes[i];
 #if TRI_FULLTEXT_DEBUG
     TRI_ASSERT(follower != nullptr);
 #endif
     if (follower->_docs != nullptr) {
+      TRI_CloneListMMFilesFulltextIndex(follower->_docs, result);
       // OR-merge the follower node's documents with what we already have found
-      list =
-          TRI_UnioniseListMMFilesFulltextIndex(list, GetDirectNodeDocs(follower));
-      if (list == nullptr) {
-        return nullptr;
-      }
     }
 
     // recurse into sub-nodes
-    list = MergeSubNodeDocs(follower, list);
-    if (list == nullptr) {
-      return nullptr;
-    }
+    MergeSubNodeDocs(follower, result);
   }
-
-  return list;
 }
 
 /// @brief recursively create a result list with the docs of a node and
 /// all of its sub-nodes
-static inline TRI_fulltext_list_t* GetSubNodeDocs(node_t const* node) {
-  TRI_fulltext_list_t* list = GetDirectNodeDocs(node);
-  return MergeSubNodeDocs(node, list);
+static inline void GetSubNodeDocs(node_t const* node,
+                                  std::set<TRI_voc_rid_t>& result) {
+  TRI_CloneListMMFilesFulltextIndex(node->_docs, result);
+  MergeSubNodeDocs(node, result);
 }
 
 /// @brief insert a new sub-node underneath an existing node
@@ -913,54 +897,6 @@ static bool RemoveDoc(index__t* idx, node_t* node,
   }
   
   return true;
-}
-
-/// turn a docs list into a proper document list result
-/// this will also exclude all deleted documents
-static TRI_fulltext_result_t* MakeListResult(index__t* const idx,
-                                             TRI_fulltext_list_t* list,
-                                             size_t maxResults) {
-  TRI_fulltext_result_t* result;
-  TRI_fulltext_list_entry_t* listEntries;
-  uint32_t numResults;
-  uint32_t originalNumResults;
-  uint32_t i, pos;
-
-  if (list == nullptr) {
-    return nullptr;
-  }
-
-  // we have a list of docs
-  // now turn the docs into documents and exclude deleted ones on the fly
-  numResults = TRI_NumEntriesListMMFilesFulltextIndex(list);
-  originalNumResults = numResults;
-  if (static_cast<size_t>(numResults) > maxResults && maxResults > 0) {
-    // cap the number of results
-    numResults = static_cast<uint32_t>(maxResults);
-  }
-  result = TRI_CreateResultMMFilesFulltextIndex(numResults);
-  if (result == nullptr) {
-    TRI_FreeListMMFilesFulltextIndex(list);
-    return nullptr;
-  }
-
-  pos = 0;
-  listEntries = TRI_StartListMMFilesFulltextIndex(list);
-
-  for (i = 0; i < originalNumResults; ++i) {
-    result->_documents[pos++] = arangodb::MMFilesToken{listEntries[i]};
-
-    if (pos >= numResults) {
-      break;
-    }
-  }
-
-  result->_numDocuments = pos;
-
-  // don't need the list anymore
-  TRI_FreeListMMFilesFulltextIndex(list);
-
-  return result;
 }
 
 /// @brief determine the common prefix length of two words
@@ -1264,38 +1200,34 @@ int TRI_InsertWordsMMFilesFulltextIndex(TRI_fts_index_t* ftx,
 
 /// @brief execute a query on the fulltext index
 /// note: this will free the query
-TRI_fulltext_result_t* TRI_QueryMMFilesFulltextIndex(TRI_fts_index_t* const ftx,
-                                              TRI_fulltext_query_t* query) {
-  index__t* idx;
-  TRI_fulltext_list_t* result;
-  size_t i;
+std::set<TRI_voc_rid_t> TRI_QueryMMFilesFulltextIndex(TRI_fts_index_t* const ftx,
+                                                      TRI_fulltext_query_t* query) {
+  std::set<TRI_voc_rid_t> result;
 
   if (query == nullptr) {
-    return nullptr;
+    return result;
   }
+  
+  TRI_DEFER(TRI_FreeQueryMMFilesFulltextIndex(query));
 
   if (query->_numWords == 0) {
     // query is empty
-    TRI_FreeQueryMMFilesFulltextIndex(query);
-    return TRI_CreateResultMMFilesFulltextIndex(0);
+    return result;
   }
 
-  auto maxResults = query->_maxResults;
-
-  idx = static_cast<index__t*>(ftx);
+  index__t* idx = static_cast<index__t*>(ftx);
 
   // initial result is empty
-  result = nullptr;
+  std::set<TRI_voc_rid_t> current;
+  bool first = true;
 
   // iterate over all words in query
-  for (i = 0; i < query->_numWords; ++i) {
-    char* word;
+  for (size_t i = 0; i < query->_numWords; ++i) {
     TRI_fulltext_query_match_e match;
     TRI_fulltext_query_operation_e operation;
-    TRI_fulltext_list_t* list;
     node_t* node;
 
-    word = query->_words[i];
+    char* word = query->_words[i];
     if (word == nullptr) {
       break;
     }
@@ -1306,58 +1238,70 @@ TRI_fulltext_result_t* TRI_QueryMMFilesFulltextIndex(TRI_fts_index_t* const ftx,
     LOG_TOPIC(DEBUG, arangodb::Logger::FIXME) << "searching for word: '" << word << "'";
 
     if ((operation == TRI_FULLTEXT_AND || operation == TRI_FULLTEXT_EXCLUDE) &&
-        i > 0 && TRI_NumEntriesListMMFilesFulltextIndex(result) == 0) {
+        i > 0 && result.empty()) {
       // current result set is empty so logical AND or EXCLUDE will not have any
       // result either
       continue;
     }
 
-    list = nullptr;
+    current.clear();
+    
+
     node = FindNode(idx, word, strlen(word));
     if (node != nullptr) {
       if (match == TRI_FULLTEXT_COMPLETE) {
         // complete matching
-        list = GetDirectNodeDocs(node);
+        TRI_CloneListMMFilesFulltextIndex(node->_docs, current);
       } else if (match == TRI_FULLTEXT_PREFIX) {
         // prefix matching
-        list = GetSubNodeDocs(node);
+        GetSubNodeDocs(node, current);
       } else {
         LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "invalid matching option for fulltext index query";
-        list = TRI_CreateListMMFilesFulltextIndex(0);
       }
-    } else {
-      list = TRI_CreateListMMFilesFulltextIndex(0);
-    }
+    } 
 
     if (operation == TRI_FULLTEXT_AND) {
       // perform a logical AND of current and previous result (if any)
-      result = TRI_IntersectListMMFilesFulltextIndex(result, list);
+      if (first) {
+        result = std::move(current);
+      } else {
+        std::set<TRI_voc_rid_t> output;
+        std::set_intersection(result.begin(), result.end(),
+                              current.begin(), current.end(),
+                              std::inserter(output, output.begin()));
+        result = std::move(output);
+      }
     } else if (operation == TRI_FULLTEXT_OR) {
       // perform a logical OR of current and previous result (if any)
-      result = TRI_UnioniseListMMFilesFulltextIndex(result, list);
+      std::set<TRI_voc_rid_t> output;
+      std::set_union(result.begin(), result.end(),
+                     current.begin(), current.end(),
+                     std::inserter(output, output.begin()));
+      result = std::move(output);
     } else if (operation == TRI_FULLTEXT_EXCLUDE) {
       // perform a logical exclusion of current from previous result (if any)
-      result = TRI_ExcludeListMMFilesFulltextIndex(result, list);
+      std::set<TRI_voc_rid_t> output;
+      std::set_difference(result.begin(), result.end(),
+                          current.begin(), current.end(),
+                          std::inserter(output, output.begin()));
+      result = std::move(output);
+    }
+    
+    first = false;
+  }
+  
+  auto maxResults = query->_maxResults;
+  if (maxResults > 0 && result.size() > maxResults) {
+    auto it = result.begin();
+    while (it != result.end() && maxResults > 0) {
+      --maxResults;
+      ++it;
     }
 
-    if (result == nullptr) {
-      // out of memory
-      break;
-    }
+    result.erase(it, result.end());
   }
-
-  TRI_FreeQueryMMFilesFulltextIndex(query);
-
-  if (result == nullptr) {
-    // if we haven't found anything...
-    return TRI_CreateResultMMFilesFulltextIndex(0);
-  }
-
-  // now convert the handle list into a result (this will also filter out
-  // deleted documents)
-  TRI_fulltext_result_t* r = MakeListResult(idx, result, maxResults);
-
-  return r;
+      
+  return result;
 }
 
 /// @brief return stats about the index
