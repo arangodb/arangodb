@@ -592,6 +592,12 @@ int MMFilesCollection::close() {
     }
   }
 
+  // wait until ditches have been processed fully
+  while (_ditches.contains(MMFilesDitch::TRI_DITCH_DATAFILE_DROP) || 
+         _ditches.contains(MMFilesDitch::TRI_DITCH_DATAFILE_RENAME)) {
+    usleep(20000);
+  }
+
   {
     WRITE_LOCKER(writeLocker, _filesLock);
 
