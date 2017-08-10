@@ -1,6 +1,8 @@
 devel
 -----
 
+* fixed issue #2835: UI detection of JWT token in case of server restart or upgrade
+
 * upgrade jemalloc version to 5.0.1
 
 * fixed docs for issue #2968
