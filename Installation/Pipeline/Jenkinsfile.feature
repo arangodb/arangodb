@@ -471,7 +471,7 @@ def testEdition(edition, os, mode, engine) {
         }
         catch (exc) {
             if (os == 'linux' || os == 'mac') {
-                sh "for i in build core* tmp; do test -e \"\$i\" && mv \"\$i\" ${arch} || true; done"
+                
             }
 
             throw exc
@@ -480,10 +480,16 @@ def testEdition(edition, os, mode, engine) {
             if (os == 'linux' || os == 'mac') {
                 sh "find log-output -name 'FAILED_*' -exec cp '{}' . ';'"
                 sh "for i in logs log-output; do test -e \"\$i\" && mv \"\$i\" ${arch} || true; done"
+                sh "for i in core* tmp; do test -e \"\$i\" && mv \"\$i\" ${arch} || true; done"
+                sh "cp -a build/bin/* ${arch}" 
             }
             else if (os == 'windows') {
                 bat "move logs ${arch}"
                 bat "move log-output ${arch}"
+                bat "copy build/bin/*.dmp ${arch}"
+                bat "copy build/bin/*.exe ${arch}"
+                bat "copy build/bin/*.pdb ${arch}"
+                bat "copy build/bin/*.ilk ${arch}"
             }
         }
     }
