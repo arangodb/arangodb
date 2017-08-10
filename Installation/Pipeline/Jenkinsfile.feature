@@ -469,10 +469,6 @@ def testEdition(edition, os, mode, engine) {
             }
         }
         catch (exc) {
-            if (os == 'linux' || os == 'mac') {
-                
-            }
-
             throw exc
         }
         finally {
