@@ -595,7 +595,9 @@ SECTION("BinaryEq") {
     expected.add<irs::by_term>().field(mangleStringIdentity("a")).term("1");
 
     assertFilterSuccess("FOR d IN collection FILTER d.a == '1' RETURN d", expected);
+    assertFilterSuccess("FOR d IN collection FILTER d['a'] == '1' RETURN d", expected);
     assertFilterSuccess("FOR d IN collection FILTER '1' == d.a RETURN d", expected);
+    assertFilterSuccess("FOR d IN collection FILTER '1' == d['a'] RETURN d", expected);
   }
 
   // complex attribute, string
@@ -604,7 +606,11 @@ SECTION("BinaryEq") {
     expected.add<irs::by_term>().field(mangleStringIdentity("a.b.c")).term("1");
 
     assertFilterSuccess("FOR d IN collection FILTER d.a.b.c == '1' RETURN d", expected);
+    assertFilterSuccess("FOR d IN collection FILTER d.a['b'].c == '1' RETURN d", expected);
+    assertFilterSuccess("FOR d IN collection FILTER d['a']['b'].c == '1' RETURN d", expected);
     assertFilterSuccess("FOR d IN collection FILTER '1' == d.a.b.c RETURN d", expected);
+    assertFilterSuccess("FOR d IN collection FILTER '1' == d.a['b'].c RETURN d", expected);
+    assertFilterSuccess("FOR d IN collection FILTER '1' == d['a']['b']['c'] RETURN d", expected);
   }
 
   // complex attribute, true
@@ -622,7 +628,9 @@ SECTION("BinaryEq") {
     expected.add<irs::by_term>().field(mangleBool("a.b.c.bool")).term(irs::boolean_token_stream::value_false());
 
     assertFilterSuccess("FOR d IN collection FILTER d.a.b.c.bool == false RETURN d", expected);
+    assertFilterSuccess("FOR d IN collection FILTER d.a.b['c.bool'] == false RETURN d", expected);
     assertFilterSuccess("FOR d IN collection FILTER false == d.a.b.c.bool RETURN d", expected);
+    assertFilterSuccess("FOR d IN collection FILTER false == d['a'].b['c'].bool RETURN d", expected);
   }
 
   // complex attribute, null
@@ -631,7 +639,11 @@ SECTION("BinaryEq") {
     expected.add<irs::by_term>().field(mangleNull("a.b.c.bool")).term(irs::null_token_stream::value_null());
 
     assertFilterSuccess("FOR d IN collection FILTER d.a.b.c.bool == null RETURN d", expected);
+    assertFilterSuccess("FOR d IN collection FILTER d.a['b'].c.bool == null RETURN d", expected);
+    assertFilterSuccess("FOR d IN collection FILTER d['a']['b'].c.bool == null RETURN d", expected);
     assertFilterSuccess("FOR d IN collection FILTER null == d.a.b.c.bool RETURN d", expected);
+    assertFilterSuccess("FOR d IN collection FILTER null == d['a.b.c.bool'] RETURN d", expected);
+    assertFilterSuccess("FOR d IN collection FILTER null == d.a.b.c['bool'] RETURN d", expected);
   }
 
   // complex attribute, numeric
@@ -645,12 +657,17 @@ SECTION("BinaryEq") {
     expected.add<irs::by_term>().field(mangleNumeric("a.b.c.numeric")).term(term->value());
 
     assertFilterSuccess("FOR d IN collection FILTER d.a.b.c.numeric == 3 RETURN d", expected);
+    assertFilterSuccess("FOR d IN collection FILTER d.a['b'].c.numeric == 3 RETURN d", expected);
     assertFilterSuccess("FOR d IN collection FILTER d.a.b.c.numeric == 3.0 RETURN d", expected);
+    assertFilterSuccess("FOR d IN collection FILTER d.a.b.c['numeric'] == 3.0 RETURN d", expected);
     assertFilterSuccess("FOR d IN collection FILTER 3 == d.a.b.c.numeric RETURN d", expected);
     assertFilterSuccess("FOR d IN collection FILTER 3.0 == d.a.b.c.numeric RETURN d", expected);
+    assertFilterSuccess("FOR d IN collection FILTER 3.0 == d['a.b.c'].numeric RETURN d", expected);
+    assertFilterSuccess("FOR d IN collection FILTER 3.0 == d.a['b.c.numeric'] RETURN d", expected);
   }
 
   // invalid attribute access
+  assertFilterFail("FOR d IN collection FILTER k.a == '1' RETURN d");
   assertFilterFail("FOR d IN collection FILTER d == '1' RETURN d");
   assertFilterFail("FOR d IN collection FILTER '1' == d RETURN d");
 
@@ -729,6 +746,7 @@ SECTION("BinaryNotEq") {
   }
 
   // invalid attribute access
+  assertFilterFail("FOR d IN collection FILTER k.a != '1' RETURN d");
   assertFilterFail("FOR d IN collection FILTER d != '1' RETURN d");
   assertFilterFail("FOR d IN collection FILTER '1' != d RETURN d");
 
@@ -819,6 +837,7 @@ SECTION("BinaryGE") {
   }
 
   // invalid attribute access
+  assertFilterFail("FOR d IN collection FILTER k.a >= '1' RETURN d");
   assertFilterFail("FOR d IN collection FILTER d >= '1' RETURN d");
   assertFilterFail("FOR d IN collection FILTER '1' <= d RETURN d");
 
@@ -922,6 +941,7 @@ SECTION("BinaryGT") {
   }
 
   // invalid attribute access
+  assertFilterFail("FOR d IN collection FILTER k.a > '1' RETURN d");
   assertFilterFail("FOR d IN collection FILTER d > '1' RETURN d");
   assertFilterFail("FOR d IN collection FILTER '1' < d RETURN d");
 
@@ -1011,6 +1031,7 @@ SECTION("BinaryLE") {
   }
 
   // invalid attribute access
+  assertFilterFail("FOR d IN collection FILTER k.a <= '1' RETURN d");
   assertFilterFail("FOR d IN collection FILTER d <= '1' RETURN d");
   assertFilterFail("FOR d IN collection FILTER '1' >= d RETURN d");
 
@@ -1100,6 +1121,7 @@ SECTION("BinaryLT") {
   }
 
   // invalid attribute access
+  assertFilterFail("FOR d IN collection FILTER k.a < '1' RETURN d");
   assertFilterFail("FOR d IN collection FILTER d < '1' RETURN d");
   assertFilterFail("FOR d IN collection FILTER '1' > d RETURN d");
 
@@ -1235,10 +1257,10 @@ SECTION("BinaryOr") {
         .include<irs::Bound::MIN>(false).term<irs::Bound::MIN>(irs::boolean_token_stream::value_false());
     root.add<irs::by_term>().field(mangleNull("a.b.c")).term(irs::null_token_stream::value_null());
 
-    assertFilterSuccess("FOR d IN collection FILTER k.b.c > false or d.a.b.c == null RETURN d", expected);
-    assertFilterSuccess("FOR d IN collection FILTER false < k.b.c or d.a.b.c == null RETURN d", expected);
-    assertFilterSuccess("FOR d IN collection FILTER k.b.c > false or null == d.a.b.c RETURN d", expected);
-    assertFilterSuccess("FOR d IN collection FILTER false < k.b.c or null == d.a.b.c RETURN d", expected);
+    assertFilterSuccess("FOR d IN collection FILTER d.b.c > false or d.a.b.c == null RETURN d", expected);
+    assertFilterSuccess("FOR d IN collection FILTER false < d.b.c or d.a.b.c == null RETURN d", expected);
+    assertFilterSuccess("FOR d IN collection FILTER d.b.c > false or null == d.a.b.c RETURN d", expected);
+    assertFilterSuccess("FOR d IN collection FILTER false < d.b.c or null == d.a.b.c RETURN d", expected);
   }
 
   // numeric range
@@ -1395,10 +1417,10 @@ SECTION("BinaryAnd") {
         .include<irs::Bound::MIN>(false).term<irs::Bound::MIN>(irs::boolean_token_stream::value_false());
     root.add<irs::by_term>().field(mangleNull("a.b.c")).term(irs::null_token_stream::value_null());
 
-    assertFilterSuccess("FOR d IN collection FILTER k.b.c > false and d.a.b.c == null RETURN d", expected);
-    assertFilterSuccess("FOR d IN collection FILTER false < k.b.c and d.a.b.c == null RETURN d", expected);
-    assertFilterSuccess("FOR d IN collection FILTER k.b.c > false and null == d.a.b.c RETURN d", expected);
-    assertFilterSuccess("FOR d IN collection FILTER false < k.b.c and null == d.a.b.c RETURN d", expected);
+    assertFilterSuccess("FOR d IN collection FILTER d.b.c > false and d.a.b.c == null RETURN d", expected);
+    assertFilterSuccess("FOR d IN collection FILTER false < d.b.c and d.a.b.c == null RETURN d", expected);
+    assertFilterSuccess("FOR d IN collection FILTER d.b.c > false and null == d.a.b.c RETURN d", expected);
+    assertFilterSuccess("FOR d IN collection FILTER false < d.b.c and null == d.a.b.c RETURN d", expected);
   }
 
   // numeric range
@@ -1643,14 +1665,14 @@ SECTION("BinaryAnd") {
         .field(mangleNumeric("a.b.c"))
         .include<irs::Bound::MAX>(false).insert<irs::Bound::MAX>(maxTerm);
 
-    assertFilterSuccess("FOR d IN collection FILTER d.a.b.c >= '15' and k.a.b.c < 40 RETURN d", expected);
-    assertFilterSuccess("FOR d IN collection FILTER '15' <= d.a.b.c and k.a.b.c < 40 RETURN d", expected);
-    assertFilterSuccess("FOR d IN collection FILTER d.a.b.c >= '15' and 40 > k.a.b.c RETURN d", expected);
-    assertFilterSuccess("FOR d IN collection FILTER '15' <= d.a.b.c and 40 > k.a.b.c RETURN d", expected);
-    assertFilterSuccess("FOR d IN collection FILTER d.a.b.c >= '15' and k.a.b.c < 40.0 RETURN d", expected);
-    assertFilterSuccess("FOR d IN collection FILTER '15' <= d.a.b.c and k.a.b.c < 40.0 RETURN d", expected);
-    assertFilterSuccess("FOR d IN collection FILTER d.a.b.c >= '15' and 40.0 > k.a.b.c RETURN d", expected);
-    assertFilterSuccess("FOR d IN collection FILTER '15' <= d.a.b.c and 40.0 > k.a.b.c RETURN d", expected);
+    assertFilterSuccess("FOR d IN collection FILTER d.a.b.c >= '15' and d.a.b.c < 40 RETURN d", expected);
+    assertFilterSuccess("FOR d IN collection FILTER '15' <= d.a.b.c and d.a.b.c < 40 RETURN d", expected);
+    assertFilterSuccess("FOR d IN collection FILTER d.a.b.c >= '15' and 40 > d.a.b.c RETURN d", expected);
+    assertFilterSuccess("FOR d IN collection FILTER '15' <= d.a.b.c and 40 > d.a.b.c RETURN d", expected);
+    assertFilterSuccess("FOR d IN collection FILTER d.a.b.c >= '15' and d.a.b.c < 40.0 RETURN d", expected);
+    assertFilterSuccess("FOR d IN collection FILTER '15' <= d.a.b.c and d.a.b.c < 40.0 RETURN d", expected);
+    assertFilterSuccess("FOR d IN collection FILTER d.a.b.c >= '15' and 40.0 > d.a.b.c RETURN d", expected);
+    assertFilterSuccess("FOR d IN collection FILTER '15' <= d.a.b.c and 40.0 > d.a.b.c RETURN d", expected);
   }
 
   // range with different references
@@ -1667,14 +1689,14 @@ SECTION("BinaryAnd") {
         .field(mangleStringIdentity("a.b.c"))
         .include<irs::Bound::MAX>(true).term<irs::Bound::MAX>("40");
 
-    assertFilterSuccess("FOR d IN collection FILTER k.a.b.c > 15 and d.a.b.c <= '40' RETURN d", expected);
-    assertFilterSuccess("FOR d IN collection FILTER 15 < k.a.b.c and d.a.b.c <= '40' RETURN d", expected);
-    assertFilterSuccess("FOR d IN collection FILTER k.a.b.c > 15 and '40' >= d.a.b.c RETURN d", expected);
-    assertFilterSuccess("FOR d IN collection FILTER 15 < k.a.b.c and '40' >= d.a.b.c RETURN d", expected);
-    assertFilterSuccess("FOR d IN collection FILTER k.a.b.c > 15.0 and d.a.b.c <= '40' RETURN d", expected);
-    assertFilterSuccess("FOR d IN collection FILTER 15.0 < k.a.b.c and d.a.b.c <= '40' RETURN d", expected);
-    assertFilterSuccess("FOR d IN collection FILTER k.a.b.c > 15.0 and '40' >= d.a.b.c RETURN d", expected);
-    assertFilterSuccess("FOR d IN collection FILTER 15.0 < k.a.b.c and '40' >= d.a.b.c RETURN d", expected);
+    assertFilterSuccess("FOR d IN collection FILTER d.a.b.c > 15 and d.a.b.c <= '40' RETURN d", expected);
+    assertFilterSuccess("FOR d IN collection FILTER 15 < d.a.b.c and d.a.b.c <= '40' RETURN d", expected);
+    assertFilterSuccess("FOR d IN collection FILTER d.a.b.c > 15 and '40' >= d.a.b.c RETURN d", expected);
+    assertFilterSuccess("FOR d IN collection FILTER 15 < d.a.b.c and '40' >= d.a.b.c RETURN d", expected);
+    assertFilterSuccess("FOR d IN collection FILTER d.a.b.c > 15.0 and d.a.b.c <= '40' RETURN d", expected);
+    assertFilterSuccess("FOR d IN collection FILTER 15.0 < d.a.b.c and d.a.b.c <= '40' RETURN d", expected);
+    assertFilterSuccess("FOR d IN collection FILTER d.a.b.c > 15.0 and '40' >= d.a.b.c RETURN d", expected);
+    assertFilterSuccess("FOR d IN collection FILTER 15.0 < d.a.b.c and '40' >= d.a.b.c RETURN d", expected);
   }
 
   // range with different references
@@ -1690,14 +1712,14 @@ SECTION("BinaryAnd") {
         .field(mangleNumeric("a.b.c"))
         .include<irs::Bound::MAX>(true).insert<irs::Bound::MAX>(maxTerm);
 
-    assertFilterSuccess("FOR d IN collection FILTER d.a.b.c >= false and k.a.b.c <= 40 RETURN d", expected);
-    assertFilterSuccess("FOR d IN collection FILTER false <= d.a.b.c and k.a.b.c <= 40 RETURN d", expected);
-    assertFilterSuccess("FOR d IN collection FILTER d.a.b.c >= false and 40 >= k.a.b.c RETURN d", expected);
-    assertFilterSuccess("FOR d IN collection FILTER false <= d.a.b.c and 40 >= k.a.b.c RETURN d", expected);
-    assertFilterSuccess("FOR d IN collection FILTER d.a.b.c >= false and k.a.b.c <= 40.0 RETURN d", expected);
-    assertFilterSuccess("FOR d IN collection FILTER false <= d.a.b.c and k.a.b.c <= 40.0 RETURN d", expected);
-    assertFilterSuccess("FOR d IN collection FILTER d.a.b.c >= false and 40.0 >= k.a.b.c RETURN d", expected);
-    assertFilterSuccess("FOR d IN collection FILTER false <= d.a.b.c and 40.0 >= k.a.b.c RETURN d", expected);
+    assertFilterSuccess("FOR d IN collection FILTER d.a.b.c >= false and d.a.b.c <= 40 RETURN d", expected);
+    assertFilterSuccess("FOR d IN collection FILTER false <= d.a.b.c and d.a.b.c <= 40 RETURN d", expected);
+    assertFilterSuccess("FOR d IN collection FILTER d.a.b.c >= false and 40 >= d.a.b.c RETURN d", expected);
+    assertFilterSuccess("FOR d IN collection FILTER false <= d.a.b.c and 40 >= d.a.b.c RETURN d", expected);
+    assertFilterSuccess("FOR d IN collection FILTER d.a.b.c >= false and d.a.b.c <= 40.0 RETURN d", expected);
+    assertFilterSuccess("FOR d IN collection FILTER false <= d.a.b.c and d.a.b.c <= 40.0 RETURN d", expected);
+    assertFilterSuccess("FOR d IN collection FILTER d.a.b.c >= false and 40.0 >= d.a.b.c RETURN d", expected);
+    assertFilterSuccess("FOR d IN collection FILTER false <= d.a.b.c and 40.0 >= d.a.b.c RETURN d", expected);
   }
 
   // range with different references
@@ -1713,10 +1735,10 @@ SECTION("BinaryAnd") {
         .field(mangleNumeric("a.b.c"))
         .include<irs::Bound::MAX>(true).insert<irs::Bound::MAX>(maxTerm);
 
-    assertFilterSuccess("FOR d IN collection FILTER k.a.b.c > null and d.a.b.c <= 40.5 RETURN d", expected);
-    assertFilterSuccess("FOR d IN collection FILTER null < k.a.b.c and d.a.b.c <= 40.5 RETURN d", expected);
-    assertFilterSuccess("FOR d IN collection FILTER k.a.b.c > null and 40.5 >= d.a.b.c RETURN d", expected);
-    assertFilterSuccess("FOR d IN collection FILTER null < k.a.b.c and 40.5 >= d.a.b.c RETURN d", expected);
+    assertFilterSuccess("FOR d IN collection FILTER d.a.b.c > null and d.a.b.c <= 40.5 RETURN d", expected);
+    assertFilterSuccess("FOR d IN collection FILTER null < d.a.b.c and d.a.b.c <= 40.5 RETURN d", expected);
+    assertFilterSuccess("FOR d IN collection FILTER d.a.b.c > null and 40.5 >= d.a.b.c RETURN d", expected);
+    assertFilterSuccess("FOR d IN collection FILTER null < d.a.b.c and 40.5 >= d.a.b.c RETURN d", expected);
   }
 }
 
@@ -1819,6 +1841,14 @@ SECTION("Value") {
 
   // reference
   assertFilterFail("FOR d IN collection FILTER d RETURN d");
+}
+
+SECTION("NaryOr") {
+  // FIXME TODO
+}
+
+SECTION("NaryAnd") {
+  // FIXME TODO
 }
 
 SECTION("UnsupportedUserFunctions") {
@@ -2020,7 +2050,9 @@ SECTION("Phrase") {
     phrase.field(mangleStringIdentity("name")).push_back("quick");
 
     assertFilterSuccess("FOR d IN VIEW myView FILTER ir::phrase(d.name, 'quick') RETURN d", expected);
+    assertFilterSuccess("FOR d IN VIEW myView FILTER ir::phrase(d['name'], 'quick') RETURN d", expected);
     assertFilterSuccess("FOR d IN VIEW myView FILTER iR::phRase(d.name, 'quick') RETURN d", expected);
+    assertFilterSuccess("FOR d IN VIEW myView FILTER iR::phRase(d['name'], 'quick') RETURN d", expected);
 
     // invalid attribute access
     assertFilterFail("FOR d IN VIEW myView FILTER ir::phrase(d, 'quick') RETURN d");
@@ -2058,9 +2090,12 @@ SECTION("Phrase") {
     auto& phrase = expected.add<irs::by_phrase>();
     phrase.field(mangleStringIdentity("obj.name")).push_back("quick").push_back("brown", 5);
 
+    assertFilterSuccess("FOR d IN VIEW myView FILTER ir::phrase(d['obj'].name, 'quick', 5, 'brown') RETURN d", expected);
     assertFilterSuccess("FOR d IN VIEW myView FILTER ir::phrase(d.obj.name, 'quick', 5, 'brown') RETURN d", expected);
     assertFilterSuccess("FOR d IN VIEW myView FILTER ir::phrase(d.obj.name, 'quick', 5.0, 'brown') RETURN d", expected);
+    assertFilterSuccess("FOR d IN VIEW myView FILTER ir::phrase(d.obj['name'], 'quick', 5.0, 'brown') RETURN d", expected);
     assertFilterSuccess("FOR d IN VIEW myView FILTER ir::phrase(d.obj.name, 'quick', 5.5, 'brown') RETURN d", expected);
+    assertFilterSuccess("FOR d IN VIEW myView FILTER ir::phrase(d['obj']['name'], 'quick', 5.5, 'brown') RETURN d", expected);
   }
 
   // multiple offsets, complex name, default analyzer
@@ -2075,8 +2110,11 @@ SECTION("Phrase") {
           .push_back("jumps");
 
     assertFilterSuccess("FOR d IN VIEW myView FILTER ir::phrase(d.obj.properties.id.name, 'quick', 3, 'brown', 2, 'fox', 0, 'jumps') RETURN d", expected);
+    assertFilterSuccess("FOR d IN VIEW myView FILTER ir::phrase(d['obj']['properties']['id']['name'], 'quick', 3, 'brown', 2, 'fox', 0, 'jumps') RETURN d", expected);
     assertFilterSuccess("FOR d IN VIEW myView FILTER ir::phrase(d.obj.properties.id.name, 'quick', 3.0, 'brown', 2, 'fox', 0.5, 'jumps') RETURN d", expected);
+    assertFilterSuccess("FOR d IN VIEW myView FILTER ir::phrase(d.obj['properties'].id.name, 'quick', 3.0, 'brown', 2, 'fox', 0.5, 'jumps') RETURN d", expected);
     assertFilterSuccess("FOR d IN VIEW myView FILTER ir::phrase(d.obj.properties.id.name, 'quick', 3.0, 'brown', 2.0, 'fox', 0.5, 'jumps') RETURN d", expected);
+    assertFilterSuccess("FOR d IN VIEW myView FILTER ir::phrase(d.obj.properties['id'].name, 'quick', 3.0, 'brown', 2.0, 'fox', 0.5, 'jumps') RETURN d", expected);
     assertFilterSuccess("FOR d IN VIEW myView FILTER ir::phrase(d.obj.properties.id.name, 'quick', 3.5, 'brown', 2.0, 'fox', 0.5, 'jumps') RETURN d", expected);
 
     // wrong value
@@ -2145,6 +2183,7 @@ SECTION("Phrase") {
     phrase.push_back("q").push_back("u").push_back("i").push_back("c").push_back("k");
     phrase.push_back("b", 5).push_back("r").push_back("o").push_back("w").push_back("n");
 
+    assertFilterSuccess("FOR d IN VIEW myView FILTER ir::phrase(d['obj']['name'], 'quick', 5, 'brown', 'test_analyzer') RETURN d", expected);
     assertFilterSuccess("FOR d IN VIEW myView FILTER ir::phrase(d.obj.name, 'quick', 5, 'brown', 'test_analyzer') RETURN d", expected);
     assertFilterSuccess("FOR d IN VIEW myView FILTER ir::phrase(d.obj.name, 'quick', 5.0, 'brown', 'test_analyzer') RETURN d", expected);
     assertFilterSuccess("FOR d IN VIEW myView FILTER ir::phrase(d.obj.name, 'quick', 5.6, 'brown', 'test_analyzer') RETURN d", expected);
@@ -2163,10 +2202,13 @@ SECTION("Phrase") {
 
     assertFilterSuccess("FOR d IN VIEW myView FILTER ir::phrase(d.obj.properties.id.name, 'quick', 3, 'brown', 2, 'fox', 0, 'jumps', 'test_analyzer') RETURN d", expected);
     assertFilterSuccess("FOR d IN VIEW myView FILTER ir::phrase(d.obj.properties.id.name, 'quick', 3.0, 'brown', 2, 'fox', 0, 'jumps', 'test_analyzer') RETURN d", expected);
+    assertFilterSuccess("FOR d IN VIEW myView FILTER ir::phrase(d.obj.properties.id['name'], 'quick', 3.0, 'brown', 2, 'fox', 0, 'jumps', 'test_analyzer') RETURN d", expected);
     assertFilterSuccess("FOR d IN VIEW myView FILTER ir::phrase(d.obj.properties.id.name, 'quick', 3.6, 'brown', 2, 'fox', 0, 'jumps', 'test_analyzer') RETURN d", expected);
+    assertFilterSuccess("FOR d IN VIEW myView FILTER ir::phrase(d.obj['properties'].id.name, 'quick', 3.6, 'brown', 2, 'fox', 0, 'jumps', 'test_analyzer') RETURN d", expected);
     assertFilterSuccess("FOR d IN VIEW myView FILTER ir::phrase(d.obj.properties.id.name, 'quick', 3, 'brown', 2.0, 'fox', 0, 'jumps', 'test_analyzer') RETURN d", expected);
     assertFilterSuccess("FOR d IN VIEW myView FILTER ir::phrase(d.obj.properties.id.name, 'quick', 3, 'brown', 2.5, 'fox', 0.0, 'jumps', 'test_analyzer') RETURN d", expected);
     assertFilterSuccess("FOR d IN VIEW myView FILTER ir::phrase(d.obj.properties.id.name, 'quick', 3.2, 'brown', 2.0, 'fox', 0.0, 'jumps', 'test_analyzer') RETURN d", expected);
+    assertFilterSuccess("FOR d IN VIEW myView FILTER ir::phrase(d['obj']['properties']['id']['name'], 'quick', 3.2, 'brown', 2.0, 'fox', 0.0, 'jumps', 'test_analyzer') RETURN d", expected);
 
     // wrong value
     assertFilterFail("FOR d IN VIEW myView FILTER ir::phrase(d.obj.properties.id.name, 'quick', 3, d.brown, 2, 'fox', 0, 'jumps', 'test_analyzer') RETURN d");
@@ -2185,6 +2227,8 @@ SECTION("Phrase") {
   }
 
   // wrong analylzer
+  assertFilterFail("FOR d IN VIEW myView FILTER ir::phrase(d.name, 'quick', ['d']) RETURN d");
+  assertFilterFail("FOR d IN VIEW myView FILTER ir::phrase(d.name, 'quick', [d]) RETURN d");
   assertFilterFail("FOR d IN VIEW myView FILTER ir::phrase(d.name, 'quick', d) RETURN d");
   assertFilterFail("FOR d IN VIEW myView FILTER ir::phrase(d.name, 'quick', 3) RETURN d");
   assertFilterFail("FOR d IN VIEW myView FILTER ir::phrase(d.name, 'quick', 3.0) RETURN d");
@@ -2209,6 +2253,7 @@ SECTION("StartsWith") {
     prefix.field(mangleStringIdentity("name")).term("abc");
     prefix.scored_terms_limit(128);
 
+    assertFilterSuccess("FOR d IN VIEW myView FILTER ir::starts_with(d['name'], 'abc') RETURN d", expected);
     assertFilterSuccess("FOR d IN VIEW myView FILTER ir::starts_with(d.name, 'abc') RETURN d", expected);
   }
 
@@ -2219,6 +2264,9 @@ SECTION("StartsWith") {
     prefix.field(mangleStringIdentity("obj.properties.name")).term("abc");
     prefix.scored_terms_limit(128);
 
+    assertFilterSuccess("FOR d IN VIEW myView FILTER ir::starts_with(d['obj']['properties']['name'], 'abc') RETURN d", expected);
+    assertFilterSuccess("FOR d IN VIEW myView FILTER ir::starts_with(d.obj['properties']['name'], 'abc') RETURN d", expected);
+    assertFilterSuccess("FOR d IN VIEW myView FILTER ir::starts_with(d.obj['properties'].name, 'abc') RETURN d", expected);
     assertFilterSuccess("FOR d IN VIEW myView FILTER ir::starts_with(d.obj.properties.name, 'abc') RETURN d", expected);
   }
 
@@ -2229,6 +2277,7 @@ SECTION("StartsWith") {
     prefix.field(mangleStringIdentity("name")).term("abc");
     prefix.scored_terms_limit(1024);
 
+    assertFilterSuccess("FOR d IN VIEW myView FILTER ir::starts_with(d['name'], 'abc', 1024) RETURN d", expected);
     assertFilterSuccess("FOR d IN VIEW myView FILTER ir::starts_with(d.name, 'abc', 1024) RETURN d", expected);
   }
 
@@ -2239,6 +2288,7 @@ SECTION("StartsWith") {
     prefix.field(mangleStringIdentity("name")).term("abc");
     prefix.scored_terms_limit(100);
 
+    assertFilterSuccess("FOR d IN VIEW myView FILTER ir::starts_with(d['name'], 'abc', 100.5) RETURN d", expected);
     assertFilterSuccess("FOR d IN VIEW myView FILTER ir::starts_with(d.name, 'abc', 100.5) RETURN d", expected);
   }
 
@@ -2247,6 +2297,8 @@ SECTION("StartsWith") {
   assertFilterFail("FOR d IN VIEW myView FILTER ir::starts_with(d.name, 'abc', 100, 'abc') RETURN d");
 
   // invalid attribute access
+  assertFilterFail("FOR d IN VIEW myView FILTER ir::starts_with(['d'], 'abc') RETURN d");
+  assertFilterFail("FOR d IN VIEW myView FILTER ir::starts_with([d], 'abc') RETURN d");
   assertFilterFail("FOR d IN VIEW myView FILTER ir::starts_with(d, 'abc') RETURN d");
   assertFilterFail("FOR d IN VIEW myView FILTER ir::starts_with('d.name', 'abc') RETURN d");
   assertFilterFail("FOR d IN VIEW myView FILTER ir::starts_with(123, 'abc') RETURN d");

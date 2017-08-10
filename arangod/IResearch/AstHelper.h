@@ -179,6 +179,7 @@ bool visitAttributePath(
 
     return arangodb::aql::NODE_TYPE_REFERENCE == node.type
       || (arangodb::aql::NODE_TYPE_VALUE == node.type
+          && arangodb::aql::VALUE_TYPE_STRING == node.value.type
           && visitor(arangodb::iresearch::getStringRef(node))
          );
   }
@@ -242,10 +243,19 @@ bool attributeAccessEqual(
 );
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief generates field name from the specified 'node' and value 'type'
-/// @returns generated name string
+/// @brief generates field name from the specified 'node'
+/// @returns generated name
 ////////////////////////////////////////////////////////////////////////////////
 std::string nameFromAttributeAccess(arangodb::aql::AstNode const& node);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief checks whether the specified node is correct attribute access node,
+///        treats node of type NODE_TYPE_REFERENCE as invalid
+/// @returns the specified node on success, nullptr otherwise
+////////////////////////////////////////////////////////////////////////////////
+arangodb::aql::AstNode const* checkAttributeAccess(
+  arangodb::aql::AstNode const* node
+) noexcept;
 
 } // iresearch
 } // arangodb

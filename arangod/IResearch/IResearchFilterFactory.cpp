@@ -470,7 +470,9 @@ bool fromIn(
     return false; // wrong number of members
   }
 
-  auto const* attributeNode = arangodb::iresearch::getNode(node, 0, arangodb::aql::NODE_TYPE_ATTRIBUTE_ACCESS);
+  auto const* attributeNode = arangodb::iresearch::checkAttributeAccess(
+    node.getMemberUnchecked(0)
+  );
 
   if (!attributeNode) {
     LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "Unable to extract attribute name from 'IN' operator";
@@ -695,8 +697,8 @@ bool fromFuncExists(
   }
 
   // 1st argument defines a field
-  auto const* fieldArg = arangodb::iresearch::getNode(
-    args, 0, arangodb::aql::NODE_TYPE_ATTRIBUTE_ACCESS
+  auto const* fieldArg = arangodb::iresearch::checkAttributeAccess(
+    args.getMemberUnchecked(0)
   );
 
   if (!fieldArg) {
@@ -873,8 +875,8 @@ bool fromFuncPhrase(
   }
 
   // 1st argument defines a field
-  auto const* fieldArg = arangodb::iresearch::getNode(
-    args, 0, arangodb::aql::NODE_TYPE_ATTRIBUTE_ACCESS
+  auto const* fieldArg = arangodb::iresearch::checkAttributeAccess(
+    args.getMemberUnchecked(0)
   );
 
   if (!fieldArg) {
@@ -984,8 +986,8 @@ bool fromFuncStartsWith(
   }
 
   // 1st argument defines a field
-  auto const* field = arangodb::iresearch::getNode(
-    args, 0, arangodb::aql::NODE_TYPE_ATTRIBUTE_ACCESS
+  auto const* field = arangodb::iresearch::checkAttributeAccess(
+    args.getMemberUnchecked(0)
   );
 
   if (!field) {

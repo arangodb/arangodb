@@ -855,10 +855,12 @@ SECTION("test_query") {
     arangodb::aql::AstNode filter(arangodb::aql::AstNodeType::NODE_TYPE_FILTER);
     arangodb::aql::AstNode filterGe(arangodb::aql::AstNodeType::NODE_TYPE_OPERATOR_BINARY_GE);
     arangodb::aql::AstNode filterAttr(arangodb::aql::AstNodeType::NODE_TYPE_ATTRIBUTE_ACCESS);
+    arangodb::aql::AstNode filterReference(arangodb::aql::AstNodeType::NODE_TYPE_REFERENCE);
     arangodb::aql::AstNode filterValue(int64_t(1), arangodb::aql::AstNodeValueType::VALUE_TYPE_INT);
     irs::string_ref attr("key");
 
     filterAttr.setStringValue(attr.c_str(), attr.size());
+    filterAttr.addMember(&filterReference);
     filterGe.addMember(&filterAttr);
     filterGe.addMember(&filterValue);
     filter.addMember(&filterGe);
