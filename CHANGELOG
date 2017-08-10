@@ -1,6 +1,8 @@
 devel
 -----
 
+* ui: fixed the appearance of the documents filter
+
 * ui: graph vertex collections not restricted to 10 anymore
 
 * fixed docs for issue #2968
