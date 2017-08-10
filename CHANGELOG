@@ -1,6 +1,8 @@
 devel
 -----
 
+* ui: fixed a bug when success event triggers twice in a modal
+
 * ui: fixed the appearance of the documents filter
 
 * ui: graph vertex collections not restricted to 10 anymore
