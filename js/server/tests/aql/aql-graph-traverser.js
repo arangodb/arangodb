@@ -1629,6 +1629,57 @@ function complexInternaSuite () {
       // test will segfault
     },
 
+    testEdgeOptimizeAboveMinDepth: function () {
+
+      // The query should return depth 1
+      // Because edges[1] == null => null != edge.BC => ok
+      // And not depth 2/3 because edges[1]._id == edge.BC => not okay
+      let query = `
+        WITH ${vn}
+        FOR v, e, p IN 1..3 OUTBOUND '${vn}/A' ${en}
+          FILTER p.edges[1]._id != '${edge.BC}'
+          RETURN v._id`;
+
+      let res = db._query(query);
+      assertEqual(res.count(), 1);
+      assertEqual(res.toArray(), [vertex.B]);
+    },
+
+    testVertexOptimizeAboveMinDepth: function () {
+
+      // The query should return depth 1
+      // Because vertices[2] == null => null != vertex.C => ok
+      // And not depth 2/3 because vertices[3]._id == vertex.C => not okay
+      let query = `
+        WITH ${vn}
+        FOR v, e, p IN 1..3 OUTBOUND '${vn}/A' ${en}
+          FILTER p.vertices[2]._id != '${vertex.C}'
+          RETURN v._id`;
+
+      let res = db._query(query);
+      assertEqual(res.count(), 1);
+      assertEqual(res.toArray(), [vertex.B]);
+    },
+
+    testPathOptimizeAboveMinDepth: function () {
+
+      // The query should return depth 1
+      // Because vertices[2] == null => null != vertex.C => ok
+      // And not depth 2/3 because vertices[3]._id == vertex.C => not okay
+      let query = `
+        WITH ${vn}
+        FOR v, e, p IN 1..3 OUTBOUND '${vn}/A' ${en}
+          FILTER p.edges[1]._id != '${edge.BC}'
+          FILTER p.vertices[2]._id != '${vertex.C}'
+          RETURN v._id`;
+
+      let res = db._query(query);
+      assertEqual(res.count(), 1);
+      assertEqual(res.toArray(), [vertex.B]);
+    },
+
+
+
   };
 
 }
@@ -3631,6 +3682,142 @@ function optimizeNonVertexCentricIndexesSuite () {
   };
 };
 
+function exampleGraphsSuite () {
+  let ex = require('@arangodb/graph-examples/example-graph');
+
+  return {
+    setUpAll: () => {
+      ex.dropGraph('traversalGraph');
+      ex.loadGraph('traversalGraph');
+    },
+
+    tearDownAll: () => {
+      ex.dropGraph('traversalGraph');
+    },
+
+    testMinDepthFilterNEQ: () => {
+      let q = `FOR v,e,p IN 1..3 OUTBOUND 'circles/A' GRAPH 'traversalGraph'
+                 FILTER p.vertices[1]._key != 'G'
+                 FILTER p.edges[1].label != 'left_blub'
+                 RETURN v._key`;
+      let res = db._query(q);
+      assertEqual(res.count(), 3);
+      let resArr = res.toArray().sort();
+      assertEqual(resArr, ['B', 'C', 'D'].sort());
+
+      q = `FOR v,e,p IN 1..3 OUTBOUND 'circles/A' GRAPH 'traversalGraph'
+             FILTER p.vertices[1]._key != 'G'
+             FILTER 'left_blub' != p.edges[1].label
+             RETURN v._key`;
+      res = db._query(q);
+      assertEqual(res.count(), 3);
+      resArr = res.toArray().sort();
+      assertEqual(resArr, ['B', 'C', 'D'].sort());
+    },
+
+    testMinDepthFilterEq: () => {
+      let q = `FOR v,e,p IN 1..3 OUTBOUND 'circles/A' GRAPH 'traversalGraph'
+                 FILTER p.vertices[1]._key != 'G'
+                 FILTER p.edges[1].label == null
+                 RETURN v._key`;
+      let res = db._query(q);
+      assertEqual(res.count(), 1);
+      let resArr = res.toArray().sort();
+      assertEqual(resArr, ['B'].sort());
+
+      q = `FOR v,e,p IN 1..3 OUTBOUND 'circles/A' GRAPH 'traversalGraph'
+             FILTER p.vertices[1]._key != 'G'
+             FILTER null == p.edges[1].label
+             RETURN v._key`;
+      res = db._query(q);
+      assertEqual(res.count(), 1);
+      resArr = res.toArray().sort();
+      assertEqual(resArr, ['B'].sort());
+ 
+    },
+
+    testMinDepthFilterIn: () => {
+      let q = `FOR v,e,p IN 1..3 OUTBOUND 'circles/A' GRAPH 'traversalGraph'
+                 FILTER p.vertices[1]._key != 'G'
+                 FILTER p.edges[1].label IN [null, 'left_blarg', 'foo', 'bar', 'foxx']
+                 RETURN v._key`;
+      let res = db._query(q);
+      assertEqual(res.count(), 3);
+      let resArr = res.toArray().sort();
+      assertEqual(resArr, ['B', 'C', 'D'].sort());
+    },
+
+    testMinDepthFilterLess: () => {
+      let q = `FOR v,e,p IN 1..3 OUTBOUND 'circles/A' GRAPH 'traversalGraph'
+                 FILTER p.vertices[1]._key != 'G'
+                 FILTER p.edges[1].label < 'left_blub'
+                 RETURN v._key`;
+      let res = db._query(q);
+      assertEqual(res.count(), 3);
+      let resArr = res.toArray().sort();
+      assertEqual(resArr, ['B', 'C', 'D'].sort());
+
+      q = `FOR v,e,p IN 1..3 OUTBOUND 'circles/A' GRAPH 'traversalGraph'
+             FILTER p.vertices[1]._key != 'G'
+             FILTER 'left_blub' > p.edges[1].label
+             RETURN v._key`;
+      res = db._query(q);
+      assertEqual(res.count(), 3);
+      resArr = res.toArray().sort();
+      assertEqual(resArr, ['B', 'C', 'D'].sort());
+ 
+    },
+
+    testMinDepthFilterNIN: () => {
+      let q = `FOR v,e,p IN 1..3 OUTBOUND 'circles/A' GRAPH 'traversalGraph'
+                 FILTER p.vertices[1]._key != 'G'
+                 FILTER p.edges[1].label NOT IN ['left_blub', 'foo', 'bar', 'foxx']
+                 RETURN v._key`;
+      let res = db._query(q);
+      assertEqual(res.count(), 3);
+      let resArr = res.toArray().sort();
+      assertEqual(resArr, ['B', 'C', 'D'].sort());
+    },
+
+    testMinDepthFilterComplexNode: () => {
+      let q = `LET condition = { value: 'left_blub' }
+               FOR v,e,p IN 1..3 OUTBOUND 'circles/A' GRAPH 'traversalGraph'
+                 FILTER p.vertices[1]._key != 'G'
+                 FILTER p.edges[1].label != condition.value
+                 RETURN v._key`;
+      let res = db._query(q);
+      assertEqual(res.count(), 3);
+      let resArr = res.toArray().sort();
+      assertEqual(resArr, ['B', 'C', 'D'].sort());
+
+      q = `LET condition = { value: 'left_blub' }
+           FOR v,e,p IN 1..3 OUTBOUND 'circles/A' GRAPH 'traversalGraph'
+             FILTER p.vertices[1]._key != 'G'
+             FILTER condition.value != p.edges[1].label
+             RETURN v._key`;
+      res = db._query(q);
+      assertEqual(res.count(), 3);
+      resArr = res.toArray().sort();
+      assertEqual(resArr, ['B', 'C', 'D'].sort());
+ 
+    },
+
+    testMinDepthFilterReference: () => {
+      let q = `FOR snippet IN ['right']
+        LET test = CONCAT(snippet, '_blob')
+          FOR v, e, p IN 1..2 OUTBOUND 'circles/A' GRAPH 'traversalGraph'
+            FILTER p.edges[1].label != test 
+            RETURN v._key`;
+      
+      let res = db._query(q);
+      assertEqual(res.count(), 5);
+      let resArr = res.toArray().sort();
+      assertEqual(resArr, ["B", "C", "E", "G", "J"].sort());
+    }
+
+  };
+};
+
 jsunity.run(limitSuite);
 jsunity.run(nestedSuite);
 jsunity.run(namedGraphSuite);
@@ -3645,6 +3832,7 @@ jsunity.run(multiEdgeDirectionSuite);
 jsunity.run(subQuerySuite);
 jsunity.run(optionsSuite);
 jsunity.run(optimizeQuantifierSuite);
+jsunity.run(exampleGraphsSuite);
 if (!isCluster) {
   jsunity.run(optimizeNonVertexCentricIndexesSuite);
 }

@@ -867,3 +867,8 @@ int TRI_AppendCsvDoubleStringBuffer(TRI_string_buffer_t* self, double d) {
   AppendChar(self, ';');
   return TRI_ERROR_NO_ERROR;
 }
+
+std::ostream& operator<<(std::ostream& stream, arangodb::basics::StringBuffer const& buffer) {
+  stream.write(buffer.begin(), buffer.length());
+  return stream;
+}

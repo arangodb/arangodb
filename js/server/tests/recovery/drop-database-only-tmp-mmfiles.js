@@ -40,8 +40,8 @@ function runSetup () {
   fs.makeDirectory(path);
 
   var data = { deleted: true, name: "UnitTestsRecovery", id: "999999999" };
-  fs.writeFile(fs.join(path, "parameter.json"), JSON.stringify(data));
-  fs.writeFile(fs.join(path, ".tmp"), "");
+  fs.writeFileSync(fs.join(path, "parameter.json"), JSON.stringify(data));
+  fs.writeFileSync(fs.join(path, ".tmp"), "");
 
   internal.debugSegfault('crashing server');
 }

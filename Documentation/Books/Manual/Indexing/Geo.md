@@ -15,8 +15,6 @@ A geo-spatial index assumes that the latitude is between -90 and 90 degree and
 the longitude is between -180 and 180 degree. A geo index will ignore all
 documents which do not fulfill these requirements.
 
-Currently, geo indexes are not yet supported with the RocksDB storage engine. Thus the functions `NEAR()`, `WITHIN()` and `WITHIN_RECTANGLE()` will be unavailable when using this storage engine. To use geo indexes, please use the MMFiles storage engine for the time being.
-
 Accessing Geo Indexes from the Shell
 ------------------------------------
 
