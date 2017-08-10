@@ -483,8 +483,8 @@ def testEdition(edition, os, mode, engine) {
                 sh "cp -a build/bin/* ${arch}" 
             }
             else if (os == 'windows') {
-                bat "move logs ${arch}"
-                bat "move log-output ${arch}"
+                //bat "move logs ${arch}"
+                //bat "move log-output ${arch}"
                 bat "copy build/bin/*.dmp ${arch}"
                 bat "copy build/bin/*.exe ${arch}"
                 bat "copy build/bin/*.pdb ${arch}"
