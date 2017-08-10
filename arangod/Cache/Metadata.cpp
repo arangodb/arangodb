@@ -65,7 +65,7 @@ Metadata::Metadata(Metadata const& other)
       maxSize(other.maxSize),
       allocatedSize(other.allocatedSize),
       deservedSize(other.deservedSize),
-      usage(other.usage),
+      usage(other.usage.load()),
       softUsageLimit(other.softUsageLimit),
       hardUsageLimit(other.hardUsageLimit),
       _state(other._state) {}
@@ -78,7 +78,7 @@ Metadata& Metadata::operator=(Metadata const& other) {
     maxSize = other.maxSize;
     allocatedSize = other.allocatedSize;
     deservedSize = other.deservedSize;
-    usage = other.usage;
+    usage = other.usage.load();
     softUsageLimit = other.softUsageLimit;
     hardUsageLimit = other.hardUsageLimit;
   }
@@ -86,7 +86,9 @@ Metadata& Metadata::operator=(Metadata const& other) {
   return *this;
 }
 
-void Metadata::lock(bool readOnly) { _state.lock(readOnly); }
+void Metadata::readLock() { _state.readLock(); }
+
+void Metadata::writeLock() { _state.writeLock(); }
 
 void Metadata::unlock() {
   TRI_ASSERT(isLocked());
@@ -98,21 +100,26 @@ bool Metadata::isLocked() const { return _state.isLocked(); }
 bool Metadata::isWriteLocked() const { return _state.isWriteLocked(); }
 
 bool Metadata::adjustUsageIfAllowed(int64_t usageChange) {
-  TRI_ASSERT(isWriteLocked());
+  TRI_ASSERT(isLocked());
 
-  if (usageChange < 0) {
-    usage -= static_cast<uint64_t>(-usageChange);
-    return true;
+  while (true) {
+    uint64_t expected = usage.load();
+    uint64_t desired = (usageChange < 0)
+                           ? expected - static_cast<uint64_t>(-usageChange)
+                           : expected + static_cast<uint64_t>(usageChange);
+
+    if ((desired > hardUsageLimit) ||
+        ((expected <= softUsageLimit) && (desired > softUsageLimit))) {
+      return false;
+    }
+
+    bool success = usage.compare_exchange_strong(expected, desired);
+    if (success) {
+      break;
+    }
   }
 
-  if ((static_cast<uint64_t>(usageChange) + usage <= softUsageLimit) ||
-      ((usage > softUsageLimit) &&
-       (static_cast<uint64_t>(usageChange) + usage <= hardUsageLimit))) {
-    usage += static_cast<uint64_t>(usageChange);
-    return true;
-  }
-
-  return false;
+  return true;
 }
 
 bool Metadata::adjustLimits(uint64_t softLimit, uint64_t hardLimit) {

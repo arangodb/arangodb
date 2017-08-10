@@ -91,7 +91,7 @@ Result PlainCache::insert(CachedValue* value) {
         change -= static_cast<int64_t>(candidate->size());
       }
 
-      _metadata.lock(false);
+      _metadata.readLock(); // special case
       allowed = _metadata.adjustUsageIfAllowed(change);
       _metadata.unlock();
 
@@ -103,7 +103,7 @@ Result PlainCache::insert(CachedValue* value) {
             eviction = true;
           }
           freeValue(candidate);
-      }
+        }
         bucket->insert(hash, value);
         if (!eviction) {
           maybeMigrate = source->slotFilled();
@@ -141,7 +141,7 @@ Result PlainCache::remove(void const* key, uint32_t keySize) {
     if (candidate != nullptr) {
       int64_t change = -static_cast<int64_t>(candidate->size());
 
-      _metadata.lock(false);
+      _metadata.readLock(); // special case
       bool allowed = _metadata.adjustUsageIfAllowed(change);
       TRI_ASSERT(allowed);
       _metadata.unlock();
@@ -185,7 +185,7 @@ PlainCache::PlainCache(Cache::ConstructionGuard guard, Manager* manager,
             PlainCache::bucketClearer, PlainBucket::slotsData) {}
 
 PlainCache::~PlainCache() {
-  _state.lock(true);
+  _state.readLock();
   if (!_state.isSet(State::Flag::shutdown)) {
     _state.unlock();
     shutdown();
@@ -281,7 +281,7 @@ void PlainCache::migrateBucket(void* sourcePtr,
   });
 
   // finish up this bucket's migration
-  source->_state.toggleFlag(State::Flag::migrated);
+  source->_state.toggleFlag(BucketState::Flag::migrated);
   source->unlock();
 }
 
@@ -291,7 +291,7 @@ std::tuple<Result, PlainBucket*, std::shared_ptr<Table>> PlainCache::getBucket(
   PlainBucket* bucket = nullptr;
   std::shared_ptr<Table> source(nullptr);
 
-  bool ok = _state.lock(true, maxTries);
+  bool ok = _state.readLock(maxTries);
   if (ok) {
     bool started = false;
     ok = isOperational();
@@ -332,7 +332,7 @@ Table::BucketClearer PlainCache::bucketClearer(Metadata* metadata) {
       if (bucket->_cachedData[j] != nullptr) {
         uint64_t size = bucket->_cachedData[j]->size();
         freeValue(bucket->_cachedData[j]);
-        metadata->lock(false);
+        metadata->readLock(); // special case
         metadata->adjustUsageIfAllowed(-static_cast<int64_t>(size));
         metadata->unlock();
       }

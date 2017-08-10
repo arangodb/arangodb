@@ -48,7 +48,7 @@ struct Metadata {
   uint64_t deservedSize;
 
   // vital information about memory usage
-  uint64_t usage;
+  std::atomic<uint64_t> usage;
   uint64_t softUsageLimit;
   uint64_t hardUsageLimit;
 
@@ -73,9 +73,14 @@ struct Metadata {
   Metadata& operator=(Metadata const& other);
 
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief Locks the record.
+  /// @brief Locks the record for reading
   //////////////////////////////////////////////////////////////////////////////
-  void lock(bool readOnly);
+  void readLock();
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief Locks the record for writing
+  //////////////////////////////////////////////////////////////////////////////
+  void writeLock();
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Unlocks the record. Requires record to be locked.
@@ -143,7 +148,7 @@ struct Metadata {
   void toggleFlag(State::Flag flag);
 
  private:
-  State _state;
+  MetadataState _state;
 };
 
 };  // end namespace cache

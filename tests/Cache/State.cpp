@@ -39,33 +39,24 @@ TEST_CASE("cache::State", "[cache]") {
     State state;
     bool success;
 
-    uint32_t outsideState = 0;
-
-    auto cb1 = [&outsideState]() -> void { outsideState = 1; };
-
-    auto cb2 = [&outsideState]() -> void { outsideState = 2; };
-
     // check lock without contention
     REQUIRE(!state.isLocked());
-    success = state.lock(false, 10LL, cb1); // writer gets lock
+    success = state.writeLock(10LL); // writer gets lock
     REQUIRE(success);
     REQUIRE(state.isLocked());
     REQUIRE(state.isWriteLocked());
-    REQUIRE(1UL == outsideState);
 
     // check lock with "contention"
-    success = state.lock(false, 10LL, cb2); // another writer can't steal lock
+    success = state.writeLock(10LL); // another writer can't steal lock
     REQUIRE(!success);
     REQUIRE(state.isLocked());
     REQUIRE(state.isWriteLocked());
-    REQUIRE(1UL == outsideState);
 
     // check lock with "contention"
-    success = state.lock(true, 10LL, cb2); // writer blocks reader
+    success = state.readLock(10LL); // writer blocks reader
     REQUIRE(!success);
     REQUIRE(state.isLocked());
     REQUIRE(state.isWriteLocked());
-    REQUIRE(1UL == outsideState);
 
     // check unlock
     state.unlock(); // writer releases
@@ -73,17 +64,17 @@ TEST_CASE("cache::State", "[cache]") {
     REQUIRE(!state.isWriteLocked());
 
     // check read locks
-    success = state.lock(true, 10LL, cb1);
+    success = state.readLock(10LL);
     REQUIRE(success);
     REQUIRE(state.isLocked());
     REQUIRE(!state.isWriteLocked());
 
-    success = state.lock(true, 10LL, cb2); // another reader should be fine
+    success = state.readLock(10LL); // another reader should be fine
     REQUIRE(success);
     REQUIRE(state.isLocked());
     REQUIRE(!state.isWriteLocked());
 
-    success = state.lock(false, 10LL, cb2); // but a writer is not okay
+    success = state.writeLock(10LL); // but a writer is not okay
     REQUIRE(!success);
     REQUIRE(state.isLocked());
     REQUIRE(!state.isWriteLocked());
@@ -99,13 +90,13 @@ TEST_CASE("cache::State", "[cache]") {
     bool success;
 
     for (size_t i = 0; i < 127; i++) {
-      success = state.lock(true, 10LL);
+      success = state.readLock(10LL);
       REQUIRE(success);
       REQUIRE(state.isLocked());
       REQUIRE(!state.isWriteLocked());
     }
 
-    success = state.lock(true, 10LL);
+    success = state.readLock(10LL);
     REQUIRE(!success);
     REQUIRE(state.isLocked());
     REQUIRE(!state.isWriteLocked());
@@ -125,31 +116,31 @@ TEST_CASE("cache::State", "[cache]") {
     State state;
     bool success;
 
-    success = state.lock(true, 10LL);
+    success = state.readLock(10LL);
     REQUIRE(success);
     REQUIRE(!state.isSet(State::Flag::migrated));
     state.unlock();
 
-    success = state.lock(false, 10LL);
+    success = state.writeLock(10LL);
     REQUIRE(success);
     REQUIRE(!state.isSet(State::Flag::migrated));
     state.toggleFlag(State::Flag::migrated);
     REQUIRE(state.isSet(State::Flag::migrated));
     state.unlock();
 
-    success = state.lock(true, 10LL);
+    success = state.readLock(10LL);
     REQUIRE(success);
     REQUIRE(state.isSet(State::Flag::migrated));
     state.unlock();
 
-    success = state.lock(false, 10LL);
+    success = state.writeLock(10LL);
     REQUIRE(success);
     REQUIRE(state.isSet(State::Flag::migrated));
     state.toggleFlag(State::Flag::migrated);
     REQUIRE(!state.isSet(State::Flag::migrated));
     state.unlock();
 
-    success = state.lock(true, 10LL);
+    success = state.readLock(10LL);
     REQUIRE(success);
     REQUIRE(!state.isSet(State::Flag::migrated));
     state.unlock();

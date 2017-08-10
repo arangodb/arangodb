@@ -32,11 +32,11 @@
 using namespace arangodb::cache;
 
 PlainBucket::PlainBucket() {
-  _state.lock(false);
+  _state.lock();
   clear();
 }
 
-bool PlainBucket::lock(int64_t maxTries) { return _state.lock(false, maxTries); }
+bool PlainBucket::lock(int64_t maxTries) { return _state.lock(maxTries); }
 
 void PlainBucket::unlock() {
   TRI_ASSERT(_state.isLocked());
@@ -47,7 +47,7 @@ bool PlainBucket::isLocked() const { return _state.isLocked(); }
 
 bool PlainBucket::isMigrated() const {
   TRI_ASSERT(isLocked());
-  return _state.isSet(State::Flag::migrated);
+  return _state.isSet(BucketState::Flag::migrated);
 }
 
 bool PlainBucket::isFull() const {

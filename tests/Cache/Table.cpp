@@ -113,7 +113,7 @@ TEST_CASE("cache::Table", "[cache]") {
       auto source = pair.second;
       REQUIRE(bucket ==
               reinterpret_cast<PlainBucket*>(small->primaryBucket(indexSmall)));
-      bucket->_state.toggleFlag(State::Flag::migrated);
+      bucket->_state.toggleFlag(BucketState::Flag::migrated);
       bucket->unlock();
       REQUIRE(source == small);
 

@@ -81,9 +81,9 @@ Cache::Cache(ConstructionGuard guard, Manager* manager, Metadata metadata,
 
 uint64_t Cache::size() {
   uint64_t size = 0;
-  _state.lock(true);
+  _state.readLock();
   if (isOperational()) {
-    _metadata.lock(true);
+    _metadata.readLock();
     size = _metadata.allocatedSize;
     _metadata.unlock();
   }
@@ -93,9 +93,9 @@ uint64_t Cache::size() {
 
 uint64_t Cache::usageLimit() {
   uint64_t limit = 0;
-  _state.lock(true);
+  _state.readLock();
   if (isOperational()) {
-    _metadata.lock(true);
+    _metadata.readLock();
     limit = _metadata.softUsageLimit;
     _metadata.unlock();
   }
@@ -105,9 +105,9 @@ uint64_t Cache::usageLimit() {
 
 uint64_t Cache::usage() {
   uint64_t usage = 0;
-  _state.lock(true);
+  _state.readLock();
   if (isOperational()) {
-    _metadata.lock(true);
+    _metadata.readLock();
     usage = _metadata.usage;
     _metadata.unlock();
   }
@@ -163,9 +163,9 @@ std::pair<double, double> Cache::hitRates() {
 
 bool Cache::isResizing() {
   bool resizing = false;
-  _state.lock(true);
+  _state.readLock();
   if (isOperational()) {
-    _metadata.lock(true);
+    _metadata.readLock();
     resizing = _metadata.isSet(State::Flag::resizing);
     _metadata.unlock();
   }
@@ -176,9 +176,9 @@ bool Cache::isResizing() {
 
 bool Cache::isMigrating() {
   bool migrating = false;
-  _state.lock(true);
+  _state.readLock();
   if (isOperational()) {
-    _metadata.lock(true);
+    _metadata.readLock();
     migrating = _metadata.isSet(State::Flag::migrating);
     _metadata.unlock();
   }
@@ -188,7 +188,7 @@ bool Cache::isMigrating() {
 }
 
 bool Cache::isShutdown() {
-  _state.lock(true);
+  _state.readLock();
   bool shutdown = !isOperational();
   _state.unlock();
 
@@ -219,10 +219,10 @@ bool Cache::isMigratingLocked() const {
 void Cache::requestGrow() {
   bool ok = canResize();
   if (ok) {
-    ok = _state.lock(false, Cache::triesSlow);
+    ok = _state.writeLock(Cache::triesSlow);
     if (ok) {
       if (std::chrono::steady_clock::now() > _resizeRequestTime) {
-        _metadata.lock(true);
+        _metadata.readLock();
         ok = !_metadata.isSet(State::Flag::resizing);
         _metadata.unlock();
         if (ok) {
@@ -236,11 +236,11 @@ void Cache::requestGrow() {
 }
 
 void Cache::requestMigrate(uint32_t requestedLogSize) {
-  bool ok = _state.lock(false, Cache::triesGuarantee);
+  bool ok = _state.writeLock(Cache::triesGuarantee);
   if (ok) {
     if (!isMigratingLocked() &&
         (std::chrono::steady_clock::now() > _migrateRequestTime)) {
-      _metadata.lock(true);
+      _metadata.readLock();
       ok = !_metadata.isSet(State::Flag::migrating) &&
            (requestedLogSize != _table->logSize());
       _metadata.unlock();
@@ -262,7 +262,7 @@ void Cache::freeValue(CachedValue* value) {
 }
 
 bool Cache::reclaimMemory(uint64_t size) {
-  _metadata.lock(false);
+  _metadata.writeLock();
   _metadata.adjustUsageIfAllowed(-static_cast<int64_t>(size));
   bool underLimit = (_metadata.softUsageLimit >= _metadata.usage);
   _metadata.unlock();
@@ -305,7 +305,7 @@ bool Cache::reportInsert(bool hadEviction) {
   if (((++_insertsTotal) & _evictionMask) == 0) {
     if (_insertEvictions.load() > _evictionThreshold) {
       shouldMigrate = true;
-      bool ok = _state.lock(true, triesGuarantee);
+      bool ok = _state.readLock(triesGuarantee);
       if (ok) {
         _table->signalEvictions();
         _state.unlock();
@@ -322,7 +322,7 @@ Metadata* Cache::metadata() { return &_metadata; }
 std::shared_ptr<Table> Cache::table() { return _table; }
 
 void Cache::beginShutdown() {
-  _state.lock(false);
+  _state.writeLock();
   if (!_state.isSet(State::Flag::shutdown, State::Flag::shuttingDown)) {
     _state.toggleFlag(State::Flag::shuttingDown);
   }
@@ -330,7 +330,7 @@ void Cache::beginShutdown() {
 }
 
 void Cache::shutdown() {
-  _state.lock(false);
+  _state.writeLock();
   auto handle = shared_from_this();  // hold onto self-reference to prevent
                                      // pre-mature shared_ptr destruction
   TRI_ASSERT(handle.get() == this);
@@ -342,7 +342,7 @@ void Cache::shutdown() {
     while (_openOperations.load() > 0) {
       _state.unlock();
       std::this_thread::yield();
-      _state.lock(false);
+      _state.writeLock();
     }
 
     _state.clear();
@@ -353,25 +353,25 @@ void Cache::shutdown() {
       extra->clear();
       _state.unlock();
       _manager->reclaimTable(extra);
-      _state.lock(false);
+      _state.writeLock();
     }
     _table->clear();
     _state.unlock();
     _manager->reclaimTable(_table);
     _manager->unregisterCache(shared_from_this());
-    _state.lock(false);
+    _state.writeLock();
   }
-  _metadata.lock(false);
+  _metadata.writeLock();
   _metadata.changeTable(0);
   _metadata.unlock();
   _state.unlock();
 }
 
 bool Cache::canResize() {
-  bool allowed = _state.lock(true, Cache::triesSlow);
+  bool allowed = _state.readLock(Cache::triesSlow);
   if (allowed) {
     if (isOperational()) {
-      _metadata.lock(true);
+      _metadata.readLock();
       if (_metadata.isSet(State::Flag::resizing) ||
           _metadata.isSet(State::Flag::migrating)) {
         allowed = false;
@@ -387,13 +387,13 @@ bool Cache::canResize() {
 bool Cache::canMigrate() {
   bool allowed = (_manager->ioService() != nullptr);
   if (allowed) {
-    allowed = _state.lock(true, Cache::triesSlow);
+    allowed = _state.readLock(Cache::triesSlow);
     if (allowed) {
       if (isOperational()) {
         if (_state.isSet(State::Flag::migrating)) {
           allowed = false;
         } else {
-          _metadata.lock(true);
+          _metadata.readLock();
           if (_metadata.isSet(State::Flag::migrating)) {
             allowed = false;
           }
@@ -410,7 +410,7 @@ bool Cache::canMigrate() {
 }
 
 bool Cache::freeMemory() {
-  _state.lock(true);
+  _state.readLock();
   if (!isOperational()) {
     _state.unlock();
     return false;
@@ -431,7 +431,7 @@ bool Cache::freeMemory() {
     } else {
       failures++;
       if (failures > 100) {
-        _state.lock(true);
+        _state.readLock();
         bool shouldQuit = !isOperational();
         _state.unlock();
 
@@ -449,7 +449,7 @@ bool Cache::freeMemory() {
 }
 
 bool Cache::migrate(std::shared_ptr<Table> newTable) {
-  _state.lock(false);
+  _state.writeLock();
   if (!isOperational()) {
     _state.unlock();
     return false;
@@ -469,7 +469,7 @@ bool Cache::migrate(std::shared_ptr<Table> newTable) {
   }
 
   // swap tables
-  _state.lock(false);
+  _state.writeLock();
   std::shared_ptr<Table> oldTable = _table;
   _table = newTable;
   _state.unlock();
@@ -482,10 +482,10 @@ bool Cache::migrate(std::shared_ptr<Table> newTable) {
   _manager->reclaimTable(oldTable);
 
   // unmarking migrating flags
-  _state.lock(false);
+  _state.writeLock();
   _state.toggleFlag(State::Flag::migrating);
   _state.unlock();
-  _metadata.lock(false);
+  _metadata.writeLock();
   _metadata.changeTable(_table->memoryUsage());
   _metadata.toggleFlag(State::Flag::migrating);
   _metadata.unlock();

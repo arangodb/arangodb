@@ -137,7 +137,7 @@ class Cache : public std::enable_shared_from_this<Cache> {
   static constexpr int64_t triesGuarantee = -1;
 
  protected:
-  State _state;
+  CacheState _state;
 
   static uint64_t _findStatsCapacity;
   bool _enableWindowedStats;

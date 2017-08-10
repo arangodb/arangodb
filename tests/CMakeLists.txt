@@ -36,6 +36,7 @@ add_executable(
   Basics/StringBufferTest.cpp
   Basics/StringUtilsTest.cpp
   Basics/VelocyPackHelper-test.cpp
+  Cache/BucketState.cpp
   Cache/CachedValue.cpp
   Cache/FrequencyBuffer.cpp
   Cache/Manager.cpp

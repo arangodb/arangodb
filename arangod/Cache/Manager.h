@@ -175,7 +175,7 @@ class Manager {
   static constexpr int64_t triesSlow = 1000;
 
   // simple state variable for locking and other purposes
-  State _state;
+  ManagerState _state;
 
   // structure to handle access frequency monitoring
   Manager::AccessStatBuffer _accessStats;

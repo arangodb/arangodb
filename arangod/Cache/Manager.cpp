@@ -116,7 +116,7 @@ std::shared_ptr<Cache> Manager::createCache(CacheType type,
                                             bool enableWindowedStats,
                                             uint64_t maxSize) {
   std::shared_ptr<Cache> result(nullptr);
-  _state.lock(false);
+  _state.writeLock();
   bool allowed = isOperational();
   Metadata metadata;
   std::shared_ptr<Table> table(nullptr);
@@ -163,7 +163,7 @@ void Manager::destroyCache(std::shared_ptr<Cache> cache) {
 }
 
 void Manager::beginShutdown() {
-  _state.lock(false);
+  _state.writeLock();
   if (isOperational()) {
     _state.toggleFlag(State::Flag::shuttingDown);
     for (auto it = _caches.begin(); it != _caches.end(); it++) {
@@ -175,7 +175,7 @@ void Manager::beginShutdown() {
 }
 
 void Manager::shutdown() {
-  _state.lock(false);
+  _state.writeLock();
   if (!_state.isSet(State::Flag::shutdown)) {
     if (!_state.isSet(State::Flag::shuttingDown)) {
       _state.toggleFlag(State::Flag::shuttingDown);
@@ -184,7 +184,7 @@ void Manager::shutdown() {
       std::shared_ptr<Cache> cache = *_caches.begin();
       _state.unlock();
       cache->shutdown();
-      _state.lock(false);
+      _state.writeLock();
     }
     freeUnusedTables();
     _state.clear();
@@ -195,7 +195,7 @@ void Manager::shutdown() {
 
 // change global cache limit
 bool Manager::resize(uint64_t newGlobalLimit) {
-  _state.lock(false);
+  _state.writeLock();
   if ((newGlobalLimit < Manager::minSize) ||
       (static_cast<uint64_t>(0.5 * (1.0 - Manager::highwaterMultiplier) *
                              static_cast<double>(newGlobalLimit)) <
@@ -236,7 +236,7 @@ bool Manager::resize(uint64_t newGlobalLimit) {
 }
 
 uint64_t Manager::globalLimit() {
-  _state.lock(true);
+  _state.readLock();
   uint64_t limit =
       _state.isSet(State::Flag::resizing) ? _globalSoftLimit : _globalHardLimit;
   _state.unlock();
@@ -245,7 +245,7 @@ uint64_t Manager::globalLimit() {
 }
 
 uint64_t Manager::globalAllocation() {
-  _state.lock(true);
+  _state.readLock();
   uint64_t allocation = _globalAllocation;
   _state.unlock();
 
@@ -331,9 +331,9 @@ std::tuple<bool, Metadata, std::shared_ptr<Table>> Manager::registerCache(
 }
 
 void Manager::unregisterCache(std::shared_ptr<Cache> cache) {
-  _state.lock(false);
+  _state.writeLock();
   Metadata* metadata = cache->metadata();
-  metadata->lock(true);
+  metadata->readLock();
   _globalAllocation -= metadata->allocatedSize;
   metadata->unlock();
   _caches.erase(cache);
@@ -345,11 +345,11 @@ std::pair<bool, Manager::time_point> Manager::requestGrow(
   Manager::time_point nextRequest = futureTime(100);
   bool allowed = false;
 
-  bool ok = _state.lock(false, Manager::triesSlow);
+  bool ok = _state.writeLock(Manager::triesSlow);
   if (ok) {
     if (isOperational() && !globalProcessRunning()) {
       Metadata* metadata = cache->metadata();
-      metadata->lock(false);
+      metadata->writeLock();
 
       allowed = !metadata->isSet(State::Flag::resizing) &&
                 !metadata->isSet(State::Flag::migrating);
@@ -389,11 +389,11 @@ std::pair<bool, Manager::time_point> Manager::requestMigrate(
   Manager::time_point nextRequest = futureTime(100);
   bool allowed = false;
 
-  bool ok = _state.lock(false, Manager::triesSlow);
+  bool ok = _state.writeLock(Manager::triesSlow);
   if (ok) {
     if (isOperational() && !globalProcessRunning()) {
       Metadata* metadata = cache->metadata();
-      metadata->lock(false);
+      metadata->writeLock();
 
       allowed = !metadata->isSet(State::Flag::migrating);
       if (allowed) {
@@ -501,7 +501,7 @@ void Manager::unprepareTask(Manager::TaskEnvironment environment) {
   switch (environment) {
     case TaskEnvironment::rebalancing: {
       if ((--_rebalancingTasks) == 0) {
-        _state.lock(false);
+        _state.writeLock();
         _state.toggleFlag(State::Flag::rebalancing);
         _rebalanceCompleted = std::chrono::steady_clock::now();
         _state.unlock();
@@ -510,7 +510,7 @@ void Manager::unprepareTask(Manager::TaskEnvironment environment) {
     }
     case TaskEnvironment::resizing: {
       if ((--_resizingTasks) == 0) {
-        _state.lock(false);
+        _state.writeLock();
         _state.toggleFlag(State::Flag::resizing);
         _state.unlock();
       };
@@ -525,7 +525,7 @@ void Manager::unprepareTask(Manager::TaskEnvironment environment) {
 
 bool Manager::rebalance(bool onlyCalculate) {
   if (!onlyCalculate) {
-    _state.lock(false);
+    _state.writeLock();
     if (_caches.size() == 0
         || !isOperational()
         || globalProcessRunning()) {
@@ -555,7 +555,7 @@ bool Manager::rebalance(bool onlyCalculate) {
     }
 #endif
     Metadata* metadata = cache->metadata();
-    metadata->lock(false);
+    metadata->writeLock();
     uint64_t fixed = metadata->fixedSize + metadata->tableSize + Manager::cacheRecordOverhead;
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
     if (newDeserved < fixed) {
@@ -592,7 +592,7 @@ void Manager::shrinkOvergrownCaches(Manager::TaskEnvironment environment) {
     }
 
     Metadata* metadata = cache->metadata();
-    metadata->lock(false);
+    metadata->writeLock();
 
     if (metadata->allocatedSize > metadata->deservedSize) {
       LOG_TOPIC(ERR, Logger::FIXME) << "Resizing overgrown Cache (" << ((size_t)cache.get()) << ")";
@@ -665,7 +665,7 @@ void Manager::resizeCache(Manager::TaskEnvironment environment,
   bool dispatched = task->dispatch();
   if (!dispatched) {
     // TODO: decide what to do if we don't have an io_service
-    metadata->lock(false);
+    metadata->writeLock();
     metadata->toggleFlag(State::Flag::resizing);
     metadata->unlock();
   }
@@ -686,7 +686,7 @@ void Manager::migrateCache(Manager::TaskEnvironment environment,
   bool dispatched = task->dispatch();
   if (!dispatched) {
     // TODO: decide what to do if we don't have an io_service
-    metadata->lock(false);
+    metadata->writeLock();
     reclaimTable(table, true);
     metadata->toggleFlag(State::Flag::migrating);
     metadata->unlock();
@@ -718,7 +718,7 @@ std::shared_ptr<Table> Manager::leaseTable(uint32_t logSize) {
 void Manager::reclaimTable(std::shared_ptr<Table> table, bool internal) {
   TRI_ASSERT(table.get() != nullptr);
   if (!internal) {
-    _state.lock(false);
+    _state.writeLock();
   }
 
   uint32_t logSize = table->logSize();

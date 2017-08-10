@@ -26,74 +26,74 @@
 
 #include <stdint.h>
 #include <atomic>
+#include <thread>
 
 using namespace arangodb::cache;
 
-State::State() : _state(0) {}
+State::~State() {}
 
-State::State(State const& other) : _state(other._state.load()) {}
+State::State() : _state(0), _lock(0) {}
+
+State::State(State const& other)
+    : _state(other._state.load()), _lock(other._lock.load()) {}
 
 State& State::operator=(State const& other) {
   if (this != &other) {
     _state = other._state.load();
+    _lock = other._lock.load();
   }
 
   return *this;
 }
 
-bool State::isLocked() const {
-  return ((_state.load() & static_cast<uint32_t>(Flag::lockAnyMask)) > 0);
-}
+bool State::isLocked() const { return (_lock.load() > 0); }
 
 bool State::isWriteLocked() const {
-  return ((_state.load() & static_cast<uint32_t>(Flag::lockAnyMask)) == static_cast<uint32_t>(Flag::lockWriteMask));
+  return (_lock.load() == static_cast<uint32_t>(LockMask::write));
 }
 
-bool State::lock(bool readOnly, int64_t maxTries, State::CallbackType cb) {
+bool State::readLock(int64_t maxTries) {
   int64_t attempt = 0;
-  if (readOnly) {
-    // fast path for multiple concurrent readers
-    while (maxTries < 0 || attempt < maxTries) {
-      // expect not write-locked, not read-saturated
-      uint32_t expected = _state.load() & (~static_cast<uint32_t>(Flag::lockWriteMask));
-      uint32_t desired = expected + 1;
-      if ((desired & static_cast<uint32_t>(Flag::lockReadMask)) == 0) {
-        // read counter overflow, wait for someone else to unlock
-        attempt++;
-        continue;
-      }
+  while (maxTries < 0 || attempt < maxTries) {
+    // expect not write-locked, not read-saturated
+    uint32_t expected =
+        _lock.load() & (~static_cast<uint32_t>(LockMask::write));
+    uint32_t desired = expected + 1;
+    // assume we never get read counter overflow
 
-      bool success = _state.compare_exchange_strong(expected, desired);
-      if (success) {
-        cb();
-        return true;
-      }
-      attempt++;
-      // TODO: exponential back-off for failure?
+    bool success = _lock.compare_exchange_strong(expected, desired);
+    if (success) {
+      return true;
     }
-
-    return false;
+    attempt++;
+    // TODO: exponential back-off for failure?
   }
 
-  // otherwise we are attempting to lock for writing
+  return false;
+}
+
+bool State::writeLock(int64_t maxTries) {
+  int64_t attempt = 0;
   while (maxTries < 0 || attempt < maxTries) {
     // first try to set the write flag
-    uint32_t expected = _state.load() & (~static_cast<uint32_t>(Flag::lockWriteMask));
-    uint32_t desired = expected | static_cast<uint32_t>(Flag::lockWriteMask);
-    bool success = _state.compare_exchange_strong(expected, desired);
+    uint32_t expected =
+        _lock.load() & (~static_cast<uint32_t>(LockMask::write));
+    uint32_t desired = expected | static_cast<uint32_t>(LockMask::write);
+    bool success = _lock.compare_exchange_strong(expected, desired);
     if (success) {
-      // now wait for the readers to finish, ignore attempt limit
-      while ((_state.load() & static_cast<uint32_t>(Flag::lockReadMask)) > 0 && (maxTries < 0 || attempt < maxTries)) {
+      // now wait for the readers to finish
+      while ((maxTries < 0 || attempt < maxTries) &&
+             (_lock.load() & static_cast<uint32_t>(LockMask::read)) > 0) {
         attempt++;
+        std::this_thread::yield();
         continue;
       }
-      if ((_state.load() & static_cast<uint32_t>(Flag::lockReadMask)) > 0) {
+      if ((_lock.load() & static_cast<uint32_t>(LockMask::read)) > 0) {
         // too many attempts, unset write flag and bail out
-        _state &= ~static_cast<uint32_t>(Flag::lockWriteMask);
+        _lock &= ~static_cast<uint32_t>(LockMask::write);
         return false;
       }
-      cb();
-      return true;
+      return true;  // locked!
     }
     attempt++;
   }
@@ -104,14 +104,11 @@ bool State::lock(bool readOnly, int64_t maxTries, State::CallbackType cb) {
 void State::unlock() {
   TRI_ASSERT(isLocked());
   while (true) {
-    uint32_t expected = _state.load();
-    uint32_t desired = expected;
-    if ((expected & static_cast<uint32_t>(Flag::lockAnyMask)) == static_cast<uint32_t>(Flag::lockWriteMask)) {
-      desired &= ~static_cast<uint32_t>(Flag::lockAnyMask);
-    } else {
-      desired--;
-    }
-    bool success = _state.compare_exchange_strong(expected, desired);
+    uint32_t expected = _lock.load();
+    uint32_t desired = (expected == static_cast<uint32_t>(LockMask::write))
+                           ? 0
+                           : (expected - 1);
+    bool success = _lock.compare_exchange_strong(expected, desired);
     if (success) {
       break;
     }
@@ -125,7 +122,8 @@ bool State::isSet(State::Flag flag) const {
 
 bool State::isSet(State::Flag flag1, State::Flag flag2) const {
   TRI_ASSERT(isLocked());
-  return ((_state.load() & (static_cast<uint32_t>(flag1) | static_cast<uint32_t>(flag2))) > 0);
+  return ((_state.load() &
+           (static_cast<uint32_t>(flag1) | static_cast<uint32_t>(flag2))) > 0);
 }
 
 void State::toggleFlag(State::Flag flag) {
@@ -135,5 +133,320 @@ void State::toggleFlag(State::Flag flag) {
 
 void State::clear() {
   TRI_ASSERT(isWriteLocked());
-  _state = static_cast<uint32_t>(Flag::lockWriteMask);
+  _state = 0;
+}
+
+bool ManagerState::readLock(int64_t maxTries) {
+  int64_t attempt = 0;
+  while (maxTries < 0 || attempt < maxTries) {
+    // expect not write-locked, not read-saturated
+    uint32_t expected =
+        _lock.load() & (~static_cast<uint32_t>(LockMask::write));
+    uint32_t desired = expected + 1;
+    // assume we never get read counter overflow
+
+    bool success = _lock.compare_exchange_strong(expected, desired);
+    if (success) {
+      return true;
+    }
+    attempt++;
+    // TODO: exponential back-off for failure?
+  }
+
+  return false;
+}
+
+bool ManagerState::writeLock(int64_t maxTries) {
+  int64_t attempt = 0;
+  while (maxTries < 0 || attempt < maxTries) {
+    // first try to set the write flag
+    uint32_t expected =
+        _lock.load() & (~static_cast<uint32_t>(LockMask::write));
+    uint32_t desired = expected | static_cast<uint32_t>(LockMask::write);
+    bool success = _lock.compare_exchange_strong(expected, desired);
+    if (success) {
+      // now wait for the readers to finish
+      while ((maxTries < 0 || attempt < maxTries) &&
+             (_lock.load() & static_cast<uint32_t>(LockMask::read)) > 0) {
+        attempt++;
+        std::this_thread::yield();
+        continue;
+      }
+      if ((_lock.load() & static_cast<uint32_t>(LockMask::read)) > 0) {
+        // too many attempts, unset write flag and bail out
+        _lock &= ~static_cast<uint32_t>(LockMask::write);
+        return false;
+      }
+      return true;  // locked!
+    }
+    attempt++;
+  }
+
+  return false;
+}
+
+void ManagerState::unlock() {
+  TRI_ASSERT(isLocked());
+  while (true) {
+    uint32_t expected = _lock.load();
+    uint32_t desired = (expected == static_cast<uint32_t>(LockMask::write))
+                           ? 0
+                           : (expected - 1);
+    bool success = _lock.compare_exchange_strong(expected, desired);
+    if (success) {
+      break;
+    }
+  }
+}
+
+bool CacheState::readLock(int64_t maxTries) {
+  int64_t attempt = 0;
+  while (maxTries < 0 || attempt < maxTries) {
+    // expect not write-locked, not read-saturated
+    uint32_t expected =
+        _lock.load() & (~static_cast<uint32_t>(LockMask::write));
+    uint32_t desired = expected + 1;
+    // assume we never get read counter overflow
+
+    bool success = _lock.compare_exchange_strong(expected, desired);
+    if (success) {
+      return true;
+    }
+    attempt++;
+    // TODO: exponential back-off for failure?
+  }
+
+  return false;
+}
+
+bool CacheState::writeLock(int64_t maxTries) {
+  int64_t attempt = 0;
+  while (maxTries < 0 || attempt < maxTries) {
+    // first try to set the write flag
+    uint32_t expected =
+        _lock.load() & (~static_cast<uint32_t>(LockMask::write));
+    uint32_t desired = expected | static_cast<uint32_t>(LockMask::write);
+    bool success = _lock.compare_exchange_strong(expected, desired);
+    if (success) {
+      // now wait for the readers to finish
+      while ((maxTries < 0 || attempt < maxTries) &&
+             (_lock.load() & static_cast<uint32_t>(LockMask::read)) > 0) {
+        attempt++;
+        std::this_thread::yield();
+        continue;
+      }
+      if ((_lock.load() & static_cast<uint32_t>(LockMask::read)) > 0) {
+        // too many attempts, unset write flag and bail out
+        _lock &= ~static_cast<uint32_t>(LockMask::write);
+        return false;
+      }
+      return true;  // locked!
+    }
+    attempt++;
+  }
+
+  return false;
+}
+
+void CacheState::unlock() {
+  TRI_ASSERT(isLocked());
+  while (true) {
+    uint32_t expected = _lock.load();
+    uint32_t desired = (expected == static_cast<uint32_t>(LockMask::write))
+                           ? 0
+                           : (expected - 1);
+    bool success = _lock.compare_exchange_strong(expected, desired);
+    if (success) {
+      break;
+    }
+  }
+}
+
+bool MetadataState::readLock(int64_t maxTries) {
+  int64_t attempt = 0;
+  while (maxTries < 0 || attempt < maxTries) {
+    // expect not write-locked, not read-saturated
+    uint32_t expected =
+        _lock.load() & (~static_cast<uint32_t>(LockMask::write));
+    uint32_t desired = expected + 1;
+    // assume we never get read counter overflow
+
+    bool success = _lock.compare_exchange_strong(expected, desired);
+    if (success) {
+      return true;
+    }
+    attempt++;
+    // TODO: exponential back-off for failure?
+  }
+
+  return false;
+}
+
+bool MetadataState::writeLock(int64_t maxTries) {
+  int64_t attempt = 0;
+  while (maxTries < 0 || attempt < maxTries) {
+    // first try to set the write flag
+    uint32_t expected =
+        _lock.load() & (~static_cast<uint32_t>(LockMask::write));
+    uint32_t desired = expected | static_cast<uint32_t>(LockMask::write);
+    bool success = _lock.compare_exchange_strong(expected, desired);
+    if (success) {
+      // now wait for the readers to finish
+      while ((maxTries < 0 || attempt < maxTries) &&
+             (_lock.load() & static_cast<uint32_t>(LockMask::read)) > 0) {
+        attempt++;
+        std::this_thread::yield();
+        continue;
+      }
+      if ((_lock.load() & static_cast<uint32_t>(LockMask::read)) > 0) {
+        // too many attempts, unset write flag and bail out
+        _lock &= ~static_cast<uint32_t>(LockMask::write);
+        return false;
+      }
+      return true;  // locked!
+    }
+    attempt++;
+  }
+
+  return false;
+}
+
+void MetadataState::unlock() {
+  TRI_ASSERT(isLocked());
+  while (true) {
+    uint32_t expected = _lock.load();
+    uint32_t desired = (expected == static_cast<uint32_t>(LockMask::write))
+                           ? 0
+                           : (expected - 1);
+    bool success = _lock.compare_exchange_strong(expected, desired);
+    if (success) {
+      break;
+    }
+  }
+}
+
+bool TableState::readLock(int64_t maxTries) {
+  int64_t attempt = 0;
+  while (maxTries < 0 || attempt < maxTries) {
+    // expect not write-locked, not read-saturated
+    uint32_t expected =
+        _lock.load() & (~static_cast<uint32_t>(LockMask::write));
+    uint32_t desired = expected + 1;
+    // assume we never get read counter overflow
+
+    bool success = _lock.compare_exchange_strong(expected, desired);
+    if (success) {
+      return true;
+    }
+    attempt++;
+    // TODO: exponential back-off for failure?
+  }
+
+  return false;
+}
+
+bool TableState::writeLock(int64_t maxTries) {
+  int64_t attempt = 0;
+  while (maxTries < 0 || attempt < maxTries) {
+    // first try to set the write flag
+    uint32_t expected =
+        _lock.load() & (~static_cast<uint32_t>(LockMask::write));
+    uint32_t desired = expected | static_cast<uint32_t>(LockMask::write);
+    bool success = _lock.compare_exchange_strong(expected, desired);
+    if (success) {
+      // now wait for the readers to finish
+      while ((maxTries < 0 || attempt < maxTries) &&
+             (_lock.load() & static_cast<uint32_t>(LockMask::read)) > 0) {
+        attempt++;
+        std::this_thread::yield();
+        continue;
+      }
+      if ((_lock.load() & static_cast<uint32_t>(LockMask::read)) > 0) {
+        // too many attempts, unset write flag and bail out
+        _lock &= ~static_cast<uint32_t>(LockMask::write);
+        return false;
+      }
+      return true;  // locked!
+    }
+    attempt++;
+  }
+
+  return false;
+}
+
+void TableState::unlock() {
+  TRI_ASSERT(isLocked());
+  while (true) {
+    uint32_t expected = _lock.load();
+    uint32_t desired = (expected == static_cast<uint32_t>(LockMask::write))
+                           ? 0
+                           : (expected - 1);
+    bool success = _lock.compare_exchange_strong(expected, desired);
+    if (success) {
+      break;
+    }
+  }
+}
+
+bool TransactionManagerState::readLock(int64_t maxTries) {
+  int64_t attempt = 0;
+  while (maxTries < 0 || attempt < maxTries) {
+    // expect not write-locked, not read-saturated
+    uint32_t expected =
+        _lock.load() & (~static_cast<uint32_t>(LockMask::write));
+    uint32_t desired = expected + 1;
+    // assume we never get read counter overflow
+
+    bool success = _lock.compare_exchange_strong(expected, desired);
+    if (success) {
+      return true;
+    }
+    attempt++;
+    // TODO: exponential back-off for failure?
+  }
+
+  return false;
+}
+
+bool TransactionManagerState::writeLock(int64_t maxTries) {
+  int64_t attempt = 0;
+  while (maxTries < 0 || attempt < maxTries) {
+    // first try to set the write flag
+    uint32_t expected =
+        _lock.load() & (~static_cast<uint32_t>(LockMask::write));
+    uint32_t desired = expected | static_cast<uint32_t>(LockMask::write);
+    bool success = _lock.compare_exchange_strong(expected, desired);
+    if (success) {
+      // now wait for the readers to finish
+      while ((maxTries < 0 || attempt < maxTries) &&
+             (_lock.load() & static_cast<uint32_t>(LockMask::read)) > 0) {
+        attempt++;
+        std::this_thread::yield();
+        continue;
+      }
+      if ((_lock.load() & static_cast<uint32_t>(LockMask::read)) > 0) {
+        // too many attempts, unset write flag and bail out
+        _lock &= ~static_cast<uint32_t>(LockMask::write);
+        return false;
+      }
+      return true;  // locked!
+    }
+    attempt++;
+  }
+
+  return false;
+}
+
+void TransactionManagerState::unlock() {
+  TRI_ASSERT(isLocked());
+  while (true) {
+    uint32_t expected = _lock.load();
+    uint32_t desired = (expected == static_cast<uint32_t>(LockMask::write))
+                           ? 0
+                           : (expected - 1);
+    bool success = _lock.compare_exchange_strong(expected, desired);
+    if (success) {
+      break;
+    }
+  }
 }

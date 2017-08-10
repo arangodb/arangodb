@@ -32,12 +32,12 @@
 using namespace arangodb::cache;
 
 TransactionalBucket::TransactionalBucket() {
-  _state.lock(false);
+  _state.lock();
   clear();
 }
 
 bool TransactionalBucket::lock(int64_t maxTries) {
-  return _state.lock(false, maxTries);
+  return _state.lock(maxTries);
 }
 
 void TransactionalBucket::unlock() {
@@ -49,12 +49,12 @@ bool TransactionalBucket::isLocked() const { return _state.isLocked(); }
 
 bool TransactionalBucket::isMigrated() const {
   TRI_ASSERT(isLocked());
-  return _state.isSet(State::Flag::migrated);
+  return _state.isSet(BucketState::Flag::migrated);
 }
 
 bool TransactionalBucket::isFullyBlacklisted() const {
   TRI_ASSERT(isLocked());
-  return (haveOpenTransaction() && _state.isSet(State::Flag::blacklisted));
+  return (haveOpenTransaction() && _state.isSet(BucketState::Flag::blacklisted));
 }
 
 bool TransactionalBucket::isFull() const {
@@ -143,7 +143,7 @@ CachedValue* TransactionalBucket::blacklist(uint32_t hash, void const* key,
   }
 
   // no empty slot found, fully blacklist
-  _state.toggleFlag(State::Flag::blacklisted);
+  _state.toggleFlag(BucketState::Flag::blacklisted);
   return value;
 }
 
@@ -207,7 +207,7 @@ void TransactionalBucket::updateBlacklistTerm(uint64_t term) {
     _blacklistTerm = term;
 
     if (isFullyBlacklisted()) {
-      _state.toggleFlag(State::Flag::blacklisted);
+      _state.toggleFlag(BucketState::Flag::blacklisted);
     }
 
     memset(_blacklistHashes, 0, (slotsBlacklist * sizeof(uint32_t)));

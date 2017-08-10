@@ -21,8 +21,8 @@
 /// @author Daniel H. Larkin
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_CACHE_STATE_H
-#define ARANGODB_CACHE_STATE_H
+#ifndef ARANGODB_CACHE_BUCKET_STATE_H
+#define ARANGODB_CACHE_BUCKET_STATE_H
 
 #include "Basics/Common.h"
 
@@ -43,7 +43,9 @@ namespace cache {
 /// are treated uniformly, and can be checked or toggled. Each flag is defined
 /// via an enum and must correspond to exactly one set bit.
 ////////////////////////////////////////////////////////////////////////////////
-struct State {
+struct BucketState {
+  typedef std::function<void()> CallbackType;
+
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Flags which can be queried or toggled to reflect state.
   ///
@@ -54,52 +56,37 @@ struct State {
   /// ascending order.
   //////////////////////////////////////////////////////////////////////////////
   enum class Flag : uint32_t {
-    blacklisted = 0x00000100,
-    disabled = 0x00000200,
-    evictions = 0x00000400,
-    migrated = 0x00000800,
-    migrating = 0x00001000,
-    rebalancing = 0x00002000,
-    resizing = 0x00004000,
-    shutdown = 0x00008000,
-    shuttingDown = 0x00010000,
-  };
-
-  enum class LockMask : uint32_t {
-    read = 0x0fffffff,
-    write = 0x10000000,
-    any = 0x1fffffff,
+    locked = 0x00000001,
+    blacklisted = 0x00000002,
+    disabled = 0x00000004,
+    evictions = 0x00000008,
+    migrated = 0x00000010,
+    migrating = 0x00000020,
+    rebalancing = 0x00000040,
+    resizing = 0x00000080,
+    shutdown = 0x00000100,
+    shuttingDown = 0x00000200,
   };
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Initializes state with no flags set and unlocked
   //////////////////////////////////////////////////////////////////////////////
-  State();
+  BucketState();
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Initializes state to match another
   //////////////////////////////////////////////////////////////////////////////
-  State(State const& other);
+  BucketState(BucketState const& other);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Initializes state to match another
   //////////////////////////////////////////////////////////////////////////////
-  State& operator=(State const& other);
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief Virtual destructor for compiler compliance.
-  //////////////////////////////////////////////////////////////////////////////
-  virtual ~State();
+  BucketState& operator=(BucketState const& other);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Checks if state is locked.
   //////////////////////////////////////////////////////////////////////////////
   bool isLocked() const;
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief Checks if state is locked for writing.
-  //////////////////////////////////////////////////////////////////////////////
-  bool isWriteLocked() const;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Used to lock state. Returns true if locked, false otherwise.
@@ -110,95 +97,36 @@ struct State {
   /// locked or not. The optional second parameter is a function which will be
   /// called upon successfully locking the state.
   //////////////////////////////////////////////////////////////////////////////
-  virtual bool readLock(int64_t maxTries = -1LL);
-  virtual bool writeLock(int64_t maxTries = -1LL);
+  bool lock(int64_t maxTries = -1LL, BucketState::CallbackType cb = []() -> void {});
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Unlocks the state. Requires state to be locked.
   //////////////////////////////////////////////////////////////////////////////
-  virtual void unlock();
+  void unlock();
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Checks whether the given flag is set. Requires state to be locked.
   //////////////////////////////////////////////////////////////////////////////
-  bool isSet(State::Flag flag) const;
-  bool isSet(State::Flag flag1, State::Flag flag2) const;
+  bool isSet(BucketState::Flag flag) const;
+  bool isSet(BucketState::Flag flag1, BucketState::Flag flag2) const;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Toggles the given flag. Requires state to be locked.
   //////////////////////////////////////////////////////////////////////////////
-  void toggleFlag(State::Flag flag);
+  void toggleFlag(BucketState::Flag flag);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Unsets all flags besides Flag::locked. Requires state to be locked.
   //////////////////////////////////////////////////////////////////////////////
   void clear();
 
- protected:
+ private:
   std::atomic<uint32_t> _state;
-  std::atomic<uint32_t> _lock;
 };
 
-struct ManagerState : public State {
-  ManagerState() : State() {}
-  ManagerState(ManagerState const& other) : State(other) {}
-  ManagerState& operator=(ManagerState const& other) {
-    State::operator=(other);
-    return *this;
-  }
-  virtual bool readLock(int64_t maxTries = -1LL) override;
-  virtual bool writeLock(int64_t maxTries = -1LL) override;
-  virtual void unlock() override;
-};
-
-struct CacheState : public State {
-  CacheState() : State() {}
-  CacheState(CacheState const& other) : State(other) {}
-  CacheState& operator=(CacheState const& other) {
-    State::operator=(other);
-    return *this;
-  }
-  virtual bool readLock(int64_t maxTries = -1LL) override;
-  virtual bool writeLock(int64_t maxTries = -1LL) override;
-  virtual void unlock() override;
-};
-
-struct MetadataState : public State {
-  MetadataState() : State() {}
-  MetadataState(MetadataState const& other) : State(other) {}
-  MetadataState& operator=(MetadataState const& other) {
-    State::operator=(other);
-    return *this;
-  }
-  virtual bool readLock(int64_t maxTries = -1LL) override;
-  virtual bool writeLock(int64_t maxTries = -1LL) override;
-  virtual void unlock() override;
-};
-
-struct TableState : public State {
-  TableState() : State() {}
-  TableState(TableState const& other) : State(other) {}
-  TableState& operator=(TableState const& other) {
-    State::operator=(other);
-    return *this;
-  }
-  virtual bool readLock(int64_t maxTries = -1LL) override;
-  virtual bool writeLock(int64_t maxTries = -1LL) override;
-  virtual void unlock() override;
-};
-
-struct TransactionManagerState : public State {
-  TransactionManagerState() : State() {}
-  TransactionManagerState(TransactionManagerState const& other)
-      : State(other) {}
-  TransactionManagerState& operator=(TransactionManagerState const& other) {
-    State::operator=(other);
-    return *this;
-  }
-  virtual bool readLock(int64_t maxTries = -1LL) override;
-  virtual bool writeLock(int64_t maxTries = -1LL) override;
-  virtual void unlock() override;
-};
+// ensure that state is exactly the size of uint32_t
+static_assert(sizeof(BucketState) == sizeof(uint32_t),
+              "Expected sizeof(BucketState) == sizeof(uint32_t).");
 
 };  // end namespace cache
 };  // end namespace arangodb

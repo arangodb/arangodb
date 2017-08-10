@@ -175,6 +175,7 @@ SET(ARANGOD_SOURCES
   Aql/VariableGenerator.cpp
   Aql/grammar.cpp
   Aql/tokens.cpp
+  Cache/BucketState.cpp
   Cache/Cache.cpp
   Cache/CacheManagerFeature.cpp
   Cache/CacheManagerFeatureThreads.cpp

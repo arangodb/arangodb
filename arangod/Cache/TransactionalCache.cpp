@@ -91,7 +91,7 @@ Result TransactionalCache::insert(CachedValue* value) {
           change -= candidate->size();
         }
 
-        _metadata.lock(false);
+        _metadata.writeLock();
         allowed = _metadata.adjustUsageIfAllowed(change);
         _metadata.unlock();
 
@@ -144,7 +144,7 @@ Result TransactionalCache::remove(void const* key, uint32_t keySize) {
     if (candidate != nullptr) {
       int64_t change = -static_cast<int64_t>(candidate->size());
 
-      _metadata.lock(false);
+      _metadata.writeLock();
       bool allowed = _metadata.adjustUsageIfAllowed(change);
       TRI_ASSERT(allowed);
       _metadata.unlock();
@@ -179,7 +179,7 @@ Result TransactionalCache::blacklist(void const* key, uint32_t keySize) {
     if (candidate != nullptr) {
       int64_t change = -static_cast<int64_t>(candidate->size());
 
-      _metadata.lock(false);
+      _metadata.writeLock();
       bool allowed = _metadata.adjustUsageIfAllowed(change);
       TRI_ASSERT(allowed);
       _metadata.unlock();
@@ -223,7 +223,7 @@ TransactionalCache::TransactionalCache(Cache::ConstructionGuard guard,
 }
 
 TransactionalCache::~TransactionalCache() {
-  _state.lock(true);
+  _state.readLock();
   if (!_state.isSet(State::Flag::shutdown)) {
     _state.unlock();
     shutdown();
@@ -292,7 +292,7 @@ void TransactionalCache::migrateBucket(void* sourcePtr,
     targets->applyToAllBuckets([](void* ptr) -> bool {
       auto targetBucket = reinterpret_cast<TransactionalBucket*>(ptr);
       if (!targetBucket->isFullyBlacklisted()) {
-        targetBucket->_state.toggleFlag(State::Flag::blacklisted);
+        targetBucket->_state.toggleFlag(BucketState::Flag::blacklisted);
       }
       return true;
     });
@@ -364,7 +364,7 @@ void TransactionalCache::migrateBucket(void* sourcePtr,
   });
 
   // finish up this bucket's migration
-  source->_state.toggleFlag(State::Flag::migrated);
+  source->_state.toggleFlag(BucketState::Flag::migrated);
   source->unlock();
 }
 
@@ -375,7 +375,7 @@ TransactionalCache::getBucket(uint32_t hash, int64_t maxTries,
   TransactionalBucket* bucket = nullptr;
   std::shared_ptr<Table> source(nullptr);
 
-  bool ok = _state.lock(true, maxTries);
+  bool ok = _state.readLock(maxTries);
   if (ok) {
     bool started = false;
     ok = isOperational();
@@ -419,7 +419,7 @@ Table::BucketClearer TransactionalCache::bucketClearer(Metadata* metadata) {
       if (bucket->_cachedData[j] != nullptr) {
         uint64_t size = bucket->_cachedData[j]->size();
         freeValue(bucket->_cachedData[j]);
-        metadata->lock(false);
+        metadata->writeLock();
         metadata->adjustUsageIfAllowed(-static_cast<int64_t>(size));
         metadata->unlock();
       }
