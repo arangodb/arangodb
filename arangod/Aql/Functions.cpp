@@ -1182,7 +1182,7 @@ AqlValue Functions::CharLength(arangodb::aql::Query* query,
 }
 
 // #include "unicode/utypes.h"
-// #include "unicode/uchar.h"
+#include "unicode/uchar.h"
 // #include "unicode/locid.h"
 // #include "unicode/ustring.h"
 // #include "unicode/ucnv.h"
@@ -1228,6 +1228,125 @@ AqlValue Functions::Upper(arangodb::aql::Query* query,
   s.toUpper(NULL);
   s.toUTF8String(utf8);
 
+  return AqlValue(utf8.c_str(), utf8.length());
+}
+
+/// @brief function LEFT str, lenght
+AqlValue Functions::Left(arangodb::aql::Query* query,
+                         transaction::Methods* trx,
+                         VPackFunctionParameters const& parameters) {
+  ValidateParameters(parameters, "LEFT", 2, 2);
+
+  AqlValue value = ExtractFunctionParameterValue(trx, parameters, 0);
+  uint32_t length = static_cast<int32_t>(ExtractFunctionParameterValue(trx, parameters, 1).toInt64(trx));
+
+  std::string utf8;
+  transaction::StringBufferLeaser buffer(trx);
+  arangodb::basics::VPackStringBufferAdapter adapter(buffer->stringBuffer());
+
+  AppendAsString(trx, adapter, value);
+
+  UnicodeString s(buffer->c_str(), buffer->length());
+  UnicodeString left = s.tempSubString(0, s.moveIndex32(0, length));
+
+  left.toUTF8String(utf8);
+  return AqlValue(utf8.c_str(), utf8.length());
+}
+
+#include "Logger/Logger.h"
+#include <iostream>
+
+/// @brief function RIGHT
+AqlValue Functions::Right(arangodb::aql::Query* query,
+                         transaction::Methods* trx,
+                         VPackFunctionParameters const& parameters) {
+  ValidateParameters(parameters, "RIGHT", 2, 2);
+
+  AqlValue value = ExtractFunctionParameterValue(trx, parameters, 0);
+  uint32_t length = static_cast<int32_t>(ExtractFunctionParameterValue(trx, parameters, 1).toInt64(trx));
+
+  std::string utf8;
+  transaction::StringBufferLeaser buffer(trx);
+  arangodb::basics::VPackStringBufferAdapter adapter(buffer->stringBuffer());
+
+  AppendAsString(trx, adapter, value);
+
+  UnicodeString s(buffer->c_str(), buffer->length());
+  UnicodeString right = s.tempSubString(s.moveIndex32(s.length(), -length));
+
+  right.toUTF8String(utf8);
+  return AqlValue(utf8.c_str(), utf8.length());
+}
+
+/// @brief function TRIM
+AqlValue Functions::Trim(arangodb::aql::Query* query,
+                         transaction::Methods* trx,
+                         VPackFunctionParameters const& parameters) {
+  ValidateParameters(parameters, "TRIM", 2, 2);
+
+  AqlValue value = ExtractFunctionParameterValue(trx, parameters, 0);
+  transaction::StringBufferLeaser buffer(trx);
+  arangodb::basics::VPackStringBufferAdapter adapter(buffer->stringBuffer());
+
+  AppendAsString(trx, adapter, value);
+  UnicodeString s(buffer->c_str(), buffer->length());
+
+  UErrorCode errorCode;
+
+  UnicodeString whitespace("\r\n\t ");
+  UChar32 spaceChars[4];
+
+  whitespace.toUTF32(spaceChars, 4, errorCode);
+
+
+  // std::cout << "errorCode " << errorCode << std::endl;
+
+
+  uint32_t startOffset = 0, endOffset = s.length();
+
+  for (uint32_t codeUnitPos = 0; codeUnitPos < s.length(); codeUnitPos = s.moveIndex32(codeUnitPos, 1)) {
+    bool found = false;
+    for (uint32_t pos = 0; pos < 4; pos++) {
+
+      std::cout << "char32A(" << codeUnitPos << ") " << s.char32At(codeUnitPos) << " == spaceChars["<<pos<<"] " << spaceChars[pos] << std::endl;
+
+      if (s.char32At(codeUnitPos) == spaceChars[pos]) {
+        found = true;
+        break;
+      }
+    }
+
+    std::cout << "codeUnitPos " << codeUnitPos << std::endl;
+
+    if (!found) {
+      startOffset = codeUnitPos;
+      break;
+    };
+  } // for
+
+  std::cout << "start " << startOffset << std::endl;;
+
+  for (uint32_t codeUnitPos = s.moveIndex32(s.length(),0); startOffset < codeUnitPos; codeUnitPos = s.moveIndex32(codeUnitPos, -1)) {
+    bool found = false;
+    for (uint8_t pos = 0; pos < 4; pos++) {
+      if (s.char32At(codeUnitPos) == spaceChars[pos]) {
+        found = true;
+        break;
+      }
+    }
+
+    if (!found) {
+      endOffset = codeUnitPos;
+      break;
+    };
+  }
+
+  LOG_TOPIC(INFO, arangodb::Logger::FIXME) << "end " << endOffset;
+
+
+  UnicodeString result = s.tempSubString(startOffset, endOffset - startOffset);
+  std::string utf8;
+  result.toUTF8String(utf8);
   return AqlValue(utf8.c_str(), utf8.length());
 }
 

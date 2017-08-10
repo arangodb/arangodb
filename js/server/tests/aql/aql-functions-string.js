@@ -788,9 +788,11 @@ function ahuacatlStringFunctionsTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testLeft : function () {
-      var expected = [ 'fo', 'f', '', 'foo', 'foo', '', '', '', 'mö', 'mötö' ];
-      var actual = getQueryResults("FOR t IN [ [ 'foo', 2 ], [ 'foo', 1 ], [ 'foo', 0 ], [ 'foo', 4 ], [ 'foo', 999999999 ], [ '', 0 ], [ '', 1 ], [ '', 2 ], [ 'mötör', 2 ], [ 'mötör', 4 ] ] RETURN LEFT(t[0], t[1])");
-      assertEqual(expected, actual);
+      assertEqual([ 'cp', 'f', '', 'foo', 'foo', '', '', '', 'mö', 'mötö', '😰2🤓'],
+      getQueryResults("FOR t IN [ [ 'cpp', 2 ], [ 'foo', 1 ], [ 'foo', 0 ], [ 'foo', 4 ], [ 'foo', 999999999 ], [ '', 0 ], [ '', 1 ], [ '', 2 ], [ 'mötör', 2 ], [ 'mötör', 4 ], ['😰2🤓4🤡6😎8', 3] ] RETURN NOOPT(LEFT(t[0], t[1]))"));
+
+      assertEqual([ 'v8', 'f', '', 'foo', 'foo', '', '', '', 'mö', 'mötö', '😰2🤓'],
+      getQueryResults("FOR t IN [ [ 'v8v8', 2 ], [ 'foo', 1 ], [ 'foo', 0 ], [ 'foo', 4 ], [ 'foo', 999999999 ], [ '', 0 ], [ '', 1 ], [ '', 2 ], [ 'mötör', 2 ], [ 'mötör', 4 ], ['😰2🤓4🤡6😎8', 3] ] RETURN NOOPT(V8(LEFT(t[0], t[1])))"));
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -798,24 +800,59 @@ function ahuacatlStringFunctionsTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testLeftInvalid : function () {
-      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN LEFT()"); 
-      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN LEFT('foo')"); 
-      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN LEFT('foo', 2, 3)"); 
-      assertEqual([ "" ], getQueryResults("RETURN LEFT(null, 1)")); 
-      assertEqual([ "" ], getQueryResults("RETURN LEFT(null, 2)")); 
-      assertEqual([ "tr" ], getQueryResults("RETURN LEFT(true, 2)")); 
-      assertEqual([ "4" ], getQueryResults("RETURN LEFT(4, 2)")); 
-      assertEqual([ "[]" ], getQueryResults("RETURN LEFT([ ], 2)")); 
-      assertEqual([ "[" ], getQueryResults("RETURN LEFT([ ], 1)")); 
-      assertEqual([ "{}" ], getQueryResults("RETURN LEFT({ }, 2)")); 
-      assertEqual([ "{" ], getQueryResults("RETURN LEFT({ }, 1)")); 
-      assertEqual([ "" ], getQueryResults("RETURN LEFT('foo', null)")); 
-      assertEqual([ "f" ], getQueryResults("RETURN LEFT('foo', true)")); 
-      assertEqual([ "" ], getQueryResults("RETURN LEFT('foo', 'bar')")); 
-      assertEqual([ "" ], getQueryResults("RETURN LEFT('foo', [ ])")); 
-      assertEqual([ "" ], getQueryResults("RETURN LEFT('foo', { })")); 
-      assertEqual([ "" ], getQueryResults("RETURN LEFT('foo', -1)")); 
-      assertEqual([ "" ], getQueryResults("RETURN LEFT('foo', -1.5)")); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN NOOPT(LEFT())");
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN NOOPT(V8(LEFT()))");
+
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN NOOPT(LEFT('foo'))");
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN NOOPT(V8(LEFT('foo')))");
+
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN NOOPT(LEFT('foo', 2, 3))");
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN NOOPT(V8(LEFT('foo', 2, 3)))");
+
+      assertEqual([ "" ], getQueryResults("RETURN NOOPT(LEFT(null, 1))"));
+      assertEqual([ "" ], getQueryResults("RETURN NOOPT(V8(LEFT(null, 1)))"));
+
+      assertEqual([ "" ], getQueryResults("RETURN NOOPT(LEFT(null, 2))"));
+      assertEqual([ "" ], getQueryResults("RETURN NOOPT(V8(LEFT(null, 2)))"));
+
+      assertEqual([ "tr" ], getQueryResults("RETURN NOOPT(LEFT(true, 2))"));
+      assertEqual([ "tr" ], getQueryResults("RETURN NOOPT(V8(LEFT(true, 2)))"));
+
+      assertEqual([ "4" ], getQueryResults("RETURN NOOPT(LEFT(4, 2))"));
+      assertEqual([ "4" ], getQueryResults("RETURN NOOPT(V8(LEFT(4, 2)))"));
+
+      assertEqual([ "[]" ], getQueryResults("RETURN NOOPT(LEFT([ ], 2))"));
+      assertEqual([ "[]" ], getQueryResults("RETURN NOOPT(V8(LEFT([ ], 2)))"));
+
+      assertEqual([ "[" ], getQueryResults("RETURN NOOPT(LEFT([ ], 1))"));
+      assertEqual([ "[" ], getQueryResults("RETURN NOOPT(V8(LEFT([ ], 1)))"));
+
+      assertEqual([ "{}" ], getQueryResults("RETURN NOOPT(LEFT({ }, 2))"));
+      assertEqual([ "{}" ], getQueryResults("RETURN NOOPT(V8(LEFT({ }, 2)))"));
+
+      assertEqual([ "{" ], getQueryResults("RETURN NOOPT(LEFT({ }, 1))"));
+      assertEqual([ "{" ], getQueryResults("RETURN NOOPT(V8(LEFT({ }, 1)))"));
+
+      assertEqual([ "" ], getQueryResults("RETURN NOOPT(LEFT('foo', null))"));
+      assertEqual([ "" ], getQueryResults("RETURN NOOPT(V8(LEFT('foo', null)))"));
+
+      assertEqual([ "f" ], getQueryResults("RETURN NOOPT(LEFT('foo', true))"));
+      assertEqual([ "f" ], getQueryResults("RETURN NOOPT(V8(LEFT('foo', true)))"));
+
+      assertEqual([ "" ], getQueryResults("RETURN NOOPT(LEFT('foo', 'bar'))"));
+      assertEqual([ "" ], getQueryResults("RETURN NOOPT(V8(LEFT('foo', 'bar')))"));
+
+      assertEqual([ "" ], getQueryResults("RETURN NOOPT(LEFT('foo', [ ]))"));
+      assertEqual([ "" ], getQueryResults("RETURN NOOPT(V8(LEFT('foo', [ ])))"));
+
+      assertEqual([ "" ], getQueryResults("RETURN NOOPT(LEFT('foo', { }))"));
+      assertEqual([ "" ], getQueryResults("RETURN NOOPT(V8(LEFT('foo', { })))"));
+
+      assertEqual([ "" ], getQueryResults("RETURN NOOPT(LEFT('foo', -1))"));
+      assertEqual([ "" ], getQueryResults("RETURN NOOPT(V8(LEFT('foo', -1)))"));
+
+      assertEqual([ "" ], getQueryResults("RETURN NOOPT(LEFT('foo', -1.5))"));
+      assertEqual([ "" ], getQueryResults("RETURN NOOPT(V8(LEFT('foo', -1.5)))"));
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -823,9 +860,11 @@ function ahuacatlStringFunctionsTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testRight : function () {
-      var expected = [ 'oo', 'o', '', 'foo', 'foo', '', '', '', 'ör', 'ötör' ];
-      var actual = getQueryResults("FOR t IN [ [ 'foo', 2 ], [ 'foo', 1 ], [ 'foo', 0 ], [ 'foo', 4 ], [ 'foo', 999999999 ], [ '', 0 ], [ '', 1 ], [ '', 2 ], [ 'mötör', 2 ], [ 'mötör', 4 ] ] RETURN RIGHT(t[0], t[1])");
-      assertEqual(expected, actual);
+      assertEqual([ 'pc', 'o', '', 'foo', 'foo', '', '', '', 'ör', 'ötör', '6😎8'],
+      getQueryResults("FOR t IN [ [ 'ppc', 2 ], [ 'foo', 1 ], [ 'foo', 0 ], [ 'foo', 4 ], [ 'foo', 999999999 ], [ '', 0 ], [ '', 1 ], [ '', 2 ], [ 'mötör', 2 ], [ 'mötör', 4 ], ['😰2🤓4🤡6😎8', 3] ] RETURN NOOPT(RIGHT(t[0], t[1]))"));
+
+      assertEqual([ 'v8', 'o', '', 'foo', 'foo', '', '', '', 'ör', 'ötör', '6😎8'],
+      getQueryResults("FOR t IN [ [ 'v8v8', 2 ], [ 'foo', 1 ], [ 'foo', 0 ], [ 'foo', 4 ], [ 'foo', 999999999 ], [ '', 0 ], [ '', 1 ], [ '', 2 ], [ 'mötör', 2 ], [ 'mötör', 4 ], ['😰2🤓4🤡6😎8', 3] ] RETURN NOOPT(V8(RIGHT(t[0], t[1])))"));
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -833,24 +872,59 @@ function ahuacatlStringFunctionsTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testRightInvalid : function () {
-      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN RIGHT()"); 
-      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN RIGHT('foo')"); 
-      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN RIGHT('foo', 2, 3)"); 
-      assertEqual([ "" ], getQueryResults("RETURN RIGHT(null, 1)")); 
-      assertEqual([ "" ], getQueryResults("RETURN RIGHT(null, 2)")); 
-      assertEqual([ "ue" ], getQueryResults("RETURN RIGHT(true, 2)")); 
-      assertEqual([ "4" ], getQueryResults("RETURN RIGHT(4, 2)")); 
-      assertEqual([ "[]" ], getQueryResults("RETURN RIGHT([ ], 2)")); 
-      assertEqual([ "]" ], getQueryResults("RETURN RIGHT([ ], 1)")); 
-      assertEqual([ "{}" ], getQueryResults("RETURN RIGHT({ }, 2)")); 
-      assertEqual([ "}" ], getQueryResults("RETURN RIGHT({ }, 1)")); 
-      assertEqual([ "" ], getQueryResults("RETURN RIGHT('foo', null)")); 
-      assertEqual([ "o" ], getQueryResults("RETURN RIGHT('foo', true)")); 
-      assertEqual([ "" ], getQueryResults("RETURN RIGHT('foo', 'bar')")); 
-      assertEqual([ "" ], getQueryResults("RETURN RIGHT('foo', [ ])")); 
-      assertEqual([ "" ], getQueryResults("RETURN RIGHT('foo', { })")); 
-      assertEqual([ "" ], getQueryResults("RETURN RIGHT('foo', -1)")); 
-      assertEqual([ "" ], getQueryResults("RETURN RIGHT('foo', -1.5)")); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN NOOPT(RIGHT())");
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN NOOPT(V8(RIGHT()))");
+
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN NOOPT(RIGHT('foo'))");
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN NOOPT(V8(RIGHT('foo')))");
+
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN NOOPT(RIGHT('foo', 2, 3))");
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN NOOPT(V8(RIGHT('foo', 2, 3)))");
+
+      assertEqual([ "" ], getQueryResults("RETURN NOOPT(RIGHT(null, 1))"));
+      assertEqual([ "" ], getQueryResults("RETURN NOOPT(V8(RIGHT(null, 1)))"));
+
+      assertEqual([ "" ], getQueryResults("RETURN NOOPT(RIGHT(null, 2))"));
+      assertEqual([ "" ], getQueryResults("RETURN NOOPT(V8(RIGHT(null, 2)))"));
+
+      assertEqual([ "ue" ], getQueryResults("RETURN NOOPT(RIGHT(true, 2))"));
+      assertEqual([ "ue" ], getQueryResults("RETURN NOOPT(V8(RIGHT(true, 2)))"));
+
+      assertEqual([ "4" ], getQueryResults("RETURN NOOPT(RIGHT(4, 2))"));
+      assertEqual([ "4" ], getQueryResults("RETURN NOOPT(V8(RIGHT(4, 2)))"));
+
+      assertEqual([ "[]" ], getQueryResults("RETURN NOOPT(RIGHT([ ], 2))"));
+      assertEqual([ "[]" ], getQueryResults("RETURN NOOPT(V8(RIGHT([ ], 2)))"));
+
+      assertEqual([ "]" ], getQueryResults("RETURN NOOPT(RIGHT([ ], 1))"));
+      assertEqual([ "]" ], getQueryResults("RETURN NOOPT(V8(RIGHT([ ], 1)))"));
+
+      assertEqual([ "{}" ], getQueryResults("RETURN NOOPT(RIGHT({ }, 2))"));
+      assertEqual([ "{}" ], getQueryResults("RETURN NOOPT(V8(RIGHT({ }, 2)))"));
+
+      assertEqual([ "}" ], getQueryResults("RETURN NOOPT(RIGHT({ }, 1))"));
+      assertEqual([ "}" ], getQueryResults("RETURN NOOPT(V8(RIGHT({ }, 1)))"));
+
+      assertEqual([ "" ], getQueryResults("RETURN NOOPT(RIGHT('foo', null))"));
+      assertEqual([ "" ], getQueryResults("RETURN NOOPT(V8(RIGHT('foo', null)))"));
+
+      assertEqual([ "o" ], getQueryResults("RETURN NOOPT(RIGHT('foo', true))"));
+      assertEqual([ "o" ], getQueryResults("RETURN NOOPT(V8(RIGHT('foo', true)))"));
+
+      assertEqual([ "" ], getQueryResults("RETURN NOOPT(RIGHT('foo', 'bar'))"));
+      assertEqual([ "" ], getQueryResults("RETURN NOOPT(V8(RIGHT('foo', 'bar')))"));
+
+      assertEqual([ "" ], getQueryResults("RETURN NOOPT(RIGHT('foo', [ ]))"));
+      assertEqual([ "" ], getQueryResults("RETURN NOOPT(V8(RIGHT('foo', [ ])))"));
+
+      assertEqual([ "" ], getQueryResults("RETURN NOOPT(RIGHT('foo', { }))"));
+      assertEqual([ "" ], getQueryResults("RETURN NOOPT(V8(RIGHT('foo', { })))"));
+
+      assertEqual([ "" ], getQueryResults("RETURN NOOPT(RIGHT('foo', -1))"));
+      assertEqual([ "" ], getQueryResults("RETURN NOOPT(V8(RIGHT('foo', -1)))"));
+
+      assertEqual([ "" ], getQueryResults("RETURN NOOPT(RIGHT('foo', -1.5))"));
+      assertEqual([ "" ], getQueryResults("RETURN NOOPT(V8(RIGHT('foo', -1.5)))"));
     },
 
 ////////////////////////////////////////////////////////////////////////////////
