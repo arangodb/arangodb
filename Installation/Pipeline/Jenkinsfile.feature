@@ -551,7 +551,6 @@ def testStep(edition, os, mode, engine) {
                 catch (exc) {
                     echo "Exception while testing!"
                     echo exc.toString()
-                    exc.printStackTrace()
                     testsSuccess[name] = false
                     allTestsSuccessful = false
                     throw exc
