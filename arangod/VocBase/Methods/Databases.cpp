@@ -463,8 +463,8 @@ arangodb::Result Databases::drop(TRI_vocbase_t* systemVocbase,
   }
 
   auto auth = FeatureCacheFeature::instance()->authenticationFeature();
-  if (auth->isActive() && (ServerState::instance()->isCoordinator() ||
-                           !ServerState::instance()->isRunningInCluster())) {
+  if (ServerState::instance()->isCoordinator() ||
+      !ServerState::instance()->isRunningInCluster()) {
     auth->authInfo()->enumerateUsers(
         [&](AuthUserEntry& entry) { entry.removeDatabase(dbName); });
   }

@@ -375,13 +375,19 @@
         self.modalBindValidation(row);
         if (row.type === self.tables.SELECT2) {
           // handle select2
-          $('#' + row.id).select2({
+
+          var options = {
             tags: row.tags || [],
             showSearchBox: false,
             minimumResultsForSearch: -1,
-            width: '336px',
-            maximumSelectionSize: row.maxEntrySize || 8
-          });
+            width: '336px'
+          };
+
+          if (row.maxEntrySize) {
+            options.maximumSelectionSize = row.maxEntrySize;
+          }
+
+          $('#' + row.id).select2(options);
         }
       });
 
