@@ -483,12 +483,9 @@ def testEdition(edition, os, mode, engine) {
                 sh "cp -a build/bin/* ${arch}" 
             }
             else if (os == 'windows') {
-                //bat "move logs ${arch}"
-                //bat "move log-output ${arch}"
-                bat "copy .\\build\\bin\\*.dmp ${arch}"
-                bat "copy .\\build\\bin\\*.exe ${arch}"
-                bat "copy .\\build\\bin\\*.pdb ${arch}"
-                bat "copy .\\build\\bin\\*.ilk ${arch}"
+                powershell "move-item -Force -ErrorAction Ignore logs ${arch}"
+                powershell "move-item -Force -ErrorAction Ignore log-output ${arch}"
+                powershell "Copy-Item .\\build\\bin\\* -Include *.exe,*.pdb,*.ilk,*.dmp ${arch}"
             }
         }
     }
