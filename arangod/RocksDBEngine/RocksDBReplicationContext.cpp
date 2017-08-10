@@ -285,7 +285,12 @@ arangodb::Result RocksDBReplicationContext::dumpKeys(
       static_cast<RocksDBSortedAllIterator*>(_iter.get());
 
   // Position the iterator correctly
+  if (chunk != 0 && ((std::numeric_limits<std::size_t>::max() / chunk) < chunkSize)) {
+    return rv.reset(TRI_ERROR_BAD_PARAMETER, "It seems that your chunk / chunkSize combination is not valid - overflow");
+  }
+
   size_t from = chunk * chunkSize;
+
   if (from != _lastIteratorOffset) {
     if (!lowKey.empty()) {
       primary->seek(StringRef(lowKey));
@@ -295,6 +300,7 @@ arangodb::Result RocksDBReplicationContext::dumpKeys(
         _iter->reset();
         _lastIteratorOffset = 0;
       }
+
       if (from > _lastIteratorOffset) {
         TRI_ASSERT(from >= chunkSize);
         uint64_t diff = from - _lastIteratorOffset;
@@ -302,7 +308,11 @@ arangodb::Result RocksDBReplicationContext::dumpKeys(
         _iter->skip(diff, to);
         _lastIteratorOffset += to;
       }
-      TRI_ASSERT(_lastIteratorOffset == from);
+
+      //TRI_ASSERT(_lastIteratorOffset == from);
+      if(_lastIteratorOffset != from){
+        return rv.reset(TRI_ERROR_BAD_PARAMETER, "It seems that your chunk / chunkSize combination is not valid");
+      }
     }
   }
 
@@ -332,14 +342,25 @@ arangodb::Result RocksDBReplicationContext::dumpKeys(
 arangodb::Result RocksDBReplicationContext::dumpDocuments(
     VPackBuilder& b, size_t chunk, size_t chunkSize, std::string const& lowKey,
     VPackSlice const& ids) {
+  Result rv;
+
   TRI_ASSERT(_trx);
+
+  if(!_iter){
+    return rv.reset(TRI_ERROR_BAD_PARAMETER, "the replication context interator has not been initialized");
+  }
+
   TRI_ASSERT(_iter);
   RocksDBSortedAllIterator* primary =
       static_cast<RocksDBSortedAllIterator*>(_iter.get());
 
   // Position the iterator must be reset to the beginning
   // after calls to dumpKeys moved it forwards
+  if (chunk != 0 && ((std::numeric_limits<std::size_t>::max() / chunk) < chunkSize)) {
+    return rv.reset(TRI_ERROR_BAD_PARAMETER, "It seems that your chunk / chunkSize combination is not valid - overflow");
+  }
   size_t from = chunk * chunkSize;
+
   if (from != _lastIteratorOffset) {
     if (!lowKey.empty()) {
       primary->seek(StringRef(lowKey));
@@ -357,7 +378,10 @@ arangodb::Result RocksDBReplicationContext::dumpDocuments(
         _lastIteratorOffset += to;
         TRI_ASSERT(to == diff);
       }
-      TRI_ASSERT(_lastIteratorOffset == from);
+
+      if(_lastIteratorOffset != from){
+        return rv.reset(TRI_ERROR_BAD_PARAMETER, "It seems that your chunk / chunkSize combination results in an invalid from");
+      }
     }
   }
 

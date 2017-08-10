@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false, maxlen: 5000 */
-/*global arango, assertEqual */
+/*global arango, assertEqual, assertTrue*/
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test the replication interface
@@ -37,8 +37,8 @@ function ReplicationApiSuite () {
 
   var cn = "UnitTestsCollection";
   var collection = null;
-  var isRocksDB = ( db._engine().name === "rocksdb" )
-  var batchesToFree=[]
+  var isRocksDB = ( db._engine().name === "rocksdb" );
+  var batchesToFree = [];
 
   return {
 
@@ -50,7 +50,7 @@ function ReplicationApiSuite () {
       db._drop(cn);
       collection = db._create(cn);
       for(var i = 0; i < 100; i++){
-        collection.insert({"number":i})
+        collection.insert({"number":i});
       }
     },
 
@@ -102,23 +102,52 @@ function ReplicationApiSuite () {
       assertEqual(200, result.code);
       var batchObj = JSON.parse(result.body);
       assertTrue(batchObj.hasOwnProperty("id"));
-      batchesToFree.push(batchObj.id)
+      batchesToFree.push(batchObj.id);
 
       // create keys
-      var result = arango.POST_RAW("/_api/replication/keys?collection=" + cn + 
+      result = arango.POST_RAW("/_api/replication/keys?collection=" + cn + 
                                    "&batchId=" + batchObj.id, JSON.stringify(doc));
       assertEqual(200, result.code);
       var keysObj = JSON.parse(result.body);
-      //print("##############################################")
-      //print(keysObj)
       assertTrue(keysObj.hasOwnProperty("count"));
-      assertTrue(keysObj.count == 100);
+      assertTrue(keysObj.hasOwnProperty("id"));
+      assertTrue(keysObj.count === 100);
+
+      // fetch keys
+      result = arango.PUT_RAW("/_api/replication/keys/"+ batchObj.id +
+                              "?collection=" + cn +
+                              "&type=keys"
+                             ,JSON.stringify(doc)
+                             );
+
+      assertEqual(200, result.code);
+      keysObj = JSON.parse(result.body);
+      assertTrue(Array.isArray(keysObj));
+
+      result = arango.PUT_RAW("/_api/replication/keys/"+ batchObj.id +
+                              "?collection=" + cn +
+                              "&type=keys" +
+                              "&chunk=" + Math.pow(2,60) +
+                              "&chunkSize=" + Math.pow(2,60)
+                             ,JSON.stringify(doc)
+                             );
+      assertEqual(400, result.code);
+
+      // iterator should be invalid
+      result = arango.PUT_RAW("/_api/replication/keys/"+ batchObj.id +
+                              "?collection=" + cn +
+                              "&type=keys" +
+                              "&chunk=" + 5 +
+                              "&chunkSize=" + 2000
+                             ,JSON.stringify(doc)
+                             );
+      assertEqual(400, result.code);
 
       // delete batch
       result = arango.DELETE_RAW("/_api/replication/batch/"+ batchObj.id, "");
-      //print(result.body)
       assertEqual(204, result.code);
-      batchesToFree.pop()
+
+      batchesToFree.pop();
 
     }
 

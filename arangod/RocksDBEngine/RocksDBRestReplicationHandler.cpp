@@ -998,9 +998,15 @@ void RocksDBRestReplicationHandler::handleCommandFetchKeys() {
   uint64_t batchId = arangodb::basics::StringUtils::uint64(id);
   bool busy;
   RocksDBReplicationContext* ctx = _manager->find(batchId, busy);
-  if (busy || ctx == nullptr) {
+  if (ctx == nullptr) {
     generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_CURSOR_NOT_FOUND,
-                  "batchId not specified");
+                  "batchId not specified or not found");
+    return;
+  }
+
+  if (busy) {
+    generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_CURSOR_NOT_FOUND,
+                  "batch is busy");
     return;
   }
   RocksDBReplicationContextGuard(_manager, ctx);
@@ -1010,7 +1016,11 @@ void RocksDBRestReplicationHandler::handleCommandFetchKeys() {
 
   VPackBuilder resultBuilder(transactionContext->getVPackOptions());
   if (keys) {
-    ctx->dumpKeys(resultBuilder, chunk, static_cast<size_t>(chunkSize), lowKey);
+    Result rv = ctx->dumpKeys(resultBuilder, chunk, static_cast<size_t>(chunkSize), lowKey);
+    if (rv.fail()){
+      generateError(rv);
+      return;
+    }
   } else {
     bool success;
     std::shared_ptr<VPackBuilder> parsedIds = parseVelocyPackBody(success);
@@ -1018,8 +1028,11 @@ void RocksDBRestReplicationHandler::handleCommandFetchKeys() {
       generateResult(rest::ResponseCode::BAD, VPackSlice());
       return;
     }
-    ctx->dumpDocuments(resultBuilder, chunk, static_cast<size_t>(chunkSize),
-                       lowKey, parsedIds->slice());
+    Result rv = ctx->dumpDocuments(resultBuilder, chunk, static_cast<size_t>(chunkSize), lowKey, parsedIds->slice());
+    if (rv.fail()){
+      generateError(rv);
+      return;
+    }
   }
 
   generateResult(rest::ResponseCode::OK, resultBuilder.slice(),
