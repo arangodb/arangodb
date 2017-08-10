@@ -31,6 +31,17 @@
 namespace arangodb {
 namespace iresearch {
 
+//////////////////////////////////////////////////////////////////////////////
+/// @brief extracts string_ref from an AstNode, note that provided 'node'
+///        must be an arangodb::aql::VALUE_TYPE_STRING
+/// @return extracted string_ref
+//////////////////////////////////////////////////////////////////////////////
+inline irs::string_ref getStringRef(arangodb::aql::AstNode const& node) {
+  TRI_ASSERT(arangodb::aql::VALUE_TYPE_STRING == node.value.type);
+
+  return irs::string_ref(node.getStringValue(), node.getStringLength());
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief tries to extract 'size_t' value from the specified AstNode 'node'
 /// @returns true on success, false otherwise
@@ -106,6 +117,73 @@ bool visit(arangodb::aql::AstNode const& root, Visitor visitor) {
   }
 
   return true;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief interprets the specified node as an attribute path description and
+///        visits the members in attribute path order calling the provided
+///        'visitor' on each path sub-index, expecting the following signatures:
+///          bool operator()(irs::string_ref) - string keys
+///          bool operator()(int64_t)         - array offsets
+///          bool operator()()                - any string key or numeric offset
+/// @return success and set head the the starting node of path (reference/value)
+////////////////////////////////////////////////////////////////////////////////
+template<typename T>
+bool visitAttributePath(
+  arangodb::aql::AstNode const*& head,
+  arangodb::aql::AstNode const& node,
+  T& visitor
+) {
+  if (node.numMembers() >= 2
+      && arangodb::aql::NODE_TYPE_EXPANSION == node.type) { // [*]
+    auto* itr = node.getMemberUnchecked(0);
+    auto* ref = node.getMemberUnchecked(1);
+
+    if (itr && itr->numMembers() == 2) {
+      auto* root = itr->getMemberUnchecked(1);
+      auto* var = itr->getMemberUnchecked(0);
+
+      return ref
+        && arangodb::aql::NODE_TYPE_ITERATOR == itr->type
+        && arangodb::aql::NODE_TYPE_REFERENCE == ref->type
+        && root && var
+        && arangodb::aql::NODE_TYPE_VARIABLE == var->type
+        && visitAttributePath(head, *root, visitor) // 1st visit root
+        && visitor(); // 2nd visit current node
+    }
+  } else if (node.numMembers() == 2
+             && arangodb::aql::NODE_TYPE_INDEXED_ACCESS == node.type) { // [<something>]
+    auto* root = node.getMemberUnchecked(0);
+    auto* offset = node.getMemberUnchecked(1);
+
+    if (offset && offset->isIntValue()) {
+      return root
+        && offset->getIntValue() >= 0
+        && visitAttributePath(head, *root, visitor) // 1st visit root
+        && visitor(offset->getIntValue()); // 2nd visit current node
+    }
+
+    return root && offset && offset->isStringValue()
+      && visitAttributePath(head, *root, visitor) // 1st visit root
+      && visitor(arangodb::iresearch::getStringRef(*offset)); // 2nd visit current node
+  } else if (node.numMembers() == 1
+             && arangodb::aql::NODE_TYPE_ATTRIBUTE_ACCESS == node.type) {
+    auto* root = node.getMemberUnchecked(0);
+
+    return root
+      && arangodb::aql::VALUE_TYPE_STRING == node.value.type
+      && visitAttributePath(head, *root, visitor) // 1st visit root
+      && visitor(arangodb::iresearch::getStringRef(node)); // 2nd visit current node
+  } else if (!node.numMembers()) { // end of attribute path (base case)
+    head = &node;
+
+    return arangodb::aql::NODE_TYPE_REFERENCE == node.type
+      || (arangodb::aql::NODE_TYPE_VALUE == node.type
+          && visitor(arangodb::iresearch::getStringRef(node))
+         );
+  }
+
+  return false;
 }
 
 struct NormalizedCmpNode {

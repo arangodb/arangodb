@@ -272,30 +272,108 @@ SECTION("test_query") {
   {
     // ArangoDB default type sort order:
     // null < bool < number < string < array/list < object/document
-    std::vector<size_t> const expected = { 9, 8, 7, 4, 5, 6, 1, 2, 3, 10, 11, 12 };
-    std::string query = "FOR d IN testCollection FILTER d.key >= 1 SORT 'testAttr' RETURN d";
 
-    assertOrderSuccess(*logicalView, query, "key", expected);
+    // string values
+    {
+      std::vector<size_t> const expected = { 9, 8, 7, 4, 5, 6, 1, 2, 3, 10, 11, 12 };
+      std::string query0 = "FOR d IN testCollection FILTER d.key >= 1 SORT 'testAttr' RETURN d";
+      std::string query1 = "FOR d IN testCollection FILTER d.key >= 1 SORT d['testAttr'] RETURN d";
+      std::string query2 = "FOR d IN testCollection FILTER d.key >= 1 SORT d.testAttr RETURN d";
+
+      assertOrderSuccess(*logicalView, query0, "key", expected);
+      assertOrderSuccess(*logicalView, query1, "key", expected);
+      assertOrderSuccess(*logicalView, query2, "key", expected);
+    }
+
+    // array values
+    {
+      std::vector<size_t> const expected = { 10, 1, 2, 3, 4, 5, 6, 7, 8, 9, 11, 12 };
+      std::string query = "FOR d IN testCollection FILTER d.key >= 1 SORT d['testAttr'][0] RETURN d";
+
+      assertOrderSuccess(*logicalView, query, "key", expected);
+    }
+
+    // object values
+    {
+      std::vector<size_t> const expected =  { 11, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 12 };
+      std::string query0 = "FOR d IN testCollection FILTER d.key >= 1 SORT d['testAttr']['a'] RETURN d";
+      std::string query1 = "FOR d IN testCollection FILTER d.key >= 1 SORT d.testAttr.a RETURN d";
+
+      assertOrderSuccess(*logicalView, query0, "key", expected);
+      assertOrderSuccess(*logicalView, query1, "key", expected);
+    }
   }
 
   // query view ascending
   {
     // ArangoDB default type sort order:
     // null < bool < number < string < array/list < object/document
-    std::vector<size_t> const expected = { 9, 8, 7, 4, 5, 6, 1, 2, 3, 10, 11, 12 };
-    std::string query = "FOR d IN testCollection FILTER d.key >= 1 SORT 'testAttr' ASC RETURN d";
 
-    assertOrderSuccess(*logicalView, query, "key", expected);
+    // string values
+    {
+      std::vector<size_t> const expected = { 9, 8, 7, 4, 5, 6, 1, 2, 3, 10, 11, 12 };
+      std::string query0 = "FOR d IN testCollection FILTER d.key >= 1 SORT 'testAttr' ASC RETURN d";
+      std::string query1 = "FOR d IN testCollection FILTER d.key >= 1 SORT d['testAttr'] ASC RETURN d";
+      std::string query2 = "FOR d IN testCollection FILTER d.key >= 1 SORT d.testAttr ASC RETURN d";
+
+      assertOrderSuccess(*logicalView, query0, "key", expected);
+      assertOrderSuccess(*logicalView, query1, "key", expected);
+      assertOrderSuccess(*logicalView, query2, "key", expected);
+    }
+
+    // array values
+    {
+      std::vector<size_t> const expected = { 10, 1, 2, 3, 4, 5, 6, 7, 8, 9, 11, 12 };
+      std::string query = "FOR d IN testCollection FILTER d.key >= 1 SORT d['testAttr'][0] ASC RETURN d";
+
+      assertOrderSuccess(*logicalView, query, "key", expected);
+    }
+
+    // object values
+    {
+      std::vector<size_t> const expected =  { 11, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 12 };
+      std::string query0 = "FOR d IN testCollection FILTER d.key >= 1 SORT d['testAttr']['a'] ASC RETURN d";
+      std::string query1 = "FOR d IN testCollection FILTER d.key >= 1 SORT d.testAttr.a ASC RETURN d";
+
+      assertOrderSuccess(*logicalView, query0, "key", expected);
+      assertOrderSuccess(*logicalView, query1, "key", expected);
+    }
   }
 
   // query view descending
   {
     // ArangoDB default type sort order:
     // null < bool < number < string < array/list < object/document
-    std::vector<size_t> const expected = { 12, 11, 10, 3, 2, 1, 6, 5, 4, 7, 8, 9 };
-    std::string query = "FOR d IN testCollection FILTER d.key >= 1 SORT 'testAttr' DESC RETURN d";
 
-    assertOrderSuccess(*logicalView, query, "key", expected);
+    // string values
+    {
+      std::vector<size_t> const expected = { 12, 11, 10, 3, 2, 1, 6, 5, 4, 7, 8, 9 };
+      std::string query0 = "FOR d IN testCollection FILTER d.key >= 1 SORT 'testAttr' DESC RETURN d";
+      std::string query1 = "FOR d IN testCollection FILTER d.key >= 1 SORT d['testAttr'] DESC RETURN d";
+      std::string query2 = "FOR d IN testCollection FILTER d.key >= 1 SORT d.testAttr DESC RETURN d";
+
+      assertOrderSuccess(*logicalView, query0, "key", expected);
+      assertOrderSuccess(*logicalView, query1, "key", expected);
+      assertOrderSuccess(*logicalView, query2, "key", expected);
+    }
+
+    // array values
+    {
+      std::vector<size_t> const expected = { 1, 2, 3, 4, 5, 6, 7, 8, 9, 11, 12, 10 };
+      std::string query = "FOR d IN testCollection FILTER d.key >= 1 SORT d['testAttr'][0] DESC RETURN d";
+
+      assertOrderSuccess(*logicalView, query, "key", expected);
+    }
+
+    // object values
+    {
+      std::vector<size_t> const expected =  { 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 12, 11 };
+      std::string query0 = "FOR d IN testCollection FILTER d.key >= 1 SORT d['testAttr']['a'] DESC RETURN d";
+      std::string query1 = "FOR d IN testCollection FILTER d.key >= 1 SORT d.testAttr.a DESC RETURN d";
+
+      assertOrderSuccess(*logicalView, query0, "key", expected);
+      assertOrderSuccess(*logicalView, query1, "key", expected);
+    }
   }
 }
 
