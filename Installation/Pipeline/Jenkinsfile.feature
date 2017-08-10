@@ -552,6 +552,8 @@ def testStep(edition, os, mode, engine) {
                 catch (exc) {
                     echo "Exception while testing!"
                     echo exc.toString()
+                    echo exc.getCause()
+                    exc.printStackTrace()
                     testsSuccess[name] = false
                     allTestsSuccessful = false
                     throw exc
@@ -683,7 +685,7 @@ def testResilienceStep(os, engine, foxx) {
                             sh "for i in log-output; do test -e \"\$i\" && mv \"\$i\" ${arch}; done"
                         }
                         else if (os == 'windows') {
-                            bat "move log-output ${arch}"
+                            bat "move log-output/* ${arch}"
                         }
                         
                     }
@@ -763,7 +765,7 @@ def buildEdition(edition, os) {
                 sh "for i in log-output; do test -e \"\$i\" && mv \"\$i\" ${arch} || true; done"
             }
             else if (os == 'windows') {
-                powershell "Move-Item -ErrorAction Ignore -Path log-output -Destination ${arch}"
+                powershell "Move-Item -ErrorAction Ignore -Path log-output/* -Destination ${arch}"
             }
         }
     }

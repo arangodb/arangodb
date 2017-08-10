@@ -1,5 +1,6 @@
 $ErrorActionPreference="Stop"
 $buildOptions = "-DUSE_MAINTAINER_MODE=On -DUSE_CATCH_TESTS=On -DUSE_FAILURE_TESTS=On -DDEBUG_SYNC_REPLICATION=On -DCMAKE_BUILD_TYPE=RelWithDebInfo -DSKIP_PACKAGING=On"
+Remove-Item -Force log-output | Out-Null
 New-Item -Force -ItemType Directory log-output | Out-Null
 if (Get-Command docker -errorAction SilentlyContinue) {
   $buildOptions += " -DOPENSSL_INCLUDE_DIR=`"`$env:OPENSSL_INCLUDE_DIR`" -DLIB_EAY_RELEASE=`"`$env:LIB_EAY_RELEASE`" -DSSL_EAY_RELEASE=`"`$env:SSL_EAY_RELEASE`" -DLIB_EAY_RELEASE_DLL=`"`$env:LIB_EAY_RELEASE_DLL`" -DSSL_EAY_RELEASE_DLL=`"`$env:SSL_EAY_RELEASE_DLL"
