@@ -27,6 +27,8 @@
 #include "Basics/LocalTaskQueue.h"
 #include "Logger/Logger.h"
 #include "Logger/LogMacros.h"
+#include "RocksDBEngine/RocksDBEngine.h"
+#include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/TransactionState.h"
 #include "Transaction/Methods.h"
 #include "VocBase/LogicalCollection.h"
@@ -298,7 +300,13 @@ int IResearchLink::load() {
       return nullptr; // failed to parse metadata
     }
 
-    PTR_NAMED(IResearchLink, ptr, iid, collection, std::move(meta));
+    StorageEngine* engine = EngineSelectorFeature::ENGINE;
+    std::shared_ptr<IResearchLink> ptr;
+    if (engine->typeName() == RocksDBEngine::EngineName) {
+      ptr.reset(new RocksDBIResearchLink(definition, iid, collection, std::move(meta)));
+    } else {
+      ptr.reset(new IResearchLink(iid, collection, std::move(meta)));
+    }
 
     if (definition.hasKey(SKIP_VIEW_REGISTRATION_FIELD)) {
       // TODO FIXME find a better way to remember view name for use with toVelocyPack(...)

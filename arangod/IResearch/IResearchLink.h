@@ -28,11 +28,13 @@
 #include "IResearchView.h"
 
 #include "Indexes/Index.h"
+#include "RocksDBEngine/RocksDBIndex.h"
+#include "RocksDBEngine/RocksDBColumnFamily.h"
 
 NS_BEGIN(arangodb)
 NS_BEGIN(iresearch)
 
-class IResearchLink final: public Index {
+class IResearchLink : public Index {
  public:
   typedef std::shared_ptr<IResearchLink> ptr;
 
@@ -172,7 +174,7 @@ class IResearchLink final: public Index {
   ////////////////////////////////////////////////////////////////////////////////
   int unload() override;
 
- private:
+protected:
   friend bool IResearchView::linkRegister(IResearchLink&); // to call updateView(...)
   friend IResearchView::~IResearchView(); // to call updateView(...)
   TRI_voc_cid_t _defaultId; // the identifier of the desired view (iff _view == nullptr)
@@ -195,6 +197,52 @@ class IResearchLink final: public Index {
       bool isNew = false
   );
 }; // IResearchLink
+
+class RocksDBIResearchLink final : public RocksDBIndex, public IResearchLink {
+ public:
+  friend IResearchLink;
+
+  virtual char const* typeName() const override {
+    return IResearchLink::typeName();
+  }
+
+  virtual bool allowExpansion() const override {
+    return IResearchLink::allowExpansion();
+  }
+
+  virtual IndexType type() const override { return IResearchLink::type(); }
+
+  virtual bool canBeDropped() const override {
+    return IResearchLink::canBeDropped();
+  }
+
+  virtual bool isSorted() const override { return IResearchLink::isSorted(); }
+
+  virtual bool hasSelectivityEstimate() const override {
+    return IResearchLink::hasSelectivityEstimate();
+  }
+
+  virtual arangodb::Result insertInternal(transaction::Methods* trx,
+      arangodb::RocksDBMethods*, TRI_voc_rid_t revisionId,
+      const arangodb::velocypack::Slice& doc) override {
+    return IResearchLink::insert(trx, revisionId, doc, false);
+  }
+
+  virtual arangodb::Result removeInternal(transaction::Methods* trx,
+      arangodb::RocksDBMethods*, TRI_voc_rid_t revisionId,
+      const arangodb::velocypack::Slice& doc) override {
+    return IResearchLink::remove(trx, revisionId, doc, false);
+  }
+ protected:
+  RocksDBIResearchLink(
+    VPackSlice const& definition,
+    TRI_idx_iid_t iid,
+    arangodb::LogicalCollection* collection,
+    IResearchLinkMeta&& meta
+  ) : RocksDBIndex(iid, collection, definition,
+                   RocksDBColumnFamily::vpack(), false),
+      IResearchLink(iid, collection, std::move(meta)) {}
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief copy required fields from the 'definition' into the 'builder'
