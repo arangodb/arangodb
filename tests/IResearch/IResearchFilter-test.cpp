@@ -52,6 +52,7 @@
 #include "search/prefix_filter.hpp"
 #include "search/range_filter.hpp"
 #include "search/granular_range_filter.hpp"
+#include "search/column_existence_filter.hpp"
 #include "search/boolean_filter.hpp"
 #include "search/phrase_filter.hpp"
 
@@ -113,8 +114,18 @@ std::string mangleNumeric(std::string name) {
 }
 
 std::string mangleString(std::string name, std::string suffix) {
-  name += '\0';
+  arangodb::iresearch::kludge::mangleAnalyzer(name);
   name += suffix;
+  return name;
+}
+
+std::string mangleType(std::string name) {
+  arangodb::iresearch::kludge::mangleType(name);
+  return name;
+}
+
+std::string mangleAnalyzer(std::string name) {
+  arangodb::iresearch::kludge::mangleAnalyzer(name);
   return name;
 }
 
@@ -1820,7 +1831,187 @@ SECTION("UnsupportedSystemFunctions") {
   // FIXME TODO
 }
 
+SECTION("Exists") {
+  // field only
+  {
+    irs::Or expected;
+    auto& exists = expected.add<irs::by_column_existence>();
+    exists.field("name").prefix_match(true);
+
+    assertFilterSuccess("FOR d IN VIEW myView FILTER ir::exists(d.name) RETURN d", expected);
+    assertFilterSuccess("FOR d IN VIEW myView FILTER iR::eXists(d.name) RETURN d", expected);
+  }
+
+  // complex field
+  {
+    irs::Or expected;
+    auto& exists = expected.add<irs::by_column_existence>();
+    exists.field("obj.prop.name").prefix_match(true);
+
+    assertFilterSuccess("FOR d IN VIEW myView FILTER ir::exists(d.obj.prop.name) RETURN d", expected);
+    assertFilterSuccess("FOR d IN VIEW myView FILTER iR::eXists(d.obj.prop.name) RETURN d", expected);
+  }
+
+  // invalid attribute access
+  assertFilterFail("FOR d IN VIEW myView FILTER ir::exists(d) RETURN d");
+  assertFilterFail("FOR d IN VIEW myView FILTER ir::exists('d.name') RETURN d");
+  assertFilterFail("FOR d IN VIEW myView FILTER ir::exists(123) RETURN d");
+  assertFilterFail("FOR d IN VIEW myView FILTER ir::exists(123.5) RETURN d");
+  assertFilterFail("FOR d IN VIEW myView FILTER ir::exists(null) RETURN d");
+  assertFilterFail("FOR d IN VIEW myView FILTER ir::exists(true) RETURN d");
+  assertFilterFail("FOR d IN VIEW myView FILTER ir::exists(false) RETURN d");
+
+  // field + type
+  {
+    irs::Or expected;
+    auto& exists = expected.add<irs::by_column_existence>();
+    exists.field(mangleType("name")).prefix_match(true);
+
+    assertFilterSuccess("FOR d IN VIEW myView FILTER ir::exists(d.name, 'type') RETURN d", expected);
+    assertFilterSuccess("FOR d IN VIEW myView FILTER iR::eXists(d.name, 'type') RETURN d", expected);
+
+    // invalid 2nd argument
+    assertFilterFail("FOR d IN VIEW myView FILTER ir::exists(d.name, 'Type') RETURN d");
+    assertFilterFail("FOR d IN VIEW myView FILTER ir::exists(d.name, 'TYPE') RETURN d");
+    assertFilterFail("FOR d IN VIEW myView FILTER ir::exists(d.name, 'invalid') RETURN d");
+    assertFilterFail("FOR d IN VIEW myView FILTER ir::exists(d.name, d) RETURN d");
+    assertFilterFail("FOR d IN VIEW myView FILTER ir::exists(d.name, null) RETURN d");
+    assertFilterFail("FOR d IN VIEW myView FILTER ir::exists(d.name, 123) RETURN d");
+    assertFilterFail("FOR d IN VIEW myView FILTER ir::exists(d.name, 123.5) RETURN d");
+    assertFilterFail("FOR d IN VIEW myView FILTER ir::exists(d.name, true) RETURN d");
+    assertFilterFail("FOR d IN VIEW myView FILTER ir::exists(d.name, false) RETURN d");
+  }
+
+  // field + analyzer
+  {
+    irs::Or expected;
+    auto& exists = expected.add<irs::by_column_existence>();
+    exists.field(mangleAnalyzer("name")).prefix_match(true);
+
+    assertFilterSuccess("FOR d IN VIEW myView FILTER ir::exists(d.name, 'analyzer') RETURN d", expected);
+    assertFilterSuccess("FOR d IN VIEW myView FILTER iR::eXists(d.name, 'analyzer') RETURN d", expected);
+
+    // invalid 2nd argument
+    assertFilterFail("FOR d IN VIEW myView FILTER ir::exists(d.name, 'Analyzer') RETURN d");
+    assertFilterFail("FOR d IN VIEW myView FILTER ir::exists(d.name, 'ANALYZER') RETURN d");
+    assertFilterFail("FOR d IN VIEW myView FILTER ir::exists(d.name, 'foo') RETURN d");
+    assertFilterFail("FOR d IN VIEW myView FILTER ir::exists(d.name, d) RETURN d");
+    assertFilterFail("FOR d IN VIEW myView FILTER ir::exists(d.name, null) RETURN d");
+    assertFilterFail("FOR d IN VIEW myView FILTER ir::exists(d.name, 123) RETURN d");
+    assertFilterFail("FOR d IN VIEW myView FILTER ir::exists(d.name, 123.5) RETURN d");
+    assertFilterFail("FOR d IN VIEW myView FILTER ir::exists(d.name, true) RETURN d");
+    assertFilterFail("FOR d IN VIEW myView FILTER ir::exists(d.name, false) RETURN d");
+  }
+
+  // field + type + string
+  {
+    irs::Or expected;
+    auto& exists = expected.add<irs::by_column_existence>();
+    exists.field(mangleStringIdentity("name")).prefix_match(false);
+
+    assertFilterSuccess("FOR d IN VIEW myView FILTER ir::exists(d.name, 'type', 'string') RETURN d", expected);
+    assertFilterSuccess("FOR d IN VIEW myView FILTER iR::eXists(d.name, 'type', 'string') RETURN d", expected);
+
+    // invalid 3rd argument
+    assertFilterFail("FOR d IN VIEW myView FILTER ir::exists(d.name, 'type', 'String') RETURN d");
+    assertFilterFail("FOR d IN VIEW myView FILTER ir::exists(d.name, 'type', 'STRING') RETURN d");
+    assertFilterFail("FOR d IN VIEW myView FILTER ir::exists(d.name, 'type', 'invalid') RETURN d");
+  }
+
+  // field + type + numeric
+  {
+    irs::Or expected;
+    auto& exists = expected.add<irs::by_column_existence>();
+    exists.field(mangleNumeric("obj.name")).prefix_match(false);
+
+    assertFilterSuccess("FOR d IN VIEW myView FILTER ir::exists(d.obj.name, 'type', 'numeric') RETURN d", expected);
+    assertFilterSuccess("FOR d IN VIEW myView FILTER iR::eXists(d.obj.name, 'type', 'numeric') RETURN d", expected);
+
+    // invalid 3rd argument
+    assertFilterFail("FOR d IN VIEW myView FILTER ir::exists(d.obj.name, 'type', 'Numeric') RETURN d");
+    assertFilterFail("FOR d IN VIEW myView FILTER ir::exists(d.obj.name, 'type', 'NUMERIC') RETURN d");
+    assertFilterFail("FOR d IN VIEW myView FILTER ir::exists(d.obj.name, 'type', 'foo') RETURN d");
+  }
+
+  // field + type + bool
+  {
+    irs::Or expected;
+    auto& exists = expected.add<irs::by_column_existence>();
+    exists.field(mangleBool("name")).prefix_match(false);
+
+    assertFilterSuccess("FOR d IN VIEW myView FILTER ir::exists(d.name, 'type', 'bool') RETURN d", expected);
+    assertFilterSuccess("FOR d IN VIEW myView FILTER iR::eXists(d.name, 'type', 'bool') RETURN d", expected);
+
+    // invalid 3rd argument
+    assertFilterFail("FOR d IN VIEW myView FILTER ir::exists(d.name, 'type', 'Bool') RETURN d");
+    assertFilterFail("FOR d IN VIEW myView FILTER ir::exists(d.name, 'type', 'BOOL') RETURN d");
+    assertFilterFail("FOR d IN VIEW myView FILTER ir::exists(d.name, 'type', 'asdfasdfa') RETURN d");
+  }
+
+  // field + type + null
+  {
+    irs::Or expected;
+    auto& exists = expected.add<irs::by_column_existence>();
+    exists.field(mangleNull("name")).prefix_match(false);
+
+    assertFilterSuccess("FOR d IN VIEW myView FILTER ir::exists(d.name, 'type', 'null') RETURN d", expected);
+    assertFilterSuccess("FOR d IN VIEW myView FILTER iR::eXists(d.name, 'type', 'null') RETURN d", expected);
+
+    // invalid 3rd argument
+    assertFilterFail("FOR d IN VIEW myView FILTER ir::exists(d.name, 'type', 'Null') RETURN d");
+    assertFilterFail("FOR d IN VIEW myView FILTER ir::exists(d.name, 'type', 'NULL') RETURN d");
+    assertFilterFail("FOR d IN VIEW myView FILTER ir::exists(d.name, 'type', 'asdfasdfa') RETURN d");
+  }
+
+  // invalid 3rd argument
+  assertFilterFail("FOR d IN VIEW myView FILTER ir::exists(d.name, 'type', d) RETURN d");
+  assertFilterFail("FOR d IN VIEW myView FILTER ir::exists(d.name, 'type', null) RETURN d");
+  assertFilterFail("FOR d IN VIEW myView FILTER ir::exists(d.name, 'type', 123) RETURN d");
+  assertFilterFail("FOR d IN VIEW myView FILTER ir::exists(d.name, 'type', 123.5) RETURN d");
+  assertFilterFail("FOR d IN VIEW myView FILTER ir::exists(d.name, 'type', true) RETURN d");
+  assertFilterFail("FOR d IN VIEW myView FILTER ir::exists(d.name, 'type', false) RETURN d");
+
+  // field + type + analyzer
+  {
+    irs::Or expected;
+    auto& exists = expected.add<irs::by_column_existence>();
+    exists.field(mangleString("name", "test_analyzer")).prefix_match(false);
+
+    assertFilterSuccess("FOR d IN VIEW myView FILTER ir::exists(d.name, 'analyzer', 'test_analyzer') RETURN d", expected);
+    assertFilterSuccess("FOR d IN VIEW myView FILTER iR::eXists(d.name, 'analyzer', 'test_analyzer') RETURN d", expected);
+
+    // invalid 3rd argument
+    assertFilterFail("FOR d IN VIEW myView FILTER ir::exists(d.name, 'analyzer', 'foo') RETURN d");
+    assertFilterFail("FOR d IN VIEW myView FILTER ir::exists(d.name, 'analyzer', 'invalid') RETURN d");
+    assertFilterFail("FOR d IN VIEW myView FILTER ir::exists(d.name, 'analyzer', '') RETURN d");
+    assertFilterFail("FOR d IN VIEW myView FILTER ir::exists(d.name, 'analyzer', d) RETURN d");
+    assertFilterFail("FOR d IN VIEW myView FILTER ir::exists(d.name, 'analyzer', null) RETURN d");
+    assertFilterFail("FOR d IN VIEW myView FILTER ir::exists(d.name, 'analyzer', 123) RETURN d");
+    assertFilterFail("FOR d IN VIEW myView FILTER ir::exists(d.name, 'analyzer', 123.5) RETURN d");
+    assertFilterFail("FOR d IN VIEW myView FILTER ir::exists(d.name, 'analyzer', true) RETURN d");
+    assertFilterFail("FOR d IN VIEW myView FILTER ir::exists(d.name, 'analyzer', false) RETURN d");
+  }
+
+  // field + type + identity analyzer
+  {
+    irs::Or expected;
+    auto& exists = expected.add<irs::by_column_existence>();
+    exists.field(mangleStringIdentity("name")).prefix_match(false);
+
+    assertFilterSuccess("FOR d IN VIEW myView FILTER ir::exists(d.name, 'analyzer', 'identity') RETURN d", expected);
+    assertFilterSuccess("FOR d IN VIEW myView FILTER iR::eXists(d.name, 'analyzer', 'identity') RETURN d", expected);
+  }
+
+  // invalid number of arguments
+  assertFilterFail("FOR d IN VIEW myView FILTER ir::exists() RETURN d");
+  assertFilterFail("FOR d IN VIEW myView FILTER ir::exists(d.name, 'type', 'null', d) RETURN d");
+  assertFilterFail("FOR d IN VIEW myView FILTER ir::exists(d.name, 'analyzer', 'test_analyzer', false) RETURN d");
+}
+
 SECTION("Phrase") {
+  // wrong number of arguments
+  assertFilterFail("FOR d IN VIEW myView FILTER ir::phrase() RETURN d");
+
   // without offset, default analyzer
   // quick
   {
@@ -2050,6 +2241,10 @@ SECTION("StartsWith") {
 
     assertFilterSuccess("FOR d IN VIEW myView FILTER ir::starts_with(d.name, 'abc', 100.5) RETURN d", expected);
   }
+
+  // wrong number of arguments
+  assertFilterFail("FOR d IN VIEW myView FILTER ir::starts_with() RETURN d");
+  assertFilterFail("FOR d IN VIEW myView FILTER ir::starts_with(d.name, 'abc', 100, 'abc') RETURN d");
 
   // invalid attribute access
   assertFilterFail("FOR d IN VIEW myView FILTER ir::starts_with(d, 'abc') RETURN d");
