@@ -379,12 +379,10 @@ Restrictions: ${restrictions.keySet().join(", ")}
 
 def stashBinaries(edition, os) {
     echo "STASHING BINARIES"
-    stash name: "binaries-${edition}-${os}", includes: "build/**, etc/**, Installation/Pipeline/**, js/**, scripts/**, UnitTests/**, utils/**, resilience/**"
+    stash name: "binaries-${edition}-${os}", includes: "build/bin/*/**, etc/**, Installation/Pipeline/**, js/**, scripts/**, UnitTests/**, utils/**, resilience/**"
 }
 
 def unstashBinaries(edition, os) {
-    def name = "binaries-${edition}-${os}.zip"
-
     unstash name: "binaries-${edition}-${os}"
 }
 
