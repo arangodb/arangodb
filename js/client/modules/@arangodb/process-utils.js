@@ -111,7 +111,11 @@ function setupBinaries (builddir, buildType, configDir) {
     }
   }
 
-  BIN_DIR = fs.join(TOP_DIR, builddir, 'bin');
+  BIN_DIR = fs.join(builddir, 'bin');
+  if(!fs.exists(BIN_DIR)){
+    BIN_DIR = fs.join(TOP_DIR, BIN_DIR);
+  }
+
   UNITTESTS_DIR = fs.join(TOP_DIR, fs.join(builddir, 'tests'));
 
   if (buildType !== '') {
@@ -127,7 +131,11 @@ function setupBinaries (builddir, buildType, configDir) {
   ARANGOEXPORT_BIN = fs.join(BIN_DIR, 'arangoexport' + executableExt);
   ARANGOSH_BIN = fs.join(BIN_DIR, 'arangosh' + executableExt);
 
-  CONFIG_ARANGODB_DIR = fs.join(TOP_DIR, builddir, 'etc', 'arangodb3');
+  CONFIG_ARANGODB_DIR = fs.join(builddir, 'etc', 'arangodb3'); 
+  if(!fs.exists(CONFIG_ARANGODB_DIR)){
+    CONFIG_ARANGODB_DIR = fs.join(TOP_DIR, CONFIG_ARANGODB_DIR);
+  }
+
   CONFIG_RELATIVE_DIR = fs.join(TOP_DIR, 'etc', 'relative');
   CONFIG_DIR = fs.join(TOP_DIR, configDir);
 
@@ -523,24 +531,25 @@ function runArangoImp (options, instanceInfo, what) {
 // / @brief runs arangodump or arangorestore
 // //////////////////////////////////////////////////////////////////////////////
 
-function runArangoDumpRestore (options, instanceInfo, which, database, rootDir) {
+function runArangoDumpRestore (options, instanceInfo, which, database, rootDir, dumpDir = 'dump', includeSystem = true) {
   let args = {
     'configuration': fs.join(CONFIG_DIR, (which === 'dump' ? 'arangodump.conf' : 'arangorestore.conf')),
     'server.username': options.username,
     'server.password': options.password,
     'server.endpoint': instanceInfo.endpoint,
     'server.database': database,
-    'include-system-collections': 'true'
+    'include-system-collections': includeSystem ? 'true' : 'false'
   };
 
   let exe;
+  rootDir = rootDir || instanceInfo.rootDir;
 
   if (which === 'dump') {
-    args['output-directory'] = fs.join(instanceInfo.rootDir, 'dump');
+    args['output-directory'] = fs.join(rootDir, dumpDir);
     exe = ARANGODUMP_BIN;
   } else {
     args['create-database'] = 'true';
-    args['input-directory'] = fs.join(instanceInfo.rootDir, 'dump');
+    args['input-directory'] = fs.join(rootDir, dumpDir);
     exe = ARANGORESTORE_BIN;
   }
 
@@ -549,7 +558,7 @@ function runArangoDumpRestore (options, instanceInfo, which, database, rootDir) 
     print(args);
   }
 
-  return executeAndWait(exe, toArgv(args), options, 'arangorestore', instanceInfo.rootDir);
+  return executeAndWait(exe, toArgv(args), options, 'arangorestore', rootDir);
 }
 
 // //////////////////////////////////////////////////////////////////////////////

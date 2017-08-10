@@ -122,7 +122,7 @@ runResilience = params.runResilience
 runTests = params.runTests
 
 // restrict builds
-restrictions = []
+restrictions = [:]
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                             CONSTANTS AND HELPERS

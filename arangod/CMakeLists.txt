@@ -129,7 +129,6 @@ SET(ARANGOD_SOURCES
   Aql/ExecutionNode.cpp
   Aql/ExecutionPlan.cpp
   Aql/ExecutionStats.cpp
-  Aql/Executor.cpp
   Aql/Expression.cpp
   Aql/FixedVarExpressionContext.cpp
   Aql/Function.cpp
@@ -170,6 +169,7 @@ SET(ARANGOD_SOURCES
   Aql/TraversalBlock.cpp
   Aql/TraversalConditionFinder.cpp
   Aql/TraversalNode.cpp
+  Aql/V8Executor.cpp
   Aql/V8Expression.cpp
   Aql/Variable.cpp
   Aql/VariableGenerator.cpp
@@ -291,6 +291,7 @@ SET(ARANGOD_SOURCES
   RestHandler/RestPregelHandler.cpp
   RestHandler/RestQueryCacheHandler.cpp
   RestHandler/RestQueryHandler.cpp
+  RestHandler/RestReplicationHandler.cpp
   RestHandler/RestShutdownHandler.cpp
   RestHandler/RestSimpleHandler.cpp
   RestHandler/RestSimpleQueryHandler.cpp
@@ -457,6 +458,10 @@ if (NOT USE_PRECOMPILED_V8)
   add_dependencies(arangod zlibstatic v8_build)
 else ()
   add_dependencies(arangod zlibstatic)
+endif ()
+
+if (USE_JEMALLOC)
+  add_dependencies(arangod jemalloc)
 endif ()
 
 ################################################################################
