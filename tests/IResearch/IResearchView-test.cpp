@@ -855,10 +855,12 @@ SECTION("test_query") {
     arangodb::aql::AstNode filter(arangodb::aql::AstNodeType::NODE_TYPE_FILTER);
     arangodb::aql::AstNode filterGe(arangodb::aql::AstNodeType::NODE_TYPE_OPERATOR_BINARY_GE);
     arangodb::aql::AstNode filterAttr(arangodb::aql::AstNodeType::NODE_TYPE_ATTRIBUTE_ACCESS);
+    arangodb::aql::AstNode filterReference(arangodb::aql::AstNodeType::NODE_TYPE_REFERENCE);
     arangodb::aql::AstNode filterValue(int64_t(1), arangodb::aql::AstNodeValueType::VALUE_TYPE_INT);
     irs::string_ref attr("key");
 
     filterAttr.setStringValue(attr.c_str(), attr.size());
+    filterAttr.addMember(&filterReference);
     filterGe.addMember(&filterAttr);
     filterGe.addMember(&filterValue);
     filter.addMember(&filterGe);
@@ -869,10 +871,12 @@ SECTION("test_query") {
 
     irs::string_ref attribute("testAttribute");
     arangodb::aql::AstNode nodeArgs(arangodb::aql::AstNodeType::NODE_TYPE_ARRAY);
+    arangodb::aql::AstNode nodeOutVar(arangodb::aql::AstNodeType::NODE_TYPE_REFERENCE);
     arangodb::aql::AstNode nodeExpression(arangodb::aql::AstNodeType::NODE_TYPE_FCALL);
     arangodb::aql::Function nodeFunction("test_doc_id", "internalName", "", false, false, true, true, false);
     arangodb::aql::Variable variable("testVariable", 0);
 
+    nodeArgs.addMember(&nodeOutVar);
     nodeExpression.addMember(&nodeArgs);
     nodeExpression.setData(&nodeFunction);
     variableDefinitions.emplace(variable.id, &nodeExpression); // add node for condition

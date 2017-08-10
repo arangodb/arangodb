@@ -23,6 +23,7 @@
 
 #include "IResearchOrderFactory.h"
 
+#include "AstHelper.h"
 #include "AttributeScorer.h"
 
 #include "Aql/AstNode.h"
@@ -35,6 +36,14 @@
 
 NS_LOCAL
 
+bool validateOutputVariable(arangodb::aql::AstNode const* node) {
+  // referencing chain node structure:
+  // NODE_TYPE_ATTRIBUTE_ACCESS->NODE_TYPE_ATTRIBUTE_ACCESS->NODE_TYPE_REFERENCE
+  // for SORT should only expect that the the node is a reference to a variable
+  return node
+    && arangodb::aql::NODE_TYPE_REFERENCE == node->type;
+}
+
 bool fromFCall(
     arangodb::iresearch::OrderFactory::OrderContext* ctx,
     irs::string_ref const& name,
@@ -46,45 +55,62 @@ bool fromFCall(
   irs::sort::ptr scorer;
 
   switch (args.numMembers()) {
-    case 0:
-      scorer = irs::scorers::get(name, irs::string_ref::nil);
+   case 0:
+    return false; // expected arangodb::aql::NODE_TYPE_ATTRIBUTE_ACCESS
+   case 1:
+    if (!validateOutputVariable(args.getMemberUnchecked(0))) {
+      return false; // expected arangodb::aql::NODE_TYPE_ATTRIBUTE_ACCESS
+    }
 
-      if (!scorer) {
-        scorer = irs::scorers::get(name, "{}"); // pass arg as json
-      }
+    scorer = irs::scorers::get(name, irs::string_ref::nil);
 
-      break;
-    case 1: {
-      auto* arg = args.getMemberUnchecked(0);
+    if (!scorer) {
+      scorer = irs::scorers::get(name, "{}"); // pass arg as json
+    }
 
-      if (arg
-          && arangodb::aql::NODE_TYPE_VALUE == arg->type
-          && arangodb::aql::VALUE_TYPE_STRING == arg->value.type) {
-        irs::string_ref value(arg->getStringValue(), arg->getStringLength());
+    break;
+   case 2: {
+    if (!validateOutputVariable(args.getMemberUnchecked(0))) {
+      return false; // expected arangodb::aql::NODE_TYPE_ATTRIBUTE_ACCESS
+    }
 
-        scorer = irs::scorers::get(name, value);
+    auto* arg = args.getMemberUnchecked(1);
 
-        if (scorer) {
-          break;
-        }
+    if (arg
+        && arangodb::aql::NODE_TYPE_VALUE == arg->type
+        && arangodb::aql::VALUE_TYPE_STRING == arg->value.type) {
+      irs::string_ref value(arg->getStringValue(), arg->getStringLength());
+
+      scorer = irs::scorers::get(name, value);
+
+      if (scorer) {
+        break;
       }
     }
-    // fall through
-    default:
-      for (size_t i = 0, count = args.numMembers(); i < count; ++i) {
-        auto* arg = args.getMemberUnchecked(i);
+   }
+   // fall through
+   default: {
+    if (!validateOutputVariable(args.getMemberUnchecked(0))) {
+      return false; // expected arangodb::aql::NODE_TYPE_ATTRIBUTE_ACCESS
+    }
 
-        if (!arg) {
-          return false; // invalid arg
-        }
+    arangodb::velocypack::Builder builder;
 
-        arangodb::velocypack::Builder builder;
+    builder.openArray();
 
-        builder.openObject();
-        arg->toVelocyPackValue(builder);
-        builder.close();
-        scorer = irs::scorers::get(name, builder.toJson()); // pass arg as json
+    for (size_t i = 1, count = args.numMembers(); i < count; ++i) {
+      auto* arg = args.getMemberUnchecked(i);
+
+      if (!arg) {
+        return false; // invalid arg
       }
+
+      arg->toVelocyPackValue(builder);
+    }
+
+    builder.close();
+    scorer = irs::scorers::get(name, builder.toJson()); // pass arg as json
+   }
   }
 
   if (!scorer) {
@@ -158,16 +184,38 @@ bool fromValue(
 ) {
   TRI_ASSERT(
     arangodb::aql::NODE_TYPE_ATTRIBUTE_ACCESS == node.type
+    || arangodb::aql::NODE_TYPE_INDEXED_ACCESS == node.type
     || arangodb::aql::NODE_TYPE_VALUE == node.type
   );
 
-  if (node.value.type != arangodb::aql::VALUE_TYPE_STRING) {
-    return false; // unsupported value
-  }
+  arangodb::aql::AstNode const* head = nullptr;
+  bool valid = false;
 
-  if (ctx) {
-    irs::string_ref name(node.getStringValue(), node.getStringLength());
-    auto& scorer = ctx->order.add<arangodb::iresearch::AttributeScorer>(ctx->trx, name);
+  if (!ctx) {
+    struct {
+      bool operator()() { return false; } // do not support [*]
+      bool operator()(int64_t value) { return value >= 0; }
+      bool operator()(irs::string_ref const& value) { return !value.null(); }
+    } visitor;
+
+    valid = arangodb::iresearch::visitAttributePath(head, node, visitor);
+  } else {
+    struct {
+      arangodb::iresearch::AttributeScorer* scorer;
+      bool operator()() { return false; } // do not support [*]
+      bool operator()(int64_t value) {
+        scorer->attributeNext(uint64_t(value));
+        return value >= 0;
+      }
+      bool operator()(irs::string_ref const& value) {
+        scorer->attributeNext(value);
+        return !value.null();
+      }
+    } visitor;
+    auto& scorer = ctx->order.add<arangodb::iresearch::AttributeScorer>(ctx->trx);
+
+    visitor.scorer = &scorer;
+    valid = arangodb::iresearch::visitAttributePath(head, node, visitor);
     scorer.reverse(reverse);
 
     // ArangoDB default type sort order:
@@ -180,7 +228,10 @@ bool fromValue(
     scorer.orderNext(arangodb::iresearch::AttributeScorer::ValueType::OBJECT);
   }
 
-  return true;
+  return valid
+      && ((arangodb::aql::NODE_TYPE_VALUE == head->type && &node == head)
+          || validateOutputVariable(head)
+         );
 }
 
 NS_END
@@ -217,7 +268,8 @@ NS_BEGIN(iresearch)
       case arangodb::aql::NODE_TYPE_FCALL_USER: // user function call
         result = fromFCallUser(ctx, *expression, !ascending, meta);
         break;
-      case arangodb::aql::NODE_TYPE_ATTRIBUTE_ACCESS:
+      case arangodb::aql::NODE_TYPE_ATTRIBUTE_ACCESS: // fall through
+      case arangodb::aql::NODE_TYPE_INDEXED_ACCESS: // fall through
       case arangodb::aql::NODE_TYPE_VALUE:
         result = fromValue(ctx, *expression, !ascending, meta);
         break;
