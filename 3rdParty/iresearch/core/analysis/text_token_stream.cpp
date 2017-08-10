@@ -10,6 +10,7 @@
 // 
 
 #include <cctype>
+#include <fstream>
 #include <mutex>
 #include <unordered_map>
 
@@ -24,21 +25,7 @@
 #endif
 
 #include <boost/locale/encoding.hpp>
-
-#if !defined(_MSC_VER)
-  #pragma GCC diagnostic ignored "-Wunused-local-typedefs"
-#else
-  #pragma warning(disable: 4512)
-#endif
-
-  #include <boost/property_tree/json_parser.hpp>
-
-#if !defined(_MSC_VER)
-  #pragma GCC diagnostic pop
-#else
-  #pragma warning(default: 4512)
-#endif
-
+#include <rapidjson/rapidjson/document.h> // for rapidjson::Document, rapidjson::Value
 #include <unicode/brkiter.h> // for icu::BreakIterator
 
 #if defined(_MSC_VER)
@@ -270,9 +257,13 @@ iresearch::analysis::analyzer::ptr construct(
   auto locale = iresearch::locale_utils::locale(locale_name);
   ignored_words_t buf;
 
-  return get_ignored_words(buf, locale, nullptr)
-    ? construct(cache_key, locale, std::move(buf))
-    : nullptr;
+  if (!get_ignored_words(buf, locale)) {
+    IR_FRMT_WARN("Failed to retrieve 'ignored_words' while constructing text_token_stream with cache key: %s", cache_key.c_str());
+
+    return nullptr;
+  }
+
+  return construct(cache_key, locale, std::move(buf));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -284,10 +275,13 @@ iresearch::analysis::analyzer::ptr construct(
 ) {
   ignored_words_t buf;
 
-  return get_ignored_words(buf, locale)
-    ? construct(cache_key, locale, std::move(buf))
-    : nullptr
-    ;
+  if (!get_ignored_words(buf, locale)) {
+     IR_FRMT_WARN("Failed to retrieve 'ignored_words' while constructing text_token_stream with cache key: %s", cache_key.c_str());
+
+     return nullptr;
+  }
+
+  return construct(cache_key, locale, std::move(buf));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -300,10 +294,13 @@ iresearch::analysis::analyzer::ptr construct(
 ) {
   ignored_words_t buf;
 
-  return get_ignored_words(buf, locale, &ignored_word_path)
-    ? construct(cache_key, locale, std::move(buf))
-    : nullptr
-    ;
+  if (!get_ignored_words(buf, locale, &ignored_word_path)) {
+    IR_FRMT_WARN("Failed to retrieve 'ignored_words' while constructing text_token_stream with cache key: '%s', ignored word path: %s", cache_key.c_str(), ignored_word_path.c_str());
+
+    return nullptr;
+  }
+
+  return construct(cache_key, locale, std::move(buf));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -315,10 +312,13 @@ iresearch::analysis::analyzer::ptr construct(
   const std::string& ignored_word_path,
   ignored_words_t&& ignored_words
 ) {
-  return get_ignored_words(ignored_words, locale, &ignored_word_path)
-    ? construct(cache_key, locale, std::move(ignored_words))
-    : nullptr
-    ;
+  if (!get_ignored_words(ignored_words, locale, &ignored_word_path)) {
+    IR_FRMT_WARN("Failed to retrieve 'ignored_words' while constructing text_token_stream with cache key: '%s', ignored word path: %s", cache_key.c_str(), ignored_word_path.c_str());
+
+    return nullptr;
+  }
+
+  return construct(cache_key, locale, std::move(ignored_words));
 }
 
 bool process_term(
@@ -407,36 +407,42 @@ REGISTER_ANALYZER(text_token_stream);
 /*static*/ analyzer::ptr text_token_stream::make(const string_ref& args) {
   // try to parse 'args' as a jSON config
   try {
-    std::stringstream args_stream(std::string(args.c_str(), args.size()));
-    ::boost::property_tree::ptree pt;
+    rapidjson::Document json;
 
-    try {
-      static std::mutex mutex;
-      SCOPED_LOCK(mutex); // ::boost::property_tree::read_json(...) is not thread-safe, was seen to SEGFAULT
-      ::boost::property_tree::read_json(args_stream, pt);
-    } catch(...) {
+    if (json.Parse(args.c_str(), args.size()).HasParseError()
+        || !json.IsObject()
+        || !json.HasMember("locale")
+        || !json["locale"].IsString()
+       ) {
       return construct(args); // fallback to parseing 'args' as a locale name
     }
 
-    auto locale = iresearch::locale_utils::locale(pt.get<std::string>("locale"));
-    auto ignored_words = pt.get_child_optional("ignored_words");
-    auto ignored_words_path = pt.get_optional<std::string>("ignored_words_path");
+    static const rapidjson::Value empty;
+    auto locale = iresearch::locale_utils::locale(json["locale"].GetString());
+    auto& ignored_words = json.HasMember("ignored_words") ? json["ignored_words"] : empty;
+    auto& ignored_words_path = json.HasMember("ignored_words_path") ? json["ignored_words_path"] : empty;
 
-    if (!ignored_words) {
-      return ignored_words_path
-        ? construct(args, locale, ignored_words_path.value())
+    if (!ignored_words.IsArray()) {
+      return ignored_words_path.IsString()
+        ? construct(args, locale, ignored_words_path.GetString())
         : construct(args, locale)
         ;
     }
 
     ignored_words_t buf;
 
-    for (auto& ignored_word: *ignored_words) {
-     buf.emplace(ignored_word.second.get_value<std::string>());
+    for (auto itr = ignored_words.Begin(), end = ignored_words.End(); itr != end; ++itr) {
+      if (!itr->IsString()) {
+        IR_FRMT_WARN("Non-string value in 'ignored_words' while constructing text_token_stream from jSON arguments: %s", args.c_str());
+
+        return construct(args); // fallback to parseing 'args' as a locale name
+      }
+
+      buf.emplace(itr->GetString());
     }
 
-    return ignored_words_path
-      ? construct(args, locale, ignored_words_path.value(), std::move(buf))
+    return ignored_words_path.IsString()
+      ? construct(args, locale, ignored_words_path.GetString(), std::move(buf))
       : construct(args, locale, std::move(buf))
       ;
   }

@@ -35,18 +35,18 @@ struct term_meta : iresearch::term_meta {
   DECLARE_FACTORY_DEFAULT();
 
   void clear() {
-    iresearch::term_meta::clear();
+    irs::term_meta::clear();
     doc_start = pos_start = pay_start = 0;
     pos_end = type_limits<type_t::address_t>::invalid();
   }
 
-  uint64_t doc_start = 0; /* where this term's postings start in the .doc file */
-  uint64_t pos_start = 0; /* where this term's postings start in the .pos file */
+  uint64_t doc_start = 0; // where this term's postings start in the .doc file
+  uint64_t pos_start = 0; // where this term's postings start in the .pos file
   uint64_t pos_end = iresearch::type_limits<iresearch::type_t::address_t>::invalid(); // file pointer where the last (vInt encoded) pos delta is
-  uint64_t pay_start = 0; /* where this term's payloads/offsets start in the .pay file */
+  uint64_t pay_start = 0; // where this term's payloads/offsets start in the .pay file
   union {
     doc_id_t e_single_doc; // singleton document id delta
-    uint64_t e_skip_start; /* pointer where skip data starts (after doc_start) */
+    uint64_t e_skip_start; // pointer where skip data starts (after doc_start)
   };
 }; // term_meta
 

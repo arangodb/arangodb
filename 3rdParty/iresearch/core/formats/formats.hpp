@@ -41,23 +41,72 @@ typedef std::unordered_set<doc_id_t> document_mask;
  * postings_writer
  * ------------------------------------------------------------------*/
 
+struct postings_writer;
+
+//////////////////////////////////////////////////////////////////////////////
+/// @class term_meta
+/// @brief represents metadata associated with the term
+//////////////////////////////////////////////////////////////////////////////
+struct IRESEARCH_API term_meta : attribute {
+  DECLARE_ATTRIBUTE_TYPE();
+
+  term_meta() = default;
+  virtual ~term_meta() = default;
+
+  virtual void clear() {
+    docs_count = 0;
+    freq = 0;
+  }
+
+  uint64_t docs_count = 0; // how many documents a particular term contains
+  uint64_t freq = 0; // FIXME check whether we can move freq to another place
+}; // term_meta
+
 struct IRESEARCH_API postings_writer : util::const_attribute_store_provider {
-  DECLARE_PTR( postings_writer );
-  DECLARE_FACTORY( postings_writer );
+  DECLARE_PTR(postings_writer);
+  DECLARE_FACTORY(postings_writer);
+
+  class releaser {
+   public:
+    explicit releaser(postings_writer* owner = nullptr) NOEXCEPT
+      : owner_(owner) {
+    }
+
+    inline void operator()(term_meta* meta) const NOEXCEPT;
+
+   private:
+    postings_writer* owner_;
+  }; // releaser
+
+  typedef std::unique_ptr<term_meta, releaser> state;
 
   virtual ~postings_writer();
   /* out - corresponding terms utils/utstream */
   virtual void prepare( index_output& out, const flush_state& state ) = 0;  
   virtual void begin_field(const flags& features) = 0;
-  virtual void write(doc_iterator& docs, attribute_store& out) = 0;
+  virtual state write(doc_iterator& docs) = 0;
   virtual void begin_block() = 0;
-  virtual void encode(data_output& out, const attribute_store& attrs) = 0;
+  virtual void encode(data_output& out, const term_meta& attrs) = 0;
   virtual void end() = 0;
 
   virtual const attribute_store& attributes() const NOEXCEPT override {
     return attribute_store::empty_instance();
   }
+
+ protected:
+  friend class term_meta;
+
+  state make_state(term_meta& meta) NOEXCEPT {
+    return state(&meta, releaser(this));
+  }
+
+  virtual void release(term_meta* meta) NOEXCEPT = 0;
 };
+
+void postings_writer::releaser::operator()(term_meta* meta) const NOEXCEPT {
+  assert(owner_ && meta);
+  owner_->release(meta);
+}
 
 /* -------------------------------------------------------------------
  * field_writer
@@ -189,7 +238,7 @@ struct IRESEARCH_API columnstore_writer {
 
   virtual bool prepare(directory& dir, const segment_meta& meta) = 0;
   virtual column_t push_column() = 0;
-  virtual void flush() = 0;
+  virtual bool flush() = 0; // @return was anything actually flushed
 }; // columnstore_writer
 
 NS_END
@@ -236,6 +285,35 @@ struct IRESEARCH_API columnstore_reader {
   typedef std::function<bool(doc_id_t, bytes_ref&)> values_reader_f;
   typedef std::function<bool(doc_id_t, const bytes_ref&)> values_visitor_f;
 
+  struct column_iterator : irs::iterator<const std::pair<doc_id_t, bytes_ref>&> {
+    DECLARE_PTR(column_iterator);
+    DECLARE_FACTORY(column_iterator);
+
+    typedef std::pair<doc_id_t, bytes_ref> value_type;
+
+    static const value_type INVALID;
+    static const value_type EOFMAX;
+
+    virtual const value_type& seek(doc_id_t doc) = 0;
+  }; // column_iterator
+
+  struct column_reader {
+    virtual ~column_reader() = default;
+
+    // returns corresponding column reader
+    virtual columnstore_reader::values_reader_f values() const = 0;
+
+    // returns corresponding column iterator
+    virtual columnstore_reader::column_iterator::ptr iterator() const = 0;
+
+    virtual bool visit(const columnstore_reader::values_visitor_f& reader) const = 0;
+
+    virtual size_t size() const = 0;
+  };
+
+  static column_iterator::ptr empty_iterator();
+  static const values_reader_f& empty_reader();
+
   virtual ~columnstore_reader();
 
   // @param seen if found and seen != nullptr -> set seen = true
@@ -248,8 +326,10 @@ struct IRESEARCH_API columnstore_reader {
     bool* seen = nullptr
   ) = 0;
 
-  virtual values_reader_f values(field_id field) const = 0;
-  virtual bool visit(field_id field, const values_visitor_f& visitor) const = 0;
+  virtual const column_reader* column(field_id field) const = 0;
+
+  // @returns total number of columns
+  virtual size_t size() const = 0;
 }; // columnstore_reader
 
 NS_END

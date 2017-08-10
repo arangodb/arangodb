@@ -230,7 +230,7 @@ class fst_buffer : public vector_byte_fst {
 
 entry::entry(
     const irs::bytes_ref& term,
-    irs::attribute_store&& attrs,
+    irs::postings_writer::state&& attrs,
     bool volatile_term)
   : type_(ET_TERM) {
   if (volatile_term) {
@@ -239,7 +239,7 @@ entry::entry(
     data_.assign<false>(term);
   }
 
-  mem_.construct<irs::attribute_store>(std::move(attrs));
+  mem_.construct<irs::postings_writer::state>(std::move(attrs));
 }
 
 entry::entry(
@@ -279,8 +279,8 @@ entry& entry::operator=(entry&& rhs) NOEXCEPT{
 
 void entry::move_union(entry&& rhs) NOEXCEPT {
   switch (rhs.type_) {
-    case ET_TERM: mem_.construct<irs::attribute_store>(std::move(rhs.term())); break;
-    case ET_BLOCK : mem_.construct<block_t>(std::move(rhs.block()));        break;
+    case ET_TERM  : mem_.construct<irs::postings_writer::state>(std::move(rhs.term())); break;
+    case ET_BLOCK : mem_.construct<block_t>(std::move(rhs.block())); break;
     default: break;
   }
 
@@ -290,8 +290,8 @@ void entry::move_union(entry&& rhs) NOEXCEPT {
 
 void entry::destroy() NOEXCEPT {
   switch (type_) {
-    case ET_TERM: mem_.destroy<irs::attribute_store>(); break;
-    case ET_BLOCK : mem_.destroy<block_t>();         break;
+    case ET_TERM  : mem_.destroy<irs::postings_writer::state>(); break;
+    case ET_BLOCK : mem_.destroy<block_t>(); break;
     default: break;
   }
 }
@@ -1213,7 +1213,7 @@ void field_writer::write_term_entry(const detail::entry& e, size_t prefix, bool 
   suffix.stream.write_vlong(leaf ? suf_size : shift_pack_64(suf_size, false));
   suffix.stream.write_bytes(data.c_str() + prefix, suf_size);
 
-  pw->encode(stats.stream, e.term());
+  pw->encode(stats.stream, *e.term());
 }
 
 void field_writer::write_block_entry(
@@ -1488,18 +1488,12 @@ void field_writer::write(
   auto& docs = pw->attributes().get<version10::documents>();
   assert(docs);
 
-  // aggregated by postings writer term attributes
-  attribute_store attrs;
-
   for (; terms.next();) {
     auto postings = terms.postings(features);
-    pw->write(*postings, attrs);
-
-    auto& meta = attrs.emplace<term_meta>();
+    auto meta = pw->write(*postings);
 
     if (freq_exists) {
-      auto& tfreq = attrs.emplace<frequency>();
-      sum_tfreq += tfreq->value;
+      sum_tfreq += meta->freq;
     }
 
     if (meta->docs_count) {
@@ -1508,8 +1502,8 @@ void field_writer::write(
       const bytes_ref& term = terms.value();
       push(term);
 
-      /* push term to the top of the stack */
-      stack.emplace_back(term, std::move(attrs), volatile_state_);
+      // push term to the top of the stack
+      stack.emplace_back(term, std::move(meta), volatile_state_);
 
       if (!min_term.first) {
         min_term.first = true;
@@ -1526,7 +1520,7 @@ void field_writer::write(
         max_term.assign<false>(term);
       }
 
-      /* increase processed term count */
+      // increase processed term count
       ++term_count;
     }
   }

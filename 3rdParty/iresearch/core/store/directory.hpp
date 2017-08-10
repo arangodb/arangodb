@@ -19,6 +19,7 @@
 #include "utils/noncopyable.hpp"
 #include "utils/string.hpp"
 
+#include <ctime>
 #include <vector>
 
 NS_ROOT

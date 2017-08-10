@@ -201,7 +201,7 @@ bool by_same_position::equals(const filter& rhs) const {
 
 size_t by_same_position::hash() const {
   size_t seed = 0;
-  ::boost::hash_combine<const filter&>(seed, *this);
+  ::boost::hash_combine(seed, filter::hash());
   for (auto& term : terms_) {
     ::boost::hash_combine(seed, term.first);
     ::boost::hash_combine(seed, term.second);

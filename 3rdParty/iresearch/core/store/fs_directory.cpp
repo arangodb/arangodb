@@ -55,7 +55,7 @@ class fs_lock : public index_lock {
     bool exists;
     utf8_path path;
 
-    if (!(path/dir_).exists(exists)) {
+    if (!(path/=dir_).exists(exists)) {
       IR_FRMT_ERROR("Error caught in: %s", __FUNCTION__);
       return false;
     }
@@ -67,7 +67,7 @@ class fs_lock : public index_lock {
     }
 
     // create lock file
-    if (!file_utils::verify_lock_file((path/file_).c_str())) {
+    if (!file_utils::verify_lock_file((path/=file_).c_str())) {
       if (!path.exists(exists) || (exists && !path.remove())) {
         IR_FRMT_ERROR("Error caught in: %s", __FUNCTION__);
         return false;
@@ -88,7 +88,7 @@ class fs_lock : public index_lock {
     try {
       utf8_path path;
 
-      path/dir_/file_;
+      (path/=dir_)/=file_;
       result = file_utils::verify_lock_file(path.c_str());
 
       return true;
@@ -106,7 +106,7 @@ class fs_lock : public index_lock {
       // file will be automatically removed on close
       return true;
 #else
-      return (utf8_path()/dir_/file_).remove();
+      return ((utf8_path()/=dir_)/=file_).remove();
 #endif
     }
 
@@ -163,10 +163,9 @@ class fs_index_output : public buffered_index_output {
     auto len_written = fwrite(b, sizeof(byte_type), len, handle.get());
 
     if (len && len_written != len) {
-      std::stringstream ss;
-      ss << "Failed to write buffer, written " << len_written 
-         << " out of " << len << " bytes.", 
-      throw detailed_io_error(ss.str());
+      throw detailed_io_error("Failed to write buffer, written ")
+              << std::to_string(len_written) << " out of "
+              << std::to_string(len) << " bytes.";
     }
   }
 
@@ -209,7 +208,7 @@ class fs_index_input : public buffered_index_input {
     // convert file descriptor to POSIX
     auto size = file_utils::file_size(file_no(*handle));
 
-    if (handle->size < 0) {
+    if (size < 0) {
       auto path = boost::locale::conv::utf_to_utf<char>(name);
       #ifdef _WIN32
         auto error = GetLastError();
@@ -242,10 +241,9 @@ class fs_index_input : public buffered_index_input {
  protected:
   virtual void seek_internal(size_t pos) override {
     if (pos >= handle_->size) {
-      std::stringstream ss;
-      ss << "Seek out of range for input file, length " << handle_->size 
-         << ", position " << pos;
-      throw detailed_io_error(ss.str());
+      throw detailed_io_error("Seek out of range for input file, length ")
+              << std::to_string(handle_->size)
+              << ", position " << std::to_string(pos);
     }
 
     pos_ = pos;
@@ -259,11 +257,9 @@ class fs_index_input : public buffered_index_input {
 
     if (handle_->pos != pos_) {
       if (fseek(stream, static_cast<long>(pos_), SEEK_SET) != 0) {
-
-        std::stringstream ss;
-        ss << "Failed to seek to " << pos_ 
-           << " for input file, error " << ferror(stream);
-        throw detailed_io_error(ss.str());
+        throw detailed_io_error("Failed to seek to ")
+                << std::to_string(pos_)
+                << " for input file, error " << std::to_string(ferror(stream));
       }
 
       handle_->pos = pos_;
@@ -280,11 +276,10 @@ class fs_index_input : public buffered_index_input {
       }
 
       // read error
-      std::stringstream ss;
-      ss << "Failed to read from input file, read " << read 
-         << " out of " << len 
-         << " bytes, error " << ferror(stream);
-      throw detailed_io_error(ss.str());
+      throw detailed_io_error("Failed to read from input file, read ")
+              << std::to_string(read)
+              << " out of " << std::to_string(len)
+              << " bytes, error " << std::to_string(ferror(stream));
     }
 
     assert(handle_->pos == pos_);
@@ -425,11 +420,11 @@ fs_index_input::file_handle::ptr pooled_fs_index_input::reopen(
 // -----------------------------------------------------------------------------
 
 /*static*/ bool fs_directory::create_directory(const string_ref& dir) {
-  return (utf8_path()/dir).mkdir();
+  return (utf8_path()/=dir).mkdir();
 }
 
 /*static*/ bool fs_directory::remove_directory(const string_ref& dir) {
-  return (utf8_path()/dir).rmdir();
+  return (utf8_path()/=dir).rmdir();
 }
 
 fs_directory::fs_directory(const std::string& dir)
@@ -448,7 +443,7 @@ index_output::ptr fs_directory::create(const std::string& name) NOEXCEPT {
   try {
     utf8_path path;
 
-    path/dir_/name;
+    (path/=dir_)/=name;
 
     auto out = fs_index_output::open(path.c_str());
 
@@ -473,13 +468,13 @@ const std::string& fs_directory::directory() const NOEXCEPT {
 bool fs_directory::exists(
   bool& result, const std::string& name
 ) const NOEXCEPT {
-  return (utf8_path()/dir_/name).exists(result);
+  return ((utf8_path()/=dir_)/=name).exists(result);
 }
 
 bool fs_directory::length(
   uint64_t& result, const std::string& name
 ) const NOEXCEPT {
-  return (utf8_path()/dir_/name).file_size(result);
+  return ((utf8_path()/=dir_)/=name).file_size(result);
 }
 
 index_lock::ptr fs_directory::make_lock(const std::string& name) NOEXCEPT {
@@ -489,14 +484,14 @@ index_lock::ptr fs_directory::make_lock(const std::string& name) NOEXCEPT {
 bool fs_directory::mtime(
   std::time_t& result, const std::string& name
 ) const NOEXCEPT {
-  return (utf8_path()/dir_/name).file_mtime(result);
+  return ((utf8_path()/=dir_)/=name).mtime(result);
 }
 
 bool fs_directory::remove(const std::string& name) NOEXCEPT {
   try {
     utf8_path path;
 
-    path/dir_/name;
+    (path/=dir_)/=name;
 
     return path.remove();
   } catch (...) {
@@ -512,7 +507,7 @@ index_input::ptr fs_directory::open(const std::string& name) const NOEXCEPT {
     auto pool_size =
       const_cast<attribute_store&>(attributes()).emplace<fd_pool_size>()->size;
 
-    path/dir_/name;
+    (path/=dir_)/=name;
 
     return fs_index_input::open(path.c_str(), pool_size);
   } catch(...) {
@@ -529,8 +524,8 @@ bool fs_directory::rename(
     utf8_path src_path;
     utf8_path dst_path;
 
-    src_path/dir_/src;
-    dst_path/dir_/dst;
+    (src_path/=dir_)/=src;
+    (dst_path/=dir_)/=dst;
 
     return src_path.rename(dst_path);
   } catch (...) {
@@ -541,7 +536,7 @@ bool fs_directory::rename(
 }
 
 bool fs_directory::visit(const directory::visitor_f& visitor) const {
-  auto directory = (utf8_path()/dir_).native();
+  auto directory = (utf8_path()/=dir_).native();
 
   if (!file_utils::is_directory(directory.c_str())) {
     return false;
@@ -551,7 +546,7 @@ bool fs_directory::visit(const directory::visitor_f& visitor) const {
   utf8_path path;
   auto dir_visitor = [&path, &visitor] (const file_path_t name) {
     path.clear();
-    path / name;
+    path /= name;
 
     auto filename = path.utf8();
     return visitor(filename);
@@ -571,7 +566,7 @@ bool fs_directory::sync(const std::string& name) NOEXCEPT {
   try {
     utf8_path path;
 
-    path/dir_/name;
+    (path/=dir_)/=name;
 
     if (file_utils::file_sync(path.c_str())) {
       return true;

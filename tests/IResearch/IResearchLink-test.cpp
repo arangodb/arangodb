@@ -101,8 +101,8 @@ struct IResearchLinkSetup {
     TransactionStateMock::beginTransactionCount = 0;
     TransactionStateMock::commitTransactionCount = 0;
     testFilesystemPath = (
-      irs::utf8_path()/
-      TRI_GetTempPath()/
+      (irs::utf8_path()/=
+      TRI_GetTempPath())/=
       (std::string("arangodb_tests.") + std::to_string(TRI_microtime()))
       ).utf8();
 
@@ -305,7 +305,7 @@ SECTION("test_write") {
   static std::vector<std::string> const EMPTY;
   auto doc0 = arangodb::velocypack::Parser::fromJson("{ \"abc\": \"def\" }");
   auto doc1 = arangodb::velocypack::Parser::fromJson("{ \"ghi\": \"jkl\" }");
-  std::string dataPath = (irs::utf8_path()/s.testFilesystemPath/std::string("test_write")).utf8();
+  std::string dataPath = ((irs::utf8_path()/=s.testFilesystemPath)/=std::string("test_write")).utf8();
   TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "testVocbase");
   auto linkJson = arangodb::velocypack::Parser::fromJson("{ \"view\": 42, \"includeAllFields\": true }");
   auto collectionJson = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testCollection\" }");

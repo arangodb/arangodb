@@ -153,7 +153,13 @@ skip_reader::level::level(const skip_reader::level& rhs)
 }
 
 index_input::ptr skip_reader::level::dup() const NOEXCEPT {
-  return index_input::make<skip_reader::level>(*this);
+  try {
+    return index_input::make<skip_reader::level>(*this);
+  } catch(...) {
+    IR_EXCEPTION();
+  }
+
+  return nullptr;
 }
 
 byte_type skip_reader::level::read_byte() {

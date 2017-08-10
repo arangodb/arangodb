@@ -29,6 +29,7 @@
 #include "utils/bit_utils.hpp"
 #include "utils/bitset.hpp"
 #include "utils/memory.hpp"
+#include "utils/memory_pool.hpp"
 #include "utils/noncopyable.hpp"
 #include "utils/type_limits.hpp"
 
@@ -244,10 +245,13 @@ class IRESEARCH_PLUGIN postings_writer final: public iresearch::postings_writer 
 
   virtual void prepare(index_output& out, const iresearch::flush_state& state) override;
   virtual void begin_field(const iresearch::flags& meta) override;
-  virtual void write(doc_iterator& docs, irs::attribute_store& out) override;
+  virtual irs::postings_writer::state write(doc_iterator& docs) override;
   virtual void begin_block() override;
-  virtual void encode(data_output& out, const irs::attribute_store& attrs) override;
+  virtual void encode(data_output& out, const irs::term_meta& attrs) override;
   virtual void end() override;
+
+ protected:
+  virtual void release(irs::term_meta *meta) NOEXCEPT override;
 
  private:
   struct stream {
@@ -334,11 +338,11 @@ class IRESEARCH_PLUGIN postings_writer final: public iresearch::postings_writer 
   void begin_doc(doc_id_t id, const frequency* freq);
   void add_position( uint32_t pos, const offset* offs, const payload* pay );
   void end_doc();
-  void end_term(
-      version10::term_meta& state,
-      const frequency* tfreq);
+  void end_term(version10::term_meta& state, const uint64_t* tfreq);
 
   IRESEARCH_API_PRIVATE_VARIABLES_BEGIN
+  memory::memory_pool<> meta_pool_;
+  memory::memory_pool_allocator<version10::term_meta, decltype(meta_pool_)> alloc_{ meta_pool_ };
   skip_writer skip_;
   irs::attribute_store attrs_;
   uint64_t buf[BLOCK_SIZE]; // buffer for encoding (worst case)
@@ -349,7 +353,7 @@ class IRESEARCH_PLUGIN postings_writer final: public iresearch::postings_writer 
   uint64_t docs_count{};      /* count of processed documents */
   bitset docs_;             /* bit set of all processed documents */
   features features_; /* features supported by current field */
-  bool volatile_attributes_ = false; // attribute value memory locations may change after next()
+  bool volatile_attributes_; // attribute value memory locations may change after next()
   IRESEARCH_API_PRIVATE_VARIABLES_END
 };
 

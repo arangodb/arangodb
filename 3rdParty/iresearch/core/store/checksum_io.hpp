@@ -118,8 +118,14 @@ class checksum_index_input final : public index_input {
   /* index_input */
 
   virtual ptr dup() const NOEXCEPT override {
-    PTR_NAMED(checksum_index_input, ptr, impl_->dup(), crc_);
-    return ptr;
+    try {
+      PTR_NAMED(checksum_index_input, ptr, impl_->dup(), crc_);
+      return ptr;
+    } catch(...) {
+      IR_EXCEPTION();
+    }
+
+    return nullptr;
   }
 
   virtual size_t length() const override {

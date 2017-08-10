@@ -47,7 +47,7 @@ class compound_attributes: public irs::attribute_store {
   void add(const irs::attribute_store& attributes) {
     auto visitor = [this](
         const irs::attribute::type_id& type_id,
-        const irs::attribute_store::ref<void>&
+        const irs::attribute_store::ref<irs::attribute>&
     ) ->bool {
       bool inserted;
       attribute_map::emplace(inserted, type_id);
@@ -60,14 +60,14 @@ class compound_attributes: public irs::attribute_store {
   void set(const irs::attribute_store& attributes) {
     auto visitor_unset = [](
       const irs::attribute::type_id&,
-      irs::attribute_store::ref<void>& value
+      irs::attribute_store::ref<irs::attribute>& value
     )->bool {
       value = nullptr;
       return true;
     };
     auto visitor_update = [this](
       const irs::attribute::type_id& type_id,
-      const irs::attribute_store::ref<void>& value
+      const irs::attribute_store::ref<irs::attribute>& value
     )->bool {
       bool inserted;
       attribute_map::emplace(inserted, type_id) = value;
@@ -110,7 +110,8 @@ struct compound_doc_iterator : public irs::doc_iterator {
   virtual bool next() override;
 
   virtual irs::doc_id_t seek(irs::doc_id_t target) override {
-    return irs::seek(*this, target);
+    irs::seek(*this, target);
+    return value();
   }
 
   virtual irs::doc_id_t value() const override {
@@ -607,35 +608,32 @@ class columnstore {
     writer_ = std::move(writer);
   }
 
-  ~columnstore() {
-    try {
-      writer_->flush();
-    } catch (...) {
-      // NOOP
-    }
-  }
-
   // inserts live values from the specified 'column' and 'reader' into column
   bool insert(
       const irs::sub_reader& reader,
       irs::field_id column,
       const doc_id_map_t& doc_id_map) {
-    return reader.visit(
-        column,
-        [this, &doc_id_map](irs::doc_id_t doc, const irs::bytes_ref& in) {
-          const auto mapped_doc = doc_id_map[doc];
-          if (MASKED_DOC_ID == mapped_doc) {
-            // skip deleted document
-            return true;
-          }
+    const auto* column_reader = reader.column_reader(column);
 
-          empty_ = false;
-          empty_writer_ = false;
+    if (!column_reader) {
+      // nothing to do
+      return true;
+    }
 
-          auto& out = column_.second(mapped_doc);
-          out.write_bytes(in.c_str(), in.size());
+    return column_reader->visit(
+      [this, &doc_id_map](irs::doc_id_t doc, const irs::bytes_ref& in) {
+        const auto mapped_doc = doc_id_map[doc];
+        if (MASKED_DOC_ID == mapped_doc) {
+          // skip deleted document
           return true;
-        });
+        }
+
+        empty_ = false;
+
+        auto& out = column_.second(mapped_doc);
+        out.write_bytes(in.c_str(), in.size());
+        return true;
+    });
   }
 
   void reset() {
@@ -653,8 +651,8 @@ class columnstore {
   // returns 'true' if no data has been written to columnstore
   bool empty() const { return empty_; }
 
-  // @return if column data has been written to columnstore writer (any column)
-  bool empty_writer() const { return empty_writer_; }
+  // @return was anything actually flushed
+  bool flush() { return writer_->flush(); }
 
   // returns current column identifier
   irs::field_id id() const { return column_.first; }
@@ -663,7 +661,6 @@ class columnstore {
   irs::columnstore_writer::ptr writer_;
   irs::columnstore_writer::column_t column_{};
   bool empty_{ false };
-  bool empty_writer_{ false };
 }; // columnstore
 
 bool write_columns(
@@ -835,7 +832,7 @@ bool merge_writer::flush(std::string& filename, segment_meta& meta) {
     return false; // flush failure
   }
 
-  meta.column_store = !cs.empty_writer();
+  meta.column_store = cs.flush();
 
   // ...........................................................................
   // write segment meta

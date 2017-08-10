@@ -77,7 +77,7 @@ bool by_range::equals(const filter& rhs) const {
 
 size_t by_range::hash() const {
   size_t seed = 0;
-  ::boost::hash_combine<const filter&>(seed, *this);
+  ::boost::hash_combine(seed, filter::hash());
   ::boost::hash_combine(seed, fld_);
   ::boost::hash_combine(seed, rng_.min);
   ::boost::hash_combine(seed, rng_.min_type);

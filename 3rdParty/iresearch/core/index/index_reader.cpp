@@ -18,17 +18,11 @@
 #include "segment_reader.hpp"
 #include "index_meta.hpp"
 
-NS_LOCAL
-irs::columnstore_reader::values_reader_f NOOP_VISITOR =
-  [] (iresearch::doc_id_t, irs::bytes_ref&) { return false; };
-
-NS_END
-
 NS_ROOT
 
-/* -------------------------------------------------------------------
-* index_reader
-* ------------------------------------------------------------------*/
+// -------------------------------------------------------------------
+// index_reader
+// -------------------------------------------------------------------
 
 index_reader::~index_reader() { }
 
@@ -36,27 +30,10 @@ index_reader::~index_reader() { }
 // sub_reader
 // -------------------------------------------------------------------
 
-columnstore_reader::values_reader_f sub_reader::values(
+const columnstore_reader::column_reader* sub_reader::column_reader(
     const string_ref& field) const {
-  auto* meta = column(field);
-
-  if (!meta) {
-    return NOOP_VISITOR;
-  }
-
-  return values(meta->id);
-}
-
-bool sub_reader::visit(
-    const string_ref& field,
-    const columnstore_reader::values_visitor_f& visitor) const {
-  auto* meta = column(field);
-
-  if (!meta) {
-    return false;
-  }
-
-  return visit(meta->id, visitor);
+  const auto* meta = column(field);
+  return meta ? column_reader(meta->id) : nullptr;
 }
 
 // -------------------------------------------------------------------

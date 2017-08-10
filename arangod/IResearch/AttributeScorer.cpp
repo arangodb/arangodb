@@ -162,7 +162,15 @@ void Prepared::prepare_score(score_t& score) const {
       arangodb::iresearch::DocumentPrimaryKey docPk;
       irs::bytes_ref tmpRef;
 
-      if (!score.reader->values(score.pkColId)(score.docId, tmpRef) || !docPk.read(tmpRef)) {
+      const auto* column = score.reader->column_reader(score.pkColId);
+
+      if (!column) {
+        return; // not a valid PK column
+      }
+
+      auto values = column->values();
+
+      if (!values(score.docId, tmpRef) || !docPk.read(tmpRef)) {
         LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "failed to read document primary key while computing document score, doc_id '" << score.docId << "'";
 
         return; // not a valid document reference

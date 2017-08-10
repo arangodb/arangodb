@@ -269,7 +269,7 @@ class IRESEARCH_API sort {
   void reverse( bool rev ) { rev_ = rev; }
 
   const type_id& type() const { return *type_; }
-  
+
   virtual prepared::ptr prepare() const = 0;
 
  private:
@@ -411,6 +411,10 @@ public:
   order(order&& rhs) NOEXCEPT;
 
   order& operator=(order&& rhs) NOEXCEPT;
+
+  bool operator==(const order& other) const;
+
+  bool operator!=(const order& other) const;
 
   prepared prepare() const;
 

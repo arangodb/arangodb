@@ -16,6 +16,7 @@
 #include "utils/type_limits.hpp"
 
 #include "directory_reader.hpp"
+#include "segment_reader.hpp"
 
 NS_LOCAL
 
@@ -161,22 +162,25 @@ class directory_reader::atomic_helper:
   public singleton<directory_reader::atomic_helper> {
 };
 
-class directory_reader::directory_reader_impl:
+class directory_reader_impl :
   public composite_reader_impl<segment_reader> {
  public:
-  const directory& dir() const NOEXCEPT;
+  DECLARE_SPTR(directory_reader_impl); // required for NAMED_PTR(...)
+
+  const directory& dir() const NOEXCEPT {
+    return dir_;
+  }
 
   // open a new directory reader
   // if codec == nullptr then use the latest file for all known codecs
   // if cached != nullptr then try to reuse its segments
-  static directory_reader open(
+  static composite_reader::ptr open(
     const directory& dir,
     const format::ptr& codec = format::ptr(nullptr),
-    const directory_reader* cached = nullptr
+    const composite_reader::ptr& cached = nullptr
   );
 
  private:
-  DECLARE_SPTR(directory_reader_impl); // required for NAMED_PTR(...)
   typedef std::unordered_set<index_file_refs::ref_t> segment_file_refs_t;
   typedef std::vector<segment_file_refs_t> reader_file_refs_t;
 
@@ -193,20 +197,23 @@ class directory_reader::directory_reader_impl:
     uint64_t docs_count,
     uint64_t docs_max
   );
-};
+}; // directory_reader_impl
 
-directory_reader::directory_reader(const impl_ptr& impl): impl_(impl) {
+directory_reader::directory_reader(impl_ptr&& impl) NOEXCEPT
+  : impl_(std::move(impl)) {
 }
 
 directory_reader::directory_reader(const directory_reader& other) {
   *this = other;
 }
 
-directory_reader::directory_reader(directory_reader&& other) NOEXCEPT {
+directory_reader::directory_reader(
+    directory_reader&& other) NOEXCEPT {
   *this = std::move(other);
 }
 
-directory_reader& directory_reader::operator=(const directory_reader& other) {
+directory_reader& directory_reader::operator=(
+    const directory_reader& other) {
   if (this != &other) {
     auto impl = atomic_helper::instance().atomic_load(&(other.impl_));
 
@@ -216,7 +223,8 @@ directory_reader& directory_reader::operator=(const directory_reader& other) {
   return *this;
 }
 
-directory_reader& directory_reader::operator=(directory_reader&& other) NOEXCEPT {
+directory_reader& directory_reader::operator=(
+    directory_reader&& other) NOEXCEPT {
   if (this != &other) {
     atomic_helper::instance().atomic_exchange(&impl_, other.impl_);
   }
@@ -224,102 +232,45 @@ directory_reader& directory_reader::operator=(directory_reader&& other) NOEXCEPT
   return *this;
 }
 
-directory_reader::operator bool() const NOEXCEPT {
-  return impl_ ? true : false;
-}
-
-directory_reader& directory_reader::operator*() NOEXCEPT {
-  return *this;
-}
-
-const directory_reader& directory_reader::operator*() const NOEXCEPT {
-  return *this;
-}
-
-directory_reader* directory_reader::operator->() NOEXCEPT {
-  return this;
-}
-
-const directory_reader* directory_reader::operator->() const NOEXCEPT {
-  return this;
-}
-
-const sub_reader& directory_reader::operator[](size_t i) const {
-  return (*impl_)[i];
-}
-
-doc_id_t directory_reader::base(size_t i) const {
-  return impl_->base(i);
-}
-
-index_reader::reader_iterator directory_reader::begin() const {
-  return impl_->begin();
-}
-
-uint64_t directory_reader::docs_count() const {
-  return impl_->docs_count();
-}
-
-uint64_t directory_reader::docs_count(const string_ref& field) const {
-  return impl_->docs_count(field);
-}
-
-index_reader::reader_iterator directory_reader::end() const {
-  return impl_->end();
-}
-
-uint64_t directory_reader::live_docs_count() const {
-  return impl_->live_docs_count();
-}
-
 /*static*/ directory_reader directory_reader::open(
-  const directory& dir, const format::ptr& codec /*= format::ptr(nullptr)*/
-) {
+    const directory& dir, 
+    const format::ptr& codec /*= format::ptr(nullptr)*/) {
   return directory_reader_impl::open(dir, codec);
 }
 
 directory_reader directory_reader::reopen(
-  const format::ptr& codec /*= format::ptr(nullptr)*/
-) const {
-  return directory_reader_impl::open(impl_->dir(), codec, this);
-}
+    const format::ptr& codec /*= format::ptr(nullptr)*/) const {
+#ifdef IRESEARCH_DEBUG
+  auto& impl = dynamic_cast<directory_reader_impl&>(*impl_);
+#else
+  auto& impl = static_cast<directory_reader_impl&>(*impl_);
+#endif
 
-void directory_reader::reset() NOEXCEPT {
-  impl_.reset();
-}
-
-size_t directory_reader::size() const {
-  return impl_->size();
+  return directory_reader_impl::open(impl.dir(), codec, impl_);
 }
 
 // -------------------------------------------------------------------
 // directory_reader_impl
 // -------------------------------------------------------------------
 
-directory_reader::directory_reader_impl::directory_reader_impl(
-  const format::ptr& codec,
-  const directory& dir,
-  reader_file_refs_t&& file_refs,
-  index_meta&& meta,
-  ctxs_t&& ctxs,
-  uint64_t docs_count,
-  uint64_t docs_max
-):
-  composite_reader_impl(std::move(meta), std::move(ctxs), docs_count, docs_max),
-  codec_(codec),
-  dir_(dir),
-  file_refs_(std::move(file_refs)) {
+directory_reader_impl::directory_reader_impl(
+    const format::ptr& codec,
+    const directory& dir,
+    reader_file_refs_t&& file_refs,
+    index_meta&& meta,
+    ctxs_t&& ctxs,
+    uint64_t docs_count,
+    uint64_t docs_max)
+  : composite_reader_impl(std::move(meta), std::move(ctxs), docs_count, docs_max),
+    codec_(codec),
+    dir_(dir),
+    file_refs_(std::move(file_refs)) {
 }
 
-const directory& directory_reader::directory_reader_impl::dir() const NOEXCEPT {
-  return dir_;
-}
-
-/*static*/ directory_reader directory_reader::directory_reader_impl::open(
-  const directory& dir,
-  const format::ptr& codec /*= format::ptr(nullptr)*/,
-  const directory_reader* cached /*= nullptr*/
-) {
+/*static*/ composite_reader::ptr directory_reader_impl::open(
+    const directory& dir,
+    const format::ptr& codec /*= format::ptr(nullptr)*/,
+    const composite_reader::ptr& cached /*= nullptr*/) {
   index_meta meta;
   index_file_refs::ref_t meta_file_ref = load_newest_index_meta(meta, dir, codec);
 
@@ -327,18 +278,25 @@ const directory& directory_reader::directory_reader_impl::dir() const NOEXCEPT {
     throw index_not_found();
   }
 
-  if (cached && cached->impl_ && cached->impl_->meta() == meta) {
-    return *cached; // no changes to refresh
+#ifdef IRESEARCH_DEBUG
+  auto* cached_impl = dynamic_cast<directory_reader_impl*>(cached.get());
+  assert(!cached || cached_impl);
+#else
+  auto* cached_impl = static_cast<directory_reader_impl*>(cached.get());
+#endif
+
+  if (cached_impl && cached_impl->meta() == meta) {
+    return cached; // no changes to refresh
   }
 
-  static const auto invalid_candidate = std::numeric_limits<size_t>::max();
+  const auto INVALID_CANDIDATE = integer_traits<size_t>::const_max;
   std::unordered_map<string_ref, size_t> reuse_candidates; // map by segment name to old segment id
 
-  for(size_t i = 0, count = cached && cached->impl_ ? cached->impl_->meta().size() : 0; i < count; ++i) {
-    auto itr = reuse_candidates.emplace(cached->impl_->meta().segment(i).meta.name, i);
+  for(size_t i = 0, count = cached_impl ? cached_impl->meta().size() : 0; i < count; ++i) {
+    auto itr = reuse_candidates.emplace(cached_impl->meta().segment(i).meta.name, i);
 
     if (!itr.second) {
-      itr.first->second = invalid_candidate; // treat collisions as invalid
+      itr.first->second = INVALID_CANDIDATE; // treat collisions as invalid
     }
   }
 
@@ -359,9 +317,9 @@ const directory& directory_reader::directory_reader_impl::dir() const NOEXCEPT {
     auto itr = reuse_candidates.find(segment.name);
 
     if (itr != reuse_candidates.end()
-        && itr->second != invalid_candidate
-        && segment == cached->impl_->meta().segment(itr->second).meta) {
-      ctx.reader = (*(cached->impl_))[itr->second].reopen(segment);
+        && itr->second != INVALID_CANDIDATE
+        && segment == cached_impl->meta().segment(itr->second).meta) {
+      ctx.reader = (*cached_impl)[itr->second].reopen(segment);
       reuse_candidates.erase(itr);
     } else {
       ctx.reader = segment_reader::open(dir, segment);

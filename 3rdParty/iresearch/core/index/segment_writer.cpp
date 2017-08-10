@@ -111,11 +111,8 @@ void segment_writer::finish() {
 bool segment_writer::flush(std::string& filename, segment_meta& meta) {
   REGISTER_TIMER_DETAILED();
 
-  // flush columnstore
-  col_writer_->flush();
-
-  // flush columns indices
-  if (!columns_.empty()) {
+  // flush columnstore and columns indices
+  if (col_writer_->flush() && !columns_.empty()) {
     static struct less_t {
       bool operator()(const column* lhs, const column* rhs) {
         return lhs->name < rhs->name;
@@ -130,9 +127,11 @@ bool segment_writer::flush(std::string& filename, segment_meta& meta) {
 
     // flush columns meta
     col_meta_writer_->prepare(dir_, meta);
+
     for (auto& column: columns) {
       col_meta_writer_->write(column->name, column->handle.first);
     }
+
     col_meta_writer_->flush();
     columns_.clear();
     meta.column_store = true;

@@ -100,25 +100,49 @@ class CompoundReader: public irs::index_reader {
  public:
   CompoundReader(irs::async_utils::read_write_mutex& mutex);
   CompoundReader(CompoundReader&& other) noexcept;
-  irs::sub_reader const& operator[](size_t subReaderId) const;
+  irs::sub_reader const& operator[](size_t subReaderId) const noexcept {
+    return *(_subReaders[subReaderId].first);
+  }
   void add(irs::directory_reader const& reader);
   virtual reader_iterator begin() const override;
   virtual uint64_t docs_count(const irs::string_ref& field) const override;
   virtual uint64_t docs_count() const override;
   virtual reader_iterator end() const override;
   virtual uint64_t live_docs_count() const override;
-  irs::field_id pkColumnId(size_t subReaderId) const;
-  virtual size_t size() const override;
+
+  irs::columnstore_reader::values_reader_f const& pkColumn(
+      size_t subReaderId
+  ) const noexcept {
+    return _subReaders[subReaderId].second;
+  }
+
+  virtual size_t size() const noexcept override {
+    return _subReaders.size();
+  }
 
  private:
-  typedef std::vector<std::pair<irs::sub_reader*, irs::field_id>> SubReadersType;
-  class IteratorImpl: public irs::index_reader::reader_iterator_impl {
+  typedef std::vector<
+    std::pair<irs::sub_reader*, irs::columnstore_reader::values_reader_f>
+  > SubReadersType;
+
+  class IteratorImpl final : public irs::index_reader::reader_iterator_impl {
    public:
-    IteratorImpl(SubReadersType::const_iterator const& itr);
-    virtual void operator++() override;
-    virtual reference operator*() override;
-    virtual const_reference operator*() const override;
-    virtual bool operator==(const reader_iterator_impl& other) override;
+    IteratorImpl(SubReadersType::const_iterator const& itr)
+      : _itr(itr) {
+    }
+
+    virtual void operator++() noexcept override {
+      ++_itr;
+    }
+    virtual reference operator*() noexcept override {
+      return *(_itr->first);
+    }
+    virtual const_reference operator*() const noexcept override {
+      return *(_itr->first);
+    }
+    virtual bool operator==(const reader_iterator_impl& other) noexcept override {
+      return static_cast<IteratorImpl const&>(other)._itr == _itr;
+    }
 
    private:
     SubReadersType::const_iterator _itr;
@@ -129,29 +153,6 @@ class CompoundReader: public irs::index_reader {
   std::vector<irs::directory_reader> _readers;
   SubReadersType _subReaders;
 };
-
-CompoundReader::IteratorImpl::IteratorImpl(
-    SubReadersType::const_iterator const& itr
-): _itr(itr) {
-}
-
-void CompoundReader::IteratorImpl::operator++() {
-  ++_itr;
-}
-
-irs::index_reader::reader_iterator_impl::reference CompoundReader::IteratorImpl::operator*() {
-  return *(_itr->first);
-}
-
-irs::index_reader::reader_iterator_impl::const_reference CompoundReader::IteratorImpl::operator*() const {
-  return *(_itr->first);
-}
-
-bool CompoundReader::IteratorImpl::operator==(
-    reader_iterator_impl const& other
-) {
-  return static_cast<IteratorImpl const&>(other)._itr == _itr;
-}
 
 CompoundReader::CompoundReader(irs::async_utils::read_write_mutex& mutex)
   : _mutex(mutex) {
@@ -167,23 +168,19 @@ CompoundReader::CompoundReader(CompoundReader&& other) noexcept
   other._lock.release();
 }
 
-irs::sub_reader const& CompoundReader::operator[](size_t subReaderId) const {
-  return *(_subReaders[subReaderId].first);
-}
-
 void CompoundReader::add(irs::directory_reader const& reader) {
   _readers.emplace_back(reader);
 
   for(auto& entry: _readers.back()) {
-    auto* pkColMeta = entry.column(arangodb::iresearch::DocumentPrimaryKey::PK());
+    const auto* pkColumn = entry.column_reader(arangodb::iresearch::DocumentPrimaryKey::PK());
 
-    if (!pkColMeta) {
+    if (!pkColumn) {
       LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "encountered a sub-reader without a primary key column while creating a reader for iResearch view, ignoring";
 
       continue;
     }
 
-    _subReaders.emplace_back(&entry, pkColMeta->id);
+    _subReaders.emplace_back(&entry, pkColumn->values());
   }
 }
 
@@ -223,14 +220,6 @@ uint64_t CompoundReader::live_docs_count() const {
   }
 
   return count;
-}
-
-irs::field_id CompoundReader::pkColumnId(size_t subReaderId) const {
-  return _subReaders[subReaderId].second;
-}
-
-size_t CompoundReader::size() const {
-  return _subReaders.size();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -327,14 +316,13 @@ bool ViewIteratorBase::readDocument(
     arangodb::DocumentIdentifierToken const& token,
     arangodb::ManagedDocumentResult& result
 ) const {
-  auto docId = subDocId(token);
-  auto readerId = subReaderId(token);
-  auto& reader = _reader[readerId];
-  auto pkColId = _reader.pkColumnId(readerId);
+  const auto docId = subDocId(token);
+  const auto readerId = subReaderId(token);
+  const auto& pkValues = _reader.pkColumn(readerId);
   arangodb::iresearch::DocumentPrimaryKey docPk;
   irs::bytes_ref tmpRef;
 
-  if (!reader.values(pkColId)(docId, tmpRef) || !docPk.read(tmpRef)) {
+  if (!pkValues(docId, tmpRef) || !docPk.read(tmpRef)) {
     LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "failed to read document primary key while reading document from iResearch view, doc_id '" << docId << "'";
 
     return false; // not a valid document reference
@@ -648,8 +636,8 @@ bool appendAbsolutePersistedDataPath(
   irs::utf8_path absPath(feature->directory());
   static std::string subPath("databases");
 
-  absPath/subPath;
-  absPath/(path.empty()
+  absPath/=subPath;
+  absPath/=(path.empty()
            ? (arangodb::iresearch::IResearchView::type() + "-" + std::to_string(view.id()))
            : path
           );

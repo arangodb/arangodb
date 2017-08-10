@@ -80,17 +80,6 @@ document::document() NOEXCEPT:
 }
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                                        term_meta
-// -----------------------------------------------------------------------------
-
-REGISTER_ATTRIBUTE(iresearch::term_meta);
-DEFINE_ATTRIBUTE_TYPE(iresearch::term_meta);
-DEFINE_FACTORY_DEFAULT(term_meta);
-
-term_meta::term_meta() NOEXCEPT {
-}
-
-// -----------------------------------------------------------------------------
 // --SECTION--                                                         frequency
 // -----------------------------------------------------------------------------
 
@@ -139,11 +128,13 @@ bool norm::empty() const {
 bool norm::reset(const sub_reader& reader, field_id column, const document& doc) {
   assert(doc.value);
 
-  if (!type_limits<type_t::field_id_t>::valid(column)) {
+  const auto* column_reader = reader.column_reader(column);
+
+  if (!column_reader) {
     return false;
   }
 
-  column_ = reader.values(column);
+  column_ = column_reader->values();
   doc_ = doc.value;
   return true;
 }

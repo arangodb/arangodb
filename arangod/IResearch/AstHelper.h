@@ -56,11 +56,13 @@ inline bool parseValue(size_t& value, arangodb::aql::AstNode const& node) {
 //         specified AstNode 'node'
 /// @returns true on success, false otherwise
 ////////////////////////////////////////////////////////////////////////////////
-template<typename Char>
+template<typename String>
 inline bool parseValue(
-    irs::basic_string_ref<Char>& value,
+    String& value,
     arangodb::aql::AstNode const& node
 ) {
+  typedef typename String::traits_type traits_t;
+
   switch (node.value.type) {
     case arangodb::aql::VALUE_TYPE_NULL:
     case arangodb::aql::VALUE_TYPE_BOOL:
@@ -68,8 +70,8 @@ inline bool parseValue(
     case arangodb::aql::VALUE_TYPE_DOUBLE:
       return false;
     case arangodb::aql::VALUE_TYPE_STRING:
-      value = irs::basic_string_ref<Char>(
-        reinterpret_cast<Char const*>(node.getStringValue()),
+      value = String(
+        reinterpret_cast<typename traits_t::char_type const*>(node.getStringValue()),
         node.getStringLength()
       );
       return true;
