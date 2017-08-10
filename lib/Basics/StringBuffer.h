@@ -29,6 +29,7 @@
 #include "Zip/zip.h"
 
 #include <sstream>
+#include <iosfwd>
 
 /// @brief string buffer with formatting routines
 struct TRI_string_buffer_t {
@@ -467,6 +468,7 @@ class StringBuffer {
 
   /// @brief returns length of the character buffer
   size_t length() const { return TRI_LengthStringBuffer(&_buffer); }
+  size_t size() const { return TRI_LengthStringBuffer(&_buffer); }
   
   /// @brief returns capacity of the character buffer
   size_t capacity() const { return TRI_CapacityStringBuffer(&_buffer); }
@@ -766,5 +768,7 @@ class StringBuffer {
 };
 }
 }
+
+std::ostream& operator<<(std::ostream&, arangodb::basics::StringBuffer const&);
 
 #endif

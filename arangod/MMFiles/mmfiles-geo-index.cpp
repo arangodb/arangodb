@@ -361,7 +361,7 @@ GeoIdx* GeoIndex_new(void) {
   int i, j;
 
   gix = static_cast<GeoIx*>(
-      TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(GeoIx), false));
+      TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(GeoIx)));
 
   if (gix == nullptr) {
     return (GeoIdx*)gix;
@@ -369,9 +369,9 @@ GeoIdx* GeoIndex_new(void) {
 
   /* try to allocate all the things we need  */
   gix->pots = static_cast<GeoPot*>(
-      TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, GEOPOTSTART * sizeof(GeoPot), false));
+      TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, GEOPOTSTART * sizeof(GeoPot)));
   gix->gc = static_cast<GeoCoordinate*>(TRI_Allocate(
-      TRI_UNKNOWN_MEM_ZONE, GEOSLOTSTART * sizeof(GeoCoordinate), false));
+      TRI_UNKNOWN_MEM_ZONE, GEOSLOTSTART * sizeof(GeoCoordinate)));
 
   /* if any of them fail, free the ones that succeeded  */
   /* and then return the nullptr for our user      */
@@ -782,11 +782,11 @@ GeoResults* GeoResultsCons(int alloc) {
   }
 
   gres = static_cast<GeoResults*>(
-      TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(GeoResults), false));
+      TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(GeoResults)));
   sa = static_cast<int*>(
-      TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, alloc * sizeof(int), false));
+      TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, alloc * sizeof(int)));
   dd = static_cast<double*>(
-      TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, alloc * sizeof(double), false));
+      TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, alloc * sizeof(double)));
   if ((gres == NULL) || (sa == NULL) || (dd == NULL)) {
     if (gres != NULL) {
       TRI_Free(TRI_UNKNOWN_MEM_ZONE, gres);
@@ -944,9 +944,9 @@ GeoCoordinates* GeoAnswers(GeoIx* gix, GeoResults* gr, bool returnDistances) {
   }
 
   ans = static_cast<GeoCoordinates*>(
-      TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(GeoCoordinates), false));
+      TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(GeoCoordinates)));
   gc = static_cast<GeoCoordinate*>(TRI_Allocate(
-      TRI_UNKNOWN_MEM_ZONE, gr->pointsct * sizeof(GeoCoordinate), false));
+      TRI_UNKNOWN_MEM_ZONE, gr->pointsct * sizeof(GeoCoordinate)));
 
   if ((ans == NULL) || (gc == NULL)) {
     if (ans != NULL) {

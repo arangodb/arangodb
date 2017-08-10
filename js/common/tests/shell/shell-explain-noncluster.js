@@ -455,8 +455,25 @@ function ExplainSuite () {
       node = nodes[2];
       assertEqual("ReplaceNode", node.type);
       assertEqual(cn, node.collection);
-    }
+    },
+    
+    testV8Query : function () {
+      // should not crash the server
+      var st = new ArangoStatement(db, { query : "FOR i IN [ 1, 2, 3 ] FILTER 1 == 2 RETURN i" });
+      var nodes = st.explain().plan.nodes, node;
 
+      node = nodes[0];
+      assertEqual("SingletonNode", node.type);
+    },
+
+    testV8QueryWithFCall : function () {
+      // should not crash the server either
+      var st = new ArangoStatement(db, { query : "FOR i IN [ 1, 2, 3 ] FILTER V8(TO_STRING(i)) == '1' RETURN i" });
+      var nodes = st.explain().plan.nodes, node;
+
+      node = nodes[0];
+      assertEqual("SingletonNode", node.type);
+    }
   };
 }
 

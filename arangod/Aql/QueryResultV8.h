@@ -35,11 +35,10 @@ namespace aql {
 struct QueryResultV8 : public QueryResult {
   QueryResultV8& operator=(QueryResultV8 const& other) = delete;
 
-  QueryResultV8(QueryResultV8&& other)
-      : QueryResult((QueryResult && )other), result(other.result) {}
+  QueryResultV8(QueryResultV8&& other) = default;
 
   QueryResultV8(QueryResult&& other)
-      : QueryResult((QueryResult && )other), result() {}
+      : QueryResult(std::move(other)), result() {}
 
   QueryResultV8(int code, std::string const& details)
       : QueryResult(code, details), result() {}
