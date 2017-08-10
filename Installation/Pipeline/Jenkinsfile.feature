@@ -950,6 +950,10 @@ def buildStep(edition, os) {
                 }
             }
         }
+
+        if (fullParallel) {
+            testStepParallel([edition], [os], ['cluster', 'singleserver'])
+        }
     }
 }
 
@@ -1014,8 +1018,9 @@ if (buildExecutable) {
 runStage {
     stage('tests') {
         if (fullParallel) {
-            testStepParallel(['community', 'enterprise'], ['linux', 'mac', 'windows'], ['cluster', 'singleserver'])
-            testResilienceParallel(['linux', 'mac', 'windows'])
+//            testStepParallel(['community', 'enterprise'], ['linux', 'mac', 'windows'], ['cluster', 'singleserver'])
+//            testResilienceParallel(['linux', 'mac', 'windows'])
+          echo "done"
         }
         else {
             testStepParallel(['community', 'enterprise'], ['linux'], ['cluster', 'singleserver'])
