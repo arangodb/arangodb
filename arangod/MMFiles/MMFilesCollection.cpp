@@ -2121,7 +2121,7 @@ int MMFilesCollection::saveIndex(transaction::Methods* trx,
 
   std::shared_ptr<VPackBuilder> builder;
   try {
-    builder = idx->toVelocyPack(false);
+    builder = idx->toVelocyPack(false, true);
   } catch (arangodb::basics::Exception const& ex) {
     return ex.code();
   } catch (...) {

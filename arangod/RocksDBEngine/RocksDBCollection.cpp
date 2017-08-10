@@ -1233,7 +1233,7 @@ int RocksDBCollection::saveIndex(transaction::Methods* trx,
     return res.errorNumber();
   }
 
-  std::shared_ptr<VPackBuilder> builder = idx->toVelocyPack(false);
+  std::shared_ptr<VPackBuilder> builder = idx->toVelocyPack(false, true);
   auto vocbase = _logicalCollection->vocbase();
   auto collectionId = _logicalCollection->cid();
   VPackSlice data = builder->slice();
