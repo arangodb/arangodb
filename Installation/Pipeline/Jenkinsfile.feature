@@ -485,10 +485,10 @@ def testEdition(edition, os, mode, engine) {
             else if (os == 'windows') {
                 //bat "move logs ${arch}"
                 //bat "move log-output ${arch}"
-                bat "copy .\build\bin\*.dmp ${arch}"
-                bat "copy .\build\bin\*.exe ${arch}"
-                bat "copy .\build\bin\*.pdb ${arch}"
-                bat "copy .\build\bin\*.ilk ${arch}"
+                bat "copy .\\build\\bin\\*.dmp ${arch}"
+                bat "copy .\\build\\bin\\*.exe ${arch}"
+                bat "copy .\\build\\bin\\*.pdb ${arch}"
+                bat "copy .\\build\\bin\\*.ilk ${arch}"
             }
         }
     }
