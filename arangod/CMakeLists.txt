@@ -460,6 +460,10 @@ else ()
   add_dependencies(arangod zlibstatic)
 endif ()
 
+if (USE_JEMALLOC)
+  add_dependencies(arangod jemalloc)
+endif ()
+
 ################################################################################
 ## arango-dfdb
 ################################################################################
