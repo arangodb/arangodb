@@ -47,17 +47,24 @@ class AttributeScorer: public irs::sort {
   DECLARE_SORT_TYPE();
 
   // for use with irs::order::add<T>(...) and default args (static build)
-  DECLARE_FACTORY_DEFAULT(arangodb::transaction::Methods& trx, irs::string_ref const& attr);
+  DECLARE_FACTORY_DEFAULT(arangodb::transaction::Methods& trx);
 
   enum ValueType { ARRAY, BOOLEAN, NIL, NUMBER, OBJECT, STRING, UNKNOWN, eLast};
 
-  explicit AttributeScorer(arangodb::transaction::Methods& trx, irs::string_ref const& attr);
+  explicit AttributeScorer(arangodb::transaction::Methods& trx);
 
-  void orderNext(ValueType type) noexcept;
+  AttributeScorer& attributeNext(uint64_t offset);
+  AttributeScorer& attributeNext(irs::string_ref const& attibute);
+  AttributeScorer& orderNext(ValueType type) noexcept;
   virtual sort::prepared::ptr prepare() const override;
 
  private:
-  std::string _attr;
+  struct AttributeItem {
+    size_t _offset; // offset into _buf or jSON array
+    size_t _size; //  (std::numeric_limits<size_t>::max() -> offset into jSON array)
+  };
+  std::vector<AttributeItem> _attribute; // full attribute path to match
+  std::string _buf;
   size_t _nextOrder;
   size_t _order[ValueType::eLast]; // type precedence order
   arangodb::transaction::Methods& _trx;

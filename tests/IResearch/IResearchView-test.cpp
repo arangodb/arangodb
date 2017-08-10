@@ -869,10 +869,12 @@ SECTION("test_query") {
 
     irs::string_ref attribute("testAttribute");
     arangodb::aql::AstNode nodeArgs(arangodb::aql::AstNodeType::NODE_TYPE_ARRAY);
+    arangodb::aql::AstNode nodeOutVar(arangodb::aql::AstNodeType::NODE_TYPE_REFERENCE);
     arangodb::aql::AstNode nodeExpression(arangodb::aql::AstNodeType::NODE_TYPE_FCALL);
     arangodb::aql::Function nodeFunction("test_doc_id", "internalName", "", false, false, true, true, false);
     arangodb::aql::Variable variable("testVariable", 0);
 
+    nodeArgs.addMember(&nodeOutVar);
     nodeExpression.addMember(&nodeArgs);
     nodeExpression.setData(&nodeFunction);
     variableDefinitions.emplace(variable.id, &nodeExpression); // add node for condition
