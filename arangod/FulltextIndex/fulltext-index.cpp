@@ -1302,9 +1302,12 @@ void TRI_FreeFtsIndex(TRI_fts_index_t* ftx) {
 
 void TRI_TruncateFulltextIndex(TRI_fts_index_t* ftx) {
   index__t* idx = (index__t*)ftx;
+  
+  TRI_WriteLockReadWriteLock(&idx->_lock);
 
   // free root node (this will recursively free all other nodes)
   FreeNode(idx, idx->_root);
+  idx->_root = nullptr;
   
   // free handles
   TRI_FreeHandlesFulltextIndex(idx->_handles);
@@ -1322,6 +1325,7 @@ void TRI_TruncateFulltextIndex(TRI_fts_index_t* ftx) {
   idx->_root = CreateNode(idx);
   if (idx->_root == nullptr) {
     // out of memory
+    TRI_WriteUnlockReadWriteLock(&idx->_lock);
     THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
   }
 
@@ -1330,6 +1334,8 @@ void TRI_TruncateFulltextIndex(TRI_fts_index_t* ftx) {
   if (idx->_handles == nullptr) {
     // out of memory
     TRI_Free(TRI_UNKNOWN_MEM_ZONE, idx->_root);
+    idx->_root = nullptr;
+    TRI_WriteUnlockReadWriteLock(&idx->_lock);
     THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
   }
 
@@ -1337,6 +1343,8 @@ void TRI_TruncateFulltextIndex(TRI_fts_index_t* ftx) {
 #if TRI_FULLTEXT_DEBUG
   idx->_memoryBase += sizeof(TRI_fulltext_handles_t);
 #endif
+    
+  TRI_WriteUnlockReadWriteLock(&idx->_lock);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
