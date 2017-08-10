@@ -28,7 +28,7 @@
 #include "Aql/ExecutionBlock.h"
 #include "Aql/ExecutionEngine.h"
 #include "Aql/ExecutionPlan.h"
-#include "Aql/Executor.h"
+#include "Aql/V8Executor.h"
 #include "Aql/Optimizer.h"
 #include "Aql/Parser.h"
 #include "Aql/PlanCache.h"
@@ -910,8 +910,8 @@ QueryResultV8 Query::executeV8(v8::Isolate* isolate, QueryRegistry* registry) {
   } catch (...) {
     setExecutionTime();
     cleanupPlanAndEngine(TRI_ERROR_INTERNAL);
-    return QueryResult(TRI_ERROR_INTERNAL,
-                       TRI_errno_string(TRI_ERROR_INTERNAL) + QueryExecutionState::toStringWithPrefix(_state));
+    return QueryResultV8(TRI_ERROR_INTERNAL,
+                         TRI_errno_string(TRI_ERROR_INTERNAL) + QueryExecutionState::toStringWithPrefix(_state));
   }
 }
 
@@ -1044,10 +1044,10 @@ void Query::engine(ExecutionEngine* engine) {
 }
 
 /// @brief get v8 executor
-Executor* Query::executor() {
+V8Executor* Query::executor() {
   if (_executor == nullptr) {
     // the executor is a singleton per query
-    _executor.reset(new Executor(_queryOptions.literalSizeThreshold));
+    _executor.reset(new V8Executor(_queryOptions.literalSizeThreshold));
   }
 
   TRI_ASSERT(_executor != nullptr);
