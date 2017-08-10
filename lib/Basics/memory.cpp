@@ -313,14 +313,15 @@ void* TRI_SystemAllocate(uint64_t n, bool set) {
 
 /// @brief basic memory management for allocate
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-void* TRI_AllocateZ(TRI_memory_zone_t* zone, uint64_t n, bool set,
+void* TRI_AllocateZ(TRI_memory_zone_t* zone, uint64_t n,
                     char const* file, int line) {
 #else
-void* TRI_Allocate(TRI_memory_zone_t* zone, uint64_t n, bool set) {
+void* TRI_Allocate(TRI_memory_zone_t* zone, uint64_t n) {
 #endif
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   CheckSize(n, file, line);
 #endif
+
   char* m = static_cast<char*>(MALLOC_WRAPPER(zone, (size_t)n));
 
   if (m == nullptr) {
@@ -347,20 +348,15 @@ void* TRI_Allocate(TRI_memory_zone_t* zone, uint64_t n, bool set) {
         (unsigned long long)n ZONE_DEBUG_PARAMS);
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-    return TRI_AllocateZ(zone, n, set, file, line);
+    return TRI_AllocateZ(zone, n, file, line);
 #else
-    return TRI_Allocate(zone, n, set);
+    return TRI_Allocate(zone, n);
 #endif
   }
 
-  if (set) {
-    memset(m, 0, (size_t)n);
-  }
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-  else {
-    // prefill with 0xA5 (magic value, same as Valgrind will use)
-    memset(m, 0xA5, (size_t)n);
-  }
+  // prefill with 0xA5 (magic value, same as Valgrind will use)
+  memset(m, 0xA5, (size_t)n);
 #endif
 
   return m;
@@ -376,9 +372,9 @@ void* TRI_Reallocate(TRI_memory_zone_t* zone, void* m, uint64_t n) {
 
   if (m == nullptr) {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-    return TRI_AllocateZ(zone, n, false, file, line);
+    return TRI_AllocateZ(zone, n, file, line);
 #else
-    return TRI_Allocate(zone, n, false);
+    return TRI_Allocate(zone, n);
 #endif
   }
 

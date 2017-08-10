@@ -162,7 +162,7 @@ session) and add or modify users with the following commands.
 Alternatively, you can specify user data directly. For example:
 
 ```js
-  db._createDatabase("newDB", [], [{ username: "newUser", passwd: "123456", active: true}])
+  db._createDatabase("newDB", {}, [{ username: "newUser", passwd: "123456", active: true}])
 ```
 
 Those methods can only be used from within the *_system* database.

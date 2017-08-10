@@ -948,12 +948,9 @@ QueryResult Query::explain() {
     // put in bind parameters
     parser.ast()->injectBindParameters(_bindParameters);
 
-    enterState(QueryExecutionState::ValueType::AST_OPTIMIZATION);
     // optimize and validate the ast
-    parser.ast()->validateAndOptimize();
+    enterState(QueryExecutionState::ValueType::AST_OPTIMIZATION);
     
-    enterState(QueryExecutionState::ValueType::LOADING_COLLECTIONS);
-
     // create the transaction object, but do not start it yet
     _trx = new AqlTransaction(createTransactionContext(),
                               _collections.collections(), 
@@ -965,6 +962,10 @@ QueryResult Query::explain() {
     if (!res.ok()) {
       THROW_ARANGO_EXCEPTION(res);
     }
+    
+    enterState(QueryExecutionState::ValueType::LOADING_COLLECTIONS);
+    parser.ast()->validateAndOptimize();
+
 
     enterState(QueryExecutionState::ValueType::PLAN_INSTANTIATION);
     ExecutionPlan* plan = ExecutionPlan::instantiateFromAst(parser.ast());

@@ -94,10 +94,10 @@ void* TRI_SystemAllocate(uint64_t, bool);
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-#define TRI_Allocate(a, b, c) TRI_AllocateZ((a), (b), (c), __FILE__, __LINE__)
-void* TRI_AllocateZ(TRI_memory_zone_t*, uint64_t, bool, char const*, int);
+#define TRI_Allocate(a, b) TRI_AllocateZ((a), (b), __FILE__, __LINE__)
+void* TRI_AllocateZ(TRI_memory_zone_t*, uint64_t, char const*, int);
 #else
-void* TRI_Allocate(TRI_memory_zone_t*, uint64_t, bool);
+void* TRI_Allocate(TRI_memory_zone_t*, uint64_t);
 #endif
 
 ////////////////////////////////////////////////////////////////////////////////
