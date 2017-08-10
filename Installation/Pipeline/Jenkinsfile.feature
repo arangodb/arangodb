@@ -550,6 +550,7 @@ def testStep(edition, os, mode, engine) {
                     testsSuccess[name] = true
                 }
                 catch (exc) {
+                    echo "Exception while testing!"
                     echo exc.toString()
                     testsSuccess[name] = false
                     allTestsSuccessful = false
