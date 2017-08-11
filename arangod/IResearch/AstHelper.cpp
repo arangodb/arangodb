@@ -22,6 +22,10 @@
 
 #include "AstHelper.h"
 
+#include "IResearchDocument.h"
+
+#include <inttypes.h>
+
 namespace {
 
 arangodb::aql::AstNodeType const CmpMap[] {
@@ -224,8 +228,10 @@ std::string nameFromAttributeAccess(arangodb::aql::AstNode const& node) {
   class nameBuilder {
    public:
     bool operator()(irs::string_ref const& value) {
+      if (!str_.empty()) {
+        str_ += NESTING_LEVEL_DELIMITER;
+      }
       str_.append(value.c_str(), value.size());
-      str_ += '.';
       return true;
     }
 
@@ -233,17 +239,21 @@ std::string nameFromAttributeAccess(arangodb::aql::AstNode const& node) {
       return false; // do not support [*]
     }
 
-    bool operator()(int64_t) const {
-      return false; // do not support [i]
+    bool operator()(uint64_t i) {
+      str_ += NESTING_LIST_OFFSET_PREFIX;
+      auto const written = sprintf(buf_, "%" PRIu64, i);
+      str_.append(buf_, written);
+      str_ += NESTING_LIST_OFFSET_SUFFIX;
+      return true;
     }
 
     std::string&& str() noexcept {
-      str_.pop_back(); // remove trailing '.'
       return std::move(str_);
     }
 
    private:
     std::string str_;
+    char buf_[21]; // enough to hold all numbers up to 64-bits
   } builder;
 
   TRI_ASSERT(checkAttributeAccess(&node));
@@ -266,7 +276,7 @@ arangodb::aql::AstNode const* checkAttributeAccess(
     }
 
     bool operator()(int64_t) const {
-      return false; // do not support [i]
+      return true;
     }
   } checker;
 

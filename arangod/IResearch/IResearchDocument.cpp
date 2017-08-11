@@ -46,24 +46,6 @@ NS_LOCAL
 // --SECTION--                                       FieldIterator dependencies
 // ----------------------------------------------------------------------------
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief the delimiter used to separate jSON nesting levels when generating
-///        flat iResearch field names
-////////////////////////////////////////////////////////////////////////////////
-std::string const NESTING_LEVEL_DELIMITER(".");
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief the prefix used to denote start of jSON list offset when generating
-///        flat iResearch field names
-////////////////////////////////////////////////////////////////////////////////
-std::string const NESTING_LIST_OFFSET_PREFIX("[");
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief the suffix used to denote end of jSON list offset when generating
-///        flat iResearch field names
-////////////////////////////////////////////////////////////////////////////////
-std::string const NESTING_LIST_OFFSET_SUFFIX("]");
-
 irs::string_ref const CID_FIELD("@_CID");
 irs::string_ref const RID_FIELD("@_REV");
 irs::string_ref const PK_COLUMN("@_PK");
@@ -186,9 +168,9 @@ inline bool inArrayOrdered(
     arangodb::iresearch::IResearchLinkMeta const*& context,
     arangodb::iresearch::IteratorValue const& value
 ) {
-  buffer += NESTING_LIST_OFFSET_PREFIX;
+  buffer += arangodb::iresearch::NESTING_LIST_OFFSET_PREFIX;
   append(buffer, value.pos);
-  buffer += NESTING_LIST_OFFSET_SUFFIX;
+  buffer += arangodb::iresearch::NESTING_LIST_OFFSET_SUFFIX;
 
   return canHandleValue(value.value, *context);
 }

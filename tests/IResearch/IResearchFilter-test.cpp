@@ -285,6 +285,29 @@ SECTION("BinaryIn") {
     assertFilterSuccess("FOR d IN collection FILTER d['a'] in ['1','2','3'] RETURN d", expected);
   }
 
+  // simple offset
+  {
+    irs::Or expected;
+    auto& root = expected.add<irs::Or>();
+    root.add<irs::by_term>().field(mangleStringIdentity("[1]")).term("1");
+    root.add<irs::by_term>().field(mangleStringIdentity("[1]")).term("2");
+    root.add<irs::by_term>().field(mangleStringIdentity("[1]")).term("3");
+
+    assertFilterSuccess("FOR d IN collection FILTER d[1] in ['1','2','3'] RETURN d", expected);
+  }
+
+  // simple offset
+  {
+    irs::Or expected;
+    auto& root = expected.add<irs::Or>();
+    root.add<irs::by_term>().field(mangleStringIdentity("a[1]")).term("1");
+    root.add<irs::by_term>().field(mangleStringIdentity("a[1]")).term("2");
+    root.add<irs::by_term>().field(mangleStringIdentity("a[1]")).term("3");
+
+    assertFilterSuccess("FOR d IN collection FILTER d.a[1] in ['1','2','3'] RETURN d", expected);
+    assertFilterSuccess("FOR d IN collection FILTER d['a'][1] in ['1','2','3'] RETURN d", expected);
+  }
+
   // complex attribute name
   {
     irs::Or expected;
@@ -295,6 +318,18 @@ SECTION("BinaryIn") {
 
     assertFilterSuccess("FOR d IN collection FILTER d.a['b']['c'].e.f in ['1','2','3'] RETURN d", expected);
     assertFilterSuccess("FOR d IN collection FILTER d.a.b.c.e.f in ['1','2','3'] RETURN d", expected);
+  }
+
+  // complex attribute name with offset
+  {
+    irs::Or expected;
+    auto& root = expected.add<irs::Or>();
+    root.add<irs::by_term>().field(mangleStringIdentity("a.b.c[412].e.f")).term("1");
+    root.add<irs::by_term>().field(mangleStringIdentity("a.b.c[412].e.f")).term("2");
+    root.add<irs::by_term>().field(mangleStringIdentity("a.b.c[412].e.f")).term("3");
+
+    assertFilterSuccess("FOR d IN collection FILTER d.a['b']['c'][412].e.f in ['1','2','3'] RETURN d", expected);
+    assertFilterSuccess("FOR d IN collection FILTER d.a.b.c[412].e.f in ['1','2','3'] RETURN d", expected);
   }
 
   // heterogeneous array values
@@ -328,6 +363,8 @@ SECTION("BinaryIn") {
 
   // invalid attribute access
   assertFilterFail("FOR d IN VIEW myView FILTER d in [1,2,3] RETURN d");
+  assertFilterFail("FOR d IN VIEW myView FILTER d[*] in [1,2,3] RETURN d");
+  assertFilterFail("FOR d IN VIEW myView FILTER d.a[*] in [1,2,3] RETURN d");
   assertFilterFail("FOR d IN VIEW myView FILTER [] in [1,2,3] RETURN d");
   assertFilterFail("FOR d IN VIEW myView FILTER ['d'] in [1,2,3] RETURN d");
   assertFilterFail("FOR d IN VIEW myView FILTER 'd.a' in [1,2,3] RETURN d");
@@ -400,6 +437,19 @@ SECTION("BinaryIn") {
     assertFilterSuccess("FOR d IN collection FILTER d['a']['b.c.e.f'] in '4'..'5' RETURN d", expected);
   }
 
+  // string range, attribute offset
+  {
+    irs::Or expected;
+    auto& range = expected.add<irs::by_range>();
+    range.field(mangleStringIdentity("a.b.c.e.f[4]"));
+    range.include<irs::Bound::MIN>(true).term<irs::Bound::MIN>("4");
+    range.include<irs::Bound::MAX>(true).term<irs::Bound::MAX>("5");
+
+    assertFilterSuccess("FOR d IN collection FILTER d.a.b.c.e.f[4] in '4'..'5' RETURN d", expected);
+    assertFilterSuccess("FOR d IN collection FILTER d.a['b.c.e.f'][4] in '4'..'5' RETURN d", expected);
+    assertFilterSuccess("FOR d IN collection FILTER d['a']['b.c.e.f[4]'] in '4'..'5' RETURN d", expected);
+  }
+
   // boolean range
   {
     irs::Or expected;
@@ -413,6 +463,19 @@ SECTION("BinaryIn") {
     assertFilterSuccess("FOR d IN collection FILTER d['a'].b['c.e.f'] in false..true RETURN d", expected);
   }
 
+  // boolean range, attribute offset
+  {
+    irs::Or expected;
+    auto& range = expected.add<irs::by_range>();
+    range.field(mangleBool("[100].a.b.c.e.f"));
+    range.include<irs::Bound::MIN>(true).term<irs::Bound::MIN>(irs::boolean_token_stream::value_false());
+    range.include<irs::Bound::MAX>(true).term<irs::Bound::MAX>(irs::boolean_token_stream::value_true());
+
+    assertFilterSuccess("FOR d IN collection FILTER d[100].a.b.c.e.f in false..true RETURN d", expected);
+    assertFilterSuccess("FOR d IN collection FILTER d[100]['a'].b.c.e.f in false..true RETURN d", expected);
+    assertFilterSuccess("FOR d IN collection FILTER d[100]['a'].b['c.e.f'] in false..true RETURN d", expected);
+  }
+
   // null range
   {
     irs::Or expected;
@@ -423,6 +486,18 @@ SECTION("BinaryIn") {
 
     assertFilterSuccess("FOR d IN collection FILTER d.a.b.c.e.f in null..null RETURN d", expected);
     assertFilterSuccess("FOR d IN collection FILTER d['a.b.c.e.f'] in null..null RETURN d", expected);
+  }
+
+  // null range
+  {
+    irs::Or expected;
+    auto& range = expected.add<irs::by_range>();
+    range.field(mangleNull("a[100].b.c[1].e[32].f"));
+    range.include<irs::Bound::MIN>(true).term<irs::Bound::MIN>(irs::null_token_stream::value_null());
+    range.include<irs::Bound::MAX>(true).term<irs::Bound::MAX>(irs::null_token_stream::value_null());
+
+    assertFilterSuccess("FOR d IN collection FILTER d.a[100].b.c[1].e[32].f in null..null RETURN d", expected);
+    assertFilterSuccess("FOR d IN collection FILTER d['a[100].b.c[1].e[32].f'] in null..null RETURN d", expected);
   }
 
   // invalid attribute access
@@ -1630,9 +1705,6 @@ SECTION("BinaryAnd") {
     assertFilterSuccess("FOR d IN collection FILTER d['a']['b']['c'] > 15.0 and 40.0 > d.a['b']['c'] RETURN d", expected);
     assertFilterSuccess("FOR d IN collection FILTER 15.0 < d.a.b.c and 40.0 > d.a.b.c RETURN d", expected);
 
-    assertFilterFail("FOR d IN collection FILTER d[1] > 15 and d[1] < 40 RETURN d");
-    assertFilterFail("FOR d IN collection FILTER d.a[1] > 15 and d.a[1] < 40 RETURN d");
-
     assertFilterFail("FOR d IN collection FILTER d.a[*].b > 15 and d.a[*].b < 40 RETURN d");
   }
 
@@ -2110,6 +2182,8 @@ SECTION("Value") {
 
   // reference
   assertFilterFail("FOR d IN collection FILTER d RETURN d");
+  assertFilterFail("FOR d IN collection FILTER d[1] RETURN d");
+  assertFilterFail("FOR d IN collection FILTER d.a[1] RETURN d");
   assertFilterFail("FOR d IN collection FILTER d[*] RETURN d");
   assertFilterFail("FOR d IN collection FILTER d.a[*] RETURN d");
 }
@@ -2155,6 +2229,18 @@ SECTION("Exists") {
     assertFilterSuccess("FOR d IN VIEW myView FILTER ir::exists(d['obj']['prop']['name']) RETURN d", expected);
     assertFilterSuccess("FOR d IN VIEW myView FILTER iR::eXists(d.obj.prop.name) RETURN d", expected);
     assertFilterSuccess("FOR d IN VIEW myView FILTER iR::eXists(d['obj'].prop.name) RETURN d", expected);
+  }
+
+  // complex field with offset
+  {
+    irs::Or expected;
+    auto& exists = expected.add<irs::by_column_existence>();
+    exists.field("obj.prop[3].name").prefix_match(true);
+
+    assertFilterSuccess("FOR d IN VIEW myView FILTER ir::exists(d.obj.prop[3].name) RETURN d", expected);
+    assertFilterSuccess("FOR d IN VIEW myView FILTER ir::exists(d['obj']['prop'][3]['name']) RETURN d", expected);
+    assertFilterSuccess("FOR d IN VIEW myView FILTER iR::eXists(d.obj.prop[3].name) RETURN d", expected);
+    assertFilterSuccess("FOR d IN VIEW myView FILTER iR::eXists(d['obj'].prop[3].name) RETURN d", expected);
   }
 
   // invalid attribute access
@@ -2377,6 +2463,21 @@ SECTION("Phrase") {
     assertFilterSuccess("FOR d IN VIEW myView FILTER ir::phrase(d['obj']['name'], 'quick', 5.5, 'brown') RETURN d", expected);
   }
 
+  // with offset, complex name, default analyzer
+  // quick <...> <...> <...> <...> <...> brown
+  {
+    irs::Or expected;
+    auto& phrase = expected.add<irs::by_phrase>();
+    phrase.field(mangleStringIdentity("[5].obj.name[100]")).push_back("quick").push_back("brown", 5);
+
+    assertFilterSuccess("FOR d IN VIEW myView FILTER ir::phrase(d[5]['obj'].name[100], 'quick', 5, 'brown') RETURN d", expected);
+    assertFilterSuccess("FOR d IN VIEW myView FILTER ir::phrase(d[5].obj.name[100], 'quick', 5, 'brown') RETURN d", expected);
+    assertFilterSuccess("FOR d IN VIEW myView FILTER ir::phrase(d[5].obj.name[100], 'quick', 5.0, 'brown') RETURN d", expected);
+    assertFilterSuccess("FOR d IN VIEW myView FILTER ir::phrase(d[5].obj['name'][100], 'quick', 5.0, 'brown') RETURN d", expected);
+    assertFilterSuccess("FOR d IN VIEW myView FILTER ir::phrase(d[5].obj.name[100], 'quick', 5.5, 'brown') RETURN d", expected);
+    assertFilterSuccess("FOR d IN VIEW myView FILTER ir::phrase(d[5]['obj']['name'][100], 'quick', 5.5, 'brown') RETURN d", expected);
+  }
+
   // multiple offsets, complex name, default analyzer
   // quick <...> <...> <...> brown <...> <...> fox jumps
   {
@@ -2536,6 +2637,17 @@ SECTION("StartsWith") {
     assertFilterSuccess("FOR d IN VIEW myView FILTER ir::starts_with(d.name, 'abc') RETURN d", expected);
   }
 
+  // without scoring limit, name with offset
+  {
+    irs::Or expected;
+    auto& prefix = expected.add<irs::by_prefix>();
+    prefix.field(mangleStringIdentity("name[1]")).term("abc");
+    prefix.scored_terms_limit(128);
+
+    assertFilterSuccess("FOR d IN VIEW myView FILTER ir::starts_with(d['name'][1], 'abc') RETURN d", expected);
+    assertFilterSuccess("FOR d IN VIEW myView FILTER ir::starts_with(d.name[1], 'abc') RETURN d", expected);
+  }
+
   // without scoring limit, complex name
   {
     irs::Or expected;
@@ -2547,6 +2659,19 @@ SECTION("StartsWith") {
     assertFilterSuccess("FOR d IN VIEW myView FILTER ir::starts_with(d.obj['properties']['name'], 'abc') RETURN d", expected);
     assertFilterSuccess("FOR d IN VIEW myView FILTER ir::starts_with(d.obj['properties'].name, 'abc') RETURN d", expected);
     assertFilterSuccess("FOR d IN VIEW myView FILTER ir::starts_with(d.obj.properties.name, 'abc') RETURN d", expected);
+  }
+
+  // without scoring limit, complex name with offset
+  {
+    irs::Or expected;
+    auto& prefix = expected.add<irs::by_prefix>();
+    prefix.field(mangleStringIdentity("obj[400].properties[3].name")).term("abc");
+    prefix.scored_terms_limit(128);
+
+    assertFilterSuccess("FOR d IN VIEW myView FILTER ir::starts_with(d['obj'][400]['properties'][3]['name'], 'abc') RETURN d", expected);
+    assertFilterSuccess("FOR d IN VIEW myView FILTER ir::starts_with(d.obj[400]['properties[3]']['name'], 'abc') RETURN d", expected);
+    assertFilterSuccess("FOR d IN VIEW myView FILTER ir::starts_with(d.obj[400]['properties[3]'].name, 'abc') RETURN d", expected);
+    assertFilterSuccess("FOR d IN VIEW myView FILTER ir::starts_with(d.obj[400].properties[3].name, 'abc') RETURN d", expected);
   }
 
   // with scoring limit (int)
