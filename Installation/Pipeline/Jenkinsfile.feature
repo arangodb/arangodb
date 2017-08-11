@@ -464,12 +464,15 @@ def testEdition(edition, os, mode, engine) {
                 powershell ". .\\Installation\\Pipeline\\windows\\test_${mode}_${edition}_${engine}_${os}.ps1"
             }
 
-            if (findFiles(glob: 'core*').length > 0) {
-                error("found core file")
+            if (os == 'windows') {
+                if (findFiles(glob: '*.dmp').length > 0) {
+                    error("found dmp file")
+                }
+            } else {
+                if (findFiles(glob: 'core*').length > 0) {
+                    error("found core file")
+                }
             }
-        }
-        catch (exc) {
-            throw exc
         }
         finally {
             if (os == 'linux' || os == 'mac') {
@@ -481,7 +484,9 @@ def testEdition(edition, os, mode, engine) {
             else if (os == 'windows') {
                 powershell "move-item -Force -ErrorAction Ignore logs ${arch}"
                 powershell "move-item -Force -ErrorAction Ignore log-output ${arch}"
-                powershell "Copy-Item .\\build\\bin\\* -Include *.exe,*.pdb,*.ilk,*.dmp ${arch}"
+                powershell "move-item -Force -ErrorAction Ignore .\\build\\bin\\*.dmp ${arch}"
+                powershell "move-item -Force -ErrorAction Ignore .\\build\\tests\\*.dmp ${arch}"
+                powershell "Copy-Item .\\build\\bin\\* -Include *.exe,*.pdb,*.ilk ${arch}"
             }
         }
     }
