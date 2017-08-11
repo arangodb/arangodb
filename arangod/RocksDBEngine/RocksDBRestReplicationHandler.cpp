@@ -1456,9 +1456,9 @@ void RocksDBRestReplicationHandler::handleCommandAddFollower() {
   VPackSlice const followerId = body.get("followerId");
   VPackSlice const readLockId = body.get("readLockId");
   VPackSlice const shard = body.get("shard");
-  if (!followerId.isString() || !shard.isString() || !readLockId.isString()) {
+  if (!followerId.isString() || !shard.isString()) {
     generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
-                  "'followerId', 'shard' and 'readLockId' attributes must be strings");
+                  "'followerId' and 'shard' attributes must be strings");
     return;
   }
 
@@ -1474,7 +1474,7 @@ void RocksDBRestReplicationHandler::handleCommandAddFollower() {
   VPackSlice const checksum = body.get("checksum");
   // optional while intoroducing this bugfix. should definately be required with 3.4
   // and throw a 400 then
-  if (checksum.isString()) {
+  if (checksum.isString() && readLockId.isString()) {
     std::string referenceChecksum;
     {
       CONDITION_LOCKER(locker, _condVar);
