@@ -236,16 +236,52 @@ SECTION("test_emplace") {
     CHECK((true == !feature.get("test_analyzer6")));
   }
 
-  // add invalalid (feature not started)
+  // add invalid (feature not started)
   {
     arangodb::iresearch::IResearchAnalyzerFeature feature(nullptr);
-    CHECK((true == !feature.emplace("test_analyzer7", "TestAnalyzer", irs::string_ref::nil).first));
-    auto pool = feature.get("test_analyzer");
+    CHECK((true == !feature.emplace("test_analyzer7", "TestAnalyzer", "abc").first));
+    auto pool = feature.ensure("test_analyzer");
     REQUIRE((false == !pool));
-    CHECK((false == !feature.get("test_analyzer7")));
     CHECK((irs::flags::empty_instance() == pool->features()));
     auto analyzer = pool->get();
     CHECK((true == !analyzer));
+    CHECK((true == !feature.get("test_analyzer7")));
+  }
+}
+
+SECTION("test_ensure") {
+  {
+    arangodb::iresearch::IResearchAnalyzerFeature feature(nullptr);
+
+    // ensure (not started)
+    {
+      auto pool = feature.ensure("test_analyzer");
+      REQUIRE((false == !pool));
+      CHECK((irs::flags::empty_instance() == pool->features()));
+      auto analyzer = pool->get();
+      CHECK((true == !analyzer));
+    }
+  }
+
+  {
+    arangodb::iresearch::IResearchAnalyzerFeature feature(nullptr);
+
+    feature.start();
+    feature.emplace("test_analyzer", "TestAnalyzer", "abc");
+
+    // ensure valid (started)
+    {
+      auto pool = feature.get("test_analyzer");
+      REQUIRE((false == !pool));
+      CHECK((irs::flags({TestAttribute::type(), irs::term_attribute::type()}) == pool->features()));
+      auto analyzer = pool.get();
+      CHECK((false == !analyzer));
+    }
+
+    // ensure invalid (started)
+    {
+      CHECK((true == !feature.get("invalid")));
+    }
   }
 }
 
@@ -253,7 +289,7 @@ SECTION("test_get") {
   {
     arangodb::iresearch::IResearchAnalyzerFeature feature(nullptr);
 
-    feature.emplace("test_analyzer", "TestAnalyzer", "abc");
+    feature.ensure("test_analyzer");
 
     // get valid (not started)
     {
@@ -264,9 +300,9 @@ SECTION("test_get") {
       CHECK((true == !analyzer));
     }
 
-    // get invalid (started)
+    // get invalid (not started)
     {
-      CHECK((false == !feature.get("invalid")));
+      CHECK((true == !feature.get("invalid")));
     }
   }
 
@@ -317,7 +353,8 @@ SECTION("test_identity") {
   // test registered 'identity'
   {
     arangodb::iresearch::IResearchAnalyzerFeature feature(nullptr);
-    auto pool = feature.get("identity");
+    CHECK((true == !feature.get("identity")));
+    auto pool = feature.ensure("identity");
     CHECK((false == !pool));
     feature.start();
     pool = feature.get("identity");
@@ -622,7 +659,8 @@ SECTION("test_persistence") {
 
     {
       arangodb::iresearch::IResearchAnalyzerFeature feature(nullptr);
-      auto pool = feature.get("valid");
+      CHECK((true == !feature.get("valid")));
+      auto pool = feature.ensure("valid");
       CHECK((false == !pool));
       CHECK((feature.reserve("valid")));
       CHECK_THROWS((feature.start()));
@@ -668,7 +706,8 @@ SECTION("test_registration") {
   // reserve pool (not started)
   {
     arangodb::iresearch::IResearchAnalyzerFeature feature(nullptr);
-    auto pool = feature.get("valid");
+    CHECK((true == !feature.get("valid")));
+    auto pool = feature.ensure("valid");
     CHECK((false == !pool));
     CHECK((feature.reserve("valid")));
     CHECK((0 == feature.erase("valid"))); // remove not allowed
@@ -677,7 +716,8 @@ SECTION("test_registration") {
   // release pool (not started)
   {
     arangodb::iresearch::IResearchAnalyzerFeature feature(nullptr);
-    auto pool = feature.get("valid");
+    CHECK((true == !feature.get("valid")));
+    auto pool = feature.ensure("valid");
     CHECK((false == !pool));
     CHECK((feature.reserve("valid")));
     CHECK((feature.reserve("valid"))); // 2nd time
@@ -788,7 +828,8 @@ SECTION("test_registration") {
 
     {
       arangodb::iresearch::IResearchAnalyzerFeature feature(nullptr);
-      auto pool = feature.get("valid");
+      CHECK((true == !feature.get("valid")));
+      auto pool = feature.ensure("valid");
       CHECK((false == !pool));
       CHECK((feature.reserve("valid")));
       feature.start();
@@ -836,7 +877,8 @@ SECTION("test_remove") {
   {
     arangodb::iresearch::IResearchAnalyzerFeature feature(nullptr);
     CHECK((0 == feature.erase("test_analyzer")));
-    CHECK((false == !feature.get("test_analyzer")));
+    CHECK((true == !feature.get("test_analyzer")));
+    CHECK((false == !feature.ensure("test_analyzer")));
     CHECK((1 == feature.erase("test_analyzer")));
   }
 
@@ -912,7 +954,8 @@ SECTION("test_start") {
 
     StorageEngineMock::inRecoveryResult = true;
     arangodb::iresearch::IResearchAnalyzerFeature feature(nullptr);
-    CHECK((false == !feature.get("test_analyzer")));
+    CHECK((true == !feature.get("test_analyzer")));
+    CHECK((false == !feature.ensure("test_analyzer")));
     feature.start();
     CHECK((nullptr == vocbase->lookupCollection("_iresearch_analyzers")));
 
@@ -993,7 +1036,8 @@ SECTION("test_start") {
 
     StorageEngineMock::inRecoveryResult = true;
     arangodb::iresearch::IResearchAnalyzerFeature feature(nullptr);
-    CHECK((false == !feature.get("test_analyzer")));
+    CHECK((true == !feature.get("test_analyzer")));
+    CHECK((false == !feature.ensure("test_analyzer")));
     feature.start();
     CHECK((nullptr != vocbase->lookupCollection("_iresearch_analyzers")));
 
@@ -1061,7 +1105,8 @@ SECTION("test_start") {
 
     StorageEngineMock::inRecoveryResult = false;
     arangodb::iresearch::IResearchAnalyzerFeature feature(nullptr);
-    CHECK((false == !feature.get("identity")));
+    CHECK((true == !feature.get("identity")));
+    CHECK((false == !feature.ensure("identity")));
     feature.start();
     CHECK((nullptr != vocbase->lookupCollection("_iresearch_analyzers")));
 
@@ -1142,7 +1187,8 @@ SECTION("test_start") {
 
     StorageEngineMock::inRecoveryResult = false;
     arangodb::iresearch::IResearchAnalyzerFeature feature(nullptr);
-    CHECK((false == !feature.get("test_analyzer")));
+    CHECK((true == !feature.get("test_analyzer")));
+    CHECK((false == !feature.ensure("test_analyzer")));
     feature.start();
     CHECK((nullptr != vocbase->lookupCollection("_iresearch_analyzers")));
 

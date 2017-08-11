@@ -1320,6 +1320,13 @@ SECTION("FieldIterator_nullptr_tokenizer") {
 
   // register analizers with feature
   {
+    // ensure that there will be no exception on 'start'
+    InvalidTokenizer::returnNullFromMake = false;
+
+    analyzers.start();
+    analyzers.erase("empty");
+    analyzers.erase("invalid");
+
     // ensure that there will be no exception on 'emplace'
     InvalidTokenizer::returnNullFromMake = false;
 

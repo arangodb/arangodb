@@ -173,14 +173,14 @@ SECTION("test_inheritDefaults") {
   std::unordered_set<std::string> expectedOverrides = { "xyz" };
   std::string tmpString;
 
-  analyzers.emplace("empty", "empty", "");
+  analyzers.start();
 
   defaults._boost = 3.14f;
   defaults._fields["abc"] = std::move(arangodb::iresearch::IResearchLinkMeta());
   defaults._includeAllFields = true;
   defaults._nestListValues = true;
   defaults._tokenizers.clear();
-  defaults._tokenizers.emplace_back(analyzers.get("empty"));
+  defaults._tokenizers.emplace_back(analyzers.ensure("empty"));
   defaults._fields["abc"]->_fields["xyz"] = std::move(arangodb::iresearch::IResearchLinkMeta());
 
   auto json = arangodb::velocypack::Parser::fromJson("{}");
@@ -390,8 +390,8 @@ SECTION("test_writeCustomizedValues") {
   meta._includeAllFields = true;
   meta._nestListValues = true;
   meta._tokenizers.clear();
-  meta._tokenizers.emplace_back(analyzers.get("identity"));
-  meta._tokenizers.emplace_back(analyzers.get("empty"));
+  meta._tokenizers.emplace_back(analyzers.ensure("identity"));
+  meta._tokenizers.emplace_back(analyzers.ensure("empty"));
   meta._fields["a"] = meta; // copy from meta
   meta._fields["a"]->_fields.clear(); // do not inherit fields to match jSon inheritance
   meta._fields["b"] = meta; // copy from meta
@@ -415,7 +415,7 @@ SECTION("test_writeCustomizedValues") {
   overrideAll._includeAllFields = false;
   overrideAll._nestListValues = false;
   overrideAll._tokenizers.clear();
-  overrideAll._tokenizers.emplace_back(analyzers.get("empty"));
+  overrideAll._tokenizers.emplace_back(analyzers.ensure("empty"));
   overrideSome._boost = 12;
   overrideSome._fields.clear(); // do not inherit fields to match jSon inheritance
   overrideSome._nestListValues = false;

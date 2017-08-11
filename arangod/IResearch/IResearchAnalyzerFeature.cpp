@@ -502,6 +502,13 @@ std::pair<IResearchAnalyzerFeature::AnalyzerPool::ptr, bool> IResearchAnalyzerFe
     }
 
     if (itr.second) { // new pool
+      if (!_started) {
+        LOG_TOPIC(WARN, Logger::FIXME) << "cannot garantee collision-free persistance while creating an IResearch analyzer instance for name '" << name << "' type '" << type << "' properties '" << properties << "'";
+        TRI_set_errno(TRI_ERROR_ARANGO_ILLEGAL_STATE);
+
+        return std::make_pair(AnalyzerPool::ptr(), false);
+      }
+
       if (!pool->init(type, properties)) {
         LOG_TOPIC(WARN, Logger::FIXME) << "failure initializing an IResearch analyzer instance for name '" << name << "' type '" << type << "' properties '" << properties << "'";
         TRI_set_errno(TRI_ERROR_BAD_PARAMETER);
@@ -539,6 +546,17 @@ std::pair<IResearchAnalyzerFeature::AnalyzerPool::ptr, bool> IResearchAnalyzerFe
   }
 
   return std::make_pair(AnalyzerPool::ptr(), false);
+}
+
+IResearchAnalyzerFeature::AnalyzerPool::ptr IResearchAnalyzerFeature::ensure(
+    irs::string_ref const& name
+) {
+  // insert dummy (uninitialized) placeholders if this feature has not been
+  // started to break the dependency loop on DatabaseFeature
+  // placeholders will be loaded/validation during start()/loadConfiguration()
+  return _started
+    ? get(name)
+    : emplace(name, irs::string_ref::nil, irs::string_ref::nil, false).first;
 }
 
 size_t IResearchAnalyzerFeature::erase(
@@ -639,14 +657,7 @@ size_t IResearchAnalyzerFeature::erase(
 
 IResearchAnalyzerFeature::AnalyzerPool::ptr IResearchAnalyzerFeature::get(
     irs::string_ref const& name
-) const {
-    // insert dummy (uninitialized) placeholders if this feature has not been
-    // started to break the dependency loop on DatabaseFeature
-    // placeholders will be loaded/validation during start()/loadConfiguration()
-    if (!_started) {
-      return const_cast<IResearchAnalyzerFeature*>(this)->emplace(name, irs::string_ref::nil, irs::string_ref::nil, false).first;
-    }
-
+) const noexcept {
   try {
     ReadMutex mutex(_mutex);
     SCOPED_LOCK(mutex);
@@ -928,7 +939,7 @@ bool IResearchAnalyzerFeature::release(irs::string_ref const& name) {
 }
 
 bool IResearchAnalyzerFeature::reserve(irs::string_ref const& name) {
-  auto pool = get(name); // ensure that references are incremented on the pool from this feature
+  auto pool = ensure(name); // ensure that references are incremented on the pool from this feature
 
   if (!pool) {
     return false; // ignore reservation requests on uninitialized pools
