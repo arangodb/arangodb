@@ -9,9 +9,28 @@
 // Agreement under which it is provided by or on behalf of EMC.
 // 
 
-#include <boost/locale/generator.hpp>
+#if defined (__GNUC__)
+  #pragma GCC diagnostic ignored "-Wdeprecated-declarations"
+#endif
+
+  #include <boost/locale/generator.hpp>
+
+#if defined (__GNUC__)
+  #pragma GCC diagnostic pop
+#endif
+
 #include <boost/locale/info.hpp>
-#include <boost/locale/util.hpp>
+
+#if defined (__GNUC__)
+  #pragma GCC diagnostic ignored "-Wdeprecated-declarations"
+#endif
+
+  #include <boost/locale/util.hpp>
+
+#if defined (__GNUC__)
+  #pragma GCC diagnostic pop
+#endif
+
 #include "locale_utils.hpp"
 
 NS_LOCAL

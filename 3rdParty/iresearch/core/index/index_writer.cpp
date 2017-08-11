@@ -129,7 +129,7 @@ index_writer::ptr index_writer::make(directory& dir, format::ptr codec, OPEN_MOD
   auto lock = dir.make_lock(WRITE_LOCK_NAME);
 
   if (!lock || !lock->try_lock()) {
-    throw lock_obtain_failed() << lock_obtain_failed::lock_name(WRITE_LOCK_NAME);
+    throw lock_obtain_failed(WRITE_LOCK_NAME);
   }
 
   /* read from directory
@@ -156,11 +156,9 @@ index_writer::ptr index_writer::make(directory& dir, format::ptr codec, OPEN_MOD
       } catch (const error_base&) {
         meta = index_meta();
       }
+    } else if (!index_exists) {
+      throw file_not_found(); // no segments file found
     } else {
-      if (!index_exists) {
-        throw file_not_found();
-      }
-
       reader->read(dir, meta, segments_file);
       append_segments_refs(file_refs, dir, meta);
       file_refs.emplace_back(iresearch::directory_utils::reference(dir, segments_file));
@@ -937,11 +935,7 @@ bool index_writer::start() {
     // sync files
     for (auto& file: to_commit.to_sync) {
       if (!to_commit.ctx->dir_->sync(file)) {
-        std::stringstream ss;
-
-        ss << "Failed to sync file, path: " << std::string(file.c_str(), file.size());
-
-        throw detailed_io_error(ss.str());
+        throw detailed_io_error("Failed to sync file, path: ") << file;
       }
     }
   } catch (...) {

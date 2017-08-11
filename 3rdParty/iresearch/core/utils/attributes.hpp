@@ -30,17 +30,14 @@ NS_ROOT
 
 //////////////////////////////////////////////////////////////////////////////
 /// @class attribute 
-/// @brief base class for all attributes that can be deallocated via a ptr of
-///        this struct type using a virtual destructor
-///        an empty struct tag type with a virtual destructor
-///        all derived classes must implement the following functions:
+/// @brief base class for all attributes that can be used with attribute_map
+///        an empty struct tag type with no virtual methods
+///        all derived classes must implement the following function:
 ///        static const attribute::type_id& type() NOEXCEPT
 ///          via DECLARE_ATTRIBUTE_TYPE()/DEFINE_ATTRIBUTE_TYPE(...)
-///        static ptr make(Args&&... args)
-///          via DECLARE_FACTORY()/DECLARE_FACTORY_DEFAULT()
 //////////////////////////////////////////////////////////////////////////////
 struct IRESEARCH_API attribute {
-  DECLARE_PTR(attribute);
+  DECLARE_PTR(attribute); // FIXME TODO remove
 
   //////////////////////////////////////////////////////////////////////////////
   /// @class type_id 
@@ -56,7 +53,22 @@ struct IRESEARCH_API attribute {
     string_ref name_;
   }; // type_id
 
-  virtual ~attribute();
+  virtual ~attribute(); // FIXME TODO remove
+};
+
+//////////////////////////////////////////////////////////////////////////////
+/// @brief base class for all attributes that can be deallocated via a ptr of
+///        this struct type using a virtual destructor
+///        an empty struct tag type with a virtual destructor
+///        all derived classes must implement the following functions:
+///        static const attribute::type_id& type() NOEXCEPT
+///          via DECLARE_ATTRIBUTE_TYPE()/DEFINE_ATTRIBUTE_TYPE(...)
+///        static ptr make(Args&&... args)
+///          via DECLARE_FACTORY()/DECLARE_FACTORY_DEFAULT()
+//////////////////////////////////////////////////////////////////////////////
+struct IRESEARCH_API stored_attribute {
+  DECLARE_PTR(stored_attribute);
+  virtual ~stored_attribute();
 };
 
 // -----------------------------------------------------------------------------
@@ -253,11 +265,7 @@ class IRESEARCH_API_TEMPLATE attribute_map {
     ref<T>& operator=(PTR_T&& ptr) NOEXCEPT { ptr_ = std::move(ptr); return *this; }
     ref<T>& operator=(ref<T>&& other) NOEXCEPT { if (this != &other) { ptr_ = std::move(other.ptr_); } return *this; }
     ref<T>& operator=(const ref<T>& other) NOEXCEPT { if (this != &other) { ptr_ = other.ptr_; } return *this; } // TODO FIXME remove
-    typename std::add_lvalue_reference<T>::type operator*() const NOEXCEPT {
-      // valid for T types other than 'void'
-      typedef typename std::enable_if<!std::is_same<void, T>::value, T>::type type;
-      return reinterpret_cast<type&>(*ptr_);
-    }
+    T& operator*() const NOEXCEPT { return reinterpret_cast<T&>(*ptr_); }
     T* operator->() const NOEXCEPT { return ptr_cast(ptr_); }
     explicit operator bool() const NOEXCEPT { return nullptr != ptr_; }
 
@@ -268,7 +276,8 @@ class IRESEARCH_API_TEMPLATE attribute_map {
     friend attribute_map<PTR_T>& attribute_map<PTR_T>::operator=(const attribute_map&);
     PTR_T ptr_;
 
-    FORCE_INLINE static T* ptr_cast(void* ptr) { return reinterpret_cast<T*>(ptr); }
+    template<typename U>
+    FORCE_INLINE static T* ptr_cast(U* ptr) { return reinterpret_cast<T*>(ptr); }
     template<typename U>
     FORCE_INLINE static T* ptr_cast(const U& ptr) { return reinterpret_cast<T*>(ptr.get()); }
   };
@@ -336,25 +345,6 @@ class IRESEARCH_API_TEMPLATE attribute_map {
     return features;
   }
 
-  ref<void>* get(const attribute::type_id& type) {
-    auto itr = map_.find(&type);
-
-    return map_.end() == itr ? nullptr : &(itr->second);
-  }
-
-  ref<void>& get(const attribute::type_id& type, ref<void>& fallback) {
-    auto itr = map_.find(&type);
-
-    return map_.end() == itr ? fallback : itr->second;
-  }
-
-  const ref<void>& get(
-      const attribute::type_id& type,
-      const ref<void>& fallback = ref<void>::nil()
-  ) const {
-    return const_cast<attribute_map*>(this)->get(type, const_cast<ref<void>&>(fallback));
-  }
-
   template<typename T>
   inline ref<T>* get() {
     typedef typename std::enable_if<std::is_base_of<attribute, T>::value, T>::type type;
@@ -367,7 +357,7 @@ class IRESEARCH_API_TEMPLATE attribute_map {
   template<typename T>
   inline ref<T>& get(ref<T>& fallback) {
     typedef typename std::enable_if<std::is_base_of<attribute, T>::value, T>::type type;
-    auto& value = get(type::type(), reinterpret_cast<ref<void>&>(fallback));
+    auto& value = get(type::type(), reinterpret_cast<ref<attribute>&>(fallback));
 
     // safe to reinterpret because layout/size is identical
     return reinterpret_cast<ref<type>&>(value);
@@ -376,7 +366,7 @@ class IRESEARCH_API_TEMPLATE attribute_map {
   template<typename T>
   inline const ref<T>& get(const ref<T>& fallback = ref<T>::nil()) const {
     typedef typename std::enable_if<std::is_base_of<attribute, T>::value, T>::type type;
-    auto& value = get(type::type(), reinterpret_cast<const ref<void>&>(fallback));
+    auto& value = get(type::type(), reinterpret_cast<const ref<attribute>&>(fallback));
 
     // safe to reinterpret because layout/size is identical
     return reinterpret_cast<const ref<type>&>(value);
@@ -406,7 +396,7 @@ class IRESEARCH_API_TEMPLATE attribute_map {
   size_t size() const { return map_.size(); }
 
  protected:
-  ref<void>& emplace(bool& inserted, const attribute::type_id& type) {
+  ref<attribute>& emplace(bool& inserted, const attribute::type_id& type) {
     auto res = map_utils::try_emplace(map_, &type);
 
     inserted = res.second;
@@ -414,9 +404,28 @@ class IRESEARCH_API_TEMPLATE attribute_map {
     return res.first->second;
   }
 
+  ref<attribute>* get(const attribute::type_id& type) {
+    auto itr = map_.find(&type);
+
+    return map_.end() == itr ? nullptr : &(itr->second);
+  }
+
+  ref<attribute>& get(const attribute::type_id& type, ref<attribute>& fallback) {
+    auto itr = map_.find(&type);
+
+    return map_.end() == itr ? fallback : itr->second;
+  }
+
+  const ref<attribute>& get(
+      const attribute::type_id& type,
+      const ref<attribute>& fallback = ref<attribute>::nil()
+  ) const {
+    return const_cast<attribute_map*>(this)->get(type, const_cast<ref<attribute>&>(fallback));
+  }
+
  private:
   // std::map<...> is 25% faster than std::unordered_map<...> as per profile_bulk_index test
-  typedef std::map<const attribute::type_id*, ref<void>> map_t;
+  typedef std::map<const attribute::type_id*, ref<attribute>> map_t;
 
   IRESEARCH_API_PRIVATE_VARIABLES_BEGIN
   map_t map_;
@@ -436,8 +445,8 @@ class IRESEARCH_API_TEMPLATE attribute_map {
 //////////////////////////////////////////////////////////////////////////////
 /// @brief storage of shared_ptr to attributes
 //////////////////////////////////////////////////////////////////////////////
-// TODO FIXME use attribute::ptr once attribute_view used in merge_writer
-//class IRESEARCH_API attribute_store: public attribute_map<attribute::ptr> {
+// TODO FIXME use stored_attribute::ptr once attribute_view used in merge_writer
+//class IRESEARCH_API attribute_store: public attribute_map<stored_attribute::ptr> {
 class IRESEARCH_API attribute_store: public attribute_map<std::shared_ptr<attribute>> {
  public:
   attribute_store(size_t reserve = 0);
@@ -445,6 +454,8 @@ class IRESEARCH_API attribute_store: public attribute_map<std::shared_ptr<attrib
   template<typename T, typename... Args>
   ref<T>& emplace(Args&&... args) {
     REGISTER_TIMER_DETAILED();
+    // TODO FIXME use stored_attribute once basic_attribute is not added to attribute_store
+    //typedef typename std::enable_if<std::is_base_of<stored_attribute, T>::value, T>::type type;
     typedef typename std::enable_if<std::is_base_of<attribute, T>::value, T>::type type;
     bool inserted;
     auto& attr = attribute_map::emplace(inserted, type::type());
@@ -462,18 +473,19 @@ class IRESEARCH_API attribute_store: public attribute_map<std::shared_ptr<attrib
 //////////////////////////////////////////////////////////////////////////////
 /// @brief storage of data pointers to attributes
 //////////////////////////////////////////////////////////////////////////////
-class IRESEARCH_API attribute_view: public attribute_map<void*> {
+class IRESEARCH_API attribute_view: public attribute_map<attribute*> {
  public:
   attribute_view(size_t reserve = 0);
 
   template<typename T>
-  ref<T>& emplace(const attribute::type_id& type, T& value) {
+  ref<T>& emplace(T& value) {
     REGISTER_TIMER_DETAILED();
+    typedef typename std::enable_if<std::is_base_of<attribute, T>::value, T>::type type;
     bool inserted;
-    auto& attr = attribute_map::emplace(inserted, type);
+    auto& attr = attribute_map::emplace(inserted, type::type());
 
     if (inserted) {
-      attr = &value;
+      reinterpret_cast<ref<type>&>(attr) = &value;
     }
 
     return reinterpret_cast<ref<T>&>(attr);

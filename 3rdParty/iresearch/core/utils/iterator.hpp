@@ -43,7 +43,7 @@ class iterator_adapter : public Base {
     : begin_(begin), end_(end) {
   }
 
-  virtual value_type value() const {
+  virtual const value_type& value() const {
     return *begin_;
   }
 

@@ -34,7 +34,7 @@ NS_BEGIN(iresearch)
 
 class IResearchLink final: public Index {
  public:
-  typedef std::shared_ptr<IResearchLink> ptr;
+  DECLARE_SPTR(IResearchLink);
 
   virtual ~IResearchLink();
 
@@ -172,7 +172,7 @@ class IResearchLink final: public Index {
   ////////////////////////////////////////////////////////////////////////////////
   int unload() override;
 
- private:
+protected:
   friend bool IResearchView::linkRegister(IResearchLink&); // to call updateView(...)
   friend IResearchView::~IResearchView(); // to call updateView(...)
   TRI_voc_cid_t _defaultId; // the identifier of the desired view (iff _view == nullptr)

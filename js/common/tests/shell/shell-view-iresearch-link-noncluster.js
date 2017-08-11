@@ -77,6 +77,7 @@ function IResearchLinkSuite () {
       var view = db._createView("badView", "iresearch", meta);
       var links = view.properties().links;
       assertEqual(links['testCollection'], undefined);
+      view.drop();
     },
 
     ////////////////////////////////////////////////////////////////////////////

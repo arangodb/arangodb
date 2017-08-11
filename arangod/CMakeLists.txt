@@ -53,6 +53,7 @@ if (USE_IRESEARCH)
     IResearch/IResearchKludge.cpp IResearch/IResearchKludge.h
     IResearch/IResearchLink.cpp IResearch/IResearchLink.h
     IResearch/IResearchLinkMeta.cpp IResearch/IResearchLinkMeta.h
+    IResearch/IResearchRocksDBLink.cpp IResearch/IResearchRocksDBLink.h
     IResearch/IResearchView.cpp IResearch/IResearchView.h
     IResearch/IResearchViewMeta.cpp IResearch/IResearchViewMeta.h
     IResearch/IResearchFeature.cpp IResearch/IResearchFeature.h

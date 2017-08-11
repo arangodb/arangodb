@@ -189,19 +189,27 @@ template < typename _Elem, typename _Traits >
 const basic_string_ref< _Elem, _Traits > basic_string_ref< _Elem, _Traits >::nil;
 
 template< typename _Elem, typename _Traits >
-inline bool starts_with( const basic_string_ref< _Elem, _Traits >& first,
-                         const _Elem* second, size_t second_size ) {
+inline bool starts_with(
+    const basic_string_ref<_Elem, _Traits >& first,
+    const _Elem* second, size_t second_size) {
   typedef typename basic_string_ref <
     _Elem, _Traits > ::traits_type traits_type;
 
   return first.size() >= second_size
-    && 0 == traits_type::compare( first.c_str(), second, second_size );
+    && 0 == traits_type::compare(first.c_str(), second, second_size);
 }
 
 template< typename _Elem, typename _Traits >
 inline bool starts_with(
     const std::basic_string<_Elem>& first, 
     const basic_string_ref<_Elem, _Traits>& second) {
+  return 0 == first.compare(0, second.size(), second.c_str(), second.size());
+}
+
+template<typename _Elem>
+inline bool starts_with(
+    const std::basic_string<_Elem>& first,
+    const std::basic_string<_Elem>& second) {
   return 0 == first.compare(0, second.size(), second.c_str(), second.size());
 }
 

@@ -29,6 +29,17 @@ NS_BEGIN(arangodb)
 NS_BEGIN(iresearch)
 NS_BEGIN(kludge)
 
+const char TYPE_DELIMITER = '\0';
+const char ANALYZER_DELIMITER = '\1';
+
+void mangleType(std::string& name) {
+  name += TYPE_DELIMITER;
+}
+
+void mangleAnalyzer(std::string& name) {
+  name += ANALYZER_DELIMITER;
+}
+
 void mangleNull(std::string& name) {
   static irs::string_ref const SUFFIX("\0_n", 3);
   name.append(SUFFIX.c_str(), SUFFIX.size());
@@ -46,13 +57,13 @@ void mangleNumeric(std::string& name) {
 
 void mangleStringField(std::string& name, AnalyzerPoolPtr const& pool) {
   TRI_ASSERT(pool);
-  name += '\0';
+  name += ANALYZER_DELIMITER;
   name += pool->name();
 }
 
 void unmangleStringField(std::string& name, AnalyzerPoolPtr const& pool) {
   TRI_ASSERT(pool);
-  // +1 for preceding '\0'
+  // +1 for preceding '\1'
   auto const suffixSize = 1 + pool->name().size();
 
   TRI_ASSERT(name.size() >= suffixSize);

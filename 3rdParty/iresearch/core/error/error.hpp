@@ -15,8 +15,6 @@
 #include "utils/string.hpp"
 
 #include <exception>
-#include <boost/exception/exception.hpp>
-#include <boost/exception/info.hpp>
 
 NS_ROOT
 
@@ -37,142 +35,125 @@ enum class ErrorCode : uint32_t {
 
 #define DECLARE_ERROR_CODE(class_name) static const ErrorCode CODE = ErrorCode::class_name
 
-/* -------------------------------------------------------------------
- * error
- * ------------------------------------------------------------------*/
-
-//TODO: boost::excception has no public interface
-struct IRESEARCH_API error_base : virtual std::exception,
-                                  virtual ::boost::exception {
+// ----------------------------------------------------------------------------
+//                                                                   error_base
+// ----------------------------------------------------------------------------
+struct IRESEARCH_API error_base: std::exception {
   virtual ErrorCode code() const NOEXCEPT;
-  virtual const char* what() const NOEXCEPT;
+  virtual const char* what() const NOEXCEPT override;
 };
 
-/* -------------------------------------------------------------------
- * not_supported
- * ------------------------------------------------------------------*/
-
-struct IRESEARCH_API not_supported : virtual error_base {
+// ----------------------------------------------------------------------------
+//                                                                not_supported
+// ----------------------------------------------------------------------------
+struct IRESEARCH_API not_supported: error_base {
   DECLARE_ERROR_CODE( not_supported );
   virtual ErrorCode code() const NOEXCEPT override;
-  virtual const char* what() const NOEXCEPT;
+  virtual const char* what() const NOEXCEPT override;
 };
 
-/* -------------------------------------------------------------------
- * io_error
- * ------------------------------------------------------------------*/
-
-struct IRESEARCH_API io_error : virtual error_base {
+// ----------------------------------------------------------------------------
+//                                                                     io_error
+// ----------------------------------------------------------------------------
+struct IRESEARCH_API io_error: error_base {
   DECLARE_ERROR_CODE( io_error );
   virtual ErrorCode code() const NOEXCEPT override;
-  virtual const char* what() const NOEXCEPT;
+  virtual const char* what() const NOEXCEPT override;
 };
 
-/* -------------------------------------------------------------------
- * eof_error
- * ------------------------------------------------------------------*/
-
-struct IRESEARCH_API eof_error : virtual io_error {
+// ----------------------------------------------------------------------------
+//                                                                    eof_error
+// ----------------------------------------------------------------------------
+struct IRESEARCH_API eof_error: io_error {
   DECLARE_ERROR_CODE( eof_error );
   virtual ErrorCode code() const NOEXCEPT override;
-  virtual const char* what() const NOEXCEPT;
+  virtual const char* what() const NOEXCEPT override;
 };
 
 // ----------------------------------------------------------------------------
 //                                                            detailed_io_error
 // ----------------------------------------------------------------------------
-struct detailed_io_error: virtual iresearch::io_error {
-  explicit detailed_io_error(const std::string& error): error_(error) {}
-  explicit detailed_io_error(std::string&& error): error_(std::move(error)) {}
-  virtual iresearch::ErrorCode code() const NOEXCEPT override{ return CODE; }
-  virtual const char* what() const NOEXCEPT{ return error_.c_str(); }
+struct IRESEARCH_API detailed_io_error: io_error {
+  DECLARE_ERROR_CODE(io_error);
+  explicit detailed_io_error(const irs::string_ref& error = irs::string_ref::nil);
+  explicit detailed_io_error(std::string&& error);
+  explicit detailed_io_error(const char* error);
+  detailed_io_error& operator<<(const irs::string_ref& error);
+  detailed_io_error& operator<<(std::string&& error);
+  detailed_io_error& operator<<(const char* error);
+  virtual iresearch::ErrorCode code() const NOEXCEPT override;
+  virtual const char* what() const NOEXCEPT override;
  private:
-   std::string error_;
+  std::string error_;
 };
 
-/* -------------------------------------------------------------------
- * lock_obtain_failed
- * ------------------------------------------------------------------*/
-
-struct IRESEARCH_API lock_obtain_failed : virtual error_base {
-  struct tag_lock_name;
-  typedef ::boost::error_info<struct tag_lock_name, std::string> lock_name;
-  
+// ----------------------------------------------------------------------------
+//                                                           lock_obtain_failed
+// ----------------------------------------------------------------------------
+struct IRESEARCH_API lock_obtain_failed: error_base {
   DECLARE_ERROR_CODE( lock_obtain_failed );
+  explicit lock_obtain_failed(const irs::string_ref& filename = irs::string_ref::nil);
   virtual ErrorCode code() const NOEXCEPT override;
-  virtual const char* what() const NOEXCEPT;
+  virtual const char* what() const NOEXCEPT override;
+ private:
+  std::string error_;
 };
 
-/* -------------------------------------------------------------------
-* file_not_found
-* ------------------------------------------------------------------*/
-
-struct IRESEARCH_API file_not_found : virtual error_base {
-  struct tag_file_name;
-  typedef ::boost::error_info < struct tag_file_name, std::string> file_name;
-  
+// ----------------------------------------------------------------------------
+//                                                               file_not_found
+// ----------------------------------------------------------------------------
+struct IRESEARCH_API file_not_found: error_base {
   DECLARE_ERROR_CODE( file_not_found );
+  explicit file_not_found(const irs::string_ref& filename = irs::string_ref::nil);
   virtual ErrorCode code() const NOEXCEPT override;
-  virtual const char* what() const NOEXCEPT;
- protected:
-  struct tag_what_err;
-  typedef ::boost::error_info <struct tag_file_name, std::string> what_err;
+  virtual const char* what() const NOEXCEPT override;
+ private:
+  std::string error_;
 };
 
-/* -------------------------------------------------------------------
-* index_not_found
-* ------------------------------------------------------------------*/
-
-struct IRESEARCH_API index_not_found : virtual error_base {
+// ----------------------------------------------------------------------------
+//                                                              index_not_found
+// ----------------------------------------------------------------------------
+struct IRESEARCH_API index_not_found: error_base {
   DECLARE_ERROR_CODE( index_not_found );
   virtual ErrorCode code() const NOEXCEPT override;
-  virtual const char* what() const NOEXCEPT;
+  virtual const char* what() const NOEXCEPT override;
 };
 
-/* -------------------------------------------------------------------
-* index_error
-* ------------------------------------------------------------------*/
-
-struct IRESEARCH_API index_error : virtual error_base {
+// ----------------------------------------------------------------------------
+//                                                                  index_error
+// ----------------------------------------------------------------------------
+struct IRESEARCH_API index_error: error_base {
   DECLARE_ERROR_CODE( index_error );
   virtual ErrorCode code() const NOEXCEPT override;
-  virtual const char* what() const NOEXCEPT;
+  virtual const char* what() const NOEXCEPT override;
 };
 
-/* -------------------------------------------------------------------
- * not_impl_error
- * ------------------------------------------------------------------*/
-
-struct IRESEARCH_API not_impl_error : virtual error_base {
+// ----------------------------------------------------------------------------
+//                                                               not_impl_error
+// ----------------------------------------------------------------------------
+struct IRESEARCH_API not_impl_error: error_base {
   DECLARE_ERROR_CODE( not_impl_error );
   virtual ErrorCode code() const NOEXCEPT override;
-  virtual const char* what() const NOEXCEPT;
+  virtual const char* what() const NOEXCEPT override;
 };
 
-/* -------------------------------------------------------------------
-* illegal_argument
-* ------------------------------------------------------------------*/
-
-struct IRESEARCH_API illegal_argument : virtual error_base {
-  struct tag_arg_name;
-  typedef ::boost::error_info < struct tag_arg_name, std::string> arg_name;
-  
+// ----------------------------------------------------------------------------
+//                                                             illegal_argument
+// ----------------------------------------------------------------------------
+struct IRESEARCH_API illegal_argument: error_base {
   DECLARE_ERROR_CODE( illegal_argument );
   virtual ErrorCode code() const NOEXCEPT override;
-  virtual const char* what() const NOEXCEPT;
+  virtual const char* what() const NOEXCEPT override;
 };
 
-/* -------------------------------------------------------------------
-* illegal_state
-* ------------------------------------------------------------------*/
-
-struct IRESEARCH_API illegal_state : virtual error_base {
-  struct tag_arg_name;
-  typedef ::boost::error_info < struct tag_arg_name, std::string> arg_name;
-
+// ----------------------------------------------------------------------------
+//                                                                illegal_state
+// ----------------------------------------------------------------------------
+struct IRESEARCH_API illegal_state: error_base {
   DECLARE_ERROR_CODE( illegal_state );
   virtual ErrorCode code() const NOEXCEPT override;
-  virtual const char* what() const NOEXCEPT;
+  virtual const char* what() const NOEXCEPT override;
 };
 
 NS_END

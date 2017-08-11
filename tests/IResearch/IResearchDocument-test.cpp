@@ -32,6 +32,7 @@
 #include "IResearch/IResearchAnalyzerFeature.h"
 #include "IResearch/IResearchDocument.h"
 #include "IResearch/IResearchLinkMeta.h"
+#include "IResearch/IResearchKludge.h"
 #include "IResearch/SystemDatabaseFeature.h"
 #include "Logger/Logger.h"
 #include "Logger/LogTopic.h"
@@ -101,11 +102,33 @@ bool InvalidTokenizer::returnNullFromMake = false;
 DEFINE_ANALYZER_TYPE_NAMED(InvalidTokenizer, "iresearch-document-invalid");
 REGISTER_ANALYZER(InvalidTokenizer);
 
-std::string mangleName(irs::string_ref const& name, irs::string_ref const& suffix) {
-  std::string mangledName(name.c_str(), name.size());
-  mangledName += '\0';
-  mangledName.append(suffix.c_str(), suffix.size());
-  return mangledName;
+std::string mangleBool(std::string name) {
+  arangodb::iresearch::kludge::mangleBool(name);
+  return name;
+}
+
+std::string mangleNull(std::string name) {
+  arangodb::iresearch::kludge::mangleNull(name);
+  return name;
+}
+
+std::string mangleNumeric(std::string name) {
+  arangodb::iresearch::kludge::mangleNumeric(name);
+  return name;
+}
+
+std::string mangleString(std::string name, std::string suffix) {
+  arangodb::iresearch::kludge::mangleAnalyzer(name);
+  name += suffix;
+  return name;
+}
+
+std::string mangleStringIdentity(std::string name) {
+  arangodb::iresearch::kludge::mangleStringField(
+    name,
+    arangodb::iresearch::IResearchAnalyzerFeature::identity()
+  );
+  return name;
 }
 
 NS_END
@@ -324,19 +347,19 @@ SECTION("FieldIterator_traverse_complex_object_custom_nested_delimiter") {
   }");
 
   std::unordered_map<std::string, size_t> expectedValues {
-    { mangleName("nested.foo", "identity"), 1 },
-    { mangleName("keys", "identity"), 4 },
-    { mangleName("boost", "identity"), 1 },
-    { mangleName("depth", "identity"), 1 },
-    { mangleName("fields.fieldA.name", "identity"), 1 },
-    { mangleName("fields.fieldB.name", "identity"), 1 },
-    { mangleName("listValuation", "identity"), 1 },
-    { mangleName("locale", "identity"), 1 },
-    { mangleName("array.id", "identity"), 3 },
-    { mangleName("array.subarr", "identity"), 9 },
-    { mangleName("array.subobj.id", "identity"), 2 },
-    { mangleName("array.subobj.name", "identity"), 1 },
-    { mangleName("array.id", "identity"), 2 }
+    { mangleStringIdentity("nested.foo"), 1 },
+    { mangleStringIdentity("keys"), 4 },
+    { mangleStringIdentity("boost"), 1 },
+    { mangleStringIdentity("depth"), 1 },
+    { mangleStringIdentity("fields.fieldA.name"), 1 },
+    { mangleStringIdentity("fields.fieldB.name"), 1 },
+    { mangleStringIdentity("listValuation"), 1 },
+    { mangleStringIdentity("locale"), 1 },
+    { mangleStringIdentity("array.id"), 3 },
+    { mangleStringIdentity("array.subarr"), 9 },
+    { mangleStringIdentity("array.subobj.id"), 2 },
+    { mangleStringIdentity("array.subobj.name"), 1 },
+    { mangleStringIdentity("array.id"), 2 }
   };
 
   auto const slice = json->slice();
@@ -391,19 +414,19 @@ SECTION("FieldIterator_traverse_complex_object_all_fields") {
   }");
 
   std::unordered_map<std::string, size_t> expectedValues {
-    { mangleName("nested.foo", "identity"), 1 },
-    { mangleName("keys", "identity"), 4 },
-    { mangleName("boost", "identity"), 1 },
-    { mangleName("depth", "identity"), 1 },
-    { mangleName("fields.fieldA.name", "identity"), 1 },
-    { mangleName("fields.fieldB.name", "identity"), 1 },
-    { mangleName("listValuation", "identity"), 1 },
-    { mangleName("locale", "identity"), 1 },
-    { mangleName("array.id", "identity"), 3 },
-    { mangleName("array.subarr", "identity"), 9 },
-    { mangleName("array.subobj.id", "identity"), 2 },
-    { mangleName("array.subobj.name", "identity"), 1 },
-    { mangleName("array.id", "identity"), 2 }
+    { mangleStringIdentity("nested.foo"), 1 },
+    { mangleStringIdentity("keys"), 4 },
+    { mangleStringIdentity("boost"), 1 },
+    { mangleStringIdentity("depth"), 1 },
+    { mangleStringIdentity("fields.fieldA.name"), 1 },
+    { mangleStringIdentity("fields.fieldB.name"), 1 },
+    { mangleStringIdentity("listValuation"), 1 },
+    { mangleStringIdentity("locale"), 1 },
+    { mangleStringIdentity("array.id"), 3 },
+    { mangleStringIdentity("array.subarr"), 9 },
+    { mangleStringIdentity("array.subobj.id"), 2 },
+    { mangleStringIdentity("array.subobj.name"), 1 },
+    { mangleStringIdentity("array.id"), 2 }
   };
 
   auto const slice = json->slice();
@@ -458,35 +481,35 @@ SECTION("FieldIterator_traverse_complex_object_ordered_all_fields") {
   }");
 
   std::unordered_multiset<std::string> expectedValues {
-    mangleName("nested.foo", "identity"),
-    mangleName("keys[0]", "identity"),
-    mangleName("keys[1]", "identity"),
-    mangleName("keys[2]", "identity"),
-    mangleName("keys[3]", "identity"),
-    mangleName("boost", "identity"),
-    mangleName("depth", "identity"),
-    mangleName("fields.fieldA.name", "identity"),
-    mangleName("fields.fieldB.name", "identity"),
-    mangleName("listValuation", "identity"),
-    mangleName("locale", "identity"),
+    mangleStringIdentity("nested.foo"),
+    mangleStringIdentity("keys[0]"),
+    mangleStringIdentity("keys[1]"),
+    mangleStringIdentity("keys[2]"),
+    mangleStringIdentity("keys[3]"),
+    mangleStringIdentity("boost"),
+    mangleStringIdentity("depth"),
+    mangleStringIdentity("fields.fieldA.name"),
+    mangleStringIdentity("fields.fieldB.name"),
+    mangleStringIdentity("listValuation"),
+    mangleStringIdentity("locale"),
 
-    mangleName("array[0].id", "identity"),
-    mangleName("array[0].subarr[0]", "identity"),
-    mangleName("array[0].subarr[1]", "identity"),
-    mangleName("array[0].subarr[2]", "identity"),
-    mangleName("array[0].subobj.id", "identity"),
+    mangleStringIdentity("array[0].id"),
+    mangleStringIdentity("array[0].subarr[0]"),
+    mangleStringIdentity("array[0].subarr[1]"),
+    mangleStringIdentity("array[0].subarr[2]"),
+    mangleStringIdentity("array[0].subobj.id"),
 
-    mangleName("array[1].subarr[0]", "identity"),
-    mangleName("array[1].subarr[1]", "identity"),
-    mangleName("array[1].subarr[2]", "identity"),
-    mangleName("array[1].subobj.name", "identity"),
-    mangleName("array[1].id", "identity"),
+    mangleStringIdentity("array[1].subarr[0]"),
+    mangleStringIdentity("array[1].subarr[1]"),
+    mangleStringIdentity("array[1].subarr[2]"),
+    mangleStringIdentity("array[1].subobj.name"),
+    mangleStringIdentity("array[1].id"),
 
-    mangleName("array[2].id", "identity"),
-    mangleName("array[2].subarr[0]", "identity"),
-    mangleName("array[2].subarr[1]", "identity"),
-    mangleName("array[2].subarr[2]", "identity"),
-    mangleName("array[2].subobj.id", "identity")
+    mangleStringIdentity("array[2].id"),
+    mangleStringIdentity("array[2].subarr[0]"),
+    mangleStringIdentity("array[2].subarr[1]"),
+    mangleStringIdentity("array[2].subarr[2]"),
+    mangleStringIdentity("array[2].subobj.id")
   };
 
   auto const slice = json->slice();
@@ -550,7 +573,7 @@ SECTION("FieldIterator_traverse_complex_object_ordered_filtered") {
   REQUIRE(it != arangodb::iresearch::FieldIterator::END);
 
   auto& value = *it;
-  CHECK(mangleName("boost","identity") == value.name());
+  CHECK(mangleStringIdentity("boost") == value.name());
   const auto expected_analyzer = irs::analysis::analyzers::get("identity", "");
   auto& analyzer = dynamic_cast<irs::analysis::analyzer&>(value.get_tokens());
   CHECK(expected_analyzer->attributes().features() == value.features());
@@ -647,7 +670,7 @@ SECTION("FieldIterator_traverse_complex_object_ordered_check_value_types") {
   // stringValue (with IdentityTokenizer)
   {
     auto& field = *it;
-    CHECK(mangleName("stringValue", "identity") == field.name());
+    CHECK(mangleStringIdentity("stringValue") == field.name());
     CHECK(1.f == field.boost());
 
     auto const expected_analyzer = irs::analysis::analyzers::get("identity", "");
@@ -663,7 +686,7 @@ SECTION("FieldIterator_traverse_complex_object_ordered_check_value_types") {
   // stringValue (with EmptyTokenizer)
   {
     auto& field = *it;
-    CHECK(mangleName("stringValue", "iresearch-document-empty") == field.name());
+    CHECK(mangleString("stringValue", "iresearch-document-empty") == field.name());
     CHECK(1.f == field.boost());
 
     auto const expected_analyzer = irs::analysis::analyzers::get("iresearch-document-empty", "en");
@@ -679,7 +702,7 @@ SECTION("FieldIterator_traverse_complex_object_ordered_check_value_types") {
   // nullValue
   {
     auto& field = *it;
-    CHECK(mangleName("nullValue", "_n") == field.name());
+    CHECK(mangleNull("nullValue") == field.name());
     CHECK(1.f == field.boost());
 
     auto& analyzer = dynamic_cast<irs::null_token_stream&>(field.get_tokens());
@@ -693,7 +716,7 @@ SECTION("FieldIterator_traverse_complex_object_ordered_check_value_types") {
   // trueValue
   {
     auto& field = *it;
-    CHECK(mangleName("trueValue", "_b") == field.name());
+    CHECK(mangleBool("trueValue") == field.name());
     CHECK(1.f == field.boost());
 
     auto& analyzer = dynamic_cast<irs::boolean_token_stream&>(field.get_tokens());
@@ -707,7 +730,7 @@ SECTION("FieldIterator_traverse_complex_object_ordered_check_value_types") {
   // falseValue
   {
     auto& field = *it;
-    CHECK(mangleName("falseValue", "_b") == field.name());
+    CHECK(mangleBool("falseValue") == field.name());
     CHECK(1.f == field.boost());
 
     auto& analyzer = dynamic_cast<irs::boolean_token_stream&>(field.get_tokens());
@@ -721,7 +744,7 @@ SECTION("FieldIterator_traverse_complex_object_ordered_check_value_types") {
   // smallIntValue
   {
     auto& field = *it;
-    CHECK(mangleName("smallIntValue", "_d") == field.name());
+    CHECK(mangleNumeric("smallIntValue") == field.name());
     CHECK(1.f == field.boost());
 
     auto& analyzer = dynamic_cast<irs::numeric_token_stream&>(field.get_tokens());
@@ -735,7 +758,7 @@ SECTION("FieldIterator_traverse_complex_object_ordered_check_value_types") {
   // smallNegativeIntValue
   {
     auto& field = *it;
-    CHECK(mangleName("smallNegativeIntValue", "_d") == field.name());
+    CHECK(mangleNumeric("smallNegativeIntValue") == field.name());
     CHECK(1.f == field.boost());
 
     auto& analyzer = dynamic_cast<irs::numeric_token_stream&>(field.get_tokens());
@@ -749,7 +772,7 @@ SECTION("FieldIterator_traverse_complex_object_ordered_check_value_types") {
   // bigIntValue
   {
     auto& field = *it;
-    CHECK(mangleName("bigIntValue", "_d") == field.name());
+    CHECK(mangleNumeric("bigIntValue") == field.name());
     CHECK(1.f == field.boost());
 
     auto& analyzer = dynamic_cast<irs::numeric_token_stream&>(field.get_tokens());
@@ -763,7 +786,7 @@ SECTION("FieldIterator_traverse_complex_object_ordered_check_value_types") {
   // bigNegativeIntValue
   {
     auto& field = *it;
-    CHECK(mangleName("bigNegativeIntValue", "_d") == field.name());
+    CHECK(mangleNumeric("bigNegativeIntValue") == field.name());
     CHECK(1.f == field.boost());
 
     auto& analyzer = dynamic_cast<irs::numeric_token_stream&>(field.get_tokens());
@@ -777,7 +800,7 @@ SECTION("FieldIterator_traverse_complex_object_ordered_check_value_types") {
   // smallDoubleValue
   {
     auto& field = *it;
-    CHECK(mangleName("smallDoubleValue", "_d") == field.name());
+    CHECK(mangleNumeric("smallDoubleValue") == field.name());
     CHECK(1.f == field.boost());
 
     auto& analyzer = dynamic_cast<irs::numeric_token_stream&>(field.get_tokens());
@@ -791,7 +814,7 @@ SECTION("FieldIterator_traverse_complex_object_ordered_check_value_types") {
   // bigDoubleValue
   {
     auto& field = *it;
-    CHECK(mangleName("bigDoubleValue", "_d") == field.name());
+    CHECK(mangleNumeric("bigDoubleValue") == field.name());
     CHECK(1.f == field.boost());
 
     auto& analyzer = dynamic_cast<irs::numeric_token_stream&>(field.get_tokens());
@@ -805,7 +828,7 @@ SECTION("FieldIterator_traverse_complex_object_ordered_check_value_types") {
   // bigNegativeDoubleValue
   {
     auto& field = *it;
-    CHECK(mangleName("bigNegativeDoubleValue", "_d") == field.name());
+    CHECK(mangleNumeric("bigNegativeDoubleValue") == field.name());
     CHECK(1.f == field.boost());
 
     auto& analyzer = dynamic_cast<irs::numeric_token_stream&>(field.get_tokens());
@@ -835,7 +858,7 @@ SECTION("FieldIterator_reset") {
 
   {
     auto& value = *it;
-    CHECK(mangleName("boost", "identity") == value.name());
+    CHECK(mangleStringIdentity("boost") == value.name());
     const auto expected_analyzer = irs::analysis::analyzers::get("identity", "");
     auto& analyzer = dynamic_cast<irs::analysis::analyzer&>(value.get_tokens());
     CHECK(expected_analyzer->attributes().features() == value.features());
@@ -849,7 +872,7 @@ SECTION("FieldIterator_reset") {
   // depth (with IdentityTokenizer)
   {
     auto& value = *it;
-    CHECK(mangleName("depth", "identity") == value.name());
+    CHECK(mangleStringIdentity("depth") == value.name());
     const auto expected_analyzer = irs::analysis::analyzers::get("identity", "");
     auto& analyzer = dynamic_cast<irs::analysis::analyzer&>(value.get_tokens());
     CHECK(expected_analyzer->attributes().features() == value.features());
@@ -865,7 +888,7 @@ SECTION("FieldIterator_reset") {
 
   {
     auto& value = *it;
-    CHECK(mangleName("name", "identity") == value.name());
+    CHECK(mangleStringIdentity("name") == value.name());
     const auto expected_analyzer = irs::analysis::analyzers::get("identity", "");
     auto& analyzer = dynamic_cast<irs::analysis::analyzer&>(value.get_tokens());
     CHECK(expected_analyzer->attributes().features() == value.features());
@@ -895,35 +918,35 @@ SECTION("FieldIterator_traverse_complex_object_ordered_all_fields_custom_list_of
   }");
 
   std::unordered_multiset<std::string> expectedValues {
-    mangleName("nested.foo", "identity"),
-    mangleName("keys[0]", "identity"),
-    mangleName("keys[1]", "identity"),
-    mangleName("keys[2]", "identity"),
-    mangleName("keys[3]", "identity"),
-    mangleName("boost", "identity"),
-    mangleName("depth", "identity"),
-    mangleName("fields.fieldA.name", "identity"),
-    mangleName("fields.fieldB.name", "identity"),
-    mangleName("listValuation", "identity"),
-    mangleName("locale", "identity"),
+    mangleStringIdentity("nested.foo"),
+    mangleStringIdentity("keys[0]"),
+    mangleStringIdentity("keys[1]"),
+    mangleStringIdentity("keys[2]"),
+    mangleStringIdentity("keys[3]"),
+    mangleStringIdentity("boost"),
+    mangleStringIdentity("depth"),
+    mangleStringIdentity("fields.fieldA.name"),
+    mangleStringIdentity("fields.fieldB.name"),
+    mangleStringIdentity("listValuation"),
+    mangleStringIdentity("locale"),
 
-    mangleName("array[0].id", "identity"),
-    mangleName("array[0].subarr[0]", "identity"),
-    mangleName("array[0].subarr[1]", "identity"),
-    mangleName("array[0].subarr[2]", "identity"),
-    mangleName("array[0].subobj.id", "identity"),
+    mangleStringIdentity("array[0].id"),
+    mangleStringIdentity("array[0].subarr[0]"),
+    mangleStringIdentity("array[0].subarr[1]"),
+    mangleStringIdentity("array[0].subarr[2]"),
+    mangleStringIdentity("array[0].subobj.id"),
 
-    mangleName("array[1].subarr[0]", "identity"),
-    mangleName("array[1].subarr[1]", "identity"),
-    mangleName("array[1].subarr[2]", "identity"),
-    mangleName("array[1].subobj.name", "identity"),
-    mangleName("array[1].id", "identity"),
+    mangleStringIdentity("array[1].subarr[0]"),
+    mangleStringIdentity("array[1].subarr[1]"),
+    mangleStringIdentity("array[1].subarr[2]"),
+    mangleStringIdentity("array[1].subobj.name"),
+    mangleStringIdentity("array[1].id"),
 
-    mangleName("array[2].id", "identity"),
-    mangleName("array[2].subarr[0]", "identity"),
-    mangleName("array[2].subarr[1]", "identity"),
-    mangleName("array[2].subarr[2]", "identity"),
-    mangleName("array[2].subobj.id", "identity")
+    mangleStringIdentity("array[2].id"),
+    mangleStringIdentity("array[2].subarr[0]"),
+    mangleStringIdentity("array[2].subarr[1]"),
+    mangleStringIdentity("array[2].subarr[2]"),
+    mangleStringIdentity("array[2].subobj.id")
   };
 
   auto const slice = json->slice();
@@ -1001,7 +1024,7 @@ SECTION("FieldIterator_traverse_complex_object_check_meta_inheritance") {
   // nested.foo (with IdentityTokenizer)
   {
     auto& value = *it;
-    CHECK(mangleName("nested.foo", "identity") == value.name());
+    CHECK(mangleStringIdentity("nested.foo") == value.name());
     const auto expected_analyzer = irs::analysis::analyzers::get("identity", "");
     auto& analyzer = dynamic_cast<irs::analysis::analyzer&>(value.get_tokens());
     CHECK(expected_analyzer->attributes().features() == value.features());
@@ -1016,7 +1039,7 @@ SECTION("FieldIterator_traverse_complex_object_check_meta_inheritance") {
   // nested.foo (with EmptyTokenizer)
   {
     auto& value = *it;
-    CHECK(mangleName("nested.foo", "iresearch-document-empty") == value.name());
+    CHECK(mangleString("nested.foo", "iresearch-document-empty") == value.name());
     auto& analyzer = dynamic_cast<EmptyTokenizer&>(value.get_tokens());
     CHECK(!analyzer.next());
     CHECK(1.f == value.boost());
@@ -1029,7 +1052,7 @@ SECTION("FieldIterator_traverse_complex_object_check_meta_inheritance") {
     REQUIRE(it != arangodb::iresearch::FieldIterator::END);
 
     auto& value = *it;
-    CHECK(mangleName("keys", "identity") == value.name());
+    CHECK(mangleStringIdentity("keys") == value.name());
     const auto expected_analyzer = irs::analysis::analyzers::get("identity", "");
     auto& analyzer = dynamic_cast<irs::analysis::analyzer&>(value.get_tokens());
     CHECK(expected_analyzer->attributes().features() == value.features());
@@ -1045,7 +1068,7 @@ SECTION("FieldIterator_traverse_complex_object_check_meta_inheritance") {
   // boost
   {
     auto& value = *it;
-    CHECK(mangleName("boost", "identity") == value.name());
+    CHECK(mangleStringIdentity("boost") == value.name());
     const auto expected_analyzer = irs::analysis::analyzers::get("identity", "");
     auto& analyzer = dynamic_cast<irs::analysis::analyzer&>(value.get_tokens());
     CHECK(expected_analyzer->attributes().features() == value.features());
@@ -1060,7 +1083,7 @@ SECTION("FieldIterator_traverse_complex_object_check_meta_inheritance") {
   // depth
   {
     auto& value = *it;
-    CHECK(mangleName("depth", "_d") == value.name());
+    CHECK(mangleNumeric("depth") == value.name());
     auto& analyzer = dynamic_cast<irs::numeric_token_stream&>(value.get_tokens());
     CHECK(analyzer.next());
     CHECK(5.f == value.boost());
@@ -1073,7 +1096,7 @@ SECTION("FieldIterator_traverse_complex_object_check_meta_inheritance") {
   // fields.fieldA (with IdenitytTokenizer)
   {
     auto& value = *it;
-    CHECK(mangleName("fields.fieldA.name", "identity") == value.name());
+    CHECK(mangleStringIdentity("fields.fieldA.name") == value.name());
     const auto expected_analyzer = irs::analysis::analyzers::get("identity", "");
     auto& analyzer = dynamic_cast<irs::analysis::analyzer&>(value.get_tokens());
     CHECK(expected_analyzer->attributes().features() == value.features());
@@ -1088,7 +1111,7 @@ SECTION("FieldIterator_traverse_complex_object_check_meta_inheritance") {
   // fields.fieldA (with EmptyTokenizer)
   {
     auto& value = *it;
-    CHECK(mangleName("fields.fieldA.name", "iresearch-document-empty") == value.name());
+    CHECK(mangleString("fields.fieldA.name", "iresearch-document-empty") == value.name());
     auto& analyzer = dynamic_cast<EmptyTokenizer&>(value.get_tokens());
     CHECK(!analyzer.next());
     CHECK(3.f == value.boost());
@@ -1101,7 +1124,7 @@ SECTION("FieldIterator_traverse_complex_object_check_meta_inheritance") {
   // listValuation (with IdenitytTokenizer)
   {
     auto& value = *it;
-    CHECK(mangleName("listValuation", "identity") == value.name());
+    CHECK(mangleStringIdentity("listValuation") == value.name());
     const auto expected_analyzer = irs::analysis::analyzers::get("identity", "");
     auto& analyzer = dynamic_cast<irs::analysis::analyzer&>(value.get_tokens());
     CHECK(expected_analyzer->attributes().features() == value.features());
@@ -1116,7 +1139,7 @@ SECTION("FieldIterator_traverse_complex_object_check_meta_inheritance") {
   // listValuation (with EmptyTokenizer)
   {
     auto& value = *it;
-    CHECK(mangleName("listValuation", "iresearch-document-empty") == value.name());
+    CHECK(mangleString("listValuation", "iresearch-document-empty") == value.name());
     auto& analyzer = dynamic_cast<EmptyTokenizer&>(value.get_tokens());
     CHECK(!analyzer.next());
     CHECK(1.f == value.boost());
@@ -1129,7 +1152,7 @@ SECTION("FieldIterator_traverse_complex_object_check_meta_inheritance") {
   // locale
   {
     auto& value = *it;
-    CHECK(mangleName("locale", "_n") == value.name());
+    CHECK(mangleNull("locale") == value.name());
     auto& analyzer = dynamic_cast<irs::null_token_stream&>(value.get_tokens());
     CHECK(analyzer.next());
     CHECK(1.f == value.boost());
@@ -1142,7 +1165,7 @@ SECTION("FieldIterator_traverse_complex_object_check_meta_inheritance") {
   // array[0].id
   {
     auto& value = *it;
-    CHECK(mangleName("array[0].id", "_d") == value.name());
+    CHECK(mangleNumeric("array[0].id") == value.name());
     auto& analyzer = dynamic_cast<irs::numeric_token_stream&>(value.get_tokens());
     CHECK(analyzer.next());
     CHECK(2.f == value.boost());
@@ -1158,7 +1181,7 @@ SECTION("FieldIterator_traverse_complex_object_check_meta_inheritance") {
     // IdentityTokenizer
     {
       auto& value = *it;
-      CHECK(mangleName("array[0].subarr", "identity") == value.name());
+      CHECK(mangleStringIdentity("array[0].subarr") == value.name());
       const auto expected_analyzer = irs::analysis::analyzers::get("identity", "");
       auto& analyzer = dynamic_cast<irs::analysis::analyzer&>(value.get_tokens());
       CHECK(expected_analyzer->attributes().features() == value.features());
@@ -1173,7 +1196,7 @@ SECTION("FieldIterator_traverse_complex_object_check_meta_inheritance") {
     // EmptyTokenizer
     {
       auto& value = *it;
-      CHECK(mangleName("array[0].subarr", "iresearch-document-empty") == value.name());
+      CHECK(mangleString("array[0].subarr", "iresearch-document-empty") == value.name());
       auto& analyzer = dynamic_cast<EmptyTokenizer&>(value.get_tokens());
       CHECK(!analyzer.next());
       CHECK(1.f == value.boost());
@@ -1189,7 +1212,7 @@ SECTION("FieldIterator_traverse_complex_object_check_meta_inheritance") {
     // IdentityTokenizer
     {
       auto& value = *it;
-      CHECK(mangleName("array[1].subarr", "identity") == value.name());
+      CHECK(mangleStringIdentity("array[1].subarr") == value.name());
       const auto expected_analyzer = irs::analysis::analyzers::get("identity", "");
       auto& analyzer = dynamic_cast<irs::analysis::analyzer&>(value.get_tokens());
       CHECK(expected_analyzer->attributes().features() == value.features());
@@ -1204,7 +1227,7 @@ SECTION("FieldIterator_traverse_complex_object_check_meta_inheritance") {
     // EmptyTokenizer
     {
       auto& value = *it;
-      CHECK(mangleName("array[1].subarr", "iresearch-document-empty") == value.name());
+      CHECK(mangleString("array[1].subarr", "iresearch-document-empty") == value.name());
       auto& analyzer = dynamic_cast<EmptyTokenizer&>(value.get_tokens());
       CHECK(!analyzer.next());
       CHECK(1.f == value.boost());
@@ -1218,7 +1241,7 @@ SECTION("FieldIterator_traverse_complex_object_check_meta_inheritance") {
   // array[1].id (IdentityTokenizer)
   {
     auto& value = *it;
-    CHECK(mangleName("array[1].id", "identity") == value.name());
+    CHECK(mangleStringIdentity("array[1].id") == value.name());
     const auto expected_analyzer = irs::analysis::analyzers::get("identity", "");
     auto& analyzer = dynamic_cast<irs::analysis::analyzer&>(value.get_tokens());
     CHECK(expected_analyzer->attributes().features() == value.features());
@@ -1233,7 +1256,7 @@ SECTION("FieldIterator_traverse_complex_object_check_meta_inheritance") {
   // array[1].id (EmptyTokenizer)
   {
     auto& value = *it;
-    CHECK(mangleName("array[1].id", "iresearch-document-empty") == value.name());
+    CHECK(mangleString("array[1].id", "iresearch-document-empty") == value.name());
     auto& analyzer = dynamic_cast<EmptyTokenizer&>(value.get_tokens());
     CHECK(!analyzer.next());
     CHECK(2.f == value.boost());
@@ -1246,7 +1269,7 @@ SECTION("FieldIterator_traverse_complex_object_check_meta_inheritance") {
   // array[2].id (IdentityTokenizer)
   {
     auto& value = *it;
-    CHECK(mangleName("array[2].id", "_d") == value.name());
+    CHECK(mangleNumeric("array[2].id") == value.name());
     auto& analyzer = dynamic_cast<irs::numeric_token_stream&>(value.get_tokens());
     CHECK(analyzer.next());
     CHECK(2.f == value.boost());
@@ -1261,7 +1284,7 @@ SECTION("FieldIterator_traverse_complex_object_check_meta_inheritance") {
     // IdentityTokenizer
     {
       auto& value = *it;
-      CHECK(mangleName("array[2].subarr", "identity") == value.name());
+      CHECK(mangleStringIdentity("array[2].subarr") == value.name());
       const auto expected_analyzer = irs::analysis::analyzers::get("identity", "");
       auto& analyzer = dynamic_cast<irs::analysis::analyzer&>(value.get_tokens());
       CHECK(expected_analyzer->attributes().features() == value.features());
@@ -1276,7 +1299,7 @@ SECTION("FieldIterator_traverse_complex_object_check_meta_inheritance") {
     // EmptyTokenizer
     {
       auto& value = *it;
-      CHECK(mangleName("array[2].subarr", "iresearch-document-empty") == value.name());
+      CHECK(mangleString("array[2].subarr", "iresearch-document-empty") == value.name());
       auto& analyzer = dynamic_cast<EmptyTokenizer&>(value.get_tokens());
       CHECK(!analyzer.next());
       CHECK(1.f == value.boost());
@@ -1297,6 +1320,13 @@ SECTION("FieldIterator_nullptr_tokenizer") {
 
   // register analizers with feature
   {
+    // ensure that there will be no exception on 'start'
+    InvalidTokenizer::returnNullFromMake = false;
+
+    analyzers.start();
+    analyzers.erase("empty");
+    analyzers.erase("invalid");
+
     // ensure that there will be no exception on 'emplace'
     InvalidTokenizer::returnNullFromMake = false;
 
@@ -1321,7 +1351,7 @@ SECTION("FieldIterator_nullptr_tokenizer") {
     // stringValue (with IdentityTokenizer)
     {
       auto& field = *it;
-      CHECK(mangleName("stringValue", "identity") == field.name());
+      CHECK(mangleStringIdentity("stringValue") == field.name());
       CHECK(1.f == field.boost());
 
       auto const expected_analyzer = irs::analysis::analyzers::get("identity", "");
@@ -1337,7 +1367,7 @@ SECTION("FieldIterator_nullptr_tokenizer") {
     // stringValue (with EmptyTokenizer)
     {
       auto& field = *it;
-      CHECK(mangleName("stringValue", "empty") == field.name());
+      CHECK(mangleString("stringValue", "empty") == field.name());
       CHECK(1.f == field.boost());
 
       auto const expected_analyzer = irs::analysis::analyzers::get("iresearch-document-empty", "en");
@@ -1371,7 +1401,7 @@ SECTION("FieldIterator_nullptr_tokenizer") {
     // stringValue (with EmptyTokenizer)
     {
       auto& field = *it;
-      CHECK(mangleName("stringValue", "empty") == field.name());
+      CHECK(mangleString("stringValue", "empty") == field.name());
       CHECK(1.f == field.boost());
 
       auto const expected_analyzer = irs::analysis::analyzers::get("iresearch-document-empty", "en");

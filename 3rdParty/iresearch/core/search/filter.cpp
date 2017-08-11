@@ -10,7 +10,6 @@
 // 
 
 #include "filter.hpp"
-#include "collector.hpp"
 #include "cost.hpp"
 #include "index/index_reader.hpp"
 #include "utils/type_limits.hpp"
@@ -58,97 +57,6 @@ filter::prepared::prepared(attribute_store&& attrs)
 }
 
 filter::prepared::~prepared() {}
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                             query
-// -----------------------------------------------------------------------------
-
-class auto_score_iterator final : public doc_iterator {
-public:
-  auto_score_iterator( score_doc_iterator::ptr&& it )
-    : it_( std::move( it ) ) {
-    assert( it_ );
-  }
-
-  virtual doc_id_t value() const override {
-    return it_->value();
-  }
-
-  virtual const attribute_store& attributes() const NOEXCEPT override {
-    return it_->attributes();
-  }
-
-  virtual bool next() override {
-    if ( it_->next() ) {
-      it_->score();
-      return true;
-    }
-
-    return false;
-  }
-
-  virtual doc_id_t seek(doc_id_t target) override {
-    const auto doc = it_->seek( target );
-
-    if (!type_limits<type_t::doc_id_t>::eof(doc)) {
-      it_->score();
-    }
-
-    return doc;
-  }
-
-private:
-  score_doc_iterator::ptr it_;
-}; // auto_score_doc_iterator
-
-query::query(query&& rhs) NOEXCEPT
-  : filter_( std::move( rhs.filter_ ) ), 
-    order_( std::move( rhs.order_ ) ) {
-  assert( filter_ );
-}
-
-query& query::operator=(query&& rhs) NOEXCEPT {
-  if ( this != &rhs ) {
-    filter_ = std::move( rhs.filter_ );
-    order_ = std::move( rhs.order_ );
-  }
-
-  return *this;
-}
-
-query query::prepare(
-    const index_reader& rdr,
-    const filter& filter,
-    const order& order) {
-  order::prepared porder = order.prepare();
-  filter::prepared::ptr pfilter = filter.prepare(rdr, porder);
-  return query(std::move(pfilter), std::move(porder));
-}
-
-query::query(filter::prepared::ptr&& filter, order::prepared&& order) NOEXCEPT
-  : filter_(std::move(filter)), order_(std::move(order)) {
-  assert(filter_);
-}
-
-doc_iterator::ptr query::execute(const sub_reader& rdr) const {
-  if (order_.empty()) {
-    return filter_->execute(rdr, order_);
-  }
-
-  return doc_iterator::make<auto_score_iterator>(
-    filter_->execute(rdr, order_)
-    );
-}
-
-void query::execute(const index_reader& rdr, collector& c) const {
-  for (const auto& sr : rdr) {
-    doc_iterator::ptr docs = execute(sr);
-    c.prepare(c, docs->attributes());
-    for (; docs->next();) {
-      c.collect(c, docs->value());
-    }
-  }
-}
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                               all

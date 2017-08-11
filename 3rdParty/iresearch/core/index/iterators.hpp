@@ -33,8 +33,9 @@ NS_ROOT
 /// Once iterator has finished execution it should return "false" on last 
 /// "next()" call. After that "value()" should always return NO_MORE_DOCS.
 //////////////////////////////////////////////////////////////////////////////
-struct IRESEARCH_API doc_iterator:
-  iterator<doc_id_t>, public util::const_attribute_store_provider {
+struct IRESEARCH_API doc_iterator
+    : iterator<doc_id_t>,
+      util::const_attribute_store_provider {
   DECLARE_SPTR(doc_iterator);
   DECLARE_FACTORY(doc_iterator);
 
@@ -61,11 +62,13 @@ struct IRESEARCH_API score_doc_iterator: doc_iterator {
 //////////////////////////////////////////////////////////////////////////////
 /// @brief jumps iterator to the specified target and returns current value
 /// of the iterator
+/// @returns 'false' if iterator exhausted, true otherwise
 //////////////////////////////////////////////////////////////////////////////
 template<typename Iterator, typename T, typename Less = std::less<T>>
-T seek(Iterator& it, const T& target, Less less = Less()) {
-  while (less(it.value(), target) && it.next());
-  return it.value();
+bool seek(Iterator& it, const T& target, Less less = Less()) {
+  bool next = true;
+  while (less(it.value(), target) && (next = it.next()));
+  return next;
 }
 
 // ----------------------------------------------------------------------------

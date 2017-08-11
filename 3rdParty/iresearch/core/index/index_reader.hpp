@@ -92,20 +92,9 @@ struct IRESEARCH_API sub_reader : index_reader {
 
   virtual const column_meta* column(const string_ref& name) const = 0;
 
-  // returns corresponding column reader by the specified field
-  virtual columnstore_reader::values_reader_f values(field_id id) const = 0;
+  virtual const columnstore_reader::column_reader* column_reader(field_id field) const = 0;
 
-  virtual bool visit(
-    field_id id,
-    const columnstore_reader::values_visitor_f& reader
-  ) const = 0;
-
-  columnstore_reader::values_reader_f values(const string_ref& field) const;
-
-  bool visit(
-    const string_ref& name,
-    const columnstore_reader::values_visitor_f& reader
-  ) const;
+  const columnstore_reader::column_reader* column_reader(const string_ref& field) const;
 }; // sub_reader
 
 NS_END

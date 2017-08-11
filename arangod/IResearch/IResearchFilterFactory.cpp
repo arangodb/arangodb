@@ -38,7 +38,10 @@
 #include "search/prefix_filter.hpp"
 #include "search/range_filter.hpp"
 #include "search/granular_range_filter.hpp"
+#include "search/column_existence_filter.hpp"
 #include "search/phrase_filter.hpp"
+
+#include <cctype>
 
 NS_LOCAL
 
@@ -81,11 +84,6 @@ void appendTerms(
     firstOffset = 0;
   }
 }
-
-bool processSubnode(
-  irs::boolean_filter* filter,
-  arangodb::aql::AstNode const& node
-);
 
 template<typename Filter>
 bool fromGroup(
@@ -171,10 +169,10 @@ bool byPrefix(
 
   try {
     LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "'STARTS_WITH' AQL function: Unable to parse specified value '" << valueNode.toString()
-                                             << "' as a string";
+                                             << "' as string";
   } catch (...) {
     // valueNode.toString() may throw
-    LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "'STARTS_WITH' AQL function: Unable to parse specified value as a string";
+    LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "'STARTS_WITH' AQL function: Unable to parse specified value as string";
   }
 
   return false;
@@ -472,7 +470,9 @@ bool fromIn(
     return false; // wrong number of members
   }
 
-  auto const* attributeNode = arangodb::iresearch::getNode(node, 0, arangodb::aql::NODE_TYPE_ATTRIBUTE_ACCESS);
+  auto const* attributeNode = arangodb::iresearch::checkAttributeAccess(
+    node.getMemberUnchecked(0)
+  );
 
   if (!attributeNode) {
     LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "Unable to extract attribute name from 'IN' operator";
@@ -603,7 +603,7 @@ bool fromNegation(
     filter = &filter->add<irs::Not>().filter<irs::And>();
   }
 
-  return processSubnode(filter, *member);
+  return arangodb::iresearch::FilterFactory::filter(filter, *member);
 }
 
 bool fromBinaryAnd(
@@ -676,7 +676,7 @@ bool fromGroup(
     auto const* valueNode = node.getMemberUnchecked(i);
     TRI_ASSERT(valueNode);
 
-    if (!processSubnode(filter, *valueNode)) {
+    if (!arangodb::iresearch::FilterFactory::filter(filter, *valueNode)) {
       return false;
     }
   }
@@ -684,31 +684,172 @@ bool fromGroup(
   return true;
 }
 
-// EXISTS(<attribute>)
+// EXISTS(<attribute>, <"type"|"analyzer">, <analyzer-name|"string"|"null"|"bool","numeric">)
 bool fromFuncExists(
     irs::boolean_filter* filter,
     arangodb::aql::AstNode const& args
 ) {
   auto const argc = args.numMembers();
 
-  if (argc != 1) {
-    LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "'EXISTS' AQL function: Invalid number of arguments passed (must be == 1)";
+  if (argc < 1 || argc > 3) {
+    LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "'EXISTS' AQL function: Invalid number of arguments passed (must be >= 1 and <= 3)";
     return false;
   }
 
   // 1st argument defines a field
-  auto const* field = arangodb::iresearch::getNode(
-    args, 0, arangodb::aql::NODE_TYPE_ATTRIBUTE_ACCESS
+  auto const* fieldArg = arangodb::iresearch::checkAttributeAccess(
+    args.getMemberUnchecked(0)
   );
 
-  if (!field) {
+  if (!fieldArg) {
     LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "'PHRASE' AQL function: 1st argument is invalid";
     return false;
   }
 
-  // FIXME TODO
+  bool prefix_match = true;
+  std::string fieldName;
 
-  return false;
+  if (filter) {
+    fieldName = arangodb::iresearch::nameFromAttributeAccess(*fieldArg);
+  }
+
+  if (argc > 1) {
+    // 2nd argument defines a type (if present)
+    auto const typeArg = arangodb::iresearch::getNode(
+      args, 1, arangodb::aql::NODE_TYPE_VALUE
+    );
+
+    if (!typeArg) {
+      LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "'EXISTS' AQL function: 2nd argument is invalid";
+      return false;
+    }
+
+    irs::string_ref arg;
+
+    if (!arangodb::iresearch::parseValue(arg, *typeArg)) {
+      LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "'EXISTS' AQL function: Unable to parse 2nd argument as string";
+      return false;
+    }
+
+    static irs::string_ref const TYPE = "type";
+    static irs::string_ref const ANALYZER = "analyzer";
+
+    bool const bAnalyzer = (ANALYZER == arg);
+
+    if (!bAnalyzer && TYPE != arg) {
+      LOG_TOPIC(WARN, arangodb::Logger::FIXME)
+          << "'EXISTS' AQL function: 2nd argument must be equal to '" << TYPE
+          << "' or '" << ANALYZER << "', got '" << arg << "'";
+      return false;
+    }
+
+    if (argc > 2) {
+
+      // 3rd argument defines a value (if present)
+      auto const valueArg = arangodb::iresearch::getNode(
+        args, 2, arangodb::aql::NODE_TYPE_VALUE
+      );
+
+      if (!valueArg) {
+        LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "'EXISTS' AQL function: 3rd argument is invalid";
+        return false;
+      }
+
+      if (!arangodb::iresearch::parseValue(arg, *valueArg)) {
+        LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "'EXISTS' AQL function: Unable to parse 3rd argument as string";
+        return false;
+      }
+
+      if (bAnalyzer) {
+
+        auto* analyzerFeature = arangodb::iresearch::getFeature<
+          arangodb::iresearch::IResearchAnalyzerFeature
+        >();
+
+        if (!analyzerFeature) {
+          LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "'" << arangodb::iresearch::IResearchAnalyzerFeature::name()
+                                                   << "' feature is not registered, unable to evaluate 'EXISTS' function";
+          return false;
+        }
+
+        auto analyzer = analyzerFeature->get(arg);
+
+        if (!analyzer) {
+          LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "'EXISTS' AQL function: Unable to lookup analyzer '" << arg << "'";
+          return false;
+        }
+
+        if (filter) {
+          arangodb::iresearch::kludge::mangleStringField(fieldName, analyzer);
+        }
+      } else {
+
+        typedef void(*TypeHandler)(std::string&);
+
+        static std::unordered_map<irs::hashed_string_ref, TypeHandler> const TypeHandlers {
+          {
+            irs::make_hashed_ref(irs::string_ref("string"), std::hash<irs::string_ref>()),
+            [] (std::string& name) {
+              arangodb::iresearch::kludge::mangleStringField(
+                name,
+                arangodb::iresearch::IResearchAnalyzerFeature::identity()
+              );
+            }
+          },
+          {
+            irs::make_hashed_ref(irs::string_ref("numeric"), std::hash<irs::string_ref>()),
+            [] (std::string& name) {
+              arangodb::iresearch::kludge::mangleNumeric(name);
+            }
+          },
+          {
+            irs::make_hashed_ref(irs::string_ref("bool"), std::hash<irs::string_ref>()),
+            [] (std::string& name) {
+              arangodb::iresearch::kludge::mangleBool(name);
+            }
+          },
+          {
+            irs::make_hashed_ref(irs::string_ref("null"), std::hash<irs::string_ref>()),
+            [] (std::string& name) {
+              arangodb::iresearch::kludge::mangleNull(name);
+            }
+          }
+        };
+
+        const auto it = TypeHandlers.find(
+          irs::make_hashed_ref(arg, std::hash<irs::string_ref>())
+        );
+
+        if (TypeHandlers.end() == it) {
+          LOG_TOPIC(WARN, arangodb::Logger::FIXME)
+            << "'EXISTS' AQL function: 3rd argument must be equal to one of the following 'string', 'numeric', 'bool', 'null', got '"
+            << arg << "'";
+
+          return false;
+        }
+
+        if (filter) {
+          it->second(fieldName);
+        }
+      }
+
+      prefix_match = false;
+    } else if (filter) {
+
+      bAnalyzer
+        ? arangodb::iresearch::kludge::mangleAnalyzer(fieldName)
+        : arangodb::iresearch::kludge::mangleType(fieldName);
+
+    }
+  }
+
+  if (filter) {
+    auto& exists = filter->add<irs::by_column_existence>();
+    exists.field(std::move(fieldName));
+    exists.prefix_match(prefix_match);
+  }
+
+  return true;
 }
 
 // PHRASE(<attribute>, <value> [, <offset>, <value>, ...] [, <locale>])
@@ -734,8 +875,8 @@ bool fromFuncPhrase(
   }
 
   // 1st argument defines a field
-  auto const* fieldArg = arangodb::iresearch::getNode(
-    args, 0, arangodb::aql::NODE_TYPE_ATTRIBUTE_ACCESS
+  auto const* fieldArg = arangodb::iresearch::checkAttributeAccess(
+    args.getMemberUnchecked(0)
   );
 
   if (!fieldArg) {
@@ -756,7 +897,7 @@ bool fromFuncPhrase(
   irs::string_ref value;
 
   if (!arangodb::iresearch::parseValue(value, *valueArg)) {
-    LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "'PHRASE' AQL function: Unable to parse 2nd argument as a string";
+    LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "'PHRASE' AQL function: Unable to parse 2nd argument as string";
     return false;
   }
 
@@ -839,14 +980,14 @@ bool fromFuncStartsWith(
 ) {
   auto const argc = args.numMembers();
 
-  if (argc < 2) {
-    LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "'STARTS_WITH' AQL function: Invalid number of arguments passed (should be >= 2)";
+  if (argc < 2 || argc > 3) {
+    LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "'STARTS_WITH' AQL function: Invalid number of arguments passed (should be >= 2 and <= 3)";
     return false;
   }
 
   // 1st argument defines a field
-  auto const* field = arangodb::iresearch::getNode(
-    args, 0, arangodb::aql::NODE_TYPE_ATTRIBUTE_ACCESS
+  auto const* field = arangodb::iresearch::checkAttributeAccess(
+    args.getMemberUnchecked(0)
   );
 
   if (!field) {
@@ -965,11 +1106,48 @@ bool fromFilter(
 
   auto const* member = node.getMemberUnchecked(0);
 
-  return member && processSubnode(filter, *member);
+  return member && arangodb::iresearch::FilterFactory::filter(filter, *member);
 }
 
+NS_END
 
-bool processSubnode(
+NS_BEGIN(arangodb)
+NS_BEGIN(iresearch)
+
+// ----------------------------------------------------------------------------
+// --SECTION--                                      FilerFactory implementation
+// ----------------------------------------------------------------------------
+
+/*static*/ irs::filter::ptr FilterFactory::filter(TRI_voc_cid_t cid) {
+  auto filter = irs::by_term::make();
+
+  // filter matching on cid
+  static_cast<irs::by_term&>(*filter)
+    .field(DocumentPrimaryKey::CID()) // set field
+    .term(DocumentPrimaryKey::encode(cid)); // set value
+
+  return std::move(filter);
+}
+
+/*static*/ irs::filter::ptr FilterFactory::filter(
+    TRI_voc_cid_t cid,
+    TRI_voc_rid_t rid
+) {
+  auto filter = irs::And::make();
+
+  // filter matching on cid and rid
+  static_cast<irs::And&>(*filter).add<irs::by_term>()
+    .field(DocumentPrimaryKey::CID()) // set field
+    .term(DocumentPrimaryKey::encode(cid)); // set value
+
+  static_cast<irs::And&>(*filter).add<irs::by_term>()
+    .field(DocumentPrimaryKey::RID()) // set field
+    .term(DocumentPrimaryKey::encode(rid)); // set value
+
+  return std::move(filter);
+}
+
+/*static*/ bool FilterFactory::filter(
     irs::boolean_filter* filter,
     arangodb::aql::AstNode const& node
 ) {
@@ -1022,51 +1200,6 @@ bool processSubnode(
   }
 
   return false; // unsupported node type
-}
-
-NS_END
-
-NS_BEGIN(arangodb)
-NS_BEGIN(iresearch)
-
-// ----------------------------------------------------------------------------
-// --SECTION--                                      FilerFactory implementation
-// ----------------------------------------------------------------------------
-
-/*static*/ irs::filter::ptr FilterFactory::filter(TRI_voc_cid_t cid) {
-  auto filter = irs::by_term::make();
-
-  // filter matching on cid
-  static_cast<irs::by_term&>(*filter)
-    .field(DocumentPrimaryKey::CID()) // set field
-    .term(DocumentPrimaryKey::encode(cid)); // set value
-
-  return std::move(filter);
-}
-
-/*static*/ irs::filter::ptr FilterFactory::filter(
-    TRI_voc_cid_t cid,
-    TRI_voc_rid_t rid
-) {
-  auto filter = irs::And::make();
-
-  // filter matching on cid and rid
-  static_cast<irs::And&>(*filter).add<irs::by_term>()
-    .field(DocumentPrimaryKey::CID()) // set field
-    .term(DocumentPrimaryKey::encode(cid)); // set value
-
-  static_cast<irs::And&>(*filter).add<irs::by_term>()
-    .field(DocumentPrimaryKey::RID()) // set field
-    .term(DocumentPrimaryKey::encode(rid)); // set value
-
-  return std::move(filter);
-}
-
-/*static*/ bool FilterFactory::filter(
-    irs::boolean_filter* filter,
-    arangodb::aql::AstNode const& node
-) {
-  return processSubnode(filter, node);
 }
 
 NS_END // iresearch

@@ -271,7 +271,7 @@ bool IResearchLinkMeta::init(
         }
 
         auto name = getStringRef(key);
-        auto analyzer = analyzers->get(name);
+        auto analyzer = analyzers->ensure(name);
 
         if (!analyzer) {
           errorField = fieldName + "=>" + std::string(name);

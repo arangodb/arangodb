@@ -77,8 +77,8 @@ bool normalizeCmpNode(arangodb::aql::AstNode const& in, NormalizedCmpNode& out) 
   auto const* value = in.getMemberUnchecked(1);
   TRI_ASSERT(value);
 
-  if (attribute->type != arangodb::aql::NODE_TYPE_ATTRIBUTE_ACCESS) {
-    if (value->type != arangodb::aql::NODE_TYPE_ATTRIBUTE_ACCESS) {
+  if (!arangodb::iresearch::checkAttributeAccess(attribute)) {
+    if (!arangodb::iresearch::checkAttributeAccess(value)) {
       // no attribute access node found
       return false;
     }
@@ -146,23 +146,62 @@ bool attributeAccessEqual(
 }
 
 std::string nameFromAttributeAccess(arangodb::aql::AstNode const& node) {
-  TRI_ASSERT(arangodb::aql::NODE_TYPE_ATTRIBUTE_ACCESS == node.type);
-
-  std::string name;
-
-  auto visitor = [&name](arangodb::aql::AstNode const& node) mutable {
-    if (arangodb::aql::NODE_TYPE_ATTRIBUTE_ACCESS == node.type) {
-      TRI_ASSERT(arangodb::aql::VALUE_TYPE_STRING == node.value.type);
-      name.append(node.getStringValue(), node.getStringLength());
-      name += '.';
+  class nameBuilder {
+   public:
+    bool operator()(irs::string_ref const& value) {
+      str_.append(value.c_str(), value.size());
+      str_ += '.';
+      return true;
     }
-    return true;
-  };
 
-  visit<false>(node, visitor);
-  name.pop_back(); // remove extra '.'
+    bool operator()() const {
+      return false; // do not support [*]
+    }
 
-  return name;
+    bool operator()(int64_t) const {
+      return false; // do not support [i]
+    }
+
+    std::string&& str() noexcept {
+      str_.pop_back(); // remove trailing '.'
+      return std::move(str_);
+    }
+
+   private:
+    std::string str_;
+  } builder;
+
+  TRI_ASSERT(checkAttributeAccess(&node));
+
+  arangodb::aql::AstNode const* head = nullptr;
+  visitAttributePath(head, node, builder);
+  return builder.str();
+}
+
+arangodb::aql::AstNode const* checkAttributeAccess(
+    arangodb::aql::AstNode const* node
+) noexcept {
+  struct {
+    bool operator()(irs::string_ref const&) {
+      return true;
+    }
+
+    bool operator()() const {
+      return false; // do not support [*]
+    }
+
+    bool operator()(int64_t) const {
+      return false; // do not support [i]
+    }
+  } checker;
+
+  arangodb::aql::AstNode const* head = nullptr;
+
+  return node
+      && arangodb::aql::NODE_TYPE_REFERENCE != node->type // do not allow root node to be REFERENCE
+      && visitAttributePath(head, *node, checker)
+      && head && !head->isConstant()
+    ? node : nullptr;
 }
 
 } // iresearch

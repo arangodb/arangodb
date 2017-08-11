@@ -81,6 +81,28 @@ order::prepared& order::prepared::operator=(order::prepared&& rhs) NOEXCEPT {
   return *this;
 }
 
+bool order::operator==(const order& other) const {
+  if (order_.size() != other.order_.size()) {
+    return false;
+  }
+
+  for (size_t i = 0, count = order_.size(); i < count; ++i) {
+    // FIXME TODO operator==(...) should be specialized for every sort child class based on init config
+    if (!order_[i] != !other.order_[i]
+        || (order_[i]
+            && (order_[i]->type() != other.order_[i]->type()
+                || order_[i]->reverse() != other.order_[i]->reverse()))) {
+      return false;
+    }
+  }
+
+  return true;
+}
+
+bool order::operator!=(const order& other) const {
+  return !(*this == other);
+}
+
 order& order::add(sort::ptr const& sort) {
   order_.emplace_back(sort);
 

@@ -9,7 +9,16 @@
 // Agreement under which it is provided by or on behalf of EMC.
 // 
 
-#include <boost/filesystem/operations.hpp>
+#if defined (__GNUC__)
+  #pragma GCC diagnostic ignored "-Wdeprecated-declarations"
+#endif
+
+  #include <boost/filesystem/operations.hpp>
+
+#if defined (__GNUC__)
+  #pragma GCC diagnostic pop
+#endif
+
 #include <boost/locale/encoding.hpp>
 
 #include "locale_utils.hpp"
@@ -32,13 +41,77 @@ NS_END
 
 NS_ROOT
 
-utf8_path::utf8_path() {
+utf8_path::utf8_path(bool current_working_path /*= false*/) {
+  if (current_working_path) {
+    path_ = ::boost::filesystem::current_path();
+  }
 }
 
 utf8_path::utf8_path(const ::boost::filesystem::path& path): path_(path) {
 }
 
-utf8_path& utf8_path::operator/(const string_ref& utf8_name) {
+
+utf8_path& utf8_path::operator+=(const string_ref& utf8_name) {
+  #ifdef _WIN32
+    auto native_name = boost::locale::conv::utf_to_utf<wchar_t>(
+      utf8_name.c_str(), utf8_name.c_str() + utf8_name.size()
+    );
+
+    path_.concat(std::move(native_name), fs_cvt);
+  #else
+    path_.concat(utf8_name.c_str(), utf8_name.c_str() + utf8_name.size(), fs_cvt);
+  #endif
+
+  return *this;
+}
+
+utf8_path& utf8_path::operator+=(const std::string &utf8_name) {
+  #ifdef _WIN32
+    auto native_name = boost::locale::conv::utf_to_utf<wchar_t>(
+      utf8_name.c_str(), utf8_name.c_str() + utf8_name.size()
+    );
+
+    path_.concat(std::move(native_name), fs_cvt);
+  #else
+    path_.concat(utf8_name.c_str(), utf8_name.c_str() + utf8_name.size(), fs_cvt);
+  #endif
+
+  return *this;
+}
+
+utf8_path& utf8_path::operator+=(const std::wstring &ucs2_name) {
+  #ifdef _WIN32
+    path_.append(ucs2_name, fs_cvt);
+  #else
+    auto native_name = boost::locale::conv::utf_to_utf<char>(
+      ucs2_name.c_str(), ucs2_name.c_str() + ucs2_name.size()
+    );
+
+    path_.concat(std::move(native_name), fs_cvt);
+  #endif
+
+  return *this;
+}
+
+utf8_path& utf8_path::operator+=(const wchar_t* ucs2_name) {
+  return (*this) += irs::basic_string_ref<wchar_t>(ucs2_name);
+}
+
+utf8_path& utf8_path::operator+=(const irs::basic_string_ref<wchar_t>& ucs2_name) {
+  #ifdef _WIN32
+    path_.concat(ucs2_name.c_str(),ucs2_name.c_str() + ucs2_name.size() , fs_cvt);
+  #else
+    auto native_name = boost::locale::conv::utf_to_utf<char>(
+      ucs2_name.c_str(), ucs2_name.c_str() + ucs2_name.size()
+    );
+
+    path_.concat(std::move(native_name), fs_cvt);
+  #endif
+
+  return *this;
+}
+
+utf8_path& utf8_path::operator/=(const string_ref& utf8_name) {
   #ifdef _WIN32
     auto native_name = boost::locale::conv::utf_to_utf<wchar_t>(
       utf8_name.c_str(), utf8_name.c_str() + utf8_name.size()
@@ -52,7 +125,7 @@ utf8_path& utf8_path::operator/(const string_ref& utf8_name) {
   return *this;
 }
 
-utf8_path& utf8_path::operator/(const std::string &utf8_name) {
+utf8_path& utf8_path::operator/=(const std::string &utf8_name) {
   #ifdef _WIN32
     auto native_name = boost::locale::conv::utf_to_utf<wchar_t>(
       utf8_name.c_str(), utf8_name.c_str() + utf8_name.size()
@@ -66,7 +139,7 @@ utf8_path& utf8_path::operator/(const std::string &utf8_name) {
   return *this;
 }
 
-utf8_path& utf8_path::operator/(const std::wstring &ucs2_name) {
+utf8_path& utf8_path::operator/=(const std::wstring &ucs2_name) {
   #ifdef _WIN32
     path_.append(ucs2_name, fs_cvt);
   #else
@@ -80,11 +153,11 @@ utf8_path& utf8_path::operator/(const std::wstring &ucs2_name) {
   return *this;
 }
 
-utf8_path& utf8_path::operator/(const wchar_t* ucs2_name) {
-  return (*this) / iresearch::basic_string_ref<wchar_t>(ucs2_name);
+utf8_path& utf8_path::operator/=(const wchar_t* ucs2_name) {
+  return (*this) /= iresearch::basic_string_ref<wchar_t>(ucs2_name);
 }
 
-utf8_path& utf8_path::operator/(const iresearch::basic_string_ref<wchar_t>& ucs2_name) {
+utf8_path& utf8_path::operator/=(const iresearch::basic_string_ref<wchar_t>& ucs2_name) {
   #ifdef _WIN32
     path_.append(ucs2_name.c_str(),ucs2_name.c_str() + ucs2_name.size() , fs_cvt);
   #else
@@ -98,13 +171,21 @@ utf8_path& utf8_path::operator/(const iresearch::basic_string_ref<wchar_t>& ucs2
   return *this;
 }
 
+bool utf8_path::chdir() const NOEXCEPT {
+  boost::system::error_code code;
+
+  boost::filesystem::current_path(path_, code);
+
+  return boost::system::errc::success == code.value();
+}
+
 bool utf8_path::exists(bool& result) const NOEXCEPT {
   boost::system::error_code code;
 
   result = boost::filesystem::exists(path_, code);
 
-  return (result && boost::system::errc::success == code.value())
-      || (!result && boost::system::errc::no_such_file_or_directory == code.value());
+  return boost::system::errc::success == code.value()
+      || boost::system::errc::no_such_file_or_directory == code.value();
 }
 
 bool utf8_path::exists_file(bool& result) const NOEXCEPT {
@@ -112,21 +193,8 @@ bool utf8_path::exists_file(bool& result) const NOEXCEPT {
 
   result = boost::filesystem::is_regular_file(path_, code);
 
-  return boost::system::errc::success == code.value();
-}
-
-bool utf8_path::file_mtime(std::time_t& result) const NOEXCEPT {
-  boost::system::error_code code;
-
-  try {
-    result = boost::filesystem::last_write_time(path_, code);
-
-    return boost::system::errc::success == code.value();
-  } catch(...) { // boost::filesystem::last_write_time(...) is not noexcept
-    IR_FRMT_ERROR("Caught exception at: %s code: %d for path: %s", __FUNCTION__, code.value(), path_.c_str());
-  }
-
-  return false;
+  return boost::system::errc::success == code.value()
+      || boost::system::errc::no_such_file_or_directory == code.value();
 }
 
 bool utf8_path::file_size(uint64_t& result) const NOEXCEPT {
@@ -143,19 +211,26 @@ bool utf8_path::file_size(uint64_t& result) const NOEXCEPT {
   return false;
 }
 
-const boost::filesystem::path::string_type& utf8_path::native() const NOEXCEPT {
-  return path_.native();
-}
+bool utf8_path::mtime(std::time_t& result) const NOEXCEPT {
+  boost::system::error_code code;
 
-const boost::filesystem::path::value_type* utf8_path::c_str() const NOEXCEPT {
-  return path_.c_str();
+  try {
+    result = boost::filesystem::last_write_time(path_, code);
+
+    return boost::system::errc::success == code.value();
+  } catch(...) { // boost::filesystem::last_write_time(...) is not noexcept
+    IR_FRMT_ERROR("Caught exception at: %s code: %d for path: %s", __FUNCTION__, code.value(), path_.c_str());
+  }
+
+  return false;
 }
 
 bool utf8_path::mkdir() const NOEXCEPT {
   boost::system::error_code code;
 
   try {
-    return boost::filesystem::create_directories(path_, code)
+    return !path_.empty() // at least Boost v1.62 cannot handle empty paths SIGSEGV
+           && boost::filesystem::create_directories(path_, code)
            && boost::system::errc::success == code.value();
   } catch(...) { // boost::filesystem::create_directories(...) is not noexcept
     IR_FRMT_ERROR("Caught exception at: %s code: %d for path: %s", __FUNCTION__, code.value(), path_.c_str());
@@ -201,6 +276,14 @@ bool utf8_path::rmdir() const {
 
 void utf8_path::clear() {
   path_.clear();
+}
+
+const boost::filesystem::path::value_type* utf8_path::c_str() const NOEXCEPT {
+  return path_.c_str();
+}
+
+const boost::filesystem::path::string_type& utf8_path::native() const NOEXCEPT {
+  return path_.native();
 }
 
 std::string utf8_path::utf8() const {

@@ -234,34 +234,6 @@ class IRESEARCH_API filter {
   static iresearch::type_id type; \
   return type; }
 
-
-//////////////////////////////////////////////////////////////////////////////
-/// @class query
-/// @brief represents compiled query (filter + writer)
-//////////////////////////////////////////////////////////////////////////////
-class query : util::noncopyable {
-public:
-  DECLARE_SPTR( query );
-
-  query(query&& rhs) NOEXCEPT;
-  query& operator=(query&& rhs) NOEXCEPT;
-
-  static query prepare(
-    const index_reader& rdr,
-    const filter& filter,
-    const order& order = order::unordered() );
-
-  doc_iterator::ptr execute(const sub_reader& ctx) const;
-
-  void execute(const index_reader& rdr, collector& c) const;
-
-private:
-  query( filter::prepared::ptr&& filter, order::prepared&& order ) NOEXCEPT;
-
-  filter::prepared::ptr filter_;
-  order::prepared order_;
-}; // query
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @class all
 /// @brief filter that returns all documents

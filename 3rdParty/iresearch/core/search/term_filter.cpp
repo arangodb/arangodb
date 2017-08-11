@@ -11,7 +11,6 @@
 
 #include "term_filter.hpp"
 #include "term_query.hpp"
-#include "collector.hpp"
 #include "cost.hpp"
 #include "analysis/token_attributes.hpp"
 #include "index/index_reader.hpp"
@@ -42,7 +41,7 @@ bool by_term::equals(const filter& rhs) const {
 
 size_t by_term::hash() const {
   size_t seed = 0;
-  ::boost::hash_combine<const filter&>(seed, *this);
+  ::boost::hash_combine(seed, filter::hash());
   ::boost::hash_combine(seed, fld_);
   ::boost::hash_combine(seed, term_);
   return seed;

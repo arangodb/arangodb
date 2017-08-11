@@ -78,7 +78,7 @@ VPackSlice const& emptyParentSlice() {
       fieldsBuilder.close(); // empty array
       _builder.openObject();
       _builder.add("fields", fieldsBuilder.slice()); // empty array
-      _builder.add(LINK_TYPE_FIELD, VPackValue(LINK_TYPE)); // the index type required by Index
+      arangodb::iresearch::IResearchLink::setType(_builder); // the index type required by Index
       _builder.close(); // object with just one field required by the Index constructor
       _slice = _builder.slice();
     }

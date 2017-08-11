@@ -43,7 +43,7 @@ class IRESEARCH_API scorer_registrar {
   bool registered_;
 };
 
-#define REGISTER_SCORER__(scorer_name, line) static iresearch::scorer_registrar scorer_registrar ## _ ## line(scorer_name::type(), &scorer_name::make)
+#define REGISTER_SCORER__(scorer_name, line) static ::iresearch::scorer_registrar scorer_registrar ## _ ## line(scorer_name::type(), &scorer_name::make)
 #define REGISTER_SCORER_EXPANDER__(scorer_name, line) REGISTER_SCORER__(scorer_name, line)
 #define REGISTER_SCORER(scorer_name) REGISTER_SCORER_EXPANDER__(scorer_name, __LINE__)
 

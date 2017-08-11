@@ -189,8 +189,6 @@ bool ConditionFinder::before(ExecutionNode* en) {
           condition->checkView(node, sortCondition.get());
 
       if (canUseView.first) {
-        // We either can find indexes for everything or findIndexes will clear
-        // out usedIndexes
         std::unique_ptr<ExecutionNode> newNode(new EnumerateViewNode(
             _plan, _plan->nextId(), node->vocbase(), node->view(),
             node->outVariable(), condition.get(), nullptr));
@@ -284,11 +282,6 @@ bool ConditionFinder::handleFilterCondition(
   if (condition->removeInvalidVariables(varsValid)) {
     // removing left a previously non-empty OR block empty...
     // this means we can't use the index to restrict the results
-    return false;
-  }
-
-  if (condition->root() && condition->root()->canThrow()) {
-    // something that can throw is not safe to optimize
     return false;
   }
 

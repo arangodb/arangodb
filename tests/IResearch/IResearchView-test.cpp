@@ -154,8 +154,8 @@ struct IResearchViewSetup {
     TransactionStateMock::beginTransactionCount = 0;
     TransactionStateMock::commitTransactionCount = 0;
     testFilesystemPath = (
-      irs::utf8_path()/
-      TRI_GetTempPath()/
+      (irs::utf8_path()/=
+      TRI_GetTempPath())/=
       (std::string("arangodb_tests.") + std::to_string(TRI_microtime()))
     ).utf8();
 
@@ -310,7 +310,7 @@ SECTION("test_defaults") {
 }
 
 SECTION("test_drop") {
-  std::string dataPath = (irs::utf8_path()/s.testFilesystemPath/std::string("deleteme")).utf8();
+  std::string dataPath = ((irs::utf8_path()/=s.testFilesystemPath)/=std::string("deleteme")).utf8();
   auto json = arangodb::velocypack::Parser::fromJson("{ \
     \"name\": \"testView\", \
     \"type\": \"iresearch\", \
@@ -343,7 +343,7 @@ SECTION("test_drop") {
 }
 
 SECTION("test_drop_with_link") {
-  std::string dataPath = (irs::utf8_path()/s.testFilesystemPath/std::string("deleteme")).utf8();
+  std::string dataPath = ((irs::utf8_path()/=s.testFilesystemPath)/=std::string("deleteme")).utf8();
   auto json = arangodb::velocypack::Parser::fromJson("{ \
     \"name\": \"testView\", \
     \"type\": \"iresearch\", \
@@ -601,8 +601,8 @@ SECTION("test_insert") {
 }
 
 SECTION("test_move_datapath") {
-  std::string createDataPath = (irs::utf8_path()/s.testFilesystemPath/std::string("deleteme0")).utf8();
-  std::string updateDataPath = (irs::utf8_path()/s.testFilesystemPath/std::string("deleteme1")).utf8();
+  std::string createDataPath = ((irs::utf8_path()/=s.testFilesystemPath)/=std::string("deleteme0")).utf8();
+  std::string updateDataPath = ((irs::utf8_path()/=s.testFilesystemPath)/=std::string("deleteme1")).utf8();
   auto namedJson = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testView\" }");
   auto createJson = arangodb::velocypack::Parser::fromJson("{ \
     \"name\": \"testView\", \
@@ -634,7 +634,7 @@ SECTION("test_move_datapath") {
 SECTION("test_open") {
   // absolute data path
   {
-    std::string dataPath = (irs::utf8_path()/s.testFilesystemPath/std::string("deleteme")).utf8();
+    std::string dataPath = ((irs::utf8_path()/=s.testFilesystemPath)/=std::string("deleteme")).utf8();
     auto namedJson = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testView\" }");
     auto json = arangodb::velocypack::Parser::fromJson("{ \
       \"dataPath\": \"" + arangodb::basics::StringUtils::replace(dataPath, "\\", "/") + "\" \
@@ -662,10 +662,10 @@ SECTION("test_open") {
   {
     arangodb::options::ProgramOptions options("", "", "", nullptr);
 
-    options.addPositional((irs::utf8_path()/s.testFilesystemPath).utf8());
+    options.addPositional((irs::utf8_path()/=s.testFilesystemPath).utf8());
     dbPathFeature->validateOptions(std::shared_ptr<decltype(options)>(&options, [](decltype(options)*){})); // set data directory
 
-    std::string dataPath = (irs::utf8_path()/s.testFilesystemPath/std::string("databases")/std::string("deleteme")).utf8();
+    std::string dataPath = (((irs::utf8_path()/=s.testFilesystemPath)/=std::string("databases"))/=std::string("deleteme")).utf8();
     auto namedJson = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testView\" }");
     auto json = arangodb::velocypack::Parser::fromJson("{ \
       \"dataPath\": \"deleteme\" \
@@ -683,10 +683,10 @@ SECTION("test_open") {
   {
     arangodb::options::ProgramOptions options("", "", "", nullptr);
 
-    options.addPositional((irs::utf8_path()/s.testFilesystemPath).utf8());
+    options.addPositional((irs::utf8_path()/=s.testFilesystemPath).utf8());
     dbPathFeature->validateOptions(std::shared_ptr<decltype(options)>(&options, [](decltype(options)*){})); // set data directory
 
-    std::string dataPath = (irs::utf8_path()/s.testFilesystemPath/std::string("databases")/std::string("iresearch-0")).utf8();
+    std::string dataPath = (((irs::utf8_path()/=s.testFilesystemPath)/=std::string("databases"))/=std::string("iresearch-0")).utf8();
     auto namedJson = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testView\" }");
     auto json = arangodb::velocypack::Parser::fromJson("{}");
 
@@ -855,10 +855,12 @@ SECTION("test_query") {
     arangodb::aql::AstNode filter(arangodb::aql::AstNodeType::NODE_TYPE_FILTER);
     arangodb::aql::AstNode filterGe(arangodb::aql::AstNodeType::NODE_TYPE_OPERATOR_BINARY_GE);
     arangodb::aql::AstNode filterAttr(arangodb::aql::AstNodeType::NODE_TYPE_ATTRIBUTE_ACCESS);
+    arangodb::aql::AstNode filterReference(arangodb::aql::AstNodeType::NODE_TYPE_REFERENCE);
     arangodb::aql::AstNode filterValue(int64_t(1), arangodb::aql::AstNodeValueType::VALUE_TYPE_INT);
     irs::string_ref attr("key");
 
     filterAttr.setStringValue(attr.c_str(), attr.size());
+    filterAttr.addMember(&filterReference);
     filterGe.addMember(&filterAttr);
     filterGe.addMember(&filterValue);
     filter.addMember(&filterGe);
@@ -869,10 +871,12 @@ SECTION("test_query") {
 
     irs::string_ref attribute("testAttribute");
     arangodb::aql::AstNode nodeArgs(arangodb::aql::AstNodeType::NODE_TYPE_ARRAY);
+    arangodb::aql::AstNode nodeOutVar(arangodb::aql::AstNodeType::NODE_TYPE_REFERENCE);
     arangodb::aql::AstNode nodeExpression(arangodb::aql::AstNodeType::NODE_TYPE_FCALL);
     arangodb::aql::Function nodeFunction("test_doc_id", "internalName", "", false, false, true, true, false);
     arangodb::aql::Variable variable("testVariable", 0);
 
+    nodeArgs.addMember(&nodeOutVar);
     nodeExpression.addMember(&nodeArgs);
     nodeExpression.setData(&nodeFunction);
     variableDefinitions.emplace(variable.id, &nodeExpression); // add node for condition
@@ -1489,7 +1493,7 @@ SECTION("test_update_partial") {
     auto view = logicalView->getImplementation();
     REQUIRE((false == !view));
 
-    std::string dataPath = (irs::utf8_path()/s.testFilesystemPath/std::string("deleteme")).utf8();
+    std::string dataPath = ((irs::utf8_path()/=s.testFilesystemPath)/=std::string("deleteme")).utf8();
     auto res = TRI_CreateDatafile(dataPath, 1); // create a file where the data path directory should be
     arangodb::iresearch::IResearchViewMeta expectedMeta;
     auto updateJson = arangodb::velocypack::Parser::fromJson(std::string() + "{ \

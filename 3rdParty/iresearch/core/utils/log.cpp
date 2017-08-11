@@ -9,10 +9,6 @@
 // Agreement under which it is provided by or on behalf of EMC.
 // 
 
-#if defined(USE_LIBBFD)
-  #include <config.h> // required by bfd.h, config.h must be #included before system headers
-#endif
-
 #include <memory>
 #include <mutex>
 

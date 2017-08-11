@@ -146,7 +146,9 @@ class bounded_object_pool : atomic_base<typename T::ptr> {
     element_type& operator*() const NOEXCEPT { return *slot_->ptr; }
     element_type* operator->() const NOEXCEPT { return get(); }
     element_type* get() const NOEXCEPT { return slot_->ptr.get(); }
-    operator bool() const NOEXCEPT { return slot_->ptr; }
+    operator bool() const NOEXCEPT {
+      return static_cast<bool>(slot_->ptr);
+    }
 
    private:
     slot_t* slot_;

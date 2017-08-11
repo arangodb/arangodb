@@ -39,6 +39,9 @@ NS_BEGIN(kludge)
 
 typedef arangodb::iresearch::IResearchAnalyzerFeature::AnalyzerPool::ptr AnalyzerPoolPtr;
 
+void mangleType(std::string& name);
+void mangleAnalyzer(std::string& name);
+
 void mangleNull(std::string& name);
 void mangleBool(std::string& name);
 void mangleNumeric(std::string& name);

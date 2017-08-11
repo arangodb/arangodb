@@ -184,15 +184,20 @@ enum EntryType : byte_type {
 ///////////////////////////////////////////////////////////////////////////////
 class entry : private util::noncopyable {
  public:
-  entry(const irs::bytes_ref& term, irs::attribute_store&& attrs, bool volatile_term);
+  entry(const irs::bytes_ref& term, irs::postings_writer::state&& attrs, bool volatile_term);
   entry(const irs::bytes_ref& prefix, uint64_t block_start,
         byte_type meta, int16_t label, bool volatile_term);
   entry(entry&& rhs) NOEXCEPT;
   entry& operator=(entry&& rhs) NOEXCEPT;
   ~entry() NOEXCEPT;
 
-  const irs::attribute_store& term() const NOEXCEPT { return *mem_.as<irs::attribute_store>(); }
-  irs::attribute_store& term() NOEXCEPT { return *mem_.as<irs::attribute_store>(); }
+  const irs::postings_writer::state& term() const NOEXCEPT {
+    return *mem_.as<irs::postings_writer::state>();
+  }
+
+  irs::postings_writer::state& term() NOEXCEPT {
+    return *mem_.as<irs::postings_writer::state>();
+  }
 
   const block_t& block() const NOEXCEPT { return *mem_.as<block_t>(); }
   block_t& block() NOEXCEPT { return *mem_.as<block_t>(); }
@@ -207,7 +212,7 @@ class entry : private util::noncopyable {
   void move_union(entry&& rhs) NOEXCEPT;
 
   volatile_byte_ref data_; // block prefix or term
-  memory::aligned_type<irs::attribute_store, block_t> mem_; // storage
+  memory::aligned_type<irs::postings_writer::state, block_t> mem_; // storage
   EntryType type_; // entry type
 }; // entry
 
@@ -321,11 +326,11 @@ class field_writer final : public iresearch::field_writer {
   void push( const iresearch::bytes_ref& term );
 
   std::unordered_map<const attribute::type_id*, size_t> feature_map_;
-  iresearch::memory_output suffix; /* term suffix column */
-  iresearch::memory_output stats; /* term stats column */
-  iresearch::index_output::ptr terms_out; /* output stream for terms */
-  iresearch::index_output::ptr index_out; /* output stream for indexes*/
-  iresearch::postings_writer::ptr pw; /* postings writer */
+  irs::memory_output suffix; /* term suffix column */
+  irs::memory_output stats; /* term stats column */
+  irs::index_output::ptr terms_out; /* output stream for terms */
+  irs::index_output::ptr index_out; /* output stream for indexes*/
+  irs::postings_writer::ptr pw; /* postings writer */
   std::vector< detail::entry > stack;
   std::unique_ptr<detail::fst_buffer> fst_buf_; // pimpl buffer used for building FST for fields
   detail::volatile_byte_ref last_term; // last pushed term

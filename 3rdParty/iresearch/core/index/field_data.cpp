@@ -184,7 +184,8 @@ class doc_iterator : public irs::doc_iterator {
   }
 
   virtual doc_id_t seek(doc_id_t doc) override {
-    return irs::seek(*this, doc);
+    irs::seek(*this, doc);
+    return value();
   }
 
   virtual doc_id_t value() const override {

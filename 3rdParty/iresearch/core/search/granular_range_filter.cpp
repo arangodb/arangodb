@@ -224,6 +224,7 @@ void collect_terms_from(
        ++current_min_term_itr != end;
        ++min_term_itr
   ) {
+    // seek to the same term at a lower granularity level than current level
     auto res = terms.seek_ge(min_term_itr->second);
 
     if (iresearch::SeekResult::END == res) {
@@ -501,7 +502,7 @@ by_granular_range& by_granular_range::field(std::string fld) {
 
 size_t by_granular_range::hash() const {
   size_t seed = 0;
-  ::boost::hash_combine<const filter&>(seed, *this);
+  ::boost::hash_combine(seed, filter::hash());
   ::boost::hash_combine(seed, fld_);
   ::boost::hash_combine(seed, rng_.min);
   ::boost::hash_combine(seed, rng_.min_type);

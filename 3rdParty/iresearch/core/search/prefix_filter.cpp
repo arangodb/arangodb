@@ -100,7 +100,7 @@ by_prefix::by_prefix() : by_term(by_prefix::type()) {
 
 size_t by_prefix::hash() const {
   size_t seed = 0;
-  ::boost::hash_combine<const by_term&>(seed, *this);
+  ::boost::hash_combine(seed, by_term::hash());
   ::boost::hash_combine(seed, scored_terms_limit_);
   return seed;
 }

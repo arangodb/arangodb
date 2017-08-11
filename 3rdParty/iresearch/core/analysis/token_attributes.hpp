@@ -159,23 +159,6 @@ struct IRESEARCH_API norm : attribute {
 }; // norm
 
 //////////////////////////////////////////////////////////////////////////////
-/// @class term_meta
-/// @brief represents metadata associated with the term
-//////////////////////////////////////////////////////////////////////////////
-struct IRESEARCH_API term_meta : attribute {
-  DECLARE_ATTRIBUTE_TYPE();
-  DECLARE_FACTORY_DEFAULT();
-
-  term_meta() NOEXCEPT;
-
-  void clear() {
-    docs_count = 0;
-  }
-
-  uint64_t docs_count = 0; /* how many documents contain a particular term */
-}; // term_meta
-
-//////////////////////////////////////////////////////////////////////////////
 /// @class position 
 /// @brief represents a term positions in document (iterator)
 //////////////////////////////////////////////////////////////////////////////
@@ -225,7 +208,8 @@ class IRESEARCH_API position : public attribute {
     };
 
     typedef skewed_comparer pos_less;
-    return iresearch::seek(*impl_, target, pos_less()); 
+    iresearch::seek(*impl_, target, pos_less());
+    return impl_->value();
   }
 
   value_t value() const { return impl_->value(); }
@@ -233,11 +217,6 @@ class IRESEARCH_API position : public attribute {
   const attribute_store& attributes() const {
     return impl_->attributes(); 
   }
-
-  const attribute* get( attribute::type_id id ) const { 
-    return reinterpret_cast<attribute*>(impl_->attributes().get(id)->get());
-  }  
-
   template< typename A > 
   const attribute_store::ref<A>& get() const {
     return this->attributes().get<A>(); 

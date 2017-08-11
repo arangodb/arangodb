@@ -91,8 +91,9 @@ class IResearchAnalyzerFeature final: public arangodb::application_features::App
     irs::string_ref const& type,
     irs::string_ref const& properties
   ) noexcept;
+  AnalyzerPool::ptr ensure(irs::string_ref const& name); // before start() returns pool placeholder, during start() all placeholders are initialized, after start() returns same as get(...)
   size_t erase(irs::string_ref const& name, bool force = false) noexcept;
-  AnalyzerPool::ptr get(irs::string_ref const& name) const;
+  AnalyzerPool::ptr get(irs::string_ref const& name) const noexcept;
   static AnalyzerPool::ptr identity() noexcept; // the identity analyzer
   static std::string const& name() noexcept;
   void prepare() override;
