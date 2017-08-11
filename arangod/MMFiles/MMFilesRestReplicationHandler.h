@@ -24,24 +24,15 @@
 #ifndef ARANGOD_MMFILES_MMFILES_REST_REPLICATION_HANDLER_H
 #define ARANGOD_MMFILES_MMFILES_REST_REPLICATION_HANDLER_H 1
 
-#include "Basics/Common.h"
-
-#include "RestHandler/RestVocbaseBaseHandler.h"
-#include "VocBase/replication-common.h"
+#include "RestHandler/RestReplicationHandler.h"
 
 namespace arangodb {
-class ClusterInfo;
-class CollectionNameResolver;
-class LogicalCollection;
-namespace transaction {
-class Methods;
-};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief replication request handler
 ////////////////////////////////////////////////////////////////////////////////
 
-class MMFilesRestReplicationHandler : public RestVocbaseBaseHandler {
+class MMFilesRestReplicationHandler : public RestReplicationHandler {
  public:
   MMFilesRestReplicationHandler(GeneralRequest*, GeneralResponse*);
   ~MMFilesRestReplicationHandler();
@@ -70,12 +61,6 @@ class MMFilesRestReplicationHandler : public RestVocbaseBaseHandler {
 
  private:
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief creates an error if called on a coordinator server
-  //////////////////////////////////////////////////////////////////////////////
-
-  bool isCoordinatorError();
-
-  //////////////////////////////////////////////////////////////////////////////
   /// @brief insert the applier action into an action list
   ///        (helper in loggerFollow)
   ///        Saves a follow as synchronous up to lastTick
@@ -102,7 +87,7 @@ class MMFilesRestReplicationHandler : public RestVocbaseBaseHandler {
   ///           * clients (list of followers)
   //////////////////////////////////////////////////////////////////////////////
 
-  void handleCommandLoggerState();
+  void handleCommandLoggerState() override;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief return the available logfile range
@@ -129,26 +114,20 @@ class MMFilesRestReplicationHandler : public RestVocbaseBaseHandler {
   /// @brief handle a follow command for the replication log
   //////////////////////////////////////////////////////////////////////////////
 
-  void handleCommandLoggerFollow();
+  void handleCommandLoggerFollow() override;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief handle the command to determine the transactions that were open
   /// at a certain point in time
   //////////////////////////////////////////////////////////////////////////////
 
-  void handleCommandDetermineOpenTransactions();
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief turn the server into a slave of another
-  //////////////////////////////////////////////////////////////////////////////
-
-  void handleCommandMakeSlave();
+  void handleCommandDetermineOpenTransactions() override;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief handle a batch command
   //////////////////////////////////////////////////////////////////////////////
 
-  void handleCommandBatch();
+  void handleCommandBatch() override;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief add or remove a WAL logfile barrier
@@ -157,22 +136,10 @@ class MMFilesRestReplicationHandler : public RestVocbaseBaseHandler {
   void handleCommandBarrier();
 
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief forward a command in the coordinator case
-  //////////////////////////////////////////////////////////////////////////////
-
-  void handleTrampolineCoordinator();
-
-  //////////////////////////////////////////////////////////////////////////////
   /// @brief return the inventory (current replication and collection state)
   //////////////////////////////////////////////////////////////////////////////
 
-  void handleCommandInventory();
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief returns the cluster inventory, only on coordinator
-  //////////////////////////////////////////////////////////////////////////////
-
-  void handleCommandClusterInventory();
+  void handleCommandInventory() override;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief extract the collection id from VelocyPack TODO: MOVE
@@ -190,13 +157,7 @@ class MMFilesRestReplicationHandler : public RestVocbaseBaseHandler {
   /// @brief handle a restore command for a specific collection
   //////////////////////////////////////////////////////////////////////////////
 
-  void handleCommandRestoreCollection();
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief handle a restore command for a specific collection
-  //////////////////////////////////////////////////////////////////////////////
-
-  void handleCommandRestoreIndexes();
+  void handleCommandRestoreCollection() override;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief restores the structure of a collection TODO MOVE
@@ -216,13 +177,13 @@ class MMFilesRestReplicationHandler : public RestVocbaseBaseHandler {
   /// @brief restores the indexes of a collection TODO MOVE
   //////////////////////////////////////////////////////////////////////////////
 
-  int processRestoreIndexes(VPackSlice const&, bool, std::string&);
+  int processRestoreIndexes(VPackSlice const&, bool, std::string&) override;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief restores the indexes of a collection, coordinator case
   //////////////////////////////////////////////////////////////////////////////
 
-  int processRestoreIndexesCoordinator(VPackSlice const&, bool, std::string&);
+  int processRestoreIndexesCoordinator(VPackSlice const&, bool, std::string&) override;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief apply a single marker from the collection dump
@@ -233,25 +194,6 @@ class MMFilesRestReplicationHandler : public RestVocbaseBaseHandler {
                                 std::string const&, TRI_replication_operation_e,
                                 VPackSlice const&, VPackSlice const&,
                                 std::string&);
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief restores the data of a collection TODO MOVE
-  //////////////////////////////////////////////////////////////////////////////
-
-  int processRestoreDataBatch(transaction::Methods&, std::string const&, bool,
-                              bool, std::string&);
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief restores the data of a collection TODO MOVE
-  //////////////////////////////////////////////////////////////////////////////
-
-  int processRestoreData(std::string const&, bool, bool, std::string&);
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief handle a restore command for a specific collection
-  //////////////////////////////////////////////////////////////////////////////
-
-  void handleCommandRestoreData();
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief produce list of keys for a specific collection

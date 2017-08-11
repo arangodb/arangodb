@@ -49,6 +49,10 @@ else ()
   add_dependencies(arangobench zlibstatic)
 endif ()
 
+if (USE_JEMALLOC)
+  add_dependencies(arangobench jemalloc)
+endif ()
+
 ################################################################################
 ## arangodump
 ################################################################################
@@ -95,6 +99,10 @@ else ()
   add_dependencies(arangodump zlibstatic)
 endif ()
 
+if (USE_JEMALLOC)
+  add_dependencies(arangodump jemalloc)
+endif ()
+
 ################################################################################
 ## arangoexport
 ################################################################################
@@ -139,6 +147,10 @@ if (NOT USE_PRECOMPILED_V8)
   add_dependencies(arangoexport zlibstatic v8_build) # v8_build includes ICU build
 else ()
   add_dependencies(arangoexport zlibstatic) # v8_build includes ICU build
+endif ()
+
+if (USE_JEMALLOC)
+  add_dependencies(arangoexport jemalloc)
 endif ()
 
 ################################################################################
@@ -189,6 +201,10 @@ else ()
   add_dependencies(arangoimp zlibstatic) # v8_build includes ICU build
 endif ()
 
+if (USE_JEMALLOC)
+  add_dependencies(arangoimp jemalloc)
+endif ()
+
 ################################################################################
 ## arangorestore
 ################################################################################
@@ -233,6 +249,10 @@ if (NOT USE_PRECOMPILED_V8)
   add_dependencies(arangorestore zlibstatic v8_build) # v8_build includes ICU build
 else ()
   add_dependencies(arangorestore zlibstatic) # v8_build includes ICU build
+endif ()
+
+if (USE_JEMALLOC)
+  add_dependencies(arangorestore jemalloc)
 endif ()
 
 ################################################################################
@@ -288,6 +308,10 @@ else ()
   add_dependencies(arangosh zlibstatic)
 endif ()
 
+if (USE_JEMALLOC)
+  add_dependencies(arangosh jemalloc)
+endif ()
+
 ################################################################################
 ## arangovpack
 ################################################################################
@@ -329,6 +353,10 @@ if (NOT USE_PRECOMPILED_V8)
   add_dependencies(arangovpack zlibstatic v8_build) # v8_build includes ICU build
 else ()
   add_dependencies(arangovpack zlibstatic) # v8_build includes ICU build
+endif ()
+
+if (USE_JEMALLOC)
+  add_dependencies(arangovpack jemalloc)
 endif ()
 
 ################################################################################

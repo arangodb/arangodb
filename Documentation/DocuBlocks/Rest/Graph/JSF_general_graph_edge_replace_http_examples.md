@@ -52,7 +52,8 @@ Returned if if-match header is given, but the documents revision is different.
   var examples = require("@arangodb/graph-examples/example-graph.js");
 ~ examples.dropGraph("social");
   examples.loadGraph("social");
-  var url = "/_api/gharial/social/edge/relation/aliceAndBob";
+  var any = require("@arangodb").db.relation.any();
+  var url = "/_api/gharial/social/edge/relation/" + any._key;
   body = {
     type: "divorced",
     _from: "female/alice",

@@ -95,7 +95,7 @@ void RocksDBOptimizerRules::reduceExtractionToProjectionRule(Optimizer* opt,
 
     Variable const* v = e->outVariable();
     Variable const* replaceVar = nullptr;
-
+              
     ExecutionNode* current = n->getFirstParent();
     while (current != nullptr) {
       if (current->getType() == EN::CALCULATION) {
@@ -113,6 +113,10 @@ void RocksDBOptimizerRules::reduceExtractionToProjectionRule(Optimizer* opt,
               
               if (node != nullptr) {
                 if (Ast::populateSingleAttributeAccess(node, v, attributeNames)) {
+                  if (!Ast::variableOnlyUsedForSingleAttributeAccess(node, v, attributeNames)) {
+                    stop = true;
+                    break;
+                  }
                   replaceVar = static_cast<CalculationNode*>(current)->outVariable();
                   optimize = true;
                   TRI_ASSERT(!attributeNames.empty());
@@ -130,7 +134,7 @@ void RocksDBOptimizerRules::reduceExtractionToProjectionRule(Optimizer* opt,
                 break;
               }
             } else {
-            // don't know what to do
+              // don't know what to do
               stop = true;
               break;
             }
