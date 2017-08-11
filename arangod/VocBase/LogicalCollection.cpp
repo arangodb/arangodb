@@ -1320,18 +1320,13 @@ ChecksumResult LogicalCollection::checksum(bool withRevisions, bool withData) co
 
 Result LogicalCollection::compareChecksums(VPackSlice checksumSlice, std::string const& referenceChecksum) const {
   if (!checksumSlice.isString()) {
-    auto typeName = checksumSlice.typeName();
     return Result(
       TRI_ERROR_REPLICATION_WRONG_CHECKSUM_FORMAT,
-      std::string("Checksum must be a string but is ") + typeName
+      std::string("Checksum must be a string but is ") + checksumSlice.typeName()
     );
   }
-  auto checksum = checksumSlice.copyString();
-  auto result = this->checksum(false, false);
 
-  if (!result.ok()) {
-    return Result(result);
-  }
+  auto checksum = checksumSlice.copyString();
 
   if (checksum != referenceChecksum) {
     return Result(
