@@ -46,7 +46,6 @@
 #include <velocypack/velocypack-aliases.h>
 
 #ifdef USE_IRESEARCH
-  #include "IResearch/IResearchLink.h"
   #include "IResearch/IResearchRocksDBLink.h"
 #endif
 

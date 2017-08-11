@@ -35,7 +35,7 @@
 #include "Basics/files.h"
 #include "IResearch/IResearchAnalyzerFeature.h"
 #include "IResearch/IResearchFeature.h"
-#include "IResearch/IResearchLink.h"
+#include "IResearch/IResearchMMFilesLink.h"
 #include "IResearch/SystemDatabaseFeature.h"
 #include "Logger/Logger.h"
 #include "Logger/LogTopic.h"
@@ -156,14 +156,14 @@ SECTION("test_defaults") {
   // no view specified
   {
     auto json = arangodb::velocypack::Parser::fromJson("{}");
-    auto link = arangodb::iresearch::IResearchLink::make(1, nullptr, json->slice());
+    auto link = arangodb::iresearch::IResearchMMFilesLink::make(1, nullptr, json->slice());
     CHECK((true == !link));
   }
 
   // no view can be found
   {
     auto json = arangodb::velocypack::Parser::fromJson("{ \"view\": 42 }");
-    auto link = arangodb::iresearch::IResearchLink::make(1, nullptr, json->slice());
+    auto link = arangodb::iresearch::IResearchMMFilesLink::make(1, nullptr, json->slice());
     CHECK((true == !link));
   }
 
@@ -171,7 +171,7 @@ SECTION("test_defaults") {
   {
     // 'skipViewRegistration' attribute as defined in IResearchLink.cpp SKIP_VIEW_REGISTRATION_FIELD
     auto json = arangodb::velocypack::Parser::fromJson("{ \"view\": 42, \"skipViewRegistration\": null }");
-    auto link = arangodb::iresearch::IResearchLink::make(1, nullptr, json->slice());
+    auto link = arangodb::iresearch::IResearchMMFilesLink::make(1, nullptr, json->slice());
     CHECK((false == !link));
     auto builder = link->toVelocyPack(false, false);
     auto slice = builder->slice();

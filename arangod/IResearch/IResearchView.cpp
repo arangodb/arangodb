@@ -1631,7 +1631,14 @@ void IResearchView::getPropertiesVPack(
 
           arangodb::velocypack::Builder linkBuilder;
 
-          ptr->toVelocyPack(linkBuilder, false, false); // FIXE check last parameter
+          linkBuilder.openObject();
+
+          if (!ptr->json(linkBuilder, false)) {
+            LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "failed to generate json for IResearch link '" << ptr->id() << "' while generating json for IResearch view '" << id() << "'";
+            continue; // skip invalid link definitions
+          }
+
+          linkBuilder.close();
           linksBuilderWrapper->add(collectionName, linkBuilder.slice());
         }
       }
@@ -1639,11 +1646,11 @@ void IResearchView::getPropertiesVPack(
 
     trx.commit();
   } catch (std::exception& e) {
-    LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "caught error while generating json for iResearch view '" << id() << "': " << e.what();
+    LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "caught exception while generating json for IResearch view '" << id() << "': " << e.what();
     IR_EXCEPTION();
     return; // do not add 'links' section
   } catch (...) {
-    LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "caught error while generating json for iResearch view '" << id() << "'";
+    LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "caught exception while generating json for IResearch view '" << id() << "'";
     IR_EXCEPTION();
     return; // do not add 'links' section
   }

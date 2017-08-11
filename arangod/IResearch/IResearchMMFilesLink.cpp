@@ -21,18 +21,15 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "Basics/Common.h" // required for RocksDBColumnFamily.h
 #include "Logger/Logger.h"
 #include "Logger/LogMacros.h"
-#include "RocksDBEngine/RocksDBColumnFamily.h"
 
-#include "IResearchRocksDBLink.h"
+#include "IResearchMMFilesLink.h"
 
 NS_LOCAL
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief return a reference to a static VPackSlice of an empty RocksDB index
-///        definition
+/// @brief return a reference to a static VPackSlice of an empty index definition
 ////////////////////////////////////////////////////////////////////////////////
 VPackSlice const& emptyParentSlice() {
   static const struct EmptySlice {
@@ -59,44 +56,44 @@ NS_END
 NS_BEGIN(arangodb)
 NS_BEGIN(iresearch)
 
-IResearchRocksDBLink::IResearchRocksDBLink(
+IResearchMMFilesLink::IResearchMMFilesLink(
     TRI_idx_iid_t iid,
     arangodb::LogicalCollection* collection
-): RocksDBIndex(iid, collection, emptyParentSlice(), RocksDBColumnFamily::vpack(), false),
+): Index(iid, collection, emptyParentSlice()),
    IResearchLink(iid, collection) {
   _unique = false; // cannot be unique since multiple fields are indexed
   _sparse = true;  // always sparse
 }
 
-IResearchRocksDBLink::~IResearchRocksDBLink() {
+IResearchMMFilesLink::~IResearchMMFilesLink() {
   // NOOP
 }
 
-/*static*/ IResearchRocksDBLink::ptr IResearchRocksDBLink::make(
+/*static*/ IResearchMMFilesLink::ptr IResearchMMFilesLink::make(
   TRI_idx_iid_t iid,
   arangodb::LogicalCollection* collection,
   arangodb::velocypack::Slice const& definition
 ) noexcept {
   try {
-    PTR_NAMED(IResearchRocksDBLink, ptr, iid, collection);
+    PTR_NAMED(IResearchMMFilesLink, ptr, iid, collection);
 
     #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-      auto* link = dynamic_cast<arangodb::iresearch::IResearchRocksDBLink*>(ptr.get());
+      auto* link = dynamic_cast<arangodb::iresearch::IResearchMMFilesLink*>(ptr.get());
     #else
-      auto* link = static_cast<arangodb::iresearch::IResearchRocksDBLink*>(ptr.get());
+      auto* link = static_cast<arangodb::iresearch::IResearchMMFilesLink*>(ptr.get());
     #endif
 
     return link && link->init(definition) ? ptr : nullptr;
   } catch (std::exception const& e) {
-    LOG_TOPIC(WARN, Logger::DEVEL) << "caught exception while creating IResearch view RocksDB link '" << iid << "'" << e.what();
+    LOG_TOPIC(WARN, Logger::DEVEL) << "caught exception while creating IResearch view MMFiles link '" << iid << "'" << e.what();
   } catch (...) {
-    LOG_TOPIC(WARN, Logger::DEVEL) << "caught exception while creating IResearch view RocksDB link '" << iid << "'";
+    LOG_TOPIC(WARN, Logger::DEVEL) << "caught exception while creating IResearch view MMFiles link '" << iid << "'";
   }
 
   return nullptr;
 }
 
-void IResearchRocksDBLink::toVelocyPack(
+void IResearchMMFilesLink::toVelocyPack(
     arangodb::velocypack::Builder& builder,
     bool withFigures,
     bool forPersistence

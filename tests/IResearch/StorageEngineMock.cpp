@@ -26,7 +26,7 @@
 #include "Basics/Result.h"
 #include "Basics/StaticStrings.h"
 #include "Indexes/IndexIterator.h"
-#include "IResearch/IResearchLink.h"
+#include "IResearch/IResearchMMFilesLink.h"
 #include "IResearch/VelocyPackHelper.h"
 #include "Utils/OperationOptions.h"
 #include "velocypack/Iterator.h"
@@ -69,8 +69,9 @@ int PhysicalCollectionMock::close() {
 std::shared_ptr<arangodb::Index> PhysicalCollectionMock::createIndex(arangodb::transaction::Methods* trx, arangodb::velocypack::Slice const& info, bool& created) {
   before();
 
-  _indexes.emplace_back(arangodb::iresearch::IResearchLink::make(++lastId, _logicalCollection, info));
+  _indexes.emplace_back(arangodb::iresearch::IResearchMMFilesLink::make(++lastId, _logicalCollection, info));
   created = true;
+
   return _indexes.back();
 }
 

@@ -21,22 +21,22 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_IRESEARCH__IRESEARCH_ROCKSDB_LINK_H
-#define ARANGOD_IRESEARCH__IRESEARCH_ROCKSDB_LINK_H 1
+#ifndef ARANGOD_IRESEARCH__IRESEARCH_MMFILES_LINK_H
+#define ARANGOD_IRESEARCH__IRESEARCH_MMFILES_LINK_H 1
 
 #include "IResearchLink.h"
 
-#include "RocksDBEngine/RocksDBIndex.h"
+#include "Indexes/Index.h"
 
 NS_BEGIN(arangodb)
 NS_BEGIN(iresearch)
 
-class IResearchRocksDBLink final
-  : public arangodb::RocksDBIndex, public IResearchLink {
+class IResearchMMFilesLink final
+  : public arangodb::Index, public IResearchLink {
  public:
   DECLARE_SPTR(Index);
 
-  virtual ~IResearchRocksDBLink();
+  virtual ~IResearchMMFilesLink();
 
   virtual bool allowExpansion() const override {
     return IResearchLink::allowExpansion();
@@ -58,13 +58,17 @@ class IResearchRocksDBLink final
     return IResearchLink::hasSelectivityEstimate();
   }
 
-  virtual arangodb::Result insertInternal(
-      transaction::Methods* trx,
-      arangodb::RocksDBMethods*,
-      TRI_voc_rid_t revisionId,
-      const arangodb::velocypack::Slice& doc
+  virtual arangodb::Result insert(
+    transaction::Methods* trx,
+    TRI_voc_rid_t rid,
+    VPackSlice const& doc,
+    bool isRollback
   ) override {
-    return IResearchLink::insert(trx, revisionId, doc, false);
+    return IResearchLink::insert(trx, rid, doc, isRollback);
+  }
+
+  virtual bool isPersistent() const override {
+    return IResearchLink::isPersistent();
   }
 
   virtual bool isSorted() const override {
@@ -76,7 +80,7 @@ class IResearchRocksDBLink final
   }
 
   ////////////////////////////////////////////////////////////////////////////////
-  /// @brief create and initialize a RocksDB IResearch View Link instance
+  /// @brief create and initialize an iResearch View Link instance
   /// @return nullptr on failure
   ////////////////////////////////////////////////////////////////////////////////
   static ptr make(
@@ -95,13 +99,13 @@ class IResearchRocksDBLink final
     return IResearchLink::memory();
   }
 
-  virtual arangodb::Result removeInternal(
-      transaction::Methods* trx,
-      arangodb::RocksDBMethods*,
-      TRI_voc_rid_t revisionId,
-      const arangodb::velocypack::Slice& doc
+  arangodb::Result remove(
+    transaction::Methods* trx,
+    TRI_voc_rid_t rid,
+    VPackSlice const& doc,
+    bool isRollback
   ) override {
-    return IResearchLink::remove(trx, revisionId, doc, false);
+    return IResearchLink::remove(trx, rid, doc, isRollback);
   }
 
   ////////////////////////////////////////////////////////////////////////////////
@@ -128,7 +132,7 @@ class IResearchRocksDBLink final
   }
 
  private:
-  IResearchRocksDBLink(
+  IResearchMMFilesLink(
     TRI_idx_iid_t iid,
     arangodb::LogicalCollection* collection
   );
@@ -136,4 +140,5 @@ class IResearchRocksDBLink final
 
 NS_END // iresearch
 NS_END // arangodb
+
 #endif

@@ -46,7 +46,7 @@
 #include <velocypack/velocypack-aliases.h>
 
 #ifdef USE_IRESEARCH
-#include "IResearch/IResearchLink.h"
+#include "IResearch/IResearchMMFilesLink.h"
 #endif
 
 using namespace arangodb;
@@ -465,7 +465,7 @@ std::shared_ptr<Index> MMFilesIndexFactory::prepareIndexFromSlice(
     }
 #ifdef USE_IRESEARCH
     case arangodb::Index::TRI_IDX_TYPE_IRESEARCH_LINK: {
-      newIdx = arangodb::iresearch::IResearchLink::make(iid, col, info);
+      newIdx = arangodb::iresearch::IResearchMMFilesLink::make(iid, col, info);
       break;
     }
 #endif
