@@ -1489,15 +1489,15 @@ function fulltextQuerySuite () {
     },
 
     testQueryingAfterDeletion: function () {
-      for (var i = 0; i < 4000; ++i) {
+      for (let i = 0; i < 4000; ++i) {
         collection.save({ _key: "test" + i, text: "test" + i });
       }
 
-      for (var i = 2436; i < 3473; ++i) {
+      for (let i = 2436; i < 3473; ++i) {
         collection.remove("test" + i);
       }
 
-      for (var i = 0; i < 4000; ++i) {
+      for (let i = 0; i < 4000; ++i) {
         assertEqual((i >= 2436 && i < 3473) ? 0 : 1, collection.fulltext("text", "test" + i, idx).toArray().length);
       }
     } 
