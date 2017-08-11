@@ -2566,8 +2566,8 @@ void MMFilesRestReplicationHandler::handleCommandAddFollower() {
   }
 
   VPackSlice const checksum = body.get("checksum");
-  // optional while intoroducing this bugfix. should definately be required with 3.4
-  // and throw a 400 then
+  // optional while introducing this bugfix. should definitely be required with 3.4
+  // and throw a 400 then when no checksum is provided
   if (checksum.isString() && readLockId.isString()) {
     std::string referenceChecksum;
     {
@@ -2590,15 +2590,8 @@ void MMFilesRestReplicationHandler::handleCommandAddFollower() {
         return;
       }
       
-      // aggregate false because we are not aggregating? not sure :S
-      auto result = trx->count(col->name(), false);
-      if (result.failed()) {
-        generateError(rest::ResponseCode::SERVER_ERROR,
-                      TRI_ERROR_TRANSACTION_INTERNAL,
-                      "Couldn't read collection count");
-        return;
-      }
-      
+      // referenceChecksum is the stringified number of documents in the
+      // collection 
       uint64_t num = col->numberDocuments(trx.get());
       referenceChecksum = std::to_string(num);
     }

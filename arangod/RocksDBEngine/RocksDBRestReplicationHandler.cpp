@@ -1472,8 +1472,8 @@ void RocksDBRestReplicationHandler::handleCommandAddFollower() {
   }
 
   VPackSlice const checksum = body.get("checksum");
-  // optional while intoroducing this bugfix. should definately be required with 3.4
-  // and throw a 400 then
+  // optional while introducing this bugfix. should definetely be required with 3.4
+  // and throw a 400 then when no checksum is provided
   if (checksum.isString() && readLockId.isString()) {
     std::string referenceChecksum;
     {
@@ -1495,16 +1495,9 @@ void RocksDBRestReplicationHandler::handleCommandAddFollower() {
           "Read lock not yet acquired!");
         return;
       }
-      
-      // aggregate false because we are not aggregating? not sure :S
-      auto result = trx->count(col->name(), false);
-      if (result.failed()) {
-        generateError(rest::ResponseCode::SERVER_ERROR,
-                      TRI_ERROR_TRANSACTION_INTERNAL,
-                      "Couldn't read collection count");
-        return;
-      }
-      
+     
+      // referenceChecksum is the stringified number of documents in the
+      // collection 
       uint64_t num = col->numberDocuments(trx.get());
       referenceChecksum = std::to_string(num);
     }
@@ -1647,9 +1640,12 @@ void RocksDBRestReplicationHandler::handleCommandHoldReadLockCollection() {
     _holdReadLockJobs.emplace(id, std::shared_ptr<SingleCollectionTransaction>(nullptr));
   }
 
+  // we need to lock in EXCLUSIVE mode here, because simply locking
+  // in READ mode will not stop other writers in RocksDB. In order
+  // to stop other writers, we need to fetch the EXCLUSIVE lock
   auto trxContext = transaction::StandaloneContext::Create(_vocbase);
   auto trx = std::make_shared<SingleCollectionTransaction>(
-    trxContext, col->cid(), AccessMode::Type::READ);
+    trxContext, col->cid(), AccessMode::Type::EXCLUSIVE);
   trx->addHint(transaction::Hints::Hint::LOCK_ENTIRELY);
   Result res = trx->begin();
   if (!res.ok()) {
@@ -1670,6 +1666,7 @@ void RocksDBRestReplicationHandler::handleCommandHoldReadLockCollection() {
                     "read transaction was cancelled");
       return;
     }
+      
     it->second = trx; // mark the read lock as acquired
   }
 
@@ -1910,7 +1907,7 @@ int RocksDBRestReplicationHandler::processRestoreCollection(
         // instead, truncate them
         SingleCollectionTransaction trx(
             transaction::StandaloneContext::Create(_vocbase), col->cid(),
-            AccessMode::Type::WRITE);
+            AccessMode::Type::EXCLUSIVE);
         trx.addHint(
             transaction::Hints::Hint::RECOVERY);  // to turn off waitForSync!
 
@@ -2276,7 +2273,7 @@ int RocksDBRestReplicationHandler::processRestoreIndexes(
 
     SingleCollectionTransaction trx(
         transaction::StandaloneContext::Create(_vocbase), collection->cid(),
-        AccessMode::Type::WRITE);
+        AccessMode::Type::EXCLUSIVE);
 
     Result res = trx.begin();
 
