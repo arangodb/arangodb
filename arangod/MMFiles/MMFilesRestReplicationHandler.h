@@ -28,6 +28,8 @@
 
 namespace arangodb {
 
+class SingleCollectionTransaction;
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief replication request handler
 ////////////////////////////////////////////////////////////////////////////////
@@ -340,7 +342,7 @@ class MMFilesRestReplicationHandler : public RestReplicationHandler {
   /// is deleted.
   //////////////////////////////////////////////////////////////////////////////
 
-  static std::unordered_map<std::string, bool> _holdReadLockJobs;
+  static std::unordered_map<std::string, std::shared_ptr<SingleCollectionTransaction>> _holdReadLockJobs;
 };
 }
 
