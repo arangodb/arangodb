@@ -438,6 +438,29 @@
       this.buildSubNavBar(menus);
     },
 
+    buildServicesSubNav: function (activeKey, disabled) {
+      var menus = {
+        Store: {
+          route: '#services/install'
+        },
+        New: {
+          route: '#services/install/new'
+        },
+        Upload: {
+          route: '#services/install/upload'
+        },
+        GitHub: {
+          route: '#services/install/github'
+        }
+      };
+
+      menus[activeKey].active = true;
+      if (disabled) {
+        menus[disabled].disabled = true;
+      }
+      this.buildSubNavBar(menus);
+    },
+
     scaleability: undefined,
 
     /*

@@ -29,6 +29,9 @@
       'settings': 'databases',
       'services': 'applications',
       'services/install': 'installService',
+      'services/install/new': 'installNewService',
+      'services/install/github': 'installGitHubService',
+      'services/install/upload': 'installUploadService',
       'service/:mount': 'applicationDetail',
       'graphs': 'graphManagement',
       'graphs/:name': 'showGraph',
@@ -933,9 +936,48 @@
         this.serviceInstallView.remove();
       }
       this.serviceInstallView = new window.ServiceInstallView({
-        collection: this.foxxList
+        collection: this.foxxRepo
       });
       this.serviceInstallView.render();
+    },
+
+    installNewService: function (initialized) {
+      this.checkUser();
+      if (!initialized) {
+        this.waitForInit(this.installNewService.bind(this));
+        return;
+      }
+      if (this.serviceNewView) {
+        this.serviceNewView.remove();
+      }
+      this.serviceNewView = new window.ServiceInstallNewView({});
+      this.serviceNewView.render();
+    },
+
+    installGitHubService: function (initialized) {
+      this.checkUser();
+      if (!initialized) {
+        this.waitForInit(this.installGitHubService.bind(this));
+        return;
+      }
+      if (this.serviceGitHubView) {
+        this.serviceGitHubView.remove();
+      }
+      this.serviceGitHubView = new window.ServiceInstallGitHubView({});
+      this.serviceGitHubView.render();
+    },
+
+    installUploadService: function (initialized) {
+      this.checkUser();
+      if (!initialized) {
+        this.waitForInit(this.installUploadService.bind(this));
+        return;
+      }
+      if (this.serviceUploadView) {
+        this.serviceUploadView.remove();
+      }
+      this.serviceUploadView = new window.ServiceInstallUploadView({});
+      this.serviceUploadView.render();
     },
 
     handleSelectDatabase: function (initialized) {

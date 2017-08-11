@@ -49,6 +49,8 @@
         services: this.collection
       }));
 
+      arangoHelper.buildServicesSubNav('Store');
+
       if (this.collection.length === 0) {
         this.waitForResponse();
         return;
@@ -65,6 +67,5 @@
       // arangoHelper.checkDatabasePermissions(this.setReadOnly.bind(this));
       return this;
     }
-
   });
 }());
