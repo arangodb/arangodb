@@ -11,6 +11,7 @@ function executeParallel {
 
   $activeJobs = [System.Collections.ArrayList]$ArrayList = $()
   $index = 0
+  $failed=$false
   while ($doneJobs.Count -lt $numJobs) {
     $activeJobs = Get-Job
     while ($index -lt $numJobs -and $activeJobs.Length -lt $parallelity) {
@@ -24,10 +25,19 @@ function executeParallel {
     ForEach ($finishedJob in $finishedJobs) {
       Write-Host "Job $($finishedJob.Name) $($finishedJob.State)"
       Write-Host "========================"
-      echo $finishedJob.childJobs[0].Output 
+      if ($finishedJob.ChildJobs[0].State -eq 'Failed') {
+        $failed=$true
+        Write-Host $finishedJob.childJobs[0].JobStateInfo.Reason.Message -ForegroundColor Red
+      } else {
+        Write-Host $finishedJob.childJobs[0].Output
+      }
+
     }
     $doneJobs += $finishedJobs
     $finishedJobs | Remove-Job
+  }
+  if ($failed -eq $true) {
+    throw "Some jobs failed!"
   }
 }
 
@@ -75,13 +85,13 @@ function createTests {
     $cluster = "true"
 
     $tests = @(
-      #"arangobench",
-      #"arangosh",
-      #"authentication",
-      #"authentication_parameters",
-      #"config",
-      #"dump",
-      #"dump_authentication",
+      "arangobench",
+      "arangosh",
+      "authentication",
+      "authentication_parameters",
+      "config",
+      "dump",
+      "dump_authentication",
       "endpoints",
       @("http_server","http_server", "--rspec C:\tools\ruby23\bin\rspec.bat"),
       "server_http",
@@ -119,8 +129,8 @@ function createTests {
       name=$name
       script={
         param($name, $myport, $maxPort, $test, $cluster, $engine, $testArgs, $log)
-
-        .\build\bin\arangosh.exe --log.level warning --javascript.execute UnitTests\unittest.js $test -- --cluster $cluster --storageEngine $engine --minPort $myport --maxPort $maxPort --skipNondeterministic true --skipTimeCritical true  --configDir etc/jenkins --skipLogAnalysis true $testargs *>&1 | Tee-Object -FilePath $log
+        $ErrorActionPreference="Stop"
+        .\build\bin\arangosh.exe --log.level warning --javascript.execute UnitTest/unittest.js $test -- --cluster $cluster --storageEngine $engine --minPort $myport --maxPort $maxPort --skipNondeterministic true --skipTimeCritical true  --configDir etc/jenkins --skipLogAnalysis true $testargs *>&1 | Tee-Object -FilePath $log
       }
       args=@($name, $myport, $maxPort, $test, $cluster, $engine, $testArgs, $log)
     }
@@ -128,8 +138,6 @@ function createTests {
 
   $tests | % $createTestScript
 }
-
-
 function RunTests {
   Param ([int]$port, [string]$engine, [string]$edition, [string]$mode)
   $jobs = createTests -port 12000 -engine mmfiles -edition community -mode singleserver
