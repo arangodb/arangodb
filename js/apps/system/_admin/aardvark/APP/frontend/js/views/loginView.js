@@ -1,6 +1,6 @@
 /* jshint browser: true */
 /* jshint unused: false */
-/* global Backbone, document, _, arangoHelper, window, setTimeout, $, templateEngine, frontendConfig */
+/* global Backbone, location, document, _, arangoHelper, window, setTimeout, $, templateEngine, frontendConfig */
 
 (function () {
   'use strict';
@@ -65,7 +65,8 @@
           if (errCallback) {
             errCallback();
           } else {
-            console.log('could not fetch user db data');
+            // existing jwt login is not valid anymore => reload
+            location.reload(true);
           }
         });
       };

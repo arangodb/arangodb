@@ -295,6 +295,7 @@ SET(ARANGOD_SOURCES
   RestHandler/RestShutdownHandler.cpp
   RestHandler/RestSimpleHandler.cpp
   RestHandler/RestSimpleQueryHandler.cpp
+  RestHandler/RestTransactionHandler.cpp
   RestHandler/RestUploadHandler.cpp
   RestHandler/RestUsersHandler.cpp
   RestHandler/RestVersionHandler.cpp
@@ -382,6 +383,7 @@ SET(ARANGOD_SOURCES
   VocBase/Methods/Collections.cpp
   VocBase/Methods/Databases.cpp
   VocBase/Methods/Indexes.cpp
+  VocBase/Methods/Transactions.cpp
   VocBase/AuthInfo.cpp
   VocBase/AuthUserEntry.cpp
   VocBase/EdgeCollectionInfo.cpp

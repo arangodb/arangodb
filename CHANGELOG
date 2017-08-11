@@ -2,6 +2,15 @@ devel
 -----
 
 * improved MMFiles fulltext index document removal performance
+  and fulltext index query performance for bigger result sets
+
+* ui: fixed a bug when success event triggers twice in a modal
+
+* ui: fixed the appearance of the documents filter
+
+* ui: graph vertex collections not restricted to 10 anymore
+
+* fixed issue #2835: UI detection of JWT token in case of server restart or upgrade
 
 * upgrade jemalloc version to 5.0.1
 
