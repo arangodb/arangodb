@@ -28,7 +28,6 @@
 #include "MMFiles/MMFilesToken.h"
 #include "MMFiles/mmfiles-fulltext-list.h"
 #include "MMFiles/mmfiles-fulltext-query.h"
-#include "MMFiles/mmfiles-fulltext-result.h"
 #include "StorageEngine/DocumentIdentifierToken.h"
 
 #include <algorithm>

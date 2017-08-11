@@ -48,21 +48,6 @@ void TRI_FreeListMMFilesFulltextIndex(TRI_fulltext_list_t*);
 /// @brief get the memory usage of a list
 size_t TRI_MemoryListMMFilesFulltextIndex(TRI_fulltext_list_t const*);
 
-/// @brief unionise two lists
-/// this will create a new list and free both lhs & rhs
-TRI_fulltext_list_t* TRI_UnioniseListMMFilesFulltextIndex(TRI_fulltext_list_t*,
-                                                   TRI_fulltext_list_t*);
-
-/// @brief intersect two lists
-/// this will create a new list and free both lhs & rhs
-TRI_fulltext_list_t* TRI_IntersectListMMFilesFulltextIndex(TRI_fulltext_list_t*,
-                                                    TRI_fulltext_list_t*);
-
-/// @brief exclude values from a list
-/// this will modify the result in place
-TRI_fulltext_list_t* TRI_ExcludeListMMFilesFulltextIndex(TRI_fulltext_list_t*,
-                                                  TRI_fulltext_list_t*);
-
 /// @brief insert an element into a list
 /// this might free the old list and allocate a new, bigger one
 TRI_fulltext_list_t* TRI_InsertListMMFilesFulltextIndex(
@@ -72,15 +57,6 @@ TRI_fulltext_list_t* TRI_InsertListMMFilesFulltextIndex(
 /// this might free the old list and allocate a new, smaller one
 TRI_fulltext_list_t* TRI_RemoveListMMFilesFulltextIndex(
     TRI_fulltext_list_t*, TRI_fulltext_list_entry_t);
-
-/// @brief rewrites the list of entries using a map of values
-/// returns the number of entries remaining in the list after rewrite
-uint32_t TRI_RewriteListMMFilesFulltextIndex(TRI_fulltext_list_t*, void const*);
-
-/// @brief dump a list
-#if TRI_FULLTEXT_DEBUG
-void TRI_DumpListMMFilesFulltextIndex(TRI_fulltext_list_t const*);
-#endif
 
 /// @brief return the number of entries
 uint32_t TRI_NumEntriesListMMFilesFulltextIndex(TRI_fulltext_list_t const*);
