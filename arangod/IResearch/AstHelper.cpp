@@ -103,46 +103,121 @@ bool attributeAccessEqual(
     arangodb::aql::AstNode const* lhs,
     arangodb::aql::AstNode const* rhs
 ) {
-  TRI_ASSERT(lhs && rhs);
+  struct NodeValue {
+    enum class Type {
+      INVALID = 0,
+      EXPANSION, // [*]
+      ACCESS,    // [<offset>] | [<string>] | .
+      VALUE      // REFERENCE | VALUE
+    };
 
-  auto comparer = [rhs](arangodb::aql::AstNode const& node) mutable {
-    auto const type = node.type;
+    bool read(arangodb::aql::AstNode const* node) noexcept {
+      this->strVal = irs::string_ref::nil;
+      this->iVal= 0;
+      this->type = Type::INVALID;
+      this->root = nullptr;
 
-    if (type != rhs->type) {
-      // type mismatch
+      if (!node) {
+        return false;
+      }
+
+      auto const n = node->numMembers();
+      auto const type = node->type;
+
+      if (n >= 2 && arangodb::aql::NODE_TYPE_EXPANSION == type) { // [*]
+        auto* itr = node->getMemberUnchecked(0);
+        auto* ref = node->getMemberUnchecked(1);
+
+        if (itr && itr->numMembers() == 2) {
+          auto* var = itr->getMemberUnchecked(0);
+          auto* root = itr->getMemberUnchecked(1);
+
+          if (ref
+              && arangodb::aql::NODE_TYPE_ITERATOR == itr->type
+              && arangodb::aql::NODE_TYPE_REFERENCE == ref->type
+              && root && var
+              && arangodb::aql::NODE_TYPE_VARIABLE == var->type) {
+            this->type = Type::EXPANSION;
+            this->root = root;
+            return true;
+          }
+        }
+
+      } else if (n == 2 && arangodb::aql::NODE_TYPE_INDEXED_ACCESS == type) { // [<something>]
+        auto* root = node->getMemberUnchecked(0);
+        auto* offset = node->getMemberUnchecked(1);
+
+        if (root && offset) {
+          if (offset->isIntValue()) {
+            this->iVal = offset->getIntValue();
+            this->type = Type::ACCESS;
+            this->root = root;
+            return true;
+          } else if (offset->isStringValue()){
+            this->strVal = getStringRef(*offset);
+            this->type = Type::ACCESS;
+            this->root = root;
+            return true;
+          }
+        }
+
+      } else if (n == 1 && arangodb::aql::NODE_TYPE_ATTRIBUTE_ACCESS == type) {
+        auto* root = node->getMemberUnchecked(0);
+
+        if (root && arangodb::aql::VALUE_TYPE_STRING == node->value.type) {
+          this->strVal = getStringRef(*node);
+          this->type = Type::ACCESS;
+          this->root = root;
+          return true;
+        }
+
+      } else if (!n) { // end of attribute path (base case)
+
+        if (arangodb::aql::NODE_TYPE_REFERENCE == type) {
+          this->iVal = reinterpret_cast<int64_t>(node->value.value._data);
+          this->type = Type::VALUE;
+          this->root = node;
+          return false; // end of path
+        } else if (arangodb::aql::VALUE_TYPE_STRING == node->value.type) {
+          this->strVal = getStringRef(*node);
+          this->type = Type::VALUE;
+          this->root = node;
+          return false; // end of path
+        }
+
+      }
+
+      return false; // invalid input
+    }
+
+    bool operator==(const NodeValue& rhs) const noexcept {
+      return type == rhs.type
+        && strVal == rhs.strVal
+        && iVal == rhs.iVal;
+    }
+
+    bool operator!=(const NodeValue& rhs) const noexcept {
+      return !(*this == rhs);
+    }
+
+    irs::string_ref strVal;
+    int64_t iVal;
+    Type type { Type::INVALID };
+    arangodb::aql::AstNode const* root;
+  } lhsValue, rhsValue;
+
+  while (lhsValue.read(lhs) & rhsValue.read(rhs)) {
+    if (lhsValue != rhsValue) {
       return false;
     }
 
-    if (type == arangodb::aql::NODE_TYPE_ATTRIBUTE_ACCESS) {
-      if (node.numMembers() != 1 || rhs->numMembers() != 1) {
-        // wrong and different number of members
-        return false;
-      }
+    lhs = lhsValue.root;
+    rhs = rhsValue.root;
+  }
 
-      irs::string_ref const lhsValue(node.getStringValue(), node.getStringLength());
-      irs::string_ref const rhsValue(rhs->getStringValue(), rhs->getStringLength());
-
-      if (lhsValue != rhsValue) {
-        // values are not equal
-        return false;
-      }
-
-      rhs = rhs->getMemberUnchecked(0);
-      return true;
-    } else if (type == arangodb::aql::NODE_TYPE_REFERENCE) {
-      if (node.numMembers() != 0 || rhs->numMembers() != 0) {
-        // wrong and different number of members
-        return false;
-      }
-
-      // equality means refering to the same memory location
-      return node.value.value._data == rhs->value.value._data;
-    }
-
-    return false;
-  };
-
-  return visit<true>(*lhs, comparer);
+  return lhsValue.type != NodeValue::Type::INVALID
+   && lhsValue.type != NodeValue::Type::INVALID
+   && rhsValue == lhsValue;
 }
 
 std::string nameFromAttributeAccess(arangodb::aql::AstNode const& node) {
