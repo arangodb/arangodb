@@ -27,8 +27,6 @@
 #include "Basics/LocalTaskQueue.h"
 #include "Logger/Logger.h"
 #include "Logger/LogMacros.h"
-#include "RocksDBEngine/RocksDBEngine.h"
-#include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/TransactionState.h"
 #include "Transaction/Methods.h"
 #include "VocBase/LogicalCollection.h"
@@ -80,7 +78,7 @@ VPackSlice const& emptyParentSlice() {
       fieldsBuilder.close(); // empty array
       _builder.openObject();
       _builder.add("fields", fieldsBuilder.slice()); // empty array
-      _builder.add(LINK_TYPE_FIELD, VPackValue(LINK_TYPE)); // the index type required by Index
+      arangodb::iresearch::IResearchLink::setType(_builder); // the index type required by Index
       _builder.close(); // object with just one field required by the Index constructor
       _slice = _builder.slice();
     }
@@ -300,13 +298,7 @@ int IResearchLink::load() {
       return nullptr; // failed to parse metadata
     }
 
-    StorageEngine* engine = EngineSelectorFeature::ENGINE;
-    std::shared_ptr<IResearchLink> ptr;
-    if (engine->typeName() == RocksDBEngine::EngineName) {
-      ptr.reset(new RocksDBIResearchLink(definition, iid, collection, std::move(meta)));
-    } else {
-      ptr.reset(new IResearchLink(iid, collection, std::move(meta)));
-    }
+    PTR_NAMED(IResearchLink, ptr, iid, collection, std::move(meta));
 
     if (definition.hasKey(SKIP_VIEW_REGISTRATION_FIELD)) {
       // TODO FIXME find a better way to remember view name for use with toVelocyPack(...)
