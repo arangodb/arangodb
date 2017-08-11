@@ -40,8 +40,8 @@
 #include "Basics/files.h"
 #include "GeneralServer/AuthenticationFeature.h"
 #include "IResearch/IResearchFeature.h"
-#include "IResearch/IResearchLink.h"
 #include "IResearch/IResearchLinkMeta.h"
+#include "IResearch/IResearchMMFilesLink.h"
 #include "IResearch/IResearchView.h"
 #include "IResearch/SystemDatabaseFeature.h"
 #include "Logger/Logger.h"
@@ -1075,7 +1075,7 @@ SECTION("test_register_link") {
     StorageEngineMock::inRecoveryResult = true;
     auto restore = irs::make_finally([]()->void { StorageEngineMock::inRecoveryResult = false; });
     persisted = false;
-    auto link = arangodb::iresearch::IResearchLink::make(1, logicalCollection, linkJson->slice());
+    auto link = arangodb::iresearch::IResearchMMFilesLink::make(1, logicalCollection, linkJson->slice());
     CHECK((false == persisted));
     CHECK((false == !link));
     CHECK((1 == view->linkCount()));
@@ -1092,7 +1092,7 @@ SECTION("test_register_link") {
 
     CHECK((0 == view->linkCount()));
     persisted = false;
-    auto link = arangodb::iresearch::IResearchLink::make(1, logicalCollection, linkJson->slice());
+    auto link = arangodb::iresearch::IResearchMMFilesLink::make(1, logicalCollection, linkJson->slice());
     CHECK((true == persisted));
     CHECK((false == !link));
     CHECK((1 == view->linkCount()));
@@ -1109,12 +1109,12 @@ SECTION("test_register_link") {
 
     CHECK((1 == view->linkCount()));
     persisted = false;
-    auto link0 = arangodb::iresearch::IResearchLink::make(1, logicalCollection, linkJson->slice());
+    auto link0 = arangodb::iresearch::IResearchMMFilesLink::make(1, logicalCollection, linkJson->slice());
     CHECK((false == persisted));
     CHECK((false == !link0));
     CHECK((1 == view->linkCount()));
     persisted = false;
-    auto link1 = arangodb::iresearch::IResearchLink::make(1, logicalCollection, linkJson->slice());
+    auto link1 = arangodb::iresearch::IResearchMMFilesLink::make(1, logicalCollection, linkJson->slice());
     CHECK((false == persisted));
     CHECK((true == !link1));
     CHECK((1 == view->linkCount()));

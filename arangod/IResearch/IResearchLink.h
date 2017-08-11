@@ -32,10 +32,12 @@
 NS_BEGIN(arangodb)
 NS_BEGIN(iresearch)
 
-class IResearchLink final: public Index {
+////////////////////////////////////////////////////////////////////////////////
+/// @brief common base class for functionality required to link an ArangoDB
+///        LogicalCollection with an IResearchView
+////////////////////////////////////////////////////////////////////////////////
+class IResearchLink {
  public:
-  DECLARE_SPTR(IResearchLink);
-
   virtual ~IResearchLink();
 
   ////////////////////////////////////////////////////////////////////////////////
@@ -50,7 +52,7 @@ class IResearchLink final: public Index {
   bool operator==(IResearchLinkMeta const& meta) const noexcept;
   bool operator!=(IResearchLinkMeta const& meta) const noexcept;
 
-  bool allowExpansion() const override;
+  bool allowExpansion() const; // arangodb::Index override
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief insert a set of ArangoDB documents into an iResearch View using
@@ -60,61 +62,75 @@ class IResearchLink final: public Index {
     transaction::Methods* trx,
     std::vector<std::pair<TRI_voc_rid_t, arangodb::velocypack::Slice>> const& batch,
     std::shared_ptr<arangodb::basics::LocalTaskQueue> queue = nullptr
-  ) override;
+  ); // arangodb::Index override
 
-  bool canBeDropped() const override;
+  bool canBeDropped() const; // arangodb::Index override
+
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief the collection of this link
+  ////////////////////////////////////////////////////////////////////////////////
+  LogicalCollection* collection() const noexcept;
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief called when the iResearch Link is dropped
   ////////////////////////////////////////////////////////////////////////////////
-  int drop() override;
+  int drop(); // arangodb::Index override
 
-  bool hasBatchInsert() const override;
-  bool hasSelectivityEstimate() const override;
+  bool hasBatchInsert() const; // arangodb::Index override
+  bool hasSelectivityEstimate() const; // arangodb::Index override
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief insert an ArangoDB document into an iResearch View using '_meta' params
   ////////////////////////////////////////////////////////////////////////////////
-  Result insert(
+  arangodb::Result insert(
     transaction::Methods* trx,
     TRI_voc_rid_t rid,
     VPackSlice const& doc,
     bool isRollback
-  ) override;
+  ); // arangodb::Index override
 
-  bool isPersistent() const override;
-  bool isSorted() const override;
+  bool isPersistent() const; // arangodb::Index override
+  bool isSorted() const; // arangodb::Index override
 
   ////////////////////////////////////////////////////////////////////////////////
-  /// @brief create and initialize an iResearch View Link instance
-  /// @return nullptr on failure
+  /// @brief the identifier for this link
   ////////////////////////////////////////////////////////////////////////////////
-  static ptr make(
-    TRI_idx_iid_t iid,
-    arangodb::LogicalCollection* collection,
-    VPackSlice const& definition
-  ) noexcept;
+  TRI_idx_iid_t id() const noexcept;
+
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief fill and return a jSON description of a IResearchLink object
+  ///        elements are appended to an existing object
+  /// @return success or set TRI_set_errno(...) and return false
+  ////////////////////////////////////////////////////////////////////////////////
+  bool json(arangodb::velocypack::Builder& builder, bool forPersistence) const;
+
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief called when the iResearch Link is loaded into memory
+  ////////////////////////////////////////////////////////////////////////////////
+  int load(); // arangodb::Index override
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief index comparator, used by the coordinator to detect if the specified
   ///        definition is the same as this link
   ////////////////////////////////////////////////////////////////////////////////
-  bool matchesDefinition(VPackSlice const& slice) const override;
+  bool matchesDefinition(
+    arangodb::velocypack::Slice const& slice
+  ) const; // arangodb::Index override
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief amount of memory in bytes occupied by this iResearch Link
   ////////////////////////////////////////////////////////////////////////////////
-  size_t memory() const override;
+  size_t memory() const; // arangodb::Index override
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief remove an ArangoDB document from an iResearch View
   ////////////////////////////////////////////////////////////////////////////////
-  Result remove(
+  arangodb::Result remove(
     transaction::Methods* trx,
     TRI_voc_rid_t rid,
     VPackSlice const& doc,
     bool isRollback
-  ) override;
+  ); // arangodb::Index override
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief set a flag in the builder to prevent registration with the
@@ -142,49 +158,45 @@ class IResearchLink final: public Index {
   );
 
   ////////////////////////////////////////////////////////////////////////////////
-  /// @brief fill and return a JSON description of a IResearchLink object
-  /// @param withFigures output 'figures' section with e.g. memory size
-  ////////////////////////////////////////////////////////////////////////////////
-  using Index::toVelocyPack; // for Index::toVelocyPack(bool)
-  void toVelocyPack(
-    VPackBuilder& builder,
-    bool withFigures,
-    bool forPeristence
-  ) const override;
-
-  ////////////////////////////////////////////////////////////////////////////////
   /// @brief iResearch Link index type enum value
   ////////////////////////////////////////////////////////////////////////////////
-  IndexType type() const override;
+  arangodb::Index::IndexType type() const; // arangodb::Index override
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief iResearch Link index type string value
   ////////////////////////////////////////////////////////////////////////////////
-  char const* typeName() const;
-
-  ////////////////////////////////////////////////////////////////////////////////
-  /// @brief called when the iResearch Link is loaded into memory
-  ////////////////////////////////////////////////////////////////////////////////
-  int load() override;
+  char const* typeName() const; // arangodb::Index override
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief called when the iResearch Link is unloaded from memory
   ////////////////////////////////////////////////////////////////////////////////
-  int unload() override;
+  int unload(); // arangodb::Index override
 
-protected:
+ protected:
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief construct an uninitialized IResearch link, must call init(...) after
+  ////////////////////////////////////////////////////////////////////////////////
+  IResearchLink(
+    TRI_idx_iid_t iid,
+    arangodb::LogicalCollection* collection
+  );
+
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief initialize from the specified definition used in make(...)
+  /// @return success
+  ////////////////////////////////////////////////////////////////////////////////
+  bool init(arangodb::velocypack::Slice const& definition);
+
+ private:
   friend bool IResearchView::linkRegister(IResearchLink&); // to call updateView(...)
   friend IResearchView::~IResearchView(); // to call updateView(...)
+
+  LogicalCollection* _collection; // the linked collection
   TRI_voc_cid_t _defaultId; // the identifier of the desired view (iff _view == nullptr)
+  TRI_idx_iid_t const _id; // the index identifier
   IResearchLinkMeta _meta; // how this collection should be indexed
   mutable irs::async_utils::read_write_mutex _mutex; // for use with _view to allow asynchronous disassociation
   IResearchView::sptr _view; // effectively the index itself (nullptr == not associated)
-
-  IResearchLink(
-    TRI_idx_iid_t iid,
-    arangodb::LogicalCollection* collection,
-    IResearchLinkMeta&& meta
-  );
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief update the '_view' pointer under lock and return the original value

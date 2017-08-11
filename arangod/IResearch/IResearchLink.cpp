@@ -65,29 +65,6 @@ typedef irs::async_utils::read_write_mutex::read_mutex ReadMutex;
 typedef irs::async_utils::read_write_mutex::write_mutex WriteMutex;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief return a reference to a static VPackSlice of an empty index definition
-////////////////////////////////////////////////////////////////////////////////
-VPackSlice const& emptyParentSlice() {
-  static const struct EmptySlice {
-    VPackBuilder _builder;
-    VPackSlice _slice;
-    EmptySlice() {
-      VPackBuilder fieldsBuilder;
-
-      fieldsBuilder.openArray();
-      fieldsBuilder.close(); // empty array
-      _builder.openObject();
-      _builder.add("fields", fieldsBuilder.slice()); // empty array
-      arangodb::iresearch::IResearchLink::setType(_builder); // the index type required by Index
-      _builder.close(); // object with just one field required by the Index constructor
-      _slice = _builder.slice();
-    }
-  } emptySlice;
-
-  return emptySlice._slice;
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief reserve in IResearchAnalyzerFeature all tokenizers regsitered with
 ///        the IResearchLinkMeta
 /// @return success
@@ -152,14 +129,11 @@ NS_BEGIN(iresearch)
 
 IResearchLink::IResearchLink(
   TRI_idx_iid_t iid,
-  arangodb::LogicalCollection* collection,
-  IResearchLinkMeta&& meta
-) : Index(iid, collection, emptyParentSlice()),
-    _defaultId(0), // 0 is never a valid id
-    _meta(std::move(meta)),
-    _view(nullptr) {
-  _unique = false; // cannot be unique since multiple fields are indexed
-  _sparse = true;  // always sparse
+  arangodb::LogicalCollection* collection
+): _collection(collection),
+   _defaultId(0), // 0 is never a valid id
+   _id(iid),
+   _view(nullptr) {
 }
 
 IResearchLink::~IResearchLink() {
@@ -195,7 +169,7 @@ void IResearchLink::batchInsert(
     std::shared_ptr<arangodb::basics::LocalTaskQueue> queue /*= nullptr*/
 ) {
   if (!queue) {
-    throw std::runtime_error(std::string("failed to report status during batch insert for iResearch link '") + arangodb::basics::StringUtils::itoa(id()) + "'");
+    throw std::runtime_error(std::string("failed to report status during batch insert for iResearch link '") + arangodb::basics::StringUtils::itoa(_id) + "'");
   }
 
   ReadMutex mutex(_mutex); // '_view' can be asynchronously modified
@@ -224,6 +198,10 @@ bool IResearchLink::canBeDropped() const {
   return true; // valid for a link to be dropped from an iResearch view
 }
 
+LogicalCollection* IResearchLink::collection() const noexcept {
+  return _collection;
+}
+
 int IResearchLink::drop() {
   ReadMutex mutex(_mutex); // '_view' can be asynchronously modified
   SCOPED_LOCK(mutex);
@@ -232,8 +210,8 @@ int IResearchLink::drop() {
     return TRI_ERROR_ARANGO_COLLECTION_NOT_LOADED; // '_collection' and '_view' required
   }
 
-  if (!releaseAnalyzers(_meta, _view->id(), _iid)) {
-    LOG_TOPIC(WARN, Logger::FIXME) << "failed to release tokenizers while dropping IResearch link '" << _iid << "' for IResearch view '" << _view->id() << "'";
+  if (!releaseAnalyzers(_meta, _view->id(), _id)) {
+    LOG_TOPIC(WARN, Logger::FIXME) << "failed to release tokenizers while dropping IResearch link '" << _id << "' for IResearch view '" << _view->id() << "'";
 
     return TRI_ERROR_INTERNAL;
   }
@@ -247,6 +225,91 @@ bool IResearchLink::hasBatchInsert() const {
 
 bool IResearchLink::hasSelectivityEstimate() const {
   return false; // selectivity can only be determined per query since multiple fields are indexed
+}
+
+TRI_idx_iid_t IResearchLink::id() const noexcept {
+  return _id;
+}
+
+bool IResearchLink::init(arangodb::velocypack::Slice const& definition) {
+  // disassociate from view if it has not been done yet
+  if (TRI_ERROR_NO_ERROR != unload()) {
+    return false;
+  }
+
+  std::string error;
+  IResearchLinkMeta meta;
+
+  if (!meta.init(definition, error)) {
+    LOG_TOPIC(WARN, Logger::FIXME) << "error parsing view link parameters from json: " << error;
+    TRI_set_errno(TRI_ERROR_BAD_PARAMETER);
+
+    return false; // failed to parse metadata
+  }
+
+  if (definition.hasKey(SKIP_VIEW_REGISTRATION_FIELD)) {
+    // TODO FIXME find a better way to remember view name for use with toVelocyPack(...)
+    if (definition.hasKey(VIEW_ID_FIELD)) {
+      auto identifier = definition.get(VIEW_ID_FIELD);
+
+      if (!identifier.isNumber() || uint64_t(identifier.getInt()) != identifier.getUInt()) {
+        LOG_TOPIC(WARN, Logger::FIXME) << "error parsing identifier name for link '" << _id << "'";
+        TRI_set_errno(TRI_ERROR_BAD_PARAMETER);
+
+        return false; // failed to parse view identifier
+      }
+
+      _defaultId = identifier.getUInt();
+    }
+
+    _meta = std::move(meta);
+
+    return true;
+  }
+
+  if (collection() && definition.hasKey(VIEW_ID_FIELD)) {
+    auto identifier = definition.get(VIEW_ID_FIELD);
+    auto vocbase = collection()->vocbase();
+
+    if (vocbase && identifier.isNumber() && uint64_t(identifier.getInt()) == identifier.getUInt()) {
+      auto viewId = identifier.getUInt();
+
+      // NOTE: this will cause a deadlock if registering a link while view is being created
+      auto logicalView = vocbase->lookupView(viewId);
+
+      if (!logicalView || IResearchView::type() != logicalView->type()) {
+        LOG_TOPIC(WARN, Logger::FIXME) << "error looking up view '" << viewId << "': no such view";
+        return false; // no such view
+      }
+
+      // TODO FIXME find a better way to look up an iResearch View
+      #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+        auto* view = dynamic_cast<IResearchView*>(logicalView->getImplementation());
+      #else
+        auto* view = static_cast<IResearchView*>(logicalView->getImplementation());
+      #endif
+
+      // on success this call will set the '_view' pointer
+      if (!view) {
+        LOG_TOPIC(WARN, Logger::FIXME) << "error finding view: '" << viewId << "' for link '" << _id << "'";
+        return false;
+      }
+
+      if (!view->linkRegister(*this)) {
+        LOG_TOPIC(WARN, Logger::FIXME) << "error registering link '" << _id << "' for view: '" << viewId;
+        return false;
+      }
+
+      _meta = std::move(meta);
+
+      return true;
+    }
+  }
+
+  LOG_TOPIC(WARN, Logger::FIXME) << "error finding view for link '" << _id << "'";
+  TRI_set_errno(TRI_ERROR_ARANGO_VIEW_NOT_FOUND);
+
+  return false;
 }
 
 Result IResearchLink::insert(
@@ -277,93 +340,33 @@ bool IResearchLink::isSorted() const {
   return false; // iResearch does not provide a fixed default sort order
 }
 
+bool IResearchLink::json(
+    arangodb::velocypack::Builder& builder,
+    bool forPersistence
+) const {
+  if (!builder.isOpenObject() || !_meta.json(builder)) {
+    return false;
+  }
+
+  builder.add("id", VPackValue(std::to_string(_id)));
+  builder.add(LINK_TYPE_FIELD, VPackValue(typeName()));
+
+  ReadMutex mutex(_mutex); // '_view' can be asynchronously modified
+  SCOPED_LOCK(mutex);
+
+  if (_view) {
+    builder.add(VIEW_ID_FIELD, VPackValue(_view->id()));
+  } else if (_defaultId) { // '0' _defaultId == no view name in source jSON
+  // } else if (_defaultId && forPersistence) { // MMFilesCollection::saveIndex(...) does not set 'forPersistence'
+    builder.add(VIEW_ID_FIELD, VPackValue(_defaultId));
+  }
+
+  return true;
+}
+
 int IResearchLink::load() {
   // NOOP
   return TRI_ERROR_NO_ERROR;
-}
-
-/*static*/ IResearchLink::ptr IResearchLink::make(
-  TRI_idx_iid_t iid,
-  arangodb::LogicalCollection* collection,
-  VPackSlice const& definition
-) noexcept {  // TODO: should somehow pass an error to the caller (return nullptr means "Out of memory")
-  try {
-    std::string error;
-    IResearchLinkMeta meta;
-
-    if (!meta.init(definition, error)) {
-      LOG_TOPIC(WARN, Logger::FIXME) << "error parsing view link parameters from json: " << error;
-      TRI_set_errno(TRI_ERROR_BAD_PARAMETER);
-
-      return nullptr; // failed to parse metadata
-    }
-
-    PTR_NAMED(IResearchLink, ptr, iid, collection, std::move(meta));
-
-    if (definition.hasKey(SKIP_VIEW_REGISTRATION_FIELD)) {
-      // TODO FIXME find a better way to remember view name for use with toVelocyPack(...)
-      if (definition.hasKey(VIEW_ID_FIELD)) {
-        auto identifier = definition.get(VIEW_ID_FIELD);
-
-        if (!identifier.isNumber() || uint64_t(identifier.getInt()) != identifier.getUInt()) {
-          LOG_TOPIC(WARN, Logger::FIXME) << "error parsing identifier name for link '" << iid << "'";
-          TRI_set_errno(TRI_ERROR_BAD_PARAMETER);
-
-          return nullptr;
-        }
-
-        ptr->_defaultId = identifier.getUInt();
-      }
-
-      return ptr;
-    }
-
-    if (collection && definition.hasKey(VIEW_ID_FIELD)) {
-      auto identifier = definition.get(VIEW_ID_FIELD);
-      auto vocbase = collection->vocbase();
-
-      if (vocbase && identifier.isNumber() && uint64_t(identifier.getInt()) == identifier.getUInt()) {
-        auto viewId = identifier.getUInt();
-
-        // NOTE: this will cause a deadlock if registering a link while view is being created
-        auto logicalView = vocbase->lookupView(viewId);
-
-        if (!logicalView || IResearchView::type() != logicalView->type()) {
-          LOG_TOPIC(WARN, Logger::FIXME) << "error looking up view '" << viewId << "': no such view";
-          return nullptr; // no such view
-        }
-
-        // TODO FIXME find a better way to look up an iResearch View
-        #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-          auto* view = dynamic_cast<IResearchView*>(logicalView->getImplementation());
-        #else
-          auto* view = static_cast<IResearchView*>(logicalView->getImplementation());
-        #endif
-
-        // on success this call will set the '_view' pointer
-        if (!view) {
-          LOG_TOPIC(WARN, Logger::FIXME) << "error finding view: '" << viewId << "' for link '" << iid << "'";
-          return nullptr;
-        }
-
-        if (!view->linkRegister(*ptr)) {
-          LOG_TOPIC(WARN, Logger::FIXME) << "error registering link '" << iid << "' for view: '" << viewId;
-          return nullptr;
-        }
-
-        return ptr;
-      }
-    }
-
-    LOG_TOPIC(WARN, Logger::FIXME) << "error finding view for link '" << iid << "'";
-    TRI_set_errno(TRI_ERROR_ARANGO_VIEW_NOT_FOUND);
-  } catch (std::exception const& e) {
-    LOG_TOPIC(WARN, Logger::DEVEL) << "caught exception while creating view link '" << iid << "'" << e.what();
-  } catch (...) {
-    LOG_TOPIC(WARN, Logger::DEVEL) << "caught exception while creating view link '" << iid << "'";
-  }
-
-  return nullptr;
 }
 
 bool IResearchLink::matchesDefinition(VPackSlice const& slice) const {
@@ -463,41 +466,6 @@ Result IResearchLink::remove(
   return true;
 }
 
-void IResearchLink::toVelocyPack(
-    VPackBuilder& builder,
-    bool withFigures,
-    bool forPersistence) const {
-  TRI_ASSERT(!builder.isOpenObject());
-  builder.openObject();
-  bool success = _meta.json(builder);
-  TRI_ASSERT(success);
-
-  builder.add("id", VPackValue(std::to_string(_iid)));
-  builder.add(LINK_TYPE_FIELD, VPackValue(typeName()));
-
-  {
-    ReadMutex mutex(_mutex); // '_view' can be asynchronously modified
-    SCOPED_LOCK(mutex);
-
-    if (_view) {
-      builder.add(VIEW_ID_FIELD, VPackValue(_view->id()));
-    } else if (_defaultId) { // '0' _defaultId == no view name in source jSON
-    // } else if (_defaultId && forPersistence) { // MMFilesCollection::saveIndex(...) does not set 'forPersistence'
-      builder.add(VIEW_ID_FIELD, VPackValue(_defaultId));
-    }
-  }
-
-  if (withFigures) {
-    VPackBuilder figuresBuilder;
-
-    figuresBuilder.openObject();
-    toVelocyPackFigures(figuresBuilder);
-    figuresBuilder.close();
-    builder.add("figures", figuresBuilder.slice());
-  }
-  builder.close();
-}
-
 Index::IndexType IResearchLink::type() const {
   // TODO: don't use enum
   return Index::TRI_IDX_TYPE_IRESEARCH_LINK;
@@ -517,7 +485,7 @@ int IResearchLink::unload() {
     auto* col = collection();
 
     if (!col) {
-      LOG_TOPIC(WARN, Logger::FIXME) << "error finding collection while unloading IResearch link '" << _iid << "'";
+      LOG_TOPIC(WARN, Logger::FIXME) << "failed finding collection while unloading IResearch link '" << _id << "'";
 
       return TRI_ERROR_ARANGO_COLLECTION_NOT_LOADED; // '_collection' required
     }
@@ -527,13 +495,13 @@ int IResearchLink::unload() {
       auto res = _view->drop(col->cid());
 
       if (TRI_ERROR_NO_ERROR != res) {
-        LOG_TOPIC(WARN, Logger::FIXME) << "failed to drop collection from view while unloading dropped IResearch link '" << _iid << "' for IResearch view '" << _view->id() << "'";
+        LOG_TOPIC(WARN, Logger::FIXME) << "failed to drop collection from view while unloading dropped IResearch link '" << _id << "' for IResearch view '" << _view->id() << "'";
 
         return res;
       }
 
-      if (!releaseAnalyzers(_meta, _view->id(), _iid)) {
-        LOG_TOPIC(WARN, Logger::FIXME) << "failed to release tokenizers while unloading dropped IResearch link '" << _iid << "' for IResearch view '" << _view->id() << "'";
+      if (!releaseAnalyzers(_meta, _view->id(), _id)) {
+        LOG_TOPIC(WARN, Logger::FIXME) << "failed to release tokenizers while unloading dropped IResearch link '" << _id << "' for IResearch view '" << _view->id() << "'";
 
         return TRI_ERROR_INTERNAL;
       }
@@ -556,7 +524,7 @@ IResearchView::sptr IResearchLink::updateView(
   _view = view;
 
   if (isNew && _view) {
-    reserveAnalyzers(_meta, _view->id(), _iid);
+    reserveAnalyzers(_meta, _view->id(), _id);
   }
 
   return previous;
