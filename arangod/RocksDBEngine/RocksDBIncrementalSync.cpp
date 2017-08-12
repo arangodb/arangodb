@@ -416,7 +416,7 @@ int handleSyncKeysRocksDB(InitialSyncer& syncer,
     // first chunk
     SingleCollectionTransaction trx(
         transaction::StandaloneContext::Create(syncer._vocbase), col->cid(),
-        AccessMode::Type::WRITE);
+        AccessMode::Type::EXCLUSIVE);
 
     Result res = trx.begin();
 
@@ -462,7 +462,7 @@ int handleSyncKeysRocksDB(InitialSyncer& syncer,
         },
         UINT64_MAX);
 
-    trx.commit();
+    res = trx.commit();
   }
 
   {
@@ -472,7 +472,7 @@ int handleSyncKeysRocksDB(InitialSyncer& syncer,
 
     SingleCollectionTransaction trx(
         transaction::StandaloneContext::Create(syncer._vocbase), col->cid(),
-        AccessMode::Type::WRITE);
+        AccessMode::Type::EXCLUSIVE);
 
     Result res = trx.begin();
 
