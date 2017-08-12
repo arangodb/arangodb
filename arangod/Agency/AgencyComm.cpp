@@ -1141,6 +1141,8 @@ AgencyCommResult AgencyComm::sendTransactionWithFailover(
   } catch (std::exception const& e) {
     LOG_TOPIC(ERR, Logger::AGENCYCOMM) << "Error transforming result. "
                                        << e.what()
+                                       << " status code: "
+                                       << result._statusCode
                                        << " incriminating body: "
                                        << result.bodyRef();
     result.clear();
