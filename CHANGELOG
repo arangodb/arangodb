@@ -1,23 +1,26 @@
 devel
 -----
 
+* improved MMFiles fulltext index document removal performance
+  and fulltext index query performance for bigger result sets
+
 * ui: fixed a bug when success event triggers twice in a modal
 
 * ui: fixed the appearance of the documents filter
 
 * ui: graph vertex collections not restricted to 10 anymore
 
-* fixed docs for issue #2968
-
 * fixed issue #2835: UI detection of JWT token in case of server restart or upgrade
 
 * upgrade jemalloc version to 5.0.1
 
-* fixed docs for issue #2968
-
 * fixed issue #2978: log something more obvious when you log a Buffer
 
 * fixed issue #2982: AQL parse error?
+
+
+v3.2.1 (2017-08-09)
+-------------------
 
 * fixed docs for issue #2968: Collection _key autoincrement value increases on error 
 
@@ -27,7 +30,7 @@ devel
   It is still not possible to restore collections that are sharded
   differently than by _key.
 
-* fixed an isse with restoring of system collections and user rights.
+* fixed an issue with restoring of system collections and user rights.
   It was not possible to restore users into an authenticated server.
 
 * fixed issue #2977: Documentation for db._createDatabase is wrong
@@ -37,8 +40,6 @@ devel
 * fixed issue #1751: Slow Query API should provide bind parameters, webui should display them
 
 * ui: fixed a bug when moving multiple documents was not possible
-
-* fixed docs for issue #2968: Collection _key autoincrement value increases on error
 
 * AQL CHAR_LENGTH(null) returns now 0. Since AQL TO_STRING(null) is '' (string of length 0)
 
@@ -125,6 +126,7 @@ devel
 * option "--rocksdb.compaction-read-ahead-size" now defaults to 2MB
 
 * change Windows build so that RocksDB doesn't enforce AVX optimizations by default
+  This fixes startup crashes on servers that do not have AVX CPU extensions
 
 * speed up RocksDB secondary index creation and dropping
 

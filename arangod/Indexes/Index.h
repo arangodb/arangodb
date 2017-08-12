@@ -241,8 +241,8 @@ class Index {
 
   virtual size_t memory() const = 0;
 
-  virtual void toVelocyPack(arangodb::velocypack::Builder&, bool, bool) const;
-  std::shared_ptr<arangodb::velocypack::Builder> toVelocyPack(bool) const;
+  virtual void toVelocyPack(arangodb::velocypack::Builder&, bool withFigures, bool forPersistence) const;
+  std::shared_ptr<arangodb::velocypack::Builder> toVelocyPack(bool withFigures, bool forPersistence) const;
 
   virtual void toVelocyPackFigures(arangodb::velocypack::Builder&) const;
   std::shared_ptr<arangodb::velocypack::Builder> toVelocyPackFigures() const;
@@ -257,11 +257,9 @@ class Index {
       std::vector<std::pair<TRI_voc_rid_t, arangodb::velocypack::Slice>> const&,
       std::shared_ptr<arangodb::basics::LocalTaskQueue> queue);
 
-  virtual int load() = 0;
-  virtual int unload() = 0;
+  virtual void load() = 0;
+  virtual void unload() = 0;
 
-  // a garbage collection function for the index
-  virtual int cleanup();
   // called when the index is dropped
   virtual int drop();
 
