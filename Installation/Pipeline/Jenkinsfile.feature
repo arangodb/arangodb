@@ -684,7 +684,9 @@ def testStepParallel(editionList, osList, modeList) {
         }
     }
 
-    if (runJslint && osList.contains('linux') && useLinux && useCommunity) {
+    if (runJslint
+     && osList.contains('linux') && useLinux
+     && editionList.contains('community') && useCommunity) {
         branches['jslint'] = jslintStep('community')
     }
 
