@@ -225,7 +225,7 @@ void LogicalView::toVelocyPack(VPackBuilder& result, bool includeProperties,
   if (includeProperties && (getImplementation() != nullptr)) {
     // implementation Information
     result.add("properties", VPackValue(VPackValueType::Object));
-    getImplementation()->getPropertiesVPack(result);
+    getImplementation()->getPropertiesVPack(result, !includeSystem);
     result.close();
   }
   TRI_ASSERT(result.isOpenObject());

@@ -112,7 +112,8 @@ class IResearchView final: public arangodb::ViewImplementation,
   /// @brief fill and return a JSON description of a IResearchView object
   ///        only fields describing the view itself, not 'link' descriptions
   ////////////////////////////////////////////////////////////////////////////////
-  void getPropertiesVPack(arangodb::velocypack::Builder& builder) const override;
+  void getPropertiesVPack(arangodb::velocypack::Builder& builder,
+			  bool forPersistence) const override;
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief the id identifying the current iResearch View or '0' if unknown

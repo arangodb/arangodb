@@ -1562,7 +1562,7 @@ int IResearchView::finish() {
 }
 
 void IResearchView::getPropertiesVPack(
-  arangodb::velocypack::Builder& builder
+  arangodb::velocypack::Builder& builder, bool forPersistence
 ) const {
   ReadMutex mutex(_mutex);
   SCOPED_LOCK(mutex); // '_meta'/'_links' can be asynchronously updated

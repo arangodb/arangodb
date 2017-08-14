@@ -216,7 +216,7 @@ SECTION("test_defaults") {
     arangodb::velocypack::Builder builder;
 
     builder.openObject();
-    view->getPropertiesVPack(builder);
+    view->getPropertiesVPack(builder, false);
     builder.close();
 
     auto slice = builder.slice();
@@ -236,7 +236,7 @@ SECTION("test_defaults") {
     arangodb::velocypack::Builder builder;
 
     builder.openObject();
-    view->getPropertiesVPack(builder);
+    view->getPropertiesVPack(builder, false);
     builder.close();
 
     auto slice = builder.slice();
@@ -255,7 +255,7 @@ SECTION("test_defaults") {
     arangodb::velocypack::Builder builder;
 
     builder.openObject();
-    view->getPropertiesVPack(builder);
+    view->getPropertiesVPack(builder, false);
     builder.close();
 
     auto slice = builder.slice();
@@ -275,7 +275,7 @@ SECTION("test_defaults") {
     arangodb::velocypack::Builder builder;
 
     builder.openObject();
-    view->getPropertiesVPack(builder);
+    view->getPropertiesVPack(builder, false);
     builder.close();
 
     auto slice = builder.slice();
@@ -1284,7 +1284,7 @@ SECTION("test_update_overwrite") {
       arangodb::velocypack::Builder builder;
 
       builder.openObject();
-      view->getPropertiesVPack(builder);
+      view->getPropertiesVPack(builder, false);
       builder.close();
 
       auto slice = builder.slice();
@@ -1311,7 +1311,7 @@ SECTION("test_update_overwrite") {
       arangodb::velocypack::Builder builder;
 
       builder.openObject();
-      view->getPropertiesVPack(builder);
+      view->getPropertiesVPack(builder, false);
       builder.close();
 
       auto slice = builder.slice();
@@ -1355,7 +1355,7 @@ SECTION("test_update_overwrite") {
       arangodb::velocypack::Builder builder;
 
       builder.openObject();
-      view->getPropertiesVPack(builder);
+      view->getPropertiesVPack(builder, false);
       builder.close();
 
       auto slice = builder.slice();
@@ -1402,7 +1402,7 @@ SECTION("test_update_overwrite") {
       arangodb::velocypack::Builder builder;
 
       builder.openObject();
-      view->getPropertiesVPack(builder);
+      view->getPropertiesVPack(builder, false);
       builder.close();
 
       auto slice = builder.slice();
@@ -1471,7 +1471,7 @@ SECTION("test_update_partial") {
     arangodb::velocypack::Builder builder;
 
     builder.openObject();
-    view->getPropertiesVPack(builder);
+    view->getPropertiesVPack(builder, false);
     builder.close();
 
     auto slice = builder.slice();
@@ -1508,7 +1508,7 @@ SECTION("test_update_partial") {
     arangodb::velocypack::Builder builder;
 
     builder.openObject();
-    view->getPropertiesVPack(builder);
+    view->getPropertiesVPack(builder, false);
     builder.close();
 
     auto slice = builder.slice();
@@ -1544,7 +1544,7 @@ SECTION("test_update_partial") {
     arangodb::velocypack::Builder builder;
 
     builder.openObject();
-    view->getPropertiesVPack(builder);
+    view->getPropertiesVPack(builder, false);
     builder.close();
 
     auto slice = builder.slice();
@@ -1582,7 +1582,7 @@ SECTION("test_update_partial") {
     arangodb::velocypack::Builder builder;
 
     builder.openObject();
-    view->getPropertiesVPack(builder);
+    view->getPropertiesVPack(builder, false);
     builder.close();
 
     auto slice = builder.slice();
@@ -1620,7 +1620,7 @@ SECTION("test_update_partial") {
     arangodb::velocypack::Builder builder;
 
     builder.openObject();
-    view->getPropertiesVPack(builder);
+    view->getPropertiesVPack(builder, false);
     builder.close();
 
     auto slice = builder.slice();
@@ -1671,7 +1671,7 @@ SECTION("test_update_partial") {
     arangodb::velocypack::Builder builder;
 
     builder.openObject();
-    view->getPropertiesVPack(builder);
+    view->getPropertiesVPack(builder, false);
     builder.close();
 
     auto slice = builder.slice();
@@ -1707,7 +1707,7 @@ SECTION("test_update_partial") {
       arangodb::velocypack::Builder builder;
 
       builder.openObject();
-      view->getPropertiesVPack(builder);
+      view->getPropertiesVPack(builder, false);
       builder.close();
 
       auto slice = builder.slice();
@@ -1732,7 +1732,7 @@ SECTION("test_update_partial") {
       arangodb::velocypack::Builder builder;
 
       builder.openObject();
-      view->getPropertiesVPack(builder);
+      view->getPropertiesVPack(builder, false);
       builder.close();
 
       auto slice = builder.slice();
@@ -1770,7 +1770,7 @@ SECTION("test_update_partial") {
       arangodb::velocypack::Builder builder;
 
       builder.openObject();
-      view->getPropertiesVPack(builder);
+      view->getPropertiesVPack(builder, false);
       builder.close();
 
       auto slice = builder.slice();
@@ -1796,7 +1796,7 @@ SECTION("test_update_partial") {
       arangodb::velocypack::Builder builder;
 
       builder.openObject();
-      view->getPropertiesVPack(builder);
+      view->getPropertiesVPack(builder, false);
       builder.close();
 
       auto slice = builder.slice();
@@ -1830,7 +1830,7 @@ SECTION("test_update_partial") {
     arangodb::velocypack::Builder builder;
 
     builder.openObject();
-    view->getPropertiesVPack(builder);
+    view->getPropertiesVPack(builder, false);
     builder.close();
 
     auto slice = builder.slice();
@@ -1866,7 +1866,7 @@ SECTION("test_update_partial") {
     arangodb::velocypack::Builder builder;
 
     builder.openObject();
-    view->getPropertiesVPack(builder);
+    view->getPropertiesVPack(builder, false);
     builder.close();
 
     auto slice = builder.slice();
@@ -1901,7 +1901,7 @@ SECTION("test_update_partial") {
       arangodb::velocypack::Builder builder;
 
       builder.openObject();
-      view->getPropertiesVPack(builder);
+      view->getPropertiesVPack(builder, false);
       builder.close();
 
       auto slice = builder.slice();
@@ -1925,7 +1925,7 @@ SECTION("test_update_partial") {
       arangodb::velocypack::Builder builder;
 
       builder.openObject();
-      view->getPropertiesVPack(builder);
+      view->getPropertiesVPack(builder, false);
       builder.close();
 
       auto slice = builder.slice();

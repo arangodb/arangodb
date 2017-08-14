@@ -59,7 +59,7 @@ class LoggerView final : public ViewImplementation {
                                     bool partialUpdate, bool doSync) override;
 
   /// @brief export properties
-  void getPropertiesVPack(velocypack::Builder&) const override;
+  void getPropertiesVPack(velocypack::Builder&, bool) const override;
 
   /// @brief opens an existing view
   void open() override;

@@ -172,7 +172,7 @@ void RestViewHandler::modifyView(bool partialUpdate) {
     if (result.ok()) {
       VPackBuilder updated;
       updated.openObject();
-      view->getImplementation()->getPropertiesVPack(updated);
+      view->getImplementation()->getPropertiesVPack(updated, false);
       updated.close();
       generateResult(rest::ResponseCode::OK, updated.slice());
       return;
@@ -294,7 +294,7 @@ void RestViewHandler::getViewProperties(std::string const& name) {
   if (view.get() != nullptr) {
     VPackBuilder props;
     props.openObject();
-    view->getImplementation()->getPropertiesVPack(props);
+    view->getImplementation()->getPropertiesVPack(props, false);
     props.close();
     generateResult(rest::ResponseCode::OK, props.slice());
   } else {

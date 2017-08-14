@@ -129,7 +129,7 @@ arangodb::Result LoggerView::updateProperties(
 }
 
 /// @brief export properties
-void LoggerView::getPropertiesVPack(velocypack::Builder& builder) const {
+void LoggerView::getPropertiesVPack(velocypack::Builder& builder, bool) const {
   VIEW_LOG_TOPIC(_level) << "called LoggerView::getPropertiesVPack";
 
   TRI_ASSERT(builder.isOpenObject());

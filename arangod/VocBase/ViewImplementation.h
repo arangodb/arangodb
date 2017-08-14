@@ -70,7 +70,8 @@ class ViewImplementation {
   /// add all its own property attributes with their values, and must
   /// not close the Builder
   //////////////////////////////////////////////////////////////////////////////
-  virtual void getPropertiesVPack(velocypack::Builder&) const = 0;
+  virtual void getPropertiesVPack(velocypack::Builder&,
+				  bool forPersistence) const = 0;
 
   /// @brief opens an existing view when the server is restarted
   virtual void open() = 0;
