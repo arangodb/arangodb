@@ -225,7 +225,10 @@ void LogicalView::toVelocyPack(VPackBuilder& result, bool includeProperties,
   if (includeProperties && (getImplementation() != nullptr)) {
     // implementation Information
     result.add("properties", VPackValue(VPackValueType::Object));
-    getImplementation()->getPropertiesVPack(result, !includeSystem);
+    // note: includeSystem and forPersistence are not 100% synonymous,
+    // however, for our purposes this is an okay mapping; we only set
+    // includeSystem if we are persisting the properties
+    getImplementation()->getPropertiesVPack(result, includeSystem);
     result.close();
   }
   TRI_ASSERT(result.isOpenObject());
