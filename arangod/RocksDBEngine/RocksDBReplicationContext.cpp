@@ -311,7 +311,7 @@ arangodb::Result RocksDBReplicationContext::dumpKeys(
 
       //TRI_ASSERT(_lastIteratorOffset == from);
       if(_lastIteratorOffset != from){
-        return rv.reset(TRI_ERROR_BAD_PARAMETER, "It seems that your chunk / chunkSize combination is not valid");
+        return rv.reset(TRI_ERROR_BAD_PARAMETER, "The parameters you provided lead to an invalid iterator offset.");
       }
     }
   }
@@ -380,7 +380,7 @@ arangodb::Result RocksDBReplicationContext::dumpDocuments(
       }
 
       if(_lastIteratorOffset != from){
-        return rv.reset(TRI_ERROR_BAD_PARAMETER, "It seems that your chunk / chunkSize combination results in an invalid from");
+        return rv.reset(TRI_ERROR_BAD_PARAMETER, "The parameters you provided lead to an invalid iterator offset.");
       }
     }
   }
