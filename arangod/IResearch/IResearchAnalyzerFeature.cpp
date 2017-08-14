@@ -223,27 +223,8 @@ arangodb::aql::AqlValue aqlFnTokens(
   return arangodb::aql::AqlValue(buffer.get(), bufOwner);
 }
 
-void addFunction(
-    arangodb::aql::AqlFunctionFeature& functions,
-    arangodb::aql::Function const& function
-) {
-  // check that a function by the given name is not registred to avoid
-  // triggering an assert inside AqlFunctionFeature::add(...)
-  try {
-    if (functions.byName(function.externalName)) {
-      return; // already have a function with this name
-    }
-  } catch (arangodb::basics::Exception& e) {
-    if (TRI_ERROR_QUERY_FUNCTION_NAME_UNKNOWN != e.code()) {
-      throw; // not a duplicate instance exception
-    }
-  }
-
-  functions.add(function);
-}
-
 void addFunctions(arangodb::aql::AqlFunctionFeature& functions) {
-  arangodb::aql::Function tokens(
+  arangodb::iresearch::addFunction(functions, arangodb::aql::Function{
     "TOKENS", // external name (AQL function external names are always in upper case)
     "tokens", // internal name
     ".,.", // positional arguments (data,analyzer)
@@ -253,9 +234,7 @@ void addFunctions(arangodb::aql::AqlFunctionFeature& functions) {
     true, // can be run on server
     true, // can pass arguments by reference
     aqlFnTokens // function implementation
-  );
-
-  addFunction(functions, tokens);
+  });
 }
 
 ////////////////////////////////////////////////////////////////////////////////

@@ -1017,12 +1017,7 @@ bool fromFuncStartsWith(
   return byPrefix(filter, *field, *prefix, scoringLimit);
 }
 
-std::map<irs::string_ref, ConvertionHandler> const FCallUserConvertionHandlers{
-  { "IR::PHRASE", fromFuncPhrase },
-  { "IR::STARTS_WITH", fromFuncStartsWith },
-  { "IR::EXISTS", fromFuncExists }
-  //  { "MIN_MATCH", fromFuncMinMatch } // add when AQL will support filters as the function parameters
-};
+std::map<irs::string_ref, ConvertionHandler> const FCallUserConvertionHandlers;
 
 bool fromFCallUser(
     irs::boolean_filter* filter,
@@ -1061,7 +1056,12 @@ bool fromFCallUser(
   return entry->second(filter, *args);
 }
 
-std::map<std::string, ConvertionHandler> const FCallConvertionHandlers{ };
+std::map<std::string, ConvertionHandler> const FCallSystemConvertionHandlers{
+  { "PHRASE", fromFuncPhrase },
+  { "STARTS_WITH", fromFuncStartsWith },
+  { "EXISTS", fromFuncExists }
+  //  { "MIN_MATCH", fromFuncMinMatch } // add when AQL will support filters as the function parameters
+};
 
 bool fromFCall(
     irs::boolean_filter* filter,
@@ -1083,9 +1083,9 @@ bool fromFCall(
     return false; // invalid args
   }
 
-  auto const entry = FCallConvertionHandlers.find(fn->externalName);
+  auto const entry = FCallSystemConvertionHandlers.find(fn->externalName);
 
-  if (entry == FCallConvertionHandlers.end()) {
+  if (entry == FCallSystemConvertionHandlers.end()) {
     LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "Unable to find system function '" << fn->externalName << "'";
     return false;
   }

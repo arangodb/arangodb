@@ -24,12 +24,86 @@
 
 #include "IResearchFeature.h"
 #include "IResearchView.h"
+#include "ApplicationServerHelper.h"
 
 #include "RestServer/ViewTypesFeature.h"
+
+#include "Aql/AqlValue.h"
+#include "Aql/AqlFunctionFeature.h"
+#include "Aql/Function.h"
+
+#include "Logger/Logger.h"
+#include "Logger/LogMacros.h"
+
+#include "Basics/SmallVector.h"
+
+NS_BEGIN(arangodb)
+
+NS_BEGIN(transaction)
+class Methods;
+NS_END // transaction
+
+NS_BEGIN(basics)
+class VPackStringBufferAdapter;
+NS_END // basics
+
+NS_BEGIN(aql)
+class Query;
+NS_END // aql
+
+NS_END // arangodb
 
 NS_LOCAL
 
 static std::string const FEATURE_NAME("IResearch");
+
+arangodb::aql::AqlValue noop(
+    arangodb::aql::Query*,
+    arangodb::transaction::Methods* ,
+    arangodb::SmallVector<arangodb::aql::AqlValue> const&) {
+  THROW_ARANGO_EXCEPTION_MESSAGE(
+    TRI_ERROR_NOT_IMPLEMENTED,
+    "Function is designed to use with IResearchView only"
+  );
+}
+
+void registerFilters(arangodb::aql::AqlFunctionFeature& functions) {
+  arangodb::iresearch::addFunction(functions, arangodb::aql::Function{
+    "EXISTS",      // external name (AQL function external names are always in upper case)
+    "exists",      // internal name
+    ".|.,.",       // positional arguments (attribute, [ "analyzer"|"type", analyzer-name|"string"|"numeric"|"bool"|"null" ])
+    false,         // cacheable
+    true,          // deterministic
+    true,          // can throw
+    true,          // can be run on server
+    true,          // can pass arguments by reference
+    &noop          // function implementation (use function name as placeholder)
+  });
+
+  arangodb::iresearch::addFunction(functions, arangodb::aql::Function{
+    "STARTS_WITH", // external name (AQL function external names are always in upper case)
+    "starts_with", // internal name
+    ".,.|.",       // positional arguments (attribute, prefix, scoring-limit)
+    false,         // cacheable
+    true,          // deterministic
+    true,          // can throw
+    true,          // can be run on server
+    true,          // can pass arguments by reference
+    &noop          // function implementation (use function name as placeholder)
+  });
+
+  arangodb::iresearch::addFunction(functions, arangodb::aql::Function{
+    "PHRASE",      // external name (AQL function external names are always in upper case)
+    "phrase",      // internal name
+    ".,.|.+",      // positional arguments (attribute, input [, offset, input... ] [, analyzer])
+    false,         // cacheable
+    false,         // deterministic
+    true,          // can throw
+    true,          // can be run on server
+    true,          // can pass arguments by reference
+    &noop          // function implementation (use function name as placeholder)
+  });
+}
 
 NS_END
 
@@ -49,6 +123,7 @@ IResearchFeature::IResearchFeature(arangodb::application_features::ApplicationSe
   startsAfter("Logger");
   startsAfter("Database");
   startsAfter("IResearchAnalyzer"); // used for retrieving IResearch analyzers for functions
+  startsAfter("AQLFunctions");
   // TODO FIXME: we need the MMFilesLogfileManager to be available here if we
   // use the MMFiles engine. But it does not feel right to have such storage engine-
   // specific dependency here. Better create a "StorageEngineFeature" and make 
@@ -87,6 +162,18 @@ void IResearchFeature::prepare() {
 
 void IResearchFeature::start() {
   ApplicationFeature::start();
+
+  // register IResearchView filters
+ {
+    auto* functions = getFeature<arangodb::aql::AqlFunctionFeature>("AQLFunctions");
+
+    if (functions) {
+      registerFilters(*functions);
+    } else {
+      LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "failure to find feature 'AQLFunctions' while registering iresearch filters";
+    }
+  }
+
   _running = true;
 }
 
