@@ -21,9 +21,6 @@ Approximate maximum size of the returned result.
 @RESTQUERYPARAM{includeSystem,boolean,optional}
 Include system collections in the result. The default value is *true*.
 
-@RESTQUERYPARAM{failOnUnknown,boolean,optional}
-Produce an error when dumped edges refer to now-unknown collections.
-
 @RESTQUERYPARAM{ticks,boolean,optional}
 Whether or not to include tick values in the dump. The default value is *true*.
 
