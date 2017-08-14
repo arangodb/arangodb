@@ -456,11 +456,6 @@ Result MMFilesPersistentIndex::remove(transaction::Methods* trx,
   return IndexResult(res, this);
 }
 
-int MMFilesPersistentIndex::unload() {
-  // nothing to do
-  return TRI_ERROR_NO_ERROR;
-}
-
 /// @brief called when the index is dropped
 int MMFilesPersistentIndex::drop() {
   return MMFilesPersistentIndexFeature::instance()->dropIndex(

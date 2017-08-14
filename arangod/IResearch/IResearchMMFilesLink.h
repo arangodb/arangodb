@@ -75,8 +75,8 @@ class IResearchMMFilesLink final
     return IResearchLink::isSorted();
   }
 
-  virtual int load() override {
-    return IResearchLink::load();
+  virtual void load() override {
+    IResearchLink::load();
   }
 
   ////////////////////////////////////////////////////////////////////////////////
@@ -127,8 +127,11 @@ class IResearchMMFilesLink final
     return IResearchLink::typeName();
   }
 
-  virtual int unload() override {
-    return IResearchLink::unload();
+  virtual void unload() override {
+    int res = IResearchLink::unload();
+    if (res != TRI_ERROR_NO_ERROR) {
+      THROW_ARANGO_EXCEPTION(res);
+    }
   }
 
  private:

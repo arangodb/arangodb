@@ -397,8 +397,11 @@ void DatabaseFeature::stop() {
     TRI_ASSERT(vocbase != nullptr);
     TRI_ASSERT(vocbase->type() == TRI_VOCBASE_TYPE_NORMAL);
 
-    vocbase->processCollections([](LogicalCollection* collection) {
-      collection->close();
+    vocbase->processCollections([](LogicalCollection* collection) { 
+      // no one else must modify the collection's status while we are in here
+      collection->executeWhileStatusWriteLocked([collection]() {
+        collection->close(); 
+      });
     }, true);
   }
 }

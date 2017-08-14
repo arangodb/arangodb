@@ -287,7 +287,7 @@ SECTION("test_defaults") {
 
     // ensure jSON is still valid after unload()
     {
-      CHECK((TRI_ERROR_NO_ERROR == link->unload()));
+      link->unload();
       auto builder = link->toVelocyPack(true, false);
       auto slice = builder->slice();
       CHECK((

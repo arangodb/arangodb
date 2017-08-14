@@ -290,7 +290,7 @@ class MMFilesSkiplistIndex final : public MMFilesPathBasedIndex {
   Result remove(transaction::Methods*, TRI_voc_rid_t,
                 arangodb::velocypack::Slice const&, bool isRollback) override;
 
-  int unload() override;
+  void unload() override;
 
   bool supportsFilterCondition(arangodb::aql::AstNode const*,
                                arangodb::aql::Variable const*, size_t, size_t&,

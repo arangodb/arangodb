@@ -530,9 +530,15 @@ TRI_vocbase_col_status_e LogicalCollection::getStatusLocked() {
   return _status;
 }
 
+void LogicalCollection::executeWhileStatusWriteLocked(
+    std::function<void()> const& callback) {
+  WRITE_LOCKER_EVENTUAL(locker, _lock);
+  callback();
+}
+
 void LogicalCollection::executeWhileStatusLocked(
     std::function<void()> const& callback) {
-  READ_LOCKER(readLocker, _lock);
+  READ_LOCKER(locker, _lock);
   callback();
 }
 

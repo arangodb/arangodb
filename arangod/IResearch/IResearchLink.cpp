@@ -364,11 +364,6 @@ bool IResearchLink::json(
   return true;
 }
 
-int IResearchLink::load() {
-  // NOOP
-  return TRI_ERROR_NO_ERROR;
-}
-
 bool IResearchLink::matchesDefinition(VPackSlice const& slice) const {
   ReadMutex mutex(_mutex); // '_view' can be asynchronously modified
   SCOPED_LOCK(mutex);

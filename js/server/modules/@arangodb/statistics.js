@@ -62,9 +62,6 @@ function createStatisticsCollection (name) {
     }
 
     collection = db._collection(name);
-  }
-
-  if (collection !== null) {
     collection.ensureIndex({ type: 'skiplist', fields: [ 'time' ] });
   }
 
@@ -414,11 +411,9 @@ exports.STATISTICS_INTERVAL = 10;
 exports.STATISTICS_HISTORY_INTERVAL = 15 * 60;
 
 // //////////////////////////////////////////////////////////////////////////////
-// / @brief createCollections
-// /
 // / This cannot be called during version check, because the collections are
 // / system wide and the version checks might not yet know, that it is running
-// / on a cluster coordinate.
+// / on a cluster coordinator.
 // //////////////////////////////////////////////////////////////////////////////
 
 exports.createStatisticsCollections = function () {

@@ -96,16 +96,6 @@ void MMFilesCleanupThread::run() {
             
           // we're the only ones that can unload the collection, so using
           // the collection pointer outside the lock is ok
-
-          // maybe cleanup indexes, unload the collection or some datafiles
-          
-          // clean indexes?
-          if (iterations % cleanupIndexIterations() == 0 && status != TRI_VOC_COL_STATUS_DELETED) {
-            auto physical = static_cast<MMFilesCollection*>(collection->getPhysical());
-            TRI_ASSERT(physical != nullptr);
-            physical->cleanupIndexes();
-          }
-
           cleanupCollection(collection);
         }
       }, false);
@@ -160,11 +150,13 @@ void MMFilesCleanupThread::cleanupCollection(arangodb::LogicalCollection* collec
 
   // but if we are in server shutdown, we can force unloading of collections
   bool isInShutdown = application_features::ApplicationServer::isStopping();
-  
-  // loop until done
 
+  // loop until done
+    
+  auto mmfiles = arangodb::MMFilesCollection::toMMFilesCollection(collection);
+  TRI_ASSERT(mmfiles != nullptr);
+    
   while (true) {
-    auto mmfiles = arangodb::MMFilesCollection::toMMFilesCollection(collection);
     auto ditches = mmfiles->ditches();
 
     TRI_ASSERT(ditches != nullptr);
