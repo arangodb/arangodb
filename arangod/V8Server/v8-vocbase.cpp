@@ -67,6 +67,7 @@
 #include "V8/JSLoader.h"
 #include "V8/V8LineEditor.h"
 #include "V8/v8-conv.h"
+#include "V8/v8-helper.h"
 #include "V8/v8-utils.h"
 #include "V8/v8-vpack.h"
 #include "V8Server/V8DealerFeature.h"
@@ -82,6 +83,7 @@
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/modes.h"
 #include "VocBase/Methods/Databases.h"
+#include "VocBase/Methods/Transactions.h"
 
 using namespace arangodb;
 using namespace arangodb::basics;
@@ -122,257 +124,30 @@ static void JS_Transaction(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
+  // check if we have some transaction object
   if (args.Length() != 1 || !args[0]->IsObject()) {
     TRI_V8_THROW_EXCEPTION_USAGE("TRANSACTION(<object>)");
   }
 
-  TRI_vocbase_t* vocbase = GetContextVocBase(isolate);
-
-  if (vocbase == nullptr) {
-    TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
-  }
-
-  // treat the argument as an object from now on
-  v8::Handle<v8::Object> object = v8::Handle<v8::Object>::Cast(args[0]);
-
-  // extract the properties from the object
-  transaction::Options trxOptions;
-
-  if (object->Has(TRI_V8_ASCII_STRING("lockTimeout"))) {
-    static std::string const timeoutError =
-        "<lockTimeout> must be a valid numeric value";
-
-    if (!object->Get(TRI_V8_ASCII_STRING("lockTimeout"))->IsNumber()) {
-      TRI_V8_THROW_EXCEPTION_PARAMETER(timeoutError);
-    }
-
-    trxOptions.lockTimeout =
-        TRI_ObjectToDouble(object->Get(TRI_V8_ASCII_STRING("lockTimeout")));
-
-    if (trxOptions.lockTimeout < 0.0) {
-      TRI_V8_THROW_EXCEPTION_PARAMETER(timeoutError);
-    }
-  }
-
-  // "waitForSync"
-  TRI_GET_GLOBALS();
-  TRI_GET_GLOBAL_STRING(WaitForSyncKey);
-  if (object->Has(WaitForSyncKey)) {
-    if (!object->Get(WaitForSyncKey)->IsBoolean() &&
-        !object->Get(WaitForSyncKey)->IsBooleanObject()) {
-      TRI_V8_THROW_EXCEPTION_PARAMETER("<waitForSync> must be a boolean value");
-    }
-
-    trxOptions.waitForSync = TRI_ObjectToBoolean(WaitForSyncKey);
-  }
-
-  // "collections"
-  std::string collectionError;
-  
-  if (!object->Has(TRI_V8_ASCII_STRING("collections")) ||
-      !object->Get(TRI_V8_ASCII_STRING("collections"))->IsObject()) {
-    collectionError = "missing/invalid collections definition for transaction";
-    TRI_V8_THROW_EXCEPTION_PARAMETER(collectionError);
-  }
-
-  // extract collections
-  v8::Handle<v8::Object> collections = v8::Handle<v8::Object>::Cast(
-      object->Get(TRI_V8_ASCII_STRING("collections")));
-
-  if (collections.IsEmpty()) {
-    collectionError =
-      "empty collections definition for transaction";
-
-    TRI_V8_THROW_EXCEPTION_PARAMETER(collectionError);
-  }
-
-  std::vector<std::string> readCollections;
-  std::vector<std::string> writeCollections;
-  std::vector<std::string> exclusiveCollections;
-
-  if (collections->Has(TRI_V8_ASCII_STRING("allowImplicit"))) {
-    trxOptions.allowImplicitCollections = TRI_ObjectToBoolean(
-        collections->Get(TRI_V8_ASCII_STRING("allowImplicit")));
-  }
-  
-  if (object->Has(TRI_V8_ASCII_STRING("maxTransactionSize"))) {
-    trxOptions.maxTransactionSize = TRI_ObjectToUInt64(
-        object->Get(TRI_V8_ASCII_STRING("maxTransactionSize")), true);
-  }
-  if (object->Has(TRI_V8_ASCII_STRING("intermediateCommitSize"))) {
-    trxOptions.intermediateCommitSize = TRI_ObjectToUInt64(
-        object->Get(TRI_V8_ASCII_STRING("intermediateCommitSize")), true);
-  }
-  if (object->Has(TRI_V8_ASCII_STRING("intermediateCommitCount"))) {
-    trxOptions.intermediateCommitCount = TRI_ObjectToUInt64(
-        object->Get(TRI_V8_ASCII_STRING("intermediateCommitCount")), true);
-  }
-
-  auto getCollections = [&isolate](v8::Handle<v8::Object> obj,
-                                   std::vector<std::string>& collections,
-                                   char const* attributeName,
-                                   std::string &collectionError) -> bool {
-    if (obj->Has(TRI_V8_ASCII_STRING(attributeName))) {
-      if (obj->Get(TRI_V8_ASCII_STRING(attributeName))->IsArray()) {
-        v8::Handle<v8::Array> names = v8::Handle<v8::Array>::Cast(
-            obj->Get(TRI_V8_ASCII_STRING(attributeName)));
-
-        for (uint32_t i = 0; i < names->Length(); ++i) {
-          v8::Handle<v8::Value> collection = names->Get(i);
-          if (!collection->IsString()) {
-            collectionError += std::string(" Collection name #") +
-              std::to_string(i) + " in array '"+ attributeName +
-              std::string("' is not a string");
-            return false;
-          }
-
-          collections.emplace_back(TRI_ObjectToString(collection));
-        }
-      } else if (obj->Get(TRI_V8_ASCII_STRING(attributeName))->IsString()) {
-        collections.emplace_back(
-          TRI_ObjectToString(obj->Get(TRI_V8_ASCII_STRING(attributeName))));
-      } else {
-        collectionError += std::string(" There is no array in '") + attributeName + "'";
-        return false;
-      }
-      // fallthrough intentional
-    }
-    return true;
-  };
-
-  collectionError = "invalid collection definition for transaction: ";
-  // collections.read
-  bool isValid = 
-    (getCollections(collections, readCollections, "read", collectionError) &&
-     getCollections(collections, writeCollections, "write", collectionError) &&
-     getCollections(collections, exclusiveCollections, "exclusive", collectionError));
-  
-  if (!isValid) {
-    TRI_V8_THROW_EXCEPTION_PARAMETER(collectionError);
-  }
-
-  // extract the "action" property
-  static std::string const actionErrorPrototype =
-      "missing/invalid action definition for transaction";
-  std::string actionError = actionErrorPrototype;
-
-  if (!object->Has(TRI_V8_ASCII_STRING("action"))) {
-    TRI_V8_THROW_EXCEPTION_PARAMETER(actionError);
-  }
-
-  // function parameters
-  v8::Handle<v8::Value> params;
-
-  if (object->Has(TRI_V8_ASCII_STRING("params"))) {
-    params =
-        v8::Handle<v8::Array>::Cast(object->Get(TRI_V8_ASCII_STRING("params")));
-  } else {
-    params = v8::Undefined(isolate);
-  }
-
-  if (params.IsEmpty()) {
-    TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "unable to decode function parameters");
-  }
-
-  bool embed = false;
-  if (object->Has(TRI_V8_ASCII_STRING("embed"))) {
-    v8::Handle<v8::Value> v =
-        v8::Handle<v8::Object>::Cast(object->Get(TRI_V8_ASCII_STRING("embed")));
-    embed = TRI_ObjectToBoolean(v);
-  }
-
-  v8::Handle<v8::Object> current = isolate->GetCurrentContext()->Global();
-
-  // callback function
-  v8::Handle<v8::Function> action;
-
-  if (object->Get(TRI_V8_ASCII_STRING("action"))->IsFunction()) {
-    action = v8::Handle<v8::Function>::Cast(
-        object->Get(TRI_V8_ASCII_STRING("action")));
-    v8::Local<v8::Value> v8_fnname = action->GetName();
-    std::string fnname = TRI_ObjectToString(v8_fnname);
-    if (fnname.length() == 0) {
-      action->SetName(TRI_V8_ASCII_STRING("userTransactionFunction"));
-    }
-  } else if (object->Get(TRI_V8_ASCII_STRING("action"))->IsString()) {
-    v8::TryCatch tryCatch;
-    // get built-in Function constructor (see ECMA-262 5th edition 15.3.2)
-    v8::Local<v8::Function> ctor = v8::Local<v8::Function>::Cast(
-        current->Get(TRI_V8_ASCII_STRING("Function")));
-
-    // Invoke Function constructor to create function with the given body and no
-    // arguments
-    std::string body = TRI_ObjectToString(
-        object->Get(TRI_V8_ASCII_STRING("action"))->ToString());
-    body = "return (" + body + ")(params);";
-    v8::Handle<v8::Value> args[2] = {TRI_V8_ASCII_STRING("params"),
-                                     TRI_V8_STD_STRING(body)};
-    v8::Local<v8::Object> function = ctor->NewInstance(2, args);
-
-    action = v8::Local<v8::Function>::Cast(function);
-    if (tryCatch.HasCaught()) {
-      actionError += " - ";
-      actionError += *v8::String::Utf8Value(tryCatch.Message()->Get());
-      actionError += " - ";
-      actionError += *v8::String::Utf8Value(tryCatch.StackTrace());
-
-      TRI_CreateErrorObject(isolate, TRI_ERROR_BAD_PARAMETER, actionError, false);
-      tryCatch.ReThrow();
-      return;
-    }
-    action->SetName(TRI_V8_ASCII_STRING("userTransactionSource"));
-  } else {
-    TRI_V8_THROW_EXCEPTION_PARAMETER(actionError);
-  }
-
-  if (action.IsEmpty()) {
-    TRI_V8_THROW_EXCEPTION_PARAMETER(actionError);
-  }
-
-  auto transactionContext =
-      std::make_shared<transaction::V8Context>(vocbase, embed);
-
-  // start actual transaction
-  transaction::UserTransaction trx(transactionContext, readCollections, writeCollections, exclusiveCollections,
-                          trxOptions);
-
-  Result res = trx.begin();
-
-  if (!res.ok()) {
-    TRI_V8_THROW_EXCEPTION(res);
-  }
-
+  // filled by function
   v8::Handle<v8::Value> result;
-  try {
-    v8::TryCatch tryCatch;
-    v8::Handle<v8::Value> arguments = params;
-    result = action->Call(current, 1, &arguments);
+  v8::TryCatch tryCatch;
+  Result rv = executeTransactionJS(isolate, args[0], result, tryCatch);
 
-    if (tryCatch.HasCaught()) {
-      trx.abort();
-
-      if (tryCatch.CanContinue()) {
-        tryCatch.ReThrow();
-        return;
-      } else {
-        v8g->_canceled = true;
-        TRI_V8_RETURN(result);
-      }
-    }
-  } catch (arangodb::basics::Exception const& ex) {
-    TRI_V8_THROW_EXCEPTION_MESSAGE(ex.code(), ex.what());
-  } catch (std::bad_alloc const&) {
-    TRI_V8_THROW_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
-  } catch (std::exception const& ex) {
-    TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, ex.what());
-  } catch (...) {
-    TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "caught unknown exception during transaction");
+  // do not rethrow if already canceled
+  if(isContextCanceled(isolate)){
+    TRI_V8_RETURN(result);
   }
 
-  res = trx.commit();
+  // has caught and could not be converted to arangoError
+  // otherwise it would have been reseted
+  if(tryCatch.HasCaught()){
+    tryCatch.ReThrow();
+    return;
+  }
 
-  if (!res.ok()) {
-    TRI_V8_THROW_EXCEPTION(res);
+  if (rv.fail()){
+    THROW_ARANGO_EXCEPTION(rv);
   }
 
   TRI_V8_RETURN(result);

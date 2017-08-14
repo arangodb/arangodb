@@ -158,6 +158,7 @@ class LogicalCollection {
   TRI_vocbase_col_status_e status() const;
   TRI_vocbase_col_status_e getStatusLocked();
 
+  void executeWhileStatusWriteLocked(std::function<void()> const& callback);
   void executeWhileStatusLocked(std::function<void()> const& callback);
   bool tryExecuteWhileStatusLocked(std::function<void()> const& callback);
 

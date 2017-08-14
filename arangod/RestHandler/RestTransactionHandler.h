@@ -18,32 +18,35 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Jan Steemann
+/// @author Jan Christoph Uhde
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_MMFILES_MMFILES_FULLTEXT_RESULT_H
-#define ARANGOD_MMFILES_MMFILES_FULLTEXT_RESULT_H 1
+#ifndef ARANGOD_REST_HANDLER_REST_TRANSACTION_HANDLER_H
+#define ARANGOD_REST_HANDLER_REST_TRANSACTION_HANDLER_H 1
 
-#include "mmfiles-fulltext-common.h"
+#include "Basics/ReadWriteLock.h"
+#include "RestHandler/RestVocbaseBaseHandler.h"
 
-// Forward declarations
 namespace arangodb {
-  struct DocumentIdentifierToken;
+
+class V8Context;
+
+class RestTransactionHandler : public arangodb::RestVocbaseBaseHandler {
+  V8Context* _v8Context;
+  basics::ReadWriteLock _lock;
+
+ public:
+  RestTransactionHandler(GeneralRequest*, GeneralResponse*);
+
+ public:
+  char const* name() const override final { return "RestTransactionHandler"; }
+  bool isDirect() const override { return false; }
+  RestStatus execute() override;
+  bool cancel() override final;
+
+ private:
+  void returnContext();
+};
 }
-
-/// @brief typedef for a fulltext result list
-typedef struct TRI_fulltext_result_s {
-  uint32_t _numDocuments;
-  arangodb::DocumentIdentifierToken* _documents;
-} TRI_fulltext_result_t;
-
-/// @brief create a result
-TRI_fulltext_result_t* TRI_CreateResultMMFilesFulltextIndex(const uint32_t);
-
-/// @brief destroy a result
-void TRI_DestroyResultMMFilesFulltextIndex(TRI_fulltext_result_t*);
-
-/// @brief free a result
-void TRI_FreeResultMMFilesFulltextIndex(TRI_fulltext_result_t*);
 
 #endif

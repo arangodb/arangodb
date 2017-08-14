@@ -541,25 +541,6 @@ Result RocksDBGeoIndex::removeInternal(transaction::Methods* trx,
   return IndexResult(TRI_ERROR_NO_ERROR, this);
 }
 
-int RocksDBGeoIndex::unload() {
-  // create a new, empty index
-  /*auto empty = GeoIndex_new(_objectId, 0, 0);
-
-  if (empty == nullptr) {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
-  }
-
-  // free the old one
-  if (_geoIndex != nullptr) {
-    GeoIndex_free(_geoIndex);
-  }
-
-  // and assign it
-  _geoIndex = empty;*/
-
-  return TRI_ERROR_NO_ERROR;
-}
-
 /// @brief looks up all points within a given radius
 GeoCoordinates* RocksDBGeoIndex::withinQuery(transaction::Methods* trx,
                                              double lat, double lon,
