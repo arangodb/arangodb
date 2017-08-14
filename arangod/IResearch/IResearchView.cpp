@@ -1569,8 +1569,8 @@ void IResearchView::getPropertiesVPack(
 
   _meta.json(builder);
 
-  if (!_logicalView) {
-    return; // nothing more to output
+  if (!_logicalView || forPersistence) {
+    return; // nothing more to output (persistent configuration does not need links)
   }
 
   std::vector<std::string> collections;

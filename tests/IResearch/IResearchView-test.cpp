@@ -224,6 +224,28 @@ SECTION("test_defaults") {
     std::string error;
 
     CHECK((7U == slice.length()));
+    CHECK((!slice.hasKey("links"))); // no logical view so no links
+    CHECK((meta.init(slice, error) && expectedMeta == meta));
+  }
+
+  // existing view definition with LogicalView (for persistence)
+  {
+    arangodb::LogicalView logicalView(nullptr, namedJson->slice());
+    auto view = arangodb::iresearch::IResearchView::make(&logicalView, json->slice(), false);
+    CHECK((false == !view));
+
+    arangodb::velocypack::Builder builder;
+
+    builder.openObject();
+    view->getPropertiesVPack(builder, true);
+    builder.close();
+
+    auto slice = builder.slice();
+    arangodb::iresearch::IResearchViewMeta meta;
+    std::string error;
+
+    CHECK((7U == slice.length()));
+    CHECK((!slice.hasKey("links"))); // for persistence so no links
     CHECK((meta.init(slice, error) && expectedMeta == meta));
   }
 
@@ -244,6 +266,7 @@ SECTION("test_defaults") {
     std::string error;
 
     CHECK((8U == slice.length()));
+    CHECK((slice.hasKey("links")));
     CHECK((meta.init(slice, error) && expectedMeta == meta));
   }
 
