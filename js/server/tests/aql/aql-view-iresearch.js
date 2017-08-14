@@ -195,7 +195,7 @@ function iResearchAqlTestSuite () {
     },
 
     testStartsWithFilter : function () {
-      var result = AQL_EXECUTE("FOR doc IN VIEW UnitTestsView FILTER IR::STARTS_WITH(doc.a, 'fo') RETURN doc", null, { }).json;
+      var result = AQL_EXECUTE("FOR doc IN VIEW UnitTestsView FILTER STARTS_WITH(doc.a, 'fo') RETURN doc", null, { }).json;
 
       assertEqual(result.length, 10);
       result.forEach(function(res) {
@@ -204,7 +204,7 @@ function iResearchAqlTestSuite () {
     },
 
     testStartsWithFilter2 : function () {
-      var result = AQL_EXECUTE("FOR doc IN VIEW UnitTestsView FILTER IR::STARTS_WITH(doc.b, 'ba') RETURN doc", null, { }).json;
+      var result = AQL_EXECUTE("FOR doc IN VIEW UnitTestsView FILTER STARTS_WITH(doc.b, 'ba') RETURN doc", null, { }).json;
 
       assertEqual(result.length, 10);
       result.forEach(function(res) {
@@ -213,7 +213,7 @@ function iResearchAqlTestSuite () {
     },
 
     testStartsWithFilterSort : function () {
-      var result = AQL_EXECUTE("FOR doc IN VIEW UnitTestsView FILTER IR::STARTS_WITH(doc.b, 'ba') && doc.c == 0 SORT doc.b RETURN doc", null, { }).json;
+      var result = AQL_EXECUTE("FOR doc IN VIEW UnitTestsView FILTER STARTS_WITH(doc.b, 'ba') && doc.c == 0 SORT doc.b RETURN doc", null, { }).json;
 
       assertEqual(result.length, 2);
       assertEqual(result[0].b, 'bar');

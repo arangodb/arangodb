@@ -225,7 +225,7 @@ bool attributeAccessEqual(
 }
 
 std::string nameFromAttributeAccess(arangodb::aql::AstNode const& node) {
-  class nameBuilder {
+  class {
    public:
     bool operator()(irs::string_ref const& value) {
       if (!str_.empty()) {

@@ -21,44 +21,30 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_IRESEARCH__APPLICATION_SERVER_HELPER_H
-#define ARANGOD_IRESEARCH__APPLICATION_SERVER_HELPER_H 1
-
-#include "ApplicationFeatures/ApplicationServer.h"
+#include "Aql/AqlFunctionFeature.h"
+#include "Aql/Function.h"
 
 namespace arangodb {
-
-namespace aql {
-
-struct Function;
-class AqlFunctionFeature;
-
-} // aql
-
 namespace iresearch {
 
-template<typename T>
-T* getFeature(std::string const& name) {
-  auto* feature = arangodb::application_features::ApplicationServer::lookupFeature(name);
-
-  #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-    return dynamic_cast<T*>(feature);
-  #else
-    return static_cast<T*>(feature);
-  #endif
-}
-
-template<typename T>
-T* getFeature() {
-  return getFeature<T>(T::name());
-}
-
 void addFunction(
-  arangodb::aql::AqlFunctionFeature& functions,
-  arangodb::aql::Function const& function
-);
+    arangodb::aql::AqlFunctionFeature& functions,
+    arangodb::aql::Function const& function
+) {
+  // check that a function by the given name is not registred to avoid
+  // triggering an assert inside AqlFunctionFeature::add(...)
+  try {
+    if (functions.byName(function.externalName)) {
+      return; // already have a function with this name
+    }
+  } catch (arangodb::basics::Exception& e) {
+    if (TRI_ERROR_QUERY_FUNCTION_NAME_UNKNOWN != e.code()) {
+      throw; // not a duplicate instance exception
+    }
+  }
+
+  functions.add(function);
+}
 
 } // iresearch
 } // arangodb
-
-#endif

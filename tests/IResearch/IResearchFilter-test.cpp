@@ -29,6 +29,7 @@
 #include "GeneralServer/AuthenticationFeature.h"
 #include "IResearch/ApplicationServerHelper.h"
 #include "IResearch/IResearchFilterFactory.h"
+#include "IResearch/IResearchFeature.h"
 #include "IResearch/IResearchLinkMeta.h"
 #include "IResearch/IResearchViewMeta.h"
 #include "IResearch/IResearchAnalyzerFeature.h"
@@ -163,6 +164,19 @@ void assertFilterSuccess(std::string const& queryString, irs::filter const& expe
   CHECK(expected == actual);
 }
 
+void assertFilterParseFail(std::string const& queryString) {
+  TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "testVocbase");
+
+  arangodb::aql::Query query(
+     false, &vocbase, arangodb::aql::QueryString(queryString),
+     nullptr, nullptr,
+     arangodb::aql::PART_MAIN
+  );
+
+  auto const parseResult = query.parse();
+  CHECK(TRI_ERROR_NO_ERROR != parseResult.code);
+}
+
 void assertFilterFail(std::string const& queryString) {
   TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "testVocbase");
 
@@ -213,6 +227,7 @@ struct IResearchFilterSetup {
     features.emplace_back(new arangodb::AqlFeature(&server), true);
     features.emplace_back(new arangodb::aql::AqlFunctionFeature(&server), true); // required for IResearchAnalyzerFeature
     features.emplace_back(new arangodb::iresearch::IResearchAnalyzerFeature(&server), true);
+    features.emplace_back(new arangodb::iresearch::IResearchFeature(&server), true);
     features.emplace_back(new arangodb::iresearch::SystemDatabaseFeature(&server, system.get()), false); // required for IResearchAnalyzerFeature
 
     for (auto& f : features) {
@@ -2213,10 +2228,10 @@ SECTION("Exists") {
     auto& exists = expected.add<irs::by_column_existence>();
     exists.field("name").prefix_match(true);
 
-    assertFilterSuccess("FOR d IN VIEW myView FILTER ir::exists(d.name) RETURN d", expected);
-    assertFilterSuccess("FOR d IN VIEW myView FILTER ir::exists(d['name']) RETURN d", expected);
-    assertFilterSuccess("FOR d IN VIEW myView FILTER iR::eXists(d.name) RETURN d", expected);
-    assertFilterSuccess("FOR d IN VIEW myView FILTER iR::eXists(d['name']) RETURN d", expected);
+    assertFilterSuccess("FOR d IN VIEW myView FILTER exists(d.name) RETURN d", expected);
+    assertFilterSuccess("FOR d IN VIEW myView FILTER exists(d['name']) RETURN d", expected);
+    assertFilterSuccess("FOR d IN VIEW myView FILTER eXists(d.name) RETURN d", expected);
+    assertFilterSuccess("FOR d IN VIEW myView FILTER eXists(d['name']) RETURN d", expected);
   }
 
   // complex field
@@ -2225,10 +2240,10 @@ SECTION("Exists") {
     auto& exists = expected.add<irs::by_column_existence>();
     exists.field("obj.prop.name").prefix_match(true);
 
-    assertFilterSuccess("FOR d IN VIEW myView FILTER ir::exists(d.obj.prop.name) RETURN d", expected);
-    assertFilterSuccess("FOR d IN VIEW myView FILTER ir::exists(d['obj']['prop']['name']) RETURN d", expected);
-    assertFilterSuccess("FOR d IN VIEW myView FILTER iR::eXists(d.obj.prop.name) RETURN d", expected);
-    assertFilterSuccess("FOR d IN VIEW myView FILTER iR::eXists(d['obj'].prop.name) RETURN d", expected);
+    assertFilterSuccess("FOR d IN VIEW myView FILTER exists(d.obj.prop.name) RETURN d", expected);
+    assertFilterSuccess("FOR d IN VIEW myView FILTER exists(d['obj']['prop']['name']) RETURN d", expected);
+    assertFilterSuccess("FOR d IN VIEW myView FILTER eXists(d.obj.prop.name) RETURN d", expected);
+    assertFilterSuccess("FOR d IN VIEW myView FILTER eXists(d['obj'].prop.name) RETURN d", expected);
   }
 
   // complex field with offset
@@ -2237,22 +2252,22 @@ SECTION("Exists") {
     auto& exists = expected.add<irs::by_column_existence>();
     exists.field("obj.prop[3].name").prefix_match(true);
 
-    assertFilterSuccess("FOR d IN VIEW myView FILTER ir::exists(d.obj.prop[3].name) RETURN d", expected);
-    assertFilterSuccess("FOR d IN VIEW myView FILTER ir::exists(d['obj']['prop'][3]['name']) RETURN d", expected);
-    assertFilterSuccess("FOR d IN VIEW myView FILTER iR::eXists(d.obj.prop[3].name) RETURN d", expected);
-    assertFilterSuccess("FOR d IN VIEW myView FILTER iR::eXists(d['obj'].prop[3].name) RETURN d", expected);
+    assertFilterSuccess("FOR d IN VIEW myView FILTER exists(d.obj.prop[3].name) RETURN d", expected);
+    assertFilterSuccess("FOR d IN VIEW myView FILTER exists(d['obj']['prop'][3]['name']) RETURN d", expected);
+    assertFilterSuccess("FOR d IN VIEW myView FILTER eXists(d.obj.prop[3].name) RETURN d", expected);
+    assertFilterSuccess("FOR d IN VIEW myView FILTER eXists(d['obj'].prop[3].name) RETURN d", expected);
   }
 
   // invalid attribute access
-  assertFilterFail("FOR d IN VIEW myView FILTER ir::exists(d) RETURN d");
-  assertFilterFail("FOR d IN VIEW myView FILTER ir::exists(d[*]) RETURN d");
-  assertFilterFail("FOR d IN VIEW myView FILTER ir::exists(d.a.b[*]) RETURN d");
-  assertFilterFail("FOR d IN VIEW myView FILTER ir::exists('d.name') RETURN d");
-  assertFilterFail("FOR d IN VIEW myView FILTER ir::exists(123) RETURN d");
-  assertFilterFail("FOR d IN VIEW myView FILTER ir::exists(123.5) RETURN d");
-  assertFilterFail("FOR d IN VIEW myView FILTER ir::exists(null) RETURN d");
-  assertFilterFail("FOR d IN VIEW myView FILTER ir::exists(true) RETURN d");
-  assertFilterFail("FOR d IN VIEW myView FILTER ir::exists(false) RETURN d");
+  assertFilterFail("FOR d IN VIEW myView FILTER exists(d) RETURN d");
+  assertFilterFail("FOR d IN VIEW myView FILTER exists(d[*]) RETURN d");
+  assertFilterFail("FOR d IN VIEW myView FILTER exists(d.a.b[*]) RETURN d");
+  assertFilterFail("FOR d IN VIEW myView FILTER exists('d.name') RETURN d");
+  assertFilterFail("FOR d IN VIEW myView FILTER exists(123) RETURN d");
+  assertFilterFail("FOR d IN VIEW myView FILTER exists(123.5) RETURN d");
+  assertFilterFail("FOR d IN VIEW myView FILTER exists(null) RETURN d");
+  assertFilterFail("FOR d IN VIEW myView FILTER exists(true) RETURN d");
+  assertFilterFail("FOR d IN VIEW myView FILTER exists(false) RETURN d");
 
   // field + type
   {
@@ -2260,19 +2275,19 @@ SECTION("Exists") {
     auto& exists = expected.add<irs::by_column_existence>();
     exists.field(mangleType("name")).prefix_match(true);
 
-    assertFilterSuccess("FOR d IN VIEW myView FILTER ir::exists(d.name, 'type') RETURN d", expected);
-    assertFilterSuccess("FOR d IN VIEW myView FILTER iR::eXists(d.name, 'type') RETURN d", expected);
+    assertFilterSuccess("FOR d IN VIEW myView FILTER exists(d.name, 'type') RETURN d", expected);
+    assertFilterSuccess("FOR d IN VIEW myView FILTER eXists(d.name, 'type') RETURN d", expected);
 
     // invalid 2nd argument
-    assertFilterFail("FOR d IN VIEW myView FILTER ir::exists(d.name, 'Type') RETURN d");
-    assertFilterFail("FOR d IN VIEW myView FILTER ir::exists(d.name, 'TYPE') RETURN d");
-    assertFilterFail("FOR d IN VIEW myView FILTER ir::exists(d.name, 'invalid') RETURN d");
-    assertFilterFail("FOR d IN VIEW myView FILTER ir::exists(d.name, d) RETURN d");
-    assertFilterFail("FOR d IN VIEW myView FILTER ir::exists(d.name, null) RETURN d");
-    assertFilterFail("FOR d IN VIEW myView FILTER ir::exists(d.name, 123) RETURN d");
-    assertFilterFail("FOR d IN VIEW myView FILTER ir::exists(d.name, 123.5) RETURN d");
-    assertFilterFail("FOR d IN VIEW myView FILTER ir::exists(d.name, true) RETURN d");
-    assertFilterFail("FOR d IN VIEW myView FILTER ir::exists(d.name, false) RETURN d");
+    assertFilterFail("FOR d IN VIEW myView FILTER exists(d.name, 'Type') RETURN d");
+    assertFilterFail("FOR d IN VIEW myView FILTER exists(d.name, 'TYPE') RETURN d");
+    assertFilterFail("FOR d IN VIEW myView FILTER exists(d.name, 'invalid') RETURN d");
+    assertFilterFail("FOR d IN VIEW myView FILTER exists(d.name, d) RETURN d");
+    assertFilterFail("FOR d IN VIEW myView FILTER exists(d.name, null) RETURN d");
+    assertFilterFail("FOR d IN VIEW myView FILTER exists(d.name, 123) RETURN d");
+    assertFilterFail("FOR d IN VIEW myView FILTER exists(d.name, 123.5) RETURN d");
+    assertFilterFail("FOR d IN VIEW myView FILTER exists(d.name, true) RETURN d");
+    assertFilterFail("FOR d IN VIEW myView FILTER exists(d.name, false) RETURN d");
   }
 
   // field + analyzer
@@ -2281,19 +2296,19 @@ SECTION("Exists") {
     auto& exists = expected.add<irs::by_column_existence>();
     exists.field(mangleAnalyzer("name")).prefix_match(true);
 
-    assertFilterSuccess("FOR d IN VIEW myView FILTER ir::exists(d.name, 'analyzer') RETURN d", expected);
-    assertFilterSuccess("FOR d IN VIEW myView FILTER iR::eXists(d.name, 'analyzer') RETURN d", expected);
+    assertFilterSuccess("FOR d IN VIEW myView FILTER exists(d.name, 'analyzer') RETURN d", expected);
+    assertFilterSuccess("FOR d IN VIEW myView FILTER eXists(d.name, 'analyzer') RETURN d", expected);
 
     // invalid 2nd argument
-    assertFilterFail("FOR d IN VIEW myView FILTER ir::exists(d.name, 'Analyzer') RETURN d");
-    assertFilterFail("FOR d IN VIEW myView FILTER ir::exists(d.name, 'ANALYZER') RETURN d");
-    assertFilterFail("FOR d IN VIEW myView FILTER ir::exists(d.name, 'foo') RETURN d");
-    assertFilterFail("FOR d IN VIEW myView FILTER ir::exists(d.name, d) RETURN d");
-    assertFilterFail("FOR d IN VIEW myView FILTER ir::exists(d.name, null) RETURN d");
-    assertFilterFail("FOR d IN VIEW myView FILTER ir::exists(d.name, 123) RETURN d");
-    assertFilterFail("FOR d IN VIEW myView FILTER ir::exists(d.name, 123.5) RETURN d");
-    assertFilterFail("FOR d IN VIEW myView FILTER ir::exists(d.name, true) RETURN d");
-    assertFilterFail("FOR d IN VIEW myView FILTER ir::exists(d.name, false) RETURN d");
+    assertFilterFail("FOR d IN VIEW myView FILTER exists(d.name, 'Analyzer') RETURN d");
+    assertFilterFail("FOR d IN VIEW myView FILTER exists(d.name, 'ANALYZER') RETURN d");
+    assertFilterFail("FOR d IN VIEW myView FILTER exists(d.name, 'foo') RETURN d");
+    assertFilterFail("FOR d IN VIEW myView FILTER exists(d.name, d) RETURN d");
+    assertFilterFail("FOR d IN VIEW myView FILTER exists(d.name, null) RETURN d");
+    assertFilterFail("FOR d IN VIEW myView FILTER exists(d.name, 123) RETURN d");
+    assertFilterFail("FOR d IN VIEW myView FILTER exists(d.name, 123.5) RETURN d");
+    assertFilterFail("FOR d IN VIEW myView FILTER exists(d.name, true) RETURN d");
+    assertFilterFail("FOR d IN VIEW myView FILTER exists(d.name, false) RETURN d");
   }
 
   // field + type + string
@@ -2302,13 +2317,13 @@ SECTION("Exists") {
     auto& exists = expected.add<irs::by_column_existence>();
     exists.field(mangleStringIdentity("name")).prefix_match(false);
 
-    assertFilterSuccess("FOR d IN VIEW myView FILTER ir::exists(d.name, 'type', 'string') RETURN d", expected);
-    assertFilterSuccess("FOR d IN VIEW myView FILTER iR::eXists(d.name, 'type', 'string') RETURN d", expected);
+    assertFilterSuccess("FOR d IN VIEW myView FILTER exists(d.name, 'type', 'string') RETURN d", expected);
+    assertFilterSuccess("FOR d IN VIEW myView FILTER eXists(d.name, 'type', 'string') RETURN d", expected);
 
     // invalid 3rd argument
-    assertFilterFail("FOR d IN VIEW myView FILTER ir::exists(d.name, 'type', 'String') RETURN d");
-    assertFilterFail("FOR d IN VIEW myView FILTER ir::exists(d.name, 'type', 'STRING') RETURN d");
-    assertFilterFail("FOR d IN VIEW myView FILTER ir::exists(d.name, 'type', 'invalid') RETURN d");
+    assertFilterFail("FOR d IN VIEW myView FILTER exists(d.name, 'type', 'String') RETURN d");
+    assertFilterFail("FOR d IN VIEW myView FILTER exists(d.name, 'type', 'STRING') RETURN d");
+    assertFilterFail("FOR d IN VIEW myView FILTER exists(d.name, 'type', 'invalid') RETURN d");
   }
 
   // field + type + numeric
@@ -2317,13 +2332,13 @@ SECTION("Exists") {
     auto& exists = expected.add<irs::by_column_existence>();
     exists.field(mangleNumeric("obj.name")).prefix_match(false);
 
-    assertFilterSuccess("FOR d IN VIEW myView FILTER ir::exists(d.obj.name, 'type', 'numeric') RETURN d", expected);
-    assertFilterSuccess("FOR d IN VIEW myView FILTER iR::eXists(d.obj.name, 'type', 'numeric') RETURN d", expected);
+    assertFilterSuccess("FOR d IN VIEW myView FILTER exists(d.obj.name, 'type', 'numeric') RETURN d", expected);
+    assertFilterSuccess("FOR d IN VIEW myView FILTER eXists(d.obj.name, 'type', 'numeric') RETURN d", expected);
 
     // invalid 3rd argument
-    assertFilterFail("FOR d IN VIEW myView FILTER ir::exists(d.obj.name, 'type', 'Numeric') RETURN d");
-    assertFilterFail("FOR d IN VIEW myView FILTER ir::exists(d.obj.name, 'type', 'NUMERIC') RETURN d");
-    assertFilterFail("FOR d IN VIEW myView FILTER ir::exists(d.obj.name, 'type', 'foo') RETURN d");
+    assertFilterFail("FOR d IN VIEW myView FILTER exists(d.obj.name, 'type', 'Numeric') RETURN d");
+    assertFilterFail("FOR d IN VIEW myView FILTER exists(d.obj.name, 'type', 'NUMERIC') RETURN d");
+    assertFilterFail("FOR d IN VIEW myView FILTER exists(d.obj.name, 'type', 'foo') RETURN d");
   }
 
   // field + type + bool
@@ -2332,13 +2347,13 @@ SECTION("Exists") {
     auto& exists = expected.add<irs::by_column_existence>();
     exists.field(mangleBool("name")).prefix_match(false);
 
-    assertFilterSuccess("FOR d IN VIEW myView FILTER ir::exists(d.name, 'type', 'bool') RETURN d", expected);
-    assertFilterSuccess("FOR d IN VIEW myView FILTER iR::eXists(d.name, 'type', 'bool') RETURN d", expected);
+    assertFilterSuccess("FOR d IN VIEW myView FILTER exists(d.name, 'type', 'bool') RETURN d", expected);
+    assertFilterSuccess("FOR d IN VIEW myView FILTER eXists(d.name, 'type', 'bool') RETURN d", expected);
 
     // invalid 3rd argument
-    assertFilterFail("FOR d IN VIEW myView FILTER ir::exists(d.name, 'type', 'Bool') RETURN d");
-    assertFilterFail("FOR d IN VIEW myView FILTER ir::exists(d.name, 'type', 'BOOL') RETURN d");
-    assertFilterFail("FOR d IN VIEW myView FILTER ir::exists(d.name, 'type', 'asdfasdfa') RETURN d");
+    assertFilterFail("FOR d IN VIEW myView FILTER exists(d.name, 'type', 'Bool') RETURN d");
+    assertFilterFail("FOR d IN VIEW myView FILTER exists(d.name, 'type', 'BOOL') RETURN d");
+    assertFilterFail("FOR d IN VIEW myView FILTER exists(d.name, 'type', 'asdfasdfa') RETURN d");
   }
 
   // field + type + null
@@ -2347,22 +2362,22 @@ SECTION("Exists") {
     auto& exists = expected.add<irs::by_column_existence>();
     exists.field(mangleNull("name")).prefix_match(false);
 
-    assertFilterSuccess("FOR d IN VIEW myView FILTER ir::exists(d.name, 'type', 'null') RETURN d", expected);
-    assertFilterSuccess("FOR d IN VIEW myView FILTER iR::eXists(d.name, 'type', 'null') RETURN d", expected);
+    assertFilterSuccess("FOR d IN VIEW myView FILTER exists(d.name, 'type', 'null') RETURN d", expected);
+    assertFilterSuccess("FOR d IN VIEW myView FILTER eXists(d.name, 'type', 'null') RETURN d", expected);
 
     // invalid 3rd argument
-    assertFilterFail("FOR d IN VIEW myView FILTER ir::exists(d.name, 'type', 'Null') RETURN d");
-    assertFilterFail("FOR d IN VIEW myView FILTER ir::exists(d.name, 'type', 'NULL') RETURN d");
-    assertFilterFail("FOR d IN VIEW myView FILTER ir::exists(d.name, 'type', 'asdfasdfa') RETURN d");
+    assertFilterFail("FOR d IN VIEW myView FILTER exists(d.name, 'type', 'Null') RETURN d");
+    assertFilterFail("FOR d IN VIEW myView FILTER exists(d.name, 'type', 'NULL') RETURN d");
+    assertFilterFail("FOR d IN VIEW myView FILTER exists(d.name, 'type', 'asdfasdfa') RETURN d");
   }
 
   // invalid 3rd argument
-  assertFilterFail("FOR d IN VIEW myView FILTER ir::exists(d.name, 'type', d) RETURN d");
-  assertFilterFail("FOR d IN VIEW myView FILTER ir::exists(d.name, 'type', null) RETURN d");
-  assertFilterFail("FOR d IN VIEW myView FILTER ir::exists(d.name, 'type', 123) RETURN d");
-  assertFilterFail("FOR d IN VIEW myView FILTER ir::exists(d.name, 'type', 123.5) RETURN d");
-  assertFilterFail("FOR d IN VIEW myView FILTER ir::exists(d.name, 'type', true) RETURN d");
-  assertFilterFail("FOR d IN VIEW myView FILTER ir::exists(d.name, 'type', false) RETURN d");
+  assertFilterFail("FOR d IN VIEW myView FILTER exists(d.name, 'type', d) RETURN d");
+  assertFilterFail("FOR d IN VIEW myView FILTER exists(d.name, 'type', null) RETURN d");
+  assertFilterFail("FOR d IN VIEW myView FILTER exists(d.name, 'type', 123) RETURN d");
+  assertFilterFail("FOR d IN VIEW myView FILTER exists(d.name, 'type', 123.5) RETURN d");
+  assertFilterFail("FOR d IN VIEW myView FILTER exists(d.name, 'type', true) RETURN d");
+  assertFilterFail("FOR d IN VIEW myView FILTER exists(d.name, 'type', false) RETURN d");
 
   // field + type + analyzer
   {
@@ -2370,19 +2385,19 @@ SECTION("Exists") {
     auto& exists = expected.add<irs::by_column_existence>();
     exists.field(mangleString("name", "test_analyzer")).prefix_match(false);
 
-    assertFilterSuccess("FOR d IN VIEW myView FILTER ir::exists(d.name, 'analyzer', 'test_analyzer') RETURN d", expected);
-    assertFilterSuccess("FOR d IN VIEW myView FILTER iR::eXists(d.name, 'analyzer', 'test_analyzer') RETURN d", expected);
+    assertFilterSuccess("FOR d IN VIEW myView FILTER exists(d.name, 'analyzer', 'test_analyzer') RETURN d", expected);
+    assertFilterSuccess("FOR d IN VIEW myView FILTER eXists(d.name, 'analyzer', 'test_analyzer') RETURN d", expected);
 
     // invalid 3rd argument
-    assertFilterFail("FOR d IN VIEW myView FILTER ir::exists(d.name, 'analyzer', 'foo') RETURN d");
-    assertFilterFail("FOR d IN VIEW myView FILTER ir::exists(d.name, 'analyzer', 'invalid') RETURN d");
-    assertFilterFail("FOR d IN VIEW myView FILTER ir::exists(d.name, 'analyzer', '') RETURN d");
-    assertFilterFail("FOR d IN VIEW myView FILTER ir::exists(d.name, 'analyzer', d) RETURN d");
-    assertFilterFail("FOR d IN VIEW myView FILTER ir::exists(d.name, 'analyzer', null) RETURN d");
-    assertFilterFail("FOR d IN VIEW myView FILTER ir::exists(d.name, 'analyzer', 123) RETURN d");
-    assertFilterFail("FOR d IN VIEW myView FILTER ir::exists(d.name, 'analyzer', 123.5) RETURN d");
-    assertFilterFail("FOR d IN VIEW myView FILTER ir::exists(d.name, 'analyzer', true) RETURN d");
-    assertFilterFail("FOR d IN VIEW myView FILTER ir::exists(d.name, 'analyzer', false) RETURN d");
+    assertFilterFail("FOR d IN VIEW myView FILTER exists(d.name, 'analyzer', 'foo') RETURN d");
+    assertFilterFail("FOR d IN VIEW myView FILTER exists(d.name, 'analyzer', 'invalid') RETURN d");
+    assertFilterFail("FOR d IN VIEW myView FILTER exists(d.name, 'analyzer', '') RETURN d");
+    assertFilterFail("FOR d IN VIEW myView FILTER exists(d.name, 'analyzer', d) RETURN d");
+    assertFilterFail("FOR d IN VIEW myView FILTER exists(d.name, 'analyzer', null) RETURN d");
+    assertFilterFail("FOR d IN VIEW myView FILTER exists(d.name, 'analyzer', 123) RETURN d");
+    assertFilterFail("FOR d IN VIEW myView FILTER exists(d.name, 'analyzer', 123.5) RETURN d");
+    assertFilterFail("FOR d IN VIEW myView FILTER exists(d.name, 'analyzer', true) RETURN d");
+    assertFilterFail("FOR d IN VIEW myView FILTER exists(d.name, 'analyzer', false) RETURN d");
   }
 
   // field + type + identity analyzer
@@ -2391,19 +2406,19 @@ SECTION("Exists") {
     auto& exists = expected.add<irs::by_column_existence>();
     exists.field(mangleStringIdentity("name")).prefix_match(false);
 
-    assertFilterSuccess("FOR d IN VIEW myView FILTER ir::exists(d.name, 'analyzer', 'identity') RETURN d", expected);
-    assertFilterSuccess("FOR d IN VIEW myView FILTER iR::eXists(d.name, 'analyzer', 'identity') RETURN d", expected);
+    assertFilterSuccess("FOR d IN VIEW myView FILTER exists(d.name, 'analyzer', 'identity') RETURN d", expected);
+    assertFilterSuccess("FOR d IN VIEW myView FILTER eXists(d.name, 'analyzer', 'identity') RETURN d", expected);
   }
 
   // invalid number of arguments
-  assertFilterFail("FOR d IN VIEW myView FILTER ir::exists() RETURN d");
-  assertFilterFail("FOR d IN VIEW myView FILTER ir::exists(d.name, 'type', 'null', d) RETURN d");
-  assertFilterFail("FOR d IN VIEW myView FILTER ir::exists(d.name, 'analyzer', 'test_analyzer', false) RETURN d");
+  assertFilterParseFail("FOR d IN VIEW myView FILTER exists() RETURN d");
+  assertFilterParseFail("FOR d IN VIEW myView FILTER exists(d.name, 'type', 'null', d) RETURN d");
+  assertFilterParseFail("FOR d IN VIEW myView FILTER exists(d.name, 'analyzer', 'test_analyzer', false) RETURN d");
 }
 
 SECTION("Phrase") {
   // wrong number of arguments
-  assertFilterFail("FOR d IN VIEW myView FILTER ir::phrase() RETURN d");
+  assertFilterParseFail("FOR d IN VIEW myView FILTER phrase() RETURN d");
 
   // without offset, default analyzer
   // quick
@@ -2412,21 +2427,21 @@ SECTION("Phrase") {
     auto& phrase = expected.add<irs::by_phrase>();
     phrase.field(mangleStringIdentity("name")).push_back("quick");
 
-    assertFilterSuccess("FOR d IN VIEW myView FILTER ir::phrase(d.name, 'quick') RETURN d", expected);
-    assertFilterSuccess("FOR d IN VIEW myView FILTER ir::phrase(d['name'], 'quick') RETURN d", expected);
-    assertFilterSuccess("FOR d IN VIEW myView FILTER iR::phRase(d.name, 'quick') RETURN d", expected);
-    assertFilterSuccess("FOR d IN VIEW myView FILTER iR::phRase(d['name'], 'quick') RETURN d", expected);
+    assertFilterSuccess("FOR d IN VIEW myView FILTER phrase(d.name, 'quick') RETURN d", expected);
+    assertFilterSuccess("FOR d IN VIEW myView FILTER phrase(d['name'], 'quick') RETURN d", expected);
+    assertFilterSuccess("FOR d IN VIEW myView FILTER phRase(d.name, 'quick') RETURN d", expected);
+    assertFilterSuccess("FOR d IN VIEW myView FILTER phRase(d['name'], 'quick') RETURN d", expected);
 
     // invalid attribute access
-    assertFilterFail("FOR d IN VIEW myView FILTER ir::phrase(d, 'quick') RETURN d");
-    assertFilterFail("FOR d IN VIEW myView FILTER ir::phrase(d[*], 'quick') RETURN d");
-    assertFilterFail("FOR d IN VIEW myView FILTER ir::phrase(d.a.b[*].c, 'quick') RETURN d");
-    assertFilterFail("FOR d IN VIEW myView FILTER ir::phrase('d.name', 'quick') RETURN d");
-    assertFilterFail("FOR d IN VIEW myView FILTER ir::phrase(123, 'quick') RETURN d");
-    assertFilterFail("FOR d IN VIEW myView FILTER ir::phrase(123.5, 'quick') RETURN d");
-    assertFilterFail("FOR d IN VIEW myView FILTER ir::phrase(null, 'quick') RETURN d");
-    assertFilterFail("FOR d IN VIEW myView FILTER ir::phrase(true, 'quick') RETURN d");
-    assertFilterFail("FOR d IN VIEW myView FILTER ir::phrase(false, 'quick') RETURN d");
+    assertFilterFail("FOR d IN VIEW myView FILTER phrase(d, 'quick') RETURN d");
+    assertFilterFail("FOR d IN VIEW myView FILTER phrase(d[*], 'quick') RETURN d");
+    assertFilterFail("FOR d IN VIEW myView FILTER phrase(d.a.b[*].c, 'quick') RETURN d");
+    assertFilterFail("FOR d IN VIEW myView FILTER phrase('d.name', 'quick') RETURN d");
+    assertFilterFail("FOR d IN VIEW myView FILTER phrase(123, 'quick') RETURN d");
+    assertFilterFail("FOR d IN VIEW myView FILTER phrase(123.5, 'quick') RETURN d");
+    assertFilterFail("FOR d IN VIEW myView FILTER phrase(null, 'quick') RETURN d");
+    assertFilterFail("FOR d IN VIEW myView FILTER phrase(true, 'quick') RETURN d");
+    assertFilterFail("FOR d IN VIEW myView FILTER phrase(false, 'quick') RETURN d");
   }
 
   // with offset, default analyzer
@@ -2436,16 +2451,16 @@ SECTION("Phrase") {
     auto& phrase = expected.add<irs::by_phrase>();
     phrase.field(mangleStringIdentity("name")).push_back("quick").push_back("brown");
 
-    assertFilterSuccess("FOR d IN VIEW myView FILTER ir::phrase(d.name, 'quick', 0, 'brown') RETURN d", expected);
-    assertFilterSuccess("FOR d IN VIEW myView FILTER ir::phrase(d.name, 'quick', 0.0, 'brown') RETURN d", expected);
-    assertFilterSuccess("FOR d IN VIEW myView FILTER ir::phrase(d.name, 'quick', 0.1, 'brown') RETURN d", expected);
+    assertFilterSuccess("FOR d IN VIEW myView FILTER phrase(d.name, 'quick', 0, 'brown') RETURN d", expected);
+    assertFilterSuccess("FOR d IN VIEW myView FILTER phrase(d.name, 'quick', 0.0, 'brown') RETURN d", expected);
+    assertFilterSuccess("FOR d IN VIEW myView FILTER phrase(d.name, 'quick', 0.1, 'brown') RETURN d", expected);
 
     // wrong offset argument
-    assertFilterFail("FOR d IN VIEW myView FILTER ir::phrase(d.name, 'quick', '0', 'brown') RETURN d");
-    assertFilterFail("FOR d IN VIEW myView FILTER ir::phrase(d.name, 'quick', null, 'brown') RETURN d");
-    assertFilterFail("FOR d IN VIEW myView FILTER ir::phrase(d.name, 'quick', true, 'brown') RETURN d");
-    assertFilterFail("FOR d IN VIEW myView FILTER ir::phrase(d.name, 'quick', false, 'brown') RETURN d");
-    assertFilterFail("FOR d IN VIEW myView FILTER ir::phrase(d.name, 'quick', d.name, 'brown') RETURN d");
+    assertFilterFail("FOR d IN VIEW myView FILTER phrase(d.name, 'quick', '0', 'brown') RETURN d");
+    assertFilterFail("FOR d IN VIEW myView FILTER phrase(d.name, 'quick', null, 'brown') RETURN d");
+    assertFilterFail("FOR d IN VIEW myView FILTER phrase(d.name, 'quick', true, 'brown') RETURN d");
+    assertFilterFail("FOR d IN VIEW myView FILTER phrase(d.name, 'quick', false, 'brown') RETURN d");
+    assertFilterFail("FOR d IN VIEW myView FILTER phrase(d.name, 'quick', d.name, 'brown') RETURN d");
   }
 
   // with offset, complex name, default analyzer
@@ -2455,12 +2470,12 @@ SECTION("Phrase") {
     auto& phrase = expected.add<irs::by_phrase>();
     phrase.field(mangleStringIdentity("obj.name")).push_back("quick").push_back("brown", 5);
 
-    assertFilterSuccess("FOR d IN VIEW myView FILTER ir::phrase(d['obj'].name, 'quick', 5, 'brown') RETURN d", expected);
-    assertFilterSuccess("FOR d IN VIEW myView FILTER ir::phrase(d.obj.name, 'quick', 5, 'brown') RETURN d", expected);
-    assertFilterSuccess("FOR d IN VIEW myView FILTER ir::phrase(d.obj.name, 'quick', 5.0, 'brown') RETURN d", expected);
-    assertFilterSuccess("FOR d IN VIEW myView FILTER ir::phrase(d.obj['name'], 'quick', 5.0, 'brown') RETURN d", expected);
-    assertFilterSuccess("FOR d IN VIEW myView FILTER ir::phrase(d.obj.name, 'quick', 5.5, 'brown') RETURN d", expected);
-    assertFilterSuccess("FOR d IN VIEW myView FILTER ir::phrase(d['obj']['name'], 'quick', 5.5, 'brown') RETURN d", expected);
+    assertFilterSuccess("FOR d IN VIEW myView FILTER phrase(d['obj'].name, 'quick', 5, 'brown') RETURN d", expected);
+    assertFilterSuccess("FOR d IN VIEW myView FILTER phrase(d.obj.name, 'quick', 5, 'brown') RETURN d", expected);
+    assertFilterSuccess("FOR d IN VIEW myView FILTER phrase(d.obj.name, 'quick', 5.0, 'brown') RETURN d", expected);
+    assertFilterSuccess("FOR d IN VIEW myView FILTER phrase(d.obj['name'], 'quick', 5.0, 'brown') RETURN d", expected);
+    assertFilterSuccess("FOR d IN VIEW myView FILTER phrase(d.obj.name, 'quick', 5.5, 'brown') RETURN d", expected);
+    assertFilterSuccess("FOR d IN VIEW myView FILTER phrase(d['obj']['name'], 'quick', 5.5, 'brown') RETURN d", expected);
   }
 
   // with offset, complex name, default analyzer
@@ -2470,12 +2485,12 @@ SECTION("Phrase") {
     auto& phrase = expected.add<irs::by_phrase>();
     phrase.field(mangleStringIdentity("[5].obj.name[100]")).push_back("quick").push_back("brown", 5);
 
-    assertFilterSuccess("FOR d IN VIEW myView FILTER ir::phrase(d[5]['obj'].name[100], 'quick', 5, 'brown') RETURN d", expected);
-    assertFilterSuccess("FOR d IN VIEW myView FILTER ir::phrase(d[5].obj.name[100], 'quick', 5, 'brown') RETURN d", expected);
-    assertFilterSuccess("FOR d IN VIEW myView FILTER ir::phrase(d[5].obj.name[100], 'quick', 5.0, 'brown') RETURN d", expected);
-    assertFilterSuccess("FOR d IN VIEW myView FILTER ir::phrase(d[5].obj['name'][100], 'quick', 5.0, 'brown') RETURN d", expected);
-    assertFilterSuccess("FOR d IN VIEW myView FILTER ir::phrase(d[5].obj.name[100], 'quick', 5.5, 'brown') RETURN d", expected);
-    assertFilterSuccess("FOR d IN VIEW myView FILTER ir::phrase(d[5]['obj']['name'][100], 'quick', 5.5, 'brown') RETURN d", expected);
+    assertFilterSuccess("FOR d IN VIEW myView FILTER phrase(d[5]['obj'].name[100], 'quick', 5, 'brown') RETURN d", expected);
+    assertFilterSuccess("FOR d IN VIEW myView FILTER phrase(d[5].obj.name[100], 'quick', 5, 'brown') RETURN d", expected);
+    assertFilterSuccess("FOR d IN VIEW myView FILTER phrase(d[5].obj.name[100], 'quick', 5.0, 'brown') RETURN d", expected);
+    assertFilterSuccess("FOR d IN VIEW myView FILTER phrase(d[5].obj['name'][100], 'quick', 5.0, 'brown') RETURN d", expected);
+    assertFilterSuccess("FOR d IN VIEW myView FILTER phrase(d[5].obj.name[100], 'quick', 5.5, 'brown') RETURN d", expected);
+    assertFilterSuccess("FOR d IN VIEW myView FILTER phrase(d[5]['obj']['name'][100], 'quick', 5.5, 'brown') RETURN d", expected);
   }
 
   // multiple offsets, complex name, default analyzer
@@ -2489,28 +2504,28 @@ SECTION("Phrase") {
           .push_back("fox", 2)
           .push_back("jumps");
 
-    assertFilterSuccess("FOR d IN VIEW myView FILTER ir::phrase(d.obj.properties.id.name, 'quick', 3, 'brown', 2, 'fox', 0, 'jumps') RETURN d", expected);
-    assertFilterSuccess("FOR d IN VIEW myView FILTER ir::phrase(d['obj']['properties']['id']['name'], 'quick', 3, 'brown', 2, 'fox', 0, 'jumps') RETURN d", expected);
-    assertFilterSuccess("FOR d IN VIEW myView FILTER ir::phrase(d.obj.properties.id.name, 'quick', 3.0, 'brown', 2, 'fox', 0.5, 'jumps') RETURN d", expected);
-    assertFilterSuccess("FOR d IN VIEW myView FILTER ir::phrase(d.obj['properties'].id.name, 'quick', 3.0, 'brown', 2, 'fox', 0.5, 'jumps') RETURN d", expected);
-    assertFilterSuccess("FOR d IN VIEW myView FILTER ir::phrase(d.obj.properties.id.name, 'quick', 3.0, 'brown', 2.0, 'fox', 0.5, 'jumps') RETURN d", expected);
-    assertFilterSuccess("FOR d IN VIEW myView FILTER ir::phrase(d.obj.properties['id'].name, 'quick', 3.0, 'brown', 2.0, 'fox', 0.5, 'jumps') RETURN d", expected);
-    assertFilterSuccess("FOR d IN VIEW myView FILTER ir::phrase(d.obj.properties.id.name, 'quick', 3.5, 'brown', 2.0, 'fox', 0.5, 'jumps') RETURN d", expected);
+    assertFilterSuccess("FOR d IN VIEW myView FILTER phrase(d.obj.properties.id.name, 'quick', 3, 'brown', 2, 'fox', 0, 'jumps') RETURN d", expected);
+    assertFilterSuccess("FOR d IN VIEW myView FILTER phrase(d['obj']['properties']['id']['name'], 'quick', 3, 'brown', 2, 'fox', 0, 'jumps') RETURN d", expected);
+    assertFilterSuccess("FOR d IN VIEW myView FILTER phrase(d.obj.properties.id.name, 'quick', 3.0, 'brown', 2, 'fox', 0.5, 'jumps') RETURN d", expected);
+    assertFilterSuccess("FOR d IN VIEW myView FILTER phrase(d.obj['properties'].id.name, 'quick', 3.0, 'brown', 2, 'fox', 0.5, 'jumps') RETURN d", expected);
+    assertFilterSuccess("FOR d IN VIEW myView FILTER phrase(d.obj.properties.id.name, 'quick', 3.0, 'brown', 2.0, 'fox', 0.5, 'jumps') RETURN d", expected);
+    assertFilterSuccess("FOR d IN VIEW myView FILTER phrase(d.obj.properties['id'].name, 'quick', 3.0, 'brown', 2.0, 'fox', 0.5, 'jumps') RETURN d", expected);
+    assertFilterSuccess("FOR d IN VIEW myView FILTER phrase(d.obj.properties.id.name, 'quick', 3.5, 'brown', 2.0, 'fox', 0.5, 'jumps') RETURN d", expected);
 
     // wrong value
-    assertFilterFail("FOR d IN VIEW myView FILTER ir::phrase(d.obj.properties.id.name, 'quick', 3, d.brown, 2, 'fox', 0, 'jumps') RETURN d");
-    assertFilterFail("FOR d IN VIEW myView FILTER ir::phrase(d.obj.properties.id.name, 'quick', 3, 2, 2, 'fox', 0, 'jumps') RETURN d");
-    assertFilterFail("FOR d IN VIEW myView FILTER ir::phrase(d.obj.properties.id.name, 'quick', 3, 2.5, 2, 'fox', 0, 'jumps') RETURN d");
-    assertFilterFail("FOR d IN VIEW myView FILTER ir::phrase(d.obj.properties.id.name, 'quick', 3, null, 2, 'fox', 0, 'jumps') RETURN d");
-    assertFilterFail("FOR d IN VIEW myView FILTER ir::phrase(d.obj.properties.id.name, 'quick', 3, true, 2, 'fox', 0, 'jumps') RETURN d");
-    assertFilterFail("FOR d IN VIEW myView FILTER ir::phrase(d.obj.properties.id.name, 'quick', 3, false, 2, 'fox', 0, 'jumps') RETURN d");
-    assertFilterFail("FOR d IN VIEW myView FILTER ir::phrase(d.obj.properties.id.name, 'quick', 3, 'brown', 2, 'fox', 0, d) RETURN d");
+    assertFilterFail("FOR d IN VIEW myView FILTER phrase(d.obj.properties.id.name, 'quick', 3, d.brown, 2, 'fox', 0, 'jumps') RETURN d");
+    assertFilterFail("FOR d IN VIEW myView FILTER phrase(d.obj.properties.id.name, 'quick', 3, 2, 2, 'fox', 0, 'jumps') RETURN d");
+    assertFilterFail("FOR d IN VIEW myView FILTER phrase(d.obj.properties.id.name, 'quick', 3, 2.5, 2, 'fox', 0, 'jumps') RETURN d");
+    assertFilterFail("FOR d IN VIEW myView FILTER phrase(d.obj.properties.id.name, 'quick', 3, null, 2, 'fox', 0, 'jumps') RETURN d");
+    assertFilterFail("FOR d IN VIEW myView FILTER phrase(d.obj.properties.id.name, 'quick', 3, true, 2, 'fox', 0, 'jumps') RETURN d");
+    assertFilterFail("FOR d IN VIEW myView FILTER phrase(d.obj.properties.id.name, 'quick', 3, false, 2, 'fox', 0, 'jumps') RETURN d");
+    assertFilterFail("FOR d IN VIEW myView FILTER phrase(d.obj.properties.id.name, 'quick', 3, 'brown', 2, 'fox', 0, d) RETURN d");
 
     // wrong offset argument
-    assertFilterFail("FOR d IN VIEW myView FILTER ir::phrase(d.obj.properties.id.name, 'quick', 3, 'brown', '2', 'fox', 0, 'jumps') RETURN d");
-    assertFilterFail("FOR d IN VIEW myView FILTER ir::phrase(d.obj.properties.id.name, 'quick', 3, 'brown', null, 'fox', 0, 'jumps') RETURN d");
-    assertFilterFail("FOR d IN VIEW myView FILTER ir::phrase(d.obj.properties.id.name, 'quick', 3, 'brown', true, 'fox', 0, 'jumps') RETURN d");
-    assertFilterFail("FOR d IN VIEW myView FILTER ir::phrase(d.obj.properties.id.name, 'quick', 3, 'brown', false, 'fox', 0, 'jumps') RETURN d");
+    assertFilterFail("FOR d IN VIEW myView FILTER phrase(d.obj.properties.id.name, 'quick', 3, 'brown', '2', 'fox', 0, 'jumps') RETURN d");
+    assertFilterFail("FOR d IN VIEW myView FILTER phrase(d.obj.properties.id.name, 'quick', 3, 'brown', null, 'fox', 0, 'jumps') RETURN d");
+    assertFilterFail("FOR d IN VIEW myView FILTER phrase(d.obj.properties.id.name, 'quick', 3, 'brown', true, 'fox', 0, 'jumps') RETURN d");
+    assertFilterFail("FOR d IN VIEW myView FILTER phrase(d.obj.properties.id.name, 'quick', 3, 'brown', false, 'fox', 0, 'jumps') RETURN d");
   }
 
   // without offset, custom analyzer
@@ -2521,16 +2536,16 @@ SECTION("Phrase") {
     phrase.field(mangleString("name", "test_analyzer"));
     phrase.push_back("q").push_back("u").push_back("i").push_back("c").push_back("k");
 
-    assertFilterSuccess("FOR d IN VIEW myView FILTER ir::phrase(d.name, 'quick', 'test_analyzer') RETURN d", expected);
+    assertFilterSuccess("FOR d IN VIEW myView FILTER phrase(d.name, 'quick', 'test_analyzer') RETURN d", expected);
 
     // invalid attribute access
-    assertFilterFail("FOR d IN VIEW myView FILTER ir::phrase(d, 'quick', 'test_analyzer') RETURN d");
-    assertFilterFail("FOR d IN VIEW myView FILTER ir::phrase('d.name', 'quick', 'test_analyzer') RETURN d");
-    assertFilterFail("FOR d IN VIEW myView FILTER ir::phrase(123, 'quick', 'test_analyzer') RETURN d");
-    assertFilterFail("FOR d IN VIEW myView FILTER ir::phrase(123.5, 'quick', 'test_analyzer') RETURN d");
-    assertFilterFail("FOR d IN VIEW myView FILTER ir::phrase(null, 'quick', 'test_analyzer') RETURN d");
-    assertFilterFail("FOR d IN VIEW myView FILTER ir::phrase(true, 'quick', 'test_analyzer') RETURN d");
-    assertFilterFail("FOR d IN VIEW myView FILTER ir::phrase(false, 'quick', 'test_analyzer') RETURN d");
+    assertFilterFail("FOR d IN VIEW myView FILTER phrase(d, 'quick', 'test_analyzer') RETURN d");
+    assertFilterFail("FOR d IN VIEW myView FILTER phrase('d.name', 'quick', 'test_analyzer') RETURN d");
+    assertFilterFail("FOR d IN VIEW myView FILTER phrase(123, 'quick', 'test_analyzer') RETURN d");
+    assertFilterFail("FOR d IN VIEW myView FILTER phrase(123.5, 'quick', 'test_analyzer') RETURN d");
+    assertFilterFail("FOR d IN VIEW myView FILTER phrase(null, 'quick', 'test_analyzer') RETURN d");
+    assertFilterFail("FOR d IN VIEW myView FILTER phrase(true, 'quick', 'test_analyzer') RETURN d");
+    assertFilterFail("FOR d IN VIEW myView FILTER phrase(false, 'quick', 'test_analyzer') RETURN d");
   }
 
   // with offset, custom analyzer
@@ -2542,16 +2557,16 @@ SECTION("Phrase") {
     phrase.push_back("q").push_back("u").push_back("i").push_back("c").push_back("k");
     phrase.push_back("b").push_back("r").push_back("o").push_back("w").push_back("n");
 
-    assertFilterSuccess("FOR d IN VIEW myView FILTER ir::phrase(d.name, 'quick', 0, 'brown', 'test_analyzer') RETURN d", expected);
-    assertFilterSuccess("FOR d IN VIEW myView FILTER ir::phrase(d.name, 'quick', 0.0, 'brown', 'test_analyzer') RETURN d", expected);
-    assertFilterSuccess("FOR d IN VIEW myView FILTER ir::phrase(d.name, 'quick', 0.5, 'brown', 'test_analyzer') RETURN d", expected);
+    assertFilterSuccess("FOR d IN VIEW myView FILTER phrase(d.name, 'quick', 0, 'brown', 'test_analyzer') RETURN d", expected);
+    assertFilterSuccess("FOR d IN VIEW myView FILTER phrase(d.name, 'quick', 0.0, 'brown', 'test_analyzer') RETURN d", expected);
+    assertFilterSuccess("FOR d IN VIEW myView FILTER phrase(d.name, 'quick', 0.5, 'brown', 'test_analyzer') RETURN d", expected);
 
     // wrong offset argument
-    assertFilterFail("FOR d IN VIEW myView FILTER ir::phrase(d.name, 'quick', '0', 'brown', 'test_analyzer') RETURN d");
-    assertFilterFail("FOR d IN VIEW myView FILTER ir::phrase(d.name, 'quick', null, 'brown', 'test_analyzer') RETURN d");
-    assertFilterFail("FOR d IN VIEW myView FILTER ir::phrase(d.name, 'quick', true, 'brown', 'test_analyzer') RETURN d");
-    assertFilterFail("FOR d IN VIEW myView FILTER ir::phrase(d.name, 'quick', false, 'brown', 'test_analyzer') RETURN d");
-    assertFilterFail("FOR d IN VIEW myView FILTER ir::phrase(d.name, 'quick', d.name, 'brown', 'test_analyzer') RETURN d");
+    assertFilterFail("FOR d IN VIEW myView FILTER phrase(d.name, 'quick', '0', 'brown', 'test_analyzer') RETURN d");
+    assertFilterFail("FOR d IN VIEW myView FILTER phrase(d.name, 'quick', null, 'brown', 'test_analyzer') RETURN d");
+    assertFilterFail("FOR d IN VIEW myView FILTER phrase(d.name, 'quick', true, 'brown', 'test_analyzer') RETURN d");
+    assertFilterFail("FOR d IN VIEW myView FILTER phrase(d.name, 'quick', false, 'brown', 'test_analyzer') RETURN d");
+    assertFilterFail("FOR d IN VIEW myView FILTER phrase(d.name, 'quick', d.name, 'brown', 'test_analyzer') RETURN d");
   }
 
   // with offset, complex name, custom analyzer
@@ -2563,10 +2578,10 @@ SECTION("Phrase") {
     phrase.push_back("q").push_back("u").push_back("i").push_back("c").push_back("k");
     phrase.push_back("b", 5).push_back("r").push_back("o").push_back("w").push_back("n");
 
-    assertFilterSuccess("FOR d IN VIEW myView FILTER ir::phrase(d['obj']['name'], 'quick', 5, 'brown', 'test_analyzer') RETURN d", expected);
-    assertFilterSuccess("FOR d IN VIEW myView FILTER ir::phrase(d.obj.name, 'quick', 5, 'brown', 'test_analyzer') RETURN d", expected);
-    assertFilterSuccess("FOR d IN VIEW myView FILTER ir::phrase(d.obj.name, 'quick', 5.0, 'brown', 'test_analyzer') RETURN d", expected);
-    assertFilterSuccess("FOR d IN VIEW myView FILTER ir::phrase(d.obj.name, 'quick', 5.6, 'brown', 'test_analyzer') RETURN d", expected);
+    assertFilterSuccess("FOR d IN VIEW myView FILTER phrase(d['obj']['name'], 'quick', 5, 'brown', 'test_analyzer') RETURN d", expected);
+    assertFilterSuccess("FOR d IN VIEW myView FILTER phrase(d.obj.name, 'quick', 5, 'brown', 'test_analyzer') RETURN d", expected);
+    assertFilterSuccess("FOR d IN VIEW myView FILTER phrase(d.obj.name, 'quick', 5.0, 'brown', 'test_analyzer') RETURN d", expected);
+    assertFilterSuccess("FOR d IN VIEW myView FILTER phrase(d.obj.name, 'quick', 5.6, 'brown', 'test_analyzer') RETURN d", expected);
   }
 
   // multiple offsets, complex name, custom analyzer
@@ -2580,49 +2595,49 @@ SECTION("Phrase") {
     phrase.push_back("f", 2).push_back("o").push_back("x");
     phrase.push_back("j").push_back("u").push_back("m").push_back("p").push_back("s");
 
-    assertFilterSuccess("FOR d IN VIEW myView FILTER ir::phrase(d.obj.properties.id.name, 'quick', 3, 'brown', 2, 'fox', 0, 'jumps', 'test_analyzer') RETURN d", expected);
-    assertFilterSuccess("FOR d IN VIEW myView FILTER ir::phrase(d.obj.properties.id.name, 'quick', 3.0, 'brown', 2, 'fox', 0, 'jumps', 'test_analyzer') RETURN d", expected);
-    assertFilterSuccess("FOR d IN VIEW myView FILTER ir::phrase(d.obj.properties.id['name'], 'quick', 3.0, 'brown', 2, 'fox', 0, 'jumps', 'test_analyzer') RETURN d", expected);
-    assertFilterSuccess("FOR d IN VIEW myView FILTER ir::phrase(d.obj.properties.id.name, 'quick', 3.6, 'brown', 2, 'fox', 0, 'jumps', 'test_analyzer') RETURN d", expected);
-    assertFilterSuccess("FOR d IN VIEW myView FILTER ir::phrase(d.obj['properties'].id.name, 'quick', 3.6, 'brown', 2, 'fox', 0, 'jumps', 'test_analyzer') RETURN d", expected);
-    assertFilterSuccess("FOR d IN VIEW myView FILTER ir::phrase(d.obj.properties.id.name, 'quick', 3, 'brown', 2.0, 'fox', 0, 'jumps', 'test_analyzer') RETURN d", expected);
-    assertFilterSuccess("FOR d IN VIEW myView FILTER ir::phrase(d.obj.properties.id.name, 'quick', 3, 'brown', 2.5, 'fox', 0.0, 'jumps', 'test_analyzer') RETURN d", expected);
-    assertFilterSuccess("FOR d IN VIEW myView FILTER ir::phrase(d.obj.properties.id.name, 'quick', 3.2, 'brown', 2.0, 'fox', 0.0, 'jumps', 'test_analyzer') RETURN d", expected);
-    assertFilterSuccess("FOR d IN VIEW myView FILTER ir::phrase(d['obj']['properties']['id']['name'], 'quick', 3.2, 'brown', 2.0, 'fox', 0.0, 'jumps', 'test_analyzer') RETURN d", expected);
+    assertFilterSuccess("FOR d IN VIEW myView FILTER phrase(d.obj.properties.id.name, 'quick', 3, 'brown', 2, 'fox', 0, 'jumps', 'test_analyzer') RETURN d", expected);
+    assertFilterSuccess("FOR d IN VIEW myView FILTER phrase(d.obj.properties.id.name, 'quick', 3.0, 'brown', 2, 'fox', 0, 'jumps', 'test_analyzer') RETURN d", expected);
+    assertFilterSuccess("FOR d IN VIEW myView FILTER phrase(d.obj.properties.id['name'], 'quick', 3.0, 'brown', 2, 'fox', 0, 'jumps', 'test_analyzer') RETURN d", expected);
+    assertFilterSuccess("FOR d IN VIEW myView FILTER phrase(d.obj.properties.id.name, 'quick', 3.6, 'brown', 2, 'fox', 0, 'jumps', 'test_analyzer') RETURN d", expected);
+    assertFilterSuccess("FOR d IN VIEW myView FILTER phrase(d.obj['properties'].id.name, 'quick', 3.6, 'brown', 2, 'fox', 0, 'jumps', 'test_analyzer') RETURN d", expected);
+    assertFilterSuccess("FOR d IN VIEW myView FILTER phrase(d.obj.properties.id.name, 'quick', 3, 'brown', 2.0, 'fox', 0, 'jumps', 'test_analyzer') RETURN d", expected);
+    assertFilterSuccess("FOR d IN VIEW myView FILTER phrase(d.obj.properties.id.name, 'quick', 3, 'brown', 2.5, 'fox', 0.0, 'jumps', 'test_analyzer') RETURN d", expected);
+    assertFilterSuccess("FOR d IN VIEW myView FILTER phrase(d.obj.properties.id.name, 'quick', 3.2, 'brown', 2.0, 'fox', 0.0, 'jumps', 'test_analyzer') RETURN d", expected);
+    assertFilterSuccess("FOR d IN VIEW myView FILTER phrase(d['obj']['properties']['id']['name'], 'quick', 3.2, 'brown', 2.0, 'fox', 0.0, 'jumps', 'test_analyzer') RETURN d", expected);
 
     // wrong value
-    assertFilterFail("FOR d IN VIEW myView FILTER ir::phrase(d.obj.properties.id.name, 'quick', 3, d.brown, 2, 'fox', 0, 'jumps', 'test_analyzer') RETURN d");
-    assertFilterFail("FOR d IN VIEW myView FILTER ir::phrase(d.obj.properties.id.name, 'quick', 3, 2, 2, 'fox', 0, 'jumps', 'test_analyzer') RETURN d");
-    assertFilterFail("FOR d IN VIEW myView FILTER ir::phrase(d.obj.properties.id.name, 'quick', 3, 2.5, 2, 'fox', 0, 'jumps', 'test_analyzer') RETURN d");
-    assertFilterFail("FOR d IN VIEW myView FILTER ir::phrase(d.obj.properties.id.name, 'quick', 3, null, 2, 'fox', 0, 'jumps', 'test_analyzer') RETURN d");
-    assertFilterFail("FOR d IN VIEW myView FILTER ir::phrase(d.obj.properties.id.name, 'quick', 3, true, 2, 'fox', 0, 'jumps', 'test_analyzer') RETURN d");
-    assertFilterFail("FOR d IN VIEW myView FILTER ir::phrase(d.obj.properties.id.name, 'quick', 3, false, 2, 'fox', 0, 'jumps', 'test_analyzer') RETURN d");
-    assertFilterFail("FOR d IN VIEW myView FILTER ir::phrase(d.obj.properties.id.name, 'quick', 3, 'brown', 2, 'fox', 0, d, 'test_analyzer') RETURN d");
+    assertFilterFail("FOR d IN VIEW myView FILTER phrase(d.obj.properties.id.name, 'quick', 3, d.brown, 2, 'fox', 0, 'jumps', 'test_analyzer') RETURN d");
+    assertFilterFail("FOR d IN VIEW myView FILTER phrase(d.obj.properties.id.name, 'quick', 3, 2, 2, 'fox', 0, 'jumps', 'test_analyzer') RETURN d");
+    assertFilterFail("FOR d IN VIEW myView FILTER phrase(d.obj.properties.id.name, 'quick', 3, 2.5, 2, 'fox', 0, 'jumps', 'test_analyzer') RETURN d");
+    assertFilterFail("FOR d IN VIEW myView FILTER phrase(d.obj.properties.id.name, 'quick', 3, null, 2, 'fox', 0, 'jumps', 'test_analyzer') RETURN d");
+    assertFilterFail("FOR d IN VIEW myView FILTER phrase(d.obj.properties.id.name, 'quick', 3, true, 2, 'fox', 0, 'jumps', 'test_analyzer') RETURN d");
+    assertFilterFail("FOR d IN VIEW myView FILTER phrase(d.obj.properties.id.name, 'quick', 3, false, 2, 'fox', 0, 'jumps', 'test_analyzer') RETURN d");
+    assertFilterFail("FOR d IN VIEW myView FILTER phrase(d.obj.properties.id.name, 'quick', 3, 'brown', 2, 'fox', 0, d, 'test_analyzer') RETURN d");
 
     // wrong offset argument
-    assertFilterFail("FOR d IN VIEW myView FILTER ir::phrase(d.obj.properties.id.name, 'quick', 3, 'brown', '2', 'fox', 0, 'jumps', 'test_analyzer') RETURN d");
-    assertFilterFail("FOR d IN VIEW myView FILTER ir::phrase(d.obj.properties.id.name, 'quick', 3, 'brown', null, 'fox', 0, 'jumps', 'test_analyzer') RETURN d");
-    assertFilterFail("FOR d IN VIEW myView FILTER ir::phrase(d.obj.properties.id.name, 'quick', 3, 'brown', true, 'fox', 0, 'jumps', 'test_analyzer') RETURN d");
-    assertFilterFail("FOR d IN VIEW myView FILTER ir::phrase(d.obj.properties.id.name, 'quick', 3, 'brown', false, 'fox', 0, 'jumps', 'test_analyzer') RETURN d");
+    assertFilterFail("FOR d IN VIEW myView FILTER phrase(d.obj.properties.id.name, 'quick', 3, 'brown', '2', 'fox', 0, 'jumps', 'test_analyzer') RETURN d");
+    assertFilterFail("FOR d IN VIEW myView FILTER phrase(d.obj.properties.id.name, 'quick', 3, 'brown', null, 'fox', 0, 'jumps', 'test_analyzer') RETURN d");
+    assertFilterFail("FOR d IN VIEW myView FILTER phrase(d.obj.properties.id.name, 'quick', 3, 'brown', true, 'fox', 0, 'jumps', 'test_analyzer') RETURN d");
+    assertFilterFail("FOR d IN VIEW myView FILTER phrase(d.obj.properties.id.name, 'quick', 3, 'brown', false, 'fox', 0, 'jumps', 'test_analyzer') RETURN d");
   }
 
   // wrong analylzer
-  assertFilterFail("FOR d IN VIEW myView FILTER ir::phrase(d.name, 'quick', ['d']) RETURN d");
-  assertFilterFail("FOR d IN VIEW myView FILTER ir::phrase(d.name, 'quick', [d]) RETURN d");
-  assertFilterFail("FOR d IN VIEW myView FILTER ir::phrase(d.name, 'quick', d) RETURN d");
-  assertFilterFail("FOR d IN VIEW myView FILTER ir::phrase(d.name, 'quick', 3) RETURN d");
-  assertFilterFail("FOR d IN VIEW myView FILTER ir::phrase(d.name, 'quick', 3.0) RETURN d");
-  assertFilterFail("FOR d IN VIEW myView FILTER ir::phrase(d.name, 'quick', true) RETURN d");
-  assertFilterFail("FOR d IN VIEW myView FILTER ir::phrase(d.name, 'quick', false) RETURN d");
-  assertFilterFail("FOR d IN VIEW myView FILTER ir::phrase(d.name, 'quick', null) RETURN d");
-  assertFilterFail("FOR d IN VIEW myView FILTER ir::phrase(d.name, 'quick', 'invalidAnalyzer') RETURN d");
-  assertFilterFail("FOR d IN VIEW myView FILTER ir::phrase(d.name, 'quick', 3, 'brown', d) RETURN d");
-  assertFilterFail("FOR d IN VIEW myView FILTER ir::phrase(d.name, 'quick', 3, 'brown', 3) RETURN d");
-  assertFilterFail("FOR d IN VIEW myView FILTER ir::phrase(d.name, 'quick', 3, 'brown', 3.0) RETURN d");
-  assertFilterFail("FOR d IN VIEW myView FILTER ir::phrase(d.name, 'quick', 3, 'brown', true) RETURN d");
-  assertFilterFail("FOR d IN VIEW myView FILTER ir::phrase(d.name, 'quick', 3, 'brown', false) RETURN d");
-  assertFilterFail("FOR d IN VIEW myView FILTER ir::phrase(d.name, 'quick', 3, 'brown', null) RETURN d");
-  assertFilterFail("FOR d IN VIEW myView FILTER ir::phrase(d.name, 'quick', 3, 'brown', 'invalidAnalyzer') RETURN d");
+  assertFilterFail("FOR d IN VIEW myView FILTER phrase(d.name, 'quick', ['d']) RETURN d");
+  assertFilterFail("FOR d IN VIEW myView FILTER phrase(d.name, 'quick', [d]) RETURN d");
+  assertFilterFail("FOR d IN VIEW myView FILTER phrase(d.name, 'quick', d) RETURN d");
+  assertFilterFail("FOR d IN VIEW myView FILTER phrase(d.name, 'quick', 3) RETURN d");
+  assertFilterFail("FOR d IN VIEW myView FILTER phrase(d.name, 'quick', 3.0) RETURN d");
+  assertFilterFail("FOR d IN VIEW myView FILTER phrase(d.name, 'quick', true) RETURN d");
+  assertFilterFail("FOR d IN VIEW myView FILTER phrase(d.name, 'quick', false) RETURN d");
+  assertFilterFail("FOR d IN VIEW myView FILTER phrase(d.name, 'quick', null) RETURN d");
+  assertFilterFail("FOR d IN VIEW myView FILTER phrase(d.name, 'quick', 'invalidAnalyzer') RETURN d");
+  assertFilterFail("FOR d IN VIEW myView FILTER phrase(d.name, 'quick', 3, 'brown', d) RETURN d");
+  assertFilterFail("FOR d IN VIEW myView FILTER phrase(d.name, 'quick', 3, 'brown', 3) RETURN d");
+  assertFilterFail("FOR d IN VIEW myView FILTER phrase(d.name, 'quick', 3, 'brown', 3.0) RETURN d");
+  assertFilterFail("FOR d IN VIEW myView FILTER phrase(d.name, 'quick', 3, 'brown', true) RETURN d");
+  assertFilterFail("FOR d IN VIEW myView FILTER phrase(d.name, 'quick', 3, 'brown', false) RETURN d");
+  assertFilterFail("FOR d IN VIEW myView FILTER phrase(d.name, 'quick', 3, 'brown', null) RETURN d");
+  assertFilterFail("FOR d IN VIEW myView FILTER phrase(d.name, 'quick', 3, 'brown', 'invalidAnalyzer') RETURN d");
 }
 
 SECTION("StartsWith") {
@@ -2633,8 +2648,8 @@ SECTION("StartsWith") {
     prefix.field(mangleStringIdentity("name")).term("abc");
     prefix.scored_terms_limit(128);
 
-    assertFilterSuccess("FOR d IN VIEW myView FILTER ir::starts_with(d['name'], 'abc') RETURN d", expected);
-    assertFilterSuccess("FOR d IN VIEW myView FILTER ir::starts_with(d.name, 'abc') RETURN d", expected);
+    assertFilterSuccess("FOR d IN VIEW myView FILTER starts_with(d['name'], 'abc') RETURN d", expected);
+    assertFilterSuccess("FOR d IN VIEW myView FILTER starts_with(d.name, 'abc') RETURN d", expected);
   }
 
   // without scoring limit, name with offset
@@ -2644,8 +2659,8 @@ SECTION("StartsWith") {
     prefix.field(mangleStringIdentity("name[1]")).term("abc");
     prefix.scored_terms_limit(128);
 
-    assertFilterSuccess("FOR d IN VIEW myView FILTER ir::starts_with(d['name'][1], 'abc') RETURN d", expected);
-    assertFilterSuccess("FOR d IN VIEW myView FILTER ir::starts_with(d.name[1], 'abc') RETURN d", expected);
+    assertFilterSuccess("FOR d IN VIEW myView FILTER starts_with(d['name'][1], 'abc') RETURN d", expected);
+    assertFilterSuccess("FOR d IN VIEW myView FILTER starts_with(d.name[1], 'abc') RETURN d", expected);
   }
 
   // without scoring limit, complex name
@@ -2655,10 +2670,10 @@ SECTION("StartsWith") {
     prefix.field(mangleStringIdentity("obj.properties.name")).term("abc");
     prefix.scored_terms_limit(128);
 
-    assertFilterSuccess("FOR d IN VIEW myView FILTER ir::starts_with(d['obj']['properties']['name'], 'abc') RETURN d", expected);
-    assertFilterSuccess("FOR d IN VIEW myView FILTER ir::starts_with(d.obj['properties']['name'], 'abc') RETURN d", expected);
-    assertFilterSuccess("FOR d IN VIEW myView FILTER ir::starts_with(d.obj['properties'].name, 'abc') RETURN d", expected);
-    assertFilterSuccess("FOR d IN VIEW myView FILTER ir::starts_with(d.obj.properties.name, 'abc') RETURN d", expected);
+    assertFilterSuccess("FOR d IN VIEW myView FILTER starts_with(d['obj']['properties']['name'], 'abc') RETURN d", expected);
+    assertFilterSuccess("FOR d IN VIEW myView FILTER starts_with(d.obj['properties']['name'], 'abc') RETURN d", expected);
+    assertFilterSuccess("FOR d IN VIEW myView FILTER starts_with(d.obj['properties'].name, 'abc') RETURN d", expected);
+    assertFilterSuccess("FOR d IN VIEW myView FILTER starts_with(d.obj.properties.name, 'abc') RETURN d", expected);
   }
 
   // without scoring limit, complex name with offset
@@ -2668,10 +2683,10 @@ SECTION("StartsWith") {
     prefix.field(mangleStringIdentity("obj[400].properties[3].name")).term("abc");
     prefix.scored_terms_limit(128);
 
-    assertFilterSuccess("FOR d IN VIEW myView FILTER ir::starts_with(d['obj'][400]['properties'][3]['name'], 'abc') RETURN d", expected);
-    assertFilterSuccess("FOR d IN VIEW myView FILTER ir::starts_with(d.obj[400]['properties[3]']['name'], 'abc') RETURN d", expected);
-    assertFilterSuccess("FOR d IN VIEW myView FILTER ir::starts_with(d.obj[400]['properties[3]'].name, 'abc') RETURN d", expected);
-    assertFilterSuccess("FOR d IN VIEW myView FILTER ir::starts_with(d.obj[400].properties[3].name, 'abc') RETURN d", expected);
+    assertFilterSuccess("FOR d IN VIEW myView FILTER starts_with(d['obj'][400]['properties'][3]['name'], 'abc') RETURN d", expected);
+    assertFilterSuccess("FOR d IN VIEW myView FILTER starts_with(d.obj[400]['properties[3]']['name'], 'abc') RETURN d", expected);
+    assertFilterSuccess("FOR d IN VIEW myView FILTER starts_with(d.obj[400]['properties[3]'].name, 'abc') RETURN d", expected);
+    assertFilterSuccess("FOR d IN VIEW myView FILTER starts_with(d.obj[400].properties[3].name, 'abc') RETURN d", expected);
   }
 
   // with scoring limit (int)
@@ -2681,8 +2696,8 @@ SECTION("StartsWith") {
     prefix.field(mangleStringIdentity("name")).term("abc");
     prefix.scored_terms_limit(1024);
 
-    assertFilterSuccess("FOR d IN VIEW myView FILTER ir::starts_with(d['name'], 'abc', 1024) RETURN d", expected);
-    assertFilterSuccess("FOR d IN VIEW myView FILTER ir::starts_with(d.name, 'abc', 1024) RETURN d", expected);
+    assertFilterSuccess("FOR d IN VIEW myView FILTER starts_with(d['name'], 'abc', 1024) RETURN d", expected);
+    assertFilterSuccess("FOR d IN VIEW myView FILTER starts_with(d.name, 'abc', 1024) RETURN d", expected);
   }
 
   // with scoring limit (double)
@@ -2692,39 +2707,39 @@ SECTION("StartsWith") {
     prefix.field(mangleStringIdentity("name")).term("abc");
     prefix.scored_terms_limit(100);
 
-    assertFilterSuccess("FOR d IN VIEW myView FILTER ir::starts_with(d['name'], 'abc', 100.5) RETURN d", expected);
-    assertFilterSuccess("FOR d IN VIEW myView FILTER ir::starts_with(d.name, 'abc', 100.5) RETURN d", expected);
+    assertFilterSuccess("FOR d IN VIEW myView FILTER starts_with(d['name'], 'abc', 100.5) RETURN d", expected);
+    assertFilterSuccess("FOR d IN VIEW myView FILTER starts_with(d.name, 'abc', 100.5) RETURN d", expected);
   }
 
   // wrong number of arguments
-  assertFilterFail("FOR d IN VIEW myView FILTER ir::starts_with() RETURN d");
-  assertFilterFail("FOR d IN VIEW myView FILTER ir::starts_with(d.name, 'abc', 100, 'abc') RETURN d");
+  assertFilterParseFail("FOR d IN VIEW myView FILTER starts_with() RETURN d");
+  assertFilterParseFail("FOR d IN VIEW myView FILTER starts_with(d.name, 'abc', 100, 'abc') RETURN d");
 
   // invalid attribute access
-  assertFilterFail("FOR d IN VIEW myView FILTER ir::starts_with(['d'], 'abc') RETURN d");
-  assertFilterFail("FOR d IN VIEW myView FILTER ir::starts_with([d], 'abc') RETURN d");
-  assertFilterFail("FOR d IN VIEW myView FILTER ir::starts_with(d, 'abc') RETURN d");
-  assertFilterFail("FOR d IN VIEW myView FILTER ir::starts_with(d[*], 'abc') RETURN d");
-  assertFilterFail("FOR d IN VIEW myView FILTER ir::starts_with(d.a[*].c, 'abc') RETURN d");
-  assertFilterFail("FOR d IN VIEW myView FILTER ir::starts_with('d.name', 'abc') RETURN d");
-  assertFilterFail("FOR d IN VIEW myView FILTER ir::starts_with(123, 'abc') RETURN d");
-  assertFilterFail("FOR d IN VIEW myView FILTER ir::starts_with(123.5, 'abc') RETURN d");
-  assertFilterFail("FOR d IN VIEW myView FILTER ir::starts_with(null, 'abc') RETURN d");
-  assertFilterFail("FOR d IN VIEW myView FILTER ir::starts_with(true, 'abc') RETURN d");
-  assertFilterFail("FOR d IN VIEW myView FILTER ir::starts_with(false, 'abc') RETURN d");
+  assertFilterFail("FOR d IN VIEW myView FILTER starts_with(['d'], 'abc') RETURN d");
+  assertFilterFail("FOR d IN VIEW myView FILTER starts_with([d], 'abc') RETURN d");
+  assertFilterFail("FOR d IN VIEW myView FILTER starts_with(d, 'abc') RETURN d");
+  assertFilterFail("FOR d IN VIEW myView FILTER starts_with(d[*], 'abc') RETURN d");
+  assertFilterFail("FOR d IN VIEW myView FILTER starts_with(d.a[*].c, 'abc') RETURN d");
+  assertFilterFail("FOR d IN VIEW myView FILTER starts_with('d.name', 'abc') RETURN d");
+  assertFilterFail("FOR d IN VIEW myView FILTER starts_with(123, 'abc') RETURN d");
+  assertFilterFail("FOR d IN VIEW myView FILTER starts_with(123.5, 'abc') RETURN d");
+  assertFilterFail("FOR d IN VIEW myView FILTER starts_with(null, 'abc') RETURN d");
+  assertFilterFail("FOR d IN VIEW myView FILTER starts_with(true, 'abc') RETURN d");
+  assertFilterFail("FOR d IN VIEW myView FILTER starts_with(false, 'abc') RETURN d");
 
   // invalid value
-  assertFilterFail("FOR d IN VIEW myView FILTER ir::starts_with(d.name, 1) RETURN d");
-  assertFilterFail("FOR d IN VIEW myView FILTER ir::starts_with(d.name, 1.5) RETURN d");
-  assertFilterFail("FOR d IN VIEW myView FILTER ir::starts_with(d.name, true) RETURN d");
-  assertFilterFail("FOR d IN VIEW myView FILTER ir::starts_with(d.name, false) RETURN d");
-  assertFilterFail("FOR d IN VIEW myView FILTER ir::starts_with(d.name, null) RETURN d");
+  assertFilterFail("FOR d IN VIEW myView FILTER starts_with(d.name, 1) RETURN d");
+  assertFilterFail("FOR d IN VIEW myView FILTER starts_with(d.name, 1.5) RETURN d");
+  assertFilterFail("FOR d IN VIEW myView FILTER starts_with(d.name, true) RETURN d");
+  assertFilterFail("FOR d IN VIEW myView FILTER starts_with(d.name, false) RETURN d");
+  assertFilterFail("FOR d IN VIEW myView FILTER starts_with(d.name, null) RETURN d");
 
   // invalid scoring limit
-  assertFilterFail("FOR d IN VIEW myView FILTER ir::starts_with(d.name, 'abc', '1024') RETURN d");
-  assertFilterFail("FOR d IN VIEW myView FILTER ir::starts_with(d.name, 'abc', true) RETURN d");
-  assertFilterFail("FOR d IN VIEW myView FILTER ir::starts_with(d.name, 'abc', false) RETURN d");
-  assertFilterFail("FOR d IN VIEW myView FILTER ir::starts_with(d.name, 'abc', null) RETURN d");
+  assertFilterFail("FOR d IN VIEW myView FILTER starts_with(d.name, 'abc', '1024') RETURN d");
+  assertFilterFail("FOR d IN VIEW myView FILTER starts_with(d.name, 'abc', true) RETURN d");
+  assertFilterFail("FOR d IN VIEW myView FILTER starts_with(d.name, 'abc', false) RETURN d");
+  assertFilterFail("FOR d IN VIEW myView FILTER starts_with(d.name, 'abc', null) RETURN d");
 }
 
 }
