@@ -1065,9 +1065,8 @@ function ahuacatlStringFunctionsTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testTrim : function () {
-      var expected = [ 'foo', 'foo  ', '  foo', '', '', '', 'abc', 'abc\n\r\t', '\t\r\nabc', 'a\rb\nc', 'a\rb\nc ', '\ta\rb\nc' ];
-      var actual = getQueryResults("FOR t IN [ [ '  foo  ', 0 ], [ '  foo  ', 1 ], [ '  foo  ', 2 ], [ '', 0 ], [ '', 1 ], [ '', 2 ], [ '\t\r\nabc\n\r\t', 0 ], [ '\t\r\nabc\n\r\t', 1 ], [ '\t\r\nabc\t\r\n', 2 ], [ '\ta\rb\nc ', 0 ], [ '\ta\rb\nc ', 1 ], [ '\ta\rb\nc ', 2 ] ] RETURN TRIM(t[0], t[1])");
-      assertEqual(expected, actual);
+      assertEqual([ 'foo', 'foo  ', '  foo', '', '', '', 'abc', 'abc\n\r\t', '\t\r\nabc', 'a\rb\nc', 'a\rb\nc ', '\ta\rb\nc' ], getQueryResults("FOR t IN [ [ '  foo  ', 0 ], [ '  foo  ', 1 ], [ '  foo  ', 2 ], [ '', 0 ], [ '', 1 ], [ '', 2 ], [ '\t\r\nabc\n\r\t', 0 ], [ '\t\r\nabc\n\r\t', 1 ], [ '\t\r\nabc\t\r\n', 2 ], [ '\ta\rb\nc ', 0 ], [ '\ta\rb\nc ', 1 ], [ '\ta\rb\nc ', 2 ] ] RETURN NOOPT(TRIM(t[0], t[1]))"));
+      assertEqual([ 'foo', 'foo  ', '  foo', '', '', '', 'abc', 'abc\n\r\t', '\t\r\nabc', 'a\rb\nc', 'a\rb\nc ', '\ta\rb\nc' ], getQueryResults("FOR t IN [ [ '  foo  ', 0 ], [ '  foo  ', 1 ], [ '  foo  ', 2 ], [ '', 0 ], [ '', 1 ], [ '', 2 ], [ '\t\r\nabc\n\r\t', 0 ], [ '\t\r\nabc\n\r\t', 1 ], [ '\t\r\nabc\t\r\n', 2 ], [ '\ta\rb\nc ', 0 ], [ '\ta\rb\nc ', 1 ], [ '\ta\rb\nc ', 2 ] ] RETURN NOOPT(V8(TRIM(t[0], t[1])))"));
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1075,9 +1074,8 @@ function ahuacatlStringFunctionsTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testTrimSpecial : function () {
-      var expected = [ 'foo', '  foo  ', '', 'abc', '\t\r\nabc\n\r\t', '\r\nabc\t\r',  'a\rb\n', '\rb\n', '\ta\rb' ];
-      var actual = getQueryResults("FOR t IN [ [ '  foo  ', '\r\n\t ' ], [ '  foo  ', '\r\n\t' ], [ '', '\r\n\t' ], [ '\t\r\nabc\n\r\t', '\r\n\t ' ], [ '\t\r\nabc\n\r\t', '\r\n ' ], [ '\t\r\nabc\t\r\n', '\t\n' ], [ '\ta\rb\nc', '\tc' ], [ '\ta\rb\nc', '\tac' ], [ '\ta\rb\nc', '\nc' ] ] RETURN TRIM(t[0], t[1])");
-      assertEqual(expected, actual);
+      assertEqual([ 'foo', '  foo  ', '', 'abc', '\t\r\nabc\n\r\t', '\r\nabc\t\r',  'a\rb\n', '\rb\n', '\ta\rb' ], getQueryResults("FOR t IN [ [ '  foo  ', '\r\n\t ' ], [ '  foo  ', '\r\n\t' ], [ '', '\r\n\t' ], [ '\t\r\nabc\n\r\t', '\r\n\t ' ], [ '\t\r\nabc\n\r\t', '\r\n ' ], [ '\t\r\nabc\t\r\n', '\t\n' ], [ '\ta\rb\nc', '\tc' ], [ '\ta\rb\nc', '\tac' ], [ '\ta\rb\nc', '\nc' ] ] RETURN NOOPT(TRIM(t[0], t[1]))"));
+      assertEqual([ 'foo', '  foo  ', '', 'abc', '\t\r\nabc\n\r\t', '\r\nabc\t\r',  'a\rb\n', '\rb\n', '\ta\rb' ], getQueryResults("FOR t IN [ [ '  foo  ', '\r\n\t ' ], [ '  foo  ', '\r\n\t' ], [ '', '\r\n\t' ], [ '\t\r\nabc\n\r\t', '\r\n\t ' ], [ '\t\r\nabc\n\r\t', '\r\n ' ], [ '\t\r\nabc\t\r\n', '\t\n' ], [ '\ta\rb\nc', '\tc' ], [ '\ta\rb\nc', '\tac' ], [ '\ta\rb\nc', '\nc' ] ] RETURN NOOPT(V8(TRIM(t[0], t[1])))"));
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1085,26 +1083,62 @@ function ahuacatlStringFunctionsTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testTrimInvalid : function () {
-      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN TRIM()"); 
-      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN TRIM('foo', 2, 2)"); 
-      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN LTRIM('foo', 2, 2)"); 
-      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN LTRIM()"); 
-      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN RTRIM('foo', 2, 2)"); 
-      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN RTRIM()"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN NOOPT(TRIM())");
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN NOOPT(V8(TRIM()))");
 
-      assertEqual([ "" ], getQueryResults("RETURN TRIM(null)")); 
-      assertEqual([ "true" ], getQueryResults("RETURN TRIM(true)")); 
-      assertEqual([ "4" ], getQueryResults("RETURN TRIM(4)")); 
-      assertEqual([ "[]" ], getQueryResults("RETURN TRIM([ ])")); 
-      assertEqual([ "{}" ], getQueryResults("RETURN TRIM({ })")); 
-      assertEqual([ "foo" ], getQueryResults("RETURN TRIM('foo', null)")); 
-      assertEqual([ "foo" ], getQueryResults("RETURN TRIM('foo', true)")); 
-      assertEqual([ "foo" ], getQueryResults("RETURN TRIM('foo', 'bar')")); 
-      assertEqual([ "foo" ], getQueryResults("RETURN TRIM('foo', [ ])")); 
-      assertEqual([ "foo" ], getQueryResults("RETURN TRIM('foo', { })"));
-      assertEqual([ "foo" ], getQueryResults("RETURN TRIM('foo', -1)")); 
-      assertEqual([ "foo" ], getQueryResults("RETURN TRIM('foo', -1.5)")); 
-      assertEqual([ "foo" ], getQueryResults("RETURN TRIM('foo', 3)")); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN NOOPT(TRIM('foo', 2, 2))");
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN NOOPT(V8(TRIM('foo', 2, 2)))");
+
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN NOOPT(LTRIM('foo', 2, 2))");
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN NOOPT(V8(LTRIM('foo', 2, 2)))");
+
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN NOOPT(LTRIM())");
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN NOOPT(V8(LTRIM()))");
+
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN NOOPT(RTRIM('foo', 2, 2))");
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN NOOPT(V8(RTRIM('foo', 2, 2)))");
+
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN NOOPT(RTRIM())");
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN NOOPT(V8(RTRIM()))");
+
+      assertEqual([ "" ], getQueryResults("RETURN NOOPT(TRIM(null))"));
+      assertEqual([ "" ], getQueryResults("RETURN NOOPT(V8(TRIM(null)))"));
+
+      assertEqual([ "true" ], getQueryResults("RETURN NOOPT(TRIM(true))"));
+      assertEqual([ "true" ], getQueryResults("RETURN NOOPT(V8(TRIM(true)))"));
+
+      assertEqual([ "4" ], getQueryResults("RETURN NOOPT(TRIM(4))"));
+      assertEqual([ "4" ], getQueryResults("RETURN NOOPT(V8(TRIM(4)))"));
+
+      assertEqual([ "[]" ], getQueryResults("RETURN NOOPT(TRIM([ ]))"));
+      assertEqual([ "[]" ], getQueryResults("RETURN NOOPT(V8(TRIM([ ])))"));
+
+      assertEqual([ "{}" ], getQueryResults("RETURN NOOPT(TRIM({ }))"));
+      assertEqual([ "{}" ], getQueryResults("RETURN NOOPT(V8(TRIM({ })))"));
+
+      assertEqual([ "foo" ], getQueryResults("RETURN NOOPT(TRIM('foo', null))"));
+      assertEqual([ "foo" ], getQueryResults("RETURN NOOPT(V8(TRIM('foo', null)))"));
+
+      assertEqual([ "foo" ], getQueryResults("RETURN NOOPT(TRIM('foo', true))"));
+      assertEqual([ "foo" ], getQueryResults("RETURN NOOPT(V8(TRIM('foo', true)))"));
+
+      assertEqual([ "foo" ], getQueryResults("RETURN NOOPT(TRIM('foo', 'bar'))"));
+      assertEqual([ "foo" ], getQueryResults("RETURN NOOPT(V8(TRIM('foo', 'bar')))"));
+
+      assertEqual([ "foo" ], getQueryResults("RETURN NOOPT(TRIM('foo', [ ]))"));
+      assertEqual([ "foo" ], getQueryResults("RETURN NOOPT(V8(TRIM('foo', [ ])))"));
+
+      assertEqual([ "foo" ], getQueryResults("RETURN NOOPT(TRIM('foo', { }))"));
+      assertEqual([ "foo" ], getQueryResults("RETURN NOOPT(V8(TRIM('foo', { })))"));
+
+      assertEqual([ "foo" ], getQueryResults("RETURN NOOPT(TRIM('foo', -1))"));
+      assertEqual([ "foo" ], getQueryResults("RETURN NOOPT(V8(TRIM('foo', -1)))"));
+
+      assertEqual([ "foo" ], getQueryResults("RETURN NOOPT(TRIM('foo', -1.5))"));
+      assertEqual([ "foo" ], getQueryResults("RETURN NOOPT(V8(TRIM('foo', -1.5)))"));
+
+      assertEqual([ "foo" ], getQueryResults("RETURN NOOPT(TRIM('foo', 3))"));
+      assertEqual([ "foo" ], getQueryResults("RETURN NOOPT(V8(TRIM('foo', 3)))"));
     },
 
 ////////////////////////////////////////////////////////////////////////////////

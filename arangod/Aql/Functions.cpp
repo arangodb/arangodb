@@ -1253,9 +1253,6 @@ AqlValue Functions::Left(arangodb::aql::Query* query,
   return AqlValue(utf8.c_str(), utf8.length());
 }
 
-#include "Logger/Logger.h"
-#include <iostream>
-
 /// @brief function RIGHT
 AqlValue Functions::Right(arangodb::aql::Query* query,
                          transaction::Methods* trx,
@@ -1282,67 +1279,77 @@ AqlValue Functions::Right(arangodb::aql::Query* query,
 AqlValue Functions::Trim(arangodb::aql::Query* query,
                          transaction::Methods* trx,
                          VPackFunctionParameters const& parameters) {
-  ValidateParameters(parameters, "TRIM", 2, 2);
+  ValidateParameters(parameters, "TRIM", 1, 2);
 
   AqlValue value = ExtractFunctionParameterValue(trx, parameters, 0);
   transaction::StringBufferLeaser buffer(trx);
   arangodb::basics::VPackStringBufferAdapter adapter(buffer->stringBuffer());
-
   AppendAsString(trx, adapter, value);
   UnicodeString s(buffer->c_str(), buffer->length());
 
-  UErrorCode errorCode;
-
+  int64_t howToTrim = 0;
   UnicodeString whitespace("\r\n\t ");
-  UChar32 spaceChars[4];
 
-  whitespace.toUTF32(spaceChars, 4, errorCode);
+  if (parameters.size() == 2) {
+    AqlValue optional  = ExtractFunctionParameterValue(trx, parameters, 1);
 
+    if (optional.isNumber()) {
+      howToTrim = optional.toInt64(trx);
 
-  // std::cout << "errorCode " << errorCode << std::endl;
+      if (howToTrim < 0 || 2 < howToTrim) {
+        howToTrim = 0;
+      }
+    } else if(optional.isString()) {
+      buffer->clear();
+      AppendAsString(trx, adapter, optional);
+      whitespace = UnicodeString(buffer->c_str(), buffer->length());
+    }
+  }
 
+  uint32_t numWhitespaces = whitespace.countChar32();
+  UErrorCode errorCode = U_ZERO_ERROR;
+  UChar32 *spaceChars = new UChar32[numWhitespaces];
+
+  whitespace.toUTF32(spaceChars, numWhitespaces, errorCode);
 
   uint32_t startOffset = 0, endOffset = s.length();
 
-  for (uint32_t codeUnitPos = 0; codeUnitPos < s.length(); codeUnitPos = s.moveIndex32(codeUnitPos, 1)) {
-    bool found = false;
-    for (uint32_t pos = 0; pos < 4; pos++) {
+  if (howToTrim <= 1) {
+    for (; startOffset < endOffset; startOffset = s.moveIndex32(startOffset, 1)) {
+      bool found = false;
 
-      std::cout << "char32A(" << codeUnitPos << ") " << s.char32At(codeUnitPos) << " == spaceChars["<<pos<<"] " << spaceChars[pos] << std::endl;
+      for (uint32_t pos = 0; pos < numWhitespaces; pos++) {
+        if (s.char32At(startOffset) == spaceChars[pos]) {
+          found = true;
+          break;
+        }
+      }
 
-      if (s.char32At(codeUnitPos) == spaceChars[pos]) {
-        found = true;
+      if (!found) {
         break;
       }
-    }
-
-    std::cout << "codeUnitPos " << codeUnitPos << std::endl;
-
-    if (!found) {
-      startOffset = codeUnitPos;
-      break;
-    };
-  } // for
-
-  std::cout << "start " << startOffset << std::endl;;
-
-  for (uint32_t codeUnitPos = s.moveIndex32(s.length(),0); startOffset < codeUnitPos; codeUnitPos = s.moveIndex32(codeUnitPos, -1)) {
-    bool found = false;
-    for (uint8_t pos = 0; pos < 4; pos++) {
-      if (s.char32At(codeUnitPos) == spaceChars[pos]) {
-        found = true;
-        break;
-      }
-    }
-
-    if (!found) {
-      endOffset = codeUnitPos;
-      break;
-    };
+    } // for
   }
 
-  LOG_TOPIC(INFO, arangodb::Logger::FIXME) << "end " << endOffset;
+  if (howToTrim == 2 || howToTrim == 0) {
+    for (uint32_t codeUnitPos = s.moveIndex32(s.length(),-1); startOffset < codeUnitPos; codeUnitPos = s.moveIndex32(codeUnitPos, -1)) {
+      bool found = false;
 
+      for (uint32_t pos = 0; pos < numWhitespaces; pos++) {
+        if (s.char32At(codeUnitPos) == spaceChars[pos]) {
+          found = true;
+          break;
+        }
+      }
+
+      endOffset = s.moveIndex32(codeUnitPos, 1);
+      if (!found) {
+        break;
+      }
+    } // for
+  }
+
+  delete[] spaceChars;
 
   UnicodeString result = s.tempSubString(startOffset, endOffset - startOffset);
   std::string utf8;
