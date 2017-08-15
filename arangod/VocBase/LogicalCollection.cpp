@@ -1324,59 +1324,24 @@ ChecksumResult LogicalCollection::checksum(bool withRevisions, bool withData) co
   return ChecksumResult(std::move(b));
 }
 
-Result LogicalCollection::compareChecksums(VPackSlice checksumSlice) const {
-  if (!checksumSlice.isObject()) {
-    auto typeName = checksumSlice.typeName();
+Result LogicalCollection::compareChecksums(VPackSlice checksumSlice, std::string const& referenceChecksum) const {
+  if (!checksumSlice.isString()) {
     return Result(
       TRI_ERROR_REPLICATION_WRONG_CHECKSUM_FORMAT,
-      std::string("Checksum must be an object but is ") + typeName
+      std::string("Checksum must be a string but is ") + checksumSlice.typeName()
     );
   }
 
-  auto revision = checksumSlice.get("revision");
-  auto checksum = checksumSlice.get("checksum");
+  auto checksum = checksumSlice.copyString();
 
-  if (!revision.isString()) {
-    return Result(
-      TRI_ERROR_REPLICATION_WRONG_CHECKSUM_FORMAT,
-      "Property `revisionId` must be a string"
-    );
-  }
-  if (!checksum.isString()) {
-    return Result(
-      TRI_ERROR_REPLICATION_WRONG_CHECKSUM_FORMAT,
-      "Property `checksum` must be a string"
-    );
-  }
-
-  auto result = this->checksum(false, false);
-
-  if (!result.ok()) {
-    return Result(result);
-  }
-
-  auto referenceChecksumSlice = result.slice();
-  auto referenceChecksum = referenceChecksumSlice.get("checksum");
-  auto referenceRevision = referenceChecksumSlice.get("revision");
-  TRI_ASSERT(referenceChecksum.isString());
-  TRI_ASSERT(referenceRevision.isString());
-
-  if (!checksum.isEqualString(referenceChecksum.copyString())) {
+  if (checksum != referenceChecksum) {
     return Result(
       TRI_ERROR_REPLICATION_WRONG_CHECKSUM,
-      "`checksum` property is wrong. Expected: "
-        + referenceChecksum.copyString()
-        + ". Actual: " + checksum.copyString()
+      "'checksum' is wrong. Expected: "
+        + referenceChecksum
+        + ". Actual: " + checksum
     );
   }
- 
-  if (!revision.isEqualString(referenceRevision.copyString())) {
-    return Result(
-      TRI_ERROR_REPLICATION_WRONG_CHECKSUM,
-      "`checksum` property is wrong. Expected: "
-        + revision.copyString()
-        + ". Actual: " + referenceRevision.copyString()
-    );
-  }
+
   return Result();
 }
