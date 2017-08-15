@@ -128,8 +128,11 @@ function createTests {
       script={
         param($name, $myport, $maxPort, $test, $cluster, $engine, $testArgs, $log)
         $ErrorActionPreference="Stop"
-        .\build\bin\arangosh.exe --log.level warning --javascript.execute UnitTests\unittest.js $test -- --cluster $cluster --storageEngine $engine --minPort $myport --maxPort $maxPort --skipNondeterministic true --skipTimeCritical true  --configDir etc/jenkins --skipLogAnalysis true $testargs *>&1 | Tee-Object -FilePath $log
-        if ($? -eq $false) {
+        Start-Transcript -Path $log
+        .\build\bin\arangosh.exe --log.level warning --javascript.execute UnitTests\unittest.js $test -- --cluster $cluster --storageEngine $engine --minPort $myport --maxPort $maxPort --skipNondeterministic true --skipTimeCritical true  --configDir etc/jenkins --skipLogAnalysis true $testargs *>&1
+        $result = $?
+        Stop-Transcript
+        if ($result -eq $false) {
           throw "arangosh returned a non zero exit code!"
         }
       }
