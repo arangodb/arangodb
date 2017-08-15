@@ -1,0 +1,19 @@
+################################################################################
+## General errors
+################################################################################
+
+# general
+EXIT_SUCCESS,0,"success","No error has occurred."
+EXIT_FAILED,1,"failed","Will be returned when a general error occurred."
+
+# internal
+EXIT_UPGRADE,10,"upgrade failed","Will be returend when the Database upgrade failed"
+
+# startup
+EXIT_ALREADY_RUNNING, 20,"already running","Will be returend when arangod is already running according to PID-file"
+EXIT_PORT_BLOCKED, 21,"port blocked","Will be returend when endpoint is taken by antoher process"
+
+# network
+#EXIT_NO_COORDINATOR
+#EXIT_NO_AGENCY
+#EXIT_NO_CONNECTIVITY

@@ -171,6 +171,7 @@ add_library(${LIB_ARANGO} STATIC
   Basics/tri-zip.cpp
   Basics/vector.cpp
   Basics/voc-errors.cpp
+  Basics/exitcodes.cpp
   Basics/voc-mimetypes.cpp
   Basics/xxhash.cpp
   Endpoint/Endpoint.cpp

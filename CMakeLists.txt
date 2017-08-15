@@ -884,6 +884,32 @@ if (USE_MAINTAINER_MODE)
   endforeach ()
 
   add_custom_target(errorfiles ALL DEPENDS ${ERROR_FILES_GEN})
+ 
+  set(EXIT_CODE_FILES
+    lib/Basics/exitcodes.h
+    lib/Basics/exitcodes.cpp
+    js/common/bootstrap/exitcodes.js
+  )
+
+  set(EXIT_CODE_FILES_GEN)
+  set(EXIT_CODES_DAT lib/Basics/exitcodes.dat)
+
+  foreach (m IN LISTS EXIT_CODE_FILES)
+    add_custom_command(
+      OUTPUT ${CMAKE_SOURCE_DIR}/${m}
+      COMMAND ${PYTHON_EXECUTABLE} ./utils/generateExitCodesFiles.py ./${EXIT_CODES_DAT} ./${m}.tmp
+      COMMAND ${CMAKE_COMMAND} -E copy_if_different ./${m}.tmp ./${m}
+      COMMAND ${CMAKE_COMMAND} -E remove ./${m}.tmp
+      DEPENDS ${CMAKE_SOURCE_DIR}/${EXIT_CODES_DAT}
+      WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+      COMMENT  "Building exitcode files ${m}"
+      VERBATIM
+    )
+
+    list(APPEND EXIT_CODE_FILES_GEN ${CMAKE_SOURCE_DIR}/${m})
+  endforeach ()
+
+  add_custom_target(exitcodefiles ALL DEPENDS ${EXIT_CODE_FILES_GEN})
 endif ()
 
 ################################################################################
