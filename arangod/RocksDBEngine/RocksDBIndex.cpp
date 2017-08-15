@@ -278,10 +278,12 @@ size_t RocksDBIndex::memory() const {
 void RocksDBIndex::cleanup() {
   rocksdb::TransactionDB* db = rocksutils::globalRocksDB();
   rocksdb::CompactRangeOptions opts;
-  RocksDBKeyBounds bounds = this->getBounds();
-  TRI_ASSERT(_cf == bounds.columnFamily());
-  rocksdb::Slice b = bounds.start(), e = bounds.end();
-  db->CompactRange(opts, _cf, &b, &e);
+  if (_cf != RocksDBColumnFamily::invalid()) {
+    RocksDBKeyBounds bounds = this->getBounds();
+    TRI_ASSERT(_cf == bounds.columnFamily());
+    rocksdb::Slice b = bounds.start(), e = bounds.end();
+    db->CompactRange(opts, _cf, &b, &e);
+  }
 }
 
 Result RocksDBIndex::postprocessRemove(transaction::Methods* trx,
@@ -326,6 +328,8 @@ RocksDBKeyBounds RocksDBIndex::getBounds(Index::IndexType type,
     case RocksDBIndex::TRI_IDX_TYPE_GEO1_INDEX:
     case RocksDBIndex::TRI_IDX_TYPE_GEO2_INDEX:
       return RocksDBKeyBounds::GeoIndex(objectId);
+    case RocksDBIndex::TRI_IDX_TYPE_IRESEARCH_LINK:
+      return RocksDBKeyBounds::Empty();
     case RocksDBIndex::TRI_IDX_TYPE_UNKNOWN:
     default:
       THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);

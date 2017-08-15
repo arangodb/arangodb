@@ -36,6 +36,7 @@ namespace arangodb {
 /// RocksDBPrefixExtractor as well.
 ////////////////////////////////////////////////////////////////////////////////
 enum class RocksDBEntryType : char {
+  Placeholder = '\0',
   Database = '0',
   Collection = '1',
   CounterValue = '2',

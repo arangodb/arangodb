@@ -62,7 +62,7 @@ NS_BEGIN(iresearch)
 IResearchRocksDBLink::IResearchRocksDBLink(
     TRI_idx_iid_t iid,
     arangodb::LogicalCollection* collection
-): RocksDBIndex(iid, collection, emptyParentSlice(), RocksDBColumnFamily::vpack(), false),
+): RocksDBIndex(iid, collection, emptyParentSlice(), RocksDBColumnFamily::invalid(), false),
    IResearchLink(iid, collection) {
   _unique = false; // cannot be unique since multiple fields are indexed
   _sparse = true;  // always sparse

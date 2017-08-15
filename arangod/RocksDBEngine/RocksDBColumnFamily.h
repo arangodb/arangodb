@@ -23,6 +23,8 @@
 #ifndef ARANGOD_ROCKSDB_ENGINE_COLUMN_FAMILY_H
 #define ARANGOD_ROCKSDB_ENGINE_COLUMN_FAMILY_H 1
 
+#include "RocksDBEngine/RocksDBCommon.h"
+
 #include <rocksdb/db.h>
 
 namespace arangodb {
@@ -57,6 +59,8 @@ struct RocksDBColumnFamily {
 
   static rocksdb::ColumnFamilyHandle* fulltext() { return _fulltext; }
 
+  static rocksdb::ColumnFamilyHandle* invalid() { return rocksutils::defaultCF(); }
+
   static char const* columnFamilyName(rocksdb::ColumnFamilyHandle* cf) {
     if (cf == _definitions) {
       return "definitions";
@@ -78,6 +82,9 @@ struct RocksDBColumnFamily {
     }
     if (cf == _fulltext) {
       return "fulltext";
+    }
+    if (cf == rocksutils::defaultCF()) {
+      return "invalid";
     }
     TRI_ASSERT(false);
     return "unknown";
