@@ -25,6 +25,7 @@
 #define ARANGOD_MMFILES_MMFILES_COLLECTION_H 1
 
 #include "Basics/Common.h"
+#include "Basics/Mutex.h"
 #include "Basics/ReadWriteLock.h"
 #include "Indexes/IndexIterator.h"
 #include "Indexes/IndexLookupContext.h"
@@ -302,8 +303,6 @@ class MMFilesCollection final : public PhysicalCollection {
   /// @brief Drop an index with the given iid.
   bool dropIndex(TRI_idx_iid_t iid) override;
 
-  int cleanupIndexes();
-
   ////////////////////////////////////
   // -- SECTION Locking --
   ///////////////////////////////////
@@ -555,7 +554,6 @@ class MMFilesCollection final : public PhysicalCollection {
 
   // SECTION: Indexes
 
-  size_t _cleanupIndexes;
   size_t _persistentIndexes;
   uint32_t _indexBuckets;
 

@@ -150,7 +150,7 @@ class MMFilesPrimaryIndex final : public Index {
 
   size_t memory() const override;
 
-  void toVelocyPack(VPackBuilder&, bool, bool) const override;
+  void toVelocyPack(VPackBuilder&, bool withFigures, bool forPersistence) const override;
   void toVelocyPackFigures(VPackBuilder&) const override;
 
   Result insert(transaction::Methods*, TRI_voc_rid_t,
@@ -159,8 +159,8 @@ class MMFilesPrimaryIndex final : public Index {
   Result remove(transaction::Methods*, TRI_voc_rid_t,
                 arangodb::velocypack::Slice const&, bool isRollback) override;
 
-  int load() override { return 0; }
-  int unload() override;
+  void load() override {}
+  void unload() override;
 
   MMFilesSimpleIndexElement lookupKey(transaction::Methods*,
                                       VPackSlice const&) const;

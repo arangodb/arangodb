@@ -17,6 +17,10 @@ global.DEFINE_MODULE('buffer', (function () {
   const exports = {};
 
   var SlowBuffer = require('internal').SlowBuffer;
+      
+  SlowBuffer.prototype._PRINT = function(context) {
+      context.output += '[Buffer, length: ' + this.length + ']';
+  };
 
   // Copyright Joyent, Inc. and other Node contributors.
   //
@@ -229,6 +233,10 @@ global.DEFINE_MODULE('buffer', (function () {
         this.parent = new SlowBuffer(0);
         this.offset = 0;
       }
+
+      this._PRINT = function(context) {
+        context.output += '[Buffer, length: ' + this.length + ']';
+      };
 
       // optimize by branching logic for new allocations
       if (typeof subject !== 'number') {

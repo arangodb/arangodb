@@ -480,7 +480,6 @@ MMFilesCollection::MMFilesCollection(LogicalCollection* collection,
                                                    TRI_JOURNAL_DEFAULT_SIZE))),
       _isVolatile(arangodb::basics::VelocyPackHelper::readBooleanValue(
           info, "isVolatile", false)),
-      _cleanupIndexes(0),
       _persistentIndexes(0),
       _indexBuckets(Helper::readNumericValue<uint32_t>(
           info, "indexBuckets", defaultIndexBuckets)),
@@ -512,7 +511,6 @@ MMFilesCollection::MMFilesCollection(LogicalCollection* logical,
       _ditches(logical),
       _isVolatile(static_cast<MMFilesCollection*>(physical)->isVolatile()) {
   MMFilesCollection& mmfiles = *static_cast<MMFilesCollection*>(physical);
-  _cleanupIndexes = mmfiles._cleanupIndexes;
   _persistentIndexes = mmfiles._persistentIndexes;
   _useSecondaryIndexes = mmfiles._useSecondaryIndexes;
   _initialCount = mmfiles._initialCount;
@@ -592,6 +590,13 @@ int MMFilesCollection::close() {
     for (auto& idx : _indexes) {
       idx->unload();
     }
+  }
+
+  // wait until ditches have been processed fully
+  while (_ditches.contains(MMFilesDitch::TRI_DITCH_DATAFILE_DROP) || 
+         _ditches.contains(MMFilesDitch::TRI_DITCH_DATAFILE_RENAME) ||
+         _ditches.contains(MMFilesDitch::TRI_DITCH_COMPACTION)) {
+    usleep(20000);
   }
 
   {
@@ -2121,7 +2126,7 @@ int MMFilesCollection::saveIndex(transaction::Methods* trx,
 
   std::shared_ptr<VPackBuilder> builder;
   try {
-    builder = idx->toVelocyPack(false);
+    builder = idx->toVelocyPack(false, true);
   } catch (arangodb::basics::Exception const& ex) {
     return ex.code();
   } catch (...) {
@@ -2182,9 +2187,6 @@ void MMFilesCollection::addIndexLocal(std::shared_ptr<arangodb::Index> idx) {
   }
 
   // update statistics
-  if (idx->type() == arangodb::Index::TRI_IDX_TYPE_FULLTEXT_INDEX) {
-    ++_cleanupIndexes;
-  }
   if (idx->isPersistent()) {
     ++_persistentIndexes;
   }
@@ -2315,9 +2317,6 @@ bool MMFilesCollection::removeIndex(TRI_idx_iid_t iid) {
       _indexes.erase(_indexes.begin() + i);
 
       // update statistics
-      if (idx->type() == arangodb::Index::TRI_IDX_TYPE_FULLTEXT_INDEX) {
-        --_cleanupIndexes;
-      }
       if (idx->isPersistent()) {
         --_persistentIndexes;
       }
@@ -2328,27 +2327,6 @@ bool MMFilesCollection::removeIndex(TRI_idx_iid_t iid) {
 
   // not found
   return false;
-}
-
-/// @brief garbage-collect a collection's indexes
-int MMFilesCollection::cleanupIndexes() {
-  int res = TRI_ERROR_NO_ERROR;
-
-  // cleaning indexes is expensive, so only do it if the flag is set for the
-  // collection
-  if (_cleanupIndexes > 0) {
-    WRITE_LOCKER(writeLocker, _dataLock);
-    for (auto& idx : _indexes) {
-      if (idx->type() == arangodb::Index::TRI_IDX_TYPE_FULLTEXT_INDEX) {
-        res = idx->cleanup();
-
-        if (res != TRI_ERROR_NO_ERROR) {
-          break;
-        }
-      }
-    }
-  }
-  return res;
 }
 
 std::unique_ptr<IndexIterator> MMFilesCollection::getAllIterator(
