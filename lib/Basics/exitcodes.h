@@ -10,8 +10,14 @@
 #include "Basics/error.h"
 /// - 0: @LIT{success}
 ///   No error has occurred.
-/// - 1: @LIT{failed}
+/// - 1: @LIT{exit with error}
 ///   Will be returned when a general error occurred.
+/// - 2: @LIT{exit code resolving failed}
+///   fill me
+/// - 5: @LIT{binary not found}
+///   fill me
+/// - 6: @LIT{config not found}
+///   fill me
 /// - 10: @LIT{upgrade failed}
 ///   Will be returned when the database upgrade failed
 /// - 11: @LIT{db upgrade required}
@@ -20,10 +26,12 @@
 ///   Will be returned when a database upgrade is required
 /// - 13: @LIT{version check failed}
 ///   Will be returned when there is a version mismatch
-/// -  20: @LIT{already running}
+/// - 20: @LIT{already running}
 ///   Will be returned when arangod is already running according to PID-file
-/// -  21: @LIT{port blocked}
+/// - 21: @LIT{port blocked}
 ///   Will be returned when endpoint is taken by another process
+/// - 22: @LIT{could not lock}
+///   fill me
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -51,12 +59,42 @@ void TRI_InitializeExitMessages ();
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1: EXIT_FAILED
 ///
-/// failed
+/// exit with error
 ///
 /// Will be returned when a general error occurred.
 ////////////////////////////////////////////////////////////////////////////////
 
 #define TRI_EXIT_FAILED                                                   (1)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 2: EXIT_CODE_RESOLVING_FAILED
+///
+/// exit code resolving failed
+///
+/// fill me
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_EXIT_CODE_RESOLVING_FAILED                                    (2)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 5: EXIT_BINARY_NOT_FOUND
+///
+/// binary not found
+///
+/// fill me
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_EXIT_BINARY_NOT_FOUND                                         (5)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 6: EXIT_CONFIG_NOT_FOUND
+///
+/// config not found
+///
+/// fill me
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_EXIT_CONFIG_NOT_FOUND                                         (6)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 10: EXIT_UPGRADE_FAILED
@@ -99,24 +137,34 @@ void TRI_InitializeExitMessages ();
 #define TRI_EXIT_VERSION_CHECK_FAILED                                     (13)
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief  20: EXIT_ALREADY_RUNNING
+/// @brief 20: EXIT_ALREADY_RUNNING
 ///
 /// already running
 ///
 /// Will be returned when arangod is already running according to PID-file
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_EXIT_ALREADY_RUNNING                                          ( 20)
+#define TRI_EXIT_ALREADY_RUNNING                                          (20)
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief  21: EXIT_PORT_BLOCKED
+/// @brief 21: EXIT_COULD_NOT_BIND_PORT
 ///
 /// port blocked
 ///
 /// Will be returned when endpoint is taken by another process
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_EXIT_PORT_BLOCKED                                             ( 21)
+#define TRI_EXIT_COULD_NOT_BIND_PORT                                      (21)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 22: EXIT_COULD_NOT_LOCK
+///
+/// could not lock
+///
+/// fill me
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_EXIT_COULD_NOT_LOCK                                           (22)
 
 #endif
 
