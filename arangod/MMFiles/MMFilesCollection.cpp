@@ -689,6 +689,11 @@ int MMFilesCollection::rotateActiveJournal() {
     return TRI_ERROR_ARANGO_NO_JOURNAL;
   }
 
+  if (_journals.size() > 1) {
+    // we should never have more than a single journal at a time
+    return TRI_ERROR_INTERNAL;
+  }
+
   MMFilesDatafile* datafile = _journals.back();
   TRI_ASSERT(datafile != nullptr);
     
@@ -732,6 +737,8 @@ int MMFilesCollection::syncActiveJournal() {
     // nothing to do
     return TRI_ERROR_NO_ERROR;
   }
+
+  TRI_ASSERT(_journals.size() == 1);
 
   MMFilesDatafile* datafile = _journals.back();
   TRI_ASSERT(datafile != nullptr);
@@ -780,8 +787,6 @@ int MMFilesCollection::reserveJournalSpace(TRI_voc_tick_t tick,
   resultPosition = nullptr;
   resultDatafile = nullptr;
 
-  WRITE_LOCKER(writeLocker, _filesLock);
-
   // start with configured journal size
   TRI_voc_size_t targetSize = static_cast<TRI_voc_size_t>(_journalSize);
 
@@ -789,6 +794,9 @@ int MMFilesCollection::reserveJournalSpace(TRI_voc_tick_t tick,
   while (targetSize - 256 < size) {
     targetSize *= 2;
   }
+  
+  WRITE_LOCKER(writeLocker, _filesLock);
+  TRI_ASSERT(_journals.size() <= 1);
 
   while (true) {
     // no need to go on if the collection is already deleted
@@ -827,6 +835,8 @@ int MMFilesCollection::reserveJournalSpace(TRI_voc_tick_t tick,
 
     // select datafile
     TRI_ASSERT(!_journals.empty());
+    TRI_ASSERT(_journals.size() == 1);
+
     datafile = _journals.back();
 
     TRI_ASSERT(datafile != nullptr);
