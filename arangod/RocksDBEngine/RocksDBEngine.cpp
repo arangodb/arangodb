@@ -214,16 +214,17 @@ void RocksDBEngine::start() {
       FATAL_ERROR_EXIT();
     }
   }
-
+  
+  // options imported set by RocksDBOptionFeature
+  auto const* opts =
+  ApplicationServer::getFeature<arangodb::RocksDBOptionFeature>(
+                                                                "RocksDBOption");
+  
   rocksdb::TransactionDBOptions transactionOptions;
   // number of locks per column_family
   transactionOptions.num_stripes = TRI_numberProcessors();
+  transactionOptions.transaction_lock_timeout = opts->_transactionLockTimeout;
 
-  // options imported set by RocksDBOptionFeature
-  auto const* opts =
-      ApplicationServer::getFeature<arangodb::RocksDBOptionFeature>(
-          "RocksDBOption");
-  
   _options.enable_pipelined_write = opts->_enablePipelinedWrite;
   _options.write_buffer_size = static_cast<size_t>(opts->_writeBufferSize);
   _options.max_write_buffer_number =
@@ -261,12 +262,8 @@ void RocksDBEngine::start() {
     _options.wal_recovery_mode = rocksdb::WALRecoveryMode::kPointInTimeRecovery;
   }
 
-  _options.base_background_compactions =
-      static_cast<int>(opts->_baseBackgroundCompactions);
-  _options.max_background_compactions =
-      static_cast<int>(opts->_maxBackgroundCompactions);
+  _options.max_background_jobs = static_cast<int>(opts->_maxBackgroundJobs);
   _options.max_subcompactions = static_cast<int>(opts->_maxSubcompactions);
-  _options.max_background_flushes = static_cast<int>(opts->_maxFlushes);
   _options.use_fsync = opts->_useFSync;
 
   // only compress levels >= 2
@@ -324,14 +321,16 @@ void RocksDBEngine::start() {
   if (opts->_blockCacheSize > 0) {
     table_options.block_cache = rocksdb::NewLRUCache(opts->_blockCacheSize,
                                       static_cast<int>(opts->_blockCacheShardBits));
+    //table_options.cache_index_and_filter_blocks = opts->_compactionReadaheadSize > 0;
   } else {
     table_options.no_block_cache = true;
   }
   table_options.block_size = opts->_tableBlockSize;
   table_options.filter_policy.reset(rocksdb::NewBloomFilterPolicy(10, true));
+  
   _options.table_factory.reset(
       rocksdb::NewBlockBasedTableFactory(table_options));
-
+  
   _options.create_if_missing = true;
   _options.create_missing_column_families = true;
   _options.max_open_files = -1;
@@ -505,6 +504,8 @@ void RocksDBEngine::start() {
   TRI_ASSERT(_db != nullptr);
   _counterManager.reset(new RocksDBCounterManager(_db));
   _replicationManager.reset(new RocksDBReplicationManager());
+
+  _counterManager->runRecovery();
 
   double const counter_sync_seconds = 2.5;
   _backgroundThread.reset(
@@ -1031,11 +1032,20 @@ arangodb::Result RocksDBEngine::dropCollection(
     // User View remains consistent.
     return TRI_ERROR_NO_ERROR;
   }
+  
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  //check if documents have been deleted
+  rocksdb::ReadOptions readOptions;
+  readOptions.fill_cache = false;
+  size_t numDocs = rocksutils::countKeyRange(rocksutils::globalRocksDB(), readOptions, bounds);
+  if (numDocs) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "deletion check in drop collection failed - not all documents have been deleted");
+  }
+#endif
 
-  // delete indexes
+  // delete indexes, RocksDBIndex::drop() has its own check
   std::vector<std::shared_ptr<Index>> vecShardIndex = coll->getIndexes();
   TRI_ASSERT(!vecShardIndex.empty());
-
   for (auto& index : vecShardIndex) {
     int dropRes = index->drop();
     // TODO FAILURE Simulate dropRes != TRI_ERROR_NO_ERROR
@@ -1320,6 +1330,7 @@ Result RocksDBEngine::dropDatabase(TRI_voc_tick_t id) {
 
   // remove collections
   for (auto const& val : collectionKVPairs(id)) {
+    
     // remove indexes
     VPackSlice indexes = val.second.slice().get("indexes");
     if (indexes.isArray()) {
@@ -1338,6 +1349,15 @@ Result RocksDBEngine::dropDatabase(TRI_voc_tick_t id) {
         if (res.fail()) {
           return res;
         }
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+        //check if documents have been deleted
+        rocksdb::ReadOptions readOptions;
+        readOptions.fill_cache = false;
+        size_t numDocs = rocksutils::countKeyRange(rocksutils::globalRocksDB(), readOptions, bounds);
+        if (numDocs) {
+          THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "deletion check in drop collection failed - not all index documents have been deleted");
+        }
+#endif
       }
     }
     
@@ -1349,13 +1369,23 @@ Result RocksDBEngine::dropDatabase(TRI_voc_tick_t id) {
     if (res.fail()) {
       return res;
     }
-    // delete Collection
+    // delete collection meta-data
     _counterManager->removeCounter(objectId);
     res = globalRocksDBRemove(RocksDBColumnFamily::definitions(),
                               val.first.string(), options);
     if (res.fail()) {
       return res;
     }
+    
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+    //check if documents have been deleted
+    rocksdb::ReadOptions readOptions;
+    readOptions.fill_cache = false;
+    size_t numDocs = rocksutils::countKeyRange(rocksutils::globalRocksDB(), readOptions, bounds);
+    if (numDocs) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "deletion check in drop collection failed - not all documents have been deleted");
+    }
+#endif
   }
 
   // TODO

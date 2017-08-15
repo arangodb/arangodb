@@ -1,5 +1,5 @@
 /* jshint unused: false */
-/* global window, $, Backbone, document */
+/* global window, $, Backbone, document, arangoHelper */
 
 (function () {
   'use strict';
@@ -9,6 +9,15 @@
       var currentJwt = window.arangoHelper.getCurrentJwt();
       if (currentJwt) {
         jqxhr.setRequestHeader('Authorization', 'bearer ' + currentJwt);
+      }
+    });
+
+    $.ajaxSetup({
+      error: function (x, status, error) {
+        if (x.status === 401) {
+          // session might be expired. check if jwt is still valid
+          arangoHelper.checkJwt();
+        }
       }
     });
 

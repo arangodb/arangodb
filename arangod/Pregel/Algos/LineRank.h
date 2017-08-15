@@ -42,7 +42,7 @@ struct LineRank : public SimpleAlgorithm<float, float, float> {
   explicit LineRank(arangodb::velocypack::Slice params);
 
   GraphFormat<float, float>* inputFormat() const override {
-    return new VertexGraphFormat<float, float>(_resultField, -1.0);
+    return new VertexGraphFormat<float, float>(_resultField, 0);
   }
   MessageFormat<float>* messageFormat() const override {
     return new NumberMessageFormat<float>();
@@ -52,7 +52,8 @@ struct LineRank : public SimpleAlgorithm<float, float, float> {
     return new SumCombiner<float>();
   }
 
-  WorkerContext* workerContext(VPackSlice params) const override;
+  WorkerContext* workerContext(velocypack::Slice params) const override;
+  MasterContext* masterContext(velocypack::Slice) const override;
 
   VertexComputation<float, float, float>* createComputation(
       WorkerConfig const*) const override;

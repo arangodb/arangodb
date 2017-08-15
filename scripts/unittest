@@ -2,6 +2,13 @@
 export PID=$$
 export GLIBCXX_FORCE_NEW=1
 
+SED=sed
+isMac=0
+if test "$(uname)" == "Darwin"; then
+    isMac=1
+    SED=gsed
+fi
+
 if test -n "$ORIGINAL_PATH"; then
     # running in cygwin...
     PS='\'
@@ -15,28 +22,53 @@ export PORT=`expr 1024 + $RANDOM`
 
 NUMA=""
 
-if `which numactl > /dev/null`; then
+if $(which numactl > /dev/null 2>&1); then
     NUMA="numactl --interleave=all"
 fi
 
 if [ -z "${ARANGOSH}" ];  then
     if [ -x build/bin/arangosh ];  then
-        ARANGOSH=build/bin/arangosh
+        ARANGOSH="build/bin/arangosh${EXT}"
     elif [ -x bin/arangosh ];  then
-        ARANGOSH=bin/arangosh
+        ARANGOSH="bin/arangosh${EXT}"
     elif [ -x usr/bin/arangosh ];  then
-        ARANGOSH=usr/bin/arangosh
+        ARANGOSH="usr/bin/arangosh${EXT}"
     else
-        echo "$0: cannot locate arangosh"
-        exit 1
+        ARANGOSH="$(find . -name "arangosh${EXT}" -executable -type f | head -n 1)"
+        [ -x "${ARANGOSH}" ] || {
+          echo "$0: cannot locate arangosh"
+          exit 1
+        }
     fi
 fi
 
-#
-exec $NUMA $ARANGOSH \
-     -c etc${PS}relative${PS}arangosh.conf \
-     --log.level warning \
-     --server.endpoint tcp://127.0.0.1:${PORT} \
-     --javascript.execute UnitTests${PS}unittest.js \
-     -- \
-     "$@"
+declare -a EXTRA_ARGS
+
+if [ `uname -s` == "Darwin" ]; then
+  EXEC_PATH="$(dirname "$(dirname "$0")")"
+else
+  EXEC_PATH="$(dirname "$(dirname "$(readlink -m "$0")")")"
+  [ -x "${ARANGOSH}" ] && ARANGOSH="$(readlink -m "${ARANGOSH}")"
+fi
+
+[[ " $@ " =~ "--build" ]] || {
+  BUILD_PATH="$(dirname "$(dirname "${ARANGOSH}")")"
+  BUILD_PATH="${BUILD_PATH#${EXEC_PATH}/}"
+
+  if test -n "$ORIGINAL_PATH"; then
+    # running in cygwin...
+      BUILD_PATH=$(cygpath --windows "$BUILD_PATH")
+  fi
+  EXTRA_ARGS=("--build" "${BUILD_PATH}")
+}
+
+(
+  cd "${EXEC_PATH}"
+  exec $NUMA $ARANGOSH \
+       -c etc${PS}relative${PS}arangosh.conf \
+       --log.level warning \
+       --server.endpoint tcp://127.0.0.1:${PORT} \
+       --javascript.execute UnitTests${PS}unittest.js \
+       -- \
+       "$@" "${EXTRA_ARGS[@]}"
+)

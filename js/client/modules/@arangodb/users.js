@@ -1,42 +1,40 @@
 /* jshint strict: false */
 
-// //////////////////////////////////////////////////////////////////////////////
-// / @brief User management
-// /
-// / @file
-// /
-// / DISCLAIMER
-// /
-// / Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
-// /
-// / Licensed under the Apache License, Version 2.0 (the "License")
-// / you may not use this file except in compliance with the License.
-// / You may obtain a copy of the License at
-// /
-// /     http://www.apache.org/licenses/LICENSE-2.0
-// /
-// / Unless required by applicable law or agreed to in writing, software
-// / distributed under the License is distributed on an "AS IS" BASIS,
-// / WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// / See the License for the specific language governing permissions and
-// / limitations under the License.
-// /
-// / Copyright holder is triAGENS GmbH, Cologne, Germany
-// /
-// / @author Jan Steemann
-// / @author Copyright 2012-2014, triAGENS GmbH, Cologne, Germany
+// /////////////////////////////////////////////////////////////////////////////
+// @brief User management
+//
+// DISCLAIMER
+//
+// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
+//
+// Licensed under the Apache License, Version 2.0 (the "License")
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//      http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+//
+// Copyright holder is triAGENS GmbH, Cologne, Germany
+//
+// @author Jan Steemann
+// @author Copyright 2012-2014, triAGENS GmbH, Cologne, Germany
 // //////////////////////////////////////////////////////////////////////////////
 
-var internal = require('internal');
-var arangodb = require('@arangodb');
-var arangosh = require('@arangodb/arangosh');
+const internal = require('internal');
+const arangodb = require('@arangodb');
+const arangosh = require('@arangodb/arangosh');
 
 // creates a new user
 exports.save = function (user, passwd, active, extra, changePassword) {
-  var db = internal.db;
+  let db = internal.db;
 
-  var uri = '_api/user/';
-  var data = {user: user};
+  let uri = '_api/user/';
+  let data = {user: user};
 
   if (passwd !== undefined) {
     data.passwd = passwd;
@@ -54,7 +52,7 @@ exports.save = function (user, passwd, active, extra, changePassword) {
     data.changePassword = changePassword;
   }
 
-  var requestResult = db._connection.POST(uri, JSON.stringify(data));
+  let requestResult = db._connection.POST(uri, JSON.stringify(data));
   return arangosh.checkRequestResult(requestResult);
 };
 
@@ -235,7 +233,7 @@ exports.updateConfigData = function (username, key, value) {
   arangosh.checkRequestResult(requestResult);
 };
 
-// one config data (key != null) or all (key == null)    
+// one config data (key != null) or all (key == null)
 exports.configData = function (username, key) {
   var db = internal.db;
   var requestResult;
@@ -256,11 +254,11 @@ exports.configData = function (username, key) {
   return arangosh.checkRequestResult(requestResult).result;
 };
 
-// one db permission data (key != null) or all (key == null)    
+// one db permission data (key != null) or all (key == null)
 exports.permission = function (username, dbName, coll) {
-  var db = internal.db;
-  var requestResult;
-  var uri;
+  let db = internal.db;
+  let requestResult;
+  let uri;
 
   if (dbName === undefined || dbName === null) {
     uri = '_api/user/' + encodeURIComponent(username)
@@ -277,4 +275,31 @@ exports.permission = function (username, dbName, coll) {
   }
 
   return arangosh.checkRequestResult(requestResult).result;
+};
+
+exports.exists = function (username) {
+  try {
+    exports.document(username);
+    return true;
+  } catch (e) {
+    if (e.errorNum === arangodb.errors.ERROR_USER_NOT_FOUND.code) {
+      return false;
+    }
+    throw e;
+  }
+};
+
+exports.currentUser = function() {
+  return internal.arango.connectedUser();
+};
+
+exports.isAuthActive = function() {
+  let active = false;
+  try {
+    let c = internal.db._collection("_users");
+    c.properties(); // we need to access c to trigger the exception
+  } catch(e) {
+    active = true;
+  }
+  return active;
 };

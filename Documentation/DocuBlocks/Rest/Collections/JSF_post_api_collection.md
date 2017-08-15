@@ -13,10 +13,12 @@ document create, update, replace or removal operation. (default: false)
 
 @RESTBODYPARAM{doCompact,boolean,optional,}
 whether or not the collection will be compacted (default is *true*)
+This option is meaningful for the MMFiles storage engine only.
 
 @RESTBODYPARAM{journalSize,integer,optional,int64}
 The maximal size of a journal or datafile in bytes. The value 
 must be at least `1048576` (1 MiB). (The default is a configuration parameter)
+This option is meaningful for the MMFiles storage engine only.
 
 @RESTBODYPARAM{isSystem,boolean,optional,}
 If *true*, create a  system collection. In this case *collection-name*
@@ -36,6 +38,7 @@ checksums for datafiles (as there are no datafiles). This option
 should therefore be used for cache-type collections only, and not 
 for data that cannot be re-created otherwise.
 (The default is *false*)
+This option is meaningful for the MMFiles storage engine only.
 
 @RESTBODYPARAM{keyOptions,object,optional,JSF_post_api_collection_opts}
 additional options for key generation. If specified, then *keyOptions*
@@ -67,7 +70,7 @@ The following values for *type* are valid:
 - *3*: edges collection
 
 @RESTBODYPARAM{indexBuckets,integer,optional,int64}
-The: number of buckets into which indexes using a hash
+The number of buckets into which indexes using a hash
 table are split. The default is 16 and this number has to be a
 power of 2 and less than or equal to 1024. 
 
@@ -79,6 +82,7 @@ example, 64 might be a sensible value for a collection with 100
 value, but other index types might follow in future ArangoDB versions. 
 Changes (see below) are applied when the collection is loaded the next 
 time.
+This option is meaningful for the MMFiles storage engine only.
 
 @RESTBODYPARAM{numberOfShards,integer,optional,int64}
 (The default is *1*): in a cluster, this value determines the

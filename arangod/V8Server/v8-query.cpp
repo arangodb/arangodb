@@ -27,7 +27,6 @@
 #include "Aql/QueryString.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/VelocyPackHelper.h"
-#include "Basics/fasthash.h"
 #include "Indexes/Index.h"
 #include "StorageEngine/PhysicalCollection.h"
 #include "Transaction/Helpers.h"
@@ -173,10 +172,14 @@ static void EdgesQuery(TRI_edge_direction_e direction,
   }
 
   std::string const queryString = "FOR doc IN @@collection " + filter + " RETURN doc";
-  v8::Handle<v8::Value> result =
-      AqlQuery(isolate, collection, queryString, bindVars).result;
+  
+  aql::QueryResultV8 queryResult = AqlQuery(isolate, collection, queryString, bindVars);
 
-  TRI_V8_RETURN(result);
+  if (!queryResult.result.IsEmpty()) {
+    TRI_V8_RETURN(queryResult.result);
+  }
+
+  TRI_V8_RETURN_NULL();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -371,73 +374,12 @@ static void JS_ChecksumCollection(
     }
   }
 
-  SingleCollectionTransaction trx(transaction::V8Context::Create(col->vocbase(), true),
-                                          col->cid(), AccessMode::Type::READ);
-
-  Result res = trx.begin();
-
-  if (!res.ok()) {
-    TRI_V8_THROW_EXCEPTION(res);
+  ChecksumResult result = col->checksum(withRevisions, withData);
+  if (!result.ok()) {
+    TRI_V8_THROW_EXCEPTION(result);
   }
 
-  trx.pinData(col->cid()); // will throw when it fails
-  
-  // get last tick
-  LogicalCollection* collection = trx.documentCollection();
-  auto physical = collection->getPhysical();
-  TRI_ASSERT(physical != nullptr);
-  std::string const revisionId = TRI_RidToString(physical->revision(&trx));
-  uint64_t hash = 0;
-        
-  ManagedDocumentResult mmdr;
-  trx.invokeOnAllElements(col->name(), [&hash, &withData, &withRevisions, &trx, &collection, &mmdr](DocumentIdentifierToken const& token) {
-      if (collection->readDocument(&trx, token, mmdr)) {
-      VPackSlice const slice(mmdr.vpack());
-
-      uint64_t localHash = transaction::helpers::extractKeyFromDocument(slice).hashString(); 
-
-      if (withRevisions) {
-      localHash += transaction::helpers::extractRevSliceFromDocument(slice).hash();
-      }
-
-      if (withData) {
-      // with data
-      uint64_t const n = slice.length() ^ 0xf00ba44ba5;
-      uint64_t seed = fasthash64_uint64(n, 0xdeadf054);
-
-      for (auto const& it : VPackObjectIterator(slice, false)) {
-      // loop over all attributes, but exclude _rev, _id and _key
-      // _id is different for each collection anyway, _rev is covered by withRevisions, and _key
-      // was already handled before
-      VPackValueLength keyLength;
-      char const* key = it.key.getString(keyLength);
-      if (keyLength >= 3 && 
-          key[0] == '_' &&
-          ((keyLength == 3 && memcmp(key, "_id", 3) == 0) ||
-           (keyLength == 4 && (memcmp(key, "_key", 4) == 0 || memcmp(key, "_rev", 4) == 0)))) {
-        // exclude attribute
-        continue;
-      }
-
-      localHash ^= it.key.hash(seed) ^ 0xba5befd00d; 
-      localHash += it.value.normalizedHash(seed) ^ 0xd4129f526421; 
-      }
-      }
-
-      hash ^= localHash;
-      }
-    return true;
-  });
-
-  trx.finish(res);
-
-  std::string const hashString = std::to_string(hash);
-
-  v8::Handle<v8::Object> result = v8::Object::New(isolate);
-  result->Set(TRI_V8_ASCII_STRING("checksum"), TRI_V8_STD_STRING(hashString));
-  result->Set(TRI_V8_ASCII_STRING("revision"), TRI_V8_STD_STRING(revisionId));
-    
-  TRI_V8_RETURN(result);
+  TRI_V8_RETURN(TRI_VPackToV8(isolate, result.builder().slice()));
   TRI_V8_TRY_CATCH_END
 }
 
@@ -520,7 +462,9 @@ static void JS_LookupByKeys(v8::FunctionCallbackInfo<v8::Value> const& args) {
   aql::QueryResultV8 queryResult = AqlQuery(isolate, collection, queryString, bindVars);
 
   v8::Handle<v8::Object> result = v8::Object::New(isolate);
-  result->Set(TRI_V8_ASCII_STRING("documents"), queryResult.result);
+  if (!queryResult.result.IsEmpty()) {
+    result->Set(TRI_V8_ASCII_STRING("documents"), queryResult.result);
+  }
 
   TRI_V8_RETURN(result);
   TRI_V8_TRY_CATCH_END

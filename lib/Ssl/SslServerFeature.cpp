@@ -117,8 +117,7 @@ void SslServerFeature::unprepare() {
 void SslServerFeature::verifySslOptions() {
   // check keyfile
   if (_keyfile.empty()) {
-    LOG_TOPIC(FATAL, arangodb::Logger::SSL) << "keyfile empty'" << _keyfile
-                                            << "'";
+    LOG_TOPIC(FATAL, arangodb::Logger::SSL) << "no value specified for '--ssl.keyfile'";
     FATAL_ERROR_EXIT();
   }
 
@@ -126,7 +125,7 @@ void SslServerFeature::verifySslOptions() {
   if (_sslProtocol <= SSL_UNKNOWN || _sslProtocol >= SSL_LAST) {
     LOG_TOPIC(FATAL, arangodb::Logger::SSL)
         << "invalid SSL protocol version specified. Please use a valid "
-           "value for '--ssl.protocol'.";
+           "value for '--ssl.protocol'";
     FATAL_ERROR_EXIT();
   }
 

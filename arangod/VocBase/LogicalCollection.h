@@ -26,6 +26,7 @@
 #define ARANGOD_VOCBASE_LOGICAL_COLLECTION_H 1
 
 #include "Basics/Common.h"
+#include "Basics/ReadWriteLock.h"
 #include "Indexes/IndexIterator.h"
 #include "VocBase/voc-types.h"
 #include "VocBase/vocbase.h"
@@ -57,6 +58,23 @@ class KeyGenerator;
 namespace transaction {
 class Methods;
 }
+
+class ChecksumResult: public Result {
+ public:
+  explicit ChecksumResult(Result result) : Result(result) {}
+  explicit ChecksumResult(VPackBuilder&& builder): Result(TRI_ERROR_NO_ERROR), _builder(std::move(builder)) {}
+
+  VPackBuilder builder() {
+    return _builder;
+  }
+
+  VPackSlice slice() {
+    return _builder.slice();
+  }
+
+ private:
+  VPackBuilder _builder;
+};
 
 class LogicalCollection {
   friend struct ::TRI_vocbase_t;
@@ -140,6 +158,7 @@ class LogicalCollection {
   TRI_vocbase_col_status_e status() const;
   TRI_vocbase_col_status_e getStatusLocked();
 
+  void executeWhileStatusWriteLocked(std::function<void()> const& callback);
   void executeWhileStatusLocked(std::function<void()> const& callback);
   bool tryExecuteWhileStatusLocked(std::function<void()> const& callback);
 
@@ -178,17 +197,33 @@ class LogicalCollection {
       transaction::Methods* trx,
       std::function<bool(DocumentIdentifierToken const&)> callback);
 
-  // SECTION: Indexes
+  //// SECTION: Indexes
+
+  // Estimates
+  std::unordered_map<std::string, double> clusterIndexEstimates(bool doNotUpdate=false);
+  void clusterIndexEstimates(std::unordered_map<std::string, double>&& estimates);
+
+  double clusterIndexEstimatesTTL(){
+    return _clusterEstimateTTL;
+  }
+
+  void clusterIndexEstimatesTTL(double ttl){
+    _clusterEstimateTTL = ttl;
+  }
+  // End - Estimates
+
   std::vector<std::shared_ptr<Index>> getIndexes() const;
 
   void getIndexesVPack(velocypack::Builder&, bool withFigures, bool forPersistence) const;
 
   // SECTION: Replication
   int replicationFactor() const;
+  void replicationFactor(int);
   bool isSatellite() const;
 
   // SECTION: Sharding
   int numberOfShards() const;
+  void numberOfShards(int);
   bool allowUserKeys() const;
   virtual bool usesDefaultShardKeys() const;
   std::vector<std::string> const& shardKeys() const;
@@ -305,6 +340,12 @@ class LogicalCollection {
   // Caller is not allowed to free it.
   inline KeyGenerator* keyGenerator() const { return _keyGenerator.get(); }
 
+  ChecksumResult checksum(bool, bool) const;
+
+  // compares the checksum value passed in the Slice (must be of type String)
+  // with the checksum provided in the reference checksum
+  Result compareChecksums(velocypack::Slice checksumSlice, std::string const& referenceChecksum) const;
+
  private:
   void prepareIndexes(velocypack::Slice indexesSlice);
 
@@ -386,6 +427,10 @@ class LogicalCollection {
   mutable basics::ReadWriteLock _lock;  // lock protecting the status and name
 
   mutable basics::ReadWriteLock _infoLock;  // lock protecting the info
+
+  std::unordered_map<std::string, double> _clusterEstimates;
+  double _clusterEstimateTTL; //only valid if above vector is not empty
+  basics::ReadWriteLock _clusterEstimatesLock;
 };
 
 }  // namespace arangodb

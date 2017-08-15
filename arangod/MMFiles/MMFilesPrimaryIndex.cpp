@@ -156,6 +156,24 @@ bool MMFilesAllIndexIterator::next(TokenCallback const& cb, size_t limit) {
   return true;
 }
 
+// Skip the first count-many entries
+void MMFilesAllIndexIterator::skip(uint64_t count, uint64_t& skipped) {
+  while (count > 0) {
+    MMFilesSimpleIndexElement element;
+    if (_reverse) {
+      element = _index->findSequentialReverse(&_context, _position);
+    } else {
+      element = _index->findSequential(&_context, _position, _total);
+    }
+    if (element) {
+      ++skipped;
+      --count;
+    } else {
+      break;
+    }
+  }
+}
+
 void MMFilesAllIndexIterator::reset() { _position.reset(); }
 
 MMFilesAnyIndexIterator::MMFilesAnyIndexIterator(
@@ -193,7 +211,7 @@ MMFilesPrimaryIndex::MMFilesPrimaryIndex(
             std::vector<std::vector<arangodb::basics::AttributeName>>(
                 {{arangodb::basics::AttributeName(StaticStrings::KeyString,
                                                   false)}}),
-            true, false),
+            /*unique*/ true , /*sparse*/ false),
       _primaryIndex(nullptr) {
   size_t indexBuckets = 1;
 
@@ -261,11 +279,9 @@ Result MMFilesPrimaryIndex::remove(transaction::Methods*, TRI_voc_rid_t,
 }
 
 /// @brief unload the index data from memory
-int MMFilesPrimaryIndex::unload() {
+void MMFilesPrimaryIndex::unload() {
   _primaryIndex->truncate(
       [](MMFilesSimpleIndexElement const&) { return true; });
-
-  return TRI_ERROR_NO_ERROR;
 }
 
 /// @brief looks up an element given a key

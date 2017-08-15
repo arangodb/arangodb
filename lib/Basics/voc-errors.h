@@ -288,6 +288,10 @@
 /// - 1414: @LIT{start tick not present}
 ///   Will be raised when the replication applier fetches data using a start
 ///   tick, but that start tick is not present on the logger server anymore.
+/// - 1415: @LIT{the checksum format is wrong}
+///    "Will be raised when the format of the checksum is wrong")
+/// - 1416: @LIT{wrong checksum}
+///   Will be raised when a new born follower submits a wrong checksum
 /// - 1450: @LIT{could not connect to agency}
 ///   Will be raised when none of the agency servers can be connected to.
 /// - 1451: @LIT{missing coordinator header}
@@ -417,6 +421,12 @@
 /// - 1492: @LIT{some agency operation failed}
 ///   Will be raised if after various retries an agency operation could not be
 ///   performed successfully.
+/// - 1493: @LIT{conflicting replication factor with distributeShardsLike parameter assignment}
+///   Will be raised if intended replication factor does not match that of the
+///   prototype shard given in ditributeShardsLike parameter.
+/// - 1494: @LIT{conflicting shard number with distributeShardsLike parameter assignment}
+///   Will be raised if intended number of shards does not match that of the
+///   prototype shard given in ditributeShardsLike parameter.
 /// - 1500: @LIT{query killed}
 ///   Will be raised when a running query is killed by an explicit admin
 ///   command.
@@ -1986,6 +1996,26 @@ void TRI_InitializeErrorMessages ();
 #define TRI_ERROR_REPLICATION_START_TICK_NOT_PRESENT                      (1414)
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief 1415: ERROR_REPLICATION_WRONG_CHECKSUM_FORMAT
+///
+/// the checksum format is wrong
+///
+///  "Will be raised when the format of the checksum is wrong")
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_REPLICATION_WRONG_CHECKSUM_FORMAT                       (1415)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 1416: ERROR_REPLICATION_WRONG_CHECKSUM
+///
+/// wrong checksum
+///
+/// Will be raised when a new born follower submits a wrong checksum
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_REPLICATION_WRONG_CHECKSUM                              (1416)
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief 1450: ERROR_CLUSTER_NO_AGENCY
 ///
 /// could not connect to agency
@@ -2460,6 +2490,28 @@ void TRI_InitializeErrorMessages ();
 ////////////////////////////////////////////////////////////////////////////////
 
 #define TRI_ERROR_CLUSTER_AGENCY_COMMUNICATION_FAILED                     (1492)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 1493: ERROR_CLUSTER_DISTRIBUTE_SHARDS_LIKE_REPLICATION_FACTOR
+///
+/// conflicting replication factor with distributeShardsLike parameter assignment
+///
+/// Will be raised if intended replication factor does not match that of the
+/// prototype shard given in ditributeShardsLike parameter.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_CLUSTER_DISTRIBUTE_SHARDS_LIKE_REPLICATION_FACTOR       (1493)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 1494: ERROR_CLUSTER_DISTRIBUTE_SHARDS_LIKE_NUMBER_OF_SHARDS
+///
+/// conflicting shard number with distributeShardsLike parameter assignment
+///
+/// Will be raised if intended number of shards does not match that of the
+/// prototype shard given in ditributeShardsLike parameter.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_CLUSTER_DISTRIBUTE_SHARDS_LIKE_NUMBER_OF_SHARDS         (1494)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1500: ERROR_QUERY_KILLED

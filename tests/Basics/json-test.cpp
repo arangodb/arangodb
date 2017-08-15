@@ -53,9 +53,11 @@
 // --SECTION--                                                 setup / tear-down
 // -----------------------------------------------------------------------------
 
+extern char const* ARGV0;
+
 struct CJsonSetup {
   CJsonSetup () {
-    IcuInitializer::setup("./3rdParty/V8/v8/third_party/icu/common/icudtl.dat");
+    IcuInitializer::setup(ARGV0);
   }
 };
 

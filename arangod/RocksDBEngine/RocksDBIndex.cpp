@@ -41,7 +41,8 @@
 using namespace arangodb;
 using namespace arangodb::rocksutils;
 
-// This is the number of distinct elements the index estimator can reliably store
+// This is the number of distinct elements the index estimator can reliably
+// store
 // This correlates directly with the memory of the estimator:
 // memory == ESTIMATOR_SIZE * 6 bytes
 
@@ -117,21 +118,19 @@ void RocksDBIndex::toVelocyPackFigures(VPackBuilder& builder) const {
   }
 }
 
-int RocksDBIndex::load() {
+void RocksDBIndex::load() {
   if (_useCache) {
     createCache();
     TRI_ASSERT(_cachePresent);
   }
-  return TRI_ERROR_NO_ERROR;
 }
 
-int RocksDBIndex::unload() {
+void RocksDBIndex::unload() {
   if (useCache()) {
     // LOG_TOPIC(ERR, Logger::FIXME) << "unload cache";
     disableCache();
     TRI_ASSERT(!_cachePresent);
   }
-  return TRI_ERROR_NO_ERROR;
 }
 
 /// @brief return a VelocyPack representation of the index
@@ -176,21 +175,6 @@ void RocksDBIndex::disableCache() {
   TRI_ASSERT(_useCache);
 }
 
-int RocksDBIndex::drop() {
-  // Try to drop the cache as well.
-  if (_cachePresent) {
-    try {
-      TRI_ASSERT(CacheManagerFeature::MANAGER != nullptr);
-      CacheManagerFeature::MANAGER->destroyCache(_cache);
-      // Reset flag
-      _cache.reset();
-      _cachePresent = false;
-    } catch (...) {
-    }
-  }
-  return TRI_ERROR_NO_ERROR;
-}
-
 void RocksDBIndex::serializeEstimate(std::string&) const {
   // All indexes that do not have an estimator do not serialize anything.
 }
@@ -207,6 +191,40 @@ void RocksDBIndex::recalculateEstimates() {
   return;
 }
 
+int RocksDBIndex::drop() {
+  // edge index needs to be dropped with prefix_same_as_start = false
+  // otherwise full index scan will not work
+  bool prefix_same_as_start = this->type() != Index::TRI_IDX_TYPE_EDGE_INDEX;
+  arangodb::Result r = rocksutils::removeLargeRange(
+    rocksutils::globalRocksDB(), this->getBounds(), prefix_same_as_start);
+  
+  // Try to drop the cache as well.
+  if (_cachePresent) {
+    try {
+      TRI_ASSERT(CacheManagerFeature::MANAGER != nullptr);
+      CacheManagerFeature::MANAGER->destroyCache(_cache);
+      // Reset flag
+      _cache.reset();
+      _cachePresent = false;
+    } catch (...) {
+    }
+  }
+  
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  //check if documents have been deleted
+  rocksdb::ReadOptions readOptions;
+  readOptions.fill_cache = false;
+  size_t numDocs = rocksutils::countKeyRange(rocksutils::globalRocksDB(), readOptions,
+                                             RocksDBKeyBounds::EdgeIndex(_objectId));
+  if (numDocs) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "deletion check in edge index drop failed "
+                                   "- not all documents in the index have been deleted");
+  }
+#endif
+  
+  return r.errorNumber();
+}
+
 void RocksDBIndex::truncate(transaction::Methods* trx) {
   auto* mthds = RocksDBTransactionState::toMethods(trx);
   RocksDBKeyBounds indexBounds = getBounds(type(), _objectId, _unique);
@@ -219,6 +237,8 @@ void RocksDBIndex::truncate(transaction::Methods* trx) {
     options.prefix_same_as_start = false;
     options.total_order_seek = true;
   }
+  options.verify_checksums = false;
+  options.fill_cache = false;
 
   std::unique_ptr<rocksdb::Iterator> iter = mthds->NewIterator(options, _cf);
   iter->Seek(indexBounds.start());
@@ -238,6 +258,30 @@ void RocksDBIndex::truncate(transaction::Methods* trx) {
 
     iter->Next();
   }
+}
+
+/// @brief return the memory usage of the index
+size_t RocksDBIndex::memory() const {
+  rocksdb::TransactionDB* db = rocksutils::globalRocksDB();
+  RocksDBKeyBounds bounds = getBounds();
+  TRI_ASSERT(_cf == bounds.columnFamily());
+  rocksdb::Range r(bounds.start(), bounds.end());
+  uint64_t out;
+  db->GetApproximateSizes(_cf, &r, 1, &out,
+      static_cast<uint8_t>(
+          rocksdb::DB::SizeApproximationFlags::INCLUDE_MEMTABLES |
+          rocksdb::DB::SizeApproximationFlags::INCLUDE_FILES));
+  return static_cast<size_t>(out);
+}
+
+/// compact the index, should reduce read amplification
+void RocksDBIndex::cleanup() {
+  rocksdb::TransactionDB* db = rocksutils::globalRocksDB();
+  rocksdb::CompactRangeOptions opts;
+  RocksDBKeyBounds bounds = this->getBounds();
+  TRI_ASSERT(_cf == bounds.columnFamily());
+  rocksdb::Slice b = bounds.start(), e = bounds.end();
+  db->CompactRange(opts, _cf, &b, &e);
 }
 
 Result RocksDBIndex::postprocessRemove(transaction::Methods* trx,

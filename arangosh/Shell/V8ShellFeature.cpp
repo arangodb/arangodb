@@ -160,8 +160,13 @@ void V8ShellFeature::unprepare() {
 
     v8::Context::Scope context_scope{context};
 
-    // remove any objects stored in _last global value
-    context->Global()->Delete(TRI_V8_ASCII_STRING2(_isolate, "_last"));
+    // clear globals to free memory
+    auto globals = _isolate->GetCurrentContext()->Global();
+    v8::Handle<v8::Array> names = globals->GetOwnPropertyNames();
+    uint32_t const n = names->Length();
+    for (uint32_t i = 0; i < n; ++i) {
+      globals->Delete(names->Get(i));
+    }
 
     TRI_RunGarbageCollectionV8(_isolate, 2500.0);
   }
@@ -178,7 +183,7 @@ void V8ShellFeature::unprepare() {
 
     _context.Reset();
   }
-
+  
   _isolate->Dispose();
   
   // turn on memory allocation failures again
@@ -304,8 +309,8 @@ V8ClientConnection* V8ShellFeature::setup(
 
 int V8ShellFeature::runShell(std::vector<std::string> const& positionals) {
   v8::Locker locker{_isolate};
-
   v8::Isolate::Scope isolate_scope(_isolate);
+
   v8::HandleScope handle_scope(_isolate);
 
   v8::Local<v8::Context> context =
@@ -434,7 +439,7 @@ int V8ShellFeature::runShell(std::vector<std::string> const& positionals) {
       V8PlatformFeature::resetOutOfMemory(_isolate);
     }
   }
-      
+     
   if (!_console->quiet()) {
     _console->printLine("");
     _console->printByeBye();

@@ -1625,131 +1625,177 @@ function ahuacatlStringFunctionsTestSuite () {
 /// @brief test charlength function
 ////////////////////////////////////////////////////////////////////////////////
     
-    testCharLength1 : function () {
-      var expected = [ 13 ];
-      var actual = getQueryResults("FOR r IN [ 1 ] return CHAR_LENGTH('the quick fox')");
-      assertEqual(expected, actual);
+    testCharLength1 : () => {
+      assertEqual([ 7 ], getQueryResults("RETURN NOOPT(CHAR_LENGTH('äöüÄÖÜß'))"));
+      assertEqual([ 7 ], getQueryResults("RETURN NOOPT(V8(CHAR_LENGTH('äöüÄÖÜß')))"));
+
+      assertEqual([ 10 ], getQueryResults("RETURN NOOPT(CHAR_LENGTH('アボカド名称について'))"));
+      assertEqual([ 10 ], getQueryResults("RETURN NOOPT(V8(CHAR_LENGTH('アボカド名称について')))"));
+
+      assertEqual([ 13 ], getQueryResults("RETURN NOOPT(CHAR_LENGTH('the quick fox'))"));
+      assertEqual([ 13 ], getQueryResults("RETURN NOOPT(V8(CHAR_LENGTH('the quick fox')))"));
+
+      assertEqual([ 0 ], getQueryResults("RETURN NOOPT(CHAR_LENGTH(null))"));
+      assertEqual([ 0 ], getQueryResults("RETURN NOOPT(V8(CHAR_LENGTH(null)))"));
+
+      assertEqual([ 4 ], getQueryResults("RETURN NOOPT(CHAR_LENGTH(true))"));
+      assertEqual([ 4 ], getQueryResults("RETURN NOOPT(V8(CHAR_LENGTH(true)))"));
+
+      assertEqual([ 5 ], getQueryResults("RETURN NOOPT(CHAR_LENGTH(false))"));
+      assertEqual([ 5 ], getQueryResults("RETURN NOOPT(V8(CHAR_LENGTH(false)))"));
+
+      assertEqual([ 1 ], getQueryResults("RETURN NOOPT(CHAR_LENGTH(3))"));
+      assertEqual([ 1 ], getQueryResults("RETURN NOOPT(V8(CHAR_LENGTH(3)))"));
+
+      assertEqual([ 3 ], getQueryResults("RETURN NOOPT(CHAR_LENGTH(3.3))"));
+      assertEqual([ 3 ], getQueryResults("RETURN NOOPT(V8(CHAR_LENGTH(3.3)))"));
+
+      assertEqual([ 4 ], getQueryResults("RETURN NOOPT(CHAR_LENGTH('🥑😄👻👽'))"));
+      assertEqual([ 4 ], getQueryResults("RETURN NOOPT(V8(CHAR_LENGTH('🥑😄👻👽')))"));
+
+      assertEqual([ 2 ], getQueryResults("RETURN NOOPT(CHAR_LENGTH([ ]))"));
+      assertEqual([ 2 ], getQueryResults("RETURN NOOPT(V8(CHAR_LENGTH([ ])))"));
+
+      assertEqual([ 7 ], getQueryResults("RETURN NOOPT(CHAR_LENGTH([ 1, 2, 3 ]))"));
+      assertEqual([ 7 ], getQueryResults("RETURN NOOPT(V8(CHAR_LENGTH([ 1, 2, 3 ])))"));
+
+      assertEqual([ 2 ], getQueryResults("RETURN NOOPT(CHAR_LENGTH({ }))"));
+      assertEqual([ 2 ], getQueryResults("RETURN NOOPT(V8(CHAR_LENGTH({ })))"));
+
+      assertEqual([ 7 ], getQueryResults("RETURN NOOPT(CHAR_LENGTH({ a:1 }))"));
+      assertEqual([ 7 ], getQueryResults("RETURN NOOPT(V8(CHAR_LENGTH({ a:1 })))"));
+
+      assertEqual([ 11 ], getQueryResults("RETURN NOOPT(CHAR_LENGTH({ a: \"foo\" }))"));
+      assertEqual([ 11 ], getQueryResults("RETURN NOOPT(V8(CHAR_LENGTH({ a: \"foo\" })))"));
+
+      assertEqual([ 13 ], getQueryResults("RETURN NOOPT(CHAR_LENGTH({ a:1, b: 2 }))"));
+      assertEqual([ 13 ], getQueryResults("RETURN NOOPT(V8(CHAR_LENGTH({ a:1, b: 2 })))"));
     },
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test charlength function
 ////////////////////////////////////////////////////////////////////////////////
-    
-    testCharLength2 : function () {
-      var expected = [ 7 ];
-      var actual = getQueryResults("FOR r IN [ 1 ] return CHAR_LENGTH('äöüÄÖÜß')");
-      assertEqual(expected, actual);
-    },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test charlength function
-////////////////////////////////////////////////////////////////////////////////
-    
-    testCharLength3 : function () {
-      var expected = [ 10 ];
-      var actual = getQueryResults("FOR r IN [ 1 ] return CHAR_LENGTH('アボカド名称について')");
-      assertEqual(expected, actual);
-    },
+    testCharLengthInvalid : () => {
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN NOOPT(CHAR_LENGTH())");
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN NOOPT(V8(CHAR_LENGTH()))");
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test charlength function
-////////////////////////////////////////////////////////////////////////////////
-
-    testCharLengthInvalid : function () {
-      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN CHAR_LENGTH()"); 
-      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN CHAR_LENGTH(\"yes\", \"yes\")"); 
-      assertEqual([ 0 ], getQueryResults("RETURN CHAR_LENGTH(null)"));
-      assertEqual([ 4 ], getQueryResults("RETURN CHAR_LENGTH(true)"));
-      assertEqual([ 1 ], getQueryResults("RETURN CHAR_LENGTH(3)"));
-      assertEqual([ 2 ], getQueryResults("RETURN CHAR_LENGTH([ ])"));
-      assertEqual([ 7 ], getQueryResults("RETURN CHAR_LENGTH([ 1, 2, 3 ])"));
-      assertEqual([ 2 ], getQueryResults("RETURN CHAR_LENGTH({ })"));
-      assertEqual([ 7 ], getQueryResults("RETURN CHAR_LENGTH({ a:1 })"));
-      assertEqual([ 11 ], getQueryResults("RETURN CHAR_LENGTH({ a: \"foo\" })"));
-      assertEqual([ 13 ], getQueryResults("RETURN CHAR_LENGTH({ a:1, b: 2 })"));
-    },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test lower function
-////////////////////////////////////////////////////////////////////////////////
-    
-    testLower1 : function () {
-      var expected = [ "the quick brown fox jumped" ];
-      var actual = getQueryResults("FOR r IN [ 1 ] return LOWER('THE quick Brown foX JuMpED')");
-      assertEqual(expected, actual);
-    },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test lower function
-////////////////////////////////////////////////////////////////////////////////
-    
-    testLower2 : function () {
-      var expected = [ "äöüäöüß アボカド名称について" ];
-      var actual = getQueryResults("FOR r IN [ 1 ] return LOWER('äöüÄÖÜß アボカド名称について')");
-      assertEqual(expected, actual);
-    },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test lower function
-////////////////////////////////////////////////////////////////////////////////
-    
-    testLower3 : function () {
-      var expected = [ "0123456789<>|,;.:-_#'+*@!\"$&/(){[]}?\\" ];
-      var actual = getQueryResults("FOR r IN [ 1 ] return LOWER('0123456789<>|,;.:-_#\\'+*@!\\\"$&/(){[]}?\\\\')");
-      assertEqual(expected, actual);
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN NOOPT(CHAR_LENGTH('yes', 'yes'))");
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN NOOPT(V8(CHAR_LENGTH('yes', 'yes')))");
     },
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test lower function
 ////////////////////////////////////////////////////////////////////////////////
 
-    testLowerInvalid : function () {
-      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN LOWER()"); 
-      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN LOWER(\"yes\", \"yes\")"); 
-      assertEqual([ "" ], getQueryResults("RETURN LOWER(null)"));
-      assertEqual([ "true" ], getQueryResults("RETURN LOWER(true)"));
-      assertEqual([ "3" ], getQueryResults("RETURN LOWER(3)"));
-      assertEqual([ "[]" ], getQueryResults("RETURN LOWER([])"));
-      assertEqual([ "[1,2,3]" ], getQueryResults("RETURN LOWER([1,2,3])"));
-      assertEqual([ "{}" ], getQueryResults("RETURN LOWER({})"));
-      assertEqual([ "{\"a\":1,\"b\":2}" ], getQueryResults("RETURN LOWER({A:1,b:2})"));
-      assertEqual([ "{\"a\":1,\"a\":2,\"b\":3}" ], getQueryResults("RETURN LOWER({A:1,a:2,b:3})"));
+    testLower1 : () => {
+      assertEqual([ 'the quick brown fox jumped' ], getQueryResults("RETURN NOOPT(LOWER('THE quick Brown foX JuMpED'))"));
+      assertEqual([ 'the quick brown fox jumped' ], getQueryResults("RETURN NOOPT(V8(LOWER('THE quick Brown foX JuMpED')))"));
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test lower function
+////////////////////////////////////////////////////////////////////////////////
+
+    testLower2 : () => {
+      assertEqual([ "äöüäöüß アボカド名称について" ], getQueryResults("return NOOPT(LOWER('äöüÄÖÜß アボカド名称について'))"));
+      assertEqual([ "äöüäöüß アボカド名称について" ], getQueryResults("return NOOPT(V8(LOWER('äöüÄÖÜß アボカド名称について')))"));
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test lower function
+////////////////////////////////////////////////////////////////////////////////
+
+    testLower3 : () => {
+      assertEqual([ "0123456789<>|,;.:-_#'+*@!\"$&/(){[]}?\\" ], getQueryResults("return NOOPT(LOWER('0123456789<>|,;.:-_#\\'+*@!\\\"$&/(){[]}?\\\\'))"));
+      assertEqual([ "0123456789<>|,;.:-_#'+*@!\"$&/(){[]}?\\" ], getQueryResults("return NOOPT(V8(LOWER('0123456789<>|,;.:-_#\\'+*@!\\\"$&/(){[]}?\\\\')))"));
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test lower function
+////////////////////////////////////////////////////////////////////////////////
+
+    testLowerInvalid : () => {
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN NOOPT(LOWER())");
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN NOOPT(V8(LOWER()))");
+
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN LOWER(NOOPT('yes', 'yes'))");
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN LOWER(NOOPT(V8('yes', 'yes')))");
+
+      assertEqual([ "" ], getQueryResults("RETURN NOOPT(LOWER(null))"));
+      assertEqual([ "" ], getQueryResults("RETURN NOOPT(V8(LOWER(null)))"));
+
+      assertEqual([ "true" ], getQueryResults("RETURN NOOPT(LOWER(true))"));
+      assertEqual([ "true" ], getQueryResults("RETURN NOOPT(V8(LOWER(true)))"));
+
+      assertEqual([ "3" ], getQueryResults("RETURN NOOPT(LOWER(3))"));
+      assertEqual([ "3" ], getQueryResults("RETURN NOOPT(V8(LOWER(3)))"));
+
+      assertEqual([ "[]" ], getQueryResults("RETURN NOOPT(LOWER([]))"));
+      assertEqual([ "[]" ], getQueryResults("RETURN NOOPT(V8(LOWER([])))"));
+
+      assertEqual([ "[1,2,3]" ], getQueryResults("RETURN NOOPT(LOWER([1,2,3]))"));
+      assertEqual([ "[1,2,3]" ], getQueryResults("RETURN NOOPT(V8(LOWER([1,2,3])))"));
+
+      assertEqual([ "{}" ], getQueryResults("RETURN NOOPT(LOWER({}))"));
+      assertEqual([ "{}" ], getQueryResults("RETURN NOOPT(V8(LOWER({})))"));
+
+      assertEqual([ "{\"a\":1,\"b\":2}" ], getQueryResults("RETURN NOOPT(LOWER({A:1,b:2}))"));
+      assertEqual([ "{\"a\":1,\"b\":2}" ], getQueryResults("RETURN NOOPT(V8(LOWER({A:1,b:2})))"));
+
+      assertEqual([ "{\"a\":1,\"a\":2,\"b\":3}" ], getQueryResults("RETURN NOOPT(LOWER({A:1,a:2,b:3}))"));
+      assertEqual([ "{\"a\":1,\"a\":2,\"b\":3}" ], getQueryResults("RETURN NOOPT(LOWER(V8({A:1,a:2,b:3})))"));
     },
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test upper function
 ////////////////////////////////////////////////////////////////////////////////
     
-    testUpper1 : function () {
-      var expected = [ "THE QUICK BROWN FOX JUMPED" ];
-      var actual = getQueryResults("FOR r IN [ 1 ] return UPPER('THE quick Brown foX JuMpED')");
-      assertEqual(expected, actual);
+    testUpper1 : () => {
+      assertEqual([ 'THE QUICK BROWN FOX JUMPED' ], getQueryResults("return NOOPT(UPPER('THE quick Brown foX JuMpED'))"));
+      assertEqual([ 'THE QUICK BROWN FOX JUMPED' ], getQueryResults("return NOOPT(V8(UPPER('THE quick Brown foX JuMpED')))"));
     },
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test upper function
 ////////////////////////////////////////////////////////////////////////////////
     
-    testUpper2 : function () {
-      var expected = [ "ÄÖÜÄÖÜSS アボカド名称について" ];
-      var actual = getQueryResults("FOR r IN [ 1 ] return UPPER('äöüÄÖÜß アボカド名称について')");
-      assertEqual(expected, actual);
+    testUpper2 : () => {
+      assertEqual([ 'ÄÖÜÄÖÜSS アボカド名称について' ], getQueryResults("return NOOPT(UPPER('äöüÄÖÜß アボカド名称について'))"));
+      assertEqual([ 'ÄÖÜÄÖÜSS アボカド名称について' ], getQueryResults("return NOOPT(V8(UPPER('äöüÄÖÜß アボカド名称について')))"));
     },
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test upper function
 ////////////////////////////////////////////////////////////////////////////////
 
-    testUpperInvalid : function () {
-      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN UPPER()"); 
-      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN UPPER(\"yes\", \"yes\")"); 
-      assertEqual([ "" ], getQueryResults("RETURN UPPER(null)"));
-      assertEqual([ "TRUE" ], getQueryResults("RETURN UPPER(true)"));
-      assertEqual([ "3" ], getQueryResults("RETURN UPPER(3)"));
-      assertEqual([ "[]" ], getQueryResults("RETURN UPPER([])"));
-      assertEqual([ "[1,2,3]" ], getQueryResults("RETURN UPPER([1,2,3])"));
-      assertEqual([ "{}" ], getQueryResults("RETURN UPPER({})"));
-      assertEqual([ "{\"A\":1,\"B\":2}" ], getQueryResults("RETURN UPPER({a:1, b:2})"));
+    testUpperInvalid : () => {
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, 'RETURN NOOPT(UPPER())');
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, 'RETURN NOOPT(V8(UPPER()))');
+
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN NOOPT(UPPER('yes', 'yes'))");
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN NOOPT(V8(UPPER('yes', 'yes')))");
+
+      assertEqual([ "" ], getQueryResults("RETURN NOOPT(UPPER(null))"));
+      assertEqual([ "" ], getQueryResults("RETURN NOOPT(V8(UPPER(null)))"));
+
+      assertEqual([ "TRUE" ], getQueryResults("RETURN NOOPT(UPPER(true))"));
+      assertEqual([ "TRUE" ], getQueryResults("RETURN NOOPT(V8(UPPER(true)))"));
+
+      assertEqual([ "3" ], getQueryResults("RETURN NOOPT(UPPER(3))"));
+      assertEqual([ "3" ], getQueryResults("RETURN NOOPT(V8(UPPER(3)))"));
+
+      assertEqual([ "[]" ], getQueryResults("RETURN NOOPT(UPPER([]))"));
+      assertEqual([ "[]" ], getQueryResults("RETURN NOOPT(V8(UPPER([])))"));
+
+      assertEqual([ "[1,2,3]" ], getQueryResults("RETURN NOOPT(UPPER([1,2,3]))"));
+      assertEqual([ "[1,2,3]" ], getQueryResults("RETURN NOOPT(V8(UPPER([1,2,3])))"));
+
+      assertEqual([ "{}" ], getQueryResults("RETURN NOOPT(UPPER({}))"));
+      assertEqual([ "{}" ], getQueryResults("RETURN NOOPT(V8(UPPER({})))"));
+
+      assertEqual([ "{\"A\":1,\"B\":2}" ], getQueryResults("RETURN NOOPT(UPPER({a:1, b:2}))"));
+      assertEqual([ "{\"A\":1,\"B\":2}" ], getQueryResults("RETURN NOOPT(V8(UPPER({a:1, b:2})))"));
     },
 
 ////////////////////////////////////////////////////////////////////////////////

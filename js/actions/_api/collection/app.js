@@ -221,6 +221,7 @@ function post_api_collection (req, res) {
         r.type = arangodb.ArangoCollection.TYPE_EDGE;
       }
     }
+
     if (r.type === arangodb.ArangoCollection.TYPE_EDGE) {
       collection = arangodb.db._createEdgeCollection(r.name, r.parameters, options);
     } else {
@@ -477,7 +478,7 @@ function put_api_collection_load_indexes_in_memory (req, res, collection) {
     // Load all index values into Memory
     collection.loadIndexesIntoMemory();
 
-    actions.resultOk(req, res, actions.HTTP_OK, true);
+    actions.resultOk(req, res, actions.HTTP_OK, { result: true });
   } catch (err) {
     actions.resultException(req, res, err, undefined, false);
   }

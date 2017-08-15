@@ -213,11 +213,12 @@ function cancelBarrier (endpoint, database, barrierId) {
 // / @brief tell leader that we are in sync
 // /////////////////////////////////////////////////////////////////////////////
 
-function addShardFollower (endpoint, database, shard) {
+function addShardFollower (endpoint, database, shard, lockJobId) {
   console.topic('heartbeat=debug', 'addShardFollower: tell the leader to put us into the follower list...');
   var url = endpointToURL(endpoint) + '/_db/' + database +
     '/_api/replication/addFollower';
-  var body = {followerId: ArangoServerState.id(), shard};
+  let db = require('internal').db;
+  var body = {followerId: ArangoServerState.id(), shard, checksum: db._collection(shard).count() + '', readLockId: lockJobId};
   var r = request({url, body: JSON.stringify(body), method: 'PUT'});
   if (r.status !== 200) {
     console.topic('heartbeat=error', "addShardFollower: could not add us to the leader's follower list.", r);
@@ -544,7 +545,7 @@ function synchronizeOneShard (database, shard, planId, leader) {
     let startTime = new Date();
     sy = rep.syncCollection(shard,
       { endpoint: ep, incremental: true, keepBarrier: true,
-        useCollectionId: false, leaderId: leader });
+        useCollectionId: false, leaderId: leader, skipCreateDrop: true });
     let endTime = new Date();
     let longSync = false;
     if (endTime - startTime > 5000) {
@@ -590,7 +591,12 @@ function synchronizeOneShard (database, shard, planId, leader) {
                 shard, sy2);
               ok = false;
             } else {
-              ok = addShardFollower(ep, database, shard);
+              try {
+                ok = addShardFollower(ep, database, shard, lockJobId);
+              } catch (err4) {
+                db._drop(shard);
+                throw err4;
+              }
             }
           } catch (err3) {
             console.topic('heartbeat=error', 'synchronizeOneshard: exception in',
@@ -993,6 +999,11 @@ function executePlanForCollections(plannedCollections) {
 
             try {
               db._drop(collection, {timeout:1.0});
+              console.topic('heartbeat=debug', "dropping local shard '%s/%s' of '%s/%s => SUCCESS",
+                    database,
+                    collection,
+                    database,
+                    collections[collection].planId);
             }
             catch (err) {
               console.topic('heartbeat=debug', "could not drop local shard '%s/%s' of '%s/%s within 1 second, trying again later",

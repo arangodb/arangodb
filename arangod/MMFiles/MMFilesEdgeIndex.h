@@ -94,7 +94,7 @@ class MMFilesEdgeIndex final : public Index {
 
   bool hasSelectivityEstimate() const override { return true; }
 
-  double selectivityEstimate(
+  double selectivityEstimateLocal(
       arangodb::StringRef const* = nullptr) const override;
 
   size_t memory() const override;
@@ -113,8 +113,8 @@ class MMFilesEdgeIndex final : public Index {
                    std::vector<std::pair<TRI_voc_rid_t, VPackSlice>> const&,
                    std::shared_ptr<arangodb::basics::LocalTaskQueue>) override;
 
-  int load() override { return 0; }
-  int unload() override;
+  void load() override {}
+  void unload() override;
 
   int sizeHint(transaction::Methods*, size_t) override;
 

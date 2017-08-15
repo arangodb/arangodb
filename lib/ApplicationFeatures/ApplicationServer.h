@@ -24,6 +24,7 @@
 #define ARANGODB_APPLICATION_FEATURES_APPLICATION_SERVER_H 1
 
 #include "Basics/Common.h"
+#include "Basics/ConditionVariable.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/velocypack-aliases.h>
@@ -228,6 +229,13 @@ class ApplicationServer {
     _startupCallbacks.emplace_back(callback);
   }
 
+  void registerFailCallback(std::function<void(std::string const&)> const& callback) {
+    fail = callback;
+  }
+  
+  // setup and validate all feature dependencies, determine feature order
+  void setupDependencies(bool failOnMissing);
+
  private:
   // throws an exception that a requested feature was not found
   static void throwFeatureNotFoundException(std::string const& name);
@@ -237,9 +245,6 @@ class ApplicationServer {
 
   static void disableFeatures(std::vector<std::string> const& names,
                               bool force);
-
-  // fail and abort with the specified message
-  void fail(std::string const& message);
 
   // walks over all features and runs a callback function for them
   void apply(std::function<void(ApplicationFeature*)>, bool enabledOnly);
@@ -253,9 +258,6 @@ class ApplicationServer {
 
   // allows features to cross-validate their program options
   void validateOptions();
-
-  // setup and validate all feature dependencies, determine feature order
-  void setupDependencies(bool failOnMissing);
 
   // allows process control
   void daemonize();
@@ -299,6 +301,9 @@ class ApplicationServer {
 
   // features order for prepare/start
   std::vector<ApplicationFeature*> _orderedFeatures;
+  
+  // will be signalled when the application server is asked to shut down
+  basics::ConditionVariable _shutdownCondition;
 
   // stop flag. this is being changed by calling beginShutdown
   std::atomic<bool> _stopping;
@@ -320,6 +325,9 @@ class ApplicationServer {
 
   // the install directory of this program:
   char const* _binaryPath;
+
+  // fail callback
+  std::function<void(std::string const&)> fail;
 };
 }
 }

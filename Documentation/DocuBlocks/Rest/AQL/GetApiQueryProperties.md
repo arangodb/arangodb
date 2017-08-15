@@ -16,6 +16,9 @@ JSON object with the following properties:
   *slowQueryThreshold*. In order for slow queries to be tracked, the *enabled*
   property must also be set to *true*.
 
+- *trackBindVars*: if set to *true*, then bind variables used in queries will 
+  be tracked.
+
 - *maxSlowQueries*: the maximum number of slow queries to keep in the list
   of slow queries. If the list of slow queries is full, the oldest entry in
   it will be discarded when additional slow queries occur.

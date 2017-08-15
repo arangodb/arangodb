@@ -9,8 +9,6 @@ AQL offers the following functions to filter data based on
 least one geo index. If no geo index can be found, calling this function will fail
 with an error at runtime. There is no error when explaining the query however.
 
-Currently, geo indexes are not yet supported with the RocksDB storage engine. Thus the functions `NEAR()`, `WITHIN()` and `WITHIN_RECTANGLE()` will be unavailable when using this storage engine. To use geo indexes, please use the MMFiles storage engine for the time being.
-
 ### NEAR()
 
 `NEAR(coll, latitude, longitude, limit, distanceName) → docArray`

@@ -1795,12 +1795,6 @@ static void JS_Log(v8::FunctionCallbackInfo<v8::Value> const& args) {
     TRI_V8_THROW_TYPE_ERROR("<level> must be a string");
   }
 
-  TRI_Utf8ValueNFC message(TRI_UNKNOWN_MEM_ZONE, args[1]);
-
-  if (*message == nullptr) {
-    TRI_V8_THROW_TYPE_ERROR("<message> must be a string");
-  }
-
   std::vector<std::string> splitted = StringUtils::split(*level, '=');
 
   std::string ls = "info";
@@ -1813,14 +1807,14 @@ static void JS_Log(v8::FunctionCallbackInfo<v8::Value> const& args) {
     ls = splitted[1];
   }
 
-  std::string msg = *message;
+  std::string prefix;
   LogLevel ll = LogLevel::WARN;
 
   StringUtils::tolowerInPlace(&ls);
   StringUtils::tolowerInPlace(&ts);
 
   if (ls == "fatal") {
-    msg = "FATAL! " + msg;
+    prefix = "FATAL! ";
     ll = LogLevel::ERR;
   } else if (ls == "error") {
     ll = LogLevel::ERR;
@@ -1833,17 +1827,47 @@ static void JS_Log(v8::FunctionCallbackInfo<v8::Value> const& args) {
   } else if (ls == "trace") {
     ll = LogLevel::TRACE;
   } else {
-    msg = ls + "!" + msg;
+    prefix = ls + "!";
   }
 
   LogTopic* topic = ts.empty() ? nullptr : LogTopic::lookup(ts);
 
-  if (topic == nullptr) {
-    LOG_TOPIC_RAW(ll, Logger::FIXME) << msg;
-  } else {
-    LOG_TOPIC_RAW(ll, *topic) << msg;
-  }
+  if (args[1]->IsArray()) {
+    auto loglines = v8::Handle<v8::Array>::Cast(args[1]);
+    std::vector<std::string> logLineVec;
 
+    logLineVec.reserve(loglines->Length());
+    
+    for (uint32_t i = 0; i < loglines->Length(); ++i) {
+      v8::Handle<v8::Value> line = loglines->Get(i);
+      TRI_Utf8ValueNFC message(TRI_UNKNOWN_MEM_ZONE, line);
+      if (line->IsString()) {
+        logLineVec.push_back(*message);
+      }
+    }
+    for (auto& message: logLineVec) {
+      if (topic == nullptr) {
+        LOG_TOPIC_RAW(ll, Logger::FIXME) << prefix << message;
+      } else {
+        LOG_TOPIC_RAW(ll, *topic) << prefix << message;
+      }
+    }
+  }
+  else {
+    TRI_Utf8ValueNFC message(TRI_UNKNOWN_MEM_ZONE, args[1]);
+
+    if (*message == nullptr) {
+      TRI_V8_THROW_TYPE_ERROR("<message> must be a string or an array");
+    }
+
+    std::string msg = *message;
+    if (topic == nullptr) {
+      LOG_TOPIC_RAW(ll, Logger::FIXME) << prefix << msg;
+    } else {
+      LOG_TOPIC_RAW(ll, *topic) << prefix << msg;
+    }
+  }
+  
   TRI_V8_RETURN_UNDEFINED();
   TRI_V8_TRY_CATCH_END
 }
@@ -3397,7 +3421,7 @@ static void JS_ExecuteExternal(
 
       n = arr->Length();
       arguments = static_cast<char**>(
-          TRI_Allocate(TRI_CORE_MEM_ZONE, n * sizeof(char*), false));
+          TRI_Allocate(TRI_CORE_MEM_ZONE, n * sizeof(char*)));
 
       for (uint32_t i = 0; i < n; ++i) {
         TRI_Utf8ValueNFC arg(TRI_UNKNOWN_MEM_ZONE, arr->Get(i));
@@ -3411,7 +3435,7 @@ static void JS_ExecuteExternal(
     } else {
       n = 1;
       arguments = static_cast<char**>(
-          TRI_Allocate(TRI_CORE_MEM_ZONE, n * sizeof(char*), false));
+          TRI_Allocate(TRI_CORE_MEM_ZONE, n * sizeof(char*)));
 
       TRI_Utf8ValueNFC arg(TRI_UNKNOWN_MEM_ZONE, a);
 
@@ -3585,7 +3609,7 @@ static void JS_ExecuteAndWaitExternal(
 
       n = arr->Length();
       arguments = static_cast<char**>(
-          TRI_Allocate(TRI_CORE_MEM_ZONE, n * sizeof(char*), false));
+          TRI_Allocate(TRI_CORE_MEM_ZONE, n * sizeof(char*)));
 
       for (uint32_t i = 0; i < n; ++i) {
         TRI_Utf8ValueNFC arg(TRI_UNKNOWN_MEM_ZONE, arr->Get(i));
@@ -3599,7 +3623,7 @@ static void JS_ExecuteAndWaitExternal(
     } else {
       n = 1;
       arguments = static_cast<char**>(
-          TRI_Allocate(TRI_CORE_MEM_ZONE, n * sizeof(char*), false));
+          TRI_Allocate(TRI_CORE_MEM_ZONE, n * sizeof(char*)));
 
       TRI_Utf8ValueNFC arg(TRI_UNKNOWN_MEM_ZONE, a);
 

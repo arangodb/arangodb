@@ -60,7 +60,7 @@ function runSetup () {
     waitForSync: false,
     journalSize: 16 * 1024 * 1024,
     doCompact: true,
-    isVolatile: true
+    isVolatile: (db._engine().name === "mmfiles")
   });
   c.save({ value1: { 'some': 'rubbish' } });
   c.ensureSkiplist('value1');

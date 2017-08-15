@@ -21,13 +21,13 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "Aql/AstNode.h"
+#include "AstNode.h"
 #include "Aql/Ast.h"
-#include "Aql/Executor.h"
 #include "Aql/Function.h"
 #include "Aql/Quantifier.h"
 #include "Aql/Query.h"
 #include "Aql/Scopes.h"
+#include "Aql/V8Executor.h"
 #include "Aql/types.h"
 #include "Basics/StringBuffer.h"
 #include "Basics/Utf8Helper.h"
@@ -1031,80 +1031,76 @@ std::shared_ptr<VPackBuilder> AstNode::toVelocyPack(bool verbose) const {
 
 /// @brief Create a VelocyPack representation of the node
 void AstNode::toVelocyPack(VPackBuilder& builder, bool verbose) const {
-  try {
-    VPackObjectBuilder guard(&builder);
+  VPackObjectBuilder guard(&builder);
 
-    // dump node type
-    builder.add("type", VPackValue(getTypeString()));
+  // dump node type
+  builder.add("type", VPackValue(getTypeString()));
+  if (verbose) {
+    builder.add("typeID", VPackValue(static_cast<int>(type)));
+  }
+  if (type == NODE_TYPE_COLLECTION || type == NODE_TYPE_PARAMETER ||
+      type == NODE_TYPE_ATTRIBUTE_ACCESS ||
+      type == NODE_TYPE_OBJECT_ELEMENT || type == NODE_TYPE_FCALL_USER) {
+    // dump "name" of node
+    builder.add("name", VPackValuePair(getStringValue(), getStringLength(),
+                                        VPackValueType::String));
+  }
+  if (type == NODE_TYPE_FCALL) {
+    auto func = static_cast<Function*>(getData());
+    builder.add("name", VPackValue(func->externalName));
+    // arguments are exported via node members
+  }
+
+  if (type == NODE_TYPE_ARRAY && hasFlag(DETERMINED_SORTED)) {
+    // transport information about a node's sortedness
+    builder.add("sorted", VPackValue(hasFlag(VALUE_SORTED)));
+  }
+
+  if (type == NODE_TYPE_VALUE) {
+    // dump value of "value" node
+    builder.add(VPackValue("value"));
+    toVelocyPackValue(builder);
+
     if (verbose) {
-      builder.add("typeID", VPackValue(static_cast<int>(type)));
+      builder.add("vType", VPackValue(getValueTypeString()));
+      builder.add("vTypeID", VPackValue(static_cast<int>(value.type)));
     }
-    if (type == NODE_TYPE_COLLECTION || type == NODE_TYPE_PARAMETER ||
-        type == NODE_TYPE_ATTRIBUTE_ACCESS ||
-        type == NODE_TYPE_OBJECT_ELEMENT || type == NODE_TYPE_FCALL_USER) {
-      // dump "name" of node
-      builder.add("name", VPackValuePair(getStringValue(), getStringLength(),
-                                         VPackValueType::String));
-    }
-    if (type == NODE_TYPE_FCALL) {
-      auto func = static_cast<Function*>(getData());
-      builder.add("name", VPackValue(func->externalName));
-      // arguments are exported via node members
-    }
+  }
 
-    if (type == NODE_TYPE_ARRAY && hasFlag(DETERMINED_SORTED)) {
-      // transport information about a node's sortedness
-      builder.add("sorted", VPackValue(hasFlag(VALUE_SORTED)));
-    }
+  if (type == NODE_TYPE_OPERATOR_BINARY_IN ||
+      type == NODE_TYPE_OPERATOR_BINARY_NIN ||
+      type == NODE_TYPE_OPERATOR_BINARY_ARRAY_IN ||
+      type == NODE_TYPE_OPERATOR_BINARY_ARRAY_NIN) {
+    builder.add("sorted", VPackValue(getBoolValue()));
+  }
+  if (type == NODE_TYPE_QUANTIFIER) {
+    std::string const quantifier(Quantifier::Stringify(getIntValue(true)));
+    builder.add("quantifier", VPackValue(quantifier));
+  }
 
-    if (type == NODE_TYPE_VALUE) {
-      // dump value of "value" node
-      builder.add(VPackValue("value"));
-      toVelocyPackValue(builder);
+  if (type == NODE_TYPE_VARIABLE || type == NODE_TYPE_REFERENCE) {
+    auto variable = static_cast<Variable*>(getData());
 
-      if (verbose) {
-        builder.add("vType", VPackValue(getValueTypeString()));
-        builder.add("vTypeID", VPackValue(static_cast<int>(value.type)));
+    TRI_ASSERT(variable != nullptr);
+    builder.add("name", VPackValue(variable->name));
+    builder.add("id", VPackValue(static_cast<double>(variable->id)));
+  }
+
+  if (type == NODE_TYPE_EXPANSION) {
+    builder.add("levels", VPackValue(static_cast<double>(getIntValue(true))));
+  }
+
+  // dump sub-nodes
+  size_t const n = members.size();
+  if (n > 0) {
+    builder.add(VPackValue("subNodes"));
+    VPackArrayBuilder guard(&builder);
+    for (size_t i = 0; i < n; ++i) {
+      AstNode* member = getMemberUnchecked(i);
+      if (member != nullptr) {
+        member->toVelocyPack(builder, verbose);
       }
     }
-
-    if (type == NODE_TYPE_OPERATOR_BINARY_IN ||
-        type == NODE_TYPE_OPERATOR_BINARY_NIN ||
-        type == NODE_TYPE_OPERATOR_BINARY_ARRAY_IN ||
-        type == NODE_TYPE_OPERATOR_BINARY_ARRAY_NIN) {
-      builder.add("sorted", VPackValue(getBoolValue()));
-    }
-    if (type == NODE_TYPE_QUANTIFIER) {
-      std::string const quantifier(Quantifier::Stringify(getIntValue(true)));
-      builder.add("quantifier", VPackValue(quantifier));
-    }
-
-    if (type == NODE_TYPE_VARIABLE || type == NODE_TYPE_REFERENCE) {
-      auto variable = static_cast<Variable*>(getData());
-
-      TRI_ASSERT(variable != nullptr);
-      builder.add("name", VPackValue(variable->name));
-      builder.add("id", VPackValue(static_cast<double>(variable->id)));
-    }
-
-    if (type == NODE_TYPE_EXPANSION) {
-      builder.add("levels", VPackValue(static_cast<double>(getIntValue(true))));
-    }
-
-    // dump sub-nodes
-    size_t const n = members.size();
-    if (n > 0) {
-      builder.add(VPackValue("subNodes"));
-      VPackArrayBuilder guard(&builder);
-      for (size_t i = 0; i < n; ++i) {
-        AstNode* member = getMemberUnchecked(i);
-        if (member != nullptr) {
-          member->toVelocyPack(builder, verbose);
-        }
-      }
-    }
-  } catch (...) {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
   }
 }
 

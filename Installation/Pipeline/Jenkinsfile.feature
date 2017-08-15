@@ -8,8 +8,8 @@ properties(
 )
 
 def defaultLinux = true
-def defaultMac = true
-def defaultWindows = true
+def defaultMac = false
+def defaultWindows = false
 def defaultBuild = true
 def defaultCleanBuild = false
 def defaultCommunity = true
@@ -122,7 +122,7 @@ runResilience = params.runResilience
 runTests = params.runTests
 
 // restrict builds
-restrictions = []
+restrictions = [:]
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                             CONSTANTS AND HELPERS
@@ -131,6 +131,9 @@ restrictions = []
 // users
 jenkinsMaster = 'jenkins-master@c1'
 jenkinsSlave = 'jenkins'
+
+// github proxy repositiory
+proxyRepo = 'http://c1:8088/github.com/arangodb/arangodb'
 
 // github repositiory for resilience tests
 resilienceRepo = 'https://github.com/arangodb/resilience-tests'
@@ -143,6 +146,17 @@ credentials = '8d893d23-6714-4f35-a239-c847c798e080'
 
 // jenkins cache
 cacheDir = '/vol/cache/' + env.JOB_NAME.replaceAll('%', '_')
+
+// source branch for pull requests
+sourceBranchLabel = env.BRANCH_NAME
+
+if (env.BRANCH_NAME =~ /^PR-/) {
+  def prUrl = new URL("https://api.github.com/repos/arangodb/arangodb/pulls/${env.CHANGE_ID}")
+  sourceBranchLabel = new groovy.json.JsonSlurper().parseText(prUrl.text).head.label
+
+  def reg = ~/^arangodb:/
+  sourceBranchLabel = sourceBranchLabel - reg
+}
 
 // copy data to master cache
 def scpToMaster(os, from, to) {
@@ -175,37 +189,43 @@ def checkoutCommunity() {
 
     retry(3) {
         try {
-            checkout scm
+            checkout(
+                changelog: false,
+                poll: false,
+                scm: [
+                    $class: 'GitSCM',
+                    branches: [[name: "*/${sourceBranchLabel}"]],
+                    doGenerateSubmoduleConfigurations: false,
+                    extensions: [],
+                    submoduleCfg: [],
+                    userRemoteConfigs: [[url: proxyRepo]]])
             sh 'git clean -f -d -x'
         }
-        // catch (hudson.AbortException ae) {
-        //     throw ae
-        // }
         catch (exc) {
-            echo "GITHUB checkout failed, retrying in 5min"
+            echo "GITHUB checkout failed, retrying in 1min"
             echo exc.toString()
-            sleep 300
+            sleep 60
         }
     }
 }
 
 def checkoutEnterprise() {
     try {
-        echo "Trying enterprise branch ${env.BRANCH_NAME}"
+        echo "Trying enterprise branch ${sourceBranchLabel}"
 
         checkout(
             changelog: false,
             poll: false,
             scm: [
                 $class: 'GitSCM',
-                branches: [[name: "*/${env.BRANCH_NAME}"]],
+                branches: [[name: "*/${sourceBranchLabel}"]],
                 doGenerateSubmoduleConfigurations: false,
                 extensions: [[$class: 'RelativeTargetDirectory', relativeTargetDir: 'enterprise']],
                 submoduleCfg: [],
                 userRemoteConfigs: [[credentialsId: credentials, url: enterpriseRepo]]])
     }
     catch (exc) {
-        echo "Failed ${env.BRANCH_NAME}, trying enterprise branch devel"
+        echo "Failed ${sourceBranchLabel}, trying enterprise branch devel"
 
         checkout(
             changelog: false,
@@ -238,6 +258,8 @@ def checkoutResilience() {
 }
 
 def checkCommitMessages() {
+    def causes = currentBuild.rawBuild.getCauses()
+    def causeDescription = causes[0].getShortDescription();
     def changeLogSets = currentBuild.changeSets
     def seenCommit = false
     def skip = false
@@ -279,7 +301,10 @@ def checkCommitMessages() {
         }
     }
 
-    if (skip) {
+    if (causeDescription =~ /Started by user/) {
+        echo "build started by user"
+    }
+    else if (skip) {
         useLinux = false
         useMac = false
         useWindows = false
@@ -290,7 +315,7 @@ def checkCommitMessages() {
         runResilience = false
         runTests = false
     }
-    else if (seenCommit) {
+    else {
         if (env.BRANCH_NAME == "devel" || env.BRANCH_NAME == "3.2") {
             useLinux = true
             useMac = true
@@ -312,33 +337,53 @@ def checkCommitMessages() {
             runJslint = true
             runResilience = true
             runTests = true
+
+            restrictions = [
+                "build-community-linux" : true,
+                "build-community-mac" : true,
+                // "build-community-windows" : true,
+                "build-enterprise-linux" : true,
+                "build-enterprise-mac" : true,
+                "build-enterprise-windows" : true,
+                "test-cluster-community-mmfiles-linux" : true,
+                "test-cluster-community-rocksdb-linux" : true,
+                "test-cluster-enterprise-mmfiles-linux" : true,
+                "test-cluster-enterprise-rocksdb-linux" : true,
+                "test-singleserver-community-mmfiles-linux" : true,
+                "test-singleserver-community-rocksdb-linux" : true,
+                "test-singleserver-enterprise-mmfiles-linux" : true,
+                "test-singleserver-enterprise-rocksdb-linux" : true
+            ]
         }
         else {
             useLinux = true
             useMac = true
             useWindows = true
             buildExecutable = true
+            fullParallel = true
             useCommunity = true
             useEnterprise = true
             runJslint = true
-            runResilience = false
-            runTests = false
+            runResilience = true
+            runTests = true
 
             restrictions = [
-                "build-enterprise-linux",
-                "build-community-mac",
-                "build-community-windows",
-                "test-cluster-enterprise-rocksdb-linux",
-                "test-singleserver-community-mmfiles-mac",
-                "test-singleserver-community-rocksdb-windows"
+                "build-community-mac" : true,
+                // "build-community-windows" : true,
+                "build-enterprise-linux" : true,
+                "test-cluster-enterprise-rocksdb-linux" : true,
+                "test-singleserver-community-mmfiles-mac" : true
+                // "test-singleserver-community-rocksdb-windows" : true
             ]
         }
     }
 
     echo """BRANCH_NAME: ${env.BRANCH_NAME}
+SOURCE: ${sourceBranchLabel}
 CHANGE_ID: ${env.CHANGE_ID}
 CHANGE_TARGET: ${env.CHANGE_TARGET}
 JOB_NAME: ${env.JOB_NAME}
+CAUSE: ${causeDescription}
 
 Linux: ${useLinux}
 Mac: ${useMac}
@@ -350,7 +395,10 @@ Building Community: ${useCommunity}
 Building Enterprise: ${useEnterprise}
 Running Jslint: ${runJslint}
 Running Resilience: ${runResilience}
-Running Tests: ${runTests}"""
+Running Tests: ${runTests}
+
+Restrictions: ${restrictions.keySet().join(", ")}
+"""
 }
 
 // -----------------------------------------------------------------------------
@@ -377,11 +425,9 @@ def unstashSourceCode(os) {
 
     if (os == 'linux' || os == 'mac') {
         sh 'unzip -o -q source.zip'
-        sh 'rm -f source.zip'
     }
     else if (os == 'windows') {
         bat 'c:\\cmake\\bin\\cmake -E tar xf source.zip'
-        bat 'del /q /f source.zip'
     }
 }
 
@@ -421,7 +467,7 @@ def unstashBuild(edition, os) {
 
 def stashBinaries(edition, os) {
     def name = "binaries-${edition}-${os}.zip"
-    def dirs = 'build etc Installation/Pipeline js scripts UnitTests utils resilience'
+    def dirs = 'build etc Installation/Pipeline js scripts UnitTests utils resilience source.zip'
 
     if (edition == 'enterprise') {
         dirs = "${dirs} enterprise/js"
@@ -490,9 +536,6 @@ def jslint() {
     try {
         sh './Installation/Pipeline/test_jslint.sh'
     }
-    // catch (hudson.AbortException ae) {
-    //     throw ae
-    // }
     catch (exc) {
         jslintSuccessful = false
         throw exc
@@ -519,47 +562,65 @@ def jslintStep(edition) {
 def testEdition(edition, os, mode, engine) {
     def arch = "LOG_test_${mode}_${edition}_${engine}_${os}"
 
+    if (os == 'linux' || os == 'mac') {
+       sh "rm -rf ${arch}"
+       sh "mkdir -p ${arch}"
+    }
+    else if (os == 'windows') {
+        bat "del /F /Q ${arch}"
+        powershell "New-Item -ItemType Directory -Force -Path ${arch}"
+    }
+
     try {
         try {
             if (os == 'linux') {
-                sh "./Installation/Pipeline/test_${mode}_${edition}_${engine}_${os}.sh 10"
+                sh "./Installation/Pipeline/linux/test_${mode}_${edition}_${engine}_${os}.sh 10"
             }
             else if (os == 'mac') {
-                sh "./Installation/Pipeline/test_${mode}_${edition}_${engine}_${os}.sh 5"
+                sh "./Installation/Pipeline/mac/test_${mode}_${edition}_${engine}_${os}.sh 3"
             }
             else if (os == 'windows') {
-                powershell ". .\\Installation\\Pipeline\\test_${mode}_${edition}_${engine}_${os}.ps1"
+                powershell ". .\\Installation\\Pipeline\\windows\\test_${mode}_${edition}_${engine}_${os}.ps1"
+            }
+
+            if (findFiles(glob: 'core*').length > 0) {
+                error("found core file")
             }
         }
         catch (exc) {
             if (os == 'linux' || os == 'mac') {
-                sh "for i in build core* tmp; do test -e \$i && mv \$i ${arch} || true; done"
+                sh "for i in build core* tmp; do test -e \"\$i\" && mv \"\$i\" ${arch} || true; done"
             }
+
+            archiveArtifacts allowEmptyArchive: true,
+                             artifacts: "source.zip",
+                             defaultExcludes: false
 
             throw exc
         }
         finally {
             if (os == 'linux' || os == 'mac') {
-                sh "rm -rf ${arch}"
-                sh "mkdir -p ${arch}"
-                sh "find log-output -name 'FAILED_*' -exec cp '{}' ${arch} ';'"
-                sh "for i in logs log-output; do test -e \$i && mv \$i ${arch} || true; done"
+                sh "find log-output -name 'FAILED_*' -exec cp '{}' . ';'"
+                sh "for i in logs log-output; do test -e \"\$i\" && mv \"\$i\" ${arch} || true; done"
+            }
+            else if (os == 'windows') {
+                bat "move logs ${arch}"
+                bat "move log-output ${arch}"
             }
         }
     }
-    // catch (hudson.AbortException ae) {
-    //     throw ae
-    // }
     finally {
         archiveArtifacts allowEmptyArchive: true,
                          artifacts: "${arch}/**",
                          defaultExcludes: false
+
+        archiveArtifacts allowEmptyArchive: true,
+                         artifacts: "FAILED_*",
+                         defaultExcludes: false
     }
 }
 
-def testCheck(edition, os, mode, engine, full) {
-    def name = "${edition}-${os}"
-
+def testCheck(edition, os, mode, engine) {
     if (! runTests) {
         return false
     }
@@ -584,6 +645,10 @@ def testCheck(edition, os, mode, engine, full) {
         return false
     }
 
+    if (restrictions && !restrictions["test-${mode}-${edition}-${engine}-${os}"]) {
+        return false
+    }
+
     return true
 }
 
@@ -592,7 +657,7 @@ def testStep(edition, os, mode, engine) {
         node(testJenkins[os]) {
             def buildName = "${edition}-${os}"
 
-            if (buildsSuccess[buildName]) {
+            if (!buildExecutable || buildsSuccess[buildName]) {
                 def name = "${edition}-${os}-${mode}-${engine}"
 
                 try {
@@ -600,9 +665,6 @@ def testStep(edition, os, mode, engine) {
                     testEdition(edition, os, mode, engine)
                     testsSuccess[name] = true
                 }
-                // catch (hudson.AbortException ae) {
-                //     throw ae
-                // }
                 catch (exc) {
                     echo exc.toString()
                     testsSuccess[name] = false
@@ -619,13 +681,12 @@ def testStep(edition, os, mode, engine) {
 
 def testStepParallel(editionList, osList, modeList) {
     def branches = [:]
-    def full = false
 
     for (edition in editionList) {
         for (os in osList) {
             for (mode in modeList) {
                 for (engine in ['mmfiles', 'rocksdb']) {
-                    if (testCheck(edition, os, mode, engine, full)) {
+                    if (testCheck(edition, os, mode, engine)) {
                         def name = "test-${mode}-${edition}-${engine}-${os}";
 
                         branches[name] = testStep(edition, os, mode, engine)
@@ -657,20 +718,18 @@ allResiliencesSuccessful = true
 def testResilience(os, engine, foxx) {
     withEnv(['LOG_COMMUNICATION=debug', 'LOG_REQUESTS=trace', 'LOG_AGENCY=trace']) {
         if (os == 'linux') {
-            sh "./Installation/Pipeline/test_resilience_${foxx}_${engine}_${os}.sh"
+            sh "./Installation/Pipeline/linux/test_resilience_${foxx}_${engine}_${os}.sh"
         }
         else if (os == 'mac') {
-            sh "./Installation/Pipeline/test_resilience_${foxx}_${engine}_${os}.sh"
+            sh "./Installation/Pipeline/mac/test_resilience_${foxx}_${engine}_${os}.sh"
         }
         else if (os == 'windows') {
-            powershell "./Installation/Pipeline/test_resilience_${foxx}_${engine}_${os}.ps1"
+            powershell ".\\Installation\\Pipeline\\test_resilience_${foxx}_${engine}_${os}.ps1"
         }
     }
 }
 
-def testResilienceCheck(os, engine, foxx, full) {
-    def name = "community-${os}"
-
+def testResilienceCheck(os, engine, foxx) {
     if (! runResilience) {
         return false
     }
@@ -691,17 +750,11 @@ def testResilienceCheck(os, engine, foxx, full) {
         return false
     }
 
-    return true
-}
-
-def testResilienceName(os, engine, foxx, full) {
-    def name = "test-resilience-${foxx}-${engine}-${os}";
-
-    if (! testResilienceCheck(os, engine, foxx, full)) {
-        name = "DISABLED-${name}"
+    if (restrictions && !restrictions["test-resilience-${foxx}-${engine}-${os}"]) {
+        return false
     }
 
-    return name 
+    return true
 }
 
 def testResilienceStep(os, engine, foxx) {
@@ -710,39 +763,49 @@ def testResilienceStep(os, engine, foxx) {
             def edition = "community"
             def buildName = "${edition}-${os}"
 
-            if (buildsSuccess[buildName]) {
+            if (!buildExecutable || buildsSuccess[buildName]) {
                 def name = "${os}-${engine}-${foxx}"
                 def arch = "LOG_resilience_${foxx}_${engine}_${os}"
+
+                if (os == 'linux' || os == 'mac') {
+                   sh "rm -rf ${arch}"
+                   sh "mkdir -p ${arch}"
+                }
+                else if (os == 'windows') {
+                    bat "del /F /Q ${arch}"
+                    powershell "New-Item -ItemType Directory -Force -Path ${arch}"
+                }
 
                 try {
                     try {
                         unstashBinaries(edition, os)
                         testResilience(os, engine, foxx)
+
+                        if (findFiles(glob: 'resilience/core*').length > 0) {
+                            error("found core file")
+                        }
                     }
                     catch (exc) {
                         if (os == 'linux' || os == 'mac') {
-                            sh "for i in build core* tmp; do test -e \$i && mv \$i ${arch} || true; done"
+                            sh "for i in build resilience/core* tmp; do test -e \"\$i\" && mv \"\$i\" ${arch} || true; done"
                         }
+
+                        archiveArtifacts allowEmptyArchive: true,
+                                         artifacts: "source.zip",
+                                         defaultExcludes: false
 
                         throw exc
                     }
                     finally {
                         if (os == 'linux' || os == 'mac') {
-                            sh "rm -rf ${arch}"
-                            sh "mkdir -p ${arch}"
-                            sh "for i in log-output resilience/core*; do test -e \$i && mv \$i ${arch}; done"
+                            sh "for i in log-output; do test -e \"\$i\" && mv \"\$i\" ${arch}; done"
                         }
                         else if (os == 'windows') {
-                            bat "del /F /Q ${arch}"
-                            powershell "New-Item -ItemType Directory -Force -Path ${arch}"
                             bat "move log-output ${arch}"
                         }
                         
                     }
                 }
-                // catch (hudson.AbortException ae) {
-                //     throw ae
-                // }
                 catch (exc) {
                     resiliencesSuccess[name] = false
                     allResiliencesSuccessful = false
@@ -764,13 +827,12 @@ def testResilienceStep(os, engine, foxx) {
 
 def testResilienceParallel(osList) {
     def branches = [:]
-    def full = false
 
     for (foxx in ['foxx', 'nofoxx']) {
         for (os in osList) {
             for (engine in ['mmfiles', 'rocksdb']) {
-                if (testResilienceCheck(os, engine, foxx, full)) {
-                    def name = testResilienceName(os, engine, foxx, full)
+                if (testResilienceCheck(os, engine, foxx)) {
+                    def name = "test-resilience-${foxx}-${engine}-${os}"
 
                     branches[name] = testResilienceStep(os, engine, foxx)
                 }
@@ -795,9 +857,6 @@ def buildEdition(edition, os) {
         try {
             unstashBuild(edition, os)
         }
-        // catch (hudson.AbortException ae) {
-        //     throw ae
-        // }
         catch (exc) {
             echo "no stashed build environment, starting clean build"
         }
@@ -805,33 +864,39 @@ def buildEdition(edition, os) {
 
     def arch = "LOG_build_${edition}_${os}"
 
+    if (os == 'linux' || os == 'mac') {
+       sh "rm -rf ${arch}"
+       sh "mkdir -p ${arch}"
+    }
+    else if (os == 'windows') {
+        bat "del /F /Q ${arch}"
+        powershell "New-Item -ItemType Directory -Force -Path ${arch}"
+    }
+
     try {
         try {
             if (os == 'linux') {
-                sh "./Installation/Pipeline/build_${edition}_${os}.sh 64"
+                sh "./Installation/Pipeline/linux/build_${edition}_${os}.sh 64"
             }
             else if (os == 'mac') {
-                sh "./Installation/Pipeline/build_${edition}_${os}.sh 20"
+                sh "./Installation/Pipeline/mac/build_${edition}_${os}.sh 16"
             }
             else if (os == 'windows') {
-                powershell ". .\\Installation\\Pipeline\\build_${edition}_${os}.ps1"
+                powershell ". .\\Installation\\Pipeline\\windows\\build_${edition}_${os}.ps1"
             }
         }
         finally {
             if (os == 'linux' || os == 'mac') {
-                sh "rm -rf ${arch}"
-                sh "mkdir -p ${arch}"
-                sh "find log-output -name 'FAILED_*' -exec cp '{}' ${arch} ';'"
-                sh "for i in log-output; do test -e \$i && mv \$i ${arch} || true; done"
+                sh "for i in log-output; do test -e \"\$i\" && mv \"\$i\" ${arch} || true; done"
             }
             else if (os == 'windows') {
-                bat "del /F /Q ${arch}"
-                powershell "New-Item -ItemType Directory -Force -Path ${arch}"
+                bat "move log-output ${arch}"
             }
         }
     }
     finally {
         stashBuild(edition, os)
+
         archiveArtifacts allowEmptyArchive: true,
                          artifacts: "${arch}/**",
                          defaultExcludes: false
@@ -859,6 +924,10 @@ def buildStepCheck(edition, os, full) {
         return false
     }
 
+    if (restrictions && !restrictions["build-${edition}-${os}"]) {
+        return false
+    }
+
     return true
 }
 
@@ -874,9 +943,6 @@ def buildStep(edition, os) {
                     stashBinaries(edition, os)
                     buildsSuccess[name] = true
                 }
-                // catch (hudson.AbortException ae) {
-                //     throw ae
-                // }
                 catch (exc) {
                     buildsSuccess[name] = false
                     allBuildsSuccessful = false
@@ -915,10 +981,6 @@ def runStage(stage) {
     try {
         stage()
     }
-    // catch (hudson.AbortException ae) {
-    //     echo exc.toString()
-    //     throw ae
-    // }
     catch (exc) {
         echo exc.toString()
     }
@@ -926,11 +988,13 @@ def runStage(stage) {
 
 stage('checkout') {
     node('master') {
-        checkoutCommunity()
-        checkCommitMessages()
-        checkoutEnterprise()
-        checkoutResilience()
-        stashSourceCode()
+        timeout(30) {
+            checkoutCommunity()
+            checkCommitMessages()
+            checkoutEnterprise()
+            checkoutResilience()
+            stashSourceCode()
+        }
     }
 }
 
@@ -1031,7 +1095,7 @@ stage('result') {
             && allTestsSuccessful
             && allResiliencesSuccessful
             && jslintSuccessful)) {
-            currentBuild.result = 'FAILURE'
+            error "run failed"
         }
     }
 }

@@ -581,6 +581,18 @@ ArangoDatabase.prototype._engine = function () {
 };
 
 // //////////////////////////////////////////////////////////////////////////////
+// / @brief returns the engine statistics
+// //////////////////////////////////////////////////////////////////////////////
+
+ArangoDatabase.prototype._engineStats = function () {
+  var requestResult = this._connection.GET('/_api/engineStats');
+
+  arangosh.checkRequestResult(requestResult);
+
+  return requestResult;
+};
+
+// //////////////////////////////////////////////////////////////////////////////
 // / @brief returns the database version
 // //////////////////////////////////////////////////////////////////////////////
 
@@ -1110,8 +1122,7 @@ ArangoDatabase.prototype._executeTransaction = function (data) {
     data.action = String(data.action);
   }
 
-  var requestResult = this._connection.POST('/_api/transaction',
-    JSON.stringify(data));
+  var requestResult = this._connection.POST('/_api/transaction', JSON.stringify(data));
 
   if (requestResult !== null && requestResult.error === true) {
     throw new ArangoError(requestResult);

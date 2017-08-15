@@ -22,7 +22,7 @@ data on another db server and keeps it in sync. Essentially, when storing
 data after enabling synchronous replication the cluster will wait for
 all replicas to write all the data before greenlighting the write
 operation to the client. This will naturally increase the latency a
-bit, since one more network hops is needed for each write. However, it
+bit, since one more network hop is needed for each write. However, it
 will enable the cluster to immediately fail over to a replica whenever
 an outage has been detected, without losing any committed data, and
 mostly without even signaling an error condition to the client. 

@@ -72,7 +72,7 @@ int syncChunkRocksDB(
   syncer.setProgress(progress);
 
   std::unique_ptr<httpclient::SimpleHttpResult> response(
-      syncer._client->retryRequest(rest::RequestType::PUT, url, nullptr, 0));
+      syncer._client->retryRequest(rest::RequestType::PUT, url, nullptr, 0, syncer.createHeaders()));
 
   if (response == nullptr || !response->isComplete()) {
     errorMsg = "could not connect to master at " +
@@ -241,10 +241,11 @@ int syncChunkRocksDB(
 
     std::string const keyJsonString(keysBuilder.slice().toJson());
 
+    
     std::unique_ptr<httpclient::SimpleHttpResult> response(
         syncer._client->retryRequest(rest::RequestType::PUT, url,
                                      keyJsonString.c_str(),
-                                     keyJsonString.size()));
+                                     keyJsonString.size(), syncer.createHeaders()));
 
     if (response == nullptr || !response->isComplete()) {
       errorMsg = "could not connect to master at " +
@@ -355,9 +356,9 @@ int handleSyncKeysRocksDB(InitialSyncer& syncer,
   progress = "fetching remote keys chunks for collection '" + collectionName +
              "' from " + url;
   syncer.setProgress(progress);
-
+  auto const headers = syncer.createHeaders();
   std::unique_ptr<httpclient::SimpleHttpResult> response(
-      syncer._client->retryRequest(rest::RequestType::GET, url, nullptr, 0));
+      syncer._client->retryRequest(rest::RequestType::GET, url, nullptr, 0, headers));
 
   if (response == nullptr || !response->isComplete()) {
     errorMsg = "could not connect to master at " +
@@ -415,7 +416,7 @@ int handleSyncKeysRocksDB(InitialSyncer& syncer,
     // first chunk
     SingleCollectionTransaction trx(
         transaction::StandaloneContext::Create(syncer._vocbase), col->cid(),
-        AccessMode::Type::WRITE);
+        AccessMode::Type::EXCLUSIVE);
 
     Result res = trx.begin();
 
@@ -461,7 +462,7 @@ int handleSyncKeysRocksDB(InitialSyncer& syncer,
         },
         UINT64_MAX);
 
-    trx.commit();
+    res = trx.commit();
   }
 
   {
@@ -471,7 +472,7 @@ int handleSyncKeysRocksDB(InitialSyncer& syncer,
 
     SingleCollectionTransaction trx(
         transaction::StandaloneContext::Create(syncer._vocbase), col->cid(),
-        AccessMode::Type::WRITE);
+        AccessMode::Type::EXCLUSIVE);
 
     Result res = trx.begin();
 

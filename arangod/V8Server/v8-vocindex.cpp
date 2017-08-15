@@ -267,7 +267,8 @@ static void CreateVocBase(v8::FunctionCallbackInfo<v8::Value> const& args,
 
   v8::Handle<v8::Value> result;
   if (ServerState::instance()->isCoordinator()) {
-    bool createWaitsForSyncReplication = application_features::ApplicationServer::getFeature<ClusterFeature>("Cluster")->createWaitsForSyncReplication();
+    bool createWaitsForSyncReplication =
+      application_features::ApplicationServer::getFeature<ClusterFeature>("Cluster")->createWaitsForSyncReplication();
 
     if (args.Length() >= 3 && args[args.Length()-1]->IsObject()) {
       v8::Handle<v8::Object> obj = args[args.Length()-1]->ToObject();
@@ -305,8 +306,9 @@ static void CreateVocBase(v8::FunctionCallbackInfo<v8::Value> const& args,
     TRI_V8_THROW_EXCEPTION_MEMORY();
   }
   
+  // do not grant rights on system collections
   // in case of success we grant the creating user RW access
-  if (auth->isActive() && ExecContext::CURRENT != nullptr &&
+  if (name[0] != '_' && ExecContext::CURRENT != nullptr &&
       (ServerState::instance()->isCoordinator() ||
        !ServerState::instance()->isRunningInCluster())) {
     // this should not fail, we can not get here without database RW access
