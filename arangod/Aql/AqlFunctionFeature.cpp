@@ -249,9 +249,9 @@ void AqlFunctionFeature::addStringFunctions() {
        &Functions::RegexTest});
   add({"REGEX_REPLACE", "AQL_REGEX_REPLACE", ".,.,.|.", true, true, false, true,
        true, &Functions::RegexReplace});
-  add({"LEFT", "AQL_LEFT", ".,.", true, true, false, true, true});
-  add({"RIGHT", "AQL_RIGHT", ".,.", true, true, false, true, true});
-  add({"TRIM", "AQL_TRIM", ".|.", true, true, false, true, true});
+  add({"LEFT", "AQL_LEFT", ".,.", true, true, false, true, true, &Functions::Left});
+  add({"RIGHT", "AQL_RIGHT", ".,.", true, true, false, true, true, &Functions::Right});
+  add({"TRIM", "AQL_TRIM", ".|.", true, true, false, true, true, &Functions::Trim});
   add({"LTRIM", "AQL_LTRIM", ".|.", true, true, false, true, true});
   add({"RTRIM", "AQL_RTRIM", ".|.", true, true, false, true, true});
   add({"FIND_FIRST", "AQL_FIND_FIRST", ".,.|.,.", true, true, false, true,
@@ -264,6 +264,7 @@ void AqlFunctionFeature::addStringFunctions() {
   add({"MD5", "AQL_MD5", ".", true, true, false, true, true, &Functions::Md5});
   add({"SHA1", "AQL_SHA1", ".", true, true, false, true, true,
        &Functions::Sha1});
+  add({"SHA512", "AQL_SHA512", ".", true, true, false, true, true});
   add({"HASH", "AQL_HASH", ".", true, true, false, true, true,
        &Functions::Hash});
   add({"RANDOM_TOKEN", "AQL_RANDOM_TOKEN", ".", false, false, true, true, true,
