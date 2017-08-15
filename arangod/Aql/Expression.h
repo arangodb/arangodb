@@ -48,8 +48,8 @@ class AqlItemBlock;
 struct AqlValue;
 class Ast;
 class AttributeAccessor;
-class Executor;
 class ExpressionContext;
+class V8Executor;
 struct V8Expression;
 
 /// @brief AqlExpression, used in execution plans and execution blocks
@@ -333,7 +333,7 @@ class Expression {
   Ast* _ast;
 
   /// @brief the V8 executor
-  Executor* _executor;
+  V8Executor* _executor;
 
   /// @brief the AST node that contains the expression to execute
   AstNode* _node;

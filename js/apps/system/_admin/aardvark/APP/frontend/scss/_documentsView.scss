@@ -152,11 +152,12 @@
   height: 26px;
 }
 
+.removeFilterItem,
 .add-filter-item {
-  margin-left: 4px;
+  margin-left: 8px;
 
   i {
-    margin-top: 0 !important;
+    margin-top: 5px !important;
   }
 }
 
@@ -194,9 +195,24 @@
 }
 
 .queryline {
+  height: 37px !important;
+
   .fa-info-circle:hover {
     cursor: pointer;
   }
+
+  input,
+  select {
+    float: left;
+  }
+
+  select {
+    height: 32px;
+  }
+}
+
+.headerDropdown .queryline:last-child {
+  margin-bottom: -2px;
 }
 
 .ace_error {

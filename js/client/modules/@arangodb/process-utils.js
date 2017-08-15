@@ -111,7 +111,11 @@ function setupBinaries (builddir, buildType, configDir) {
     }
   }
 
-  BIN_DIR = fs.join(TOP_DIR, builddir, 'bin');
+  BIN_DIR = fs.join(builddir, 'bin');
+  if(!fs.exists(BIN_DIR)){
+    BIN_DIR = fs.join(TOP_DIR, BIN_DIR);
+  }
+
   UNITTESTS_DIR = fs.join(TOP_DIR, fs.join(builddir, 'tests'));
 
   if (buildType !== '') {
@@ -127,7 +131,11 @@ function setupBinaries (builddir, buildType, configDir) {
   ARANGOEXPORT_BIN = fs.join(BIN_DIR, 'arangoexport' + executableExt);
   ARANGOSH_BIN = fs.join(BIN_DIR, 'arangosh' + executableExt);
 
-  CONFIG_ARANGODB_DIR = fs.join(TOP_DIR, builddir, 'etc', 'arangodb3');
+  CONFIG_ARANGODB_DIR = fs.join(builddir, 'etc', 'arangodb3'); 
+  if(!fs.exists(CONFIG_ARANGODB_DIR)){
+    CONFIG_ARANGODB_DIR = fs.join(TOP_DIR, CONFIG_ARANGODB_DIR);
+  }
+
   CONFIG_RELATIVE_DIR = fs.join(TOP_DIR, 'etc', 'relative');
   CONFIG_DIR = fs.join(TOP_DIR, configDir);
 
