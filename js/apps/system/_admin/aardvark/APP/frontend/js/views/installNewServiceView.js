@@ -1,5 +1,5 @@
 /* jshint browser: true */
-/* global Backbone, $, window, arangoHelper, templateEngine*/
+/* global Backbone, $, window, Joi, arangoHelper, templateEngine */
 (function () {
   'use strict';
 
@@ -29,9 +29,77 @@
         services: this.collection
       }));
 
+      this.renderSelects();
       this.breadcrumb();
+      this.setNewAppValidators();
+      arangoHelper.createTooltips('.modalTooltips');
 
       return this;
+    },
+
+    renderSelects: function () {
+      $('#new-app-document-collections').select2({
+        tags: [],
+        showSearchBox: false,
+        minimumResultsForSearch: -1,
+        width: '336px'
+      });
+      $('#new-app-edge-collections').select2({
+        tags: [],
+        showSearchBox: false,
+        minimumResultsForSearch: -1,
+        width: '336px'
+      });
+    },
+
+    setNewAppValidators: function () {
+      window.modalView.modalBindValidation({
+        id: 'new-app-author',
+        validateInput: function () {
+          return [
+            {
+              rule: Joi.string().required().min(1),
+              msg: 'Has to be non empty.'
+            }
+          ];
+        }
+      });
+      window.modalView.modalBindValidation({
+        id: 'new-app-name',
+        validateInput: function () {
+          return [
+            {
+              rule: Joi.string().required().regex(/^[a-zA-Z\-_][a-zA-Z0-9\-_]*$/),
+              msg: "Can only contain a to z, A to Z, 0-9, '-' and '_'."
+            }
+          ];
+        }
+      });
+
+      window.modalView.modalBindValidation({
+        id: 'new-app-description',
+        validateInput: function () {
+          return [
+            {
+              rule: Joi.string().required().min(1),
+              msg: 'Has to be non empty.'
+            }
+          ];
+        }
+      });
+
+      window.modalView.modalBindValidation({
+        id: 'new-app-license',
+        validateInput: function () {
+          return [
+            {
+              rule: Joi.string().required().regex(/^[a-zA-Z0-9 .,;-]+$/),
+              msg: 'Has to be non empty.'
+            }
+          ];
+        }
+      });
+      window.modalView.modalTestAll();
     },
 
     breadcrumb: function () {
@@ -39,7 +107,7 @@
 
       if (window.App.naviView) {
         $('#subNavigationBar .breadcrumb').html(
-          'New Service'
+          '<a href="#services">Services:</a> New'
         );
         arangoHelper.buildServicesSubNav('New');
       } else {

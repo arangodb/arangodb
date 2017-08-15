@@ -50,6 +50,7 @@
       }));
 
       arangoHelper.buildServicesSubNav('Store');
+      this.breadcrumb();
 
       if (this.collection.length === 0) {
         this.waitForResponse();
@@ -66,6 +67,12 @@
       // this.delegateEvents();
       // arangoHelper.checkDatabasePermissions(this.setReadOnly.bind(this));
       return this;
+    },
+
+    breadcrumb: function () {
+      $('#subNavigationBar .breadcrumb').html(
+        '<a href="#services">Services:</a> New'
+      );
     }
   });
 }());

@@ -976,7 +976,7 @@
       if (this.serviceUploadView) {
         this.serviceUploadView.remove();
       }
-      this.serviceUploadView = new window.ServiceInstallUploadView({});
+      this.serviceUploadView = new window.ServiceInstallUploadView();
       this.serviceUploadView.render();
     },
 

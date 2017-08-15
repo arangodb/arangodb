@@ -1,5 +1,5 @@
 /* jshint browser: true */
-/* global Backbone, $, window, arangoHelper, templateEngine */
+/* global Backbone, $, window, arangoHelper, templateEngine, Joi */
 (function () {
   'use strict';
 
@@ -29,6 +29,8 @@
       }));
 
       this.breadcrumb();
+      this.setGithubValidators();
+      arangoHelper.createTooltips('.modalTooltips');
 
       return this;
     },
@@ -38,7 +40,7 @@
 
       if (window.App.naviView) {
         $('#subNavigationBar .breadcrumb').html(
-          'New Service'
+          '<a href="#services">Services:</a> New'
         );
         arangoHelper.buildServicesSubNav('GitHub');
       } else {
@@ -46,6 +48,21 @@
           self.breadcrumb();
         }, 100);
       }
+    },
+
+    setGithubValidators: function () {
+      window.modalView.modalBindValidation({
+        id: 'repository',
+        validateInput: function () {
+          return [
+            {
+              rule: Joi.string().required().regex(/^[a-zA-Z0-9_-]+\/[a-zA-Z0-9_-]+$/),
+              msg: 'No valid Github account and repository.'
+            }
+          ];
+        }
+      });
+      window.modalView.modalTestAll();
     }
 
   });

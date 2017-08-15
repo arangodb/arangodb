@@ -18,6 +18,7 @@
     },
 
     events: {
+      'click #installUploadService': 'installFromUpload'
     },
 
     initialize: function () {
@@ -30,26 +31,42 @@
 
       this.prepareUpload();
       this.breadcrumb();
+      arangoHelper.createTooltips('.modalTooltips');
 
       return this;
     },
 
+    installFromUpload: function () {
+      arangoHelper.createMountPointModal(this.installFoxxFromZip.bind(this));
+    },
+
+    testFunction: function (files, data) {
+      if (!window.foxxData) {
+        window.foxxData = {};
+      }
+      window.foxxData.files = files;
+      window.foxxData.data = data;
+      $('#installUploadService').attr('disabled', false);
+    },
+
     prepareUpload: function () {
+      var self = this;
+
       $('#upload-foxx-zip').uploadFile({
         url: arangoHelper.databaseUrl('/_api/upload?multipart=true'),
-        allowedTypes: 'zip,js',
+        allowedTypes: 'zip, js',
         multiple: false,
-        onSuccess: this.installFoxxFromZip
+        onSuccess: self.testFunction
       });
     },
 
-    installFoxxFromZip: function (files, data) {
-      if (data === undefined) {
-        data = this._uploadData;
+    installFoxxFromZip: function () {
+      if (window.foxxData.data === undefined) {
+        window.foxxData.data = this._uploadData;
       } else {
-        this._uploadData = data;
+        this._uploadData = window.foxxData.data;
       }
-      if (data && window.modalView.modalTestAll()) {
+      if (window.foxxData.data && window.modalView.modalTestAll()) {
         var mount, flag, isLegacy;
         if (this._upgrade) {
           mount = this.mount;
@@ -58,37 +75,45 @@
           mount = window.arangoHelper.escapeHtml($('#new-app-mount').val());
         }
         isLegacy = Boolean($('#zip-app-islegacy').prop('checked'));
-        this.collection.installFromZip(data.filename, mount, this.installCallback.bind(this), isLegacy, flag);
+        this.installFromZip(window.foxxData.data.filename, mount, this.installCallback.bind(this), isLegacy, flag);
       }
+      window.modalView.hide();
+    },
+
+    installFromZip: function (fileName, mount, callback, isLegacy, flag) {
+      var url = arangoHelper.databaseUrl('/_admin/aardvark/foxxes/zip?mount=' + encodeURIComponent(mount));
+      if (isLegacy) {
+        url += '&legacy=true';
+      }
+      if (flag !== undefined) {
+        if (flag) {
+          url += '&replace=true';
+        } else {
+          url += '&upgrade=true';
+        }
+      }
+
+      $.ajax({
+        cache: false,
+        type: 'PUT',
+        url: url,
+        data: JSON.stringify({zipFile: fileName}),
+        contentType: 'application/json',
+        processData: false,
+        success: function (data) {
+          callback(data);
+          window.foxxData = {};
+        },
+        error: function (err) {
+          callback(err);
+          window.foxxData = {};
+        }
+      });
     },
 
     installCallback: function (result) {
-      var self = this;
-      var errors = {
-        'ERROR_SERVICE_DOWNLOAD_FAILED': { 'code': 1752, 'message': 'service download failed' }
-      };
-
-      if (result.error === false) {
-        this.collection.fetch({
-          success: function () {
-            window.modalView.hide();
-            self.reload();
-            arangoHelper.arangoNotification('Services', 'Service ' + result.name + ' installed.');
-          }
-        });
-      } else {
-        var res = result;
-        if (result.hasOwnProperty('responseJSON')) {
-          res = result.responseJSON;
-        }
-        switch (res.errorNum) {
-          case errors.ERROR_SERVICE_DOWNLOAD_FAILED.code:
-            arangoHelper.arangoError('Services', 'Unable to download application from the given repository.');
-            break;
-          default:
-            arangoHelper.arangoError('Services', res.errorNum + '. ' + res.errorMessage);
-        }
-      }
+      window.App.navigate('#services', {trigger: true});
+      window.App.applicationsView.installCallback(result);
     },
 
     breadcrumb: function () {
@@ -96,7 +121,7 @@
 
       if (window.App.naviView) {
         $('#subNavigationBar .breadcrumb').html(
-          'New Service'
+          '<a href="#services">Services:</a> New'
         );
         arangoHelper.buildServicesSubNav('Upload');
       } else {
