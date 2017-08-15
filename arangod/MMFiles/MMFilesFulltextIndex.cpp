@@ -39,26 +39,25 @@ using namespace arangodb;
 
 /// @brief walk over the attribute. Also Extract sub-attributes and elements in
 ///        list.
-static void ExtractWords(std::set<std::string>& words,
-                         VPackSlice const value,
-                         size_t minWordLength,
-                         int level) {
+void MMFilesFulltextIndex::extractWords(std::set<std::string>& words,
+                                        VPackSlice value,
+                                        int level) const {
   if (value.isString()) {
     // extract the string value for the indexed attribute
     std::string text = value.copyString();
 
     // parse the document text
     arangodb::basics::Utf8Helper::DefaultUtf8Helper.tokenize(
-        words, text, minWordLength, TRI_FULLTEXT_MAX_WORD_LENGTH, true);
+        words, text, _minWordLength, TRI_FULLTEXT_MAX_WORD_LENGTH, true);
     // We don't care for the result. If the result is false, words stays
     // unchanged and is not indexed
   } else if (value.isArray() && level == 0) {
     for (auto const& v : VPackArrayIterator(value)) {
-      ExtractWords(words, v, minWordLength, level + 1);
+      extractWords(words, v, level + 1);
     }
   } else if (value.isObject() && level == 0) {
     for (auto const& v : VPackObjectIterator(value)) {
-      ExtractWords(words, v.value, minWordLength, level + 1);
+      extractWords(words, v.value, level + 1);
     }
   }
 }
@@ -216,19 +215,10 @@ Result MMFilesFulltextIndex::insert(transaction::Methods*,
                                     TRI_voc_rid_t revisionId,
                                     VPackSlice const& doc, bool isRollback) {
   int res = TRI_ERROR_NO_ERROR;
-
   std::set<std::string> words = wordlist(doc);
 
-  if (words.empty()) {
-    // TODO: distinguish the cases "empty wordlist" and "out of memory"
-    // LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "could not build wordlist";
-    return IndexResult(res, this);
-  }
-
-  // TODO: use status codes
-  if (!TRI_InsertWordsMMFilesFulltextIndex(_fulltextIndex, revisionId, words)) {
-    LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "adding document to fulltext index failed";
-    res = TRI_ERROR_INTERNAL;
+  if (!words.empty()) {
+    res = TRI_InsertWordsMMFilesFulltextIndex(_fulltextIndex, revisionId, words);
   }
   return IndexResult(res, this);
 }
@@ -236,46 +226,30 @@ Result MMFilesFulltextIndex::insert(transaction::Methods*,
 Result MMFilesFulltextIndex::remove(transaction::Methods*,
                                     TRI_voc_rid_t revisionId,
                                     VPackSlice const& doc, bool isRollback) {
-  TRI_DeleteDocumentMMFilesFulltextIndex(_fulltextIndex, revisionId);
-
-  return Result(TRI_ERROR_NO_ERROR);
-}
-
-int MMFilesFulltextIndex::unload() {
-  TRI_TruncateMMFilesFulltextIndex(_fulltextIndex);
-  return TRI_ERROR_NO_ERROR;
-}
-
-int MMFilesFulltextIndex::cleanup() {
-  LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "fulltext cleanup called";
-
   int res = TRI_ERROR_NO_ERROR;
+  std::set<std::string> words = wordlist(doc);
 
-  // check whether we should do a cleanup at all
-  if (!TRI_CompactMMFilesFulltextIndex(_fulltextIndex)) {
-    res = TRI_ERROR_INTERNAL;
+  if (!words.empty()) {
+    res = TRI_RemoveWordsMMFilesFulltextIndex(_fulltextIndex, revisionId, words);
   }
+  return IndexResult(res, this);
+}
 
-  return res;
+void MMFilesFulltextIndex::unload() {
+  TRI_TruncateMMFilesFulltextIndex(_fulltextIndex);
 }
 
 /// @brief callback function called by the fulltext index to determine the
 /// words to index for a specific document
 std::set<std::string> MMFilesFulltextIndex::wordlist(VPackSlice const& doc) {
   std::set<std::string> words;
-  try {
-    VPackSlice const value = doc.get(_attr);
+  VPackSlice const value = doc.get(_attr);
 
-    if (!value.isString() && !value.isArray() && !value.isObject()) {
-      // Invalid Input
-      return words;
-    }
-
-    ExtractWords(words, value, _minWordLength, 0);
-  } catch (...) {
-    // Backwards compatibility
-    // The pre-vpack impl. did just ignore all errors and returned nulltpr
+  if (!value.isString() && !value.isArray() && !value.isObject()) {
+    // Invalid Input
     return words;
   }
+
+  extractWords(words, value, 0);
   return words;
 }

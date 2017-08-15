@@ -3421,7 +3421,7 @@ static void JS_ExecuteExternal(
 
       n = arr->Length();
       arguments = static_cast<char**>(
-          TRI_Allocate(TRI_CORE_MEM_ZONE, n * sizeof(char*), false));
+          TRI_Allocate(TRI_CORE_MEM_ZONE, n * sizeof(char*)));
 
       for (uint32_t i = 0; i < n; ++i) {
         TRI_Utf8ValueNFC arg(TRI_UNKNOWN_MEM_ZONE, arr->Get(i));
@@ -3435,7 +3435,7 @@ static void JS_ExecuteExternal(
     } else {
       n = 1;
       arguments = static_cast<char**>(
-          TRI_Allocate(TRI_CORE_MEM_ZONE, n * sizeof(char*), false));
+          TRI_Allocate(TRI_CORE_MEM_ZONE, n * sizeof(char*)));
 
       TRI_Utf8ValueNFC arg(TRI_UNKNOWN_MEM_ZONE, a);
 
@@ -3609,7 +3609,7 @@ static void JS_ExecuteAndWaitExternal(
 
       n = arr->Length();
       arguments = static_cast<char**>(
-          TRI_Allocate(TRI_CORE_MEM_ZONE, n * sizeof(char*), false));
+          TRI_Allocate(TRI_CORE_MEM_ZONE, n * sizeof(char*)));
 
       for (uint32_t i = 0; i < n; ++i) {
         TRI_Utf8ValueNFC arg(TRI_UNKNOWN_MEM_ZONE, arr->Get(i));
@@ -3623,7 +3623,7 @@ static void JS_ExecuteAndWaitExternal(
     } else {
       n = 1;
       arguments = static_cast<char**>(
-          TRI_Allocate(TRI_CORE_MEM_ZONE, n * sizeof(char*), false));
+          TRI_Allocate(TRI_CORE_MEM_ZONE, n * sizeof(char*)));
 
       TRI_Utf8ValueNFC arg(TRI_UNKNOWN_MEM_ZONE, a);
 

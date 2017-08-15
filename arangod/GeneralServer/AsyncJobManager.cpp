@@ -25,6 +25,7 @@
 
 #include "Basics/ReadLocker.h"
 #include "Basics/WriteLocker.h"
+#include "Basics/voc-errors.h"
 #include "GeneralServer/RestHandler.h"
 #include "Logger/Logger.h"
 #include "Rest/GeneralResponse.h"
@@ -180,13 +181,18 @@ void AsyncJobManager::deleteExpiredJobResults(double stamp) {
   }
 }
 
-bool AsyncJobManager::cancelJob(AsyncJobResult::IdType jobId) {
+Result AsyncJobManager::cancelJob(AsyncJobResult::IdType jobId) {
+  Result rv;
   WRITE_LOCKER(writeLocker, _lock);
 
   auto it = _jobs.find(jobId);
 
   if (it == _jobs.end()) {
-    return false;
+    rv.reset(TRI_ERROR_HTTP_NOT_FOUND
+            , "could not find job (" + std::to_string(jobId) +
+              ") in AsyncJobManager during cancel operation"
+            );
+    return rv;
   }
 
   bool ok = true;
@@ -196,7 +202,14 @@ bool AsyncJobManager::cancelJob(AsyncJobResult::IdType jobId) {
     ok = handler->cancel();
   }
 
-  return ok;
+  if(!ok){
+    // if you end up here you might need to implement the cancel method on your handler
+    rv.reset(TRI_ERROR_INTERNAL
+            ,"could not cancel job (" + std::to_string(jobId) +
+             ") in handler"
+            );
+  }
+  return rv;
 }
 
 std::vector<AsyncJobResult::IdType> AsyncJobManager::pending(size_t maxCount) {

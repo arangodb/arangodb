@@ -213,12 +213,12 @@ function cancelBarrier (endpoint, database, barrierId) {
 // / @brief tell leader that we are in sync
 // /////////////////////////////////////////////////////////////////////////////
 
-function addShardFollower (endpoint, database, shard) {
+function addShardFollower (endpoint, database, shard, lockJobId) {
   console.topic('heartbeat=debug', 'addShardFollower: tell the leader to put us into the follower list...');
   var url = endpointToURL(endpoint) + '/_db/' + database +
     '/_api/replication/addFollower';
   let db = require('internal').db;
-  var body = {followerId: ArangoServerState.id(), shard, checksum: db._collection(shard).checksum()};
+  var body = {followerId: ArangoServerState.id(), shard, checksum: db._collection(shard).count() + '', readLockId: lockJobId};
   var r = request({url, body: JSON.stringify(body), method: 'PUT'});
   if (r.status !== 200) {
     console.topic('heartbeat=error', "addShardFollower: could not add us to the leader's follower list.", r);
@@ -592,7 +592,7 @@ function synchronizeOneShard (database, shard, planId, leader) {
               ok = false;
             } else {
               try {
-                ok = addShardFollower(ep, database, shard);
+                ok = addShardFollower(ep, database, shard, lockJobId);
               } catch (err4) {
                 db._drop(shard);
                 throw err4;

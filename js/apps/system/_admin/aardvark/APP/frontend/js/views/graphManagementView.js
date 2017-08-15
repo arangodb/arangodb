@@ -924,7 +924,7 @@
               true,
               false,
               false,
-              10,
+              null,
               collList.sort(sorter)
             )
           );
@@ -938,7 +938,7 @@
               true,
               false,
               false,
-              10,
+              null,
               collList.sort(sorter)
             )
           );
@@ -956,7 +956,7 @@
           false,
           false,
           false,
-          10,
+          null,
           collList.sort(sorter)
         )
       );
@@ -1035,15 +1035,15 @@
           tags: collList,
           showSearchBox: false,
           minimumResultsForSearch: -1,
-          width: '336px',
-          maximumSelectionSize: 10
+          width: '336px'
+          // maximumSelectionSize: 10
         });
         $('#toCollections' + this.counter).select2({
           tags: collList,
           showSearchBox: false,
           minimumResultsForSearch: -1,
-          width: '336px',
-          maximumSelectionSize: 10
+          width: '336px'
+          // maximumSelectionSize: 10
         });
         window.modalView.undelegateEvents();
         window.modalView.delegateEvents(this.events);

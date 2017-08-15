@@ -34,25 +34,11 @@
 /// @brief growth factor for lists
 #define GROWTH_FACTOR 1.2
 
-/// @brief compare two entries in a list
-static int CompareEntries(const void* lhs, const void* rhs) {
-  TRI_fulltext_list_entry_t l = (*(TRI_fulltext_list_entry_t*)lhs);
-  TRI_fulltext_list_entry_t r = (*(TRI_fulltext_list_entry_t*)rhs);
-
-  if (l < r) {
-    return -1;
-  }
-
-  if (l > r) {
-    return 1;
-  }
-
-  return 0;
-}
+#include "Logger/Logger.h"
 
 /// @brief return whether the list is sorted
 /// this will check the sorted bit at the start of the list
-static inline bool IsSorted(const TRI_fulltext_list_t* const list) {
+static inline bool IsSorted(TRI_fulltext_list_t const* list) {
   uint32_t* head = (uint32_t*)list;
 
   return ((*head & SORTED_BIT) != 0);
@@ -103,30 +89,57 @@ static inline uint32_t GetNumAllocated(TRI_fulltext_list_t const* list) {
   return (*head & ~SORTED_BIT);
 }
 
+static uint32_t FindListEntry(TRI_fulltext_list_t* list,
+                              TRI_fulltext_list_entry_t* listEntries,
+                              uint32_t numEntries, 
+                              TRI_fulltext_list_entry_t entry) {
+  if (numEntries >= 10 && IsSorted(list)) {
+    // binary search
+    uint32_t l = 0;
+    uint32_t r = numEntries - 1;
+  
+    while (true) {
+      // determine midpoint
+      uint32_t m = l + ((r - l) / 2);
+      TRI_fulltext_list_entry_t value = listEntries[m];
+      if (value == entry) {
+        return m;
+      }
+
+      if (value > entry) {
+        if (m == 0) {
+          // we must abort because the following subtraction would
+          // make the uin32_t underflow to UINT32_MAX!
+          break;
+        }
+        // this is safe
+        r = m - 1;
+      } else {
+        l = m + 1;
+      }
+
+      if (r < l) {
+        break;
+      }
+    }
+  } else {
+    // linear search
+    for (uint32_t i = 0; i < numEntries; ++i) {
+      if (listEntries[i] == entry) {
+        return i;
+      }
+    }
+  }
+
+  return UINT32_MAX;
+}
+
 /// @brief initialize a new list
 static void InitList(TRI_fulltext_list_t* list, uint32_t size) {
   uint32_t* head = (uint32_t*)list;
 
   *(head++) = size;
   *(head) = 0;
-}
-
-/// @brief sort a list in place
-static void SortList(TRI_fulltext_list_t* list) {
-  if (IsSorted(list)) {
-    // nothing to do
-    return;
-  }
-
-  uint32_t numEntries = GetNumEntries(list);
-
-  if (numEntries > 1) {
-    // only sort if more than one elements
-    qsort(GetStart(list), numEntries, sizeof(TRI_fulltext_list_entry_t),
-          &CompareEntries);
-  }
-
-  SetIsSorted(list, true);
 }
 
 /// @brief get the memory usage for a list of the specified size
@@ -147,6 +160,21 @@ static TRI_fulltext_list_t* IncreaseList(TRI_fulltext_list_t* list,
   }
 
   return copy;
+}
+
+void TRI_CloneListMMFilesFulltextIndex(TRI_fulltext_list_t const* source,
+                                       std::set<TRI_voc_rid_t>& result) {
+  if (source == nullptr) {
+    return;
+  }
+  
+  uint32_t numEntries = GetNumEntries(source);
+  if (numEntries > 0) {
+    TRI_fulltext_list_entry_t* entries = GetStart(source);
+    for (uint32_t i = 0; i < numEntries; ++i) {
+      result.emplace(entries[i]);
+    }
+  }
 }
 
 /// @brief clone a list by copying an existing one
@@ -176,7 +204,7 @@ TRI_fulltext_list_t* TRI_CloneListMMFilesFulltextIndex(
 /// @brief create a new list
 TRI_fulltext_list_t* TRI_CreateListMMFilesFulltextIndex(uint32_t size) {
   TRI_fulltext_list_t* list =
-      TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, MemoryList(size), false);
+      TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, MemoryList(size));
 
   if (list == nullptr) {
     // out of memory
@@ -199,256 +227,10 @@ size_t TRI_MemoryListMMFilesFulltextIndex(TRI_fulltext_list_t const* list) {
   return MemoryList(size);
 }
 
-/// @brief unionise two lists (a.k.a. logical OR)
-/// this will create a new list and free both lhs & rhs
-TRI_fulltext_list_t* TRI_UnioniseListMMFilesFulltextIndex(TRI_fulltext_list_t* lhs,
-                                                   TRI_fulltext_list_t* rhs) {
-  TRI_fulltext_list_t* list;
-  TRI_fulltext_list_entry_t last;
-  TRI_fulltext_list_entry_t* lhsEntries;
-  TRI_fulltext_list_entry_t* rhsEntries;
-  TRI_fulltext_list_entry_t* listEntries;
-  uint32_t l, r;
-  uint32_t numLhs, numRhs;
-  uint32_t listPos;
-
-  if (lhs == nullptr) {
-    return rhs;
-  }
-  if (rhs == nullptr) {
-    return lhs;
-  }
-
-  numLhs = GetNumEntries(lhs);
-  numRhs = GetNumEntries(rhs);
-
-  // check the easy cases when one of the lists is empty
-  if (numLhs == 0) {
-    TRI_FreeListMMFilesFulltextIndex(lhs);
-    return rhs;
-  }
-
-  if (numRhs == 0) {
-    TRI_FreeListMMFilesFulltextIndex(rhs);
-    return lhs;
-  }
-
-  list = TRI_CreateListMMFilesFulltextIndex(numLhs + numRhs);
-  if (list == nullptr) {
-    TRI_FreeListMMFilesFulltextIndex(lhs);
-    TRI_FreeListMMFilesFulltextIndex(rhs);
-    return nullptr;
-  }
-
-  SortList(lhs);
-  lhsEntries = GetStart(lhs);
-  l = 0;
-
-  SortList(rhs);
-  rhsEntries = GetStart(rhs);
-  r = 0;
-
-  listPos = 0;
-  listEntries = GetStart(list);
-  last = 0;
-
-  while (true) {
-    while (l < numLhs && lhsEntries[l] <= last) {
-      ++l;
-    }
-
-    while (r < numRhs && rhsEntries[r] <= last) {
-      ++r;
-    }
-
-    if (l >= numLhs && r >= numRhs) {
-      break;
-    }
-
-    if (l >= numLhs && r < numRhs) {
-      listEntries[listPos++] = last = rhsEntries[r++];
-    } else if (l < numLhs && r >= numRhs) {
-      listEntries[listPos++] = last = lhsEntries[l++];
-    } else if (lhsEntries[l] < rhsEntries[r]) {
-      listEntries[listPos++] = last = lhsEntries[l++];
-    } else {
-      listEntries[listPos++] = last = rhsEntries[r++];
-    }
-  }
-
-  SetNumEntries(list, listPos);
-  SetIsSorted(list, true);
-
-  TRI_FreeListMMFilesFulltextIndex(lhs);
-  TRI_FreeListMMFilesFulltextIndex(rhs);
-
-  return list;
-}
-
-/// @brief intersect two lists (a.k.a. logical AND)
-/// this will create a new list and free both lhs & rhs
-TRI_fulltext_list_t* TRI_IntersectListMMFilesFulltextIndex(TRI_fulltext_list_t* lhs,
-                                                    TRI_fulltext_list_t* rhs) {
-  TRI_fulltext_list_t* list;
-  TRI_fulltext_list_entry_t last;
-  TRI_fulltext_list_entry_t* lhsEntries;
-  TRI_fulltext_list_entry_t* rhsEntries;
-  TRI_fulltext_list_entry_t* listEntries;
-  uint32_t l, r;
-  uint32_t numLhs, numRhs;
-  uint32_t listPos;
-
-  // check if one of the pointers is NULL
-  if (lhs == nullptr) {
-    return rhs;
-  }
-
-  if (rhs == nullptr) {
-    return lhs;
-  }
-
-  numLhs = GetNumEntries(lhs);
-  numRhs = GetNumEntries(rhs);
-
-  // printf("list intersection lhs: %lu rhs: %lu\n\n", (unsigned long) numLhs,
-  // (unsigned long) numRhs);
-
-  // check the easy cases when one of the lists is empty
-  if (numLhs == 0 || numRhs == 0) {
-    if (lhs != nullptr) {
-      TRI_FreeListMMFilesFulltextIndex(lhs);
-    }
-    if (rhs != nullptr) {
-      TRI_FreeListMMFilesFulltextIndex(rhs);
-    }
-
-    return TRI_CreateListMMFilesFulltextIndex(0);
-  }
-
-  // we have at least one entry in each list
-  list = TRI_CreateListMMFilesFulltextIndex(numLhs < numRhs ? numLhs : numRhs);
-  if (list == nullptr) {
-    TRI_FreeListMMFilesFulltextIndex(lhs);
-    TRI_FreeListMMFilesFulltextIndex(rhs);
-    return nullptr;
-  }
-
-  SortList(lhs);
-  lhsEntries = GetStart(lhs);
-  l = 0;
-
-  SortList(rhs);
-  rhsEntries = GetStart(rhs);
-  r = 0;
-
-  listPos = 0;
-  listEntries = GetStart(list);
-  last = 0;
-
-  while (true) {
-    while (l < numLhs && lhsEntries[l] <= last) {
-      ++l;
-    }
-
-    while (r < numRhs && rhsEntries[r] <= last) {
-      ++r;
-    }
-
-  again:
-    if (l >= numLhs || r >= numRhs) {
-      break;
-    }
-
-    if (lhsEntries[l] < rhsEntries[r]) {
-      ++l;
-      goto again;
-    } else if (lhsEntries[l] > rhsEntries[r]) {
-      ++r;
-      goto again;
-    }
-
-    // match
-    listEntries[listPos++] = last = lhsEntries[l];
-    ++l;
-    ++r;
-  }
-
-  SetNumEntries(list, listPos);
-  SetIsSorted(list, true);
-
-  TRI_FreeListMMFilesFulltextIndex(lhs);
-  TRI_FreeListMMFilesFulltextIndex(rhs);
-
-  // printf("result list has %lu\n\n", (unsigned long) listPos);
-
-  return list;
-}
-
-/// @brief exclude values from a list
-/// this will modify list in place
-TRI_fulltext_list_t* TRI_ExcludeListMMFilesFulltextIndex(
-    TRI_fulltext_list_t* list, TRI_fulltext_list_t* exclude) {
-  TRI_fulltext_list_entry_t* listEntries;
-  TRI_fulltext_list_entry_t* excludeEntries;
-  uint32_t numEntries;
-  uint32_t numExclude;
-  uint32_t i, j, listPos;
-
-  if (list == nullptr) {
-    TRI_FreeListMMFilesFulltextIndex(exclude);
-    return list;
-  }
-
-  if (exclude == nullptr) {
-    return list;
-  }
-
-  numEntries = GetNumEntries(list);
-  numExclude = GetNumEntries(exclude);
-
-  if (numEntries == 0 || numExclude == 0) {
-    // original list or exclusion list are empty
-    TRI_FreeListMMFilesFulltextIndex(exclude);
-    return list;
-  }
-
-  SortList(list);
-
-  listEntries = GetStart(list);
-  excludeEntries = GetStart(exclude);
-
-  j = 0;
-  listPos = 0;
-  for (i = 0; i < numEntries; ++i) {
-    TRI_fulltext_list_entry_t entry;
-
-    entry = listEntries[i];
-    while (j < numExclude && excludeEntries[j] < entry) {
-      ++j;
-    }
-
-    if (j < numExclude && excludeEntries[j] == entry) {
-      // entry is contained in exclusion list
-      continue;
-    }
-
-    if (listPos != i) {
-      listEntries[listPos] = listEntries[i];
-    }
-    ++listPos;
-  }
-
-  // we may have less results in the list of exclusion
-  SetNumEntries(list, listPos);
-  TRI_FreeListMMFilesFulltextIndex(exclude);
-
-  return list;
-}
-
 /// @brief insert an element into a list
 /// this might free the old list and allocate a new, bigger one
 TRI_fulltext_list_t* TRI_InsertListMMFilesFulltextIndex(
-    TRI_fulltext_list_t* list, const TRI_fulltext_list_entry_t entry) {
+    TRI_fulltext_list_t* list, TRI_fulltext_list_entry_t entry) {
   TRI_fulltext_list_entry_t* listEntries;
   uint32_t numAllocated;
   uint32_t numEntries;
@@ -512,76 +294,59 @@ TRI_fulltext_list_t* TRI_InsertListMMFilesFulltextIndex(
   return list;
 }
 
-/// @brief rewrites the list of entries using a map of handles
-/// returns the number of entries remaining in the list after rewrite
-/// the map is provided by the routines that handle the compaction
-uint32_t TRI_RewriteListMMFilesFulltextIndex(TRI_fulltext_list_t* list,
-                                      void const* data) {
-  TRI_fulltext_list_entry_t* listEntries;
-  TRI_fulltext_list_entry_t* map;
-  uint32_t numEntries;
-  uint32_t i, j;
+/// @brief remove an element from a list
+/// this might free the old list and allocate a new, smaller one
+TRI_fulltext_list_t* TRI_RemoveListMMFilesFulltextIndex(
+    TRI_fulltext_list_t* list, TRI_fulltext_list_entry_t entry) {
+  if (list == nullptr) {
+    return nullptr;
+  }
 
-  numEntries = GetNumEntries(list);
+  uint32_t numEntries = GetNumEntries(list);
+
   if (numEntries == 0) {
-    return 0;
+    // definitely not contained...
+    return list;
+  }
+  
+  TRI_fulltext_list_entry_t* listEntries = GetStart(list);
+  uint32_t i = FindListEntry(list, listEntries, numEntries, entry);
+  
+  if (i == UINT32_MAX) {
+    // not found
+    return list;
+  }
+   
+  // found! 
+  --numEntries; 
+
+  if (numEntries == 0) {
+    // free all memory
+    TRI_FreeListMMFilesFulltextIndex(list);
+    return nullptr;
   }
 
-  map = (TRI_fulltext_list_entry_t*)data;
-  listEntries = GetStart(list);
-  j = 0;
+  while (i < numEntries) {
+    listEntries[i] = listEntries[i + 1];
+    ++i;
+  }
 
-  for (i = 0; i < numEntries; ++i) {
-    TRI_fulltext_list_entry_t entry;
-    TRI_fulltext_list_entry_t mapped;
+  SetNumEntries(list, numEntries);
+    
+  uint32_t numAllocated = GetNumAllocated(list);
 
-    entry = listEntries[i];
-    if (entry == 0) {
-      continue;
+  if (numAllocated > 4 && numEntries < numAllocated / 2) {
+    // list is only half full now
+    TRI_fulltext_list_t* clone = TRI_CloneListMMFilesFulltextIndex(list);
+
+    if (clone != nullptr) {
+      TRI_FreeListMMFilesFulltextIndex(list);
+      return clone;
     }
-
-    mapped = map[entry];
-    if (mapped == 0) {
-      // original value has been deleted
-      continue;
-    }
-
-    listEntries[j++] = mapped;
   }
 
-  if (j != numEntries) {
-    SetNumEntries(list, j);
-  }
-
-  return j;
+  return list;
 }
-
-/// @brief dump the contents of a list
-#if TRI_FULLTEXT_DEBUG
-void TRI_DumpListMMFilesFulltextIndex(TRI_fulltext_list_t const* list) {
-  TRI_fulltext_list_entry_t* listEntries;
-  uint32_t numEntries;
-  uint32_t i;
-
-  numEntries = GetNumEntries(list);
-  listEntries = GetStart(list);
-
-  printf("(");
-
-  for (i = 0; i < numEntries; ++i) {
-    TRI_fulltext_list_entry_t entry;
-
-    if (i > 0) {
-      printf(", ");
-    }
-
-    entry = listEntries[i];
-    printf("%lu", (unsigned long)entry);
-  }
-
-  printf(")");
-}
-#endif
 
 /// @brief return the number of entries
 uint32_t TRI_NumEntriesListMMFilesFulltextIndex(TRI_fulltext_list_t const* list) {

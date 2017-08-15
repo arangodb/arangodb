@@ -109,11 +109,11 @@ void RestJobHandler::putJobMethod() {
   uint64_t jobId = StringUtils::uint64(value);
 
   if (method == "cancel") {
-    bool status = _jobManager->cancelJob(jobId);
+    Result status = _jobManager->cancelJob(jobId);
 
     // unknown or already fetched job
-    if (!status) {
-      generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_HTTP_NOT_FOUND);
+    if (status.fail()) {
+      generateError(status);
     } else {
       VPackBuilder json;
       json.add(VPackValue(VPackValueType::Object));

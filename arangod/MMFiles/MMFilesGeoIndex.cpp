@@ -513,7 +513,7 @@ Result MMFilesGeoIndex::remove(transaction::Methods*, TRI_voc_rid_t revisionId,
   return Result(TRI_ERROR_NO_ERROR);
 }
 
-int MMFilesGeoIndex::unload() {
+void MMFilesGeoIndex::unload() {
   // create a new, empty index
   auto empty = GeoIndex_new();
 
@@ -528,8 +528,6 @@ int MMFilesGeoIndex::unload() {
 
   // and assign it
   _geoIndex = empty;
-
-  return TRI_ERROR_NO_ERROR;
 }
 
 /// @brief looks up all points within a given radius

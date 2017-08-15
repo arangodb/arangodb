@@ -701,23 +701,9 @@ size_t MMFilesSkiplistIndex::memory() const {
              MMFilesSkiplistIndexElement::baseMemoryUsage(_paths.size());
 }
 
-/// @brief return a VelocyPack representation of the index
-void MMFilesSkiplistIndex::toVelocyPack(VPackBuilder& builder, bool withFigures,
-                                        bool forPersistence) const {
-  builder.openObject();
-  {
-    Index::toVelocyPack(builder, withFigures, forPersistence);
-    builder.add("unique", VPackValue(_unique));
-    builder.add("sparse", VPackValue(_sparse));
-    builder.add("deduplicate", VPackValue(_deduplicate));
-  }
-  builder.close();
-}
-
 /// @brief return a VelocyPack representation of the index figures
 void MMFilesSkiplistIndex::toVelocyPackFigures(VPackBuilder& builder) const {
-  TRI_ASSERT(builder.isOpenObject());
-  builder.add("memory", VPackValue(memory()));
+  MMFilesPathBasedIndex::toVelocyPackFigures(builder);
   _skiplistIndex->appendToVelocyPack(builder);
 }
 
@@ -824,9 +810,8 @@ Result MMFilesSkiplistIndex::remove(transaction::Methods* trx,
   return IndexResult(res, this);
 }
 
-int MMFilesSkiplistIndex::unload() {
+void MMFilesSkiplistIndex::unload() {
   _skiplistIndex->truncate(true);
-  return TRI_ERROR_NO_ERROR;
 }
 
 /// @brief Checks if the interval is valid. It is declared invalid if

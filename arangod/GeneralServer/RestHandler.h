@@ -92,6 +92,8 @@ class RestHandler : public std::enable_shared_from_this<RestHandler> {
   virtual RestStatus execute() = 0;
   virtual void finalizeExecute() {}
 
+  // you might need to implment this in you handler
+  // if it will be executed in an async job
   virtual bool cancel() {
     _canceled.store(true);
     return false;

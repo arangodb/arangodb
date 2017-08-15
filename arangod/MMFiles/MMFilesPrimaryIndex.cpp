@@ -279,11 +279,9 @@ Result MMFilesPrimaryIndex::remove(transaction::Methods*, TRI_voc_rid_t,
 }
 
 /// @brief unload the index data from memory
-int MMFilesPrimaryIndex::unload() {
+void MMFilesPrimaryIndex::unload() {
   _primaryIndex->truncate(
       [](MMFilesSimpleIndexElement const&) { return true; });
-
-  return TRI_ERROR_NO_ERROR;
 }
 
 /// @brief looks up an element given a key

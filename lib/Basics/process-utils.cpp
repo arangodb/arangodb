@@ -818,7 +818,7 @@ void TRI_CreateExternalProcess(char const* executable, char const** arguments,
                                TRI_external_id_t* pid) {
   // create the external structure
   TRI_external_t* external = static_cast<TRI_external_t*>(
-      TRI_Allocate(TRI_CORE_MEM_ZONE, sizeof(TRI_external_t), true));
+      TRI_Allocate(TRI_CORE_MEM_ZONE, sizeof(TRI_external_t)));
 
   if (external == nullptr) {
     // gracefully handle out of memory
@@ -826,11 +826,13 @@ void TRI_CreateExternalProcess(char const* executable, char const** arguments,
     return;
   }
 
+  memset(external, 0, sizeof(TRI_external_t));
+
   external->_executable = TRI_DuplicateString(executable);
   external->_numberArguments = n + 1;
 
   external->_arguments = static_cast<char**>(
-      TRI_Allocate(TRI_CORE_MEM_ZONE, (n + 2) * sizeof(char*), true));
+      TRI_Allocate(TRI_CORE_MEM_ZONE, (n + 2) * sizeof(char*)));
 
   if (external->_arguments == nullptr) {
     // gracefully handle out of memory
@@ -838,6 +840,8 @@ void TRI_CreateExternalProcess(char const* executable, char const** arguments,
     FreeExternal(external);
     return;
   }
+
+  memset(external->_arguments, 0, (n + 2) * sizeof(char*));
 
   external->_arguments[0] = TRI_DuplicateString(executable);
 

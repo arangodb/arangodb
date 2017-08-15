@@ -23,9 +23,9 @@
 
 #include "V8Expression.h"
 #include "Aql/AqlItemBlock.h"
-#include "Aql/Executor.h"
 #include "Aql/ExpressionContext.h"
 #include "Aql/Query.h"
+#include "Aql/V8Executor.h"
 #include "Aql/Variable.h"
 #include "Basics/VelocyPackHelper.h"
 #include "V8/v8-conv.h"
@@ -133,7 +133,7 @@ AqlValue V8Expression::execute(v8::Isolate* isolate, Query* query,
 
     v8g->_query = old;
 
-    Executor::HandleV8Error(tryCatch, result, nullptr, false);
+    V8Executor::HandleV8Error(tryCatch, result, nullptr, false);
   } catch (...) {
     v8g->_query = old;
     // bubble up exception
