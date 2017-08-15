@@ -85,33 +85,6 @@ TEST_CASE("cache::State", "[cache]") {
     REQUIRE(!state.isLocked());
   }
 
-  SECTION("test read-lock overflow") {
-    State state;
-    bool success;
-
-    for (size_t i = 0; i < 127; i++) {
-      success = state.readLock(10LL);
-      REQUIRE(success);
-      REQUIRE(state.isLocked());
-      REQUIRE(!state.isWriteLocked());
-    }
-
-    success = state.readLock(10LL);
-    REQUIRE(!success);
-    REQUIRE(state.isLocked());
-    REQUIRE(!state.isWriteLocked());
-
-    for (size_t i = 0; i < 126; i++) {
-      state.unlock();
-      REQUIRE(state.isLocked());
-      REQUIRE(!state.isWriteLocked());
-    }
-
-    state.unlock();
-    REQUIRE(!state.isLocked());
-    REQUIRE(!state.isWriteLocked());
-  }
-
   SECTION("test methods for non-lock flags") {
     State state;
     bool success;
