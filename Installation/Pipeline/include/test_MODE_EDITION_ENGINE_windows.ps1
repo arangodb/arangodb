@@ -127,10 +127,16 @@ function createTests {
       name=$name
       script={
         param($name, $myport, $maxPort, $test, $cluster, $engine, $testArgs, $log)
+        # ridiculous...first allow it to continue because as soon as something will write to stderr it will fail
+        # however some of these tests trigger these and actually some errors are to be expected.
         $ErrorActionPreference="SilentlyContinue"
         .\build\bin\arangosh.exe --log.level warning --javascript.execute UnitTests\unittest.js $test -- --cluster $cluster --storageEngine $engine --minPort $myport --maxPort $maxPort --skipNondeterministic true --skipTimeCritical true  --configDir etc/jenkins --skipLogAnalysis true $testargs *>&1 | Tee-Object -FilePath $log
+        $result = $?
+        # the only one who really knows if it broke or not is arangosh itself. so catch the error code
+        # THEN REENABLE THE FCKING ERROR HANDLING
         $ErrorActionPreference="Stop"
-        if ($? -eq $false) {
+        # and finally throw an error only if there really was an error
+        if ($result -eq $false) {
           throw "arangosh returned a non zero exit code!"
         }
       }
