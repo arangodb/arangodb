@@ -193,6 +193,7 @@ RocksDBToken RocksDBPrimaryIndex::lookupKey(transaction::Methods* trx,
       }
 
       delete entry;
+      break;
     }
   }
 
