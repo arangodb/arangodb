@@ -137,8 +137,8 @@ function createTests {
         # THEN REENABLE THE FCKING ERROR HANDLING
         $ErrorActionPreference="Stop"
         # and finally throw an error only if there really was an error
-        if ($result -eq $false) {
-          throw "arangosh returned a non zero exit code!"
+        if ($result -ne 0) {
+          throw "arangosh returned a non zero exit code: $result!"
         }
       }
       args=@($name, $myport, $maxPort, $test, $cluster, $engine, $testArgs, $log)
