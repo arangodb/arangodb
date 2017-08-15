@@ -40,7 +40,7 @@ function iResearchAqlTestSuite () {
   var v;
 
   return {
-    setUp : function () {
+    setUpAll : function () {
       db._drop("UnitTestsCollection");
       c = db._create("UnitTestsCollection");
 
@@ -50,14 +50,20 @@ function iResearchAqlTestSuite () {
       v.properties(meta);
 
       for (var i = 0; i < 5; i++) {
-        c.save({ a: "foo", b: "bar", c: i }, { waitForSync: true });
-        c.save({ a: "foo", b: "baz", c: i }, { waitForSync: true });
-        c.save({ a: "bar", b: "foo", c: i }, { waitForSync: true });
-        c.save({ a: "baz", b: "foo", c: i }, { waitForSync: true });
+        c.save({ a: "foo", b: "bar", c: i });
+        c.save({ a: "foo", b: "baz", c: i });
+        c.save({ a: "bar", b: "foo", c: i });
       }
+      for (var i = 0; i < 4; i++) {
+        c.save({ a: "baz", b: "foo", c: i });
+      }
+
+      // save last doc with waitForSync
+      c.save({ a: "baz", b: "foo", c: 4 }, { waitForSync: true });
+      require('internal').wait(2);
     },
 
-    tearDown : function () {
+    tearDownAll : function () {
       var meta = { links : { "UnitTestsCollection": null } };
       v.properties(meta);
       v.drop();

@@ -426,7 +426,6 @@ void arangodb::aql::removeUnnecessaryFiltersRule(
 
     // filter expression is constant and thus cannot throw
     // we can now evaluate it safely
-    TRI_ASSERT(!s->expression()->canThrow());
 
     if (root->isTrue()) {
       // filter is always true
@@ -2018,6 +2017,68 @@ void arangodb::aql::removeFiltersCoveredByIndexRule(
         if (handled) {
           break;
         }
+      }
+
+      if (handled || current->getType() == EN::LIMIT ||
+          !current->hasDependency()) {
+        break;
+      }
+
+      current = current->getFirstDependency();
+    }
+  }
+
+  if (!toUnlink.empty()) {
+    plan->unlinkNodes(toUnlink);
+  }
+
+  opt->addPlan(std::move(plan), rule, modified);
+}
+
+/// @brief try to remove filters which are covered by views
+void arangodb::aql::removeFiltersCoveredByViewRule(
+    Optimizer* opt, std::unique_ptr<ExecutionPlan> plan,
+    OptimizerRule const* rule) {
+  SmallVector<ExecutionNode*>::allocator_type::arena_type a;
+  SmallVector<ExecutionNode*> nodes{a};
+  plan->findNodesOfType(nodes, EN::FILTER, true);
+
+  std::unordered_set<ExecutionNode*> toUnlink;
+  bool modified = false;
+
+  for (auto const& node : nodes) {
+    auto fn = static_cast<FilterNode const*>(node);
+    // find the node with the filter expression
+    auto inVar = fn->getVariablesUsedHere();
+    TRI_ASSERT(inVar.size() == 1);
+
+    auto setter = plan->getVarSetBy(inVar[0]->id);
+
+    if (setter == nullptr || setter->getType() != EN::CALCULATION) {
+      continue;
+    }
+
+    auto calculationNode = static_cast<CalculationNode*>(setter);
+    auto conditionNode = calculationNode->expression()->node();
+
+    // build the filter condition
+    auto condition = std::make_unique<Condition>(plan->getAst());
+    condition->andCombine(conditionNode);
+    condition->normalize(plan.get());
+
+    if (condition->root() == nullptr) {
+      continue;
+    }
+
+    bool handled = false;
+    auto current = node;
+    while (current != nullptr) {
+      if (current->getType() == EN::ENUMERATE_VIEW) {
+	toUnlink.emplace(node);
+        calculationNode->canRemoveIfThrows(true);
+	modified = true;
+	handled = true;
+        break;
       }
 
       if (handled || current->getType() == EN::LIMIT ||

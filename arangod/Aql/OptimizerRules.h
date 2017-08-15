@@ -104,6 +104,10 @@ void useIndexForSortRule(Optimizer*, std::unique_ptr<ExecutionPlan>, OptimizerRu
 void removeFiltersCoveredByIndexRule(Optimizer*, std::unique_ptr<ExecutionPlan>,
                                      OptimizerRule const*);
 
+/// @brief try to remove filters which are covered by views
+void removeFiltersCoveredByViewRule(Optimizer*, std::unique_ptr<ExecutionPlan>,
+                                    OptimizerRule const*);
+
 /// @brief interchange adjacent EnumerateCollectionNodes in all possible ways
 void interchangeAdjacentEnumerationsRule(Optimizer*, std::unique_ptr<ExecutionPlan>,
                                          OptimizerRule const*);

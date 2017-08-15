@@ -209,6 +209,10 @@ void OptimizerRulesFeature::addRules() {
                removeFiltersCoveredByIndexRule,
                OptimizerRule::removeFiltersCoveredByIndexRule_pass6, DoesNotCreateAdditionalPlans, CanBeDisabled);
 
+  registerRule("remove-filter-covered-by-view",
+               removeFiltersCoveredByViewRule,
+               OptimizerRule::removeFiltersCoveredByViewRule_pass6, DoesNotCreateAdditionalPlans, CanNotBeDisabled);
+
   // try to find sort blocks which are superseeded by indexes
   registerRule("use-index-for-sort", useIndexForSortRule,
                OptimizerRule::useIndexForSortRule_pass6, DoesNotCreateAdditionalPlans, CanBeDisabled);
