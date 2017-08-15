@@ -282,7 +282,6 @@ class MMFilesSkiplistIndex final : public MMFilesPathBasedIndex {
 
   size_t memory() const override;
 
-  void toVelocyPack(VPackBuilder&, bool, bool) const override;
   void toVelocyPackFigures(VPackBuilder&) const override;
 
   Result insert(transaction::Methods*, TRI_voc_rid_t,
@@ -291,7 +290,7 @@ class MMFilesSkiplistIndex final : public MMFilesPathBasedIndex {
   Result remove(transaction::Methods*, TRI_voc_rid_t,
                 arangodb::velocypack::Slice const&, bool isRollback) override;
 
-  int unload() override;
+  void unload() override;
 
   bool supportsFilterCondition(arangodb::aql::AstNode const*,
                                arangodb::aql::Variable const*, size_t, size_t&,

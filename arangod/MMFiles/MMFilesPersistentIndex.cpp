@@ -217,24 +217,6 @@ size_t MMFilesPersistentIndex::memory() const {
   return 0;  // TODO
 }
 
-/// @brief return a VelocyPack representation of the index
-void MMFilesPersistentIndex::toVelocyPack(VPackBuilder& builder,
-                                          bool withFigures,
-                                          bool forPersistence) const {
-  builder.openObject();
-  Index::toVelocyPack(builder, withFigures, forPersistence);
-  builder.add("unique", VPackValue(_unique));
-  builder.add("sparse", VPackValue(_sparse));
-  builder.add("deduplicate", VPackValue(_deduplicate));
-  builder.close();
-}
-
-/// @brief return a VelocyPack representation of the index figures
-void MMFilesPersistentIndex::toVelocyPackFigures(VPackBuilder& builder) const {
-  TRI_ASSERT(builder.isOpenObject());
-  builder.add("memory", VPackValue(memory()));
-}
-
 /// @brief inserts a document into the index
 Result MMFilesPersistentIndex::insert(transaction::Methods* trx,
                                       TRI_voc_rid_t revisionId,
@@ -472,11 +454,6 @@ Result MMFilesPersistentIndex::remove(transaction::Methods* trx,
   }
 
   return IndexResult(res, this);
-}
-
-int MMFilesPersistentIndex::unload() {
-  // nothing to do
-  return TRI_ERROR_NO_ERROR;
 }
 
 /// @brief called when the index is dropped

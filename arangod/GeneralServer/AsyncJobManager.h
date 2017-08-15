@@ -25,6 +25,7 @@
 #define ARANGOD_HTTP_SERVER_ASYNC_JOB_MANAGER_H 1
 
 #include "Basics/Common.h"
+#include "Basics/Result.h"
 #include "Basics/ReadWriteLock.h"
 
 namespace arangodb {
@@ -82,7 +83,7 @@ class AsyncJobManager {
   bool deleteJobResult(AsyncJobResult::IdType);
   void deleteJobResults();
   void deleteExpiredJobResults(double stamp);
-  bool cancelJob(AsyncJobResult::IdType);
+  Result cancelJob(AsyncJobResult::IdType);
 
   std::vector<AsyncJobResult::IdType> pending(size_t maxCount);
   std::vector<AsyncJobResult::IdType> done(size_t maxCount);
