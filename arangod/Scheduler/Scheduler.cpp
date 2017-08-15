@@ -65,7 +65,6 @@ class SchedulerManagerThread : public Thread {
     while (!_scheduler->isStopping()) {
       try {
         _service->run_one();
-        _scheduler->deleteOldThreads();
       } catch (...) {
         LOG_TOPIC(ERR, Logger::THREADS)
             << "manager loop caught an error, restarting";
@@ -89,7 +88,7 @@ namespace {
 class SchedulerThread : public Thread {
  public:
   SchedulerThread(Scheduler* scheduler, boost::asio::io_service* service)
-      : Thread("Scheduler"), _scheduler(scheduler), _service(service) {}
+    : Thread("Scheduler", true), _scheduler(scheduler), _service(service) {}
 
   ~SchedulerThread() { shutdown(); }
 
@@ -186,14 +185,6 @@ Scheduler::Scheduler(uint64_t nrMinimum, uint64_t nrDesired, uint64_t nrMaximum,
 
 Scheduler::~Scheduler() {
   stopRebalancer();
-
-  try {
-    deleteOldThreads();
-  } catch (...) {
-    // probably out of memory here...
-    // must not throw in the dtor
-    LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "unable to delete old scheduler threads";
-  }
 }
 
 // -----------------------------------------------------------------------------
@@ -359,32 +350,7 @@ std::string Scheduler::infoStatus() {
 
 void Scheduler::threadDone(Thread* thread) {
   MUTEX_LOCKER(guard, _threadsLock);
-
   _threads.erase(thread);
-  _deadThreads.insert(thread);
-}
-
-void Scheduler::deleteOldThreads() {
-  // delete old thread objects
-  std::unordered_set<Thread*> deadThreads;
-
-  {
-    MUTEX_LOCKER(guard, _threadsLock);
-
-    if (_deadThreads.empty()) {
-      return;
-    }
-
-    deadThreads.swap(_deadThreads);
-  }
-
-  for (auto thread : deadThreads) {
-    try {
-      delete thread;
-    } catch (...) {
-      LOG_TOPIC(ERR, Logger::THREADS) << "cannot delete thread";
-    }
-  }
 }
 
 void Scheduler::rebalanceThreads() {
@@ -438,8 +404,6 @@ void Scheduler::shutdown() {
     }
     std::this_thread::yield();
   }
-
-  deleteOldThreads();
 
   // remove all queued work descriptions in the work monitor first
   // before freeing the io service a few lines later

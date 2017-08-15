@@ -101,7 +101,6 @@ class Scheduler {
 
   void startNewThread();
   void threadDone(Thread*);
-  void deleteOldThreads();
   
   void stopRebalancer() noexcept;
 
@@ -158,7 +157,6 @@ class Scheduler {
 
   Mutex _threadsLock;
   std::unordered_set<Thread*> _threads;
-  std::unordered_set<Thread*> _deadThreads;
 };
 }
 }
