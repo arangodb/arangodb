@@ -13,11 +13,17 @@
 /// - 1: @LIT{failed}
 ///   Will be returned when a general error occurred.
 /// - 10: @LIT{upgrade failed}
-///   Will be returend when the Database upgrade failed
+///   Will be returned when the database upgrade failed
+/// - 11: @LIT{db upgrade required}
+///   Will be returned when a database upgrade is required
+/// - 12: @LIT{db downgrade required}
+///   Will be returned when a database upgrade is required
+/// - 13: @LIT{version check failed}
+///   Will be returned when there is a version mismatch
 /// -  20: @LIT{already running}
-///   Will be returend when arangod is already running according to PID-file
+///   Will be returned when arangod is already running according to PID-file
 /// -  21: @LIT{port blocked}
-///   Will be returend when endpoint is taken by antoher process
+///   Will be returned when endpoint is taken by another process
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -53,21 +59,51 @@ void TRI_InitializeExitMessages ();
 #define TRI_EXIT_FAILED                                                   (1)
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief 10: EXIT_UPGRADE
+/// @brief 10: EXIT_UPGRADE_FAILED
 ///
 /// upgrade failed
 ///
-/// Will be returend when the Database upgrade failed
+/// Will be returned when the database upgrade failed
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_EXIT_UPGRADE                                                  (10)
+#define TRI_EXIT_UPGRADE_FAILED                                           (10)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 11: EXIT_UPGRADE_REQUIRED
+///
+/// db upgrade required
+///
+/// Will be returned when a database upgrade is required
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_EXIT_UPGRADE_REQUIRED                                         (11)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 12: EXIT_DOWNGRADE_REQUIRED
+///
+/// db downgrade required
+///
+/// Will be returned when a database upgrade is required
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_EXIT_DOWNGRADE_REQUIRED                                       (12)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 13: EXIT_VERSION_CHECK_FAILED
+///
+/// version check failed
+///
+/// Will be returned when there is a version mismatch
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_EXIT_VERSION_CHECK_FAILED                                     (13)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief  20: EXIT_ALREADY_RUNNING
 ///
 /// already running
 ///
-/// Will be returend when arangod is already running according to PID-file
+/// Will be returned when arangod is already running according to PID-file
 ////////////////////////////////////////////////////////////////////////////////
 
 #define TRI_EXIT_ALREADY_RUNNING                                          ( 20)
@@ -77,7 +113,7 @@ void TRI_InitializeExitMessages ();
 ///
 /// port blocked
 ///
-/// Will be returend when endpoint is taken by antoher process
+/// Will be returned when endpoint is taken by another process
 ////////////////////////////////////////////////////////////////////////////////
 
 #define TRI_EXIT_PORT_BLOCKED                                             ( 21)

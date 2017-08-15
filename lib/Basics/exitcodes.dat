@@ -1,5 +1,5 @@
 ################################################################################
-## General errors
+## Exit Codes
 ################################################################################
 
 # general
@@ -7,11 +7,14 @@ EXIT_SUCCESS,0,"success","No error has occurred."
 EXIT_FAILED,1,"failed","Will be returned when a general error occurred."
 
 # internal
-EXIT_UPGRADE,10,"upgrade failed","Will be returend when the Database upgrade failed"
+EXIT_UPGRADE_FAILED,10,"upgrade failed","Will be returned when the database upgrade failed"
+EXIT_UPGRADE_REQUIRED,11,"db upgrade required","Will be returned when a database upgrade is required"
+EXIT_DOWNGRADE_REQUIRED,12,"db downgrade required","Will be returned when a database upgrade is required"
+EXIT_VERSION_CHECK_FAILED,13,"version check failed","Will be returned when there is a version mismatch"
 
 # startup
-EXIT_ALREADY_RUNNING, 20,"already running","Will be returend when arangod is already running according to PID-file"
-EXIT_PORT_BLOCKED, 21,"port blocked","Will be returend when endpoint is taken by antoher process"
+EXIT_ALREADY_RUNNING, 20,"already running","Will be returned when arangod is already running according to PID-file"
+EXIT_PORT_BLOCKED, 21,"port blocked","Will be returned when endpoint is taken by another process"
 
 # network
 #EXIT_NO_COORDINATOR
