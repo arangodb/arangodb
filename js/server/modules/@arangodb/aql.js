@@ -2068,11 +2068,23 @@ function AQL_UPPER (value) {
 function AQL_SUBSTRING (value, offset, count) {
   'use strict';
 
+  // https://mathiasbynens.be/notes/javascript-unicode
+  value = [...AQL_TO_STRING(value)];
+
   if (TYPEWEIGHT(count) !== TYPEWEIGHT_NULL) {
     count = AQL_TO_NUMBER(count);
   }
+  if (count === undefined) {
+    count = value.length;
+  }
 
-  return AQL_TO_STRING(value).substr(AQL_TO_NUMBER(offset), count);
+  offset = AQL_TO_NUMBER(offset);
+
+  if (offset < 0) {
+    offset = value.length + offset;
+  }
+
+  return value.slice(offset, offset + count).join('');
 }
 
 // //////////////////////////////////////////////////////////////////////////////
