@@ -1,5 +1,10 @@
 <script id="foxxActiveView.ejs" type="text/template">
   <div class="paddingBox">
+    <div class="foxxDesc">
+      <p><span class="foxxName"><%=model.get("name")%></span></p>
+      <!--<p><span class="foxxCategory"><%=model.get("category")%></span></p>-->
+    </div>
+    <!-- <div class="foxxActions"><button class="installFoxx button-success" appId="<%=model.name %>" appVersion="<%=model.latestVersion%>" >Interface</button></div>-->
     <div class="borderBox"></div>
     <img src="<%= model.thumbnailUrl %>" height="50" width="50" alt="Icon for Service" class="icon">
     <% if(model.isDevelopment()) { %>
@@ -11,12 +16,5 @@
         </span>
       </div>
     <% } %>
-    <h5 class="collectionName">
-      <%= model.get("mount") %>
-       
-      <% if(model.get("name")) { %>
-        (<%= model.get("name") %>)
-      <% } %>
-    </h5>
   </div>
 </script>
