@@ -11,9 +11,6 @@
 . /etc/rc.d/init.d/functions
 . /usr/share/arangodb3/arangodb-helper.sh
 
-echo "$(exit_num_to_message 5)"
-echo "$(exit_num_to_string 5)"
-
 # Path to the server binary
 ARANGO_BIN=/usr/sbin/arangod
 test -x $ARANGO_BIN || exit_string EXIT_BINARY_NOT_FOUND
