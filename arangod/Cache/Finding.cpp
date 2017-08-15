@@ -132,4 +132,4 @@ CachedValue* Finding::copy() const {
   return ((_value == nullptr) ? nullptr : _value->copy());
 }
 
-Result Finding::result() const { return _result; }
+Result const& Finding::result() const { return _result; }

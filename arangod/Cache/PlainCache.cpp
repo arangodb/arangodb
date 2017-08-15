@@ -53,7 +53,13 @@ Finding PlainCache::find(void const* key, uint32_t keySize) {
 
   if (status.ok()) {
     result.set(bucket->find(hash, key, keySize));
-    recordStat(result.found() ? Stat::findHit : Stat::findMiss);
+    if (result.found()) {
+      recordStat(Stat::findHit);
+    } else {
+      recordStat(Stat::findMiss);
+      status.reset(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND);
+      result.reportError(status);
+    }
     bucket->unlock();
     endOperation();
   } else {

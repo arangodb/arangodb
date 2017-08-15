@@ -54,9 +54,18 @@ Finding TransactionalCache::find(void const* key, uint32_t keySize) {
 
   if (status.ok()) {
     result.set(bucket->find(hash, key, keySize));
+    if (result.found()) {
+      recordStat(Stat::findHit);
+    } else {
+      recordStat(Stat::findMiss);
+      status.reset(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND);
+      result.reportError(status);
+    }
     recordStat(result.found() ? Stat::findHit : Stat::findMiss);
     bucket->unlock();
     endOperation();
+  } else {
+    result.reportError(status);
   }
 
   return result;
@@ -75,7 +84,7 @@ Result TransactionalCache::insert(CachedValue* value) {
     bool maybeMigrate = false;
     bool allowed = !bucket->isBlacklisted(hash);
     if (allowed) {
-      int64_t change = value->size();
+      int64_t change = static_cast<int64_t>(value->size());
       CachedValue* candidate = bucket->find(hash, value->key(), value->keySize);
 
       if (candidate == nullptr && bucket->isFull()) {
@@ -88,7 +97,7 @@ Result TransactionalCache::insert(CachedValue* value) {
 
       if (allowed) {
         if (candidate != nullptr) {
-          change -= candidate->size();
+          change -= static_cast<int64_t>(candidate->size());
         }
 
         _metadata.writeLock();

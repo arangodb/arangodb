@@ -1558,9 +1558,20 @@ arangodb::Result RocksDBCollection::lookupRevisionVPack(
       auto entry = cache::CachedValue::construct(
           key.string().data(), static_cast<uint32_t>(key.string().size()),
           value->data(), static_cast<uint64_t>(value->size()));
-      auto status = _cache->insert(entry);
-      if (status.fail()) {
+      size_t attempts = 0;
+      while (true) {
+        auto status = _cache->insert(entry);
+	if (status.ok()) {
+          break;
+        }
+
+        if (status.errorNumber() == TRI_ERROR_LOCK_TIMEOUT && attempts < 10) {
+          attempts++;
+          continue;
+        }
+
         delete entry;
+        break;
       }
     }
 

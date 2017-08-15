@@ -179,8 +179,19 @@ RocksDBToken RocksDBPrimaryIndex::lookupKey(transaction::Methods* trx,
     auto entry = cache::CachedValue::construct(
         key.string().data(), static_cast<uint32_t>(key.string().size()),
         value.buffer()->data(), static_cast<uint64_t>(value.buffer()->size()));
-    auto status = _cache->insert(entry);
-    if (status.fail()) {
+    size_t attempt = 0;
+    while (true) {
+      auto status = _cache->insert(entry);
+
+      if (status.ok()) {
+        break;
+      }
+
+      if (status.errorNumber() == TRI_ERROR_LOCK_TIMEOUT && attempt < 10) {
+        attempt++;
+        continue;
+      }
+
       delete entry;
     }
   }
