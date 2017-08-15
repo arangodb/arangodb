@@ -109,9 +109,7 @@
 
     createInstallModal: function (event) {
       event.preventDefault();
-      if (!this.readOnly) {
-        window.foxxInstallView.install(this.reload.bind(this));
-      }
+      window.App.navigate('services/install', {trigger: true});
     },
 
     setReadOnly: function () {

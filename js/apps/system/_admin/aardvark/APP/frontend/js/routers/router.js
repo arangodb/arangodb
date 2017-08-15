@@ -936,7 +936,8 @@
         this.serviceInstallView.remove();
       }
       this.serviceInstallView = new window.ServiceInstallView({
-        collection: this.foxxRepo
+        collection: this.foxxRepo,
+        functionsCollection: this.foxxList
       });
       this.serviceInstallView.render();
     },
@@ -950,7 +951,9 @@
       if (this.serviceNewView) {
         this.serviceNewView.remove();
       }
-      this.serviceNewView = new window.ServiceInstallNewView({});
+      this.serviceNewView = new window.ServiceInstallNewView({
+        collection: this.foxxList
+      });
       this.serviceNewView.render();
     },
 
@@ -963,7 +966,9 @@
       if (this.serviceGitHubView) {
         this.serviceGitHubView.remove();
       }
-      this.serviceGitHubView = new window.ServiceInstallGitHubView({});
+      this.serviceGitHubView = new window.ServiceInstallGitHubView({
+        collection: this.foxxList
+      });
       this.serviceGitHubView.render();
     },
 
@@ -976,7 +981,9 @@
       if (this.serviceUploadView) {
         this.serviceUploadView.remove();
       }
-      this.serviceUploadView = new window.ServiceInstallUploadView();
+      this.serviceUploadView = new window.ServiceInstallUploadView({
+        collection: this.foxxList
+      });
       this.serviceUploadView.render();
     },
 

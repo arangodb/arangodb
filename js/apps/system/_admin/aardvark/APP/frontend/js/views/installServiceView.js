@@ -20,7 +20,8 @@
     events: {
     },
 
-    initialize: function () {
+    initialize: function (options) {
+      this.functionsCollection = options.functionsCollection;
     },
 
     waitForResponse: function () {
@@ -36,6 +37,7 @@
 
       self.collection.each(function (foxx) {
         var subView = new window.FoxxRepoView({
+          collection: self.functionsCollection,
           model: foxx,
           appsView: self
         });

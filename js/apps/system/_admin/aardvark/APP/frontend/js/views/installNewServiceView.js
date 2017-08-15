@@ -1,5 +1,5 @@
 /* jshint browser: true */
-/* global Backbone, $, window, Joi, arangoHelper, templateEngine */
+/* global Backbone, $, _, window, Joi, arangoHelper, templateEngine */
 (function () {
   'use strict';
 
@@ -18,9 +18,7 @@
     },
 
     events: {
-    },
-
-    initialize: function () {
+      'click #installNewService': 'installNewService'
     },
 
     render: function () {
@@ -35,6 +33,42 @@
       arangoHelper.createTooltips('.modalTooltips');
 
       return this;
+    },
+
+    installNewService: function () {
+      arangoHelper.createMountPointModal(this.generateNewFoxxApp.bind(this));
+    },
+
+    generateNewFoxxApp: function () {
+      if (window.modalView.modalTestAll()) {
+        var mount, flag;
+        if (this._upgrade) {
+          mount = this.mount;
+          flag = $('#new-app-teardown').prop('checked');
+        } else {
+          mount = window.arangoHelper.escapeHtml($('#new-app-mount').val());
+        }
+        var info = {
+          name: window.arangoHelper.escapeHtml($('#new-app-name').val()),
+          documentCollections: _.map($('#new-app-document-collections').select2('data'), function (d) {
+            return window.arangoHelper.escapeHtml(d.text);
+          }),
+          edgeCollections: _.map($('#new-app-edge-collections').select2('data'), function (d) {
+            return window.arangoHelper.escapeHtml(d.text);
+          }),
+          //        authenticated: window.arangoHelper.escapeHtml($("#new-app-name").val()),
+          author: window.arangoHelper.escapeHtml($('#new-app-author').val()),
+          license: window.arangoHelper.escapeHtml($('#new-app-license').val()),
+          description: window.arangoHelper.escapeHtml($('#new-app-description').val())
+        };
+        this.collection.generate(info, mount, this.installCallback.bind(this), flag);
+      }
+      window.modalView.hide();
+    },
+
+    installCallback: function (result) {
+      window.App.navigate('#services', {trigger: true});
+      window.App.applicationsView.installCallback(result);
     },
 
     renderSelects: function () {

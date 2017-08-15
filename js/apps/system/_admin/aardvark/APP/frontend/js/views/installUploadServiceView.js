@@ -21,9 +21,6 @@
       'click #installUploadService': 'installFromUpload'
     },
 
-    initialize: function () {
-    },
-
     render: function () {
       $(this.el).html(this.template.render({
         services: this.collection
@@ -75,40 +72,9 @@
           mount = window.arangoHelper.escapeHtml($('#new-app-mount').val());
         }
         isLegacy = Boolean($('#zip-app-islegacy').prop('checked'));
-        this.installFromZip(window.foxxData.data.filename, mount, this.installCallback.bind(this), isLegacy, flag);
+        this.collection.installFromZip(window.foxxData.data.filename, mount, this.installCallback.bind(this), isLegacy, flag);
       }
       window.modalView.hide();
-    },
-
-    installFromZip: function (fileName, mount, callback, isLegacy, flag) {
-      var url = arangoHelper.databaseUrl('/_admin/aardvark/foxxes/zip?mount=' + encodeURIComponent(mount));
-      if (isLegacy) {
-        url += '&legacy=true';
-      }
-      if (flag !== undefined) {
-        if (flag) {
-          url += '&replace=true';
-        } else {
-          url += '&upgrade=true';
-        }
-      }
-
-      $.ajax({
-        cache: false,
-        type: 'PUT',
-        url: url,
-        data: JSON.stringify({zipFile: fileName}),
-        contentType: 'application/json',
-        processData: false,
-        success: function (data) {
-          callback(data);
-          window.foxxData = {};
-        },
-        error: function (err) {
-          callback(err);
-          window.foxxData = {};
-        }
-      });
     },
 
     installCallback: function (result) {
