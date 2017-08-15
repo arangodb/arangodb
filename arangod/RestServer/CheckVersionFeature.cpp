@@ -32,6 +32,7 @@
 #include "V8Server/v8-query.h"
 #include "V8Server/v8-vocbase.h"
 #include "VocBase/vocbase.h"
+#include "Basics/exitcodes.h"
 
 using namespace arangodb;
 using namespace arangodb::application_features;
@@ -154,7 +155,7 @@ void CheckVersionFeature::checkVersion() {
             LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << "Database version check failed for '"
                        << vocbase->name()
                        << "'. Please inspect the logs for any errors";
-            FATAL_ERROR_EXIT();
+            FATAL_ERROR_EXIT_CODE(TRI_EXIT_VERSION_CHECK_FAILED);
           } else if (status == 3) {
             // this is safe to do even if further databases will be checked
             // because we will never set the status back to success
@@ -185,11 +186,13 @@ void CheckVersionFeature::checkVersion() {
     if (*_result == 2) {
       // downgrade needed
       LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << "Database version check failed: downgrade needed";
+      FATAL_ERROR_EXIT_CODE(TRI_EXIT_DOWNGRADE_REQUIRED);
     } else if (*_result == 3) {
       LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << "Database version check failed: upgrade needed";
+      FATAL_ERROR_EXIT_CODE(TRI_EXIT_UPGRADE_REQUIRED);
     } else {
       LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << "Database version check failed";
-      *_result = EXIT_FAILURE;
+      FATAL_ERROR_EXIT_CODE(TRI_EXIT_VERSION_CHECK_FAILED);
     }
     FATAL_ERROR_EXIT_CODE(*_result);
   }

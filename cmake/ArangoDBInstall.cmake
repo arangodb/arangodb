@@ -203,6 +203,15 @@ install(FILES ${ICU_DT}
   DESTINATION "${INSTALL_ICU_DT_DEST}"
   RENAME ${ICU_DT_DEST})
 
+install(FILES "${CMAKE_SOURCE_DIR}/lib/Basics/exitcodes.dat"
+  DESTINATION "${INSTALL_ICU_DT_DEST}"
+  RENAME exitcodes.dat)
+
+install(FILES "${CMAKE_SOURCE_DIR}/Installation/arangodb-helper.sh"
+  DESTINATION "${INSTALL_ICU_DT_DEST}"
+  RENAME arangodb-helper.sh)
+
+
 if (MSVC AND NOT(SKIP_PACKAGING))
   # so we don't need to ship dll's twice, make it one directory:
   include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/InstallMacros.cmake)

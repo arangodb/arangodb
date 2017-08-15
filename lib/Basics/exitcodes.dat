@@ -4,7 +4,11 @@
 
 # general
 EXIT_SUCCESS,0,"success","No error has occurred."
-EXIT_FAILED,1,"failed","Will be returned when a general error occurred."
+EXIT_FAILED,1,"exit with error","Will be returned when a general error occurred."
+EXIT_CODE_RESOLVING_FAILED,2,"",""
+
+EXIT_BINARY_NOT_FOUND,5,"binary not found",""
+EXIT_CONFIG_NOT_FOUND,6,"config not found",""
 
 # internal
 EXIT_UPGRADE_FAILED,10,"upgrade failed","Will be returned when the database upgrade failed"

@@ -140,7 +140,7 @@ prologue = "////////////////////////////////////////////////////////////////////
          + "/// @brief auto-generated file generated from exitcodes.dat\n"\
          + "////////////////////////////////////////////////////////////////////////////////\n"\
          + "\n"
-  
+
 if len(sys.argv) < 3:
   print >> sys.stderr, "usage: %s <sourcefile> <outfile>" % sys.argv[0]
   sys.exit()

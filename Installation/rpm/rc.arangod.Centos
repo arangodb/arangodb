@@ -9,13 +9,17 @@
 
 # Source function library.
 . /etc/rc.d/init.d/functions
+. /usr/share/arangodb3/arangodb-helper.sh
+
+echo "$(exit_num_to_message 5)"
+echo "$(exit_num_to_string 5)"
 
 # Path to the server binary
 ARANGO_BIN=/usr/sbin/arangod
-test -x $ARANGO_BIN || exit 5
+test -x $ARANGO_BIN || exit_string EXIT_BINARY_NOT_FOUND
 
 ARANGO_SYSCONFIG=/etc/arangodb3/arangod.conf
-test -r $ARANGO_SYSCONFIG || exit 6
+test -r $ARANGO_SYSCONFIG || exit_string EXIT_CONFIG_NOT_FOUND
 
 pidfile=/var/run/arangodb/arangod.pid
 
@@ -58,12 +62,11 @@ start() {
           if [ "$RETVAL" -eq 0 ];  then
               $ARANGO_BIN --uid arangodb --gid arangodb --log.foreground-tty false --pid-file "$pidfile" --temp.path "/var/tmp/arangod"  --supervisor $@
 	      RETVAL=$?
-          else
-	      echo "database version check failed, maybe you need to run 'upgrade'?"
           fi
           ;;
   esac
 
+  echo $(exit_num_to_message ${RETVAL})
   echo
   return $RETVAL
 }
