@@ -556,8 +556,8 @@ bool Manager::rebalance(bool onlyCalculate) {
 #endif
     Metadata* metadata = cache->metadata();
     metadata->writeLock();
-    uint64_t fixed = metadata->fixedSize + metadata->tableSize + Manager::cacheRecordOverhead;
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+    uint64_t fixed = metadata->fixedSize + metadata->tableSize + Manager::cacheRecordOverhead;
     if (newDeserved < fixed) {
       LOG_TOPIC(ERR, Logger::FIXME) << "Setting deserved cache size " << newDeserved << " below usage: " << fixed
       << " ; Using weight  " << weight;

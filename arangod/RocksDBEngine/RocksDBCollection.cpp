@@ -1561,7 +1561,7 @@ arangodb::Result RocksDBCollection::lookupRevisionVPack(
       size_t attempts = 0;
       while (true) {
         auto status = _cache->insert(entry);
-	if (status.ok()) {
+        if (status.ok()) {
           break;
         }
 
