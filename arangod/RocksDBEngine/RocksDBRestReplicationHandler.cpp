@@ -1454,6 +1454,7 @@ void RocksDBRestReplicationHandler::handleCommandAddFollower() {
     return;
   }
   VPackSlice const followerId = body.get("followerId");
+  VPackSlice const readLockId = body.get("readLockId");
   VPackSlice const shard = body.get("shard");
   if (!followerId.isString() || !shard.isString()) {
     generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
@@ -1471,10 +1472,37 @@ void RocksDBRestReplicationHandler::handleCommandAddFollower() {
   }
 
   VPackSlice const checksum = body.get("checksum");
-  // optional while intoroducing this bugfix. should definately be required with 3.4
-  // and throw a 400 then
-  if (checksum.isObject()) {
-    auto result = col->compareChecksums(checksum);
+  // optional while introducing this bugfix. should definetely be required with 3.4
+  // and throw a 400 then when no checksum is provided
+  if (checksum.isString() && readLockId.isString()) {
+    std::string referenceChecksum;
+    {
+      CONDITION_LOCKER(locker, _condVar);
+      auto it = _holdReadLockJobs.find(readLockId.copyString());
+      if (it == _holdReadLockJobs.end()) {
+        // Entry has been removed since, so we cancel the whole thing
+        // right away and generate an error:
+        generateError(rest::ResponseCode::SERVER_ERROR,
+                      TRI_ERROR_TRANSACTION_INTERNAL,
+                      "read transaction was cancelled");
+        return;
+      }
+
+      auto trx = it->second;
+      if (!trx) {
+        generateError(rest::ResponseCode::SERVER_ERROR,
+          TRI_ERROR_TRANSACTION_INTERNAL,
+          "Read lock not yet acquired!");
+        return;
+      }
+     
+      // referenceChecksum is the stringified number of documents in the
+      // collection 
+      uint64_t num = col->numberDocuments(trx.get());
+      referenceChecksum = std::to_string(num);
+    }
+
+    auto result = col->compareChecksums(checksum, referenceChecksum);
 
     if (result.fail()) {
       auto errorNumber = result.errorNumber();
@@ -1609,14 +1637,17 @@ void RocksDBRestReplicationHandler::handleCommandHoldReadLockCollection() {
 
   {
     CONDITION_LOCKER(locker, _condVar);
-    _holdReadLockJobs.emplace(id, false);
+    _holdReadLockJobs.emplace(id, std::shared_ptr<SingleCollectionTransaction>(nullptr));
   }
 
+  // we need to lock in EXCLUSIVE mode here, because simply locking
+  // in READ mode will not stop other writers in RocksDB. In order
+  // to stop other writers, we need to fetch the EXCLUSIVE lock
   auto trxContext = transaction::StandaloneContext::Create(_vocbase);
-  SingleCollectionTransaction trx(trxContext, col->cid(),
-                                  AccessMode::Type::EXCLUSIVE);
-  trx.addHint(transaction::Hints::Hint::LOCK_ENTIRELY);
-  Result res = trx.begin();
+  auto trx = std::make_shared<SingleCollectionTransaction>(
+    trxContext, col->cid(), AccessMode::Type::EXCLUSIVE);
+  trx->addHint(transaction::Hints::Hint::LOCK_ENTIRELY);
+  Result res = trx->begin();
   if (!res.ok()) {
     generateError(rest::ResponseCode::SERVER_ERROR,
                   TRI_ERROR_TRANSACTION_INTERNAL,
@@ -1635,7 +1666,8 @@ void RocksDBRestReplicationHandler::handleCommandHoldReadLockCollection() {
                     "read transaction was cancelled");
       return;
     }
-    it->second = true;  // mark the read lock as acquired
+      
+    it->second = trx; // mark the read lock as acquired
   }
 
   double now = TRI_microtime();
@@ -1875,7 +1907,7 @@ int RocksDBRestReplicationHandler::processRestoreCollection(
         // instead, truncate them
         SingleCollectionTransaction trx(
             transaction::StandaloneContext::Create(_vocbase), col->cid(),
-            AccessMode::Type::WRITE);
+            AccessMode::Type::EXCLUSIVE);
         trx.addHint(
             transaction::Hints::Hint::RECOVERY);  // to turn off waitForSync!
 
@@ -2241,7 +2273,7 @@ int RocksDBRestReplicationHandler::processRestoreIndexes(
 
     SingleCollectionTransaction trx(
         transaction::StandaloneContext::Create(_vocbase), collection->cid(),
-        AccessMode::Type::WRITE);
+        AccessMode::Type::EXCLUSIVE);
 
     Result res = trx.begin();
 
@@ -2408,5 +2440,5 @@ arangodb::basics::ConditionVariable RocksDBRestReplicationHandler::_condVar;
 /// the flag is set of the ID of a job, the job is cancelled
 //////////////////////////////////////////////////////////////////////////////
 
-std::unordered_map<std::string, bool>
+std::unordered_map<std::string, std::shared_ptr<SingleCollectionTransaction>>
     RocksDBRestReplicationHandler::_holdReadLockJobs;

@@ -342,7 +342,9 @@ class LogicalCollection {
 
   ChecksumResult checksum(bool, bool) const;
 
-  Result compareChecksums(velocypack::Slice) const;
+  // compares the checksum value passed in the Slice (must be of type String)
+  // with the checksum provided in the reference checksum
+  Result compareChecksums(velocypack::Slice checksumSlice, std::string const& referenceChecksum) const;
 
  private:
   void prepareIndexes(velocypack::Slice indexesSlice);
