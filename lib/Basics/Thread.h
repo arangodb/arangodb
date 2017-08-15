@@ -256,6 +256,7 @@ class Thread {
   static void startThread(void* arg);
 
  private:
+  void markAsStopped();
   void runMe();
   void cleanupMe();
 

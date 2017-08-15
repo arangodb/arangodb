@@ -333,9 +333,13 @@ bool Thread::start(ConditionVariable* finishedCondition) {
       TRI_StartThread(&_thread, &_threadId, _name.c_str(), &startThread, this);
 
   if (!ok) {
+    // could not start the thread
     _state.store(ThreadState::STOPPED);
     LOG_TOPIC(ERR, Logger::THREADS)
         << "could not start thread '" << _name << "': " << TRI_last_error();
+
+    // must cleanup to prevent memleaks
+    cleanupMe();
   }
 
   return ok;
@@ -393,35 +397,35 @@ void Thread::addStatus(VPackBuilder* b) {
   }
 }
 
-void Thread::runMe() {
-  try {
-    run();
-    _state.store(ThreadState::STOPPED);
-  } catch (Exception const& ex) {
-    LOG_TOPIC(ERR, Logger::THREADS)
-        << "exception caught in thread '" << _name << "': " << ex.what();
-    Logger::flush();
-    _state.store(ThreadState::STOPPED);
-    throw;
-  } catch (std::exception const& ex) {
-    LOG_TOPIC(ERR, Logger::THREADS)
-        << "exception caught in thread '" << _name << "': " << ex.what();
-    Logger::flush();
-    _state.store(ThreadState::STOPPED);
-    throw;
-  } catch (...) {
-    if (!isSilent()) {
-      LOG_TOPIC(ERR, Logger::THREADS)
-          << "exception caught in thread '" << _name << "'";
-      Logger::flush();
-    }
-    _state.store(ThreadState::STOPPED);
-    throw;
-  }
+void Thread::markAsStopped() {
+  _state.store(ThreadState::STOPPED);
 
   if (_finishedCondition != nullptr) {
     CONDITION_LOCKER(locker, *_finishedCondition);
     locker.broadcast();
+  }
+}
+
+void Thread::runMe() {
+  // make sure the thread is marked as stopped under all circumstances
+  TRI_DEFER(markAsStopped());
+
+  try {
+    run();
+  } catch (std::exception const& ex) {
+    if (!isSilent()) {
+      LOG_TOPIC(ERR, Logger::THREADS)
+          << "exception caught in thread '" << _name << "': " << ex.what();
+      Logger::flush();
+    }
+    throw;
+  } catch (...) {
+    if (!isSilent()) {
+      LOG_TOPIC(ERR, Logger::THREADS)
+          << "unknown exception caught in thread '" << _name << "'";
+      Logger::flush();
+    }
+    throw;
   }
 }
 
