@@ -480,7 +480,6 @@ MMFilesCollection::MMFilesCollection(LogicalCollection* collection,
                                                    TRI_JOURNAL_DEFAULT_SIZE))),
       _isVolatile(arangodb::basics::VelocyPackHelper::readBooleanValue(
           info, "isVolatile", false)),
-      _cleanupIndexes(0),
       _persistentIndexes(0),
       _indexBuckets(Helper::readNumericValue<uint32_t>(
           info, "indexBuckets", defaultIndexBuckets)),
@@ -512,7 +511,6 @@ MMFilesCollection::MMFilesCollection(LogicalCollection* logical,
       _ditches(logical),
       _isVolatile(static_cast<MMFilesCollection*>(physical)->isVolatile()) {
   MMFilesCollection& mmfiles = *static_cast<MMFilesCollection*>(physical);
-  _cleanupIndexes = mmfiles._cleanupIndexes;
   _persistentIndexes = mmfiles._persistentIndexes;
   _useSecondaryIndexes = mmfiles._useSecondaryIndexes;
   _initialCount = mmfiles._initialCount;
@@ -594,6 +592,13 @@ int MMFilesCollection::close() {
     }
   }
 
+  // wait until ditches have been processed fully
+  while (_ditches.contains(MMFilesDitch::TRI_DITCH_DATAFILE_DROP) || 
+         _ditches.contains(MMFilesDitch::TRI_DITCH_DATAFILE_RENAME) ||
+         _ditches.contains(MMFilesDitch::TRI_DITCH_COMPACTION)) {
+    usleep(20000);
+  }
+
   {
     WRITE_LOCKER(writeLocker, _filesLock);
 
@@ -660,6 +665,19 @@ int MMFilesCollection::sealDatafile(MMFilesDatafile* datafile,
   return res;
 }
 
+/// @brief set the initial datafiles for the collection
+void MMFilesCollection::setInitialFiles(std::vector<MMFilesDatafile*>&& datafiles,
+                                        std::vector<MMFilesDatafile*>&& journals,
+                                        std::vector<MMFilesDatafile*>&& compactors) {
+  WRITE_LOCKER(writeLocker, _filesLock);
+
+  _datafiles = std::move(datafiles);
+  _journals = std::move(journals);
+  _compactors = std::move(compactors);
+
+  TRI_ASSERT(_journals.size() <= 1);
+}
+
 /// @brief rotate the active journal - will do nothing if there is no journal
 int MMFilesCollection::rotateActiveJournal() {
   WRITE_LOCKER(writeLocker, _filesLock);
@@ -671,8 +689,21 @@ int MMFilesCollection::rotateActiveJournal() {
     return TRI_ERROR_ARANGO_NO_JOURNAL;
   }
 
-  MMFilesDatafile* datafile = _journals[0];
+  if (_journals.size() > 1) {
+    // we should never have more than a single journal at a time
+    return TRI_ERROR_INTERNAL;
+  }
+
+  MMFilesDatafile* datafile = _journals.back();
   TRI_ASSERT(datafile != nullptr);
+    
+  TRI_IF_FAILURE("CreateMultipleJournals") {
+    // create an additional journal now, without sealing and renaming the old one!
+    _datafiles.emplace_back(datafile);
+    _journals.pop_back();
+
+    return TRI_ERROR_NO_ERROR;
+  }
 
   // make sure we have enough room in the target vector before we go on
   _datafiles.reserve(_datafiles.size() + 1);
@@ -688,7 +719,7 @@ int MMFilesCollection::rotateActiveJournal() {
 
   TRI_ASSERT(!_journals.empty());
   TRI_ASSERT(_journals.back() == datafile);
-  _journals.erase(_journals.begin());
+  _journals.pop_back();
   TRI_ASSERT(_journals.empty());
 
   return res;
@@ -707,7 +738,9 @@ int MMFilesCollection::syncActiveJournal() {
     return TRI_ERROR_NO_ERROR;
   }
 
-  MMFilesDatafile* datafile = _journals[0];
+  TRI_ASSERT(_journals.size() == 1);
+
+  MMFilesDatafile* datafile = _journals.back();
   TRI_ASSERT(datafile != nullptr);
 
   int res = TRI_ERROR_NO_ERROR;
@@ -754,8 +787,6 @@ int MMFilesCollection::reserveJournalSpace(TRI_voc_tick_t tick,
   resultPosition = nullptr;
   resultDatafile = nullptr;
 
-  WRITE_LOCKER(writeLocker, _filesLock);
-
   // start with configured journal size
   TRI_voc_size_t targetSize = static_cast<TRI_voc_size_t>(_journalSize);
 
@@ -763,6 +794,9 @@ int MMFilesCollection::reserveJournalSpace(TRI_voc_tick_t tick,
   while (targetSize - 256 < size) {
     targetSize *= 2;
   }
+  
+  WRITE_LOCKER(writeLocker, _filesLock);
+  TRI_ASSERT(_journals.size() <= 1);
 
   while (true) {
     // no need to go on if the collection is already deleted
@@ -783,6 +817,7 @@ int MMFilesCollection::reserveJournalSpace(TRI_voc_tick_t tick,
         // shouldn't throw as we reserved enough space before
         _journals.emplace_back(df.get());
         df.release();
+        TRI_ASSERT(_journals.size() == 1);
       } catch (basics::Exception const& ex) {
         LOG_TOPIC(ERR, Logger::COLLECTOR) << "cannot select journal: "
                                           << ex.what();
@@ -800,7 +835,9 @@ int MMFilesCollection::reserveJournalSpace(TRI_voc_tick_t tick,
 
     // select datafile
     TRI_ASSERT(!_journals.empty());
-    datafile = _journals[0];
+    TRI_ASSERT(_journals.size() == 1);
+
+    datafile = _journals.back();
 
     TRI_ASSERT(datafile != nullptr);
 
@@ -841,7 +878,7 @@ int MMFilesCollection::reserveJournalSpace(TRI_voc_tick_t tick,
     // and finally erase it from _journals vector
     TRI_ASSERT(!_journals.empty());
     TRI_ASSERT(_journals.back() == datafile);
-    _journals.erase(_journals.begin());
+    _journals.pop_back();
     TRI_ASSERT(_journals.empty());
 
     if (res != TRI_ERROR_NO_ERROR) {
@@ -867,6 +904,7 @@ MMFilesDatafile* MMFilesCollection::createCompactor(
 
   // should not throw, as we've reserved enough space before
   _compactors.emplace_back(compactor.get());
+  TRI_ASSERT(_compactors.size() == 1);
   return compactor.release();
 }
 
@@ -1106,6 +1144,8 @@ bool MMFilesCollection::removeDatafile(MMFilesDatafile* df) {
 /// @brief iterates over a collection
 bool MMFilesCollection::iterateDatafiles(
     std::function<bool(MMFilesMarker const*, MMFilesDatafile*)> const& cb) {
+  READ_LOCKER(readLocker, _filesLock);
+
   if (!iterateDatafilesVector(_datafiles, cb) ||
       !iterateDatafilesVector(_compactors, cb) ||
       !iterateDatafilesVector(_journals, cb)) {
@@ -1115,6 +1155,7 @@ bool MMFilesCollection::iterateDatafiles(
 }
 
 /// @brief iterate over all datafiles in a vector
+/// the caller must hold the _filesLock
 bool MMFilesCollection::iterateDatafilesVector(
     std::vector<MMFilesDatafile*> const& files,
     std::function<bool(MMFilesMarker const*, MMFilesDatafile*)> const& cb) {
@@ -2121,7 +2162,7 @@ int MMFilesCollection::saveIndex(transaction::Methods* trx,
 
   std::shared_ptr<VPackBuilder> builder;
   try {
-    builder = idx->toVelocyPack(false);
+    builder = idx->toVelocyPack(false, true);
   } catch (arangodb::basics::Exception const& ex) {
     return ex.code();
   } catch (...) {
@@ -2182,9 +2223,6 @@ void MMFilesCollection::addIndexLocal(std::shared_ptr<arangodb::Index> idx) {
   }
 
   // update statistics
-  if (idx->type() == arangodb::Index::TRI_IDX_TYPE_FULLTEXT_INDEX) {
-    ++_cleanupIndexes;
-  }
   if (idx->isPersistent()) {
     ++_persistentIndexes;
   }
@@ -2315,9 +2353,6 @@ bool MMFilesCollection::removeIndex(TRI_idx_iid_t iid) {
       _indexes.erase(_indexes.begin() + i);
 
       // update statistics
-      if (idx->type() == arangodb::Index::TRI_IDX_TYPE_FULLTEXT_INDEX) {
-        --_cleanupIndexes;
-      }
       if (idx->isPersistent()) {
         --_persistentIndexes;
       }
@@ -2328,27 +2363,6 @@ bool MMFilesCollection::removeIndex(TRI_idx_iid_t iid) {
 
   // not found
   return false;
-}
-
-/// @brief garbage-collect a collection's indexes
-int MMFilesCollection::cleanupIndexes() {
-  int res = TRI_ERROR_NO_ERROR;
-
-  // cleaning indexes is expensive, so only do it if the flag is set for the
-  // collection
-  if (_cleanupIndexes > 0) {
-    WRITE_LOCKER(writeLocker, _dataLock);
-    for (auto& idx : _indexes) {
-      if (idx->type() == arangodb::Index::TRI_IDX_TYPE_FULLTEXT_INDEX) {
-        res = idx->cleanup();
-
-        if (res != TRI_ERROR_NO_ERROR) {
-          break;
-        }
-      }
-    }
-  }
-  return res;
 }
 
 std::unique_ptr<IndexIterator> MMFilesCollection::getAllIterator(

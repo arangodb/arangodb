@@ -362,7 +362,7 @@ function transactionInvocationSuite () {
         { collections: { }, action: true },
         { collections: { } },
         { collections: true, action: function () { } },
-        { collections: { read: true }, action: function () { } },
+        { collections: { read: true }, action: function () { }, },
         { collections: { }, lockTimeout: -1, action: function () { } },
         { collections: { }, lockTimeout: -30.0, action: function () { } },
         { collections: { }, lockTimeout: null, action: function () { } },
@@ -377,13 +377,27 @@ function transactionInvocationSuite () {
         { collections: { }, waitForSync: { }, action: function () { } }
       ];
 
+      let localDebug=false;
       tests.forEach(function (test) {
+        if(localDebug) {
+          require("internal").print(test);
+        }
         try {
           TRANSACTION(test);
+          if(localDebug) {
+            require("internal").print("no exception failing");
+          }
           fail();
         }
         catch (err) {
-          assertEqual(internal.errors.ERROR_BAD_PARAMETER.code, err.errorNum);
+          var expected = internal.errors.ERROR_BAD_PARAMETER.code;
+          if(test && test.hasOwnProperty("exErr")) {
+              expected = test.exErr;
+          }
+          if(localDebug) {
+            require("internal").print("exp: " + expected + " real: " + err.errorNum);
+          }
+          assertEqual(expected, err.errorNum);
         }
       });
     },

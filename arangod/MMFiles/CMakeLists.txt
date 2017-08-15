@@ -2,11 +2,9 @@
 
 # add sources for mmfiles engine
 set(MMFILES_SOURCES
-  MMFiles/mmfiles-fulltext-handles.cpp
   MMFiles/mmfiles-fulltext-index.cpp
   MMFiles/mmfiles-fulltext-list.cpp
   MMFiles/mmfiles-fulltext-query.cpp
-  MMFiles/mmfiles-fulltext-result.cpp
   MMFiles/mmfiles-geo-index.cpp
   MMFiles/MMFilesAllocatorThread.cpp
   MMFiles/MMFilesAqlFunctions.cpp

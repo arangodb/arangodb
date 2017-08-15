@@ -159,7 +159,6 @@ class MMFilesHashIndex final : public MMFilesPathBasedIndex {
 
   size_t memory() const override;
 
-  void toVelocyPack(VPackBuilder&, bool, bool) const override;
   void toVelocyPackFigures(VPackBuilder&) const override;
 
   bool matchesDefinition(VPackSlice const& info) const override;
@@ -175,7 +174,7 @@ class MMFilesHashIndex final : public MMFilesPathBasedIndex {
       std::vector<std::pair<TRI_voc_rid_t, arangodb::velocypack::Slice>> const&,
       std::shared_ptr<arangodb::basics::LocalTaskQueue> queue) override;
 
-  int unload() override;
+  void unload() override;
 
   int sizeHint(transaction::Methods*, size_t) override;
 

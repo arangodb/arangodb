@@ -95,6 +95,22 @@
       localStorage.setItem('jwtUser', username);
     },
 
+    checkJwt: function () {
+      $.ajax({
+        type: 'GET',
+        cache: false,
+        url: arangoHelper.databaseUrl('/_api/version'),
+        contentType: 'application/json',
+        processData: false,
+        async: true,
+        error: function (jqXHR) {
+          if (jqXHR.status === 401) {
+            window.App.navigate('login', {trigger: true});
+          }
+        }
+      });
+    },
+
     getCoordinatorShortName: function (id) {
       var shortName;
       if (window.clusterHealth) {

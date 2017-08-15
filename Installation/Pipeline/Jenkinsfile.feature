@@ -43,11 +43,6 @@ properties([
             name: 'fullParallel'
         ),
         booleanParam(
-            defaultValue: defaultBuild,
-            description: 'build executables',
-            name: 'build'
-        ),
-        booleanParam(
             defaultValue: defaultCleanBuild,
             description: 'clean build directories',
             name: 'cleanBuild'
@@ -84,9 +79,6 @@ properties([
         )
     ])
 ])
-
-// build executable
-buildExecutable = params.build
 
 // start with empty build directory
 cleanBuild = params.cleanBuild
@@ -280,7 +272,6 @@ def checkCommitMessages() {
         useLinux = false
         useMac = false
         useWindows = false
-        buildExecutable = false
         useCommunity = false
         useEnterprise = false
         runJslint = false
@@ -292,7 +283,6 @@ def checkCommitMessages() {
             useLinux = true
             useMac = true
             useWindows = true
-            buildExecutable = true
             useCommunity = true
             useEnterprise = true
             runJslint = true
@@ -303,7 +293,6 @@ def checkCommitMessages() {
             useLinux = true
             useMac = true
             useWindows = true
-            buildExecutable = true
             useCommunity = true
             useEnterprise = true
             runJslint = true
@@ -331,7 +320,6 @@ def checkCommitMessages() {
             useLinux = true
             useMac = true
             useWindows = true
-            buildExecutable = true
             fullParallel = true
             useCommunity = true
             useEnterprise = true
@@ -360,7 +348,6 @@ CAUSE: ${causeDescription}
 Linux: ${useLinux}
 Mac: ${useMac}
 Windows: ${useWindows}
-Build: ${buildExecutable}
 Clean Build: ${cleanBuild}
 Full Parallel: ${fullParallel}
 Building Community: ${useCommunity}
@@ -428,10 +415,12 @@ def jslintStep(edition) {
 
     return {
         node(os) {
-            echo "Running jslint test"
+            stage("jslint") {
+                echo "Running jslint test"
 
-            unstashBinaries(edition, os)
-            jslint()
+                unstashBinaries(edition, os)
+                jslint()
+            }
         }
     }
 }
@@ -538,24 +527,23 @@ def testStep(edition, os, mode, engine) {
         node(testJenkins[os]) {
             def buildName = "${edition}-${os}"
 
-            if (!buildExecutable || buildsSuccess[buildName]) {
+            if (buildsSuccess[buildName]) {
                 def name = "${edition}-${os}-${mode}-${engine}"
 
-                try {
-                    unstashBinaries(edition, os)
-                    testEdition(edition, os, mode, engine)
-                    testsSuccess[name] = true
+                stage("test-${name}") {
+                    try {
+                        unstashBinaries(edition, os)
+                        testEdition(edition, os, mode, engine)
+                        testsSuccess[name] = true
+                    }
+                    catch (exc) {
+                        echo "Exception while testing!"
+                        echo exc.toString()
+                        testsSuccess[name] = false
+                        allTestsSuccessful = false
+                        throw exc
+                    }
                 }
-                catch (exc) {
-                    echo "Exception while testing!"
-                    echo exc.toString()
-                    testsSuccess[name] = false
-                    allTestsSuccessful = false
-                    throw exc
-                }
-            }
-            else {
-                error "build failed, cannot test"
             }
         }
     }
@@ -578,7 +566,9 @@ def testStepParallel(editionList, osList, modeList) {
         }
     }
 
-    if (runJslint && osList.contains('linux') && useLinux && useCommunity) {
+    if (runJslint
+     && osList.contains('linux') && useLinux
+     && editionList.contains('community') && useCommunity) {
         branches['jslint'] = jslintStep('community')
     }
 
@@ -646,59 +636,61 @@ def testResilienceStep(os, engine, foxx) {
             def edition = "community"
             def buildName = "${edition}-${os}"
 
-            if (!buildExecutable || buildsSuccess[buildName]) {
+            if (buildsSuccess[buildName]) {
                 def name = "${os}-${engine}-${foxx}"
                 def arch = "LOG_resilience_${foxx}_${engine}_${os}"
 
-                if (os == 'linux' || os == 'mac') {
-                   sh "rm -rf ${arch}"
-                   sh "mkdir -p ${arch}"
-                }
-                else if (os == 'windows') {
-                    bat "del /F /Q ${arch}"
-                    powershell "New-Item -ItemType Directory -Force -Path ${arch}"
-                }
+                stage("resilience-${name}") {
+                    if (os == 'linux' || os == 'mac') {
+                       sh "rm -rf ${arch}"
+                       sh "mkdir -p ${arch}"
+                    }
+                    else if (os == 'windows') {
+                        bat "del /F /Q ${arch}"
+                        powershell "New-Item -ItemType Directory -Force -Path ${arch}"
+                    }
 
-                try {
                     try {
-                        unstashBinaries(edition, os)
-                        testResilience(os, engine, foxx)
+                        try {
+                            unstashBinaries(edition, os)
+                            testResilience(os, engine, foxx)
 
-                        if (findFiles(glob: 'resilience/core*').length > 0) {
-                            error("found core file")
+                            if (findFiles(glob: 'resilience/core*').length > 0) {
+                                error("found core file")
+                            }
+                        }
+                        catch (exc) {
+                            if (os == 'linux' || os == 'mac') {
+                                sh "for i in build resilience/core* tmp; do test -e \"\$i\" && mv \"\$i\" ${arch} || true; done"
+                            }
+
+                            archiveArtifacts allowEmptyArchive: true,
+                                             artifacts: "source.zip",
+                                             defaultExcludes: false
+
+                            throw exc
+                        }
+                        finally {
+                            if (os == 'linux' || os == 'mac') {
+                                sh "for i in log-output; do test -e \"\$i\" && mv \"\$i\" ${arch}; done"
+                            }
+                            else if (os == 'windows') {
+                                bat "move log-output ${arch}"
+                            }
                         }
                     }
                     catch (exc) {
-                        if (os == 'linux' || os == 'mac') {
-                            sh "for i in build resilience/core* tmp; do test -e \"\$i\" && mv \"\$i\" ${arch} || true; done"
-                        }
+                        resiliencesSuccess[name] = false
+                        allResiliencesSuccessful = false
 
                         throw exc
                     }
                     finally {
-                        if (os == 'linux' || os == 'mac') {
-                            sh "for i in log-output; do test -e \"\$i\" && mv \"\$i\" ${arch}; done"
-                        }
-                        else if (os == 'windows') {
-                            bat "move log-output/* ${arch}"
-                        }
-                        
+                        archiveArtifacts allowEmptyArchive: true,
+                                         artifacts: "${arch}/**",
+                                         defaultExcludes: false
                     }
                 }
-                catch (exc) {
-                    resiliencesSuccess[name] = false
-                    allResiliencesSuccessful = false
-
-                    throw exc
-                }
-                finally {
-                    archiveArtifacts allowEmptyArchive: true,
-                                     artifacts: "${arch}/**",
-                                     defaultExcludes: false
-                }
-            }
-            else {
-                error "build failed, cannot test"
             }
         }
     }
@@ -805,23 +797,30 @@ def buildStep(edition, os) {
             def name = "${edition}-${os}"
 
             try {
-                timeout(30) {
-                    checkoutCommunity()
-                    checkCommitMessages()
-                    if (useEnterprise) {
-                        checkoutEnterprise()
+                stage("build-${name}") {
+                    timeout(30) {
+                        checkoutCommunity()
+                        checkCommitMessages()
+                        if (useEnterprise) {
+                            checkoutEnterprise()
+                        }
+                        checkoutResilience()
                     }
-                    checkoutResilience()
+
+                    buildEdition(edition, os)
+                    stashBinaries(edition, os)
+                    buildsSuccess[name] = true
                 }
-                buildEdition(edition, os)
-                stashBinaries(edition, os)
-                buildsSuccess[name] = true
             }
             catch (exc) {
                 buildsSuccess[name] = false
                 allBuildsSuccessful = false
                 throw exc
             }
+        }
+
+        if (fullParallel) {
+            testStepParallel([edition], [os], ['cluster', 'singleserver'])
         }
     }
 }
@@ -859,70 +858,31 @@ def runStage(stage) {
     }
 }
 
-if (buildExecutable) {
-    runStage {
-        stage('build') {
-            if (fullParallel) {
-                buildStepParallel(['linux', 'mac', 'windows'])
-            }
-            else {
-                buildStepParallel(['linux'])
-            }
-        }
-    }
+if (fullParallel) {
+    runStage { buildStepParallel(['linux', 'mac', 'windows']) }
 }
+else {
+    runStage { buildStepParallel(['linux']) }
+    runStage { testStepParallel(['community', 'enterprise'], ['linux'], ['cluster', 'singleserver']) }
 
-runStage {
-    stage('tests') {
-        if (fullParallel) {
-            testStepParallel(['community', 'enterprise'], ['linux', 'mac', 'windows'], ['cluster', 'singleserver'])
-            testResilienceParallel(['linux', 'mac', 'windows'])
-        }
-        else {
-            testStepParallel(['community', 'enterprise'], ['linux'], ['cluster', 'singleserver'])
-        }
-    }
-}
-
-if (! fullParallel) {
-    runStage {
-        stage('build mac') {
-            if (allBuildsSuccessful) {
-                buildStepParallel(['mac'])
-            }
-        }
+    if (allBuildsSuccessful) {
+        runStage { buildStepParallel(['mac']) }
     }
 
-    runStage {
-        stage('tests mac') {
-            if (allTestsSuccessful || ! skipTestsOnError) {
-                testStepParallel(['community', 'enterprise'], ['mac'], ['cluster', 'singleserver'])
-            }
-        }
+    if (allTestsSuccessful || ! skipTestsOnError) {
+        runStage { testStepParallel(['community', 'enterprise'], ['mac'], ['cluster', 'singleserver']) }
     }
 
-    runStage {
-        stage('build windows') {
-            if (allBuildsSuccessful) {
-                buildStepParallel(['windows'])
-            }
-        }
+    if (allBuildsSuccessful) {
+        runStage { buildStepParallel(['windows']) }
     }
 
-    runStage {
-        stage('tests windows') {
-            if (allTestsSuccessful || ! skipTestsOnError) {
-                testStepParallel(['community', 'enterprise'], ['windows'], ['cluster', 'singleserver'])
-            }
-        }
+    if (allTestsSuccessful || ! skipTestsOnError) {
+        runStage { testStepParallel(['community', 'enterprise'], ['windows'], ['cluster', 'singleserver']) }
     }
 
-    runStage {
-        stage('resilience') {
-            if (allTestsSuccessful) {
-                testResilienceParallel(['linux', 'mac', 'windows'])
-            }
-        }
+    if (allTestsSuccessful) {
+        runStage { testResilienceParallel(['linux', 'mac', 'windows']) }
     }
 }
 
