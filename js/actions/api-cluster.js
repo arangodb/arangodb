@@ -522,7 +522,7 @@ actions.defineHttp({
       Health[serverId].CanBeDeleted = canBeDeleted;
       return Health;
     }, Health);
-
+    
     actions.resultOk(req, res, actions.HTTP_OK, {Health, ClusterId: clusterId, Agency: agency[0]['.agency']});
   }
 });
