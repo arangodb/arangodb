@@ -2196,7 +2196,12 @@ function AQL_REGEX_REPLACE (value, regex, replacement, caseInsensitive) {
 function AQL_LEFT (value, length) {
   'use strict';
 
-  return AQL_TO_STRING(value).substr(0, AQL_TO_NUMBER(length));
+  let right = AQL_TO_NUMBER(length);
+  if (right < 0) {
+    right = 0;
+  }
+
+  return [...AQL_TO_STRING(value)].slice(0, right).join('');
 }
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -2206,15 +2211,15 @@ function AQL_LEFT (value, length) {
 function AQL_RIGHT (value, length) {
   'use strict';
 
-  value = AQL_TO_STRING(value);
+  value = [...AQL_TO_STRING(value)];
   length = AQL_TO_NUMBER(length);
 
-  var left = value.length - length;
+  let left = value.length - length;
   if (left < 0) {
     left = 0;
   }
 
-  return value.substr(left, length);
+  return value.slice(left, left+length).join('');
 }
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -2408,6 +2413,16 @@ function AQL_SHA1 (value) {
   'use strict';
 
   return INTERNAL.sha1(AQL_TO_STRING(value));
+}
+
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief generates the SHA512 value for a string
+// //////////////////////////////////////////////////////////////////////////////
+
+function AQL_SHA512 (value) {
+  'use strict';
+
+  return INTERNAL.sha512(AQL_TO_STRING(value));
 }
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -5587,6 +5602,7 @@ exports.AQL_SPLIT = AQL_SPLIT;
 exports.AQL_SUBSTITUTE = AQL_SUBSTITUTE;
 exports.AQL_MD5 = AQL_MD5;
 exports.AQL_SHA1 = AQL_SHA1;
+exports.AQL_SHA512 = AQL_SHA512;
 exports.AQL_HASH = AQL_HASH;
 exports.AQL_TYPENAME = AQL_TYPENAME;
 exports.AQL_RANDOM_TOKEN = AQL_RANDOM_TOKEN;

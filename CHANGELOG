@@ -1,5 +1,12 @@
+v3.2.2 (2017-XX-XX)
+
+* ui: fixed a display bug within the slow and running queries view
+
+
 v3.2.1 (2017-08-09)
 -------------------
+
+* added C++ implementations for AQL functions `LEFT()`, `RIGHT()` and `TRIM()`
 
 * fixed issue #3011: Optimizer rule reduce-extraction-to-projection breaks queries
 

@@ -48,7 +48,7 @@
       id: 'arangoQueryManagementTable',
       titles: ['ID', 'Query String', 'Bind parameter', 'Runtime', 'Started', ''],
       rows: [],
-      unescaped: [false, false, false, false, true]
+      unescaped: [false, false, false, false, false, true]
     },
 
     deleteRunningQueryModal: function (e) {

@@ -148,6 +148,15 @@ struct Functions {
    static AqlValue Substring(arangodb::aql::Query*,
                               transaction::Methods*,
                               VPackFunctionParameters const&);
+   static AqlValue Left(arangodb::aql::Query*,
+                         transaction::Methods*,
+                         VPackFunctionParameters const&);
+   static AqlValue Right(arangodb::aql::Query*,
+                         transaction::Methods*,
+                         VPackFunctionParameters const&);
+   static AqlValue Trim(arangodb::aql::Query*,
+                        transaction::Methods*,
+                        VPackFunctionParameters const&);
    static AqlValue Like(arangodb::aql::Query*, transaction::Methods*,
                         VPackFunctionParameters const&);
    static AqlValue RegexTest(arangodb::aql::Query*, transaction::Methods*,
