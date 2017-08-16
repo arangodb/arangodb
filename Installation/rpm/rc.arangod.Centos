@@ -71,12 +71,8 @@ start() {
 stop() {
   echo -n $"Stopping $ARANGO_BIN: "
   killproc -p "${pidfile}" -d 10 $ARANGO_BIN
-
   RETVAL=$?
-  echo "$RETVAL"
-  if test "$RETVAL" -ne "0" ; then
-     exit "$RETVAL"
-  fi
+  ar_ferr "could not kill arangod" $RETVAL
 }
 
 
@@ -96,7 +92,7 @@ case "$1" in
     ;;
 
   restart)
-    stop || ar_ferr "could not stop"
+    stop # will exit on fail
     start
     ;;
 
@@ -105,7 +101,7 @@ case "$1" in
 
     start --upgrade
     ;;
-  
+
   reload-log)
     log_daemon_msg "Re-Opening Logfiles $DESC" "$NAME"
 

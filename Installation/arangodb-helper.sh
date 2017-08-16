@@ -25,15 +25,20 @@ export ARANGO_OS="$(ar_detect_os)"
 #print error message
 ar_err(){
     local msg="$1"
-    echo "ERROR: $msg" &>2
+    local code="${2-1}"
+    if ! [ $code -eq 0 ]; then
+        echo "ERROR: $msg" 1>&2
+    fi
 }
 
 #print fatal error message and exit
 ar_ferr(){
-    local msg="$1"
     local code="${2-1}"
-    echo "FATAL ERROR: $msg" &>2
-    exit "$code"
+    if ! [ $code -eq 0 ]; then
+        local msg="$1"
+        echo "FATAL ERROR: $msg" 1>&2
+        exit "$code"
+    fi
 }
 
 ## exit codes and other data
@@ -60,8 +65,9 @@ export ARANGO_ERROR_CODES_DAT="$(ar_find_dat_file exitcodes.dat)"
 
 ar_exitcode_num_to_string(){
     in="$1"
+    local file="$ARANGO_ERROR_CODES_DAT"
     local found=false
-    if [ -f $file ]; then
+    if [ -f "$file" ]; then
         while IFS=',' read code num _ ; do
             if [ "$in" == "$num" ]; then
                 echo $code
@@ -127,7 +133,7 @@ ar_exit_by_num(){
     local code="$1"
     local msg="$(ar_exitcode_num_to_string $code)"
     if [ $code -ne 0 ]; then
-        echo "FATAL ERROR: $msg" &>2
+        echo "FATAL ERROR: $msg" 1>&2
         exit "$code"
     fi
 }
