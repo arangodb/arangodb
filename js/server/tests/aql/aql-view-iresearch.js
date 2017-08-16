@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false, maxlen: 500 */
-/*global assertUndefined, assertEqual, AQL_EXECUTE */
+/*global assertUndefined, assertEqual, assertTrue, assertFalse, AQL_EXECUTE */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief tests for iresearch usage
@@ -49,12 +49,12 @@ function iResearchAqlTestSuite () {
       var meta = { links: { "UnitTestsCollection": { includeAllFields: true } } };
       v.properties(meta);
 
-      for (var i = 0; i < 5; i++) {
+      for (let i = 0; i < 5; i++) {
         c.save({ a: "foo", b: "bar", c: i });
         c.save({ a: "foo", b: "baz", c: i });
         c.save({ a: "bar", b: "foo", c: i });
       }
-      for (var i = 0; i < 4; i++) {
+      for (let i = 0; i < 4; i++) {
         c.save({ a: "baz", b: "foo", c: i });
       }
 
@@ -187,16 +187,7 @@ function iResearchAqlTestSuite () {
 
       assertEqual(result.length, 10);
       result.forEach(function(res) {
-        assertFalse(res.a == 'foo');
-      });
-    },
-
-    testAttributeNeqFilter : function () {
-      var result = AQL_EXECUTE("FOR doc IN VIEW UnitTestsView FILTER doc.a != 'foo'  RETURN doc", null, { }).json;
-
-      assertEqual(result.length, 10);
-      result.forEach(function(res) {
-        assertFalse(res.a == 'foo');
+        assertFalse(res.a === 'foo');
       });
     },
 
