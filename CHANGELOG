@@ -1,6 +1,8 @@
 devel
 -----
 
+* fixed issue #3044: ArangoDB server shutdown unexpectedly
+
 * improved MMFiles fulltext index document removal performance
   and fulltext index query performance for bigger result sets
 
