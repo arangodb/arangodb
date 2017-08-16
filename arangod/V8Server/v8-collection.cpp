@@ -3063,6 +3063,8 @@ static void JS_CollectionsVocbase(
     };
     colls = GetCollectionsCluster(vocbase);
   } else {
+    // no cleanup needed
+    cleanup = []() {};
     colls = vocbase->collections(false);
   }
 
