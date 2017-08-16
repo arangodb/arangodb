@@ -292,7 +292,7 @@ void TRI_GetBacktrace(std::string& btstr) {
       char* mangled_name = nullptr, * offset_begin = nullptr,
             * offset_end = nullptr;
 
-      // find parantheses and +address offset surrounding mangled name
+      // find parentheses and +address offset surrounding mangled name
       for (char* p = strings[i]; *p; ++p) {
         if (*p == '(') {
           mangled_name = p;
@@ -315,18 +315,18 @@ void TRI_GetBacktrace(std::string& btstr) {
           if (status == 0) {
             ss << stack_frames[i];
             btstr += strings[i] + std::string("() [") + ss.str() +
-                     std::string("] ") + demangled_name + std::string("\n");
+                     std::string("] ") + demangled_name + '\n';
           } else {
-            btstr += strings[i] + std::string("\n");
+            btstr += strings[i] + '\n';
           }
           TRI_SystemFree(demangled_name);
         }
       } else {
-        btstr += strings[i] + std::string("\n");
+        btstr += strings[i] + '\n';
       }
     } else {
       ss << stack_frames[i];
-      btstr += ss.str() + std::string("\n");
+      btstr += ss.str() + '\n';
     }
   }
   if (strings != nullptr) {

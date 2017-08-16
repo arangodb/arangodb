@@ -125,9 +125,6 @@ class Scheduler {
   // minimum number of running SchedulerThreads
   uint64_t const _nrMinimum;
 
-  // desired number of running SchedulerThreads
-  uint64_t const _nrDesired;
-
   // maximal number of outstanding user requests
   uint64_t const _nrMaximum;
 

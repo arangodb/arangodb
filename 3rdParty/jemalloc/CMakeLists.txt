@@ -35,9 +35,11 @@ if (LINUX OR DARWIN)
   if (DARWIN)
     set(JEMALLOC_CC_TMP "cc")
     set(JEMALLOC_CXX_TMP "c++}")
+    set(JEALLOC_CONFIG "background_thread:false")
   else ()
     set(JEMALLOC_CC_TMP "${CMAKE_C_COMPILER}")
     set(JEMALLOC_CXX_TMP "${CMAKE_CXX_COMPILER}")
+    set(JEALLOC_CONFIG "background_thread:true")
   endif ()
 
   set(JEMALLOC_CFLAGS_TMP "-DARANGODB_MMAP_JEMALLOC=1")
@@ -59,7 +61,7 @@ if (LINUX OR DARWIN)
                   CFLAGS=${JEMALLOC_CFLAGS_TMP}
                   CXXFLAGS=${JEMALLOC_CXXFLAGS_TMP}
                   --prefix=${CMAKE_CURRENT_BINARY_DIR}
-                  --with-malloc-conf=background_thread:true
+                  --with-malloc-conf=${JEMALLOC_CONFIG}
                   --with-version=${JEMALLOC_VERSION}-0-g0
     BUILD_COMMAND
       make build_lib_static
