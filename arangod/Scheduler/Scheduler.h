@@ -29,11 +29,8 @@
 
 #include <boost/asio/steady_timer.hpp>
 
-#include "Basics/Mutex.h"
-#include "Basics/MutexLocker.h"
 #include "Basics/asio-helper.h"
 #include "Basics/socket-utils.h"
-#include "Logger/Logger.h"
 #include "Scheduler/EventLoop.h"
 #include "Scheduler/Job.h"
 
@@ -100,7 +97,6 @@ class Scheduler {
   std::string infoStatus();
 
   void startNewThread();
-  void threadDone(Thread*);
   
   void stopRebalancer() noexcept;
 
@@ -151,9 +147,6 @@ class Scheduler {
 
   std::unique_ptr<boost::asio::steady_timer> _threadManager;
   std::function<void(const boost::system::error_code&)> _threadHandler;
-
-  Mutex _threadsLock;
-  std::unordered_set<Thread*> _threads;
 };
 }
 }

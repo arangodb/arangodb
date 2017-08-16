@@ -31,7 +31,6 @@
 #include <velocypack/Builder.h>
 #include <velocypack/velocypack-aliases.h>
 
-#include "Basics/MutexLocker.h"
 #include "Basics/StringUtils.h"
 #include "Basics/Thread.h"
 #include "Basics/WorkMonitor.h"
@@ -56,7 +55,7 @@ namespace {
 class SchedulerManagerThread : public Thread {
  public:
   SchedulerManagerThread(Scheduler* scheduler, boost::asio::io_service* service)
-      : Thread("SchedulerManager"), _scheduler(scheduler), _service(service) {}
+      : Thread("SchedulerManager", true), _scheduler(scheduler), _service(service) {}
 
   ~SchedulerManagerThread() { shutdown(); }
 
@@ -70,8 +69,6 @@ class SchedulerManagerThread : public Thread {
             << "manager loop caught an error, restarting";
       }
     }
-
-    _scheduler->threadDone(this);
   }
 
  private:
@@ -96,7 +93,6 @@ class SchedulerThread : public Thread {
   void run() {
     try {
       _scheduler->incRunning();
-      TRI_DEFER(_scheduler->threadDone(this));
 
       LOG_TOPIC(DEBUG, Logger::THREADS) << "started thread ("
                                         << _scheduler->infoStatus() << ")";
@@ -269,32 +265,12 @@ void Scheduler::stopRebalancer() noexcept {
 }
 
 void Scheduler::startManagerThread() {
-  MUTEX_LOCKER(guard, _threadsLock);
-
   auto thread = new SchedulerManagerThread(this, _managerService.get());
-
-  try {
-    _threads.emplace(thread);
-  } catch (...) {
-    delete thread;
-    throw;
-  }
-    
   thread->start();
 }
 
 void Scheduler::startNewThread() {
-  MUTEX_LOCKER(guard, _threadsLock);
-
   auto thread = new SchedulerThread(this, _ioService.get());
-  
-  try {
-    _threads.emplace(thread);
-  } catch (...) {
-    delete thread;
-    throw;
-  }
-    
   thread->start();
 }
 
@@ -349,11 +325,6 @@ std::string Scheduler::infoStatus() {
          std::to_string(_nrMinimum) + "/" + std::to_string(_nrMaximum);
 }
 
-void Scheduler::threadDone(Thread* thread) {
-  MUTEX_LOCKER(guard, _threadsLock);
-  _threads.erase(thread);
-}
-
 void Scheduler::rebalanceThreads() {
   static uint64_t count = 0;
 
@@ -399,10 +370,7 @@ void Scheduler::shutdown() {
   bool done = false;
 
   while (!done) {
-    {
-      MUTEX_LOCKER(guard, _threadsLock);
-      done = _threads.empty();
-    }
+    done = (_nrRunning == 0 && _nrWorking == 0);
     std::this_thread::yield();
   }
 
