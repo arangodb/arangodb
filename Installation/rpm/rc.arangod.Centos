@@ -13,10 +13,10 @@
 
 # Path to the server binary
 ARANGO_BIN=/usr/sbin/arangod
-test -x $ARANGO_BIN || exit_string EXIT_BINARY_NOT_FOUND
+test -x $ARANGO_BIN || ar_exit_by_string EXIT_BINARY_NOT_FOUND
 
 ARANGO_SYSCONFIG=/etc/arangodb3/arangod.conf
-test -r $ARANGO_SYSCONFIG || exit_string EXIT_CONFIG_NOT_FOUND
+test -r $ARANGO_SYSCONFIG || ar_exit_by_string EXIT_CONFIG_NOT_FOUND
 
 pidfile=/var/run/arangodb/arangod.pid
 
@@ -63,9 +63,7 @@ start() {
           ;;
   esac
 
-  echo $(exit_num_to_message ${RETVAL})
-  echo
-  return $RETVAL
+  ar_exit_by_num ${RETVAL}
 }
 
 
@@ -98,7 +96,7 @@ case "$1" in
     ;;
 
   restart)
-    stop || exit 1
+    stop || ar_ferr "could not stop"
     start
     ;;
 

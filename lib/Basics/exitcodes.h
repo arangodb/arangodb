@@ -30,7 +30,7 @@
 ///   Will be returned when arangod is already running according to PID-file
 /// - 21: @LIT{port blocked}
 ///   Will be returned when endpoint is taken by another process
-/// - 22: @LIT{could not lock}
+/// - 22: @LIT{could not lock - another process could be running}
 ///   fill me
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -159,7 +159,7 @@ void TRI_InitializeExitMessages ();
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 22: EXIT_COULD_NOT_LOCK
 ///
-/// could not lock
+/// could not lock - another process could be running
 ///
 /// fill me
 ////////////////////////////////////////////////////////////////////////////////
