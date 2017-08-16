@@ -514,6 +514,8 @@ class ClusterInfo {
   
  private:
 
+  void loadClusterId();
+
   //////////////////////////////////////////////////////////////////////////////
   /// @brief get an operation timeout
   //////////////////////////////////////////////////////////////////////////////
@@ -600,6 +602,8 @@ class ClusterInfo {
 
   std::shared_ptr<VPackBuilder> _plan;
   std::shared_ptr<VPackBuilder> _current;
+
+  std::string _clusterId;
 
   std::unordered_map<DatabaseID, VPackSlice> _plannedDatabases;  // from Plan/Databases
 

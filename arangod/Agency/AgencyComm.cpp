@@ -53,6 +53,10 @@
 #include "SimpleHttpClient/SimpleHttpClient.h"
 #include "SimpleHttpClient/SimpleHttpResult.h"
 
+#include <boost/uuid/uuid.hpp>
+#include <boost/uuid/uuid_generators.hpp>
+#include <boost/uuid/uuid_io.hpp>
+
 using namespace arangodb;
 using namespace arangodb::application_features;
 using namespace arangodb::httpclient;
@@ -1676,7 +1680,11 @@ bool AgencyComm::tryInitializeStructure(std::string const& jwtSecret) {
   try {
     VPackObjectBuilder b(&builder);
 
-    builder.add(VPackValue("Agency"));
+    
+    builder.add(                       // Cluster Id --------------------------
+      "Cluster", VPackValue(to_string(boost::uuids::random_generator()())));
+
+    builder.add(VPackValue("Agency")); // Agency ------------------------------
     {
       VPackObjectBuilder a(&builder);
       builder.add("Definition", VPackValue(1));
