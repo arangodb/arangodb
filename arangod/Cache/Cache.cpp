@@ -217,6 +217,11 @@ bool Cache::isMigratingLocked() const {
 }
 
 void Cache::requestGrow() {
+  // fail fast if inside banned window
+  if (std::chrono::steady_clock::now() <= _resizeRequestTime) {
+    return;
+  }
+
   bool ok = canResize();
   if (ok) {
     ok = _state.writeLock(Cache::triesSlow);
@@ -236,6 +241,11 @@ void Cache::requestGrow() {
 }
 
 void Cache::requestMigrate(uint32_t requestedLogSize) {
+  // fail fast if inside banned window
+  if (std::chrono::steady_clock::now() <= _migrateRequestTime) {
+    return;
+  }
+
   bool ok = _state.writeLock(Cache::triesGuarantee);
   if (ok) {
     if (!isMigratingLocked() &&
