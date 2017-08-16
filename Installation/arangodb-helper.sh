@@ -94,17 +94,17 @@ ar_exitcode_num_to_message(){
     if [ -f $file ]; then
         while IFS=',' read code num message long_message; do
             if [ "$in" == "$num" ]; then
-                echo "EXIT($1) - $message"
+                echo "$message"
                 found=true
                 break
             fi
         done < "$file"
     else
-        echo "EXIT($in) - could not resolve error message"
+        echo "could not resolve exit code $in"
     fi
 
     if ! $found; then
-        echo "EXIT($in) - could not resolve error message"
+        echo "could not resolve exit code $in"
     fi
 }
 
@@ -131,9 +131,10 @@ ar_exitcode_string_to_num(){
 
 ar_exit_by_num(){
     local code="$1"
-    local msg="$(ar_exitcode_num_to_string $code)"
+    local str="$(ar_exitcode_num_to_string $code)"
+    local msg="$(ar_exitcode_num_to_message $code)"
     if [ $code -ne 0 ]; then
-        echo "FATAL ERROR: $msg" 1>&2
+        echo "FATAL ERROR: $str - $msg" 1>&2
         exit "$code"
     fi
 }
