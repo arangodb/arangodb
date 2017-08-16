@@ -2073,7 +2073,6 @@ function AQL_SUBSTRING (value, offset, count) {
 
   if (TYPEWEIGHT(count) !== TYPEWEIGHT_NULL) {
     count = AQL_TO_NUMBER(count);
-    print(count);
   }
   if (count === undefined) {
     count = value.length;
