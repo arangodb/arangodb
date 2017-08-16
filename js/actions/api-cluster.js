@@ -485,7 +485,6 @@ actions.defineHttp({
     }
 
     let agency = ArangoAgency.agency();
-    console.log(agency.pool);
 
     var Health;
     try {
@@ -524,7 +523,7 @@ actions.defineHttp({
       return Health;
     }, Health);
 
-    actions.resultOk(req, res, actions.HTTP_OK, {Health, ClusterId: clusterId});
+    actions.resultOk(req, res, actions.HTTP_OK, {Health, ClusterId: clusterId, agency: agency});
   }
 });
 
