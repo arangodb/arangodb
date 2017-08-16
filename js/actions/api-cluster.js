@@ -523,7 +523,7 @@ actions.defineHttp({
       return Health;
     }, Health);
 
-    actions.resultOk(req, res, actions.HTTP_OK, {Health, ClusterId: clusterId, agency: agency});
+    actions.resultOk(req, res, actions.HTTP_OK, {Health, ClusterId: clusterId, agency: agency[0]['.agency']});
   }
 });
 
