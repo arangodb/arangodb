@@ -227,13 +227,13 @@ ArangoDB 3 (https://www.arangodb.com)
   or JavaScript extensions.
 
 First Steps with ArangoDB:
-  https://www.arangodb.com/quickstart
+  https://docs.arangodb.com/latest/Manual/GettingStarted/
 
 Upgrading ArangoDB:
   https://docs.arangodb.com/Installing/Upgrading.html
 
 Configuring the storage Engine:
-  https://docs.arangodb.com/3.2/Manual/Administration/Configuration/GeneralArangod.html#storage-engine
+  https://docs.arangodb.com/latest/Manual/Administration/Configuration/GeneralArangod.html#storage-engine
 
 Upgrading ArangoDB database files:
   > /etc/init.d/arangodb3 upgrade
