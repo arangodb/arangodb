@@ -1573,15 +1573,13 @@ static bool UnloadCollectionCallback(LogicalCollection* collection) {
   int res = collection->close();
 
   if (res != TRI_ERROR_NO_ERROR) {
-    std::string const colName(collection->name());
     LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "failed to close collection '"
-                                            << colName << "': " << res;
+                                            << collection->name() << "': " << TRI_errno_string(res);
 
     collection->setStatus(TRI_VOC_COL_STATUS_CORRUPTED);
-    return true;
+  } else {
+    collection->setStatus(TRI_VOC_COL_STATUS_UNLOADED);
   }
-
-  collection->setStatus(TRI_VOC_COL_STATUS_UNLOADED);
 
   return true;
 }
@@ -2974,7 +2972,7 @@ int MMFilesEngine::openCollection(TRI_vocbase_t* vocbase,
         stop = true;
         LOG_TOPIC(ERR, arangodb::Logger::FIXME)
             << "cannot rename sealed journal to '" << filename
-            << "', this should not happen: " << TRI_errno_string(res);
+            << "': " << TRI_errno_string(res);
         break;
       }
     }
@@ -3000,11 +2998,66 @@ int MMFilesEngine::openCollection(TRI_vocbase_t* vocbase,
   std::sort(journals.begin(), journals.end(), DatafileComparator());
   std::sort(compactors.begin(), compactors.end(), DatafileComparator());
 
+  if (journals.size() > 1) {
+    LOG_TOPIC(DEBUG, Logger::FIXME) << "found more than a single journal for collection '" << collection->name() << "'. now turning extra journals into datafiles";
+
+    MMFilesDatafile* journal = journals.back();
+    journals.pop_back();
+    
+    // got more than one journal. now add all the journals but the last one as datafiles
+    for (auto& it : journals) {
+      std::string dname("datafile-" + std::to_string(it->fid()) + ".db");
+      std::string filename =
+          arangodb::basics::FileUtils::buildFilename(physical->path(), dname);
+
+      int res = it->rename(filename);
+
+      if (res == TRI_ERROR_NO_ERROR) {
+        datafiles.emplace_back(it);
+        LOG_TOPIC(DEBUG, arangodb::Logger::FIXME)
+            << "renamed extra journal to '" << filename << "'";
+      } else {
+        result = res;
+        stop = true;
+        LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+            << "cannot rename extra journal to '" << filename
+            << "': " << TRI_errno_string(res);
+        break;
+      }
+    }
+
+    journals.clear();
+    journals.emplace_back(journal);
+
+    TRI_ASSERT(journals.size() == 1);
+
+    // sort datafiles again
+    std::sort(datafiles.begin(), datafiles.end(), DatafileComparator());
+  }
+  
+  // stop if necessary
+  if (stop) {
+    for (auto& datafile : all) {
+      LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "closing datafile '"
+                                                << datafile->getName() << "'";
+      delete datafile;
+    }
+
+    if (result != TRI_ERROR_NO_ERROR) {
+      return result;
+    }
+    return TRI_ERROR_INTERNAL;
+  }
+  
+  LOG_TOPIC(DEBUG, Logger::FIXME) << "collection inventory for '" 
+                                  << collection->name() << "': datafiles: " 
+                                  << datafiles.size() << ", journals: " 
+                                  << journals.size() << ", compactors: " 
+                                  << compactors.size();
+    
+
   // add the datafiles and journals
-  WRITE_LOCKER(writeLocker, physical->_filesLock);
-  physical->_datafiles = std::move(datafiles);
-  physical->_journals = std::move(journals);
-  physical->_compactors = std::move(compactors);
+  physical->setInitialFiles(std::move(datafiles), std::move(journals), std::move(compactors));
 
   return TRI_ERROR_NO_ERROR;
 }

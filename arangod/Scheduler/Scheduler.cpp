@@ -95,64 +95,68 @@ class SchedulerThread : public Thread {
 
  public:
   void run() {
-    _scheduler->incRunning();
-    LOG_TOPIC(DEBUG, Logger::THREADS) << "started thread ("
-                                      << _scheduler->infoStatus() << ")";
-
-    auto start = std::chrono::steady_clock::now();
-
     try {
-      static size_t EVERY_LOOP = 1000;
-      static double MIN_SECONDS = 30;
+      _scheduler->incRunning();
+      TRI_DEFER(_scheduler->threadDone(this));
 
-      size_t counter = 0;
-      bool doDecrement = true;
+      LOG_TOPIC(DEBUG, Logger::THREADS) << "started thread ("
+                                        << _scheduler->infoStatus() << ")";
 
-      while (!_scheduler->isStopping()) {
-        _service->run_one();
+      auto start = std::chrono::steady_clock::now();
 
-        if (++counter > EVERY_LOOP) {
-          counter = 0;
+      try {
+        static size_t EVERY_LOOP = 1000;
+        static double MIN_SECONDS = 30;
 
-          auto now = std::chrono::steady_clock::now();
-          std::chrono::duration<double> diff = now - start;
+        size_t counter = 0;
+        bool doDecrement = true;
 
-          if (diff.count() > MIN_SECONDS) {
-            start = std::chrono::steady_clock::now();
+        while (!_scheduler->isStopping()) {
+          _service->run_one();
 
-            if (_scheduler->shouldStopThread()) {
-              auto n = _scheduler->decRunning();
+          if (++counter > EVERY_LOOP) {
+            counter = 0;
 
-              if (n <= _scheduler->minimum()) {
-                _scheduler->incRunning();
-              } else {
-                doDecrement = false;
-                break;
+            auto now = std::chrono::steady_clock::now();
+            std::chrono::duration<double> diff = now - start;
+
+            if (diff.count() > MIN_SECONDS) {
+              start = std::chrono::steady_clock::now();
+
+              if (_scheduler->shouldStopThread()) {
+                auto n = _scheduler->decRunning();
+
+                if (n <= _scheduler->minimum()) {
+                  _scheduler->incRunning();
+                } else {
+                  doDecrement = false;
+                  break;
+                }
               }
             }
           }
         }
-      }
 
-      if (doDecrement) {
+        if (doDecrement) {
+          _scheduler->decRunning();
+        }
+
+        LOG_TOPIC(DEBUG, Logger::THREADS) << "stopped ("
+                                          << _scheduler->infoStatus() << ")";
+      } catch (std::exception const& ex) {
+        LOG_TOPIC(ERR, Logger::THREADS)
+            << "restarting scheduler loop after caught exception: " << ex.what();
         _scheduler->decRunning();
+        _scheduler->startNewThread();
+      } catch (...) {
+        LOG_TOPIC(ERR, Logger::THREADS)
+            << "restarting scheduler loop after unknown exception";
+        _scheduler->decRunning();
+        _scheduler->startNewThread();
       }
-
-      LOG_TOPIC(DEBUG, Logger::THREADS) << "stopped ("
-                                        << _scheduler->infoStatus() << ")";
-    } catch (std::exception const& ex) {
-      LOG_TOPIC(ERR, Logger::THREADS)
-          << "restarting scheduler loop after caught exception: " << ex.what();
-      _scheduler->decRunning();
-      _scheduler->startNewThread();
     } catch (...) {
-      LOG_TOPIC(ERR, Logger::THREADS)
-          << "restarting scheduler loop after unknown exception";
-      _scheduler->decRunning();
-      _scheduler->startNewThread();
+      // better not throw from here, as this is a thread main loop
     }
-
-    _scheduler->threadDone(this);
   }
 
  private:
@@ -169,12 +173,11 @@ class SchedulerThread : public Thread {
 // --SECTION--                                      constructors and destructors
 // -----------------------------------------------------------------------------
 
-Scheduler::Scheduler(uint64_t nrMinimum, uint64_t nrDesired, uint64_t nrMaximum,
-                     uint64_t maxQueueSize)
+Scheduler::Scheduler(uint64_t nrMinimum, uint64_t /*nrDesired*/, 
+                     uint64_t nrMaximum, uint64_t maxQueueSize)
     : _stopping(false),
       _maxQueueSize(maxQueueSize),
       _nrMinimum(nrMinimum),
-      _nrDesired(nrDesired),
       _nrMaximum(nrMaximum),
       _nrWorking(0),
       _nrQueued(0),
@@ -218,8 +221,7 @@ bool Scheduler::start(ConditionVariable* cv) {
   startIoService();
 
   TRI_ASSERT(0 < _nrMinimum);
-  TRI_ASSERT(_nrMinimum <= _nrDesired);
-  TRI_ASSERT(_nrDesired <= _nrMaximum);
+  TRI_ASSERT(_nrMinimum <= _nrMaximum);
 
   for (uint64_t i = 0; i < _nrMinimum; ++i) {
     startNewThread();
@@ -352,9 +354,8 @@ std::string Scheduler::infoStatus() {
          std::to_string(_nrQueued) + ", blocked: " +
          std::to_string(_nrBlocked) + ", running: " +
          std::to_string(_nrRunning) + ", outstanding: " +
-         std::to_string(queueSize) + ", min/des/max: " +
-         std::to_string(_nrMinimum) + "/" + std::to_string(_nrDesired) + "/" +
-         std::to_string(_nrMaximum);
+         std::to_string(queueSize) + ", min/max: " +
+         std::to_string(_nrMinimum) + "/" + std::to_string(_nrMaximum);
 }
 
 void Scheduler::threadDone(Thread* thread) {

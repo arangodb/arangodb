@@ -180,7 +180,7 @@ Aborting a transaction due to an internal error
     };
 
     var response = logCurlRequest('POST', url, body);
-    assert(response.code === 400);
+    assert(response.code === 409);
 
     logJsonResponse(response);
     db._drop(cn);
