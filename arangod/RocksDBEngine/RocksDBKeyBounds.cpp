@@ -246,7 +246,8 @@ RocksDBKeyBounds::RocksDBKeyBounds(RocksDBEntryType type) : _type(type) {
       break;
     }
     case RocksDBEntryType::CounterValue:
-    case RocksDBEntryType::IndexEstimateValue: {
+    case RocksDBEntryType::IndexEstimateValue:
+    case RocksDBEntryType::KeyGeneratorValue: {
       _internals.reserve(2 * (sizeof(char) + sizeof(uint64_t)));
       _internals.push_back(static_cast<char>(_type));
       uint64ToPersistent(_internals.buffer(), 0);
