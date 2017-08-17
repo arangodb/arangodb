@@ -282,9 +282,23 @@ get_filename_component(PYTHON_EXECUTABLE "${PYTHON_EXECUTABLE}" REALPATH)
 
 set($ENV{PYTHON_EXECUTABLE} ${PYTHON_EXECUTABLE})
 
+# FIXME the build containers seem to have a
+# /usr/bin/ch(mod|own) to prevent the search
+# to find those files the NO_DEFAULT_PATH
+# argument is passed
 if (NOT WINDOWS)
-  find_program(CHMOD_EXECUTABLE chmod)
-  find_program(CHOWN_EXECUTABLE chown)
+  find_program(
+    CHMOD_EXECUTABLE chmod
+    PATHS "/bin/" "/usr/bin/"
+    NO_DEFAULT_PATH
+  )
+  message(STATUS "chmod found in ${CHMOD_EXECUTABLE}")
+  find_program(
+    CHOWN_EXECUTABLE chown
+    PATHS "/bin" "/usr/bin"
+    NO_DEFAULT_PATH
+  )
+  message(STATUS "chown found in ${CHOWN_EXECUTABLE}")
 endif()
 
 ################################################################################
