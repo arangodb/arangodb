@@ -160,7 +160,7 @@ static void JS_LastLoggerReplication( v8::FunctionCallbackInfo<v8::Value> const&
   TRI_V8_TRY_CATCH_END
 }
 
-void addReplicationAuthentication(v8::Isolate* isolate,
+static void addReplicationAuthentication(v8::Isolate* isolate,
     v8::Handle<v8::Object> object,
     TRI_replication_applier_configuration_t &config) {
   bool hasUsernamePassword = false;
