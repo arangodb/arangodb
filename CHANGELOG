@@ -2,6 +2,7 @@ v3.2.2 (2017-XX-XX)
 
 * ui: fixed a display bug within the slow and running queries view
 
+* fixed issue #3037: Foxx, internal server error when I try to add a new service
 
 v3.2.1 (2017-08-09)
 -------------------
