@@ -14,6 +14,7 @@ DOCKERTAG=${VERSION}-local
 DEBIMAGE_NAME="arangodb3-${DEBVERSION}_amd64"
 BUILDDEB_ARGS="--gcc6"
 BUILDDEB_DOCKER_ARGS=""
+
 DOCKERFILENAME=Dockerfile$(echo ${VERSION} | cut -d '.' -f 1,2 --output-delimiter=).local
 for i in $@; do
     if test "$i" == "--enterprise"; then
