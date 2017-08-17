@@ -23,6 +23,7 @@
 
 #include "Cache/BucketState.h"
 #include "Basics/Common.h"
+#include "Cache/Common.h"
 
 #include <stdint.h>
 #include <atomic>
@@ -50,15 +51,19 @@ bool BucketState::lock(int64_t maxTries, BucketState::CallbackType cb) {
   int64_t attempt = 0;
   while (maxTries < 0 || attempt < maxTries) {
     // expect unlocked, but need to preserve migrating status
-    uint32_t expected = _state.load() & (~static_cast<uint32_t>(Flag::locked));
-    bool success = _state.compare_exchange_strong(
-        expected,
-        (expected | static_cast<uint32_t>(Flag::locked)));  // try to lock
-    if (success) {
-      cb();
-      return true;
+    uint32_t current = _state.load();
+    uint32_t expected = current & (~static_cast<uint32_t>(Flag::locked));
+    if (current == expected) {
+      bool success = _state.compare_exchange_strong(
+          expected,
+          (expected | static_cast<uint32_t>(Flag::locked)));  // try to lock
+      if (success) {
+        cb();
+        return true;
+      }
     }
     attempt++;
+    cpu_relax();
     // TODO: exponential back-off for failure?
   }
 

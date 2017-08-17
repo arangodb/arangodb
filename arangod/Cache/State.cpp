@@ -23,25 +23,12 @@
 
 #include "Cache/State.h"
 #include "Basics/Common.h"
+#include "Cache/Common.h"
 
 #include <stdint.h>
 #include <atomic>
 #include <chrono>
 #include <thread>
-
-#if defined(__i386) || defined(_M_IX86) || defined(__x86_64__) || defined(_M_X64)
-  #if defined __WIN32__
-    #define cpu_relax() YieldProcessor();
-  #else 
-    #define cpu_relax() asm volatile ("pause" ::: "memory");
-  #endif
-#else
-  #define cpu_relax() { \
-    static constexpr std::chrono::microseconds us0{ 0 }; \
-    std::this_thread::sleep_for( us0); \
-  }
-#endif
-
 
 using namespace arangodb::cache;
 using namespace std;
