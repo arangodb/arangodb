@@ -101,6 +101,8 @@ class RocksDBPrimaryIndex final : public RocksDBIndex {
       arangodb::StringRef const* = nullptr) const override {
     return 1.0;
   }
+  
+  void load() override;
 
   void toVelocyPack(VPackBuilder&, bool, bool) const override;
 

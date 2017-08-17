@@ -134,6 +134,15 @@ RocksDBPrimaryIndex::RocksDBPrimaryIndex(
 
 RocksDBPrimaryIndex::~RocksDBPrimaryIndex() {}
 
+void RocksDBPrimaryIndex::load() {
+  RocksDBIndex::load();
+  if (useCache() && _collection->type() == TRI_COL_TYPE_DOCUMENT) {
+    // FIXME: make the factor configurable
+    RocksDBCollection* rdb = static_cast<RocksDBCollection*>(_collection->getPhysical());
+    _cache->sizeHint(0.3 * rdb->numberDocuments());
+  }
+}
+
 /// @brief return a VelocyPack representation of the index
 void RocksDBPrimaryIndex::toVelocyPack(VPackBuilder& builder, bool withFigures,
                                        bool forPersistence) const {
@@ -150,6 +159,7 @@ RocksDBToken RocksDBPrimaryIndex::lookupKey(transaction::Methods* trx,
   auto key = RocksDBKey::PrimaryIndexValue(_objectId, keyRef);
   auto value = RocksDBValue::Empty(RocksDBEntryType::PrimaryIndexValue);
 
+  bool lockTimeout = false;
   if (useCache()) {
     TRI_ASSERT(_cache != nullptr);
     // check cache first for fast path
@@ -159,6 +169,10 @@ RocksDBToken RocksDBPrimaryIndex::lookupKey(transaction::Methods* trx,
       rocksdb::Slice s(reinterpret_cast<char const*>(f.value()->value()),
                        static_cast<size_t>(f.value()->valueSize));
       return RocksDBToken(RocksDBValue::revisionId(s));
+    } else if (f.result().errorNumber() == TRI_ERROR_LOCK_TIMEOUT) {
+      // assuming someone is currently holding a write lock, which
+      // is why we cannot access the TransactionalBucket.
+      lockTimeout = true; // we skip the insert in this case
     }
   }
 
@@ -173,27 +187,22 @@ RocksDBToken RocksDBPrimaryIndex::lookupKey(transaction::Methods* trx,
     return RocksDBToken();
   }
 
-  if (useCache()) {
+  if (useCache() && !lockTimeout && !_cache->isTemporaryUnavailable()) {
     TRI_ASSERT(_cache != nullptr);
+    
     // write entry back to cache
     auto entry = cache::CachedValue::construct(
         key.string().data(), static_cast<uint32_t>(key.string().size()),
         value.buffer()->data(), static_cast<uint64_t>(value.buffer()->size()));
-    size_t attempt = 0;
-    while (true) {
+    
+    Result status = _cache->insert(entry);
+    if (status.fail() && status.errorNumber() == TRI_ERROR_LOCK_TIMEOUT) {
+      // sleeping, because insert already retries locking 200 times
+      usleep(250);
       auto status = _cache->insert(entry);
-
-      if (status.ok()) {
-        break;
-      }
-
-      if (status.errorNumber() == TRI_ERROR_LOCK_TIMEOUT && attempt < 10) {
-        attempt++;
-        continue;
-      }
-
+    }
+    if (status.fail()) {
       delete entry;
-      break;
     }
   }
 

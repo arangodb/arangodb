@@ -187,6 +187,20 @@ bool Cache::isMigrating() {
   return migrating;
 }
 
+bool Cache::isTemporaryUnavailable() {
+  bool unavailable = false;
+  _state.readLock();
+  if (isOperational()) {
+    _metadata.readLock();
+    unavailable = _metadata.isSet(State::Flag::migrating) ||
+                  _metadata.isSet(State::Flag::resizing);
+    _metadata.unlock();
+  }
+  _state.unlock();
+  
+  return unavailable;
+}
+
 bool Cache::isShutdown() {
   _state.readLock();
   bool shutdown = !isOperational();
