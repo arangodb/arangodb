@@ -1571,7 +1571,7 @@ arangodb::Result RocksDBCollection::lookupRevisionVPack(
       if (status.fail() && status.errorNumber() == TRI_ERROR_LOCK_TIMEOUT) {
         // sleeping, because insert already retries locking 200 times
         usleep(250);
-        auto status = _cache->insert(entry);
+        status = _cache->insert(entry);
       }
       if (status.fail()) {
         delete entry;
@@ -1630,7 +1630,7 @@ arangodb::Result RocksDBCollection::lookupRevisionVPack(
       if (status.fail() && status.errorNumber() == TRI_ERROR_LOCK_TIMEOUT) {
         // sleeping, because insert already retries locking 200 times
         usleep(250);
-        auto status = _cache->insert(entry);
+        status = _cache->insert(entry);
       }
       if (status.fail()) {
         delete entry;
