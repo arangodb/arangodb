@@ -859,7 +859,7 @@ void IResearchAnalyzerFeature::loadConfiguration(
     }
 
     if (!trx.commit().ok()) {
-      LOG_TOPIC(WARN, Logger::FIXME) << "failure to commit AnalyzerPool configuration while updating ref_count of IResearch analyzer name '" << name << "'";
+      LOG_TOPIC(WARN, Logger::FIXME) <<  "failure to commit AnalyzerPool configuration while updating ref_count of IResearch analyzer";
       trx.abort();
 
       THROW_ARANGO_EXCEPTION_MESSAGE(

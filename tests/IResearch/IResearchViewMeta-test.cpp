@@ -43,15 +43,15 @@ NS_END
 
 struct IResearchViewMetaSetup {
   IResearchViewMetaSetup() {
-    auto& scorers = defaultScorers;
-    auto defaultScorersCollector = [&scorers](
-      std::string const& name, irs::flags const& features, irs::iql::order_function const& builder, bool isDefault
-      )->bool {
-      if (isDefault) {
-        scorers.emplace(name, builder); // default scorers always present
-      };
-      return true;
-    };
+//    auto& scorers = defaultScorers;
+//    auto defaultScorersCollector = [&scorers](
+//      std::string const& name, irs::flags const& features, irs::iql::order_function const& builder, bool isDefault
+//      )->bool {
+//      if (isDefault) {
+//        scorers.emplace(name, builder); // default scorers always present
+//      };
+//      return true;
+//    };
 
     defaultScorers.clear();
     //SimilarityDocumentAdapter::visitScorers(defaultScorersCollector); FIXME TODO

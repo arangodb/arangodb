@@ -55,15 +55,15 @@ std::unordered_multimap<std::string, ScorerMeta> const& allKnownScorers() {
   static const struct AllScorers {
     std::unordered_multimap<std::string, ScorerMeta> _scorers;
     AllScorers() {
-      auto visitor = [this](
-        std::string const& name,
-        iresearch::flags const& features,
-        iresearch::iql::order_function const& builder,
-        bool isDefault
-        )->bool {
-        _scorers.emplace(name, ScorerMeta(features, builder, isDefault));
-        return true;
-      };
+//      auto visitor = [this](
+//        std::string const& name,
+//        iresearch::flags const& features,
+//        iresearch::iql::order_function const& builder,
+//        bool isDefault
+//        )->bool {
+//        _scorers.emplace(name, ScorerMeta(features, builder, isDefault));
+//        return true;
+//      };
       static ScorerMeta::fnScorer_f FIXME_SCORER = [](
         iresearch::order& order,
         const std::locale&,
