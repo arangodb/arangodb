@@ -365,7 +365,7 @@ Restrictions: ${restrictions.keySet().join(", ")}
 // -----------------------------------------------------------------------------
 
 def stashBinaries(edition, os) {
-    stash name: "binaries-${edition}-${os}", includes: "build/bin/*/**, build/tests/*/**, etc/**, Installation/Pipeline/**, js/**, scripts/**, UnitTests/**, utils/**, resilience/**"
+    stash name: "binaries-${edition}-${os}", includes: "build/bin/**, build/tests/**, build/etc/**, etc/**, Installation/Pipeline/**, js/**, scripts/**, UnitTests/**, utils/**, resilience/**"
 }
 
 def unstashBinaries(edition, os) {
