@@ -573,8 +573,7 @@ def testStepParallel(editionList, osList, modeList) {
     }
 
     if (branches.size() > 1) {
-        branches.values()[0]()
-        //parallel branches
+        parallel branches
     }
     else if (branches.size() == 1) {
         branches.values()[0]()
