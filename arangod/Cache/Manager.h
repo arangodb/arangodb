@@ -179,7 +179,6 @@ class Manager {
 
   // structure to handle access frequency monitoring
   Manager::AccessStatBuffer _accessStats;
-  std::atomic<uint64_t> _accessCounter;
 
   // structures to handle hit rate monitoring
   bool _enableWindowedStats;

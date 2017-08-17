@@ -73,7 +73,6 @@ Manager::Manager(boost::asio::io_service* ioService, uint64_t globalLimit,
       _accessStats((globalLimit >= (1024 * 1024 * 1024))
                        ? ((1024 * 1024) / sizeof(std::weak_ptr<Cache>))
                        : (globalLimit / (1024 * sizeof(std::weak_ptr<Cache>)))),
-      _accessCounter(0),
       _enableWindowedStats(enableWindowedStats),
       _findStats(nullptr),
       _findHits(0),
@@ -445,7 +444,9 @@ void Manager::reportAccess(std::shared_ptr<Cache> cache) {
   // if (((++_accessCounter) & static_cast<uint64_t>(7)) == 0) {  // record 1
   // in
   // 8
-  _accessStats.insertRecord(cache);
+  if (xorshf96() % 8 == 0) {
+    _accessStats.insertRecord(cache);
+  }
   //}
 }
 
