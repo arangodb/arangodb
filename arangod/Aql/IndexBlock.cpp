@@ -587,7 +587,7 @@ AqlItemBlock* IndexBlock::getSome(size_t atLeast, size_t atMost) {
     _indexesExhausted = !readIndex(atMost, callback);
     if (_returned == saveReturned) {
       // No results. Kill the registers:
-      for (size_t i = 0; i < curRegs; ++i) {
+      for (arangodb::aql::RegisterId i = 0; i < curRegs; ++i) {
         res->destroyValue(_returned, i);
       }
     } else {
