@@ -131,6 +131,7 @@ install(
 ### @brief detect if we're on a systemd enabled system; if install unit file.
 ################################################################################
 
+message(STATUS "detecting systemd")
 set(IS_SYSTEMD_INSTALL 0)
 set(SYSTEMD_UNIT_DIR "")
 if (UNIX)
@@ -143,6 +144,7 @@ if (UNIX)
   find_package(PkgConfig QUIET)
   pkg_check_modules(SYSTEMD systemd)
   if (SYSTEMD_FOUND)
+    message(STATUS "-- systemd found")
     # cmake to old: pkg_get_variable(SYSTEMD_UNIT_DIR systemd systemdsystemunitdir)
     execute_process(COMMAND ${PKG_CONFIG_EXECUTABLE} systemd --variable=systemdsystemunitdir
       OUTPUT_VARIABLE SYSTEMD_UNIT_DIR
@@ -170,6 +172,7 @@ if (UNIX)
       DESTINATION ${CMAKE_INSTALL_FULL_SYSCONFDIR}/logrotate.d
       RENAME ${SERVICE_NAME})
   else ()
+    message(STATUS "-- systemd not found")
     configure_file (
       ${ARANGODB_SOURCE_DIR}/Installation/logrotate.d/arangod.sysv
       ${PROJECT_BINARY_DIR}/arangod.sysv
