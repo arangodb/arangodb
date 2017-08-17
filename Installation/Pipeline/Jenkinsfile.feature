@@ -17,7 +17,6 @@ def defaultEnterprise = true
 def defaultJslint = true
 def defaultRunResilience = false
 def defaultRunTests = false
-def defaultSkipTestsOnError = true
 def defaultFullParallel = false
 
 properties([
@@ -46,11 +45,6 @@ properties([
             defaultValue: defaultCleanBuild,
             description: 'clean build directories',
             name: 'cleanBuild'
-        ),
-        booleanParam(
-            defaultValue: defaultSkipTestsOnError,
-            description: 'skip Mac & Windows tests if Linux tests fails',
-            name: 'skipTestsOnError'
         ),
         booleanParam(
             defaultValue: defaultCommunity,
@@ -82,9 +76,6 @@ properties([
 
 // start with empty build directory
 cleanBuild = params.cleanBuild
-
-// skip tests on previous error
-skipTestsOnError = params.skipTestsOnError
 
 // do everything in parallel
 fullParallel = params.fullParallel
@@ -864,25 +855,13 @@ else {
     runStage { buildStepParallel(['linux']) }
     runStage { testStepParallel(['community', 'enterprise'], ['linux'], ['cluster', 'singleserver']) }
 
-    if (allBuildsSuccessful) {
-        runStage { buildStepParallel(['mac']) }
-    }
+    runStage { buildStepParallel(['mac']) }
+    runStage { testStepParallel(['community', 'enterprise'], ['mac'], ['cluster', 'singleserver']) }
 
-    if (allTestsSuccessful || ! skipTestsOnError) {
-        runStage { testStepParallel(['community', 'enterprise'], ['mac'], ['cluster', 'singleserver']) }
-    }
+    runStage { buildStepParallel(['windows']) }
+    runStage { testStepParallel(['community', 'enterprise'], ['windows'], ['cluster', 'singleserver']) }
 
-    if (allBuildsSuccessful) {
-        runStage { buildStepParallel(['windows']) }
-    }
-
-    if (allTestsSuccessful || ! skipTestsOnError) {
-        runStage { testStepParallel(['community', 'enterprise'], ['windows'], ['cluster', 'singleserver']) }
-    }
-
-    if (allTestsSuccessful) {
-        runStage { testResilienceParallel(['linux', 'mac', 'windows']) }
-    }
+    runStage { testResilienceParallel(['linux', 'mac', 'windows']) }
 }
 
 stage('result') {
