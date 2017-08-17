@@ -570,11 +570,11 @@ bool Manager::rebalance(bool onlyCalculate) {
   if (!onlyCalculate) {
     if (_globalAllocation >= _globalHighwaterMark * 0.7) {
       shrinkOvergrownCaches(TaskEnvironment::rebalancing);
+    }
 
-      if (_rebalancingTasks.load() == 0) {
-        _rebalanceCompleted = std::chrono::steady_clock::now();
-        _state.toggleFlag(State::Flag::rebalancing);
-      }
+    if (_rebalancingTasks.load() == 0) {
+      _rebalanceCompleted = std::chrono::steady_clock::now();
+      _state.toggleFlag(State::Flag::rebalancing);
     }
 
     _state.unlock();

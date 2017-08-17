@@ -204,27 +204,28 @@ bool Cache::isMigrating() {
 }
 
 bool Cache::isTemporaryUnavailable() {
-  bool unavailable = false;
-  _state.readLock();
-  if (isOperational()) {
-    _metadata.readLock();
-    unavailable = _metadata.isSet(State::Flag::migrating) ||
-                  _metadata.isSet(State::Flag::resizing);
-    _metadata.unlock();
+  bool started = startOperation();
+  if (!started) {
+    return true;
   }
-  _state.unlock();
-  
+  TRI_DEFER(endOperation());
+
+  _metadata.readLock();
+  bool unavailable = (_metadata.isSet(State::Flag::migrating)
+                      || _metadata.isSet(State::Flag::resizing));
+  _metadata.unlock();
+
   return unavailable;
 }
 
 bool Cache::isShutdown() {
   bool started = startOperation();
   if (!started) {
-    return false;
+    return true;
   }
   TRI_DEFER(endOperation());
 
-  return true;
+  return false;
 }
 
 void Cache::destroy(std::shared_ptr<Cache> cache) {
