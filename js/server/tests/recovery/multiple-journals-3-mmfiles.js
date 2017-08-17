@@ -77,6 +77,20 @@ function runSetup () {
   
   c.rotate();
 
+  var fs = require("fs"), journals = 0;
+  fs.listTree(c.path()).forEach(function(filename) {
+    if (filename.match(/journal-/)) {
+      ++journals;
+    }
+  });
+
+  if (journals < 2) {
+    // we should have two journals when we get here
+    // if not, we crash the server prematurely so the asserts in
+    // the second phase will fail
+    internal.debugSegfault('crashing server - expectation failed');
+  }
+
   for (i = 200; i < 300; ++i) {
     c.insert({ _key: 'test' + i, value: 'test' + i });
   }
