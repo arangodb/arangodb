@@ -59,7 +59,7 @@ RestStatus RestTransactionHandler::execute() {
 
   auto slice = _request->payload();
   if(!slice.isObject()){
-    generateError(GeneralResponse::responseCode(TRI_ERROR_BAD_PARAMETER),TRI_ERROR_BAD_PARAMETER, "could not acquire v8 context");
+    generateError(Result(TRI_ERROR_BAD_PARAMETER, "could not acquire v8 context"));
     return RestStatus::DONE;
   }
 
@@ -67,7 +67,7 @@ RestStatus RestTransactionHandler::execute() {
 
   _v8Context = V8DealerFeature::DEALER->enterContext(_vocbase, true /*allow use database*/);
   if (!_v8Context) {
-    generateError(GeneralResponse::responseCode(TRI_ERROR_INTERNAL),TRI_ERROR_INTERNAL, "could not acquire v8 context");
+    generateError(Result(TRI_ERROR_INTERNAL, "could not acquire v8 context"));
     return RestStatus::DONE;
   }
 
@@ -84,7 +84,6 @@ RestStatus RestTransactionHandler::execute() {
     }
 
     Result res = executeTransaction(_v8Context->_isolate, _lock, _canceled, slice , portType, result);
-
     if (res.ok()){
       VPackSlice slice = result.slice();
       if (slice.isNone()) {
@@ -96,11 +95,11 @@ RestStatus RestTransactionHandler::execute() {
       generateError(res);
     }
   } catch (arangodb::basics::Exception const& ex) {
-    generateError(GeneralResponse::responseCode(ex.code()),ex.code(), ex.what());
+    generateError(Result(ex.code(), ex.what()));
   } catch (std::exception const& ex) {
-    generateError(GeneralResponse::responseCode(TRI_ERROR_INTERNAL), TRI_ERROR_INTERNAL, ex.what());
+    generateError(Result(TRI_ERROR_INTERNAL, ex.what()));
   } catch (...) {
-    generateError(GeneralResponse::responseCode(TRI_ERROR_INTERNAL), TRI_ERROR_INTERNAL);
+    generateError(Result(TRI_ERROR_INTERNAL));
   }
 
   return RestStatus::DONE;

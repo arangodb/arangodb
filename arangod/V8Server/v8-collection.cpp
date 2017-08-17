@@ -3061,6 +3061,8 @@ static void JS_CollectionsVocbase(
     };
     colls = GetCollectionsCluster(vocbase);
   } else {
+    // no cleanup needed on single server / dbserver 
+    cleanup = [&colls]() {};
     colls = vocbase->collections(false);
   }
 

@@ -383,6 +383,10 @@ class Methods {
 
   /// @brief return the collection name resolver
   CollectionNameResolver const* resolver() const;
+  
+#ifdef USE_ENTERPRISE
+  virtual bool isInaccessibleCollection(TRI_voc_cid_t cid) { return false; }
+#endif
 
  private:
 
@@ -465,7 +469,7 @@ class Methods {
       TransactionCollection const*) const;
 
   /// @brief add a collection by id, with the name supplied
-  Result addCollection(TRI_voc_cid_t, char const*, AccessMode::Type);
+  ENTERPRISE_VIRT Result addCollection(TRI_voc_cid_t, char const*, AccessMode::Type);
 
   /// @brief add a collection by id, with the name supplied
   Result addCollection(TRI_voc_cid_t, std::string const&, AccessMode::Type);
