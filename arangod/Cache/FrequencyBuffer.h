@@ -53,9 +53,9 @@ class FrequencyBuffer {
   typedef std::vector<std::pair<T, uint64_t>> stats_t;
 
  private:
-  std::atomic<uint64_t> _current;
-  uint64_t _capacity;
-  uint64_t _mask;
+  std::atomic<size_t> _current;
+  size_t _capacity;
+  size_t _mask;
   std::unique_ptr<std::vector<T>> _buffer;
   Comparator _cmp;
   T _empty;
@@ -64,17 +64,17 @@ class FrequencyBuffer {
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Initialize with the given capacity.
   //////////////////////////////////////////////////////////////////////////////
-  explicit FrequencyBuffer(uint64_t capacity)
+  explicit FrequencyBuffer(size_t capacity)
       : _current(0),
         _capacity(0),
         _mask(0),
         _buffer(nullptr),
         _cmp(),
         _empty() {
-    uint64_t i = 0;
-    for (; (static_cast<uint64_t>(1) << i) < capacity; i++) {
+    size_t i = 0;
+    for (; (static_cast<size_t>(1) << i) < capacity; i++) {
     }
-    _capacity = (static_cast<uint64_t>(1) << i);
+    _capacity = (static_cast<size_t>(1) << i);
     _mask = _capacity - 1;
     _buffer.reset(new std::vector<T>(_capacity));
     TRI_ASSERT(_buffer->capacity() == _capacity);
@@ -84,14 +84,14 @@ class FrequencyBuffer {
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Reports the hidden allocation size (not captured by sizeof).
   //////////////////////////////////////////////////////////////////////////////
-  static uint64_t allocationSize(uint64_t capacity) {
+  static size_t allocationSize(size_t capacity) {
     return sizeof(std::vector<T>) + (capacity * sizeof(T));
   }
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Reports the memory usage in bytes.
   //////////////////////////////////////////////////////////////////////////////
-  uint64_t memoryUsage() const {
+  size_t memoryUsage() const {
     return ((_capacity * sizeof(T)) + sizeof(FrequencyBuffer<T>) +
             sizeof(std::vector<T>));
   }
@@ -99,7 +99,7 @@ class FrequencyBuffer {
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Insert an individual event record.
   //////////////////////////////////////////////////////////////////////////////
-  void insertRecord(T record) { (*_buffer)[_current++ & _mask] = record; }
+  void insertRecord(T record) { (*_buffer)[++_current & _mask] = record; }
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Remove all occurrences of the specified event record.

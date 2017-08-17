@@ -184,6 +184,9 @@ void RocksDBCollection::load() {
   for (auto it : _indexes) {
     it->load();
   }
+  if (useCache()) {
+    _cache->sizeHint(0.3 * numberDocuments());
+  }
 }
 
 void RocksDBCollection::unload() {
@@ -1534,6 +1537,7 @@ arangodb::Result RocksDBCollection::lookupRevisionVPack(
 
   auto key = RocksDBKey::Document(_objectId, revisionId);
 
+  bool lockTimeout = false;
   if (withCache && useCache()) {
     TRI_ASSERT(_cache != nullptr);
     // check cache first for fast path
@@ -1545,6 +1549,10 @@ arangodb::Result RocksDBCollection::lookupRevisionVPack(
                     static_cast<size_t>(f.value()->valueSize));
       mdr.setManagedAfterStringUsage(revisionId);
       return {TRI_ERROR_NO_ERROR};
+    } else if (f.result().errorNumber() == TRI_ERROR_LOCK_TIMEOUT) {
+      // assuming someone is currently holding a write lock, which
+      // is why we cannot access the TransactionalBucket.
+      lockTimeout = true; // we skip the insert in this case
     }
   }
 
@@ -1552,26 +1560,21 @@ arangodb::Result RocksDBCollection::lookupRevisionVPack(
   std::string* value = mdr.prepareStringUsage();
   Result res = mthd->Get(RocksDBColumnFamily::documents(), key, value);
   if (res.ok()) {
-    if (withCache && useCache()) {
+    if (withCache && useCache() && !lockTimeout && !_cache->isTemporaryUnavailable()) {
       TRI_ASSERT(_cache != nullptr);
       // write entry back to cache
       auto entry = cache::CachedValue::construct(
           key.string().data(), static_cast<uint32_t>(key.string().size()),
           value->data(), static_cast<uint64_t>(value->size()));
-      size_t attempts = 0;
-      while (true) {
-        auto status = _cache->insert(entry);
-        if (status.ok()) {
-          break;
-        }
-
-        if (status.errorNumber() == TRI_ERROR_LOCK_TIMEOUT && attempts < 10) {
-          attempts++;
-          continue;
-        }
-
+      
+      Result status = _cache->insert(entry);
+      if (status.fail() && status.errorNumber() == TRI_ERROR_LOCK_TIMEOUT) {
+        // sleeping, because insert already retries locking 200 times
+        usleep(250);
+        status = _cache->insert(entry);
+      }
+      if (status.fail()) {
         delete entry;
-        break;
       }
     }
 
@@ -1594,6 +1597,7 @@ arangodb::Result RocksDBCollection::lookupRevisionVPack(
 
   auto key = RocksDBKey::Document(_objectId, revisionId);
 
+  bool lockTimeout = false;
   if (withCache && useCache()) {
     TRI_ASSERT(_cache != nullptr);
     // check cache first for fast path
@@ -1602,6 +1606,10 @@ arangodb::Result RocksDBCollection::lookupRevisionVPack(
     if (f.found()) {
       cb(RocksDBToken(revisionId), VPackSlice(reinterpret_cast<char const*>(f.value()->value())));
       return {TRI_ERROR_NO_ERROR};
+    } else if (f.result().errorNumber() == TRI_ERROR_LOCK_TIMEOUT) {
+      // assuming someone is currently holding a write lock, which
+      // is why we cannot access the TransactionalBucket.
+      lockTimeout = true; // we skip the insert in this case
     }
   }
 
@@ -1611,13 +1619,19 @@ arangodb::Result RocksDBCollection::lookupRevisionVPack(
   Result res = mthd->Get(RocksDBColumnFamily::documents(), key, &value);
   TRI_ASSERT(value.data());
   if (res.ok()) {
-    if (withCache && useCache()) {
+    if (withCache && useCache() && !lockTimeout && !_cache->isTemporaryUnavailable()) {
       TRI_ASSERT(_cache != nullptr);
       // write entry back to cache
       auto entry = cache::CachedValue::construct(
           key.string().data(), static_cast<uint32_t>(key.string().size()),
           value.data(), static_cast<uint64_t>(value.size()));
       auto status = _cache->insert(entry);
+      
+      if (status.fail() && status.errorNumber() == TRI_ERROR_LOCK_TIMEOUT) {
+        // sleeping, because insert already retries locking 200 times
+        usleep(250);
+        status = _cache->insert(entry);
+      }
       if (status.fail()) {
         delete entry;
       }
