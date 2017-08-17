@@ -137,7 +137,9 @@ class Cache : public std::enable_shared_from_this<Cache> {
   static constexpr int64_t triesGuarantee = -1;
 
  protected:
-  CacheState _state;
+  State _opState;
+  State _taskState;
+  State _tableState;
 
   static uint64_t _findStatsCapacity;
   bool _enableWindowedStats;
@@ -179,10 +181,9 @@ class Cache : public std::enable_shared_from_this<Cache> {
   static void destroy(std::shared_ptr<Cache> cache);
 
   bool isOperational() const;
-  void startOperation();
+  bool startOperation(int64_t maxTries = Cache::triesGuarantee, bool* shutdown = nullptr);
   void endOperation();
 
-  bool isMigratingLocked() const;
   void requestGrow();
   void requestMigrate(uint32_t requestedLogSize = 0);
 

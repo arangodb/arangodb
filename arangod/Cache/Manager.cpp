@@ -636,8 +636,8 @@ void Manager::resizeCache(Manager::TaskEnvironment environment,
 
   if (metadata->usage <= newLimit) {
     LOG_TOPIC(ERR, Logger::FIXME) << "Cache (" << ((size_t)cache.get())
-    << ") Growing cache using " << metadata->usage
-    << " to " << newLimit;
+    << ") Resizing cache using " << metadata->usage
+    << " from " << metadata->hardUsageLimit << " to " << newLimit << " (no free required)";
 
     uint64_t oldLimit = metadata->hardUsageLimit;
     bool success = metadata->adjustLimits(newLimit, newLimit);
@@ -651,8 +651,8 @@ void Manager::resizeCache(Manager::TaskEnvironment environment,
     return;
   } else {
     LOG_TOPIC(ERR, Logger::FIXME) << "Cache (" << ((size_t)cache.get())
-    << ") Shrinking cache from allocated " << metadata->allocatedSize
-    << " to " << newLimit;
+    << ") Resizing cache using " << metadata->usage << " from "
+    << metadata->hardUsageLimit << " to " << newLimit << " (freeMemory required)";
   }
 
   bool success = metadata->adjustLimits(newLimit, metadata->hardUsageLimit);

@@ -71,7 +71,7 @@ class TransactionManager {
   uint64_t term();
 
  private:
-  TransactionManagerState _state;
+  State _state;
   std::atomic<uint64_t> _openReads;
   std::atomic<uint64_t> _openSensitive;
   std::atomic<uint64_t> _openWrites;

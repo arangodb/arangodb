@@ -189,7 +189,7 @@ class Table : public std::enable_shared_from_this<Table> {
   uint32_t idealSize();
 
  private:
-  TableState _state;
+  State _state;
 
   uint32_t _logSize;
   uint64_t _size;

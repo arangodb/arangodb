@@ -50,21 +50,21 @@ Finding PlainCache::find(void const* key, uint32_t keySize) {
   PlainBucket* bucket;
   std::shared_ptr<Table> source;
   std::tie(status, bucket, source) = getBucket(hash, Cache::triesFast);
+  if (status.fail()) {
+    result.reportError(status);
+    return result;
+  }
+  TRI_DEFER(endOperation());
 
-  if (status.ok()) {
-    result.set(bucket->find(hash, key, keySize));
-    if (result.found()) {
-      recordStat(Stat::findHit);
-    } else {
-      recordStat(Stat::findMiss);
-      status.reset(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND);
-      result.reportError(status);
-    }
-    bucket->unlock();
-    endOperation();
+  result.set(bucket->find(hash, key, keySize));
+  if (result.found()) {
+    recordStat(Stat::findHit);
   } else {
+    recordStat(Stat::findMiss);
+    status.reset(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND);
     result.reportError(status);
   }
+  bucket->unlock();
 
   return result;
 }
@@ -73,59 +73,60 @@ Result PlainCache::insert(CachedValue* value) {
   TRI_ASSERT(value != nullptr);
   uint32_t hash = hashKey(value->key(), value->keySize);
 
-  Result status;
+  Result status{TRI_ERROR_NO_ERROR};
   PlainBucket* bucket;
   std::shared_ptr<Table> source;
   std::tie(status, bucket, source) = getBucket(hash, Cache::triesFast);
+  if (status.fail()) {
+    return status;
+  }
+  TRI_DEFER(endOperation());
 
-  if (status.ok()) {
-    bool allowed = true;
-    bool maybeMigrate = false;
-    int64_t change = static_cast<int64_t>(value->size());
-    CachedValue* candidate = bucket->find(hash, value->key(), value->keySize);
+  bool allowed = true;
+  bool maybeMigrate = false;
+  int64_t change = static_cast<int64_t>(value->size());
+  CachedValue* candidate = bucket->find(hash, value->key(), value->keySize);
 
-    if (candidate == nullptr && bucket->isFull()) {
-      candidate = bucket->evictionCandidate();
-      if (candidate == nullptr) {
-        allowed = false;
-        status.reset(TRI_ERROR_ARANGO_BUSY);
-      }
+  if (candidate == nullptr && bucket->isFull()) {
+    candidate = bucket->evictionCandidate();
+    if (candidate == nullptr) {
+      allowed = false;
+      status.reset(TRI_ERROR_ARANGO_BUSY);
     }
+  }
+
+  if (allowed) {
+    if (candidate != nullptr) {
+      change -= static_cast<int64_t>(candidate->size());
+    }
+
+    _metadata.readLock(); // special case
+    allowed = _metadata.adjustUsageIfAllowed(change);
+    _metadata.unlock();
 
     if (allowed) {
+      bool eviction = false;
       if (candidate != nullptr) {
-        change -= static_cast<int64_t>(candidate->size());
-      }
-
-      _metadata.readLock(); // special case
-      allowed = _metadata.adjustUsageIfAllowed(change);
-      _metadata.unlock();
-
-      if (allowed) {
-        bool eviction = false;
-        if (candidate != nullptr) {
-          bucket->evict(candidate, true);
-          if (!candidate->sameKey(value->key(), value->keySize)) {
-            eviction = true;
-          }
-          freeValue(candidate);
+        bucket->evict(candidate, true);
+        if (!candidate->sameKey(value->key(), value->keySize)) {
+          eviction = true;
         }
-        bucket->insert(hash, value);
-        if (!eviction) {
-          maybeMigrate = source->slotFilled();
-        }
-        maybeMigrate |= reportInsert(eviction);
-      } else {
-        requestGrow();  // let function do the hard work
-        status.reset(TRI_ERROR_RESOURCE_LIMIT);
+        freeValue(candidate);
       }
+      bucket->insert(hash, value);
+      if (!eviction) {
+        maybeMigrate = source->slotFilled();
+      }
+      maybeMigrate |= reportInsert(eviction);
+    } else {
+      requestGrow();  // let function do the hard work
+      status.reset(TRI_ERROR_RESOURCE_LIMIT);
     }
+  }
 
-    bucket->unlock();
-    if (maybeMigrate) {
-      requestMigrate(_table->idealSize());  // let function do the hard work
-    }
-    endOperation();
+  bucket->unlock();
+  if (maybeMigrate) {
+    requestMigrate(_table->idealSize());  // let function do the hard work
   }
 
   return status;
@@ -139,28 +140,29 @@ Result PlainCache::remove(void const* key, uint32_t keySize) {
   PlainBucket* bucket;
   std::shared_ptr<Table> source;
   std::tie(status, bucket, source) = getBucket(hash, Cache::triesSlow);
+  if (status.fail()) {
+    return status;
+  }
+  TRI_DEFER(endOperation());
 
-  if (status.ok()) {
-    bool maybeMigrate = false;
-    CachedValue* candidate = bucket->remove(hash, key, keySize);
+  bool maybeMigrate = false;
+  CachedValue* candidate = bucket->remove(hash, key, keySize);
 
-    if (candidate != nullptr) {
-      int64_t change = -static_cast<int64_t>(candidate->size());
+  if (candidate != nullptr) {
+    int64_t change = -static_cast<int64_t>(candidate->size());
 
-      _metadata.readLock(); // special case
-      bool allowed = _metadata.adjustUsageIfAllowed(change);
-      TRI_ASSERT(allowed);
-      _metadata.unlock();
+    _metadata.readLock(); // special case
+    bool allowed = _metadata.adjustUsageIfAllowed(change);
+    TRI_ASSERT(allowed);
+    _metadata.unlock();
 
-      freeValue(candidate);
-      maybeMigrate = source->slotEmptied();
-    }
+    freeValue(candidate);
+    maybeMigrate = source->slotEmptied();
+  }
 
-    bucket->unlock();
-    if (maybeMigrate) {
-      requestMigrate(_table->idealSize());
-    }
-    endOperation();
+  bucket->unlock();
+  if (maybeMigrate) {
+    requestMigrate(_table->idealSize());
   }
 
   return status;
@@ -191,13 +193,12 @@ PlainCache::PlainCache(Cache::ConstructionGuard guard, Manager* manager,
             PlainCache::bucketClearer, PlainBucket::slotsData) {}
 
 PlainCache::~PlainCache() {
-  _state.readLock();
-  if (!_state.isSet(State::Flag::shutdown)) {
-    _state.unlock();
+  _opState.readLock();
+  if (!_opState.isSet(State::Flag::shutdown)) {
+    _opState.unlock();
     shutdown();
-  }
-  if (_state.isLocked()) {
-    _state.unlock();
+  } else {
+    _opState.unlock();
   }
 }
 
@@ -208,20 +209,22 @@ uint64_t PlainCache::freeMemoryFrom(uint32_t hash) {
   PlainBucket* bucket;
   std::shared_ptr<Table> source;
   std::tie(status, bucket, source) = getBucket(hash, Cache::triesFast, false);
-
-  if (status.ok()) {
-    // evict LRU freeable value if exists
-    CachedValue* candidate = bucket->evictionCandidate();
-
-    if (candidate != nullptr) {
-      reclaimed = candidate->size();
-      bucket->evict(candidate);
-      freeValue(candidate);
-      maybeMigrate = source->slotEmptied();
-    }
-
-    bucket->unlock();
+  if (status.fail()) {
+    return 0;
   }
+  TRI_DEFER(endOperation());
+
+  // evict LRU freeable value if exists
+  CachedValue* candidate = bucket->evictionCandidate();
+
+  if (candidate != nullptr) {
+    reclaimed = candidate->size();
+    bucket->evict(candidate);
+    freeValue(candidate);
+    maybeMigrate = source->slotEmptied();
+  }
+
+  bucket->unlock();
 
   if (maybeMigrate) {
     requestMigrate(_table->idealSize());
@@ -297,33 +300,28 @@ std::tuple<Result, PlainBucket*, std::shared_ptr<Table>> PlainCache::getBucket(
   PlainBucket* bucket = nullptr;
   std::shared_ptr<Table> source(nullptr);
 
-  bool ok = _state.readLock(maxTries);
-  if (ok) {
-    bool started = false;
-    ok = isOperational();
-    if (ok) {
-      if (singleOperation) {
-        startOperation();
-        started = true;
-        _manager->reportAccess(shared_from_this());
-      }
+  bool shutdown = false;
+  bool started = startOperation(maxTries, &shutdown);
+  if (!started) {
+    status.reset(shutdown ? TRI_ERROR_SHUTTING_DOWN : TRI_ERROR_LOCK_TIMEOUT);
+    return std::make_tuple(status, bucket, source);
+  }
 
-      auto pair = _table->fetchAndLockBucket(hash, maxTries);
-      bucket = reinterpret_cast<PlainBucket*>(pair.first);
-      source = pair.second;
-      ok = (bucket != nullptr);
-      if (!ok) {
-        status.reset(TRI_ERROR_LOCK_TIMEOUT);
-      }
-    } else {
-      status.reset(TRI_ERROR_SHUTTING_DOWN);
-    }
-    if (!ok && started) {
-      endOperation();
-    }
-    _state.unlock();
-  } else {
+  if (singleOperation) {
+    _manager->reportAccess(shared_from_this());
+  }
+
+  bool ok = _tableState.readLock(maxTries);
+  if (ok) {
+    auto pair = _table->fetchAndLockBucket(hash, maxTries);
+    _tableState.unlock();
+    bucket = reinterpret_cast<PlainBucket*>(pair.first);
+    source = pair.second;
+    ok = (bucket != nullptr);
+  }
+  if (!ok) {
     status.reset(TRI_ERROR_LOCK_TIMEOUT);
+    endOperation();
   }
 
   return std::make_tuple(status, bucket, source);

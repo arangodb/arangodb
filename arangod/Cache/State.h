@@ -139,67 +139,6 @@ struct State {
   std::atomic<uint32_t> _lock;
 };
 
-struct ManagerState : public State {
-  ManagerState() : State() {}
-  ManagerState(ManagerState const& other) : State(other) {}
-  ManagerState& operator=(ManagerState const& other) {
-    State::operator=(other);
-    return *this;
-  }
-  virtual bool readLock(int64_t maxTries = -1LL) override;
-  virtual bool writeLock(int64_t maxTries = -1LL) override;
-  virtual void unlock() override;
-};
-
-struct CacheState : public State {
-  CacheState() : State() {}
-  CacheState(CacheState const& other) : State(other) {}
-  CacheState& operator=(CacheState const& other) {
-    State::operator=(other);
-    return *this;
-  }
-  virtual bool readLock(int64_t maxTries = -1LL) override;
-  virtual bool writeLock(int64_t maxTries = -1LL) override;
-  virtual void unlock() override;
-};
-
-struct MetadataState : public State {
-  MetadataState() : State() {}
-  MetadataState(MetadataState const& other) : State(other) {}
-  MetadataState& operator=(MetadataState const& other) {
-    State::operator=(other);
-    return *this;
-  }
-  virtual bool readLock(int64_t maxTries = -1LL) override;
-  virtual bool writeLock(int64_t maxTries = -1LL) override;
-  virtual void unlock() override;
-};
-
-struct TableState : public State {
-  TableState() : State() {}
-  TableState(TableState const& other) : State(other) {}
-  TableState& operator=(TableState const& other) {
-    State::operator=(other);
-    return *this;
-  }
-  virtual bool readLock(int64_t maxTries = -1LL) override;
-  virtual bool writeLock(int64_t maxTries = -1LL) override;
-  virtual void unlock() override;
-};
-
-struct TransactionManagerState : public State {
-  TransactionManagerState() : State() {}
-  TransactionManagerState(TransactionManagerState const& other)
-      : State(other) {}
-  TransactionManagerState& operator=(TransactionManagerState const& other) {
-    State::operator=(other);
-    return *this;
-  }
-  virtual bool readLock(int64_t maxTries = -1LL) override;
-  virtual bool writeLock(int64_t maxTries = -1LL) override;
-  virtual void unlock() override;
-};
-
 };  // end namespace cache
 };  // end namespace arangodb
 

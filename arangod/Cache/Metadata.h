@@ -148,7 +148,7 @@ struct Metadata {
   void toggleFlag(State::Flag flag);
 
  private:
-  MetadataState _state;
+  State _state;
 };
 
 };  // end namespace cache
