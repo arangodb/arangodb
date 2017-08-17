@@ -100,8 +100,10 @@ class FrequencyBuffer {
   /// @brief Insert an individual event record.
   //////////////////////////////////////////////////////////////////////////////
   void insertRecord(T record) {
-    size_t i = _current.fetch_add(1, std::memory_order_relaxed);
-    (*_buffer)[i & _mask] = record;
+    if (std::rand() % 8 == 0) {
+      size_t i = _current.fetch_add(1, std::memory_order_relaxed);
+      (*_buffer)[i & _mask] = record;
+    }
   }
   
   //////////////////////////////////////////////////////////////////////////////
