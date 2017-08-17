@@ -1386,12 +1386,11 @@ AstNode* Condition::transformNode(AstNode* node) {
         auto negated = transformNode(_ast->createNodeUnaryOperator(
             NODE_TYPE_OPERATOR_UNARY_NOT, sub->getMemberUnchecked(i)));
         auto optimized = _ast->optimizeNotExpression(negated);
-
         newOperator->addMember(optimized);
       }
 
-      return newOperator;
-    }
+      return transformNode(newOperator);
+    } 
 
     node->changeMember(0, transformNode(sub));
   }
