@@ -212,13 +212,13 @@ int RocksDBTransactionCollection::use(int nestingLevel) {
     if (res != TRI_ERROR_NO_ERROR) {
       return res;
     }
+  }
     
-    if (doSetup) {
-      RocksDBCollection* rc =
-          static_cast<RocksDBCollection*>(_collection->getPhysical());
-      _initialNumberDocuments = rc->numberDocuments();
-      _revision = rc->revision();
-    }
+  if (doSetup) {
+    RocksDBCollection* rc =
+        static_cast<RocksDBCollection*>(_collection->getPhysical());
+    _initialNumberDocuments = rc->numberDocuments();
+    _revision = rc->revision();
   }
 
   return TRI_ERROR_NO_ERROR;
