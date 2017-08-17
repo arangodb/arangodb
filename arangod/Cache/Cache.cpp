@@ -339,7 +339,7 @@ unsigned long arangodb::cache::xorshf96() {//period 2^96-1
 }
 
 void Cache::recordStat(Stat stat) {
-  if (xorshf96() % 8 != 0) {
+  if ((xorshf96() & static_cast<unsigned long>(7)) != 0) {
     return;
   }
   

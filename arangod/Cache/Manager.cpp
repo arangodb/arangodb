@@ -444,7 +444,7 @@ void Manager::reportAccess(std::shared_ptr<Cache> cache) {
   // if (((++_accessCounter) & static_cast<uint64_t>(7)) == 0) {  // record 1
   // in
   // 8
-  if (xorshf96() % 8 == 0) {
+  if ((xorshf96() & static_cast<unsigned long>(7)) == 0) {
     _accessStats.insertRecord(cache);
   }
   //}

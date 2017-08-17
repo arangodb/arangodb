@@ -100,6 +100,7 @@ class FrequencyBuffer {
   /// @brief Insert an individual event record.
   //////////////////////////////////////////////////////////////////////////////
   void insertRecord(T record) {
+    // we do not care about the order in which threads insert their values
     size_t i = _current.fetch_add(1, std::memory_order_relaxed);
     (*_buffer)[i & _mask] = record;
   }
