@@ -97,9 +97,6 @@ void CacheManagerFeature::validateOptions(
 }
 
 void CacheManagerFeature::start() {
-  // will use this to randomize stats access
-  std::srand(std::time(0));
-  
   auto scheduler = SchedulerFeature::SCHEDULER;
   auto ioService = (scheduler == nullptr) ? nullptr : scheduler->ioService();
   _manager.reset(new Manager(ioService, _cacheSize));

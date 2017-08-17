@@ -322,7 +322,27 @@ uint32_t Cache::hashKey(void const* key, uint32_t keySize) const {
                     fasthash32(key, keySize, 0xdeadbeefUL));
 }
 
+// fast unsafe random numbers
+static unsigned long x=123456789, y=362436069, z=521288629;
+unsigned long arangodb::cache::xorshf96() {//period 2^96-1
+  unsigned long t;
+  x ^= x << 16;
+  x ^= x >> 5;
+  x ^= x << 1;
+  
+  t = x;
+  x = y;
+  y = z;
+  z = t ^ x ^ y;
+  
+  return z;
+}
+
 void Cache::recordStat(Stat stat) {
+  if (xorshf96() % 8 != 0) {
+    return;
+  }
+  
   switch (stat) {
     case Stat::findHit: {
       _findHits++;

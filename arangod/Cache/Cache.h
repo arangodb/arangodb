@@ -215,6 +215,8 @@ class Cache : public std::enable_shared_from_this<Cache> {
                              std::unique_ptr<Table::Subtable> targets,
                              std::shared_ptr<Table> newTable) = 0;
 };
+  
+unsigned long xorshf96();
 
 };  // end namespace cache
 };  // end namespace arangodb
