@@ -135,7 +135,7 @@ installer.put('/store', function (req) {
 `);
 
 installer.put('/git', function (req) {
-  const baseUrl = process.env.FOXX_BASE_URL || 'https://github.com';
+  const baseUrl = process.env.FOXX_BASE_URL || 'https://github.com/';
   req.body = `${baseUrl}${req.body.url}/archive/${req.body.version || 'master'}.zip`;
 })
 .body(joi.object({

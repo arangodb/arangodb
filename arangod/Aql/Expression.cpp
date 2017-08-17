@@ -587,8 +587,9 @@ AqlValue Expression::executeSimpleExpressionAttributeAccess(
   auto member = node->getMemberUnchecked(0);
   char const* name = static_cast<char const*>(node->getData());
 
-  AqlValue result = executeSimpleExpression(member, trx, mustDestroy, false);
-  AqlValueGuard guard(result, mustDestroy);
+  bool localMustDestroy;
+  AqlValue result = executeSimpleExpression(member, trx, localMustDestroy, false);
+  AqlValueGuard guard(result, localMustDestroy);
 
   return result.get(trx, std::string(name, node->getStringLength()), mustDestroy, true);
 }
@@ -856,8 +857,9 @@ AqlValue Expression::executeSimpleExpressionReference(
     auto it = _variables.find(v);
 
     if (it != _variables.end()) {
+      // copy the slice we found
       mustDestroy = true;
-      return AqlValue(VPackSlice((*it).second.begin())); 
+      return AqlValue((*it).second);
     }
   }
   return _expressionContext->getVariableValue(v, doCopy, mustDestroy);
@@ -1330,6 +1332,7 @@ AqlValue Expression::executeSimpleExpressionTernary(
 AqlValue Expression::executeSimpleExpressionExpansion(
     AstNode const* node, transaction::Methods* trx, bool& mustDestroy) {
   TRI_ASSERT(node->numMembers() == 5);
+  mustDestroy = false;
 
   // LIMIT
   int64_t offset = 0;
@@ -1338,17 +1341,16 @@ AqlValue Expression::executeSimpleExpressionExpansion(
   auto limitNode = node->getMember(3);
 
   if (limitNode->type != NODE_TYPE_NOP) {
+    bool localMustDestroy;
     AqlValue subOffset =
-        executeSimpleExpression(limitNode->getMember(0), trx, mustDestroy, false);
+        executeSimpleExpression(limitNode->getMember(0), trx, localMustDestroy, false);
     offset = subOffset.toInt64(trx);
-    if (mustDestroy) { subOffset.destroy(); }
+    if (localMustDestroy) { subOffset.destroy(); }
 
-    AqlValue subCount = executeSimpleExpression(limitNode->getMember(1), trx, mustDestroy, false);
+    AqlValue subCount = executeSimpleExpression(limitNode->getMember(1), trx, localMustDestroy, false);
     count = subCount.toInt64(trx);
-    if (mustDestroy) { subCount.destroy(); }
+    if (localMustDestroy) { subCount.destroy(); }
   }
-    
-  mustDestroy = false;
 
   if (offset < 0 || count <= 0) {
     // no items to return... can already stop here
