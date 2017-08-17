@@ -51,7 +51,7 @@ if [ "$RET" = "true" ];  then
 elif [ "$UPGRADE" = "true" ];  then
     echo "Warning: database files need upgrade, automatic upgrade is disable, please do it manually."
     echo "After you've prepared your system for upgrade run "
-    echo "  /etc/init.d/arangodb3 upgrade"
+    echo "  /usr/share/arangodb3/arangodb-update-db"
     echo "  dpkg --pending --configure"
     echo "after the packaging system is in stable state again."
 else

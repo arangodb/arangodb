@@ -9,7 +9,7 @@
 
 # Source function library.
 . /etc/rc.d/init.d/functions
-. /usr/share/arangodb3/arangodb-helper.sh
+. /usr/share/arangodb3/arangodb-helper
 
 # Path to the server binary
 ARANGO_BIN=/usr/sbin/arangod

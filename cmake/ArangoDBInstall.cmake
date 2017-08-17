@@ -231,9 +231,13 @@ install(FILES "${CMAKE_SOURCE_DIR}/lib/Basics/exitcodes.dat"
   DESTINATION "${INSTALL_ICU_DT_DEST}"
   RENAME exitcodes.dat)
 
-install(FILES "${CMAKE_SOURCE_DIR}/Installation/arangodb-helper.sh"
+install(FILES "${CMAKE_SOURCE_DIR}/Installation/arangodb-helper"
   DESTINATION "${INSTALL_ICU_DT_DEST}"
-  RENAME arangodb-helper.sh)
+  RENAME arangodb-helper)
+
+install(FILES "${CMAKE_SOURCE_DIR}/Installation/arangodb-helper"
+  DESTINATION "${INSTALL_ICU_DT_DEST}"
+  RENAME arangodb-update-db)
 
 
 if (MSVC AND NOT(SKIP_PACKAGING))
