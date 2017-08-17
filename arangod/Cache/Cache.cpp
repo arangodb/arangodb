@@ -345,7 +345,7 @@ void Cache::recordStat(Stat stat) {
   
   switch (stat) {
     case Stat::findHit: {
-      _findHits++;
+      _findHits.fetch_add(1, std::memory_order_relaxed);
       if (_enableWindowedStats && _findStats.get() != nullptr) {
         _findStats->insertRecord(static_cast<uint8_t>(Stat::findHit));
       }
@@ -353,7 +353,7 @@ void Cache::recordStat(Stat stat) {
       break;
     }
     case Stat::findMiss: {
-      _findMisses++;
+      _findMisses.fetch_add(1, std::memory_order_relaxed);
       if (_enableWindowedStats && _findStats.get() != nullptr) {
         _findStats->insertRecord(static_cast<uint8_t>(Stat::findMiss));
       }
@@ -367,10 +367,11 @@ void Cache::recordStat(Stat stat) {
 bool Cache::reportInsert(bool hadEviction) {
   bool shouldMigrate = false;
   if (hadEviction) {
-    _insertEvictions++;
+    _insertEvictions.fetch_add(1, std::memory_order_relaxed);
   }
-  if (((++_insertsTotal) & _evictionMask) == 0) {
-    if (_insertEvictions.load() > _evictionThreshold) {
+  uint64_t total = _insertsTotal.fetch_add(1, std::memory_order_relaxed);
+  if (((total + 1) & _evictionMask) == 0) {
+    if (_insertEvictions.load(std::memory_order_relaxed) > _evictionThreshold) {
       shouldMigrate = true;
       bool ok = _tableState.readLock(triesGuarantee);
       if (ok) {
@@ -378,7 +379,7 @@ bool Cache::reportInsert(bool hadEviction) {
         _tableState.unlock();
       }
     }
-    _insertEvictions = 0;
+    _insertEvictions.store(0, std::memory_order_relaxed);
   }
 
   return shouldMigrate;

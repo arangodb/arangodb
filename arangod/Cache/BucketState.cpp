@@ -28,7 +28,6 @@
 #include <stdint.h>
 #include <atomic>
 
-using namespace std;
 using namespace arangodb::cache;
 
 BucketState::BucketState() : _state(0) {}
@@ -52,13 +51,14 @@ bool BucketState::lock(int64_t maxTries, BucketState::CallbackType cb) {
   int64_t attempt = 0;
   while (maxTries < 0 || attempt < maxTries) {
     // expect unlocked, but need to preserve migrating status
-    uint32_t current = _state.load(memory_order_relaxed);
+    uint32_t current = _state.load(std::memory_order_relaxed);
     uint32_t expected = current & (~static_cast<uint32_t>(Flag::locked));
     if (current == expected) {
       uint32_t desired = expected | static_cast<uint32_t>(Flag::locked);
+      // try to lock
       bool success = _state.compare_exchange_strong(
           expected, desired,
-          memory_order_acquire, memory_order_relaxed);  // try to lock
+          std::memory_order_acquire, std::memory_order_relaxed);
       if (success) {
         cb();
         return true;
@@ -74,7 +74,7 @@ bool BucketState::lock(int64_t maxTries, BucketState::CallbackType cb) {
 
 void BucketState::unlock() {
   TRI_ASSERT(isLocked());
-  _state.fetch_and(~static_cast<uint32_t>(Flag::locked), memory_order_release);
+  _state.fetch_and(~static_cast<uint32_t>(Flag::locked), std::memory_order_release);
 }
 
 bool BucketState::isSet(BucketState::Flag flag) const {
