@@ -171,6 +171,11 @@ class MMFilesCollection final : public PhysicalCollection {
   void load() override {}
   void unload() override {}
 
+  /// @brief set the initial datafiles for the collection
+  void setInitialFiles(std::vector<MMFilesDatafile*>&& datafiles,
+                       std::vector<MMFilesDatafile*>&& journals,
+                       std::vector<MMFilesDatafile*>&& compactors);
+
   /// @brief rotate the active journal - will do nothing if there is no journal
   int rotateActiveJournal();
 

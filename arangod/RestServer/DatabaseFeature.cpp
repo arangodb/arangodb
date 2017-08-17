@@ -387,24 +387,7 @@ void DatabaseFeature::beginShutdown() {
   }
 }
 
-void DatabaseFeature::stop() {
-  auto unuser(_databasesProtector.use());
-  auto theLists = _databasesLists.load();
-  
-  for (auto& p : theLists->_databases) {
-    TRI_vocbase_t* vocbase = p.second;
-    // iterate over all databases
-    TRI_ASSERT(vocbase != nullptr);
-    TRI_ASSERT(vocbase->type() == TRI_VOCBASE_TYPE_NORMAL);
-
-    vocbase->processCollections([](LogicalCollection* collection) { 
-      // no one else must modify the collection's status while we are in here
-      collection->executeWhileStatusWriteLocked([collection]() {
-        collection->close(); 
-      });
-    }, true);
-  }
-}
+void DatabaseFeature::stop() {}
 
 void DatabaseFeature::unprepare() {
   // close all databases
