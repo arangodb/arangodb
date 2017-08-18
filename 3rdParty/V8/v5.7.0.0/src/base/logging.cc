@@ -10,6 +10,10 @@
 #include "src/base/debug/stack_trace.h"
 #include "src/base/platform/platform.h"
 
+#ifdef __linux__
+#include <syslog.h>
+#endif
+
 namespace v8 {
 namespace base {
 
@@ -51,8 +55,13 @@ extern "C" void V8_Fatal(const char* file, int line, const char* format, ...) {
   fflush(stderr);
   v8::base::OS::PrintError("\n\n#\n# Fatal error in %s, line %d\n# ", file,
                            line);
+#ifdef __linux__
+  ::syslog(LOG_CRIT, "V8 fatal error in %s:%d", file, line);
+#endif
+
   va_list arguments;
   va_start(arguments, format);
+
   v8::base::OS::VPrintError(format, arguments);
   va_end(arguments);
   v8::base::OS::PrintError("\n#\n");

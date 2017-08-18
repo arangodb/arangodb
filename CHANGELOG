@@ -1,6 +1,10 @@
 devel
 -----
 
+* fixed issue #3044: ArangoDB server shutdown unexpectedly
+
+* fixed issue #3039: Incorrect filter interpretation
+
 * improved MMFiles fulltext index document removal performance
   and fulltext index query performance for bigger result sets
 
@@ -18,6 +22,7 @@ devel
 
 * fixed issue #2982: AQL parse error?
 
+* fixed issue #3037: Foxx, internal server error when I try to add a new service
 
 v3.2.1 (2017-08-09)
 -------------------

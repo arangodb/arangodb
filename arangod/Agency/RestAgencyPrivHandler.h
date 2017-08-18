@@ -45,7 +45,7 @@ template<> struct sto<int64_t> {
 };
 template<> struct sto<int32_t> {
    static long convert(std::string const& s) {
-     return std::stoll(s);
+     return std::stol(s);
    }
 };
 template<> struct sto<uint32_t> {

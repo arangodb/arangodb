@@ -157,6 +157,8 @@ int RocksDBTransactionCollection::use(int nestingLevel) {
     return TRI_ERROR_NO_ERROR;
   }
 
+  bool doSetup = false;
+
   if (_collection == nullptr) {
     // open the collection
     if (!_transaction->hasHint(transaction::Hints::Hint::LOCK_NEVER) &&
@@ -198,11 +200,10 @@ int RocksDBTransactionCollection::use(int nestingLevel) {
       return TRI_ERROR_ARANGO_READ_ONLY;
     }
 
-    RocksDBCollection* rc =
-        static_cast<RocksDBCollection*>(_collection->getPhysical());
-    _initialNumberDocuments = rc->numberDocuments();
-    _revision = rc->revision();
+    doSetup = true;
   }
+
+  TRI_ASSERT(_collection != nullptr);
 
   if (AccessMode::isWriteOrExclusive(_accessType) && !isLocked()) {
     // r/w lock the collection
@@ -211,6 +212,13 @@ int RocksDBTransactionCollection::use(int nestingLevel) {
     if (res != TRI_ERROR_NO_ERROR) {
       return res;
     }
+  }
+    
+  if (doSetup) {
+    RocksDBCollection* rc =
+        static_cast<RocksDBCollection*>(_collection->getPhysical());
+    _initialNumberDocuments = rc->numberDocuments();
+    _revision = rc->revision();
   }
 
   return TRI_ERROR_NO_ERROR;
