@@ -271,6 +271,8 @@ def checkCommitMessages() {
     }
     else {
         if (env.BRANCH_NAME == "devel" || env.BRANCH_NAME == "3.2") {
+            echo "build of main branch"
+
             useLinux = true
             useMac = true
             useWindows = true
@@ -281,6 +283,8 @@ def checkCommitMessages() {
             runTests = true
         }
         else if (env.BRANCH_NAME =~ /^PR-/) {
+            echo "build of PR"
+
             useLinux = true
             useMac = true
             useWindows = true
@@ -293,7 +297,7 @@ def checkCommitMessages() {
             restrictions = [
                 "build-community-linux" : true,
                 "build-community-mac" : true,
-                // "build-community-windows" : true,
+                "build-community-windows" : true,
                 "build-enterprise-linux" : true,
                 "build-enterprise-mac" : true,
                 "build-enterprise-windows" : true,
