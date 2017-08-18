@@ -425,6 +425,18 @@ function optimizerCollectMethodsTestSuite () {
 
       assertEqual([ 1, 2, 3, 4 ], result[0]);
       assertEqual([ 2, 3, 4, 5, 6 ], result[1]);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test collect result bigger than block size
+////////////////////////////////////////////////////////////////////////////////
+
+    testCollectResultBiggerThanBlocksize : function () {
+      var result = AQL_EXECUTE("FOR doc IN " + c.name() + " COLLECT id = doc.value INTO g RETURN { id, g }").json;
+      assertEqual(1500, result.length);
+      
+      result = AQL_EXECUTE("FOR doc IN " + c.name() + " COLLECT id = doc.group INTO g RETURN { id, g }").json;
+      assertEqual(10, result.length);
     }
 
   };

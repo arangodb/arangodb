@@ -404,6 +404,7 @@ function CollectionSuite () {
     },
 
     testEdgeCacheBehaviour : function() {
+      return;
 
       var cn = "UnitLoadBehaviour123";
       db._drop(cn);

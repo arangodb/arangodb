@@ -740,6 +740,7 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
     }
 
     try {
+      auto clusterInfo = arangodb::ClusterInfo::instance();
       auto engine = std::make_unique<ExecutionEngine>(localQuery);
       localQuery->engine(engine.get());
 
@@ -806,8 +807,28 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
             if (idThere.back() == '*') {
               idThere.pop_back();
             }
+
+            auto serverList = clusterInfo->getResponsibleServer(shardId);
+            if (serverList->empty()) {
+              THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_CLUSTER_BACKEND_UNAVAILABLE,
+                                            "Could not find responsible server for shard " + shardId);
+            }
+
+            // use "server:" instead of "shard:" to send query fragments to 
+            // the correct servers, even after failover or when a follower drops
+            // the problem with using the previous shard-based approach was that 
+            // responsibilities for shards may change at runtime.
+            // however, an AQL query must send all requests for the query to the 
+            // initially used servers.
+            // if there is a failover while the query is executing, we must still 
+            // send all following requests to the same servers, and not the newly 
+            // responsible servers.
+            // otherwise we potentially would try to get data from a query from 
+            // server B while the query was only instanciated on server A.
+            TRI_ASSERT(!serverList->empty());
+            auto& leader = (*serverList)[0];
             ExecutionBlock* r = new RemoteBlock(engine.get(), remoteNode,
-                                                "shard:" + shardId,  // server
+                                                "server:" + leader,  // server
                                                 "",                  // ownName
                                                 idThere);            // queryId
 
