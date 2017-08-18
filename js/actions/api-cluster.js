@@ -87,6 +87,8 @@ actions.defineHttp({
       return;
     }
 
+    let agency = ArangoAgency.get('', false, true).arango;
+    
     let node = agency.Supervision.Health[serverId];
     if (node === undefined) {
       actions.resultError(req, res, actions.HTTP_NOT_FOUND,
