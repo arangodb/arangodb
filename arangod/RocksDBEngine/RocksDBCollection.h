@@ -263,8 +263,12 @@ class RocksDBCollection final : public PhysicalCollection {
 
   /// upgrade write locks to exclusive locks if this flag is set
   bool _hasGeoIndex;
+  /// cache the primary index for performance, do not delete
+  RocksDBPrimaryIndex* _primaryIndex;
+  
   mutable basics::ReadWriteLock _exclusiveLock;
   mutable std::shared_ptr<cache::Cache> _cache;
+  
   // we use this boolean for testing whether _cache is set.
   // it's quicker than accessing the shared_ptr each time
   mutable bool _cachePresent;

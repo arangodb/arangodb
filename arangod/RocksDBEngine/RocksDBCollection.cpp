@@ -87,6 +87,7 @@ RocksDBCollection::RocksDBCollection(LogicalCollection* collection,
       _revisionId(0),
       _needToPersistIndexEstimates(false),
       _hasGeoIndex(false),
+      _primaryIndex(nullptr),
       _cache(nullptr),
       _cachePresent(false),
       _useCache(!collection->isSystem()) {
@@ -112,6 +113,7 @@ RocksDBCollection::RocksDBCollection(LogicalCollection* collection,
       _revisionId(0),
       _needToPersistIndexEstimates(false),
       _hasGeoIndex(false),
+      _primaryIndex(nullptr),
       _cache(nullptr),
       _cachePresent(false),
       _useCache(!collection->isSystem()) {
@@ -1207,6 +1209,10 @@ void RocksDBCollection::addIndex(std::shared_ptr<arangodb::Index> idx) {
       idx->type() == Index::TRI_IDX_TYPE_GEO2_INDEX) {
     _hasGeoIndex = true;
   }
+  if (idx->type() == Index::TRI_IDX_TYPE_PRIMARY_INDEX) {
+    TRI_ASSERT(idx->id() == 0);
+    _primaryIndex = static_cast<RocksDBPrimaryIndex*>(idx.get());
+  }
 }
 
 void RocksDBCollection::addIndexCoordinator(
@@ -1220,6 +1226,10 @@ void RocksDBCollection::addIndexCoordinator(
     }
   }
   _indexes.emplace_back(idx);
+  if (idx->type() == Index::TRI_IDX_TYPE_PRIMARY_INDEX) {
+    TRI_ASSERT(idx->id() == 0);
+    _primaryIndex = static_cast<RocksDBPrimaryIndex*>(idx.get());
+  }
 }
 
 int RocksDBCollection::saveIndex(transaction::Methods* trx,
@@ -1347,6 +1357,10 @@ arangodb::Result RocksDBCollection::fillIndexes(
 // is somehow protected. If it goes out of all scopes
 // or it's indexes are freed the pointer returned will get invalidated.
 arangodb::RocksDBPrimaryIndex* RocksDBCollection::primaryIndex() const {
+  if (_primaryIndex != nullptr) {
+    return _primaryIndex;
+  }
+  
   // The primary index always has iid 0
   auto primary = PhysicalCollection::lookupIndex(0);
   TRI_ASSERT(primary != nullptr);
@@ -1363,7 +1377,6 @@ arangodb::RocksDBPrimaryIndex* RocksDBCollection::primaryIndex() const {
   }
 #endif
   TRI_ASSERT(primary->type() == Index::IndexType::TRI_IDX_TYPE_PRIMARY_INDEX);
-  // the primary index must be the index at position #0
   return static_cast<arangodb::RocksDBPrimaryIndex*>(primary.get());
 }
 
