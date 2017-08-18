@@ -1203,7 +1203,7 @@ AqlValue Functions::Lower(arangodb::aql::Query* query,
 
   AppendAsString(trx, adapter, value);
 
-  UnicodeString s(buffer->c_str(), buffer->length());
+  UnicodeString s(buffer->c_str(), static_cast<int32_t>(buffer->length()));
   s.toLower(NULL);
   s.toUTF8String(utf8);
 
@@ -1224,7 +1224,7 @@ AqlValue Functions::Upper(arangodb::aql::Query* query,
 
   AppendAsString(trx, adapter, value);
 
-  UnicodeString s(buffer->c_str(), buffer->length());
+  UnicodeString s(buffer->c_str(), static_cast<int32_t>(buffer->length()));
   s.toUpper(NULL);
   s.toUTF8String(utf8);
 

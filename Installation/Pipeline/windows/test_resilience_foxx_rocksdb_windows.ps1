@@ -1,3 +1,5 @@
+$ErrorActionPreference="Stop"
+
 . Installation\Pipeline\include\test_setup_tmp.ps1
 . Installation\Pipeline\port.ps1
 

@@ -188,6 +188,5 @@ AuthInfo* AuthenticationFeature::authInfo() {
   return _authInfo;
 }
 
-void AuthenticationFeature::unprepare() {}
+void AuthenticationFeature::unprepare() { INSTANCE = nullptr; }
 
-void AuthenticationFeature::stop() { INSTANCE = nullptr; }

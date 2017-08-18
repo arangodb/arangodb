@@ -533,8 +533,8 @@ struct linenoiseCompletions {
   vector<Utf32String> completionStrings;
 };
 
-#define LINENOISE_DEFAULT_HISTORY_MAX_LEN 100
-#define LINENOISE_MAX_LINE 4096
+#define LINENOISE_DEFAULT_HISTORY_MAX_LEN 128
+#define LINENOISE_MAX_LINE 8192
 
 // make control-characters more readable
 #define ctrlChar(upperCaseASCII) (upperCaseASCII - 0x40)
