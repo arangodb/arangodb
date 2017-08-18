@@ -911,6 +911,7 @@ if (USE_MAINTAINER_MODE)
     lib/Basics/exitcodes.h
     lib/Basics/exitcodes.cpp
     js/common/bootstrap/exitcodes.js
+    Installation/Windows/Plugins/exitcodes.nsh
   )
 
   set(EXIT_CODE_FILES_GEN)

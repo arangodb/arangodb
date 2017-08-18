@@ -54,6 +54,41 @@ def genJsFile(errors):
 
   return out
 
+# generate NSIS implementation file from errors
+def genNSISFile(errors, filename):
+
+  impl = """
+!include "LogicLib.nsh"
+!macro printExitCode exitCode Message
+  Push "${exitCode}"
+  Push "${Message}"
+  Call printExitCode
+!macroend
+Function printExitCode
+pop $1
+pop $2
+${Switch} $0\n
+"""
+  # print individual errors
+  for e in errors:
+    impl += """
+  ${Case} %s # %s
+    MessageBox MB_ICONEXCLAMATION '$1:$\\r$\\n%s'
+    ; %s
+  ${Break}
+""" % (
+  e[1],
+  e[0],
+  e[2],
+  e[3]
+  )
+
+  impl = impl + """
+${EndSwitch}
+FunctionEnd
+"""
+
+  return impl.replace("\r", "\r\n")
 
 # generate C implementation file from errors
 def genCFile(errors, filename):
@@ -180,6 +215,8 @@ elif extension == ".h":
   out = genCHeaderFile(errorsList)
 elif extension == ".cpp":
   out = genCFile(errorsList, filename)
+elif extension == ".nsh":
+  out = genNSISFile(errorsList, filename)
 else:
   print >> sys.stderr, "usage: %s <sourcefile> <outfile>" % sys.argv[0]
   sys.exit()
