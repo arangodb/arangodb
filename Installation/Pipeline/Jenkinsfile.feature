@@ -288,6 +288,7 @@ def checkCommitMessages() {
             useLinux = true
             useMac = true
             useWindows = true
+            fullParallel = true
             useCommunity = true
             useEnterprise = true
             runJslint = true
