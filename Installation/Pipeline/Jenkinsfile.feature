@@ -527,17 +527,19 @@ def testStep(edition, os, mode, engine) {
                 def name = "${edition}-${os}-${mode}-${engine}"
 
                 stage("test-${name}") {
-                    try {
-                        unstashBinaries(edition, os)
-                        testEdition(edition, os, mode, engine)
-                        testsSuccess[name] = true
-                    }
-                    catch (exc) {
-                        echo "Exception while testing!"
-                        echo exc.toString()
-                        testsSuccess[name] = false
-                        allTestsSuccessful = false
-                        throw exc
+                    timeout(120) {
+                        try {
+                            unstashBinaries(edition, os)
+                            testEdition(edition, os, mode, engine)
+                            testsSuccess[name] = true
+                        }
+                        catch (exc) {
+                            echo "Exception while testing!"
+                            echo exc.toString()
+                            testsSuccess[name] = false
+                            allTestsSuccessful = false
+                            throw exc
+                        }
                     }
                 }
             }
@@ -647,8 +649,10 @@ def testResilienceStep(os, engine, foxx) {
 
                     try {
                         try {
-                            unstashBinaries(edition, os)
-                            testResilience(os, engine, foxx)
+                            timeout(120) {
+                                unstashBinaries(edition, os)
+                                testResilience(os, engine, foxx)
+                            }
 
                             if (findFiles(glob: 'resilience/core*').length > 0) {
                                 error("found core file")
@@ -802,8 +806,11 @@ def buildStep(edition, os) {
                         checkoutResilience()
                     }
 
-                    buildEdition(edition, os)
-                    stashBinaries(edition, os)
+                    timeout(90) {
+                        buildEdition(edition, os)
+                        stashBinaries(edition, os)
+                    }
+
                     buildsSuccess[name] = true
                 }
             }
