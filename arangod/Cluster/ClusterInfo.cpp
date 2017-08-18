@@ -355,6 +355,10 @@ bool ClusterInfo::doesDatabaseExist(DatabaseID const& databaseID, bool reload) {
 std::vector<DatabaseID> ClusterInfo::databases(bool reload) {
   std::vector<DatabaseID> result;
 
+  if (_clusterId.empty()) {
+    loadClusterId();
+  }
+
   if (reload || !_planProt.isValid || !_currentProt.isValid ||
       !_DBServersProt.isValid) {
     loadPlan();
@@ -393,6 +397,24 @@ std::vector<DatabaseID> ClusterInfo::databases(bool reload) {
   }
   return result;
 }
+
+
+/// @brief Load cluster ID
+void ClusterInfo::loadClusterId() {
+
+  // Contact agency for /<prefix>/Cluster
+  AgencyCommResult result = _agency.getValues("Cluster");
+
+  // Parse 
+  if (result.successful()) {
+    VPackSlice slice = result.slice()[0].get(
+      std::vector<std::string>({AgencyCommManager::path(), "Cluster"}));
+    if(slice.isString()) {
+      _clusterId = slice.copyString();
+    } 
+  }
+}
+
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief (re-)load the information about our plan
