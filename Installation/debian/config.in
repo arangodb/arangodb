@@ -84,8 +84,8 @@ fi # DO_CONFIGURE
 # so try an upgrade
 if test -d /var/lib/arangodb3 -a ! -f /usr/sbin/arangod; then
     db_set @CPACK_PACKAGE_NAME@/new_install_existing_db_dir "true"
+else
+    db_set @CPACK_PACKAGE_NAME@/new_install_existing_db_dir "false"
 fi
-    db_set @CPACK_PACKAGE_NAME@/new_install_existing_db_dir "true"
-false
 
 exit 0

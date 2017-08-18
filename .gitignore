@@ -18,6 +18,9 @@ core.*
 *.gcno
 *.gcda
 
+*.deb
+*.rpm
+
 .DS_Store
 *.swp
 *.diff
