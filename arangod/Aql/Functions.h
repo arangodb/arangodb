@@ -230,7 +230,7 @@ struct Functions {
                          VPackFunctionParameters const&);
    static AqlValue Document(arangodb::aql::Query*, transaction::Methods*,
                             VPackFunctionParameters const&);
-    static AqlValue Matches(arangodb::aql::Query*, transaction::Methods*,
+   static AqlValue Matches(arangodb::aql::Query*, transaction::Methods*,
                             VPackFunctionParameters const&);
    static AqlValue Round(arangodb::aql::Query*, transaction::Methods*,
                          VPackFunctionParameters const&);
