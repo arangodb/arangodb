@@ -770,7 +770,7 @@ void RocksDBEdgeIndex::warmupInternal(transaction::Methods* trx,
         // Store what we have.
         builder.close();
 
-        while (cc->isTemporaryUnavailable()) {
+        while (cc->isBusy()) {
           // We should wait here, the cache will reject
           // any inserts anyways.
           usleep(10000);

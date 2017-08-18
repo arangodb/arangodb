@@ -165,10 +165,6 @@ void Manager::beginShutdown() {
   _state.writeLock();
   if (isOperational()) {
     _state.toggleFlag(State::Flag::shuttingDown);
-    for (auto it = _caches.begin(); it != _caches.end(); it++) {
-      std::shared_ptr<Cache> cache = *it;
-      cache->beginShutdown();
-    }
   }
   _state.unlock();
 }

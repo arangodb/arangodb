@@ -55,7 +55,6 @@ Finding TransactionalCache::find(void const* key, uint32_t keySize) {
     result.reportError(status);
     return result;
   }
-  TRI_DEFER(endOperation());
 
   result.set(bucket->find(hash, key, keySize));
   if (result.found()) {
@@ -82,7 +81,6 @@ Result TransactionalCache::insert(CachedValue* value) {
   if (status.fail()) {
     return status;
   }
-  TRI_DEFER(endOperation());
 
   bool maybeMigrate = false;
   bool allowed = !bucket->isBlacklisted(hash);
@@ -149,7 +147,6 @@ Result TransactionalCache::remove(void const* key, uint32_t keySize) {
   if (status.fail()) {
     return status;
   }
-  TRI_DEFER(endOperation());
 
   bool maybeMigrate = false;
   CachedValue* candidate = bucket->remove(hash, key, keySize);
@@ -184,7 +181,6 @@ Result TransactionalCache::blacklist(void const* key, uint32_t keySize) {
   if (status.fail()) {
     return status;
   }
-  TRI_DEFER(endOperation());
 
   bool maybeMigrate = false;
   CachedValue* candidate = bucket->blacklist(hash, key, keySize);
@@ -234,12 +230,8 @@ TransactionalCache::TransactionalCache(Cache::ConstructionGuard guard,
 }
 
 TransactionalCache::~TransactionalCache() {
-  _opState.readLock();
-  if (!_opState.isSet(State::Flag::shutdown)) {
-    _opState.unlock();
+  if (!_shutdown) {
     shutdown();
-  } else {
-    _opState.unlock();
   }
 }
 
@@ -252,7 +244,6 @@ uint64_t TransactionalCache::freeMemoryFrom(uint32_t hash) {
   if (status.fail()) {
     return 0;
   }
-  TRI_DEFER(endOperation());
 
   bool maybeMigrate = false;
   // evict LRU freeable value if exists
@@ -267,8 +258,11 @@ uint64_t TransactionalCache::freeMemoryFrom(uint32_t hash) {
 
   bucket->unlock();
 
+  _tableState.readLock();
+  auto size = _table->idealSize();
+  _tableState.unlock();
   if (maybeMigrate) {
-    requestMigrate(_table->idealSize());
+    requestMigrate(size);
   }
 
   return reclaimed;
@@ -388,10 +382,8 @@ TransactionalCache::getBucket(uint32_t hash, int64_t maxTries,
   TransactionalBucket* bucket = nullptr;
   std::shared_ptr<Table> source(nullptr);
 
-  bool shutdown = false;
-  bool started = startOperation(maxTries, &shutdown);
-  if (!started) {
-    status.reset(shutdown ? TRI_ERROR_SHUTTING_DOWN : TRI_ERROR_LOCK_TIMEOUT);
+  if (isShutdown()) {
+    status.reset(TRI_ERROR_SHUTTING_DOWN);
     return std::make_tuple(status, bucket, source);
   }
 
@@ -401,6 +393,11 @@ TransactionalCache::getBucket(uint32_t hash, int64_t maxTries,
 
   bool ok = _tableState.readLock(maxTries);
   if (ok) {
+    if (isShutdown()) {
+      _tableState.unlock();
+      status.reset(TRI_ERROR_SHUTTING_DOWN);
+      return std::make_tuple(status, bucket, source);
+    }
     uint64_t term = _manager->_transactions.term();
     auto pair = _table->fetchAndLockBucket(hash, maxTries);
     _tableState.unlock();
@@ -413,7 +410,6 @@ TransactionalCache::getBucket(uint32_t hash, int64_t maxTries,
   }
   if (!ok) {
     status.reset(TRI_ERROR_LOCK_TIMEOUT);
-    endOperation();
   }
 
   return std::make_tuple(status, bucket, source);

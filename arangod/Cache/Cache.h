@@ -127,10 +127,10 @@ class Cache : public std::enable_shared_from_this<Cache> {
   bool isMigrating();
 
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief Check whether the cache is currently either resizing or migrating
+  /// @brief Chedk whether the cache is currently migrating or resizing.
   //////////////////////////////////////////////////////////////////////////////
-  bool isTemporaryUnavailable();
-  
+  bool isBusy();
+
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Check whether the cache has begin the process of shutting down.
   //////////////////////////////////////////////////////////////////////////////
@@ -142,9 +142,10 @@ class Cache : public std::enable_shared_from_this<Cache> {
   static constexpr int64_t triesGuarantee = -1;
 
  protected:
-  State _opState;
   State _taskState;
   State _tableState;
+
+  bool _shutdown;
 
   static uint64_t _findStatsCapacity;
   bool _enableWindowedStats;
@@ -169,9 +170,6 @@ class Cache : public std::enable_shared_from_this<Cache> {
                                                       // evictions in past 1024
                                                       // inserts, migrate
 
-  // keep track of number of open operations to allow clean shutdown
-  std::atomic<uint32_t> _openOperations;
-
   // times to wait until requesting is allowed again
   Manager::time_point _migrateRequestTime;
   Manager::time_point _resizeRequestTime;
@@ -184,10 +182,6 @@ class Cache : public std::enable_shared_from_this<Cache> {
  protected:
   // shutdown cache and let its memory be reclaimed
   static void destroy(std::shared_ptr<Cache> cache);
-
-  bool isOperational() const;
-  bool startOperation(int64_t maxTries = Cache::triesGuarantee, bool* shutdown = nullptr);
-  void endOperation();
 
   void requestGrow();
   void requestMigrate(uint32_t requestedLogSize = 0);
@@ -203,7 +197,6 @@ class Cache : public std::enable_shared_from_this<Cache> {
   // management
   Metadata* metadata();
   std::shared_ptr<Table> table();
-  void beginShutdown();
   void shutdown();
   bool canResize();
   bool canMigrate();

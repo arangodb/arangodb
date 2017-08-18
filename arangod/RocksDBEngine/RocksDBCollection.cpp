@@ -1560,7 +1560,7 @@ arangodb::Result RocksDBCollection::lookupRevisionVPack(
   std::string* value = mdr.prepareStringUsage();
   Result res = mthd->Get(RocksDBColumnFamily::documents(), key, value);
   if (res.ok()) {
-    if (withCache && useCache() && !lockTimeout && !_cache->isTemporaryUnavailable()) {
+    if (withCache && useCache() && !lockTimeout) {
       TRI_ASSERT(_cache != nullptr);
       // write entry back to cache
       auto entry = cache::CachedValue::construct(
@@ -1619,7 +1619,7 @@ arangodb::Result RocksDBCollection::lookupRevisionVPack(
   Result res = mthd->Get(RocksDBColumnFamily::documents(), key, &value);
   TRI_ASSERT(value.data());
   if (res.ok()) {
-    if (withCache && useCache() && !lockTimeout && !_cache->isTemporaryUnavailable()) {
+    if (withCache && useCache() && !lockTimeout) {
       TRI_ASSERT(_cache != nullptr);
       // write entry back to cache
       auto entry = cache::CachedValue::construct(

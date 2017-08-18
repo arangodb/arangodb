@@ -52,9 +52,9 @@ Cache::Cache(ConstructionGuard guard, Manager* manager, Metadata metadata,
              std::shared_ptr<Table> table, bool enableWindowedStats,
              std::function<Table::BucketClearer(Metadata*)> bucketClearer,
              size_t slotsPerBucket)
-    : _opState(),
-      _taskState(),
+    : _taskState(),
       _tableState(),
+      _shutdown(false),
       _enableWindowedStats(enableWindowedStats),
       _findStats(nullptr),
       _findHits(0),
@@ -66,7 +66,6 @@ Cache::Cache(ConstructionGuard guard, Manager* manager, Metadata metadata,
       _slotsPerBucket(slotsPerBucket),
       _insertsTotal(0),
       _insertEvictions(0),
-      _openOperations(0),
       _migrateRequestTime(std::chrono::steady_clock::now()),
       _resizeRequestTime(std::chrono::steady_clock::now()) {
   _table->setTypeSpecifics(_bucketClearer, _slotsPerBucket);
@@ -82,11 +81,9 @@ Cache::Cache(ConstructionGuard guard, Manager* manager, Metadata metadata,
 }
 
 uint64_t Cache::size() {
-  bool started = startOperation();
-  if (!started) {
+  if (isShutdown()) {
     return 0;
   }
-  TRI_DEFER(endOperation());
 
   _metadata.readLock();
   uint64_t size = _metadata.allocatedSize;
@@ -96,11 +93,9 @@ uint64_t Cache::size() {
 }
 
 uint64_t Cache::usageLimit() {
-  bool started = startOperation();
-  if (!started) {
+  if (isShutdown()) {
     return 0;
   }
-  TRI_DEFER(endOperation());
 
   _metadata.readLock();
   uint64_t limit = _metadata.softUsageLimit;
@@ -110,11 +105,9 @@ uint64_t Cache::usageLimit() {
 }
 
 uint64_t Cache::usage() {
-  bool started = startOperation();
-  if (!started) {
+  if (isShutdown()) {
     return false;
   }
-  TRI_DEFER(endOperation());
 
   _metadata.readLock();
   uint64_t usage = _metadata.usage;
@@ -124,11 +117,9 @@ uint64_t Cache::usage() {
 }
 
 void Cache::sizeHint(uint64_t numElements) {
-  bool started = startOperation();
-  if (!started) {
+  if (isShutdown()) {
     return;
   }
-  TRI_DEFER(endOperation());
 
   uint64_t numBuckets = static_cast<uint64_t>(static_cast<double>(numElements)
     / (static_cast<double>(_slotsPerBucket) * Table::idealUpperRatio));
@@ -176,11 +167,9 @@ std::pair<double, double> Cache::hitRates() {
 }
 
 bool Cache::isResizing() {
-  bool started = startOperation();
-  if (!started) {
+  if (isShutdown()) {
     return false;
   }
-  TRI_DEFER(endOperation());
 
   _metadata.readLock();
   bool resizing = _metadata.isSet(State::Flag::resizing);
@@ -190,11 +179,9 @@ bool Cache::isResizing() {
 }
 
 bool Cache::isMigrating() {
-  bool started = startOperation();
-  if (!started) {
+  if (isShutdown()) {
     return false;
   }
-  TRI_DEFER(endOperation());
 
   _metadata.readLock();
   bool migrating = _metadata.isSet(State::Flag::migrating);
@@ -203,29 +190,21 @@ bool Cache::isMigrating() {
   return migrating;
 }
 
-bool Cache::isTemporaryUnavailable() {
-  bool started = startOperation();
-  if (!started) {
-    return true;
+bool Cache::isBusy() {
+  if (isShutdown()) {
+    return false;
   }
-  TRI_DEFER(endOperation());
 
   _metadata.readLock();
-  bool unavailable = (_metadata.isSet(State::Flag::migrating)
-                      || _metadata.isSet(State::Flag::resizing));
+  bool busy = _metadata.isSet(State::Flag::resizing) ||
+              _metadata.isSet(State::Flag::migrating);
   _metadata.unlock();
 
-  return unavailable;
+  return busy;
 }
 
 bool Cache::isShutdown() {
-  bool started = startOperation();
-  if (!started) {
-    return true;
-  }
-  TRI_DEFER(endOperation());
-
-  return false;
+  return _shutdown;
 }
 
 void Cache::destroy(std::shared_ptr<Cache> cache) {
@@ -233,29 +212,6 @@ void Cache::destroy(std::shared_ptr<Cache> cache) {
     cache->shutdown();
   }
 }
-
-bool Cache::isOperational() const {
-  TRI_ASSERT(_opState.isLocked());
-  return (!_opState.isSet(State::Flag::shutdown) &&
-          !_opState.isSet(State::Flag::shuttingDown));
-}
-
-bool Cache::startOperation(int64_t maxTries, bool* shutdown) { 
-  bool ok = _opState.readLock(maxTries);
-  if (ok) {
-    ok = isOperational();
-    if (ok) {
-      ++_openOperations;
-    } else if (shutdown != nullptr) {
-      *shutdown = true;
-    }
-    _opState.unlock();
-  }
-
-  return ok;
-}
-
-void Cache::endOperation() { TRI_ASSERT(_openOperations.load() > 0); --_openOperations; }
 
 void Cache::requestGrow() {
   // fail fast if inside banned window
@@ -265,7 +221,7 @@ void Cache::requestGrow() {
 
   bool ok = _taskState.writeLock(Cache::triesSlow);
   if (ok) {
-    if (std::chrono::steady_clock::now() > _resizeRequestTime) {
+    if (!isShutdown() && (std::chrono::steady_clock::now() > _resizeRequestTime)) {
       _metadata.readLock();
       ok = !_metadata.isSet(State::Flag::resizing);
       _metadata.unlock();
@@ -286,13 +242,13 @@ void Cache::requestMigrate(uint32_t requestedLogSize) {
 
   bool ok = _taskState.writeLock(Cache::triesGuarantee);
   if (ok) {
-    if (std::chrono::steady_clock::now() > _migrateRequestTime) {
+    if (!isShutdown() && std::chrono::steady_clock::now() > _migrateRequestTime) {
       _metadata.readLock();
       ok = !_metadata.isSet(State::Flag::migrating) &&
            (requestedLogSize != _table->logSize());
       _metadata.unlock();
       if (ok) {
-        std::tie(ok, _resizeRequestTime) =
+        std::tie(ok, _migrateRequestTime) =
             _manager->requestMigrate(shared_from_this(), requestedLogSize);
       }
     }
@@ -396,58 +352,53 @@ std::shared_ptr<Table> Cache::table() {
   return table;
 }
 
-void Cache::beginShutdown() {
-  _opState.writeLock();
-  if (!_opState.isSet(State::Flag::shutdown, State::Flag::shuttingDown)) {
-    _opState.toggleFlag(State::Flag::shuttingDown);
-  }
-  _opState.unlock();
-}
-
 void Cache::shutdown() {
-  _opState.writeLock();
+  _taskState.writeLock();
+  _tableState.writeLock();
   auto handle = shared_from_this();  // hold onto self-reference to prevent
                                      // pre-mature shared_ptr destruction
   TRI_ASSERT(handle.get() == this);
-  if (!_opState.isSet(State::Flag::shutdown)) {
-    if (!_opState.isSet(State::Flag::shuttingDown)) {
-      _opState.toggleFlag(State::Flag::shuttingDown);
-    }
+  if (!_shutdown) {
+    _shutdown = true;
 
-    while (_openOperations.load() > 0) {
-      _opState.unlock();
+    _metadata.readLock();
+    while (true) {
+      if (!_metadata.isSet(State::Flag::migrating) && 
+          !_metadata.isSet(State::Flag::resizing)) {
+        break;
+      }
+      _metadata.unlock();
+      _tableState.unlock();
+      _taskState.unlock();
       std::this_thread::yield();
-      _opState.writeLock();
+      _taskState.writeLock();
+      _tableState.writeLock();
+      _metadata.readLock();
     }
+    _metadata.unlock();
 
-    _opState.clear();
-    _opState.toggleFlag(State::Flag::shutdown);
     std::shared_ptr<Table> extra =
         _table->setAuxiliary(std::shared_ptr<Table>(nullptr));
     if (extra.get() != nullptr) {
       extra->clear();
-      _opState.unlock();
       _manager->reclaimTable(extra);
-      _opState.writeLock();
     }
     _table->clear();
-    _opState.unlock();
     _manager->reclaimTable(_table);
     _manager->unregisterCache(shared_from_this());
-    _opState.writeLock();
   }
   _metadata.writeLock();
   _metadata.changeTable(0);
   _metadata.unlock();
-  _opState.unlock();
+
+  _tableState.unlock();
+  _taskState.unlock();
 }
 
 bool Cache::canResize() {
-  bool started = startOperation(Cache::triesSlow);
-  if (!started) {
+  if (isShutdown()) {
     return false;
   }
-  TRI_DEFER(endOperation());
 
   bool allowed = true;
   _metadata.readLock();
@@ -461,11 +412,9 @@ bool Cache::canResize() {
 }
 
 bool Cache::canMigrate() {
-  bool started = startOperation(Cache::triesSlow);
-  if (!started) {
+  if (isShutdown()) {
     return false;
   }
-  TRI_DEFER(endOperation());
 
   bool allowed = (_manager->ioService() != nullptr);
   _metadata.readLock();
@@ -478,11 +427,9 @@ bool Cache::canMigrate() {
 }
 
 bool Cache::freeMemory() {
-  bool started = startOperation();
-  if (!started) {
+  if (isShutdown()) {
     return false;
   }
-  TRI_DEFER(endOperation());
 
   bool underLimit = reclaimMemory(0ULL);
   uint64_t failures = 0;
@@ -497,11 +444,7 @@ bool Cache::freeMemory() {
     } else {
       failures++;
       if (failures > 100) {
-        _opState.readLock();
-        bool shouldQuit = !isOperational();
-        _opState.unlock();
-
-        if (shouldQuit) {
+        if (isShutdown()) {
           break;
         } else {
           failures = 0;
@@ -514,11 +457,9 @@ bool Cache::freeMemory() {
 }
 
 bool Cache::migrate(std::shared_ptr<Table> newTable) {
-  bool started = startOperation();
-  if (!started) {
+  if (isShutdown()) {
     return false;
   }
-  TRI_DEFER(endOperation());
 
   _tableState.writeLock();
   newTable->setTypeSpecifics(_bucketClearer, _slotsPerBucket);
@@ -529,7 +470,7 @@ bool Cache::migrate(std::shared_ptr<Table> newTable) {
   // do the actual migration
   for (uint32_t i = 0; i < _table->size(); i++) {
     migrateBucket(_table->primaryBucket(i), _table->auxiliaryBuckets(i),
-                  newTable);
+                            newTable);
   }
 
   // swap tables

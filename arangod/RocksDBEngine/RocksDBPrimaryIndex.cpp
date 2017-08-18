@@ -187,7 +187,7 @@ RocksDBToken RocksDBPrimaryIndex::lookupKey(transaction::Methods* trx,
     return RocksDBToken();
   }
 
-  if (useCache() && !lockTimeout && !_cache->isTemporaryUnavailable()) {
+  if (useCache() && !lockTimeout) {
     TRI_ASSERT(_cache != nullptr);
     
     // write entry back to cache
