@@ -43,40 +43,55 @@ LoggerStream::~LoggerStream() {
 
 // print a hex representation of the binary data
 LoggerStream& LoggerStream::operator<<(Logger::BINARY binary) {
-  std::ostringstream tmp;
- 
-  uint8_t const* ptr = static_cast<uint8_t const*>(binary.baseAddress);
-  uint8_t const* end = ptr + binary.size;
+  try {
+    std::ostringstream tmp;
   
-  while (ptr < end) {
-    uint8_t n = *ptr;
-     
-    uint8_t n1 = n >> 4;
-    uint8_t n2 = n & 0x0F;
+    uint8_t const* ptr = static_cast<uint8_t const*>(binary.baseAddress);
+    uint8_t const* end = ptr + binary.size;
     
-    tmp << "\\x" 
-        << static_cast<char>((n1 < 10) ? ('0' + n1) : ('A' + n1 - 10)) 
-        << static_cast<char>((n2 < 10) ? ('0' + n2) : ('A' + n2 - 10));
-    ++ptr;
+    while (ptr < end) {
+      uint8_t n = *ptr;
+      
+      uint8_t n1 = n >> 4;
+      uint8_t n2 = n & 0x0F;
+      
+      tmp << "\\x" 
+          << static_cast<char>((n1 < 10) ? ('0' + n1) : ('A' + n1 - 10)) 
+          << static_cast<char>((n2 < 10) ? ('0' + n2) : ('A' + n2 - 10));
+      ++ptr;
+    }
+    _out << tmp.str();
+  } catch (...) {
+    // ignore any errors here. logging should not have side effects
   }
-  _out << tmp.str();
+
   return *this;
 }
 
 LoggerStream& LoggerStream::operator<<(Logger::RANGE range) {
-  std::ostringstream tmp;
-  tmp << range.baseAddress << " - "
-      << static_cast<void const*>(static_cast<char const*>(range.baseAddress) +
-                                  range.size)
-      << " (" << range.size << " bytes)";
-  _out << tmp.str();
+  try {
+    std::ostringstream tmp;
+    tmp << range.baseAddress << " - "
+        << static_cast<void const*>(static_cast<char const*>(range.baseAddress) +
+                                    range.size)
+        << " (" << range.size << " bytes)";
+    _out << tmp.str();
+  } catch (...) {
+    // ignore any errors here. logging should not have side effects
+  }
+
   return *this;
 }
 
 LoggerStream& LoggerStream::operator<<(Logger::FIXED value) {
-  std::ostringstream tmp;
-  tmp << std::setprecision(value._precision) << std::fixed
-      << value._value;
-  _out << tmp.str();
+  try {
+    std::ostringstream tmp;
+    tmp << std::setprecision(value._precision) << std::fixed
+        << value._value;
+    _out << tmp.str();
+  } catch (...) {
+    // ignore any errors here. logging should not have side effects
+  }
+
   return *this;
 }

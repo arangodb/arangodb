@@ -1,6 +1,10 @@
 devel
 -----
 
+* fixed a buffer overrun in linenoise console input library for long input strings
+
+* increase size of the linenoise input buffer to 8 KB
+
 * abort compilation if the detected GCC or CLANG isn't in the range of compilers 
   we support
 
