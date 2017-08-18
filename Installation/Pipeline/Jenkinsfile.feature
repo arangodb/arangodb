@@ -160,8 +160,8 @@ def checkoutCommunity() {
         }
         catch (exc) {
             echo "GITHUB checkout failed, retrying in 1min"
-            echo exc.toString()
             sleep 60
+            throw exc
         }
     }
 }
