@@ -37,7 +37,9 @@ ExecStartPre=@CHMOD_EXECUTABLE@ 700 /var/lib/arangodb3-apps
 ExecStart=/usr/sbin/arangod --uid arangodb --gid arangodb --pid-file /var/run/arangodb3/arangod.pid --temp.path /var/tmp/arangodb3 --log.foreground-tty true
 TimeoutStopSec=3600
 TimeoutSec=3600
+
 Restart=on-failure
+RestartSec=5
 
 [Install]
 WantedBy=multi-user.target
