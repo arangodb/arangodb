@@ -1,6 +1,9 @@
 #!/bin/sh
 set -e
 
+action="$1"
+version="$2"
+
 # source debconf stuff
 . /usr/share/debconf/confmodule
 
@@ -10,15 +13,15 @@ db_capb backup
 
 DO_CONFIGURE=no
 
-if test -n "$2"; then
+if test -n "$version"; then
     # do we want to reconfigure?
-    num="$(echo $2 | sed -e 's/[a-zA-Z.-]//g' -e 's;ubuntu;;')"
-    if test "$num" -lt 127 -o "$1" = reconfigure; then
+    short_version="$(echo "$version" | sed -e 's/[a-zA-Z.-]//g' -e 's;ubuntu;;')"
+    if test "$short_version" -lt 127 -o "$action" = reconfigure; then
         DO_CONFIGURE=yes
     fi
 else
     # are we in first install?
-    if test "$1" = "configure"; then
+    if test "$action" = "configure"; then
         DO_CONFIGURE=yes
     fi
 fi
@@ -27,7 +30,8 @@ fi
 if test "$DO_CONFIGURE" = "yes"; then
     STATE=1
     LASTSTATE=5
-    while [ "$STATE" != 0 -a "$STATE" -le "$LASTSTATE" ]; do
+    while test "$STATE" -ne 0 -a \
+               "$STATE" -le "$LASTSTATE" ; do
 
         case "$STATE" in
             1)
@@ -44,7 +48,7 @@ if test "$DO_CONFIGURE" = "yes"; then
                     ROOT_PW=""
                 else
                     db_input critical @CPACK_PACKAGE_NAME@/password_mismatch
-                    STATE=$(($STATE - 1))
+                    STATE=$((STATE - 1))
                     db_set @CPACK_PACKAGE_NAME@/password_again ""
                 fi
             ;;
@@ -68,12 +72,20 @@ if test "$DO_CONFIGURE" = "yes"; then
         esac
 
         if db_go; then
-            STATE=$(($STATE + 1))
+            STATE=$((STATE + 1))
         else
-            STATE=$(($STATE - 1))
+            STATE=$((STATE - 1))
         fi
 
     done # STATE LOOP
 fi # DO_CONFIGURE
+
+# test if db-dir is in place but arangod is not installed if
+# so try an upgrade
+if test -d /var/lib/arangodb3 -a ! -f /usr/sbin/arangod; then
+    db_set @CPACK_PACKAGE_NAME@/new_install_existing_db_dir "true"
+fi
+    db_set @CPACK_PACKAGE_NAME@/new_install_existing_db_dir "true"
+false
 
 exit 0
