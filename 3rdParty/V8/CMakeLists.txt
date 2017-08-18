@@ -287,7 +287,7 @@ elseif (${CMAKE_GENERATOR} MATCHES "Ninja")
 ################################################################################
 
 elseif (WIN32)
-  MESSAGE("Building V8 for Windows with MSBUILD")
+  MESSAGE(STATUS "Building V8 for Windows with MSBUILD")
   set(GYP_MAIN gypfiles/gyp_v8)
 
   # try to find 2013 in 'Visual Studio 12 2013 Win64'

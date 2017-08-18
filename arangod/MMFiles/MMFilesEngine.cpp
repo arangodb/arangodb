@@ -2934,23 +2934,19 @@ int MMFilesEngine::openCollection(TRI_vocbase_t* vocbase,
       // file is a datafile (or was a compaction file)
       else if (filetype == "datafile" || filetype == "compaction") {
         if (!datafile->isSealed()) {
-          LOG_TOPIC(ERR, Logger::DATAFILES)
+          LOG_TOPIC(DEBUG, Logger::DATAFILES)
               << "datafile '" << filename
-              << "' is not sealed, this should never happen";
-          result = TRI_ERROR_ARANGO_CORRUPTED_DATAFILE;
-          stop = true;
-          break;
-        } else {
-          datafiles.emplace_back(datafile);
-        }
+              << "' is not sealed, this should not happen under normal circumstances";
+        } 
+        datafiles.emplace_back(datafile);
       }
 
       else {
-        LOG_TOPIC(ERR, Logger::DATAFILES) << "unknown datafile '" << file
+        LOG_TOPIC(ERR, Logger::DATAFILES) << "unknown file '" << file
                                           << "'";
       }
     } else {
-      LOG_TOPIC(ERR, Logger::DATAFILES) << "unknown datafile '" << file << "'";
+      LOG_TOPIC(ERR, Logger::DATAFILES) << "unknown file '" << file << "'";
     }
   }
 

@@ -84,8 +84,8 @@ RocksDBCounterManager::RocksDBCounterManager(rocksdb::DB* db)
     : _syncing(false), _db(db) {
   readSettings();
   readIndexEstimates();
-
   readCounterValues();
+  readKeyGenerators();
 }
 
 /// parse recent RocksDB WAL entries and notify the

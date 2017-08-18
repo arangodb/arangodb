@@ -1881,17 +1881,17 @@ static void JS_TrustedProxies(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
 static void JS_AuthenticationEnabled(
     v8::FunctionCallbackInfo<v8::Value> const& args) {
-  auto authentication = application_features::ApplicationServer::getFeature<AuthenticationFeature>(
-    "Authentication");
-
-  TRI_ASSERT(authentication != nullptr);
-
   // mop: one could argue that this is a function because this might be
   // changable on the fly at some time but the sad truth is server startup
   // order
   // v8 is initialized after GeneralServerFeature
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
+  
+  auto authentication = application_features::ApplicationServer::getFeature<AuthenticationFeature>(
+    "Authentication");
+
+  TRI_ASSERT(authentication != nullptr);
 
   v8::Handle<v8::Boolean> result =
       v8::Boolean::New(isolate, authentication->isActive());
@@ -2017,18 +2017,16 @@ static void JS_DecodeRev(v8::FunctionCallbackInfo<v8::Value> const& args) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief decode a _rev time stamp
+/// @brief returns the current context
 ////////////////////////////////////////////////////////////////////////////////
 
-void JS_ArangoDBContext(v8::FunctionCallbackInfo<v8::Value> const& args)
-{
+void JS_ArangoDBContext(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
   
   if (args.Length() != 0) {
     TRI_V8_THROW_EXCEPTION_USAGE("ARANGODB_CONTEXT()");
   }
-  
 
   v8::Handle<v8::Object> result = v8::Object::New(isolate);
   auto context = Thread::currentWorkContext();

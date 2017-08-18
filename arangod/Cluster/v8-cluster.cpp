@@ -397,6 +397,55 @@ static void JS_SetAgency(v8::FunctionCallbackInfo<v8::Value> const& args) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief returns the agency summery
+////////////////////////////////////////////////////////////////////////////////
+
+static void JS_Agency(v8::FunctionCallbackInfo<v8::Value> const& args) {
+  TRI_V8_TRY_CATCH_BEGIN(isolate)
+  v8::HandleScope scope(isolate);
+
+  if (args.Length() > 0) {
+    TRI_V8_THROW_EXCEPTION_USAGE("agency()");
+  }
+
+  VPackBuilder builder;
+  { VPackArrayBuilder a(&builder);
+    { VPackArrayBuilder b(&builder);
+      builder.add(VPackValue("/.agency"));
+    }
+  }
+
+  AgencyComm comm;
+  AgencyCommResult result =
+    comm.sendWithFailover(
+      arangodb::rest::RequestType::POST,
+      AgencyCommManager::CONNECTION_OPTIONS._requestTimeout,
+      std::string("/_api/agency/read"), builder.slice());
+
+  if (!result.successful()) {
+    THROW_AGENCY_EXCEPTION(result);
+  }
+
+  try {
+    result.setVPack(VPackParser::fromJson(result.bodyRef()));
+    result._body.clear();
+  } catch (std::exception const& e) {
+    LOG_TOPIC(ERR, Logger::AGENCYCOMM)
+      << "Error transforming result. " << e.what();
+    result.clear();
+  } catch (...) {
+    LOG_TOPIC(ERR, Logger::AGENCYCOMM)
+      << "Error transforming result. Out of memory";
+    result.clear();
+  }
+  
+  auto l = TRI_VPackToV8(isolate, result.slice());
+
+  TRI_V8_RETURN(l);
+  TRI_V8_TRY_CATCH_END
+
+}
+////////////////////////////////////////////////////////////////////////////////
 /// @brief returns the agency endpoints
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -1935,6 +1984,8 @@ void TRI_InitV8Cluster(v8::Isolate* isolate, v8::Handle<v8::Context> context) {
   rt = ft->InstanceTemplate();
   rt->SetInternalFieldCount(2);
 
+  TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING("agency"), JS_Agency);
+  
   TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING("read"), JS_ReadAgency);
   TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING("write"), JS_WriteAgency);
   TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING("transact"), JS_TransactAgency);

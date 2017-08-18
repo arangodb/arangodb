@@ -117,7 +117,7 @@ inline std::tuple<bool,bool,Result> extractArangoError(v8::Isolate* isolate, v8:
        object->Has(TRI_V8_ASCII_STRING("errorMessage"))
       )
     {
-      std::uint64_t errorNum = TRI_ObjectToInt64(object->Get(TRI_V8_ASCII_STRING("errorNum")));
+      int errorNum = static_cast<int>(TRI_ObjectToInt64(object->Get(TRI_V8_ASCII_STRING("errorNum"))));
       std::string  errorMessage = *v8::String::Utf8Value(object->Get(TRI_V8_ASCII_STRING("errorMessage")));
       std::get<1>(rv) = true;
       std::get<2>(rv).reset(errorNum,errorMessage);
