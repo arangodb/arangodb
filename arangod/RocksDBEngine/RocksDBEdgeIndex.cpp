@@ -649,8 +649,7 @@ void RocksDBEdgeIndex::warmup(transaction::Methods* trx) {
   // Prepare the cache to be resized for this amount of objects to be inserted.
   _cache->sizeHint(expectedCount);
   if (expectedCount < 50000) {
-    LOG_TOPIC(ERR, Logger::ROCKSDB)
-    << "Skipping the multrithreaded loading";
+    LOG_TOPIC(DEBUG, Logger::ROCKSDB) << "Skipping the multithreaded loading";
     this->warmupInternal(trx, bounds.start(), bounds.end());
     return;
   }
@@ -666,16 +665,14 @@ void RocksDBEdgeIndex::warmup(transaction::Methods* trx) {
   // get the first and last actual key
   it->Seek(bounds.start());
   if (!it->Valid()) {
-    LOG_TOPIC(ERR, Logger::ROCKSDB)
-    << "Cannot use multithreaded edge index warmup";
+    LOG_TOPIC(DEBUG, Logger::ROCKSDB) << "Cannot use multithreaded edge index warmup";
     this->warmupInternal(trx, bounds.start(), bounds.end());
     return;
   }
   std::string firstKey = it->key().ToString();
   it->SeekForPrev(bounds.end());
   if (!it->Valid()) {
-    LOG_TOPIC(ERR, Logger::ROCKSDB)
-    << "Cannot use multithreaded edge index warmup";
+    LOG_TOPIC(DEBUG, Logger::ROCKSDB) << "Cannot use multithreaded edge index warmup";
     this->warmupInternal(trx, bounds.start(), bounds.end());
     return;
   }
@@ -684,8 +681,7 @@ void RocksDBEdgeIndex::warmup(transaction::Methods* trx) {
   std::string q1 = firstKey, q2, q3, q4, q5 = lastKey;
   q3 = FindMedian(it.get(), q1, q5);
   if (q3 == lastKey) {
-    LOG_TOPIC(ERR, Logger::ROCKSDB)
-    << "Cannot use multithreaded edge index warmup";
+    LOG_TOPIC(DEBUG, Logger::ROCKSDB) << "Cannot use multithreaded edge index warmup";
     this->warmupInternal(trx, bounds.start(), bounds.end());
     return;
   }
@@ -852,7 +848,7 @@ void RocksDBEdgeIndex::warmupInternal(transaction::Methods* trx,
       delete entry;
     }
   }
-  LOG_TOPIC(ERR, Logger::FIXME) << "loaded n: " << n ;
+  LOG_TOPIC(DEBUG, Logger::FIXME) << "loaded n: " << n ;
 }
 
 // ===================== Helpers ==================
