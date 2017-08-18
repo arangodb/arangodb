@@ -524,8 +524,12 @@ actions.defineHttp({
       Health[serverId].CanBeDeleted = canBeDeleted;
       return Health;
     }, Health);
+
+    Object.entries(agency[0]['.agency'].pool).forEach(([key, value]) => {
+      Health[key] = {Endpoint: value, Role: 'Agent', CanBeDeleted: false};
+    });
     
-    actions.resultOk(req, res, actions.HTTP_OK, {Health, ClusterId: clusterId, Agency: agency[0]['.agency']});
+    actions.resultOk(req, res, actions.HTTP_OK, {Health, ClusterId: clusterId});
   }
 });
 
