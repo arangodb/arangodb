@@ -25,6 +25,7 @@
 #define ARANGODB_CACHE_STATE_H
 
 #include "Basics/Common.h"
+#include "Basics/ReadWriteSpinLock.h"
 
 #include <atomic>
 #include <cstdint>
@@ -114,9 +115,14 @@ struct State {
   virtual bool writeLock(int64_t maxTries = -1LL);
 
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief Unlocks the state. Requires state to be locked.
+  /// @brief Unlocks the state. Requires state to be read-locked.
   //////////////////////////////////////////////////////////////////////////////
-  virtual void unlock();
+  virtual void readUnlock();
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief Unlocks the state. Requires state to be write-locked.
+  //////////////////////////////////////////////////////////////////////////////
+  virtual void writeUnlock();
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Checks whether the given flag is set. Requires state to be locked.
@@ -136,7 +142,7 @@ struct State {
 
  protected:
   std::atomic<uint32_t> _state;
-  std::atomic<uint32_t> _lock;
+  arangodb::basics::ReadWriteSpinLock<> _lock;
 };
 
 };  // end namespace cache

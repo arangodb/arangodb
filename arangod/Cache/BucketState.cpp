@@ -23,11 +23,12 @@
 
 #include "Cache/BucketState.h"
 #include "Basics/Common.h"
-#include "Cache/Common.h"
+#include "Basics/cpu-relax.h"
 
 #include <stdint.h>
 #include <atomic>
 
+using namespace arangodb::basics;
 using namespace arangodb::cache;
 
 BucketState::BucketState() : _state(0) {}

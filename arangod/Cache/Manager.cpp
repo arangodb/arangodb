@@ -152,7 +152,7 @@ std::shared_ptr<Cache> Manager::createCache(CacheType type,
   if (result.get() != nullptr) {
     _caches.emplace(result);
   }
-  _state.unlock();
+  _state.writeUnlock();
 
   return result;
 }
@@ -166,7 +166,7 @@ void Manager::beginShutdown() {
   if (isOperational()) {
     _state.toggleFlag(State::Flag::shuttingDown);
   }
-  _state.unlock();
+  _state.writeUnlock();
 }
 
 void Manager::shutdown() {
@@ -177,7 +177,7 @@ void Manager::shutdown() {
     }
     while (!_caches.empty()) {
       std::shared_ptr<Cache> cache = *_caches.begin();
-      _state.unlock();
+      _state.writeUnlock();
       cache->shutdown();
       _state.writeLock();
     }
@@ -185,7 +185,7 @@ void Manager::shutdown() {
     _state.clear();
     _state.toggleFlag(State::Flag::shutdown);
   }
-  _state.unlock();
+  _state.writeUnlock();
 }
 
 // change global cache limit
@@ -198,7 +198,7 @@ bool Manager::resize(uint64_t newGlobalLimit) {
       (static_cast<uint64_t>(Manager::highwaterMultiplier *
                              static_cast<double>(newGlobalLimit)) <
        (_caches.size() * Manager::minCacheAllocation))) {
-    _state.unlock();
+    _state.writeUnlock();
     return false;
   }
   
@@ -223,7 +223,7 @@ bool Manager::resize(uint64_t newGlobalLimit) {
     }
   }
 
-  _state.unlock();
+  _state.writeUnlock();
   return success;
 }
 
@@ -231,7 +231,7 @@ uint64_t Manager::globalLimit() {
   _state.readLock();
   uint64_t limit =
       _state.isSet(State::Flag::resizing) ? _globalSoftLimit : _globalHardLimit;
-  _state.unlock();
+  _state.readUnlock();
 
   return limit;
 }
@@ -239,7 +239,7 @@ uint64_t Manager::globalLimit() {
 uint64_t Manager::globalAllocation() {
   _state.readLock();
   uint64_t allocation = _globalAllocation;
-  _state.unlock();
+  _state.readUnlock();
 
   return allocation;
 }
@@ -327,9 +327,9 @@ void Manager::unregisterCache(std::shared_ptr<Cache> cache) {
   Metadata* metadata = cache->metadata();
   metadata->readLock();
   _globalAllocation -= metadata->allocatedSize;
-  metadata->unlock();
+  metadata->readUnlock();
   _caches.erase(cache);
-  _state.unlock();
+  _state.writeUnlock();
 }
 
 std::pair<bool, Manager::time_point> Manager::requestGrow(
@@ -367,10 +367,10 @@ std::pair<bool, Manager::time_point> Manager::requestGrow(
       }
 
       if (!allowed) {
-        metadata->unlock();
+        metadata->writeUnlock();
       }
     }
-    _state.unlock();
+    _state.writeUnlock();
   }
 
   return std::make_pair(allowed, nextRequest);
@@ -424,10 +424,10 @@ std::pair<bool, Manager::time_point> Manager::requestMigrate(
       }
 
       if (!allowed) {
-        metadata->unlock();
+        metadata->writeUnlock();
       }
     }
-    _state.unlock();
+    _state.writeUnlock();
   }
 
   return std::make_pair(allowed, nextRequest);
@@ -498,7 +498,7 @@ void Manager::unprepareTask(Manager::TaskEnvironment environment) {
         _state.writeLock();
         _state.toggleFlag(State::Flag::rebalancing);
         _rebalanceCompleted = std::chrono::steady_clock::now();
-        _state.unlock();
+        _state.writeUnlock();
       };
       break;
     }
@@ -506,7 +506,7 @@ void Manager::unprepareTask(Manager::TaskEnvironment environment) {
       if ((--_resizingTasks) == 0) {
         _state.writeLock();
         _state.toggleFlag(State::Flag::resizing);
-        _state.unlock();
+        _state.writeUnlock();
       };
       break;
     }
@@ -523,7 +523,7 @@ bool Manager::rebalance(bool onlyCalculate) {
     if (_caches.size() == 0
         || !isOperational()
         || globalProcessRunning()) {
-      _state.unlock();
+      _state.writeUnlock();
       return false;
     }
 
@@ -558,7 +558,7 @@ bool Manager::rebalance(bool onlyCalculate) {
     }
 #endif
     metadata->adjustDeserved(newDeserved);
-    metadata->unlock();
+    metadata->writeUnlock();
   }
 
   if (!onlyCalculate) {
@@ -571,7 +571,7 @@ bool Manager::rebalance(bool onlyCalculate) {
       _state.toggleFlag(State::Flag::rebalancing);
     }
 
-    _state.unlock();
+    _state.writeUnlock();
   }
 
   return true;
@@ -591,7 +591,7 @@ void Manager::shrinkOvergrownCaches(Manager::TaskEnvironment environment) {
     if (metadata->allocatedSize > metadata->deservedSize) {
       resizeCache(environment, cache, metadata->newLimit()); // unlocks metadata
     } else {
-      metadata->unlock();
+      metadata->writeUnlock();
     }
   }
 }
@@ -631,7 +631,7 @@ void Manager::resizeCache(Manager::TaskEnvironment environment,
     uint64_t oldLimit = metadata->hardUsageLimit;
     bool success = metadata->adjustLimits(newLimit, newLimit);
     TRI_ASSERT(success);
-    metadata->unlock();
+    metadata->writeUnlock();
     if (oldLimit > newLimit) {
       _globalAllocation -= (oldLimit - newLimit);
     } else {
@@ -644,7 +644,7 @@ void Manager::resizeCache(Manager::TaskEnvironment environment,
   TRI_ASSERT(success);
   TRI_ASSERT(!metadata->isSet(State::Flag::resizing));
   metadata->toggleFlag(State::Flag::resizing);
-  metadata->unlock();
+  metadata->writeUnlock();
 
   auto task = std::make_shared<FreeMemoryTask>(environment, this, cache);
   bool dispatched = task->dispatch();
@@ -652,7 +652,7 @@ void Manager::resizeCache(Manager::TaskEnvironment environment,
     // TODO: decide what to do if we don't have an io_service
     metadata->writeLock();
     metadata->toggleFlag(State::Flag::resizing);
-    metadata->unlock();
+    metadata->writeUnlock();
   }
 }
 
@@ -665,7 +665,7 @@ void Manager::migrateCache(Manager::TaskEnvironment environment,
 
   TRI_ASSERT(!metadata->isSet(State::Flag::migrating));
   metadata->toggleFlag(State::Flag::migrating);
-  metadata->unlock();
+  metadata->writeUnlock();
 
   auto task = std::make_shared<MigrateTask>(environment, this, cache, table);
   bool dispatched = task->dispatch();
@@ -674,7 +674,7 @@ void Manager::migrateCache(Manager::TaskEnvironment environment,
     metadata->writeLock();
     reclaimTable(table, true);
     metadata->toggleFlag(State::Flag::migrating);
-    metadata->unlock();
+    metadata->writeUnlock();
   }
 }
 
@@ -719,7 +719,7 @@ void Manager::reclaimTable(std::shared_ptr<Table> table, bool internal) {
   }
 
   if (!internal) {
-    _state.unlock();
+    _state.writeUnlock();
   }
 }
 

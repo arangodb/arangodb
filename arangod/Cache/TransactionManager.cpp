@@ -56,7 +56,7 @@ Transaction* TransactionManager::begin(bool readOnly) {
     _openSensitive++;
   }
   tx->term = _term;
-  _state.unlock();
+  _state.writeUnlock();
 
   return tx;
 }
@@ -80,7 +80,7 @@ void TransactionManager::end(Transaction* tx) {
     _term++;
   }
 
-  _state.unlock();
+  _state.writeUnlock();
   delete tx;
 }
 

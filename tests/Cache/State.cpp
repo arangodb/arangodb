@@ -59,7 +59,7 @@ TEST_CASE("cache::State", "[cache]") {
     REQUIRE(state.isWriteLocked());
 
     // check unlock
-    state.unlock(); // writer releases
+    state.writeUnlock(); // writer releases
     REQUIRE(!state.isLocked());
     REQUIRE(!state.isWriteLocked());
 
@@ -79,9 +79,9 @@ TEST_CASE("cache::State", "[cache]") {
     REQUIRE(state.isLocked());
     REQUIRE(!state.isWriteLocked());
 
-    state.unlock(); // reader1 releases
+    state.readUnlock(); // reader1 releases
     REQUIRE(state.isLocked());
-    state.unlock(); // reader2 releases
+    state.readUnlock(); // reader2 releases
     REQUIRE(!state.isLocked());
   }
 
@@ -92,30 +92,30 @@ TEST_CASE("cache::State", "[cache]") {
     success = state.readLock(10LL);
     REQUIRE(success);
     REQUIRE(!state.isSet(State::Flag::migrated));
-    state.unlock();
+    state.readUnlock();
 
     success = state.writeLock(10LL);
     REQUIRE(success);
     REQUIRE(!state.isSet(State::Flag::migrated));
     state.toggleFlag(State::Flag::migrated);
     REQUIRE(state.isSet(State::Flag::migrated));
-    state.unlock();
+    state.writeUnlock();
 
     success = state.readLock(10LL);
     REQUIRE(success);
     REQUIRE(state.isSet(State::Flag::migrated));
-    state.unlock();
+    state.readUnlock();
 
     success = state.writeLock(10LL);
     REQUIRE(success);
     REQUIRE(state.isSet(State::Flag::migrated));
     state.toggleFlag(State::Flag::migrated);
     REQUIRE(!state.isSet(State::Flag::migrated));
-    state.unlock();
+    state.writeUnlock();
 
     success = state.readLock(10LL);
     REQUIRE(success);
     REQUIRE(!state.isSet(State::Flag::migrated));
-    state.unlock();
+    state.readUnlock();
   }
 }

@@ -90,9 +90,14 @@ void Metadata::readLock() { _state.readLock(); }
 
 void Metadata::writeLock() { _state.writeLock(); }
 
-void Metadata::unlock() {
+void Metadata::readUnlock() {
   TRI_ASSERT(isLocked());
-  _state.unlock();
+  _state.readUnlock();
+}
+
+void Metadata::writeUnlock() {
+  TRI_ASSERT(isWriteLocked());
+  _state.writeUnlock();
 }
 
 bool Metadata::isLocked() const { return _state.isLocked(); }
@@ -100,8 +105,6 @@ bool Metadata::isLocked() const { return _state.isLocked(); }
 bool Metadata::isWriteLocked() const { return _state.isWriteLocked(); }
 
 bool Metadata::adjustUsageIfAllowed(int64_t usageChange) {
-  TRI_ASSERT(isLocked());
-
   while (true) {
     uint64_t expected = usage.load();
     uint64_t desired = (usageChange < 0)

@@ -87,7 +87,7 @@ uint64_t Cache::size() {
 
   _metadata.readLock();
   uint64_t size = _metadata.allocatedSize;
-  _metadata.unlock();
+  _metadata.readUnlock();
 
   return size;
 }
@@ -99,7 +99,7 @@ uint64_t Cache::usageLimit() {
 
   _metadata.readLock();
   uint64_t limit = _metadata.softUsageLimit;
-  _metadata.unlock();
+  _metadata.readUnlock();
 
   return limit;
 }
@@ -111,7 +111,7 @@ uint64_t Cache::usage() {
 
   _metadata.readLock();
   uint64_t usage = _metadata.usage;
-  _metadata.unlock();
+  _metadata.readUnlock();
 
   return usage;
 }
@@ -173,7 +173,7 @@ bool Cache::isResizing() {
 
   _metadata.readLock();
   bool resizing = _metadata.isSet(State::Flag::resizing);
-  _metadata.unlock();
+  _metadata.readUnlock();
 
   return resizing;
 }
@@ -185,7 +185,7 @@ bool Cache::isMigrating() {
 
   _metadata.readLock();
   bool migrating = _metadata.isSet(State::Flag::migrating);
-  _metadata.unlock();
+  _metadata.readUnlock();
 
   return migrating;
 }
@@ -198,7 +198,7 @@ bool Cache::isBusy() {
   _metadata.readLock();
   bool busy = _metadata.isSet(State::Flag::resizing) ||
               _metadata.isSet(State::Flag::migrating);
-  _metadata.unlock();
+  _metadata.readUnlock();
 
   return busy;
 }
@@ -220,13 +220,13 @@ void Cache::requestGrow() {
     if (!isShutdown() && (std::chrono::steady_clock::now() > _resizeRequestTime)) {
       _metadata.readLock();
       ok = !_metadata.isSet(State::Flag::resizing);
-      _metadata.unlock();
+      _metadata.readUnlock();
       if (ok) {
         std::tie(ok, _resizeRequestTime) =
             _manager->requestGrow(shared_from_this());
       }
     }
-    _taskState.unlock();
+    _taskState.writeUnlock();
   }
 }
 
@@ -242,13 +242,13 @@ void Cache::requestMigrate(uint32_t requestedLogSize) {
       _metadata.readLock();
       ok = !_metadata.isSet(State::Flag::migrating) &&
            (requestedLogSize != _table->logSize());
-      _metadata.unlock();
+      _metadata.readUnlock();
       if (ok) {
         std::tie(ok, _migrateRequestTime) =
             _manager->requestMigrate(shared_from_this(), requestedLogSize);
       }
     }
-    _taskState.unlock();
+    _taskState.writeUnlock();
   }
 }
 
@@ -264,7 +264,7 @@ bool Cache::reclaimMemory(uint64_t size) {
   _metadata.readLock();
   _metadata.adjustUsageIfAllowed(-static_cast<int64_t>(size));
   bool underLimit = (_metadata.softUsageLimit >= _metadata.usage);
-  _metadata.unlock();
+  _metadata.readUnlock();
 
   return underLimit;
 }
@@ -353,14 +353,14 @@ void Cache::shutdown() {
           !_metadata.isSet(State::Flag::resizing)) {
         break;
       }
-      _metadata.unlock();
-      _taskState.unlock();
+      _metadata.readUnlock();
+      _taskState.writeUnlock();
       std::this_thread::yield();
       _taskState.writeLock();
       _metadata.readLock();
     }
     //TODO: lock all tables or something
-    _metadata.unlock();
+    _metadata.readUnlock();
 
     std::shared_ptr<Table> extra =
         _table->setAuxiliary(std::shared_ptr<Table>(nullptr));
@@ -375,9 +375,9 @@ void Cache::shutdown() {
   }
   _metadata.writeLock();
   _metadata.changeTable(0);
-  _metadata.unlock();
+  _metadata.readUnlock();
 
-  _taskState.unlock();
+  _taskState.writeUnlock();
 }
 
 bool Cache::canResize() {
@@ -391,7 +391,7 @@ bool Cache::canResize() {
       _metadata.isSet(State::Flag::migrating)) {
     allowed = false;
   }
-  _metadata.unlock();
+  _metadata.readUnlock();
 
   return allowed;
 }
@@ -406,7 +406,7 @@ bool Cache::canMigrate() {
   if (_metadata.isSet(State::Flag::migrating)) {
     allowed = false;
   }
-  _metadata.unlock();
+  _metadata.readUnlock();
 
   return allowed;
 }
@@ -462,7 +462,7 @@ bool Cache::migrate(std::shared_ptr<Table> newTable) {
   std::shared_ptr<Table> oldTable = std::atomic_exchange(&_tableShrdPtr, newTable);
   std::shared_ptr<Table> confirm =
       oldTable->setAuxiliary(std::shared_ptr<Table>(nullptr));
-  _taskState.unlock();
+  _taskState.writeUnlock();
 
   // clear out old table and release it
   oldTable->clear();
@@ -472,7 +472,7 @@ bool Cache::migrate(std::shared_ptr<Table> newTable) {
   _metadata.writeLock();
   _metadata.changeTable(_table->memoryUsage());
   _metadata.toggleFlag(State::Flag::migrating);
-  _metadata.unlock();
+  _metadata.writeUnlock();
 
   return true;
 }

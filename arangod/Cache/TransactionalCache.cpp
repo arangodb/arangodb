@@ -101,9 +101,9 @@ Result TransactionalCache::insert(CachedValue* value) {
         change -= static_cast<int64_t>(candidate->size());
       }
 
-      _metadata.writeLock();
+      _metadata.readLock();
       allowed = _metadata.adjustUsageIfAllowed(change);
-      _metadata.unlock();
+      _metadata.readUnlock();
 
       if (allowed) {
         bool eviction = false;
@@ -153,10 +153,10 @@ Result TransactionalCache::remove(void const* key, uint32_t keySize) {
 
   if (candidate != nullptr) {
     int64_t change = -static_cast<int64_t>(candidate->size());
-     _metadata.writeLock();
+     _metadata.readLock();
     bool allowed = _metadata.adjustUsageIfAllowed(change);
     TRI_ASSERT(allowed);
-    _metadata.unlock();
+    _metadata.readUnlock();
 
     freeValue(candidate);
     maybeMigrate = source->slotEmptied();
@@ -188,10 +188,10 @@ Result TransactionalCache::blacklist(void const* key, uint32_t keySize) {
   if (candidate != nullptr) {
     int64_t change = -static_cast<int64_t>(candidate->size());
 
-    _metadata.writeLock();
+    _metadata.readLock();
     bool allowed = _metadata.adjustUsageIfAllowed(change);
     TRI_ASSERT(allowed);
-    _metadata.unlock();
+    _metadata.readUnlock();
 
     freeValue(candidate);
     maybeMigrate = source->slotEmptied();
@@ -413,9 +413,9 @@ Table::BucketClearer TransactionalCache::bucketClearer(Metadata* metadata) {
       if (bucket->_cachedData[j] != nullptr) {
         uint64_t size = bucket->_cachedData[j]->size();
         freeValue(bucket->_cachedData[j]);
-        metadata->writeLock();
+        metadata->readLock();
         metadata->adjustUsageIfAllowed(-static_cast<int64_t>(size));
-        metadata->unlock();
+        metadata->readUnlock();
       }
     }
     bucket->clear();

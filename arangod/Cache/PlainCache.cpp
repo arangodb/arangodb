@@ -100,7 +100,7 @@ Result PlainCache::insert(CachedValue* value) {
 
     _metadata.readLock(); // special case
     allowed = _metadata.adjustUsageIfAllowed(change);
-    _metadata.unlock();
+    _metadata.readUnlock();
 
     if (allowed) {
       bool eviction = false;
@@ -151,7 +151,7 @@ Result PlainCache::remove(void const* key, uint32_t keySize) {
     _metadata.readLock(); // special case
     bool allowed = _metadata.adjustUsageIfAllowed(change);
     TRI_ASSERT(allowed);
-    _metadata.unlock();
+    _metadata.readUnlock();
 
     freeValue(candidate);
     maybeMigrate = source->slotEmptied();
@@ -326,7 +326,7 @@ Table::BucketClearer PlainCache::bucketClearer(Metadata* metadata) {
         freeValue(bucket->_cachedData[j]);
         metadata->readLock(); // special case
         metadata->adjustUsageIfAllowed(-static_cast<int64_t>(size));
-        metadata->unlock();
+        metadata->readUnlock();
       }
     }
     bucket->clear();

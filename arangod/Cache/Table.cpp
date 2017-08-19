@@ -90,7 +90,7 @@ Table::Table(uint32_t logSize)
   _state.writeLock();
   _state.toggleFlag(State::Flag::disabled);
   memset(_buckets, 0, BUCKET_SIZE * _size);
-  _state.unlock();
+  _state.writeUnlock();
 }
 
 uint64_t Table::allocationSize(uint32_t logSize) {
@@ -131,7 +131,7 @@ std::pair<void*, std::shared_ptr<Table>> Table::fetchAndLockBucket(
         source.reset();
       }
     }
-    _state.unlock();
+    _state.readUnlock();
   }
 
   return std::make_pair(bucket, source);
@@ -148,7 +148,7 @@ std::shared_ptr<Table> Table::setAuxiliary(std::shared_ptr<Table> table) {
       _auxiliary = table;
       result.reset();
     }
-    _state.unlock();
+    _state.writeUnlock();
   }
   return result;
 }
@@ -185,7 +185,7 @@ std::unique_ptr<Table::Subtable> Table::auxiliaryBuckets(uint32_t index) {
     mask = (static_cast<uint32_t>(size - 1) << _auxiliary->_shift);
     shift = _auxiliary->_shift;
   }
-  _state.unlock();
+  _state.readUnlock();
 
   return std::make_unique<Subtable>(source, base, size, mask, shift);
 }
@@ -212,7 +212,7 @@ void Table::disable() {
   if (!_state.isSet(State::Flag::disabled)) {
     _state.toggleFlag(State::Flag::disabled);
   }
-  _state.unlock();
+  _state.writeUnlock();
 }
 
 void Table::enable() {
@@ -220,14 +220,14 @@ void Table::enable() {
   if (_state.isSet(State::Flag::disabled)) {
     _state.toggleFlag(State::Flag::disabled);
   }
-  _state.unlock();
+  _state.writeUnlock();
 }
 
 bool Table::isEnabled(int64_t maxTries) {
   bool ok = _state.readLock(maxTries);
   if (ok) {
     ok = !_state.isSet(State::Flag::disabled);
-    _state.unlock();
+    _state.readUnlock();
   }
   return ok;
 }
@@ -251,7 +251,7 @@ void Table::signalEvictions() {
     if (!_state.isSet(State::Flag::evictions)) {
       _state.toggleFlag(State::Flag::evictions);
     }
-    _state.unlock();
+    _state.writeUnlock();
   }
 }
 
@@ -263,7 +263,7 @@ uint32_t Table::idealSize() {
     if (forceGrowth) {
       _state.toggleFlag(State::Flag::evictions);
     }
-    _state.unlock();
+    _state.writeUnlock();
   }
   if (forceGrowth) {
     return logSize() + 1;

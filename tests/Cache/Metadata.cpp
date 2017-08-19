@@ -90,7 +90,7 @@ TEST_CASE("cache::Metadata", "[cache]") {
     REQUIRE(!metadata.adjustLimits(2049, 2049));
     REQUIRE(metadata.allocatedSize == 1024 + overhead);
 
-    metadata.unlock();
+    metadata.writeUnlock();
   }
 
   SECTION("verify table methods work correctly") {
@@ -113,6 +113,6 @@ TEST_CASE("cache::Metadata", "[cache]") {
     REQUIRE(metadata.tableSize == 512);
     REQUIRE(metadata.allocatedSize == 1536 + overhead);
 
-    metadata.unlock();
+    metadata.writeUnlock();
   }
 }
