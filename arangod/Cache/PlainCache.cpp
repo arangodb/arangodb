@@ -293,7 +293,8 @@ std::tuple<Result, PlainBucket*, std::shared_ptr<Table>> PlainCache::getBucket(
   PlainBucket* bucket = nullptr;
   std::shared_ptr<Table> source(nullptr);
 
-  if (isShutdown()) {
+  Table* table = _table;
+  if (isShutdown() || table == nullptr) {
     status.reset(TRI_ERROR_SHUTTING_DOWN);
     return std::make_tuple(status, bucket, source);
   }
@@ -303,11 +304,7 @@ std::tuple<Result, PlainBucket*, std::shared_ptr<Table>> PlainCache::getBucket(
   }
 
 
-  if (!_table) {
-    status.reset(TRI_ERROR_SHUTTING_DOWN);
-    return std::make_tuple(status, bucket, source);
-  }
-  auto pair = _table->fetchAndLockBucket(hash, maxTries);
+  auto pair = table->fetchAndLockBucket(hash, maxTries);
   bucket = reinterpret_cast<PlainBucket*>(pair.first);
   source = pair.second;
   bool ok = (bucket != nullptr);

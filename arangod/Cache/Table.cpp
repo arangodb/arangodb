@@ -50,7 +50,7 @@ bool Table::GenericBucket::isMigrated() const {
 }
 
 Table::Subtable::Subtable(std::shared_ptr<Table> source, GenericBucket* buckets,
-                          size_t size, uint32_t mask, uint32_t shift)
+                          uint64_t size, uint32_t mask, uint32_t shift)
     : _source(source),
       _buckets(buckets),
       _size(size),
@@ -138,13 +138,19 @@ std::pair<void*, std::shared_ptr<Table>> Table::fetchAndLockBucket(
 }
 
 std::shared_ptr<Table> Table::setAuxiliary(std::shared_ptr<Table> table) {
+  std::shared_ptr<Table> result = table;
   if (table.get() != this) {
     _state.writeLock();
-    _auxiliary.swap(table);
-    //std::atomic_exchange(&_auxiliary, table);
+    if (table.get() == nullptr) {
+      result = _auxiliary;
+      _auxiliary = table;
+    } else if (_auxiliary.get() == nullptr) {
+      _auxiliary = table;
+      result.reset();
+    }
     _state.unlock();
   }
-  return table;
+  return result;
 }
 
 void* Table::primaryBucket(uint64_t index) {
@@ -191,8 +197,9 @@ void Table::setTypeSpecifics(BucketClearer clearer, size_t slotsPerBucket) {
 
 void Table::clear() {
   disable();
-  TRI_ASSERT(_auxiliary.get() == nullptr);
-  
+  if (_auxiliary.get() != nullptr) {
+    throw;
+  }
   for (uint64_t i = 0; i < _size; i++) {
     _bucketClearer(&(_buckets[i]));
   }

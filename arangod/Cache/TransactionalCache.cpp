@@ -380,7 +380,8 @@ TransactionalCache::getBucket(uint32_t hash, int64_t maxTries,
   TransactionalBucket* bucket = nullptr;
   std::shared_ptr<Table> source(nullptr);
 
-  if (isShutdown()) {
+  Table* table = _table;
+  if (isShutdown() || table == nullptr) {
     status.reset(TRI_ERROR_SHUTTING_DOWN);
     return std::make_tuple(status, bucket, source);
   }
@@ -389,20 +390,17 @@ TransactionalCache::getBucket(uint32_t hash, int64_t maxTries,
     _manager->reportAccess(shared_from_this());
   }
 
-
-  if (isShutdown()) {
-    status.reset(TRI_ERROR_SHUTTING_DOWN);
-    return std::make_tuple(status, bucket, source);
-  }
   uint64_t term = _manager->_transactions.term();
-  auto pair = _table->fetchAndLockBucket(hash, maxTries);
+  auto pair = table->fetchAndLockBucket(hash, maxTries);
   bucket = reinterpret_cast<TransactionalBucket*>(pair.first);
   source = pair.second;
   bool ok = (bucket != nullptr);
   if (ok) {
     bucket->updateBlacklistTerm(term);
+  } else {
+    status.reset(TRI_ERROR_LOCK_TIMEOUT);
   }
-  
+
   return std::make_tuple(status, bucket, source);
 }
 
