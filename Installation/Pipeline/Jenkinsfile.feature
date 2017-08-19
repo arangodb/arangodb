@@ -14,7 +14,6 @@ def defaultBuild = true
 def defaultCleanBuild = false
 def defaultCommunity = true
 def defaultEnterprise = true
-def defaultJslint = true
 def defaultRunResilience = false
 def defaultRunTests = false
 def defaultFullParallel = false
@@ -57,11 +56,6 @@ properties([
             name: 'Enterprise'
         ),
         booleanParam(
-            defaultValue: defaultJslint,
-            description: 'run jslint',
-            name: 'runJslint'
-        ),
-        booleanParam(
             defaultValue: defaultRunResilience,
             description: 'run resilience tests',
             name: 'runResilience'
@@ -94,9 +88,6 @@ useMac = params.Mac
 
 // build windows
 useWindows = params.Windows
-
-// run jslint
-runJslint = params.runJslint
 
 // run resilience tests
 runResilience = params.runResilience
@@ -265,7 +256,6 @@ def checkCommitMessages() {
         useWindows = false
         useCommunity = false
         useEnterprise = false
-        runJslint = false
         runResilience = false
         runTests = false
     }
@@ -278,7 +268,6 @@ def checkCommitMessages() {
             useWindows = true
             useCommunity = true
             useEnterprise = true
-            runJslint = true
             runResilience = true
             runTests = true
         }
@@ -291,7 +280,6 @@ def checkCommitMessages() {
             fullParallel = true
             useCommunity = true
             useEnterprise = true
-            runJslint = true
             runResilience = true
             runTests = true
 
@@ -319,7 +307,6 @@ def checkCommitMessages() {
             fullParallel = true
             useCommunity = true
             useEnterprise = true
-            runJslint = true
             runResilience = true
             runTests = true
 
@@ -348,7 +335,6 @@ Clean Build: ${cleanBuild}
 Full Parallel: ${fullParallel}
 Building Community: ${useCommunity}
 Building Enterprise: ${useEnterprise}
-Running Jslint: ${runJslint}
 Running Resilience: ${runResilience}
 Running Tests: ${runTests}
 
@@ -406,12 +392,10 @@ def jslint() {
     }
 }
 
-def jslintStep(edition) {
-    def os = 'linux'
-
+def jslintStep(edition, os) {
     return {
         node(os) {
-            stage("jslint") {
+            stage("jslint-${edition}-${os}") {
                 echo "Running jslint test"
 
                 unstashBinaries(edition, os)
@@ -562,12 +546,6 @@ def testStepParallel(editionList, osList, modeList) {
                 }
             }
         }
-    }
-
-    if (runJslint
-     && osList.contains('linux') && useLinux
-     && editionList.contains('community') && useCommunity) {
-        branches['jslint'] = jslintStep('community')
     }
 
     if (branches.size() > 1) {
@@ -874,6 +852,19 @@ else {
     runStage { testStepParallel(['community', 'enterprise'], ['windows'], ['cluster', 'singleserver']) }
 
     runStage { testResilienceParallel(['linux', 'mac', 'windows']) }
+}
+
+if (buildsSuccess["enterprise-linux"]) {
+    jslintStep('enterprise', 'linux')
+}
+else if (buildsSuccess["community-linux"]) {
+    jslintStep('community', 'linux')
+}
+else if (buildsSuccess["enterprise-mac"]) {
+    jslintStep('enterprise', 'mac')
+}
+else if (buildsSuccess["community-mac"]) {
+    jslintStep('community', 'mac')
 }
 
 stage('result') {
