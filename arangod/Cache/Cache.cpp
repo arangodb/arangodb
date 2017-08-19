@@ -457,10 +457,12 @@ bool Cache::migrate(std::shared_ptr<Table> newTable) {
   }
   
   // swap tables
+  _taskState.writeLock();
   _table = newTable.get();
   std::shared_ptr<Table> oldTable = std::atomic_exchange(&_tableShrdPtr, newTable);
   std::shared_ptr<Table> confirm =
       oldTable->setAuxiliary(std::shared_ptr<Table>(nullptr));
+  _taskState.unlock();
 
   // clear out old table and release it
   oldTable->clear();
