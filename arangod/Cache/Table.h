@@ -67,7 +67,7 @@ class Table : public std::enable_shared_from_this<Table> {
   //////////////////////////////////////////////////////////////////////////////
   struct Subtable {
     Subtable(std::shared_ptr<Table> source, GenericBucket* buckets,
-             uint64_t size, uint32_t mask, uint32_t shift);
+             size_t size, uint32_t mask, uint32_t shift);
     void* fetchBucket(uint32_t hash);
     bool applyToAllBuckets(std::function<bool(void*)> cb);
 
@@ -192,7 +192,7 @@ class Table : public std::enable_shared_from_this<Table> {
   State _state;
 
   uint32_t _logSize;
-  uint64_t _size;
+  size_t _size;
   uint32_t _shift;
   uint32_t _mask;
   std::unique_ptr<uint8_t[]> _buffer;
@@ -202,8 +202,8 @@ class Table : public std::enable_shared_from_this<Table> {
 
   BucketClearer _bucketClearer;
 
-  uint64_t _slotsTotal;
-  std::atomic<uint64_t> _slotsUsed;
+  size_t _slotsTotal;
+  std::atomic<size_t> _slotsUsed;
 
  private:
   void disable();

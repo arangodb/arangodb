@@ -134,7 +134,9 @@ class Cache : public std::enable_shared_from_this<Cache> {
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Check whether the cache has begin the process of shutting down.
   //////////////////////////////////////////////////////////////////////////////
-  bool isShutdown();
+  bool isShutdown() const {
+    return _shutdown;
+  }
 
  protected:
   static constexpr int64_t triesFast = 200;
@@ -143,7 +145,6 @@ class Cache : public std::enable_shared_from_this<Cache> {
 
  protected:
   State _taskState;
-  State _tableState;
 
   bool _shutdown;
 
@@ -158,7 +159,10 @@ class Cache : public std::enable_shared_from_this<Cache> {
   Metadata _metadata;
 
   // manage the actual table
-  std::shared_ptr<Table> _table;
+  std::shared_ptr<Table> _tableShrdPtr;
+  /// keep a pointer to the current table, which can be atomically set
+  Table* _table;
+  
   Table::BucketClearer _bucketClearer;
   size_t _slotsPerBucket;
 
@@ -196,7 +200,7 @@ class Cache : public std::enable_shared_from_this<Cache> {
 
   // management
   Metadata* metadata();
-  std::shared_ptr<Table> table();
+  std::shared_ptr<Table> table() const;
   void shutdown();
   bool canResize();
   bool canMigrate();

@@ -201,11 +201,8 @@ bool Manager::resize(uint64_t newGlobalLimit) {
     _state.unlock();
     return false;
   }
-
-  LOG_TOPIC(ERR, Logger::FIXME) << "Changing global manager size to " << newGlobalLimit;
-
+  
   bool success = true;
-
   if (!isOperational() || globalProcessRunning()) {
     // shut(ting) down or still have another global process running already
     success = false;
@@ -592,7 +589,6 @@ void Manager::shrinkOvergrownCaches(Manager::TaskEnvironment environment) {
     metadata->writeLock();
 
     if (metadata->allocatedSize > metadata->deservedSize) {
-      LOG_TOPIC(ERR, Logger::FIXME) << "Resizing overgrown Cache (" << ((size_t)cache.get()) << ")";
       resizeCache(environment, cache, metadata->newLimit()); // unlocks metadata
     } else {
       metadata->unlock();
@@ -632,10 +628,6 @@ void Manager::resizeCache(Manager::TaskEnvironment environment,
   TRI_ASSERT(metadata->isWriteLocked());
 
   if (metadata->usage <= newLimit) {
-    LOG_TOPIC(ERR, Logger::FIXME) << "Cache (" << ((size_t)cache.get())
-    << ") Resizing cache using " << metadata->usage
-    << " from " << metadata->hardUsageLimit << " to " << newLimit << " (no free required)";
-
     uint64_t oldLimit = metadata->hardUsageLimit;
     bool success = metadata->adjustLimits(newLimit, newLimit);
     TRI_ASSERT(success);
@@ -646,12 +638,8 @@ void Manager::resizeCache(Manager::TaskEnvironment environment,
       _globalAllocation += (newLimit - oldLimit);
     }
     return;
-  } else {
-    LOG_TOPIC(ERR, Logger::FIXME) << "Cache (" << ((size_t)cache.get())
-    << ") Resizing cache using " << metadata->usage << " from "
-    << metadata->hardUsageLimit << " to " << newLimit << " (freeMemory required)";
   }
-
+  
   bool success = metadata->adjustLimits(newLimit, metadata->hardUsageLimit);
   TRI_ASSERT(success);
   TRI_ASSERT(!metadata->isSet(State::Flag::resizing));
@@ -751,8 +739,6 @@ bool Manager::increaseAllowed(uint64_t increase, bool privileged) const {
 
 std::shared_ptr<Manager::PriorityList> Manager::priorityList() {
   TRI_ASSERT(_state.isWriteLocked());
-
-  LOG_TOPIC(ERR, Logger::FIXME) << "Cache count " << _caches.size();
   double minimumWeight = static_cast<double>(Manager::minCacheAllocation) /
   static_cast<double>(_globalHighwaterMark);
   while (static_cast<uint64_t>(std::ceil(minimumWeight * static_cast<double>(_globalHighwaterMark))) <
@@ -773,7 +759,6 @@ std::shared_ptr<Manager::PriorityList> Manager::priorityList() {
 #endif
   double remainingWeight =
   1.0 - (baseWeight * static_cast<double>(_caches.size()));
-  LOG_TOPIC(ERR, Logger::FIXME) << "remainingWeight " << remainingWeight;
 
   std::shared_ptr<PriorityList> list(new PriorityList());
   list->reserve(_caches.size());
@@ -791,7 +776,6 @@ std::shared_ptr<Manager::PriorityList> Manager::priorityList() {
     }
   }
   totalAccesses = std::max(static_cast<uint64_t>(1), totalAccesses);
-  LOG_TOPIC(ERR, Logger::FIXME) << "totalAccesses " << totalAccesses;
 
   double allocFrac = 1.0 - std::max(1.0, static_cast<double>(_globalAllocation) / static_cast<double>(_globalHighwaterMark));
   LOG_TOPIC(ERR, Logger::FIXME) << "Allocated fraction " <<  allocFrac << "%";

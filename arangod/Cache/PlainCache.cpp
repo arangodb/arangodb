@@ -218,9 +218,7 @@ uint64_t PlainCache::freeMemoryFrom(uint32_t hash) {
 
   bucket->unlock();
 
-  _tableState.readLock();
-  auto size = _table->idealSize();
-  _tableState.unlock();
+  int32_t size = _table->idealSize();
   if (maybeMigrate) {
     requestMigrate(size);
   }
@@ -304,19 +302,15 @@ std::tuple<Result, PlainBucket*, std::shared_ptr<Table>> PlainCache::getBucket(
     _manager->reportAccess(shared_from_this());
   }
 
-  bool ok = _tableState.readLock(maxTries);
-  if (ok) {
-    if (_table.get() == nullptr) {
-      _tableState.unlock();
-      status.reset(TRI_ERROR_SHUTTING_DOWN);
-      return std::make_tuple(status, bucket, source);
-    }
-    auto pair = _table->fetchAndLockBucket(hash, maxTries);
-    _tableState.unlock();
-    bucket = reinterpret_cast<PlainBucket*>(pair.first);
-    source = pair.second;
-    ok = (bucket != nullptr);
+
+  if (!_table) {
+    status.reset(TRI_ERROR_SHUTTING_DOWN);
+    return std::make_tuple(status, bucket, source);
   }
+  auto pair = _table->fetchAndLockBucket(hash, maxTries);
+  bucket = reinterpret_cast<PlainBucket*>(pair.first);
+  source = pair.second;
+  bool ok = (bucket != nullptr);
   if (!ok) {
     status.reset(TRI_ERROR_LOCK_TIMEOUT);
   }

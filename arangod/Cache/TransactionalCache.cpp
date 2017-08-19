@@ -258,9 +258,7 @@ uint64_t TransactionalCache::freeMemoryFrom(uint32_t hash) {
 
   bucket->unlock();
 
-  _tableState.readLock();
-  auto size = _table->idealSize();
-  _tableState.unlock();
+  uint32_t size = _table->idealSize();
   if (maybeMigrate) {
     requestMigrate(size);
   }
@@ -391,27 +389,20 @@ TransactionalCache::getBucket(uint32_t hash, int64_t maxTries,
     _manager->reportAccess(shared_from_this());
   }
 
-  bool ok = _tableState.readLock(maxTries);
-  if (ok) {
-    if (isShutdown()) {
-      _tableState.unlock();
-      status.reset(TRI_ERROR_SHUTTING_DOWN);
-      return std::make_tuple(status, bucket, source);
-    }
-    uint64_t term = _manager->_transactions.term();
-    auto pair = _table->fetchAndLockBucket(hash, maxTries);
-    _tableState.unlock();
-    bucket = reinterpret_cast<TransactionalBucket*>(pair.first);
-    source = pair.second;
-    ok = (bucket != nullptr);
-    if (ok) {
-      bucket->updateBlacklistTerm(term);
-    }
-  }
-  if (!ok) {
-    status.reset(TRI_ERROR_LOCK_TIMEOUT);
-  }
 
+  if (isShutdown()) {
+    status.reset(TRI_ERROR_SHUTTING_DOWN);
+    return std::make_tuple(status, bucket, source);
+  }
+  uint64_t term = _manager->_transactions.term();
+  auto pair = _table->fetchAndLockBucket(hash, maxTries);
+  bucket = reinterpret_cast<TransactionalBucket*>(pair.first);
+  source = pair.second;
+  bool ok = (bucket != nullptr);
+  if (ok) {
+    bucket->updateBlacklistTerm(term);
+  }
+  
   return std::make_tuple(status, bucket, source);
 }
 

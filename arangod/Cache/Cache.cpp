@@ -53,7 +53,6 @@ Cache::Cache(ConstructionGuard guard, Manager* manager, Metadata metadata,
              std::function<Table::BucketClearer(Metadata*)> bucketClearer,
              size_t slotsPerBucket)
     : _taskState(),
-      _tableState(),
       _shutdown(false),
       _enableWindowedStats(enableWindowedStats),
       _findStats(nullptr),
@@ -61,7 +60,8 @@ Cache::Cache(ConstructionGuard guard, Manager* manager, Metadata metadata,
       _findMisses(0),
       _manager(manager),
       _metadata(metadata),
-      _table(table),
+      _tableShrdPtr(table),
+      _table(table.get()),
       _bucketClearer(bucketClearer(&_metadata)),
       _slotsPerBucket(slotsPerBucket),
       _insertsTotal(0),
@@ -140,7 +140,7 @@ std::pair<double, double> Cache::hitRates() {
                           static_cast<double>(currentHits + currentMisses));
   }
 
-  if (_enableWindowedStats && _findStats.get() != nullptr) {
+  if (_enableWindowedStats && _findStats) {
     auto stats = _findStats->getFrequencies();
     if (stats.size() == 1) {
       if (stats[0].first == static_cast<uint8_t>(Stat::findHit)) {
@@ -203,12 +203,8 @@ bool Cache::isBusy() {
   return busy;
 }
 
-bool Cache::isShutdown() {
-  return _shutdown;
-}
-
 void Cache::destroy(std::shared_ptr<Cache> cache) {
-  if (cache.get() != nullptr) {
+  if (cache) {
     cache->shutdown();
   }
 }
@@ -302,7 +298,7 @@ void Cache::recordStat(Stat stat) {
   switch (stat) {
     case Stat::findHit: {
       _findHits.fetch_add(1, std::memory_order_relaxed);
-      if (_enableWindowedStats && _findStats.get() != nullptr) {
+      if (_enableWindowedStats && _findStats) {
         _findStats->insertRecord(static_cast<uint8_t>(Stat::findHit));
       }
       _manager->reportHitStat(Stat::findHit);
@@ -310,7 +306,7 @@ void Cache::recordStat(Stat stat) {
     }
     case Stat::findMiss: {
       _findMisses.fetch_add(1, std::memory_order_relaxed);
-      if (_enableWindowedStats && _findStats.get() != nullptr) {
+      if (_enableWindowedStats && _findStats) {
         _findStats->insertRecord(static_cast<uint8_t>(Stat::findMiss));
       }
       _manager->reportHitStat(Stat::findMiss);
@@ -329,11 +325,7 @@ bool Cache::reportInsert(bool hadEviction) {
   if (((total + 1) & _evictionMask) == 0) {
     if (_insertEvictions.load(std::memory_order_relaxed) > _evictionThreshold) {
       shouldMigrate = true;
-      bool ok = _tableState.readLock(triesGuarantee);
-      if (ok) {
-        _table->signalEvictions();
-        _tableState.unlock();
-      }
+      _table->signalEvictions();
     }
     _insertEvictions.store(0, std::memory_order_relaxed);
   }
@@ -343,18 +335,12 @@ bool Cache::reportInsert(bool hadEviction) {
 
 Metadata* Cache::metadata() { return &_metadata; }
 
-std::shared_ptr<Table> Cache::table() { 
-  std::shared_ptr<Table> table = nullptr;
-  _tableState.readLock();
-  table = _table;
-  _tableState.unlock();
-
-  return table;
+std::shared_ptr<Table> Cache::table() const {
+  return std::atomic_load(&_tableShrdPtr);
 }
 
 void Cache::shutdown() {
   _taskState.writeLock();
-  _tableState.writeLock();
   auto handle = shared_from_this();  // hold onto self-reference to prevent
                                      // pre-mature shared_ptr destruction
   TRI_ASSERT(handle.get() == this);
@@ -368,30 +354,29 @@ void Cache::shutdown() {
         break;
       }
       _metadata.unlock();
-      _tableState.unlock();
       _taskState.unlock();
       std::this_thread::yield();
       _taskState.writeLock();
-      _tableState.writeLock();
       _metadata.readLock();
     }
+    //TODO: lock all tables or something
     _metadata.unlock();
 
     std::shared_ptr<Table> extra =
         _table->setAuxiliary(std::shared_ptr<Table>(nullptr));
-    if (extra.get() != nullptr) {
+    if (extra) {
       extra->clear();
       _manager->reclaimTable(extra);
     }
     _table->clear();
-    _manager->reclaimTable(_table);
+    _manager->reclaimTable(std::atomic_load(&_tableShrdPtr));
     _manager->unregisterCache(shared_from_this());
+    _table = nullptr;
   }
   _metadata.writeLock();
   _metadata.changeTable(0);
   _metadata.unlock();
 
-  _tableState.unlock();
   _taskState.unlock();
 }
 
@@ -461,25 +446,21 @@ bool Cache::migrate(std::shared_ptr<Table> newTable) {
     return false;
   }
 
-  _tableState.writeLock();
   newTable->setTypeSpecifics(_bucketClearer, _slotsPerBucket);
   newTable->enable();
   _table->setAuxiliary(newTable);
-  _tableState.unlock();
 
   // do the actual migration
   for (uint32_t i = 0; i < _table->size(); i++) {
     migrateBucket(_table->primaryBucket(i), _table->auxiliaryBuckets(i),
                             newTable);
   }
-
+  
   // swap tables
-  _tableState.writeLock();
-  std::shared_ptr<Table> oldTable = _table;
-  _table = newTable;
+  _table = newTable.get();
+  std::shared_ptr<Table> oldTable = std::atomic_exchange(&_tableShrdPtr, newTable);
   std::shared_ptr<Table> confirm =
       oldTable->setAuxiliary(std::shared_ptr<Table>(nullptr));
-  _tableState.unlock();
 
   // clear out old table and release it
   oldTable->clear();

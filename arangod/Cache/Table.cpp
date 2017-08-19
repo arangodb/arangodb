@@ -50,7 +50,7 @@ bool Table::GenericBucket::isMigrated() const {
 }
 
 Table::Subtable::Subtable(std::shared_ptr<Table> source, GenericBucket* buckets,
-                          uint64_t size, uint32_t mask, uint32_t shift)
+                          size_t size, uint32_t mask, uint32_t shift)
     : _source(source),
       _buckets(buckets),
       _size(size),
@@ -120,7 +120,7 @@ std::pair<void*, std::shared_ptr<Table>> Table::fetchAndLockBucket(
           bucket->unlock();
           bucket = nullptr;
           source.reset();
-          if (_auxiliary.get() != nullptr) {
+          if (_auxiliary) {
             auto pair = _auxiliary->fetchAndLockBucket(hash, maxTries);
             bucket = reinterpret_cast<GenericBucket*>(pair.first);
             source = pair.second;
@@ -138,19 +138,13 @@ std::pair<void*, std::shared_ptr<Table>> Table::fetchAndLockBucket(
 }
 
 std::shared_ptr<Table> Table::setAuxiliary(std::shared_ptr<Table> table) {
-  std::shared_ptr<Table> result = table;
   if (table.get() != this) {
     _state.writeLock();
-    if (table.get() == nullptr) {
-      result = _auxiliary;
-      _auxiliary = table;
-    } else if (_auxiliary.get() == nullptr) {
-      _auxiliary = table;
-      result.reset();
-    }
+    _auxiliary.swap(table);
+    //std::atomic_exchange(&_auxiliary, table);
     _state.unlock();
   }
-  return result;
+  return table;
 }
 
 void* Table::primaryBucket(uint64_t index) {
@@ -197,9 +191,8 @@ void Table::setTypeSpecifics(BucketClearer clearer, size_t slotsPerBucket) {
 
 void Table::clear() {
   disable();
-  if (_auxiliary.get() != nullptr) {
-    throw;
-  }
+  TRI_ASSERT(_auxiliary.get() == nullptr);
+  
   for (uint64_t i = 0; i < _size; i++) {
     _bucketClearer(&(_buckets[i]));
   }
@@ -233,12 +226,14 @@ bool Table::isEnabled(int64_t maxTries) {
 }
 
 bool Table::slotFilled() {
-  return ((static_cast<double>(++_slotsUsed) /
+  size_t i = _slotsUsed.fetch_add(1, std::memory_order_relaxed);
+  return ((static_cast<double>(i + 1) /
            static_cast<double>(_slotsTotal)) > Table::idealUpperRatio);
 }
 
 bool Table::slotEmptied() {
-  return (((static_cast<double>(--_slotsUsed) /
+  size_t i = _slotsUsed.fetch_sub(1, std::memory_order_relaxed);
+  return (((static_cast<double>(i - 1) /
             static_cast<double>(_slotsTotal)) < Table::idealLowerRatio) &&
           (_logSize > Table::minLogSize));
 }
