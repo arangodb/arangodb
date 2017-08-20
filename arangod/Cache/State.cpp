@@ -40,11 +40,11 @@ State::~State() {}
 State::State() : _state(0), _lock() {}
 
 State::State(State const& other)
-    : _state(other._state.load()), _lock(other._lock) {}
+    : _state(other._state), _lock(other._lock) {}
 
 State& State::operator=(State const& other) {
   if (this != &other) {
-    _state = other._state.load();
+    _state = other._state;
     _lock = other._lock;
   }
 
@@ -76,11 +76,11 @@ void State::writeUnlock() {
 }
 
 bool State::isSet(State::Flag flag) const {
-  return ((_state.load() & static_cast<uint32_t>(flag)) > 0);
+  return ((_state & static_cast<uint32_t>(flag)) > 0);
 }
 
 bool State::isSet(State::Flag flag1, State::Flag flag2) const {
-  return ((_state.load() &
+  return ((_state &
            (static_cast<uint32_t>(flag1) | static_cast<uint32_t>(flag2))) > 0);
 }
 

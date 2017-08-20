@@ -141,7 +141,7 @@ struct State {
   void clear();
 
  protected:
-  std::atomic<uint32_t> _state;
+  uint32_t _state;
   arangodb::basics::ReadWriteSpinLock<> _lock;
 };
 
