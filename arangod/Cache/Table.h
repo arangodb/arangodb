@@ -25,9 +25,9 @@
 #define ARANGODB_CACHE_TABLE_H
 
 #include "Basics/Common.h"
+#include "Basics/ReadWriteSpinLock.h"
 #include "Cache/BucketState.h"
 #include "Cache/Common.h"
-#include "Cache/State.h"
 
 #include <stdint.h>
 #include <memory>
@@ -189,7 +189,9 @@ class Table : public std::enable_shared_from_this<Table> {
   uint32_t idealSize();
 
  private:
-  State _state;
+  basics::ReadWriteSpinLock<64> _lock;
+  bool _disabled;
+  bool _evictions;
 
   uint32_t _logSize;
   uint64_t _size;

@@ -74,7 +74,9 @@ bool Table::Subtable::applyToAllBuckets(std::function<bool(void*)> cb) {
 }
 
 Table::Table(uint32_t logSize)
-    : _state(),
+    : _lock(),
+      _disabled(true),
+      _evictions(false),
       _logSize(std::min(logSize, maxLogSize)),
       _size(static_cast<uint64_t>(1) << _logSize),
       _shift(32 - _logSize),
@@ -87,10 +89,7 @@ Table::Table(uint32_t logSize)
       _bucketClearer(defaultClearer),
       _slotsTotal(_size),
       _slotsUsed(static_cast<uint64_t>(0)) {
-  _state.writeLock();
-  _state.toggleFlag(State::Flag::disabled);
   memset(_buckets, 0, BUCKET_SIZE * _size);
-  _state.writeUnlock();
 }
 
 uint64_t Table::allocationSize(uint32_t logSize) {
@@ -108,9 +107,9 @@ std::pair<void*, std::shared_ptr<Table>> Table::fetchAndLockBucket(
     uint32_t hash, int64_t maxTries) {
   GenericBucket* bucket = nullptr;
   std::shared_ptr<Table> source(nullptr);
-  bool ok = _state.readLock(maxTries);
+  bool ok = _lock.readLock(maxTries);
   if (ok) {
-    ok = !_state.isSet(State::Flag::disabled);
+    ok = !_disabled;
     if (ok) {
       bucket = &(_buckets[(hash & _mask) >> _shift]);
       source = shared_from_this();
@@ -131,7 +130,7 @@ std::pair<void*, std::shared_ptr<Table>> Table::fetchAndLockBucket(
         source.reset();
       }
     }
-    _state.readUnlock();
+    _lock.readUnlock();
   }
 
   return std::make_pair(bucket, source);
@@ -140,7 +139,7 @@ std::pair<void*, std::shared_ptr<Table>> Table::fetchAndLockBucket(
 std::shared_ptr<Table> Table::setAuxiliary(std::shared_ptr<Table> table) {
   std::shared_ptr<Table> result = table;
   if (table.get() != this) {
-    _state.writeLock();
+    _lock.writeLock();
     if (table.get() == nullptr) {
       result = _auxiliary;
       _auxiliary = table;
@@ -148,7 +147,7 @@ std::shared_ptr<Table> Table::setAuxiliary(std::shared_ptr<Table> table) {
       _auxiliary = table;
       result.reset();
     }
-    _state.writeUnlock();
+    _lock.writeUnlock();
   }
   return result;
 }
@@ -169,7 +168,7 @@ std::unique_ptr<Table::Subtable> Table::auxiliaryBuckets(uint32_t index) {
   uint32_t mask;
   uint32_t shift;
 
-  _state.readLock();
+  _lock.readLock();
   std::shared_ptr<Table> source = _auxiliary->shared_from_this();
   TRI_ASSERT(_auxiliary.get() != nullptr);
   if (_logSize > _auxiliary->_logSize) {
@@ -185,7 +184,7 @@ std::unique_ptr<Table::Subtable> Table::auxiliaryBuckets(uint32_t index) {
     mask = (static_cast<uint32_t>(size - 1) << _auxiliary->_shift);
     shift = _auxiliary->_shift;
   }
-  _state.readUnlock();
+  _lock.readUnlock();
 
   return std::make_unique<Subtable>(source, base, size, mask, shift);
 }
@@ -208,26 +207,22 @@ void Table::clear() {
 }
 
 void Table::disable() {
-  _state.writeLock();
-  if (!_state.isSet(State::Flag::disabled)) {
-    _state.toggleFlag(State::Flag::disabled);
-  }
-  _state.writeUnlock();
+  _lock.writeLock();
+  _disabled = true;
+  _lock.writeUnlock();
 }
 
 void Table::enable() {
-  _state.writeLock();
-  if (_state.isSet(State::Flag::disabled)) {
-    _state.toggleFlag(State::Flag::disabled);
-  }
-  _state.writeUnlock();
+  _lock.writeLock();
+  _disabled = false;
+  _lock.writeUnlock();
 }
 
 bool Table::isEnabled(int64_t maxTries) {
-  bool ok = _state.readLock(maxTries);
+  bool ok = _lock.readLock(maxTries);
   if (ok) {
-    ok = !_state.isSet(State::Flag::disabled);
-    _state.readUnlock();
+    ok = !_disabled;
+    _lock.readUnlock();
   }
   return ok;
 }
@@ -246,24 +241,20 @@ bool Table::slotEmptied() {
 }
 
 void Table::signalEvictions() {
-  bool ok = _state.writeLock(triesGuarantee);
+  bool ok = _lock.writeLock(triesGuarantee);
   if (ok) {
-    if (!_state.isSet(State::Flag::evictions)) {
-      _state.toggleFlag(State::Flag::evictions);
-    }
-    _state.writeUnlock();
+    _evictions = true;
+    _lock.writeUnlock();
   }
 }
 
 uint32_t Table::idealSize() {
-  bool ok = _state.writeLock(triesGuarantee);
+  bool ok = _lock.writeLock(triesGuarantee);
   bool forceGrowth = false;
   if (ok) {
-    forceGrowth = _state.isSet(State::Flag::evictions);
-    if (forceGrowth) {
-      _state.toggleFlag(State::Flag::evictions);
-    }
-    _state.writeUnlock();
+    forceGrowth = _evictions;
+    _evictions = false;
+    _lock.writeUnlock();
   }
   if (forceGrowth) {
     return logSize() + 1;

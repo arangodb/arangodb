@@ -26,8 +26,6 @@
 
 #include "Basics/Common.h"
 #include "Basics/ReadWriteSpinLock.h"
-#include "Basics/SharedAtomic.h"
-#include "Cache/State.h"
 
 #include <atomic>
 #include <cstdint>
@@ -155,27 +153,27 @@ struct Metadata {
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Checks if cache is migrating. Requires record to be read-locked.
   //////////////////////////////////////////////////////////////////////////////
-  bool isMigrating() const { return _migrating.load() > 0; }
+  bool isMigrating() const { return _migrating; }
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Checks if the cache is resizing. Requires record to be read-locked.
   //////////////////////////////////////////////////////////////////////////////
-  bool isResizing() const { return _resizing.load() > 0; }
+  bool isResizing() const { return _resizing; }
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Toggles the migrating flag. Requires record to be write-locked.
   //////////////////////////////////////////////////////////////////////////////
-  void toggleMigrating() { _migrating ^= 1; }
+  void toggleMigrating() { _migrating  = !_migrating; }
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Toggles the resizing flag. Requires record to be write-locked.
   //////////////////////////////////////////////////////////////////////////////
-  void toggleResizing() { _resizing ^= 1; }
+  void toggleResizing() { _resizing = !_resizing; }
 
  private:
   basics::ReadWriteSpinLock<64> _lock;
-  basics::SharedAtomic<size_t> _migrating;
-  basics::SharedAtomic<size_t> _resizing;
+  bool _migrating;
+  bool _resizing;
 };
 
 };  // end namespace cache
