@@ -152,8 +152,8 @@ class Cache : public std::enable_shared_from_this<Cache> {
   static uint64_t _findStatsCapacity;
   bool _enableWindowedStats;
   std::unique_ptr<StatBuffer> _findStats;
-  basics::SharedCounter<> _findHits;
-  basics::SharedCounter<> _findMisses;
+  basics::SharedCounter<64> _findHits;
+  basics::SharedCounter<64> _findMisses;
 
   // allow communication with manager
   Manager* _manager;
@@ -168,12 +168,12 @@ class Cache : public std::enable_shared_from_this<Cache> {
   size_t _slotsPerBucket;
 
   // manage eviction rate
-  std::atomic<uint64_t> _insertsTotal;
-  std::atomic<uint64_t> _insertEvictions;
-  static constexpr uint64_t _evictionMask = 1023; // check every 1024 insertions
-  static constexpr uint64_t _evictionThreshold = 10;  // if more than 10
-                                                      // evictions in past 1024
-                                                      // inserts, migrate
+  basics::SharedCounter<64> _insertsTotal;
+  basics::SharedCounter<64> _insertEvictions;
+  static constexpr uint64_t _evictionMask = 1023; // check roughly every 1024 insertions
+  static constexpr double _evictionRateThreshold = 0.01; // if more than 1%
+                                                         // evictions in past 1024
+                                                         // inserts, migrate
 
   // times to wait until requesting is allowed again
   Manager::time_point _migrateRequestTime;

@@ -65,8 +65,8 @@ Cache::Cache(ConstructionGuard guard, Manager* manager, Metadata metadata,
       _table(table.get()),
       _bucketClearer(bucketClearer(&_metadata)),
       _slotsPerBucket(slotsPerBucket),
-      _insertsTotal(0),
-      _insertEvictions(0),
+      _insertsTotal(),
+      _insertEvictions(),
       _migrateRequestTime(std::chrono::steady_clock::now()),
       _resizeRequestTime(std::chrono::steady_clock::now()) {
   _table->setTypeSpecifics(_bucketClearer, _slotsPerBucket);
@@ -304,15 +304,18 @@ void Cache::recordStat(Stat stat) {
 bool Cache::reportInsert(bool hadEviction) {
   bool shouldMigrate = false;
   if (hadEviction) {
-    _insertEvictions.fetch_add(1, std::memory_order_relaxed);
+    _insertEvictions.add(1);
   }
-  uint64_t total = _insertsTotal.fetch_add(1, std::memory_order_relaxed);
-  if (((total + 1) & _evictionMask) == 0) {
-    if (_insertEvictions.load(std::memory_order_relaxed) > _evictionThreshold) {
+  _insertsTotal.add(1);
+  if ((basics::SharedPRNG::rand() & _evictionMask) == 0) {
+    uint64_t total = _insertsTotal.value();
+    uint64_t evictions = _insertEvictions.value();
+    if ((static_cast<double>(evictions) / static_cast<double>(total))
+        > _evictionRateThreshold) {
       shouldMigrate = true;
       _table->signalEvictions();
     }
-    _insertEvictions.store(0, std::memory_order_relaxed);
+    _insertEvictions.reset();
   }
 
   return shouldMigrate;
