@@ -53,7 +53,7 @@ Cache::Cache(ConstructionGuard guard, Manager* manager, Metadata metadata,
              std::shared_ptr<Table> table, bool enableWindowedStats,
              std::function<Table::BucketClearer(Metadata*)> bucketClearer,
              size_t slotsPerBucket)
-    : _taskState(),
+    : _taskLock(),
       _shutdown(false),
       _enableWindowedStats(enableWindowedStats),
       _findStats(nullptr),
@@ -216,7 +216,7 @@ void Cache::requestGrow() {
     return;
   }
 
-  bool ok = _taskState.writeLock(Cache::triesSlow);
+  bool ok = _taskLock.writeLock(Cache::triesSlow);
   if (ok) {
     if (!isShutdown() && (std::chrono::steady_clock::now() > _resizeRequestTime)) {
       _metadata.readLock();
@@ -227,7 +227,7 @@ void Cache::requestGrow() {
             _manager->requestGrow(shared_from_this());
       }
     }
-    _taskState.writeUnlock();
+    _taskLock.writeUnlock();
   }
 }
 
@@ -237,7 +237,7 @@ void Cache::requestMigrate(uint32_t requestedLogSize) {
     return;
   }
 
-  bool ok = _taskState.writeLock(Cache::triesGuarantee);
+  bool ok = _taskLock.writeLock(Cache::triesGuarantee);
   if (ok) {
     if (!isShutdown() && std::chrono::steady_clock::now() > _migrateRequestTime) {
       _metadata.readLock();
@@ -249,7 +249,7 @@ void Cache::requestMigrate(uint32_t requestedLogSize) {
             _manager->requestMigrate(shared_from_this(), requestedLogSize);
       }
     }
-    _taskState.writeUnlock();
+    _taskLock.writeUnlock();
   }
 }
 
@@ -328,7 +328,7 @@ std::shared_ptr<Table> Cache::table() const {
 }
 
 void Cache::shutdown() {
-  _taskState.writeLock();
+  _taskLock.writeLock();
   auto handle = shared_from_this();  // hold onto self-reference to prevent
                                      // pre-mature shared_ptr destruction
   TRI_ASSERT(handle.get() == this);
@@ -342,9 +342,9 @@ void Cache::shutdown() {
         break;
       }
       _metadata.readUnlock();
-      _taskState.writeUnlock();
+      _taskLock.writeUnlock();
       std::this_thread::yield();
-      _taskState.writeLock();
+      _taskLock.writeLock();
       _metadata.readLock();
     }
     //TODO: lock all tables or something
@@ -365,7 +365,7 @@ void Cache::shutdown() {
   _metadata.changeTable(0);
   _metadata.readUnlock();
 
-  _taskState.writeUnlock();
+  _taskLock.writeUnlock();
 }
 
 bool Cache::canResize() {
@@ -445,12 +445,12 @@ bool Cache::migrate(std::shared_ptr<Table> newTable) {
   }
   
   // swap tables
-  _taskState.writeLock();
+  _taskLock.writeLock();
   _table = newTable.get();
   std::shared_ptr<Table> oldTable = std::atomic_exchange(&_tableShrdPtr, newTable);
   std::shared_ptr<Table> confirm =
       oldTable->setAuxiliary(std::shared_ptr<Table>(nullptr));
-  _taskState.writeUnlock();
+  _taskLock.writeUnlock();
 
   // clear out old table and release it
   oldTable->clear();

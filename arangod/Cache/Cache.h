@@ -26,6 +26,7 @@
 
 #include "Basics/Common.h"
 #include "Basics/Result.h"
+#include "Basics/ReadWriteSpinLock.h"
 #include "Basics/SharedCounter.h"
 #include "Cache/CachedValue.h"
 #include "Cache/Common.h"
@@ -34,7 +35,6 @@
 #include "Cache/Manager.h"
 #include "Cache/ManagerTasks.h"
 #include "Cache/Metadata.h"
-#include "Cache/State.h"
 #include "Cache/Table.h"
 
 #include <stdint.h>
@@ -140,12 +140,12 @@ class Cache : public std::enable_shared_from_this<Cache> {
   }
 
  protected:
-  static constexpr int64_t triesFast = 200;
-  static constexpr int64_t triesSlow = 10000;
-  static constexpr int64_t triesGuarantee = -1;
+  static constexpr uint64_t triesFast = 200;
+  static constexpr uint64_t triesSlow = 10000;
+  static constexpr uint64_t triesGuarantee = UINT64_MAX;
 
  protected:
-  State _taskState;
+  basics::ReadWriteSpinLock<64> _taskLock;
 
   bool _shutdown;
 
@@ -213,8 +213,6 @@ class Cache : public std::enable_shared_from_this<Cache> {
                              std::unique_ptr<Table::Subtable> targets,
                              std::shared_ptr<Table> newTable) = 0;
 };
-  
-unsigned long xorshf96();
 
 };  // end namespace cache
 };  // end namespace arangodb
