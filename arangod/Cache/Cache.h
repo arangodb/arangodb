@@ -26,6 +26,7 @@
 
 #include "Basics/Common.h"
 #include "Basics/Result.h"
+#include "Basics/SharedCounter.h"
 #include "Cache/CachedValue.h"
 #include "Cache/Common.h"
 #include "Cache/Finding.h"
@@ -151,8 +152,8 @@ class Cache : public std::enable_shared_from_this<Cache> {
   static uint64_t _findStatsCapacity;
   bool _enableWindowedStats;
   std::unique_ptr<StatBuffer> _findStats;
-  std::atomic<uint64_t> _findHits;
-  std::atomic<uint64_t> _findMisses;
+  basics::SharedCounter<> _findHits;
+  basics::SharedCounter<> _findMisses;
 
   // allow communication with manager
   Manager* _manager;

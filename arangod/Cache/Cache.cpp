@@ -57,8 +57,8 @@ Cache::Cache(ConstructionGuard guard, Manager* manager, Metadata metadata,
       _shutdown(false),
       _enableWindowedStats(enableWindowedStats),
       _findStats(nullptr),
-      _findHits(0),
-      _findMisses(0),
+      _findHits(),
+      _findMisses(),
       _manager(manager),
       _metadata(metadata),
       _tableShrdPtr(table),
@@ -134,8 +134,8 @@ std::pair<double, double> Cache::hitRates() {
   double lifetimeRate = std::nan("");
   double windowedRate = std::nan("");
 
-  uint64_t currentMisses = _findMisses.load();
-  uint64_t currentHits = _findHits.load();
+  uint64_t currentMisses = _findMisses.value();
+  uint64_t currentHits = _findHits.value();
   if (currentMisses + currentHits > 0) {
     lifetimeRate = 100 * (static_cast<double>(currentHits) /
                           static_cast<double>(currentHits + currentMisses));
@@ -282,7 +282,7 @@ void Cache::recordStat(Stat stat) {
 
   switch (stat) {
     case Stat::findHit: {
-      _findHits.fetch_add(1, std::memory_order_relaxed);
+      _findHits.add(1);
       if (_enableWindowedStats && _findStats) {
         _findStats->insertRecord(static_cast<uint8_t>(Stat::findHit));
       }
@@ -290,7 +290,7 @@ void Cache::recordStat(Stat stat) {
       break;
     }
     case Stat::findMiss: {
-      _findMisses.fetch_add(1, std::memory_order_relaxed);
+      _findMisses.add(1);
       if (_enableWindowedStats && _findStats) {
         _findStats->insertRecord(static_cast<uint8_t>(Stat::findMiss));
       }
