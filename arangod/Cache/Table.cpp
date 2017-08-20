@@ -24,7 +24,6 @@
 #include "Cache/Table.h"
 #include "Basics/Common.h"
 #include "Cache/Common.h"
-#include "Cache/State.h"
 
 #include <stdint.h>
 #include <memory>

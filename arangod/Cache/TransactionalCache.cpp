@@ -29,7 +29,6 @@
 #include "Cache/Finding.h"
 #include "Cache/FrequencyBuffer.h"
 #include "Cache/Metadata.h"
-#include "Cache/State.h"
 #include "Cache/Table.h"
 #include "Cache/TransactionalBucket.h"
 #include "Logger/Logger.h"

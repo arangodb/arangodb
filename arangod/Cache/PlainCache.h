@@ -34,7 +34,6 @@
 #include "Cache/ManagerTasks.h"
 #include "Cache/Metadata.h"
 #include "Cache/PlainBucket.h"
-#include "Cache/State.h"
 #include "Cache/Table.h"
 
 #include <stdint.h>

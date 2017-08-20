@@ -33,7 +33,6 @@
 #include "Cache/Manager.h"
 #include "Cache/ManagerTasks.h"
 #include "Cache/Metadata.h"
-#include "Cache/State.h"
 #include "Cache/Table.h"
 #include "Cache/TransactionalBucket.h"
 

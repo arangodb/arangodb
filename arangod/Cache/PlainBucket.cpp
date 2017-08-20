@@ -24,7 +24,6 @@
 #include "Cache/PlainBucket.h"
 #include "Basics/Common.h"
 #include "Cache/CachedValue.h"
-#include "Cache/State.h"
 
 #include <stdint.h>
 #include <atomic>

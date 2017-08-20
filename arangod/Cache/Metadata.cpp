@@ -25,8 +25,6 @@
 #include "Basics/Common.h"
 #include "Cache/Cache.h"
 #include "Cache/Manager.h"
-#include "Cache/State.h"
-#include "Logger/Logger.h"
 
 #include <stdint.h>
 #include <algorithm>

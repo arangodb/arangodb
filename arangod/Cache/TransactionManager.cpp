@@ -23,7 +23,6 @@
 
 #include "Cache/TransactionManager.h"
 #include "Basics/cpu-relax.h"
-#include "Cache/State.h"
 #include "Cache/Transaction.h"
 
 #include <stdint.h>

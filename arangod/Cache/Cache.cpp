@@ -29,7 +29,6 @@
 #include "Cache/Common.h"
 #include "Cache/Manager.h"
 #include "Cache/Metadata.h"
-#include "Cache/State.h"
 #include "Cache/Table.h"
 #include "Random/RandomGenerator.h"
 
