@@ -94,7 +94,8 @@ Manager::Manager(boost::asio::io_service* ioService, uint64_t globalLimit,
       _rebalancingTasks(0),
       _resizingTasks(0),
       _rebalanceCompleted(std::chrono::steady_clock::now() -
-                          Manager::rebalancingGracePeriod) {
+                          Manager::rebalancingGracePeriod),
+      _prng() {
   TRI_ASSERT(_globalAllocation < _globalSoftLimit);
   TRI_ASSERT(_globalAllocation < _globalHardLimit);
   if (enableWindowedStats) {
@@ -434,13 +435,9 @@ std::pair<bool, Manager::time_point> Manager::requestMigrate(
 }
 
 void Manager::reportAccess(std::shared_ptr<Cache> cache) {
-  // if (((++_accessCounter) & static_cast<uint64_t>(7)) == 0) {  // record 1
-  // in
-  // 8
-  if ((xorshf96() & static_cast<unsigned long>(7)) == 0) {
+  if ((rand() & static_cast<unsigned long>(7)) == 0) {
     _accessStats.insertRecord(cache);
   }
-  //}
 }
 
 void Manager::reportHitStat(Stat stat) {
@@ -461,6 +458,10 @@ void Manager::reportHitStat(Stat stat) {
     }
     default: { break; }
   }
+}
+
+uint64_t Manager::rand() {
+  return _prng.next();
 }
 
 bool Manager::isOperational() const {
