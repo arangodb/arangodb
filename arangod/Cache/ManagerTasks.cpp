@@ -53,7 +53,7 @@ void FreeMemoryTask::run() {
   bool ran = _cache->freeMemory();
 
   if (ran) {
-    _manager->_state.writeLock();
+    _manager->_lock.writeLock();
     Metadata* metadata = _cache->metadata();
     metadata->writeLock();
     uint64_t reclaimed = metadata->hardUsageLimit - metadata->softUsageLimit;
@@ -61,7 +61,7 @@ void FreeMemoryTask::run() {
     metadata->toggleResizing();
     metadata->writeUnlock();
     _manager->_globalAllocation -= reclaimed;
-    _manager->_state.writeUnlock();
+    _manager->_lock.writeUnlock();
   }
 
   _manager->unprepareTask(_environment);

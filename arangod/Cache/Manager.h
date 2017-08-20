@@ -25,12 +25,14 @@
 #define ARANGODB_CACHE_MANAGER_H
 
 #include "Basics/Common.h"
+#include "Basics/ReadWriteSpinLock.h"
+#include "Basics/SharedAtomic.h"
+#include "Basics/SharedCounter.h"
 #include "Basics/asio-helper.h"
 #include "Cache/CachedValue.h"
 #include "Cache/Common.h"
 #include "Cache/FrequencyBuffer.h"
 #include "Cache/Metadata.h"
-#include "Cache/State.h"
 #include "Cache/Table.h"
 #include "Cache/Transaction.h"
 #include "Cache/TransactionManager.h"
@@ -171,11 +173,15 @@ class Manager {
   // assume at most 16 slots in each stack -- TODO: check validity
   static constexpr uint64_t tableListsOverhead =
       32 * 16 * sizeof(std::shared_ptr<Cache>);
-  static constexpr int64_t triesFast = 100;
-  static constexpr int64_t triesSlow = 1000;
+  static constexpr uint64_t triesFast = 100;
+  static constexpr uint64_t triesSlow = 1000;
 
-  // simple state variable for locking and other purposes
-  State _state;
+  // simple state variables
+  basics::ReadWriteSpinLock<64> _lock;
+  bool _shutdown;
+  bool _shuttingDown;
+  bool _resizing;
+  bool _rebalancing;
 
   // structure to handle access frequency monitoring
   Manager::AccessStatBuffer _accessStats;
@@ -183,8 +189,8 @@ class Manager {
   // structures to handle hit rate monitoring
   bool _enableWindowedStats;
   std::unique_ptr<Manager::FindStatBuffer> _findStats;
-  std::atomic<uint64_t> _findHits;
-  std::atomic<uint64_t> _findMisses;
+  basics::SharedCounter<64> _findHits;
+  basics::SharedCounter<64> _findMisses;
 
   // set of pointers to keep track of registered caches
   std::set<std::shared_ptr<Cache>> _caches;
@@ -207,9 +213,9 @@ class Manager {
   enum TaskEnvironment { none, rebalancing, resizing };
   boost::asio::io_service* _ioService;
   uint64_t _resizeAttempt;
-  std::atomic<uint64_t> _outstandingTasks;
-  std::atomic<uint64_t> _rebalancingTasks;
-  std::atomic<uint64_t> _resizingTasks;
+  basics::SharedAtomic<uint64_t> _outstandingTasks;
+  basics::SharedAtomic<uint64_t> _rebalancingTasks;
+  basics::SharedAtomic<uint64_t> _resizingTasks;
   Manager::time_point _rebalanceCompleted;
 
   // friend class tasks and caches to allow access
