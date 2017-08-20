@@ -25,6 +25,8 @@
 #define ARANGODB_CACHE_METADATA_H
 
 #include "Basics/Common.h"
+#include "Basics/ReadWriteSpinLock.h"
+#include "Basics/SharedAtomic.h"
 #include "Cache/State.h"
 
 #include <atomic>
@@ -75,36 +77,42 @@ struct Metadata {
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Locks the record for reading
   //////////////////////////////////////////////////////////////////////////////
-  void readLock();
+  void readLock() { _lock.readLock(); }
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Locks the record for writing
   //////////////////////////////////////////////////////////////////////////////
-  void writeLock();
+  void writeLock() { _lock.writeLock(); }
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Unlocks the record. Requires record to be read-locked.
   //////////////////////////////////////////////////////////////////////////////
-  void readUnlock();
+  void readUnlock() {
+    TRI_ASSERT(isLocked());
+    _lock.readUnlock();
+  }
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Unlocks the record. Requires record to be write-locked.
   //////////////////////////////////////////////////////////////////////////////
-  void writeUnlock();
+  void writeUnlock() {
+    TRI_ASSERT(isWriteLocked());
+    _lock.writeUnlock();
+  }
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Returns true if the record is locked, false otherwise.
   //////////////////////////////////////////////////////////////////////////////
-  bool isLocked() const;
+  bool isLocked() const { return _lock.isLocked(); }
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Returns true if the record is write-locked, false otherwise.
   //////////////////////////////////////////////////////////////////////////////
-  bool isWriteLocked() const;
+  bool isWriteLocked() const { return _lock.isWriteLocked(); }
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Adjusts usage by the specified amount if it will not violate
-  /// limits. Requires record to be locked.
+  /// limits. Requires record to be read-locked.
   ///
   /// Returns true if adjusted, false otherwise. Used by caches to check-and-set
   /// in a single operation to determine whether they can afford to store a new
@@ -113,24 +121,25 @@ struct Metadata {
   bool adjustUsageIfAllowed(int64_t usageChange);
 
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief Sets the soft and hard usage limits. Requires record to be locked.
+  /// @brief Sets the soft and hard usage limits. Requires record to be
+  /// write-locked.
   //////////////////////////////////////////////////////////////////////////////
   bool adjustLimits(uint64_t softLimit, uint64_t hardLimit);
 
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief Sets the deserved size. Requires record to be locked.
+  /// @brief Sets the deserved size. Requires record to be write-locked.
   //////////////////////////////////////////////////////////////////////////////
   uint64_t adjustDeserved(uint64_t deserved);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Calculates the new usage limit based on deserved size and other
-  /// values. Requires record to be locked.
+  /// values. Requires record to be read-locked.
   //////////////////////////////////////////////////////////////////////////////
   uint64_t newLimit();
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Checks feasibility of new table size prior to migration. Requires
-  /// record to be locked.
+  /// record to be read-locked.
   ///
   /// If migrating to table of new size would exceed either deserved or maximum
   /// size, then returns false.
@@ -138,22 +147,35 @@ struct Metadata {
   bool migrationAllowed(uint64_t newTableSize);
 
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief Sets the table size after migration. Requires record to be locked.
+  /// @brief Sets the table size after migration. Requires record to be
+  /// write-locked.
   //////////////////////////////////////////////////////////////////////////////
   void changeTable(uint64_t newTableSize);
 
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief Checks if flag is set in state. Requires record to be locked.
+  /// @brief Checks if cache is migrating. Requires record to be read-locked.
   //////////////////////////////////////////////////////////////////////////////
-  bool isSet(State::Flag flag) const;
+  bool isMigrating() const { return _migrating.load() > 0; }
 
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief Toggles flag in state. Requires record to be locked.
+  /// @brief Checks if the cache is resizing. Requires record to be read-locked.
   //////////////////////////////////////////////////////////////////////////////
-  void toggleFlag(State::Flag flag);
+  bool isResizing() const { return _resizing.load() > 0; }
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief Toggles the migrating flag. Requires record to be write-locked.
+  //////////////////////////////////////////////////////////////////////////////
+  void toggleMigrating() { _migrating ^= 1; }
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief Toggles the resizing flag. Requires record to be write-locked.
+  //////////////////////////////////////////////////////////////////////////////
+  void toggleResizing() { _resizing ^= 1; }
 
  private:
-  State _state;
+  basics::ReadWriteSpinLock<64> _lock;
+  basics::SharedAtomic<size_t> _migrating;
+  basics::SharedAtomic<size_t> _resizing;
 };
 
 };  // end namespace cache

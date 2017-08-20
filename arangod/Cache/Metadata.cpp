@@ -43,7 +43,9 @@ Metadata::Metadata()
       usage(0),
       softUsageLimit(0),
       hardUsageLimit(0),
-      _state() {}
+      _lock(),
+      _migrating(0),
+      _resizing(0) {}
 
 Metadata::Metadata(uint64_t usageLimit, uint64_t fixed, uint64_t table,
                    uint64_t max)
@@ -55,7 +57,9 @@ Metadata::Metadata(uint64_t usageLimit, uint64_t fixed, uint64_t table,
       usage(0),
       softUsageLimit(usageLimit),
       hardUsageLimit(usageLimit),
-      _state() {
+      _lock(),
+      _migrating(0),
+      _resizing(0) {
   TRI_ASSERT(allocatedSize <= maxSize);
 }
 
@@ -68,11 +72,15 @@ Metadata::Metadata(Metadata const& other)
       usage(other.usage.load()),
       softUsageLimit(other.softUsageLimit),
       hardUsageLimit(other.hardUsageLimit),
-      _state(other._state) {}
+      _lock(other._lock),
+      _migrating(other._migrating),
+      _resizing(other._resizing) {}
 
 Metadata& Metadata::operator=(Metadata const& other) {
   if (this != &other) {
-    _state = other._state;
+    _lock = other._lock;
+    _migrating = other._migrating;
+    _resizing = other._resizing;
     fixedSize = other.fixedSize;
     tableSize = other.tableSize;
     maxSize = other.maxSize;
@@ -85,24 +93,6 @@ Metadata& Metadata::operator=(Metadata const& other) {
 
   return *this;
 }
-
-void Metadata::readLock() { _state.readLock(); }
-
-void Metadata::writeLock() { _state.writeLock(); }
-
-void Metadata::readUnlock() {
-  TRI_ASSERT(isLocked());
-  _state.readUnlock();
-}
-
-void Metadata::writeUnlock() {
-  TRI_ASSERT(isWriteLocked());
-  _state.writeUnlock();
-}
-
-bool Metadata::isLocked() const { return _state.isLocked(); }
-
-bool Metadata::isWriteLocked() const { return _state.isWriteLocked(); }
 
 bool Metadata::adjustUsageIfAllowed(int64_t usageChange) {
   while (true) {
@@ -195,14 +185,4 @@ void Metadata::changeTable(uint64_t newTableSize) {
   tableSize = newTableSize;
   allocatedSize =
       hardUsageLimit + fixedSize + tableSize + Manager::cacheRecordOverhead;
-}
-
-bool Metadata::isSet(State::Flag flag) const {
-  TRI_ASSERT(isLocked());
-  return _state.isSet(flag);
-}
-
-void Metadata::toggleFlag(State::Flag flag) {
-  TRI_ASSERT(isWriteLocked());
-  _state.toggleFlag(flag);
 }

@@ -173,7 +173,7 @@ bool Cache::isResizing() {
   }
 
   _metadata.readLock();
-  bool resizing = _metadata.isSet(State::Flag::resizing);
+  bool resizing = _metadata.isResizing();
   _metadata.readUnlock();
 
   return resizing;
@@ -185,7 +185,7 @@ bool Cache::isMigrating() {
   }
 
   _metadata.readLock();
-  bool migrating = _metadata.isSet(State::Flag::migrating);
+  bool migrating = _metadata.isMigrating();
   _metadata.readUnlock();
 
   return migrating;
@@ -197,8 +197,8 @@ bool Cache::isBusy() {
   }
 
   _metadata.readLock();
-  bool busy = _metadata.isSet(State::Flag::resizing) ||
-              _metadata.isSet(State::Flag::migrating);
+  bool busy = _metadata.isResizing() ||
+              _metadata.isMigrating();
   _metadata.readUnlock();
 
   return busy;
@@ -220,7 +220,7 @@ void Cache::requestGrow() {
   if (ok) {
     if (!isShutdown() && (std::chrono::steady_clock::now() > _resizeRequestTime)) {
       _metadata.readLock();
-      ok = !_metadata.isSet(State::Flag::resizing);
+      ok = !_metadata.isResizing();
       _metadata.readUnlock();
       if (ok) {
         std::tie(ok, _resizeRequestTime) =
@@ -241,7 +241,7 @@ void Cache::requestMigrate(uint32_t requestedLogSize) {
   if (ok) {
     if (!isShutdown() && std::chrono::steady_clock::now() > _migrateRequestTime) {
       _metadata.readLock();
-      ok = !_metadata.isSet(State::Flag::migrating) &&
+      ok = !_metadata.isMigrating() &&
            (requestedLogSize != _table->logSize());
       _metadata.readUnlock();
       if (ok) {
@@ -337,8 +337,8 @@ void Cache::shutdown() {
 
     _metadata.readLock();
     while (true) {
-      if (!_metadata.isSet(State::Flag::migrating) && 
-          !_metadata.isSet(State::Flag::resizing)) {
+      if (!_metadata.isMigrating() && 
+          !_metadata.isResizing()) {
         break;
       }
       _metadata.readUnlock();
@@ -375,8 +375,8 @@ bool Cache::canResize() {
 
   bool allowed = true;
   _metadata.readLock();
-  if (_metadata.isSet(State::Flag::resizing) ||
-      _metadata.isSet(State::Flag::migrating)) {
+  if (_metadata.isResizing() ||
+      _metadata.isMigrating()) {
     allowed = false;
   }
   _metadata.readUnlock();
@@ -391,7 +391,7 @@ bool Cache::canMigrate() {
 
   bool allowed = (_manager->ioService() != nullptr);
   _metadata.readLock();
-  if (_metadata.isSet(State::Flag::migrating)) {
+  if (_metadata.isMigrating()) {
     allowed = false;
   }
   _metadata.readUnlock();
@@ -459,7 +459,7 @@ bool Cache::migrate(std::shared_ptr<Table> newTable) {
   // unmarking migrating flag
   _metadata.writeLock();
   _metadata.changeTable(_table->memoryUsage());
-  _metadata.toggleFlag(State::Flag::migrating);
+  _metadata.toggleMigrating();
   _metadata.writeUnlock();
 
   return true;

@@ -344,8 +344,8 @@ std::pair<bool, Manager::time_point> Manager::requestGrow(
       Metadata* metadata = cache->metadata();
       metadata->writeLock();
 
-      allowed = !metadata->isSet(State::Flag::resizing) &&
-                !metadata->isSet(State::Flag::migrating);
+      allowed = !metadata->isResizing() &&
+                !metadata->isMigrating();
       if (allowed) {
         if (metadata->allocatedSize >= metadata->deservedSize &&
             pastRebalancingGracePeriod()) {
@@ -388,7 +388,7 @@ std::pair<bool, Manager::time_point> Manager::requestMigrate(
       Metadata* metadata = cache->metadata();
       metadata->writeLock();
 
-      allowed = !metadata->isSet(State::Flag::migrating);
+      allowed = !metadata->isMigrating();
       if (allowed) {
         if (metadata->tableSize < Table::allocationSize(requestedLogSize)) {
           uint64_t increase =
@@ -639,8 +639,8 @@ void Manager::resizeCache(Manager::TaskEnvironment environment,
   
   bool success = metadata->adjustLimits(newLimit, metadata->hardUsageLimit);
   TRI_ASSERT(success);
-  TRI_ASSERT(!metadata->isSet(State::Flag::resizing));
-  metadata->toggleFlag(State::Flag::resizing);
+  TRI_ASSERT(!metadata->isResizing());
+  metadata->toggleResizing();
   metadata->writeUnlock();
 
   auto task = std::make_shared<FreeMemoryTask>(environment, this, cache);
@@ -648,7 +648,7 @@ void Manager::resizeCache(Manager::TaskEnvironment environment,
   if (!dispatched) {
     // TODO: decide what to do if we don't have an io_service
     metadata->writeLock();
-    metadata->toggleFlag(State::Flag::resizing);
+    metadata->toggleResizing();
     metadata->writeUnlock();
   }
 }
@@ -660,8 +660,8 @@ void Manager::migrateCache(Manager::TaskEnvironment environment,
   Metadata* metadata = cache->metadata();
   TRI_ASSERT(metadata->isWriteLocked());
 
-  TRI_ASSERT(!metadata->isSet(State::Flag::migrating));
-  metadata->toggleFlag(State::Flag::migrating);
+  TRI_ASSERT(!metadata->isMigrating());
+  metadata->toggleMigrating();
   metadata->writeUnlock();
 
   auto task = std::make_shared<MigrateTask>(environment, this, cache, table);
@@ -670,7 +670,7 @@ void Manager::migrateCache(Manager::TaskEnvironment environment,
     // TODO: decide what to do if we don't have an io_service
     metadata->writeLock();
     reclaimTable(table, true);
-    metadata->toggleFlag(State::Flag::migrating);
+    metadata->toggleMigrating();
     metadata->writeUnlock();
   }
 }
