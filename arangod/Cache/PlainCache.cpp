@@ -47,7 +47,7 @@ Finding PlainCache::find(void const* key, uint32_t keySize) {
 
   Result status;
   PlainBucket* bucket;
-  std::shared_ptr<Table> source;
+  Table* source;
   std::tie(status, bucket, source) = getBucket(hash, Cache::triesFast);
   if (status.fail()) {
     result.reportError(status);
@@ -73,7 +73,7 @@ Result PlainCache::insert(CachedValue* value) {
 
   Result status{TRI_ERROR_NO_ERROR};
   PlainBucket* bucket;
-  std::shared_ptr<Table> source;
+  Table* source;
   std::tie(status, bucket, source) = getBucket(hash, Cache::triesFast);
   if (status.fail()) {
     return status;
@@ -135,7 +135,7 @@ Result PlainCache::remove(void const* key, uint32_t keySize) {
 
   Result status;
   PlainBucket* bucket;
-  std::shared_ptr<Table> source;
+  Table* source;
   std::tie(status, bucket, source) = getBucket(hash, Cache::triesSlow);
   if (status.fail()) {
     return status;
@@ -199,7 +199,7 @@ uint64_t PlainCache::freeMemoryFrom(uint32_t hash) {
   Result status;
   bool maybeMigrate = false;
   PlainBucket* bucket;
-  std::shared_ptr<Table> source;
+  Table* source;
   std::tie(status, bucket, source) = getBucket(hash, Cache::triesFast, false);
   if (status.fail()) {
     return 0;
@@ -286,11 +286,11 @@ void PlainCache::migrateBucket(void* sourcePtr,
   source->unlock();
 }
 
-std::tuple<Result, PlainBucket*, std::shared_ptr<Table>> PlainCache::getBucket(
+std::tuple<Result, PlainBucket*, Table*> PlainCache::getBucket(
     uint32_t hash, int64_t maxTries, bool singleOperation) {
   Result status;
   PlainBucket* bucket = nullptr;
-  std::shared_ptr<Table> source(nullptr);
+  Table* source = nullptr;
 
   Table* table = _table;
   if (isShutdown() || table == nullptr) {

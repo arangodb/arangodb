@@ -102,22 +102,22 @@ uint64_t Table::size() const { return _size; }
 
 uint32_t Table::logSize() const { return _logSize; }
 
-std::pair<void*, std::shared_ptr<Table>> Table::fetchAndLockBucket(
+std::pair<void*, Table*> Table::fetchAndLockBucket(
     uint32_t hash, int64_t maxTries) {
   GenericBucket* bucket = nullptr;
-  std::shared_ptr<Table> source(nullptr);
+  Table* source = nullptr;
   bool ok = _lock.readLock(maxTries);
   if (ok) {
     ok = !_disabled;
     if (ok) {
       bucket = &(_buckets[(hash & _mask) >> _shift]);
-      source = shared_from_this();
+      source = this;
       ok = bucket->lock(maxTries);
       if (ok) {
         if (bucket->isMigrated()) {
           bucket->unlock();
           bucket = nullptr;
-          source.reset();
+          source = nullptr;
           if (_auxiliary) {
             auto pair = _auxiliary->fetchAndLockBucket(hash, maxTries);
             bucket = reinterpret_cast<GenericBucket*>(pair.first);
@@ -126,7 +126,7 @@ std::pair<void*, std::shared_ptr<Table>> Table::fetchAndLockBucket(
         }
       } else {
         bucket = nullptr;
-        source.reset();
+        source = nullptr;
       }
     }
     _lock.readUnlock();

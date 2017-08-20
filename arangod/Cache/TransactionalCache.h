@@ -131,7 +131,7 @@ class TransactionalCache final : public Cache {
                              std::shared_ptr<Table> newTable);
 
   // helpers
-  std::tuple<Result, TransactionalBucket*, std::shared_ptr<Table>> getBucket(
+  std::tuple<Result, TransactionalBucket*, Table*> getBucket(
       uint32_t hash, int64_t maxTries, bool singleOperation = true);
   uint32_t getIndex(uint32_t hash, bool useAuxiliary) const;
 

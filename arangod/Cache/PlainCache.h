@@ -115,7 +115,7 @@ class PlainCache final : public Cache {
                              std::shared_ptr<Table> newTable);
 
   // helpers
-  std::tuple<Result, PlainBucket*, std::shared_ptr<Table>> getBucket(
+  std::tuple<Result, PlainBucket*, Table*> getBucket(
       uint32_t hash, int64_t maxTries, bool singleOperation = true);
   uint32_t getIndex(uint32_t hash, bool useAuxiliary) const;
 

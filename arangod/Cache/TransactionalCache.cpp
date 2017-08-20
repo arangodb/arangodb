@@ -48,7 +48,7 @@ Finding TransactionalCache::find(void const* key, uint32_t keySize) {
 
   Result status;
   TransactionalBucket* bucket;
-  std::shared_ptr<Table> source;
+  Table* source;
   std::tie(status, bucket, source) = getBucket(hash, Cache::triesFast);
   if (status.fail()) {
     result.reportError(status);
@@ -75,7 +75,7 @@ Result TransactionalCache::insert(CachedValue* value) {
 
   Result status;
   TransactionalBucket* bucket;
-  std::shared_ptr<Table> source;
+  Table* source;
   std::tie(status, bucket, source) = getBucket(hash, Cache::triesFast);
   if (status.fail()) {
     return status;
@@ -141,7 +141,7 @@ Result TransactionalCache::remove(void const* key, uint32_t keySize) {
 
   Result status;
   TransactionalBucket* bucket;
-  std::shared_ptr<Table> source;
+  Table* source;
   std::tie(status, bucket, source) = getBucket(hash, Cache::triesSlow);
   if (status.fail()) {
     return status;
@@ -175,7 +175,7 @@ Result TransactionalCache::blacklist(void const* key, uint32_t keySize) {
 
   Result status;
   TransactionalBucket* bucket;
-  std::shared_ptr<Table> source;
+  Table* source;
   std::tie(status, bucket, source) = getBucket(hash, Cache::triesSlow);
   if (status.fail()) {
     return status;
@@ -238,7 +238,7 @@ uint64_t TransactionalCache::freeMemoryFrom(uint32_t hash) {
   uint64_t reclaimed = 0;
   Result status;
   TransactionalBucket* bucket;
-  std::shared_ptr<Table> source;
+  Table* source;
   std::tie(status, bucket, source) = getBucket(hash, Cache::triesFast, false);
   if (status.fail()) {
     return 0;
@@ -372,12 +372,12 @@ void TransactionalCache::migrateBucket(void* sourcePtr,
   source->unlock();
 }
 
-std::tuple<Result, TransactionalBucket*, std::shared_ptr<Table>>
+std::tuple<Result, TransactionalBucket*, Table*>
 TransactionalCache::getBucket(uint32_t hash, int64_t maxTries,
                               bool singleOperation) {
   Result status;
   TransactionalBucket* bucket = nullptr;
-  std::shared_ptr<Table> source(nullptr);
+  Table* source = nullptr;
 
   Table* table = _table;
   if (isShutdown() || table == nullptr) {
