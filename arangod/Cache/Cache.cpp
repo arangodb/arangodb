@@ -23,6 +23,7 @@
 
 #include "Cache/Cache.h"
 #include "Basics/Common.h"
+#include "Basics/SharedPRNG.h"
 #include "Basics/fasthash.h"
 #include "Cache/CachedValue.h"
 #include "Cache/Common.h"
@@ -275,7 +276,7 @@ uint32_t Cache::hashKey(void const* key, uint32_t keySize) const {
 }
 
 void Cache::recordStat(Stat stat) {
-  if ((_manager->rand() & static_cast<unsigned long>(7)) != 0) {
+  if ((basics::SharedPRNG::rand() & static_cast<unsigned long>(7)) != 0) {
     return;
   }
 

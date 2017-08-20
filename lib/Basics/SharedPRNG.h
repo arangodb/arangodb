@@ -26,75 +26,40 @@
 
 #include "Basics/Common.h"
 #include "Basics/Thread.h"
-#include "Basics/cpu-relax.h"
-#include "Basics/splitmix64.h"
+#include "Basics/fasthash.h"
 #include "Basics/xoroshiro128plus.h"
-
-#include <atomic>
 
 namespace arangodb {
 namespace basics {
 
-template <uint64_t stripes = 64>
-struct SharedPRNG {
-  typedef std::function<uint64_t()> IdFunc;
-  static uint64_t DefaultIdFunc() { return Thread::currentThreadNumber(); }
-
-  SharedPRNG() : SharedPRNG(DefaultIdFunc) {}
-
-  SharedPRNG(IdFunc f) : _id(f) {
-    for (_mask = 1; _mask <= stripes; _mask <<= 1) {
-    }
-    TRI_ASSERT(_mask > stripes);
-    _mask >>= 1;
-    TRI_ASSERT(_mask <= stripes);
-    _mask -= 1;
-
-    splitmix64 seeder(0xdeadbeefdeadbeefULL);
-    for (size_t i = 0; i < stripes; i++) {
-      uint64_t seed1 = seeder.next();
-      uint64_t seed2 = seeder.next();
-      _prng[i].seed(seed1, seed2);
-    }
-  }
-
-  uint64_t next() { return _prng[_id() & _mask].next(); }
+struct PaddedPRNG {
+  void seed(uint64_t seed1, uint64_t seed2);
+  inline uint64_t next() { return _prng.next(); }
 
  private:
-  struct SingleSharedPRNG {
-    SingleSharedPRNG() : _lock(false) {}
+  uint8_t _frontPadding[64];
+  xoroshiro128plus _prng;
+  uint8_t _backpadding[64 - sizeof(xoroshiro128plus)];
+};
 
-    void seed(uint64_t seed1, uint64_t seed2) {
-      _lock = false;
-      _prng.seed(seed1, seed2);
-    }
+struct SharedPRNG {
+  static inline uint64_t rand() { return _global->next(); }
+  SharedPRNG();
 
-    uint64_t next() {
-      while (!lock()) {
-        cpu_relax();
-      }
-      uint64_t result = _prng.next();
-      _lock.store(false, std::memory_order_release);
-      return result;
-    }
+ private:
+  // never want two live threads to hash to the same stripe
+  static constexpr uint64_t _stripes = (1 << 16);
+  static std::unique_ptr<SharedPRNG> _global;
 
-   private:
-    bool lock() {
-      bool expected = false;
-      return _lock.compare_exchange_weak(
-          expected, true, std::memory_order_acquire, std::memory_order_release);
-    }
-
-   private:
-    uint8_t _frontPadding[64];
-    xoroshiro128plus _prng;
-    std::atomic<bool> _lock;
-    uint8_t _backpadding[64 - sizeof(xoroshiro128plus)];
-  };
-
-  SingleSharedPRNG _prng[stripes];
-  IdFunc _id;
+  PaddedPRNG _prng[_stripes];
   uint64_t _mask;
+
+  inline uint64_t id() {
+    return fasthash64_uint64(Thread::currentThreadNumber(),
+                             0xdeadbeefdeadbeefULL);
+  }
+
+  inline uint64_t next() { return _prng[id() & _mask].next(); }
 };
 
 }  // namespace basics

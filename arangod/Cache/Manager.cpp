@@ -23,6 +23,7 @@
 
 #include "Cache/Manager.h"
 #include "Basics/Common.h"
+#include "Basics/SharedPRNG.h"
 #include "Basics/asio-helper.h"
 #include "Cache/Cache.h"
 #include "Cache/CachedValue.h"
@@ -94,8 +95,7 @@ Manager::Manager(boost::asio::io_service* ioService, uint64_t globalLimit,
       _rebalancingTasks(0),
       _resizingTasks(0),
       _rebalanceCompleted(std::chrono::steady_clock::now() -
-                          Manager::rebalancingGracePeriod),
-      _prng() {
+                          Manager::rebalancingGracePeriod) {
   TRI_ASSERT(_globalAllocation < _globalSoftLimit);
   TRI_ASSERT(_globalAllocation < _globalHardLimit);
   if (enableWindowedStats) {
@@ -435,7 +435,7 @@ std::pair<bool, Manager::time_point> Manager::requestMigrate(
 }
 
 void Manager::reportAccess(std::shared_ptr<Cache> cache) {
-  if ((rand() & static_cast<unsigned long>(7)) == 0) {
+  if ((basics::SharedPRNG::rand() & static_cast<unsigned long>(7)) == 0) {
     _accessStats.insertRecord(cache);
   }
 }
@@ -458,10 +458,6 @@ void Manager::reportHitStat(Stat stat) {
     }
     default: { break; }
   }
-}
-
-uint64_t Manager::rand() {
-  return _prng.next();
 }
 
 bool Manager::isOperational() const {

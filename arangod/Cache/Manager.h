@@ -25,7 +25,6 @@
 #define ARANGODB_CACHE_MANAGER_H
 
 #include "Basics/Common.h"
-#include "Basics/SharedPRNG.h"
 #include "Basics/asio-helper.h"
 #include "Cache/CachedValue.h"
 #include "Cache/Common.h"
@@ -213,9 +212,6 @@ class Manager {
   std::atomic<uint64_t> _resizingTasks;
   Manager::time_point _rebalanceCompleted;
 
-  // fast PRNG
-  basics::SharedPRNG<512> _prng;
-
   // friend class tasks and caches to allow access
   friend class Cache;
   friend class FreeMemoryTask;
@@ -240,9 +236,6 @@ class Manager {
   // stat reporting
   void reportAccess(std::shared_ptr<Cache> cache);
   void reportHitStat(Stat stat);
-
-  // fast PRNG
-  uint64_t rand();
 
  private:  // used internally and by tasks
   static constexpr double highwaterMultiplier = 0.8;
