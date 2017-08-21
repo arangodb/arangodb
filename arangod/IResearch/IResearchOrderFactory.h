@@ -52,8 +52,8 @@ struct IResearchViewMeta; // forward declaration
 
 struct OrderFactory {
   struct OrderContext {
+    std::vector<irs::attribute::ptr>& attributes;
     irs::order& order;
-    arangodb::transaction::Methods& trx;
   };
 
   ////////////////////////////////////////////////////////////////////////////////

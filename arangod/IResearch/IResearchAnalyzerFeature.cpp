@@ -202,13 +202,9 @@ arangodb::aql::AqlValue aqlFnTokens(
   builder.openArray();
 
   while (analyzer->next()) {
-    auto value = values->value();
+    auto value = irs::ref_cast<char>(values->value());
 
-    builder.add(arangodb::velocypack::ValuePair(
-      value.c_str(),
-      value.size(),
-      arangodb::velocypack::ValueType::String
-    ));
+    builder.add(arangodb::iresearch::toValuePair(value));
   }
 
   builder.close();
@@ -859,7 +855,7 @@ void IResearchAnalyzerFeature::loadConfiguration(
     }
 
     if (!trx.commit().ok()) {
-      LOG_TOPIC(WARN, Logger::FIXME) <<  "failure to commit AnalyzerPool configuration while updating ref_count of IResearch analyzer";
+      LOG_TOPIC(WARN, Logger::FIXME) << "failure to commit AnalyzerPool configuration while updating ref_count of IResearch analyzer";
       trx.abort();
 
       THROW_ARANGO_EXCEPTION_MESSAGE(

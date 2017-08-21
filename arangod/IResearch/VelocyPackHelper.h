@@ -209,13 +209,38 @@ bool mergeSlice(
 );
 
 //////////////////////////////////////////////////////////////////////////////
+/// @brief convert an irs::byte_type array to an
+///        arangodb::velocypack::ValuePair
+//////////////////////////////////////////////////////////////////////////////
+inline arangodb::velocypack::ValuePair toValuePair(
+    const irs::byte_type* data,
+    size_t size
+) {
+  return arangodb::velocypack::ValuePair(
+    data,
+    size,
+    arangodb::velocypack::ValueType::Binary
+  );
+}
+
+//////////////////////////////////////////////////////////////////////////////
 /// @brief convert an irs::bytes_ref to an arangodb::velocypack::ValuePair
 //////////////////////////////////////////////////////////////////////////////
 inline arangodb::velocypack::ValuePair toValuePair(irs::bytes_ref const& ref) {
+  return toValuePair(ref.c_str(), ref.size());
+}
+
+//////////////////////////////////////////////////////////////////////////////
+/// @brief convert a char array to an arangodb::velocypack::ValuePair
+//////////////////////////////////////////////////////////////////////////////
+inline arangodb::velocypack::ValuePair toValuePair(
+    const char* data,
+    size_t size
+) {
   return arangodb::velocypack::ValuePair(
-    ref.c_str(),
-    ref.size(),
-    arangodb::velocypack::ValueType::Binary
+    data,
+    size,
+    arangodb::velocypack::ValueType::String
   );
 }
 
@@ -223,11 +248,7 @@ inline arangodb::velocypack::ValuePair toValuePair(irs::bytes_ref const& ref) {
 /// @brief convert an irs::string_ref to an arangodb::velocypack::ValuePair
 //////////////////////////////////////////////////////////////////////////////
 inline arangodb::velocypack::ValuePair toValuePair(irs::string_ref const& ref) {
-  return arangodb::velocypack::ValuePair(
-    ref.c_str(),
-    ref.size(),
-    arangodb::velocypack::ValueType::String
-  );
+  return toValuePair(ref.c_str(), ref.size());
 }
 
 ////////////////////////////////////////////////////////////////////////////

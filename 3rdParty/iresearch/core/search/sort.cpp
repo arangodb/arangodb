@@ -39,6 +39,9 @@ sort::collector::~collector() { }
 
 sort::scorer::~scorer() { }
 
+sort::prepared::prepared(attribute_store&& attrs): attrs_(std::move(attrs)) {
+}
+
 sort::prepared::~prepared() { }
 
 // ----------------------------------------------------------------------------

@@ -32,6 +32,7 @@
 #include "utils/utf8_path.hpp"
 
 #include "ApplicationServerHelper.h"
+#include "IResearchAttributes.h"
 #include "IResearchDocument.h"
 #include "IResearchOrderFactory.h"
 #include "IResearchFilterFactory.h"
@@ -373,7 +374,8 @@ class OrderedViewIterator: public ViewIteratorBase {
     arangodb::transaction::Methods& trx,
     CompoundReader&& reader,
     irs::filter const& filter,
-    irs::order const& order
+    irs::order const& order,
+    std::vector<irs::attribute::ptr>&& orderAttrs
   );
   virtual bool next(TokenCallback const& callback, size_t limit) override;
   virtual void reset() override;
@@ -386,6 +388,7 @@ class OrderedViewIterator: public ViewIteratorBase {
 
   irs::filter::prepared::ptr _filter;
   irs::order::prepared _order;
+  std::vector<irs::attribute::ptr> _orderAttrs;
   State _state; // previous iteration state
 
   void next(TokenCallback const& callback, size_t limit, bool sort);
@@ -396,9 +399,25 @@ OrderedViewIterator::OrderedViewIterator(
     arangodb::transaction::Methods& trx,
     CompoundReader&& reader,
     irs::filter const& filter,
-    irs::order const& order
+    irs::order const& order,
+    std::vector<irs::attribute::ptr>&& orderAttrs
 ): ViewIteratorBase("iresearch-ordered-iterator", view, trx, std::move(reader)),
-   _order(order.prepare()) {
+   _order(order.prepare()),
+   _orderAttrs(std::move(orderAttrs)) {
+  // set current transaction for any scorers that require it
+  for (auto& entry: _order) {
+    if (!entry.bucket) {
+      continue;
+    }
+
+    auto& attrs = entry.bucket->attributes();
+    auto* trxAttr = attrs.get<arangodb::iresearch::attribute::Transaction>();
+
+    if (trxAttr && *trxAttr) {
+      (*trxAttr)->value = &trx;
+    }
+  }
+
   _filter = filter.prepare(_reader, _order);
   reset();
 }
@@ -1829,7 +1848,8 @@ arangodb::ViewIterator* IResearchView::iteratorForCondition(
   }
 
   irs::order order;
-  OrderFactory::OrderContext orderCtx{ order, *trx };
+  std::vector<irs::attribute::ptr> orderAttrs;
+  OrderFactory::OrderContext orderCtx{ orderAttrs, order };
   CompoundReader compoundReader(_mutex); // will aquire read-lock since members can be asynchronously updated
 
   if (sortCondition && !OrderFactory::order(&orderCtx, *sortCondition, _meta)) {
@@ -1877,7 +1897,7 @@ arangodb::ViewIterator* IResearchView::iteratorForCondition(
     return iterator.release();
   }
 
-  PTR_NAMED(OrderedViewIterator, iterator, *this, *trx, std::move(compoundReader), filter, order);
+  PTR_NAMED(OrderedViewIterator, iterator, *this, *trx, std::move(compoundReader), filter, order, std::move(orderAttrs));
 
   return iterator.release();
 }

@@ -25,10 +25,13 @@
 
 #include "analysis/token_attributes.hpp"
 #include "index/field_meta.hpp"
+#include "IResearch/IResearchAttributes.h"
 #include "IResearch/IResearchDocument.h"
 #include "Logger/Logger.h"
 #include "StorageEngine/DocumentIdentifierToken.h"
 #include "Transaction/Methods.h"
+#include "velocypack/Iterator.h"
+#include "velocypack/Parser.h"
 #include "velocypack/Slice.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/ManagedDocumentResult.h"
@@ -41,7 +44,7 @@ irs::string_ref const ATTRIBUTE_SCORER_NAME("@");
 /// @brief lazy-computed score from within Prepared::less(...)
 ////////////////////////////////////////////////////////////////////////////////
 struct Score {
-  void (*compute)(std::vector<irs::string_ref> const& attribute, arangodb::transaction::Methods& trx, Score& score);
+  void (*compute)(arangodb::velocypack::Slice const& attr, arangodb::transaction::Methods* trx, Score& score);
   irs::doc_id_t docId;
   irs::field_id pkColId;
   irs::sub_reader const* reader;
@@ -56,10 +59,8 @@ class Prepared: public irs::sort::prepared_base<Score> {
   DECLARE_FACTORY(Prepared);
 
   Prepared(
-    std::vector<irs::string_ref> const& attribute, // nullptr == c_str() -> offset into jSON
     size_t const (&order)[arangodb::iresearch::AttributeScorer::ValueType::eLast],
-    bool reverse,
-    arangodb::transaction::Methods& trx
+    bool reverse
   );
 
   virtual void add(score_t& dst, const score_t& src) const override;
@@ -75,43 +76,22 @@ class Prepared: public irs::sort::prepared_base<Score> {
   ) const override;
 
  private:
-  std::vector<irs::string_ref> _attribute; // nullptr == c_str() -> offset into jSON
-  std::string _buf; // attribute string sub-element buffer
+  arangodb::iresearch::attribute::AttributePath& _attr; // a jSON array representation of the attribute path
   mutable size_t _nextOrder;
   mutable size_t _order[arangodb::iresearch::AttributeScorer::ValueType::eLast + 1]; // type precedence order, +1 for unordered/unsuported types
   bool _reverse;
-  arangodb::transaction::Methods& _trx;
+  arangodb::iresearch::attribute::Transaction& _trx;
 
   size_t precedence(arangodb::velocypack::Slice const& slice) const;
 };
 
 Prepared::Prepared(
-    std::vector<irs::string_ref> const& attribute,
     size_t const (&order)[arangodb::iresearch::AttributeScorer::ValueType::eLast],
-    bool reverse,
-    arangodb::transaction::Methods& trx
-): _nextOrder(arangodb::iresearch::AttributeScorer::ValueType::eLast + 1), // past default set values, +1 for values unasigned by AttributeScorer
+    bool reverse
+): _attr(*(attributes().emplace<arangodb::iresearch::attribute::AttributePath>())), // mark sort as requiring attribute path
+   _nextOrder(arangodb::iresearch::AttributeScorer::ValueType::eLast + 1), // past default set values, +1 for values unasigned by AttributeScorer
    _reverse(reverse),
-   _trx(trx) {
-  std::vector<size_t> offsets;
-
-  offsets.reserve(attribute.size());
-
-  // fill _buf to ensure it does not reallocate later
-  for (auto& entry: attribute) {
-    if (!entry.null()) {
-      offsets.emplace_back(_buf.size());
-      _buf.append(entry.c_str(), entry.size());
-    }
-  }
-
-  auto itr = offsets.begin();
-
-  //recreate attribute path based on internal string buffer
-  for (auto& entry: attribute) {
-    _attribute.emplace_back(entry.null() ? nullptr : &(_buf[*(itr++)]), entry.size());
-  }
-
+   _trx(*(attributes().emplace<arangodb::iresearch::attribute::Transaction>())) { // mark sort as requiring transaction
   std::memcpy(_order, order, sizeof(order));
 }
 
@@ -128,8 +108,8 @@ irs::flags const& Prepared::features() const {
 }
 
 bool Prepared::less(const score_t& lhs, const score_t& rhs) const {
-  lhs.compute(_attribute, _trx, const_cast<score_t&>(lhs));
-  rhs.compute(_attribute, _trx, const_cast<score_t&>(rhs));
+  lhs.compute(_attr.value, _trx.value, const_cast<score_t&>(lhs));
+  rhs.compute(_attr.value, _trx.value, const_cast<score_t&>(rhs));
 
   if (lhs.slice.isBoolean() && rhs.slice.isBoolean()) {
       return _reverse
@@ -169,13 +149,23 @@ irs::sort::collector::ptr Prepared::prepare_collector() const {
 
 void Prepared::prepare_score(score_t& score) const {
   struct Compute {
-    static void noop(std::vector<irs::string_ref> const& attribute, arangodb::transaction::Methods& trx, Score& score) {}
-    static void invoke(std::vector<irs::string_ref> const& attribute, arangodb::transaction::Methods& trx, Score& score) {
+    static void noop(arangodb::velocypack::Slice const& attr, arangodb::transaction::Methods* trx, Score& score) {}
+    static void invoke(arangodb::velocypack::Slice const& attr, arangodb::transaction::Methods* trx, Score& score) {
       score.compute = &Compute::noop; // do not recompute score again
-      score.slice = arangodb::velocypack::Slice(); // inilialize to an unsupported value
+
+      if (!attr.isArray()) {
+        LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "failed to parse attribute path as an array while computing document score, doc_id '" << score.docId << "'";
+        return; // attribute path not initialized or incorrect argument format
+      }
 
       if (!score.reader) {
+        LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "failed to find reader while computing document score, doc_id '" << score.docId << "'";
         return; // score value not initialized, see errors during initialization
+      }
+
+      if (!trx) {
+        LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "failed to find transaction while computing document score, doc_id '" << score.docId << "'";
+        return; // transaction not provided, cannot compute value
       }
 
       arangodb::iresearch::DocumentPrimaryKey docPk;
@@ -184,6 +174,7 @@ void Prepared::prepare_score(score_t& score) const {
       const auto* column = score.reader->column_reader(score.pkColId);
 
       if (!column) {
+        LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "failed to find primary key column while computing document score, doc_id '" << score.docId << "'";
         return; // not a valid PK column
       }
 
@@ -197,9 +188,9 @@ void Prepared::prepare_score(score_t& score) const {
 
       static const std::string unknown("<unknown>");
 
-      trx.addCollectionAtRuntime(docPk.cid(), unknown);
+      trx->addCollectionAtRuntime(docPk.cid(), unknown);
 
-      auto* collection = trx.documentCollection(docPk.cid());
+      auto* collection = trx->documentCollection(docPk.cid());
 
       if (!collection) {
         LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "failed to find collection while computing document score, cid '" << docPk.cid() << "', rid '" << docPk.rid() << "'";
@@ -212,7 +203,7 @@ void Prepared::prepare_score(score_t& score) const {
 
       colToken._data = docPk.rid();
 
-      if (!collection->readDocument(&trx, colToken, docResult)) {
+      if (!collection->readDocument(trx, colToken, docResult)) {
         LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "failed to read document while computing document score, cid '" << docPk.cid() << "', rid '" << docPk.rid() << "'";
 
         return; // not a valid document
@@ -220,12 +211,14 @@ void Prepared::prepare_score(score_t& score) const {
 
       arangodb::velocypack::Slice doc(docResult.vpack());
 
-      for (auto& attr: attribute) {
-        if (doc.isArray() && attr.null()) {
-          doc = doc.at(attr.size()); // use size() as offset into jSON
+      for (arangodb::velocypack::ArrayIterator itr(attr); itr.valid(); ++itr) {
+        auto entry = *itr;
+
+        if (doc.isArray() && entry.isNumber<uint64_t>()) {
+          doc = doc.at(entry.getNumber<uint64_t>());
           score.slice = doc;
-        } else if (doc.isObject() && !attr.null()) {
-          doc = doc.get(attr);
+        } else if (doc.isObject() && entry.isString()) {
+          doc = doc.get(arangodb::iresearch::getStringRef(entry));
           score.slice = doc;
         } else { // array with non-numeric offset or object with non-string offset
           score.slice = arangodb::velocypack::Slice::noneSlice();
@@ -238,8 +231,9 @@ void Prepared::prepare_score(score_t& score) const {
     }
   };
 
-  score.compute = _attribute.empty() ? &Compute::noop : &Compute::invoke;
+  score.compute = &Compute::invoke;
   score.reader = nullptr; // unset for the case where the object is reused
+  score.slice = arangodb::velocypack::Slice(); // inilialize to an unsupported value
 }
 
 irs::sort::scorer::ptr Prepared::prepare_scorer(
@@ -308,25 +302,131 @@ size_t Prepared::precedence(arangodb::velocypack::Slice const& slice) const {
   return _order[type];
 }
 
+void setArangoDBTypeSortOrder(arangodb::iresearch::AttributeScorer& scorer) {
+  // ArangoDB default type sort order:
+  // null < bool < number < string < array/list < object/document
+  scorer.orderNext(arangodb::iresearch::AttributeScorer::ValueType::NIL);
+  scorer.orderNext(arangodb::iresearch::AttributeScorer::ValueType::BOOLEAN);
+  scorer.orderNext(arangodb::iresearch::AttributeScorer::ValueType::NUMBER);
+  scorer.orderNext(arangodb::iresearch::AttributeScorer::ValueType::STRING);
+  scorer.orderNext(arangodb::iresearch::AttributeScorer::ValueType::ARRAY);
+  scorer.orderNext(arangodb::iresearch::AttributeScorer::ValueType::OBJECT);
+}
+
 NS_END
 
 NS_BEGIN(arangodb)
 NS_BEGIN(iresearch)
 
 DEFINE_SORT_TYPE_NAMED(AttributeScorer, ATTRIBUTE_SCORER_NAME);
+REGISTER_SCORER(AttributeScorer);
 
 /*static*/ irs::sort::ptr AttributeScorer::make(
-    arangodb::transaction::Methods& trx
+    bool arangodbTypeOrder /*= false*/
 ) {
-  PTR_NAMED(AttributeScorer, ptr, trx);
+  PTR_NAMED(AttributeScorer, ptr);
+
+  #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+    auto* scorer = dynamic_cast<AttributeScorer*>(ptr.get());
+  #else
+    auto* scorer = static_cast<AttributeScorer*>(ptr.get());
+  #endif
+
+  if (scorer && arangodbTypeOrder) {
+    setArangoDBTypeSortOrder(*scorer);
+  }
 
   return ptr;
 }
 
-AttributeScorer::AttributeScorer(arangodb::transaction::Methods& trx)
+/*static*/ irs::sort::ptr AttributeScorer::make(const irs::string_ref& args) {
+  try {
+    PTR_NAMED(AttributeScorer, ptr);
+
+    #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+      auto* scorer = dynamic_cast<AttributeScorer*>(ptr.get());
+    #else
+      auto* scorer = static_cast<AttributeScorer*>(ptr.get());
+    #endif
+
+    if (!scorer) {
+      LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "Failed to create AttributeScorer instance";
+
+      return nullptr; // malloc failure
+    }
+
+    if (args.null()) {
+      setArangoDBTypeSortOrder(*scorer);
+
+      return ptr;
+    }
+
+    static std::unordered_map<irs::string_ref, ValueType> const valueTypes = {
+      { "array",   ValueType::ARRAY   },
+      { "boolean", ValueType::BOOLEAN },
+      { "null",    ValueType::NIL     },
+      { "numeric", ValueType::NUMBER  },
+      { "object",  ValueType::OBJECT  },
+      { "string",  ValueType::STRING  },
+      { "unknown", ValueType::UNKNOWN },
+    };
+
+    // try parsing as a string containing a single type value
+    {
+      auto typeItr = valueTypes.find(args);
+
+      if (typeItr != valueTypes.end()) {
+        scorer->orderNext(typeItr->second);
+
+        return ptr;
+      }
+    }
+
+    // velocypack::Parser::fromJson(...) will throw exception on parse error
+    auto json = arangodb::velocypack::Parser::fromJson(args.c_str(), args.size());
+    auto slice = json ? json->slice() : arangodb::velocypack::Slice();
+
+    if (!slice.isArray()) {
+      LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "Failed to parse AttributeScorer argument as an array";
+
+      return nullptr; // incorrect argument format
+    }
+
+    size_t i = 0;
+
+    for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr, ++i) {
+      auto entry = *itr;
+
+      if (!entry.isString()) {
+        LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "Failed to parse AttributeScorer argument [" << i << "] as a string";
+
+        return nullptr;
+      }
+
+      auto type = getStringRef(entry);
+      auto typeItr = valueTypes.find(type);
+
+      if (typeItr == valueTypes.end()) {
+        LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "Failed to parse AttributeScorer argument [" << type << "] as a supported enum value, not one of: 'array', 'boolean', 'null', 'numeric', 'object', 'string', 'unknown'";
+
+        return nullptr;
+      }
+
+      scorer->orderNext(typeItr->second);
+    }
+
+    return ptr;
+  } catch (...) {
+    LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "Caught error while constructing AttributeScorer from jSON arguments: " << args.c_str();
+    IR_EXCEPTION();
+  }
+
+  return nullptr;
+}
+
+AttributeScorer::AttributeScorer()
   : irs::sort(AttributeScorer::type()),
-    _nextOrder(0),
-    _trx(trx) {
+    _nextOrder(0) {
   std::fill_n(_order, (size_t)(ValueType::eLast), ValueType::eLast);
 }
 
@@ -359,19 +459,43 @@ AttributeScorer& AttributeScorer::orderNext(ValueType type) noexcept {
 }
 
 irs::sort::prepared::ptr AttributeScorer::prepare() const {
-  std::vector<irs::string_ref> attribute;
+  auto prepared = Prepared::make<Prepared>(_order, reverse());
 
-  attribute.reserve(_attribute.size());
-
-  for (auto& entry: _attribute) {
-    if (std::numeric_limits<size_t>::max() == entry._size) { // offset into jSON array
-      attribute.emplace_back(nullptr, entry._offset);
-    } else {
-      attribute.emplace_back(&(_buf[entry._offset]), entry._size);
-    }
+  if (!prepared || _attribute.empty()) {
+    return prepared; // attr should be set on Prepared instance
   }
 
-  return Prepared::make<Prepared>(attribute, _order, reverse(), _trx);
+  auto& attrs = prepared->attributes();
+  auto* attr = attrs.get<arangodb::iresearch::attribute::AttributePath>();
+
+  if (!attr || !*attr) {
+    return nullptr; // algorithm error, Prepared shuld be requesting attribute
+  }
+
+  try {
+    auto& builder =
+      attrs.emplace<arangodb::iresearch::stored_attribute::AttributePath>()->value;
+
+    builder.openArray();
+
+    for (auto& entry: _attribute) {
+      if (std::numeric_limits<size_t>::max() == entry._size) { // offset into jSON array
+         builder.add(arangodb::velocypack::Value(entry._offset));
+      } else {
+        builder.add(arangodb::iresearch::toValuePair(
+          &(_buf[entry._offset]),
+          entry._size
+        ));
+      }
+    }
+
+    builder.close();
+    (*attr)->value = builder.slice();
+  } catch (...) {
+    return nullptr; // jSON build failure
+  }
+
+  return prepared;
 }
 
 NS_END // iresearch

@@ -75,9 +75,9 @@ struct IRESEARCH_API stored_attribute {
 // --SECTION--                                              Attribute definition
 // -----------------------------------------------------------------------------
 
-#define DECLARE_ATTRIBUTE_TYPE() DECLARE_TYPE_ID(iresearch::attribute::type_id)
-#define DEFINE_ATTRIBUTE_TYPE_NAMED(class_type, class_name) DEFINE_TYPE_ID(class_type, iresearch::attribute::type_id) { \
-  static iresearch::attribute::type_id type(class_name); \
+#define DECLARE_ATTRIBUTE_TYPE() DECLARE_TYPE_ID(::iresearch::attribute::type_id)
+#define DEFINE_ATTRIBUTE_TYPE_NAMED(class_type, class_name) DEFINE_TYPE_ID(class_type, ::iresearch::attribute::type_id) { \
+  static ::iresearch::attribute::type_id type(class_name); \
   return type; \
 }
 #define DEFINE_ATTRIBUTE_TYPE(class_type) DEFINE_ATTRIBUTE_TYPE_NAMED(class_type, #class_type)
@@ -94,7 +94,7 @@ class IRESEARCH_API attribute_registrar {
   bool registered_;
 };
 
-#define REGISTER_ATTRIBUTE__(attribute_name, line) static iresearch::attribute_registrar attribute_registrar ## _ ## line(attribute_name::type())
+#define REGISTER_ATTRIBUTE__(attribute_name, line) static ::iresearch::attribute_registrar attribute_registrar ## _ ## line(attribute_name::type())
 #define REGISTER_ATTRIBUTE_EXPANDER__(attribute_name, line) REGISTER_ATTRIBUTE__(attribute_name, line)
 #define REGISTER_ATTRIBUTE(attribute_name) REGISTER_ATTRIBUTE_EXPANDER__(attribute_name, __LINE__)
 

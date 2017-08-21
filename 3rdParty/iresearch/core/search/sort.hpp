@@ -149,12 +149,18 @@ class IRESEARCH_API sort {
   /// @class sort::prepared
   /// @brief base class for all prepared(compiled) sort entries
   ////////////////////////////////////////////////////////////////////////////////
-  class IRESEARCH_API prepared {
+  class IRESEARCH_API prepared: public util::attribute_store_provider {
    public:
     DECLARE_PTR(prepared);
 
     prepared() = default;
+    explicit prepared(attribute_store&& attrs);
     virtual ~prepared();
+
+    using util::attribute_store_provider::attributes;
+    virtual attribute_store& attributes() NOEXCEPT override final {
+      return attrs_;
+    }
 
     ////////////////////////////////////////////////////////////////////////////////
     /// @brief the features required for proper operation of this sort::prepared
@@ -195,6 +201,9 @@ class IRESEARCH_API sort {
     /// @brief number of bytes required to store the score type (i.e. sizeof(score))
     ////////////////////////////////////////////////////////////////////////////////
     virtual size_t size() const = 0;
+
+   private:
+    attribute_store attrs_;
   }; // prepared
 
   ////////////////////////////////////////////////////////////////////////////////

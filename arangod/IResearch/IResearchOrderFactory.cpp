@@ -25,6 +25,8 @@
 
 #include "AstHelper.h"
 #include "AttributeScorer.h"
+#include "IResearchAttributes.h"
+#include "VelocyPackHelper.h"
 
 #include "Aql/AstNode.h"
 #include "Aql/Function.h"
@@ -35,6 +37,88 @@
 // ----------------------------------------------------------------------------
 
 NS_LOCAL
+
+class Sort: public irs::sort {
+ public:
+  Sort(irs::sort::ptr&& impl, arangodb::velocypack::Slice attrPath)
+    : irs::sort(impl->type()),
+      _impl(std::move(impl)) {
+    TRI_ASSERT(_impl);
+    _attrPath.value = attrPath;
+    irs::sort::reverse(_impl->reverse()); // ensure full equivalence for tests
+  }
+
+  virtual ~Sort() { }
+
+  static irs::sort::ptr make(
+      irs::sort::ptr&& impl,
+      arangodb::velocypack::Slice attrPath
+  ) {
+    PTR_NAMED(Sort, ptr, std::move(impl), attrPath);
+    return ptr;
+  }
+
+  virtual prepared::ptr prepare() const override {
+    auto ptr = _impl->prepare();
+
+    if (!ptr) {
+      return nullptr;
+    }
+
+    auto* attr = ptr->attributes().get<arangodb::iresearch::attribute::AttributePath>();
+
+    if (attr) {
+      **attr = _attrPath; // set attribute path if requested
+    }
+
+    return ptr;
+  }
+
+  void reverse(bool rev) { TRI_ASSERT(false); } // must initialize impl before construction wrapper
+
+ private:
+  arangodb::iresearch::attribute::AttributePath _attrPath;
+  irs::sort::ptr _impl;
+};
+
+bool appendAttributePath(
+    arangodb::velocypack::Builder* builder,
+    arangodb::aql::AstNode const*& head,
+    arangodb::aql::AstNode const* node
+) {
+  if (!node) {
+    return false;
+  }
+
+  if (!builder) {
+    struct {
+      bool operator()() { return false; } // do not support [*]
+      bool operator()(int64_t value) { return value >= 0; }
+      bool operator()(irs::string_ref const& value) { return !value.null(); }
+    } visitor;
+
+    return arangodb::iresearch::visitAttributePath(head, *node, visitor);
+  }
+
+  struct VisitorType{
+    arangodb::velocypack::Builder& builder;
+    VisitorType(arangodb::velocypack::Builder& vBuilder): builder(vBuilder) {
+      builder.openArray();
+    }
+    ~VisitorType() { builder.close(); }
+    bool operator()() { return false; } // do not support [*]
+    bool operator()(int64_t value) {
+      builder.add(arangodb::velocypack::Value(value));
+      return value >= 0;
+    }
+    bool operator()(irs::string_ref const& value) {
+      builder.add(arangodb::iresearch::toValuePair(value));
+      return !value.null();
+    }
+  } visitor(*builder);
+
+  return arangodb::iresearch::visitAttributePath(head, *node, visitor);
+}
 
 bool validateOutputVariable(arangodb::aql::AstNode const* node) {
   // referencing chain node structure:
@@ -52,16 +136,37 @@ bool fromFCall(
     arangodb::iresearch::IResearchViewMeta const& meta
 ) {
   TRI_ASSERT(arangodb::aql::NODE_TYPE_ARRAY == args.type);
+  arangodb::velocypack::Builder* attrPath = nullptr;
+  arangodb::aql::AstNode const* head;
   irs::sort::ptr scorer;
 
-  switch (args.numMembers()) {
-   case 0:
-    return false; // expected arangodb::aql::NODE_TYPE_ATTRIBUTE_ACCESS
-   case 1:
-    if (!validateOutputVariable(args.getMemberUnchecked(0))) {
-      return false; // expected arangodb::aql::NODE_TYPE_ATTRIBUTE_ACCESS
-    }
+  if (ctx) {
+    auto attr = arangodb::iresearch::stored_attribute::AttributePath::make();
 
+    #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+      auto* attrPtr = dynamic_cast<arangodb::iresearch::stored_attribute::AttributePath*>(attr.get());
+    #else
+      auto* attrPtr = static_cast<arangodb::iresearch::stored_attribute::AttributePath*>(attr.get());
+    #endif
+
+    if (attrPtr) {
+      attrPath = &(attrPtr->value);
+      ctx->attributes.emplace_back(std::move(attr));
+    }
+  }
+
+  if (!args.numMembers()
+      || !appendAttributePath(attrPath, head, args.getMemberUnchecked(0))
+      || !(validateOutputVariable(head)
+           || (arangodb::aql::NODE_TYPE_VALUE == head->type // allow pure string attribute path
+               && args.getMemberUnchecked(0) == head)
+          )
+     ) {
+    return false; // expected to see an attribute path as the first argument
+  }
+
+  switch (args.numMembers()) {
+   case 1:
     scorer = irs::scorers::get(name, irs::string_ref::nil);
 
     if (!scorer) {
@@ -70,10 +175,6 @@ bool fromFCall(
 
     break;
    case 2: {
-    if (!validateOutputVariable(args.getMemberUnchecked(0))) {
-      return false; // expected arangodb::aql::NODE_TYPE_ATTRIBUTE_ACCESS
-    }
-
     auto* arg = args.getMemberUnchecked(1);
 
     if (arg
@@ -90,10 +191,6 @@ bool fromFCall(
    }
    // fall through
    default: {
-    if (!validateOutputVariable(args.getMemberUnchecked(0))) {
-      return false; // expected arangodb::aql::NODE_TYPE_ATTRIBUTE_ACCESS
-    }
-
     arangodb::velocypack::Builder builder;
 
     builder.openArray();
@@ -118,8 +215,8 @@ bool fromFCall(
   }
 
   if (ctx) {
-    ctx->order.add(scorer);
     scorer->reverse(reverse);
+    ctx->order.add<Sort>(std::move(scorer), attrPath->slice());
   }
 
   return true;
@@ -188,50 +285,17 @@ bool fromValue(
     || arangodb::aql::NODE_TYPE_VALUE == node.type
   );
 
-  arangodb::aql::AstNode const* head = nullptr;
-  bool valid = false;
+  arangodb::aql::AstNode args(arangodb::aql::NODE_TYPE_ARRAY);
 
-  if (!ctx) {
-    struct {
-      bool operator()() { return false; } // do not support [*]
-      bool operator()(int64_t value) { return value >= 0; }
-      bool operator()(irs::string_ref const& value) { return !value.null(); }
-    } visitor;
+  args.addMember(&node); // simulate argument array AST structure of an FCall
 
-    valid = arangodb::iresearch::visitAttributePath(head, node, visitor);
-  } else {
-    struct {
-      arangodb::iresearch::AttributeScorer* scorer;
-      bool operator()() { return false; } // do not support [*]
-      bool operator()(int64_t value) {
-        scorer->attributeNext(uint64_t(value));
-        return value >= 0;
-      }
-      bool operator()(irs::string_ref const& value) {
-        scorer->attributeNext(value);
-        return !value.null();
-      }
-    } visitor;
-    auto& scorer = ctx->order.add<arangodb::iresearch::AttributeScorer>(ctx->trx);
-
-    visitor.scorer = &scorer;
-    valid = arangodb::iresearch::visitAttributePath(head, node, visitor);
-    scorer.reverse(reverse);
-
-    // ArangoDB default type sort order:
-    // null < bool < number < string < array/list < object/document
-    scorer.orderNext(arangodb::iresearch::AttributeScorer::ValueType::NIL);
-    scorer.orderNext(arangodb::iresearch::AttributeScorer::ValueType::BOOLEAN);
-    scorer.orderNext(arangodb::iresearch::AttributeScorer::ValueType::NUMBER);
-    scorer.orderNext(arangodb::iresearch::AttributeScorer::ValueType::STRING);
-    scorer.orderNext(arangodb::iresearch::AttributeScorer::ValueType::ARRAY);
-    scorer.orderNext(arangodb::iresearch::AttributeScorer::ValueType::OBJECT);
-  }
-
-  return valid
-      && ((arangodb::aql::NODE_TYPE_VALUE == head->type && &node == head)
-          || validateOutputVariable(head)
-         );
+  return fromFCall(
+    ctx,
+    arangodb::iresearch::AttributeScorer::type().name(),
+    args,
+    reverse,
+    meta
+  );
 }
 
 NS_END

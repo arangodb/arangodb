@@ -91,10 +91,9 @@ void assertOrderSuccess(std::string const& queryString, irs::order const& expect
     variableNodes.emplace(variables.back().id, sortNode->getMember(i)->getMember(0));
   }
 
-  static std::vector<std::string> const EMPTY;
-  arangodb::transaction::UserTransaction trx(arangodb::transaction::StandaloneContext::Create(&vocbase), EMPTY, EMPTY, EMPTY, arangodb::transaction::Options());
   irs::order actual;
-  arangodb::iresearch::OrderFactory::OrderContext ctx { actual, trx };
+  std::vector<irs::attribute::ptr> actualAttrs;
+  arangodb::iresearch::OrderFactory::OrderContext ctx { actualAttrs, actual };
   arangodb::aql::SortCondition order(nullptr, sorts, attrs, variableNodes);
   arangodb::iresearch::IResearchViewMeta meta;
 
@@ -139,10 +138,9 @@ void assertOrderFail(std::string const& queryString, size_t parseCode) {
     variableNodes.emplace(variables.back().id, sortNode->getMember(i)->getMember(0));
   }
 
-  static std::vector<std::string> const EMPTY;
-  arangodb::transaction::UserTransaction trx(arangodb::transaction::StandaloneContext::Create(&vocbase), EMPTY, EMPTY, EMPTY, arangodb::transaction::Options());
   irs::order actual;
-  arangodb::iresearch::OrderFactory::OrderContext ctx { actual, trx };
+  std::vector<irs::attribute::ptr> actualAttrs;
+  arangodb::iresearch::OrderFactory::OrderContext ctx { actualAttrs, actual };
   arangodb::aql::SortCondition order(nullptr, sorts, attrs, variableNodes);
   arangodb::iresearch::IResearchViewMeta meta;
 
@@ -455,15 +453,12 @@ SECTION("test_FCallUser") {
 }
 
 SECTION("test_StringValue") {
-  static std::vector<std::string> const EMPTY;
-  arangodb::transaction::UserTransaction trx(arangodb::transaction::StandaloneContext::Create(nullptr), EMPTY, EMPTY, EMPTY, arangodb::transaction::Options());
-
   // simple field
   {
     std::string query = "FOR d IN collection FILTER '1' SORT 'a' RETURN d";
     irs::order expected;
 
-    expected.add<arangodb::iresearch::AttributeScorer>(trx).attributeNext("a");
+    expected.add<arangodb::iresearch::AttributeScorer>().attributeNext("a");
     assertOrderSuccess(query, expected);
   }
 
@@ -472,7 +467,7 @@ SECTION("test_StringValue") {
     std::string query = "FOR d IN collection FILTER '1' SORT 'a' ASC RETURN d";
     irs::order expected;
 
-    expected.add<arangodb::iresearch::AttributeScorer>(trx).attributeNext("a");
+    expected.add<arangodb::iresearch::AttributeScorer>().attributeNext("a");
     assertOrderSuccess(query, expected);
   }
 
@@ -481,7 +476,7 @@ SECTION("test_StringValue") {
     std::string query = "FOR d IN collection FILTER '1' SORT 'a' DESC RETURN d";
     irs::order expected;
 
-    expected.add<arangodb::iresearch::AttributeScorer>(trx).attributeNext("a").reverse(true);
+    expected.add<arangodb::iresearch::AttributeScorer>().attributeNext("a").reverse(true);
     assertOrderSuccess(query, expected);
   }
 
@@ -490,7 +485,7 @@ SECTION("test_StringValue") {
     std::string query = "FOR d IN collection FILTER '1' SORT 'a.b.c' RETURN d";
     irs::order expected;
 
-    expected.add<arangodb::iresearch::AttributeScorer>(trx).attributeNext("a.b.c");
+    expected.add<arangodb::iresearch::AttributeScorer>().attributeNext("a.b.c");
     assertOrderSuccess(query, expected);
   }
 
@@ -499,7 +494,7 @@ SECTION("test_StringValue") {
     std::string query = "FOR d IN collection FILTER '1' SORT 'a.b.c' ASC RETURN d";
     irs::order expected;
 
-    expected.add<arangodb::iresearch::AttributeScorer>(trx).attributeNext("a.b.c");
+    expected.add<arangodb::iresearch::AttributeScorer>().attributeNext("a.b.c");
     assertOrderSuccess(query, expected);
   }
 
@@ -508,7 +503,7 @@ SECTION("test_StringValue") {
     std::string query = "FOR d IN collection FILTER '1' SORT 'a.b.c' DESC RETURN d";
     irs::order expected;
 
-    expected.add<arangodb::iresearch::AttributeScorer>(trx).attributeNext("a.b.c").reverse(true);
+    expected.add<arangodb::iresearch::AttributeScorer>().attributeNext("a.b.c").reverse(true);
     assertOrderSuccess(query, expected);
   }
 }
@@ -521,10 +516,9 @@ SECTION("test_order") {
     std::unordered_map<arangodb::aql::VariableId, arangodb::aql::AstNode const*> variableNodes;
     std::vector<arangodb::aql::Variable> variables;
 
-    static std::vector<std::string> const EMPTY;
-    arangodb::transaction::UserTransaction trx(arangodb::transaction::StandaloneContext::Create(nullptr), EMPTY, EMPTY, EMPTY, arangodb::transaction::Options());
     irs::order actual;
-    arangodb::iresearch::OrderFactory::OrderContext ctx { actual, trx };
+    std::vector<irs::attribute::ptr> actualAttrs;
+    arangodb::iresearch::OrderFactory::OrderContext ctx { actualAttrs, actual };
     arangodb::aql::SortCondition order(nullptr, sorts, attrs, variableNodes);
     arangodb::iresearch::IResearchViewMeta meta;
 

@@ -27,31 +27,38 @@
 #include "search/scorers.hpp"
 
 NS_BEGIN(arangodb)
-NS_BEGIN(transaction)
-
-class Methods; // forward declaration
-
-NS_END // transaction
-NS_END // arangodb
-
-NS_BEGIN(arangodb)
 NS_BEGIN(iresearch)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief an iResearch scorer implementation based on jSON attributes of
 ///        ArangoDB documents
+///        expects attributes: TransactionAttribute, AttributePathAttribute
 ////////////////////////////////////////////////////////////////////////////////
-
 class AttributeScorer: public irs::sort {
  public:
   DECLARE_SORT_TYPE();
 
   // for use with irs::order::add<T>(...) and default args (static build)
-  DECLARE_FACTORY_DEFAULT(arangodb::transaction::Methods& trx);
+  DECLARE_FACTORY_DEFAULT(bool arangodbTypeOrder = false);
 
-  enum ValueType { ARRAY, BOOLEAN, NIL, NUMBER, OBJECT, STRING, UNKNOWN, eLast};
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief for use with irs::order::add(...) (dynamic build)
+  ///        or jSON args (static build)
+  /// @param args: jSON [string enum, ...] precedence order of value types,
+  ///              (string_ref::nil == use ArangoDB defaults), any of:
+  ///        array   - array attribute value in jSON document
+  ///        boolean - boolean attribute value in jSON document
+  ///        null    - null attribute value in jSON document
+  ///        numeric - numeric attribute value in jSON document
+  ///        object  - object attribute value in jSON document
+  ///        string  - string attribute value in jSON document
+  ///        unknown - missing or unsupported attribute value in jSON document
+  ////////////////////////////////////////////////////////////////////////////////
+  DECLARE_FACTORY_DEFAULT(const irs::string_ref& args);
 
-  explicit AttributeScorer(arangodb::transaction::Methods& trx);
+  enum ValueType { ARRAY, BOOLEAN, NIL, NUMBER, OBJECT, STRING, UNKNOWN, eLast };
+
+  explicit AttributeScorer();
 
   AttributeScorer& attributeNext(uint64_t offset);
   AttributeScorer& attributeNext(irs::string_ref const& attibute);
@@ -61,13 +68,12 @@ class AttributeScorer: public irs::sort {
  private:
   struct AttributeItem {
     size_t _offset; // offset into _buf or jSON array
-    size_t _size; //  (std::numeric_limits<size_t>::max() -> offset into jSON array)
+    size_t _size; // (std::numeric_limits<size_t>::max() -> offset into jSON array)
   };
   std::vector<AttributeItem> _attribute; // full attribute path to match
   std::string _buf;
   size_t _nextOrder;
   size_t _order[ValueType::eLast]; // type precedence order
-  arangodb::transaction::Methods& _trx;
 };
 
 NS_END // iresearch

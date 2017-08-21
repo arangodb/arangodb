@@ -34,6 +34,7 @@
 #include "IResearch/IResearchAnalyzerFeature.h"
 #include "IResearch/IResearchFeature.h"
 #include "IResearch/AttributeScorer.h"
+#include "IResearch/IResearchOrderFactory.h"
 #include "IResearch/IResearchView.h"
 #include "IResearch/SystemDatabaseFeature.h"
 #include "MMFiles/MMFilesDocumentPosition.h"
@@ -57,12 +58,76 @@
 
 NS_LOCAL
 
+void assertOrderFail(
+    arangodb::LogicalView& view,
+    std::string const& queryString,
+    size_t parseCode
+) {
+  TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "testVocbase");
+
+  arangodb::aql::Query query(
+     false, &vocbase, arangodb::aql::QueryString(queryString),
+     nullptr, nullptr,
+     arangodb::aql::PART_MAIN
+  );
+
+  auto const parseResult = query.parse();
+  REQUIRE(parseCode == parseResult.code);
+
+  if (TRI_ERROR_NO_ERROR != parseCode) {
+    return; // expecting a parse error, nothing more to check
+  }
+
+  auto* root = query.ast()->root();
+  REQUIRE(root);
+  auto* orderNode = root->getMember(2);
+  REQUIRE(orderNode);
+  auto* sortNode = orderNode->getMember(0);
+  REQUIRE(sortNode);
+
+  std::vector<std::vector<arangodb::basics::AttributeName>> attrs;
+  std::vector<std::pair<arangodb::aql::Variable const*, bool>> sorts;
+  std::unordered_map<arangodb::aql::VariableId, arangodb::aql::AstNode const*> variableNodes;
+  std::vector<arangodb::aql::Variable> variables;
+
+  variables.reserve(sortNode->numMembers());
+
+  for (size_t i = 0, count = sortNode->numMembers(); i < count; ++i) {
+    variables.emplace_back("arg", i);
+    sorts.emplace_back(&variables.back(), sortNode->getMember(i)->getMember(1)->value.value._bool);
+    variableNodes.emplace(variables.back().id, sortNode->getMember(i)->getMember(0));
+  }
+
+  irs::order actual;
+  std::vector<irs::attribute::ptr> actualAttrs;
+  arangodb::iresearch::OrderFactory::OrderContext ctx { actualAttrs, actual };
+  arangodb::aql::SortCondition order(nullptr, sorts, attrs, variableNodes);
+  arangodb::iresearch::IResearchViewMeta meta;
+
+  CHECK((!arangodb::iresearch::OrderFactory::order(nullptr, order, meta)));
+  CHECK((!arangodb::iresearch::OrderFactory::order(&ctx, order, meta)));
+}
+
 void assertOrderSuccess(
     arangodb::LogicalView& view,
     std::string const& queryString,
     std::string const& field,
     std::vector<size_t> const& expected
 ) {
+  std::vector<size_t> expectedOrdered;
+  std::unordered_multiset<size_t> expectedUnordered;
+  bool ordered = true;
+
+  for (auto entry: expected) {
+    if (size_t(-1) == entry) { // unordered delimiter
+      ordered = false;
+    } else if (ordered) {
+      expectedOrdered.emplace_back(entry);
+    } else {
+      expectedUnordered.emplace(entry);
+    }
+  }
+
   auto* vocbase = view.vocbase();
   std::shared_ptr<arangodb::velocypack::Builder> bindVars;
   auto options = std::make_shared<arangodb::velocypack::Builder>();
@@ -106,22 +171,29 @@ void assertOrderSuccess(
   CHECK((false == !itr));
 
   size_t next = 0;
-  auto callback = [&field, &expected, itr, &next](arangodb::DocumentIdentifierToken const& token) {
+  auto callback = [&field, &expectedOrdered, &expectedUnordered, itr, &next](arangodb::DocumentIdentifierToken const& token)->void {
     arangodb::ManagedDocumentResult result;
 
     CHECK((itr->readDocument(token, result)));
 
     arangodb::velocypack::Slice doc(result.vpack());
 
-    CHECK((next < expected.size()));
     CHECK((doc.hasKey(field)));
     CHECK((doc.get(field).isNumber()));
-    CHECK((expected[next++] == doc.get(field).getNumber<size_t>()));
+
+    if (next < expectedOrdered.size()) {
+      CHECK((expectedOrdered[next++] == doc.get(field).getNumber<size_t>()));
+    } else {
+      auto itr = expectedUnordered.find(doc.get(field).getNumber<size_t>());
+
+      CHECK((itr != expectedUnordered.end()));
+      expectedUnordered.erase(itr);
+    }
   };
 
   CHECK((!itr->next(callback, size_t(-1)))); // false because no more results
   CHECK((trx.commit().ok()));
-  CHECK((expected.size() == next));
+  CHECK((next == expectedOrdered.size() && expectedUnordered.empty()));
 }
 
 NS_END
@@ -172,10 +244,23 @@ struct IResearchAttributeScorerSetup {
         f.first->start();
       }
     }
+
+    // external function names must be registred in upper-case
+    // user defined functions have ':' in the external function name
+    // function arguments string format: requiredArg1[,requiredArg2]...[|optionalArg1[,optionalArg2]...]
+    auto& functions = *arangodb::aql::AqlFunctionFeature::AQLFUNCTIONS;
+    arangodb::aql::Function attr("@", "internalName", ".|+", false, false, true, true, false);
+
+    functions.add(attr);
+
+    // suppress log messages since tests check error conditions
+    arangodb::LogTopic::setLogLevel(arangodb::Logger::FIXME.name(), arangodb::LogLevel::FATAL);
+    irs::logger::output_le(iresearch::logger::IRL_FATAL, stderr);
   }
 
   ~IResearchAttributeScorerSetup() {
     system.reset(); // destroy before reseting the 'ENGINE'
+    arangodb::LogTopic::setLogLevel(arangodb::Logger::FIXME.name(), arangodb::LogLevel::DEFAULT);
     arangodb::application_features::ApplicationServer::server = nullptr;
     arangodb::EngineSelectorFeature::ENGINE = nullptr;
 
@@ -295,12 +380,66 @@ SECTION("test_query") {
 
     // object values
     {
-      std::vector<size_t> const expected =  { 11, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 12 };
+      std::vector<size_t> const expected = { 11, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 12 };
       std::string query0 = "FOR d IN testCollection FILTER d.key >= 1 SORT d['testAttr']['a'] RETURN d";
       std::string query1 = "FOR d IN testCollection FILTER d.key >= 1 SORT d.testAttr.a RETURN d";
 
       assertOrderSuccess(*logicalView, query0, "key", expected);
       assertOrderSuccess(*logicalView, query1, "key", expected);
+    }
+
+    // via function (no precendence)
+    {
+      std::vector<size_t> const expected = { 9, 8, 7, 4, 5, 6, 1, 2, 3, 10, 11, 12 };
+      std::string query0 = "FOR d IN testCollection FILTER d.key >= 1 SORT `@`('testAttr') RETURN d";
+      std::string query1 = "FOR d IN testCollection FILTER d.key >= 1 SORT `@`(d['testAttr']) RETURN d";
+      std::string query2 = "FOR d IN testCollection FILTER d.key >= 1 SORT `@`(d.testAttr) RETURN d";
+
+      assertOrderSuccess(*logicalView, query0, "key", expected);
+      assertOrderSuccess(*logicalView, query1, "key", expected);
+      assertOrderSuccess(*logicalView, query2, "key", expected);
+    }
+
+    // via function (with precendence)
+    {
+      std::vector<size_t> const expected0 = { 10, size_t(-1), 1, 2, 3, 4, 5, 6, 7, 8, 9, 11, 12 };
+      std::vector<size_t> const expected1 = { 8, 7, size_t(-1), 1, 2, 3, 4, 5, 6, 9, 10, 11, 12 };
+      std::vector<size_t> const expected2 = { 9, size_t(-1), 1, 2, 3, 4, 5, 6, 7, 8, 10, 11, 12 };
+      std::vector<size_t> const expected3 = { 4, 5, 6, size_t(-1), 1, 2, 3, 7, 8, 9, 10, 11, 12 };
+      std::vector<size_t> const expected4 = { 11, size_t(-1), 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 12 };
+      std::vector<size_t> const expected5 = { 1, 2, 3, size_t(-1), 4, 5, 6, 7, 8, 9, 10, 11, 12 };
+      std::vector<size_t> const expected6 = { 12, size_t(-1), 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11 };
+      std::vector<size_t> const expected7 = { 10, 8, 7, 9, 4, 5, 6, 11, 1, 2, 3, 12 };
+      std::string query0 = "FOR d IN testCollection FILTER d.key >= 1 SORT `@`(d.testAttr, 'array') RETURN d";
+      std::string query1 = "FOR d IN testCollection FILTER d.key >= 1 SORT `@`(d.testAttr, 'boolean') RETURN d";
+      std::string query2 = "FOR d IN testCollection FILTER d.key >= 1 SORT `@`(d.testAttr, 'null') RETURN d";
+      std::string query3 = "FOR d IN testCollection FILTER d.key >= 1 SORT `@`(d.testAttr, 'numeric') RETURN d";
+      std::string query4 = "FOR d IN testCollection FILTER d.key >= 1 SORT `@`(d.testAttr, 'object') RETURN d";
+      std::string query5 = "FOR d IN testCollection FILTER d.key >= 1 SORT `@`(d.testAttr, 'string') RETURN d";
+      std::string query6 = "FOR d IN testCollection FILTER d.key >= 1 SORT `@`(d.testAttr, 'unknown') RETURN d";
+      std::string query7 = "FOR d IN testCollection FILTER d.key >= 1 SORT `@`(d.testAttr, 'array', 'boolean', 'null', 'numeric', 'object', 'string', 'unknown') RETURN d";
+
+      assertOrderSuccess(*logicalView, query0, "key", expected0);
+      assertOrderSuccess(*logicalView, query1, "key", expected1);
+      assertOrderSuccess(*logicalView, query2, "key", expected2);
+      assertOrderSuccess(*logicalView, query3, "key", expected3);
+      assertOrderSuccess(*logicalView, query4, "key", expected4);
+      assertOrderSuccess(*logicalView, query5, "key", expected5);
+      assertOrderSuccess(*logicalView, query6, "key", expected6);
+      assertOrderSuccess(*logicalView, query7, "key", expected7);
+    }
+
+    // via function (with invalid precedence)
+    {
+      std::string query0 = "FOR d IN testCollection FILTER d.key >= 1 SORT `@`(d.testAttr, []) RETURN d";
+      std::string query1 = "FOR d IN testCollection FILTER d.key >= 1 SORT `@`(d.testAttr, {}) RETURN d";
+      std::string query2 = "FOR d IN testCollection FILTER d.key >= 1 SORT `@`(d.testAttr, 42) RETURN d";
+      std::string query3 = "FOR d IN testCollection FILTER d.key >= 1 SORT `@`(d.testAttr, 'abc') RETURN d";
+
+      assertOrderFail(*logicalView, query0, TRI_ERROR_NO_ERROR);
+      assertOrderFail(*logicalView, query1, TRI_ERROR_NO_ERROR);
+      assertOrderFail(*logicalView, query2, TRI_ERROR_NO_ERROR);
+      assertOrderFail(*logicalView, query3, TRI_ERROR_NO_ERROR);
     }
   }
 
