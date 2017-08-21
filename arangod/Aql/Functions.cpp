@@ -1231,6 +1231,40 @@ AqlValue Functions::Upper(arangodb::aql::Query* query,
   return AqlValue(utf8.c_str(), utf8.length());
 }
 
+/// @brief function SUBSTRING
+AqlValue Functions::Substring(arangodb::aql::Query* query,
+                                    transaction::Methods* trx,
+                                    VPackFunctionParameters const& parameters) {
+  ValidateParameters(parameters, "SUBSTRING", 2, 3);
+  AqlValue value = ExtractFunctionParameterValue(trx, parameters, 0);
+
+  int32_t length = INT32_MAX;
+
+  transaction::StringBufferLeaser buffer(trx);
+  arangodb::basics::VPackStringBufferAdapter adapter(buffer->stringBuffer());
+
+  AppendAsString(trx, adapter, value);
+  UnicodeString s(buffer->c_str(), buffer->length());
+
+  int32_t offset = static_cast<int32_t>(ExtractFunctionParameterValue(trx, parameters, 1).toInt64(trx));
+
+  if (parameters.size() == 3) {
+    length = static_cast<int32_t>(ExtractFunctionParameterValue(trx, parameters, 2).toInt64(trx));
+  }
+
+  if (offset < 0) {
+    offset = s.moveIndex32(s.moveIndex32( s.length(), 0), offset);
+  } else {
+    offset = s.moveIndex32(0, offset);
+  }
+
+  std::string utf8;
+  s.tempSubString(offset, s.moveIndex32(offset, length) - offset)
+  .toUTF8String(utf8);
+
+  return AqlValue(utf8.c_str(), utf8.length());
+}
+
 /// @brief function LEFT str, lenght
 AqlValue Functions::Left(arangodb::aql::Query* query,
                          transaction::Methods* trx,
@@ -1354,6 +1388,7 @@ AqlValue Functions::Trim(arangodb::aql::Query* query,
   UnicodeString result = s.tempSubString(startOffset, endOffset - startOffset);
   std::string utf8;
   result.toUTF8String(utf8);
+
   return AqlValue(utf8.c_str(), utf8.length());
 }
 
