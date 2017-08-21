@@ -235,10 +235,14 @@ void SslClientConnection::init(uint64_t sslProtocol) {
       meth = SSLv23_method();
       break;
 
+#if defined OPENSSL_VERSION_MAJOR && OPENSSL_VERSION_MAJOR == 1
+#if defined OPENSSL_VERSION_MINOR && OPENSSL_VERSION_MINOR < 1
     case TLS_V1:
       meth = TLSv1_method();
       break;
-    
+#endif
+#endif
+
     case TLS_V12:
       meth = TLSv1_2_method();
       break;
