@@ -39,7 +39,7 @@ namespace arangodb {
 
 class RocksDBKey {
  public:
-  RocksDBKey() = delete;
+  RocksDBKey();
   explicit RocksDBKey(rocksdb::Slice slice)
       : _type(static_cast<RocksDBEntryType>(slice.data()[0])),
         _buffer(slice.data(), slice.size()) {}
@@ -68,6 +68,7 @@ class RocksDBKey {
   /// @brief Create a fully-specified document key
   //////////////////////////////////////////////////////////////////////////////
   static RocksDBKey Document(uint64_t objectId, TRI_voc_rid_t revisionId);
+  void constructDocument(uint64_t objectId, TRI_voc_rid_t revisionId);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Create a fully-specified key for an entry in a primary index
@@ -79,6 +80,9 @@ class RocksDBKey {
                                       arangodb::StringRef const& primaryKey);
 
   static RocksDBKey PrimaryIndexValue(uint64_t indexId, char const* primaryKey);
+  void constructPrimaryIndexValue(uint64_t indexId,
+                                  arangodb::StringRef const& primaryKey);
+  void constructPrimaryIndexValue(uint64_t indexId, char const* primaryKey);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Create a fully-specified key for an entry in an edge index
@@ -257,8 +261,8 @@ class RocksDBKey {
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Returns a reference to the full, constructed key
   //////////////////////////////////////////////////////////////////////////////
-  std::string const& string() const;
-  
+  rocksdb::Slice const& string() const;
+
  private:
   explicit RocksDBKey(RocksDBEntryType type, RocksDBSettingsType st);
   RocksDBKey(RocksDBEntryType type, uint64_t first);
@@ -266,8 +270,6 @@ class RocksDBKey {
   RocksDBKey(RocksDBEntryType type, uint64_t first, VPackSlice const& slice);
   RocksDBKey(RocksDBEntryType type, uint64_t first, VPackSlice const& second,
              TRI_voc_rid_t third);
-  RocksDBKey(RocksDBEntryType type, uint64_t first,
-             arangodb::StringRef const& second);
   RocksDBKey(RocksDBEntryType type, uint64_t first,
              arangodb::StringRef const& second, uint64_t third);
 
@@ -307,10 +309,15 @@ class RocksDBKey {
   static StringRef vertexId(char const* data, size_t size);
   static VPackSlice indexedVPack(char const* data, size_t size);
 
+  void buildDocument(uint64_t collectionId, TRI_voc_rid_t revisionId);
+  void buildPrimaryIndexValue(uint64_t indexId, arangodb::StringRef const& primaryKey);
+
  private:
   static const char _stringSeparator;
-  RocksDBEntryType const _type;
+  RocksDBEntryType _type;
   std::string _buffer;
+  size_t _keyLength;
+  rocksdb::Slice _slice;
 };
 
 }  // namespace arangodb

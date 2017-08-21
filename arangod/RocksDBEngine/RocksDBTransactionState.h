@@ -121,6 +121,11 @@ class RocksDBTransactionState final : public TransactionState {
     return static_cast<RocksDBTransactionState*>(state)->rocksdbMethods();
   }
 
+  /// @brief temporarily lease a Builder object
+  RocksDBKey* leaseRocksDBKey();
+  /// @brief return a temporary RocksDBKey object
+  void returnRocksDBKey(RocksDBKey* key);
+
  private:
   void createTransaction();
   arangodb::Result internalCommit();
@@ -151,7 +156,28 @@ class RocksDBTransactionState final : public TransactionState {
   /// store the number of log entries in WAL
   uint64_t _numLogdata = 0;
 #endif
+  SmallVector<RocksDBKey*, 32>::allocator_type::arena_type _arena;
+  SmallVector<RocksDBKey*, 32> _keys;
 };
+
+class RocksDBKeyLeaser {
+ public:
+  explicit RocksDBKeyLeaser(transaction::Methods*);
+  ~RocksDBKeyLeaser();
+  inline RocksDBKey* builder() const { return _key; }
+  inline RocksDBKey* operator->() const { return _key; }
+  inline RocksDBKey* get() const { return _key; }
+  inline RocksDBKey& ref() const {return *_key; }
+  inline RocksDBKey* steal() {
+    RocksDBKey* res = _key;
+    _key = nullptr;
+    return res;
+  }
+ private:
+  RocksDBTransactionState* _rtrx;
+  RocksDBKey* _key;
+};
+
 }  // namespace arangodb
 
 #endif
