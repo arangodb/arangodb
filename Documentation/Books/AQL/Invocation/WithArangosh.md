@@ -155,6 +155,14 @@ The following additional attributes can be passed to queries in the RocksDB stor
 - *intermediateCommitCount*: maximum number of operations after which an intermediate
   commit is performed automatically
 
+In the ArangoDB Enterprise Edition there is an additional parameter:
+
+- *skipInaccessibleCollections* AQL queries (especially graph traversals) will treat
+  collection to which a user has **no access** rights as if these collections were empty.
+  Instead of returning a *forbidden access* error, your queries will execute normally.
+  This is intended to help with certain use-cases: A graph contains several collections
+  and different users execute AQL queries on that graph. You can now naturally limit the 
+  accessible results by changing the access rights of users on collections.
 
 ### with _createStatement (ArangoStatement)
 

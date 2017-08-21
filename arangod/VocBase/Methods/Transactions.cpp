@@ -140,6 +140,10 @@ Result executeTransactionJS(
     VPackBuilder builder;
     TRI_V8ToVPack(isolate, builder, object, false);
     if (!builder.isClosed()) builder.close();
+    if (!builder.slice().isObject()) {
+      rv.reset(TRI_ERROR_BAD_PARAMETER);
+      return rv;
+    }
     trxOptions.fromVelocyPack(builder.slice());
   }
   if (trxOptions.lockTimeout < 0.0) {
