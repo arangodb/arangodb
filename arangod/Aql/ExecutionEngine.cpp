@@ -1075,6 +1075,7 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
       }
       engineInfo.close(); // edges
       
+#ifdef USE_ENTERPRISE
       if (!list.second.inaccessibleShards.empty()) {
         engineInfo.add(VPackValue("inaccessible"));
         engineInfo.openArray();
@@ -1083,6 +1084,7 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
         }
         engineInfo.close(); // inaccessible
       }
+#endif
 
       engineInfo.close(); // shards
 

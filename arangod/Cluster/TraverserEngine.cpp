@@ -100,6 +100,7 @@ BaseEngine::BaseEngine(TRI_vocbase_t* vocbase, VPackSlice info)
   // FIXME: in the future this needs to be replaced with the new cluster
   // wide transactions
   transaction::Options trxOpts;
+#ifdef USE_ENTERPRISE
   if (info.hasKey(INACCESSIBLE)) {
     trxOpts.skipInaccessibleCollections = true;
     std::unordered_set<ShardID> inaccessible;
@@ -115,6 +116,11 @@ BaseEngine::BaseEngine(TRI_vocbase_t* vocbase, VPackSlice info)
         arangodb::transaction::StandaloneContext::Create(vocbase),
         _collections.collections(), trxOpts, true);
   }
+#else
+  _trx = aql::AqlTransaction::create(
+       arangodb::transaction::StandaloneContext::Create(vocbase),
+       _collections.collections(), trxOpts, true);
+#endif
 
   // true here as last argument is crucial: it leads to the fact that the
   // created transaction is considered a "MAIN" part and will not switch
