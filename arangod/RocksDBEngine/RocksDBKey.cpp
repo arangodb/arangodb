@@ -222,10 +222,10 @@ std::pair<bool, int32_t> RocksDBKey::geoValues(rocksdb::Slice const& slice) {
 }
 
 rocksdb::Slice const& RocksDBKey::string() const { 
+  TRI_ASSERT(_keyLength > 0);
+  TRI_ASSERT(_keyLength == _slice.size());
   return _slice;
 }
-
-RocksDBKey::RocksDBKey() {}
 
 RocksDBKey::RocksDBKey(RocksDBEntryType type,
                        RocksDBSettingsType st) : _type(type), _buffer() {
@@ -472,6 +472,7 @@ VPackSlice RocksDBKey::indexedVPack(char const* data, size_t size) {
 void RocksDBKey::buildDocument(uint64_t collectionId, TRI_voc_rid_t revisionId) {
   _type = RocksDBEntryType::Document;
   _keyLength = 2 * sizeof(uint64_t);
+  _buffer.clear();
   _buffer.reserve(_keyLength);
   uint64ToPersistent(_buffer, collectionId);
   uint64ToPersistent(_buffer, revisionId);
@@ -481,6 +482,7 @@ void RocksDBKey::buildDocument(uint64_t collectionId, TRI_voc_rid_t revisionId) 
 void RocksDBKey::buildPrimaryIndexValue(uint64_t indexId, arangodb::StringRef const& primaryKey) {
   _type = RocksDBEntryType::PrimaryIndexValue;
   _keyLength = sizeof(uint64_t) + primaryKey.size();
+  _buffer.clear();
   _buffer.reserve(_keyLength);
   uint64ToPersistent(_buffer, indexId);
   _buffer.append(primaryKey.data(), primaryKey.size());

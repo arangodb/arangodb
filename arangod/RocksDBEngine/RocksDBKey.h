@@ -39,16 +39,23 @@ namespace arangodb {
 
 class RocksDBKey {
  public:
-  RocksDBKey();
+  RocksDBKey()
+    : _type(RocksDBEntryType::Document), // placeholder
+      _buffer(),
+      _keyLength(),
+      _slice() {}
+
   explicit RocksDBKey(rocksdb::Slice slice)
       : _type(static_cast<RocksDBEntryType>(slice.data()[0])),
-        _buffer(slice.data(), slice.size()) {}
-
-  RocksDBKey(RocksDBKey const& other)
-      : _type(other._type), _buffer(other._buffer) {}
+        _buffer(slice.data(), slice.size()),
+        _keyLength(slice.size()),
+        _slice(_buffer) {}
 
   RocksDBKey(RocksDBKey&& other) noexcept
-      : _type(other._type), _buffer(std::move(other._buffer)) {}
+      : _type(other._type),
+        _buffer(std::move(other._buffer)),
+        _keyLength(other._keyLength),
+        _slice(_buffer.data(), _keyLength) {}
 
   RocksDBKey& operator=(RocksDBKey const& other) = delete;
   RocksDBKey& operator=(RocksDBKey&& other) = delete;
