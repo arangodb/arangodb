@@ -175,17 +175,17 @@ uint64_t PlainCache::allocationSize(bool enableWindowedStats) {
                               : 0);
 }
 
-std::shared_ptr<Cache> PlainCache::create(Manager* manager, Metadata metadata,
+std::shared_ptr<Cache> PlainCache::create(Manager* manager, uint64_t id, Metadata metadata,
                                           std::shared_ptr<Table> table,
                                           bool enableWindowedStats) {
-  return std::make_shared<PlainCache>(Cache::ConstructionGuard(), manager,
+  return std::make_shared<PlainCache>(Cache::ConstructionGuard(), manager, id,
                                       metadata, table, enableWindowedStats);
 }
 
-PlainCache::PlainCache(Cache::ConstructionGuard guard, Manager* manager,
+PlainCache::PlainCache(Cache::ConstructionGuard guard, Manager* manager, uint64_t id,
                        Metadata metadata, std::shared_ptr<Table> table,
                        bool enableWindowedStats)
-    : Cache(guard, manager, metadata, table, enableWindowedStats,
+    : Cache(guard, manager, id, metadata, table, enableWindowedStats,
             PlainCache::bucketClearer, PlainBucket::slotsData) {}
 
 PlainCache::~PlainCache() {
@@ -299,7 +299,7 @@ std::tuple<Result, PlainBucket*, Table*> PlainCache::getBucket(
   }
 
   if (singleOperation) {
-    _manager->reportAccess(shared_from_this());
+    _manager->reportAccess(_id);
   }
 
 

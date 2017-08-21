@@ -48,7 +48,7 @@ uint64_t Cache::_findStatsCapacity = 16384;
 
 Cache::ConstructionGuard::ConstructionGuard() {}
 
-Cache::Cache(ConstructionGuard guard, Manager* manager, Metadata metadata,
+Cache::Cache(ConstructionGuard guard, Manager* manager, uint64_t id, Metadata metadata,
              std::shared_ptr<Table> table, bool enableWindowedStats,
              std::function<Table::BucketClearer(Metadata*)> bucketClearer,
              size_t slotsPerBucket)
@@ -59,6 +59,7 @@ Cache::Cache(ConstructionGuard guard, Manager* manager, Metadata metadata,
       _findHits(),
       _findMisses(),
       _manager(manager),
+      _id(id),
       _metadata(metadata),
       _tableShrdPtr(table),
       _table(table.get()),
@@ -78,6 +79,10 @@ Cache::Cache(ConstructionGuard guard, Manager* manager, Metadata metadata,
       _enableWindowedStats = false;
     }
   }
+}
+
+uint64_t Cache::id() {
+  return _id;
 }
 
 uint64_t Cache::size() {
@@ -223,7 +228,7 @@ void Cache::requestGrow() {
       _metadata.readUnlock();
       if (ok) {
         std::tie(ok, _resizeRequestTime) =
-            _manager->requestGrow(shared_from_this());
+            _manager->requestGrow(this);
       }
     }
     _taskLock.writeUnlock();
@@ -245,7 +250,7 @@ void Cache::requestMigrate(uint32_t requestedLogSize) {
       _metadata.readUnlock();
       if (ok) {
         std::tie(ok, _migrateRequestTime) =
-            _manager->requestMigrate(shared_from_this(), requestedLogSize);
+            _manager->requestMigrate(this, requestedLogSize);
       }
     }
     _taskLock.writeUnlock();
@@ -315,6 +320,7 @@ bool Cache::reportInsert(bool hadEviction) {
       _table->signalEvictions();
     }
     _insertEvictions.reset();
+    _insertsTotal.reset();
   }
 
   return shouldMigrate;
@@ -357,7 +363,7 @@ void Cache::shutdown() {
     }
     _table->clear();
     _manager->reclaimTable(std::atomic_load(&_tableShrdPtr));
-    _manager->unregisterCache(shared_from_this());
+    _manager->unregisterCache(_id);
     _table = nullptr;
   }
   _metadata.writeLock();

@@ -212,19 +212,20 @@ uint64_t TransactionalCache::allocationSize(bool enableWindowedStats) {
 }
 
 std::shared_ptr<Cache> TransactionalCache::create(Manager* manager,
+                                                  uint64_t id,
                                                   Metadata metadata,
                                                   std::shared_ptr<Table> table,
                                                   bool enableWindowedStats) {
   return std::make_shared<TransactionalCache>(Cache::ConstructionGuard(),
-                                              manager, metadata, table,
+                                              manager, id, metadata, table,
                                               enableWindowedStats);
 }
 
 TransactionalCache::TransactionalCache(Cache::ConstructionGuard guard,
-                                       Manager* manager, Metadata metadata,
+                                       Manager* manager, uint64_t id, Metadata metadata,
                                        std::shared_ptr<Table> table,
                                        bool enableWindowedStats)
-    : Cache(guard, manager, metadata, table, enableWindowedStats,
+    : Cache(guard, manager, id, metadata, table, enableWindowedStats,
             TransactionalCache::bucketClearer, TransactionalBucket::slotsData) {
 }
 
@@ -386,7 +387,7 @@ TransactionalCache::getBucket(uint32_t hash, int64_t maxTries,
   }
 
   if (singleOperation) {
-    _manager->reportAccess(shared_from_this());
+    _manager->reportAccess(_id);
   }
 
   uint64_t term = _manager->_transactions.term();

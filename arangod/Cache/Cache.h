@@ -72,7 +72,7 @@ class Cache : public std::enable_shared_from_this<Cache> {
   static const uint64_t minLogSize;
 
  public:
-  Cache(ConstructionGuard guard, Manager* manager, Metadata metadata,
+  Cache(ConstructionGuard guard, Manager* manager, uint64_t id, Metadata metadata,
         std::shared_ptr<Table> table, bool enableWindowedStats,
         std::function<Table::BucketClearer(Metadata*)> bucketClearer,
         size_t slotsPerBucket);
@@ -83,6 +83,11 @@ class Cache : public std::enable_shared_from_this<Cache> {
   virtual Result insert(CachedValue* value) = 0;
   virtual Result remove(void const* key, uint32_t keySize) = 0;
   virtual Result blacklist(void const* key, uint32_t keySize) = 0;
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief Returns the ID for this cache.
+  //////////////////////////////////////////////////////////////////////////////
+  uint64_t id();
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Returns the total memory usage for this cache in bytes.
@@ -157,6 +162,7 @@ class Cache : public std::enable_shared_from_this<Cache> {
 
   // allow communication with manager
   Manager* _manager;
+  uint64_t _id;
   Metadata _metadata;
 
   // manage the actual table

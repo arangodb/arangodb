@@ -53,7 +53,7 @@ namespace cache {
 ////////////////////////////////////////////////////////////////////////////////
 class PlainCache final : public Cache {
  public:
-  PlainCache(Cache::ConstructionGuard guard, Manager* manager,
+  PlainCache(Cache::ConstructionGuard guard, Manager* manager, uint64_t id,
              Metadata metadata, std::shared_ptr<Table> table,
              bool enableWindowedStats);
   ~PlainCache();
@@ -105,7 +105,7 @@ class PlainCache final : public Cache {
 
  private:
   static uint64_t allocationSize(bool enableWindowedStats);
-  static std::shared_ptr<Cache> create(Manager* manager, Metadata metadata,
+  static std::shared_ptr<Cache> create(Manager* manager, uint64_t id, Metadata metadata,
                                        std::shared_ptr<Table> table,
                                        bool enableWindowedStats);
 

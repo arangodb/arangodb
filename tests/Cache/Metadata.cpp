@@ -57,7 +57,7 @@ TEST_CASE("cache::Metadata", "[cache]") {
   }
 
   SECTION("verify usage limits are adjusted and enforced correctly") {
-    uint64_t overhead = 48;
+    uint64_t overhead = 80;
     Metadata metadata(1024, 0, 0, 2048 + overhead);
 
     metadata.writeLock();
@@ -94,7 +94,7 @@ TEST_CASE("cache::Metadata", "[cache]") {
   }
 
   SECTION("verify table methods work correctly") {
-    uint64_t overhead = 48;
+    uint64_t overhead = 80;
     Metadata metadata(1024, 0, 512, 2048 + overhead);
 
     metadata.writeLock();
