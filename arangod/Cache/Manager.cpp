@@ -433,9 +433,9 @@ std::pair<bool, Manager::time_point> Manager::requestMigrate(
 }
 
 void Manager::reportAccess(uint64_t id) {
-  if ((basics::SharedPRNG::rand() & static_cast<unsigned long>(7)) == 0) {
+//  if ((basics::SharedPRNG::rand() & static_cast<unsigned long>(7)) == 0) {
     _accessStats.insertRecord(id);
-  }
+//  }
 }
 
 void Manager::reportHitStat(Stat stat) {
@@ -773,8 +773,8 @@ std::shared_ptr<Manager::PriorityList> Manager::priorityList() {
   }
   totalAccesses = std::max(static_cast<uint64_t>(1), totalAccesses);
 
-  double allocFrac = 1.0 - std::max(1.0, static_cast<double>(_globalAllocation) / static_cast<double>(_globalHighwaterMark));
-  LOG_TOPIC(ERR, Logger::FIXME) << "Allocated fraction " <<  allocFrac << "%";
+  double allocFrac = 0.8 * std::min(1.0, static_cast<double>(_globalAllocation) / static_cast<double>(_globalHighwaterMark));
+  LOG_TOPIC(ERR, Logger::FIXME) << "Allocated fraction " <<  allocFrac * 100.0 << "%";
 
   // calculate global data usage
   for (auto it = _caches.begin(); it != _caches.end(); it++) {
@@ -793,16 +793,16 @@ std::shared_ptr<Manager::PriorityList> Manager::priorityList() {
     }
   }
 
-  double normalizer =
-  remainingWeight / static_cast<double>(totalAccesses);
+  double accessNormalizer = ((1.0 - allocFrac) * remainingWeight) / static_cast<double>(totalAccesses);
+  double usageNormalizer =  (allocFrac * remainingWeight) / static_cast<double>(globalUsage);
 
   // gather all accessed caches in order
   for (auto s : stats) {
     auto it = accessed.find(s.first);
     if (it != accessed.end()) {
       std::shared_ptr<Cache>& cache = _caches.find(s.first)->second;
-      double accessWeight = static_cast<double>(s.second) * normalizer * (1.0 - allocFrac);
-      double usageWeight = (cache->usage() / globalUsage) * allocFrac;
+      double accessWeight = static_cast<double>(s.second) * accessNormalizer;
+      double usageWeight = static_cast<double>(cache->usage()) * usageNormalizer;
 
       TRI_ASSERT(accessWeight >= 0.0);
       TRI_ASSERT(usageWeight >= 0.0);
