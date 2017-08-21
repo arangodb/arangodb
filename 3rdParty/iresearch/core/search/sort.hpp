@@ -149,16 +149,16 @@ class IRESEARCH_API sort {
   /// @class sort::prepared
   /// @brief base class for all prepared(compiled) sort entries
   ////////////////////////////////////////////////////////////////////////////////
-  class IRESEARCH_API prepared: public util::attribute_store_provider {
+  class IRESEARCH_API prepared: public util::attribute_view_provider {
    public:
     DECLARE_PTR(prepared);
 
     prepared() = default;
-    explicit prepared(attribute_store&& attrs);
+    explicit prepared(attribute_view&& attrs);
     virtual ~prepared();
 
-    using util::attribute_store_provider::attributes;
-    virtual attribute_store& attributes() NOEXCEPT override final {
+    using util::attribute_view_provider::attributes;
+    virtual attribute_view& attributes() NOEXCEPT override final {
       return attrs_;
     }
 
@@ -203,7 +203,7 @@ class IRESEARCH_API sort {
     virtual size_t size() const = 0;
 
    private:
-    attribute_store attrs_;
+    attribute_view attrs_;
   }; // prepared
 
   ////////////////////////////////////////////////////////////////////////////////

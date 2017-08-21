@@ -456,54 +456,60 @@ SECTION("test_StringValue") {
   // simple field
   {
     std::string query = "FOR d IN collection FILTER '1' SORT 'a' RETURN d";
+    std::vector<irs::attribute::ptr> attrBuf;
     irs::order expected;
 
-    expected.add<arangodb::iresearch::AttributeScorer>().attributeNext("a");
+    expected.add<arangodb::iresearch::AttributeScorer>(attrBuf).attributeNext("a");
     assertOrderSuccess(query, expected);
   }
 
   // simple field ASC
   {
     std::string query = "FOR d IN collection FILTER '1' SORT 'a' ASC RETURN d";
+    std::vector<irs::attribute::ptr> attrBuf;
     irs::order expected;
 
-    expected.add<arangodb::iresearch::AttributeScorer>().attributeNext("a");
+    expected.add<arangodb::iresearch::AttributeScorer>(attrBuf).attributeNext("a");
     assertOrderSuccess(query, expected);
   }
 
   // simple field DESC
   {
     std::string query = "FOR d IN collection FILTER '1' SORT 'a' DESC RETURN d";
+    std::vector<irs::attribute::ptr> attrBuf;
     irs::order expected;
 
-    expected.add<arangodb::iresearch::AttributeScorer>().attributeNext("a").reverse(true);
+    expected.add<arangodb::iresearch::AttributeScorer>(attrBuf).attributeNext("a").reverse(true);
     assertOrderSuccess(query, expected);
   }
 
   // nested field
   {
     std::string query = "FOR d IN collection FILTER '1' SORT 'a.b.c' RETURN d";
+    std::vector<irs::attribute::ptr> attrBuf;
     irs::order expected;
 
-    expected.add<arangodb::iresearch::AttributeScorer>().attributeNext("a.b.c");
+    expected.add<arangodb::iresearch::AttributeScorer>(attrBuf).attributeNext("a.b.c");
     assertOrderSuccess(query, expected);
   }
 
   // nested field ASC
   {
     std::string query = "FOR d IN collection FILTER '1' SORT 'a.b.c' ASC RETURN d";
+    std::vector<irs::attribute::ptr> attrBuf;
     irs::order expected;
 
-    expected.add<arangodb::iresearch::AttributeScorer>().attributeNext("a.b.c");
+    expected.add<arangodb::iresearch::AttributeScorer>(attrBuf).attributeNext("a.b.c");
     assertOrderSuccess(query, expected);
   }
 
   // nested field DESC
   {
     std::string query = "FOR d IN collection FILTER '1' SORT 'a.b.c' DESC RETURN d";
+    std::vector<irs::attribute::ptr> attrBuf;
     irs::order expected;
 
-    expected.add<arangodb::iresearch::AttributeScorer>().attributeNext("a.b.c").reverse(true);
+    expected.add<arangodb::iresearch::AttributeScorer>(attrBuf).attributeNext("a.b.c").reverse(true);
     assertOrderSuccess(query, expected);
   }
 }

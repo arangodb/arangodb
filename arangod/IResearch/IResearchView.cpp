@@ -390,6 +390,7 @@ class OrderedViewIterator: public ViewIteratorBase {
   irs::order::prepared _order;
   std::vector<irs::attribute::ptr> _orderAttrs;
   State _state; // previous iteration state
+  arangodb::iresearch::attribute::Transaction _trx; // current transaction
 
   void next(TokenCallback const& callback, size_t limit, bool sort);
 };
@@ -403,7 +404,8 @@ OrderedViewIterator::OrderedViewIterator(
     std::vector<irs::attribute::ptr>&& orderAttrs
 ): ViewIteratorBase("iresearch-ordered-iterator", view, trx, std::move(reader)),
    _order(order.prepare()),
-   _orderAttrs(std::move(orderAttrs)) {
+   _orderAttrs(std::move(orderAttrs)),
+   _trx(trx) {
   // set current transaction for any scorers that require it
   for (auto& entry: _order) {
     if (!entry.bucket) {
@@ -413,8 +415,8 @@ OrderedViewIterator::OrderedViewIterator(
     auto& attrs = entry.bucket->attributes();
     auto* trxAttr = attrs.get<arangodb::iresearch::attribute::Transaction>();
 
-    if (trxAttr && *trxAttr) {
-      (*trxAttr)->value = &trx;
+    if (trxAttr) {
+      *trxAttr = &_trx;
     }
   }
 

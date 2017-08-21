@@ -478,20 +478,31 @@ class IRESEARCH_API attribute_view: public attribute_map<attribute*> {
   attribute_view(size_t reserve = 0);
 
   template<typename T>
+  ref<T>& emplace() {
+    return emplace_internal<T>();
+  }
+
+  template<typename T>
   ref<T>& emplace(T& value) {
+    return emplace_internal<T>(&value);
+  }
+
+  static const attribute_view& empty_instance();
+
+ private:
+  template<typename T>
+  ref<T>& emplace_internal(T* value = nullptr) {
     REGISTER_TIMER_DETAILED();
     typedef typename std::enable_if<std::is_base_of<attribute, T>::value, T>::type type;
     bool inserted;
     auto& attr = attribute_map::emplace(inserted, type::type());
 
     if (inserted) {
-      reinterpret_cast<ref<type>&>(attr) = &value;
+      reinterpret_cast<ref<type>&>(attr) = value;
     }
 
     return reinterpret_cast<ref<T>&>(attr);
   }
-
-  static const attribute_view& empty_instance();
 };
 
 NS_END

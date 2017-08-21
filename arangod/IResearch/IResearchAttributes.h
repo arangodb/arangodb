@@ -26,7 +26,6 @@
 
 #include "utils/attributes.hpp"
 #include "velocypack/Builder.h"
-#include "velocypack/Slice.h"
 
 NS_BEGIN(arangodb)
 NS_BEGIN(transaction)
@@ -38,28 +37,7 @@ NS_END // arangodb
 
 NS_BEGIN(arangodb)
 NS_BEGIN(iresearch)
-
 NS_BEGIN(attribute)
-
-//////////////////////////////////////////////////////////////////////////////
-/// @brief contains the path to the attribute encoded as a jSON array
-//////////////////////////////////////////////////////////////////////////////
-struct AttributePath: irs::basic_attribute<arangodb::velocypack::Slice> {
-  DECLARE_ATTRIBUTE_TYPE();
-  DECLARE_FACTORY_DEFAULT();
-};
-
-//////////////////////////////////////////////////////////////////////////////
-/// @brief contains a pointer to the current transaction
-//////////////////////////////////////////////////////////////////////////////
-struct Transaction: irs::basic_attribute<arangodb::transaction::Methods*> {
-  DECLARE_ATTRIBUTE_TYPE();
-  DECLARE_FACTORY_DEFAULT();
-};
-
-NS_END // attribute
-
-NS_BEGIN(stored_attribute)
 
 //////////////////////////////////////////////////////////////////////////////
 /// @brief contains the path to the attribute encoded as a jSON array
@@ -69,8 +47,16 @@ struct AttributePath: irs::basic_attribute<arangodb::velocypack::Builder> {
   DECLARE_FACTORY_DEFAULT();
 };
 
-NS_END // stored_attribute
+//////////////////////////////////////////////////////////////////////////////
+/// @brief contains a pointer to the current transaction
+//////////////////////////////////////////////////////////////////////////////
+struct Transaction: irs::basic_attribute<arangodb::transaction::Methods&> {
+  DECLARE_ATTRIBUTE_TYPE();
 
+  Transaction(arangodb::transaction::Methods& trx);
+};
+
+NS_END // attribute
 NS_END // iresearch
 NS_END // arangodb
 

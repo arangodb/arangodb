@@ -44,7 +44,7 @@ irs::string_ref const ATTRIBUTE_SCORER_NAME("@");
 /// @brief lazy-computed score from within Prepared::less(...)
 ////////////////////////////////////////////////////////////////////////////////
 struct Score {
-  void (*compute)(arangodb::velocypack::Slice const& attr, arangodb::transaction::Methods* trx, Score& score);
+  void (*compute)(arangodb::iresearch::attribute::AttributePath* attr, arangodb::iresearch::attribute::Transaction* trx, Score& score);
   irs::doc_id_t docId;
   irs::field_id pkColId;
   irs::sub_reader const* reader;
@@ -76,11 +76,11 @@ class Prepared: public irs::sort::prepared_base<Score> {
   ) const override;
 
  private:
-  arangodb::iresearch::attribute::AttributePath& _attr; // a jSON array representation of the attribute path
+  irs::attribute_view::ref<arangodb::iresearch::attribute::AttributePath>& _attr; // a jSON array representation of the attribute path
   mutable size_t _nextOrder;
   mutable size_t _order[arangodb::iresearch::AttributeScorer::ValueType::eLast + 1]; // type precedence order, +1 for unordered/unsuported types
   bool _reverse;
-  arangodb::iresearch::attribute::Transaction& _trx;
+  irs::attribute_view::ref<arangodb::iresearch::attribute::Transaction>& _trx;
 
   size_t precedence(arangodb::velocypack::Slice const& slice) const;
 };
@@ -88,10 +88,10 @@ class Prepared: public irs::sort::prepared_base<Score> {
 Prepared::Prepared(
     size_t const (&order)[arangodb::iresearch::AttributeScorer::ValueType::eLast],
     bool reverse
-): _attr(*(attributes().emplace<arangodb::iresearch::attribute::AttributePath>())), // mark sort as requiring attribute path
+): _attr(attributes().emplace<arangodb::iresearch::attribute::AttributePath>()), // mark sort as requiring attribute path
    _nextOrder(arangodb::iresearch::AttributeScorer::ValueType::eLast + 1), // past default set values, +1 for values unasigned by AttributeScorer
    _reverse(reverse),
-   _trx(*(attributes().emplace<arangodb::iresearch::attribute::Transaction>())) { // mark sort as requiring transaction
+   _trx(attributes().emplace<arangodb::iresearch::attribute::Transaction>()) { // mark sort as requiring transaction
   std::memcpy(_order, order, sizeof(order));
 }
 
@@ -108,8 +108,8 @@ irs::flags const& Prepared::features() const {
 }
 
 bool Prepared::less(const score_t& lhs, const score_t& rhs) const {
-  lhs.compute(_attr.value, _trx.value, const_cast<score_t&>(lhs));
-  rhs.compute(_attr.value, _trx.value, const_cast<score_t&>(rhs));
+  lhs.compute(_attr.get(), _trx.get(), const_cast<score_t&>(lhs));
+  rhs.compute(_attr.get(), _trx.get(), const_cast<score_t&>(rhs));
 
   if (lhs.slice.isBoolean() && rhs.slice.isBoolean()) {
       return _reverse
@@ -149,11 +149,24 @@ irs::sort::collector::ptr Prepared::prepare_collector() const {
 
 void Prepared::prepare_score(score_t& score) const {
   struct Compute {
-    static void noop(arangodb::velocypack::Slice const& attr, arangodb::transaction::Methods* trx, Score& score) {}
-    static void invoke(arangodb::velocypack::Slice const& attr, arangodb::transaction::Methods* trx, Score& score) {
+    static void noop(arangodb::iresearch::attribute::AttributePath* attr, arangodb::iresearch::attribute::Transaction* trx, Score& score) {}
+    static void invoke(arangodb::iresearch::attribute::AttributePath* attr, arangodb::iresearch::attribute::Transaction* trx, Score& score) {
       score.compute = &Compute::noop; // do not recompute score again
 
-      if (!attr.isArray()) {
+      if (!attr) {
+        LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "failed to find attribute path while computing document score, doc_id '" << score.docId << "'";
+        return; // transaction not provided, cannot compute value
+      }
+
+      arangodb::velocypack::Slice attrPath;
+
+      try {
+        attrPath = attr->value.slice();
+      } catch(...) {
+        return; // failure converting builder into slice
+      }
+
+      if (!attrPath.isArray()) {
         LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "failed to parse attribute path as an array while computing document score, doc_id '" << score.docId << "'";
         return; // attribute path not initialized or incorrect argument format
       }
@@ -188,9 +201,9 @@ void Prepared::prepare_score(score_t& score) const {
 
       static const std::string unknown("<unknown>");
 
-      trx->addCollectionAtRuntime(docPk.cid(), unknown);
+      trx->value.addCollectionAtRuntime(docPk.cid(), unknown);
 
-      auto* collection = trx->documentCollection(docPk.cid());
+      auto* collection = trx->value.documentCollection(docPk.cid());
 
       if (!collection) {
         LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "failed to find collection while computing document score, cid '" << docPk.cid() << "', rid '" << docPk.rid() << "'";
@@ -203,7 +216,7 @@ void Prepared::prepare_score(score_t& score) const {
 
       colToken._data = docPk.rid();
 
-      if (!collection->readDocument(trx, colToken, docResult)) {
+      if (!collection->readDocument(&(trx->value), colToken, docResult)) {
         LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "failed to read document while computing document score, cid '" << docPk.cid() << "', rid '" << docPk.rid() << "'";
 
         return; // not a valid document
@@ -211,7 +224,7 @@ void Prepared::prepare_score(score_t& score) const {
 
       arangodb::velocypack::Slice doc(docResult.vpack());
 
-      for (arangodb::velocypack::ArrayIterator itr(attr); itr.valid(); ++itr) {
+      for (arangodb::velocypack::ArrayIterator itr(attrPath); itr.valid(); ++itr) {
         auto entry = *itr;
 
         if (doc.isArray() && entry.isNumber<uint64_t>()) {
@@ -322,6 +335,7 @@ DEFINE_SORT_TYPE_NAMED(AttributeScorer, ATTRIBUTE_SCORER_NAME);
 REGISTER_SCORER(AttributeScorer);
 
 /*static*/ irs::sort::ptr AttributeScorer::make(
+    std::vector<irs::attribute::ptr>& storedAttrBuf,
     bool arangodbTypeOrder /*= false*/
 ) {
   PTR_NAMED(AttributeScorer, ptr);
@@ -332,8 +346,12 @@ REGISTER_SCORER(AttributeScorer);
     auto* scorer = static_cast<AttributeScorer*>(ptr.get());
   #endif
 
-  if (scorer && arangodbTypeOrder) {
-    setArangoDBTypeSortOrder(*scorer);
+  if (scorer) {
+    scorer->_storedAttrBuf = &storedAttrBuf;
+
+    if (arangodbTypeOrder) {
+      setArangoDBTypeSortOrder(*scorer);
+    }
   }
 
   return ptr;
@@ -426,7 +444,8 @@ REGISTER_SCORER(AttributeScorer);
 
 AttributeScorer::AttributeScorer()
   : irs::sort(AttributeScorer::type()),
-    _nextOrder(0) {
+    _nextOrder(0),
+    _storedAttrBuf(nullptr) {
   std::fill_n(_order, (size_t)(ValueType::eLast), ValueType::eLast);
 }
 
@@ -468,13 +487,28 @@ irs::sort::prepared::ptr AttributeScorer::prepare() const {
   auto& attrs = prepared->attributes();
   auto* attr = attrs.get<arangodb::iresearch::attribute::AttributePath>();
 
-  if (!attr || !*attr) {
+  if (!attr) {
     return nullptr; // algorithm error, Prepared shuld be requesting attribute
   }
 
+  if (!_storedAttrBuf) {
+    return nullptr; // stored attribute buffer required for adding new attributes
+  }
+
   try {
-    auto& builder =
-      attrs.emplace<arangodb::iresearch::stored_attribute::AttributePath>()->value;
+    auto storedAttr = arangodb::iresearch::attribute::AttributePath::make();
+
+    #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+      auto* storedAttrPath = dynamic_cast<arangodb::iresearch::attribute::AttributePath*>(storedAttr.get());
+    #else
+      auto* storedAttrPath = static_cast<arangodb::iresearch::attribute::AttributePath*>(storedAttr.get());
+    #endif
+
+    if (!storedAttrPath) {
+      return nullptr; // malloc failure
+    }
+
+    auto& builder = storedAttrPath->value();
 
     builder.openArray();
 
@@ -490,7 +524,8 @@ irs::sort::prepared::ptr AttributeScorer::prepare() const {
     }
 
     builder.close();
-    (*attr)->value = builder.slice();
+    _storedAttrBuf->emplace_back(std::move(storedAttr));
+    *attr = storedAttrPath;
   } catch (...) {
     return nullptr; // jSON build failure
   }
