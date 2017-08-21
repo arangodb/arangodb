@@ -372,7 +372,7 @@ void RocksDBEngine::start() {
                           definitionsCF);                       // 0
   cfFamilies.emplace_back("Documents", fixedPrefCF);            // 1
   cfFamilies.emplace_back("PrimaryIndex", fixedPrefCF);         // 2
-  cfFamilies.emplace_back("EdgeIndex", dynamicPrefCF);         // 3
+  cfFamilies.emplace_back("EdgeIndex", dynamicPrefCF);          // 3
   cfFamilies.emplace_back("VPackIndex", vpackFixedPrefCF);      // 4
   cfFamilies.emplace_back("GeoIndex", fixedPrefCF);             // 5
   cfFamilies.emplace_back("FulltextIndex", fixedPrefCF);        // 6
