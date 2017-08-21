@@ -163,7 +163,7 @@ uint64_t Metadata::adjustDeserved(uint64_t deserved) {
   return deservedSize;
 }
 
-uint64_t Metadata::newLimit() {
+uint64_t Metadata::newLimit() const {
   TRI_ASSERT(isLocked());
   uint64_t fixed = fixedSize + tableSize + Manager::cacheRecordOverhead;
   return ((Cache::minSize + fixed) >= deservedSize)

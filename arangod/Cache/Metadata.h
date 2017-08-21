@@ -75,17 +75,17 @@ struct Metadata {
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Locks the record for reading
   //////////////////////////////////////////////////////////////////////////////
-  void readLock() { _lock.readLock(); }
+  void readLock() const { _lock.readLock(); }
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Locks the record for writing
   //////////////////////////////////////////////////////////////////////////////
-  void writeLock() { _lock.writeLock(); }
+  void writeLock() const { _lock.writeLock(); }
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Unlocks the record. Requires record to be read-locked.
   //////////////////////////////////////////////////////////////////////////////
-  void readUnlock() {
+  void readUnlock() const {
     TRI_ASSERT(isLocked());
     _lock.readUnlock();
   }
@@ -93,7 +93,7 @@ struct Metadata {
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Unlocks the record. Requires record to be write-locked.
   //////////////////////////////////////////////////////////////////////////////
-  void writeUnlock() {
+  void writeUnlock() const {
     TRI_ASSERT(isWriteLocked());
     _lock.writeUnlock();
   }
@@ -133,7 +133,7 @@ struct Metadata {
   /// @brief Calculates the new usage limit based on deserved size and other
   /// values. Requires record to be read-locked.
   //////////////////////////////////////////////////////////////////////////////
-  uint64_t newLimit();
+  uint64_t newLimit() const;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Checks feasibility of new table size prior to migration. Requires
@@ -171,7 +171,7 @@ struct Metadata {
   void toggleResizing() { _resizing = !_resizing; }
 
  private:
-  basics::ReadWriteSpinLock<64> _lock;
+  mutable basics::ReadWriteSpinLock<64> _lock;
   bool _migrating;
   bool _resizing;
 };

@@ -89,9 +89,11 @@ struct SharedAtomic {
       std::memory_order order = std::memory_order_seq_cst) noexcept {
     return _data.compare_exchange_strong(expected, desired, order);
   }
-
+  
+#if __cplusplus > 201402L
   static constexpr bool is_always_lock_free =
       std::atomic<T>::is_always_lock_free;
+#endif
 
   T fetch_add(T arg,
               std::memory_order order = std::memory_order_seq_cst) noexcept {

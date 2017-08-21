@@ -81,11 +81,7 @@ Cache::Cache(ConstructionGuard guard, Manager* manager, uint64_t id, Metadata me
   }
 }
 
-uint64_t Cache::id() {
-  return _id;
-}
-
-uint64_t Cache::size() {
+uint64_t Cache::size() const {
   if (isShutdown()) {
     return 0;
   }
@@ -97,7 +93,7 @@ uint64_t Cache::size() {
   return size;
 }
 
-uint64_t Cache::usageLimit() {
+uint64_t Cache::usageLimit() const {
   if (isShutdown()) {
     return 0;
   }
@@ -109,7 +105,7 @@ uint64_t Cache::usageLimit() {
   return limit;
 }
 
-uint64_t Cache::usage() {
+uint64_t Cache::usage() const {
   if (isShutdown()) {
     return false;
   }

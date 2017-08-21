@@ -87,22 +87,24 @@ class Cache : public std::enable_shared_from_this<Cache> {
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Returns the ID for this cache.
   //////////////////////////////////////////////////////////////////////////////
-  uint64_t id();
+  uint64_t id() const {
+    return _id;
+  }
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Returns the total memory usage for this cache in bytes.
   //////////////////////////////////////////////////////////////////////////////
-  uint64_t size();
+  uint64_t size() const;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Returns the limit on data memory usage for this cache in bytes.
   //////////////////////////////////////////////////////////////////////////////
-  uint64_t usageLimit();
+  uint64_t usageLimit() const;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Returns the current data memory usage for this cache in bytes.
   //////////////////////////////////////////////////////////////////////////////
-  uint64_t usage();
+  uint64_t usage() const;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Gives hint to attempt to preallocate space for an incoming load.
@@ -157,8 +159,8 @@ class Cache : public std::enable_shared_from_this<Cache> {
   static uint64_t _findStatsCapacity;
   bool _enableWindowedStats;
   std::unique_ptr<StatBuffer> _findStats;
-  basics::SharedCounter<64> _findHits;
-  basics::SharedCounter<64> _findMisses;
+  mutable basics::SharedCounter<64> _findHits;
+  mutable basics::SharedCounter<64> _findMisses;
 
   // allow communication with manager
   Manager* _manager;
