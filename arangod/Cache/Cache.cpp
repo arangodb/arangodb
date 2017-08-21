@@ -280,10 +280,10 @@ uint32_t Cache::hashKey(void const* key, uint32_t keySize) const {
 }
 
 void Cache::recordStat(Stat stat) {
-/*  if ((basics::SharedPRNG::rand() & static_cast<unsigned long>(7)) != 0) {
+  if ((basics::SharedPRNG::rand() & static_cast<unsigned long>(7)) != 0) {
     return;
   }
-*/
+
   switch (stat) {
     case Stat::findHit: {
       _findHits.add(1);

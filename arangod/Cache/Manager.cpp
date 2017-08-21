@@ -433,9 +433,9 @@ std::pair<bool, Manager::time_point> Manager::requestMigrate(
 }
 
 void Manager::reportAccess(uint64_t id) {
-//  if ((basics::SharedPRNG::rand() & static_cast<unsigned long>(7)) == 0) {
+  if ((basics::SharedPRNG::rand() & static_cast<unsigned long>(7)) == 0) {
     _accessStats.insertRecord(id);
-//  }
+  }
 }
 
 void Manager::reportHitStat(Stat stat) {
