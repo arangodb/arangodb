@@ -118,21 +118,19 @@ void RocksDBIndex::toVelocyPackFigures(VPackBuilder& builder) const {
   }
 }
 
-int RocksDBIndex::load() {
+void RocksDBIndex::load() {
   if (_useCache) {
     createCache();
     TRI_ASSERT(_cachePresent);
   }
-  return TRI_ERROR_NO_ERROR;
 }
 
-int RocksDBIndex::unload() {
+void RocksDBIndex::unload() {
   if (useCache()) {
     // LOG_TOPIC(ERR, Logger::FIXME) << "unload cache";
     disableCache();
     TRI_ASSERT(!_cachePresent);
   }
-  return TRI_ERROR_NO_ERROR;
 }
 
 /// @brief return a VelocyPack representation of the index
@@ -277,14 +275,13 @@ size_t RocksDBIndex::memory() const {
 }
 
 /// compact the index, should reduce read amplification
-int RocksDBIndex::cleanup() {
+void RocksDBIndex::cleanup() {
   rocksdb::TransactionDB* db = rocksutils::globalRocksDB();
   rocksdb::CompactRangeOptions opts;
   RocksDBKeyBounds bounds = this->getBounds();
   TRI_ASSERT(_cf == bounds.columnFamily());
   rocksdb::Slice b = bounds.start(), e = bounds.end();
   db->CompactRange(opts, _cf, &b, &e);
-  return TRI_ERROR_NO_ERROR;
 }
 
 Result RocksDBIndex::postprocessRemove(transaction::Methods* trx,

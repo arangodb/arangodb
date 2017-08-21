@@ -158,6 +158,7 @@ class LogicalCollection {
   TRI_vocbase_col_status_e status() const;
   TRI_vocbase_col_status_e getStatusLocked();
 
+  void executeWhileStatusWriteLocked(std::function<void()> const& callback);
   void executeWhileStatusLocked(std::function<void()> const& callback);
   bool tryExecuteWhileStatusLocked(std::function<void()> const& callback);
 
@@ -341,7 +342,9 @@ class LogicalCollection {
 
   ChecksumResult checksum(bool, bool) const;
 
-  Result compareChecksums(velocypack::Slice) const;
+  // compares the checksum value passed in the Slice (must be of type String)
+  // with the checksum provided in the reference checksum
+  Result compareChecksums(velocypack::Slice checksumSlice, std::string const& referenceChecksum) const;
 
  private:
   void prepareIndexes(velocypack::Slice indexesSlice);

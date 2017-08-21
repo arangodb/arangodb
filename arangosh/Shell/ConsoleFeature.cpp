@@ -116,7 +116,7 @@ void ConsoleFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
 
 #if _WIN32
   options->addHiddenOption("--console.code-page", "Windows code page to use",
-                           new Int16Parameter(&_codePage));
+                           new UInt16Parameter(&_codePage));
 #endif
 }
 
@@ -275,26 +275,6 @@ void ConsoleFeature::printContinuous(std::string const& s) {
     return;
   }
 
-#ifdef _WIN32
-  // no, we cannot use std::cout as this doesn't support UTF-8 on Windows
-
-  if (!_cygwinShell) {
-    // no, we cannot use std::cout as this doesn't support UTF-8 on Windows
-    // fprintf(stdout, "%s\r\n", s.c_str());
-
-    std::vector<std::string> lines = StringUtils::split(s, '\n', '\0');
-
-    auto last = lines.back();
-    lines.pop_back();
-
-    for (auto& line : lines) {
-      _print(line);
-      _newLine();
-    }
-
-    _print(last);
-  } else
-#endif
   {
     fprintf(stdout, "%s", s.c_str());
     fflush(stdout);
@@ -302,23 +282,6 @@ void ConsoleFeature::printContinuous(std::string const& s) {
 }
 
 void ConsoleFeature::printLine(std::string const& s) {
-#ifdef _WIN32
-  // no, we cannot use std::cout as this doesn't support UTF-8 on Windows
-
-  if (s.empty()) {
-    _newLine();
-    return;
-  }
-
-  if (!_cygwinShell) {
-    std::vector<std::string> lines = StringUtils::split(s, '\n', '\0');
-
-    for (auto& line : lines) {
-      _print(line);
-      _newLine();
-    }
-  } else
-#endif
   {
     fprintf(stdout, "%s\n", s.c_str());
     fflush(stdout);

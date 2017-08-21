@@ -65,25 +65,25 @@ class RocksDBIndex : public Index {
  public:
   ~RocksDBIndex();
   void toVelocyPackFigures(VPackBuilder& builder) const override;
+  
+  /// @brief return a VelocyPack representation of the index
+  void toVelocyPack(velocypack::Builder& builder, bool withFigures,
+                    bool forPersistence) const override;
 
   uint64_t objectId() const { return _objectId; }
 
   bool isPersistent() const override final { return true; }
 
-  /// @brief return a VelocyPack representation of the index
-  void toVelocyPack(velocypack::Builder& builder, bool withFigures,
-                    bool forPersistence) const override;
-
   int drop() override;
 
-  int load() override;
-  int unload() override;
+  void load() override;
+  void unload() override;
 
   virtual void truncate(transaction::Methods*);
 
   size_t memory() const override;
 
-  int cleanup() override;
+  void cleanup();
 
   /// @brief provides a size hint for the index
   int sizeHint(transaction::Methods* /*trx*/, size_t /*size*/) override final {

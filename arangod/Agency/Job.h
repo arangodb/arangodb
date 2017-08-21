@@ -166,22 +166,22 @@ struct Job {
   // or pre must be in the state that an object has been opened, this
   // method adds some attribute/value pairs and leaves the object open:
   static void addIncreasePlanVersion(Builder& trx);
-  static void addRemoveJobFromSomewhere(Builder& trx, std::string where,
-                                        std::string jobId);
-  static void addPutJobIntoSomewhere(Builder& trx, std::string where,
-    Slice job, std::string reason = "");
+  static void addRemoveJobFromSomewhere(Builder& trx, std::string const& where,
+                                        std::string const& jobId);
+  static void addPutJobIntoSomewhere(Builder& trx, std::string const& where,
+    Slice job, std::string const& reason = "");
   static void addPreconditionCollectionStillThere(Builder& pre,
-    std::string database, std::string collection);
-  static void addBlockServer(Builder& trx, std::string server,
-                             std::string jobId);
-  static void addBlockShard(Builder& trx, std::string shard, std::string jobId);
-  static void addReleaseServer(Builder& trx, std::string server);
-  static void addReleaseShard(Builder& trx, std::string shard);
-  static void addPreconditionServerNotBlocked(Builder& pre, std::string server);
-  static void addPreconditionServerGood(Builder& pre, std::string server);
-  static void addPreconditionShardNotBlocked(Builder& pre, std::string shard);
+    std::string const& database, std::string const& collection);
+  static void addBlockServer(Builder& trx, std::string const& server,
+                             std::string const& jobId);
+  static void addBlockShard(Builder& trx, std::string const& shard, std::string const& jobId);
+  static void addReleaseServer(Builder& trx, std::string const& server);
+  static void addReleaseShard(Builder& trx, std::string const& shard);
+  static void addPreconditionServerNotBlocked(Builder& pre, std::string const& server);
+  static void addPreconditionServerGood(Builder& pre, std::string const& server);
+  static void addPreconditionShardNotBlocked(Builder& pre, std::string const& shard);
   static void addPreconditionUnchanged(Builder& pre,
-    std::string key, Slice value);
+    std::string const& key, Slice value);
   static std::string checkServerGood(Node const& snapshot,
                                      std::string const& server);
 

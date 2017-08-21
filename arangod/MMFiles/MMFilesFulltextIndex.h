@@ -60,7 +60,7 @@ class MMFilesFulltextIndex final : public Index {
 
   size_t memory() const override;
 
-  void toVelocyPack(VPackBuilder&, bool, bool) const override;
+  void toVelocyPack(VPackBuilder&, bool withFigures, bool forPersistence) const override;
   // Uses default toVelocyPackFigures
 
   bool matchesDefinition(VPackSlice const&) const override;
@@ -71,10 +71,8 @@ class MMFilesFulltextIndex final : public Index {
   Result remove(transaction::Methods*, TRI_voc_rid_t,
                 arangodb::velocypack::Slice const&, bool isRollback) override;
 
-  int load() override { return 0; }
-  int unload() override;
-
-  int cleanup() override;
+  void load() override {}
+  void unload() override;
 
   bool isSame(std::string const& field, int minWordLength) const {
     std::string fieldString;
@@ -91,6 +89,7 @@ class MMFilesFulltextIndex final : public Index {
 
  private:
   std::set<std::string> wordlist(arangodb::velocypack::Slice const&);
+  void extractWords(std::set<std::string>& words, arangodb::velocypack::Slice value, int level) const;
 
  private:
   /// @brief the indexed attribute (path)

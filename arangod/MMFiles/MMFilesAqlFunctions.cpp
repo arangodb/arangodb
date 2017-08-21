@@ -27,9 +27,9 @@
 #include "Aql/AqlFunctionFeature.h"
 #include "MMFiles/MMFilesFulltextIndex.h"
 #include "MMFiles/MMFilesGeoIndex.h"
+#include "MMFiles/MMFilesToken.h"
 #include "MMFiles/mmfiles-fulltext-index.h"
 #include "MMFiles/mmfiles-fulltext-query.h"
-#include "MMFiles/mmfiles-fulltext-result.h"
 #include "StorageEngine/DocumentIdentifierToken.h"
 #include "Utils/CollectionNameResolver.h"
 #include "Transaction/Helpers.h"
@@ -279,33 +279,21 @@ AqlValue MMFilesAqlFunctions::Fulltext(
   }
 
   // note: the following call will free "ft"!
-  TRI_fulltext_result_t* queryResult =
-      TRI_QueryMMFilesFulltextIndex(fulltextIndex->internals(), ft);
+  std::set<TRI_voc_rid_t> queryResult = TRI_QueryMMFilesFulltextIndex(fulltextIndex->internals(), ft);
 
-  if (queryResult == nullptr) {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
-  }
-  
   TRI_ASSERT(trx->isPinned(cid));
 
   transaction::BuilderLeaser builder(trx);
-  try {
-    builder->openArray();
+  builder->openArray();
 
-    ManagedDocumentResult mmdr;
-    size_t const numResults = queryResult->_numDocuments;
-    for (size_t i = 0; i < numResults; ++i) {
-      if (collection->readDocument(trx, queryResult->_documents[i], mmdr)) {
-        mmdr.addToBuilder(*builder.get(), true);
-      }
+  ManagedDocumentResult mmdr;
+  for (auto const& it : queryResult) {
+    if (collection->readDocument(trx, MMFilesToken{it}, mmdr)) {
+      mmdr.addToBuilder(*builder.get(), true);
     }
-    builder->close();
-    TRI_FreeResultMMFilesFulltextIndex(queryResult);
-    return AqlValue(builder.get());
-  } catch (...) {
-    TRI_FreeResultMMFilesFulltextIndex(queryResult);
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
   }
+  builder->close();
+  return AqlValue(builder.get());
 }
 
 

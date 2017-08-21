@@ -53,6 +53,10 @@
 #include "SimpleHttpClient/SimpleHttpClient.h"
 #include "SimpleHttpClient/SimpleHttpResult.h"
 
+#include <boost/uuid/uuid.hpp>
+#include <boost/uuid/uuid_generators.hpp>
+#include <boost/uuid/uuid_io.hpp>
+
 using namespace arangodb;
 using namespace arangodb::application_features;
 using namespace arangodb::httpclient;
@@ -70,7 +74,7 @@ static void addEmptyVPackObject(std::string const& name,
 }
 
 const std::vector<std::string> AgencyTransaction::TypeUrl(
-  { "/read", "/write", "/transact", "/transient" });
+  { "/read", "/write", "/transact", "/transient", "/config" });
 
 
 // -----------------------------------------------------------------------------
@@ -1141,6 +1145,8 @@ AgencyCommResult AgencyComm::sendTransactionWithFailover(
   } catch (std::exception const& e) {
     LOG_TOPIC(ERR, Logger::AGENCYCOMM) << "Error transforming result. "
                                        << e.what()
+                                       << " status code: "
+                                       << result._statusCode
                                        << " incriminating body: "
                                        << result.bodyRef();
     result.clear();
@@ -1674,7 +1680,11 @@ bool AgencyComm::tryInitializeStructure(std::string const& jwtSecret) {
   try {
     VPackObjectBuilder b(&builder);
 
-    builder.add(VPackValue("Agency"));
+    
+    builder.add(                       // Cluster Id --------------------------
+      "Cluster", VPackValue(to_string(boost::uuids::random_generator()())));
+
+    builder.add(VPackValue("Agency")); // Agency ------------------------------
     {
       VPackObjectBuilder a(&builder);
       builder.add("Definition", VPackValue(1));

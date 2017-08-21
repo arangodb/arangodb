@@ -59,7 +59,10 @@ class SortedCollectBlock final : public ExecutionBlock {
     bool const count;
 
     CollectGroup() = delete;
-    explicit CollectGroup(bool);
+    CollectGroup(CollectGroup const&) = delete;
+    CollectGroup& operator=(CollectGroup const&) = delete;
+
+    explicit CollectGroup(bool count);
     ~CollectGroup();
 
     void initialize(size_t capacity);
@@ -84,13 +87,16 @@ class SortedCollectBlock final : public ExecutionBlock {
   ~SortedCollectBlock();
 
   int initialize() override final;
+  
+  /// @brief initializeCursor
+  int initializeCursor(AqlItemBlock* items, size_t pos) override;
 
  private:
   int getOrSkipSome(size_t atLeast, size_t atMost, bool skipping,
                     AqlItemBlock*& result, size_t& skipped) override;
 
   /// @brief writes the current group data into the result
-  void emitGroup(AqlItemBlock const* cur, AqlItemBlock* res, size_t row);
+  void emitGroup(AqlItemBlock const* cur, AqlItemBlock* res, size_t row, bool skipping);
   
   /// @brief skips the current group
   void skipGroup();

@@ -235,6 +235,7 @@ MMFilesCollectorThread::MMFilesCollectorThread(MMFilesLogfileManager* logfileMan
     : Thread("WalCollector"),
       _logfileManager(logfileManager),
       _condition(),
+      _forcedStopIterations(-1),
       _operationsQueueLock(),
       _operationsQueue(),
       _operationsQueueInUse(false),
@@ -272,6 +273,13 @@ void MMFilesCollectorThread::signal() {
   guard.signal();
 }
 
+/// @brief signal the thread that there is something to do
+void MMFilesCollectorThread::forceStop() {
+  CONDITION_LOCKER(guard, _condition);
+  _forcedStopIterations = 0;
+  guard.signal();
+}
+
 /// @brief main loop
 void MMFilesCollectorThread::run() {
   int counter = 0;
@@ -295,20 +303,13 @@ void MMFilesCollectorThread::run() {
       }
 
       // step 2: update master pointers
-      try {
-        bool worked;
-        int res = this->processQueuedOperations(worked);
+      bool worked;
+      int res = this->processQueuedOperations(worked);
 
-        if (res == TRI_ERROR_NO_ERROR) {
-          hasWorked |= worked;
-        } else if (res == TRI_ERROR_ARANGO_FILESYSTEM_FULL) {
-          doDelay = true;
-        }
-      } catch (...) {
-        // re-activate the queue
-        MUTEX_LOCKER(mutexLocker, _operationsQueueLock);
-        _operationsQueueInUse = false;
-        throw;
+      if (res == TRI_ERROR_NO_ERROR) {
+        hasWorked |= worked;
+      } else if (res == TRI_ERROR_ARANGO_FILESYSTEM_FULL) {
+        doDelay = true;
       }
     } catch (arangodb::basics::Exception const& ex) {
       int res = ex.code();
@@ -338,10 +339,20 @@ void MMFilesCollectorThread::run() {
           counter = 0;
         }
       }
-    } else if (isStopping() && !hasQueuedOperations()) {
-      // no operations left to execute, we can exit
-      break;
-    }
+    } else if (isStopping()) {
+      if (!hasQueuedOperations()) {
+        // no operations left to execute, we can exit
+        break;
+      }
+      if (_forcedStopIterations >= 0) {
+        if (++_forcedStopIterations == 10) {
+          // forceful exit
+          break;
+        } else {
+          guard.wait(interval);
+        }
+      }
+    } 
   }
 
   // all queues are empty, so we can exit
@@ -480,6 +491,7 @@ int MMFilesCollectorThread::processQueuedOperations(bool& worked) {
         if (res == TRI_ERROR_LOCK_TIMEOUT) {
           // could not acquire write-lock for collection in time
           // do not delete the operations
+          LOG_TOPIC(TRACE, Logger::COLLECTOR) << "got lock timeout while trying to apply queued operations";
           ++it2;
           continue;
         }

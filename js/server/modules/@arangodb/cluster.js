@@ -213,12 +213,12 @@ function cancelBarrier (endpoint, database, barrierId) {
 // / @brief tell leader that we are in sync
 // /////////////////////////////////////////////////////////////////////////////
 
-function addShardFollower (endpoint, database, shard) {
+function addShardFollower (endpoint, database, shard, lockJobId) {
   console.topic('heartbeat=debug', 'addShardFollower: tell the leader to put us into the follower list...');
   var url = endpointToURL(endpoint) + '/_db/' + database +
     '/_api/replication/addFollower';
   let db = require('internal').db;
-  var body = {followerId: ArangoServerState.id(), shard, checksum: db._collection(shard).checksum()};
+  var body = {followerId: ArangoServerState.id(), shard, checksum: db._collection(shard).count() + '', readLockId: lockJobId};
   var r = request({url, body: JSON.stringify(body), method: 'PUT'});
   if (r.status !== 200) {
     console.topic('heartbeat=error', "addShardFollower: could not add us to the leader's follower list.", r);
@@ -592,7 +592,7 @@ function synchronizeOneShard (database, shard, planId, leader) {
               ok = false;
             } else {
               try {
-                ok = addShardFollower(ep, database, shard);
+                ok = addShardFollower(ep, database, shard, lockJobId);
               } catch (err4) {
                 db._drop(shard);
                 throw err4;
@@ -1934,41 +1934,33 @@ function rebalanceShards () {
 
   // First count and collect:
   var db = require('internal').db;
-  var databases = db._databases();
-  for (i = 0; i < databases.length; ++i) {
-    db._useDatabase(databases[i]);
-    try {
-      var colls = db._collections();
-      for (j = 0; j < colls.length; ++j) {
-        var collName = colls[j].name();
-        if (collName.substr(0, 1) === '_') {
-          continue;
-        }
-        var collInfo = global.ArangoClusterInfo.getCollectionInfo(
-          databases[i], collName);
-        if (collInfo.distributeShardsLike === undefined) {
-          // Only consider those collections that do not follow another one
-          // w.r.t. their shard distribution.
-          var shardNames = Object.keys(collInfo.shards);
-          for (k = 0; k < shardNames.length; k++) {
-            var shardName = shardNames[k];
-            shardMap[shardName] = { database: databases[i],
-              collection: collName,
-              servers: collInfo.shards[shardName],
-              weight: 1 };
-            dbTab[collInfo.shards[shardName][0]].push(
-              { shard: shardName, leader: true,
+
+  var colls = db._collections();
+  for (j = 0; j < colls.length; ++j) {
+    var collName = colls[j].name();
+    if (collName.substr(0, 1) === '_') {
+      continue;
+    }
+    var collInfo = global.ArangoClusterInfo.getCollectionInfo(
+      db._name(), collName);
+    if (collInfo.distributeShardsLike === undefined) {
+      // Only consider those collections that do not follow another one
+      // w.r.t. their shard distribution.
+      var shardNames = Object.keys(collInfo.shards);
+      for (k = 0; k < shardNames.length; k++) {
+        var shardName = shardNames[k];
+        shardMap[shardName] = {
+          database: db._name(), collection: collName,
+          servers: collInfo.shards[shardName], weight: 1 };
+        dbTab[collInfo.shards[shardName][0]].push(
+          { shard: shardName, leader: true,
+            weight: shardMap[shardName].weight });
+        for (l = 1; l < collInfo.shards[shardName].length; ++l) {
+          dbTab[collInfo.shards[shardName][l]].push(
+            { shard: shardName, leader: false,
               weight: shardMap[shardName].weight });
-            for (l = 1; l < collInfo.shards[shardName].length; ++l) {
-              dbTab[collInfo.shards[shardName][l]].push(
-                { shard: shardName, leader: false,
-                weight: shardMap[shardName].weight });
-            }
-          }
         }
       }
-    } finally {
-      db._useDatabase('_system');
     }
   }
   

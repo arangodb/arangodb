@@ -27,6 +27,10 @@
 #include <sys/sysctl.h>  // NOLINT, for sysctl
 #endif
 
+#ifdef __linux__
+#include <syslog.h>
+#endif
+
 #undef MAP_TYPE
 
 #if defined(ANDROID) && !defined(V8_ANDROID_LOG_STDOUT)
@@ -249,6 +253,10 @@ void OS::Sleep(TimeDelta interval) {
 
 
 void OS::Abort() {
+#ifdef __linux__
+  ::syslog(LOG_CRIT, "V8 fatal error. Aborting process");
+#endif
+
   if (g_hard_abort) {
     V8_IMMEDIATE_CRASH();
   }

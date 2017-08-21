@@ -172,10 +172,14 @@ static void EdgesQuery(TRI_edge_direction_e direction,
   }
 
   std::string const queryString = "FOR doc IN @@collection " + filter + " RETURN doc";
-  v8::Handle<v8::Value> result =
-      AqlQuery(isolate, collection, queryString, bindVars).result;
+  
+  aql::QueryResultV8 queryResult = AqlQuery(isolate, collection, queryString, bindVars);
 
-  TRI_V8_RETURN(result);
+  if (!queryResult.result.IsEmpty()) {
+    TRI_V8_RETURN(queryResult.result);
+  }
+
+  TRI_V8_RETURN_NULL();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -385,8 +389,7 @@ static void JS_ChecksumCollection(
 
 static void JS_EdgesQuery(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
-  return EdgesQuery(TRI_EDGE_ANY, args);
-
+  EdgesQuery(TRI_EDGE_ANY, args);
   // cppcheck-suppress *
   TRI_V8_TRY_CATCH_END
 }
@@ -397,8 +400,7 @@ static void JS_EdgesQuery(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
 static void JS_InEdgesQuery(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
-  return EdgesQuery(TRI_EDGE_IN, args);
-
+  EdgesQuery(TRI_EDGE_IN, args);
   // cppcheck-suppress *
   TRI_V8_TRY_CATCH_END
 }
@@ -409,8 +411,7 @@ static void JS_InEdgesQuery(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
 static void JS_OutEdgesQuery(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
-  return EdgesQuery(TRI_EDGE_OUT, args);
-
+  EdgesQuery(TRI_EDGE_OUT, args);
   // cppcheck-suppress *
   TRI_V8_TRY_CATCH_END
 }
@@ -458,7 +459,9 @@ static void JS_LookupByKeys(v8::FunctionCallbackInfo<v8::Value> const& args) {
   aql::QueryResultV8 queryResult = AqlQuery(isolate, collection, queryString, bindVars);
 
   v8::Handle<v8::Object> result = v8::Object::New(isolate);
-  result->Set(TRI_V8_ASCII_STRING("documents"), queryResult.result);
+  if (!queryResult.result.IsEmpty()) {
+    result->Set(TRI_V8_ASCII_STRING("documents"), queryResult.result);
+  }
 
   TRI_V8_RETURN(result);
   TRI_V8_TRY_CATCH_END

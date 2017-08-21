@@ -585,7 +585,7 @@ ArangoDatabase.prototype._engine = function () {
 // //////////////////////////////////////////////////////////////////////////////
 
 ArangoDatabase.prototype._engineStats = function () {
-  var requestResult = this._connection.GET('/_api/engineStats');
+  var requestResult = this._connection.GET('/_api/engine/stats');
 
   arangosh.checkRequestResult(requestResult);
 
@@ -1122,8 +1122,7 @@ ArangoDatabase.prototype._executeTransaction = function (data) {
     data.action = String(data.action);
   }
 
-  var requestResult = this._connection.POST('/_api/transaction',
-    JSON.stringify(data));
+  var requestResult = this._connection.POST('/_api/transaction', JSON.stringify(data));
 
   if (requestResult !== null && requestResult.error === true) {
     throw new ArangoError(requestResult);

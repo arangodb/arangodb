@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false, maxlen: 500 */
-/*global assertEqual, AQL_EXPLAIN */
+/*global assertEqual, assertNull, AQL_EXPLAIN */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief tests for condition collapsing
@@ -46,6 +46,55 @@ function optimizerConditionsTestSuite () {
 
     tearDown : function () {
       db._drop("UnitTestsCollection");
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test negations
+////////////////////////////////////////////////////////////////////////////////
+
+    testNegation : function () {
+      var query = "FOR doc IN " + c.name() + " FILTER doc.a != null && LENGTH(doc.a) > 0 && !(doc.a == 'abc' || doc.a == 'def' || doc.a == 'xyz') RETURN doc";
+
+      var nodes = AQL_EXPLAIN(query).plan.nodes;
+ 
+      var calcNode = nodes[2];
+      assertEqual("CalculationNode", calcNode.type);
+      
+      var expression = calcNode.expression;
+      
+      assertEqual("logical and", expression.type);
+      assertEqual(2, expression.subNodes.length);
+      assertEqual("logical and", expression.subNodes[0].type);
+      assertEqual("compare !=", expression.subNodes[0].subNodes[0].type);
+      assertEqual("attribute access", expression.subNodes[0].subNodes[0].subNodes[0].type);
+      assertEqual("a", expression.subNodes[0].subNodes[0].subNodes[0].name);
+      assertEqual("value", expression.subNodes[0].subNodes[0].subNodes[1].type);
+      assertNull(expression.subNodes[0].subNodes[0].subNodes[1].value);
+      
+      assertEqual("compare >", expression.subNodes[0].subNodes[1].type);
+      assertEqual("function call", expression.subNodes[0].subNodes[1].subNodes[0].type);
+      assertEqual("LENGTH", expression.subNodes[0].subNodes[1].subNodes[0].name);
+      assertEqual("value", expression.subNodes[0].subNodes[1].subNodes[1].type);
+      assertEqual(0, expression.subNodes[0].subNodes[1].subNodes[1].value);
+      
+      assertEqual("unary not", expression.subNodes[1].type);
+      assertEqual("logical or", expression.subNodes[1].subNodes[0].type);
+      assertEqual("logical or", expression.subNodes[1].subNodes[0].subNodes[0].type);
+      assertEqual("compare ==", expression.subNodes[1].subNodes[0].subNodes[0].subNodes[0].type);
+      assertEqual("attribute access", expression.subNodes[1].subNodes[0].subNodes[0].subNodes[0].subNodes[0].type);
+      assertEqual("a", expression.subNodes[1].subNodes[0].subNodes[0].subNodes[0].subNodes[0].name);
+      assertEqual("value", expression.subNodes[1].subNodes[0].subNodes[0].subNodes[0].subNodes[1].type);
+      assertEqual("abc", expression.subNodes[1].subNodes[0].subNodes[0].subNodes[0].subNodes[1].value);
+      assertEqual("compare ==", expression.subNodes[1].subNodes[0].subNodes[0].subNodes[1].type);
+      assertEqual("attribute access", expression.subNodes[1].subNodes[0].subNodes[0].subNodes[1].subNodes[0].type);
+      assertEqual("a", expression.subNodes[1].subNodes[0].subNodes[0].subNodes[1].subNodes[0].name);
+      assertEqual("value", expression.subNodes[1].subNodes[0].subNodes[0].subNodes[1].subNodes[1].type);
+      assertEqual("def", expression.subNodes[1].subNodes[0].subNodes[0].subNodes[1].subNodes[1].value);
+      assertEqual("compare ==", expression.subNodes[1].subNodes[0].subNodes[1].type);
+      assertEqual("attribute access", expression.subNodes[1].subNodes[0].subNodes[1].subNodes[0].type);
+      assertEqual("a", expression.subNodes[1].subNodes[0].subNodes[1].subNodes[0].name);
+      assertEqual("value", expression.subNodes[1].subNodes[0].subNodes[1].subNodes[1].type);
+      assertEqual("xyz", expression.subNodes[1].subNodes[0].subNodes[1].subNodes[1].value);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
