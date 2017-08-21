@@ -2,7 +2,11 @@ v3.2.2 (2017-XX-XX)
 
 * ui: fixed a display bug within the slow and running queries view
 
-* fixed issue #3037: Foxx, internal server error when I try to add a new service
+* fixed issue #3037: Foxx, internal server error when I try to add a
+  new service
+
+* fixed rebalance shards button failing on non _system databases.
+  limiting the effect to single database.
 
 v3.2.1 (2017-08-09)
 -------------------
