@@ -1026,7 +1026,9 @@ std::shared_ptr<Index> LogicalCollection::createIndex(transaction::Methods* trx,
 /// @brief drops an index, including index file removal and replication
 bool LogicalCollection::dropIndex(TRI_idx_iid_t iid) {
   TRI_ASSERT(!ServerState::instance()->isCoordinator());
+#if USE_PLAN_CACHE
   arangodb::aql::PlanCache::instance()->invalidate(_vocbase);
+#endif
   arangodb::aql::QueryCache::instance()->invalidate(_vocbase, name());
   return _physical->dropIndex(iid);
 }
