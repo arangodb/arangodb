@@ -9,6 +9,8 @@
 @RESTQUERYPARAM{collection,string,required}
 The name or id of the collection to dump.
 
+@RESTQUERYPARAM{chunkSize,number,optional} Approximate maximum size of the returned result.
+
 @RESTQUERYPARAM{batchId,string,required}
 rocksdb only - The id of the snapshot to use
 
@@ -17,9 +19,6 @@ mmfiles only - Lower bound tick value for results.
 
 @RESTQUERYPARAM{to,number,optional}
 mmfiles only - Upper bound tick value for results.
-
-@RESTQUERYPARAM{chunkSize,number,optional}
-mmfiles only - Approximate maximum size of the returned result.
 
 @RESTQUERYPARAM{includeSystem,boolean,optional}
 mmfiles only - Include system collections in the result. The default value is *true*.

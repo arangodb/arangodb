@@ -1670,6 +1670,7 @@ int RocksDBEngine::handleSyncKeys(arangodb::InitialSyncer& syncer,
   return handleSyncKeysRocksDB(syncer, col, keysId, cid, collectionName,
                                maxTick, errorMsg);
 }
+  
 Result RocksDBEngine::createTickRanges(VPackBuilder& builder) {
   rocksdb::TransactionDB* tdb = rocksutils::globalRocksDB();
   rocksdb::VectorLogPtr walFiles;

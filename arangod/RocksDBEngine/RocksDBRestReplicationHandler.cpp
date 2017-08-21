@@ -99,6 +99,22 @@ RestStatus RocksDBRestReplicationHandler::execute() {
         goto BAD_CALL;
       }
       handleCommandLoggerState();
+    } else if (command == "logger-tick-ranges") {
+      if (type != rest::RequestType::GET) {
+        goto BAD_CALL;
+      }
+      if (isCoordinatorError()) {
+        return RestStatus::DONE;
+      }
+      handleCommandLoggerTickRanges();
+    } else if (command == "logger-first-tick") {
+      if (type != rest::RequestType::GET) {
+        goto BAD_CALL;
+      }
+      if (isCoordinatorError()) {
+        return RestStatus::DONE;
+      }
+      handleCommandLoggerFirstTick();
     } else if (command == "logger-follow") {
       if (type != rest::RequestType::GET && type != rest::RequestType::PUT) {
         goto BAD_CALL;
@@ -360,6 +376,47 @@ void RocksDBRestReplicationHandler::handleCommandLoggerState() {
     return;
   }
   generateResult(rest::ResponseCode::OK, builder.slice());
+}
+
+//////////////////////////////////////////////////////////////////////////////
+/// @brief return the available logfile range
+/// @route GET logger-tick-ranges
+/// @caller js/client/modules/@arangodb/replication.js
+/// @response VPackArray, containing info about each datafile
+///           * filename
+///           * status
+///           * tickMin - tickMax
+//////////////////////////////////////////////////////////////////////////////
+void RocksDBRestReplicationHandler::handleCommandLoggerTickRanges() {
+  VPackBuilder b;
+  Result res = globalRocksEngine()->createTickRanges(b);
+  if (res.ok()) {
+    generateResult(rest::ResponseCode::OK, b.slice());
+  } else {
+    generateError(res);
+  }
+}
+
+//////////////////////////////////////////////////////////////////////////////
+/// @brief return the first tick available in a logfile
+/// @route GET logger-first-tick
+/// @caller js/client/modules/@arangodb/replication.js
+/// @response VPackObject with minTick of LogfileManager->ranges()
+//////////////////////////////////////////////////////////////////////////////
+void RocksDBRestReplicationHandler::handleCommandLoggerFirstTick() {
+  TRI_voc_tick_t tick = UINT64_MAX;
+  Result res = EngineSelectorFeature::ENGINE->firstTick(tick);
+
+  VPackBuilder b;
+  b.add(VPackValue(VPackValueType::Object));
+  if (tick == UINT64_MAX || res.fail()) {
+    b.add("firstTick", VPackValue(VPackValueType::Null));
+  } else {
+    auto tickString = std::to_string(tick);
+    b.add("firstTick", VPackValue(tickString));
+  }
+  b.close();
+  generateResult(rest::ResponseCode::OK, b.slice());
 }
 
 ////////////////////////////////////////////////////////////////////////////////
