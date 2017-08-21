@@ -282,6 +282,7 @@ RocksDBKey::RocksDBKey(RocksDBEntryType type, uint64_t first,
     default:
       THROW_ARANGO_EXCEPTION(TRI_ERROR_BAD_PARAMETER);
   }
+  _slice = rocksdb::Slice(_buffer.data(), _keyLength);
 }
 
 RocksDBKey::RocksDBKey(RocksDBEntryType type, uint64_t first, uint64_t second)
