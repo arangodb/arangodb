@@ -46,6 +46,8 @@
 #include "Pregel/Worker.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/FeatureCacheFeature.h"
+#include "Scheduler/Scheduler.h"
+#include "Scheduler/SchedulerFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/PhysicalCollection.h"
 #include "StorageEngine/StorageEngine.h"
@@ -547,7 +549,6 @@ static void DocumentVocbase(
 ////////////////////////////////////////////////////////////////////////////////
 
 static void RemoveVocbaseCol(v8::FunctionCallbackInfo<v8::Value> const& args) {
-
   v8::Isolate* isolate = args.GetIsolate();
   v8::HandleScope scope(isolate);
   OperationOptions options;
@@ -1593,8 +1594,7 @@ static void JS_PropertiesVocbaseCol(
 static void JS_RemoveVocbaseCol(
     v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
-  return RemoveVocbaseCol(args);
-
+  RemoveVocbaseCol(args);
   // cppcheck-suppress style
   TRI_V8_TRY_CATCH_END
 }
@@ -3061,8 +3061,8 @@ static void JS_CollectionsVocbase(
     };
     colls = GetCollectionsCluster(vocbase);
   } else {
-    // no cleanup needed on single server / dbserver 
-    cleanup = [&colls]() {};
+    // no cleanup needed on single server / dbserver
+    cleanup = []() {};
     colls = vocbase->collections(false);
   }
 
@@ -3188,8 +3188,7 @@ static void JS_CompletionsVocbase(
 
 static void JS_RemoveVocbase(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
-  return RemoveVocbase(args);
-
+  RemoveVocbase(args);
   // cppcheck-suppress style
   TRI_V8_TRY_CATCH_END
 }
@@ -3315,12 +3314,19 @@ static void JS_WarmupVocbaseCol(
   if (!trxRes.ok()) {
     TRI_V8_THROW_EXCEPTION(trxRes);
   }
-
+  
   auto idxs = collection->getIndexes();
+  rest::Scheduler* schdler = SchedulerFeature::SCHEDULER;
+  std::atomic<size_t> numTrx(idxs.size());
 
   for (auto& idx : idxs) {
-    // multi threading?
-    idx->warmup(&trx);
+    schdler->post([&] {
+      TRI_DEFER(numTrx--);
+      idx->warmup(&trx);
+    });
+  }
+  while (numTrx > 0 && !schdler->isStopping()) {
+    usleep(50000);
   }
 
   trxRes = trx.commit();

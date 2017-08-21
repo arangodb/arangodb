@@ -167,6 +167,11 @@ class RocksDBEdgeIndex final : public RocksDBIndex {
   /// @brief add a single value node to the iterator's keys
   void handleValNode(VPackBuilder* keys,
                      arangodb::aql::AstNode const* valNode) const;
+  
+  void warmupInternal(transaction::Methods* trx,
+                      rocksdb::Slice const& lower, rocksdb::Slice const& upper);
+  
+ private:
 
   std::string _directionAttr;
   bool _isFromIndex;

@@ -178,6 +178,7 @@ class AqlItemBlock {
   
   void copyColValuesFromFirstRow(size_t currentRow, RegisterId col) {
     TRI_ASSERT(currentRow > 0);
+    TRI_ASSERT(_data.capacity() > currentRow * _nrRegs + col);
 
     if (_data[currentRow * _nrRegs + col].isEmpty()) {
       // First update the reference count, if this fails, the value is empty

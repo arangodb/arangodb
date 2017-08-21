@@ -62,21 +62,21 @@ db_stop
 
 if test "@CPACK_SYSTEMD_FOUND@" -eq 1 ; then
     # This will only remove masks created by d-s-h on package removal.
-    deb-systemd-helper unmask arangodb3.service >/dev/null || true
+    deb-systemd-helper unmask @CPACK_PACKAGE_NAME@.service >/dev/null || true
     # was-enabled defaults to true, so new installations run enable.
-    if deb-systemd-helper --quiet was-enabled arangodb3.service; then
+    if deb-systemd-helper --quiet was-enabled @CPACK_PACKAGE_NAME@.service; then
         # Enables the unit on first installation, creates new
         # symlinks on upgrades if the unit file has changed.
-        deb-systemd-helper enable arangodb3.service >/dev/null || true
+        deb-systemd-helper enable @CPACK_PACKAGE_NAME@.service >/dev/null || true
     else
         # Update the statefile to add new symlinks (if any), which need to be
         # cleaned up on purge. Also remove old symlinks.
-        deb-systemd-helper update-state arangodb3.service >/dev/null || true
+        deb-systemd-helper update-state @CPACK_PACKAGE_NAME@.service >/dev/null || true
     fi
     # Automatically added by dh_systemd_start
     if [ -d /run/systemd/system ]; then
         systemctl --system daemon-reload >/dev/null || true
-        deb-systemd-invoke start arangodb3.service >/dev/null || true
+        deb-systemd-invoke start @CPACK_PACKAGE_NAME@.service >/dev/null || true
     fi
     # End automatically added section
 else

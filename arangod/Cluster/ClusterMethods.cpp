@@ -2482,12 +2482,12 @@ std::unique_ptr<LogicalCollection> ClusterMethods::persistCollectionInAgency(
             replicationFactor = parameters.get(replicationFactorStr).getNumber<size_t>();
             if (otherReplFactor != replicationFactor) {
               replicationFactor = otherReplFactor;
-              col->replicationFactor(otherReplFactor);
+              col->replicationFactor(static_cast<int>(otherReplFactor));
               //replicationFactorConflict = true;
             }
           } else {
             replicationFactor = otherReplFactor;
-            col->replicationFactor(otherReplFactor);
+            col->replicationFactor(static_cast<int>(otherReplFactor));
           }
 
           size_t otherNumOfShards = size_t(other->numberOfShards());
@@ -2495,12 +2495,12 @@ std::unique_ptr<LogicalCollection> ClusterMethods::persistCollectionInAgency(
             numberOfShards = parameters.get(numberOfShardsStr).getNumber<size_t>();
             if (otherNumOfShards != numberOfShards) {
               numberOfShards = otherNumOfShards;
-              col->replicationFactor(otherNumOfShards);
+              col->replicationFactor(static_cast<int>(otherNumOfShards));
               //numberOfShardsConflict = true;
             }
           } else {
             numberOfShards = otherNumOfShards;
-            col->replicationFactor(otherNumOfShards);
+            col->replicationFactor(static_cast<int>(otherNumOfShards));
           }
         
         }          
