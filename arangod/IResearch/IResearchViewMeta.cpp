@@ -369,26 +369,26 @@ bool IResearchViewMeta::CommitBaseMeta::ConsolidationPolicy::operator==(
 
 /*static*/ const IResearchViewMeta::CommitBaseMeta::ConsolidationPolicy& IResearchViewMeta::CommitBaseMeta::ConsolidationPolicy::DEFAULT(
     IResearchViewMeta::CommitBaseMeta::ConsolidationPolicy::Type type
-) noexcept {
+) {
   switch (type) {
     case Type::BYTES:
     {
-      static const ConsolidationPolicy policy(Type::BYTES, 10, 0.85f);
+      static const ConsolidationPolicy policy(type, 10, 0.85f);
       return policy;
     }
   case Type::BYTES_ACCUM:
     {
-      static const ConsolidationPolicy policy(Type::BYTES_ACCUM, 10, 0.85f);
+      static const ConsolidationPolicy policy(type, 10, 0.85f);
       return policy;
     }
   case Type::COUNT:
     {
-      static const ConsolidationPolicy policy(Type::COUNT, 10, 0.85f);
+      static const ConsolidationPolicy policy(type, 10, 0.85f);
       return policy;
     }
   case Type::FILL:
     {
-      static const ConsolidationPolicy policy(Type::FILL, 10, 0.85f);
+      static const ConsolidationPolicy policy(type, 10, 0.85f);
       return policy;
     }
   default:

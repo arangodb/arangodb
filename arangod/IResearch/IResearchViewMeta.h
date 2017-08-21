@@ -78,7 +78,7 @@ struct IResearchViewMeta {
       ConsolidationPolicy& operator=(ConsolidationPolicy const& other);
       ConsolidationPolicy& operator=(ConsolidationPolicy&& other) noexcept;
       bool operator==(ConsolidationPolicy const& other) const noexcept;
-      static const ConsolidationPolicy& DEFAULT(Type type) noexcept; // default values for a given type
+      static const ConsolidationPolicy& DEFAULT(Type type); // default values for a given type
       size_t intervalStep() const noexcept;
       irs::index_writer::consolidation_policy_t const& policy() const noexcept;
       float threshold() const noexcept;

@@ -21,13 +21,12 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "Transaction/Methods.h"
+//#include "Transaction/Methods.h"
 
 #include "IResearchAttributes.h"
 
 NS_BEGIN(arangodb)
 NS_BEGIN(iresearch)
-
 NS_BEGIN(attribute)
 
 // -----------------------------------------------------------------------------
@@ -44,22 +43,12 @@ DEFINE_FACTORY_DEFAULT(AttributePath);
 
 REGISTER_ATTRIBUTE(Transaction);
 DEFINE_ATTRIBUTE_TYPE(Transaction);
-DEFINE_FACTORY_DEFAULT(Transaction);
+
+Transaction::Transaction(arangodb::transaction::Methods& trx)
+  : irs::basic_attribute<arangodb::transaction::Methods&>(trx) {
+}
 
 NS_END // attribute
-
-NS_BEGIN(stored_attribute)
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                     AttributePath
-// -----------------------------------------------------------------------------
-
-REGISTER_ATTRIBUTE(AttributePath);
-DEFINE_ATTRIBUTE_TYPE(AttributePath);
-DEFINE_FACTORY_DEFAULT(AttributePath);
-
-NS_END // stored_attribute
-
 NS_END // iresearch
 NS_END // arangodb
 

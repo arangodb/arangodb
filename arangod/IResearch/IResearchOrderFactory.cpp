@@ -40,11 +40,13 @@ NS_LOCAL
 
 class Sort: public irs::sort {
  public:
-  Sort(irs::sort::ptr&& impl, arangodb::velocypack::Slice attrPath)
-    : irs::sort(impl->type()),
-      _impl(std::move(impl)) {
+  Sort(
+      irs::sort::ptr&& impl,
+      arangodb::iresearch::attribute::AttributePath& attrPath
+  ): irs::sort(impl->type()),
+     _attrPath(attrPath),
+     _impl(std::move(impl)) {
     TRI_ASSERT(_impl);
-    _attrPath.value = attrPath;
     irs::sort::reverse(_impl->reverse()); // ensure full equivalence for tests
   }
 
@@ -52,7 +54,7 @@ class Sort: public irs::sort {
 
   static irs::sort::ptr make(
       irs::sort::ptr&& impl,
-      arangodb::velocypack::Slice attrPath
+      arangodb::iresearch::attribute::AttributePath& attrPath
   ) {
     PTR_NAMED(Sort, ptr, std::move(impl), attrPath);
     return ptr;
@@ -68,7 +70,7 @@ class Sort: public irs::sort {
     auto* attr = ptr->attributes().get<arangodb::iresearch::attribute::AttributePath>();
 
     if (attr) {
-      **attr = _attrPath; // set attribute path if requested
+      *attr = &_attrPath; // set attribute path if requested
     }
 
     return ptr;
@@ -77,7 +79,7 @@ class Sort: public irs::sort {
   void reverse(bool rev) { TRI_ASSERT(false); } // must initialize impl before construction wrapper
 
  private:
-  arangodb::iresearch::attribute::AttributePath _attrPath;
+  arangodb::iresearch::attribute::AttributePath& _attrPath;
   irs::sort::ptr _impl;
 };
 
@@ -137,22 +139,25 @@ bool fromFCall(
 ) {
   TRI_ASSERT(arangodb::aql::NODE_TYPE_ARRAY == args.type);
   arangodb::velocypack::Builder* attrPath = nullptr;
+  arangodb::iresearch::attribute::AttributePath* attrPtr = nullptr;
   arangodb::aql::AstNode const* head;
   irs::sort::ptr scorer;
 
   if (ctx) {
-    auto attr = arangodb::iresearch::stored_attribute::AttributePath::make();
+    auto attr = arangodb::iresearch::attribute::AttributePath::make();
 
     #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-      auto* attrPtr = dynamic_cast<arangodb::iresearch::stored_attribute::AttributePath*>(attr.get());
+      attrPtr = dynamic_cast<arangodb::iresearch::attribute::AttributePath*>(attr.get());
     #else
-      auto* attrPtr = static_cast<arangodb::iresearch::stored_attribute::AttributePath*>(attr.get());
+      attrPtr = static_cast<arangodb::iresearch::attribute::AttributePath*>(attr.get());
     #endif
 
-    if (attrPtr) {
-      attrPath = &(attrPtr->value);
-      ctx->attributes.emplace_back(std::move(attr));
+    if (!attrPtr) {
+      return false; // failure to create attribute path coiner attribute
     }
+
+    attrPath = &(attrPtr->value);
+    ctx->attributes.emplace_back(std::move(attr));
   }
 
   if (!args.numMembers()
@@ -216,7 +221,7 @@ bool fromFCall(
 
   if (ctx) {
     scorer->reverse(reverse);
-    ctx->order.add<Sort>(std::move(scorer), attrPath->slice());
+    ctx->order.add<Sort>(std::move(scorer), *attrPtr);
   }
 
   return true;

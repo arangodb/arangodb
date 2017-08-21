@@ -39,7 +39,10 @@ class AttributeScorer: public irs::sort {
   DECLARE_SORT_TYPE();
 
   // for use with irs::order::add<T>(...) and default args (static build)
-  DECLARE_FACTORY_DEFAULT(bool arangodbTypeOrder = false);
+  DECLARE_FACTORY_DEFAULT(
+    std::vector<irs::attribute::ptr>& storedAttrBuf,
+    bool arangodbTypeOrder = false
+  );
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief for use with irs::order::add(...) (dynamic build)
@@ -74,6 +77,7 @@ class AttributeScorer: public irs::sort {
   std::string _buf;
   size_t _nextOrder;
   size_t _order[ValueType::eLast]; // type precedence order
+  std::vector<irs::attribute::ptr>* _storedAttrBuf; // buffer for runtime-created attributes
 };
 
 NS_END // iresearch
