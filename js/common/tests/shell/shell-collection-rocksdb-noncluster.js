@@ -449,7 +449,7 @@ function CollectionSuite () {
         if (idx.figures.cacheInUse) {
           let diff = Math.abs(inital[i].cacheSize - idx.figures.cacheSize);
           assertTrue(diff <= Math.pow(2, 21), idx);
-          assertTrue(idx.figures.cacheLifeTimeHitRate > 25, idx);
+          assertTrue(idx.figures.cacheLifeTimeHitRate > 15, idx);
           inital[i] = idx.figures;
         }
       });
@@ -462,7 +462,7 @@ function CollectionSuite () {
       idxs.forEach(function(idx, i) {
         if (idx.figures.cacheInUse) {
           assertTrue(Math.abs(inital[i].cacheSize - idx.figures.cacheSize) < 1024);
-          assertTrue(idx.figures.cacheLifeTimeHitRate > 40, idx);
+          assertTrue(idx.figures.cacheLifeTimeHitRate > 30, idx);
         }
       });
 
@@ -496,7 +496,7 @@ function CollectionSuite () {
       // should be about 50 %
       idxs.forEach(function(idx) {
         if (idx.figures.cacheInUse) {
-          assertTrue(idx.figures.cacheLifeTimeHitRate > 25, idx);
+          assertTrue(idx.figures.cacheLifeTimeHitRate > 15, idx);
         }
       });
 

@@ -187,6 +187,10 @@ void RocksDBCounterManager::removeCounter(uint64_t objectId) {
 
 /// Thread-Safe force sync
 Result RocksDBCounterManager::sync(bool force) {
+  TRI_IF_FAILURE("RocksDBCounterManagerSync") {
+    return Result();
+  }
+
   if (force) {
     while (true) {
       bool expected = false;
@@ -694,18 +698,26 @@ class WBReader final : public rocksdb::WriteBatch::Handler {
   }
 };
 
+/// earliest safe sequence number to throw away from wal
+rocksdb::SequenceNumber RocksDBCounterManager::earliestSeqNeeded() const {
+  rocksdb::SequenceNumber start = UINT64_MAX;
+  for (auto const& pair : _counters) {
+    start = std::min(start, pair.second._sequenceNum);
+  }
+  return start;
+}
+
 /// parse the WAL with the above handler parser class
 bool RocksDBCounterManager::parseRocksWAL() {
   WRITE_LOCKER(guard, _rwLock);
   TRI_ASSERT(_counters.size() > 0);
 
-  rocksdb::SequenceNumber start = UINT64_MAX;
+  rocksdb::SequenceNumber start = earliestSeqNeeded();
   // Tell the WriteBatch reader the transaction markers to look for
   auto handler = std::make_unique<WBReader>(&_estimators, &_generators);
 
   for (auto const& pair : _counters) {
     handler->seqStart.emplace(pair.first, pair.second._sequenceNum);
-    start = std::min(start, pair.second._sequenceNum);
   }
 
   std::unique_ptr<rocksdb::TransactionLogIterator> iterator;  // reader();

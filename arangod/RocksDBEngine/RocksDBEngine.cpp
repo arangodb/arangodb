@@ -1201,7 +1201,9 @@ std::pair<TRI_voc_tick_t, TRI_voc_cid_t> RocksDBEngine::mapObjectToCollection(
   return it->second;
 }
 
-arangodb::Result RocksDBEngine::syncWal() {
+arangodb::Result RocksDBEngine::syncWal(bool waitForSync,
+                                        bool waitForCollector,
+                                        bool writeShutdownFile) {
 #ifdef _WIN32
   // SyncWAL always reports "not implemented" on Windows
   return arangodb::Result();
@@ -1209,6 +1211,14 @@ arangodb::Result RocksDBEngine::syncWal() {
   rocksdb::Status status = _db->GetBaseDB()->SyncWAL();
   if (!status.ok()) {
     return rocksutils::convertStatus(status);
+  }
+  if (waitForCollector) {
+    for (auto cf : RocksDBColumnFamily::_allHandles) {
+      status = _db->GetBaseDB()->Flush(rocksdb::FlushOptions(), cf);
+      if (!status.ok()) {
+        return rocksutils::convertStatus(status);
+      }
+    }
   }
   return arangodb::Result();
 #endif
