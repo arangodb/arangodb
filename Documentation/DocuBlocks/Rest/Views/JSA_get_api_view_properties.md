@@ -25,6 +25,7 @@ is returned.
 
 Using an identifier:
 
+@EXAMPLE_ARANGOSH_RUN{RestViewGetViewPropertiesIdentifier}
     var viewName = "products";
     var viewType = "iresearch";
     var viewProperties = { locale : "c" };
@@ -38,9 +39,11 @@ Using an identifier:
 
     logJsonResponse(response);
     db._dropView(viewName);
+@END_EXAMPLE_ARANGOSH_RUN
 
 Using a name:
 
+@EXAMPLE_ARANGOSH_RUN{RestViewGetViewPropertiesName}
     var viewName = "products";
     var viewType = "iresearch";
     var viewProperties = { locale : "c" };
@@ -54,6 +57,6 @@ Using a name:
 
     logJsonResponse(response);
     db._dropView(viewName);
-
+@END_EXAMPLE_ARANGOSH_RUN
 @endDocuBlock
 

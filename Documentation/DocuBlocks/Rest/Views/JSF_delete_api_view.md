@@ -34,6 +34,7 @@ If the *view-name* is unknown, then a *HTTP 404* is returned.
 
 Using an identifier:
 
+@EXAMPLE_ARANGOSH_RUN{RestViewDeleteViewIdentifier}
     var viewName = "testView";
     var viewType = "iresearch";
     var viewProperties = {};
@@ -45,9 +46,11 @@ Using an identifier:
     assert(response.code === 200);
 
     logJsonResponse(response);
+@END_EXAMPLE_ARANGOSH_RUN
 
 Using a name:
 
+@EXAMPLE_ARANGOSH_RUN{RestViewDeleteViewName}
     var viewName = "testView";
     var viewType = "iresearch";
     var viewProperties = {};
@@ -60,6 +63,6 @@ Using a name:
     assert(response.code === 200);
 
     logJsonResponse(response);
-
+@END_EXAMPLE_ARANGOSH_RUN
 @endDocuBlock
 

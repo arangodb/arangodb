@@ -35,6 +35,7 @@ If the *view-name* is unknown, then a *HTTP 404*
 is returned.
 @EXAMPLES
 
+@EXAMPLE_ARANGOSH_RUN{RestViewPutViewRename}
     var viewType = "iresearch";
     var viewName = "products1";
     var viewNewName = "newname";
@@ -50,4 +51,5 @@ is returned.
     db._dropView(viewNewName);
 
     logJsonResponse(response);
+@END_EXAMPLE_ARANGOSH_RUN
 @endDocuBlock

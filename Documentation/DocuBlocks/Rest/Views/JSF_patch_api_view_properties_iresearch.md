@@ -142,17 +142,19 @@ is returned.
 
 @EXAMPLES
 
+@EXAMPLE_ARANGOSH_RUN{RestIResearchViewPatchProperties}
     var viewName = "products";
     var viewType = "iresearch";
     db._dropView(viewName);
     var view = db._createView(viewName, viewType, {});
     var url = "/_api/view/"+ view.name() + "/properties";
 
-    var response = logCurlRequest('PUT', url, { "threadMaxIdle" : 10 });
+    var response = logCurlRequest('PATCH', url, { "threadMaxIdle" : 10 });
 
     assert(response.code === 200);
 
     logJsonResponse(response);
     db._dropView(viewName);
+@END_EXAMPLE_ARANGOSH_RUN
 @endDocuBlock
 

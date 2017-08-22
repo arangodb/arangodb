@@ -18,6 +18,7 @@ The list of views
 
 Return information about all views:
 
+@EXAMPLE_ARANGOSH_RUN{RestViewGetAllViews}
     var url = "/_api/view";
 
     var response = logCurlRequest('GET', url);
@@ -25,5 +26,6 @@ Return information about all views:
     assert(response.code === 200);
 
     logJsonResponse(response);
+@END_EXAMPLE_ARANGOSH_RUN
 @endDocuBlock
 
