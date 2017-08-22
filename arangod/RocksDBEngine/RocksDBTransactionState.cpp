@@ -475,8 +475,6 @@ uint64_t RocksDBTransactionState::sequenceNumber() const {
 
 void RocksDBTransactionState::prepareForParallelReads() { _parallel = true; }
 
-bool RocksDBTransactionState::inParallelMode() const { return _parallel; }
-
 /// @brief temporarily lease a Builder object
 RocksDBKey* RocksDBTransactionState::leaseRocksDBKey() {
   if (_keys.empty()) {

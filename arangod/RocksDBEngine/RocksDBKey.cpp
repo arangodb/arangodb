@@ -221,12 +221,6 @@ std::pair<bool, int32_t> RocksDBKey::geoValues(rocksdb::Slice const& slice) {
   return std::pair<bool, int32_t>(isSlot, static_cast<int32_t>(val >> 32));
 }
 
-rocksdb::Slice const& RocksDBKey::string() const { 
-  TRI_ASSERT(_keyLength > 0);
-  TRI_ASSERT(_keyLength == _slice.size());
-  return _slice;
-}
-
 RocksDBKey::RocksDBKey(RocksDBEntryType type,
                        RocksDBSettingsType st) : _type(type), _buffer() {
   switch (_type) {

@@ -125,7 +125,7 @@ class RocksDBTransactionState final : public TransactionState {
   /// parallel from multiple threads. READ-ONLY transactions
   void prepareForParallelReads();
   /// @brief in parallel mode. READ-ONLY transactions
-  bool inParallelMode() const;
+  bool inParallelMode() const { return _parallel; }
   /// @brief temporarily lease a Builder object
   RocksDBKey* leaseRocksDBKey();
   /// @brief return a temporary RocksDBKey object

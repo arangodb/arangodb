@@ -268,7 +268,7 @@ class RocksDBKey {
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Returns a reference to the full, constructed key
   //////////////////////////////////////////////////////////////////////////////
-  rocksdb::Slice const& string() const;
+  rocksdb::Slice const& string() const { return _slice; }
 
  private:
   explicit RocksDBKey(RocksDBEntryType type, RocksDBSettingsType st);
