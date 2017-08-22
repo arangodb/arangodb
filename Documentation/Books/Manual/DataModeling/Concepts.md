@@ -57,15 +57,13 @@ database *_system* is special, because it cannot be removed. Database users
 are managed in this database, and their credentials are valid for all databases
 of a server instance.
 
-Similarly **databases** may also contain **view** entities. A view in its
-simplest form can be seen as a read-only collection of documents. The view
-concept quite closely matches a similarly named concept available in most
-relational database management systems (RDBMS). Each view entity usually maps
-some implementation specific document transformation, (possibly identity), onto
-documents from zero or more collections.
-
-The currently supported view implementations are: **iresearch** as described in
-[IResearch View](Views/IResearch.md).
+Similarly **databases** may also contain **view** entities. A
+[View](Views/Readme.md) in its simplest form can be seen as a read-only
+array or collection of documents. The view concept quite closely matches a
+similarly named concept available in most relational database management systems
+(RDBMS). Each view entity usually maps some implementation specific document
+transformation, (possibly identity), onto documents from zero or more
+collections.
 
 Data Retrieval
 --------------

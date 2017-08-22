@@ -37,6 +37,7 @@
     * [Collection Methods](DataModeling/Documents/DocumentMethods.md)
     * [Database Methods](DataModeling/Documents/DatabaseMethods.md)
   * [Graphs, Vertices & Edges](DataModeling/GraphsVerticesEdges.md)
+  * [Views](DataModeling/Views/README.md)
   * [Naming Conventions](DataModeling/NamingConventions/README.md)
     * [Database Names](DataModeling/NamingConventions/DatabaseNames.md)
     * [Collection Names](DataModeling/NamingConventions/CollectionNames.md)
