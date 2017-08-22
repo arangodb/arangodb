@@ -1,5 +1,5 @@
 /* jshint globalstrict:true, strict:true, maxlen: 5000 */
-/* global describe, before, afterEach, it, require*/
+/* global describe, before, after, afterEach, it, require*/
 
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief tests for user access rights
@@ -33,18 +33,22 @@
 const expect = require('chai').expect;
 const foxxManager = require('@arangodb/foxx/manager');
 const fs = require('fs');
-const basePath = fs.makeAbsolute(fs.join(require('internal').startupPath, 'common', 'test-data', 'apps'));
-const download = require('internal').download;
+const internal = require('internal');
+const basePath = fs.makeAbsolute(fs.join(internal.startupPath, 'common', 'test-data', 'apps'));
+const download = internal.download;
 
 const arangodb = require('@arangodb');
 const arango = require('@arangodb').arango;
 const aql = arangodb.aql;
-const db = require('internal').db;
+const db = internal.db;
 
 describe('Foxx service', () => {
   const mount = '/queue_test_mount';
   before(() => {
     foxxManager.install(fs.join(basePath, 'queue'), mount);
+  });
+  after(() => {
+    foxxManager.uninstall(mount, {force: true});
   });
   afterEach(() => {
     download(`${arango.getEndpoint().replace('tcp://', 'http://')}/${mount}`, '', {
@@ -85,4 +89,32 @@ describe('Foxx service', () => {
     `).toArray();
     expect(queuesAfter.length - queuesBefore.length).to.equal(1);
   });
+  it('should support jobs running in the queue', () => {
+    let res = download(`${arango.getEndpoint().replace('tcp://', 'http://')}/${mount}`, '', {
+      method: 'post'
+    });
+    expect(res.code).to.equal(204);
+    expect(waitForJob()).to.equal(true);
+    const jobResult = db._query(aql`
+      FOR i IN foxx_queue_test
+        FILTER i.job == true
+        RETURN 1
+    `).toArray();
+    expect(jobResult.length).to.equal(1);
+  });
+  const waitForJob = () => {
+    let i = 0;
+    while (i++ < 50) {
+      internal.wait(0.1);
+      const jobs = db._query(aql`
+        FOR job IN _jobs
+          FILTER job.type.mount == ${mount}
+          RETURN job.status
+      `).toArray();
+      if (jobs.length === 1 && jobs[0] === 'complete') {
+        return true;
+      }
+    }
+    return false;
+  };
 });
