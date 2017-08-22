@@ -57,7 +57,7 @@ function runSetup () {
   while (keepWriting) {
     var padding = 'aaa';
     for (i = 0; i < 10000; i++) {
-      var padding = padding.concat('aaa');
+      padding = padding.concat('aaa');
       c.save({ value: i , text: padding });
     }
 
