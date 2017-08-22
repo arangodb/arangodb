@@ -4,11 +4,10 @@ const router = require('@arangodb/foxx/router')();
 module.context.use(router);
 
 router.post((req, res) => {
-  console.error(require('@arangodb/users').currentUser());
   const queue = queues.create('test_queue');
   queue.push({
-    name: 'test_job',
-    mount: '/test'
+    name: 'job',
+    mount: '/queue_test_mount'
   }, {});
 });
 
