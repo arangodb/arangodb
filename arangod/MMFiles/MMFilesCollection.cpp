@@ -2001,6 +2001,35 @@ void MMFilesCollection::prepareIndexes(VPackSlice indexesSlice) {
     createInitialIndexes();
   }
 
+  bool foundPrimary = false;
+  bool foundEdge = false;
+   
+  for (auto const& it : VPackArrayIterator(indexesSlice)) {
+    auto const& s = it.get("type");
+    if (s.isString()) {
+      std::string const type = s.copyString();
+      if (type == "primary") {
+        foundPrimary = true;
+      } else if (type == "edge") {
+        foundEdge = true;
+      }
+    }
+  }
+  for (auto const& idx : _indexes) {
+    if (idx->type() == Index::IndexType::TRI_IDX_TYPE_PRIMARY_INDEX) {
+      foundPrimary = true;
+    } else if (_logicalCollection->type() == TRI_COL_TYPE_EDGE && 
+               idx->type() == Index::IndexType::TRI_IDX_TYPE_EDGE_INDEX) {
+      foundEdge = true;
+    }
+  }
+
+  if (!foundPrimary || 
+      (!foundEdge && _logicalCollection->type() == TRI_COL_TYPE_EDGE)) {
+    // we still do not have any of the default indexes, so create them now
+    createInitialIndexes();
+  }
+
   StorageEngine* engine = EngineSelectorFeature::ENGINE;
   IndexFactory const* idxFactory = engine->indexFactory();
   TRI_ASSERT(idxFactory != nullptr);
@@ -2016,12 +2045,7 @@ void MMFilesCollection::prepareIndexes(VPackSlice indexesSlice) {
 
     auto idx =
         idxFactory->prepareIndexFromSlice(v, false, _logicalCollection, true);
-    /*
-        if (idx->type() == Index::TRI_IDX_TYPE_PRIMARY_INDEX ||
-            idx->type() == Index::TRI_IDX_TYPE_EDGE_INDEX) {
-          continue;
-        }
-    */
+    
     if (ServerState::instance()->isRunningInCluster()) {
       addIndexCoordinator(idx);
     } else {
@@ -2032,8 +2056,8 @@ void MMFilesCollection::prepareIndexes(VPackSlice indexesSlice) {
   TRI_ASSERT(!_indexes.empty());
 
   if (_indexes[0]->type() != Index::IndexType::TRI_IDX_TYPE_PRIMARY_INDEX ||
-      (_logicalCollection->type() == TRI_COL_TYPE_EDGE &&
-       _indexes[1]->type() != Index::IndexType::TRI_IDX_TYPE_EDGE_INDEX)) {
+      (_logicalCollection->type() == TRI_COL_TYPE_EDGE && 
+       (_indexes.size() < 2 || _indexes[1]->type() != Index::IndexType::TRI_IDX_TYPE_EDGE_INDEX))) {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
     for (auto const& it : _indexes) {
       LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "- " << it.get();
@@ -2044,6 +2068,23 @@ void MMFilesCollection::prepareIndexes(VPackSlice indexesSlice) {
     errorMsg.push_back('\'');
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, errorMsg);
   }
+
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  {
+    bool foundPrimary = false;
+    for (auto const& it : _indexes) {
+      if (it->type() == Index::IndexType::TRI_IDX_TYPE_PRIMARY_INDEX) {
+        if (foundPrimary) {
+          std::string errorMsg("found multiple primary indexes for collection '");
+          errorMsg.append(_logicalCollection->name());
+          errorMsg.push_back('\'');
+          THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, errorMsg);
+        } 
+        foundPrimary = true;
+      }
+    }
+  }
+#endif
 }
 
 /// @brief creates the initial indexes for the collection

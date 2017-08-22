@@ -67,7 +67,7 @@ From [www.kernel.org](https://www.kernel.org/doc/Documentation/sysctl/vm.txt):
 
 Execute
 
-    sudo bash -c "echo 0 >/proc/sys/vm/overcommit_memory"
+    sudo bash -c "echo 0 >/proc/sys/vm/zone_reclaim_mode"
 
 before executing `arangod`.
 
