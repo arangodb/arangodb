@@ -90,8 +90,9 @@ RocksDBCollection::RocksDBCollection(LogicalCollection* collection,
       _primaryIndex(nullptr),
       _cache(nullptr),
       _cachePresent(false),
-      _useCache(basics::VelocyPackHelper::readBooleanValue(info,
-                                                           "enableCache", false)) {
+      _useCache(!ServerState::instance()->isCoordinator() &&
+                !collection->isSystem() &&
+                basics::VelocyPackHelper::readBooleanValue(info, "enableCache", false)) {
   VPackSlice s = info.get("isVolatile");
   if (s.isBoolean() && s.getBoolean()) {
       THROW_ARANGO_EXCEPTION_MESSAGE(
@@ -116,7 +117,7 @@ RocksDBCollection::RocksDBCollection(LogicalCollection* collection,
       _primaryIndex(nullptr),
       _cache(nullptr),
       _cachePresent(false),
-      _useCache(!collection->isSystem()) {
+      _useCache(static_cast<RocksDBCollection*>(physical)->_useCache) {
   addCollectionMapping(_objectId, _logicalCollection->vocbase()->id(),
                        _logicalCollection->cid());
   if (_useCache) {
@@ -1379,17 +1380,16 @@ RocksDBOperationResult RocksDBCollection::insertDocument(
   RocksDBOperationResult innerRes;
   READ_LOCKER(guard, _indexesLock);
   for (std::shared_ptr<Index> const& idx : _indexes) {
-    innerRes.reset(idx->insert(trx, revisionId, doc, false));
-
-    // in case of OOM return immediately
-    if (innerRes.is(TRI_ERROR_OUT_OF_MEMORY)) {
-      return innerRes;
-    }
+    RocksDBIndex* rIdx = static_cast<RocksDBIndex*>(idx.get());
+    innerRes.reset(rIdx->insertInternal(trx, mthd, revisionId, doc));
 
     if (innerRes.fail()) {
-      // "prefer" unique constraint violated over other errors
-      if (innerRes.is(TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED) ||
-          res.ok()) {
+      // in case of OOM return immediately
+      if (innerRes.is(TRI_ERROR_OUT_OF_MEMORY)) {
+        return innerRes;
+      } else if (innerRes.is(TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED) ||
+                 res.ok()) {
+        // "prefer" unique constraint violated over other errors
         res = innerRes;
       }
     }

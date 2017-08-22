@@ -58,9 +58,8 @@ RocksDBIndex::RocksDBIndex(
       _cf(cf),
       _cache(nullptr),
       _cachePresent(false),
-      _useCache(useCache) {
+      _useCache(useCache && !collection->isSystem()) {
   TRI_ASSERT(cf != nullptr && cf != RocksDBColumnFamily::definitions());
-
   if (_useCache) {
     createCache();
   }
@@ -151,7 +150,8 @@ void RocksDBIndex::createCache() {
     return;
   }
 
-  TRI_ASSERT(_useCache);
+  TRI_ASSERT(!_collection->isSystem() &&
+             !ServerState::instance()->isCoordinator());
   TRI_ASSERT(_cache.get() == nullptr);
   TRI_ASSERT(CacheManagerFeature::MANAGER != nullptr);
   _cache = CacheManagerFeature::MANAGER->createCache(

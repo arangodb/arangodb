@@ -138,7 +138,7 @@ class RocksDBCollection final : public PhysicalCollection {
   Result read(transaction::Methods* trx,
               arangodb::velocypack::Slice const& key,
               ManagedDocumentResult& result, bool locked) override {
-    this->read(trx, arangodb::StringRef(key), result, locked);
+    return this->read(trx, arangodb::StringRef(key), result, locked);
   }
 
   bool readDocument(transaction::Methods* trx,
@@ -208,6 +208,9 @@ class RocksDBCollection final : public PhysicalCollection {
 
   Result serializeKeyGenerator(rocksdb::Transaction*) const;
   void deserializeKeyGenerator(arangodb::RocksDBCounterManager* mgr);
+  
+  /// is this collection using a cache
+  inline bool useCache() const { return (_useCache && _cachePresent); }
 
  private:
   /// @brief return engine-specific figures
@@ -263,8 +266,6 @@ class RocksDBCollection final : public PhysicalCollection {
   void createCache() const;
 
   void disableCache() const;
-
-  inline bool useCache() const { return (_useCache && _cachePresent); }
 
   void blackListKey(char const* data, std::size_t len) const;
 

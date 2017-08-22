@@ -127,7 +127,7 @@ RocksDBPrimaryIndex::RocksDBPrimaryIndex(
                            StaticStrings::KeyString, false)}}),
                    true, false, RocksDBColumnFamily::primary(),
                    basics::VelocyPackHelper::stringUInt64(info, "objectId"),
-                   !collection->isSystem()) {
+                   static_cast<RocksDBCollection*>(collection->getPhysical())->useCache()) {
   TRI_ASSERT(_cf == RocksDBColumnFamily::primary()); 
   TRI_ASSERT(_objectId != 0);
 }
@@ -136,7 +136,7 @@ RocksDBPrimaryIndex::~RocksDBPrimaryIndex() {}
 
 void RocksDBPrimaryIndex::load() {
   RocksDBIndex::load();
-  if (useCache() && _collection->type() == TRI_COL_TYPE_DOCUMENT) {
+  if (useCache()) {
     // FIXME: make the factor configurable
     RocksDBCollection* rdb = static_cast<RocksDBCollection*>(_collection->getPhysical());
     _cache->sizeHint(0.3 * rdb->numberDocuments());
