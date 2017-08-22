@@ -219,7 +219,7 @@ arangodb::Result RocksDBReplicationContext::dumpKeyChunks(VPackBuilder& b,
 
   TRI_ASSERT(_trx);
   if(!_iter){
-    return rv.reset(TRI_ERROR_BAD_PARAMETER, "the replication context interator has not been initialized");
+    return rv.reset(TRI_ERROR_BAD_PARAMETER, "the replication context iterator has not been initialized");
   }
 
   std::string lowKey;
@@ -278,7 +278,7 @@ arangodb::Result RocksDBReplicationContext::dumpKeys(
   Result rv;
 
   if(!_iter){
-    return rv.reset(TRI_ERROR_BAD_PARAMETER, "the replication context interator has not been initialized");
+    return rv.reset(TRI_ERROR_BAD_PARAMETER, "the replication context iterator has not been initialized");
   }
 
   RocksDBSortedAllIterator* primary =
@@ -347,7 +347,7 @@ arangodb::Result RocksDBReplicationContext::dumpDocuments(
   TRI_ASSERT(_trx);
 
   if(!_iter){
-    return rv.reset(TRI_ERROR_BAD_PARAMETER, "the replication context interator has not been initialized");
+    return rv.reset(TRI_ERROR_BAD_PARAMETER, "the replication context iterator has not been initialized");
   }
 
   TRI_ASSERT(_iter);
@@ -440,6 +440,12 @@ void RocksDBReplicationContext::use(double ttl) {
   TRI_ASSERT(!_isUsed);
 
   _isUsed = true;
+  _expires = TRI_microtime() + ttl;
+}
+
+void RocksDBReplicationContext::adjustTtl(double ttl) {
+  TRI_ASSERT(_isUsed);
+
   _expires = TRI_microtime() + ttl;
 }
 

@@ -97,6 +97,7 @@ class RocksDBReplicationContext {
   void deleted();
   bool isUsed() const;
   void use(double ttl);
+  void adjustTtl(double ttl);
   bool more() const;
   /// remove use flag
   void release();
