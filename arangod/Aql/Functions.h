@@ -296,9 +296,6 @@ struct Functions {
                              VPackFunctionParameters const&);
    static AqlValue NotNull(arangodb::aql::Query*, transaction::Methods*,
                            VPackFunctionParameters const&);
-   static AqlValue CurrentDatabase(arangodb::aql::Query*,
-                                   transaction::Methods*,
-                                   VPackFunctionParameters const&);
    static AqlValue CollectionCount(arangodb::aql::Query*,
                                    transaction::Methods*,
                                    VPackFunctionParameters const&);
@@ -325,6 +322,12 @@ struct Functions {
    static AqlValue IsSameCollection(arangodb::aql::Query*,
                                     transaction::Methods*,
                                     VPackFunctionParameters const&);
+   static AqlValue CurrentUser(arangodb::aql::Query*,
+                                    transaction::Methods*,
+                                    VPackFunctionParameters const&);
+   static AqlValue CurrentDatabase(arangodb::aql::Query*,
+                                   transaction::Methods*,
+                                   VPackFunctionParameters const&);
 };
 }
 }
