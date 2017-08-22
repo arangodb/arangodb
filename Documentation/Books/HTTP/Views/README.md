@@ -18,6 +18,11 @@ is created. The available types are: iresearch.
 
 #### IResearch View
 
+A natively integrated AQL extension that allows one to:
+ * evaluate together documents located in different collections
+ * filter documents based on AQL boolean expressions and functions
+ * sort the resultset based on how closely each document matched the filter
+
 #### View Identifier
 
 A view identifier lets you refer to a view in a database.

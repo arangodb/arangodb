@@ -127,6 +127,7 @@ If the *view-name* is unknown, then a *HTTP 404* is returned.
 
 @EXAMPLES
 
+@EXAMPLE_ARANGOSH_RUN{RestViewPostView}
     var url = "/_api/view";
     var body = {
       name: "testViewBasics",
@@ -141,6 +142,6 @@ If the *view-name* is unknown, then a *HTTP 404* is returned.
 
     db._flushCache();
     db._dropView("testViewBasics");
-
+@END_EXAMPLE_ARANGOSH_RUN
 @endDocuBlock
 

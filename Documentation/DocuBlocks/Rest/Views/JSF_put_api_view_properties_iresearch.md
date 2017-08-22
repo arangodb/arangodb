@@ -32,6 +32,21 @@ The list of analyzers to be used for indexing of string values (default: ["ident
 The field properties. If specified, then *properties*
 should be a JSON object containing the following attributes:
 
+@RESTSTRUCT{boost,JSF_post_api_view_link_props_field_props,float,optional,float}
+Multiplier of the rank value computed for documents matching on this field (default: 1.0).
+
+@RESTSTRUCT{includeAllFields,JSF_post_api_view_link_props_field_props,boolean,optional,bool}
+The flag determines whether or not to index all fields on a particular level of depth (default: false).
+
+@RESTSTRUCT{trackListPositions,JSF_post_api_view_link_props_field_props,boolean,optional,bool}
+The flag determines whether or not values in a lists should be treated separate (default: false).
+
+@RESTSTRUCT{analyzers,JSF_post_api_view_link_props_field_props,array,optional,string}
+The list of analyzers to be used for indexing of string values (default: ["identity"]).
+
+@RESTSTRUCT{[field-name],JSF_post_api_view_link_props_field_props,string,optional,}
+Specify properties for nested fields here
+
 @RESTBODYPARAM{commitBulk,object,optional,JSF_post_api_view_props_commit_bulk}
 Commit options for bulk operations (e.g. adding a new link).
 
