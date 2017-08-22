@@ -151,6 +151,11 @@ and [Arangorestore](../Administration/Arangorestore.md) to restore a backup into
 - you need the system collection `_graphs` if you backup named graphs.
 - you need to backup the complete set of all edge and vertex collections your graph consists of. Partial dump/restore may not work.
 
+### Managing graphs
+By default you should use [the interface your driver provides to manage graphs](../HTTP/Gharial/Management.html).
+
+This is i.e. documented [in Graphs-Section of the ArangoDB Java driver](https://github.com/arangodb/arangodb-java-driver#graphs).
+
 ### Example Graphs
 
 ArangoDB comes with a set of easily graspable graphs that are used to demonstrate the APIs.
