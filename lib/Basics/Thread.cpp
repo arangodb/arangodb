@@ -95,7 +95,6 @@ void Thread::startThread(void* arg) {
     }
 
     ptr->cleanupMe();
-
     throw;
   } catch (...) {
     if (pushed) {
@@ -103,7 +102,6 @@ void Thread::startThread(void* arg) {
     }
 
     ptr->cleanupMe();
-
     throw;
   }
 
@@ -194,10 +192,12 @@ Thread::~Thread() {
       << "delete(" << _name << "), state: " << stringify(state);
 
   if (state == ThreadState::STOPPED) {
-    int res = TRI_JoinThread(&_thread);
-
-    if (res != 0) {
-      LOG_TOPIC(INFO, Logger::THREADS) << "cannot detach thread";
+    if (TRI_IsSelfThread(&_thread)) {
+      // we must ignore any errors here, but TRI_DetachThread will log them
+      TRI_DetachThread(&_thread);
+    } else {
+      // we must ignore any errors here, but TRI_JoinThread will log them
+      TRI_JoinThread(&_thread);
     }
 
     _state.store(ThreadState::DETACHED);

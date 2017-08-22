@@ -22,30 +22,32 @@
 /// @author Achim Brandt
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifdef _WIN32
-#include "Basics/win-utils.h"
-#endif
-
 #include "Scheduler.h"
 
-#include <velocypack/Builder.h>
-#include <velocypack/velocypack-aliases.h>
-
+#include "Basics/MutexLocker.h"
 #include "Basics/StringUtils.h"
 #include "Basics/Thread.h"
 #include "Basics/WorkMonitor.h"
 #include "GeneralServer/RestHandler.h"
 #include "Logger/Logger.h"
+#include "Random/RandomGenerator.h"
 #include "Rest/GeneralResponse.h"
 #include "Scheduler/JobGuard.h"
 #include "Scheduler/JobQueue.h"
 #include "Scheduler/Task.h"
+
+#include <velocypack/Builder.h>
+#include <velocypack/velocypack-aliases.h>
 
 #include <thread>
 
 using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
+
+namespace {    
+constexpr double MIN_SECONDS = 30.0;
+}
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                            SchedulerManagerThread
@@ -91,66 +93,61 @@ class SchedulerThread : public Thread {
 
  public:
   void run() {
-    try {
-      _scheduler->incRunning();
+    constexpr size_t EVERY_LOOP = size_t(MIN_SECONDS);
+    
+    // when we enter this method, 
+    // _nrRunning has already been increased for this thread
+    LOG_TOPIC(DEBUG, Logger::THREADS) << "started thread ("
+                                      << _scheduler->infoStatus() << ")";
+  
+    // some random delay value to avoid all initial threads checking for
+    // their deletion at the very same time
+    double const randomWait =
+        static_cast<double>(RandomGenerator::interval(int64_t(0), static_cast<int64_t>(MIN_SECONDS * 0.5)));
 
-      LOG_TOPIC(DEBUG, Logger::THREADS) << "started thread ("
-                                        << _scheduler->infoStatus() << ")";
+    double start = TRI_microtime() + randomWait;
+    size_t counter = 0;
+    bool doDecrement = true;
 
-      auto start = std::chrono::steady_clock::now();
-
+    while (!_scheduler->isStopping()) {
       try {
-        static size_t EVERY_LOOP = 1000;
-        static double MIN_SECONDS = 30;
-
-        size_t counter = 0;
-        bool doDecrement = true;
-
-        while (!_scheduler->isStopping()) {
-          _service->run_one();
-
-          if (++counter > EVERY_LOOP) {
-            counter = 0;
-
-            auto now = std::chrono::steady_clock::now();
-            std::chrono::duration<double> diff = now - start;
-
-            if (diff.count() > MIN_SECONDS) {
-              start = std::chrono::steady_clock::now();
-
-              if (_scheduler->shouldStopThread()) {
-                auto n = _scheduler->decRunning();
-
-                if (n <= _scheduler->minimum()) {
-                  _scheduler->incRunning();
-                } else {
-                  doDecrement = false;
-                  break;
-                }
-              }
-            }
-          }
-        }
-
-        if (doDecrement) {
-          _scheduler->decRunning();
-        }
-
-        LOG_TOPIC(DEBUG, Logger::THREADS) << "stopped ("
-                                          << _scheduler->infoStatus() << ")";
+        _service->run_one();
       } catch (std::exception const& ex) {
         LOG_TOPIC(ERR, Logger::THREADS)
-            << "restarting scheduler loop after caught exception: " << ex.what();
-        _scheduler->decRunning();
-        _scheduler->startNewThread();
+            << "scheduler loop caught exception: " << ex.what();
       } catch (...) {
         LOG_TOPIC(ERR, Logger::THREADS)
-            << "restarting scheduler loop after unknown exception";
-        _scheduler->decRunning();
-        _scheduler->startNewThread();
+            << "scheduler loop caught unknown exception";
       }
-    } catch (...) {
-      // better not throw from here, as this is a thread main loop
+          
+      if (++counter > EVERY_LOOP) {
+        counter = 0;
+
+        double const now = TRI_microtime();
+
+        if (now - start > MIN_SECONDS) {
+          // test if we should stop this thread
+          // if this returns true, nrRunning will have been
+          // decremented by one already
+          if (_scheduler->stopThreadIfTooMany(now)) {
+            // nrRunning was decremented already. now exit thread
+            // main loop
+            doDecrement = false;
+            break;
+          }
+         
+          // use new start time 
+          start = now;
+        }
+      }
+    }
+
+    LOG_TOPIC(DEBUG, Logger::THREADS) << "stopped ("
+                                      << _scheduler->infoStatus() << ")";
+
+    if (doDecrement) {
+      // only decrement here if this wasn't already done above
+      _scheduler->stopThread();
     }
   }
 
@@ -164,20 +161,14 @@ class SchedulerThread : public Thread {
 // --SECTION--                                                         Scheduler
 // -----------------------------------------------------------------------------
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                      constructors and destructors
-// -----------------------------------------------------------------------------
-
 Scheduler::Scheduler(uint64_t nrMinimum, uint64_t /*nrDesired*/, 
                      uint64_t nrMaximum, uint64_t maxQueueSize)
-    : _stopping(false),
-      _maxQueueSize(maxQueueSize),
+    : _maxQueueSize(maxQueueSize),
       _nrMinimum(nrMinimum),
       _nrMaximum(nrMaximum),
-      _nrWorking(0),
+      _counters(0),
       _nrQueued(0),
-      _nrBlocked(0),
-      _nrRunning(0) {
+      _lastAllBusyStamp(0.0) {
   // setup signal handlers
   initializeSignalHandlers();
 }
@@ -186,18 +177,14 @@ Scheduler::~Scheduler() {
   stopRebalancer();
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                  public functions
-// -----------------------------------------------------------------------------
-
 void Scheduler::post(std::function<void()> callback) {
   ++_nrQueued;
 
   _ioService.get()->post([this, callback]() {
+    --_nrQueued;
+
     JobGuard guard(this);
     guard.work();
-
-    --_nrQueued;
 
     callback();
   });
@@ -211,7 +198,15 @@ bool Scheduler::start(ConditionVariable* cv) {
   TRI_ASSERT(_nrMinimum <= _nrMaximum);
 
   for (uint64_t i = 0; i < _nrMinimum; ++i) {
-    startNewThread();
+    MUTEX_LOCKER(locker, _threadCreateLock);
+
+    incRunning();
+    try {
+      startNewThread();
+    } catch (...) {
+      decRunning();
+      throw;
+    }
   }
 
   startManagerThread();
@@ -273,21 +268,60 @@ void Scheduler::startNewThread() {
   auto thread = new SchedulerThread(this, _ioService.get());
   thread->start();
 }
+    
+void Scheduler::stopThread() {
+  MUTEX_LOCKER(locker, _threadCreateLock);
+  decRunning();
+}
 
-bool Scheduler::shouldStopThread() const {
-  if (_nrRunning <= _nrWorking + _nrQueued + _nrMinimum) {
+// check if the current thread should be stopped
+// returns true if yes, otherwise false. when the function returns
+// true, it has already decremented the nrRunning counter!
+bool Scheduler::stopThreadIfTooMany(double now) {
+  // make sure no extra threads are created while we check the timestamp
+  // and while we modify nrRunning
+  
+  MUTEX_LOCKER(locker, _threadCreateLock);
+  
+  // fetch all counters in one atomic operation
+  uint64_t counters = _counters.load();
+  uint64_t const nrRunning = numRunning(counters);
+  uint64_t const nrBlocked = numBlocked(counters);
+  uint64_t const nrWorking = numWorking(counters);
+  uint64_t const nrQueued = _nrQueued;
+
+  if (nrRunning <= _nrMinimum + nrBlocked) {
+    // don't stop a thread if we already reached the minimum 
+    // number of threads
+    _lastAllBusyStamp = now;
     return false;
   }
 
-  if (_nrMinimum + _nrBlocked < _nrRunning) {
-    return true;
+  if (nrRunning <= nrWorking + nrQueued) {
+    return false;
+  }
+  
+  if (_lastAllBusyStamp + 1.25 * MIN_SECONDS >= now) {
+    // last time all threads were busy is less than x seconds ago
+    return false;
+  }
+  
+  // set the all busy stamp. this avoids that we shut down all threads
+  // at the same time
+  if (_lastAllBusyStamp < MIN_SECONDS / 2.0) {
+    _lastAllBusyStamp = now - MIN_SECONDS / 2.0;
   }
 
-  return false;
+  // decrement nrRunning by one already in here while holding the lock
+  decRunning();
+  return true;
 }
 
 bool Scheduler::shouldQueueMore() const {
-  if (_nrWorking + _nrQueued + _nrMinimum < _nrMaximum) {
+  uint64_t const counters = _counters.load();
+  uint64_t const nrWorking = numWorking(counters);
+
+  if (nrWorking + _nrQueued < _nrMaximum) {
     return true;
   }
 
@@ -295,7 +329,7 @@ bool Scheduler::shouldQueueMore() const {
 }
 
 bool Scheduler::hasQueueCapacity() const {
-  if (_nrWorking + _nrQueued + _nrMinimum >= _nrMaximum) {
+  if (!shouldQueueMore()) {
     return false;
   }
 
@@ -317,10 +351,11 @@ std::string Scheduler::infoStatus() {
   auto jobQueue = _jobQueue.get();
   auto queueSize = (jobQueue == nullptr) ? 0 : jobQueue->queueSize();
 
-  return "working: " + std::to_string(_nrWorking) + ", queued: " +
+  uint64_t const counters = _counters.load();
+  return "working: " + std::to_string(numWorking(counters)) + ", queued: " +
          std::to_string(_nrQueued) + ", blocked: " +
-         std::to_string(_nrBlocked) + ", running: " +
-         std::to_string(_nrRunning) + ", outstanding: " +
+         std::to_string(numBlocked(counters)) + ", running: " +
+         std::to_string(numRunning(counters)) + ", outstanding: " +
          std::to_string(queueSize) + ", min/max: " +
          std::to_string(_nrMinimum) + "/" + std::to_string(_nrMaximum);
 }
@@ -330,24 +365,59 @@ void Scheduler::rebalanceThreads() {
 
   ++count;
 
-  if ((count % 5) == 0) {
+  if (count % 50 == 0) {
     LOG_TOPIC(DEBUG, Logger::THREADS) << "rebalancing threads: " << infoStatus();
-  } else {
+  } else if (count % 5 == 0) {
     LOG_TOPIC(TRACE, Logger::THREADS) << "rebalancing threads: " << infoStatus();
   }
 
-  while (_nrRunning < _nrWorking + _nrQueued + _nrMinimum) {
-    if (_stopping) {
-      // do not start any new threads in case we are already shutting down
-      break;
+  while (true) {
+    {
+      double const now = TRI_microtime();
+
+      MUTEX_LOCKER(locker, _threadCreateLock);
+
+      uint64_t const counters = _counters.load();
+      uint64_t const nrRunning = numRunning(counters);
+      uint64_t const nrWorking = numWorking(counters);
+      uint64_t const nrQueued = _nrQueued;
+
+      if (nrRunning >= std::max(_nrMinimum, nrWorking + nrQueued)) {
+        if (nrWorking == nrRunning) {
+          // all threads maxed out
+          _lastAllBusyStamp = now;
+        }
+        break;
+      }
+    
+      if (isStopping(counters)) {
+        // do not start any new threads in case we are already shutting down
+        break;
+      }
+
+      // all threads maxed out
+      _lastAllBusyStamp = now;
+      // increase nrRunning by one here already, while holding the lock
+      incRunning();
     }
-    startNewThread();
+
+    // create thread and sleep without holding the mutex
+    try {
+      // actually start the new thread
+      startNewThread();
+    } catch (...) {
+      // if it fails, we have to rollback the increase of nrRunning again
+      MUTEX_LOCKER(locker, _threadCreateLock);
+      decRunning();
+      throw;
+    }
+
     usleep(5000);
   }
 }
 
 void Scheduler::beginShutdown() {
-  if (_stopping) {
+  if (isStopping()) {
     return;
   }
   
@@ -363,14 +433,17 @@ void Scheduler::beginShutdown() {
   _ioService->stop();
 
   // set the flag AFTER stopping the threads
-  _stopping = true;
+  setStopping();
 }
 
 void Scheduler::shutdown() {
-  bool done = false;
+  while (true) {
+    uint64_t const counters = _counters.load();
+    
+    if (numRunning(counters) == 0 && numWorking(counters) == 0) {
+      break;
+    }
 
-  while (!done) {
-    done = (_nrRunning == 0 && _nrWorking == 0);
     std::this_thread::yield();
   }
 

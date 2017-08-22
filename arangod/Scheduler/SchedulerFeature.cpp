@@ -55,6 +55,7 @@ SchedulerFeature::SchedulerFeature(
   requiresElevatedPrivileges(false);
   startsAfter("FileDescriptors");
   startsAfter("Logger");
+  startsAfter("Random");
   startsAfter("WorkMonitor");
 }
 
