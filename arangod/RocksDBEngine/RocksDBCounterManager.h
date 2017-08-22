@@ -114,6 +114,9 @@ class RocksDBCounterManager {
   // Clear out key generator map for values not read by any collection.
   void clearKeyGenerators();
 
+  // Earliest sequence number needed for recovery (don't throw out newer WALs)
+  rocksdb::SequenceNumber earliestSeqNeeded() const;
+
  protected:
   struct CMValue {
     /// ArangoDB transaction ID
