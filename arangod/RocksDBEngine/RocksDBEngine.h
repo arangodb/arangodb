@@ -256,7 +256,9 @@ class RocksDBEngine final : public StorageEngine {
   static std::string const FeatureName;
   RocksDBCounterManager* counterManager() const;
   RocksDBReplicationManager* replicationManager() const;
-  arangodb::Result syncWal();
+  arangodb::Result syncWal(bool waitForSync = false,
+                           bool waitForCollector = false,
+                           bool writeShutdownFile = false);
 
  private:
   /// single rocksdb database used in this storage engine

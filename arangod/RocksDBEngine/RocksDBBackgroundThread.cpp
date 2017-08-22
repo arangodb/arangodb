@@ -61,6 +61,10 @@ void RocksDBBackgroundThread::run() {
       _engine->replicationManager()->garbageCollect(force);
 
       TRI_voc_tick_t minTick = rocksutils::latestSequenceNumber();
+      auto cmTick = _engine->counterManager()->earliestSeqNeeded();
+      if (cmTick < minTick) {
+        minTick = cmTick;
+      }
       if (DatabaseFeature::DATABASE != nullptr) {
         DatabaseFeature::DATABASE->enumerateDatabases(
             [force, &minTick](TRI_vocbase_t* vocbase) {
