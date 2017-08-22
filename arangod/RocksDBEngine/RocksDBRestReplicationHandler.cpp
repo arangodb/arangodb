@@ -83,7 +83,7 @@ RocksDBRestReplicationHandler::RocksDBRestReplicationHandler(
 
 RocksDBRestReplicationHandler::~RocksDBRestReplicationHandler() {}
 
-//main function that dispactes the diferent routes and commands
+//main function that dispatches the different routes and commands
 RestStatus RocksDBRestReplicationHandler::execute() {
   // extract the request type
   auto const type = _request->requestType();
@@ -143,7 +143,7 @@ RestStatus RocksDBRestReplicationHandler::execute() {
         handleCommandBatch();
       }
     } else if (command == "inventory") {
-			// get overview of collections and idexes followed by some extra data
+      // get overview of collections and idexes followed by some extra data
       // example call: curl --dump - http://localhost:5555/_api/replication/inventory?batchId=75
 
       // {
@@ -200,7 +200,7 @@ RestStatus RocksDBRestReplicationHandler::execute() {
       // works on collections
       // example: curl --dump - 'http://localhost:5555/_db/_system/_api/replication/dump?collection=test&batchId=115'
       // requires batch-id
-			// does internally an
+      // does internally an
       //   - get inventory
       //   - purge local
       //   - dump remote to local
@@ -450,7 +450,7 @@ void RocksDBRestReplicationHandler::handleCommandBatch() {
     // extract ttl
     if (input->slice().hasKey("ttl")){
       double ttl = VelocyPackHelper::getNumericValue<double>(input->slice(), "ttl", RocksDBReplicationContext::DefaultTTL);
-      ctx->use(ttl);
+      ctx->adjustTtl(ttl);
     }
 
     RocksDBReplicationContextGuard(_manager, ctx);
@@ -1188,7 +1188,7 @@ void RocksDBRestReplicationHandler::handleCommandDump() {
     return;
   }
 
-  // check for 28 compatibility
+  // check for 2.8 compatibility
   bool compat28 = false;
   std::string const& value8 = _request->value("compat28", found);
 
