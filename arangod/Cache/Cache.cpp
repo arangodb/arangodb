@@ -348,7 +348,6 @@ void Cache::shutdown() {
       _taskLock.writeLock();
       _metadata.readLock();
     }
-    //TODO: lock all tables or something
     _metadata.readUnlock();
 
     std::shared_ptr<Table> extra =
@@ -364,7 +363,7 @@ void Cache::shutdown() {
   }
   _metadata.writeLock();
   _metadata.changeTable(0);
-  _metadata.readUnlock();
+  _metadata.writeUnlock();
 
   _taskLock.writeUnlock();
 }
