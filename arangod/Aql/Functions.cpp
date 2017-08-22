@@ -2779,7 +2779,7 @@ AqlValue Functions::Document(arangodb::aql::Query* query,
     }
     return AqlValue(builder.get());
   }
-   
+
   if (id.isArray()) {
     transaction::BuilderLeaser builder(trx);
     builder->openArray();
@@ -2799,6 +2799,46 @@ AqlValue Functions::Document(arangodb::aql::Query* query,
 
   // Id has invalid format
   return AqlValue(arangodb::basics::VelocyPackHelper::NullValue());
+}
+
+/// @brief function MATCHES
+AqlValue Functions::Matches(arangodb::aql::Query* query,
+                             transaction::Methods* trx,
+                             VPackFunctionParameters const& parameters) {
+  ValidateParameters(parameters, "MATCHES", 2, 3);
+
+  AqlValue docToFind = ExtractFunctionParameterValue(trx, parameters, 0);
+  AqlValue exampleDocs = ExtractFunctionParameterValue(trx, parameters, 1);
+
+  bool retIdx = false;
+  if (parameters.size() == 3) {
+    retIdx = ExtractFunctionParameterValue(trx, parameters, 2).toBoolean();
+  }
+
+  AqlValueMaterializer materializer(trx);
+  VPackSlice docSlice = materializer.slice(docToFind, false);
+
+  int32_t idx = -1;
+  for (auto const& name : VPackArrayIterator(materializer.slice(exampleDocs, false))) {
+    idx++;
+    if (basics::VelocyPackHelper::VPackEqual()(name, docSlice)) {
+      if (retIdx) {
+        transaction::BuilderLeaser builder(trx);
+        builder->add(VPackValue(idx));
+        return AqlValue(builder.get());
+      } else {
+        return AqlValue(arangodb::basics::VelocyPackHelper::TrueValue());
+      }
+    }
+  }
+
+  if (retIdx) {
+    transaction::BuilderLeaser builder(trx);
+    builder->add(VPackValue(-1));
+    return AqlValue(builder.get());
+  }
+
+  return AqlValue(arangodb::basics::VelocyPackHelper::FalseValue());
 }
 
 /// @brief function ROUND
