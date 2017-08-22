@@ -77,7 +77,7 @@ bool reserveAnalyzers(
   auto* analyzers = arangodb::iresearch::getFeature<arangodb::iresearch::IResearchAnalyzerFeature>();
 
   if (!analyzers) {
-    LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "failed to retrieve Analyzer Feature while registering analyzers for IResearch view '" << cid << "' IResearch link '" << iid << "'";
+    LOG_TOPIC(WARN, arangodb::Logger::IRESEARCH) << "failed to retrieve Analyzer Feature while registering analyzers for IResearch view '" << cid << "' IResearch link '" << iid << "'";
 
     return false;
   }
@@ -106,7 +106,7 @@ bool releaseAnalyzers(
   auto* analyzers = arangodb::iresearch::getFeature<arangodb::iresearch::IResearchAnalyzerFeature>();
 
   if (!analyzers) {
-    LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "failed to retrieve Analyzer Feature while unregistering analyzers for IResearch view '" << cid << "' IResearch link '" << iid << "'";
+    LOG_TOPIC(WARN, arangodb::Logger::IRESEARCH) << "failed to retrieve Analyzer Feature while unregistering analyzers for IResearch view '" << cid << "' IResearch link '" << iid << "'";
 
     return false;
   }
@@ -211,7 +211,7 @@ int IResearchLink::drop() {
   }
 
   if (!releaseAnalyzers(_meta, _view->id(), _id)) {
-    LOG_TOPIC(WARN, Logger::FIXME) << "failed to release tokenizers while dropping IResearch link '" << _id << "' for IResearch view '" << _view->id() << "'";
+    LOG_TOPIC(WARN, Logger::IRESEARCH) << "failed to release tokenizers while dropping IResearch link '" << _id << "' for IResearch view '" << _view->id() << "'";
 
     return TRI_ERROR_INTERNAL;
   }
@@ -241,7 +241,7 @@ bool IResearchLink::init(arangodb::velocypack::Slice const& definition) {
   IResearchLinkMeta meta;
 
   if (!meta.init(definition, error)) {
-    LOG_TOPIC(WARN, Logger::FIXME) << "error parsing view link parameters from json: " << error;
+    LOG_TOPIC(WARN, Logger::IRESEARCH) << "error parsing view link parameters from json: " << error;
     TRI_set_errno(TRI_ERROR_BAD_PARAMETER);
 
     return false; // failed to parse metadata
@@ -253,7 +253,7 @@ bool IResearchLink::init(arangodb::velocypack::Slice const& definition) {
       auto identifier = definition.get(VIEW_ID_FIELD);
 
       if (!identifier.isNumber() || uint64_t(identifier.getInt()) != identifier.getUInt()) {
-        LOG_TOPIC(WARN, Logger::FIXME) << "error parsing identifier name for link '" << _id << "'";
+        LOG_TOPIC(WARN, Logger::IRESEARCH) << "error parsing identifier name for link '" << _id << "'";
         TRI_set_errno(TRI_ERROR_BAD_PARAMETER);
 
         return false; // failed to parse view identifier
@@ -278,7 +278,7 @@ bool IResearchLink::init(arangodb::velocypack::Slice const& definition) {
       auto logicalView = vocbase->lookupView(viewId);
 
       if (!logicalView || IResearchView::type() != logicalView->type()) {
-        LOG_TOPIC(WARN, Logger::FIXME) << "error looking up view '" << viewId << "': no such view";
+        LOG_TOPIC(WARN, Logger::IRESEARCH) << "error looking up view '" << viewId << "': no such view";
         return false; // no such view
       }
 
@@ -291,12 +291,12 @@ bool IResearchLink::init(arangodb::velocypack::Slice const& definition) {
 
       // on success this call will set the '_view' pointer
       if (!view) {
-        LOG_TOPIC(WARN, Logger::FIXME) << "error finding view: '" << viewId << "' for link '" << _id << "'";
+        LOG_TOPIC(WARN, Logger::IRESEARCH) << "error finding view: '" << viewId << "' for link '" << _id << "'";
         return false;
       }
 
       if (!view->linkRegister(*this)) {
-        LOG_TOPIC(WARN, Logger::FIXME) << "error registering link '" << _id << "' for view: '" << viewId;
+        LOG_TOPIC(WARN, Logger::IRESEARCH) << "error registering link '" << _id << "' for view: '" << viewId;
         return false;
       }
 
@@ -306,7 +306,7 @@ bool IResearchLink::init(arangodb::velocypack::Slice const& definition) {
     }
   }
 
-  LOG_TOPIC(WARN, Logger::FIXME) << "error finding view for link '" << _id << "'";
+  LOG_TOPIC(WARN, Logger::IRESEARCH) << "error finding view for link '" << _id << "'";
   TRI_set_errno(TRI_ERROR_ARANGO_VIEW_NOT_FOUND);
 
   return false;
@@ -480,7 +480,7 @@ int IResearchLink::unload() {
     auto* col = collection();
 
     if (!col) {
-      LOG_TOPIC(WARN, Logger::FIXME) << "failed finding collection while unloading IResearch link '" << _id << "'";
+      LOG_TOPIC(WARN, Logger::IRESEARCH) << "failed finding collection while unloading IResearch link '" << _id << "'";
 
       return TRI_ERROR_ARANGO_COLLECTION_NOT_LOADED; // '_collection' required
     }
@@ -490,13 +490,13 @@ int IResearchLink::unload() {
       auto res = _view->drop(col->cid());
 
       if (TRI_ERROR_NO_ERROR != res) {
-        LOG_TOPIC(WARN, Logger::FIXME) << "failed to drop collection from view while unloading dropped IResearch link '" << _id << "' for IResearch view '" << _view->id() << "'";
+        LOG_TOPIC(WARN, Logger::IRESEARCH) << "failed to drop collection from view while unloading dropped IResearch link '" << _id << "' for IResearch view '" << _view->id() << "'";
 
         return res;
       }
 
       if (!releaseAnalyzers(_meta, _view->id(), _id)) {
-        LOG_TOPIC(WARN, Logger::FIXME) << "failed to release tokenizers while unloading dropped IResearch link '" << _id << "' for IResearch view '" << _view->id() << "'";
+        LOG_TOPIC(WARN, Logger::IRESEARCH) << "failed to release tokenizers while unloading dropped IResearch link '" << _id << "' for IResearch view '" << _view->id() << "'";
 
         return TRI_ERROR_INTERNAL;
       }
@@ -535,7 +535,7 @@ int EnhanceJsonIResearchLink(
     IResearchLinkMeta meta;
 
     if (!meta.init(definition, error)) {
-      LOG_TOPIC(WARN, Logger::FIXME) << "error parsing view link parameters from json: " << error;
+      LOG_TOPIC(WARN, Logger::IRESEARCH) << "error parsing view link parameters from json: " << error;
 
       return TRI_ERROR_BAD_PARAMETER;
     }
@@ -546,9 +546,9 @@ int EnhanceJsonIResearchLink(
 
     return meta.json(builder) ? TRI_ERROR_NO_ERROR : TRI_ERROR_BAD_PARAMETER;
   } catch (std::exception const& e) {
-    LOG_TOPIC(WARN, Logger::FIXME) << "error serializaing view link parameters to json: " << e.what();
+    LOG_TOPIC(WARN, Logger::IRESEARCH) << "error serializaing view link parameters to json: " << e.what();
   } catch (...) {
-    LOG_TOPIC(WARN, Logger::FIXME) << "error serializaing view link parameters to json";
+    LOG_TOPIC(WARN, Logger::IRESEARCH) << "error serializaing view link parameters to json";
   }
 
   return TRI_ERROR_INTERNAL;

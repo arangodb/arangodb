@@ -64,7 +64,7 @@ void SystemDatabaseFeature::start() {
     return;
   }
 
-  LOG_TOPIC(WARN, Logger::FIXME) << "failure to find feature 'Database' while starting SystemDatabaseFeature";
+  LOG_TOPIC(WARN, Logger::IRESEARCH) << "failure to find feature 'Database' while starting SystemDatabaseFeature";
   FATAL_ERROR_EXIT();
 }
 

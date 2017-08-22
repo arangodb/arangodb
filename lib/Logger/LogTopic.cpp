@@ -71,6 +71,9 @@ LogTopic Logger::THREADS("threads", LogLevel::WARN);
 LogTopic Logger::TRANSACTIONS("trx", LogLevel::WARN);
 LogTopic Logger::V8("v8", LogLevel::WARN);
 LogTopic Logger::VIEWS("views", LogLevel::FATAL);
+#ifdef USE_IRESEARCH
+LogTopic Logger::IRESEARCH("iresearch", LogLevel::INFO);
+#endif
 
 #ifdef USE_ENTERPRISE
 LogTopic AuditFeature::AUDIT_AUTHENTICATION("audit-authentication", LogLevel::INFO);

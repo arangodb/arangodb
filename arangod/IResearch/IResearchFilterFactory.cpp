@@ -56,10 +56,10 @@ void logMalformedNode(arangodb::aql::AstNodeType type) {
   auto const* typeName = arangodb::iresearch::getNodeTypeName(type);
 
   if (typeName) {
-    LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "Can't process malformed AstNode of type '"
+    LOG_TOPIC(WARN, arangodb::Logger::IRESEARCH) << "Can't process malformed AstNode of type '"
                                              << *typeName << "'";
   } else {
-    LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "Can't process malformed AstNode of type '"
+    LOG_TOPIC(WARN, arangodb::Logger::IRESEARCH) << "Can't process malformed AstNode of type '"
                                              << type << "'";
   }
 }
@@ -146,7 +146,7 @@ bool byPrefix(
   size_t scoringLimit = 128; // FIXME make configurable
 
   if (scoringLimitNode && !arangodb::iresearch::parseValue(scoringLimit, *scoringLimitNode)) {
-    LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "'STARTS_WITH' AQL function: Unable to parse scoring limit, default value "
+    LOG_TOPIC(WARN, arangodb::Logger::IRESEARCH) << "'STARTS_WITH' AQL function: Unable to parse scoring limit, default value "
                                              << scoringLimit << " is going to be used";
     return false;
   }
@@ -168,11 +168,11 @@ bool byPrefix(
   }
 
   try {
-    LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "'STARTS_WITH' AQL function: Unable to parse specified value '" << valueNode.toString()
+    LOG_TOPIC(WARN, arangodb::Logger::IRESEARCH) << "'STARTS_WITH' AQL function: Unable to parse specified value '" << valueNode.toString()
                                              << "' as string";
   } catch (...) {
     // valueNode.toString() may throw
-    LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "'STARTS_WITH' AQL function: Unable to parse specified value as string";
+    LOG_TOPIC(WARN, arangodb::Logger::IRESEARCH) << "'STARTS_WITH' AQL function: Unable to parse specified value as string";
   }
 
   return false;
@@ -298,7 +298,7 @@ bool byRange(
     bool const incl
 ) {
   if (!valueNode.isConstant()) {
-    LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "Unable to handle non constant values for interval";
+    LOG_TOPIC(WARN, arangodb::Logger::IRESEARCH) << "Unable to handle non constant values for interval";
     return false; // can't process non constant nodes
   }
 
@@ -392,9 +392,9 @@ bool fromInterval(
     auto const* typeName = arangodb::iresearch::getNodeTypeName(node.type);
 
     if (typeName) {
-      LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "Unable to normalize operator " << *typeName;
+      LOG_TOPIC(WARN, arangodb::Logger::IRESEARCH) << "Unable to normalize operator " << *typeName;
     } else {
-      LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "Unable to normalize operator " << node.type;
+      LOG_TOPIC(WARN, arangodb::Logger::IRESEARCH) << "Unable to normalize operator " << node.type;
     }
 
     return false; // unable to normalize node
@@ -422,7 +422,7 @@ bool fromBinaryEq(
   arangodb::iresearch::NormalizedCmpNode normalized;
 
   if (!arangodb::iresearch::normalizeCmpNode(node, normalized)) {
-    LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "Unable to normalize operator '=='";
+    LOG_TOPIC(WARN, arangodb::Logger::IRESEARCH) << "Unable to normalize operator '=='";
     return false; // unable to normalize node
   }
 
@@ -475,7 +475,7 @@ bool fromIn(
   );
 
   if (!attributeNode) {
-    LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "Unable to extract attribute name from 'IN' operator";
+    LOG_TOPIC(WARN, arangodb::Logger::IRESEARCH) << "Unable to extract attribute name from 'IN' operator";
     return false; // wrong attriubte node type
   }
 
@@ -510,7 +510,7 @@ bool fromIn(
 
       if (elementNode->type != arangodb::aql::NODE_TYPE_VALUE
           || !elementNode->isConstant()) {
-        LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "Unable to process non constant array value";
+        LOG_TOPIC(WARN, arangodb::Logger::IRESEARCH) << "Unable to process non constant array value";
         return false;
       }
 
@@ -531,7 +531,7 @@ bool fromIn(
     );
 
     if (!minValueNode || !minValueNode->isConstant()) {
-      LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "Unable to parse left bound of the RANGE node";
+      LOG_TOPIC(WARN, arangodb::Logger::IRESEARCH) << "Unable to parse left bound of the RANGE node";
       return false; // wrong left node
     }
 
@@ -540,7 +540,7 @@ bool fromIn(
     );
 
     if (!maxValueNode || !maxValueNode->isConstant()) {
-      LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "Unable to parse right bound of the RANGE node";
+      LOG_TOPIC(WARN, arangodb::Logger::IRESEARCH) << "Unable to parse right bound of the RANGE node";
       return false; // wrong right node
     }
 
@@ -555,9 +555,9 @@ bool fromIn(
   auto const* typeName = arangodb::iresearch::getNodeTypeName(valueNode->type);
 
   if (typeName) {
-    LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "Wrong Ast node of type '" << *typeName << "' detected in 'IN' operator";
+    LOG_TOPIC(WARN, arangodb::Logger::IRESEARCH) << "Wrong Ast node of type '" << *typeName << "' detected in 'IN' operator";
   } else {
-    LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "Wrong Ast node of type '" << valueNode->type << "' detected in 'IN' operator";
+    LOG_TOPIC(WARN, arangodb::Logger::IRESEARCH) << "Wrong Ast node of type '" << valueNode->type << "' detected in 'IN' operator";
   }
 
   // wrong value node type
@@ -692,7 +692,7 @@ bool fromFuncExists(
   auto const argc = args.numMembers();
 
   if (argc < 1 || argc > 3) {
-    LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "'EXISTS' AQL function: Invalid number of arguments passed (must be >= 1 and <= 3)";
+    LOG_TOPIC(WARN, arangodb::Logger::IRESEARCH) << "'EXISTS' AQL function: Invalid number of arguments passed (must be >= 1 and <= 3)";
     return false;
   }
 
@@ -702,7 +702,7 @@ bool fromFuncExists(
   );
 
   if (!fieldArg) {
-    LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "'PHRASE' AQL function: 1st argument is invalid";
+    LOG_TOPIC(WARN, arangodb::Logger::IRESEARCH) << "'PHRASE' AQL function: 1st argument is invalid";
     return false;
   }
 
@@ -720,14 +720,14 @@ bool fromFuncExists(
     );
 
     if (!typeArg) {
-      LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "'EXISTS' AQL function: 2nd argument is invalid";
+      LOG_TOPIC(WARN, arangodb::Logger::IRESEARCH) << "'EXISTS' AQL function: 2nd argument is invalid";
       return false;
     }
 
     irs::string_ref arg;
 
     if (!arangodb::iresearch::parseValue(arg, *typeArg)) {
-      LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "'EXISTS' AQL function: Unable to parse 2nd argument as string";
+      LOG_TOPIC(WARN, arangodb::Logger::IRESEARCH) << "'EXISTS' AQL function: Unable to parse 2nd argument as string";
       return false;
     }
 
@@ -737,7 +737,7 @@ bool fromFuncExists(
     bool const bAnalyzer = (ANALYZER == arg);
 
     if (!bAnalyzer && TYPE != arg) {
-      LOG_TOPIC(WARN, arangodb::Logger::FIXME)
+      LOG_TOPIC(WARN, arangodb::Logger::IRESEARCH)
           << "'EXISTS' AQL function: 2nd argument must be equal to '" << TYPE
           << "' or '" << ANALYZER << "', got '" << arg << "'";
       return false;
@@ -751,12 +751,12 @@ bool fromFuncExists(
       );
 
       if (!valueArg) {
-        LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "'EXISTS' AQL function: 3rd argument is invalid";
+        LOG_TOPIC(WARN, arangodb::Logger::IRESEARCH) << "'EXISTS' AQL function: 3rd argument is invalid";
         return false;
       }
 
       if (!arangodb::iresearch::parseValue(arg, *valueArg)) {
-        LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "'EXISTS' AQL function: Unable to parse 3rd argument as string";
+        LOG_TOPIC(WARN, arangodb::Logger::IRESEARCH) << "'EXISTS' AQL function: Unable to parse 3rd argument as string";
         return false;
       }
 
@@ -767,7 +767,7 @@ bool fromFuncExists(
         >();
 
         if (!analyzerFeature) {
-          LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "'" << arangodb::iresearch::IResearchAnalyzerFeature::name()
+          LOG_TOPIC(WARN, arangodb::Logger::IRESEARCH) << "'" << arangodb::iresearch::IResearchAnalyzerFeature::name()
                                                    << "' feature is not registered, unable to evaluate 'EXISTS' function";
           return false;
         }
@@ -775,7 +775,7 @@ bool fromFuncExists(
         auto analyzer = analyzerFeature->get(arg);
 
         if (!analyzer) {
-          LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "'EXISTS' AQL function: Unable to lookup analyzer '" << arg << "'";
+          LOG_TOPIC(WARN, arangodb::Logger::IRESEARCH) << "'EXISTS' AQL function: Unable to lookup analyzer '" << arg << "'";
           return false;
         }
 
@@ -821,7 +821,7 @@ bool fromFuncExists(
         );
 
         if (TypeHandlers.end() == it) {
-          LOG_TOPIC(WARN, arangodb::Logger::FIXME)
+          LOG_TOPIC(WARN, arangodb::Logger::IRESEARCH)
             << "'EXISTS' AQL function: 3rd argument must be equal to one of the following 'string', 'numeric', 'bool', 'null', got '"
             << arg << "'";
 
@@ -862,7 +862,7 @@ bool fromFuncPhrase(
   >();
 
   if (!analyzerFeature) {
-    LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "'" << arangodb::iresearch::IResearchAnalyzerFeature::name()
+    LOG_TOPIC(WARN, arangodb::Logger::IRESEARCH) << "'" << arangodb::iresearch::IResearchAnalyzerFeature::name()
                                    << "' feature is not registered, unable to evaluate 'PHRASE' function";
     return false;
   }
@@ -870,7 +870,7 @@ bool fromFuncPhrase(
   auto const argc = args.numMembers();
 
   if (argc < 2) {
-    LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "'PHRASE' AQL function: Invalid number of arguments passed (must be >= 2)";
+    LOG_TOPIC(WARN, arangodb::Logger::IRESEARCH) << "'PHRASE' AQL function: Invalid number of arguments passed (must be >= 2)";
     return false;
   }
 
@@ -880,7 +880,7 @@ bool fromFuncPhrase(
   );
 
   if (!fieldArg) {
-    LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "'PHRASE' AQL function: 1st argument is invalid";
+    LOG_TOPIC(WARN, arangodb::Logger::IRESEARCH) << "'PHRASE' AQL function: 1st argument is invalid";
     return false;
   }
 
@@ -890,14 +890,14 @@ bool fromFuncPhrase(
   );
 
   if (!valueArg) {
-    LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "'PHRASE' AQL function: 2nd argument is invalid";
+    LOG_TOPIC(WARN, arangodb::Logger::IRESEARCH) << "'PHRASE' AQL function: 2nd argument is invalid";
     return false;
   }
 
   irs::string_ref value;
 
   if (!arangodb::iresearch::parseValue(value, *valueArg)) {
-    LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "'PHRASE' AQL function: Unable to parse 2nd argument as string";
+    LOG_TOPIC(WARN, arangodb::Logger::IRESEARCH) << "'PHRASE' AQL function: Unable to parse 2nd argument as string";
     return false;
   }
 
@@ -913,7 +913,7 @@ bool fromFuncPhrase(
     );
 
     if (!analyzerArg || !arangodb::iresearch::parseValue(analyzerName, *analyzerArg)) {
-      LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "'PHRASE' AQL function: Unable to parse analyzer value";
+      LOG_TOPIC(WARN, arangodb::Logger::IRESEARCH) << "'PHRASE' AQL function: Unable to parse analyzer value";
       return false;
     }
 
@@ -921,14 +921,14 @@ bool fromFuncPhrase(
   }
 
   if (!pool) {
-    LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "'PHRASE' AQL function: Unable to load requested analyzer '" << analyzerName << "'";
+    LOG_TOPIC(WARN, arangodb::Logger::IRESEARCH) << "'PHRASE' AQL function: Unable to load requested analyzer '" << analyzerName << "'";
     return false;
   }
 
   auto analyzer = pool->get(); // get analyzer from pool
 
   if (!analyzer) {
-    LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "'PHRASE' AQL function: Unable to instantiate analyzer '" << pool->name() << "'";
+    LOG_TOPIC(WARN, arangodb::Logger::IRESEARCH) << "'PHRASE' AQL function: Unable to instantiate analyzer '" << pool->name() << "'";
     return false;
   }
 
@@ -952,7 +952,7 @@ bool fromFuncPhrase(
     );
 
     if (!offsetArg || !arangodb::iresearch::parseValue(offset, *offsetArg)) {
-      LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "'PHRASE' AQL function: Unable to parse argument on position " << idx << " as an offset";
+      LOG_TOPIC(WARN, arangodb::Logger::IRESEARCH) << "'PHRASE' AQL function: Unable to parse argument on position " << idx << " as an offset";
       return false;
     }
 
@@ -961,7 +961,7 @@ bool fromFuncPhrase(
     );
 
     if (!valueArg || !arangodb::iresearch::parseValue(value, *valueArg)) {
-      LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "'PHRASE' AQL function: Unable to parse argument on position " << idx + 1 << " as a value";
+      LOG_TOPIC(WARN, arangodb::Logger::IRESEARCH) << "'PHRASE' AQL function: Unable to parse argument on position " << idx + 1 << " as a value";
       return false;
     }
 
@@ -981,7 +981,7 @@ bool fromFuncStartsWith(
   auto const argc = args.numMembers();
 
   if (argc < 2 || argc > 3) {
-    LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "'STARTS_WITH' AQL function: Invalid number of arguments passed (should be >= 2 and <= 3)";
+    LOG_TOPIC(WARN, arangodb::Logger::IRESEARCH) << "'STARTS_WITH' AQL function: Invalid number of arguments passed (should be >= 2 and <= 3)";
     return false;
   }
 
@@ -991,7 +991,7 @@ bool fromFuncStartsWith(
   );
 
   if (!field) {
-    LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "'STARTS_WITH' AQL function: Unable to parse 1st argument as an attribute identifier";
+    LOG_TOPIC(WARN, arangodb::Logger::IRESEARCH) << "'STARTS_WITH' AQL function: Unable to parse 1st argument as an attribute identifier";
     return false;
   }
 
@@ -1001,7 +1001,7 @@ bool fromFuncStartsWith(
   );
 
   if (!prefix) {
-    LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "'STARTS_WITH' AQL function: Unable to parse 2nd argument as a prefix";
+    LOG_TOPIC(WARN, arangodb::Logger::IRESEARCH) << "'STARTS_WITH' AQL function: Unable to parse 2nd argument as a prefix";
     return false;
   }
 
@@ -1035,21 +1035,21 @@ bool fromFCallUser(
   );
 
   if (!args) {
-    LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "Unable to parse user function arguments as an array'";
+    LOG_TOPIC(WARN, arangodb::Logger::IRESEARCH) << "Unable to parse user function arguments as an array'";
     return false; // invalid args
   }
 
   irs::string_ref name;
 
   if (!arangodb::iresearch::parseValue(name, node)) {
-    LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "Unable to parse user function name";
+    LOG_TOPIC(WARN, arangodb::Logger::IRESEARCH) << "Unable to parse user function name";
     return false;
   }
 
   auto const entry = FCallUserConvertionHandlers.find(name);
 
   if (entry == FCallUserConvertionHandlers.end()) {
-    LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "Unable to find user function '" << name << "'";
+    LOG_TOPIC(WARN, arangodb::Logger::IRESEARCH) << "Unable to find user function '" << name << "'";
     return false;
   }
 
@@ -1079,14 +1079,14 @@ bool fromFCall(
   auto const* args = arangodb::iresearch::getNode(node, 0, arangodb::aql::NODE_TYPE_ARRAY);
 
   if (!args) {
-    LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "Unable to parse system function arguments as an array'";
+    LOG_TOPIC(WARN, arangodb::Logger::IRESEARCH) << "Unable to parse system function arguments as an array'";
     return false; // invalid args
   }
 
   auto const entry = FCallSystemConvertionHandlers.find(fn->externalName);
 
   if (entry == FCallSystemConvertionHandlers.end()) {
-    LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "Unable to find system function '" << fn->externalName << "'";
+    LOG_TOPIC(WARN, arangodb::Logger::IRESEARCH) << "Unable to find system function '" << fn->externalName << "'";
     return false;
   }
 
@@ -1194,9 +1194,9 @@ NS_BEGIN(iresearch)
   auto const* typeName = arangodb::iresearch::getNodeTypeName(node.type);
 
   if (typeName) {
-    LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "Unable to process Ast node of type '" << *typeName << "'";
+    LOG_TOPIC(WARN, arangodb::Logger::IRESEARCH) << "Unable to process Ast node of type '" << *typeName << "'";
   } else {
-    LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "Unable to process Ast node of type '" << node.type << "'";
+    LOG_TOPIC(WARN, arangodb::Logger::IRESEARCH) << "Unable to process Ast node of type '" << node.type << "'";
   }
 
   return false; // unsupported node type

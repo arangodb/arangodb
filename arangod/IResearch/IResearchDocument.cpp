@@ -282,7 +282,7 @@ bool setStringValue(
   TRI_ASSERT(value.isString());
 
   if (!pool) {
-    LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "got nullptr analyzer factory";
+    LOG_TOPIC(WARN, arangodb::Logger::IRESEARCH) << "got nullptr analyzer factory";
 
     return false;
   }
@@ -295,7 +295,7 @@ bool setStringValue(
   auto analyzer = pool->get();
 
   if (!analyzer) {
-    LOG_TOPIC(WARN, arangodb::Logger::FIXME)
+    LOG_TOPIC(WARN, arangodb::Logger::IRESEARCH)
       << "got nullptr from analyzer factory, name '" << pool->name() <<  "'";
     return false;
   }

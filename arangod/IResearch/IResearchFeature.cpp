@@ -170,7 +170,7 @@ void IResearchFeature::start() {
     if (functions) {
       registerFilters(*functions);
     } else {
-      LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "failure to find feature 'AQLFunctions' while registering iresearch filters";
+      LOG_TOPIC(WARN, arangodb::Logger::IRESEARCH) << "failure to find feature 'AQLFunctions' while registering iresearch filters";
     }
   }
 

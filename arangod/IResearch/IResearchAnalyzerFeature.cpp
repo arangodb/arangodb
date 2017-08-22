@@ -136,7 +136,7 @@ arangodb::aql::AqlValue aqlFnTokens(
     arangodb::aql::VPackFunctionParameters const& args
 ) {
   if (2 != args.size() || !args[0].isString() || !args[1].isString()) {
-    LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "invalid arguments passed while computing result for function 'TOKENS'";
+    LOG_TOPIC(WARN, arangodb::Logger::IRESEARCH) << "invalid arguments passed while computing result for function 'TOKENS'";
     TRI_set_errno(TRI_ERROR_BAD_PARAMETER);
 
     return arangodb::aql::AqlValue();
@@ -147,7 +147,7 @@ arangodb::aql::AqlValue aqlFnTokens(
   auto analyzers = arangodb::iresearch::getFeature<arangodb::iresearch::IResearchAnalyzerFeature>("IResearchAnalyzer");
 
   if (!analyzers) {
-    LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "failure to find feature 'IResearch' while computing result for function 'TOKENS'";
+    LOG_TOPIC(WARN, arangodb::Logger::IRESEARCH) << "failure to find feature 'IResearch' while computing result for function 'TOKENS'";
     TRI_set_errno(TRI_ERROR_INTERNAL);
 
     return arangodb::aql::AqlValue();
@@ -156,7 +156,7 @@ arangodb::aql::AqlValue aqlFnTokens(
   auto pool = analyzers->get(name);
 
   if (!pool) {
-    LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "failure to find IResearch analyzer pool name '" << name << "' while computing result for function 'TOKENS'";
+    LOG_TOPIC(WARN, arangodb::Logger::IRESEARCH) << "failure to find IResearch analyzer pool name '" << name << "' while computing result for function 'TOKENS'";
     TRI_set_errno(TRI_ERROR_BAD_PARAMETER);
 
     return arangodb::aql::AqlValue();
@@ -165,14 +165,14 @@ arangodb::aql::AqlValue aqlFnTokens(
   auto analyzer = pool->get();
 
   if (!analyzer) {
-    LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "failure to find IResearch analyzer name '" << name << "' while computing result for function 'TOKENS'";
+    LOG_TOPIC(WARN, arangodb::Logger::IRESEARCH) << "failure to find IResearch analyzer name '" << name << "' while computing result for function 'TOKENS'";
     TRI_set_errno(TRI_ERROR_BAD_PARAMETER);
 
     return arangodb::aql::AqlValue();
   }
 
   if (!analyzer->reset(data)) {
-    LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "failure to reset IResearch analyzer name '" << name << "' while computing result for function 'TOKENS'";
+    LOG_TOPIC(WARN, arangodb::Logger::IRESEARCH) << "failure to reset IResearch analyzer name '" << name << "' while computing result for function 'TOKENS'";
     TRI_set_errno(TRI_ERROR_INTERNAL);
 
     return arangodb::aql::AqlValue();
@@ -181,7 +181,7 @@ arangodb::aql::AqlValue aqlFnTokens(
   auto& values = analyzer->attributes().get<irs::term_attribute>();
 
   if (!values) {
-    LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "failure to retrieve values from IResearch analyzer name '" << name << "' while computing result for function 'TOKENS'";
+    LOG_TOPIC(WARN, arangodb::Logger::IRESEARCH) << "failure to retrieve values from IResearch analyzer name '" << name << "' while computing result for function 'TOKENS'";
     TRI_set_errno(TRI_ERROR_INTERNAL);
 
     return arangodb::aql::AqlValue();
@@ -192,7 +192,7 @@ arangodb::aql::AqlValue aqlFnTokens(
   auto buffer = irs::memory::make_unique<arangodb::velocypack::Buffer<uint8_t>>();
 
   if (!buffer) {
-    LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "failure to allocate result buffer while computing result for function 'TOKENS'";
+    LOG_TOPIC(WARN, arangodb::Logger::IRESEARCH) << "failure to allocate result buffer while computing result for function 'TOKENS'";
 
     return arangodb::aql::AqlValue();
   }
@@ -240,7 +240,7 @@ arangodb::iresearch::SystemDatabaseFeature::ptr getSystemDatabase() {
   auto* database = arangodb::iresearch::getFeature<arangodb::iresearch::SystemDatabaseFeature>();
 
   if (!database) {
-    LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "failure to find feature 'SystemDatabase' while getting the system database";
+    LOG_TOPIC(WARN, arangodb::Logger::IRESEARCH) << "failure to find feature 'SystemDatabase' while getting the system database";
 
     return nullptr;
   }
@@ -346,10 +346,10 @@ bool IResearchAnalyzerFeature::AnalyzerPool::init(
       return true;
     }
   } catch (std::exception& e) {
-    LOG_TOPIC(WARN, Logger::FIXME) << "caught exception while initializing an IResearch analizer type '" << _type << "' properties '" << _properties << "': " << e.what();
+    LOG_TOPIC(WARN, Logger::IRESEARCH) << "caught exception while initializing an IResearch analizer type '" << _type << "' properties '" << _properties << "': " << e.what();
     IR_EXCEPTION();
   } catch (...) {
-    LOG_TOPIC(WARN, Logger::FIXME) << "caught exception while initializing an IResearch analizer type '" << _type << "' properties '" << _properties << "'";
+    LOG_TOPIC(WARN, Logger::IRESEARCH) << "caught exception while initializing an IResearch analizer type '" << _type << "' properties '" << _properties << "'";
     IR_EXCEPTION();
   }
 
@@ -399,10 +399,10 @@ irs::analysis::analyzer::ptr IResearchAnalyzerFeature::AnalyzerPool::get() const
   try {
     return _cache.emplace(_type, _properties);
   } catch (std::exception& e) {
-    LOG_TOPIC(WARN, Logger::FIXME) << "caught exception while instantiating an IResearch analizer type '" << _type << "' properties '" << _properties << "': " << e.what();
+    LOG_TOPIC(WARN, Logger::IRESEARCH) << "caught exception while instantiating an IResearch analizer type '" << _type << "' properties '" << _properties << "': " << e.what();
     IR_EXCEPTION();
   } catch (...) {
-    LOG_TOPIC(WARN, Logger::FIXME) << "caught exception while instantiating an IResearch analizer type '" << _type << "' properties '" << _properties << "'";
+    LOG_TOPIC(WARN, Logger::IRESEARCH) << "caught exception while instantiating an IResearch analizer type '" << _type << "' properties '" << _properties << "'";
     IR_EXCEPTION();
   }
 
@@ -463,7 +463,7 @@ std::pair<IResearchAnalyzerFeature::AnalyzerPool::ptr, bool> IResearchAnalyzerFe
     auto pool = itr.first->second;
 
     if (!pool) {
-      LOG_TOPIC(WARN, Logger::FIXME) << "failure creating an IResearch analyzer instance for name '" << name << "' type '" << type << "' properties '" << properties << "'";
+      LOG_TOPIC(WARN, Logger::IRESEARCH) << "failure creating an IResearch analyzer instance for name '" << name << "' type '" << type << "' properties '" << properties << "'";
       TRI_set_errno(TRI_ERROR_BAD_PARAMETER);
 
       return std::make_pair(AnalyzerPool::ptr(), false);
@@ -478,21 +478,21 @@ std::pair<IResearchAnalyzerFeature::AnalyzerPool::ptr, bool> IResearchAnalyzerFe
 
     if (itr.second) { // new pool
       if (!_started) {
-        LOG_TOPIC(WARN, Logger::FIXME) << "cannot garantee collision-free persistance while creating an IResearch analyzer instance for name '" << name << "' type '" << type << "' properties '" << properties << "'";
+        LOG_TOPIC(WARN, Logger::IRESEARCH) << "cannot garantee collision-free persistance while creating an IResearch analyzer instance for name '" << name << "' type '" << type << "' properties '" << properties << "'";
         TRI_set_errno(TRI_ERROR_ARANGO_ILLEGAL_STATE);
 
         return std::make_pair(AnalyzerPool::ptr(), false);
       }
 
       if (!pool->init(type, properties)) {
-        LOG_TOPIC(WARN, Logger::FIXME) << "failure initializing an IResearch analyzer instance for name '" << name << "' type '" << type << "' properties '" << properties << "'";
+        LOG_TOPIC(WARN, Logger::IRESEARCH) << "failure initializing an IResearch analyzer instance for name '" << name << "' type '" << type << "' properties '" << properties << "'";
         TRI_set_errno(TRI_ERROR_BAD_PARAMETER);
 
         return std::make_pair(AnalyzerPool::ptr(), false);
       }
 
       if (!storeConfiguration(*pool)) {
-        LOG_TOPIC(WARN, Logger::FIXME) << "failure persisting an IResearch analyzer instance for name '" << name << "' type '" << type << "' properties '" << properties << "'";
+        LOG_TOPIC(WARN, Logger::IRESEARCH) << "failure persisting an IResearch analyzer instance for name '" << name << "' type '" << type << "' properties '" << properties << "'";
         TRI_set_errno(TRI_ERROR_BAD_PARAMETER);
 
         return std::make_pair(AnalyzerPool::ptr(), false);
@@ -500,12 +500,12 @@ std::pair<IResearchAnalyzerFeature::AnalyzerPool::ptr, bool> IResearchAnalyzerFe
 
       erase = false;
     } else if (type != pool->_type || properties != pool->_properties) {
-      LOG_TOPIC(WARN, Logger::FIXME) << "name collision detected while registering an IResearch analizer name '" << name << "' type '" << type << "' properties '" << properties << "', previous registration type '" << pool->_type << "' properties '" << pool->_properties << "'";
+      LOG_TOPIC(WARN, Logger::IRESEARCH) << "name collision detected while registering an IResearch analizer name '" << name << "' type '" << type << "' properties '" << properties << "', previous registration type '" << pool->_type << "' properties '" << pool->_properties << "'";
       TRI_set_errno(TRI_ERROR_BAD_PARAMETER);
 
       return std::make_pair(AnalyzerPool::ptr(), false);
     } else if (pool->_key.null() && !storeConfiguration(*pool)) { // not yet persisted
-      LOG_TOPIC(WARN, Logger::FIXME) << "failure persisting an IResearch analyzer instance for name '" << name << "' type '" << type << "' properties '" << properties << "'";
+      LOG_TOPIC(WARN, Logger::IRESEARCH) << "failure persisting an IResearch analyzer instance for name '" << name << "' type '" << type << "' properties '" << properties << "'";
       TRI_set_errno(TRI_ERROR_BAD_PARAMETER);
 
       return std::make_pair(AnalyzerPool::ptr(), false);
@@ -513,10 +513,10 @@ std::pair<IResearchAnalyzerFeature::AnalyzerPool::ptr, bool> IResearchAnalyzerFe
 
     return std::make_pair(pool, itr.second);
   } catch (std::exception& e) {
-    LOG_TOPIC(WARN, Logger::FIXME) << "caught exception while registering an IResearch analizer name '" << name << "' type '" << type << "' properties '" << properties << "': " << e.what();
+    LOG_TOPIC(WARN, Logger::IRESEARCH) << "caught exception while registering an IResearch analizer name '" << name << "' type '" << type << "' properties '" << properties << "': " << e.what();
     IR_EXCEPTION();
   } catch (...) {
-    LOG_TOPIC(WARN, Logger::FIXME) << "caught exception while registering an IResearch analizer name '" << name << "' type '" << type << "' properties '" << properties << "'";
+    LOG_TOPIC(WARN, Logger::IRESEARCH) << "caught exception while registering an IResearch analizer name '" << name << "' type '" << type << "' properties '" << properties << "'";
     IR_EXCEPTION();
   }
 
@@ -551,14 +551,14 @@ size_t IResearchAnalyzerFeature::erase(
     auto pool = itr->second;
 
     if (!pool) {
-      LOG_TOPIC(WARN, Logger::FIXME) << "removal of an unset IResearch analizer name '" << name << "'";
+      LOG_TOPIC(WARN, Logger::IRESEARCH) << "removal of an unset IResearch analizer name '" << name << "'";
       _analyzers.erase(itr);
 
       return 0; // no actual valid analyzer was removed (this is definitly a bug somewhere)
     }
 
     if (!force && pool->_refCount) {
-      LOG_TOPIC(WARN, Logger::FIXME) << "outstanding reservation requests preventing removal of IResearch analizer name '" << name << "'";
+      LOG_TOPIC(WARN, Logger::IRESEARCH) << "outstanding reservation requests preventing removal of IResearch analizer name '" << name << "'";
 
       return 0;
     }
@@ -567,7 +567,7 @@ size_t IResearchAnalyzerFeature::erase(
       auto vocbase = getSystemDatabase();
 
       if (!vocbase) {
-        LOG_TOPIC(WARN, Logger::FIXME) << "failure to get system database while removing IResearch analyzer name '" << pool->name() << "'";
+        LOG_TOPIC(WARN, Logger::IRESEARCH) << "failure to get system database while removing IResearch analyzer name '" << pool->name() << "'";
 
         return false;
       }
@@ -580,7 +580,7 @@ size_t IResearchAnalyzerFeature::erase(
       auto res = trx.begin();
 
       if (!res.ok()) {
-        LOG_TOPIC(WARN, Logger::FIXME) << "failure to start transaction while removing configuration for IResearch analyzer name '" << pool->name() << "'";
+        LOG_TOPIC(WARN, Logger::IRESEARCH) << "failure to start transaction while removing configuration for IResearch analyzer name '" << pool->name() << "'";
 
         return false;
       }
@@ -597,14 +597,14 @@ size_t IResearchAnalyzerFeature::erase(
 
       // stataic analyzers may be not persisted if their '_refCount' did not change
       if (!result.successful() && TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND != result.code) {
-        LOG_TOPIC(WARN, Logger::FIXME) << "failure to persist AnalyzerPool configuration while removing IResearch analyzer name '" << pool->name() << "'";
+        LOG_TOPIC(WARN, Logger::IRESEARCH) << "failure to persist AnalyzerPool configuration while removing IResearch analyzer name '" << pool->name() << "'";
         trx.abort();
 
         return false;
       }
 
       if (!trx.commit().ok()) {
-        LOG_TOPIC(WARN, Logger::FIXME) << "failure to commit AnalyzerPool configuration while removing IResearch analyzer name '" << pool->name() << "'";
+        LOG_TOPIC(WARN, Logger::IRESEARCH) << "failure to commit AnalyzerPool configuration while removing IResearch analyzer name '" << pool->name() << "'";
         trx.abort();
 
         return false;
@@ -612,7 +612,7 @@ size_t IResearchAnalyzerFeature::erase(
     }
 
     if (force) {
-      LOG_TOPIC(WARN, Logger::FIXME) << "outstanding reservation requests while removal of IResearch analizer name '" << name << "'";
+      LOG_TOPIC(WARN, Logger::IRESEARCH) << "outstanding reservation requests while removal of IResearch analizer name '" << name << "'";
     }
 
     // OK to erase if !_started because on start() the persisted configuration will be loaded
@@ -620,10 +620,10 @@ size_t IResearchAnalyzerFeature::erase(
 
     return 1;
   } catch (std::exception& e) {
-    LOG_TOPIC(WARN, Logger::FIXME) << "caught exception while removing an IResearch analizer name '" << name << "': " << e.what();
+    LOG_TOPIC(WARN, Logger::IRESEARCH) << "caught exception while removing an IResearch analizer name '" << name << "': " << e.what();
     IR_EXCEPTION();
   } catch (...) {
-    LOG_TOPIC(WARN, Logger::FIXME) << "caught exception while removing an IResearch analizer name '" << name << "'";
+    LOG_TOPIC(WARN, Logger::IRESEARCH) << "caught exception while removing an IResearch analizer name '" << name << "'";
     IR_EXCEPTION();
   }
 
@@ -639,7 +639,7 @@ IResearchAnalyzerFeature::AnalyzerPool::ptr IResearchAnalyzerFeature::get(
     auto itr = _analyzers.find(irs::make_hashed_ref(name, std::hash<irs::string_ref>()));
 
     if (itr == _analyzers.end()) {
-      LOG_TOPIC(WARN, Logger::FIXME) << "failure to find IResearch analyzer name '" << name << "'";
+      LOG_TOPIC(WARN, Logger::IRESEARCH) << "failure to find IResearch analyzer name '" << name << "'";
 
       return nullptr;
     }
@@ -650,13 +650,13 @@ IResearchAnalyzerFeature::AnalyzerPool::ptr IResearchAnalyzerFeature::get(
       return pool;
     }
 
-    LOG_TOPIC(WARN, Logger::FIXME) << "failure to get IResearch analyzer name '" << name << "'";
+    LOG_TOPIC(WARN, Logger::IRESEARCH) << "failure to get IResearch analyzer name '" << name << "'";
     TRI_set_errno(TRI_ERROR_INTERNAL);
   } catch (std::exception& e) {
-    LOG_TOPIC(WARN, Logger::FIXME) << "caught exception while retrieving an IResearch analizer name '" << name << "': " << e.what();
+    LOG_TOPIC(WARN, Logger::IRESEARCH) << "caught exception while retrieving an IResearch analizer name '" << name << "': " << e.what();
     IR_EXCEPTION();
   } catch (...) {
-    LOG_TOPIC(WARN, Logger::FIXME) << "caught exception while retrieving an IResearch analizer name '" << name << "'";
+    LOG_TOPIC(WARN, Logger::IRESEARCH) << "caught exception while retrieving an IResearch analizer name '" << name << "'";
     IR_EXCEPTION();
   }
 
@@ -671,7 +671,7 @@ IResearchAnalyzerFeature::AnalyzerPool::ptr IResearchAnalyzerFeature::get(
 
       // name (use same as 'type' for convenience)
       if (!ptr || !ptr->init(IDENTITY_TOKENIZER_NAME, irs::string_ref::nil)) {
-        LOG_TOPIC(FATAL, Logger::FIXME) << "failed to initialize 'identity' analyzer";
+        LOG_TOPIC(FATAL, Logger::IRESEARCH) << "failed to initialize 'identity' analyzer";
 
         throw irs::illegal_state(); // this should never happen, treat as an assertion failure
       }
@@ -695,7 +695,7 @@ void IResearchAnalyzerFeature::loadConfiguration(
   auto vocbase = getSystemDatabase();
 
   if (!vocbase) {
-    LOG_TOPIC(WARN, Logger::FIXME) << "failure to get system database while loading IResearch analyzer persisted configuration";
+    LOG_TOPIC(WARN, Logger::IRESEARCH) << "failure to get system database while loading IResearch analyzer persisted configuration";
 
     return;
   }
@@ -708,7 +708,7 @@ void IResearchAnalyzerFeature::loadConfiguration(
   auto res = trx.begin();
 
   if (!res.ok()) {
-    LOG_TOPIC(WARN, Logger::FIXME) << "failure to start transaction while loading IResearch analyzer persisted configuration";
+    LOG_TOPIC(WARN, Logger::IRESEARCH) << "failure to start transaction while loading IResearch analyzer persisted configuration";
 
     return;
   }
@@ -716,7 +716,7 @@ void IResearchAnalyzerFeature::loadConfiguration(
   auto* collection = trx.documentCollection();
 
   if (!collection) {
-    LOG_TOPIC(WARN, Logger::FIXME) << "failure to get collection while loading IResearch analyzer persisted configuration";
+    LOG_TOPIC(WARN, Logger::IRESEARCH) << "failure to get collection while loading IResearch analyzer persisted configuration";
     trx.abort();
 
     return;
@@ -729,7 +729,7 @@ void IResearchAnalyzerFeature::loadConfiguration(
     ManagedDocumentResult result;
 
     if (!collection->readDocument(&trx, token, result)) {
-      LOG_TOPIC(WARN, Logger::FIXME) << "skipping failed read of an IResearch analyzer persisted configuration token: " << token._data;
+      LOG_TOPIC(WARN, Logger::IRESEARCH) << "skipping failed read of an IResearch analyzer persisted configuration token: " << token._data;
 
       return true; // failed to read document, skip
     }
@@ -749,7 +749,7 @@ void IResearchAnalyzerFeature::loadConfiguration(
           || slice.get("properties").isObject()
         )
         || !slice.hasKey("ref_count") || !slice.get("ref_count").isNumber<uint64_t>()) {
-      LOG_TOPIC(WARN, Logger::FIXME) << "skipping invalid IResearch analyzer persisted configuration entry: " << slice.toJson();
+      LOG_TOPIC(WARN, Logger::IRESEARCH) << "skipping invalid IResearch analyzer persisted configuration entry: " << slice.toJson();
 
       return true; // not a valid configuration, skip
     }
@@ -776,7 +776,7 @@ void IResearchAnalyzerFeature::loadConfiguration(
     auto& pool = entry.first;
 
     if (!pool) {
-      LOG_TOPIC(WARN, Logger::FIXME) << "failure creating an IResearch analyzer instance for name '" << name << "' type '" << type << "' properties '" << properties << "'";
+      LOG_TOPIC(WARN, Logger::IRESEARCH) << "failure creating an IResearch analyzer instance for name '" << name << "' type '" << type << "' properties '" << properties << "'";
 
       THROW_ARANGO_EXCEPTION_MESSAGE(
         TRI_ERROR_BAD_PARAMETER,
@@ -785,7 +785,7 @@ void IResearchAnalyzerFeature::loadConfiguration(
     }
 
     if (!entry.second && initialized.find(name) != initialized.end()) {
-      LOG_TOPIC(WARN, Logger::FIXME) << "name collision detected while registering an IResearch analizer name '" << name << "' type '" << type << "' properties '" << properties << "', previous registration type '" << pool->_type << "' properties '" << pool->_properties << "'";
+      LOG_TOPIC(WARN, Logger::IRESEARCH) << "name collision detected while registering an IResearch analizer name '" << name << "' type '" << type << "' properties '" << properties << "', previous registration type '" << pool->_type << "' properties '" << pool->_properties << "'";
 
       THROW_ARANGO_EXCEPTION_MESSAGE(
         TRI_ERROR_BAD_PARAMETER,
@@ -795,7 +795,7 @@ void IResearchAnalyzerFeature::loadConfiguration(
 
     // check if able to convert 'count' to signed value for delta
     if (count > std::numeric_limits<int64_t>::max()) {
-      LOG_TOPIC(WARN, Logger::FIXME) << "overflow detected while registering an IResearch analyzer name '" << name << "' type '" << type << "' properties '" << properties << "', previous registration type '" << pool->_type << "' properties '" << pool->_properties << "'";
+      LOG_TOPIC(WARN, Logger::IRESEARCH) << "overflow detected while registering an IResearch analyzer name '" << name << "' type '" << type << "' properties '" << properties << "', previous registration type '" << pool->_type << "' properties '" << pool->_properties << "'";
 
       THROW_ARANGO_EXCEPTION_MESSAGE(
         TRI_ERROR_INTERNAL,
@@ -805,7 +805,7 @@ void IResearchAnalyzerFeature::loadConfiguration(
 
     if (!entry.second && preinitialized.find(name) != preinitialized.end()) {
       if (type != pool->_type || properties != pool->_properties) {
-        LOG_TOPIC(WARN, Logger::FIXME) << "name collision detected while registering an IResearch analizer name '" << name << "' type '" << type << "' properties '" << properties << "', previous registration type '" << pool->_type << "' properties '" << pool->_properties << "'";
+        LOG_TOPIC(WARN, Logger::IRESEARCH) << "name collision detected while registering an IResearch analizer name '" << name << "' type '" << type << "' properties '" << properties << "', previous registration type '" << pool->_type << "' properties '" << pool->_properties << "'";
 
         THROW_ARANGO_EXCEPTION_MESSAGE(
           TRI_ERROR_INTERNAL,
@@ -813,7 +813,7 @@ void IResearchAnalyzerFeature::loadConfiguration(
         );
       }
     } else if (!pool->init(type, properties)) {
-      LOG_TOPIC(WARN, Logger::FIXME) << "failure initializing an IResearch analyzer instance for name '" << name << "' type '" << type << "' properties '" << properties << "'";
+      LOG_TOPIC(WARN, Logger::IRESEARCH) << "failure initializing an IResearch analyzer instance for name '" << name << "' type '" << type << "' properties '" << properties << "'";
 
       THROW_ARANGO_EXCEPTION_MESSAGE(
         TRI_ERROR_BAD_PARAMETER,
@@ -845,7 +845,7 @@ void IResearchAnalyzerFeature::loadConfiguration(
       auto& pool = entry.second.first;
 
       if (count && (!pool || !updateConfiguration(trx, *pool, count))) {
-        LOG_TOPIC(WARN, Logger::FIXME) << "failure to persist AnalyzerPool configuration while updating ref_count of IResearch analyzer name '" << name << "'";
+        LOG_TOPIC(WARN, Logger::IRESEARCH) << "failure to persist AnalyzerPool configuration while updating ref_count of IResearch analyzer name '" << name << "'";
 
         THROW_ARANGO_EXCEPTION_MESSAGE(
           TRI_ERROR_INTERNAL,
@@ -855,7 +855,7 @@ void IResearchAnalyzerFeature::loadConfiguration(
     }
 
     if (!trx.commit().ok()) {
-      LOG_TOPIC(WARN, Logger::FIXME) << "failure to commit AnalyzerPool configuration while updating ref_count of IResearch analyzer";
+      LOG_TOPIC(WARN, Logger::IRESEARCH) << "failure to commit AnalyzerPool configuration while updating ref_count of IResearch analyzer";
       trx.abort();
 
       THROW_ARANGO_EXCEPTION_MESSAGE(
@@ -944,7 +944,7 @@ void IResearchAnalyzerFeature::start() {
     if (functions) {
       addFunctions(*functions);
     } else {
-      LOG_TOPIC(WARN, Logger::FIXME) << "failure to find feature 'AQLFunctions' while registering IResearch functions";
+      LOG_TOPIC(WARN, Logger::IRESEARCH) << "failure to find feature 'AQLFunctions' while registering IResearch functions";
     }
   }
 
@@ -971,7 +971,7 @@ void IResearchAnalyzerFeature::start() {
     auto vocbase = getSystemDatabase();
 
     if (!vocbase) {
-      LOG_TOPIC(WARN, Logger::FIXME) << "failure to get system database while starting feature 'IResearchAnalyzer'";
+      LOG_TOPIC(WARN, Logger::IRESEARCH) << "failure to get system database while starting feature 'IResearchAnalyzer'";
       // assume configuration collection exists
     } else {
       auto* collection = vocbase->lookupCollection(ANALYZER_COLLECTION_NAME);
@@ -980,13 +980,13 @@ void IResearchAnalyzerFeature::start() {
         auto* engine = arangodb::EngineSelectorFeature::ENGINE;
 
         if (!engine) {
-          LOG_TOPIC(WARN, Logger::FIXME) << "failure to get storage engine while starting feature 'IResearchAnalyzer'";
+          LOG_TOPIC(WARN, Logger::IRESEARCH) << "failure to get storage engine while starting feature 'IResearchAnalyzer'";
           // assume not inRecovery(), create collection immediately
         } else if (engine->inRecovery()) {
           auto* feature = getFeature<arangodb::DatabaseFeature>("Database");
 
           if (!feature) {
-            LOG_TOPIC(WARN, Logger::FIXME) << "failure to find feature 'Database' while starting feature 'IResearchAnalyzer'";
+            LOG_TOPIC(WARN, Logger::IRESEARCH) << "failure to find feature 'Database' while starting feature 'IResearchAnalyzer'";
             // can't register post-recovery callback, create collection immediately
           } else {
             std::shared_ptr<TRI_vocbase_t> sharedVocbase(std::move(vocbase));
@@ -1052,7 +1052,7 @@ bool IResearchAnalyzerFeature::storeConfiguration(AnalyzerPool& pool) {
   auto vocbase = getSystemDatabase();
 
   if (!vocbase) {
-    LOG_TOPIC(WARN, Logger::FIXME) << "failure to get system database while persisting configuration IResearch analyzer name '" << pool.name() << "'";
+    LOG_TOPIC(WARN, Logger::IRESEARCH) << "failure to get system database while persisting configuration IResearch analyzer name '" << pool.name() << "'";
 
     return false;
   }
@@ -1066,7 +1066,7 @@ bool IResearchAnalyzerFeature::storeConfiguration(AnalyzerPool& pool) {
     auto res = trx.begin();
 
     if (!res.ok()) {
-      LOG_TOPIC(WARN, Logger::FIXME) << "failure to start transaction while persisting configuration for IResearch analyzer name '" << pool.name() << "'";
+      LOG_TOPIC(WARN, Logger::IRESEARCH) << "failure to start transaction while persisting configuration for IResearch analyzer name '" << pool.name() << "'";
 
       return false;
     }
@@ -1085,7 +1085,7 @@ bool IResearchAnalyzerFeature::storeConfiguration(AnalyzerPool& pool) {
     auto result = trx.insert(ANALYZER_COLLECTION_NAME, builder.slice(), options);
 
     if (!result.successful()) {
-      LOG_TOPIC(WARN, Logger::FIXME) << "failure to persist AnalyzerPool configuration while persisting configuration for IResearch analyzer name '" << pool.name() << "'";
+      LOG_TOPIC(WARN, Logger::IRESEARCH) << "failure to persist AnalyzerPool configuration while persisting configuration for IResearch analyzer name '" << pool.name() << "'";
       trx.abort();
 
       return false;
@@ -1094,14 +1094,14 @@ bool IResearchAnalyzerFeature::storeConfiguration(AnalyzerPool& pool) {
     auto key = result.slice().get(arangodb::StaticStrings::KeyString);
 
     if (!key.isString()) {
-      LOG_TOPIC(WARN, Logger::FIXME) << "failure to find the resulting key field while persisting configuration for IResearch analyzer name '" << pool.name() << "'";
+      LOG_TOPIC(WARN, Logger::IRESEARCH) << "failure to find the resulting key field while persisting configuration for IResearch analyzer name '" << pool.name() << "'";
       trx.abort();
 
       return false;
     }
 
     if (!trx.commit().ok()) {
-      LOG_TOPIC(WARN, Logger::FIXME) << "failure to commit AnalyzerPool configuration while persisting configuration for IResearch analyzer name '" << pool.name() << "'";
+      LOG_TOPIC(WARN, Logger::IRESEARCH) << "failure to commit AnalyzerPool configuration while persisting configuration for IResearch analyzer name '" << pool.name() << "'";
       trx.abort();
 
       return false;
@@ -1111,10 +1111,10 @@ bool IResearchAnalyzerFeature::storeConfiguration(AnalyzerPool& pool) {
 
     return true;
   } catch (std::exception& e) {
-    LOG_TOPIC(WARN, Logger::FIXME) << "caught exception during persist of an AnalyzerPool configuration while persisting configuration for IResearch analyzer name '" << pool.name() << "': " << e.what();
+    LOG_TOPIC(WARN, Logger::IRESEARCH) << "caught exception during persist of an AnalyzerPool configuration while persisting configuration for IResearch analyzer name '" << pool.name() << "': " << e.what();
     IR_EXCEPTION();
   } catch (...) {
-    LOG_TOPIC(WARN, Logger::FIXME) << "caught exception during persist of an AnalyzerPool configuration while persisting configuration for IResearch analyzer name '" << pool.name() << "'";
+    LOG_TOPIC(WARN, Logger::IRESEARCH) << "caught exception during persist of an AnalyzerPool configuration while persisting configuration for IResearch analyzer name '" << pool.name() << "'";
     IR_EXCEPTION();
   }
 
@@ -1128,7 +1128,7 @@ bool IResearchAnalyzerFeature::updateConfiguration(
   auto vocbase = getSystemDatabase();
 
   if (!vocbase) {
-    LOG_TOPIC(WARN, Logger::FIXME) << "failure to get system database while updating ref_count of IResearch analyzer name '" << pool.name() << "'";
+    LOG_TOPIC(WARN, Logger::IRESEARCH) << "failure to get system database while updating ref_count of IResearch analyzer name '" << pool.name() << "'";
 
     return false;
   }
@@ -1142,7 +1142,7 @@ bool IResearchAnalyzerFeature::updateConfiguration(
     auto res = trx.begin();
 
     if (!res.ok()) {
-      LOG_TOPIC(WARN, Logger::FIXME) << "failure to start transaction while updating ref_count of IResearch analyzer name '" << pool.name() << "'";
+      LOG_TOPIC(WARN, Logger::IRESEARCH) << "failure to start transaction while updating ref_count of IResearch analyzer name '" << pool.name() << "'";
 
       return false;
     }
@@ -1151,14 +1151,14 @@ bool IResearchAnalyzerFeature::updateConfiguration(
     SCOPED_LOCK(mutex);
 
     if (!updateConfiguration(trx, pool, delta)) {
-      LOG_TOPIC(WARN, Logger::FIXME) << "failure to update AnalyzerPool configuration while updating ref_count of IResearch analyzer name '" << pool.name() << "'";
+      LOG_TOPIC(WARN, Logger::IRESEARCH) << "failure to update AnalyzerPool configuration while updating ref_count of IResearch analyzer name '" << pool.name() << "'";
       trx.abort();
 
       return false;
     }
 
     if (!trx.commit().ok()) {
-      LOG_TOPIC(WARN, Logger::FIXME) << "failure to commit AnalyzerPool configuration while updating ref_count of IResearch analyzer name '" << pool.name() << "'";
+      LOG_TOPIC(WARN, Logger::IRESEARCH) << "failure to commit AnalyzerPool configuration while updating ref_count of IResearch analyzer name '" << pool.name() << "'";
       trx.abort();
 
       return false;
@@ -1168,10 +1168,10 @@ bool IResearchAnalyzerFeature::updateConfiguration(
 
     return true;
   } catch (std::exception& e) {
-    LOG_TOPIC(WARN, Logger::FIXME) << "caught exception during persist of an AnalyzerPool configuration while updating ref_count of IResearch analyzer name '" << pool.name() << "': " << e.what();
+    LOG_TOPIC(WARN, Logger::IRESEARCH) << "caught exception during persist of an AnalyzerPool configuration while updating ref_count of IResearch analyzer name '" << pool.name() << "': " << e.what();
     IR_EXCEPTION();
   } catch (...) {
-    LOG_TOPIC(WARN, Logger::FIXME) << "caught exception during persist of an AnalyzerPool configuration while updating ref_count of IResearch analyzer name '" << pool.name() << "'";
+    LOG_TOPIC(WARN, Logger::IRESEARCH) << "caught exception during persist of an AnalyzerPool configuration while updating ref_count of IResearch analyzer name '" << pool.name() << "'";
     IR_EXCEPTION();
   }
 
@@ -1187,7 +1187,7 @@ bool IResearchAnalyzerFeature::updateConfiguration(
 
   if ((delta < 0 && CountType(0 - delta) > pool._refCount)
       || (delta > 0 && std::numeric_limits<CountType>::max() - pool._refCount < CountType(delta))) {
-    LOG_TOPIC(WARN, Logger::FIXME) << "overflow detected while updating ref_count of IResearch analyzer name '" << pool.name() << "'";
+    LOG_TOPIC(WARN, Logger::IRESEARCH) << "overflow detected while updating ref_count of IResearch analyzer name '" << pool.name() << "'";
 
     return false;
   }
