@@ -53,7 +53,7 @@ class Result {
   bool is(int errorNumber) const { return _errorNumber == errorNumber; }
   bool isNot(int errorNumber) const { return !is(errorNumber); }
 
-  void reset(int errorNumber = TRI_ERROR_NO_ERROR) {
+  Result& reset(int errorNumber = TRI_ERROR_NO_ERROR) {
     _errorNumber = errorNumber;
 
     if (errorNumber != TRI_ERROR_NO_ERROR) {
@@ -61,26 +61,31 @@ class Result {
     } else {
       _errorMessage.clear();
     }
+    return *this;
   }
 
-  void reset(int errorNumber, std::string const& errorMessage) {
+  Result& reset(int errorNumber, std::string const& errorMessage) {
     _errorNumber = errorNumber;
     _errorMessage = errorMessage;
+    return *this;
   }
 
-  void reset(int errorNumber, std::string&& errorMessage) {
+  Result& reset(int errorNumber, std::string&& errorMessage) {
     _errorNumber = errorNumber;
     _errorMessage = std::move(errorMessage);
+    return *this;
   }
 
-  void reset(Result const& other) {
+  Result& reset(Result const& other) {
     _errorNumber = other._errorNumber;
     _errorMessage = other._errorMessage;
+    return *this;
   }
 
-  void reset(Result&& other) {
+  Result& reset(Result&& other) {
     _errorNumber = other._errorNumber;
     _errorMessage = std::move(other._errorMessage);
+    return *this;
   }
 
   void cloneData(Result const& other) {

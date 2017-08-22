@@ -60,6 +60,27 @@ class RocksDBRestReplicationHandler : public RestReplicationHandler {
   //////////////////////////////////////////////////////////////////////////////
 
   void handleCommandLoggerState() override;
+  
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief return the available logfile range
+  /// @route GET logger-tick-ranges
+  /// @caller js/client/modules/@arangodb/replication.js
+  /// @response VPackArray, containing info about each datafile
+  ///           * filename
+  ///           * status
+  ///           * tickMin - tickMax
+  //////////////////////////////////////////////////////////////////////////////
+  
+  void handleCommandLoggerTickRanges();
+  
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief return the first tick available in a logfile
+  /// @route GET logger-first-tick
+  /// @caller js/client/modules/@arangodb/replication.js
+  /// @response VPackObject with minTick of LogfileManager->ranges()
+  //////////////////////////////////////////////////////////////////////////////
+  
+  void handleCommandLoggerFirstTick();
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief handle a follow command for the replication log

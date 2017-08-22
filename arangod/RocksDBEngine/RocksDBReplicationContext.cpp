@@ -215,8 +215,12 @@ RocksDBReplicationResult RocksDBReplicationContext::dump(
 
 arangodb::Result RocksDBReplicationContext::dumpKeyChunks(VPackBuilder& b,
                                                           uint64_t chunkSize) {
+  Result rv;
+
   TRI_ASSERT(_trx);
-  TRI_ASSERT(_iter);
+  if(!_iter){
+    return rv.reset(TRI_ERROR_BAD_PARAMETER, "the replication context iterator has not been initialized");
+  }
 
   std::string lowKey;
   VPackSlice highKey;  // FIXME: no good keeping this
@@ -253,15 +257,16 @@ arangodb::Result RocksDBReplicationContext::dumpKeyChunks(VPackBuilder& b,
       b.close();
       lowKey.clear();  // reset string
     } catch (std::exception const&) {
-      return Result(TRI_ERROR_INTERNAL);
+      return rv.reset(TRI_ERROR_INTERNAL);
     }
   }
+
   b.close();
   // we will not call this method twice
   _iter->reset();
   _lastIteratorOffset = 0;
 
-  return Result();
+  return rv;
 }
 
 /// dump all keys from collection
@@ -269,12 +274,23 @@ arangodb::Result RocksDBReplicationContext::dumpKeys(
     VPackBuilder& b, size_t chunk, size_t chunkSize,
     std::string const& lowKey) {
   TRI_ASSERT(_trx);
-  TRI_ASSERT(_iter);
+
+  Result rv;
+
+  if(!_iter){
+    return rv.reset(TRI_ERROR_BAD_PARAMETER, "the replication context iterator has not been initialized");
+  }
+
   RocksDBSortedAllIterator* primary =
       static_cast<RocksDBSortedAllIterator*>(_iter.get());
 
   // Position the iterator correctly
+  if (chunk != 0 && ((std::numeric_limits<std::size_t>::max() / chunk) < chunkSize)) {
+    return rv.reset(TRI_ERROR_BAD_PARAMETER, "It seems that your chunk / chunkSize combination is not valid - overflow");
+  }
+
   size_t from = chunk * chunkSize;
+
   if (from != _lastIteratorOffset) {
     if (!lowKey.empty()) {
       primary->seek(StringRef(lowKey));
@@ -284,6 +300,7 @@ arangodb::Result RocksDBReplicationContext::dumpKeys(
         _iter->reset();
         _lastIteratorOffset = 0;
       }
+
       if (from > _lastIteratorOffset) {
         TRI_ASSERT(from >= chunkSize);
         uint64_t diff = from - _lastIteratorOffset;
@@ -291,7 +308,11 @@ arangodb::Result RocksDBReplicationContext::dumpKeys(
         _iter->skip(diff, to);
         _lastIteratorOffset += to;
       }
-      TRI_ASSERT(_lastIteratorOffset == from);
+
+      //TRI_ASSERT(_lastIteratorOffset == from);
+      if(_lastIteratorOffset != from){
+        return rv.reset(TRI_ERROR_BAD_PARAMETER, "The parameters you provided lead to an invalid iterator offset.");
+      }
     }
   }
 
@@ -310,25 +331,36 @@ arangodb::Result RocksDBReplicationContext::dumpKeys(
     _hasMore = primary->nextWithKey(cb, chunkSize);
     _lastIteratorOffset++;
   } catch (std::exception const&) {
-    return Result(TRI_ERROR_INTERNAL);
+    return rv.reset(TRI_ERROR_INTERNAL);
   }
   b.close();
 
-  return Result();
+  return rv;
 }
 
 /// dump keys and document
 arangodb::Result RocksDBReplicationContext::dumpDocuments(
     VPackBuilder& b, size_t chunk, size_t chunkSize, std::string const& lowKey,
     VPackSlice const& ids) {
+  Result rv;
+
   TRI_ASSERT(_trx);
+
+  if(!_iter){
+    return rv.reset(TRI_ERROR_BAD_PARAMETER, "the replication context iterator has not been initialized");
+  }
+
   TRI_ASSERT(_iter);
   RocksDBSortedAllIterator* primary =
       static_cast<RocksDBSortedAllIterator*>(_iter.get());
 
   // Position the iterator must be reset to the beginning
   // after calls to dumpKeys moved it forwards
+  if (chunk != 0 && ((std::numeric_limits<std::size_t>::max() / chunk) < chunkSize)) {
+    return rv.reset(TRI_ERROR_BAD_PARAMETER, "It seems that your chunk / chunkSize combination is not valid - overflow");
+  }
   size_t from = chunk * chunkSize;
+
   if (from != _lastIteratorOffset) {
     if (!lowKey.empty()) {
       primary->seek(StringRef(lowKey));
@@ -346,7 +378,10 @@ arangodb::Result RocksDBReplicationContext::dumpDocuments(
         _lastIteratorOffset += to;
         TRI_ASSERT(to == diff);
       }
-      TRI_ASSERT(_lastIteratorOffset == from);
+
+      if(_lastIteratorOffset != from){
+        return rv.reset(TRI_ERROR_BAD_PARAMETER, "The parameters you provided lead to an invalid iterator offset.");
+      }
     }
   }
 
@@ -405,6 +440,12 @@ void RocksDBReplicationContext::use(double ttl) {
   TRI_ASSERT(!_isUsed);
 
   _isUsed = true;
+  _expires = TRI_microtime() + ttl;
+}
+
+void RocksDBReplicationContext::adjustTtl(double ttl) {
+  TRI_ASSERT(_isUsed);
+
   _expires = TRI_microtime() + ttl;
 }
 
