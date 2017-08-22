@@ -25,7 +25,7 @@ It is an error if this attribute is not bound in the coordinator case.
 
 @RESTRETURNCODES
 
-@RESTRETURNCODE{204}
+@RESTRETURNCODE{200}
 is returned if the batch was created successfully.
 
 @RESTRETURNCODE{400}

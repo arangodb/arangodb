@@ -84,9 +84,9 @@ static void JS_TickRangesLoggerReplication(
 
   VPackBuilder builder;
   Result res = EngineSelectorFeature::ENGINE->createTickRanges(builder);
-  if(res.fail()){
+  if (res.fail()) {
     TRI_V8_THROW_EXCEPTION(res);
-   }
+  }
 
   v8::Handle<v8::Value>resultValue = TRI_VPackToV8(isolate, builder.slice());
   result = v8::Handle<v8::Array>::Cast(resultValue);

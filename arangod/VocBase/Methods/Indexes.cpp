@@ -190,10 +190,18 @@ arangodb::Result Indexes::getAll(arangodb::LogicalCollection const* collection,
         if (val.isNumber()) {
           selectivity += val.getNumber<double>();
         }
+        
+        bool useCache = false;
         VPackSlice figures = index.get("figures");
         if (figures.isObject() && !figures.isEmptyObject()) {
+          if ((val = figures.get("cacheInUse")).isBool()) {
+            useCache = val.getBool();
+          }
           if ((val = figures.get("memory")).isNumber()) {
             memory += val.getNumber<double>();
+          }
+          if ((val = figures.get("cacheSize")).isNumber()) {
+            cacheSize += val.getNumber<double>();
           }
           if ((val = figures.get("cacheLifeTimeHitRate")).isNumber()) {
             cacheLifeTimeHitRate += val.getNumber<double>();
@@ -215,7 +223,7 @@ arangodb::Result Indexes::getAll(arangodb::LogicalCollection const* collection,
           if (withFigures) {
             merge.add("figures", VPackValue(VPackValueType::Object));
             merge.add("memory", VPackValue(memory));
-            if (cacheSize != 0 || cacheLifeTimeHitRate != 0) {
+            if (useCache) {
               merge.add("cacheSize", VPackValue(cacheSize));
               merge.add("cacheLifeTimeHitRate",
                         VPackValue(cacheLifeTimeHitRate / 2));
