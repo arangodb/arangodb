@@ -121,6 +121,11 @@ class RocksDBTransactionState final : public TransactionState {
     return static_cast<RocksDBTransactionState*>(state)->rocksdbMethods();
   }
 
+  /// @brief make some internal preparations for accessing this state in
+  /// parallel from multiple threads. READ-ONLY transactions
+  void prepareForParallelReads();
+  /// @brief in parallel mode. READ-ONLY transactions
+  bool inParallelMode() const;
   /// @brief temporarily lease a Builder object
   RocksDBKey* leaseRocksDBKey();
   /// @brief return a temporary RocksDBKey object
@@ -158,6 +163,7 @@ class RocksDBTransactionState final : public TransactionState {
 #endif
   SmallVector<RocksDBKey*, 32>::allocator_type::arena_type _arena;
   SmallVector<RocksDBKey*, 32> _keys;
+  bool _parallel;
 };
 
 class RocksDBKeyLeaser {
@@ -168,14 +174,11 @@ class RocksDBKeyLeaser {
   inline RocksDBKey* operator->() const { return _key; }
   inline RocksDBKey* get() const { return _key; }
   inline RocksDBKey& ref() const {return *_key; }
-  inline RocksDBKey* steal() {
-    RocksDBKey* res = _key;
-    _key = nullptr;
-    return res;
-  }
  private:
   RocksDBTransactionState* _rtrx;
+  bool _parallel;
   RocksDBKey* _key;
+  RocksDBKey _internal;
 };
 
 }  // namespace arangodb

@@ -69,7 +69,8 @@ RocksDBTransactionState::RocksDBTransactionState(
       _numUpdates(0),
       _numRemoves(0),
       _lastUsedCollection(0),
-      _keys{_arena} {}
+      _keys{_arena},
+      _parallel(false) {}
 
 /// @brief free a transaction container
 RocksDBTransactionState::~RocksDBTransactionState() {
@@ -472,6 +473,10 @@ uint64_t RocksDBTransactionState::sequenceNumber() const {
   }
 }
 
+void RocksDBTransactionState::prepareForParallelReads() { _parallel = true; }
+
+bool RocksDBTransactionState::inParallelMode() const { return _parallel; }
+
 /// @brief temporarily lease a Builder object
 RocksDBKey* RocksDBTransactionState::leaseRocksDBKey() {
   if (_keys.empty()) {
@@ -500,13 +505,14 @@ void RocksDBTransactionState::returnRocksDBKey(RocksDBKey* key) {
 /// @brief constructor, leases a builder
 RocksDBKeyLeaser::RocksDBKeyLeaser(transaction::Methods* trx)
       : _rtrx(RocksDBTransactionState::toState(trx)),
-        _key(_rtrx->leaseRocksDBKey()) {
+        _parallel(_rtrx->inParallelMode()),
+        _key(_parallel ? &_internal : _rtrx->leaseRocksDBKey()) {
   TRI_ASSERT(_key != nullptr);
 }
 
 /// @brief destructor
 RocksDBKeyLeaser::~RocksDBKeyLeaser() {
-  if (_key != nullptr) {
+  if (!_parallel && _key != nullptr) {
     _rtrx->returnRocksDBKey(_key);
   }
 }

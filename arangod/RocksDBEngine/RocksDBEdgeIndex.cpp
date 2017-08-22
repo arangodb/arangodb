@@ -660,7 +660,7 @@ void RocksDBEdgeIndex::warmup(transaction::Methods* trx) {
   ro.total_order_seek = true;
   ro.verify_checksums = false;
   ro.fill_cache = EdgeIndexFillBlockCache;
-  
+
   std::unique_ptr<rocksdb::Iterator> it(rocksutils::globalRocksDB()->NewIterator(ro, _cf));
   // get the first and last actual key
   it->Seek(bounds.start());
@@ -688,7 +688,10 @@ void RocksDBEdgeIndex::warmup(transaction::Methods* trx) {
   
   q2 = FindMedian(it.get(), q1, q3);
   q4 = FindMedian(it.get(), q3, q5);
-  
+
+  // prepare transaction for parallel read access
+  RocksDBTransactionState::toState(trx)->prepareForParallelReads();
+
   auto scheduler = SchedulerFeature::SCHEDULER;
   std::atomic<uint64_t> count(3);
   scheduler->post([&] {
