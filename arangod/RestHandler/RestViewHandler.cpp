@@ -265,7 +265,7 @@ void RestViewHandler::getListOfViews() {
   for (std::shared_ptr<LogicalView> view : views) {
     if (view.get() != nullptr) {
       props.openObject();
-      view->toVelocyPack(props);
+      view->toVelocyPack(props, true);
       props.close();
     }
   }
@@ -279,7 +279,7 @@ void RestViewHandler::getSingleView(std::string const& name) {
   if (view.get() != nullptr) {
     VPackBuilder props;
     props.openObject();
-    view->toVelocyPack(props);
+    view->toVelocyPack(props, true);
     props.close();
     generateResult(rest::ResponseCode::OK, props.slice());
   } else {
