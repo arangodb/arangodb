@@ -226,6 +226,7 @@ class RocksDBEngine final : public StorageEngine {
   std::pair<TRI_voc_tick_t, TRI_voc_cid_t> mapObjectToCollection(
       uint64_t) const;
 
+  std::vector<std::string> currentWalFiles();
   void determinePrunableWalFiles(TRI_voc_tick_t minTickToKeep);
   void pruneWalFiles();
 

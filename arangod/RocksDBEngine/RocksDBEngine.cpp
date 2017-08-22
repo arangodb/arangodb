@@ -1260,6 +1260,27 @@ Result RocksDBEngine::createLoggerState(TRI_vocbase_t* vocbase,
   return Result{};
 }
 
+std::vector<std::string> RocksDBEngine::currentWalFiles() {
+  rocksdb::VectorLogPtr files;
+  std::vector<std::string> names;
+
+  auto status = _db->GetSortedWalFiles(files);
+  if (!status.ok()) {
+    return names;  // TODO: error here?
+  }
+
+  for (size_t current = 0; current < files.size(); current++) {
+    auto f = files[current].get();
+    try {
+      names.push_back(f->PathName());
+    } catch (...) {
+      return names;
+    }
+  }
+
+  return names;
+}
+
 void RocksDBEngine::determinePrunableWalFiles(TRI_voc_tick_t minTickToKeep) {
   rocksdb::VectorLogPtr files;
 
