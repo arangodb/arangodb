@@ -555,6 +555,17 @@ SECTION("BinaryNotIn") {
     assertFilterSuccess("FOR d IN collection FILTER d['a'] not in ['1','2','3'] RETURN d", expected);
   }
 
+  // simple offset
+  {
+    irs::Or expected;
+    auto& root = expected.add<irs::Not>().filter<irs::And>();
+    root.add<irs::by_term>().field(mangleStringIdentity("[1]")).term("1");
+    root.add<irs::by_term>().field(mangleStringIdentity("[1]")).term("2");
+    root.add<irs::by_term>().field(mangleStringIdentity("[1]")).term("3");
+
+    assertFilterSuccess("FOR d IN collection FILTER d[1] not in ['1','2','3'] RETURN d", expected);
+  }
+
   // complex attribute name
   {
     irs::Or expected;
@@ -566,6 +577,19 @@ SECTION("BinaryNotIn") {
     assertFilterSuccess("FOR d IN collection FILTER d.a.b.c.e.f not in ['1','2','3'] RETURN d", expected);
     assertFilterSuccess("FOR d IN collection FILTER d.a['b'].c.e.f not in ['1','2','3'] RETURN d", expected);
     assertFilterSuccess("FOR d IN collection FILTER d.a['b']['c'].e.f not in ['1','2','3'] RETURN d", expected);
+  }
+
+  // complex attribute name, offset
+  {
+    irs::Or expected;
+    auto& root = expected.add<irs::Not>().filter<irs::And>();
+    root.add<irs::by_term>().field(mangleStringIdentity("a.b.c[323].e.f")).term("1");
+    root.add<irs::by_term>().field(mangleStringIdentity("a.b.c[323].e.f")).term("2");
+    root.add<irs::by_term>().field(mangleStringIdentity("a.b.c[323].e.f")).term("3");
+
+    assertFilterSuccess("FOR d IN collection FILTER d.a.b.c[323].e.f not in ['1','2','3'] RETURN d", expected);
+    assertFilterSuccess("FOR d IN collection FILTER d.a['b'].c[323].e.f not in ['1','2','3'] RETURN d", expected);
+    assertFilterSuccess("FOR d IN collection FILTER d.a['b']['c'][323].e.f not in ['1','2','3'] RETURN d", expected);
   }
 
   // heterogeneous array values
@@ -597,6 +621,8 @@ SECTION("BinaryNotIn") {
   }
 
   // invalid attribute access
+  assertFilterFail("for d in view myview filter d[*] not in [1,2,3] return d");
+  assertFilterFail("for d in view myview filter d.a[*] not in [1,2,3] return d");
   assertFilterFail("FOR d IN VIEW myView FILTER d not in [1,2,3] RETURN d");
   assertFilterFail("FOR d IN VIEW myView FILTER [] not in [1,2,3] RETURN d");
   assertFilterFail("FOR d IN VIEW myView FILTER ['d'] not in [1,2,3] RETURN d");
@@ -628,6 +654,21 @@ SECTION("BinaryNotIn") {
     assertFilterSuccess("FOR d IN collection FILTER d.a['b.c.e.f'] not in 4..5 RETURN d", expected);
   }
 
+  // numeric range, attribute offset
+  {
+    irs::numeric_token_stream minTerm; minTerm.reset(4.0);
+    irs::numeric_token_stream maxTerm; maxTerm.reset(5.0);
+
+    irs::Or expected;
+    auto& range = expected.add<irs::Not>().filter<irs::Or>().add<irs::by_granular_range>();
+    range.field(mangleNumeric("a.b[4].c.e.f"));
+    range.include<irs::Bound::MIN>(true).insert<irs::Bound::MIN>(minTerm);
+    range.include<irs::Bound::MAX>(true).insert<irs::Bound::MAX>(maxTerm);
+
+    assertFilterSuccess("FOR d IN collection FILTER d.a.b[4].c.e.f not in 4..5 RETURN d", expected);
+    assertFilterSuccess("FOR d IN collection FILTER d.a['b[4].c.e.f'] not in 4..5 RETURN d", expected);
+  }
+
   // numeric floating range
   {
     irs::numeric_token_stream minTerm; minTerm.reset(4.5);
@@ -641,6 +682,21 @@ SECTION("BinaryNotIn") {
 
     assertFilterSuccess("FOR d IN collection FILTER d.a.b.c.e.f not in 4.5..5.0 RETURN d", expected);
     assertFilterSuccess("FOR d IN collection FILTER d.a['b'].c.e.f not in 4.5..5.0 RETURN d", expected);
+  }
+
+  // numeric floating range, attribute offset
+  {
+    irs::numeric_token_stream minTerm; minTerm.reset(4.5);
+    irs::numeric_token_stream maxTerm; maxTerm.reset(5.0);
+
+    irs::Or expected;
+    auto& range = expected.add<irs::Not>().filter<irs::Or>().add<irs::by_granular_range>();
+    range.field(mangleNumeric("a[3].b[1].c.e.f"));
+    range.include<irs::Bound::MIN>(true).insert<irs::Bound::MIN>(minTerm);
+    range.include<irs::Bound::MAX>(true).insert<irs::Bound::MAX>(maxTerm);
+
+    assertFilterSuccess("FOR d IN collection FILTER d.a[3].b[1].c.e.f not in 4.5..5.0 RETURN d", expected);
+    assertFilterSuccess("FOR d IN collection FILTER d.a[3]['b'][1].c.e.f not in 4.5..5.0 RETURN d", expected);
   }
 
   // numeric int-float range
@@ -670,6 +726,18 @@ SECTION("BinaryNotIn") {
     assertFilterSuccess("FOR d IN collection FILTER d.a['b'].c.e.f not in '4'..'5' RETURN d", expected);
   }
 
+  // string range, attribute offset
+  {
+    irs::Or expected;
+    auto& range = expected.add<irs::Not>().filter<irs::Or>().add<irs::by_range>();
+    range.field(mangleStringIdentity("a.b[3].c.e.f"));
+    range.include<irs::Bound::MIN>(true).term<irs::Bound::MIN>("4");
+    range.include<irs::Bound::MAX>(true).term<irs::Bound::MAX>("5");
+
+    assertFilterSuccess("FOR d IN collection FILTER d.a.b[3].c.e.f not in '4'..'5' RETURN d", expected);
+    assertFilterSuccess("FOR d IN collection FILTER d.a['b'][3].c.e.f not in '4'..'5' RETURN d", expected);
+  }
+
   // boolean range
   {
     irs::Or expected;
@@ -682,6 +750,18 @@ SECTION("BinaryNotIn") {
     assertFilterSuccess("FOR d IN collection FILTER d['a'].b.c.e.f not in false..true RETURN d", expected);
   }
 
+  // boolean range, attribute offset
+  {
+    irs::Or expected;
+    auto& range = expected.add<irs::Not>().filter<irs::Or>().add<irs::by_range>();
+    range.field(mangleBool("a.b.c.e.f[1]"));
+    range.include<irs::Bound::MIN>(true).term<irs::Bound::MIN>(irs::boolean_token_stream::value_false());
+    range.include<irs::Bound::MAX>(true).term<irs::Bound::MAX>(irs::boolean_token_stream::value_true());
+
+    assertFilterSuccess("FOR d IN collection FILTER d.a.b.c.e.f[1] not in false..true RETURN d", expected);
+    assertFilterSuccess("FOR d IN collection FILTER d['a'].b.c.e.f[1] not in false..true RETURN d", expected);
+  }
+
   // null range
   {
     irs::Or expected;
@@ -692,6 +772,18 @@ SECTION("BinaryNotIn") {
 
     assertFilterSuccess("FOR d IN collection FILTER d.a.b.c.e.f not in null..null RETURN d", expected);
     assertFilterSuccess("FOR d IN collection FILTER d.a.b.c['e'].f not in null..null RETURN d", expected);
+  }
+
+  // null range, attribute offset
+  {
+    irs::Or expected;
+    auto& range = expected.add<irs::Not>().filter<irs::Or>().add<irs::by_range>();
+    range.field(mangleNull("a.b.c.e[3].f"));
+    range.include<irs::Bound::MIN>(true).term<irs::Bound::MIN>(irs::null_token_stream::value_null());
+    range.include<irs::Bound::MAX>(true).term<irs::Bound::MAX>(irs::null_token_stream::value_null());
+
+    assertFilterSuccess("FOR d IN collection FILTER d.a.b.c.e[3].f not in null..null RETURN d", expected);
+    assertFilterSuccess("FOR d IN collection FILTER d.a.b.c['e'][3].f not in null..null RETURN d", expected);
   }
 
   // invalid attribute access
@@ -727,6 +819,15 @@ SECTION("BinaryEq") {
     assertFilterSuccess("FOR d IN collection FILTER '1' == d['a'] RETURN d", expected);
   }
 
+  // simple offset, string
+  {
+    irs::Or expected;
+    expected.add<irs::by_term>().field(mangleStringIdentity("[1]")).term("1");
+
+    assertFilterSuccess("FOR d IN collection FILTER d[1] == '1' RETURN d", expected);
+    assertFilterSuccess("FOR d IN collection FILTER '1' == d[1] RETURN d", expected);
+  }
+
   // complex attribute, string
   {
     irs::Or expected;
@@ -740,6 +841,19 @@ SECTION("BinaryEq") {
     assertFilterSuccess("FOR d IN collection FILTER '1' == d['a']['b']['c'] RETURN d", expected);
   }
 
+  // complex attribute with offset, string
+  {
+    irs::Or expected;
+    expected.add<irs::by_term>().field(mangleStringIdentity("a.b[23].c")).term("1");
+
+    assertFilterSuccess("FOR d IN collection FILTER d.a.b[23].c == '1' RETURN d", expected);
+    assertFilterSuccess("FOR d IN collection FILTER d.a['b'][23].c == '1' RETURN d", expected);
+    assertFilterSuccess("FOR d IN collection FILTER d['a']['b'][23].c == '1' RETURN d", expected);
+    assertFilterSuccess("FOR d IN collection FILTER '1' == d.a.b[23].c RETURN d", expected);
+    assertFilterSuccess("FOR d IN collection FILTER '1' == d.a['b'][23].c RETURN d", expected);
+    assertFilterSuccess("FOR d IN collection FILTER '1' == d['a']['b'][23]['c'] RETURN d", expected);
+  }
+
   // complex attribute, true
   {
     irs::Or expected;
@@ -747,6 +861,15 @@ SECTION("BinaryEq") {
 
     assertFilterSuccess("FOR d IN collection FILTER d.a.b.c == true RETURN d", expected);
     assertFilterSuccess("FOR d IN collection FILTER true == d.a.b.c RETURN d", expected);
+  }
+
+  // complex attribute with offset, true
+  {
+    irs::Or expected;
+    expected.add<irs::by_term>().field(mangleBool("a[1].b.c")).term(irs::boolean_token_stream::value_true());
+
+    assertFilterSuccess("FOR d IN collection FILTER d.a[1].b.c == true RETURN d", expected);
+    assertFilterSuccess("FOR d IN collection FILTER true == d.a[1].b.c RETURN d", expected);
   }
 
   // complex attribute, false
@@ -773,6 +896,19 @@ SECTION("BinaryEq") {
     assertFilterSuccess("FOR d IN collection FILTER null == d.a.b.c['bool'] RETURN d", expected);
   }
 
+  // complex attribute with offset, null
+  {
+    irs::Or expected;
+    expected.add<irs::by_term>().field(mangleNull("a[1].b[2].c[3].bool")).term(irs::null_token_stream::value_null());
+
+    assertFilterSuccess("FOR d IN collection FILTER d.a[1].b[2].c[3].bool == null RETURN d", expected);
+    assertFilterSuccess("FOR d IN collection FILTER d.a[1]['b'][2].c[3].bool == null RETURN d", expected);
+    assertFilterSuccess("FOR d IN collection FILTER d['a'][1]['b'][2].c[3].bool == null RETURN d", expected);
+    assertFilterSuccess("FOR d IN collection FILTER null == d.a[1].b[2].c[3].bool RETURN d", expected);
+    assertFilterSuccess("FOR d IN collection FILTER null == d['a[1].b[2].c[3].bool'] RETURN d", expected);
+    assertFilterSuccess("FOR d IN collection FILTER null == d.a[1].b[2].c[3]['bool'] RETURN d", expected);
+  }
+
   // complex attribute, numeric
   {
     irs::numeric_token_stream stream;
@@ -791,6 +927,26 @@ SECTION("BinaryEq") {
     assertFilterSuccess("FOR d IN collection FILTER 3.0 == d.a.b.c.numeric RETURN d", expected);
     assertFilterSuccess("FOR d IN collection FILTER 3.0 == d['a.b.c'].numeric RETURN d", expected);
     assertFilterSuccess("FOR d IN collection FILTER 3.0 == d.a['b.c.numeric'] RETURN d", expected);
+  }
+
+  // complex attribute with offset, numeric
+  {
+    irs::numeric_token_stream stream;
+    stream.reset(3.);
+    CHECK(stream.next());
+    auto& term = stream.attributes().get<irs::term_attribute>();
+
+    irs::Or expected;
+    expected.add<irs::by_term>().field(mangleNumeric("a.b[3].c.numeric")).term(term->value());
+
+    assertFilterSuccess("FOR d IN collection FILTER d.a.b[3].c.numeric == 3 RETURN d", expected);
+    assertFilterSuccess("FOR d IN collection FILTER d.a['b'][3].c.numeric == 3 RETURN d", expected);
+    assertFilterSuccess("FOR d IN collection FILTER d.a.b[3].c.numeric == 3.0 RETURN d", expected);
+    assertFilterSuccess("FOR d IN collection FILTER d.a.b[3].c['numeric'] == 3.0 RETURN d", expected);
+    assertFilterSuccess("FOR d IN collection FILTER 3 == d.a.b[3].c.numeric RETURN d", expected);
+    assertFilterSuccess("FOR d IN collection FILTER 3.0 == d.a.b[3].c.numeric RETURN d", expected);
+    assertFilterSuccess("FOR d IN collection FILTER 3.0 == d['a.b[3].c'].numeric RETURN d", expected);
+    assertFilterSuccess("FOR d IN collection FILTER 3.0 == d.a['b[3].c.numeric'] RETURN d", expected);
   }
 
   // invalid attribute access
@@ -824,6 +980,15 @@ SECTION("BinaryNotEq") {
     assertFilterSuccess("FOR d IN collection FILTER '1' != d['a'] RETURN d", expected);
   }
 
+  // simple offset
+  {
+    irs::Or expected;
+    expected.add<irs::Not>().filter<irs::by_term>().field(mangleStringIdentity("[4]")).term("1");
+
+    assertFilterSuccess("FOR d IN collection FILTER d[4] != '1' RETURN d", expected);
+    assertFilterSuccess("FOR d IN collection FILTER '1' != d[4] RETURN d", expected);
+  }
+
   // complex attribute name, string
   {
     irs::Or expected;
@@ -837,6 +1002,21 @@ SECTION("BinaryNotEq") {
     assertFilterSuccess("FOR d IN collection FILTER '1' != d['a'].b.c RETURN d", expected);
     assertFilterSuccess("FOR d IN collection FILTER '1' != d['a']['b'].c RETURN d", expected);
     assertFilterSuccess("FOR d IN collection FILTER '1' != d['a']['b']['c'] RETURN d", expected);
+  }
+
+  // complex attribute name with offset, string
+  {
+    irs::Or expected;
+    expected.add<irs::Not>().filter<irs::by_term>().field(mangleStringIdentity("a.b[23].c")).term("1");
+
+    assertFilterSuccess("FOR d IN collection FILTER d.a.b[23].c != '1' RETURN d", expected);
+    assertFilterSuccess("FOR d IN collection FILTER d['a'].b[23].c != '1' RETURN d", expected);
+    assertFilterSuccess("FOR d IN collection FILTER d['a']['b'][23].c != '1' RETURN d", expected);
+    assertFilterSuccess("FOR d IN collection FILTER d['a']['b'][23]['c'] != '1' RETURN d", expected);
+    assertFilterSuccess("FOR d IN collection FILTER '1' != d.a.b[23].c RETURN d", expected);
+    assertFilterSuccess("FOR d IN collection FILTER '1' != d['a'].b[23].c RETURN d", expected);
+    assertFilterSuccess("FOR d IN collection FILTER '1' != d['a']['b'][23].c RETURN d", expected);
+    assertFilterSuccess("FOR d IN collection FILTER '1' != d['a']['b'][23]['c'] RETURN d", expected);
   }
 
   // complex boolean attribute, true
@@ -861,6 +1041,17 @@ SECTION("BinaryNotEq") {
     assertFilterSuccess("FOR d IN collection FILTER false != d['a']['b'].c.bool RETURN d", expected);
   }
 
+  // complex boolean attribute with offset, false
+  {
+    irs::Or expected;
+    expected.add<irs::Not>().filter<irs::by_term>().field(mangleBool("a[12].b.c.bool")).term(irs::boolean_token_stream::value_false());
+
+    assertFilterSuccess("FOR d IN collection FILTER d.a[12].b.c.bool != false RETURN d", expected);
+    assertFilterSuccess("FOR d IN collection FILTER d['a'][12]['b']['c'].bool != false RETURN d", expected);
+    assertFilterSuccess("FOR d IN collection FILTER false != d.a[12].b.c.bool RETURN d", expected);
+    assertFilterSuccess("FOR d IN collection FILTER false != d['a'][12]['b'].c.bool RETURN d", expected);
+  }
+
   // complex boolean attribute, null
   {
     irs::Or expected;
@@ -870,6 +1061,17 @@ SECTION("BinaryNotEq") {
     assertFilterSuccess("FOR d IN collection FILTER d.a['b']['c'].bool != null RETURN d", expected);
     assertFilterSuccess("FOR d IN collection FILTER null != d.a.b.c.bool RETURN d", expected);
     assertFilterSuccess("FOR d IN collection FILTER null != d['a']['b'].c.bool RETURN d", expected);
+  }
+
+  // complex boolean attribute with offset, null
+  {
+    irs::Or expected;
+    expected.add<irs::Not>().filter<irs::by_term>().field(mangleNull("a.b.c[3].bool")).term(irs::null_token_stream::value_null());
+
+    assertFilterSuccess("FOR d IN collection FILTER d.a.b.c[3].bool != null RETURN d", expected);
+    assertFilterSuccess("FOR d IN collection FILTER d.a['b']['c'][3].bool != null RETURN d", expected);
+    assertFilterSuccess("FOR d IN collection FILTER null != d.a.b.c[3].bool RETURN d", expected);
+    assertFilterSuccess("FOR d IN collection FILTER null != d['a']['b'].c[3].bool RETURN d", expected);
   }
 
   // complex boolean attribute, numeric
@@ -888,6 +1090,24 @@ SECTION("BinaryNotEq") {
     assertFilterSuccess("FOR d IN collection FILTER 3 != d.a.b.c.numeric RETURN d", expected);
     assertFilterSuccess("FOR d IN collection FILTER 3.0 != d.a.b.c.numeric RETURN d", expected);
     assertFilterSuccess("FOR d IN collection FILTER 3.0 != d.a['b']['c'].numeric RETURN d", expected);
+  }
+
+  // complex boolean attribute with offset, numeric
+  {
+    irs::numeric_token_stream stream;
+    stream.reset(3.);
+    CHECK(stream.next());
+    auto& term = stream.attributes().get<irs::term_attribute>();
+
+    irs::Or expected;
+    expected.add<irs::Not>().filter<irs::by_term>().field(mangleNumeric("a.b.c.numeric[1]")).term(term->value());
+
+    assertFilterSuccess("FOR d IN collection FILTER d.a.b.c.numeric[1] != 3 RETURN d", expected);
+    assertFilterSuccess("FOR d IN collection FILTER d['a']['b'].c.numeric[1] != 3 RETURN d", expected);
+    assertFilterSuccess("FOR d IN collection FILTER d.a.b.c.numeric[1] != 3.0 RETURN d", expected);
+    assertFilterSuccess("FOR d IN collection FILTER 3 != d.a.b.c.numeric[1] RETURN d", expected);
+    assertFilterSuccess("FOR d IN collection FILTER 3.0 != d.a.b.c.numeric[1] RETURN d", expected);
+    assertFilterSuccess("FOR d IN collection FILTER 3.0 != d.a['b']['c'].numeric[1] RETURN d", expected);
   }
 
   // invalid attribute access
@@ -927,6 +1147,17 @@ SECTION("BinaryGE") {
     assertFilterSuccess("FOR d IN collection FILTER '1' <= d['a'] RETURN d", expected);
   }
 
+  // simple string offset
+  {
+    irs::Or expected;
+    expected.add<irs::by_range>()
+            .field(mangleStringIdentity("[23]"))
+            .include<irs::Bound::MIN>(true).term<irs::Bound::MIN>("1");
+
+    assertFilterSuccess("FOR d IN collection FILTER d[23] >= '1' RETURN d", expected);
+    assertFilterSuccess("FOR d IN collection FILTER '1' <= d[23] RETURN d", expected);
+  }
+
   // complex attribute name, string
   {
     irs::Or expected;
@@ -940,6 +1171,19 @@ SECTION("BinaryGE") {
     assertFilterSuccess("FOR d IN collection FILTER '1' <= d['a']['b'].c RETURN d", expected);
   }
 
+  // complex attribute name with offset, string
+  {
+    irs::Or expected;
+    expected.add<irs::by_range>()
+            .field(mangleStringIdentity("a.b[23].c"))
+            .include<irs::Bound::MIN>(true).term<irs::Bound::MIN>("1");
+
+    assertFilterSuccess("FOR d IN collection FILTER d.a.b[23].c >= '1' RETURN d", expected);
+    assertFilterSuccess("FOR d IN collection FILTER d.a['b'][23]['c'] >= '1' RETURN d", expected);
+    assertFilterSuccess("FOR d IN collection FILTER '1' <= d.a.b[23].c RETURN d", expected);
+    assertFilterSuccess("FOR d IN collection FILTER '1' <= d['a']['b'][23].c RETURN d", expected);
+  }
+
   // complex boolean attribute, true
   {
     irs::Or expected;
@@ -951,6 +1195,19 @@ SECTION("BinaryGE") {
     assertFilterSuccess("FOR d IN collection FILTER d['a']['b']['c'] >= true RETURN d", expected);
     assertFilterSuccess("FOR d IN collection FILTER true <= d.a.b.c RETURN d", expected);
     assertFilterSuccess("FOR d IN collection FILTER true <= d['a']['b']['c'] RETURN d", expected);
+  }
+
+  // complex boolean attribute with offset, true
+  {
+    irs::Or expected;
+    expected.add<irs::by_range>()
+            .field(mangleBool("a.b.c[223]"))
+            .include<irs::Bound::MIN>(true).term<irs::Bound::MIN>(irs::boolean_token_stream::value_true());
+
+    assertFilterSuccess("FOR d IN collection FILTER d.a.b.c[223] >= true RETURN d", expected);
+    assertFilterSuccess("FOR d IN collection FILTER d['a']['b']['c'][223] >= true RETURN d", expected);
+    assertFilterSuccess("FOR d IN collection FILTER true <= d.a.b.c[223] RETURN d", expected);
+    assertFilterSuccess("FOR d IN collection FILTER true <= d['a']['b']['c'][223] RETURN d", expected);
   }
 
   // complex boolean attribute, false
@@ -979,6 +1236,19 @@ SECTION("BinaryGE") {
     assertFilterSuccess("FOR d IN collection FILTER null <= d['a']['b'].c.nil RETURN d", expected);
   }
 
+  // complex null attribute with offset
+  {
+    irs::Or expected;
+    expected.add<irs::by_range>()
+            .field(mangleNull("a.b[23].c.nil"))
+            .include<irs::Bound::MIN>(true).term<irs::Bound::MIN>(irs::null_token_stream::value_null());
+
+    assertFilterSuccess("FOR d IN collection FILTER d.a.b[23].c.nil >= null RETURN d", expected);
+    assertFilterSuccess("FOR d IN collection FILTER d['a']['b'][23]['c'].nil >= null RETURN d", expected);
+    assertFilterSuccess("FOR d IN collection FILTER null <= d.a.b[23].c.nil RETURN d", expected);
+    assertFilterSuccess("FOR d IN collection FILTER null <= d['a']['b'][23].c.nil RETURN d", expected);
+  }
+
   // complex boolean attribute, numeric
   {
     irs::numeric_token_stream stream;
@@ -995,6 +1265,24 @@ SECTION("BinaryGE") {
     assertFilterSuccess("FOR d IN collection FILTER 13 <= d.a.b.c.numeric RETURN d", expected);
     assertFilterSuccess("FOR d IN collection FILTER 13.0 <= d.a.b.c.numeric RETURN d", expected);
     assertFilterSuccess("FOR d IN collection FILTER 13.0 <= d['a']['b']['c'].numeric RETURN d", expected);
+  }
+
+  // complex boolean attribute, numeric
+  {
+    irs::numeric_token_stream stream;
+    stream.reset(13.);
+
+    irs::Or expected;
+    expected.add<irs::by_granular_range>()
+            .field(mangleNumeric("a.b.c[223].numeric"))
+            .include<irs::Bound::MIN>(true).insert<irs::Bound::MIN>(stream);
+
+    assertFilterSuccess("FOR d IN collection FILTER d.a.b.c[223].numeric >= 13 RETURN d", expected);
+    assertFilterSuccess("FOR d IN collection FILTER d['a']['b'].c[223].numeric >= 13 RETURN d", expected);
+    assertFilterSuccess("FOR d IN collection FILTER d.a.b.c[223].numeric >= 13.0 RETURN d", expected);
+    assertFilterSuccess("FOR d IN collection FILTER 13 <= d.a.b.c[223].numeric RETURN d", expected);
+    assertFilterSuccess("FOR d IN collection FILTER 13.0 <= d.a.b.c[223].numeric RETURN d", expected);
+    assertFilterSuccess("FOR d IN collection FILTER 13.0 <= d['a']['b']['c'][223].numeric RETURN d", expected);
   }
 
   // invalid attribute access
@@ -1033,6 +1321,17 @@ SECTION("BinaryGT") {
     assertFilterSuccess("FOR d IN collection FILTER '1' < d['a'] RETURN d", expected);
   }
 
+  // simple string offset
+  {
+    irs::Or expected;
+    expected.add<irs::by_range>()
+            .field(mangleStringIdentity("[23]"))
+            .include<irs::Bound::MIN>(false).term<irs::Bound::MIN>("1");
+
+    assertFilterSuccess("FOR d IN collection FILTER d[23] > '1' RETURN d", expected);
+    assertFilterSuccess("FOR d IN collection FILTER '1' < d[23] RETURN d", expected);
+  }
+
   // complex attribute name, string
   {
     irs::Or expected;
@@ -1045,6 +1344,20 @@ SECTION("BinaryGT") {
     assertFilterSuccess("FOR d IN collection FILTER '1' < d.a.b.c RETURN d", expected);
     assertFilterSuccess("FOR d IN collection FILTER '1' < d['a']['b'].c RETURN d", expected);
   }
+
+  // complex attribute name with offset, string
+  {
+    irs::Or expected;
+    expected.add<irs::by_range>()
+            .field(mangleStringIdentity("a.b[23].c"))
+            .include<irs::Bound::MIN>(false).term<irs::Bound::MIN>("1");
+
+    assertFilterSuccess("FOR d IN collection FILTER d.a.b[23].c > '1' RETURN d", expected);
+    assertFilterSuccess("FOR d IN collection FILTER d.a['b'][23]['c'] > '1' RETURN d", expected);
+    assertFilterSuccess("FOR d IN collection FILTER '1' < d.a.b[23].c RETURN d", expected);
+    assertFilterSuccess("FOR d IN collection FILTER '1' < d['a']['b'][23].c RETURN d", expected);
+  }
+
 
   // complex boolean attribute, true
   {
@@ -1072,7 +1385,20 @@ SECTION("BinaryGT") {
     assertFilterSuccess("FOR d IN collection FILTER false < d['a']['b']['c'].bool RETURN d", expected);
   }
 
-  // complex boolean attribute, null
+  // complex boolean attribute with, false
+  {
+    irs::Or expected;
+    expected.add<irs::by_range>()
+            .field(mangleBool("a.b.c[223].bool"))
+            .include<irs::Bound::MIN>(false).term<irs::Bound::MIN>(irs::boolean_token_stream::value_false());
+
+    assertFilterSuccess("FOR d IN collection FILTER d.a.b.c[223].bool > false RETURN d", expected);
+    assertFilterSuccess("FOR d IN collection FILTER d['a'].b.c[223].bool > false RETURN d", expected);
+    assertFilterSuccess("FOR d IN collection FILTER false < d.a.b.c[223].bool RETURN d", expected);
+    assertFilterSuccess("FOR d IN collection FILTER false < d['a']['b']['c'][223].bool RETURN d", expected);
+  }
+
+  // complex null attribute
   {
     irs::Or expected;
     expected.add<irs::by_range>()
@@ -1083,6 +1409,19 @@ SECTION("BinaryGT") {
     assertFilterSuccess("FOR d IN collection FILTER d['a'].b.c.nil > null RETURN d", expected);
     assertFilterSuccess("FOR d IN collection FILTER null < d.a.b.c.nil RETURN d", expected);
     assertFilterSuccess("FOR d IN collection FILTER null < d['a'].b.c.nil RETURN d", expected);
+  }
+
+  // complex null attribute with offset
+  {
+    irs::Or expected;
+    expected.add<irs::by_range>()
+            .field(mangleNull("a.b[23].c.nil"))
+            .include<irs::Bound::MIN>(false).term<irs::Bound::MIN>(irs::null_token_stream::value_null());
+
+    assertFilterSuccess("FOR d IN collection FILTER d.a.b[23].c.nil > null RETURN d", expected);
+    assertFilterSuccess("FOR d IN collection FILTER d['a']['b'][23]['c'].nil > null RETURN d", expected);
+    assertFilterSuccess("FOR d IN collection FILTER null < d.a.b[23].c.nil RETURN d", expected);
+    assertFilterSuccess("FOR d IN collection FILTER null < d['a']['b'][23].c.nil RETURN d", expected);
   }
 
   // complex boolean attribute, numeric
@@ -1117,6 +1456,24 @@ SECTION("BinaryGT") {
     assertFilterSuccess("FOR d IN collection FILTER d.a['b']['c'].numeric > 13.5 RETURN d", expected);
     assertFilterSuccess("FOR d IN collection FILTER 13.5 < d.a.b.c.numeric RETURN d", expected);
     assertFilterSuccess("FOR d IN collection FILTER 13.5 < d['a']['b'].c.numeric RETURN d", expected);
+  }
+
+  // complex boolean attribute, numeric
+  {
+    irs::numeric_token_stream stream;
+    stream.reset(13.);
+
+    irs::Or expected;
+    expected.add<irs::by_granular_range>()
+            .field(mangleNumeric("a[1].b.c[223].numeric"))
+            .include<irs::Bound::MIN>(false).insert<irs::Bound::MIN>(stream);
+
+    assertFilterSuccess("FOR d IN collection FILTER d.a[1].b.c[223].numeric > 13 RETURN d", expected);
+    assertFilterSuccess("FOR d IN collection FILTER d['a'][1]['b'].c[223].numeric > 13 RETURN d", expected);
+    assertFilterSuccess("FOR d IN collection FILTER d.a[1].b.c[223].numeric > 13.0 RETURN d", expected);
+    assertFilterSuccess("FOR d IN collection FILTER 13 < d.a[1].b.c[223].numeric RETURN d", expected);
+    assertFilterSuccess("FOR d IN collection FILTER 13.0 < d.a[1].b.c[223].numeric RETURN d", expected);
+    assertFilterSuccess("FOR d IN collection FILTER 13.0 < d['a'][1]['b']['c'][223].numeric RETURN d", expected);
   }
 
   // invalid attribute access
@@ -1155,6 +1512,17 @@ SECTION("BinaryLE") {
     assertFilterSuccess("FOR d IN collection FILTER '1' >= d['a'] RETURN d", expected);
   }
 
+  // simple string offset
+  {
+    irs::Or expected;
+    expected.add<irs::by_range>()
+            .field(mangleStringIdentity("[23]"))
+            .include<irs::Bound::MAX>(true).term<irs::Bound::MAX>("1");
+
+    assertFilterSuccess("FOR d IN collection FILTER d[23] <= '1' RETURN d", expected);
+    assertFilterSuccess("FOR d IN collection FILTER '1' >= d[23] RETURN d", expected);
+  }
+
   // complex attribute name, string
   {
     irs::Or expected;
@@ -1166,6 +1534,19 @@ SECTION("BinaryLE") {
     assertFilterSuccess("FOR d IN collection FILTER d['a']['b'].c <= '1' RETURN d", expected);
     assertFilterSuccess("FOR d IN collection FILTER '1' >= d.a.b.c RETURN d", expected);
     assertFilterSuccess("FOR d IN collection FILTER '1' >= d['a']['b']['c'] RETURN d", expected);
+  }
+
+  // complex attribute name with offset, string
+  {
+    irs::Or expected;
+    expected.add<irs::by_range>()
+            .field(mangleStringIdentity("a[1].b.c[42]"))
+            .include<irs::Bound::MAX>(true).term<irs::Bound::MAX>("1");
+
+    assertFilterSuccess("FOR d IN collection FILTER d.a[1].b.c[42] <= '1' RETURN d", expected);
+    assertFilterSuccess("FOR d IN collection FILTER d['a'][1]['b'].c[42] <= '1' RETURN d", expected);
+    assertFilterSuccess("FOR d IN collection FILTER '1' >= d.a[1].b.c[42] RETURN d", expected);
+    assertFilterSuccess("FOR d IN collection FILTER '1' >= d['a'][1]['b']['c'][42] RETURN d", expected);
   }
 
   // complex boolean attribute, true
@@ -1181,6 +1562,19 @@ SECTION("BinaryLE") {
     assertFilterSuccess("FOR d IN collection FILTER true >= d.a['b']['c'] RETURN d", expected);
   }
 
+  // complex boolean attribute, true
+  {
+    irs::Or expected;
+    expected.add<irs::by_range>()
+            .field(mangleBool("a.b[42].c"))
+            .include<irs::Bound::MAX>(true).term<irs::Bound::MAX>(irs::boolean_token_stream::value_true());
+
+    assertFilterSuccess("FOR d IN collection FILTER d.a.b[42].c <= true RETURN d", expected);
+    assertFilterSuccess("FOR d IN collection FILTER d['a']['b'][42]['c'] <= true RETURN d", expected);
+    assertFilterSuccess("FOR d IN collection FILTER true >= d.a.b[42].c RETURN d", expected);
+    assertFilterSuccess("FOR d IN collection FILTER true >= d.a['b'][42]['c'] RETURN d", expected);
+  }
+
   // complex boolean attribute, false
   {
     irs::Or expected;
@@ -1194,7 +1588,7 @@ SECTION("BinaryLE") {
     assertFilterSuccess("FOR d IN collection FILTER false >= d.a['b']['c'].bool RETURN d", expected);
   }
 
-  // complex boolean attribute, null
+  // complex null attribute
   {
     irs::Or expected;
     expected.add<irs::by_range>()
@@ -1205,6 +1599,19 @@ SECTION("BinaryLE") {
     assertFilterSuccess("FOR d IN collection FILTER d.a['b']['c'].nil <= null RETURN d", expected);
     assertFilterSuccess("FOR d IN collection FILTER null >= d.a.b.c.nil RETURN d", expected);
     assertFilterSuccess("FOR d IN collection FILTER null >= d['a']['b']['c'].nil RETURN d", expected);
+  }
+
+  // complex null attribute with offset
+  {
+    irs::Or expected;
+    expected.add<irs::by_range>()
+            .field(mangleNull("a.b.c.nil[1]"))
+            .include<irs::Bound::MAX>(true).term<irs::Bound::MAX>(irs::null_token_stream::value_null());
+
+    assertFilterSuccess("FOR d IN collection FILTER d.a.b.c.nil[1] <= null RETURN d", expected);
+    assertFilterSuccess("FOR d IN collection FILTER d.a['b']['c'].nil[1] <= null RETURN d", expected);
+    assertFilterSuccess("FOR d IN collection FILTER null >= d.a.b.c.nil[1] RETURN d", expected);
+    assertFilterSuccess("FOR d IN collection FILTER null >= d['a']['b']['c'].nil[1] RETURN d", expected);
   }
 
   // complex boolean attribute, numeric
@@ -1223,6 +1630,24 @@ SECTION("BinaryLE") {
     assertFilterSuccess("FOR d IN collection FILTER 13 >= d.a.b.c.numeric RETURN d", expected);
     assertFilterSuccess("FOR d IN collection FILTER 13.0 >= d.a.b.c.numeric RETURN d", expected);
     assertFilterSuccess("FOR d IN collection FILTER 13.0 >= d.a['b']['c'].numeric RETURN d", expected);
+  }
+
+  // complex boolean attribute with offset, numeric
+  {
+    irs::numeric_token_stream stream;
+    stream.reset(13.);
+
+    irs::Or expected;
+    expected.add<irs::by_granular_range>()
+            .field(mangleNumeric("a.b.c[223].numeric"))
+            .include<irs::Bound::MAX>(true).insert<irs::Bound::MAX>(stream);
+
+    assertFilterSuccess("FOR d IN collection FILTER d.a.b.c[223].numeric <= 13 RETURN d", expected);
+    assertFilterSuccess("FOR d IN collection FILTER d['a']['b']['c'][223].numeric <= 13 RETURN d", expected);
+    assertFilterSuccess("FOR d IN collection FILTER d.a.b.c[223].numeric <= 13.0 RETURN d", expected);
+    assertFilterSuccess("FOR d IN collection FILTER 13 >= d.a.b.c[223].numeric RETURN d", expected);
+    assertFilterSuccess("FOR d IN collection FILTER 13.0 >= d.a.b.c[223].numeric RETURN d", expected);
+    assertFilterSuccess("FOR d IN collection FILTER 13.0 >= d.a['b']['c'][223].numeric RETURN d", expected);
   }
 
   // invalid attribute access
@@ -1261,6 +1686,17 @@ SECTION("BinaryLT") {
     assertFilterSuccess("FOR d IN collection FILTER '1' > d['a'] RETURN d", expected);
   }
 
+  // simple offset
+  {
+    irs::Or expected;
+    expected.add<irs::by_range>()
+            .field(mangleStringIdentity("[42]"))
+            .include<irs::Bound::MAX>(false).term<irs::Bound::MAX>("1");
+
+    assertFilterSuccess("FOR d IN collection FILTER d[42] < '1' RETURN d", expected);
+    assertFilterSuccess("FOR d IN collection FILTER '1' > d[42] RETURN d", expected);
+  }
+
   // complex attribute name, string
   {
     irs::Or expected;
@@ -1272,6 +1708,19 @@ SECTION("BinaryLT") {
     assertFilterSuccess("FOR d IN collection FILTER d.a['b']['c'] < '1' RETURN d", expected);
     assertFilterSuccess("FOR d IN collection FILTER '1' > d.a.b.c RETURN d", expected);
     assertFilterSuccess("FOR d IN collection FILTER '1' > d['a']['b']['c'] RETURN d", expected);
+  }
+
+  // complex attribute name with offset, string
+  {
+    irs::Or expected;
+    expected.add<irs::by_range>()
+            .field(mangleStringIdentity("a.b[42].c"))
+            .include<irs::Bound::MAX>(false).term<irs::Bound::MAX>("1");
+
+    assertFilterSuccess("FOR d IN collection FILTER d.a.b[42].c < '1' RETURN d", expected);
+    assertFilterSuccess("FOR d IN collection FILTER d.a['b'][42]['c'] < '1' RETURN d", expected);
+    assertFilterSuccess("FOR d IN collection FILTER '1' > d.a.b[42].c RETURN d", expected);
+    assertFilterSuccess("FOR d IN collection FILTER '1' > d['a']['b'][42]['c'] RETURN d", expected);
   }
 
   // complex boolean attribute, true
@@ -1300,7 +1749,20 @@ SECTION("BinaryLT") {
     assertFilterSuccess("FOR d IN collection FILTER false > d['a'].b.c.bool RETURN d", expected);
   }
 
-  // complex boolean attribute, null
+  // complex boolean attribute with offset, false
+  {
+    irs::Or expected;
+    expected.add<irs::by_range>()
+            .field(mangleBool("a.b.c[42].bool[42]"))
+            .include<irs::Bound::MAX>(false).term<irs::Bound::MAX>(irs::boolean_token_stream::value_false());
+
+    assertFilterSuccess("FOR d IN collection FILTER d.a.b.c[42].bool[42] < false RETURN d", expected);
+    assertFilterSuccess("FOR d IN collection FILTER d.a['b']['c'][42].bool[42] < false RETURN d", expected);
+    assertFilterSuccess("FOR d IN collection FILTER false > d.a.b.c[42].bool[42] RETURN d", expected);
+    assertFilterSuccess("FOR d IN collection FILTER false > d['a'].b.c[42].bool[42] RETURN d", expected);
+  }
+
+  // complex null attribute
   {
     irs::Or expected;
     expected.add<irs::by_range>()
@@ -1311,6 +1773,19 @@ SECTION("BinaryLT") {
     assertFilterSuccess("FOR d IN collection FILTER d.a['b']['c'].nil < null RETURN d", expected);
     assertFilterSuccess("FOR d IN collection FILTER null > d.a.b.c.nil RETURN d", expected);
     assertFilterSuccess("FOR d IN collection FILTER null > d['a'].b.c.nil RETURN d", expected);
+  }
+
+  // complex null attribute with offset
+  {
+    irs::Or expected;
+    expected.add<irs::by_range>()
+            .field(mangleNull("a.b[42].c.nil"))
+            .include<irs::Bound::MAX>(false).term<irs::Bound::MAX>(irs::null_token_stream::value_null());
+
+    assertFilterSuccess("FOR d IN collection FILTER d.a.b[42].c.nil < null RETURN d", expected);
+    assertFilterSuccess("FOR d IN collection FILTER d.a['b'][42]['c'].nil < null RETURN d", expected);
+    assertFilterSuccess("FOR d IN collection FILTER null > d.a.b[42].c.nil RETURN d", expected);
+    assertFilterSuccess("FOR d IN collection FILTER null > d['a'].b[42].c.nil RETURN d", expected);
   }
 
   // complex boolean attribute, numeric
@@ -1329,6 +1804,24 @@ SECTION("BinaryLT") {
     assertFilterSuccess("FOR d IN collection FILTER 13 > d.a.b.c.numeric RETURN d", expected);
     assertFilterSuccess("FOR d IN collection FILTER 13.0 > d.a.b.c.numeric RETURN d", expected);
     assertFilterSuccess("FOR d IN collection FILTER 13.0 > d['a']['b']['c'].numeric RETURN d", expected);
+  }
+
+  // complex boolean attribute, numeric
+  {
+    irs::numeric_token_stream stream;
+    stream.reset(13.);
+
+    irs::Or expected;
+    expected.add<irs::by_granular_range>()
+            .field(mangleNumeric("a[1].b[42].c.numeric"))
+            .include<irs::Bound::MAX>(false).insert<irs::Bound::MAX>(stream);
+
+    assertFilterSuccess("FOR d IN collection FILTER d.a[1].b[42].c.numeric < 13 RETURN d", expected);
+    assertFilterSuccess("FOR d IN collection FILTER d.a[1]['b'][42]['c'].numeric < 13 RETURN d", expected);
+    assertFilterSuccess("FOR d IN collection FILTER d.a[1].b[42].c.numeric < 13.0 RETURN d", expected);
+    assertFilterSuccess("FOR d IN collection FILTER 13 > d.a[1].b[42].c.numeric RETURN d", expected);
+    assertFilterSuccess("FOR d IN collection FILTER 13.0 > d.a[1].b[42].c.numeric RETURN d", expected);
+    assertFilterSuccess("FOR d IN collection FILTER 13.0 > d['a'][1]['b'][42]['c'].numeric RETURN d", expected);
   }
 
   // invalid attribute access
@@ -1367,6 +1860,17 @@ SECTION("UnaryNot") {
     assertFilterSuccess("FOR d IN collection FILTER not ('1' == d['a']) RETURN d", expected);
   }
 
+  // simple offset, string
+  {
+    irs::Or expected;
+    expected.add<irs::Not>()
+            .filter<irs::And>()
+            .add<irs::by_term>().field(mangleStringIdentity("[1]")).term("1");
+
+    assertFilterSuccess("FOR d IN collection FILTER not (d[1] == '1') RETURN d", expected);
+    assertFilterSuccess("FOR d IN collection FILTER not ('1' == d[1]) RETURN d", expected);
+  }
+
   // complex attribute, string
   {
     irs::Or expected;
@@ -1378,6 +1882,19 @@ SECTION("UnaryNot") {
     assertFilterSuccess("FOR d IN collection FILTER not (d['a']['b']['c'] == '1') RETURN d", expected);
     assertFilterSuccess("FOR d IN collection FILTER not ('1' == d.a.b.c) RETURN d", expected);
     assertFilterSuccess("FOR d IN collection FILTER not ('1' == d['a']['b']['c']) RETURN d", expected);
+  }
+
+  // complex attribute with offset, string
+  {
+    irs::Or expected;
+    expected.add<irs::Not>()
+            .filter<irs::And>()
+            .add<irs::by_term>().field(mangleStringIdentity("a.b[42].c")).term("1");
+
+    assertFilterSuccess("FOR d IN collection FILTER not (d.a.b[42].c == '1') RETURN d", expected);
+    assertFilterSuccess("FOR d IN collection FILTER not (d['a']['b'][42]['c'] == '1') RETURN d", expected);
+    assertFilterSuccess("FOR d IN collection FILTER not ('1' == d.a.b[42].c) RETURN d", expected);
+    assertFilterSuccess("FOR d IN collection FILTER not ('1' == d['a']['b'][42]['c']) RETURN d", expected);
   }
 
   // complex attribute, true
@@ -1406,6 +1923,19 @@ SECTION("UnaryNot") {
     assertFilterSuccess("FOR d IN collection FILTER not (false == d.a['b']['c'].bool) RETURN d", expected);
   }
 
+  // complex attribute with offset, false
+  {
+    irs::Or expected;
+    expected.add<irs::Not>()
+            .filter<irs::And>()
+            .add<irs::by_term>().field(mangleBool("a[1].b.c.bool")).term(irs::boolean_token_stream::value_false());
+
+    assertFilterSuccess("FOR d IN collection FILTER not (d.a[1].b.c.bool == false) RETURN d", expected);
+    assertFilterSuccess("FOR d IN collection FILTER not (d['a'][1].b.c.bool == false) RETURN d", expected);
+    assertFilterSuccess("FOR d IN collection FILTER not (false == d.a[1].b.c.bool) RETURN d", expected);
+    assertFilterSuccess("FOR d IN collection FILTER not (false == d.a[1]['b']['c'].bool) RETURN d", expected);
+  }
+
   // complex attribute, null
   {
     irs::Or expected;
@@ -1417,6 +1947,19 @@ SECTION("UnaryNot") {
     assertFilterSuccess("FOR d IN collection FILTER not (d.a['b']['c'].bool == null) RETURN d", expected);
     assertFilterSuccess("FOR d IN collection FILTER not (null == d.a.b.c.bool) RETURN d", expected);
     assertFilterSuccess("FOR d IN collection FILTER not (null == d['a']['b']['c'].bool) RETURN d", expected);
+  }
+
+  // complex attribute, null
+  {
+    irs::Or expected;
+    expected.add<irs::Not>()
+            .filter<irs::And>()
+            .add<irs::by_term>().field(mangleNull("a.b.c.bool[42]")).term(irs::null_token_stream::value_null());
+
+    assertFilterSuccess("FOR d IN collection FILTER not (d.a.b.c.bool[42] == null) RETURN d", expected);
+    assertFilterSuccess("FOR d IN collection FILTER not (d.a['b']['c'].bool[42] == null) RETURN d", expected);
+    assertFilterSuccess("FOR d IN collection FILTER not (null == d.a.b.c.bool[42]) RETURN d", expected);
+    assertFilterSuccess("FOR d IN collection FILTER not (null == d['a']['b']['c'].bool[42]) RETURN d", expected);
   }
 
   // complex attribute, numeric
@@ -1437,6 +1980,26 @@ SECTION("UnaryNot") {
     assertFilterSuccess("FOR d IN collection FILTER not (3 == d.a.b.c.numeric) RETURN d", expected);
     assertFilterSuccess("FOR d IN collection FILTER not (3.0 == d.a.b.c.numeric) RETURN d", expected);
     assertFilterSuccess("FOR d IN collection FILTER not (3.0 == d.a['b']['c'].numeric) RETURN d", expected);
+  }
+
+  // complex attribute, numeric
+  {
+    irs::numeric_token_stream stream;
+    stream.reset(3.);
+    CHECK(stream.next());
+    auto& term = stream.attributes().get<irs::term_attribute>();
+
+    irs::Or expected;
+    expected.add<irs::Not>()
+            .filter<irs::And>()
+            .add<irs::by_term>().field(mangleNumeric("a.b.c.numeric[42]")).term(term->value());
+
+    assertFilterSuccess("FOR d IN collection FILTER not (d.a.b.c.numeric[42] == 3) RETURN d", expected);
+    assertFilterSuccess("FOR d IN collection FILTER not (d['a']['b']['c'].numeric[42] == 3) RETURN d", expected);
+    assertFilterSuccess("FOR d IN collection FILTER not (d.a.b.c.numeric[42] == 3.0) RETURN d", expected);
+    assertFilterSuccess("FOR d IN collection FILTER not (3 == d.a.b.c.numeric[42]) RETURN d", expected);
+    assertFilterSuccess("FOR d IN collection FILTER not (3.0 == d.a.b.c.numeric[42]) RETURN d", expected);
+    assertFilterSuccess("FOR d IN collection FILTER not (3.0 == d.a['b']['c'].numeric[42]) RETURN d", expected);
   }
 
   // invalid unary not usage
@@ -1721,6 +2284,34 @@ SECTION("BinaryAnd") {
     assertFilterSuccess("FOR d IN collection FILTER 15.0 < d.a.b.c and 40.0 > d.a.b.c RETURN d", expected);
 
     assertFilterFail("FOR d IN collection FILTER d.a[*].b > 15 and d.a[*].b < 40 RETURN d");
+  }
+
+  // numeric range with offset
+  {
+    irs::numeric_token_stream minTerm; minTerm.reset(15.);
+    irs::numeric_token_stream maxTerm; maxTerm.reset(40.);
+
+    irs::Or expected;
+    auto& range = expected.add<irs::by_granular_range>();
+    range.field(mangleNumeric("a.b[42].c"))
+        .include<irs::Bound::MIN>(false).insert<irs::Bound::MIN>(minTerm)
+        .include<irs::Bound::MAX>(false).insert<irs::Bound::MAX>(maxTerm);
+
+    assertFilterSuccess("FOR d IN collection FILTER d.a.b[42].c > 15 and d.a.b[42].c < 40 RETURN d", expected);
+    assertFilterSuccess("FOR d IN collection FILTER d['a'].b[42].c > 15 and d['a']['b'][42]['c'] < 40 RETURN d", expected);
+    assertFilterSuccess("FOR d IN collection FILTER d.a['b'][42]['c'] > 15 and d['a']['b'][42]['c'] < 40 RETURN d", expected);
+    assertFilterSuccess("FOR d IN collection FILTER d['a'].b[42].c > 15 and d.a.b[42].c < 40 RETURN d", expected);
+    assertFilterSuccess("FOR d IN collection FILTER 15 < d.a.b[42].c and d.a.b[42].c < 40 RETURN d", expected);
+    assertFilterSuccess("FOR d IN collection FILTER 15 < d['a'].b[42].c and d.a.b[42].c < 40 RETURN d", expected);
+    assertFilterSuccess("FOR d IN collection FILTER d.a.b[42].c > 15 and 40 > d.a.b[42].c RETURN d", expected);
+    assertFilterSuccess("FOR d IN collection FILTER d['a']['b'][42]['c'] > 15 and 40 > d['a']['b'][42]['c'] RETURN d", expected);
+    assertFilterSuccess("FOR d IN collection FILTER 15 < d.a.b[42].c and 40 > d.a.b[42].c RETURN d", expected);
+    assertFilterSuccess("FOR d IN collection FILTER d.a.b[42].c > 15.0 and d.a.b[42].c < 40.0 RETURN d", expected);
+    assertFilterSuccess("FOR d IN collection FILTER d.a['b'][42]['c'] > 15.0 and d.a['b'][42]['c'] < 40.0 RETURN d", expected);
+    assertFilterSuccess("FOR d IN collection FILTER 15.0 < d.a.b[42].c and d.a.b[42].c < 40.0 RETURN d", expected);
+    assertFilterSuccess("FOR d IN collection FILTER d.a.b[42].c > 15.0 and 40.0 > d.a.b[42].c RETURN d", expected);
+    assertFilterSuccess("FOR d IN collection FILTER d['a']['b'][42]['c'] > 15.0 and 40.0 > d.a['b'][42]['c'] RETURN d", expected);
+    assertFilterSuccess("FOR d IN collection FILTER 15.0 < d.a.b[42].c and 40.0 > d.a.b[42].c RETURN d", expected);
   }
 
   // numeric range
@@ -2234,6 +2825,15 @@ SECTION("Exists") {
     assertFilterSuccess("FOR d IN VIEW myView FILTER eXists(d['name']) RETURN d", expected);
   }
 
+  // field with simple offset
+  {
+    irs::Or expected;
+    auto& exists = expected.add<irs::by_column_existence>();
+    exists.field("[42]").prefix_match(true);
+
+    assertFilterSuccess("FOR d IN VIEW myView FILTER exists(d[42]) RETURN d", expected);
+  }
+
   // complex field
   {
     irs::Or expected;
@@ -2444,6 +3044,17 @@ SECTION("Phrase") {
     assertFilterFail("FOR d IN VIEW myView FILTER phrase(false, 'quick') RETURN d");
   }
 
+  // field with simple offset
+  // without offset, default analyzer
+  // quick
+  {
+    irs::Or expected;
+    auto& phrase = expected.add<irs::by_phrase>();
+    phrase.field(mangleStringIdentity("[42]")).push_back("quick");
+
+    assertFilterSuccess("FOR d IN VIEW myView FILTER phrase(d[42], 'quick') RETURN d", expected);
+  }
+
   // with offset, default analyzer
   // quick brown
   {
@@ -2476,6 +3087,21 @@ SECTION("Phrase") {
     assertFilterSuccess("FOR d IN VIEW myView FILTER phrase(d.obj['name'], 'quick', 5.0, 'brown') RETURN d", expected);
     assertFilterSuccess("FOR d IN VIEW myView FILTER phrase(d.obj.name, 'quick', 5.5, 'brown') RETURN d", expected);
     assertFilterSuccess("FOR d IN VIEW myView FILTER phrase(d['obj']['name'], 'quick', 5.5, 'brown') RETURN d", expected);
+  }
+
+  // with offset, complex name with offset, default analyzer
+  // quick <...> <...> <...> <...> <...> brown
+  {
+    irs::Or expected;
+    auto& phrase = expected.add<irs::by_phrase>();
+    phrase.field(mangleStringIdentity("obj[3].name[1]")).push_back("quick").push_back("brown", 5);
+
+    assertFilterSuccess("FOR d IN VIEW myView FILTER phrase(d['obj'][3].name[1], 'quick', 5, 'brown') RETURN d", expected);
+    assertFilterSuccess("FOR d IN VIEW myView FILTER phrase(d.obj[3].name[1], 'quick', 5, 'brown') RETURN d", expected);
+    assertFilterSuccess("FOR d IN VIEW myView FILTER phrase(d.obj[3].name[1], 'quick', 5.0, 'brown') RETURN d", expected);
+    assertFilterSuccess("FOR d IN VIEW myView FILTER phrase(d.obj[3]['name'][1], 'quick', 5.0, 'brown') RETURN d", expected);
+    assertFilterSuccess("FOR d IN VIEW myView FILTER phrase(d.obj[3].name[1], 'quick', 5.5, 'brown') RETURN d", expected);
+    assertFilterSuccess("FOR d IN VIEW myView FILTER phrase(d['obj'][3]['name'][1], 'quick', 5.5, 'brown') RETURN d", expected);
   }
 
   // with offset, complex name, default analyzer
