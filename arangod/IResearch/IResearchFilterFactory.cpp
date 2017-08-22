@@ -852,7 +852,7 @@ bool fromFuncExists(
   return true;
 }
 
-// PHRASE(<attribute>, <value> [, <offset>, <value>, ...] [, <locale>])
+// PHRASE(<attribute>, <value> [, <offset>, <value>, ...] [, <analyzer>])
 bool fromFuncPhrase(
     irs::boolean_filter* filter,
     arangodb::aql::AstNode const& args

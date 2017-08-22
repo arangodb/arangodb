@@ -38,6 +38,8 @@
   * [Geo](Functions/Geo.md)
   * [Fulltext](Functions/Fulltext.md)
   * [Miscellaneous](Functions/Miscellaneous.md)
+* [Views](Views/README.md)
+  * [IResearch](Views/IResearch.md)
 * [Graphs](Graphs/README.md)
   * [Traversal](Graphs/Traversals.md)
   * [Shortest Path](Graphs/ShortestPath.md)
