@@ -78,7 +78,11 @@ class LoggerStream {
 
   template <typename T>
   LoggerStream& operator<<(T const& obj) {
-    _out << obj;
+    try {
+      _out << obj;
+    } catch (...) {
+      // ignore any errors here. logging should not have side effects
+    }
     return *this;
   }
   

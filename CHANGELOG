@@ -1,12 +1,56 @@
 devel
 -----
 
+* fixed issue #3075: Error when upgrading arangoDB on linux ubuntu 16.04 
+
+* fixed a buffer overrun in linenoise console input library for long input strings
+
+* increase size of the linenoise input buffer to 8 KB
+
+* abort compilation if the detected GCC or CLANG isn't in the range of compilers 
+  we support
+
+* fixed spurious cluster hangups by always sending AQL-query related requests
+  to the correct servers, even after failover or when a follower drops
+    
+  The problem with the previous shard-based approach was that responsibilities 
+  for shards may change from one server to another at runtime, after the query
+  was already instanciated. The coordinator and other parts of the query then
+  sent further requests for the query to the servers now responsible for the
+  shards.
+  However, an AQL query must send all further requests to the same servers on 
+  which the query was originally instanciated, even in case of failover.
+  Otherwise this would potentially send requests to servers that do not know
+  about the query, and would also send query shutdown requests to the wrong 
+  servers, leading to abandoned queries piling up and using resources until 
+  they automatically time out.
+
+* fixed issue with RocksDB engine acquiring the collection count values too
+  early, leading to the collection count values potentially being slightly off 
+  even in exclusive transactions (for which the exclusive access should provide
+  an always-correct count value)
+
+* fixed some issues in leader-follower catch-up code, specifically for the
+  RocksDB engine
+
+* make V8 log fatal errors to syslog before it terminates the process.
+  This change is effective on Linux only.
+
+* fixed issue with MMFiles engine creating superfluous collection journals
+  on shutdown
+
+* fixed issue #3067: Upgrade from 3.2 to 3.2.1 reset autoincrement keys
+
 * fixed issue #3044: ArangoDB server shutdown unexpectedly
 
 * fixed issue #3039: Incorrect filter interpretation
 
+* fixed issue #3037: Foxx, internal server error when I try to add a new service
+
 * improved MMFiles fulltext index document removal performance
   and fulltext index query performance for bigger result sets
+
+* ui: fixed a display bug within the slow and running queries view
 
 * ui: fixed a bug when success event triggers twice in a modal
 
@@ -18,14 +62,26 @@ devel
 
 * upgrade jemalloc version to 5.0.1
 
+  This fixes problems with the memory allocator returing "out of memory" when
+  calling munmap to free memory in order to return it to the OS.
+
+  It seems that calling munmap on Linux can increase the number of mappings, at least 
+  when a region is partially unmapped. This can lead to the process exceeding its 
+  maximum number of mappings, and munmap and future calls to mmap returning errors.
+
+  jemalloc version 5.0.1 does not have the `--enable-munmap` configure option anymore,
+  so the problem is avoided. To return memory to the OS eventually, jemalloc 5's 
+  background purge threads are used on Linux.
+
 * fixed issue #2978: log something more obvious when you log a Buffer
 
 * fixed issue #2982: AQL parse error?
 
-* fixed issue #3037: Foxx, internal server error when I try to add a new service
 
 v3.2.1 (2017-08-09)
 -------------------
+
+* added C++ implementations for AQL functions `LEFT()`, `RIGHT()` and `TRIM()`
 
 * fixed docs for issue #2968: Collection _key autoincrement value increases on error 
 

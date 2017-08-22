@@ -10,6 +10,17 @@ or the incremental data synchronization.
 <!-- arangod/RestHandler/RestReplicationHandler.cpp -->
 @startDocuBlock JSF_put_api_replication_inventory
 
+
+The *batch* method will create a snapshot of the current state that then can be
+dumped. A batchId is required when using the dump api with rocksdb.
+
+@startDocuBlock JSF_post_batch_replication
+
+@startDocuBlock JSF_delete_batch_replication
+
+@startDocuBlock JSF_put_batch_replication
+
+
 The *dump* method can be used to fetch data from a specific collection. As the
 results of the dump command can be huge, *dump* may not return all data from a collection
 at once. Instead, the dump command may be called repeatedly by replication clients

@@ -9,26 +9,25 @@
 @RESTQUERYPARAM{collection,string,required}
 The name or id of the collection to dump.
 
+@RESTQUERYPARAM{chunkSize,number,optional} Approximate maximum size of the returned result.
+
+@RESTQUERYPARAM{batchId,string,required}
+rocksdb only - The id of the snapshot to use
+
 @RESTQUERYPARAM{from,number,optional}
-Lower bound tick value for results.
+mmfiles only - Lower bound tick value for results.
 
 @RESTQUERYPARAM{to,number,optional}
-Upper bound tick value for results.
-
-@RESTQUERYPARAM{chunkSize,number,optional}
-Approximate maximum size of the returned result.
+mmfiles only - Upper bound tick value for results.
 
 @RESTQUERYPARAM{includeSystem,boolean,optional}
-Include system collections in the result. The default value is *true*.
-
-@RESTQUERYPARAM{failOnUnknown,boolean,optional}
-Produce an error when dumped edges refer to now-unknown collections.
+mmfiles only - Include system collections in the result. The default value is *true*.
 
 @RESTQUERYPARAM{ticks,boolean,optional}
-Whether or not to include tick values in the dump. The default value is *true*.
+mmfiles only - Whether or not to include tick values in the dump. The default value is *true*.
 
 @RESTQUERYPARAM{flush,boolean,optional}
-Whether or not to flush the WAL before dumping. The default value is *true*.
+mmfiles only - Whether or not to flush the WAL before dumping. The default value is *true*.
 
 @RESTDESCRIPTION
 Returns the data from the collection for the requested range.
