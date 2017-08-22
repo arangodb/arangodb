@@ -90,8 +90,8 @@ RocksDBCollection::RocksDBCollection(LogicalCollection* collection,
       _primaryIndex(nullptr),
       _cache(nullptr),
       _cachePresent(false),
-      _useCache(!collection->isSystem()) {
-  
+      _useCache(basics::VelocyPackHelper::readBooleanValue(info,
+                                                           "enableCache", false)) {
   VPackSlice s = info.get("isVolatile");
   if (s.isBoolean() && s.getBoolean()) {
       THROW_ARANGO_EXCEPTION_MESSAGE(
@@ -753,10 +753,9 @@ DocumentIdentifierToken RocksDBCollection::lookupKey(transaction::Methods* trx,
 }
 
 Result RocksDBCollection::read(transaction::Methods* trx,
-                               arangodb::velocypack::Slice const key,
+                               arangodb::StringRef const& key,
                                ManagedDocumentResult& result, bool) {
-  TRI_ASSERT(key.isString());
-  RocksDBToken token = primaryIndex()->lookupKey(trx, StringRef(key));
+  RocksDBToken token = primaryIndex()->lookupKey(trx, key);
 
   if (token.revisionId()) {
     auto res = lookupRevisionVPack(token.revisionId(), trx, result, true);
@@ -774,8 +773,7 @@ bool RocksDBCollection::readDocument(transaction::Methods* trx,
   RocksDBToken const* tkn = static_cast<RocksDBToken const*>(&token);
   TRI_voc_rid_t revisionId = tkn->revisionId();
   if (revisionId != 0) {
-    bool useCache = _logicalCollection->type() != TRI_COL_TYPE_EDGE;
-    auto res = lookupRevisionVPack(revisionId, trx, result, useCache);
+    auto res = lookupRevisionVPack(revisionId, trx, result, true);
     return res.ok();
   }
   return false;
@@ -1350,34 +1348,6 @@ arangodb::Result RocksDBCollection::fillIndexes(
   }
 
   return res;
-}
-
-// @brief return the primary index
-// WARNING: Make sure that this LogicalCollection Instance
-// is somehow protected. If it goes out of all scopes
-// or it's indexes are freed the pointer returned will get invalidated.
-arangodb::RocksDBPrimaryIndex* RocksDBCollection::primaryIndex() const {
-  if (_primaryIndex != nullptr) {
-    return _primaryIndex;
-  }
-  
-  // The primary index always has iid 0
-  auto primary = PhysicalCollection::lookupIndex(0);
-  TRI_ASSERT(primary != nullptr);
-
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-  if (primary->type() != Index::IndexType::TRI_IDX_TYPE_PRIMARY_INDEX) {
-    LOG_TOPIC(ERR, arangodb::Logger::FIXME)
-        << "got invalid indexes for collection '" << _logicalCollection->name()
-        << "'";
-    READ_LOCKER(guard, _indexesLock);
-    for (auto const& it : _indexes) {
-      LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "- " << it.get();
-    }
-  }
-#endif
-  TRI_ASSERT(primary->type() == Index::IndexType::TRI_IDX_TYPE_PRIMARY_INDEX);
-  return static_cast<arangodb::RocksDBPrimaryIndex*>(primary.get());
 }
 
 RocksDBOperationResult RocksDBCollection::insertDocument(

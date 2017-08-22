@@ -138,7 +138,7 @@ class TraverserCache {
        StringRef idString);
 
    arangodb::velocypack::Slice lookupInCollection(
-       SingleServerEdgeDocumentToken const* idToken);
+       SingleServerEdgeDocumentToken const* idToken) const;
 
   protected:
 

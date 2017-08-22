@@ -132,8 +132,14 @@ class RocksDBCollection final : public PhysicalCollection {
       transaction::Methods* trx,
       arangodb::velocypack::Slice const& key) override;
 
-  Result read(transaction::Methods*, arangodb::velocypack::Slice const key,
+  Result read(transaction::Methods*, arangodb::StringRef const& key,
               ManagedDocumentResult& result, bool) override;
+  
+  Result read(transaction::Methods* trx,
+              arangodb::velocypack::Slice const& key,
+              ManagedDocumentResult& result, bool locked) override {
+    this->read(trx, arangodb::StringRef(key), result, locked);
+  }
 
   bool readDocument(transaction::Methods* trx,
                     DocumentIdentifierToken const& token,
@@ -217,7 +223,14 @@ class RocksDBCollection final : public PhysicalCollection {
   arangodb::Result fillIndexes(transaction::Methods*,
                                std::shared_ptr<arangodb::Index>);
 
-  arangodb::RocksDBPrimaryIndex* primaryIndex() const;
+  // @brief return the primary index
+  // WARNING: Make sure that this instance
+  // is somehow protected. If it goes out of all scopes
+  // or it's indexes are freed the pointer returned will get invalidated.
+  arangodb::RocksDBPrimaryIndex* primaryIndex() const {
+    TRI_ASSERT (_primaryIndex != nullptr);
+    return _primaryIndex;
+  }
 
   arangodb::RocksDBOperationResult insertDocument(
       arangodb::transaction::Methods* trx, TRI_voc_rid_t revisionId,

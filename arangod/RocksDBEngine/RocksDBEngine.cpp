@@ -586,6 +586,9 @@ void RocksDBEngine::addParametersForNewCollection(VPackBuilder& builder,
   if (!info.hasKey("objectId")) {
     builder.add("objectId", VPackValue(std::to_string(TRI_NewTickServer())));
   }
+  if (!info.hasKey("enableCache") || !info.get("enableCache").isBool()) {
+    builder.add("enableCache", VPackValue(false));
+  }
 }
 
 void RocksDBEngine::addParametersForNewIndex(VPackBuilder& builder,
