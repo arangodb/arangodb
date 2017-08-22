@@ -17,12 +17,9 @@ Renames a view. Expects an object with the attribute(s)
 It returns an object with the attributes
 
 - *id*: The identifier of the view.
-
 - *name*: The new name of the view.
-
 - *type*: The view type. Valid types are:
   - iresearch : IResearch view
-
 - *properties* : The view properties.
 
 **Note**: this method is not available in a cluster. - ???

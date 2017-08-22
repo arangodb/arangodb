@@ -113,7 +113,7 @@ For the case where there are limited resources CPU/memory, a higher value will n
 Creates a new view with a given name and properties if it does not
 already exist.
 
-**Note**: view can't be created with the links. Please use PUT/PATCH 
+**Note**: view can't be created with the links. Please use PUT/PATCH
 for links management.
 
 @RESTRETURNCODES

@@ -14,7 +14,7 @@ It also has a unique name that clients should
 use to identify and access it. View can be renamed. This will
 change the view name, but not the view identifier.
 Views have a type that is specified by the user when the view
-is created. There is currently single type: iresearch.
+is created. The available types are: iresearch.
 
 #### IResearch View
 

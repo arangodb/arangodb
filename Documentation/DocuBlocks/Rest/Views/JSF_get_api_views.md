@@ -7,10 +7,7 @@
 @RESTQUERYPARAMETERS
 
 @RESTDESCRIPTION
-Returns an object with an attribute *views* containing an
-array of all view descriptions. The same information is also
-available in the *names* as an object with the view names
-as keys.
+Returns an object containing an array of all view descriptions.
 
 @RESTRETURNCODES
 
