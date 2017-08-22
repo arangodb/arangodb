@@ -1,6 +1,8 @@
 devel
 -----
 
+* Adjust the response of the DELETE `/_api/users/database/*` calls
+
 * fixed a buffer overrun in linenoise console input library for long input strings
 
 * increase size of the linenoise input buffer to 8 KB
