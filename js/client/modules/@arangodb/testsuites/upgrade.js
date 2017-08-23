@@ -64,9 +64,14 @@ function upgrade (options) {
   fs.makeDirectoryRecursive(tmpDataDir);
 
   const appDir = fs.join(tmpDataDir, 'app');
+  fs.makeDirectoryRecursive(appDir);
+
+  const tmpDir = fs.join(tmpDataDir, 'tmp');
+  fs.makeDirectoryRecursive(tmpDir);
+
   const port = pu.findFreePort(options.minPort, options.maxPort);
 
-  let args = pu.makeArgs.arangod(options, appDir);
+  let args = pu.makeArgs.arangod(options, appDir, '', tmpDir);
   args['server.endpoint'] = 'tcp://127.0.0.1:' + port;
   args['database.directory'] = fs.join(tmpDataDir, 'data');
   args['database.auto-upgrade'] = true;

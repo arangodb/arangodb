@@ -45,15 +45,21 @@ const RESET = require('internal').COLORS.COLOR_RESET;
 // //////////////////////////////////////////////////////////////////////////////
 
 function runArangodRecovery (instanceInfo, options, script, setup) {
+  let tempDir = fs.getTempFile();
   if (!instanceInfo.tmpDataDir) {
-    let td = fs.join(fs.getTempFile(), 'data');
+    let td = fs.join(tempDir, 'data');
     fs.makeDirectoryRecursive(td);
 
     instanceInfo.tmpDataDir = td;
   }
 
+  let appDir = fs.join(tempDir, 'app');
+  fs.makeDirectoryRecursive(appDir);
+  let tmpDir = fs.join(tempDir, 'tmp');
+  fs.makeDirectoryRecursive(tmpDir);
+
   if (!instanceInfo.recoveryArgs) {
-    let args = pu.makeArgs.arangod(options);
+    let args = pu.makeArgs.arangod(options, appDir, '', tmpDir);
     args['server.threads'] = 1;
     args['wal.reserve-logfiles'] = 1;
     args['database.directory'] = instanceInfo.tmpDataDir;
