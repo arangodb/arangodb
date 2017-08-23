@@ -91,7 +91,7 @@ struct ReadWriteSpinLock {
         _readers.add(1, std::memory_order_acquire); // read locked
 
         // double check writer hasn't stepped in
-        if (_writer.load(std::memory_order_relaxed)) {
+        if (_writer.load(std::memory_order_acquire)) {
           // writer got the lock, go back to waiting
           _readers.sub(1, std::memory_order_release);
         } else {
