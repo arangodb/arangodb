@@ -630,9 +630,9 @@ describe ArangoDB do
 
     it "revoking granted collection" do
       doc = ArangoDB.log_delete("#{prefix}-revoke", api + "/users-1/database/test/test")
-      doc.code.should eq(200)
+      doc.code.should eq(202)
       doc.parsed_response['error'].should eq(false)
-      doc.parsed_response['code'].should eq(200)
+      doc.parsed_response['code'].should eq(202)
 
       doc = ArangoDB.log_get("#{prefix}-validate", api + "/users-1/database/test/test")
       doc.code.should eq(200)
