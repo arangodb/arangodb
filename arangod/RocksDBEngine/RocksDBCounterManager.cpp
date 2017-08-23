@@ -323,7 +323,10 @@ Result RocksDBCounterManager::sync(bool force) {
   // we have to commit all counters in one batch
   s = rtrx->Commit();
   if (s.ok()) {
-    _lastSync = seqNumber;
+    {
+      WRITE_LOCKER(guard, _rwLock);
+      _lastSync = seqNumber;
+    }
     for (std::pair<uint64_t, CMValue> const& pair : copy) {
       _syncedSeqNums[pair.first] = pair.second._sequenceNum;
     }
@@ -360,9 +363,9 @@ void RocksDBCounterManager::readSettings() {
           TRI_HybridLogicalClock(lastHlc);
         }
 
-        uint64_t _lastSync =
-            basics::VelocyPackHelper::stringUInt64(slice.get("lastSync"));
-        LOG_TOPIC(TRACE, Logger::ENGINES) << "last background settings sync: " << _lastSync;
+        _lastSync = basics::VelocyPackHelper::stringUInt64(slice.get("lastSync"));
+        LOG_TOPIC(TRACE, Logger::ENGINES) << "last background settings sync: "
+                                          << _lastSync;
       } catch (...) {
         LOG_TOPIC(WARN, Logger::ENGINES)
             << "unable to read initial settings: invalid data";
