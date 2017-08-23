@@ -80,7 +80,11 @@ class IResearchAnalyzerFeature final: public arangodb::application_features::App
     irs::string_ref _type; // IResearch analyzer name
 
     AnalyzerPool(irs::string_ref const& name);
-    bool init(irs::string_ref const& type, irs::string_ref const& properties);
+    bool init(
+      irs::string_ref const& type,
+      irs::string_ref const& properties,
+      irs::flags const& additionalFeatures = irs::flags::empty_instance()
+   );
     void setKey(irs::string_ref const& type);
   };
 
@@ -115,9 +119,12 @@ class IResearchAnalyzerFeature final: public arangodb::application_features::App
     irs::string_ref const& properties,
     bool initAndPersist
   ) noexcept;
+
   void loadConfiguration(
     std::unordered_set<irs::string_ref> const& preinitialized
   );
+
+  bool loadStaticAnalyzers(std::unordered_set<irs::string_ref>& initialized);
   bool storeConfiguration(AnalyzerPool& pool);
   bool updateConfiguration(AnalyzerPool& pool, int64_t delta);
   bool updateConfiguration(

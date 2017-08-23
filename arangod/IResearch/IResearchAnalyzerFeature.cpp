@@ -319,7 +319,8 @@ IResearchAnalyzerFeature::AnalyzerPool::AnalyzerPool(
 
 bool IResearchAnalyzerFeature::AnalyzerPool::init(
     irs::string_ref const& type,
-    irs::string_ref const& properties
+    irs::string_ref const& properties,
+    irs::flags const& additionalFeatures /*= irs::flags::empty_instance()*/
 ) {
   try {
     _cache.clear(); // reset for new type/properties
@@ -342,6 +343,7 @@ bool IResearchAnalyzerFeature::AnalyzerPool::init(
       }
 
       _features = instance->attributes().features();
+      _features |= additionalFeatures;
 
       return true;
     }
@@ -882,6 +884,89 @@ void IResearchAnalyzerFeature::loadConfiguration(
   }
 }
 
+bool IResearchAnalyzerFeature::loadStaticAnalyzers(
+  std::unordered_set<irs::string_ref>& initialized
+) {
+  // register the indentity analyzer
+  {
+    static const irs::string_ref name("identity");
+    auto analyzer = emplace(
+      name,
+      IdentityTokenizer::type().name(),
+      irs::string_ref::nil,
+      false // do not persist since it's a static analyzer always available after start()
+    ).first;
+
+    if (!analyzer
+        || !analyzer->init(IdentityTokenizer::type().name(), irs::string_ref::nil)) {
+      LOG_TOPIC(WARN, Logger::IRESEARCH) << "failure creating an IResearch static analyzer instance for name '" << name << "'";
+      return false;
+    }
+
+    initialized.emplace(analyzer->name());
+  }
+
+  // register the identity analyzer with frequency+norms
+  {
+    static const irs::flags extraFeatures = { irs::frequency::type(), irs::norm::type() };
+    static const irs::string_ref name("identity_sort");
+    auto analyzer = emplace(
+      name,
+      IdentityTokenizer::type().name(),
+      irs::string_ref::nil,
+      false // do not persist since it's a static analyzer always available after start()
+    ).first;
+
+    if (!analyzer
+        || !analyzer->init(IdentityTokenizer::type().name(), irs::string_ref::nil, extraFeatures)) {
+      LOG_TOPIC(WARN, Logger::IRESEARCH) << "failure creating an IResearch static analyzer instance for name '" << name << "'";
+      return false;
+    }
+
+    initialized.emplace(analyzer->name());
+  }
+
+  // register the text analyzers
+  {
+    static const std::vector<std::pair<irs::string_ref, irs::string_ref>> analzyers = {
+      {"text_de", "{ \"locale\": \"de\", \"ignored_words\": [ ] }" }, // empty stop word list
+      {"text_en", "{ \"locale\": \"en\", \"ignored_words\": [ ] }" }, // empty stop word list
+      {"text_es", "{ \"locale\": \"es\", \"ignored_words\": [ ] }" }, // empty stop word list
+      {"text_fi", "{ \"locale\": \"fi\", \"ignored_words\": [ ] }" }, // empty stop word list
+      {"text_fr", "{ \"locale\": \"fr\", \"ignored_words\": [ ] }" }, // empty stop word list
+      {"text_it", "{ \"locale\": \"it\", \"ignored_words\": [ ] }" }, // empty stop word list
+      {"text_nl", "{ \"locale\": \"nl\", \"ignored_words\": [ ] }" }, // empty stop word list
+      {"text_no", "{ \"locale\": \"no\", \"ignored_words\": [ ] }" }, // empty stop word list
+      {"text_pt", "{ \"locale\": \"pt\", \"ignored_words\": [ ] }" }, // empty stop word list
+      {"text_ru", "{ \"locale\": \"ru\", \"ignored_words\": [ ] }" }, // empty stop word list
+      {"text_sv", "{ \"locale\": \"sv\", \"ignored_words\": [ ] }" }, // empty stop word list
+    };
+    static const irs::flags extraFeatures = { irs::norm::type() }; // add norms
+    static const irs::string_ref type("text");
+
+    for (auto& entry: analzyers) {
+      auto& name = entry.first;
+      auto& args = entry.second;
+      auto analyzer = emplace(
+        name,
+        type,
+        args,
+        false // do not persist since it's a static analyzer always available after start()
+      ).first;
+
+      if (!analyzer
+          || !analyzer->init(type, args, extraFeatures)) {
+        LOG_TOPIC(WARN, Logger::IRESEARCH) << "failure creating an IResearch static analyzer instance for name '" << name << "'";
+        return false;
+      }
+
+      initialized.emplace(analyzer->name());
+    }
+  }
+
+  return true;
+}
+
 /*static*/ std::string const& IResearchAnalyzerFeature::name() noexcept {
   return FEATURE_NAME;
 }
@@ -948,19 +1033,14 @@ void IResearchAnalyzerFeature::start() {
     }
   }
 
-  // register the indentity analyzer (before loading configuration)
-  auto identity = emplace(
-    IdentityTokenizer::type().name(), // use name same as type for convenience
-    IdentityTokenizer::type().name(),
-    irs::string_ref::nil,
-    false // do not persist since it's a static analyzer always available after start()
-  ).first;
   std::unordered_set<irs::string_ref> initialized;
 
-  // initialize the identity analyzer pool
-  if (identity
-      && identity->init(IdentityTokenizer::type().name(), irs::string_ref::nil)) {
-    initialized.emplace(identity->name());
+  // register static analyzers (before loading configuration)
+  if (!loadStaticAnalyzers(initialized)) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+      TRI_ERROR_ARANGO_ILLEGAL_STATE,
+      "failure loading IResearch static analyzers"
+    );
   }
 
   // ensure that the configuration collection is present before loading configuration

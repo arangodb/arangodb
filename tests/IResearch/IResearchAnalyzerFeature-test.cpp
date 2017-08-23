@@ -84,6 +84,35 @@ private:
 DEFINE_ANALYZER_TYPE_NAMED(TestAnalyzer, "TestAnalyzer");
 REGISTER_ANALYZER(TestAnalyzer);
 
+struct Analyzer {
+  irs::string_ref type;
+  irs::string_ref properties;
+  irs::flags features;
+
+  Analyzer() = default;
+  Analyzer(irs::string_ref const& t, irs::string_ref const& p, irs::flags const& f = irs::flags::empty_instance()): type(t), properties(p), features(f) {}
+};
+
+std::map<irs::string_ref, Analyzer>const& staticAnalyzers() {
+  static const std::map<irs::string_ref, Analyzer> analyzers = {
+    { "identity", { "identity", irs::string_ref::nil, irs::flags::empty_instance() } },
+    { "identity_sort", { "identity", irs::string_ref::nil, { irs::frequency::type(), irs::norm::type() } } },
+    {"text_de", { "text", "{ \"locale\": \"de\", \"ignored_words\": [ ] }", { irs::norm::type() } } },
+    {"text_en", { "text", "{ \"locale\": \"en\", \"ignored_words\": [ ] }", { irs::norm::type() } } },
+    {"text_es", { "text", "{ \"locale\": \"es\", \"ignored_words\": [ ] }", { irs::norm::type() } } },
+    {"text_fi", { "text", "{ \"locale\": \"fi\", \"ignored_words\": [ ] }", { irs::norm::type() } } },
+    {"text_fr", { "text", "{ \"locale\": \"fr\", \"ignored_words\": [ ] }", { irs::norm::type() } } },
+    {"text_it", { "text", "{ \"locale\": \"it\", \"ignored_words\": [ ] }", { irs::norm::type() } } },
+    {"text_nl", { "text", "{ \"locale\": \"nl\", \"ignored_words\": [ ] }", { irs::norm::type() } } },
+    {"text_no", { "text", "{ \"locale\": \"no\", \"ignored_words\": [ ] }", { irs::norm::type() } } },
+    {"text_pt", { "text", "{ \"locale\": \"pt\", \"ignored_words\": [ ] }", { irs::norm::type() } } },
+    {"text_ru", { "text", "{ \"locale\": \"ru\", \"ignored_words\": [ ] }", { irs::norm::type() } } },
+    {"text_sv", { "text", "{ \"locale\": \"sv\", \"ignored_words\": [ ] }", { irs::norm::type() } } },
+  };
+
+  return analyzers;
+}
+
 NS_END
 
 // -----------------------------------------------------------------------------
@@ -419,11 +448,15 @@ SECTION("test_persistence") {
       trx.commit();
     }
 
-    std::map<irs::string_ref, std::pair<irs::string_ref, irs::string_ref>> expected = {
-      { "identity", { "identity", irs::string_ref::nil } },
-    };
+    std::map<irs::string_ref, std::pair<irs::string_ref, irs::string_ref>> expected = {};
     arangodb::iresearch::IResearchAnalyzerFeature feature(nullptr);
+
     feature.start();
+
+    for (auto& entry: staticAnalyzers()) {
+      feature.erase(entry.first); // remove to simplify test implementation
+    }
+
     feature.visit([&expected](irs::string_ref const& name, irs::string_ref const& type, irs::string_ref const& properties)->bool {
       auto itr = expected.find(name);
       CHECK((itr != expected.end()));
@@ -478,14 +511,19 @@ SECTION("test_persistence") {
     }
 
     std::map<irs::string_ref, std::pair<irs::string_ref, irs::string_ref>> expected = {
-      { "identity", { "identity", irs::string_ref::nil } },
       { "valid0", { "identity", irs::string_ref::nil } },
       { "valid2", { "identity", "abc" } },
       { "valid4", { "identity", "[1,\"abc\"]" } },
       { "valid5", { "identity", "{\"a\":7,\"b\":\"c\"}" } },
     };
     arangodb::iresearch::IResearchAnalyzerFeature feature(nullptr);
+
     feature.start();
+
+    for (auto& entry: staticAnalyzers()) {
+      feature.erase(entry.first); // remove to simplify test implementation
+    }
+
     feature.visit([&expected](irs::string_ref const& name, irs::string_ref const& type, irs::string_ref const& properties)->bool {
       auto itr = expected.find(name);
       CHECK((itr != expected.end()));
@@ -517,11 +555,16 @@ SECTION("test_persistence") {
 
     {
       std::map<irs::string_ref, std::pair<irs::string_ref, irs::string_ref>> expected = {
-        { "identity", { "identity", irs::string_ref::nil } },
         { "valid", { "identity", "abc" } },
       };
       arangodb::iresearch::IResearchAnalyzerFeature feature(nullptr);
+
       feature.start();
+
+      for (auto& entry: staticAnalyzers()) {
+        feature.erase(entry.first); // remove to simplify test implementation
+      }
+
       feature.visit([&expected](irs::string_ref const& name, irs::string_ref const& type, irs::string_ref const& properties)->bool {
         auto itr = expected.find(name);
         CHECK((itr != expected.end()));
@@ -553,12 +596,17 @@ SECTION("test_persistence") {
 
     {
       std::map<irs::string_ref, std::pair<irs::string_ref, irs::string_ref>> expected = {
-        { "identity", { "identity", irs::string_ref::nil } },
         { "valid0", { "identity", irs::string_ref::nil } },
         { "valid1", { "identity", irs::string_ref::nil } },
       };
       arangodb::iresearch::IResearchAnalyzerFeature feature(nullptr);
+
       feature.start();
+
+      for (auto& entry: staticAnalyzers()) {
+        feature.erase(entry.first); // remove to simplify test implementation
+      }
+
       feature.visit([&expected](irs::string_ref const& name, irs::string_ref const& type, irs::string_ref const& properties)->bool {
         auto itr = expected.find(name);
         CHECK((itr != expected.end()));
@@ -574,11 +622,15 @@ SECTION("test_persistence") {
     }
 
     {
-      std::map<irs::string_ref, std::pair<irs::string_ref, irs::string_ref>> expected = {
-        { "identity", { "identity", irs::string_ref::nil } },
-      };
+      std::map<irs::string_ref, std::pair<irs::string_ref, irs::string_ref>> expected = {};
       arangodb::iresearch::IResearchAnalyzerFeature feature(nullptr);
+
       feature.start();
+
+      for (auto& entry: staticAnalyzers()) {
+        feature.erase(entry.first); // remove to simplify test implementation
+      }
+
       feature.visit([&expected](irs::string_ref const& name, irs::string_ref const& type, irs::string_ref const& properties)->bool {
         auto itr = expected.find(name);
         CHECK((itr != expected.end()));
@@ -924,14 +976,14 @@ SECTION("test_start") {
     feature.start();
     CHECK((nullptr == vocbase->lookupCollection("_iresearch_analyzers")));
 
-    std::map<irs::string_ref, std::pair<irs::string_ref, irs::string_ref>> expected = {
-      { "identity", { "identity", irs::string_ref::nil } },
-    };
-    feature.visit([&expected](irs::string_ref const& name, irs::string_ref const& type, irs::string_ref const& properties)->bool {
+    auto expected = staticAnalyzers();
+
+    feature.visit([&expected, &feature](irs::string_ref const& name, irs::string_ref const& type, irs::string_ref const& properties)->bool {
       auto itr = expected.find(name);
       CHECK((itr != expected.end()));
-      CHECK((itr->second.first == type));
-      CHECK((itr->second.second == properties));
+      CHECK((itr->second.type == type));
+      CHECK((itr->second.properties == properties));
+      CHECK((itr->second.features.is_subset_of(feature.get(name)->features())));
       expected.erase(itr);
       return true;
     });
@@ -959,15 +1011,15 @@ SECTION("test_start") {
     feature.start();
     CHECK((nullptr == vocbase->lookupCollection("_iresearch_analyzers")));
 
-    std::map<irs::string_ref, std::pair<irs::string_ref, irs::string_ref>> expected = {
-      { "identity", { "identity", irs::string_ref::nil } },
-      { "test_analyzer", { irs::string_ref::nil, irs::string_ref::nil } },
-    };
-    feature.visit([&expected](irs::string_ref const& name, irs::string_ref const& type, irs::string_ref const& properties)->bool {
+    auto expected = staticAnalyzers();
+
+    expected.emplace(std::piecewise_construct, std::forward_as_tuple("test_analyzer"), std::forward_as_tuple(irs::string_ref::nil, irs::string_ref::nil));
+    feature.visit([&expected, &feature](irs::string_ref const& name, irs::string_ref const& type, irs::string_ref const& properties)->bool {
       auto itr = expected.find(name);
       CHECK((itr != expected.end()));
-      CHECK((itr->second.first == type));
-      CHECK((itr->second.second == properties));
+      CHECK((itr->second.type == type));
+      CHECK((itr->second.properties == properties));
+      CHECK((itr->second.features.is_subset_of(feature.get(name)->features())));
       expected.erase(itr);
       return true;
     });
@@ -999,15 +1051,15 @@ SECTION("test_start") {
     feature.start();
     CHECK((nullptr != vocbase->lookupCollection("_iresearch_analyzers")));
 
-    std::map<irs::string_ref, std::pair<irs::string_ref, irs::string_ref>> expected = {
-      { "identity", { "identity", irs::string_ref::nil } },
-      { "test_analyzer", { "identity", "abc" } },
-    };
-    feature.visit([&expected](irs::string_ref const& name, irs::string_ref const& type, irs::string_ref const& properties)->bool {
+    auto expected = staticAnalyzers();
+
+    expected.emplace(std::piecewise_construct, std::forward_as_tuple("test_analyzer"), std::forward_as_tuple("identity", "abc"));
+    feature.visit([&expected, &feature](irs::string_ref const& name, irs::string_ref const& type, irs::string_ref const& properties)->bool {
       auto itr = expected.find(name);
       CHECK((itr != expected.end()));
-      CHECK((itr->second.first == type));
-      CHECK((itr->second.second == properties));
+      CHECK((itr->second.type == type));
+      CHECK((itr->second.properties == properties));
+      CHECK((itr->second.features.is_subset_of(feature.get(name)->features())));
       expected.erase(itr);
       return true;
     });
@@ -1041,15 +1093,15 @@ SECTION("test_start") {
     feature.start();
     CHECK((nullptr != vocbase->lookupCollection("_iresearch_analyzers")));
 
-    std::map<irs::string_ref, std::pair<irs::string_ref, irs::string_ref>> expected = {
-      { "identity", { "identity", irs::string_ref::nil } },
-      { "test_analyzer", { "identity", "abc" } },
-    };
-    feature.visit([&expected](irs::string_ref const& name, irs::string_ref const& type, irs::string_ref const& properties)->bool {
+    auto expected = staticAnalyzers();
+
+    expected.emplace(std::piecewise_construct, std::forward_as_tuple("test_analyzer"), std::forward_as_tuple("identity", "abc"));
+    feature.visit([&expected, &feature](irs::string_ref const& name, irs::string_ref const& type, irs::string_ref const& properties)->bool {
       auto itr = expected.find(name);
       CHECK((itr != expected.end()));
-      CHECK((itr->second.first == type));
-      CHECK((itr->second.second == properties));
+      CHECK((itr->second.type == type));
+      CHECK((itr->second.properties == properties));
+      CHECK((itr->second.features.is_subset_of(feature.get(name)->features())));
       expected.erase(itr);
       return true;
     });
@@ -1075,14 +1127,14 @@ SECTION("test_start") {
     feature.start();
     CHECK((nullptr != vocbase->lookupCollection("_iresearch_analyzers")));
 
-    std::map<irs::string_ref, std::pair<irs::string_ref, irs::string_ref>> expected = {
-      { "identity", { "identity", irs::string_ref::nil } },
-    };
-    feature.visit([&expected](irs::string_ref const& name, irs::string_ref const& type, irs::string_ref const& properties)->bool {
+    auto expected = staticAnalyzers();
+
+    feature.visit([&expected, &feature](irs::string_ref const& name, irs::string_ref const& type, irs::string_ref const& properties)->bool {
       auto itr = expected.find(name);
       CHECK((itr != expected.end()));
-      CHECK((itr->second.first == type));
-      CHECK((itr->second.second == properties));
+      CHECK((itr->second.type == type));
+      CHECK((itr->second.properties == properties));
+      CHECK((itr->second.features.is_subset_of(feature.get(name)->features())));
       expected.erase(itr);
       return true;
     });
@@ -1110,14 +1162,14 @@ SECTION("test_start") {
     feature.start();
     CHECK((nullptr != vocbase->lookupCollection("_iresearch_analyzers")));
 
-    std::map<irs::string_ref, std::pair<irs::string_ref, irs::string_ref>> expected = {
-      { "identity", { "identity", irs::string_ref::nil } },
-    };
-    feature.visit([&expected](irs::string_ref const& name, irs::string_ref const& type, irs::string_ref const& properties)->bool {
+    auto expected = staticAnalyzers();
+
+    feature.visit([&expected, &feature](irs::string_ref const& name, irs::string_ref const& type, irs::string_ref const& properties)->bool {
       auto itr = expected.find(name);
       CHECK((itr != expected.end()));
-      CHECK((itr->second.first == type));
-      CHECK((itr->second.second == properties));
+      CHECK((itr->second.type == type));
+      CHECK((itr->second.properties == properties));
+      CHECK((itr->second.features.is_subset_of(feature.get(name)->features())));
       expected.erase(itr);
       return true;
     });
@@ -1150,15 +1202,15 @@ SECTION("test_start") {
     feature.start();
     CHECK((nullptr != vocbase->lookupCollection("_iresearch_analyzers")));
 
-    std::map<irs::string_ref, std::pair<irs::string_ref, irs::string_ref>> expected = {
-      { "identity", { "identity", irs::string_ref::nil } },
-      { "test_analyzer", { "identity", "abc" } },
-    };
-    feature.visit([&expected](irs::string_ref const& name, irs::string_ref const& type, irs::string_ref const& properties)->bool {
+    auto expected = staticAnalyzers();
+
+    expected.emplace(std::piecewise_construct, std::forward_as_tuple("test_analyzer"), std::forward_as_tuple("identity", "abc"));
+    feature.visit([&expected, &feature](irs::string_ref const& name, irs::string_ref const& type, irs::string_ref const& properties)->bool {
       auto itr = expected.find(name);
       CHECK((itr != expected.end()));
-      CHECK((itr->second.first == type));
-      CHECK((itr->second.second == properties));
+      CHECK((itr->second.type == type));
+      CHECK((itr->second.properties == properties));
+      CHECK((itr->second.features.is_subset_of(feature.get(name)->features())));
       expected.erase(itr);
       return true;
     });
@@ -1192,15 +1244,15 @@ SECTION("test_start") {
     feature.start();
     CHECK((nullptr != vocbase->lookupCollection("_iresearch_analyzers")));
 
-    std::map<irs::string_ref, std::pair<irs::string_ref, irs::string_ref>> expected = {
-      { "identity", { "identity", irs::string_ref::nil } },
-      { "test_analyzer", { "identity", "abc" } },
-    };
-    feature.visit([&expected](irs::string_ref const& name, irs::string_ref const& type, irs::string_ref const& properties)->bool {
+    auto expected = staticAnalyzers();
+
+    expected.emplace(std::piecewise_construct, std::forward_as_tuple("test_analyzer"), std::forward_as_tuple("identity", "abc"));
+    feature.visit([&expected, &feature](irs::string_ref const& name, irs::string_ref const& type, irs::string_ref const& properties)->bool {
       auto itr = expected.find(name);
       CHECK((itr != expected.end()));
-      CHECK((itr->second.first == type));
-      CHECK((itr->second.second == properties));
+      CHECK((itr->second.type == type));
+      CHECK((itr->second.properties == properties));
+      CHECK((itr->second.features.is_subset_of(feature.get(name)->features())));
       expected.erase(itr);
       return true;
     });
@@ -1349,7 +1401,11 @@ SECTION("test_tokens") {
 SECTION("test_visit") {
   arangodb::iresearch::IResearchAnalyzerFeature feature(nullptr);
   feature.start();
-  feature.erase("identity"); // remove to simplify test implementation
+
+  for (auto& entry: staticAnalyzers()) {
+    feature.erase(entry.first); // remove to simplify test implementation
+  }
+
   feature.emplace("test_analyzer0", "TestAnalyzer", "abc0");
   feature.emplace("test_analyzer1", "TestAnalyzer", "abc1");
   feature.emplace("test_analyzer2", "TestAnalyzer", "abc2");
