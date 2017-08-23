@@ -77,8 +77,8 @@ void RocksDBView::open() {}
 
 void RocksDBView::drop() {
   auto db = rocksutils::globalRocksDB();
-  auto key =
-      RocksDBKey::View(_logicalView->vocbase()->id(), _logicalView->id());
+  RocksDBKey key;
+  key.constructView(_logicalView->vocbase()->id(), _logicalView->id());
 
   rocksdb::WriteOptions options;  // TODO: check which options would make sense
   auto status = rocksutils::convertStatus(
@@ -96,8 +96,8 @@ arangodb::Result RocksDBView::updateProperties(VPackSlice const& slice,
 
 arangodb::Result RocksDBView::persistProperties() {
   auto db = rocksutils::globalRocksDB();
-  auto key =
-      RocksDBKey::View(_logicalView->vocbase()->id(), _logicalView->id());
+  RocksDBKey key;
+  key.constructView(_logicalView->vocbase()->id(), _logicalView->id());
 
   VPackBuilder infoBuilder;
   infoBuilder.openObject();

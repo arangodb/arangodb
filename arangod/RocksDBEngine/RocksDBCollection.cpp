@@ -1373,16 +1373,17 @@ RocksDBOperationResult RocksDBCollection::insertDocument(
   TRI_ASSERT(!ServerState::instance()->isCoordinator());
   TRI_ASSERT(trx->state()->isRunning());
 
-  RocksDBKey key(RocksDBKey::Document(_objectId, revisionId));
+  RocksDBKeyLeaser key(trx);
+  key->constructDocument(_objectId, revisionId);
   RocksDBValue value(RocksDBValue::Document(doc));
 
-  blackListKey(key.string().data(), static_cast<uint32_t>(key.string().size()));
+  blackListKey(key->string().data(), static_cast<uint32_t>(key->string().size()));
 
   RocksDBMethods* mthd = RocksDBTransactionState::toMethods(trx);
-  res = mthd->Put(RocksDBColumnFamily::documents(), key, value.string());
+  res = mthd->Put(RocksDBColumnFamily::documents(), key.ref(), value.string());
   if (!res.ok()) {
     // set keysize that is passed up to the crud operations
-    res.keySize(key.string().size());
+    res.keySize(key->string().size());
     return res;
   }
 
@@ -1432,9 +1433,10 @@ RocksDBOperationResult RocksDBCollection::removeDocument(
   TRI_ASSERT(trx->state()->isRunning());
   TRI_ASSERT(_objectId != 0);
 
-  auto key = RocksDBKey::Document(_objectId, revisionId);
+  RocksDBKeyLeaser key(trx);
+  key->constructDocument(_objectId, revisionId);
 
-  blackListKey(key.string().data(), static_cast<uint32_t>(key.string().size()));
+  blackListKey(key->string().data(), static_cast<uint32_t>(key->string().size()));
 
   // prepare operation which adds log statements is called
   // from the outside. We do not need to DELETE a document from the
@@ -1443,7 +1445,7 @@ RocksDBOperationResult RocksDBCollection::removeDocument(
   // if (!isUpdate) {
   RocksDBMethods* mthd = RocksDBTransactionState::toMethods(trx);
   RocksDBOperationResult res =
-      mthd->Delete(RocksDBColumnFamily::documents(), key);
+      mthd->Delete(RocksDBColumnFamily::documents(), key.ref());
   if (!res.ok()) {
     return res;
   }
@@ -1545,13 +1547,14 @@ arangodb::Result RocksDBCollection::lookupRevisionVPack(
   TRI_ASSERT(trx->state()->isRunning());
   TRI_ASSERT(_objectId != 0);
 
-  auto key = RocksDBKey::Document(_objectId, revisionId);
+  RocksDBKeyLeaser key(trx);
+  key->constructDocument(_objectId, revisionId);
 
   if (withCache && useCache()) {
     TRI_ASSERT(_cache != nullptr);
     // check cache first for fast path
-    auto f = _cache->find(key.string().data(),
-                          static_cast<uint32_t>(key.string().size()));
+    auto f = _cache->find(key->string().data(),
+                          static_cast<uint32_t>(key->string().size()));
     if (f.found()) {
       std::string* value = mdr.prepareStringUsage();
       value->append(reinterpret_cast<char const*>(f.value()->value()),
@@ -1563,13 +1566,13 @@ arangodb::Result RocksDBCollection::lookupRevisionVPack(
 
   RocksDBMethods* mthd = RocksDBTransactionState::toMethods(trx);
   std::string* value = mdr.prepareStringUsage();
-  Result res = mthd->Get(RocksDBColumnFamily::documents(), key, value);
+  Result res = mthd->Get(RocksDBColumnFamily::documents(), key.ref(), value);
   if (res.ok()) {
     if (withCache && useCache()) {
       TRI_ASSERT(_cache != nullptr);
       // write entry back to cache
       auto entry = cache::CachedValue::construct(
-          key.string().data(), static_cast<uint32_t>(key.string().size()),
+          key->string().data(), static_cast<uint32_t>(key->string().size()),
           value->data(), static_cast<uint64_t>(value->size()));
       auto status = _cache->insert(entry);
       if (status.fail()) {
@@ -1594,13 +1597,14 @@ arangodb::Result RocksDBCollection::lookupRevisionVPack(
   TRI_ASSERT(trx->state()->isRunning());
   TRI_ASSERT(_objectId != 0);
 
-  auto key = RocksDBKey::Document(_objectId, revisionId);
+  RocksDBKeyLeaser key(trx);
+  key->constructDocument(_objectId, revisionId);
 
   if (withCache && useCache()) {
     TRI_ASSERT(_cache != nullptr);
     // check cache first for fast path
-    auto f = _cache->find(key.string().data(),
-                          static_cast<uint32_t>(key.string().size()));
+    auto f = _cache->find(key->string().data(),
+                          static_cast<uint32_t>(key->string().size()));
     if (f.found()) {
       cb(RocksDBToken(revisionId), VPackSlice(reinterpret_cast<char const*>(f.value()->value())));
       return {TRI_ERROR_NO_ERROR};
@@ -1610,14 +1614,14 @@ arangodb::Result RocksDBCollection::lookupRevisionVPack(
   std::string value;
   auto state = RocksDBTransactionState::toState(trx);
   RocksDBMethods* mthd = state->rocksdbMethods();
-  Result res = mthd->Get(RocksDBColumnFamily::documents(), key, &value);
+  Result res = mthd->Get(RocksDBColumnFamily::documents(), key.ref(), &value);
   TRI_ASSERT(value.data());
   if (res.ok()) {
     if (withCache && useCache()) {
       TRI_ASSERT(_cache != nullptr);
       // write entry back to cache
       auto entry = cache::CachedValue::construct(
-          key.string().data(), static_cast<uint32_t>(key.string().size()),
+          key->string().data(), static_cast<uint32_t>(key->string().size()),
           value.data(), static_cast<uint64_t>(value.size()));
       auto status = _cache->insert(entry);
       if (status.fail()) {
@@ -1841,7 +1845,8 @@ arangodb::Result RocksDBCollection::serializeIndexEstimates(
         output, static_cast<uint64_t>(tdb->GetLatestSequenceNumber()));
     cindex->serializeEstimate(output);
     if (output.size() > sizeof(uint64_t)) {
-      RocksDBKey key = RocksDBKey::IndexEstimateValue(cindex->objectId());
+      RocksDBKey key;
+      key.constructIndexEstimateValue(cindex->objectId());
       rocksdb::Slice value(output);
       rocksdb::Status s = rtrx->Put(RocksDBColumnFamily::definitions(),
                                     key.string(), value);
@@ -1918,7 +1923,8 @@ arangodb::Result RocksDBCollection::serializeKeyGenerator(
   _logicalCollection->keyGenerator()->toVelocyPack(builder);
   builder.close();
 
-  RocksDBKey key = RocksDBKey::KeyGeneratorValue(_objectId);
+  RocksDBKey key;
+  key.constructKeyGeneratorValue(_objectId);
   RocksDBValue value = RocksDBValue::KeyGeneratorValue(builder.slice());
   rocksdb::Status s = rtrx->Put(RocksDBColumnFamily::definitions(),
                                 key.string(), value.string());
