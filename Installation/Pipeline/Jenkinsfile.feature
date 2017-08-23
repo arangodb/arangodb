@@ -741,7 +741,7 @@ def buildStep(edition, os) {
                     timeout(30) {
                         checkoutCommunity()
                         checkCommitMessages()
-                        if (useEnterprise) {
+                        if (edition == "enterprise") {
                             checkoutEnterprise()
                         }
                         checkoutResilience()
