@@ -238,6 +238,19 @@ function readImportantLogLines (logPath) {
 // / @brief cleans up the database direcory
 // //////////////////////////////////////////////////////////////////////////////
 
+function cleanupLastDirectory (options) {
+  if (options.cleanup) {
+    while (cleanupDirectories.length) {
+      const cleanupDirectory = cleanupDirectories.shift();
+      // Avoid attempting to remove the same directory multiple times
+      if (cleanupDirectories.indexOf(cleanupDirectory) === -1) {
+        fs.removeDirectoryRecursive(cleanupDirectory, true);
+      }
+      break;
+    }
+  }
+}
+
 function cleanupDBDirectories (options) {
   if (options.cleanup) {
     while (cleanupDirectories.length) {
@@ -252,7 +265,7 @@ function cleanupDBDirectories (options) {
 }
 
 function cleanupDBDirectoriesAppend (appendThis) {
-  cleanupDirectories.push(appendThis);
+  cleanupDirectories.unshift(appendThis);
 }
 
 function getCleanupDBDirectories () {
@@ -855,7 +868,7 @@ function shutdownInstance (instanceInfo, options, forceTerminate) {
     });
   }
 
-  cleanupDirectories.push(instanceInfo.rootDir);
+  cleanupDirectories.unshift(instanceInfo.rootDir);
 }
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -1253,6 +1266,7 @@ exports.serverCrashed = serverCrashed;
 
 exports.cleanupDBDirectoriesAppend = cleanupDBDirectoriesAppend;
 exports.cleanupDBDirectories = cleanupDBDirectories;
+exports.cleanupLastDirectory = cleanupLastDirectory;
 exports.getCleanupDBDirectories = getCleanupDBDirectories;
 
 exports.makeAuthorizationHeaders = makeAuthorizationHeaders;

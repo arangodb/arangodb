@@ -440,7 +440,8 @@ function unitTest (cases, options) {
     print('FATAL: "which" is undefined\n');
 
     return {
-      status: false
+      status: false,
+      crashed: false
     };
   }
 
@@ -507,6 +508,10 @@ function unitTest (cases, options) {
     result.failed = failed;
     result.status = status;
     results[currentTest] = result;
+
+    if (status) {
+      pu.cleanupLastDirectory(options);
+    }
   }
 
   results.status = globalStatus;
