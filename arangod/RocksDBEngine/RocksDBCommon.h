@@ -59,15 +59,14 @@ namespace arangodb {
 
 class RocksDBOperationResult : public Result {
 public:
-  RocksDBOperationResult() : Result(), _keySize(0) {}
+  RocksDBOperationResult() 
+      : Result(), _keySize(0) {}
   
-  RocksDBOperationResult(Result const& other) : _keySize(0) {
-    cloneData(other);
-  }
+  RocksDBOperationResult(Result const& other) 
+      : Result(other), _keySize(0) {}
   
-  RocksDBOperationResult(Result&& other) : _keySize(0) {
-    cloneData(std::move(other));
-  }
+  RocksDBOperationResult(Result&& other) noexcept 
+      : Result(std::move(other)), _keySize(0) {}
   
   uint64_t keySize() const { return _keySize; }
   void keySize(uint64_t s) { _keySize = s; }
