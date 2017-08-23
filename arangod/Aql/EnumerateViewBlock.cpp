@@ -44,8 +44,13 @@ EnumerateViewBlock::EnumerateViewBlock(ExecutionEngine* engine,
 {
   TRI_ASSERT(_view != nullptr);
 
-  TRI_ASSERT(en->condition() != nullptr);
-  AstNode* filter = en->condition()->root();
+  // no filter means 'RETURN *'
+  AstNode* filter = nullptr;
+
+  if (en->condition()) {
+    filter = en->condition()->root();
+  }
+
   _iter.reset(_view->iteratorForCondition(transaction(), filter, _outVariable,
                                           en->sortCondition().get()));
   TRI_ASSERT(_iter != nullptr);

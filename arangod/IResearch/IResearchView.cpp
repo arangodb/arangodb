@@ -64,6 +64,11 @@
 NS_LOCAL
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief surrogate root for all queries without a filter
+////////////////////////////////////////////////////////////////////////////////
+arangodb::aql::AstNode ALL(true, arangodb::aql::VALUE_TYPE_BOOL);
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief the storage format used with iResearch writers
 ////////////////////////////////////////////////////////////////////////////////
 const irs::string_ref IRESEARCH_STORE_FORMAT("1_0");
@@ -1836,10 +1841,12 @@ arangodb::ViewIterator* IResearchView::iteratorForCondition(
   }
 
   if (!node) {
-    LOG_TOPIC(WARN, Logger::IRESEARCH) << "no query supplied while querying iResearch view '" << id() << "'";
-
-    return nullptr;
+    // in case if filter is not specified
+    // seet it to surrogate 'RETURN ALL' node
+    node = &ALL;
   }
+
+  TRI_ASSERT(node);
 
   irs::Or filter;
 
@@ -2118,11 +2125,11 @@ arangodb::aql::AstNode* IResearchView::specializeCondition(
 bool IResearchView::supportsFilterCondition(
   arangodb::aql::AstNode const* node,
   arangodb::aql::Variable const* reference,
-  size_t& estimatedItems,
-  double& estimatedCost
+  size_t& /*estimatedItems*/,
+  double& /*estimatedCost*/
 ) const {
   // no way to estimate items/cost before preparing the query
-  return node && FilterFactory::filter(nullptr, *node);
+  return !node || FilterFactory::filter(nullptr, *node);
 }
 
 bool IResearchView::supportsSortCondition(
