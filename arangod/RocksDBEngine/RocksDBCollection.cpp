@@ -165,6 +165,7 @@ void RocksDBCollection::getPropertiesVPack(velocypack::Builder& result) const {
   // objectId might be undefined on the coordinator
   TRI_ASSERT(result.isOpenObject());
   result.add("objectId", VPackValue(std::to_string(_objectId)));
+  result.add("enableCache", VPackValue(_useCache));
   TRI_ASSERT(result.isOpenObject());
 }
 
@@ -183,16 +184,22 @@ int RocksDBCollection::close() {
 }
 
 void RocksDBCollection::load() {
+  if (_useCache) {
+    createCache();
+    TRI_ASSERT(_cachePresent);
+    _cache->sizeHint(0.3 * numberDocuments());
+  }
   READ_LOCKER(guard, _indexesLock);
   for (auto it : _indexes) {
     it->load();
   }
-  if (useCache()) {
-    _cache->sizeHint(0.3 * numberDocuments());
-  }
 }
 
 void RocksDBCollection::unload() {
+  if (useCache()) {
+    disableCache();
+    TRI_ASSERT(!_cachePresent);
+  }
   READ_LOCKER(guard, _indexesLock);
   for (auto it : _indexes) {
     it->unload();

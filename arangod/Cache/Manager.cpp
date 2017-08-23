@@ -535,7 +535,7 @@ bool Manager::rebalance(bool onlyCalculate) {
         std::ceil(weight * static_cast<double>(_globalHighwaterMark)));
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
     if (newDeserved < Manager::minCacheAllocation) {
-      LOG_TOPIC(FATAL, Logger::FIXME)
+      LOG_TOPIC(FATAL, Logger::CACHE)
           << "Deserved limit of " << newDeserved << " from weight " << weight
           << " and highwater " << _globalHighwaterMark
           << ". Should be at least " << Manager::minCacheAllocation;
@@ -547,7 +547,7 @@ bool Manager::rebalance(bool onlyCalculate) {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
     uint64_t fixed = metadata->fixedSize + metadata->tableSize + Manager::cacheRecordOverhead;
     if (newDeserved < fixed) {
-      LOG_TOPIC(ERR, Logger::FIXME) << "Setting deserved cache size " << newDeserved << " below usage: " << fixed
+      LOG_TOPIC(ERR, Logger::CACHE) << "Setting deserved cache size " << newDeserved << " below usage: " << fixed
       << " ; Using weight  " << weight;
     }
 #endif
@@ -742,12 +742,13 @@ std::shared_ptr<Manager::PriorityList> Manager::priorityList() {
   }
 
   double uniformMarginalWeight = 0.2 / static_cast<double>(_caches.size());
-  LOG_TOPIC(ERR, Logger::FIXME) << "uniformMarginalWeight " << uniformMarginalWeight;
   double baseWeight = std::max(minimumWeight, uniformMarginalWeight);
-  LOG_TOPIC(ERR, Logger::FIXME) << "baseWeight " << baseWeight;
+  
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  LOG_TOPIC(DEBUG, Logger::CACHE) << "uniformMarginalWeight " << uniformMarginalWeight;
+  LOG_TOPIC(DEBUG, Logger::CACHE) << "baseWeight " << baseWeight;
   if (1.0 < (baseWeight * static_cast<double>(_caches.size()))) {
-    LOG_TOPIC(FATAL, Logger::FIXME)
+    LOG_TOPIC(FATAL, Logger::CACHE)
     << "weight: " << baseWeight << ", count: " << _caches.size();
     TRI_ASSERT(1.0 >= (baseWeight * static_cast<double>(_caches.size())));
   }
@@ -774,8 +775,6 @@ std::shared_ptr<Manager::PriorityList> Manager::priorityList() {
   totalAccesses = std::max(static_cast<uint64_t>(1), totalAccesses);
 
   double allocFrac = 0.8 * std::min(1.0, static_cast<double>(_globalAllocation) / static_cast<double>(_globalHighwaterMark));
-  LOG_TOPIC(ERR, Logger::FIXME) << "Allocated fraction " <<  allocFrac * 100.0 << "%";
-
   // calculate global data usage
   for (auto it = _caches.begin(); it != _caches.end(); it++) {
     globalUsage += it->second->usage();
@@ -788,7 +787,6 @@ std::shared_ptr<Manager::PriorityList> Manager::priorityList() {
     auto found = accessed.find(cache->id());
     if (found == accessed.end()) {
       double weight = baseWeight + (cache->usage() / globalUsage) * allocFrac;
-      //LOG_TOPIC(ERR, Logger::FIXME) << "Cache (" << ((size_t)it->get()) << ") weight: " << weight;
       list->emplace_back(cache, weight);
     }
   }
@@ -806,8 +804,6 @@ std::shared_ptr<Manager::PriorityList> Manager::priorityList() {
 
       TRI_ASSERT(accessWeight >= 0.0);
       TRI_ASSERT(usageWeight >= 0.0);
-      LOG_TOPIC(ERR, Logger::FIXME) << "Cache (" << ((size_t)cache.get()) << ") accesses "<< s.second
-      << " weight: " << (baseWeight + accessWeight + usageWeight);
       list->emplace_back(cache, (baseWeight + accessWeight + usageWeight));
     }
   }
