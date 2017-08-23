@@ -1845,7 +1845,8 @@ arangodb::Result RocksDBCollection::serializeIndexEstimates(
         output, static_cast<uint64_t>(tdb->GetLatestSequenceNumber()));
     cindex->serializeEstimate(output);
     if (output.size() > sizeof(uint64_t)) {
-      RocksDBKey key = RocksDBKey::IndexEstimateValue(cindex->objectId());
+      RocksDBKey key;
+      key.constructIndexEstimateValue(cindex->objectId());
       rocksdb::Slice value(output);
       rocksdb::Status s = rtrx->Put(RocksDBColumnFamily::definitions(),
                                     key.string(), value);
@@ -1922,7 +1923,8 @@ arangodb::Result RocksDBCollection::serializeKeyGenerator(
   _logicalCollection->keyGenerator()->toVelocyPack(builder);
   builder.close();
 
-  RocksDBKey key = RocksDBKey::KeyGeneratorValue(_objectId);
+  RocksDBKey key;
+  key.constructKeyGeneratorValue(_objectId);
   RocksDBValue value = RocksDBValue::KeyGeneratorValue(builder.slice());
   rocksdb::Status s = rtrx->Put(RocksDBColumnFamily::definitions(),
                                 key.string(), value.string());

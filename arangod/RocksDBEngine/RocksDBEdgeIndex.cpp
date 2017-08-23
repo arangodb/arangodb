@@ -437,7 +437,8 @@ Result RocksDBEdgeIndex::insertInternal(transaction::Methods* trx,
   VPackSlice fromTo = doc.get(_directionAttr);
   TRI_ASSERT(fromTo.isString());
   auto fromToRef = StringRef(fromTo);
-  RocksDBKey key = RocksDBKey::EdgeIndexValue(_objectId, fromToRef, revisionId);
+  RocksDBKeyLeaser key(trx);
+  key->constructEdgeIndexValue(_objectId, fromToRef, revisionId);
   VPackSlice toFrom = _isFromIndex
                           ? transaction::helpers::extractToFromDocument(doc)
                           : transaction::helpers::extractFromFromDocument(doc);
@@ -448,7 +449,7 @@ Result RocksDBEdgeIndex::insertInternal(transaction::Methods* trx,
   blackListKey(fromToRef);
 
   // acquire rocksdb transaction
-  Result r = mthd->Put(_cf, RocksDBKey(rocksdb::Slice(key.string())),
+  Result r = mthd->Put(_cf, key.ref(),
                        value.string(), rocksutils::index);
   if (r.ok()) {
     std::hash<StringRef> hasher;
@@ -468,7 +469,8 @@ Result RocksDBEdgeIndex::removeInternal(transaction::Methods* trx,
   VPackSlice fromTo = doc.get(_directionAttr);
   auto fromToRef = StringRef(fromTo);
   TRI_ASSERT(fromTo.isString());
-  RocksDBKey key = RocksDBKey::EdgeIndexValue(_objectId, fromToRef, revisionId);
+  RocksDBKeyLeaser key(trx);
+  key->constructEdgeIndexValue(_objectId, fromToRef, revisionId);
   VPackSlice toFrom = _isFromIndex
                           ? transaction::helpers::extractToFromDocument(doc)
                           : transaction::helpers::extractFromFromDocument(doc);
@@ -478,7 +480,7 @@ Result RocksDBEdgeIndex::removeInternal(transaction::Methods* trx,
   // blacklist key in cache
   blackListKey(fromToRef);
 
-  Result res = mthd->Delete(_cf, RocksDBKey(rocksdb::Slice(key.string())));
+  Result res = mthd->Delete(_cf, key.ref());
   if (res.ok()) {
     std::hash<StringRef> hasher;
     uint64_t hash = static_cast<uint64_t>(hasher(fromToRef));
@@ -499,11 +501,11 @@ void RocksDBEdgeIndex::batchInsert(
     VPackSlice fromTo = doc.second.get(_directionAttr);
     TRI_ASSERT(fromTo.isString());
     auto fromToRef = StringRef(fromTo);
-    RocksDBKey key =
-        RocksDBKey::EdgeIndexValue(_objectId, fromToRef, doc.first);
+    RocksDBKeyLeaser key(trx);
+    key->constructEdgeIndexValue(_objectId, fromToRef, doc.first);
 
     blackListKey(fromToRef);
-    Result r = mthds->Put(_cf, RocksDBKey(rocksdb::Slice(key.string())),
+    Result r = mthds->Put(_cf, key.ref(),
                           rocksdb::Slice(), rocksutils::index);
     if (!r.ok()) {
       queue->setStatus(r.errorNumber());

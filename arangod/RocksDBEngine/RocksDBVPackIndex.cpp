@@ -308,15 +308,17 @@ int RocksDBVPackIndex::fillElement(VPackBuilder& leased, TRI_voc_rid_t revId,
       // - Key: 7 + 8-byte object ID of index + VPack array with index
       // value(s) + separator (NUL) byte
       // - Value: primary key
-      elements.emplace_back(
-          RocksDBKey::UniqueVPackIndexValue(_objectId, leased.slice()));
+      RocksDBKey key;
+      key.constructUniqueVPackIndexValue(_objectId, leased.slice());
+      elements.emplace_back(std::move(key));
     } else {
       // Non-unique VPack index values are stored as follows:
       // - Key: 6 + 8-byte object ID of index + VPack array with index
       // value(s) + revisionID
       // - Value: empty
-      elements.emplace_back(
-          RocksDBKey::VPackIndexValue(_objectId, leased.slice(), revId));
+      RocksDBKey key;
+      key.constructVPackIndexValue(_objectId, leased.slice(), revId);
+      elements.emplace_back(std::move(key));
       hashes.push_back(leased.slice().normalizedHash());
     }
   } else {
@@ -345,15 +347,17 @@ void RocksDBVPackIndex::addIndexValue(VPackBuilder& leased, TRI_voc_rid_t revId,
     // Unique VPack index values are stored as follows:
     // - Key: 7 + 8-byte object ID of index + VPack array with index value(s)
     // - Value: primary key
-    elements.emplace_back(
-        RocksDBKey::UniqueVPackIndexValue(_objectId, leased.slice()));
+    RocksDBKey key;
+    key.constructUniqueVPackIndexValue(_objectId, leased.slice());
+    elements.emplace_back(std::move(key));
   } else {
     // Non-unique VPack index values are stored as follows:
     // - Key: 6 + 8-byte object ID of index + VPack array with index value(s)
     // + primary key
     // - Value: empty
-    elements.emplace_back(
-        RocksDBKey::VPackIndexValue(_objectId, leased.slice(), revId));
+    RocksDBKey key;
+    key.constructVPackIndexValue(_objectId, leased.slice(), revId);
+    elements.emplace_back(std::move(key));
     hashes.push_back(leased.slice().normalizedHash());
   }
 }
