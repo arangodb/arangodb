@@ -81,7 +81,7 @@ void RocksDBCounterManager::CMValue::serialize(VPackBuilder& b) const {
 /// Constructor needs to be called synchrunously,
 /// will load counts from the db and scan the WAL
 RocksDBCounterManager::RocksDBCounterManager(rocksdb::DB* db)
-    : _syncing(false), _db(db) {
+    : _lastSync(0),_syncing(false), _db(db) {
   readSettings();
   readIndexEstimates();
   readCounterValues();
@@ -221,6 +221,7 @@ Result RocksDBCounterManager::sync(bool force) {
 
   rocksdb::WriteOptions writeOptions;
   rocksdb::TransactionDB* db = rocksutils::globalRocksDB();
+  auto seqNumber = db->GetLatestSequenceNumber();
   std::unique_ptr<rocksdb::Transaction> rtrx(
       db->BeginTransaction(writeOptions));
 
@@ -241,8 +242,9 @@ Result RocksDBCounterManager::sync(bool force) {
                                   key.string(), value);
     if (!s.ok()) {
       rtrx->Rollback();
-      LOG_TOPIC(WARN, Logger::ENGINES) << "writing counters failed";
-      return rocksutils::convertStatus(s);
+      auto rStatus = rocksutils::convertStatus(s);
+      LOG_TOPIC(WARN, Logger::ENGINES) << "writing counters failed: " << rStatus.errorMessage();
+      return rStatus;
     }
   }
 
@@ -251,6 +253,7 @@ Result RocksDBCounterManager::sync(bool force) {
   b.openObject();
   b.add("tick", VPackValue(std::to_string(TRI_CurrentTickServer())));
   b.add("hlc", VPackValue(std::to_string(TRI_HybridLogicalClock())));
+  b.add("lastSync", VPackValue(std::to_string(seqNumber)));
   b.close();
 
   VPackSlice slice = b.slice();
@@ -263,9 +266,10 @@ Result RocksDBCounterManager::sync(bool force) {
                                 key.string(), value);
 
   if (!s.ok()) {
-    LOG_TOPIC(WARN, Logger::ENGINES) << "writing settings failed";
+    auto rStatus = rocksutils::convertStatus(s);
+    LOG_TOPIC(WARN, Logger::ENGINES) << "writing settings failed: " << rStatus.errorMessage();
     rtrx->Rollback();
-    return rocksutils::convertStatus(s);
+    return rStatus;
   }
 
   // Now persist the index estimates and key generators
@@ -304,11 +308,13 @@ Result RocksDBCounterManager::sync(bool force) {
       TRI_ASSERT(rocksCollection != nullptr);
       Result res = rocksCollection->serializeIndexEstimates(rtrx.get());
       if (!res.ok()) {
+        LOG_TOPIC(WARN, Logger::ENGINES) << "writing index estimates failed: " << res.errorMessage();
         return res;
       }
 
       res = rocksCollection->serializeKeyGenerator(rtrx.get());
       if (!res.ok()) {
+        LOG_TOPIC(WARN, Logger::ENGINES) << "writing key generators failed: " << res.errorMessage();
         return res;
       }
     }
@@ -317,6 +323,10 @@ Result RocksDBCounterManager::sync(bool force) {
   // we have to commit all counters in one batch
   s = rtrx->Commit();
   if (s.ok()) {
+    {
+      WRITE_LOCKER(guard, _rwLock);
+      _lastSync = seqNumber;
+    }
     for (std::pair<uint64_t, CMValue> const& pair : copy) {
       _syncedSeqNums[pair.first] = pair.second._sequenceNum;
     }
@@ -352,6 +362,10 @@ void RocksDBCounterManager::readSettings() {
           LOG_TOPIC(TRACE, Logger::ENGINES) << "using last hlc: " << lastHlc;
           TRI_HybridLogicalClock(lastHlc);
         }
+
+        _lastSync = basics::VelocyPackHelper::stringUInt64(slice.get("lastSync"));
+        LOG_TOPIC(TRACE, Logger::ENGINES) << "last background settings sync: "
+                                          << _lastSync;
       } catch (...) {
         LOG_TOPIC(WARN, Logger::ENGINES)
             << "unable to read initial settings: invalid data";
@@ -700,11 +714,8 @@ class WBReader final : public rocksdb::WriteBatch::Handler {
 
 /// earliest safe sequence number to throw away from wal
 rocksdb::SequenceNumber RocksDBCounterManager::earliestSeqNeeded() const {
-  rocksdb::SequenceNumber start = UINT64_MAX;
-  for (auto const& pair : _counters) {
-    start = std::min(start, pair.second._sequenceNum);
-  }
-  return start;
+  READ_LOCKER(guard, _rwLock);
+  return _lastSync;
 }
 
 /// parse the WAL with the above handler parser class
@@ -712,7 +723,7 @@ bool RocksDBCounterManager::parseRocksWAL() {
   WRITE_LOCKER(guard, _rwLock);
   TRI_ASSERT(_counters.size() > 0);
 
-  rocksdb::SequenceNumber start = earliestSeqNeeded();
+  rocksdb::SequenceNumber start = _lastSync;
   // Tell the WriteBatch reader the transaction markers to look for
   auto handler = std::make_unique<WBReader>(&_estimators, &_generators);
 
