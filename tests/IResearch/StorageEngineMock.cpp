@@ -441,7 +441,7 @@ void StorageEngineMock::addAqlFunctions() {
 }
 
 void StorageEngineMock::addOptimizerRules() {
-  TRI_ASSERT(false);
+  // NOOP
 }
 
 void StorageEngineMock::addRestHandlers(arangodb::rest::RestHandlerFactory*) {

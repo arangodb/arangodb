@@ -52,7 +52,7 @@ class PhysicalCollectionMock: public arangodb::PhysicalCollection {
   static std::function<void()> before;
   TRI_idx_iid_t lastId;
   std::string physicalPath;
-  std::vector<std::pair<arangodb::velocypack::Builder, bool>> documents; // std::pair<jSON, valid>
+  std::deque<std::pair<arangodb::velocypack::Builder, bool>> documents; // std::pair<jSON, valid>, deque -> pointers remain valid
 
   PhysicalCollectionMock(arangodb::LogicalCollection* collection, arangodb::velocypack::Slice const& info);
   virtual PhysicalCollection* clone(arangodb::LogicalCollection*) override;
