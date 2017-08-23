@@ -372,7 +372,7 @@ void RocksDBEngine::start() {
                           definitionsCF);                       // 0
   cfFamilies.emplace_back("Documents", fixedPrefCF);            // 1
   cfFamilies.emplace_back("PrimaryIndex", fixedPrefCF);         // 2
-  cfFamilies.emplace_back("EdgeIndex", dynamicPrefCF);         // 3
+  cfFamilies.emplace_back("EdgeIndex", dynamicPrefCF);          // 3
   cfFamilies.emplace_back("VPackIndex", vpackFixedPrefCF);      // 4
   cfFamilies.emplace_back("GeoIndex", fixedPrefCF);             // 5
   cfFamilies.emplace_back("FulltextIndex", fixedPrefCF);        // 6
@@ -1035,9 +1035,7 @@ arangodb::Result RocksDBEngine::dropCollection(
   
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   //check if documents have been deleted
-  rocksdb::ReadOptions readOptions;
-  readOptions.fill_cache = false;
-  size_t numDocs = rocksutils::countKeyRange(rocksutils::globalRocksDB(), readOptions, bounds);
+  size_t numDocs = rocksutils::countKeyRange(rocksutils::globalRocksDB(), bounds, true);
   if (numDocs) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "deletion check in drop collection failed - not all documents have been deleted");
   }
@@ -1200,25 +1198,28 @@ std::pair<TRI_voc_tick_t, TRI_voc_cid_t> RocksDBEngine::mapObjectToCollection(
 
 arangodb::Result RocksDBEngine::syncWal(bool waitForSync,
                                         bool waitForCollector,
-                                        bool writeShutdownFile) {
-#ifdef _WIN32
+                                        bool /*writeShutdownFile*/) {
+  rocksdb::Status status;
+#ifndef _WIN32
   // SyncWAL always reports "not implemented" on Windows
-  return arangodb::Result();
-#else
-  rocksdb::Status status = _db->GetBaseDB()->SyncWAL();
+  status = _db->GetBaseDB()->SyncWAL();
+  
   if (!status.ok()) {
     return rocksutils::convertStatus(status);
   }
+#endif
   if (waitForCollector) {
+    rocksdb::FlushOptions flushOptions;
+    flushOptions.wait = waitForSync;
+
     for (auto cf : RocksDBColumnFamily::_allHandles) {
-      status = _db->GetBaseDB()->Flush(rocksdb::FlushOptions(), cf);
+      status = _db->GetBaseDB()->Flush(flushOptions, cf);
       if (!status.ok()) {
         return rocksutils::convertStatus(status);
       }
     }
   }
   return arangodb::Result();
-#endif
 }
 
 Result RocksDBEngine::createLoggerState(TRI_vocbase_t* vocbase,
@@ -1373,6 +1374,9 @@ Result RocksDBEngine::dropDatabase(TRI_voc_tick_t id) {
         Index::IndexType type = Index::type(it.get("type").copyString());
         bool unique =
             basics::VelocyPackHelper::getBooleanValue(it, "unique", false);
+
+        bool prefix_same_as_start = type != Index::TRI_IDX_TYPE_EDGE_INDEX;
+
         RocksDBKeyBounds bounds =
             RocksDBIndex::getBounds(type, objectId, unique);
 
@@ -1382,9 +1386,7 @@ Result RocksDBEngine::dropDatabase(TRI_voc_tick_t id) {
         }
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
         //check if documents have been deleted
-        rocksdb::ReadOptions readOptions;
-        readOptions.fill_cache = false;
-        size_t numDocs = rocksutils::countKeyRange(rocksutils::globalRocksDB(), readOptions, bounds);
+        size_t numDocs = rocksutils::countKeyRange(rocksutils::globalRocksDB(), bounds, prefix_same_as_start);
         if (numDocs) {
           THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "deletion check in drop collection failed - not all index documents have been deleted");
         }
@@ -1410,9 +1412,7 @@ Result RocksDBEngine::dropDatabase(TRI_voc_tick_t id) {
     
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
     //check if documents have been deleted
-    rocksdb::ReadOptions readOptions;
-    readOptions.fill_cache = false;
-    size_t numDocs = rocksutils::countKeyRange(rocksutils::globalRocksDB(), readOptions, bounds);
+    size_t numDocs = rocksutils::countKeyRange(rocksutils::globalRocksDB(), bounds, true);
     if (numDocs) {
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "deletion check in drop collection failed - not all documents have been deleted");
     }

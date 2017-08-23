@@ -1760,13 +1760,10 @@ uint64_t RocksDBCollection::recalculateCounts() {
     THROW_ARANGO_EXCEPTION(res);
   }
 
-  rocksdb::ReadOptions readOptions;
-  readOptions.fill_cache = false;
-
   // count documents
   auto documentBounds = RocksDBKeyBounds::CollectionDocuments(_objectId);
   _numberDocuments =
-      rocksutils::countKeyRange(globalRocksDB(), readOptions, documentBounds);
+      rocksutils::countKeyRange(globalRocksDB(), documentBounds, true);
 
   // update counter manager value
   res = globalRocksEngine()->counterManager()->setAbsoluteCounter(
