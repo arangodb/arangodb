@@ -1998,7 +1998,6 @@ AqlValue Functions::Sleep(arangodb::aql::Query* query,
 #include "GeneralServer/AuthenticationFeature.h"
 #include "RestServer/FeatureCacheFeature.h"
 #include "V8Server/v8-collection.h"
-#include <iostream>
 
 /// @brief function COLLECTIONS
 AqlValue Functions::Collections(arangodb::aql::Query* query,
