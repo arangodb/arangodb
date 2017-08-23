@@ -147,6 +147,14 @@ std::unique_ptr<rocksdb::Iterator> RocksDBReadOnlyMethods::NewIterator(
 }
 
 // =================== RocksDBTrxMethods ====================
+  
+void RocksDBTrxMethods::DisableIndexing() {
+  _state->_rocksTransaction->DisableIndexing();
+}
+
+void RocksDBTrxMethods::EnableIndexing() {
+  _state->_rocksTransaction->EnableIndexing();
+}
 
 RocksDBTrxMethods::RocksDBTrxMethods(RocksDBTransactionState* state)
     : RocksDBMethods(state) {}
@@ -200,6 +208,27 @@ void RocksDBTrxMethods::SetSavePoint() {
 arangodb::Result RocksDBTrxMethods::RollbackToSavePoint() {
   return rocksutils::convertStatus(
       _state->_rocksTransaction->RollbackToSavePoint());
+}
+
+// =================== RocksDBTrxUntrackedMethods ====================
+
+RocksDBTrxUntrackedMethods::RocksDBTrxUntrackedMethods(RocksDBTransactionState* state)
+    : RocksDBTrxMethods(state) {}
+
+arangodb::Result RocksDBTrxUntrackedMethods::Put(rocksdb::ColumnFamilyHandle* cf,
+                                                 RocksDBKey const& key,
+                                                 rocksdb::Slice const& val,
+                                                 rocksutils::StatusHint hint) {
+  TRI_ASSERT(cf != nullptr);
+  rocksdb::Status s = _state->_rocksTransaction->PutUntracked(cf, key.string(), val);
+  return s.ok() ? arangodb::Result() : rocksutils::convertStatus(s, hint);
+}
+
+arangodb::Result RocksDBTrxUntrackedMethods::Delete(rocksdb::ColumnFamilyHandle* cf,
+                                                    RocksDBKey const& key) {
+  TRI_ASSERT(cf != nullptr);
+  rocksdb::Status s = _state->_rocksTransaction->DeleteUntracked(cf, key.string());
+  return s.ok() ? arangodb::Result() : rocksutils::convertStatus(s);
 }
 
 // =================== RocksDBBatchedMethods ====================

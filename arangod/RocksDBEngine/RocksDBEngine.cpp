@@ -98,6 +98,7 @@ namespace arangodb {
 std::string const RocksDBEngine::EngineName("rocksdb");
 std::string const RocksDBEngine::FeatureName("RocksDBEngine");
 
+// static variables for all existing column families
 rocksdb::ColumnFamilyHandle* RocksDBColumnFamily::_definitions(nullptr);
 rocksdb::ColumnFamilyHandle* RocksDBColumnFamily::_documents(nullptr);
 rocksdb::ColumnFamilyHandle* RocksDBColumnFamily::_primary(nullptr);
