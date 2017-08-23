@@ -603,11 +603,6 @@ def testResilienceStep(os, engine, foxx) {
                             if (os == 'linux' || os == 'mac') {
                                 sh "for i in build resilience/core* tmp; do test -e \"\$i\" && mv \"\$i\" ${arch} || true; done"
                             }
-
-                            archiveArtifacts allowEmptyArchive: true,
-                                             artifacts: "source.zip",
-                                             defaultExcludes: false
-
                             throw exc
                         }
                         finally {
