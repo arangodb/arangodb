@@ -744,7 +744,12 @@ def runOperatingSystems(osList) {
 
 pipeline {
     agent any
-    runOperatingSystems(['linux', 'mac', 'windows'])
+    stages {
+        stage("execute") {
+            runOperatingSystems(['linux', 'mac', 'windows'])
+        }    
+    }
+
     post {
         always {
         }
