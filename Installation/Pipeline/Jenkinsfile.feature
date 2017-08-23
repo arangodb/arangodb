@@ -696,28 +696,26 @@ def buildStep(edition, os) {
         node(buildJenkins[os]) {
             def name = "${edition}-${os}"
 
-            try {
-                stage("build-${name}") {
-                    timeout(30) {
-                        checkoutCommunity()
-                        checkCommitMessages()
-                        if (edition == "enterprise") {
-                            checkoutEnterprise()
-                        }
-                        checkoutResilience()
+            stage("build-${name}") {
+                timeout(30) {
+                    checkoutCommunity()
+                    checkCommitMessages()
+                    if (edition == "enterprise") {
+                        checkoutEnterprise()
                     }
+                    checkoutResilience()
+                }
 
-                    timeout(90) {
-                        buildEdition(edition, os)
-                        stashBinaries(edition, os)
-                    }
+                timeout(90) {
+                    buildEdition(edition, os)
+                    stashBinaries(edition, os)
+                }
 
-                    // we only need one jslint test per edition
-                    if (os == "linux") {
-                        stage("jslint-${edition}") {
-                            echo "Running jslint for ${edition}"
-                            jslint()
-                        }
+                // we only need one jslint test per edition
+                if (os == "linux") {
+                    stage("jslint-${edition}") {
+                        echo "Running jslint for ${edition}"
+                        jslint()
                     }
                 }
             }
