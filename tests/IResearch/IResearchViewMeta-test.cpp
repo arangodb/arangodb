@@ -23,11 +23,15 @@
 
 #include "catch.hpp"
 
+#include "StorageEngineMock.h"
+
 #include "utils/locale_utils.hpp"
 
 #include "IResearch/IResearchViewMeta.h"
+#include "StorageEngine/EngineSelectorFeature.h"
 #include "velocypack/Iterator.h"
 #include "velocypack/Parser.h"
+#include "VocBase/LogicalView.h"
 
 NS_LOCAL
 
@@ -42,7 +46,11 @@ NS_END
 // -----------------------------------------------------------------------------
 
 struct IResearchViewMetaSetup {
+  StorageEngineMock engine;
+
   IResearchViewMetaSetup() {
+    arangodb::EngineSelectorFeature::ENGINE = &engine;
+
 //    auto& scorers = defaultScorers;
 //    auto defaultScorersCollector = [&scorers](
 //      std::string const& name, irs::flags const& features, irs::iql::order_function const& builder, bool isDefault
@@ -59,6 +67,7 @@ struct IResearchViewMetaSetup {
   }
 
   ~IResearchViewMetaSetup() {
+    arangodb::EngineSelectorFeature::ENGINE = nullptr;
     defaultScorers.clear();
   }
 };
@@ -115,6 +124,8 @@ SECTION("test_defaults") {
 }
 
 SECTION("test_inheritDefaults") {
+  auto viewJson = arangodb::velocypack::Parser::fromJson("{ \"id\": 123, \"name\": \"testView\", \"type\": \"testType\" }");
+  arangodb::LogicalView logicalView(nullptr, viewJson->slice());
   arangodb::iresearch::IResearchViewMeta defaults;
   arangodb::iresearch::IResearchViewMeta meta;
   std::string tmpString;
@@ -143,7 +154,7 @@ SECTION("test_inheritDefaults") {
 
   {
     auto json = arangodb::velocypack::Parser::fromJson("{}");
-    CHECK(true == meta.init(json->slice(), tmpString, defaults));
+    CHECK(true == meta.init(json->slice(), tmpString, logicalView, defaults));
     CHECK(1 == meta._collections.size());
     CHECK(42 == *(meta._collections.begin()));
     CHECK(123 == meta._commitBulk._cleanupIntervalStep);
@@ -227,8 +238,10 @@ SECTION("test_readDefaults") {
   std::string tmpString;
 
   {
+    auto viewJson = arangodb::velocypack::Parser::fromJson("{ \"id\": 123, \"name\": \"testView\", \"type\": \"testType\" }");
+    arangodb::LogicalView logicalView(nullptr, viewJson->slice());
     auto json = arangodb::velocypack::Parser::fromJson("{}");
-    CHECK(true == meta.init(json->slice(), tmpString));
+    CHECK(true == meta.init(json->slice(), tmpString, logicalView));
     CHECK(true == meta._collections.empty());
     CHECK(10 == meta._commitBulk._cleanupIntervalStep);
     CHECK(10000 == meta._commitBulk._commitIntervalBatchSize);
@@ -256,7 +269,7 @@ SECTION("test_readDefaults") {
       CHECK(true == (.85f == entry.threshold()));
     }
 
-    CHECK(std::string("") == meta._dataPath);
+    CHECK((std::string("testType-123") == meta._dataPath));
     CHECK(std::string("C") == irs::locale_utils::name(meta._locale));
     CHECK(defaultScorers == meta._scorers);
     CHECK(5 == meta._threadsMaxIdle);
@@ -265,6 +278,8 @@ SECTION("test_readDefaults") {
 }
 
 SECTION("test_readCustomizedValues") {
+  auto viewJson = arangodb::velocypack::Parser::fromJson("{ \"id\": 123, \"name\": \"testView\", \"type\": \"testType\" }");
+  arangodb::LogicalView logicalView(nullptr, viewJson->slice());
   std::unordered_set<TRI_voc_cid_t> expectedCollections = { 42 };
   std::unordered_set<std::string> expectedScorers = { "tfidf" };
   arangodb::iresearch::IResearchViewMeta meta;
@@ -276,154 +291,154 @@ SECTION("test_readCustomizedValues") {
   {
     std::string errorField;
     auto json = arangodb::velocypack::Parser::fromJson("{ \"collections\": \"invalid\" }");
-    CHECK(false == meta.init(json->slice(), errorField));
+    CHECK(false == meta.init(json->slice(), errorField, logicalView));
     CHECK(std::string("collections") == errorField);
   }
 
   {
     std::string errorField;
     auto json = arangodb::velocypack::Parser::fromJson("{ \"commitBulk\": \"invalid\" }");
-    CHECK(false == meta.init(json->slice(), errorField));
+    CHECK(false == meta.init(json->slice(), errorField, logicalView));
     CHECK(std::string("commitBulk") == errorField);
   }
 
   {
     std::string errorField;
     auto json = arangodb::velocypack::Parser::fromJson("{ \"commitBulk\": { \"commitIntervalBatchSize\": 0.5 } }");
-    CHECK(false == meta.init(json->slice(), errorField));
+    CHECK(false == meta.init(json->slice(), errorField, logicalView));
     CHECK(std::string("commitBulk=>commitIntervalBatchSize") == errorField);
   }
 
   {
     std::string errorField;
     auto json = arangodb::velocypack::Parser::fromJson("{ \"commitBulk\": { \"cleanupIntervalStep\": 0.5 } }");
-    CHECK(false == meta.init(json->slice(), errorField));
+    CHECK(false == meta.init(json->slice(), errorField, logicalView));
     CHECK(std::string("commitBulk=>cleanupIntervalStep") == errorField);
   }
 
   {
     std::string errorField;
     auto json = arangodb::velocypack::Parser::fromJson("{ \"commitBulk\": { \"consolidate\": \"invalid\" } }");
-    CHECK(false == meta.init(json->slice(), errorField));
+    CHECK(false == meta.init(json->slice(), errorField, logicalView));
     CHECK(std::string("commitBulk=>consolidate") == errorField);
   }
 
   {
     std::string errorField;
     auto json = arangodb::velocypack::Parser::fromJson("{ \"commitBulk\": { \"consolidate\": { \"invalid\": \"abc\" } } }");
-    CHECK(false == meta.init(json->slice(), errorField));
+    CHECK(false == meta.init(json->slice(), errorField, logicalView));
     CHECK(std::string("commitBulk=>consolidate=>invalid") == errorField);
   }
 
   {
     std::string errorField;
     auto json = arangodb::velocypack::Parser::fromJson("{ \"commitBulk\": { \"consolidate\": { \"invalid\": 0.5 } } }");
-    CHECK(false == meta.init(json->slice(), errorField));
+    CHECK(false == meta.init(json->slice(), errorField, logicalView));
     CHECK(std::string("commitBulk=>consolidate=>invalid") == errorField);
   }
 
   {
     std::string errorField;
     auto json = arangodb::velocypack::Parser::fromJson("{ \"commitBulk\": { \"consolidate\": { \"bytes\": { \"intervalStep\": 0.5, \"threshold\": 1 } } } }");
-    CHECK(false == meta.init(json->slice(), errorField));
+    CHECK(false == meta.init(json->slice(), errorField, logicalView));
     CHECK(std::string("commitBulk=>consolidate=>bytes=>intervalStep") == errorField);
   }
 
   {
     std::string errorField;
     auto json = arangodb::velocypack::Parser::fromJson("{ \"commitBulk\": { \"consolidate\": { \"bytes\": { \"threshold\": -0.5 } } } }");
-    CHECK(false == meta.init(json->slice(), errorField));
+    CHECK(false == meta.init(json->slice(), errorField, logicalView));
     CHECK(std::string("commitBulk=>consolidate=>bytes=>threshold") == errorField);
   }
 
   {
     std::string errorField;
     auto json = arangodb::velocypack::Parser::fromJson("{ \"commitBulk\": { \"consolidate\": { \"bytes\": { \"threshold\": 1.5 } } } }");
-    CHECK(false == meta.init(json->slice(), errorField));
+    CHECK(false == meta.init(json->slice(), errorField, logicalView));
     CHECK(std::string("commitBulk=>consolidate=>bytes=>threshold") == errorField);
   }
 
   {
     std::string errorField;
     auto json = arangodb::velocypack::Parser::fromJson("{ \"commitItem\": \"invalid\" }");
-    CHECK(false == meta.init(json->slice(), errorField));
+    CHECK(false == meta.init(json->slice(), errorField, logicalView));
     CHECK(std::string("commitItem") == errorField);
   }
 
   {
     std::string errorField;
     auto json = arangodb::velocypack::Parser::fromJson("{ \"commitItem\": { \"commitIntervalMsec\": 0.5 } }");
-    CHECK(false == meta.init(json->slice(), errorField));
+    CHECK(false == meta.init(json->slice(), errorField, logicalView));
     CHECK(std::string("commitItem=>commitIntervalMsec") == errorField);
   }
 
   {
     std::string errorField;
     auto json = arangodb::velocypack::Parser::fromJson("{ \"commitItem\": { \"cleanupIntervalStep\": 0.5 } }");
-    CHECK(false == meta.init(json->slice(), errorField));
+    CHECK(false == meta.init(json->slice(), errorField, logicalView));
     CHECK(std::string("commitItem=>cleanupIntervalStep") == errorField);
   }
 
   {
     std::string errorField;
     auto json = arangodb::velocypack::Parser::fromJson("{ \"commitItem\": { \"consolidate\": \"invalid\" } }");
-    CHECK(false == meta.init(json->slice(), errorField));
+    CHECK(false == meta.init(json->slice(), errorField, logicalView));
     CHECK(std::string("commitItem=>consolidate") == errorField);
   }
 
   {
     std::string errorField;
     auto json = arangodb::velocypack::Parser::fromJson("{ \"commitItem\": { \"consolidate\": { \"invalid\": \"abc\" } } }");
-    CHECK(false == meta.init(json->slice(), errorField));
+    CHECK(false == meta.init(json->slice(), errorField, logicalView));
     CHECK(std::string("commitItem=>consolidate=>invalid") == errorField);
   }
 
   {
     std::string errorField;
     auto json = arangodb::velocypack::Parser::fromJson("{ \"commitItem\": { \"consolidate\": { \"invalid\": 0.5 } } }");
-    CHECK(false == meta.init(json->slice(), errorField));
+    CHECK(false == meta.init(json->slice(), errorField, logicalView));
     CHECK(std::string("commitItem=>consolidate=>invalid") == errorField);
   }
 
   {
     std::string errorField;
     auto json = arangodb::velocypack::Parser::fromJson("{ \"commitItem\": { \"consolidate\": { \"bytes\": { \"intervalStep\": 0.5, \"threshold\": 1 } } } }");
-    CHECK(false == meta.init(json->slice(), errorField));
+    CHECK(false == meta.init(json->slice(), errorField, logicalView));
     CHECK(std::string("commitItem=>consolidate=>bytes=>intervalStep") == errorField);
   }
 
   {
     std::string errorField;
     auto json = arangodb::velocypack::Parser::fromJson("{ \"commitItem\": { \"consolidate\": { \"bytes\": { \"threshold\": -0.5 } } } }");
-    CHECK(false == meta.init(json->slice(), errorField));
+    CHECK(false == meta.init(json->slice(), errorField, logicalView));
     CHECK(std::string("commitItem=>consolidate=>bytes=>threshold") == errorField);
   }
 
   {
     std::string errorField;
     auto json = arangodb::velocypack::Parser::fromJson("{ \"commitItem\": { \"consolidate\": { \"bytes\": { \"threshold\": 1.5 } } } }");
-    CHECK(false == meta.init(json->slice(), errorField));
+    CHECK(false == meta.init(json->slice(), errorField, logicalView));
     CHECK(std::string("commitItem=>consolidate=>bytes=>threshold") == errorField);
   }
 
   {
     std::string errorField;
     auto json = arangodb::velocypack::Parser::fromJson("{ \"threadsMaxIdle\": 0.5 }");
-    CHECK(false == meta.init(json->slice(), errorField));
+    CHECK(false == meta.init(json->slice(), errorField, logicalView));
     CHECK(std::string("threadsMaxIdle") == errorField);
   }
 
   {
     std::string errorField;
     auto json = arangodb::velocypack::Parser::fromJson("{ \"threadsMaxTotal\": 0.5 }");
-    CHECK(false == meta.init(json->slice(), errorField));
+    CHECK(false == meta.init(json->slice(), errorField, logicalView));
     CHECK(std::string("threadsMaxTotal") == errorField);
   }
 
   {
     std::string errorField;
     auto json = arangodb::velocypack::Parser::fromJson("{ \"threadsMaxTotal\": 0 }");
-    CHECK(false == meta.init(json->slice(), errorField));
+    CHECK(false == meta.init(json->slice(), errorField, logicalView));
     CHECK(std::string("threadsMaxTotal") == errorField);
   }
 
@@ -438,7 +453,7 @@ SECTION("test_readCustomizedValues") {
       \"commitBulk\": { \"consolidate\": {} }, \
       \"commitItem\": { \"consolidate\": {} } \
     }");
-    CHECK(true == meta.init(json->slice(), errorField));
+    CHECK(true == meta.init(json->slice(), errorField, logicalView));
     CHECK(true == (meta._commitBulk._consolidationPolicies.empty()));
     CHECK(true == (meta._commitItem._consolidationPolicies.empty()));
   }
@@ -450,7 +465,7 @@ SECTION("test_readCustomizedValues") {
       \"commitBulk\": { \"consolidate\": { \"bytes\": { \"intervalStep\": 0, \"threshold\": 0.1 }, \"count\": { \"intervalStep\": 0 } } }, \
       \"commitItem\": { \"consolidate\": { \"bytes_accum\": { \"intervalStep\": 0, \"threshold\": 0.2 }, \"fill\": { \"intervalStep\": 0 } } } \
     }");
-    CHECK(true == meta.init(json->slice(), errorField));
+    CHECK(true == meta.init(json->slice(), errorField, logicalView));
     CHECK(true == (meta._commitBulk._consolidationPolicies.empty()));
     CHECK(true == (meta._commitItem._consolidationPolicies.empty()));
   }
@@ -467,7 +482,7 @@ SECTION("test_readCustomizedValues") {
         \"threadsMaxIdle\": 8, \
         \"threadsMaxTotal\": 16 \
     }");
-  CHECK(true == meta.init(json->slice(), errorField));
+  CHECK(true == meta.init(json->slice(), errorField, logicalView));
   CHECK(1 == meta._collections.size());
 
   for (auto& collection: meta._collections) {
@@ -823,6 +838,8 @@ SECTION("test_writeCustomizedValues") {
 }
 
 SECTION("test_readMaskAll") {
+  auto viewJson = arangodb::velocypack::Parser::fromJson("{ \"id\": 123, \"name\": \"testView\", \"type\": \"testType\" }");
+  arangodb::LogicalView logicalView(nullptr, viewJson->slice());
   arangodb::iresearch::IResearchViewMeta meta;
   arangodb::iresearch::IResearchViewMeta::Mask mask;
   std::string errorField;
@@ -837,7 +854,7 @@ SECTION("test_readMaskAll") {
     \"threadsMaxIdle\": 8, \
     \"threadsMaxTotal\": 16 \
   }");
-  CHECK(true == meta.init(json->slice(), errorField, arangodb::iresearch::IResearchViewMeta::DEFAULT(), &mask));
+  CHECK(true == meta.init(json->slice(), errorField, logicalView, arangodb::iresearch::IResearchViewMeta::DEFAULT(), &mask));
   CHECK(true == mask._collections);
   CHECK(true == mask._commitBulk);
   CHECK(true == mask._commitItem);
@@ -849,12 +866,14 @@ SECTION("test_readMaskAll") {
 }
 
 SECTION("test_readMaskNone") {
+  auto viewJson = arangodb::velocypack::Parser::fromJson("{ \"id\": 123, \"name\": \"testView\", \"type\": \"testType\" }");
+  arangodb::LogicalView logicalView(nullptr, viewJson->slice());
   arangodb::iresearch::IResearchViewMeta meta;
   arangodb::iresearch::IResearchViewMeta::Mask mask;
   std::string errorField;
 
   auto json = arangodb::velocypack::Parser::fromJson("{}");
-  CHECK(true == meta.init(json->slice(), errorField, arangodb::iresearch::IResearchViewMeta::DEFAULT(), &mask));
+  CHECK(true == meta.init(json->slice(), errorField, logicalView, arangodb::iresearch::IResearchViewMeta::DEFAULT(), &mask));
   CHECK(false == mask._collections);
   CHECK(false == mask._commitBulk);
   CHECK(false == mask._commitItem);

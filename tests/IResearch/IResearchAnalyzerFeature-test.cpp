@@ -128,13 +128,13 @@ struct IResearchAnalyzerFeatureSetup {
     arangodb::KeyGenerator::Initialize(); // ensure document keys can be generated/validated correctly
 
     // suppress log messages since tests check error conditions
-    arangodb::LogTopic::setLogLevel(arangodb::Logger::FIXME.name(), arangodb::LogLevel::FATAL);
+    arangodb::LogTopic::setLogLevel(arangodb::Logger::IRESEARCH.name(), arangodb::LogLevel::FATAL);
     irs::logger::output_le(iresearch::logger::IRL_FATAL, stderr);
   }
 
   ~IResearchAnalyzerFeatureSetup() {
     system.reset(); // destroy before reseting the 'ENGINE'
-    arangodb::LogTopic::setLogLevel(arangodb::Logger::FIXME.name(), arangodb::LogLevel::DEFAULT);
+    arangodb::LogTopic::setLogLevel(arangodb::Logger::IRESEARCH.name(), arangodb::LogLevel::DEFAULT);
     arangodb::application_features::ApplicationServer::server = nullptr;
     arangodb::EngineSelectorFeature::ENGINE = nullptr;
 
@@ -1220,6 +1220,7 @@ SECTION("test_tokens") {
       arangodb::application_features::ApplicationServer::server = ptr;
     }
   );
+  arangodb::application_features::ApplicationServer::server = nullptr; // avoid "ApplicationServer initialized twice"
   arangodb::application_features::ApplicationServer server(nullptr, nullptr);
   auto* analyzers = new arangodb::iresearch::IResearchAnalyzerFeature(&server);
   auto* functions = new arangodb::aql::AqlFunctionFeature(&server);

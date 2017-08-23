@@ -646,6 +646,10 @@ bool appendAbsolutePersistedDataPath(
 ) {
   auto& path = meta._dataPath;
 
+  if (path.empty()) {
+    return false; // empty data path should have been set to a default value
+  }
+
   if (TRI_PathIsAbsolute(path)) {
     buf = path;
 
@@ -663,10 +667,7 @@ bool appendAbsolutePersistedDataPath(
   static std::string subPath("databases");
 
   absPath/=subPath;
-  absPath/=(path.empty()
-           ? (arangodb::iresearch::IResearchView::type() + "-" + std::to_string(view.id()))
-           : path
-          );
+  absPath/=path;
   buf = absPath.utf8();
 
   return true;
@@ -1981,7 +1982,7 @@ bool IResearchView::linkRegister(IResearchLink& link) {
   auto& json = info.isNone() ? emptyObjectSlice() : info; // if no 'info' then assume defaults
   std::string error;
 
-  if (!impl._meta.init(json, error)) {
+  if (!view || !impl._meta.init(json, error, *view)) {
     LOG_TOPIC(WARN, Logger::IRESEARCH) << "failed to initialize iResearch view from definition, error: " << error;
 
     return nullptr;
@@ -2290,7 +2291,9 @@ arangodb::Result IResearchView::updateProperties(
       );
     }
 
-    if (!meta.init(slice, error, partialUpdate ? _meta : IResearchViewMeta::DEFAULT(), &mask)) {
+    auto& initialMeta = partialUpdate ? _meta : IResearchViewMeta::DEFAULT();
+
+    if (!meta.init(slice, error, *_logicalView, initialMeta, &mask)) {
       return arangodb::Result(TRI_ERROR_BAD_PARAMETER, std::move(error));
     }
 
