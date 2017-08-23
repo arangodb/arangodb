@@ -209,7 +209,7 @@ class RocksDBCollection final : public PhysicalCollection {
   Result serializeKeyGenerator(rocksdb::Transaction*) const;
   void deserializeKeyGenerator(arangodb::RocksDBCounterManager* mgr);
   
-  inline bool cacheEnabled() const { _cacheEnabled; }
+  inline bool cacheEnabled() const { return _cacheEnabled; }
 
  private:
   /// @brief return engine-specific figures

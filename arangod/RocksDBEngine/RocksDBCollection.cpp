@@ -1904,23 +1904,6 @@ void RocksDBCollection::recalculateIndexEstimates(
   trx.commit();
 }
 
-void RocksDBCollection::createCache() const {
-  if (!_cacheEnabled || _cachePresent ||
-      ServerState::instance()->isCoordinator()) {
-    // we leave this if we do not need the cache
-    // or if cache already created
-    return;
-  }
-
-  TRI_ASSERT(_cacheEnabled);
-  TRI_ASSERT(_cache.get() == nullptr);
-  TRI_ASSERT(CacheManagerFeature::MANAGER != nullptr);
-  _cache = CacheManagerFeature::MANAGER->createCache(
-      cache::CacheType::Transactional);
-  _cachePresent = (_cache.get() != nullptr);
-  TRI_ASSERT(_cacheEnabled);
-}
-
 arangodb::Result RocksDBCollection::serializeKeyGenerator(
     rocksdb::Transaction* rtrx) const {
   VPackBuilder builder;
@@ -1948,6 +1931,23 @@ void RocksDBCollection::deserializeKeyGenerator(RocksDBCounterManager* mgr) {
     std::string k(basics::StringUtils::itoa(value));
     _logicalCollection->keyGenerator()->track(k.data(), k.size());
   }
+}
+
+void RocksDBCollection::createCache() const {
+  if (!_cacheEnabled || _cachePresent ||
+      ServerState::instance()->isCoordinator()) {
+    // we leave this if we do not need the cache
+    // or if cache already created
+    return;
+  }
+  
+  TRI_ASSERT(_cacheEnabled);
+  TRI_ASSERT(_cache.get() == nullptr);
+  TRI_ASSERT(CacheManagerFeature::MANAGER != nullptr);
+  _cache = CacheManagerFeature::MANAGER->createCache(
+                                                     cache::CacheType::Transactional);
+  _cachePresent = (_cache.get() != nullptr);
+  TRI_ASSERT(_cacheEnabled);
 }
 
 void RocksDBCollection::disableCache() const {
