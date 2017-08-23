@@ -521,27 +521,9 @@ function patchManifestFile (servicePath, patchData) {
   fs.writeFileSync(filename, JSON.stringify(manifest, null, 2));
 }
 
-function joinLastPath (tempPath) {
-  var pathParts = tempPath.split(fs.pathSeparator).reverse();
-  var individual = pathParts.shift();
-
-  // we already have a directory which would be shared amongst tasks.
-  // since we don't want that we remove it here.
-  var voidDir = pathParts.slice().reverse().join(fs.pathSeparator);
-  if (fs.isDirectory(voidDir)) {
-    fs.removeDirectoryRecursive(voidDir);
-  }
-
-  var base = pathParts.shift();
-  pathParts.unshift(base + '-' + individual);
-  var rc = pathParts.reverse().join(fs.pathSeparator);
-
-  return rc;
-}
-
 function _prepareService (serviceInfo, options = {}) {
-  const tempServicePath = joinLastPath(fs.getTempFile('services', false));
-  const tempBundlePath = joinLastPath(fs.getTempFile('bundles', false));
+  const tempServicePath = utils.joinLastPath(fs.getTempFile('services', false));
+  const tempBundlePath = utils.joinLastPath(fs.getTempFile('bundles', false));
   try {
     if (isZipBuffer(serviceInfo)) {
       // Buffer (zip)
@@ -791,7 +773,7 @@ function downloadServiceBundleFromRemote (url) {
 }
 
 function extractServiceBundle (archive, targetPath) {
-  const tempFolder = joinLastPath(fs.getTempFile('services', false));
+  const tempFolder = utils.joinLastPath(fs.getTempFile('services', false));
   fs.makeDirectory(tempFolder);
   fs.unzipFile(archive, tempFolder, false, true);
 
