@@ -528,7 +528,9 @@ function joinLastPath (tempPath) {
   // we already have a directory which would be shared amongst tasks.
   // since we don't want that we remove it here.
   var voidDir = pathParts.slice().reverse().join(fs.pathSeparator);
-  fs.removeDirectory(voidDir);
+  if (fs.isDirectory(voidDir)) {
+    fs.removeDirectoryRecursive(voidDir);
+  }
 
   var base = pathParts.shift();
   pathParts.unshift(base + '-' + individual);
