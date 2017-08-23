@@ -1,5 +1,5 @@
-devel
------
+v3.2.2 (2017-08-23)
+-------------------
 
 * fixed issue #2847: adjust the response of the DELETE `/_api/users/database/*` calls
 
@@ -14,7 +14,7 @@ devel
 
 * fixed spurious cluster hangups by always sending AQL-query related requests
   to the correct servers, even after failover or when a follower drops
-    
+
   The problem with the previous shard-based approach was that responsibilities 
   for shards may change from one server to another at runtime, after the query
   was already instanciated. The coordinator and other parts of the query then
@@ -103,6 +103,8 @@ v3.2.1 (2017-08-09)
 * fixed issue #1751: Slow Query API should provide bind parameters, webui should display them
 
 * ui: fixed a bug when moving multiple documents was not possible
+
+* fixed docs for issue #2968: Collection _key autoincrement value increases on error
 
 * AQL CHAR_LENGTH(null) returns now 0. Since AQL TO_STRING(null) is '' (string of length 0)
 
