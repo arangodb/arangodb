@@ -340,18 +340,32 @@ buildJenkins = [
     "windows": "windows"
 ]
 
+buildsSuccess = [:]
+allBuildsSuccessful = true
+
+jslintSuccessful = true
+
 testJenkins = [
     "linux": "linux && tests",
     "mac" : "mac",
     "windows": "windows"
 ]
 
+testsSuccess = [:]
+allTestsSuccessful = true
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                    SCRIPTS JSLINT
 // -----------------------------------------------------------------------------
 
 def jslint() {
-    sh './Installation/Pipeline/test_jslint.sh'
+    try {
+        sh './Installation/Pipeline/test_jslint.sh'
+    }
+    catch (exc) {
+        jslintSuccessful = false
+        throw exc
+    }
 }
 
 // -----------------------------------------------------------------------------
@@ -456,12 +470,24 @@ def testStep(edition, os, mode, engine) {
         node(testJenkins[os]) {
             def buildName = "${edition}-${os}"
 
-            def name = "${edition}-${os}-${mode}-${engine}"
+            if (buildsSuccess[buildName]) {
+                def name = "${edition}-${os}-${mode}-${engine}"
 
-            stage("test-${name}") {
-                timeout(120) {
-                    unstashBinaries(edition, os)
-                    testEdition(edition, os, mode, engine)
+                stage("test-${name}") {
+                    timeout(120) {
+                        try {
+                            unstashBinaries(edition, os)
+                            testEdition(edition, os, mode, engine)
+                            testsSuccess[name] = true
+                        }
+                        catch (exc) {
+                            echo "Exception while testing!"
+                            echo exc.toString()
+                            testsSuccess[name] = false
+                            allTestsSuccessful = false
+                            throw exc
+                        }
+                    }
                 }
             }
         }
@@ -496,6 +522,9 @@ def testStepParallel(editionList, osList, modeList) {
 // -----------------------------------------------------------------------------
 // --SECTION--                                                SCRIPTS RESILIENCE
 // -----------------------------------------------------------------------------
+
+resiliencesSuccess = [:]
+allResiliencesSuccessful = true
 
 def testResilience(os, engine, foxx) {
     withEnv(['LOG_COMMUNICATION=debug', 'LOG_REQUESTS=trace', 'LOG_AGENCY=trace']) {
@@ -585,6 +614,12 @@ def testResilienceStep(os, engine, foxx) {
                             }
                         }
                     }
+                    catch (exc) {
+                        resiliencesSuccess[name] = false
+                        allResiliencesSuccessful = false
+
+                        throw exc
+                    }
                     finally {
                         archiveArtifacts allowEmptyArchive: true,
                                          artifacts: "${arch}/**",
@@ -636,30 +671,23 @@ def buildEdition(edition, os) {
     }
 
     try {
-        try {
-            if (os == 'linux') {
-                sh "./Installation/Pipeline/linux/build_${edition}_${os}.sh 64"
-            }
-            else if (os == 'mac') {
-                sh "./Installation/Pipeline/mac/build_${edition}_${os}.sh 16"
-            }
-            else if (os == 'windows') {
-                powershell ". .\\Installation\\Pipeline\\windows\\build_${edition}_${os}.ps1"
-            }
+        if (os == 'linux') {
+            sh "./Installation/Pipeline/linux/build_${edition}_${os}.sh 64"
         }
-        finally {
-            if (os == 'linux' || os == 'mac') {
-                sh "for i in log-output; do test -e \"\$i\" && mv \"\$i\" ${arch} || true; done"
-            }
-            else if (os == 'windows') {
-                powershell "Move-Item -ErrorAction Ignore -Path log-output/* -Destination ${arch}"
-            }
+        else if (os == 'mac') {
+            sh "./Installation/Pipeline/mac/build_${edition}_${os}.sh 16"
+        }
+        else if (os == 'windows') {
+            powershell ". .\\Installation\\Pipeline\\windows\\build_${edition}_${os}.ps1"
         }
     }
     finally {
-        archiveArtifacts allowEmptyArchive: true,
-                         artifacts: "${arch}/**",
-                         defaultExcludes: false
+        if (os == 'linux' || os == 'mac') {
+            sh "for i in log-output; do test -e \"\$i\" && mv \"\$i\" ${arch} || true; done"
+        }
+        else if (os == 'windows') {
+            powershell "Move-Item -ErrorAction Ignore -Path log-output/* -Destination ${arch}"
+        }
     }
 }
 
@@ -742,16 +770,17 @@ def runOperatingSystems(osList) {
 // --SECTION--                                                          PIPELINE
 // -----------------------------------------------------------------------------
 
-pipeline {
-    agent any
-    stages {
-        stage("execute") {
-            runOperatingSystems(['linux', 'mac', 'windows'])
-        }    
+def runStage(stage) {
+    try {
+        stage()
     }
+    catch (exc) {
+        echo exc.toString()
+    }
+}
 
-    post {
-        always {
-        }
-    }
+try {
+    runStage { runOperatingSystems(['linux', 'mac', 'windows']) }
+} finally {
+    // TODO always publish test results and stuff
 }
