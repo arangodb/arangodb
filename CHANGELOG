@@ -1,6 +1,10 @@
 devel
 -----
 
+* fixed issue #2847: adjust the response of the DELETE `/_api/users/database/*` calls
+
+* fixed issue #3075: Error when upgrading arangoDB on linux ubuntu 16.04 
+
 * fixed a buffer overrun in linenoise console input library for long input strings
 
 * increase size of the linenoise input buffer to 8 KB

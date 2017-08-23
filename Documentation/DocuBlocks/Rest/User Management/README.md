@@ -149,7 +149,7 @@ to the *_system* database in order to execute this REST call.
 
 @RESTRETURNCODES
 
-@RESTRETURNCODE{200}
+@RESTRETURNCODE{202}
 Returned if the access permissions were changed successfully.
 
 @RESTRETURNCODE{400}
@@ -268,7 +268,7 @@ order to execute this REST call.
 
 @RESTRETURNCODES
 
-@RESTRETURNCODE{200}
+@RESTRETURNCODE{202}
 Returned if the access permissions were changed successfully.
 
 @RESTRETURNCODE{400}

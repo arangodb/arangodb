@@ -210,9 +210,3 @@ in a batch part will be ignored.
 
 
 @startDocuBlock JSF_batch_processing
-
-@startDocuBlock JSF_delete_batch_replication
-
-@startDocuBlock JSF_post_batch_replication
-
-@startDocuBlock JSF_put_batch_replication

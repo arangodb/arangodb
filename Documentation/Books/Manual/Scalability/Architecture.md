@@ -248,10 +248,8 @@ same DC/OS cluster. The built-in service discovery makes it extremely
 simple to connect the various microservices and Mesos automatically
 takes care of the distribution and deployment of the various tasks.
 
-As of June 2016, we offer Apache Mesos integration, later there will
-be integration with other cluster management infrastructures. See the
-[Deployment](../Deployment/README.md) chapter and its subsections for
-instructions.
+See the [Deployment](../Deployment/README.md) chapter and its subsections
+for instructions.
 
 It is possible to deploy an ArangoDB cluster by simply launching a bunch of 
 Docker containers with the right command line options to link them up, 
@@ -263,17 +261,3 @@ ArangoDB cluster cannot within itself launch additional instances, replacement
 of failed nodes is not automatic and scaling up and down has to be managed
 manually. This is why we do not recommend this setup for production 
 deployment.
-
-### Authentication
-
-As of version 3.0 ArangoDB authentication is **NOT** supported within a
-cluster. You **HAVE** to properly secure your cluster to the outside.
-Most setups will have a secured data center anyway and ArangoDB will
-be accessed from the outside via an application. To this application
-only the coordinators need to be made available. If you want to isolate
-even further you can install a reverse proxy like haproxy or nginx in
-front of the coordinators (that will also allow easy access from the
-application).
-
-Authentication in the cluster will be added soon after the initial 3.0
-release.
