@@ -116,11 +116,13 @@ struct IResearchLinkMetaSetup {
     analyzers->emplace("empty", "empty", "en"); // cache the 'empty' analyzer
 
     // suppress log messages since tests check error conditions
+    arangodb::LogTopic::setLogLevel(arangodb::Logger::IRESEARCH.name(), arangodb::LogLevel::FATAL);
     irs::logger::output_le(iresearch::logger::IRL_FATAL, stderr);
   }
 
   ~IResearchLinkMetaSetup() {
     system.reset(); // destroy before reseting the 'ENGINE'
+    arangodb::LogTopic::setLogLevel(arangodb::Logger::IRESEARCH.name(), arangodb::LogLevel::DEFAULT);
     arangodb::application_features::ApplicationServer::server = nullptr;
     arangodb::EngineSelectorFeature::ENGINE = nullptr;
 

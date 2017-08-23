@@ -35,6 +35,12 @@
 #include "VocBase/voc-types.h"
 
 NS_BEGIN(arangodb)
+
+class LogicalView; // forward declaration
+
+NS_END // arangodb
+
+NS_BEGIN(arangodb)
 NS_BEGIN(velocypack)
 
 class Builder; // forward declarations
@@ -167,6 +173,7 @@ struct IResearchViewMeta {
   bool init(
     arangodb::velocypack::Slice const& slice,
     std::string& errorField,
+    arangodb::LogicalView const& viewDefaults,
     IResearchViewMeta const& defaults = DEFAULT(),
     Mask* mask = nullptr
   ) noexcept;

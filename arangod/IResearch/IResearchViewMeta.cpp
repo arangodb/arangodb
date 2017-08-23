@@ -29,6 +29,7 @@
 #include "Basics/StringUtils.h"
 #include "velocypack/Builder.h"
 #include "velocypack/Iterator.h"
+#include "VocBase/LogicalView.h"
 
 #include "IResearchViewMeta.h"
 
@@ -590,6 +591,7 @@ bool IResearchViewMeta::operator!=(
 bool IResearchViewMeta::init(
   arangodb::velocypack::Slice const& slice,
   std::string& errorField,
+  arangodb::LogicalView const& viewDefaults,
   IResearchViewMeta const& defaults /*= DEFAULT()*/,
   Mask* mask /*= nullptr*/
 ) noexcept {
@@ -735,6 +737,12 @@ bool IResearchViewMeta::init(
       errorField = fieldName;
 
       return false;
+    }
+
+    // empty data path always means path relative to the ArangoDB data directory
+    // with a constant prefix and a view id suffix
+    if (_dataPath.empty()) {
+      _dataPath = viewDefaults.type() + "-" + std::to_string(viewDefaults.id());
     }
   }
 
