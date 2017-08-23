@@ -94,7 +94,7 @@ Metadata& Metadata::operator=(Metadata const& other) {
 
 bool Metadata::adjustUsageIfAllowed(int64_t usageChange) {
   while (true) {
-    uint64_t expected = usage.load();
+    uint64_t expected = usage.load(std::memory_order_acquire);
     uint64_t desired = (usageChange < 0)
                            ? expected - static_cast<uint64_t>(-usageChange)
                            : expected + static_cast<uint64_t>(usageChange);
@@ -104,7 +104,9 @@ bool Metadata::adjustUsageIfAllowed(int64_t usageChange) {
       return false;
     }
 
-    bool success = usage.compare_exchange_strong(expected, desired);
+    bool success = usage.compare_exchange_weak(expected, desired,
+                                               std::memory_order_acq_rel,
+                                               std::memory_order_relaxed);
     if (success) {
       break;
     }

@@ -59,7 +59,7 @@ bool BucketState::lock(int64_t maxTries, BucketState::CallbackType cb) {
       // try to lock
       bool success = _state.compare_exchange_strong(
           expected, desired,
-          std::memory_order_acquire, std::memory_order_relaxed);
+          std::memory_order_acq_rel, std::memory_order_relaxed);
       if (success) {
         cb();
         return true;

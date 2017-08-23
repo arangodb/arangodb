@@ -96,7 +96,7 @@ void TransactionManager::lock() {
       basics::cpu_relax();
     }
     bool expected = false;
-    if (_lock.compare_exchange_weak(expected, true, std::memory_order_acquire,
+    if (_lock.compare_exchange_weak(expected, true, std::memory_order_acq_rel,
                                     std::memory_order_relaxed)) {
       return;
     }

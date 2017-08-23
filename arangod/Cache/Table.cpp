@@ -227,13 +227,13 @@ bool Table::isEnabled(int64_t maxTries) {
 }
 
 bool Table::slotFilled() {
-  size_t i = _slotsUsed.fetch_add(1, std::memory_order_relaxed);
+  size_t i = _slotsUsed.fetch_add(1, std::memory_order_acq_rel);
   return ((static_cast<double>(i + 1) /
            static_cast<double>(_slotsTotal)) > Table::idealUpperRatio);
 }
 
 bool Table::slotEmptied() {
-  size_t i = _slotsUsed.fetch_sub(1, std::memory_order_relaxed);
+  size_t i = _slotsUsed.fetch_sub(1, std::memory_order_acq_rel);
   return (((static_cast<double>(i - 1) /
             static_cast<double>(_slotsTotal)) < Table::idealLowerRatio) &&
           (_logSize > Table::minLogSize));

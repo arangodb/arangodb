@@ -34,7 +34,7 @@
 namespace arangodb {
 namespace basics {
 
-template <uint64_t stripes = 64>
+template <uint64_t stripes = 64, bool everywhereNonNegative = false>
 struct SharedCounter {
   typedef std::function<uint64_t()> IdFunc;
   static uint64_t DefaultIdFunc() {
@@ -64,34 +64,37 @@ struct SharedCounter {
     return *this;
   }
 
-  void add(int64_t arg, std::memory_order order = std::memory_order_relaxed) {
+  void add(int64_t arg, std::memory_order order = std::memory_order_seq_cst) {
     _data[_id() & _mask].fetch_add(arg, order);
   }
 
-  void sub(int64_t arg, std::memory_order order = std::memory_order_relaxed) {
-    _data[_id() & _mask].fetch_sub(arg, order);
-  }
+  void sub(int64_t arg, std::memory_order order = std::memory_order_seq_cst) {
+    int64_t prev = _data[_id() & _mask].fetch_sub(arg, order);
+    TRI_ASSERT(!everywhereNonNegative || (prev - arg >= 0));
+ }
 
-  int64_t value() const {
+  int64_t value(std::memory_order order = std::memory_order_seq_cst) const {
     int64_t sum = 0;
     for (size_t i = 0; i < stripes; i++) {
-      sum += _data[i].load(std::memory_order_relaxed);
+      sum += _data[i].load(order);
     }
     return sum;
   }
 
-  bool nonEmpty() const {
+  bool nonZero(std::memory_order order = std::memory_order_seq_cst) const {
+    int64_t sum = 0;
     for (size_t i = 0; i < stripes; i++) {
-      if (_data[i].load(std::memory_order_relaxed) != 0) {
+      sum += _data[i].load(order);
+      if (everywhereNonNegative && sum > 0) {
         return true;
       }
     }
-    return false;
+    return (sum != 0);
   }
 
-  void reset() {
+  void reset(std::memory_order order = std::memory_order_seq_cst) {
     for (size_t i = 0; i < stripes; i++) {
-      _data[i].store(0, std::memory_order_relaxed);
+      _data[i].store(0, order);
     }
   }
 
@@ -105,7 +108,9 @@ struct SharedCounter {
       _id = other._id;
       _mask = other._mask;
       for (size_t i = 0; i < stripes; i++) {
-        _data[i] = other._data[i];
+        _data[i].store(
+          other._data[i].load(std::memory_order_acquire),
+          std::memory_order_release);
       }
     }
   }

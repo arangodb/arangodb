@@ -178,9 +178,9 @@ class Cache : public std::enable_shared_from_this<Cache> {
   // manage eviction rate
   basics::SharedCounter<64> _insertsTotal;
   basics::SharedCounter<64> _insertEvictions;
-  static constexpr uint64_t _evictionMask = 1023; // check roughly every 1024 insertions
+  static constexpr uint64_t _evictionMask = 4095; // check roughly every 4096 insertions
   static constexpr double _evictionRateThreshold = 0.01; // if more than 1%
-                                                         // evictions in past 1024
+                                                         // evictions in past 4096
                                                          // inserts, migrate
 
   // times to wait until requesting is allowed again

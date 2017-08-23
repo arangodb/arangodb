@@ -242,8 +242,8 @@ std::pair<double, double> Manager::globalHitRates() {
   double lifetimeRate = std::nan("");
   double windowedRate = std::nan("");
 
-  uint64_t currentHits = _findHits.value();
-  uint64_t currentMisses = _findMisses.value();
+  uint64_t currentHits = _findHits.value(std::memory_order_relaxed);
+  uint64_t currentMisses = _findMisses.value(std::memory_order_relaxed);
   if (currentHits + currentMisses > 0) {
     lifetimeRate = 100.0 * (static_cast<double>(currentHits) /
                             static_cast<double>(currentHits + currentMisses));
@@ -441,14 +441,14 @@ void Manager::reportAccess(uint64_t id) {
 void Manager::reportHitStat(Stat stat) {
   switch (stat) {
     case Stat::findHit: {
-      _findHits.add(1);
+      _findHits.add(1, std::memory_order_relaxed);
       if (_enableWindowedStats && _findStats.get() != nullptr) {
         _findStats->insertRecord(static_cast<uint8_t>(Stat::findHit));
       }
       break;
     }
     case Stat::findMiss: {
-      _findMisses.add(1);
+      _findMisses.add(1, std::memory_order_relaxed);
       if (_enableWindowedStats && _findStats.get() != nullptr) {
         _findStats->insertRecord(static_cast<uint8_t>(Stat::findMiss));
       }
