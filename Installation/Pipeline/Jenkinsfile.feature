@@ -478,14 +478,9 @@ def testStep(edition, os, mode, engine) {
                         try {
                             unstashBinaries(edition, os)
                             testEdition(edition, os, mode, engine)
-                            testsSuccess[name] = true
                         }
-                        catch (exc) {
-                            echo "Exception while testing!"
-                            echo exc.toString()
-                            testsSuccess[name] = false
-                            allTestsSuccessful = false
-                            throw exc
+                        finally {
+                            junit 'out/*.xml'
                         }
                     }
                 }
@@ -511,12 +506,7 @@ def testStepParallel(editionList, osList, modeList) {
         }
     }
 
-    if (branches.size() > 1) {
-        parallel branches
-    }
-    else if (branches.size() == 1) {
-        branches.values()[0]()
-    }
+    parallel branches
 }
 
 // -----------------------------------------------------------------------------
@@ -770,17 +760,4 @@ def runOperatingSystems(osList) {
 // --SECTION--                                                          PIPELINE
 // -----------------------------------------------------------------------------
 
-def runStage(stage) {
-    try {
-        stage()
-    }
-    catch (exc) {
-        echo exc.toString()
-    }
-}
-
-try {
-    runStage { runOperatingSystems(['linux', 'mac', 'windows']) }
-} finally {
-    // TODO always publish test results and stuff
-}
+runOperatingSystems(['linux', 'mac', 'windows'])
