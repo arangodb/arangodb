@@ -69,7 +69,7 @@ to the [naming conventions](../NamingConventions/README.md).
   only shard key by delegating to the individual shards.
 
 <!---
- *enableCache* (optional, default is *false*, **rocksdb-only**): Enable in-memory
+ *cacheEnabled* (optional, default is *false*, **rocksdb-only**): Enable in-memory
  caching for documents. This can potentially speed up point-lookups significantly,
   especially if your collections has a subset of frequently accessed keys.
 -->

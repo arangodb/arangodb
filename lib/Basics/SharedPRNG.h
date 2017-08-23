@@ -37,9 +37,9 @@ struct PaddedPRNG {
   inline uint64_t next() { return _prng.next(); }
 
  private:
-  uint8_t _frontPadding[64];
+  uint8_t _frontPadding[64] __attribute__((unused));
   xoroshiro128plus _prng;
-  uint8_t _backpadding[64 - sizeof(xoroshiro128plus)];
+  uint8_t _backpadding[64 - sizeof(xoroshiro128plus)] __attribute__((unused));
 };
 
 struct SharedPRNG {

@@ -127,7 +127,7 @@ RocksDBPrimaryIndex::RocksDBPrimaryIndex(
                            StaticStrings::KeyString, false)}}),
                    true, false, RocksDBColumnFamily::primary(),
                    basics::VelocyPackHelper::stringUInt64(info, "objectId"),
-                   static_cast<RocksDBCollection*>(collection->getPhysical())->useCache()) {
+                   static_cast<RocksDBCollection*>(collection->getPhysical())->cacheEnabled()) {
   TRI_ASSERT(_cf == RocksDBColumnFamily::primary()); 
   TRI_ASSERT(_objectId != 0);
 }
@@ -135,6 +135,8 @@ RocksDBPrimaryIndex::RocksDBPrimaryIndex(
 RocksDBPrimaryIndex::~RocksDBPrimaryIndex() {}
 
 void RocksDBPrimaryIndex::load() {
+  // allow disabling and enabling of caches for the primary index
+  _cacheEnabled = static_cast<RocksDBCollection*>(_collection->getPhysical())->cacheEnabled();
   RocksDBIndex::load();
   if (useCache()) {
     // FIXME: make the factor configurable

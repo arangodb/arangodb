@@ -209,8 +209,7 @@ class RocksDBCollection final : public PhysicalCollection {
   Result serializeKeyGenerator(rocksdb::Transaction*) const;
   void deserializeKeyGenerator(arangodb::RocksDBCounterManager* mgr);
   
-  /// is this collection using a cache
-  inline bool useCache() const { return (_useCache && _cachePresent); }
+  inline bool cacheEnabled() const { _cacheEnabled; }
 
  private:
   /// @brief return engine-specific figures
@@ -266,6 +265,9 @@ class RocksDBCollection final : public PhysicalCollection {
   void createCache() const;
 
   void disableCache() const;
+  
+  /// is this collection using a cache
+  inline bool useCache() const { return (_cacheEnabled && _cachePresent); }
 
   void blackListKey(char const* data, std::size_t len) const;
 
@@ -286,7 +288,7 @@ class RocksDBCollection final : public PhysicalCollection {
   // we use this boolean for testing whether _cache is set.
   // it's quicker than accessing the shared_ptr each time
   mutable bool _cachePresent;
-  bool _useCache;
+  bool _cacheEnabled;
 };
 
 inline RocksDBCollection* toRocksDBCollection(PhysicalCollection* physical) {

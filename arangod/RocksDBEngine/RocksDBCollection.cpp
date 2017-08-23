@@ -90,9 +90,8 @@ RocksDBCollection::RocksDBCollection(LogicalCollection* collection,
       _primaryIndex(nullptr),
       _cache(nullptr),
       _cachePresent(false),
-      _useCache(!ServerState::instance()->isCoordinator() &&
-                !collection->isSystem() &&
-                basics::VelocyPackHelper::readBooleanValue(info, "enableCache", false)) {
+      _cacheEnabled(!collection->isSystem() &&
+                    basics::VelocyPackHelper::readBooleanValue(info, "cacheEnabled", false)) {
   VPackSlice s = info.get("isVolatile");
   if (s.isBoolean() && s.getBoolean()) {
       THROW_ARANGO_EXCEPTION_MESSAGE(
@@ -101,7 +100,7 @@ RocksDBCollection::RocksDBCollection(LogicalCollection* collection,
   }
   addCollectionMapping(_objectId, _logicalCollection->vocbase()->id(),
                        _logicalCollection->cid());
-  if (_useCache) {
+  if (_cacheEnabled) {
     createCache();
   }
 }
@@ -117,10 +116,10 @@ RocksDBCollection::RocksDBCollection(LogicalCollection* collection,
       _primaryIndex(nullptr),
       _cache(nullptr),
       _cachePresent(false),
-      _useCache(static_cast<RocksDBCollection*>(physical)->_useCache) {
+      _cacheEnabled(static_cast<RocksDBCollection*>(physical)->_cacheEnabled) {
   addCollectionMapping(_objectId, _logicalCollection->vocbase()->id(),
                        _logicalCollection->cid());
-  if (_useCache) {
+  if (_cacheEnabled) {
     createCache();
   }
 }
@@ -128,9 +127,7 @@ RocksDBCollection::RocksDBCollection(LogicalCollection* collection,
 RocksDBCollection::~RocksDBCollection() {
   if (useCache()) {
     try {
-      TRI_ASSERT(_cache != nullptr);
-      TRI_ASSERT(CacheManagerFeature::MANAGER != nullptr);
-      CacheManagerFeature::MANAGER->destroyCache(_cache);
+      disableCache();
     } catch (...) {
     }
   }
@@ -146,8 +143,19 @@ void RocksDBCollection::setPath(std::string const&) {
 
 arangodb::Result RocksDBCollection::updateProperties(VPackSlice const& slice,
                                                      bool doSync) {
-
-  // nothing to do
+  
+  bool b = basics::VelocyPackHelper::readBooleanValue(slice, "cacheEnabled", false);
+  if (!ServerState::instance()->isCoordinator() && !_logicalCollection->isSystem()) {
+    if ((_cacheEnabled = b)) {
+      createCache();
+      primaryIndex()->createCache();
+    } else if (useCache()) {
+      disableCache();
+      primaryIndex()->disableCache();
+    }
+  }
+  
+  // nothing else to do
   return arangodb::Result{};
 }
 
@@ -165,7 +173,7 @@ void RocksDBCollection::getPropertiesVPack(velocypack::Builder& result) const {
   // objectId might be undefined on the coordinator
   TRI_ASSERT(result.isOpenObject());
   result.add("objectId", VPackValue(std::to_string(_objectId)));
-  result.add("enableCache", VPackValue(_useCache));
+  result.add("cacheEnabled", VPackValue(_cacheEnabled));
   TRI_ASSERT(result.isOpenObject());
 }
 
@@ -184,10 +192,11 @@ int RocksDBCollection::close() {
 }
 
 void RocksDBCollection::load() {
-  if (_useCache) {
+  if (_cacheEnabled) {
     createCache();
-    TRI_ASSERT(_cachePresent);
-    _cache->sizeHint(0.3 * numberDocuments());
+    if (_cachePresent) {
+      _cache->sizeHint(0.3 * numberDocuments());
+    }
   }
   READ_LOCKER(guard, _indexesLock);
   for (auto it : _indexes) {
@@ -1346,8 +1355,6 @@ arangodb::Result RocksDBCollection::fillIndexes(
     while (hasMore && numDocsWritten > 0) {
       hasMore = it->next(removeCb, 500);
     }
-    // TODO: if this fails, do we have any recourse?
-    // Simon: Don't think so
     rocksdb::WriteOptions writeOpts;
     db->Write(writeOpts, batch.GetWriteBatch());
   }
@@ -1898,19 +1905,20 @@ void RocksDBCollection::recalculateIndexEstimates(
 }
 
 void RocksDBCollection::createCache() const {
-  if (!_useCache || _cachePresent) {
+  if (!_cacheEnabled || _cachePresent ||
+      ServerState::instance()->isCoordinator()) {
     // we leave this if we do not need the cache
     // or if cache already created
     return;
   }
 
-  TRI_ASSERT(_useCache);
+  TRI_ASSERT(_cacheEnabled);
   TRI_ASSERT(_cache.get() == nullptr);
   TRI_ASSERT(CacheManagerFeature::MANAGER != nullptr);
   _cache = CacheManagerFeature::MANAGER->createCache(
       cache::CacheType::Transactional);
   _cachePresent = (_cache.get() != nullptr);
-  TRI_ASSERT(_useCache);
+  TRI_ASSERT(_cacheEnabled);
 }
 
 arangodb::Result RocksDBCollection::serializeKeyGenerator(
@@ -1948,13 +1956,13 @@ void RocksDBCollection::disableCache() const {
   }
   TRI_ASSERT(CacheManagerFeature::MANAGER != nullptr);
   // must have a cache...
-  TRI_ASSERT(_useCache);
+  TRI_ASSERT(_cacheEnabled);
   TRI_ASSERT(_cachePresent);
   TRI_ASSERT(_cache.get() != nullptr);
   CacheManagerFeature::MANAGER->destroyCache(_cache);
   _cache.reset();
   _cachePresent = false;
-  TRI_ASSERT(_useCache);
+  TRI_ASSERT(_cacheEnabled);
 }
 
 // blacklist given key from transactional cache

@@ -58,9 +58,9 @@ RocksDBIndex::RocksDBIndex(
       _cf(cf),
       _cache(nullptr),
       _cachePresent(false),
-      _useCache(useCache && !collection->isSystem()) {
+      _cacheEnabled(useCache && !collection->isSystem()) {
   TRI_ASSERT(cf != nullptr && cf != RocksDBColumnFamily::definitions());
-  if (_useCache) {
+  if (_cacheEnabled) {
     createCache();
   }
 }
@@ -73,13 +73,13 @@ RocksDBIndex::RocksDBIndex(TRI_idx_iid_t id, LogicalCollection* collection,
       _cf(cf),
       _cache(nullptr),
       _cachePresent(false),
-      _useCache(useCache) {
+      _cacheEnabled(useCache) {
   TRI_ASSERT(cf != nullptr && cf != RocksDBColumnFamily::definitions());
 
   if (_objectId == 0) {
     _objectId = TRI_NewTickServer();
   }
-  if (_useCache) {
+  if (_cacheEnabled) {
     createCache();
   }
 }
@@ -118,7 +118,7 @@ void RocksDBIndex::toVelocyPackFigures(VPackBuilder& builder) const {
 }
 
 void RocksDBIndex::load() {
-  if (_useCache) {
+  if (_cacheEnabled) {
     createCache();
     TRI_ASSERT(_cachePresent);
   }
@@ -144,7 +144,8 @@ void RocksDBIndex::toVelocyPack(VPackBuilder& builder, bool withFigures,
 }
 
 void RocksDBIndex::createCache() {
-  if (!_useCache || _cachePresent) {
+  if (!_cacheEnabled || _cachePresent ||
+      ServerState::instance()->isCoordinator()) {
     // we leave this if we do not need the cache
     // or if cache already created
     return;
@@ -157,7 +158,7 @@ void RocksDBIndex::createCache() {
   _cache = CacheManagerFeature::MANAGER->createCache(
       cache::CacheType::Transactional);
   _cachePresent = (_cache.get() != nullptr);
-  TRI_ASSERT(_useCache);
+  TRI_ASSERT(_cacheEnabled);
 }
 
 void RocksDBIndex::disableCache() {
@@ -166,13 +167,13 @@ void RocksDBIndex::disableCache() {
   }
   TRI_ASSERT(CacheManagerFeature::MANAGER != nullptr);
   // must have a cache...
-  TRI_ASSERT(_useCache);
+  TRI_ASSERT(_cacheEnabled);
   TRI_ASSERT(_cachePresent);
   TRI_ASSERT(_cache.get() != nullptr);
   CacheManagerFeature::MANAGER->destroyCache(_cache);
   _cache.reset();
   _cachePresent = false;
-  TRI_ASSERT(_useCache);
+  TRI_ASSERT(_cacheEnabled);
 }
 
 void RocksDBIndex::serializeEstimate(std::string&) const {
