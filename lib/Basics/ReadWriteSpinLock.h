@@ -55,13 +55,12 @@ struct ReadWriteSpinLock {
         // attempt to get read lock
         bool expected = false;
         bool success = _writer.compare_exchange_weak(expected, true,
-                                                     std::memory_order_acquire,
+                                                     std::memory_order_acq_rel,
                                                      std::memory_order_relaxed);
 
         if (success) {
           // write lock acquired, wait for readers to finish
-          while (attempts < maxTries && _readers.nonEmpty()) {
-            attempts++;
+          while (attempts++ < maxTries && _readers.nonZero(std::memory_order_acquire)) {
             cpu_relax();
           }
           if (attempts >= maxTries) {
@@ -86,12 +85,12 @@ struct ReadWriteSpinLock {
   bool readLock(uint64_t maxTries = UINT64_MAX) {
     uint64_t attempts = 0;
 
-    while (attempts < maxTries) {
+    while (attempts++ < maxTries) {
       if (!_writer.load(std::memory_order_relaxed)) {
-        _readers.add(1, std::memory_order_acquire); // read locked
+        _readers.add(1, std::memory_order_acq_rel); // read locked
 
         // double check writer hasn't stepped in
-        if (_writer.load(std::memory_order_relaxed)) {
+        if (_writer.load(std::memory_order_acquire)) {
           // writer got the lock, go back to waiting
           _readers.sub(1, std::memory_order_release);
         } else {
@@ -100,7 +99,6 @@ struct ReadWriteSpinLock {
         }
       }
 
-      attempts++;
       cpu_relax();
     } // too many attempts
 
@@ -110,14 +108,14 @@ struct ReadWriteSpinLock {
   void readUnlock() { _readers.sub(1, std::memory_order_release); }
 
   bool isLocked() const {
-    return (_readers.nonEmpty() || _writer.load(std::memory_order_relaxed));
+    return (_readers.nonZero() || _writer.load());
   }
 
-  bool isWriteLocked() const { return _writer.load(std::memory_order_relaxed); }
+  bool isWriteLocked() const { return _writer.load(); }
 
  private:
   SharedAtomic<bool> _writer;
-  SharedCounter<stripes> _readers;
+  SharedCounter<stripes, true> _readers;
 };
 
 }  // namespace basics
