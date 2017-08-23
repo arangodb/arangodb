@@ -435,26 +435,32 @@ def testEdition(edition, os, mode, engine) {
 
 def testCheck(edition, os, mode, engine) {
     if (! runTests) {
+        echo "Not testing ${os} ${mode} because testing is not enabled"
         return false
     }
 
     if (os == 'linux' && ! useLinux) {
+        echo "Not testing ${os} ${mode} because testing on ${os} is not enabled"
         return false
     }
 
     if (os == 'mac' && ! useMac) {
+        echo "Not testing ${os} ${mode} because testing on ${os} is not enabled"
         return false
     }
 
     if (os == 'windows' && ! useWindows) {
+        echo "Not testing ${os} ${mode} because testing on ${os} is not enabled"
         return false
     }
 
     if (edition == 'enterprise' && ! useEnterprise) {
+        echo "Not testing ${os} ${mode} ${edition} because testing ${edition} is not enabled"
         return false
     }
 
     if (edition == 'community' && ! useCommunity) {
+        echo "Not testing ${os} ${mode} ${edition} because testing ${edition} is not enabled"
         return false
     }
 
@@ -736,9 +742,10 @@ def buildStep(edition, os) {
                         jslint()
                     }
                 }
+                testStepParallel([edition], [os], ['cluster', 'singleserver'])
             }
         }
-        testStepParallel([edition], [os], ['cluster', 'singleserver'])
+
     }
 }
 
