@@ -46,8 +46,41 @@ static void JS_FlushWal(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
+  bool waitForSync = false;
+  bool waitForCollector = false;
+  bool writeShutdownFile = false;
+
+  if (args.Length() > 0) {
+    if (args[0]->IsObject()) {
+      v8::Handle<v8::Object> obj = args[0]->ToObject();
+      if (obj->Has(TRI_V8_ASCII_STRING("waitForSync"))) {
+        waitForSync =
+            TRI_ObjectToBoolean(obj->Get(TRI_V8_ASCII_STRING("waitForSync")));
+      }
+      if (obj->Has(TRI_V8_ASCII_STRING("waitForCollector"))) {
+        waitForCollector = TRI_ObjectToBoolean(
+            obj->Get(TRI_V8_ASCII_STRING("waitForCollector")));
+      }
+      if (obj->Has(TRI_V8_ASCII_STRING("writeShutdownFile"))) {
+        writeShutdownFile = TRI_ObjectToBoolean(
+            obj->Get(TRI_V8_ASCII_STRING("writeShutdownFile")));
+      }
+    } else {
+      waitForSync = TRI_ObjectToBoolean(args[0]);
+
+      if (args.Length() > 1) {
+        waitForCollector = TRI_ObjectToBoolean(args[1]);
+
+        if (args.Length() > 2) {
+          writeShutdownFile = TRI_ObjectToBoolean(args[2]);
+        }
+      }
+    }
+  }
+
   arangodb::Result ret =
-      static_cast<RocksDBEngine*>(EngineSelectorFeature::ENGINE)->syncWal();
+      static_cast<RocksDBEngine*>(EngineSelectorFeature::ENGINE)->syncWal(
+          waitForSync, waitForCollector, writeShutdownFile);
   if (!ret.ok()) {
     THROW_ARANGO_EXCEPTION_MESSAGE(ret.errorNumber(), ret.errorMessage());
   }

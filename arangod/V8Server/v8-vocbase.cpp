@@ -59,6 +59,7 @@
 #include "Rest/Version.h"
 #include "RestServer/ConsoleThread.h"
 #include "RestServer/DatabaseFeature.h"
+#include "RocksDBEngine/RocksDBEngine.h"
 #include "Statistics/StatisticsFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
@@ -2043,6 +2044,32 @@ void JS_ArangoDBContext(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_END;
 }
 
+/// @brief return a list of all wal files (empty list if not rocksdb)
+static void JS_CurrentWalFiles(v8::FunctionCallbackInfo<v8::Value> const& args) {
+  TRI_V8_TRY_CATCH_BEGIN(isolate);
+  v8::HandleScope scope(isolate);
+
+  std::vector<std::string> names;
+  StorageEngine* engine = EngineSelectorFeature::ENGINE;
+  bool haveRocks = engine->typeName() == RocksDBEngine::EngineName;
+  if (haveRocks) {
+    names = static_cast<RocksDBEngine*>(engine)->currentWalFiles();
+  }
+  std::sort(names.begin(), names.end());
+
+  // already create an array of the correct size
+  v8::Handle<v8::Array> result = v8::Array::New(isolate);
+
+  size_t const n = names.size();
+
+  for (size_t i = 0; i < n; ++i) {
+    result->Set(static_cast<uint32_t>(i), TRI_V8_STD_STRING(names[i]));
+  }
+
+  TRI_V8_RETURN(result);
+  TRI_V8_TRY_CATCH_END
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates a TRI_vocbase_t global context
 ////////////////////////////////////////////////////////////////////////////////
@@ -2094,6 +2121,8 @@ void TRI_InitV8VocBridge(v8::Isolate* isolate, v8::Handle<v8::Context> context,
                        JS_NameDatabase);
   TRI_AddMethodVocbase(isolate, ArangoNS, TRI_V8_ASCII_STRING("_path"),
                        JS_PathDatabase);
+  TRI_AddMethodVocbase(isolate, ArangoNS, TRI_V8_ASCII_STRING("_currentWalFiles"),
+                       JS_CurrentWalFiles);
   TRI_AddMethodVocbase(isolate, ArangoNS, TRI_V8_ASCII_STRING("_versionFilename"),
                        JS_VersionFilenameDatabase, true);
   TRI_AddMethodVocbase(isolate, ArangoNS,
@@ -2263,3 +2292,4 @@ void TRI_InitV8VocBridge(v8::Isolate* isolate, v8::Handle<v8::Context> context,
   context->Global()->ForceSet(TRI_V8_ASCII_STRING("_AQL"),
                               v8::Undefined(isolate), v8::DontEnum);
 }
+

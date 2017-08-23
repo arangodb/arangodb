@@ -3152,6 +3152,7 @@ static void JS_CompletionsVocbase(
   result->Set(j++, TRI_V8_ASCII_STRING("_createEdgeCollection()"));
   result->Set(j++, TRI_V8_ASCII_STRING("_createView()"));
   result->Set(j++, TRI_V8_ASCII_STRING("_createStatement()"));
+  result->Set(j++, TRI_V8_ASCII_STRING("_currentWalFiles()"));
   result->Set(j++, TRI_V8_ASCII_STRING("_document()"));
   result->Set(j++, TRI_V8_ASCII_STRING("_drop()"));
   result->Set(j++, TRI_V8_ASCII_STRING("_dropDatabase()"));
