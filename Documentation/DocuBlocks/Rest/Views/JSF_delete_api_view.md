@@ -37,11 +37,12 @@ Using an identifier:
 @EXAMPLE_ARANGOSH_RUN{RestViewDeleteViewIdentifier}
     var viewName = "testView";
     var viewType = "iresearch";
-    var viewProperties = {};
-    var view = db._createView(viewName, viewType, viewProperties);
+
+    var view = db._createView(viewName, viewType);
     var url = "/_api/view/"+ view._id;
 
     var response = logCurlRequest('DELETE', url);
+    db._viewList[viewName] = undefined;
 
     assert(response.code === 200);
 
@@ -53,12 +54,12 @@ Using a name:
 @EXAMPLE_ARANGOSH_RUN{RestViewDeleteViewName}
     var viewName = "testView";
     var viewType = "iresearch";
-    var viewProperties = {};
-    db._dropView(viewName);
-    var view = db._createView(viewName, viewType, viewProperties);
+
+    var view = db._createView(viewName, viewType);
     var url = "/_api/view/testView";
 
     var response = logCurlRequest('DELETE', url);
+    db._viewList[viewName] = undefined;
 
     assert(response.code === 200);
 
