@@ -340,32 +340,18 @@ buildJenkins = [
     "windows": "windows"
 ]
 
-buildsSuccess = [:]
-allBuildsSuccessful = true
-
-jslintSuccessful = true
-
 testJenkins = [
     "linux": "linux && tests",
     "mac" : "mac",
     "windows": "windows"
 ]
 
-testsSuccess = [:]
-allTestsSuccessful = true
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                    SCRIPTS JSLINT
 // -----------------------------------------------------------------------------
 
 def jslint() {
-    try {
-        sh './Installation/Pipeline/test_jslint.sh'
-    }
-    catch (exc) {
-        jslintSuccessful = false
-        throw exc
-    }
+    sh './Installation/Pipeline/test_jslint.sh'
 }
 
 // -----------------------------------------------------------------------------
@@ -470,24 +456,12 @@ def testStep(edition, os, mode, engine) {
         node(testJenkins[os]) {
             def buildName = "${edition}-${os}"
 
-            if (buildsSuccess[buildName]) {
-                def name = "${edition}-${os}-${mode}-${engine}"
+            def name = "${edition}-${os}-${mode}-${engine}"
 
-                stage("test-${name}") {
-                    timeout(120) {
-                        try {
-                            unstashBinaries(edition, os)
-                            testEdition(edition, os, mode, engine)
-                            testsSuccess[name] = true
-                        }
-                        catch (exc) {
-                            echo "Exception while testing!"
-                            echo exc.toString()
-                            testsSuccess[name] = false
-                            allTestsSuccessful = false
-                            throw exc
-                        }
-                    }
+            stage("test-${name}") {
+                timeout(120) {
+                    unstashBinaries(edition, os)
+                    testEdition(edition, os, mode, engine)
                 }
             }
         }
@@ -522,9 +496,6 @@ def testStepParallel(editionList, osList, modeList) {
 // -----------------------------------------------------------------------------
 // --SECTION--                                                SCRIPTS RESILIENCE
 // -----------------------------------------------------------------------------
-
-resiliencesSuccess = [:]
-allResiliencesSuccessful = true
 
 def testResilience(os, engine, foxx) {
     withEnv(['LOG_COMMUNICATION=debug', 'LOG_REQUESTS=trace', 'LOG_AGENCY=trace']) {
@@ -613,12 +584,6 @@ def testResilienceStep(os, engine, foxx) {
                                 bat "move log-output ${arch}"
                             }
                         }
-                    }
-                    catch (exc) {
-                        resiliencesSuccess[name] = false
-                        allResiliencesSuccessful = false
-
-                        throw exc
                     }
                     finally {
                         archiveArtifacts allowEmptyArchive: true,
@@ -754,14 +719,7 @@ def buildStep(edition, os) {
                             jslint()
                         }
                     }
-
-                    buildsSuccess[name] = true
                 }
-            }
-            catch (exc) {
-                buildsSuccess[name] = false
-                allBuildsSuccessful = false
-                throw exc
             }
         }
         testStepParallel([edition], [os], ['cluster', 'singleserver'])
@@ -786,48 +744,14 @@ def runOperatingSystems(osList) {
 // --SECTION--                                                          PIPELINE
 // -----------------------------------------------------------------------------
 
-def runStage(stage) {
-    try {
-        stage()
+pipeline {
+    ageny any
+    stages {
+        runOperatingSystems(['linux', 'mac', 'windows'])
     }
-    catch (exc) {
-        echo exc.toString()
-    }
-}
 
-runStage { runOperatingSystems(['linux', 'mac', 'windows']) }
-
-stage('result') {
-    node('master') {
-        def result = ""
-
-        if (!jslintSuccessful) {
-            result += "JSLINT failed\n"
-        }
-
-        for (kv in buildsSuccess) {
-            result += "BUILD ${kv.key}: ${kv.value}\n"
-        }
-
-        for (kv in testsSuccess) {
-            result += "TEST ${kv.key}: ${kv.value}\n"
-        }
-
-        for (kv in resiliencesSuccess) {
-            result += "RESILIENCE ${kv.key}: ${kv.value}\n"
-        }
-
-        if (result == "") {
-           result = "All tests passed!"
-        }
-
-        echo result
-
-        if (! (allBuildsSuccessful
-            && allTestsSuccessful
-            && allResiliencesSuccessful
-            && jslintSuccessful)) {
-            error "run failed"
+    post {
+        always {
         }
     }
 }
