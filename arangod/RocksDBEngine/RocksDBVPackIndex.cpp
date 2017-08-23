@@ -81,13 +81,14 @@ static std::vector<arangodb::basics::AttributeName> const KeyAttribute{
 RocksDBVPackUniqueIndexIterator::RocksDBVPackUniqueIndexIterator(
     LogicalCollection* collection, transaction::Methods* trx,
     ManagedDocumentResult* mmdr, arangodb::RocksDBVPackIndex const* index,
-    RocksDBKeyBounds&& bounds)
+    VPackSlice const& indexValues)
     : IndexIterator(collection, trx, mmdr, index),
       _index(index),
       _cmp(index->comparator()),
-      _bounds(std::move(bounds)),
+      _key(trx),
       _done(false) {
   TRI_ASSERT(index->columnFamily() == RocksDBColumnFamily::vpack());
+  _key->constructUniqueVPackIndexValue(index->objectId(), indexValues);
 }
 
 /// @brief Reset the cursor
@@ -109,7 +110,7 @@ bool RocksDBVPackUniqueIndexIterator::next(TokenCallback const& cb, size_t limit
 
   auto value = RocksDBValue::Empty(RocksDBEntryType::PrimaryIndexValue);
   RocksDBMethods* mthds = RocksDBTransactionState::toMethods(_trx);
-  arangodb::Result r = mthds->Get(_index->columnFamily(), _bounds.start(), value.buffer());
+  arangodb::Result r = mthds->Get(_index->columnFamily(), _key.ref(), value.buffer());
 
   if (r.ok()) {
     cb(RocksDBToken(RocksDBValue::revisionId(*value.buffer())));
@@ -669,9 +670,8 @@ IndexIterator* RocksDBVPackIndex::lookup(
   
   if (lastNonEq.isNone() && _unique && searchValues.length() == _fields.size()) {
     leftSearch.close();
-    RocksDBKeyBounds bounds = RocksDBKeyBounds::UniqueVPackIndex(_objectId, leftSearch.slice());
 
-    return new RocksDBVPackUniqueIndexIterator(_collection, trx, mmdr, this, std::move(bounds));
+    return new RocksDBVPackUniqueIndexIterator(_collection, trx, mmdr, this, leftSearch.slice());
   }
   
   VPackSlice leftBorder;

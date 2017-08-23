@@ -59,7 +59,6 @@ class Methods;
 /// @brief Iterator structure for RocksDB unique index. 
 /// This iterator can be used only for equality lookups that use all
 /// index attributes. It uses a point lookup and no seeks
-/// We require a start and stop node, though they should be identical
 class RocksDBVPackUniqueIndexIterator final : public IndexIterator {
  private:
   friend class RocksDBVPackIndex;
@@ -69,7 +68,7 @@ class RocksDBVPackUniqueIndexIterator final : public IndexIterator {
                                   transaction::Methods* trx,
                                   ManagedDocumentResult* mmdr,
                                   arangodb::RocksDBVPackIndex const* index,
-                                  RocksDBKeyBounds&& bounds);
+                                  VPackSlice const& indexValues);
 
   ~RocksDBVPackUniqueIndexIterator() = default;
 
@@ -87,7 +86,7 @@ class RocksDBVPackUniqueIndexIterator final : public IndexIterator {
  private:
   arangodb::RocksDBVPackIndex const* _index;
   rocksdb::Comparator const* _cmp;
-  RocksDBKeyBounds _bounds;
+  RocksDBKeyLeaser _key;
   bool _done;
 };
 
