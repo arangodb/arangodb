@@ -20,7 +20,6 @@ def defaultCommunity = true
 def defaultEnterprise = true
 def defaultRunResilience = false
 def defaultRunTests = false
-def defaultFullParallel = false
 
 properties([
     parameters([
@@ -38,11 +37,6 @@ properties([
             defaultValue: defaultWindows,
             description: 'build and run tests in Windows',
             name: 'Windows'
-        ),
-        booleanParam(
-            defaultValue: defaultFullParallel,
-            description: 'build all os in parallel',
-            name: 'fullParallel'
         ),
         booleanParam(
             defaultValue: defaultCleanBuild,
@@ -74,9 +68,6 @@ properties([
 
 // start with empty build directory
 cleanBuild = params.cleanBuild
-
-// do everything in parallel
-fullParallel = params.fullParallel
 
 // build community
 useCommunity = params.Community
@@ -264,28 +255,18 @@ def checkCommitMessages() {
         runTests = false
     }
     else {
+        useLinux = true
+        useMac = true
+        useWindows = true
+        useCommunity = true
+        useEnterprise = true
+        runResilience = true
+        runTests = true
         if (env.BRANCH_NAME == "devel" || env.BRANCH_NAME == "3.2") {
             echo "build of main branch"
-
-            useLinux = true
-            useMac = true
-            useWindows = true
-            useCommunity = true
-            useEnterprise = true
-            runResilience = true
-            runTests = true
         }
         else if (env.BRANCH_NAME =~ /^PR-/) {
             echo "build of PR"
-
-            useLinux = true
-            useMac = true
-            useWindows = true
-            fullParallel = true
-            useCommunity = true
-            useEnterprise = true
-            runResilience = true
-            runTests = true
 
             restrictions = [
                 "build-community-linux" : true,
@@ -305,14 +286,6 @@ def checkCommitMessages() {
             ]
         }
         else {
-            useLinux = true
-            useMac = true
-            useWindows = true
-            fullParallel = true
-            useCommunity = true
-            useEnterprise = true
-            runResilience = true
-            runTests = true
 
             restrictions = [
                 "build-community-mac" : true,
@@ -336,7 +309,6 @@ Linux: ${useLinux}
 Mac: ${useMac}
 Windows: ${useWindows}
 Clean Build: ${cleanBuild}
-Full Parallel: ${fullParallel}
 Building Community: ${useCommunity}
 Building Enterprise: ${useEnterprise}
 Running Resilience: ${runResilience}
@@ -802,10 +774,7 @@ def buildStep(edition, os) {
                 throw exc
             }
         }
-
-        if (fullParallel) {
-            testStepParallel([edition], [os], ['cluster', 'singleserver'])
-        }
+        testStepParallel([edition], [os], ['cluster', 'singleserver'])
     }
 }
 
@@ -842,21 +811,7 @@ def runStage(stage) {
     }
 }
 
-if (fullParallel) {
-    runStage { buildStepParallel(['linux', 'mac', 'windows']) }
-}
-else {
-    runStage { buildStepParallel(['linux']) }
-    runStage { testStepParallel(['community', 'enterprise'], ['linux'], ['cluster', 'singleserver']) }
-
-    runStage { buildStepParallel(['mac']) }
-    runStage { testStepParallel(['community', 'enterprise'], ['mac'], ['cluster', 'singleserver']) }
-
-    runStage { buildStepParallel(['windows']) }
-    runStage { testStepParallel(['community', 'enterprise'], ['windows'], ['cluster', 'singleserver']) }
-
-    runStage { testResilienceParallel(['linux', 'mac', 'windows']) }
-}
+runStage { buildStepParallel(['linux', 'mac', 'windows']) }
 
 if (buildsSuccess["enterprise-linux"]) {
     jslintStep('enterprise', 'linux')
