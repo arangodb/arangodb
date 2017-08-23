@@ -747,17 +747,17 @@ def buildStep(edition, os) {
                         checkoutResilience()
                     }
 
+                    timeout(90) {
+                        buildEdition(edition, os)
+                        stashBinaries(edition, os)
+                    }
+
                     // we only need one jslint test per edition
                     if (os == "linux") {
                         stage("jslint-${edition}") {
                             echo "Running jslint for ${edition}"
                             jslint()
                         }
-                    }
-
-                    timeout(90) {
-                        buildEdition(edition, os)
-                        stashBinaries(edition, os)
                     }
 
                     buildsSuccess[name] = true
