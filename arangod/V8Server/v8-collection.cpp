@@ -246,7 +246,7 @@ static int V8ToVPackNoKeyRevId (v8::Isolate* isolate,
 /// @brief get all cluster collections
 ////////////////////////////////////////////////////////////////////////////////
 
-static std::vector<LogicalCollection*> GetCollectionsCluster(
+std::vector<LogicalCollection*> GetCollectionsCluster(
     TRI_vocbase_t* vocbase) {
   std::vector<LogicalCollection*> result;
 

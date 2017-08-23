@@ -39,6 +39,9 @@ class LogicalCollection;
 
 void ReleaseCollection(arangodb::LogicalCollection const* collection);
 
+std::vector<arangodb::LogicalCollection*> GetCollectionsCluster(
+    TRI_vocbase_t* vocbase);
+
 ///////////////////////////////////////////////////////////////////////////////
 /// @brief check if a name belongs to a collection
 ////////////////////////////////////////////////////////////////////////////////

@@ -646,8 +646,17 @@ function ahuacatlCollectionCountTestSuite () {
         assertEqual(errors.ERROR_QUERY_ACCESS_AFTER_MODIFICATION.code, err.errorNum);
       }
       assertEqual(1000, c.count());
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test COLLECTIONS()
+////////////////////////////////////////////////////////////////////////////////
+
+    testCollections : function () {
+      assertEqual(db._collections().map((col) => {return {name:col.name(),_id:''+col._id}}), getQueryResults('RETURN NOOPT(COLLECTIONS())')[0]);
+      assertEqual(db._collections().map((col) => {return {name:col.name(),_id:''+col._id}}), getQueryResults('RETURN NOOPT(V8(COLLECTIONS()))')[0]);
     }
-  
+
   };
 }
 
@@ -659,4 +668,3 @@ jsunity.run(ahuacatlMiscFunctionsTestSuite);
 jsunity.run(ahuacatlCollectionCountTestSuite);
 
 return jsunity.done();
-
