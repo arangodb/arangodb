@@ -368,19 +368,6 @@ def jslint() {
     }
 }
 
-def jslintStep(edition, os) {
-    return {
-        node(os) {
-            stage("jslint-${edition}-${os}") {
-                echo "Running jslint test"
-
-                unstashBinaries(edition, os)
-                jslint()
-            }
-        }
-    }
-}
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                     SCRIPTS TESTS
 // -----------------------------------------------------------------------------
@@ -760,6 +747,14 @@ def buildStep(edition, os) {
                         checkoutResilience()
                     }
 
+                    // we only need one jslint test per edition
+                    if (os == "linux") {
+                        stage("jslint-${edition}") {
+                            echo "Running jslint for ${edition}"
+                            jslint()
+                        }
+                    }
+
                     timeout(90) {
                         buildEdition(edition, os)
                         stashBinaries(edition, os)
@@ -778,7 +773,7 @@ def buildStep(edition, os) {
     }
 }
 
-def buildStepParallel(osList) {
+def runOperatingSystems(osList) {
     def branches = [:]
     def full = false
 
@@ -789,13 +784,7 @@ def buildStepParallel(osList) {
             }
         }
     }
-
-    if (branches.size() > 1) {
-        parallel branches
-    }
-    else if (branches.size() == 1) {
-        branches.values()[0]()
-    }
+    parallel branches
 }
 
 // -----------------------------------------------------------------------------
@@ -811,20 +800,7 @@ def runStage(stage) {
     }
 }
 
-runStage { buildStepParallel(['linux', 'mac', 'windows']) }
-
-if (buildsSuccess["enterprise-linux"]) {
-    jslintStep('enterprise', 'linux')
-}
-else if (buildsSuccess["community-linux"]) {
-    jslintStep('community', 'linux')
-}
-else if (buildsSuccess["enterprise-mac"]) {
-    jslintStep('enterprise', 'mac')
-}
-else if (buildsSuccess["community-mac"]) {
-    jslintStep('community', 'mac')
-}
+runStage { runOperatingSystems(['linux', 'mac', 'windows']) }
 
 stage('result') {
     node('master') {
