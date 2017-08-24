@@ -410,11 +410,7 @@ def testEdition(edition, os, mode, engine) {
     }
     finally {
         archiveArtifacts allowEmptyArchive: true,
-                         artifacts: "${arch}/**",
-                         defaultExcludes: false
-
-        archiveArtifacts allowEmptyArchive: true,
-                         artifacts: "FAILED_*",
+                         artifacts: "${arch}/**, FAILED_*",
                          defaultExcludes: false
     }
 }
