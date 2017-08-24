@@ -50,7 +50,7 @@ struct RocksDBColumnFamily {
 
   static rocksdb::ColumnFamilyHandle* edge() { return _edge; }
 
-  /// non unique vpack indexes (skiplist, permanent indexes)
+  /// unique and non-unique vpack indexes (skiplist, permanent indexes)
   static rocksdb::ColumnFamilyHandle* vpack() { return _vpack; }
 
   static rocksdb::ColumnFamilyHandle* geo() { return _geo; }

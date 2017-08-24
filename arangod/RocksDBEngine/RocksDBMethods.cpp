@@ -66,6 +66,13 @@ void RocksDBSavePoint::rollback() {
 
 // =================== RocksDBMethods ===================
 
+arangodb::Result RocksDBMethods::Get(rocksdb::ColumnFamilyHandle* cf,
+                                     RocksDBKey const& key,
+                                     std::string* val) {
+  std::string const& keyString = key.string();
+  return Get(cf, rocksdb::Slice(keyString), val);
+}
+
 rocksdb::ReadOptions const& RocksDBMethods::readOptions() {
   return _state->_rocksReadOptions;
 }
@@ -119,12 +126,12 @@ bool RocksDBReadOnlyMethods::Exists(rocksdb::ColumnFamilyHandle* cf,
 }
 
 arangodb::Result RocksDBReadOnlyMethods::Get(rocksdb::ColumnFamilyHandle* cf,
-                                             RocksDBKey const& key,
+                                             rocksdb::Slice const& key,
                                              std::string* val) {
   TRI_ASSERT(cf != nullptr);
   rocksdb::ReadOptions const& ro = _state->_rocksReadOptions;
   TRI_ASSERT(ro.snapshot != nullptr);
-  rocksdb::Status s = _db->Get(ro, cf, key.string(), val);
+  rocksdb::Status s = _db->Get(ro, cf, key, val);
   return s.ok() ? arangodb::Result() : rocksutils::convertStatus(s);
 }
 
@@ -161,12 +168,12 @@ bool RocksDBTrxMethods::Exists(rocksdb::ColumnFamilyHandle* cf,
 }
 
 arangodb::Result RocksDBTrxMethods::Get(rocksdb::ColumnFamilyHandle* cf,
-                                        RocksDBKey const& key,
+                                        rocksdb::Slice const& key,
                                         std::string* val) {
   TRI_ASSERT(cf != nullptr);
   rocksdb::ReadOptions const& ro = _state->_rocksReadOptions;
   TRI_ASSERT(ro.snapshot != nullptr);
-  rocksdb::Status s = _state->_rocksTransaction->Get(ro, cf, key.string(), val);
+  rocksdb::Status s = _state->_rocksTransaction->Get(ro, cf, key, val);
   return s.ok() ? arangodb::Result() : rocksutils::convertStatus(s);
 }
 
@@ -220,11 +227,11 @@ bool RocksDBBatchedMethods::Exists(rocksdb::ColumnFamilyHandle* cf,
 }
 
 arangodb::Result RocksDBBatchedMethods::Get(rocksdb::ColumnFamilyHandle* cf,
-                                            RocksDBKey const& key,
+                                            rocksdb::Slice const& key,
                                             std::string* val) {
   TRI_ASSERT(cf != nullptr);
   rocksdb::ReadOptions ro;
-  rocksdb::Status s = _wb->GetFromBatchAndDB(_db, ro, cf, key.string(), val);
+  rocksdb::Status s = _wb->GetFromBatchAndDB(_db, ro, cf, key, val);
   return s.ok() ? arangodb::Result() : rocksutils::convertStatus(s);
 }
 
