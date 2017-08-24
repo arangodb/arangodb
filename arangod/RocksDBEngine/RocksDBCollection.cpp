@@ -1555,17 +1555,6 @@ RocksDBOperationResult RocksDBCollection::updateDocument(
   return res;
 }
 
-Result RocksDBCollection::lookupDocumentToken(transaction::Methods* trx,
-                                              arangodb::StringRef key,
-                                              RocksDBToken& outToken) const {
-  TRI_ASSERT(_objectId != 0);
-
-  outToken = primaryIndex()->lookupKey(trx, key);
-  return outToken.revisionId() > 0
-             ? Result()
-             : Result(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND);
-}
-
 arangodb::Result RocksDBCollection::lookupRevisionVPack(
     TRI_voc_rid_t revisionId, transaction::Methods* trx,
     arangodb::ManagedDocumentResult& mdr, bool withCache) const {
@@ -1585,15 +1574,11 @@ arangodb::Result RocksDBCollection::lookupRevisionVPack(
       value->append(reinterpret_cast<char const*>(f.value()->value()),
                     static_cast<size_t>(f.value()->valueSize));
       mdr.setManagedAfterStringUsage(revisionId);
-<<<<<<< HEAD
-      return {TRI_ERROR_NO_ERROR};
+      return TRI_ERROR_NO_ERROR;
     } else if (f.result().errorNumber() == TRI_ERROR_LOCK_TIMEOUT) {
       // assuming someone is currently holding a write lock, which
       // is why we cannot access the TransactionalBucket.
       lockTimeout = true; // we skip the insert in this case
-=======
-      return Result();
->>>>>>> 3f0026d0160af354b3a9621a89e2fb82197c25f8
     }
   }
 
