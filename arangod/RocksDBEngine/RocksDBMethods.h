@@ -67,6 +67,12 @@ class RocksDBMethods {
 
   rocksdb::ReadOptions const& readOptions();
 
+  // the default implementation is to do nothing
+  virtual void DisableIndexing() {}
+  
+  // the default implementation is to do nothing
+  virtual void EnableIndexing() {}
+
   virtual bool Exists(rocksdb::ColumnFamilyHandle*, RocksDBKey const&) = 0;
   virtual arangodb::Result Get(rocksdb::ColumnFamilyHandle*, rocksdb::Slice const&,
                                std::string*) = 0;
@@ -125,10 +131,14 @@ class RocksDBReadOnlyMethods final : public RocksDBMethods {
   rocksdb::TransactionDB* _db;
 };
 
-/// transactio wrapper, uses the current rocksdb transaction
-class RocksDBTrxMethods final : public RocksDBMethods {
+/// transaction wrapper, uses the current rocksdb transaction
+class RocksDBTrxMethods : public RocksDBMethods {
  public:
   explicit RocksDBTrxMethods(RocksDBTransactionState* state);
+  
+  void DisableIndexing() override;
+  
+  void EnableIndexing() override;
 
   bool Exists(rocksdb::ColumnFamilyHandle*, RocksDBKey const&) override;
   arangodb::Result Get(rocksdb::ColumnFamilyHandle*, rocksdb::Slice const& key,
@@ -146,6 +156,19 @@ class RocksDBTrxMethods final : public RocksDBMethods {
 
   void SetSavePoint() override;
   arangodb::Result RollbackToSavePoint() override;
+};
+
+/// transaction wrapper, uses the current rocksdb transaction and non-tracking methods
+class RocksDBTrxUntrackedMethods final : public RocksDBTrxMethods {
+ public:
+  explicit RocksDBTrxUntrackedMethods(RocksDBTransactionState* state);
+  
+  arangodb::Result Put(
+      rocksdb::ColumnFamilyHandle*, RocksDBKey const& key,
+      rocksdb::Slice const& val,
+      rocksutils::StatusHint hint = rocksutils::StatusHint::none) override;
+  arangodb::Result Delete(rocksdb::ColumnFamilyHandle*,
+                          RocksDBKey const& key) override;
 };
 
 /// wraps a writebatch - non transactional
