@@ -150,7 +150,17 @@ Result RocksDBTransactionState::beginTransaction(transaction::Hints hints) {
         _rocksReadOptions.snapshot = _snapshot;
         TRI_ASSERT(_snapshot != nullptr);
       }
-      _rocksMethods.reset(new RocksDBTrxMethods(this));
+
+      // under some circumstances we can use untracking Put/Delete methods,
+      // but we need to be sure this does not cause any lost updates or other
+      // inconsistencies. 
+      // TODO: enable this optimization once these circumstances are clear
+      // and fully covered by tests
+      if (false && isExclusiveTransactionOnSingleCollection()) {
+        _rocksMethods.reset(new RocksDBTrxUntrackedMethods(this));
+      } else {
+        _rocksMethods.reset(new RocksDBTrxMethods(this));
+      }
     }
   } else {
     TRI_ASSERT(_status == transaction::Status::RUNNING);
@@ -159,9 +169,10 @@ Result RocksDBTransactionState::beginTransaction(transaction::Hints hints) {
   return result;
 }
 
+// create a rocksdb transaction. will only be called for write transactions
 void RocksDBTransactionState::createTransaction() {
   TRI_ASSERT(!_rocksTransaction);
-  // TODO intermediates
+  TRI_ASSERT(!isReadOnlyTransaction());
 
   // start rocks transaction
   rocksdb::TransactionDB* db = rocksutils::globalRocksDB();

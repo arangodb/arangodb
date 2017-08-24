@@ -756,12 +756,12 @@ Result RocksDBCollection::read(transaction::Methods* trx,
   if (token.revisionId()) {
     if (readDocument(trx, token, result)) {
       // found
-      return TRI_ERROR_NO_ERROR;
+      return Result();
     }
   }
 
   // not found
-  return TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND;
+  return Result(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND);
 }
 
 // read using a token!
@@ -803,7 +803,6 @@ Result RocksDBCollection::insert(arangodb::transaction::Methods* trx,
   VPackSlice fromSlice;
   VPackSlice toSlice;
 
-  RocksDBOperationResult res;
   bool const isEdgeCollection =
       (_logicalCollection->type() == TRI_COL_TYPE_EDGE);
 
@@ -811,33 +810,29 @@ Result RocksDBCollection::insert(arangodb::transaction::Methods* trx,
     // _from:
     fromSlice = slice.get(StaticStrings::FromString);
     if (!fromSlice.isString()) {
-      res.reset(TRI_ERROR_ARANGO_INVALID_EDGE_ATTRIBUTE);
-      return res.errorNumber();
+      return RocksDBOperationResult(TRI_ERROR_ARANGO_INVALID_EDGE_ATTRIBUTE);
     }
     VPackValueLength len;
     char const* docId = fromSlice.getString(len);
     size_t split;
     if (!TRI_ValidateDocumentIdKeyGenerator(docId, static_cast<size_t>(len),
                                             &split)) {
-      res.reset(TRI_ERROR_ARANGO_INVALID_EDGE_ATTRIBUTE);
-      return res.errorNumber();
+      return RocksDBOperationResult(TRI_ERROR_ARANGO_INVALID_EDGE_ATTRIBUTE);
     }
     // _to:
     toSlice = slice.get(StaticStrings::ToString);
     if (!toSlice.isString()) {
-      res.reset(TRI_ERROR_ARANGO_INVALID_EDGE_ATTRIBUTE);
-      return res.errorNumber();
+      return RocksDBOperationResult(TRI_ERROR_ARANGO_INVALID_EDGE_ATTRIBUTE);
     }
     docId = toSlice.getString(len);
     if (!TRI_ValidateDocumentIdKeyGenerator(docId, static_cast<size_t>(len),
                                             &split)) {
-      res.reset(TRI_ERROR_ARANGO_INVALID_EDGE_ATTRIBUTE);
-      return res.errorNumber();
+      return RocksDBOperationResult(TRI_ERROR_ARANGO_INVALID_EDGE_ATTRIBUTE);
     }
   }
 
   transaction::BuilderLeaser builder(trx);
-  res.reset(newObjectForInsert(trx, slice, fromSlice, toSlice, isEdgeCollection,
+  RocksDBOperationResult res(newObjectForInsert(trx, slice, fromSlice, toSlice, isEdgeCollection,
                                *builder.get(), options.isRestore));
   if (res.fail()) {
     return res;
@@ -912,9 +907,11 @@ Result RocksDBCollection::update(arangodb::transaction::Methods* trx,
     if (newSlice.isObject()) {
       expectedRev = TRI_ExtractRevisionId(newSlice);
     }
+
     int result = checkRevision(trx, expectedRev, prevRev);
+
     if (result != TRI_ERROR_NO_ERROR) {
-      return result;
+      return Result(result);
     }
   }
 
@@ -928,7 +925,7 @@ Result RocksDBCollection::update(arangodb::transaction::Methods* trx,
       trx->state()->waitForSync(true);
       options.waitForSync = true;
     }
-    return TRI_ERROR_NO_ERROR;
+    return Result();
   }
 
   // merge old and new values
@@ -943,7 +940,7 @@ Result RocksDBCollection::update(arangodb::transaction::Methods* trx,
                                    trx->resolver()->getCollectionNameCluster(
                                        _logicalCollection->planId()),
                                    oldDoc, builder->slice(), false)) {
-      return TRI_ERROR_CLUSTER_MUST_NOT_CHANGE_SHARDING_ATTRIBUTES;
+      return Result(TRI_ERROR_CLUSTER_MUST_NOT_CHANGE_SHARDING_ATTRIBUTES);
     }
   }
 
@@ -994,7 +991,7 @@ Result RocksDBCollection::replace(
   // get the previous revision
   VPackSlice key = newSlice.get(StaticStrings::KeyString);
   if (key.isNone()) {
-    return TRI_ERROR_ARANGO_DOCUMENT_HANDLE_BAD;
+    return Result(TRI_ERROR_ARANGO_DOCUMENT_HANDLE_BAD);
   }
 
   // get the previous revision
@@ -1018,8 +1015,9 @@ Result RocksDBCollection::replace(
       expectedRev = TRI_ExtractRevisionId(newSlice);
     }
     int res = checkRevision(trx, expectedRev, prevRev);
+
     if (res != TRI_ERROR_NO_ERROR) {
-      return res;
+      return Result(res);
     }
   }
 
@@ -1036,7 +1034,7 @@ Result RocksDBCollection::replace(
                                    trx->resolver()->getCollectionNameCluster(
                                        _logicalCollection->planId()),
                                    oldDoc, builder->slice(), false)) {
-      return TRI_ERROR_CLUSTER_MUST_NOT_CHANGE_SHARDING_ATTRIBUTES;
+      return Result(TRI_ERROR_CLUSTER_MUST_NOT_CHANGE_SHARDING_ATTRIBUTES);
     }
   }
 
@@ -1100,7 +1098,7 @@ Result RocksDBCollection::remove(arangodb::transaction::Methods* trx,
   RocksDBOperationResult res = lookupDocument(trx, key, previous);
 
   if (res.fail()) {
-    return res.errorNumber();
+    return res;
   }
 
   TRI_ASSERT(!previous.empty());
@@ -1116,7 +1114,7 @@ Result RocksDBCollection::remove(arangodb::transaction::Methods* trx,
     int res = checkRevision(trx, expectedRevisionId, oldRevisionId);
 
     if (res != TRI_ERROR_NO_ERROR) {
-      return res;
+      return Result(res);
     }
   }
 
@@ -1272,7 +1270,7 @@ arangodb::Result RocksDBCollection::fillIndexes(
   TRI_ASSERT(db != nullptr);
   
   uint64_t numDocsWritten = 0;
-  // write batch will be reset each 5000 documents
+  // write batch will be reset every x documents
   rocksdb::WriteBatchWithIndex batch(ridx->columnFamily()->GetComparator(),
                                      32 * 1024 * 1024);
   RocksDBBatchedMethods batched(state, &batch);
@@ -1490,21 +1488,17 @@ RocksDBOperationResult RocksDBCollection::removeDocument(
 RocksDBOperationResult RocksDBCollection::lookupDocument(
     transaction::Methods* trx, VPackSlice key,
     ManagedDocumentResult& mdr) const {
-  RocksDBOperationResult res;
   if (!key.isString()) {
-    res.reset(TRI_ERROR_ARANGO_DOCUMENT_KEY_BAD);
-    return res;
+    return RocksDBOperationResult(TRI_ERROR_ARANGO_DOCUMENT_KEY_BAD);
   }
 
   RocksDBToken token = primaryIndex()->lookupKey(trx, StringRef(key));
   TRI_voc_rid_t revisionId = token.revisionId();
 
   if (revisionId > 0) {
-    res = lookupRevisionVPack(revisionId, trx, mdr, true);
-  } else {
-    res.reset(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND);
+    return lookupRevisionVPack(revisionId, trx, mdr, true);
   }
-  return res;
+  return RocksDBOperationResult(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND);
 }
 
 RocksDBOperationResult RocksDBCollection::updateDocument(
@@ -1523,8 +1517,7 @@ RocksDBOperationResult RocksDBCollection::updateDocument(
     return res;
   }
 
-  res = insertDocument(trx, newRevisionId, newDoc, waitForSync);
-  return res;
+  return insertDocument(trx, newRevisionId, newDoc, waitForSync);
 }
 
 Result RocksDBCollection::lookupDocumentToken(transaction::Methods* trx,
@@ -1532,7 +1525,6 @@ Result RocksDBCollection::lookupDocumentToken(transaction::Methods* trx,
                                               RocksDBToken& outToken) const {
   TRI_ASSERT(_objectId != 0);
 
-  // TODO fix as soon as we got a real primary index
   outToken = primaryIndex()->lookupKey(trx, key);
   return outToken.revisionId() > 0
              ? Result()
@@ -1557,7 +1549,7 @@ arangodb::Result RocksDBCollection::lookupRevisionVPack(
       value->append(reinterpret_cast<char const*>(f.value()->value()),
                     static_cast<size_t>(f.value()->valueSize));
       mdr.setManagedAfterStringUsage(revisionId);
-      return {TRI_ERROR_NO_ERROR};
+      return Result();
     }
   }
 
@@ -1603,7 +1595,7 @@ arangodb::Result RocksDBCollection::lookupRevisionVPack(
                           static_cast<uint32_t>(key.string().size()));
     if (f.found()) {
       cb(RocksDBToken(revisionId), VPackSlice(reinterpret_cast<char const*>(f.value()->value())));
-      return {TRI_ERROR_NO_ERROR};
+      return Result();
     }
   }
 
@@ -1760,13 +1752,10 @@ uint64_t RocksDBCollection::recalculateCounts() {
     THROW_ARANGO_EXCEPTION(res);
   }
 
-  rocksdb::ReadOptions readOptions;
-  readOptions.fill_cache = false;
-
   // count documents
   auto documentBounds = RocksDBKeyBounds::CollectionDocuments(_objectId);
   _numberDocuments =
-      rocksutils::countKeyRange(globalRocksDB(), readOptions, documentBounds);
+      rocksutils::countKeyRange(globalRocksDB(), documentBounds, true);
 
   // update counter manager value
   res = globalRocksEngine()->counterManager()->setAbsoluteCounter(
@@ -1853,7 +1842,7 @@ arangodb::Result RocksDBCollection::serializeIndexEstimates(
       }
     }
   }
-  return {TRI_ERROR_NO_ERROR};
+  return Result();
 }
 
 void RocksDBCollection::deserializeIndexEstimates(RocksDBCounterManager* mgr) {
@@ -1929,7 +1918,7 @@ arangodb::Result RocksDBCollection::serializeKeyGenerator(
     return rocksutils::convertStatus(s);
   }
 
-  return {TRI_ERROR_NO_ERROR};
+  return Result();
 }
 
 void RocksDBCollection::deserializeKeyGenerator(RocksDBCounterManager* mgr) {

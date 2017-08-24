@@ -105,11 +105,18 @@ RocksDBKeyBounds RocksDBKeyBounds::VPackIndex(uint64_t indexId,
                           right);
 }
 
+/// used for seeking lookups
 RocksDBKeyBounds RocksDBKeyBounds::UniqueVPackIndex(uint64_t indexId,
                                                     VPackSlice const& left,
                                                     VPackSlice const& right) {
   return RocksDBKeyBounds(RocksDBEntryType::UniqueVPackIndexValue, indexId,
                           left, right);
+}
+
+/// used for point lookups
+RocksDBKeyBounds RocksDBKeyBounds::UniqueVPackIndex(uint64_t indexId,
+                                                    VPackSlice const& left) {
+  return RocksDBKeyBounds(RocksDBEntryType::UniqueVPackIndexValue, indexId, left);
 }
 
 RocksDBKeyBounds RocksDBKeyBounds::DatabaseViews(TRI_voc_tick_t databaseId) {
@@ -363,6 +370,30 @@ RocksDBKeyBounds::RocksDBKeyBounds(RocksDBEntryType type, uint64_t first,
       if (type == RocksDBEntryType::EdgeIndexValue) {
         _internals.push_back(0xFFU);
       }
+      break;
+    }
+
+    default:
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_BAD_PARAMETER);
+  }
+}
+
+/// point lookups for unique velocypack indexes
+RocksDBKeyBounds::RocksDBKeyBounds(RocksDBEntryType type, uint64_t first,
+                                   VPackSlice const& second) 
+    : _type(type) {
+  switch (_type) {
+    case RocksDBEntryType::UniqueVPackIndexValue: {
+      size_t startLength =
+          sizeof(uint64_t) + static_cast<size_t>(second.byteSize());
+
+      _internals.reserve(startLength);
+      uint64ToPersistent(_internals.buffer(), first);
+      _internals.buffer().append(reinterpret_cast<char const*>(second.begin()),
+                                 static_cast<size_t>(second.byteSize()));
+
+      _internals.separate();
+      // second bound is intentionally left empty!
       break;
     }
 
