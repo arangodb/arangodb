@@ -323,7 +323,7 @@ Restrictions: ${restrictions.keySet().join(", ")}
 // -----------------------------------------------------------------------------
 
 def stashBinaries(edition, os) {
-    stash name: "binaries-${edition}-${os}", includes: "build/bin/**, build/tests/**, build/etc/**, etc/**, Installation/Pipeline/**, js/**, scripts/**, UnitTests/**, utils/**, resilience/**", excludes: "build/bin/*.exe, build/bin/*.pdb, build/bin/*.ilk, build/tests/*.exe, build/tests/*.pdb, build/tests/*.ilk, js/node/node_modules/eslint*"
+    stash name: "binaries-${edition}-${os}", includes: "build/bin/**, build/tests/**, build/etc/**, etc/**, Installation/Pipeline/**, js/**, scripts/**, UnitTests/**, utils/**, resilience/**, enterprise/js/**", excludes: "build/bin/*.exe, build/bin/*.pdb, build/bin/*.ilk, build/tests/*.exe, build/tests/*.pdb, build/tests/*.ilk, js/node/node_modules/eslint*"
 }
 
 def unstashBinaries(edition, os) {
