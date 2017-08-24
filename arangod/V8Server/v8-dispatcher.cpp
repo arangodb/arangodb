@@ -236,7 +236,7 @@ void V8Task::setParameter(
     std::shared_ptr<arangodb::velocypack::Builder> const& parameters) {
   _parameters = parameters;
 }
-  
+
 void V8Task::setUser(std::string const& user) {
   _user = user;
 }
@@ -264,7 +264,7 @@ V8Task::callbackFunction() {
       }
       return;
     }
-    
+
     // get the permissions to be used by this task
     AuthLevel dbLvl = AuthLevel::RW;
     std::unique_ptr<ExecContext> execContext;
@@ -284,10 +284,10 @@ V8Task::callbackFunction() {
       V8Task::unregisterTask(_id, false);
       return;
     }
-    
+
     // now do the work:
     work();
-    
+
     if (_periodic && !SchedulerFeature::SCHEDULER->isStopping()) {
       _timer->expires_from_now(_interval);
       _timer->async_wait(callbackFunction());
@@ -469,7 +469,7 @@ static void JS_RegisterTask(v8::FunctionCallbackInfo<v8::Value> const& args) {
   if (args.Length() != 1 || !args[0]->IsObject()) {
     TRI_V8_THROW_EXCEPTION_USAGE("register(<task>)");
   }
-  
+
   if (ExecContext::CURRENT != nullptr &&
       ExecContext::CURRENT->databaseAuthLevel() != AuthLevel::RW) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN,
@@ -522,7 +522,7 @@ static void JS_RegisterTask(v8::FunctionCallbackInfo<v8::Value> const& args) {
           "task period must be specified and positive");
     }
   }
-  
+
   std::string runAsUser;
   if (obj->HasOwnProperty(TRI_V8_ASCII_STRING("runAsUser"))) {
     runAsUser = TRI_ObjectToString(obj->Get(TRI_V8_ASCII_STRING("runAs")));
@@ -617,7 +617,7 @@ static void JS_UnregisterTask(v8::FunctionCallbackInfo<v8::Value> const& args) {
   if (args.Length() != 1) {
     TRI_V8_THROW_EXCEPTION_USAGE("unregister(<id>)");
   }
-  
+
   if (ExecContext::CURRENT != nullptr &&
       ExecContext::CURRENT->databaseAuthLevel() != AuthLevel::RW) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN,
@@ -666,11 +666,11 @@ static void JS_GetTask(v8::FunctionCallbackInfo<v8::Value> const& args) {
 static void JS_CreateQueue(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
-  
+
   if (args.Length() < 1) {
     TRI_V8_THROW_EXCEPTION_USAGE("createQueue(<id>)");
   }
-  
+
   std::string runAsUser;
   if (ExecContext::CURRENT != nullptr) {
     if (ExecContext::CURRENT->databaseAuthLevel() != AuthLevel::RW) {
@@ -683,7 +683,7 @@ static void JS_CreateQueue(v8::FunctionCallbackInfo<v8::Value> const& args) {
   ExecContext *exe = ExecContext::CURRENT;
   ExecContext::CURRENT = nullptr;
   TRI_DEFER(ExecContext::CURRENT = exe);
-  
+
   VPackBuilder docs;
   {
     int res = TRI_V8ToVPack(isolate, docs, args[0], true);
@@ -693,18 +693,17 @@ static void JS_CreateQueue(v8::FunctionCallbackInfo<v8::Value> const& args) {
   }
   docs.add("runAsUser", VPackValue(runAsUser));
   docs.close();
-  
+
   TRI_GET_GLOBALS();
-  
+
   auto transactionContext = std::make_shared<transaction::V8Context>(v8g->_vocbase, true);
   SingleCollectionTransaction trx(transactionContext, "_queues",
-                                  AccessMode::Type::WRITE);
-  trx.addHint(transaction::Hints::Hint::SINGLE_OPERATION);
+                                  AccessMode::Type::EXCLUSIVE);
   Result res = trx.begin();
   if (!res.ok()) {
     TRI_V8_THROW_EXCEPTION(res);
   }
-  
+
   OperationOptions opts;
   OperationResult result = trx.insert("_queues", docs.slice(), opts);
   if (!result.successful() &&
@@ -715,7 +714,7 @@ static void JS_CreateQueue(v8::FunctionCallbackInfo<v8::Value> const& args) {
   if (!res.ok()) {
     TRI_V8_THROW_EXCEPTION(res);
   }
-  
+
   TRI_V8_RETURN(v8::Boolean::New(isolate, result.successful()));
   TRI_V8_TRY_CATCH_END
 }
@@ -723,14 +722,14 @@ static void JS_CreateQueue(v8::FunctionCallbackInfo<v8::Value> const& args) {
 static void JS_DeleteQueue(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
-  
+
   if (args.Length() < 1) {
     TRI_V8_THROW_EXCEPTION_USAGE("deleteQueue(<id>)");
   }
   std::string key = TRI_ObjectToString(args[0]);
   VPackBuilder keyB;
   keyB(VPackValue(VPackValueType::Object))(StaticStrings::KeyString, VPackValue(key))();
-  
+
   ExecContext *exe = ExecContext::CURRENT;
   if (exe != nullptr && exe->databaseAuthLevel() != AuthLevel::RW) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN,
@@ -739,9 +738,9 @@ static void JS_DeleteQueue(v8::FunctionCallbackInfo<v8::Value> const& args) {
   // stupid trick to force superuser rights
   ExecContext::CURRENT = nullptr;
   TRI_DEFER(ExecContext::CURRENT = exe);
-  
+
   TRI_GET_GLOBALS();
-  
+
   auto transactionContext = std::make_shared<transaction::V8Context>(v8g->_vocbase, true);
   SingleCollectionTransaction trx(transactionContext, "_queues",
                                   AccessMode::Type::WRITE);
@@ -757,7 +756,7 @@ static void JS_DeleteQueue(v8::FunctionCallbackInfo<v8::Value> const& args) {
   if (!res.ok()) {
     TRI_V8_THROW_EXCEPTION(res);
   }
-  
+
   TRI_V8_RETURN(v8::Boolean::New(isolate, result.successful()));
   TRI_V8_TRY_CATCH_END
 }
@@ -769,12 +768,12 @@ static void JS_DeleteQueue(v8::FunctionCallbackInfo<v8::Value> const& args) {
 void TRI_InitV8Dispatcher(v8::Isolate* isolate,
                           v8::Handle<v8::Context> context) {
   v8::HandleScope scope(isolate);
-  
+
   // _queues is a RO collection and can only be written in C++, as superroot
   TRI_AddGlobalFunctionVocbase(isolate,
                                TRI_V8_ASCII_STRING("SYS_CREATE_QUEUE"),
                                JS_CreateQueue);
-  
+
   TRI_AddGlobalFunctionVocbase(isolate,
                                TRI_V8_ASCII_STRING("SYS_DELETE_QUEUE"),
                                JS_DeleteQueue);
