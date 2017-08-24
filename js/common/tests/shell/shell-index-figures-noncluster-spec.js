@@ -76,7 +76,7 @@ describe('Index figures', function () {
     }
   });
 
-  describe('primar/edge index', function () {
+  describe('primary/edge index', function () {
     const colName = 'UnitTestEdges';
     let col;
 
