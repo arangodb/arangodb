@@ -244,7 +244,7 @@ class RocksDBCollection final : public PhysicalCollection {
       bool& waitForSync) const;
 
   arangodb::RocksDBOperationResult lookupDocument(
-      transaction::Methods* trx, arangodb::velocypack::Slice key,
+      transaction::Methods* trx, arangodb::velocypack::Slice const& key,
       ManagedDocumentResult& result) const;
 
   arangodb::RocksDBOperationResult updateDocument(

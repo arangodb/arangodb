@@ -215,8 +215,8 @@ Result RocksDBPrimaryIndex::insertInternal(transaction::Methods* trx,
                                            RocksDBMethods* mthd,
                                            TRI_voc_rid_t revisionId,
                                            VPackSlice const& slice) {
-  auto key = RocksDBKey::PrimaryIndexValue(
-      _objectId, StringRef(slice.get(StaticStrings::KeyString)));
+  VPackSlice keySlice = transaction::helpers::extractKeyFromDocument(slice);
+  auto key = RocksDBKey::PrimaryIndexValue(_objectId, StringRef(keySlice));
   auto value = RocksDBValue::PrimaryIndexValue(revisionId);
 
   // acquire rocksdb transaction
@@ -227,6 +227,24 @@ Result RocksDBPrimaryIndex::insertInternal(transaction::Methods* trx,
   blackListKey(key.string().data(), static_cast<uint32_t>(key.string().size()));
 
   Result status = mthd->Put(_cf, key, value.string(), rocksutils::index);
+  return IndexResult(status.errorNumber(), this);
+}
+
+Result RocksDBPrimaryIndex::updateInternal(transaction::Methods* trx,
+                                           RocksDBMethods* mthd,
+                      TRI_voc_rid_t oldRevision,
+                      arangodb::velocypack::Slice const& oldDoc,
+                      TRI_voc_rid_t newRevision,
+                      velocypack::Slice const& newDoc) {
+  VPackSlice keySlice = transaction::helpers::extractKeyFromDocument(oldDoc);
+  TRI_ASSERT(keySlice == oldDoc.get(StaticStrings::KeyString));
+  auto key = RocksDBKey::PrimaryIndexValue(_objectId, StringRef(keySlice));
+  auto value = RocksDBValue::PrimaryIndexValue(newRevision);
+  
+  TRI_ASSERT(mthd->Exists(_cf, key));
+  blackListKey(key.string().data(), static_cast<uint32_t>(key.string().size()));
+  Result status = mthd->Put(_cf, key, value.string(), rocksutils::index);
+  
   return IndexResult(status.errorNumber(), this);
 }
 

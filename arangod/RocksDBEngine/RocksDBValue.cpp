@@ -39,10 +39,6 @@ RocksDBValue RocksDBValue::Collection(VPackSlice const& data) {
   return RocksDBValue(RocksDBEntryType::Collection, data);
 }
 
-RocksDBValue RocksDBValue::Document(VPackSlice const& data) {
-  return RocksDBValue(RocksDBEntryType::Document, data);
-}
-
 RocksDBValue RocksDBValue::PrimaryIndexValue(TRI_voc_rid_t revisionId) {
   return RocksDBValue(RocksDBEntryType::PrimaryIndexValue, revisionId);
 }
@@ -137,7 +133,6 @@ RocksDBValue::RocksDBValue(RocksDBEntryType type, VPackSlice const& data)
   switch (_type) {
     case RocksDBEntryType::Database:
     case RocksDBEntryType::Collection:
-    case RocksDBEntryType::Document:
     case RocksDBEntryType::View:
     case RocksDBEntryType::KeyGeneratorValue:
     case RocksDBEntryType::ReplicationApplierConfig: {
@@ -146,6 +141,10 @@ RocksDBValue::RocksDBValue(RocksDBEntryType type, VPackSlice const& data)
                      static_cast<size_t>(data.byteSize()));
       break;
     }
+      
+    case RocksDBEntryType::Document:
+      TRI_ASSERT(false);// use for document => get free schellen
+      break;
 
     default:
       THROW_ARANGO_EXCEPTION(TRI_ERROR_BAD_PARAMETER);

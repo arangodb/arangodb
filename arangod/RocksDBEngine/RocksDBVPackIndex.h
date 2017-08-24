@@ -164,6 +164,12 @@ class RocksDBVPackIndex : public RocksDBIndex {
  protected:
   Result insertInternal(transaction::Methods*, RocksDBMethods*, TRI_voc_rid_t,
                         arangodb::velocypack::Slice const&) override;
+  
+  Result updateInternal(transaction::Methods* trx, RocksDBMethods*,
+                        TRI_voc_rid_t oldRevision,
+                        arangodb::velocypack::Slice const& oldDoc,
+                        TRI_voc_rid_t newRevision,
+                        velocypack::Slice const& newDoc) override;
 
   Result removeInternal(transaction::Methods*, RocksDBMethods*, TRI_voc_rid_t,
                         arangodb::velocypack::Slice const&) override;

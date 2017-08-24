@@ -1374,12 +1374,12 @@ RocksDBOperationResult RocksDBCollection::insertDocument(
   TRI_ASSERT(trx->state()->isRunning());
 
   RocksDBKey key(RocksDBKey::Document(_objectId, revisionId));
-  RocksDBValue value(RocksDBValue::Document(doc));
-
   blackListKey(key.string().data(), static_cast<uint32_t>(key.string().size()));
 
   RocksDBMethods* mthd = RocksDBTransactionState::toMethods(trx);
-  res = mthd->Put(RocksDBColumnFamily::documents(), key, value.string());
+  res = mthd->Put(RocksDBColumnFamily::documents(), key,
+                  rocksdb::Slice(reinterpret_cast<char const*>(doc.begin()),
+                                 static_cast<size_t>(doc.byteSize())));
   if (!res.ok()) {
     // set keysize that is passed up to the crud operations
     res.keySize(key.string().size());
@@ -1391,20 +1391,18 @@ RocksDBOperationResult RocksDBCollection::insertDocument(
       << " seq: " << mthd->readOptions().snapshot->GetSequenceNumber()
       << " objectID " << _objectId << " name: " << _logicalCollection->name();*/
 
-  RocksDBOperationResult innerRes;
   READ_LOCKER(guard, _indexesLock);
   for (std::shared_ptr<Index> const& idx : _indexes) {
     RocksDBIndex* rIdx = static_cast<RocksDBIndex*>(idx.get());
-    innerRes.reset(rIdx->insertInternal(trx, mthd, revisionId, doc));
-
-    if (innerRes.fail()) {
-      // in case of OOM return immediately
-      if (innerRes.is(TRI_ERROR_OUT_OF_MEMORY)) {
-        return innerRes;
-      } else if (innerRes.is(TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED) ||
+    Result tmpres = rIdx->insertInternal(trx, mthd, revisionId, doc);
+    if (!tmpres.ok()) {
+      if (tmpres.is(TRI_ERROR_OUT_OF_MEMORY)) {
+        // in case of OOM return immediately
+        return tmpres;
+      } else if (tmpres.is(TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED) ||
                  res.ok()) {
         // "prefer" unique constraint violated over other errors
-        res = innerRes;
+        res.reset(tmpres);
       }
     }
   }
@@ -1457,16 +1455,13 @@ RocksDBOperationResult RocksDBCollection::removeDocument(
   READ_LOCKER(guard, _indexesLock);
   for (std::shared_ptr<Index> const& idx : _indexes) {
     Result tmpres = idx->remove(trx, revisionId, doc, false);
-    resInner.reset(tmpres);
-
-    // in case of OOM return immediately
-    if (resInner.is(TRI_ERROR_OUT_OF_MEMORY)) {
-      return resInner;
-    }
-
-    // for other errors, set result
-    if (resInner.fail()) {
-      res = resInner;
+    if (!tmpres.ok()) {
+      if (tmpres.is(TRI_ERROR_OUT_OF_MEMORY)) {
+        // in case of OOM return immediately
+        return tmpres;
+      }
+      // for other errors, set result
+      res.reset(tmpres);
     }
   }
 
@@ -1487,7 +1482,7 @@ RocksDBOperationResult RocksDBCollection::removeDocument(
 /// @brief looks up a document by key, low level worker
 /// the key must be a string slice, no revision check is performed
 RocksDBOperationResult RocksDBCollection::lookupDocument(
-    transaction::Methods* trx, VPackSlice key,
+    transaction::Methods* trx, VPackSlice const& key,
     ManagedDocumentResult& mdr) const {
   RocksDBOperationResult res;
   if (!key.isString()) {
@@ -1511,18 +1506,61 @@ RocksDBOperationResult RocksDBCollection::updateDocument(
     VPackSlice const& oldDoc, TRI_voc_rid_t newRevisionId,
     VPackSlice const& newDoc, bool& waitForSync) const {
   // keysize in return value is set by insertDocument
-
+  
   // Coordinator doesn't know index internals
-  TRI_ASSERT(trx->state()->isRunning());
   TRI_ASSERT(!ServerState::instance()->isCoordinator());
-
+  TRI_ASSERT(trx->state()->isRunning());
+  TRI_ASSERT(_objectId != 0);
+  
+  RocksDBMethods* mthd = RocksDBTransactionState::toMethods(trx);
+  RocksDBKey oldKey = RocksDBKey::Document(_objectId, oldRevisionId);
+  blackListKey(oldKey.string().data(),
+               static_cast<uint32_t>(oldKey.string().size()));
+  
   RocksDBOperationResult res =
-      removeDocument(trx, oldRevisionId, oldDoc, true, waitForSync);
-  if (res.fail()) {
+  mthd->Delete(RocksDBColumnFamily::documents(), oldKey);
+  if (!res.ok()) {
+    return res;
+  }
+  
+  RocksDBKey newKey = RocksDBKey::Document(_objectId, newRevisionId);
+  // TODO: given that this should have a unique revision ID, do
+  // we really need to blacklist the new key?
+  blackListKey(newKey.string().data(), static_cast<uint32_t>(newKey.string().size()));
+  res = mthd->Put(RocksDBColumnFamily::documents(), newKey,
+                  rocksdb::Slice(reinterpret_cast<char const*>(newDoc.begin()),
+                                 static_cast<size_t>(newDoc.byteSize())));
+  if (!res.ok()) {
+    // set keysize that is passed up to the crud operations
+    res.keySize(newKey.size());
     return res;
   }
 
-  res = insertDocument(trx, newRevisionId, newDoc, waitForSync);
+  READ_LOCKER(guard, _indexesLock);
+  for (std::shared_ptr<Index> const& idx : _indexes) {
+    RocksDBIndex* rIdx = static_cast<RocksDBIndex*>(idx.get());
+    Result tmpres = rIdx->updateInternal(trx, mthd, oldRevisionId, oldDoc,
+                                         newRevisionId, newDoc);
+    if (!tmpres.ok()) {
+      if (tmpres.is(TRI_ERROR_OUT_OF_MEMORY)) {
+        // in case of OOM return immediately
+        return tmpres;
+      }
+      res.reset(tmpres);
+    }
+  }
+  
+  if (res.ok()) {
+    if (_logicalCollection->waitForSync()) {
+      waitForSync = true;
+    }
+    
+    if (waitForSync) {
+      trx->state()->waitForSync(true);
+    }
+    _needToPersistIndexEstimates = true;
+  }
+  
   return res;
 }
 

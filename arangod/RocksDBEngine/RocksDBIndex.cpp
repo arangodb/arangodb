@@ -226,6 +226,18 @@ int RocksDBIndex::drop() {
   return r.errorNumber();
 }
 
+Result RocksDBIndex::updateInternal(transaction::Methods* trx, RocksDBMethods* mthd,
+                      TRI_voc_rid_t oldRevision,
+                      arangodb::velocypack::Slice const& oldDoc,
+                      TRI_voc_rid_t newRevision,
+                                    arangodb::velocypack::Slice const& newDoc) {
+  Result res = removeInternal(trx, mthd, oldRevision, oldDoc);
+  if (!res.ok()) {
+      return res;
+  }
+  return insertInternal(trx, mthd, newRevision, newDoc);
+}
+
 void RocksDBIndex::truncate(transaction::Methods* trx) {
   auto* mthds = RocksDBTransactionState::toMethods(trx);
   RocksDBKeyBounds indexBounds = getBounds(type(), _objectId, _unique);
