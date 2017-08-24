@@ -470,7 +470,9 @@ def testStep(edition, os, mode, engine) {
                         testEdition(edition, os, mode, engine)
                     }
                     finally {
-                        junit 'out/*.xml'
+                        step([$class: 'XUnitBuilder',
+                            thresholds: [[$class: 'FailedThreshold', unstableThreshold: '1']],
+                            tools: [[$class: 'JUnitType', failIfNotNew: false, pattern: 'out/*.xml']]])
                     }
                 }
             }
