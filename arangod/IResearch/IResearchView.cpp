@@ -2300,6 +2300,9 @@ arangodb::Result IResearchView::updateProperties(
     // reset non-updatable values to match current meta
     meta._collections = _meta._collections;
 
+    // do not modify data path if not changes since will cause lock obtain failure
+    mask._dataPath = mask._dataPath && _meta._dataPath != meta._dataPath;
+
     DataStore storePersisted; // renamed persisted data store
     std::string srcDataPath = _meta._dataPath;
     char const* dropDataPath = nullptr;
