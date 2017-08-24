@@ -32,7 +32,7 @@ class Result {
 
   Result(int errorNumber)
       : _errorNumber(errorNumber){
-    if(errorNumber != TRI_ERROR_NO_ERROR) {
+    if (errorNumber != TRI_ERROR_NO_ERROR) {
       _errorMessage = TRI_errno_string(errorNumber);
     }
   }
@@ -42,6 +42,28 @@ class Result {
 
   Result(int errorNumber, std::string&& errorMessage)
       : _errorNumber(errorNumber), _errorMessage(std::move(errorMessage)) {}
+  
+  // copy
+  Result(Result const& other) 
+      : _errorNumber(other._errorNumber), 
+        _errorMessage(other._errorMessage) {}
+
+  Result& operator=(Result const& other) {
+    _errorNumber = other._errorNumber;
+    _errorMessage = other._errorMessage;
+    return *this; 
+  }
+ 
+  // move 
+  Result(Result&& other) noexcept 
+      : _errorNumber(other._errorNumber), 
+        _errorMessage(std::move(other._errorMessage)) {}
+  
+  Result& operator=(Result&& other) noexcept {
+    _errorNumber = other._errorNumber;
+    _errorMessage = std::move(other._errorMessage);
+    return *this; 
+  }
 
   virtual ~Result() {}
 
@@ -70,7 +92,7 @@ class Result {
     return *this;
   }
 
-  Result& reset(int errorNumber, std::string&& errorMessage) {
+  Result& reset(int errorNumber, std::string&& errorMessage) noexcept {
     _errorNumber = errorNumber;
     _errorMessage = std::move(errorMessage);
     return *this;
@@ -82,23 +104,13 @@ class Result {
     return *this;
   }
 
-  Result& reset(Result&& other) {
+  Result& reset(Result&& other) noexcept {
     _errorNumber = other._errorNumber;
     _errorMessage = std::move(other._errorMessage);
     return *this;
   }
 
-  void cloneData(Result const& other) {
-    _errorNumber = other._errorNumber;
-    _errorMessage = other._errorMessage;
-  }
-
-  void cloneData(Result&& other) {
-    _errorNumber = other._errorNumber;
-    _errorMessage = std::move(other._errorMessage);
-  }
-
-  // the default implementations is const, but sub-classes might
+  // the default implementation is const, but sub-classes might
   // really do more work to compute.
 
   virtual std::string errorMessage() const& { return _errorMessage; }

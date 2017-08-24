@@ -382,10 +382,11 @@ void RocksDBCounterManager::readIndexEstimates() {
   WRITE_LOCKER(guard, _rwLock);
   RocksDBKeyBounds bounds = RocksDBKeyBounds::IndexEstimateValues();
 
-  rocksdb::Comparator const* cmp = _db->GetOptions().comparator;
+  auto cf = RocksDBColumnFamily::definitions();
+  rocksdb::Comparator const* cmp = cf->GetComparator();
   rocksdb::ReadOptions readOptions;
   std::unique_ptr<rocksdb::Iterator> iter(
-      _db->NewIterator(readOptions, RocksDBColumnFamily::definitions()));
+      _db->NewIterator(readOptions, cf));
   iter->Seek(bounds.start());
 
   for (; iter->Valid() && cmp->Compare(iter->key(), bounds.end()) < 0;
@@ -420,10 +421,11 @@ void RocksDBCounterManager::readKeyGenerators() {
   WRITE_LOCKER(guard, _rwLock);
   RocksDBKeyBounds bounds = RocksDBKeyBounds::KeyGenerators();
 
-  rocksdb::Comparator const* cmp = _db->GetOptions().comparator;
+  auto cf = RocksDBColumnFamily::definitions();
+  rocksdb::Comparator const* cmp = cf->GetComparator();
   rocksdb::ReadOptions readOptions;
   std::unique_ptr<rocksdb::Iterator> iter(
-      _db->NewIterator(readOptions, RocksDBColumnFamily::definitions()));
+      _db->NewIterator(readOptions, cf));
   iter->Seek(bounds.start());
 
   for (; iter->Valid() && cmp->Compare(iter->key(), bounds.end()) < 0;
@@ -484,10 +486,11 @@ void RocksDBCounterManager::readCounterValues() {
   WRITE_LOCKER(guard, _rwLock);
   RocksDBKeyBounds bounds = RocksDBKeyBounds::CounterValues();
 
-  rocksdb::Comparator const* cmp = _db->GetOptions().comparator;
+  auto cf = RocksDBColumnFamily::definitions();
+  rocksdb::Comparator const* cmp = cf->GetComparator();
   rocksdb::ReadOptions readOptions;
   std::unique_ptr<rocksdb::Iterator> iter(
-      _db->NewIterator(readOptions, RocksDBColumnFamily::definitions()));
+      _db->NewIterator(readOptions, cf));
   iter->Seek(bounds.start());
 
   while (iter->Valid() && cmp->Compare(iter->key(), bounds.end()) < 0) {

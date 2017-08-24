@@ -54,6 +54,9 @@ describe('Foxx service', () => {
     download(`${arango.getEndpoint().replace('tcp://', 'http://')}/${mount}`, '', {
       method: 'delete'
     });
+    if (db._collection('foxx_queue_test')) {
+      db.foxx_queue_test.truncate();
+    }
   });
   it('should support queue registration', () => {
     const queuesBefore = db._query(aql`
