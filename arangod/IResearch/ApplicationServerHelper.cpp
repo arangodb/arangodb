@@ -24,27 +24,45 @@
 #include "Aql/AqlFunctionFeature.h"
 #include "Aql/Function.h"
 
+#include "ApplicationServerHelper.h"
+
 namespace arangodb {
 namespace iresearch {
 
-void addFunction(
+bool addFunction(
     arangodb::aql::AqlFunctionFeature& functions,
     arangodb::aql::Function const& function
 ) {
   // check that a function by the given name is not registred to avoid
   // triggering an assert inside AqlFunctionFeature::add(...)
-  try {
-    if (functions.byName(function.externalName)) {
-      return; // already have a function with this name
-    }
-  } catch (arangodb::basics::Exception& e) {
-    if (TRI_ERROR_QUERY_FUNCTION_NAME_UNKNOWN != e.code()) {
-      throw; // not a duplicate instance exception
-    }
+  if (getFunction(functions, function.externalName)) {
+    return false;
   }
 
   functions.add(function);
+
+  return true;
+}
+
+arangodb::aql::Function const* getFunction(
+    arangodb::aql::AqlFunctionFeature& functions,
+    std::string const& externalName
+) {
+  // if a function cannot be found then return nullptr instead of throwing exception
+  try {
+    return functions.byName(externalName);
+  } catch (arangodb::basics::Exception& e) {
+    if (TRI_ERROR_QUERY_FUNCTION_NAME_UNKNOWN != e.code()) {
+      throw; // not a missing function exception
+    }
+  }
+
+  return nullptr;
 }
 
 } // iresearch
 } // arangodb
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                       END-OF-FILE
+// -----------------------------------------------------------------------------

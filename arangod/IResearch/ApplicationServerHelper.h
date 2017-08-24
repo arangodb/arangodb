@@ -37,6 +37,11 @@ class AqlFunctionFeature;
 
 namespace iresearch {
 
+bool addFunction(
+  arangodb::aql::AqlFunctionFeature& functions,
+  arangodb::aql::Function const& function
+);
+
 template<typename T>
 T* getFeature(std::string const& name) {
   auto* feature = arangodb::application_features::ApplicationServer::lookupFeature(name);
@@ -53,9 +58,9 @@ T* getFeature() {
   return getFeature<T>(T::name());
 }
 
-void addFunction(
+arangodb::aql::Function const* getFunction(
   arangodb::aql::AqlFunctionFeature& functions,
-  arangodb::aql::Function const& function
+  std::string const& externalName
 );
 
 } // iresearch

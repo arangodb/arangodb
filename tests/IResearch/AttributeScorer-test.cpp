@@ -31,6 +31,7 @@
 #include "Aql/Query.h"
 #include "Aql/SortCondition.h"
 #include "GeneralServer/AuthenticationFeature.h"
+#include "IResearch/ApplicationServerHelper.h"
 #include "IResearch/IResearchAnalyzerFeature.h"
 #include "IResearch/IResearchFeature.h"
 #include "IResearch/AttributeScorer.h"
@@ -251,7 +252,7 @@ struct IResearchAttributeScorerSetup {
     auto& functions = *arangodb::aql::AqlFunctionFeature::AQLFUNCTIONS;
     arangodb::aql::Function attr("@", "internalName", ".|+", false, false, true, true, false);
 
-    functions.add(attr);
+    arangodb::iresearch::addFunction(functions, attr);
 
     // suppress log messages since tests check error conditions
     arangodb::LogTopic::setLogLevel(arangodb::Logger::IRESEARCH.name(), arangodb::LogLevel::FATAL);

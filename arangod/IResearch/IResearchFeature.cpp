@@ -22,6 +22,8 @@
 /// @author Vasily Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
+#include "search/scorers.hpp"
+
 #include "IResearchFeature.h"
 #include "IResearchView.h"
 #include "ApplicationServerHelper.h"
@@ -105,6 +107,29 @@ void registerFilters(arangodb::aql::AqlFunctionFeature& functions) {
   });
 }
 
+void registerScorers(arangodb::aql::AqlFunctionFeature& functions) {
+  irs::scorers::visit([&functions](const irs::string_ref& name)->bool {
+    std::string externalName = name;
+
+    // AQL function external names are always in upper case
+    std::transform(externalName.begin(), externalName.end(), externalName.begin(), ::toupper);
+
+    arangodb::iresearch::addFunction(functions, arangodb::aql::Function{
+      std::move(externalName), // external name
+      name, // internal name
+      ".|+", // positional arguments (attribute [, <scorer-specific properties>...])
+      false, // cacheable
+      false, // deterministic
+      true, // can throw
+      true, // can be run on server
+      true, // can pass arguments by reference
+      &noop // function implementation (use function name as placeholder)
+    });
+
+    return true;
+  });
+}
+
 NS_END
 
 NS_BEGIN(arangodb)
@@ -153,6 +178,9 @@ void IResearchFeature::prepare() {
   // load all known codecs
   ::iresearch::formats::init();
 
+  // load all known scorers
+  ::iresearch::scorers::init();
+
   // register 'iresearch' view
   ViewTypesFeature::registerViewImplementation(
      IResearchView::type(),
@@ -169,6 +197,7 @@ void IResearchFeature::start() {
 
     if (functions) {
       registerFilters(*functions);
+      registerScorers(*functions);
     } else {
       LOG_TOPIC(WARN, arangodb::Logger::IRESEARCH) << "failure to find feature 'AQLFunctions' while registering iresearch filters";
     }
