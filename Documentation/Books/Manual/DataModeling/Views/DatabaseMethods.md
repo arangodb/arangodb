@@ -91,7 +91,7 @@ arangosh> db._dropView("example");
 Drops a view named *view-name* and all its data. No error is thrown if there is
 no such view.
 
-`db._drop(view-identifier)`
+`db._dropView(view-identifier)`
 
 Drops a view identified by *view-identifier* with all its data. No error is
 thrown if there is no such view.

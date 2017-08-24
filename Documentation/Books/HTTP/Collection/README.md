@@ -29,7 +29,7 @@ collection ids internally. When returning collection ids to clients,
 ArangoDB will put them into a string to ensure the collection id is not 
 clipped by clients that do not support big integers. Clients should treat 
 the collection ids returned by ArangoDB as opaque strings when they store 
-or use it locally.
+or use them locally.
 
 Note: collection ids have been returned as integers up to including ArangoDB 1.1
 
@@ -74,7 +74,7 @@ to the standard HTTP methods (*POST*, *GET*, *PUT*, *DELETE*).
 Address of a Collection
 -----------------------
 
-All collections in ArangoDB have an unique identifier and a unique
+All collections in ArangoDB have a unique identifier and a unique
 name. ArangoDB internally uses the collection's unique identifier to
 look up collections. This identifier however is managed by ArangoDB
 and the user has no control over it. In order to allow users use their
@@ -88,5 +88,4 @@ For example: Assume that the collection identifier is *7254820* and
 the collection name is *demo*, then the URL of that collection is:
 
     http://localhost:8529/_api/collection/demo
-
 

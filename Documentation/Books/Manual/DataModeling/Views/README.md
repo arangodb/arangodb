@@ -8,9 +8,8 @@ corresponding language API.
 Address of a View
 -----------------
 
-All views in ArangoDB have a unique identifier and a unique name. The uniqueness
-applies collectively to both views and collections, i.e. there cannot be both a
-view an a collection with the same identifier or name. ArangoDB internally uses
+All views in ArangoDB have a unique identifier and a unique name.
+ArangoDB internally uses
 the view's unique identifier to look up views. This identifier, however, is
 managed by ArangoDB and the user has no control over it. In order to allow users
 to use their own names, each view also has a unique name which is specified by
@@ -31,8 +30,6 @@ the name is *demo*, then the view can be accessed as:
 
 If no view with such a name exists, then *null* is returned.
 
-There is a short-cut that can be used for non-system view:
-
 ### Create
 `db._createView(view-name, view-type, view-properties)`
 
@@ -42,5 +39,5 @@ method and is documented in detail in
 
 ### View Types
 
-The currently supported view implementations are: **iresearch** as described in
+The currently supported view implementation is: **iresearch** as described in
 [IResearch View](../Views/IResearch.md).

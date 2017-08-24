@@ -44,7 +44,7 @@ arangosh> db._dropView("example");
 `view.rename(new-name)`
 
 Renames a view using the *new-name*. The *new-name* must not already be used by
-a different collection or view. *new-name* must also be a valid view name. For
+a different view. *new-name* must also be a valid view name. For
 more information on valid view names please refer to the
 [naming conventions](../NamingConventions/README.md).
 

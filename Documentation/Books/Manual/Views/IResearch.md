@@ -9,7 +9,7 @@ A natively integrated AQL extension that allows one to:
 * filter documents based on AQL boolean expressions and functions
 * sort the resultset based on how closely each document matched the filter
 
-A concept of JSON value 'analysis' that is meant to break up a given value into
+A concept of value 'analysis' that is meant to break up a given value into
 a set of sub-values internally tied together by metadata which influences both
 the filter and sort stages to provide the most appropriate match for the
 specified conditions, similar to queries to web search engines.
@@ -30,14 +30,12 @@ A framework for indexing, filtering and sorting of data. The indexing stage can
 treat each data item as an atom or use custom 'analyzers' to break the data item
 into sub-atomic pieces tied together with internally tracked metadata.
 
-The framework can be further extended at runtime with custom implementations of
-analyzers (used during the indexing and filtering stages) and scorers (used
-during the sorting stage) allowing full control of the behaviour of the engine.
+The IResearch framework in general can be further extended at runtime with
+custom implementations of analyzers (used during the indexing and filtering
+stages) and scorers (used during the sorting stage) allowing full control over
+the behaviour of the engine.
 
 ### Analyzers:
-
-All custom 'analyzers' must implement the
-[IResearch Analyzer API](https://github.com/iresearch-toolkit/iresearch/blob/master/core/analysis/analyzer.hpp)
 
 To simplify query syntax ArangoDB provides a concept of named analyzers which
 are merely aliases for type+configuration of IResearch analyzers. Management of
@@ -65,9 +63,9 @@ The user is then immediately able to run queries with the said analyzer, e.g.
 
 To a limited degree the concept of 'analysis' is even available in non-IResearch
 AQL, e.g. the TOKENS(...) function will utilize the power of IResearch to break
-up a jSON value into an AQL array that can be used anywhere in the AQL query.
+up a value into an AQL array that can be used anywhere in the AQL query.
 
-In plain terms this means a user can match a JSON document attribute when its
+In plain terms this means a user can match a document attribute when its
 value matches at least one value form a set, (yes this is independent of doc),
 e.g. to match docs with 'word == quick' OR 'word == brown' OR 'word == fox'
 
@@ -75,10 +73,61 @@ e.g. to match docs with 'word == quick' OR 'word == brown' OR 'word == fox'
       FILTER doc.word IN TOKENS('a quick brown fox', 'text_en')
       RETRUN doc
 
-### Scorers:
+Runtime-plugging functionality for analyzers is not avaiable in ArangoDB at this
+point in time, so ArangoDB comes with a few default-initialized analyzers:
 
-All custom 'scorers' must implement the
-[IResearch Sort API](https://github.com/iresearch-toolkit/iresearch/blob/master/core/search/sort.hpp)
+* identity
+  treat the value as an atom
+
+* identity_sort
+  treat the value as an atom but track metadata required for meaningful sorting
+  of results with frequency based scorers, e.g. bm25, tfidf
+
+* text_de
+  tokenize the value into case-insensitive word stems as per the German locale,
+  do not discard any any stopwords
+
+* text_en
+  tokenize the value into case-insensitive word stems as per the English locale,
+  do not discard any any stopwords
+
+* text_es
+  tokenize the value into case-insensitive word stems as per the Spanish locale,
+  do not discard any any stopwords
+
+* text_fi
+  tokenize the value into case-insensitive word stems as per the Finnish locale,
+  do not discard any any stopwords
+
+* text_fr
+  tokenize the value into case-insensitive word stems as per the French locale,
+  do not discard any any stopwords
+
+* text_it
+  tokenize the value into case-insensitive word stems as per the Italian locale,
+  do not discard any any stopwords
+
+* text_nl
+  tokenize the value into case-insensitive word stems as per the Dutch locale,
+  do not discard any any stopwords
+
+* text_no
+  tokenize the value into case-insensitive word stems as per the Norwegian
+  locale, do not discard any any stopwords
+
+* text_pt
+  tokenize the value into case-insensitive word stems as per the Portuguese
+  locale, do not discard any any stopwords
+
+* text_ru
+  tokenize the value into case-insensitive word stems as per the Russian locale,
+  do not discard any any stopwords
+
+* text_sv
+  tokenize the value into case-insensitive word stems as per the Swedish locale,
+  do not discard any any stopwords
+
+### Scorers:
 
 ArangoDB accesses IResearch scorers directly by their internal names. The name
 (in upper-case) of the scorer is the function name to be used in the 'SORT'
@@ -96,7 +145,7 @@ optionally takes 'k' and 'b' positional parameters.
 The user is able to run queries with the said scorer, e.g.
 <br>SORT BM25(doc, 1.2, 0.75)
 
-The function arguments will then be serialized into a jSON representation:
+The function arguments will then be serialized into a JSON representation:
 <br>"[ 1.2, 0.75 ]"
 <br>
 and passed to the scorer implementation.
@@ -106,10 +155,24 @@ Similarly an administrator may choose to deploy a custom DNA analyzer 'DnaRank'.
 The user is then immediately able to run queries with the said scorer, e.g.
 <br>SORT DNARANK(doc, 123, 456, "abc", { "def", "ghi" })
 
-The function arguments will then be serialized into a jSON representation:
+The function arguments will then be serialized into a JSON representation:
 <br>"[ 123, 456, \"abc\", { \"def\", \"ghi\" } ]"
 <br>
 and passed to the scorer implementation.
+
+Runtime-plugging functionality for scores is not avaiable in ArangoDB at this
+point in time, so ArangoDB comes with a few default-initialized scores:
+
+* \<attribute-name\>
+  order results based on the value of **attribute-name**
+
+* BM25
+  order results based on the
+  [BM25 algorithm](https://en.wikipedia.org/wiki/Okapi_BM25)
+
+* TFIDF
+  order results based on the
+  [TFIDF algorithm](https://en.wikipedia.org/wiki/TF-IDF)
 
 ### IResearch is much more than a fulltext search
 
@@ -121,11 +184,11 @@ document attributes.
 ### View datasource
 
 IResearch functionality is exposed through an ArangoDB view API because the
-IResearch View is merely a identity transformation applied onto documents stored
-in linked collections of the same ArangoDB database. In plain terms an IResearch
-View only allows filtering and sorting of JSON documents located in collections
-of the same database. The matching documents themselves are returned as-is from
-their corresponding collections.
+IResearch view is merely an identity transformation applied onto documents
+stored in linked collections of the same ArangoDB database. In plain terms an
+IResearch view only allows filtering and sorting of documents located in
+collections of the same database. The matching documents themselves are returned
+as-is from their corresponding collections.
 
 ### Links to ArangoDB collections
 
@@ -134,26 +197,26 @@ which ArangoDB collections a given IResearch View should query for documents and
 how these documents should be queried.
 
 An IResearch Link is a uni-directional connection from an ArangoDB collection
-to an IResearch View describing how data coming from the said collection should
-be made available in the given view. Each IResearch Link in an IResearch View is
+to an IResearch view describing how data coming from the said collection should
+be made available in the given view. Each IResearch Link in an IResearch view is
 uniquely identified by the name of the ArangoDB collection it links to. An
-IResearch View may have zero or more links, each to a distinct ArangoDB
+IResearch view may have zero or more links, each to a distinct ArangoDB
 collection. Similarly an ArangoDB collection may be referenced via links by zero
-or more distinct IResearch Views. In plain terms any given IResearch View may be
+or more distinct IResearch views. In plain terms any given IResearch view may be
 linked to any given ArangoDB collection of the same database with zero or at
-most one link. However, any IResearch View may be linked to multiple distinct
+most one link. However, any IResearch view may be linked to multiple distinct
 ArangoDB collections and similarly any ArangoDB collection may be referenced by
-multiple IResearch Views.
+multiple IResearch views.
 
-To configure an IResearch View for consideration of documents from a given
+To configure an IResearch view for consideration of documents from a given
 ArangoDB collection a link definition must be added to the properties of the
-said IResearch View defining the link parameters as per the section
+said IResearch view defining the link parameters as per the section
 [View definition/modification].
 
 
 ### View definition/modification
 
-An IResearch View is configured via a JSON object containing a set of
+An IResearch view is configured via an object containing a set of
 view-specific configuration directives and a map of link-specific configuration
 directives.
 
@@ -308,7 +371,7 @@ During view modification the following directives apply:
   the filesystem path where to store persisted view metadata
 
 * locale: <optional> (default: 'C')
-  the default locale used for ordering JSON processed attribute names
+  the default locale used for ordering processed attribute names
 
 * threadsMaxIdle: <optional> (default: 5)
   maximum idle number of threads for single-run tasks
@@ -335,29 +398,29 @@ During view modification the following directives apply:
 
 * analyzers: \<optional\> (default: [ 'identity' ])
   a list of analyzers, by name as defined via the section [Analyzers], that
-  should be applied to values of processed JSON document attributes
+  should be applied to values of processed document attributes
 
 * boost: \<optional\> (default: 1.0)
-  sort preference factor that should be applied to values of processed JSON
+  sort preference factor that should be applied to values of processed 
   document attributes, documents otherwise scored equally but having a higher
   preference will appear sooner/higher in the sorted resultset
 
 * fields: \<optional\> (default: {})
-  a map{\<JSON document attribute\>, [Link properties]} of fields that should be
-  processed at each level of the JSON document
-  each key specifies the JSON document attribute to be processed, the value of
+  a map{\<attribute-name\>, [Link properties]} of fields that should be
+  processed at each level of the document
+  each key specifies the document attribute to be processed, the value of
   *includeAllFields* is also consulted when selecting fields to be processed
   each value specifies the [Link properties] directives to be used when
   processing the specified field, a [Link properties] value of '{}' denotes
   inheritance of all (except *fields*) directives from the current level
 
 * includeAllFields: \<optional\> (default: false)
-  if true then process all JSON document attributes (if not explicitly specified
+  if true then process all document attributes (if not explicitly specified
   then process the fields with default [Link properties] directives, i.e. {}),
   otherwise only consider attributes mentioned in *fields*
 
 * nestListValues: \<optional\> (default: false)
-  if true then for JSON arrays track the value position in the array, e.g. when
+  if true then for array values track the value position in the array, e.g. when
   querying for the input: { attr: [ 'valueX', 'valueY', 'valueZ' ] }
   the user must specify: doc.attr[1] == 'valueY'
   otherwise all values in an array are treated as equal alternatives, e.g. when
