@@ -26,6 +26,7 @@
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/Query.h"
 #include "Basics/FileUtils.h"
+#include "Basics/LocalTaskQueue.h"
 #include "Basics/ReadLocker.h"
 #include "Basics/Result.h"
 #include "Basics/ScopeGuard.h"
@@ -3315,22 +3316,21 @@ static void JS_WarmupVocbaseCol(
   if (!trxRes.ok()) {
     TRI_V8_THROW_EXCEPTION(trxRes);
   }
-  
+
   auto idxs = collection->getIndexes();
   rest::Scheduler* schdler = SchedulerFeature::SCHEDULER;
-  std::atomic<size_t> numTrx(idxs.size());
+  auto queue = std::make_shared<basics::LocalTaskQueue>(schdler->ioService());
 
   for (auto& idx : idxs) {
-    schdler->post([&] {
-      TRI_DEFER(numTrx--);
-      idx->warmup(&trx);
-    });
-  }
-  while (numTrx > 0 && !schdler->isStopping()) {
-    usleep(50000);
+    idx->warmup(&trx, queue);
   }
 
-  trxRes = trx.commit();
+  queue->dispatchAndWait();
+  if (queue->status() == TRI_ERROR_NO_ERROR) {
+    trxRes = trx.commit();
+  } else {
+    TRI_V8_THROW_EXCEPTION(queue->status());
+  }
 
   if (!trxRes.ok()) {
     TRI_V8_THROW_EXCEPTION(trxRes);

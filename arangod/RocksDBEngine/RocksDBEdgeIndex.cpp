@@ -67,6 +67,27 @@ namespace {
 constexpr bool EdgeIndexFillBlockCache = false;
 }
 
+RocksDBEdgeIndexWarmupTask::RocksDBEdgeIndexWarmupTask(
+    std::shared_ptr<basics::LocalTaskQueue> queue,
+    RocksDBEdgeIndex* index,
+    transaction::Methods* trx,
+    rocksdb::Slice const& lower,
+    rocksdb::Slice const& upper)
+  : LocalTask(queue),
+    _index(index),
+    _trx(trx),
+    _lower(lower.data(), lower.size()),
+    _upper(upper.data(), upper.size()) {}
+
+void RocksDBEdgeIndexWarmupTask::run() {
+  try {
+    _index->warmupInternal(_trx, _lower, _upper);
+  } catch (...) {
+    _queue->setStatus(TRI_ERROR_INTERNAL);
+  }
+  _queue->join();
+}
+
 RocksDBEdgeIndexIterator::RocksDBEdgeIndexIterator(
     LogicalCollection* collection, transaction::Methods* trx,
     ManagedDocumentResult* mmdr, arangodb::RocksDBEdgeIndex const* index,
@@ -638,21 +659,29 @@ static std::string FindMedian(rocksdb::Iterator* it,
   return it->key().ToString();  // median is exclusive upper bound
 }
 
-void RocksDBEdgeIndex::warmup(transaction::Methods* trx) {
+void RocksDBEdgeIndex::warmup(transaction::Methods* trx,
+                              std::shared_ptr<basics::LocalTaskQueue> queue) {
   if (!_useCache || !_cache) {
     return;
   }
+
+  // prepare transaction for parallel read access
+  RocksDBTransactionState::toState(trx)->prepareForParallelReads();
+
   auto rocksColl = toRocksDBCollection(_collection);
   auto* mthds = RocksDBTransactionState::toMethods(trx);
   auto bounds = RocksDBKeyBounds::EdgeIndex(_objectId);
-  
+
   uint64_t expectedCount = static_cast<uint64_t>(selectivityEstimate() *
                                                  rocksColl->numberDocuments());
+
   // Prepare the cache to be resized for this amount of objects to be inserted.
   _cache->sizeHint(expectedCount);
   if (expectedCount < 50000) {
     LOG_TOPIC(DEBUG, Logger::ROCKSDB) << "Skipping the multithreaded loading";
-    this->warmupInternal(trx, bounds.start(), bounds.end());
+    auto task = std::make_shared<RocksDBEdgeIndexWarmupTask>(
+        queue, this, trx, bounds.start(), bounds.end());
+    queue->enqueue(task);
     return;
   }
 
@@ -668,50 +697,50 @@ void RocksDBEdgeIndex::warmup(transaction::Methods* trx) {
   it->Seek(bounds.start());
   if (!it->Valid()) {
     LOG_TOPIC(DEBUG, Logger::ROCKSDB) << "Cannot use multithreaded edge index warmup";
-    this->warmupInternal(trx, bounds.start(), bounds.end());
+    auto task = std::make_shared<RocksDBEdgeIndexWarmupTask>(
+        queue, this, trx, bounds.start(), bounds.end());
+    queue->enqueue(task);
     return;
   }
   std::string firstKey = it->key().ToString();
   it->SeekForPrev(bounds.end());
   if (!it->Valid()) {
     LOG_TOPIC(DEBUG, Logger::ROCKSDB) << "Cannot use multithreaded edge index warmup";
-    this->warmupInternal(trx, bounds.start(), bounds.end());
+    auto task = std::make_shared<RocksDBEdgeIndexWarmupTask>(
+        queue, this, trx, bounds.start(), bounds.end());
+    queue->enqueue(task);
     return;
   }
   std::string lastKey = it->key().ToString();
-  
+
   std::string q1 = firstKey, q2, q3, q4, q5 = lastKey;
   q3 = FindMedian(it.get(), q1, q5);
   if (q3 == lastKey) {
     LOG_TOPIC(DEBUG, Logger::ROCKSDB) << "Cannot use multithreaded edge index warmup";
-    this->warmupInternal(trx, bounds.start(), bounds.end());
+    auto task = std::make_shared<RocksDBEdgeIndexWarmupTask>(
+        queue, this, trx, bounds.start(), bounds.end());
+    queue->enqueue(task);
     return;
   }
-  
+
   q2 = FindMedian(it.get(), q1, q3);
   q4 = FindMedian(it.get(), q3, q5);
 
-  // prepare transaction for parallel read access
-  RocksDBTransactionState::toState(trx)->prepareForParallelReads();
+  auto task1 = std::make_shared<RocksDBEdgeIndexWarmupTask>(
+      queue, this, trx, q1, q2);
+  queue->enqueue(task1);
 
-  auto scheduler = SchedulerFeature::SCHEDULER;
-  std::atomic<uint64_t> count(3);
-  scheduler->post([&] {
-    TRI_DEFER(count--);  // q2 is excluded
-    this->warmupInternal(trx, q1, q2);
-  });
-  scheduler->post([&] {
-    TRI_DEFER(count--);// q3 is excluded
-    this->warmupInternal(trx, q2, q3);
-  });
-  scheduler->post([&] {
-    TRI_DEFER(count--);  // q4 is excluded
-    this->warmupInternal(trx, q3, q4);
-  });
-  this->warmupInternal(trx, q4, bounds.end());
-  while (count > 0 && !scheduler->isStopping()) {
-    usleep(10000);
-  }
+  auto task2 = std::make_shared<RocksDBEdgeIndexWarmupTask>(
+      queue, this, trx, q2, q3);
+  queue->enqueue(task2);
+
+  auto task3 = std::make_shared<RocksDBEdgeIndexWarmupTask>(
+      queue, this, trx, q3, q4);
+  queue->enqueue(task3);
+
+  auto task4 = std::make_shared<RocksDBEdgeIndexWarmupTask>(
+      queue, this, trx, q4, bounds.end());
+  queue->enqueue(task4);
 }
 
 void RocksDBEdgeIndex::warmupInternal(transaction::Methods* trx,
@@ -743,7 +772,7 @@ void RocksDBEdgeIndex::warmupInternal(transaction::Methods* trx,
       return;
     }
     n++;
-    
+
     rocksdb::Slice key = it->key();
     StringRef v = RocksDBKey::vertexId(key);
     if (previous.empty()) {

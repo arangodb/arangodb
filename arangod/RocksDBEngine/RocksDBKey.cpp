@@ -40,6 +40,7 @@ void RocksDBKey::constructDatabase(TRI_voc_tick_t databaseId) {
   _buffer.reserve(keyLength);
   _buffer.push_back(static_cast<char>(_type));
   uint64ToPersistent(_buffer, databaseId);
+  TRI_ASSERT(_buffer.size() == keyLength);
   _slice = rocksdb::Slice(_buffer.data(), keyLength);
 }
 
@@ -52,6 +53,7 @@ void RocksDBKey::constructCollection(TRI_voc_tick_t databaseId,
   _buffer.push_back(static_cast<char>(_type));
   uint64ToPersistent(_buffer, databaseId);
   uint64ToPersistent(_buffer, collectionId);
+  TRI_ASSERT(_buffer.size() == keyLength);
   _slice = rocksdb::Slice(_buffer.data(), keyLength);
 }
 
@@ -64,6 +66,7 @@ void RocksDBKey::constructDocument(uint64_t collectionId,
   _buffer.reserve(keyLength);
   uint64ToPersistent(_buffer, collectionId);
   uint64ToPersistent(_buffer, revisionId);
+  TRI_ASSERT(_buffer.size() == keyLength);
   _slice = rocksdb::Slice(_buffer.data(), keyLength);
 }
 
@@ -75,6 +78,7 @@ void RocksDBKey::constructPrimaryIndexValue(
   _buffer.reserve(keyLength);
   uint64ToPersistent(_buffer, indexId);
   _buffer.append(primaryKey.data(), primaryKey.size());
+  TRI_ASSERT(_buffer.size() == keyLength);
   _slice = rocksdb::Slice(_buffer.data(), keyLength);
 }
 
@@ -96,6 +100,7 @@ void RocksDBKey::constructEdgeIndexValue(uint64_t indexId,
   _buffer.push_back(_stringSeparator);
   uint64ToPersistent(_buffer, revisionId);
   _buffer.push_back(0xFFU);
+  TRI_ASSERT(_buffer.size() == keyLength);
   _slice = rocksdb::Slice(_buffer.data(), keyLength);
 }
 
@@ -110,6 +115,7 @@ void RocksDBKey::constructVPackIndexValue(uint64_t indexId,
   uint64ToPersistent(_buffer, indexId);
   _buffer.append(reinterpret_cast<char const*>(indexValues.begin()), byteSize);
   uint64ToPersistent(_buffer, revisionId);
+  TRI_ASSERT(_buffer.size() == keyLength);
   _slice = rocksdb::Slice(_buffer.data(), keyLength);
 }
 
@@ -122,7 +128,7 @@ void RocksDBKey::constructUniqueVPackIndexValue(uint64_t indexId,
   _buffer.reserve(keyLength);
   uint64ToPersistent(_buffer, indexId);
   _buffer.append(reinterpret_cast<char const*>(indexValues.begin()), byteSize);
-  TRI_ASSERT(_buffer.size() == sizeof(uint64_t) + byteSize);
+  TRI_ASSERT(_buffer.size() == keyLength);
   _slice = rocksdb::Slice(_buffer.data(), keyLength);
 }
 
@@ -137,6 +143,7 @@ void RocksDBKey::constructFulltextIndexValue(uint64_t indexId,
   _buffer.append(word.data(), word.length());
   _buffer.push_back(_stringSeparator);
   uint64ToPersistent(_buffer, revisionId);
+  TRI_ASSERT(_buffer.size() == keyLength);
   _slice = rocksdb::Slice(_buffer.data(), keyLength);
 }
 
@@ -150,6 +157,7 @@ void RocksDBKey::constructGeoIndexValue(uint64_t indexId, int32_t offset,
   _buffer.reserve(keyLength);
   uint64ToPersistent(_buffer, indexId);
   uint64ToPersistent(_buffer, norm);
+  TRI_ASSERT(_buffer.size() == keyLength);
   _slice = rocksdb::Slice(_buffer.data(), keyLength);
 }
 
@@ -161,6 +169,7 @@ void RocksDBKey::constructView(TRI_voc_tick_t databaseId, TRI_voc_cid_t viewId) 
   _buffer.push_back(static_cast<char>(_type));
   uint64ToPersistent(_buffer, databaseId);
   uint64ToPersistent(_buffer, viewId);
+  TRI_ASSERT(_buffer.size() == keyLength);
   _slice = rocksdb::Slice(_buffer.data(), keyLength);
 }
 
@@ -171,6 +180,7 @@ void RocksDBKey::constructCounterValue(uint64_t objectId) {
   _buffer.reserve(keyLength);
   _buffer.push_back(static_cast<char>(_type));
   uint64ToPersistent(_buffer, objectId);
+  TRI_ASSERT(_buffer.size() == keyLength);
   _slice = rocksdb::Slice(_buffer.data(), keyLength);
 }
 
@@ -181,6 +191,7 @@ void RocksDBKey::constructSettingsValue(RocksDBSettingsType st) {
   _buffer.reserve(keyLength);
   _buffer.push_back(static_cast<char>(_type));
   _buffer.push_back(static_cast<char>(st));
+  TRI_ASSERT(_buffer.size() == keyLength);
   _slice = rocksdb::Slice(_buffer.data(), keyLength);
 }
 
@@ -191,6 +202,7 @@ void RocksDBKey::constructReplicationApplierConfig(TRI_voc_tick_t databaseId) {
   _buffer.reserve(keyLength);
   _buffer.push_back(static_cast<char>(_type));
   uint64ToPersistent(_buffer, databaseId);
+  TRI_ASSERT(_buffer.size() == keyLength);
   _slice = rocksdb::Slice(_buffer.data(), keyLength);
 }
 
@@ -201,6 +213,7 @@ void RocksDBKey::constructIndexEstimateValue(uint64_t collectionObjectId) {
   _buffer.reserve(keyLength);
   _buffer.push_back(static_cast<char>(_type));
   uint64ToPersistent(_buffer, collectionObjectId);
+  TRI_ASSERT(_buffer.size() == keyLength);
   _slice = rocksdb::Slice(_buffer.data(), keyLength);
 }
 
@@ -211,6 +224,7 @@ void RocksDBKey::constructKeyGeneratorValue(uint64_t objectId) {
   _buffer.reserve(keyLength);
   _buffer.push_back(static_cast<char>(_type));
   uint64ToPersistent(_buffer, objectId);
+  TRI_ASSERT(_buffer.size() == keyLength);
   _slice = rocksdb::Slice(_buffer.data(), keyLength);
 }
 
