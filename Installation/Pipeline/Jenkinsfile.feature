@@ -3,7 +3,11 @@
 properties(
     [[
       $class: 'BuildDiscarderProperty',
-      strategy: [$class: 'LogRotator', artifactDaysToKeepStr: '', artifactNumToKeepStr: '', daysToKeepStr: '3', numToKeepStr: '5']
+      strategy: [$class: 'LogRotator',
+                 artifactDaysToKeepStr: '3',
+                 artifactNumToKeepStr: '5',
+                 daysToKeepStr: '3',
+                 numToKeepStr: '5']
     ]]
 )
 
@@ -14,7 +18,6 @@ def defaultBuild = true
 def defaultCleanBuild = false
 def defaultCommunity = true
 def defaultEnterprise = true
-def defaultJslint = true
 def defaultRunResilience = false
 def defaultRunTests = false
 def defaultFullParallel = false
@@ -57,11 +60,6 @@ properties([
             name: 'Enterprise'
         ),
         booleanParam(
-            defaultValue: defaultJslint,
-            description: 'run jslint',
-            name: 'runJslint'
-        ),
-        booleanParam(
             defaultValue: defaultRunResilience,
             description: 'run resilience tests',
             name: 'runResilience'
@@ -94,9 +92,6 @@ useMac = params.Mac
 
 // build windows
 useWindows = params.Windows
-
-// run jslint
-runJslint = params.runJslint
 
 // run resilience tests
 runResilience = params.runResilience
@@ -160,8 +155,8 @@ def checkoutCommunity() {
         }
         catch (exc) {
             echo "GITHUB checkout failed, retrying in 1min"
-            echo exc.toString()
             sleep 60
+            throw exc
         }
     }
 }
@@ -265,35 +260,37 @@ def checkCommitMessages() {
         useWindows = false
         useCommunity = false
         useEnterprise = false
-        runJslint = false
         runResilience = false
         runTests = false
     }
     else {
         if (env.BRANCH_NAME == "devel" || env.BRANCH_NAME == "3.2") {
+            echo "build of main branch"
+
             useLinux = true
             useMac = true
             useWindows = true
             useCommunity = true
             useEnterprise = true
-            runJslint = true
             runResilience = true
             runTests = true
         }
         else if (env.BRANCH_NAME =~ /^PR-/) {
+            echo "build of PR"
+
             useLinux = true
             useMac = true
             useWindows = true
+            fullParallel = true
             useCommunity = true
             useEnterprise = true
-            runJslint = true
             runResilience = true
             runTests = true
 
             restrictions = [
                 "build-community-linux" : true,
                 "build-community-mac" : true,
-                // "build-community-windows" : true,
+                "build-community-windows" : true,
                 "build-enterprise-linux" : true,
                 "build-enterprise-mac" : true,
                 "build-enterprise-windows" : true,
@@ -314,7 +311,6 @@ def checkCommitMessages() {
             fullParallel = true
             useCommunity = true
             useEnterprise = true
-            runJslint = true
             runResilience = true
             runTests = true
 
@@ -343,7 +339,6 @@ Clean Build: ${cleanBuild}
 Full Parallel: ${fullParallel}
 Building Community: ${useCommunity}
 Building Enterprise: ${useEnterprise}
-Running Jslint: ${runJslint}
 Running Resilience: ${runResilience}
 Running Tests: ${runTests}
 
@@ -401,12 +396,10 @@ def jslint() {
     }
 }
 
-def jslintStep(edition) {
-    def os = 'linux'
-
+def jslintStep(edition, os) {
     return {
         node(os) {
-            stage("jslint") {
+            stage("jslint-${edition}-${os}") {
                 echo "Running jslint test"
 
                 unstashBinaries(edition, os)
@@ -522,17 +515,19 @@ def testStep(edition, os, mode, engine) {
                 def name = "${edition}-${os}-${mode}-${engine}"
 
                 stage("test-${name}") {
-                    try {
-                        unstashBinaries(edition, os)
-                        testEdition(edition, os, mode, engine)
-                        testsSuccess[name] = true
-                    }
-                    catch (exc) {
-                        echo "Exception while testing!"
-                        echo exc.toString()
-                        testsSuccess[name] = false
-                        allTestsSuccessful = false
-                        throw exc
+                    timeout(120) {
+                        try {
+                            unstashBinaries(edition, os)
+                            testEdition(edition, os, mode, engine)
+                            testsSuccess[name] = true
+                        }
+                        catch (exc) {
+                            echo "Exception while testing!"
+                            echo exc.toString()
+                            testsSuccess[name] = false
+                            allTestsSuccessful = false
+                            throw exc
+                        }
                     }
                 }
             }
@@ -555,12 +550,6 @@ def testStepParallel(editionList, osList, modeList) {
                 }
             }
         }
-    }
-
-    if (runJslint
-     && osList.contains('linux') && useLinux
-     && editionList.contains('community') && useCommunity) {
-        branches['jslint'] = jslintStep('community')
     }
 
     if (branches.size() > 1) {
@@ -642,8 +631,10 @@ def testResilienceStep(os, engine, foxx) {
 
                     try {
                         try {
-                            unstashBinaries(edition, os)
-                            testResilience(os, engine, foxx)
+                            timeout(120) {
+                                unstashBinaries(edition, os)
+                                testResilience(os, engine, foxx)
+                            }
 
                             if (findFiles(glob: 'resilience/core*').length > 0) {
                                 error("found core file")
@@ -797,8 +788,11 @@ def buildStep(edition, os) {
                         checkoutResilience()
                     }
 
-                    buildEdition(edition, os)
-                    stashBinaries(edition, os)
+                    timeout(90) {
+                        buildEdition(edition, os)
+                        stashBinaries(edition, os)
+                    }
+
                     buildsSuccess[name] = true
                 }
             }
@@ -862,6 +856,19 @@ else {
     runStage { testStepParallel(['community', 'enterprise'], ['windows'], ['cluster', 'singleserver']) }
 
     runStage { testResilienceParallel(['linux', 'mac', 'windows']) }
+}
+
+if (buildsSuccess["enterprise-linux"]) {
+    jslintStep('enterprise', 'linux')
+}
+else if (buildsSuccess["community-linux"]) {
+    jslintStep('community', 'linux')
+}
+else if (buildsSuccess["enterprise-mac"]) {
+    jslintStep('enterprise', 'mac')
+}
+else if (buildsSuccess["community-mac"]) {
+    jslintStep('community', 'mac')
 }
 
 stage('result') {

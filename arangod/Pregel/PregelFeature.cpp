@@ -218,7 +218,7 @@ void PregelFeature::handleWorkerRequest(TRI_vocbase_t* vocbase,
                                     << exeNum << " does not exist";
     THROW_ARANGO_EXCEPTION_FORMAT(
         TRI_ERROR_INTERNAL,
-        "Handling request %s, but worker %lld does not exists.", path.c_str(),
+        "Handling request %s, but worker %lld does not exist.", path.c_str(),
         exeNum);
   }
 

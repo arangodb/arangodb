@@ -482,7 +482,9 @@ exports.historian = function () {
     }
   } catch (err) {
     // errors on shutdown are expected. do not log them in case they occur
-    if (err.errorNum !== internal.errors.ERROR_SHUTTING_DOWN.code) {
+    if (err.errorNum !== internal.errors.ERROR_SHUTTING_DOWN.code &&
+        err.errorNum !== internal.errors.ERROR_ARANGO_CORRUPTED_COLLECTION.code &&
+        err.errorNum !== internal.errors.ERROR_ARANGO_CORRUPTED_DATAFILE.code) {
       require('console').warn('catch error in historian: %s', err.stack);
     }
   }

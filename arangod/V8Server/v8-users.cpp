@@ -233,6 +233,9 @@ static void JS_ReloadAuthData(v8::FunctionCallbackInfo<v8::Value> const& args) {
   auto authentication =
       FeatureCacheFeature::instance()->authenticationFeature();
   authentication->authInfo()->outdate();
+  if (ServerState::instance()->isCoordinator()) {
+    authentication->authInfo()->reloadAllUsers();
+  }
 
   TRI_V8_RETURN_UNDEFINED();
   TRI_V8_TRY_CATCH_END
