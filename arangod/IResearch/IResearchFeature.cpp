@@ -39,6 +39,8 @@
 
 #include "Basics/SmallVector.h"
 
+#include "utils/log.hpp"
+
 NS_BEGIN(arangodb)
 
 NS_BEGIN(transaction)
@@ -57,7 +59,27 @@ NS_END // arangodb
 
 NS_LOCAL
 
-static std::string const FEATURE_NAME("IResearch");
+class IResearchLogTopic final : public arangodb::LogTopic {
+ public:
+  IResearchLogTopic(std::string const& name, arangodb::LogLevel level)
+    : arangodb::LogTopic(name, level) {
+    setIResearchLogLevel(level);
+  }
+
+  virtual void setLogLevel(arangodb::LogLevel level) override {
+    arangodb::LogTopic::setLogLevel(level);
+    setIResearchLogLevel(level);
+  }
+
+ private:
+  static void setIResearchLogLevel(arangodb::LogLevel level) {
+    auto irsLevel = static_cast<irs::logger::level_t>(level);
+    irsLevel = std::max(irsLevel, irs::logger::IRL_FATAL);
+    irsLevel = std::min(irsLevel, irs::logger::IRL_TRACE);
+
+    irs::logger::enabled(irsLevel);
+  }
+}; // IResearchLogTopic
 
 arangodb::aql::AqlValue noop(
     arangodb::aql::Query*,
@@ -130,13 +152,15 @@ void registerScorers(arangodb::aql::AqlFunctionFeature& functions) {
   });
 }
 
+std::string const FEATURE_NAME("IResearch");
+IResearchLogTopic LIBIRESEARCH("libiresearch", arangodb::LogLevel::INFO);
+
 NS_END
 
 NS_BEGIN(arangodb)
 NS_BEGIN(iresearch)
 
 /* static */ arangodb::LogTopic IResearchFeature::IRESEARCH("iresearch", LogLevel::INFO);
-/* static */ arangodb::LogTopic IResearchFeature::LIBIRESEARCH("libiresearch", LogLevel::INFO);
 
 /* static */ std::string const& IResearchFeature::name() {
   return FEATURE_NAME;

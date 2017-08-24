@@ -33,7 +33,6 @@ namespace iresearch {
 class IResearchFeature final : public application_features::ApplicationFeature {
  public:
   static arangodb::LogTopic IRESEARCH;
-  static arangodb::LogTopic LIBIRESEARCH;
 
   static std::string const& name();
 
