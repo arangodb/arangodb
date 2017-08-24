@@ -77,6 +77,7 @@ TEST_CASE("cache::TransactionalBucket", "[cache]") {
     for (size_t i = 0; i < 9; i++) {
       ptrs[i] = CachedValue::construct(&(keys[i]), sizeof(uint64_t),
                                        &(values[i]), sizeof(uint64_t));
+      TRI_ASSERT(ptrs[i] != nullptr);
     }
 
     success = bucket->lock(-1LL);
@@ -123,6 +124,7 @@ TEST_CASE("cache::TransactionalBucket", "[cache]") {
     for (size_t i = 0; i < 3; i++) {
       ptrs[i] = CachedValue::construct(&(keys[i]), sizeof(uint64_t),
                                        &(values[i]), sizeof(uint64_t));
+      TRI_ASSERT(ptrs[i] != nullptr);
     }
 
     success = bucket->lock(-1LL);
@@ -172,6 +174,7 @@ TEST_CASE("cache::TransactionalBucket", "[cache]") {
     for (size_t i = 0; i < 9; i++) {
       ptrs[i] = CachedValue::construct(&(keys[i]), sizeof(uint64_t),
                                        &(values[i]), sizeof(uint64_t));
+      TRI_ASSERT(ptrs[i] != nullptr);
     }
 
     success = bucket->lock(-1LL);
@@ -235,6 +238,7 @@ TEST_CASE("cache::TransactionalBucket", "[cache]") {
     for (size_t i = 0; i < 8; i++) {
       ptrs[i] = CachedValue::construct(&(keys[i]), sizeof(uint64_t),
                                        &(values[i]), sizeof(uint64_t));
+      TRI_ASSERT(ptrs[i] != nullptr);
     }
 
     success = bucket->lock(-1LL);

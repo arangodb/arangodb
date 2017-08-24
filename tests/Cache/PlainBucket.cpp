@@ -51,6 +51,7 @@ TEST_CASE("cache::PlainBucket", "[cache]") {
     for (size_t i = 0; i < 11; i++) {
       ptrs[i] = CachedValue::construct(&(keys[i]), sizeof(uint64_t),
                                        &(values[i]), sizeof(uint64_t));
+      TRI_ASSERT(ptrs[i] != nullptr);
     }
 
     success = bucket->lock(-1LL);
@@ -97,6 +98,7 @@ TEST_CASE("cache::PlainBucket", "[cache]") {
     for (size_t i = 0; i < 3; i++) {
       ptrs[i] = CachedValue::construct(&(keys[i]), sizeof(uint64_t),
                                        &(values[i]), sizeof(uint64_t));
+      TRI_ASSERT(ptrs[i] != nullptr);
     }
 
     success = bucket->lock(-1LL);
@@ -148,6 +150,7 @@ TEST_CASE("cache::PlainBucket", "[cache]") {
     for (size_t i = 0; i < 11; i++) {
       ptrs[i] = CachedValue::construct(&(keys[i]), sizeof(uint64_t),
                                        &(values[i]), sizeof(uint64_t));
+      TRI_ASSERT(ptrs[i] != nullptr);
     }
 
     success = bucket->lock(-1LL);

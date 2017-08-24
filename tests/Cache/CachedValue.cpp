@@ -102,6 +102,7 @@ TEST_CASE("cache::CachedValue", "[cache]") {
     // fixed key, variable value
     auto original =
         CachedValue::construct(&k, sizeof(uint64_t), v.data(), v.size());
+    REQUIRE(nullptr != original);
     auto copy = original->copy();
     REQUIRE(nullptr != copy);
     REQUIRE(copy != original);
@@ -122,6 +123,7 @@ TEST_CASE("cache::CachedValue", "[cache]") {
 
     auto cv = CachedValue::construct(
         k1.data(), static_cast<uint32_t>(k1.size()), &v, sizeof(uint64_t));
+    REQUIRE(nullptr != cv);
 
     // same key
     REQUIRE(cv->sameKey(k1.data(), static_cast<uint32_t>(k1.size())));
