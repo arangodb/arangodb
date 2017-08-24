@@ -27,6 +27,7 @@
   #pragma warning(disable : 4512)
 #elif defined (__GNUC__)
   #pragma GCC diagnostic ignored "-Wsign-compare"
+  #pragma GCC diagnostic ignored "-Wignored-qualifiers"
 #endif
 
 #include <fst/vector-fst.h>
