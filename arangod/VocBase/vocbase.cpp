@@ -833,7 +833,7 @@ std::string TRI_vocbase_t::collectionName(TRI_voc_cid_t id) {
 }
 
 /// @brief looks up a collection by name
-LogicalCollection* TRI_vocbase_t::lookupCollection(std::string const& name) {
+LogicalCollection* TRI_vocbase_t::lookupCollection(std::string const& name) const {
   if (name.empty()) {
     return nullptr;
   }
@@ -858,7 +858,7 @@ LogicalCollection* TRI_vocbase_t::lookupCollection(std::string const& name) {
 
 /// @brief looks up a collection by name
 LogicalCollection* TRI_vocbase_t::lookupCollectionNoLock(
-    std::string const& name) {
+    std::string const& name) const {
   if (name.empty()) {
     return nullptr;
   }
@@ -886,11 +886,10 @@ LogicalCollection* TRI_vocbase_t::lookupCollectionNoLock(
 }
 
 /// @brief looks up a collection by identifier
-LogicalCollection* TRI_vocbase_t::lookupCollection(TRI_voc_cid_t id) {
+LogicalCollection* TRI_vocbase_t::lookupCollection(TRI_voc_cid_t id) const {
   READ_LOCKER(readLocker, _collectionsLock);
 
   auto it = _collectionsById.find(id);
-
   if (it == _collectionsById.end()) {
     return nullptr;
   }

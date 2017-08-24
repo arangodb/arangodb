@@ -24,7 +24,6 @@
 #include "Cache/PlainBucket.h"
 #include "Basics/Common.h"
 #include "Cache/CachedValue.h"
-#include "Cache/State.h"
 
 #include <stdint.h>
 #include <atomic>
@@ -47,7 +46,7 @@ bool PlainBucket::isLocked() const { return _state.isLocked(); }
 
 bool PlainBucket::isMigrated() const {
   TRI_ASSERT(isLocked());
-  return _state.isSet(State::Flag::migrated);
+  return _state.isSet(BucketState::Flag::migrated);
 }
 
 bool PlainBucket::isFull() const {

@@ -25,9 +25,9 @@
 #define ARANGODB_CACHE_PLAIN_BUCKET_H
 
 #include "Basics/Common.h"
+#include "Cache/BucketState.h"
 #include "Cache/CachedValue.h"
 #include "Cache/Common.h"
-#include "Cache/State.h"
 
 #include <stdint.h>
 #include <atomic>
@@ -45,7 +45,7 @@ namespace cache {
 /// fits in a single cacheline.
 ////////////////////////////////////////////////////////////////////////////////
 struct PlainBucket {
-  State _state;
+  BucketState _state;
 
   uint32_t _paddingExplicit; // fill 4-byte gap for alignment purposes
 

@@ -140,7 +140,7 @@ class RocksDBIndex : public Index {
                                    rocksdb::Slice const& key,
                                    rocksdb::Slice const& value);
 
-  inline bool useCache() const { return (_useCache && _cachePresent); }
+  inline bool useCache() const { return (_cacheEnabled && _cachePresent); }
   void blackListKey(char const* data, std::size_t len);
   void blackListKey(StringRef& ref) { blackListKey(ref.data(), ref.size()); };
 
@@ -152,7 +152,7 @@ class RocksDBIndex : public Index {
   // we use this boolean for testing whether _cache is set.
   // it's quicker than accessing the shared_ptr each time
   bool _cachePresent;
-  bool _useCache;
+  bool _cacheEnabled;
 };
 }  // namespace arangodb
 
