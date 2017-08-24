@@ -63,8 +63,8 @@ Result executeTransaction(
   //do not allow the manipulation of the isolate while we are messing here
   READ_LOCKER(readLock2, lock);
 
-  if(canceled){ //if it was ok we would already have committed
-    if(rv.ok()){
+  if (canceled) { //if it was ok we would already have committed
+    if(rv.ok()) {
       rv.reset(TRI_ERROR_REQUEST_CANCELED,"handler canceled - result already committed");
     } else {
       rv.reset(TRI_ERROR_REQUEST_CANCELED,"handler canceled");
@@ -72,17 +72,21 @@ Result executeTransaction(
     return rv;
   }
 
-  if(rv.fail()){ return rv; };
+  if (rv.fail()) { 
+    return rv; 
+  }
 
-  if (tryCatch.HasCaught()){
+  if (tryCatch.HasCaught()) {
     //we have some javascript error that is not an arangoError
     std::string msg = *v8::String::Utf8Value(tryCatch.Message()->Get());
     rv.reset(TRI_ERROR_HTTP_SERVER_ERROR, msg);
   }
 
-  if(rv.fail()){ return rv; };
+  if (rv.fail()) { 
+    return rv; 
+  }
 
-  if(result->IsUndefined()){
+  if(result.IsEmpty() || result->IsUndefined()) {
     // turn undefined to none
     builder.add(VPackSlice::noneSlice());
   } else {

@@ -154,9 +154,6 @@ arangodb::Result Indexes::getAll(arangodb::LogicalCollection const* collection,
       return res;
     }
 
-    // READ-LOCK start
-    trx.lockRead();
-
     // get list of indexes
     auto indexes = collection->getIndexes();
     tmp.openArray(true);
@@ -165,7 +162,6 @@ arangodb::Result Indexes::getAll(arangodb::LogicalCollection const* collection,
     }
     tmp.close();
     trx.finish(res);
-    // READ-LOCK end
   }
 
   double selectivity = 0, memory = 0, cacheSize = 0, cacheLifeTimeHitRate = 0,

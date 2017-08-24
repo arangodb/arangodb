@@ -158,8 +158,14 @@ void DatabaseManagerThread::run() {
               TRI_RemoveDirectory(path.c_str());
             }
           }
-          
-          engine->dropDatabase(database);
+         
+          try { 
+            engine->dropDatabase(database);
+          } catch (std::exception const& ex) {
+            LOG_TOPIC(ERR, Logger::FIXME) << "dropping database '" << database->name() << "' failed: " << ex.what();
+          } catch (...) {
+            LOG_TOPIC(ERR, Logger::FIXME) << "dropping database '" << database->name() << "' failed";
+          }
         }
 
         delete database;

@@ -484,7 +484,10 @@ RestStatus RestUsersHandler::deleteRequest(AuthInfo* authInfo) {
         }
       });
       if (r.ok()) {
-        resetResponse(ResponseCode::OK);
+        VPackBuilder b;
+        b(VPackValue(VPackValueType::Object))("error", VPackValue(false))(
+                     "code", VPackValue(202))();
+        generateResult(ResponseCode::ACCEPTED, b.slice());
       } else {
         generateError(r);
       }

@@ -1,7 +1,8 @@
-/* jshint globalstrict:false, strict:false, unused: false */
-/* global assertTrue, assertFalse, assertEqual */
+/* jshint globalstrict:false, strict:false, unused : false */
+/* global assertEqual */
+
 // //////////////////////////////////////////////////////////////////////////////
-// / @brief tests for transactions
+// / @brief tests for dump/reload
 // /
 // / @file
 // /
@@ -24,7 +25,7 @@
 // / Copyright holder is triAGENS GmbH, Cologne, Germany
 // /
 // / @author Jan Steemann
-// / @author Copyright 2013, triAGENS GmbH, Cologne, Germany
+// / @author Copyright 2012, triAGENS GmbH, Cologne, Germany
 // //////////////////////////////////////////////////////////////////////////////
 
 var db = require('@arangodb').db;
@@ -34,46 +35,19 @@ var jsunity = require('jsunity');
 function runSetup () {
   'use strict';
   internal.debugClearFailAt();
-  var c, i;
 
-  // write some documents with autoincrement keys
-  db._drop('UnitTestsRecovery1');
-  c = db._create('UnitTestsRecovery1', { keyOptions: { type: 'autoincrement',
-    offset: 0, increment: 10 } } );
-  for (i = 0; i < 1000; i++) {
-    c.save({ value: i });
+  db._drop('UnitTestsRecovery');
+  var c = db._create('UnitTestsRecovery'), i;
+  for (i = 0; i < 10000; ++i) {
+    c.save({ value1: 'test' + i, value2: i });
   }
-  var wals = db._currentWalFiles().map(function(f) {
-    // strip off leading `/` or `/archive/` if it exists
-    var p = f.split('/');
-    return p[p.length - 1];
-  });
 
-  // write to other collection until all documents from first collection are
-  // out of the wall
-  db._drop('UnitTestsRecovery2');
-  c = db._create('UnitTestsRecovery2');
-  var keepWriting = true;
-  while (keepWriting) {
-    var padding = 'aaa';
-    for (i = 0; i < 10000; i++) {
-      padding = padding.concat('aaa');
-      c.save({ value: i , text: padding });
-    }
+  internal.debugSetFailAt("RocksDBCounterManagerSync");
+  internal.wal.flush(true, true);
 
-    keepWriting = false;
-    var walsLeft = db._currentWalFiles().map(function(f) {
-      // strip off leading `/` or `/archive/` if it exists
-      var p = f.split('/');
-      return p[p.length - 1];
-    });
-    for (var j = 0; j < wals.length; j++) {
-      if (walsLeft.indexOf(wals[j]) !== -1) { // still have old wal file
-        keepWriting = true;
-      }
-    }
+  for (i = 10000; i < 200000; ++i) {
+    c.save({ value1: 'test' + i, value2: i });
   }
-  c.save({ value: 0 }, { waitForSync: true });
 
   internal.debugSegfault('crashing server');
 }
@@ -91,15 +65,16 @@ function recoverySuite () {
     tearDown: function () {},
 
     // //////////////////////////////////////////////////////////////////////////////
-    // / @brief test whether we still pick up the right autoincrement value
+    // / @brief test whether we can restore the data
     // //////////////////////////////////////////////////////////////////////////////
 
-    testCollectionKeyGen: function () {
-      var c, d;
+    testCollectorOom: function () {
+      var i, c = db._collection('UnitTestsRecovery');
+      assertEqual(200000, c.count());
 
-      c = db._collection('UnitTestsRecovery1');
-      d = c.save({ value: 1001});
-      assertEqual("10010", d._key);
+      for (i = 200000; i < 210000; ++i) {
+        c.save({ value1: 'test' + i, value2: i });
+      }
     }
 
   };

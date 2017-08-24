@@ -37,7 +37,6 @@ function ReplicationApiSuite () {
 
   var cn = "UnitTestsCollection";
   var collection = null;
-  var isRocksDB = ( db._engine().name === "rocksdb" );
   var batchesToFree = [];
 
   return {
@@ -59,7 +58,6 @@ function ReplicationApiSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     tearDown : function () {
-
       // avoid hanging tests! by canceling batches
       batchesToFree.forEach( function(id){
           arango.DELETE_RAW("/_api/replication/batch/"+ id, "");
@@ -74,8 +72,6 @@ function ReplicationApiSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testCreateBatchId : function () {
-      if(!isRocksDB){ return; };
-
       // create batch
       var doc = {};
       var result = arango.POST_RAW("/_api/replication/batch", JSON.stringify(doc));
@@ -94,8 +90,6 @@ function ReplicationApiSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testKeys : function () {
-    if(!isRocksDB){ return; };
-
       // create batch
       var doc = {};
       var result = arango.POST_RAW("/_api/replication/batch", JSON.stringify(doc));
@@ -148,13 +142,10 @@ function ReplicationApiSuite () {
       assertEqual(204, result.code);
 
       batchesToFree.pop();
-
     }
-
 
   }; // return
 } // Replication suite
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief executes the test suite
@@ -163,4 +154,3 @@ function ReplicationApiSuite () {
 jsunity.run(ReplicationApiSuite);
 
 return jsunity.done();
-
