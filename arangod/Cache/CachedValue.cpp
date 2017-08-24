@@ -48,7 +48,7 @@ CachedValue* CachedValue::construct(void const* k, size_t kSize,
 
   cv->_refCount = 0;
   cv->_keySize = static_cast<uint32_t>(kSize);
-  cv->_valueSize = static_cast<uint64_t>(vSize);
+  cv->_valueSize = static_cast<uint32_t>(vSize);
   std::memcpy(const_cast<uint8_t*>(cv->key()), k, kSize);
   if (vSize > 0) {
     std::memcpy(const_cast<uint8_t*>(cv->value()), v, vSize);

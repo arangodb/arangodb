@@ -74,7 +74,8 @@ struct CachedValue {
   inline uint8_t const* value() const {
     return (_valueSize == 0)
       ? nullptr
-      : reinterpret_cast<uint8_t const*>(this) + sizeof(CachedValue) + _keySize;
+      : reinterpret_cast<uint8_t const*>(this) + sizeof(CachedValue) +
+          static_cast<size_t>(_keySize);
   }
 
   //////////////////////////////////////////////////////////////////////////////
@@ -127,7 +128,7 @@ struct CachedValue {
  private:
   std::atomic<uint32_t> _refCount;
   uint32_t _keySize;
-  uint64_t _valueSize;
+  uint32_t _valueSize;
 };
 
 };  // end namespace cache
