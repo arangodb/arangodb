@@ -43,18 +43,23 @@ const aql = arangodb.aql;
 const db = internal.db;
 
 describe('Foxx service', () => {
+
   const mount = '/queue_test_mount';
+
   before(() => {
     foxxManager.install(fs.join(basePath, 'queue'), mount);
   });
+
   after(() => {
     foxxManager.uninstall(mount, {force: true});
   });
+
   afterEach(() => {
     download(`${arango.getEndpoint().replace('tcp://', 'http://')}/${mount}`, '', {
       method: 'delete'
     });
   });
+
   it('should support queue registration', () => {
     const queuesBefore = db._query(aql`
       FOR queue IN _queues
@@ -70,6 +75,7 @@ describe('Foxx service', () => {
     `).toArray();
     expect(queuesAfter.length - queuesBefore.length).to.equal(1, 'Could not register foxx queue');
   });
+
   it('should not register a queue two times', () => {
     const queuesBefore = db._query(aql`
       FOR queue IN _queues
@@ -89,6 +95,7 @@ describe('Foxx service', () => {
     `).toArray();
     expect(queuesAfter.length - queuesBefore.length).to.equal(1);
   });
+
   it('should support jobs running in the queue', () => {
     let res = download(`${arango.getEndpoint().replace('tcp://', 'http://')}/${mount}`, '', {
       method: 'post'
@@ -102,6 +109,7 @@ describe('Foxx service', () => {
     `).toArray();
     expect(jobResult.length).to.equal(1);
   });
+
   const waitForJob = () => {
     let i = 0;
     while (i++ < 50) {
@@ -117,4 +125,5 @@ describe('Foxx service', () => {
     }
     return false;
   };
+
 });
