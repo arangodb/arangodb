@@ -30,6 +30,7 @@
 #include "GeneralServer/AuthenticationFeature.h"
 #include "IResearch/ApplicationServerHelper.h"
 #include "IResearch/IResearchAnalyzerFeature.h"
+#include "IResearch/IResearchFeature.h"
 #include "IResearch/IResearchDocument.h"
 #include "IResearch/IResearchLinkMeta.h"
 #include "IResearch/IResearchKludge.h"
@@ -182,13 +183,13 @@ struct IResearchDocumentSetup {
     analyzers->emplace("iresearch-document-invalid", "iresearch-document-invalid", "en"); // cache analyzer
 
     // suppress log messages since tests check error conditions
-    arangodb::LogTopic::setLogLevel(arangodb::Logger::IRESEARCH.name(), arangodb::LogLevel::FATAL);
+    arangodb::LogTopic::setLogLevel(arangodb::iresearch::IResearchFeature::IRESEARCH.name(), arangodb::LogLevel::FATAL);
     irs::logger::output_le(iresearch::logger::IRL_FATAL, stderr);
   }
 
   ~IResearchDocumentSetup() {
     system.reset(); // destroy before reseting the 'ENGINE'
-    arangodb::LogTopic::setLogLevel(arangodb::Logger::IRESEARCH.name(), arangodb::LogLevel::DEFAULT);
+    arangodb::LogTopic::setLogLevel(arangodb::iresearch::IResearchFeature::IRESEARCH.name(), arangodb::LogLevel::DEFAULT);
     arangodb::application_features::ApplicationServer::server = nullptr;
     arangodb::EngineSelectorFeature::ENGINE = nullptr;
 

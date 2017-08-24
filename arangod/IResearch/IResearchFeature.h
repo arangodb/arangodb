@@ -25,12 +25,16 @@
 #define ARANGOD_IRESEARCH__IRESEARCH_FEATURE_H 1
 
 #include "ApplicationFeatures/ApplicationFeature.h"
+#include "Logger/LogTopic.h"
 
 namespace arangodb {
 namespace iresearch {
 
 class IResearchFeature final : public application_features::ApplicationFeature {
  public:
+  static arangodb::LogTopic IRESEARCH;
+  static arangodb::LogTopic LIBIRESEARCH;
+
   static std::string const& name();
 
   IResearchFeature(application_features::ApplicationServer* server);

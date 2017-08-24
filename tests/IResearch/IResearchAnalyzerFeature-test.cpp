@@ -32,6 +32,7 @@
 #include "GeneralServer/AuthenticationFeature.h"
 #include "IResearch/ApplicationServerHelper.h"
 #include "IResearch/IResearchAnalyzerFeature.h"
+#include "IResearch/IResearchFeature.h"
 #include "IResearch/SystemDatabaseFeature.h"
 #include "IResearch/VelocyPackHelper.h"
 #include "RestServer/DatabaseFeature.h"
@@ -157,13 +158,13 @@ struct IResearchAnalyzerFeatureSetup {
     arangodb::KeyGenerator::Initialize(); // ensure document keys can be generated/validated correctly
 
     // suppress log messages since tests check error conditions
-    arangodb::LogTopic::setLogLevel(arangodb::Logger::IRESEARCH.name(), arangodb::LogLevel::FATAL);
+    arangodb::LogTopic::setLogLevel(arangodb::iresearch::IResearchFeature::IRESEARCH.name(), arangodb::LogLevel::FATAL);
     irs::logger::output_le(iresearch::logger::IRL_FATAL, stderr);
   }
 
   ~IResearchAnalyzerFeatureSetup() {
     system.reset(); // destroy before reseting the 'ENGINE'
-    arangodb::LogTopic::setLogLevel(arangodb::Logger::IRESEARCH.name(), arangodb::LogLevel::DEFAULT);
+    arangodb::LogTopic::setLogLevel(arangodb::iresearch::IResearchFeature::IRESEARCH.name(), arangodb::LogLevel::DEFAULT);
     arangodb::application_features::ApplicationServer::server = nullptr;
     arangodb::EngineSelectorFeature::ENGINE = nullptr;
 

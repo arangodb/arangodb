@@ -27,6 +27,7 @@
 #include "index/field_meta.hpp"
 #include "IResearch/IResearchAttributes.h"
 #include "IResearch/IResearchDocument.h"
+#include "IResearch/IResearchFeature.h"
 #include "Logger/Logger.h"
 #include "StorageEngine/DocumentIdentifierToken.h"
 #include "Transaction/Methods.h"
@@ -154,7 +155,7 @@ void Prepared::prepare_score(score_t& score) const {
       score.compute = &Compute::noop; // do not recompute score again
 
       if (!attr) {
-        LOG_TOPIC(WARN, arangodb::Logger::IRESEARCH) << "failed to find attribute path while computing document score, doc_id '" << score.docId << "'";
+        LOG_TOPIC(WARN, arangodb::iresearch::IResearchFeature::IRESEARCH) << "failed to find attribute path while computing document score, doc_id '" << score.docId << "'";
         return; // transaction not provided, cannot compute value
       }
 
@@ -167,17 +168,17 @@ void Prepared::prepare_score(score_t& score) const {
       }
 
       if (!attrPath.isArray()) {
-        LOG_TOPIC(WARN, arangodb::Logger::IRESEARCH) << "failed to parse attribute path as an array while computing document score, doc_id '" << score.docId << "'";
+        LOG_TOPIC(WARN, arangodb::iresearch::IResearchFeature::IRESEARCH) << "failed to parse attribute path as an array while computing document score, doc_id '" << score.docId << "'";
         return; // attribute path not initialized or incorrect argument format
       }
 
       if (!score.reader) {
-        LOG_TOPIC(WARN, arangodb::Logger::IRESEARCH) << "failed to find reader while computing document score, doc_id '" << score.docId << "'";
+        LOG_TOPIC(WARN, arangodb::iresearch::IResearchFeature::IRESEARCH) << "failed to find reader while computing document score, doc_id '" << score.docId << "'";
         return; // score value not initialized, see errors during initialization
       }
 
       if (!trx) {
-        LOG_TOPIC(WARN, arangodb::Logger::IRESEARCH) << "failed to find transaction while computing document score, doc_id '" << score.docId << "'";
+        LOG_TOPIC(WARN, arangodb::iresearch::IResearchFeature::IRESEARCH) << "failed to find transaction while computing document score, doc_id '" << score.docId << "'";
         return; // transaction not provided, cannot compute value
       }
 
@@ -187,14 +188,14 @@ void Prepared::prepare_score(score_t& score) const {
       const auto* column = score.reader->column_reader(score.pkColId);
 
       if (!column) {
-        LOG_TOPIC(WARN, arangodb::Logger::IRESEARCH) << "failed to find primary key column while computing document score, doc_id '" << score.docId << "'";
+        LOG_TOPIC(WARN, arangodb::iresearch::IResearchFeature::IRESEARCH) << "failed to find primary key column while computing document score, doc_id '" << score.docId << "'";
         return; // not a valid PK column
       }
 
       auto values = column->values();
 
       if (!values(score.docId, tmpRef) || !docPk.read(tmpRef)) {
-        LOG_TOPIC(WARN, arangodb::Logger::IRESEARCH) << "failed to read document primary key while computing document score, doc_id '" << score.docId << "'";
+        LOG_TOPIC(WARN, arangodb::iresearch::IResearchFeature::IRESEARCH) << "failed to read document primary key while computing document score, doc_id '" << score.docId << "'";
 
         return; // not a valid document reference
       }
@@ -206,7 +207,7 @@ void Prepared::prepare_score(score_t& score) const {
       auto* collection = trx->value.documentCollection(docPk.cid());
 
       if (!collection) {
-        LOG_TOPIC(WARN, arangodb::Logger::IRESEARCH) << "failed to find collection while computing document score, cid '" << docPk.cid() << "', rid '" << docPk.rid() << "'";
+        LOG_TOPIC(WARN, arangodb::iresearch::IResearchFeature::IRESEARCH) << "failed to find collection while computing document score, cid '" << docPk.cid() << "', rid '" << docPk.rid() << "'";
 
         return; // not a valid collection reference
       }
@@ -217,7 +218,7 @@ void Prepared::prepare_score(score_t& score) const {
       colToken._data = docPk.rid();
 
       if (!collection->readDocument(&(trx->value), colToken, docResult)) {
-        LOG_TOPIC(WARN, arangodb::Logger::IRESEARCH) << "failed to read document while computing document score, cid '" << docPk.cid() << "', rid '" << docPk.rid() << "'";
+        LOG_TOPIC(WARN, arangodb::iresearch::IResearchFeature::IRESEARCH) << "failed to read document while computing document score, cid '" << docPk.cid() << "', rid '" << docPk.rid() << "'";
 
         return; // not a valid document
       }
@@ -268,10 +269,10 @@ irs::sort::scorer::ptr Prepared::prepare_scorer(
       auto* pkColMeta = _reader.column(arangodb::iresearch::DocumentPrimaryKey::PK());
 
       if (!doc) {
-        LOG_TOPIC(WARN, arangodb::Logger::IRESEARCH) << "encountered a document without a doc_id value while scoring a document for iResearch view, ignoring";
+        LOG_TOPIC(WARN, arangodb::iresearch::IResearchFeature::IRESEARCH) << "encountered a document without a doc_id value while scoring a document for iResearch view, ignoring";
         score.reader = nullptr;
       } else if (!pkColMeta) {
-        LOG_TOPIC(WARN, arangodb::Logger::IRESEARCH) << "encountered a sub-reader without a primary key column while scoring a document for iResearch view, ignoring";
+        LOG_TOPIC(WARN, arangodb::iresearch::IResearchFeature::IRESEARCH) << "encountered a sub-reader without a primary key column while scoring a document for iResearch view, ignoring";
         score.reader = nullptr;
       } else {
         score.docId = *(doc->value);
@@ -368,7 +369,7 @@ REGISTER_SCORER(AttributeScorer);
     #endif
 
     if (!scorer) {
-      LOG_TOPIC(WARN, arangodb::Logger::IRESEARCH) << "Failed to create AttributeScorer instance";
+      LOG_TOPIC(WARN, arangodb::iresearch::IResearchFeature::IRESEARCH) << "Failed to create AttributeScorer instance";
 
       return nullptr; // malloc failure
     }
@@ -405,7 +406,7 @@ REGISTER_SCORER(AttributeScorer);
     auto slice = json ? json->slice() : arangodb::velocypack::Slice();
 
     if (!slice.isArray()) {
-      LOG_TOPIC(WARN, arangodb::Logger::IRESEARCH) << "Failed to parse AttributeScorer argument as an array";
+      LOG_TOPIC(WARN, arangodb::iresearch::IResearchFeature::IRESEARCH) << "Failed to parse AttributeScorer argument as an array";
 
       return nullptr; // incorrect argument format
     }
@@ -416,7 +417,7 @@ REGISTER_SCORER(AttributeScorer);
       auto entry = *itr;
 
       if (!entry.isString()) {
-        LOG_TOPIC(WARN, arangodb::Logger::IRESEARCH) << "Failed to parse AttributeScorer argument [" << i << "] as a string";
+        LOG_TOPIC(WARN, arangodb::iresearch::IResearchFeature::IRESEARCH) << "Failed to parse AttributeScorer argument [" << i << "] as a string";
 
         return nullptr;
       }
@@ -425,7 +426,7 @@ REGISTER_SCORER(AttributeScorer);
       auto typeItr = valueTypes.find(type);
 
       if (typeItr == valueTypes.end()) {
-        LOG_TOPIC(WARN, arangodb::Logger::IRESEARCH) << "Failed to parse AttributeScorer argument [" << type << "] as a supported enum value, not one of: 'array', 'boolean', 'null', 'numeric', 'object', 'string', 'unknown'";
+        LOG_TOPIC(WARN, arangodb::iresearch::IResearchFeature::IRESEARCH) << "Failed to parse AttributeScorer argument [" << type << "] as a supported enum value, not one of: 'array', 'boolean', 'null', 'numeric', 'object', 'string', 'unknown'";
 
         return nullptr;
       }
@@ -435,7 +436,7 @@ REGISTER_SCORER(AttributeScorer);
 
     return ptr;
   } catch (...) {
-    LOG_TOPIC(WARN, arangodb::Logger::IRESEARCH) << "Caught error while constructing AttributeScorer from jSON arguments: " << args.c_str();
+    LOG_TOPIC(WARN, arangodb::iresearch::IResearchFeature::IRESEARCH) << "Caught error while constructing AttributeScorer from jSON arguments: " << args.c_str();
     IR_EXCEPTION();
   }
 

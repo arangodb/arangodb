@@ -135,6 +135,9 @@ NS_END
 NS_BEGIN(arangodb)
 NS_BEGIN(iresearch)
 
+/* static */ arangodb::LogTopic IResearchFeature::IRESEARCH("iresearch", LogLevel::INFO);
+/* static */ arangodb::LogTopic IResearchFeature::LIBIRESEARCH("libiresearch", LogLevel::INFO);
+
 /* static */ std::string const& IResearchFeature::name() {
   return FEATURE_NAME;
 }
@@ -199,7 +202,7 @@ void IResearchFeature::start() {
       registerFilters(*functions);
       registerScorers(*functions);
     } else {
-      LOG_TOPIC(WARN, arangodb::Logger::IRESEARCH) << "failure to find feature 'AQLFunctions' while registering iresearch filters";
+      LOG_TOPIC(WARN, arangodb::iresearch::IResearchFeature::IRESEARCH) << "failure to find feature 'AQLFunctions' while registering iresearch filters";
     }
   }
 

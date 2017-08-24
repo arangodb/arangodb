@@ -157,9 +157,6 @@ class Logger {
   static LogTopic TRANSACTIONS;
   static LogTopic V8;
   static LogTopic VIEWS;
-#ifdef USE_IRESEARCH
-  static LogTopic IRESEARCH;
-#endif
 
  public:
   struct FIXED {

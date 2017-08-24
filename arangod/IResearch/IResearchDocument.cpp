@@ -22,6 +22,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "IResearchDocument.h"
+#include "IResearchFeature.h"
 #include "IResearchViewMeta.h"
 #include "IResearchKludge.h"
 
@@ -282,7 +283,7 @@ bool setStringValue(
   TRI_ASSERT(value.isString());
 
   if (!pool) {
-    LOG_TOPIC(WARN, arangodb::Logger::IRESEARCH) << "got nullptr analyzer factory";
+    LOG_TOPIC(WARN, arangodb::iresearch::IResearchFeature::IRESEARCH) << "got nullptr analyzer factory";
 
     return false;
   }
@@ -295,7 +296,7 @@ bool setStringValue(
   auto analyzer = pool->get();
 
   if (!analyzer) {
-    LOG_TOPIC(WARN, arangodb::Logger::IRESEARCH)
+    LOG_TOPIC(WARN, arangodb::iresearch::IResearchFeature::IRESEARCH)
       << "got nullptr from analyzer factory, name '" << pool->name() <<  "'";
     return false;
   }
