@@ -323,7 +323,7 @@ Restrictions: ${restrictions.keySet().join(", ")}
 // -----------------------------------------------------------------------------
 
 def stashBinaries(edition, os) {
-    stash name: "binaries-${edition}-${os}", includes: "build/bin/**, build/tests/**, build/etc/**, etc/**, Installation/Pipeline/**, js/**, scripts/**, UnitTests/**, utils/**, resilience/**"
+    stash name: "binaries-${edition}-${os}", includes: "build/bin/**, build/tests/**, build/etc/**, etc/**, Installation/Pipeline/**, js/**, scripts/**, UnitTests/**, utils/**, resilience/**", excludes: "build/bin/*.exe, build/bin/*.pdb, build/bin/*.ilk"
 }
 
 def unstashBinaries(edition, os) {
@@ -340,32 +340,18 @@ buildJenkins = [
     "windows": "windows"
 ]
 
-buildsSuccess = [:]
-allBuildsSuccessful = true
-
-jslintSuccessful = true
-
 testJenkins = [
     "linux": "linux && tests",
     "mac" : "mac",
     "windows": "windows"
 ]
 
-testsSuccess = [:]
-allTestsSuccessful = true
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                    SCRIPTS JSLINT
 // -----------------------------------------------------------------------------
 
 def jslint() {
-    try {
-        sh './Installation/Pipeline/test_jslint.sh'
-    }
-    catch (exc) {
-        jslintSuccessful = false
-        throw exc
-    }
+    sh './Installation/Pipeline/test_jslint.sh'
 }
 
 // -----------------------------------------------------------------------------
@@ -475,19 +461,16 @@ def testStep(edition, os, mode, engine) {
     return {
         node(testJenkins[os]) {
             def buildName = "${edition}-${os}"
+            def name = "${edition}-${os}-${mode}-${engine}"
 
-            if (buildsSuccess[buildName]) {
-                def name = "${edition}-${os}-${mode}-${engine}"
-
-                stage("test-${name}") {
-                    timeout(120) {
-                        try {
-                            unstashBinaries(edition, os)
-                            testEdition(edition, os, mode, engine)
-                        }
-                        finally {
-                            junit 'out/*.xml'
-                        }
+            stage("test-${name}") {
+                timeout(120) {
+                    try {
+                        unstashBinaries(edition, os)
+                        testEdition(edition, os, mode, engine)
+                    }
+                    finally {
+                        junit 'out/*.xml'
                     }
                 }
             }
@@ -518,9 +501,6 @@ def testStepParallel(editionList, osList, modeList) {
 // -----------------------------------------------------------------------------
 // --SECTION--                                                SCRIPTS RESILIENCE
 // -----------------------------------------------------------------------------
-
-resiliencesSuccess = [:]
-allResiliencesSuccessful = true
 
 def testResilience(os, engine, foxx) {
     withEnv(['LOG_COMMUNICATION=debug', 'LOG_REQUESTS=trace', 'LOG_AGENCY=trace']) {
@@ -570,57 +550,49 @@ def testResilienceStep(os, engine, foxx) {
             def edition = "community"
             def buildName = "${edition}-${os}"
 
-            if (buildsSuccess[buildName]) {
-                def name = "${os}-${engine}-${foxx}"
-                def arch = "LOG_resilience_${foxx}_${engine}_${os}"
+            def name = "${os}-${engine}-${foxx}"
+            def arch = "LOG_resilience_${foxx}_${engine}_${os}"
 
-                stage("resilience-${name}") {
-                    if (os == 'linux' || os == 'mac') {
-                       sh "rm -rf ${arch}"
-                       sh "mkdir -p ${arch}"
-                    }
-                    else if (os == 'windows') {
-                        bat "del /F /Q ${arch}"
-                        powershell "New-Item -ItemType Directory -Force -Path ${arch}"
-                    }
+            stage("resilience-${name}") {
+                if (os == 'linux' || os == 'mac') {
+                    sh "rm -rf ${arch}"
+                    sh "mkdir -p ${arch}"
+                }
+                else if (os == 'windows') {
+                    bat "del /F /Q ${arch}"
+                    powershell "New-Item -ItemType Directory -Force -Path ${arch}"
+                }
 
+                try {
                     try {
-                        try {
-                            timeout(120) {
-                                unstashBinaries(edition, os)
-                                testResilience(os, engine, foxx)
-                            }
+                        timeout(120) {
+                            unstashBinaries(edition, os)
+                            testResilience(os, engine, foxx)
+                        }
 
-                            if (findFiles(glob: 'resilience/core*').length > 0) {
-                                error("found core file")
-                            }
-                        }
-                        catch (exc) {
-                            if (os == 'linux' || os == 'mac') {
-                                sh "for i in build resilience/core* tmp; do test -e \"\$i\" && mv \"\$i\" ${arch} || true; done"
-                            }
-                            throw exc
-                        }
-                        finally {
-                            if (os == 'linux' || os == 'mac') {
-                                sh "for i in log-output; do test -e \"\$i\" && mv \"\$i\" ${arch}; done"
-                            }
-                            else if (os == 'windows') {
-                                bat "move log-output ${arch}"
-                            }
+                        if (findFiles(glob: 'resilience/core*').length > 0) {
+                            error("found core file")
                         }
                     }
                     catch (exc) {
-                        resiliencesSuccess[name] = false
-                        allResiliencesSuccessful = false
-
+                        if (os == 'linux' || os == 'mac') {
+                            sh "for i in build resilience/core* tmp; do test -e \"\$i\" && mv \"\$i\" ${arch} || true; done"
+                        }
                         throw exc
                     }
                     finally {
-                        archiveArtifacts allowEmptyArchive: true,
-                                         artifacts: "${arch}/**",
-                                         defaultExcludes: false
+                        if (os == 'linux' || os == 'mac') {
+                            sh "for i in log-output; do test -e \"\$i\" && mv \"\$i\" ${arch}; done"
+                        }
+                        else if (os == 'windows') {
+                            bat "move log-output ${arch}"
+                        }
                     }
+                }
+                finally {
+                    archiveArtifacts allowEmptyArchive: true,
+                                        artifacts: "${arch}/**",
+                                        defaultExcludes: false
                 }
             }
         }
