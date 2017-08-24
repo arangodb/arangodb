@@ -42,8 +42,8 @@ class TransactionCollection {
   TransactionCollection(TransactionCollection const&) = delete;
   TransactionCollection& operator=(TransactionCollection const&) = delete;
 
-  TransactionCollection(TransactionState* trx, TRI_voc_cid_t cid)
-      : _transaction(trx), _cid(cid), _collection(nullptr) {}
+  TransactionCollection(TransactionState* trx, TRI_voc_cid_t cid, AccessMode::Type accessType)
+      : _transaction(trx), _cid(cid), _collection(nullptr), _accessType(accessType) {}
   
   virtual ~TransactionCollection() {}
   
@@ -52,8 +52,10 @@ class TransactionCollection {
   LogicalCollection* collection() const {
     return _collection;  // vocbase collection pointer
   }
-
+  
   std::string collectionName() const;
+  
+  AccessMode::Type accessType() const { return _accessType; }
 
   /// @brief request a main-level lock for a collection
   virtual int lock() = 0;
@@ -76,6 +78,7 @@ class TransactionCollection {
   virtual void freeOperations(transaction::Methods* activeTrx, bool mustRollback) = 0;
   
   virtual bool canAccess(AccessMode::Type accessType) const = 0;
+  
   virtual int updateUsage(AccessMode::Type accessType, int nestingLevel) = 0;
   virtual int use(int nestingLevel) = 0;
   virtual void unuse(int nestingLevel) = 0;
@@ -85,6 +88,7 @@ class TransactionCollection {
   TransactionState* _transaction;  // the transaction state
   TRI_voc_cid_t const _cid;        // collection id
   LogicalCollection* _collection;  // vocbase collection pointer
+  AccessMode::Type _accessType;  // access type (read|write)
 };
 
 }

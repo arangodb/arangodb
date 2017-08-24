@@ -50,7 +50,6 @@ typedef struct TRI_fulltext_stats_s {
   size_t _memoryDocuments;
   uint32_t _numNodes;
 #endif
-  bool _shouldCompact;
 } TRI_fulltext_stats_t;
 
 /// @brief create a fulltext index

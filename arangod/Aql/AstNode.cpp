@@ -357,6 +357,7 @@ static bool IsEmptyString(char const* p, size_t length) {
 /// @brief create the node
 AstNode::AstNode(AstNodeType type)
     : type(type), flags(0), computedValue(nullptr) {
+  value.type = VALUE_TYPE_NULL;
   value.length = 0;
 }
 

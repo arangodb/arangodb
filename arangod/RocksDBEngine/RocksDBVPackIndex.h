@@ -56,6 +56,41 @@ namespace transaction {
 class Methods;
 }
 
+/// @brief Iterator structure for RocksDB unique index. 
+/// This iterator can be used only for equality lookups that use all
+/// index attributes. It uses a point lookup and no seeks
+/// We require a start and stop node, though they should be identical
+class RocksDBVPackUniqueIndexIterator final : public IndexIterator {
+ private:
+  friend class RocksDBVPackIndex;
+
+ public:
+  RocksDBVPackUniqueIndexIterator(LogicalCollection* collection,
+                                  transaction::Methods* trx,
+                                  ManagedDocumentResult* mmdr,
+                                  arangodb::RocksDBVPackIndex const* index,
+                                  RocksDBKeyBounds&& bounds);
+
+  ~RocksDBVPackUniqueIndexIterator() = default;
+
+ public:
+  char const* typeName() const override {
+    return "rocksdb-unique-index-iterator";
+  }
+
+  /// @brief Get the next limit many element in the index
+  bool next(TokenCallback const& cb, size_t limit) override;
+
+  /// @brief Reset the cursor
+  void reset() override;
+
+ private:
+  arangodb::RocksDBVPackIndex const* _index;
+  rocksdb::Comparator const* _cmp;
+  RocksDBKeyBounds _bounds;
+  bool _done;
+};
+
 /// @brief Iterator structure for RocksDB. We require a start and stop node
 class RocksDBVPackIndexIterator final : public IndexIterator {
  private:
@@ -66,14 +101,14 @@ class RocksDBVPackIndexIterator final : public IndexIterator {
                             transaction::Methods* trx,
                             ManagedDocumentResult* mmdr,
                             arangodb::RocksDBVPackIndex const* index,
-                            bool reverse, bool singleElementFetch,
+                            bool reverse, 
                             RocksDBKeyBounds&& bounds);
 
   ~RocksDBVPackIndexIterator() = default;
 
  public:
   char const* typeName() const override {
-    return "rocksdb-unique-index-iterator";
+    return "rocksdb-index-iterator";
   }
 
   /// @brief Get the next limit many element in the index
@@ -89,7 +124,6 @@ class RocksDBVPackIndexIterator final : public IndexIterator {
   rocksdb::Comparator const* _cmp;
   std::unique_ptr<rocksdb::Iterator> _iterator;
   bool const _reverse;
-  bool const _singleElementFetch;
   RocksDBKeyBounds _bounds;
   rocksdb::Slice _upperBound;  // used for iterate_upper_bound
 };
@@ -133,7 +167,7 @@ class RocksDBVPackIndex : public RocksDBIndex {
   ///
   /// Warning: who ever calls this function is responsible for destroying
   /// the velocypack::Slice and the RocksDBVPackIndexIterator* results
-  RocksDBVPackIndexIterator* lookup(transaction::Methods*,
+  IndexIterator* lookup(transaction::Methods*,
                                     ManagedDocumentResult* mmdr,
                                     arangodb::velocypack::Slice const,
                                     bool reverse) const;

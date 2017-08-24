@@ -37,8 +37,7 @@ using namespace arangodb;
 RocksDBTransactionCollection::RocksDBTransactionCollection(
     TransactionState* trx, TRI_voc_cid_t cid, AccessMode::Type accessType,
     int nestingLevel)
-    : TransactionCollection(trx, cid),
-      _accessType(accessType),
+    : TransactionCollection(trx, cid, accessType),
       _lockType(AccessMode::Type::NONE),
       _nestingLevel(nestingLevel),
       _initialNumberDocuments(0),
