@@ -19,7 +19,6 @@
 #include "tests_config.hpp"
 
 #include <boost/filesystem.hpp>
-#include <boost/program_options.hpp>
 
 #include <ctime>
 #include <formats/formats.hpp>
@@ -31,6 +30,8 @@
 #include "utils/network_utils.hpp"
 #include "utils/bitset.hpp"
 #include "utils/runtime_utils.hpp"
+
+#include <cmdline.h>
 
 #ifdef _MSC_VER
   // +1 for \0 at end of string
@@ -59,7 +60,12 @@ namespace {
   namespace fs = boost::filesystem;
 }
 
-const std::string test_base::test_results( "test_detail.xml" );
+const std::string IRES_HELP("help");
+const std::string IRES_OUTPUT("ires_output");
+const std::string IRES_OUTPUT_PATH("ires_output_path");
+const std::string IRES_RESOURCE_DIR("ires_resource_dir");
+
+const std::string test_base::test_results("test_detail.xml");
 
 fs::path test_base::exec_path_;
 fs::path test_base::exec_dir_;
@@ -89,26 +95,26 @@ void test_base::SetUp() {
   namespace tst = ::testing;
   const tst::TestInfo* ti = tst::UnitTest::GetInstance()->current_test_info();
 
-  fs::path iter_dir( res_dir_ );
-  if ( ::testing::FLAGS_gtest_repeat > 1 || ::testing::FLAGS_gtest_repeat < 0 ) {    
+  fs::path iter_dir(res_dir_);
+  if (::testing::FLAGS_gtest_repeat > 1 || ::testing::FLAGS_gtest_repeat < 0) {
     iter_dir.append(
-      std::string( "iteration " ).append( std::to_string( iteration() ) ) 
+      std::string("iteration ").append(std::to_string(iteration()))
     );
   }
 
-  ( test_case_dir_ = iter_dir ).append( ti->test_case_name() );
-  ( test_dir_ = test_case_dir_ ).append( ti->name() );
-  fs::create_directories( test_dir_ );
+  (test_case_dir_ = iter_dir).append(ti->test_case_name());
+  (test_dir_ = test_case_dir_).append(ti->name());
+  fs::create_directories(test_dir_);
 }
 
-void test_base::prepare( const po::variables_map& vm ) {
-  if ( vm.count( "help" ) ) {
+void test_base::prepare(const cmdline::parser& parser) {
+  if (parser.exist(IRES_HELP)) {
     return;
   }
 
   make_directories();
 
-  if (vm.count( "ires_output")) {
+  if (parser.exist(IRES_OUTPUT)) {
     std::unique_ptr<char*[]> argv(new char*[2 + argc_]);
     std::memcpy(argv.get(), argv_, sizeof(char*)*(argc_));    
     argv_ires_output_.append("--gtest_output=xml:").append(res_path_.string());
@@ -124,14 +130,20 @@ void test_base::make_directories() {
   exec_path_ = fs::path( argv_[0] );
   exec_file_ = exec_path_.filename();
   exec_dir_ = exec_path_.parent_path();
-  
   test_name_ = exec_file_.replace_extension().string();
 
   if (out_dir_.empty()) {
     out_dir_ = exec_dir_;
   }
 
+  std::cout << "launching: " << exec_path_.string() << std::endl;
+  std::cout << "options:" << std::endl;
+  std::cout << "\t" << IRES_OUTPUT_PATH << ": " << out_dir_.string() << std::endl;
+  std::cout << "\t" << IRES_RESOURCE_DIR << ": " << resource_dir_.string() << std::endl;
+
+  out_dir_ = ::boost::filesystem::canonical(out_dir_);
   (res_dir_ = out_dir_).append( test_name_ );  
+
   // add timestamp to res_dir_
   {
     std::tm tinfo;
@@ -159,40 +171,30 @@ void test_base::make_directories() {
   (res_path_ = res_dir_).append(test_results);
 }
 
-void test_base::parse_command_line( po::variables_map& vm ) {
-  namespace po = boost::program_options;
-  po::options_description desc( "\n[IReSearch] Allowed options" );
-  desc.add_options()
-    ( "help", "produce help message" )
-    ( "ires_output", "generate an XML report" )
-    ( "ires_output_path", po::value< fs::path >( &out_dir_ ), "set output directory" )
-    ( "ires_resource_dir", po::value< fs::path >( &resource_dir_ ), "set resource directory" );
+void test_base::parse_command_line(cmdline::parser& cmd) {
+  cmd.add(IRES_HELP, '?', "print this message");
+  cmd.add(IRES_OUTPUT, 0, "generate an XML report");
+  cmd.add(IRES_OUTPUT_PATH, 0, "output directory", false, out_dir_);
+  cmd.add(IRES_RESOURCE_DIR, 0, "resource directory", false, fs::path(IResearch_test_resource_dir));
+  cmd.parse(argc_, argv_);
 
-  po::command_line_parser parser( argc_, argv_ );
-  parser.options( desc ).allow_unregistered();
-  po::parsed_options options = parser.run();
-
-  po::store( options, vm );
-  po::notify( vm );
-
-  if ( vm.count( "help" ) ) {
-    std::cout << desc << std::endl;
+  if (cmd.exist(IRES_HELP)) {
+    std::cout << cmd.usage() << std::endl;
     return;
   }
 
-  if ( !vm.count( "ires_resource_dir" ) ) {
-    resource_dir_ = IResearch_test_resource_dir;
-  }
+  resource_dir_ = cmd.get<fs::path>(IRES_RESOURCE_DIR);
+  out_dir_ = cmd.get<fs::path>(IRES_OUTPUT_PATH);
 }
 
-int test_base::initialize( int argc, char* argv[] ) {
+int test_base::initialize(int argc, char* argv[]) {
   argc_ = argc;
   argv_ = argv;
 
-  po::variables_map vm;
-  parse_command_line( vm );
-  prepare( vm );
-  
+  cmdline::parser cmd;
+  parse_command_line(cmd);
+  prepare(cmd);
+
   ::testing::AddGlobalTestEnvironment( new iteration_tracker() );
   ::testing::InitGoogleTest( &argc_, argv_ ); 
 

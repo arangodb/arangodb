@@ -254,8 +254,8 @@ template <typename T, bool Manage = true>
 inline typename std::enable_if<
   !std::is_array<T>::value,
   std::unique_ptr<T, managed_deleter<T>>
->::type make_managed(std::unique_ptr<T>& ptr) NOEXCEPT {
-  auto* p = ptr.release();
+>::type make_managed(std::unique_ptr<T>&& ptr) NOEXCEPT {
+  auto* p = Manage ? ptr.release() : ptr.get();
   return std::unique_ptr<T, managed_deleter<T>>(p, Manage ? p : nullptr);
 }
 
@@ -413,7 +413,7 @@ NS_END // ROOT
   class_type::ptr name; \
   try { \
     name.reset(new class_type(__VA_ARGS__)); \
-  } catch (std::bad_alloc&) { \
+  } catch (const std::bad_alloc&) { \
     fprintf( \
       stderr, \
       "Memory allocation failure while creating and initializing an object of size " IR_SIZE_T_SPECIFIER " bytes\n", \
@@ -421,6 +421,19 @@ NS_END // ROOT
     ); \
     ::iresearch::memory::dump_mem_stats_trace(); \
     throw; \
+  }
+
+#define PTR_NAMED_NOTHROW(class_type, name, ...) \
+  class_type::ptr name; \
+  try { \
+    name.reset(new class_type(__VA_ARGS__)); \
+  } catch (const std::bad_alloc&) { \
+    fprintf( \
+      stderr, \
+      "Memory allocation failure while creating and initializing an object of size " IR_SIZE_T_SPECIFIER " bytes\n", \
+      sizeof(class_type) \
+    ); \
+    ::iresearch::memory::dump_mem_stats_trace(); \
   }
 
 #define DECLARE_SPTR(class_name) typedef std::shared_ptr<class_name> ptr

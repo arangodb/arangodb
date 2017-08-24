@@ -24,7 +24,7 @@ DEFINE_ATTRIBUTE_TYPE(iresearch::boost);
 DEFINE_FACTORY_DEFAULT(boost);
 
 boost::boost()
-  : basic_attribute<boost::boost_t>(boost_t(boost::no_boost())) {
+  : basic_stored_attribute<boost::boost_t>(boost_t(boost::no_boost())) {
 }
 
 // ----------------------------------------------------------------------------
@@ -161,7 +161,7 @@ void order::prepared::stats::field(
   }
 }
 
-void order::prepared::stats::term(const attribute_store& term) const {
+void order::prepared::stats::term(const attribute_view& term) const {
   for (auto& collector : colls_) {
     collector->term(term);
   }
@@ -232,7 +232,7 @@ order::prepared::prepare_scorers(
     const sub_reader& segment,
     const term_reader& field,
     const attribute_store& stats,
-    const attribute_store& doc
+    const attribute_view& doc
 ) const {
   scorers::scorers_t scrs;
   scrs.reserve(size());
@@ -292,3 +292,7 @@ order& order::operator=(order&& rhs) NOEXCEPT {
 }
 
 NS_END
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                       END-OF-FILE
+// -----------------------------------------------------------------------------

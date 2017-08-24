@@ -16,7 +16,17 @@ if("${GTEST_ROOT}" STREQUAL "")
 endif()
 find_package(GTest
   REQUIRED
-) 
+)
+
+# set rapidjson directories
+set(RAPIDJSON_INCLUDE_DIR
+  ${EXTERNAL_INCLUDE_DIRS}/rapidjson
+)
+
+# set cmdline directories
+set(CMDLINE_INCLUDE_DIR
+  ${EXTERNAL_INCLUDE_DIRS}/cmdline
+)
 
 # set test resource directory
 set(IResearch_test_resource_dir
@@ -68,6 +78,7 @@ set(IReSearch_tests_sources
   ./search/granular_range_filter_tests.cpp
   ./search/index_reader_test.cpp
   ./search/scorers_tests.cpp
+  ./search/sort_tests.cpp
   ./search/tfidf_test.cpp
   ./search/bm25_test.cpp
   ./search/cost_attribute_test.cpp
@@ -79,6 +90,7 @@ set(IReSearch_tests_sources
   ./search/prefix_filter_test.cpp
   ./search/range_filter_test.cpp
   ./search/phrase_filter_tests.cpp
+  ./search/column_existence_filter_test.cpp
   ./search/same_position_filter_tests.cpp
   ./iql/parser_common_test.cpp
   ./iql/query_builder_test.cpp
@@ -101,6 +113,7 @@ set(IReSearch_tests_sources
   ./utils/math_utils_test.cpp
   ./utils/std_test.cpp
   ./utils/type_utils_tests.cpp
+  ./utils/utf8_path_tests.cpp
   ./tests_main.cpp
 )
 
@@ -116,7 +129,6 @@ set(IReSearch_tests_headers
   ./unicode/utf8/unchecked.h
   ./unicode/utf8/core.h
   ./tests_config.hpp
-  ./json_parser.hpp
   ${IReSearch_generated_INCLUDE_DIR}/tests_config.hpp # auto generated
 )
 
@@ -231,6 +243,8 @@ include_directories(${IResearchTests_TARGET_NAME}-static
   ${ICU_INCLUDE_DIR}
   ${GTEST_INCLUDE_DIR}
   ${Boost_INCLUDE_DIRS}
+  ${RAPIDJSON_INCLUDE_DIR}
+  ${CMDLINE_INCLUDE_DIR}
 )
 
 ################################################################################

@@ -13,7 +13,6 @@
 #include <unordered_map>
 
 #include "merge_writer.hpp"
-#include "index/doc_header.hpp"
 #include "index/field_meta.hpp"
 #include "index/index_meta.hpp"
 #include "index/segment_reader.hpp"
@@ -42,12 +41,12 @@ const irs::doc_id_t MASKED_DOC_ID = irs::integer_traits<irs::doc_id_t>::const_ma
 /// @class compound_attributes
 /// @brief compound view of multiple attributes as a single object
 //////////////////////////////////////////////////////////////////////////////
-class compound_attributes: public irs::attribute_store {
+class compound_attributes: public irs::attribute_view {
  public:
-  void add(const irs::attribute_store& attributes) {
+  void add(const irs::attribute_view& attributes) {
     auto visitor = [this](
         const irs::attribute::type_id& type_id,
-        const irs::attribute_store::ref<irs::attribute>&
+        const irs::attribute_view::ref<irs::attribute>&
     ) ->bool {
       bool inserted;
       attribute_map::emplace(inserted, type_id);
@@ -57,17 +56,17 @@ class compound_attributes: public irs::attribute_store {
     attributes.visit(visitor); // add
   }
 
-  void set(const irs::attribute_store& attributes) {
+  void set(const irs::attribute_view& attributes) {
     auto visitor_unset = [](
       const irs::attribute::type_id&,
-      irs::attribute_store::ref<irs::attribute>& value
+      irs::attribute_view::ref<irs::attribute>& value
     )->bool {
       value = nullptr;
       return true;
     };
     auto visitor_update = [this](
       const irs::attribute::type_id& type_id,
-      const irs::attribute_store::ref<irs::attribute>& value
+      const irs::attribute_view::ref<irs::attribute>& value
     )->bool {
       bool inserted;
       attribute_map::emplace(inserted, type_id) = value;
@@ -95,15 +94,14 @@ struct compound_doc_iterator : public irs::doc_iterator {
   void add(irs::doc_iterator::ptr&& postings, const doc_id_map_t& doc_id_map) {
     if (iterators.empty()) {
       attrs.set(postings->attributes()); // add keys and set values
-    }
-    else {
+    } else {
       attrs.add(postings->attributes()); // only add missing keys
     }
 
     iterators.emplace_back(std::move(postings), &doc_id_map);
   }
 
-  virtual const irs::attribute_store& attributes() const NOEXCEPT override {
+  virtual const irs::attribute_view& attributes() const NOEXCEPT override {
     return attrs;
   }
 
@@ -162,7 +160,7 @@ bool compound_doc_iterator::next() {
   }
 
   current_id = MASKED_DOC_ID;
-  attrs.set(irs::attribute_store::empty_instance());
+  attrs.set(irs::attribute_view::empty_instance());
 
   return false;
 }
@@ -292,10 +290,11 @@ class compound_term_iterator : public irs::term_iterator {
   compound_term_iterator& operator=(const compound_term_iterator&) = delete; // due to references
   const irs::field_meta& meta() const NOEXCEPT { return *meta_; }
   void add(const irs::term_reader& reader, const doc_id_map_t& doc_id_map);
-  virtual const irs::attribute_store& attributes() const NOEXCEPT override {
+  virtual const irs::attribute_view& attributes() const NOEXCEPT override {
     // no way to merge attributes for the same term spread over multiple iterators
     // would require API change for attributes
-    throw irs::not_impl_error();
+    assert(false);
+    return irs::attribute_view::empty_instance();
   }
   virtual bool next() override;
   virtual irs::doc_iterator::ptr postings(const irs::flags& features) const override;
@@ -412,8 +411,8 @@ class compound_field_iterator : public irs::basic_term_reader {
     return *max_;
   }
 
-  virtual const irs::attribute_store& attributes() const NOEXCEPT override {
-    return irs::attribute_store::empty_instance();
+  virtual const irs::attribute_view& attributes() const NOEXCEPT override {
+    return irs::attribute_view::empty_instance();
   }
 
   virtual irs::term_iterator::ptr iterator() const override;

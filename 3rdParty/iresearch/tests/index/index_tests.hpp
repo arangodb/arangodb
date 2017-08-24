@@ -99,7 +99,7 @@ class index_test_base : public virtual test_base {
     }
     writer.commit();
   }
-  
+
   void add_segment(tests::doc_generator_base& gen, ir::OPEN_MODE mode = ir::OPEN_MODE::OM_CREATE) {
     auto writer = open_writer(mode);
     add_segment(*writer, gen);
@@ -122,13 +122,13 @@ class token_stream_payload : public ir::token_stream {
   explicit token_stream_payload(ir::token_stream* impl);
   bool next(); 
 
-  const ir::attributes& attributes() const NOEXCEPT {
+  const irs::attribute_view& attributes() const NOEXCEPT {
     return impl_->attributes();
   }
 
  private:
   ir::term_attribute* term_;
-  ir::payload* pay_;
+  ir::payload pay_;
   ir::token_stream* impl_;
 }; // token_stream_payload
 
@@ -142,7 +142,7 @@ class text_field : public tests::field_base {
   text_field(
       const ir::string_ref& name, 
       bool payload = false)
-      : token_stream_(ir::analysis::analyzers::get("text", "{\"locale\":\"C\", \"ignored_words\":{}}")) {
+      : token_stream_(ir::analysis::analyzers::get("text", "{\"locale\":\"C\", \"ignored_words\":[]}")) {
     if (payload) {
       if (!token_stream_->reset(value_)) {
          throw ir::illegal_state();
@@ -156,7 +156,7 @@ class text_field : public tests::field_base {
       const ir::string_ref& name, 
       const T& value,
       bool payload = false)
-      : token_stream_(ir::analysis::analyzers::get("text", "{\"locale\":\"C\", \"ignored_words\":{}}")),
+      : token_stream_(ir::analysis::analyzers::get("text", "{\"locale\":\"C\", \"ignored_words\":[]}")),
       value_(value) {
     if (payload) {
       if (!token_stream_->reset(value_)) {
@@ -232,7 +232,7 @@ class string_field : public tests::field_base {
 void generic_json_field_factory(
   tests::document& doc,
   const std::string& name,
-  const tests::json::json_value& data);
+  const json_doc_generator::json_value& data);
 
 } // tests 
 

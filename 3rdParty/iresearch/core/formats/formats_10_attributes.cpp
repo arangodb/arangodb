@@ -21,17 +21,10 @@ NS_BEGIN(version10)
 
 REGISTER_ATTRIBUTE(documents);
 DEFINE_ATTRIBUTE_TYPE(documents);
-DEFINE_FACTORY_DEFAULT(documents);
-
-documents::documents() NOEXCEPT
-  : basic_attribute<bitset*>() {
-}
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                         term_meta
 // -----------------------------------------------------------------------------
-
-DEFINE_FACTORY_DEFAULT(term_meta);
 
 NS_END // version10
 NS_END // ROOT

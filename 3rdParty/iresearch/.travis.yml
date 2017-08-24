@@ -120,7 +120,7 @@ install:
           mkdir -p ${BOOST_DIR}
           { travis_retry wget --quiet -O - ${BOOST_URL} | tar --strip-components=1 -xz -C ${BOOST_DIR}; } || exit 1
         fi
-        (cd ${BOOST_DIR} && ./bootstrap.sh --with-libraries=filesystem,locale,program_options,system,thread && ./b2 install --libdir=lib)
+        (cd ${BOOST_DIR} && ./bootstrap.sh --with-libraries=filesystem,locale,system,thread && ./b2 install --libdir=lib)
       fi      
       export BOOST_ROOT=${BOOST_DIR}
     fi    

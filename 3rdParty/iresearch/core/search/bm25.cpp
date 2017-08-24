@@ -42,7 +42,7 @@ const frequency EMPTY_FREQ;
 // set of features required for bm25 model
 const flags FEATURES{ frequency::type(), norm::type() };
 
-struct stats final : attribute {
+struct stats final : stored_attribute {
   DECLARE_ATTRIBUTE_TYPE();
   DECLARE_FACTORY_DEFAULT();
 
@@ -143,7 +143,7 @@ class collector final : public iresearch::sort::collector {
     docs_count += field.docs_count();
   }
 
-  virtual void term(const attribute_store& term_attrs) override {
+  virtual void term(const attribute_view& term_attrs) override {
     auto& meta = term_attrs.get<iresearch::term_meta>();
 
     if (meta) {
@@ -205,8 +205,12 @@ class sort final : iresearch::sort::prepared_base<bm25::score_t> {
       const sub_reader& segment,
       const term_reader& field,
       const attribute_store& query_attrs,
-      const attribute_store& doc_attrs
+      const attribute_view& doc_attrs
   ) const override {
+    if (!doc_attrs.contains<frequency>()) {
+      return nullptr; // if there is no frequency then all the scores will be the same (e.g. filter irs::all)
+    }
+
     auto& norm = query_attrs.get<iresearch::norm>();
 
     if (norm && norm->reset(segment, field.meta().norm, *doc_attrs.get<document>())) {
@@ -265,3 +269,7 @@ sort::prepared::ptr bm25_sort::prepare() const {
 }
 
 NS_END // ROOT
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                       END-OF-FILE
+// -----------------------------------------------------------------------------

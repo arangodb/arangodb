@@ -10,9 +10,6 @@
 // 
 
 #include "filter.hpp"
-#include "cost.hpp"
-#include "index/index_reader.hpp"
-#include "utils/type_limits.hpp"
 
 NS_ROOT
 
@@ -34,9 +31,6 @@ class empty_query final : public filter::prepared {
 // ----------------------------------------------------------------------------
 
 DEFINE_ATTRIBUTE_TYPE(iresearch::score);
-DEFINE_FACTORY_DEFAULT(score);
-
-score::score() { }
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                            filter
@@ -59,69 +53,6 @@ filter::prepared::prepared(attribute_store&& attrs)
 filter::prepared::~prepared() {}
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                                               all
-// -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @class all_query
-/// @brief compiled all_filter that returns all documents
-////////////////////////////////////////////////////////////////////////////////
-class all_query : public filter::prepared {
- public:
-  class all_iterator : public score_doc_iterator {
-   public:
-    all_iterator(uint64_t docs_count):
-      attrs_(1), // cost
-      max_doc_(doc_id_t(type_limits<type_t::doc_id_t>::min() + docs_count - 1)),
-      doc_(type_limits<type_t::doc_id_t>::invalid()) {
-      attrs_.emplace<cost>()->value(max_doc_);
-    }
-
-    virtual doc_id_t value() const {
-      return doc_;
-    }
-
-    virtual const attribute_store& attributes() const NOEXCEPT {
-      return attrs_;
-    }
-
-    virtual bool next() override { 
-      return !type_limits<type_t::doc_id_t>::eof(seek(doc_ + 1));
-    }
-
-    virtual doc_id_t seek(doc_id_t target) override {
-      doc_ = target <= max_doc_ ? target : type_limits<type_t::doc_id_t>::eof();
-      return doc_;
-    }
-
-    virtual void score() override { }
-
-   private:
-    attribute_store attrs_;
-    doc_id_t max_doc_; // largest valid doc_id
-    doc_id_t doc_;
-  };
-
-  virtual score_doc_iterator::ptr execute(
-      const sub_reader& rdr,
-      const order::prepared&) const override {
-    return score_doc_iterator::make<all_iterator>(rdr.docs_count());
-  }
-};
-
-DEFINE_FILTER_TYPE(iresearch::all);
-DEFINE_FACTORY_DEFAULT(iresearch::all);
-
-all::all() : filter(all::type()) { }
-
-filter::prepared::ptr all::prepare( 
-    const index_reader&, 
-    const order::prepared&,
-    boost_t) const {
-  return filter::prepared::make<all_query>();
-}
-
-// -----------------------------------------------------------------------------
 // --SECTION--                                                             empty
 // -----------------------------------------------------------------------------
 
@@ -139,4 +70,8 @@ filter::prepared::ptr empty::prepare(
   return filter::prepared::empty();
 }
 
-NS_END
+NS_END // ROOT
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                       END-OF-FILE
+// -----------------------------------------------------------------------------

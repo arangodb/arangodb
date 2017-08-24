@@ -11,7 +11,17 @@
 
 #include "gtest/gtest.h"
 #include "tests_config.hpp"
-#include <boost/locale.hpp>
+
+#if defined (__GNUC__)
+  #pragma GCC diagnostic ignored "-Wdeprecated-declarations"
+#endif
+
+  #include <boost/locale.hpp>
+
+#if defined (__GNUC__)
+  #pragma GCC diagnostic pop
+#endif
+
 #include <boost/locale/conversion.hpp>
 #include <boost/locale/generator.hpp>
 #include "analysis/text_token_stream.hpp"

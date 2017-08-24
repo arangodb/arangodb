@@ -92,7 +92,7 @@ void assertOrderSuccess(std::string const& queryString, irs::order const& expect
   }
 
   irs::order actual;
-  std::vector<irs::attribute::ptr> actualAttrs;
+  std::vector<irs::stored_attribute::ptr> actualAttrs;
   arangodb::iresearch::OrderFactory::OrderContext ctx { actualAttrs, actual };
   arangodb::aql::SortCondition order(nullptr, sorts, attrs, variableNodes);
   arangodb::iresearch::IResearchViewMeta meta;
@@ -139,7 +139,7 @@ void assertOrderFail(std::string const& queryString, size_t parseCode) {
   }
 
   irs::order actual;
-  std::vector<irs::attribute::ptr> actualAttrs;
+  std::vector<irs::stored_attribute::ptr> actualAttrs;
   arangodb::iresearch::OrderFactory::OrderContext ctx { actualAttrs, actual };
   arangodb::aql::SortCondition order(nullptr, sorts, attrs, variableNodes);
   arangodb::iresearch::IResearchViewMeta meta;
@@ -456,7 +456,7 @@ SECTION("test_StringValue") {
   // simple field
   {
     std::string query = "FOR d IN collection FILTER '1' SORT 'a' RETURN d";
-    std::vector<irs::attribute::ptr> attrBuf;
+    std::vector<irs::stored_attribute::ptr> attrBuf;
     irs::order expected;
 
     expected.add<arangodb::iresearch::AttributeScorer>(attrBuf).attributeNext("a");
@@ -466,7 +466,7 @@ SECTION("test_StringValue") {
   // simple field ASC
   {
     std::string query = "FOR d IN collection FILTER '1' SORT 'a' ASC RETURN d";
-    std::vector<irs::attribute::ptr> attrBuf;
+    std::vector<irs::stored_attribute::ptr> attrBuf;
     irs::order expected;
 
     expected.add<arangodb::iresearch::AttributeScorer>(attrBuf).attributeNext("a");
@@ -476,7 +476,7 @@ SECTION("test_StringValue") {
   // simple field DESC
   {
     std::string query = "FOR d IN collection FILTER '1' SORT 'a' DESC RETURN d";
-    std::vector<irs::attribute::ptr> attrBuf;
+    std::vector<irs::stored_attribute::ptr> attrBuf;
     irs::order expected;
 
     expected.add<arangodb::iresearch::AttributeScorer>(attrBuf).attributeNext("a").reverse(true);
@@ -486,7 +486,7 @@ SECTION("test_StringValue") {
   // nested field
   {
     std::string query = "FOR d IN collection FILTER '1' SORT 'a.b.c' RETURN d";
-    std::vector<irs::attribute::ptr> attrBuf;
+    std::vector<irs::stored_attribute::ptr> attrBuf;
     irs::order expected;
 
     expected.add<arangodb::iresearch::AttributeScorer>(attrBuf).attributeNext("a.b.c");
@@ -496,7 +496,7 @@ SECTION("test_StringValue") {
   // nested field ASC
   {
     std::string query = "FOR d IN collection FILTER '1' SORT 'a.b.c' ASC RETURN d";
-    std::vector<irs::attribute::ptr> attrBuf;
+    std::vector<irs::stored_attribute::ptr> attrBuf;
     irs::order expected;
 
     expected.add<arangodb::iresearch::AttributeScorer>(attrBuf).attributeNext("a.b.c");
@@ -506,7 +506,7 @@ SECTION("test_StringValue") {
   // nested field DESC
   {
     std::string query = "FOR d IN collection FILTER '1' SORT 'a.b.c' DESC RETURN d";
-    std::vector<irs::attribute::ptr> attrBuf;
+    std::vector<irs::stored_attribute::ptr> attrBuf;
     irs::order expected;
 
     expected.add<arangodb::iresearch::AttributeScorer>(attrBuf).attributeNext("a.b.c").reverse(true);
@@ -523,7 +523,7 @@ SECTION("test_order") {
     std::vector<arangodb::aql::Variable> variables;
 
     irs::order actual;
-    std::vector<irs::attribute::ptr> actualAttrs;
+    std::vector<irs::stored_attribute::ptr> actualAttrs;
     arangodb::iresearch::OrderFactory::OrderContext ctx { actualAttrs, actual };
     arangodb::aql::SortCondition order(nullptr, sorts, attrs, variableNodes);
     arangodb::iresearch::IResearchViewMeta meta;

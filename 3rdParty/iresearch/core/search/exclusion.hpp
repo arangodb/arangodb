@@ -55,7 +55,7 @@ class exclusion final : public score_doc_iterator {
     return next(target);
   }
 
-  virtual const attribute_store& attributes() const NOEXCEPT override {
+  virtual const attribute_view& attributes() const NOEXCEPT override {
     return incl_->attributes();
   }
 

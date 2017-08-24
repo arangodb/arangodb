@@ -137,7 +137,7 @@ class checksum_index_input final : public index_input {
   }
 
   virtual ptr reopen() const NOEXCEPT override {
-    PTR_NAMED(checksum_index_input, ptr, impl_->reopen(), crc_);
+    PTR_NAMED_NOTHROW(checksum_index_input, ptr, impl_->reopen(), crc_);
     return ptr;
   }
 

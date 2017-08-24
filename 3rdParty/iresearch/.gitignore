@@ -50,4 +50,4 @@ tags
 *.user
 
 # Builds
-/build/
+/build*/

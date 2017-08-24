@@ -12,8 +12,15 @@
 #include "gtest/gtest.h"
 #include "utils/locale_utils.hpp"
 
-#include <boost/locale.hpp>
+#if defined (__GNUC__)
+  #pragma GCC diagnostic ignored "-Wdeprecated-declarations"
+#endif
 
+  #include <boost/locale.hpp>
+
+#if defined (__GNUC__)
+  #pragma GCC diagnostic pop
+#endif
 
 namespace tests {
   class LocaleUtilsTestSuite: public ::testing::Test {

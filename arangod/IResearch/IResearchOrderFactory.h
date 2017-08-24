@@ -52,7 +52,7 @@ struct IResearchViewMeta; // forward declaration
 
 struct OrderFactory {
   struct OrderContext {
-    std::vector<irs::attribute::ptr>& attributes;
+    std::vector<irs::stored_attribute::ptr>& attributes;
     irs::order& order;
   };
 

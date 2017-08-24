@@ -24,6 +24,7 @@ class directory_test_case {
   void string_read_write();
   void read_multiple_streams();
   void lock_obtain_release();
+  void directory_size();
 
  protected:
   iresearch::directory::ptr dir_;

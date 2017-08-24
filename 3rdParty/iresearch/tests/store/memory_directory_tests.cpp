@@ -17,21 +17,21 @@
 
 using namespace iresearch;
 
-class memory_directory_test : public directory_test_case, 
+class memory_directory_test : public directory_test_case,
                               public test_base {
  protected:
   virtual void SetUp() {
     test_base::SetUp();
 
-    dir_ = directory::make< memory_directory >();
+    dir_ = directory::make<memory_directory>();
   }
-};
+}; // memory_directory_test
 
 TEST_F(memory_directory_test, read_multiple_streams) {
   read_multiple_streams();
 }
 
-TEST_F( memory_directory_test, string_read_write ) {
+TEST_F(memory_directory_test, string_read_write) {
   string_read_write();
 }
 
@@ -54,3 +54,11 @@ TEST_F(memory_directory_test, index_io) {
 TEST_F(memory_directory_test, lock_obtain_release) {
   lock_obtain_release();
 }
+
+TEST_F(memory_directory_test, directory_size) {
+  directory_size();
+}
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                       END-OF-FILE
+// -----------------------------------------------------------------------------

@@ -22,10 +22,9 @@ environment:
   CMAKE_OPTIONS: -DCMAKE_BUILD_TYPE=%CONFIGURATION%
   CMAKE_BUILD_OPTIONS: --config %CONFIGURATION%
   matrix:
-  - BUILD_SUFFIX: -shared    
+  - BUILD_TYPE: shared    
     TEST_OPTIONS: --gtest_filter=*type_utils*
-  - BUILD_SUFFIX: -static    
-    EXECUTABLE_SUFFIX: -s
+  - BUILD_TYPE: static        
     TEST_OPTIONS: --gtest_filter=*type_utils*
     
 install:  
@@ -91,7 +90,7 @@ install:
   - set BOOST_DIR=C:/Libraries/boost_1_58_0
   - cd %BOOST_DIR%
   - bootstrap.bat  
-  - b2 --build-dir=%BOOST_DIR%\build --build-type=complete stage address-model=64 --with-filesystem --with-program_options --with-locale --with-system --with-thread
+  - b2 --build-dir=%BOOST_DIR%\build --build-type=complete stage address-model=64 --with-filesystem --with-locale --with-system --with-thread
   - set BOOST_ROOT=%BOOST_DIR%
  
   ############################################################################
@@ -112,19 +111,20 @@ before_build:
   - call "C:\Program Files (x86)\Microsoft Visual Studio 14.0\VC\vcvarsall.bat" amd64
 
 build_script:
+  - if "%BUILD_TYPE%" == "static" set EXECUTABLE_SUFFIX="-s"          
   - cd %APPVEYOR_BUILD_FOLDER%
   - mkdir build
   - cd build
   - cmake -g %APPVEYOR_BUILD_WORKER_IMAGE% -Ax64 %CMAKE_OPTIONS% ..      
-  - cmake --build . %CMAKE_BUILD_OPTIONS% --target iresearch-tests-static
-  - cmake --build . %CMAKE_BUILD_OPTIONS% --target iresearch-benchmarks-index
-  - cmake --build . %CMAKE_BUILD_OPTIONS% --target iresearch-benchmarks-search  
+  - cmake --build . %CMAKE_BUILD_OPTIONS% --target iresearch-tests-%BUILD_TYPE%
+  - if "%BUILD_TYPE%" == "static" ( cmake --build . %CMAKE_BUILD_OPTIONS% --target iresearch-benchmarks )
+  - if "%BUILD_TYPE%" == "static" ( cmake --build . %CMAKE_BUILD_OPTIONS% --target iresearch-index-util )
    
 test_script:
   ############################################################################
   # Execute tests
   ############################################################################
-  - cmd: bin\%CONFIGURATION%\iresearch-tests-s.exe --gtest_output=xml:test_results.xml %TEST_OPTIONS%
+  - cmd: bin\%CONFIGURATION%\iresearch-tests%EXECUTABLE_SUFFIX%.exe --gtest_output=xml:test_results.xml %TEST_OPTIONS%
 
 on_finish:
   ############################################################################

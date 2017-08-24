@@ -19,7 +19,16 @@
 #include "utils/process_utils.hpp"
 #include "utils/network_utils.hpp"
 
-#include <boost/locale.hpp>
+#if defined (__GNUC__)
+  #pragma GCC diagnostic ignored "-Wdeprecated-declarations"
+#endif
+
+  #include <boost/locale.hpp>
+
+#if defined (__GNUC__)
+  #pragma GCC diagnostic pop
+#endif
+
 #include <boost/locale/generator.hpp>
 #include <boost/locale/conversion.hpp>
 
@@ -295,6 +304,10 @@ TEST_F(fs_directory_test, utf8_chars) {
     dir.check_files();
     dir.TearDown();
   }
+}
+
+TEST_F(fs_directory_test, directory_size) {
+  directory_size();
 }
 
 // -----------------------------------------------------------------------------

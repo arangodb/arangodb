@@ -17,6 +17,9 @@ NS_BEGIN(sort)
 DEFINE_SORT_TYPE(boost);
 DEFINE_FACTORY_SINGLETON(boost);
 
+DEFINE_SORT_TYPE(custom_sort);
+DEFINE_FACTORY_DEFAULT(custom_sort);
+
 DEFINE_SORT_TYPE(frequency_sort);
 DEFINE_FACTORY_SINGLETON(frequency_sort);
 

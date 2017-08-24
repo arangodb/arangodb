@@ -29,7 +29,9 @@ class empty_filter_test_case: public tests::filter_test_case_base {
 
     auto rdr = open_reader();
 
-    check_query(irs::empty(), docs_t{}, rdr);
+    std::vector<irs::cost::cost_t> cost{ 0 };
+
+    check_query(irs::empty(), docs_t{}, cost, rdr);
   }
 };
 

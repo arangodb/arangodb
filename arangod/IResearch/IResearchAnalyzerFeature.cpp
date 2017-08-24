@@ -56,29 +56,11 @@ static size_t const DEFAULT_POOL_SIZE = 8; // arbitrary value
 static std::string const FEATURE_NAME("IResearchAnalyzer");
 static irs::string_ref const IDENTITY_TOKENIZER_NAME("identity");
 
-class IdentityValue: public irs::term_attribute {
-public:
-  DECLARE_FACTORY_DEFAULT();
-
-  virtual ~IdentityValue() {}
-
-  virtual void clear() override {
-    _value = irs::bytes_ref::nil;
+struct IdentityValue : irs::term_attribute {
+  void value(irs::bytes_ref const& data) noexcept {
+    value_ = data;
   }
-
-  virtual const irs::bytes_ref& value() const {
-    return _value;
-  }
-
-  void value(irs::bytes_ref const& data) {
-    _value = data;
-  }
-
- private:
-  iresearch::bytes_ref _value;
 };
-
-DEFINE_FACTORY_DEFAULT(IdentityValue);
 
 class IdentityTokenizer: public irs::analysis::analyzer {
  public:
@@ -86,14 +68,16 @@ class IdentityTokenizer: public irs::analysis::analyzer {
   DECLARE_FACTORY_DEFAULT(irs::string_ref const& args); // args ignored
 
   IdentityTokenizer();
-  virtual irs::attribute_store const& attributes() const NOEXCEPT override;
+  virtual irs::attribute_view const& attributes() const NOEXCEPT override;
   virtual bool next() override;
   virtual bool reset(irs::string_ref const& data) override;
 
  private:
-  irs::attribute_store _attrs;
-  bool _empty;
+  irs::attribute_view _attrs;
+  IdentityValue _term;
+  irs::increment _inc;
   irs::string_ref _value;
+  bool _empty;
 };
 
 DEFINE_ANALYZER_TYPE_NAMED(IdentityTokenizer, IDENTITY_TOKENIZER_NAME);
@@ -106,18 +90,18 @@ REGISTER_ANALYZER(IdentityTokenizer);
 
 IdentityTokenizer::IdentityTokenizer()
   : irs::analysis::analyzer(IdentityTokenizer::type()), _empty(true) {
-  _attrs.emplace<IdentityValue>();
-  _attrs.emplace<irs::increment>();
+  _attrs.emplace(_term);
+  _attrs.emplace(_inc);
 }
 
-irs::attribute_store const& IdentityTokenizer::attributes() const NOEXCEPT {
+irs::attribute_view const& IdentityTokenizer::attributes() const NOEXCEPT {
   return _attrs;
 }
 
 bool IdentityTokenizer::next() {
   auto empty = _empty;
 
-  const_cast<const irs::attribute_store&>(_attrs).get<IdentityValue>()->value(irs::ref_cast<irs::byte_type>(_value));
+  _term.value(irs::ref_cast<irs::byte_type>(_value));
   _empty = true;
   _value = irs::string_ref::nil;
 

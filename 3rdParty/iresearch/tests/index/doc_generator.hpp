@@ -16,7 +16,6 @@
 #include "utils/iterator.hpp"
 #include "store/store_utils.hpp"
 #include "index/index_writer.hpp"
-#include "json_parser.hpp"
 
 #include <fstream>
 #include <atomic>
@@ -328,15 +327,83 @@ class delim_doc_generator : public doc_generator_base {
 /* Generates documents from json file based on type of JSON value */
 class json_doc_generator: public doc_generator_base {
  public:
+  enum class ValueType {
+    NIL,
+    BOOL,
+    INT,
+    UINT,
+    INT64,
+    UINT64,
+    DBL,
+    STRING,
+    RAWNUM
+  }; // ValueType
+
+  struct json_value {
+    union {
+      bool b;
+      int i;
+      unsigned ui;
+      int64_t i64;
+      uint64_t ui64;
+      double_t dbl;
+      irs::string_ref str{};
+    };
+    ValueType vt{ ValueType::NIL };
+
+    json_value() NOEXCEPT { }
+
+    bool is_bool() const NOEXCEPT {
+      return ValueType::BOOL == vt;
+    }
+
+    bool is_null() const NOEXCEPT {
+      return ValueType::NIL == vt;
+    }
+
+    bool is_string() const NOEXCEPT {
+      return ValueType::STRING == vt;
+    }
+
+    bool is_number() const NOEXCEPT {
+      return ValueType::INT == vt
+        || ValueType::INT64 == vt
+        || ValueType::UINT == vt
+        || ValueType::UINT64 == vt
+        || ValueType::DBL == vt;
+    }
+
+    template<typename T>
+    T as_number() const NOEXCEPT {
+      assert(is_number());
+
+      switch (vt) {
+        case ValueType::NIL:    break;
+        case ValueType::BOOL:   break;
+        case ValueType::INT:    return static_cast<T>(i);
+        case ValueType::UINT:   return static_cast<T>(ui);
+        case ValueType::INT64:  return static_cast<T>(i64);
+        case ValueType::UINT64: return static_cast<T>(ui64);
+        case ValueType::DBL:    return static_cast<T>(dbl);
+        case ValueType::STRING: break;
+        case ValueType::RAWNUM: break;
+      }
+
+      assert(false);
+      return 0.;
+    }
+  }; // json_value
+
   typedef std::function<void(
     tests::document&,
     const std::string&,
-    const tests::json::json_value&)
-  > factory_f;
+    const json_value&
+  )> factory_f;
 
   json_doc_generator(
     const fs::path& file,
-    const factory_f& factory);
+    const factory_f& factory
+  );
 
   json_doc_generator(json_doc_generator&& rhs) NOEXCEPT;
 

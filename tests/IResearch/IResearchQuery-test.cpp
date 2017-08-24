@@ -127,14 +127,14 @@ struct IResearchQuerySetup {
     analyzers->emplace("test_analyzer", "TestAnalyzer", "abc"); // cache analyzer
 
     // suppress log messages since tests check error conditions
-    arangodb::LogTopic::setLogLevel(arangodb::Logger::IRESEARCH.name(), arangodb::LogLevel::FATAL);
+    arangodb::LogTopic::setLogLevel(arangodb::iresearch::IResearchFeature::IRESEARCH.name(), arangodb::LogLevel::FATAL);
     irs::logger::output_le(iresearch::logger::IRL_FATAL, stderr);
   }
 
   ~IResearchQuerySetup() {
     system.reset(); // destroy before reseting the 'ENGINE'
     arangodb::AqlFeature(&server).stop(); // unset singleton instance
-    arangodb::LogTopic::setLogLevel(arangodb::Logger::IRESEARCH.name(), arangodb::LogLevel::DEFAULT);
+    arangodb::LogTopic::setLogLevel(arangodb::iresearch::IResearchFeature::IRESEARCH.name(), arangodb::LogLevel::DEFAULT);
     arangodb::application_features::ApplicationServer::server = nullptr;
     arangodb::EngineSelectorFeature::ENGINE = nullptr;
 
@@ -314,7 +314,7 @@ SECTION("SelectAll") {
 //
 //    auto queryResult = executeQuery(
 //      vocbase,
-//      "FOR d IN VIEW testView SORT TFIDF() RETURN d"
+//      "FOR d IN VIEW testView SORT TFIDF(d) RETURN d"
 //    );
 //    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
 //
@@ -345,7 +345,7 @@ SECTION("SelectAll") {
 //
 //    auto queryResult = executeQuery(
 //      vocbase,
-//      "FOR d IN VIEW testView SORT TFIDF() DESC RETURN d"
+//      "FOR d IN VIEW testView SORT TFIDF(d) DESC RETURN d"
 //    );
 //    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
 //

@@ -238,7 +238,7 @@ class term_reader : public iresearch::term_reader,
   virtual uint64_t docs_count() const override { return doc_count_; }
   virtual const bytes_ref& min() const override { return min_term_ref_; }
   virtual const bytes_ref& max() const override { return max_term_ref_; }
-  virtual const irs::attribute_store& attributes() const NOEXCEPT override {
+  virtual const irs::attribute_view& attributes() const NOEXCEPT override {
     return attrs_; 
   }
 
@@ -246,7 +246,7 @@ class term_reader : public iresearch::term_reader,
   typedef fst::VectorFst<byte_arc> fst_t;
   friend class term_iterator;
 
-  irs::attribute_store attrs_;
+  irs::attribute_view attrs_;
   bstring min_term_;
   bstring max_term_;
   bytes_ref min_term_ref_;
@@ -255,6 +255,7 @@ class term_reader : public iresearch::term_reader,
   uint64_t doc_count_;
   uint64_t doc_freq_;
   uint64_t term_freq_;
+  frequency freq_; // total term freq
   field_meta field_;
   fst_t* fst_; // TODO: use compact fst here!!!
   field_reader* owner_;

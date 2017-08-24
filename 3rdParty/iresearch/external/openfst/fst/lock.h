@@ -23,6 +23,7 @@
 #ifndef FST_LIB_LOCK_H__
 #define FST_LIB_LOCK_H__
 
+#include <atomic>
 #include <fst/compat.h>  // for DISALLOW_COPY_AND_ASSIGN
 
 namespace fst {
@@ -82,7 +83,7 @@ class RefCounter {
   int Decr() const {  return --count_; }
 
  private:
-  mutable int count_;
+  mutable std::atomic<int> count_; // NOTE!!! can be concurrently modified
 
   DISALLOW_COPY_AND_ASSIGN(RefCounter);
 };

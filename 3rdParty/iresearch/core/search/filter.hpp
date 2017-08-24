@@ -14,15 +14,8 @@
 
 #include "shared.hpp"
 #include "sort.hpp"
-#include "index/iterators.hpp"
-#include "utils/memory.hpp"
-#include "utils/string.hpp"
-#include "utils/type_id.hpp"
-#include "utils/attributes_provider.hpp"
 
 #include <unordered_map>
-#include <vector>
-#include <boost/iterator/iterator_facade.hpp>
 
 NS_ROOT
 
@@ -34,26 +27,27 @@ class IRESEARCH_API score : public attribute {
  public:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief applies score to the specified attributes collection ("src")
-  /// @return pointer to the attribute
   //////////////////////////////////////////////////////////////////////////////
-  static score* apply(attribute_store& src, const order::prepared& ord) {
+  static bool apply(
+      attribute_view& src,
+      irs::score& score,
+      const order::prepared& ord) {
     if (ord.empty()) {
-      return nullptr;
+      return false;
     }
 
-    auto& attr = src.emplace<score>();
+    src.emplace(score);
 
-    attr->order_ = &ord;
-    attr->value_.resize(ord.size());
-    attr->clear();
+    score.order_ = &ord;
+    score.value_.resize(ord.size());
+    score.clear();
 
-    return attr.get();
+    return true;
   }
 
   DECLARE_ATTRIBUTE_TYPE();
-  DECLARE_FACTORY_DEFAULT();
 
-  score();
+  score() = default;
 
   template<typename T>
   const T& get(size_t i) const {
@@ -79,6 +73,10 @@ class IRESEARCH_API score : public attribute {
         ord.bucket->prepare_score(&(value_[0]) + ord.offset);
       }
     }
+  }
+
+  bool empty() const NOEXCEPT {
+    return value_.empty();
   }
 
  private:
@@ -233,23 +231,6 @@ class IRESEARCH_API filter {
 #define DEFINE_FILTER_TYPE(class_name) DEFINE_TYPE_ID(class_name,iresearch::type_id) { \
   static iresearch::type_id type; \
   return type; }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @class all
-/// @brief filter that returns all documents
-////////////////////////////////////////////////////////////////////////////////
-class IRESEARCH_API all: public filter {
- public:
-  DECLARE_FILTER_TYPE();
-  DECLARE_FACTORY_DEFAULT();
-
-  all();
-
-  virtual filter::prepared::ptr prepare(
-    const index_reader& rdr,
-    const order::prepared& ord,
-    boost_t) const override;
-}; // all
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @class empty

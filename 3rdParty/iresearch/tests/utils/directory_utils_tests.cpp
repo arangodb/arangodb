@@ -40,7 +40,7 @@ TEST_F(directory_utils_tests, test_reference) {
 
     ASSERT_TRUE(iresearch::directory_utils::reference(dir, "abc", true).operator bool());
 
-    auto& attribute = dir.attributes().get<iresearch::index_file_refs>();
+    auto& attribute = const_cast<const irs::attribute_store&>(dir.attributes()).get<irs::index_file_refs>();
 
     ASSERT_TRUE(attribute.operator bool());
     ASSERT_FALSE(attribute->refs().empty());
@@ -57,7 +57,7 @@ TEST_F(directory_utils_tests, test_reference) {
 
     ASSERT_TRUE(ref.operator bool());
 
-    auto& attribute = dir.attributes().get<iresearch::index_file_refs>();
+    auto& attribute = const_cast<const irs::attribute_store&>(dir.attributes()).get<irs::index_file_refs>();
 
     ASSERT_TRUE(attribute.operator bool());
     ASSERT_FALSE(attribute->refs().empty());
@@ -71,7 +71,7 @@ TEST_F(directory_utils_tests, test_reference) {
 
     ASSERT_FALSE(iresearch::directory_utils::reference(dir, "abc").operator bool());
 
-    auto& attribute = dir.attributes().get<iresearch::index_file_refs>();
+    auto& attribute = const_cast<const irs::attribute_store&>(dir.attributes()).get<irs::index_file_refs>();
 
     ASSERT_FALSE(attribute.operator bool());
   }
@@ -82,7 +82,7 @@ TEST_F(directory_utils_tests, test_reference) {
 
     ASSERT_TRUE(iresearch::directory_utils::reference(dir, "abc", true).operator bool());
 
-    auto& attribute = dir.attributes().get<iresearch::index_file_refs>();
+    auto& attribute = const_cast<const irs::attribute_store&>(dir.attributes()).get<irs::index_file_refs>();
 
     ASSERT_TRUE(attribute.operator bool());
     ASSERT_FALSE(attribute->refs().empty());
@@ -98,7 +98,7 @@ TEST_F(directory_utils_tests, test_reference) {
     ASSERT_FALSE(!file);
     ASSERT_TRUE(iresearch::directory_utils::reference(dir, "abc").operator bool());
 
-    auto& attribute = dir.attributes().get<iresearch::index_file_refs>();
+    auto& attribute = const_cast<const irs::attribute_store&>(dir.attributes()).get<irs::index_file_refs>();
 
     ASSERT_TRUE(attribute.operator bool());
     ASSERT_FALSE(attribute->refs().empty());
@@ -130,7 +130,7 @@ TEST_F(directory_utils_tests, test_reference) {
     ASSERT_TRUE(iresearch::directory_utils::reference(dir, source, visitor));
     ASSERT_EQ(1, count);
 
-    auto& attribute = dir.attributes().get<iresearch::index_file_refs>();
+    auto& attribute = const_cast<const irs::attribute_store&>(dir.attributes()).get<irs::index_file_refs>();
 
     ASSERT_TRUE(attribute.operator bool());
     ASSERT_FALSE(attribute->refs().empty());
@@ -163,7 +163,7 @@ TEST_F(directory_utils_tests, test_reference) {
     ASSERT_TRUE(iresearch::directory_utils::reference(dir, source, visitor, true));
     ASSERT_EQ(2, count);
 
-    auto& attribute = dir.attributes().get<iresearch::index_file_refs>();
+    auto& attribute = const_cast<const irs::attribute_store&>(dir.attributes()).get<irs::index_file_refs>();
 
     ASSERT_TRUE(attribute.operator bool());
     ASSERT_FALSE(attribute->refs().empty());
@@ -198,7 +198,7 @@ TEST_F(directory_utils_tests, test_reference) {
     ASSERT_FALSE(iresearch::directory_utils::reference(dir, source, visitor, true));
     ASSERT_EQ(1, count);
 
-    auto& attribute = dir.attributes().get<iresearch::index_file_refs>();
+    auto& attribute = const_cast<const irs::attribute_store&>(dir.attributes()).get<irs::index_file_refs>();
 
     ASSERT_TRUE(attribute.operator bool());
     ASSERT_FALSE(attribute->refs().empty());
@@ -227,7 +227,7 @@ TEST_F(directory_utils_tests, test_reference) {
     ASSERT_TRUE(iresearch::directory_utils::reference(dir, meta, visitor, true));
     ASSERT_EQ(0, count);
 
-    auto& attribute = dir.attributes().get<iresearch::index_file_refs>();
+    auto& attribute = const_cast<const irs::attribute_store&>(dir.attributes()).get<irs::index_file_refs>();
 
     ASSERT_FALSE(attribute.operator bool());
   }
@@ -247,7 +247,7 @@ TEST_F(directory_utils_tests, test_reference) {
     ASSERT_TRUE(iresearch::directory_utils::reference(dir, meta, visitor));
     ASSERT_EQ(1, count);
 
-    auto& attribute = dir.attributes().get<iresearch::index_file_refs>();
+    auto& attribute = const_cast<const irs::attribute_store&>(dir.attributes()).get<irs::index_file_refs>();
 
     ASSERT_TRUE(attribute.operator bool());
     ASSERT_FALSE(attribute->refs().empty());
@@ -270,7 +270,7 @@ TEST_F(directory_utils_tests, test_reference) {
     ASSERT_TRUE(iresearch::directory_utils::reference(dir, meta, visitor, true));
     ASSERT_EQ(2, count);
 
-    auto& attribute = dir.attributes().get<iresearch::index_file_refs>();
+    auto& attribute = const_cast<const irs::attribute_store&>(dir.attributes()).get<irs::index_file_refs>();
 
     ASSERT_TRUE(attribute.operator bool());
     ASSERT_FALSE(attribute->refs().empty());
@@ -297,7 +297,7 @@ TEST_F(directory_utils_tests, test_reference) {
     ASSERT_FALSE(iresearch::directory_utils::reference(dir, meta, visitor, true));
     ASSERT_EQ(1, count);
 
-    auto& attribute = dir.attributes().get<iresearch::index_file_refs>();
+    auto& attribute = const_cast<const irs::attribute_store&>(dir.attributes()).get<irs::index_file_refs>();
 
     ASSERT_TRUE(attribute.operator bool());
     ASSERT_FALSE(attribute->refs().empty());
@@ -327,7 +327,7 @@ TEST_F(directory_utils_tests, test_reference) {
     ASSERT_TRUE(iresearch::directory_utils::reference(dir, meta, visitor));
     ASSERT_EQ(0, count);
 
-    auto& attribute = dir.attributes().get<iresearch::index_file_refs>();
+    auto& attribute = const_cast<const irs::attribute_store&>(dir.attributes()).get<irs::index_file_refs>();
 
     ASSERT_FALSE(attribute.operator bool());
   }
@@ -349,7 +349,7 @@ TEST_F(directory_utils_tests, test_reference) {
     ASSERT_TRUE(iresearch::directory_utils::reference(dir, meta, visitor));
     ASSERT_EQ(1, count);
 
-    auto& attribute = dir.attributes().get<iresearch::index_file_refs>();
+    auto& attribute = const_cast<const irs::attribute_store&>(dir.attributes()).get<irs::index_file_refs>();
 
     ASSERT_TRUE(attribute.operator bool());
     ASSERT_FALSE(attribute->refs().empty());
@@ -374,7 +374,7 @@ TEST_F(directory_utils_tests, test_reference) {
     ASSERT_TRUE(iresearch::directory_utils::reference(dir, meta, visitor, true));
     ASSERT_EQ(3, count); // +1 for segment file
 
-    auto& attribute = dir.attributes().get<iresearch::index_file_refs>();
+    auto& attribute = const_cast<const irs::attribute_store&>(dir.attributes()).get<irs::index_file_refs>();
 
     ASSERT_TRUE(attribute.operator bool());
     ASSERT_FALSE(attribute->refs().empty());
@@ -405,7 +405,7 @@ TEST_F(directory_utils_tests, test_reference) {
     ASSERT_FALSE(iresearch::directory_utils::reference(dir, meta, visitor, true));
     ASSERT_EQ(1, count);
 
-    auto& attribute = dir.attributes().get<iresearch::index_file_refs>();
+    auto& attribute = const_cast<const irs::attribute_store&>(dir.attributes()).get<irs::index_file_refs>();
 
     ASSERT_TRUE(attribute.operator bool());
     ASSERT_FALSE(attribute->refs().empty());
@@ -612,8 +612,8 @@ TEST_F(directory_utils_tests, test_ref_tracking_dir) {
   // ...........................................................................
 
   struct error_directory: public iresearch::directory {
-    iresearch::attributes attrs;
-    virtual iresearch::attributes& attributes() NOEXCEPT override { return attrs; }
+    irs::attribute_store attrs;
+    virtual irs::attribute_store& attributes() NOEXCEPT override { return attrs; }
     virtual void close() NOEXCEPT override {}
     virtual iresearch::index_output::ptr create(const std::string&) NOEXCEPT override { return nullptr; }
     virtual bool exists(bool& result, const std::string&) const NOEXCEPT override { return false; }

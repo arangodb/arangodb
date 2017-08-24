@@ -62,18 +62,19 @@ class basic_disjunction final : public score_doc_iterator_base {
       lhs_(std::move(lhs)), rhs_(std::move(rhs)), 
       doc_(type_limits<type_t::doc_id_t>::invalid()) {
     // estimate disjunction
-    attrs_.emplace<cost>()->rule([this](){
+    est_.rule([this](){
       cost::cost_t est = 0;
       est += traits_t::estimate(lhs_, 0);
       est += traits_t::estimate(rhs_, 0);
       return est;
     });
+    attrs_.emplace(est_);
   }
 
   virtual void score() override {
-    if (!scr_) return;
-    scr_->clear();
-    score_impl(scr_->leak());
+    if (scr_.empty()) return;
+    scr_.clear();
+    score_impl(scr_.leak());
   }
 
   virtual doc_id_t value() const override {
@@ -130,6 +131,7 @@ class basic_disjunction final : public score_doc_iterator_base {
     score_iterator_impl(rhs_, lhs);
   }
 
+  irs::cost est_;
   doc_iterator lhs_;
   doc_iterator rhs_;
   doc_id_t doc_;
@@ -161,8 +163,9 @@ public:
       const order::prepared& ord,
       cost::cost_t est) 
     : disjunction(std::move(itrs), ord) {
-    /* estimate disjunction */
-    attrs_.emplace<cost>()->value(est);
+    // estimate disjunction
+    est_.value(est);
+    attrs_.emplace(est_);
   }
 
   explicit disjunction(
@@ -179,19 +182,20 @@ public:
     //assert(irstd::all_equal(itrs_.begin(), itrs_.end()));
 
     // estimate disjunction
-    attrs_.emplace<cost>()->rule([this](){
+    est_.rule([this](){
       return std::accumulate(
         itrs_.begin(), itrs_.end(), cost::cost_t(0),
         [](cost::cost_t lhs, const doc_iterator& rhs) {
           return lhs + traits_t::estimate(rhs, 0);
       });
     });
+    attrs_.emplace(est_);
   }
 
   virtual void score() override {
-    if (!scr_) return;
-    scr_->clear();
-    score_impl(scr_->leak());
+    if (scr_.empty()) return;
+    scr_.clear();
+    score_impl(scr_.leak());
   }
 
   virtual doc_id_t value() const override {
@@ -319,6 +323,7 @@ public:
     }
   }
 
+  irs::cost est_;
   doc_iterators_t itrs_;
   doc_id_t doc_;
 }; // disjunction
@@ -366,7 +371,7 @@ template<
     });
 
     // estimate disjunction
-    attrs_.emplace<cost>()->rule([this](){
+    est_.rule([this](){
       return std::accumulate(
         // estimate only first min_match_count_ subnodes
         itrs_.begin(), itrs_.end(), cost::cost_t(0),
@@ -374,12 +379,13 @@ template<
           return lhs + traits_t::estimate(rhs, 0);
       });
     });
+    attrs_.emplace(est_);
   }
 
   virtual void score() override {
-    if (!scr_) return;
-    scr_->clear();
-    score_impl(scr_->leak());
+    if (scr_.empty()) return;
+    scr_.clear();
+    score_impl(scr_.leak());
   }
 
   virtual doc_id_t value() const override {
@@ -661,6 +667,7 @@ template<
     });
   }
 
+  cost est_;
   doc_iterators_t itrs_; /* sub iterators */
   size_t min_match_count_; /* minimum number of hits */
   size_t lead_; /* number of iterators in lead group */

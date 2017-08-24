@@ -26,25 +26,11 @@ NS_END
 NS_ROOT
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                                         attribute
-// -----------------------------------------------------------------------------
-
-attribute::~attribute() { }
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                  stored_attribute
-// -----------------------------------------------------------------------------
-
-stored_attribute::~stored_attribute() {
-}
-
-// -----------------------------------------------------------------------------
 // --SECTION--                                                attribute::type_id
 // -----------------------------------------------------------------------------
 
 /*static*/ const attribute::type_id* attribute::type_id::get(
-  const string_ref& name
-) {
+    const string_ref& name) {
   return attribute_register::instance().get(name);
 }
 
@@ -60,32 +46,32 @@ const flags& flags::empty_instance() {
 flags::flags() { }
 
 flags::flags(flags&& rhs) NOEXCEPT
-  : map_( std::move( rhs.map_ ) ) {
+  : map_(std::move(rhs.map_)) {
 }
 
 flags& flags::operator=(flags&& rhs) NOEXCEPT {
-  if ( this != &rhs ) {
-    map_ = std::move( rhs.map_ );
+  if (this != &rhs) {
+    map_ = std::move(rhs.map_);
   }
 
   return *this;
 }
 
-flags::flags( std::initializer_list<const attribute::type_id* > flags ) {
+flags::flags(std::initializer_list<const attribute::type_id*> flags) {
   std::for_each( 
     flags.begin(), flags.end(), 
-    [this]( const attribute::type_id* type) {
-      add( *type );
+    [this](const attribute::type_id* type) {
+      add(*type);
   } );
 }
 
-flags& flags::operator=( std::initializer_list<const attribute::type_id* > flags ) {
+flags& flags::operator=(std::initializer_list<const attribute::type_id*> flags) {
   map_.clear();
   std::for_each( 
     flags.begin(), flags.end(), 
-    [this]( const attribute::type_id* type) {
-      add( *type );
-  } );
+    [this](const attribute::type_id* type) {
+      add(*type);
+  });
   return *this;
 }
 
@@ -93,9 +79,12 @@ flags& flags::operator=( std::initializer_list<const attribute::type_id* > flags
 // --SECTION--                                            attribute registration
 // -----------------------------------------------------------------------------
 
-attribute_registrar::attribute_registrar(const attribute::type_id& type)
-  : registered_(attribute_register::instance().set(type.name(), &type)) {
-  if (!registered_) {
+attribute_registrar::attribute_registrar(const attribute::type_id& type) {
+  auto entry = attribute_register::instance().set(type.name(), &type);
+
+  registered_ = entry.second;
+
+  if (!registered_ && &type != entry.first) {
     IR_FRMT_WARN(
       "type name collision detected while registering attribute, ignoring: type '%s' from %s:%d",
       type.name().c_str(),
@@ -117,8 +106,7 @@ attribute_registrar::operator bool() const NOEXCEPT {
 #if defined(_MSC_VER) && defined(IRESEARCH_DLL)
 
   template class IRESEARCH_API attribute_map<attribute*>;
-  //template class IRESEARCH_API attribute_map<stored_attribute::ptr>; FIXME TODO uncomment
-  template class IRESEARCH_API attribute_map<std::shared_ptr<attribute>>; // FIXME TODO remove
+  template class IRESEARCH_API attribute_map<stored_attribute::ptr>;
 
 #endif
 
@@ -147,3 +135,7 @@ attribute_view::attribute_view(size_t /*reserve = 0*/) {
 }
 
 NS_END
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                       END-OF-FILE
+// -----------------------------------------------------------------------------

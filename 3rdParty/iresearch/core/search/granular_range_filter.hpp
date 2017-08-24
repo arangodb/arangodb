@@ -100,7 +100,6 @@ class IRESEARCH_API by_granular_range: public filter {
   by_granular_range& insert(numeric_token_stream& term) {
     auto& attributes = term.attributes();
     auto& term_attr = attributes.get<term_attribute>();
-    auto& increment_attr = attributes.get<increment>();
 
     for (level_t level = (std::numeric_limits<level_t>::min)(); term.next(); ++level) {
       insert<B>(level, term_attr->value());

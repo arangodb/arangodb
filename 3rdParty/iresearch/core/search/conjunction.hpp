@@ -164,7 +164,8 @@ class conjunction : public score_doc_iterator_base {
     front_ = &itrs_.front();
 
     // estimate iterator
-    attrs_.emplace<cost>()->value(traits_t::estimate(*front_));
+    est_.value(traits_t::estimate(*front_));
+    attrs_.emplace(est_);
   }
 
   iterator begin() const { return itrs_.begin(); }
@@ -174,9 +175,9 @@ class conjunction : public score_doc_iterator_base {
   size_t size() const { return itrs_.size(); }
 
   virtual void score() override final {
-    if (!scr_) return;
-    scr_->clear();
-    score_impl(scr_->leak());
+    if (scr_.empty()) return;
+    scr_.clear();
+    score_impl(scr_.leak());
   }
 
   virtual doc_id_t value() const override {
@@ -236,6 +237,7 @@ class conjunction : public score_doc_iterator_base {
     return target;
   }
 
+  irs::cost est_;
   doc_iterators_t itrs_;
   doc_iterator* front_;
 }; // conjunction

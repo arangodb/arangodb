@@ -229,13 +229,12 @@ class IRESEARCH_PLUGIN postings_writer final: public iresearch::postings_writer 
   static const uint32_t SKIP_N = 8;
 
   postings_writer(bool volatile_attributes);
-  virtual ~postings_writer();
 
   /*------------------------------------------
   * const_attributes_provider 
   * ------------------------------------------*/
 
-  virtual const irs::attribute_store& attributes() const NOEXCEPT override final {
+  virtual const irs::attribute_view& attributes() const NOEXCEPT override final {
     return attrs_;
   }
 
@@ -344,14 +343,14 @@ class IRESEARCH_PLUGIN postings_writer final: public iresearch::postings_writer 
   memory::memory_pool<> meta_pool_;
   memory::memory_pool_allocator<version10::term_meta, decltype(meta_pool_)> alloc_{ meta_pool_ };
   skip_writer skip_;
-  irs::attribute_store attrs_;
+  irs::attribute_view attrs_;
   uint64_t buf[BLOCK_SIZE]; // buffer for encoding (worst case)
   version10::term_meta last_state;    /* last final term state*/
   doc_stream doc;           /* document stream */
   pos_stream::ptr pos_;      /* proximity stream */
   pay_stream::ptr pay_;      /* payloads and offsets stream */
   uint64_t docs_count{};      /* count of processed documents */
-  bitset docs_;             /* bit set of all processed documents */
+  version10::documents docs_; /* bit set of all processed documents */
   features features_; /* features supported by current field */
   bool volatile_attributes_; // attribute value memory locations may change after next()
   IRESEARCH_API_PRIVATE_VARIABLES_END
@@ -370,14 +369,15 @@ class IRESEARCH_PLUGIN postings_reader final: public iresearch::postings_reader 
   ) override;
 
   virtual void decode(
-    data_input& in, 
+    data_input& in,
     const flags& field,
-    attribute_store& attrs
+    const attribute_view& attrs,
+    irs::term_meta& state
   ) override;
 
   virtual doc_iterator::ptr iterator(
     const flags& field,
-    const attribute_store& attrs,
+    const attribute_view& attrs,
     const flags& features
   ) override;
 

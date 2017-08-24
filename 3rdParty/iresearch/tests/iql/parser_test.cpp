@@ -10,7 +10,17 @@
 // 
 
 #include "gtest/gtest.h"
-#include <boost/locale.hpp>
+
+#if defined (__GNUC__)
+  #pragma GCC diagnostic ignored "-Wdeprecated-declarations"
+#endif
+
+  #include <boost/locale.hpp>
+
+#if defined (__GNUC__)
+  #pragma GCC diagnostic pop
+#endif
+
 #include "iql/parser.hh"
 #include "iql/parser_context.hpp"
 

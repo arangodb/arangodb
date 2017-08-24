@@ -43,7 +43,6 @@
 
 NS_LOCAL
 
-irs::frequency EMPTY_FREQ; // placeholder for empty frequency
 irs::bytes_ref DUMMY; // placeholder for visiting logic in columnstore
 
 NS_END
@@ -171,7 +170,7 @@ class doc_iterator : public iresearch::doc_iterator {
   void prepare(
       const version10::features& field,
       const version10::features& enabled,
-      const irs::attribute_store& attrs,
+      const irs::attribute_view& attrs,
       const index_input* doc_in,
       const index_input* pos_in,
       const index_input* pay_in) {
@@ -179,9 +178,8 @@ class doc_iterator : public iresearch::doc_iterator {
     enabled_ = enabled; // set enabled features
 
     // add mandatory attributes
-    doc_ = attrs_.emplace<document>().get();
-    doc_->value = begin_ = end_ = docs_;
-    *docs_ = type_limits<type_t::doc_id_t>::invalid();
+    attrs_.emplace(doc_);
+    begin_ = end_ = docs_;
 
     // get state attribute
     assert(attrs.contains<version10::term_meta>());
@@ -207,8 +205,8 @@ class doc_iterator : public iresearch::doc_iterator {
   }
 
   virtual doc_id_t seek(doc_id_t target) override {
-    if (target <= *(doc_->value)) {
-      return *(doc_->value);
+    if (target <= doc_.value) {
+      return doc_.value;
     }
 
     seek_to_block(target);
@@ -217,10 +215,10 @@ class doc_iterator : public iresearch::doc_iterator {
   }
 
   virtual doc_id_t value() const override {
-    return *(doc_->value);
+    return doc_.value;
   }
 
-  virtual const irs::attribute_store& attributes() const NOEXCEPT override {
+  virtual const irs::attribute_view& attributes() const NOEXCEPT override {
     return attrs_;
   }
 
@@ -231,20 +229,20 @@ class doc_iterator : public iresearch::doc_iterator {
 #endif
 
   virtual bool next() override {
-    if (doc_->value == end_) {
+    if (begin_ == end_) {
       cur_pos_ += relative_pos();
 
       if (cur_pos_ == term_state_.docs_count) {
-        *docs_ = type_limits<type_t::doc_id_t>::eof();
-        doc_->value = begin_ = end_ = docs_; // seal the iterator
+        doc_.value = type_limits<type_t::doc_id_t>::eof();
+        begin_ = end_ = docs_; // seal the iterator
         return false;
       }
 
       refill();
     }
 
-    ++(doc_->value);
-    freq_->value = *doc_freq_++;
+    doc_.value = *begin_++;
+    freq_.value = *doc_freq_++;
 
     return true;
   }
@@ -258,13 +256,13 @@ class doc_iterator : public iresearch::doc_iterator {
  protected:
   virtual void prepare_attributes(
       const version10::features& enabled,
-      const irs::attribute_store& attrs,
+      const irs::attribute_view& attrs,
       const index_input* pos_in,
       const index_input* pay_in) {
     // term frequency attributes
     if (enabled.freq()) {
       assert(attrs.contains<frequency>());
-      freq_ = attrs_.emplace<frequency>().get();
+      attrs_.emplace(freq_);
       term_freq_ = attrs.get<frequency>()->value;
     }
   }
@@ -276,8 +274,8 @@ class doc_iterator : public iresearch::doc_iterator {
 
   // returns current position in the document block 'docs_'
   size_t relative_pos() NOEXCEPT {
-    assert(doc_->value >= begin_);
-    return doc_->value - begin_;
+    assert(begin_ >= docs_);
+    return begin_ - docs_;
   }
 
   doc_id_t read_skip(skip_state& state, index_input& in) {
@@ -316,11 +314,6 @@ class doc_iterator : public iresearch::doc_iterator {
   void refill() {
     const auto left = term_state_.docs_count - cur_pos_;
 
-    // if this is the initial doc_id then set it to min() for proper delta value
-    const doc_id_t last = type_limits<type_t::doc_id_t>::valid(*docs_)
-      ? *end_
-      : (type_limits<type_t::doc_id_t>::min)();
-
     if (left >= postings_writer::BLOCK_SIZE) {
       // read doc deltas
       encode::bitpack::read_block(*doc_in_, postings_writer::BLOCK_SIZE, enc_buf_, docs_);
@@ -354,19 +347,23 @@ class doc_iterator : public iresearch::doc_iterator {
       end_ = docs_ + left;
     }
 
-    *docs_ += last; // add last doc_id before decoding
-    encode::delta::decode(std::begin(docs_), end_); // decode delta encoded documents block
+    // if this is the initial doc_id then set it to min() for proper delta value
+    // add last doc_id before decoding
+    *docs_ += type_limits<type_t::doc_id_t>::valid(doc_.value)
+      ? doc_.value
+      : (type_limits<type_t::doc_id_t>::min)();
 
+    // decode delta encoded documents block
+    encode::delta::decode(std::begin(docs_), end_);
+
+    begin_ = docs_;
     doc_freq_ = docs_ + postings_writer::BLOCK_SIZE;
-
-    doc_->value = begin_ = docs_ - 1;
-    --end_;
   }
 
   std::vector<skip_state> skip_levels_;
   skip_reader skip_;
   skip_context* skip_ctx_; // pointer to used skip context, will be used by skip reader
-  irs::attribute_store attrs_;
+  irs::attribute_view attrs_;
   uint64_t enc_buf_[postings_writer::BLOCK_SIZE]; // buffer for encoding
   doc_id_t docs_[postings_writer::BLOCK_SIZE]; // doc values
   uint64_t doc_freqs_[postings_writer::BLOCK_SIZE]; // document frequencies
@@ -375,8 +372,8 @@ class doc_iterator : public iresearch::doc_iterator {
   doc_id_t* end_{docs_};
   uint64_t* doc_freq_{}; // pointer into docs_ to the frequency attribute value for the current doc
   uint64_t term_freq_{}; // total term frequency
-  document* doc_;
-  frequency* freq_{ &EMPTY_FREQ };
+  document doc_;
+  frequency freq_;
   index_input::ptr doc_in_;
   version10::term_meta term_state_;
   features features_; // field features
@@ -435,9 +432,9 @@ void doc_iterator::seek_to_block(doc_id_t target) {
     const size_t skipped = skip_.seek(target);
     if (skipped > (cur_pos_ + relative_pos())) {
       doc_in_->seek(last.doc_ptr);
-      *docs_ = last.doc;
+      doc_.value = last.doc;
       cur_pos_ = skipped;
-      doc_->value = begin_ = end_ = docs_; // will trigger refill in "next"
+      begin_ = end_ = docs_; // will trigger refill in "next"
       seek_notify(last); // notifies derivatives
     }
   }
@@ -631,19 +628,18 @@ class pos_iterator : public position::impl {
 ///////////////////////////////////////////////////////////////////////////////
 class offs_pay_iterator final : public pos_iterator {
  public:
-  DECLARE_PTR( offs_pay_iterator );
+  DECLARE_PTR(offs_pay_iterator);
 
-  offs_pay_iterator():
-    pos_iterator(2) { // offset + payload
-    auto& attrs = this->attributes();
-    offs_ = attrs.emplace<offset>().get();
-    pay_ = attrs.emplace<payload>().get();
+  offs_pay_iterator()
+    : pos_iterator(2) { // offset + payload
+    attrs_.emplace(offs_);
+    attrs_.emplace(pay_);
   }
 
   virtual void clear() override {
     pos_iterator::clear();
-    offs_->clear();
-    pay_->clear();
+    offs_.clear();
+    pay_.clear();
   }
 
  protected:
@@ -667,10 +663,10 @@ class offs_pay_iterator final : public pos_iterator {
   }
 
   virtual void read_attributes() override {
-    offs_->start += offs_start_deltas_[buf_pos_];
-    offs_->end = offs_->start + offs_lengts_[buf_pos_];
+    offs_.start += offs_start_deltas_[buf_pos_];
+    offs_.end = offs_.start + offs_lengts_[buf_pos_];
 
-    pay_->value = bytes_ref(
+    pay_.value = bytes_ref(
       pay_data_.c_str() + pay_data_pos_,
       pay_lengths_[buf_pos_]);
     pay_data_pos_ += pay_lengths_[buf_pos_];
@@ -763,8 +759,8 @@ class offs_pay_iterator final : public pos_iterator {
   }
 
   index_input::ptr pay_in_;
-  offset* offs_;
-  payload* pay_;
+  offset offs_;
+  payload pay_;
   uint32_t offs_start_deltas_[postings_writer::BLOCK_SIZE]{}; /* buffer to store offset starts */
   uint32_t offs_lengts_[postings_writer::BLOCK_SIZE]{}; /* buffer to store offset lengths */
   uint32_t pay_lengths_[postings_writer::BLOCK_SIZE]{}; /* buffer to store payload lengths */
@@ -779,15 +775,14 @@ class offs_iterator final : public pos_iterator {
  public:
   DECLARE_PTR(offs_iterator);
 
-  offs_iterator():
-    pos_iterator(1) { // offset
-    auto& attrs = this->attributes();
-    offs_ = attrs.emplace<offset>().get();
+  offs_iterator()
+    : pos_iterator(1) { // offset
+    attrs_.emplace(offs_);
   }
 
   virtual void clear() override {
     pos_iterator::clear();
-    offs_->clear();
+    offs_.clear();
   }
 
  protected:
@@ -810,8 +805,8 @@ class offs_iterator final : public pos_iterator {
   }
 
   virtual void read_attributes() override {
-    offs_->start += offs_start_deltas_[buf_pos_];
-    offs_->end = offs_->start + offs_lengts_[buf_pos_];
+    offs_.start += offs_start_deltas_[buf_pos_];
+    offs_.end = offs_.start + offs_lengts_[buf_pos_];
   }
 
   virtual void refill() override {
@@ -878,7 +873,7 @@ class offs_iterator final : public pos_iterator {
   }
 
   index_input::ptr pay_in_;
-  offset* offs_;
+  offset offs_;
   uint32_t offs_start_deltas_[postings_writer::BLOCK_SIZE]; /* buffer to store offset starts */
   uint32_t offs_lengts_[postings_writer::BLOCK_SIZE]; /* buffer to store offset lengths */
 }; // offs_iterator
@@ -890,15 +885,14 @@ class pay_iterator final : public pos_iterator {
  public:
   DECLARE_PTR(pay_iterator);
 
-  pay_iterator():
-    pos_iterator(1) { // payload
-    auto& attrs = this->attributes();
-    pay_ = attrs.emplace<payload>().get();
+  pay_iterator()
+    : pos_iterator(1) { // payload
+    attrs_.emplace(pay_);
   }
 
   virtual void clear() override {
     pos_iterator::clear();
-    pay_->clear();
+    pay_.clear();
   }
 
  protected:
@@ -922,8 +916,10 @@ class pay_iterator final : public pos_iterator {
   }
 
   virtual void read_attributes() override {
-    pay_->value = bytes_ref( pay_data_.data() + pay_data_pos_,
-                             pay_lengths_[buf_pos_] );
+    pay_.value = bytes_ref(
+      pay_data_.data() + pay_data_pos_,
+      pay_lengths_[buf_pos_]
+    );
     pay_data_pos_ += pay_lengths_[buf_pos_];
   }
 
@@ -1018,7 +1014,7 @@ class pay_iterator final : public pos_iterator {
   }
 
   index_input::ptr pay_in_;
-  payload* pay_;
+  payload pay_;
   uint32_t pay_lengths_[postings_writer::BLOCK_SIZE]{}; /* buffer to store payload lengths */
   uint64_t pay_data_pos_{}; /* current postition in payload buffer */
   bstring pay_data_; // buffer to store payload data
@@ -1046,27 +1042,27 @@ class pay_iterator final : public pos_iterator {
 class pos_doc_iterator : public doc_iterator {
  public:
   virtual bool next() override {
-    if (doc_->value == end_) {
+    if (begin_ == end_) {
       cur_pos_ += relative_pos();
 
       if (cur_pos_ == term_state_.docs_count) {
-        *docs_ = type_limits<type_t::doc_id_t>::eof();
-        doc_->value = begin_ = end_ = docs_; // seal the iterator
+        doc_.value = type_limits<type_t::doc_id_t>::eof();
+        begin_ = end_ = docs_; // seal the iterator
         return false;
       }
 
       refill();
     }
 
-    ++(doc_->value);
+    // update document attribute
+    doc_.value = *begin_++;
 
     // update frequency attribute
-    auto& freq = freq_->value;
-    freq = *doc_freq_++;
+    freq_.value = *doc_freq_++;
 
     // update position attribute
     assert(pos_);
-    pos_->pend_pos_ += freq;
+    pos_->pend_pos_ += freq_.value;
     pos_->clear();
 
     return true;
@@ -1075,7 +1071,7 @@ class pos_doc_iterator : public doc_iterator {
  protected:
   virtual void prepare_attributes(
     const version10::features& features,
-    const irs::attribute_store &attrs,
+    const irs::attribute_view& attrs,
     const index_input* pos_in,
     const index_input* pay_in
   ) final;
@@ -1087,12 +1083,13 @@ class pos_doc_iterator : public doc_iterator {
   }
 
  private:
+  position position_;
   pos_iterator* pos_{};
 }; // pos_doc_iterator
 
 void pos_doc_iterator::prepare_attributes(
     const version10::features& enabled,
-    const irs::attribute_store& attrs,
+    const irs::attribute_view& attrs,
     const index_input* pos_in,
     const index_input* pay_in) {
   doc_iterator::prepare_attributes(
@@ -1104,12 +1101,13 @@ void pos_doc_iterator::prepare_attributes(
 
   // position attribute
   pos_iterator::ptr it = pos_iterator::make(enabled);
+  pos_ = it.get();
 
   doc_state state;
   state.pos_in = pos_in;
   state.pay_in = pay_in;
   state.term_state = &term_state_;
-  state.freq = &freq_->value;
+  state.freq = &freq_.value;
   state.features = features_;
   state.enc_buf = enc_buf_;
   if (term_freq_ < postings_writer::BLOCK_SIZE) {
@@ -1123,8 +1121,8 @@ void pos_doc_iterator::prepare_attributes(
   it->prepare(state);
 
   // finish initialization
-  auto* pos = attrs_.emplace<position>().get();
-  pos->prepare(pos_ = it.release());
+  attrs_.emplace(position_);
+  position_.reset(std::move(it));
 }
 
 NS_END // detail
@@ -3783,16 +3781,15 @@ void postings_writer::pay_stream::flush_offsets(uint32_t* buf) {
 }
 
 postings_writer::postings_writer(bool volatile_attributes)
-  : skip_(BLOCK_SIZE, SKIP_N), volatile_attributes_(volatile_attributes) {
+  : skip_(BLOCK_SIZE, SKIP_N),
+    volatile_attributes_(volatile_attributes) {
+  attrs_.emplace(docs_);
 }
-
-postings_writer::~postings_writer() { }
 
 void postings_writer::prepare(index_output& out, const iresearch::flush_state& state) {
   assert(!state.name.null());
 
   // reset writer state
-  attrs_.clear();
   docs_count = 0;
 
   std::string name;
@@ -3833,19 +3830,18 @@ void postings_writer::prepare(index_output& out, const iresearch::flush_state& s
       write_skip(i, out);
   });
 
-  /* write postings format name */
+  // write postings format name
   format_utils::write_header(out, TERMS_FORMAT_NAME, TERMS_FORMAT_MAX);
-  /* write postings block size */
+  // write postings block size
   out.write_vint(BLOCK_SIZE);
 
-  /* prepare documents bitset */
-  docs_.reset(state.doc_count);
-  attrs_.emplace<version10::documents>()->value = &docs_;
+  // prepare documents bitset
+  docs_.value.reset(state.doc_count);
 }
 
 void postings_writer::begin_field(const iresearch::flags& field) {
   features_ = version10::features(field);
-  docs_.clear();
+  docs_.value.clear();
   last_state.clear();
 }
 
@@ -3865,7 +3861,7 @@ void postings_writer::begin_block() {
 irs::postings_writer::state postings_writer::write(doc_iterator& docs) {
   REGISTER_TIMER_DETAILED();
   auto& freq = docs.attributes().get<frequency>();
-  auto& pos = freq ? docs.attributes().get<position>() : irs::attribute_store::ref<position>::nil();
+  auto& pos = freq ? docs.attributes().get<position>() : irs::attribute_view::ref<position>::nil();
   const offset* offs = nullptr;
   const payload* pay = nullptr;
 
@@ -3875,8 +3871,9 @@ irs::postings_writer::state postings_writer::write(doc_iterator& docs) {
 
   if (freq) {
     if (pos && !volatile_attributes_) {
-      offs = pos->get<offset>().get();
-      pay = pos->get<payload>().get();
+      auto& attrs = pos->attributes();
+      offs = attrs.get<offset>().get();
+      pay = attrs.get<payload>().get();
     }
 
     tfreq = &meta->freq;
@@ -3889,12 +3886,13 @@ irs::postings_writer::state postings_writer::write(doc_iterator& docs) {
 
     assert(type_limits<type_t::doc_id_t>::valid(did));
     begin_doc(did, freq.get());
-    docs_.set(did - type_limits<type_t::doc_id_t>::min());
+    docs_.value.set(did - type_limits<type_t::doc_id_t>::min());
 
     if (pos) {
       if (volatile_attributes_) {
-        offs = pos->get<offset>().get();
-        pay = pos->get<payload>().get();
+        auto& attrs = pos->attributes();
+        offs = attrs.get<offset>().get();
+        pay = attrs.get<payload>().get();
       }
 
       while (pos->next()) {
@@ -4299,42 +4297,46 @@ bool postings_reader::prepare(
   return true;
 }
 
-void postings_reader::decode( 
-    data_input& in, 
-    const flags& meta, 
-    attribute_store& attrs
+void postings_reader::decode(
+    data_input& in,
+    const flags& meta,
+    const attribute_view& attrs,
+    irs::term_meta& state
 ) {
-  auto& tmeta = attrs.emplace<version10::term_meta>();
-  auto& tfreq = const_cast<const attribute_store&>(attrs).get<frequency>();
+#ifdef IRESEARCH_DEBUG
+  auto& term_meta = dynamic_cast<version10::term_meta&>(state);
+#else
+  auto& term_meta = static_cast<version10::term_meta&>(state);
+#endif // IRESEARCH_DEBUG
 
-  assert(tmeta);
+  auto& term_freq = attrs.get<frequency>();
 
-  tmeta->docs_count = in.read_vlong();
-  if (tfreq) {
-    tfreq->value = tmeta->docs_count + in.read_vlong();
+  term_meta.docs_count = in.read_vlong();
+  if (term_freq) {
+    term_freq->value = term_meta.docs_count + in.read_vlong();
   }
 
-  tmeta->doc_start += in.read_vlong();
-  if (tfreq && tfreq->value && meta.check<position>()) {
-    tmeta->pos_start += in.read_vlong();
+  term_meta.doc_start += in.read_vlong();
+  if (term_freq && term_freq->value && meta.check<position>()) {
+    term_meta.pos_start += in.read_vlong();
 
-    tmeta->pos_end = tfreq->value > postings_writer::BLOCK_SIZE
+    term_meta.pos_end = term_freq->value > postings_writer::BLOCK_SIZE
         ? in.read_vlong()
         : type_limits<type_t::address_t>::invalid();
 
     if (meta.check<payload>() || meta.check<offset>()) {
-      tmeta->pay_start += in.read_vlong();
+      term_meta.pay_start += in.read_vlong();
     }
   }
 
-  if (1U == tmeta->docs_count || tmeta->docs_count > postings_writer::BLOCK_SIZE) {
-    tmeta->e_skip_start = in.read_vlong();
+  if (1U == term_meta.docs_count || term_meta.docs_count > postings_writer::BLOCK_SIZE) {
+    term_meta.e_skip_start = in.read_vlong();
   }
 }
 
 doc_iterator::ptr postings_reader::iterator(
     const flags& field,
-    const attribute_store& attrs,
+    const attribute_view& attrs,
     const flags& req) {
   typedef detail::doc_iterator doc_iterator_t;
   typedef detail::pos_doc_iterator pos_doc_iterator_t;

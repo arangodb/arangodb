@@ -34,12 +34,12 @@ const flags& features(bool normalize) {
   return NORM_FEATURES;
 }
 
-struct idf : basic_attribute<float_t> {
+struct idf final : basic_stored_attribute<float_t> {
   DECLARE_ATTRIBUTE_TYPE();
   DECLARE_FACTORY_DEFAULT();
-  idf() : basic_attribute(1.f) { }
+  idf() : basic_stored_attribute(1.f) { }
 
-  virtual void clear() { value = 1.f; }
+  void clear() { value = 1.f; }
 };
 
 DEFINE_ATTRIBUTE_TYPE(iresearch::tfidf::idf);
@@ -53,7 +53,7 @@ class collector final : public iresearch::sort::collector {
     : normalize_(normalize) {
   }
 
-  virtual void term(const attribute_store& term_attrs) {
+  virtual void term(const attribute_view& term_attrs) override {
     auto& meta = term_attrs.get<iresearch::term_meta>();
 
     if (meta) {
@@ -152,8 +152,12 @@ class sort final: iresearch::sort::prepared_base<tfidf::score_t> {
       const sub_reader& segment,
       const term_reader& field,
       const attribute_store& query_attrs, 
-      const attribute_store& doc_attrs
+      const attribute_view& doc_attrs
   ) const override {
+    if (!doc_attrs.contains<frequency>()) {
+      return nullptr; // if there is no frequency then all the scores will be the same (e.g. filter irs::all)
+    }
+
     auto& norm = query_attrs.get<iresearch::norm>();
 
     if (norm && norm->reset(segment, field.meta().norm, *doc_attrs.get<document>())) {
@@ -210,3 +214,7 @@ sort::prepared::ptr tfidf_sort::prepare() const {
 }
 
 NS_END // ROOT
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                       END-OF-FILE
+// -----------------------------------------------------------------------------

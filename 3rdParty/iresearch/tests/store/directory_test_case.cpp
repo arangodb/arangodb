@@ -1011,7 +1011,39 @@ void directory_test_case::smoke_store() {
         ASSERT_TRUE(false);
       }
     }
-    
+
     ASSERT_TRUE(dir_->remove("nonempty_file"));
+  }
+}
+
+void directory_test_case::directory_size() {
+  // write integer to file
+  {
+    auto file = dir_->create("test_file");
+
+    ASSERT_FALSE(!file);
+    ASSERT_EQ(0, file->file_pointer());
+
+    file->write_int(100);
+    file->flush();
+  }
+
+  // visit directory
+  {
+    size_t accumulated_size = 0;
+
+    auto visitor = [this, &accumulated_size](const std::string& name) {
+      size_t size = 0;
+
+      if (!dir_->length(size, name)) {
+        return false;
+      }
+
+      accumulated_size += size;
+      return true;
+    };
+
+    ASSERT_TRUE(dir_->visit(visitor));
+    ASSERT_EQ(sizeof(uint32_t), accumulated_size);
   }
 }

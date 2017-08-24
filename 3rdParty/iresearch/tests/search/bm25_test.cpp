@@ -40,6 +40,29 @@ using namespace tests;
 // --SECTION--                                                        test suite
 // -----------------------------------------------------------------------------
 
+/////////////////
+// Freq | Term //
+/////////////////
+// 4    | 0    //
+// 3    | 1    //
+// 10   | 2    //
+// 7    | 3    //
+// 5    | 4    //
+// 4    | 5    //
+// 3    | 6    //
+// 7    | 7    //
+// 2    | 8    //
+// 7    | 9    //
+/////////////////
+
+//////////////////////////////////////////////////
+// Stats                                        //
+//////////////////////////////////////////////////
+// TotalFreq = 52                               //
+// DocsCount = 8                                //
+// AverageDocLength (TotalFreq/DocsCount) = 6.5 //
+//////////////////////////////////////////////////
+
 TEST_F(bm25_test, test_load) {
   irs::order order;
   auto scorer = irs::scorers::get("bm25", irs::string_ref::nil);
@@ -52,10 +75,13 @@ TEST_F(bm25_test, test_query) {
   {
     tests::json_doc_generator gen(
       resource("simple_sequential_order.json"),
-      [](tests::document& doc, const std::string& name, const tests::json::json_value& data) {
-        static const std::string s_seq = "seq";
-        static const std::string s_field = "field";
-        doc.insert(std::make_shared<templates::string_field>(name, data.value), name == s_field, name == s_seq);
+      [](tests::document& doc, const std::string& name, const tests::json_doc_generator::json_value& data) {
+        if (data.is_string()) { // field
+          doc.insert(std::make_shared<templates::string_field>(name, data.str), true, false);
+        } else if (data.is_number()) { // seq
+          const auto value = std::to_string(data.as_number<uint64_t>());
+          doc.insert(std::make_shared<templates::string_field>(name, value), false, true);
+        }
     });
     add_segment(gen);
   }
@@ -71,7 +97,9 @@ TEST_F(bm25_test, test_query) {
 
   auto reader = iresearch::directory_reader::open(dir(), codec());
   auto& segment = *(reader.begin());
-  auto values = segment.values("seq");
+  const auto* column = segment.column_reader("seq");
+  ASSERT_NE(nullptr, column);
+  auto values = column->values();
 
   // by_term
   {
@@ -218,10 +246,13 @@ TEST_F(bm25_test, test_order) {
   {
     tests::json_doc_generator gen(
       resource("simple_sequential_order.json"),
-      [](tests::document& doc, const std::string& name, const tests::json::json_value& data) {
-        static const std::string s_seq = "seq";
-        static const std::string s_field = "field";
-        doc.insert(std::make_shared<templates::string_field>(name, data.value), name == s_field, name == s_seq);
+      [](tests::document& doc, const std::string& name, const tests::json_doc_generator::json_value& data) {
+        if (data.is_string()) { // field
+          doc.insert(std::make_shared<templates::string_field>(name, data.str), true, false);
+        } else if (data.is_number()) { // seq
+          const auto value = std::to_string(data.as_number<uint64_t>());
+          doc.insert(std::make_shared<templates::string_field>(name, value), false, true);
+        }
     });
     add_segment(gen);
   }
@@ -241,7 +272,9 @@ TEST_F(bm25_test, test_order) {
   };
 
   uint64_t seq = 0;
-  auto values = segment.values("seq");
+  const auto* column = segment.column_reader("seq");
+  ASSERT_NE(nullptr, column);
+  auto values = column->values();
 
   {
     query.term("7");

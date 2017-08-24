@@ -30,7 +30,7 @@ NS_ROOT
 /// @class boost
 /// @brief represents a boost related to the particular query
 //////////////////////////////////////////////////////////////////////////////
-struct IRESEARCH_API boost : basic_attribute<float_t> {
+struct IRESEARCH_API boost : basic_stored_attribute<float_t> {
   typedef float_t boost_t;
 
   static CONSTEXPR boost_t no_boost() { return 1.f; }
@@ -104,7 +104,7 @@ class IRESEARCH_API sort {
     ////////////////////////////////////////////////////////////////////////////////
     /// @brief compute term level statistics, e.g. from current attribute values
     ////////////////////////////////////////////////////////////////////////////////
-    virtual void term(const attribute_store& /*term*/) {
+    virtual void term(const attribute_view& /*term*/) {
     }
 
     ////////////////////////////////////////////////////////////////////////////////
@@ -149,7 +149,7 @@ class IRESEARCH_API sort {
   /// @class sort::prepared
   /// @brief base class for all prepared(compiled) sort entries
   ////////////////////////////////////////////////////////////////////////////////
-  class IRESEARCH_API prepared: public util::attribute_view_provider {
+  class IRESEARCH_API prepared : public util::attribute_view_provider {
    public:
     DECLARE_PTR(prepared);
 
@@ -179,7 +179,7 @@ class IRESEARCH_API sort {
       const sub_reader& segment,
       const term_reader& field,
       const attribute_store& query_attrs,
-      const attribute_store& doc_attrs
+      const attribute_view& doc_attrs
     ) const = 0;
 
     ////////////////////////////////////////////////////////////////////////////////
@@ -336,7 +336,7 @@ public:
 
       void field(const sub_reader& segment, const term_reader& field) const;
 
-      void term(const attribute_store& term) const;
+      void term(const attribute_view& term) const;
 
       void finish(const index_reader& index, attribute_store& query_context) const;
 
@@ -393,7 +393,7 @@ public:
       const sub_reader& segment,
       const term_reader& field,
       const attribute_store& stats,
-      const attribute_store& doc
+      const attribute_view& doc
     ) const;
 
     bool less(const byte_type* lhs, const byte_type* rhs) const;

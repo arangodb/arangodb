@@ -34,6 +34,7 @@
 #include "Logger/Logger.h"
 #include "Logger/LogMacros.h"
 
+#include "search/all_filter.hpp"
 #include "search/boolean_filter.hpp"
 #include "search/term_filter.hpp"
 #include "search/prefix_filter.hpp"

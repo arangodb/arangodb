@@ -13,12 +13,6 @@
 #include "token_attributes.hpp"
 #include "store/store_utils.hpp"
 
-NS_LOCAL
-
-const irs::doc_id_t INVALID_DOCUMENT = irs::type_limits<irs::type_t::doc_id_t>::invalid();
-
-NS_END
-
 NS_ROOT
 
 // -----------------------------------------------------------------------------
@@ -27,11 +21,6 @@ NS_ROOT
 
 REGISTER_ATTRIBUTE(iresearch::offset);
 DEFINE_ATTRIBUTE_TYPE(offset);
-DEFINE_FACTORY_DEFAULT(offset);
-
-offset::offset() NOEXCEPT
-  : start(0), end(0) {
-}
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                         increment
@@ -39,7 +28,6 @@ offset::offset() NOEXCEPT
 
 REGISTER_ATTRIBUTE(iresearch::increment);
 DEFINE_ATTRIBUTE_TYPE(increment);
-DEFINE_FACTORY_DEFAULT(increment);
 
 increment::increment() NOEXCEPT
   : basic_attribute<uint32_t>(1U) {
@@ -61,11 +49,6 @@ term_attribute::term_attribute() NOEXCEPT {
 
 REGISTER_ATTRIBUTE(iresearch::payload);
 DEFINE_ATTRIBUTE_TYPE(payload);
-DEFINE_FACTORY_DEFAULT(payload);
-
-payload::payload() NOEXCEPT
-  : basic_attribute<bytes_ref>() {
-}
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                          document
@@ -73,10 +56,9 @@ payload::payload() NOEXCEPT
 
 REGISTER_ATTRIBUTE(iresearch::document);
 DEFINE_ATTRIBUTE_TYPE(document);
-DEFINE_FACTORY_DEFAULT(document);
 
 document::document() NOEXCEPT:
-  basic_attribute<const doc_id_t*>(&INVALID_DOCUMENT) {
+  basic_attribute<doc_id_t>(type_limits<type_t::doc_id_t>::invalid()) {
 }
 
 // -----------------------------------------------------------------------------
@@ -85,23 +67,13 @@ document::document() NOEXCEPT:
 
 REGISTER_ATTRIBUTE(iresearch::frequency);
 DEFINE_ATTRIBUTE_TYPE(frequency);
-DEFINE_FACTORY_DEFAULT(frequency);
-
-frequency::frequency() NOEXCEPT
-  : basic_attribute<uint64_t>() {
-}
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                granularity_prefix
 // -----------------------------------------------------------------------------
 
 REGISTER_ATTRIBUTE(iresearch::granularity_prefix);
-DEFINE_ATTRIBUTE_TYPE(granularity_prefix);
-DEFINE_FACTORY_DEFAULT(granularity_prefix);
-
-granularity_prefix::granularity_prefix() NOEXCEPT:
-  attribute() {
-}
+DEFINE_ATTRIBUTE_TYPE(iresearch::granularity_prefix);
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                              norm
@@ -111,8 +83,9 @@ REGISTER_ATTRIBUTE(iresearch::norm);
 DEFINE_ATTRIBUTE_TYPE(norm);
 DEFINE_FACTORY_DEFAULT(norm);
 
-norm::norm() NOEXCEPT
-  : attribute() {
+const document INVALID_DOCUMENT;
+
+norm::norm() NOEXCEPT {
   reset();
 }
 
@@ -126,8 +99,6 @@ bool norm::empty() const {
 }
 
 bool norm::reset(const sub_reader& reader, field_id column, const document& doc) {
-  assert(doc.value);
-
   const auto* column_reader = reader.column_reader(column);
 
   if (!column_reader) {
@@ -135,13 +106,13 @@ bool norm::reset(const sub_reader& reader, field_id column, const document& doc)
   }
 
   column_ = column_reader->values();
-  doc_ = doc.value;
+  doc_ = &doc;
   return true;
 }
 
 float_t norm::read() const {
   bytes_ref value;
-  if (!column_(*doc_, value)) {
+  if (!column_(doc_->value, value)) {
     return DEFAULT();
   }
 
@@ -156,11 +127,9 @@ float_t norm::read() const {
 
 REGISTER_ATTRIBUTE(iresearch::position);
 DEFINE_ATTRIBUTE_TYPE(position);
-DEFINE_FACTORY_DEFAULT(position);
 
-position::position() NOEXCEPT {
+position::impl::impl(size_t reserve_attrs)
+  : attrs_(reserve_attrs) {
 }
-
-position::impl::impl(size_t reserve_attrs): attrs_(reserve_attrs) {}
 
 NS_END

@@ -68,9 +68,14 @@ NS_BEGIN(analysis)
 // -----------------------------------------------------------------------------
 
 analyzer_registrar::analyzer_registrar(
-  const analyzer::type_id& type, analyzer::ptr(*factory)(const iresearch::string_ref& args)
-): registered_(analyzer_register::instance().set(type.name(), factory)) {
-  if (!registered_) {
+  const analyzer::type_id& type,
+  analyzer::ptr(*factory)(const iresearch::string_ref& args)
+) {
+  auto entry = analyzer_register::instance().set(type.name(), factory);
+
+  registered_ = entry.second;
+
+  if (!registered_ && factory != entry.first) {
     IR_FRMT_WARN(
       "type name collision detected while registering analyzer, ignoring: type '%s' from %s:%d",
       type.name().c_str(),
@@ -87,3 +92,7 @@ analyzer_registrar::operator bool() const NOEXCEPT {
 
 NS_END // NS_BEGIN(analysis)
 NS_END
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                       END-OF-FILE
+// -----------------------------------------------------------------------------

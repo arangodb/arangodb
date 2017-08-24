@@ -15,17 +15,35 @@
 #include "analyzers.hpp"
 #include "shared.hpp"
 #include "token_stream.hpp"
+#include "token_attributes.hpp"
 
 NS_ROOT
-
-struct offset;
-struct term_attribute;
-
 NS_BEGIN(analysis)
 
-class text_token_stream: public analyzer {
+class text_token_stream : public analyzer, util::noncopyable {
  public:
   struct state_t;
+
+  class bytes_term : public irs::term_attribute {
+   public:
+    void clear() {
+      buf_.clear();
+      value_ = irs::bytes_ref::nil;
+    }
+
+    void value(irs::bstring&& data) {
+      buf_ = std::move(data);
+      value(buf_);
+    }
+
+    void value(const irs::bytes_ref& data) {
+      value_ = data;
+    }
+
+   private:
+    irs::bstring buf_; // buffer for value if value cannot be referenced directly
+  };
+
   static char const* STOPWORD_PATH_ENV_VARIABLE;
 
   DECLARE_ANALYZER_TYPE();
@@ -42,12 +60,14 @@ class text_token_stream: public analyzer {
     const std::locale& locale,
     const std::unordered_set<std::string>& ignored_words
   );
-  virtual const irs::attribute_store& attributes() const NOEXCEPT override;
+  virtual const irs::attribute_view& attributes() const NOEXCEPT override {
+    return attrs_;
+  }
   virtual bool next() override;
   virtual bool reset(const string_ref& data) override;
 
  private:
-  irs::attribute_store attrs_;
+  irs::attribute_view attrs_;
   std::shared_ptr<state_t> state_;
   struct {
     std::string country;
@@ -56,8 +76,9 @@ class text_token_stream: public analyzer {
     bool utf8;
   } locale_;
   const std::unordered_set<std::string>& ignored_words_;
-  iresearch::offset* offs_;
-  iresearch::term_attribute* term_;
+  irs::offset offs_;
+  irs::increment inc_;
+  bytes_term term_;
 };
 
 NS_END // analysis

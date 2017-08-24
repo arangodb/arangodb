@@ -138,11 +138,11 @@ TEST(directory_reader_test, open_newest_index) {
 TEST(directory_reader_test, open) {
   tests::json_doc_generator gen(
     test_base::resource("simple_sequential.json"),
-    [] (tests::document& doc, const std::string& name, const tests::json::json_value& data) {
-    if (data.quoted) {
+    [] (tests::document& doc, const std::string& name, const tests::json_doc_generator::json_value& data) {
+    if (tests::json_doc_generator::ValueType::STRING == data.vt) {
       doc.insert(std::make_shared<tests::templates::string_field>(
         ir::string_ref(name),
-        ir::string_ref(data.value)
+        data.str
       ));
     }
   });
@@ -231,7 +231,9 @@ TEST(directory_reader_test, open) {
     ASSERT_EQ(3, sub->docs_count());
     ASSERT_EQ(3, sub->live_docs_count());
 
-    auto values = sub->values("name");
+    const auto* column = sub->column_reader("name");
+    ASSERT_NE(nullptr, column);
+    auto values = column->values();
 
     // read documents
     ASSERT_TRUE(values(1, actual_value));
@@ -253,7 +255,9 @@ TEST(directory_reader_test, open) {
     ASSERT_EQ(4, sub->docs_count());
     ASSERT_EQ(4, sub->live_docs_count());
 
-    auto values = sub->values("name");
+    const auto* column = sub->column_reader("name");
+    ASSERT_NE(nullptr, column);
+    auto values = column->values();
 
     // read documents
     ASSERT_TRUE(values(1, actual_value));
@@ -277,7 +281,9 @@ TEST(directory_reader_test, open) {
     ASSERT_EQ(2, sub->docs_count());
     ASSERT_EQ(2, sub->live_docs_count());
 
-    auto values = sub->values("name");
+    const auto* column = sub->column_reader("name");
+    ASSERT_NE(nullptr, column);
+    auto values = column->values();
 
     // read documents
     ASSERT_TRUE(values(1, actual_value));
@@ -463,7 +469,9 @@ TEST(segment_reader_test, open) {
     irs::bytes_ref actual_value;
 
     auto& segment = *rdr.begin();
-    auto values = segment.values("name");
+    const auto* column = segment.column_reader("name");
+    ASSERT_NE(nullptr, column);
+    auto values = column->values();
 
     // read documents
     ASSERT_TRUE(values(1, actual_value));

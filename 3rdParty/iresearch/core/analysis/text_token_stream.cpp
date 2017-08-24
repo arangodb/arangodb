@@ -43,7 +43,6 @@
 
 #include "libstemmer.h"
 
-#include "token_attributes.hpp"
 #include "utils/hash_utils.hpp"
 #include "utils/locale_utils.hpp"
 #include "utils/log.hpp"
@@ -81,49 +80,14 @@ NS_END // ROOT
 NS_LOCAL
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                                     private types
-// -----------------------------------------------------------------------------
-
-class bytes_term: public iresearch::term_attribute {
- public:
-  DECLARE_FACTORY_DEFAULT();
-
-  virtual ~bytes_term() {}
-
-  void clear() {
-    buf_.clear();
-    value_ = iresearch::bytes_ref::nil;
-  }
-
-  virtual const iresearch::bytes_ref& value() const {
-    return value_;
-  }
-
-  void value(iresearch::bstring&& data) {
-    buf_ = std::move(data);
-    value(buf_);
-  }
-
-  void value(const iresearch::bytes_ref& data) {
-    value_ = data;
-  }
-
- private:
-  iresearch::bstring buf_; // buffer for value if value cannot be referenced directly
-  iresearch::bytes_ref value_;
-};
-
-DEFINE_FACTORY_DEFAULT(bytes_term);
-
-// -----------------------------------------------------------------------------
 // --SECTION--                                                 private variables
 // -----------------------------------------------------------------------------
 
 typedef std::unordered_set<std::string> ignored_words_t;
 typedef std::pair<std::locale, ignored_words_t> cached_state_t;
-static std::unordered_map<iresearch::hashed_string_ref, cached_state_t> cached_state_by_key;
+static std::unordered_map<irs::hashed_string_ref, cached_state_t> cached_state_by_key;
 static std::mutex mutex;
-static auto icu_cleanup = iresearch::make_finally([]()->void{
+static auto icu_cleanup = irs::make_finally([]()->void{
   // this call will release/free all memory used by ICU (for all users)
   // very dangerous to call if ICU is still in use by some other code
   //u_cleanup();
@@ -141,12 +105,12 @@ bool get_ignored_words(
   const std::locale& locale,
   const std::string* path = nullptr
 ) {
-  auto language = iresearch::locale_utils::language(locale);
+  auto language = irs::locale_utils::language(locale);
   boost::filesystem::path stopword_path;
   auto* custom_stopword_path =
     path
     ? path->c_str()
-    : iresearch::getenv(iresearch::analysis::text_token_stream::STOPWORD_PATH_ENV_VARIABLE)
+    : irs::getenv(irs::analysis::text_token_stream::STOPWORD_PATH_ENV_VARIABLE)
     ;
 
   if (custom_stopword_path) {
@@ -211,8 +175,8 @@ bool get_ignored_words(
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create an analyzer with supplied ignored_words and cache its state
 ////////////////////////////////////////////////////////////////////////////////
-iresearch::analysis::analyzer::ptr construct(
-  const iresearch::string_ref& cache_key,
+irs::analysis::analyzer::ptr construct(
+  const irs::string_ref& cache_key,
   const std::locale& locale,
   ignored_words_t&& ignored_words
 ) {
@@ -228,7 +192,7 @@ iresearch::analysis::analyzer::ptr construct(
     ).first->second);
   }
 
-  return iresearch::memory::make_unique<iresearch::analysis::text_token_stream>(
+  return irs::memory::make_unique<irs::analysis::text_token_stream>(
     cached_state->first, cached_state->second
   );
 }
@@ -236,8 +200,8 @@ iresearch::analysis::analyzer::ptr construct(
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create an analyzer based on the supplied cache_key
 ////////////////////////////////////////////////////////////////////////////////
-iresearch::analysis::analyzer::ptr construct(
-  const iresearch::string_ref& cache_key
+irs::analysis::analyzer::ptr construct(
+  const irs::string_ref& cache_key
 ) {
   {
     SCOPED_LOCK(mutex);
@@ -246,7 +210,7 @@ iresearch::analysis::analyzer::ptr construct(
     );
 
     if (itr != cached_state_by_key.end()) {
-      return iresearch::memory::make_unique<iresearch::analysis::text_token_stream>(
+      return irs::memory::make_unique<irs::analysis::text_token_stream>(
         itr->second.first, itr->second.second
       );
     }
@@ -254,7 +218,7 @@ iresearch::analysis::analyzer::ptr construct(
 
   // interpret the cache_key as a locale name
   std::string locale_name(cache_key.c_str(), cache_key.size());
-  auto locale = iresearch::locale_utils::locale(locale_name);
+  auto locale = irs::locale_utils::locale(locale_name);
   ignored_words_t buf;
 
   if (!get_ignored_words(buf, locale)) {
@@ -269,8 +233,8 @@ iresearch::analysis::analyzer::ptr construct(
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create an analyzer for the supplied locale and default values
 ////////////////////////////////////////////////////////////////////////////////
-iresearch::analysis::analyzer::ptr construct(
-  const iresearch::string_ref& cache_key,
+irs::analysis::analyzer::ptr construct(
+  const irs::string_ref& cache_key,
   const std::locale& locale
 ) {
   ignored_words_t buf;
@@ -287,8 +251,8 @@ iresearch::analysis::analyzer::ptr construct(
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create an analyzer with supplied ignore_word_path
 ////////////////////////////////////////////////////////////////////////////////
-iresearch::analysis::analyzer::ptr construct(
-  const iresearch::string_ref& cache_key,
+irs::analysis::analyzer::ptr construct(
+  const irs::string_ref& cache_key,
   const std::locale& locale,
   const std::string& ignored_word_path
 ) {
@@ -306,8 +270,8 @@ iresearch::analysis::analyzer::ptr construct(
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create an analyzer with supplied ignored_words and ignore_word_path
 ////////////////////////////////////////////////////////////////////////////////
-iresearch::analysis::analyzer::ptr construct(
-  const iresearch::string_ref& cache_key,
+irs::analysis::analyzer::ptr construct(
+  const irs::string_ref& cache_key,
   const std::locale& locale,
   const std::string& ignored_word_path,
   ignored_words_t&& ignored_words
@@ -322,9 +286,9 @@ iresearch::analysis::analyzer::ptr construct(
 }
 
 bool process_term(
-  bytes_term& term,
+  irs::analysis::text_token_stream::bytes_term& term,
   const std::unordered_set<std::string>& ignored_words,
-  iresearch::analysis::text_token_stream::state_t& state,
+  irs::analysis::text_token_stream::state_t& state,
   UnicodeString const& data
 ) {
   // ...........................................................................
@@ -371,8 +335,8 @@ bool process_term(
     value = sb_stemmer_stem(state.stemmer.get(), value, (int)word_utf8.size());
 
     if (value) {
-      static_assert(sizeof(iresearch::byte_type) == sizeof(sb_symbol), "sizeof(iresearch::byte_type) != sizeof(sb_symbol)");
-      term.value(iresearch::bytes_ref(reinterpret_cast<const iresearch::byte_type*>(value), sb_stemmer_length(state.stemmer.get())));
+      static_assert(sizeof(irs::byte_type) == sizeof(sb_symbol), "sizeof(irs::byte_type) != sizeof(sb_symbol)");
+      term.value(irs::bytes_ref(reinterpret_cast<const irs::byte_type*>(value), sb_stemmer_length(state.stemmer.get())));
 
       return true;
     }
@@ -381,8 +345,8 @@ bool process_term(
   // ...........................................................................
   // use the value of the unstemmed token
   // ...........................................................................
-  static_assert(sizeof(iresearch::byte_type) == sizeof(char), "sizeof(iresearch::byte_type) != sizeof(char)");
-  term.value(iresearch::bstring(iresearch::ref_cast<iresearch::byte_type>(word_utf8).c_str(), word_utf8.size()));
+  static_assert(sizeof(irs::byte_type) == sizeof(char), "sizeof(irs::byte_type) != sizeof(char)");
+  term.value(irs::bstring(irs::ref_cast<irs::byte_type>(word_utf8).c_str(), word_utf8.size()));
 
   return true;
 }
@@ -418,7 +382,7 @@ REGISTER_ANALYZER(text_token_stream);
     }
 
     static const rapidjson::Value empty;
-    auto locale = iresearch::locale_utils::locale(json["locale"].GetString());
+    auto locale = irs::locale_utils::locale(json["locale"].GetString());
     auto& ignored_words = json.HasMember("ignored_words") ? json["ignored_words"] : empty;
     auto& ignored_words_path = json.HasMember("ignored_words_path") ? json["ignored_words_path"] : empty;
 
@@ -465,9 +429,9 @@ text_token_stream::text_token_stream(
     attrs_(3), // offset + bytes_term + increment
     state_(memory::make_unique<state_t>()),
     ignored_words_(ignored_words) {
-  offs_ = attrs_.emplace<offset>().get();
-  term_ = attrs_.emplace<bytes_term>().get();
-  attrs_.emplace<increment>();
+  attrs_.emplace(offs_);
+  attrs_.emplace(term_);
+  attrs_.emplace(inc_);
   locale_.country = locale_utils::country(locale);
   locale_.encoding = locale_utils::encoding(locale);
   locale_.language = locale_utils::language(locale);
@@ -477,10 +441,6 @@ text_token_stream::text_token_stream(
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  public functions
 // -----------------------------------------------------------------------------
-
-const irs::attribute_store& text_token_stream::attributes() const NOEXCEPT {
-  return attrs_;
-}
 
 bool text_token_stream::reset(const string_ref& data) {
   if (state_->locale.isBogus()) {
@@ -584,12 +544,12 @@ bool text_token_stream::next() {
     // skip whitespace and unsuccessful terms
     // ...........................................................................
     if (state_->break_iterator->getRuleStatus() == UWordBreak::UBRK_WORD_NONE ||
-        !process_term(static_cast<bytes_term&>(*term_), ignored_words_, *state_, state_->data.tempSubString(start, end - start))) {
+        !process_term(term_, ignored_words_, *state_, state_->data.tempSubString(start, end - start))) {
       continue;
     }
 
-    offs_->start = start;
-    offs_->end = end;
+    offs_.start = start;
+    offs_.end = end;
     return true;
   }
 

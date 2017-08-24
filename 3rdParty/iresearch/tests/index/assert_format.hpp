@@ -47,7 +47,7 @@ class posting {
  public:
   posting(iresearch::doc_id_t id);
 
-  void add(uint32_t pos, uint32_t offs_start, const iresearch::attributes& attrs);
+  void add(uint32_t pos, uint32_t offs_start, const iresearch::attribute_view& attrs);
 
   const std::set<position>& positions() const { return positions_; }
   iresearch::doc_id_t id() const { return id_; }
@@ -193,7 +193,7 @@ class term_reader : public iresearch::term_reader {
   virtual uint64_t docs_count() const override;
   virtual const iresearch::bytes_ref& (min)() const override;
   virtual const iresearch::bytes_ref& (max)() const override;
-  virtual const iresearch::attributes& attributes() const NOEXCEPT override;
+  virtual const irs::attribute_view& attributes() const NOEXCEPT override;
 
  private:
   const tests::field& data_;

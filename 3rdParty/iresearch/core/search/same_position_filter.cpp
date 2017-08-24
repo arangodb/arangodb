@@ -35,22 +35,22 @@ class same_position_iterator final : public Conjunction {
   >::type conjunction_t;
 
   typedef std::vector<position::cref> positions_t;
-   
+
   same_position_iterator(
       typename conjunction_t::doc_iterators_t&& itrs,
-      const order::prepared& ord, 
+      const order::prepared& ord,
       positions_t&& pos)
-    : conjunction_t(std::move(itrs), ord), 
+    : conjunction_t(std::move(itrs), ord),
       pos_(std::move(pos)) {
     assert(!pos_.empty());
-  }  
+  }
 
 #if defined(_MSC_VER)
   #pragma warning(disable : 4706)
 #elif defined (__GNUC__)
   #pragma GCC diagnostic ignored "-Wparentheses"
 #endif
-  
+
   virtual bool next() override {
     bool next = false;
     while(true == (next = conjunction_t::next()) && !find_same_position()) {}
@@ -62,7 +62,7 @@ class same_position_iterator final : public Conjunction {
 #elif defined (__GNUC__)
   #pragma GCC diagnostic pop
 #endif
-  
+
   virtual doc_id_t seek(doc_id_t target) override {
     const auto doc = conjunction_t::seek(target);
 

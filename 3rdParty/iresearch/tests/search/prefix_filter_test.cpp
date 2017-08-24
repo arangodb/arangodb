@@ -179,7 +179,7 @@ class prefix_filter_test_case : public filter_test_case_base {
 } // tests
 
 // ----------------------------------------------------------------------------
-// --SECTION--                                             by_prefix base tests 
+// --SECTION--                                             by_prefix base tests
 // ----------------------------------------------------------------------------
 
 TEST(by_prefix_test, ctor) {
@@ -188,15 +188,31 @@ TEST(by_prefix_test, ctor) {
   ASSERT_EQ("", q.field());
   ASSERT_TRUE(q.term().empty());
   ASSERT_EQ(ir::boost::no_boost(), q.boost());
+  ASSERT_EQ(1024, q.scored_terms_limit());
 }
 
-TEST(by_prefix_test, equal) { 
-  ir::by_prefix q;
-  q.field("field").term("term");
+TEST(by_prefix_test, equal) {
+  {
+    ir::by_prefix q;
+    q.field("field").term("term");
 
-  ASSERT_EQ(q, ir::by_prefix().field("field").term("term"));
-  ASSERT_NE(q, ir::by_prefix().field("field1").term("term"));
-  ASSERT_NE(q, ir::by_term().field("field").term("term"));
+    ASSERT_EQ(q, ir::by_prefix().field("field").term("term"));
+    ASSERT_EQ(q.hash(), ir::by_prefix().field("field").term("term").hash());
+    ASSERT_NE(q, ir::by_prefix().field("field1").term("term"));
+    ASSERT_NE(q, ir::by_prefix().scored_terms_limit(100).field("field").term("term"));
+    ASSERT_NE(q, ir::by_term().field("field").term("term"));
+  }
+
+  {
+    ir::by_prefix q;
+    q.scored_terms_limit(100).field("field").term("term");
+
+    ASSERT_EQ(q, ir::by_prefix().scored_terms_limit(100).field("field").term("term"));
+    ASSERT_EQ(q.hash(), ir::by_prefix().scored_terms_limit(100).field("field").term("term").hash());
+    ASSERT_NE(q, ir::by_prefix().scored_terms_limit(100).field("field1").term("term"));
+    ASSERT_NE(q, ir::by_prefix().field("field").term("term"));
+    ASSERT_NE(q, ir::by_term().field("field").term("term"));
+  }
 }
 
 TEST(by_prefix_test, boost) {

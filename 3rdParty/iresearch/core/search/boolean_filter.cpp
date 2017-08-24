@@ -9,6 +9,7 @@
 // Agreement under which it is provided by or on behalf of EMC.
 // 
 
+#include "all_filter.hpp"
 #include "boolean_filter.hpp"
 #include "disjunction.hpp"
 #include "conjunction.hpp"
@@ -348,3 +349,7 @@ bool Not::equals( const iresearch::filter& rhs ) const {
 }
 
 NS_END // root
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                       END-OF-FILE
+// -----------------------------------------------------------------------------

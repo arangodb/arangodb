@@ -15,6 +15,7 @@
 #include "analysis/analyzers.hpp"
 #include "analysis/token_attributes.hpp"
 #include "analysis/token_stream.hpp"
+#include "search/all_filter.hpp"
 #include "search/boolean_filter.hpp"
 #include "search/phrase_filter.hpp"
 #include "search/range_filter.hpp"
@@ -22,21 +23,20 @@
 #include "utils/locale_utils.hpp"
 #include "query_builder.hpp"
 
-using namespace iresearch::iql;
+NS_LOCAL
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                   private members
 // -----------------------------------------------------------------------------
 
 // by default no transformation is performed and value is treated verbatim
-namespace {
-  const query_builder::branch_builder_function_t RANGE_EE_BRANCH_BUILDER =
+const irs::iql::query_builder::branch_builder_function_t RANGE_EE_BRANCH_BUILDER =
   [](
-    proxy_filter& root,
+    irs::iql::proxy_filter& root,
     const std::locale& locale,
     const iresearch::string_ref& field,
     void* cookie,
-    const std::vector<function_arg>& args
+    const std::vector<irs::iql::function_arg>& args
   )->bool {
     iresearch::bstring minValue;
     iresearch::bstring maxValue;
@@ -64,13 +64,13 @@ namespace {
     return true;
   };
 
-  const query_builder::branch_builder_function_t RANGE_EI_BRANCH_BUILDER =
+const irs::iql::query_builder::branch_builder_function_t RANGE_EI_BRANCH_BUILDER =
   [](
-    proxy_filter& root,
+    irs::iql::proxy_filter& root,
     const std::locale& locale,
     const iresearch::string_ref& field,
     void* cookie,
-    const std::vector<function_arg>& args
+    const std::vector<irs::iql::function_arg>& args
   )->bool {
     iresearch::bstring minValue;
     iresearch::bstring maxValue;
@@ -98,13 +98,13 @@ namespace {
     return true;
   };
 
-  const query_builder::branch_builder_function_t RANGE_IE_BRANCH_BUILDER =
+const irs::iql::query_builder::branch_builder_function_t RANGE_IE_BRANCH_BUILDER =
   [](
-    proxy_filter& root,
+    irs::iql::proxy_filter& root,
     const std::locale& locale,
     const iresearch::string_ref& field,
     void* cookie,
-    const std::vector<function_arg>& args
+    const std::vector<irs::iql::function_arg>& args
   )->bool {
     iresearch::bstring minValue;
     iresearch::bstring maxValue;
@@ -132,13 +132,13 @@ namespace {
     return true;
   };
 
-  const query_builder::branch_builder_function_t RANGE_II_BRANCH_BUILDER =
+const irs::iql::query_builder::branch_builder_function_t RANGE_II_BRANCH_BUILDER =
   [](
-    proxy_filter& root,
+    irs::iql::proxy_filter& root,
     const std::locale& locale,
     const iresearch::string_ref& field,
     void* cookie,
-    const std::vector<function_arg>& args
+    const std::vector<irs::iql::function_arg>& args
   )->bool {
     iresearch::bstring minValue;
     iresearch::bstring maxValue;
@@ -176,13 +176,13 @@ namespace {
     return true;
   };
 
-  const query_builder::branch_builder_function_t SIMILAR_BRANCH_BUILDER =
+const irs::iql::query_builder::branch_builder_function_t SIMILAR_BRANCH_BUILDER =
   [](
-    proxy_filter& root,
+    irs::iql::proxy_filter& root,
     const std::locale& locale,
     const iresearch::string_ref& field,
     void* cookie,
-    const std::vector<function_arg>& args
+    const std::vector<irs::iql::function_arg>& args
   )->bool {
     iresearch::bstring value;
     bool bValueNil;
@@ -207,13 +207,11 @@ namespace {
 
     return true;
   };
-}
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private functions
 // -----------------------------------------------------------------------------
 
-namespace {
   class parse_context;
 
   class ErrorNode: public iresearch::filter {
@@ -237,7 +235,7 @@ namespace {
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief proxy_filter specialized for iresearch::filter::ptr
   ////////////////////////////////////////////////////////////////////////////////
-  class LinkNode: public proxy_filter_t<std::shared_ptr<iresearch::filter>> {
+  class LinkNode: public irs::iql::proxy_filter_t<std::shared_ptr<iresearch::filter>> {
    public:
     LinkNode(iresearch::filter* link):
       proxy_filter_t(LinkNode::type()) { filter_ = std::move(ptr(link)); }
@@ -259,74 +257,78 @@ namespace {
   };
   DEFINE_FACTORY_DEFAULT(RootNode);
 
-  class parse_context: public parser_context {
+  class parse_context: public irs::iql::parser_context {
    public:
     parse_context(
       const std::string& sQuery,
       const std::locale& locale,
       void* cookie,
-      const functions& functions,
-      const query_builder::branch_builders& branch_builders
+      const irs::iql::functions& functions,
+      const irs::iql::query_builder::branch_builders& branch_builders
     );
-    query build();
-    query buildError();
+    irs::iql::query build();
+    irs::iql::query buildError();
+
    private:
-    static const parser::semantic_type SUCCESS;
-    static const parser::semantic_type UNKNOWN;
-    const query_builder::branch_builders& m_branch_builders;
+    static const irs::iql::parser::semantic_type SUCCESS;
+    static const irs::iql::parser::semantic_type UNKNOWN;
+    const irs::iql::query_builder::branch_builders& m_branch_builders;
     void* m_cookie;
     const std::locale& m_locale;
 
-    parser::semantic_type append_function_arg(
-      function_arg::fn_args_t& buf, const parser::semantic_type& node_id
+    irs::iql::parser::semantic_type append_function_arg(
+      irs::iql::function_arg::fn_args_t& buf,
+      const irs::iql::parser::semantic_type& node_id
     ) const; // @return SUCCESS or ID of failed node, or UNKNOWN for self
-    parser::semantic_type children(
+    irs::iql::parser::semantic_type children(
       iresearch::boolean_filter& node, const std::vector<size_t>& children
     ) const; // @return SUCCESS or ID of failed node, or UNKNOWN for self
-    parser::semantic_type eval(
+    irs::iql::parser::semantic_type eval(
       iresearch::bstring& buf,
       const query_node& src
     ) const; // @return SUCCESS or ID of failed node, or UNKNOWN for self
     template <typename fn_type, typename... ctx_args_type>
-    parser::semantic_type eval(
+    irs::iql::parser::semantic_type eval(
       typename fn_type::contextual_buffer_t& buf,
       const typename fn_type::contextual_function_t& fn,
       const std::vector<size_t>& args,
       const ctx_args_type&... ctx_args
     ) const; // @return SUCCESS or ID of failed node, or UNKNOWN for self
-    query_node const& find_node(parser::semantic_type const& value) const {
+    query_node const& find_node(
+      irs::iql::parser::semantic_type const& value
+    ) const {
       // force visibility only of const fn for GCC, otherwise it tries private fn
       return parser_context::find_node(value);
     }
     template <typename T> // @return SUCCESS or ID of failed node, or UNKNOWN for self
-    parser::semantic_type init(T& node, const query_node& src) const;
-    parser::semantic_type initRange(
-      proxy_filter& node,
+    irs::iql::parser::semantic_type init(T& node, const query_node& src) const;
+    irs::iql::parser::semantic_type initRange(
+      irs::iql::proxy_filter& node,
       const iresearch::string_ref& field,
-      const parser::semantic_type& min_node_id, bool min_inclusive,
-      const parser::semantic_type& max_value_id, bool max_inclusive
+      const irs::iql::parser::semantic_type& min_node_id, bool min_inclusive,
+      const irs::iql::parser::semantic_type& max_value_id, bool max_inclusive
     ) const;
-    parser::semantic_type initSimilar(
-      proxy_filter& node,
+    irs::iql::parser::semantic_type initSimilar(
+      irs::iql::proxy_filter& node,
       const iresearch::string_ref& field,
-      const parser::semantic_type& value_id
+      const irs::iql::parser::semantic_type& value_id
     ) const;
-    parser::semantic_type order(
+    irs::iql::parser::semantic_type order(
       iresearch::order& node, const std::vector<std::pair<size_t, bool>>& order
     ) const; // @return SUCCESS or ID of failed node
   };
 
-  const parser::semantic_type parse_context::SUCCESS =
-    std::numeric_limits<parser::semantic_type>::max(); // init() success
-  const parser::semantic_type parse_context::UNKNOWN =
-    std::numeric_limits<parser::semantic_type>::max() - 1; // init() unknown failure
+  const irs::iql::parser::semantic_type parse_context::SUCCESS =
+    std::numeric_limits<irs::iql::parser::semantic_type>::max(); // init() success
+  const irs::iql::parser::semantic_type parse_context::UNKNOWN =
+    std::numeric_limits<irs::iql::parser::semantic_type>::max() - 1; // init() unknown failure
 
   parse_context::parse_context(
     const std::string& sQuery,
     const std::locale& locale,
     void* cookie,
-    const functions& functions,
-    const query_builder::branch_builders& branch_builders
+    const irs::iql::functions& functions,
+    const irs::iql::query_builder::branch_builders& branch_builders
   ):
     parser_context(sQuery, functions),
     m_branch_builders(branch_builders),
@@ -336,13 +338,13 @@ namespace {
 
   // add implementation before any calls to the function
   template<typename fn_type, typename... ctx_args_type>
-  parser::semantic_type parse_context::eval(
+  irs::iql::parser::semantic_type parse_context::eval(
     typename fn_type::contextual_buffer_t& buf,
     const typename fn_type::contextual_function_t& fn,
     const std::vector<size_t>& args,
     const ctx_args_type&... ctx_args
   ) const {
-    function_arg::fn_args_t fnArgs;
+    irs::iql::function_arg::fn_args_t fnArgs;
 
     fnArgs.reserve(args.size());
 
@@ -359,8 +361,8 @@ namespace {
   }
 
   template<> // add implementation before any calls to the function
-  parser::semantic_type parse_context::init<proxy_filter>(
-    proxy_filter& node, const query_node& src
+  irs::iql::parser::semantic_type parse_context::init<irs::iql::proxy_filter>(
+    irs::iql::proxy_filter& node, const query_node& src
   ) const {
     assert(
       (query_node::NodeType::FUNCTION == src.type && src.pFnBoolean) ||
@@ -371,7 +373,7 @@ namespace {
     node.boost(src.fBoost);
 
     if (query_node::NodeType::FUNCTION == src.type && src.pFnBoolean) {
-      return eval<boolean_function, std::locale, void*>(
+      return eval<irs::iql::boolean_function, std::locale, void*>(
         node, function(*(src.pFnBoolean)), src.children, m_locale, m_cookie
       );
     }
@@ -417,7 +419,7 @@ namespace {
   }
 
   template<> // add implementation before any calls to the function
-  parser::semantic_type parse_context::init<iresearch::Or>(
+  irs::iql::parser::semantic_type parse_context::init<iresearch::Or>(
     iresearch::Or& node, const query_node& src
   ) const {
     assert(query_node::NodeType::UNION == src.type);
@@ -427,7 +429,7 @@ namespace {
   }
 
   template<> // add implementation before any calls to the function
-  parser::semantic_type parse_context::init<iresearch::And>(
+  irs::iql::parser::semantic_type parse_context::init<iresearch::And>(
     iresearch::And& node, const query_node& src
   ) const {
     assert(query_node::NodeType::INTERSECTION == src.type);
@@ -437,7 +439,7 @@ namespace {
   }
 
   template<> // add implementation before any calls to the function
-  parser::semantic_type parse_context::init<iresearch::Not>(
+  irs::iql::parser::semantic_type parse_context::init<iresearch::Not>(
     iresearch::Not& node, const query_node& src
   ) const {
     assert(
@@ -446,11 +448,11 @@ namespace {
       query_node::NodeType::LIKE == src.type
     );
 
-    return init(node.filter<proxy_filter>(), src);
+    return init(node.filter<irs::iql::proxy_filter>(), src);
   }
 
   template<> // add implementation before any calls to the function
-  parser::semantic_type parse_context::init<iresearch::all>(
+  irs::iql::parser::semantic_type parse_context::init<iresearch::all>(
     iresearch::all& node, const query_node& src
   ) const {
     assert(query_node::NodeType::BOOL_TRUE == src.type);
@@ -459,9 +461,9 @@ namespace {
     return SUCCESS;
   }
 
-  query parse_context::build() {
+  irs::iql::query parse_context::build() {
     auto state = current_state();
-    query result;
+    irs::iql::query result;
 
     if (!state.pnFilter) {
       return buildError();
@@ -526,7 +528,7 @@ namespace {
     return result;
   }
 
-  query parse_context::buildError() {
+  irs::iql::query parse_context::buildError() {
     auto state = current_state();
     std::stringstream error;
 
@@ -543,7 +545,7 @@ namespace {
         << state.pError->sMessage;
     }
 
-    query result;
+    irs::iql::query result;
 
     result.filter = std::move(ErrorNode::make<ErrorNode>());
     result.error = &(static_cast<ErrorNode*>(result.filter.get())->sError);
@@ -552,10 +554,11 @@ namespace {
     return result;
   }
 
-  parser::semantic_type parse_context::append_function_arg(
-    function_arg::fn_args_t& buf, const parser::semantic_type& node_id
+  irs::iql::parser::semantic_type parse_context::append_function_arg(
+    irs::iql::function_arg::fn_args_t& buf,
+    const irs::iql::parser::semantic_type& node_id
   ) const {
-    function_arg::fn_args_t fnArgs;
+    irs::iql::function_arg::fn_args_t fnArgs;
     auto& node = find_node(node_id);
 
     switch(node.type) {
@@ -563,7 +566,7 @@ namespace {
       buf.emplace_back(
         std::move(fnArgs),
         [this, node_id](
-          proxy_filter& node, const std::locale&, void* const&, const function_arg::fn_args_t& args
+          irs::iql::proxy_filter& node, const std::locale&, void* const&, const irs::iql::function_arg::fn_args_t& args
         )->bool {
           return args.empty() && SUCCESS == init(node.proxy<iresearch::Or>(), find_node(node_id));
         }
@@ -571,14 +574,14 @@ namespace {
       return SUCCESS;
      case query_node::NodeType::INTERSECTION:
       buf.emplace_back(std::move(fnArgs), [this, node_id](
-        proxy_filter& node, const std::locale&, void* const&, const function_arg::fn_args_t& args
+        irs::iql::proxy_filter& node, const std::locale&, void* const&, const irs::iql::function_arg::fn_args_t& args
       )->bool {
         return args.empty() && SUCCESS == init(node.proxy<iresearch::And>(), find_node(node_id));
       });
       return SUCCESS;
      case query_node::NodeType::BOOL_TRUE:
       buf.emplace_back(std::move(fnArgs), [this, node_id](
-        proxy_filter& node, const std::locale&, void* const&, const function_arg::fn_args_t& args
+        irs::iql::proxy_filter& node, const std::locale&, void* const&, const irs::iql::function_arg::fn_args_t& args
       )->bool {
         auto& argNode = find_node(node_id);
         return args.empty() && SUCCESS == init(
@@ -605,14 +608,14 @@ namespace {
       if (node.pFnBoolean) {
         if (node.bNegated) {
           auto fnBranchArg = [this, node_id](
-            proxy_filter& node,
+            irs::iql::proxy_filter& node,
             const std::locale& locale,
             void* const& cookie,
-            const std::vector<function_arg>& args
+            const std::vector<irs::iql::function_arg>& args
           )->bool {
             auto& argNode = find_node(node_id);
             return argNode.pFnBoolean && function(*(argNode.pFnBoolean))(
-              node.proxy<iresearch::Not>().filter<proxy_filter>(), locale, cookie, args
+              node.proxy<iresearch::Not>().filter<irs::iql::proxy_filter>(), locale, cookie, args
             );
           };
 
@@ -646,12 +649,12 @@ namespace {
      case query_node::NodeType::EQUAL: // fall through
      case query_node::NodeType::LIKE:
       buf.emplace_back(std::move(fnArgs), [this, node_id](
-        proxy_filter& node, const std::locale&, void* const&, const function_arg::fn_args_t& args
+        irs::iql::proxy_filter& node, const std::locale&, void* const&, const irs::iql::function_arg::fn_args_t& args
       )->bool {
         auto& argNode = find_node(node_id);
         return args.empty() && SUCCESS == init(
           argNode.bNegated
-          ? node.proxy<iresearch::Not>().filter<proxy_filter>()
+          ? node.proxy<iresearch::Not>().filter<irs::iql::proxy_filter>()
           : node,
           argNode
         );
@@ -667,7 +670,7 @@ namespace {
   }
 
   // initialize node children
-  parser::semantic_type parse_context::children(
+  irs::iql::parser::semantic_type parse_context::children(
     iresearch::boolean_filter& node, const std::vector<size_t>& children
   ) const {
     for (auto& childId: children) {
@@ -690,7 +693,7 @@ namespace {
        case query_node::NodeType::LIKE:
         errorNodeId = child.bNegated
                     ? init(node.add<iresearch::Not>(), child)
-                    : init(node.add<proxy_filter>(), child);
+                    : init(node.add<irs::iql::proxy_filter>(), child);
         break;
        default: {} // NOOP
       }
@@ -704,7 +707,7 @@ namespace {
     return SUCCESS;
   }
 
-  parser::semantic_type parse_context::eval(
+  irs::iql::parser::semantic_type parse_context::eval(
     iresearch::bstring& buf,
     const query_node& src
   ) const {
@@ -714,7 +717,7 @@ namespace {
       break;
      case query_node::NodeType::FUNCTION:
       if (src.pFnSequence) {
-        auto errorNodeId = eval<sequence_function, std::locale, void*>(
+        auto errorNodeId = eval<irs::iql::sequence_function, std::locale, void*>(
           buf, function(*(src.pFnSequence)), src.children, m_locale, m_cookie
         );
 
@@ -732,7 +735,7 @@ namespace {
     return SUCCESS;
   }
 
-  parser::semantic_type parse_context::order(
+  irs::iql::parser::semantic_type parse_context::order(
     iresearch::order& node, const std::vector<std::pair<size_t, bool>>& order
   ) const {
     for (auto orderTerm: order) {
@@ -746,7 +749,7 @@ namespace {
           return childId; // no order function
         }
 
-        auto errorNodeId = eval<order_function, std::locale, void*, bool>(
+        auto errorNodeId = eval<irs::iql::order_function, std::locale, void*, bool>(
           node,
           function(*(childNode.pFnOrder)),
           childNode.children,
@@ -772,15 +775,15 @@ namespace {
     return SUCCESS;
   }
 
-  parser::semantic_type parse_context::initRange(
-    proxy_filter& node,
+  irs::iql::parser::semantic_type parse_context::initRange(
+    irs::iql::proxy_filter& node,
     const iresearch::string_ref& field,
-    const parser::semantic_type& min_node_id, bool min_inclusive,
-    const parser::semantic_type& max_value_id, bool max_inclusive
+    const irs::iql::parser::semantic_type& min_node_id, bool min_inclusive,
+    const irs::iql::parser::semantic_type& max_value_id, bool max_inclusive
   ) const {
     auto& min_node = find_node(min_node_id);
     auto& max_node = find_node(max_value_id);
-    function_arg::fn_args_t args;
+    irs::iql::function_arg::fn_args_t args;
 
     args.reserve(2);
 
@@ -829,12 +832,12 @@ namespace {
       ? SUCCESS : UNKNOWN;
   }
 
-  parser::semantic_type parse_context::initSimilar(
-    proxy_filter& node,
+  irs::iql::parser::semantic_type parse_context::initSimilar(
+    irs::iql::proxy_filter& node,
     const iresearch::string_ref& field,
-    const parser::semantic_type& value_id
+    const irs::iql::parser::semantic_type& value_id
   ) const {
-    function_arg::fn_args_t args;
+    irs::iql::function_arg::fn_args_t args;
 
     args.reserve(1);
 
@@ -848,7 +851,11 @@ namespace {
     return m_branch_builders.similar(node, m_locale, field, m_cookie, args)
       ? SUCCESS : UNKNOWN;
   }
-}
+
+NS_END
+
+NS_ROOT
+NS_BEGIN(iql)
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                      constructors and destructors
@@ -920,6 +927,9 @@ query query_builder::build(
 
 DEFINE_FILTER_TYPE(proxy_filter);
 DEFINE_FACTORY_DEFAULT(proxy_filter);
+
+NS_END // iql
+NS_END // NS_ROOT
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE

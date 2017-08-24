@@ -42,7 +42,7 @@ NS_BEGIN(attribute)
 //////////////////////////////////////////////////////////////////////////////
 /// @brief contains the path to the attribute encoded as a jSON array
 //////////////////////////////////////////////////////////////////////////////
-struct AttributePath: irs::basic_attribute<arangodb::velocypack::Builder> {
+struct AttributePath: irs::basic_stored_attribute<arangodb::velocypack::Builder> {
   DECLARE_ATTRIBUTE_TYPE();
   DECLARE_FACTORY_DEFAULT();
 };

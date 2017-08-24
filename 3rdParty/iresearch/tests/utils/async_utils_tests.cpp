@@ -565,6 +565,38 @@ TEST_F(async_utils_tests, test_thread_pool_stop) {
     pool.stop(true);
     ASSERT_FALSE(pool.run(std::move(task2)));
   }
+
+  // test multiple calls to stop will all block
+  {
+    irs::async_utils::thread_pool pool(1, 0);
+    std::condition_variable cond;
+    std::mutex mutex;
+    std::unique_lock<std::mutex> lock(mutex);
+    auto task = [&mutex, &cond]()->void { std::lock_guard<std::mutex> lock(mutex); cond.notify_all(); };
+
+    pool.run(std::move(task));
+
+    std::condition_variable cond2;
+    std::mutex mutex2;
+    std::unique_lock<std::mutex> lock2(mutex2);
+    std::thread thread1([&pool, &mutex2, &cond2]()->void { pool.stop(); std::lock_guard<std::mutex> lock(mutex2); cond2.notify_all(); });
+    std::thread thread2([&pool, &mutex2, &cond2]()->void { pool.stop(); std::lock_guard<std::mutex> lock(mutex2); cond2.notify_all(); });
+    ASSERT_EQ(std::cv_status::timeout, cond2.wait_for(lock2, std::chrono::milliseconds(1000)));
+    lock2.unlock();
+    ASSERT_EQ(std::cv_status::no_timeout, cond.wait_for(lock, std::chrono::milliseconds(1000)));
+    thread1.join();
+    thread2.join();
+  }
+
+  // test stop with a single thread will stop threads
+  {
+    irs::async_utils::thread_pool pool(1, 1);
+
+    pool.run([]()->void{}); // start a single thread
+    ASSERT_EQ(1, pool.threads());
+    pool.stop();
+    ASSERT_EQ(0, pool.threads());
+  }
 }
 
 // -----------------------------------------------------------------------------

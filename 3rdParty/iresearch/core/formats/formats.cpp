@@ -142,8 +142,12 @@ format::~format() {}
 
 format_registrar::format_registrar(
   const format::type_id& type, format::ptr(*factory)()
-): registered_(format_register::instance().set(type.name(), factory)) {
-  if (!registered_) {
+) {
+  auto entry = format_register::instance().set(type.name(), factory);
+
+  registered_ = entry.second;
+
+  if (!registered_ && factory != entry.first) {
     IR_FRMT_WARN(
       "type name collision detected while registering format, ignoring: type '%s' from %s:%d",
       type.name().c_str(),
@@ -151,10 +155,15 @@ format_registrar::format_registrar(
       __LINE__
     );
     IR_STACK_TRACE();
-  }}
+  }
+}
 
 format_registrar::operator bool() const NOEXCEPT {
   return registered_;
 }
 
 NS_END
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                       END-OF-FILE
+// -----------------------------------------------------------------------------

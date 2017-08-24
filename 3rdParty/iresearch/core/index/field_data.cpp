@@ -51,21 +51,18 @@ using irs::bytes_ref;
 
 class payload : public irs::payload {
  public:
-  DECLARE_FACTORY_DEFAULT();
-
-  inline byte_type* data() {
+  byte_type* data() {
     return &(value_[0]);
   }
 
-  inline void resize( size_t size ) {
+  void resize( size_t size ) {
     value_.resize(size);
     value = value_;
   }
 
  private:
-   bstring value_;
+  bstring value_;
 };
-DEFINE_FACTORY_DEFAULT(payload);
 
 class pos_iterator final : public irs::position::impl {
  public:
@@ -80,23 +77,23 @@ class pos_iterator final : public irs::position::impl {
       offs_{},
       field_(field),
       val_{} {
-    auto& attrs = this->attributes();
     auto& features = field_.meta().features;
 
-    if (features.check< offset >()) {
-      offs_ = attrs.emplace<offset>().get();
+    if (features.check<offset>()) {
+      attrs_.emplace(offs_);
+      has_offs_ = true;
     }
 
-    if (features.check< payload >()) {
-      pay_ = attrs.emplace<payload>().get();
+    if (features.check<payload>()) {
+      attrs_.emplace(pay_);
     }
   }
 
   virtual void clear() override {
     pos_ = 0;
     val_ = 0;
-    if (offs_) offs_->clear();
-    if (pay_) pay_->clear();
+    offs_.clear();
+    pay_.clear();
   }
 
   virtual uint32_t value() const override {
@@ -104,23 +101,22 @@ class pos_iterator final : public irs::position::impl {
   }
 
   virtual bool next() {
-    if ( pos_ == freq_.value ) {
+    if (pos_ == freq_.value) {
       val_ = position::INVALID;
       return false;
     }
 
     uint32_t pos;
-    if ( shift_unpack_32( bytes_io< uint32_t >::vread( prox_in_ ), pos ) ) {
-      assert(pay_);
-      const size_t size = bytes_io<size_t>::vread( prox_in_ );
-      pay_->resize( size );
-      prox_in_.read( pay_->data(), size );
+    if (shift_unpack_32(bytes_io<uint32_t>::vread(prox_in_), pos)) {
+      const size_t size = bytes_io<size_t>::vread(prox_in_);
+      pay_.resize(size);
+      prox_in_.read(pay_.data(), size);
     }
     val_ += pos;
 
-    if ( offs_ ) {
-      offs_->start += bytes_io< uint32_t >::vread( prox_in_ );
-      offs_->end = offs_->start + bytes_io< uint32_t >::vread( prox_in_ );
+    if (has_offs_) {
+      offs_.start += bytes_io<uint32_t>::vread(prox_in_);
+      offs_.end = offs_.start + bytes_io<uint32_t>::vread(prox_in_);
     }
     ++pos_;
     return true;
@@ -128,12 +124,13 @@ class pos_iterator final : public irs::position::impl {
 
  private:
   byte_block_pool::sliced_reader prox_in_;
-  const frequency& freq_; /* number of terms position in a document */
-  uint64_t pos_; /* current position */
-  payload* pay_;
-  offset* offs_;
+  const frequency& freq_; // number of terms position in a document
+  uint64_t pos_; // current position
+  payload pay_;
+  offset offs_;
   const field_data& field_;
   uint32_t val_;
+  bool has_offs_{false}; // FIXME find a better way to handle presence of offsets
 };
 
 /* -------------------------------------------------------------------
@@ -149,7 +146,7 @@ class doc_iterator : public irs::doc_iterator {
       freq_in_(EMPTY_POOL.begin(), 0) {
   }
 
-  virtual const attribute_store& attributes() const NOEXCEPT override {
+  virtual const attribute_view& attributes() const NOEXCEPT override {
     return attrs_;
   }
 
@@ -157,27 +154,24 @@ class doc_iterator : public irs::doc_iterator {
       const field_data& field, const irs::posting& posting,
       const byte_block_pool::sliced_reader& freq,
       const byte_block_pool::sliced_reader& prox) {
-    freq_ = nullptr;
-    pos_ = nullptr;
+    pos_.reset();
     freq_in_ = freq;
     posting_ = &posting;
     field_ = &field;
 
     attrs_.clear();
 
-    auto& doc = attrs_.emplace<document>();
-    doc->value = &docv_;
-    docv_ = 0;
+    attrs_.emplace(doc_);
+    doc_.value = 0;
 
     const auto& features = field_->meta().features;
-    if (features.check<frequency>()) {
-      freq_ = attrs_.emplace<frequency>().get();
-      freq_->value = 0;
+    if ((has_freq_ = features.check<frequency>())) {
+      attrs_.emplace(freq_);
+      freq_.value = 0;
 
       if (features.check<position>()) {
-        auto& pos = attrs_.emplace<position>();
-        auto pos_it = memory::make_unique<pos_iterator>(field, *freq_, prox);
-        pos->prepare(pos_ = pos_it.release());
+        pos_.reset(memory::make_unique<pos_iterator>(field, freq_, prox));
+        attrs_.emplace(pos_);
       }
     }
 
@@ -189,7 +183,7 @@ class doc_iterator : public irs::doc_iterator {
   }
 
   virtual doc_id_t value() const override {
-    return docv_;
+    return doc_.value;
   }
 
   virtual bool next() override {
@@ -198,44 +192,48 @@ class doc_iterator : public irs::doc_iterator {
         return false;
       }
 
-      docv_ = posting_->doc;
+      doc_.value = posting_->doc;
 
       if (field_->meta().features.check<frequency>()) {
-        freq_->value = posting_->freq; 
+        freq_.value = posting_->freq; 
       }
 
       const_cast<posting*>(posting_)->doc_code = type_limits<type_t::doc_id_t>::invalid();
     } else {
-      if (freq_) {
+      //if (freq_) {
+      if (has_freq_) {
         doc_id_t delta;
 
         if (shift_unpack_64( bytes_io<uint64_t>::vread(freq_in_), delta)) {
-          freq_->value = 1U;
+          freq_.value = 1U;
         } else {
-          freq_->value = bytes_io< uint32_t >::vread( freq_in_ );
+          freq_.value = bytes_io< uint32_t >::vread( freq_in_ );
         }
 
-        docv_ += delta;
+        doc_.value += delta;
       } else {
-        docv_ += bytes_io<uint64_t>::vread(freq_in_);
+        doc_.value += bytes_io<uint64_t>::vread(freq_in_);
       }
 
-      assert(docv_ != posting_->doc);
+      assert(doc_.value != posting_->doc);
     }
 
-    if (pos_) pos_->clear();
+    if (pos_) {
+      pos_.clear();
+    }
 
     return true;
   }
 
  private:
-  doc_id_t docv_;
-  frequency* freq_;
-  attribute_store attrs_;
+  document doc_;
+  frequency freq_;
+  position pos_;
+  attribute_view attrs_;
   byte_block_pool::sliced_reader freq_in_;
-  position::impl* pos_;
   const posting* posting_;
   const field_data* field_;
+  bool has_freq_{false}; // FIXME remove
 };
 
 /* -------------------------------------------------------------------
@@ -268,8 +266,8 @@ class term_iterator : public irs::term_iterator {
     return term_;
   }
 
-  virtual const attribute_store& attributes() const NOEXCEPT {
-    return attribute_store::empty_instance();
+  virtual const attribute_view& attributes() const NOEXCEPT {
+    return attribute_view::empty_instance();
   }
 
   virtual void read() {
@@ -365,8 +363,8 @@ class term_reader final : public irs::basic_term_reader, util::noncopyable {
     return memory::make_managed<irs::term_iterator, false>(&it_);
   }
 
-  virtual const attribute_store& attributes() const NOEXCEPT override {
-    return attribute_store::empty_instance();
+  virtual const attribute_view& attributes() const NOEXCEPT override {
+    return attribute_view::empty_instance();
   }
 
  private:

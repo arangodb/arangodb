@@ -62,7 +62,7 @@ struct IRESEARCH_API term_meta : attribute {
   uint64_t freq = 0; // FIXME check whether we can move freq to another place
 }; // term_meta
 
-struct IRESEARCH_API postings_writer : util::const_attribute_store_provider {
+struct IRESEARCH_API postings_writer : util::const_attribute_view_provider {
   DECLARE_PTR(postings_writer);
   DECLARE_FACTORY(postings_writer);
 
@@ -86,11 +86,11 @@ struct IRESEARCH_API postings_writer : util::const_attribute_store_provider {
   virtual void begin_field(const flags& features) = 0;
   virtual state write(doc_iterator& docs) = 0;
   virtual void begin_block() = 0;
-  virtual void encode(data_output& out, const term_meta& attrs) = 0;
+  virtual void encode(data_output& out, const term_meta& state) = 0;
   virtual void end() = 0;
 
-  virtual const attribute_store& attributes() const NOEXCEPT override {
-    return attribute_store::empty_instance();
+  virtual const attribute_view& attributes() const NOEXCEPT override {
+    return attribute_view::empty_instance();
   }
 
  protected:
@@ -143,15 +143,16 @@ struct IRESEARCH_API postings_reader {
   // parses input stream "in" and populate "attrs" collection
   // with attributes
   virtual void decode(
-    data_input& in, 
+    data_input& in,
     const flags& features,
-    attribute_store& attrs
+    const attribute_view& attrs,
+    term_meta& state
   ) = 0;
 
-  virtual doc_iterator::ptr iterator( 
+  virtual doc_iterator::ptr iterator(
     const flags& field,
-    const attribute_store& attrs,
-    const flags& features 
+    const attribute_view& attrs,
+    const flags& features
   ) = 0;
 };
 
@@ -159,7 +160,7 @@ struct IRESEARCH_API postings_reader {
  * term_reader
  * ------------------------------------------------------------------*/
 
-struct IRESEARCH_API basic_term_reader: public util::const_attribute_store_provider {
+struct IRESEARCH_API basic_term_reader: public util::const_attribute_view_provider {
   virtual ~basic_term_reader();
 
   virtual term_iterator::ptr iterator() const = 0;
@@ -174,9 +175,9 @@ struct IRESEARCH_API basic_term_reader: public util::const_attribute_store_provi
   virtual const bytes_ref& (max)() const = 0;
 }; // basic_term_reader
 
-struct IRESEARCH_API term_reader: public util::const_attribute_store_provider {
-  DECLARE_PTR( term_reader );
-  DECLARE_FACTORY( term_reader );
+struct IRESEARCH_API term_reader: public util::const_attribute_view_provider {
+  DECLARE_PTR( term_reader);
+  DECLARE_FACTORY(term_reader);
 
   virtual ~term_reader();
 

@@ -10,6 +10,7 @@
 // 
 
 #include "tests_shared.hpp"
+#include "search/all_filter.hpp"
 #include "search/boolean_filter.hpp"
 #include "search/disjunction.hpp"
 #include "search/exclusion.hpp"
@@ -44,16 +45,17 @@ class basic_doc_iterator: public iresearch::score_doc_iterator {
   basic_doc_iterator(
       const docids_t::const_iterator& first,
       const docids_t::const_iterator& last,
-      const iresearch::attributes& stats = iresearch::attributes::empty_instance(),
+      const irs::attribute_store& stats = irs::attribute_store::empty_instance(),
       const iresearch::order::prepared& ord = iresearch::order::prepared::unordered())
       : first_(first), last_(last),
         stats_(&stats), ord_(&ord),
-        score_(nullptr), doc_(iresearch::type_limits<iresearch::type_t::doc_id_t>::invalid()) {
+        doc_(iresearch::type_limits<iresearch::type_t::doc_id_t>::invalid()) {
     assert(ord_ && stats_);
 
-    attrs_.add<iresearch::cost>()->value(std::distance(first_, last_));
+    est_.value(std::distance(first_, last_));
+    attrs_.emplace(est_);
 
-    if (score_ = iresearch::score::apply(attrs_, *ord_)) {
+    if (iresearch::score::apply(attrs_, score_, *ord_)) {
       scorers_ = ord_->prepare_scorers(
         empty_sub_reader::instance(),
         empty_term_reader::instance(),
@@ -83,12 +85,12 @@ class basic_doc_iterator: public iresearch::score_doc_iterator {
   }
 
   virtual void score() override {
-    if (score_) {
-      scorers_.score(*ord_, score_->leak());
+    if (!score_.empty()) {
+      scorers_.score(*ord_, score_.leak());
     }
   }
 
-  virtual const iresearch::attributes& attributes() const NOEXCEPT {
+  virtual const irs::attribute_view& attributes() const NOEXCEPT {
     return attrs_;
   }
 
@@ -105,13 +107,14 @@ class basic_doc_iterator: public iresearch::score_doc_iterator {
   }
 
  private:
-  iresearch::attributes attrs_;
+  irs::cost est_;
+  irs::attribute_view attrs_;
   iresearch::order::prepared::scorers scorers_;
   docids_t::const_iterator first_;
   docids_t::const_iterator last_;
-  const iresearch::attributes* stats_;
+  const irs::attribute_store* stats_;
   const iresearch::order::prepared* ord_;
-  iresearch::score* score_;
+  iresearch::score score_;
   iresearch::doc_id_t doc_;
 }; // basic_doc_iterator
 
@@ -474,7 +477,7 @@ TEST(boolean_query_boost, and) {
       iresearch::order::prepared::unordered()
     );
 
-    auto& boost = prep->attributes().get<iresearch::boost>();
+    auto& boost = const_cast<const irs::attribute_store&>(prep->attributes()).get<irs::boost>();
     ASSERT_TRUE(!boost);
   }
 
@@ -490,7 +493,7 @@ TEST(boolean_query_boost, and) {
       iresearch::order::prepared::unordered()
     );
 
-    auto& boost = prep->attributes().get<iresearch::boost>();
+    auto& boost = const_cast<const irs::attribute_store&>(prep->attributes()).get<irs::boost>();
     ASSERT_FALSE(!boost);
     ASSERT_EQ(value, boost->value);
   }
@@ -748,7 +751,7 @@ TEST(boolean_query_boost, or) {
       iresearch::order::prepared::unordered()
     );
 
-    auto& boost = prep->attributes().get<iresearch::boost>();
+    auto& boost = const_cast<const irs::attribute_store&>(prep->attributes()).get<irs::boost>();
     ASSERT_TRUE(!boost);
   }
 
@@ -764,7 +767,7 @@ TEST(boolean_query_boost, or) {
       iresearch::order::prepared::unordered()
     );
 
-    auto& boost = prep->attributes().get<iresearch::boost>();
+    auto& boost = const_cast<const irs::attribute_store&>(prep->attributes()).get<irs::boost>();
     ASSERT_FALSE(!boost);
     ASSERT_EQ(value, boost->value);
   }
@@ -1077,8 +1080,8 @@ struct unestimated: public iresearch::filter {
       return iresearch::type_limits<iresearch::type_t::doc_id_t>::invalid();
     }
     virtual void score() override { }
-    virtual const iresearch::attributes& attributes() const NOEXCEPT override {
-      return iresearch::attributes::empty_instance();
+    virtual const irs::attribute_view& attributes() const NOEXCEPT override {
+      return irs::attribute_view::empty_instance();
     }
   }; // doc_iterator
 
@@ -1110,10 +1113,11 @@ DEFINE_FACTORY_DEFAULT(unestimated);
 struct estimated: public iresearch::filter {
   struct doc_iterator : iresearch::score_doc_iterator {
     doc_iterator(iresearch::cost::cost_t est, bool* evaluated) {
-      attrs.add<iresearch::cost>()->rule([est, evaluated]() {
+      cost.rule([est, evaluated]() {
         *evaluated = true;
         return est;
       });
+      attrs.emplace(cost);
     }
     virtual iresearch::doc_id_t value() const override {
       // prevent iterator to filter out
@@ -1125,11 +1129,12 @@ struct estimated: public iresearch::filter {
       return iresearch::type_limits<iresearch::type_t::doc_id_t>::invalid();
     }
     virtual void score() override { }
-    virtual const iresearch::attributes& attributes() const NOEXCEPT override {
+    virtual const irs::attribute_view& attributes() const NOEXCEPT override {
       return attrs;
     }
 
-    iresearch::attributes attrs;
+    irs::cost cost;
+    irs::attribute_view attrs;
   }; // doc_iterator
 
   struct prepared: public iresearch::filter::prepared {

@@ -73,7 +73,7 @@ class Prepared: public irs::sort::prepared_base<Score> {
     irs::sub_reader const& segment,
     irs::term_reader const& field,
     irs::attribute_store const& query_attrs,
-    irs::attribute_store const& doc_attrs
+    irs::attribute_view const& doc_attrs
   ) const override;
 
  private:
@@ -254,39 +254,40 @@ irs::sort::scorer::ptr Prepared::prepare_scorer(
     irs::sub_reader const& segment,
     irs::term_reader const& field,
     irs::attribute_store const& query_attrs,
-    irs::attribute_store const& doc_attrs
+    irs::attribute_view const& doc_attrs
 ) const {
   class Scorer: public irs::sort::scorer {
    public:
     Scorer(
         irs::sub_reader const& reader,
-        irs::attribute_store::ref<irs::document> const& doc
-    ): _doc(doc), _reader(reader) {
+        irs::document const* doc
+    ) : _doc(doc), _reader(reader) {
+      TRI_ASSERT(doc);
     }
+
     virtual void score(irs::byte_type* score_buf) override {
       auto& score = *reinterpret_cast<score_t*>(score_buf);
-      auto* doc = _doc.get();
       auto* pkColMeta = _reader.column(arangodb::iresearch::DocumentPrimaryKey::PK());
 
-      if (!doc) {
+      if (!_doc) {
         LOG_TOPIC(WARN, arangodb::iresearch::IResearchFeature::IRESEARCH) << "encountered a document without a doc_id value while scoring a document for iResearch view, ignoring";
         score.reader = nullptr;
       } else if (!pkColMeta) {
         LOG_TOPIC(WARN, arangodb::iresearch::IResearchFeature::IRESEARCH) << "encountered a sub-reader without a primary key column while scoring a document for iResearch view, ignoring";
         score.reader = nullptr;
       } else {
-        score.docId = *(doc->value);
+        score.docId = _doc->value;
         score.pkColId = pkColMeta->id;
         score.reader = &_reader;
       }
     }
 
    private:
-    irs::attribute_store::ref<irs::document> const& _doc;
+    irs::document const* _doc;
     irs::sub_reader const& _reader;
   };
 
-  return irs::sort::scorer::make<Scorer>(segment, doc_attrs.get<irs::document>());
+  return irs::sort::scorer::make<Scorer>(segment, doc_attrs.get<irs::document>().get());
 }
 
 size_t Prepared::precedence(arangodb::velocypack::Slice const& slice) const {
@@ -336,7 +337,7 @@ DEFINE_SORT_TYPE_NAMED(AttributeScorer, ATTRIBUTE_SCORER_NAME);
 REGISTER_SCORER(AttributeScorer);
 
 /*static*/ irs::sort::ptr AttributeScorer::make(
-    std::vector<irs::attribute::ptr>& storedAttrBuf,
+    std::vector<irs::stored_attribute::ptr>& storedAttrBuf,
     bool arangodbTypeOrder /*= false*/
 ) {
   PTR_NAMED(AttributeScorer, ptr);

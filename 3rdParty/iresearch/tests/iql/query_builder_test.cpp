@@ -9,7 +9,15 @@
 // Agreement under which it is provided by or on behalf of EMC.
 // 
 
-#include <boost/locale/generator.hpp>
+#if defined (__GNUC__)
+  #pragma GCC diagnostic ignored "-Wdeprecated-declarations"
+#endif
+
+  #include <boost/locale/generator.hpp>
+
+#if defined (__GNUC__)
+  #pragma GCC diagnostic pop
+#endif
 
 #include <unicode/uclean.h> // for u_cleanup
 
@@ -43,8 +51,9 @@ namespace tests {
       virtual scorer::ptr prepare_scorer(
           const iresearch::sub_reader&,
           const iresearch::term_reader&,
-          const iresearch::attributes& query_attrs, 
-          const iresearch::attributes& doc_attrs) const override { 
+          const irs::attribute_store& query_attrs,
+          const irs::attribute_view& doc_attrs
+      ) const override {
         return nullptr; 
       }
       virtual const iresearch::flags& features() const override { 
@@ -127,48 +136,68 @@ namespace tests {
     static auto analyzed_field_factory = [](
         tests::document& doc,
         const std::string& name,
-        const tests::json::json_value& value) {
-      doc.insert(std::make_shared<analyzed_string_field>(
-        iresearch::string_ref(name),
-        iresearch::string_ref(value.value)
-      ));
+        const tests::json_doc_generator::json_value& value) {
+      if (value.is_string()) {
+        doc.insert(std::make_shared<analyzed_string_field>(
+          iresearch::string_ref(name),
+          value.str
+        ));
+      } else if (value.is_null()) {
+        doc.insert(std::make_shared<analyzed_string_field>(
+          iresearch::string_ref(name),
+          "null"
+        ));
+      } else if (value.is_bool() && value.b) {
+        doc.insert(std::make_shared<analyzed_string_field>(
+          iresearch::string_ref(name),
+          "true"
+        ));
+      } else if (value.is_bool() && !value.b) {
+        doc.insert(std::make_shared<analyzed_string_field>(
+          iresearch::string_ref(name),
+          "false"
+        ));
+      } else if (value.is_number()) {
+        const auto str = std::to_string(value.as_number<uint64_t>());
+        doc.insert(std::make_shared<analyzed_string_field>(
+          iresearch::string_ref(name),
+          str
+        ));
+      }
     };
 
     static auto generic_field_factory = [](
         tests::document& doc,
         const std::string& name,
-        const tests::json::json_value& data) {
-      if (data.quoted) {
+        const tests::json_doc_generator::json_value& data) {
+      if (data.is_string()) {
         doc.insert(std::make_shared<templates::string_field>(
           ir::string_ref(name),
-          ir::string_ref(data.value)
+          data.str
         ));
-      } else if ("null" == data.value) {
+      } else if (data.is_null()) {
         doc.insert(std::make_shared<tests::binary_field>());
         auto& field = (doc.indexed.end() - 1).as<tests::binary_field>();
         field.name(iresearch::string_ref(name));
         field.value(ir::null_token_stream::value_null());
-      } else if ("true" == data.value) {
+      } else if (data.is_bool() && data.b) {
         doc.insert(std::make_shared<tests::binary_field>());
         auto& field = (doc.indexed.end() - 1).as<tests::binary_field>();
         field.name(iresearch::string_ref(name));
         field.value(ir::boolean_token_stream::value_true());
-      } else if ("false" == data.value) {
+      } else if (data.is_bool() && !data.b) {
         doc.insert(std::make_shared<tests::binary_field>());
         auto& field = (doc.indexed.end() - 1).as<tests::binary_field>();
         field.name(iresearch::string_ref(name));
         field.value(ir::boolean_token_stream::value_true());
-      } else {
-        char* czSuffix;
-        double dValue = strtod(data.value.c_str(), &czSuffix);
+      } else if (data.is_number()) {
+        const double dValue = data.as_number<double_t>();
 
         // 'value' can be interpreted as a double
-        if (!czSuffix[0]) {
-          doc.insert(std::make_shared<tests::double_field>());
-          auto& field = (doc.indexed.end() - 1).as<tests::double_field>();
-          field.name(iresearch::string_ref(name));
-          field.value(dValue);
-        }
+        doc.insert(std::make_shared<tests::double_field>());
+        auto& field = (doc.indexed.end() - 1).as<tests::double_field>();
+        field.name(iresearch::string_ref(name));
+        field.value(dValue);
       }
     };
 
@@ -233,7 +262,9 @@ TEST_F(IqlQueryBuilderTestSuite, test_query_builder) {
   // single string term
   {
     irs::bytes_ref actual_value;
-    auto values = segment.values("name");
+    auto column = segment.column_reader("name");
+    ASSERT_NE(nullptr, column);
+    auto values = column->values();
 
     auto query = query_builder().build("name==A", std::locale::classic());
     ASSERT_NE(nullptr, query.filter.get());
@@ -281,7 +312,9 @@ TEST_F(IqlQueryBuilderTestSuite, test_query_builder) {
   {
     irs::bytes_ref actual_value;
     irs::bytes_ref_input in;
-    auto values = segment.values("name");
+    auto column = segment.column_reader("name");
+    ASSERT_NE(nullptr, column);
+    auto values = column->values();
 
     auto query = query_builder().build("name!=A", std::locale::classic());
     ASSERT_NE(nullptr, query.filter.get());
@@ -306,7 +339,9 @@ TEST_F(IqlQueryBuilderTestSuite, test_query_builder) {
   // term union
   {
     irs::bytes_ref actual_value;
-    auto values = segment.values("name");
+    auto column = segment.column_reader("name");
+    ASSERT_NE(nullptr, column);
+    auto values = column->values();
 
     auto query = query_builder().build("name==A || name==B OR name==C", std::locale::classic());
     ASSERT_NE(nullptr, query.filter.get());
@@ -361,8 +396,12 @@ TEST_F(IqlQueryBuilderTestSuite, test_query_builder) {
     std::unordered_set<irs::string_ref> expected = { "N", "O", "P", "Q", "R", "S", "T", "U", "V", "W", "X", "Y", "Z" };
 
     double_t seq;
-    auto seq_values = segment.values("seq");
-    auto name_values = segment.values("name");
+    auto seq_column = segment.column_reader("seq");
+    ASSERT_NE(nullptr, seq_column);
+    auto seq_values = seq_column->values();
+    auto name_column = segment.column_reader("name");
+    ASSERT_NE(nullptr, name_column);
+    auto name_values = name_column->values();
 
     auto query = query_builder().build("name > M", std::locale::classic());
     ASSERT_NE(nullptr, query.filter.get());
@@ -395,8 +434,12 @@ TEST_F(IqlQueryBuilderTestSuite, test_query_builder) {
     std::unordered_set<irs::string_ref> expected = { "M", "N", "O", "P", "Q", "R", "S", "T", "U", "V", "W", "X", "Y", "Z" };
 
     double_t seq;
-    auto seq_values = segment.values("seq");
-    auto name_values = segment.values("name");
+    auto seq_column = segment.column_reader("seq");
+    ASSERT_NE(nullptr, seq_column);
+    auto seq_values = seq_column->values();
+    auto name_column = segment.column_reader("name");
+    ASSERT_NE(nullptr, name_column);
+    auto name_values = name_column->values();
 
     auto query = query_builder().build("name >= M", std::locale::classic());
     ASSERT_NE(nullptr, query.filter.get());
@@ -429,8 +472,12 @@ TEST_F(IqlQueryBuilderTestSuite, test_query_builder) {
     std::unordered_set<irs::string_ref> expected = { "A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M", "N" };
 
     double_t seq;
-    auto seq_values = segment.values("seq");
-    auto name_values = segment.values("name");
+    auto seq_column = segment.column_reader("seq");
+    ASSERT_NE(nullptr, seq_column);
+    auto seq_values = seq_column->values();
+    auto name_column = segment.column_reader("name");
+    ASSERT_NE(nullptr, name_column);
+    auto name_values = name_column->values();
 
     auto query = query_builder().build("name <= N", std::locale::classic());
     ASSERT_NE(nullptr, query.filter.get());
@@ -463,8 +510,12 @@ TEST_F(IqlQueryBuilderTestSuite, test_query_builder) {
     std::unordered_set<irs::string_ref> expected = { "A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M" };
 
     double_t seq;
-    auto seq_values = segment.values("seq");
-    auto name_values = segment.values("name");
+    auto seq_column = segment.column_reader("seq");
+    ASSERT_NE(nullptr, seq_column);
+    auto seq_values = seq_column->values();
+    auto name_column = segment.column_reader("name");
+    ASSERT_NE(nullptr, name_column);
+    auto name_values = name_column->values();
 
     auto query = query_builder().build("name < N", std::locale::classic());
     ASSERT_NE(nullptr, query.filter.get());
@@ -493,7 +544,9 @@ TEST_F(IqlQueryBuilderTestSuite, test_query_builder) {
   // limit
   {
     irs::bytes_ref actual_value;
-    auto values = segment.values("name");
+    auto column = segment.column_reader("name");
+    ASSERT_NE(nullptr, column);
+    auto values = column->values();
 
     auto query = query_builder().build("name==A limit 42", std::locale::classic());
     ASSERT_NE(nullptr, query.filter.get());
@@ -573,7 +626,9 @@ TEST_F(IqlQueryBuilderTestSuite, test_query_builder_builders_default) {
   auto reader = load_json(dir, "simple_sequential.json");
   ASSERT_EQ(1, reader.size());
   auto& segment = reader[0]; // assume 0 is id of first/only segment
-  auto values = segment.values("name");
+  auto column = segment.column_reader("name");
+  ASSERT_NE(nullptr, column);
+  auto values = column->values();
 
   // default range builder functr ()
   {
@@ -661,7 +716,9 @@ TEST_F(IqlQueryBuilderTestSuite, test_query_builder_builders_default) {
 
     ASSERT_EQ(1, analyzed_reader.size());
     auto& analyzed_segment = analyzed_reader[0]; // assume 0 is id of first/only segment
-    auto analyzed_segment_values = analyzed_segment.values("name");
+    auto column = analyzed_segment.column_reader("name");
+    ASSERT_NE(nullptr, column);
+    auto analyzed_segment_values = column->values();
 
     query_builder::branch_builders builders;
     auto locale = boost::locale::generator().generate("en"); // a locale that exists in tests
@@ -712,7 +769,9 @@ TEST_F(IqlQueryBuilderTestSuite, test_query_builder_builders_custom) {
   auto reader = load_json(dir, "simple_sequential.json");
   ASSERT_EQ(1, reader.size());
   auto& segment = reader[0]; // assume 0 is id of first/only segment
-  auto values = segment.values("name");
+  auto column = segment.column_reader("name");
+  ASSERT_NE(nullptr, column);
+  auto values = column->values();
 
   // custom range builder functr ()
   {
@@ -835,7 +894,9 @@ TEST_F(IqlQueryBuilderTestSuite, test_query_builder_bool_fns) {
   // user supplied boolean_function
   {
     irs::bytes_ref actual_value;
-    auto values = segment.values("name");
+    auto column = segment.column_reader("name");
+    ASSERT_NE(nullptr, column);
+    auto values = column->values();
 
     boolean_function bool_function(fnEqual, 2);
     boolean_functions bool_functions = {
@@ -862,7 +923,9 @@ TEST_F(IqlQueryBuilderTestSuite, test_query_builder_bool_fns) {
   {
     irs::bytes_ref actual_value;
     irs::bytes_ref_input in;
-    auto values = segment.values("name");
+    auto column = segment.column_reader("name");
+    ASSERT_NE(nullptr, column);
+    auto values = column->values();
 
     boolean_function bool_function(fnEqual, 2);
     boolean_functions bool_functions = {
@@ -931,7 +994,9 @@ TEST_F(IqlQueryBuilderTestSuite, test_query_builder_bool_fns) {
     auto docsItr = pQuery->execute(segment);
     ASSERT_NE(nullptr, docsItr.get());
     std::unordered_set<irs::string_ref> expected = { "A", "C", "D", "E" };
-    auto values = segment.values("name");
+    auto column = segment.column_reader("name");
+    ASSERT_NE(nullptr, column);
+    auto values = column->values();
 
     while (docsItr->next()) {
       ASSERT_TRUE(values(docsItr->value(), actual_value));
@@ -959,7 +1024,9 @@ TEST_F(IqlQueryBuilderTestSuite, test_query_builder_sequence_fns) {
   auto reader = load_json(dir, "simple_sequential.json");
   ASSERT_EQ(1, reader.size());
   auto& segment = reader[0]; // assume 0 is id of first/only segment
-  auto values = segment.values("name");
+  auto column = segment.column_reader("name");
+  ASSERT_NE(nullptr, column);
+  auto values = column->values();
 
   // user supplied sequence_function
   {
@@ -1056,7 +1123,9 @@ TEST_F(IqlQueryBuilderTestSuite, test_query_builder_order) {
   // custom contextual order function
   {
     irs::bytes_ref actual_value;
-    auto values = segment.values("name");
+    auto column = segment.column_reader("name");
+    ASSERT_NE(nullptr, column);
+    auto values = column->values();
 
     std::vector<std::pair<bool, std::string>> direction;
     sequence_function::deterministic_function_t fnTestSeq = [](

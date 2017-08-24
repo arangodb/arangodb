@@ -32,18 +32,17 @@ class IRESEARCH_API cost : public attribute {
   /// @returns a value of the "cost" attribute in the specified "src"
   /// collection, or "def" value if there is no "cost" attribute in "src"
   //////////////////////////////////////////////////////////////////////////////
-  static cost_t extract(const attribute_store& src, cost_t def = MAX) NOEXCEPT {
+  static cost_t extract(const attribute_view& src, cost_t def = MAX) NOEXCEPT {
     cost::cost_t est = def;
     auto& attr = src.get<iresearch::cost>();
-    if (attr) { 
+    if (attr) {
       est = attr->estimate();
     }
     return est;
   }
 
   DECLARE_ATTRIBUTE_TYPE();
-  DECLARE_FACTORY_DEFAULT();
-  cost();
+  cost() = default;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @returns the estimation rule 
@@ -96,8 +95,8 @@ class IRESEARCH_API cost : public attribute {
   IRESEARCH_API_PRIVATE_VARIABLES_BEGIN
   /* evaluation function */
   cost_f func_;
-  cost_t value_;
-  bool init_;
+  cost_t value_ { 0 };
+  bool init_{ false };
   IRESEARCH_API_PRIVATE_VARIABLES_END
 }; // cost
 

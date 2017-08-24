@@ -24,15 +24,15 @@ NS_ROOT
 ////////////////////////////////////////////////////////////////////////////////
 class IRESEARCH_API score_doc_iterator_base: public score_doc_iterator {
  public:
-  virtual const attribute_store& attributes() const NOEXCEPT override final {
+  virtual const attribute_view& attributes() const NOEXCEPT override final {
     return attrs_;
   }
 
  protected:
   score_doc_iterator_base(const order::prepared& ord);
 
-  attribute_store attrs_;
-  iresearch::score* scr_;
+  attribute_view attrs_;
+  irs::score scr_;
   const order::prepared* ord_;
 }; // score_doc_iterator_base
 
@@ -51,7 +51,7 @@ class basic_score_iterator final : public score_doc_iterator_base {
      cost::cost_t estimation) NOEXCEPT;
 
   virtual void score() override {
-    scorers_.score(*ord_, scr_->leak());
+    scorers_.score(*ord_, scr_.leak());
   }
 
   virtual doc_id_t value() const override {
@@ -69,8 +69,9 @@ class basic_score_iterator final : public score_doc_iterator_base {
  private:
   order::prepared::scorers scorers_;
   doc_iterator::ptr it_;
+  cost est_;
   const attribute_store* stats_;
-}; // basic_score_iterator    
+}; // basic_score_iterator
 
 NS_END // ROOT
 

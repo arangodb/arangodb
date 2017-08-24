@@ -82,17 +82,17 @@ struct DocIdScorer: public irs::sort {
       irs::sub_reader const& segment,
       irs::term_reader const& field,
       irs::attribute_store const& query_attrs,
-      irs::attribute_store const& doc_attrs
+      irs::attribute_view const& doc_attrs
     ) const override {
       return irs::sort::scorer::make<Scorer>(doc_attrs.get<irs::document>());
     }
   };
 
   struct Scorer: public irs::sort::scorer {
-    irs::attribute_store::ref<irs::document> const& _doc;
-    Scorer(irs::attribute_store::ref<irs::document> const& doc): _doc(doc) { }
+    irs::attribute_view::ref<irs::document> const& _doc;
+    Scorer(irs::attribute_view::ref<irs::document> const& doc): _doc(doc) { }
     virtual void score(irs::byte_type* score_buf) override {
-      reinterpret_cast<uint64_t&>(*score_buf) = *(_doc.get()->value);
+      reinterpret_cast<uint64_t&>(*score_buf) = _doc.get()->value;
     }
   };
 };

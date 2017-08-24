@@ -26,38 +26,46 @@ number of components produced by third parties
 
 ## Third Party Software used by EMC IResearch search engine
 
-1. Title: OpenFST 
-   - Copyright: Cyril Allauzen, Michael Riley 
-   - License: [Apache 2.0](http://www.apache.org/licenses/LICENSE-2.0)
-   - How it's used: Part of the source code tree
-2. Title: Murmurhash
-   - Copyright: Austin Appleby
-   - License: [MIT license](https://opensource.org/licenses/MIT)
-   - How it's used: Part of the source code tree
-3. Title: Boost C++ Libraries
-   - Copyright: Beman Dawes, David Abrahams, 1998-2005, Rene Rivera 2004-2005
-   - License: [Boost Software License, Version 1.0](http://www.boost.org/LICENSE_1_0.txt)
-   - How it's used: Statically or dynamically linked into the library
-4. Title: Lz4 
-   - Copyright: Yann Collet
-   - License: [BSD 2-clauses](https://opensource.org/licenses/bsd-license.php)
-   - How it's used: Statically or dynamically linked into the library
-5. Title: snowball 
-   - Copyright: Dr Martin Porter, Richard Boulton
-   - License: [BSD 3-clauses](http://snowball.tartarus.org/license.html)
-   - How it's used: Statically or dynamically linked into the library
-6. Title: ICU 
-   - Copyright: UNICODE, INC. 
-   - License: [UNICODE INC. LICENSE AGREEMENT](   http://www.unicode.org/copyright.html#License)
-   - How it's used: Dynamically linked into the library
-7. Title: Bison
-   - Copyright: Free Software Foundation, Inc.
-   - License: [GPL with exception](http://git.savannah.gnu.org/cgit/bison.git/tree/src/parse-gram.c)
-   - How it's used: Parser generator
-8. Title: Google Test 
-   - Copyright: Google Inc.
-   - License: [BSD 3-clause](https://github.com/google/googletest/blob/master/googletest/LICENSE)
-   - How it's used: Unit testing tool
+1.  Title: OpenFST 
+    - Copyright: Cyril Allauzen, Michael Riley 
+    - License: [Apache 2.0](http://www.apache.org/licenses/LICENSE-2.0)
+    - How it's used: Part of the source code tree
+2.  Title: Murmurhash
+    - Copyright: Austin Appleby
+    - License: [MIT license](https://opensource.org/licenses/MIT)
+    - How it's used: Part of the source code tree
+3.  Title: Boost C++ Libraries
+    - Copyright: Beman Dawes, David Abrahams, 1998-2005, Rene Rivera 2004-2005
+    - License: [Boost Software License, Version 1.0](http://www.boost.org/LICENSE_1_0.txt)
+    - How it's used: Statically or dynamically linked into the library
+4.  Title: Lz4 
+    - Copyright: Yann Collet
+    - License: [BSD 2-clauses](https://opensource.org/licenses/bsd-license.php)
+    - How it's used: Statically or dynamically linked into the library
+5.  Title: snowball 
+    - Copyright: Dr Martin Porter, Richard Boulton
+    - License: [BSD 3-clauses](http://snowball.tartarus.org/license.html)
+    - How it's used: Statically or dynamically linked into the library
+6.  Title: ICU 
+    - Copyright: UNICODE, INC. 
+    - License: [UNICODE INC. LICENSE AGREEMENT](   http://www.unicode.org/copyright.html#License)
+    - How it's used: Dynamically linked into the library
+7.  Title: Bison
+    - Copyright: Free Software Foundation, Inc.
+    - License: [GPL with exception](http://git.savannah.gnu.org/cgit/bison.git/tree/src/parse-gram.c)
+    - How it's used: Parser generator
+8.  Title: Google Test
+    - Copyright: Google Inc.
+    - License: [BSD 3-clause](https://github.com/google/googletest/blob/master/googletest/LICENSE)
+    - How it's used: Unit testing tool
+9.  Title: RapidJSON
+    - Copyright: THL A29 Limited, a Tencent company, and Milo Yip
+    - License: [MIT license](https://opensource.org/licenses/MIT)
+    - How it's used: JSON parser
+10. Title: cmdline
+    - Copyright: Hideyuki Tanaka
+    - License: [BSD 3-clause](https://github.com/tanakh/cmdline/blob/master/LICENSE)
+    - How it's used: command line parser
 
 ## Third Party Open Source Software licenses
 
@@ -658,6 +666,59 @@ distribution.
     * Neither the name of Google Inc. nor the names of its
 contributors may be used to endorse or promote products derived from
 this software without specific prior written permission.
+
+THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+"AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
+A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
+OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
+SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
+LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
+DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
+THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+(INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+### RapidJSON
+
+Permission is hereby granted, free of charge, to any person obtaining
+a copy of this software and associated documentation files
+(the "Software"), to deal in the Software without restriction,
+including without limitation the rights to use, copy, modify, merge,
+publish, distribute, sublicense, and/or sell copies of the Software,
+and to permit persons to whom the Software is furnished to do so, 
+subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included
+in all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
+IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
+CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
+TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
+SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+### cmdline
+Copyright (c) 2009, Hideyuki Tanaka
+
+All rights reserved.
+
+Redistribution and use in source and binary forms, with or without
+modification, are permitted provided that the following conditions are met:
+
+    * Redistributions of source code must retain the above copyright
+      notice, this list of conditions and the following disclaimer.
+
+    * Redistributions in binary form must reproduce the above
+      copyright notice, this list of conditions and the following
+      disclaimer in the documentation and/or other materials provided
+      with the distribution.
+
+    * Neither the name of Hideyuki Tanaka nor the names of other
+      contributors may be used to endorse or promote products derived
+      from this software without specific prior written permission.
 
 THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
 "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT

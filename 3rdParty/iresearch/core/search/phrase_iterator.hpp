@@ -45,8 +45,8 @@ class phrase_iterator final : public Conjunction {
     assert(!pos_.empty());
 
     // add phrase frequency
-    phrase_freq_ = conjunction_t::attrs_.template emplace<frequency>().get();
-  }  
+    conjunction_t::attrs_.template emplace(phrase_freq_);
+  }
 
   virtual void score_impl(byte_type* lhs) override {
     conjunction_t::score_impl(lhs);
@@ -55,21 +55,20 @@ class phrase_iterator final : public Conjunction {
     // assumptions about the the of the boost. Perhaps we should introduce
     // operation with fixed type or cast operation for scorer.
     // Refactor this piece of code when score API will be defined
-    const boost::boost_t phrase_boost = phrase_boost_*phrase_freq_->value;
+    const boost::boost_t phrase_boost = phrase_boost_*phrase_freq_.value;
     conjunction_t::ord_->add(lhs, reinterpret_cast<const byte_type*>(&phrase_boost));
   }
 
   virtual bool next() override {
     bool next = false;
-    auto& freq = phrase_freq_->value;
-    while((next = conjunction_t::next()) && !(freq = phrase_freq())) {}
+    while((next = conjunction_t::next()) && !(phrase_freq_.value = phrase_freq())) {}
     return next;
   }
 
   virtual doc_id_t seek(doc_id_t target) override {
     const auto doc = conjunction_t::seek(target);
 
-    if (type_limits<type_t::doc_id_t>::eof(doc) || (phrase_freq_->value = phrase_freq())) {
+    if (type_limits<type_t::doc_id_t>::eof(doc) || (phrase_freq_.value = phrase_freq())) {
       return doc; 
     } 
 
@@ -111,7 +110,7 @@ class phrase_iterator final : public Conjunction {
   }
 
   positions_t pos_;
-  frequency* phrase_freq_;
+  frequency phrase_freq_;
   boost::boost_t phrase_boost_;
 }; // phrase_iterator
 

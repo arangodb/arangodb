@@ -38,9 +38,6 @@ void fd_pool_size::clear() {
 DEFINE_ATTRIBUTE_TYPE(index_file_refs);
 DEFINE_FACTORY_DEFAULT(index_file_refs);
 
-index_file_refs::index_file_refs() {
-}
-
 index_file_refs::ref_t index_file_refs::add(const std::string& key) {
   return refs_.add(std::string(key));
 }

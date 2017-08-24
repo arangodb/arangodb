@@ -23,7 +23,7 @@ NS_ROOT
 /// @brief the size of file descriptor pools
 ///        where applicable, e.g. fs_directory
 //////////////////////////////////////////////////////////////////////////////
-struct IRESEARCH_API fd_pool_size: public attribute {
+struct IRESEARCH_API fd_pool_size: public stored_attribute {
   DECLARE_ATTRIBUTE_TYPE();
   DECLARE_FACTORY_DEFAULT();
   size_t size;
@@ -37,14 +37,14 @@ struct IRESEARCH_API fd_pool_size: public attribute {
 /// @brief represents a ref_counter for index related files
 //////////////////////////////////////////////////////////////////////////////
 
-class IRESEARCH_API index_file_refs: public attribute {
+class IRESEARCH_API index_file_refs: public stored_attribute {
  public:
   typedef attribute_store::ref<index_file_refs> attribute_t;
   typedef ref_counter<std::string> counter_t;
   typedef counter_t::ref_t ref_t;
   DECLARE_ATTRIBUTE_TYPE();
   DECLARE_FACTORY_DEFAULT();
-  index_file_refs();
+  index_file_refs() = default;
   ref_t add(const std::string& key);
   ref_t add(std::string&& key);
   void clear();

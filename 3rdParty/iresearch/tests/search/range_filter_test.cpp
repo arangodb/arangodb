@@ -28,41 +28,39 @@ class range_filter_test_case : public filter_test_case_base {
         resource("simple_sequential.json"),
         [](tests::document& doc,
            const std::string& name,
-           const tests::json::json_value& data) {
-          if (data.quoted) {
+           const tests::json_doc_generator::json_value& data) {
+          if (data.is_string()) {
             doc.insert(std::make_shared<tests::templates::string_field>(
               ir::string_ref(name),
-              ir::string_ref(data.value)
+              data.str
             ));
-          } else if ("null" == data.value) {
+          } else if (data.is_null()) {
             doc.insert(std::make_shared<tests::binary_field>());
             auto& field = (doc.indexed.end() - 1).as<tests::binary_field>();
             field.name(iresearch::string_ref(name));
             field.value(ir::null_token_stream::value_null());
-          } else if ("true" == data.value) {
+          } else if (data.is_bool() && data.b) {
             doc.insert(std::make_shared<tests::binary_field>());
             auto& field = (doc.indexed.end() - 1).as<tests::binary_field>();
             field.name(iresearch::string_ref(name));
             field.value(ir::boolean_token_stream::value_true());
-          } else if ("false" == data.value) {
+          } else if (data.is_bool() && !data.b) {
             doc.insert(std::make_shared<tests::binary_field>());
             auto& field = (doc.indexed.end() - 1).as<tests::binary_field>();
             field.name(iresearch::string_ref(name));
             field.value(ir::boolean_token_stream::value_true());
-          } else {
-            char* czSuffix;
-            double dValue = strtod(data.value.c_str(), &czSuffix);
-
+          } else if (data.is_number()){
+            const double dValue = data.as_number<double_t>();
             // 'value' can be interpreted as a double
-            if (!czSuffix[0]) {
+            {
               doc.insert(std::make_shared<tests::double_field>());
               auto& field = (doc.indexed.end() - 1).as<tests::double_field>();
               field.name(iresearch::string_ref(name));
               field.value(dValue);
             }
 
-            float fValue = strtof(data.value.c_str(), &czSuffix);
-            if (!czSuffix[0]) {
+            const float fValue = data.as_number<float_t>();
+            {
               // 'value' can be interpreted as a float 
               doc.insert(std::make_shared<tests::float_field>());
               auto& field = (doc.indexed.end() - 1).as<tests::float_field>();

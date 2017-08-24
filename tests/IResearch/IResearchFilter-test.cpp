@@ -50,6 +50,7 @@
 #include "analysis/token_streams.hpp"
 #include "analysis/token_attributes.hpp"
 #include "search/term_filter.hpp"
+#include "search/all_filter.hpp"
 #include "search/prefix_filter.hpp"
 #include "search/range_filter.hpp"
 #include "search/granular_range_filter.hpp"
@@ -61,39 +62,55 @@ NS_LOCAL
 
 struct TestAttribute: public irs::attribute {
   DECLARE_ATTRIBUTE_TYPE();
-  DECLARE_FACTORY_DEFAULT();
 };
 
 DEFINE_ATTRIBUTE_TYPE(TestAttribute);
-DEFINE_FACTORY_DEFAULT(TestAttribute);
 
 struct TestTermAttribute: public irs::term_attribute {
  public:
-  DECLARE_FACTORY_DEFAULT();
-
-  virtual ~TestTermAttribute() {}
-  void clear() override { value_ = irs::bytes_ref::nil; }
-  virtual const irs::bytes_ref& value() const override { return value_; }
-
-  iresearch::bytes_ref value_;
+  void value(irs::bytes_ref const& value) {
+    value_ = value;
+  }
 };
-
-DEFINE_FACTORY_DEFAULT(TestTermAttribute);
 
 class TestAnalyzer: public irs::analysis::analyzer {
  public:
   DECLARE_ANALYZER_TYPE();
 
-  TestAnalyzer(): irs::analysis::analyzer(TestAnalyzer::type()), _term(_attrs.emplace<TestTermAttribute>()) { _attrs.emplace<TestAttribute>(); }
-  virtual irs::attribute_store const& attributes() const NOEXCEPT override { return _attrs; }
-  static ptr make(irs::string_ref const& args) { if (args.null()) throw std::exception(); if (args.empty()) return nullptr; PTR_NAMED(TestAnalyzer, ptr); return ptr; }
-  virtual bool next() override { if (_data.empty()) return false; _term->value_ = irs::bytes_ref(_data.c_str(), 1); _data = irs::bytes_ref(_data.c_str() + 1, _data.size() - 1); return true; }
-  virtual bool reset(irs::string_ref const& data) override { _data = irs::ref_cast<irs::byte_type>(data); return true; }
+  static ptr make(irs::string_ref const& args) {
+    if (args.null()) throw std::exception();
+    if (args.empty()) return nullptr;
+    PTR_NAMED(TestAnalyzer, ptr);
+    return ptr;
+  }
+
+  TestAnalyzer() : irs::analysis::analyzer(TestAnalyzer::type()) {
+    _attrs.emplace(_term);
+    _attrs.emplace(_attr);
+  }
+
+  virtual irs::attribute_view const& attributes() const NOEXCEPT override { return _attrs; }
+
+  virtual bool next() override {
+    if (_data.empty()) {
+      return false;
+    }
+
+    _term.value(irs::bytes_ref(_data.c_str(), 1));
+    _data = irs::bytes_ref(_data.c_str() + 1, _data.size() - 1);
+    return true;
+  }
+
+  virtual bool reset(irs::string_ref const& data) override {
+    _data = irs::ref_cast<irs::byte_type>(data);
+    return true;
+  }
 
  private:
-  irs::attribute_store _attrs;
+  irs::attribute_view _attrs;
   irs::bytes_ref _data;
-  irs::attribute_store::ref<TestTermAttribute>& _term;
+  TestTermAttribute _term;
+  TestAttribute _attr;
 };
 
 DEFINE_ANALYZER_TYPE_NAMED(TestAnalyzer, "TestAnalyzer");

@@ -100,7 +100,7 @@ void assertOrderFail(
   }
 
   irs::order actual;
-  std::vector<irs::attribute::ptr> actualAttrs;
+  std::vector<irs::stored_attribute::ptr> actualAttrs;
   arangodb::iresearch::OrderFactory::OrderContext ctx { actualAttrs, actual };
   arangodb::aql::SortCondition order(nullptr, sorts, attrs, variableNodes);
   arangodb::iresearch::IResearchViewMeta meta;

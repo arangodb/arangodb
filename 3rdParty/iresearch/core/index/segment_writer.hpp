@@ -13,7 +13,6 @@
 #define IRESEARCH_TL_DOC_WRITER_H
 
 #include "field_data.hpp"
-#include "doc_header.hpp"
 #include "analysis/token_stream.hpp"
 #include "formats/formats.hpp"
 #include "utils/directory_utils.hpp"

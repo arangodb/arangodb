@@ -37,8 +37,6 @@ NS_ROOT
 ///          via DECLARE_ATTRIBUTE_TYPE()/DEFINE_ATTRIBUTE_TYPE(...)
 //////////////////////////////////////////////////////////////////////////////
 struct IRESEARCH_API attribute {
-  DECLARE_PTR(attribute); // FIXME TODO remove
-
   //////////////////////////////////////////////////////////////////////////////
   /// @class type_id 
   //////////////////////////////////////////////////////////////////////////////
@@ -52,8 +50,6 @@ struct IRESEARCH_API attribute {
    private:
     string_ref name_;
   }; // type_id
-
-  virtual ~attribute(); // FIXME TODO remove
 };
 
 //////////////////////////////////////////////////////////////////////////////
@@ -66,9 +62,9 @@ struct IRESEARCH_API attribute {
 ///        static ptr make(Args&&... args)
 ///          via DECLARE_FACTORY()/DECLARE_FACTORY_DEFAULT()
 //////////////////////////////////////////////////////////////////////////////
-struct IRESEARCH_API stored_attribute {
+struct IRESEARCH_API stored_attribute : attribute {
   DECLARE_PTR(stored_attribute);
-  virtual ~stored_attribute();
+  virtual ~stored_attribute() = default;
 };
 
 // -----------------------------------------------------------------------------
@@ -102,7 +98,7 @@ class IRESEARCH_API attribute_registrar {
 /// @class basic_attribute
 /// @brief represents simple attribute holds a single value 
 //////////////////////////////////////////////////////////////////////////////
-template< typename T > 
+template<typename T>
 struct IRESEARCH_API_TEMPLATE basic_attribute : attribute {
   typedef T value_t;
 
@@ -113,7 +109,30 @@ struct IRESEARCH_API_TEMPLATE basic_attribute : attribute {
   bool operator==(const basic_attribute& rhs) const {
     return value == rhs.value;
   }
-  
+
+  bool operator==(const T& rhs) const {
+    return value == rhs;
+  }
+
+  T value;
+};
+
+//////////////////////////////////////////////////////////////////////////////
+/// @class basic_stored_attribute
+/// @brief represents simple attribute holds a single value
+//////////////////////////////////////////////////////////////////////////////
+template<typename T>
+struct IRESEARCH_API_TEMPLATE basic_stored_attribute : stored_attribute {
+  typedef T value_t;
+
+  explicit basic_stored_attribute(const T& value = T())
+    : value(value) {
+  }
+
+  bool operator==(const basic_stored_attribute& rhs) const {
+    return value == rhs.value;
+  }
+
   bool operator==(const T& rhs) const {
     return value == rhs;
   }
@@ -134,10 +153,10 @@ class IRESEARCH_API flags {
   flags();
   flags(const flags&) = default;
   flags(flags&& rhs) NOEXCEPT;
-  flags( std::initializer_list< const attribute::type_id* > flags );
-  flags& operator=( std::initializer_list< const attribute::type_id* > flags );
+  flags(std::initializer_list<const attribute::type_id*> flags);
+  flags& operator=(std::initializer_list<const attribute::type_id*> flags);
   flags& operator=(flags&& rhs) NOEXCEPT;
-  flags& operator=( const flags&) = default;
+  flags& operator=(const flags&) = default;
 
   type_map::const_iterator begin() const { return map_.begin(); }
   type_map::const_iterator end() const { return map_.end(); }
@@ -151,8 +170,8 @@ class IRESEARCH_API flags {
     return add(attribute_t::type());
   }
 
-  flags& add( const attribute::type_id& type ) {
-    map_.insert( &type );
+  flags& add(const attribute::type_id& type) {
+    map_.insert(&type);
     return *this;
   }
   
@@ -165,8 +184,8 @@ class IRESEARCH_API flags {
     return remove(attribute_t::type());
   }
 
-  flags& remove( const attribute::type_id& type ) {
-    map_.erase( &type );
+  flags& remove(const attribute::type_id& type) {
+    map_.erase(&type);
     return *this;
   }
   
@@ -188,15 +207,15 @@ class IRESEARCH_API flags {
     return map_.end() != map_.find( &type );
   }
 
-  bool operator==( const flags& rhs ) const {
+  bool operator==(const flags& rhs) const {
     return map_ == rhs.map_;
   }
 
-  bool operator!=( const flags& rhs ) const {
-    return !( *this == rhs );
+  bool operator!=(const flags& rhs) const {
+    return !(*this == rhs);
   }
 
-  flags& operator|=( const flags& rhs ) {
+  flags& operator|=(const flags& rhs) {
     std::for_each(
       rhs.map_.begin(), rhs.map_.end() ,
       [this] ( const attribute::type_id* type ) {
@@ -205,7 +224,7 @@ class IRESEARCH_API flags {
     return *this;
   }
 
-  flags operator&( const flags& rhs ) const {
+  flags operator&(const flags& rhs) const {
     const type_map* lhs_map = &map_;
     const type_map* rhs_map = &rhs.map_;
     if (lhs_map->size() > rhs_map->size()) {
@@ -445,18 +464,14 @@ class IRESEARCH_API_TEMPLATE attribute_map {
 //////////////////////////////////////////////////////////////////////////////
 /// @brief storage of shared_ptr to attributes
 //////////////////////////////////////////////////////////////////////////////
-// TODO FIXME use stored_attribute::ptr once attribute_view used in merge_writer
-//class IRESEARCH_API attribute_store: public attribute_map<stored_attribute::ptr> {
-class IRESEARCH_API attribute_store: public attribute_map<std::shared_ptr<attribute>> {
+class IRESEARCH_API attribute_store: public attribute_map<stored_attribute::ptr> {
  public:
   attribute_store(size_t reserve = 0);
 
   template<typename T, typename... Args>
   ref<T>& emplace(Args&&... args) {
     REGISTER_TIMER_DETAILED();
-    // TODO FIXME use stored_attribute once basic_attribute is not added to attribute_store
-    //typedef typename std::enable_if<std::is_base_of<stored_attribute, T>::value, T>::type type;
-    typedef typename std::enable_if<std::is_base_of<attribute, T>::value, T>::type type;
+    typedef typename std::enable_if<std::is_base_of<stored_attribute, T>::value, T>::type type;
     bool inserted;
     auto& attr = attribute_map::emplace(inserted, type::type());
 

@@ -15,20 +15,17 @@
 #include "analysis/token_streams.hpp"
 #include "store/store_utils.hpp"
 #include "unicode/utf8.h"
+#include "utils/file_utils.hpp"
+
+#include <boost/filesystem/fstream.hpp>
 
 #include <sstream>
 #include <iomanip>
 #include <numeric>
 
-#include <boost/property_tree/ptree.hpp>
-#include <boost/property_tree/xml_parser.hpp>
-#include <boost/property_tree/json_parser.hpp>
-
-using boost::property_tree::read_json;
-using boost::property_tree::read_xml;
-using boost::property_tree::write_xml;
-using boost::property_tree::xml_writer_make_settings;
-using boost::property_tree::ptree;
+#include <rapidjson/rapidjson.h>
+#include <rapidjson/reader.h>
+#include <rapidjson/istreamwrapper.h>
 
 namespace utf8 {
 namespace unchecked {
@@ -167,6 +164,7 @@ bool double_field::write(ir::data_output& out) const {
   return true;
 }
 
+
 ir::token_stream& double_field::get_tokens() const {
   stream_.reset(value_);
   return stream_;
@@ -304,96 +302,141 @@ void delim_doc_generator::reset() {
 }
 
 //////////////////////////////////////////////////////////////////////////////
-/// @class json_doc_visitor
-/// @brief visitor for JSON document-derived column value types
+/// @class parse_json_handler
+/// @brief rapdijson campatible visitor for
+///        JSON document-derived column value types
 //////////////////////////////////////////////////////////////////////////////
-class json_doc_visitor: iresearch::util::noncopyable {
+class parse_json_handler : irs::util::noncopyable {
  public:
-  typedef std::function<void(
-    tests::document&,
-    const std::string&,
-    const tests::json::json_value&)
-  > factory_f;
-
   typedef std::vector<tests::document> documents_t;
 
-  json_doc_visitor(
-      const factory_f& factory, 
-      documents_t& docs) 
-    : factory_(factory),
-      docs_(docs) {
+  parse_json_handler(const json_doc_generator::factory_f& factory, documents_t& docs)
+    : factory_(factory), docs_(docs) {
   }
 
-  /* called at the beginning of a document */
-  void begin_doc() {}
+  bool Null() {
+    val_.vt = json_doc_generator::ValueType::NIL;
+    AddField();
+    return true;
+  }
 
-  /* called at the beginning of an array */
-  void begin_array(const json::parser_context& ctx) {}
+  bool Bool(bool b) {
+    val_.vt = json_doc_generator::ValueType::BOOL;
+    val_.b = b;
+    AddField();
+    return true;
+  }
 
-  /* called at the beginning of an object */
-  void begin_object(const json::parser_context& ctx) {
-    if (1 == ctx.level) {
+  bool Int(int i) {
+    val_.vt = json_doc_generator::ValueType::INT;
+    val_.i = i;
+    AddField();
+    return true;
+  }
+
+  bool Uint(unsigned u) {
+    val_.vt = json_doc_generator::ValueType::UINT;
+    val_.ui = u;
+    AddField();
+    return true;
+  }
+
+  bool Int64(int64_t i) {
+    val_.vt = json_doc_generator::ValueType::INT64;
+    val_.i64 = i;
+    AddField();
+    return true;
+  }
+
+  bool Uint64(uint64_t u) {
+    val_.vt = json_doc_generator::ValueType::UINT64;
+    val_.ui64 = u;
+    AddField();
+    return true;
+  }
+
+  bool Double(double d) {
+    val_.vt = json_doc_generator::ValueType::DBL;
+    val_.dbl = d;
+    AddField();
+    return true;
+  }
+
+  bool RawNumber(const char* str, rapidjson::SizeType length, bool /*copy*/) {
+    val_.vt = json_doc_generator::ValueType::RAWNUM;
+    val_.str = irs::string_ref(str, length);
+    AddField();
+    return true;
+  }
+
+  bool String(const char* str, rapidjson::SizeType length, bool /*copy*/) {
+    val_.vt = json_doc_generator::ValueType::STRING;
+    val_.str = irs::string_ref(str, length);
+    AddField();
+    return true;
+  }
+
+  bool StartObject() {
+    if (1 == level_) {
       docs_.emplace_back();
     }
+
+    ++level_;
+    return true;
   }
 
-  /* called at value entry */
-  void node(
-      const json::parser_context& ctx, 
-      const tests::json::json_tree::value_type& value) {
-    const std::string& name = value.first.empty() 
-      ? ctx.path.back() 
-      : value.first;
-    const auto& data = value.second.data();
-    factory_(docs_.back(), name, data);
+  bool StartArray() {
+    ++level_;
+    return true;
   }
 
-  /* called at the end of an array  */
-  void end_array(const json::parser_context& ctx) {}
+  bool Key(const char* str, rapidjson::SizeType length, bool) {
+    if (level_-1 > path_.size()) {
+      path_.emplace_back(str, length);
+    } else {
+      path_.back().assign(str, length);
+    }
+    return true;
+  }
 
-  /* called at the end of an object */
-  void end_object(const json::parser_context& ctx) {}
+  bool EndObject(rapidjson::SizeType memberCount) {
+    --level_;
 
-  /* called at the end of document */
-  void end_doc() { }
+    if (!path_.empty()) {
+      path_.pop_back();
+    }
+    return true;
+  }
+
+  bool EndArray(rapidjson::SizeType elementCount) {
+    return EndObject(elementCount);
+  }
 
  private:
+  void AddField() {
+    factory_(docs_.back(), path_.back(), val_);
+  }
+
+  const json_doc_generator::factory_f& factory_;
   documents_t& docs_;
-  const factory_f& factory_;
-}; // json_doc_visitor
+  std::vector<std::string> path_;
+  size_t level_{};
+  json_doc_generator::json_value val_;
+}; // parse_json_handler
 
 json_doc_generator::json_doc_generator(
     const fs::path& file, 
     const json_doc_generator::factory_f& factory) {
-  tests::json::json_tree pt;
-  json_doc_visitor visitor(factory, docs_);
+  boost::filesystem::ifstream input(file, std::ios::in | std::ios::binary);
+  assert(input);
 
-  #if BOOST_VERSION < 105900
-    read_json(file.string(), pt);
-  #else
-  {
-    typedef tests::json::json_tree::data_type::value_type char_type;
-    typedef boost::propertphrase_sequentialy_tree::json_parser::detail::encoding<char_type> encoding_type;
-    typedef std::istreambuf_iterator<char_type> iterator;
-    typedef tests::json::json_comment_masking_iterator<iterator> comment_masking_iterator;
+  rapidjson::IStreamWrapper stream(input);
+  parse_json_handler handler(factory, docs_);
+  rapidjson::Reader reader;
 
-    tests::json::json_callbacks callbacks;
-    encoding_type encoding;
-    auto filename = file.string();
-    std::ifstream stream(filename);
+  const auto res = reader.Parse(stream, handler);
+  assert(!res.IsError());
 
-    detail::read_json_internal(
-      comment_masking_iterator(iterator(stream)),
-      iterator(),
-      encoding,
-      callbacks,
-      filename
-    );
-    pt.swap(callbacks.output());
-  }
-  #endif
-
-  json::parse_json(pt, visitor);
   next_ = docs_.begin();
 }
 

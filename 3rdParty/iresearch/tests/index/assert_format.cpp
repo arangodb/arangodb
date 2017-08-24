@@ -18,7 +18,6 @@
 #include "index/field_meta.hpp"
 #include "index/directory_reader.hpp"
 
-#include "search/collector.hpp"
 #include "search/term_filter.hpp"
 #include "search/boolean_filter.hpp"
 #include "search/tfidf.hpp"
@@ -58,7 +57,7 @@ position::position(
 
 posting::posting(iresearch::doc_id_t id): id_(id) {}
 
-void posting::add(uint32_t pos, uint32_t offs_start, const iresearch::attributes& attrs) {
+void posting::add(uint32_t pos, uint32_t offs_start, const irs::attribute_view& attrs) {
   auto& offs = attrs.get<iresearch::offset>();
   auto& pay = attrs.get<iresearch::payload>();
 
@@ -158,7 +157,7 @@ void index_segment::add(const ifield& f) {
 
   auto& stream = f.get_tokens();
 
-  const iresearch::attributes& attrs = stream.attributes();
+  auto& attrs = stream.attributes();
   auto& term = attrs.get<iresearch::term_attribute>();
   auto& inc = attrs.get<iresearch::increment>();
   auto& offs = attrs.get<iresearch::offset>();
@@ -356,23 +355,23 @@ class doc_iterator : public iresearch::doc_iterator {
                       const tests::term& data );
 
   iresearch::doc_id_t value() const override {
-    return doc_->value;
+    return doc_.value;
   }
 
-  const iresearch::attributes& attributes() const NOEXCEPT override {
+  const irs::attribute_view& attributes() const NOEXCEPT override {
     return attrs_;
   }
 
   virtual bool next() override {
-    if ( next_ == data_.postings.end() ) {
-      doc_->clear();
+    if (next_ == data_.postings.end()) {
+      doc_.value = irs::type_limits<irs::type_t::doc_id_t>::invalid();
       return false;
     }
 
     prev_ = next_, ++next_;
-    doc_->value = prev_->id();
-    if ( freq_ ) freq_->value = prev_->positions().size();
-    if ( pos_ ) pos_->clear();
+    doc_.value = prev_->id();
+    freq_.value = prev_->positions().size();
+    if (pos_) pos_.clear();
     return true;
   }
 
@@ -387,21 +386,21 @@ class doc_iterator : public iresearch::doc_iterator {
 
     prev_ = it;
     next_ = ++it;
-    doc_->value = prev_->id();
-    if ( pos_ ) {
-      pos_->clear();
+    doc_.value = prev_->id();
+    if (pos_) {
+      pos_.clear();
     }
-    return doc_->value;
+    return doc_.value;
   }
 
  private:
   friend class pos_iterator;
 
-  iresearch::attributes attrs_;
-  iresearch::document* doc_;
-  iresearch::frequency* freq_;
-  const iresearch::flags& features_;
-  iresearch::position::impl* pos_;
+  irs::attribute_view attrs_;
+  irs::document doc_;
+  irs::frequency freq_;
+  irs::position pos_;
+  const irs::flags& features_;
   const tests::term& data_;
   std::set<posting>::const_iterator prev_;
   std::set<posting>::const_iterator next_;
@@ -411,23 +410,21 @@ class pos_iterator : public iresearch::position::impl {
  public:
   pos_iterator(const doc_iterator& owner):
     value_(iresearch::type_limits<iresearch::type_t::pos_t>::invalid()),
-    offs_(nullptr),
-    pay_(nullptr),
-    owner_( owner ) {
-
+    owner_(owner) {
     if (owner_.features_.check<iresearch::offset>()) {
-      offs_ = attributes().add<iresearch::offset>();
+      attrs_.emplace(offs_);
     }
+
     if (owner_.features_.check<iresearch::payload>()) {
-      pay_ = attributes().add<iresearch::payload>();
+      attrs_.emplace(pay_);
     }
   }
 
   void clear() override {
     next_ = owner_.prev_->positions().begin();
     value_ = iresearch::type_limits<iresearch::type_t::pos_t>::invalid();
-    if ( offs_ ) offs_->clear();
-    if ( pay_ ) pay_->clear();
+    offs_.clear();
+    pay_.clear();
   }
 
   bool next() override {
@@ -437,14 +434,10 @@ class pos_iterator : public iresearch::position::impl {
 
     value_ = next_->pos;
 
-    if ( offs_ ) {
-      offs_->start = next_->start;
-      offs_->end = next_->end;
-    }
+    offs_.start = next_->start;
+    offs_.end = next_->end;
 
-    if ( pay_ ) {
-      pay_->value = next_->payload;
-    }
+    pay_.value = next_->payload;
 
     ++next_;
     return true;
@@ -453,29 +446,29 @@ class pos_iterator : public iresearch::position::impl {
   uint32_t value() const override {
     return value_;
   }
-  
+
  private:
   std::set<position>::const_iterator next_;
   uint32_t value_;
-  iresearch::offset* offs_;
-  iresearch::payload* pay_;
+  irs::offset offs_;
+  irs::payload pay_;
   const doc_iterator& owner_;
 };
 
 doc_iterator::doc_iterator(const iresearch::flags& features, const tests::term& data)
-  : freq_( nullptr ),
-    pos_( nullptr ),
-    features_( features ),
+  : features_( features ),
     data_( data ) {
   next_ = data_.postings.begin();
 
-  doc_ = attrs_.add <iresearch::document>();
-  if ( features.check<iresearch::frequency>() ) {
-    freq_ = attrs_.add<iresearch::frequency>();
+  attrs_.emplace(doc_);
+
+  if (features.check<iresearch::frequency>()) {
+    attrs_.emplace(freq_);
   }
 
-  if ( features.check< iresearch::position >() ) {
-    attrs_.add<iresearch::position>()->prepare(pos_ = new detail::pos_iterator(*this));
+  if (features.check< iresearch::position >()) {
+    pos_.reset(irs::memory::make_unique<detail::pos_iterator>(*this));
+    attrs_.emplace(pos_);
   }
 }
 
@@ -486,7 +479,7 @@ class term_iterator : public iresearch::seek_term_iterator {
     next_ = data_.terms.begin();
   }
 
-  const iresearch::attributes& attributes() const NOEXCEPT override {
+  const irs::attribute_view& attributes() const NOEXCEPT override {
     return attrs_;
   }
 
@@ -548,17 +541,17 @@ class term_iterator : public iresearch::seek_term_iterator {
   }
 
   virtual bool seek(
-      const iresearch::bytes_ref& term,
-      const iresearch::attribute& cookie) {
+      const irs::bytes_ref& term,
+      const irs::seek_term_iterator::seek_cookie& cookie) {
     return false;
   }
 
-  virtual irs::seek_term_iterator::cookie_ptr cookie() const {
+  virtual irs::seek_term_iterator::seek_cookie::ptr cookie() const {
     return nullptr;
   }
 
  private:
-  iresearch::attributes attrs_;
+  irs::attribute_view attrs_;
   const tests::field& data_;
   std::set< tests::term >::const_iterator prev_;
   std::set< tests::term >::const_iterator next_;
@@ -591,8 +584,8 @@ const iresearch::field_meta& term_reader::meta() const {
   return data_;
 }
 
-const iresearch::attributes& term_reader::attributes() const NOEXCEPT {
-  return iresearch::attributes::empty_instance();
+const irs::attribute_view& term_reader::attributes() const NOEXCEPT {
+  return irs::attribute_view::empty_instance();
 }
 
 NS_END
@@ -742,12 +735,12 @@ void assert_term(
       if (expected_pos) {
         ASSERT_FALSE(!actual_pos);
 
-        auto& expected_offs = expected_pos->get<iresearch::offset>();
-        auto& actual_offs = actual_pos->get<iresearch::offset>();
+        auto& expected_offs = expected_pos->attributes().get<iresearch::offset>();
+        auto& actual_offs = actual_pos->attributes().get<iresearch::offset>();
         if (expected_offs) ASSERT_FALSE(!actual_offs);
 
-        auto& expected_pay = expected_pos->get<iresearch::payload>();
-        auto& actual_pay = actual_pos->get<iresearch::payload>();
+        auto& expected_pay = expected_pos->attributes().get<iresearch::payload>();
+        auto& actual_pay = actual_pos->attributes().get<iresearch::payload>();
         if (expected_pay) ASSERT_FALSE(!actual_pay);
 
         for (; expected_pos->next();) {
@@ -831,7 +824,7 @@ void assert_terms_seek(
     }
 
     // seek without state, iterate forward
-    irs::seek_term_iterator::cookie_ptr cookie; // cookie
+    irs::seek_term_iterator::seek_cookie::ptr cookie; // cookie
     {
       auto actual_term = actual_term_reader.iterator();
       ASSERT_TRUE(actual_term->seek(expected_term->value()));

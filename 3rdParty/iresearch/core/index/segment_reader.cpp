@@ -122,11 +122,16 @@ bool read_columns_meta(
     }
   }
 
-  assert(std::is_sorted(
+  if (!std::is_sorted(
     columns.begin(), columns.end(),
     [] (const iresearch::column_meta& lhs, const iresearch::column_meta& rhs) {
-      return lhs.name < rhs.name;
-  }));
+        return lhs.name < rhs.name; })) {
+    columns.clear();
+    id_to_column.clear();
+    name_to_column.clear();
+    // TODO: log
+    return false;
+  }
 
   return true;
 }
@@ -304,13 +309,23 @@ const column_meta* segment_reader_impl::column(
 }
 
 column_iterator::ptr segment_reader_impl::columns() const {
-  const auto* begin = columns_.data() - 1;
+  struct less {
+    bool operator()(
+        const irs::column_meta& lhs,
+        const string_ref& rhs) const NOEXCEPT {
+      return lhs.name < rhs;
+    }
+  }; // less
 
-  auto it = new iterator_adapter<decltype(begin), column_iterator>(
-    begin, begin + columns_.size()
+  typedef iterator_adaptor<
+    string_ref, column_meta, column_iterator, less
+  > iterator_t;
+
+  auto it = memory::make_unique<iterator_t>(
+    columns_.data(), columns_.data() + columns_.size()
   );
 
-  return memory::make_managed<column_iterator>(it);
+  return memory::make_managed<column_iterator>(std::move(it));
 }
 
 sub_reader::docs_iterator_t::ptr segment_reader_impl::docs_iterator() const {

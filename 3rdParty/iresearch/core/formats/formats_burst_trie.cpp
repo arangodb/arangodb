@@ -37,6 +37,7 @@
   // NOOP
 #elif defined (__GNUC__)
   #pragma GCC diagnostic ignored "-Wunused-local-typedefs"
+  #pragma GCC diagnostic ignored "-Wmisleading-indentation"
 #endif
 
 #include <fst/equivalent.h>
@@ -410,7 +411,7 @@ class term_iterator : public iresearch::seek_term_iterator {
 
   virtual void read() override;
   virtual bool next() override;
-  const irs::attribute_store& attributes() const NOEXCEPT override {
+  const irs::attribute_view& attributes() const NOEXCEPT override {
     return attrs_;
   }
   const bytes_ref& value() const override { return term_; }
@@ -426,10 +427,8 @@ class term_iterator : public iresearch::seek_term_iterator {
 #endif // IRESEARCH_DEBUG
 
     // copy state
-    *state_ = state.meta;
-    if (freq_) {
-      freq_->value = state.term_freq;
-    }
+    state_ = state.meta;
+    freq_.value = state.term_freq;
 
     // copy term
     term_.reset();
@@ -443,9 +442,7 @@ class term_iterator : public iresearch::seek_term_iterator {
     return true;
   }
   virtual seek_term_iterator::seek_cookie::ptr cookie() const override {
-    return detail::cookie::make(
-      *state_, freq_ ? freq_->value : 0
-    );
+    return detail::cookie::make(state_, freq_.value);
   }
   virtual doc_iterator::ptr postings( const flags& features ) const override;
   index_input& terms_input() const;
@@ -516,12 +513,12 @@ class term_iterator : public iresearch::seek_term_iterator {
 
   const term_reader* owner_;
   matcher_t matcher_;
-  irs::attribute_store attrs_;
+  irs::attribute_view attrs_;
   seek_state_t sstate_;
   block_stack_t block_stack_;
   block_iterator* cur_block_;
-  version10::term_meta* state_;
-  frequency* freq_;
+  version10::term_meta state_;
+  frequency freq_;
   mutable index_input::ptr terms_in_;
   bytes_builder term_;
   byte_weight weight_; // aggregated fst output
@@ -823,7 +820,7 @@ void block_iterator::load_data(const field_meta& meta, iresearch::postings_reade
     return;
   }
 
-  auto& state = *owner_->state_;
+  auto& state = owner_->state_;
   if (0 == cur_stats_ent_) {
     /* clear state at the beginning */
     state.clear();
@@ -832,7 +829,7 @@ void block_iterator::load_data(const field_meta& meta, iresearch::postings_reade
   }
 
   for (; cur_stats_ent_ < term_count_; ++cur_stats_ent_) {
-    pr.decode(stats_in_, meta.features, owner_->attrs_);
+    pr.decode(stats_in_, meta.features, owner_->attrs_, owner_->state_);
   }
 
   state_ = state;
@@ -864,18 +861,17 @@ term_iterator::term_iterator(const term_reader* owner)
   : owner_(owner),
     matcher_(*owner->fst_, fst::MATCH_INPUT),
     attrs_(2), // version10::term_meta + frequency
-    cur_block_(nullptr),
-    freq_(nullptr) {
+    cur_block_(nullptr) {
   assert(owner_);
-  state_ = attrs_.emplace<version10::term_meta>().get();
+  attrs_.emplace(state_);
 
   if (owner_->field_.features.check<frequency>()) {
-    freq_ = attrs_.emplace<frequency>().get();
+    attrs_.emplace(freq_);
   }
 }
 
 void term_iterator::read() {
-  /* read attributes */
+  // read attributes
   cur_block_->load_data(
     owner_->field_,
     *owner_->owner_->pr_
@@ -919,7 +915,7 @@ bool term_iterator::next() {
     } else {
       const uint64_t start = cur_block_->start();
       cur_block_ = pop_block();
-      *state_ = cur_block_->state();
+      state_ = cur_block_->state();
       if (cur_block_->dirty() || cur_block_->sub_start() != start) {
         /* here we currently on non block that was not loaded yet */
         cur_block_->scan_to_block(term_); /* to sub-block */
@@ -1182,8 +1178,8 @@ bool term_reader::prepare(
   max_term_ref_ = max_term_;
 
   if (field_.features.check<frequency>()) {
-    auto& freq = attrs_.emplace<frequency>();
-    freq->value = meta_in.read_vlong();
+    freq_.value = meta_in.read_vlong();
+    attrs_.emplace(freq_);
   }
 
   // read fst
@@ -1525,7 +1521,7 @@ void field_writer::write(
     }
   }
 
-  end_field(name, norm, features, sum_dfreq, sum_tfreq, docs->value->count());
+  end_field(name, norm, features, sum_dfreq, sum_tfreq, docs->value.count());
 }
 
 void field_writer::begin_field(const iresearch::flags& field) {
@@ -1758,13 +1754,23 @@ const irs::term_reader* field_reader::field(const string_ref& field) const {
 }
 
 irs::field_iterator::ptr field_reader::iterator() const {
-  const auto* begin = fields_.data() - 1;
+  struct less {
+    bool operator()(
+        const irs::term_reader& lhs,
+        const string_ref& rhs) const NOEXCEPT {
+      return lhs.meta().name < rhs;
+    }
+  }; // less
 
-  auto it = new iterator_adapter<decltype(begin), field_iterator>(
-    begin, begin + fields_.size()
+  typedef iterator_adaptor<
+    string_ref, detail::term_reader, irs::field_iterator, less
+  > iterator_t;
+
+  auto it = memory::make_unique<iterator_t>(
+    fields_.data(), fields_.data() + fields_.size()
   );
 
-  return memory::make_managed<irs::field_iterator, true>(it);
+  return memory::make_managed<irs::field_iterator, true>(it.release());
 }
 
 size_t field_reader::size() const {

@@ -62,6 +62,12 @@ find_library(UNWIND_SHARED_LIBRARY_CORE
   PATH_SUFFIXES ${UNWIND_ROOT_SUFFIX}
   NO_DEFAULT_PATH
 )
+find_library(UNWIND_SHARED_LIBRARY_LZMA
+  NAMES lzma
+  PATHS ${UNWIND_SEARCH_LIB_PATH} ${UNIX_DEFAULT_LIB}
+  PATH_SUFFIXES ${UNWIND_ROOT_SUFFIX}
+  NO_DEFAULT_PATH
+)
 find_library(UNWIND_SHARED_LIBRARY_PLATFORM
   NAMES unwind-x86_64
   PATHS ${UNWIND_SEARCH_LIB_PATH} ${UNIX_DEFAULT_LIB}
@@ -90,13 +96,18 @@ find_library(UNWIND_STATIC_LIBRARY_CORE
   PATH_SUFFIXES ${UNWIND_ROOT_SUFFIX}
   NO_DEFAULT_PATH
 )
+find_library(UNWIND_STATIC_LIBRARY_LZMA
+  NAMES lzma
+  PATHS ${UNWIND_SEARCH_LIB_PATH} ${UNIX_DEFAULT_LIB}
+  PATH_SUFFIXES ${UNWIND_ROOT_SUFFIX}
+  NO_DEFAULT_PATH
+)
 find_library(UNWIND_STATIC_LIBRARY_PLATFORM
   NAMES unwind-x86_64
   PATHS ${UNWIND_SEARCH_LIB_PATH} ${UNIX_DEFAULT_LIB}
   PATH_SUFFIXES ${UNWIND_ROOT_SUFFIX}
   NO_DEFAULT_PATH
 )
-
 
 # restore initial options
 restore_find_library_options()
@@ -112,6 +123,14 @@ if (Unwind_INCLUDE_DIR AND UNWIND_SHARED_LIBRARY_CORE AND UNWIND_SHARED_LIBRARY_
     "Directory containing unwind libraries"
     FORCE
   )
+
+  if(UNWIND_SHARED_LIBRARY_LZMA)
+    list(APPEND Unwind_SHARED_LIBS ${UNWIND_SHARED_LIBRARY_LZMA})
+  endif()
+
+  if(UNWIND_STATIC_LIBRARY_LZMA)
+    list(APPEND Unwind_STATIC_LIBS ${UNWIND_STATIC_LIBRARY_LZMA})
+  endif()
 
   # build a list of shared libraries (staticRT)
   foreach(ELEMENT ${Unwind_SHARED_LIBS})
@@ -155,6 +174,14 @@ message("Unwind_SHARED_LIBS: " ${Unwind_SHARED_LIBS})
 message("Unwind_STATIC_LIBS: " ${Unwind_STATIC_LIBS})
 message("Unwind_SHARED_LIB_RESOURCES: " ${Unwind_SHARED_LIB_RESOURCES})
 
+if(NOT UNWIND_SHARED_LIBRARY_LZMA)
+  message("LZMA shared library not found. Required if during linking the following errors are seen: undefined reference to `lzma_...")
+endif()
+
+if(NOT UNWIND_STATIC_LIBRARY_LZMA)
+  message("LZMA static library not found. Required if during linking the following errors are seen: undefined reference to `lzma_...")
+endif()
+
 mark_as_advanced(
   Unwind_INCLUDE_DIR
   Unwind_LIBRARY_DIR
@@ -162,6 +189,8 @@ mark_as_advanced(
   Unwind_STATIC_LIBS
   UNWIND_SHARED_LIBRARY_CORE
   UNWIND_STATIC_LIBRARY_CORE
+  UNWIND_SHARED_LIBRARY_LZMA
+  UNWIND_STATIC_LIBRARY_LZMA
   UNWIND_SHARED_LIBRARY_PLATFORM
   UNWIND_STATIC_LIBRARY_PLATFORM
 )

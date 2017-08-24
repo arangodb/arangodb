@@ -13,6 +13,7 @@
 #define IRESEARCH_ITERATOR_H
 
 #include "noncopyable.hpp"
+#include "ebo.hpp"
 
 #include <memory>
 #include <cassert>
@@ -34,31 +35,56 @@ struct IRESEARCH_API_TEMPLATE iterator {
   virtual bool next() = 0;
 };
 
-template<typename Iterator, typename Base>
-class iterator_adapter : public Base {
+template<
+  typename Key,
+  typename Value,
+  typename Base,
+  typename Less = std::less<Key>
+> class iterator_adaptor
+    : public Base,
+      private irs::compact<0, Less> {
+ private:
+  typedef irs::compact<0, Less> comparer_t;
+
  public:
-  typedef decltype(*Iterator()) value_type;
+  typedef Value value_type;
+  typedef Key key_type;
+  typedef const value_type* const_pointer;
+  typedef const value_type& const_reference;
 
-  iterator_adapter(Iterator begin, Iterator end)
-    : begin_(begin), end_(end) {
+  iterator_adaptor(
+      const_pointer begin,
+      const_pointer end,
+      const Less& less = Less())
+    : comparer_t(less),
+      begin_(begin),
+      cur_(begin),
+      end_(end) {
   }
 
-  virtual const value_type& value() const {
-    return *begin_;
+  const_reference value() const NOEXCEPT {
+    return *cur_;
   }
 
-  virtual bool next() {
+  bool seek(const key_type& key) NOEXCEPT {
+    begin_ = std::lower_bound(cur_, end_, key, comparer_t::get());
+    return next();
+  }
+
+  bool next() NOEXCEPT {
     if (begin_ == end_) {
+      cur_ = begin_; // seal iterator
       return false;
     }
 
-    ++begin_;
+    cur_ = begin_++;
     return true;
   }
 
  private:
-  Iterator begin_;
-  Iterator end_;
+  const_pointer begin_;
+  const_pointer cur_;
+  const_pointer end_;
 }; // field_iterator
 
 // ----------------------------------------------------------------------------

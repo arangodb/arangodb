@@ -22,6 +22,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "formats/formats.hpp"
+#include "search/all_filter.hpp"
 #include "search/boolean_filter.hpp"
 #include "search/scorers.hpp"
 #include "store/memory_directory.hpp"
@@ -380,7 +381,7 @@ class OrderedViewIterator: public ViewIteratorBase {
     CompoundReader&& reader,
     irs::filter const& filter,
     irs::order const& order,
-    std::vector<irs::attribute::ptr>&& orderAttrs
+    std::vector<irs::stored_attribute::ptr>&& orderAttrs
   );
   virtual bool next(TokenCallback const& callback, size_t limit) override;
   virtual void reset() override;
@@ -393,7 +394,7 @@ class OrderedViewIterator: public ViewIteratorBase {
 
   irs::filter::prepared::ptr _filter;
   irs::order::prepared _order;
-  std::vector<irs::attribute::ptr> _orderAttrs;
+  std::vector<irs::stored_attribute::ptr> _orderAttrs;
   State _state; // previous iteration state
   arangodb::iresearch::attribute::Transaction _trx; // current transaction
 
@@ -406,7 +407,7 @@ OrderedViewIterator::OrderedViewIterator(
     CompoundReader&& reader,
     irs::filter const& filter,
     irs::order const& order,
-    std::vector<irs::attribute::ptr>&& orderAttrs
+    std::vector<irs::stored_attribute::ptr>&& orderAttrs
 ): ViewIteratorBase("iresearch-ordered-iterator", view, trx, std::move(reader)),
    _order(order.prepare()),
    _orderAttrs(std::move(orderAttrs)),
@@ -1858,7 +1859,7 @@ arangodb::ViewIterator* IResearchView::iteratorForCondition(
   }
 
   irs::order order;
-  std::vector<irs::attribute::ptr> orderAttrs;
+  std::vector<irs::stored_attribute::ptr> orderAttrs;
   OrderFactory::OrderContext orderCtx{ orderAttrs, order };
   CompoundReader compoundReader(_mutex); // will aquire read-lock since members can be asynchronously updated
 

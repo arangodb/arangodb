@@ -72,8 +72,12 @@ NS_ROOT
 scorer_registrar::scorer_registrar(
     const sort::type_id& type,
     sort::ptr(*factory)(const irs::string_ref& args)
-): registered_(scorer_register::instance().set(type.name(), factory)) {
-  if (!registered_) {
+) {
+  auto entry = scorer_register::instance().set(type.name(), factory);
+
+  registered_ = entry.second;
+
+  if (!registered_ && factory != entry.first) {
     IR_FRMT_WARN(
       "type name collision detected while registering scorer, ignoring: type '%s' from %s:%d",
       type.name().c_str(),
@@ -88,3 +92,7 @@ scorer_registrar::operator bool() const NOEXCEPT {
 }
 
 NS_END
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                       END-OF-FILE
+// -----------------------------------------------------------------------------

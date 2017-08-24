@@ -35,7 +35,7 @@ NS_ROOT
 //////////////////////////////////////////////////////////////////////////////
 struct IRESEARCH_API doc_iterator
     : iterator<doc_id_t>,
-      util::const_attribute_store_provider {
+      util::const_attribute_view_provider {
   DECLARE_SPTR(doc_iterator);
   DECLARE_FACTORY(doc_iterator);
 
@@ -80,13 +80,21 @@ struct term_reader;
 struct IRESEARCH_API field_iterator : iterator<const term_reader&> {
   DECLARE_MANAGED_PTR(field_iterator);
 
+  virtual bool seek(const string_ref& name) = 0;
+
   static field_iterator::ptr empty();
 };
+
+// ----------------------------------------------------------------------------
+// --SECTION--                                                 column iterators
+// ----------------------------------------------------------------------------
 
 struct column_meta;
 
 struct IRESEARCH_API column_iterator : iterator<const column_meta&> {
   DECLARE_MANAGED_PTR(column_iterator);
+
+  virtual bool seek(const string_ref& name) = 0;
   
   static column_iterator::ptr empty();
 };
@@ -97,7 +105,7 @@ struct IRESEARCH_API column_iterator : iterator<const column_meta&> {
 
 struct IRESEARCH_API term_iterator
     : iterator<const bytes_ref&>,
-      public util::const_attribute_store_provider {
+      public util::const_attribute_view_provider {
   DECLARE_MANAGED_PTR(term_iterator);
 
   static term_iterator::ptr empty();
