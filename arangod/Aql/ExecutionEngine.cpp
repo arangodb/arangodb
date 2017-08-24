@@ -607,6 +607,9 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
       TRI_ASSERT(opts.transactionOptions.skipInaccessibleCollections);
       opts.inaccessibleShardIds.insert(shardId);
       opts.toVelocyPack(result, true);
+    } else {
+      // the toVelocyPack will open & close the "options" object
+      query->queryOptions().toVelocyPack(result, true);
     }
 #else
     // the toVelocyPack will open & close the "options" object
