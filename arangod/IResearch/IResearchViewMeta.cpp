@@ -21,7 +21,6 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "search/scorers.hpp"
 #include "utils/index_utils.hpp"
 #include "utils/locale_utils.hpp"
 
@@ -34,57 +33,6 @@
 #include "IResearchViewMeta.h"
 
 NS_LOCAL
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief functrs for initializing scorers
-////////////////////////////////////////////////////////////////////////////////
-struct ScorerMeta {
-  // @return success
-  typedef std::function<bool(irs::flags& flags)> fnFeatures_f;
-  typedef irs::iql::order_function fnScorer_t;
-  typedef fnScorer_t::contextual_function_t fnScorer_f;
-  typedef fnScorer_t::contextual_function_args_t fnScoreArgs_t;
-  bool _isDefault;
-  irs::flags _features;
-  fnScorer_t const& _scorer;
-  ScorerMeta(
-    irs::flags const& features, fnScorer_t const& scorer, bool isDefault = false
-  ) : _isDefault(isDefault), _features(features), _scorer(scorer) {}
-};
-
-std::unordered_multimap<std::string, ScorerMeta> const& allKnownScorers() {
-  static const struct AllScorers {
-    std::unordered_multimap<std::string, ScorerMeta> _scorers;
-    AllScorers() {
-//      auto visitor = [this](
-//        std::string const& name,
-//        iresearch::flags const& features,
-//        iresearch::iql::order_function const& builder,
-//        bool isDefault
-//        )->bool {
-//        _scorers.emplace(name, ScorerMeta(features, builder, isDefault));
-//        return true;
-//      };
-      static ScorerMeta::fnScorer_f FIXME_SCORER = [](
-        iresearch::order& order,
-        const std::locale&,
-        void* cookie,
-        bool ascending,
-        const ScorerMeta::fnScoreArgs_t& args
-        )->bool {
-        return false;
-      };
-
-      irs::scorers::visit([this](const irs::string_ref& name)->bool{
-        _scorers.emplace(name, ScorerMeta(irs::flags::empty_instance(), FIXME_SCORER));
-        return true;
-      });
-      //iResearchDocumentAdapter::visitScorers(visitor); FIXME TODO
-    }
-  } KNOWN_SCORERS;
-
-  return KNOWN_SCORERS._scorers;
-}
 
 bool equalConsolidationPolicies(
   arangodb::iresearch::IResearchViewMeta::CommitBaseMeta::ConsolidationPolicies const& lhs,
@@ -462,7 +410,6 @@ IResearchViewMeta::Mask::Mask(bool mask /*=false*/) noexcept
     _commitItem(mask),
     _dataPath(mask),
     _locale(mask),
-    _scorers(mask),
     _threadsMaxIdle(mask),
     _threadsMaxTotal(mask) {
 }
@@ -485,13 +432,6 @@ IResearchViewMeta::IResearchViewMeta()
   _commitItem._consolidationPolicies.emplace_back(CommitBaseMeta::ConsolidationPolicy::DEFAULT(CommitBaseMeta::ConsolidationPolicy::Type::BYTES_ACCUM));
   _commitItem._consolidationPolicies.emplace_back(CommitBaseMeta::ConsolidationPolicy::DEFAULT(CommitBaseMeta::ConsolidationPolicy::Type::COUNT));
   _commitItem._consolidationPolicies.emplace_back(CommitBaseMeta::ConsolidationPolicy::DEFAULT(CommitBaseMeta::ConsolidationPolicy::Type::FILL));
-
-  for (auto& scorer: allKnownScorers()) {
-    if (scorer.second._isDefault) {
-      _features |= scorer.second._features;
-      _scorers.emplace(scorer.first, scorer.second._scorer);
-    }
-  }
 }
 
 IResearchViewMeta::IResearchViewMeta(IResearchViewMeta const& defaults) {
@@ -508,9 +448,7 @@ IResearchViewMeta& IResearchViewMeta::operator=(IResearchViewMeta&& other) noexc
     _commitBulk = std::move(other._commitBulk);
     _commitItem = std::move(other._commitItem);
     _dataPath = std::move(other._dataPath);
-    _features = std::move(other._features);
     _locale = std::move(other._locale);
-    _scorers = std::move(other._scorers);
     _threadsMaxIdle = std::move(other._threadsMaxIdle);
     _threadsMaxTotal = std::move(other._threadsMaxTotal);
   }
@@ -524,9 +462,7 @@ IResearchViewMeta& IResearchViewMeta::operator=(IResearchViewMeta const& other) 
     _commitBulk = other._commitBulk;
     _commitItem = other._commitItem;
     _dataPath = other._dataPath;
-    _features = other._features;
     _locale = other._locale;
-    _scorers = other._scorers;
     _threadsMaxIdle = other._threadsMaxIdle;
     _threadsMaxTotal = other._threadsMaxTotal;
   }
@@ -551,17 +487,9 @@ bool IResearchViewMeta::operator==(IResearchViewMeta const& other) const noexcep
     return false; // values do not match
   }
 
-  if (_features != other._features) {
-    return false; // values do not match
-  }
-
   if (irs::locale_utils::language(_locale) != irs::locale_utils::language(other._locale)
       || irs::locale_utils::country(_locale) != irs::locale_utils::country(other._locale)
       || irs::locale_utils::encoding(_locale) != irs::locale_utils::encoding(other._locale)) {
-    return false; // values do not match
-  }
-
-  if (_scorers != other._scorers) {
     return false; // values do not match
   }
 
@@ -773,67 +701,6 @@ bool IResearchViewMeta::init(
   }
 
   {
-    // optional string list
-    static const std::string fieldName("scorers");
-
-    mask->_scorers = slice.hasKey(fieldName);
-
-    if (!mask->_scorers) {
-      _features = defaults._features; // add features from default scorers
-      _scorers = defaults._scorers; // always add default scorers
-    } else {
-      auto field = slice.get(fieldName);
-
-      if (!field.isArray()) { // [ <scorerName 1> ... <scorerName N> ]
-        errorField = fieldName;
-
-        return false;
-      }
-
-      for (arangodb::velocypack::ArrayIterator itr(field); itr.valid(); ++itr) {
-        auto entry = itr.value();
-
-        if (!entry.isString()) {
-          errorField = fieldName + "=>[" + arangodb::basics::StringUtils::itoa(itr.index()) + "]";
-
-          return false;
-        }
-
-        auto name = entry.copyString();
-
-        if (_scorers.find(name) != _scorers.end()) {
-          continue; // do not insert duplicates
-        }
-
-        auto& knownScorers = allKnownScorers();
-        auto knownScorersItr = knownScorers.equal_range(name);
-
-        if (knownScorersItr.first == knownScorersItr.second) {
-          errorField = fieldName + "=>" + name;
-
-          return false; // unknown scorer
-        }
-
-        _features.clear(); // reset to match read values exactly
-        _scorers.clear(); // reset to match read values exactly
-
-        // ensure default scorers and their features are always present
-        for (auto& scorer: knownScorers) {
-          if (scorer.second._isDefault) {
-            _features |= scorer.second._features;
-            _scorers.emplace(scorer.first, scorer.second._scorer);
-          }
-        }
-
-        for (auto scorerItr = knownScorersItr.first; scorerItr != knownScorersItr.second; ++scorerItr) {
-          _features |= scorerItr->second._features;
-          _scorers.emplace(scorerItr->first, scorerItr->second._scorer);
-        }
-      }
-    }
-  }
-
-  {
     // optional size_t
     static const std::string fieldName("threadsMaxIdle");
 
@@ -922,20 +789,6 @@ bool IResearchViewMeta::json(
     builder.add("locale", arangodb::velocypack::Value(irs::locale_utils::name(_locale)));
   }
 
-  if ((!ignoreEqual || _scorers != ignoreEqual->_scorers) && (!mask || mask->_scorers)) {
-    arangodb::velocypack::Builder subBuilder;
-
-    {
-      arangodb::velocypack::ArrayBuilder subBuilderWrapper(&subBuilder);
-
-      for (auto& scorer: _scorers) {
-        subBuilderWrapper->add(arangodb::velocypack::Value(scorer.first));
-      }
-    }
-
-    builder.add("scorers", subBuilder.slice());
-  }
-
   if ((!ignoreEqual || _threadsMaxIdle != ignoreEqual->_threadsMaxIdle) && (!mask || mask->_threadsMaxIdle)) {
     builder.add("threadsMaxIdle", arangodb::velocypack::Value(_threadsMaxIdle));
   }
@@ -960,11 +813,6 @@ size_t IResearchViewMeta::memory() const {
 
   size += sizeof(TRI_voc_cid_t) * _collections.size();
   size += _dataPath.size();
-  size += sizeof(irs::flags::type_map::key_type) * _features.size();
-
-  for (auto& scorer: _scorers) {
-    size += scorer.first.length() + sizeof(scorer.second);
-  }
 
   return size;
 }

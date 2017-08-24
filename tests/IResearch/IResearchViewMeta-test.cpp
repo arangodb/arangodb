@@ -33,14 +33,6 @@
 #include "velocypack/Parser.h"
 #include "VocBase/LogicalView.h"
 
-NS_LOCAL
-
-irs::iql::order_functions defaultScorers;
-const irs::iql::order_function::contextual_function_t invalidScorerFn;
-const irs::iql::order_function invalidScorer(invalidScorerFn);
-
-NS_END
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 setup / tear-down
 // -----------------------------------------------------------------------------
@@ -50,25 +42,10 @@ struct IResearchViewMetaSetup {
 
   IResearchViewMetaSetup() {
     arangodb::EngineSelectorFeature::ENGINE = &engine;
-
-//    auto& scorers = defaultScorers;
-//    auto defaultScorersCollector = [&scorers](
-//      std::string const& name, irs::flags const& features, irs::iql::order_function const& builder, bool isDefault
-//      )->bool {
-//      if (isDefault) {
-//        scorers.emplace(name, builder); // default scorers always present
-//      };
-//      return true;
-//    };
-
-    defaultScorers.clear();
-    //SimilarityDocumentAdapter::visitScorers(defaultScorersCollector); FIXME TODO
-
   }
 
   ~IResearchViewMetaSetup() {
     arangodb::EngineSelectorFeature::ENGINE = nullptr;
-    defaultScorers.clear();
   }
 };
 
@@ -118,7 +95,6 @@ SECTION("test_defaults") {
   CHECK(true == (expectedItem.empty()));
   CHECK(std::string("") == meta._dataPath);
   CHECK(std::string("C") == irs::locale_utils::name(meta._locale));
-  CHECK(defaultScorers == meta._scorers);
   CHECK(5 == meta._threadsMaxIdle);
   CHECK(5 == meta._threadsMaxTotal);
 }
@@ -148,7 +124,6 @@ SECTION("test_inheritDefaults") {
   defaults._commitItem._consolidationPolicies.emplace_back(ConsolidationPolicy::Type::FILL, 301, .31f);
   defaults._dataPath = "path";
   defaults._locale = irs::locale_utils::locale("ru");
-  defaults._scorers.emplace("testScorer", invalidScorer);
   defaults._threadsMaxIdle = 8;
   defaults._threadsMaxTotal = 16;
 
@@ -226,8 +201,6 @@ SECTION("test_inheritDefaults") {
     CHECK(true == (expectedItem.empty()));
     CHECK(std::string("path") == meta._dataPath);
     CHECK(std::string("ru") == irs::locale_utils::name(meta._locale));
-    CHECK(defaultScorers.size() + 1 == meta._scorers.size());
-    CHECK(meta._scorers.find("testScorer") != meta._scorers.end());
     CHECK(8 == meta._threadsMaxIdle);
     CHECK(16 == meta._threadsMaxTotal);
   }
@@ -271,7 +244,6 @@ SECTION("test_readDefaults") {
 
     CHECK((std::string("testType-123") == meta._dataPath));
     CHECK(std::string("C") == irs::locale_utils::name(meta._locale));
-    CHECK(defaultScorers == meta._scorers);
     CHECK(5 == meta._threadsMaxIdle);
     CHECK(5 == meta._threadsMaxTotal);
   }
@@ -281,7 +253,6 @@ SECTION("test_readCustomizedValues") {
   auto viewJson = arangodb::velocypack::Parser::fromJson("{ \"id\": 123, \"name\": \"testView\", \"type\": \"testType\" }");
   arangodb::LogicalView logicalView(nullptr, viewJson->slice());
   std::unordered_set<TRI_voc_cid_t> expectedCollections = { 42 };
-  std::unordered_set<std::string> expectedScorers = { "tfidf" };
   arangodb::iresearch::IResearchViewMeta meta;
 
   // .............................................................................
@@ -478,7 +449,6 @@ SECTION("test_readCustomizedValues") {
         \"commitItem\": { \"commitIntervalMsec\": 456, \"cleanupIntervalStep\": 654, \"commitTimeoutMsec\": 789, \"consolidate\": { \"bytes\": { \"intervalStep\": 1001, \"threshold\": 0.11 }, \"bytes_accum\": { \"intervalStep\": 1501, \"threshold\": 0.151 }, \"count\": { \"intervalStep\": 2001 }, \"fill\": {} } }, \
         \"locale\": \"ru_RU.KOI8-R\", \
         \"dataPath\": \"somepath\", \
-        \"scorers\": [ \"tfidf\" ], \
         \"threadsMaxIdle\": 8, \
         \"threadsMaxTotal\": 16 \
     }");
@@ -560,14 +530,6 @@ SECTION("test_readCustomizedValues") {
   CHECK(true == (expectedItem.empty()));
   CHECK(std::string("somepath") == meta._dataPath);
   CHECK(std::string("ru_RU.UTF-8") == iresearch::locale_utils::name(meta._locale));
-  CHECK(defaultScorers.size() + 1 == meta._scorers.size());
-
-  for (auto& scorer: meta._scorers) {
-    CHECK((defaultScorers.find(scorer.first) != defaultScorers.end() || 1 == expectedScorers.erase(scorer.first)));
-  }
-
-  CHECK(true == expectedScorers.empty());
-  CHECK(meta._scorers.find("tfidf") != meta._scorers.end());
   CHECK(8 == meta._threadsMaxIdle);
   CHECK(16 == meta._threadsMaxTotal);
 }
@@ -594,7 +556,7 @@ SECTION("test_writeDefaults") {
 
   auto slice = builder.slice();
 
-  CHECK(7U == slice.length());
+  CHECK((6U == slice.length()));
   tmpSlice = slice.get("collections");
   CHECK((true == tmpSlice.isArray() && 0 == tmpSlice.length()));
   tmpSlice = slice.get("commitBulk");
@@ -655,8 +617,6 @@ SECTION("test_writeDefaults") {
   CHECK(true == expectedCommitItemConsolidate.empty());
   tmpSlice = slice.get("locale");
   CHECK((true == tmpSlice.isString() && std::string("C") == tmpSlice.copyString()));
-  tmpSlice = slice.get("scorers");
-  CHECK((true == tmpSlice.isArray() && defaultScorers.size() == tmpSlice.length()));
   tmpSlice = slice.get("threadsMaxIdle");
   CHECK((true == tmpSlice.isNumber() && 5 == tmpSlice.getUInt()));
   tmpSlice = slice.get("threadsMaxTotal");
@@ -719,9 +679,6 @@ SECTION("test_writeCustomizedValues") {
   meta._commitItem._consolidationPolicies.emplace_back(ConsolidationPolicy::Type::FILL, 301, .31f);
   meta._locale = iresearch::locale_utils::locale("en_UK.UTF-8");
   meta._dataPath = "somepath";
-  meta._scorers.emplace("scorer1", invalidScorer);
-  meta._scorers.emplace("scorer2", invalidScorer);
-  meta._scorers.emplace("scorer3", invalidScorer);
   meta._threadsMaxIdle = 8;
   meta._threadsMaxTotal = 16;
 
@@ -738,7 +695,6 @@ SECTION("test_writeCustomizedValues") {
     { "count",{ { "intervalStep", 201 },{ "threshold", .21f } } },
     { "fill",{ { "intervalStep", 301 },{ "threshold", .31f } } }
   };
-  std::unordered_set<std::string> expectedScorers = { "scorer1", "scorer2", "scorer3" };
   arangodb::velocypack::Builder builder;
   arangodb::velocypack::Slice tmpSlice;
   arangodb::velocypack::Slice tmpSlice2;
@@ -747,7 +703,7 @@ SECTION("test_writeCustomizedValues") {
 
   auto slice = builder.slice();
 
-  CHECK(8U == slice.length());
+  CHECK((7U == slice.length()));
   tmpSlice = slice.get("collections");
   CHECK((true == tmpSlice.isArray() && 3 == tmpSlice.length()));
 
@@ -817,20 +773,6 @@ SECTION("test_writeCustomizedValues") {
   CHECK((tmpSlice.isString() && std::string("somepath") == tmpSlice.copyString()));
   tmpSlice = slice.get("locale");
   CHECK((tmpSlice.isString() && std::string("en_UK.UTF-8") == tmpSlice.copyString()));
-  tmpSlice = slice.get("scorers");
-  CHECK((tmpSlice.isArray() && defaultScorers.size() + 3 == tmpSlice.length()));
-
-  for (arangodb::velocypack::ArrayIterator itr(tmpSlice); itr.valid(); ++itr) {
-    auto value = itr.value();
-    CHECK((
-      true ==
-      value.isString() &&
-      (defaultScorers.find(value.copyString()) != defaultScorers.end() ||
-       1 == expectedScorers.erase(value.copyString()))
-    ));
-  }
-
-  CHECK(true == expectedScorers.empty());
   tmpSlice = slice.get("threadsMaxIdle");
   CHECK((true == tmpSlice.isNumber() && 8 == tmpSlice.getUInt()));
   tmpSlice = slice.get("threadsMaxTotal");
@@ -850,7 +792,6 @@ SECTION("test_readMaskAll") {
     \"commitItem\": { \"commitIntervalMsec\": 654, \"cleanupIntervalStep\": 456, \"consolidate\": {\"bytes_accum\": { \"threshold\": 0.1 } } }, \
     \"dataPath\": \"somepath\", \
     \"locale\": \"ru_RU.KOI8-R\", \
-    \"scorers\": [ \"tfidf\" ], \
     \"threadsMaxIdle\": 8, \
     \"threadsMaxTotal\": 16 \
   }");
@@ -860,7 +801,6 @@ SECTION("test_readMaskAll") {
   CHECK(true == mask._commitItem);
   CHECK(true == mask._dataPath);
   CHECK(true == mask._locale);
-  CHECK(true == mask._scorers);
   CHECK(true == mask._threadsMaxIdle);
   CHECK(true == mask._threadsMaxTotal);
 }
@@ -879,7 +819,6 @@ SECTION("test_readMaskNone") {
   CHECK(false == mask._commitItem);
   CHECK(false == mask._dataPath);
   CHECK(false == mask._locale);
-  CHECK(false == mask._scorers);
   CHECK(false == mask._threadsMaxIdle);
   CHECK(false == mask._threadsMaxTotal);
 }
@@ -896,7 +835,7 @@ SECTION("test_writeMaskAll") {
 
   auto slice = builder.slice();
 
-  CHECK(8U == slice.length());
+  CHECK(7U == slice.length());
   CHECK(true == slice.hasKey("collections"));
   CHECK(true == slice.hasKey("commitBulk"));
   tmpSlice = slice.get("commitBulk");
@@ -911,7 +850,6 @@ SECTION("test_writeMaskAll") {
   CHECK(true == tmpSlice.hasKey("consolidate"));
   CHECK(true == slice.hasKey("dataPath"));
   CHECK(true == slice.hasKey("locale"));
-  CHECK(true == slice.hasKey("scorers"));
   CHECK(true == slice.hasKey("threadsMaxIdle"));
   CHECK(true == slice.hasKey("threadsMaxTotal"));
 }

@@ -789,7 +789,7 @@ SECTION("test_registration") {
     {
       // simulate temporary failure
       auto before = PhysicalCollectionMock::before;
-      auto restore = irs::make_finally([before]()->void { PhysicalCollectionMock::before =before; });
+      auto restore = irs::make_finally([&before]()->void { PhysicalCollectionMock::before = before; });
       PhysicalCollectionMock::before = []()->void { throw "exception"; };
 
       CHECK((!feature.reserve("valid")));
@@ -816,7 +816,7 @@ SECTION("test_registration") {
     {
       // simulate temporary failure
       auto before = PhysicalCollectionMock::before;
-      auto restore = irs::make_finally([before]()->void { PhysicalCollectionMock::before =before; });
+      auto restore = irs::make_finally([&before]()->void { PhysicalCollectionMock::before = before; });
       PhysicalCollectionMock::before = []()->void { throw "exception"; };
 
       CHECK((!feature.release("valid")));

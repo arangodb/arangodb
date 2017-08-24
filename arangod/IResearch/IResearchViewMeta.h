@@ -27,11 +27,7 @@
 #include <locale>
 #include <unordered_set>
 
-#include "shared.hpp"
 #include "index/index_writer.hpp"
-#include "iql/parser_common.hpp"
-#include "utils/attributes.hpp"
-
 #include "VocBase/voc-types.h"
 
 NS_BEGIN(arangodb)
@@ -124,7 +120,6 @@ struct IResearchViewMeta {
     bool _commitItem;
     bool _dataPath;
     bool _locale;
-    bool _scorers;
     bool _threadsMaxIdle;
     bool _threadsMaxTotal;
     Mask(bool mask = false) noexcept;
@@ -134,9 +129,7 @@ struct IResearchViewMeta {
   CommitBulkMeta _commitBulk;
   CommitItemMeta _commitItem;
   std::string _dataPath; // data file path
-  irs::flags _features; // non-persisted dynamic value based on scorers
-  std::locale _locale;
-  irs::iql::order_functions _scorers; // supported scorers
+  std::locale _locale; // locale used for ordering processed attribute names
   size_t _threadsMaxIdle; // maximum idle number of threads for single-run tasks
   size_t _threadsMaxTotal; // maximum total number of threads for single-run tasks
   // NOTE: if adding fields don't forget to modify the default constructor !!!
