@@ -1363,6 +1363,8 @@ Result RocksDBEngine::dropDatabase(TRI_voc_tick_t id) {
     }
   }
 
+  size_t numDocsLeft = 0;
+
   // remove collections
   for (auto const& val : collectionKVPairs(id)) {
     // remove indexes
@@ -1387,15 +1389,10 @@ Result RocksDBEngine::dropDatabase(TRI_voc_tick_t id) {
         if (res.fail()) {
           return res;
         }
+
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
         //check if documents have been deleted
-        size_t numDocs = rocksutils::countKeyRange(rocksutils::globalRocksDB(), bounds, prefix_same_as_start);
-
-        if (numDocs > 0) {
-          std::string errorMsg("deletion check in drop database failed - not all index documents have been deleted. remaining: ");
-          errorMsg.append(std::to_string(numDocs));
-          THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, errorMsg);
-        }
+        numDocsLeft += rocksutils::countKeyRange(rocksutils::globalRocksDB(), bounds, prefix_same_as_start);
 #endif
       }
     }
@@ -1418,19 +1415,9 @@ Result RocksDBEngine::dropDatabase(TRI_voc_tick_t id) {
     
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
     //check if documents have been deleted
-    size_t numDocs = rocksutils::countKeyRange(rocksutils::globalRocksDB(), bounds, true);
-
-    if (numDocs > 0) {
-      std::string errorMsg("deletion check in drop database failed - not all documents have been deleted. remaining: ");
-      errorMsg.append(std::to_string(numDocs));
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, errorMsg);
-    }
+    numDocsLeft += rocksutils::countKeyRange(rocksutils::globalRocksDB(), bounds, true);
 #endif
   }
-
-  // TODO
-  // How to unregister Vocbase?
-  // Cleanup thread does it in MMFiles
 
   auto key = RocksDBKey::Database(id);
   res = rocksutils::globalRocksDBRemove(RocksDBColumnFamily::definitions(),
@@ -1439,6 +1426,12 @@ Result RocksDBEngine::dropDatabase(TRI_voc_tick_t id) {
   // remove VERSION file for database. it's not a problem when this fails
   // because it will simply remain there and be ignored on subsequent starts
   TRI_UnlinkFile(versionFilename(id).c_str());
+    
+  if (numDocsLeft > 0) {
+    std::string errorMsg("deletion check in drop database failed - not all documents have been deleted. remaining: ");
+    errorMsg.append(std::to_string(numDocsLeft));
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, errorMsg);
+  }
 
   return res;
 }
