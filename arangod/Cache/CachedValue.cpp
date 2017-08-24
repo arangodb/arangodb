@@ -28,55 +28,16 @@
 
 using namespace arangodb::cache;
 
-uint8_t const* CachedValue::key() const {
-  uint8_t const* buf = reinterpret_cast<uint8_t const*>(this);
-  return (buf + sizeof(CachedValue));
-}
-
-uint8_t const* CachedValue::value() const {
-  if (valueSize == 0) {
-    return nullptr;
-  }
-
-  uint8_t const* buf = reinterpret_cast<uint8_t const*>(this);
-  return (buf + sizeof(CachedValue) + keySize);
-}
-
-uint64_t CachedValue::size() const {
-  uint64_t size = sizeof(CachedValue);
-  size += keySize;
-  size += valueSize;
-  return size;
-}
-
-bool CachedValue::sameKey(void const* k, uint32_t kSize) const {
-  if (keySize != kSize) {
-    return false;
-  }
-
-  return (0 == memcmp(key(), k, keySize));
-}
-
-void CachedValue::lease() { ++refCount; }
-
-void CachedValue::release() { 
-  if (--refCount == UINT32_MAX) {
-    TRI_ASSERT(false);
-  }
-}
-
-bool CachedValue::isFreeable() { return (refCount.load() == 0); }
-
 CachedValue* CachedValue::copy() const {
   uint8_t* buf = new uint8_t[size()];
   memcpy(buf, this, size());
   CachedValue* value = reinterpret_cast<CachedValue*>(buf);
-  value->refCount = 0;
+  value->_refCount = 0;
   return value;
 }
 
-CachedValue* CachedValue::construct(void const* k, uint32_t kSize,
-                                    void const* v, uint64_t vSize) {
+CachedValue* CachedValue::construct(void const* k, size_t kSize,
+                                    void const* v, size_t vSize) {
   if (kSize == 0 || k == nullptr || (vSize > 0 && v == nullptr) ||
       kSize > maxKeySize || vSize > maxValueSize) {
     return nullptr;
@@ -85,9 +46,9 @@ CachedValue* CachedValue::construct(void const* k, uint32_t kSize,
   uint8_t* buf = new uint8_t[sizeof(CachedValue) + kSize + vSize];
   CachedValue* cv = reinterpret_cast<CachedValue*>(buf);
 
-  cv->refCount = 0;
-  cv->keySize = kSize;
-  cv->valueSize = vSize;
+  cv->_refCount = 0;
+  cv->_keySize = static_cast<uint32_t>(kSize);
+  cv->_valueSize = static_cast<uint64_t>(vSize);
   std::memcpy(const_cast<uint8_t*>(cv->key()), k, kSize);
   if (vSize > 0) {
     std::memcpy(const_cast<uint8_t*>(cv->value()), v, vSize);

@@ -69,13 +69,13 @@ TEST_CASE("cache::PlainBucket", "[cache]") {
     }
     for (size_t i = 0; i < 10; i++) {
       CachedValue* res =
-          bucket->find(hashes[i], ptrs[i]->key(), ptrs[i]->keySize);
+          bucket->find(hashes[i], ptrs[i]->key(), ptrs[i]->keySize());
       REQUIRE(res == ptrs[i]);
     }
 
     // check that insert is ignored if full
     bucket->insert(hashes[10], ptrs[10]);
-    CachedValue* res = bucket->find(hashes[10], ptrs[10]->key(), ptrs[10]->keySize);
+    CachedValue* res = bucket->find(hashes[10], ptrs[10]->key(), ptrs[10]->keySize());
     REQUIRE(nullptr == res);
 
     bucket->unlock();
@@ -109,22 +109,22 @@ TEST_CASE("cache::PlainBucket", "[cache]") {
     }
     for (size_t i = 0; i < 3; i++) {
       CachedValue* res =
-          bucket->find(hashes[i], ptrs[i]->key(), ptrs[i]->keySize);
+          bucket->find(hashes[i], ptrs[i]->key(), ptrs[i]->keySize());
       REQUIRE(res == ptrs[i]);
     }
 
     CachedValue* res;
-    res = bucket->remove(hashes[1], ptrs[1]->key(), ptrs[1]->keySize);
+    res = bucket->remove(hashes[1], ptrs[1]->key(), ptrs[1]->keySize());
     REQUIRE(res == ptrs[1]);
-    res = bucket->find(hashes[1], ptrs[1]->key(), ptrs[1]->keySize);
+    res = bucket->find(hashes[1], ptrs[1]->key(), ptrs[1]->keySize());
     REQUIRE(nullptr == res);
-    res = bucket->remove(hashes[0], ptrs[0]->key(), ptrs[0]->keySize);
+    res = bucket->remove(hashes[0], ptrs[0]->key(), ptrs[0]->keySize());
     REQUIRE(res == ptrs[0]);
-    res = bucket->find(hashes[0], ptrs[0]->key(), ptrs[0]->keySize);
+    res = bucket->find(hashes[0], ptrs[0]->key(), ptrs[0]->keySize());
     REQUIRE(nullptr == res);
-    res = bucket->remove(hashes[2], ptrs[2]->key(), ptrs[2]->keySize);
+    res = bucket->remove(hashes[2], ptrs[2]->key(), ptrs[2]->keySize());
     REQUIRE(res == ptrs[2]);
-    res = bucket->find(hashes[2], ptrs[2]->key(), ptrs[2]->keySize);
+    res = bucket->find(hashes[2], ptrs[2]->key(), ptrs[2]->keySize());
     REQUIRE(nullptr == res);
 
     bucket->unlock();
@@ -168,7 +168,7 @@ TEST_CASE("cache::PlainBucket", "[cache]") {
     }
     for (size_t i = 0; i < 10; i++) {
       CachedValue* res =
-          bucket->find(hashes[i], ptrs[i]->key(), ptrs[i]->keySize);
+          bucket->find(hashes[i], ptrs[i]->key(), ptrs[i]->keySize());
       REQUIRE(res == ptrs[i]);
     }
 
@@ -176,7 +176,7 @@ TEST_CASE("cache::PlainBucket", "[cache]") {
     CachedValue* candidate = bucket->evictionCandidate();
     REQUIRE(candidate == ptrs[0]);
     bucket->evict(candidate, false);
-    CachedValue* res = bucket->find(hashes[0], ptrs[0]->key(), ptrs[0]->keySize);
+    CachedValue* res = bucket->find(hashes[0], ptrs[0]->key(), ptrs[0]->keySize());
     REQUIRE(nullptr == res);
     REQUIRE(!bucket->isFull());
 
@@ -184,13 +184,13 @@ TEST_CASE("cache::PlainBucket", "[cache]") {
     candidate = bucket->evictionCandidate();
     REQUIRE(candidate == ptrs[1]);
     bucket->evict(candidate, true);
-    res = bucket->find(hashes[1], ptrs[1]->key(), ptrs[1]->keySize);
+    res = bucket->find(hashes[1], ptrs[1]->key(), ptrs[1]->keySize());
     REQUIRE(nullptr == res);
     REQUIRE(!bucket->isFull());
 
     // check that we can insert now after eviction optimized for insertion
     bucket->insert(hashes[10], ptrs[10]);
-    res = bucket->find(hashes[10], ptrs[10]->key(), ptrs[10]->keySize);
+    res = bucket->find(hashes[10], ptrs[10]->key(), ptrs[10]->keySize());
     REQUIRE(res == ptrs[10]);
 
     bucket->unlock();

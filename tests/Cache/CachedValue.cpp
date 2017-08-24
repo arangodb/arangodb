@@ -44,8 +44,8 @@ TEST_CASE("cache::CachedValue", "[cache]") {
     // fixed key, variable value
     cv = CachedValue::construct(&k, sizeof(uint64_t), v.data(), v.size());
     REQUIRE(nullptr != cv);
-    REQUIRE(sizeof(uint64_t) == cv->keySize);
-    REQUIRE(v.size() == cv->valueSize);
+    REQUIRE(sizeof(uint64_t) == cv->keySize());
+    REQUIRE(v.size() == cv->valueSize());
     REQUIRE(sizeof(CachedValue) + sizeof(uint64_t) + v.size() == cv->size());
     REQUIRE(k == *reinterpret_cast<uint64_t const*>(cv->key()));
     REQUIRE(0 == memcmp(v.data(), cv->value(), v.size()));
@@ -55,8 +55,8 @@ TEST_CASE("cache::CachedValue", "[cache]") {
     cv = CachedValue::construct(v.data(), static_cast<uint32_t>(v.size()), &k,
                                 sizeof(uint64_t));
     REQUIRE(nullptr != cv);
-    REQUIRE(v.size() == cv->keySize);
-    REQUIRE(sizeof(uint64_t) == cv->valueSize);
+    REQUIRE(v.size() == cv->keySize());
+    REQUIRE(sizeof(uint64_t) == cv->valueSize());
     REQUIRE(sizeof(CachedValue) + sizeof(uint64_t) + v.size() == cv->size());
     REQUIRE(0 == memcmp(v.data(), cv->key(), v.size()));
     REQUIRE(k == *reinterpret_cast<uint64_t const*>(cv->value()));
@@ -65,8 +65,8 @@ TEST_CASE("cache::CachedValue", "[cache]") {
     // fixed key, zero length value
     cv = CachedValue::construct(&k, sizeof(uint64_t), nullptr, 0);
     REQUIRE(nullptr != cv);
-    REQUIRE(sizeof(uint64_t) == cv->keySize);
-    REQUIRE(0ULL == cv->valueSize);
+    REQUIRE(sizeof(uint64_t) == cv->keySize());
+    REQUIRE(0ULL == cv->valueSize());
     REQUIRE(sizeof(CachedValue) + sizeof(uint64_t) == cv->size());
     REQUIRE(k == *reinterpret_cast<uint64_t const*>(cv->key()));
     REQUIRE(nullptr == cv->value());
@@ -114,8 +114,8 @@ TEST_CASE("cache::CachedValue", "[cache]") {
     auto copy = original->copy();
     REQUIRE(nullptr != copy);
     REQUIRE(copy != original);
-    REQUIRE(sizeof(uint64_t) == copy->keySize);
-    REQUIRE(v.size() == copy->valueSize);
+    REQUIRE(sizeof(uint64_t) == copy->keySize());
+    REQUIRE(v.size() == copy->valueSize());
     REQUIRE(sizeof(CachedValue) + sizeof(uint64_t) + v.size() == copy->size());
     REQUIRE(k == *reinterpret_cast<uint64_t const*>(copy->key()));
     REQUIRE(0 == memcmp(v.data(), copy->value(), v.size()));

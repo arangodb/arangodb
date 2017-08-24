@@ -1547,7 +1547,7 @@ arangodb::Result RocksDBCollection::lookupRevisionVPack(
     if (f.found()) {
       std::string* value = mdr.prepareStringUsage();
       value->append(reinterpret_cast<char const*>(f.value()->value()),
-                    static_cast<size_t>(f.value()->valueSize));
+                    f.value()->valueSize());
       mdr.setManagedAfterStringUsage(revisionId);
       return Result();
     }
