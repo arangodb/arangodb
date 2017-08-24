@@ -2778,16 +2778,9 @@ static void JS_TruncateVocbaseCol(
     }
   }
   
-  // optionally specify non trx remove
-  bool unsafeTruncate = false;
-  if (args.Length() > 0) {
-    unsafeTruncate = TRI_ObjectToBoolean(args[0]);
-  }
-
-  auto t = unsafeTruncate ? AccessMode::Type::EXCLUSIVE : AccessMode::Type::WRITE;
   SingleCollectionTransaction trx(
       transaction::V8Context::Create(collection->vocbase(), true),
-                                  collection->cid(), t);
+                                  collection->cid(), AccessMode::Type::EXCLUSIVE);
 
   Result res = trx.begin();
   if (!res.ok()) {

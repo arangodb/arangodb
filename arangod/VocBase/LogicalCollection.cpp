@@ -1258,7 +1258,7 @@ ChecksumResult LogicalCollection::checksum(bool withRevisions, bool withData) co
   Result res = trx.begin();
 
   if (!res.ok()) {
-    return ChecksumResult(res);
+    return ChecksumResult(std::move(res));
   }
 
   trx.pinData(_cid); // will throw when it fails
