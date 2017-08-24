@@ -80,7 +80,7 @@ function success (options) {
   print('created temporary data directory ' + tmpDataDir);
 
   return {
-    failSuite: {
+    successSuite2: {
       status: true,
       total: 1,
       message: 'this suite will always succeed.',
@@ -98,7 +98,7 @@ function success (options) {
         message: 'this testcase will always succeed, since its in the success testsuite.'
       }
     },
-    successSuite: {
+    successSuite3: {
       status: true,
       total: 1,
       message: 'this suite will always be successfull',
