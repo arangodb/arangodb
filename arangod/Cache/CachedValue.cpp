@@ -77,7 +77,8 @@ CachedValue* CachedValue::copy() const {
 
 CachedValue* CachedValue::construct(void const* k, uint32_t kSize,
                                     void const* v, uint64_t vSize) {
-  if (kSize == 0 || k == nullptr || (vSize > 0 && v == nullptr)) {
+  if (kSize == 0 || k == nullptr || (vSize > 0 && v == nullptr) ||
+      kSize > maxKeySize || vSize > maxValueSize) {
     return nullptr;
   }
 

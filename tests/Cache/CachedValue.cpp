@@ -93,6 +93,14 @@ TEST_CASE("cache::CachedValue", "[cache]") {
     // nullptr value, non-zero length
     cv = CachedValue::construct(&k, sizeof(uint64_t), nullptr, v.size());
     REQUIRE(nullptr == cv);
+
+    // too large key size
+    cv = CachedValue::construct(&k, 0x1000000, v.data(), v.size());
+    REQUIRE(nullptr == cv);
+
+    // too large value size
+    cv = CachedValue::construct(&k, sizeof(uint64_t), v.data(), 0x100000000ULL);
+    REQUIRE(nullptr == cv);
   }
 
   SECTION("copy() should produce a correct copy") {
