@@ -271,22 +271,30 @@ struct notify_t {
 
 /// Apply (from logs)
 std::vector<bool> Store::applyLogEntries(
-  std::vector<VPackSlice> const& queries, index_t index,
+  arangodb::velocypack::Builder const& queries, index_t index,
   term_t term, bool inform) {
   std::vector<bool> applied;
 
   // Apply log entries
   {
+    VPackArrayIterator queriesIterator(queries.slice());
+
     MUTEX_LOCKER(storeLocker, _storeLock);
-    for (auto const& i : queries) {
-      applied.push_back(applies(i));
+
+    while (queriesIterator.valid()) {
+      applied.push_back(applies(queriesIterator.value()));
+      queriesIterator.next();
     }
   }
 
   if (inform && _agent->leading()) {
     // Find possibly affected callbacks
     std::multimap<std::string, std::shared_ptr<notify_t>> in;
-    for (auto const& i : queries) {
+    VPackArrayIterator queriesIterator(queries.slice());
+
+    while (queriesIterator.valid()) {
+      VPackSlice const& i = queriesIterator.value();
+
       for (auto const& j : VPackObjectIterator(i)) {
         if (j.value.isObject() && j.value.hasKey("op")) {
           std::string oper = j.value.get("op").copyString();
@@ -315,6 +323,8 @@ std::vector<bool> Store::applyLogEntries(
           }
         }
       }
+
+      queriesIterator.next();
     }
     
     // Sort by URLS to avoid multiple callbacks

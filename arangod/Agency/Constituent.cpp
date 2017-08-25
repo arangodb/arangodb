@@ -105,6 +105,8 @@ void Constituent::term(term_t t) {
 
 void Constituent::termNoLock(term_t t) {
   // Only call this when you have the _castLock
+  _castLock.assertLockedByCurrentThread();
+
   term_t tmp = _term;
   _term = t;
 
@@ -200,6 +202,8 @@ void Constituent::follow(term_t t) {
 }
 
 void Constituent::followNoLock(term_t t) {
+  _castLock.assertLockedByCurrentThread();
+
   _term = t;
   _role = FOLLOWER;
 
@@ -373,13 +377,13 @@ bool Constituent::vote(term_t termOfPeer, std::string id, index_t prevLogIndex,
   }
   
   TRI_ASSERT(_vocbase != nullptr);
+ 
+  MUTEX_LOCKER(guard, _castLock);
   
   LOG_TOPIC(TRACE, Logger::AGENCY)
     << "vote(termOfPeer: " << termOfPeer << ", leaderId: " << id
     << ", prev-log-index: " << prevLogIndex << ", prev-log-term: " << prevLogTerm
     << ") in (my) term " << _term;
-
-  MUTEX_LOCKER(guard, _castLock);
 
   if (termOfPeer > _term) {
     termNoLock(termOfPeer);
@@ -505,6 +509,7 @@ void Constituent::callElection() {
   while (true) {
 
     if (steady_clock::now() >= timeout) {       // Timeout. 
+      // TODO: missing _castLock for _term
       follow(_term);        
       break;
     }
@@ -523,6 +528,7 @@ void Constituent::callElection() {
           
           // Follow right away?
           term_t t = slc.get("term").getUInt();
+          // TODO: missing _castLock for _term
           if (t > _term) {
             follow(t);
             break;
@@ -542,6 +548,7 @@ void Constituent::callElection() {
     }
     // Count the vote as a nay
     if (++nay >= majority) {                  // Network: majority against?
+      // TODO: missing _castLock for _term
       follow(_term);
       break;
     }
@@ -641,6 +648,7 @@ void Constituent::run() {
   }
 
   if (size() == 1) {
+    MUTEX_LOCKER(guard, _castLock);
     _leaderID = _agent->config().id();
     LOG_TOPIC(DEBUG, Logger::AGENCY) << "Set _leaderID to " << _leaderID
       << " in term " << _term;
@@ -651,6 +659,7 @@ void Constituent::run() {
       _role = FOLLOWER;
     }
     while (!this->isStopping()) {
+      // TODO: missing _castLock for _role
       if (_role == FOLLOWER) {
         static double const M = 1.0e6;
         int64_t a = static_cast<int64_t>(M * _agent->config().minPing() *
@@ -707,6 +716,7 @@ void Constituent::run() {
           candidate();
           _agent->unprepareLead();
         }
+        // TODO: missing _castLock for _role
       } else if (_role == CANDIDATE) {
         callElection();  // Run for office
       } else {

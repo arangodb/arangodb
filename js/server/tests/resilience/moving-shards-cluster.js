@@ -120,7 +120,7 @@ function MovingShardsSuite () {
     } catch (err) {
       console.error(
         "Exception for POST /_admin/cluster/cleanOutServer:", err.stack);
-      return [];
+      return {};
     }
     var body = res.body;
     if (typeof body === "string") {
