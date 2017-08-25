@@ -11,15 +11,15 @@ properties(
     ]]
 )
 
-def defaultLinux = true
+def defaultLinux = false
 def defaultMac = false
-def defaultWindows = false
+def defaultWindows = true
 def defaultBuild = true
 def defaultCleanBuild = false
 def defaultCommunity = true
 def defaultEnterprise = true
 def defaultRunResilience = false
-def defaultRunTests = false
+def defaultRunTests = true
 
 properties([
     parameters([
