@@ -169,8 +169,10 @@ struct Functions {
                        VPackFunctionParameters const&);
    static AqlValue Average(arangodb::aql::Query*, transaction::Methods*,
                            VPackFunctionParameters const&);
-    static AqlValue Sleep(arangodb::aql::Query*, transaction::Methods*,
+   static AqlValue Sleep(arangodb::aql::Query*, transaction::Methods*,
                           VPackFunctionParameters const&);
+   static AqlValue Collections(arangodb::aql::Query*, transaction::Methods*,
+                               VPackFunctionParameters const&);
    static AqlValue RandomToken(arangodb::aql::Query*, transaction::Methods*,
                                VPackFunctionParameters const&);
    static AqlValue Md5(arangodb::aql::Query*, transaction::Methods*,

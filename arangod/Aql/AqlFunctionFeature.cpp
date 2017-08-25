@@ -482,7 +482,7 @@ void AqlFunctionFeature::addMiscFunctions() {
   add({"TEST_INTERNAL", ".,.", false, false, true,
        false});
   add({"SLEEP", ".", false, true, true, true, &Functions::Sleep});
-  add({"COLLECTIONS", "", false, true, false, true});
+  add({"COLLECTIONS", "", false, true, false, true, &Functions::Collections});
   add({"NOT_NULL", ".|+", true, false, true, true,
        &Functions::NotNull});
   add({"FIRST_LIST", ".|+", true, false, true, true,
