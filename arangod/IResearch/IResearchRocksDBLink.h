@@ -42,6 +42,14 @@ class IResearchRocksDBLink final
     return IResearchLink::allowExpansion();
   }
 
+  virtual void batchInsert(
+    transaction::Methods* trx,
+    std::vector<std::pair<TRI_voc_rid_t, arangodb::velocypack::Slice>> const& documents,
+    std::shared_ptr<arangodb::basics::LocalTaskQueue> queue
+  ) {
+    return IResearchLink::batchInsert(trx, documents, queue);
+  }
+
   virtual bool canBeDropped() const override {
     return IResearchLink::canBeDropped();
   }
@@ -139,4 +147,5 @@ class IResearchRocksDBLink final
 
 NS_END // iresearch
 NS_END // arangodb
+
 #endif

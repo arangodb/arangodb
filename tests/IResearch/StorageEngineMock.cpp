@@ -23,6 +23,7 @@
 
 #include "StorageEngineMock.h"
 
+#include "Basics/LocalTaskQueue.h"
 #include "Basics/Result.h"
 #include "Basics/StaticStrings.h"
 #include "Indexes/IndexIterator.h"
@@ -70,9 +71,41 @@ std::shared_ptr<arangodb::Index> PhysicalCollectionMock::createIndex(arangodb::t
   before();
 
   _indexes.emplace_back(arangodb::iresearch::IResearchMMFilesLink::make(++lastId, _logicalCollection, info));
+
+  std::vector<std::pair<TRI_voc_rid_t, arangodb::velocypack::Slice>> docs;
+
+  for (size_t i = 0, count = documents.size(); i < count; ++i) {
+    auto& entry = documents[i];
+
+    if (entry.second) {
+      TRI_voc_rid_t revId = i + 1; // always > 0
+
+      docs.emplace_back(revId, entry.first.slice());
+    }
+  }
+
+  auto& index = _indexes.back();
+  boost::asio::io_service ioService;
+  arangodb::basics::LocalTaskQueue taskQueue(&ioService);
+  std::shared_ptr<arangodb::basics::LocalTaskQueue> taskQueuePtr(&taskQueue, [](arangodb::basics::LocalTaskQueue*)->void{});
+  bool success = false;
+
+  try {
+    index->batchInsert(trx, docs, taskQueuePtr);
+    success = true;
+  } catch (...) {
+    // NOOP
+  }
+
+  if (!success || TRI_ERROR_NO_ERROR != taskQueue.status()) {
+    _indexes.pop_back();
+
+    return nullptr; // error during index population
+  }
+
   created = true;
 
-  return _indexes.back();
+  return index;
 }
 
 void PhysicalCollectionMock::deferDropCollection(std::function<bool(arangodb::LogicalCollection*)> callback) {

@@ -169,6 +169,10 @@ void IResearchLink::batchInsert(
     std::vector<std::pair<TRI_voc_rid_t, arangodb::velocypack::Slice>> const& batch,
     std::shared_ptr<arangodb::basics::LocalTaskQueue> queue /*= nullptr*/
 ) {
+  if (batch.empty()) {
+    return; // nothing to do
+  }
+
   if (!queue) {
     throw std::runtime_error(std::string("failed to report status during batch insert for iResearch link '") + arangodb::basics::StringUtils::itoa(_id) + "'");
   }
