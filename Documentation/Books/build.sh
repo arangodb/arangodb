@@ -336,7 +336,6 @@ function build-book-symlinks()
 function build-book()
 {
     export NAME="$1"
-    NODE_MODULES_DIR="$2"
     echo "${STD_COLOR}##### Generating book ${NAME}${RESET}"
     ppbook-precheck-bad-code-sections "${NAME}"
 
