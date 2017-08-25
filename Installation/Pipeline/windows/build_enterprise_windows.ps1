@@ -30,6 +30,7 @@ exit $LastExitCode
   cmake --build . --config RelWithDebInfo | Add-Content -PassThru ..\log-output\build.log
   cd ..
 }
-} finally {
+} catch {
   Get-Process -Id $((Get-WmiObject Win32_Process -Filter "Name='mspdbsrv.exe'" | Where-Object {$_.CommandLine -match "endpoint ${env:_MSPDBSRV_ENDPOINT_}" } | Select-Object ProcessId).ProcessId) | Stop-Process
+  throw
 }
