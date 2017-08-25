@@ -2076,6 +2076,7 @@ void arangodb::aql::removeFiltersAndSortsCoveredByViewRule(
       while (current) {
         if (current->getType() == EN::ENUMERATE_VIEW) {
           toUnlink.emplace(node);
+          toUnlink.emplace(calculationNode);
           calculationNode->canRemoveIfThrows(true);
           modified = true;
           break;
@@ -2090,37 +2091,44 @@ void arangodb::aql::removeFiltersAndSortsCoveredByViewRule(
     }
   }
 
+  // ensure that array is empty
+  nodes.clear();
+
   {
     plan->findNodesOfType(nodes, EN::SORT, true);
 
     for (auto const& node : nodes) {
       auto sn = static_cast<SortNode const*>(node);
-      // find the node with the filter expression
+
+      // find the node with the sort expression
       auto inVar = sn->getVariablesUsedHere();
       TRI_ASSERT(inVar.size() >= 1);
 
-      auto setter = plan->getVarSetBy(inVar[0]->id);
+      for (auto& var : inVar) {
+        auto setter = plan->getVarSetBy(var->id);
 
-      if (!setter || setter->getType() != EN::CALCULATION) {
-        continue;
-      }
-
-      auto calculationNode = static_cast<CalculationNode*>(setter);
-
-      auto current = node;
-      while (current) {
-        if (current->getType() == EN::ENUMERATE_VIEW) {
-          toUnlink.emplace(node);
-          calculationNode->canRemoveIfThrows(true);
-          modified = true;
-          break;
+        if (!setter || setter->getType() != EN::CALCULATION) {
+          continue;
         }
 
-        if (current->getType() == EN::LIMIT || !current->hasDependency()) {
-          break;
-        }
+        auto calculationNode = static_cast<CalculationNode*>(setter);
 
-        current = current->getFirstDependency();
+        auto current = node;
+        while (current) {
+          if (current->getType() == EN::ENUMERATE_VIEW) {
+            toUnlink.emplace(node);
+            toUnlink.emplace(calculationNode);
+            calculationNode->canRemoveIfThrows(true);
+            modified = true;
+            break;
+          }
+
+          if (current->getType() == EN::LIMIT || !current->hasDependency()) {
+            break;
+          }
+
+          current = current->getFirstDependency();
+        }
       }
     }
   }
@@ -3972,22 +3980,22 @@ void arangodb::aql::handleViewsRule(Optimizer* opt,
     }
   }
 
-  {
-    SmallVector<ExecutionNode*>::allocator_type::arena_type a;
-    SmallVector<ExecutionNode*> nodes{a};
-    plan->findNodesOfType(nodes, EN::ENUMERATE_VIEW, true);
-
-    for (auto const& n : nodes) {
-      auto sortNode = static_cast<SortNode*>(n);
-
-      SortToViewNode finder(plan.get());
-      sortNode->walk(&finder);
-
-      if (finder._modified) {
-        modified = true;
-      }
-    }
-  }
+//  {
+//    SmallVector<ExecutionNode*>::allocator_type::arena_type a;
+//    SmallVector<ExecutionNode*> nodes{a};
+//    plan->findNodesOfType(nodes, EN::ENUMERATE_VIEW, true);
+//
+//    for (auto const& n : nodes) {
+//      auto sortNode = static_cast<SortNode*>(n);
+//
+//      SortToViewNode finder(plan.get());
+//      sortNode->walk(&finder);
+//
+//      if (finder._modified) {
+//        modified = true;
+//      }
+//    }
+//  }
 
   opt->addPlan(std::move(plan), rule, modified);
 }

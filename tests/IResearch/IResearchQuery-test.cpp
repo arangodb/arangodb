@@ -52,6 +52,10 @@
 #include "RestServer/TraverserEngineRegistryFeature.h"
 #include "Aql/Ast.h"
 #include "Aql/Query.h"
+#include "3rdParty/iresearch/tests/tests_config.hpp"
+
+#include "IResearch/VelocyPackHelper.h"
+#include "utils/utf8_path.hpp"
 
 #include <velocypack/Iterator.h>
 
@@ -174,11 +178,22 @@ SECTION("SelectAll") {
   }");
 
   TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "testVocbase");
+  arangodb::LogicalCollection* logicalCollection1{};
+  arangodb::LogicalCollection* logicalCollection2{};
 
-  // add collection
-  auto collectionJson = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testCollection\" }");
-  auto* logicalCollection = vocbase.createCollection(collectionJson->slice());
-  REQUIRE((nullptr != logicalCollection));
+  // add collection_1
+  {
+    auto collectionJson = arangodb::velocypack::Parser::fromJson("{ \"name\": \"collection_1\" }");
+    logicalCollection1 = vocbase.createCollection(collectionJson->slice());
+    REQUIRE((nullptr != logicalCollection1));
+  }
+
+  // add collection_2
+  {
+    auto collectionJson = arangodb::velocypack::Parser::fromJson("{ \"name\": \"collection_2\" }");
+    logicalCollection2 = vocbase.createCollection(collectionJson->slice());
+    REQUIRE((nullptr != logicalCollection2));
+  }
 
   // add view
   auto logicalView = vocbase.createView(createJson->slice(), 0);
@@ -189,7 +204,10 @@ SECTION("SelectAll") {
   // add link to collection
   {
     auto updateJson = arangodb::velocypack::Parser::fromJson(
-      "{ \"links\": { \"testCollection\": { \"includeAllFields\" : true } } }"
+      "{ \"links\" : {"
+        "\"collection_1\" : { \"includeAllFields\" : true },"
+        "\"collection_2\" : { \"includeAllFields\" : true }"
+      "}}"
     );
     CHECK((view->updateProperties(updateJson->slice(), true, false).ok()));
 
@@ -201,12 +219,12 @@ SECTION("SelectAll") {
 
     auto slice = builder.slice();
     auto tmpSlice = slice.get("links");
-    CHECK((true == tmpSlice.isObject() && 1 == tmpSlice.length()));
+    CHECK((true == tmpSlice.isObject() && 2 == tmpSlice.length()));
   }
 
-  std::vector<arangodb::ManagedDocumentResult> insertedDocs(42);
+  std::vector<arangodb::ManagedDocumentResult> insertedDocs(2*42);
 
-  // populate collection with data
+  // populate view with the data
   {
       arangodb::OperationOptions opt;
       TRI_voc_tick_t tick;
@@ -218,9 +236,19 @@ SECTION("SelectAll") {
       );
       CHECK((trx.begin().ok()));
 
-      for (size_t i = 0; i < insertedDocs.size(); ++i) {
+      size_t i = 0;
+
+      // insert into collection_1
+      for (; i < insertedDocs.size()/2; ++i) {
         auto const doc = arangodb::velocypack::Parser::fromJson("{ \"key\": " + std::to_string(i) + "}");
-        auto const res = logicalCollection->insert(&trx, doc->slice(), insertedDocs[i], opt, tick, false);
+        auto const res = logicalCollection1->insert(&trx, doc->slice(), insertedDocs[i], opt, tick, false);
+        CHECK(res.ok());
+      }
+
+      // insert into collection_2
+      for (; i < insertedDocs.size(); ++i) {
+        auto const doc = arangodb::velocypack::Parser::fromJson("{ \"key\": " + std::to_string(i) + "}");
+        auto const res = logicalCollection1->insert(&trx, doc->slice(), insertedDocs[i], opt, tick, false);
         CHECK(res.ok());
       }
 
@@ -365,6 +393,68 @@ SECTION("SelectAll") {
     CHECK(expectedDocs.empty());
   }
 
+  // BM25() ASC
+  {
+    std::map<size_t, arangodb::ManagedDocumentResult const*> expectedDocs;
+    for (auto const& doc : insertedDocs) {
+      arangodb::velocypack::Slice docSlice(doc.vpack());
+      auto keySlice = docSlice.get("key");
+      expectedDocs.emplace(keySlice.getNumber<size_t>(), &doc);
+    }
+
+    auto queryResult = executeQuery(
+      vocbase,
+      "FOR d IN VIEW testView SORT BM25(d) RETURN d"
+    );
+    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+
+    auto result = queryResult.result->slice();
+    CHECK(result.isArray());
+
+    for (auto const actualDoc : arangodb::velocypack::ArrayIterator(result)) {
+      auto const resolved = actualDoc.resolveExternals();
+      auto const keySlice = resolved.get("key");
+      auto const key = keySlice.getNumber<size_t>();
+
+      auto expectedDoc = expectedDocs.find(key);
+      REQUIRE(expectedDoc != expectedDocs.end());
+      CHECK(arangodb::velocypack::Slice(expectedDoc->second->vpack()) == resolved);
+      expectedDocs.erase(expectedDoc);
+    }
+    CHECK(expectedDocs.empty());
+  }
+
+  // BM25() DESC
+  {
+    std::map<size_t, arangodb::ManagedDocumentResult const*> expectedDocs;
+    for (auto const& doc : insertedDocs) {
+      arangodb::velocypack::Slice docSlice(doc.vpack());
+      auto keySlice = docSlice.get("key");
+      expectedDocs.emplace(keySlice.getNumber<size_t>(), &doc);
+    }
+
+    auto queryResult = executeQuery(
+      vocbase,
+      "FOR d IN VIEW testView SORT BM25(d) DESC RETURN d"
+    );
+    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+
+    auto result = queryResult.result->slice();
+    CHECK(result.isArray());
+
+    for (auto const actualDoc : arangodb::velocypack::ArrayIterator(result)) {
+      auto const resolved = actualDoc.resolveExternals();
+      auto const keySlice = resolved.get("key");
+      auto const key = keySlice.getNumber<size_t>();
+
+      auto expectedDoc = expectedDocs.find(key);
+      REQUIRE(expectedDoc != expectedDocs.end());
+      CHECK(arangodb::velocypack::Slice(expectedDoc->second->vpack()) == resolved);
+      expectedDocs.erase(expectedDoc);
+    }
+    CHECK(expectedDocs.empty());
+  }
+
   // TFIDF() ASC, key ASC
   {
     auto const& expectedDocs = insertedDocs;
@@ -410,8 +500,292 @@ SECTION("SelectAll") {
   }
 }
 
+// ==, !=, <=, <, >=, >
+SECTION("StringEqual") {
+  static std::vector<std::string> const EMPTY;
+
+  auto createJson = arangodb::velocypack::Parser::fromJson("{ \
+    \"name\": \"testView\", \
+    \"type\": \"iresearch\" \
+  }");
+
+  TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "testVocbase");
+  arangodb::LogicalCollection* logicalCollection1{};
+  arangodb::LogicalCollection* logicalCollection2{};
+
+  // add collection_1
+  {
+    auto collectionJson = arangodb::velocypack::Parser::fromJson("{ \"name\": \"collection_1\" }");
+    logicalCollection1 = vocbase.createCollection(collectionJson->slice());
+    REQUIRE((nullptr != logicalCollection1));
+  }
+
+  // add collection_2
+  {
+    auto collectionJson = arangodb::velocypack::Parser::fromJson("{ \"name\": \"collection_2\" }");
+    logicalCollection2 = vocbase.createCollection(collectionJson->slice());
+    REQUIRE((nullptr != logicalCollection2));
+  }
+
+  // add view
+  auto logicalView = vocbase.createView(createJson->slice(), 0);
+  REQUIRE((false == !logicalView));
+  auto* view = dynamic_cast<arangodb::iresearch::IResearchView*>(logicalView->getImplementation());
+  REQUIRE((false == !view));
+
+  // add link to collection
+  {
+    auto updateJson = arangodb::velocypack::Parser::fromJson(
+      "{ \"links\" : {"
+        "\"collection_1\" : { \"includeAllFields\" : true },"
+        "\"collection_2\" : { \"includeAllFields\" : true }"
+      "}}"
+    );
+    CHECK((view->updateProperties(updateJson->slice(), true, false).ok()));
+
+    arangodb::velocypack::Builder builder;
+
+    builder.openObject();
+    view->getPropertiesVPack(builder, false);
+    builder.close();
+
+    auto slice = builder.slice();
+    auto tmpSlice = slice.get("links");
+    CHECK((true == tmpSlice.isObject() && 2 == tmpSlice.length()));
+  }
+
+  std::deque<arangodb::ManagedDocumentResult> insertedDocs;
+
+  // populate view with the data
+  {
+    arangodb::OperationOptions opt;
+    TRI_voc_tick_t tick;
+
+    arangodb::transaction::UserTransaction trx(
+      arangodb::transaction::StandaloneContext::Create(&vocbase),
+      EMPTY, EMPTY, EMPTY,
+      arangodb::transaction::Options()
+    );
+    CHECK((trx.begin().ok()));
+
+    // insert into collection_1
+    {
+      irs::utf8_path resource;
+      resource/=irs::string_ref(IResearch_test_resource_dir);
+      resource/=irs::string_ref("simple_sequential.json");
+
+      auto builder = arangodb::basics::VelocyPackHelper::velocyPackFromFile(resource.utf8());
+      auto root = builder->slice();
+      REQUIRE(root.isArray());
+
+      size_t i = 0;
+      for (auto doc : arangodb::velocypack::ArrayIterator(root)) {
+        insertedDocs.emplace_back();
+        auto const res = logicalCollection1->insert(&trx, doc, insertedDocs.back(), opt, tick, false);
+        CHECK(res.ok());
+      }
+    }
+
+    CHECK((trx.commit().ok()));
+    view->sync();
+  }
+
+  // missing term
+  {
+    auto queryResult = executeQuery(
+      vocbase,
+      "FOR d IN VIEW testView FILTER d.name == 'invalid_value' RETURN d"
+    );
+    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+
+    auto result = queryResult.result->slice();
+    CHECK(result.isArray());
+
+    for (auto const actualDoc : arangodb::velocypack::ArrayIterator(result)) {
+      UNUSED(actualDoc);
+      CHECK(false);
+    }
+  }
+
+  // d.name == 'A', unordered
+  {
+    std::map<irs::string_ref, arangodb::ManagedDocumentResult const*> expectedDocs {
+      { "A", &insertedDocs[0] }
+    };
+
+    auto queryResult = executeQuery(
+      vocbase,
+      "FOR d IN VIEW testView FILTER d.name == 'A' RETURN d"
+    );
+    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+
+    auto result = queryResult.result->slice();
+    CHECK(result.isArray());
+
+    for (auto const actualDoc : arangodb::velocypack::ArrayIterator(result)) {
+      auto const resolved = actualDoc.resolveExternals();
+      auto const keySlice = resolved.get("name");
+      auto const key = arangodb::iresearch::getStringRef(keySlice);
+
+      auto expectedDoc = expectedDocs.find(key);
+      REQUIRE(expectedDoc != expectedDocs.end());
+      CHECK(arangodb::velocypack::Slice(expectedDoc->second->vpack()) == resolved);
+      expectedDocs.erase(expectedDoc);
+    }
+    CHECK(expectedDocs.empty());
+  }
+
+  // d.same == 'same', unordered
+  {
+    std::map<irs::string_ref, arangodb::ManagedDocumentResult const*> expectedDocs;
+    for (auto const& doc : insertedDocs) {
+      arangodb::velocypack::Slice docSlice(doc.vpack());
+      auto const keySlice = docSlice.get("name");
+      expectedDocs.emplace(arangodb::iresearch::getStringRef(keySlice), &doc);
+    }
+
+    auto queryResult = executeQuery(
+      vocbase,
+      "FOR d IN VIEW testView FILTER d.same == 'xyz' RETURN d"
+    );
+    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+
+    auto result = queryResult.result->slice();
+    CHECK(result.isArray());
+
+    for (auto const actualDoc : arangodb::velocypack::ArrayIterator(result)) {
+      auto const resolved = actualDoc.resolveExternals();
+      auto const keySlice = resolved.get("name");
+      auto const key = arangodb::iresearch::getStringRef(keySlice);
+
+      auto expectedDoc = expectedDocs.find(key);
+      REQUIRE(expectedDoc != expectedDocs.end());
+      CHECK(arangodb::velocypack::Slice(expectedDoc->second->vpack()) == resolved);
+      expectedDocs.erase(expectedDoc);
+    }
+    CHECK(expectedDocs.empty());
+  }
+
+  // d.duplicated == 'abcd', unordered
+  {
+    std::map<irs::string_ref, arangodb::ManagedDocumentResult const*> expectedDocs {
+      { "A", &insertedDocs[0] },
+      { "E", &insertedDocs[4] },
+      { "K", &insertedDocs[10] },
+      { "U", &insertedDocs[20] },
+      { "~", &insertedDocs[26] },
+      { "$", &insertedDocs[30] }
+    };
+
+    auto queryResult = executeQuery(
+      vocbase,
+      "FOR d IN VIEW testView FILTER d.duplicated == 'abcd' RETURN d"
+    );
+    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+
+    auto result = queryResult.result->slice();
+    CHECK(result.isArray());
+
+    for (auto const actualDoc : arangodb::velocypack::ArrayIterator(result)) {
+      auto const resolved = actualDoc.resolveExternals();
+      auto const keySlice = resolved.get("name");
+      auto const key = arangodb::iresearch::getStringRef(keySlice);
+
+      auto expectedDoc = expectedDocs.find(key);
+      REQUIRE(expectedDoc != expectedDocs.end());
+      CHECK(arangodb::velocypack::Slice(expectedDoc->second->vpack()) == resolved);
+      expectedDocs.erase(expectedDoc);
+    }
+    CHECK(expectedDocs.empty());
+  }
+
+  // d.duplicated == 'abcd', name DESC
+  {
+    std::map<irs::string_ref, arangodb::ManagedDocumentResult const*> expectedDocs {
+      { "A", &insertedDocs[0] },
+      { "E", &insertedDocs[4] },
+      { "K", &insertedDocs[10] },
+      { "U", &insertedDocs[20] },
+      { "~", &insertedDocs[26] },
+      { "$", &insertedDocs[30] }
+    };
+
+    auto queryResult = executeQuery(
+      vocbase,
+      "FOR d IN VIEW testView FILTER d.duplicated == 'abcd' SORT d.name DESC RETURN d"
+    );
+    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+
+    auto result = queryResult.result->slice();
+    CHECK(result.isArray());
+
+    arangodb::velocypack::ArrayIterator actualDocs(result);
+    for (auto expectedDoc = expectedDocs.rbegin(), end = expectedDocs.rend(); expectedDoc != end; ++expectedDoc) {
+      CHECK(actualDocs.valid());
+      auto actualDoc = actualDocs.value();
+      auto const resolved = actualDoc.resolveExternals();
+      CHECK(arangodb::velocypack::Slice(expectedDoc->second->vpack()) == resolved);
+      actualDocs.next();
+    }
+    CHECK(!actualDocs.valid());
+  }
+
+  // d.duplicated == 'abcd', TFIDF() ASC, name DESC
+  {
+    std::map<irs::string_ref, arangodb::ManagedDocumentResult const*> expectedDocs {
+      { "A", &insertedDocs[0] },
+      { "E", &insertedDocs[4] },
+      { "K", &insertedDocs[10] },
+      { "U", &insertedDocs[20] },
+      { "~", &insertedDocs[26] },
+      { "$", &insertedDocs[30] }
+    };
+
+    auto queryResult = executeQuery(
+      vocbase,
+      "FOR d IN VIEW testView FILTER d.duplicated == 'abcd' SORT TFIDF(d) ASC, d.name DESC RETURN d"
+    );
+    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+
+    auto result = queryResult.result->slice();
+    CHECK(result.isArray());
+
+    arangodb::velocypack::ArrayIterator actualDocs(result);
+    for (auto expectedDoc = expectedDocs.rbegin(), end = expectedDocs.rend(); expectedDoc != end; ++expectedDoc) {
+      CHECK(actualDocs.valid());
+      auto actualDoc = actualDocs.value();
+      auto const resolved = actualDoc.resolveExternals();
+      CHECK(arangodb::velocypack::Slice(expectedDoc->second->vpack()) == resolved);
+      actualDocs.next();
+    }
+    CHECK(!actualDocs.valid());
+  }
+
+  // d.same == 'same', BM25() ASC, TFIDF() ASC, seq DESC
+  {
+    auto const& expectedDocs = insertedDocs;
+
+    auto queryResult = executeQuery(
+      vocbase,
+      "FOR d IN VIEW testView FILTER d.same == 'xyz' SORT BM25(d) ASC, TFIDF(d) DESC, d.seq DESC RETURN d"
+    );
+    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+
+    auto result = queryResult.result->slice();
+    CHECK(result.isArray());
+
+    auto expectedDoc = expectedDocs.rbegin();
+    for (auto const actualDoc : arangodb::velocypack::ArrayIterator(result)) {
+      auto const resolved = actualDoc.resolveExternals();
+      CHECK(arangodb::velocypack::Slice(expectedDoc->vpack()) == resolved);
+      ++expectedDoc;
+    }
+    CHECK(expectedDoc == expectedDocs.rend());
+  }
+
+}
+
 // FIXME TODO
-// SECTION("Term") { } ==, !=, <=, <, >=, >
 // SECTION("Range") { }
 // SECTION("Prefix") { }
 // SECTION("Phrase") { }
