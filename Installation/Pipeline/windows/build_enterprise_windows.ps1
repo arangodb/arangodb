@@ -1,4 +1,5 @@
 $ErrorActionPreference="Stop"
+echo $env:BUILD_TAG
 $env:_MSPDBSRV_ENDPOINT_=$env:BUILD_TAG
 $buildOptions = "-DUSE_MAINTAINER_MODE=On -DUSE_ENTERPRISE=On -DUSE_CATCH_TESTS=On -DUSE_FAILURE_TESTS=On -DDEBUG_SYNC_REPLICATION=On -DCMAKE_BUILD_TYPE=RelWithDebInfo -DSKIP_PACKAGING=On"
 Remove-Item -Force -Recurse log-output -ErrorAction SilentlyContinue
