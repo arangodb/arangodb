@@ -645,7 +645,16 @@ def buildEdition(edition, os) {
             sh "./Installation/Pipeline/mac/build_${edition}_${os}.sh 16"
         }
         else if (os == 'windows') {
-            powershell ". .\\Installation\\Pipeline\\windows\\build_${edition}_${os}.ps1"
+            // i concede...we need a lock for windows...I could not get it to run concurrently...
+            // v8 would not build multiple times at the same time on the same machine:
+            // [build-enterprise-windows] F:\jenkins\workspace\feature-branches-ng@2\3rdParty\V8\v5.7.0.0\third_party\icu\source\common\unicode/utypes.h(675): fatal error C1090: PDB API call failed, error code '24': ' etc etc
+            // in theory it should be possible to parallelize it by setting an environment variable (see the build script) but for v8 it won't work :(
+            // feel free to recheck if there is time somewhen...this thing here really should not be possible but
+            // ensure that there are 2 concurrent builds on the SAME node building v8 at the same time to properly test it
+            // I just don't want any more "yeah that might randomly fail. just restart" sentences any more
+            lock('build-${env.NODE_NAME}') {
+                powershell ". .\\Installation\\Pipeline\\windows\\build_${edition}_${os}.ps1"
+            }
         }
     }
     finally {
