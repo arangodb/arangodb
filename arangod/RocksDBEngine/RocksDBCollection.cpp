@@ -456,8 +456,10 @@ std::shared_ptr<Index> RocksDBCollection::createIndex(
     THROW_ARANGO_EXCEPTION(res);
   }
 
+#if USE_PLAN_CACHE
   arangodb::aql::PlanCache::instance()->invalidate(
       _logicalCollection->vocbase());
+#endif
   // Until here no harm is done if sth fails. The shared ptr will clean up. if
   // left before
   {

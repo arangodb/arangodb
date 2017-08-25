@@ -35,6 +35,7 @@
 #include "Basics/TimedAction.h"
 #include "Basics/WorkMonitor.h"
 #include "Cluster/ServerState.h"
+#include "Logger/Logger.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
 #include "Random/RandomGenerator.h"

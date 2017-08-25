@@ -31,6 +31,7 @@
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/ArangoGlobalContext.h"
 #include "Basics/WorkMonitor.h"
+#include "Logger/Logger.h"
 #include "Logger/LogAppender.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
@@ -54,6 +55,7 @@ SchedulerFeature::SchedulerFeature(
   requiresElevatedPrivileges(false);
   startsAfter("FileDescriptors");
   startsAfter("Logger");
+  startsAfter("Random");
   startsAfter("WorkMonitor");
 }
 

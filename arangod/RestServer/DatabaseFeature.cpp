@@ -742,7 +742,9 @@ int DatabaseFeature::dropDatabase(std::string const& name, bool waitForDeletion,
     vocbase->setIsOwnAppsDirectory(removeAppsDirectory);
 
     // invalidate all entries for the database
+#if USE_PLAN_CACHE
     arangodb::aql::PlanCache::instance()->invalidate(vocbase);
+#endif
     arangodb::aql::QueryCache::instance()->invalidate(vocbase);
 
     engine->prepareDropDatabase(vocbase, !engine->inRecovery(), res);

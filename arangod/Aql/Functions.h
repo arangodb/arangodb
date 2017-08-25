@@ -86,14 +86,6 @@ struct Functions {
                                    char const* funcName, bool recursive);
 
   public:
-   /// @brief called before a query starts
-   /// has the chance to set up any thread-local storage
-   static void InitializeThreadContext();
-
-   /// @brief called when a query ends
-   /// its responsibility is to clear any thread-local storage
-   static void DestroyThreadContext();
-
    /// @brief helper function. not callable as a "normal" AQL function
    static void Stringify(transaction::Methods* trx,
                          arangodb::basics::VPackStringBufferAdapter& buffer,
