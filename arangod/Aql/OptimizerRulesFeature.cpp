@@ -56,6 +56,11 @@ void OptimizerRulesFeature::prepare() {
   addRules();
 }
 
+void OptimizerRulesFeature::unprepare() {
+  _ruleLookup.clear();
+  _rules.clear();
+}
+
 /// @brief register a rule
 void OptimizerRulesFeature::registerRule(std::string const& name, RuleFunction func,
                                          OptimizerRule::RuleLevel level, bool canCreateAdditionalPlans,
