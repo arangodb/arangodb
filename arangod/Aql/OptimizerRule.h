@@ -146,8 +146,8 @@ struct OptimizerRule {
     // try to remove filters covered by index ranges
     removeFiltersCoveredByIndexRule_pass6,
 
-    // try to remove filters covered by view ranges
-    removeFiltersCoveredByViewRule_pass6,
+    // try to remove filters and sorts covered by view
+    removeFiltersAndSortsCoveredByViewRule_pass6,
 
     removeUnnecessaryFiltersRule_pass6,
 

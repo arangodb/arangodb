@@ -191,7 +191,7 @@ bool ConditionFinder::before(ExecutionNode* en) {
       if (canUseView.first) {
         std::unique_ptr<ExecutionNode> newNode(new EnumerateViewNode(
             _plan, _plan->nextId(), node->vocbase(), node->view(),
-            node->outVariable(), condition.get(), nullptr));
+            node->outVariable(), condition.get(), std::move(sortCondition)));
         condition.release();
         TRI_IF_FAILURE("ConditionFinder::insertViewNode") {
           THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);

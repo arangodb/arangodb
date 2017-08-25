@@ -303,67 +303,111 @@ SECTION("SelectAll") {
     CHECK(expectedDoc == expectedDocs.rend());
   }
 
-//  // TFIDF() ASC
-//  {
-//    std::map<size_t, arangodb::ManagedDocumentResult const*> expectedDocs;
-//    for (auto const& doc : insertedDocs) {
-//      arangodb::velocypack::Slice docSlice(doc.vpack());
-//      auto keySlice = docSlice.get("key");
-//      expectedDocs.emplace(keySlice.getNumber<size_t>(), &doc);
-//    }
-//
-//    auto queryResult = executeQuery(
-//      vocbase,
-//      "FOR d IN VIEW testView SORT TFIDF(d) RETURN d"
-//    );
-//    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
-//
-//    auto result = queryResult.result->slice();
-//    CHECK(result.isArray());
-//
-//    for (auto const actualDoc : arangodb::velocypack::ArrayIterator(result)) {
-//      auto const resolved = actualDoc.resolveExternals();
-//      auto const keySlice = resolved.get("key");
-//      auto const key = keySlice.getNumber<size_t>();
-//
-//      auto expectedDoc = expectedDocs.find(key);
-//      REQUIRE(expectedDoc != expectedDocs.end());
-//      CHECK(arangodb::velocypack::Slice(expectedDoc->second->vpack()) == resolved);
-//      expectedDocs.erase(expectedDoc);
-//    }
-//    CHECK(expectedDocs.empty());
-//  }
-//
-//  // TFIDF() DESC
-//  {
-//    std::map<size_t, arangodb::ManagedDocumentResult const*> expectedDocs;
-//    for (auto const& doc : insertedDocs) {
-//      arangodb::velocypack::Slice docSlice(doc.vpack());
-//      auto keySlice = docSlice.get("key");
-//      expectedDocs.emplace(keySlice.getNumber<size_t>(), &doc);
-//    }
-//
-//    auto queryResult = executeQuery(
-//      vocbase,
-//      "FOR d IN VIEW testView SORT TFIDF(d) DESC RETURN d"
-//    );
-//    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
-//
-//    auto result = queryResult.result->slice();
-//    CHECK(result.isArray());
-//
-//    for (auto const actualDoc : arangodb::velocypack::ArrayIterator(result)) {
-//      auto const resolved = actualDoc.resolveExternals();
-//      auto const keySlice = resolved.get("key");
-//      auto const key = keySlice.getNumber<size_t>();
-//
-//      auto expectedDoc = expectedDocs.find(key);
-//      REQUIRE(expectedDoc != expectedDocs.end());
-//      CHECK(arangodb::velocypack::Slice(expectedDoc->second->vpack()) == resolved);
-//      expectedDocs.erase(expectedDoc);
-//    }
-//    CHECK(expectedDocs.empty());
-//  }
+  // TFIDF() ASC
+  {
+    std::map<size_t, arangodb::ManagedDocumentResult const*> expectedDocs;
+    for (auto const& doc : insertedDocs) {
+      arangodb::velocypack::Slice docSlice(doc.vpack());
+      auto keySlice = docSlice.get("key");
+      expectedDocs.emplace(keySlice.getNumber<size_t>(), &doc);
+    }
+
+    auto queryResult = executeQuery(
+      vocbase,
+      "FOR d IN VIEW testView SORT TFIDF(d) RETURN d"
+    );
+    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+
+    auto result = queryResult.result->slice();
+    CHECK(result.isArray());
+
+    for (auto const actualDoc : arangodb::velocypack::ArrayIterator(result)) {
+      auto const resolved = actualDoc.resolveExternals();
+      auto const keySlice = resolved.get("key");
+      auto const key = keySlice.getNumber<size_t>();
+
+      auto expectedDoc = expectedDocs.find(key);
+      REQUIRE(expectedDoc != expectedDocs.end());
+      CHECK(arangodb::velocypack::Slice(expectedDoc->second->vpack()) == resolved);
+      expectedDocs.erase(expectedDoc);
+    }
+    CHECK(expectedDocs.empty());
+  }
+
+  // TFIDF() DESC
+  {
+    std::map<size_t, arangodb::ManagedDocumentResult const*> expectedDocs;
+    for (auto const& doc : insertedDocs) {
+      arangodb::velocypack::Slice docSlice(doc.vpack());
+      auto keySlice = docSlice.get("key");
+      expectedDocs.emplace(keySlice.getNumber<size_t>(), &doc);
+    }
+
+    auto queryResult = executeQuery(
+      vocbase,
+      "FOR d IN VIEW testView SORT TFIDF(d) DESC RETURN d"
+    );
+    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+
+    auto result = queryResult.result->slice();
+    CHECK(result.isArray());
+
+    for (auto const actualDoc : arangodb::velocypack::ArrayIterator(result)) {
+      auto const resolved = actualDoc.resolveExternals();
+      auto const keySlice = resolved.get("key");
+      auto const key = keySlice.getNumber<size_t>();
+
+      auto expectedDoc = expectedDocs.find(key);
+      REQUIRE(expectedDoc != expectedDocs.end());
+      CHECK(arangodb::velocypack::Slice(expectedDoc->second->vpack()) == resolved);
+      expectedDocs.erase(expectedDoc);
+    }
+    CHECK(expectedDocs.empty());
+  }
+
+  // TFIDF() ASC, key ASC
+  {
+    auto const& expectedDocs = insertedDocs;
+
+    auto queryResult = executeQuery(
+      vocbase,
+      "FOR d IN VIEW testView SORT TFIDF(d), d.key ASC RETURN d"
+    );
+    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+
+    auto result = queryResult.result->slice();
+    CHECK(result.isArray());
+
+    auto expectedDoc = expectedDocs.begin();
+    for (auto const actualDoc : arangodb::velocypack::ArrayIterator(result)) {
+      auto const resolved = actualDoc.resolveExternals();
+      CHECK(arangodb::velocypack::Slice(expectedDoc->vpack()) == resolved);
+      ++expectedDoc;
+    }
+    CHECK(expectedDoc == expectedDocs.end());
+  }
+
+  // TFIDF ASC, key DESC
+  {
+    auto const& expectedDocs = insertedDocs;
+
+    auto queryResult = executeQuery(
+      vocbase,
+      "FOR d IN VIEW testView SORT TFIDF(d), d.key DESC RETURN d"
+    );
+    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+
+    auto result = queryResult.result->slice();
+    CHECK(result.isArray());
+
+    auto expectedDoc = expectedDocs.rbegin();
+    for (auto const actualDoc : arangodb::velocypack::ArrayIterator(result)) {
+      auto const resolved = actualDoc.resolveExternals();
+      CHECK(arangodb::velocypack::Slice(expectedDoc->vpack()) == resolved);
+      ++expectedDoc;
+    }
+    CHECK(expectedDoc == expectedDocs.rend());
+  }
 }
 
 // FIXME TODO

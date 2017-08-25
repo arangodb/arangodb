@@ -1110,7 +1110,7 @@ SECTION("test_query") {
 SECTION("test_register_link") {
   bool persisted = false;
   auto before = PhysicalViewMock::before;
-  auto restore = irs::make_finally([&before]()->void { PhysicalCollectionMock::before = before; });
+  auto restore = irs::make_finally([&before]()->void { PhysicalViewMock::before = before; });
   PhysicalViewMock::before = [&persisted]()->void { persisted = true; };
 
   auto collectionJson = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testCollection\", \"id\": 100 }");
@@ -1181,7 +1181,7 @@ SECTION("test_register_link") {
 SECTION("test_unregister_link") {
   bool persisted = false;
   auto before = PhysicalViewMock::before;
-  auto restore = irs::make_finally([&before]()->void { PhysicalCollectionMock::before = before; });
+  auto restore = irs::make_finally([&before]()->void { PhysicalViewMock::before = before; });
   PhysicalViewMock::before = [&persisted]()->void { persisted = true; };
 
   auto collectionJson = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testCollection\", \"id\": 100 }");
@@ -1506,7 +1506,7 @@ SECTION("test_update_partial") {
   }");
   bool persisted = false;
   auto before = PhysicalViewMock::before;
-  auto restore = irs::make_finally([&before]()->void { PhysicalCollectionMock::before = before; });
+  auto restore = irs::make_finally([&before]()->void { PhysicalViewMock::before = before; });
   PhysicalViewMock::before = [&persisted]()->void { persisted = true; };
 
   // modify meta params

@@ -2036,63 +2036,96 @@ void arangodb::aql::removeFiltersCoveredByIndexRule(
 }
 
 /// @brief try to remove filters which are covered by views
-void arangodb::aql::removeFiltersCoveredByViewRule(
+void arangodb::aql::removeFiltersAndSortsCoveredByViewRule(
     Optimizer* opt, std::unique_ptr<ExecutionPlan> plan,
     OptimizerRule const* rule) {
   SmallVector<ExecutionNode*>::allocator_type::arena_type a;
   SmallVector<ExecutionNode*> nodes{a};
-  plan->findNodesOfType(nodes, EN::FILTER, true);
 
   std::unordered_set<ExecutionNode*> toUnlink;
   bool modified = false;
 
-  for (auto const& node : nodes) {
-    auto fn = static_cast<FilterNode const*>(node);
-    // find the node with the filter expression
-    auto inVar = fn->getVariablesUsedHere();
-    TRI_ASSERT(inVar.size() == 1);
+  {
+    plan->findNodesOfType(nodes, EN::FILTER, true);
 
-    auto setter = plan->getVarSetBy(inVar[0]->id);
+    for (auto const& node : nodes) {
+      auto fn = static_cast<FilterNode const*>(node);
+      // find the node with the filter expression
+      auto inVar = fn->getVariablesUsedHere();
+      TRI_ASSERT(inVar.size() == 1);
 
-    if (setter == nullptr || setter->getType() != EN::CALCULATION) {
-      continue;
-    }
+      auto setter = plan->getVarSetBy(inVar[0]->id);
 
-    auto calculationNode = static_cast<CalculationNode*>(setter);
-    auto conditionNode = calculationNode->expression()->node();
-
-    // build the filter condition
-    auto condition = std::make_unique<Condition>(plan->getAst());
-    condition->andCombine(conditionNode);
-    condition->normalize(plan.get());
-
-    if (condition->root() == nullptr) {
-      continue;
-    }
-
-    bool handled = false;
-    auto current = node;
-    while (current != nullptr) {
-      if (current->getType() == EN::ENUMERATE_VIEW) {
-	toUnlink.emplace(node);
-        calculationNode->canRemoveIfThrows(true);
-	modified = true;
-	handled = true;
-        break;
+      if (!setter || setter->getType() != EN::CALCULATION) {
+        continue;
       }
 
-      if (handled || current->getType() == EN::LIMIT ||
-          !current->hasDependency()) {
-        break;
+      auto calculationNode = static_cast<CalculationNode*>(setter);
+      auto conditionNode = calculationNode->expression()->node();
+
+      // build the filter condition
+      auto condition = std::make_unique<Condition>(plan->getAst());
+      condition->andCombine(conditionNode);
+      condition->normalize(plan.get());
+
+      if (condition->root() == nullptr) {
+        continue;
       }
 
-      current = current->getFirstDependency();
+      auto current = node;
+      while (current) {
+        if (current->getType() == EN::ENUMERATE_VIEW) {
+          toUnlink.emplace(node);
+          calculationNode->canRemoveIfThrows(true);
+          modified = true;
+          break;
+        }
+
+        if (current->getType() == EN::LIMIT || !current->hasDependency()) {
+          break;
+        }
+
+        current = current->getFirstDependency();
+      }
     }
   }
 
-  if (!toUnlink.empty()) {
-    plan->unlinkNodes(toUnlink);
+  {
+    plan->findNodesOfType(nodes, EN::SORT, true);
+
+    for (auto const& node : nodes) {
+      auto sn = static_cast<SortNode const*>(node);
+      // find the node with the filter expression
+      auto inVar = sn->getVariablesUsedHere();
+      TRI_ASSERT(inVar.size() >= 1);
+
+      auto setter = plan->getVarSetBy(inVar[0]->id);
+
+      if (!setter || setter->getType() != EN::CALCULATION) {
+        continue;
+      }
+
+      auto calculationNode = static_cast<CalculationNode*>(setter);
+
+      auto current = node;
+      while (current) {
+        if (current->getType() == EN::ENUMERATE_VIEW) {
+          toUnlink.emplace(node);
+          calculationNode->canRemoveIfThrows(true);
+          modified = true;
+          break;
+        }
+
+        if (current->getType() == EN::LIMIT || !current->hasDependency()) {
+          break;
+        }
+
+        current = current->getFirstDependency();
+      }
+    }
   }
+
+  plan->unlinkNodes(toUnlink);
 
   opt->addPlan(std::move(plan), rule, modified);
 }
