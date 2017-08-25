@@ -68,7 +68,7 @@ function resolveAppInfo (appInfo) {
   }
   if (/^git:/i.test(appInfo)) {
     const splitted = appInfo.split(':');
-    const baseUrl = process.env.FOXX_BASE_URL || 'https://github.com';
+    const baseUrl = process.env.FOXX_BASE_URL || 'https://github.com/';
     return `${baseUrl}${splitted[1]}/archive/${splitted[2] || 'master'}.zip`;
   }
   if (/^https?:/i.test(appInfo)) {

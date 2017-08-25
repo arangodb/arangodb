@@ -301,17 +301,9 @@ bool IndexBlock::initIndexes() {
       }
     } else {
       // no V8 context required!
-
-      Functions::InitializeThreadContext();
-      try {
-        executeExpressions();
-        TRI_IF_FAILURE("IndexBlock::executeExpression") {
-          THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
-        }
-        Functions::DestroyThreadContext();
-      } catch (...) {
-        Functions::DestroyThreadContext();
-        throw;
+      executeExpressions();
+      TRI_IF_FAILURE("IndexBlock::executeExpression") {
+        THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
       }
     }
   }
@@ -587,7 +579,7 @@ AqlItemBlock* IndexBlock::getSome(size_t atLeast, size_t atMost) {
     _indexesExhausted = !readIndex(atMost, callback);
     if (_returned == saveReturned) {
       // No results. Kill the registers:
-      for (size_t i = 0; i < curRegs; ++i) {
+      for (arangodb::aql::RegisterId i = 0; i < curRegs; ++i) {
         res->destroyValue(_returned, i);
       }
     } else {

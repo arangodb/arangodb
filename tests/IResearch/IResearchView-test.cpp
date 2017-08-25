@@ -56,6 +56,7 @@
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "Transaction/StandaloneContext.h"
 #include "Transaction/UserTransaction.h"
+#include "Utils/OperationOptions.h"
 #include "velocypack/Iterator.h"
 #include "velocypack/Parser.h"
 #include "V8Server/V8DealerFeature.h"
@@ -1282,14 +1283,17 @@ SECTION("test_unregister_link") {
     {
       auto createJson = arangodb::velocypack::Parser::fromJson("{}");
       auto updateJson = arangodb::velocypack::Parser::fromJson("{ \"links\": { \"testCollection\": {} } }");
-      arangodb::LogicalView logicalView(&vocbase, viewJson->slice());
-      auto view = arangodb::iresearch::IResearchView::make(&logicalView, createJson->slice(), true);
-      REQUIRE((false == !view));
-      auto* viewImpl = dynamic_cast<arangodb::iresearch::IResearchView*>(view.get());
+      auto logicalView = vocbase.createView(viewJson->slice(), 0);
+      REQUIRE((false == !logicalView));
+      auto* viewImpl = dynamic_cast<arangodb::iresearch::IResearchView*>(logicalView->getImplementation());
       REQUIRE((nullptr != viewImpl));
       CHECK((viewImpl->updateProperties(updateJson->slice(), true, false).ok()));
       CHECK((false == logicalCollection->getIndexes().empty()));
       CHECK((1 == viewImpl->linkCount()));
+
+      auto factory = [](arangodb::LogicalView*, arangodb::velocypack::Slice const&, bool isNew)->std::unique_ptr<arangodb::ViewImplementation>{ return nullptr; };
+      logicalView->spawnImplementation(factory, createJson->slice(), true); // ensure destructor for ViewImplementation is called
+      CHECK((false == logicalCollection->getIndexes().empty()));
     }
 
     // create a new view with same ID to validate links
@@ -1668,6 +1672,76 @@ SECTION("test_update_partial") {
     REQUIRE((false == !logicalView));
     auto view = logicalView->getImplementation();
     REQUIRE((false == !view));
+
+    arangodb::iresearch::IResearchViewMeta expectedMeta;
+    std::unordered_map<std::string, arangodb::iresearch::IResearchLinkMeta> expectedLinkMeta;
+    auto updateJson = arangodb::velocypack::Parser::fromJson("{ \
+      \"links\": { \
+        \"testCollection\": {} \
+      }}");
+
+    expectedMeta._collections.insert(logicalCollection->cid());
+    expectedMeta._dataPath = std::string("iresearch-") + std::to_string(logicalView->id());
+    expectedLinkMeta["testCollection"]; // use defaults
+    persisted = false;
+    CHECK((view->updateProperties(updateJson->slice(), true, false).ok()));
+    CHECK((true == persisted));
+
+    arangodb::velocypack::Builder builder;
+
+    builder.openObject();
+    view->getPropertiesVPack(builder, false);
+    builder.close();
+
+    auto slice = builder.slice();
+    arangodb::iresearch::IResearchViewMeta meta;
+    std::string error;
+
+    CHECK((8U == slice.length()));
+    CHECK((meta.init(slice, error, *logicalView) && expectedMeta == meta));
+
+    auto tmpSlice = slice.get("links");
+    CHECK((true == tmpSlice.isObject() && 1 == tmpSlice.length()));
+
+    for (arangodb::velocypack::ObjectIterator itr(tmpSlice); itr.valid(); ++itr) {
+      arangodb::iresearch::IResearchLinkMeta linkMeta;
+      auto key = itr.key();
+      auto value = itr.value();
+      CHECK((true == key.isString()));
+
+      auto expectedItr = expectedLinkMeta.find(key.copyString());
+      CHECK((
+        true == value.isObject()
+        && expectedItr != expectedLinkMeta.end()
+        && linkMeta.init(value, error)
+        && expectedItr->second == linkMeta
+      ));
+      expectedLinkMeta.erase(expectedItr);
+    }
+
+    CHECK((true == expectedLinkMeta.empty()));
+  }
+
+  // add a new link to a collection with documents
+  {
+    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "testVocbase");
+    auto collectionJson = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testCollection\" }");
+    auto* logicalCollection = vocbase.createCollection(collectionJson->slice());
+    REQUIRE((nullptr != logicalCollection));
+    auto logicalView = vocbase.createView(createJson->slice(), 0);
+    REQUIRE((false == !logicalView));
+    auto view = logicalView->getImplementation();
+    REQUIRE((false == !view));
+
+    {
+      static std::vector<std::string> const EMPTY;
+      auto doc = arangodb::velocypack::Parser::fromJson("{ \"abc\": \"def\" }");
+      arangodb::transaction::UserTransaction trx(arangodb::transaction::StandaloneContext::Create(&vocbase), EMPTY, EMPTY, EMPTY, arangodb::transaction::Options());
+
+      CHECK((trx.begin().ok()));
+      CHECK((trx.insert(logicalCollection->name(), doc->slice(), arangodb::OperationOptions()).successful()));
+      CHECK((trx.commit().ok()));
+    }
 
     arangodb::iresearch::IResearchViewMeta expectedMeta;
     std::unordered_map<std::string, arangodb::iresearch::IResearchLinkMeta> expectedLinkMeta;

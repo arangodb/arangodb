@@ -78,15 +78,55 @@ static std::vector<arangodb::basics::AttributeName> const KeyAttribute{
 // lists: lexicographically and within each slot according to these rules.
 // ...........................................................................
 
+RocksDBVPackUniqueIndexIterator::RocksDBVPackUniqueIndexIterator(
+    LogicalCollection* collection, transaction::Methods* trx,
+    ManagedDocumentResult* mmdr, arangodb::RocksDBVPackIndex const* index,
+    RocksDBKeyBounds&& bounds)
+    : IndexIterator(collection, trx, mmdr, index),
+      _index(index),
+      _cmp(index->comparator()),
+      _bounds(std::move(bounds)),
+      _done(false) {
+  TRI_ASSERT(index->columnFamily() == RocksDBColumnFamily::vpack());
+}
+
+/// @brief Reset the cursor
+void RocksDBVPackUniqueIndexIterator::reset() {
+  TRI_ASSERT(_trx->state()->isRunning());
+
+  _done = false;
+}
+
+bool RocksDBVPackUniqueIndexIterator::next(TokenCallback const& cb, size_t limit) {
+  TRI_ASSERT(_trx->state()->isRunning());
+
+  if (limit == 0 || _done) {
+    // already looked up something
+    return false;
+  }
+  
+  _done = true;
+
+  auto value = RocksDBValue::Empty(RocksDBEntryType::PrimaryIndexValue);
+  RocksDBMethods* mthds = RocksDBTransactionState::toMethods(_trx);
+  arangodb::Result r = mthds->Get(_index->columnFamily(), _bounds.start(), value.buffer());
+
+  if (r.ok()) {
+    cb(RocksDBToken(RocksDBValue::revisionId(*value.buffer())));
+  }
+
+  // there is at most one element, so we are done now
+  return false;
+}
+
 RocksDBVPackIndexIterator::RocksDBVPackIndexIterator(
     LogicalCollection* collection, transaction::Methods* trx,
     ManagedDocumentResult* mmdr, arangodb::RocksDBVPackIndex const* index,
-    bool reverse, bool singleElementFetch, RocksDBKeyBounds&& bounds)
+    bool reverse, RocksDBKeyBounds&& bounds)
     : IndexIterator(collection, trx, mmdr, index),
       _index(index),
       _cmp(index->comparator()),
       _reverse(reverse),
-      _singleElementFetch(singleElementFetch),
       _bounds(std::move(bounds)) {
   TRI_ASSERT(index->columnFamily() == RocksDBColumnFamily::vpack());
 
@@ -146,13 +186,6 @@ bool RocksDBVPackIndexIterator::next(TokenCallback const& cb, size_t limit) {
             ? RocksDBValue::revisionId(_iterator->value())
             : RocksDBKey::revisionId(_bounds.type(), _iterator->key());
     cb(RocksDBToken(revisionId));
-
-    if (_singleElementFetch) {
-      // we only need to fetch a single element from the index and are done then
-      // this is a useful optimization because seeking forwards or backwards
-      // with the iterator can be very expensive
-      return false;
-    }
 
     --limit;
     if (_reverse) {
@@ -610,14 +643,13 @@ Result RocksDBVPackIndex::removeInternal(transaction::Methods* trx,
 /// @brief attempts to locate an entry in the index
 /// Warning: who ever calls this function is responsible for destroying
 /// the RocksDBVPackIndexIterator* results
-RocksDBVPackIndexIterator* RocksDBVPackIndex::lookup(
+IndexIterator* RocksDBVPackIndex::lookup(
     transaction::Methods* trx, ManagedDocumentResult* mmdr,
     VPackSlice const searchValues, bool reverse) const {
   TRI_ASSERT(searchValues.isArray());
   TRI_ASSERT(searchValues.length() <= _fields.size());
 
   VPackBuilder leftSearch;
-  VPackBuilder rightSearch;
 
   VPackSlice lastNonEq;
   leftSearch.openArray();
@@ -630,9 +662,18 @@ RocksDBVPackIndexIterator* RocksDBVPackIndex::lookup(
     }
     leftSearch.add(eq);
   }
+  
+  if (lastNonEq.isNone() && _unique && searchValues.length() == _fields.size()) {
+    leftSearch.close();
+    RocksDBKeyBounds bounds = RocksDBKeyBounds::UniqueVPackIndex(_objectId, leftSearch.slice());
 
+    return new RocksDBVPackUniqueIndexIterator(_collection, trx, mmdr, this, std::move(bounds));
+  }
+  
   VPackSlice leftBorder;
   VPackSlice rightBorder;
+  
+  VPackBuilder rightSearch;
 
   if (lastNonEq.isNone()) {
     // We only have equality!
@@ -703,15 +744,12 @@ RocksDBVPackIndexIterator* RocksDBVPackIndex::lookup(
     }
   }
 
-  bool const singleElementFetch = (_unique && lastNonEq.isNone() &&
-                                   searchValues.length() == _fields.size());
-
   RocksDBKeyBounds bounds = _unique ? RocksDBKeyBounds::UniqueVPackIndex(
                                           _objectId, leftBorder, rightBorder)
                                     : RocksDBKeyBounds::VPackIndex(
                                           _objectId, leftBorder, rightBorder);
-  return new RocksDBVPackIndexIterator(_collection, trx, mmdr, this, reverse,
-                                       singleElementFetch, std::move(bounds));
+
+  return new RocksDBVPackIndexIterator(_collection, trx, mmdr, this, reverse, std::move(bounds));
 }
 
 bool RocksDBVPackIndex::accessFitsIndex(

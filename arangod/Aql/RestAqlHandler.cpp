@@ -46,6 +46,10 @@
 #include <velocypack/Dumper.h>
 #include <velocypack/velocypack-aliases.h>
 
+#ifdef USE_ENTERPRISE
+#include "Enterprise/Transaction/IgnoreNoAccessAqlTransaction.h"
+#endif
+
 using namespace arangodb;
 using namespace arangodb::rest;
 using namespace arangodb::aql;

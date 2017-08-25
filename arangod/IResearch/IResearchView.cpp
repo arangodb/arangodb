@@ -868,7 +868,6 @@ arangodb::Result updateLinks(
       namedJson.openObject();
 
       if (!arangodb::iresearch::mergeSlice(namedJson, link)
-          || !arangodb::iresearch::IResearchLink::setSkipViewRegistration(namedJson)
           || !arangodb::iresearch::IResearchLink::setType(namedJson)
           || !arangodb::iresearch::IResearchLink::setView(namedJson, view.id())) {
         return arangodb::Result(
@@ -998,8 +997,7 @@ arangodb::Result updateLinks(
           auto* ptr = static_cast<arangodb::iresearch::IResearchLink*>(linkPtr.get());
         #endif
 
-        // do not -re-register a link if it was not created here
-        state._valid = ptr && isNew && view.linkRegister(*ptr);
+        state._valid = ptr && isNew;
       }
     }
 

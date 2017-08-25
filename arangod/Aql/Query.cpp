@@ -347,11 +347,10 @@ void Query::prepare(QueryRegistry* registry, uint64_t queryHash) {
       TRI_ASSERT(_collections.empty());
   
       // create the transaction object, but do not start it yet
-      AqlTransaction* trx = new AqlTransaction(
-        createTransactionContext(), _collections.collections(),
-        _queryOptions.transactionOptions,
-        _part == PART_MAIN);
-      _trx = trx;
+      _trx = AqlTransaction::create(
+              createTransactionContext(), _collections.collections(),
+              _queryOptions.transactionOptions,
+              _part == PART_MAIN);
 
       VPackBuilder* builder = planCacheEntry->builder.get();
       VPackSlice slice = builder->slice();
@@ -433,15 +432,25 @@ ExecutionPlan* Query::prepare() {
     _isModificationQuery = parser.isModificationQuery();
   }
 
-  TRI_ASSERT(_trx == nullptr); 
-
+  TRI_ASSERT(_trx == nullptr);
+  
+  // TODO: Remove once we have cluster wide transactions
+  std::unordered_set<std::string> inaccessibleCollections;
+#ifdef USE_ENTERPRISE
+  if (_queryOptions.transactionOptions.skipInaccessibleCollections) {
+    inaccessibleCollections = _queryOptions.inaccessibleShardIds;
+  }
+#endif
+  
+  std::unique_ptr<AqlTransaction> trx(AqlTransaction::create(
+                     createTransactionContext(), _collections.collections(),
+                     _queryOptions.transactionOptions,
+                     _part == PART_MAIN, inaccessibleCollections));
+  TRI_DEFER(trx.release());
   // create the transaction object, but do not start it yet
-  AqlTransaction* trx = new AqlTransaction(
-      createTransactionContext(), _collections.collections(), 
-      _queryOptions.transactionOptions, _part == PART_MAIN);
-  _trx = trx;
-    
-  // As soon as we start du instantiate the plan we have to clean it
+  _trx = trx.get();
+  
+  // As soon as we start to instantiate the plan we have to clean it
   // up before killing the unique_ptr
   if (!_queryString.empty()) {
     // we have an AST
@@ -486,7 +495,6 @@ ExecutionPlan* Query::prepare() {
     enterState(QueryExecutionState::ValueType::LOADING_COLLECTIONS);
     
     Result res = trx->addCollections(*_collections.collections());
-
     if (res.ok()) {
       res = _trx->begin();
     }
@@ -952,7 +960,7 @@ QueryResult Query::explain() {
     enterState(QueryExecutionState::ValueType::AST_OPTIMIZATION);
     
     // create the transaction object, but do not start it yet
-    _trx = new AqlTransaction(createTransactionContext(),
+    _trx = AqlTransaction::create(createTransactionContext(),
                               _collections.collections(), 
                               _queryOptions.transactionOptions, true);
 

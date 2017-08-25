@@ -1026,7 +1026,9 @@ std::shared_ptr<Index> LogicalCollection::createIndex(transaction::Methods* trx,
 /// @brief drops an index, including index file removal and replication
 bool LogicalCollection::dropIndex(TRI_idx_iid_t iid) {
   TRI_ASSERT(!ServerState::instance()->isCoordinator());
+#if USE_PLAN_CACHE
   arangodb::aql::PlanCache::instance()->invalidate(_vocbase);
+#endif
   arangodb::aql::QueryCache::instance()->invalidate(_vocbase, name());
   return _physical->dropIndex(iid);
 }
@@ -1258,7 +1260,7 @@ ChecksumResult LogicalCollection::checksum(bool withRevisions, bool withData) co
   Result res = trx.begin();
 
   if (!res.ok()) {
-    return ChecksumResult(res);
+    return ChecksumResult(std::move(res));
   }
 
   trx.pinData(_cid); // will throw when it fails
@@ -1324,59 +1326,24 @@ ChecksumResult LogicalCollection::checksum(bool withRevisions, bool withData) co
   return ChecksumResult(std::move(b));
 }
 
-Result LogicalCollection::compareChecksums(VPackSlice checksumSlice) const {
-  if (!checksumSlice.isObject()) {
-    auto typeName = checksumSlice.typeName();
+Result LogicalCollection::compareChecksums(VPackSlice checksumSlice, std::string const& referenceChecksum) const {
+  if (!checksumSlice.isString()) {
     return Result(
       TRI_ERROR_REPLICATION_WRONG_CHECKSUM_FORMAT,
-      std::string("Checksum must be an object but is ") + typeName
+      std::string("Checksum must be a string but is ") + checksumSlice.typeName()
     );
   }
 
-  auto revision = checksumSlice.get("revision");
-  auto checksum = checksumSlice.get("checksum");
+  auto checksum = checksumSlice.copyString();
 
-  if (!revision.isString()) {
-    return Result(
-      TRI_ERROR_REPLICATION_WRONG_CHECKSUM_FORMAT,
-      "Property `revisionId` must be a string"
-    );
-  }
-  if (!checksum.isString()) {
-    return Result(
-      TRI_ERROR_REPLICATION_WRONG_CHECKSUM_FORMAT,
-      "Property `checksum` must be a string"
-    );
-  }
-
-  auto result = this->checksum(false, false);
-
-  if (!result.ok()) {
-    return Result(result);
-  }
-
-  auto referenceChecksumSlice = result.slice();
-  auto referenceChecksum = referenceChecksumSlice.get("checksum");
-  auto referenceRevision = referenceChecksumSlice.get("revision");
-  TRI_ASSERT(referenceChecksum.isString());
-  TRI_ASSERT(referenceRevision.isString());
-
-  if (!checksum.isEqualString(referenceChecksum.copyString())) {
+  if (checksum != referenceChecksum) {
     return Result(
       TRI_ERROR_REPLICATION_WRONG_CHECKSUM,
-      "`checksum` property is wrong. Expected: "
-        + referenceChecksum.copyString()
-        + ". Actual: " + checksum.copyString()
+      "'checksum' is wrong. Expected: "
+        + referenceChecksum
+        + ". Actual: " + checksum
     );
   }
- 
-  if (!revision.isEqualString(referenceRevision.copyString())) {
-    return Result(
-      TRI_ERROR_REPLICATION_WRONG_CHECKSUM,
-      "`checksum` property is wrong. Expected: "
-        + revision.copyString()
-        + ". Actual: " + referenceRevision.copyString()
-    );
-  }
+
   return Result();
 }

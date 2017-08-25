@@ -147,7 +147,8 @@ std::string const MMFilesEngine::FeatureName("MMFilesEngine");
 MMFilesEngine::MMFilesEngine(application_features::ApplicationServer* server)
     : StorageEngine(server, EngineName, FeatureName, new MMFilesIndexFactory()),
       _isUpgrade(false),
-      _maxTick(0) {
+      _maxTick(0),
+      _releasedTick(0) {
   startsAfter("MMFilesPersistentIndex"); // yes, intentional!
 
   server->addFeature(new MMFilesWalRecoveryFeature(server));
@@ -1573,15 +1574,13 @@ static bool UnloadCollectionCallback(LogicalCollection* collection) {
   int res = collection->close();
 
   if (res != TRI_ERROR_NO_ERROR) {
-    std::string const colName(collection->name());
     LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "failed to close collection '"
-                                            << colName << "': " << res;
+                                            << collection->name() << "': " << TRI_errno_string(res);
 
     collection->setStatus(TRI_VOC_COL_STATUS_CORRUPTED);
-    return true;
+  } else {
+    collection->setStatus(TRI_VOC_COL_STATUS_UNLOADED);
   }
-
-  collection->setStatus(TRI_VOC_COL_STATUS_UNLOADED);
 
   return true;
 }
@@ -2940,23 +2939,19 @@ int MMFilesEngine::openCollection(TRI_vocbase_t* vocbase,
       // file is a datafile (or was a compaction file)
       else if (filetype == "datafile" || filetype == "compaction") {
         if (!datafile->isSealed()) {
-          LOG_TOPIC(ERR, Logger::DATAFILES)
+          LOG_TOPIC(DEBUG, Logger::DATAFILES)
               << "datafile '" << filename
-              << "' is not sealed, this should never happen";
-          result = TRI_ERROR_ARANGO_CORRUPTED_DATAFILE;
-          stop = true;
-          break;
-        } else {
-          datafiles.emplace_back(datafile);
-        }
+              << "' is not sealed, this should not happen under normal circumstances";
+        } 
+        datafiles.emplace_back(datafile);
       }
 
       else {
-        LOG_TOPIC(ERR, Logger::DATAFILES) << "unknown datafile '" << file
+        LOG_TOPIC(ERR, Logger::DATAFILES) << "unknown file '" << file
                                           << "'";
       }
     } else {
-      LOG_TOPIC(ERR, Logger::DATAFILES) << "unknown datafile '" << file << "'";
+      LOG_TOPIC(ERR, Logger::DATAFILES) << "unknown file '" << file << "'";
     }
   }
 
@@ -2978,7 +2973,7 @@ int MMFilesEngine::openCollection(TRI_vocbase_t* vocbase,
         stop = true;
         LOG_TOPIC(ERR, arangodb::Logger::FIXME)
             << "cannot rename sealed journal to '" << filename
-            << "', this should not happen: " << TRI_errno_string(res);
+            << "': " << TRI_errno_string(res);
         break;
       }
     }
@@ -3004,11 +2999,66 @@ int MMFilesEngine::openCollection(TRI_vocbase_t* vocbase,
   std::sort(journals.begin(), journals.end(), DatafileComparator());
   std::sort(compactors.begin(), compactors.end(), DatafileComparator());
 
+  if (journals.size() > 1) {
+    LOG_TOPIC(DEBUG, Logger::FIXME) << "found more than a single journal for collection '" << collection->name() << "'. now turning extra journals into datafiles";
+
+    MMFilesDatafile* journal = journals.back();
+    journals.pop_back();
+    
+    // got more than one journal. now add all the journals but the last one as datafiles
+    for (auto& it : journals) {
+      std::string dname("datafile-" + std::to_string(it->fid()) + ".db");
+      std::string filename =
+          arangodb::basics::FileUtils::buildFilename(physical->path(), dname);
+
+      int res = it->rename(filename);
+
+      if (res == TRI_ERROR_NO_ERROR) {
+        datafiles.emplace_back(it);
+        LOG_TOPIC(DEBUG, arangodb::Logger::FIXME)
+            << "renamed extra journal to '" << filename << "'";
+      } else {
+        result = res;
+        stop = true;
+        LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+            << "cannot rename extra journal to '" << filename
+            << "': " << TRI_errno_string(res);
+        break;
+      }
+    }
+
+    journals.clear();
+    journals.emplace_back(journal);
+
+    TRI_ASSERT(journals.size() == 1);
+
+    // sort datafiles again
+    std::sort(datafiles.begin(), datafiles.end(), DatafileComparator());
+  }
+  
+  // stop if necessary
+  if (stop) {
+    for (auto& datafile : all) {
+      LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "closing datafile '"
+                                                << datafile->getName() << "'";
+      delete datafile;
+    }
+
+    if (result != TRI_ERROR_NO_ERROR) {
+      return result;
+    }
+    return TRI_ERROR_INTERNAL;
+  }
+  
+  LOG_TOPIC(DEBUG, Logger::FIXME) << "collection inventory for '" 
+                                  << collection->name() << "': datafiles: " 
+                                  << datafiles.size() << ", journals: " 
+                                  << journals.size() << ", compactors: " 
+                                  << compactors.size();
+    
+
   // add the datafiles and journals
-  WRITE_LOCKER(writeLocker, physical->_filesLock);
-  physical->_datafiles = std::move(datafiles);
-  physical->_journals = std::move(journals);
-  physical->_compactors = std::move(compactors);
+  physical->setInitialFiles(std::move(datafiles), std::move(journals), std::move(compactors));
 
   return TRI_ERROR_NO_ERROR;
 }
@@ -3390,7 +3440,7 @@ Result MMFilesEngine::createLoggerState(TRI_vocbase_t* vocbase, VPackBuilder& bu
   return Result();
 }
 
-Result MMFilesEngine::createTickRanges(VPackBuilder& builder){
+Result MMFilesEngine::createTickRanges(VPackBuilder& builder) {
     auto const& ranges = MMFilesLogfileManager::instance()->ranges();
     builder.openArray();
     for (auto& it : ranges) {
@@ -3437,3 +3487,18 @@ Result MMFilesEngine::lastLogger(TRI_vocbase_t* /*vocbase*/, std::shared_ptr<tra
   builderSPtr = parser.steal();
   return res;
 }
+
+TRI_voc_tick_t MMFilesEngine::currentTick() const {
+  return MMFilesLogfileManager::instance()->slots()->lastCommittedTick();
+}
+
+TRI_voc_tick_t MMFilesEngine::releasedTick() const {
+  READ_LOCKER(lock, _releaseLock);
+  return _releasedTick;
+}
+
+void MMFilesEngine::releaseTick(TRI_voc_tick_t tick) {
+  WRITE_LOCKER(lock, _releaseLock);
+  _releasedTick = tick;
+}
+

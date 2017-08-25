@@ -114,6 +114,9 @@ class RocksDBCounterManager {
   // Clear out key generator map for values not read by any collection.
   void clearKeyGenerators();
 
+  // Earliest sequence number needed for recovery (don't throw out newer WALs)
+  rocksdb::SequenceNumber earliestSeqNeeded() const;
+
  protected:
   struct CMValue {
     /// ArangoDB transaction ID
@@ -163,6 +166,11 @@ class RocksDBCounterManager {
   std::unordered_map<uint64_t, rocksdb::SequenceNumber> _syncedSeqNums;
 
   //////////////////////////////////////////////////////////////////////////////
+  /// @brief last sync sequence number
+  //////////////////////////////////////////////////////////////////////////////
+  rocksdb::SequenceNumber _lastSync;
+
+  //////////////////////////////////////////////////////////////////////////////
   /// @brief currently syncing
   //////////////////////////////////////////////////////////////////////////////
   std::atomic<bool> _syncing;
@@ -176,6 +184,8 @@ class RocksDBCounterManager {
   /// @brief protect _syncing and _counters
   //////////////////////////////////////////////////////////////////////////////
   mutable basics::ReadWriteLock _rwLock;
+
+  TRI_voc_tick_t _initialReleasedTick;
 };
 }
 

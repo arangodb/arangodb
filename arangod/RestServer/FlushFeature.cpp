@@ -42,7 +42,7 @@ FlushFeature::FlushFeature(ApplicationServer* server)
   setOptional(false);
   requiresElevatedPrivileges(false);
   startsAfter("WorkMonitor");
-  startsAfter("EngineSelector");
+  startsAfter("StorageEngine");
   // TODO: must start after storage engine
 }
 

@@ -586,7 +586,7 @@ ArangoDatabase.prototype._engine = function () {
 // //////////////////////////////////////////////////////////////////////////////
 
 ArangoDatabase.prototype._engineStats = function () {
-  var requestResult = this._connection.GET('/_api/engineStats');
+  var requestResult = this._connection.GET('/_api/engine/stats');
 
   arangosh.checkRequestResult(requestResult);
 

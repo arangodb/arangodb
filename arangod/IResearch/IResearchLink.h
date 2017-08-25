@@ -133,14 +133,6 @@ class IResearchLink {
   ); // arangodb::Index override
 
   ////////////////////////////////////////////////////////////////////////////////
-  /// @brief set a flag in the builder to prevent registration with the
-  ///        corresponding iResearch View during construction of the object
-  ///        NOTE: required to avoid deadlock when looking-up view in vocbase
-  /// @return success
-  ////////////////////////////////////////////////////////////////////////////////
-  static bool setSkipViewRegistration(arangodb::velocypack::Builder& builder);
-
-  ////////////////////////////////////////////////////////////////////////////////
   /// @brief set the iResearch link 'type' field in the builder to the proper
   ///        value
   /// @return success
@@ -219,4 +211,5 @@ int EnhanceJsonIResearchLink(
 
 NS_END // iresearch
 NS_END // arangodb
+
 #endif

@@ -41,7 +41,7 @@ void RocksDBLogger::Logv(const rocksdb::InfoLogLevel logLevel, char const* forma
   static constexpr size_t prefixSize = 9; // strlen("rocksdb: ");
   // truncate all log messages after this length
   char buffer[4096];
-  memcpy(&buffer[0], "rocksdb: \0", prefixSize); // add trailing \0 byte already for safety
+  memcpy(&buffer[0], "rocksdb: \0", strlen("rocksdb: \0")); // add trailing \0 byte already for safety
 
   va_list backup;
   va_copy(backup, ap);

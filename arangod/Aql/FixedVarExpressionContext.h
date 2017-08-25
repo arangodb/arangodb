@@ -31,7 +31,7 @@ namespace arangodb {
 namespace aql {
 class AqlItemBlock;
 
-class FixedVarExpressionContext : public ExpressionContext {
+class FixedVarExpressionContext final : public ExpressionContext {
  public:
   FixedVarExpressionContext() : ExpressionContext() {}
 

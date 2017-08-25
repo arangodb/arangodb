@@ -226,8 +226,14 @@ class RocksDBEngine final : public StorageEngine {
   std::pair<TRI_voc_tick_t, TRI_voc_cid_t> mapObjectToCollection(
       uint64_t) const;
 
+  std::vector<std::string> currentWalFiles();
   void determinePrunableWalFiles(TRI_voc_tick_t minTickToKeep);
   void pruneWalFiles();
+
+  // management methods for synchronizing with external persistent stores
+  virtual TRI_voc_tick_t currentTick() const;
+  virtual TRI_voc_tick_t releasedTick() const;
+  virtual void releaseTick(TRI_voc_tick_t);
 
  private:
   Result dropDatabase(TRI_voc_tick_t);
@@ -255,7 +261,9 @@ class RocksDBEngine final : public StorageEngine {
   static std::string const FeatureName;
   RocksDBCounterManager* counterManager() const;
   RocksDBReplicationManager* replicationManager() const;
-  arangodb::Result syncWal();
+  arangodb::Result syncWal(bool waitForSync = false,
+                           bool waitForCollector = false,
+                           bool writeShutdownFile = false);
 
  private:
   /// single rocksdb database used in this storage engine
@@ -286,11 +294,16 @@ class RocksDBEngine final : public StorageEngine {
   std::unordered_map<uint64_t, std::pair<TRI_voc_tick_t, TRI_voc_cid_t>>
       _collectionMap;
 
+  mutable basics::ReadWriteLock _walFileLock;
+
   // which WAL files can be pruned when
   std::unordered_map<std::string, double> _prunableWalFiles;
 
   // number of seconds to wait before an obsolete WAL file is actually pruned
   double _pruneWaitTime;
+
+  // do not release walfiles containing writes later than this
+  TRI_voc_tick_t _releasedTick;
 };
 }  // namespace arangodb
 #endif

@@ -165,6 +165,7 @@ class StorageEngineMock: public arangodb::StorageEngine {
   virtual arangodb::TransactionManager* createTransactionManager() override;
   virtual arangodb::TransactionState* createTransactionState(TRI_vocbase_t* vocbase, arangodb::transaction::Options const& options) override;
   virtual void createView(TRI_vocbase_t* vocbase, TRI_voc_cid_t id, arangodb::LogicalView const*) override;
+  virtual TRI_voc_tick_t currentTick() const override;
   virtual std::string databasePath(TRI_vocbase_t const* vocbase) const override;
   virtual void destroyCollection(TRI_vocbase_t* vocbase, arangodb::LogicalCollection* collection) override;
   virtual void destroyView(TRI_vocbase_t* vocbase, arangodb::LogicalView*) override;
@@ -184,6 +185,8 @@ class StorageEngineMock: public arangodb::StorageEngine {
   virtual arangodb::Result persistCollection(TRI_vocbase_t* vocbase, arangodb::LogicalCollection const* collection) override;
   virtual arangodb::Result persistView(TRI_vocbase_t* vocbase, arangodb::LogicalView const*) override;
   virtual void prepareDropDatabase(TRI_vocbase_t* vocbase, bool useWriteMarker, int& status) override;
+  virtual TRI_voc_tick_t releasedTick() const override;
+  virtual void releaseTick(TRI_voc_tick_t) override;
   virtual int removeReplicationApplierConfiguration(TRI_vocbase_t*) override;
   virtual arangodb::Result renameCollection(TRI_vocbase_t* vocbase, arangodb::LogicalCollection const* collection, std::string const& oldName) override;
   virtual int saveReplicationApplierConfiguration(TRI_vocbase_t*, arangodb::velocypack::Slice, bool) override;
@@ -195,6 +198,9 @@ class StorageEngineMock: public arangodb::StorageEngine {
   virtual void waitForSync(TRI_voc_tick_t tick) override;
   virtual void waitUntilDeletion(TRI_voc_tick_t id, bool force, int& status) override;
   virtual int writeCreateDatabaseMarker(TRI_voc_tick_t id, VPackSlice const& slice) override;
+
+ private:
+  TRI_voc_tick_t _releasedTick;
 };
 
 #endif

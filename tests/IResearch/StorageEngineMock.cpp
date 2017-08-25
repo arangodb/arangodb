@@ -34,6 +34,7 @@
 #include "VocBase/KeyGenerator.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/ManagedDocumentResult.h"
+#include "VocBase/ticks.h"
 
 void ContextDataMock::pinData(arangodb::LogicalCollection* collection) {
   if (collection) {
@@ -70,8 +71,6 @@ int PhysicalCollectionMock::close() {
 std::shared_ptr<arangodb::Index> PhysicalCollectionMock::createIndex(arangodb::transaction::Methods* trx, arangodb::velocypack::Slice const& info, bool& created) {
   before();
 
-  _indexes.emplace_back(arangodb::iresearch::IResearchMMFilesLink::make(++lastId, _logicalCollection, info));
-
   std::vector<std::pair<TRI_voc_rid_t, arangodb::velocypack::Slice>> docs;
 
   for (size_t i = 0, count = documents.size(); i < count; ++i) {
@@ -84,28 +83,26 @@ std::shared_ptr<arangodb::Index> PhysicalCollectionMock::createIndex(arangodb::t
     }
   }
 
-  auto& index = _indexes.back();
+  auto index = arangodb::iresearch::IResearchMMFilesLink::make(++lastId, _logicalCollection, info);
+
+  if (!index) {
+    return nullptr;
+  }
+
   boost::asio::io_service ioService;
   arangodb::basics::LocalTaskQueue taskQueue(&ioService);
   std::shared_ptr<arangodb::basics::LocalTaskQueue> taskQueuePtr(&taskQueue, [](arangodb::basics::LocalTaskQueue*)->void{});
-  bool success = false;
 
-  try {
-    index->batchInsert(trx, docs, taskQueuePtr);
-    success = true;
-  } catch (...) {
-    // NOOP
+  index->batchInsert(trx, docs, taskQueuePtr);
+
+  if (TRI_ERROR_NO_ERROR != taskQueue.status()) {
+    return nullptr;
   }
 
-  if (!success || TRI_ERROR_NO_ERROR != taskQueue.status()) {
-    _indexes.pop_back();
-
-    return nullptr; // error during index population
-  }
-
+  _indexes.emplace_back(std::move(index));
   created = true;
 
-  return index;
+  return _indexes.back();
 }
 
 void PhysicalCollectionMock::deferDropCollection(std::function<bool(arangodb::LogicalCollection*)> callback) {
@@ -466,7 +463,8 @@ arangodb::Result PhysicalViewMock::updateProperties(arangodb::velocypack::Slice 
 bool StorageEngineMock::inRecoveryResult = false;
 
 StorageEngineMock::StorageEngineMock()
-  : StorageEngine(nullptr, "", "", nullptr) {
+  : StorageEngine(nullptr, "", "", nullptr),
+    _releasedTick(0) {
 }
 
 void StorageEngineMock::addAqlFunctions() {
@@ -548,6 +546,10 @@ arangodb::TransactionState* StorageEngineMock::createTransactionState(TRI_vocbas
 
 void StorageEngineMock::createView(TRI_vocbase_t* vocbase, TRI_voc_cid_t id, arangodb::LogicalView const*) {
   // NOOP, assume physical view created OK
+}
+
+TRI_voc_tick_t StorageEngineMock::currentTick() const {
+  return TRI_CurrentTickServer();
 }
 
 std::string StorageEngineMock::databasePath(TRI_vocbase_t const* vocbase) const {
@@ -666,6 +668,14 @@ void StorageEngineMock::prepareDropDatabase(TRI_vocbase_t* vocbase, bool useWrit
   TRI_ASSERT(false);
 }
 
+TRI_voc_tick_t StorageEngineMock::releasedTick() const {
+  return _releasedTick;
+}
+
+void StorageEngineMock::releaseTick(TRI_voc_tick_t tick) {
+  _releasedTick = tick;
+}
+
 int StorageEngineMock::removeReplicationApplierConfiguration(TRI_vocbase_t*) {
   TRI_ASSERT(false);
   return 0;
@@ -717,7 +727,7 @@ int StorageEngineMock::writeCreateDatabaseMarker(TRI_voc_tick_t id, VPackSlice c
 }
 
 TransactionCollectionMock::TransactionCollectionMock(arangodb::TransactionState* state, TRI_voc_cid_t cid)
-  : TransactionCollection(state, cid), lockType(arangodb::AccessMode::Type::NONE) {
+  : TransactionCollection(state, cid, arangodb::AccessMode::Type::NONE) {
 }
 
 bool TransactionCollectionMock::canAccess(arangodb::AccessMode::Type accessType) const {

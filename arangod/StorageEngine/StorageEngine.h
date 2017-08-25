@@ -392,6 +392,11 @@ class StorageEngine : public application_features::ApplicationFeature {
     builder.close();
   }
 
+  // management methods for synchronizing with external persistent stores
+  virtual TRI_voc_tick_t currentTick() const = 0;
+  virtual TRI_voc_tick_t releasedTick() const = 0;
+  virtual void releaseTick(TRI_voc_tick_t) = 0;
+
  protected:
   void registerCollection(TRI_vocbase_t* vocbase,
                           arangodb::LogicalCollection* collection) {

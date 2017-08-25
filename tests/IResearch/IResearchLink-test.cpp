@@ -155,31 +155,24 @@ TEST_CASE("IResearchLinkTest", "[iresearch][iresearch-link]") {
 SECTION("test_defaults") {
   // no view specified
   {
+    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "testVocbase");
+    auto collectionJson = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testCollection\" }");
+    auto* logicalCollection = vocbase.createCollection(collectionJson->slice());
+    REQUIRE((nullptr != logicalCollection));
     auto json = arangodb::velocypack::Parser::fromJson("{}");
-    auto link = arangodb::iresearch::IResearchMMFilesLink::make(1, nullptr, json->slice());
+    auto link = arangodb::iresearch::IResearchMMFilesLink::make(1, logicalCollection, json->slice());
     CHECK((true == !link));
   }
 
   // no view can be found
   {
+    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "testVocbase");
+    auto collectionJson = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testCollection\" }");
+    auto* logicalCollection = vocbase.createCollection(collectionJson->slice());
+    REQUIRE((nullptr != logicalCollection));
     auto json = arangodb::velocypack::Parser::fromJson("{ \"view\": 42 }");
-    auto link = arangodb::iresearch::IResearchMMFilesLink::make(1, nullptr, json->slice());
+    auto link = arangodb::iresearch::IResearchMMFilesLink::make(1, logicalCollection, json->slice());
     CHECK((true == !link));
-  }
-
-  // view specified without registration
-  {
-    // 'skipViewRegistration' attribute as defined in IResearchLink.cpp SKIP_VIEW_REGISTRATION_FIELD
-    auto json = arangodb::velocypack::Parser::fromJson("{ \"view\": 42, \"skipViewRegistration\": null }");
-    auto link = arangodb::iresearch::IResearchMMFilesLink::make(1, nullptr, json->slice());
-    CHECK((false == !link));
-    auto builder = link->toVelocyPack(false, false);
-    auto slice = builder->slice();
-    CHECK((
-      slice.hasKey("view")
-      && slice.get("view").isNumber()
-      && TRI_voc_cid_t(42) == slice.get("view").getNumber<TRI_voc_cid_t>()
-    ));
   }
 
   // valid link creation

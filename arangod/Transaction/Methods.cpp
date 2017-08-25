@@ -797,11 +797,6 @@ std::string transaction::Methods::name(TRI_voc_cid_t cid) const {
   return c->collectionName();
 }
 
-/// @brief read any (random) document
-OperationResult transaction::Methods::any(std::string const& collectionName) {
-  return any(collectionName, 0, 1);
-}
-
 /// @brief read all master pointers, using skip and limit.
 /// The resualt guarantees that all documents are contained exactly once
 /// as long as the collection is not modified.

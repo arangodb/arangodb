@@ -81,6 +81,12 @@ class TransactionCollection;
 
 namespace transaction {
 struct Options;
+  
+#ifdef USE_ENTERPRISE
+  #define ENTERPRISE_VIRT virtual
+#else
+  #define ENTERPRISE_VIRT
+#endif
 
 class Methods {
   friend class traverser::BaseEngine;
@@ -202,16 +208,15 @@ class Methods {
   /// string
   std::string extractIdString(VPackSlice);
 
-  /// @brief read any (random) document
-  OperationResult any(std::string const&);
-
   /// @brief read many documents, using skip and limit in arbitrary order
   /// The result guarantees that all documents are contained exactly once
   /// as long as the collection is not modified.
-  OperationResult any(std::string const&, uint64_t, uint64_t);
+  ENTERPRISE_VIRT OperationResult any(std::string const&,
+                                      uint64_t skip = 0,
+                                      uint64_t limit = 1);
 
   /// @brief add a collection to the transaction for read, at runtime
-  TRI_voc_cid_t addCollectionAtRuntime(TRI_voc_cid_t cid,
+  ENTERPRISE_VIRT TRI_voc_cid_t addCollectionAtRuntime(TRI_voc_cid_t cid,
                                        std::string const& collectionName,
                                        AccessMode::Type type = AccessMode::Type::READ);
 
@@ -227,7 +232,7 @@ class Methods {
   std::string collectionName(TRI_voc_cid_t cid);
 
   /// @brief Iterate over all elements of the collection.
-  void invokeOnAllElements(std::string const& collectionName,
+  ENTERPRISE_VIRT void invokeOnAllElements(std::string const& collectionName,
                            std::function<bool(arangodb::DocumentIdentifierToken const&)>);
 
   /// @brief return one  document from a collection, fast path
@@ -238,7 +243,7 @@ class Methods {
   ///        Does not care for revision handling!
   ///        shouldLock indicates if the transaction should lock the collection
   ///        if set to false it will not lock it (make sure it is already locked!)
-  Result documentFastPath(std::string const& collectionName,
+  ENTERPRISE_VIRT Result documentFastPath(std::string const& collectionName,
                        ManagedDocumentResult* mmdr,
                        arangodb::velocypack::Slice const value,
                        arangodb::velocypack::Builder& result,
@@ -287,7 +292,7 @@ class Methods {
                          OperationOptions const& options);
 
   /// @brief fetches all documents in a collection
-  OperationResult all(std::string const& collectionName,
+  ENTERPRISE_VIRT OperationResult all(std::string const& collectionName,
                       uint64_t skip, uint64_t limit,
                       OperationOptions const& options);
 
@@ -296,7 +301,7 @@ class Methods {
                            OperationOptions const& options);
 
   /// @brief count the number of documents in a collection
-  OperationResult count(std::string const& collectionName, bool aggregate);
+  ENTERPRISE_VIRT OperationResult count(std::string const& collectionName, bool aggregate);
 
   /// @brief Gets the best fitting index for an AQL condition.
   /// note: the caller must have read-locked the underlying collection when
@@ -312,7 +317,7 @@ class Methods {
   ///        Returns false if no index could be found.
   ///        If it returned true, the AstNode contains the specialized condition
 
-  bool getBestIndexHandleForFilterCondition(std::string const&,
+  ENTERPRISE_VIRT bool getBestIndexHandleForFilterCondition(std::string const&,
                                             arangodb::aql::AstNode*&,
                                             arangodb::aql::Variable const*,
                                             size_t, IndexHandle&);
@@ -334,7 +339,7 @@ class Methods {
   /// @brief Gets the best fitting index for an AQL sort condition
   /// note: the caller must have read-locked the underlying collection when
   /// calling this method
-  std::pair<bool, bool> getIndexForSortCondition(
+  ENTERPRISE_VIRT std::pair<bool, bool> getIndexForSortCondition(
       std::string const&, arangodb::aql::SortCondition const*,
       arangodb::aql::Variable const*, size_t,
       std::vector<IndexHandle>&,
@@ -380,6 +385,10 @@ class Methods {
 
   /// @brief return the collection name resolver
   CollectionNameResolver const* resolver() const;
+  
+#ifdef USE_ENTERPRISE
+  virtual bool isInaccessibleCollection(TRI_voc_cid_t cid) { return false; }
+#endif
 
  private:
 
@@ -462,7 +471,7 @@ class Methods {
       TransactionCollection const*) const;
 
   /// @brief add a collection by id, with the name supplied
-  Result addCollection(TRI_voc_cid_t, char const*, AccessMode::Type);
+  ENTERPRISE_VIRT Result addCollection(TRI_voc_cid_t, char const*, AccessMode::Type);
 
   /// @brief add a collection by id, with the name supplied
   Result addCollection(TRI_voc_cid_t, std::string const&, AccessMode::Type);

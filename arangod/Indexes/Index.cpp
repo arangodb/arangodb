@@ -189,6 +189,9 @@ Index::IndexType Index::type(char const* type) {
     return TRI_IDX_TYPE_IRESEARCH_LINK;
   }
 #endif
+  if (::strcmp(type, "noaccess") == 0) {
+    return TRI_IDX_TYPE_NO_ACCESS_INDEX;
+  }
 
   return TRI_IDX_TYPE_UNKNOWN;
 }
@@ -220,6 +223,8 @@ char const* Index::oldtypeName(Index::IndexType type) {
     case TRI_IDX_TYPE_IRESEARCH_LINK:
       return "iresearch";
 #endif
+    case TRI_IDX_TYPE_NO_ACCESS_INDEX:
+      return "noaccess";
     case TRI_IDX_TYPE_UNKNOWN: {
     }
   }
