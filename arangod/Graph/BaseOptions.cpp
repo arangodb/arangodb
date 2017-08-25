@@ -23,6 +23,7 @@
 
 #include "BaseOptions.h"
 #include "Aql/Ast.h"
+#include "Aql/AqlTransaction.h"
 #include "Aql/Condition.h"
 #include "Aql/ExecutionPlan.h"
 #include "Aql/Expression.h"
