@@ -602,6 +602,7 @@ function build-dist-books()
 {
     set -x
     set -e
+    rm -rf books ppbooks
     PIDFILE=/tmp/xvfb_20_0.pid
     if test -z "${DISPLAY}"; then
 	DISPLAY=:20.0
