@@ -35,6 +35,8 @@
 
 using namespace arangodb::cache;
 
+const size_t padding = alignof(std::atomic<uint32_t>) - 1;
+
 TEST_CASE("cache::CachedValue", "[cache]") {
   SECTION("test constructor with valid input") {
     uint64_t k = 1;
@@ -46,7 +48,7 @@ TEST_CASE("cache::CachedValue", "[cache]") {
     REQUIRE(nullptr != cv);
     REQUIRE(sizeof(uint64_t) == cv->keySize());
     REQUIRE(v.size() == cv->valueSize());
-    REQUIRE(sizeof(CachedValue) + sizeof(uint64_t) + v.size() == cv->size());
+    REQUIRE(sizeof(CachedValue) + padding + sizeof(uint64_t) + v.size() == cv->size());
     REQUIRE(k == *reinterpret_cast<uint64_t const*>(cv->key()));
     REQUIRE(0 == memcmp(v.data(), cv->value(), v.size()));
     delete cv;
@@ -57,7 +59,7 @@ TEST_CASE("cache::CachedValue", "[cache]") {
     REQUIRE(nullptr != cv);
     REQUIRE(v.size() == cv->keySize());
     REQUIRE(sizeof(uint64_t) == cv->valueSize());
-    REQUIRE(sizeof(CachedValue) + sizeof(uint64_t) + v.size() == cv->size());
+    REQUIRE(sizeof(CachedValue) + padding + sizeof(uint64_t) + v.size() == cv->size());
     REQUIRE(0 == memcmp(v.data(), cv->key(), v.size()));
     REQUIRE(k == *reinterpret_cast<uint64_t const*>(cv->value()));
     delete cv;
@@ -67,7 +69,7 @@ TEST_CASE("cache::CachedValue", "[cache]") {
     REQUIRE(nullptr != cv);
     REQUIRE(sizeof(uint64_t) == cv->keySize());
     REQUIRE(0ULL == cv->valueSize());
-    REQUIRE(sizeof(CachedValue) + sizeof(uint64_t) == cv->size());
+    REQUIRE(sizeof(CachedValue) + padding + sizeof(uint64_t) == cv->size());
     REQUIRE(k == *reinterpret_cast<uint64_t const*>(cv->key()));
     REQUIRE(nullptr == cv->value());
     delete cv;
@@ -116,7 +118,7 @@ TEST_CASE("cache::CachedValue", "[cache]") {
     REQUIRE(copy != original);
     REQUIRE(sizeof(uint64_t) == copy->keySize());
     REQUIRE(v.size() == copy->valueSize());
-    REQUIRE(sizeof(CachedValue) + sizeof(uint64_t) + v.size() == copy->size());
+    REQUIRE(sizeof(CachedValue) + padding + sizeof(uint64_t) + v.size() == copy->size());
     REQUIRE(k == *reinterpret_cast<uint64_t const*>(copy->key()));
     REQUIRE(0 == memcmp(v.data(), copy->value(), v.size()));
     delete original;

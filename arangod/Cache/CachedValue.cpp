@@ -28,11 +28,12 @@
 
 using namespace arangodb::cache;
 
+const size_t CachedValue::_headerAllocSize = sizeof(CachedValue) +
+                                       CachedValue::_padding;
+
 CachedValue* CachedValue::copy() const {
   uint8_t* buf = new uint8_t[size()];
-  memcpy(buf, this, size());
-  CachedValue* value = reinterpret_cast<CachedValue*>(buf);
-  value->_refCount = 0;
+  CachedValue* value = new (buf + offset()) CachedValue(*this);
   return value;
 }
 
@@ -43,20 +44,38 @@ CachedValue* CachedValue::construct(void const* k, size_t kSize,
     return nullptr;
   }
 
-  uint8_t* buf = new uint8_t[sizeof(CachedValue) + kSize + vSize];
-  CachedValue* cv = reinterpret_cast<CachedValue*>(buf);
-
-  cv->_refCount = 0;
-  cv->_keySize = static_cast<uint32_t>(kSize);
-  cv->_valueSize = static_cast<uint32_t>(vSize);
-  std::memcpy(const_cast<uint8_t*>(cv->key()), k, kSize);
-  if (vSize > 0) {
-    std::memcpy(const_cast<uint8_t*>(cv->value()), v, vSize);
-  }
+  uint8_t* buf = new uint8_t[_headerAllocSize + kSize + vSize];
+  uint8_t* aligned = reinterpret_cast<uint8_t*>(
+    (reinterpret_cast<size_t>(buf) + _headerAllocOffset) &
+    _headerAllocMask);
+  size_t offset = buf - aligned;
+  CachedValue* cv = new (aligned) CachedValue(offset, k, kSize, v, vSize);
 
   return cv;
 }
 
 void CachedValue::operator delete(void* ptr) {
-  delete[] reinterpret_cast<uint8_t*>(ptr);
+  CachedValue* cv = reinterpret_cast<CachedValue*>(ptr);
+  size_t offset = cv->offset();
+  cv->~CachedValue();
+  delete[] (reinterpret_cast<uint8_t*>(ptr) - offset);
+}
+
+CachedValue::CachedValue(size_t off, void const* k, size_t kSize,
+                         void const* v, size_t vSize)
+  : _refCount(0),
+    _keySize(kSize + (off << _offsetShift)),
+    _valueSize(vSize) {
+  std::memcpy(const_cast<uint8_t*>(key()), k, kSize);
+  if (vSize > 0) {
+    std::memcpy(const_cast<uint8_t*>(value()), v, vSize);
+  }
+}
+
+CachedValue::CachedValue(CachedValue const& other)
+  : _refCount(0),
+    _keySize(other._keySize),
+    _valueSize(other._valueSize) {
+  std::memcpy(const_cast<uint8_t*>(key()), other.key(),
+              keySize() + valueSize());
 }

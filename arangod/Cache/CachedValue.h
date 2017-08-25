@@ -42,7 +42,7 @@ namespace cache {
 ////////////////////////////////////////////////////////////////////////////////
 struct CachedValue {
   // key size must fit in 3 bytes
-  static constexpr size_t maxKeySize = 0xFFFFFFUL;
+  static constexpr size_t maxKeySize = 0x00FFFFFFULL;
   // value size must fit in 4 bytes
   static constexpr size_t maxValueSize = 0xFFFFFFFFULL;
 
@@ -54,7 +54,9 @@ struct CachedValue {
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Size of the key in bytes
   //////////////////////////////////////////////////////////////////////////////
-  inline size_t keySize() const { return static_cast<size_t>(_keySize); }
+  inline size_t keySize() const {
+    return static_cast<size_t>(_keySize & _keyMask);
+  }
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Size of the value in bytes
@@ -74,23 +76,22 @@ struct CachedValue {
   inline uint8_t const* value() const {
     return (_valueSize == 0)
       ? nullptr
-      : reinterpret_cast<uint8_t const*>(this) + sizeof(CachedValue) +
-          static_cast<size_t>(_keySize);
+      : reinterpret_cast<uint8_t const*>(this) + sizeof(CachedValue) + 
+          keySize();
   }
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Returns the allocated size of bytes including the key and value
   //////////////////////////////////////////////////////////////////////////////
   inline size_t size() const {
-    return sizeof(CachedValue) + static_cast<size_t>(_keySize) +
-        static_cast<size_t>(_valueSize);
+    return _headerAllocSize + keySize() + valueSize();
   }
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Utility method to compare underlying key to external key
   //////////////////////////////////////////////////////////////////////////////
   inline bool sameKey(void const* k, size_t kSize) const {
-    return (static_cast<size_t>(_keySize) == kSize) &&
+    return (keySize() == kSize) &&
            (0 == memcmp(key(), k, kSize));
   }
 
@@ -126,9 +127,26 @@ struct CachedValue {
   static void operator delete(void* ptr);
 
  private:
+  static constexpr size_t _padding = alignof(std::atomic<uint32_t>) - 1;
+  static const size_t _headerAllocSize;
+  static constexpr size_t _headerAllocMask = ~_padding;
+  static constexpr size_t _headerAllocOffset = _padding;
+  static constexpr uint32_t _keyMask = 0x00FFFFFF;
+  static constexpr uint32_t _offsetMask = 0xFF000000;
+  static constexpr size_t _offsetShift = 24;
+
   std::atomic<uint32_t> _refCount;
   uint32_t _keySize;
   uint32_t _valueSize;
+
+ private:
+  CachedValue(size_t off, void const* k, size_t kSize,
+              void const* v, size_t vSize);
+  CachedValue(CachedValue const& other);
+
+  inline size_t offset() const {
+    return ((_keySize & _offsetMask) >> _offsetShift);
+  }
 };
 
 };  // end namespace cache
