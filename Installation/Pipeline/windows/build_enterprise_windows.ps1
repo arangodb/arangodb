@@ -1,8 +1,6 @@
 $ErrorActionPreference="Stop"
 $vcpath=$(Get-ItemProperty HKLM:\SOFTWARE\Wow6432Node\Microsoft\VisualStudio\SxS\VC7)."14.0"
 $env:_MSPDBSRV_ENDPOINT_="enterprise-${env:BUILD_TAG}"
-Start-Process -FilePath ${vcpath}\bin\mspdbsrv.exe -NoNewWindow -Args "-start -shutdowntime -1 -endpoint $env:_MSPDBSRV_ENDPOINT_"
-try {
 $buildOptions = "-DUSE_MAINTAINER_MODE=On -DUSE_ENTERPRISE=On -DUSE_CATCH_TESTS=On -DUSE_FAILURE_TESTS=On -DDEBUG_SYNC_REPLICATION=On -DCMAKE_BUILD_TYPE=RelWithDebInfo -DSKIP_PACKAGING=On"
 Remove-Item -Force -Recurse log-output -ErrorAction SilentlyContinue
 New-Item -Force -ItemType Directory log-output -ErrorAction SilentlyContinue
@@ -22,15 +20,10 @@ exit $LastExitCode
 
   docker run --rm -v $volume m0ppers/build-container powershell C:\arangodb\buildscript.ps1 | Set-Content -PassThru log-output\build.log
 } else {
-  Get-Process mspdbsrv
   $env:GYP_MSVS_OVERRIDE_PATH="${vcpath}\bin"
   New-Item -ItemType Directory -Force -Path build
   cd build
   Invoke-Expression "cmake .. -G `"Visual Studio 15 2017 Win64`" ${buildOptions} | Set-Content -PassThru ..\log-output\build.log"
   cmake --build . --config RelWithDebInfo | Add-Content -PassThru ..\log-output\build.log
   cd ..
-}
-} catch {
-  Get-Process -Id $((Get-WmiObject Win32_Process -Filter "Name='mspdbsrv.exe'" | Where-Object {$_.CommandLine -match "endpoint ${env:_MSPDBSRV_ENDPOINT_}" } | Select-Object ProcessId).ProcessId) | Stop-Process
-  throw
 }
