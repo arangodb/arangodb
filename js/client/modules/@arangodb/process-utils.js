@@ -523,6 +523,9 @@ function runArangoImp (options, instanceInfo, what) {
   if (what.convert !== undefined) {
     args['convert'] = what.convert ? 'true' : 'false';
   }
+  if (what.removeAttribute !== undefined) {
+    args['remove-attribute'] = what.removeAttribute;
+  }
 
   return executeAndWait(ARANGOIMP_BIN, toArgv(args), options, 'arangoimp', instanceInfo.rootDir);
 }

@@ -50,6 +50,7 @@
   db._drop("UnitTestsImportEdge");
   db._drop("UnitTestsImportIgnore");
   db._drop("UnitTestsImportUniqueConstraints");
+  db._drop("UnitTestsImportRemoveAttribute");
 
   db._create("UnitTestsImportJson1");
   db._create("UnitTestsImportJson2");
