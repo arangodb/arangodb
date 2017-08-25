@@ -617,6 +617,7 @@ function build-dist-books()
 	mv books "ArangoDB-${newVersionNumber}"
         pwd
 	if test -n "${COOKBOOK_DIR}" ; then
+            rm -rf "ArangoDB-${newVersionNumber}/cookbook"
 	    cp -a "${COOKBOOK_DIR}" "ArangoDB-${newVersionNumber}/cookbook"
 	fi
 	tar -czf "${OUTPUT_DIR}/ArangoDB-${newVersionNumber}.tar.gz" "ArangoDB-${newVersionNumber}"

@@ -23,7 +23,7 @@
 // / @author Alan Plum
 // //////////////////////////////////////////////////////////////////////////////
 
-const isCluster = require("@arangodb/cluster").isCluster();
+const isCluster = require('@arangodb/cluster').isCluster();
 const isAgent = global.ArangoAgent.enabled();
 
 var _ = require('lodash');
@@ -65,16 +65,15 @@ function updateQueueDelay () {
       collections: {
         read: ['_queues', '_jobs']
       },
-      action() {
-        var delayUntil = db._query(
-          qb.let('queues', qb.for('queue').in('_queues').return('queue._key'))
-            .for('job').in('_jobs')
-            .filter(qb('pending').eq('job.status'))
-            .filter(qb.POSITION('queues', 'job.queue', false))
-            .filter(qb(null).neq('job.delayUntil'))
-            .sort('job.delayUntil', 'ASC')
-            .return('job.delayUntil')
-        ).next();
+      action () {
+        var delayUntil = db._query(global.aqlQuery`
+          LET queues = (FOR queue IN _queues RETURN queue._key)
+          FOR job IN _jobs
+            FILTER ('pending' == job.status)
+            FILTER POSITION(queues, job.queue, false)
+            FILTER (null != job.delayUntil)
+          SORT job.delayUntil ASC
+          RETURN job.delayUntil`).next();
         if (typeof delayUntil !== 'number') {
           delayUntil = -1;
         }
@@ -101,8 +100,11 @@ function getQueue (key) {
 }
 
 function createQueue (key, maxWorkers) {
-  internal.createQueue({_key: key, maxWorkers: maxWorkers || 1});
-  
+  internal.createQueue({
+    _key: key,
+    maxWorkers: maxWorkers || 1
+  });
+
   var databaseName = db._name();
   var cache = queueCache[databaseName];
   if (!cache) {
@@ -117,8 +119,8 @@ function deleteQueue (key) {
   try {
     internal.deleteQueue(key);
     result = true;
-  } catch(e) {
-    internal.print("Deleting queue failed: " + e.message);
+  } catch (e) {
+    internal.print('Deleting queue failed: ' + e.message);
   }
   return result;
 }
@@ -142,7 +144,10 @@ function getJobs (queue, status, type) {
       qb.ref('@type.name').eq('job.type.name')
         .and(qb.ref('@type.mount').eq('job.type.mount'))
     );
-    vars.type = {name: type.name, mount: type.mount};
+    vars.type = {
+      name: type.name,
+      mount: type.mount
+    };
   }
 
   return db._createStatement({
@@ -160,7 +165,7 @@ function Job (id) {
   });
   _.each(['data', 'status', 'type', 'failures', 'runs', 'runFailures'], (key) => {
     Object.defineProperty(this, key, {
-      get() {
+      get () {
         var value = db._jobs.document(this.id)[key];
         return (value && typeof value === 'object') ? Object.freeze(value) : value;
       },
@@ -171,13 +176,13 @@ function Job (id) {
 }
 
 Object.assign(Job.prototype, {
-  abort() {
+  abort () {
     var self = this;
     db._executeTransaction({
       collections: {
         exclusive: ['_jobs']
       },
-      action() {
+      action () {
         var job = db._jobs.document(self.id);
         if (job.status !== 'completed') {
           job.failures.push(flatten(new Error('Job aborted.')));
@@ -190,7 +195,7 @@ Object.assign(Job.prototype, {
       }
     });
   },
-  reset() {
+  reset () {
     db._jobs.update(this.id, {
       status: 'pending'
     });
@@ -216,7 +221,7 @@ function asNumber (num) {
   return num ? Number(num) : 0;
 }
 
-function updateQueueDelayClusterAware() {
+function updateQueueDelayClusterAware () {
   if (isCluster && !isAgent) {
     global.ArangoAgency.set('Current/FoxxmasterQueueupdate', true);
   }
@@ -224,7 +229,7 @@ function updateQueueDelayClusterAware() {
 }
 
 Object.assign(Queue.prototype, {
-  push(type, data, opts) {
+  push (type, data, opts) {
     if (!type) {
       throw new Error('Must pass a job type!');
     }
@@ -274,7 +279,7 @@ Object.assign(Queue.prototype, {
     updateQueueDelayClusterAware();
     return job._id;
   },
-  get(id) {
+  get (id) {
     if (typeof id !== 'string') {
       throw new Error('Invalid job id');
     }
@@ -291,12 +296,12 @@ Object.assign(Queue.prototype, {
     }
     return jobCache[databaseName][id];
   },
-  delete(id) {
+  delete (id) {
     return db._executeTransaction({
       collections: {
         write: ['_jobs']
       },
-      action() {
+      action () {
         try {
           db._jobs.remove(id);
           return true;
@@ -306,19 +311,19 @@ Object.assign(Queue.prototype, {
       }
     });
   },
-  pending(type) {
+  pending (type) {
     return getJobs(this.name, 'pending', type);
   },
-  complete(type) {
+  complete (type) {
     return getJobs(this.name, 'complete', type);
   },
-  failed(type) {
+  failed (type) {
     return getJobs(this.name, 'failed', type);
   },
-  progress(type) {
+  progress (type) {
     return getJobs(this.name, 'progress', type);
   },
-  all(type) {
+  all (type) {
     return getJobs(this.name, undefined, type);
   }
 });
