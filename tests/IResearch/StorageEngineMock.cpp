@@ -719,7 +719,7 @@ int StorageEngineMock::writeCreateDatabaseMarker(TRI_voc_tick_t id, VPackSlice c
 }
 
 TransactionCollectionMock::TransactionCollectionMock(arangodb::TransactionState* state, TRI_voc_cid_t cid)
-  : TransactionCollection(state, cid), lockType(arangodb::AccessMode::Type::NONE) {
+  : TransactionCollection(state, cid, arangodb::AccessMode::Type::NONE) {
 }
 
 bool TransactionCollectionMock::canAccess(arangodb::AccessMode::Type accessType) const {

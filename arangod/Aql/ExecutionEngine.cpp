@@ -619,6 +619,7 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
 #else
     // the toVelocyPack will open & close the "options" object
     query->queryOptions().toVelocyPack(result, true);
+#endif
 
     result.close();
 
