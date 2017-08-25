@@ -131,6 +131,7 @@ def checkoutCommunity() {
         deleteDir()
     }
 
+    echo "Checking out ${sourceBranchLabel}"
     retry(3) {
         try {
             checkout(
@@ -138,8 +139,8 @@ def checkoutCommunity() {
                 poll: false,
                 scm: [
                     $class: 'GitSCM',
-                    //branches: [[name: "*/${sourceBranchLabel}"]],
-                    branches: [[name: "*/feature/improve-jenkins"]],
+                    branches: [[name: "*/${sourceBranchLabel}"]],
+                    //branches: [[name: "*/feature/improve-jenkins"]],
                     doGenerateSubmoduleConfigurations: false,
                     extensions: [],
                     submoduleCfg: [],
