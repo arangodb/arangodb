@@ -191,6 +191,8 @@ v3.2.1 (2017-08-09)
 * ui: allows now to edit default access level for collections in database
   _system for all users except the root user.
 
+* The _users collection is no longer accessible outside the arngod process, _queues is always read-only
+
 * added new option "--rocksdb.max-background-jobs"
 
 * removed options "--rocksdb.max-background-compactions", "--rocksdb.base-background-compactions" and "--rocksdb.max-background-flushes"
