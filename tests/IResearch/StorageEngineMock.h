@@ -195,6 +195,11 @@ class StorageEngineMock: public arangodb::StorageEngine {
   virtual void waitForSync(TRI_voc_tick_t tick) override;
   virtual void waitUntilDeletion(TRI_voc_tick_t id, bool force, int& status) override;
   virtual int writeCreateDatabaseMarker(TRI_voc_tick_t id, VPackSlice const& slice) override;
+  virtual TRI_voc_tick_t currentTick() const override;
+  virtual TRI_voc_tick_t releasedTick() const override;
+  virtual void releaseTick(TRI_voc_tick_t) override;
+ private:
+  TRI_voc_tick_t _releasedTick;
 };
 
 #endif

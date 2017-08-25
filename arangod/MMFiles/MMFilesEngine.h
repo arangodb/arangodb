@@ -354,6 +354,10 @@ class MMFilesEngine final : public StorageEngine {
   std::string viewDirectory(TRI_voc_tick_t databaseId,
                             TRI_voc_cid_t viewId) const;
 
+  virtual TRI_voc_tick_t currentTick() const;
+  virtual TRI_voc_tick_t releasedTick() const;
+  virtual void releaseTick(TRI_voc_tick_t);
+
  private:
   /// @brief: check the initial markers in a datafile
   bool checkDatafileHeader(MMFilesDatafile* datafile,
@@ -470,6 +474,9 @@ class MMFilesEngine final : public StorageEngine {
   bool _isUpgrade;
   TRI_voc_tick_t _maxTick;
   std::vector<std::pair<std::string, std::string>> _deleted;
+
+  arangodb::basics::ReadWriteLock mutable _releaseLock;
+  TRI_voc_tick_t _releasedTick;
 
   arangodb::basics::ReadWriteLock mutable _pathsLock;
   std::unordered_map<TRI_voc_tick_t,

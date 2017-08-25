@@ -147,7 +147,8 @@ std::string const MMFilesEngine::FeatureName("MMFilesEngine");
 MMFilesEngine::MMFilesEngine(application_features::ApplicationServer* server)
     : StorageEngine(server, EngineName, FeatureName, new MMFilesIndexFactory()),
       _isUpgrade(false),
-      _maxTick(0) {
+      _maxTick(0),
+      _releasedTick(0) {
   startsAfter("MMFilesPersistentIndex"); // yes, intentional!
 
   server->addFeature(new MMFilesWalRecoveryFeature(server));
@@ -3437,3 +3438,18 @@ Result MMFilesEngine::lastLogger(TRI_vocbase_t* /*vocbase*/, std::shared_ptr<tra
   builderSPtr = parser.steal();
   return res;
 }
+
+TRI_voc_tick_t MMFilesEngine::currentTick() const {
+  return MMFilesLogfileManager::instance()->slots()->lastCommittedTick();
+}
+
+TRI_voc_tick_t MMFilesEngine::releasedTick() const {
+  READ_LOCKER(lock, _releaseLock);
+  return _releasedTick;
+}
+
+void MMFilesEngine::releaseTick(TRI_voc_tick_t tick) {
+  WRITE_LOCKER(lock, _releaseLock);
+  _releasedTick = tick;
+}
+

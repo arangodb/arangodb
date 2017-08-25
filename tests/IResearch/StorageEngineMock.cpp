@@ -34,6 +34,7 @@
 #include "VocBase/KeyGenerator.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/ManagedDocumentResult.h"
+#include "VocBase/ticks.h"
 
 void ContextDataMock::pinData(arangodb::LogicalCollection* collection) {
   if (collection) {
@@ -466,7 +467,8 @@ arangodb::Result PhysicalViewMock::updateProperties(arangodb::velocypack::Slice 
 bool StorageEngineMock::inRecoveryResult = false;
 
 StorageEngineMock::StorageEngineMock()
-  : StorageEngine(nullptr, "", "", nullptr) {
+  : StorageEngine(nullptr, "", "", nullptr),
+    _releasedTick(0) {
 }
 
 void StorageEngineMock::addAqlFunctions() {
@@ -815,6 +817,18 @@ arangodb::Result TransactionStateMock::commitTransaction(arangodb::transaction::
 
 bool TransactionStateMock::hasFailedOperations() const {
   return false; // assume no failed operations
+}
+
+TRI_voc_tick_t StorageEngineMock::currentTick() const {
+  return TRI_CurrentTickServer();
+}
+
+TRI_voc_tick_t StorageEngineMock::releasedTick() const {
+  return _releasedTick;
+}
+
+void StorageEngineMock::releaseTick(TRI_voc_tick_t tick) {
+  _releasedTick = tick;
 }
 
 // -----------------------------------------------------------------------------

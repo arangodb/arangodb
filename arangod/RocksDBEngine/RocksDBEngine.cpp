@@ -117,7 +117,8 @@ RocksDBEngine::RocksDBEngine(application_features::ApplicationServer* server)
           transaction::Options::defaultIntermediateCommitSize),
       _intermediateCommitCount(
           transaction::Options::defaultIntermediateCommitCount),
-      _pruneWaitTime(10.0) {
+      _pruneWaitTime(10.0),
+      _releasedTick(0) {
   // inherits order from StorageEngine but requires "RocksDBOption" that is used
   // to configure this engine and the MMFiles PersistentIndexFeature
   startsAfter("RocksDBOption");
@@ -774,7 +775,9 @@ std::string RocksDBEngine::collectionPath(TRI_vocbase_t const* vocbase,
 }
 
 void RocksDBEngine::waitForSync(TRI_voc_tick_t tick) {
-  // intentionally empty, not useful for this type of engine
+#ifndef _WIN32
+  _db->GetBaseDB()->SyncWAL();
+#endif
 }
 
 std::shared_ptr<arangodb::velocypack::Builder>
@@ -1760,6 +1763,21 @@ std::string RocksDBEngine::getCompressionSupport() const {
     result.append(out);
   }
   return result;
+}
+
+// management methods for synchronizing with external persistent stores
+TRI_voc_tick_t RocksDBEngine::currentTick() const {
+  return static_cast<TRI_voc_tick_t>(_db->GetLatestSequenceNumber());
+}
+
+TRI_voc_tick_t RocksDBEngine::releasedTick() const {
+  READ_LOCKER(lock, _walFileLock);
+  return _releasedTick;
+}
+
+void RocksDBEngine::releaseTick(TRI_voc_tick_t tick) {
+  WRITE_LOCKER(lock, _walFileLock);
+  _releasedTick = tick;
 }
 
 }  // namespace arangodb

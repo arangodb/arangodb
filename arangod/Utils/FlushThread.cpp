@@ -28,9 +28,11 @@
 #include "Basics/Exceptions.h"
 #include "Logger/Logger.h"
 #include "RestServer/FlushFeature.h"
+#include "StorageEngine/EngineSelectorFeature.h"
+#include "StorageEngine/StorageEngine.h"
 
 using namespace arangodb;
-  
+
 FlushThread::FlushThread(uint64_t flushInterval)
     : Thread("FlushThread"),
       _condition(),
@@ -55,9 +57,15 @@ void FlushThread::run() {
   FlushFeature* flushFeature = application_features::ApplicationServer::getFeature<FlushFeature>("Flush");
   TRI_ASSERT(flushFeature != nullptr);
 
+  StorageEngine* engine = EngineSelectorFeature::ENGINE;
+  TRI_ASSERT(engine != nullptr);
+
   while (!isStopping()) {
     try {
+      TRI_voc_tick_t toRelease = engine->currentTick();
+      engine->waitForSync(toRelease);
       flushFeature->executeCallbacks();
+      engine->releaseTick(toRelease);
 
       // sleep if nothing to do
       CONDITION_LOCKER(guard, _condition);
