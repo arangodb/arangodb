@@ -647,7 +647,7 @@ def buildEdition(edition, os) {
         else if (os == 'windows') {
             // i concede...we need a lock for windows...I could not get it to run concurrently...
             // v8 would not build multiple times at the same time on the same machine:
-            // [build-enterprise-windows] F:\jenkins\workspace\feature-branches-ng@2\3rdParty\V8\v5.7.0.0\third_party\icu\source\common\unicode/utypes.h(675): fatal error C1090: PDB API call failed, error code '24': ' etc etc
+            // PDB API call failed, error code '24': ' etc etc
             // in theory it should be possible to parallelize it by setting an environment variable (see the build script) but for v8 it won't work :(
             // feel free to recheck if there is time somewhen...this thing here really should not be possible but
             // ensure that there are 2 concurrent builds on the SAME node building v8 at the same time to properly test it
