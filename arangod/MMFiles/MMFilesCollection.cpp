@@ -665,6 +665,19 @@ int MMFilesCollection::sealDatafile(MMFilesDatafile* datafile,
   return res;
 }
 
+/// @brief set the initial datafiles for the collection
+void MMFilesCollection::setInitialFiles(std::vector<MMFilesDatafile*>&& datafiles,
+                                        std::vector<MMFilesDatafile*>&& journals,
+                                        std::vector<MMFilesDatafile*>&& compactors) {
+  WRITE_LOCKER(writeLocker, _filesLock);
+
+  _datafiles = std::move(datafiles);
+  _journals = std::move(journals);
+  _compactors = std::move(compactors);
+
+  TRI_ASSERT(_journals.size() <= 1);
+}
+
 /// @brief rotate the active journal - will do nothing if there is no journal
 int MMFilesCollection::rotateActiveJournal() {
   WRITE_LOCKER(writeLocker, _filesLock);
@@ -676,8 +689,21 @@ int MMFilesCollection::rotateActiveJournal() {
     return TRI_ERROR_ARANGO_NO_JOURNAL;
   }
 
-  MMFilesDatafile* datafile = _journals[0];
+  if (_journals.size() > 1) {
+    // we should never have more than a single journal at a time
+    return TRI_ERROR_INTERNAL;
+  }
+
+  MMFilesDatafile* datafile = _journals.back();
   TRI_ASSERT(datafile != nullptr);
+    
+  TRI_IF_FAILURE("CreateMultipleJournals") {
+    // create an additional journal now, without sealing and renaming the old one!
+    _datafiles.emplace_back(datafile);
+    _journals.pop_back();
+
+    return TRI_ERROR_NO_ERROR;
+  }
 
   // make sure we have enough room in the target vector before we go on
   _datafiles.reserve(_datafiles.size() + 1);
@@ -693,7 +719,7 @@ int MMFilesCollection::rotateActiveJournal() {
 
   TRI_ASSERT(!_journals.empty());
   TRI_ASSERT(_journals.back() == datafile);
-  _journals.erase(_journals.begin());
+  _journals.pop_back();
   TRI_ASSERT(_journals.empty());
 
   return res;
@@ -712,7 +738,9 @@ int MMFilesCollection::syncActiveJournal() {
     return TRI_ERROR_NO_ERROR;
   }
 
-  MMFilesDatafile* datafile = _journals[0];
+  TRI_ASSERT(_journals.size() == 1);
+
+  MMFilesDatafile* datafile = _journals.back();
   TRI_ASSERT(datafile != nullptr);
 
   int res = TRI_ERROR_NO_ERROR;
@@ -759,8 +787,6 @@ int MMFilesCollection::reserveJournalSpace(TRI_voc_tick_t tick,
   resultPosition = nullptr;
   resultDatafile = nullptr;
 
-  WRITE_LOCKER(writeLocker, _filesLock);
-
   // start with configured journal size
   TRI_voc_size_t targetSize = static_cast<TRI_voc_size_t>(_journalSize);
 
@@ -768,6 +794,9 @@ int MMFilesCollection::reserveJournalSpace(TRI_voc_tick_t tick,
   while (targetSize - 256 < size) {
     targetSize *= 2;
   }
+  
+  WRITE_LOCKER(writeLocker, _filesLock);
+  TRI_ASSERT(_journals.size() <= 1);
 
   while (true) {
     // no need to go on if the collection is already deleted
@@ -788,6 +817,7 @@ int MMFilesCollection::reserveJournalSpace(TRI_voc_tick_t tick,
         // shouldn't throw as we reserved enough space before
         _journals.emplace_back(df.get());
         df.release();
+        TRI_ASSERT(_journals.size() == 1);
       } catch (basics::Exception const& ex) {
         LOG_TOPIC(ERR, Logger::COLLECTOR) << "cannot select journal: "
                                           << ex.what();
@@ -805,7 +835,9 @@ int MMFilesCollection::reserveJournalSpace(TRI_voc_tick_t tick,
 
     // select datafile
     TRI_ASSERT(!_journals.empty());
-    datafile = _journals[0];
+    TRI_ASSERT(_journals.size() == 1);
+
+    datafile = _journals.back();
 
     TRI_ASSERT(datafile != nullptr);
 
@@ -846,7 +878,7 @@ int MMFilesCollection::reserveJournalSpace(TRI_voc_tick_t tick,
     // and finally erase it from _journals vector
     TRI_ASSERT(!_journals.empty());
     TRI_ASSERT(_journals.back() == datafile);
-    _journals.erase(_journals.begin());
+    _journals.pop_back();
     TRI_ASSERT(_journals.empty());
 
     if (res != TRI_ERROR_NO_ERROR) {
@@ -872,6 +904,7 @@ MMFilesDatafile* MMFilesCollection::createCompactor(
 
   // should not throw, as we've reserved enough space before
   _compactors.emplace_back(compactor.get());
+  TRI_ASSERT(_compactors.size() == 1);
   return compactor.release();
 }
 
@@ -1111,6 +1144,8 @@ bool MMFilesCollection::removeDatafile(MMFilesDatafile* df) {
 /// @brief iterates over a collection
 bool MMFilesCollection::iterateDatafiles(
     std::function<bool(MMFilesMarker const*, MMFilesDatafile*)> const& cb) {
+  READ_LOCKER(readLocker, _filesLock);
+
   if (!iterateDatafilesVector(_datafiles, cb) ||
       !iterateDatafilesVector(_compactors, cb) ||
       !iterateDatafilesVector(_journals, cb)) {
@@ -1120,6 +1155,7 @@ bool MMFilesCollection::iterateDatafiles(
 }
 
 /// @brief iterate over all datafiles in a vector
+/// the caller must hold the _filesLock
 bool MMFilesCollection::iterateDatafilesVector(
     std::vector<MMFilesDatafile*> const& files,
     std::function<bool(MMFilesMarker const*, MMFilesDatafile*)> const& cb) {
@@ -1965,6 +2001,35 @@ void MMFilesCollection::prepareIndexes(VPackSlice indexesSlice) {
     createInitialIndexes();
   }
 
+  bool foundPrimary = false;
+  bool foundEdge = false;
+   
+  for (auto const& it : VPackArrayIterator(indexesSlice)) {
+    auto const& s = it.get("type");
+    if (s.isString()) {
+      std::string const type = s.copyString();
+      if (type == "primary") {
+        foundPrimary = true;
+      } else if (type == "edge") {
+        foundEdge = true;
+      }
+    }
+  }
+  for (auto const& idx : _indexes) {
+    if (idx->type() == Index::IndexType::TRI_IDX_TYPE_PRIMARY_INDEX) {
+      foundPrimary = true;
+    } else if (_logicalCollection->type() == TRI_COL_TYPE_EDGE && 
+               idx->type() == Index::IndexType::TRI_IDX_TYPE_EDGE_INDEX) {
+      foundEdge = true;
+    }
+  }
+
+  if (!foundPrimary || 
+      (!foundEdge && _logicalCollection->type() == TRI_COL_TYPE_EDGE)) {
+    // we still do not have any of the default indexes, so create them now
+    createInitialIndexes();
+  }
+
   StorageEngine* engine = EngineSelectorFeature::ENGINE;
   IndexFactory const* idxFactory = engine->indexFactory();
   TRI_ASSERT(idxFactory != nullptr);
@@ -1980,12 +2045,7 @@ void MMFilesCollection::prepareIndexes(VPackSlice indexesSlice) {
 
     auto idx =
         idxFactory->prepareIndexFromSlice(v, false, _logicalCollection, true);
-    /*
-        if (idx->type() == Index::TRI_IDX_TYPE_PRIMARY_INDEX ||
-            idx->type() == Index::TRI_IDX_TYPE_EDGE_INDEX) {
-          continue;
-        }
-    */
+    
     if (ServerState::instance()->isRunningInCluster()) {
       addIndexCoordinator(idx);
     } else {
@@ -1996,8 +2056,8 @@ void MMFilesCollection::prepareIndexes(VPackSlice indexesSlice) {
   TRI_ASSERT(!_indexes.empty());
 
   if (_indexes[0]->type() != Index::IndexType::TRI_IDX_TYPE_PRIMARY_INDEX ||
-      (_logicalCollection->type() == TRI_COL_TYPE_EDGE &&
-       _indexes[1]->type() != Index::IndexType::TRI_IDX_TYPE_EDGE_INDEX)) {
+      (_logicalCollection->type() == TRI_COL_TYPE_EDGE && 
+       (_indexes.size() < 2 || _indexes[1]->type() != Index::IndexType::TRI_IDX_TYPE_EDGE_INDEX))) {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
     for (auto const& it : _indexes) {
       LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "- " << it.get();
@@ -2008,6 +2068,23 @@ void MMFilesCollection::prepareIndexes(VPackSlice indexesSlice) {
     errorMsg.push_back('\'');
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, errorMsg);
   }
+
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  {
+    bool foundPrimary = false;
+    for (auto const& it : _indexes) {
+      if (it->type() == Index::IndexType::TRI_IDX_TYPE_PRIMARY_INDEX) {
+        if (foundPrimary) {
+          std::string errorMsg("found multiple primary indexes for collection '");
+          errorMsg.append(_logicalCollection->name());
+          errorMsg.push_back('\'');
+          THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, errorMsg);
+        } 
+        foundPrimary = true;
+      }
+    }
+  }
+#endif
 }
 
 /// @brief creates the initial indexes for the collection
@@ -2090,8 +2167,10 @@ std::shared_ptr<Index> MMFilesCollection::createIndex(transaction::Methods* trx,
     THROW_ARANGO_EXCEPTION(res);
   }
 
+#if USE_PLAN_CACHE
   arangodb::aql::PlanCache::instance()->invalidate(
       _logicalCollection->vocbase());
+#endif
   // Until here no harm is done if sth fails. The shared ptr will clean up. if
   // left before
 

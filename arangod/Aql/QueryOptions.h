@@ -59,6 +59,10 @@ struct QueryOptions {
   bool inspectSimplePlans;
   std::vector<std::string> optimizerRules;
   std::unordered_set<std::string> shardIds;
+#ifdef USE_ENTERPRISE
+  // TODO: remove as soon as we have cluster wide transactions
+  std::unordered_set<std::string> inaccessibleShardIds;
+#endif
 
   transaction::Options transactionOptions;
 };

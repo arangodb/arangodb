@@ -567,6 +567,7 @@ class AgencyCommManager {
   void removeEndpoint(std::string const&);
   std::string endpointsString() const;
   std::vector<std::string> endpoints() const;
+  std::shared_ptr<VPackBuilder> summery() const;
 
  private:
 

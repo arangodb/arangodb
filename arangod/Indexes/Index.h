@@ -93,6 +93,7 @@ class Index {
 #ifdef USE_IRESEARCH
   , TRI_IDX_TYPE_IRESEARCH_LINK
 #endif
+    TRI_IDX_TYPE_NO_ACCESS_INDEX
   };
 
  public:

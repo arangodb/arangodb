@@ -54,6 +54,8 @@ let optionsDocumentation = [
   '   - `storageEngine`: set to `rocksdb` or `mmfiles` - defaults to `mmfiles`',
   '',
   '   - `server`: server_url (e.g. tcp://127.0.0.1:8529) for external server',
+  '   - `serverRoot`: directory where data/ points into the db server. Use in',
+  '                   conjunction with `server`.',
   '   - `cluster`: if set to true the tests are run with the coordinator',
   '     of a small local cluster',
   '   - `dbServers`: number of DB-Servers to use',

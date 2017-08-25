@@ -88,7 +88,7 @@ actions.defineHttp({
     }
 
     let agency = ArangoAgency.get('', false, true).arango;
-
+    
     let node = agency.Supervision.Health[serverId];
     if (node === undefined) {
       actions.resultError(req, res, actions.HTTP_NOT_FOUND,
@@ -477,6 +477,17 @@ actions.defineHttp({
       }
     } catch (e) {}
 
+    var clusterId;
+    try {
+      clusterId = ArangoAgency.get('Cluster', false, true).arango.Cluster;
+    } catch (e1) {
+      actions.resultError(req, res, actions.HTTP_NOT_FOUND, 0,
+        'Failed to retrieve clusterId node from agency!');
+      return;
+    }
+
+    let agency = ArangoAgency.agency();
+
     var Health;
     try {
       Health = ArangoAgency.get('Supervision/Health', false, true).arango.Supervision.Health;
@@ -514,7 +525,11 @@ actions.defineHttp({
       return Health;
     }, Health);
 
-    actions.resultOk(req, res, actions.HTTP_OK, {Health});
+    Object.entries(agency[0]['.agency'].pool).forEach(([key, value]) => {
+      Health[key] = {Endpoint: value, Role: 'Agent', CanBeDeleted: false};
+    });
+    
+    actions.resultOk(req, res, actions.HTTP_OK, {Health, ClusterId: clusterId});
   }
 });
 

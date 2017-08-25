@@ -781,7 +781,7 @@ function extractServiceBundle (archive, targetPath) {
   // find the manifest with the shortest path
   const filenames = fs.listTree(tempFolder).sort((a, b) => a.length - b.length);
   for (const filename of filenames) {
-    if (filename === 'manifest.json' || filename.endsWith('/manifest.json')) {
+    if (filename === 'manifest.json' || filename.endsWith('/manifest.json') || filename.endsWith('\\manifest.json')) {
       manifestPath = filename;
       break;
     }
@@ -803,7 +803,7 @@ function extractServiceBundle (archive, targetPath) {
   }
   fs.move(basePath, targetPath);
 
-  if (manifestPath.endsWith('/manifest.json')) {
+  if (manifestPath.endsWith('/manifest.json') || manifestPath.endsWith('\\manifest.json')) {
     // service basePath is a subfolder of tempFolder
     // so tempFolder still exists and needs to be removed
     fs.removeDirectoryRecursive(tempFolder, true);

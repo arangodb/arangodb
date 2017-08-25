@@ -61,7 +61,7 @@ class Methods;
 
 class ChecksumResult: public Result {
  public:
-  explicit ChecksumResult(Result result) : Result(result) {}
+  explicit ChecksumResult(Result&& result) : Result(std::move(result)) {}
   explicit ChecksumResult(VPackBuilder&& builder): Result(TRI_ERROR_NO_ERROR), _builder(std::move(builder)) {}
 
   VPackBuilder builder() {
@@ -342,7 +342,9 @@ class LogicalCollection {
 
   ChecksumResult checksum(bool, bool) const;
 
-  Result compareChecksums(velocypack::Slice) const;
+  // compares the checksum value passed in the Slice (must be of type String)
+  // with the checksum provided in the reference checksum
+  Result compareChecksums(velocypack::Slice checksumSlice, std::string const& referenceChecksum) const;
 
  private:
   void prepareIndexes(velocypack::Slice indexesSlice);

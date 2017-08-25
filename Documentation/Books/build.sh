@@ -602,6 +602,7 @@ function build-dist-books()
 {
     set -x
     set -e
+    rm -rf books ppbooks
     PIDFILE=/tmp/xvfb_20_0.pid
     if test -z "${DISPLAY}"; then
 	DISPLAY=:20.0
@@ -617,6 +618,7 @@ function build-dist-books()
 	mv books "ArangoDB-${newVersionNumber}"
         pwd
 	if test -n "${COOKBOOK_DIR}" ; then
+            rm -rf "ArangoDB-${newVersionNumber}/cookbook"
 	    cp -a "${COOKBOOK_DIR}" "ArangoDB-${newVersionNumber}/cookbook"
 	fi
 	tar -czf "${OUTPUT_DIR}/ArangoDB-${newVersionNumber}.tar.gz" "ArangoDB-${newVersionNumber}"
