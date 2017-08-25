@@ -123,8 +123,11 @@ class TransactionState {
   /// @brief use all participating collections of a transaction
   Result useCollections(int nestingLevel);
 
-  /// @brief run a callback on all collections
+  /// @brief run a callback on all collections of the transaction
   void allCollections(std::function<bool(TransactionCollection*)> const& cb);
+
+  /// @brief return the number of collections in the transaction
+  size_t numCollections() const { return _collections.size(); }
 
   /// @brief release collection locks for a transaction
   int unuseCollections(int nestingLevel);
@@ -166,6 +169,9 @@ class TransactionState {
   bool isReadOnlyTransaction() const {
     return (_type == AccessMode::Type::READ);
   }
+
+  /// @brief whether or not a transaction is an exclusive transaction on a single collection
+  bool isExclusiveTransactionOnSingleCollection() const;
 
   /// @brief release collection locks for a transaction
   int releaseCollections();

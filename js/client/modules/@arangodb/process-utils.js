@@ -1148,6 +1148,7 @@ function startInstance (protocol, options, addArgs, testname, tmpDir) {
   try {
     if (options.hasOwnProperty('server')) {
       return { endpoint: options.server,
+               rootDir: options.serverRoot,
                url: options.server.replace('tcp', 'http'),
                arangods: []
              };

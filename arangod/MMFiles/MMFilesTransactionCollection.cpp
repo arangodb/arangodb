@@ -36,13 +36,12 @@
 using namespace arangodb;
 
 MMFilesTransactionCollection::MMFilesTransactionCollection(TransactionState* trx, TRI_voc_cid_t cid, AccessMode::Type accessType, int nestingLevel)
-    : TransactionCollection(trx, cid),
+    : TransactionCollection(trx, cid, accessType),
       _operations{_arena},
       _originalRevision(0), 
       _nestingLevel(nestingLevel), 
       _compactionLocked(false), 
       _waitForSync(false),
-      _accessType(accessType), 
       _lockType(AccessMode::Type::NONE) {} 
 
 MMFilesTransactionCollection::~MMFilesTransactionCollection() {}
@@ -244,11 +243,6 @@ int MMFilesTransactionCollection::use(int nestingLevel) {
     }
   }
 
-  if (AccessMode::AccessMode::isWriteOrExclusive(_accessType) && _originalRevision == 0) {
-    // store original revision at transaction start
-    _originalRevision = physical->revision();
-  }
-
   bool shouldLock = _transaction->hasHint(transaction::Hints::Hint::LOCK_ENTIRELY);
 
   if (!shouldLock) {
@@ -262,6 +256,11 @@ int MMFilesTransactionCollection::use(int nestingLevel) {
     if (res != TRI_ERROR_NO_ERROR) {
       return res;
     }
+  }
+  
+  if (AccessMode::AccessMode::isWriteOrExclusive(_accessType) && _originalRevision == 0) {
+    // store original revision at transaction start
+    _originalRevision = physical->revision();
   }
 
   return TRI_ERROR_NO_ERROR;

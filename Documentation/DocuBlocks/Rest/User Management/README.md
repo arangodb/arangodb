@@ -149,7 +149,7 @@ to the *_system* database in order to execute this REST call.
 
 @RESTRETURNCODES
 
-@RESTRETURNCODE{200}
+@RESTRETURNCODE{202}
 Returned if the access permissions were changed successfully.
 
 @RESTRETURNCODE{400}
@@ -161,12 +161,13 @@ from the request.
 @EXAMPLE_ARANGOSH_RUN{RestRevokeDatabase}
 var users = require("@arangodb/users");
 var theUser = "admin@myapp";
+try { users.remove(theUser); } catch (err) {}
 users.save(theUser, "secret")
 
 var url = "/_api/user/" + theUser + "/database/_system";
 var response = logCurlRequest('DELETE', url);
 
-assert(response.code === 200);
+assert(response.code === 202);
 
 logRawResponse(response);
 users.remove(theUser);
@@ -226,6 +227,7 @@ Returned if you have *No access* server access level.
 @EXAMPLE_ARANGOSH_RUN{RestGrantCollection}
     var users = require("@arangodb/users");
     var theUser = "admin@myapp";
+    try { users.remove(theUser); } catch (err) {}
     users.save(theUser, "secret")
 
     var url = "/_api/user/" + theUser + "/database/_system/reports";
@@ -268,7 +270,7 @@ order to execute this REST call.
 
 @RESTRETURNCODES
 
-@RESTRETURNCODE{200}
+@RESTRETURNCODE{202}
 Returned if the access permissions were changed successfully.
 
 @RESTRETURNCODE{400}
@@ -279,13 +281,14 @@ If there was an error
 @EXAMPLE_ARANGOSH_RUN{RestRevokeCollection}
 var users = require("@arangodb/users");
 var theUser = "admin@myapp";
+try { users.remove(theUser); } catch (err) {}
 users.save(theUser, "secret")
 users.grantCollection(theUser, "_system", "reports", "rw");
 
 var url = "/_api/user/" + theUser + "/database/_system/reports";
 var response = logCurlRequest('DELETE', url);
 
-assert(response.code === 200);
+assert(response.code === 202);
 
 logRawResponse(response);
 users.remove(theUser);
