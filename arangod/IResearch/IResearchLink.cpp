@@ -49,14 +49,6 @@ static const std::string LINK_TYPE("iresearch");
 static const std::string LINK_TYPE_FIELD("type");
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief a flag in the iResearch Link definition, if present, denoting the
-///        need to skip registration with the corresponding iResearch View
-///        during construction if the object
-///        this field is not persisted
-////////////////////////////////////////////////////////////////////////////////
-static const std::string SKIP_VIEW_REGISTRATION_FIELD("skipViewRegistration");
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief the id of the field in the iResearch Link definition denoting the
 ///        corresponding iResearch View
 ////////////////////////////////////////////////////////////////////////////////
@@ -252,26 +244,6 @@ bool IResearchLink::init(arangodb::velocypack::Slice const& definition) {
     return false; // failed to parse metadata
   }
 
-  if (definition.hasKey(SKIP_VIEW_REGISTRATION_FIELD)) {
-    // TODO FIXME find a better way to remember view name for use with toVelocyPack(...)
-    if (definition.hasKey(VIEW_ID_FIELD)) {
-      auto identifier = definition.get(VIEW_ID_FIELD);
-
-      if (!identifier.isNumber() || uint64_t(identifier.getInt()) != identifier.getUInt()) {
-        LOG_TOPIC(WARN, iresearch::IResearchFeature::IRESEARCH) << "error parsing identifier name for link '" << _id << "'";
-        TRI_set_errno(TRI_ERROR_BAD_PARAMETER);
-
-        return false; // failed to parse view identifier
-      }
-
-      _defaultId = identifier.getUInt();
-    }
-
-    _meta = std::move(meta);
-
-    return true;
-  }
-
   if (collection() && definition.hasKey(VIEW_ID_FIELD)) {
     auto identifier = definition.get(VIEW_ID_FIELD);
     auto vocbase = collection()->vocbase();
@@ -294,12 +266,12 @@ bool IResearchLink::init(arangodb::velocypack::Slice const& definition) {
         auto* view = static_cast<IResearchView*>(logicalView->getImplementation());
       #endif
 
-      // on success this call will set the '_view' pointer
       if (!view) {
         LOG_TOPIC(WARN, iresearch::IResearchFeature::IRESEARCH) << "error finding view: '" << viewId << "' for link '" << _id << "'";
         return false;
       }
 
+      // on success this call will set the '_view' pointer
       if (!view->linkRegister(*this)) {
         LOG_TOPIC(WARN, iresearch::IResearchFeature::IRESEARCH) << "error registering link '" << _id << "' for view: '" << viewId;
         return false;
@@ -429,18 +401,6 @@ Result IResearchLink::remove(
 
   // remove documents matching on cid and rid
   return _view->remove(*trx, _collection->cid(), rid);
-}
-
-/*static*/ bool IResearchLink::setSkipViewRegistration(
-  arangodb::velocypack::Builder& builder
-) {
-  if (!builder.isOpenObject()) {
-    return false;
-  }
-
-  builder.add(SKIP_VIEW_REGISTRATION_FIELD, arangodb::velocypack::Value(true));
-
-  return true;
 }
 
 /*static*/ bool IResearchLink::setType(arangodb::velocypack::Builder& builder) {
