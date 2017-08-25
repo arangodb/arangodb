@@ -138,7 +138,8 @@ def checkoutCommunity() {
                 poll: false,
                 scm: [
                     $class: 'GitSCM',
-                    branches: [[name: "*/${sourceBranchLabel}"]],
+                    //branches: [[name: "*/${sourceBranchLabel}"]],
+                    branches: [[name: "*/feature/improve-jenkins"]],
                     doGenerateSubmoduleConfigurations: false,
                     extensions: [],
                     submoduleCfg: [],
