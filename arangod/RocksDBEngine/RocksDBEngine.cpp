@@ -1263,8 +1263,11 @@ Result RocksDBEngine::createLoggerState(TRI_vocbase_t* vocbase,
   return Result{};
 }
 
-void RocksDBEngine::determinePrunableWalFiles(TRI_voc_tick_t minTickToKeep) {
+void RocksDBEngine::determinePrunableWalFiles(TRI_voc_tick_t minTickExternal) {
+  WRITE_LOCKER(lock, _walFileLock);
   rocksdb::VectorLogPtr files;
+
+  TRI_voc_tick_t minTickToKeep = std::min(_releasedTick, minTickExternal);
 
   auto status = _db->GetSortedWalFiles(files);
   if (!status.ok()) {
@@ -1296,6 +1299,8 @@ void RocksDBEngine::determinePrunableWalFiles(TRI_voc_tick_t minTickToKeep) {
 }
 
 void RocksDBEngine::pruneWalFiles() {
+  WRITE_LOCKER(lock, _walFileLock);
+
   // go through the map of WAL files that we have already and check if they are
   // "expired"
   for (auto it = _prunableWalFiles.begin(); it != _prunableWalFiles.end();

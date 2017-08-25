@@ -56,9 +56,7 @@ void FlushThread::wakeup() {
 void FlushThread::run() {
   FlushFeature* flushFeature = application_features::ApplicationServer::getFeature<FlushFeature>("Flush");
   TRI_ASSERT(flushFeature != nullptr);
-
   StorageEngine* engine = EngineSelectorFeature::ENGINE;
-  TRI_ASSERT(engine != nullptr);
 
   while (!isStopping()) {
     try {
@@ -70,7 +68,6 @@ void FlushThread::run() {
       // sleep if nothing to do
       CONDITION_LOCKER(guard, _condition);
       guard.wait(_flushInterval);
-
     } catch (std::exception const& ex) {
       LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "caught exception in FlushThread: " << ex.what();
     } catch (...) {

@@ -81,7 +81,7 @@ void RocksDBCounterManager::CMValue::serialize(VPackBuilder& b) const {
 /// Constructor needs to be called synchrunously,
 /// will load counts from the db and scan the WAL
 RocksDBCounterManager::RocksDBCounterManager(rocksdb::DB* db)
-    : _syncing(false), _db(db) {
+    : _syncing(false), _db(db), _initialReleasedTick(0) {
   readSettings();
   readIndexEstimates();
 
@@ -91,6 +91,7 @@ RocksDBCounterManager::RocksDBCounterManager(rocksdb::DB* db)
 /// parse recent RocksDB WAL entries and notify the
 /// DatabaseFeature about the successful recovery
 void RocksDBCounterManager::runRecovery() {
+  EngineSelectorFeature::ENGINE->releaseTick(_initialReleasedTick);
   if (!_counters.empty()) {
     if (parseRocksWAL()) {
       // TODO: what do we do if parseRocksWAL returns false?
@@ -243,10 +244,12 @@ Result RocksDBCounterManager::sync(bool force) {
   }
 
   // now write global settings
+  StorageEngine* engine = EngineSelectorFeature::ENGINE;
   b.clear();
   b.openObject();
   b.add("tick", VPackValue(std::to_string(TRI_CurrentTickServer())));
   b.add("hlc", VPackValue(std::to_string(TRI_HybridLogicalClock())));
+  b.add("releasedTick", VPackValue(std::to_string(engine->releasedTick())));
   b.close();
 
   VPackSlice slice = b.slice();
@@ -348,6 +351,10 @@ void RocksDBCounterManager::readSettings() {
           LOG_TOPIC(TRACE, Logger::ENGINES) << "using last hlc: " << lastHlc;
           TRI_HybridLogicalClock(lastHlc);
         }
+
+        _initialReleasedTick =
+            basics::VelocyPackHelper::stringUInt64(slice.get("releasedtick"));
+        LOG_TOPIC(TRACE, Logger::ENGINES) << "using released tick: " << _initialReleasedTick;
       } catch (...) {
         LOG_TOPIC(WARN, Logger::ENGINES)
             << "unable to read initial settings: invalid data";

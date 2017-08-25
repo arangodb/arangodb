@@ -176,6 +176,8 @@ class RocksDBCounterManager {
   /// @brief protect _syncing and _counters
   //////////////////////////////////////////////////////////////////////////////
   mutable basics::ReadWriteLock _rwLock;
+
+  TRI_voc_tick_t _initialReleasedTick;
 };
 }
 
