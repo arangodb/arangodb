@@ -408,7 +408,7 @@ void AqlFunctionFeature::addDocumentFunctions() {
   add({"MERGE_RECURSIVE", ".,.|+", true, false,
        true, true, &Functions::MergeRecursive});
   add({"DOCUMENT", "h.|.", false, true, false, true, &Functions::Document});
-  add({"MATCHES", ".,.|.", true, false, true, true});
+  add({"MATCHES", ".,.|.", true, false, true, true, &Functions::Matches});
   add({"UNSET", ".,.|+", true, false, true, true,
        &Functions::Unset});
   add({"UNSET_RECURSIVE", ".,.|+", true, false,
