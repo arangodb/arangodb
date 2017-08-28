@@ -362,6 +362,8 @@ def jslint() {
 def testEdition(edition, os, mode, engine) {
     def arch = "LOG_test_${mode}_${edition}_${engine}_${os}"
 
+
+
     if (os == 'linux' || os == 'mac') {
        sh "rm -rf ${arch}"
        sh "mkdir -p ${arch}"
@@ -371,17 +373,24 @@ def testEdition(edition, os, mode, engine) {
         powershell "New-Item -ItemType Directory -Force -Path ${arch}"
     }
 
+    def tests = ["arangosh", "config", "agency", "endpoints"]
+    def testSteps = tests.collect {
+        def command = "build/bin/arangosh --log.level warning --javascript.execute UnitTests/unittest.js ${it} -- --storageEngine $engine"
+        return {
+            lock("test-${env.NODE_NAME}-${env.JOB_NAME}-${env.BUILD_ID}") {
+                if (os == "windows") {
+                    powershell command
+                } else {
+                    sh command
+                }
+            }
+        }
+    }
+
     try {
+
         try {
-            if (os == 'linux') {
-                sh "./Installation/Pipeline/linux/test_${mode}_${edition}_${engine}_${os}.sh 10"
-            }
-            else if (os == 'mac') {
-                sh "./Installation/Pipeline/mac/test_${mode}_${edition}_${engine}_${os}.sh 3"
-            }
-            else if (os == 'windows') {
-                powershell ". .\\Installation\\Pipeline\\windows\\test_${mode}_${edition}_${engine}_${os}.ps1"
-            }
+            parallel teststeps
 
             if (os == 'windows') {
                 if (findFiles(glob: '*.dmp').length > 0) {
