@@ -89,7 +89,7 @@ describe('_api/gharial', () => {
     do {
       wait(0.1);
       req = request.get(url + "/" + graphName); 
-    } while (req.statusCode != 200);
+    } while (req.statusCode !== 200);
 
     expect(db._collection(eColName)).to.not.be.null;
     expect(db._collection(vColName)).to.not.be.null;
@@ -123,7 +123,7 @@ describe('_api/gharial', () => {
     do {
       wait(0.1);
       req = request.get(url + "/" + graphName); 
-    } while (req.statusCode != 200);
+    } while (req.statusCode !== 200);
 
     expect(db._collection(eColName)).to.not.be.null;
     expect(db._collection(vColName)).to.not.be.null;
