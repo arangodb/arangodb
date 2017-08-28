@@ -462,7 +462,7 @@ def testEdition(edition, os, mode, engine) {
         def isArray = true
         try {
             test.collect()
-        } catch {
+        } catch (e) {
             isArray = false
         }
         if (isArray) {
