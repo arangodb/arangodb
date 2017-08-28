@@ -130,8 +130,6 @@ def checkoutCommunity() {
     if (cleanBuild) {
         deleteDir()
     }
-
-    echo "Checking out ${sourceBranchLabel}"
     retry(3) {
         try {
             checkout(
