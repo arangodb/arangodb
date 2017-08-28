@@ -158,8 +158,14 @@ void DatabaseManagerThread::run() {
               TRI_RemoveDirectory(path.c_str());
             }
           }
-          
-          engine->dropDatabase(database);
+         
+          try { 
+            engine->dropDatabase(database);
+          } catch (std::exception const& ex) {
+            LOG_TOPIC(ERR, Logger::FIXME) << "dropping database '" << database->name() << "' failed: " << ex.what();
+          } catch (...) {
+            LOG_TOPIC(ERR, Logger::FIXME) << "dropping database '" << database->name() << "' failed";
+          }
         }
 
         delete database;
@@ -387,21 +393,7 @@ void DatabaseFeature::beginShutdown() {
   }
 }
 
-void DatabaseFeature::stop() {
-  auto unuser(_databasesProtector.use());
-  auto theLists = _databasesLists.load();
-  
-  for (auto& p : theLists->_databases) {
-    TRI_vocbase_t* vocbase = p.second;
-    // iterate over all databases
-    TRI_ASSERT(vocbase != nullptr);
-    TRI_ASSERT(vocbase->type() == TRI_VOCBASE_TYPE_NORMAL);
-
-    vocbase->processCollections([](LogicalCollection* collection) { 
-      collection->close(); 
-    }, true);
-  }
-}
+void DatabaseFeature::stop() {}
 
 void DatabaseFeature::unprepare() {
   // close all databases
@@ -750,7 +742,9 @@ int DatabaseFeature::dropDatabase(std::string const& name, bool waitForDeletion,
     vocbase->setIsOwnAppsDirectory(removeAppsDirectory);
 
     // invalidate all entries for the database
+#if USE_PLAN_CACHE
     arangodb::aql::PlanCache::instance()->invalidate(vocbase);
+#endif
     arangodb::aql::QueryCache::instance()->invalidate(vocbase);
 
     engine->prepareDropDatabase(vocbase, !engine->inRecovery(), res);

@@ -2509,6 +2509,10 @@ AstNode* Ast::optimizeUnaryOperatorArithmetic(AstNode* node) {
 /// the unary NOT operation will be replaced with the result of the operation
 AstNode* Ast::optimizeNotExpression(AstNode* node) {
   TRI_ASSERT(node != nullptr);
+  if (node->type != NODE_TYPE_OPERATOR_UNARY_NOT) {
+    return node;
+  }
+
   TRI_ASSERT(node->type == NODE_TYPE_OPERATOR_UNARY_NOT);
   TRI_ASSERT(node->numMembers() == 1);
 

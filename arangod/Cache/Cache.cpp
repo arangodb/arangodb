@@ -245,7 +245,7 @@ void Cache::requestMigrate(uint32_t requestedLogSize) {
            (requestedLogSize != _table->logSize());
       _metadata.unlock();
       if (ok) {
-        std::tie(ok, _resizeRequestTime) =
+        std::tie(ok, _migrateRequestTime) =
             _manager->requestMigrate(shared_from_this(), requestedLogSize);
       }
     }

@@ -84,9 +84,9 @@ static void JS_TickRangesLoggerReplication(
 
   VPackBuilder builder;
   Result res = EngineSelectorFeature::ENGINE->createTickRanges(builder);
-  if(res.fail()){
+  if (res.fail()) {
     TRI_V8_THROW_EXCEPTION(res);
-   }
+  }
 
   v8::Handle<v8::Value>resultValue = TRI_VPackToV8(isolate, builder.slice());
   result = v8::Handle<v8::Array>::Cast(resultValue);
@@ -160,7 +160,7 @@ static void JS_LastLoggerReplication( v8::FunctionCallbackInfo<v8::Value> const&
   TRI_V8_TRY_CATCH_END
 }
 
-void addReplicationAuthentication(v8::Isolate* isolate,
+static void addReplicationAuthentication(v8::Isolate* isolate,
     v8::Handle<v8::Object> object,
     TRI_replication_applier_configuration_t &config) {
   bool hasUsernamePassword = false;

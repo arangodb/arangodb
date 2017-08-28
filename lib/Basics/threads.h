@@ -70,5 +70,6 @@ void TRI_SetProcessorAffinity(TRI_thread_t*, size_t core);
 // SHOULD BE REMOVED
 void TRI_InitThread(TRI_thread_t* thread);
 int TRI_JoinThread(TRI_thread_t* thread);
+int TRI_DetachThread(TRI_thread_t* thread);
 
 #endif

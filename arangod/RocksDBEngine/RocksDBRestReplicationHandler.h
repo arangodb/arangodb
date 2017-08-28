@@ -31,6 +31,8 @@
 
 namespace arangodb {
 
+class SingleCollectionTransaction;
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief replication request handler
 ////////////////////////////////////////////////////////////////////////////////
@@ -58,6 +60,27 @@ class RocksDBRestReplicationHandler : public RestReplicationHandler {
   //////////////////////////////////////////////////////////////////////////////
 
   void handleCommandLoggerState() override;
+  
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief return the available logfile range
+  /// @route GET logger-tick-ranges
+  /// @caller js/client/modules/@arangodb/replication.js
+  /// @response VPackArray, containing info about each datafile
+  ///           * filename
+  ///           * status
+  ///           * tickMin - tickMax
+  //////////////////////////////////////////////////////////////////////////////
+  
+  void handleCommandLoggerTickRanges();
+  
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief return the first tick available in a logfile
+  /// @route GET logger-first-tick
+  /// @caller js/client/modules/@arangodb/replication.js
+  /// @response VPackObject with minTick of LogfileManager->ranges()
+  //////////////////////////////////////////////////////////////////////////////
+  
+  void handleCommandLoggerFirstTick();
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief handle a follow command for the replication log
@@ -272,16 +295,17 @@ class RocksDBRestReplicationHandler : public RestReplicationHandler {
   //////////////////////////////////////////////////////////////////////////////
   /// @brief global set of ids of holdReadLockCollection jobs, an
   /// id mapping to false here indicates that a request to get the
-  /// read lock has been started, the bool is changed to true once
-  /// this read lock is acquired. To cancel the read lock, remove
-  /// the entry here (under the protection of the mutex of
-  /// condVar) and send a broadcast to the condition variable,
+  /// read lock has been started, the mapped value holds the
+  /// actual transaction. if the read lock is not yet acquired, the
+  /// shared_ptr will contain a nullptr still. 
+  /// To cancel the read lock, remove the entry here (under the protection 
+  /// of the mutex of condVar) and send a broadcast to the condition variable,
   /// the job with that id is terminated. If it timeouts, then
   /// the read lock is released automatically and the entry here
   /// is deleted.
   //////////////////////////////////////////////////////////////////////////////
 
-  static std::unordered_map<std::string, bool> _holdReadLockJobs;
+  static std::unordered_map<std::string, std::shared_ptr<SingleCollectionTransaction>> _holdReadLockJobs;
 
   RocksDBReplicationManager* _manager;
 };

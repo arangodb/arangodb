@@ -255,6 +255,26 @@ int SortedCollectBlock::initialize() {
   return TRI_ERROR_NO_ERROR;
 }
 
+int SortedCollectBlock::initializeCursor(AqlItemBlock* items,
+                                         size_t pos) {
+  DEBUG_BEGIN_BLOCK();
+  int res = ExecutionBlock::initializeCursor(items, pos);
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    return res;
+  }
+
+  DEBUG_BEGIN_BLOCK();
+  _currentGroup.reset();
+  _pos = 0;
+  DEBUG_END_BLOCK();
+
+  return TRI_ERROR_NO_ERROR;
+
+  // cppcheck-suppress style
+  DEBUG_END_BLOCK();
+}
+
 int SortedCollectBlock::getOrSkipSome(size_t atLeast, size_t atMost,
                                       bool skipping, AqlItemBlock*& result,
                                       size_t& skipped) {
@@ -275,7 +295,7 @@ int SortedCollectBlock::getOrSkipSome(size_t atLeast, size_t atMost,
       if (isTotalAggregation && _currentGroup.groupLength == 0) {
         // total aggregation, but have not yet emitted a group
         res.reset(requestBlock(1, getPlanNode()->getRegisterPlan()->nrRegs[getPlanNode()->getDepth()]));
-        emitGroup(nullptr, res.get(), skipped);
+        emitGroup(nullptr, res.get(), skipped, skipping);
         result = res.release();
       }
 
@@ -312,13 +332,6 @@ int SortedCollectBlock::getOrSkipSome(size_t atLeast, size_t atMost,
         // we already had a group, check if the group has changed
         size_t i = 0;
         
-        if (_pos > 0 && !skipping) {
-          // re-use already copied AQLValues
-          for (auto& it : _groupRegisters) {
-            res->copyColValuesFromFirstRow(_pos, it.second);
-          }
-        }
-    
         for (auto& it : _groupRegisters) {
           int cmp = AqlValue::Compare(
               _trx, _currentGroup.groupValues[i], 
@@ -339,7 +352,7 @@ int SortedCollectBlock::getOrSkipSome(size_t atLeast, size_t atMost,
         if (!skipping) {
           // need to emit the current group first
           TRI_ASSERT(cur != nullptr);
-          emitGroup(cur, res.get(), skipped);
+          emitGroup(cur, res.get(), skipped, skipping);
         } else {
           skipGroup();
         }
@@ -359,6 +372,7 @@ int SortedCollectBlock::getOrSkipSome(size_t atLeast, size_t atMost,
 
       // construct the new group
       size_t i = 0;
+      TRI_ASSERT(cur != nullptr);
       for (auto& it : _groupRegisters) {
         _currentGroup.groupValues[i] = cur->getValueReference(_pos, it.second).clone();
         ++i;
@@ -399,7 +413,7 @@ int SortedCollectBlock::getOrSkipSome(size_t atLeast, size_t atMost,
             throwIfKilled();
 
             TRI_ASSERT(cur != nullptr);
-            emitGroup(cur, res.get(), skipped);
+            emitGroup(cur, res.get(), skipped, skipping);
             ++skipped;
             res->shrink(skipped, false);
           } else {
@@ -449,8 +463,8 @@ int SortedCollectBlock::getOrSkipSome(size_t atLeast, size_t atMost,
 
 /// @brief writes the current group data into the result
 void SortedCollectBlock::emitGroup(AqlItemBlock const* cur, AqlItemBlock* res,
-                                   size_t row) {
-  if (row > 0) {
+                                   size_t row, bool skipping) {
+  if (row > 0 && !skipping) {
     // re-use already copied AqlValues
     TRI_ASSERT(cur != nullptr);
     for (RegisterId i = 0; i < cur->getNrRegs(); i++) {
@@ -462,50 +476,55 @@ void SortedCollectBlock::emitGroup(AqlItemBlock const* cur, AqlItemBlock* res,
 
   size_t i = 0;
   for (auto& it : _groupRegisters) {
-    res->setValue(row, it.first, _currentGroup.groupValues[i]);
-    // ownership of value is transferred into res
-    _currentGroup.groupValues[i].erase();
+    if (!skipping) {
+      res->setValue(row, it.first, _currentGroup.groupValues[i]);
+      // ownership of value is transferred into res
+      _currentGroup.groupValues[i].erase();
+    } else {
+      _currentGroup.groupValues[i].destroy();
+      _currentGroup.groupValues[i].erase();
+    }
     ++i;
   }
 
   // handle aggregators
-  size_t j = 0;
-  for (auto& it : _currentGroup.aggregators) {
-    if (_currentGroup.rowsAreValid) {
-      TRI_ASSERT(cur != nullptr);
-      RegisterId const reg = _aggregateRegisters[j].second;
-      for (size_t r = _currentGroup.firstRow; r < _currentGroup.lastRow + 1;
-           ++r) {
-        it->reduce(GetValueForRegister(cur, r, reg));
+  if (!skipping) {
+    size_t j = 0;
+    for (auto& it : _currentGroup.aggregators) {
+      if (_currentGroup.rowsAreValid) {
+        TRI_ASSERT(cur != nullptr);
+        RegisterId const reg = _aggregateRegisters[j].second;
+        for (size_t r = _currentGroup.firstRow; r < _currentGroup.lastRow + 1;
+            ++r) {
+          it->reduce(GetValueForRegister(cur, r, reg));
+        }
+        res->setValue(row, _aggregateRegisters[j].first, it->stealValue());
+      } else {
+        res->setValue(
+            row, _aggregateRegisters[j].first, AqlValue(arangodb::basics::VelocyPackHelper::NullValue()));
       }
-      res->setValue(row, _aggregateRegisters[j].first, it->stealValue());
-    } else {
-      res->setValue(
-          row, _aggregateRegisters[j].first, AqlValue(arangodb::basics::VelocyPackHelper::NullValue()));
+      ++j;
     }
-    ++j;
-  }
 
-  // set the group values
-  if (_collectRegister != ExecutionNode::MaxRegisterId) {
-    _currentGroup.addValues(cur, _collectRegister);
+    // set the group values
+    if (_collectRegister != ExecutionNode::MaxRegisterId) {
+      _currentGroup.addValues(cur, _collectRegister);
 
-    if (static_cast<CollectNode const*>(_exeNode)->_count) {
-      // only set group count in result register
-      _builder.clear();
-      _builder.add(VPackValue(_currentGroup.groupLength));
-      res->setValue(row, _collectRegister, AqlValue(_builder.slice()));
-    } else if (static_cast<CollectNode const*>(_exeNode)->_expressionVariable !=
-               nullptr) {
-      // copy expression result into result register
-      res->setValue(row, _collectRegister,
-                    AqlValue::CreateFromBlocks(_trx, _currentGroup.groupBlocks,
-                                               _expressionRegister));
-    } else {
-      // copy variables / keep variables into result register
-      res->setValue(row, _collectRegister,
-                    AqlValue::CreateFromBlocks(_trx, _currentGroup.groupBlocks,
-                                               _variableNames));
+      if (static_cast<CollectNode const*>(_exeNode)->_count) {
+        // only set group count in result register
+        res->setValue(row, _collectRegister, AqlValue(static_cast<uint64_t>(_currentGroup.groupLength)));
+      } else if (static_cast<CollectNode const*>(_exeNode)->_expressionVariable !=
+                nullptr) {
+        // copy expression result into result register
+        res->setValue(row, _collectRegister,
+                      AqlValue::CreateFromBlocks(_trx, _currentGroup.groupBlocks,
+                                                _expressionRegister));
+      } else {
+        // copy variables / keep variables into result register
+        res->setValue(row, _collectRegister,
+                      AqlValue::CreateFromBlocks(_trx, _currentGroup.groupBlocks,
+                                                _variableNames));
+      }
     }
   }
 

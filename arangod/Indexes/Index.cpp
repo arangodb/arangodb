@@ -184,6 +184,9 @@ Index::IndexType Index::type(char const* type) {
   if (::strcmp(type, "geo2") == 0) {
     return TRI_IDX_TYPE_GEO2_INDEX;
   }
+  if (::strcmp(type, "noaccess") == 0) {
+    return TRI_IDX_TYPE_NO_ACCESS_INDEX;
+  }
 
   return TRI_IDX_TYPE_UNKNOWN;
 }
@@ -211,6 +214,8 @@ char const* Index::oldtypeName(Index::IndexType type) {
       return "geo1";
     case TRI_IDX_TYPE_GEO2_INDEX:
       return "geo2";
+    case TRI_IDX_TYPE_NO_ACCESS_INDEX:
+      return "noaccess";
     case TRI_IDX_TYPE_UNKNOWN: {
     }
   }
@@ -396,9 +401,9 @@ std::string Index::context() const {
 
 /// @brief create a VelocyPack representation of the index
 /// base functionality (called from derived classes)
-std::shared_ptr<VPackBuilder> Index::toVelocyPack(bool withFigures) const {
+std::shared_ptr<VPackBuilder> Index::toVelocyPack(bool withFigures, bool forPersistence) const {
   auto builder = std::make_shared<VPackBuilder>();
-  toVelocyPack(*builder, withFigures, false);
+  toVelocyPack(*builder, withFigures, forPersistence);
   return builder;
 }
 
@@ -548,12 +553,6 @@ void Index::batchInsert(
       break;
     }
   }
-}
-
-/// @brief default implementation for cleanup
-int Index::cleanup() {
-  // do nothing
-  return TRI_ERROR_NO_ERROR;
 }
 
 /// @brief default implementation for drop

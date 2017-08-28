@@ -79,7 +79,7 @@ i.e. `"friends"`, `"family"`, `"married"` or `"workmates"`, so you can later `FI
 if you only want to follow the friend edges.
 
 Another way, which may be more efficient in some cases, is to use different edge collections for different
-types of edges, so you have `friend_eges`, `family_edges`, `married_edges` and `workmate_edges` as collection names.
+types of edges, so you have `friend_edges`, `family_edges`, `married_edges` and `workmate_edges` as collection names.
 You can then configure several named graphs including a subset of the available edge and vertex collections -
 or you use anonymous graph queries, where you specify a list of edge collections to take into account in that query.
 To only follow friend edges, you would specify `friend_edges` as sole edge collection.
@@ -150,6 +150,11 @@ and [Arangorestore](../Administration/Arangorestore.md) to restore a backup into
 
 - you need the system collection `_graphs` if you backup named graphs.
 - you need to backup the complete set of all edge and vertex collections your graph consists of. Partial dump/restore may not work.
+
+### Managing graphs
+By default you should use [the interface your driver provides to manage graphs](../HTTP/Gharial/Management.html).
+
+This is i.e. documented [in Graphs-Section of the ArangoDB Java driver](https://github.com/arangodb/arangodb-java-driver#graphs).
 
 ### Example Graphs
 

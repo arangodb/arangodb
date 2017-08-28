@@ -70,6 +70,23 @@ MMFilesPathBasedIndex::~MMFilesPathBasedIndex() {
   _allocator->deallocateAll();
 }
 
+void MMFilesPathBasedIndex::toVelocyPackFigures(VPackBuilder& builder) const {
+  TRI_ASSERT(builder.isOpenObject());
+  builder.add("memory", VPackValue(memory()));
+}
+
+/// @brief return a VelocyPack representation of the index
+void MMFilesPathBasedIndex::toVelocyPack(VPackBuilder& builder,
+                                         bool withFigures,
+                                         bool forPersistence) const {
+  builder.openObject();
+  Index::toVelocyPack(builder, withFigures, forPersistence);
+  builder.add("unique", VPackValue(_unique));
+  builder.add("sparse", VPackValue(_sparse));
+  builder.add("deduplicate", VPackValue(_deduplicate));
+  builder.close();
+}
+
 /// @brief whether or not the index is implicitly unique
 /// this can be the case if the index is not declared as unique, but contains a 
 /// unique attribute such as _key

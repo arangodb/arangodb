@@ -118,21 +118,19 @@ void RocksDBIndex::toVelocyPackFigures(VPackBuilder& builder) const {
   }
 }
 
-int RocksDBIndex::load() {
+void RocksDBIndex::load() {
   if (_useCache) {
     createCache();
     TRI_ASSERT(_cachePresent);
   }
-  return TRI_ERROR_NO_ERROR;
 }
 
-int RocksDBIndex::unload() {
+void RocksDBIndex::unload() {
   if (useCache()) {
     // LOG_TOPIC(ERR, Logger::FIXME) << "unload cache";
     disableCache();
     TRI_ASSERT(!_cachePresent);
   }
-  return TRI_ERROR_NO_ERROR;
 }
 
 /// @brief return a VelocyPack representation of the index
@@ -214,13 +212,12 @@ int RocksDBIndex::drop() {
   
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   //check if documents have been deleted
-  rocksdb::ReadOptions readOptions;
-  readOptions.fill_cache = false;
-  size_t numDocs = rocksutils::countKeyRange(rocksutils::globalRocksDB(), readOptions,
-                                             RocksDBKeyBounds::EdgeIndex(_objectId));
-  if (numDocs) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "deletion check in edge index drop failed "
-                                   "- not all documents in the index have been deleted");
+  size_t numDocs = rocksutils::countKeyRange(rocksutils::globalRocksDB(),
+                                             this->getBounds(), prefix_same_as_start);
+  if (numDocs > 0) {
+    std::string errorMsg("deletion check in index drop failed - not all documents in the index have been deleted. remaining: ");
+    errorMsg.append(std::to_string(numDocs));
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, errorMsg);
   }
 #endif
   
@@ -277,14 +274,13 @@ size_t RocksDBIndex::memory() const {
 }
 
 /// compact the index, should reduce read amplification
-int RocksDBIndex::cleanup() {
+void RocksDBIndex::cleanup() {
   rocksdb::TransactionDB* db = rocksutils::globalRocksDB();
   rocksdb::CompactRangeOptions opts;
   RocksDBKeyBounds bounds = this->getBounds();
   TRI_ASSERT(_cf == bounds.columnFamily());
   rocksdb::Slice b = bounds.start(), e = bounds.end();
   db->CompactRange(opts, _cf, &b, &e);
-  return TRI_ERROR_NO_ERROR;
 }
 
 Result RocksDBIndex::postprocessRemove(transaction::Methods* trx,

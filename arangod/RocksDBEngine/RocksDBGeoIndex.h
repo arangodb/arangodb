@@ -136,7 +136,7 @@ class RocksDBGeoIndex final : public RocksDBIndex {
 
   bool matchesDefinition(VPackSlice const& info) const override;
 
-  int unload() override;
+  void unload() override {}
 
   /// @brief looks up all points within a given radius
   arangodb::rocksdbengine::GeoCoordinates* withinQuery(transaction::Methods*,
