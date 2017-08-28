@@ -463,13 +463,9 @@ def testEdition(edition, os, mode, engine, port) {
             echo "in ${edition}-${os}-${mode}-${engine}-${test}"
             // copy in groovy
             testArgs += " --minPort " + port
-            echo "in ${edition}-${os}-${mode}-${engine}-${test} 3"
             testArgs += " --maxPort " + (port + portInterval - 1)
-            echo "in ${edition}-${os}-${mode}-${engine}-${test} 4"
             def command = "build/bin/arangosh --log.level warning --javascript.execute UnitTests/unittest.js ${test} -- "
-            echo "COMMAND1: ${command}"
             command += testArgs
-            echo "COMMAND2: ${command}"
             lock("test-${env.NODE_NAME}-${env.JOB_NAME}-${env.BUILD_ID}-${edition}-${engine}-${lockIndex}") {
                 if (os == "windows") {
                     powershell command
@@ -547,7 +543,7 @@ def testStep(edition, os, mode, engine) {
                 // DO NOT INCREASE!!
                 timeout(60) {
                     echo "before port ${edition}-${os}-${mode}-${engine}"
-                    def port = getStartPort(os)
+                    def port = getStartPort(os) as Integer
                     echo "PORT: ${port}"
                     try {
                         unstashBinaries(edition, os)
