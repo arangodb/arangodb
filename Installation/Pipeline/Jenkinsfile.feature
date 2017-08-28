@@ -369,67 +369,61 @@ def rspecify(os, test) {
     if (os == "windows") {
         return [test, test, "--rspec C:\\tools\\ruby23\\bin\\rspec.bat"]
     } else {
-        return test
+        return [test, test, ""]
     }
 }
 
 def getTests(edition, os, mode, engine) {
-    def httpReplication = "http_replication"
-    def httpServer = "http_server"
-    def sslServer = "ssl_server"
-    if (os == "windows") {
-        httpReplication = ["http_replication"]
-    }
     if (mode == "singleserver") {
         return [
-            "agency",
+            ["agency","agency" ,""],
             ["boost", "boost", "--skipCache false"],
-            "arangobench",
-            "arangosh",
-            "authentication",
-            "authentication_parameters",
-            "cluster_sync",
-            "config",
-            "dfdb",
+            ["arangobench","arangobench" ,""],
+            ["arangosh","arangosh" ,""],
+            ["authentication", "authentication",""],
+            ["authentication_parameters","authentication_parameters" ,""],
+            ["cluster_sync","cluster_sync" ,""],
+            ["config","config" ,""],
+            ["dfdb","dfdb" ,""],
             //"dump",
             //"dump_authentication",
-            "endpoints",
+            ["endpoints","endpoints" ,""],
             rspecify(os, "http_replication"),
             rspecify(os, "http_server"),
-            "replication_sync",
-            "replication_static",
-            "replication_ongoing",
-            "server_http",
-            "shell_client",
-            "shell_replication",
-            "shell_server",
-            ["shell_server_aql_1", "shell_server_aql","--testBuckets 4/0"],
-            ["shell_server_aql_2", "shell_server_aql","--testBuckets 4/1"],
-            ["shell_server_aql_3", "shell_server_aql","--testBuckets 4/2"],
-            ["shell_server_aql_4", "shell_server_aql","--testBuckets 4/3"],
+            ["replication_sync", "replication_sync",""],
+            ["replication_static", "replication_static",""],
+            ["replication_ongoing","replication_ongoing" ,""],
+            ["server_http","server_http" ,""],
+            ["shell_client", "shell_client",""],
+            ["shell_replication","shell_replication" ,""],
+            ["shell_server","shell_server" ,""],
+            ["shell_server_aql_1", "shell_server_aql","--testBuckets 4/0", ,""],
+            ["shell_server_aql_2", "shell_server_aql","--testBuckets 4/1", ,""],
+            ["shell_server_aql_3", "shell_server_aql","--testBuckets 4/2", ,""],
+            ["shell_server_aql_4", "shell_server_aql","--testBuckets 4/3", ,""],
             rspecify(os, "ssl_server"),
-            "upgrade"
+            ["upgrade","upgrade" , ""]
         ]
     } else {
         return [
-            "arangobench",
-            "arangosh",
-            "authentication",
-            "authentication_parameters",
-            "config",
-            "dump",
-            "dump_authentication",
-            "endpoints",
+            ["arangobench","arangobench" , ""],
+            ["arangosh","arangosh" , ""],
+            ["authentication","authentication" , ""],
+            ["authentication_parameters","authentication_parameters" , ""],
+            ["config","config" , ""],
+            ["dump","dump" , ""],
+            ["dump_authentication","dump_authentication" , ""],
+            ["endpoints","endpoints" , ""],
             rspecify(os, "http_server"),
-            "server_http",
-            "shell_client",
-            "shell_server",
+            ["server_http", "server_http", ""],
+            ["shell_client", "shell_client", ""],
+            ["shell_server", "shell_server", ""],
             ["shell_server_aql_1", "shell_server_aql","--testBuckets 4/0"],
             ["shell_server_aql_2", "shell_server_aql","--testBuckets 4/1"],
             ["shell_server_aql_3", "shell_server_aql","--testBuckets 4/2"],
             ["shell_server_aql_4", "shell_server_aql","--testBuckets 4/3"],
             rspecify(os, "ssl_server"),
-            "upgrade"
+            ["upgrade","upgrade" , ""]
         ]
   }
 }
