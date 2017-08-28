@@ -374,7 +374,7 @@ def testEdition(edition, os, mode, engine) {
 
     def parallelity = 2
     def testIndex = 0
-    def tests = ["arangosh", "config", "agency", "peng", "endpoints"]
+    def tests = ["arangosh", "config", "agency", "endpoints"]
     def testSteps = tests.inject([:]) { testMap, test ->
         def lockIndex = testIndex % parallelity
         testIndex++
