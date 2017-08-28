@@ -489,41 +489,16 @@ def testEdition(edition, os, mode, engine) {
         testMap
     }
 
-    try {
+    parallel testSteps
 
-        try {
-            parallel testSteps
-
-            if (os == 'windows') {
-                if (findFiles(glob: '*.dmp').length > 0) {
-                    error("found dmp file")
-                }
-            } else {
-                if (findFiles(glob: 'core*').length > 0) {
-                    error("found core file")
-                }
-            }
+    if (os == 'windows') {
+        if (findFiles(glob: '*.dmp').length > 0) {
+            error("found dmp file")
         }
-        finally {
-            if (os == 'linux' || os == 'mac') {
-                sh "find log-output -name 'FAILED_*' -exec cp '{}' . ';'"
-                sh "for i in logs log-output; do test -e \"\$i\" && mv \"\$i\" ${arch} || true; done"
-                sh "for i in core* tmp; do test -e \"\$i\" && mv \"\$i\" ${arch} || true; done"
-                sh "cp -a build/bin/* ${arch}" 
-            }
-            else if (os == 'windows') {
-                powershell "move-item -Force -ErrorAction Ignore logs ${arch}"
-                powershell "move-item -Force -ErrorAction Ignore log-output ${arch}"
-                powershell "move-item -Force -ErrorAction Ignore .\\build\\bin\\*.dmp ${arch}"
-                powershell "move-item -Force -ErrorAction Ignore .\\build\\tests\\*.dmp ${arch}"
-                powershell "Copy-Item .\\build\\bin\\* -Include *.exe,*.pdb,*.ilk ${arch}"
-            }
+    } else {
+        if (findFiles(glob: 'core*').length > 0) {
+            error("found core file")
         }
-    }
-    finally {
-        archiveArtifacts allowEmptyArchive: true,
-                         artifacts: "${arch}/**, FAILED_*",
-                         defaultExcludes: false
     }
 }
 
@@ -585,6 +560,24 @@ def testStep(edition, os, mode, engine) {
                         step([$class: 'XUnitBuilder',
                             thresholds: [[$class: 'FailedThreshold', unstableThreshold: '1']],
                             tools: [[$class: 'JUnitType', failIfNotNew: false, pattern: 'out/*.xml']]])
+
+                        if (os == 'linux' || os == 'mac') {
+                            sh "find log-output -name 'FAILED_*' -exec cp '{}' . ';'"
+                            sh "for i in logs log-output; do test -e \"\$i\" && mv \"\$i\" ${arch} || true; done"
+                            sh "for i in core* tmp; do test -e \"\$i\" && mv \"\$i\" ${arch} || true; done"
+                            sh "cp -a build/bin/* ${arch}" 
+                        }
+                        else if (os == 'windows') {
+                            powershell "move-item -Force -ErrorAction Ignore logs ${arch}"
+                            powershell "move-item -Force -ErrorAction Ignore log-output ${arch}"
+                            powershell "move-item -Force -ErrorAction Ignore .\\build\\bin\\*.dmp ${arch}"
+                            powershell "move-item -Force -ErrorAction Ignore .\\build\\tests\\*.dmp ${arch}"
+                            powershell "Copy-Item .\\build\\bin\\* -Include *.exe,*.pdb,*.ilk ${arch}"
+                        }
+                        
+                        archiveArtifacts allowEmptyArchive: true,
+                            artifacts: "${arch}/**, FAILED_*",
+                            defaultExcludes: false
                     }
                 }
             }
