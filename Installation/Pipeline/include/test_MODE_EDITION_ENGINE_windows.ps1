@@ -150,5 +150,5 @@ function createTests {
 function RunTests {
   Param ([int]$port, [string]$engine, [string]$edition, [string]$mode)
   $jobs = createTests -port $port -engine $engine -edition $edition -mode $mode
-  executeParallel -jobs $jobs -parallelity 2
+  executeParallel -jobs $jobs -parallelity 4
 }
