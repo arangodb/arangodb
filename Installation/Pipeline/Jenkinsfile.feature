@@ -457,7 +457,13 @@ def testEdition(edition, os, mode, engine) {
 
         def args = ["--storageEngine ${engine}"]
         def name = test
-        if (test.getClass().isArray()) {
+        def isArray = true
+        try {
+            test.collect()
+        } catch {
+            isArray = false
+        }
+        if (isArray) {
             name = test[0]
             args << test[2]
             test = test[1]
