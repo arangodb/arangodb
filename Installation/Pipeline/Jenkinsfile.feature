@@ -855,11 +855,7 @@ def runOperatingSystems(osList) {
             }
         }
     }
-    try {
-        parallel branches
-    } catch (e) {
-        echo "PENG PENG PENG"
-    }
+    parallel branches
 }
 
 // -----------------------------------------------------------------------------
