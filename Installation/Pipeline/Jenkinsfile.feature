@@ -455,10 +455,9 @@ def testEdition(edition, os, mode, engine) {
         def lockIndex = testIndex % parallelity
         testIndex++
 
-        def isString = test instanceof String
         def args = ["--storageEngine ${engine}"]
         def name = test
-        if (!isString) {
+        if (test.getClass().isArray()) {
             name = test[0]
             args << test[2]
             test = test[1]
