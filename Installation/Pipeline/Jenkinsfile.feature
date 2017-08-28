@@ -365,15 +365,16 @@ def getStartPort(os) {
     }
 }
 
-def getTests(edition, os, mode, engine) {
-    def rspecify(test) {
-        //
-        if (os == "windows") {
-            return [test, test, "--rspec C:\\tools\\ruby23\\bin\\rspec.bat"]
-        } else {
-            return test
-        }
+def rspecify(os, test) {
+    if (os == "windows") {
+        return [test, test, "--rspec C:\\tools\\ruby23\\bin\\rspec.bat"]
+    } else {
+        return test
     }
+}
+
+def getTests(edition, os, mode, engine) {
+
 
     def httpReplication = "http_replication"
     def httpServer = "http_server"
@@ -395,8 +396,8 @@ def getTests(edition, os, mode, engine) {
             //"dump",
             //"dump_authentication",
             "endpoints",
-            rspecify("http_replication"),
-            rspecify("http_server"),
+            rspecify(os, "http_replication"),
+            rspecify(os, "http_server"),
             "replication_sync",
             "replication_static",
             "replication_ongoing",
@@ -408,7 +409,7 @@ def getTests(edition, os, mode, engine) {
             ["shell_server_aql_2", "shell_server_aql","--testBuckets 4/1"],
             ["shell_server_aql_3", "shell_server_aql","--testBuckets 4/2"],
             ["shell_server_aql_4", "shell_server_aql","--testBuckets 4/3"],
-            rspecify("ssl_server"),
+            rspecify(os, "ssl_server"),
             "upgrade"
         ]
     } else {
@@ -421,7 +422,7 @@ def getTests(edition, os, mode, engine) {
             "dump",
             "dump_authentication",
             "endpoints",
-            rspecify("http_server"),
+            rspecify(os, "http_server"),
             "server_http",
             "shell_client",
             "shell_server",
@@ -429,7 +430,7 @@ def getTests(edition, os, mode, engine) {
             ["shell_server_aql_2", "shell_server_aql","--testBuckets 4/1"],
             ["shell_server_aql_3", "shell_server_aql","--testBuckets 4/2"],
             ["shell_server_aql_4", "shell_server_aql","--testBuckets 4/3"],
-            rspecify("ssl_server"),
+            rspecify(os, "ssl_server"),
             "upgrade"
         ]
   }
