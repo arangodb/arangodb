@@ -501,6 +501,8 @@ def testEdition(edition, os, mode, engine) {
                     error("found core file")
                 }
             }
+        } catch (e) {
+            echo "CATCH VON DIE TESTSTEPS"
         }
         finally {
             if (os == 'linux' || os == 'mac') {
