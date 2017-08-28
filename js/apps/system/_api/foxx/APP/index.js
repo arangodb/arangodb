@@ -64,10 +64,10 @@ function prepareServiceRequestBody (req, res, next) {
     req.body = {source: req.body};
   }
   try {
-    if (req.body.dependencies) {
+    if (typeof req.body.dependencies === 'string') {
       req.body.dependencies = JSON.parse(req.body.dependencies);
     }
-    if (req.body.configuration) {
+    if (typeof req.body.configuration === 'string') {
       req.body.configuration = JSON.parse(req.body.configuration);
     }
   } catch (e) {
