@@ -443,7 +443,7 @@ def testEdition(edition, os, mode, engine) {
 
     def parallelity = 2
     def testIndex = 0
-    def tests = ["arangosh", "config", "agency", "endpoints"]
+    def tests = getTests(edition, os, mode, engine)
     // this is an `Array.reduce()` in groovy :S
     def testSteps = tests.inject([:]) { testMap, testStruct ->
         def lockIndex = testIndex % parallelity
