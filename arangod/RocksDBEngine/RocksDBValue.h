@@ -120,6 +120,7 @@ class RocksDBValue {
   RocksDBValue& operator=(RocksDBValue&& other) noexcept {
     TRI_ASSERT(_type == other._type);
     _buffer = std::move(other._buffer);
+    return *this;
   }
 
  private:

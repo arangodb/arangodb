@@ -312,7 +312,6 @@ function encodePassword (password) {
 
 function Users (applicationContext, options) {
   this._options = options || {};
-  this._collection = null;
 
   if (this._options.hasOwnProperty('collectionName')) {
     this._collectionName = this._options.collectionName;
@@ -326,15 +325,13 @@ function Users (applicationContext, options) {
 // //////////////////////////////////////////////////////////////////////////////
 
 Users.prototype.storage = function () {
-  if (this._collection === null) {
-    this._collection = db._collection(this._collectionName);
+  var collection = db._collection(this._collectionName);
 
-    if (!this._collection) {
-      throw new Error('users collection not found');
-    }
+  if (!collection) {
+    throw new Error('users collection not found');
   }
 
-  return this._collection;
+  return collection;
 };
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -633,7 +630,6 @@ Users.prototype.isValid = function (identifier, password) {
 function Sessions (applicationContext, options) {
   this._applicationContext = applicationContext;
   this._options = options || {};
-  this._collection = null;
 
   if (!this._options.hasOwnProperty('minUpdateResoultion')) {
     this._options.minUpdateResolution = 10;
@@ -730,15 +726,13 @@ Sessions.prototype.teardown = function () {
 // //////////////////////////////////////////////////////////////////////////////
 
 Sessions.prototype.storage = function () {
-  if (this._collection === null) {
-    this._collection = db._collection(this._collectionName);
+  var collection = db._collection(this._collectionName);
 
-    if (!this._collection) {
-      throw new Error('sessions collection not found');
-    }
+  if (!collection) {
+    throw new Error('sessions collection not found');
   }
 
-  return this._collection;
+  return collection;
 };
 
 // //////////////////////////////////////////////////////////////////////////////

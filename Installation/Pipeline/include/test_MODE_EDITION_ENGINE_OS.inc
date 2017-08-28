@@ -57,32 +57,34 @@ if [ "$mode" == singleserver ]; then
     echo "$type
     scripts/unittest boost                     --skipCache false                                                                      2>&1
     scripts/unittest agency                                       --minPort `expr $PORT01 +   0` --maxPort `expr $PORT01 +   9` $OPTS 2>&1
-    scripts/unittest arangobench                                  --minPort `expr $PORT01 +  10` --maxPort `expr $PORT01 +  19` $OPTS 2>&1
-    scripts/unittest arangosh                  --skipShebang true --minPort `expr $PORT01 +  20` --maxPort `expr $PORT01 +  29` $OPTS 2>&1
-    scripts/unittest authentication                               --minPort `expr $PORT01 +  30` --maxPort `expr $PORT01 +  39` $OPTS 2>&1
-    scripts/unittest authentication_parameters                    --minPort `expr $PORT01 +  40` --maxPort `expr $PORT01 +  49` $OPTS 2>&1
-    scripts/unittest cluster_sync                                 --minPort `expr $PORT01 +  50` --maxPort `expr $PORT01 +  59` $OPTS 2>&1
-    scripts/unittest config                                       --minPort `expr $PORT01 +  60` --maxPort `expr $PORT01 +  69` $OPTS 2>&1
-    scripts/unittest dfdb                                         --minPort `expr $PORT01 +  70` --maxPort `expr $PORT01 +  79` $OPTS 2>&1
-    scripts/unittest dump                                         --minPort `expr $PORT01 +  80` --maxPort `expr $PORT01 +  89` $OPTS 2>&1
-    scripts/unittest dump_authentication                          --minPort `expr $PORT01 +  90` --maxPort `expr $PORT01 +  99` $OPTS 2>&1
-    scripts/unittest endpoints                                    --minPort `expr $PORT01 + 100` --maxPort `expr $PORT01 + 109` $OPTS 2>&1
-    scripts/unittest http_replication                             --minPort `expr $PORT01 + 110` --maxPort `expr $PORT01 + 119` $OPTS 2>&1
-    scripts/unittest http_server                                  --minPort `expr $PORT01 + 120` --maxPort `expr $PORT01 + 129` $OPTS 2>&1
-    scripts/unittest replication_ongoing                          --minPort `expr $PORT01 + 130` --maxPort `expr $PORT01 + 139` $OPTS 2>&1
-    scripts/unittest replication_static                           --minPort `expr $PORT01 + 140` --maxPort `expr $PORT01 + 149` $OPTS 2>&1
-    scripts/unittest replication_sync                             --minPort `expr $PORT01 + 150` --maxPort `expr $PORT01 + 159` $OPTS 2>&1
-    scripts/unittest server_http                                  --minPort `expr $PORT01 + 160` --maxPort `expr $PORT01 + 169` $OPTS 2>&1
-    scripts/unittest shell_client                                 --minPort `expr $PORT01 + 170` --maxPort `expr $PORT01 + 179` $OPTS 2>&1
-    scripts/unittest shell_replication                            --minPort `expr $PORT01 + 180` --maxPort `expr $PORT01 + 189` $OPTS 2>&1
-    scripts/unittest shell_server                                 --minPort `expr $PORT01 + 190` --maxPort `expr $PORT01 + 199` $OPTS 2>&1
-    scripts/unittest shell_server_aql          --testBuckets 4/0  --minPort `expr $PORT01 + 200` --maxPort `expr $PORT01 + 209` $OPTS 2>&1
-    scripts/unittest shell_server_aql          --testBuckets 4/1  --minPort `expr $PORT01 + 210` --maxPort `expr $PORT01 + 219` $OPTS 2>&1
-    scripts/unittest shell_server_aql          --testBuckets 4/2  --minPort `expr $PORT01 + 220` --maxPort `expr $PORT01 + 229` $OPTS 2>&1
-    scripts/unittest shell_server_aql          --testBuckets 4/3  --minPort `expr $PORT01 + 230` --maxPort `expr $PORT01 + 239` $OPTS 2>&1
-    scripts/unittest ssl_server                                   --minPort `expr $PORT01 + 240` --maxPort `expr $PORT01 + 249` $OPTS 2>&1
-    scripts/unittest upgrade                                      --minPort `expr $PORT01 + 250` --maxPort `expr $PORT01 + 259` $OPTS 2>&1
-    scripts/unittest readOnly                                     --minPort `expr $PORT01 + 260` --maxPort `expr $PORT01 + 269` $OPTS 2>&1
+    scripts/unittest resilience                                   --minPort `expr $PORT01 +  10` --maxPort `expr $PORT01 +  19` $OPTS 2>&1
+    scripts/unittest arangobench                                  --minPort `expr $PORT01 +  20` --maxPort `expr $PORT01 +  29` $OPTS 2>&1
+    scripts/unittest arangosh                  --skipShebang true --minPort `expr $PORT01 +  30` --maxPort `expr $PORT01 +  39` $OPTS 2>&1
+    scripts/unittest authentication                               --minPort `expr $PORT01 +  40` --maxPort `expr $PORT01 +  49` $OPTS 2>&1
+    scripts/unittest authentication_parameters                    --minPort `expr $PORT01 +  50` --maxPort `expr $PORT01 +  59` $OPTS 2>&1
+    scripts/unittest authentication_parameters                    --minPort `expr $PORT01 +  60` --maxPort `expr $PORT01 +  69` $OPTS 2>&1
+    scripts/unittest cluster_sync                                 --minPort `expr $PORT01 +  70` --maxPort `expr $PORT01 +  79` $OPTS 2>&1
+    scripts/unittest config                                       --minPort `expr $PORT01 +  80` --maxPort `expr $PORT01 +  89` $OPTS 2>&1
+    scripts/unittest dfdb                                         --minPort `expr $PORT01 +  90` --maxPort `expr $PORT01 +  99` $OPTS 2>&1
+    scripts/unittest dump                                         --minPort `expr $PORT01 + 100` --maxPort `expr $PORT01 + 109` $OPTS 2>&1
+    scripts/unittest dump_authentication                          --minPort `expr $PORT01 + 110` --maxPort `expr $PORT01 + 119` $OPTS 2>&1
+    scripts/unittest endpoints                                    --minPort `expr $PORT01 + 120` --maxPort `expr $PORT01 + 129` $OPTS 2>&1
+    scripts/unittest http_replication                             --minPort `expr $PORT01 + 130` --maxPort `expr $PORT01 + 139` $OPTS 2>&1
+    scripts/unittest http_server                                  --minPort `expr $PORT01 + 140` --maxPort `expr $PORT01 + 149` $OPTS 2>&1
+    scripts/unittest replication_ongoing                          --minPort `expr $PORT01 + 150` --maxPort `expr $PORT01 + 159` $OPTS 2>&1
+    scripts/unittest replication_static                           --minPort `expr $PORT01 + 160` --maxPort `expr $PORT01 + 169` $OPTS 2>&1
+    scripts/unittest replication_sync                             --minPort `expr $PORT01 + 170` --maxPort `expr $PORT01 + 179` $OPTS 2>&1
+    scripts/unittest server_http                                  --minPort `expr $PORT01 + 180` --maxPort `expr $PORT01 + 189` $OPTS 2>&1
+    scripts/unittest shell_client                                 --minPort `expr $PORT01 + 190` --maxPort `expr $PORT01 + 199` $OPTS 2>&1
+    scripts/unittest shell_replication                            --minPort `expr $PORT01 + 200` --maxPort `expr $PORT01 + 209` $OPTS 2>&1
+    scripts/unittest shell_server                                 --minPort `expr $PORT01 + 210` --maxPort `expr $PORT01 + 219` $OPTS 2>&1
+    scripts/unittest shell_server_aql          --testBuckets 4/0  --minPort `expr $PORT01 + 220` --maxPort `expr $PORT01 + 229` $OPTS 2>&1
+    scripts/unittest shell_server_aql          --testBuckets 4/1  --minPort `expr $PORT01 + 230` --maxPort `expr $PORT01 + 239` $OPTS 2>&1
+    scripts/unittest shell_server_aql          --testBuckets 4/2  --minPort `expr $PORT01 + 240` --maxPort `expr $PORT01 + 249` $OPTS 2>&1
+    scripts/unittest shell_server_aql          --testBuckets 4/3  --minPort `expr $PORT01 + 250` --maxPort `expr $PORT01 + 259` $OPTS 2>&1
+    scripts/unittest ssl_server                                   --minPort `expr $PORT01 + 260` --maxPort `expr $PORT01 + 269` $OPTS 2>&1
+    scripts/unittest upgrade                                      --minPort `expr $PORT01 + 270` --maxPort `expr $PORT01 + 279` $OPTS 2>&1
+    scripts/unittest readOnly                                     --minPort `expr $PORT01 + 280` --maxPort `expr $PORT01 + 289` $OPTS 2>&1
     $ENTERPRISE_TESTS
     " | parallel --verbose --header 1 --results log-output --files --no-notice --load 10 --jobs $concurrency > log-output/tests.log
 

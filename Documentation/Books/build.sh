@@ -336,7 +336,6 @@ function build-book-symlinks()
 function build-book()
 {
     export NAME="$1"
-    NODE_MODULES_DIR="$2"
     echo "${STD_COLOR}##### Generating book ${NAME}${RESET}"
     ppbook-precheck-bad-code-sections "${NAME}"
 
@@ -602,6 +601,7 @@ function build-dist-books()
 {
     set -x
     set -e
+    rm -rf books ppbooks
     PIDFILE=/tmp/xvfb_20_0.pid
     if test -z "${DISPLAY}"; then
 	DISPLAY=:20.0

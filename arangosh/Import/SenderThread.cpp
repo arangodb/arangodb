@@ -157,38 +157,42 @@ void SenderThread::handleResult(httpclient::SimpleHttpResult* result) {
       }
     }
   }
+  
+  {
+    // first update all the statistics
+    MUTEX_LOCKER(guard, _stats->_mutex);
+    // look up the "created" flag
+    _stats->_numberCreated +=
+    arangodb::basics::VelocyPackHelper::getNumericValue<size_t>(body,
+                                                                "created", 0);
+    
+    // look up the "errors" flag
+    _stats->_numberErrors +=
+    arangodb::basics::VelocyPackHelper::getNumericValue<size_t>(body,
+                                                                "errors", 0);
+    
+    // look up the "updated" flag
+    _stats->_numberUpdated +=
+    arangodb::basics::VelocyPackHelper::getNumericValue<size_t>(body,
+                                                                "updated", 0);
+    
+    // look up the "ignored" flag
+    _stats->_numberIgnored +=
+    arangodb::basics::VelocyPackHelper::getNumericValue<size_t>(body,
+                                                                "ignored", 0);
+  }
 
   // get the "error" flag. This returns a pointer, not a copy
   if (arangodb::basics::VelocyPackHelper::getBooleanValue(body, "error",
                                                           false)) {
-    _hasError = true;
 
     // get the error message
     VPackSlice const errorMessage = body.get("errorMessage");
     if (errorMessage.isString()) {
       _errorMessage = errorMessage.copyString();
     }
+    
+    // will trigger the waiting ImportHelper thread to cancel the import
+    _hasError = true;
   }
-
-  MUTEX_LOCKER(guard, _stats->_mutex);
-
-  // look up the "created" flag
-  _stats->_numberCreated +=
-      arangodb::basics::VelocyPackHelper::getNumericValue<size_t>(body,
-                                                                  "created", 0);
-
-  // look up the "errors" flag
-  _stats->_numberErrors +=
-      arangodb::basics::VelocyPackHelper::getNumericValue<size_t>(body,
-                                                                  "errors", 0);
-
-  // look up the "updated" flag
-  _stats->_numberUpdated +=
-      arangodb::basics::VelocyPackHelper::getNumericValue<size_t>(body,
-                                                                  "updated", 0);
-
-  // look up the "ignored" flag
-  _stats->_numberIgnored +=
-      arangodb::basics::VelocyPackHelper::getNumericValue<size_t>(body,
-                                                                  "ignored", 0);
 }
