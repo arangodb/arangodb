@@ -369,7 +369,7 @@ def getTests(edition, os, mode, engine) {
     def rspecify(test) {
         //
         if (os == "windows" {
-            return [test, test, "--rspec C:\tools\ruby23\bin\rspec.bat"]
+            return [test, test, "--rspec C:\\tools\\ruby23\\bin\\rspec.bat"]
         } else {
             return test
         }
