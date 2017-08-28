@@ -483,8 +483,11 @@ def testEdition(edition, os, mode, engine) {
             echo "in ${edition}-${os}-${mode}-${engine}-${test}"
             // copy in groovy
             def testArgs = args.collect()
+            echo "in ${edition}-${os}-${mode}-${engine}-${test} 2"
             testArgs << "--minPort " + port
+            echo "in ${edition}-${os}-${mode}-${engine}-${test} 3"
             testArgs << "--maxPort " + (port + portInterval - 1)
+            echo "in ${edition}-${os}-${mode}-${engine}-${test} 4"
             def command = "build/bin/arangosh --log.level warning --javascript.execute UnitTests/unittest.js ${test} -- "
             echo "COMMAND1: ${command}"
             echo 'DINGENS ${testArgs.join(" ")}'
