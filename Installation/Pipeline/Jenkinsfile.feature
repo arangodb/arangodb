@@ -428,7 +428,7 @@ def getTests(edition, os, mode, engine) {
   }
 }
 
-def testEdition(edition, os, mode, engine) {
+def testEdition(edition, os, mode, engine, port) {
     def arch = "LOG_test_${mode}_${edition}_${engine}_${os}"
 
     if (os == 'linux' || os == 'mac') {
@@ -440,13 +440,10 @@ def testEdition(edition, os, mode, engine) {
         powershell "New-Item -ItemType Directory -Force -Path ${arch}"
     }
 
-
     def parallelity = 2
     def testIndex = 0
     def tests = getTests(edition, os, mode, engine)
-    echo "before port ${edition}-${os}-${mode}-${engine}"
-    def port = getStartPort(os)
-    echo "PORT: ${port}"
+
     // this is an `Array.reduce()` in groovy :S
     def testSteps = tests.inject([:]) { testMap, testStruct ->
         def lockIndex = testIndex % parallelity
@@ -552,9 +549,12 @@ def testStep(edition, os, mode, engine) {
                 // even if the features are green this is completely broken performance wise..
                 // DO NOT INCREASE!!
                 timeout(60) {
+                    echo "before port ${edition}-${os}-${mode}-${engine}"
+                    def port = getStartPort(os)
+                    echo "PORT: ${port}"
                     try {
                         unstashBinaries(edition, os)
-                        testEdition(edition, os, mode, engine)
+                        testEdition(edition, os, mode, engine, port)
                     }
                     finally {
                         step([$class: 'XUnitBuilder',
@@ -566,8 +566,8 @@ def testStep(edition, os, mode, engine) {
                             sh "for i in logs log-output; do test -e \"\$i\" && mv \"\$i\" ${arch} || true; done"
                             sh "for i in core* tmp; do test -e \"\$i\" && mv \"\$i\" ${arch} || true; done"
                             sh "cp -a build/bin/* ${arch}" 
-                        }
-                        else if (os == 'windows') {
+                            sh "Installation/Pipeline/port.sh --clean ${port}"
+                        } else if (os == 'windows') {
                             powershell "move-item -Force -ErrorAction Ignore logs ${arch}"
                             powershell "move-item -Force -ErrorAction Ignore log-output ${arch}"
                             powershell "move-item -Force -ErrorAction Ignore .\\build\\bin\\*.dmp ${arch}"
