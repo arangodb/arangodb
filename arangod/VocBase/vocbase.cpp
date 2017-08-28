@@ -585,7 +585,9 @@ int TRI_vocbase_t::dropCollectionWorker(arangodb::LogicalCollection* collection,
   TRI_ASSERT(writeLocker.isLocked());
   TRI_ASSERT(locker.isLocked());
 
+#if USE_PLAN_CACHE
   arangodb::aql::PlanCache::instance()->invalidate(this);
+#endif
   arangodb::aql::QueryCache::instance()->invalidate(this);
 
   switch (collection->status()) {

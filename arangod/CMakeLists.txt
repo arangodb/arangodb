@@ -157,6 +157,7 @@ SET(ARANGOD_SOURCES
   Aql/QueryResources.cpp
   Aql/QueryString.cpp
   Aql/Range.cpp
+  Aql/RegexCache.cpp
   Aql/RestAqlHandler.cpp
   Aql/Scopes.cpp
   Aql/ShortStringStorage.cpp

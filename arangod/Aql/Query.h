@@ -36,6 +36,7 @@
 #include "Aql/QueryResources.h"
 #include "Aql/QueryResultV8.h"
 #include "Aql/QueryString.h"
+#include "Aql/RegexCache.h"
 #include "Aql/ResourceUsage.h"
 #include "Aql/types.h"
 #include "Basics/Common.h"
@@ -194,6 +195,9 @@ class Query {
 
   /// @brief get v8 executor
   V8Executor* executor();
+  
+  /// @brief cache for regular expressions constructed by the query
+  RegexCache* regexCache() { return &_regexCache; }
 
   /// @brief return the engine, if prepared
   ExecutionEngine* engine() const { return _engine.get(); }
@@ -339,6 +343,9 @@ class Query {
 
   /// @brief warnings collected during execution
   std::vector<std::pair<int, std::string>> _warnings;
+
+  /// @brief cache for regular expressions constructed by the query
+  RegexCache _regexCache;
  
   /// @brief query start time
   double _startTime;

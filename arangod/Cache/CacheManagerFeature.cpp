@@ -35,7 +35,7 @@
 #include "Basics/asio-helper.h"
 #include "Cache/CacheManagerFeatureThreads.h"
 #include "Cache/Manager.h"
-#include "Logger/LogAppender.h"
+#include "Logger/Logger.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
 #include "Scheduler/Scheduler.h"

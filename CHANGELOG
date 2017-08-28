@@ -3,6 +3,13 @@ devel
 
 * fixed issue #3070: Add index in _jobs collection
 
+
+v3.2.2 (2017-08-23)
+-------------------
+
+* make "Rebalance shards" button work in selected database only, and not make 
+  it rebalance the shards of all databases
+
 * fixed issue #2847: adjust the response of the DELETE `/_api/users/database/*` calls
 
 * fixed issue #3075: Error when upgrading arangoDB on linux ubuntu 16.04 
@@ -183,6 +190,8 @@ v3.2.1 (2017-08-09)
 
 * ui: allows now to edit default access level for collections in database
   _system for all users except the root user.
+
+* The _users collection is no longer accessible outside the arngod process, _queues is always read-only
 
 * added new option "--rocksdb.max-background-jobs"
 
