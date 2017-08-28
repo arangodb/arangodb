@@ -458,9 +458,7 @@ def testEdition(edition, os, mode, engine, port) {
             portInterval = 40
         }
         
-        echo "BEFORE TESTMAP ${test}"
         testMap["${edition}-${os}-${mode}-${engine}-${test}"] = {
-            echo "in ${edition}-${os}-${mode}-${engine}-${test}"
             // copy in groovy
             testArgs += " --minPort " + port
             testArgs += " --maxPort " + (port + portInterval - 1)
@@ -475,7 +473,6 @@ def testEdition(edition, os, mode, engine, port) {
             }
             port += portInterval
         }
-        echo "AFTER TESTMAP ${test}"
         testMap
     }
 
