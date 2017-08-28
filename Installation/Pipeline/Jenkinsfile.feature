@@ -357,6 +357,83 @@ def jslint() {
 // --SECTION--                                                     SCRIPTS TESTS
 // -----------------------------------------------------------------------------
 
+def getStartPort(os) {
+    if (os == "windows") {
+        return powershell "Installation\\Pipeline\\port.ps1"
+    } else {
+        return sh "Installaton/Pipeline/port.sh" 
+    }
+}
+
+def getTests(edition, os, mode, engine) {
+    def rspecify(test) {
+        if (os == "windows" {
+            return [test, test, "--rspec C:\tools\ruby23\bin\rspec.bat"]
+        } else {
+            return test
+        }
+    }
+
+    def httpReplication = "http_replication"
+    def httpServer = "http_server"
+    def sslServer = "ssl_server"
+    if (os == "windows") {
+        httpReplication = ["http_replication]
+    }
+    if (mode == "singleserver") {
+        return [
+            "agency",
+            ["boost", "boost", "--skipCache false"],
+            "arangobench",
+            "arangosh",
+            "authentication",
+            "authentication_parameters",
+            "cluster_sync",
+            "config",
+            "dfdb",
+            //"dump",
+            //"dump_authentication",
+            "endpoints",
+            rspecify("http_replication"),
+            rspecify("http_server"),
+            "replication_sync",
+            "replication_static",
+            "replication_ongoing",
+            "server_http",
+            "shell_client",
+            "shell_replication",
+            "shell_server",
+            ["shell_server_aql_1", "shell_server_aql","--testBuckets 4/0"],
+            ["shell_server_aql_2", "shell_server_aql","--testBuckets 4/1"],
+            ["shell_server_aql_3", "shell_server_aql","--testBuckets 4/2"],
+            ["shell_server_aql_4", "shell_server_aql","--testBuckets 4/3"],
+            rspecify("ssl_server"),
+            "upgrade"
+        ]
+    } else {
+        return = [
+            "arangobench",
+            "arangosh",
+            "authentication",
+            "authentication_parameters",
+            "config",
+            "dump",
+            "dump_authentication",
+            "endpoints",
+            rspecify("http_server"),
+            "server_http",
+            "shell_client",
+            "shell_server",
+            ["shell_server_aql_1", "shell_server_aql","--testBuckets 4/0"],
+            ["shell_server_aql_2", "shell_server_aql","--testBuckets 4/1"],
+            ["shell_server_aql_3", "shell_server_aql","--testBuckets 4/2"],
+            ["shell_server_aql_4", "shell_server_aql","--testBuckets 4/3"],
+            rspecify("ssl_server"),
+            "upgrade"
+        ]
+  }
+}
+
 def testEdition(edition, os, mode, engine) {
     def arch = "LOG_test_${mode}_${edition}_${engine}_${os}"
 
@@ -373,11 +450,32 @@ def testEdition(edition, os, mode, engine) {
     def parallelity = 2
     def testIndex = 0
     def tests = ["arangosh", "config", "agency", "endpoints"]
+    // this is an `Array.reduce()` in groovy :S
     def testSteps = tests.inject([:]) { testMap, test ->
         def lockIndex = testIndex % parallelity
         testIndex++
+
+        def isString = test instanceof String
+        def args = ["--storageEngine ${engine}"]
+        def name = test[0]
+        if (!isString) {
+            args << test[2]
+            test = test[1]
+        }
+
+        def portInterval = 10
+        if (mode == "cluster") {
+            portInterval = 40
+        }
+        
+        def port = getStartPort(os)
         testMap["${edition}-${os}-${mode}-${engine}-${test}"] = {
-            def command = "build/bin/arangosh --log.level warning --javascript.execute UnitTests/unittest.js ${test} -- --storageEngine $engine"
+            // copy in groovy
+            def testArgs = args.collect()
+            testArgs << "--minPort " + port
+            testArgs << "--maxPort " + (port + portInterval - 1)
+            def command = "build/bin/arangosh --log.level warning --javascript.execute UnitTests/unittest.js ${test} -- "
+            command += testArgs.join(" ")
             lock("test-${env.NODE_NAME}-${env.JOB_NAME}-${env.BUILD_ID}-${edition}-${engine}-${lockIndex}") {
                 if (os == "windows") {
                     powershell command
@@ -385,6 +483,7 @@ def testEdition(edition, os, mode, engine) {
                     sh command
                 }
             }
+            port += portInterval
         }
         testMap
     }
