@@ -1,6 +1,8 @@
 devel
 -----
 
+* arangoimp now has a --remove-attribute option
+
 * fixed issue #3070: Add index in _jobs collection
 
 
