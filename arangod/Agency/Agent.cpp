@@ -253,7 +253,6 @@ void Agent::reportIn(std::string const& peerId, index_t index, size_t toLog) {
       _confirmed[peerId] = index;
       if (toLog > 0) { // We want to reset the wait time only if a package callback
         LOG_TOPIC(TRACE, Logger::AGENCY) << "Got call back of " << toLog << " logs";
-        // TODO: unclear responsibility for _earliestPackage locking
         _earliestPackage[peerId] = system_clock::now();
       }
     }
@@ -381,8 +380,7 @@ bool Agent::recvAppendEntriesRPC(
       }
       // Now the log is empty, but this will soon be rectified.
       { 
-        // TODO: wrong lock. should by _ioLock!
-        MUTEX_LOCKER(liLocker, _liLock);
+        MUTEX_LOCKER(ioLocker, _ioLock);
         _nextCompactionAfter = (std::min)(_nextCompactionAfter,
             snapshotIndex + _config.compactionStepSize());
       }
@@ -462,12 +460,16 @@ void Agent::sendAppendEntriesRPC() {
 
       index_t lastConfirmed, commitIndex;
       auto startTime = system_clock::now();
+      time_point<system_clock> earliestPackage, lastAcked;
+      
       {
         _liLock.assertNotLockedByCurrentThread();
         MUTEX_LOCKER(ioLocker, _ioLock);
         t = this->term();
         lastConfirmed = _confirmed[followerId];
         commitIndex = _commitIndex;
+        lastAcked = _lastAcked[followerId];
+        earliestPackage = _earliestPackage[followerId];
       }
       duration<double> lockTime = system_clock::now() - startTime;
       if (lockTime.count() > 0.1) {
@@ -475,7 +477,7 @@ void Agent::sendAppendEntriesRPC() {
           << "Reading lastConfirmed took too long: " << lockTime.count();
       }
 
-      std::vector<log_t> unconfirmed = _state.get(lastConfirmed);
+      std::vector<log_t> unconfirmed = _state.get(lastConfirmed, lastConfirmed+99);
 
       lockTime = system_clock::now() - startTime;
       if (lockTime.count() > 0.2) {
@@ -497,7 +499,6 @@ void Agent::sendAppendEntriesRPC() {
       index_t highest = unconfirmed.back().index;
 
       // _lastSent, _lastHighest: local and single threaded access
-      // TODO: missing lock for _lastSent
       duration<double> m = system_clock::now() - _lastSent[followerId];
 
       if (highest == _lastHighest[followerId] &&
@@ -511,12 +512,9 @@ void Agent::sendAppendEntriesRPC() {
 
       if (m.count() > _config.minPing() &&
           _lastSent[followerId].time_since_epoch().count() != 0) {
-        // TODO: missing lock for _lastSent
-        // TODO: missing _ioLock for _lastAcked here
         LOG_TOPIC(WARN, Logger::AGENCY) << "Oops, sent out last heartbeat "
           << "to follower " << followerId << " more than minPing ago: " 
-          << m.count() << " lastAcked: "
-          << timepointToString(_lastAcked[followerId])
+          << m.count() << " lastAcked: " << timepointToString(lastAcked)
           << " lastSent: " << timepointToString(_lastSent[followerId]);
       }
       index_t lowest = unconfirmed.front().index;
@@ -567,9 +565,8 @@ void Agent::sendAppendEntriesRPC() {
       // Body
       Builder builder;
       builder.add(VPackValue(VPackValueType::Array));
-      // TODO: unclear responsibility for _earliestPackage locking
       if (
-          ((system_clock::now() - _earliestPackage[followerId]).count() > 0)) {
+          ((system_clock::now() - earliestPackage).count() > 0)) {
         if (needSnapshot) {
           { VPackObjectBuilder guard(&builder);
             builder.add(VPackValue("readDB"));
@@ -630,20 +627,21 @@ void Agent::sendAppendEntriesRPC() {
         std::max(1.0e-3 * toLog * dt.count(), 
                  _config.minPing() * _config.timeoutMult()), true);
 
-      // _lastSent, _lastHighest: local and single threaded access
-      // TODO: missing lock for _lastSent
       _lastSent[followerId]        = system_clock::now();
       _lastHighest[followerId]     = highest;
 
       if (toLog > 0) {
-        _earliestPackage[followerId] = system_clock::now() + toLog * dt;
+        earliestPackage = system_clock::now() + toLog * dt;
+        {
+          MUTEX_LOCKER(ioLocker, _ioLock);
+          _earliestPackage[followerId] = earliestPackage;
+        }
         LOG_TOPIC(DEBUG, Logger::AGENCY)
           << "Appending " << unconfirmed.size() - 1 << " entries up to index "
-          << highest << " to follower " << followerId << ". Message: "
-          << builder.toJson() 
+          << highest << " to follower " << followerId 
           << ". Next real log contact to " << followerId<< " in: " 
           <<  std::chrono::duration<double, std::milli>(
-            _earliestPackage[followerId]-system_clock::now()).count() << "ms";
+            earliestPackage-system_clock::now()).count() << "ms";
       } else {
         LOG_TOPIC(TRACE, Logger::AGENCY)
           << "Just keeping follower " << followerId
@@ -700,9 +698,6 @@ query_t Agent::activate(query_t const& everything) {
                                 false  /* do not perform callbacks */);
         _spearhead = _readDB;
       }
-
-      //_state.persistReadDB(everything->slice().get("compact").get("_key"));
-      //_state.log((everything->slice().get("logs"));
 
       ret->add("success", VPackValue(true));
       ret->add("commitId", VPackValue(commitIndex));
@@ -780,7 +775,8 @@ void Agent::load() {
   _compactor.start();
 
   LOG_TOPIC(DEBUG, Logger::AGENCY) << "Starting spearhead worker.";
-  // TODO: missing _ioLock
+
+  // Single threaded startup no need locking
   _spearhead.start();
   _readDB.start();
 
@@ -1271,9 +1267,11 @@ void Agent::beginShutdown() {
   _compactor.beginShutdown();
 
   // Stop key value stores
-  // TODO: missing _ioLock
-  _spearhead.beginShutdown();
-  _readDB.beginShutdown();
+  {
+    MUTEX_LOCKER(ioLocker, _ioLock);
+    _spearhead.beginShutdown();
+    _readDB.beginShutdown();
+  }
 
   // Wake up all waiting rest handlers
   {
@@ -1335,17 +1333,15 @@ void Agent::lead() {
 
   // Notify inactive pool
   notifyInactive();
-
   {
     CONDITION_LOCKER(guard, _waitForCV);
-    // TODO: missing _ioLock
     while(_commitIndex != _state.lastIndex()) {
       _waitForCV.wait(10000);
     }
   }
 
-  // TODO: missing _ioLock
   _spearhead = _readDB;
+  
 }
 
 // When did we take on leader ship?
@@ -1523,8 +1519,6 @@ void Agent::compact() {
 
   {
     MUTEX_LOCKER(ioLocker, _ioLock);
-    // TODO: I assume _ioLock is the correct lock to use here, but
-    // responsibilities are currently a bit unclear...
     _nextCompactionAfter += _config.compactionStepSize();
     commitIndex = _commitIndex;
   }

@@ -509,7 +509,7 @@ void Constituent::callElection() {
   while (true) {
 
     if (steady_clock::now() >= timeout) {       // Timeout. 
-      // TODO: missing _castLock for _term
+      MUTEX_LOCKER(locker, _castLock);
       follow(_term);        
       break;
     }
@@ -527,9 +527,12 @@ void Constituent::callElection() {
         if (slc.isObject() && slc.hasKey("term") && slc.hasKey("voteGranted")) {
           
           // Follow right away?
-          term_t t = slc.get("term").getUInt();
-          // TODO: missing _castLock for _term
-          if (t > _term) {
+          term_t t = slc.get("term").getUInt(), term;
+          {
+            MUTEX_LOCKER(locker, _castLock);
+            term = _term;
+          }
+          if (t > term) {
             follow(t);
             break;
           }
@@ -548,8 +551,12 @@ void Constituent::callElection() {
     }
     // Count the vote as a nay
     if (++nay >= majority) {                  // Network: majority against?
-      // TODO: missing _castLock for _term
-      follow(_term);
+      term_t term;
+      {
+        MUTEX_LOCKER(locker, _castLock);
+        term = _term;
+      }
+      follow(term);
       break;
     }
     
@@ -659,8 +666,14 @@ void Constituent::run() {
       _role = FOLLOWER;
     }
     while (!this->isStopping()) {
-      // TODO: missing _castLock for _role
-      if (_role == FOLLOWER) {
+      
+      role_t role;
+      {
+        MUTEX_LOCKER(guard, _castLock);
+        role = _role;
+      }
+
+      if (role == FOLLOWER) {
         static double const M = 1.0e6;
         int64_t a = static_cast<int64_t>(M * _agent->config().minPing() *
                                          _agent->config().timeoutMult());
@@ -716,8 +729,8 @@ void Constituent::run() {
           candidate();
           _agent->unprepareLead();
         }
-        // TODO: missing _castLock for _role
-      } else if (_role == CANDIDATE) {
+
+      } else if (role == CANDIDATE) {
         callElection();  // Run for office
       } else {
         int32_t left =

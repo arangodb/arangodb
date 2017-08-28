@@ -1,3 +1,4 @@
+
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
@@ -115,15 +116,6 @@ inline static bool endpointPathFromUrl(std::string const& url,
 /// Ctor with name
 Store::Store(Agent* agent, std::string const& name)
   : Thread(name), _agent(agent), _node(name, this) {}
-
-/// Move constructor. note: this is not thread-safe!
-Store::Store(Store&& other)
-  : Thread(other._node.name()),
-    _agent(std::move(other._agent)),
-    _timeTable(std::move(other._timeTable)),
-    _observerTable(std::move(other._observerTable)),
-    _observedTable(std::move(other._observedTable)),
-    _node(std::move(other._node)) {}
 
 /// Copy assignment operator
 Store& Store::operator=(Store const& rhs) {
@@ -583,19 +575,20 @@ query_t Store::clearExpired() const {
   query_t tmp = std::make_shared<Builder>();
   { VPackArrayBuilder t(tmp.get());
     MUTEX_LOCKER(storeLocker, _storeLock);
-    for (auto it = _timeTable.cbegin(); it != _timeTable.cend(); ++it) {
-      if (it->first < std::chrono::system_clock::now()) {
-        VPackArrayBuilder ttt(tmp.get());
-        { VPackObjectBuilder tttt(tmp.get());
-          tmp->add(VPackValue(it->second));
-          { VPackObjectBuilder ttttt(tmp.get());
-            tmp->add("op", VPackValue("delete"));
-          }}
-      } else {
-        break;
+    if (!_timeTable.empty()) {
+      for (auto it = _timeTable.cbegin(); it != _timeTable.cend(); ++it) {
+        if (it->first < std::chrono::system_clock::now()) {
+          VPackArrayBuilder ttt(tmp.get());
+          { VPackObjectBuilder tttt(tmp.get());
+            tmp->add(VPackValue(it->second));
+            { VPackObjectBuilder ttttt(tmp.get());
+              tmp->add("op", VPackValue("delete"));
+            }}
+        } else {
+          break;
+        }
       }
     }
-    
   }
   return tmp;
 }

@@ -263,8 +263,7 @@ index_t State::log(query_t const& transactions, size_t ndups) {
   return _log.empty() ? 0 : _log.back().index;
 }
 
-size_t State::removeConflicts(query_t const& transactions,
-                              bool gotSnapshot) { 
+size_t State::removeConflicts(query_t const& transactions,  bool gotSnapshot) { 
   // Under MUTEX in Agent
   // Note that this will ignore a possible snapshot in the first position!
   // This looks through the transactions and skips over those that are
@@ -347,8 +346,8 @@ size_t State::removeConflicts(query_t const& transactions,
 }
 
 /// Get log entries from indices "start" to "end"
-std::vector<log_t> State::get(index_t start,
-                              index_t end) const {
+std::vector<log_t> State::get(index_t start, index_t end) const {
+  
   std::vector<log_t> entries;
   MUTEX_LOCKER(mutexLocker, _logLock); // Cannot be read lock (Compaction)
 
@@ -362,6 +361,11 @@ std::vector<log_t> State::get(index_t start,
 
   if (start < _log[0].index) {
     start = _log[0].index;
+  } else if (start > _log.back().index) {
+  }
+
+  if (end <= start) {
+    end = start;
   }
 
   for (size_t i = start - _cur; i <= end - _cur; ++i) {
@@ -467,7 +471,6 @@ VPackBuilder State::slices(index_t start,
       try {
         slices.add(VPackSlice(_log.at(i).entry->data()));
       } catch (std::exception const&) {
-        // TODO: we smile away exceptions here
         break;
       }
     }
@@ -1145,7 +1148,7 @@ query_t State::allLogs() const {
 std::vector<std::vector<log_t>> State::inquire(query_t const& query) const {
   if (!query->slice().isArray()) {
       THROW_ARANGO_EXCEPTION_MESSAGE(
-        210002, // TODO: why this error code?
+        20001, 
         std::string("Inquiry handles a list of string clientIds: [<clientId>] ")
         + ". We got " + query->toJson());
   }
