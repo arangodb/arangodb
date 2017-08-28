@@ -1333,14 +1333,26 @@ void Agent::lead() {
 
   // Notify inactive pool
   notifyInactive();
+
+  index_t commitIndex;
+  {
+    MUTEX_LOCKER(ioLocker, _ioLock);
+    commitIndex = _commitIndex;
+  }
+  
   {
     CONDITION_LOCKER(guard, _waitForCV);
-    while(_commitIndex != _state.lastIndex()) {
+    while(commitIndex != _state.lastIndex()) {
       _waitForCV.wait(10000);
+      MUTEX_LOCKER(ioLocker, _ioLock);
+      commitIndex = _commitIndex;
     }
   }
 
-  _spearhead = _readDB;
+  {
+    MUTEX_LOCKER(ioLocker, _ioLock);
+    _spearhead = _readDB;
+  }
   
 }
 
