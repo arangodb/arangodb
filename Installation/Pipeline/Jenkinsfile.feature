@@ -357,15 +357,15 @@ def jslint() {
 // --SECTION--                                                     SCRIPTS TESTS
 // -----------------------------------------------------------------------------
 
-// def getStartPort(os) {
-//     def port = ""
-//     if (os == "windows") {
-//         port = powershell {returnStdout: true, script: "Installation/Pipeline/port.ps1"}
-//     } else {
-//         port = sh {returnStdout: true, script: "Installaton/Pipeline/port.sh"}
-//     }
-//     return port
-// }
+def getStartPort(os) {
+    def port = ""
+    if (os == "windows") {
+        port = powershell {returnStdout: false, script: "Installation/Pipeline/port.ps1"}
+    } else {
+        port = sh {returnStdout: true, script: "Installaton/Pipeline/port.sh"}
+    }
+    return port
+}
 
 def getTests(edition, os, mode, engine) {
     def rspecify(test) {
@@ -380,7 +380,7 @@ def getTests(edition, os, mode, engine) {
     def httpServer = "http_server"
     def sslServer = "ssl_server"
     if (os == "windows") {
-        httpReplication = ["http_replication]
+        httpReplication = ["http_replication"]
     }
     if (mode == "singleserver") {
         return [
