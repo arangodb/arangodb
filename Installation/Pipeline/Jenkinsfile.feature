@@ -462,9 +462,6 @@ def testEdition(edition, os, mode, engine, port) {
         testMap["${edition}-${os}-${mode}-${engine}-${test}"] = {
             echo "in ${edition}-${os}-${mode}-${engine}-${test}"
             // copy in groovy
-            echo "was ${edition}-${os}-${mode}-${engine}-${test}"
-            echo "ARGS ${args}"
-            echo "in ${edition}-${os}-${mode}-${engine}-${test} 2"
             testArgs += " --minPort " + port
             echo "in ${edition}-${os}-${mode}-${engine}-${test} 3"
             testArgs += " --maxPort " + (port + portInterval - 1)
@@ -601,12 +598,7 @@ def testStepParallel(editionList, osList, modeList) {
             }
         }
     }
-    try {
     parallel branches
-    } catch (e) {
-        echo "HASSSSHSHSHS"
-        throw e
-    }
 }
 
 // -----------------------------------------------------------------------------
@@ -834,8 +826,8 @@ def buildStep(edition, os) {
                         jslint()
                     }
                 }
-                testStepParallel([edition], [os], ['cluster', 'singleserver'])
             }
+            testStepParallel([edition], [os], ['cluster', 'singleserver'])
         }
 
     }
