@@ -358,11 +358,13 @@ def jslint() {
 // -----------------------------------------------------------------------------
 
 def getStartPort(os) {
+    def port;
     if (os == "windows") {
-        return powershell "Installation\\Pipeline\\port.ps1"
+        port = powershell {returnStdout: true, script: "Installation\\Pipeline\\port.ps1"}
     } else {
-        return sh "Installaton/Pipeline/port.sh" 
+        port = sh {returnStdout: true, script: "Installaton/Pipeline/port.sh"}
     }
+    return port
 }
 
 def getTests(edition, os, mode, engine) {
