@@ -1,6 +1,8 @@
 devel
 -----
 
+* fixed wrong ui cluster health information
+
 * fixed issue #3070: Add index in _jobs collection
 
 
@@ -12,32 +14,32 @@ v3.2.2 (2017-08-23)
 
 * fixed issue #2847: adjust the response of the DELETE `/_api/users/database/*` calls
 
-* fixed issue #3075: Error when upgrading arangoDB on linux ubuntu 16.04 
+* fixed issue #3075: Error when upgrading arangoDB on linux ubuntu 16.04
 
 * fixed a buffer overrun in linenoise console input library for long input strings
 
 * increase size of the linenoise input buffer to 8 KB
 
-* abort compilation if the detected GCC or CLANG isn't in the range of compilers 
+* abort compilation if the detected GCC or CLANG isn't in the range of compilers
   we support
 
 * fixed spurious cluster hangups by always sending AQL-query related requests
   to the correct servers, even after failover or when a follower drops
-    
-  The problem with the previous shard-based approach was that responsibilities 
+
+  The problem with the previous shard-based approach was that responsibilities
   for shards may change from one server to another at runtime, after the query
   was already instanciated. The coordinator and other parts of the query then
   sent further requests for the query to the servers now responsible for the
   shards.
-  However, an AQL query must send all further requests to the same servers on 
+  However, an AQL query must send all further requests to the same servers on
   which the query was originally instanciated, even in case of failover.
   Otherwise this would potentially send requests to servers that do not know
-  about the query, and would also send query shutdown requests to the wrong 
-  servers, leading to abandoned queries piling up and using resources until 
+  about the query, and would also send query shutdown requests to the wrong
+  servers, leading to abandoned queries piling up and using resources until
   they automatically time out.
 
 * fixed issue with RocksDB engine acquiring the collection count values too
-  early, leading to the collection count values potentially being slightly off 
+  early, leading to the collection count values potentially being slightly off
   even in exclusive transactions (for which the exclusive access should provide
   an always-correct count value)
 
@@ -76,25 +78,26 @@ v3.2.2 (2017-08-23)
   This fixes problems with the memory allocator returing "out of memory" when
   calling munmap to free memory in order to return it to the OS.
 
-  It seems that calling munmap on Linux can increase the number of mappings, at least 
-  when a region is partially unmapped. This can lead to the process exceeding its 
+  It seems that calling munmap on Linux can increase the number of mappings, at least
+  when a region is partially unmapped. This can lead to the process exceeding its
   maximum number of mappings, and munmap and future calls to mmap returning errors.
 
   jemalloc version 5.0.1 does not have the `--enable-munmap` configure option anymore,
-  so the problem is avoided. To return memory to the OS eventually, jemalloc 5's 
+  so the problem is avoided. To return memory to the OS eventually, jemalloc 5's
   background purge threads are used on Linux.
 
 * fixed issue #2978: log something more obvious when you log a Buffer
 
 * fixed issue #2982: AQL parse error?
 
+* fixed issue #3125: HTTP Foxx API Json parsing
 
 v3.2.1 (2017-08-09)
 -------------------
 
 * added C++ implementations for AQL functions `LEFT()`, `RIGHT()` and `TRIM()`
 
-* fixed docs for issue #2968: Collection _key autoincrement value increases on error 
+* fixed docs for issue #2968: Collection _key autoincrement value increases on error
 
 * fixed issue #3011: Optimizer rule reduce-extraction-to-projection breaks queries
 

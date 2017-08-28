@@ -107,13 +107,6 @@
     "frontend/js/models/notification.js",
     "frontend/js/models/arangoQuery.js",
     "frontend/js/models/queryManagement.js",
-    "clusterFrontend/js/models/clusterServer.js",
-    "clusterFrontend/js/models/clusterCoordinator.js",
-    "clusterFrontend/js/models/clusterDatabase.js",
-    "clusterFrontend/js/models/clusterCollection.js",
-    "clusterFrontend/js/models/clusterShard.js",
-    "clusterFrontend/js/models/clusterPlan.js",
-    "clusterFrontend/js/models/clusterType.js",
 
     "frontend/js/config/dygraphConfig.js",
 
@@ -175,9 +168,6 @@
 
     "clusterFrontend/js/views/clusterDownView.js",
     "clusterFrontend/js/views/loginModalView.js",
-    "clusterFrontend/js/views/planScenarioSelectorView.js",
-    "clusterFrontend/js/views/planSymmetricView.js",
-    "clusterFrontend/js/views/planTestView.js",
     "clusterFrontend/js/views/shutdownButtonView.js",
     "clusterFrontend/js/views/showClusterView.js",
     "clusterFrontend/js/views/showShardsView.js",
@@ -221,7 +211,6 @@
     "test/specs/arango/arangoSpec.js",
 
     "test/specs/models/currentDatabaseSpec.js",
-    "test/specs/models/clusterPlanSpec.js",
     "test/specs/models/graphSpec.js",
     "test/specs/models/arangoCollectionModelSpec.js",
     "test/specs/models/arangoDatabaseSpec.js",
@@ -280,9 +269,6 @@
     "test/clusterSpecs/views/clusterDownViewSpec.js",
     "test/clusterSpecs/views/dbServerDashboardViewSpec.js",
     "test/clusterSpecs/views/loginModalViewSpec.js",
-    "test/clusterSpecs/views/planScenarioSelectorViewSpec.js",
-    "test/clusterSpecs/views/planSymmetricViewSpec.js",
-    "test/clusterSpecs/views/planTestViewSpec.js",
     "test/clusterSpecs/views/showClusterViewSpec.js",
     "test/clusterSpecs/views/shutdownButtonViewSpec.js",
 
