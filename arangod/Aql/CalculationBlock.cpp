@@ -155,15 +155,7 @@ void CalculationBlock::doEvaluation(AqlItemBlock* result) {
 
   if (!_expression->isV8()) {
     // an expression that does not require V8
-
-    Functions::InitializeThreadContext();
-    try {
-      executeExpression(result);
-      Functions::DestroyThreadContext();
-    } catch (...) {
-      Functions::DestroyThreadContext();
-      throw;
-    }
+    executeExpression(result);
   } else {
     bool const isRunningInCluster = transaction()->state()->isRunningInCluster();
 

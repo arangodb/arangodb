@@ -179,10 +179,6 @@ int TransactionState::addCollection(TRI_voc_cid_t cid,
 
   TRI_ASSERT(trxCollection != nullptr);
 
-  // std::cout << "SingleCollectionTransaction::lockRead() database: " /*<<
-  // documentCollection()->dbName()*/ << ", collection: " <<
-  // trxCollection->collectionName() << "\n";
-
   // insert collection at the correct position
   try {
     _collections.insert(_collections.begin() + position, trxCollection);
@@ -297,6 +293,10 @@ void TransactionState::setType(AccessMode::Type type) {
   }
   // all right
   _type = type;
+}
+   
+bool TransactionState::isExclusiveTransactionOnSingleCollection() const {
+  return ((numCollections() == 1) && (_collections[0]->accessType() == AccessMode::Type::EXCLUSIVE));
 }
 
 /// @brief release collection locks for a transaction

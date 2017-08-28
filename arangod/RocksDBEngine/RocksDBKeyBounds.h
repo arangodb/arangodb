@@ -118,6 +118,13 @@ class RocksDBKeyBounds {
   static RocksDBKeyBounds UniqueVPackIndex(uint64_t indexId,
                                            VPackSlice const& left,
                                            VPackSlice const& right);
+  
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief Bounds for all documents within a value range belonging to a
+  /// specified unique index. this method is used for point lookups
+  //////////////////////////////////////////////////////////////////////////////
+  static RocksDBKeyBounds UniqueVPackIndex(uint64_t indexId,
+                                           VPackSlice const& left);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Bounds for all views belonging to a specified database

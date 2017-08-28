@@ -2357,11 +2357,8 @@ static int GetRevision(arangodb::LogicalCollection* collection, TRI_voc_rid_t& r
     return res.errorNumber();
   }
 
-  // READ-LOCK start
-  trx.lockRead();
   rid = collection->revision(&trx);
   trx.finish(res);
-  // READ-LOCK end
 
   return TRI_ERROR_NO_ERROR;
 }
@@ -2781,16 +2778,9 @@ static void JS_TruncateVocbaseCol(
     }
   }
   
-  // optionally specify non trx remove
-  bool unsafeTruncate = false;
-  if (args.Length() > 0) {
-    unsafeTruncate = TRI_ObjectToBoolean(args[0]);
-  }
-
-  auto t = unsafeTruncate ? AccessMode::Type::EXCLUSIVE : AccessMode::Type::WRITE;
   SingleCollectionTransaction trx(
       transaction::V8Context::Create(collection->vocbase(), true),
-                                  collection->cid(), t);
+                                  collection->cid(), AccessMode::Type::EXCLUSIVE);
 
   Result res = trx.begin();
   if (!res.ok()) {
@@ -3061,7 +3051,7 @@ static void JS_CollectionsVocbase(
     };
     colls = GetCollectionsCluster(vocbase);
   } else {
-    // no cleanup needed
+    // no cleanup needed on single server / dbserver
     cleanup = []() {};
     colls = vocbase->collections(false);
   }

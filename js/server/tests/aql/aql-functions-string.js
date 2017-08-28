@@ -331,6 +331,18 @@ function ahuacatlStringFunctionsTestSuite () {
     },
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief test regex function, cache
+////////////////////////////////////////////////////////////////////////////////
+    
+    testRegexCache : function () {
+      var actual = getQueryResults("FOR i IN 1..100 RETURN REGEX_TEST(CONCAT('test', i), 'test')");
+      assertEqual(100, actual.length);
+      for (var i = 0; i < actual.length; ++i) {
+        assertTrue(actual[i]);
+      }
+    },
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief test REGEX_REPLACE, invalid arguments
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -522,6 +534,18 @@ function ahuacatlStringFunctionsTestSuite () {
         actual = getQueryResults("RETURN " + JSON.stringify(value) + " LIKE " + JSON.stringify(value));
         assertEqual([ true ], actual);
       });
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test like function, cache
+////////////////////////////////////////////////////////////////////////////////
+    
+    testLikeCache : function () {
+      var actual = getQueryResults("FOR i IN 1..100 RETURN LIKE(CONCAT('test', i), 'test%')");
+      assertEqual(100, actual.length);
+      for (var i = 0; i < actual.length; ++i) {
+        assertTrue(actual[i]);
+      }
     },
 
 ////////////////////////////////////////////////////////////////////////////////

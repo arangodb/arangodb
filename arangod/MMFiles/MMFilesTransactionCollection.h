@@ -87,7 +87,6 @@ class MMFilesTransactionCollection final : public TransactionCollection {
   bool _compactionLocked;  // was the compaction lock grabbed for the collection?
   bool _waitForSync;      // whether or not the collection has waitForSync
   
-  AccessMode::Type _accessType;  // access type (read|write)
   AccessMode::Type _lockType;  // collection lock type
 };
 
