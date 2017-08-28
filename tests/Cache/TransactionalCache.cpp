@@ -69,6 +69,7 @@ TEST_CASE("cache::TransactionalCache", "[cache][!hide][longRunning]") {
     for (uint64_t i = 0; i < 1024; i++) {
       CachedValue* value =
           CachedValue::construct(&i, sizeof(uint64_t), &i, sizeof(uint64_t));
+      TRI_ASSERT(value != nullptr);
       auto status = cache->insert(value);
       if (status.ok()) {
         auto f = cache->find(&i, sizeof(uint64_t));
@@ -82,6 +83,7 @@ TEST_CASE("cache::TransactionalCache", "[cache][!hide][longRunning]") {
       uint64_t j = 2 * i;
       CachedValue* value =
           CachedValue::construct(&i, sizeof(uint64_t), &j, sizeof(uint64_t));
+      TRI_ASSERT(value != nullptr);
       auto status = cache->insert(value);
       if (status.ok()) {
         auto f = cache->find(&i, sizeof(uint64_t));
@@ -95,6 +97,7 @@ TEST_CASE("cache::TransactionalCache", "[cache][!hide][longRunning]") {
     for (uint64_t i = 1024; i < 256 * 1024; i++) {
       CachedValue* value =
           CachedValue::construct(&i, sizeof(uint64_t), &i, sizeof(uint64_t));
+      TRI_ASSERT(value != nullptr);
       auto status = cache->insert(value);
       if (status.ok()) {
         auto f = cache->find(&i, sizeof(uint64_t));
@@ -117,6 +120,7 @@ TEST_CASE("cache::TransactionalCache", "[cache][!hide][longRunning]") {
     for (uint64_t i = 0; i < 1024; i++) {
       CachedValue* value =
           CachedValue::construct(&i, sizeof(uint64_t), &i, sizeof(uint64_t));
+      TRI_ASSERT(value != nullptr);
       auto status = cache->insert(value);
       if (status.ok()) {
         auto f = cache->find(&i, sizeof(uint64_t));
@@ -176,6 +180,7 @@ TEST_CASE("cache::TransactionalCache", "[cache][!hide][longRunning]") {
     for (uint64_t i = 0; i < 1024; i++) {
       CachedValue* value =
           CachedValue::construct(&i, sizeof(uint64_t), &i, sizeof(uint64_t));
+      TRI_ASSERT(value != nullptr);
       auto status = cache->insert(value);
       if (status.ok()) {
         auto f = cache->find(&i, sizeof(uint64_t));
@@ -197,6 +202,7 @@ TEST_CASE("cache::TransactionalCache", "[cache][!hide][longRunning]") {
     for (uint64_t i = 512; i < 1024; i++) {
       CachedValue* value =
           CachedValue::construct(&i, sizeof(uint64_t), &i, sizeof(uint64_t));
+      TRI_ASSERT(value != nullptr);
       auto status = cache->insert(value);
       REQUIRE(status.fail());
       delete value;
@@ -211,6 +217,7 @@ TEST_CASE("cache::TransactionalCache", "[cache][!hide][longRunning]") {
     for (uint64_t i = 512; i < 1024; i++) {
       CachedValue* value =
           CachedValue::construct(&i, sizeof(uint64_t), &i, sizeof(uint64_t));
+      TRI_ASSERT(value != nullptr);
       auto status = cache->insert(value);
       if (status.ok()) {
         reinserted++;
@@ -235,6 +242,7 @@ TEST_CASE("cache::TransactionalCache", "[cache][!hide][longRunning]") {
     for (uint64_t i = 0; i < 4 * 1024 * 1024; i++) {
       CachedValue* value =
           CachedValue::construct(&i, sizeof(uint64_t), &i, sizeof(uint64_t));
+      TRI_ASSERT(value != nullptr);
       auto status = cache->insert(value);
       if (status.fail()) {
         delete value;
@@ -267,6 +275,7 @@ TEST_CASE("cache::TransactionalCache", "[cache][!hide][longRunning]") {
         uint64_t item = lower + i;
         CachedValue* value = CachedValue::construct(&item, sizeof(uint64_t),
                                                     &item, sizeof(uint64_t));
+        TRI_ASSERT(value != nullptr);
         auto status = cache->insert(value);
         if (status.fail()) {
           delete value;
@@ -301,6 +310,7 @@ TEST_CASE("cache::TransactionalCache", "[cache][!hide][longRunning]") {
           }
           CachedValue* value = CachedValue::construct(&item, sizeof(uint64_t),
                                                       &item, sizeof(uint64_t));
+          TRI_ASSERT(value != nullptr);
           auto status = cache->insert(value);
           if (status.fail()) {
             delete value;

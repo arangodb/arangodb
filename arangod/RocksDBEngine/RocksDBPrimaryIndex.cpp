@@ -157,7 +157,7 @@ RocksDBToken RocksDBPrimaryIndex::lookupKey(transaction::Methods* trx,
                           static_cast<uint32_t>(key.string().size()));
     if (f.found()) {
       rocksdb::Slice s(reinterpret_cast<char const*>(f.value()->value()),
-                       static_cast<size_t>(f.value()->valueSize));
+                       f.value()->valueSize());
       return RocksDBToken(RocksDBValue::revisionId(s));
     }
   }
@@ -179,9 +179,11 @@ RocksDBToken RocksDBPrimaryIndex::lookupKey(transaction::Methods* trx,
     auto entry = cache::CachedValue::construct(
         key.string().data(), static_cast<uint32_t>(key.string().size()),
         value.buffer()->data(), static_cast<uint64_t>(value.buffer()->size()));
-    auto status = _cache->insert(entry);
-    if (status.fail()) {
-      delete entry;
+    if (entry) {
+      auto status = _cache->insert(entry);
+      if (status.fail()) {
+        delete entry;
+      }
     }
   }
 

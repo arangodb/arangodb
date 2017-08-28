@@ -41,55 +41,74 @@ namespace cache {
 /// to clients.
 ////////////////////////////////////////////////////////////////////////////////
 struct CachedValue {
+  // key size must fit in 3 bytes
+  static constexpr size_t maxKeySize = 0x00FFFFFFULL;
+  // value size must fit in 4 bytes
+  static constexpr size_t maxValueSize = 0xFFFFFFFFULL;
+
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Reference count (to avoid premature deletion)
   //////////////////////////////////////////////////////////////////////////////
-  std::atomic<uint32_t> refCount;
+  inline uint32_t refCount() const { return _refCount.load(); }
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Size of the key in bytes
   //////////////////////////////////////////////////////////////////////////////
-  uint32_t keySize;
+  inline size_t keySize() const {
+    return static_cast<size_t>(_keySize & _keyMask);
+  }
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Size of the value in bytes
   //////////////////////////////////////////////////////////////////////////////
-  uint64_t valueSize;
+  inline size_t valueSize() const { return static_cast<size_t>(_valueSize); }
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Returns a pointer offset to the key
   //////////////////////////////////////////////////////////////////////////////
-  uint8_t const* key() const;
+  inline uint8_t const* key() const {
+    return (reinterpret_cast<uint8_t const*>(this) + sizeof(CachedValue));
+  }
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Returns a pointer offset to the value
   //////////////////////////////////////////////////////////////////////////////
-  uint8_t const* value() const;
+  inline uint8_t const* value() const {
+    return (_valueSize == 0)
+      ? nullptr
+      : reinterpret_cast<uint8_t const*>(this) + sizeof(CachedValue) + 
+          keySize();
+  }
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Returns the allocated size of bytes including the key and value
   //////////////////////////////////////////////////////////////////////////////
-  uint64_t size() const;
+  inline size_t size() const {
+    return _headerAllocSize + keySize() + valueSize();
+  }
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Utility method to compare underlying key to external key
   //////////////////////////////////////////////////////////////////////////////
-  bool sameKey(void const* k, uint32_t kSize) const;
+  inline bool sameKey(void const* k, size_t kSize) const {
+    return (keySize() == kSize) &&
+           (0 == memcmp(key(), k, kSize));
+  }
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Increase reference count
   //////////////////////////////////////////////////////////////////////////////
-  void lease();
+  inline void lease() { ++_refCount; }
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Decrease reference count
   //////////////////////////////////////////////////////////////////////////////
-  void release();
+  inline void release() { --_refCount; }
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Checks whether value can be freed (i.e. no references to it)
   //////////////////////////////////////////////////////////////////////////////
-  bool isFreeable();
+  inline bool isFreeable() const { return _refCount.load() == 0; }
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Create a copy of this CachedValue object
@@ -99,17 +118,36 @@ struct CachedValue {
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Construct a CachedValue object from a given key and value
   //////////////////////////////////////////////////////////////////////////////
-  static CachedValue* construct(void const* k, uint32_t kSize, void const* v,
-                                uint64_t vSize);
+  static CachedValue* construct(void const* k, size_t kSize, void const* v,
+                                size_t vSize);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Custom deleter to handle casting issues
   //////////////////////////////////////////////////////////////////////////////
   static void operator delete(void* ptr);
-};
 
-// ensure that header size is what we expect
-static_assert(sizeof(CachedValue) == 16, "Expected sizeof(CachedValue) == 16.");
+ private:
+  static constexpr size_t _padding = alignof(std::atomic<uint32_t>) - 1;
+  static const size_t _headerAllocSize;
+  static constexpr size_t _headerAllocMask = ~_padding;
+  static constexpr size_t _headerAllocOffset = _padding;
+  static constexpr uint32_t _keyMask = 0x00FFFFFF;
+  static constexpr uint32_t _offsetMask = 0xFF000000;
+  static constexpr size_t _offsetShift = 24;
+
+  std::atomic<uint32_t> _refCount;
+  uint32_t _keySize;
+  uint32_t _valueSize;
+
+ private:
+  CachedValue(size_t off, void const* k, size_t kSize,
+              void const* v, size_t vSize);
+  CachedValue(CachedValue const& other);
+
+  inline size_t offset() const {
+    return ((_keySize & _offsetMask) >> _offsetShift);
+  }
+};
 
 };  // end namespace cache
 };  // end namespace arangodb
