@@ -466,7 +466,7 @@ def testEdition(edition, os, mode, engine) {
             echo "in ${edition}-${os}-${mode}-${engine}-${test}"
             // copy in groovy
             echo "was ${edition}-${os}-${mode}-${engine}-${test}"
-            echo "args ${args}"
+            echo "ARGS ${args}"
             echo "in ${edition}-${os}-${mode}-${engine}-${test} 2"
             testArgs += " --minPort " + port
             echo "in ${edition}-${os}-${mode}-${engine}-${test} 3"
@@ -503,8 +503,6 @@ def testEdition(edition, os, mode, engine) {
                     error("found core file")
                 }
             }
-        } catch (e) {
-            echo "CATCH VON DIE TESTSTEPS"
         }
         finally {
             if (os == 'linux' || os == 'mac') {
