@@ -5,6 +5,8 @@ v3.2.3 (2017-XX-XX)
 
 * fixed issue #3125: HTTP Foxx API Json parsing
 
+* fixed issue #3120: Foxx queue: job isn't running when server.authentication = true
+
 
 v3.2.2 (2017-08-23)
 -------------------
