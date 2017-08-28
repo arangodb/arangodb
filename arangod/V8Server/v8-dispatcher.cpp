@@ -525,7 +525,7 @@ static void JS_RegisterTask(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   std::string runAsUser;
   if (obj->HasOwnProperty(TRI_V8_ASCII_STRING("runAsUser"))) {
-    runAsUser = TRI_ObjectToString(obj->Get(TRI_V8_ASCII_STRING("runAs")));
+    runAsUser = TRI_ObjectToString(obj->Get(TRI_V8_ASCII_STRING("runAsUser")));
   }
   // only the superroot is allowed to run tasks as an arbitrary user
   if (ExecContext::CURRENT != nullptr) {

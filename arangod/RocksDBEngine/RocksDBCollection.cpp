@@ -143,7 +143,7 @@ void RocksDBCollection::setPath(std::string const&) {
 
 arangodb::Result RocksDBCollection::updateProperties(VPackSlice const& slice,
                                                      bool doSync) {
-  
+
   bool b = basics::VelocyPackHelper::readBooleanValue(slice, "cacheEnabled", false);
   if (!ServerState::instance()->isCoordinator() && !_logicalCollection->isSystem()) {
     if ((_cacheEnabled = b)) {
@@ -154,7 +154,7 @@ arangodb::Result RocksDBCollection::updateProperties(VPackSlice const& slice,
       primaryIndex()->disableCache();
     }
   }
-  
+
   // nothing else to do
   return arangodb::Result{};
 }
@@ -748,14 +748,14 @@ void RocksDBCollection::truncate(transaction::Methods* trx,
     rindex->truncate(trx);
   }
   _needToPersistIndexEstimates = true;
-  
-  
+
+
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   //check if documents have been deleted
   if (mthd->countInBounds(documentBounds, true)) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "deletion check in collection truncate failed - not all documents have been deleted");
   }
-  
+
   for (std::shared_ptr<Index> const& index : _indexes) {
     RocksDBIndex* rindex = static_cast<RocksDBIndex*>(index.get());
     if (mthd->countInBounds(rindex->getBounds(),true)) {
@@ -1294,7 +1294,7 @@ arangodb::Result RocksDBCollection::fillIndexes(
   // fillindex can be non transactional
   rocksdb::DB* db = globalRocksDB()->GetBaseDB();
   TRI_ASSERT(db != nullptr);
-  
+
   uint64_t numDocsWritten = 0;
   // write batch will be reset every x documents
   rocksdb::WriteBatchWithIndex batch(ridx->columnFamily()->GetComparator(),
@@ -1495,23 +1495,23 @@ RocksDBOperationResult RocksDBCollection::updateDocument(
     VPackSlice const& oldDoc, TRI_voc_rid_t newRevisionId,
     VPackSlice const& newDoc, bool& waitForSync) const {
   // keysize in return value is set by insertDocument
-  
+
   // Coordinator doesn't know index internals
   TRI_ASSERT(!ServerState::instance()->isCoordinator());
   TRI_ASSERT(trx->state()->isRunning());
   TRI_ASSERT(_objectId != 0);
-  
+
   RocksDBMethods* mthd = RocksDBTransactionState::toMethods(trx);
   RocksDBKey oldKey = RocksDBKey::Document(_objectId, oldRevisionId);
   blackListKey(oldKey.string().data(),
                static_cast<uint32_t>(oldKey.string().size()));
-  
+
   RocksDBOperationResult res =
   mthd->Delete(RocksDBColumnFamily::documents(), oldKey);
   if (!res.ok()) {
     return res;
   }
-  
+
   RocksDBKey newKey = RocksDBKey::Document(_objectId, newRevisionId);
   // TODO: given that this should have a unique revision ID, do
   // we really need to blacklist the new key?
@@ -1538,18 +1538,18 @@ RocksDBOperationResult RocksDBCollection::updateDocument(
       res.reset(tmpres);
     }
   }
-  
+
   if (res.ok()) {
     if (_logicalCollection->waitForSync()) {
       waitForSync = true;
     }
-    
+
     if (waitForSync) {
       trx->state()->waitForSync(true);
     }
     _needToPersistIndexEstimates = true;
   }
-  
+
   return res;
 }
 
@@ -1570,7 +1570,7 @@ arangodb::Result RocksDBCollection::lookupRevisionVPack(
     if (f.found()) {
       std::string* value = mdr.prepareStringUsage();
       value->append(reinterpret_cast<char const*>(f.value()->value()),
-                    static_cast<size_t>(f.value()->valueSize));
+                    f.value()->valueSize());
       mdr.setManagedAfterStringUsage(revisionId);
       return TRI_ERROR_NO_ERROR;
     } else if (f.result().errorNumber() == TRI_ERROR_LOCK_TIMEOUT) {
@@ -1590,15 +1590,16 @@ arangodb::Result RocksDBCollection::lookupRevisionVPack(
       auto entry = cache::CachedValue::construct(
           key.string().data(), static_cast<uint32_t>(key.string().size()),
           value->data(), static_cast<uint64_t>(value->size()));
-      
-      Result status = _cache->insert(entry);
-      if (status.fail() && status.errorNumber() == TRI_ERROR_LOCK_TIMEOUT) {
-        //the writeLock uses cpu_relax internally, so we can try yield
-        std::this_thread::yield();
-        status = _cache->insert(entry);
-      }
-      if (status.fail()) {
-        delete entry;
+      if (entry) {
+        Result status = _cache->insert(entry);
+        if (status.fail() && status.errorNumber() == TRI_ERROR_LOCK_TIMEOUT) {
+          //the writeLock uses cpu_relax internally, so we can try yield
+          std::this_thread::yield();
+          status = _cache->insert(entry);
+        }
+        if (status.fail()) {
+          delete entry;
+        }
       }
     }
 
@@ -1649,15 +1650,17 @@ arangodb::Result RocksDBCollection::lookupRevisionVPack(
       auto entry = cache::CachedValue::construct(
           key.string().data(), static_cast<uint32_t>(key.string().size()),
           value.data(), static_cast<uint64_t>(value.size()));
-      auto status = _cache->insert(entry);
-      
-      if (status.fail() && status.errorNumber() == TRI_ERROR_LOCK_TIMEOUT) {
-        //the writeLock uses cpu_relax internally, so we can try yield
-        std::this_thread::yield();
-        status = _cache->insert(entry);
-      }
-      if (status.fail()) {
-        delete entry;
+      if (entry) {
+        auto status = _cache->insert(entry);
+        if (entry) {
+        if (status.fail() && status.errorNumber() == TRI_ERROR_LOCK_TIMEOUT) {
+          //the writeLock uses cpu_relax internally, so we can try yield
+          std::this_thread::yield();
+          status = _cache->insert(entry);
+        }
+        if (status.fail()) {
+          delete entry;
+        }
       }
     }
 
@@ -1964,7 +1967,7 @@ void RocksDBCollection::createCache() const {
     // or if cache already created
     return;
   }
-  
+
   TRI_ASSERT(_cacheEnabled);
   TRI_ASSERT(_cache.get() == nullptr);
   TRI_ASSERT(CacheManagerFeature::MANAGER != nullptr);

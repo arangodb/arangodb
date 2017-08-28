@@ -254,7 +254,7 @@ void Cache::requestMigrate(uint32_t requestedLogSize) {
 }
 
 void Cache::freeValue(CachedValue* value) {
-  while (value->refCount.load() > 0) {
+  while (!value->isFreeable()) {
     std::this_thread::yield();
   }
 

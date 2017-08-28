@@ -71,7 +71,7 @@ Finding TransactionalCache::find(void const* key, uint32_t keySize) {
 
 Result TransactionalCache::insert(CachedValue* value) {
   TRI_ASSERT(value != nullptr);
-  uint32_t hash = hashKey(value->key(), value->keySize);
+  uint32_t hash = hashKey(value->key(), value->keySize());
 
   Result status;
   TransactionalBucket* bucket;
@@ -85,7 +85,7 @@ Result TransactionalCache::insert(CachedValue* value) {
   bool allowed = !bucket->isBlacklisted(hash);
   if (allowed) {
     int64_t change = static_cast<int64_t>(value->size());
-    CachedValue* candidate = bucket->find(hash, value->key(), value->keySize);
+    CachedValue* candidate = bucket->find(hash, value->key(), value->keySize());
 
     if (candidate == nullptr && bucket->isFull()) {
       candidate = bucket->evictionCandidate();
@@ -108,7 +108,7 @@ Result TransactionalCache::insert(CachedValue* value) {
         bool eviction = false;
         if (candidate != nullptr) {
           bucket->evict(candidate, true);
-          if (!candidate->sameKey(value->key(), value->keySize)) {
+          if (!candidate->sameKey(value->key(), value->keySize())) {
             eviction = true;
           }
           freeValue(candidate);

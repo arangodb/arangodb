@@ -128,7 +128,7 @@ RocksDBPrimaryIndex::RocksDBPrimaryIndex(
                    true, false, RocksDBColumnFamily::primary(),
                    basics::VelocyPackHelper::stringUInt64(info, "objectId"),
                    static_cast<RocksDBCollection*>(collection->getPhysical())->cacheEnabled()) {
-  TRI_ASSERT(_cf == RocksDBColumnFamily::primary()); 
+  TRI_ASSERT(_cf == RocksDBColumnFamily::primary());
   TRI_ASSERT(_objectId != 0);
 }
 
@@ -169,7 +169,7 @@ RocksDBToken RocksDBPrimaryIndex::lookupKey(transaction::Methods* trx,
                           static_cast<uint32_t>(key.string().size()));
     if (f.found()) {
       rocksdb::Slice s(reinterpret_cast<char const*>(f.value()->value()),
-                       static_cast<size_t>(f.value()->valueSize));
+                       f.value()->valueSize());
       return RocksDBToken(RocksDBValue::revisionId(s));
     } else if (f.result().errorNumber() == TRI_ERROR_LOCK_TIMEOUT) {
       // assuming someone is currently holding a write lock, which
@@ -191,20 +191,25 @@ RocksDBToken RocksDBPrimaryIndex::lookupKey(transaction::Methods* trx,
 
   if (useCache() && !lockTimeout) {
     TRI_ASSERT(_cache != nullptr);
-    
+
     // write entry back to cache
     auto entry = cache::CachedValue::construct(
         key.string().data(), static_cast<uint32_t>(key.string().size()),
         value.buffer()->data(), static_cast<uint64_t>(value.buffer()->size()));
-    
-    Result status = _cache->insert(entry);
-    if (status.fail() && status.errorNumber() == TRI_ERROR_LOCK_TIMEOUT) {
-      //the writeLock uses cpu_relax internally, so we can try yield
-      std::this_thread::yield();
-      status = _cache->insert(entry);
-    }
-    if (status.fail()) {
-      delete entry;
+    if (entry) {
+      Result status = _cache->insert(entry);
+      if (status.fail() && status.errorNumber() == TRI_ERROR_LOCK_TIMEOUT) {
+        //the writeLock uses cpu_relax internally, so we can try yield
+        std::this_thread::yield();
+        status = _cache->insert(entry);
+      }
+      if (status.fail()) {
+        delete entry;
+        auto status = _cache->insert(entry);
+        if (status.fail()) {
+          delete entry;
+        }
+      }
     }
   }
 
@@ -240,11 +245,11 @@ Result RocksDBPrimaryIndex::updateInternal(transaction::Methods* trx,
   TRI_ASSERT(keySlice == oldDoc.get(StaticStrings::KeyString));
   auto key = RocksDBKey::PrimaryIndexValue(_objectId, StringRef(keySlice));
   auto value = RocksDBValue::PrimaryIndexValue(newRevision);
-  
+
   TRI_ASSERT(mthd->Exists(_cf, key));
   blackListKey(key.string().data(), static_cast<uint32_t>(key.string().size()));
   Result status = mthd->Put(_cf, key, value.string(), rocksutils::index);
-  
+
   return IndexResult(status.errorNumber(), this);
 }
 

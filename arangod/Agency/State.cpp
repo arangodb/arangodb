@@ -246,7 +246,6 @@ index_t State::log(query_t const& transactions, size_t ndups) {
   TRI_ASSERT(nqs > ndups);
 
   MUTEX_LOCKER(mutexLocker, _logLock);  // log entries must stay in order
-  std::string clientId;
 
   for (size_t i = ndups; i < nqs; ++i) {
     VPackSlice const& slice = slices[i];
