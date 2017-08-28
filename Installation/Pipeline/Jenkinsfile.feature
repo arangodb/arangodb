@@ -374,16 +374,22 @@ def testEdition(edition, os, mode, engine) {
 
     def tests = ["arangosh", "config", "agency", "peng", "endpoints"]
     def testSteps = tests.inject([:]) { test, testMap -> 
+        echo "preparing ${test}"
         def command = "build/bin/arangosh --log.level warning --javascript.execute UnitTests/unittest.js ${it} -- --storageEngine $engine"
         testMap[test] = {
-            lock(label: "test-${env.NODE_NAME}-${env.JOB_NAME}-${env.BUILD_ID}", quantity: 2) {
-                if (os == "windows") {
-                    powershell command
-                } else {
-                    sh command
+            echo "in closure ${it}"
+            return {
+                echo "HURRA ${test}"
+                lock(label: "test-${env.NODE_NAME}-${env.JOB_NAME}-${env.BUILD_ID}", quantity: 2) {
+                    if (os == "windows") {
+                        powershell command
+                    } else {
+                        sh command
+                    }
                 }
             }
         }
+        testMap
     }
 
     try {
