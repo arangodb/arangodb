@@ -468,9 +468,12 @@ def testEdition(edition, os, mode, engine) {
         if (mode == "cluster") {
             portInterval = 40
         }
-        
+
+        echo "before port ${edition}-${os}-${mode}-${engine}-${test}"
         def port = getStartPort(os)
+        echo "PORT: ${port}"
         testMap["${edition}-${os}-${mode}-${engine}-${test}"] = {
+            echo "in ${edition}-${os}-${mode}-${engine}-${test}"
             // copy in groovy
             def testArgs = args.collect()
             testArgs << "--minPort " + port
