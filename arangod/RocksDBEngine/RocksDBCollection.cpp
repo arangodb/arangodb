@@ -1371,6 +1371,7 @@ RocksDBOperationResult RocksDBCollection::insertDocument(
   TRI_ASSERT(trx->state()->isRunning());
 
   RocksDBKey key(RocksDBKey::Document(_objectId, revisionId));
+  // only bother blacklisting if key was successfully locked in rocksdb
   blackListKey(key.string().data(), static_cast<uint32_t>(key.string().size()));
 
   RocksDBMethods* mthd = RocksDBTransactionState::toMethods(trx);
@@ -1382,11 +1383,6 @@ RocksDBOperationResult RocksDBCollection::insertDocument(
     res.keySize(key.string().size());
     return res;
   }
-
-  /*LOG_TOPIC(ERR, Logger::FIXME)
-      << "PUT rev: " << revisionId << " trx: " << trx->state()->id()
-      << " seq: " << mthd->readOptions().snapshot->GetSequenceNumber()
-      << " objectID " << _objectId << " name: " << _logicalCollection->name();*/
 
   READ_LOCKER(guard, _indexesLock);
   for (std::shared_ptr<Index> const& idx : _indexes) {

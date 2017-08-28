@@ -63,7 +63,8 @@ VPackSlice TraverserCache::lookupInCollection(StringRef id) {
     TRI_ASSERT(false);
     return basics::VelocyPackHelper::NullValue();
   }
-  Result res = _trx->documentFastPathLocal(id.substr(0, pos), id.substr(pos + 1), *_mmdr);
+  Result res = _trx->documentFastPathLocal(id.substr(0, pos).toString(),
+                                           id.substr(pos + 1), *_mmdr);
   if (res.ok()) {
     ++_insertedDocuments;
     return VPackSlice(_mmdr->vpack());

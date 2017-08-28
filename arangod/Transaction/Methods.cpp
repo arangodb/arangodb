@@ -1027,11 +1027,11 @@ Result transaction::Methods::documentFastPath(std::string const& collectionName,
 ///        Does not care for revision handling!
 ///        Must only be called on a local server, not in cluster case!
 Result transaction::Methods::documentFastPathLocal(
-    StringRef const& collectionName, StringRef const& key,
+    std::string const& collectionName, StringRef const& key,
     ManagedDocumentResult& result) {
   TRI_ASSERT(_state->status() == transaction::Status::RUNNING);
 
-  TRI_voc_cid_t cid = addCollectionAtRuntime(collectionName.toString());
+  TRI_voc_cid_t cid = addCollectionAtRuntime(collectionName);
   TransactionCollection* trxColl = trxCollection(cid);
   LogicalCollection* collection = documentCollection(trxColl);
   TRI_ASSERT(collection != nullptr);
@@ -1044,8 +1044,7 @@ Result transaction::Methods::documentFastPathLocal(
   bool isLocked = trxColl->isLocked(AccessMode::Type::READ,
                                     _state->nestingLevel());
   Result res = collection->read(this, key, result, !isLocked);
-  
-  TRI_ASSERT(res.ok() && isPinned(cid));
+  TRI_ASSERT(res.fail() || isPinned(cid));
   return res;
 }
 

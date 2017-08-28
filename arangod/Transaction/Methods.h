@@ -253,7 +253,7 @@ class Methods {
   ///        If there was an error the code is returned
   ///        Does not care for revision handling!
   ///        Must only be called on a local server, not in cluster case!
-  Result documentFastPathLocal(StringRef const& collectionName,
+  Result documentFastPathLocal(std::string const& collectionName,
                                StringRef const& key,
                                ManagedDocumentResult& result);
 
