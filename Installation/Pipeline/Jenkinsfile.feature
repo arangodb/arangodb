@@ -377,15 +377,12 @@ def testEdition(edition, os, mode, engine) {
         echo "preparing ${test}"
         def command = "build/bin/arangosh --log.level warning --javascript.execute UnitTests/unittest.js ${test} -- --storageEngine $engine"
         testMap[test] = {
-            echo "in closure ${test}"
-            return {
-                echo "HURRA ${test}"
-                lock(label: "test-${env.NODE_NAME}-${env.JOB_NAME}-${env.BUILD_ID}-${edition}-${engine}", quantity: 2) {
-                    if (os == "windows") {
-                        powershell command
-                    } else {
-                        sh command
-                    }
+            echo "HURRA ${test}"
+            lock(label: "test-${env.NODE_NAME}-${env.JOB_NAME}-${env.BUILD_ID}-${edition}-${engine}", quantity: 2) {
+                if (os == "windows") {
+                    powershell command
+                } else {
+                    sh command
                 }
             }
         }
