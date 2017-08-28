@@ -3328,17 +3328,6 @@ AqlValue Functions::NotNull(arangodb::aql::Query* query,
   return AqlValue(arangodb::basics::VelocyPackHelper::NullValue());
 }
 
-/// @brief function CURRENT_DATABASE
-AqlValue Functions::CurrentDatabase(
-    arangodb::aql::Query* query, transaction::Methods* trx,
-    VPackFunctionParameters const& parameters) {
-  ValidateParameters(parameters, "CURRENT_DATABASE", 0, 0);
-
-  transaction::BuilderLeaser builder(trx);
-  builder->add(VPackValue(query->vocbase()->name()));
-  return AqlValue(builder.get());
-}
-
 /// @brief function COLLECTION_COUNT
 AqlValue Functions::CollectionCount(
     arangodb::aql::Query* query, transaction::Methods* trx,
@@ -3722,6 +3711,32 @@ AqlValue Functions::IsSameCollection(
   RegisterWarning(query, "IS_SAME_COLLECTION",
                   TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
   return AqlValue(arangodb::basics::VelocyPackHelper::NullValue());
+}
+
+#include "Utils/ExecContext.h"
+
+/// @brief function CURRENT_USER
+AqlValue Functions::CurrentUser(
+    arangodb::aql::Query* query, transaction::Methods* trx,
+    VPackFunctionParameters const& parameters) {
+
+  if (ExecContext::CURRENT == nullptr) {
+    return AqlValue(arangodb::basics::VelocyPackHelper::NullValue());
+  }
+
+  std::string const& username = ExecContext::CURRENT->user();
+  return AqlValue(username.c_str(), username.length());
+}
+
+/// @brief function CURRENT_DATABASE
+AqlValue Functions::CurrentDatabase(
+    arangodb::aql::Query* query, transaction::Methods* trx,
+    VPackFunctionParameters const& parameters) {
+  ValidateParameters(parameters, "CURRENT_DATABASE", 0, 0);
+
+  transaction::BuilderLeaser builder(trx);
+  builder->add(VPackValue(query->vocbase()->name()));
+  return AqlValue(builder.get());
 }
 
 #include "Pregel/PregelFeature.h"
