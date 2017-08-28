@@ -381,8 +381,9 @@ void Scheduler::rebalanceThreads() {
       uint64_t const nrRunning = numRunning(counters);
       uint64_t const nrWorking = numWorking(counters);
       uint64_t const nrQueued = _nrQueued;
+      uint64_t const nrBlocked = numBlocked(counters);
 
-      if (nrRunning >= std::max(_nrMinimum, nrWorking + nrQueued)) {
+      if (nrRunning >= std::max(_nrMinimum, nrWorking + nrQueued + nrBlocked)) {
         if (nrWorking == nrRunning) {
           // all threads maxed out
           _lastAllBusyStamp = now;

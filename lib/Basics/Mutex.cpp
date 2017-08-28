@@ -129,6 +129,10 @@ void Mutex::unlock() {
 void Mutex::assertLockedByCurrentThread() {
   TRI_ASSERT(_holder == Thread::currentThreadId());
 }
+
+void Mutex::assertNotLockedByCurrentThread() {
+  TRI_ASSERT(_holder != Thread::currentThreadId());
+}
 #endif
 
 // -----------------------------------------------------------------------------
