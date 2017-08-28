@@ -362,8 +362,6 @@ def jslint() {
 def testEdition(edition, os, mode, engine) {
     def arch = "LOG_test_${mode}_${edition}_${engine}_${os}"
 
-
-
     if (os == 'linux' || os == 'mac') {
        sh "rm -rf ${arch}"
        sh "mkdir -p ${arch}"
@@ -373,11 +371,12 @@ def testEdition(edition, os, mode, engine) {
         powershell "New-Item -ItemType Directory -Force -Path ${arch}"
     }
 
-    def tests = ["arangosh", "config", "agency", "endpoints"]
-    def testSteps = tests.collect {
+
+    def tests = ["arangosh", "config", "agency", "peng", "endpoints"]
+    def testSteps = tests.inject([:]) { test, testMap -> 
         def command = "build/bin/arangosh --log.level warning --javascript.execute UnitTests/unittest.js ${it} -- --storageEngine $engine"
-        return {
-            lock("test-${env.NODE_NAME}-${env.JOB_NAME}-${env.BUILD_ID}") {
+        testMap[test] = {
+            lock(label: "test-${env.NODE_NAME}-${env.JOB_NAME}-${env.BUILD_ID}", quantity: 2) {
                 if (os == "windows") {
                     powershell command
                 } else {
