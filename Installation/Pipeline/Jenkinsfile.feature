@@ -444,6 +444,9 @@ def testEdition(edition, os, mode, engine) {
     def parallelity = 2
     def testIndex = 0
     def tests = getTests(edition, os, mode, engine)
+    echo "before port ${edition}-${os}-${mode}-${engine}"
+    def port = getStartPort(os)
+    echo "PORT: ${port}"
     // this is an `Array.reduce()` in groovy :S
     def testSteps = tests.inject([:]) { testMap, testStruct ->
         def lockIndex = testIndex % parallelity
@@ -457,10 +460,8 @@ def testEdition(edition, os, mode, engine) {
         if (mode == "cluster") {
             portInterval = 40
         }
-
-        echo "before port ${edition}-${os}-${mode}-${engine}-${test}"
-        def port = getStartPort(os)
-        echo "PORT: ${port}"
+        
+        echo "BEFORE TESTMAP ${test}"
         testMap["${edition}-${os}-${mode}-${engine}-${test}"] = {
             echo "in ${edition}-${os}-${mode}-${engine}-${test}"
             // copy in groovy
@@ -484,6 +485,7 @@ def testEdition(edition, os, mode, engine) {
             }
             port += portInterval
         }
+        echo "AFTER TESTMAP ${test}"
         testMap
     }
 
