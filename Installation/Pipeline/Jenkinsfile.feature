@@ -372,13 +372,16 @@ def testEdition(edition, os, mode, engine) {
     }
 
 
+    def parallelity = 2
+    def testIndex = 0
     def tests = ["arangosh", "config", "agency", "peng", "endpoints"]
     def testSteps = tests.inject([:]) { testMap, test ->
-        echo "preparing ${test}"
+        def lockIndex = testIndex % parallelity
+        testIndex++
         def command = "build/bin/arangosh --log.level warning --javascript.execute UnitTests/unittest.js ${test} -- --storageEngine $engine"
         testMap[test] = {
             echo "HURRA ${test}"
-            lock(label: "test-${env.NODE_NAME}-${env.JOB_NAME}-${env.BUILD_ID}-${edition}-${engine}", quantity: 2) {
+            lock(label: "test-${env.NODE_NAME}-${env.JOB_NAME}-${env.BUILD_ID}-${edition}-${engine}-${lockIndex}") {
                 if (os == "windows") {
                     powershell command
                 } else {
