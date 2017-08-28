@@ -195,8 +195,6 @@ const setupBackupTest = (options, serverOptions, instanceInfo, customInstanceInf
 const BackupNoAuthSysTests = (options) => {
   log('Test dump without authentication, restore _system incl system collections');
 
-  let localOptions = _.clone(options);
-
   let startStopHandlers = {
     preStart: setServerOptions,
     postStart: setupBackupTest,
@@ -205,7 +203,7 @@ const BackupNoAuthSysTests = (options) => {
     restoreDir: syssys
   };
 
-  return tu.performTests(localOptions,
+  return tu.performTests(options,
                          ['js/server/tests/backup/backup-system-incl-system.js'],
                          'BackupNoAuthSysTests',
                          tu.runInArangosh, {},
@@ -220,8 +218,6 @@ const BackupNoAuthNoSysTests = (options) => {
 
   log('Test dump without authentication, restore _system excl system collections');
 
-  let localOptions = _.clone(options);
-
   let startStopHandlers = {
     preStart: setServerOptions,
     postStart: setupBackupTest,
@@ -230,7 +226,7 @@ const BackupNoAuthNoSysTests = (options) => {
     restoreDir: sysNoSys
   };
 
-  return tu.performTests(localOptions,
+  return tu.performTests(options,
                          ['js/server/tests/backup/backup-system-excl-system.js'],
                          'BackupNoAuthNoSysTests',
                          tu.runInArangosh, {},
@@ -245,8 +241,6 @@ const BackupNoAuthNoSysTests = (options) => {
 const BackupAuthSysTests = (options) => {
   log('Test dump with authentication, restore _system incl system collections');
 
-  let localOptions = _.clone(options);
-
   let startStopHandlers = {
     preStart: setServerOptions,
     postStart: setupBackupTest,
@@ -255,7 +249,7 @@ const BackupAuthSysTests = (options) => {
     restoreDir: syssys
   };
 
-  return tu.performTests(localOptions,
+  return tu.performTests(options,
                          ['js/server/tests/backup/backup-system-incl-system.js'],
                          'BackupAuthSysTests',
                          tu.runInArangosh, {},
@@ -269,8 +263,6 @@ const BackupAuthSysTests = (options) => {
 const BackupAuthNoSysTests = (options) => {
   log('Test dump with authentication, restore _system excl system collections');
 
-  let localOptions = _.clone(options);
-
   let startStopHandlers = {
     preStart: setServerOptions,
     postStart: setupBackupTest,
@@ -279,7 +271,7 @@ const BackupAuthNoSysTests = (options) => {
     restoreDir: sysNoSys
   };
 
-  return tu.performTests(localOptions,
+  return tu.performTests(options,
                          ['js/server/tests/backup/backup-system-excl-system.js'],
                          'BackupAuthNoSysTests',
                          tu.runInArangosh, {},

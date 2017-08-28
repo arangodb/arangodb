@@ -486,16 +486,17 @@ function unitTest (cases, options) {
   // running all tests
   for (let n = 0; n < caselist.length; ++n) {
     const currentTest = caselist[n];
+    var localOptions = _.cloneDeep(options)
 
     print(BLUE + '================================================================================');
     print('Executing test', currentTest);
     print('================================================================================\n' + RESET);
 
-    if (options.verbose) {
-      print(CYAN + 'with options:', options, RESET);
+    if (localOptions.verbose) {
+      print(CYAN + 'with options:', localOptions, RESET);
     }
 
-    let result = testFuncs[currentTest](options);
+    let result = testFuncs[currentTest](localOptions);
     // grrr...normalize structure
     delete result.status;
     delete result.failed;
@@ -510,7 +511,7 @@ function unitTest (cases, options) {
     results[currentTest] = result;
 
     if (status) {
-      pu.cleanupLastDirectory(options);
+      pu.cleanupLastDirectory(localOptions);
     }
   }
 
