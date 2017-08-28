@@ -412,7 +412,7 @@ def getTests(edition, os, mode, engine) {
             "upgrade"
         ]
     } else {
-        return = [
+        return [
             "arangobench",
             "arangosh",
             "authentication",
@@ -458,8 +458,9 @@ def testEdition(edition, os, mode, engine) {
 
         def isString = test instanceof String
         def args = ["--storageEngine ${engine}"]
-        def name = test[0]
+        def name = test
         if (!isString) {
+            name = test[0]
             args << test[2]
             test = test[1]
         }
