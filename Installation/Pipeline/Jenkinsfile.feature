@@ -445,25 +445,13 @@ def testEdition(edition, os, mode, engine) {
     def testIndex = 0
     def tests = ["arangosh", "config", "agency", "endpoints"]
     // this is an `Array.reduce()` in groovy :S
-    def testSteps = tests.inject([:]) { testMap, test ->
+    def testSteps = tests.inject([:]) { testMap, testStruct ->
         def lockIndex = testIndex % parallelity
         testIndex++
 
-        def args = ["--storageEngine ${engine}"]
-        def name = test
-        // wow isArray instanceof etc are disabled in the jenkins sandbox :S
-        // maybe rework test list so that it is always an array
-        def isArray = true
-        try {
-            test.collect()
-        } catch (e) {
-            isArray = false
-        }
-        if (isArray) {
-            name = test[0]
-            args << test[2]
-            test = test[1]
-        }
+        def name = testStruct[0]
+        def test = testStruct[1]
+        def testArgs = "--storageEngine ${engine} " + testStruct[2]
 
         def portInterval = 10
         if (mode == "cluster") {
@@ -478,16 +466,14 @@ def testEdition(edition, os, mode, engine) {
             // copy in groovy
             echo "was ${edition}-${os}-${mode}-${engine}-${test}"
             echo "args ${args}"
-            def testArgs = args.collect()
             echo "in ${edition}-${os}-${mode}-${engine}-${test} 2"
-            testArgs << "--minPort " + port
+            testArgs += " --minPort " + port
             echo "in ${edition}-${os}-${mode}-${engine}-${test} 3"
-            testArgs << "--maxPort " + (port + portInterval - 1)
+            testArgs += " --maxPort " + (port + portInterval - 1)
             echo "in ${edition}-${os}-${mode}-${engine}-${test} 4"
             def command = "build/bin/arangosh --log.level warning --javascript.execute UnitTests/unittest.js ${test} -- "
             echo "COMMAND1: ${command}"
-            echo 'DINGENS ${testArgs.join(" ")}'
-            command += testArgs.join(" ")
+            command += testArgs
             echo "COMMAND2: ${command}"
             lock("test-${env.NODE_NAME}-${env.JOB_NAME}-${env.BUILD_ID}-${edition}-${engine}-${lockIndex}") {
                 if (os == "windows") {
