@@ -457,7 +457,7 @@ def testEdition(edition, os, mode, engine, port) {
         if (mode == "cluster") {
             portInterval = 40
         }
-        
+
         testMap["${edition}-${os}-${mode}-${engine}-${test}"] = {
             // copy in groovy
             testArgs += " --minPort " + port
@@ -471,8 +471,8 @@ def testEdition(edition, os, mode, engine, port) {
                     sh command
                 }
             }
-            port += portInterval
         }
+        port += portInterval
         testMap
     }
 
