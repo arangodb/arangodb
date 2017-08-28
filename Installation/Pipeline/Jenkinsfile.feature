@@ -486,7 +486,9 @@ def testEdition(edition, os, mode, engine) {
             testArgs << "--minPort " + port
             testArgs << "--maxPort " + (port + portInterval - 1)
             def command = "build/bin/arangosh --log.level warning --javascript.execute UnitTests/unittest.js ${test} -- "
+            echo "COMMAND1: ${command}"
             command += testArgs.join(" ")
+            echo "COMMAND2: ${command}"
             lock("test-${env.NODE_NAME}-${env.JOB_NAME}-${env.BUILD_ID}-${edition}-${engine}-${lockIndex}") {
                 if (os == "windows") {
                     powershell command
