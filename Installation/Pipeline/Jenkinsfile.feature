@@ -389,7 +389,7 @@ def testEdition(edition, os, mode, engine) {
     try {
 
         try {
-            parallel teststeps
+            parallel testSteps
 
             if (os == 'windows') {
                 if (findFiles(glob: '*.dmp').length > 0) {
