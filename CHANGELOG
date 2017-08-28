@@ -1,6 +1,8 @@
 devel
 -----
 
+* fixed wrong ui cluster health information
+
 * fixed issue #3070: Add index in _jobs collection
 
 
