@@ -457,6 +457,8 @@ def testEdition(edition, os, mode, engine) {
 
         def args = ["--storageEngine ${engine}"]
         def name = test
+        // wow isArray instanceof etc are disabled in the jenkins sandbox :S
+        // maybe rework test list so that it is always an array
         def isArray = true
         try {
             test.collect()
