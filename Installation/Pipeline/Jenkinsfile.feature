@@ -601,8 +601,12 @@ def testStepParallel(editionList, osList, modeList) {
             }
         }
     }
-
+    try {
     parallel branches
+    } catch (e) {
+        echo "HASSSSHSHSHS"
+        throw e
+    }
 }
 
 // -----------------------------------------------------------------------------
