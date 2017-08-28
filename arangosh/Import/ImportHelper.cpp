@@ -858,13 +858,17 @@ void ImportHelper::waitForSenders() {
     uint32_t numIdle = 0;
     for (auto const& t : _senderThreads) {
       if (t->isDone()) {
+        if (t->hasError()) {
+          _hasError = true;
+          _errorMessages.push_back(t->errorMessage());
+        }
         numIdle++;
       }
     }
     if (numIdle == _senderThreads.size()) {
       return;
     }
-    usleep(100000);
+    usleep(10000);
   }
 }
 }
