@@ -380,7 +380,7 @@ def testEdition(edition, os, mode, engine) {
             echo "in closure ${it}"
             return {
                 echo "HURRA ${test}"
-                lock(label: "test-${env.NODE_NAME}-${env.JOB_NAME}-${env.BUILD_ID}", quantity: 2) {
+                lock(label: "test-${env.NODE_NAME}-${env.JOB_NAME}-${env.BUILD_ID}-${edition}-${engine}", quantity: 2) {
                     if (os == "windows") {
                         powershell command
                     } else {
