@@ -482,6 +482,8 @@ def testEdition(edition, os, mode, engine) {
         testMap["${edition}-${os}-${mode}-${engine}-${test}"] = {
             echo "in ${edition}-${os}-${mode}-${engine}-${test}"
             // copy in groovy
+            echo "was ${edition}-${os}-${mode}-${engine}-${test}"
+            echo "args ${args}"
             def testArgs = args.collect()
             echo "in ${edition}-${os}-${mode}-${engine}-${test} 2"
             testArgs << "--minPort " + port
