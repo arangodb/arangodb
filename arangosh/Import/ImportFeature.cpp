@@ -231,7 +231,7 @@ void ImportFeature::validateOptions(
     StringUtils::trimInPlace(str);
     if (str.empty()) {
       LOG_TOPIC(FATAL, arangodb::Logger::FIXME)
-        << "cannot remove empty attribute '" << str << "'";
+        << "cannot remove an empty attribute";
       FATAL_ERROR_EXIT();
     }
   }
