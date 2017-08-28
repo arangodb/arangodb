@@ -582,7 +582,7 @@ def testStepParallel(editionList, osList, modeList) {
     for (edition in editionList) {
         for (os in osList) {
             for (mode in modeList) {
-                for (engine in [/*'mmfiles', */'rocksdb']) {
+                for (engine in ['mmfiles', 'rocksdb']) {
                     if (testCheck(edition, os, mode, engine)) {
                         def name = "test-${mode}-${edition}-${engine}-${os}";
 
