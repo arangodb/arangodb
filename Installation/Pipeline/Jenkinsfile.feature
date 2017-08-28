@@ -374,8 +374,6 @@ def rspecify(os, test) {
 }
 
 def getTests(edition, os, mode, engine) {
-
-
     def httpReplication = "http_replication"
     def httpServer = "http_server"
     def sslServer = "ssl_server"
@@ -574,7 +572,11 @@ def testStep(edition, os, mode, engine) {
             def name = "${edition}-${os}-${mode}-${engine}"
 
             stage("test-${name}") {
-                timeout(120) {
+                // seriously...60 minutes is the super absolute max max max.
+                // even in the worst situations ArangoDB MUST be able to finish within 60 minutes
+                // even if the features are green this is completely broken performance wise..
+                // DO NOT INCREASE!!
+                timeout(60) {
                     try {
                         unstashBinaries(edition, os)
                         testEdition(edition, os, mode, engine)
