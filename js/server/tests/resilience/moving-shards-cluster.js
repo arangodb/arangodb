@@ -108,12 +108,10 @@ function MovingShardsSuite () {
   function getCleanedOutServers() {
     var coordEndpoint =
         global.ArangoClusterInfo.getServerEndpoint("Coordinator0001");
-    console.error("coordEndpoint", coordEndpoint);
 
     var request = require("@arangodb/request");
     var endpointToURL = require("@arangodb/cluster").endpointToURL;
     var url = endpointToURL(coordEndpoint);
-    console.error("url", url);
     
     var res;
     try {
@@ -156,7 +154,6 @@ function MovingShardsSuite () {
       var obj;
       while (--count > 0) {
         obj = getCleanedOutServers();
-        console.error(obj)
         if (obj.cleanedServers.indexOf(id) >= 0) {
           ok = true;
           console.info(
