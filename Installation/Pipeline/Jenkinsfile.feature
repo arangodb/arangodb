@@ -378,7 +378,7 @@ def testEdition(edition, os, mode, engine) {
     def testSteps = tests.inject([:]) { testMap, test ->
         def lockIndex = testIndex % parallelity
         testIndex++
-        testMap["${edition}-${os}-${mode}-${engine}-${test}] = {
+        testMap["${edition}-${os}-${mode}-${engine}-${test}"] = {
             def command = "build/bin/arangosh --log.level warning --javascript.execute UnitTests/unittest.js ${test} -- --storageEngine $engine"
             lock("test-${env.NODE_NAME}-${env.JOB_NAME}-${env.BUILD_ID}-${edition}-${engine}-${lockIndex}") {
                 if (os == "windows") {
