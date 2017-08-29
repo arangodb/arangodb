@@ -541,14 +541,16 @@ def testStep(os, edition, mode, engine) {
                 // even in the worst situations ArangoDB MUST be able to finish within 60 minutes
                 // even if the features are green this is completely broken performance wise..
                 // DO NOT INCREASE!!
+                def port = 0
                 timeout(60) {
                     try {
                         unstashBinaries(os, edition)
-                        def port = getStartPort(os) as Integer
+                        port = getStartPort(os) as Integer
                         echo "Using start port: ${port}"
                         testEdition(os, edition, mode, engine, port)
                     }
                     finally {
+                        def arch = "LOG_test_${os}_${edition}_${mode}_${engine}"
                         step([$class: 'XUnitBuilder',
                             thresholds: [[$class: 'FailedThreshold', unstableThreshold: '1']],
                             tools: [[$class: 'JUnitType', failIfNotNew: false, pattern: 'out/*.xml']]])
@@ -557,8 +559,10 @@ def testStep(os, edition, mode, engine) {
                             sh "find log-output -name 'FAILED_*' -exec cp '{}' . ';'"
                             sh "for i in logs log-output; do test -e \"\$i\" && mv \"\$i\" ${arch} || true; done"
                             sh "for i in core* tmp; do test -e \"\$i\" && mv \"\$i\" ${arch} || true; done"
-                            sh "cp -a build/bin/* ${arch}" 
-                            sh "Installation/Pipeline/port.sh --clean ${port}"
+                            sh "cp -a build/bin/* ${arch}"
+                            if (port > 0) {
+                                sh "Installation/Pipeline/port.sh --clean ${port}"
+                            }
                         } else if (os == 'windows') {
                             powershell "move-item -Force -ErrorAction Ignore logs ${arch}"
                             powershell "move-item -Force -ErrorAction Ignore log-output ${arch}"
