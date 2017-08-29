@@ -482,6 +482,7 @@ function unitTest (cases, options) {
 
   let globalStatus = true;
   let results = {};
+  let cleanup = true;
 
   // running all tests
   for (let n = 0; n < caselist.length; ++n) {
@@ -510,8 +511,11 @@ function unitTest (cases, options) {
     result.status = status;
     results[currentTest] = result;
 
-    if (status) {
+    if (status && localOptions.cleanup) {
       pu.cleanupLastDirectory(localOptions);
+    }
+    else {
+      cleanup = false;
     }
   }
 
@@ -519,7 +523,7 @@ function unitTest (cases, options) {
   results.crashed = pu.serverCrashed;
 
   if (options.server === undefined) {
-    if (globalStatus && !pu.serverCrashed) {
+    if (cleanup && globalStatus && !pu.serverCrashed) {
       pu.cleanupDBDirectories(options);
     } else {
       print('not cleaning up as some tests weren\'t successful:\n' +
