@@ -23,7 +23,7 @@ NS_ROOT
 /// @brief defines user-side boolean filter, as the container for other 
 /// filters
 //////////////////////////////////////////////////////////////////////////////
-class IRESEARCH_API boolean_filter: public filter, private util::noncopyable {
+class IRESEARCH_API boolean_filter : public filter, private util::noncopyable {
  public:
   typedef std::vector<filter::ptr> filters_t;
   typedef ptr_iterator< filters_t::const_iterator > const_iterator;
@@ -51,54 +51,68 @@ class IRESEARCH_API boolean_filter: public filter, private util::noncopyable {
   bool empty() const { return filters_.empty(); }
   size_t size() const { return filters_.size(); }
 
+  virtual filter::prepared::ptr prepare(
+    const index_reader& rdr,
+    const order::prepared& ord,
+    boost_t boost
+  ) const final;
+
  protected:
-  boolean_filter(const type_id& type);
+  boolean_filter(const type_id& type) NOEXCEPT;
   virtual bool equals(const filter& rhs) const override;
 
-  void group_filters(
-    std::vector<const filter*>& incl,
-    std::vector<const filter*>& excl) const;
+  virtual filter::prepared::ptr prepare(
+    const std::vector<const filter*>& incl,
+    const std::vector<const filter*>& excl,
+    const index_reader& rdr,
+    const order::prepared& ord,
+    boost_t boost
+  ) const = 0;
 
  private:
+  void group_filters(
+    std::vector<const filter*>& incl,
+    std::vector<const filter*>& excl
+  ) const;
+
   IRESEARCH_API_PRIVATE_VARIABLES_BEGIN
   filters_t filters_;
   IRESEARCH_API_PRIVATE_VARIABLES_END
 };
 
 //////////////////////////////////////////////////////////////////////////////
-/// @class and
+/// @class And
 //////////////////////////////////////////////////////////////////////////////
 class IRESEARCH_API And: public boolean_filter {
  public:
   DECLARE_FILTER_TYPE();
   DECLARE_FACTORY_DEFAULT();
 
-  And();
+  And() NOEXCEPT;
 
   using filter::prepare;
 
+ protected:
   virtual filter::prepared::ptr prepare(
-      const index_reader& rdr,
-      const order::prepared& ord,
-      boost_t boost) const override;
-};
+    const std::vector<const filter*>& incl,
+    const std::vector<const filter*>& excl,
+    const index_reader& rdr,
+    const order::prepared& ord,
+    boost_t boost
+  ) const override;
+}; // And
 
 //////////////////////////////////////////////////////////////////////////////
-/// @class and
+/// @class Or
 //////////////////////////////////////////////////////////////////////////////
 class IRESEARCH_API Or : public boolean_filter {
  public:
   DECLARE_FILTER_TYPE();
   DECLARE_FACTORY_DEFAULT();
 
-  Or();
+  Or() NOEXCEPT;
 
   using filter::prepare;
-
-  virtual filter::prepared::ptr prepare(
-      const index_reader& rdr,
-      const order::prepared& ord,
-      boost_t boost) const override;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @return minimum number of subqueries which must be satisfied
@@ -113,9 +127,18 @@ class IRESEARCH_API Or : public boolean_filter {
     return *this;
   }
 
+ protected:
+  virtual filter::prepared::ptr prepare(
+    const std::vector<const filter*>& incl,
+    const std::vector<const filter*>& excl,
+    const index_reader& rdr,
+    const order::prepared& ord,
+    boost_t boost
+  ) const override;
+
  private:
   size_t min_match_count_;
-};
+}; // Or
 
 //////////////////////////////////////////////////////////////////////////////
 /// @class not

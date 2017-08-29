@@ -202,19 +202,19 @@ class min_match_query final : public boolean_query {
 // --SECTION--                                                   boolean_filter 
 // ----------------------------------------------------------------------------
 
-boolean_filter::boolean_filter(const type_id& type)
+boolean_filter::boolean_filter(const type_id& type) NOEXCEPT
   : filter(type) {
 }
 
 size_t boolean_filter::hash() const {
   size_t seed = 0; 
 
-  ::boost::hash_combine<const filter&>( seed, *this );
+  ::boost::hash_combine(seed, filter::hash());
   std::for_each(
     filters_.begin(), filters_.end(),
     [&seed](const filter::ptr& f){ 
-      ::boost::hash_combine( seed, *f );
-  } );
+      ::boost::hash_combine(seed, *f);
+  });
 
   return seed;
 }
@@ -222,9 +222,35 @@ size_t boolean_filter::hash() const {
 bool boolean_filter::equals( const filter& rhs ) const {
   const boolean_filter& typed_rhs = static_cast< const boolean_filter& >( rhs );
 
-  return filter::equals( rhs )
+  return filter::equals(rhs)
     && filters_.size() == typed_rhs.size()
     && std::equal(begin(), end(), typed_rhs.begin() );
+}
+
+filter::prepared::ptr boolean_filter::prepare(
+    const index_reader& rdr,
+    const order::prepared& ord,
+    boost_t boost) const {
+  // determine incl/excl parts
+  std::vector<const filter*> incl;
+  std::vector<const filter*> excl;
+  group_filters(incl, excl);
+
+  all all_docs;
+  if (incl.empty() & !excl.empty()) {
+    // single negative query case
+    incl.push_back(&all_docs);
+  }
+
+  if (incl.empty()) {
+    // empty query
+    return prepared::empty();
+  } else if (1 == incl.size() && excl.empty()) {
+    // single node case
+    return incl[0]->prepare(rdr, ord, this->boost()*boost);
+  }
+
+  return prepare(incl, excl, rdr, ord, boost);
 }
 
 void boolean_filter::group_filters(
@@ -258,23 +284,16 @@ void boolean_filter::group_filters(
 DEFINE_FILTER_TYPE(And);
 DEFINE_FACTORY_DEFAULT(And);
 
-And::And() : boolean_filter(And::type()) {}
+And::And() NOEXCEPT
+  : boolean_filter(And::type()) {
+}
 
 filter::prepared::ptr And::prepare(
+    const std::vector<const filter*>& incl,
+    const std::vector<const filter*>& excl,
     const index_reader& rdr,
     const order::prepared& ord,
     boost_t boost) const {
-  /* determine incl/excl parts */
-  std::vector<const filter*> incl;
-  std::vector<const filter*> excl;
-  group_filters(incl, excl);
-
-  /* single negative query case */
-  all all_docs;
-  if (incl.empty() & !excl.empty()) {
-    incl.push_back(&all_docs);
-  }
-
   auto q = and_query::make<and_query>();
   q->prepare(rdr, ord, this->boost()*boost, incl, excl);
   return q;
@@ -287,22 +306,17 @@ filter::prepared::ptr And::prepare(
 DEFINE_FILTER_TYPE(Or);
 DEFINE_FACTORY_DEFAULT(Or);
 
-Or::Or() : boolean_filter(Or::type()), min_match_count_(1) {}
+Or::Or() NOEXCEPT
+  : boolean_filter(Or::type()),
+    min_match_count_(1) {
+}
 
 filter::prepared::ptr Or::prepare(
+    const std::vector<const filter*>& incl,
+    const std::vector<const filter*>& excl,
     const index_reader& rdr,
     const order::prepared& ord,
     boost_t boost) const {
-  /* determine incl/excl parts */
-  std::vector<const filter*> incl;
-  std::vector<const filter*> excl;
-  group_filters(incl, excl);
-
-  /* single negative query case */
-  all all_docs;
-  if (incl.empty() & !excl.empty()) {
-    incl.push_back(&all_docs);
-  }
   size_t min_match_count = std::max(size_t(1), min_match_count_);
 
   boolean_query::ptr q;
@@ -336,8 +350,10 @@ filter::prepared::ptr Not::prepare(
 
 size_t Not::hash() const {
   size_t seed = 0;
-  ::boost::hash_combine<const iresearch::filter&>( seed, *this );
-  ::boost::hash_combine<const iresearch::filter&>( seed, *filter_ );
+  ::boost::hash_combine(seed, filter::hash());
+  if (filter_) {
+    ::boost::hash_combine<const iresearch::filter&>(seed, *filter_);
+  }
   return seed;
 }
 

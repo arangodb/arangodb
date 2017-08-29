@@ -28,8 +28,9 @@ class exclusion final : public score_doc_iterator {
     assert(excl_);
   }
 
-  /* Does nothing */
-  virtual void score() override {}
+  virtual void score() override {
+    incl_->score();
+  }
 
   virtual doc_id_t value() const {
     return incl_->value();
