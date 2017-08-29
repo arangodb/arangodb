@@ -760,7 +760,8 @@ def buildEdition(os, edition) {
             // feel free to recheck if there is time somewhen...this thing here really should not be possible but
             // ensure that there are 2 concurrent builds on the SAME node building v8 at the same time to properly test it
             // I just don't want any more "yeah that might randomly fail. just restart" sentences any more
-            lock('build-${env.NODE_NAME}') {
+            def hostname = powershell(returnStdout: true, script: "hostname")
+            lock('build-${hostname}') {
                 powershell ". .\\Installation\\Pipeline\\windows\\build_${os}_${edition}.ps1"
             }
         }
