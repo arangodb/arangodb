@@ -794,7 +794,7 @@ def buildStepCheck(edition, os, full) {
     return true
 }
 
-def buildStep(edition, os) {
+def runEdition(edition, os) {
     return {
         node(buildJenkins[os]) {
             def name = "${edition}-${os}"
@@ -822,9 +822,8 @@ def buildStep(edition, os) {
                     }
                 }
             }
-            testStepParallel([edition], [os], ['cluster', 'singleserver'])
         }
-
+        testStepParallel([edition], [os], ['cluster', 'singleserver'])
     }
 }
 
@@ -835,7 +834,7 @@ def runOperatingSystems(osList) {
     for (edition in ['community', 'enterprise']) {
         for (os in osList) {
             if (buildStepCheck(edition, os, full)) {
-                branches["build-${edition}-${os}"] = buildStep(edition, os)
+                branches["build-${edition}-${os}"] = runEdition(edition, os)
             }
         }
     }
