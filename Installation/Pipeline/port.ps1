@@ -5,7 +5,7 @@ New-Item -ItemType Directory -Force -Path C:\ports | Out-Null
 echo "HUU"
 
 $timeLimit = (Get-Date).AddMinutes(-480)
-Get-ChildItem C:\ports | ? { $_.LastWriteTime -lt $timeLimit } | Remove-Item -ErrorAction SilentlyContinue
+Get-ChildItem C:\ports | ? { $_.LastWriteTime -lt $timeLimit } | Remove-Item -ErrorAction SilentlyContinue | Out-Null
 
 $port = 10000
 $portIncrement = 2000
@@ -18,3 +18,4 @@ do {
 }
 until (New-Item -ItemType File -Path $portFile -ErrorAction SilentlyContinue)
 Write-Output $port
+exit 0
