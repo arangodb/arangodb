@@ -545,6 +545,7 @@ def testStep(os, edition, mode, engine) {
                 port = getStartPort(os) as Integer
                 echo "Using start port: ${port}"
                 if (os == "windows") {
+                    powershell "copy build\bin\RelWithDebInfo\* build\bin"
                     powershell "Installation/Pipeline/include/test_setup_tmp.ps1"
                 } else {
                     sh "Installation/Pipeline/include/test_setup_tmp.sh"
