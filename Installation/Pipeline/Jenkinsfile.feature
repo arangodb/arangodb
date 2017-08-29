@@ -466,7 +466,7 @@ def testEdition(os, edition, mode, engine, port) {
             def command = "build/bin/arangosh --log.level warning --javascript.execute UnitTests/unittest.js ${test} -- "
             command += testArgs
             lock("test-${env.NODE_NAME}-${env.JOB_NAME}-${env.BUILD_ID}-${edition}-${engine}-${lockIndex}") {
-                timeout(30) {
+                timeout(20) {
                     if (os == "windows") {
                         powershell command
                     } else {
@@ -552,7 +552,6 @@ def testStep(os, edition, mode, engine) {
                 }
                 timeout(60) {
                     try {
-
                         testEdition(os, edition, mode, engine, port)
                     }
                     finally {
