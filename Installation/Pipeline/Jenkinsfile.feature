@@ -440,7 +440,7 @@ def testEdition(os, edition, mode, engine, port) {
         powershell "New-Item -ItemType Directory -Force -Path ${arch}"
     }
 
-    def parallelity = 2
+    def parallelity = 4
     def testIndex = 0
     def tests = getTests(os, edition, mode, engine)
 
