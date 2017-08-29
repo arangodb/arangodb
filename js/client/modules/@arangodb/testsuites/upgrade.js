@@ -62,6 +62,7 @@ function upgrade (options) {
 
   const tmpDataDir = fs.getTempFile();
   fs.makeDirectoryRecursive(tmpDataDir);
+  pu.cleanupDBDirectoriesAppend(tmpDataDir);
 
   const appDir = fs.join(tmpDataDir, 'app');
   fs.makeDirectoryRecursive(appDir);
@@ -97,8 +98,6 @@ function upgrade (options) {
     print('not removing ' + tmpDataDir);
     return result.upgrade;
   }
-
-  pu.cleanupDBDirectoriesAppend(tmpDataDir);
 
   result.upgrade.status = true;
   return result;

@@ -31,6 +31,7 @@ const functionsDocumentation = {
 const optionsDocumentation = [
 ];
 
+const print = require('internal').print;
 const fs = require('fs');
 const pu = require('@arangodb/process-utils');
 

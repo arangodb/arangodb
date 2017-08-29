@@ -116,9 +116,10 @@ function recovery (options) {
   let count = 0;
 
   let orgTmp = process.env.TMPDIR;
-  let tempDir = fs.getTempPath() + '/crashtmp';
+  let tempDir = fs.join(fs.getTempPath(), 'crashtmp');
   fs.makeDirectoryRecursive(tempDir);
   process.env.TMPDIR = tempDir;
+  pu.cleanupDBDirectoriesAppend(tempDir);
 
   for (let i = 0; i < recoveryTests.length; ++i) {
     let test = recoveryTests[i];

@@ -32,6 +32,7 @@ const optionsDocumentation = [
   '   - `skipEndpoints`: if set to true endpoints tests are skipped'
 ];
 
+const fs = require('fs');
 const pu = require('@arangodb/process-utils');
 const tu = require('@arangodb/test-utils');
 
@@ -65,7 +66,7 @@ function endpoints (options) {
   let dummyDir = fs.join(fs.getTempPath(), 'enpointsdummy');
   fs.makeDirectory(dummyDir);
   pu.cleanupDBDirectoriesAppend(dummyDir);
-  console.log(dummyDir);
+
   return Object.keys(endpoints).reduce((results, endpointName) => {
     results.failed = 0;
     let testName = 'endpoint-' + endpointName;

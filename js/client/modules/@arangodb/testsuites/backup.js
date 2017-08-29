@@ -66,7 +66,7 @@ const failPreStartMessage = (msg) => {
   };
 };
 
-var dumpPath = undefined;
+var dumpPath;
 
 // //////////////////////////////////////////////////////////////////////////////
 // / We start a temporary system to generate the dumps that are agnostic
@@ -157,7 +157,7 @@ const setServerOptions = (options, serverOptions, customInstanceInfos, startStop
   return {
     state: true
   };
-}
+};
 
 // //////////////////////////////////////////////////////////////////////////////
 // / set up the test according to the testcase.
@@ -169,7 +169,7 @@ const setupBackupTest = (options, serverOptions, instanceInfo, customInstanceInf
                                          '_system',
                                          startStopHandlers.path,
                                          startStopHandlers.restoreDir);
-  
+
   if (restore.status === false || !isAlive(instanceInfo, options)) {
     log('Restore failed');
     restore.failed = 1;
@@ -178,10 +178,10 @@ const setupBackupTest = (options, serverOptions, instanceInfo, customInstanceInf
       message: restore.message
     };
   }
-  
+
   return {
     state: true
-  }
+  };
 };
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -215,7 +215,6 @@ const BackupNoAuthSysTests = (options) => {
 // //////////////////////////////////////////////////////////////////////////////
 
 const BackupNoAuthNoSysTests = (options) => {
-
   log('Test dump without authentication, restore _system excl system collections');
 
   let startStopHandlers = {
@@ -232,7 +231,6 @@ const BackupNoAuthNoSysTests = (options) => {
                          tu.runInArangosh, {},
                          startStopHandlers);
 };
-
 
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief TEST: backup with Authentication, with System collections
