@@ -28,10 +28,10 @@ const functionsDocumentation = {
   'fail'   : 'this job will always produce a failed result',
   'success': 'this job will always produce a sucessfull result'
 };
+
 const optionsDocumentation = [
 ];
 
-const print = require('internal').print;
 const fs = require('fs');
 const pu = require('@arangodb/process-utils');
 
@@ -39,7 +39,7 @@ function fail (options) {
   const tmpDataDir = fs.getTempFile();
   fs.makeDirectoryRecursive(tmpDataDir);
   pu.cleanupDBDirectoriesAppend(tmpDataDir);
-  print('created temporary data directory ' + tmpDataDir);
+  require('internal').print('created temporary data directory ' + tmpDataDir);
   return {
     failSuite: {
       status: false,
@@ -78,7 +78,7 @@ function success (options) {
   const tmpDataDir = fs.getTempFile();
   fs.makeDirectoryRecursive(tmpDataDir);
   pu.cleanupDBDirectoriesAppend(tmpDataDir);
-  print('created temporary data directory ' + tmpDataDir);
+  require('internal').print('created temporary data directory ' + tmpDataDir);
 
   return {
     successSuite2: {
