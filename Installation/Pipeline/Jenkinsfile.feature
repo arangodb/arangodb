@@ -459,7 +459,7 @@ def testEdition(os, edition, mode, engine, port) {
             testArgs += " --cluster true"
         }
 
-        testMap["test-${os}-${edition}-${mode}-${engine}-${test}"] = {
+        testMap["test-${os}-${edition}-${mode}-${engine}-${name}"] = {
             // copy in groovy
             testArgs += " --minPort " + port
             testArgs += " --maxPort " + (port + portInterval - 1)
