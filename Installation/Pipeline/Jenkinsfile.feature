@@ -828,15 +828,15 @@ def runEdition(os, edition) {
                 }
             }
         }
-        testStepParallel([edition], [os], ['cluster', 'singleserver'])
+        testStepParallel([os], [edition], ['cluster', 'singleserver'])
     }
 }
 
 def runOperatingSystems(osList) {
     def branches = [:]
 
-    for (edition in ['community', 'enterprise']) {
-        for (os in osList) {
+    for (os in osList) {
+        for (edition in ['community', 'enterprise']) {
             if (buildStepCheck(os, edition)) {
                 branches["build-${os}-${edition}"] = runEdition(os, edition)
             }
