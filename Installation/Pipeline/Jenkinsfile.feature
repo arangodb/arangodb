@@ -535,7 +535,6 @@ def testStep(os, edition, mode, engine) {
         node(testJenkins[os]) {
             def buildName = "${os}-${edition}"
             def name = "${os}-${edition}-${mode}-${engine}"
-            echo "DER FROSCH ${name}"
             stage("test-${name}") {
                 // seriously...60 minutes is the super absolute max max max.
                 // even in the worst situations ArangoDB MUST be able to finish within 60 minutes
