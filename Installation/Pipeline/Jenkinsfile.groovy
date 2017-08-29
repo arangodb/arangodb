@@ -121,7 +121,7 @@ if (env.BRANCH_NAME =~ /^PR-/) {
   sourceBranchLabel = sourceBranchLabel - reg
 }
 
-if (sourceBranchLabel = ~/devel$/) {
+if (sourceBranchLabel == ~/devel$/) {
     useWindows = true
     useMac = true
 }
