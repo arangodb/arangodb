@@ -71,6 +71,8 @@ let optionsDocumentation = [
   '   - `buildType`: Windows build type (Debug, Release), leave empty on linux',
   '   - `configDir`: the directory containing the config files, defaults to',
   '                  etc/testing',
+  '   - `writeXml`:  Write junit xml report files',
+  '   - `prefix`:    prefix for the tests in the xml reports',
   '',
   '   - `rr`: if set to true arangod instances are run with rr',
   '',
