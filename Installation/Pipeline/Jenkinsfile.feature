@@ -451,7 +451,7 @@ def testEdition(edition, os, mode, engine, port) {
 
         def name = testStruct[0]
         def test = testStruct[1]
-        def testArgs = "--configDir etc/jenkins --skipLogAnalysis true --skipTimeCritical true --skipNonDeterministic true --storageEngine ${engine} " + testStruct[2]
+        def testArgs = "--prefix ${edition}-${os}-${mode}-${engine} --configDir etc/jenkins --skipLogAnalysis true --skipTimeCritical true --skipNonDeterministic true --storageEngine ${engine} " + testStruct[2]
 
         def portInterval = 10
         if (mode == "cluster") {
