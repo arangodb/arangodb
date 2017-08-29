@@ -548,7 +548,7 @@ def testStep(os, edition, mode, engine) {
                     powershell "copy build\\bin\\RelWithDebInfo\\* build\\bin"
                     powershell "Installation/Pipeline/include/test_setup_tmp.ps1"
                 } else {
-                    sh "Installation/Pipeline/include/test_setup_tmp.inc"
+                    sh "chmod +x Installation/Pipeline/include/test_setup_tmp.inc && Installation/Pipeline/include/test_setup_tmp.inc"
                 }
                 timeout(60) {
                     try {
