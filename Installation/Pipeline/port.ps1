@@ -11,5 +11,5 @@ do {
     $port = $port + $portIncrement
     $portFile = "C:\ports\$port"
 }
-until (New-Item -ItemType File -Path $portFile -Force -ErrorAction SilentlyContinue)
+until (New-Item -ItemType File -Path $portFile -ErrorAction SilentlyContinue)
 Write-Output $port
