@@ -361,6 +361,8 @@ def getStartPort(os) {
     if (os == "windows") {
         return powershell (returnStdout: false, script: "Installation/Pipeline/port.ps1")
     } else {
+        sh "ls -al"
+        sh "ls -al Installation/Pipeline"
         return sh (returnStdout: true, script: "Installation/Pipeline/port.sh")
     }
 }
@@ -542,7 +544,6 @@ def testStep(edition, os, mode, engine) {
                 // even if the features are green this is completely broken performance wise..
                 // DO NOT INCREASE!!
                 timeout(60) {
-                    echo "before port ${edition}-${os}-${mode}-${engine}"
                     def port = getStartPort(os) as Integer
                     echo "PORT: ${port}"
                     try {
