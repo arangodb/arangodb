@@ -37,7 +37,7 @@ mkdir -p log-output
 touch log-output/build.log
 
 (
-    set -e
+    set -eo pipefail
     cd build
 
     echo "`date +%T` configuring..."
