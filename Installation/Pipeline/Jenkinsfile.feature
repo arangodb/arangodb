@@ -535,18 +535,19 @@ def testStep(os, edition, mode, engine) {
         node(testJenkins[os]) {
             def buildName = "${os}-${edition}"
             def name = "${os}-${edition}-${mode}-${engine}"
-
+            echo "DER FROSCH ${name}"
             stage("test-${name}") {
                 // seriously...60 minutes is the super absolute max max max.
                 // even in the worst situations ArangoDB MUST be able to finish within 60 minutes
                 // even if the features are green this is completely broken performance wise..
                 // DO NOT INCREASE!!
                 def port = 0
+                unstashBinaries(os, edition)
+                port = getStartPort(os) as Integer
+                echo "Using start port: ${port}"
                 timeout(60) {
                     try {
-                        unstashBinaries(os, edition)
-                        port = getStartPort(os) as Integer
-                        echo "Using start port: ${port}"
+
                         testEdition(os, edition, mode, engine, port)
                     }
                     finally {
