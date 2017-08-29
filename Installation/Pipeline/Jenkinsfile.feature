@@ -321,12 +321,12 @@ Restrictions: ${restrictions.keySet().join(", ")}
 // --SECTION--                                                     SCRIPTS STASH
 // -----------------------------------------------------------------------------
 
-def stashBinaries(edition, os) {
-    stash name: "binaries-${edition}-${os}", includes: "build/bin/**, build/tests/**, build/etc/**, etc/**, Installation/Pipeline/**, js/**, scripts/**, UnitTests/**, utils/**, resilience/**, enterprise/js/**", excludes: "build/bin/*.exe, build/bin/*.pdb, build/bin/*.ilk, build/tests/*.exe, build/tests/*.pdb, build/tests/*.ilk, js/node/node_modules/eslint*"
+def stashBinaries(os, edition) {
+    stash name: "binaries-${os}-${edition}", includes: "build/bin/**, build/tests/**, build/etc/**, etc/**, Installation/Pipeline/**, js/**, scripts/**, UnitTests/**, utils/**, resilience/**, enterprise/js/**", excludes: "build/bin/*.exe, build/bin/*.pdb, build/bin/*.ilk, build/tests/*.exe, build/tests/*.pdb, build/tests/*.ilk, js/node/node_modules/eslint*"
 }
 
-def unstashBinaries(edition, os) {
-    unstash name: "binaries-${edition}-${os}"
+def unstashBinaries(os, edition) {
+    unstash name: "binaries-${os}-${edition}"
 }
 
 // -----------------------------------------------------------------------------
@@ -373,7 +373,7 @@ def rspecify(os, test) {
     }
 }
 
-def getTests(edition, os, mode, engine) {
+def getTests(os, edition, mode, engine) {
     if (mode == "singleserver") {
         return [
             ["agency","agency" ,""],
@@ -428,8 +428,8 @@ def getTests(edition, os, mode, engine) {
   }
 }
 
-def testEdition(edition, os, mode, engine, port) {
-    def arch = "LOG_test_${mode}_${edition}_${engine}_${os}"
+def testEdition(os, edition, mode, engine, port) {
+    def arch = "LOG_test_${os}_${edition}_${mode}_${engine}"
 
     if (os == 'linux' || os == 'mac') {
        sh "rm -rf ${arch}"
@@ -442,7 +442,7 @@ def testEdition(edition, os, mode, engine, port) {
 
     def parallelity = 2
     def testIndex = 0
-    def tests = getTests(edition, os, mode, engine)
+    def tests = getTests(os, edition, mode, engine)
 
     // this is an `Array.reduce()` in groovy :S
     def testSteps = tests.inject([:]) { testMap, testStruct ->
@@ -451,7 +451,7 @@ def testEdition(edition, os, mode, engine, port) {
 
         def name = testStruct[0]
         def test = testStruct[1]
-        def testArgs = "--prefix ${edition}-${os}-${mode}-${engine} --configDir etc/jenkins --skipLogAnalysis true --skipTimeCritical true --skipNonDeterministic true --storageEngine ${engine} " + testStruct[2]
+        def testArgs = "--prefix ${os}-${edition}-${mode}-${engine} --configDir etc/jenkins --skipLogAnalysis true --skipTimeCritical true --skipNonDeterministic true --storageEngine ${engine} " + testStruct[2]
 
         def portInterval = 10
         if (mode == "cluster") {
@@ -459,7 +459,7 @@ def testEdition(edition, os, mode, engine, port) {
             testArgs += " --cluster true"
         }
 
-        testMap["test-${edition}-${os}-${mode}-${engine}-${test}"] = {
+        testMap["test-${os}-${edition}-${mode}-${engine}-${test}"] = {
             // copy in groovy
             testArgs += " --minPort " + port
             testArgs += " --maxPort " + (port + portInterval - 1)
@@ -492,7 +492,7 @@ def testEdition(edition, os, mode, engine, port) {
     }
 }
 
-def testCheck(edition, os, mode, engine) {
+def testCheck(os, edition, mode, engine) {
     if (! runTests) {
         echo "Not testing ${os} ${mode} because testing is not enabled"
         return false
@@ -530,11 +530,11 @@ def testCheck(edition, os, mode, engine) {
     return true
 }
 
-def testStep(edition, os, mode, engine) {
+def testStep(os, edition, mode, engine) {
     return {
         node(testJenkins[os]) {
-            def buildName = "${edition}-${os}"
-            def name = "${edition}-${os}-${mode}-${engine}"
+            def buildName = "${os}-${edition}"
+            def name = "${os}-${edition}-${mode}-${engine}"
 
             stage("test-${name}") {
                 // seriously...60 minutes is the super absolute max max max.
@@ -543,10 +543,10 @@ def testStep(edition, os, mode, engine) {
                 // DO NOT INCREASE!!
                 timeout(60) {
                     try {
-                        unstashBinaries(edition, os)
+                        unstashBinaries(os, edition)
                         def port = getStartPort(os) as Integer
                         echo "Using start port: ${port}"
-                        testEdition(edition, os, mode, engine, port)
+                        testEdition(os, edition, mode, engine, port)
                     }
                     finally {
                         step([$class: 'XUnitBuilder',
@@ -577,17 +577,17 @@ def testStep(edition, os, mode, engine) {
     }
 }
 
-def testStepParallel(editionList, osList, modeList) {
+def testStepParallel(osList, editionList, modeList) {
     def branches = [:]
 
-    for (edition in editionList) {
-        for (os in osList) {
+    for (os in osList) {
+        for (edition in editionList) {
             for (mode in modeList) {
                 for (engine in ['mmfiles', 'rocksdb']) {
-                    if (testCheck(edition, os, mode, engine)) {
-                        def name = "test-${mode}-${edition}-${engine}-${os}";
+                    if (testCheck(os, edition, mode, engine)) {
+                        def name = "test-${os}-${edition}-${mode}-${engine}";
 
-                        branches[name] = testStep(edition, os, mode, engine)
+                        branches[name] = testStep(os, edition, mode, engine)
                     }
                 }
             }
@@ -600,132 +600,132 @@ def testStepParallel(editionList, osList, modeList) {
 // --SECTION--                                                SCRIPTS RESILIENCE
 // -----------------------------------------------------------------------------
 
-def testResilience(os, engine, foxx) {
-    withEnv(['LOG_COMMUNICATION=debug', 'LOG_REQUESTS=trace', 'LOG_AGENCY=trace']) {
-        if (os == 'linux') {
-            sh "./Installation/Pipeline/linux/test_resilience_${foxx}_${engine}_${os}.sh"
-        }
-        else if (os == 'mac') {
-            sh "./Installation/Pipeline/mac/test_resilience_${foxx}_${engine}_${os}.sh"
-        }
-        else if (os == 'windows') {
-            powershell ".\\Installation\\Pipeline\\test_resilience_${foxx}_${engine}_${os}.ps1"
-        }
-    }
-}
+// def testResilience(os, engine, foxx) {
+//     withEnv(['LOG_COMMUNICATION=debug', 'LOG_REQUESTS=trace', 'LOG_AGENCY=trace']) {
+//         if (os == 'linux') {
+//             sh "./Installation/Pipeline/linux/test_resilience_${foxx}_${engine}_${os}.sh"
+//         }
+//         else if (os == 'mac') {
+//             sh "./Installation/Pipeline/mac/test_resilience_${foxx}_${engine}_${os}.sh"
+//         }
+//         else if (os == 'windows') {
+//             powershell ".\\Installation\\Pipeline\\test_resilience_${foxx}_${engine}_${os}.ps1"
+//         }
+//     }
+// }
 
-def testResilienceCheck(os, engine, foxx) {
-    if (! runResilience) {
-        return false
-    }
+// def testResilienceCheck(os, engine, foxx) {
+//     if (! runResilience) {
+//         return false
+//     }
 
-    if (os == 'linux' && ! useLinux) {
-        return false
-    }
+//     if (os == 'linux' && ! useLinux) {
+//         return false
+//     }
 
-    if (os == 'mac' && ! useMac) {
-        return false
-    }
+//     if (os == 'mac' && ! useMac) {
+//         return false
+//     }
 
-    if (os == 'windows' && ! useWindows) {
-        return false
-    }
+//     if (os == 'windows' && ! useWindows) {
+//         return false
+//     }
 
-    if (! useCommunity) {
-        return false
-    }
+//     if (! useCommunity) {
+//         return false
+//     }
 
-    if (restrictions && !restrictions["test-resilience-${foxx}-${engine}-${os}"]) {
-        return false
-    }
+//     if (restrictions && !restrictions["test-resilience-${foxx}-${engine}-${os}"]) {
+//         return false
+//     }
 
-    return true
-}
+//     return true
+// }
 
-def testResilienceStep(os, engine, foxx) {
-    return {
-        node(testJenkins[os]) {
-            def edition = "community"
-            def buildName = "${edition}-${os}"
+// def testResilienceStep(os, engine, foxx) {
+//     return {
+//         node(testJenkins[os]) {
+//             def edition = "community"
+//             def buildName = "${edition}-${os}"
 
-            def name = "${os}-${engine}-${foxx}"
-            def arch = "LOG_resilience_${foxx}_${engine}_${os}"
+//             def name = "${os}-${engine}-${foxx}"
+//             def arch = "LOG_resilience_${foxx}_${engine}_${os}"
 
-            stage("resilience-${name}") {
-                if (os == 'linux' || os == 'mac') {
-                    sh "rm -rf ${arch}"
-                    sh "mkdir -p ${arch}"
-                }
-                else if (os == 'windows') {
-                    bat "del /F /Q ${arch}"
-                    powershell "New-Item -ItemType Directory -Force -Path ${arch}"
-                }
+//             stage("resilience-${name}") {
+//                 if (os == 'linux' || os == 'mac') {
+//                     sh "rm -rf ${arch}"
+//                     sh "mkdir -p ${arch}"
+//                 }
+//                 else if (os == 'windows') {
+//                     bat "del /F /Q ${arch}"
+//                     powershell "New-Item -ItemType Directory -Force -Path ${arch}"
+//                 }
 
-                try {
-                    try {
-                        timeout(120) {
-                            unstashBinaries(edition, os)
-                            testResilience(os, engine, foxx)
-                        }
+//                 try {
+//                     try {
+//                         timeout(120) {
+//                             unstashBinaries(edition, os)
+//                             testResilience(os, engine, foxx)
+//                         }
 
-                        if (findFiles(glob: 'resilience/core*').length > 0) {
-                            error("found core file")
-                        }
-                    }
-                    catch (exc) {
-                        if (os == 'linux' || os == 'mac') {
-                            sh "for i in build resilience/core* tmp; do test -e \"\$i\" && mv \"\$i\" ${arch} || true; done"
-                        }
-                        throw exc
-                    }
-                    finally {
-                        if (os == 'linux' || os == 'mac') {
-                            sh "for i in log-output; do test -e \"\$i\" && mv \"\$i\" ${arch}; done"
-                        }
-                        else if (os == 'windows') {
-                            bat "move log-output ${arch}"
-                        }
-                    }
-                }
-                finally {
-                    archiveArtifacts allowEmptyArchive: true,
-                                        artifacts: "${arch}/**",
-                                        defaultExcludes: false
-                }
-            }
-        }
-    }
-}
+//                         if (findFiles(glob: 'resilience/core*').length > 0) {
+//                             error("found core file")
+//                         }
+//                     }
+//                     catch (exc) {
+//                         if (os == 'linux' || os == 'mac') {
+//                             sh "for i in build resilience/core* tmp; do test -e \"\$i\" && mv \"\$i\" ${arch} || true; done"
+//                         }
+//                         throw exc
+//                     }
+//                     finally {
+//                         if (os == 'linux' || os == 'mac') {
+//                             sh "for i in log-output; do test -e \"\$i\" && mv \"\$i\" ${arch}; done"
+//                         }
+//                         else if (os == 'windows') {
+//                             bat "move log-output ${arch}"
+//                         }
+//                     }
+//                 }
+//                 finally {
+//                     archiveArtifacts allowEmptyArchive: true,
+//                                         artifacts: "${arch}/**",
+//                                         defaultExcludes: false
+//                 }
+//             }
+//         }
+//     }
+// }
 
-def testResilienceParallel(osList) {
-    def branches = [:]
+// def testResilienceParallel(osList) {
+//     def branches = [:]
 
-    for (foxx in ['foxx', 'nofoxx']) {
-        for (os in osList) {
-            for (engine in ['mmfiles', 'rocksdb']) {
-                if (testResilienceCheck(os, engine, foxx)) {
-                    def name = "test-resilience-${foxx}-${engine}-${os}"
+//     for (foxx in ['foxx', 'nofoxx']) {
+//         for (os in osList) {
+//             for (engine in ['mmfiles', 'rocksdb']) {
+//                 if (testResilienceCheck(os, engine, foxx)) {
+//                     def name = "test-resilience-${foxx}-${engine}-${os}"
 
-                    branches[name] = testResilienceStep(os, engine, foxx)
-                }
-            }
-        }
-    }
+//                     branches[name] = testResilienceStep(os, engine, foxx)
+//                 }
+//             }
+//         }
+//     }
 
-    if (branches.size() > 1) {
-        parallel branches
-    }
-    else if (branches.size() == 1) {
-        branches.values()[0]()
-    }
-}
+//     if (branches.size() > 1) {
+//         parallel branches
+//     }
+//     else if (branches.size() == 1) {
+//         branches.values()[0]()
+//     }
+// }
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                     SCRIPTS BUILD
 // -----------------------------------------------------------------------------
 
-def buildEdition(edition, os) {
-    def arch = "LOG_build_${edition}_${os}"
+def buildEdition(os, edition) {
+    def arch = "LOG_build_${os}_${edition}"
 
     if (os == 'linux' || os == 'mac') {
        sh "rm -rf ${arch}"
@@ -738,10 +738,10 @@ def buildEdition(edition, os) {
 
     try {
         if (os == 'linux') {
-            sh "./Installation/Pipeline/linux/build_${edition}_${os}.sh 64"
+            sh "./Installation/Pipeline/linux/build_${os}_${edition}.sh 64"
         }
         else if (os == 'mac') {
-            sh "./Installation/Pipeline/mac/build_${edition}_${os}.sh 16"
+            sh "./Installation/Pipeline/mac/build_${os}_${edition}.sh 16"
         }
         else if (os == 'windows') {
             // i concede...we need a lock for windows...I could not get it to run concurrently...
@@ -752,7 +752,7 @@ def buildEdition(edition, os) {
             // ensure that there are 2 concurrent builds on the SAME node building v8 at the same time to properly test it
             // I just don't want any more "yeah that might randomly fail. just restart" sentences any more
             lock('build-${env.NODE_NAME}') {
-                powershell ". .\\Installation\\Pipeline\\windows\\build_${edition}_${os}.ps1"
+                powershell ". .\\Installation\\Pipeline\\windows\\build_${os}_${edition}.ps1"
             }
         }
     }
@@ -766,7 +766,7 @@ def buildEdition(edition, os) {
     }
 }
 
-def buildStepCheck(edition, os, full) {
+def buildStepCheck(os, edition) {
     if (os == 'linux' && ! useLinux) {
         return false
     }
@@ -794,10 +794,10 @@ def buildStepCheck(edition, os, full) {
     return true
 }
 
-def runEdition(edition, os) {
+def runEdition(os, edition) {
     return {
         node(buildJenkins[os]) {
-            def name = "${edition}-${os}"
+            def name = "${os}-${edition}"
 
             stage("build-${name}") {
                 timeout(30) {
@@ -810,8 +810,8 @@ def runEdition(edition, os) {
                 }
 
                 timeout(90) {
-                    buildEdition(edition, os)
-                    stashBinaries(edition, os)
+                    buildEdition(os, edition)
+                    stashBinaries(os, edition)
                 }
 
                 // we only need one jslint test per edition
@@ -829,12 +829,11 @@ def runEdition(edition, os) {
 
 def runOperatingSystems(osList) {
     def branches = [:]
-    def full = false
 
     for (edition in ['community', 'enterprise']) {
         for (os in osList) {
-            if (buildStepCheck(edition, os, full)) {
-                branches["build-${edition}-${os}"] = runEdition(edition, os)
+            if (buildStepCheck(os, edition)) {
+                branches["build-${os}-${edition}"] = runEdition(os, edition)
             }
         }
     }
