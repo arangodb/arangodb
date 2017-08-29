@@ -2942,7 +2942,7 @@ int MMFilesEngine::openCollection(TRI_vocbase_t* vocbase,
           LOG_TOPIC(DEBUG, Logger::DATAFILES)
               << "datafile '" << filename
               << "' is not sealed, this should not happen under normal circumstances";
-        } 
+        }
         datafiles.emplace_back(datafile);
       }
 
@@ -3004,7 +3004,7 @@ int MMFilesEngine::openCollection(TRI_vocbase_t* vocbase,
 
     MMFilesDatafile* journal = journals.back();
     journals.pop_back();
-    
+
     // got more than one journal. now add all the journals but the last one as datafiles
     for (auto& it : journals) {
       std::string dname("datafile-" + std::to_string(it->fid()) + ".db");
@@ -3035,7 +3035,7 @@ int MMFilesEngine::openCollection(TRI_vocbase_t* vocbase,
     // sort datafiles again
     std::sort(datafiles.begin(), datafiles.end(), DatafileComparator());
   }
-  
+
   // stop if necessary
   if (stop) {
     for (auto& datafile : all) {
@@ -3049,13 +3049,13 @@ int MMFilesEngine::openCollection(TRI_vocbase_t* vocbase,
     }
     return TRI_ERROR_INTERNAL;
   }
-  
-  LOG_TOPIC(DEBUG, Logger::FIXME) << "collection inventory for '" 
-                                  << collection->name() << "': datafiles: " 
-                                  << datafiles.size() << ", journals: " 
-                                  << journals.size() << ", compactors: " 
+
+  LOG_TOPIC(DEBUG, Logger::FIXME) << "collection inventory for '"
+                                  << collection->name() << "': datafiles: "
+                                  << datafiles.size() << ", journals: "
+                                  << journals.size() << ", compactors: "
                                   << compactors.size();
-    
+
 
   // add the datafiles and journals
   physical->setInitialFiles(std::move(datafiles), std::move(journals), std::move(compactors));
@@ -3501,4 +3501,3 @@ void MMFilesEngine::releaseTick(TRI_voc_tick_t tick) {
   WRITE_LOCKER(lock, _releaseLock);
   _releasedTick = tick;
 }
-

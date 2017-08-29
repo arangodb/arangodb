@@ -68,6 +68,11 @@ void FlushThread::run() {
       // sleep if nothing to do
       CONDITION_LOCKER(guard, _condition);
       guard.wait(_flushInterval);
+    } catch(basics::Exception const& ex) {
+      if (ex.code() == TRI_ERROR_SHUTTING_DOWN) {
+        break;
+      }
+      LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "caught exception in FlushThread: " << ex.what();
     } catch (std::exception const& ex) {
       LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "caught exception in FlushThread: " << ex.what();
     } catch (...) {

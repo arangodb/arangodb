@@ -43,6 +43,7 @@ FlushFeature::FlushFeature(ApplicationServer* server)
   requiresElevatedPrivileges(false);
   startsAfter("WorkMonitor");
   startsAfter("StorageEngine");
+  startsAfter("MMFilesLogfileManager");
   // TODO: must start after storage engine
 }
 
@@ -83,17 +84,17 @@ void FlushFeature::beginShutdown() {
 void FlushFeature::stop() {
   LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "stopping FlushThread";
   // wait until thread is fully finished
-  
+
   if (_flushThread != nullptr) {
     while (_flushThread->isRunning()) {
       usleep(10000);
     }
-  
+
     _flushThread.reset();
   }
 }
 
-void FlushFeature::unprepare() { 
+void FlushFeature::unprepare() {
   WRITE_LOCKER(locker, _callbacksLock);
   _callbacks.clear();
 }
@@ -119,7 +120,7 @@ void FlushFeature::executeCallbacks() {
   std::vector<FlushTransactionPtr> transactions;
 
   READ_LOCKER(locker, _callbacksLock);
-  
+
   transactions.reserve(_callbacks.size());
 
   // execute all callbacks. this will create as many transactions as
@@ -134,11 +135,11 @@ void FlushFeature::executeCallbacks() {
   // commit all transactions
   for (auto const& trx : transactions) {
     LOG_TOPIC(DEBUG, Logger::FIXME) << "commiting flush transaction '" << trx->name() << "'";
-    
+
     Result res = trx->commit();
 
     if (!res.ok()) {
-      LOG_TOPIC(ERR, Logger::FIXME) << "could not commit flush transaction '" << trx->name() << "': " << res.errorMessage(); 
+      LOG_TOPIC(ERR, Logger::FIXME) << "could not commit flush transaction '" << trx->name() << "': " << res.errorMessage();
     }
     // TODO: honor the commit results here
   }

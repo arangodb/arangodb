@@ -69,7 +69,7 @@ class MMFilesWalLogfile {
   int lockInMemory() {
     return _df->lockInMemory();
   }
-  
+
   int unlockFromMemory() {
     return _df->unlockFromMemory();
   }
@@ -84,11 +84,11 @@ class MMFilesWalLogfile {
 
   /// @brief return the datafile pointer
   inline MMFilesDatafile* df() const { return _df; }
-  
+
   /// @brief return the pointer to the logfile contents
-  inline char const* data() const { 
+  inline char const* data() const {
     TRI_ASSERT(_df != nullptr);
-    return _df->data(); 
+    return _df->data();
   }
 
   /// @brief return the file descriptor
@@ -144,7 +144,11 @@ class MMFilesWalLogfile {
   }
 
   /// @brief whether or not the logfile can be collected
-  inline bool canBeCollected() const {
+  inline bool canBeCollected(TRI_voc_tick_t releasedTick) const {
+    if (releasedTick > df()->maxTick()) {
+      return false;
+    }
+
     return (_status == StatusType::SEALED ||
             _status == StatusType::COLLECTION_REQUESTED);
   }
