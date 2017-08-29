@@ -544,6 +544,11 @@ def testStep(os, edition, mode, engine) {
                 unstashBinaries(os, edition)
                 port = getStartPort(os) as Integer
                 echo "Using start port: ${port}"
+                if (os == "windows") {
+                    powershell "Installation/Pipeline/include/test_setup_tmp.ps1"
+                } else {
+                    sh "Installation/Pipeline/include/test_setup_tmp.sh"
+                }
                 timeout(60) {
                     try {
 
