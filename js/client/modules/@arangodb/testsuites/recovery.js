@@ -44,17 +44,20 @@ const RESET = require('internal').COLORS.COLOR_RESET;
 // / @brief TEST: recovery
 // //////////////////////////////////////////////////////////////////////////////
 
-function runArangodRecovery (instanceInfo, options, script, setup) {
+function runArangodRecovery (instanceInfo, options, script, setup, count) {
   if (!instanceInfo.recoveryArgs) {
     let tempDir = fs.getTempPath();
-    let td = fs.join(tempDir, 'data');
+    let td = fs.join(tempDir, `${count}`)
+    if (setup) {
+      pu.cleanupDBDirectoriesAppend(td);
+    }
+    td = fs.join(td, 'data');
     fs.makeDirectoryRecursive(td);
+    instanceInfo.tmpDataDir = td;
 
-    instanceInfo.tmpDataDir = tempDir;
-
-    let appDir = fs.join(tempDir, 'app');
+    let appDir = fs.join(td, 'app');
     fs.makeDirectoryRecursive(appDir);
-    let tmpDir = fs.join(tempDir, 'tmp');
+    let tmpDir = fs.join(td, 'tmp');
     fs.makeDirectoryRecursive(tmpDir);
 
     let args = pu.makeArgs.arangod(options, appDir, '', tmpDir);
@@ -124,18 +127,17 @@ function recovery (options) {
   for (let i = 0; i < recoveryTests.length; ++i) {
     let test = recoveryTests[i];
     let filtered = {};
+    let localOptions = _.cloneDeep(options);
 
-    if (tu.filterTestcaseByOptions(test, options, filtered)) {
+    if (tu.filterTestcaseByOptions(test, localOptions, filtered)) {
       let instanceInfo = {};
       count += 1;
 
-      runArangodRecovery(instanceInfo, options, test, true);
+      runArangodRecovery(instanceInfo, localOptions, test, true, count);
 
-      runArangodRecovery(instanceInfo, options, test, false);
+      runArangodRecovery(instanceInfo, localOptions, test, false, count);
 
-      if (instanceInfo.tmpDataDir) {
-        fs.removeDirectoryRecursive(instanceInfo.tmpDataDir, true);
-      }
+      pu.cleanupLastDirectory(localOptions);
 
       results[test] = instanceInfo.pid;
 
