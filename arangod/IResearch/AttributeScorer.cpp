@@ -383,6 +383,7 @@ REGISTER_SCORER(AttributeScorer);
 
     static std::unordered_map<irs::string_ref, ValueType> const valueTypes = {
       { "array",   ValueType::ARRAY   },
+      { "bool", ValueType::BOOLEAN },
       { "boolean", ValueType::BOOLEAN },
       { "null",    ValueType::NIL     },
       { "numeric", ValueType::NUMBER  },

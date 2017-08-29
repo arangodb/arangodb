@@ -137,7 +137,11 @@ class column_prefix_existence_query final : public irs::filter::prepared {
       return irs::score_doc_iterator::empty();
     }
 
-    std::vector<column_existence_iterator::ptr> itrs;
+    typedef irs::detail::disjunction<
+      irs::score_wrapper<column_existence_iterator::ptr>
+    > disjunction_t;
+    disjunction_t::doc_iterators_t itrs;
+
     while (irs::starts_with(it->value().name, prefix_)) {
       const auto* column = rdr.column_reader(it->value().id);
 
@@ -159,10 +163,6 @@ class column_prefix_existence_query final : public irs::filter::prepared {
         break;
       }
     }
-
-    typedef irs::detail::disjunction<
-      column_existence_iterator::ptr
-    > disjunction_t;
 
     return irs::detail::make_disjunction<disjunction_t>(
       std::move(itrs), 1, ord

@@ -405,20 +405,24 @@ SECTION("test_query") {
     {
       std::vector<size_t> const expected0 = { 10, size_t(-1), 1, 2, 3, 4, 5, 6, 7, 8, 9, 11, 12 };
       std::vector<size_t> const expected1 = { 8, 7, size_t(-1), 1, 2, 3, 4, 5, 6, 9, 10, 11, 12 };
-      std::vector<size_t> const expected2 = { 9, size_t(-1), 1, 2, 3, 4, 5, 6, 7, 8, 10, 11, 12 };
-      std::vector<size_t> const expected3 = { 4, 5, 6, size_t(-1), 1, 2, 3, 7, 8, 9, 10, 11, 12 };
-      std::vector<size_t> const expected4 = { 11, size_t(-1), 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 12 };
-      std::vector<size_t> const expected5 = { 1, 2, 3, size_t(-1), 4, 5, 6, 7, 8, 9, 10, 11, 12 };
-      std::vector<size_t> const expected6 = { 12, size_t(-1), 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11 };
-      std::vector<size_t> const expected7 = { 10, 8, 7, 9, 4, 5, 6, 11, 1, 2, 3, 12 };
+      std::vector<size_t> const expected2 = { 8, 7, size_t(-1), 1, 2, 3, 4, 5, 6, 9, 10, 11, 12 };
+      std::vector<size_t> const expected3 = { 9, size_t(-1), 1, 2, 3, 4, 5, 6, 7, 8, 10, 11, 12 };
+      std::vector<size_t> const expected4 = { 4, 5, 6, size_t(-1), 1, 2, 3, 7, 8, 9, 10, 11, 12 };
+      std::vector<size_t> const expected5 = { 11, size_t(-1), 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 12 };
+      std::vector<size_t> const expected6 = { 1, 2, 3, size_t(-1), 4, 5, 6, 7, 8, 9, 10, 11, 12 };
+      std::vector<size_t> const expected7 = { 12, size_t(-1), 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11 };
+      std::vector<size_t> const expected8 = { 10, 8, 7, 9, 4, 5, 6, 11, 1, 2, 3, 12 };
+      std::vector<size_t> const expected9 = { 10, 8, 7, 9, 4, 5, 6, 11, 1, 2, 3, 12 };
       std::string query0 = "FOR d IN testCollection FILTER d.key >= 1 SORT `@`(d.testAttr, 'array') RETURN d";
-      std::string query1 = "FOR d IN testCollection FILTER d.key >= 1 SORT `@`(d.testAttr, 'boolean') RETURN d";
-      std::string query2 = "FOR d IN testCollection FILTER d.key >= 1 SORT `@`(d.testAttr, 'null') RETURN d";
-      std::string query3 = "FOR d IN testCollection FILTER d.key >= 1 SORT `@`(d.testAttr, 'numeric') RETURN d";
-      std::string query4 = "FOR d IN testCollection FILTER d.key >= 1 SORT `@`(d.testAttr, 'object') RETURN d";
-      std::string query5 = "FOR d IN testCollection FILTER d.key >= 1 SORT `@`(d.testAttr, 'string') RETURN d";
-      std::string query6 = "FOR d IN testCollection FILTER d.key >= 1 SORT `@`(d.testAttr, 'unknown') RETURN d";
-      std::string query7 = "FOR d IN testCollection FILTER d.key >= 1 SORT `@`(d.testAttr, 'array', 'boolean', 'null', 'numeric', 'object', 'string', 'unknown') RETURN d";
+      std::string query1 = "FOR d IN testCollection FILTER d.key >= 1 SORT `@`(d.testAttr, 'bool') RETURN d";
+      std::string query2 = "FOR d IN testCollection FILTER d.key >= 1 SORT `@`(d.testAttr, 'boolean') RETURN d";
+      std::string query3 = "FOR d IN testCollection FILTER d.key >= 1 SORT `@`(d.testAttr, 'null') RETURN d";
+      std::string query4 = "FOR d IN testCollection FILTER d.key >= 1 SORT `@`(d.testAttr, 'numeric') RETURN d";
+      std::string query5 = "FOR d IN testCollection FILTER d.key >= 1 SORT `@`(d.testAttr, 'object') RETURN d";
+      std::string query6 = "FOR d IN testCollection FILTER d.key >= 1 SORT `@`(d.testAttr, 'string') RETURN d";
+      std::string query7 = "FOR d IN testCollection FILTER d.key >= 1 SORT `@`(d.testAttr, 'unknown') RETURN d";
+      std::string query8 = "FOR d IN testCollection FILTER d.key >= 1 SORT `@`(d.testAttr, 'array', 'bool', 'null', 'numeric', 'object', 'string', 'unknown') RETURN d";
+      std::string query9 = "FOR d IN testCollection FILTER d.key >= 1 SORT `@`(d.testAttr, 'array', 'boolean', 'null', 'numeric', 'object', 'string', 'unknown') RETURN d";
 
       assertOrderSuccess(*logicalView, query0, "key", expected0);
       assertOrderSuccess(*logicalView, query1, "key", expected1);
@@ -428,6 +432,8 @@ SECTION("test_query") {
       assertOrderSuccess(*logicalView, query5, "key", expected5);
       assertOrderSuccess(*logicalView, query6, "key", expected6);
       assertOrderSuccess(*logicalView, query7, "key", expected7);
+      assertOrderSuccess(*logicalView, query8, "key", expected8);
+      assertOrderSuccess(*logicalView, query9, "key", expected9);
     }
 
     // via function (with invalid precedence)

@@ -53,9 +53,10 @@ The supported filter functions are:
 * EXISTS(\<attribute-name\>, "analyzer", "\<analyzer\>")
 <br>  to match documents where the **attribute-name** exists in the document and
       was indexed by the specified **analyzer**
-* EXISTS(\<attribute-name\>, "type", "\<"string"|"null"|"bool","numeric"\>")
+* EXISTS(\<attribute-name\>, "type", "\<"bool"|"boolean"|"numeric"|"null"|"string"\>")
 <br>  to match documents where the **attribute-name** exists in the document and
-      is of the specified type, one of: **string**/**null**/**bool**/**numeric**
+      is of the specified type, one of:
+      **bool**, **boolean**, **numeric**, **null**, **string**
 * PHRASE(\<attribute-name\>, "\<input\>" [, "\<offset\>", "\<input\>"] [, "\<analyzer\>"])
 <br>  to optionally break up **input**, with the help of the specified
       **analyzer**, into a vector of sub-tokens optionally separated from each
