@@ -1,4 +1,8 @@
+echo "HMM"
+
 New-Item -ItemType Directory -Force -Path C:\ports | Out-Null
+
+echo "HUU"
 
 $timeLimit = (Get-Date).AddMinutes(-480)
 Get-ChildItem C:\ports | ? { $_.LastWriteTime -lt $timeLimit } | Remove-Item -ErrorAction SilentlyContinue
