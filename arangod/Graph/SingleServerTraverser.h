@@ -25,7 +25,7 @@
 #define ARANGOD_SINGLE_SERVER_TRAVERSER_H 1
 
 #include "Aql/AqlValue.h"
-#include "VocBase/Traverser.h"
+#include "Graph/Traverser.h"
 #include "VocBase/voc-types.h"
 
 namespace arangodb {

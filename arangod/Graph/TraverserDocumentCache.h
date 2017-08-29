@@ -52,7 +52,7 @@ class TraverserDocumentCache : public TraverserCache {
    void insertIntoResult(StringRef idString,
                          arangodb::velocypack::Builder& builder) override;
 
-   void insertIntoResult(EdgeDocumentToken const* etkn,
+   void insertIntoResult(EdgeDocumentToken const& etkn,
                          arangodb::velocypack::Builder& builder) override;
 
    //////////////////////////////////////////////////////////////////////////////
@@ -63,7 +63,7 @@ class TraverserDocumentCache : public TraverserCache {
   
    aql::AqlValue fetchAqlResult(StringRef idString) override;
 
-   aql::AqlValue fetchAqlResult(arangodb::graph::EdgeDocumentToken const*) override;
+   aql::AqlValue fetchAqlResult(graph::EdgeDocumentToken const&) override;
 
    //////////////////////////////////////////////////////////////////////////////
    /// @brief Insert value into store
@@ -80,7 +80,7 @@ class TraverserDocumentCache : public TraverserCache {
    //////////////////////////////////////////////////////////////////////////////
 
    bool validateFilter(StringRef idString,
-       std::function<bool(arangodb::velocypack::Slice const&)> filterFunc) override;
+       std::function<bool(velocypack::Slice const&)> filterFunc) override;
  
   protected:
 

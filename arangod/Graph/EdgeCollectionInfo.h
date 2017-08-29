@@ -25,7 +25,7 @@
 #define ARANGOD_EDGE_COLLECTION_INFO_H 1
 
 #include "Aql/Graphs.h"
-#include "VocBase/Traverser.h"
+#include "Graph/Traverser.h"
 
 namespace arangodb {
 class ManagedDocumentResult;

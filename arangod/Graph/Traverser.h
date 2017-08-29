@@ -32,9 +32,9 @@
 #include "Aql/AstNode.h"
 #include "Graph/AttributeWeightShortestPathFinder.h"
 #include "Graph/ConstantWeightShortestPathFinder.h"
+#include "Graph/PathEnumerator.h"
 #include "Graph/ShortestPathFinder.h"
 #include "Transaction/Helpers.h"
-#include "VocBase/PathEnumerator.h"
 #include "VocBase/voc-types.h"
 
 namespace arangodb {

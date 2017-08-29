@@ -56,7 +56,7 @@ AqlValue ShortestPathResult::edgeToAqlValue(TraverserCache* cache, size_t positi
     return AqlValue(arangodb::basics::VelocyPackHelper::NullValue());
   }
   TRI_ASSERT(position - 1 < _edges.size());
-  return cache->fetchAqlResult(_edges[position - 1].get());
+  return cache->fetchAqlResult(_edges[position - 1]);
 }
 
 AqlValue ShortestPathResult::vertexToAqlValue(TraverserCache* cache, size_t position) const {

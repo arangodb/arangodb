@@ -79,13 +79,13 @@ ClusterEdgeCursor::ClusterEdgeCursor(StringRef vertexId, bool backward,
 }
 
 bool ClusterEdgeCursor::next(
-    std::function<void(std::unique_ptr<EdgeDocumentToken>&&, VPackSlice, size_t)> callback) {
+    std::function<void(EdgeDocumentToken&&, VPackSlice, size_t)> callback) {
   if (_position < _edgeList.size()) {
     VPackSlice edge = _edgeList[_position];
     std::string eid =
         transaction::helpers::extractIdString(_resolver, edge, VPackSlice());
     StringRef persId = _cache->persistString(StringRef(eid));
-    callback(std::make_unique<ClusterEdgeDocumentToken>(persId), edge, _position);
+    callback(EdgeDocumentToken(std::move(persId)), edge, _position);
     ++_position;
     return true;
   }
@@ -93,11 +93,11 @@ bool ClusterEdgeCursor::next(
 }
 
 void ClusterEdgeCursor::readAll(
-    std::function<void(std::unique_ptr<EdgeDocumentToken>&&, VPackSlice, size_t)> callback) {
+    std::function<void(EdgeDocumentToken&&, VPackSlice, size_t)> callback) {
   for (auto const& edge : _edgeList) {
     std::string eid =
         transaction::helpers::extractIdString(_resolver, edge, VPackSlice());
     StringRef persId = _cache->persistString(StringRef(eid));
-    callback(std::make_unique<ClusterEdgeDocumentToken>(persId), edge, _position);
+    callback(EdgeDocumentToken(std::move(persId)), edge, _position);
   }
 }

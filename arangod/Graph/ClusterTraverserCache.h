@@ -64,7 +64,7 @@ class ClusterTraverserCache : public TraverserCache {
   void insertIntoResult(StringRef idString,
                         arangodb::velocypack::Builder& builder) override;
 
-  void insertIntoResult(graph::EdgeDocumentToken const* idToken,
+  void insertIntoResult(graph::EdgeDocumentToken const& idToken,
                         arangodb::velocypack::Builder& builder) override;
 
   //////////////////////////////////////////////////////////////////////////////
@@ -74,7 +74,7 @@ class ClusterTraverserCache : public TraverserCache {
 
   aql::AqlValue fetchAqlResult(StringRef idString) override;
 
-  aql::AqlValue fetchAqlResult(graph::EdgeDocumentToken const* idToken) override;
+  aql::AqlValue fetchAqlResult(graph::EdgeDocumentToken const& idToken) override;
 
   std::unordered_map<ServerID, traverser::TraverserEngineID> const* engines();
 
@@ -86,7 +86,7 @@ class ClusterTraverserCache : public TraverserCache {
 
   size_t& filteredDocuments();
   
-  arangodb::velocypack::Slice lookupToken(EdgeDocumentToken const* token) override;
+  arangodb::velocypack::Slice lookupToken(EdgeDocumentToken const& token) override;
 
  private:
   std::unordered_map<StringRef, arangodb::velocypack::Slice> _edges;

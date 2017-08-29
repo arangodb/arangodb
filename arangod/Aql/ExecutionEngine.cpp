@@ -602,10 +602,11 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
     result.add(VPackValue("options"));
 #ifdef USE_ENTERPRISE
     if (query->trx()->state()->options().skipInaccessibleCollections &&
-        query->trx()->isInaccessibleCollection(collection->getPlanId())) {
+        query->trx()->isInaccessibleCollectionId(collection->getPlanId())) {
       aql::QueryOptions opts = query->queryOptions();
       TRI_ASSERT(opts.transactionOptions.skipInaccessibleCollections);
-      opts.inaccessibleShardIds.insert(shardId);
+      opts.inaccessibleCollections.insert(shardId);
+      opts.inaccessibleCollections.insert(collection->getCollection()->cid_as_string());
       opts.toVelocyPack(result, true);
     } else {
       // the toVelocyPack will open & close the "options" object
@@ -948,8 +949,11 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
             auto pair = findServerLists(shard);
             pair->second.vertexCollections[collection.second->getName()].emplace_back(shard);
 #ifdef USE_ENTERPRISE
-            if (trx->isInaccessibleCollection(collection.second->getPlanId())) {
+            if (trx->isInaccessibleCollectionId(collection.second->getPlanId())) {
+              TRI_ASSERT(!ServerState::instance()->isRunningInCluster() ||
+                         ServerState::instance()->isCoordinator());
               pair->second.inaccessibleShards.insert(shard);
+              pair->second.inaccessibleShards.insert(collection.second->getCollection()->cid_as_string());
             }
 #endif
           }
@@ -974,8 +978,9 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
           auto pair = findServerLists(shard);
           pair->second.vertexCollections[it->getName()].emplace_back(shard);
 #ifdef USE_ENTERPRISE
-          if (trx->isInaccessibleCollection(it->getPlanId())) {
+          if (trx->isInaccessibleCollectionId(it->getPlanId())) {
             pair->second.inaccessibleShards.insert(shard);
+            pair->second.inaccessibleShards.insert(it->getCollection()->cid_as_string());
           }
 #endif
         }

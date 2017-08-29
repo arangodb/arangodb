@@ -44,15 +44,12 @@ ClusterTraverserCache::ClusterTraverserCache(
 
 ClusterTraverserCache::~ClusterTraverserCache() {}
 
-arangodb::velocypack::Slice ClusterTraverserCache::lookupToken(EdgeDocumentToken const* token) {
-  return lookupInCollection(static_cast<ClusterEdgeDocumentToken const*>(token)->id());
+arangodb::velocypack::Slice ClusterTraverserCache::lookupToken(EdgeDocumentToken const& token) {
+  return lookupInCollection(token.vid());
 }
 
-aql::AqlValue ClusterTraverserCache::fetchAqlResult(EdgeDocumentToken const* idToken) {
-  // This cast is save because the Coordinator can only create those tokens
-  auto tkn = static_cast<ClusterEdgeDocumentToken const*>(idToken);
-  TRI_ASSERT(tkn != nullptr);
-  return fetchAqlResult(tkn->id());
+aql::AqlValue ClusterTraverserCache::fetchAqlResult(EdgeDocumentToken const& idToken) {
+  return fetchAqlResult(idToken.vid());
 }
 
 aql::AqlValue ClusterTraverserCache::fetchAqlResult(StringRef id) {
@@ -74,12 +71,10 @@ void ClusterTraverserCache::insertIntoResult(StringRef id,
   result.add(_edges[id]);
 }
 
-void ClusterTraverserCache::insertIntoResult(EdgeDocumentToken const* idToken,
+void ClusterTraverserCache::insertIntoResult(EdgeDocumentToken const& idToken,
                                              VPackBuilder& result) {
   // This cast is save because the Coordinator can only create those tokens
-  auto tkn = static_cast<ClusterEdgeDocumentToken const*>(idToken);
-  TRI_ASSERT(tkn != nullptr);
-  insertIntoResult(tkn->id(), result);
+  insertIntoResult(idToken.vid(), result);
 }
 
 

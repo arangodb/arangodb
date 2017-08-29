@@ -26,8 +26,8 @@
 
 #include "Basics/Common.h"
 #include "Graph/EdgeDocumentToken.h"
-#include "VocBase/Traverser.h"
-#include "VocBase/TraverserOptions.h"
+#include "Graph/Traverser.h"
+#include "Graph/TraverserOptions.h"
 #include <velocypack/Slice.h>
 #include <stack>
 
@@ -49,7 +49,7 @@ class Traverser;
 struct TraverserOptions;
 
 struct EnumeratedPath {
-  std::vector<std::unique_ptr<graph::EdgeDocumentToken>> edges;
+  std::vector<graph::EdgeDocumentToken> edges;
   std::vector<arangodb::StringRef> vertices;
   EnumeratedPath() {}
 };

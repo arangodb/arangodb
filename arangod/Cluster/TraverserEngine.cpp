@@ -30,10 +30,10 @@
 #include "Graph/EdgeCursor.h"
 #include "Graph/ShortestPathOptions.h"
 #include "Graph/TraverserCache.h"
+#include "Graph/TraverserOptions.h"
 #include "Transaction/Context.h"
 #include "Utils/CollectionNameResolver.h"
 #include "VocBase/ManagedDocumentResult.h"
-#include "VocBase/TraverserOptions.h"
 
 #include <velocypack/Iterator.h>
 #include <velocypack/Slice.h>
@@ -253,10 +253,10 @@ void BaseTraverserEngine::getEdges(VPackSlice vertex, size_t depth,
       std::unique_ptr<arangodb::graph::EdgeCursor> edgeCursor(
           _opts->nextCursor(&mmdr, vertexId, depth));
 
-      edgeCursor->readAll([&](std::unique_ptr<EdgeDocumentToken>&& eid,
+      edgeCursor->readAll([&](EdgeDocumentToken&& eid,
                               VPackSlice edge, size_t cursorId) {
         if (edge.isString()) {
-          edge = _opts->cache()->lookupToken(eid.get());
+          edge = _opts->cache()->lookupToken(eid);
         }
         if (_opts->evaluateEdgeExpression(edge, StringRef(v), depth,
                                           cursorId)) {
@@ -268,10 +268,10 @@ void BaseTraverserEngine::getEdges(VPackSlice vertex, size_t depth,
   } else if (vertex.isString()) {
     std::unique_ptr<arangodb::graph::EdgeCursor> edgeCursor(
         _opts->nextCursor(&mmdr, StringRef(vertex), depth));
-    edgeCursor->readAll([&](std::unique_ptr<EdgeDocumentToken>&& eid,
+    edgeCursor->readAll([&](EdgeDocumentToken&& eid,
                             VPackSlice edge, size_t cursorId) {
       if (edge.isString()) {
-        edge = _opts->cache()->lookupToken(eid.get());
+        edge = _opts->cache()->lookupToken(eid);
       }
       if (_opts->evaluateEdgeExpression(edge, StringRef(vertex), depth,
                                         cursorId)) {
@@ -402,10 +402,10 @@ void ShortestPathEngine::getEdges(VPackSlice vertex, bool backward,
         edgeCursor.reset(_opts->nextCursor(&mmdr, vertexId));
       }
 
-      edgeCursor->readAll([&](std::unique_ptr<EdgeDocumentToken>&& eid,
+      edgeCursor->readAll([&](EdgeDocumentToken&& eid,
                               VPackSlice edge, size_t cursorId) {
         if (edge.isString()) {
-          edge = _opts->cache()->lookupToken(eid.get());
+          edge = _opts->cache()->lookupToken(eid);
         }
         builder.add(edge);
       });
@@ -418,10 +418,10 @@ void ShortestPathEngine::getEdges(VPackSlice vertex, bool backward,
     } else {
       edgeCursor.reset(_opts->nextCursor(&mmdr, vertexId));
     }
-    edgeCursor->readAll([&](std::unique_ptr<EdgeDocumentToken>&& eid,
+    edgeCursor->readAll([&](EdgeDocumentToken&& eid,
                             VPackSlice edge, size_t cursorId) {
       if (edge.isString()) {
-        edge = _opts->cache()->lookupToken(eid.get());
+        edge = _opts->cache()->lookupToken(eid);
       }
       builder.add(edge);
     });

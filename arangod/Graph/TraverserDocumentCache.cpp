@@ -93,15 +93,15 @@ VPackSlice TraverserDocumentCache::lookupAndCache(StringRef id) {
 }
 
 // These two do not use the cache.
-void TraverserDocumentCache::insertIntoResult(EdgeDocumentToken const* idToken,
+void TraverserDocumentCache::insertIntoResult(EdgeDocumentToken const& idToken,
                                               VPackBuilder& builder) {
   TRI_ASSERT(!ServerState::instance()->isCoordinator());
-  builder.add(lookupInCollection(static_cast<SingleServerEdgeDocumentToken const*>(idToken)));
+  builder.add(lookupInCollection(idToken));
 }
 
-aql::AqlValue TraverserDocumentCache::fetchAqlResult(EdgeDocumentToken const* idToken) {
+aql::AqlValue TraverserDocumentCache::fetchAqlResult(EdgeDocumentToken const& idToken) {
   TRI_ASSERT(!ServerState::instance()->isCoordinator());
-  return aql::AqlValue(lookupInCollection(static_cast<SingleServerEdgeDocumentToken const*>(idToken)));
+  return aql::AqlValue(lookupInCollection(idToken));
 }
 
 void TraverserDocumentCache::insertIntoResult(StringRef idString,

@@ -24,11 +24,11 @@
 #include "Traverser.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Graph/TraverserCache.h"
+#include "Graph/TraverserOptions.h"
 #include "Transaction/Helpers.h"
 #include "Transaction/Methods.h"
 #include "Transaction/Context.h"
 #include "VocBase/KeyGenerator.h"
-#include "VocBase/TraverserOptions.h"
 
 #include <velocypack/Iterator.h> 
 #include <velocypack/velocypack-aliases.h>

@@ -30,11 +30,11 @@
 #include "Basics/VelocyPackHelper.h"
 #include "Cluster/ClusterComm.h"
 #include "Cluster/ClusterInfo.h"
+#include "Graph/Traverser.h"
 #include "Indexes/Index.h"
 #include "Utils/CollectionNameResolver.h"
 #include "Utils/OperationOptions.h"
 #include "VocBase/LogicalCollection.h"
-#include "VocBase/Traverser.h"
 #include "VocBase/ticks.h"
 
 #include <velocypack/Buffer.h>

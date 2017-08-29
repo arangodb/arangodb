@@ -386,7 +386,8 @@ class Methods {
   CollectionNameResolver const* resolver() const;
   
 #ifdef USE_ENTERPRISE
-  virtual bool isInaccessibleCollection(TRI_voc_cid_t cid) { return false; }
+  virtual bool isInaccessibleCollectionId(TRI_voc_cid_t cid) { return false; }
+  virtual bool isInaccessibleCollection(std::string const& cid) { return false; }
 #endif
 
  private:

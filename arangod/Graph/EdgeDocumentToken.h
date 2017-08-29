@@ -34,99 +34,120 @@ namespace arangodb {
 namespace graph {
 
 /// @brief Pure virtual abstract class to uniquely identify an edge
-///        Has specific implementations for Cluster adn SingleServer
-
 struct EdgeDocumentToken {
- public:
-  EdgeDocumentToken();
-
-  virtual ~EdgeDocumentToken();
-
-  virtual bool equals(EdgeDocumentToken const* other) const = 0;
-
-};
-
-/// @brief SingleServer identifier for edge documents
-///        Contains information about collection as
-///        well as the document token.
-
-struct SingleServerEdgeDocumentToken : public EdgeDocumentToken {
-
- private:
-  TRI_voc_cid_t const _cid;
-  DocumentIdentifierToken const _token;
-
- public:
-
-  SingleServerEdgeDocumentToken();
-
-  SingleServerEdgeDocumentToken(TRI_voc_cid_t const cid,
-                                DocumentIdentifierToken const token);
-
-  ~SingleServerEdgeDocumentToken();
-
-  TRI_voc_cid_t cid() const;
-
-  DocumentIdentifierToken token() const;
-
-  bool equals(EdgeDocumentToken const* other) const override;
-};
-
-/// @brief Cluster identifier for Documents
-///        Contains full _id string as StringRef
-
-struct ClusterEdgeDocumentToken : public EdgeDocumentToken {
-
- private:
-  StringRef const _id;
-
- public:
-
-  ClusterEdgeDocumentToken();
-
-  explicit ClusterEdgeDocumentToken(StringRef const id);
-
-  ~ClusterEdgeDocumentToken();
-
-  StringRef id() const;
-
-  bool equals(EdgeDocumentToken const* other) const override;
-};
-
-}
-}
-
-/*
-inline bool operator==(arangodb::graph::EdgeDocumentToken const& lhs,
-                         arangodb::graph::EdgeDocumentToken const& rhs) {
-  return rhs.token() == lhs.token() && rhs.cid() == lhs.cid();
-}
-
-inline bool operator!=(arangodb::graph::EdgeDocumentToken const& lhs,
-                       arangodb::graph::EdgeDocumentToken const& rhs) {
-  return !(lhs == rhs);
-}
-
-namespace std {
-
-template <>
-struct hash<arangodb::graph::EdgeDocumentToken> {
-  size_t operator()(arangodb::graph::EdgeDocumentToken const& value) const
-      noexcept {
-    return static_cast<size_t>(value.token()._data ^ value.cid());
+  
+  EdgeDocumentToken() noexcept
+    : _data(0, DocumentIdentifierToken()) {}
+  
+  EdgeDocumentToken(EdgeDocumentToken&& edtkn) noexcept {
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+    _type = edtkn._type;
+#endif
+    memmove(&(this->_data), &(edtkn._data), sizeof(TokenData));
   }
-};
-
-template <>
-struct equal_to<arangodb::graph::EdgeDocumentToken> {
-  bool operator()(arangodb::graph::EdgeDocumentToken const& lhs,
-                  arangodb::graph::EdgeDocumentToken const& rhs) const
-      noexcept {
-    return lhs.token() == rhs.token() && lhs.cid() == rhs.cid();
+  
+  EdgeDocumentToken(EdgeDocumentToken const& edtkn) noexcept {
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+    _type = edtkn._type;
+#endif
+    memcpy(&(this->_data), &(edtkn._data), sizeof(TokenData));
   }
+  
+  EdgeDocumentToken(TRI_voc_cid_t const cid,
+                    DocumentIdentifierToken const token) noexcept : _data(cid, token) {
+    _type = EdgeDocumentToken::TokenType::LOCAL;
+  }
+  
+  EdgeDocumentToken(arangodb::StringRef&& vid) noexcept : _data(vid) {
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+    _type = EdgeDocumentToken::TokenType::COORDINATOR;
+#endif
+  }
+  
+  EdgeDocumentToken& operator=(EdgeDocumentToken&& edtkn) {
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+    _type = edtkn._type;
+#endif
+    memcpy(&(this->_data), &(edtkn._data), sizeof(TokenData));
+    return *this;
+  }
+  
+  TRI_voc_cid_t cid() const {
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+    TRI_ASSERT(_type == TokenType::LOCAL);
+#endif
+    TRI_ASSERT(_data.local.cid != 0);
+    return _data.local.cid;
+  }
+  
+  DocumentIdentifierToken token() const {
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+    TRI_ASSERT(_type == TokenType::LOCAL);
+#endif
+    TRI_ASSERT(_data.local.token != 0);
+    return _data.local.token;
+  }
+  
+  StringRef const& vid() const {
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+    TRI_ASSERT(_type == TokenType::COORDINATOR);
+#endif
+    TRI_ASSERT(_data.vertexId.length() != 0);
+    return _data.vertexId;
+  }
+  
+  bool equalsCoordinator(EdgeDocumentToken const& other) const {
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+    TRI_ASSERT(_type == TokenType::COORDINATOR);
+#endif
+    return _data.vertexId == other.vid();
+  }
+  
+  bool equalsLocal(EdgeDocumentToken const& other) const {
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+    TRI_ASSERT(_type == TokenType::LOCAL);
+#endif
+    return _data.local.cid == other.cid() && _data.local.token == other.token();
+  }
+  
+private:
+  
+  /// Identifying information for edge documents
+  /// contains information about collection as well as
+  /// the document token only valid on a dbserver or single server
+  struct LocalData {
+    TRI_voc_cid_t cid;
+    DocumentIdentifierToken token;
+    ~LocalData() {}
+  };
+  
+  /// fixed size union, works for both single server and
+  /// cluster case
+  union TokenData {
+    EdgeDocumentToken::LocalData local;
+    arangodb::StringRef vertexId;
+    
+    TokenData() {}
+    TokenData(arangodb::StringRef const& vid) : vertexId(vid) {}
+    TokenData(TRI_voc_cid_t cid, DocumentIdentifierToken tk) {
+      local.cid = cid;
+      local.token = tk;
+    }
+    ~TokenData() {}
+  };
+  
+  TokenData _data;
+  
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  enum TokenType : uint8_t {
+    NONE,
+    LOCAL,
+    COORDINATOR
+  };
+  TokenType _type;
+#endif
 };
+}
 
-}  // namespace std
-
-*/
+}
 #endif

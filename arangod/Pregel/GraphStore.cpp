@@ -24,6 +24,7 @@
 
 #include "Basics/Common.h"
 #include "Basics/MutexLocker.h"
+#include "Graph/EdgeCollectionInfo.h"
 #include "Pregel/CommonFormats.h"
 #include "Pregel/PregelFeature.h"
 #include "Pregel/TypedBuffer.h"
@@ -37,7 +38,6 @@
 #include "Utils/CollectionNameResolver.h"
 #include "Utils/OperationCursor.h"
 #include "Utils/OperationOptions.h"
-#include "VocBase/EdgeCollectionInfo.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/ManagedDocumentResult.h"
 #include "VocBase/ticks.h"
