@@ -543,7 +543,7 @@ def testStep(os, edition, mode, engine) {
                 // DO NOT INCREASE!!
                 def port = 0
                 unstashBinaries(os, edition)
-                port = getStartPort(os)
+                port = getStartPort(os) as Integer
                 echo "Using start port: ${port}"
                 timeout(60) {
                     try {
