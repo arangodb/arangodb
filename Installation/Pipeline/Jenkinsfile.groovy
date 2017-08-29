@@ -11,9 +11,9 @@ properties(
     ]]
 )
 
-def defaultLinux = false
+def defaultLinux = true
 def defaultMac = false
-def defaultWindows = true
+def defaultWindows = false
 def defaultBuild = true
 def defaultCleanBuild = false
 def defaultCommunity = true
