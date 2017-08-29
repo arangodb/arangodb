@@ -361,8 +361,6 @@ def getStartPort(os) {
     if (os == "windows") {
         return powershell (returnStdout: false, script: "Installation/Pipeline/port.ps1")
     } else {
-        sh "ls -al"
-        sh "ls -al Installation/Pipeline"
         return sh (returnStdout: true, script: "Installation/Pipeline/port.sh")
     }
 }
