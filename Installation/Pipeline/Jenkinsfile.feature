@@ -359,9 +359,9 @@ def jslint() {
 
 def getStartPort(os) {
     if (os == "windows") {
-        return powershell (returnStdout: false, script: "Installation/Pipeline/port.ps1")
+        return powershell (returnStdout: false, script: "Installation/Pipeline/port.ps1") as Integer
     } else {
-        return sh (returnStdout: true, script: "Installation/Pipeline/port.sh")
+        return sh (returnStdout: true, script: "Installation/Pipeline/port.sh") as Integer
     }
 }
 
@@ -543,7 +543,7 @@ def testStep(os, edition, mode, engine) {
                 // DO NOT INCREASE!!
                 def port = 0
                 unstashBinaries(os, edition)
-                port = getStartPort(os) as Integer
+                port = getStartPort(os)
                 echo "Using start port: ${port}"
                 timeout(60) {
                     try {
