@@ -2973,6 +2973,21 @@ SECTION("Exists") {
     assertFilterFail("FOR d IN VIEW myView FILTER exists(d.name, 'type', 'asdfasdfa') RETURN d");
   }
 
+  // field + type + boolean
+  {
+    irs::Or expected;
+    auto& exists = expected.add<irs::by_column_existence>();
+    exists.field(mangleBool("name")).prefix_match(false);
+
+    assertFilterSuccess("FOR d IN VIEW myView FILTER exists(d.name, 'type', 'boolean') RETURN d", expected);
+    assertFilterSuccess("FOR d IN VIEW myView FILTER eXists(d.name, 'type', 'boolean') RETURN d", expected);
+
+    // invalid 3rd argument
+    assertFilterFail("FOR d IN VIEW myView FILTER exists(d.name, 'type', 'Boolean') RETURN d");
+    assertFilterFail("FOR d IN VIEW myView FILTER exists(d.name, 'type', 'BOOLEAN') RETURN d");
+    assertFilterFail("FOR d IN VIEW myView FILTER exists(d.name, 'type', 'asdfasdfa') RETURN d");
+  }
+
   // field + type + null
   {
     irs::Or expected;
@@ -3015,6 +3030,27 @@ SECTION("Exists") {
     assertFilterFail("FOR d IN VIEW myView FILTER exists(d.name, 'analyzer', 123.5) RETURN d");
     assertFilterFail("FOR d IN VIEW myView FILTER exists(d.name, 'analyzer', true) RETURN d");
     assertFilterFail("FOR d IN VIEW myView FILTER exists(d.name, 'analyzer', false) RETURN d");
+  }
+
+  // field + type + analyzer via []
+  {
+    irs::Or expected;
+    auto& exists = expected.add<irs::by_column_existence>();
+    exists.field(mangleString("name", "test_analyzer")).prefix_match(false);
+
+    assertFilterSuccess("FOR d IN VIEW myView FILTER exists(d['name'], 'analyzer', 'test_analyzer') RETURN d", expected);
+    assertFilterSuccess("FOR d IN VIEW myView FILTER eXists(d['name'], 'analyzer', 'test_analyzer') RETURN d", expected);
+
+    // invalid 3rd argument
+    assertFilterFail("FOR d IN VIEW myView FILTER exists(d['name'], 'analyzer', 'foo') RETURN d");
+    assertFilterFail("FOR d IN VIEW myView FILTER exists(d['name'], 'analyzer', 'invalid') RETURN d");
+    assertFilterFail("FOR d IN VIEW myView FILTER exists(d['name'], 'analyzer', '') RETURN d");
+    assertFilterFail("FOR d IN VIEW myView FILTER exists(d['name'], 'analyzer', d) RETURN d");
+    assertFilterFail("FOR d IN VIEW myView FILTER exists(d['name'], 'analyzer', null) RETURN d");
+    assertFilterFail("FOR d IN VIEW myView FILTER exists(d['name'], 'analyzer', 123) RETURN d");
+    assertFilterFail("FOR d IN VIEW myView FILTER exists(d['name'], 'analyzer', 123.5) RETURN d");
+    assertFilterFail("FOR d IN VIEW myView FILTER exists(d['name'], 'analyzer', true) RETURN d");
+    assertFilterFail("FOR d IN VIEW myView FILTER exists(d['name'], 'analyzer', false) RETURN d");
   }
 
   // field + type + identity analyzer

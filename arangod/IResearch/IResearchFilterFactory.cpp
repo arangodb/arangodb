@@ -811,6 +811,12 @@ bool fromFuncExists(
             }
           },
           {
+            irs::make_hashed_ref(irs::string_ref("boolean"), std::hash<irs::string_ref>()),
+            [] (std::string& name) {
+              arangodb::iresearch::kludge::mangleBool(name);
+            }
+          },
+          {
             irs::make_hashed_ref(irs::string_ref("null"), std::hash<irs::string_ref>()),
             [] (std::string& name) {
               arangodb::iresearch::kludge::mangleNull(name);
