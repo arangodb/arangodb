@@ -340,13 +340,13 @@ def unstashBinaries(os, edition) {
 buildJenkins = [
     "linux": "linux && build",
     "mac" : "mac",
-    "windows": "windows-real"
+    "windows": "windows"
 ]
 
 testJenkins = [
     "linux": "linux && tests",
     "mac" : "mac",
-    "windows": "windows-real"
+    "windows": "windows"
 ]
 
 // -----------------------------------------------------------------------------
