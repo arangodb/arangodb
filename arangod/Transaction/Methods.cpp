@@ -2674,12 +2674,18 @@ std::unique_ptr<OperationCursor> transaction::Methods::indexScan(
   }
 
   TRI_voc_cid_t cid = addCollectionAtRuntime(collectionName);
-  LogicalCollection* logical = documentCollection(trxCollection(cid));
+  TransactionCollection* trxColl = trxCollection(cid);
+  if (trxColl == nullptr) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+      TRI_ERROR_INTERNAL, "unable to determine transaction collection");
+  }
+  LogicalCollection* logical = documentCollection(trxColl);
+  TRI_ASSERT(logical != nullptr);
 
-  pinData(cid);  // will throw when it fails
+  // will throw when it fails
+  _transactionContextPtr->pinData(logical);
 
   std::unique_ptr<IndexIterator> iterator = nullptr;
-
   switch (cursorType) {
     case CursorType::ANY: {
       iterator = logical->getAnyIterator(this, mmdr);

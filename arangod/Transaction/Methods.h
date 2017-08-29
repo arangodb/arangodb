@@ -355,6 +355,7 @@ class Methods {
   /// @brief factory for OperationCursor objects
   /// note: the caller must have read-locked the underlying collection when
   /// calling this method
+  ENTERPRISE_VIRT
   std::unique_ptr<OperationCursor> indexScan(std::string const& collectionName,
                                              CursorType cursorType,
                                              ManagedDocumentResult*,

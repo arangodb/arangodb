@@ -110,8 +110,6 @@ static int runServer(int argc, char** argv, ArangoGlobalContext &context) {
     context.installSegv();
     context.runStartupChecks();
     
-    usleep(5000000);
-
     std::string name = context.binaryName();
 
     auto options = std::make_shared<options::ProgramOptions>(

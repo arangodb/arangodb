@@ -235,7 +235,7 @@ typedef long suseconds_t;
 #include "Basics/win-utils.h"
 #else
 inline void ADB_WindowsEntryFunction() {}
-inline void ADB_WindowsExitFunction(int exitCode, void* data) {}
+inline void ADB_WindowsExitFunction(int, void*) {}
 #endif
 
 // -----------------------------------------------------------------------------
