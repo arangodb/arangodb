@@ -61,7 +61,11 @@ function endpoints (options) {
       return 'unix://./arangodb-tmp.sock';
     }
   };
-
+  // we append one cleanup directory for the invoking logic...
+  let dummyDir = fs.join(fs.getTempPath(), 'enpointsdummy');
+  fs.makeDirectory(dummyDir);
+  pu.cleanupDBDirectoriesAppend(dummyDir);
+  console.log(dummyDir);
   return Object.keys(endpoints).reduce((results, endpointName) => {
     results.failed = 0;
     let testName = 'endpoint-' + endpointName;
@@ -96,6 +100,8 @@ function endpoints (options) {
 
         if (!result.status) {
           result.failed += 1;
+        } else {
+          pu.cleanupLastDirectory(options);
         }
         return result;
       }
