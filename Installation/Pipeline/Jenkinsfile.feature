@@ -544,10 +544,10 @@ def testStep(edition, os, mode, engine) {
                 // even if the features are green this is completely broken performance wise..
                 // DO NOT INCREASE!!
                 timeout(60) {
-                    def port = getStartPort(os) as Integer
-                    echo "PORT: ${port}"
                     try {
                         unstashBinaries(edition, os)
+                        def port = getStartPort(os) as Integer
+                        echo "Using start port: ${port}"
                         testEdition(edition, os, mode, engine, port)
                     }
                     finally {
