@@ -542,19 +542,19 @@ SECTION("a successfully started job should finish immediately and set everything
     REQUIRE(std::string(writes.get("/arango/Plan/Collections/" + DATABASE + "/" + COLLECTION + "/shards/" + SHARD).typeName()) == "array");
     REQUIRE(writes.get("/arango/Plan/Collections/" + DATABASE + "/" + COLLECTION + "/shards/" + SHARD).length() == 3);
     REQUIRE(writes.get("/arango/Plan/Collections/" + DATABASE + "/" + COLLECTION + "/shards/" + SHARD)[0].copyString() == "leader");
-    REQUIRE(writes.get("/arango/Plan/Collections/" + DATABASE + "/" + COLLECTION + "/shards/" + SHARD)[1].copyString() == "free");
+    REQUIRE(writes.get("/arango/Plan/Collections/" + DATABASE + "/" + COLLECTION + "/shards/" + SHARD)[1].copyString() == FREE_SERVER2);
     REQUIRE(writes.get("/arango/Plan/Collections/" + DATABASE + "/" + COLLECTION + "/shards/" + SHARD)[2].copyString() == "follower2");
     REQUIRE(writes.get("/arango/Plan/Version").get("op").copyString() == "increment");
     REQUIRE(std::string(writes.get("/arango/Target/Finished/1").typeName()) == "object");
 
     auto preconditions = q->slice()[0][1];
     REQUIRE(std::string(preconditions.typeName()) == "object");
-    REQUIRE(preconditions.get("/arango/Supervision/Health/free/Status").get("old").copyString() == "GOOD");
+    REQUIRE(preconditions.get("/arango/Supervision/Health/free2/Status").get("old").copyString() == "GOOD");
     REQUIRE(std::string(preconditions.get("/arango/Plan/Collections/" + DATABASE + "/" + COLLECTION + "/shards/" + SHARD).get("old").typeName()) == "array");
     REQUIRE(preconditions.get("/arango/Plan/Collections/" + DATABASE + "/" + COLLECTION + "/shards/" + SHARD).get("old")[0].copyString() == "leader");
     REQUIRE(preconditions.get("/arango/Plan/Collections/" + DATABASE + "/" + COLLECTION + "/shards/" + SHARD).get("old")[1].copyString() == "follower1");
     REQUIRE(preconditions.get("/arango/Plan/Collections/" + DATABASE + "/" + COLLECTION + "/shards/" + SHARD).get("old")[2].copyString() == "follower2");
-    REQUIRE(preconditions.get("/arango/Supervision/DBServers/free").get("oldEmpty").getBool() == true);
+    REQUIRE(preconditions.get("/arango/Supervision/DBServers/free2").get("oldEmpty").getBool() == true);
     REQUIRE(preconditions.get("/arango/Supervision/Shards/s99").get("oldEmpty").getBool() == true);
 
     return fakeTransResult;
@@ -629,17 +629,17 @@ SECTION("the job should handle distributeShardsLike") {
     REQUIRE(std::string(writes.get("/arango/Plan/Collections/" + DATABASE + "/" + COLLECTION + "/shards/" + SHARD).typeName()) == "array");
     REQUIRE(writes.get("/arango/Plan/Collections/" + DATABASE + "/" + COLLECTION + "/shards/" + SHARD).length() == 3);
     REQUIRE(writes.get("/arango/Plan/Collections/" + DATABASE + "/" + COLLECTION + "/shards/" + SHARD)[0].copyString() == "leader");
-    REQUIRE(writes.get("/arango/Plan/Collections/" + DATABASE + "/" + COLLECTION + "/shards/" + SHARD)[1].copyString() == "free");
+    REQUIRE(writes.get("/arango/Plan/Collections/" + DATABASE + "/" + COLLECTION + "/shards/" + SHARD)[1].copyString() == FREE_SERVER2);
     REQUIRE(writes.get("/arango/Plan/Collections/" + DATABASE + "/" + COLLECTION + "/shards/" + SHARD)[2].copyString() == "follower2");
     REQUIRE(std::string(writes.get("/arango/Plan/Collections/" + DATABASE + "/linkedcollection1/shards/s100").typeName()) == "array");
     REQUIRE(writes.get("/arango/Plan/Collections/" + DATABASE + "/linkedcollection1/shards/s100").length() == 3);
     REQUIRE(writes.get("/arango/Plan/Collections/" + DATABASE + "/linkedcollection1/shards/s100")[0].copyString() == "leader");
-    REQUIRE(writes.get("/arango/Plan/Collections/" + DATABASE + "/linkedcollection1/shards/s100")[1].copyString() == "free");
+    REQUIRE(writes.get("/arango/Plan/Collections/" + DATABASE + "/linkedcollection1/shards/s100")[1].copyString() == FREE_SERVER2);
     REQUIRE(writes.get("/arango/Plan/Collections/" + DATABASE + "/linkedcollection1/shards/s100")[2].copyString() == "follower2");
     REQUIRE(std::string(writes.get("/arango/Plan/Collections/" + DATABASE + "/linkedcollection2/shards/s101").typeName()) == "array");
     REQUIRE(writes.get("/arango/Plan/Collections/" + DATABASE + "/linkedcollection2/shards/s101").length() == 3);
     REQUIRE(writes.get("/arango/Plan/Collections/" + DATABASE + "/linkedcollection2/shards/s101")[0].copyString() == "leader");
-    REQUIRE(writes.get("/arango/Plan/Collections/" + DATABASE + "/linkedcollection2/shards/s101")[1].copyString() == "free");
+    REQUIRE(writes.get("/arango/Plan/Collections/" + DATABASE + "/linkedcollection2/shards/s101")[1].copyString() == FREE_SERVER2);
     REQUIRE(writes.get("/arango/Plan/Collections/" + DATABASE + "/linkedcollection2/shards/s101")[2].copyString() == "follower2");
 
     REQUIRE(writes.get("/arango/Plan/Version").get("op").copyString() == "increment");
@@ -647,12 +647,12 @@ SECTION("the job should handle distributeShardsLike") {
 
     auto preconditions = q->slice()[0][1];
     REQUIRE(std::string(preconditions.typeName()) == "object");
-    REQUIRE(preconditions.get("/arango/Supervision/Health/free/Status").get("old").copyString() == "GOOD");
+    REQUIRE(preconditions.get("/arango/Supervision/Health/free2/Status").get("old").copyString() == "GOOD");
     REQUIRE(std::string(preconditions.get("/arango/Plan/Collections/" + DATABASE + "/" + COLLECTION + "/shards/" + SHARD).get("old").typeName()) == "array");
     REQUIRE(preconditions.get("/arango/Plan/Collections/" + DATABASE + "/" + COLLECTION + "/shards/" + SHARD).get("old")[0].copyString() == "leader");
     REQUIRE(preconditions.get("/arango/Plan/Collections/" + DATABASE + "/" + COLLECTION + "/shards/" + SHARD).get("old")[1].copyString() == "follower1");
     REQUIRE(preconditions.get("/arango/Plan/Collections/" + DATABASE + "/" + COLLECTION + "/shards/" + SHARD).get("old")[2].copyString() == "follower2");
-    REQUIRE(preconditions.get("/arango/Supervision/DBServers/free").get("oldEmpty").getBool() == true);
+    REQUIRE(preconditions.get("/arango/Supervision/DBServers/free2").get("oldEmpty").getBool() == true);
     REQUIRE(preconditions.get("/arango/Supervision/Shards/s99").get("oldEmpty").getBool() == true);
 
     return fakeTransResult;
