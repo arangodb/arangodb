@@ -555,7 +555,7 @@ def testStep(os, edition, mode, engine) {
                     powershell "copy build\\bin\\RelWithDebInfo\\* build\\bin"
                 }
 
-                fileOpfileOperations([folderDeleteOperation('tmp'), folderDeleteOperation('out'), folderCreateOperation('tmp'),  fileDeleteOperation(excludes: '', includes: 'core.*,*.dmp')])
+                fileOperations([folderDeleteOperation('tmp'), folderDeleteOperation('out'), folderCreateOperation('tmp'),  fileDeleteOperation(excludes: '', includes: 'core.*,*.dmp')])
                 timeout(60) {
                     try {
                         executeTests(os, edition, mode, engine, port)
@@ -805,7 +805,7 @@ def runEdition(os, edition) {
 
                 timeout(90) {
                     buildEdition(os, edition)
-                    fileOpfileOperations([folderDeleteOperation('js/node/node_modules')])
+                    fileOperations([folderDeleteOperation('js/node/node_modules')])
                     if (os == "windows") {
                         powershell "mv js/node/node_modules-bundled js/node/node_modules"
                     } else {
