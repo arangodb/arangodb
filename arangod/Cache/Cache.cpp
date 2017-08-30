@@ -270,7 +270,7 @@ bool Cache::reclaimMemory(uint64_t size) {
   return underLimit;
 }
 
-uint32_t Cache::hashKey(void const* key, uint32_t keySize) const {
+uint32_t Cache::hashKey(void const* key, size_t keySize) const {
   return (std::max)(static_cast<uint32_t>(1),
                     fasthash32(key, keySize, 0xdeadbeefUL));
 }
