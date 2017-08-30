@@ -34,6 +34,7 @@ const optionsDocumentation = [
 const fs = require('fs');
 const pu = require('@arangodb/process-utils');
 const tu = require('@arangodb/test-utils');
+const _ = require('lodash');
 
 const toArgv = require('internal').toArgv;
 
@@ -47,7 +48,7 @@ const RESET = require('internal').COLORS.COLOR_RESET;
 function runArangodRecovery (instanceInfo, options, script, setup, count) {
   if (!instanceInfo.recoveryArgs) {
     let tempDir = fs.getTempPath();
-    let td = fs.join(tempDir, `${count}`)
+    let td = fs.join(tempDir, `${count}`);
     if (setup) {
       pu.cleanupDBDirectoriesAppend(td);
     }
