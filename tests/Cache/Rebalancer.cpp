@@ -63,11 +63,11 @@ TEST_CASE("cache::Rebalancer", "[cache][!hide][longRunning]") {
     bool doneRebalancing = false;
     auto rebalanceWorker = [&rebalancer, &doneRebalancing]() -> void {
       while (!doneRebalancing) {
-        bool rebalanced = rebalancer.rebalance();
-        if (rebalanced) {
+        int status = rebalancer.rebalance();
+        if (status != TRI_ERROR_ARANGO_BUSY) {
           usleep(500 * 1000);
         } else {
-          usleep(100);
+          usleep(10 * 1000);
         }
       }
     };
@@ -185,11 +185,11 @@ TEST_CASE("cache::Rebalancer", "[cache][!hide][longRunning]") {
     bool doneRebalancing = false;
     auto rebalanceWorker = [&rebalancer, &doneRebalancing]() -> void {
       while (!doneRebalancing) {
-        bool rebalanced = rebalancer.rebalance();
-        if (rebalanced) {
+        int status = rebalancer.rebalance();
+        if (status != TRI_ERROR_ARANGO_BUSY) {
           usleep(500 * 1000);
         } else {
-          usleep(100);
+          usleep(10 * 1000);
         }
       }
     };

@@ -252,7 +252,7 @@ class Manager {
   void unprepareTask(TaskEnvironment environment);
 
   // periodically run to rebalance allocations globally
-  bool rebalance(bool onlyCalculate = false);
+  int rebalance(bool onlyCalculate = false);
 
   // helpers for global resizing
   void shrinkOvergrownCaches(TaskEnvironment environment);

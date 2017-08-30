@@ -196,7 +196,7 @@ bool Manager::resize(uint64_t newGlobalLimit) {
     _lock.writeUnlock();
     return false;
   }
-  
+
   bool success = true;
   if (!isOperational() || globalProcessRunning()) {
     // shut(ting) down or still have another global process running already
@@ -512,14 +512,20 @@ void Manager::unprepareTask(Manager::TaskEnvironment environment) {
   _outstandingTasks--;
 }
 
-bool Manager::rebalance(bool onlyCalculate) {
+int Manager::rebalance(bool onlyCalculate) {
   if (!onlyCalculate) {
     _lock.writeLock();
-    if (_caches.size() == 0
-        || !isOperational()
-        || globalProcessRunning()) {
+    if (_caches.size() == 0) {
       _lock.writeUnlock();
-      return false;
+      return TRI_ERROR_NO_ERROR;
+    }
+    if (!isOperational()) {
+      _lock.writeUnlock();
+      return TRI_ERROR_SHUTTING_DOWN;
+    }
+    if (globalProcessRunning()) {
+      _lock.writeUnlock();
+      return TRI_ERROR_ARANGO_BUSY;
     }
 
     // start rebalancing
@@ -568,7 +574,7 @@ bool Manager::rebalance(bool onlyCalculate) {
     _lock.writeUnlock();
   }
 
-  return true;
+  return TRI_ERROR_NO_ERROR;
 }
 
 void Manager::shrinkOvergrownCaches(Manager::TaskEnvironment environment) {
@@ -634,7 +640,7 @@ void Manager::resizeCache(Manager::TaskEnvironment environment,
     }
     return;
   }
-  
+
   bool success = metadata->adjustLimits(newLimit, metadata->hardUsageLimit);
   TRI_ASSERT(success);
   TRI_ASSERT(!metadata->isResizing());
@@ -743,7 +749,7 @@ std::shared_ptr<Manager::PriorityList> Manager::priorityList() {
 
   double uniformMarginalWeight = 0.2 / static_cast<double>(_caches.size());
   double baseWeight = std::max(minimumWeight, uniformMarginalWeight);
-  
+
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   LOG_TOPIC(DEBUG, Logger::CACHE) << "uniformMarginalWeight " << uniformMarginalWeight;
   LOG_TOPIC(DEBUG, Logger::CACHE) << "baseWeight " << baseWeight;
