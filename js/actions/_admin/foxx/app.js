@@ -54,7 +54,13 @@ function proxyLocal (method, url, qs, body, headers = {}) {
   if (body) {
     headers['content-length'] = body.length;
   }
-  const res = request({method, url, qs, headers, body});
+  const res = request({
+    method,
+    url,
+    qs,
+    headers,
+    body
+  });
   if (res.json && res.json.errorNum) {
     throw new ArangoError(res.json);
   }
@@ -88,7 +94,7 @@ function resolveAppInfo (appInfo) {
     const tempFile = fmu.zipDirectory(appInfo);
     const buffer = fs.readFileSync(tempFile);
     try {
-      fs.remove(tempFile);
+      fs.removeDirectoryRecursive(tempFile);
     } catch (e) {
       console.warnStack(e, `Failed to remove temporary file: ${tempFile}`);
     }

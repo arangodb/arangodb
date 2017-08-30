@@ -1321,12 +1321,12 @@ int ClusterInfo::createCollectionCoordinator(std::string const& databaseName,
     MUTEX_LOCKER(locker, *cacheMutex);
 
     auto res = ac.sendTransactionWithFailover(transaction);
-    auto result = res.slice();
 
     // Only if not precondition failed
     if (!res.successful()) {
       if (res.httpCode() ==
           (int)arangodb::rest::ResponseCode::PRECONDITION_FAILED) {
+        auto result = res.slice();
         AgencyCommResult ag = ac.getValues("/");
 
         if (result.isArray() && result.length() > 0) {
@@ -1761,7 +1761,7 @@ int ClusterInfo::ensureIndexCoordinator(
       }
     }
 
-    if (!planValue) {
+    if (planValue==nullptr) {
       // hmm :S both empty :S did somebody else clean up? :S
       // should not happen?
       return errorCode;

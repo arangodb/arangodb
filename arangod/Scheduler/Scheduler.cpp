@@ -198,12 +198,14 @@ bool Scheduler::start(ConditionVariable* cv) {
   TRI_ASSERT(_nrMinimum <= _nrMaximum);
 
   for (uint64_t i = 0; i < _nrMinimum; ++i) {
-    MUTEX_LOCKER(locker, _threadCreateLock);
-
-    incRunning();
+    {
+      MUTEX_LOCKER(locker, _threadCreateLock);
+      incRunning();
+    }
     try {
       startNewThread();
     } catch (...) {
+      MUTEX_LOCKER(locker, _threadCreateLock);
       decRunning();
       throw;
     }
@@ -281,6 +283,9 @@ bool Scheduler::stopThreadIfTooMany(double now) {
   // make sure no extra threads are created while we check the timestamp
   // and while we modify nrRunning
   
+  uint64_t const queueCap = std::max(uint64_t(1), uint64_t(_nrMaximum / 4));
+  uint64_t const nrQueued = std::min(_nrQueued.load(), queueCap);
+  
   MUTEX_LOCKER(locker, _threadCreateLock);
   
   // fetch all counters in one atomic operation
@@ -288,7 +293,6 @@ bool Scheduler::stopThreadIfTooMany(double now) {
   uint64_t const nrRunning = numRunning(counters);
   uint64_t const nrBlocked = numBlocked(counters);
   uint64_t const nrWorking = numWorking(counters);
-  uint64_t const nrQueued = _nrQueued;
 
   if (nrRunning <= _nrMinimum + nrBlocked) {
     // don't stop a thread if we already reached the minimum 
@@ -308,7 +312,7 @@ bool Scheduler::stopThreadIfTooMany(double now) {
   
   // set the all busy stamp. this avoids that we shut down all threads
   // at the same time
-  if (_lastAllBusyStamp < MIN_SECONDS / 2.0) {
+  if (_lastAllBusyStamp < now - MIN_SECONDS / 2.0) {
     _lastAllBusyStamp = now - MIN_SECONDS / 2.0;
   }
 
@@ -370,23 +374,34 @@ void Scheduler::rebalanceThreads() {
   } else if (count % 5 == 0) {
     LOG_TOPIC(TRACE, Logger::THREADS) << "rebalancing threads: " << infoStatus();
   }
+      
+  uint64_t const queueCap = std::max(uint64_t(1), uint64_t(_nrMaximum / 4));
 
   while (true) {
     {
       double const now = TRI_microtime();
+      
+      uint64_t const nrQueued = std::min(_nrQueued.load(), queueCap);
 
       MUTEX_LOCKER(locker, _threadCreateLock);
 
       uint64_t const counters = _counters.load();
       uint64_t const nrRunning = numRunning(counters);
       uint64_t const nrWorking = numWorking(counters);
-      uint64_t const nrQueued = _nrQueued;
+      uint64_t const nrBlocked = numBlocked(counters);
 
-      if (nrRunning >= std::max(_nrMinimum, nrWorking + nrQueued)) {
+      if (nrRunning >= std::max(_nrMinimum, nrWorking + nrQueued)) { // + std::min(nrBlocked, uint64_t(8)))) {
+        // all threads are working, and none are blocked. so there is no
+        // need to start a new thread now
         if (nrWorking == nrRunning) {
-          // all threads maxed out
+          // still note that all threads are maxed out
           _lastAllBusyStamp = now;
         }
+        break;
+      }
+
+      if (nrRunning >= _nrMaximum + nrBlocked) {
+        // reached the maximum now
         break;
       }
     
@@ -394,8 +409,10 @@ void Scheduler::rebalanceThreads() {
         // do not start any new threads in case we are already shutting down
         break;
       }
+      
+      // LOG_TOPIC(ERR, Logger::THREADS) << "starting new thread. nrRunning: " << nrRunning << ", nrWorking: " << nrWorking << ", nrBlocked: " << nrBlocked << ", nrQueued: " << nrQueued;
 
-      // all threads maxed out
+      // all threads are maxed out
       _lastAllBusyStamp = now;
       // increase nrRunning by one here already, while holding the lock
       incRunning();

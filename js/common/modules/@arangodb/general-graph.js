@@ -2049,7 +2049,7 @@ exports._create = function (graphName, edgeDefinitions, orphanCollections, optio
   db._flushCache();
   let collections = findOrCreateCollectionsByEdgeDefinitions(edgeDefinitions, false, options);
   orphanCollections.forEach(
-    (oC, options) => {
+    (oC) => {
       findOrCreateCollectionByName(oC, ArangoCollection.TYPE_DOCUMENT, false, options);
     }
   );

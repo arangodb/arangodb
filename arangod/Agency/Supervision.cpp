@@ -76,6 +76,7 @@ static std::string const foxxmaster = "/Current/Foxxmaster";
 
 
 void Supervision::upgradeOne(Builder& builder) {
+  _lock.assertLockedByCurrentThread();
   // "/arango/Agency/Definition" not exists or is 0
   if (!_snapshot.has("Agency/Definition")) {
     { VPackArrayBuilder trx(&builder);
@@ -97,6 +98,7 @@ void Supervision::upgradeOne(Builder& builder) {
 }
 
 void Supervision::upgradeZero(Builder& builder) {
+  _lock.assertLockedByCurrentThread();
   // "/arango/Target/FailedServers" is still an array
   Slice fails = _snapshot(failedServersPrefix).slice();
   if (_snapshot(failedServersPrefix).slice().isArray()) {
@@ -118,6 +120,7 @@ void Supervision::upgradeZero(Builder& builder) {
 
 // Upgrade agency, guarded by wakeUp
 void Supervision::upgradeAgency() {
+  _lock.assertLockedByCurrentThread();
 
   Builder builder;
   {
@@ -149,6 +152,7 @@ void Supervision::upgradeAgency() {
 
 // Check all DB servers, guarded above doChecks
 std::vector<check_t> Supervision::checkDBServers() {
+  _lock.assertLockedByCurrentThread();
   std::vector<check_t> ret;
   auto const& machinesPlanned = _snapshot(planDBServersPrefix).children();
   auto const& serversRegistered =
@@ -310,7 +314,8 @@ std::vector<check_t> Supervision::checkDBServers() {
 
 // Check all coordinators, guarded above doChecks
 std::vector<check_t> Supervision::checkCoordinators() {
-
+  _lock.assertLockedByCurrentThread();
+  
   std::vector<check_t> ret;
   auto const& machinesPlanned = _snapshot(planCoordinatorsPrefix).children();
   auto const& serversRegistered =
@@ -457,18 +462,20 @@ std::vector<check_t> Supervision::checkCoordinators() {
 
 // Update local agency snapshot, guarded by callers
 bool Supervision::updateSnapshot() {
+  _lock.assertLockedByCurrentThread();
 
   if (_agent == nullptr || this->isStopping()) {
     return false;
   }
   
-  if (_agent->readDB().has(_agencyPrefix)) {
-    _snapshot = _agent->readDB().get(_agencyPrefix);
-  }
-  
-  if (_agent->transient().has(_agencyPrefix)) {
-    _transient = _agent->transient().get(_agencyPrefix);
-  } 
+  _agent->executeLocked([&]() {
+    if (_agent->readDB().has(_agencyPrefix)) {
+      _snapshot = _agent->readDB().get(_agencyPrefix);
+    }
+    if (_agent->transient().has(_agencyPrefix)) {
+      _transient = _agent->transient().get(_agencyPrefix);
+    } 
+  });
   
   return true;
   
@@ -476,6 +483,7 @@ bool Supervision::updateSnapshot() {
 
 // All checks, guarded by main thread
 bool Supervision::doChecks() {
+  _lock.assertLockedByCurrentThread();
   checkDBServers();
   checkCoordinators();
   return true;
@@ -494,19 +502,27 @@ void Supervision::run() {
       CONDITION_LOCKER(guard, _cv);
       _cv.wait(static_cast<uint64_t>(1000000 * _frequency));
     }
-    
+   
+    bool done = false; 
     MUTEX_LOCKER(locker, _lock);
-    if (_agent->readDB().has(supervisionNode)) {
-      try {
-        _snapshot = _agent->readDB().get(supervisionNode);
-        if (_snapshot.children().size() > 0) {
-          break;
+    _agent->executeLocked([&]() {
+      if (_agent->readDB().has(supervisionNode)) {
+        try {
+          _snapshot = _agent->readDB().get(supervisionNode);
+          if (_snapshot.children().size() > 0) {
+            done = true;
+          }
+        } catch (...) {
+          LOG_TOPIC(WARN, Logger::SUPERVISION) <<
+            "Main node in agency gone. Contact your db administrator.";
         }
-      } catch (...) {
-        LOG_TOPIC(WARN, Logger::SUPERVISION) <<
-          "Main node in agency gone. Contact your db administrator.";
       }
+    });
+            
+    if (done) {
+      break;
     }
+
     LOG_TOPIC(DEBUG, Logger::SUPERVISION) << "Waiting for ArangoDB to "
       "initialize its data.";
   }
@@ -518,13 +534,13 @@ void Supervision::run() {
 
     while (!this->isStopping()) {
 
-      // Get bunch of job IDs from agency for future jobs
-      if (_agent->leading() && (_jobId == 0 || _jobId == _jobIdMax)) {
-        getUniqueIds();  // cannot fail but only hang
-      }
-
       {
         MUTEX_LOCKER(locker, _lock);
+      
+        // Get bunch of job IDs from agency for future jobs
+        if (_agent->leading() && (_jobId == 0 || _jobId == _jobIdMax)) {
+          getUniqueIds();  // cannot fail but only hang
+        }
 
         updateSnapshot();
 
@@ -562,12 +578,14 @@ void Supervision::run() {
 
 // Guarded by caller
 bool Supervision::isShuttingDown() {
+  _lock.assertLockedByCurrentThread();
   return (_snapshot.has("Shutdown") && _snapshot("Shutdown").isBool()) ?
     _snapshot("/Shutdown").getBool() : false;
 }
 
 // Guarded by caller
 std::string Supervision::serverHealth(std::string const& serverName) {
+  _lock.assertLockedByCurrentThread();
   std::string const serverStatus(healthPrefix + serverName + "/Status");
   return (_snapshot.has(serverStatus)) ?
     _snapshot(serverStatus).getString() : std::string();
@@ -575,6 +593,8 @@ std::string Supervision::serverHealth(std::string const& serverName) {
 
 // Guarded by caller
 void Supervision::handleShutdown() {
+  _lock.assertLockedByCurrentThread();
+
   _selfShutdown = true;
   LOG_TOPIC(DEBUG, Logger::SUPERVISION) << "Waiting for clients to shut down";
   auto const& serversRegistered =
@@ -622,6 +642,7 @@ void Supervision::handleShutdown() {
 
 // Guarded by caller 
 bool Supervision::handleJobs() {
+  _lock.assertLockedByCurrentThread();
   // Do supervision
   
   shrinkCluster();
@@ -633,6 +654,7 @@ bool Supervision::handleJobs() {
 
 // Guarded by caller
 void Supervision::workJobs() {
+  _lock.assertLockedByCurrentThread();
 
   for (auto const& todoEnt : _snapshot(toDoPrefix).children()) {
     JobContext(
@@ -648,6 +670,7 @@ void Supervision::workJobs() {
 
 
 void Supervision::enforceReplication() {
+  _lock.assertLockedByCurrentThread();
   auto const& plannedDBs = _snapshot(planColPrefix).children();
 
   for (const auto& db_ : plannedDBs) { // Planned databases
@@ -721,6 +744,7 @@ void Supervision::enforceReplication() {
 }
 
 void Supervision::fixPrototypeChain(Builder& migrate) {
+  _lock.assertLockedByCurrentThread();
 
   auto const& snap = _snapshot;
 
@@ -763,6 +787,7 @@ void Supervision::fixPrototypeChain(Builder& migrate) {
 
 // Shrink cluster if applicable, guarded by caller
 void Supervision::shrinkCluster() {
+  _lock.assertLockedByCurrentThread();
 
   auto const& todo = _snapshot(toDoPrefix).children();
   auto const& pending = _snapshot(pendingPrefix).children();
@@ -863,6 +888,7 @@ bool Supervision::start(Agent* agent) {
 static std::string const syncLatest = "/Sync/LatestID";
 
 void Supervision::getUniqueIds() {
+  _lock.assertLockedByCurrentThread();
 
   size_t n = 10000;
 
@@ -907,28 +933,3 @@ void Supervision::beginShutdown() {
   CONDITION_LOCKER(guard, _cv);
   guard.broadcast();
 }
-
-
-void Supervision::missingPrototype() {
-
-  auto const& plannedDBs = _snapshot(planColPrefix).children();
-  //auto available = Job::availableServers(_snapshot);
-  
-  // key: prototype, value: clone
-  //std::multimap<std::string, std::string> likeness;
-  
-  for (const auto& db_ : plannedDBs) { // Planned databases
-    auto const& db = *(db_.second);
-    
-    for (const auto& col_ : db.children()) { // Planned collections
-      auto const& col = *(col_.second);
-      
-      auto prototype = col("distributeShardsLike").slice().copyString();
-      if (prototype.empty()) {
-        continue;
-      }
-      
-    }
-  }
-}
-

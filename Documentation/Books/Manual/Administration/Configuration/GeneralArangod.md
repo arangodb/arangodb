@@ -496,6 +496,23 @@ value, but it may go up as high as specified via the option `--javascript.v8-con
 When there are unused V8 contexts that linger around and the number of V8 contexts
 is greater than `--javascript.v8-contexts-minimum` the server's garbage collector 
 thread will automatically delete them.
+ 
+  
+`--javascript.v8-contexts-max-invocations`
+
+Specifies the maximum number of invocations after which a used V8 context is 
+disposed. The default value of `--javascript.v8-contexts-max-invocations` is 0, 
+meaning that the maximum number of invocations per context is unlimited. 
+
+`--javascript.v8-contexts-max-age`
+
+Specifies the time duration (in seconds) after which time a V8 context is disposed 
+automatically after its creation. If the time is elapsed, the context will be disposed.
+The default value for `--javascript.v8-contexts-max-age` is 60 seconds.
+
+If both `--javascript.v8-contexts-max-invocations` and `--javascript.v8-contexts-max-age`
+are set, then the context will be destroyed when either of the specified threshold 
+values is reached.
 
 
 ### Garbage collection frequency (time-based)

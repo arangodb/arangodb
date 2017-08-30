@@ -25,11 +25,21 @@
 // //////////////////////////////////////////////////////////////////////////////
 
 const functionsDocumentation = {
-  'fail': 'this job will always produce a failed result'
+  'fail'   : 'this job will always produce a failed result',
+  'success': 'this job will always produce a sucessfull result'
 };
+
 const optionsDocumentation = [
 ];
+
+const fs = require('fs');
+const pu = require('@arangodb/process-utils');
+
 function fail (options) {
+  const tmpDataDir = fs.getTempFile();
+  fs.makeDirectoryRecursive(tmpDataDir);
+  pu.cleanupDBDirectoriesAppend(tmpDataDir);
+  require('internal').print('created temporary data directory ' + tmpDataDir);
   return {
     failSuite: {
       status: false,
@@ -64,8 +74,50 @@ function fail (options) {
   };
 }
 
+function success (options) {
+  const tmpDataDir = fs.getTempFile();
+  fs.makeDirectoryRecursive(tmpDataDir);
+  pu.cleanupDBDirectoriesAppend(tmpDataDir);
+  require('internal').print('created temporary data directory ' + tmpDataDir);
+
+  return {
+    successSuite2: {
+      status: true,
+      total: 1,
+      message: 'this suite will always succeed.',
+      duration: 2,
+      failed: 1,
+      failTest: {
+        status: false,
+        total: 1,
+        duration: 1,
+        message: 'this testcase will always success.'
+      },
+      failSuccessTest: {
+        status: true,
+        duration: 1,
+        message: 'this testcase will always succeed, since its in the success testsuite.'
+      }
+    },
+    successSuite3: {
+      status: true,
+      total: 1,
+      message: 'this suite will always be successfull',
+      duration: 1,
+      failed: 0,
+      success: {
+        status: true,
+        message: 'this testcase will always be successfull',
+        duration: 1
+      }
+    }
+  };
+}
+
 function setup (testFns, defaultFns, opts, fnDocs, optionsDoc) {
   testFns['fail'] = fail;
+  testFns['success'] = success;
+
   for (var attrname in functionsDocumentation) { fnDocs[attrname] = functionsDocumentation[attrname]; }
   for (var i = 0; i < optionsDocumentation.length; i++) { optionsDoc.push(optionsDocumentation[i]); }
 }

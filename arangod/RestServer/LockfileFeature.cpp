@@ -24,6 +24,7 @@
 #include "Basics/Exceptions.h"
 #include "Basics/FileUtils.h"
 #include "Basics/files.h"
+#include "Basics/exitcodes.h"
 #include "Logger/Logger.h"
 #include "RestServer/DatabasePathFeature.h"
 
@@ -58,7 +59,7 @@ void LockfileFeature::start() {
       LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << "database is locked by process " <<
         otherPID << "; please stop it first and check that the lockfile '" << _lockFilename << "' goes away. If you are sure no other arangod process is running, please remove the lockfile '" << _lockFilename << "' and try again";
     }
-    FATAL_ERROR_EXIT();
+    FATAL_ERROR_EXIT_CODE(TRI_EXIT_COULD_NOT_LOCK);
   }
   
   if (TRI_ExistsFile(_lockFilename.c_str())) {
@@ -68,7 +69,7 @@ void LockfileFeature::start() {
       LOG_TOPIC(FATAL, arangodb::Logger::FIXME)
         << "failed to remove an abandoned lockfile in the database directory, please check the file permissions of the lockfile '"
         << _lockFilename << "': " << TRI_errno_string(res);
-      FATAL_ERROR_EXIT();
+    FATAL_ERROR_EXIT_CODE(TRI_EXIT_COULD_NOT_LOCK);
     }
   }
   res = TRI_CreateLockFile(_lockFilename.c_str());
@@ -77,7 +78,7 @@ void LockfileFeature::start() {
     LOG_TOPIC(FATAL, arangodb::Logger::FIXME)
       << "failed to lock the database directory using '"
       << _lockFilename << "': " << TRI_errno_string(res);
-    FATAL_ERROR_EXIT();
+    FATAL_ERROR_EXIT_CODE(TRI_EXIT_COULD_NOT_LOCK);
   }
 }
 

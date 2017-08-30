@@ -31,9 +31,10 @@ const functionsDocumentation = {
 const optionsDocumentation = [
   '   - `skipLdap` : if set to true the LDAP tests are skipped',
   '   - `ldapHost : Host/IP of the ldap server',
-  '   - `ldapPort : Port of the ldap server',
+  '   - `ldapPort : Port of the ldap server'
 ];
 
+const fs = require('fs');
 const pu = require('@arangodb/process-utils');
 const request = require('@arangodb/request');
 
@@ -190,8 +191,13 @@ function ldap (options) {
   }
 
   print(CYAN + 'LDAP tests...' + RESET);
+  // we append one cleanup directory for the invoking logic...
+  let dummyDir = fs.join(fs.getTempPath(), 'ldap_dummy');
+  fs.makeDirectory(dummyDir);
+  pu.cleanupDBDirectoriesAppend(dummyDir);
 
   for (const t of tests) {
+    let cleanup = true;
     const adbInstance = pu.startInstance('tcp', options, t.conf, 'ldap');
     if (adbInstance === false) {
       results.failed += 1;
@@ -218,6 +224,7 @@ function ldap (options) {
         failed: 1,
         status: false
       };
+      cleanup = false;
     } else {
       results[t.name] = {
         failed: 0,
@@ -225,6 +232,10 @@ function ldap (options) {
       };
     }
     pu.shutdownInstance(adbInstance, options);
+
+    if (cleanup) {
+      pu.cleanupLastDirectory(options);
+    }
   }
 
   print(results);
