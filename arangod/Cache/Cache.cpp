@@ -385,25 +385,22 @@ bool Cache::canResize() {
 }
 
 bool Cache::canMigrate() {
-  bool allowed = (_manager->ioService() != nullptr);
+  bool allowed = _state.lock(Cache::triesSlow);
   if (allowed) {
-    allowed = _state.lock(Cache::triesSlow);
-    if (allowed) {
-      if (isOperational()) {
-        if (_state.isSet(State::Flag::migrating)) {
-          allowed = false;
-        } else {
-          _metadata.lock();
-          if (_metadata.isSet(State::Flag::migrating)) {
-            allowed = false;
-          }
-          _metadata.unlock();
-        }
-      } else {
+    if (isOperational()) {
+      if (_state.isSet(State::Flag::migrating)) {
         allowed = false;
+      } else {
+        _metadata.lock();
+        if (_metadata.isSet(State::Flag::migrating)) {
+          allowed = false;
+        }
+        _metadata.unlock();
       }
-      _state.unlock();
+    } else {
+      allowed = false;
     }
+    _state.unlock();
   }
 
   return allowed;

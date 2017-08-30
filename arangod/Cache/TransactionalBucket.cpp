@@ -72,7 +72,7 @@ bool TransactionalBucket::isFull() const {
 }
 
 CachedValue* TransactionalBucket::find(uint32_t hash, void const* key,
-                                       uint32_t keySize, bool moveToFront) {
+                                       size_t keySize, bool moveToFront) {
   TRI_ASSERT(isLocked());
   CachedValue* result = nullptr;
 
@@ -112,7 +112,7 @@ void TransactionalBucket::insert(uint32_t hash, CachedValue* value) {
 }
 
 CachedValue* TransactionalBucket::remove(uint32_t hash, void const* key,
-                                         uint32_t keySize) {
+                                         size_t keySize) {
   TRI_ASSERT(isLocked());
   CachedValue* value = find(hash, key, keySize, false);
   if (value != nullptr) {
@@ -123,7 +123,7 @@ CachedValue* TransactionalBucket::remove(uint32_t hash, void const* key,
 }
 
 CachedValue* TransactionalBucket::blacklist(uint32_t hash, void const* key,
-                                            uint32_t keySize) {
+                                            size_t keySize) {
   TRI_ASSERT(isLocked());
   if (!haveOpenTransaction()) {
     return nullptr;

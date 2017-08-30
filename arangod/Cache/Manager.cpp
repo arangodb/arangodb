@@ -67,7 +67,7 @@ size_t Manager::hash_weak_ptr::operator()(
   return std::hash<decltype(sp)>()(sp);
 }
 
-Manager::Manager(boost::asio::io_service* ioService, uint64_t globalLimit,
+Manager::Manager(PostFn schedulerPost, uint64_t globalLimit,
                  bool enableWindowedStats)
     : _state(),
       _accessStats((globalLimit >= (1024 * 1024 * 1024))
@@ -89,7 +89,7 @@ Manager::Manager(boost::asio::io_service* ioService, uint64_t globalLimit,
       _spareTableAllocation(0),
       _globalAllocation(_fixedAllocation),
       _transactions(),
-      _ioService(ioService),
+      _schedulerPost(schedulerPost),
       _resizeAttempt(0),
       _outstandingTasks(0),
       _rebalancingTasks(0),
@@ -294,6 +294,8 @@ Transaction* Manager::beginTransaction(bool readOnly) {
 
 void Manager::endTransaction(Transaction* tx) { _transactions.end(tx); }
 
+bool Manager::post(std::function<void()> fn) { return _schedulerPost(fn); }
+
 std::tuple<bool, Metadata, std::shared_ptr<Table>> Manager::registerCache(
     uint64_t fixedSize, uint64_t maxSize) {
   TRI_ASSERT(_state.isLocked());
@@ -476,8 +478,6 @@ bool Manager::globalProcessRunning() const {
   TRI_ASSERT(_state.isLocked());
   return _state.isSet(State::Flag::rebalancing, State::Flag::resizing);
 }
-
-boost::asio::io_service* Manager::ioService() { return _ioService; }
 
 void Manager::prepareTask(Manager::TaskEnvironment environment) {
   _outstandingTasks++;
