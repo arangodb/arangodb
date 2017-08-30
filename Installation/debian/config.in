@@ -46,7 +46,7 @@ if test "$DO_CONFIGURE" = "yes"; then
                     ROOT_PW=""
                 else
                     db_input critical @CPACK_PACKAGE_NAME@/password_mismatch
-	            STATE=$(($STATE - 1))
+	            STATE=$(($STATE - 2))
                     db_set @CPACK_PACKAGE_NAME@/password_again ""
                 fi
 		;;
