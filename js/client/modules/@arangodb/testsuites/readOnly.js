@@ -164,28 +164,39 @@ const requests = [
     return bodies;
   };
 
-  let res = pu.run.arangoshCmd(options, adbInstance, {}, [
-          '--javascript.execute-string',
-          `const users = require('@arangodb/users');
-          users.save('test', '', true);
-          users.save('test2', '', true);
-          users.grantDatabase('test', '_system', 'ro');
-          users.grantCollection('test', '_system', 'testcol', 'ro');
+  const setup = () => {
+    arango.reconnect(adbInstance.arangods[0].endpoint, '_system', 'root', '');
+    const users = require('@arangodb/users');
+    users.save('test', '', true);
+    users.save('test2', '', true);
+    users.grantDatabase('test', '_system', 'ro');
+    users.grantCollection('test', '_system', 'testcol', 'ro');
+    db._createDatabase('testdb2');
+    db._useDatabase('testdb2');
+    db._createDocumentCollection('testcol2');
+    db._createDocumentCollection('testcol3');
+    db.testcol2.save({ _key: 'one' });
+    db.testcol3.save({ _key: 'one' });
+    users.grantDatabase('test', 'testdb2', 'ro');
+    users.grantCollection('test', 'testdb2', 'testcol2', 'ro');
+    users.grantDatabase('test2', 'testdb2', 'ro');
+    users.grantCollection('test2', 'testdb2', 'testcol2', 'rw');
+    db._useDatabase('_systemm');
+  }
 
-          db._createDatabase('testdb2');
-          db._useDatabase('testdb2');
-          db._createDocumentCollection('testcol2');
-          db._createDocumentCollection('testcol3');
-          db.testcol2.save({_key:'one'});
-          db.testcol3.save({_key:'one'});
-          users.grantDatabase('test', 'testdb2', 'ro');
-          users.grantCollection('test', 'testdb2', 'testcol2', 'ro');
-          users.grantDatabase('test2', 'testdb2', 'ro');
-          users.grantCollection('test2', 'testdb2', 'testcol2', 'rw');
-          db._useDatabase('_system');
-          /* let res = db._query("for u in _users filter u.user == 'test' return u").toArray();
-          print(res); */`
-        ]);
+  try {
+    setup();
+  } catch(e) {
+    return {
+      failed: 0,
+      readOnly: {
+        failed: 1,
+        status: false,
+        skipped: false,
+        message: `Error while setup test ${e}`
+      }
+    };
+  }
 
   let bodies = run(requests.splice(0,4));
   requests[0][2] += bodies.pop().indexes.filter(idx => idx.type === 'hash')[0].id;
