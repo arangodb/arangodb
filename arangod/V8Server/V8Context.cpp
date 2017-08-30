@@ -49,8 +49,8 @@ std::string const GlobalContextMethods::CodeWarmupExports =
   
 V8Context::V8Context(size_t id, v8::Isolate* isolate)
     : _id(id), _isolate(isolate), _locker(nullptr), 
-      _numExecutions(0), _creationStamp(TRI_microtime()), 
-      _lastGcStamp(0.0), _hasActiveExternals(false) {}
+      _creationStamp(TRI_microtime()), _lastGcStamp(0.0), 
+      _invocations(0), _invocationsSinceLastGc(0), _hasActiveExternals(false) {}
 
 void V8Context::lockAndEnter() {
   TRI_ASSERT(_isolate != nullptr);
@@ -60,6 +60,9 @@ void V8Context::lockAndEnter() {
       
   TRI_ASSERT(_locker->IsLocked(_isolate));
   TRI_ASSERT(v8::Locker::IsLocked(_isolate));
+
+  ++_invocations;
+  ++_invocationsSinceLastGc;
 }
 
 void V8Context::unlockAndExit() {
@@ -78,8 +81,28 @@ bool V8Context::hasGlobalMethodsQueued() {
   return !_globalMethods.empty();
 }
 
+void V8Context::setCleaned(double stamp) {
+  _lastGcStamp = stamp;
+  _invocationsSinceLastGc = 0;
+}
+
 double V8Context::age() const {
   return TRI_microtime() - _creationStamp;
+}
+  
+bool V8Context::shouldBeRemoved(double maxAge, uint64_t maxInvocations) const {
+  if (maxAge > 0.0 && age() > maxAge) {
+    // context is "too old"
+    return true;
+  }
+
+  if (maxInvocations > 0 && _invocations >= maxInvocations) {
+    // context is used often enough
+    return true;
+  }
+
+  // re-use the context
+  return false;
 }
 
 bool V8Context::addGlobalContextMethod(
