@@ -287,13 +287,13 @@ std::string Job::findNonblockedCommonHealthyInSyncFollower( // Which is in "GOOD
 
   auto cs = clones(snap, db, col, shrd);       // clones
   auto nclones = cs.size();                    // #clones
-  std::map<std::string,bool> good;
+  std::unordered_map<std::string,bool> good;
 
   for (const auto& i : snap(healthPrefix).children()) {
     good[i.first] = ((*i.second)("Status").toJson() == "GOOD");
   }
 
-  std::map<std::string,size_t> currentServers;
+  std::unordered_map<std::string,size_t> currentServers;
   for (const auto& clone : cs) {
     auto currentShardPath =
       curColPrefix + db + "/" + clone.collection + "/"

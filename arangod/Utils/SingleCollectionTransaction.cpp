@@ -98,18 +98,3 @@ std::string SingleCollectionTransaction::name() {
   TRI_ASSERT(_trxCollection != nullptr);
   return _trxCollection->collectionName();
 }
-
-/// @brief explicitly lock the underlying collection for read access
-Result SingleCollectionTransaction::lockRead() {
-  return lock(trxCollection(), AccessMode::Type::READ);
-}
-
-/// @brief explicitly unlock the underlying collection after read access
-Result SingleCollectionTransaction::unlockRead() {
-  return unlock(trxCollection(), AccessMode::Type::READ);
-}
-
-/// @brief explicitly lock the underlying collection for write access
-Result SingleCollectionTransaction::lockWrite() {
-  return lock(trxCollection(), AccessMode::Type::WRITE);
-}

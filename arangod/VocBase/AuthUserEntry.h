@@ -108,7 +108,7 @@ class AuthUserEntry {
 
  private:
   std::string _key;
-  bool _active;
+  bool _active = true;
   AuthSource _source = AuthSource::COLLECTION;
 
   std::string _username;

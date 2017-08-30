@@ -119,15 +119,24 @@ std::size_t countKeys(rocksdb::DB* db, rocksdb::ColumnFamilyHandle* cf) {
 }
 
 /// @brief iterate over all keys in range and count them
-std::size_t countKeyRange(rocksdb::DB* db, rocksdb::ReadOptions const& opts,
-                          RocksDBKeyBounds const& bounds) {
-  rocksdb::ColumnFamilyHandle* cf = bounds.columnFamily();
-  rocksdb::Comparator const* cmp = db->GetOptions().comparator;
-  std::unique_ptr<rocksdb::Iterator> it(db->NewIterator(opts, cf));
-  std::size_t count = 0;
-
+std::size_t countKeyRange(rocksdb::DB* db, 
+                          RocksDBKeyBounds const& bounds,
+                          bool prefix_same_as_start) {
   rocksdb::Slice lower(bounds.start());
   rocksdb::Slice upper(bounds.end());
+
+  rocksdb::ReadOptions readOptions;
+  readOptions.prefix_same_as_start = prefix_same_as_start;
+  readOptions.iterate_upper_bound = &upper;
+  readOptions.total_order_seek = !prefix_same_as_start;
+  readOptions.verify_checksums = false;
+  readOptions.fill_cache = false;
+
+  rocksdb::ColumnFamilyHandle* cf = bounds.columnFamily();
+  rocksdb::Comparator const* cmp = cf->GetComparator();
+  std::unique_ptr<rocksdb::Iterator> it(db->NewIterator(readOptions, cf));
+  std::size_t count = 0;
+
   it->Seek(lower);
   while (it->Valid() && cmp->Compare(it->key(), upper) < 0) {
     ++count;

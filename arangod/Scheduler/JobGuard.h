@@ -47,41 +47,41 @@ class JobGuard : public SameThreadAsserter {
   void work() {
     TRI_ASSERT(!_isWorkingFlag);
 
-    if (0 == _isWorking) {
+    if (0 == _isWorking++) {
       _scheduler->workThread();
     }
 
-    ++_isWorking;
     _isWorkingFlag = true;
   }
 
   void block() {
     TRI_ASSERT(!_isBlockedFlag);
 
-    if (0 == _isBlocked) {
+    if (0 == _isBlocked++) {
       _scheduler->blockThread();
     }
 
-    ++_isBlocked;
     _isBlockedFlag = true;
   }
 
  private:
   void release() {
     if (_isWorkingFlag) {
-      --_isWorking;
       _isWorkingFlag = false;
 
-      if (0 == _isWorking) {
+      if (0 == --_isWorking) {
+        // if this is the last JobGuard we inform the
+        // scheduler that the thread is back to idle
         _scheduler->unworkThread();
       }
     }
 
     if (_isBlockedFlag) {
-      --_isBlocked;
       _isBlockedFlag = false;
 
-      if (0 == _isBlocked) {
+      if (0 == --_isBlocked) {
+        // if this is the last JobGuard we inform the
+        // scheduler that the thread is now unblocked
         _scheduler->unblockThread();
       }
     }

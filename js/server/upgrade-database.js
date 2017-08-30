@@ -36,7 +36,6 @@
   delete global.UPGRADE_ARGS;
 
   const internal = require('internal');
-  const errors = internal.errors;
   const fs = require('fs');
   const console = require('console');
   const userManager = require('@arangodb/users');
@@ -44,8 +43,7 @@
   const db = internal.db;
   const shallowCopy = require('@arangodb/util').shallowCopy;
 
-  function upgrade () { 
-
+  function upgrade () {
     // default replication factor for system collections
     const DEFAULT_REPLICATION_FACTOR_SYSTEM = internal.DEFAULT_REPLICATION_FACTOR_SYSTEM;
 
@@ -107,19 +105,19 @@
     // special logger with database name
     const logger = {
       info: function (msg) {
-        console.debug("In database '%s': %s", db._name(), msg);
+        console.debug('In database "%s": %s', db._name(), msg);
       },
 
       error: function (msg) {
-        console.error("In database '%s': %s", db._name(), msg);
+        console.error('In database "%s": %s', db._name(), msg);
       },
 
       errorLines: function (msg) {
-        console.errorLines("In database '%s': %s", db._name(), msg);
+        console.errorLines('In database "%s": %s', db._name(), msg);
       },
 
       warn: function (msg) {
-        console.warn("In database '%s': %s", db._name(), msg);
+        console.warn('In database "%s": %s', db._name(), msg);
       },
 
       log: function (msg) {
@@ -235,7 +233,7 @@
         }
       }
 
-      if (0 < activeTasks.length) {
+      if (activeTasks.length > 0) {
         logger.info('Found ' + allTasks.length + ' defined task(s), ' +
           activeTasks.length + ' task(s) to run');
         logger.info('state ' + constant2name[cluster] + '/' +
@@ -308,7 +306,7 @@
           }, true));
       }
 
-      if (0 < activeTasks.length) {
+      if (activeTasks.length > 0) {
         logger.info(procedure + ' successfully finished');
       }
 
@@ -318,7 +316,6 @@
 
     // upgrade or initialize the database
     function upgradeDatabase () {
-
       // cluster
       let cluster;
 
@@ -350,9 +347,9 @@
         var versionInfo = fs.read(versionFile);
 
         if (versionInfo === '') {
-          logger.warn("VERSION file '" + versionFile + "' is empty. Creating new default VERSION file");
+          logger.warn('VERSION file "' + versionFile + '" is empty. Creating new default VERSION file');
           versionInfo = '{"version":' + currentVersion + ',"tasks":[]}';
-          //return false;
+          // return false;
         }
 
         const versionValues = JSON.parse(versionInfo);
@@ -398,9 +395,9 @@
             global.UPGRADE_TYPE = 3;
             return runTasks(cluster, DATABASE_UPGRADE, lastVersion);
           }
-        
+
           global.UPGRADE_TYPE = 4;
-          
+
           logger.error('Database directory version (' + lastVersion +
             ') is lower than current version (' + currentVersion + ').');
 
@@ -473,7 +470,7 @@
     // createUsersIndex
     addTask({
       name: 'createUsersIndex',
-      description: "create index on 'user' attribute in _users collection",
+      description: 'create index on "user" attribute in _users collection',
 
       system: DATABASE_SYSTEM,
       cluster: [CLUSTER_NONE, CLUSTER_COORDINATOR_GLOBAL],
@@ -519,16 +516,16 @@
                   userManager.save(user.username, user.passwd, user.active, user.extra || {});
                 }
               } catch (err) {
-                logger.warn("could not add database user '" + user.username + "': " +
+                logger.warn('could not add database user "' + user.username + '": ' +
                   String(err) + ' ' +
                   String(err.stack || ''));
               }
 
               try {
                 userManager.grantDatabase(user.username, oldDbname, 'rw');
-                userManager.grantCollection(user.username, oldDbname, "*", 'rw');
+                userManager.grantCollection(user.username, oldDbname, '*', 'rw');
               } catch (err) {
-                logger.warn("could not grant access to database user '" + user.username + "': " +
+                logger.warn('could not grant access to database user "' + user.username + '": ' +
                   String(err) + ' ' +
                   String(err.stack || ''));
               }
@@ -635,7 +632,6 @@
 
         // first, check for "old" redirects
         routing.toArray().forEach(function (doc) {
-
           // check for specific redirects
           if (doc.url && doc.action && doc.action.options &&
             doc.action.options.destination) {
@@ -754,13 +750,43 @@
         });
       }
     });
+    addTask({
+      name: 'createJobsIndex',
+      description: 'create index on attributes in _jobs collection',
+
+      system: DATABASE_SYSTEM,
+      cluster: [CLUSTER_NONE, CLUSTER_COORDINATOR_GLOBAL],
+      database: [DATABASE_INIT, DATABASE_UPGRADE],
+
+      task: function () {
+        const tasks = getCollection('_jobs');
+
+        if (!tasks) {
+          return false;
+        }
+
+        tasks.ensureIndex({
+          type: 'skiplist',
+          fields: ['queue', 'status', 'delayUntil'],
+          unique: true,
+          sparse: false
+        });
+        tasks.ensureIndex({
+          type: 'skiplist',
+          fields: ['status', 'queue', 'delayUntil'],
+          unique: true,
+          sparse: false
+        });
+        return true;
+      }
+    });
 
     return upgradeDatabase();
   }
 
   // set this global variable to inform the server we actually got until here...
   global.UPGRADE_STARTED = true;
-        
+
   // 0 = undecided
   // 1 = same version
   // 2 = downgrade

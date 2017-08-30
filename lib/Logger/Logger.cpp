@@ -62,8 +62,6 @@ void Logger::setLogLevel(LogLevel level) {
   _level.store(level, std::memory_order_relaxed);
 }
 
-#include <iostream>
-
 void Logger::setLogLevel(std::string const& levelName) {
   std::string l = StringUtils::tolower(levelName);
   std::vector<std::string> v = StringUtils::split(l, '=');

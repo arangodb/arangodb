@@ -42,20 +42,20 @@ struct RocksDBColumnFamily {
   static constexpr size_t minNumberOfColumnFamilies = 7;
   static constexpr size_t numberOfColumnFamilies = 7;
 
-  static rocksdb::ColumnFamilyHandle* definitions() { return _definitions; }
+  static inline rocksdb::ColumnFamilyHandle* definitions() { return _definitions; }
 
-  static rocksdb::ColumnFamilyHandle* documents() { return _documents; }
+  static inline rocksdb::ColumnFamilyHandle* documents() { return _documents; }
 
-  static rocksdb::ColumnFamilyHandle* primary() { return _primary; }
+  static inline rocksdb::ColumnFamilyHandle* primary() { return _primary; }
 
-  static rocksdb::ColumnFamilyHandle* edge() { return _edge; }
+  static inline rocksdb::ColumnFamilyHandle* edge() { return _edge; }
 
-  /// non unique vpack indexes (skiplist, permanent indexes)
-  static rocksdb::ColumnFamilyHandle* vpack() { return _vpack; }
+  /// unique and non unique vpack indexes (skiplist, permanent indexes)
+  static inline rocksdb::ColumnFamilyHandle* vpack() { return _vpack; }
 
-  static rocksdb::ColumnFamilyHandle* geo() { return _geo; }
+  static inline rocksdb::ColumnFamilyHandle* geo() { return _geo; }
 
-  static rocksdb::ColumnFamilyHandle* fulltext() { return _fulltext; }
+  static inline rocksdb::ColumnFamilyHandle* fulltext() { return _fulltext; }
 
   static char const* columnFamilyName(rocksdb::ColumnFamilyHandle* cf) {
     if (cf == _definitions) {
@@ -84,6 +84,9 @@ struct RocksDBColumnFamily {
   }
 
  private:
+  // static variables for all existing column families
+  // note that these are initialized in RocksDBEngine.cpp
+  // as there is no RocksDBColumnFamily.cpp
   static rocksdb::ColumnFamilyHandle* _definitions;
   static rocksdb::ColumnFamilyHandle* _documents;
   static rocksdb::ColumnFamilyHandle* _primary;
