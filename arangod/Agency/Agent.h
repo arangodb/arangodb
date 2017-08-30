@@ -328,12 +328,12 @@ class Agent : public arangodb::Thread,
   arangodb::basics::ConditionVariable _waitForCV;
 
   /// @brief Confirmed indices of all members of agency
-  std::map<std::string, index_t> _confirmed;
-  std::map<std::string, index_t> _lastHighest;
+  std::unordered_map<std::string, index_t> _confirmed;
+  std::unordered_map<std::string, index_t> _lastHighest;
 
-  std::map<std::string, TimePoint> _lastAcked;
-  std::map<std::string, TimePoint> _lastSent;
-  std::map<std::string, TimePoint> _earliestPackage;
+  std::unordered_map<std::string, TimePoint> _lastAcked;
+  std::unordered_map<std::string, TimePoint> _lastSent;
+  std::unordered_map<std::string, TimePoint> _earliestPackage;
 
   /**< @brief RAFT consistency lock:
      _spearhead

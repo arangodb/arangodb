@@ -1,9 +1,25 @@
 devel
 -----
 
+* arangoimp now has a --remove-attribute option
+
+* added V8 context lifetime control options
+  `--javascript.v8-contexts-max-invocations` and `--javascript.v8-contexts-max-age`
+
+  These options allow specifying after how many invocations a used V8 context is 
+  disposed, or after what time a V8 context is disposed automatically after its
+  creation. If either of the two thresholds is reached, a V8 context will be
+  disposed. 
+  
+  The default value of `--javascript.v8-contexts-max-invocations` is 0, meaning that
+  the maximum number of invocations per context is unlimited. The default value
+  for `--javascript.v8-contexts-max-age` is 60 seconds.
+
 * fixed wrong ui cluster health information
 
 * fixed issue #3070: Add index in _jobs collection
+
+* fixed issue #3120: Foxx queue: job isn't running when server.authentication = true
 
 
 v3.2.2 (2017-08-23)

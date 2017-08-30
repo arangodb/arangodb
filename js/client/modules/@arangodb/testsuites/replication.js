@@ -60,9 +60,8 @@ function shellReplication (options) {
 function replicationOngoing (options) {
   let testCases = tu.scanTestPath('js/server/tests/replication/');
 
-  let localOptions = _.clone(options);
-  localOptions.replication = true;
-  localOptions.test = 'replication-ongoing';
+  options.replication = true;
+  options.test = 'replication-ongoing';
   let startStopHandlers = {
     postStart: function (options,
                          serverOptions,
@@ -95,10 +94,22 @@ function replicationOngoing (options) {
       pu.shutdownInstance(customInstanceInfos.postStart.instanceInfo, options);
 
       return {};
+    },
+
+    postStop: function (options,
+                        serverOptions,
+                        instanceInfo,
+                        customInstanceInfos,
+                        startStopHandlers) {
+      if (options.cleanup) {
+        pu.cleanupLastDirectory(options);
+      }
+      return { state: true };
     }
+
   };
 
-  return tu.performTests(localOptions, testCases, 'replication_sync', tu.runInArangosh, {}, startStopHandlers);
+  return tu.performTests(options, testCases, 'replication_sync', tu.runInArangosh, {}, startStopHandlers);
 }
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -108,9 +119,8 @@ function replicationOngoing (options) {
 function replicationStatic (options) {
   let testCases = tu.scanTestPath('js/server/tests/replication/');
 
-  let localOptions = _.clone(options);
-  localOptions.replication = true;
-  localOptions.test = 'replication-static';
+  options.replication = true;
+  options.test = 'replication-static';
   let startStopHandlers = {
     postStart: function (options,
                          serverOptions,
@@ -160,11 +170,22 @@ function replicationStatic (options) {
                        startStopHandlers) {
       pu.shutdownInstance(customInstanceInfos.postStart.instanceInfo, options);
       return {};
+    },
+
+    postStop: function (options,
+                        serverOptions,
+                        instanceInfo,
+                        customInstanceInfos,
+                        startStopHandlers) {
+      if (options.cleanup) {
+        pu.cleanupLastDirectory(options);
+      }
+      return { state: true };
     }
   };
 
   return tu.performTests(
-    localOptions,
+    options,
     testCases,
     'master_static',
     tu.runInArangosh,
@@ -181,9 +202,8 @@ function replicationStatic (options) {
 function replicationSync (options) {
   let testCases = tu.scanTestPath('js/server/tests/replication/');
 
-  let localOptions = _.clone(options);
-  localOptions.replication = true;
-  localOptions.test = 'replication-sync';
+  options.replication = true;
+  options.test = 'replication-sync';
   let startStopHandlers = {
     postStart: function (options,
                          serverOptions,
@@ -232,10 +252,21 @@ function replicationSync (options) {
       pu.shutdownInstance(customInstanceInfos.postStart.instanceInfo, options);
 
       return {};
+    },
+
+    postStop: function (options,
+                        serverOptions,
+                        instanceInfo,
+                        customInstanceInfos,
+                        startStopHandlers) {
+      if (options.cleanup) {
+        pu.cleanupLastDirectory(options);
+      }
+      return { state: true };
     }
   };
 
-  return tu.performTests(localOptions, testCases, 'replication_sync', tu.runInArangosh, {}, startStopHandlers);
+  return tu.performTests(options, testCases, 'replication_sync', tu.runInArangosh, {}, startStopHandlers);
 }
 
 function setup (testFns, defaultFns, opts, fnDocs, optionsDoc) {

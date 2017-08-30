@@ -27,6 +27,8 @@
 #include "Cache/Cache.h"
 #include "Cache/Manager.h"
 #include "Cache/Metadata.h"
+#include "Scheduler/Scheduler.h"
+#include "Scheduler/SchedulerFeature.h"
 
 using namespace arangodb::cache;
 
@@ -37,14 +39,14 @@ FreeMemoryTask::FreeMemoryTask(Manager::TaskEnvironment environment,
 FreeMemoryTask::~FreeMemoryTask() {}
 
 bool FreeMemoryTask::dispatch() {
-  auto ioService = _manager->ioService();
-  if (ioService == nullptr) {
+  auto scheduler = SchedulerFeature::SCHEDULER;
+  if (scheduler == nullptr) {
     return false;
   }
 
   _manager->prepareTask(_environment);
   auto self = shared_from_this();
-  ioService->post([self, this]() -> void { run(); });
+  scheduler->post([self, this]() -> void { run(); });
 
   return true;
 }
@@ -78,14 +80,14 @@ MigrateTask::MigrateTask(Manager::TaskEnvironment environment, Manager* manager,
 MigrateTask::~MigrateTask() {}
 
 bool MigrateTask::dispatch() {
-  auto ioService = _manager->ioService();
-  if (ioService == nullptr) {
+  auto scheduler = SchedulerFeature::SCHEDULER;
+  if (scheduler == nullptr) {
     return false;
   }
 
   _manager->prepareTask(_environment);
   auto self = shared_from_this();
-  ioService->post([self, this]() -> void { run(); });
+  scheduler->post([self, this]() -> void { run(); });
 
   return true;
 }

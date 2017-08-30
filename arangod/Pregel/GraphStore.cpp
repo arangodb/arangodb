@@ -587,11 +587,9 @@ void GraphStore<V, E>::storeResults(WorkerConfig* config,
   size_t start = 0, end = delta;
 
   TRI_ASSERT(SchedulerFeature::SCHEDULER != nullptr);
-  boost::asio::io_service* ioService = SchedulerFeature::SCHEDULER->ioService();
-  TRI_ASSERT(ioService != nullptr);
   do {
     _runningThreads++;
-    ioService->post([this, start, end, now, callback] {
+    SchedulerFeature::SCHEDULER->post([this, start, end, now, callback] {
       try {
         RangeIterator<VertexEntry> it = vertexIterator(start, end);
         _storeVertices(_config->globalShardIDs(), it);

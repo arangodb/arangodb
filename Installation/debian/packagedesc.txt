@@ -3,7 +3,7 @@ the multi-model NoSQL database
  graphs, and key-values. Build high performance applications using a convenient
  SQL-like query language or JavaScript extensions.
  .
- Copyright: 2014-2016 by ArangoDB GmbH
+ Copyright: 2014-2017 by ArangoDB GmbH
  Copyright: 2012-2013 by triAGENS GmbH
  ArangoDB Software
  www.arangodb.com
