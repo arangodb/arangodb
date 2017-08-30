@@ -181,7 +181,7 @@ const requests = [
     users.grantCollection('test', 'testdb2', 'testcol2', 'ro');
     users.grantDatabase('test2', 'testdb2', 'ro');
     users.grantCollection('test2', 'testdb2', 'testcol2', 'rw');
-    db._useDatabase('_systemm');
+    db._useDatabase('_system');
   }
 
   try {
