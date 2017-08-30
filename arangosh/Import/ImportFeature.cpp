@@ -118,6 +118,11 @@ void ImportFeature::collectOptions(
                      "translate an attribute name (use as --translate "
                      "\"from=to\", for csv and tsv only)",
                      new VectorParameter<StringParameter>(&_translations));
+  
+  options->addOption("--remove-attribute",
+                     "remove an attribute before inserting an attribute"
+                     " into a collection (for csv and tsv only)",
+                     new VectorParameter<StringParameter>(&_removeAttributes));
 
   std::unordered_set<std::string> types = {"document", "edge"};
   std::vector<std::string> typesVector(types.begin(), types.end());
@@ -219,6 +224,14 @@ void ImportFeature::validateOptions(
     if (parts[0].empty() || parts[1].empty()) {
       LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << "invalid translation '" << it
                                                 << "'";
+      FATAL_ERROR_EXIT();
+    }
+  }
+  for (std::string& str : _removeAttributes) {
+    StringUtils::trimInPlace(str);
+    if (str.empty()) {
+      LOG_TOPIC(FATAL, arangodb::Logger::FIXME)
+        << "cannot remove an empty attribute";
       FATAL_ERROR_EXIT();
     }
   }
@@ -347,6 +360,7 @@ void ImportFeature::start() {
   }
 
   ih.setTranslations(translations);
+  ih.setRemoveAttributes(_removeAttributes);
 
   // quote
   if (_quote.length() <= 1) {

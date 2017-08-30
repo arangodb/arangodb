@@ -1,6 +1,8 @@
 devel
 -----
 
+* arangoimp now has a --remove-attribute option
+
 * added V8 context lifetime control options
   `--javascript.v8-contexts-max-invocations` and `--javascript.v8-contexts-max-age`
 

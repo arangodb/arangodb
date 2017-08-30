@@ -159,6 +159,13 @@ const impTodos = [{
   type: 'json',
   create: 'false',
   onDuplicate: 'replace'
+}, {
+  id: 'removeAttribute',
+  data: tu.makePathUnix('js/common/test-data/import/import-1.csv'),
+  coll: 'UnitTestsImportRemoveAttribute',
+  type: 'csv',
+  create: 'true',
+  removeAttribute: 'a'
 }];
 
 function importing (options) {

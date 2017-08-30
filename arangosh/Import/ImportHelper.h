@@ -153,6 +153,12 @@ class ImportHelper {
       std::unordered_map<std::string, std::string> const& translations) {
     _translations = translations;
   }
+  
+  void setRemoveAttributes(std::vector<std::string> const& attr) {
+    for (std::string const& str : attr) {
+      _removeAttributes.insert(str);
+    }
+  }
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief whether or not to overwrite existing data in the collection
@@ -289,8 +295,10 @@ class ImportHelper {
   arangodb::basics::StringBuffer _lineBuffer;
   arangodb::basics::StringBuffer _outputBuffer;
   std::string _firstLine;
+  std::vector<std::string> _columnNames;
 
   std::unordered_map<std::string, std::string> _translations;
+  std::unordered_set<std::string> _removeAttributes;
 
   bool _hasError;
   std::vector<std::string> _errorMessages;
