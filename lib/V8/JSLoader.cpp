@@ -108,13 +108,11 @@ JSLoader::eState JSLoader::loadScript(v8::Isolate* isolate,
   if (tryCatch.HasCaught()) {
     if (tryCatch.CanContinue()) {
       TRI_LogV8Exception(isolate, &tryCatch);
-      return eFailExecute;
     } else {
       TRI_GET_GLOBALS();
-
       v8g->_canceled = true;
-      return eFailExecute;
     }
+    return eFailExecute;
   }
 
   // Report the result if there is one:
