@@ -738,42 +738,24 @@ def testStepParallel(os, edition, modeList) {
 def buildEdition(os, edition) {
     def arch = "LOG_build_${os}_${edition}"
 
-    if (os == 'linux' || os == 'mac') {
-       sh "rm -rf ${arch}"
-       sh "mkdir -p ${arch}"
+    fileOperations([folderDeleteOperation(arch), folderCreateOperation(arch)])
+    if (os == 'linux') {
+        sh "./Installation/Pipeline/linux/build_${os}_${edition}.sh 64"
+    }
+    else if (os == 'mac') {
+        sh "./Installation/Pipeline/mac/build_${os}_${edition}.sh 16"
     }
     else if (os == 'windows') {
-        bat "del /F /Q ${arch}"
-        powershell "New-Item -ItemType Directory -Force -Path ${arch}"
-    }
-
-    try {
-        if (os == 'linux') {
-            sh "./Installation/Pipeline/linux/build_${os}_${edition}.sh 64"
-        }
-        else if (os == 'mac') {
-            sh "./Installation/Pipeline/mac/build_${os}_${edition}.sh 16"
-        }
-        else if (os == 'windows') {
-            // i concede...we need a lock for windows...I could not get it to run concurrently...
-            // v8 would not build multiple times at the same time on the same machine:
-            // PDB API call failed, error code '24': ' etc etc
-            // in theory it should be possible to parallelize it by setting an environment variable (see the build script) but for v8 it won't work :(
-            // feel free to recheck if there is time somewhen...this thing here really should not be possible but
-            // ensure that there are 2 concurrent builds on the SAME node building v8 at the same time to properly test it
-            // I just don't want any more "yeah that might randomly fail. just restart" sentences any more
-            def hostname = powershell(returnStdout: true, script: "hostname")
-            lock('build-${hostname}') {
-                powershell ". .\\Installation\\Pipeline\\windows\\build_${os}_${edition}.ps1"
-            }
-        }
-    }
-    finally {
-        if (os == 'linux' || os == 'mac') {
-            sh "for i in log-output; do test -e \"\$i\" && mv \"\$i\" ${arch} || true; done"
-        }
-        else if (os == 'windows') {
-            powershell "Move-Item -ErrorAction Ignore -Path log-output/* -Destination ${arch}"
+        // i concede...we need a lock for windows...I could not get it to run concurrently...
+        // v8 would not build multiple times at the same time on the same machine:
+        // PDB API call failed, error code '24': ' etc etc
+        // in theory it should be possible to parallelize it by setting an environment variable (see the build script) but for v8 it won't work :(
+        // feel free to recheck if there is time somewhen...this thing here really should not be possible but
+        // ensure that there are 2 concurrent builds on the SAME node building v8 at the same time to properly test it
+        // I just don't want any more "yeah that might randomly fail. just restart" sentences any more
+        def hostname = powershell(returnStdout: true, script: "hostname")
+        lock('build-${hostname}') {
+            powershell ". .\\Installation\\Pipeline\\windows\\build_${os}_${edition}.ps1"
         }
     }
 }
