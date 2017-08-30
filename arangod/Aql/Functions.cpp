@@ -3157,16 +3157,13 @@ AqlValue Functions::CollectionCount(
   auto resolver = trx->resolver();
   TRI_voc_cid_t cid = resolver->getCollectionIdLocal(collectionName);
   trx->addCollectionAtRuntime(cid, collectionName);
-  auto collection = trx->documentCollection(cid);
 
-  if (collection == nullptr) {
-    THROW_ARANGO_EXCEPTION_FORMAT(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND,
-                                  "'%s'", collectionName.c_str());
+  OperationResult res = trx->count(collectionName, true);
+  if (res.failed()) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(res.code, res.errorMessage);
   }
 
-  transaction::BuilderLeaser builder(trx);
-  builder->add(VPackValue(collection->numberDocuments(trx)));
-  return AqlValue(builder.get());
+  return AqlValue(res.slice());
 }
 
 /// @brief function VARIANCE_SAMPLE

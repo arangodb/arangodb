@@ -64,24 +64,11 @@ TRI_voc_cid_t Collection::cid() const {
 /// @brief count the number of documents in the collection
 size_t Collection::count(transaction::Methods* trx) const {
   if (numDocuments == UNINITIALIZED) {
-    if (arangodb::ServerState::instance()->isCoordinator()) {
-      // cluster case
-      std::vector<std::pair<std::string, uint64_t>> result;
-      int res = arangodb::countOnCoordinator(vocbase->name(), name, result);
-      if (res != TRI_ERROR_NO_ERROR) {
-        THROW_ARANGO_EXCEPTION_MESSAGE(
-            res, "could not determine number of documents in collection");
-      }
-      uint64_t count = 0;
-      for (auto const& it : result) {
-        count += it.second;
-      }
-      numDocuments = static_cast<int64_t>(count);
-    } else {
-      // local case
-      // cache the result
-      numDocuments = static_cast<int64_t>(collection->numberDocuments(trx));
+    OperationResult res = trx->count(name, true);
+    if (res.failed()) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(res.code, res.errorMessage);
     }
+    numDocuments = res.slice().getInt();
   }
 
   return static_cast<size_t>(numDocuments);

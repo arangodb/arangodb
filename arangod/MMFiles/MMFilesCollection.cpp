@@ -1458,6 +1458,7 @@ bool MMFilesCollection::applyForTickRange(
 
 // @brief Return the number of documents in this collection
 uint64_t MMFilesCollection::numberDocuments(transaction::Methods* trx) const {
+  TRI_ASSERT(!ServerState::instance()->isCoordinator());
   return primaryIndex()->size();
 }
 
