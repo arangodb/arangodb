@@ -1326,9 +1326,9 @@ int ClusterInfo::createCollectionCoordinator(std::string const& databaseName,
     if (!res.successful()) {
       if (res.httpCode() ==
           (int)arangodb::rest::ResponseCode::PRECONDITION_FAILED) {
+        auto result = res.slice();
         AgencyCommResult ag = ac.getValues("/");
 
-        auto result = res.slice();
         if (result.isArray() && result.length() > 0) {
           if (result[0].isObject()) {
             auto tres = result[0];

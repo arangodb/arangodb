@@ -112,6 +112,7 @@ function MovingShardsSuite () {
     var request = require("@arangodb/request");
     var endpointToURL = require("@arangodb/cluster").endpointToURL;
     var url = endpointToURL(coordEndpoint);
+    
     var res;
     try {
       var envelope = 
@@ -120,7 +121,7 @@ function MovingShardsSuite () {
     } catch (err) {
       console.error(
         "Exception for POST /_admin/cluster/cleanOutServer:", err.stack);
-      return [];
+      return {};
     }
     var body = res.body;
     if (typeof body === "string") {

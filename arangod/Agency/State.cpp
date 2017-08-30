@@ -135,8 +135,6 @@ bool State::persist(index_t index, term_t term,
 std::vector<index_t> State::log(
   query_t const& transactions, std::vector<bool> const& applicable, term_t term) {
 
-  TRI_ASSERT(!_log.empty()); // log must not ever be empty
-      
   std::vector<index_t> idx(applicable.size());
   size_t j = 0;
   auto const& slice = transactions->slice();
@@ -148,6 +146,8 @@ std::vector<index_t> State::log(
 
   TRI_ASSERT(slice.length() == applicable.size());
   MUTEX_LOCKER(mutexLocker, _logLock); 
+  
+  TRI_ASSERT(!_log.empty()); // log must never be empty
   
   for (auto const& i : VPackArrayIterator(slice)) {
 
@@ -181,6 +181,8 @@ index_t State::log(velocypack::Slice const& slice, term_t term,
 index_t State::logNonBlocking(
   index_t idx, velocypack::Slice const& slice, term_t term,
   std::string const& clientId, bool leading) {
+
+  _logLock.assertLockedByCurrentThread();
 
   TRI_ASSERT(!_log.empty()); // log must not ever be empty
 
@@ -236,7 +238,6 @@ index_t State::logNonBlocking(
 
 /// Log transactions (follower)
 index_t State::log(query_t const& transactions, size_t ndups) {
-  
   VPackSlice slices = transactions->slice();
 
   TRI_ASSERT(slices.isArray());
@@ -244,6 +245,7 @@ index_t State::log(query_t const& transactions, size_t ndups) {
   size_t nqs = slices.length();
 
   TRI_ASSERT(nqs > ndups);
+  std::string clientId;
 
   MUTEX_LOCKER(mutexLocker, _logLock);  // log entries must stay in order
 
@@ -256,14 +258,12 @@ index_t State::log(query_t const& transactions, size_t ndups) {
           slice.get("term").getUInt(), slice.get("clientId").copyString())==0) {
       break;
     }
-
   }
 
   return _log.empty() ? 0 : _log.back().index;
 }
 
-size_t State::removeConflicts(query_t const& transactions,
-                              bool gotSnapshot) { 
+size_t State::removeConflicts(query_t const& transactions,  bool gotSnapshot) { 
   // Under MUTEX in Agent
   // Note that this will ignore a possible snapshot in the first position!
   // This looks through the transactions and skips over those that are
@@ -346,8 +346,8 @@ size_t State::removeConflicts(query_t const& transactions,
 }
 
 /// Get log entries from indices "start" to "end"
-std::vector<log_t> State::get(index_t start,
-                              index_t end) const {
+std::vector<log_t> State::get(index_t start, index_t end) const {
+  
   std::vector<log_t> entries;
   MUTEX_LOCKER(mutexLocker, _logLock); // Cannot be read lock (Compaction)
 
@@ -355,15 +355,28 @@ std::vector<log_t> State::get(index_t start,
     return entries;
   }
 
-  if (end == (std::numeric_limits<uint64_t>::max)() || end > _log.back().index) {
+  // start must be greater than or equal to the lowest index
+  // and smaller than or equal to the largest index
+  if (start < _log[0].index) {
+    start = _log.front().index;
+  } else if (start > _log.back().index) {
+    start = _log.back().index;
+  }
+
+  // end must be greater than or equal to start
+  // and smaller than or equal to the largest index
+  if (end <= start) {
+    end = start;
+  } else if (
+    end == (std::numeric_limits<uint64_t>::max)() || end > _log.back().index) {
     end = _log.back().index;
   }
 
-  if (start < _log[0].index) {
-    start = _log[0].index;
-  }
+  // subtract offset _cur
+  start -= _cur;
+  end -= (_cur-1);
 
-  for (size_t i = start - _cur; i <= end - _cur; ++i) {
+  for (size_t i = start; i < end; ++i) {
     entries.push_back(_log[i]);
   }
 
@@ -440,35 +453,40 @@ bool State::has(index_t index, term_t term) const {
 
 
 /// Get vector of past transaction from 'start' to 'end'
-std::vector<VPackSlice> State::slices(index_t start,
-                                      index_t end) const {
-  std::vector<VPackSlice> slices;
+VPackBuilder State::slices(index_t start,
+                           index_t end) const {
+  VPackBuilder slices;
+  slices.openArray();
+
   MUTEX_LOCKER(mutexLocker, _logLock); // Cannot be read lock (Compaction)
 
-  if (_log.empty()) {
-    return slices;
-  }
+  if (!_log.empty()) {
+    if (start < _log.front().index) {  // no start specified
+      start = _log.front().index;
+    }
 
-  if (start < _log.front().index) {  // no start specified
-    start = _log.front().index;
-  }
+    if (start > _log.back().index) {  // no end specified
+      slices.close();
+      return slices;
+    }
 
-  if (start > _log.back().index) {  // no end specified
-    return slices;
-  }
+    if (end == (std::numeric_limits<uint64_t>::max)() ||
+        end > _log.back().index) {
+      end = _log.back().index;
+    }
 
-  if (end == (std::numeric_limits<uint64_t>::max)() ||
-      end > _log.back().index) {
-    end = _log.back().index;
-  }
-
-  for (size_t i = start - _cur; i <= end - _cur; ++i) {
-    try {
-      slices.push_back(VPackSlice(_log.at(i).entry->data()));
-    } catch (std::exception const&) {
-      break;
+    for (size_t i = start - _cur; i <= end - _cur; ++i) {
+      try {
+        slices.add(VPackSlice(_log.at(i).entry->data()));
+      } catch (std::exception const&) {
+        break;
+      }
     }
   }
+
+  mutexLocker.unlock();
+
+  slices.close();
 
   return slices;
 }
@@ -662,8 +680,9 @@ bool State::loadCompacted() {
 
   VPackSlice result = queryResult.result->slice();
 
+  MUTEX_LOCKER(logLock, _logLock);
+
   if (result.isArray() && result.length()) {
-    MUTEX_LOCKER(logLock, _logLock);
     for (auto const& i : VPackArrayIterator(result)) {
       auto ii = i.resolveExternals();
       buffer_t tmp = std::make_shared<arangodb::velocypack::Buffer<uint8_t>>();
@@ -680,7 +699,10 @@ bool State::loadCompacted() {
   // We can be sure that every compacted snapshot only contains index entries
   // that have been written and agreed upon by an absolute majority of agents.
   if (!_log.empty()) {
-    _agent->lastCommitted(lastLog().index);
+    index_t lastIndex = _log.back().index;
+    
+    logLock.unlock();
+    _agent->lastCommitted(lastIndex);
   }
 
   return true;
@@ -917,10 +939,6 @@ bool State::compactPersisted(index_t cind) {
     THROW_ARANGO_EXCEPTION_MESSAGE(queryResult.code, queryResult.details);
   }
 
-  if (queryResult.code != TRI_ERROR_NO_ERROR) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(queryResult.code, queryResult.details);
-  }
-
   return true;
 }
 
@@ -1136,19 +1154,17 @@ query_t State::allLogs() const {
 }
 
 std::vector<std::vector<log_t>> State::inquire(query_t const& query) const {
-
-  std::vector<std::vector<log_t>> result;
-  MUTEX_LOCKER(mutexLocker, _logLock); // Cannot be read lock (Compaction)
-
   if (!query->slice().isArray()) {
       THROW_ARANGO_EXCEPTION_MESSAGE(
-        210002,
+        20001, 
         std::string("Inquiry handles a list of string clientIds: [<clientId>] ")
         + ". We got " + query->toJson());
-    return result;
   }
-
+  
+  std::vector<std::vector<log_t>> result;
   size_t pos = 0;
+  
+  MUTEX_LOCKER(mutexLocker, _logLock); // Cannot be read lock (Compaction)
   for (auto const& i : VPackArrayIterator(query->slice())) {
 
     if (!i.isString()) {
@@ -1168,11 +1184,9 @@ std::vector<std::vector<log_t>> State::inquire(query_t const& query) const {
     result.push_back(transactions);
 
     pos++;
-    
   }
 
   return result;
-  
 }
 
 // Index of last log entry
