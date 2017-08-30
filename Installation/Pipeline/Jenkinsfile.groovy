@@ -475,6 +475,7 @@ def executeTests(os, edition, mode, engine, port) {
                         if (os == "windows") {
                             powershell command
                         } else {
+                            sh "env"
                             sh command
                         }
                     }
@@ -553,18 +554,8 @@ def testStep(os, edition, mode, engine) {
                 if (os == "windows") {
                     powershell "copy build\\bin\\RelWithDebInfo\\* build\\bin"
                 }
-                try {
-                    fileOperations([folderDeleteOperation('tmp')])
-                } catch (e) {
-                    echo "catchi"
-                }
-                try {
-                    fileOperations([folderDeleteOperation('tmp')])
-                } catch (e) {
-                    echo "real catchi"
-                }
-                fileOperations([folderDeleteOperation('out'), folderCreateOperation('tmp'),  fileDeleteOperation(excludes: '', includes: 'core.*,*.dmp')])
 
+                fileOperations([folderDeleteOperation('tmp'), folderDeleteOperation('out'), folderCreateOperation('tmp'),  fileDeleteOperation(excludes: '', includes: 'core.*,*.dmp')])
                 timeout(60) {
                     try {
                         executeTests(os, edition, mode, engine, port)
