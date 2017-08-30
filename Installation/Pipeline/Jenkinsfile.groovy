@@ -464,13 +464,12 @@ def executeTests(os, edition, mode, engine, port) {
         }
 
         testMap["test-${os}-${edition}-${mode}-${engine}-${name}"] = {
-            // copy in groovy
             testArgs += " --minPort " + port
             testArgs += " --maxPort " + (port + portInterval - 1)
             def command = "build/bin/arangosh --log.level warning --javascript.execute UnitTests/unittest.js ${test} -- "
             command += testArgs
             lock("test-${env.NODE_NAME}-${env.JOB_NAME}-${env.BUILD_ID}-${edition}-${engine}-${lockIndex}") {
-                timeout(15) {
+                timeout(30) {
                     def tmpDir = pwd() + "/tmp"
                     withEnv(["TMPDIR=${tmpDir}", "TEMPDIR=${tmpDir}"]) {
                         if (os == "windows") {
@@ -556,7 +555,7 @@ def testStep(os, edition, mode, engine) {
                     powershell "copy build\\bin\\RelWithDebInfo\\* build\\bin"
                 }
 
-                fileOperations([folderDeleteOperation('tmp'), folderDeleteOperation('out'), folderCreateOperation('tmp'),  fileDeleteOperation(excludes: '', includes: 'core.*,*.dmp')])
+                fileOpfileOperations([folderDeleteOperation('tmp'), folderDeleteOperation('out'), folderCreateOperation('tmp'),  fileDeleteOperation(excludes: '', includes: 'core.*,*.dmp')])
                 timeout(60) {
                     try {
                         executeTests(os, edition, mode, engine, port)
@@ -806,6 +805,12 @@ def runEdition(os, edition) {
 
                 timeout(90) {
                     buildEdition(os, edition)
+                    fileOpfileOperations([folderDeleteOperation('js/node/node_modules')])
+                    if (os == "windows") {
+                        powershell "mv js/node/node_modules-bundled js/node/node_modules"
+                    } else {
+                        sh "mv js/node/node_modules-bundled js/node/node_modules"
+                    }
                     stashBinaries(os, edition)
                 }
 
