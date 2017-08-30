@@ -489,7 +489,7 @@ function unitTest (cases, options) {
   // running all tests
   for (let n = 0; n < caselist.length; ++n) {
     const currentTest = caselist[n];
-    var localOptions = _.cloneDeep(options)
+    var localOptions = _.cloneDeep(options);
 
     print(BLUE + '================================================================================');
     print('Executing test', currentTest);
