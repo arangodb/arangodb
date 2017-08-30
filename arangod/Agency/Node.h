@@ -76,7 +76,7 @@ class Node {
   typedef std::vector<std::string> PathType;
 
   // @brief Child nodes
-  typedef std::map<std::string, std::shared_ptr<Node>> Children;
+  typedef std::unordered_map<std::string, std::shared_ptr<Node>> Children;
 
   /// @brief Construct with name
   explicit Node(std::string const& name);

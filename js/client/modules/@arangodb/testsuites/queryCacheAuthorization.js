@@ -29,7 +29,7 @@ const functionsDocumentation = {
   'queryCacheAuthorization': 'authorization check for query cache'
 };
 const optionsDocumentation = [
-  '   - `skipQueryCacheAuthorization` : if set to true the read only tests are skipped',
+  '   - `skipQueryCacheAuthorization` : if set to true the read only tests are skipped'
 ];
 
 const pu = require('@arangodb/process-utils');
@@ -74,12 +74,11 @@ function queryCacheAuthorization (options) {
   }
 
   const conf = {
-        'server.authentication': true,
-        'server.authentication-system-only': false,
-      };
+    'server.authentication': true,
+    'server.authentication-system-only': false
+  };
 
   print(CYAN + 'queryCacheAuthorization tests...' + RESET);
-
 
   const adbInstance = pu.startInstance('tcp', options, conf, 'queryCacheAuthorization');
   if (adbInstance === false) {
@@ -91,12 +90,12 @@ function queryCacheAuthorization (options) {
     };
   }
 
-const requests = [
-  [200, 'put', '/_api/query-cache/properties', 'root', {mode:'on', maxResults: 128}],
-  [201, 'post', '/_api/cursor', 'root', {query: 'for d in testcol filter d.a == 2 return d'}],
-  [201, 'post', '/_api/cursor', 'root', {query: 'for d in testcol filter d.a == 2 return d'}],
-  [403, 'post', '/_api/cursor', 'test', {query: 'for d in testcol filter d.a == 2 return d'}]
-];
+  const requests = [
+    [200, 'put', '/_api/query-cache/properties', 'root', {mode: 'on', maxResults: 128}],
+    [201, 'post', '/_api/cursor', 'root', {query: 'for d in testcol filter d.a == 2 return d'}],
+    [201, 'post', '/_api/cursor', 'root', {query: 'for d in testcol filter d.a == 2 return d'}],
+    [403, 'post', '/_api/cursor', 'test', {query: 'for d in testcol filter d.a == 2 return d'}]
+  ];
 
   const run = (tests) => {
     const bodies = [];
@@ -104,22 +103,22 @@ const requests = [
       const res = request[r[1]]({
         url: `${adbInstance.arangods[0].url}${r[2]}`,
         body: Object.keys(r[4]).length ? JSON.stringify(r[4]) : '',
-        auth: {username:r[3], password:''}
+        auth: {username: r[3], password: ''}
       });
       try {
         bodies.push(JSON.parse(res.body));
-      } catch(e) {
+      } catch (e) {
         bodies.push({});
       }
       r.splice(1, 0, res.statusCode);
       if (r[0] === r[1]) {
-        results[r.slice(0,5).join('_')] = {
+        results[r.slice(0, 5).join('_')] = {
           failed: 0,
           status: true
         };
       } else {
         results.failed += 1;
-        results[r.slice(0,5).join('_')] = {
+        results[r.slice(0, 5).join('_')] = {
           failed: 1,
           status: false
         };
@@ -128,20 +127,21 @@ const requests = [
     return bodies;
   };
 
-  let res = pu.run.arangoshCmd(options, adbInstance, {}, [
-          '--javascript.execute-string',
-          `const users = require('@arangodb/users');
-          users.save('test', '', true);
-          users.grantDatabase('test', '_system', 'ro');
+  pu.run.arangoshCmd(
+    options, adbInstance, {}, [
+      '--javascript.execute-string',
+      `const users = require('@arangodb/users');
+      users.save('test', '', true);
+      users.grantDatabase('test', '_system', 'ro');
 
-          db._createDocumentCollection('testcol');
-          db.testcol.save({_key:'one', a:1});
-          db.testcol.save({_key:'two', a:2});
+      db._createDocumentCollection('testcol');
+      db.testcol.save({_key:'one', a:1});
+      db.testcol.save({_key:'two', a:2});
 
-          users.grantCollection('test', '_system', 'testcol', 'none');
+      users.grantCollection('test', '_system', 'testcol', 'none');
 
-          users.reload();`
-        ]);
+      users.reload();`
+    ]);
 
   run(requests);
   pu.shutdownInstance(adbInstance, options);

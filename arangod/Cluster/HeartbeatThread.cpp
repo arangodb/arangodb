@@ -60,8 +60,7 @@ std::atomic<bool> HeartbeatThread::HasRunOnce(false);
 
 HeartbeatThread::HeartbeatThread(AgencyCallbackRegistry* agencyCallbackRegistry,
                                  uint64_t interval,
-                                 uint64_t maxFailsBeforeWarning,
-                                 boost::asio::io_service* ioService)
+                                 uint64_t maxFailsBeforeWarning) 
     : Thread("Heartbeat"),
       _agencyCallbackRegistry(agencyCallbackRegistry),
       _statusLock(std::make_shared<Mutex>()),
@@ -77,7 +76,6 @@ HeartbeatThread::HeartbeatThread(AgencyCallbackRegistry* agencyCallbackRegistry,
       _currentVersions(0, 0),
       _desiredVersions(std::make_shared<AgencyVersions>(0, 0)),
       _wasNotified(false),
-      _ioService(ioService),
       _backgroundJobsPosted(0),
       _backgroundJobsLaunched(0),
       _backgroundJobScheduledOrRunning(false),
@@ -155,8 +153,7 @@ void HeartbeatThread::runBackgroundJob() {
       _launchAnotherBackgroundJob = false;
 
       // the JobGuard is in the operator() of HeartbeatBackgroundJob
-      _ioService->post(HeartbeatBackgroundJob(shared_from_this(),
-                                              TRI_microtime()));
+      SchedulerFeature::SCHEDULER->post(HeartbeatBackgroundJob(shared_from_this(), TRI_microtime()));
     } else {
       _backgroundJobScheduledOrRunning = false;
       _launchAnotherBackgroundJob = false;
@@ -842,8 +839,7 @@ void HeartbeatThread::syncDBServerStatusQuo() {
 
   // the JobGuard is in the operator() of HeartbeatBackgroundJob
   _lastSyncTime = TRI_microtime();
-  _ioService->
-    post(HeartbeatBackgroundJob(shared_from_this(), _lastSyncTime));
+  SchedulerFeature::SCHEDULER->post(HeartbeatBackgroundJob(shared_from_this(), _lastSyncTime));
 
 }
 

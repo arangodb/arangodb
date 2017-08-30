@@ -1,0 +1,27 @@
+################################################################################
+## Exit Codes
+################################################################################
+
+# general
+EXIT_SUCCESS,0,"success","No error has occurred."
+EXIT_FAILED,1,"exit with error","Will be returned when a general error occurred."
+EXIT_CODE_RESOLVING_FAILED,2,"exit code resolving failed","fill me"
+
+EXIT_BINARY_NOT_FOUND,5,"binary not found","fill me"
+EXIT_CONFIG_NOT_FOUND,6,"config not found","fill me"
+
+# internal
+EXIT_UPGRADE_FAILED,10,"upgrade failed","Will be returned when the database upgrade failed"
+EXIT_UPGRADE_REQUIRED,11,"db upgrade required","Will be returned when a database upgrade is required"
+EXIT_DOWNGRADE_REQUIRED,12,"db downgrade required","Will be returned when a database upgrade is required"
+EXIT_VERSION_CHECK_FAILED,13,"version check failed","Will be returned when there is a version mismatch"
+
+# startup
+EXIT_ALREADY_RUNNING,20,"already running","Will be returned when arangod is already running according to PID-file"
+EXIT_COULD_NOT_BIND_PORT,21,"port blocked","Will be returned when endpoint is taken by another process"
+EXIT_COULD_NOT_LOCK,22,"could not lock - another process could be running","fill me"
+
+# network
+#EXIT_NO_COORDINATOR
+#EXIT_NO_AGENCY
+#EXIT_NO_CONNECTIVITY

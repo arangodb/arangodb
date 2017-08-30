@@ -99,26 +99,45 @@ class Scheduler {
 
   std::string infoStatus();
 
+  inline void queueJob() noexcept { ++_nrQueued; } 
+  inline void unqueueJob() noexcept { 
+    if (--_nrQueued == UINT64_MAX) {
+      TRI_ASSERT(false);
+    }
+  }
+ 
  private:
   void startNewThread();
  
   static void initializeSignalHandlers();
 
  private:
-  void setStopping() { _counters |= (1ULL << 63); }
-  inline void incRunning() { _counters += 1ULL << 0; }
-  inline void decRunning() { _counters -= 1ULL << 0; }
+  // we store most of the threads status info in a single atomic uint64_t
+  // the encoding of the values inside this variable is (left to right means
+  // high to low bytes):
+  // 
+  //   AA BB CC DD
+  // 
+  // we use the lowest 2 bytes (DD) to store the number of running threads
+  // the next lowest bytes (CC) are used to store the number of currently working threads
+  // the next bytes (BB) are used to store the number of currently blocked threads
+  // the highest bytes (AA) are used only to encode a stopping bit. when this bit is
+  // set, the scheduler is stopping (or already stopped)
+  inline void setStopping() noexcept { _counters |= (1ULL << 63); }
 
-  inline void workThread() { _counters += 1ULL << 16; } 
-  inline void unworkThread() { _counters -= 1ULL << 16; }
+  inline void incRunning() noexcept { _counters += 1ULL << 0; }
+  inline void decRunning() noexcept { _counters -= 1ULL << 0; }
 
-  inline void blockThread() { _counters += 1ULL << 32; }
-  inline void unblockThread() { _counters -= 1ULL << 32; }
-  
-  inline uint64_t numRunning(uint64_t value) const { return value & 0xFFFFULL; }
-  inline uint64_t numWorking(uint64_t value) const { return (value >> 16) & 0xFFFFULL; }
-  inline uint64_t numBlocked(uint64_t value) const { return (value >> 32) & 0xFFFFULL; }
-  inline bool isStopping(uint64_t value) { return (value & (1ULL << 63)) != 0; }
+  inline void workThread() noexcept { _counters += 1ULL << 16; } 
+  inline void unworkThread() noexcept { _counters -= 1ULL << 16; }
+
+  inline void blockThread() noexcept { _counters += 1ULL << 32; }
+  inline void unblockThread() noexcept { _counters -= 1ULL << 32; }
+
+  inline uint64_t numRunning(uint64_t value) const noexcept { return value & 0xFFFFULL; }
+  inline uint64_t numWorking(uint64_t value) const noexcept { return (value >> 16) & 0xFFFFULL; }
+  inline uint64_t numBlocked(uint64_t value) const noexcept { return (value >> 32) & 0xFFFFULL; }
+  inline bool isStopping(uint64_t value) const noexcept { return (value & (1ULL << 63)) != 0; }
 
   void startIoService();
   void startRebalancer();
@@ -135,10 +154,8 @@ class Scheduler {
   // maximal number of outstanding user requests
   uint64_t const _nrMaximum;
 
-  // current counters
-  // - the lowest 16 bits contain the number of running threads
-  // - the next 16 bits contain the number of working threads
-  // - the next 16 bits contain the number of blocked threads
+  // current counters. refer to the above description of the 
+  // meaning of its individual bits
   std::atomic<uint64_t> _counters;
 
   // number of jobs that are currently been queued, but not worked on

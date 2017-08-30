@@ -203,7 +203,6 @@ function rubyTests (options, ssl) {
           status: res.status
         };
 
-
         try {
           const jsonResult = JSON.parse(fs.read(resultfn));
 

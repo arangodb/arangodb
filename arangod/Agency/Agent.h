@@ -187,6 +187,9 @@ class Agent : public arangodb::Thread,
   /// @brief State machine
   State const& state() const;
 
+  /// @brief execute a callback while holding _ioLock
+  void executeLocked(std::function<void()> const& cb);
+
   /// @brief Get read store and compaction index
   index_t readDB(Node&) const;
 
@@ -325,18 +328,19 @@ class Agent : public arangodb::Thread,
   arangodb::basics::ConditionVariable _waitForCV;
 
   /// @brief Confirmed indices of all members of agency
-  std::map<std::string, index_t> _confirmed;
-  std::map<std::string, index_t> _lastHighest;
+  std::unordered_map<std::string, index_t> _confirmed;
+  std::unordered_map<std::string, index_t> _lastHighest;
 
-  std::map<std::string, TimePoint> _lastAcked;
-  std::map<std::string, TimePoint> _lastSent;
-  std::map<std::string, TimePoint> _earliestPackage;
+  std::unordered_map<std::string, TimePoint> _lastAcked;
+  std::unordered_map<std::string, TimePoint> _lastSent;
+  std::unordered_map<std::string, TimePoint> _earliestPackage;
 
   /**< @brief RAFT consistency lock:
      _spearhead
-     _read_db
-     _lastCommitedIndex (log index)
+     _readDB
+     _commitIndex (log index)
      _lastAcked
+     _lastSent
      _confirmed
      _nextCompactionAfter
    */
@@ -344,6 +348,11 @@ class Agent : public arangodb::Thread,
 
   // lock for _leaderCommitIndex
   mutable arangodb::Mutex _liLock;
+
+  // note: when both _ioLock and _liLock are acquired,
+  // the locking order must be:
+  // 1) _ioLock
+  // 2) _liLock
 
   // @brief guard _activator 
   mutable arangodb::Mutex _activatorLock;
@@ -368,7 +377,7 @@ class Agent : public arangodb::Thread,
   TimePoint _leaderSince;
   
   /// @brief Ids of ongoing transactions, used for inquire:
-  std::set<std::string> _ongoingTrxs;
+  std::unordered_set<std::string> _ongoingTrxs;
 
   // lock for _ongoingTrxs
   arangodb::Mutex _trxsLock;
