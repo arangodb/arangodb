@@ -58,6 +58,11 @@ describe('Foxx service', () => {
     download(`${arango.getEndpoint().replace('tcp://', 'http://')}/${mount}`, '', {
       method: 'delete'
     });
+    // the job will create documents
+    let cc = db._collection('foxx_queue_test');
+    if (cc) {
+      cc.truncate();
+    }
   });
 
   it('should support queue registration', () => {
