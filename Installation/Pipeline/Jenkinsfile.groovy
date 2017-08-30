@@ -471,10 +471,12 @@ def executeTests(os, edition, mode, engine, port) {
             command += testArgs
             lock("test-${env.NODE_NAME}-${env.JOB_NAME}-${env.BUILD_ID}-${edition}-${engine}-${lockIndex}") {
                 timeout(15) {
-                    if (os == "windows") {
-                        powershell command
-                    } else {
-                        sh command
+                    withEnv(['TMPDIR=${pwd()}/tmp', 'TEMPDIR=${pwd()}/tmp']) {
+                        if (os == "windows") {
+                            powershell command
+                        } else {
+                            sh command
+                        }
                     }
                 }
             }
@@ -550,10 +552,19 @@ def testStep(os, edition, mode, engine) {
                 echo "Using start port: ${port}"
                 if (os == "windows") {
                     powershell "copy build\\bin\\RelWithDebInfo\\* build\\bin"
-                    powershell "Installation/Pipeline/include/test_setup_tmp.ps1"
-                } else {
-                    sh "chmod +x Installation/Pipeline/include/test_setup_tmp.inc && sh Installation/Pipeline/include/test_setup_tmp.inc"
                 }
+                try {
+                    fileOperations([folderDeleteOperation('tmp')])
+                } catch (e) {
+                    echo "catchi"
+                }
+                try {
+                    fileOperations([folderDeleteOperation('tmp')])
+                } catch (e) {
+                    echo "real catchi"
+                }
+                fileOperations([folderDeleteOperation('out'), folderCreateOperation('tmp'),  fileDeleteOperation(excludes: '', includes: 'core.*,*.dmp')])
+
                 timeout(60) {
                     try {
                         executeTests(os, edition, mode, engine, port)
