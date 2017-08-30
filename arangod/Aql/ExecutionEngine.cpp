@@ -904,7 +904,9 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
     Serv2ColMap mappingServerToCollections;
     size_t length = edges.size();
     
+#ifdef USE_ENTERPRISE
     transaction::Methods* trx = query->trx();
+#endif
     
     auto findServerLists = [&] (ShardID const& shard) -> Serv2ColMap::iterator {
       auto serverList = clusterInfo->getResponsibleServer(shard);
