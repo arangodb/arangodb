@@ -432,7 +432,7 @@ def getTests(os, edition, mode, engine) {
   }
 }
 
-def testEdition(os, edition, mode, engine, port) {
+def executeTests(os, edition, mode, engine, port) {
     def arch = "LOG_test_${os}_${edition}_${mode}_${engine}"
 
     if (os == 'linux' || os == 'mac') {
@@ -556,7 +556,7 @@ def testStep(os, edition, mode, engine) {
                 }
                 timeout(60) {
                     try {
-                        testEdition(os, edition, mode, engine, port)
+                        executeTests(os, edition, mode, engine, port)
                     }
                     finally {
                         def arch = "LOG_test_${os}_${edition}_${mode}_${engine}"
@@ -590,19 +590,15 @@ def testStep(os, edition, mode, engine) {
     }
 }
 
-def testStepParallel(osList, editionList, modeList) {
+def testStepParallel(os, edition, modeList) {
     def branches = [:]
 
-    for (os in osList) {
-        for (edition in editionList) {
-            for (mode in modeList) {
-                for (engine in ['mmfiles', 'rocksdb']) {
-                    if (testCheck(os, edition, mode, engine)) {
-                        def name = "test-${os}-${edition}-${mode}-${engine}";
+    for (mode in modeList) {
+        for (engine in ['mmfiles', 'rocksdb']) {
+            if (testCheck(os, edition, mode, engine)) {
+                def name = "test-${os}-${edition}-${mode}-${engine}";
 
-                        branches[name] = testStep(os, edition, mode, engine)
-                    }
-                }
+                branches[name] = testStep(os, edition, mode, engine)
             }
         }
     }
@@ -828,16 +824,17 @@ def runEdition(os, edition) {
                     stashBinaries(os, edition)
                 }
 
-                // we only need one jslint test per edition
-                if (os == "linux") {
-                    stage("jslint-${edition}") {
-                        echo "Running jslint for ${edition}"
-                        jslint()
-                    }
-                }
+
             }
         }
-        testStepParallel([os], [edition], ['cluster', 'singleserver'])
+        // we only need one jslint test per edition
+        if (os == "linux") {
+            stage("jslint-${edition}") {
+                echo "Running jslint for ${edition}"
+                jslint()
+            }
+        }
+        testStepParallel(os, edition, ['cluster', 'singleserver'])
     }
 }
 
