@@ -432,7 +432,7 @@ def getTests(os, edition, mode, engine) {
   }
 }
 
-def testEdition(os, edition, mode, engine, port) {
+def executeTests(os, edition, mode, engine, port) {
     def arch = "LOG_test_${os}_${edition}_${mode}_${engine}"
 
     if (os == 'linux' || os == 'mac') {
@@ -471,10 +471,12 @@ def testEdition(os, edition, mode, engine, port) {
             command += testArgs
             lock("test-${env.NODE_NAME}-${env.JOB_NAME}-${env.BUILD_ID}-${edition}-${engine}-${lockIndex}") {
                 timeout(15) {
-                    if (os == "windows") {
-                        powershell command
-                    } else {
-                        sh command
+                    withEnv(['TMPDIR=${pwd()}/tmp', 'TEMPDIR=${pwd()}/tmp']) {
+                        if (os == "windows") {
+                            powershell command
+                        } else {
+                            sh command
+                        }
                     }
                 }
             }
@@ -550,13 +552,22 @@ def testStep(os, edition, mode, engine) {
                 echo "Using start port: ${port}"
                 if (os == "windows") {
                     powershell "copy build\\bin\\RelWithDebInfo\\* build\\bin"
-                    powershell "Installation/Pipeline/include/test_setup_tmp.ps1"
-                } else {
-                    sh "chmod +x Installation/Pipeline/include/test_setup_tmp.inc && sh Installation/Pipeline/include/test_setup_tmp.inc"
                 }
+                try {
+                    fileOperations([folderDeleteOperation('tmp')])
+                } catch (e) {
+                    echo "catchi"
+                }
+                try {
+                    fileOperations([folderDeleteOperation('tmp')])
+                } catch (e) {
+                    echo "real catchi"
+                }
+                fileOperations([folderDeleteOperation('out'), folderCreateOperation('tmp'),  fileDeleteOperation(excludes: '', includes: 'core.*,*.dmp')])
+
                 timeout(60) {
                     try {
-                        testEdition(os, edition, mode, engine, port)
+                        executeTests(os, edition, mode, engine, port)
                     }
                     finally {
                         def arch = "LOG_test_${os}_${edition}_${mode}_${engine}"
@@ -590,19 +601,15 @@ def testStep(os, edition, mode, engine) {
     }
 }
 
-def testStepParallel(osList, editionList, modeList) {
+def testStepParallel(os, edition, modeList) {
     def branches = [:]
 
-    for (os in osList) {
-        for (edition in editionList) {
-            for (mode in modeList) {
-                for (engine in ['mmfiles', 'rocksdb']) {
-                    if (testCheck(os, edition, mode, engine)) {
-                        def name = "test-${os}-${edition}-${mode}-${engine}";
+    for (mode in modeList) {
+        for (engine in ['mmfiles', 'rocksdb']) {
+            if (testCheck(os, edition, mode, engine)) {
+                def name = "test-${os}-${edition}-${mode}-${engine}";
 
-                        branches[name] = testStep(os, edition, mode, engine)
-                    }
-                }
+                branches[name] = testStep(os, edition, mode, engine)
             }
         }
     }
@@ -837,7 +844,8 @@ def runEdition(os, edition) {
                 }
             }
         }
-        testStepParallel([os], [edition], ['cluster', 'singleserver'])
+
+        testStepParallel(os, edition, ['cluster', 'singleserver'])
     }
 }
 
