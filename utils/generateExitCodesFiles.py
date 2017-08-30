@@ -29,7 +29,7 @@ def genJsFile(errors):
       + "  \"use strict\";\n"\
       + "  var internal = require(\"internal\");\n"\
       + "\n"\
-      + "  internal.errors = {\n"
+      + "  internal.exitCodes = {\n"
   
   # print individual errors
   i = 0
@@ -54,6 +54,41 @@ def genJsFile(errors):
 
   return out
 
+# generate NSIS implementation file from errors
+def genNSISFile(errors, filename):
+
+  impl = """
+!include "LogicLib.nsh"
+!macro printExitCode exitCode Message
+  Push "${exitCode}"
+  Push "${Message}"
+  Call printExitCode
+!macroend
+Function printExitCode
+pop $1
+pop $2
+${Switch} $0\n
+"""
+  # print individual errors
+  for e in errors:
+    impl += """
+  ${Case} %s # %s
+    MessageBox MB_ICONEXCLAMATION '$1:$\\r$\\n%s'
+    ; %s
+  ${Break}
+""" % (
+  e[1],
+  e[0],
+  e[2],
+  e[3]
+  )
+
+  impl = impl + """
+${EndSwitch}
+FunctionEnd
+"""
+
+  return impl.replace("\r", "\r\n")
 
 # generate C implementation file from errors
 def genCFile(errors, filename):
@@ -64,13 +99,13 @@ def genCFile(errors, filename):
          + "#include \"Basics/Common.h\"\n"\
          + "#include \"" + headerfile + "\"\n"\
          + "\n"\
-         + "void TRI_InitializeErrorMessages () {\n"
+         + "void TRI_InitializeExitMessages () {\n"
 
   # print individual errors
   for e in errors:
     msg  = e[2].replace("\n", " ").replace("\\", "").replace("\"", "\\\"")
     impl = impl\
-           + "  REG_ERROR(" + e[0] + ", \"" + msg + "\");\n"
+           + "  REG_EXIT(" + e[0] + ", \"" + msg + "\");\n"
 
   impl = impl\
        + "}\n"
@@ -81,11 +116,12 @@ def genCFile(errors, filename):
 # generate C header file from errors
 def genCHeaderFile(errors):
   wiki = "////////////////////////////////////////////////////////////////////////////////\n"\
-       + "/// Error codes and meanings\n"\
+       + "/// Exit codes and meanings\n"\
        + "///\n"\
-       + "/// The following errors might be raised when running ArangoDB:\n"\
-       + "///\n"
-  
+       + "/// The following codes might be retured when exiting ArangoDB:\n"\
+       + "///\n"\
+       + "#include \"Basics/error.h\"\n"
+
   for e in errors:
     wiki = wiki\
          + "/// - " + e[1] + ": @LIT{" + e[2].replace("%", "\%").replace("<", "\<").replace(">", "\>") + "}\n"\
@@ -95,22 +131,22 @@ def genCHeaderFile(errors):
        + "////////////////////////////////////////////////////////////////////////////////\n"
 
   header = "\n"\
-           + "#ifndef TRIAGENS_BASICS_VOC_ERRORS_H\n"\
-           + "#define TRIAGENS_BASICS_VOC_ERRORS_H 1\n"\
+           + "#ifndef TRIAGENS_BASICS_EXIT_CODES_H\n"\
+           + "#define TRIAGENS_BASICS_EXIT_CODES_H 1\n"\
            + "\n"\
            + wiki\
            + "\n"\
            + "////////////////////////////////////////////////////////////////////////////////\n"\
-           + "/// @brief helper macro to define an error string\n"\
+           + "/// @brief helper macro to define an exit code string\n"\
            + "////////////////////////////////////////////////////////////////////////////////\n"\
            + "\n"\
-           + "#define REG_ERROR(id, label) TRI_set_errno_string(TRI_ ## id, label);\n"\
+           + "#define REG_EXIT(id, label) TRI_set_exitno_string(TRI_ ## id, label);\n"\
            + "\n"\
            + "////////////////////////////////////////////////////////////////////////////////\n"\
-           + "/// @brief register all errors for ArangoDB\n"\
+           + "/// @brief register all exit codes for ArangoDB\n"\
            + "////////////////////////////////////////////////////////////////////////////////\n"\
            + "\n"\
-           + "void TRI_InitializeErrorMessages ();\n"\
+           + "void TRI_InitializeExitMessages ();\n"\
            + "\n"
  
   # print individual errors
@@ -136,10 +172,10 @@ def genCHeaderFile(errors):
 
 # define some globals 
 prologue = "////////////////////////////////////////////////////////////////////////////////\n"\
-         + "/// @brief auto-generated file generated from errors.dat\n"\
+         + "/// @brief auto-generated file generated from exitcodes.dat\n"\
          + "////////////////////////////////////////////////////////////////////////////////\n"\
          + "\n"
-  
+
 if len(sys.argv) < 3:
   print >> sys.stderr, "usage: %s <sourcefile> <outfile>" % sys.argv[0]
   sys.exit()
@@ -160,7 +196,7 @@ for e in errors:
     continue
 
   if e[0] == "" or e[1] == "" or e[2] == "" or e[3] == "":
-    print >> sys.stderr, "invalid error declaration file: %s" % (source)
+    print >> sys.stderr, "invalid exit code declaration file: %s" % (source)
     sys.exit()
 
   errorsList.append(e)
@@ -179,6 +215,8 @@ elif extension == ".h":
   out = genCHeaderFile(errorsList)
 elif extension == ".cpp":
   out = genCFile(errorsList, filename)
+elif extension == ".nsh":
+  out = genNSISFile(errorsList, filename)
 else:
   print >> sys.stderr, "usage: %s <sourcefile> <outfile>" % sys.argv[0]
   sys.exit()
