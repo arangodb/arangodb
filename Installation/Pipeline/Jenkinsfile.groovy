@@ -805,6 +805,13 @@ def runEdition(os, edition) {
 
                 timeout(90) {
                     buildEdition(os, edition)
+                    // we only need one jslint test per edition
+                    if (os == "linux") {
+                        stage("jslint-${edition}") {
+                            echo "Running jslint for ${edition}"
+                            jslint()
+                        }
+                    }
                     fileOperations([folderDeleteOperation('js/node/node_modules')])
                     if (os == "windows") {
                         powershell "mv js/node/node_modules-bundled js/node/node_modules"
@@ -814,13 +821,7 @@ def runEdition(os, edition) {
                     stashBinaries(os, edition)
                 }
 
-                // we only need one jslint test per edition
-                if (os == "linux") {
-                    stage("jslint-${edition}") {
-                        echo "Running jslint for ${edition}"
-                        jslint()
-                    }
-                }
+
             }
         }
 
