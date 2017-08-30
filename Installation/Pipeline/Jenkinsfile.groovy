@@ -471,7 +471,8 @@ def executeTests(os, edition, mode, engine, port) {
             command += testArgs
             lock("test-${env.NODE_NAME}-${env.JOB_NAME}-${env.BUILD_ID}-${edition}-${engine}-${lockIndex}") {
                 timeout(15) {
-                    withEnv(['TMPDIR=${pwd()}/tmp', 'TEMPDIR=${pwd()}/tmp']) {
+                    def tmpDir = pwd() + "/tmp"
+                    withEnv(["TMPDIR=${tmpDir}", "TEMPDIR=${tmpDir}"]) {
                         if (os == "windows") {
                             powershell command
                         } else {
