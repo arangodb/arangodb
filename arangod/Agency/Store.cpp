@@ -242,7 +242,7 @@ check_ret_t Store::applyTransaction(Slice const& query) {
 
 /// template<class T, class U> std::multimap<std::string, std::string>
 std::ostream& operator<<(std::ostream& os,
-                         std::multimap<std::string, std::string> const& m) {
+                         std::unordered_multimap<std::string, std::string> const& m) {
   for (auto const& i : m) {
     os << i.first << ": " << i.second << std::endl;
   }
@@ -755,25 +755,25 @@ std::multimap<TimePoint, std::string> const& Store::timeTable() const {
 }
 
 /// Observer table
-std::multimap<std::string, std::string>& Store::observerTable() {
+std::unordered_multimap<std::string, std::string>& Store::observerTable() {
   _storeLock.assertLockedByCurrentThread();
   return _observerTable;
 }
 
 /// Observer table
-std::multimap<std::string, std::string> const& Store::observerTable() const {
+std::unordered_multimap<std::string, std::string> const& Store::observerTable() const {
   _storeLock.assertLockedByCurrentThread();
   return _observerTable;
 }
 
 /// Observed table
-std::multimap<std::string, std::string>& Store::observedTable() {
+std::unordered_multimap<std::string, std::string>& Store::observedTable() {
   _storeLock.assertLockedByCurrentThread();
   return _observedTable;
 }
 
 /// Observed table
-std::multimap<std::string, std::string> const& Store::observedTable() const {
+std::unordered_multimap<std::string, std::string> const& Store::observedTable() const {
   _storeLock.assertLockedByCurrentThread();
   return _observedTable;
 }
