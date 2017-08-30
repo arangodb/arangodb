@@ -33,6 +33,7 @@ const optionsDocumentation = [
   '   - `skipAuthentication : testing authentication and authentication_paramaters will be skipped.'
 ];
 
+const fs = require('fs');
 const pu = require('@arangodb/process-utils');
 const tu = require('@arangodb/test-utils');
 const yaml = require('js-yaml');
@@ -149,8 +150,14 @@ function authenticationParameters (options) {
 
   let continueTesting = true;
   let results = {};
+  // we append one cleanup directory for the invoking logic...
+  let dummyDir = fs.join(fs.getTempPath(), 'authentication_dummy');
+  fs.makeDirectory(dummyDir);
+  pu.cleanupDBDirectoriesAppend(dummyDir);
 
   for (let test = 0; test < 3; test++) {
+    let cleanup = true;
+
     let instanceInfo = pu.startInstance('tcp', options,
       authTestServerParams[test],
       'authentication_parameters_' + authTestNames[test]);
@@ -191,7 +198,7 @@ function authenticationParameters (options) {
 
         results[testName].failed++;
         instanceInfo.exitStatus = 'server is gone.';
-
+        cleanup = false;
         break;
       }
 
@@ -213,6 +220,7 @@ function authenticationParameters (options) {
             ' and we got ' + reply.code +
             ' Full Status: ' + yaml.safeDump(reply)
         };
+        cleanup = false;
       }
 
       continueTesting = pu.arangod.check.instanceAlive(instanceInfo, options);
@@ -223,6 +231,10 @@ function authenticationParameters (options) {
     print(CYAN + 'Shutting down ' + authTestNames[test] + ' test...' + RESET);
     pu.shutdownInstance(instanceInfo, options);
     print(CYAN + 'done with ' + authTestNames[test] + ' test.' + RESET);
+
+    if (cleanup) {
+      pu.cleanupLastDirectory(options);
+    }
   }
 
   print();

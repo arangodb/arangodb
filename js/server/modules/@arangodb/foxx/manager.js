@@ -522,8 +522,8 @@ function patchManifestFile (servicePath, patchData) {
 }
 
 function _prepareService (serviceInfo, options = {}) {
-  const tempServicePath = fs.getTempFile('services', false);
-  const tempBundlePath = fs.getTempFile('bundles', false);
+  const tempServicePath = utils.joinLastPath(fs.getTempFile('services', false));
+  const tempBundlePath = utils.joinLastPath(fs.getTempFile('bundles', false));
   try {
     if (isZipBuffer(serviceInfo)) {
       // Buffer (zip)
@@ -773,7 +773,7 @@ function downloadServiceBundleFromRemote (url) {
 }
 
 function extractServiceBundle (archive, targetPath) {
-  const tempFolder = fs.getTempFile('services', false);
+  const tempFolder = utils.joinLastPath(fs.getTempFile('services', false));
   fs.makeDirectory(tempFolder);
   fs.unzipFile(archive, tempFolder, false, true);
 
