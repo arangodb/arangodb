@@ -5,6 +5,7 @@
 !addincludedir '@CPACK_PLUGIN_PATH@/UAC-plug-in-NSIS'
 !addincludedir '@CPACK_PLUGIN_PATH@/'
 !include "OpenLink.nsh"
+!include "exitcodes.nsh"
 
 ;--------------------------------
 ; Include LogicLib for more readable code
@@ -718,7 +719,10 @@ Function UpgradeExisting
   DetailPrint "Checking whether an existing database needs upgrade: "
   ExecWait "$INSTDIR\${SBIN_DIR}\arangod.exe --server.rest-server false --log.foreground-tty false --database.check-version" $0
   DetailPrint "done Checking whether an existing database needs upgrade: $0"
-  ${If} $0 == 1
+  ${If} $0 != 0
+  ${AndIf} $0 != 11
+    !insertmacro printExitCode $0 "failed to detect whether we need to Upgrade"
+  ${ElseIf} $0 == 11
   ${AndIf} $AUTOMATIC_UPDATE == "1"
     DetailPrint "Yes."
 
@@ -740,8 +744,8 @@ Function UpgradeExisting
     ; Now actually do the upgrade
     ExecWait "$INSTDIR\${SBIN_DIR}\arangod.exe --server.rest-server false  --log.level error --database.auto-upgrade true" $0
     DetailPrint "Done running database upgrade: $0"
-    ${If} $0 == 1
-      MessageBox MB_ICONEXCLAMATION "the Upgrade failed, please do a manual upgrade"
+    ${If} $0 != 0
+      !insertmacro printExitCode $0 "the Upgrade failed, please do a manual upgrade"
       Abort
     ${EndIf}
   ${EndIf}
@@ -757,6 +761,9 @@ Function SetDBPassword
   DetailPrint "Done initializing password: $0"
   ${If} $0 == 0
     return
+  ${Else}
+    !insertmacro printExitCode $0 "Failed to initialize database password.$\r$\nPlease check the windows event log for more details$\r$\n"
+    Abort
   ${EndIf}
   error:
     MessageBox MB_OK "Failed to initialize database password.$\r$\nPlease check the windows event log for details."

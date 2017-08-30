@@ -22,6 +22,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Basics/Common.h"
+#include "Basics/exitcodes.h"
 
 /// @brief error number and system error
 struct ErrorContainer {
@@ -34,6 +35,8 @@ thread_local ErrorContainer LastError;
 
 /// @brief the error messages, will be read-only after initialization
 static std::unordered_map<int, char const*> ErrorMessages;
+static std::unordered_map<int, char const*> ExitMessages;
+
 
 /// @brief returns the last error
 int TRI_errno() { return LastError._number; }
@@ -62,6 +65,16 @@ int TRI_set_errno(int error) {
   return error;
 }
 
+/// @brief defines an exit code string
+void TRI_set_exitno_string(int code, char const* msg) {
+  if (!ExitMessages.emplace(code, msg).second) {
+    // logic error, error number is redeclared
+    printf("Error: duplicate declaration of exit code %i in %s:%i\n", code,
+           __FILE__, __LINE__);
+    TRI_EXIT_FUNCTION(EXIT_FAILURE, nullptr);
+  }
+}
+
 /// @brief defines an error string
 void TRI_set_errno_string(int code, char const* msg) {
   if (!ErrorMessages.emplace(code, msg).second) {
@@ -87,6 +100,7 @@ char const* TRI_errno_string(int code) {
 /// @brief initializes the error messages
 void TRI_InitializeError() {
   TRI_InitializeErrorMessages();
+  TRI_InitializeExitMessages();
 }
 
 /// @brief shuts down the error messages
