@@ -72,6 +72,9 @@ class Rebalancer;      // forward declaration
 /// need a different instance.
 ////////////////////////////////////////////////////////////////////////////////
 class Manager {
+ protected:
+  typedef std::function<bool(std::function<void()>)> PostFn;
+
  public:
   static const uint64_t minSize;
   typedef FrequencyBuffer<uint64_t> AccessStatBuffer;
@@ -81,9 +84,10 @@ class Manager {
 
  public:
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief Initialize the manager with an io_service and global usage limit.
+  /// @brief Initialize the manager with a scheduler post method and global
+  /// usage limit.
   //////////////////////////////////////////////////////////////////////////////
-  Manager(boost::asio::io_service* ioService, uint64_t globalLimit,
+  Manager(PostFn schedulerPost, uint64_t globalLimit,
           bool enableWindowedStats = true);
   ~Manager();
 
@@ -155,6 +159,11 @@ class Manager {
   //////////////////////////////////////////////////////////////////////////////
   void endTransaction(Transaction* tx);
 
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief Post a function to the scheduler
+  //////////////////////////////////////////////////////////////////////////////
+  bool post(std::function<void()> fn);
+
  private:
   // use sizeof(uint64_t) + sizeof(std::shared_ptr<Cache>) + 64 for upper bound
   // on size of std::set<std::shared_ptr<Cache>> node -- should be valid for
@@ -203,7 +212,7 @@ class Manager {
 
   // task management
   enum TaskEnvironment { none, rebalancing, resizing };
-  boost::asio::io_service* _ioService;
+  PostFn _schedulerPost;
   uint64_t _resizeAttempt;
   basics::SharedAtomic<uint64_t> _outstandingTasks;
   basics::SharedAtomic<uint64_t> _rebalancingTasks;
@@ -243,9 +252,6 @@ class Manager {
   bool isOperational() const;
   // check if there is already a global process running
   bool globalProcessRunning() const;
-
-  // expose io_service
-  boost::asio::io_service* ioService();
 
   // coordinate state with task lifecycles
   void prepareTask(TaskEnvironment environment);

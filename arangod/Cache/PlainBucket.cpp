@@ -63,7 +63,7 @@ bool PlainBucket::isFull() const {
   return !hasEmptySlot;
 }
 
-CachedValue* PlainBucket::find(uint32_t hash, void const* key, uint32_t keySize,
+CachedValue* PlainBucket::find(uint32_t hash, void const* key, size_t keySize,
                                bool moveToFront) {
   TRI_ASSERT(isLocked());
   CachedValue* result = nullptr;
@@ -101,7 +101,7 @@ void PlainBucket::insert(uint32_t hash, CachedValue* value) {
 }
 
 CachedValue* PlainBucket::remove(uint32_t hash, void const* key,
-                                 uint32_t keySize) {
+                                 size_t keySize) {
   TRI_ASSERT(isLocked());
   CachedValue* value = find(hash, key, keySize, false);
   if (value != nullptr) {

@@ -270,7 +270,7 @@ bool Cache::reclaimMemory(uint64_t size) {
   return underLimit;
 }
 
-uint32_t Cache::hashKey(void const* key, uint32_t keySize) const {
+uint32_t Cache::hashKey(void const* key, size_t keySize) const {
   return (std::max)(static_cast<uint32_t>(1),
                     fasthash32(key, keySize, 0xdeadbeefUL));
 }
@@ -338,7 +338,7 @@ void Cache::shutdown() {
 
     _metadata.readLock();
     while (true) {
-      if (!_metadata.isMigrating() && 
+      if (!_metadata.isMigrating() &&
           !_metadata.isResizing()) {
         break;
       }
@@ -389,7 +389,7 @@ bool Cache::canMigrate() {
     return false;
   }
 
-  bool allowed = (_manager->ioService() != nullptr);
+  bool allowed = true;
   _metadata.readLock();
   if (_metadata.isMigrating()) {
     allowed = false;
@@ -443,7 +443,7 @@ bool Cache::migrate(std::shared_ptr<Table> newTable) {
     migrateBucket(_table->primaryBucket(i), _table->auxiliaryBuckets(i),
                             newTable);
   }
-  
+
   // swap tables
   _taskLock.writeLock();
   _table = newTable.get();

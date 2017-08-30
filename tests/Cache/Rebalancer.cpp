@@ -50,7 +50,11 @@ TEST_CASE("cache::Rebalancer", "[cache][!hide][longRunning]") {
   SECTION("test rebalancing with PlainCache") {
     RandomGenerator::initialize(RandomGenerator::RandomType::MERSENNE);
     MockScheduler scheduler(4);
-    Manager manager(scheduler.ioService(), 128 * 1024 * 1024);
+    auto postFn = [&scheduler](std::function<void()> fn) -> bool {
+      scheduler.post(fn);
+      return true;
+    };
+    Manager manager(postFn, 128 * 1024 * 1024);
     Rebalancer rebalancer(&manager);
 
     size_t cacheCount = 4;
@@ -172,7 +176,11 @@ TEST_CASE("cache::Rebalancer", "[cache][!hide][longRunning]") {
   SECTION("test rebalancing with TransactionalCache") {
     RandomGenerator::initialize(RandomGenerator::RandomType::MERSENNE);
     MockScheduler scheduler(4);
-    Manager manager(scheduler.ioService(), 128 * 1024 * 1024);
+    auto postFn = [&scheduler](std::function<void()> fn) -> bool {
+      scheduler.post(fn);
+      return true;
+    };
+    Manager manager(postFn, 128 * 1024 * 1024);
     Rebalancer rebalancer(&manager);
 
     size_t cacheCount = 4;
