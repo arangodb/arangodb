@@ -46,6 +46,7 @@
 #include "Transaction/Helpers.h"
 #include "Transaction/Methods.h"
 #include "Transaction/Context.h"
+#include "Utils/ExecContext.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/ManagedDocumentResult.h"
 
@@ -3712,8 +3713,6 @@ AqlValue Functions::IsSameCollection(
                   TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
   return AqlValue(arangodb::basics::VelocyPackHelper::NullValue());
 }
-
-#include "Utils/ExecContext.h"
 
 /// @brief function CURRENT_USER
 AqlValue Functions::CurrentUser(
