@@ -51,8 +51,10 @@ class Mutex {
   // nothing in non-maintainer mode and will do nothing for non-posix locks
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   void assertLockedByCurrentThread();
+  void assertNotLockedByCurrentThread();
 #else
   inline void assertLockedByCurrentThread() {}
+  inline void assertNotLockedByCurrentThread() {}
 #endif
 
  private:

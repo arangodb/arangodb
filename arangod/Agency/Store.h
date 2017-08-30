@@ -99,7 +99,7 @@ class Store : public arangodb::Thread {
   check_ret_t applyTransaction(Slice const& query);
 
   /// @brief Apply log entries in query, also process callbacks
-  std::vector<bool> applyLogEntries(std::vector<Slice> const& query,
+  std::vector<bool> applyLogEntries(arangodb::velocypack::Builder const& query,
                           index_t index, term_t term, bool inform);
 
   /// @brief Read specified query from store
@@ -151,10 +151,10 @@ class Store : public arangodb::Thread {
 
   std::multimap<TimePoint, std::string>& timeTable();
   std::multimap<TimePoint, std::string> const& timeTable() const;
-  std::multimap<std::string, std::string>& observerTable();
-  std::multimap<std::string, std::string> const& observerTable() const;
-  std::multimap<std::string, std::string>& observedTable();
-  std::multimap<std::string, std::string> const& observedTable() const;
+  std::unordered_multimap<std::string, std::string>& observerTable();
+  std::unordered_multimap<std::string, std::string> const& observerTable() const;
+  std::unordered_multimap<std::string, std::string>& observedTable();
+  std::unordered_multimap<std::string, std::string> const& observedTable() const;
 
   /// @brief Check precondition
   check_ret_t check(arangodb::velocypack::Slice const&, CheckMode = FIRST_FAIL) const;
@@ -180,8 +180,8 @@ class Store : public arangodb::Thread {
   std::multimap<TimePoint, std::string> _timeTable;
 
   /// @brief Table of observers in tree (only used in root node)
-  std::multimap<std::string, std::string> _observerTable;
-  std::multimap<std::string, std::string> _observedTable;
+  std::unordered_multimap<std::string, std::string> _observerTable;
+  std::unordered_multimap<std::string, std::string> _observedTable;
 
   /// @brief Root node
   Node _node;

@@ -723,6 +723,8 @@
 /// - 4004: @LIT{attribute cannot be used as smart graph attribute}
 ///   The given smartGraph attribute is illegal and connot be used for
 ///   sharding. All system attributes are forbidden.
+/// - 20001: @LIT{Illegal inquiry syntax}
+///   Inquiry handles a list of string clientIds: [<clientId>,...].
 /// - 20011: @LIT{Inform message must be an object.}
 ///   The inform message in the agency must be an object.
 /// - 20012: @LIT{Inform message must contain uint parameter 'term'}
@@ -2494,7 +2496,8 @@ void TRI_InitializeErrorMessages ();
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1493: ERROR_CLUSTER_DISTRIBUTE_SHARDS_LIKE_REPLICATION_FACTOR
 ///
-/// conflicting replication factor with distributeShardsLike parameter assignment
+/// conflicting replication factor with distributeShardsLike parameter
+/// assignment
 ///
 /// Will be raised if intended replication factor does not match that of the
 /// prototype shard given in ditributeShardsLike parameter.
@@ -3850,6 +3853,16 @@ void TRI_InitializeErrorMessages ();
 ////////////////////////////////////////////////////////////////////////////////
 
 #define TRI_ERROR_ILLEGAL_SMART_GRAPH_ATTRIBUTE                           (4004)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 20001: ERROR_AGENCY_INQUIRY_SYNTAX
+///
+/// Illegal inquiry syntax
+///
+/// Inquiry handles a list of string clientIds: [<clientId>,...].
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_AGENCY_INQUIRY_SYNTAX                                   (20001)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 20011: ERROR_AGENCY_INFORM_MUST_BE_OBJECT

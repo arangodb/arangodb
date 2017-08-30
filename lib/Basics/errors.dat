@@ -429,6 +429,7 @@ ERROR_ILLEGAL_SMART_GRAPH_ATTRIBUTE,4004,"attribute cannot be used as smart grap
 ## Agency errors
 ################################################################################
 
+ERROR_AGENCY_INQUIRY_SYNTAX,20001,"Illegal inquiry syntax","Inquiry handles a list of string clientIds: [<clientId>,...]."
 ERROR_AGENCY_INFORM_MUST_BE_OBJECT,20011,"Inform message must be an object.","The inform message in the agency must be an object."
 ERROR_AGENCY_INFORM_MUST_CONTAIN_TERM,20012,"Inform message must contain uint parameter 'term'","The inform message in the agency must contain a uint parameter 'term'."
 ERROR_AGENCY_INFORM_MUST_CONTAIN_ID,20013,"Inform message must contain string parameter 'id'","The inform message in the agency must contain a string parameter 'id'."
