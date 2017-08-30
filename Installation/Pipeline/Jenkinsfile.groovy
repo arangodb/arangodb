@@ -824,16 +824,16 @@ def runEdition(os, edition) {
                     stashBinaries(os, edition)
                 }
 
+                // we only need one jslint test per edition
+                if (os == "linux") {
+                    stage("jslint-${edition}") {
+                        echo "Running jslint for ${edition}"
+                        jslint()
+                    }
+                }
+            }
+        }
 
-            }
-        }
-        // we only need one jslint test per edition
-        if (os == "linux") {
-            stage("jslint-${edition}") {
-                echo "Running jslint for ${edition}"
-                jslint()
-            }
-        }
         testStepParallel(os, edition, ['cluster', 'singleserver'])
     }
 }
