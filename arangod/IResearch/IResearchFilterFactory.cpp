@@ -44,6 +44,7 @@
 #include "search/phrase_filter.hpp"
 
 #include <cctype>
+#include <type_traits>
 
 NS_LOCAL
 
@@ -608,11 +609,14 @@ bool fromNegation(
   return arangodb::iresearch::FilterFactory::filter(filter, *member);
 }
 
-bool fromBinaryAnd(
+bool rangeFromBinaryAnd(
     irs::boolean_filter* filter,
     arangodb::aql::AstNode const& node
 ) {
-  TRI_ASSERT(arangodb::aql::NODE_TYPE_OPERATOR_BINARY_AND == node.type);
+  TRI_ASSERT(
+    arangodb::aql::NODE_TYPE_OPERATOR_BINARY_AND == node.type
+    || arangodb::aql::NODE_TYPE_OPERATOR_NARY_AND == node.type
+  );
 
   if (node.numMembers() != 2) {
     logMalformedNode(node.type);
@@ -649,8 +653,8 @@ bool fromBinaryAnd(
     }
   }
 
-  // treat as ordinal 'And'
-  return fromGroup<irs::And>(filter, node);
+  // unable to create range
+  return false;
 }
 
 template<typename Filter>
@@ -667,6 +671,11 @@ bool fromGroup(
 
   if (!n) {
     // nothing to do
+    return true;
+  }
+
+  if (std::is_same<Filter, irs::And>::value && 2 == n && rangeFromBinaryAnd(filter, node)) {
+    // range case
     return true;
   }
 
@@ -1165,7 +1174,7 @@ NS_BEGIN(iresearch)
     case arangodb::aql::NODE_TYPE_OPERATOR_UNARY_NOT: // unary minus
       return fromNegation(filter, node);
     case arangodb::aql::NODE_TYPE_OPERATOR_BINARY_AND: // logical and
-      return fromBinaryAnd(filter, node);
+      return fromGroup<irs::And>(filter, node);
     case arangodb::aql::NODE_TYPE_OPERATOR_BINARY_OR: // logical or
       return fromGroup<irs::Or>(filter, node);
     case arangodb::aql::NODE_TYPE_OPERATOR_BINARY_EQ: // compare ==

@@ -2515,6 +2515,33 @@ SECTION("BinaryAnd") {
     assertFilterSuccess("FOR d IN collection FILTER '15' <= d.a.b.c and 40.0 > d.a.b.c RETURN d", expected);
   }
 
+  // heterogeneous numeric range
+  {
+    irs::numeric_token_stream minTerm; minTerm.reset(15.5);
+    irs::numeric_token_stream maxTerm; maxTerm.reset(40.);
+
+    irs::Or expected;
+    expected.add<irs::by_granular_range>()
+            .field(mangleNumeric("a.b.c"))
+            .include<irs::Bound::MIN>(true).insert<irs::Bound::MIN>(minTerm)
+            .include<irs::Bound::MIN>(true).insert<irs::Bound::MAX>(maxTerm);
+
+    assertFilterSuccess("FOR d IN collection FILTER d.a.b.c >= 15.5 and d.a.b.c < 40 RETURN d", expected);
+    assertFilterSuccess("FOR d IN collection FILTER d['a']['b'].c >= 15.5 and d['a']['b'].c < 40 RETURN d", expected);
+    assertFilterSuccess("FOR d IN collection FILTER d['a']['b']['c'] >= 15.5 and d.a.b.c < 40 RETURN d", expected);
+    assertFilterSuccess("FOR d IN collection FILTER 15.5 <= d.a.b.c and d.a.b.c < 40 RETURN d", expected);
+    assertFilterSuccess("FOR d IN collection FILTER d.a.b.c >= 15.5 and 40 > d.a.b.c RETURN d", expected);
+    assertFilterSuccess("FOR d IN collection FILTER d['a']['b'].c >= 15.5 and 40 > d['a']['b'].c RETURN d", expected);
+    assertFilterSuccess("FOR d IN collection FILTER d['a'].b.c >= 15.5 and 40 > d.a.b.c RETURN d", expected);
+    assertFilterSuccess("FOR d IN collection FILTER 15.5 <= d.a.b.c and 40 > d.a.b.c RETURN d", expected);
+    assertFilterSuccess("FOR d IN collection FILTER d.a.b.c >= 15.5 and d.a.b.c < 40.0 RETURN d", expected);
+    assertFilterSuccess("FOR d IN collection FILTER d['a']['b']['c'] >= 15.5 and d['a']['b']['c'] < 40.0 RETURN d", expected);
+    assertFilterSuccess("FOR d IN collection FILTER 15.5 <= d.a.b.c and d.a.b.c < 40.0 RETURN d", expected);
+    assertFilterSuccess("FOR d IN collection FILTER d.a.b.c >= 15.5 and 40.0 > d.a.b.c RETURN d", expected);
+    assertFilterSuccess("FOR d IN collection FILTER d['a'].b.c >= 15.5 and 40.0 > d['a']['b'].c RETURN d", expected);
+    assertFilterSuccess("FOR d IN collection FILTER 15.5 <= d.a.b.c and 40.0 > d.a.b.c RETURN d", expected);
+  }
+
   // heterogeneous range
   {
     irs::numeric_token_stream minTerm; minTerm.reset(15.);

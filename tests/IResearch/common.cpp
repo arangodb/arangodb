@@ -23,6 +23,8 @@
 
 #include "Basics/ArangoGlobalContext.h"
 
+extern char* ARGV0; // defined in main.cpp
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief there can be at most one ArangoGlobalConetxt instance because each
 ///        instance creation calls TRIAGENS_REST_INITIALIZE() which in tern
@@ -32,17 +34,15 @@ struct singleton_t {
   // required for DatabasePathFeature and TRI_InitializeErrorMessages()
   arangodb::ArangoGlobalContext ctx;
 
-  singleton_t()
-    : ctx(0, const_cast<char**>(std::vector<const char*>{""}.data()), ".") {
-  }
+  singleton_t() : ctx(1, &ARGV0, ".") { }
 };
 
 namespace arangodb {
 namespace tests {
 
-  void init() {
-    static singleton_t singleton;
-  }
+void init() {
+  static singleton_t singleton;
+}
 
 }
 }
