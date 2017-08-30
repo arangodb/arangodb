@@ -27,7 +27,9 @@
 #include "Graph/EdgeDocumentToken.h"
 #include "Graph/TraverserCache.h"
 #include "StorageEngine/DocumentIdentifierToken.h"
+#include "StorageEngine/TransactionState.h"
 #include "Transaction/Methods.h"
+#include "Transaction/Helpers.h"
 #include "Utils/OperationCursor.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/ManagedDocumentResult.h"
@@ -69,12 +71,38 @@ SingleServerEdgeCursor::~SingleServerEdgeCursor() {
   }
 }
 
+#ifdef USE_ENTERPRISE
+static bool CheckInaccesible(transaction::Methods* trx,
+                             VPackSlice const& edge) {
+  // for skipInaccessibleCollections we need to check the edge
+  // document, in that case nextWithExtra has no benefit
+  TRI_ASSERT(edge.isString());
+  StringRef str (edge);
+  size_t pos = str.find('/');
+  TRI_ASSERT(pos != std::string::npos);
+  if (trx->isInaccessibleCollection(str.substr(0, pos).toString())) {
+    return true;
+  }
+  return false;
+}
+#endif
+
 void SingleServerEdgeCursor::getDocAndRunCallback(OperationCursor* cursor, Callback callback) {
   auto collection = cursor->collection();
   EdgeDocumentToken etkn(collection->cid(), _cache[_cachePos++]);
   
   if (collection->readDocument(_trx, etkn.token(), *_mmdr)) {
     VPackSlice edgeDocument(_mmdr->vpack());
+#ifdef USE_ENTERPRISE
+    if (_trx->state()->options().skipInaccessibleCollections) {
+      VPackSlice from = transaction::helpers::extractFromFromDocument(edgeDocument);
+      VPackSlice to = transaction::helpers::extractToFromDocument(edgeDocument);
+      if (CheckInaccesible(_trx, from) || CheckInaccesible(_trx, to)) {
+        return;
+      }
+    }
+#endif
+    
     _opts->cache()->increaseCounter();
     if (_internalCursorMapping != nullptr) {
       TRI_ASSERT(_currentCursor < _internalCursorMapping->size());
@@ -134,10 +162,16 @@ bool SingleServerEdgeCursor::next(std::function<void(EdgeDocumentToken&&, VPackS
         return false;
       }
     } else {
-      if(cursor->hasExtra()) {
+      if (cursor->hasExtra()) {
         bool operationSuccessfull = false;
         auto extraCB = [&](DocumentIdentifierToken const& token, VPackSlice edge){
-          if (token._data != 0) {
+          if (token._data == 0) {
+#ifdef USE_ENTERPRISE
+            if (_trx->state()->options().skipInaccessibleCollections &&
+                CheckInaccesible(_trx, edge)) {
+              return;
+            }
+#endif
             operationSuccessfull = true;
             auto etkn = EdgeDocumentToken(cursor->collection()->cid(), token);
             if (_internalCursorMapping != nullptr) {

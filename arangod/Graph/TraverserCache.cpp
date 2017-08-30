@@ -63,6 +63,7 @@ VPackSlice TraverserCache::lookupToken(EdgeDocumentToken const& idToken) {
 }
 
 VPackSlice TraverserCache::lookupInCollection(StringRef id) {
+  TRI_ASSERT(!ServerState::instance()->isCoordinator());
   size_t pos = id.find('/');
   if (pos == std::string::npos) {
     // Invalid input. If we get here somehow we managed to store invalid _from/_to

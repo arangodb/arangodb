@@ -67,9 +67,9 @@ void ClusterTraverserCache::insertIntoResult(StringRef id,
   auto it = _edges.find(id);
   if (it == _edges.end()) {
     result.add(VelocyPackHelper::NullValue());
-    return;
+  } else {
+    result.add(_edges[id]);
   }
-  result.add(_edges[id]);
 }
 
 void ClusterTraverserCache::insertIntoResult(EdgeDocumentToken const& idToken,

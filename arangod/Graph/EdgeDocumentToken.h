@@ -129,7 +129,9 @@ private:
     EdgeDocumentToken::LocalDocument document;
     uint8_t const* vpack;
     
-    TokenData() {}
+    TokenData() {
+      vpack = nullptr;
+    }
     TokenData(velocypack::Slice const& edge) : vpack(edge.begin()) {
       TRI_ASSERT(!velocypack::Slice(vpack).isExternal());
     }

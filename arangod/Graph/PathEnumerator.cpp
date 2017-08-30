@@ -100,13 +100,12 @@ bool DepthFirstEnumerator::next() {
       if (_opts->uniqueEdges == TraverserOptions::UniquenessLevel::PATH) {
         ServerState::RoleEnum role = ServerState::instance()->getRole();
         for (auto const& it : _enumeratedPath.edges) {
+          // We might already have this edge on the path.
           if (ServerState::isCoordinator(role)) {
-            // We already have this edge on the path.
-            it.equalsCoordinator(eid);
-            return;
-          } else {
-            // We already have this edge on the path.
-            it.equalsLocal(eid);
+            if (it.equalsCoordinator(eid)) {
+              return;
+            }
+          } else if (it.equalsLocal(eid)) {
             return;
           }
         }

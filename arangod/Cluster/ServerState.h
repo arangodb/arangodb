@@ -144,7 +144,7 @@ class ServerState {
   
   bool isSingleServerOrCoordinator() {
     RoleEnum role = loadRole();
-    return isCoordinator(role);
+    return isCoordinator(role) || isSingleServer(role);
   }
 
   /// @brief get the server role
