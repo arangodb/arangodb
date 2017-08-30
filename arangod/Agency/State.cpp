@@ -355,19 +355,28 @@ std::vector<log_t> State::get(index_t start, index_t end) const {
     return entries;
   }
 
+  // start must be greater than or equal to the lowest index
+  // and smaller than or equal to the largest index
   if (start < _log[0].index) {
     start = _log.front().index;
   } else if (start > _log.back().index) {
     start = _log.back().index;
   }
 
+  // end must be greater than or equal to start
+  // and smaller than or equal to the largest index
   if (end <= start) {
     end = start;
-  } else if (end == (std::numeric_limits<uint64_t>::max)() || end > _log.back().index) {
+  } else if (
+    end == (std::numeric_limits<uint64_t>::max)() || end > _log.back().index) {
     end = _log.back().index;
   }
 
-  for (size_t i = start - _cur; i <= end - _cur; ++i) {
+  // subtract offset _cur
+  start -= _cur;
+  end -= (_cur-1);
+
+  for (size_t i = start; i < end; ++i) {
     entries.push_back(_log[i]);
   }
 

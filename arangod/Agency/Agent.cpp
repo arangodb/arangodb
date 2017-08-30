@@ -816,7 +816,7 @@ bool Agent::challengeLeadership() {
 /// Get last acknowledged responses on leader
 query_t Agent::lastAckedAgo() const {
   
-  std::map<std::string, TimePoint> lastAcked;
+  std::unordered_map<std::string, TimePoint> lastAcked;
   {
     _liLock.assertNotLockedByCurrentThread();
     MUTEX_LOCKER(ioLocker, _ioLock);
@@ -1213,7 +1213,7 @@ void Agent::failedActivation(
 void Agent::detectActiveAgentFailures() {
   // Detect faulty agent if pool larger than agency
 
-  std::map<std::string, TimePoint> lastAcked;
+  std::unordered_map<std::string, TimePoint> lastAcked;
   {
     _liLock.assertNotLockedByCurrentThread();
     MUTEX_LOCKER(ioLocker, _ioLock);
@@ -1369,7 +1369,7 @@ void Agent::notifyInactive() const {
     return;
   }
 
-  std::map<std::string, std::string> pool = _config.pool();
+  std::unordered_map<std::string, std::string> pool = _config.pool();
   std::string path = "/_api/agency_priv/inform";
 
   Builder out;
@@ -1684,7 +1684,7 @@ query_t Agent::gossip(query_t const& in, bool isCallback, size_t version) {
 
   LOG_TOPIC(TRACE, Logger::AGENCY) << "Received gossip " << slice.toJson();
 
-  std::map<std::string, std::string> incoming;
+  std::unordered_map<std::string, std::string> incoming;
   for (auto const& pair : VPackObjectIterator(pslice)) {
     if (!pair.value.isString()) {
       THROW_ARANGO_EXCEPTION_MESSAGE(
