@@ -11,14 +11,14 @@ properties(
     ]]
 )
 
-def defaultLinux = false
+def defaultLinux = true
 def defaultMac = false
-def defaultWindows = true
+def defaultWindows = false
 def defaultBuild = true
 def defaultCleanBuild = false
 def defaultCommunity = true
 def defaultEnterprise = true
-def defaultRunResilience = false
+// def defaultRunResilience = false
 def defaultRunTests = true
 
 properties([
@@ -53,11 +53,11 @@ properties([
             description: 'build and run tests for enterprise',
             name: 'Enterprise'
         ),
-        booleanParam(
-            defaultValue: defaultRunResilience,
-            description: 'run resilience tests',
-            name: 'runResilience'
-        ),
+        // booleanParam(
+        //     defaultValue: defaultRunResilience,
+        //     description: 'run resilience tests',
+        //     name: 'runResilience'
+        // ),
         booleanParam(
             defaultValue: defaultRunTests,
             description: 'run tests',
@@ -85,7 +85,7 @@ useMac = params.Mac
 useWindows = params.Windows
 
 // run resilience tests
-runResilience = params.runResilience
+//runResilience = params.runResilience
 
 // run tests
 runTests = params.runTests
@@ -102,7 +102,7 @@ restrictions = [:]
 proxyRepo = 'http://c1:8088/github.com/arangodb/arangodb'
 
 // github repositiory for resilience tests
-resilienceRepo = 'http://c1:8088/github.com/arangodb/resilience-tests'
+// resilienceRepo = 'http://c1:8088/github.com/arangodb/resilience-tests'
 
 // github repositiory for enterprise version
 enterpriseRepo = 'http://c1:8088/github.com/arangodb/enterprise'
@@ -119,6 +119,11 @@ if (env.BRANCH_NAME =~ /^PR-/) {
 
   def reg = ~/^arangodb:/
   sourceBranchLabel = sourceBranchLabel - reg
+}
+
+if (sourceBranchLabel == ~/devel$/) {
+    useWindows = true
+    useMac = true
 }
 
 
@@ -183,19 +188,19 @@ def checkoutEnterprise() {
 
 }
 
-def checkoutResilience() {
-    checkout(
-        changelog: false,
-        poll: false,
-        scm: [
-            $class: 'GitSCM',
-            branches: [[name: "*/master"]],
-            doGenerateSubmoduleConfigurations: false,
-            extensions: [[$class: 'RelativeTargetDirectory', relativeTargetDir: 'resilience']],
-            submoduleCfg: [],
-            userRemoteConfigs: [[credentialsId: credentials, url: resilienceRepo]]])
+// def checkoutResilience() {
+//     checkout(
+//         changelog: false,
+//         poll: false,
+//         scm: [
+//             $class: 'GitSCM',
+//             branches: [[name: "*/master"]],
+//             doGenerateSubmoduleConfigurations: false,
+//             extensions: [[$class: 'RelativeTargetDirectory', relativeTargetDir: 'resilience']],
+//             submoduleCfg: [],
+//             userRemoteConfigs: [[credentialsId: credentials, url: resilienceRepo]]])
 
-}
+// }
 
 def checkCommitMessages() {
     def causes = currentBuild.rawBuild.getCauses()
@@ -250,7 +255,7 @@ def checkCommitMessages() {
         useWindows = false
         useCommunity = false
         useEnterprise = false
-        runResilience = false
+        // runResilience = false
         runTests = false
     }
     else {
@@ -259,7 +264,7 @@ def checkCommitMessages() {
         useWindows = true
         useCommunity = true
         useEnterprise = true
-        runResilience = true
+        // runResilience = true
         runTests = true
         if (env.BRANCH_NAME == "devel" || env.BRANCH_NAME == "3.2") {
             echo "build of main branch"
@@ -310,7 +315,6 @@ Windows: ${useWindows}
 Clean Build: ${cleanBuild}
 Building Community: ${useCommunity}
 Building Enterprise: ${useEnterprise}
-Running Resilience: ${runResilience}
 Running Tests: ${runTests}
 
 Restrictions: ${restrictions.keySet().join(", ")}
@@ -336,13 +340,13 @@ def unstashBinaries(os, edition) {
 buildJenkins = [
     "linux": "linux && build",
     "mac" : "mac",
-    "windows": "windows-real"
+    "windows": "windows"
 ]
 
 testJenkins = [
     "linux": "linux && tests",
     "mac" : "mac",
-    "windows": "windows-real"
+    "windows": "windows"
 ]
 
 // -----------------------------------------------------------------------------
@@ -556,9 +560,9 @@ def testStep(os, edition, mode, engine) {
                     }
                     finally {
                         def arch = "LOG_test_${os}_${edition}_${mode}_${engine}"
-                        step([$class: 'XUnitBuilder',
-                            thresholds: [[$class: 'FailedThreshold', unstableThreshold: '1']],
-                            tools: [[$class: 'JUnitType', failIfNotNew: false, pattern: 'out/*.xml']]])
+                        // step([$class: 'XUnitBuilder',
+                        //     thresholds: [[$class: 'FailedThreshold', unstableThreshold: '1']],
+                        //     tools: [[$class: 'JUnitType', failIfNotNew: false, pattern: 'out/*.xml']]])
 
                         if (os == 'linux' || os == 'mac') {
                             sh "find log-output -name 'FAILED_*' -exec cp '{}' . ';'"
@@ -816,7 +820,7 @@ def runEdition(os, edition) {
                     if (edition == "enterprise") {
                         checkoutEnterprise()
                     }
-                    checkoutResilience()
+                    // checkoutResilience()
                 }
 
                 timeout(90) {

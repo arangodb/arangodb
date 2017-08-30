@@ -345,21 +345,23 @@ void RocksDBEdgeIndexIterator::lookupInRocksDB(StringRef fromTo) {
         fromTo.data(), static_cast<uint32_t>(fromTo.size()),
         _builder.slice().start(),
         static_cast<uint64_t>(_builder.slice().byteSize()));
-    bool inserted = false;
-    for (size_t attempts = 0; attempts < 10; attempts++) {
-      auto status = cc->insert(entry);
-      if (status.ok()) {
-        inserted = true;
-        break;
+    if (entry) {
+      bool inserted = false;
+      for (size_t attempts = 0; attempts < 10; attempts++) {
+        auto status = cc->insert(entry);
+        if (status.ok()) {
+          inserted = true;
+          break;
+        }
+        if (status.errorNumber() != TRI_ERROR_LOCK_TIMEOUT) {
+          break;
+        }
       }
-      if (status.errorNumber() != TRI_ERROR_LOCK_TIMEOUT) {
-        break;
+      if (!inserted) {
+        LOG_TOPIC(DEBUG, arangodb::Logger::CACHE) << "Failed to cache: "
+                                                  << fromTo.toString();
+        delete entry;
       }
-    }
-    if (!inserted) {
-      LOG_TOPIC(DEBUG, arangodb::Logger::CACHE) << "Failed to cache: "
-                                                << fromTo.toString();
-      delete entry;
     }
   }
   TRI_ASSERT(_builder.slice().isArray());
@@ -776,19 +778,21 @@ void RocksDBEdgeIndex::warmupInternal(transaction::Methods* trx,
             previous.data(), static_cast<uint32_t>(previous.size()),
             builder.slice().start(),
             static_cast<uint64_t>(builder.slice().byteSize()));
-        bool inserted = false;
-        for (size_t attempts = 0; attempts < 10; attempts++) {
-          auto status = cc->insert(entry);
-          if (status.ok()) {
-            inserted = true;
-            break;
+        if (entry) {
+          bool inserted = false;
+          for (size_t attempts = 0; attempts < 10; attempts++) {
+            auto status = cc->insert(entry);
+            if (status.ok()) {
+              inserted = true;
+              break;
+            }
+            if (status.errorNumber() != TRI_ERROR_LOCK_TIMEOUT) {
+              break;
+            }
           }
-          if (status.errorNumber() != TRI_ERROR_LOCK_TIMEOUT) {
-            break;
+          if (!inserted) {
+            delete entry;
           }
-        }
-        if (!inserted) {
-          delete entry;
         }
         builder.clear();
       }
@@ -833,19 +837,21 @@ void RocksDBEdgeIndex::warmupInternal(transaction::Methods* trx,
         previous.data(), static_cast<uint32_t>(previous.size()),
         builder.slice().start(),
         static_cast<uint64_t>(builder.slice().byteSize()));
-    bool inserted = false;
-    for (size_t attempts = 0; attempts < 10; attempts++) {
-      auto status = cc->insert(entry);
-      if (status.ok()) {
-        inserted = true;
-        break;
+    if (entry) {
+      bool inserted = false;
+      for (size_t attempts = 0; attempts < 10; attempts++) {
+        auto status = cc->insert(entry);
+        if (status.ok()) {
+          inserted = true;
+          break;
+        }
+        if (status.errorNumber() != TRI_ERROR_LOCK_TIMEOUT) {
+          break;
+        }
       }
-      if (status.errorNumber() != TRI_ERROR_LOCK_TIMEOUT) {
-        break;
+      if (!inserted) {
+        delete entry;
       }
-    }
-    if (!inserted) {
-      delete entry;
     }
   }
   LOG_TOPIC(DEBUG, Logger::FIXME) << "loaded n: " << n ;

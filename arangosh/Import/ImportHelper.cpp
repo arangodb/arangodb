@@ -715,9 +715,21 @@ bool ImportHelper::checkCreateCollection() {
     return true;
   }
 
-  LOG_TOPIC(ERR, arangodb::Logger::FIXME)
-      << "unable to create collection '" << _collectionName
-      << "', server returned status code: " << static_cast<int>(code);
+  std::shared_ptr<velocypack::Builder> bodyBuilder(result->getBodyVelocyPack());
+  velocypack::Slice error = bodyBuilder->slice();
+  if (!error.isNone()) {
+    auto errorNum = error.get("errorNum").getUInt();
+    auto errorMsg = error.get("errorMessage").copyString();
+    LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+        << "unable to create collection '" << _collectionName
+        << "', server returned status code: " << static_cast<int>(code)
+        << "; error [" << errorNum << "] " << errorMsg;
+  } else {
+    LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+        << "unable to create collection '" << _collectionName
+        << "', server returned status code: " << static_cast<int>(code)
+        << "; server returned message: " << result->getBody();
+  }
   _hasError = true;
   return false;
 }
@@ -846,13 +858,17 @@ void ImportHelper::waitForSenders() {
     uint32_t numIdle = 0;
     for (auto const& t : _senderThreads) {
       if (t->isDone()) {
+        if (t->hasError()) {
+          _hasError = true;
+          _errorMessages.push_back(t->errorMessage());
+        }
         numIdle++;
       }
     }
     if (numIdle == _senderThreads.size()) {
       return;
     }
-    usleep(100000);
+    usleep(10000);
   }
 }
 }

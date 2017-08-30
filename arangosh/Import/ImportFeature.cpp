@@ -462,7 +462,7 @@ void ImportFeature::start() {
       }
 
     } else {
-      LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "error message:";
+      LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "error message(s):";
       for (std::string const& msg : ih.getErrorMessages()) {
         LOG_TOPIC(ERR, arangodb::Logger::FIXME) << msg;
       }
