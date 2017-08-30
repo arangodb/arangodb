@@ -25,6 +25,7 @@
 #include "Aql/AqlValue.h"
 #include "Basics/StringRef.h"
 #include "Basics/VelocyPackHelper.h"
+#include "Cluster/ServerState.h"
 #include "Graph/EdgeDocumentToken.h"
 #include "Transaction/Methods.h"
 
@@ -33,7 +34,6 @@
 #include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb;
-using namespace arangodb::aql;
 using namespace arangodb::basics;
 using namespace arangodb::graph;
 
@@ -44,21 +44,22 @@ ClusterTraverserCache::ClusterTraverserCache(
 
 ClusterTraverserCache::~ClusterTraverserCache() {}
 
-arangodb::velocypack::Slice ClusterTraverserCache::lookupToken(EdgeDocumentToken const& token) {
-  return lookupInCollection(token.vid());
+VPackSlice ClusterTraverserCache::lookupToken(EdgeDocumentToken const& token) {
+  return VPackSlice(token.vpack());
 }
 
-aql::AqlValue ClusterTraverserCache::fetchAqlResult(EdgeDocumentToken const& idToken) {
-  return fetchAqlResult(idToken.vid());
+aql::AqlValue ClusterTraverserCache::fetchAqlResult(EdgeDocumentToken const& token) {
+  TRI_ASSERT(ServerState::instance()->isCoordinator());
+  return aql::AqlValue(aql::AqlValueHintNoCopy(token.vpack()));
 }
 
 aql::AqlValue ClusterTraverserCache::fetchAqlResult(StringRef id) {
   auto it = _edges.find(id);
   if (it == _edges.end()) {
     // Document not found return NULL
-    return AqlValue(VelocyPackHelper::NullValue());
+    return aql::AqlValue(VelocyPackHelper::NullValue());
   }
-  return AqlValue(it->second);
+  return aql::AqlValue(aql::AqlValueHintNoCopy(it->second.begin()));
 }
 
 void ClusterTraverserCache::insertIntoResult(StringRef id,
@@ -73,8 +74,7 @@ void ClusterTraverserCache::insertIntoResult(StringRef id,
 
 void ClusterTraverserCache::insertIntoResult(EdgeDocumentToken const& idToken,
                                              VPackBuilder& result) {
-  // This cast is save because the Coordinator can only create those tokens
-  insertIntoResult(idToken.vid(), result);
+  result.add(VPackSlice(idToken.vpack()));
 }
 
 

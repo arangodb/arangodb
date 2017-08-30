@@ -86,15 +86,6 @@ class TraverserCache {
 
    virtual void insertDocument(StringRef idString,
                                arangodb::velocypack::Slice const& document);
-
-   //////////////////////////////////////////////////////////////////////////////
-   /// @brief Throws the document referenced by the token into the filter
-   ///        function and returns it result.
-   ///        The document will be looked up in the StorageEngine
-   //////////////////////////////////////////////////////////////////////////////
-
-   virtual bool validateFilter(StringRef idString,
-                               std::function<bool(arangodb::velocypack::Slice const&)> filterFunc);
   
    size_t getAndResetInsertedDocuments() {
      size_t tmp = _insertedDocuments;
@@ -132,12 +123,7 @@ class TraverserCache {
    ///        The Slice returned here is only valid until the NEXT call of this
    ///        function.
    //////////////////////////////////////////////////////////////////////////////
-
-   arangodb::velocypack::Slice lookupInCollection(
-       StringRef idString);
-
-   arangodb::velocypack::Slice lookupInCollection(
-       EdgeDocumentToken const& idToken);
+  arangodb::velocypack::Slice lookupInCollection(arangodb::StringRef idString);
 
   protected:
 

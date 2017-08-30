@@ -50,10 +50,17 @@ TraverserCache::TraverserCache(transaction::Methods* trx)
 
 TraverserCache::~TraverserCache() {}
 
-arangodb::velocypack::Slice TraverserCache::lookupToken(EdgeDocumentToken const& token) {
-  return lookupInCollection(token);
+VPackSlice TraverserCache::lookupToken(EdgeDocumentToken const& idToken) {
+  TRI_ASSERT(!ServerState::instance()->isCoordinator());
+  auto col = _trx->vocbase()->lookupCollection(idToken.cid());
+  if (!col->readDocument(_trx, idToken.token(), *_mmdr.get())) {
+    TRI_ASSERT(false);
+    // We already had this token, inconsistent state. Return NULL in Production
+    LOG_TOPIC(ERR, arangodb::Logger::GRAPHS) << "Could not extract indexed Edge Document, return 'null' instead. This is most likely a caching issue. Try: '" << col->name() <<".unload(); " << col->name() << ".load()' in arangosh to fix this.";
+    return basics::VelocyPackHelper::NullValue();
+  }
+  return VPackSlice(_mmdr->vpack());
 }
-
 
 VPackSlice TraverserCache::lookupInCollection(StringRef id) {
   size_t pos = id.find('/');
@@ -82,21 +89,10 @@ VPackSlice TraverserCache::lookupInCollection(StringRef id) {
   return result;
 }
 
-VPackSlice TraverserCache::lookupInCollection(EdgeDocumentToken const& idToken) {
-  auto col = _trx->vocbase()->lookupCollection(idToken.cid());
-  if (!col->readDocument(_trx, idToken.token(), *_mmdr.get())) {
-    TRI_ASSERT(false);
-    // We already had this token, inconsistent state. Return NULL in Production
-    LOG_TOPIC(ERR, arangodb::Logger::GRAPHS) << "Could not extract indexed Edge Document, return 'null' instead. This is most likely a caching issue. Try: '" << col->name() <<".unload(); " << col->name() << ".load()' in arangosh to fix this."; 
-    return basics::VelocyPackHelper::NullValue();
-  }
-  return VPackSlice(_mmdr->vpack());
-}
-
 void TraverserCache::insertIntoResult(EdgeDocumentToken const& idToken,
                                       VPackBuilder& builder) {
   TRI_ASSERT(!ServerState::instance()->isCoordinator());
-  builder.add(lookupInCollection(idToken));
+  builder.add(lookupToken(idToken));
 }
 
 void TraverserCache::insertIntoResult(StringRef idString,
@@ -110,19 +106,12 @@ aql::AqlValue TraverserCache::fetchAqlResult(StringRef idString) {
 
 aql::AqlValue TraverserCache::fetchAqlResult(EdgeDocumentToken const& idToken) {
   TRI_ASSERT(!ServerState::instance()->isCoordinator());
-  return aql::AqlValue(lookupInCollection(idToken));
+  return aql::AqlValue(lookupToken(idToken));
 }
 
 void TraverserCache::insertDocument(StringRef idString,
                                     arangodb::velocypack::Slice const& document) {
   return;
-}
-
-bool TraverserCache::validateFilter(
-    StringRef idString,
-    std::function<bool(VPackSlice const&)> filterFunc) {
-  VPackSlice slice = lookupInCollection(idString);
-  return filterFunc(slice);
 }
 
 StringRef TraverserCache::persistString(

@@ -72,16 +72,6 @@ class TraverserDocumentCache : public TraverserCache {
    void insertDocument(StringRef idString,
                        arangodb::velocypack::Slice const& document) override;
 
-   //////////////////////////////////////////////////////////////////////////////
-   /// @brief Throws the document referenced by the token into the filter
-   ///        function and returns it result.
-   ///        The document will be taken from the hash-cache.
-   ///        If it is not cached it will be looked up in the StorageEngine
-   //////////////////////////////////////////////////////////////////////////////
-
-   bool validateFilter(StringRef idString,
-       std::function<bool(velocypack::Slice const&)> filterFunc) override;
- 
   protected:
 
    //////////////////////////////////////////////////////////////////////////////

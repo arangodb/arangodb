@@ -156,7 +156,7 @@ bool SingleServerEdgeCursor::next(std::function<void(EdgeDocumentToken&&, VPackS
         _cache.clear();
         auto cb = [&](DocumentIdentifierToken const& token) {
           if (token._data != 0) {
-            // Document not found
+            // Document found
             _cache.emplace_back(token);
           }
         };

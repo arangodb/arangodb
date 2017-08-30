@@ -96,12 +96,12 @@ VPackSlice TraverserDocumentCache::lookupAndCache(StringRef id) {
 void TraverserDocumentCache::insertIntoResult(EdgeDocumentToken const& idToken,
                                               VPackBuilder& builder) {
   TRI_ASSERT(!ServerState::instance()->isCoordinator());
-  builder.add(lookupInCollection(idToken));
+  builder.add(lookupToken(idToken));
 }
 
 aql::AqlValue TraverserDocumentCache::fetchAqlResult(EdgeDocumentToken const& idToken) {
   TRI_ASSERT(!ServerState::instance()->isCoordinator());
-  return aql::AqlValue(lookupInCollection(idToken));
+  return aql::AqlValue(lookupToken(idToken));
 }
 
 void TraverserDocumentCache::insertIntoResult(StringRef idString,
@@ -162,18 +162,3 @@ void TraverserDocumentCache::insertDocument(
   }
 }
 
-bool TraverserDocumentCache::validateFilter(
-    StringRef idString, std::function<bool(VPackSlice const&)> filterFunc) {
-  if (_cache != nullptr) {
-    auto finding = lookup(idString);
-    if (finding.found()) {
-      auto val = finding.value();
-      VPackSlice slice(val->value());
-      // finding makes sure that slice contant stays valid.
-      return filterFunc(slice);
-    }
-  }
-  // Not in cache. Fetch and insert.
-  VPackSlice slice = lookupAndCache(idString);
-  return filterFunc(slice);
-}

@@ -58,7 +58,7 @@ struct EdgeDocumentToken {
     _type = EdgeDocumentToken::TokenType::LOCAL;
   }
   
-  EdgeDocumentToken(arangodb::StringRef&& vid) noexcept : _data(vid) {
+  EdgeDocumentToken(arangodb::velocypack::Slice const& edge) noexcept : _data(edge) {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
     _type = EdgeDocumentToken::TokenType::COORDINATOR;
 #endif
@@ -76,62 +76,66 @@ struct EdgeDocumentToken {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
     TRI_ASSERT(_type == TokenType::LOCAL);
 #endif
-    TRI_ASSERT(_data.local.cid != 0);
-    return _data.local.cid;
+    TRI_ASSERT(_data.document.cid != 0);
+    return _data.document.cid;
   }
   
   DocumentIdentifierToken token() const {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
     TRI_ASSERT(_type == TokenType::LOCAL);
 #endif
-    TRI_ASSERT(_data.local.token != 0);
-    return _data.local.token;
+    TRI_ASSERT(_data.document.token != 0);
+    return _data.document.token;
   }
   
-  StringRef const& vid() const {
+  uint8_t const* vpack() const {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
     TRI_ASSERT(_type == TokenType::COORDINATOR);
 #endif
-    TRI_ASSERT(_data.vertexId.length() != 0);
-    return _data.vertexId;
+    TRI_ASSERT(_data.vpack);
+    return _data.vpack;
   }
   
   bool equalsCoordinator(EdgeDocumentToken const& other) const {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
     TRI_ASSERT(_type == TokenType::COORDINATOR);
 #endif
-    return _data.vertexId == other.vid();
+    // FIXME:
+    return velocypack::Slice(_data.vpack) ==
+           velocypack::Slice(other._data.vpack);
   }
   
   bool equalsLocal(EdgeDocumentToken const& other) const {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
     TRI_ASSERT(_type == TokenType::LOCAL);
 #endif
-    return _data.local.cid == other.cid() && _data.local.token == other.token();
+    return _data.document.cid == other.cid() &&
+           _data.document.token == other.token();
   }
   
 private:
   
-  /// Identifying information for edge documents
-  /// contains information about collection as well as
-  /// the document token only valid on a dbserver or single server
-  struct LocalData {
+  /// Identifying information for an edge documents valid on one server
+  /// only used on a dbserver or single server
+  struct LocalDocument {
     TRI_voc_cid_t cid;
     DocumentIdentifierToken token;
-    ~LocalData() {}
+    ~LocalDocument() {}
   };
   
   /// fixed size union, works for both single server and
   /// cluster case
   union TokenData {
-    EdgeDocumentToken::LocalData local;
-    arangodb::StringRef vertexId;
+    EdgeDocumentToken::LocalDocument document;
+    uint8_t const* vpack;
     
     TokenData() {}
-    TokenData(arangodb::StringRef const& vid) : vertexId(vid) {}
+    TokenData(velocypack::Slice const& edge) : vpack(edge.begin()) {
+      TRI_ASSERT(!velocypack::Slice(vpack).isExternal());
+    }
     TokenData(TRI_voc_cid_t cid, DocumentIdentifierToken tk) {
-      local.cid = cid;
-      local.token = tk;
+      document.cid = cid;
+      document.token = tk;
     }
     ~TokenData() {}
   };
