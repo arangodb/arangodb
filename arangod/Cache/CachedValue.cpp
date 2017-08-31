@@ -33,7 +33,14 @@ const size_t CachedValue::_headerAllocSize = sizeof(CachedValue) +
 
 CachedValue* CachedValue::copy() const {
   uint8_t* buf = new uint8_t[size()];
-  CachedValue* value = new (buf + offset()) CachedValue(*this);
+  CachedValue* value = nullptr;
+  try {
+    value = new (buf + offset()) CachedValue(*this);
+  } catch (...) {
+    delete[] buf;
+    return nullptr;
+  }
+
   return value;
 }
 
@@ -45,11 +52,17 @@ CachedValue* CachedValue::construct(void const* k, size_t kSize,
   }
 
   uint8_t* buf = new uint8_t[_headerAllocSize + kSize + vSize];
-  uint8_t* aligned = reinterpret_cast<uint8_t*>(
-    (reinterpret_cast<size_t>(buf) + _headerAllocOffset) &
-    _headerAllocMask);
-  size_t offset = buf - aligned;
-  CachedValue* cv = new (aligned) CachedValue(offset, k, kSize, v, vSize);
+  CachedValue* cv = nullptr;
+  try {
+    uint8_t* aligned = reinterpret_cast<uint8_t*>(
+      (reinterpret_cast<size_t>(buf) + _headerAllocOffset) &
+      _headerAllocMask);
+    size_t offset = buf - aligned;
+    cv = new (aligned) CachedValue(offset, k, kSize, v, vSize);
+  } catch (...) {
+    delete[] buf;
+    return nullptr;
+  }
 
   return cv;
 }
@@ -64,7 +77,7 @@ void CachedValue::operator delete(void* ptr) {
 CachedValue::CachedValue(size_t off, void const* k, size_t kSize,
                          void const* v, size_t vSize)
   : _refCount(0),
-    _keySize(kSize + (off << _offsetShift)),
+    _keySize(static_cast<uint32_t>(kSize + (off << _offsetShift))),
     _valueSize(vSize) {
   std::memcpy(const_cast<uint8_t*>(key()), k, kSize);
   if (vSize > 0) {
