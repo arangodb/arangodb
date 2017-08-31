@@ -59,7 +59,9 @@ function catchRunner (options) {
 
   // we append one cleanup directory for the invoking logic...
   let dummyDir = fs.join(fs.getTempPath(), 'catch_dummy');
-  fs.makeDirectory(dummyDir);
+  if (!fs.exists(dummyDir)) {
+    fs.makeDirectory(dummyDir);
+  }
   pu.cleanupDBDirectoriesAppend(dummyDir);
 
   const run = locateCatchTest('arangodbtests');
