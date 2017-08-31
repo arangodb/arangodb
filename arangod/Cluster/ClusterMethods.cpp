@@ -893,7 +893,6 @@ int selectivityEstimatesOnCoordinator(
             if(identifier.value.hasKey("selectivityEstimate")) {
               StringRef shard_index_id(identifier.key);
               auto split_point = std::find(shard_index_id.begin(), shard_index_id.end(),'/');
-              std::string shard(shard_index_id.begin(), split_point );
               std::string index(split_point + 1, shard_index_id.end());
 
               double estimate = arangodb::basics::VelocyPackHelper::getNumericValue(

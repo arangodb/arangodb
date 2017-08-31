@@ -37,16 +37,9 @@ FreeMemoryTask::FreeMemoryTask(Manager::TaskEnvironment environment,
 FreeMemoryTask::~FreeMemoryTask() {}
 
 bool FreeMemoryTask::dispatch() {
-  auto ioService = _manager->ioService();
-  if (ioService == nullptr) {
-    return false;
-  }
-
   _manager->prepareTask(_environment);
   auto self = shared_from_this();
-  ioService->post([self, this]() -> void { run(); });
-
-  return true;
+  return _manager->post([self, this]() -> void { run(); });
 }
 
 void FreeMemoryTask::run() {
@@ -78,16 +71,9 @@ MigrateTask::MigrateTask(Manager::TaskEnvironment environment, Manager* manager,
 MigrateTask::~MigrateTask() {}
 
 bool MigrateTask::dispatch() {
-  auto ioService = _manager->ioService();
-  if (ioService == nullptr) {
-    return false;
-  }
-
   _manager->prepareTask(_environment);
   auto self = shared_from_this();
-  ioService->post([self, this]() -> void { run(); });
-
-  return true;
+  return _manager->post([self, this]() -> void { run(); });
 }
 
 void MigrateTask::run() {

@@ -456,8 +456,10 @@ std::shared_ptr<Index> RocksDBCollection::createIndex(
     THROW_ARANGO_EXCEPTION(res);
   }
 
+#if USE_PLAN_CACHE
   arangodb::aql::PlanCache::instance()->invalidate(
       _logicalCollection->vocbase());
+#endif
   // Until here no harm is done if sth fails. The shared ptr will clean up. if
   // left before
   {
@@ -1547,7 +1549,7 @@ arangodb::Result RocksDBCollection::lookupRevisionVPack(
     if (f.found()) {
       std::string* value = mdr.prepareStringUsage();
       value->append(reinterpret_cast<char const*>(f.value()->value()),
-                    static_cast<size_t>(f.value()->valueSize));
+                    f.value()->valueSize());
       mdr.setManagedAfterStringUsage(revisionId);
       return Result();
     }
@@ -1563,9 +1565,11 @@ arangodb::Result RocksDBCollection::lookupRevisionVPack(
       auto entry = cache::CachedValue::construct(
           key.string().data(), static_cast<uint32_t>(key.string().size()),
           value->data(), static_cast<uint64_t>(value->size()));
-      auto status = _cache->insert(entry);
-      if (status.fail()) {
-        delete entry;
+      if (entry) {
+        auto status = _cache->insert(entry);
+        if (status.fail()) {
+          delete entry;
+        }
       }
     }
 
@@ -1611,9 +1615,11 @@ arangodb::Result RocksDBCollection::lookupRevisionVPack(
       auto entry = cache::CachedValue::construct(
           key.string().data(), static_cast<uint32_t>(key.string().size()),
           value.data(), static_cast<uint64_t>(value.size()));
-      auto status = _cache->insert(entry);
-      if (status.fail()) {
-        delete entry;
+      if (entry) {
+        auto status = _cache->insert(entry);
+        if (status.fail()) {
+          delete entry;
+        }
       }
     }
 

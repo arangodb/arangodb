@@ -77,6 +77,10 @@ struct TraverserEngineShardLists {
 
   // Mapping for vertexCollections to shardIds.
   std::unordered_map<std::string, std::vector<ShardID>> vertexCollections;
+  
+#ifdef USE_ENTERPRISE
+  std::set<ShardID> inaccessibleShards;
+#endif
 };
 
 /// Typedef for a complicated mapping used in TraverserEngines.
@@ -596,8 +600,21 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
     }
 
     result.add(VPackValue("options"));
+#ifdef USE_ENTERPRISE
+    if (query->trx()->state()->options().skipInaccessibleCollections &&
+        query->trx()->isInaccessibleCollection(collection->getPlanId())) {
+      aql::QueryOptions opts = query->queryOptions();
+      TRI_ASSERT(opts.transactionOptions.skipInaccessibleCollections);
+      opts.inaccessibleShardIds.insert(shardId);
+      opts.toVelocyPack(result, true);
+    } else {
+      // the toVelocyPack will open & close the "options" object
+      query->queryOptions().toVelocyPack(result, true);
+    }
+#else
     // the toVelocyPack will open & close the "options" object
     query->queryOptions().toVelocyPack(result, true);
+#endif
     
     result.close();
 
@@ -885,7 +902,11 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
     auto clusterInfo = arangodb::ClusterInfo::instance();
     Serv2ColMap mappingServerToCollections;
     size_t length = edges.size();
-
+    
+#ifdef USE_ENTERPRISE
+    transaction::Methods* trx = query->trx();
+#endif
+    
     auto findServerLists = [&] (ShardID const& shard) -> Serv2ColMap::iterator {
       auto serverList = clusterInfo->getResponsibleServer(shard);
       if (serverList->empty()) {
@@ -909,7 +930,7 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
         pair->second.edgeCollections[i].emplace_back(shard);
       }
     }
-
+    
     std::vector<std::unique_ptr<arangodb::aql::Collection>> const& vertices =
         en->vertexColls();
     if (vertices.empty()) {
@@ -919,15 +940,20 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
       }
       // This case indicates we do not have a named graph. We simply use
       // ALL collections known to this query.
-      auto cs = query->collections()->collections();
+      std::map<std::string, Collection*>* cs = query->collections()->collections();
       for (auto const& collection : (*cs)) {
         if (knownEdges.find(collection.second->getName()) == knownEdges.end()) {
           // This collection is not one of the edge collections used in this
           // graph.
           auto shardIds = collection.second->shardIds(_includedShards);
-          for (auto const& shard : *shardIds) {
+          for (ShardID const& shard : *shardIds) {
             auto pair = findServerLists(shard);
             pair->second.vertexCollections[collection.second->getName()].emplace_back(shard);
+#ifdef USE_ENTERPRISE
+            if (trx->isInaccessibleCollection(collection.second->getPlanId())) {
+              pair->second.inaccessibleShards.insert(shard);
+            }
+#endif
           }
         }
       }
@@ -946,9 +972,14 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
       // This Traversal is started with a GRAPH. It knows all relevant collections.
       for (auto const& it : vertices) {
         auto shardIds = it->shardIds(_includedShards);
-        for (auto const& shard : *shardIds) {
+        for (ShardID const& shard : *shardIds) {
           auto pair = findServerLists(shard);
           pair->second.vertexCollections[it->getName()].emplace_back(shard);
+#ifdef USE_ENTERPRISE
+          if (trx->isInaccessibleCollection(it->getPlanId())) {
+            pair->second.inaccessibleShards.insert(shard);
+          }
+#endif
         }
       }
       // We have to make sure that all engines at least know all vertex collections.
@@ -984,7 +1015,8 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
     //     "vertices" : {
     //       "v1": [<shards of v1>], // may be empty
     //       "v2": [<shards of v2>]  // may be empty
-    //     }
+    //     },
+    //     "inaccessible": [<inaccessible shards>]
     //   }
     // }
 
@@ -1047,6 +1079,17 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
         engineInfo.close();
       }
       engineInfo.close(); // edges
+      
+#ifdef USE_ENTERPRISE
+      if (!list.second.inaccessibleShards.empty()) {
+        engineInfo.add(VPackValue("inaccessible"));
+        engineInfo.openArray();
+        for (ShardID const& shard : list.second.inaccessibleShards) {
+          engineInfo.add(VPackValue(shard));
+        }
+        engineInfo.close(); // inaccessible
+      }
+#endif
 
       engineInfo.close(); // shards
 

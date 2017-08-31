@@ -254,7 +254,7 @@ void Cache::requestMigrate(uint32_t requestedLogSize) {
 }
 
 void Cache::freeValue(CachedValue* value) {
-  while (value->refCount.load() > 0) {
+  while (!value->isFreeable()) {
     std::this_thread::yield();
   }
 
@@ -270,7 +270,7 @@ bool Cache::reclaimMemory(uint64_t size) {
   return underLimit;
 }
 
-uint32_t Cache::hashKey(void const* key, uint32_t keySize) const {
+uint32_t Cache::hashKey(void const* key, size_t keySize) const {
   return (std::max)(static_cast<uint32_t>(1),
                     fasthash32(key, keySize, 0xdeadbeefUL));
 }
@@ -385,25 +385,22 @@ bool Cache::canResize() {
 }
 
 bool Cache::canMigrate() {
-  bool allowed = (_manager->ioService() != nullptr);
+  bool allowed = _state.lock(Cache::triesSlow);
   if (allowed) {
-    allowed = _state.lock(Cache::triesSlow);
-    if (allowed) {
-      if (isOperational()) {
-        if (_state.isSet(State::Flag::migrating)) {
-          allowed = false;
-        } else {
-          _metadata.lock();
-          if (_metadata.isSet(State::Flag::migrating)) {
-            allowed = false;
-          }
-          _metadata.unlock();
-        }
-      } else {
+    if (isOperational()) {
+      if (_state.isSet(State::Flag::migrating)) {
         allowed = false;
+      } else {
+        _metadata.lock();
+        if (_metadata.isSet(State::Flag::migrating)) {
+          allowed = false;
+        }
+        _metadata.unlock();
       }
-      _state.unlock();
+    } else {
+      allowed = false;
     }
+    _state.unlock();
   }
 
   return allowed;

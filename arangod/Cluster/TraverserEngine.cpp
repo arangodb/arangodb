@@ -44,6 +44,7 @@ using namespace arangodb::graph;
 using namespace arangodb::traverser;
 
 static const std::string OPTIONS = "options";
+static const std::string INACCESSIBLE = "inaccessible";
 static const std::string SHARDS = "shards";
 static const std::string EDGES = "edges";
 static const std::string TYPE = "type";
@@ -96,17 +97,38 @@ BaseEngine::BaseEngine(TRI_vocbase_t* vocbase, VPackSlice info)
     _vertexShards.emplace(collection.key.copyString(), shards);
   }
 
-  auto params = std::make_shared<VPackBuilder>();
-  auto opts = std::make_shared<VPackBuilder>();
+  // FIXME: in the future this needs to be replaced with the new cluster
+  // wide transactions
+  transaction::Options trxOpts;
+#ifdef USE_ENTERPRISE
+  if (info.hasKey(INACCESSIBLE)) {
+    trxOpts.skipInaccessibleCollections = true;
+    std::unordered_set<ShardID> inaccessible;
+    for (VPackSlice const& shard : VPackArrayIterator(info.get(INACCESSIBLE))) {
+      TRI_ASSERT(shard.isString());
+      inaccessible.insert(shard.copyString());
+    }
+    _trx = aql::AqlTransaction::create(
+        arangodb::transaction::StandaloneContext::Create(vocbase),
+        _collections.collections(), trxOpts, true, inaccessible);
+  } else {
+    _trx = aql::AqlTransaction::create(
+        arangodb::transaction::StandaloneContext::Create(vocbase),
+        _collections.collections(), trxOpts, true);
+  }
+#else
+  _trx = aql::AqlTransaction::create(
+       arangodb::transaction::StandaloneContext::Create(vocbase),
+       _collections.collections(), trxOpts, true);
+#endif
 
-  _trx = new arangodb::aql::AqlTransaction(
-      arangodb::transaction::StandaloneContext::Create(vocbase),
-      _collections.collections(), transaction::Options(), true);
   // true here as last argument is crucial: it leads to the fact that the
   // created transaction is considered a "MAIN" part and will not switch
   // off collection locking completely!
-  _query =
-      new aql::Query(false, vocbase, aql::QueryString(), params, opts, aql::PART_DEPENDENT);
+  auto params = std::make_shared<VPackBuilder>();
+  auto opts = std::make_shared<VPackBuilder>();
+  _query = new aql::Query(false, vocbase, aql::QueryString(), params, opts,
+                          aql::PART_DEPENDENT);
   _query->injectTransaction(_trx);
 
   VPackSlice variablesSlice = info.get(VARIABLES);
@@ -231,31 +253,31 @@ void BaseTraverserEngine::getEdges(VPackSlice vertex, size_t depth,
       std::unique_ptr<arangodb::graph::EdgeCursor> edgeCursor(
           _opts->nextCursor(&mmdr, vertexId, depth));
 
-      edgeCursor->readAll(
-          [&](std::unique_ptr<EdgeDocumentToken>&& eid, VPackSlice edge, size_t cursorId) {
-            if (edge.isString()) {
-              edge = _opts->cache()->lookupToken(eid.get());
-            }
-            if (_opts->evaluateEdgeExpression(edge, StringRef(v), depth,
-                                              cursorId)) {
-              builder.add(edge);
-            }
-          });
+      edgeCursor->readAll([&](std::unique_ptr<EdgeDocumentToken>&& eid,
+                              VPackSlice edge, size_t cursorId) {
+        if (edge.isString()) {
+          edge = _opts->cache()->lookupToken(eid.get());
+        }
+        if (_opts->evaluateEdgeExpression(edge, StringRef(v), depth,
+                                          cursorId)) {
+          builder.add(edge);
+        }
+      });
       // Result now contains all valid edges, probably multiples.
     }
   } else if (vertex.isString()) {
     std::unique_ptr<arangodb::graph::EdgeCursor> edgeCursor(
         _opts->nextCursor(&mmdr, StringRef(vertex), depth));
-    edgeCursor->readAll(
-        [&](std::unique_ptr<EdgeDocumentToken>&& eid, VPackSlice edge, size_t cursorId) {
-          if (edge.isString()) {
-            edge = _opts->cache()->lookupToken(eid.get());
-          }
-          if (_opts->evaluateEdgeExpression(edge, StringRef(vertex), depth,
-                                            cursorId)) {
-            builder.add(edge);
-          }
-        });
+    edgeCursor->readAll([&](std::unique_ptr<EdgeDocumentToken>&& eid,
+                            VPackSlice edge, size_t cursorId) {
+      if (edge.isString()) {
+        edge = _opts->cache()->lookupToken(eid.get());
+      }
+      if (_opts->evaluateEdgeExpression(edge, StringRef(vertex), depth,
+                                        cursorId)) {
+        builder.add(edge);
+      }
+    });
     // Result now contains all valid edges, probably multiples.
   } else {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_BAD_PARAMETER);
@@ -380,8 +402,8 @@ void ShortestPathEngine::getEdges(VPackSlice vertex, bool backward,
         edgeCursor.reset(_opts->nextCursor(&mmdr, vertexId));
       }
 
-      edgeCursor->readAll([&](std::unique_ptr<EdgeDocumentToken>&& eid, VPackSlice edge,
-                              size_t cursorId) {
+      edgeCursor->readAll([&](std::unique_ptr<EdgeDocumentToken>&& eid,
+                              VPackSlice edge, size_t cursorId) {
         if (edge.isString()) {
           edge = _opts->cache()->lookupToken(eid.get());
         }
@@ -396,8 +418,8 @@ void ShortestPathEngine::getEdges(VPackSlice vertex, bool backward,
     } else {
       edgeCursor.reset(_opts->nextCursor(&mmdr, vertexId));
     }
-    edgeCursor->readAll([&](std::unique_ptr<EdgeDocumentToken>&& eid, VPackSlice edge,
-                            size_t cursorId) {
+    edgeCursor->readAll([&](std::unique_ptr<EdgeDocumentToken>&& eid,
+                            VPackSlice edge, size_t cursorId) {
       if (edge.isString()) {
         edge = _opts->cache()->lookupToken(eid.get());
       }

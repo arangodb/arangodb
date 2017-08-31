@@ -166,7 +166,8 @@ LogicalCollection::LogicalCollection(LogicalCollection const& other)
       _keyOptions(other._keyOptions),
       _keyGenerator(KeyGenerator::factory(VPackSlice(keyOptions()))),
       _physical(other.getPhysical()->clone(this)),
-      _clusterEstimateTTL(0) {
+      _clusterEstimateTTL(0),
+      _planVersion(other._planVersion) {
   TRI_ASSERT(_physical != nullptr);
   if (ServerState::instance()->isDBServer() ||
       !ServerState::instance()->isRunningInCluster()) {
@@ -206,7 +207,8 @@ LogicalCollection::LogicalCollection(TRI_vocbase_t* vocbase,
       _keyGenerator(),
       _physical(
           EngineSelectorFeature::ENGINE->createPhysicalCollection(this, info)),
-      _clusterEstimateTTL(0) {
+      _clusterEstimateTTL(0),
+      _planVersion(0) {
   // add keyoptions from slice
   TRI_ASSERT(info.isObject());
   VPackSlice keyOpts = info.get("keyOptions");
@@ -795,7 +797,8 @@ void LogicalCollection::setStatus(TRI_vocbase_col_status_e status) {
 }
 
 void LogicalCollection::toVelocyPackForClusterInventory(VPackBuilder& result,
-                                                        bool useSystem) const {
+                                                        bool useSystem,
+                                                        bool isReady) const {
   if (_isSystem && !useSystem) {
     return;
   }
@@ -823,6 +826,8 @@ void LogicalCollection::toVelocyPackForClusterInventory(VPackBuilder& result,
 
   result.add(VPackValue("indexes"));
   getIndexesVPack(result, false, false);
+  result.add("planVersion", VPackValue(getPlanVersion()));
+  result.add("isReady", VPackValue(isReady));
   result.close();  // CollectionInfo
 }
 
@@ -1026,7 +1031,9 @@ std::shared_ptr<Index> LogicalCollection::createIndex(transaction::Methods* trx,
 /// @brief drops an index, including index file removal and replication
 bool LogicalCollection::dropIndex(TRI_idx_iid_t iid) {
   TRI_ASSERT(!ServerState::instance()->isCoordinator());
+#if USE_PLAN_CACHE
   arangodb::aql::PlanCache::instance()->invalidate(_vocbase);
+#endif
   arangodb::aql::QueryCache::instance()->invalidate(_vocbase, name());
   return _physical->dropIndex(iid);
 }

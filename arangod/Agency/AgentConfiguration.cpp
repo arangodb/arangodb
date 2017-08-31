@@ -194,7 +194,7 @@ void config_t::setTimeoutMult(int64_t m) {
   }
 }
 
-std::map<std::string, std::string> config_t::pool() const {
+std::unordered_map<std::string, std::string> config_t::pool() const {
   READ_LOCKER(readLocker, _lock);
   return _pool;
 }
@@ -392,7 +392,7 @@ bool config_t::updateEndpoint(std::string const& id, std::string const& ep) {
 
 void config_t::update(query_t const& message) {
   VPackSlice slice = message->slice();
-  std::map<std::string, std::string> pool;
+  std::unordered_map<std::string, std::string> pool;
   bool changed = false;
   for (auto const& p : VPackObjectIterator(slice.get(poolStr))) {
     auto const& id = p.key.copyString();

@@ -31,6 +31,7 @@
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/Function.h"
 #include "Aql/Query.h"
+#include "Aql/RegexCache.h"
 #include "Basics/Exceptions.h"
 #include "Basics/ScopeGuard.h"
 #include "Basics/StringBuffer.h"
@@ -51,13 +52,6 @@
 
 using namespace arangodb;
 using namespace arangodb::aql;
-
-/// @brief thread-local cache for compiled regexes (REGEX function)
-thread_local std::unordered_map<std::string, RegexMatcher*>* RegexCache =
-    nullptr;
-/// @brief thread-local cache for compiled regexes (LIKE function)
-thread_local std::unordered_map<std::string, RegexMatcher*>* LikeCache =
-    nullptr;
 
 /// @brief convert a number value into an AqlValue
 static AqlValue NumberValue(transaction::Methods* trx, int value) {
@@ -97,110 +91,6 @@ void Functions::ValidateParameters(VPackFunctionParameters const& parameters,
                                    char const* function, int minParams) {
   return ValidateParameters(parameters, function, minParams,
                             static_cast<int>(Function::MaxArguments));
-}
-
-/// @brief clear the regex cache in a thread
-static void ClearRegexCache() {
-  if (RegexCache != nullptr) {
-    for (auto& it : *RegexCache) {
-      delete it.second;
-    }
-    delete RegexCache;
-    RegexCache = nullptr;
-  }
-}
-
-/// @brief clear the like cache in a thread
-static void ClearLikeCache() {
-  if (LikeCache != nullptr) {
-    for (auto& it : *LikeCache) {
-      delete it.second;
-    }
-    delete LikeCache;
-    LikeCache = nullptr;
-  }
-}
-
-/// @brief compile a LIKE pattern from a string
-static std::string BuildLikePattern(char const* ptr, size_t length,
-                                    bool caseInsensitive) {
-  std::string pattern;
-  pattern.reserve(length + 8); // reserve some room
-  
-  // pattern is always anchored
-  pattern.push_back('^');
-  if (caseInsensitive) {
-    pattern.append("(?i)");
-  }
-
-  bool escaped = false;
-
-  for (size_t i = 0; i < length; ++i) {
-    char const c = ptr[i];
-
-    if (c == '\\') {
-      if (escaped) {
-        // literal backslash
-        pattern.append("\\\\");
-      }
-      escaped = !escaped;
-    } else {
-      if (c == '%') {
-        if (escaped) {
-          // literal %
-          pattern.push_back('%');
-        } else {
-          // wildcard
-          pattern.append("(.|[\r\n])*");
-        }
-      } else if (c == '_') {
-        if (escaped) {
-          // literal underscore
-          pattern.push_back('_');
-        } else {
-          // wildcard character
-          pattern.append("(.|[\r\n])");
-        }
-      } else if (c == '?' || c == '+' || c == '[' || c == '(' || c == ')' ||
-                 c == '{' || c == '}' || c == '^' || c == '$' || c == '|' ||
-                 c == '\\' || c == '.') {
-        // character with special meaning in a regex
-        pattern.push_back('\\');
-        pattern.push_back(c);
-      } else {
-        if (escaped) {
-          // found a backslash followed by no special character
-          pattern.append("\\\\");
-        }
-
-        // literal character
-        pattern.push_back(c);
-      }
-
-      escaped = false;
-    }
-  }
-
-  // always anchor the pattern
-  pattern.push_back('$');
-
-  return pattern;
-}
-
-/// @brief compile a REGEX pattern from a string
-static std::string BuildRegexPattern(char const* ptr, size_t length,
-                                     bool caseInsensitive) {
-  std::string pattern;
-  if (caseInsensitive) {
-    pattern.reserve(length + 4);
-    pattern.append("(?i)");
-  } else {
-    pattern.reserve(length);
-  }
-
-  pattern.append(ptr, length);
-
-  return pattern;
 }
 
 /// @brief extract a function parameter from the arguments
@@ -690,14 +580,6 @@ static void FlattenList(VPackSlice const& array, size_t maxDepth,
     }
   }
 }
-
-/// @brief called before a query starts
-/// has the chance to set up any thread-local storage
-void Functions::InitializeThreadContext() {}
-
-/// @brief called when a query ends
-/// its responsibility is to clear any thread-local storage
-void Functions::DestroyThreadContext() { ClearRegexCache(); ClearLikeCache(); }
 
 /// @brief function IS_NULL
 AqlValue Functions::IsNull(arangodb::aql::Query* query,
@@ -1243,36 +1125,9 @@ AqlValue Functions::Like(arangodb::aql::Query* query,
   // build pattern from parameter #1
   AqlValue regex = ExtractFunctionParameterValue(trx, parameters, 1);
   AppendAsString(trx, adapter, regex);
-
-  std::string const pattern =
-      BuildLikePattern(buffer->c_str(), buffer->length(), caseInsensitive);
-  RegexMatcher* matcher = nullptr;
-
-  if (LikeCache != nullptr) {
-    auto it = LikeCache->find(pattern);
-
-    // check regex cache
-    if (it != LikeCache->end()) {
-      matcher = (*it).second;
-    }
-  }
-
-  if (matcher == nullptr) {
-    matcher =
-        arangodb::basics::Utf8Helper::DefaultUtf8Helper.buildMatcher(pattern);
-
-    try {
-      if (LikeCache == nullptr) {
-        LikeCache = new std::unordered_map<std::string, RegexMatcher*>();
-      }
-      // insert into cache, no matter if pattern is valid or not
-      LikeCache->emplace(pattern, matcher);
-    } catch (...) {
-      delete matcher;
-      ClearLikeCache();
-      throw;
-    }
-  }
+  
+  // the matcher is owned by the query!
+  ::RegexMatcher* matcher = query->regexCache()->buildLikeMatcher(buffer->c_str(), buffer->length(), caseInsensitive);
 
   if (matcher == nullptr) {
     // compiling regular expression failed
@@ -1311,35 +1166,8 @@ AqlValue Functions::RegexTest(arangodb::aql::Query* query,
   AqlValue regex = ExtractFunctionParameterValue(trx, parameters, 1);
   AppendAsString(trx, adapter, regex);
 
-  std::string const pattern =
-      BuildRegexPattern(buffer->c_str(), buffer->length(), caseInsensitive);
-  RegexMatcher* matcher = nullptr;
-
-  if (RegexCache != nullptr) {
-    auto it = RegexCache->find(pattern);
-
-    // check regex cache
-    if (it != RegexCache->end()) {
-      matcher = (*it).second;
-    }
-  }
-
-  if (matcher == nullptr) {
-    matcher =
-        arangodb::basics::Utf8Helper::DefaultUtf8Helper.buildMatcher(pattern);
-
-    try {
-      if (RegexCache == nullptr) {
-        RegexCache = new std::unordered_map<std::string, RegexMatcher*>();
-      }
-      // insert into cache, no matter if pattern is valid or not
-      RegexCache->emplace(pattern, matcher);
-    } catch (...) {
-      delete matcher;
-      ClearRegexCache();
-      throw;
-    }
-  }
+  // the matcher is owned by the query!
+  ::RegexMatcher* matcher = query->regexCache()->buildRegexMatcher(buffer->c_str(), buffer->length(), caseInsensitive);
 
   if (matcher == nullptr) {
     // compiling regular expression failed
@@ -1378,35 +1206,8 @@ AqlValue Functions::RegexReplace(arangodb::aql::Query* query,
   AqlValue regex = ExtractFunctionParameterValue(trx, parameters, 1);
   AppendAsString(trx, adapter, regex);
 
-  std::string const pattern =
-      BuildRegexPattern(buffer->c_str(), buffer->length(), caseInsensitive);
-  RegexMatcher* matcher = nullptr;
-
-  if (RegexCache != nullptr) {
-    auto it = RegexCache->find(pattern);
-
-    // check regex cache
-    if (it != RegexCache->end()) {
-      matcher = (*it).second;
-    }
-  }
-
-  if (matcher == nullptr) {
-    matcher =
-        arangodb::basics::Utf8Helper::DefaultUtf8Helper.buildMatcher(pattern);
-
-    try {
-      if (RegexCache == nullptr) {
-        RegexCache = new std::unordered_map<std::string, RegexMatcher*>();
-      }
-      // insert into cache, no matter if pattern is valid or not
-      RegexCache->emplace(pattern, matcher);
-    } catch (...) {
-      delete matcher;
-      ClearRegexCache();
-      throw;
-    }
-  }
+  // the matcher is owned by the query!
+  ::RegexMatcher* matcher = query->regexCache()->buildRegexMatcher(buffer->c_str(), buffer->length(), caseInsensitive);
 
   if (matcher == nullptr) {
     // compiling regular expression failed

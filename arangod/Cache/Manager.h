@@ -79,6 +79,8 @@ class Manager {
     size_t operator()(const std::weak_ptr<Cache>& wp) const;
   };
 
+  typedef std::function<bool(std::function<void()>)> PostFn;
+
  public:
   static const uint64_t minSize;
   typedef FrequencyBuffer<std::weak_ptr<Cache>, cmp_weak_ptr, hash_weak_ptr>
@@ -89,9 +91,10 @@ class Manager {
 
  public:
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief Initialize the manager with an io_service and global usage limit.
+  /// @brief Initialize the manager with a scheduler post method and global
+  /// usage limit.
   //////////////////////////////////////////////////////////////////////////////
-  Manager(boost::asio::io_service* ioService, uint64_t globalLimit,
+  Manager(PostFn schedulerPost, uint64_t globalLimit,
           bool enableWindowedStats = true);
   ~Manager();
 
@@ -163,6 +166,11 @@ class Manager {
   //////////////////////////////////////////////////////////////////////////////
   void endTransaction(Transaction* tx);
 
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief Post a function to the scheduler
+  //////////////////////////////////////////////////////////////////////////////
+  bool post(std::function<void()> fn);
+
  private:
   // use sizeof(std::shared_ptr<Cache>) + 32 for sizeof
   // std::set<std::shared_ptr<Cache>> node -- should be valid for most libraries
@@ -206,7 +214,7 @@ class Manager {
 
   // task management
   enum TaskEnvironment { none, rebalancing, resizing };
-  boost::asio::io_service* _ioService;
+  PostFn _schedulerPost;
   uint64_t _resizeAttempt;
   std::atomic<uint64_t> _outstandingTasks;
   std::atomic<uint64_t> _rebalancingTasks;
@@ -247,9 +255,6 @@ class Manager {
   bool isOperational() const;
   // check if there is already a global process running
   bool globalProcessRunning() const;
-
-  // expose io_service
-  boost::asio::io_service* ioService();
 
   // coordinate state with task lifecycles
   void prepareTask(TaskEnvironment environment);

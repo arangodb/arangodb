@@ -54,6 +54,8 @@ let optionsDocumentation = [
   '   - `storageEngine`: set to `rocksdb` or `mmfiles` - defaults to `mmfiles`',
   '',
   '   - `server`: server_url (e.g. tcp://127.0.0.1:8529) for external server',
+  '   - `serverRoot`: directory where data/ points into the db server. Use in',
+  '                   conjunction with `server`.',
   '   - `cluster`: if set to true the tests are run with the coordinator',
   '     of a small local cluster',
   '   - `dbServers`: number of DB-Servers to use',
@@ -69,6 +71,8 @@ let optionsDocumentation = [
   '   - `buildType`: Windows build type (Debug, Release), leave empty on linux',
   '   - `configDir`: the directory containing the config files, defaults to',
   '                  etc/testing',
+  '   - `writeXml`:  Write junit xml report files',
+  '   - `prefix`:    prefix for the tests in the xml reports',
   '',
   '   - `rr`: if set to true arangod instances are run with rr',
   '',
@@ -440,7 +444,8 @@ function unitTest (cases, options) {
     print('FATAL: "which" is undefined\n');
 
     return {
-      status: false
+      status: false,
+      crashed: false
     };
   }
 
@@ -481,20 +486,22 @@ function unitTest (cases, options) {
 
   let globalStatus = true;
   let results = {};
+  let cleanup = true;
 
   // running all tests
   for (let n = 0; n < caselist.length; ++n) {
     const currentTest = caselist[n];
+    var localOptions = _.cloneDeep(options);
 
     print(BLUE + '================================================================================');
     print('Executing test', currentTest);
     print('================================================================================\n' + RESET);
 
-    if (options.verbose) {
-      print(CYAN + 'with options:', options, RESET);
+    if (localOptions.verbose) {
+      print(CYAN + 'with options:', localOptions, RESET);
     }
 
-    let result = testFuncs[currentTest](options);
+    let result = testFuncs[currentTest](localOptions);
     // grrr...normalize structure
     delete result.status;
     delete result.failed;
@@ -507,13 +514,20 @@ function unitTest (cases, options) {
     result.failed = failed;
     result.status = status;
     results[currentTest] = result;
+
+    if (status && localOptions.cleanup) {
+      pu.cleanupLastDirectory(localOptions);
+    }
+    else {
+      cleanup = false;
+    }
   }
 
   results.status = globalStatus;
   results.crashed = pu.serverCrashed;
 
   if (options.server === undefined) {
-    if (globalStatus && !pu.serverCrashed) {
+    if (cleanup && globalStatus && !pu.serverCrashed) {
       pu.cleanupDBDirectories(options);
     } else {
       print('not cleaning up as some tests weren\'t successful:\n' +

@@ -1364,7 +1364,9 @@ Result RocksDBEngine::dropDatabase(TRI_voc_tick_t id) {
     }
   }
 
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   size_t numDocsLeft = 0;
+#endif
 
   // remove collections
   for (auto const& val : collectionKVPairs(id)) {
@@ -1428,11 +1430,13 @@ Result RocksDBEngine::dropDatabase(TRI_voc_tick_t id) {
   // because it will simply remain there and be ignored on subsequent starts
   TRI_UnlinkFile(versionFilename(id).c_str());
     
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   if (numDocsLeft > 0) {
     std::string errorMsg("deletion check in drop database failed - not all documents have been deleted. remaining: ");
     errorMsg.append(std::to_string(numDocsLeft));
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, errorMsg);
   }
+#endif
 
   return res;
 }
