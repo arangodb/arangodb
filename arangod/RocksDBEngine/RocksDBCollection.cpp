@@ -127,7 +127,7 @@ RocksDBCollection::RocksDBCollection(LogicalCollection* collection,
 RocksDBCollection::~RocksDBCollection() {
   if (useCache()) {
     try {
-      disableCache();
+      destroyCache();
     } catch (...) {
     }
   }
@@ -146,23 +146,25 @@ arangodb::Result RocksDBCollection::updateProperties(VPackSlice const& slice,
 
   bool b = basics::VelocyPackHelper::readBooleanValue(slice, "cacheEnabled", false);
   if (!ServerState::instance()->isCoordinator() && !_logicalCollection->isSystem()) {
-    if ((_cacheEnabled = b)) {
+    _cacheEnabled = b;
+    primaryIndex()->setCacheEnabled(b);
+    if (_cacheEnabled) {
       createCache();
       primaryIndex()->createCache();
     } else if (useCache()) {
-      disableCache();
-      primaryIndex()->disableCache();
+      destroyCache();
+      primaryIndex()->destroyCache();
     }
   }
 
   // nothing else to do
-  return arangodb::Result{};
+  return TRI_ERROR_NO_ERROR;
 }
 
 arangodb::Result RocksDBCollection::persistProperties() {
   // only code path calling this causes these properties to be
   // already written in RocksDBEngine::changeCollection()
-  return arangodb::Result{};
+  return TRI_ERROR_NO_ERROR;
 }
 
 PhysicalCollection* RocksDBCollection::clone(LogicalCollection* logical) {
@@ -206,7 +208,7 @@ void RocksDBCollection::load() {
 
 void RocksDBCollection::unload() {
   if (useCache()) {
-    disableCache();
+    destroyCache();
     TRI_ASSERT(!_cachePresent);
   }
   READ_LOCKER(guard, _indexesLock);
@@ -1976,7 +1978,7 @@ void RocksDBCollection::createCache() const {
   TRI_ASSERT(_cacheEnabled);
 }
 
-void RocksDBCollection::disableCache() const {
+void RocksDBCollection::destroyCache() const {
   if (!_cachePresent) {
     return;
   }
@@ -2001,7 +2003,7 @@ void RocksDBCollection::blackListKey(char const* data, std::size_t len) const {
       if (status.ok()) {
         blacklisted = true;
       } else if (status.errorNumber() == TRI_ERROR_SHUTTING_DOWN) {
-        disableCache();
+        destroyCache();
         break;
       }
     }

@@ -1108,7 +1108,7 @@ function CollectionDbSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
 function CollectionCacheSuite () {
-  var cn = "UnitTestsClusterCache";
+  const cn = "UnitTestsClusterCache";
   return {
 
     tearDown : function () {
@@ -1118,12 +1118,8 @@ function CollectionCacheSuite () {
       catch (err) {
       }
     },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief drop new-born (DB)
-////////////////////////////////////////////////////////////////////////////////
-
-    testCache : function () {
+    
+    testCollectionCache : function () {
       let c = db._create(cn, {cacheEnabled:true});
       let p = c.properties();
       assertTrue(p.cacheEnabled, p);
@@ -1132,6 +1128,41 @@ function CollectionCacheSuite () {
       idxs.forEach(function(idx, i) {
         if (idx.type === 'primary') {
           assertTrue(idx.figures.cacheInUse);
+        }
+      });
+    },
+
+    testCollectionCacheModifyProperties : function () {
+      // create collection without cache
+      let c = db._create(cn, {cacheEnabled:false});
+      let p = c.properties();
+      assertFalse(p.cacheEnabled, p);
+      let idxs = c.getIndexes(true);
+      idxs.forEach(function(idx, i) {
+        if (idx.type === 'primary') {
+          assertFalse(idx.figures.cacheInUse);
+        }
+      });
+
+      // enable caches
+      c.properties({cacheEnabled:true});
+      p = c.properties();
+      assertTrue(p.cacheEnabled, p);
+      idxs = c.getIndexes(true);
+      idxs.forEach(function(idx, i) {
+        if (idx.type === 'primary') {
+          assertTrue(idx.figures.cacheInUse);
+        }
+      });
+
+      // disable caches again
+      c.properties({cacheEnabled:false});
+      p = c.properties();
+      assertFalse(p.cacheEnabled, p);
+      idxs = c.getIndexes(true);
+      idxs.forEach(function(idx, i) {
+        if (idx.type === 'primary') {
+          assertFalse(idx.figures.cacheInUse);
         }
       });
     }

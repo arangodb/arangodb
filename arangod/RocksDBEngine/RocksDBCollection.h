@@ -264,7 +264,7 @@ class RocksDBCollection final : public PhysicalCollection {
 
   void createCache() const;
 
-  void disableCache() const;
+  void destroyCache() const;
   
   /// is this collection using a cache
   inline bool useCache() const { return (_cacheEnabled && _cachePresent); }

@@ -103,8 +103,12 @@ class RocksDBIndex : public Index {
     return removeInternal(trx, mthds, rid, doc);
   }
 
+  void setCacheEnabled(bool enable) {
+    // allow disabling and enabling of caches for the primary index
+    _cacheEnabled = enable;
+  }
   void createCache();
-  void disableCache();
+  void destroyCache();
 
   virtual void serializeEstimate(std::string& output) const;
 

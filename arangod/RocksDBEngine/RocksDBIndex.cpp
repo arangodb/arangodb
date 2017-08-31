@@ -73,7 +73,7 @@ RocksDBIndex::RocksDBIndex(TRI_idx_iid_t id, LogicalCollection* collection,
       _cf(cf),
       _cache(nullptr),
       _cachePresent(false),
-      _cacheEnabled(useCache) {
+      _cacheEnabled(useCache && !collection->isSystem()) {
   TRI_ASSERT(cf != nullptr && cf != RocksDBColumnFamily::definitions());
 
   if (_objectId == 0) {
@@ -127,7 +127,7 @@ void RocksDBIndex::load() {
 void RocksDBIndex::unload() {
   if (useCache()) {
     // LOG_TOPIC(ERR, Logger::FIXME) << "unload cache";
-    disableCache();
+    destroyCache();
     TRI_ASSERT(!_cachePresent);
   }
 }
@@ -161,7 +161,7 @@ void RocksDBIndex::createCache() {
   TRI_ASSERT(_cacheEnabled);
 }
 
-void RocksDBIndex::disableCache() {
+void RocksDBIndex::destroyCache() {
   if (!_cachePresent) {
     return;
   }
@@ -312,7 +312,7 @@ void RocksDBIndex::blackListKey(char const* data, std::size_t len) {
       if (status.ok()) {
         blacklisted = true;
       } else if (status.errorNumber() == TRI_ERROR_SHUTTING_DOWN) {
-        disableCache();
+        destroyCache();
         break;
       }
     }

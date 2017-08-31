@@ -135,8 +135,6 @@ RocksDBPrimaryIndex::RocksDBPrimaryIndex(
 RocksDBPrimaryIndex::~RocksDBPrimaryIndex() {}
 
 void RocksDBPrimaryIndex::load() {
-  // allow disabling and enabling of caches for the primary index
-  _cacheEnabled = static_cast<RocksDBCollection*>(_collection->getPhysical())->cacheEnabled();
   RocksDBIndex::load();
   if (useCache()) {
     // FIXME: make the factor configurable
