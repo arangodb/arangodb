@@ -6,6 +6,7 @@ ENTERPRISE=""
 type="build"
 
 if [ "$edition" == community ]; then
+    ENTERPRISE="-DUSE_ENTERPRISE=Off"
     type="${type}_community"
 elif [ "$edition" == enterprise ]; then
     type="${type}_enterprise"
