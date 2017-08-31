@@ -134,9 +134,8 @@ class RocksDBCollection final : public PhysicalCollection {
 
   Result read(transaction::Methods*, arangodb::StringRef const& key,
               ManagedDocumentResult& result, bool) override;
-  
-  Result read(transaction::Methods* trx,
-              arangodb::velocypack::Slice const& key,
+
+  Result read(transaction::Methods* trx, arangodb::velocypack::Slice const& key,
               ManagedDocumentResult& result, bool locked) override {
     return this->read(trx, arangodb::StringRef(key), result, locked);
   }
@@ -144,10 +143,10 @@ class RocksDBCollection final : public PhysicalCollection {
   bool readDocument(transaction::Methods* trx,
                     DocumentIdentifierToken const& token,
                     ManagedDocumentResult& result) override;
-  
-  bool readDocumentWithCallback(transaction::Methods* trx,
-                                DocumentIdentifierToken const& token,
-                                IndexIterator::DocumentCallback const& cb) override;
+
+  bool readDocumentWithCallback(
+      transaction::Methods* trx, DocumentIdentifierToken const& token,
+      IndexIterator::DocumentCallback const& cb) override;
 
   Result insert(arangodb::transaction::Methods* trx,
                 arangodb::velocypack::Slice const newSlice,
@@ -208,7 +207,7 @@ class RocksDBCollection final : public PhysicalCollection {
 
   Result serializeKeyGenerator(rocksdb::Transaction*) const;
   void deserializeKeyGenerator(arangodb::RocksDBCounterManager* mgr);
-  
+
   inline bool cacheEnabled() const { return _cacheEnabled; }
 
  private:
@@ -230,7 +229,7 @@ class RocksDBCollection final : public PhysicalCollection {
   // is somehow protected. If it goes out of all scopes
   // or it's indexes are freed the pointer returned will get invalidated.
   arangodb::RocksDBPrimaryIndex* primaryIndex() const {
-    TRI_ASSERT (_primaryIndex != nullptr);
+    TRI_ASSERT(_primaryIndex != nullptr);
     return _primaryIndex;
   }
 
@@ -255,17 +254,18 @@ class RocksDBCollection final : public PhysicalCollection {
   arangodb::Result lookupRevisionVPack(TRI_voc_rid_t, transaction::Methods*,
                                        arangodb::ManagedDocumentResult&,
                                        bool withCache) const;
-  
-  arangodb::Result lookupRevisionVPack(TRI_voc_rid_t, transaction::Methods*,
-                                       IndexIterator::DocumentCallback const& cb,
-                                       bool withCache) const;
 
-  void recalculateIndexEstimates(std::vector<std::shared_ptr<Index>> const& indexes);
+  arangodb::Result lookupRevisionVPack(
+      TRI_voc_rid_t, transaction::Methods*,
+      IndexIterator::DocumentCallback const& cb, bool withCache) const;
+
+  void recalculateIndexEstimates(
+      std::vector<std::shared_ptr<Index>> const& indexes);
 
   void createCache() const;
 
   void destroyCache() const;
-  
+
   /// is this collection using a cache
   inline bool useCache() const { return (_cacheEnabled && _cachePresent); }
 
@@ -281,10 +281,10 @@ class RocksDBCollection final : public PhysicalCollection {
   bool _hasGeoIndex;
   /// cache the primary index for performance, do not delete
   RocksDBPrimaryIndex* _primaryIndex;
-  
+
   mutable basics::ReadWriteLock _exclusiveLock;
   mutable std::shared_ptr<cache::Cache> _cache;
-  
+
   // we use this boolean for testing whether _cache is set.
   // it's quicker than accessing the shared_ptr each time
   mutable bool _cachePresent;

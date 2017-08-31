@@ -75,8 +75,6 @@ class Manager {
  protected:
   typedef std::function<bool(std::function<void()>)> PostFn;
 
-  typedef std::function<bool(std::function<void()>)> PostFn;
-
  public:
   static const uint64_t minSize;
   typedef FrequencyBuffer<uint64_t> AccessStatBuffer;

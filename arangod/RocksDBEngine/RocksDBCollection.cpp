@@ -91,12 +91,13 @@ RocksDBCollection::RocksDBCollection(LogicalCollection* collection,
       _cache(nullptr),
       _cachePresent(false),
       _cacheEnabled(!collection->isSystem() &&
-                    basics::VelocyPackHelper::readBooleanValue(info, "cacheEnabled", false)) {
+                    basics::VelocyPackHelper::readBooleanValue(
+                        info, "cacheEnabled", false)) {
   VPackSlice s = info.get("isVolatile");
   if (s.isBoolean() && s.getBoolean()) {
-      THROW_ARANGO_EXCEPTION_MESSAGE(
-          TRI_ERROR_BAD_PARAMETER,
-          "volatile collections are unsupported in the RocksDB engine");
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+        TRI_ERROR_BAD_PARAMETER,
+        "volatile collections are unsupported in the RocksDB engine");
   }
   addCollectionMapping(_objectId, _logicalCollection->vocbase()->id(),
                        _logicalCollection->cid());
@@ -143,18 +144,15 @@ void RocksDBCollection::setPath(std::string const&) {
 
 arangodb::Result RocksDBCollection::updateProperties(VPackSlice const& slice,
                                                      bool doSync) {
-
-  bool b = basics::VelocyPackHelper::readBooleanValue(slice, "cacheEnabled", false);
-  if (!ServerState::instance()->isCoordinator() && !_logicalCollection->isSystem()) {
-    _cacheEnabled = b;
-    primaryIndex()->setCacheEnabled(b);
-    if (_cacheEnabled) {
-      createCache();
-      primaryIndex()->createCache();
-    } else if (useCache()) {
-      destroyCache();
-      primaryIndex()->destroyCache();
-    }
+  _cacheEnabled = basics::VelocyPackHelper::readBooleanValue(
+      slice, "cacheEnabled", !_logicalCollection->isSystem());
+  primaryIndex()->setCacheEnabled(_cacheEnabled);
+  if (_cacheEnabled) {
+    createCache();
+    primaryIndex()->createCache();
+  } else if (useCache()) {
+    destroyCache();
+    primaryIndex()->destroyCache();
   }
 
   // nothing else to do
@@ -412,7 +410,8 @@ static std::shared_ptr<Index> findIndex(
 
   if (!value.isString()) {
     // Compatibility with old v8-vocindex.
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "invalid index type definition");
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
+                                   "invalid index type definition");
   }
 
   std::string tmp = value.copyString();
@@ -751,17 +750,22 @@ void RocksDBCollection::truncate(transaction::Methods* trx,
   }
   _needToPersistIndexEstimates = true;
 
-
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-  //check if documents have been deleted
+  // check if documents have been deleted
   if (mthd->countInBounds(documentBounds, true)) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "deletion check in collection truncate failed - not all documents have been deleted");
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
+                                   "deletion check in collection truncate "
+                                   "failed - not all documents have been "
+                                   "deleted");
   }
 
   for (std::shared_ptr<Index> const& index : _indexes) {
     RocksDBIndex* rindex = static_cast<RocksDBIndex*>(index.get());
-    if (mthd->countInBounds(rindex->getBounds(),true)) {
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "deletion check in collection truncate failed - not all documents in an index have been deleted");
+    if (mthd->countInBounds(rindex->getBounds(), true)) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
+                                     "deletion check in collection truncate "
+                                     "failed - not all documents in an index "
+                                     "have been deleted");
     }
   }
 #endif
@@ -798,9 +802,9 @@ bool RocksDBCollection::readDocument(transaction::Methods* trx,
 }
 
 // read using a token!
-bool RocksDBCollection::readDocumentWithCallback(transaction::Methods* trx,
-                                                 DocumentIdentifierToken const& token,
-                                                 IndexIterator::DocumentCallback const& cb) {
+bool RocksDBCollection::readDocumentWithCallback(
+    transaction::Methods* trx, DocumentIdentifierToken const& token,
+    IndexIterator::DocumentCallback const& cb) {
   RocksDBToken const* tkn = static_cast<RocksDBToken const*>(&token);
   TRI_voc_rid_t revisionId = tkn->revisionId();
   if (revisionId != 0) {
@@ -852,8 +856,9 @@ Result RocksDBCollection::insert(arangodb::transaction::Methods* trx,
   }
 
   transaction::BuilderLeaser builder(trx);
-  RocksDBOperationResult res(newObjectForInsert(trx, slice, fromSlice, toSlice, isEdgeCollection,
-                               *builder.get(), options.isRestore));
+  RocksDBOperationResult res(
+      newObjectForInsert(trx, slice, fromSlice, toSlice, isEdgeCollection,
+                         *builder.get(), options.isRestore));
   if (res.fail()) {
     return res;
   }
@@ -864,8 +869,7 @@ Result RocksDBCollection::insert(arangodb::transaction::Methods* trx,
 
   auto state = RocksDBTransactionState::toState(trx);
   auto mthds = RocksDBTransactionState::toMethods(trx);
-  RocksDBSavePoint guard(mthds,
-                         trx->isSingleOperationTransaction(),
+  RocksDBSavePoint guard(mthds, trx->isSingleOperationTransaction(),
                          [&state]() { state->resetLogState(); });
 
   state->prepareOperation(_logicalCollection->cid(), revisionId, StringRef(),
@@ -1337,13 +1341,13 @@ arangodb::Result RocksDBCollection::fillIndexes(
     it->reset();
     batch.Clear();
 
-    arangodb::Result res2;// do not overwrite original error
+    arangodb::Result res2;  // do not overwrite original error
     auto removeCb = [&](DocumentIdentifierToken token) {
       if (res2.ok() && numDocsWritten > 0 &&
           this->readDocument(trx, token, mmdr)) {
         // we need to remove already inserted documents up to numDocsWritten
         res2 = ridx->removeInternal(trx, &batched, mmdr.lastRevisionId(),
-                              VPackSlice(mmdr.vpack()));
+                                    VPackSlice(mmdr.vpack()));
         if (res2.ok()) {
           numDocsWritten--;
         }
@@ -1509,7 +1513,7 @@ RocksDBOperationResult RocksDBCollection::updateDocument(
                static_cast<uint32_t>(oldKey.string().size()));
 
   RocksDBOperationResult res =
-  mthd->Delete(RocksDBColumnFamily::documents(), oldKey);
+      mthd->Delete(RocksDBColumnFamily::documents(), oldKey);
   if (!res.ok()) {
     return res;
   }
@@ -1517,7 +1521,8 @@ RocksDBOperationResult RocksDBCollection::updateDocument(
   RocksDBKey newKey = RocksDBKey::Document(_objectId, newRevisionId);
   // TODO: given that this should have a unique revision ID, do
   // we really need to blacklist the new key?
-  blackListKey(newKey.string().data(), static_cast<uint32_t>(newKey.string().size()));
+  blackListKey(newKey.string().data(),
+               static_cast<uint32_t>(newKey.string().size()));
   res = mthd->Put(RocksDBColumnFamily::documents(), newKey,
                   rocksdb::Slice(reinterpret_cast<char const*>(newDoc.begin()),
                                  static_cast<size_t>(newDoc.byteSize())));
@@ -1578,7 +1583,7 @@ arangodb::Result RocksDBCollection::lookupRevisionVPack(
     } else if (f.result().errorNumber() == TRI_ERROR_LOCK_TIMEOUT) {
       // assuming someone is currently holding a write lock, which
       // is why we cannot access the TransactionalBucket.
-      lockTimeout = true; // we skip the insert in this case
+      lockTimeout = true;  // we skip the insert in this case
     }
   }
 
@@ -1595,7 +1600,7 @@ arangodb::Result RocksDBCollection::lookupRevisionVPack(
       if (entry) {
         Result status = _cache->insert(entry);
         if (status.fail() && status.errorNumber() == TRI_ERROR_LOCK_TIMEOUT) {
-          //the writeLock uses cpu_relax internally, so we can try yield
+          // the writeLock uses cpu_relax internally, so we can try yield
           std::this_thread::yield();
           status = _cache->insert(entry);
         }
@@ -1631,12 +1636,13 @@ arangodb::Result RocksDBCollection::lookupRevisionVPack(
     auto f = _cache->find(key.string().data(),
                           static_cast<uint32_t>(key.string().size()));
     if (f.found()) {
-      cb(RocksDBToken(revisionId), VPackSlice(reinterpret_cast<char const*>(f.value()->value())));
+      cb(RocksDBToken(revisionId),
+         VPackSlice(reinterpret_cast<char const*>(f.value()->value())));
       return TRI_ERROR_NO_ERROR;
     } else if (f.result().errorNumber() == TRI_ERROR_LOCK_TIMEOUT) {
       // assuming someone is currently holding a write lock, which
       // is why we cannot access the TransactionalBucket.
-      lockTimeout = true; // we skip the insert in this case
+      lockTimeout = true;  // we skip the insert in this case
     }
   }
 
@@ -1655,7 +1661,7 @@ arangodb::Result RocksDBCollection::lookupRevisionVPack(
       if (entry) {
         auto status = _cache->insert(entry);
         if (status.fail() && status.errorNumber() == TRI_ERROR_LOCK_TIMEOUT) {
-          //the writeLock uses cpu_relax internally, so we can try yield
+          // the writeLock uses cpu_relax internally, so we can try yield
           std::this_thread::yield();
           status = _cache->insert(entry);
         }
@@ -1880,8 +1886,8 @@ arangodb::Result RocksDBCollection::serializeIndexEstimates(
     if (output.size() > sizeof(uint64_t)) {
       RocksDBKey key = RocksDBKey::IndexEstimateValue(cindex->objectId());
       rocksdb::Slice value(output);
-      rocksdb::Status s = rtrx->Put(RocksDBColumnFamily::definitions(),
-                                    key.string(), value);
+      rocksdb::Status s =
+          rtrx->Put(RocksDBColumnFamily::definitions(), key.string(), value);
 
       if (!s.ok()) {
         LOG_TOPIC(WARN, Logger::ENGINES) << "writing index estimates failed";
@@ -1973,7 +1979,7 @@ void RocksDBCollection::createCache() const {
   TRI_ASSERT(_cache.get() == nullptr);
   TRI_ASSERT(CacheManagerFeature::MANAGER != nullptr);
   _cache = CacheManagerFeature::MANAGER->createCache(
-                                                     cache::CacheType::Transactional);
+      cache::CacheType::Transactional);
   _cachePresent = (_cache.get() != nullptr);
   TRI_ASSERT(_cacheEnabled);
 }
