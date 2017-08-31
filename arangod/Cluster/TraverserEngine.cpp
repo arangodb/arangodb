@@ -97,14 +97,15 @@ BaseEngine::BaseEngine(TRI_vocbase_t* vocbase, VPackSlice info)
     _vertexShards.emplace(collection.key.copyString(), shards);
   }
 
-  // FIXME: in the future this needs to be replaced with the new cluster
-  // wide transactions
+  // FIXME: in the future this needs to be replaced with t
+  // he new cluster wide transactions
   transaction::Options trxOpts;
 #ifdef USE_ENTERPRISE
-  if (info.hasKey(INACCESSIBLE)) {
+  VPackSlice inaccessSlice = shardsSlice.get(INACCESSIBLE);
+  if (inaccessSlice.isArray()) {
     trxOpts.skipInaccessibleCollections = true;
     std::unordered_set<ShardID> inaccessible;
-    for (VPackSlice const& shard : VPackArrayIterator(info.get(INACCESSIBLE))) {
+    for (VPackSlice const& shard : VPackArrayIterator(inaccessSlice)) {
       TRI_ASSERT(shard.isString());
       inaccessible.insert(shard.copyString());
     }
@@ -167,7 +168,7 @@ bool BaseEngine::lockCollection(std::string const& shard) {
     return false;
   }
   _trx->pinData(cid);  // will throw when it fails
-  Result res = _trx->lock(_trx->trxCollection(cid), AccessMode::Type::READ);
+  Result res = _trx->lock(cid, AccessMode::Type::READ);
   if (!res.ok()) {
     LOG_TOPIC(ERR, arangodb::Logger::FIXME)
         << "Logging Shard " << shard << " lead to exception '"
@@ -184,42 +185,45 @@ std::shared_ptr<transaction::Context> BaseEngine::context() const {
 void BaseEngine::getVertexData(VPackSlice vertex, VPackBuilder& builder) {
   // We just hope someone has locked the shards properly. We have no clue...
   // Thanks locking
+  TRI_ASSERT(ServerState::instance()->isDBServer());
   TRI_ASSERT(vertex.isString() || vertex.isArray());
+  
+  ManagedDocumentResult mmdr;
   builder.openObject();
-  bool found;
   auto workOnOneDocument = [&](VPackSlice v) {
-    found = false;
     StringRef id(v);
-    std::string name = id.substr(0, id.find('/')).toString();
-    auto shards = _vertexShards.find(name);
+    size_t pos = id.find('/');
+    if (pos == std::string::npos || pos + 1 == id.size()) {
+      TRI_ASSERT(false);
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_GRAPH_INVALID_EDGE,
+                                     "edge contains invalid value " + id.toString());
+    }
+    ShardID shardName = id.substr(0, pos).toString();
+    auto shards = _vertexShards.find(shardName);
     if (shards == _vertexShards.end()) {
-      THROW_ARANGO_EXCEPTION_MESSAGE(
-          TRI_ERROR_QUERY_COLLECTION_LOCK_FAILED,
-          "collection not known to traversal: '" + name +
-              "'. please add 'WITH " + name +
-              "' as the first line in your AQL query");
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_QUERY_COLLECTION_LOCK_FAILED,
+                                     "Collection not known to Traversal " +
+                                     shardName + " please add 'WITH " + shardName +
+                                     "' as the first line in your AQL");
       // The collection is not known here!
       // Maybe handle differently
     }
-    builder.add(v);
+    
+    std::string vertex = id.substr(pos+1).toString();
     for (std::string const& shard : shards->second) {
-      Result res = _trx->documentFastPath(shard, nullptr, v, builder, false);
+      Result res = _trx->documentFastPathLocal(shard, vertex, mmdr);
       if (res.ok()) {
-        found = true;
         // FOUND short circuit.
+        builder.add(v);
+        mmdr.addToBuilder(builder, true);
         break;
-      }
-      if (res.isNot(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND)) {
+      } else if (res.isNot(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND)) {
         // We are in a very bad condition here...
         THROW_ARANGO_EXCEPTION(res);
       }
     }
-    if (!found) {
-      builder.add(arangodb::basics::VelocyPackHelper::NullValue());
-      builder.removeLast();
-    }
   };
-
+  
   if (vertex.isArray()) {
     for (VPackSlice v : VPackArrayIterator(vertex)) {
       workOnOneDocument(v);
@@ -227,7 +231,7 @@ void BaseEngine::getVertexData(VPackSlice vertex, VPackBuilder& builder) {
   } else {
     workOnOneDocument(vertex);
   }
-  builder.close();  // The outer object
+  builder.close(); // The outer object
 }
 
 BaseTraverserEngine::BaseTraverserEngine(TRI_vocbase_t* vocbase,

@@ -197,10 +197,10 @@ class Methods {
   std::string name(TRI_voc_cid_t cid) const;
 
   /// @brief order a ditch for a collection
-  void pinData(TRI_voc_cid_t);
+  ENTERPRISE_VIRT void pinData(TRI_voc_cid_t);
 
   /// @brief whether or not a ditch has been created for the collection
-  bool isPinned(TRI_voc_cid_t cid) const;
+  ENTERPRISE_VIRT bool isPinned(TRI_voc_cid_t cid) const;
 
   /// @brief extract the _id attribute from a slice, and convert it into a
   /// string
@@ -222,9 +222,9 @@ class Methods {
   virtual TRI_voc_cid_t addCollectionAtRuntime(std::string const& collectionName);
 
   /// @brief return the type of a collection
-  bool isEdgeCollection(std::string const& collectionName);
-  bool isDocumentCollection(std::string const& collectionName);
-  TRI_col_type_e getCollectionType(std::string const& collectionName);
+  bool isEdgeCollection(std::string const& collectionName) const;
+  bool isDocumentCollection(std::string const& collectionName) const;
+  TRI_col_type_e getCollectionType(std::string const& collectionName) const;
 
   /// @brief return the name of a collection
   std::string collectionName(TRI_voc_cid_t cid);
@@ -363,7 +363,7 @@ class Methods {
                                              uint64_t batchSize, bool reverse);
 
   /// @brief test if a collection is already locked
-  bool isLocked(arangodb::LogicalCollection*, AccessMode::Type);
+  ENTERPRISE_VIRT bool isLocked(arangodb::LogicalCollection*, AccessMode::Type);
 
   arangodb::LogicalCollection* documentCollection(TRI_voc_cid_t) const;
 
@@ -464,7 +464,8 @@ class Methods {
 
  protected:
   /// @brief return the transaction collection for a document collection
-  TransactionCollection* trxCollection(TRI_voc_cid_t cid) const;
+  TransactionCollection* trxCollection(TRI_voc_cid_t cid,
+                            AccessMode::Type type = AccessMode::Type::READ) const;
 
   /// @brief return the collection
   arangodb::LogicalCollection* documentCollection(
@@ -483,10 +484,10 @@ class Methods {
   Result addCollection(std::string const&, AccessMode::Type);
 
   /// @brief read- or write-lock a collection
-  Result lock(TransactionCollection*, AccessMode::Type);
+  ENTERPRISE_VIRT Result lock(TRI_voc_cid_t, AccessMode::Type);
 
   /// @brief read- or write-unlock a collection
-  Result unlock(TransactionCollection*, AccessMode::Type);
+  ENTERPRISE_VIRT Result unlock(TRI_voc_cid_t, AccessMode::Type);
 
  private:
 
