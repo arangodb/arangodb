@@ -1,11 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief helper for cache suite
-///
-/// @file
-///
 /// DISCLAIMER
 ///
-/// Copyright 2017 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2017 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -22,36 +19,37 @@
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Daniel H. Larkin
-/// @author Copyright 2017, ArangoDB GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef UNITTESTS_CACHE_MOCK_SCHEDULER_H
-#define UNITTESTS_CACHE_MOCK_SCHEDULER_H
+#ifndef ARANGO_CPU_RELAX_H
+#define ARANGO_CPU_RELAX_H 1
 
 #include "Basics/Common.h"
 
-#include "Basics/asio-helper.h"
-
-#include <memory>
 #include <thread>
-#include <vector>
 
 namespace arangodb {
-namespace cache {
+namespace basics {
 
-class MockScheduler {
-  typedef std::unique_ptr<boost::asio::io_service::work> asio_worker;
-  std::unique_ptr<boost::asio::io_service> _ioService;
-  std::unique_ptr<boost::asio::io_service::work> _serviceGuard;
-  std::vector<std::thread*> _group;
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Function to let CPU relax inside spinlock.
+////////////////////////////////////////////////////////////////////////////////
+inline void cpu_relax() {
+// TODO use <boost/fiber/detail/cpu_relax.hpp> when available (>1.65.0?)
+#if defined(__i386) || defined(_M_IX86) || defined(__x86_64__) || \
+    defined(_M_X64)
+#if defined __WIN32__
+  YieldProcessor();
+#else
+  asm volatile("pause" ::: "memory");
+#endif
+#else
+  static constexpr std::chrono::microseconds us0{0};
+  std::this_thread::sleep_for(us0);
+#endif
+}
 
- public:
-  MockScheduler(size_t threads);
-  ~MockScheduler();
-  void post(std::function<void()> fn);
-};
-
-};  // end namespace cache
-};  // end namespace arangodb
+}  // namespace basics
+}  // namespace arangodb
 
 #endif

@@ -139,6 +139,7 @@ add_library(${LIB_ARANGO} STATIC
   Basics/ReadWriteLockCPP11.cpp
   Basics/RocksDBLogger.cpp
   Basics/RocksDBUtils.cpp
+  Basics/SharedPRNG.cpp
   Basics/StaticStrings.cpp
   Basics/StringBuffer.cpp
   Basics/StringHeap.cpp

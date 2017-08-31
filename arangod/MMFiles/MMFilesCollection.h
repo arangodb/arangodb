@@ -329,7 +329,10 @@ class MMFilesCollection final : public PhysicalCollection {
   DocumentIdentifierToken lookupKey(transaction::Methods* trx,
                                     velocypack::Slice const& key) override;
 
-  Result read(transaction::Methods*, arangodb::velocypack::Slice const key,
+  Result read(transaction::Methods*, arangodb::StringRef const& key,
+              ManagedDocumentResult& result, bool) override;
+  
+  Result read(transaction::Methods*, arangodb::velocypack::Slice const& key,
               ManagedDocumentResult& result, bool) override;
 
   bool readDocument(transaction::Methods* trx,

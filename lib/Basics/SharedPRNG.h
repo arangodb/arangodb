@@ -21,36 +21,48 @@
 /// @author Daniel H. Larkin
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_CACHE_REBALANCER_H
-#define ARANGODB_CACHE_REBALANCER_H
+#ifndef ARANGO_SHARED_PRNG_H
+#define ARANGO_SHARED_PRNG_H 1
 
 #include "Basics/Common.h"
-
-#include "Manager.h"
+#include "Basics/Thread.h"
+#include "Basics/fasthash.h"
+#include "Basics/xoroshiro128plus.h"
 
 namespace arangodb {
-namespace cache {
+namespace basics {
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief Dedicated class to rebalance Manager.
-////////////////////////////////////////////////////////////////////////////////
-class Rebalancer {
- public:
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief Initialize state with no open transactions.
-  //////////////////////////////////////////////////////////////////////////////
-  Rebalancer(Manager* manager);
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief Rebalance the manager.
-  //////////////////////////////////////////////////////////////////////////////
-  int rebalance();
+struct PaddedPRNG {
+  void seed(uint64_t seed1, uint64_t seed2);
+  inline uint64_t next() { return _prng.next(); }
 
  private:
-  Manager* _manager;
+  uint8_t frontPadding[64];
+  xoroshiro128plus _prng;
+  uint8_t backpadding[64 - sizeof(xoroshiro128plus)];
 };
 
-};  // end namespace cache
-};  // end namespace arangodb
+struct SharedPRNG {
+  static inline uint64_t rand() { return _global->next(); }
+  SharedPRNG();
+
+ private:
+  // never want two live threads to hash to the same stripe
+  static constexpr uint64_t _stripes = (1 << 16);
+  static std::unique_ptr<SharedPRNG> _global;
+
+  PaddedPRNG _prng[_stripes];
+  uint64_t _mask;
+
+  inline uint64_t id() {
+    return fasthash64_uint64(Thread::currentThreadNumber(),
+                             0xdeadbeefdeadbeefULL);
+  }
+
+  inline uint64_t next() { return _prng[id() & _mask].next(); }
+};
+
+}  // namespace basics
+}  // namespace arangodb
 
 #endif

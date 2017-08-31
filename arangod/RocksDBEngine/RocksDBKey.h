@@ -258,6 +258,11 @@ class RocksDBKey {
   /// @brief Returns a reference to the full, constructed key
   //////////////////////////////////////////////////////////////////////////////
   std::string const& string() const;
+  inline size_t size() const { return _buffer.size(); }
+  
+  bool operator==(RocksDBKey const& other) const {
+    return _type == other._type && _buffer == other._buffer;
+  }
   
  private:
   explicit RocksDBKey(RocksDBEntryType type, RocksDBSettingsType st);

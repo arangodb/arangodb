@@ -65,29 +65,25 @@ VPackSlice TraverserCache::lookupToken(EdgeDocumentToken const& idToken) {
 VPackSlice TraverserCache::lookupInCollection(StringRef id) {
   TRI_ASSERT(!ServerState::instance()->isCoordinator());
   size_t pos = id.find('/');
-  if (pos == std::string::npos) {
+  if (pos == std::string::npos || pos + 1 == id.size()) {
     // Invalid input. If we get here somehow we managed to store invalid _from/_to
     // values or the traverser did a let an illegal start through
     TRI_ASSERT(false);
     return basics::VelocyPackHelper::NullValue();
   }
   Result res = _trx->documentFastPathLocal(id.substr(0, pos).toString(),
-                                        id.substr(pos + 1).toString(), *_mmdr);
-
-  if (!res.ok() && (res.errorNumber() != TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND)) {
+                                           id.substr(pos + 1), *_mmdr);
+  if (res.ok()) {
+    ++_insertedDocuments;
+    return VPackSlice(_mmdr->vpack());
+  } else if (res.errorNumber() == TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND) {
+    ++_insertedDocuments;
+    // This is expected, we may have dangling edges. Interpret as NULL
+    return basics::VelocyPackHelper::NullValue();
+  } else {
     // ok we are in a rather bad state. Better throw and abort.
     THROW_ARANGO_EXCEPTION(res);
   }
-
-  VPackSlice result;
-  if (res.errorNumber() == TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND) {
-    // This is expected, we may have dangling edges. Interpret as NULL
-    result = basics::VelocyPackHelper::NullValue();
-  } else {
-    result = VPackSlice(_mmdr->vpack());
-  }
-  ++_insertedDocuments;
-  return result;
 }
 
 void TraverserCache::insertIntoResult(EdgeDocumentToken const& idToken,

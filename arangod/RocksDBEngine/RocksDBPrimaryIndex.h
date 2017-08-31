@@ -101,6 +101,8 @@ class RocksDBPrimaryIndex final : public RocksDBIndex {
       arangodb::StringRef const* = nullptr) const override {
     return 1.0;
   }
+  
+  void load() override;
 
   void toVelocyPack(VPackBuilder&, bool, bool) const override;
 
@@ -128,6 +130,12 @@ class RocksDBPrimaryIndex final : public RocksDBIndex {
   Result insertInternal(transaction::Methods* trx, RocksDBMethods*,
                         TRI_voc_rid_t,
                         arangodb::velocypack::Slice const&) override;
+  
+  Result updateInternal(transaction::Methods* trx, RocksDBMethods*,
+                        TRI_voc_rid_t oldRevision,
+                        arangodb::velocypack::Slice const& oldDoc,
+                        TRI_voc_rid_t newRevision,
+                        velocypack::Slice const& newDoc) override;
 
   /// remove index elements and put it in the specified write batch.
   Result removeInternal(transaction::Methods*, RocksDBMethods*, TRI_voc_rid_t,

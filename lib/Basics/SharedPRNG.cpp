@@ -1,11 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief helper for cache suite
-///
-/// @file
-///
 /// DISCLAIMER
 ///
-/// Copyright 2017 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2017 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -22,36 +19,25 @@
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Daniel H. Larkin
-/// @author Copyright 2017, ArangoDB GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef UNITTESTS_CACHE_MOCK_SCHEDULER_H
-#define UNITTESTS_CACHE_MOCK_SCHEDULER_H
+#include "Basics/SharedPRNG.h"
+#include "Basics/splitmix64.h"
 
-#include "Basics/Common.h"
+using namespace arangodb::basics;
 
-#include "Basics/asio-helper.h"
+std::unique_ptr<SharedPRNG> SharedPRNG::_global =
+    std::make_unique<SharedPRNG>();
 
-#include <memory>
-#include <thread>
-#include <vector>
+void PaddedPRNG::seed(uint64_t seed1, uint64_t seed2) {
+  _prng.seed(seed1, seed2);
+}
 
-namespace arangodb {
-namespace cache {
-
-class MockScheduler {
-  typedef std::unique_ptr<boost::asio::io_service::work> asio_worker;
-  std::unique_ptr<boost::asio::io_service> _ioService;
-  std::unique_ptr<boost::asio::io_service::work> _serviceGuard;
-  std::vector<std::thread*> _group;
-
- public:
-  MockScheduler(size_t threads);
-  ~MockScheduler();
-  void post(std::function<void()> fn);
-};
-
-};  // end namespace cache
-};  // end namespace arangodb
-
-#endif
+SharedPRNG::SharedPRNG() : _mask(SharedPRNG::_stripes - 1) {
+  splitmix64 seeder(0xdeadbeefdeadbeefULL);
+  for (size_t i = 0; i < _stripes; i++) {
+    uint64_t seed1 = seeder.next();
+    uint64_t seed2 = seeder.next();
+    _prng[i].seed(seed1, seed2);
+  }
+}

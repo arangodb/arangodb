@@ -243,7 +243,8 @@ function cleanupLastDirectory (options) {
     while (cleanupDirectories.length) {
       const cleanupDirectory = cleanupDirectories.shift();
       // Avoid attempting to remove the same directory multiple times
-      if (cleanupDirectories.indexOf(cleanupDirectory) === -1) {
+      if ((cleanupDirectories.indexOf(cleanupDirectory) === -1) &&
+          (fs.exists(cleanupDirectory))) {
         fs.removeDirectoryRecursive(cleanupDirectory, true);
       }
       break;
@@ -257,7 +258,8 @@ function cleanupDBDirectories (options) {
       const cleanupDirectory = cleanupDirectories.shift();
 
       // Avoid attempting to remove the same directory multiple times
-      if (cleanupDirectories.indexOf(cleanupDirectory) === -1) {
+      if ((cleanupDirectories.indexOf(cleanupDirectory) === -1) &&
+          (fs.exists(cleanupDirectory))) {
         fs.removeDirectoryRecursive(cleanupDirectory, true);
       }
     }

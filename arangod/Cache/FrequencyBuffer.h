@@ -25,6 +25,7 @@
 #define ARANGODB_CACHE_FREQUENCY_BUFFER_H
 
 #include "Basics/Common.h"
+#include "Basics/SharedPRNG.h"
 
 #include <stdint.h>
 #include <algorithm>
@@ -53,9 +54,8 @@ class FrequencyBuffer {
   typedef std::vector<std::pair<T, uint64_t>> stats_t;
 
  private:
-  std::atomic<uint64_t> _current;
-  uint64_t _capacity;
-  uint64_t _mask;
+  size_t _capacity;
+  size_t _mask;
   std::unique_ptr<std::vector<T>> _buffer;
   Comparator _cmp;
   T _empty;
@@ -64,17 +64,16 @@ class FrequencyBuffer {
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Initialize with the given capacity.
   //////////////////////////////////////////////////////////////////////////////
-  explicit FrequencyBuffer(uint64_t capacity)
-      : _current(0),
-        _capacity(0),
+  explicit FrequencyBuffer(size_t capacity)
+      : _capacity(0),
         _mask(0),
         _buffer(nullptr),
         _cmp(),
         _empty() {
-    uint64_t i = 0;
-    for (; (static_cast<uint64_t>(1) << i) < capacity; i++) {
+    size_t i = 0;
+    for (; (static_cast<size_t>(1) << i) < capacity; i++) {
     }
-    _capacity = (static_cast<uint64_t>(1) << i);
+    _capacity = (static_cast<size_t>(1) << i);
     _mask = _capacity - 1;
     _buffer.reset(new std::vector<T>(_capacity));
     TRI_ASSERT(_buffer->capacity() == _capacity);
@@ -84,14 +83,14 @@ class FrequencyBuffer {
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Reports the hidden allocation size (not captured by sizeof).
   //////////////////////////////////////////////////////////////////////////////
-  static uint64_t allocationSize(uint64_t capacity) {
+  static size_t allocationSize(size_t capacity) {
     return sizeof(std::vector<T>) + (capacity * sizeof(T));
   }
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Reports the memory usage in bytes.
   //////////////////////////////////////////////////////////////////////////////
-  uint64_t memoryUsage() const {
+  size_t memoryUsage() const {
     return ((_capacity * sizeof(T)) + sizeof(FrequencyBuffer<T>) +
             sizeof(std::vector<T>));
   }
@@ -99,8 +98,11 @@ class FrequencyBuffer {
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Insert an individual event record.
   //////////////////////////////////////////////////////////////////////////////
-  void insertRecord(T record) { (*_buffer)[_current++ & _mask] = record; }
-
+  void insertRecord(T record) {
+    // we do not care about the order in which threads insert their values
+    (*_buffer)[basics::SharedPRNG::rand() & _mask] = record;
+  }
+  
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Remove all occurrences of the specified event record.
   //////////////////////////////////////////////////////////////////////////////
@@ -116,7 +118,7 @@ class FrequencyBuffer {
   /// @brief Return a list of (event, count) pairs for each recorded event in
   /// ascending order.
   //////////////////////////////////////////////////////////////////////////////
-  std::shared_ptr<typename FrequencyBuffer::stats_t> getFrequencies() const {
+  typename FrequencyBuffer::stats_t getFrequencies() const {
     // calculate frequencies
     std::unordered_map<T, uint64_t, Hasher, Comparator> frequencies;
     for (size_t i = 0; i < _capacity; i++) {
@@ -127,17 +129,17 @@ class FrequencyBuffer {
     }
 
     // gather and sort frequencies
-    std::shared_ptr<stats_t> data(new stats_t());
-    data->reserve(frequencies.size());
+    stats_t data;
+    data.reserve(frequencies.size());
     for (auto f : frequencies) {
-      data->emplace_back(std::pair<T, uint64_t>(f.first, f.second));
+      data.emplace_back(std::pair<T, uint64_t>(f.first, f.second));
     }
-    std::sort(data->begin(), data->end(),
+    std::sort(data.begin(), data.end(),
               [](std::pair<T, uint64_t>& left, std::pair<T, uint64_t>& right) {
                 return left.second < right.second;
               });
 
-    return data;
+    return data; // RVO moves this out
   }
 
   //////////////////////////////////////////////////////////////////////////////

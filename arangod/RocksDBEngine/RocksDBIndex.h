@@ -103,8 +103,12 @@ class RocksDBIndex : public Index {
     return removeInternal(trx, mthds, rid, doc);
   }
 
+  void setCacheEnabled(bool enable) {
+    // allow disabling and enabling of caches for the primary index
+    _cacheEnabled = enable;
+  }
   void createCache();
-  void disableCache();
+  void destroyCache();
 
   virtual void serializeEstimate(std::string& output) const;
 
@@ -116,6 +120,12 @@ class RocksDBIndex : public Index {
   virtual Result insertInternal(transaction::Methods* trx, RocksDBMethods*,
                                 TRI_voc_rid_t,
                                 arangodb::velocypack::Slice const&) = 0;
+  
+  virtual Result updateInternal(transaction::Methods* trx, RocksDBMethods*,
+                                TRI_voc_rid_t oldRevision,
+                                arangodb::velocypack::Slice const& oldDoc,
+                                TRI_voc_rid_t newRevision,
+                                velocypack::Slice const& newDoc);
 
   /// remove index elements and put it in the specified write batch.
   virtual Result removeInternal(transaction::Methods* trx, RocksDBMethods*,
@@ -140,7 +150,7 @@ class RocksDBIndex : public Index {
                                    rocksdb::Slice const& key,
                                    rocksdb::Slice const& value);
 
-  inline bool useCache() const { return (_useCache && _cachePresent); }
+  inline bool useCache() const { return (_cacheEnabled && _cachePresent); }
   void blackListKey(char const* data, std::size_t len);
   void blackListKey(StringRef& ref) { blackListKey(ref.data(), ref.size()); };
 
@@ -152,7 +162,7 @@ class RocksDBIndex : public Index {
   // we use this boolean for testing whether _cache is set.
   // it's quicker than accessing the shared_ptr each time
   bool _cachePresent;
-  bool _useCache;
+  bool _cacheEnabled;
 };
 }  // namespace arangodb
 

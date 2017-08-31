@@ -67,8 +67,8 @@ TEST_CASE("cache::Table", "[cache]") {
       auto source = pair.second;
       REQUIRE(bucket != nullptr);
       REQUIRE(bucket->isLocked());
-      REQUIRE(source.get() != nullptr);
-      REQUIRE(source == table);
+      REQUIRE(source != nullptr);
+      REQUIRE(source == table.get());
 
       auto rawBucket = reinterpret_cast<PlainBucket*>(table->primaryBucket(i));
       REQUIRE(bucket == rawBucket);
@@ -77,7 +77,7 @@ TEST_CASE("cache::Table", "[cache]") {
       auto badBucket = reinterpret_cast<PlainBucket*>(badPair.first);
       auto badSource = badPair.second;
       REQUIRE(badBucket == nullptr);
-      REQUIRE(badSource.get() == nullptr);
+      REQUIRE(badSource == nullptr);
 
       bucket->unlock();
     }
@@ -113,19 +113,19 @@ TEST_CASE("cache::Table", "[cache]") {
       auto source = pair.second;
       REQUIRE(bucket ==
               reinterpret_cast<PlainBucket*>(small->primaryBucket(indexSmall)));
-      bucket->_state.toggleFlag(State::Flag::migrated);
+      bucket->_state.toggleFlag(BucketState::Flag::migrated);
       bucket->unlock();
-      REQUIRE(source == small);
+      REQUIRE(source == small.get());
 
       pair = small->fetchAndLockBucket(hash, -1);
       bucket = reinterpret_cast<PlainBucket*>(pair.first);
       source = pair.second;
       REQUIRE(bucket ==
               reinterpret_cast<PlainBucket*>(large->primaryBucket(indexLarge)));
-      REQUIRE(source == large);
+      REQUIRE(source == large.get());
       pair = small->fetchAndLockBucket(hash, 10);
       REQUIRE(pair.first == nullptr);
-      REQUIRE(pair.second.get() == nullptr);
+      REQUIRE(pair.second == nullptr);
       bucket->unlock();
     }
 
