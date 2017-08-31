@@ -56,4 +56,4 @@ MockScheduler::~MockScheduler() {
   _ioService->stop();
 }
 
-boost::asio::io_service* MockScheduler::ioService() { return _ioService.get(); }
+void MockScheduler::post(std::function<void()> fn) { _ioService->post(fn); }

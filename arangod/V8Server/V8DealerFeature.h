@@ -54,12 +54,14 @@ class V8DealerFeature final : public application_features::ApplicationFeature {
  private:
   double _gcFrequency;
   uint64_t _gcInterval;
+  double _maxContextAge;
   std::string _appPath;
   std::string _startupDirectory;
   std::vector<std::string> _moduleDirectory;
   uint64_t _nrMaxContexts;  // maximum number of contexts to create
   uint64_t _nrMinContexts; // minimum number of contexts to keep
   uint64_t _nrInflightContexts; // number of contexts currently in creation
+  uint64_t _maxContextInvocations; // maximum number of V8 context invocations
   bool _allowAdminExecute;
 
  public:

@@ -29,7 +29,7 @@ const functionsDocumentation = {
   'readOnly': 'read only tests'
 };
 const optionsDocumentation = [
-  '   - `skipReadOnly` : if set to true the read only tests are skipped',
+  '   - `skipReadOnly` : if set to true the read only tests are skipped'
 ];
 
 const pu = require('@arangodb/process-utils');
@@ -74,13 +74,12 @@ function readOnly (options) {
   }
 
   const conf = {
-        'server.authentication': true,
-        'server.authentication-system-only': false,
-        'server.jwt-secret': 'haxxmann'
-      };
+    'server.authentication': true,
+    'server.authentication-system-only': false,
+    'server.jwt-secret': 'haxxmann'
+  };
 
   print(CYAN + 'readOnly tests...' + RESET);
-
 
   const adbInstance = pu.startInstance('tcp', options, conf, 'readOnly');
   if (adbInstance === false) {
@@ -92,47 +91,47 @@ function readOnly (options) {
     };
   }
 
-const requests = [
-  [200, 'post', '/_api/collection', 'root', {name:'testcol'}],
-  [202, 'post', '/_api/document/testcol', 'root', {_key:'abcd'}],
-  [201, 'post', '/_api/index?collection=testcol', 'root', {fields:['abc'],type:'hash'}],
-  [200, 'get', '/_api/index?collection=testcol', 'root', {}],
+  const requests = [
+    [200, 'post', '/_api/collection', 'root', {name: 'testcol'}],
+    [202, 'post', '/_api/document/testcol', 'root', {_key: 'abcd'}],
+    [201, 'post', '/_api/index?collection=testcol', 'root', {fields: ['abc'], type: 'hash'}],
+    [200, 'get', '/_api/index?collection=testcol', 'root', {}],
 
-  // create and delete index
-  [403, 'delete', '/_api/index/', 'test', {}],
-  [403, 'post', '/_api/index?collection=testcol', 'test', {fields:['xyz'],type:'hash'}],
+    // create and delete index
+    [403, 'delete', '/_api/index/', 'test', {}],
+    [403, 'post', '/_api/index?collection=testcol', 'test', {fields: ['xyz'], type: 'hash'}],
 
-  // create, delete, truncate collection
-  [403, 'post', '/_api/collection', 'test', {name:'testcol2'}],
-  [403, 'delete', '/_api/collection/testcol', 'test', {}],
-  [403, 'put', '/_api/collection/testcol/truncate', 'test', {}],
+    // create, delete, truncate collection
+    [403, 'post', '/_api/collection', 'test', {name: 'testcol2'}],
+    [403, 'delete', '/_api/collection/testcol', 'test', {}],
+    [403, 'put', '/_api/collection/testcol/truncate', 'test', {}],
 
-  // get, delete, update, replace document
-  [200, 'get', '/_api/document/testcol/abcd', 'test', {}],
-  [403, 'post', '/_api/document/testcol', 'test', {_key:'wxyz'}],
-  [403, 'delete', '/_api/document/testcol/abcd', 'test', {}],
-  [403, 'patch', '/_api/document/testcol/abcd', 'test', {foo:'bar'}],
-  [403, 'put', '/_api/document/testcol/abcd', 'test', {foo:'bar'}],
+    // get, delete, update, replace document
+    [200, 'get', '/_api/document/testcol/abcd', 'test', {}],
+    [403, 'post', '/_api/document/testcol', 'test', {_key: 'wxyz'}],
+    [403, 'delete', '/_api/document/testcol/abcd', 'test', {}],
+    [403, 'patch', '/_api/document/testcol/abcd', 'test', {foo: 'bar'}],
+    [403, 'put', '/_api/document/testcol/abcd', 'test', {foo: 'bar'}],
 
-  // create, delete database
-  [201, 'post',   '/_db/_system/_api/database', 'root', {name:'wxyzdb'}],
-  [403, 'post',   '/_db/_system/_api/database', 'test', {name:'abcddb'}],
-  [403, 'delete', '/_db/_system/_api/database/wxyzdb', 'test', {}],
+    // create, delete database
+    [201, 'post', '/_db/_system/_api/database', 'root', {name: 'wxyzdb'}],
+    [403, 'post', '/_db/_system/_api/database', 'test', {name: 'abcddb'}],
+    [403, 'delete', '/_db/_system/_api/database/wxyzdb', 'test', {}],
 
-  // database with only collection access
-  [200, 'get', '/_db/testdb2/_api/document/testcol2/one', 'test', {}],
-  [403, 'get', '/_db/testdb2/_api/document/testcol3/one', 'test', {}],
-  [403, 'post', '/_db/testdb2/_api/document/testcol2', 'test', {_key:'wxyz'}],
-  [403, 'post', '/_db/testdb2/_api/document/testcol3', 'test', {_key:'wxyz'}],
+    // database with only collection access
+    [200, 'get', '/_db/testdb2/_api/document/testcol2/one', 'test', {}],
+    [403, 'get', '/_db/testdb2/_api/document/testcol3/one', 'test', {}],
+    [403, 'post', '/_db/testdb2/_api/document/testcol2', 'test', {_key: 'wxyz'}],
+    [403, 'post', '/_db/testdb2/_api/document/testcol3', 'test', {_key: 'wxyz'}],
 
-  [200, 'get', '/_db/testdb2/_api/document/testcol2/one', 'test2', {}],
-  [403, 'get', '/_db/testdb2/_api/document/testcol3/one', 'test2', {}],
-  [202, 'post', '/_db/testdb2/_api/document/testcol2', 'test2', {_key:'wxyz'}],
-  [403, 'post', '/_db/testdb2/_api/document/testcol3', 'test2', {_key:'wxyz'}],
+    [200, 'get', '/_db/testdb2/_api/document/testcol2/one', 'test2', {}],
+    [403, 'get', '/_db/testdb2/_api/document/testcol3/one', 'test2', {}],
+    [202, 'post', '/_db/testdb2/_api/document/testcol2', 'test2', {_key: 'wxyz'}],
+    [403, 'post', '/_db/testdb2/_api/document/testcol3', 'test2', {_key: 'wxyz'}],
 
-  [200, 'get', '/_db/testdb2/_api/document/testcol2/wxyz', 'test', {}],
-  [403, 'delete', '/_db/testdb2/_api/document/testcol2/wxyz', 'test', {}]
-];
+    [200, 'get', '/_db/testdb2/_api/document/testcol2/wxyz', 'test', {}],
+    [403, 'delete', '/_db/testdb2/_api/document/testcol2/wxyz', 'test', {}]
+  ];
 
   const run = (tests) => {
     const bodies = [];
@@ -140,22 +139,22 @@ const requests = [
       const res = request[r[1]]({
         url: `${adbInstance.arangods[0].url}${r[2]}`,
         body: Object.keys(r[4]).length ? JSON.stringify(r[4]) : '',
-        auth: {username:r[3], password:''}
+        auth: { username: r[3], password: '' }
       });
       try {
         bodies.push(JSON.parse(res.body));
-      } catch(e) {
+      } catch (e) {
         bodies.push({});
       }
       r.splice(1, 0, res.statusCode);
       if (r[0] === r[1]) {
-        results[r.slice(0,5).join('_')] = {
+        results[r.slice(0, 5).join('_')] = {
           failed: 0,
           status: true
         };
       } else {
         results.failed += 1;
-        results[r.slice(0,5).join('_')] = {
+        results[r.slice(0, 5).join('_')] = {
           failed: 1,
           status: false
         };
@@ -165,29 +164,29 @@ const requests = [
   };
 
   let res = pu.run.arangoshCmd(options, adbInstance, {}, [
-          '--javascript.execute-string',
-          `const users = require('@arangodb/users');
-          users.save('test', '', true);
-          users.save('test2', '', true);
-          users.grantDatabase('test', '_system', 'ro');
-          users.grantCollection('test', '_system', 'testcol', 'ro');
+    '--javascript.execute-string',
+    `const users = require('@arangodb/users');
+    users.save('test', '', true);
+    users.save('test2', '', true);
+    users.grantDatabase('test', '_system', 'ro');
+    users.grantCollection('test', '_system', 'testcol', 'ro');
 
-          db._createDatabase('testdb2');
-          db._useDatabase('testdb2');
-          db._createDocumentCollection('testcol2');
-          db._createDocumentCollection('testcol3');
-          db.testcol2.save({_key:'one'});
-          db.testcol3.save({_key:'one'});
-          users.grantDatabase('test', 'testdb2', 'ro');
-          users.grantCollection('test', 'testdb2', 'testcol2', 'ro');
-          users.grantDatabase('test2', 'testdb2', 'ro');
-          users.grantCollection('test2', 'testdb2', 'testcol2', 'rw');
-          db._useDatabase('_system');
-          /* let res = db._query("for u in _users filter u.user == 'test' return u").toArray();
-          print(res); */`
-        ]);
+    db._createDatabase('testdb2');
+    db._useDatabase('testdb2');
+    db._createDocumentCollection('testcol2');
+    db._createDocumentCollection('testcol3');
+    db.testcol2.save({_key: 'one'});
+    db.testcol3.save({_key: 'one'});
+    users.grantDatabase('test', 'testdb2', 'ro');
+    users.grantCollection('test', 'testdb2', 'testcol2', 'ro');
+    users.grantDatabase('test2', 'testdb2', 'ro');
+    users.grantCollection('test2', 'testdb2', 'testcol2', 'rw');
+    db._useDatabase('_system');
+    /* let res = db._query("for u in _users filter u.user == 'test' return u").toArray();
+       print(res); */`
+  ]);
 
-  let bodies = run(requests.splice(0,4));
+  let bodies = run(requests.splice(0, 4));
   requests[0][2] += bodies.pop().indexes.filter(idx => idx.type === 'hash')[0].id;
   run(requests);
 

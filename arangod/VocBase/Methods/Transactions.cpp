@@ -15,6 +15,10 @@
 #include "Basics/WriteLocker.h"
 #include "Basics/ReadLocker.h"
 
+#ifdef USE_ENTERPRISE
+#include "Enterprise/Transaction/IgnoreNoAccessMethods.h"
+#endif
+
 namespace arangodb {
 
 
@@ -112,43 +116,43 @@ Result executeTransactionJS(
   // treat the value as an object from now on
   v8::Handle<v8::Object> object = v8::Handle<v8::Object>::Cast(arg);
 
-  VPackBuilder builder;
-  TRI_V8ToVPack(isolate, builder, object, false);
-
-  // extract the properties from the object
-  transaction::Options trxOptions;
-
-  if (object->Has(TRI_V8_ASCII_STRING("lockTimeout"))) {
-    static std::string const timeoutError =
-        "<lockTimeout> must be a valid numeric value";
-
-    if (!object->Get(TRI_V8_ASCII_STRING("lockTimeout"))->IsNumber()) {
-      rv.reset(TRI_ERROR_BAD_PARAMETER, timeoutError);
-    }
-
-    trxOptions.lockTimeout =
-        TRI_ObjectToDouble(object->Get(TRI_V8_ASCII_STRING("lockTimeout")));
-
-    if (trxOptions.lockTimeout < 0.0) {
-      rv.reset(TRI_ERROR_BAD_PARAMETER, timeoutError);
-    }
-
-    if(rv.fail()){
-      return rv;
-    }
-  }
-
   // "waitForSync"
   TRI_GET_GLOBALS();
   TRI_GET_GLOBAL_STRING(WaitForSyncKey);
-  if (object->Has(WaitForSyncKey)) {
-    if (!object->Get(WaitForSyncKey)->IsBoolean() &&
-        !object->Get(WaitForSyncKey)->IsBooleanObject()) {
-      rv.reset(TRI_ERROR_BAD_PARAMETER, "<waitForSync> must be a boolean value");
+  
+  // do extra sanity checking for user facing APIs, parsing
+  // is performed in `transaction::Options::fromVelocyPack`
+  if (object->Has(TRI_V8_ASCII_STRING("lockTimeout")) &&
+      !object->Get(TRI_V8_ASCII_STRING("lockTimeout"))->IsNumber()) {
+    rv.reset(TRI_ERROR_BAD_PARAMETER,
+             "<lockTimeout> must be a valid numeric value");
+    return rv;
+  }
+  if (object->Has(WaitForSyncKey) &&
+      !object->Get(WaitForSyncKey)->IsBoolean() &&
+      !object->Get(WaitForSyncKey)->IsBooleanObject()) {
+    rv.reset(TRI_ERROR_BAD_PARAMETER,
+             "<waitForSync> must be a boolean value");
+    return rv;
+  }
+  
+  // extract the properties from the object
+  transaction::Options trxOptions;
+  {
+    // parse all other options. `allowImplicitCollections` will
+    // be overwritten later if is contained in `object`
+    VPackBuilder builder;
+    TRI_V8ToVPack(isolate, builder, object, false);
+    if (!builder.isClosed()) builder.close();
+    if (!builder.slice().isObject()) {
+      rv.reset(TRI_ERROR_BAD_PARAMETER);
       return rv;
     }
-
-    trxOptions.waitForSync = TRI_ObjectToBoolean(WaitForSyncKey);
+    trxOptions.fromVelocyPack(builder.slice());
+  }
+  if (trxOptions.lockTimeout < 0.0) {
+    rv.reset(TRI_ERROR_BAD_PARAMETER, "<lockTiemout> needs to be positive");
+    return rv;
   }
 
   // "collections"
@@ -180,20 +184,7 @@ Result executeTransactionJS(
     trxOptions.allowImplicitCollections = TRI_ObjectToBoolean(
         collections->Get(TRI_V8_ASCII_STRING("allowImplicit")));
   }
-
-  if (object->Has(TRI_V8_ASCII_STRING("maxTransactionSize"))) {
-    trxOptions.maxTransactionSize = TRI_ObjectToUInt64(
-        object->Get(TRI_V8_ASCII_STRING("maxTransactionSize")), true);
-  }
-  if (object->Has(TRI_V8_ASCII_STRING("intermediateCommitSize"))) {
-    trxOptions.intermediateCommitSize = TRI_ObjectToUInt64(
-        object->Get(TRI_V8_ASCII_STRING("intermediateCommitSize")), true);
-  }
-  if (object->Has(TRI_V8_ASCII_STRING("intermediateCommitCount"))) {
-    trxOptions.intermediateCommitCount = TRI_ObjectToUInt64(
-        object->Get(TRI_V8_ASCII_STRING("intermediateCommitCount")), true);
-  }
-
+  
   auto getCollections = [&isolate](v8::Handle<v8::Object> obj,
                                    std::vector<std::string>& collections,
                                    char const* attributeName,
@@ -317,21 +308,21 @@ Result executeTransactionJS(
 
   auto transactionContext =
       std::make_shared<transaction::V8Context>(vocbase, embed);
-
   // start actual transaction
-  transaction::UserTransaction trx(transactionContext, readCollections, writeCollections, exclusiveCollections,
-                          trxOptions);
-
-  rv = trx.begin();
+  std::unique_ptr<transaction::Methods> trx(new transaction::UserTransaction(transactionContext, readCollections,
+                                             writeCollections, exclusiveCollections,
+                                             trxOptions));
+    
+  rv = trx->begin();
   if (rv.fail()) {
     return rv;
   }
-
+  
   try {
     v8::Handle<v8::Value> arguments = params;
     result = action->Call(current, 1, &arguments);
     if (tryCatch.HasCaught()) {
-      trx.abort();
+      trx->abort();
       std::tuple<bool,bool,Result> rvTuple = extractArangoError(isolate, tryCatch);
       if (std::get<1>(rvTuple)){
         rv = std::get<2>(rvTuple);
@@ -351,7 +342,7 @@ Result executeTransactionJS(
     return rv;
   }
 
-  rv = trx.commit();
+  rv = trx->commit();
   return rv;
 }
 

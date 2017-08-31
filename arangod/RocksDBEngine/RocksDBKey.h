@@ -202,7 +202,7 @@ class RocksDBKey {
   //////////////////////////////////////////////////////////////////////////////
   static TRI_voc_cid_t viewId(RocksDBKey const&);
   static TRI_voc_cid_t viewId(rocksdb::Slice const&);
-  
+
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Extracts the objectId from a key
   ///
@@ -262,6 +262,12 @@ class RocksDBKey {
   //////////////////////////////////////////////////////////////////////////////
   rocksdb::Slice const& string() const { return _slice; }
 
+  inline size_t size() const { return _slice.size(); }
+
+  bool operator==(RocksDBKey const& other) const {
+    return _type == other._type && _slice == other._slice;
+  }
+
  private:
   static inline RocksDBEntryType type(char const* data, size_t size) {
     TRI_ASSERT(data != nullptr);
@@ -290,7 +296,7 @@ class RocksDBKey {
   static TRI_voc_tick_t databaseId(char const* data, size_t size);
   static TRI_voc_cid_t collectionId(char const* data, size_t size);
   static TRI_voc_cid_t viewId(char const* data, size_t size);
-  
+
   // valid on data entries like document, edge, vpack
   static TRI_voc_cid_t objectId(char const* data, size_t size);
   static TRI_voc_rid_t revisionId(RocksDBEntryType, char const*, size_t);

@@ -35,7 +35,7 @@
 #include "Basics/asio-helper.h"
 #include "Cache/CacheManagerFeatureThreads.h"
 #include "Cache/Manager.h"
-#include "Logger/LogAppender.h"
+#include "Logger/Logger.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
 #include "Scheduler/Scheduler.h"
@@ -98,8 +98,11 @@ void CacheManagerFeature::validateOptions(
 
 void CacheManagerFeature::start() {
   auto scheduler = SchedulerFeature::SCHEDULER;
-  auto ioService = (scheduler == nullptr) ? nullptr : scheduler->ioService();
-  _manager.reset(new Manager(ioService, _cacheSize));
+  auto postFn = [scheduler](std::function<void()> fn) -> bool {
+    scheduler->post(fn);
+    return true;
+  };
+  _manager.reset(new Manager(postFn, _cacheSize));
   MANAGER = _manager.get();
   _rebalancer.reset(
       new CacheRebalancerThread(_manager.get(), _rebalancingInterval));

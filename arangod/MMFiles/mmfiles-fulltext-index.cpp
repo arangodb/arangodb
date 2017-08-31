@@ -521,26 +521,21 @@ static inline node_t* FindDirectSubNodeLinear(const node_t* const node,
 /// the caller must ensure the node actually has sub-nodes!
 static node_t* FindDirectSubNodeBinary(const node_t* const node,
                                        const node_char_t c) {
-  node_char_t* followerKeys;
-  node_t** followerNodes;
-  uint32_t numFollowers;
-  uint32_t l, r;
-
 #if TRI_FULLTEXT_DEBUG
   TRI_ASSERT(node != nullptr);
 #endif
 
-  numFollowers = NodeNumFollowers(node);
+  uint32_t numFollowers = NodeNumFollowers(node);
 #if TRI_FULLTEXT_DEBUG
   TRI_ASSERT(numFollowers >= 1);
 #endif
 
-  followerKeys = NodeFollowersKeys(node);
-  followerNodes = NodeFollowersNodes(node);
+  node_char_t* followerKeys = NodeFollowersKeys(node);
+  node_t** followerNodes = NodeFollowersNodes(node);
 
-  l = 0;
+  uint32_t l = 0;
   // this is safe (look at the function documentation)
-  r = numFollowers - 1;
+  uint32_t r = numFollowers - 1;
 
   while (true) {
     node_char_t followerKey;
@@ -574,13 +569,11 @@ static node_t* FindDirectSubNodeBinary(const node_t* const node,
 /// @brief find a node's sub-node, identified by its start character
 static inline node_t* FindDirectSubNode(const node_t* const node,
                                         const node_char_t c) {
-  uint32_t numFollowers;
-
 #if TRI_FULLTEXT_DEBUG
   TRI_ASSERT(node != nullptr);
 #endif
 
-  numFollowers = NodeNumFollowers(node);
+  uint32_t numFollowers = NodeNumFollowers(node);
 
   if (numFollowers >= 8) {
     return FindDirectSubNodeBinary(node, c);
@@ -596,17 +589,13 @@ static inline node_t* FindDirectSubNode(const node_t* const node,
 /// @brief find a node by its key, starting from the index root
 static node_t* FindNode(const index__t* idx, char const* const key,
                         size_t const keyLength) {
-  node_t* node;
-  node_char_t* p;
-  size_t i;
-
-  node = (node_t*)idx->_root;
+  node_t* node = idx->_root;
 #if TRI_FULLTEXT_DEBUG
   TRI_ASSERT(node != nullptr);
 #endif
-  p = (node_char_t*)key;
+  node_char_t* p = (node_char_t*)key;
 
-  for (i = 0; i < keyLength; ++i) {
+  for (size_t i = 0; i < keyLength; ++i) {
     node = FindDirectSubNode(node, *(p++));
     if (node == nullptr) {
       return nullptr;

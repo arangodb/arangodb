@@ -131,8 +131,6 @@ install(
 ### @brief detect if we're on a systemd enabled system; if install unit file.
 ################################################################################
 
-set(IS_SYSTEMD_INSTALL 0)
-set(SYSTEMD_UNIT_DIR "")
 if (UNIX)
   if (${USE_ENTERPRISE})
     set(SERVICE_NAME "arangodb3e")
@@ -140,42 +138,68 @@ if (UNIX)
     set(SERVICE_NAME "arangodb3")
   endif ()
 
+  # use pkgconfig for systemd detection
   find_package(PkgConfig QUIET)
-  pkg_check_modules(SYSTEMD systemd)
-  if (SYSTEMD_FOUND)
-    # cmake to old: pkg_get_variable(SYSTEMD_UNIT_DIR systemd systemdsystemunitdir)
-    execute_process(COMMAND ${PKG_CONFIG_EXECUTABLE} systemd --variable=systemdsystemunitdir
-      OUTPUT_VARIABLE SYSTEMD_UNIT_DIR
-      OUTPUT_STRIP_TRAILING_WHITESPACE)
-    set(IS_SYSTEMD_INSTALL 1)
-    
-    configure_file (
-      ${ARANGODB_SOURCE_DIR}/Installation/systemd/arangodb3.service.in
-      ${PROJECT_BINARY_DIR}/arangodb3.service
-      NEWLINE_STYLE UNIX)
-    if (CMAKE_INSTALL_PREFIX AND NOT "${CMAKE_INSTALL_PREFIX}" STREQUAL "/")
-      set(SYSTEMD_UNIT_DIR "${CMAKE_INSTALL_PREFIX}/${SYSTEMD_UNIT_DIR}/")
-    endif()
-    install(FILES ${PROJECT_BINARY_DIR}/arangodb3.service
-      DESTINATION ${SYSTEMD_UNIT_DIR}/
-      RENAME ${SERVICE_NAME}.service)
-    
-    configure_file (
-      ${ARANGODB_SOURCE_DIR}/Installation/logrotate.d/arangod.systemd
-      ${PROJECT_BINARY_DIR}/arangod.systemd
-      NEWLINE_STYLE UNIX)
-    install(
-      FILES ${PROJECT_BINARY_DIR}/arangod.systemd
-      PERMISSIONS OWNER_READ OWNER_WRITE GROUP_READ WORLD_READ
-      DESTINATION ${CMAKE_INSTALL_FULL_SYSCONFDIR}/logrotate.d
-      RENAME ${SERVICE_NAME})
-  else ()
-    configure_file (
-      ${ARANGODB_SOURCE_DIR}/Installation/logrotate.d/arangod.sysv
-      ${PROJECT_BINARY_DIR}/arangod.sysv
-      NEWLINE_STYLE UNIX)
-  endif()
-endif()
+  if(NOT PKG_CONFIG_FOUND)
+  	message(STATUS "pkg-config not found - skipping systemd detection")
+  else()
+    set(IS_SYSTEMD_INSTALL 0)
+    set(SYSTEMD_UNIT_DIR "")
+    message(STATUS "detecting systemd")
+    pkg_check_modules(SYSTEMD systemd)
+
+    if (SYSTEMD_FOUND)
+      message(STATUS "-- systemd found")
+
+      # get systemd_unit_dir -- e.g /lib/systemd/system/
+      # cmake to old: pkg_get_variable(SYSTEMD_UNIT_DIR systemd systemdsystemunitdir)
+      execute_process(
+        COMMAND ${PKG_CONFIG_EXECUTABLE} systemd --variable=systemdsystemunitdir
+        OUTPUT_VARIABLE SYSTEMD_UNIT_DIR
+        OUTPUT_STRIP_TRAILING_WHITESPACE
+      )
+      set(IS_SYSTEMD_INSTALL 1)
+      
+      # set prefix
+      if (CMAKE_INSTALL_PREFIX AND NOT "${CMAKE_INSTALL_PREFIX}" STREQUAL "/")
+        set(SYSTEMD_UNIT_DIR "${CMAKE_INSTALL_PREFIX}/${SYSTEMD_UNIT_DIR}/")
+      endif()
+
+      # configure and install systemd service
+      configure_file (
+        ${ARANGODB_SOURCE_DIR}/Installation/systemd/arangodb3.service.in
+        ${PROJECT_BINARY_DIR}/arangodb3.service
+        NEWLINE_STYLE UNIX
+      )
+      install(
+        FILES ${PROJECT_BINARY_DIR}/arangodb3.service
+        DESTINATION ${SYSTEMD_UNIT_DIR}/
+        RENAME ${SERVICE_NAME}.service
+      )
+
+      # configure and install logrotate file
+      configure_file (
+        ${ARANGODB_SOURCE_DIR}/Installation/logrotate.d/arangod.systemd
+        ${PROJECT_BINARY_DIR}/arangod.systemd
+        NEWLINE_STYLE UNIX
+      )
+      install(
+        FILES ${PROJECT_BINARY_DIR}/arangod.systemd
+        PERMISSIONS OWNER_READ OWNER_WRITE GROUP_READ WORLD_READ
+        DESTINATION ${CMAKE_INSTALL_FULL_SYSCONFDIR}/logrotate.d
+        RENAME ${SERVICE_NAME}
+      )
+
+    else ()
+      message(STATUS "-- systemd not found")
+      configure_file (
+        ${ARANGODB_SOURCE_DIR}/Installation/logrotate.d/arangod.sysv
+        ${PROJECT_BINARY_DIR}/arangod.sysv
+        NEWLINE_STYLE UNIX
+      )
+    endif(SYSTEMD_FOUND)
+  endif(NOT PKG_CONFIG_FOUND) 
+endif(UNIX)
 ################################################################################
 ### @brief propagate the locations into our programms:
 ################################################################################
@@ -202,6 +226,19 @@ configure_file (
 install(FILES ${ICU_DT}
   DESTINATION "${INSTALL_ICU_DT_DEST}"
   RENAME ${ICU_DT_DEST})
+
+install(FILES "${CMAKE_SOURCE_DIR}/lib/Basics/exitcodes.dat"
+  DESTINATION "${INSTALL_ICU_DT_DEST}"
+  RENAME exitcodes.dat)
+
+install(FILES "${CMAKE_SOURCE_DIR}/Installation/arangodb-helper"
+  DESTINATION "${INSTALL_ICU_DT_DEST}"
+  RENAME arangodb-helper)
+
+install(FILES "${CMAKE_SOURCE_DIR}/Installation/arangodb-helper"
+  DESTINATION "${INSTALL_ICU_DT_DEST}"
+  RENAME arangodb-update-db)
+
 
 if (MSVC AND NOT(SKIP_PACKAGING))
   # so we don't need to ship dll's twice, make it one directory:

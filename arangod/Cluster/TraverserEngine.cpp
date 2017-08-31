@@ -44,6 +44,7 @@ using namespace arangodb::graph;
 using namespace arangodb::traverser;
 
 static const std::string OPTIONS = "options";
+static const std::string INACCESSIBLE = "inaccessible";
 static const std::string SHARDS = "shards";
 static const std::string EDGES = "edges";
 static const std::string TYPE = "type";
@@ -96,17 +97,38 @@ BaseEngine::BaseEngine(TRI_vocbase_t* vocbase, VPackSlice info)
     _vertexShards.emplace(collection.key.copyString(), shards);
   }
 
-  auto params = std::make_shared<VPackBuilder>();
-  auto opts = std::make_shared<VPackBuilder>();
+  // FIXME: in the future this needs to be replaced with the new cluster
+  // wide transactions
+  transaction::Options trxOpts;
+#ifdef USE_ENTERPRISE
+  if (info.hasKey(INACCESSIBLE)) {
+    trxOpts.skipInaccessibleCollections = true;
+    std::unordered_set<ShardID> inaccessible;
+    for (VPackSlice const& shard : VPackArrayIterator(info.get(INACCESSIBLE))) {
+      TRI_ASSERT(shard.isString());
+      inaccessible.insert(shard.copyString());
+    }
+    _trx = aql::AqlTransaction::create(
+        arangodb::transaction::StandaloneContext::Create(vocbase),
+        _collections.collections(), trxOpts, true, inaccessible);
+  } else {
+    _trx = aql::AqlTransaction::create(
+        arangodb::transaction::StandaloneContext::Create(vocbase),
+        _collections.collections(), trxOpts, true);
+  }
+#else
+  _trx = aql::AqlTransaction::create(
+       arangodb::transaction::StandaloneContext::Create(vocbase),
+       _collections.collections(), trxOpts, true);
+#endif
 
-  _trx = new arangodb::aql::AqlTransaction(
-      arangodb::transaction::StandaloneContext::Create(vocbase),
-      _collections.collections(), transaction::Options(), true);
   // true here as last argument is crucial: it leads to the fact that the
   // created transaction is considered a "MAIN" part and will not switch
   // off collection locking completely!
-  _query =
-      new aql::Query(false, vocbase, aql::QueryString(), params, opts, aql::PART_DEPENDENT);
+  auto params = std::make_shared<VPackBuilder>();
+  auto opts = std::make_shared<VPackBuilder>();
+  _query = new aql::Query(false, vocbase, aql::QueryString(), params, opts,
+                          aql::PART_DEPENDENT);
   _query->injectTransaction(_trx);
 
   VPackSlice variablesSlice = info.get(VARIABLES);
@@ -162,39 +184,42 @@ std::shared_ptr<transaction::Context> BaseEngine::context() const {
 void BaseEngine::getVertexData(VPackSlice vertex, VPackBuilder& builder) {
   // We just hope someone has locked the shards properly. We have no clue...
   // Thanks locking
+  TRI_ASSERT(ServerState::instance()->isDBServer());
   TRI_ASSERT(vertex.isString() || vertex.isArray());
+  
+  ManagedDocumentResult mmdr;
   builder.openObject();
-  bool found;
   auto workOnOneDocument = [&](VPackSlice v) {
-    found = false;
     StringRef id(v);
-    std::string name = id.substr(0, id.find('/')).toString();
-    auto shards = _vertexShards.find(name);
+    size_t pos = id.find('/');
+    if (pos == std::string::npos || pos + 1 == id.size()) {
+      TRI_ASSERT(false);
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_GRAPH_INVALID_EDGE,
+                                     "edge contains invalid value " + id.toString());
+    }
+    ShardID shardName = id.substr(0, pos).toString();
+    auto shards = _vertexShards.find(shardName);
     if (shards == _vertexShards.end()) {
-      THROW_ARANGO_EXCEPTION_MESSAGE(
-          TRI_ERROR_QUERY_COLLECTION_LOCK_FAILED,
-          "collection not known to traversal: '" + name +
-              "'. please add 'WITH " + name +
-              "' as the first line in your AQL query");
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_QUERY_COLLECTION_LOCK_FAILED,
+                                     "Collection not known to Traversal " +
+                                     shardName + " please add 'WITH " + shardName +
+                                     "' as the first line in your AQL");
       // The collection is not known here!
       // Maybe handle differently
     }
-    builder.add(v);
+    
+    StringRef vertex = id.substr(pos+1);
     for (std::string const& shard : shards->second) {
-      Result res = _trx->documentFastPath(shard, nullptr, v, builder, false);
+      Result res = _trx->documentFastPathLocal(shard, vertex, mmdr);
       if (res.ok()) {
-        found = true;
         // FOUND short circuit.
+        builder.add(v);
+        mmdr.addToBuilder(builder, true);
         break;
-      }
-      if (res.isNot(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND)) {
+      } else if (res.isNot(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND)) {
         // We are in a very bad condition here...
         THROW_ARANGO_EXCEPTION(res);
       }
-    }
-    if (!found) {
-      builder.add(arangodb::basics::VelocyPackHelper::NullValue());
-      builder.removeLast();
     }
   };
 
@@ -231,31 +256,31 @@ void BaseTraverserEngine::getEdges(VPackSlice vertex, size_t depth,
       std::unique_ptr<arangodb::graph::EdgeCursor> edgeCursor(
           _opts->nextCursor(&mmdr, vertexId, depth));
 
-      edgeCursor->readAll(
-          [&](std::unique_ptr<EdgeDocumentToken>&& eid, VPackSlice edge, size_t cursorId) {
-            if (edge.isString()) {
-              edge = _opts->cache()->lookupToken(eid.get());
-            }
-            if (_opts->evaluateEdgeExpression(edge, StringRef(v), depth,
-                                              cursorId)) {
-              builder.add(edge);
-            }
-          });
+      edgeCursor->readAll([&](std::unique_ptr<EdgeDocumentToken>&& eid,
+                              VPackSlice edge, size_t cursorId) {
+        if (edge.isString()) {
+          edge = _opts->cache()->lookupToken(eid.get());
+        }
+        if (_opts->evaluateEdgeExpression(edge, StringRef(v), depth,
+                                          cursorId)) {
+          builder.add(edge);
+        }
+      });
       // Result now contains all valid edges, probably multiples.
     }
   } else if (vertex.isString()) {
     std::unique_ptr<arangodb::graph::EdgeCursor> edgeCursor(
         _opts->nextCursor(&mmdr, StringRef(vertex), depth));
-    edgeCursor->readAll(
-        [&](std::unique_ptr<EdgeDocumentToken>&& eid, VPackSlice edge, size_t cursorId) {
-          if (edge.isString()) {
-            edge = _opts->cache()->lookupToken(eid.get());
-          }
-          if (_opts->evaluateEdgeExpression(edge, StringRef(vertex), depth,
-                                            cursorId)) {
-            builder.add(edge);
-          }
-        });
+    edgeCursor->readAll([&](std::unique_ptr<EdgeDocumentToken>&& eid,
+                            VPackSlice edge, size_t cursorId) {
+      if (edge.isString()) {
+        edge = _opts->cache()->lookupToken(eid.get());
+      }
+      if (_opts->evaluateEdgeExpression(edge, StringRef(vertex), depth,
+                                        cursorId)) {
+        builder.add(edge);
+      }
+    });
     // Result now contains all valid edges, probably multiples.
   } else {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_BAD_PARAMETER);
@@ -272,44 +297,49 @@ void BaseTraverserEngine::getVertexData(VPackSlice vertex, size_t depth,
                                         VPackBuilder& builder) {
   // We just hope someone has locked the shards properly. We have no clue...
   // Thanks locking
+  TRI_ASSERT(ServerState::instance()->isDBServer());
   TRI_ASSERT(vertex.isString() || vertex.isArray());
+  
   size_t read = 0;
-  size_t filtered = 0;
-  bool found = false;
+  ManagedDocumentResult mmdr;
   builder.openObject();
   builder.add(VPackValue("vertices"));
 
   auto workOnOneDocument = [&](VPackSlice v) {
-    found = false;
     StringRef id(v);
-    std::string name = id.substr(0, id.find('/')).toString();
-    auto shards = _vertexShards.find(name);
-    if (shards == _vertexShards.end()) {
-      THROW_ARANGO_EXCEPTION_MESSAGE(
-          TRI_ERROR_QUERY_COLLECTION_LOCK_FAILED,
-          "collection not known to traversal: '" + name +
-              "'. please add 'WITH " + name +
-              "' as the first line in your AQL query");
+    size_t pos = id.find('/');
+    if (pos == std::string::npos || pos + 1 == id.size()) {
+      TRI_ASSERT(false);
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_GRAPH_INVALID_EDGE,
+                                     "edge contains invalid value " + id.toString());
     }
-    builder.add(v);
+    ShardID shardName = id.substr(0, pos).toString();
+    auto shards = _vertexShards.find(shardName);
+    if (shards == _vertexShards.end()) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_QUERY_COLLECTION_LOCK_FAILED,
+                                     "Collection not known to Traversal " +
+                                     shardName + " please add 'WITH " + shardName +
+                                     "' as the first line in your AQL");
+      // The collection is not known here!
+      // Maybe handle differently
+    }
+    
+    StringRef vertex = id.substr(pos+1);
     for (std::string const& shard : shards->second) {
-      Result res = _trx->documentFastPath(shard, nullptr, v, builder, false);
+      Result res = _trx->documentFastPathLocal(shard, vertex, mmdr);
       if (res.ok()) {
-        read++;
-        found = true;
         // FOUND short circuit.
+        read++;
+        builder.add(v);
+        mmdr.addToBuilder(builder, true);
         break;
-      }
-      if (res.isNot(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND)) {
+      } else if (res.isNot(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND)) {
         // We are in a very bad condition here...
         THROW_ARANGO_EXCEPTION(res);
       }
     }
     // TODO FILTERING!
     // HOWTO Distinguish filtered vs NULL?
-    if (!found) {
-      builder.removeLast();
-    }
   };
 
   if (vertex.isArray()) {
@@ -322,7 +352,7 @@ void BaseTraverserEngine::getVertexData(VPackSlice vertex, size_t depth,
     workOnOneDocument(vertex);
   }
   builder.add("readIndex", VPackValue(read));
-  builder.add("filtered", VPackValue(filtered));
+  builder.add("filtered", VPackValue(0));
   builder.close();
 }
 
@@ -380,8 +410,8 @@ void ShortestPathEngine::getEdges(VPackSlice vertex, bool backward,
         edgeCursor.reset(_opts->nextCursor(&mmdr, vertexId));
       }
 
-      edgeCursor->readAll([&](std::unique_ptr<EdgeDocumentToken>&& eid, VPackSlice edge,
-                              size_t cursorId) {
+      edgeCursor->readAll([&](std::unique_ptr<EdgeDocumentToken>&& eid,
+                              VPackSlice edge, size_t cursorId) {
         if (edge.isString()) {
           edge = _opts->cache()->lookupToken(eid.get());
         }
@@ -396,8 +426,8 @@ void ShortestPathEngine::getEdges(VPackSlice vertex, bool backward,
     } else {
       edgeCursor.reset(_opts->nextCursor(&mmdr, vertexId));
     }
-    edgeCursor->readAll([&](std::unique_ptr<EdgeDocumentToken>&& eid, VPackSlice edge,
-                            size_t cursorId) {
+    edgeCursor->readAll([&](std::unique_ptr<EdgeDocumentToken>&& eid,
+                            VPackSlice edge, size_t cursorId) {
       if (edge.isString()) {
         edge = _opts->cache()->lookupToken(eid.get());
       }

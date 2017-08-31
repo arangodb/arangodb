@@ -59,8 +59,6 @@ set(ENTERPRISE_INCLUDE_DIR "enterprise")
 option(USE_ENTERPRISE "enable enterprise build" OFF)
 
 if (USE_ENTERPRISE)
-  add_definitions("-DUSE_ENTERPRISE=1")
-  include_directories(${ENTERPRISE_INCLUDE_DIR})
   add_subdirectory(enterprise)
 endif ()
 
@@ -282,9 +280,23 @@ get_filename_component(PYTHON_EXECUTABLE "${PYTHON_EXECUTABLE}" REALPATH)
 
 set($ENV{PYTHON_EXECUTABLE} ${PYTHON_EXECUTABLE})
 
+# FIXME the build containers seem to have a
+# /usr/bin/ch(mod|own) to prevent the search
+# to find those files the NO_DEFAULT_PATH
+# argument is passed
 if (NOT WINDOWS)
-  find_program(CHMOD_EXECUTABLE chmod)
-  find_program(CHOWN_EXECUTABLE chown)
+  find_program(
+    CHMOD_EXECUTABLE chmod
+    PATHS "/bin/" "/usr/bin/"
+    NO_DEFAULT_PATH
+  )
+  message(STATUS "chmod found in ${CHMOD_EXECUTABLE}")
+  find_program(
+    CHOWN_EXECUTABLE chown
+    PATHS "/bin" "/usr/bin"
+    NO_DEFAULT_PATH
+  )
+  message(STATUS "chown found in ${CHOWN_EXECUTABLE}")
 endif()
 
 ################################################################################
@@ -894,6 +906,33 @@ if (USE_MAINTAINER_MODE)
   endforeach ()
 
   add_custom_target(errorfiles ALL DEPENDS ${ERROR_FILES_GEN})
+ 
+  set(EXIT_CODE_FILES
+    lib/Basics/exitcodes.h
+    lib/Basics/exitcodes.cpp
+    js/common/bootstrap/exitcodes.js
+    Installation/Windows/Plugins/exitcodes.nsh
+  )
+
+  set(EXIT_CODE_FILES_GEN)
+  set(EXIT_CODES_DAT lib/Basics/exitcodes.dat)
+
+  foreach (m IN LISTS EXIT_CODE_FILES)
+    add_custom_command(
+      OUTPUT ${CMAKE_SOURCE_DIR}/${m}
+      COMMAND ${PYTHON_EXECUTABLE} ./utils/generateExitCodesFiles.py ./${EXIT_CODES_DAT} ./${m}.tmp
+      COMMAND ${CMAKE_COMMAND} -E copy_if_different ./${m}.tmp ./${m}
+      COMMAND ${CMAKE_COMMAND} -E remove ./${m}.tmp
+      DEPENDS ${CMAKE_SOURCE_DIR}/${EXIT_CODES_DAT}
+      WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+      COMMENT  "Building exitcode files ${m}"
+      VERBATIM
+    )
+
+    list(APPEND EXIT_CODE_FILES_GEN ${CMAKE_SOURCE_DIR}/${m})
+  endforeach ()
+
+  add_custom_target(exitcodefiles ALL DEPENDS ${EXIT_CODE_FILES_GEN})
 endif ()
 
 ################################################################################

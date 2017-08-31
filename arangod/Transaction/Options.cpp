@@ -39,7 +39,11 @@ Options::Options()
       intermediateCommitSize(defaultIntermediateCommitSize),
       intermediateCommitCount(defaultIntermediateCommitCount),
       allowImplicitCollections(true),
-      waitForSync(false) {}
+      waitForSync(false)
+#ifdef USE_ENTERPRISE
+      ,skipInaccessibleCollections(false)
+#endif
+{}
   
 void Options::setLimits(uint64_t maxTransactionSize, uint64_t intermediateCommitSize, uint64_t intermediateCommitCount) {
   defaultMaxTransactionSize = maxTransactionSize;
@@ -74,6 +78,12 @@ void Options::fromVelocyPack(arangodb::velocypack::Slice const& slice) {
   if (value.isBool()) {
     waitForSync = value.getBool();
   }
+#ifdef USE_ENTERPRISE
+  value = slice.get("skipInaccessibleCollections");
+  if (value.isBool()) {
+    skipInaccessibleCollections = value.getBool();
+  }
+#endif
 }
  
 /// @brief add the options to an opened vpack builder 
@@ -86,4 +96,8 @@ void Options::toVelocyPack(arangodb::velocypack::Builder& builder) const {
   builder.add("intermediateCommitCount", VPackValue(intermediateCommitCount));
   builder.add("allowImplicitCollections", VPackValue(allowImplicitCollections));
   builder.add("waitForSync", VPackValue(waitForSync));
+#ifdef USE_ENTERPRISE
+  builder.add("skipInaccessibleCollections",
+              VPackValue(skipInaccessibleCollections));
+#endif
 }

@@ -272,6 +272,24 @@ Other common cases are to rename columns in the input file to *_from* and *_to*:
 The *translate* option can be specified multiple types. The source attribute name
 and the target attribute must be separated with a *=*.
 
+
+### Ignoring Attributes 
+
+
+For the CSV and TSV input formats, certain attribute names can be ignored on imports.
+In an ArangoDB cluster there are cases where this can come in handy,
+when your documents already contain a `_key` attribute
+and your collection has a sharding attribute other than `_key`: In the cluster this
+configuration is not supported, because ArangoDB needs to guarantee the uniqueness of the `_key` 
+attribute in *all* shards of the collection.
+
+    > arangoimp --file "data.csv" --type csv --remove-attribute "_key"
+
+The same thing would apply if your data contains an *_id* attribute:
+
+    > arangoimp --file "data.csv" --type csv --remove-attribute "_id"
+
+
 ### Importing into an Edge Collection
 
 arangoimp can also be used to import data into an existing edge collection.

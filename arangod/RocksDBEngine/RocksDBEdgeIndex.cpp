@@ -366,21 +366,23 @@ void RocksDBEdgeIndexIterator::lookupInRocksDB(StringRef fromTo) {
         fromTo.data(), static_cast<uint32_t>(fromTo.size()),
         _builder.slice().start(),
         static_cast<uint64_t>(_builder.slice().byteSize()));
-    bool inserted = false;
-    for (size_t attempts = 0; attempts < 10; attempts++) {
-      auto status = cc->insert(entry);
-      if (status.ok()) {
-        inserted = true;
-        break;
+    if (entry) {
+      bool inserted = false;
+      for (size_t attempts = 0; attempts < 10; attempts++) {
+        auto status = cc->insert(entry);
+        if (status.ok()) {
+          inserted = true;
+          break;
+        }
+        if (status.errorNumber() != TRI_ERROR_LOCK_TIMEOUT) {
+          break;
+        }
       }
-      if (status.errorNumber() != TRI_ERROR_LOCK_TIMEOUT) {
-        break;
+      if (!inserted) {
+        LOG_TOPIC(DEBUG, arangodb::Logger::CACHE) << "Failed to cache: "
+                                                  << fromTo.toString();
+        delete entry;
       }
-    }
-    if (!inserted) {
-      LOG_TOPIC(DEBUG, arangodb::Logger::CACHE) << "Failed to cache: "
-                                                << fromTo.toString();
-      delete entry;
     }
   }
   TRI_ASSERT(_builder.slice().isArray());
@@ -419,13 +421,6 @@ RocksDBEdgeIndex::RocksDBEdgeIndex(TRI_idx_iid_t iid,
   }
   TRI_ASSERT(iid != 0);
   TRI_ASSERT(_objectId != 0);
-  // if we never hit the assertions we need to remove the
-  // following code
-  // FIXME
-  if (_objectId == 0) {
-    // disable cache?
-    _useCache = false;
-  }
 }
 
 RocksDBEdgeIndex::~RocksDBEdgeIndex() {}
@@ -634,7 +629,7 @@ void RocksDBEdgeIndex::expandInSearchValues(VPackSlice const slice,
 static std::string FindMedian(rocksdb::Iterator* it,
                               std::string const& start,
                               std::string const& end) {
-  
+
   // now that we do know the actual bounds calculate a
   // bad approximation for the index median key
   size_t min = std::min(start.size(), end.size());
@@ -642,7 +637,7 @@ static std::string FindMedian(rocksdb::Iterator* it,
   for (size_t i = 0; i < min; i++) {
     median[i] = (start.data()[i] + end.data()[i]) / 2;
   }
-  
+
   // now search the beginning of a new vertex ID
   it->Seek(median);
   if (!it->Valid()) {
@@ -661,7 +656,7 @@ static std::string FindMedian(rocksdb::Iterator* it,
 
 void RocksDBEdgeIndex::warmup(transaction::Methods* trx,
                               std::shared_ptr<basics::LocalTaskQueue> queue) {
-  if (!_useCache || !_cache) {
+  if (!useCache()) {
     return;
   }
 
@@ -677,7 +672,7 @@ void RocksDBEdgeIndex::warmup(transaction::Methods* trx,
 
   // Prepare the cache to be resized for this amount of objects to be inserted.
   _cache->sizeHint(expectedCount);
-  if (expectedCount < 50000) {
+  if (expectedCount < 100000) {
     LOG_TOPIC(DEBUG, Logger::ROCKSDB) << "Skipping the multithreaded loading";
     auto task = std::make_shared<RocksDBEdgeIndexWarmupTask>(
         queue, this, trx, bounds.start(), bounds.end());
@@ -800,7 +795,7 @@ void RocksDBEdgeIndex::warmupInternal(transaction::Methods* trx,
         // Store what we have.
         builder.close();
 
-        while (cc->isResizing() || cc->isMigrating()) {
+        while (cc->isBusy()) {
           // We should wait here, the cache will reject
           // any inserts anyways.
           usleep(10000);
@@ -810,19 +805,21 @@ void RocksDBEdgeIndex::warmupInternal(transaction::Methods* trx,
             previous.data(), static_cast<uint32_t>(previous.size()),
             builder.slice().start(),
             static_cast<uint64_t>(builder.slice().byteSize()));
-        bool inserted = false;
-        for (size_t attempts = 0; attempts < 10; attempts++) {
-          auto status = cc->insert(entry);
-          if (status.ok()) {
-            inserted = true;
-            break;
+        if (entry) {
+          bool inserted = false;
+          for (size_t attempts = 0; attempts < 10; attempts++) {
+            auto status = cc->insert(entry);
+            if (status.ok()) {
+              inserted = true;
+              break;
+            }
+            if (status.errorNumber() != TRI_ERROR_LOCK_TIMEOUT) {
+              break;
+            }
           }
-          if (status.errorNumber() != TRI_ERROR_LOCK_TIMEOUT) {
-            break;
+          if (!inserted) {
+            delete entry;
           }
-        }
-        if (!inserted) {
-          delete entry;
         }
         builder.clear();
       }
@@ -867,19 +864,21 @@ void RocksDBEdgeIndex::warmupInternal(transaction::Methods* trx,
         previous.data(), static_cast<uint32_t>(previous.size()),
         builder.slice().start(),
         static_cast<uint64_t>(builder.slice().byteSize()));
-    bool inserted = false;
-    for (size_t attempts = 0; attempts < 10; attempts++) {
-      auto status = cc->insert(entry);
-      if (status.ok()) {
-        inserted = true;
-        break;
+    if (entry) {
+      bool inserted = false;
+      for (size_t attempts = 0; attempts < 10; attempts++) {
+        auto status = cc->insert(entry);
+        if (status.ok()) {
+          inserted = true;
+          break;
+        }
+        if (status.errorNumber() != TRI_ERROR_LOCK_TIMEOUT) {
+          break;
+        }
       }
-      if (status.errorNumber() != TRI_ERROR_LOCK_TIMEOUT) {
-        break;
+      if (!inserted) {
+        delete entry;
       }
-    }
-    if (!inserted) {
-      delete entry;
     }
   }
   LOG_TOPIC(DEBUG, Logger::FIXME) << "loaded n: " << n ;

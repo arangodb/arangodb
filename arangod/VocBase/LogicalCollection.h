@@ -255,7 +255,8 @@ class LogicalCollection {
       bool forPersistence) const;
 
   virtual void toVelocyPackForClusterInventory(velocypack::Builder&,
-                                               bool useSystem) const;
+                                               bool useSystem,
+                                               bool isReady) const;
 
   inline TRI_vocbase_t* vocbase() const { return _vocbase; }
 
@@ -287,9 +288,10 @@ class LogicalCollection {
 
   // SECTION: Index access (local only)
 
-  Result read(transaction::Methods*, std::string const&,
-              ManagedDocumentResult& result, bool);
-  Result read(transaction::Methods*, StringRef const&,
+  /// @brief reads an element from the document collection
+  Result read(transaction::Methods* trx, StringRef const& key,
+              ManagedDocumentResult& mdr, bool lock);
+  Result read(transaction::Methods*, arangodb::velocypack::Slice const&,
               ManagedDocumentResult& result, bool);
 
   /// @brief processes a truncate operation
@@ -346,6 +348,14 @@ class LogicalCollection {
   // with the checksum provided in the reference checksum
   Result compareChecksums(velocypack::Slice checksumSlice, std::string const& referenceChecksum) const;
 
+  // Set and get _planVersion, this is only used if the object is used in
+  // ClusterInfo to represent a cluster wide collection in the agency.
+  void setPlanVersion(uint64_t v) {
+    _planVersion = v;
+  }
+  uint64_t getPlanVersion() const {
+    return _planVersion;
+  }
  private:
   void prepareIndexes(velocypack::Slice indexesSlice);
 
@@ -431,6 +441,12 @@ class LogicalCollection {
   std::unordered_map<std::string, double> _clusterEstimates;
   double _clusterEstimateTTL; //only valid if above vector is not empty
   basics::ReadWriteLock _clusterEstimatesLock;
+
+  uint64_t _planVersion;   // Only set if setPlanVersion was called. This only
+                           // happens in ClusterInfo when this object is used
+                           // to represent a cluster wide collection. This is
+                           // then the version in the agency Plan that underpins
+                           // the information in this object. Otherwise 0.
 };
 
 }  // namespace arangodb

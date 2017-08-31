@@ -1,3 +1,4 @@
+#!/usr/bin/python
 import csv, sys, os.path, re
 
 # wrap text after x characters

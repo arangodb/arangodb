@@ -26,6 +26,8 @@
 
 #include "Basics/Common.h"
 #include "Basics/Result.h"
+#include "Basics/ReadWriteSpinLock.h"
+#include "Basics/SharedCounter.h"
 #include "Cache/CachedValue.h"
 #include "Cache/Common.h"
 #include "Cache/Finding.h"
@@ -33,7 +35,6 @@
 #include "Cache/Manager.h"
 #include "Cache/ManagerTasks.h"
 #include "Cache/Metadata.h"
-#include "Cache/State.h"
 #include "Cache/Table.h"
 
 #include <stdint.h>
@@ -71,7 +72,7 @@ class Cache : public std::enable_shared_from_this<Cache> {
   static const uint64_t minLogSize;
 
  public:
-  Cache(ConstructionGuard guard, Manager* manager, Metadata metadata,
+  Cache(ConstructionGuard guard, Manager* manager, uint64_t id, Metadata metadata,
         std::shared_ptr<Table> table, bool enableWindowedStats,
         std::function<Table::BucketClearer(Metadata*)> bucketClearer,
         size_t slotsPerBucket);
@@ -84,19 +85,26 @@ class Cache : public std::enable_shared_from_this<Cache> {
   virtual Result blacklist(void const* key, uint32_t keySize) = 0;
 
   //////////////////////////////////////////////////////////////////////////////
+  /// @brief Returns the ID for this cache.
+  //////////////////////////////////////////////////////////////////////////////
+  uint64_t id() const {
+    return _id;
+  }
+
+  //////////////////////////////////////////////////////////////////////////////
   /// @brief Returns the total memory usage for this cache in bytes.
   //////////////////////////////////////////////////////////////////////////////
-  uint64_t size();
+  uint64_t size() const;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Returns the limit on data memory usage for this cache in bytes.
   //////////////////////////////////////////////////////////////////////////////
-  uint64_t usageLimit();
+  uint64_t usageLimit() const;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Returns the current data memory usage for this cache in bytes.
   //////////////////////////////////////////////////////////////////////////////
-  uint64_t usage();
+  uint64_t usage() const;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Gives hint to attempt to preallocate space for an incoming load.
@@ -127,43 +135,53 @@ class Cache : public std::enable_shared_from_this<Cache> {
   bool isMigrating();
 
   //////////////////////////////////////////////////////////////////////////////
+  /// @brief Chedk whether the cache is currently migrating or resizing.
+  //////////////////////////////////////////////////////////////////////////////
+  bool isBusy();
+
+  //////////////////////////////////////////////////////////////////////////////
   /// @brief Check whether the cache has begin the process of shutting down.
   //////////////////////////////////////////////////////////////////////////////
-  bool isShutdown();
+  bool isShutdown() const {
+    return _shutdown;
+  }
 
  protected:
-  static constexpr int64_t triesFast = 200;
-  static constexpr int64_t triesSlow = 10000;
-  static constexpr int64_t triesGuarantee = -1;
+  static constexpr uint64_t triesFast = 200;
+  static constexpr uint64_t triesSlow = 10000;
+  static constexpr uint64_t triesGuarantee = UINT64_MAX;
 
  protected:
-  State _state;
+  basics::ReadWriteSpinLock<64> _taskLock;
+
+  bool _shutdown;
 
   static uint64_t _findStatsCapacity;
   bool _enableWindowedStats;
   std::unique_ptr<StatBuffer> _findStats;
-  std::atomic<uint64_t> _findHits;
-  std::atomic<uint64_t> _findMisses;
+  mutable basics::SharedCounter<64> _findHits;
+  mutable basics::SharedCounter<64> _findMisses;
 
   // allow communication with manager
   Manager* _manager;
+  uint64_t _id;
   Metadata _metadata;
 
   // manage the actual table
-  std::shared_ptr<Table> _table;
+  std::shared_ptr<Table> _tableShrdPtr;
+  /// keep a pointer to the current table, which can be atomically set
+  Table* _table;
+  
   Table::BucketClearer _bucketClearer;
   size_t _slotsPerBucket;
 
   // manage eviction rate
-  std::atomic<uint64_t> _insertsTotal;
-  std::atomic<uint64_t> _insertEvictions;
-  static constexpr uint64_t _evictionMask = 1023; // check every 1024 insertions
-  static constexpr uint64_t _evictionThreshold = 10;  // if more than 10
-                                                      // evictions in past 1024
-                                                      // inserts, migrate
-
-  // keep track of number of open operations to allow clean shutdown
-  std::atomic<uint32_t> _openOperations;
+  basics::SharedCounter<64> _insertsTotal;
+  basics::SharedCounter<64> _insertEvictions;
+  static constexpr uint64_t _evictionMask = 4095; // check roughly every 4096 insertions
+  static constexpr double _evictionRateThreshold = 0.01; // if more than 1%
+                                                         // evictions in past 4096
+                                                         // inserts, migrate
 
   // times to wait until requesting is allowed again
   Manager::time_point _migrateRequestTime;
@@ -178,26 +196,20 @@ class Cache : public std::enable_shared_from_this<Cache> {
   // shutdown cache and let its memory be reclaimed
   static void destroy(std::shared_ptr<Cache> cache);
 
-  bool isOperational() const;
-  void startOperation();
-  void endOperation();
-
-  bool isMigratingLocked() const;
   void requestGrow();
   void requestMigrate(uint32_t requestedLogSize = 0);
 
   static void freeValue(CachedValue* value);
   bool reclaimMemory(uint64_t size);
 
-  uint32_t hashKey(void const* key, uint32_t keySize) const;
+  uint32_t hashKey(void const* key, size_t keySize) const;
   void recordStat(Stat stat);
 
   bool reportInsert(bool hadEviction);
 
   // management
   Metadata* metadata();
-  std::shared_ptr<Table> table();
-  void beginShutdown();
+  std::shared_ptr<Table> table() const;
   void shutdown();
   bool canResize();
   bool canMigrate();

@@ -405,7 +405,24 @@ function importTestSuite () {
 
       var actual = getQueryResults("FOR i IN UnitTestsImportUniqueConstraints SORT i._key RETURN i", true);
       assertEqual(expected, actual);
-    }
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test csv import removing attribute
+////////////////////////////////////////////////////////////////////////////////
+        
+    testCsvImportRemoveAttribute : function () {
+      var expected = [ 
+        { "b": 1, "c": "1.3", "e": -5, "id": 1 }, 
+        { "b": "", "c": 3.1, "d": -2.5, "e": "ddd \" ' ffd", "id": 2 }, 
+        { "b": "test", "c" : -99999999, "d": true, "e": -888.4434, "id": 5 },
+        { "b": 20.5, "c": -42, "d": " null ", "e": false, "id": 6 },
+        { "b": 1.05e-2, "c": true, "d": false, "id": 7 }
+      ];
+
+      var actual = getQueryResults("FOR i IN UnitTestsImportRemoveAttribute SORT i.id RETURN i");
+      assertEqual(expected, actual);
+    },
 
   };
 }

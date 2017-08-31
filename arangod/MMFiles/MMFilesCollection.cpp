@@ -593,7 +593,7 @@ int MMFilesCollection::close() {
   }
 
   // wait until ditches have been processed fully
-  while (_ditches.contains(MMFilesDitch::TRI_DITCH_DATAFILE_DROP) || 
+  while (_ditches.contains(MMFilesDitch::TRI_DITCH_DATAFILE_DROP) ||
          _ditches.contains(MMFilesDitch::TRI_DITCH_DATAFILE_RENAME) ||
          _ditches.contains(MMFilesDitch::TRI_DITCH_COMPACTION)) {
     usleep(20000);
@@ -696,7 +696,7 @@ int MMFilesCollection::rotateActiveJournal() {
 
   MMFilesDatafile* datafile = _journals.back();
   TRI_ASSERT(datafile != nullptr);
-    
+
   TRI_IF_FAILURE("CreateMultipleJournals") {
     // create an additional journal now, without sealing and renaming the old one!
     _datafiles.emplace_back(datafile);
@@ -794,7 +794,7 @@ int MMFilesCollection::reserveJournalSpace(TRI_voc_tick_t tick,
   while (targetSize - 256 < size) {
     targetSize *= 2;
   }
-  
+
   WRITE_LOCKER(writeLocker, _filesLock);
   TRI_ASSERT(_journals.size() <= 1);
 
@@ -1603,16 +1603,12 @@ int MMFilesCollection::fillIndexes(
 
   TRI_ASSERT(n > 0);
 
-  TRI_ASSERT(SchedulerFeature::SCHEDULER != nullptr);
-  auto ioService = SchedulerFeature::SCHEDULER->ioService();
-  TRI_ASSERT(ioService != nullptr);
-
   PerformanceLogScope logScope(
       std::string("fill-indexes-document-collection { collection: ") +
       _logicalCollection->vocbase()->name() + "/" + _logicalCollection->name() +
       " }, indexes: " + std::to_string(n - 1));
 
-  auto queue = std::make_shared<arangodb::basics::LocalTaskQueue>(ioService);
+  auto queue = std::make_shared<arangodb::basics::LocalTaskQueue>();
 
   try {
     TRI_ASSERT(!ServerState::instance()->isCoordinator());
@@ -1929,7 +1925,7 @@ DocumentIdentifierToken MMFilesCollection::lookupKey(transaction::Methods *trx,
   return element ? MMFilesToken(element.revisionId()) : MMFilesToken();
 }
 
-Result MMFilesCollection::read(transaction::Methods* trx, VPackSlice const key,
+Result MMFilesCollection::read(transaction::Methods* trx, VPackSlice const& key,
                                ManagedDocumentResult& result, bool lock) {
   TRI_IF_FAILURE("ReadDocumentNoLock") {
     // test what happens if no lock can be acquired
@@ -1952,6 +1948,14 @@ Result MMFilesCollection::read(transaction::Methods* trx, VPackSlice const key,
 
   // we found a document
   return Result(TRI_ERROR_NO_ERROR);
+}
+
+Result MMFilesCollection::read(transaction::Methods* trx, StringRef const& key,
+                               ManagedDocumentResult& result, bool lock){
+  // copy string into a vpack string
+  transaction::BuilderLeaser builder(trx);
+  builder->add(VPackValuePair(key.data(), key.size(), VPackValueType::String));
+  return read(trx, builder->slice(), result, lock);
 }
 
 bool MMFilesCollection::readDocument(transaction::Methods* trx,
@@ -2003,7 +2007,7 @@ void MMFilesCollection::prepareIndexes(VPackSlice indexesSlice) {
 
   bool foundPrimary = false;
   bool foundEdge = false;
-   
+
   for (auto const& it : VPackArrayIterator(indexesSlice)) {
     auto const& s = it.get("type");
     if (s.isString()) {
@@ -2018,13 +2022,13 @@ void MMFilesCollection::prepareIndexes(VPackSlice indexesSlice) {
   for (auto const& idx : _indexes) {
     if (idx->type() == Index::IndexType::TRI_IDX_TYPE_PRIMARY_INDEX) {
       foundPrimary = true;
-    } else if (_logicalCollection->type() == TRI_COL_TYPE_EDGE && 
+    } else if (_logicalCollection->type() == TRI_COL_TYPE_EDGE &&
                idx->type() == Index::IndexType::TRI_IDX_TYPE_EDGE_INDEX) {
       foundEdge = true;
     }
   }
 
-  if (!foundPrimary || 
+  if (!foundPrimary ||
       (!foundEdge && _logicalCollection->type() == TRI_COL_TYPE_EDGE)) {
     // we still do not have any of the default indexes, so create them now
     createInitialIndexes();
@@ -2045,7 +2049,7 @@ void MMFilesCollection::prepareIndexes(VPackSlice indexesSlice) {
 
     auto idx =
         idxFactory->prepareIndexFromSlice(v, false, _logicalCollection, true);
-    
+
     if (ServerState::instance()->isRunningInCluster()) {
       addIndexCoordinator(idx);
     } else {
@@ -2056,7 +2060,7 @@ void MMFilesCollection::prepareIndexes(VPackSlice indexesSlice) {
   TRI_ASSERT(!_indexes.empty());
 
   if (_indexes[0]->type() != Index::IndexType::TRI_IDX_TYPE_PRIMARY_INDEX ||
-      (_logicalCollection->type() == TRI_COL_TYPE_EDGE && 
+      (_logicalCollection->type() == TRI_COL_TYPE_EDGE &&
        (_indexes.size() < 2 || _indexes[1]->type() != Index::IndexType::TRI_IDX_TYPE_EDGE_INDEX))) {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
     for (auto const& it : _indexes) {
@@ -2079,7 +2083,7 @@ void MMFilesCollection::prepareIndexes(VPackSlice indexesSlice) {
           errorMsg.append(_logicalCollection->name());
           errorMsg.push_back('\'');
           THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, errorMsg);
-        } 
+        }
         foundPrimary = true;
       }
     }
@@ -2167,8 +2171,10 @@ std::shared_ptr<Index> MMFilesCollection::createIndex(transaction::Methods* trx,
     THROW_ARANGO_EXCEPTION(res);
   }
 
+#if USE_PLAN_CACHE
   arangodb::aql::PlanCache::instance()->invalidate(
       _logicalCollection->vocbase());
+#endif
   // Until here no harm is done if sth fails. The shared ptr will clean up. if
   // left before
 

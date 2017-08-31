@@ -64,25 +64,21 @@ VPackSlice TraverserCache::lookupInCollection(StringRef id) {
     return basics::VelocyPackHelper::NullValue();
   }
   Result res = _trx->documentFastPathLocal(id.substr(0, pos).toString(),
-                                        id.substr(pos + 1).toString(), *_mmdr);
-
-  if (!res.ok() && (res.errorNumber() != TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND)) {
+                                           id.substr(pos + 1), *_mmdr);
+  if (res.ok()) {
+    ++_insertedDocuments;
+    return VPackSlice(_mmdr->vpack());
+  } else if (res.errorNumber() == TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND) {
+    ++_insertedDocuments;
+    // This is expected, we may have dangling edges. Interpret as NULL
+    return basics::VelocyPackHelper::NullValue();
+  } else {
     // ok we are in a rather bad state. Better throw and abort.
     THROW_ARANGO_EXCEPTION(res);
   }
-
-  VPackSlice result;
-  if (res.errorNumber() == TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND) {
-    // This is expected, we may have dangling edges. Interpret as NULL
-    result = basics::VelocyPackHelper::NullValue();
-  } else {
-    result = VPackSlice(_mmdr->vpack());
-  }
-  ++_insertedDocuments;
-  return result;
 }
 
-VPackSlice TraverserCache::lookupInCollection(SingleServerEdgeDocumentToken const* idToken) {
+VPackSlice TraverserCache::lookupInCollection(SingleServerEdgeDocumentToken const* idToken) const {
   auto col = _trx->vocbase()->lookupCollection(idToken->cid());
   if (!col->readDocument(_trx, idToken->token(), *_mmdr.get())) {
     TRI_ASSERT(false);

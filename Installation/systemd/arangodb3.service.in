@@ -17,10 +17,14 @@ Description=ArangoDB database server
 After=sysinit.target sockets.target timers.target paths.target slices.target network.target syslog.target
 
 [Service]
-Type=forking
+Type=simple
 LimitNOFILE=131072
 PIDFile=/var/run/arangodb3/arangod.pid
 Environment=GLIBCXX_FORCE_NEW=1
+
+# Protect users from making their installation unusable by
+# starting arangod with wrong permissions (e.g. as root).
+# This will reset the permissions to the working default.
 ExecStartPre=/usr/bin/install -g arangodb -o arangodb -d /var/tmp/arangodb3
 ExecStartPre=/usr/bin/install -g arangodb -o arangodb -d /var/run/arangodb3
 ExecStartPre=@CHOWN_EXECUTABLE@ -R arangodb:arangodb /var/log/arangodb3
@@ -29,11 +33,13 @@ ExecStartPre=@CHOWN_EXECUTABLE@ -R arangodb:arangodb /var/lib/arangodb3
 ExecStartPre=@CHMOD_EXECUTABLE@ 700 /var/lib/arangodb3
 ExecStartPre=@CHOWN_EXECUTABLE@ -R arangodb:arangodb /var/lib/arangodb3-apps
 ExecStartPre=@CHMOD_EXECUTABLE@ 700 /var/lib/arangodb3-apps
-ExecStartPre=/usr/sbin/arangod --uid arangodb --gid arangodb --pid-file /var/run/arangodb3/arangod.pid --server.rest-server false --database.auto-upgrade true
-ExecStart=/usr/sbin/arangod    --uid arangodb --gid arangodb --pid-file /var/run/arangodb3/arangod.pid --temp.path /var/tmp/arangodb3 --supervisor --log.foreground-tty false
+
+ExecStart=/usr/sbin/arangod --uid arangodb --gid arangodb --pid-file /var/run/arangodb3/arangod.pid --temp.path /var/tmp/arangodb3 --log.foreground-tty true
 TimeoutStopSec=3600
 TimeoutSec=3600
+
 Restart=on-failure
+RestartSec=5
 
 [Install]
 WantedBy=multi-user.target

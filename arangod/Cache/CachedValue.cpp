@@ -28,73 +28,67 @@
 
 using namespace arangodb::cache;
 
-uint8_t const* CachedValue::key() const {
-  uint8_t const* buf = reinterpret_cast<uint8_t const*>(this);
-  return (buf + sizeof(CachedValue));
-}
-
-uint8_t const* CachedValue::value() const {
-  if (valueSize == 0) {
-    return nullptr;
-  }
-
-  uint8_t const* buf = reinterpret_cast<uint8_t const*>(this);
-  return (buf + sizeof(CachedValue) + keySize);
-}
-
-uint64_t CachedValue::size() const {
-  uint64_t size = sizeof(CachedValue);
-  size += keySize;
-  size += valueSize;
-  return size;
-}
-
-bool CachedValue::sameKey(void const* k, uint32_t kSize) const {
-  if (keySize != kSize) {
-    return false;
-  }
-
-  return (0 == memcmp(key(), k, keySize));
-}
-
-void CachedValue::lease() { ++refCount; }
-
-void CachedValue::release() { 
-  if (--refCount == UINT32_MAX) {
-    TRI_ASSERT(false);
-  }
-}
-
-bool CachedValue::isFreeable() { return (refCount.load() == 0); }
+const size_t CachedValue::_headerAllocSize = sizeof(CachedValue) +
+                                       CachedValue::_padding;
 
 CachedValue* CachedValue::copy() const {
   uint8_t* buf = new uint8_t[size()];
-  memcpy(buf, this, size());
-  CachedValue* value = reinterpret_cast<CachedValue*>(buf);
-  value->refCount = 0;
-  return value;
-}
-
-CachedValue* CachedValue::construct(void const* k, uint32_t kSize,
-                                    void const* v, uint64_t vSize) {
-  if (kSize == 0 || k == nullptr || (vSize > 0 && v == nullptr)) {
+  CachedValue* value = nullptr;
+  try {
+    value = new (buf + offset()) CachedValue(*this);
+  } catch (...) {
+    delete[] buf;
     return nullptr;
   }
 
-  uint8_t* buf = new uint8_t[sizeof(CachedValue) + kSize + vSize];
-  CachedValue* cv = reinterpret_cast<CachedValue*>(buf);
+  return value;
+}
 
-  cv->refCount = 0;
-  cv->keySize = kSize;
-  cv->valueSize = vSize;
-  std::memcpy(const_cast<uint8_t*>(cv->key()), k, kSize);
-  if (vSize > 0) {
-    std::memcpy(const_cast<uint8_t*>(cv->value()), v, vSize);
+CachedValue* CachedValue::construct(void const* k, size_t kSize,
+                                    void const* v, size_t vSize) {
+  if (kSize == 0 || k == nullptr || (vSize > 0 && v == nullptr) ||
+      kSize > maxKeySize || vSize > maxValueSize) {
+    return nullptr;
+  }
+
+  uint8_t* buf = new uint8_t[_headerAllocSize + kSize + vSize];
+  CachedValue* cv = nullptr;
+  try {
+    uint8_t* aligned = reinterpret_cast<uint8_t*>(
+      (reinterpret_cast<size_t>(buf) + _headerAllocOffset) &
+      _headerAllocMask);
+    size_t offset = buf - aligned;
+    cv = new (aligned) CachedValue(offset, k, kSize, v, vSize);
+  } catch (...) {
+    delete[] buf;
+    return nullptr;
   }
 
   return cv;
 }
 
 void CachedValue::operator delete(void* ptr) {
-  delete[] reinterpret_cast<uint8_t*>(ptr);
+  CachedValue* cv = reinterpret_cast<CachedValue*>(ptr);
+  size_t offset = cv->offset();
+  cv->~CachedValue();
+  delete[] (reinterpret_cast<uint8_t*>(ptr) - offset);
+}
+
+CachedValue::CachedValue(size_t off, void const* k, size_t kSize,
+                         void const* v, size_t vSize)
+  : _refCount(0),
+    _keySize(static_cast<uint32_t>(kSize + (off << _offsetShift))),
+    _valueSize(vSize) {
+  std::memcpy(const_cast<uint8_t*>(key()), k, kSize);
+  if (vSize > 0) {
+    std::memcpy(const_cast<uint8_t*>(value()), v, vSize);
+  }
+}
+
+CachedValue::CachedValue(CachedValue const& other)
+  : _refCount(0),
+    _keySize(other._keySize),
+    _valueSize(other._valueSize) {
+  std::memcpy(const_cast<uint8_t*>(key()), other.key(),
+              keySize() + valueSize());
 }

@@ -18,6 +18,9 @@ core.*
 *.gcno
 *.gcda
 
+*.deb
+*.rpm
+
 .DS_Store
 *.swp
 *.diff
@@ -101,7 +104,6 @@ js/apps/system/_admin/aardvark/APP/frontend/build/style.css
 js/apps/system/_admin/aardvark/APP/frontend/build/scripts.html.part
 
 js/common/tests/shell/shell-database.js
-
 .gdb-history
 npm-debug.log
 
@@ -110,3 +112,6 @@ data-*
 cluster-init
 
 datafile-*.db
+# by build process
+arangodb-linux-amd64
+last_compiled_version.sha
