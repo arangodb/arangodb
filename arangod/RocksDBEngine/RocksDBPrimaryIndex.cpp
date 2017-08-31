@@ -156,15 +156,16 @@ void RocksDBPrimaryIndex::toVelocyPack(VPackBuilder& builder, bool withFigures,
 
 RocksDBToken RocksDBPrimaryIndex::lookupKey(transaction::Methods* trx,
                                             arangodb::StringRef keyRef) const {
-  auto key = RocksDBKey::PrimaryIndexValue(_objectId, keyRef);
+  RocksDBKeyLeaser key(trx);
+  key->constructPrimaryIndexValue(_objectId, keyRef);
   auto value = RocksDBValue::Empty(RocksDBEntryType::PrimaryIndexValue);
 
   bool lockTimeout = false;
   if (useCache()) {
     TRI_ASSERT(_cache != nullptr);
     // check cache first for fast path
-    auto f = _cache->find(key.string().data(),
-                          static_cast<uint32_t>(key.string().size()));
+    auto f = _cache->find(key->string().data(),
+                          static_cast<uint32_t>(key->string().size()));
     if (f.found()) {
       rocksdb::Slice s(reinterpret_cast<char const*>(f.value()->value()),
                        f.value()->valueSize());
@@ -182,7 +183,7 @@ RocksDBToken RocksDBPrimaryIndex::lookupKey(transaction::Methods* trx,
   options.fill_cache = PrimaryIndexFillBlockCache;
   TRI_ASSERT(options.snapshot != nullptr);
 
-  arangodb::Result r = mthds->Get(_cf, key, value.buffer());
+  arangodb::Result r = mthds->Get(_cf, key.ref(), value.buffer());
   if (!r.ok()) {
     return RocksDBToken();
   }
@@ -192,7 +193,7 @@ RocksDBToken RocksDBPrimaryIndex::lookupKey(transaction::Methods* trx,
 
     // write entry back to cache
     auto entry = cache::CachedValue::construct(
-        key.string().data(), static_cast<uint32_t>(key.string().size()),
+        key->string().data(), static_cast<uint32_t>(key->string().size()),
         value.buffer()->data(), static_cast<uint64_t>(value.buffer()->size()));
     if (entry) {
       Result status = _cache->insert(entry);
@@ -219,17 +220,18 @@ Result RocksDBPrimaryIndex::insertInternal(transaction::Methods* trx,
                                            TRI_voc_rid_t revisionId,
                                            VPackSlice const& slice) {
   VPackSlice keySlice = transaction::helpers::extractKeyFromDocument(slice);
-  auto key = RocksDBKey::PrimaryIndexValue(_objectId, StringRef(keySlice));
+  RocksDBKeyLeaser key(trx);
+  key->constructPrimaryIndexValue(_objectId, StringRef(keySlice));
   auto value = RocksDBValue::PrimaryIndexValue(revisionId);
 
   // acquire rocksdb transaction
-  if (mthd->Exists(_cf, key)) {
+  if (mthd->Exists(_cf, key.ref())) {
     return TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED;
   }
 
-  blackListKey(key.string().data(), static_cast<uint32_t>(key.string().size()));
+  blackListKey(key->string().data(), static_cast<uint32_t>(key->string().size()));
 
-  Result status = mthd->Put(_cf, key, value.string(), rocksutils::index);
+  Result status = mthd->Put(_cf, key.ref(), value.string(), rocksutils::index);
   return IndexResult(status.errorNumber(), this);
 }
 
@@ -241,12 +243,14 @@ Result RocksDBPrimaryIndex::updateInternal(transaction::Methods* trx,
                       velocypack::Slice const& newDoc) {
   VPackSlice keySlice = transaction::helpers::extractKeyFromDocument(oldDoc);
   TRI_ASSERT(keySlice == oldDoc.get(StaticStrings::KeyString));
-  auto key = RocksDBKey::PrimaryIndexValue(_objectId, StringRef(keySlice));
+  RocksDBKeyLeaser key(trx);
+  key->constructPrimaryIndexValue(_objectId, StringRef(keySlice));
   auto value = RocksDBValue::PrimaryIndexValue(newRevision);
 
-  TRI_ASSERT(mthd->Exists(_cf, key));
-  blackListKey(key.string().data(), static_cast<uint32_t>(key.string().size()));
-  Result status = mthd->Put(_cf, key, value.string(), rocksutils::index);
+  TRI_ASSERT(mthd->Exists(_cf, key.ref()));
+  blackListKey(key->string().data(),
+              static_cast<uint32_t>(key->string().size()));
+  Result status = mthd->Put(_cf, key.ref(), value.string(), rocksutils::index);
 
   return IndexResult(status.errorNumber(), this);
 }
@@ -256,14 +260,15 @@ Result RocksDBPrimaryIndex::removeInternal(transaction::Methods* trx,
                                            TRI_voc_rid_t revisionId,
                                            VPackSlice const& slice) {
   // TODO: deal with matching revisions?
-  auto key = RocksDBKey::PrimaryIndexValue(
+  RocksDBKeyLeaser key(trx);
+  key->constructPrimaryIndexValue(
       _objectId, StringRef(slice.get(StaticStrings::KeyString)));
 
-  blackListKey(key.string().data(), static_cast<uint32_t>(key.string().size()));
+  blackListKey(key->string().data(), static_cast<uint32_t>(key->string().size()));
 
   // acquire rocksdb transaction
   RocksDBMethods* mthds = RocksDBTransactionState::toMethods(trx);
-  Result r = mthds->Delete(_cf, key);
+  Result r = mthds->Delete(_cf, key.ref());
   // rocksutils::convertStatus(status, rocksutils::StatusHint::index);
   return IndexResult(r.errorNumber(), this);
 }

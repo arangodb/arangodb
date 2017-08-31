@@ -1376,17 +1376,18 @@ RocksDBOperationResult RocksDBCollection::insertDocument(
   TRI_ASSERT(!ServerState::instance()->isCoordinator());
   TRI_ASSERT(trx->state()->isRunning());
 
-  RocksDBKey key(RocksDBKey::Document(_objectId, revisionId));
-  // only bother blacklisting if key was successfully locked in rocksdb
-  blackListKey(key.string().data(), static_cast<uint32_t>(key.string().size()));
+  RocksDBKeyLeaser key(trx);
+  key->constructDocument(_objectId, revisionId);
+
+  blackListKey(key->string().data(), static_cast<uint32_t>(key->string().size()));
 
   RocksDBMethods* mthd = RocksDBTransactionState::toMethods(trx);
-  res = mthd->Put(RocksDBColumnFamily::documents(), key,
+  res = mthd->Put(RocksDBColumnFamily::documents(), key.ref(),
                   rocksdb::Slice(reinterpret_cast<char const*>(doc.begin()),
                                  static_cast<size_t>(doc.byteSize())));
   if (!res.ok()) {
     // set keysize that is passed up to the crud operations
-    res.keySize(key.string().size());
+    res.keySize(key->string().size());
     return res;
   }
 
@@ -1428,9 +1429,10 @@ RocksDBOperationResult RocksDBCollection::removeDocument(
   TRI_ASSERT(trx->state()->isRunning());
   TRI_ASSERT(_objectId != 0);
 
-  auto key = RocksDBKey::Document(_objectId, revisionId);
+  RocksDBKeyLeaser key(trx);
+  key->constructDocument(_objectId, revisionId);
 
-  blackListKey(key.string().data(), static_cast<uint32_t>(key.string().size()));
+  blackListKey(key->string().data(), static_cast<uint32_t>(key->string().size()));
 
   // prepare operation which adds log statements is called
   // from the outside. We do not need to DELETE a document from the
@@ -1439,7 +1441,7 @@ RocksDBOperationResult RocksDBCollection::removeDocument(
   // if (!isUpdate) {
   RocksDBMethods* mthd = RocksDBTransactionState::toMethods(trx);
   RocksDBOperationResult res =
-      mthd->Delete(RocksDBColumnFamily::documents(), key);
+      mthd->Delete(RocksDBColumnFamily::documents(), key.ref());
   if (!res.ok()) {
     return res;
   }
@@ -1508,27 +1510,29 @@ RocksDBOperationResult RocksDBCollection::updateDocument(
   TRI_ASSERT(_objectId != 0);
 
   RocksDBMethods* mthd = RocksDBTransactionState::toMethods(trx);
-  RocksDBKey oldKey = RocksDBKey::Document(_objectId, oldRevisionId);
-  blackListKey(oldKey.string().data(),
-               static_cast<uint32_t>(oldKey.string().size()));
+  RocksDBKeyLeaser oldKey(trx);
+  oldKey->constructDocument(_objectId, oldRevisionId);
+  blackListKey(oldKey->string().data(),
+               static_cast<uint32_t>(oldKey->string().size()));
 
   RocksDBOperationResult res =
-      mthd->Delete(RocksDBColumnFamily::documents(), oldKey);
+      mthd->Delete(RocksDBColumnFamily::documents(), oldKey.ref());
   if (!res.ok()) {
     return res;
   }
 
-  RocksDBKey newKey = RocksDBKey::Document(_objectId, newRevisionId);
+  RocksDBKeyLeaser newKey(trx);
+  newKey->constructDocument(_objectId, newRevisionId);
   // TODO: given that this should have a unique revision ID, do
   // we really need to blacklist the new key?
-  blackListKey(newKey.string().data(),
-               static_cast<uint32_t>(newKey.string().size()));
-  res = mthd->Put(RocksDBColumnFamily::documents(), newKey,
+  blackListKey(newKey->string().data(),
+               static_cast<uint32_t>(newKey->string().size()));
+  res = mthd->Put(RocksDBColumnFamily::documents(), newKey.ref(),
                   rocksdb::Slice(reinterpret_cast<char const*>(newDoc.begin()),
                                  static_cast<size_t>(newDoc.byteSize())));
   if (!res.ok()) {
     // set keysize that is passed up to the crud operations
-    res.keySize(newKey.size());
+    res.keySize(newKey->size());
     return res;
   }
 
@@ -1566,14 +1570,15 @@ arangodb::Result RocksDBCollection::lookupRevisionVPack(
   TRI_ASSERT(trx->state()->isRunning());
   TRI_ASSERT(_objectId != 0);
 
-  auto key = RocksDBKey::Document(_objectId, revisionId);
+  RocksDBKeyLeaser key(trx);
+  key->constructDocument(_objectId, revisionId);
 
   bool lockTimeout = false;
   if (withCache && useCache()) {
     TRI_ASSERT(_cache != nullptr);
     // check cache first for fast path
-    auto f = _cache->find(key.string().data(),
-                          static_cast<uint32_t>(key.string().size()));
+    auto f = _cache->find(key->string().data(),
+                          static_cast<uint32_t>(key->string().size()));
     if (f.found()) {
       std::string* value = mdr.prepareStringUsage();
       value->append(reinterpret_cast<char const*>(f.value()->value()),
@@ -1589,13 +1594,13 @@ arangodb::Result RocksDBCollection::lookupRevisionVPack(
 
   RocksDBMethods* mthd = RocksDBTransactionState::toMethods(trx);
   std::string* value = mdr.prepareStringUsage();
-  Result res = mthd->Get(RocksDBColumnFamily::documents(), key, value);
+  Result res = mthd->Get(RocksDBColumnFamily::documents(), key.ref(), value);
   if (res.ok()) {
     if (withCache && useCache() && !lockTimeout) {
       TRI_ASSERT(_cache != nullptr);
       // write entry back to cache
       auto entry = cache::CachedValue::construct(
-          key.string().data(), static_cast<uint32_t>(key.string().size()),
+          key->string().data(), static_cast<uint32_t>(key->string().size()),
           value->data(), static_cast<uint64_t>(value->size()));
       if (entry) {
         Result status = _cache->insert(entry);
@@ -1627,14 +1632,15 @@ arangodb::Result RocksDBCollection::lookupRevisionVPack(
   TRI_ASSERT(trx->state()->isRunning());
   TRI_ASSERT(_objectId != 0);
 
-  auto key = RocksDBKey::Document(_objectId, revisionId);
+  RocksDBKeyLeaser key(trx);
+  key->constructDocument(_objectId, revisionId);
 
   bool lockTimeout = false;
   if (withCache && useCache()) {
     TRI_ASSERT(_cache != nullptr);
     // check cache first for fast path
-    auto f = _cache->find(key.string().data(),
-                          static_cast<uint32_t>(key.string().size()));
+    auto f = _cache->find(key->string().data(),
+                          static_cast<uint32_t>(key->string().size()));
     if (f.found()) {
       cb(RocksDBToken(revisionId),
          VPackSlice(reinterpret_cast<char const*>(f.value()->value())));
@@ -1649,14 +1655,14 @@ arangodb::Result RocksDBCollection::lookupRevisionVPack(
   std::string value;
   auto state = RocksDBTransactionState::toState(trx);
   RocksDBMethods* mthd = state->rocksdbMethods();
-  Result res = mthd->Get(RocksDBColumnFamily::documents(), key, &value);
+  Result res = mthd->Get(RocksDBColumnFamily::documents(), key.ref(), &value);
   TRI_ASSERT(value.data());
   if (res.ok()) {
     if (withCache && useCache() && !lockTimeout) {
       TRI_ASSERT(_cache != nullptr);
       // write entry back to cache
       auto entry = cache::CachedValue::construct(
-          key.string().data(), static_cast<uint32_t>(key.string().size()),
+          key->string().data(), static_cast<uint32_t>(key->string().size()),
           value.data(), static_cast<uint64_t>(value.size()));
       if (entry) {
         auto status = _cache->insert(entry);
@@ -1884,7 +1890,8 @@ arangodb::Result RocksDBCollection::serializeIndexEstimates(
         output, static_cast<uint64_t>(tdb->GetLatestSequenceNumber()));
     cindex->serializeEstimate(output);
     if (output.size() > sizeof(uint64_t)) {
-      RocksDBKey key = RocksDBKey::IndexEstimateValue(cindex->objectId());
+      RocksDBKey key;
+      key.constructIndexEstimateValue(cindex->objectId());
       rocksdb::Slice value(output);
       rocksdb::Status s =
           rtrx->Put(RocksDBColumnFamily::definitions(), key.string(), value);
@@ -1945,7 +1952,8 @@ arangodb::Result RocksDBCollection::serializeKeyGenerator(
   _logicalCollection->keyGenerator()->toVelocyPack(builder);
   builder.close();
 
-  RocksDBKey key = RocksDBKey::KeyGeneratorValue(_objectId);
+  RocksDBKey key;
+  key.constructKeyGeneratorValue(_objectId);
   RocksDBValue value = RocksDBValue::KeyGeneratorValue(builder.slice());
   rocksdb::Status s = rtrx->Put(RocksDBColumnFamily::definitions(),
                                 key.string(), value.string());
