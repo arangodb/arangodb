@@ -21,17 +21,23 @@
 /// @author Daniel H. Larkin
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "Cache/Rebalancer.h"
-#include "Basics/Common.h"
-#include "Cache/Manager.h"
+#include "Basics/SharedPRNG.h"
+#include "Basics/splitmix64.h"
 
-using namespace arangodb::cache;
+using namespace arangodb::basics;
 
-Rebalancer::Rebalancer(Manager* manager) : _manager(manager) {}
+std::unique_ptr<SharedPRNG> SharedPRNG::_global =
+    std::make_unique<SharedPRNG>();
 
-int Rebalancer::rebalance() {
-  if (_manager != nullptr) {
-    return _manager->rebalance();
+void PaddedPRNG::seed(uint64_t seed1, uint64_t seed2) {
+  _prng.seed(seed1, seed2);
+}
+
+SharedPRNG::SharedPRNG() : _mask(SharedPRNG::_stripes - 1) {
+  splitmix64 seeder(0xdeadbeefdeadbeefULL);
+  for (size_t i = 0; i < _stripes; i++) {
+    uint64_t seed1 = seeder.next();
+    uint64_t seed2 = seeder.next();
+    _prng[i].seed(seed1, seed2);
   }
-  return false;
 }

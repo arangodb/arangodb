@@ -63,6 +63,9 @@ function collectionRepresentation(collection, showProperties, showCount, showFig
     result.keyOptions = properties.keyOptions;
     result.waitForSync = properties.waitForSync;
     result.indexBuckets = properties.indexBuckets;
+    if (properties.cacheEnabled) {
+      result.cacheEnabled = properties.cacheEnabled;
+    }
 
     if (cluster.isCoordinator()) {
       result.avoidServers = properties.avoidServers;
@@ -149,6 +152,10 @@ function parseBodyForCreateCollection (req, res) {
 
   if (body.hasOwnProperty('waitForSync')) {
     r.parameters.waitForSync = body.waitForSync;
+  }
+
+  if (body.hasOwnProperty('cacheEnabled')) {
+    r.parameters.cacheEnabled = body.cacheEnabled;
   }
 
   if (cluster.isCoordinator()) {
@@ -238,6 +245,9 @@ function post_api_collection (req, res) {
     result.status = collection.status();
     result.type = collection.type();
     result.keyOptions = collection.keyOptions;
+    if (r.parameters.cacheEnabled !== undefined) {
+      result.cacheEnabled = r.parameters.cacheEnabled;
+    }
 
     if (cluster.isCoordinator()) {
       result.shardKeys = collection.shardKeys;

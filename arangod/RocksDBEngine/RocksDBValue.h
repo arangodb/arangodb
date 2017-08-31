@@ -47,7 +47,6 @@ class RocksDBValue {
 
   static RocksDBValue Database(VPackSlice const& data);
   static RocksDBValue Collection(VPackSlice const& data);
-  static RocksDBValue Document(VPackSlice const& data);
   static RocksDBValue PrimaryIndexValue(TRI_voc_rid_t revisionId);
   static RocksDBValue EdgeIndexValue(arangodb::StringRef const& vertexId);
   static RocksDBValue VPackIndexValue();

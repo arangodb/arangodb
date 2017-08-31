@@ -57,10 +57,10 @@ TEST_CASE("cache::Metadata", "[cache]") {
   }
 
   SECTION("verify usage limits are adjusted and enforced correctly") {
-    uint64_t overhead = 48;
+    uint64_t overhead = 80;
     Metadata metadata(1024, 0, 0, 2048 + overhead);
 
-    metadata.lock();
+    metadata.writeLock();
 
     REQUIRE(metadata.adjustUsageIfAllowed(512));
     REQUIRE(metadata.adjustUsageIfAllowed(512));
@@ -90,14 +90,14 @@ TEST_CASE("cache::Metadata", "[cache]") {
     REQUIRE(!metadata.adjustLimits(2049, 2049));
     REQUIRE(metadata.allocatedSize == 1024 + overhead);
 
-    metadata.unlock();
+    metadata.writeUnlock();
   }
 
   SECTION("verify table methods work correctly") {
-    uint64_t overhead = 48;
+    uint64_t overhead = 80;
     Metadata metadata(1024, 0, 512, 2048 + overhead);
 
-    metadata.lock();
+    metadata.writeLock();
 
     REQUIRE(!metadata.migrationAllowed(1024));
     REQUIRE(2048 + overhead == metadata.adjustDeserved(2048 + overhead));
@@ -113,6 +113,6 @@ TEST_CASE("cache::Metadata", "[cache]") {
     REQUIRE(metadata.tableSize == 512);
     REQUIRE(metadata.allocatedSize == 1536 + overhead);
 
-    metadata.unlock();
+    metadata.writeUnlock();
   }
 }

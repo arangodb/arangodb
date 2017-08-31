@@ -58,10 +58,9 @@ RocksDBIndex::RocksDBIndex(
       _cf(cf),
       _cache(nullptr),
       _cachePresent(false),
-      _useCache(useCache) {
+      _cacheEnabled(useCache && !collection->isSystem()) {
   TRI_ASSERT(cf != nullptr && cf != RocksDBColumnFamily::definitions());
-
-  if (_useCache) {
+  if (_cacheEnabled) {
     createCache();
   }
 }
@@ -74,13 +73,13 @@ RocksDBIndex::RocksDBIndex(TRI_idx_iid_t id, LogicalCollection* collection,
       _cf(cf),
       _cache(nullptr),
       _cachePresent(false),
-      _useCache(useCache) {
+      _cacheEnabled(useCache && !collection->isSystem()) {
   TRI_ASSERT(cf != nullptr && cf != RocksDBColumnFamily::definitions());
 
   if (_objectId == 0) {
     _objectId = TRI_NewTickServer();
   }
-  if (_useCache) {
+  if (_cacheEnabled) {
     createCache();
   }
 }
@@ -119,7 +118,7 @@ void RocksDBIndex::toVelocyPackFigures(VPackBuilder& builder) const {
 }
 
 void RocksDBIndex::load() {
-  if (_useCache) {
+  if (_cacheEnabled) {
     createCache();
     TRI_ASSERT(_cachePresent);
   }
@@ -128,7 +127,7 @@ void RocksDBIndex::load() {
 void RocksDBIndex::unload() {
   if (useCache()) {
     // LOG_TOPIC(ERR, Logger::FIXME) << "unload cache";
-    disableCache();
+    destroyCache();
     TRI_ASSERT(!_cachePresent);
   }
 }
@@ -145,34 +144,36 @@ void RocksDBIndex::toVelocyPack(VPackBuilder& builder, bool withFigures,
 }
 
 void RocksDBIndex::createCache() {
-  if (!_useCache || _cachePresent) {
+  if (!_cacheEnabled || _cachePresent ||
+      ServerState::instance()->isCoordinator()) {
     // we leave this if we do not need the cache
     // or if cache already created
     return;
   }
 
-  TRI_ASSERT(_useCache);
+  TRI_ASSERT(!_collection->isSystem() &&
+             !ServerState::instance()->isCoordinator());
   TRI_ASSERT(_cache.get() == nullptr);
   TRI_ASSERT(CacheManagerFeature::MANAGER != nullptr);
   _cache = CacheManagerFeature::MANAGER->createCache(
       cache::CacheType::Transactional);
   _cachePresent = (_cache.get() != nullptr);
-  TRI_ASSERT(_useCache);
+  TRI_ASSERT(_cacheEnabled);
 }
 
-void RocksDBIndex::disableCache() {
+void RocksDBIndex::destroyCache() {
   if (!_cachePresent) {
     return;
   }
   TRI_ASSERT(CacheManagerFeature::MANAGER != nullptr);
   // must have a cache...
-  TRI_ASSERT(_useCache);
+  TRI_ASSERT(_cacheEnabled);
   TRI_ASSERT(_cachePresent);
   TRI_ASSERT(_cache.get() != nullptr);
   CacheManagerFeature::MANAGER->destroyCache(_cache);
   _cache.reset();
   _cachePresent = false;
-  TRI_ASSERT(_useCache);
+  TRI_ASSERT(_cacheEnabled);
 }
 
 void RocksDBIndex::serializeEstimate(std::string&) const {
@@ -222,6 +223,18 @@ int RocksDBIndex::drop() {
 #endif
   
   return r.errorNumber();
+}
+
+Result RocksDBIndex::updateInternal(transaction::Methods* trx, RocksDBMethods* mthd,
+                      TRI_voc_rid_t oldRevision,
+                      arangodb::velocypack::Slice const& oldDoc,
+                      TRI_voc_rid_t newRevision,
+                                    arangodb::velocypack::Slice const& newDoc) {
+  Result res = removeInternal(trx, mthd, oldRevision, oldDoc);
+  if (!res.ok()) {
+      return res;
+  }
+  return insertInternal(trx, mthd, newRevision, newDoc);
 }
 
 void RocksDBIndex::truncate(transaction::Methods* trx) {
@@ -299,7 +312,7 @@ void RocksDBIndex::blackListKey(char const* data, std::size_t len) {
       if (status.ok()) {
         blacklisted = true;
       } else if (status.errorNumber() == TRI_ERROR_SHUTTING_DOWN) {
-        disableCache();
+        destroyCache();
         break;
       }
     }

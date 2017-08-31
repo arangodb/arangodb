@@ -400,13 +400,6 @@ RocksDBEdgeIndex::RocksDBEdgeIndex(TRI_idx_iid_t iid,
   }
   TRI_ASSERT(iid != 0);
   TRI_ASSERT(_objectId != 0);
-  // if we never hit the assertions we need to remove the
-  // following code
-  // FIXME
-  if (_objectId == 0) {
-    // disable cache?
-    _useCache = false;
-  }
 }
 
 RocksDBEdgeIndex::~RocksDBEdgeIndex() {}
@@ -639,7 +632,7 @@ static std::string FindMedian(rocksdb::Iterator* it,
 }
 
 void RocksDBEdgeIndex::warmup(transaction::Methods* trx) {
-  if (!_useCache || !_cache) {
+  if (!useCache()) {
     return;
   }
   auto rocksColl = toRocksDBCollection(_collection);
@@ -650,7 +643,7 @@ void RocksDBEdgeIndex::warmup(transaction::Methods* trx) {
                                                  rocksColl->numberDocuments());
   // Prepare the cache to be resized for this amount of objects to be inserted.
   _cache->sizeHint(expectedCount);
-  if (expectedCount < 50000) {
+  if (expectedCount < 100000) {
     LOG_TOPIC(DEBUG, Logger::ROCKSDB) << "Skipping the multithreaded loading";
     this->warmupInternal(trx, bounds.start(), bounds.end());
     return;
@@ -768,7 +761,7 @@ void RocksDBEdgeIndex::warmupInternal(transaction::Methods* trx,
         // Store what we have.
         builder.close();
 
-        while (cc->isResizing() || cc->isMigrating()) {
+        while (cc->isBusy()) {
           // We should wait here, the cache will reject
           // any inserts anyways.
           usleep(10000);

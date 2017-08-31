@@ -25,9 +25,9 @@
 #define ARANGODB_CACHE_TRANSACTIONAL_BUCKET_H
 
 #include "Basics/Common.h"
+#include "Cache/BucketState.h"
 #include "Cache/CachedValue.h"
 #include "Cache/Common.h"
-#include "Cache/State.h"
 
 #include <stddef.h>
 
@@ -48,7 +48,7 @@ namespace cache {
 /// cacheline.
 ////////////////////////////////////////////////////////////////////////////////
 struct TransactionalBucket {
-  State _state;
+  BucketState _state;
 
   // blacklist entries for transactional semantics
   static constexpr size_t slotsBlacklist = 5;

@@ -25,8 +25,9 @@
 #define ARANGODB_CACHE_TABLE_H
 
 #include "Basics/Common.h"
+#include "Basics/ReadWriteSpinLock.h"
+#include "Cache/BucketState.h"
 #include "Cache/Common.h"
-#include "Cache/State.h"
 
 #include <stdint.h>
 #include <memory>
@@ -39,8 +40,8 @@ namespace cache {
 ////////////////////////////////////////////////////////////////////////////////
 class Table : public std::enable_shared_from_this<Table> {
  public:
-   static constexpr double idealLowerRatio = 0.04;
-   static constexpr double idealUpperRatio = 0.25;
+  static constexpr double idealLowerRatio = 0.04;
+  static constexpr double idealUpperRatio = 0.25;
   static const uint32_t minLogSize;
   static const uint32_t maxLogSize;
   static constexpr uint32_t standardLogSizeAdjustment = 6;
@@ -51,8 +52,8 @@ class Table : public std::enable_shared_from_this<Table> {
 
  private:
   struct GenericBucket {
-    State _state;
-    uint8_t _filler[BUCKET_SIZE - sizeof(State)];
+    BucketState _state;
+    uint8_t _filler[BUCKET_SIZE - sizeof(BucketState)];
     bool lock(int64_t maxTries);
     void unlock();
     bool isMigrated() const;
@@ -117,7 +118,7 @@ class Table : public std::enable_shared_from_this<Table> {
   /// the auxiliary table. The second member of the returned pair is the source
   /// table for the bucket returned as the first member.
   //////////////////////////////////////////////////////////////////////////////
-  std::pair<void*, std::shared_ptr<Table>> fetchAndLockBucket(
+  std::pair<void*, Table*> fetchAndLockBucket(
       uint32_t hash, int64_t maxTries = -1);
 
   //////////////////////////////////////////////////////////////////////////////
@@ -188,7 +189,9 @@ class Table : public std::enable_shared_from_this<Table> {
   uint32_t idealSize();
 
  private:
-  State _state;
+  basics::ReadWriteSpinLock<64> _lock;
+  bool _disabled;
+  bool _evictions;
 
   uint32_t _logSize;
   uint64_t _size;

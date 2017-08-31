@@ -1925,7 +1925,7 @@ DocumentIdentifierToken MMFilesCollection::lookupKey(transaction::Methods *trx,
   return element ? MMFilesToken(element.revisionId()) : MMFilesToken();
 }
 
-Result MMFilesCollection::read(transaction::Methods* trx, VPackSlice const key,
+Result MMFilesCollection::read(transaction::Methods* trx, VPackSlice const& key,
                                ManagedDocumentResult& result, bool lock) {
   TRI_IF_FAILURE("ReadDocumentNoLock") {
     // test what happens if no lock can be acquired
@@ -1948,6 +1948,14 @@ Result MMFilesCollection::read(transaction::Methods* trx, VPackSlice const key,
 
   // we found a document
   return Result(TRI_ERROR_NO_ERROR);
+}
+
+Result MMFilesCollection::read(transaction::Methods* trx, StringRef const& key,
+                               ManagedDocumentResult& result, bool lock){
+  // copy string into a vpack string
+  transaction::BuilderLeaser builder(trx);
+  builder->add(VPackValuePair(key.data(), key.size(), VPackValueType::String));
+  return read(trx, builder->slice(), result, lock);
 }
 
 bool MMFilesCollection::readDocument(transaction::Methods* trx,

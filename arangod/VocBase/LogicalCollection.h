@@ -288,9 +288,10 @@ class LogicalCollection {
 
   // SECTION: Index access (local only)
 
-  Result read(transaction::Methods*, std::string const&,
-              ManagedDocumentResult& result, bool);
-  Result read(transaction::Methods*, StringRef const&,
+  /// @brief reads an element from the document collection
+  Result read(transaction::Methods* trx, StringRef const& key,
+              ManagedDocumentResult& mdr, bool lock);
+  Result read(transaction::Methods*, arangodb::velocypack::Slice const&,
               ManagedDocumentResult& result, bool);
 
   /// @brief processes a truncate operation

@@ -1062,17 +1062,14 @@ void LogicalCollection::deferDropCollection(
 }
 
 /// @brief reads an element from the document collection
-Result LogicalCollection::read(transaction::Methods* trx,
-                               std::string const& key,
-                               ManagedDocumentResult& result, bool lock) {
-  return read(trx, StringRef(key.c_str(), key.size()), result, lock);
-}
-
 Result LogicalCollection::read(transaction::Methods* trx, StringRef const& key,
                                ManagedDocumentResult& result, bool lock) {
-  transaction::BuilderLeaser builder(trx);
-  builder->add(VPackValuePair(key.data(), key.size(), VPackValueType::String));
-  return getPhysical()->read(trx, builder->slice(), result, lock);
+  return getPhysical()->read(trx, key, result, lock);
+}
+
+Result LogicalCollection::read(transaction::Methods* trx, arangodb::velocypack::Slice const& key,
+            ManagedDocumentResult& result, bool lock) {
+  return getPhysical()->read(trx, key, result, lock);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
