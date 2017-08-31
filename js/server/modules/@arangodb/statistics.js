@@ -587,13 +587,13 @@ exports.installPeriodicTasks = function () {
     command: "require('@arangodb/statistics').historianAverage();"
   });
 
-  internal.registerTask({
-    id: 'statistics-gc',
-    name: 'statistics-gc',
-    offset: Math.random() * interval15 / 2,
-    period: interval15 / 2,
-    command: "require('@arangodb/statistics').garbageCollector();"
-  });
+  // internal.registerTask({
+  //   id: 'statistics-gc',
+  //   name: 'statistics-gc',
+  //   offset: Math.random() * interval15 / 2,
+  //   period: interval15 / 2,
+  //   command: "require('@arangodb/statistics').garbageCollector();"
+  // });
 };
 
 exports.startup = function () {

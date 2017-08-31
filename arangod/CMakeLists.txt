@@ -342,6 +342,7 @@ SET(ARANGOD_SOURCES
   Statistics/RequestStatistics.cpp
   Statistics/ServerStatistics.cpp
   Statistics/StatisticsFeature.cpp
+  Statistics/StatisticsWorker.cpp
   StorageEngine/EngineSelectorFeature.cpp
   StorageEngine/PhysicalCollection.cpp
   StorageEngine/TransactionCollection.cpp

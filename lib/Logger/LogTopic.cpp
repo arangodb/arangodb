@@ -65,6 +65,7 @@ LogTopic Logger::REQUESTS("requests", LogLevel::FATAL);  // suppress
 LogTopic Logger::ROCKSDB("rocksdb", LogLevel::WARN);
 LogTopic Logger::SSL("ssl", LogLevel::WARN);
 LogTopic Logger::STARTUP("startup", LogLevel::INFO);
+LogTopic Logger::STATISTICS("statistics", LogLevel::INFO);
 LogTopic Logger::SUPERVISION("supervision", LogLevel::INFO);
 LogTopic Logger::SYSCALL("syscall", LogLevel::INFO);
 LogTopic Logger::THREADS("threads", LogLevel::WARN);

@@ -26,6 +26,7 @@
 #include "ApplicationFeatures/ApplicationFeature.h"
 #include "Basics/Thread.h"
 #include "Statistics/figures.h"
+#include "StatisticsWorker.h"
 
 namespace arangodb {
 namespace basics {
@@ -47,6 +48,7 @@ extern std::vector<StatisticsCounter> TRI_MethodRequestsStatistics;
 }
 
 class StatisticsThread;
+class StatisticsWorker;
 
 class StatisticsFeature final
     : public application_features::ApplicationFeature {
@@ -76,6 +78,7 @@ class StatisticsFeature final
   bool _statistics;
 
   std::unique_ptr<StatisticsThread> _statisticsThread;
+  std::unique_ptr<StatisticsWorker> _statisticsWorker;
 };
 }
 

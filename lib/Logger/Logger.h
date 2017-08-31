@@ -151,6 +151,7 @@ class Logger {
   static LogTopic ROCKSDB;
   static LogTopic SSL;
   static LogTopic STARTUP;
+  static LogTopic STATISTICS;
   static LogTopic SUPERVISION;
   static LogTopic SYSCALL;
   static LogTopic THREADS;
