@@ -420,15 +420,17 @@ std::pair<bool, bool> Condition::checkView(
   auto var = node->outVariable();
   TRI_ASSERT(var != nullptr);
 
+  // FIXME how we can use these variables?
+  size_t covered{};
+  double cost{};
 
-  size_t covered;
-  double cost;
+  const bool handlesFilter = view->supportsFilterCondition(
+    _root, var, covered, cost
+  );
 
-  bool handlesFilter = view->supportsFilterCondition(_root, var, covered, cost);
-
-  bool handlesSort = view->supportsSortCondition(sortCondition, var, cost,
-                                                 covered);
-  handlesSort = handlesSort && (covered == sortCondition->numAttributes());
+  const bool handlesSort = view->supportsSortCondition(
+    sortCondition, var, cost, covered
+  );
 
   return std::make_pair(handlesFilter, handlesSort);
 }
