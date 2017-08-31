@@ -185,14 +185,20 @@ bool ConditionFinder::before(ExecutionNode* en) {
         break;
       }
 
-      auto canUseView =
-          condition->checkView(node, sortCondition.get());
+      const auto canUseView = condition->checkView(node, sortCondition.get());
 
       if (canUseView.first) {
-        std::unique_ptr<ExecutionNode> newNode(new EnumerateViewNode(
-            _plan, _plan->nextId(), node->vocbase(), node->view(),
-            node->outVariable(), condition.get(), std::move(sortCondition)));
+        auto newNode = std::make_unique<EnumerateViewNode>(
+          _plan,
+          _plan->nextId(),
+          node->vocbase(),
+          node->view(),
+          node->outVariable(),
+          condition.get(),
+          std::move(sortCondition)
+        );
         condition.release();
+
         TRI_IF_FAILURE("ConditionFinder::insertViewNode") {
           THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
         }

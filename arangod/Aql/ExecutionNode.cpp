@@ -1319,6 +1319,11 @@ EnumerateViewNode::EnumerateViewNode(ExecutionPlan* plan,
       _condition(Condition::fromVPack(plan, base.get("condition"))),
       _sortCondition(SortCondition::fromVelocyPack(plan, base, "sortCondition")) {}
 
+
+EnumerateViewNode::~EnumerateViewNode() {
+  delete _condition;
+}
+
 /// @brief toVelocyPack, for EnumerateViewNode
 void EnumerateViewNode::toVelocyPackHelper(VPackBuilder& nodes,
                                            bool verbose) const {

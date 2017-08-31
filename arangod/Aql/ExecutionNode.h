@@ -838,6 +838,8 @@ class EnumerateViewNode : public ExecutionNode {
 
   EnumerateViewNode(ExecutionPlan*, arangodb::velocypack::Slice const& base);
 
+  ~EnumerateViewNode();
+
   /// @brief return the type of the node
   NodeType getType() const override final { return ENUMERATE_VIEW; }
 
