@@ -1364,7 +1364,9 @@ Result RocksDBEngine::dropDatabase(TRI_voc_tick_t id) {
     }
   }
 
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   size_t numDocsLeft = 0;
+#endif
 
   // remove collections
   for (auto const& val : collectionKVPairs(id)) {
