@@ -304,7 +304,7 @@ class Methods {
   /// @brief Gets the best fitting index for an AQL condition.
   /// note: the caller must have read-locked the underlying collection when
   /// calling this method
-  std::pair<bool, bool> getBestIndexHandlesForFilterCondition(
+  ENTERPRISE_VIRT std::pair<bool, bool> getBestIndexHandlesForFilterCondition(
       std::string const&, arangodb::aql::Ast*, arangodb::aql::AstNode*,
       arangodb::aql::Variable const*, arangodb::aql::SortCondition const*,
       size_t, std::vector<IndexHandle>&, bool&);
@@ -369,11 +369,11 @@ class Methods {
 
 /// @brief get the index by it's identifier. Will either throw or
 ///        return a valid index. nullptr is impossible.
-  IndexHandle getIndexByIdentifier(
+  ENTERPRISE_VIRT IndexHandle getIndexByIdentifier(
     std::string const& collectionName, std::string const& indexHandle);
 
 /// @brief get all indexes for a collection name
-  std::vector<std::shared_ptr<arangodb::Index>> indexesForCollection(
+  ENTERPRISE_VIRT std::vector<std::shared_ptr<arangodb::Index>> indexesForCollection(
       std::string const&);
 
   /// @brief Lock all collections. Only works for selected sub-classes
@@ -464,8 +464,8 @@ class Methods {
 
  protected:
   /// @brief return the transaction collection for a document collection
-  TransactionCollection* trxCollection(TRI_voc_cid_t cid,
-                            AccessMode::Type type = AccessMode::Type::READ) const;
+  ENTERPRISE_VIRT TransactionCollection* trxCollection(TRI_voc_cid_t cid,
+                               AccessMode::Type type = AccessMode::Type::READ) const;
 
   /// @brief return the collection
   arangodb::LogicalCollection* documentCollection(

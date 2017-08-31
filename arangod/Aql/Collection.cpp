@@ -151,6 +151,7 @@ void Collection::setCollection(arangodb::LogicalCollection* coll) {
 /// @brief either use the set collection or get one from ClusterInfo:
 std::shared_ptr<LogicalCollection> Collection::getCollection() const {
   if (collection == nullptr) {
+    TRI_ASSERT(ServerState::instance()->isRunningInCluster());
     auto clusterInfo = arangodb::ClusterInfo::instance();
     return clusterInfo->getCollection(vocbase->name(), name);
   }

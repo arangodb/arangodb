@@ -62,7 +62,7 @@ class SingleCollectionTransaction final : public transaction::Methods {
   /// @brief get the underlying transaction collection
   //////////////////////////////////////////////////////////////////////////////
 
-  TransactionCollection* trxCollection();
+  TransactionCollection* resolveTrxCollection();
 
  public:
   //////////////////////////////////////////////////////////////////////////////
