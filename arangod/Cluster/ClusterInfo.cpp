@@ -108,78 +108,14 @@ static std::string extractErrorMessage(std::string const& shardId,
 /// @brief creates an empty collection info object
 ////////////////////////////////////////////////////////////////////////////////
 
-CollectionInfoCurrent::CollectionInfoCurrent() {}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief creates a collection info object from json
-////////////////////////////////////////////////////////////////////////////////
-
-CollectionInfoCurrent::CollectionInfoCurrent(ShardID const& shardID,
-                                             VPackSlice slice) {
-  add(shardID, slice);
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief creates a collection info object from another
-////////////////////////////////////////////////////////////////////////////////
-
-CollectionInfoCurrent::CollectionInfoCurrent(CollectionInfoCurrent const& other)
-    : _vpacks(other._vpacks) {
-  copyAllVPacks();
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief moves a collection info current object from another
-////////////////////////////////////////////////////////////////////////////////
-
-CollectionInfoCurrent::CollectionInfoCurrent(CollectionInfoCurrent&& other) {
-  _vpacks.swap(other._vpacks);
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief copy assigns a collection info current object from another one
-////////////////////////////////////////////////////////////////////////////////
-
-CollectionInfoCurrent& CollectionInfoCurrent::operator=(
-    CollectionInfoCurrent const& other) {
-  if (this == &other) {
-    return *this;
-  }
-  _vpacks = other._vpacks;
-  copyAllVPacks();
-  return *this;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief creates a collection info object from json
-////////////////////////////////////////////////////////////////////////////////
-
-CollectionInfoCurrent& CollectionInfoCurrent::operator=(
-    CollectionInfoCurrent&& other) {
-  if (this == &other) {
-    return *this;
-  }
-  _vpacks.clear();
-  _vpacks.swap(other._vpacks);
-  return *this;
-}
+CollectionInfoCurrent::CollectionInfoCurrent(uint64_t currentVersion)
+  : _currentVersion(currentVersion) {}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief destroys a collection info object
 ////////////////////////////////////////////////////////////////////////////////
 
 CollectionInfoCurrent::~CollectionInfoCurrent() {}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief copy slices behind the pointers in the map _vpacks
-////////////////////////////////////////////////////////////////////////////////
-void CollectionInfoCurrent::copyAllVPacks() {
-  for (auto it : _vpacks) {
-    auto builder = std::make_shared<VPackBuilder>();
-    builder->add(it.second->slice());
-    it.second = builder;
-  }
-}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create the clusterinfo instance
@@ -201,7 +137,8 @@ ClusterInfo* ClusterInfo::instance() { return _instance.get(); }
 ////////////////////////////////////////////////////////////////////////////////
 
 ClusterInfo::ClusterInfo(AgencyCallbackRegistry* agencyCallbackRegistry)
-    : _agency(), _agencyCallbackRegistry(agencyCallbackRegistry), _uniqid() {
+    : _agency(), _agencyCallbackRegistry(agencyCallbackRegistry),
+      _planVersion(0), _currentVersion(0), _uniqid() {
   _uniqid._currentValue = 1ULL;
   _uniqid._upperValue = 0ULL;
 
@@ -450,6 +387,19 @@ void ClusterInfo::loadPlan() {
     VPackSlice planSlice = planBuilder->slice();
 
     if (planSlice.isObject()) {
+      uint64_t newPlanVersion = 0;
+      VPackSlice planVersionSlice = planSlice.get("Version");
+      if (planVersionSlice.isNumber()) {
+        try {
+          newPlanVersion = planVersionSlice.getNumber<uint64_t>();
+        } catch (...) {
+        }
+      }
+      if (newPlanVersion == 0) {
+        LOG_TOPIC(WARN, Logger::CLUSTER)
+          << "Attention: /arango/Plan/Version in the agency is not set or not "
+             "a positive number.";
+      }
       decltype(_plannedDatabases) newDatabases;
       decltype(_plannedCollections) newCollections; // map<string /*database id*/
                                                     //    ,map<string /*collection id*/
@@ -590,6 +540,7 @@ void ClusterInfo::loadPlan() {
                     vocbase, collectionSlice);
               }
 #endif
+              newCollection->setPlanVersion(newPlanVersion);
               std::string const collectionName = newCollection->name();
               if (isCoordinator && !selectivityEstimates.empty()){
                 LOG_TOPIC(TRACE, Logger::CLUSTER) << "copy index estimates";
@@ -662,6 +613,7 @@ void ClusterInfo::loadPlan() {
 
       WRITE_LOCKER(writeLocker, _planProt.lock);
       _plan = planBuilder;
+      _planVersion = newPlanVersion;
       if (swapDatabases) {
         _plannedDatabases.swap(newDatabases);
       }
@@ -718,6 +670,20 @@ void ClusterInfo::loadCurrent() {
     VPackSlice currentSlice = currentBuilder->slice();
 
     if (currentSlice.isObject()) {
+      uint64_t newCurrentVersion = 0;
+      VPackSlice currentVersionSlice = currentSlice.get("Version");
+      if (currentVersionSlice.isNumber()) {
+        try {
+          newCurrentVersion = currentVersionSlice.getNumber<uint64_t>();
+        } catch (...) {
+        }
+      }
+      if (newCurrentVersion == 0) {
+        LOG_TOPIC(WARN, Logger::CLUSTER)
+          << "Attention: /arango/Current/Version in the agency is not set or "
+             "not a positive number.";
+      }
+
       decltype(_currentDatabases) newDatabases;
       decltype(_currentCollections) newCollections;
       decltype(_shardIds) newShardIds;
@@ -758,7 +724,7 @@ void ClusterInfo::loadCurrent() {
             std::string const collectionName = collectionSlice.key.copyString();
 
             auto collectionDataCurrent =
-                std::make_shared<CollectionInfoCurrent>();
+                std::make_shared<CollectionInfoCurrent>(newCurrentVersion);
             for (auto const& shardSlice :
                  VPackObjectIterator(collectionSlice.value)) {
               std::string const shardID = shardSlice.key.copyString();
@@ -788,6 +754,7 @@ void ClusterInfo::loadCurrent() {
       // Now set the new value:
       WRITE_LOCKER(writeLocker, _currentProt.lock);
       _current = currentBuilder;
+      _currentVersion = newCurrentVersion;
       if (swapDatabases) {
         _currentDatabases.swap(newDatabases);
       }
@@ -929,7 +896,7 @@ std::shared_ptr<CollectionInfoCurrent> ClusterInfo::getCollectionCurrent(
     loadCurrent();
   }
 
-  return std::make_shared<CollectionInfoCurrent>();
+  return std::make_shared<CollectionInfoCurrent>(0);
 }
 
 ////////////////////////////////////////////////////////////////////////////////

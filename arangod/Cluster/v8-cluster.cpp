@@ -706,6 +706,8 @@ static void JS_GetCollectionInfoCurrentClusterInfo(
       ClusterInfo::instance()->getCollectionCurrent(TRI_ObjectToString(args[0]),
                                                     cid);
 
+  result->Set(TRI_V8_ASCII_STRING("currentVersion"),
+              v8::Number::New(isolate, (double) cic->getCurrentVersion()));
   result->Set(TRI_V8_ASCII_STRING("type"),
               v8::Number::New(isolate, (int)ci->type()));
 

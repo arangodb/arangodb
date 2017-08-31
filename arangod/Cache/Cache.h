@@ -189,7 +189,7 @@ class Cache : public std::enable_shared_from_this<Cache> {
   static void freeValue(CachedValue* value);
   bool reclaimMemory(uint64_t size);
 
-  uint32_t hashKey(void const* key, uint32_t keySize) const;
+  uint32_t hashKey(void const* key, size_t keySize) const;
   void recordStat(Stat stat);
 
   bool reportInsert(bool hadEviction);

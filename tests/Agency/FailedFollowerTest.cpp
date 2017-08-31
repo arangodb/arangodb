@@ -547,6 +547,7 @@ SECTION("a successfully started job should finish immediately and set everything
     auto freeEntry = writes.get(planEntry)[1].copyString();
     REQUIRE(freeEntry.compare(0,4,FREE_SERVER) == 0);
     REQUIRE(writes.get(planEntry)[2].copyString() == "follower2");
+
     REQUIRE(writes.get("/arango/Plan/Version").get("op").copyString() == "increment");
     REQUIRE(std::string(writes.get("/arango/Target/Finished/1").typeName()) == "object");
 
@@ -641,6 +642,7 @@ SECTION("the job should handle distributeShardsLike") {
     REQUIRE(writes.get("/arango/Plan/Collections/" + DATABASE + "/linkedcollection1/shards/s100").length() == 3);
     REQUIRE(writes.get("/arango/Plan/Collections/" + DATABASE + "/linkedcollection1/shards/s100")[0].copyString() == "leader");
     REQUIRE(writes.get("/arango/Plan/Collections/" + DATABASE + "/linkedcollection1/shards/s100")[1].copyString().compare(0,4,FREE_SERVER) == 0);
+
     REQUIRE(writes.get("/arango/Plan/Collections/" + DATABASE + "/linkedcollection1/shards/s100")[2].copyString() == "follower2");
     REQUIRE(std::string(writes.get("/arango/Plan/Collections/" + DATABASE + "/linkedcollection2/shards/s101").typeName()) == "array");
     REQUIRE(writes.get("/arango/Plan/Collections/" + DATABASE + "/linkedcollection2/shards/s101").length() == 3);
@@ -653,7 +655,6 @@ SECTION("the job should handle distributeShardsLike") {
 
     auto preconditions = q->slice()[0][1];
     REQUIRE(std::string(preconditions.typeName()) == "object");
-
     auto healthStat = std::string("/arango/Supervision/Health/") + freeEntry + "/Status";
     REQUIRE(preconditions.get(healthStat).get("old").copyString() == "GOOD");
     REQUIRE(std::string(preconditions.get(entry).get("old").typeName()) == "array");

@@ -7,14 +7,18 @@ ARANGODB="/usr/sbin/arangod"
 
 # source debconf library
 . /usr/share/debconf/confmodule
+. /usr/share/arangodb3/arangodb-helper
 
 set +x
 db_get @CPACK_PACKAGE_NAME@/storage_engine
 STORAGE_ENGINE=$RET
 export GLIBCXX_FORCE_NEW=1
 
-db_get @CPACK_PACKAGE_NAME@/new_install_existing_db_dir
-NEW_INSTALL_EXISTING_DIR=$RET
+if test -d /var/lib/arangodb3 -a ! -f /usr/sbin/arangod; then
+    NEW_INSTALL_EXISTING_DIR=true
+else
+    NEW_INSTALL_EXISTING_DIR=false
+fi
 
 #fill in correct storage engine into arangod.conf
 sed -i /etc/arangodb3/arangod.conf -e "s;storage-engine = auto;storage-engine = $STORAGE_ENGINE;"
@@ -42,10 +46,19 @@ fi
 
 # check if we should upgrade the database directory
 UPGRADE=false #requires upgrade
+set +e
 $ARANGODB --uid arangodb --gid arangodb \
-          --server.rest-server false --log.foreground-tty false
-          --database.check-version \
-    || UPGRADE=true
+          --server.rest-server false --log.foreground-tty false \
+          --database.check-version
+exit_status=$?
+set -e
+
+if [ $exit_status -eq "$(ar_exitcode_string_to_num EXIT_UPGRADE_REQUIRED)" ]; then
+    UPGRADE=true
+else
+    ar_ferr $exit_status
+fi
+
 
 db_get @CPACK_PACKAGE_NAME@/upgrade #wants upgrade
 if [ "$RET" = "true" ];  then
@@ -59,7 +72,9 @@ if [ "$RET" = "true" ];  then
         fi
 
         echo "Upgrading database files."
-        $ARANGODB --uid arangodb --gid arangodb --server.rest-server false --log.level error --database.auto-upgrade true
+        set +e
+        $ARANGODB --uid arangodb --gid arangodb --server.rest-server false --log.level error --database.auto-upgrade || ar_ferr $?
+        set -e
     else
         echo "Database files are up-to-date."
     fi
