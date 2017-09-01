@@ -188,7 +188,6 @@ function explainSuite () {
           cn + "/testkey3" // And this
         ]
       };
-      require("internal").db._explain(query, bindParams);
       assertEqual([ 1, 2, 3], AQL_EXECUTE(query, bindParams).json);
     }
   };
