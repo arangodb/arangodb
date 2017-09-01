@@ -167,58 +167,6 @@ function analyzeCoreDumpWindows (instanceInfo) {
 // /        information about the incident.
 // //////////////////////////////////////////////////////////////////////////////
 function analyzeCrash (binary, arangod, options, checkStr) {
-  var cpf = '/proc/sys/kernel/core_pattern';
-
-  if (fs.isFile(cpf)) {
-    var matchApport = /.*apport.*/;
-    var matchVarTmp = /\/var\/tmp/;
-    var matchSystemdCoredump = /.*systemd-coredump*/;
-    var corePattern = fs.readBuffer(cpf);
-    var cp = corePattern.asciiSlice(0, corePattern.length);
-
-    if (matchApport.exec(cp) != null) {
-      print(RED + 'apport handles corefiles on your system. Uninstall it if you want us to get corefiles for analysis.' + RESET);
-      return;
-    }
-
-    if (matchSystemdCoredump.exec(cp) !== null) {
-      options.coreDirectory = '/var/lib/systemd/coredump/*core*' + arangod.pid + '*';
-    } else if (matchVarTmp.exec(cp) !== null) {
-      options.coreDirectory = cp.replace('%e', '*').replace('%t', '*').replace('%p', arangod.pid);
-    } else {
-      print(RED + 'Don\'t know howto locate corefiles in your system. "' + cpf + '" contains: "' + cp + '"' + RESET);
-      return;
-    }
-  }
-
-  let pathParts = binary.split(fs.pathSeparator);
-  let bareBinary = binary;
-  if (pathParts.length > 0) {
-    bareBinary = pathParts[pathParts.length - 1];
-  }
-  const storeArangodPath = arangod.rootDir + '/' + bareBinary + '_' + arangod.pid;
-
-  print(RED +
-    'during: ' + checkStr + ': Core dump written; copying ' + binary + ' to ' +
-    storeArangodPath + ' for later analysis.\n' +
-    'Server shut down with :\n' +
-    yaml.safeDump(arangod) +
-    'marking build as crashy.' + RESET);
-
-  let hint = '';
-  if (platform.substr(0, 3) === 'win') {
-    // Windows: wait for procdump to do its job...
-    statusExternal(arangod.monitor, true);
-    hint = analyzeCoreDumpWindows(arangod);
-  } else if (platform === 'darwin') {
-    fs.copyFile(binary, storeArangodPath);
-    hint = analyzeCoreDumpMac(arangod, options, storeArangodPath, arangod.pid);
-  } else {
-    fs.copyFile(binary, storeArangodPath);
-    hint = analyzeCoreDump(arangod, options, storeArangodPath, arangod.pid);
-  }
-  arangod.exitStatus.gdbHint = 'Run debugger with "' + hint + '"';
-
   print(RESET);
 }
 

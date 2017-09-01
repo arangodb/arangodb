@@ -27,8 +27,6 @@
 #include "Cache/Cache.h"
 #include "Cache/Manager.h"
 #include "Cache/Metadata.h"
-#include "Scheduler/Scheduler.h"
-#include "Scheduler/SchedulerFeature.h"
 
 using namespace arangodb::cache;
 
@@ -39,31 +37,24 @@ FreeMemoryTask::FreeMemoryTask(Manager::TaskEnvironment environment,
 FreeMemoryTask::~FreeMemoryTask() {}
 
 bool FreeMemoryTask::dispatch() {
-  auto scheduler = SchedulerFeature::SCHEDULER;
-  if (scheduler == nullptr) {
-    return false;
-  }
-
   _manager->prepareTask(_environment);
   auto self = shared_from_this();
-  scheduler->post([self, this]() -> void { run(); });
-
-  return true;
+  return _manager->post([self, this]() -> void { run(); });
 }
 
 void FreeMemoryTask::run() {
   bool ran = _cache->freeMemory();
 
   if (ran) {
-    _manager->_state.lock();
+    _manager->_lock.writeLock();
     Metadata* metadata = _cache->metadata();
-    metadata->lock();
+    metadata->writeLock();
     uint64_t reclaimed = metadata->hardUsageLimit - metadata->softUsageLimit;
     metadata->adjustLimits(metadata->softUsageLimit, metadata->softUsageLimit);
-    metadata->toggleFlag(State::Flag::resizing);
-    metadata->unlock();
+    metadata->toggleResizing();
+    metadata->writeUnlock();
     _manager->_globalAllocation -= reclaimed;
-    _manager->_state.unlock();
+    _manager->_lock.writeUnlock();
   }
 
   _manager->unprepareTask(_environment);
@@ -80,16 +71,9 @@ MigrateTask::MigrateTask(Manager::TaskEnvironment environment, Manager* manager,
 MigrateTask::~MigrateTask() {}
 
 bool MigrateTask::dispatch() {
-  auto scheduler = SchedulerFeature::SCHEDULER;
-  if (scheduler == nullptr) {
-    return false;
-  }
-
   _manager->prepareTask(_environment);
   auto self = shared_from_this();
-  scheduler->post([self, this]() -> void { run(); });
-
-  return true;
+  return _manager->post([self, this]() -> void { run(); });
 }
 
 void MigrateTask::run() {
@@ -98,9 +82,9 @@ void MigrateTask::run() {
 
   if (!ran) {
     Metadata* metadata = _cache->metadata();
-    metadata->lock();
-    metadata->toggleFlag(State::Flag::migrating);
-    metadata->unlock();
+    metadata->writeLock();
+    metadata->toggleMigrating();
+    metadata->writeUnlock();
     _manager->reclaimTable(_table);
   }
 

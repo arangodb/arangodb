@@ -69,8 +69,7 @@ void RocksDBSavePoint::rollback() {
 arangodb::Result RocksDBMethods::Get(rocksdb::ColumnFamilyHandle* cf,
                                      RocksDBKey const& key,
                                      std::string* val) {
-  std::string const& keyString = key.string();
-  return Get(cf, rocksdb::Slice(keyString), val);
+  return Get(cf, key.string(), val);
 }
 
 rocksdb::ReadOptions const& RocksDBMethods::readOptions() {

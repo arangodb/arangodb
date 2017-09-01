@@ -184,39 +184,42 @@ std::shared_ptr<transaction::Context> BaseEngine::context() const {
 void BaseEngine::getVertexData(VPackSlice vertex, VPackBuilder& builder) {
   // We just hope someone has locked the shards properly. We have no clue...
   // Thanks locking
+  TRI_ASSERT(ServerState::instance()->isDBServer());
   TRI_ASSERT(vertex.isString() || vertex.isArray());
+  
+  ManagedDocumentResult mmdr;
   builder.openObject();
-  bool found;
   auto workOnOneDocument = [&](VPackSlice v) {
-    found = false;
     StringRef id(v);
-    std::string name = id.substr(0, id.find('/')).toString();
-    auto shards = _vertexShards.find(name);
+    size_t pos = id.find('/');
+    if (pos == std::string::npos || pos + 1 == id.size()) {
+      TRI_ASSERT(false);
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_GRAPH_INVALID_EDGE,
+                                     "edge contains invalid value " + id.toString());
+    }
+    ShardID shardName = id.substr(0, pos).toString();
+    auto shards = _vertexShards.find(shardName);
     if (shards == _vertexShards.end()) {
-      THROW_ARANGO_EXCEPTION_MESSAGE(
-          TRI_ERROR_QUERY_COLLECTION_LOCK_FAILED,
-          "collection not known to traversal: '" + name +
-              "'. please add 'WITH " + name +
-              "' as the first line in your AQL query");
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_QUERY_COLLECTION_LOCK_FAILED,
+                                     "Collection not known to Traversal " +
+                                     shardName + " please add 'WITH " + shardName +
+                                     "' as the first line in your AQL");
       // The collection is not known here!
       // Maybe handle differently
     }
-    builder.add(v);
+    
+    StringRef vertex = id.substr(pos+1);
     for (std::string const& shard : shards->second) {
-      Result res = _trx->documentFastPath(shard, nullptr, v, builder, false);
+      Result res = _trx->documentFastPathLocal(shard, vertex, mmdr);
       if (res.ok()) {
-        found = true;
         // FOUND short circuit.
+        builder.add(v);
+        mmdr.addToBuilder(builder, true);
         break;
-      }
-      if (res.isNot(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND)) {
+      } else if (res.isNot(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND)) {
         // We are in a very bad condition here...
         THROW_ARANGO_EXCEPTION(res);
       }
-    }
-    if (!found) {
-      builder.add(arangodb::basics::VelocyPackHelper::NullValue());
-      builder.removeLast();
     }
   };
 
@@ -294,44 +297,49 @@ void BaseTraverserEngine::getVertexData(VPackSlice vertex, size_t depth,
                                         VPackBuilder& builder) {
   // We just hope someone has locked the shards properly. We have no clue...
   // Thanks locking
+  TRI_ASSERT(ServerState::instance()->isDBServer());
   TRI_ASSERT(vertex.isString() || vertex.isArray());
+  
   size_t read = 0;
-  size_t filtered = 0;
-  bool found = false;
+  ManagedDocumentResult mmdr;
   builder.openObject();
   builder.add(VPackValue("vertices"));
 
   auto workOnOneDocument = [&](VPackSlice v) {
-    found = false;
     StringRef id(v);
-    std::string name = id.substr(0, id.find('/')).toString();
-    auto shards = _vertexShards.find(name);
-    if (shards == _vertexShards.end()) {
-      THROW_ARANGO_EXCEPTION_MESSAGE(
-          TRI_ERROR_QUERY_COLLECTION_LOCK_FAILED,
-          "collection not known to traversal: '" + name +
-              "'. please add 'WITH " + name +
-              "' as the first line in your AQL query");
+    size_t pos = id.find('/');
+    if (pos == std::string::npos || pos + 1 == id.size()) {
+      TRI_ASSERT(false);
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_GRAPH_INVALID_EDGE,
+                                     "edge contains invalid value " + id.toString());
     }
-    builder.add(v);
+    ShardID shardName = id.substr(0, pos).toString();
+    auto shards = _vertexShards.find(shardName);
+    if (shards == _vertexShards.end()) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_QUERY_COLLECTION_LOCK_FAILED,
+                                     "Collection not known to Traversal " +
+                                     shardName + " please add 'WITH " + shardName +
+                                     "' as the first line in your AQL");
+      // The collection is not known here!
+      // Maybe handle differently
+    }
+    
+    StringRef vertex = id.substr(pos+1);
     for (std::string const& shard : shards->second) {
-      Result res = _trx->documentFastPath(shard, nullptr, v, builder, false);
+      Result res = _trx->documentFastPathLocal(shard, vertex, mmdr);
       if (res.ok()) {
-        read++;
-        found = true;
         // FOUND short circuit.
+        read++;
+        builder.add(v);
+        mmdr.addToBuilder(builder, true);
         break;
-      }
-      if (res.isNot(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND)) {
+      } else if (res.isNot(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND)) {
         // We are in a very bad condition here...
         THROW_ARANGO_EXCEPTION(res);
       }
     }
     // TODO FILTERING!
     // HOWTO Distinguish filtered vs NULL?
-    if (!found) {
-      builder.removeLast();
-    }
   };
 
   if (vertex.isArray()) {
@@ -344,7 +352,7 @@ void BaseTraverserEngine::getVertexData(VPackSlice vertex, size_t depth,
     workOnOneDocument(vertex);
   }
   builder.add("readIndex", VPackValue(read));
-  builder.add("filtered", VPackValue(filtered));
+  builder.add("filtered", VPackValue(0));
   builder.close();
 }
 

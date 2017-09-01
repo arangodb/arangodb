@@ -59,8 +59,6 @@ set(ENTERPRISE_INCLUDE_DIR "enterprise")
 option(USE_ENTERPRISE "enable enterprise build" OFF)
 
 if (USE_ENTERPRISE)
-  add_definitions("-DUSE_ENTERPRISE=1")
-  include_directories(${ENTERPRISE_INCLUDE_DIR})
   add_subdirectory(enterprise)
 endif ()
 

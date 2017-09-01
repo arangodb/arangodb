@@ -75,7 +75,11 @@ TEST_CASE("cache with backing store", "[cache][!hide][longRunning]") {
   SECTION("test hit rate for read-only hotset workload") {
     RandomGenerator::initialize(RandomGenerator::RandomType::MERSENNE);
     MockScheduler scheduler(4);
-    Manager manager(scheduler.ioService(), 16 * 1024 * 1024);
+    auto postFn = [&scheduler](std::function<void()> fn) -> bool {
+      scheduler.post(fn);
+      return true;
+    };
+    Manager manager(postFn, 16 * 1024 * 1024);
     TransactionalStore store(&manager);
     uint64_t totalDocuments = 1000000;
     uint64_t hotsetSize = 50000;
@@ -124,7 +128,11 @@ TEST_CASE("cache with backing store", "[cache][!hide][longRunning]") {
   SECTION("test hit rate for mixed workload") {
     RandomGenerator::initialize(RandomGenerator::RandomType::MERSENNE);
     MockScheduler scheduler(4);
-    Manager manager(scheduler.ioService(), 256 * 1024 * 1024);
+    auto postFn = [&scheduler](std::function<void()> fn) -> bool {
+      scheduler.post(fn);
+      return true;
+    };
+    Manager manager(postFn, 256 * 1024 * 1024);
     TransactionalStore store(&manager);
     uint64_t totalDocuments = 1000000;
     uint64_t batchSize = 1000;
@@ -194,7 +202,7 @@ TEST_CASE("cache with backing store", "[cache][!hide][longRunning]") {
 
     auto hitRates = manager.globalHitRates();
     CHECK(hitRates.first >= 0.1);
-    CHECK(hitRates.second >= 5.0);
+    CHECK(hitRates.second >= 2.5);
 
     RandomGenerator::shutdown();
   }
@@ -202,7 +210,11 @@ TEST_CASE("cache with backing store", "[cache][!hide][longRunning]") {
   SECTION("test transactionality for mixed workload") {
     RandomGenerator::initialize(RandomGenerator::RandomType::MERSENNE);
     MockScheduler scheduler(4);
-    Manager manager(scheduler.ioService(), 256 * 1024 * 1024);
+    auto postFn = [&scheduler](std::function<void()> fn) -> bool {
+      scheduler.post(fn);
+      return true;
+    };
+    Manager manager(postFn, 256 * 1024 * 1024);
     TransactionalStore store(&manager);
     uint64_t totalDocuments = 1000000;
     uint64_t writeBatchSize = 1000;
@@ -285,7 +297,11 @@ TEST_CASE("cache with backing store", "[cache][!hide][longRunning]") {
   SECTION("test rebalancing in the wild") {
     RandomGenerator::initialize(RandomGenerator::RandomType::MERSENNE);
     MockScheduler scheduler(4);
-    Manager manager(scheduler.ioService(), 16 * 1024 * 1024);
+    auto postFn = [&scheduler](std::function<void()> fn) -> bool {
+      scheduler.post(fn);
+      return true;
+    };
+    Manager manager(postFn, 16 * 1024 * 1024);
     Rebalancer rebalancer(&manager);
     TransactionalStore store1(&manager);
     TransactionalStore store2(&manager);

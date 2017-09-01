@@ -6,6 +6,7 @@ ENTERPRISE=""
 type="build"
 
 if [ "$edition" == community ]; then
+    ENTERPRISE="-DUSE_ENTERPRISE=Off"
     type="${type}_community"
 elif [ "$edition" == enterprise ]; then
     type="${type}_enterprise"
@@ -30,30 +31,15 @@ echo "CONCURRENY: $concurrency"
 echo "HOST: `hostname`"
 echo "PWD: `pwd`"
 
-mkdir -p build-$edition
-
-if [ ! -f build-$edition/location ]; then
-    if [ "$os" == mac ]; then
-        (ls -l  && echo "$edition $os") | md5 | awk '{print $1}' > build-$edition/location
-    else
-        (ls -l  && echo "$edition $os") | md5sum | awk '{print $1}' > build-$edition/location
-    fi
-fi
-
-GENPATH="/tmp/`cat build-$edition/location`"
-
-rm -f $GENPATH
-ln -s `pwd` $GENPATH
-cd $GENPATH
-
-echo "GENPATH: `pwd`"
+mkdir -p build
 
 rm -rf log-output
 mkdir -p log-output
 touch log-output/build.log
 
 (
-    cd build-$edition
+    set -eo pipefail
+    cd build
 
     echo "`date +%T` configuring..."
     CXXFLAGS=-fno-omit-frame-pointer \
@@ -64,41 +50,10 @@ touch log-output/build.log
             -DUSE_FAILURE_TESTS=On \
             -DDEBUG_SYNC_REPLICATION=On \
             $ENTERPRISE \
-            .. >> ../log-output/build.log 2>&1
-
-    if [ "$?" != 0 ]; then
-        if fgrep 'Re-run cmake with a different source directory' ../log-output/build.log; then
-            mv location ..
-            rm -rf *
-            mv ../location .
-            
-            CXXFLAGS=-fno-omit-frame-pointer \
-                cmake \
-                    -DCMAKE_BUILD_TYPE=RelWithDebInfo \
-                    -DUSE_MAINTAINER_MODE=On \
-                    -DUSE_CATCH_TESTS=On \
-                    -DUSE_FAILURE_TESTS=On \
-                    -DDEBUG_SYNC_REPLICATION=On \
-                    $ENTERPRISE \
-                    .. >> ../log-output/build.log 2>&1 || exit 1
-        else
-            exit 1
-        fi
-    fi
+            ..  2>&1 | tee ../log-output/build.log
 
     echo "`date +%T` building..."
-    make -j $concurrency -l $load >> ../log-output/build.log 2>&1 || exit 1
+    make -j $concurrency -l $load 2>&1 | tee -a ../log-output/build.log
 ) || exit 1
-
-# copy binaries to preserve them
-echo "`date +%T` copying..."
-
-rm -rf build
-mkdir -p build/tests
-
-cp -a build-$edition/bin                 build
-cp -a build-$edition/etc                 build
-cp -a build-$edition/tests/arangodbtests build/tests
-cp -a build-$edition/tests/icudtl.dat    build/tests
 
 echo "`date +%T` done..."

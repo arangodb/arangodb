@@ -152,6 +152,7 @@ void Mutex::unlock() { ReleaseSRWLockExclusive(&_mutex); }
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
 void Mutex::assertLockedByCurrentThread() {}
+void Mutex::assertNotLockedByCurrentThread() {}
 #endif
 
 #endif

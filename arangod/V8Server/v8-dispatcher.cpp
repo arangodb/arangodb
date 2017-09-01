@@ -596,7 +596,7 @@ static void JS_RegisterTask(v8::FunctionCallbackInfo<v8::Value> const& args) {
   }
   // only the superroot is allowed to run tasks as an arbitrary user
   if (ExecContext::CURRENT != nullptr) {
-    if (runAsUser.empty()) { // execute task as in the same use
+    if (runAsUser.empty()) { // execute task as the same use
       runAsUser = ExecContext::CURRENT->user();
     } else if (ExecContext::CURRENT->user() != runAsUser) {
       TRI_V8_THROW_EXCEPTION(TRI_ERROR_FORBIDDEN);

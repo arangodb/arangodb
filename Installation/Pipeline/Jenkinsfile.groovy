@@ -326,11 +326,35 @@ Restrictions: ${restrictions.keySet().join(", ")}
 // -----------------------------------------------------------------------------
 
 def stashBinaries(os, edition) {
-    stash name: "binaries-${os}-${edition}", includes: "build/bin/**, build/tests/**, build/etc/**, etc/**, Installation/Pipeline/**, js/**, scripts/**, UnitTests/**, utils/**, resilience/**, enterprise/js/**", excludes: "build/bin/*.exe, build/bin/*.pdb, build/bin/*.ilk, build/tests/*.exe, build/tests/*.pdb, build/tests/*.ilk, js/node/node_modules/eslint*"
+    def paths = ["build/etc", "etc", "Installation/Pipeline", "js", "scripts", "UnitTests"]
+    if (os == "windows") {
+        paths << "build/bin/RelWithDebInfo"
+        paths << "build/tests/RelWithDebInfo"
+
+        // so frustrating...compress-archive is built in but it simply won't include the relative path to the archive :(
+        // powershell "Compress-Archive -Force -Path (Get-ChildItem -Recurse -Path " + paths.join(',') + ") -DestinationPath stash.zip -Confirm -CompressionLevel Fastest"
+        // install 7z portable (https://chocolatey.org/packages/7zip.portable)
+        powershell "7z a stash.zip -r -bd -mx=1 " + paths.join(" ")
+        // this is a super mega mess...scp will run as the system user and not as jenkins when run as a server
+        // I couldn't figure out how to properly get it running for hours...so last resort was to install putty
+        powershell "echo 'y' | pscp -i C:\\Users\\Jenkins\\.ssh\\putty-jenkins.ppk stash.zip jenkins@c1:/vol/cache/binaries-${env.BUILD_TAG}-${os}-${edition}.zip"
+    } else {
+        paths << "build/bin/"
+        paths << "build/tests/"
+
+        sh "GZIP=-1 tar cpzf stash.tar.gz " + paths.join(" ")
+        sh "scp stash.tar.gz c1:/vol/cache/binaries-${env.BUILD_TAG}-${os}-${edition}.tar.gz"
+    }
 }
 
 def unstashBinaries(os, edition) {
-    unstash name: "binaries-${os}-${edition}"
+    if (os == "windows") {
+        powershell "echo 'y' | pscp -i C:\\Users\\Jenkins\\.ssh\\putty-jenkins.ppk jenkins@c1:/vol/cache/binaries-${env.BUILD_TAG}-${os}-${edition}.zip stash.zip"
+        powershell "Expand-Archive -Path stash.zip -Force -DestinationPath ."
+    } else {
+        sh "scp c1:/vol/cache/binaries-${env.BUILD_TAG}-${os}-${edition}.tar.gz stash.tar.gz"
+        sh "tar xpzf stash.tar.gz"
+    }
 }
 
 // -----------------------------------------------------------------------------
@@ -432,7 +456,7 @@ def getTests(os, edition, mode, engine) {
   }
 }
 
-def testEdition(os, edition, mode, engine, port) {
+def executeTests(os, edition, mode, engine, port) {
     def arch = "LOG_test_${os}_${edition}_${mode}_${engine}"
 
     if (os == 'linux' || os == 'mac') {
@@ -464,17 +488,19 @@ def testEdition(os, edition, mode, engine, port) {
         }
 
         testMap["test-${os}-${edition}-${mode}-${engine}-${name}"] = {
-            // copy in groovy
             testArgs += " --minPort " + port
             testArgs += " --maxPort " + (port + portInterval - 1)
             def command = "build/bin/arangosh --log.level warning --javascript.execute UnitTests/unittest.js ${test} -- "
             command += testArgs
             lock("test-${env.NODE_NAME}-${env.JOB_NAME}-${env.BUILD_ID}-${edition}-${engine}-${lockIndex}") {
-                timeout(15) {
-                    if (os == "windows") {
-                        powershell command
-                    } else {
-                        sh command
+                timeout(30) {
+                    def tmpDir = pwd() + "/tmp"
+                    withEnv(["TMPDIR=${tmpDir}", "TEMPDIR=${tmpDir}", "TMP=${tmpDir}"]) {
+                        if (os == "windows") {
+                            powershell command
+                        } else {
+                            sh command
+                        }
                     }
                 }
             }
@@ -540,23 +566,21 @@ def testStep(os, edition, mode, engine) {
             def buildName = "${os}-${edition}"
             def name = "${os}-${edition}-${mode}-${engine}"
             stage("test-${name}") {
-                // seriously...60 minutes is the super absolute max max max.
-                // even in the worst situations ArangoDB MUST be able to finish within 60 minutes
-                // even if the features are green this is completely broken performance wise..
-                // DO NOT INCREASE!!
-                def port = 0
+                fileOperations([folderDeleteOperation('tmp'), folderDeleteOperation('build/bin'), folderDeleteOperation('js'), folderDeleteOperation('out'), folderCreateOperation('tmp'),  fileDeleteOperation(excludes: '', includes: 'core.*,*.dmp')])
                 unstashBinaries(os, edition)
+                def port = 0
                 port = getStartPort(os) as Integer
                 echo "Using start port: ${port}"
                 if (os == "windows") {
                     powershell "copy build\\bin\\RelWithDebInfo\\* build\\bin"
-                    powershell "Installation/Pipeline/include/test_setup_tmp.ps1"
-                } else {
-                    sh "chmod +x Installation/Pipeline/include/test_setup_tmp.inc && sh Installation/Pipeline/include/test_setup_tmp.inc"
                 }
+                // seriously...60 minutes is the super absolute max max max.
+                // even in the worst situations ArangoDB MUST be able to finish within 60 minutes
+                // even if the features are green this is completely broken performance wise..
+                // DO NOT INCREASE!!
                 timeout(60) {
                     try {
-                        testEdition(os, edition, mode, engine, port)
+                        executeTests(os, edition, mode, engine, port)
                     }
                     finally {
                         def arch = "LOG_test_${os}_${edition}_${mode}_${engine}"
@@ -590,19 +614,15 @@ def testStep(os, edition, mode, engine) {
     }
 }
 
-def testStepParallel(osList, editionList, modeList) {
+def testStepParallel(os, edition, modeList) {
     def branches = [:]
 
-    for (os in osList) {
-        for (edition in editionList) {
-            for (mode in modeList) {
-                for (engine in ['mmfiles', 'rocksdb']) {
-                    if (testCheck(os, edition, mode, engine)) {
-                        def name = "test-${os}-${edition}-${mode}-${engine}";
+    for (mode in modeList) {
+        for (engine in ['mmfiles', 'rocksdb']) {
+            if (testCheck(os, edition, mode, engine)) {
+                def name = "test-${os}-${edition}-${mode}-${engine}";
 
-                        branches[name] = testStep(os, edition, mode, engine)
-                    }
-                }
+                branches[name] = testStep(os, edition, mode, engine)
             }
         }
     }
@@ -740,42 +760,24 @@ def testStepParallel(osList, editionList, modeList) {
 def buildEdition(os, edition) {
     def arch = "LOG_build_${os}_${edition}"
 
-    if (os == 'linux' || os == 'mac') {
-       sh "rm -rf ${arch}"
-       sh "mkdir -p ${arch}"
+    fileOperations([folderDeleteOperation(arch), folderCreateOperation(arch)])
+    if (os == 'linux') {
+        sh "./Installation/Pipeline/linux/build_${os}_${edition}.sh 64"
+    }
+    else if (os == 'mac') {
+        sh "./Installation/Pipeline/mac/build_${os}_${edition}.sh 16"
     }
     else if (os == 'windows') {
-        bat "del /F /Q ${arch}"
-        powershell "New-Item -ItemType Directory -Force -Path ${arch}"
-    }
-
-    try {
-        if (os == 'linux') {
-            sh "./Installation/Pipeline/linux/build_${os}_${edition}.sh 64"
-        }
-        else if (os == 'mac') {
-            sh "./Installation/Pipeline/mac/build_${os}_${edition}.sh 16"
-        }
-        else if (os == 'windows') {
-            // i concede...we need a lock for windows...I could not get it to run concurrently...
-            // v8 would not build multiple times at the same time on the same machine:
-            // PDB API call failed, error code '24': ' etc etc
-            // in theory it should be possible to parallelize it by setting an environment variable (see the build script) but for v8 it won't work :(
-            // feel free to recheck if there is time somewhen...this thing here really should not be possible but
-            // ensure that there are 2 concurrent builds on the SAME node building v8 at the same time to properly test it
-            // I just don't want any more "yeah that might randomly fail. just restart" sentences any more
-            def hostname = powershell(returnStdout: true, script: "hostname")
-            lock('build-${hostname}') {
-                powershell ". .\\Installation\\Pipeline\\windows\\build_${os}_${edition}.ps1"
-            }
-        }
-    }
-    finally {
-        if (os == 'linux' || os == 'mac') {
-            sh "for i in log-output; do test -e \"\$i\" && mv \"\$i\" ${arch} || true; done"
-        }
-        else if (os == 'windows') {
-            powershell "Move-Item -ErrorAction Ignore -Path log-output/* -Destination ${arch}"
+        // i concede...we need a lock for windows...I could not get it to run concurrently...
+        // v8 would not build multiple times at the same time on the same machine:
+        // PDB API call failed, error code '24': ' etc etc
+        // in theory it should be possible to parallelize it by setting an environment variable (see the build script) but for v8 it won't work :(
+        // feel free to recheck if there is time somewhen...this thing here really should not be possible but
+        // ensure that there are 2 concurrent builds on the SAME node building v8 at the same time to properly test it
+        // I just don't want any more "yeah that might randomly fail. just restart" sentences any more
+        def hostname = powershell(returnStdout: true, script: "hostname")
+        lock('build-${hostname}') {
+            powershell ". .\\Installation\\Pipeline\\windows\\build_${os}_${edition}.ps1"
         }
     }
 }
@@ -825,19 +827,21 @@ def runEdition(os, edition) {
 
                 timeout(90) {
                     buildEdition(os, edition)
+                    // we only need one jslint test per edition
+                    if (os == "linux") {
+                        stage("jslint-${edition}") {
+                            echo "Running jslint for ${edition}"
+                            jslint()
+                        }
+                    }
                     stashBinaries(os, edition)
                 }
 
-                // we only need one jslint test per edition
-                if (os == "linux") {
-                    stage("jslint-${edition}") {
-                        echo "Running jslint for ${edition}"
-                        jslint()
-                    }
-                }
+
             }
         }
-        testStepParallel([os], [edition], ['cluster', 'singleserver'])
+
+        testStepParallel(os, edition, ['cluster', 'singleserver'])
     }
 }
 
