@@ -382,6 +382,7 @@ void collect_terms_within(
   // align the min_term granularity level with max_term granularity level
   // ...........................................................................
 
+  auto* exact_min_term = min_term.empty() ? nullptr : &(min_term.begin()->second);
   auto max_term_itr = max_term.rbegin();
 
   // align min_term granularity level to be <= max_term_itr (to ensure min_term term is not a superset of max_term)
@@ -396,7 +397,7 @@ void collect_terms_within(
       const auto& max_term_level = mask_granularity(max_term_value, prefix_size);
 
       if (min_term_level == max_term_level) {
-        if (min_term_value != max_term_value) {
+        if (min_term_value != max_term_value || exact_min_term == &min_term_value) {
           break; // aligned matching granularity levels with terms in different ranges
         }
 
@@ -414,8 +415,6 @@ void collect_terms_within(
   // now min_term_itr is aligned with some granularity value in max_term
   // collect the least-granular term range
   // ...........................................................................
-
-  auto* exact_min_term = min_term.empty() ? nullptr : &(min_term.begin()->second);
 
   // seek to least-granular term, advance by one and seek to end, (end is when masked next term is < masked current term)
   collect_terms_between(
