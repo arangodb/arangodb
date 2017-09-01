@@ -627,7 +627,7 @@ SECTION("StringTerm") {
     }
   }
 
-  // inavlid type
+  // invalid type
   {
     auto queryResult = executeQuery(
       vocbase,
@@ -647,7 +647,7 @@ SECTION("StringTerm") {
     }
   }
 
-  // inavlid type
+  // invalid type
   {
     auto queryResult = executeQuery(
       vocbase,
@@ -667,7 +667,7 @@ SECTION("StringTerm") {
     }
   }
 
-  // inavlid type
+  // invalid type
   {
     auto queryResult = executeQuery(
       vocbase,
@@ -687,7 +687,7 @@ SECTION("StringTerm") {
     }
   }
 
-  // inavlid type
+  // invalid type
   {
     auto queryResult = executeQuery(
       vocbase,
@@ -903,6 +903,105 @@ SECTION("StringTerm") {
   // --SECTION--                                                                !=
   // -----------------------------------------------------------------------------
 
+  // invalid type, unordered
+  {
+    std::map<irs::string_ref, arangodb::ManagedDocumentResult const*> expectedDocs;
+    for (auto const& doc : insertedDocs) {
+      arangodb::velocypack::Slice docSlice(doc.vpack());
+      auto const keySlice = docSlice.get("name");
+      expectedDocs.emplace(arangodb::iresearch::getStringRef(keySlice), &doc);
+    }
+
+    auto queryResult = executeQuery(
+      vocbase,
+      "FOR d IN VIEW testView FILTER d.name != 0 RETURN d"
+    );
+    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+
+    auto result = queryResult.result->slice();
+    CHECK(result.isArray());
+
+    arangodb::velocypack::ArrayIterator resultIt(result);
+    CHECK(expectedDocs.size() == resultIt.size());
+
+    for (auto const actualDoc : resultIt) {
+      auto const resolved = actualDoc.resolveExternals();
+      auto const keySlice = resolved.get("name");
+      auto const key = arangodb::iresearch::getStringRef(keySlice);
+
+      auto expectedDoc = expectedDocs.find(key);
+      REQUIRE(expectedDoc != expectedDocs.end());
+      CHECK(arangodb::velocypack::Slice(expectedDoc->second->vpack()) == resolved);
+      expectedDocs.erase(expectedDoc);
+    }
+    CHECK(expectedDocs.empty());
+  }
+
+  // invalid type, unordered
+  {
+    std::map<irs::string_ref, arangodb::ManagedDocumentResult const*> expectedDocs;
+    for (auto const& doc : insertedDocs) {
+      arangodb::velocypack::Slice docSlice(doc.vpack());
+      auto const keySlice = docSlice.get("name");
+      expectedDocs.emplace(arangodb::iresearch::getStringRef(keySlice), &doc);
+    }
+
+    auto queryResult = executeQuery(
+      vocbase,
+      "FOR d IN VIEW testView FILTER d.name != false RETURN d"
+    );
+    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+
+    auto result = queryResult.result->slice();
+    CHECK(result.isArray());
+
+    arangodb::velocypack::ArrayIterator resultIt(result);
+    CHECK(expectedDocs.size() == resultIt.size());
+
+    for (auto const actualDoc : resultIt) {
+      auto const resolved = actualDoc.resolveExternals();
+      auto const keySlice = resolved.get("name");
+      auto const key = arangodb::iresearch::getStringRef(keySlice);
+
+      auto expectedDoc = expectedDocs.find(key);
+      REQUIRE(expectedDoc != expectedDocs.end());
+      CHECK(arangodb::velocypack::Slice(expectedDoc->second->vpack()) == resolved);
+      expectedDocs.erase(expectedDoc);
+    }
+    CHECK(expectedDocs.empty());
+  }
+
+  // invalid type, d.seq DESC
+  {
+    std::map<ptrdiff_t, arangodb::ManagedDocumentResult const*> expectedDocs;
+    for (auto const& doc : insertedDocs) {
+      arangodb::velocypack::Slice docSlice(doc.vpack());
+      auto const keySlice = docSlice.get("seq");
+      expectedDocs.emplace(keySlice.getNumber<ptrdiff_t>(), &doc);
+    }
+
+    auto queryResult = executeQuery(
+      vocbase,
+      "FOR d IN VIEW testView FILTER d.name != null SORT d.seq DESC RETURN d"
+    );
+    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+
+    auto result = queryResult.result->slice();
+    CHECK(result.isArray());
+
+    arangodb::velocypack::ArrayIterator resultIt(result);
+    CHECK(expectedDocs.size() == resultIt.size());
+
+    auto expectedDoc = expectedDocs.rbegin();
+    for (auto const actualDoc : resultIt) {
+      auto const resolved = actualDoc.resolveExternals();
+
+      CHECK(arangodb::velocypack::Slice(expectedDoc->second->vpack()) == resolved);
+      ++expectedDoc;
+    }
+    CHECK(expectedDoc == expectedDocs.rend());
+  }
+
   // missing term, unordered
   {
     std::map<irs::string_ref, arangodb::ManagedDocumentResult const*> expectedDocs;
@@ -1057,6 +1156,66 @@ SECTION("StringTerm") {
   // --SECTION--                                                                 <
   // -----------------------------------------------------------------------------
 
+  // invalid type
+  {
+    auto queryResult = executeQuery(
+      vocbase,
+      "FOR d IN VIEW testView FILTER d.name < null RETURN d"
+    );
+    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+
+    auto result = queryResult.result->slice();
+    CHECK(result.isArray());
+
+    arangodb::velocypack::ArrayIterator resultIt(result);
+    CHECK(0 == resultIt.size());
+
+    for (auto const actualDoc : resultIt) {
+      UNUSED(actualDoc);
+      CHECK(false);
+    }
+  }
+
+  // invalid type
+  {
+    auto queryResult = executeQuery(
+      vocbase,
+      "FOR d IN VIEW testView FILTER d.name < true RETURN d"
+    );
+    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+
+    auto result = queryResult.result->slice();
+    CHECK(result.isArray());
+
+    arangodb::velocypack::ArrayIterator resultIt(result);
+    CHECK(0 == resultIt.size());
+
+    for (auto const actualDoc : resultIt) {
+      UNUSED(actualDoc);
+      CHECK(false);
+    }
+  }
+
+  // invalid type
+  {
+    auto queryResult = executeQuery(
+      vocbase,
+      "FOR d IN VIEW testView FILTER d.name < 0 RETURN d"
+    );
+    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+
+    auto result = queryResult.result->slice();
+    CHECK(result.isArray());
+
+    arangodb::velocypack::ArrayIterator resultIt(result);
+    CHECK(0 == resultIt.size());
+
+    for (auto const actualDoc : resultIt) {
+      UNUSED(actualDoc);
+      CHECK(false);
+    }
+  }
+
   // d.name < 'H', unordered
   {
     std::map<irs::string_ref, arangodb::ManagedDocumentResult const*> expectedDocs;
@@ -1153,6 +1312,66 @@ SECTION("StringTerm") {
   // --SECTION--                                                                <=
   // -----------------------------------------------------------------------------
 
+  // invalid type
+  {
+    auto queryResult = executeQuery(
+      vocbase,
+      "FOR d IN VIEW testView FILTER d.name <= null RETURN d"
+    );
+    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+
+    auto result = queryResult.result->slice();
+    CHECK(result.isArray());
+
+    arangodb::velocypack::ArrayIterator resultIt(result);
+    CHECK(0 == resultIt.size());
+
+    for (auto const actualDoc : resultIt) {
+      UNUSED(actualDoc);
+      CHECK(false);
+    }
+  }
+
+  // invalid type
+  {
+    auto queryResult = executeQuery(
+      vocbase,
+      "FOR d IN VIEW testView FILTER d.name <= true RETURN d"
+    );
+    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+
+    auto result = queryResult.result->slice();
+    CHECK(result.isArray());
+
+    arangodb::velocypack::ArrayIterator resultIt(result);
+    CHECK(0 == resultIt.size());
+
+    for (auto const actualDoc : resultIt) {
+      UNUSED(actualDoc);
+      CHECK(false);
+    }
+  }
+
+  // invalid type
+  {
+    auto queryResult = executeQuery(
+      vocbase,
+      "FOR d IN VIEW testView FILTER d.name <= 0 RETURN d"
+    );
+    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+
+    auto result = queryResult.result->slice();
+    CHECK(result.isArray());
+
+    arangodb::velocypack::ArrayIterator resultIt(result);
+    CHECK(0 == resultIt.size());
+
+    for (auto const actualDoc : resultIt) {
+      UNUSED(actualDoc);
+      CHECK(false);
+    }
+  }
+
   // d.name <= 'H', unordered
   {
     std::map<irs::string_ref, arangodb::ManagedDocumentResult const*> expectedDocs;
@@ -1241,6 +1460,66 @@ SECTION("StringTerm") {
   // -----------------------------------------------------------------------------
   // --SECTION--                                                                 >
   // -----------------------------------------------------------------------------
+
+  // invalid type
+  {
+    auto queryResult = executeQuery(
+      vocbase,
+      "FOR d IN VIEW testView FILTER d.name > null RETURN d"
+    );
+    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+
+    auto result = queryResult.result->slice();
+    CHECK(result.isArray());
+
+    arangodb::velocypack::ArrayIterator resultIt(result);
+    CHECK(0 == resultIt.size());
+
+    for (auto const actualDoc : resultIt) {
+      UNUSED(actualDoc);
+      CHECK(false);
+    }
+  }
+
+  // invalid type
+  {
+    auto queryResult = executeQuery(
+      vocbase,
+      "FOR d IN VIEW testView FILTER d.name > true RETURN d"
+    );
+    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+
+    auto result = queryResult.result->slice();
+    CHECK(result.isArray());
+
+    arangodb::velocypack::ArrayIterator resultIt(result);
+    CHECK(0 == resultIt.size());
+
+    for (auto const actualDoc : resultIt) {
+      UNUSED(actualDoc);
+      CHECK(false);
+    }
+  }
+
+  // invalid type
+  {
+    auto queryResult = executeQuery(
+      vocbase,
+      "FOR d IN VIEW testView FILTER d.name > 0 RETURN d"
+    );
+    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+
+    auto result = queryResult.result->slice();
+    CHECK(result.isArray());
+
+    arangodb::velocypack::ArrayIterator resultIt(result);
+    CHECK(0 == resultIt.size());
+
+    for (auto const actualDoc : resultIt) {
+      UNUSED(actualDoc);
+      CHECK(false);
+    }
+  }
 
   // d.name > 'H', unordered
   {
@@ -1334,7 +1613,67 @@ SECTION("StringTerm") {
   // --SECTION--                                                                >=
   // -----------------------------------------------------------------------------
 
-  // d.name > 'H', unordered
+  // invalid type
+  {
+    auto queryResult = executeQuery(
+      vocbase,
+      "FOR d IN VIEW testView FILTER d.name >= null RETURN d"
+    );
+    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+
+    auto result = queryResult.result->slice();
+    CHECK(result.isArray());
+
+    arangodb::velocypack::ArrayIterator resultIt(result);
+    CHECK(0 == resultIt.size());
+
+    for (auto const actualDoc : resultIt) {
+      UNUSED(actualDoc);
+      CHECK(false);
+    }
+  }
+
+  // invalid type
+  {
+    auto queryResult = executeQuery(
+      vocbase,
+      "FOR d IN VIEW testView FILTER d.name >= true RETURN d"
+    );
+    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+
+    auto result = queryResult.result->slice();
+    CHECK(result.isArray());
+
+    arangodb::velocypack::ArrayIterator resultIt(result);
+    CHECK(0 == resultIt.size());
+
+    for (auto const actualDoc : resultIt) {
+      UNUSED(actualDoc);
+      CHECK(false);
+    }
+  }
+
+  // invalid type
+  {
+    auto queryResult = executeQuery(
+      vocbase,
+      "FOR d IN VIEW testView FILTER d.name >= 0 RETURN d"
+    );
+    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+
+    auto result = queryResult.result->slice();
+    CHECK(result.isArray());
+
+    arangodb::velocypack::ArrayIterator resultIt(result);
+    CHECK(0 == resultIt.size());
+
+    for (auto const actualDoc : resultIt) {
+      UNUSED(actualDoc);
+      CHECK(false);
+    }
+  }
+
+  // d.name >= 'H', unordered
   {
     std::map<irs::string_ref, arangodb::ManagedDocumentResult const*> expectedDocs;
     for (auto const& doc : insertedDocs) {
@@ -1423,7 +1762,67 @@ SECTION("StringTerm") {
   // --SECTION--                                                      Range (>, <)
   // -----------------------------------------------------------------------------
 
-  // d.name > 'H' AND d.name < 'S' , unordered
+  // invalid type
+  {
+    auto queryResult = executeQuery(
+      vocbase,
+      "FOR d IN VIEW testView FILTER d.name > null AND d.name < 'Z' RETURN d"
+    );
+    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+
+    auto result = queryResult.result->slice();
+    CHECK(result.isArray());
+
+    arangodb::velocypack::ArrayIterator resultIt(result);
+    CHECK(0 == resultIt.size());
+
+    for (auto const actualDoc : resultIt) {
+      UNUSED(actualDoc);
+      CHECK(false);
+    }
+  }
+
+  // invalid type
+  {
+    auto queryResult = executeQuery(
+      vocbase,
+      "FOR d IN VIEW testView FILTER d.name > true AND d.name < 'Z' RETURN d"
+    );
+    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+
+    auto result = queryResult.result->slice();
+    CHECK(result.isArray());
+
+    arangodb::velocypack::ArrayIterator resultIt(result);
+    CHECK(0 == resultIt.size());
+
+    for (auto const actualDoc : resultIt) {
+      UNUSED(actualDoc);
+      CHECK(false);
+    }
+  }
+
+  // invalid type
+  {
+    auto queryResult = executeQuery(
+      vocbase,
+      "FOR d IN VIEW testView FILTER d.name > 0 AND d.name < 'Z' RETURN d"
+    );
+    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+
+    auto result = queryResult.result->slice();
+    CHECK(result.isArray());
+
+    arangodb::velocypack::ArrayIterator resultIt(result);
+    CHECK(0 == resultIt.size());
+
+    for (auto const actualDoc : resultIt) {
+      UNUSED(actualDoc);
+      CHECK(false);
+    }
+  }
+
+  // d.name > 'H' AND d.name < 'S', unordered
   {
     std::map<irs::string_ref, arangodb::ManagedDocumentResult const*> expectedDocs;
     for (auto const& doc : insertedDocs) {
@@ -1532,6 +1931,66 @@ SECTION("StringTerm") {
   // -----------------------------------------------------------------------------
   // --SECTION--                                                     Range (>=, <)
   // -----------------------------------------------------------------------------
+
+  // invalid type
+  {
+    auto queryResult = executeQuery(
+      vocbase,
+      "FOR d IN VIEW testView FILTER d.name >= null AND d.name < 'Z' RETURN d"
+    );
+    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+
+    auto result = queryResult.result->slice();
+    CHECK(result.isArray());
+
+    arangodb::velocypack::ArrayIterator resultIt(result);
+    CHECK(0 == resultIt.size());
+
+    for (auto const actualDoc : resultIt) {
+      UNUSED(actualDoc);
+      CHECK(false);
+    }
+  }
+
+  // invalid type
+  {
+    auto queryResult = executeQuery(
+      vocbase,
+      "FOR d IN VIEW testView FILTER d.name >= true AND d.name < 'Z' RETURN d"
+    );
+    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+
+    auto result = queryResult.result->slice();
+    CHECK(result.isArray());
+
+    arangodb::velocypack::ArrayIterator resultIt(result);
+    CHECK(0 == resultIt.size());
+
+    for (auto const actualDoc : resultIt) {
+      UNUSED(actualDoc);
+      CHECK(false);
+    }
+  }
+
+  // invalid type
+  {
+    auto queryResult = executeQuery(
+      vocbase,
+      "FOR d IN VIEW testView FILTER d.name >= 0 AND d.name < 'Z' RETURN d"
+    );
+    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+
+    auto result = queryResult.result->slice();
+    CHECK(result.isArray());
+
+    arangodb::velocypack::ArrayIterator resultIt(result);
+    CHECK(0 == resultIt.size());
+
+    for (auto const actualDoc : resultIt) {
+      UNUSED(actualDoc);
+      CHECK(false);
+    }
+  }
 
   // d.name >= 'H' AND d.name < 'S' , unordered
   {
@@ -1643,6 +2102,66 @@ SECTION("StringTerm") {
   // --SECTION--                                                     Range (>, <=)
   // -----------------------------------------------------------------------------
 
+  // invalid type
+  {
+    auto queryResult = executeQuery(
+      vocbase,
+      "FOR d IN VIEW testView FILTER d.name > null AND d.name <= 'Z' RETURN d"
+    );
+    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+
+    auto result = queryResult.result->slice();
+    CHECK(result.isArray());
+
+    arangodb::velocypack::ArrayIterator resultIt(result);
+    CHECK(0 == resultIt.size());
+
+    for (auto const actualDoc : resultIt) {
+      UNUSED(actualDoc);
+      CHECK(false);
+    }
+  }
+
+  // invalid type
+  {
+    auto queryResult = executeQuery(
+      vocbase,
+      "FOR d IN VIEW testView FILTER d.name > true AND d.name <= 'Z' RETURN d"
+    );
+    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+
+    auto result = queryResult.result->slice();
+    CHECK(result.isArray());
+
+    arangodb::velocypack::ArrayIterator resultIt(result);
+    CHECK(0 == resultIt.size());
+
+    for (auto const actualDoc : resultIt) {
+      UNUSED(actualDoc);
+      CHECK(false);
+    }
+  }
+
+  // invalid type
+  {
+    auto queryResult = executeQuery(
+      vocbase,
+      "FOR d IN VIEW testView FILTER d.name > 0 AND d.name <= 'Z' RETURN d"
+    );
+    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+
+    auto result = queryResult.result->slice();
+    CHECK(result.isArray());
+
+    arangodb::velocypack::ArrayIterator resultIt(result);
+    CHECK(0 == resultIt.size());
+
+    for (auto const actualDoc : resultIt) {
+      UNUSED(actualDoc);
+      CHECK(false);
+    }
+  }
+
   // d.name >= 'H' AND d.name <= 'S' , unordered
   {
     std::map<irs::string_ref, arangodb::ManagedDocumentResult const*> expectedDocs;
@@ -1752,6 +2271,66 @@ SECTION("StringTerm") {
   // -----------------------------------------------------------------------------
   // --SECTION--                                                    Range (>=, <=)
   // -----------------------------------------------------------------------------
+
+  // invalid type
+  {
+    auto queryResult = executeQuery(
+      vocbase,
+      "FOR d IN VIEW testView FILTER d.name >= null AND d.name <= 'Z' RETURN d"
+    );
+    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+
+    auto result = queryResult.result->slice();
+    CHECK(result.isArray());
+
+    arangodb::velocypack::ArrayIterator resultIt(result);
+    CHECK(0 == resultIt.size());
+
+    for (auto const actualDoc : resultIt) {
+      UNUSED(actualDoc);
+      CHECK(false);
+    }
+  }
+
+  // invalid type
+  {
+    auto queryResult = executeQuery(
+      vocbase,
+      "FOR d IN VIEW testView FILTER d.name >= true AND d.name <= 'Z' RETURN d"
+    );
+    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+
+    auto result = queryResult.result->slice();
+    CHECK(result.isArray());
+
+    arangodb::velocypack::ArrayIterator resultIt(result);
+    CHECK(0 == resultIt.size());
+
+    for (auto const actualDoc : resultIt) {
+      UNUSED(actualDoc);
+      CHECK(false);
+    }
+  }
+
+  // invalid type
+  {
+    auto queryResult = executeQuery(
+      vocbase,
+      "FOR d IN VIEW testView FILTER d.name >= 0 AND d.name <= 'Z' RETURN d"
+    );
+    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+
+    auto result = queryResult.result->slice();
+    CHECK(result.isArray());
+
+    arangodb::velocypack::ArrayIterator resultIt(result);
+    CHECK(0 == resultIt.size());
+
+    for (auto const actualDoc : resultIt) {
+      UNUSED(actualDoc);
+      CHECK(false);
+    }
+  }
 
   // d.name >= 'H' AND d.name <= 'S' , unordered
   {
@@ -2327,6 +2906,105 @@ SECTION("NumericTerm") {
   // --SECTION--                                                                !=
   // -----------------------------------------------------------------------------
 
+  // invalid type, unordered
+  {
+    std::map<irs::string_ref, arangodb::ManagedDocumentResult const*> expectedDocs;
+    for (auto const& doc : insertedDocs) {
+      arangodb::velocypack::Slice docSlice(doc.vpack());
+      auto const keySlice = docSlice.get("name");
+      expectedDocs.emplace(arangodb::iresearch::getStringRef(keySlice), &doc);
+    }
+
+    auto queryResult = executeQuery(
+      vocbase,
+      "FOR d IN VIEW testView FILTER d.seq != '0' RETURN d"
+    );
+    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+
+    auto result = queryResult.result->slice();
+    CHECK(result.isArray());
+
+    arangodb::velocypack::ArrayIterator resultIt(result);
+    CHECK(expectedDocs.size() == resultIt.size());
+
+    for (auto const actualDoc : resultIt) {
+      auto const resolved = actualDoc.resolveExternals();
+      auto const keySlice = resolved.get("name");
+      auto const key = arangodb::iresearch::getStringRef(keySlice);
+
+      auto expectedDoc = expectedDocs.find(key);
+      REQUIRE(expectedDoc != expectedDocs.end());
+      CHECK(arangodb::velocypack::Slice(expectedDoc->second->vpack()) == resolved);
+      expectedDocs.erase(expectedDoc);
+    }
+    CHECK(expectedDocs.empty());
+  }
+
+  // invalid type, unordered
+  {
+    std::map<irs::string_ref, arangodb::ManagedDocumentResult const*> expectedDocs;
+    for (auto const& doc : insertedDocs) {
+      arangodb::velocypack::Slice docSlice(doc.vpack());
+      auto const keySlice = docSlice.get("name");
+      expectedDocs.emplace(arangodb::iresearch::getStringRef(keySlice), &doc);
+    }
+
+    auto queryResult = executeQuery(
+      vocbase,
+      "FOR d IN VIEW testView FILTER d.seq != false RETURN d"
+    );
+    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+
+    auto result = queryResult.result->slice();
+    CHECK(result.isArray());
+
+    arangodb::velocypack::ArrayIterator resultIt(result);
+    CHECK(expectedDocs.size() == resultIt.size());
+
+    for (auto const actualDoc : resultIt) {
+      auto const resolved = actualDoc.resolveExternals();
+      auto const keySlice = resolved.get("name");
+      auto const key = arangodb::iresearch::getStringRef(keySlice);
+
+      auto expectedDoc = expectedDocs.find(key);
+      REQUIRE(expectedDoc != expectedDocs.end());
+      CHECK(arangodb::velocypack::Slice(expectedDoc->second->vpack()) == resolved);
+      expectedDocs.erase(expectedDoc);
+    }
+    CHECK(expectedDocs.empty());
+  }
+
+  // invalid type, d.seq DESC
+  {
+    std::map<ptrdiff_t, arangodb::ManagedDocumentResult const*> expectedDocs;
+    for (auto const& doc : insertedDocs) {
+      arangodb::velocypack::Slice docSlice(doc.vpack());
+      auto const keySlice = docSlice.get("seq");
+      expectedDocs.emplace(keySlice.getNumber<ptrdiff_t>(), &doc);
+    }
+
+    auto queryResult = executeQuery(
+      vocbase,
+      "FOR d IN VIEW testView FILTER d.seq != null SORT d.seq DESC RETURN d"
+    );
+    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+
+    auto result = queryResult.result->slice();
+    CHECK(result.isArray());
+
+    arangodb::velocypack::ArrayIterator resultIt(result);
+    CHECK(expectedDocs.size() == resultIt.size());
+
+    auto expectedDoc = expectedDocs.rbegin();
+    for (auto const actualDoc : resultIt) {
+      auto const resolved = actualDoc.resolveExternals();
+
+      CHECK(arangodb::velocypack::Slice(expectedDoc->second->vpack()) == resolved);
+      ++expectedDoc;
+    }
+    CHECK(expectedDoc == expectedDocs.rend());
+  }
+
   // missing term, unordered
   {
     std::map<irs::string_ref, arangodb::ManagedDocumentResult const*> expectedDocs;
@@ -2499,6 +3177,70 @@ SECTION("NumericTerm") {
   // --SECTION--                                                                 <
   // -----------------------------------------------------------------------------
 
+  // invalid type
+  {
+    auto queryResult = executeQuery(
+      vocbase,
+      "FOR d IN VIEW testView FILTER d.seq < '0' RETURN d"
+    );
+    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+
+    auto result = queryResult.result->slice();
+    CHECK(result.isArray());
+
+    arangodb::velocypack::ArrayIterator resultIt(result);
+    CHECK(0 == resultIt.size());
+    CHECK(!resultIt.valid());
+  }
+
+  // invalid type
+  {
+    auto queryResult = executeQuery(
+      vocbase,
+      "FOR d IN VIEW testView FILTER d.seq < true RETURN d"
+    );
+    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+
+    auto result = queryResult.result->slice();
+    CHECK(result.isArray());
+
+    arangodb::velocypack::ArrayIterator resultIt(result);
+    CHECK(0 == resultIt.size());
+    CHECK(!resultIt.valid());
+  }
+
+  // invalid type
+  {
+    auto queryResult = executeQuery(
+      vocbase,
+      "FOR d IN VIEW testView FILTER d.seq < false RETURN d"
+    );
+    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+
+    auto result = queryResult.result->slice();
+    CHECK(result.isArray());
+
+    arangodb::velocypack::ArrayIterator resultIt(result);
+    CHECK(0 == resultIt.size());
+    CHECK(!resultIt.valid());
+  }
+
+  // invalid type
+  {
+    auto queryResult = executeQuery(
+      vocbase,
+      "FOR d IN VIEW testView FILTER d.seq < null RETURN d"
+    );
+    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+
+    auto result = queryResult.result->slice();
+    CHECK(result.isArray());
+
+    arangodb::velocypack::ArrayIterator resultIt(result);
+    CHECK(0 == resultIt.size());
+    CHECK(!resultIt.valid());
+  }
+
   // d.seq < 7, unordered
   {
     std::map<size_t, arangodb::ManagedDocumentResult const*> expectedDocs;
@@ -2660,6 +3402,70 @@ SECTION("NumericTerm") {
   // -----------------------------------------------------------------------------
   // --SECTION--                                                                <=
   // -----------------------------------------------------------------------------
+
+  // invalid type
+  {
+    auto queryResult = executeQuery(
+      vocbase,
+      "FOR d IN VIEW testView FILTER d.seq <= '0' RETURN d"
+    );
+    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+
+    auto result = queryResult.result->slice();
+    CHECK(result.isArray());
+
+    arangodb::velocypack::ArrayIterator resultIt(result);
+    CHECK(0 == resultIt.size());
+    CHECK(!resultIt.valid());
+  }
+
+  // invalid type
+  {
+    auto queryResult = executeQuery(
+      vocbase,
+      "FOR d IN VIEW testView FILTER d.seq <= true RETURN d"
+    );
+    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+
+    auto result = queryResult.result->slice();
+    CHECK(result.isArray());
+
+    arangodb::velocypack::ArrayIterator resultIt(result);
+    CHECK(0 == resultIt.size());
+    CHECK(!resultIt.valid());
+  }
+
+  // invalid type
+  {
+    auto queryResult = executeQuery(
+      vocbase,
+      "FOR d IN VIEW testView FILTER d.seq <= false RETURN d"
+    );
+    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+
+    auto result = queryResult.result->slice();
+    CHECK(result.isArray());
+
+    arangodb::velocypack::ArrayIterator resultIt(result);
+    CHECK(0 == resultIt.size());
+    CHECK(!resultIt.valid());
+  }
+
+  // invalid type
+  {
+    auto queryResult = executeQuery(
+      vocbase,
+      "FOR d IN VIEW testView FILTER d.seq <= null RETURN d"
+    );
+    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+
+    auto result = queryResult.result->slice();
+    CHECK(result.isArray());
+
+    arangodb::velocypack::ArrayIterator resultIt(result);
+    CHECK(0 == resultIt.size());
+    CHECK(!resultIt.valid());
+  }
 
   // d.seq <= 7, unordered
   {
@@ -2829,6 +3635,70 @@ SECTION("NumericTerm") {
   // --SECTION--                                                                 >
   // -----------------------------------------------------------------------------
 
+  // invalid type
+  {
+    auto queryResult = executeQuery(
+      vocbase,
+      "FOR d IN VIEW testView FILTER d.seq > '0' RETURN d"
+    );
+    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+
+    auto result = queryResult.result->slice();
+    CHECK(result.isArray());
+
+    arangodb::velocypack::ArrayIterator resultIt(result);
+    CHECK(0 == resultIt.size());
+    CHECK(!resultIt.valid());
+  }
+
+  // invalid type
+  {
+    auto queryResult = executeQuery(
+      vocbase,
+      "FOR d IN VIEW testView FILTER d.seq > true RETURN d"
+    );
+    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+
+    auto result = queryResult.result->slice();
+    CHECK(result.isArray());
+
+    arangodb::velocypack::ArrayIterator resultIt(result);
+    CHECK(0 == resultIt.size());
+    CHECK(!resultIt.valid());
+  }
+
+  // invalid type
+  {
+    auto queryResult = executeQuery(
+      vocbase,
+      "FOR d IN VIEW testView FILTER d.seq > false RETURN d"
+    );
+    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+
+    auto result = queryResult.result->slice();
+    CHECK(result.isArray());
+
+    arangodb::velocypack::ArrayIterator resultIt(result);
+    CHECK(0 == resultIt.size());
+    CHECK(!resultIt.valid());
+  }
+
+  // invalid type
+  {
+    auto queryResult = executeQuery(
+      vocbase,
+      "FOR d IN VIEW testView FILTER d.seq > null RETURN d"
+    );
+    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+
+    auto result = queryResult.result->slice();
+    CHECK(result.isArray());
+
+    arangodb::velocypack::ArrayIterator resultIt(result);
+    CHECK(0 == resultIt.size());
+    CHECK(!resultIt.valid());
+  }
+
   // d.seq > 7, unordered
   {
     std::map<size_t, arangodb::ManagedDocumentResult const*> expectedDocs;
@@ -2990,6 +3860,70 @@ SECTION("NumericTerm") {
   // -----------------------------------------------------------------------------
   // --SECTION--                                                                >=
   // -----------------------------------------------------------------------------
+
+  // invalid type
+  {
+    auto queryResult = executeQuery(
+      vocbase,
+      "FOR d IN VIEW testView FILTER d.seq >= '0' RETURN d"
+    );
+    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+
+    auto result = queryResult.result->slice();
+    CHECK(result.isArray());
+
+    arangodb::velocypack::ArrayIterator resultIt(result);
+    CHECK(0 == resultIt.size());
+    CHECK(!resultIt.valid());
+  }
+
+  // invalid type
+  {
+    auto queryResult = executeQuery(
+      vocbase,
+      "FOR d IN VIEW testView FILTER d.seq >= true RETURN d"
+    );
+    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+
+    auto result = queryResult.result->slice();
+    CHECK(result.isArray());
+
+    arangodb::velocypack::ArrayIterator resultIt(result);
+    CHECK(0 == resultIt.size());
+    CHECK(!resultIt.valid());
+  }
+
+  // invalid type
+  {
+    auto queryResult = executeQuery(
+      vocbase,
+      "FOR d IN VIEW testView FILTER d.seq >= false RETURN d"
+    );
+    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+
+    auto result = queryResult.result->slice();
+    CHECK(result.isArray());
+
+    arangodb::velocypack::ArrayIterator resultIt(result);
+    CHECK(0 == resultIt.size());
+    CHECK(!resultIt.valid());
+  }
+
+  // invalid type
+  {
+    auto queryResult = executeQuery(
+      vocbase,
+      "FOR d IN VIEW testView FILTER d.seq >= null RETURN d"
+    );
+    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+
+    auto result = queryResult.result->slice();
+    CHECK(result.isArray());
+
+    arangodb::velocypack::ArrayIterator resultIt(result);
+    CHECK(0 == resultIt.size());
+    CHECK(!resultIt.valid());
+  }
 
   // d.seq >= 7, unordered
   {
@@ -3155,6 +4089,70 @@ SECTION("NumericTerm") {
   // -----------------------------------------------------------------------------
   // --SECTION--                                                      Range (>, <)
   // -----------------------------------------------------------------------------
+
+  // invalid type
+  {
+    auto queryResult = executeQuery(
+      vocbase,
+      "FOR d IN VIEW testView FILTER d.seq > '0' AND d.seq < 15 RETURN d"
+    );
+    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+
+    auto result = queryResult.result->slice();
+    CHECK(result.isArray());
+
+    arangodb::velocypack::ArrayIterator resultIt(result);
+    CHECK(0 == resultIt.size());
+    CHECK(!resultIt.valid());
+  }
+
+  // invalid type
+  {
+    auto queryResult = executeQuery(
+      vocbase,
+      "FOR d IN VIEW testView FILTER d.seq > true AND d.seq < 15 RETURN d"
+    );
+    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+
+    auto result = queryResult.result->slice();
+    CHECK(result.isArray());
+
+    arangodb::velocypack::ArrayIterator resultIt(result);
+    CHECK(0 == resultIt.size());
+    CHECK(!resultIt.valid());
+  }
+
+  // invalid type
+  {
+    auto queryResult = executeQuery(
+      vocbase,
+      "FOR d IN VIEW testView FILTER d.seq > false AND d.seq < 15 RETURN d"
+    );
+    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+
+    auto result = queryResult.result->slice();
+    CHECK(result.isArray());
+
+    arangodb::velocypack::ArrayIterator resultIt(result);
+    CHECK(0 == resultIt.size());
+    CHECK(!resultIt.valid());
+  }
+
+  // invalid type
+  {
+    auto queryResult = executeQuery(
+      vocbase,
+      "FOR d IN VIEW testView FILTER d.seq > null AND d.seq < 15 RETURN d"
+    );
+    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+
+    auto result = queryResult.result->slice();
+    CHECK(result.isArray());
+
+    arangodb::velocypack::ArrayIterator resultIt(result);
+    CHECK(0 == resultIt.size());
+    CHECK(!resultIt.valid());
+  }
 
   // d.seq > 7 AND d.name < 18, unordered
   {
@@ -3380,6 +4378,70 @@ SECTION("NumericTerm") {
   // --SECTION--                                                     Range (>=, <)
   // -----------------------------------------------------------------------------
 
+  // invalid type
+  {
+    auto queryResult = executeQuery(
+      vocbase,
+      "FOR d IN VIEW testView FILTER d.seq >= '0' AND d.seq < 15 RETURN d"
+    );
+    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+
+    auto result = queryResult.result->slice();
+    CHECK(result.isArray());
+
+    arangodb::velocypack::ArrayIterator resultIt(result);
+    CHECK(0 == resultIt.size());
+    CHECK(!resultIt.valid());
+  }
+
+  // invalid type
+  {
+    auto queryResult = executeQuery(
+      vocbase,
+      "FOR d IN VIEW testView FILTER d.seq >= true AND d.seq < 15 RETURN d"
+    );
+    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+
+    auto result = queryResult.result->slice();
+    CHECK(result.isArray());
+
+    arangodb::velocypack::ArrayIterator resultIt(result);
+    CHECK(0 == resultIt.size());
+    CHECK(!resultIt.valid());
+  }
+
+  // invalid type
+  {
+    auto queryResult = executeQuery(
+      vocbase,
+      "FOR d IN VIEW testView FILTER d.seq >= false AND d.seq < 15 RETURN d"
+    );
+    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+
+    auto result = queryResult.result->slice();
+    CHECK(result.isArray());
+
+    arangodb::velocypack::ArrayIterator resultIt(result);
+    CHECK(0 == resultIt.size());
+    CHECK(!resultIt.valid());
+  }
+
+  // invalid type
+  {
+    auto queryResult = executeQuery(
+      vocbase,
+      "FOR d IN VIEW testView FILTER d.seq >= null AND d.seq < 15 RETURN d"
+    );
+    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+
+    auto result = queryResult.result->slice();
+    CHECK(result.isArray());
+
+    arangodb::velocypack::ArrayIterator resultIt(result);
+    CHECK(0 == resultIt.size());
+    CHECK(!resultIt.valid());
+  }
+
   // d.seq >= 7 AND d.seq < 18, unordered
   {
     std::map<size_t, arangodb::ManagedDocumentResult const*> expectedDocs;
@@ -3604,6 +4666,70 @@ SECTION("NumericTerm") {
   // --SECTION--                                                     Range (>, <=)
   // -----------------------------------------------------------------------------
 
+  // invalid type
+  {
+    auto queryResult = executeQuery(
+      vocbase,
+      "FOR d IN VIEW testView FILTER d.seq > '0' AND d.seq <= 15 RETURN d"
+    );
+    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+
+    auto result = queryResult.result->slice();
+    CHECK(result.isArray());
+
+    arangodb::velocypack::ArrayIterator resultIt(result);
+    CHECK(0 == resultIt.size());
+    CHECK(!resultIt.valid());
+  }
+
+  // invalid type
+  {
+    auto queryResult = executeQuery(
+      vocbase,
+      "FOR d IN VIEW testView FILTER d.seq > true AND d.seq <= 15 RETURN d"
+    );
+    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+
+    auto result = queryResult.result->slice();
+    CHECK(result.isArray());
+
+    arangodb::velocypack::ArrayIterator resultIt(result);
+    CHECK(0 == resultIt.size());
+    CHECK(!resultIt.valid());
+  }
+
+  // invalid type
+  {
+    auto queryResult = executeQuery(
+      vocbase,
+      "FOR d IN VIEW testView FILTER d.seq > false AND d.seq <= 15 RETURN d"
+    );
+    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+
+    auto result = queryResult.result->slice();
+    CHECK(result.isArray());
+
+    arangodb::velocypack::ArrayIterator resultIt(result);
+    CHECK(0 == resultIt.size());
+    CHECK(!resultIt.valid());
+  }
+
+  // invalid type
+  {
+    auto queryResult = executeQuery(
+      vocbase,
+      "FOR d IN VIEW testView FILTER d.seq > null AND d.seq <= 15 RETURN d"
+    );
+    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+
+    auto result = queryResult.result->slice();
+    CHECK(result.isArray());
+
+    arangodb::velocypack::ArrayIterator resultIt(result);
+    CHECK(0 == resultIt.size());
+    CHECK(!resultIt.valid());
+  }
+
   // d.seq > 7 AND d.seq <= 18, unordered
   {
     std::map<size_t, arangodb::ManagedDocumentResult const*> expectedDocs;
@@ -3827,6 +4953,70 @@ SECTION("NumericTerm") {
   // -----------------------------------------------------------------------------
   // --SECTION--                                                    Range (>=, <=)
   // -----------------------------------------------------------------------------
+
+  // invalid type
+  {
+    auto queryResult = executeQuery(
+      vocbase,
+      "FOR d IN VIEW testView FILTER d.seq >= '0' AND d.seq <= 15 RETURN d"
+    );
+    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+
+    auto result = queryResult.result->slice();
+    CHECK(result.isArray());
+
+    arangodb::velocypack::ArrayIterator resultIt(result);
+    CHECK(0 == resultIt.size());
+    CHECK(!resultIt.valid());
+  }
+
+  // invalid type
+  {
+    auto queryResult = executeQuery(
+      vocbase,
+      "FOR d IN VIEW testView FILTER d.seq >= true AND d.seq <= 15 RETURN d"
+    );
+    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+
+    auto result = queryResult.result->slice();
+    CHECK(result.isArray());
+
+    arangodb::velocypack::ArrayIterator resultIt(result);
+    CHECK(0 == resultIt.size());
+    CHECK(!resultIt.valid());
+  }
+
+  // invalid type
+  {
+    auto queryResult = executeQuery(
+      vocbase,
+      "FOR d IN VIEW testView FILTER d.seq >= false AND d.seq <= 15 RETURN d"
+    );
+    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+
+    auto result = queryResult.result->slice();
+    CHECK(result.isArray());
+
+    arangodb::velocypack::ArrayIterator resultIt(result);
+    CHECK(0 == resultIt.size());
+    CHECK(!resultIt.valid());
+  }
+
+  // invalid type
+  {
+    auto queryResult = executeQuery(
+      vocbase,
+      "FOR d IN VIEW testView FILTER d.seq >= null AND d.seq <= 15 RETURN d"
+    );
+    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+
+    auto result = queryResult.result->slice();
+    CHECK(result.isArray());
+
+    arangodb::velocypack::ArrayIterator resultIt(result);
+    CHECK(0 == resultIt.size());
+    CHECK(!resultIt.valid());
+  }
 
   // d.seq >= 7 AND d.seq <= 18, unordered
   {
@@ -6459,8 +7649,1270 @@ SECTION("BooleanTerm") {
   }
 }
 
+// ==, !=, <, <=, >, >=, range
+SECTION("NullTerm") {
+  TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "testVocbase");
+  arangodb::LogicalView* view{};
+  std::vector<arangodb::velocypack::Builder> insertedDocs;
+
+  // create collection0
+  {
+    auto createJson = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testCollection0\" }");
+    auto* collection = vocbase.createCollection(createJson->slice());
+    REQUIRE((nullptr != collection));
+
+    std::vector<std::shared_ptr<arangodb::velocypack::Builder>> docs {
+      arangodb::velocypack::Parser::fromJson("{ \"seq\": -7 }"),
+      arangodb::velocypack::Parser::fromJson("{ \"seq\": -6, \"value\": null}"),
+      arangodb::velocypack::Parser::fromJson("{ \"seq\": -5, \"value\": null}"),
+      arangodb::velocypack::Parser::fromJson("{ \"seq\": -4 }"),
+      arangodb::velocypack::Parser::fromJson("{ \"seq\": -3, \"value\": null}"),
+      arangodb::velocypack::Parser::fromJson("{ \"seq\": -2, \"value\": null}"),
+      arangodb::velocypack::Parser::fromJson("{ \"seq\": -1 }"),
+      arangodb::velocypack::Parser::fromJson("{ \"seq\": 0, \"value\": null }"),
+      arangodb::velocypack::Parser::fromJson("{ \"seq\": 1 }")
+    };
+
+    arangodb::OperationOptions options;
+    options.returnNew = true;
+    arangodb::SingleCollectionTransaction trx(
+      arangodb::transaction::StandaloneContext::Create(&vocbase),
+      collection->cid(),
+      arangodb::AccessMode::Type::WRITE
+    );
+    CHECK((trx.begin().ok()));
+
+    for (auto& entry: docs) {
+      auto res = trx.insert(collection->name(), entry->slice(), options);
+      CHECK((res.successful()));
+      insertedDocs.emplace_back(res.slice().get("new"));
+    }
+
+    CHECK((trx.commit().ok()));
+  }
+
+  // create collection1
+  {
+    auto createJson = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testCollection1\" }");
+    auto* collection = vocbase.createCollection(createJson->slice());
+    REQUIRE((nullptr != collection));
+
+    std::vector<std::shared_ptr<arangodb::velocypack::Builder>> docs {
+      arangodb::velocypack::Parser::fromJson("{ \"seq\": 2, \"value\": null}"),
+      arangodb::velocypack::Parser::fromJson("{ \"seq\": 3 }"),
+      arangodb::velocypack::Parser::fromJson("{ \"seq\": 4 }"),
+      arangodb::velocypack::Parser::fromJson("{ \"seq\": 5 }"),
+      arangodb::velocypack::Parser::fromJson("{ \"seq\": 6, \"value\": null}"),
+      arangodb::velocypack::Parser::fromJson("{ \"seq\": 7, \"value\": null}"),
+      arangodb::velocypack::Parser::fromJson("{ \"seq\": 8 }")
+    };
+
+    arangodb::OperationOptions options;
+    options.returnNew = true;
+    arangodb::SingleCollectionTransaction trx(
+      arangodb::transaction::StandaloneContext::Create(&vocbase),
+      collection->cid(),
+      arangodb::AccessMode::Type::WRITE
+    );
+    CHECK((trx.begin().ok()));
+
+    for (auto& entry: docs) {
+      auto res = trx.insert(collection->name(), entry->slice(), options);
+      CHECK((res.successful()));
+      insertedDocs.emplace_back(res.slice().get("new"));
+    }
+
+    CHECK((trx.commit().ok()));
+  }
+
+  // create view
+  {
+    auto createJson = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testView\", \"type\": \"iresearch\" }");
+    auto logicalView = vocbase.createView(createJson->slice(), 0);
+    REQUIRE((false == !logicalView));
+
+    view = logicalView.get();
+    REQUIRE(nullptr != view);
+    auto* impl = dynamic_cast<arangodb::iresearch::IResearchView*>(view->getImplementation());
+    REQUIRE((false == !impl));
+
+    auto updateJson = arangodb::velocypack::Parser::fromJson(
+      "{ \"links\": {"
+        "\"testCollection0\": { \"includeAllFields\": true, \"nestListValues\": true },"
+        "\"testCollection1\": { \"includeAllFields\": true }"
+      "}}"
+    );
+    CHECK((impl->updateProperties(updateJson->slice(), true, false).ok()));
+    CHECK((2 == impl->linkCount()));
+    impl->sync();
+  }
+
+  // -----------------------------------------------------------------------------
+  // --SECTION--                                                                ==
+  // -----------------------------------------------------------------------------
+
+  // invalid type
+  {
+    auto queryResult = executeQuery(
+      vocbase,
+      "FOR d IN VIEW testView FILTER d.value == 'null' RETURN d"
+    );
+    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+
+    auto result = queryResult.result->slice();
+    CHECK(result.isArray());
+
+    arangodb::velocypack::ArrayIterator resultIt(result);
+    CHECK(0 == resultIt.size());
+
+    for (auto const actualDoc : resultIt) {
+      UNUSED(actualDoc);
+      CHECK(false);
+    }
+  }
+
+  // invalid type
+  {
+    auto queryResult = executeQuery(
+      vocbase,
+      "FOR d IN VIEW testView FILTER d.value == 0 RETURN d"
+    );
+    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+
+    auto result = queryResult.result->slice();
+    CHECK(result.isArray());
+
+    arangodb::velocypack::ArrayIterator resultIt(result);
+    CHECK(0 == resultIt.size());
+
+    for (auto const actualDoc : resultIt) {
+      UNUSED(actualDoc);
+      CHECK(false);
+    }
+  }
+
+  // d.value == null, unordered
+  {
+    std::map<size_t, arangodb::velocypack::Slice> expectedDocs;
+    for (auto const& doc : insertedDocs) {
+      arangodb::velocypack::Slice docSlice = doc.slice();
+      auto const valueSlice = docSlice.get("value");
+      if (!valueSlice.isNull()) {
+        continue;
+      }
+      auto const keySlice = docSlice.get("seq");
+      expectedDocs.emplace(keySlice.getNumber<ptrdiff_t>(), docSlice);
+    }
+
+    auto queryResult = executeQuery(
+      vocbase,
+      "FOR d IN VIEW testView FILTER d.value == null RETURN d"
+    );
+    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+
+    auto result = queryResult.result->slice();
+    CHECK(result.isArray());
+
+    arangodb::velocypack::ArrayIterator resultIt(result);
+    CHECK(expectedDocs.size() == resultIt.size());
+
+    for (auto const actualDoc : resultIt) {
+      auto const resolved = actualDoc.resolveExternals();
+      auto const keySlice = resolved.get("seq");
+      auto const key = keySlice.getNumber<ptrdiff_t>();
+
+      auto expectedDoc = expectedDocs.find(key);
+      REQUIRE(expectedDoc != expectedDocs.end());
+      CHECK(expectedDoc->second == resolved);
+      expectedDocs.erase(expectedDoc);
+    }
+    CHECK(expectedDocs.empty());
+  }
+
+  // d.value == null, BM25(), TFIDF(), d.seq DESC
+  {
+    std::map<ptrdiff_t, arangodb::velocypack::Slice> expectedDocs;
+    for (auto const& doc : insertedDocs) {
+      arangodb::velocypack::Slice docSlice = doc.slice();
+      auto const valueSlice = docSlice.get("value");
+      if (!valueSlice.isNull()) {
+        continue;
+      }
+      auto const keySlice = docSlice.get("seq");
+      expectedDocs.emplace(keySlice.getNumber<ptrdiff_t>(), docSlice);
+    }
+
+    auto queryResult = executeQuery(
+      vocbase,
+      "FOR d IN VIEW testView FILTER d.value == null SORT BM25(d), TFIDF(d), d.seq DESC RETURN d"
+    );
+    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+
+    auto result = queryResult.result->slice();
+    CHECK(result.isArray());
+
+    arangodb::velocypack::ArrayIterator resultIt(result);
+    CHECK(expectedDocs.size() == resultIt.size());
+
+    auto expectedDoc = expectedDocs.rbegin();
+    for (auto const actualDoc : resultIt) {
+      auto const resolved = actualDoc.resolveExternals();
+      CHECK(expectedDoc->second == resolved);
+      ++expectedDoc;
+    }
+    CHECK(expectedDoc == expectedDocs.rend());
+  }
+
+  // -----------------------------------------------------------------------------
+  // --SECTION--                                                                !=
+  // -----------------------------------------------------------------------------
+
+  // invalid type
+  {
+    std::map<ptrdiff_t, arangodb::velocypack::Slice> expectedDocs;
+    for (auto const& doc : insertedDocs) {
+      arangodb::velocypack::Slice docSlice = doc.slice();
+      auto const keySlice = docSlice.get("seq");
+      expectedDocs.emplace(keySlice.getNumber<ptrdiff_t>(), docSlice);
+    }
+
+    auto queryResult = executeQuery(
+      vocbase,
+      "FOR d IN VIEW testView FILTER d.value != 'null' RETURN d"
+    );
+    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+
+    auto result = queryResult.result->slice();
+    CHECK(result.isArray());
+
+    arangodb::velocypack::ArrayIterator resultIt(result);
+    CHECK(expectedDocs.size() == resultIt.size());
+
+    for (auto const actualDoc : resultIt) {
+      auto const resolved = actualDoc.resolveExternals();
+      auto const keySlice = resolved.get("seq");
+      auto const key = keySlice.getNumber<ptrdiff_t>();
+
+      auto expectedDoc = expectedDocs.find(key);
+      REQUIRE(expectedDoc != expectedDocs.end());
+      CHECK(expectedDoc->second == resolved);
+      expectedDocs.erase(expectedDoc);
+    }
+    CHECK(expectedDocs.empty());
+  }
+
+  // invalid type
+  {
+    std::map<ptrdiff_t, arangodb::velocypack::Slice> expectedDocs;
+    for (auto const& doc : insertedDocs) {
+      arangodb::velocypack::Slice docSlice = doc.slice();
+      auto const keySlice = docSlice.get("seq");
+      expectedDocs.emplace(keySlice.getNumber<ptrdiff_t>(), docSlice);
+    }
+
+    auto queryResult = executeQuery(
+      vocbase,
+      "FOR d IN VIEW testView FILTER d.value != 0 RETURN d"
+    );
+    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+
+    auto result = queryResult.result->slice();
+    CHECK(result.isArray());
+
+    arangodb::velocypack::ArrayIterator resultIt(result);
+    CHECK(expectedDocs.size() == resultIt.size());
+
+    for (auto const actualDoc : resultIt) {
+      auto const resolved = actualDoc.resolveExternals();
+      auto const keySlice = resolved.get("seq");
+      auto const key = keySlice.getNumber<ptrdiff_t>();
+
+      auto expectedDoc = expectedDocs.find(key);
+      REQUIRE(expectedDoc != expectedDocs.end());
+      CHECK(expectedDoc->second == resolved);
+      expectedDocs.erase(expectedDoc);
+    }
+    CHECK(expectedDocs.empty());
+  }
+
+  // d.value != null, unordered
+  {
+    std::map<size_t, arangodb::velocypack::Slice> expectedDocs;
+    for (auto const& doc : insertedDocs) {
+      arangodb::velocypack::Slice docSlice = doc.slice();
+      auto const valueSlice = docSlice.get("value");
+      if (valueSlice.isNull()) {
+        continue;
+      }
+      auto const keySlice = docSlice.get("seq");
+      expectedDocs.emplace(keySlice.getNumber<ptrdiff_t>(), docSlice);
+    }
+
+    auto queryResult = executeQuery(
+      vocbase,
+      "FOR d IN VIEW testView FILTER d.value != null RETURN d"
+    );
+    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+
+    auto result = queryResult.result->slice();
+    CHECK(result.isArray());
+
+    arangodb::velocypack::ArrayIterator resultIt(result);
+    CHECK(expectedDocs.size() == resultIt.size());
+
+    for (auto const actualDoc : resultIt) {
+      auto const resolved = actualDoc.resolveExternals();
+      auto const keySlice = resolved.get("seq");
+      auto const key = keySlice.getNumber<ptrdiff_t>();
+
+      auto expectedDoc = expectedDocs.find(key);
+      REQUIRE(expectedDoc != expectedDocs.end());
+      CHECK(expectedDoc->second == resolved);
+      expectedDocs.erase(expectedDoc);
+    }
+    CHECK(expectedDocs.empty());
+  }
+
+  // d.value != null, BM25(), TFIDF(), d.seq DESC
+  {
+    std::map<ptrdiff_t, arangodb::velocypack::Slice> expectedDocs;
+    for (auto const& doc : insertedDocs) {
+      arangodb::velocypack::Slice docSlice = doc.slice();
+      auto const valueSlice = docSlice.get("value");
+      if (valueSlice.isNull()) {
+        continue;
+      }
+      auto const keySlice = docSlice.get("seq");
+      expectedDocs.emplace(keySlice.getNumber<ptrdiff_t>(), docSlice);
+    }
+
+    auto queryResult = executeQuery(
+      vocbase,
+      "FOR d IN VIEW testView FILTER d.value != null SORT BM25(d), TFIDF(d), d.seq DESC RETURN d"
+    );
+    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+
+    auto result = queryResult.result->slice();
+    CHECK(result.isArray());
+
+    arangodb::velocypack::ArrayIterator resultIt(result);
+    CHECK(expectedDocs.size() == resultIt.size());
+
+    auto expectedDoc = expectedDocs.rbegin();
+    for (auto const actualDoc : resultIt) {
+      auto const resolved = actualDoc.resolveExternals();
+      CHECK(expectedDoc->second == resolved);
+      ++expectedDoc;
+    }
+    CHECK(expectedDoc == expectedDocs.rend());
+  }
+
+  // -----------------------------------------------------------------------------
+  // --SECTION--                                                                 <
+  // -----------------------------------------------------------------------------
+
+  // invalid type
+  {
+    auto queryResult = executeQuery(
+      vocbase,
+      "FOR d IN VIEW testView FILTER d.value < 'null' RETURN d"
+    );
+    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+
+    auto result = queryResult.result->slice();
+    CHECK(result.isArray());
+
+    arangodb::velocypack::ArrayIterator resultIt(result);
+    CHECK(0 == resultIt.size());
+
+    for (auto const actualDoc : resultIt) {
+      UNUSED(actualDoc);
+      CHECK(false);
+    }
+  }
+
+  // invalid type
+  {
+    auto queryResult = executeQuery(
+      vocbase,
+      "FOR d IN VIEW testView FILTER d.value < false RETURN d"
+    );
+    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+
+    auto result = queryResult.result->slice();
+    CHECK(result.isArray());
+
+    arangodb::velocypack::ArrayIterator resultIt(result);
+    CHECK(0 == resultIt.size());
+
+    for (auto const actualDoc : resultIt) {
+      UNUSED(actualDoc);
+      CHECK(false);
+    }
+  }
+
+  // invalid type
+  {
+    auto queryResult = executeQuery(
+      vocbase,
+      "FOR d IN VIEW testView FILTER d.value < 0 RETURN d"
+    );
+    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+
+    auto result = queryResult.result->slice();
+    CHECK(result.isArray());
+
+    arangodb::velocypack::ArrayIterator resultIt(result);
+    CHECK(0 == resultIt.size());
+
+    for (auto const actualDoc : resultIt) {
+      UNUSED(actualDoc);
+      CHECK(false);
+    }
+  }
+
+  // d.value < null
+  {
+    auto queryResult = executeQuery(
+      vocbase,
+      "FOR d IN VIEW testView FILTER d.value < null RETURN d"
+    );
+    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+
+    auto result = queryResult.result->slice();
+    CHECK(result.isArray());
+
+    arangodb::velocypack::ArrayIterator resultIt(result);
+    CHECK(0 == resultIt.size());
+
+    for (auto const actualDoc : resultIt) {
+      UNUSED(actualDoc);
+      CHECK(false);
+    }
+  }
+
+  // -----------------------------------------------------------------------------
+  // --SECTION--                                                                <=
+  // -----------------------------------------------------------------------------
+
+  // invalid type
+  {
+    auto queryResult = executeQuery(
+      vocbase,
+      "FOR d IN VIEW testView FILTER d.value <= 'null' RETURN d"
+    );
+    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+
+    auto result = queryResult.result->slice();
+    CHECK(result.isArray());
+
+    arangodb::velocypack::ArrayIterator resultIt(result);
+    CHECK(0 == resultIt.size());
+
+    for (auto const actualDoc : resultIt) {
+      UNUSED(actualDoc);
+      CHECK(false);
+    }
+  }
+
+  // invalid type
+  {
+    auto queryResult = executeQuery(
+      vocbase,
+      "FOR d IN VIEW testView FILTER d.value <= false RETURN d"
+    );
+    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+
+    auto result = queryResult.result->slice();
+    CHECK(result.isArray());
+
+    arangodb::velocypack::ArrayIterator resultIt(result);
+    CHECK(0 == resultIt.size());
+
+    for (auto const actualDoc : resultIt) {
+      UNUSED(actualDoc);
+      CHECK(false);
+    }
+  }
+
+  // invalid type
+  {
+    auto queryResult = executeQuery(
+      vocbase,
+      "FOR d IN VIEW testView FILTER d.value <= 0 RETURN d"
+    );
+    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+
+    auto result = queryResult.result->slice();
+    CHECK(result.isArray());
+
+    arangodb::velocypack::ArrayIterator resultIt(result);
+    CHECK(0 == resultIt.size());
+
+    for (auto const actualDoc : resultIt) {
+      UNUSED(actualDoc);
+      CHECK(false);
+    }
+  }
+
+  // d.value <= null, unordered
+  {
+    std::map<size_t, arangodb::velocypack::Slice> expectedDocs;
+    for (auto const& doc : insertedDocs) {
+      arangodb::velocypack::Slice docSlice = doc.slice();
+      auto const valueSlice = docSlice.get("value");
+      if (valueSlice.isNone() || !valueSlice.isNull()) {
+        continue;
+      }
+      auto const keySlice = docSlice.get("seq");
+      expectedDocs.emplace(keySlice.getNumber<ptrdiff_t>(), docSlice);
+    }
+
+    auto queryResult = executeQuery(
+      vocbase,
+      "FOR d IN VIEW testView FILTER d.value <= null RETURN d"
+    );
+    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+
+    auto result = queryResult.result->slice();
+    CHECK(result.isArray());
+
+    arangodb::velocypack::ArrayIterator resultIt(result);
+    CHECK(expectedDocs.size() == resultIt.size());
+
+    for (auto const actualDoc : resultIt) {
+      auto const resolved = actualDoc.resolveExternals();
+      auto const keySlice = resolved.get("seq");
+      auto const key = keySlice.getNumber<ptrdiff_t>();
+
+      auto expectedDoc = expectedDocs.find(key);
+      REQUIRE(expectedDoc != expectedDocs.end());
+      CHECK(expectedDoc->second == resolved);
+      expectedDocs.erase(expectedDoc);
+    }
+    CHECK(expectedDocs.empty());
+  }
+
+  // d.value <= null, BM25(), TFIDF(), d.seq DESC
+  {
+    std::map<ptrdiff_t, arangodb::velocypack::Slice> expectedDocs;
+    for (auto const& doc : insertedDocs) {
+      arangodb::velocypack::Slice docSlice = doc.slice();
+      auto const valueSlice = docSlice.get("value");
+      if (valueSlice.isNone() || !valueSlice.isNull()) {
+        continue;
+      }
+      auto const keySlice = docSlice.get("seq");
+      expectedDocs.emplace(keySlice.getNumber<ptrdiff_t>(), docSlice);
+    }
+
+    auto queryResult = executeQuery(
+      vocbase,
+      "FOR d IN VIEW testView FILTER d.value <= null SORT BM25(d), TFIDF(d), d.seq DESC RETURN d"
+    );
+    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+
+    auto result = queryResult.result->slice();
+    CHECK(result.isArray());
+
+    arangodb::velocypack::ArrayIterator resultIt(result);
+    CHECK(expectedDocs.size() == resultIt.size());
+
+    auto expectedDoc = expectedDocs.rbegin();
+    for (auto const actualDoc : resultIt) {
+      auto const resolved = actualDoc.resolveExternals();
+      CHECK(expectedDoc->second == resolved);
+      ++expectedDoc;
+    }
+    CHECK(expectedDoc == expectedDocs.rend());
+  }
+
+  // -----------------------------------------------------------------------------
+  // --SECTION--                                                                 >
+  // -----------------------------------------------------------------------------
+
+  // invalid type
+  {
+    auto queryResult = executeQuery(
+      vocbase,
+      "FOR d IN VIEW testView FILTER d.value > 'null' RETURN d"
+    );
+    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+
+    auto result = queryResult.result->slice();
+    CHECK(result.isArray());
+
+    arangodb::velocypack::ArrayIterator resultIt(result);
+    CHECK(0 == resultIt.size());
+
+    for (auto const actualDoc : resultIt) {
+      UNUSED(actualDoc);
+      CHECK(false);
+    }
+  }
+
+  // invalid type
+  {
+    auto queryResult = executeQuery(
+      vocbase,
+      "FOR d IN VIEW testView FILTER d.value > false RETURN d"
+    );
+    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+
+    auto result = queryResult.result->slice();
+    CHECK(result.isArray());
+
+    arangodb::velocypack::ArrayIterator resultIt(result);
+    CHECK(0 == resultIt.size());
+
+    for (auto const actualDoc : resultIt) {
+      UNUSED(actualDoc);
+      CHECK(false);
+    }
+  }
+
+  // invalid type
+  {
+    auto queryResult = executeQuery(
+      vocbase,
+      "FOR d IN VIEW testView FILTER d.value > 0 RETURN d"
+    );
+    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+
+    auto result = queryResult.result->slice();
+    CHECK(result.isArray());
+
+    arangodb::velocypack::ArrayIterator resultIt(result);
+    CHECK(0 == resultIt.size());
+
+    for (auto const actualDoc : resultIt) {
+      UNUSED(actualDoc);
+      CHECK(false);
+    }
+  }
+
+  // d.value > null
+  {
+    auto queryResult = executeQuery(
+      vocbase,
+      "FOR d IN VIEW testView FILTER d.value > null RETURN d"
+    );
+    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+
+    auto result = queryResult.result->slice();
+    CHECK(result.isArray());
+
+    arangodb::velocypack::ArrayIterator resultIt(result);
+    CHECK(0 == resultIt.size());
+
+    for (auto const actualDoc : resultIt) {
+      UNUSED(actualDoc);
+      CHECK(false);
+    }
+  }
+
+  // -----------------------------------------------------------------------------
+  // --SECTION--                                                                >=
+  // -----------------------------------------------------------------------------
+
+  // invalid type
+  {
+    auto queryResult = executeQuery(
+      vocbase,
+      "FOR d IN VIEW testView FILTER d.value >= 'null' RETURN d"
+    );
+    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+
+    auto result = queryResult.result->slice();
+    CHECK(result.isArray());
+
+    arangodb::velocypack::ArrayIterator resultIt(result);
+    CHECK(0 == resultIt.size());
+
+    for (auto const actualDoc : resultIt) {
+      UNUSED(actualDoc);
+      CHECK(false);
+    }
+  }
+
+  // invalid type
+  {
+    auto queryResult = executeQuery(
+      vocbase,
+      "FOR d IN VIEW testView FILTER d.value >= 0 RETURN d"
+    );
+    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+
+    auto result = queryResult.result->slice();
+    CHECK(result.isArray());
+
+    arangodb::velocypack::ArrayIterator resultIt(result);
+    CHECK(0 == resultIt.size());
+
+    for (auto const actualDoc : resultIt) {
+      UNUSED(actualDoc);
+      CHECK(false);
+    }
+  }
+
+  // invalid type
+  {
+    auto queryResult = executeQuery(
+      vocbase,
+      "FOR d IN VIEW testView FILTER d.value >= false RETURN d"
+    );
+    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+
+    auto result = queryResult.result->slice();
+    CHECK(result.isArray());
+
+    arangodb::velocypack::ArrayIterator resultIt(result);
+    CHECK(0 == resultIt.size());
+
+    for (auto const actualDoc : resultIt) {
+      UNUSED(actualDoc);
+      CHECK(false);
+    }
+  }
+
+  // d.value >= null, unordered
+  {
+    std::map<size_t, arangodb::velocypack::Slice> expectedDocs;
+    for (auto const& doc : insertedDocs) {
+      arangodb::velocypack::Slice docSlice = doc.slice();
+      auto const valueSlice = docSlice.get("value");
+      if (valueSlice.isNone() || !valueSlice.isNull()) {
+        continue;
+      }
+      auto const keySlice = docSlice.get("seq");
+      expectedDocs.emplace(keySlice.getNumber<ptrdiff_t>(), docSlice);
+    }
+
+    auto queryResult = executeQuery(
+      vocbase,
+      "FOR d IN VIEW testView FILTER d.value >= null RETURN d"
+    );
+    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+
+    auto result = queryResult.result->slice();
+    CHECK(result.isArray());
+
+    arangodb::velocypack::ArrayIterator resultIt(result);
+    CHECK(expectedDocs.size() == resultIt.size());
+
+    for (auto const actualDoc : resultIt) {
+      auto const resolved = actualDoc.resolveExternals();
+      auto const keySlice = resolved.get("seq");
+      auto const key = keySlice.getNumber<ptrdiff_t>();
+
+      auto expectedDoc = expectedDocs.find(key);
+      REQUIRE(expectedDoc != expectedDocs.end());
+      CHECK(expectedDoc->second == resolved);
+      expectedDocs.erase(expectedDoc);
+    }
+    CHECK(expectedDocs.empty());
+  }
+
+  // d.value >= null, BM25(), TFIDF(), d.seq DESC
+  {
+    std::map<ptrdiff_t, arangodb::velocypack::Slice> expectedDocs;
+    for (auto const& doc : insertedDocs) {
+      arangodb::velocypack::Slice docSlice = doc.slice();
+      auto const valueSlice = docSlice.get("value");
+      if (valueSlice.isNone() || !valueSlice.isNull()) {
+        continue;
+      }
+      auto const keySlice = docSlice.get("seq");
+      expectedDocs.emplace(keySlice.getNumber<ptrdiff_t>(), docSlice);
+    }
+
+    auto queryResult = executeQuery(
+      vocbase,
+      "FOR d IN VIEW testView FILTER d.value >= null SORT BM25(d), TFIDF(d), d.seq DESC RETURN d"
+    );
+    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+
+    auto result = queryResult.result->slice();
+    CHECK(result.isArray());
+
+    arangodb::velocypack::ArrayIterator resultIt(result);
+    CHECK(expectedDocs.size() == resultIt.size());
+
+    auto expectedDoc = expectedDocs.rbegin();
+    for (auto const actualDoc : resultIt) {
+      auto const resolved = actualDoc.resolveExternals();
+      CHECK(expectedDoc->second == resolved);
+      ++expectedDoc;
+    }
+    CHECK(expectedDoc == expectedDocs.rend());
+  }
+
+  // -----------------------------------------------------------------------------
+  // --SECTION--                                                       Range(>, <)
+  // -----------------------------------------------------------------------------
+
+  // invalid type
+  {
+    auto queryResult = executeQuery(
+      vocbase,
+      "FOR d IN VIEW testView FILTER d.value > 'null' and d.value < null RETURN d"
+    );
+    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+
+    auto result = queryResult.result->slice();
+    CHECK(result.isArray());
+
+    arangodb::velocypack::ArrayIterator resultIt(result);
+    CHECK(0 == resultIt.size());
+
+    for (auto const actualDoc : resultIt) {
+      UNUSED(actualDoc);
+      CHECK(false);
+    }
+  }
+
+  // invalid type
+  {
+    auto queryResult = executeQuery(
+      vocbase,
+      "FOR d IN VIEW testView FILTER d.value > 0 and d.value < null RETURN d"
+    );
+    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+
+    auto result = queryResult.result->slice();
+    CHECK(result.isArray());
+
+    arangodb::velocypack::ArrayIterator resultIt(result);
+    CHECK(0 == resultIt.size());
+
+    for (auto const actualDoc : resultIt) {
+      UNUSED(actualDoc);
+      CHECK(false);
+    }
+  }
+
+  // invalid type
+  {
+    auto queryResult = executeQuery(
+      vocbase,
+      "FOR d IN VIEW testView FILTER d.value > false and d.value < null RETURN d"
+    );
+    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+
+    auto result = queryResult.result->slice();
+    CHECK(result.isArray());
+
+    arangodb::velocypack::ArrayIterator resultIt(result);
+    CHECK(0 == resultIt.size());
+
+    for (auto const actualDoc : resultIt) {
+      UNUSED(actualDoc);
+      CHECK(false);
+    }
+  }
+
+  // empty range
+  {
+    auto queryResult = executeQuery(
+      vocbase,
+      "FOR d IN VIEW testView FILTER d.value > null and d.value < null RETURN d"
+    );
+    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+
+    auto result = queryResult.result->slice();
+    CHECK(result.isArray());
+
+    arangodb::velocypack::ArrayIterator resultIt(result);
+    CHECK(0 == resultIt.size());
+
+    for (auto const actualDoc : resultIt) {
+      UNUSED(actualDoc);
+      CHECK(false);
+    }
+  }
+
+  // -----------------------------------------------------------------------------
+  // --SECTION--                                                      Range(>=, <)
+  // -----------------------------------------------------------------------------
+
+  // invalid type
+  {
+    auto queryResult = executeQuery(
+      vocbase,
+      "FOR d IN VIEW testView FILTER d.value >= 'null' and d.value < null RETURN d"
+    );
+    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+
+    auto result = queryResult.result->slice();
+    CHECK(result.isArray());
+
+    arangodb::velocypack::ArrayIterator resultIt(result);
+    CHECK(0 == resultIt.size());
+
+    for (auto const actualDoc : resultIt) {
+      UNUSED(actualDoc);
+      CHECK(false);
+    }
+  }
+
+  // invalid type
+  {
+    auto queryResult = executeQuery(
+      vocbase,
+      "FOR d IN VIEW testView FILTER d.value >= 0 and d.value < null RETURN d"
+    );
+    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+
+    auto result = queryResult.result->slice();
+    CHECK(result.isArray());
+
+    arangodb::velocypack::ArrayIterator resultIt(result);
+    CHECK(0 == resultIt.size());
+
+    for (auto const actualDoc : resultIt) {
+      UNUSED(actualDoc);
+      CHECK(false);
+    }
+  }
+
+  // invalid type
+  {
+    auto queryResult = executeQuery(
+      vocbase,
+      "FOR d IN VIEW testView FILTER d.value >= false and d.value < null RETURN d"
+    );
+    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+
+    auto result = queryResult.result->slice();
+    CHECK(result.isArray());
+
+    arangodb::velocypack::ArrayIterator resultIt(result);
+    CHECK(0 == resultIt.size());
+
+    for (auto const actualDoc : resultIt) {
+      UNUSED(actualDoc);
+      CHECK(false);
+    }
+  }
+
+  // empty range
+  {
+    auto queryResult = executeQuery(
+      vocbase,
+      "FOR d IN VIEW testView FILTER d.value >= null and d.value < null RETURN d"
+    );
+    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+
+    auto result = queryResult.result->slice();
+    CHECK(result.isArray());
+
+    arangodb::velocypack::ArrayIterator resultIt(result);
+    CHECK(0 == resultIt.size());
+
+    for (auto const actualDoc : resultIt) {
+      UNUSED(actualDoc);
+      CHECK(false);
+    }
+  }
+
+  // -----------------------------------------------------------------------------
+  // --SECTION--                                                      Range(>, <=)
+  // -----------------------------------------------------------------------------
+
+  // invalid type
+  {
+    auto queryResult = executeQuery(
+      vocbase,
+      "FOR d IN VIEW testView FILTER d.value > 'null' and d.value <= null RETURN d"
+    );
+    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+
+    auto result = queryResult.result->slice();
+    CHECK(result.isArray());
+
+    arangodb::velocypack::ArrayIterator resultIt(result);
+    CHECK(0 == resultIt.size());
+
+    for (auto const actualDoc : resultIt) {
+      UNUSED(actualDoc);
+      CHECK(false);
+    }
+  }
+
+  // invalid type
+  {
+    auto queryResult = executeQuery(
+      vocbase,
+      "FOR d IN VIEW testView FILTER d.value > 0 and d.value <= null RETURN d"
+    );
+    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+
+    auto result = queryResult.result->slice();
+    CHECK(result.isArray());
+
+    arangodb::velocypack::ArrayIterator resultIt(result);
+    CHECK(0 == resultIt.size());
+
+    for (auto const actualDoc : resultIt) {
+      UNUSED(actualDoc);
+      CHECK(false);
+    }
+  }
+
+  // invalid type
+  {
+    auto queryResult = executeQuery(
+      vocbase,
+      "FOR d IN VIEW testView FILTER d.value > false and d.value <= null RETURN d"
+    );
+    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+
+    auto result = queryResult.result->slice();
+    CHECK(result.isArray());
+
+    arangodb::velocypack::ArrayIterator resultIt(result);
+    CHECK(0 == resultIt.size());
+
+    for (auto const actualDoc : resultIt) {
+      UNUSED(actualDoc);
+      CHECK(false);
+    }
+  }
+
+  // empty range
+  {
+    auto queryResult = executeQuery(
+      vocbase,
+      "FOR d IN VIEW testView FILTER d.value > null and d.value <= null RETURN d"
+    );
+    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+
+    auto result = queryResult.result->slice();
+    CHECK(result.isArray());
+
+    arangodb::velocypack::ArrayIterator resultIt(result);
+    CHECK(0 == resultIt.size());
+
+    for (auto const actualDoc : resultIt) {
+      UNUSED(actualDoc);
+      CHECK(false);
+    }
+  }
+
+  // -----------------------------------------------------------------------------
+  // --SECTION--                                                     Range(>=, <=)
+  // -----------------------------------------------------------------------------
+
+  // invalid type
+  {
+    auto queryResult = executeQuery(
+      vocbase,
+      "FOR d IN VIEW testView FILTER d.value >= 'null' and d.value <= null RETURN d"
+    );
+    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+
+    auto result = queryResult.result->slice();
+    CHECK(result.isArray());
+
+    arangodb::velocypack::ArrayIterator resultIt(result);
+    CHECK(0 == resultIt.size());
+
+    for (auto const actualDoc : resultIt) {
+      UNUSED(actualDoc);
+      CHECK(false);
+    }
+  }
+
+  // invalid type
+  {
+    auto queryResult = executeQuery(
+      vocbase,
+      "FOR d IN VIEW testView FILTER d.value >= 0 and d.value <= null RETURN d"
+    );
+    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+
+    auto result = queryResult.result->slice();
+    CHECK(result.isArray());
+
+    arangodb::velocypack::ArrayIterator resultIt(result);
+    CHECK(0 == resultIt.size());
+
+    for (auto const actualDoc : resultIt) {
+      UNUSED(actualDoc);
+      CHECK(false);
+    }
+  }
+
+  // invalid type
+  {
+    auto queryResult = executeQuery(
+      vocbase,
+      "FOR d IN VIEW testView FILTER d.value >= false and d.value <= null RETURN d"
+    );
+    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+
+    auto result = queryResult.result->slice();
+    CHECK(result.isArray());
+
+    arangodb::velocypack::ArrayIterator resultIt(result);
+    CHECK(0 == resultIt.size());
+
+    for (auto const actualDoc : resultIt) {
+      UNUSED(actualDoc);
+      CHECK(false);
+    }
+  }
+
+  // d.value >= null and d.value <= null, unordered
+  {
+    std::map<size_t, arangodb::velocypack::Slice> expectedDocs;
+    for (auto const& doc : insertedDocs) {
+      arangodb::velocypack::Slice docSlice = doc.slice();
+      auto const valueSlice = docSlice.get("value");
+      if (valueSlice.isNone() || !valueSlice.isNull()) {
+        continue;
+      }
+      auto const keySlice = docSlice.get("seq");
+      expectedDocs.emplace(keySlice.getNumber<ptrdiff_t>(), docSlice);
+    }
+
+    auto queryResult = executeQuery(
+      vocbase,
+      "FOR d IN VIEW testView FILTER d.value >= null and d.value <= null RETURN d"
+    );
+    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+
+    auto result = queryResult.result->slice();
+    CHECK(result.isArray());
+
+    arangodb::velocypack::ArrayIterator resultIt(result);
+    CHECK(expectedDocs.size() == resultIt.size());
+
+    for (auto const actualDoc : resultIt) {
+      auto const resolved = actualDoc.resolveExternals();
+      auto const keySlice = resolved.get("seq");
+      auto const key = keySlice.getNumber<ptrdiff_t>();
+
+      auto expectedDoc = expectedDocs.find(key);
+      REQUIRE(expectedDoc != expectedDocs.end());
+      CHECK(expectedDoc->second == resolved);
+      expectedDocs.erase(expectedDoc);
+    }
+    CHECK(expectedDocs.empty());
+  }
+
+  // d.value >= null and d.value <= null, BM25(), TFIDF(), d.seq DESC
+  {
+    std::map<ptrdiff_t, arangodb::velocypack::Slice> expectedDocs;
+    for (auto const& doc : insertedDocs) {
+      arangodb::velocypack::Slice docSlice = doc.slice();
+      auto const valueSlice = docSlice.get("value");
+      if (valueSlice.isNone() || !valueSlice.isNull()) {
+        continue;
+      }
+      auto const keySlice = docSlice.get("seq");
+      expectedDocs.emplace(keySlice.getNumber<ptrdiff_t>(), docSlice);
+    }
+
+    auto queryResult = executeQuery(
+      vocbase,
+      "FOR d IN VIEW testView FILTER d.value >= null and d.value <= null SORT BM25(d), TFIDF(d), d.seq DESC RETURN d"
+    );
+    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+
+    auto result = queryResult.result->slice();
+    CHECK(result.isArray());
+
+    arangodb::velocypack::ArrayIterator resultIt(result);
+    CHECK(expectedDocs.size() == resultIt.size());
+
+    auto expectedDoc = expectedDocs.rbegin();
+    for (auto const actualDoc : resultIt) {
+      auto const resolved = actualDoc.resolveExternals();
+      CHECK(expectedDoc->second == resolved);
+      ++expectedDoc;
+    }
+    CHECK(expectedDoc == expectedDocs.rend());
+  }
+
+  // -----------------------------------------------------------------------------
+  // --SECTION--                                                     Range(>=, <=)
+  // -----------------------------------------------------------------------------
+
+  // d.value >= null and d.value <= null, unordered
+  {
+    std::map<size_t, arangodb::velocypack::Slice> expectedDocs;
+    for (auto const& doc : insertedDocs) {
+      arangodb::velocypack::Slice docSlice = doc.slice();
+      auto const valueSlice = docSlice.get("value");
+      if (valueSlice.isNone() || !valueSlice.isNull()) {
+        continue;
+      }
+      auto const keySlice = docSlice.get("seq");
+      expectedDocs.emplace(keySlice.getNumber<ptrdiff_t>(), docSlice);
+    }
+
+    auto queryResult = executeQuery(
+      vocbase,
+      "FOR d IN VIEW testView FILTER d.value IN null..null RETURN d"
+    );
+    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+
+    auto result = queryResult.result->slice();
+    CHECK(result.isArray());
+
+    arangodb::velocypack::ArrayIterator resultIt(result);
+    CHECK(expectedDocs.size() == resultIt.size());
+
+    for (auto const actualDoc : resultIt) {
+      auto const resolved = actualDoc.resolveExternals();
+      auto const keySlice = resolved.get("seq");
+      auto const key = keySlice.getNumber<ptrdiff_t>();
+
+      auto expectedDoc = expectedDocs.find(key);
+      REQUIRE(expectedDoc != expectedDocs.end());
+      CHECK(expectedDoc->second == resolved);
+      expectedDocs.erase(expectedDoc);
+    }
+    CHECK(expectedDocs.empty());
+  }
+
+  // d.value >= null and d.value <= null, BM25(), TFIDF(), d.seq DESC
+  {
+    std::map<ptrdiff_t, arangodb::velocypack::Slice> expectedDocs;
+    for (auto const& doc : insertedDocs) {
+      arangodb::velocypack::Slice docSlice = doc.slice();
+      auto const valueSlice = docSlice.get("value");
+      if (valueSlice.isNone() || !valueSlice.isNull()) {
+        continue;
+      }
+      auto const keySlice = docSlice.get("seq");
+      expectedDocs.emplace(keySlice.getNumber<ptrdiff_t>(), docSlice);
+    }
+
+    auto queryResult = executeQuery(
+      vocbase,
+      "FOR d IN VIEW testView FILTER d.value IN null..null SORT BM25(d), TFIDF(d), d.seq DESC RETURN d"
+    );
+    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+
+    auto result = queryResult.result->slice();
+    CHECK(result.isArray());
+
+    arangodb::velocypack::ArrayIterator resultIt(result);
+    CHECK(expectedDocs.size() == resultIt.size());
+
+    auto expectedDoc = expectedDocs.rbegin();
+    for (auto const actualDoc : resultIt) {
+      auto const resolved = actualDoc.resolveExternals();
+      CHECK(expectedDoc->second == resolved);
+      ++expectedDoc;
+    }
+    CHECK(expectedDoc == expectedDocs.rend());
+  }
+}
+
 // FIXME TODO
-// SECTION("Range") { }
 // SECTION("Prefix") { }
 // SECTION("Phrase") { }
 // SECTION("Tokens") { }
