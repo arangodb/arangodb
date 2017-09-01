@@ -26,6 +26,7 @@
 #include "Graph/EdgeCursor.h"
 #include "Graph/Traverser.h"
 #include "Graph/TraverserCache.h"
+#include "Graph/TraverserOptions.h"
 
 using PathEnumerator = arangodb::traverser::PathEnumerator;
 using DepthFirstEnumerator = arangodb::traverser::DepthFirstEnumerator;

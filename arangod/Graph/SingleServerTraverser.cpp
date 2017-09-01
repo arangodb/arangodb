@@ -22,14 +22,13 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "SingleServerTraverser.h"
-#include "Basics/StringRef.h"
-
 #include "Aql/AqlValue.h"
+#include "Basics/StringRef.h"
 #include "Graph/BreadthFirstEnumerator.h"
 #include "Graph/NeighborsEnumerator.h"
 #include "Graph/TraverserCache.h"
+#include "Graph/TraverserOptions.h"
 #include "Transaction/Methods.h"
-#include "VocBase/ManagedDocumentResult.h"
 
 using namespace arangodb;
 using namespace arangodb::traverser;

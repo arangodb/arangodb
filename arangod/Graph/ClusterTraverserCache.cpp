@@ -56,6 +56,7 @@ aql::AqlValue ClusterTraverserCache::fetchEdgeAqlResult(EdgeDocumentToken const&
 aql::AqlValue ClusterTraverserCache::fetchVertexAqlResult(StringRef id) {
   auto it = _edges.find(id);
   if (it == _edges.end()) {
+    LOG_TOPIC(ERR, Logger::GRAPHS) << __FUNCTION__ << " vertex not found";
     // Document not found return NULL
     return aql::AqlValue(VelocyPackHelper::NullValue());
   }
@@ -71,6 +72,8 @@ void ClusterTraverserCache::insertVertexIntoResult(StringRef id,
                                                    VPackBuilder& result) {
   auto it = _edges.find(id);
   if (it == _edges.end()) {
+    LOG_TOPIC(ERR, Logger::GRAPHS) << __FUNCTION__ << " vertex not found";
+    // Document not found append NULL
     result.add(VelocyPackHelper::NullValue());
   } else {
     result.add(_edges[id]);

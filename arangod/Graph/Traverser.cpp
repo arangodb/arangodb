@@ -188,19 +188,6 @@ TraverserCache* arangodb::traverser::Traverser::traverserCache() {
   return _opts->cache();
 }
 
-arangodb::aql::AqlValue arangodb::traverser::Traverser::lastVertexToAqlValue() {
-  return _enumerator->lastVertexToAqlValue();
-}
-
-arangodb::aql::AqlValue arangodb::traverser::Traverser::lastEdgeToAqlValue() {
-  return _enumerator->lastEdgeToAqlValue();
-}
-
-arangodb::aql::AqlValue arangodb::traverser::Traverser::pathToAqlValue(
-    VPackBuilder& builder) {
-  return _enumerator->pathToAqlValue(builder);
-}
-
 size_t arangodb::traverser::Traverser::getAndResetReadDocuments() {
   return traverserCache()->getAndResetInsertedDocuments();
 }

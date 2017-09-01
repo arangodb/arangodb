@@ -25,8 +25,9 @@
 
 #include "Basics/VelocyPackHelper.h"
 #include "Graph/EdgeCursor.h"
-#include "Graph/TraverserCache.h"
 #include "Graph/Traverser.h"
+#include "Graph/TraverserCache.h"
+#include "Graph/TraverserOptions.h"
 
 using namespace arangodb;
 using namespace arangodb::graph;

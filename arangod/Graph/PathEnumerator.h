@@ -26,8 +26,6 @@
 
 #include "Basics/Common.h"
 #include "Graph/EdgeDocumentToken.h"
-#include "Graph/Traverser.h"
-#include "Graph/TraverserOptions.h"
 #include <velocypack/Slice.h>
 #include <stack>
 

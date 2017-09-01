@@ -62,12 +62,11 @@ class ClusterTraverserCache : public TraverserCache {
   void insertEdgeIntoResult(graph::EdgeDocumentToken const& idToken,
                             arangodb::velocypack::Builder& builder) override;
   
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief Inserts the real document into the builder, document will
-  ///        be retrieved from the DBServer
-  //////////////////////////////////////////////////////////////////////////////
+  
   void insertVertexIntoResult(StringRef idString,
                               velocypack::Builder& builder) override;
+  aql::AqlValue fetchVertexAqlResult(StringRef idString) override;
+
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Return AQL value containing the result
@@ -75,12 +74,6 @@ class ClusterTraverserCache : public TraverserCache {
   ///        the datalake (on the coordinator)
   //////////////////////////////////////////////////////////////////////////////
   aql::AqlValue fetchEdgeAqlResult(graph::EdgeDocumentToken const& idToken) override;
-  
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief Return AQL value containing the result
-  ///        The document be looked up, which might be expensive
-  //////////////////////////////////////////////////////////////////////////////
-  aql::AqlValue fetchVertexAqlResult(StringRef idString) override;
 
   std::unordered_map<ServerID, traverser::TraverserEngineID> const* engines();
 
