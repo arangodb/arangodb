@@ -81,13 +81,14 @@ static std::vector<arangodb::basics::AttributeName> const KeyAttribute{
 RocksDBVPackUniqueIndexIterator::RocksDBVPackUniqueIndexIterator(
     LogicalCollection* collection, transaction::Methods* trx,
     ManagedDocumentResult* mmdr, arangodb::RocksDBVPackIndex const* index,
-    RocksDBKeyBounds&& bounds)
+    VPackSlice const& indexValues)
     : IndexIterator(collection, trx, mmdr, index),
       _index(index),
       _cmp(index->comparator()),
-      _bounds(std::move(bounds)),
+      _key(trx),
       _done(false) {
   TRI_ASSERT(index->columnFamily() == RocksDBColumnFamily::vpack());
+  _key->constructUniqueVPackIndexValue(index->objectId(), indexValues);
 }
 
 /// @brief Reset the cursor
@@ -109,7 +110,7 @@ bool RocksDBVPackUniqueIndexIterator::next(TokenCallback const& cb, size_t limit
 
   auto value = RocksDBValue::Empty(RocksDBEntryType::PrimaryIndexValue);
   RocksDBMethods* mthds = RocksDBTransactionState::toMethods(_trx);
-  arangodb::Result r = mthds->Get(_index->columnFamily(), _bounds.start(), value.buffer());
+  arangodb::Result r = mthds->Get(_index->columnFamily(), _key.ref(), value.buffer());
 
   if (r.ok()) {
     cb(RocksDBToken(RocksDBValue::revisionId(*value.buffer())));
@@ -341,15 +342,17 @@ int RocksDBVPackIndex::fillElement(VPackBuilder& leased, TRI_voc_rid_t revId,
       // - Key: 7 + 8-byte object ID of index + VPack array with index
       // value(s) + separator (NUL) byte
       // - Value: primary key
-      elements.emplace_back(
-          RocksDBKey::UniqueVPackIndexValue(_objectId, leased.slice()));
+      RocksDBKey key;
+      key.constructUniqueVPackIndexValue(_objectId, leased.slice());
+      elements.emplace_back(std::move(key));
     } else {
       // Non-unique VPack index values are stored as follows:
       // - Key: 6 + 8-byte object ID of index + VPack array with index
       // value(s) + revisionID
       // - Value: empty
-      elements.emplace_back(
-          RocksDBKey::VPackIndexValue(_objectId, leased.slice(), revId));
+      RocksDBKey key;
+      key.constructVPackIndexValue(_objectId, leased.slice(), revId);
+      elements.emplace_back(std::move(key));
       hashes.push_back(leased.slice().normalizedHash());
     }
   } else {
@@ -378,15 +381,17 @@ void RocksDBVPackIndex::addIndexValue(VPackBuilder& leased, TRI_voc_rid_t revId,
     // Unique VPack index values are stored as follows:
     // - Key: 7 + 8-byte object ID of index + VPack array with index value(s)
     // - Value: primary key
-    elements.emplace_back(
-        RocksDBKey::UniqueVPackIndexValue(_objectId, leased.slice()));
+    RocksDBKey key;
+    key.constructUniqueVPackIndexValue(_objectId, leased.slice());
+    elements.emplace_back(std::move(key));
   } else {
     // Non-unique VPack index values are stored as follows:
     // - Key: 6 + 8-byte object ID of index + VPack array with index value(s)
     // + primary key
     // - Value: empty
-    elements.emplace_back(
-        RocksDBKey::VPackIndexValue(_objectId, leased.slice(), revId));
+    RocksDBKey key;
+    key.constructVPackIndexValue(_objectId, leased.slice(), revId);
+    elements.emplace_back(std::move(key));
     hashes.push_back(leased.slice().normalizedHash());
   }
 }
@@ -737,9 +742,8 @@ IndexIterator* RocksDBVPackIndex::lookup(
   
   if (lastNonEq.isNone() && _unique && searchValues.length() == _fields.size()) {
     leftSearch.close();
-    RocksDBKeyBounds bounds = RocksDBKeyBounds::UniqueVPackIndex(_objectId, leftSearch.slice());
 
-    return new RocksDBVPackUniqueIndexIterator(_collection, trx, mmdr, this, std::move(bounds));
+    return new RocksDBVPackUniqueIndexIterator(_collection, trx, mmdr, this, leftSearch.slice());
   }
   
   VPackSlice leftBorder;

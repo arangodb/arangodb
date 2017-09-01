@@ -26,6 +26,7 @@
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/Query.h"
 #include "Basics/FileUtils.h"
+#include "Basics/LocalTaskQueue.h"
 #include "Basics/ReadLocker.h"
 #include "Basics/Result.h"
 #include "Basics/ScopeGuard.h"
@@ -587,7 +588,7 @@ static void RemoveVocbaseCol(v8::FunctionCallbackInfo<v8::Value> const& args) {
       }
       TRI_GET_GLOBAL_STRING(IsSynchronousReplicationKey);
       if (optionsObject->Has(IsSynchronousReplicationKey)) {
-        options.isSynchronousReplicationFrom 
+        options.isSynchronousReplicationFrom
           = TRI_ObjectToString(optionsObject->Get(IsSynchronousReplicationKey));
       }
     } else {  // old variant remove(<document>, <overwrite>, <waitForSync>)
@@ -970,7 +971,7 @@ static void DropVocbaseColCoordinator(
 static void JS_DropVocbaseCol(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
-  
+
   arangodb::LogicalCollection* collection =
   TRI_UnwrapClass<arangodb::LogicalCollection>(args.Holder(), WRP_VOCBASE_COL_TYPE);
   if (collection == nullptr) {
@@ -989,9 +990,9 @@ static void JS_DropVocbaseCol(v8::FunctionCallbackInfo<v8::Value> const& args) {
                                      "Insufficient rights to drop collection");
     }
   }
-  
+
   PREVENT_EMBEDDED_TRANSACTION();
-  
+
   std::string const dbname = collection->dbName();
   std::string const collName = collection->name();
 
@@ -1022,20 +1023,20 @@ static void JS_DropVocbaseCol(v8::FunctionCallbackInfo<v8::Value> const& args) {
         allowDropSystem = TRI_ObjectToBoolean(args[0]);
       }
     }
-    
+
     int res = collection->vocbase()->dropCollection(collection, allowDropSystem, timeout);
     if (res != TRI_ERROR_NO_ERROR) {
       TRI_V8_THROW_EXCEPTION_MESSAGE(res, "cannot drop collection");
     }
   }
-  
+
   if (ServerState::instance()->isCoordinator() ||
       !ServerState::instance()->isRunningInCluster()) {
     auth->authInfo()->enumerateUsers([&](AuthUserEntry& entry) {
       entry.removeCollection(dbname, collName);
     });
   }
-  
+
   TRI_V8_RETURN_UNDEFINED();
   TRI_V8_TRY_CATCH_END
 }
@@ -1462,15 +1463,15 @@ static void JS_PropertiesVocbaseCol(
     v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
-  
-  
+
+
   arangodb::LogicalCollection* collection =
   TRI_UnwrapClass<arangodb::LogicalCollection>(args.Holder(), WRP_VOCBASE_COL_TYPE);
-  
+
   if (collection == nullptr) {
     TRI_V8_THROW_EXCEPTION_INTERNAL("cannot extract collection");
   }
-  
+
   bool const isModification = (args.Length() != 0);
   if (ExecContext::CURRENT != nullptr) {
     AuthenticationFeature *auth = AuthenticationFeature::INSTANCE;
@@ -1640,7 +1641,7 @@ static void JS_RenameVocbaseCol(
     // renaming a collection in a cluster is unsupported
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_CLUSTER_UNSUPPORTED);
   }
-  
+
   std::string const name = TRI_ObjectToString(args[0]);
   if (ExecContext::CURRENT != nullptr) {
     AuthenticationFeature* auth = AuthenticationFeature::INSTANCE;
@@ -1737,7 +1738,7 @@ static void parseReplaceAndUpdateOptions(
     }
     TRI_GET_GLOBAL_STRING(IsSynchronousReplicationKey);
     if (optionsObject->Has(IsSynchronousReplicationKey)) {
-      options.isSynchronousReplicationFrom 
+      options.isSynchronousReplicationFrom
         = TRI_ObjectToString(optionsObject->Get(IsSynchronousReplicationKey));
     }
     if (operation == TRI_VOC_DOCUMENT_OPERATION_UPDATE) {
@@ -2116,7 +2117,7 @@ static void JS_PregelStart(v8::FunctionCallbackInfo<v8::Value> const& args) {
   if (ss->isRunningInCluster() && !ss->isCoordinator()) {
     TRI_V8_THROW_EXCEPTION_USAGE("Only call on coordinator or in single server mode");
   }
-  
+
 
   // check the arguments
   uint32_t const argLength = args.Length();
@@ -2166,7 +2167,7 @@ static void JS_PregelStart(v8::FunctionCallbackInfo<v8::Value> const& args) {
           TRI_V8_THROW_EXCEPTION(res);
       }
   }
-  
+
   // now check the access rights to collections
   if (ExecContext::CURRENT != nullptr) {
     VPackSlice storeSlice = paramBuilder.slice().get("store");
@@ -2575,7 +2576,7 @@ static void InsertVocbaseCol(v8::Isolate* isolate,
     }
     TRI_GET_GLOBAL_STRING(IsSynchronousReplicationKey);
     if (optionsObject->Has(IsSynchronousReplicationKey)) {
-      options.isSynchronousReplicationFrom 
+      options.isSynchronousReplicationFrom
         = TRI_ObjectToString(optionsObject->Get(IsSynchronousReplicationKey));
     }
   } else {
@@ -2777,7 +2778,7 @@ static void JS_TruncateVocbaseCol(
       TRI_V8_THROW_EXCEPTION(TRI_ERROR_FORBIDDEN);
     }
   }
-  
+
   SingleCollectionTransaction trx(
       transaction::V8Context::Create(collection->vocbase(), true),
                                   collection->cid(), AccessMode::Type::EXCLUSIVE);
@@ -2979,7 +2980,7 @@ static void JS_CollectionVocbase(
 
   v8::Handle<v8::Value> val = args[0];
   arangodb::LogicalCollection const* collection = nullptr;
-  
+
   std::string const name = TRI_ObjectToString(val);
   if (ServerState::instance()->isCoordinator()) {
     try {
@@ -3035,7 +3036,7 @@ static void JS_CollectionsVocbase(
   }
 
   std::vector<LogicalCollection*> colls;
-  
+
   // clean memory
   std::function<void()> cleanup;
 
@@ -3062,17 +3063,17 @@ static void JS_CollectionsVocbase(
   std::sort(colls.begin(), colls.end(), [](LogicalCollection* lhs, LogicalCollection* rhs) -> bool {
     return StringUtils::tolower(lhs->name()) < StringUtils::tolower(rhs->name());
   });
-  
+
   AuthenticationFeature* auth = FeatureCacheFeature::instance()->authenticationFeature();
   bool error = false;
-  
+
   // already create an array of the correct size
   v8::Handle<v8::Array> result = v8::Array::New(isolate);
   size_t const n = colls.size();
   size_t x = 0;
   for (size_t i = 0; i < n; ++i) {
     auto& collection = colls[i];
-  
+
     if (auth->isActive() && ExecContext::CURRENT != nullptr) {
       AuthLevel level = auth->canUseCollection(ExecContext::CURRENT->user(),
                              vocbase->name(), collection->name());
@@ -3080,7 +3081,7 @@ static void JS_CollectionsVocbase(
         continue;
       }
     }
-    
+
     v8::Handle<v8::Value> c = WrapCollection(isolate, collection);
     if (c.IsEmpty()) {
       error = true;
@@ -3279,7 +3280,7 @@ static void JS_WarmupVocbaseCol(
   arangodb::LogicalCollection* collection =
       TRI_UnwrapClass<arangodb::LogicalCollection>(args.Holder(),
                                                    WRP_VOCBASE_COL_TYPE);
-  
+
   if (collection == nullptr) {
     TRI_V8_THROW_EXCEPTION_INTERNAL("cannot extract collection");
   }
@@ -3305,22 +3306,20 @@ static void JS_WarmupVocbaseCol(
   if (!trxRes.ok()) {
     TRI_V8_THROW_EXCEPTION(trxRes);
   }
-  
+
   auto idxs = collection->getIndexes();
-  rest::Scheduler* schdler = SchedulerFeature::SCHEDULER;
-  std::atomic<size_t> numTrx(idxs.size());
+  auto queue = std::make_shared<basics::LocalTaskQueue>();
 
   for (auto& idx : idxs) {
-    schdler->post([&] {
-      TRI_DEFER(numTrx--);
-      idx->warmup(&trx);
-    });
-  }
-  while (numTrx > 0 && !schdler->isStopping()) {
-    usleep(50000);
+    idx->warmup(&trx, queue);
   }
 
-  trxRes = trx.commit();
+  queue->dispatchAndWait();
+  if (queue->status() == TRI_ERROR_NO_ERROR) {
+    trxRes = trx.commit();
+  } else {
+    TRI_V8_THROW_EXCEPTION(queue->status());
+  }
 
   if (!trxRes.ok()) {
     TRI_V8_THROW_EXCEPTION(trxRes);

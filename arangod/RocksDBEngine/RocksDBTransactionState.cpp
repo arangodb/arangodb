@@ -68,7 +68,9 @@ RocksDBTransactionState::RocksDBTransactionState(
       _numInserts(0),
       _numUpdates(0),
       _numRemoves(0),
-      _lastUsedCollection(0) {}
+      _lastUsedCollection(0),
+      _keys{_arena},
+      _parallel(false) {}
 
 /// @brief free a transaction container
 RocksDBTransactionState::~RocksDBTransactionState() {
@@ -81,6 +83,10 @@ RocksDBTransactionState::~RocksDBTransactionState() {
     rocksdb::TransactionDB* db = rocksutils::globalRocksDB();
     db->ReleaseSnapshot(_snapshot);
     _snapshot = nullptr;
+  }
+
+  for (auto& it : _keys) {
+    delete it;
   }
 }
 
@@ -482,3 +488,46 @@ uint64_t RocksDBTransactionState::sequenceNumber() const {
         _rocksTransaction->GetSnapshot()->GetSequenceNumber());
   }
 }
+
+void RocksDBTransactionState::prepareForParallelReads() { _parallel = true; }
+
+/// @brief temporarily lease a Builder object
+RocksDBKey* RocksDBTransactionState::leaseRocksDBKey() {
+  if (_keys.empty()) {
+    // create a new key and return it
+    return new RocksDBKey();
+  }
+
+  // re-use an existing builder
+  RocksDBKey* k = _keys.back();
+  _keys.pop_back();
+
+  return k;
+}
+
+/// @brief return a temporary RocksDBKey object
+void RocksDBTransactionState::returnRocksDBKey(RocksDBKey* key) {
+  try {
+    // put key back into our vector of keys
+    _keys.emplace_back(key);
+  } catch (...) {
+    // no harm done. just wipe the key
+    delete key;
+  }
+}
+
+/// @brief constructor, leases a builder
+RocksDBKeyLeaser::RocksDBKeyLeaser(transaction::Methods* trx)
+      : _rtrx(RocksDBTransactionState::toState(trx)),
+        _parallel(_rtrx->inParallelMode()),
+        _key(_parallel ? &_internal : _rtrx->leaseRocksDBKey()) {
+  TRI_ASSERT(_key != nullptr);
+}
+
+/// @brief destructor
+RocksDBKeyLeaser::~RocksDBKeyLeaser() {
+  if (!_parallel && _key != nullptr) {
+    _rtrx->returnRocksDBKey(_key);
+  }
+}
+
