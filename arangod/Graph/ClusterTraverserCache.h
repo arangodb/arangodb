@@ -53,7 +53,7 @@ class ClusterTraverserCache : public TraverserCache {
       std::unordered_map<ServerID, traverser::TraverserEngineID> const*
           engines);
 
-  ~ClusterTraverserCache();
+  ~ClusterTraverserCache() {}
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Inserts the real document stored within the token

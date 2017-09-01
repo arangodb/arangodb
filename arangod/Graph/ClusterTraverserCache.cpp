@@ -42,8 +42,6 @@ ClusterTraverserCache::ClusterTraverserCache(
     std::unordered_map<ServerID, traverser::TraverserEngineID> const* engines)
     : TraverserCache(trx), _engines(engines) {}
 
-ClusterTraverserCache::~ClusterTraverserCache() {}
-
 VPackSlice ClusterTraverserCache::lookupToken(EdgeDocumentToken const& token) {
   return VPackSlice(token.vpack());
 }
@@ -54,13 +52,19 @@ aql::AqlValue ClusterTraverserCache::fetchEdgeAqlResult(EdgeDocumentToken const&
 }
 
 aql::AqlValue ClusterTraverserCache::fetchVertexAqlResult(StringRef id) {
+  // FIXME: this is only used for ShortestPath, where the shortestpath stuff
+  // uses _edges to store its vertices
+  TRI_ASSERT(ServerState::instance()->isCoordinator());
   auto it = _edges.find(id);
   if (it == _edges.end()) {
     LOG_TOPIC(ERR, Logger::GRAPHS) << __FUNCTION__ << " vertex not found";
     // Document not found return NULL
     return aql::AqlValue(VelocyPackHelper::NullValue());
   }
-  return aql::AqlValue(aql::AqlValueHintNoCopy(it->second.begin()));
+  // FIXME: the ClusterTraverserCache lifetime is shorter then the query lifetime
+  // therefore we cannot get away here without copying the result
+  //return aql::AqlValue(aql::AqlValueHintNoCopy(it->second.begin()));
+  return aql::AqlValue(it->second); // will copy slice
 }
 
 void ClusterTraverserCache::insertEdgeIntoResult(EdgeDocumentToken const& idToken,
@@ -70,6 +74,8 @@ void ClusterTraverserCache::insertEdgeIntoResult(EdgeDocumentToken const& idToke
 
 void ClusterTraverserCache::insertVertexIntoResult(StringRef id,
                                                    VPackBuilder& result) {
+  // FIXME: this is only used for ShortestPath, where the shortestpath stuff
+  // uses _edges to store its vertices
   auto it = _edges.find(id);
   if (it == _edges.end()) {
     LOG_TOPIC(ERR, Logger::GRAPHS) << __FUNCTION__ << " vertex not found";
