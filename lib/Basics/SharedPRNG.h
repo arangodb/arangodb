@@ -42,11 +42,11 @@ struct PaddedPRNG {
 #pragma clang diagnostic ignored "-Wunused-private-field"
 #endif
   // this padding is intentionally here
-  
+
   uint8_t frontPadding[64];
   xoroshiro128plus _prng;
   uint8_t backpadding[64 - sizeof(xoroshiro128plus)];
-  
+
 #if defined(__clang__)
 #pragma clang diagnostic pop
 #endif
