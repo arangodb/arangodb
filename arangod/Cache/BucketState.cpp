@@ -21,19 +21,22 @@
 /// @author Daniel H. Larkin
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "Cache/State.h"
+#include "Cache/BucketState.h"
 #include "Basics/Common.h"
+#include "Basics/cpu-relax.h"
 
 #include <stdint.h>
 #include <atomic>
 
+using namespace arangodb::basics;
 using namespace arangodb::cache;
 
-State::State() : _state(0) {}
+BucketState::BucketState() : _state(0) {}
 
-State::State(State const& other) : _state(other._state.load()) {}
+BucketState::BucketState(BucketState const& other)
+    : _state(other._state.load()) {}
 
-State& State::operator=(State const& other) {
+BucketState& BucketState::operator=(BucketState const& other) {
   if (this != &other) {
     _state = other._state.load();
   }
@@ -41,50 +44,58 @@ State& State::operator=(State const& other) {
   return *this;
 }
 
-bool State::isLocked() const {
+bool BucketState::isLocked() const {
   return ((_state.load() & static_cast<uint32_t>(Flag::locked)) > 0);
 }
 
-bool State::lock(int64_t maxTries, State::CallbackType cb) {
+bool BucketState::lock(int64_t maxTries, BucketState::CallbackType cb) {
   int64_t attempt = 0;
   while (maxTries < 0 || attempt < maxTries) {
     // expect unlocked, but need to preserve migrating status
-    uint32_t expected = _state.load() & (~static_cast<uint32_t>(Flag::locked));
-    bool success = _state.compare_exchange_strong(
-        expected,
-        (expected | static_cast<uint32_t>(Flag::locked)));  // try to lock
-    if (success) {
-      cb();
-      return true;
+    uint32_t current = _state.load(std::memory_order_relaxed);
+    uint32_t expected = current & (~static_cast<uint32_t>(Flag::locked));
+    if (current == expected) {
+      uint32_t desired = expected | static_cast<uint32_t>(Flag::locked);
+      // try to lock
+      bool success = _state.compare_exchange_strong(
+          expected, desired,
+          std::memory_order_acq_rel, std::memory_order_relaxed);
+      if (success) {
+        cb();
+        return true;
+      }
     }
     attempt++;
+    cpu_relax();
     // TODO: exponential back-off for failure?
   }
 
   return false;
 }
 
-void State::unlock() {
+void BucketState::unlock() {
   TRI_ASSERT(isLocked());
-  _state &= ~static_cast<uint32_t>(Flag::locked);
+  _state.fetch_and(~static_cast<uint32_t>(Flag::locked), std::memory_order_release);
 }
 
-bool State::isSet(State::Flag flag) const {
+bool BucketState::isSet(BucketState::Flag flag) const {
   TRI_ASSERT(isLocked());
   return ((_state.load() & static_cast<uint32_t>(flag)) > 0);
 }
 
-bool State::isSet(State::Flag flag1, State::Flag flag2) const {
+bool BucketState::isSet(BucketState::Flag flag1,
+                        BucketState::Flag flag2) const {
   TRI_ASSERT(isLocked());
-  return ((_state.load() & (static_cast<uint32_t>(flag1) | static_cast<uint32_t>(flag2))) > 0);
+  return ((_state.load() &
+           (static_cast<uint32_t>(flag1) | static_cast<uint32_t>(flag2))) > 0);
 }
 
-void State::toggleFlag(State::Flag flag) {
+void BucketState::toggleFlag(BucketState::Flag flag) {
   TRI_ASSERT(isLocked());
   _state ^= static_cast<uint32_t>(flag);
 }
 
-void State::clear() {
+void BucketState::clear() {
   TRI_ASSERT(isLocked());
   _state = static_cast<uint32_t>(Flag::locked);
 }

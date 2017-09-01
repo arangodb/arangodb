@@ -299,7 +299,8 @@ class Index {
   virtual void expandInSearchValues(arangodb::velocypack::Slice const,
                                     arangodb::velocypack::Builder&) const;
 
-  virtual void warmup(arangodb::transaction::Methods* trx);
+  virtual void warmup(arangodb::transaction::Methods* trx,
+                      std::shared_ptr<basics::LocalTaskQueue> queue);
 
   // needs to be called when the _colllection is guaranteed to be valid!
   // unfortunatly access the logical collection on the coordinator is not always safe!

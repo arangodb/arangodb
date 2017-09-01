@@ -861,7 +861,8 @@ void Index::expandInSearchValues(VPackSlice const base,
   }
 }
 
-void Index::warmup(arangodb::transaction::Methods*) {
+void Index::warmup(arangodb::transaction::Methods*,
+                   std::shared_ptr<basics::LocalTaskQueue>) {
   // Do nothing. If an index needs some warmup
   // it has to explicitly implement it.
 }

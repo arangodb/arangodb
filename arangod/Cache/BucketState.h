@@ -21,8 +21,8 @@
 /// @author Daniel H. Larkin
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_CACHE_STATE_H
-#define ARANGODB_CACHE_STATE_H
+#ifndef ARANGODB_CACHE_BUCKET_STATE_H
+#define ARANGODB_CACHE_BUCKET_STATE_H
 
 #include "Basics/Common.h"
 
@@ -43,7 +43,7 @@ namespace cache {
 /// are treated uniformly, and can be checked or toggled. Each flag is defined
 /// via an enum and must correspond to exactly one set bit.
 ////////////////////////////////////////////////////////////////////////////////
-struct State {
+struct BucketState {
   typedef std::function<void()> CallbackType;
 
   //////////////////////////////////////////////////////////////////////////////
@@ -71,17 +71,17 @@ struct State {
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Initializes state with no flags set and unlocked
   //////////////////////////////////////////////////////////////////////////////
-  State();
+  BucketState();
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Initializes state to match another
   //////////////////////////////////////////////////////////////////////////////
-  State(State const& other);
+  BucketState(BucketState const& other);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Initializes state to match another
   //////////////////////////////////////////////////////////////////////////////
-  State& operator=(State const& other);
+  BucketState& operator=(BucketState const& other);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Checks if state is locked.
@@ -97,7 +97,7 @@ struct State {
   /// locked or not. The optional second parameter is a function which will be
   /// called upon successfully locking the state.
   //////////////////////////////////////////////////////////////////////////////
-  bool lock(int64_t maxTries = -1LL, State::CallbackType cb = []() -> void {});
+  bool lock(int64_t maxTries = -1LL, BucketState::CallbackType cb = []() -> void {});
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Unlocks the state. Requires state to be locked.
@@ -107,13 +107,13 @@ struct State {
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Checks whether the given flag is set. Requires state to be locked.
   //////////////////////////////////////////////////////////////////////////////
-  bool isSet(State::Flag flag) const;
-  bool isSet(State::Flag flag1, State::Flag flag2) const;
+  bool isSet(BucketState::Flag flag) const;
+  bool isSet(BucketState::Flag flag1, BucketState::Flag flag2) const;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Toggles the given flag. Requires state to be locked.
   //////////////////////////////////////////////////////////////////////////////
-  void toggleFlag(State::Flag flag);
+  void toggleFlag(BucketState::Flag flag);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Unsets all flags besides Flag::locked. Requires state to be locked.
@@ -125,8 +125,8 @@ struct State {
 };
 
 // ensure that state is exactly the size of uint32_t
-static_assert(sizeof(State) == sizeof(uint32_t),
-              "Expected sizeof(State) == sizeof(uint32_t).");
+static_assert(sizeof(BucketState) == sizeof(uint32_t),
+              "Expected sizeof(BucketState) == sizeof(uint32_t).");
 
 };  // end namespace cache
 };  // end namespace arangodb

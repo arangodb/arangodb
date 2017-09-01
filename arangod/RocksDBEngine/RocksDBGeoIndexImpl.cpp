@@ -389,20 +389,23 @@ inline void RocksDelete(GeoIx* gix, RocksDBKey const& key) {
 }
 
 void SlotRead(GeoIx* gix, int slot, GeoCoordinate* gc /*out param*/) {
-  RocksDBKey key = RocksDBKey::GeoIndexValue(gix->objectId, slot, true);
+  RocksDBKey key;
+  key.constructGeoIndexValue(gix->objectId, slot, true);
   std::string slotValue;
   RocksRead(gix, key, &slotValue);
   fromPersistent(slotValue.data(), *gc);
 }
 void SlotWrite(GeoIx* gix, int slot, GeoCoordinate* gc) {
-  RocksDBKey key = RocksDBKey::GeoIndexValue(gix->objectId, slot, true);
+  RocksDBKey key;
+  key.constructGeoIndexValue(gix->objectId, slot, true);
   char data[sizeof(GeoCoordinate)];
   toPersistent(*gc, &data[0]);
   RocksWrite(gix, key, rocksdb::Slice(&data[0], sizeof(GeoCoordinate)));
 }
 
 void PotRead(GeoIx* gix, int pot, GeoPot* gp) {
-  RocksDBKey key = RocksDBKey::GeoIndexValue(gix->objectId, pot, false);
+  RocksDBKey key;
+  key.constructGeoIndexValue(gix->objectId, pot, false);
   std::string potValue;
   RocksRead(gix, key, &potValue);
   TRI_ASSERT(potValue.size() == sizeof(GeoPot));
@@ -410,7 +413,8 @@ void PotRead(GeoIx* gix, int pot, GeoPot* gp) {
 }
 
 void PotWrite(GeoIx* gix, int pot, GeoPot* gp) {
-  RocksDBKey key = RocksDBKey::GeoIndexValue(gix->objectId, pot, false);
+  RocksDBKey key;
+  key.constructGeoIndexValue(gix->objectId, pot, false);
   char data[sizeof(GeoPot)];
   toPersistent(*gp, &data[0]);
   RocksWrite(gix, key, rocksdb::Slice(&data[0], sizeof(GeoPot)));
@@ -449,7 +453,8 @@ double GeoIndex_distance(GeoCoordinate* c1, GeoCoordinate* c2) {
 /* free list.                                          */
 /* =================================================== */
 void GeoIndexFreePot(GeoIx* gix, int pot) {  // rewrite delete in rocksdb
-  RocksDBKey key = RocksDBKey::GeoIndexValue(gix->objectId, pot, false);
+  RocksDBKey key;
+  key.constructGeoIndexValue(gix->objectId, pot, false);
   RocksDelete(gix, key);
 }
 /* =================================================== */
@@ -1282,7 +1287,8 @@ GeoCoordinates* GeoIndex_NearestCountPoints(GeoIdx* gi, GeoCoordinate* c,
 /* return the specified slot to the free list          */
 /* =================================================== */
 void GeoIndexFreeSlot(GeoIx* gix, int slot) {
-  RocksDBKey key = RocksDBKey::GeoIndexValue(gix->objectId, slot, true);
+  RocksDBKey key;
+  key.constructGeoIndexValue(gix->objectId, slot, true);
   RocksDelete(gix, key);
 }
 /* =================================================== */

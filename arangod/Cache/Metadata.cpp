@@ -25,7 +25,6 @@
 #include "Basics/Common.h"
 #include "Cache/Cache.h"
 #include "Cache/Manager.h"
-#include "Cache/State.h"
 
 #include <stdint.h>
 #include <algorithm>
@@ -42,7 +41,9 @@ Metadata::Metadata()
       usage(0),
       softUsageLimit(0),
       hardUsageLimit(0),
-      _state() {}
+      _lock(),
+      _migrating(0),
+      _resizing(0) {}
 
 Metadata::Metadata(uint64_t usageLimit, uint64_t fixed, uint64_t table,
                    uint64_t max)
@@ -54,7 +55,9 @@ Metadata::Metadata(uint64_t usageLimit, uint64_t fixed, uint64_t table,
       usage(0),
       softUsageLimit(usageLimit),
       hardUsageLimit(usageLimit),
-      _state() {
+      _lock(),
+      _migrating(0),
+      _resizing(0) {
   TRI_ASSERT(allocatedSize <= maxSize);
 }
 
@@ -64,20 +67,24 @@ Metadata::Metadata(Metadata const& other)
       maxSize(other.maxSize),
       allocatedSize(other.allocatedSize),
       deservedSize(other.deservedSize),
-      usage(other.usage),
+      usage(other.usage.load()),
       softUsageLimit(other.softUsageLimit),
       hardUsageLimit(other.hardUsageLimit),
-      _state(other._state) {}
+      _lock(other._lock),
+      _migrating(other._migrating),
+      _resizing(other._resizing) {}
 
 Metadata& Metadata::operator=(Metadata const& other) {
   if (this != &other) {
-    _state = other._state;
+    _lock = other._lock;
+    _migrating = other._migrating;
+    _resizing = other._resizing;
     fixedSize = other.fixedSize;
     tableSize = other.tableSize;
     maxSize = other.maxSize;
     allocatedSize = other.allocatedSize;
     deservedSize = other.deservedSize;
-    usage = other.usage;
+    usage = other.usage.load();
     softUsageLimit = other.softUsageLimit;
     hardUsageLimit = other.hardUsageLimit;
   }
@@ -85,35 +92,31 @@ Metadata& Metadata::operator=(Metadata const& other) {
   return *this;
 }
 
-void Metadata::lock() { _state.lock(); }
+bool Metadata::adjustUsageIfAllowed(int64_t usageChange) noexcept {
+  while (true) {
+    uint64_t expected = usage.load(std::memory_order_acquire);
+    uint64_t desired = (usageChange < 0)
+                           ? expected - static_cast<uint64_t>(-usageChange)
+                           : expected + static_cast<uint64_t>(usageChange);
 
-void Metadata::unlock() {
-  TRI_ASSERT(isLocked());
-  _state.unlock();
-}
+    if ((desired > hardUsageLimit) ||
+        ((expected <= softUsageLimit) && (desired > softUsageLimit))) {
+      return false;
+    }
 
-bool Metadata::isLocked() const { return _state.isLocked(); }
-
-bool Metadata::adjustUsageIfAllowed(int64_t usageChange) {
-  TRI_ASSERT(isLocked());
-
-  if (usageChange < 0) {
-    usage -= static_cast<uint64_t>(-usageChange);
-    return true;
+    bool success = usage.compare_exchange_weak(expected, desired,
+                                               std::memory_order_acq_rel,
+                                               std::memory_order_relaxed);
+    if (success) {
+      break;
+    }
   }
 
-  if ((static_cast<uint64_t>(usageChange) + usage <= softUsageLimit) ||
-      ((usage > softUsageLimit) &&
-       (static_cast<uint64_t>(usageChange) + usage <= hardUsageLimit))) {
-    usage += static_cast<uint64_t>(usageChange);
-    return true;
-  }
-
-  return false;
+  return true;
 }
 
-bool Metadata::adjustLimits(uint64_t softLimit, uint64_t hardLimit) {
-  TRI_ASSERT(isLocked());
+bool Metadata::adjustLimits(uint64_t softLimit, uint64_t hardLimit) noexcept {
+  TRI_ASSERT(isWriteLocked());
   uint64_t fixed = tableSize + fixedSize + Manager::cacheRecordOverhead;
   auto approve = [&]() -> bool {
     softUsageLimit = softLimit;
@@ -156,13 +159,13 @@ bool Metadata::adjustLimits(uint64_t softLimit, uint64_t hardLimit) {
   return false;
 }
 
-uint64_t Metadata::adjustDeserved(uint64_t deserved) {
-  TRI_ASSERT(isLocked());
+uint64_t Metadata::adjustDeserved(uint64_t deserved) noexcept {
+  TRI_ASSERT(isWriteLocked());
   deservedSize = std::min(deserved, maxSize);
   return deservedSize;
 }
 
-uint64_t Metadata::newLimit() {
+uint64_t Metadata::newLimit() const noexcept {
   TRI_ASSERT(isLocked());
   uint64_t fixed = fixedSize + tableSize + Manager::cacheRecordOverhead;
   return ((Cache::minSize + fixed) >= deservedSize)
@@ -170,25 +173,16 @@ uint64_t Metadata::newLimit() {
              : std::min((deservedSize - fixed), 4 * hardUsageLimit);
 }
 
-bool Metadata::migrationAllowed(uint64_t newTableSize) {
+bool Metadata::migrationAllowed(uint64_t newTableSize) noexcept {
   TRI_ASSERT(isLocked());
   return (hardUsageLimit + fixedSize + newTableSize +
               Manager::cacheRecordOverhead <=
           std::min(deservedSize, maxSize));
 }
 
-void Metadata::changeTable(uint64_t newTableSize) {
+void Metadata::changeTable(uint64_t newTableSize) noexcept {
+  TRI_ASSERT(isWriteLocked());
   tableSize = newTableSize;
   allocatedSize =
       hardUsageLimit + fixedSize + tableSize + Manager::cacheRecordOverhead;
-}
-
-bool Metadata::isSet(State::Flag flag) const {
-  TRI_ASSERT(isLocked());
-  return _state.isSet(flag);
-}
-
-void Metadata::toggleFlag(State::Flag flag) {
-  TRI_ASSERT(isLocked());
-  _state.toggleFlag(flag);
 }

@@ -1104,11 +1104,53 @@ function CollectionDbSuite () {
 
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief test suite: collection caches
+////////////////////////////////////////////////////////////////////////////////
+
+function CollectionCacheSuite () {
+  const cn = "UnitTestsClusterCache";
+  return {
+
+    tearDown : function () {
+      try {
+        db._drop(cn);
+      }
+      catch (err) {
+      }
+    },
+    
+    testCollectionCache : function () {
+      let c = db._create(cn, {cacheEnabled:true});
+      let p = c.properties();
+      assertTrue(p.cacheEnabled, p);
+    },
+
+    testCollectionCacheModifyProperties : function () {
+      // create collection without cache
+      let c = db._create(cn, {cacheEnabled:false});
+      let p = c.properties();
+      assertFalse(p.cacheEnabled, p);
+
+      // enable caches
+      c.properties({cacheEnabled:true});
+      p = c.properties();
+      assertTrue(p.cacheEnabled, p);
+
+      // disable caches again
+      c.properties({cacheEnabled:false});
+      p = c.properties();
+      assertFalse(p.cacheEnabled, p);
+    }
+  };
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief executes the test suites
 ////////////////////////////////////////////////////////////////////////////////
 
 jsunity.run(CollectionSuiteErrorHandling);
 jsunity.run(CollectionSuite);
 jsunity.run(CollectionDbSuite);
+jsunity.run(CollectionCacheSuite);
 
 return jsunity.done();

@@ -21,17 +21,35 @@
 /// @author Daniel H. Larkin
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "Cache/Rebalancer.h"
+#ifndef ARANGO_CPU_RELAX_H
+#define ARANGO_CPU_RELAX_H 1
+
 #include "Basics/Common.h"
-#include "Cache/Manager.h"
 
-using namespace arangodb::cache;
+#include <thread>
 
-Rebalancer::Rebalancer(Manager* manager) : _manager(manager) {}
+namespace arangodb {
+namespace basics {
 
-int Rebalancer::rebalance() {
-  if (_manager != nullptr) {
-    return _manager->rebalance();
-  }
-  return false;
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Function to let CPU relax inside spinlock.
+////////////////////////////////////////////////////////////////////////////////
+inline void cpu_relax() {
+// TODO use <boost/fiber/detail/cpu_relax.hpp> when available (>1.65.0?)
+#if defined(__i386) || defined(_M_IX86) || defined(__x86_64__) || \
+    defined(_M_X64)
+#if defined __WIN32__
+  YieldProcessor();
+#else
+  asm volatile("pause" ::: "memory");
+#endif
+#else
+  static constexpr std::chrono::microseconds us0{0};
+  std::this_thread::sleep_for(us0);
+#endif
 }
+
+}  // namespace basics
+}  // namespace arangodb
+
+#endif

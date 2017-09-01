@@ -254,8 +254,8 @@ class Methods {
   ///        Does not care for revision handling!
   ///        Must only be called on a local server, not in cluster case!
   Result documentFastPathLocal(std::string const& collectionName,
-                            std::string const& key,
-                            ManagedDocumentResult& result);
+                               StringRef const& key,
+                               ManagedDocumentResult& result);
 
   /// @brief return one or multiple documents from a collection
   OperationResult document(std::string const& collectionName,
@@ -269,7 +269,8 @@ class Methods {
                          VPackSlice const value,
                          OperationOptions const& options);
 
-  /// @brief update/patch one or multiple documents in a collecti  Result/// the single-document variant of this operation will either succeed or,
+  /// @brief update/patch one or multiple documents in a collecti  Result
+  /// the single-document variant of this operation will either succeed or,
   /// if it fails, clean up after itself
   OperationResult update(std::string const& collectionName,
                          VPackSlice const updateValue,
@@ -362,7 +363,7 @@ class Methods {
                                              uint64_t batchSize, bool reverse);
 
   /// @brief test if a collection is already locked
-  bool isLocked(arangodb::LogicalCollection*, AccessMode::Type);
+  bool isLocked(arangodb::LogicalCollection*, AccessMode::Type) const;
 
   arangodb::LogicalCollection* documentCollection(TRI_voc_cid_t) const;
 
