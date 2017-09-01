@@ -1167,10 +1167,13 @@ static bool throwExceptionAfterBadSyncRequest(ClusterCommResult* res,
   }
 
   if (res->status == CL_COMM_ERROR) {
-    std::string errorMessage = std::string("Error message received from shard '") +
-                     std::string(res->shardID) +
-                     std::string("' on cluster node '") +
-                     std::string(res->serverID) + std::string("': ");
+    std::string errorMessage = res->shardID.empty() ?
+        std::string("Error message received from cluster node '") +
+        std::string(res->serverID) + std::string("': ")
+      : std::string("Error message received from shard '") +
+        std::string(res->shardID) +
+        std::string("' on cluster node '") +
+        std::string(res->serverID) + std::string("': ");
 
 
     int errorNum = TRI_ERROR_INTERNAL;
