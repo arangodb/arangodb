@@ -1329,8 +1329,8 @@ OperationResult transaction::Methods::insertCoordinator(
 #endif
 
 /// @brief choose a timeout for synchronous replication, based on the
-/// number of documents we ship over
-static double chooseTimeout(size_t count) {
+/// byte size of the documents we ship over
+static double chooseTimeout(size_t byteSize) {
   static bool timeoutQueried = false;
   static double timeoutFactor = 1.0;
   static double lowerLimit = 0.5;
@@ -1342,14 +1342,17 @@ static double chooseTimeout(size_t count) {
     timeoutQueried = true;
     auto feature2 = application_features::ApplicationServer::getFeature<EngineSelectorFeature>("EngineSelector");
     if (feature2->engineName() == arangodb::RocksDBEngine::EngineName) {
-      lowerLimit = 1.0;
+      lowerLimit = 3.0;
+      // at least as long as we have thinking pauses in RocksDB
     }
   }
 
-  // We usually assume that a server can process at least 2500 documents
-  // per second (this is a low estimate), and use a low limit of 0.5s
-  // and a high timeout of 120s
-  double timeout = static_cast<double>(count / 2500);
+  // We usually assume that a server can process at least 250000 bytes
+  // per second (this is a rather arbitrary low estimate and actually
+  // also depends on the size of the documents), and use a low limit of
+  // 0.5s and a high timeout of 120s, for RocksDB we increase the low
+  // limit to 3.0s because write stalls can happen.
+  double timeout = static_cast<double>(byteSize / 250000);
   if (timeout < lowerLimit) {
     return lowerLimit * timeoutFactor;
   } else if (timeout > 120) {
@@ -1516,8 +1519,8 @@ OperationResult transaction::Methods::insertLocal(
         if (cc != nullptr) {
           // nullptr only happens on controlled shutdown
           size_t nrDone = 0;
-          size_t nrGood = cc->performRequests(requests, chooseTimeout(count),
-                                              nrDone, Logger::REPLICATION, false);
+          size_t nrGood = cc->performRequests(requests,
+              chooseTimeout(body->size()), nrDone, Logger::REPLICATION, false);
           if (nrGood < followers->size()) {
             // If any would-be-follower refused to follow there must be a
             // new leader in the meantime, in this case we must not allow
@@ -1865,8 +1868,8 @@ OperationResult transaction::Methods::modifyLocal(
                 path, body);
           }
           size_t nrDone = 0;
-          size_t nrGood = cc->performRequests(requests, chooseTimeout(count),
-                                              nrDone, Logger::REPLICATION, false);
+          size_t nrGood = cc->performRequests(requests,
+              chooseTimeout(body->size()), nrDone, Logger::REPLICATION, false);
           if (nrGood < followers->size()) {
             // If any would-be-follower refused to follow there must be a
             // new leader in the meantime, in this case we must not allow
@@ -2145,8 +2148,8 @@ OperationResult transaction::Methods::removeLocal(
                 body);
           }
           size_t nrDone = 0;
-          size_t nrGood = cc->performRequests(requests, chooseTimeout(count),
-                                              nrDone, Logger::REPLICATION, false);
+          size_t nrGood = cc->performRequests(requests,
+              chooseTimeout(body->size()), nrDone, Logger::REPLICATION, false);
           if (nrGood < followers->size()) {
             // If any would-be-follower refused to follow there must be a
             // new leader in the meantime, in this case we must not allow
