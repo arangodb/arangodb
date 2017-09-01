@@ -451,7 +451,7 @@ void RocksDBEngine::start() {
   if (!status.ok()) {
     std::string error;
     if (status.IsIOError()) {
-      error = "; Maybe your filesystem doesn't provide requried features? (Cifs? NFS?)";
+      error = "; Maybe your filesystem doesn't provide required features? (Cifs? NFS?)";
     }
 
     LOG_TOPIC(FATAL, arangodb::Logger::STARTUP)
