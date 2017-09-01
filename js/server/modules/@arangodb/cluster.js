@@ -148,16 +148,16 @@ function startReadLockOnLeader (endpoint, database, collName, timeout) {
     }
     wait(0.5);
   }
-  console.topic('heartbeat=error', 'startReadLockOnLeader: giving up');
+  console.topic('heartbeat=debug', 'startReadLockOnLeader: giving up');
   try {
     r = request({ url: url + '/_api/replication/holdReadLockCollection',
                   body: JSON.stringify({'id': id}), method: 'DELETE' });
   } catch (err2) {
-    console.topic('heartbeat=error', 'startReadLockOnLeader: expection in cancel:',
+    console.topic('heartbeat=debug', 'startReadLockOnLeader: exception in cancel:',
                   JSON.stringify(err2));
   }
   if (r.status !== 200) {
-    console.topic('heartbeat=error', 'startReadLockOnLeader: cancelation error for shard',
+    console.topic('heartbeat=debug', 'startReadLockOnLeader: cancelation error for shard',
                   collName, r);
   }
   return false;
@@ -178,11 +178,11 @@ function cancelReadLockOnLeader (endpoint, database, lockJobId) {
   try {
     r = request({url, body: JSON.stringify(body), method: 'DELETE' });
   } catch (e) {
-    console.topic('heartbeat=error', 'cancelReadLockOnLeader: exception caught:', e);
+    console.topic('heartbeat=warn', 'cancelReadLockOnLeader: exception caught:', e);
     return false;
   }
   if (r.status !== 200) {
-    console.topic('heartbeat=error', 'cancelReadLockOnLeader: error', lockJobId, r.status,
+    console.topic('heartbeat=debug', 'cancelReadLockOnLeader: error', lockJobId, r.status,
                   r.message, r.body, r.json);
     return false;
   }
@@ -202,7 +202,7 @@ function cancelBarrier (endpoint, database, barrierId) {
     '/_api/replication/barrier/' + barrierId;
   var r = request({url, method: 'DELETE' });
   if (r.status !== 200 && r.status !== 204) {
-    console.topic('heartbeat=error', 'CancelBarrier: error', r);
+    console.topic('heartbeat=warn', 'CancelBarrier: error', r);
     return false;
   }
   console.topic('heartbeat=debug', 'cancelBarrier: success');
@@ -221,7 +221,7 @@ function addShardFollower (endpoint, database, shard, lockJobId) {
   var body = {followerId: ArangoServerState.id(), shard, checksum: db._collection(shard).count() + '', readLockId: lockJobId};
   var r = request({url, body: JSON.stringify(body), method: 'PUT'});
   if (r.status !== 200) {
-    console.topic('heartbeat=error', "addShardFollower: could not add us to the leader's follower list.", r);
+    console.topic('heartbeat=debug', "addShardFollower: could not add us to the leader's follower list.", r);
     return false;
   }
   return true;
@@ -238,7 +238,7 @@ function removeShardFollower (endpoint, database, shard) {
   var body = {followerId: ArangoServerState.id(), shard};
   var r = request({url, body: JSON.stringify(body), method: 'PUT'});
   if (r.status !== 200) {
-    console.topic('heartbeat=error', "removeShardFollower: could not remove us from the leader's follower list: ", r.status, r.body);
+    console.topic('heartbeat=debug', "removeShardFollower: could not remove us from the leader's follower list: ", r.status, r.body);
     return false;
   }
   return true;
@@ -372,7 +372,7 @@ function organiseLeaderResign (database, collId, shardName) {
         'action': function () { }
       });
   } catch (x) {
-    console.topic('heartbeat=error', 'exception thrown when resigning:', x);
+    console.topic('heartbeat=warn', 'exception thrown when resigning:', x);
   }
 }
 
@@ -548,24 +548,24 @@ function synchronizeOneShard (database, shard, planId, leader) {
         useCollectionId: false, leaderId: leader, skipCreateDrop: true });
     let endTime = new Date();
     let longSync = false;
-    if (endTime - startTime > 5000) {
-      console.topic('heartbeat=error', 'synchronizeOneShard: long call to syncCollection for shard', shard, JSON.stringify(sy), "start time: ", startTime.toString(), "end time: ", endTime.toString());
+    if (endTime - startTime > 15000) {
+      console.topic('heartbeat=warn', 'synchronizeOneShard: long call to syncCollection for shard', shard, JSON.stringify(sy), "start time: ", startTime.toString(), "end time: ", endTime.toString(), "(can happen under heavy write load)");
       longSync = true;
     }
     if (sy.error) {
-      console.topic('heartbeat=error', 'synchronizeOneShard: could not initially synchronize',
+      console.topic('heartbeat=debug', 'synchronizeOneShard: could not initially synchronize',
         'shard ', shard, sy);
       throw 'Initial sync for shard ' + shard + ' failed';
     } else {
       if (sy.collections.length === 0 ||
         sy.collections[0].name !== shard) {
         if (longSync) {
-          console.topic('heartbeat=error', 'synchronizeOneShard: long sync, before cancelBarrier',
+          console.topic('heartbeat=debug', 'synchronizeOneShard: long sync, before cancelBarrier',
                         new Date().toString());
         }
         cancelBarrier(ep, database, sy.barrierId);
         if (longSync) {
-          console.topic('heartbeat=error', 'synchronizeOneShard: long sync, after cancelBarrier',
+          console.topic('heartbeat=debug', 'synchronizeOneShard: long sync, after cancelBarrier',
                         new Date().toString());
         }
         throw 'Shard ' + shard + ' seems to be gone from leader!';
@@ -577,7 +577,7 @@ function synchronizeOneShard (database, shard, planId, leader) {
             shard, 300);
           console.topic('heartbeat=debug', 'lockJobId:', lockJobId);
         } catch (err1) {
-          console.topic('heartbeat=error', 'synchronizeOneShard: exception in startReadLockOnLeader:', err1, err1.stack);
+          console.topic('heartbeat=debug', 'synchronizeOneShard: exception in startReadLockOnLeader:', err1, err1.stack);
         }
         finally {
           cancelBarrier(ep, database, sy.barrierId);
@@ -587,7 +587,7 @@ function synchronizeOneShard (database, shard, planId, leader) {
             var sy2 = rep.syncCollectionFinalize(
               database, shard, sy.lastLogTick, { endpoint: ep }, leader);
             if (sy2.error) {
-              console.topic('heartbeat=error', 'synchronizeOneShard: Could not finalize shard synchronization',
+              console.topic('heartbeat=debug', 'synchronizeOneShard: Could not finalize shard synchronization',
                 shard, sy2);
               ok = false;
             } else {
@@ -599,18 +599,18 @@ function synchronizeOneShard (database, shard, planId, leader) {
               }
             }
           } catch (err3) {
-            console.topic('heartbeat=error', 'synchronizeOneshard: exception in',
+            console.topic('heartbeat=debug', 'synchronizeOneshard: exception in',
               'syncCollectionFinalize:', err3);
           }
           finally {
             if (!cancelReadLockOnLeader(ep, database, lockJobId)) {
-              console.topic('heartbeat=error', 'synchronizeOneShard: read lock has timed out',
+              console.topic('heartbeat=warn', 'synchronizeOneShard: read lock has timed out',
                 'for shard', shard);
               ok = false;
             }
           }
         } else {
-          console.topic('heartbeat=error', 'synchronizeOneShard: lockJobId was false for shard',
+          console.topic('heartbeat=debug', 'synchronizeOneShard: lockJobId was false for shard',
             shard);
         }
         if (ok) {
@@ -808,7 +808,7 @@ function executePlanForCollections(plannedCollections) {
                     errorNum: err2.errorNum,
                     errorMessage: err2.errorMessage,
                   };
-                  console.topic('heartbeat=error', "creating local shard '%s/%s' for central '%s/%s' failed: %s",
+                  console.topic('heartbeat=warn', "creating local shard '%s/%s' for central '%s/%s' failed: %s",
                     database,
                     shardName,
                     database,
@@ -936,7 +936,7 @@ function executePlanForCollections(plannedCollections) {
           }, localErrors);
         });
       } catch(e) {
-        console.topic('heartbeat=error', "Got error executing plan", e, e.stack);
+        console.topic('heartbeat=debug', "Got error executing plan", e, e.stack);
       } finally {
         // always return to previous database
         db._useDatabase('_system');
@@ -1136,7 +1136,7 @@ function updateCurrentForCollections(localErrors, plannedCollections,
         }
       }
     } catch (e) {
-      console.topic('heartbeat=error', 'Got error while trying to sync current collections:', e, e.stack);
+      console.topic('heartbeat=debug', 'Got error while trying to sync current collections:', e, e.stack);
     } finally {
       // always return to previous database
       db._useDatabase('_system');
@@ -1252,11 +1252,11 @@ function syncReplicatedShardsWithLeaders(plan, current, localErrors) {
                 let currentServers = currentShards[shardName].servers;
                 let plannedServers = plannedShards[shardName];
                 if (!plannedServers) {
-                  console.topic('heartbeat=error', 'Shard ' + shardName + ' does not have servers substructure in plan');
+                  console.topic('heartbeat=warn', 'Shard ' + shardName + ' does not have servers substructure in plan');
                   return;
                 }
                 if (!currentServers) {
-                  console.topic('heartbeat=error', 'Shard ' + shardName + ' does not have servers substructure in current');
+                  console.topic('heartbeat=warn', 'Shard ' + shardName + ' does not have servers substructure in current');
                   return;
                 }
                 
@@ -1308,10 +1308,10 @@ function migratePrimary(plan, current) {
       if (typeof res !== 'object' || !res.hasOwnProperty("results") ||
           typeof res.results !== 'object' || res.results.length !== 1 || 
           res.results[0] === 0) {
-        console.topic('heartbeat=error', 'migratePrimary: could not send transaction for Current to agency, result:', res);
+        console.topic('heartbeat=warn', 'migratePrimary: could not send transaction for Current to agency, result:', res);
       }
     } catch (err) {
-      console.topic('heartbeat=error', 'migratePrimary: caught exception when sending transaction for Current to agency:', err);
+      console.topic('heartbeat=warn', 'migratePrimary: caught exception when sending transaction for Current to agency:', err);
     }
   }
 
@@ -1478,10 +1478,10 @@ function migrateAnyServer(plan, current) {
       if (typeof res !== 'object' || !res.hasOwnProperty("results") ||
           typeof res.results !== 'object' || res.results.length !== 1 || 
           res.results[0] === 0) {
-        console.topic('heartbeat=error', 'migrateAnyServer: could not send transaction for Current to agency, result:', res);
+        console.topic('heartbeat=warn', 'migrateAnyServer: could not send transaction for Current to agency, result:', res);
       }
     } catch (err) {
-      console.topic('heartbeat=error', 'migrateAnyServer: caught exception when sending transaction for Current to agency:', err);
+      console.topic('heartbeat=warn', 'migrateAnyServer: caught exception when sending transaction for Current to agency:', err);
     }
   }
 }
@@ -1520,7 +1520,7 @@ function setupReplication () {
         console.topic('heartbeat=debug', 'Result of replication start: ' + res2);
       }
     } catch (err) {
-      console.topic('heartbeat=error', 'Could not set up replication for database ', database, JSON.stringify(err));
+      console.topic('heartbeat=warn', 'Could not set up replication for database ', database, JSON.stringify(err));
       ok = false;
     }
   }
@@ -1798,9 +1798,9 @@ var handlePlanChange = function (plan, current) {
 
     console.topic('heartbeat=debug', 'plan change handling successful');
   } catch (err) {
-    console.topic('heartbeat=error', 'error details: %s', JSON.stringify(err));
-    console.topic('heartbeat=error', 'error stack: %s', err.stack);
-    console.topic('heartbeat=error', 'plan change handling failed');
+    console.topic('heartbeat=debug', 'error details: %s', JSON.stringify(err));
+    console.topic('heartbeat=debug', 'error stack: %s', err.stack);
+    console.topic('heartbeat=warn', 'plan change handling failed');
     versions.success = false;
   }
   console.topic('heartbeat=debug', 'handlePlanChange: done');
@@ -2012,7 +2012,7 @@ function rebalanceShards () {
           break;
         }
       } else {
-        console.topic('heartbeat=error', 'rebalanceShards: moveShard(', todo, ') produced:',
+        console.topic('heartbeat=warn', 'rebalanceShards: moveShard(', todo, ') produced:',
                       res.errorMessage);
       }
     }
@@ -2072,7 +2072,7 @@ function checkForSyncReplOneCollection (dbName, collName) {
                   shards);
     return false;
   } catch (err) {
-    console.topic('heartbeat=error', 'checkForSyncReplOneCollection: exception:', dbName, collName,
+    console.topic('heartbeat=warn', 'checkForSyncReplOneCollection: exception:', dbName, collName,
                   JSON.stringify(err));
   }
   return false;
