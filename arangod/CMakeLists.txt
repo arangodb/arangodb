@@ -429,7 +429,7 @@ target_link_libraries(arangoserver
 
 if (USE_ENTERPRISE)
   target_compile_definitions(arangoserver PUBLIC "-DUSE_ENTERPRISE=1")
-  target_include_directories(arangoserver PUBLIC ${ENTERPRISE_INCLUDE_DIR})
+  target_include_directories(arangoserver PUBLIC "${PROJECT_SOURCE_DIR}/${ENTERPRISE_INCLUDE_DIR}")
   if (MSVC)
     target_link_libraries(arangoserver
       Wldap32.lib
