@@ -4,6 +4,7 @@
 
 #include "Aql/Query.h"
 #include "Aql/QueryString.h"
+#include "Basics/VelocyPackHelper.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/QueryRegistryFeature.h"
 #include "Transaction/StandaloneContext.h"
@@ -99,14 +100,94 @@ void StatisticsWorker::_collectGarbage(std::string const& collectionName,
     }
 }
 
+
+
+
+
+
+void StatisticsWorker::historianAverage() {
+  // var stats15m = db._statistics15;
+  // var clusterId = cluster.isCluster() && global.ArangoServerState.id();
+  // if (cluster.isCluster()) {
+  // }
+
+  try {
+    auto now = static_cast<uint64_t>(TRI_microtime());
+
+    // check if need to create a new 15 min interval
+    // var prev15 = lastEntry(
+    //   '_statistics15',
+    //   now - 2 * HISTORY_INTERVAL,
+    //   clusterId);
+
+    // var stat15;
+    // var start;
+
+    // if (prev15 === null) {
+    //   start = now - HISTORY_INTERVAL;
+    // } else {
+    //   start = prev15.time;
+    // }
+
+    // stat15 = compute15Minute(start, clusterId);
+
+    // if (stat15 !== undefined) {
+    //   if (clusterId) {
+    //     stat15.clusterId = clusterId;
+    //   }
+
+    //   stats15m.save(stat15);
+    // }
+
+  } catch (...) {
+    // we don't want this error to appear every x seconds
+    // require("console").warn("catch error in historianAverage: %s", err)
+  }
+}
+
+VPackSlice StatisticsWorker::_lastEntry(std::string const& collection, uint64_t start, uint64_t clusterId) {
+  /*
+  var filter = '';
+  var bindVars = { start: start, '@collection': collection };
+
+  if (clusterId) {
+    filter = ' FILTER s.clusterId == @clusterId ';
+    bindVars.clusterId = clusterId;
+  }
+
+  var values = db._query(
+    'FOR s in @@collection '
+    + 'FILTER s.time >= @start '
+    + filter
+    + 'SORT s.time desc '
+    + 'LIMIT 1 '
+    + 'RETURN s', bindVars);
+
+  if (values.hasNext()) {
+    return values.next();
+  }
+  */
+  arangodb::basics::VelocyPackHelper::NullValue();
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
 void StatisticsWorker::run() {
   uint64_t seconds = 0;
 
-  std::cout << "stat worker start run\n";
-
   while (!isStopping() && StatisticsFeature::enabled()) {
     // process every second
-    
+
     std::cout << "1 done\n";
 
     // process every 15 seconds
@@ -115,7 +196,8 @@ void StatisticsWorker::run() {
       collectGarbage();
     }
 
-    if (seconds % 15 == 0) {
+    if (seconds % HISTORY_INTERVAL == 0) {
+      historianAverage();
       std::cout << "15 done\n";
     }
 

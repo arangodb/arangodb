@@ -34,13 +34,15 @@ class StatisticsWorker final : public Thread {
   public:
     StatisticsWorker() : Thread("StatisticsWorker") {}
     ~StatisticsWorker() { shutdown(); }
-    void collectGarbage();
-    void historian();
-    void historianAverage();
     void run() override;
 
   private:
+    uint64_t const HISTORY_INTERVAL = 15 * 60; // 15 min
+    void collectGarbage();
+    void historian();
+    void historianAverage();
     void _collectGarbage(std::string const& collection, uint64_t time);
+    VPackSlice _lastEntry(std::string const& collection, uint64_t start, uint64_t clusterId);
 };
 
 }
