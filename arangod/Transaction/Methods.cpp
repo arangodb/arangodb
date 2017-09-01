@@ -1352,7 +1352,7 @@ static double chooseTimeout(size_t byteSize) {
   // also depends on the size of the documents), and use a low limit of
   // 0.5s and a high timeout of 120s, for RocksDB we increase the low
   // limit to 3.0s because write stalls can happen.
-  double timeout = static_cast<double>(byteSize / 250000);
+  double timeout = static_cast<double>(byteSize) / 250000.0;
   if (timeout < lowerLimit) {
     return lowerLimit * timeoutFactor;
   } else if (timeout > 120) {
