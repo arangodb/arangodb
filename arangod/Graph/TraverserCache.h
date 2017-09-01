@@ -57,36 +57,28 @@ class TraverserCache {
    //////////////////////////////////////////////////////////////////////////////
    /// @brief Inserts the real document stored within the token
    ///        into the given builder.
-   ///        The document will be looked up in the StorageEngine
    //////////////////////////////////////////////////////////////////////////////
-
-   virtual void insertIntoResult(StringRef idString,
-                                 arangodb::velocypack::Builder& builder);
-
-   virtual void insertIntoResult(graph::EdgeDocumentToken const& etkn,
-                                 arangodb::velocypack::Builder& builder);
+   virtual void insertEdgeIntoResult(graph::EdgeDocumentToken const& etkn,
+                                     velocypack::Builder& builder);
 
    //////////////////////////////////////////////////////////////////////////////
-   /// @brief Return AQL value containing the result
-   ///        The document will be looked up in the StorageEngine
+   /// @brief Inserts the real document identified by the _id string
    //////////////////////////////////////////////////////////////////////////////
-
-   virtual aql::AqlValue fetchAqlResult(graph::EdgeDocumentToken const&);
+   virtual void insertVertexIntoResult(StringRef idString,
+                                       velocypack::Builder& builder);
 
    //////////////////////////////////////////////////////////////////////////////
    /// @brief Return AQL value containing the result
    ///        The document will be looked up in the StorageEngine
    //////////////////////////////////////////////////////////////////////////////
-  
-   virtual aql::AqlValue fetchAqlResult(StringRef idString);
+   virtual aql::AqlValue fetchEdgeAqlResult(graph::EdgeDocumentToken const&);
 
    //////////////////////////////////////////////////////////////////////////////
-   /// @brief Insert value into store
+   /// @brief Return AQL value containing the result
+   ///        The document will be looked up in the StorageEngine
    //////////////////////////////////////////////////////////////////////////////
+   virtual aql::AqlValue fetchVertexAqlResult(StringRef idString);
 
-   virtual void insertDocument(StringRef idString,
-                               arangodb::velocypack::Slice const& document);
-  
    size_t getAndResetInsertedDocuments() {
      size_t tmp = _insertedDocuments;
      _insertedDocuments = 0;

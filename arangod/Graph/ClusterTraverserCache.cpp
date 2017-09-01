@@ -48,12 +48,12 @@ VPackSlice ClusterTraverserCache::lookupToken(EdgeDocumentToken const& token) {
   return VPackSlice(token.vpack());
 }
 
-aql::AqlValue ClusterTraverserCache::fetchAqlResult(EdgeDocumentToken const& token) {
+aql::AqlValue ClusterTraverserCache::fetchEdgeAqlResult(EdgeDocumentToken const& token) {
   TRI_ASSERT(ServerState::instance()->isCoordinator());
   return aql::AqlValue(aql::AqlValueHintNoCopy(token.vpack()));
 }
 
-aql::AqlValue ClusterTraverserCache::fetchAqlResult(StringRef id) {
+aql::AqlValue ClusterTraverserCache::fetchVertexAqlResult(StringRef id) {
   auto it = _edges.find(id);
   if (it == _edges.end()) {
     // Document not found return NULL
@@ -62,8 +62,13 @@ aql::AqlValue ClusterTraverserCache::fetchAqlResult(StringRef id) {
   return aql::AqlValue(aql::AqlValueHintNoCopy(it->second.begin()));
 }
 
-void ClusterTraverserCache::insertIntoResult(StringRef id,
-                                             VPackBuilder& result) {
+void ClusterTraverserCache::insertEdgeIntoResult(EdgeDocumentToken const& idToken,
+                                                 VPackBuilder& result) {
+  result.add(VPackSlice(idToken.vpack()));
+}
+
+void ClusterTraverserCache::insertVertexIntoResult(StringRef id,
+                                                   VPackBuilder& result) {
   auto it = _edges.find(id);
   if (it == _edges.end()) {
     result.add(VelocyPackHelper::NullValue());
@@ -71,12 +76,6 @@ void ClusterTraverserCache::insertIntoResult(StringRef id,
     result.add(_edges[id]);
   }
 }
-
-void ClusterTraverserCache::insertIntoResult(EdgeDocumentToken const& idToken,
-                                             VPackBuilder& result) {
-  result.add(VPackSlice(idToken.vpack()));
-}
-
 
 std::unordered_map<StringRef, arangodb::velocypack::Slice>&
 ClusterTraverserCache::edges() {

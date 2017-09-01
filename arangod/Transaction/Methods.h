@@ -253,12 +253,12 @@ class Methods {
   ///        If there was an error the code is returned
   ///        Does not care for revision handling!
   ///        Must only be called on a local server, not in cluster case!
-  Result documentFastPathLocal(std::string const& collectionName,
+  ENTERPRISE_VIRT Result documentFastPathLocal(std::string const& collectionName,
                                StringRef const& key,
                                ManagedDocumentResult& result);
 
   /// @brief return one or multiple documents from a collection
-  OperationResult document(std::string const& collectionName,
+  ENTERPRISE_VIRT OperationResult document(std::string const& collectionName,
                            VPackSlice const value,
                            OperationOptions& options);
 

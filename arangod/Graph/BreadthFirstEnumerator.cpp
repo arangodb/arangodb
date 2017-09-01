@@ -177,8 +177,7 @@ bool BreadthFirstEnumerator::next() {
 
 arangodb::aql::AqlValue BreadthFirstEnumerator::lastVertexToAqlValue() {
   TRI_ASSERT(_lastReturned < _schreier.size());
-  return _traverser->fetchVertexData(
-      StringRef(_schreier[_lastReturned]->vertex));
+  return _traverser->fetchVertexData(_schreier[_lastReturned]->vertex);
 }
 
 arangodb::aql::AqlValue BreadthFirstEnumerator::lastEdgeToAqlValue() {
@@ -188,7 +187,7 @@ arangodb::aql::AqlValue BreadthFirstEnumerator::lastEdgeToAqlValue() {
     return arangodb::aql::AqlValue(
         arangodb::basics::VelocyPackHelper::NullValue());
   }
-  return _opts->cache()->fetchAqlResult(_schreier[_lastReturned]->edge);
+  return _opts->cache()->fetchEdgeAqlResult(_schreier[_lastReturned]->edge);
 }
 
 arangodb::aql::AqlValue BreadthFirstEnumerator::pathToAqlValue(
@@ -208,7 +207,7 @@ arangodb::aql::AqlValue BreadthFirstEnumerator::pathToAqlValue(
   result.add(VPackValue("edges"));
   result.openArray();
   for (auto const& idx : fullPath) {
-    _opts->cache()->insertIntoResult(_schreier[idx]->edge, result);
+    _opts->cache()->insertEdgeIntoResult(_schreier[idx]->edge, result);
   }
   result.close();  // edges
   result.add(VPackValue("vertices"));

@@ -86,29 +86,24 @@ VPackSlice TraverserCache::lookupInCollection(StringRef id) {
   }
 }
 
-void TraverserCache::insertIntoResult(EdgeDocumentToken const& idToken,
+void TraverserCache::insertEdgeIntoResult(EdgeDocumentToken const& idToken,
                                       VPackBuilder& builder) {
   TRI_ASSERT(!ServerState::instance()->isCoordinator());
   builder.add(lookupToken(idToken));
 }
 
-void TraverserCache::insertIntoResult(StringRef idString,
+void TraverserCache::insertVertexIntoResult(StringRef idString,
                                       VPackBuilder& builder) {
   builder.add(lookupInCollection(idString));
 }
 
-aql::AqlValue TraverserCache::fetchAqlResult(StringRef idString) {
-  return aql::AqlValue(lookupInCollection(idString));
-}
-
-aql::AqlValue TraverserCache::fetchAqlResult(EdgeDocumentToken const& idToken) {
+aql::AqlValue TraverserCache::fetchEdgeAqlResult(EdgeDocumentToken const& idToken) {
   TRI_ASSERT(!ServerState::instance()->isCoordinator());
   return aql::AqlValue(lookupToken(idToken));
 }
 
-void TraverserCache::insertDocument(StringRef idString,
-                                    arangodb::velocypack::Slice const& document) {
-  return;
+aql::AqlValue TraverserCache::fetchVertexAqlResult(StringRef idString) {
+  return aql::AqlValue(lookupInCollection(idString));
 }
 
 StringRef TraverserCache::persistString(

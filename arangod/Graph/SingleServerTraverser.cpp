@@ -42,13 +42,13 @@ SingleServerTraverser::SingleServerTraverser(TraverserOptions* opts,
 
 SingleServerTraverser::~SingleServerTraverser() {}
 
-aql::AqlValue SingleServerTraverser::fetchVertexData(StringRef vid) {
-  return _opts->cache()->fetchAqlResult(vid);
-}
-
 void SingleServerTraverser::addVertexToVelocyPack(StringRef vid,
                                                   VPackBuilder& result) {
-  _opts->cache()->insertIntoResult(vid, result);
+  _opts->cache()->insertVertexIntoResult(vid, result);
+}
+
+aql::AqlValue SingleServerTraverser::fetchVertexData(StringRef vid) {
+  return _opts->cache()->fetchVertexAqlResult(vid);
 }
 
 void SingleServerTraverser::setStartVertex(std::string const& vid) {

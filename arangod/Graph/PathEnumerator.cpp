@@ -186,7 +186,7 @@ arangodb::aql::AqlValue DepthFirstEnumerator::lastEdgeToAqlValue() {
   }
   // FIXME: add some asserts back into this
   //TRI_ASSERT(_enumeratedPath.edges.back() != nullptr);
-  return _opts->cache()->fetchAqlResult(_enumeratedPath.edges.back());
+  return _opts->cache()->fetchEdgeAqlResult(_enumeratedPath.edges.back());
 }
 
 arangodb::aql::AqlValue DepthFirstEnumerator::pathToAqlValue(
@@ -197,7 +197,7 @@ arangodb::aql::AqlValue DepthFirstEnumerator::pathToAqlValue(
   result.openArray();
   for (auto const& it : _enumeratedPath.edges) {
     //TRI_ASSERT(it != nullptr);
-    _opts->cache()->insertIntoResult(it, result);
+    _opts->cache()->insertEdgeIntoResult(it, result);
   }
   result.close();
   result.add(VPackValue("vertices"));

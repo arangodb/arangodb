@@ -93,19 +93,14 @@ VPackSlice TraverserDocumentCache::lookupAndCache(StringRef id) {
 }
 
 // These two do not use the cache.
-void TraverserDocumentCache::insertIntoResult(EdgeDocumentToken const& idToken,
-                                              VPackBuilder& builder) {
+void TraverserDocumentCache::insertEdgeIntoResult(EdgeDocumentToken const& idToken,
+                                                  VPackBuilder& builder) {
   TRI_ASSERT(!ServerState::instance()->isCoordinator());
   builder.add(lookupToken(idToken));
 }
 
-aql::AqlValue TraverserDocumentCache::fetchAqlResult(EdgeDocumentToken const& idToken) {
-  TRI_ASSERT(!ServerState::instance()->isCoordinator());
-  return aql::AqlValue(lookupToken(idToken));
-}
-
-void TraverserDocumentCache::insertIntoResult(StringRef idString,
-                                              VPackBuilder& builder) {
+void TraverserDocumentCache::insertVertexIntoResult(StringRef idString,
+                                                    VPackBuilder& builder) {
   if (_cache != nullptr) {
     auto finding = lookup(idString);
     if (finding.found()) {
@@ -120,7 +115,12 @@ void TraverserDocumentCache::insertIntoResult(StringRef idString,
   builder.add(lookupAndCache(idString));
 }
 
-aql::AqlValue TraverserDocumentCache::fetchAqlResult(StringRef idString) {
+aql::AqlValue TraverserDocumentCache::fetchEdgeAqlResult(EdgeDocumentToken const& idToken) {
+  TRI_ASSERT(!ServerState::instance()->isCoordinator());
+  return aql::AqlValue(lookupToken(idToken));
+}
+
+aql::AqlValue TraverserDocumentCache::fetchVertexAqlResult(StringRef idString) {
   if (_cache != nullptr) {
     auto finding = lookup(idString);
     if (finding.found()) {

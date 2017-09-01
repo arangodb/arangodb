@@ -57,24 +57,30 @@ class ClusterTraverserCache : public TraverserCache {
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Inserts the real document stored within the token
-  ///        into the given builder.
-  ///        The document will be looked up in the Datalake
+  ///        into the given builder. No need for actual lookup
   //////////////////////////////////////////////////////////////////////////////
-
-  void insertIntoResult(StringRef idString,
-                        arangodb::velocypack::Builder& builder) override;
-
-  void insertIntoResult(graph::EdgeDocumentToken const& idToken,
-                        arangodb::velocypack::Builder& builder) override;
+  void insertEdgeIntoResult(graph::EdgeDocumentToken const& idToken,
+                            arangodb::velocypack::Builder& builder) override;
+  
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief Inserts the real document into the builder, document will
+  ///        be retrieved from the DBServer
+  //////////////////////////////////////////////////////////////////////////////
+  void insertVertexIntoResult(StringRef idString,
+                              velocypack::Builder& builder) override;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Return AQL value containing the result
-  ///        The document will be looked up in the Datalake
+  ///        The document will either be fetched from storage or looked up in
+  ///        the datalake (on the coordinator)
   //////////////////////////////////////////////////////////////////////////////
-
-  aql::AqlValue fetchAqlResult(StringRef idString) override;
-
-  aql::AqlValue fetchAqlResult(graph::EdgeDocumentToken const& idToken) override;
+  aql::AqlValue fetchEdgeAqlResult(graph::EdgeDocumentToken const& idToken) override;
+  
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief Return AQL value containing the result
+  ///        The document be looked up, which might be expensive
+  //////////////////////////////////////////////////////////////////////////////
+  aql::AqlValue fetchVertexAqlResult(StringRef idString) override;
 
   std::unordered_map<ServerID, traverser::TraverserEngineID> const* engines();
 
