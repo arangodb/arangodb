@@ -23,12 +23,16 @@
 
 #include "catch.hpp"
 #include "common.h"
+
 #include "StorageEngineMock.h"
+
+#include "V8/v8-globals.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/LogicalView.h"
 #include "VocBase/ManagedDocumentResult.h"
 #include "Transaction/UserTransaction.h"
 #include "Transaction/StandaloneContext.h"
+#include "Transaction/V8Context.h"
 #include "Utils/OperationOptions.h"
 #include "Utils/SingleCollectionTransaction.h"
 #include "Aql/AqlFunctionFeature.h"
@@ -70,8 +74,19 @@ arangodb::aql::QueryResult executeQuery(
   std::shared_ptr<arangodb::velocypack::Builder> bindVars;
   auto options = std::make_shared<arangodb::velocypack::Builder>();
 
+  // create a query V8 execution context
+  auto* isolate = arangodb::tests::v8Isolate();
+  TRI_CreateV8Globals(isolate); // initialize 'isolate'
+  isolate->Enter(); // required for arangodb::transaction::V8Context()
+  v8::HandleScope scope(isolate); // required for v8::Context::New(...)
+  auto context = v8::Context::New(isolate);
+  context->Enter(); // required for evaluation of function calls, e.g. TOKENS(...)
+  arangodb::transaction::V8Context trxContext(&vocbase, true);
+  TRI_GET_GLOBALS();
+  v8g->_transactionContext = &trxContext;
+
   arangodb::aql::Query query(
-    false, &vocbase, arangodb::aql::QueryString(queryString),
+    true, &vocbase, arangodb::aql::QueryString(queryString),
     bindVars, options,
     arangodb::aql::PART_MAIN
   );
@@ -4946,7 +4961,259 @@ SECTION("BooleanTerm") {
 // SECTION("Range") { }
 // SECTION("Prefix") { }
 // SECTION("Phrase") { }
-// SECTION("Tokens") { }
+
+SECTION("Tokens") {
+  TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "testVocbase");
+  std::vector<arangodb::velocypack::Builder> insertedDocs;
+  arangodb::LogicalView* view;
+
+  // create collection0
+  {
+    auto createJson = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testCollection0\" }");
+    auto* collection = vocbase.createCollection(createJson->slice());
+    REQUIRE((nullptr != collection));
+
+    std::vector<std::shared_ptr<arangodb::velocypack::Builder>> docs {
+      arangodb::velocypack::Parser::fromJson("{ \"seq\": -6, \"value\": null }"),
+      arangodb::velocypack::Parser::fromJson("{ \"seq\": -5, \"value\": true }"),
+      arangodb::velocypack::Parser::fromJson("{ \"seq\": -4, \"value\": \"abc\" }"),
+      arangodb::velocypack::Parser::fromJson("{ \"seq\": -3, \"value\": 3.14 }"),
+      arangodb::velocypack::Parser::fromJson("{ \"seq\": -2, \"value\": [ 1, \"abc\" ] }"),
+      arangodb::velocypack::Parser::fromJson("{ \"seq\": -1, \"value\": { \"a\": 7, \"b\": \"c\" } }"),
+    };
+
+    arangodb::OperationOptions options;
+    options.returnNew = true;
+    arangodb::SingleCollectionTransaction trx(
+      arangodb::transaction::StandaloneContext::Create(&vocbase),
+      collection->cid(),
+      arangodb::AccessMode::Type::WRITE
+    );
+    CHECK((trx.begin().ok()));
+
+    for (auto& entry: docs) {
+      auto res = trx.insert(collection->name(), entry->slice(), options);
+      CHECK((res.successful()));
+      insertedDocs.emplace_back(res.slice().get("new"));
+    }
+
+    CHECK((trx.commit().ok()));
+  }
+
+  // create collection1
+  {
+    auto createJson = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testCollection1\" }");
+    auto* collection = vocbase.createCollection(createJson->slice());
+    REQUIRE((nullptr != collection));
+
+    irs::utf8_path resource;
+    resource/=irs::string_ref(IResearch_test_resource_dir);
+    resource/=irs::string_ref("simple_sequential.json");
+
+    auto builder = arangodb::basics::VelocyPackHelper::velocyPackFromFile(resource.utf8());
+    auto slice = builder->slice();
+    REQUIRE(slice.isArray());
+
+    arangodb::OperationOptions options;
+    options.returnNew = true;
+    arangodb::SingleCollectionTransaction trx(
+      arangodb::transaction::StandaloneContext::Create(&vocbase),
+      collection->cid(),
+      arangodb::AccessMode::Type::WRITE
+    );
+    CHECK((trx.begin().ok()));
+
+    for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
+      auto res = trx.insert(collection->name(), itr.value(), options);
+      CHECK((res.successful()));
+      insertedDocs.emplace_back(res.slice().get("new"));
+    }
+
+    CHECK((trx.commit().ok()));
+  }
+
+  // create view
+  {
+    auto createJson = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testView\", \"type\": \"iresearch\" }");
+    auto logicalView = vocbase.createView(createJson->slice(), 0);
+    REQUIRE((false == !logicalView));
+
+    view = logicalView.get();
+    auto* impl = dynamic_cast<arangodb::iresearch::IResearchView*>(view->getImplementation());
+    REQUIRE((false == !impl));
+
+    auto updateJson = arangodb::velocypack::Parser::fromJson(
+      "{ \"links\": {"
+        "\"testCollection0\": { \"includeAllFields\": true, \"nestListValues\": true },"
+        "\"testCollection1\": { \"includeAllFields\": true }"
+      "}}"
+    );
+    CHECK((impl->updateProperties(updateJson->slice(), true, false).ok()));
+    CHECK((2 == impl->linkCount()));
+    impl->sync();
+  }
+/* FIXME TODO uncomment once can figure out how to add _AQL object int the query V* execution context
+  // test no-match
+  {
+    std::vector<arangodb::velocypack::Slice> expected = {
+    };
+    auto result = executeQuery(
+      vocbase,
+      "FOR d IN VIEW testView FILTER d.value IN TOKENS('def', 'TestAnalyzer') SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
+    );
+    REQUIRE(TRI_ERROR_NO_ERROR == result.code);
+    auto slice = result.result->slice();
+    CHECK(slice.isArray());
+    size_t i = 0;
+
+    for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
+      auto const resolved = itr.value().resolveExternals();
+      CHECK((i < expected.size()));
+      CHECK((expected[i++] == resolved));
+    }
+
+    CHECK((i == expected.size()));
+  }
+
+  // test no-match via []
+  {
+    std::vector<arangodb::velocypack::Slice> expected = {
+    };
+    auto result = executeQuery(
+      vocbase,
+      "FOR d IN VIEW testView FILTER d['value'] IN TOKENS('def', 'TestAnalyzer') SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
+    );
+    REQUIRE(TRI_ERROR_NO_ERROR == result.code);
+    auto slice = result.result->slice();
+    CHECK(slice.isArray());
+    size_t i = 0;
+
+    for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
+      auto const resolved = itr.value().resolveExternals();
+      CHECK((i < expected.size()));
+      CHECK((expected[i++] == resolved));
+    }
+
+    CHECK((i == expected.size()));
+  }
+
+  // test single match
+  {
+    std::vector<arangodb::velocypack::Slice> expected = {
+      insertedDocs[2].slice(),
+    };
+    auto result = executeQuery(
+      vocbase,
+      "FOR d IN VIEW testView FILTER d.value IN TOKENS('cde', 'TestAnalyzer') SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
+    );
+    REQUIRE(TRI_ERROR_NO_ERROR == result.code);
+    auto slice = result.result->slice();
+    CHECK(slice.isArray());
+    size_t i = 0;
+
+    for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
+      auto const resolved = itr.value().resolveExternals();
+      CHECK((i < expected.size()));
+      CHECK((expected[i++] == resolved));
+    }
+
+    CHECK((i == expected.size()));
+  }
+
+  // test single match via []
+  {
+    std::vector<arangodb::velocypack::Slice> expected = {
+      insertedDocs[2].slice(),
+    };
+    auto result = executeQuery(
+      vocbase,
+      "FOR d IN VIEW testView FILTER d['value'] IN TOKENS('cde', 'TestAnalyzer') SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
+    );
+    REQUIRE(TRI_ERROR_NO_ERROR == result.code);
+    auto slice = result.result->slice();
+    CHECK(slice.isArray());
+    size_t i = 0;
+
+    for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
+      auto const resolved = itr.value().resolveExternals();
+      CHECK((i < expected.size()));
+      CHECK((expected[i++] == resolved));
+    }
+
+    CHECK((i == expected.size()));
+  }
+
+  // test mulptiple match
+  {
+    std::vector<arangodb::velocypack::Slice> expected = {
+      insertedDocs[6].slice(),
+      insertedDocs[7].slice(),
+      insertedDocs[8].slice(),
+      insertedDocs[10].slice(),
+      insertedDocs[13].slice(),
+      insertedDocs[16].slice(),
+      insertedDocs[19].slice(),
+      insertedDocs[22].slice(),
+      insertedDocs[24].slice(),
+      insertedDocs[26].slice(),
+      insertedDocs[29].slice(),
+      insertedDocs[32].slice(),
+      insertedDocs[36].slice(),
+    };
+    auto result = executeQuery(
+      vocbase,
+      "FOR d IN VIEW testView FILTER d.duplicated IN TOKENS('coz', 'TestAnalyzer') SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
+    );
+    REQUIRE(TRI_ERROR_NO_ERROR == result.code);
+    auto slice = result.result->slice();
+    CHECK(slice.isArray());
+    size_t i = 0;
+
+    for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
+      auto const resolved = itr.value().resolveExternals();
+      CHECK((i < expected.size()));
+      CHECK((expected[i++] == resolved));
+    }
+
+    CHECK((i == expected.size()));
+  }
+
+  // test mulptiple match via []
+  {
+    std::vector<arangodb::velocypack::Slice> expected = {
+      insertedDocs[6].slice(),
+      insertedDocs[7].slice(),
+      insertedDocs[8].slice(),
+      insertedDocs[10].slice(),
+      insertedDocs[13].slice(),
+      insertedDocs[16].slice(),
+      insertedDocs[19].slice(),
+      insertedDocs[22].slice(),
+      insertedDocs[24].slice(),
+      insertedDocs[26].slice(),
+      insertedDocs[29].slice(),
+      insertedDocs[32].slice(),
+      insertedDocs[36].slice(),
+    };
+    auto result = executeQuery(
+      vocbase,
+      "FOR d IN VIEW testView FILTER d['duplicated'] IN TOKENS('coz', 'TestAnalyzer') SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
+    );
+    REQUIRE(TRI_ERROR_NO_ERROR == result.code);
+    auto slice = result.result->slice();
+    CHECK(slice.isArray());
+    size_t i = 0;
+
+    for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
+      auto const resolved = itr.value().resolveExternals();
+      CHECK((i < expected.size()));
+      CHECK((expected[i++] == resolved));
+    }
+
+    CHECK((i == expected.size()));
+  }
+*/
+}
 
 SECTION("Exists") {
   TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "testVocbase");
@@ -6127,6 +6394,66 @@ SECTION("Value") {
     auto result = executeQuery(
       vocbase,
       "FOR d IN VIEW testView FILTER [ 'abc', 'def' ] SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
+    );
+    REQUIRE(TRI_ERROR_NO_ERROR == result.code);
+    auto slice = result.result->slice();
+    CHECK(slice.isArray());
+    size_t i = 0;
+
+    for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
+      auto const resolved = itr.value().resolveExternals();
+      CHECK((i < expected.size()));
+      CHECK((expected[i++] == resolved));
+    }
+
+    CHECK((i == expected.size()));
+  }
+
+  // test numeric range (true)
+  {
+    std::vector<arangodb::velocypack::Slice> expected = {
+      insertedDocs[0].slice(),
+      insertedDocs[1].slice(),
+      insertedDocs[2].slice(),
+      insertedDocs[3].slice(),
+      insertedDocs[4].slice(),
+      insertedDocs[5].slice(),
+      insertedDocs[6].slice(),
+      insertedDocs[7].slice(),
+      insertedDocs[8].slice(),
+      insertedDocs[9].slice(),
+      insertedDocs[10].slice(),
+      insertedDocs[11].slice(),
+      insertedDocs[12].slice(),
+      insertedDocs[13].slice(),
+      insertedDocs[14].slice(),
+      insertedDocs[15].slice(),
+      insertedDocs[16].slice(),
+      insertedDocs[17].slice(),
+      insertedDocs[18].slice(),
+      insertedDocs[19].slice(),
+      insertedDocs[20].slice(),
+      insertedDocs[21].slice(),
+      insertedDocs[22].slice(),
+      insertedDocs[23].slice(),
+      insertedDocs[24].slice(),
+      insertedDocs[25].slice(),
+      insertedDocs[26].slice(),
+      insertedDocs[27].slice(),
+      insertedDocs[28].slice(),
+      insertedDocs[29].slice(),
+      insertedDocs[30].slice(),
+      insertedDocs[31].slice(),
+      insertedDocs[32].slice(),
+      insertedDocs[33].slice(),
+      insertedDocs[34].slice(),
+      insertedDocs[35].slice(),
+      insertedDocs[36].slice(),
+      insertedDocs[37].slice(),
+    };
+    auto result = executeQuery(
+      vocbase,
+      "FOR d IN VIEW testView FILTER [ 1 .. 42 ] SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
     );
     REQUIRE(TRI_ERROR_NO_ERROR == result.code);
     auto slice = result.result->slice();

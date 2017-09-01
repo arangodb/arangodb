@@ -21,6 +21,7 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
+#include "ApplicationFeatures/V8PlatformFeature.h"
 #include "Basics/ArangoGlobalContext.h"
 
 extern char* ARGV0; // defined in main.cpp
@@ -34,15 +35,33 @@ struct singleton_t {
   // required for DatabasePathFeature and TRI_InitializeErrorMessages()
   arangodb::ArangoGlobalContext ctx;
 
-  singleton_t() : ctx(1, &ARGV0, ".") { }
+  // required for creation of V* Isolate instances
+  arangodb::V8PlatformFeature v8PlatformFeature;
+
+  singleton_t()
+    : ctx(1, &ARGV0, "."),
+      v8PlatformFeature(nullptr) {
+    v8PlatformFeature.start(); // required for createIsolate()
+  }
+
+  ~singleton_t() {
+    v8PlatformFeature.unprepare();
+  }
 };
+
+static singleton_t* SINGLETON = nullptr;
 
 namespace arangodb {
 namespace tests {
 
-void init() {
-  static singleton_t singleton;
-}
+  void init() {
+    static singleton_t singleton;
+    SINGLETON = &singleton;
+  }
+
+  v8::Isolate* v8Isolate() {
+    return SINGLETON ? SINGLETON->v8PlatformFeature.createIsolate() : nullptr;
+  }
 
 }
 }

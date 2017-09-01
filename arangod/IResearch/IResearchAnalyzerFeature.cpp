@@ -210,7 +210,7 @@ void addFunctions(arangodb::aql::AqlFunctionFeature& functions) {
     "tokens", // internal name
     ".,.", // positional arguments (data,analyzer)
     false, // cacheable
-    false, // deterministic
+    true, // deterministic (true == called during AST optimization and will be used to calculate values for constant expressions)
     true, // can throw
     true, // can be run on server
     true, // can pass arguments by reference
