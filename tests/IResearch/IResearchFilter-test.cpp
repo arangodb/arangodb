@@ -549,6 +549,9 @@ SECTION("BinaryIn") {
   assertFilterFail("FOR d IN VIEW myView FILTER d.a in 'a'..4 RETURN d");
   assertFilterFail("FOR d IN VIEW myView FILTER d.a in 1..null RETURN d");
   assertFilterFail("FOR d IN VIEW myView FILTER d.a in false..5.5 RETURN d");
+  assertFilterFail("FOR d IN VIEW myView FILTER d.a in 'false'..true RETURN d");
+  assertFilterFail("FOR d IN VIEW myView FILTER d.a in 0..true RETURN d");
+  assertFilterFail("FOR d IN VIEW myView FILTER d.a in null..true RETURN d");
 
   // inverted 'in' node node
   assertFilterFail("FOR d IN VIEW myView FILTER 4..5 in d.a RETURN d");
