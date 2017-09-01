@@ -74,25 +74,41 @@ arangodb::aql::QueryResult executeQuery(
   std::shared_ptr<arangodb::velocypack::Builder> bindVars;
   auto options = std::make_shared<arangodb::velocypack::Builder>();
 
-  // create a query V8 execution context
-  auto* isolate = arangodb::tests::v8Isolate();
-  TRI_CreateV8Globals(isolate); // initialize 'isolate'
-  isolate->Enter(); // required for arangodb::transaction::V8Context()
-  v8::HandleScope scope(isolate); // required for v8::Context::New(...)
-  auto context = v8::Context::New(isolate);
-  context->Enter(); // required for evaluation of function calls, e.g. TOKENS(...)
-  arangodb::transaction::V8Context trxContext(&vocbase, true);
-  TRI_GET_GLOBALS();
-  v8g->_transactionContext = &trxContext;
-
   arangodb::aql::Query query(
-    true, &vocbase, arangodb::aql::QueryString(queryString),
+    false, &vocbase, arangodb::aql::QueryString(queryString),
     bindVars, options,
     arangodb::aql::PART_MAIN
   );
 
   return query.execute(arangodb::QueryRegistryFeature::QUERY_REGISTRY);
 }
+
+//arangodb::aql::QueryResult executeQueryV8(
+//    TRI_vocbase_t& vocbase,
+//    const std::string& queryString
+//) {
+//  std::shared_ptr<arangodb::velocypack::Builder> bindVars;
+//  auto options = std::make_shared<arangodb::velocypack::Builder>();
+//
+//  // create a query V8 execution context
+//  auto* isolate = arangodb::tests::v8Isolate();
+//  TRI_CreateV8Globals(isolate); // initialize 'isolate'
+//  isolate->Enter(); // required for arangodb::transaction::V8Context()
+//  v8::HandleScope scope(isolate); // required for v8::Context::New(...)
+//  auto context = v8::Context::New(isolate);
+//  context->Enter(); // required for evaluation of function calls, e.g. TOKENS(...)
+//  arangodb::transaction::V8Context trxContext(&vocbase, true);
+//  TRI_GET_GLOBALS();
+//  v8g->_transactionContext = &trxContext;
+//
+//  arangodb::aql::Query query(
+//    true, &vocbase, arangodb::aql::QueryString(queryString),
+//    bindVars, options,
+//    arangodb::aql::PART_MAIN
+//  );
+//
+//  return query.execute(arangodb::QueryRegistryFeature::QUERY_REGISTRY);
+//}
 
 NS_END
 
@@ -9026,7 +9042,7 @@ SECTION("Tokens") {
   {
     std::vector<arangodb::velocypack::Slice> expected = {
     };
-    auto result = executeQuery(
+    auto result = executeQueryV8(
       vocbase,
       "FOR d IN VIEW testView FILTER d.value IN TOKENS('def', 'TestAnalyzer') SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
     );
@@ -9048,7 +9064,7 @@ SECTION("Tokens") {
   {
     std::vector<arangodb::velocypack::Slice> expected = {
     };
-    auto result = executeQuery(
+    auto result = executeQueryV8(
       vocbase,
       "FOR d IN VIEW testView FILTER d['value'] IN TOKENS('def', 'TestAnalyzer') SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
     );
@@ -9071,7 +9087,7 @@ SECTION("Tokens") {
     std::vector<arangodb::velocypack::Slice> expected = {
       insertedDocs[2].slice(),
     };
-    auto result = executeQuery(
+    auto result = executeQueryV8(
       vocbase,
       "FOR d IN VIEW testView FILTER d.value IN TOKENS('cde', 'TestAnalyzer') SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
     );
@@ -9094,7 +9110,7 @@ SECTION("Tokens") {
     std::vector<arangodb::velocypack::Slice> expected = {
       insertedDocs[2].slice(),
     };
-    auto result = executeQuery(
+    auto result = executeQueryV8(
       vocbase,
       "FOR d IN VIEW testView FILTER d['value'] IN TOKENS('cde', 'TestAnalyzer') SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
     );
@@ -9129,7 +9145,7 @@ SECTION("Tokens") {
       insertedDocs[32].slice(),
       insertedDocs[36].slice(),
     };
-    auto result = executeQuery(
+    auto result = executeQueryV8(
       vocbase,
       "FOR d IN VIEW testView FILTER d.duplicated IN TOKENS('coz', 'TestAnalyzer') SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
     );
@@ -9164,7 +9180,7 @@ SECTION("Tokens") {
       insertedDocs[32].slice(),
       insertedDocs[36].slice(),
     };
-    auto result = executeQuery(
+    auto result = executeQueryV8(
       vocbase,
       "FOR d IN VIEW testView FILTER d['duplicated'] IN TOKENS('coz', 'TestAnalyzer') SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
     );
