@@ -21,6 +21,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "EnvironmentFeature.h"
+#include "ApplicationFeatures/MaxMapCountFeature.h"
 #include "Basics/process-utils.h"
 #include "Basics/FileUtils.h"
 #include "Basics/StringUtils.h"
@@ -42,6 +43,7 @@ EnvironmentFeature::EnvironmentFeature(
   requiresElevatedPrivileges(false);
   startsAfter("Greetings");
   startsAfter("Logger");
+  startsAfter("MaxMapCount");
 }
 
 void EnvironmentFeature::prepare() {
@@ -108,7 +110,21 @@ void EnvironmentFeature::prepare() {
         << "execute 'export GLIBCXX_FORCE_NEW=1'";
   }
 #endif
+  
+  // test max_map_count
+  if (MaxMapCountFeature::needsChecking()) {
+    uint64_t actual = MaxMapCountFeature::actualMaxMappings();
+    uint64_t expected = MaxMapCountFeature::minimumExpectedMaxMappings();
 
+    if (actual < expected) {
+      LOG_TOPIC(WARN, arangodb::Logger::MEMORY)
+          << "maximum number of memory mappings per process is " << actual
+          << ", which seems too low. it is recommended to set it to at least " << expected;
+      LOG_TOPIC(WARN, Logger::MEMORY) << "execute 'sudo sysctl -w \"vm.max_map_count=" << expected << "\"'";
+    }
+  }
+
+  // test zone_reclaim_mode
   try {
     std::string value =
         basics::FileUtils::slurp("/proc/sys/vm/zone_reclaim_mode");
