@@ -491,11 +491,6 @@ def executeTests(os, edition, mode, engine, port) {
         testMap["test-${os}-${edition}-${mode}-${engine}-${name}"] = {
             def arch = "02_test_${os}_${edition}_${mode}_${engine}_${name}"
 
-            fileOperations([
-                folderDeleteOperation(arch),
-                folderCreateOperation(arch)
-            ])
-
             testArgs += " --minPort " + port
             testArgs += " --maxPort " + (port + portInterval - 1)
 
@@ -503,16 +498,39 @@ def executeTests(os, edition, mode, engine, port) {
             command += testArgs
 
             lock("test-${env.NODE_NAME}-${env.JOB_NAME}-${env.BUILD_ID}-${edition}-${engine}-${lockIndex}") {
-                timeout(30) {
-                    def tmpDir = pwd() + "/tmp"
-                    withEnv(["TMPDIR=${tmpDir}", "TEMPDIR=${tmpDir}", "TMP=${tmpDir}"]) {
-                        if (os == "windows") {
-                            powershell command + " | Add-Content -PassThru ..\\${arch}\\test.log"
+                fileOperations([
+                    folderDeleteOperation(arch),
+                    folderCreateOperation(arch)
+                ])
+
+                try {
+                    timeout(30) {
+                        try {
+                            def tmpDir = pwd() + "/tmp"
+
+                            withEnv(["TMPDIR=${tmpDir}", "TEMPDIR=${tmpDir}", "TMP=${tmpDir}"]) {
+                                if (os == "windows") {
+                                    powershell command + ' | Add-Content -PassThru ..\\' + arch + '\\test.log'
+                                }
+                                else {
+                                    sh command + ' 2>&1 | tee ' + arch + '/test.log'
+                                }
+                            }
                         }
-                        else {
-                            sh command + " 2>&1 | tee ${arch}/test.log"
+                        catch (exc) {
+                            fileOperations([
+                                folderCopyOperation(arch, "${arch}_FAILED"),
+                                folderDeleteOperation(arch)
+                            ])
+
+                            throw exc
                         }
                     }
+                }
+                finally {
+                    archiveArtifacts allowEmptyArchive: true,
+                        artifacts: "${arch}/**, FAILED_*",
+                        defaultExcludes: false
                 }
             }
         }
