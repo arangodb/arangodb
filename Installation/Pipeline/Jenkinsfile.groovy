@@ -489,8 +489,6 @@ def executeTests(os, edition, mode, engine, port) {
         }
 
         testMap["test-${os}-${edition}-${mode}-${engine}-${name}"] = {
-            def arch = "02_test_${os}_${edition}_${mode}_${engine}_${name}"
-
             testArgs += " --minPort " + port
             testArgs += " --maxPort " + (port + portInterval - 1)
 
@@ -498,9 +496,12 @@ def executeTests(os, edition, mode, engine, port) {
             command += testArgs
 
             lock("test-${env.NODE_NAME}-${env.JOB_NAME}-${env.BUILD_ID}-${edition}-${engine}-${lockIndex}") {
+                def arch = "02_test_${os}_${edition}_${mode}_${engine}"
+                def archfull = "${arch}/${name}"
+
                 fileOperations([
-                    folderDeleteOperation(arch),
-                    folderCreateOperation(arch)
+                    folderDeleteOperation(archfull),
+                    folderCreateOperation(archfull)
                 ])
 
                 try {
@@ -510,10 +511,10 @@ def executeTests(os, edition, mode, engine, port) {
 
                             withEnv(["TMPDIR=${tmpDir}", "TEMPDIR=${tmpDir}", "TMP=${tmpDir}"]) {
                                 if (os == "windows") {
-                                    powershell command + ' | Add-Content -PassThru ..\\' + arch + '\\test.log'
+                                    powershell command + ' | Add-Content -PassThru ..\\' + arch + '\\' + name + '\\test.log'
                                 }
                                 else {
-                                    sh command + ' 2>&1 | tee ' + arch + '/test.log'
+                                    sh command + ' 2>&1 | tee ' + archfull + '/test.log'
                                 }
                             }
                         }
@@ -529,7 +530,7 @@ def executeTests(os, edition, mode, engine, port) {
                 }
                 finally {
                     archiveArtifacts allowEmptyArchive: true,
-                        artifacts: "${arch}/**, FAILED_*",
+                        artifacts: "${arch}/**, ${arch}_FAILED/**",
                         defaultExcludes: false
                 }
             }
