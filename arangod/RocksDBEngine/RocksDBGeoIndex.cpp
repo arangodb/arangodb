@@ -542,16 +542,11 @@ Result RocksDBGeoIndex::removeInternal(transaction::Methods* trx,
 }
 
 void RocksDBGeoIndex::truncate(transaction::Methods* trx) {
-  if (_geoIndex != nullptr) {
-    GeoIndex_free(_geoIndex);
-  }
+  TRI_ASSERT(_geoIndex != nullptr);
   RocksDBIndex::truncate(trx);
-
-  // We cannot find any slots or pots after truncate
-  _geoIndex = GeoIndex_new(_objectId, 0, 0);
-  if (_geoIndex == nullptr) {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
-  }
+  GeoIndex_setRocksMethods(_geoIndex, RocksDBTransactionState::toMethods(trx));
+  TRI_DEFER(GeoIndex_clearRocks(_geoIndex));
+  GeoIndex_reset(_geoIndex);
 }
 
 /// @brief looks up all points within a given radius

@@ -257,6 +257,16 @@ void RocksDBIndex::truncate(transaction::Methods* trx) {
 
     iter->Next();
   }
+  
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  //check if index entries have been deleted
+  if (type() != TRI_IDX_TYPE_GEO1_INDEX && type() != TRI_IDX_TYPE_GEO2_INDEX) {
+    if (mthds->countInBounds(getBounds(), true)) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
+                                     "deletion check in collection truncate failed - not all documents in an index have been deleted");
+    }
+  }
+#endif
 }
 
 /// @brief return the memory usage of the index
