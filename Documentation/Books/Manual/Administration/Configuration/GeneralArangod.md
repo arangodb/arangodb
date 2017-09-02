@@ -142,6 +142,19 @@ The name of the process ID file to use when running the server as a
 daemon. This parameter must be specified if either the flag *daemon* or
 *supervisor* is set.
 
+### Check max memory mappings
+
+`--server.check-max-memory-mappings` can be used on Linux to make arangod 
+check the number of memory mappings currently used by the process (as reported in
+*/proc/<pid>/maps*) and compare it with the maximum number of allowed mappings as 
+determined by */proc/sys/vm/max_map_count*. If the current number of memory
+mappings gets near the maximum allowed value, arangod will log a warning
+and disallow the creation of further V8 contexts temporarily until the current
+number of mappings goes down again. 
+
+If the option is set to false, no such checks will be performed. All non-Linux
+operating systems do not provide this option and will ignore it.
+
 
 ### Console
 

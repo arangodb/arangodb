@@ -1,5 +1,5 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief test suite for arangodb::cache::State
+/// @brief test suite for arangodb::cache::BucketState
 ///
 /// @file
 ///
@@ -25,7 +25,7 @@
 /// @author Copyright 2017, ArangoDB GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "Cache/State.h"
+#include "Cache/BucketState.h"
 #include "Basics/Common.h"
 
 #include "catch.hpp"
@@ -34,29 +34,29 @@
 
 using namespace arangodb::cache;
 
-TEST_CASE("cache::State", "[cache]") {
+TEST_CASE("cache::BucketState", "[cache]") {
   SECTION("test lock methods") {
-    State state;
+    BucketState state;
     bool success;
 
-    uint32_t outsideState = 0;
+    uint32_t outsideBucketState = 0;
 
-    auto cb1 = [&outsideState]() -> void { outsideState = 1; };
+    auto cb1 = [&outsideBucketState]() -> void { outsideBucketState = 1; };
 
-    auto cb2 = [&outsideState]() -> void { outsideState = 2; };
+    auto cb2 = [&outsideBucketState]() -> void { outsideBucketState = 2; };
 
     // check lock without contention
     REQUIRE(!state.isLocked());
     success = state.lock(-1, cb1);
     REQUIRE(success);
     REQUIRE(state.isLocked());
-    REQUIRE(1UL == outsideState);
+    REQUIRE(1UL == outsideBucketState);
 
     // check lock with contention
     success = state.lock(10LL, cb2);
     REQUIRE(!success);
     REQUIRE(state.isLocked());
-    REQUIRE(1UL == outsideState);
+    REQUIRE(1UL == outsideBucketState);
 
     // check unlock
     state.unlock();
@@ -64,36 +64,36 @@ TEST_CASE("cache::State", "[cache]") {
   }
 
   SECTION("test methods for non-lock flags") {
-    State state;
+    BucketState state;
     bool success;
 
     success = state.lock();
     REQUIRE(success);
-    REQUIRE(!state.isSet(State::Flag::migrated));
+    REQUIRE(!state.isSet(BucketState::Flag::migrated));
     state.unlock();
 
     success = state.lock();
     REQUIRE(success);
-    REQUIRE(!state.isSet(State::Flag::migrated));
-    state.toggleFlag(State::Flag::migrated);
-    REQUIRE(state.isSet(State::Flag::migrated));
+    REQUIRE(!state.isSet(BucketState::Flag::migrated));
+    state.toggleFlag(BucketState::Flag::migrated);
+    REQUIRE(state.isSet(BucketState::Flag::migrated));
     state.unlock();
 
     success = state.lock();
     REQUIRE(success);
-    REQUIRE(state.isSet(State::Flag::migrated));
+    REQUIRE(state.isSet(BucketState::Flag::migrated));
     state.unlock();
 
     success = state.lock();
     REQUIRE(success);
-    REQUIRE(state.isSet(State::Flag::migrated));
-    state.toggleFlag(State::Flag::migrated);
-    REQUIRE(!state.isSet(State::Flag::migrated));
+    REQUIRE(state.isSet(BucketState::Flag::migrated));
+    state.toggleFlag(BucketState::Flag::migrated);
+    REQUIRE(!state.isSet(BucketState::Flag::migrated));
     state.unlock();
 
     success = state.lock();
     REQUIRE(success);
-    REQUIRE(!state.isSet(State::Flag::migrated));
+    REQUIRE(!state.isSet(BucketState::Flag::migrated));
     state.unlock();
   }
 }

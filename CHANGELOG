@@ -1,6 +1,12 @@
 devel
 -----
 
+* added startup option `--server.check-max-memory-mappings` to make arangod check
+  the number of memory mappings currently used by the process and compare it with
+  the maximum number of allowed mappings as determined by /proc/sys/vm/max_map_count
+
+  Note that this option is effective on Linux systems only.
+
 * arangoimp now has a --remove-attribute option
 
 * added V8 context lifetime control options

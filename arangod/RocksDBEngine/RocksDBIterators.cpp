@@ -280,6 +280,7 @@ RocksDBSortedAllIterator::RocksDBSortedAllIterator(
     LogicalCollection* collection, transaction::Methods* trx,
     ManagedDocumentResult* mmdr, RocksDBPrimaryIndex const* index)
     : IndexIterator(collection, trx, mmdr, index),
+      _trx(trx),
       _bounds(RocksDBKeyBounds::PrimaryIndex(index->objectId())),
       _iterator(),
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
@@ -362,8 +363,9 @@ void RocksDBSortedAllIterator::seek(StringRef const& key) {
   TRI_ASSERT(_trx->state()->isRunning());
   // don't want to get the index pointer just for this
   uint64_t objectId = _bounds.objectId();
-  RocksDBKey val = RocksDBKey::PrimaryIndexValue(objectId, key);
-  _iterator->Seek(val.string());
+  RocksDBKeyLeaser val(_trx);
+  val->constructPrimaryIndexValue(objectId, key);
+  _iterator->Seek(val->string());
   TRI_ASSERT(_iterator->Valid());
 }
 

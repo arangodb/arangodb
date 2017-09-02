@@ -478,7 +478,8 @@ void RocksDBEngine::start() {
   
   // try to find version
   const char version = rocksDBFormatVersion();
-  auto key = RocksDBKey::SettingsValue(RocksDBSettingsType::Version);
+  RocksDBKey key;
+  key.constructSettingsValue(RocksDBSettingsType::Version);
   rocksdb::PinnableSlice oldVersion;
   rocksdb::Status s = _db->Get(rocksdb::ReadOptions(), cfHandles[0],
                                key.string(), &oldVersion);
@@ -587,6 +588,9 @@ void RocksDBEngine::addParametersForNewCollection(VPackBuilder& builder,
   if (!info.hasKey("objectId")) {
     builder.add("objectId", VPackValue(std::to_string(TRI_NewTickServer())));
   }
+  if (!info.hasKey("cacheEnabled") || !info.get("cacheEnabled").isBool()) {
+    builder.add("cacheEnabled", VPackValue(false));
+  }
 }
 
 void RocksDBEngine::addParametersForNewIndex(VPackBuilder& builder,
@@ -668,7 +672,8 @@ void RocksDBEngine::getCollectionInfo(TRI_vocbase_t* vocbase, TRI_voc_cid_t cid,
   builder.openObject();
 
   // read collection info from database
-  auto key = RocksDBKey::Collection(vocbase->id(), cid);
+  RocksDBKey key;
+  key.constructCollection(vocbase->id(), cid);
   rocksdb::PinnableSlice value;
   rocksdb::ReadOptions options;
   rocksdb::Status res = _db->Get(options, RocksDBColumnFamily::definitions(),
@@ -781,7 +786,8 @@ void RocksDBEngine::waitForSync(TRI_voc_tick_t tick) {
 std::shared_ptr<arangodb::velocypack::Builder>
 RocksDBEngine::getReplicationApplierConfiguration(TRI_vocbase_t* vocbase,
                                                   int& status) {
-  auto key = RocksDBKey::ReplicationApplierConfig(vocbase->id());
+  RocksDBKey key;
+  key.constructReplicationApplierConfig(vocbase->id());
   rocksdb::PinnableSlice value;
 
   auto db = rocksutils::globalRocksDB();
@@ -801,7 +807,8 @@ RocksDBEngine::getReplicationApplierConfiguration(TRI_vocbase_t* vocbase,
 
 int RocksDBEngine::removeReplicationApplierConfiguration(
     TRI_vocbase_t* vocbase) {
-  auto key = RocksDBKey::ReplicationApplierConfig(vocbase->id());
+  RocksDBKey key;
+  key.constructReplicationApplierConfig(vocbase->id());
 
   auto status = rocksutils::globalRocksDBRemove(RocksDBColumnFamily::definitions(),
                                                 key.string());
@@ -814,7 +821,8 @@ int RocksDBEngine::removeReplicationApplierConfiguration(
 
 int RocksDBEngine::saveReplicationApplierConfiguration(
     TRI_vocbase_t* vocbase, arangodb::velocypack::Slice slice, bool doSync) {
-  auto key = RocksDBKey::ReplicationApplierConfig(vocbase->id());
+  RocksDBKey key;
+  key.constructReplicationApplierConfig(vocbase->id());
   auto value = RocksDBValue::ReplicationApplierConfig(slice);
 
   auto status = rocksutils::globalRocksDBPut(RocksDBColumnFamily::definitions(),
@@ -851,7 +859,8 @@ TRI_vocbase_t* RocksDBEngine::createDatabase(
 
 int RocksDBEngine::writeCreateDatabaseMarker(TRI_voc_tick_t id,
                                              VPackSlice const& slice) {
-  auto key = RocksDBKey::Database(id);
+  RocksDBKey key;
+  key.constructDatabase(id);
   auto value = RocksDBValue::Database(slice);
   rocksdb::WriteOptions options;  // TODO: check which options would make sense
 
@@ -865,7 +874,8 @@ int RocksDBEngine::writeCreateCollectionMarker(TRI_voc_tick_t databaseId,
                                                TRI_voc_cid_t cid,
                                                VPackSlice const& slice,
                                                RocksDBLogValue&& logValue) {
-  auto key = RocksDBKey::Collection(databaseId, cid);
+  RocksDBKey key;
+  key.constructCollection(databaseId, cid);
   auto value = RocksDBValue::Collection(slice);
   rocksdb::WriteOptions options;  // TODO: check which options would make sense
 
@@ -1000,8 +1010,9 @@ arangodb::Result RocksDBEngine::dropCollection(
       RocksDBLogValue::CollectionDrop(vocbase->id(), collection->cid());
   rocksdb::WriteBatch batch;
   batch.PutLogData(logValue.slice());
-  batch.Delete(RocksDBColumnFamily::definitions(),
-      RocksDBKey::Collection(vocbase->id(), collection->cid()).string());
+  RocksDBKey key;
+  key.constructCollection(vocbase->id(), collection->cid());
+  batch.Delete(RocksDBColumnFamily::definitions(), key.string());
   rocksdb::Status res = _db->Write(options, &batch);
 
   // TODO FAILURE Simulate !res.ok()
@@ -1119,7 +1130,8 @@ void RocksDBEngine::unloadCollection(TRI_vocbase_t* vocbase,
 
 void RocksDBEngine::createView(TRI_vocbase_t* vocbase, TRI_voc_cid_t id,
                                arangodb::LogicalView const*) {
-  auto key = RocksDBKey::View(vocbase->id(), id);
+  RocksDBKey key;
+  key.constructView(vocbase->id(), id);
   auto value = RocksDBValue::View(VPackSlice::emptyObjectSlice());
 
   auto status = rocksutils::globalRocksDBPut(RocksDBColumnFamily::definitions(),
@@ -1422,7 +1434,8 @@ Result RocksDBEngine::dropDatabase(TRI_voc_tick_t id) {
 #endif
   }
 
-  auto key = RocksDBKey::Database(id);
+  RocksDBKey key;
+  key.constructDatabase(id);
   res = rocksutils::globalRocksDBRemove(RocksDBColumnFamily::definitions(),
                                         key.string(), options);
 
@@ -1679,8 +1692,8 @@ void RocksDBEngine::getStatistics(VPackBuilder& builder) const {
 
   cache::Manager* manager = CacheManagerFeature::MANAGER;
   auto rates = manager->globalHitRates();
-  builder.add("cache.size", VPackValue(manager->globalLimit()));
-  builder.add("cache.used", VPackValue(manager->globalAllocation()));
+  builder.add("cache.limit", VPackValue(manager->globalLimit()));
+  builder.add("cache.allocated", VPackValue(manager->globalAllocation()));
   builder.add("cache.hit-rate-lifetime", VPackValue(rates.first));
   builder.add("cache.hit-rate-recent", VPackValue(rates.second));
   

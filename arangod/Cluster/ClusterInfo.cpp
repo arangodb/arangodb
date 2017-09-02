@@ -150,7 +150,7 @@ ClusterInfo::ClusterInfo(AgencyCallbackRegistry* agencyCallbackRegistry)
 ////////////////////////////////////////////////////////////////////////////////
 
 ClusterInfo::~ClusterInfo() {}
-  
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief cleanup method which frees cluster-internal shared ptrs on shutdown
 ////////////////////////////////////////////////////////////////////////////////
@@ -342,13 +342,13 @@ void ClusterInfo::loadClusterId() {
   // Contact agency for /<prefix>/Cluster
   AgencyCommResult result = _agency.getValues("Cluster");
 
-  // Parse 
+  // Parse
   if (result.successful()) {
     VPackSlice slice = result.slice()[0].get(
       std::vector<std::string>({AgencyCommManager::path(), "Cluster"}));
     if(slice.isString()) {
       _clusterId = slice.copyString();
-    } 
+    }
   }
 }
 
@@ -474,7 +474,7 @@ void ClusterInfo::loadPlan() {
       //    },...
       //  },...
       //}
-      
+
       databasesSlice = planSlice.get("Collections"); //format above
       if (databasesSlice.isObject()) {
         bool isCoordinator = ServerState::instance()->isCoordinator();
@@ -573,7 +573,7 @@ void ClusterInfo::loadPlan() {
                                  std::strtol(b.c_str() + 1, nullptr, 10);
                         });
               newShards.emplace(std::make_pair(collectionId, shards));
-              
+
             } catch (std::exception const& ex) {
               // The plan contains invalid collection information.
               // This should not happen in healthy situations.
@@ -992,7 +992,7 @@ int ClusterInfo::createDatabaseCoordinator(std::string const& name,
       res._clientId + " at " + __FILE__ + ":" + std::to_string(__LINE__);
     return setErrormsg(TRI_ERROR_CLUSTER_COULD_NOT_CREATE_DATABASE_IN_PLAN,
                        errorMsg);
-  } 
+  }
 
   // Now update our own cache of planned databases:
   loadPlan();
@@ -1021,7 +1021,7 @@ int ClusterInfo::createDatabaseCoordinator(std::string const& name,
       }
 
       if (TRI_microtime() > endTime) {
-        
+
         return setErrormsg(TRI_ERROR_CLUSTER_TIMEOUT, errorMsg);
       }
 
@@ -1206,7 +1206,7 @@ int ClusterInfo::createCollectionCoordinator(std::string const& databaseName,
                 }
               }
             }
-            
+
             // wait that all followers have created our new collection
             if (tmpError.empty() && waitForReplication) {
               std::vector<ServerID> plannedServers;
@@ -1276,13 +1276,13 @@ int ClusterInfo::createCollectionCoordinator(std::string const& databaseName,
                            AgencyPrecondition::Type::EMPTY, true));
     }
   }
-  
+
   AgencyGeneralTransaction transaction;
   transaction.transactions.push_back(
     AgencyGeneralTransaction::TransactionType(opers,precs));
-  
+
   { // we hold this mutex from now on until we have updated our cache
-    // using loadPlan, this is necessary for the callback closure to 
+    // using loadPlan, this is necessary for the callback closure to
     // see the new planned state for this collection. Otherwise it cannot
     // recognize completion of the create collection operation properly:
     MUTEX_LOCKER(locker, *cacheMutex);
@@ -1332,7 +1332,7 @@ int ClusterInfo::createCollectionCoordinator(std::string const& databaseName,
           name, TRI_ERROR_CLUSTER_COULD_NOT_CREATE_COLLECTION_IN_PLAN);
         return TRI_ERROR_CLUSTER_COULD_NOT_CREATE_COLLECTION_IN_PLAN;
       }
-      
+
     }
 
     // Update our cache:
@@ -1403,7 +1403,7 @@ int ClusterInfo::createCollectionCoordinator(std::string const& databaseName,
 int ClusterInfo::dropCollectionCoordinator(
   std::string const& databaseName, std::string const& collectionID,
   std::string& errorMsg, double timeout) {
-  
+
   AgencyComm ac;
   AgencyCommResult res;
 
@@ -1429,7 +1429,7 @@ int ClusterInfo::dropCollectionCoordinator(
     errorMsg += ".";
     return TRI_ERROR_CLUSTER_MUST_NOT_DROP_COLL_OTHER_DISTRIBUTESHARDSLIKE;
   }
-  
+
   double const realTimeout = getTimeout(timeout);
   double const endTime = TRI_microtime() + realTimeout;
   double const interval = getPollInterval();
@@ -1572,8 +1572,8 @@ int ClusterInfo::setCollectionPropertiesCoordinator(
   if (!collection.isObject()) {
     return TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND;
   }
- 
-  VPackBuilder temp;     
+
+  VPackBuilder temp;
   temp.openObject();
   temp.add("waitForSync", VPackValue(info->waitForSync()));
   info->getPhysical()->getPropertiesVPackCoordinator(temp);
@@ -1679,7 +1679,7 @@ int ClusterInfo::ensureIndexCoordinator(
     VPackSlice const& slice, bool create,
     bool (*compare)(VPackSlice const&, VPackSlice const&),
     VPackBuilder& resultBuilder, std::string& errorMsg, double timeout) {
-  
+
   // check index id
   uint64_t iid = 0;
 
@@ -1701,7 +1701,7 @@ int ClusterInfo::ensureIndexCoordinator(
   if (errorCode == TRI_ERROR_NO_ERROR) {
     return errorCode;
   }
-  
+
   std::shared_ptr<VPackBuilder> planValue;
   std::shared_ptr<VPackBuilder> oldPlanIndexes;
   std::shared_ptr<LogicalCollection> c;
@@ -1716,14 +1716,14 @@ int ClusterInfo::ensureIndexCoordinator(
     c = getCollection(databaseName, collectionID);
     c->getIndexesVPack(*(oldPlanIndexes.get()), false, false);
     VPackSlice const planIndexes = oldPlanIndexes->slice();
-    
+
     if (planIndexes.isArray()) {
       for (auto const& index : VPackArrayIterator(planIndexes)) {
         auto idPlanSlice = index.get("id");
         if (idPlanSlice.isString() && idPlanSlice.copyString() == idString) {
           planValue.reset(new VPackBuilder());
           planValue->add(index);
-          break; 
+          break;
         }
       }
     }
@@ -1736,7 +1736,7 @@ int ClusterInfo::ensureIndexCoordinator(
     std::string const planIndexesKey = "Plan/Collections/" + databaseName + "/" + collectionID +"/indexes";
     std::vector<AgencyOperation> operations;
     std::vector<AgencyPrecondition> preconditions;
-    if (planValue) { 
+    if (planValue) {
       AgencyOperation planEraser(planIndexesKey, AgencyValueOperationType::ERASE, planValue->slice());
       TRI_ASSERT(oldPlanIndexes);
       AgencyPrecondition planPrecondition(planIndexesKey, AgencyPrecondition::Type::VALUE, oldPlanIndexes->slice());
@@ -1810,7 +1810,7 @@ int ClusterInfo::ensureIndexCoordinatorWithoutRollback(
 
     std::shared_ptr<VPackBuilder> tmp = std::make_shared<VPackBuilder>();
     c->getIndexesVPack(*(tmp.get()), false, false);
-    { 
+    {
       MUTEX_LOCKER(guard, *numberOfShardsMutex);
       *numberOfShards = c->numberOfShards();
     }
@@ -1994,7 +1994,7 @@ int ClusterInfo::ensureIndexCoordinatorWithoutRollback(
   // AgencyCallback for this.
   std::string where =
     "Current/Collections/" + databaseName + "/" + collectionID;
-  
+
   auto agencyCallback =
       std::make_shared<AgencyCallback>(ac, where, dbServerChanged, true, false);
   _agencyCallbackRegistry->registerCallback(agencyCallback);
@@ -2325,14 +2325,14 @@ void ClusterInfo::loadServers() {
   AgencyCommResult result = _agency.sendTransactionWithFailover(
     AgencyReadTransaction(std::vector<std::string>({AgencyCommManager::path(prefixServers),
           AgencyCommManager::path(mapUniqueToShortId)})));
-  
-  
+
+
   if (result.successful()) {
     velocypack::Slice serversRegistered =
       result.slice()[0].get(
         std::vector<std::string>(
           {AgencyCommManager::path(), "Current", "ServersRegistered"}));
-    
+
     velocypack::Slice serversAliases =
       result.slice()[0].get(
         std::vector<std::string>(
@@ -2341,15 +2341,15 @@ void ClusterInfo::loadServers() {
     if (serversRegistered.isObject()) {
       decltype(_servers) newServers;
       decltype(_serverAliases) newAliases;
-      
+
       for (auto const& res : VPackObjectIterator(serversRegistered)) {
         velocypack::Slice slice = res.value;
-        
+
         if (slice.isObject() && slice.hasKey("endpoint")) {
           std::string server =
             arangodb::basics::VelocyPackHelper::getStringValue(
               slice, "endpoint", "");
-          
+
           std::string serverId = res.key.copyString();
           try {
             velocypack::Slice serverSlice;
@@ -2364,7 +2364,7 @@ void ClusterInfo::loadServers() {
           newServers.emplace(std::make_pair(serverId, server));
         }
       }
-      
+
       // Now set the new value:
       {
         WRITE_LOCKER(writeLocker, _serversProt.lock);
@@ -2376,7 +2376,7 @@ void ClusterInfo::loadServers() {
       return;
     }
   }
-  
+
   LOG_TOPIC(DEBUG, Logger::CLUSTER)
     << "Error while loading " << prefixServers
     << " httpCode: " << result.httpCode()
@@ -2405,18 +2405,18 @@ std::string ClusterInfo::getServerEndpoint(ServerID const& serverID) {
   }
 
   std::string serverID_ = serverID;
-  
+
   while (true) {
     {
       READ_LOCKER(readLocker, _serversProt.lock);
 
       // _serversAliases is a map-type <Alias, ServerID>
       auto ita = _serverAliases.find(serverID_);
-      
+
       if (ita != _serverAliases.end()) {
         serverID_ = (*ita).second;
       }
-      
+
       // _servers is a map-type <ServerId, std::string>
       auto it = _servers.find(serverID_);
 
@@ -2425,8 +2425,8 @@ std::string ClusterInfo::getServerEndpoint(ServerID const& serverID) {
       }
     }
 
-    
-    
+
+
     if (++tries >= 2) {
       break;
     }

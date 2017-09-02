@@ -276,11 +276,6 @@ TEST_CASE("cache::TransactionalBucket", "[cache]") {
     res = bucket->find(hashes[0], ptrs[0]->key(), ptrs[0]->keySize());
     REQUIRE(res == ptrs[0]);
 
-    // verify we can't insert a key with a blacklisted hash
-    bucket->insert(hashes[1], ptrs[1]);
-    res = bucket->find(hashes[1], ptrs[1]->key(), ptrs[1]->keySize());
-    REQUIRE(nullptr == res);
-
     // proceed to fully blacklist
     bucket->blacklist(hashes[6], ptrs[6]->key(), ptrs[6]->keySize());
     REQUIRE(bucket->isBlacklisted(hashes[6]));

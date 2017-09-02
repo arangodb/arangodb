@@ -1027,28 +1027,25 @@ Result transaction::Methods::documentFastPath(std::string const& collectionName,
 ///        Does not care for revision handling!
 ///        Must only be called on a local server, not in cluster case!
 Result transaction::Methods::documentFastPathLocal(
-    std::string const& collectionName, std::string const& key,
+    std::string const& collectionName, StringRef const& key,
     ManagedDocumentResult& result) {
   TRI_ASSERT(_state->status() == transaction::Status::RUNNING);
 
   TRI_voc_cid_t cid = addCollectionAtRuntime(collectionName);
-  LogicalCollection* collection = documentCollection(trxCollection(cid));
-
-  pinData(cid);  // will throw when it fails
+  TransactionCollection* trxColl = trxCollection(cid);
+  LogicalCollection* collection = documentCollection(trxColl);
+  TRI_ASSERT(collection != nullptr);
+  _transactionContextPtr->pinData(collection); // will throw when it fails
 
   if (key.empty()) {
     return TRI_ERROR_ARANGO_DOCUMENT_HANDLE_BAD;
   }
 
-  Result res = collection->read(this, key, result,
-                                !isLocked(collection, AccessMode::Type::READ));
-
-  if (res.fail()) {
-    return res;
-  }
-
-  TRI_ASSERT(isPinned(cid));
-  return TRI_ERROR_NO_ERROR;
+  bool isLocked = trxColl->isLocked(AccessMode::Type::READ,
+                                    _state->nestingLevel());
+  Result res = collection->read(this, key, result, !isLocked);
+  TRI_ASSERT(res.fail() || isPinned(cid));
+  return res;
 }
 
 /// @brief Create Cluster Communication result for document
@@ -2710,7 +2707,6 @@ arangodb::LogicalCollection* transaction::Methods::documentCollection(
   TRI_ASSERT(_state != nullptr);
   TRI_ASSERT(trxCollection != nullptr);
   TRI_ASSERT(_state->status() == transaction::Status::RUNNING);
-
   TRI_ASSERT(trxCollection->collection() != nullptr);
 
   return trxCollection->collection();
@@ -2785,7 +2781,7 @@ Result transaction::Methods::addCollection(std::string const& name,
 
 /// @brief test if a collection is already locked
 bool transaction::Methods::isLocked(LogicalCollection* document,
-                                    AccessMode::Type type) {
+                                    AccessMode::Type type) const {
   if (_state == nullptr || _state->status() != transaction::Status::RUNNING) {
     return false;
   }

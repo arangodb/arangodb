@@ -1,58 +1,57 @@
-/*jshint globalstrict:false, unused:false */
-/*global print, start_pretty_print, ARGUMENTS */
+/* jshint globalstrict:false, unused:false */
+/* global print, start_pretty_print, ARGUMENTS */
 'use strict';
 
-const yaml = require("js-yaml");
-const _ = require("lodash");
+const _ = require('lodash');
 
-const UnitTest = require("@arangodb/testing");
+const UnitTest = require('@arangodb/testing');
 
 const internalMembers = UnitTest.internalMembers;
-const fs = require("fs");
-const internal = require("internal"); // js/common/bootstrap/modules/internal.js
+const fs = require('fs');
+const internal = require('internal'); // js/common/bootstrap/modules/internal.js
 const inspect = internal.inspect;
 
 let testOutputDirectory;
 
-function makePathGeneric(path) {
+function makePathGeneric (path) {
   return path.split(fs.pathSeparator);
 }
 
-function xmlEscape(s) {
-  return s.replace(/[<>&"]/g, function(c) {
-    return "&" + {
-      "<": "lt",
-      ">": "gt",
-      "&": "amp",
-      "\"": "quot"
-    }[c] + ";";
+function xmlEscape (s) {
+  return s.replace(/[<>&"]/g, function (c) {
+    return '&' + {
+      '<': 'lt',
+      '>': 'gt',
+      '&': 'amp',
+      '"': 'quot'
+    }[c] + ';';
   });
 }
 
-function buildXml() {
-  let xml = ["<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n"];
+function buildXml () {
+  let xml = ['<?xml version="1.0" encoding="UTF-8"?>\n'];
 
-  xml.text = function(s) {
+  xml.text = function (s) {
     Array.prototype.push.call(this, s);
     return this;
   };
 
-  xml.elem = function(tagName, attrs, close) {
-    this.text("<").text(tagName);
+  xml.elem = function (tagName, attrs, close) {
+    this.text('<').text(tagName);
     attrs = attrs || {};
 
     for (let a in attrs) {
       if (attrs.hasOwnProperty(a)) {
-        this.text(" ").text(a).text("=\"")
-          .text(xmlEscape(String(attrs[a]))).text("\"");
+        this.text(' ').text(a).text('="')
+          .text(xmlEscape(String(attrs[a]))).text('"');
       }
     }
 
     if (close) {
-      this.text("/");
+      this.text('/');
     }
 
-    this.text(">\n");
+    this.text('>\n');
 
     return this;
   };
@@ -60,18 +59,24 @@ function buildXml() {
   return xml;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief converts results to XML representation
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+//  @brief converts results to XML representation
+// //////////////////////////////////////////////////////////////////////////////
 
-function resultsToXml(results, baseName, cluster) {
+function resultsToXml (results, baseName, cluster, isRocksDb) {
   let clprefix = '';
 
   if (cluster) {
     clprefix = 'CL_';
   }
 
-  const isSignificant = function(a, b) {
+  if (isRocksDb) {
+    clprefix += 'RX_';
+  } else {
+    clprefix += 'MM_';
+  }
+
+  const isSignificant = function (a, b) {
     return (internalMembers.indexOf(b) === -1) && a.hasOwnProperty(b);
   };
 
@@ -81,7 +86,7 @@ function resultsToXml(results, baseName, cluster) {
 
       for (let runName in run) {
         if (isSignificant(run, runName)) {
-          const xmlName = clprefix + resultName + "_" + runName;
+          const xmlName = clprefix + resultName + '_' + runName;
           const current = run[runName];
 
           if (current.skipped) {
@@ -96,7 +101,7 @@ function resultsToXml(results, baseName, cluster) {
           }
 
           let failuresFound = current.failed;
-          xml.elem("testsuite", {
+          xml.elem('testsuite', {
             errors: 0,
             failures: failuresFound,
             tests: total,
@@ -113,43 +118,43 @@ function resultsToXml(results, baseName, cluster) {
 
               seen = true;
 
-              xml.elem("testcase", {
+              xml.elem('testcase', {
                 name: clprefix + oneTestName,
                 time: 0 + oneTest.duration
               }, success);
 
               if (!success) {
-                xml.elem("failure");
+                xml.elem('failure');
                 xml.text('<![CDATA[' + oneTest.message + ']]>\n');
-                xml.elem("/failure");
-                xml.elem("/testcase");
+                xml.elem('/failure');
+                xml.elem('/testcase');
               }
             }
           }
 
           if (!seen) {
-            xml.elem("testcase", {
+            xml.elem('testcase', {
               name: 'all_tests_in_' + xmlName,
               time: 0 + current.duration
             }, true);
           }
 
-          xml.elem("/testsuite");
+          xml.elem('/testsuite');
 
-          const fn = makePathGeneric(baseName + xmlName + ".xml").join('_');
+          const fn = makePathGeneric(baseName + xmlName + '.xml').join('_');
 
-          fs.write(testOutputDirectory + fn, xml.join(""));
+          fs.write(testOutputDirectory + fn, xml.join(''));
         }
       }
     }
   }
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief runs the test using testing.js
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+//  @brief runs the test using testing.js
+// //////////////////////////////////////////////////////////////////////////////
 
-function main(argv) {
+function main (argv) {
   start_pretty_print();
 
   // parse arguments
@@ -178,8 +183,8 @@ function main(argv) {
         options = internal.parseArgv(argv, 0); // parse option with parseArgv function
       }
     } catch (x) {
-      print("failed to parse the json options: " + x.message + "\n" + String(x.stack));
-      print("argv: ", argv);
+      print('failed to parse the json options: ' + x.message + '\n' + String(x.stack));
+      print('argv: ', argv);
       return -1;
     }
   }
@@ -191,7 +196,7 @@ function main(argv) {
   }
 
   options.testOutputDirectory = testOutputDirectory;
-  
+
   // force json reply
   options.jsonReply = true;
 
@@ -204,7 +209,7 @@ function main(argv) {
     // run tests
     r = UnitTest.unitTest(testSuits, options, testOutputDirectory) || {};
   } catch (x) {
-    print("caught exception during test execution!");
+    print('caught exception during test execution!');
 
     if (x.message !== undefined) {
       print(x.message);
@@ -214,7 +219,6 @@ function main(argv) {
       print(x.stack);
     } else {
       print(x);
-
     }
 
     print(JSON.stringify(r));
@@ -225,8 +229,8 @@ function main(argv) {
     crashed: true
   });
 
-  // whether or not there was an error 
-  fs.write(testOutputDirectory + "/UNITTEST_RESULT_EXECUTIVE_SUMMARY.json", String(r.status));
+  // whether or not there was an error
+  fs.write(testOutputDirectory + '/UNITTEST_RESULT_EXECUTIVE_SUMMARY.json', String(r.status));
 
   if (options.writeXmlReport) {
     let j;
@@ -237,14 +241,26 @@ function main(argv) {
       j = inspect(r);
     }
 
-    fs.write(testOutputDirectory + "/UNITTEST_RESULT.json", j);
-    fs.write(testOutputDirectory + "/UNITTEST_RESULT_CRASHED.json", String(r.crashed));
+    fs.write(testOutputDirectory + '/UNITTEST_RESULT.json', j);
+    fs.write(testOutputDirectory + '/UNITTEST_RESULT_CRASHED.json', String(r.crashed));
 
     try {
-      resultsToXml(r,
-        "UNITTEST_RESULT_", (options.hasOwnProperty('cluster') && options.cluster));
+      let isCluster = false;
+      let isRocksDb = false;
+      let prefix = '';
+      if (options.hasOwnProperty('prefix')) {
+        prefix = options.prefix;
+      }
+      if (options.hasOwnProperty('cluster') && options.cluster) {
+        isCluster = true;
+      }
+      if (options.hasOwnProperty('storageEngine')) {
+        isRocksDb = (options.storageEngine === 'rocksdb');
+      }
+
+      resultsToXml(r, 'UNITTEST_RESULT_' + prefix, isCluster, isRocksDb);
     } catch (x) {
-      print("exception while serializing status xml!");
+      print('exception while serializing status xml!');
       print(x.message);
       print(x.stack);
       print(inspect(r));
@@ -258,7 +274,9 @@ function main(argv) {
 }
 
 let result = main(ARGUMENTS);
+
 if (!result) {
   // force an error in the console
   throw 'peng!';
 }
+

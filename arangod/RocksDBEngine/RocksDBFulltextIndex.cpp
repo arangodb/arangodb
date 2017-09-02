@@ -32,7 +32,6 @@
 #include "RocksDBEngine/RocksDBCollection.h"
 #include "RocksDBEngine/RocksDBCommon.h"
 #include "RocksDBEngine/RocksDBMethods.h"
-#include "RocksDBEngine/RocksDBPrimaryIndex.h"
 #include "RocksDBEngine/RocksDBToken.h"
 #include "RocksDBEngine/RocksDBTransactionState.h"
 #include "RocksDBEngine/RocksDBTypes.h"
@@ -198,10 +197,10 @@ Result RocksDBFulltextIndex::insertInternal(transaction::Methods* trx,
   int res = TRI_ERROR_NO_ERROR;
   // size_t const count = words.size();
   for (std::string const& word : words) {
-    RocksDBKey key =
-        RocksDBKey::FulltextIndexValue(_objectId, StringRef(word), revisionId);
+    RocksDBKeyLeaser key(trx);
+    key->constructFulltextIndexValue(_objectId, StringRef(word), revisionId);
 
-    Result r = mthd->Put(_cf, key, value.string(), rocksutils::index);
+    Result r = mthd->Put(_cf, key.ref(), value.string(), rocksutils::index);
     if (!r.ok()) {
       res = r.errorNumber();
       break;
@@ -223,10 +222,10 @@ Result RocksDBFulltextIndex::removeInternal(transaction::Methods* trx,
   // unique indexes have a different key structure
   int res = TRI_ERROR_NO_ERROR;
   for (std::string const& word : words) {
-    RocksDBKey key =
-        RocksDBKey::FulltextIndexValue(_objectId, StringRef(word), revisionId);
+    RocksDBKeyLeaser key(trx);
+    key->constructFulltextIndexValue(_objectId, StringRef(word), revisionId);
 
-    Result r = mthd->Delete(_cf, key);
+    Result r = mthd->Delete(_cf, key.ref());
     if (!r.ok()) {
       res = r.errorNumber();
       break;

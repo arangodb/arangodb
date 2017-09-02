@@ -81,13 +81,14 @@ static std::vector<arangodb::basics::AttributeName> const KeyAttribute{
 RocksDBVPackUniqueIndexIterator::RocksDBVPackUniqueIndexIterator(
     LogicalCollection* collection, transaction::Methods* trx,
     ManagedDocumentResult* mmdr, arangodb::RocksDBVPackIndex const* index,
-    RocksDBKeyBounds&& bounds)
+    VPackSlice const& indexValues)
     : IndexIterator(collection, trx, mmdr, index),
       _index(index),
       _cmp(index->comparator()),
-      _bounds(std::move(bounds)),
+      _key(trx),
       _done(false) {
   TRI_ASSERT(index->columnFamily() == RocksDBColumnFamily::vpack());
+  _key->constructUniqueVPackIndexValue(index->objectId(), indexValues);
 }
 
 /// @brief Reset the cursor
@@ -109,7 +110,7 @@ bool RocksDBVPackUniqueIndexIterator::next(TokenCallback const& cb, size_t limit
 
   auto value = RocksDBValue::Empty(RocksDBEntryType::PrimaryIndexValue);
   RocksDBMethods* mthds = RocksDBTransactionState::toMethods(_trx);
-  arangodb::Result r = mthds->Get(_index->columnFamily(), _bounds.start(), value.buffer());
+  arangodb::Result r = mthds->Get(_index->columnFamily(), _key.ref(), value.buffer());
 
   if (r.ok()) {
     cb(RocksDBToken(RocksDBValue::revisionId(*value.buffer())));
@@ -341,15 +342,17 @@ int RocksDBVPackIndex::fillElement(VPackBuilder& leased, TRI_voc_rid_t revId,
       // - Key: 7 + 8-byte object ID of index + VPack array with index
       // value(s) + separator (NUL) byte
       // - Value: primary key
-      elements.emplace_back(
-          RocksDBKey::UniqueVPackIndexValue(_objectId, leased.slice()));
+      RocksDBKey key;
+      key.constructUniqueVPackIndexValue(_objectId, leased.slice());
+      elements.emplace_back(std::move(key));
     } else {
       // Non-unique VPack index values are stored as follows:
       // - Key: 6 + 8-byte object ID of index + VPack array with index
       // value(s) + revisionID
       // - Value: empty
-      elements.emplace_back(
-          RocksDBKey::VPackIndexValue(_objectId, leased.slice(), revId));
+      RocksDBKey key;
+      key.constructVPackIndexValue(_objectId, leased.slice(), revId);
+      elements.emplace_back(std::move(key));
       hashes.push_back(leased.slice().normalizedHash());
     }
   } else {
@@ -378,15 +381,17 @@ void RocksDBVPackIndex::addIndexValue(VPackBuilder& leased, TRI_voc_rid_t revId,
     // Unique VPack index values are stored as follows:
     // - Key: 7 + 8-byte object ID of index + VPack array with index value(s)
     // - Value: primary key
-    elements.emplace_back(
-        RocksDBKey::UniqueVPackIndexValue(_objectId, leased.slice()));
+    RocksDBKey key;
+    key.constructUniqueVPackIndexValue(_objectId, leased.slice());
+    elements.emplace_back(std::move(key));
   } else {
     // Non-unique VPack index values are stored as follows:
     // - Key: 6 + 8-byte object ID of index + VPack array with index value(s)
     // + primary key
     // - Value: empty
-    elements.emplace_back(
-        RocksDBKey::VPackIndexValue(_objectId, leased.slice(), revId));
+    RocksDBKey key;
+    key.constructVPackIndexValue(_objectId, leased.slice(), revId);
+    elements.emplace_back(std::move(key));
     hashes.push_back(leased.slice().normalizedHash());
   }
 }
@@ -541,13 +546,12 @@ Result RocksDBVPackIndex::insertInternal(transaction::Methods* trx,
                                          VPackSlice const& doc) {
   std::vector<RocksDBKey> elements;
   std::vector<uint64_t> hashes;
-  int res;
+  int res = TRI_ERROR_NO_ERROR;
   {
     // rethrow all types of exceptions from here...
     transaction::BuilderLeaser leased(trx);
     res = fillElement(*(leased.get()), revisionId, doc, elements, hashes);
   }
-
   if (res != TRI_ERROR_NO_ERROR) {
     return IndexResult(res, this);
   }
@@ -572,8 +576,6 @@ Result RocksDBVPackIndex::insertInternal(transaction::Methods* trx,
       arangodb::Result r =
           mthds->Put(_cf, key, value.string(), rocksutils::index);
       if (!r.ok()) {
-        // auto status =
-        //    rocksutils::convertStatus(s, rocksutils::StatusHint::index);
         res = r.errorNumber();
       }
     }
@@ -602,6 +604,82 @@ Result RocksDBVPackIndex::insertInternal(transaction::Methods* trx,
 
   return IndexResult(res, this);
 }
+
+Result RocksDBVPackIndex::updateInternal(transaction::Methods* trx,
+                                         RocksDBMethods* mthds,
+                      TRI_voc_rid_t oldRevision,
+                      arangodb::velocypack::Slice const& oldDoc,
+                      TRI_voc_rid_t newRevision,
+                                         velocypack::Slice const& newDoc) {
+
+  if (!_unique || _useExpansion) {
+    // only unique index supports in-place updates
+    // lets also not handle the complex case of expanded arrays
+    return RocksDBIndex::updateInternal(trx, mthds, oldRevision, oldDoc,
+                                        newRevision, newDoc);
+  } else {
+    
+    bool equal = true;
+    for (size_t i = 0; i < _paths.size(); ++i) {
+      TRI_ASSERT(!_paths[i].empty());
+      VPackSlice oldSlice = oldDoc.get(_paths[i]);
+      VPackSlice newSlice = newDoc.get(_paths[i]);
+      if ((oldSlice.isNone() || oldSlice.isNull()) &&
+          (newSlice.isNone() || newSlice.isNull())) {
+        // attribute not found
+        if (_sparse) {
+          // if sparse we do not have to index, this is indicated by result
+          // being shorter than n
+          return TRI_ERROR_NO_ERROR;
+        }
+      } else if (basics::VelocyPackHelper::compare(oldSlice, newSlice, true)) {
+        equal = false;
+        break;
+      }
+    }
+    if (!equal) {
+      // we can only use in-place updates if no indexed attributes changed
+      return RocksDBIndex::updateInternal(trx, mthds, oldRevision, oldDoc,
+                                          newRevision, newDoc);
+    }
+    
+    // more expansive method to
+    std::vector<RocksDBKey> elements;
+    std::vector<uint64_t> hashes;
+    int res = TRI_ERROR_NO_ERROR;
+    {
+      // rethrow all types of exceptions from here...
+      transaction::BuilderLeaser leased(trx);
+      res = fillElement(*(leased.get()), newRevision, newDoc, elements, hashes);
+    }
+    if (res != TRI_ERROR_NO_ERROR) {
+      return IndexResult(res, this);
+    }
+    
+    RocksDBValue value = RocksDBValue::UniqueVPackIndexValue(newRevision);
+    size_t const count = elements.size();
+    for (size_t i = 0; i < count; ++i) {
+      RocksDBKey& key = elements[i];
+      if (res == TRI_ERROR_NO_ERROR) {
+        arangodb::Result r =
+        mthds->Put(_cf, key, value.string(), rocksutils::index);
+        if (!r.ok()) {
+          res = r.errorNumber();
+        }
+      }
+      // fix the inserts again
+      if (res != TRI_ERROR_NO_ERROR) {
+        for (size_t j = 0; j < i; ++j) {
+          mthds->Delete(_cf, elements[j]);
+        }
+        break;
+      }
+    }
+    
+    return res;
+  }
+}
+
 /// @brief removes a document from the index
 Result RocksDBVPackIndex::removeInternal(transaction::Methods* trx,
                                          RocksDBMethods* mthds,
@@ -609,18 +687,17 @@ Result RocksDBVPackIndex::removeInternal(transaction::Methods* trx,
                                          VPackSlice const& doc) {
   std::vector<RocksDBKey> elements;
   std::vector<uint64_t> hashes;
-
-  int res;
+  int res = TRI_ERROR_NO_ERROR;
   {
     // rethrow all types of exceptions from here...
     transaction::BuilderLeaser leased(trx);
     res = fillElement(*(leased.get()), revisionId, doc, elements, hashes);
   }
-
   if (res != TRI_ERROR_NO_ERROR) {
     return IndexResult(res, this);
   }
 
+  
   size_t const count = elements.size();
   for (size_t i = 0; i < count; ++i) {
     arangodb::Result r = mthds->Delete(_cf, elements[i]);
@@ -665,9 +742,8 @@ IndexIterator* RocksDBVPackIndex::lookup(
   
   if (lastNonEq.isNone() && _unique && searchValues.length() == _fields.size()) {
     leftSearch.close();
-    RocksDBKeyBounds bounds = RocksDBKeyBounds::UniqueVPackIndex(_objectId, leftSearch.slice());
 
-    return new RocksDBVPackUniqueIndexIterator(_collection, trx, mmdr, this, std::move(bounds));
+    return new RocksDBVPackUniqueIndexIterator(_collection, trx, mmdr, this, leftSearch.slice());
   }
   
   VPackSlice leftBorder;

@@ -34,7 +34,6 @@
 #include "Cache/ManagerTasks.h"
 #include "Cache/Metadata.h"
 #include "Cache/PlainBucket.h"
-#include "Cache/State.h"
 #include "Cache/Table.h"
 
 #include <stdint.h>
@@ -54,7 +53,7 @@ namespace cache {
 ////////////////////////////////////////////////////////////////////////////////
 class PlainCache final : public Cache {
  public:
-  PlainCache(Cache::ConstructionGuard guard, Manager* manager,
+  PlainCache(Cache::ConstructionGuard guard, Manager* manager, uint64_t id,
              Metadata metadata, std::shared_ptr<Table> table,
              bool enableWindowedStats);
   ~PlainCache();
@@ -106,7 +105,7 @@ class PlainCache final : public Cache {
 
  private:
   static uint64_t allocationSize(bool enableWindowedStats);
-  static std::shared_ptr<Cache> create(Manager* manager, Metadata metadata,
+  static std::shared_ptr<Cache> create(Manager* manager, uint64_t id, Metadata metadata,
                                        std::shared_ptr<Table> table,
                                        bool enableWindowedStats);
 
@@ -116,7 +115,7 @@ class PlainCache final : public Cache {
                              std::shared_ptr<Table> newTable);
 
   // helpers
-  std::tuple<Result, PlainBucket*, std::shared_ptr<Table>> getBucket(
+  std::tuple<Result, PlainBucket*, Table*> getBucket(
       uint32_t hash, int64_t maxTries, bool singleOperation = true);
   uint32_t getIndex(uint32_t hash, bool useAuxiliary) const;
 
