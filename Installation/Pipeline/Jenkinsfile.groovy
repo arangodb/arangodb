@@ -417,7 +417,7 @@ def getTests(os, edition, mode, engine) {
             ["agency", "agency", ""],
             ["boost", "boost", "--skipCache false"],
             ["arangobench", "arangobench", ""],
-            ["arangosh", "arangosh", ""],
+            ["arangosh", "arangosh", "--skipShebang true"],
             ["authentication", "authentication", ""],
             ["authentication_parameters", "authentication_parameters", ""],
             ["cluster_sync", "cluster_sync", ""],
@@ -446,7 +446,7 @@ def getTests(os, edition, mode, engine) {
     else {
         return [
             ["arangobench", "arangobench" , ""],
-            ["arangosh", "arangosh" , ""],
+            ["arangosh", "arangosh" , "--skipShebang true"],
             ["authentication", "authentication" , ""],
             ["authentication_parameters", "authentication_parameters" , ""],
             ["config", "config" , ""],
@@ -500,6 +500,13 @@ def executeTests(os, edition, mode, engine, port) {
         }
 
         testMap["test-${os}-${edition}-${mode}-${engine}-${name}"] = {
+            def arch = "02_test_${os}_${edition}_${mode}_${engine}_${name}"
+
+            fileOperations([
+                folderDeleteOperation(arch),
+                folderCreateOperation(arch)
+            ])
+
             testArgs += " --minPort " + port
             testArgs += " --maxPort " + (port + portInterval - 1)
 
@@ -511,10 +518,10 @@ def executeTests(os, edition, mode, engine, port) {
                     def tmpDir = pwd() + "/tmp"
                     withEnv(["TMPDIR=${tmpDir}", "TEMPDIR=${tmpDir}", "TMP=${tmpDir}"]) {
                         if (os == "windows") {
-                            powershell command
+                            powershell command + " | Add-Content -PassThru ..\\${arch}\\test.log"
                         }
                         else {
-                            sh command
+                            sh command + " | tee ${arch}/test.log"
                         }
                     }
                 }
