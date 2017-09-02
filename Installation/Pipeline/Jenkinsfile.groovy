@@ -479,7 +479,13 @@ def executeTests(os, edition, mode, engine, port) {
 
         def name = testStruct[0]
         def test = testStruct[1]
-        def testArgs = "--prefix ${os}-${edition}-${mode}-${engine} --configDir etc/jenkins --skipLogAnalysis true --skipTimeCritical true --skipNonDeterministic true --storageEngine ${engine} " + testStruct[2]
+        def testArgs = "--prefix ${os}-${edition}-${mode}-${engine} " +
+                       "--configDir etc/jenkins " +
+                       "--skipLogAnalysis true " +
+                       "--skipTimeCritical true " +
+                       "--skipNonDeterministic true " +
+                       "--storageEngine ${engine} " +
+                       testStruct[2]
 
         def portInterval = 10
 
@@ -496,12 +502,11 @@ def executeTests(os, edition, mode, engine, port) {
             command += testArgs
 
             lock("test-${env.NODE_NAME}-${env.JOB_NAME}-${env.BUILD_ID}-${edition}-${engine}-${lockIndex}") {
-                def arch = "02_test_${os}_${edition}_${mode}_${engine}"
-                def archfull = "${arch}/${name}"
+                def arch = "02_test_${os}_${edition}_${mode}_${engine}/${name}"
 
                 fileOperations([
                     folderDeleteOperation(arch),
-                    folderCreateOperation(archfull)
+                    folderCreateOperation(arch)
                 ])
 
                 try {
@@ -511,19 +516,14 @@ def executeTests(os, edition, mode, engine, port) {
 
                             withEnv(["TMPDIR=${tmpDir}", "TEMPDIR=${tmpDir}", "TMP=${tmpDir}"]) {
                                 if (os == "windows") {
-                                    powershell command + ' | Add-Content -PassThru ..\\' + arch + '\\' + name + '\\test.log'
+                                    powershell command + ' | Add-Content -PassThru ..\\' + arch + '\\test.log'
                                 }
                                 else {
-                                    sh command + ' 2>&1 | tee ' + archfull + '/test.log'
+                                    sh command + ' 2>&1 | tee ' + arch + '/test.log'
                                 }
                             }
                         }
                         catch (exc) {
-                            fileOperations([
-                                folderCopyOperation(arch, "${arch}_FAILED"),
-                                folderDeleteOperation(arch)
-                            ])
-
                             throw exc
                         }
                     }
@@ -631,26 +631,26 @@ def testStep(os, edition, mode, engine) {
                         //     thresholds: [[$class: 'FailedThreshold', unstableThreshold: '1']],
                         //     tools: [[$class: 'JUnitType', failIfNotNew: false, pattern: 'out/*.xml']]])
 
-                        if (os == 'linux' || os == 'mac') {
-                            sh "find log-output -name 'FAILED_*' -exec cp '{}' . ';'"
-                            sh "for i in logs log-output; do test -e \"\$i\" && mv \"\$i\" ${arch} || true; done"
-                            sh "for i in core* tmp; do test -e \"\$i\" && mv \"\$i\" ${arch} || true; done"
-                            sh "cp -a build/bin/* ${arch}"
-                            if (port > 0) {
-                                sh "Installation/Pipeline/port.sh --clean ${port}"
-                            }
-                        }
-                        else if (os == 'windows') {
-                            powershell "move-item -Force -ErrorAction Ignore logs ${arch}"
-                            powershell "move-item -Force -ErrorAction Ignore log-output ${arch}"
-                            powershell "move-item -Force -ErrorAction Ignore .\\build\\bin\\*.dmp ${arch}"
-                            powershell "move-item -Force -ErrorAction Ignore .\\build\\tests\\*.dmp ${arch}"
-                            powershell "Copy-Item .\\build\\bin\\* -Include *.exe,*.pdb,*.ilk ${arch}"
-                        }
+                        // if (os == 'linux' || os == 'mac') {
+                        //     sh "find log-output -name 'FAILED_*' -exec cp '{}' . ';'"
+                        //     sh "for i in logs log-output; do test -e \"\$i\" && mv \"\$i\" ${arch} || true; done"
+                        //     sh "for i in core* tmp; do test -e \"\$i\" && mv \"\$i\" ${arch} || true; done"
+                        //     sh "cp -a build/bin/* ${arch}"
+                        //     if (port > 0) {
+                        //         sh "Installation/Pipeline/port.sh --clean ${port}"
+                        //     }
+                        // }
+                        // else if (os == 'windows') {
+                        //     powershell "move-item -Force -ErrorAction Ignore logs ${arch}"
+                        //     powershell "move-item -Force -ErrorAction Ignore log-output ${arch}"
+                        //     powershell "move-item -Force -ErrorAction Ignore .\\build\\bin\\*.dmp ${arch}"
+                        //     powershell "move-item -Force -ErrorAction Ignore .\\build\\tests\\*.dmp ${arch}"
+                        //     powershell "Copy-Item .\\build\\bin\\* -Include *.exe,*.pdb,*.ilk ${arch}"
+                        // }
                         
-                        archiveArtifacts allowEmptyArchive: true,
-                            artifacts: "${arch}/**, FAILED_*",
-                            defaultExcludes: false
+                        // archiveArtifacts allowEmptyArchive: true,
+                        //     artifacts: "${arch}/**, FAILED_*",
+                        //     defaultExcludes: false
                     }
                 }
             }
@@ -835,11 +835,6 @@ def buildEdition(os, edition) {
             }
         }
         catch (exc) {
-            fileOperations([
-                folderCopyOperation(arch, "${arch}_FAILED"),
-                folderDeleteOperation(arch)
-            ])
-
             throw exc
         }
     }
