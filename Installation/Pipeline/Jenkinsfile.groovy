@@ -135,6 +135,7 @@ def checkoutCommunity() {
     if (cleanBuild) {
         deleteDir()
     }
+
     retry(3) {
         try {
             checkout(
@@ -266,6 +267,7 @@ def checkCommitMessages() {
         useEnterprise = true
         // runResilience = true
         runTests = true
+
         if (env.BRANCH_NAME == "devel" || env.BRANCH_NAME == "3.2") {
             echo "build of main branch"
         }
@@ -327,18 +329,24 @@ Restrictions: ${restrictions.keySet().join(", ")}
 
 def stashBinaries(os, edition) {
     def paths = ["build/etc", "etc", "Installation/Pipeline", "js", "scripts", "UnitTests"]
+
     if (os == "windows") {
         paths << "build/bin/RelWithDebInfo"
         paths << "build/tests/RelWithDebInfo"
 
-        // so frustrating...compress-archive is built in but it simply won't include the relative path to the archive :(
+        // so frustrating...compress-archive is built in but it simply won't include the relative path to
+        // the archive :(
         // powershell "Compress-Archive -Force -Path (Get-ChildItem -Recurse -Path " + paths.join(',') + ") -DestinationPath stash.zip -Confirm -CompressionLevel Fastest"
         // install 7z portable (https://chocolatey.org/packages/7zip.portable)
+
         powershell "7z a stash.zip -r -bd -mx=1 " + paths.join(" ")
+
         // this is a super mega mess...scp will run as the system user and not as jenkins when run as a server
         // I couldn't figure out how to properly get it running for hours...so last resort was to install putty
+
         powershell "echo 'y' | pscp -i C:\\Users\\Jenkins\\.ssh\\putty-jenkins.ppk stash.zip jenkins@c1:/vol/cache/binaries-${env.BUILD_TAG}-${os}-${edition}.zip"
-    } else {
+    }
+    else {
         paths << "build/bin/"
         paths << "build/tests/"
 
@@ -351,7 +359,8 @@ def unstashBinaries(os, edition) {
     if (os == "windows") {
         powershell "echo 'y' | pscp -i C:\\Users\\Jenkins\\.ssh\\putty-jenkins.ppk jenkins@c1:/vol/cache/binaries-${env.BUILD_TAG}-${os}-${edition}.zip stash.zip"
         powershell "Expand-Archive -Path stash.zip -Force -DestinationPath ."
-    } else {
+    }
+    else {
         sh "scp c1:/vol/cache/binaries-${env.BUILD_TAG}-${os}-${edition}.tar.gz stash.tar.gz"
         sh "tar xpzf stash.tar.gz"
     }
@@ -388,7 +397,8 @@ def jslint() {
 def getStartPort(os) {
     if (os == "windows") {
         return powershell (returnStdout: true, script: "Installation/Pipeline/port.ps1")
-    } else {
+    }
+    else {
         return sh (returnStdout: true, script: "Installation/Pipeline/port.sh")
     }
 }
@@ -404,54 +414,55 @@ def rspecify(os, test) {
 def getTests(os, edition, mode, engine) {
     if (mode == "singleserver") {
         return [
-            ["agency","agency" ,""],
+            ["agency", "agency", ""],
             ["boost", "boost", "--skipCache false"],
-            ["arangobench","arangobench" ,""],
-            ["arangosh","arangosh" ,""],
-            ["authentication", "authentication",""],
-            ["authentication_parameters","authentication_parameters" ,""],
-            ["cluster_sync","cluster_sync" ,""],
-            ["config","config" ,""],
-            ["dfdb","dfdb" ,""],
+            ["arangobench", "arangobench", ""],
+            ["arangosh", "arangosh", ""],
+            ["authentication", "authentication", ""],
+            ["authentication_parameters", "authentication_parameters", ""],
+            ["cluster_sync", "cluster_sync", ""],
+            ["config", "config", ""],
+            ["dfdb", "dfdb", ""],
             //"dump",
             //"dump_authentication",
-            ["endpoints","endpoints" ,""],
+            ["endpoints", "endpoints", ""],
             rspecify(os, "http_replication"),
             rspecify(os, "http_server"),
-            ["replication_sync", "replication_sync",""],
-            ["replication_static", "replication_static",""],
-            ["replication_ongoing","replication_ongoing" ,""],
-            ["server_http","server_http" ,""],
-            ["shell_client", "shell_client",""],
-            ["shell_replication","shell_replication" ,""],
-            ["shell_server","shell_server" ,""],
-            ["shell_server_aql_1", "shell_server_aql","--testBuckets 4/0", ,""],
-            ["shell_server_aql_2", "shell_server_aql","--testBuckets 4/1", ,""],
-            ["shell_server_aql_3", "shell_server_aql","--testBuckets 4/2", ,""],
-            ["shell_server_aql_4", "shell_server_aql","--testBuckets 4/3", ,""],
+            ["replication_sync", "replication_sync", ""],
+            ["replication_static", "replication_static", ""],
+            ["replication_ongoing", "replication_ongoing", ""],
+            ["server_http", "server_http", ""],
+            ["shell_client", "shell_client", ""],
+            ["shell_replication", "shell_replication", ""],
+            ["shell_server", "shell_server", ""],
+            ["shell_server_aql_1", "shell_server_aql", "--testBuckets 4/0", ,""],
+            ["shell_server_aql_2", "shell_server_aql", "--testBuckets 4/1", ,""],
+            ["shell_server_aql_3", "shell_server_aql", "--testBuckets 4/2", ,""],
+            ["shell_server_aql_4", "shell_server_aql", "--testBuckets 4/3", ,""],
             rspecify(os, "ssl_server"),
-            ["upgrade","upgrade" , ""]
+            ["upgrade", "upgrade" , ""]
         ]
-    } else {
+    }
+    else {
         return [
-            ["arangobench","arangobench" , ""],
-            ["arangosh","arangosh" , ""],
-            ["authentication","authentication" , ""],
-            ["authentication_parameters","authentication_parameters" , ""],
-            ["config","config" , ""],
-            ["dump","dump" , ""],
-            ["dump_authentication","dump_authentication" , ""],
-            ["endpoints","endpoints" , ""],
+            ["arangobench", "arangobench" , ""],
+            ["arangosh", "arangosh" , ""],
+            ["authentication", "authentication" , ""],
+            ["authentication_parameters", "authentication_parameters" , ""],
+            ["config", "config" , ""],
+            ["dump", "dump" , ""],
+            ["dump_authentication", "dump_authentication" , ""],
+            ["endpoints", "endpoints" , ""],
             rspecify(os, "http_server"),
             ["server_http", "server_http", ""],
             ["shell_client", "shell_client", ""],
             ["shell_server", "shell_server", ""],
-            ["shell_server_aql_1", "shell_server_aql","--testBuckets 4/0"],
-            ["shell_server_aql_2", "shell_server_aql","--testBuckets 4/1"],
-            ["shell_server_aql_3", "shell_server_aql","--testBuckets 4/2"],
-            ["shell_server_aql_4", "shell_server_aql","--testBuckets 4/3"],
+            ["shell_server_aql_1", "shell_server_aql", "--testBuckets 4/0"],
+            ["shell_server_aql_2", "shell_server_aql", "--testBuckets 4/1"],
+            ["shell_server_aql_3", "shell_server_aql", "--testBuckets 4/2"],
+            ["shell_server_aql_4", "shell_server_aql", "--testBuckets 4/3"],
             rspecify(os, "ssl_server"),
-            ["upgrade","upgrade" , ""]
+            ["upgrade", "upgrade" , ""]
         ]
   }
 }
@@ -482,6 +493,7 @@ def executeTests(os, edition, mode, engine, port) {
         def testArgs = "--prefix ${os}-${edition}-${mode}-${engine} --configDir etc/jenkins --skipLogAnalysis true --skipTimeCritical true --skipNonDeterministic true --storageEngine ${engine} " + testStruct[2]
 
         def portInterval = 10
+
         if (mode == "cluster") {
             portInterval = 40
             testArgs += " --cluster true"
@@ -490,21 +502,25 @@ def executeTests(os, edition, mode, engine, port) {
         testMap["test-${os}-${edition}-${mode}-${engine}-${name}"] = {
             testArgs += " --minPort " + port
             testArgs += " --maxPort " + (port + portInterval - 1)
+
             def command = "build/bin/arangosh --log.level warning --javascript.execute UnitTests/unittest.js ${test} -- "
             command += testArgs
+
             lock("test-${env.NODE_NAME}-${env.JOB_NAME}-${env.BUILD_ID}-${edition}-${engine}-${lockIndex}") {
                 timeout(30) {
                     def tmpDir = pwd() + "/tmp"
                     withEnv(["TMPDIR=${tmpDir}", "TEMPDIR=${tmpDir}", "TMP=${tmpDir}"]) {
                         if (os == "windows") {
                             powershell command
-                        } else {
+                        }
+                        else {
                             sh command
                         }
                     }
                 }
             }
         }
+
         port += portInterval
         testMap
     }
@@ -566,18 +582,30 @@ def testStep(os, edition, mode, engine) {
             def buildName = "${os}-${edition}"
             def name = "${os}-${edition}-${mode}-${engine}"
             stage("test-${name}") {
-                fileOperations([folderDeleteOperation('tmp'), folderDeleteOperation('build/bin'), folderDeleteOperation('js'), folderDeleteOperation('out'), folderCreateOperation('tmp'),  fileDeleteOperation(excludes: '', includes: 'core.*,*.dmp')])
+                fileOperations([
+                    folderDeleteOperation('tmp'),
+                    folderDeleteOperation('build/bin'),
+                    folderDeleteOperation('js'),
+                    folderDeleteOperation('out'),
+                    folderCreateOperation('tmp'),
+                    fileDeleteOperation(excludes: '', includes: 'core.*,*.dmp')
+                ])
+
                 unstashBinaries(os, edition)
+
                 def port = 0
                 port = getStartPort(os) as Integer
                 echo "Using start port: ${port}"
+
                 if (os == "windows") {
                     powershell "copy build\\bin\\RelWithDebInfo\\* build\\bin"
                 }
+
                 // seriously...60 minutes is the super absolute max max max.
                 // even in the worst situations ArangoDB MUST be able to finish within 60 minutes
                 // even if the features are green this is completely broken performance wise..
                 // DO NOT INCREASE!!
+
                 timeout(60) {
                     try {
                         executeTests(os, edition, mode, engine, port)
@@ -596,7 +624,8 @@ def testStep(os, edition, mode, engine) {
                             if (port > 0) {
                                 sh "Installation/Pipeline/port.sh --clean ${port}"
                             }
-                        } else if (os == 'windows') {
+                        }
+                        else if (os == 'windows') {
                             powershell "move-item -Force -ErrorAction Ignore logs ${arch}"
                             powershell "move-item -Force -ErrorAction Ignore log-output ${arch}"
                             powershell "move-item -Force -ErrorAction Ignore .\\build\\bin\\*.dmp ${arch}"
@@ -758,27 +787,51 @@ def testStepParallel(os, edition, modeList) {
 // -----------------------------------------------------------------------------
 
 def buildEdition(os, edition) {
-    def arch = "LOG_build_${os}_${edition}"
+    def arch = "01_build_${os}_${edition}"
 
-    fileOperations([folderDeleteOperation(arch), folderCreateOperation(arch)])
-    if (os == 'linux') {
-        sh "./Installation/Pipeline/linux/build_${os}_${edition}.sh 64"
-    }
-    else if (os == 'mac') {
-        sh "./Installation/Pipeline/mac/build_${os}_${edition}.sh 16"
-    }
-    else if (os == 'windows') {
-        // i concede...we need a lock for windows...I could not get it to run concurrently...
-        // v8 would not build multiple times at the same time on the same machine:
-        // PDB API call failed, error code '24': ' etc etc
-        // in theory it should be possible to parallelize it by setting an environment variable (see the build script) but for v8 it won't work :(
-        // feel free to recheck if there is time somewhen...this thing here really should not be possible but
-        // ensure that there are 2 concurrent builds on the SAME node building v8 at the same time to properly test it
-        // I just don't want any more "yeah that might randomly fail. just restart" sentences any more
-        def hostname = powershell(returnStdout: true, script: "hostname")
-        lock('build-${hostname}') {
-            powershell ". .\\Installation\\Pipeline\\windows\\build_${os}_${edition}.ps1"
+    fileOperations([
+        folderDeleteOperation(arch),
+        folderCreateOperation(arch)
+    ])
+
+    try {
+        if (os == 'linux') {
+            sh "./Installation/Pipeline/linux/build_${os}_${edition}.sh 64"
         }
+        else if (os == 'mac') {
+            sh "./Installation/Pipeline/mac/build_${os}_${edition}.sh 16"
+        }
+        else if (os == 'windows') {
+            // I concede...we need a lock for windows...I could not get it to run concurrently...
+            // v8 would not build multiple times at the same time on the same machine:
+            // PDB API call failed, error code '24': ' etc etc
+            // in theory it should be possible to parallelize it by setting an environment variable
+            // (see the build script) but for v8 it won't work :(
+            // feel free to recheck if there is time somewhen...this thing here really should not be possible but
+            // ensure that there are 2 concurrent builds on the SAME node building v8 at the same time to properly
+            // test it. I just don't want any more "yeah that might randomly fail. just restart" sentences any more.
+
+            def hostname = powershell(returnStdout: true, script: "hostname")
+
+            lock('build-${hostname}') {
+                powershell ". .\\Installation\\Pipeline\\windows\\build_${os}_${edition}.ps1"
+            }
+        }
+    }
+    catch (exc) {
+        fileOperations([
+            folderCopyOperation(arch, "arch_FAILED"),
+            folderDeleteOperation(arch)
+        ])
+
+        arch += "_FAILED"
+
+        throw exc
+    }
+    finally () {
+        archiveArtifacts allowEmptyArchive: true,
+            artifacts: "${arch}/**",
+            defaultExcludes: false
     }
 }
 
@@ -819,25 +872,27 @@ def runEdition(os, edition) {
                 timeout(30) {
                     checkoutCommunity()
                     checkCommitMessages()
+
                     if (edition == "enterprise") {
                         checkoutEnterprise()
                     }
+
                     // checkoutResilience()
                 }
 
                 timeout(90) {
                     buildEdition(os, edition)
-                    // we only need one jslint test per edition
-                    if (os == "linux") {
-                        stage("jslint-${edition}") {
-                            echo "Running jslint for ${edition}"
-                            jslint()
-                        }
-                    }
                     stashBinaries(os, edition)
                 }
+            }
 
-
+            // we only need one jslint test per edition
+            if (os == "linux") {
+                stage("jslint-${edition}") {
+                    echo "Running jslint for ${edition}"
+                        jslint()
+                    }
+                }
             }
         }
 
@@ -855,6 +910,7 @@ def runOperatingSystems(osList) {
             }
         }
     }
+
     parallel branches
 }
 
