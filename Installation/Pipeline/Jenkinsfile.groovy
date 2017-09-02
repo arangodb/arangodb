@@ -824,13 +824,11 @@ def buildEdition(os, edition) {
             folderDeleteOperation(arch)
         ])
 
-        arch += "_FAILED"
-
         throw exc
     }
     finally {
         archiveArtifacts allowEmptyArchive: true,
-            artifacts: "${arch}/**",
+            artifacts: "${arch}/**, ${arch}_FAILED/**",
             defaultExcludes: false
     }
 }
