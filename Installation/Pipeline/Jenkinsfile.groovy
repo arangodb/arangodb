@@ -415,12 +415,12 @@ def checkEnabledOS(os, text) {
 
 def checkEnabledEdition(edition, text) {
     if (edition == 'enterprise' && ! useEnterprise) {
-        echo "Not ${text} ${os} ${mode} because ${os} is not enabled"
+        echo "Not ${text} ${edition} because ${edition} is not enabled"
         return false
     }
 
     if (edition == 'community' && ! useCommunity) {
-        echo "Not ${text} ${os} ${mode} because ${os} is not enabled"
+        echo "Not ${text} ${edition} because ${edition} is not enabled"
         return false
     }
 
