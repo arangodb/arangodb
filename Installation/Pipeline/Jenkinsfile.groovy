@@ -510,7 +510,7 @@ def executeTests(os, edition, mode, engine, port) {
                             powershell command + " | Add-Content -PassThru ..\\${arch}\\test.log"
                         }
                         else {
-                            sh command + " | tee ${arch}/test.log"
+                            sh command + " 2>&1 | tee ${arch}/test.log"
                         }
                     }
                 }
@@ -791,36 +791,38 @@ def buildEdition(os, edition) {
     ])
 
     try {
-        if (os == 'linux') {
-            sh "./Installation/Pipeline/linux/build_${os}_${edition}.sh 64 ${arch}"
-        }
-        else if (os == 'mac') {
-            sh "./Installation/Pipeline/mac/build_${os}_${edition}.sh 16 ${arch}"
-        }
-        else if (os == 'windows') {
-            // I concede...we need a lock for windows...I could not get it to run concurrently...
-            // v8 would not build multiple times at the same time on the same machine:
-            // PDB API call failed, error code '24': ' etc etc
-            // in theory it should be possible to parallelize it by setting an environment variable
-            // (see the build script) but for v8 it won't work :(
-            // feel free to recheck if there is time somewhen...this thing here really should not be possible but
-            // ensure that there are 2 concurrent builds on the SAME node building v8 at the same time to properly
-            // test it. I just don't want any more "yeah that might randomly fail. just restart" sentences any more.
+        try {
+            if (os == 'linux') {
+                sh "./Installation/Pipeline/linux/build_${os}_${edition}.sh 64 ${arch}"
+            }
+            else if (os == 'mac') {
+                sh "./Installation/Pipeline/mac/build_${os}_${edition}.sh 16 ${arch}"
+            }
+            else if (os == 'windows') {
+                // I concede...we need a lock for windows...I could not get it to run concurrently...
+                // v8 would not build multiple times at the same time on the same machine:
+                // PDB API call failed, error code '24': ' etc etc
+                // in theory it should be possible to parallelize it by setting an environment variable
+                // (see the build script) but for v8 it won't work :(
+                // feel free to recheck if there is time somewhen...this thing here really should not be possible but
+                // ensure that there are 2 concurrent builds on the SAME node building v8 at the same time to properly
+                // test it. I just don't want any more "yeah that might randomly fail. just restart" sentences any more.
 
-            def hostname = powershell(returnStdout: true, script: "hostname")
+                def hostname = powershell(returnStdout: true, script: "hostname")
 
-            lock('build-${hostname}') {
-                powershell ". .\\Installation\\Pipeline\\windows\\build_${os}_${edition}.ps1"
+                lock('build-${hostname}') {
+                    powershell ". .\\Installation\\Pipeline\\windows\\build_${os}_${edition}.ps1"
+                }
             }
         }
-    }
-    catch (exc) {
-        fileOperations([
-            folderCopyOperation(arch, "arch_FAILED"),
-            folderDeleteOperation(arch)
-        ])
+        catch (exc) {
+            fileOperations([
+                folderCopyOperation(arch, "${arch}_FAILED"),
+                folderDeleteOperation(arch)
+            ])
 
-        throw exc
+            throw exc
+        }
     }
     finally {
         archiveArtifacts allowEmptyArchive: true,
