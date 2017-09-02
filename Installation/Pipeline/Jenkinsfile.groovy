@@ -396,17 +396,17 @@ def jslint() {
 
 def checkEnabledOS(os, text) {
     if (os == 'linux' && ! useLinux) {
-        echo "Not ${text} ${os} ${mode} because ${os} is not enabled"
+        echo "Not ${text} ${os} because ${os} is not enabled"
         return false
     }
 
     if (os == 'mac' && ! useMac) {
-        echo "Not ${text} ${os} ${mode} because ${os} is not enabled"
+        echo "Not ${text} ${os} because ${os} is not enabled"
         return false
     }
 
     if (os == 'windows' && ! useWindows) {
-        echo "Not ${text} ${os} ${mode} because ${os} is not enabled"
+        echo "Not ${text} ${os} because ${os} is not enabled"
         return false
     }
 
