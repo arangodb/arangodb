@@ -796,10 +796,10 @@ def buildEdition(os, edition) {
 
     try {
         if (os == 'linux') {
-            sh "./Installation/Pipeline/linux/build_${os}_${edition}.sh 64"
+            sh "./Installation/Pipeline/linux/build_${os}_${edition}.sh 64 ${arch}"
         }
         else if (os == 'mac') {
-            sh "./Installation/Pipeline/mac/build_${os}_${edition}.sh 16"
+            sh "./Installation/Pipeline/mac/build_${os}_${edition}.sh 16 ${arch}"
         }
         else if (os == 'windows') {
             // I concede...we need a lock for windows...I could not get it to run concurrently...
