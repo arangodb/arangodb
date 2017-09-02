@@ -828,7 +828,7 @@ def buildEdition(os, edition) {
 
         throw exc
     }
-    finally () {
+    finally {
         archiveArtifacts allowEmptyArchive: true,
             artifacts: "${arch}/**",
             defaultExcludes: false
