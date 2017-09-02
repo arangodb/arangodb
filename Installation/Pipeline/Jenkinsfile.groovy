@@ -628,11 +628,12 @@ def testStep(os, edition, mode, engine) {
             stage("test-${name}") {
                 fileOperations([
                     folderDeleteOperation('tmp'),
+                    folderCreateOperation('tmp'),
                     folderDeleteOperation('build/bin'),
                     folderDeleteOperation('js'),
                     folderDeleteOperation('out'),
                     folderDeleteOperation("02_test_${os}_${edition}_${mode}_${engine}"),
-                    folderCreateOperation('tmp'),
+                    folderCreateOperation("02_test_${os}_${edition}_${mode}_${engine}"),
                     fileDeleteOperation(excludes: '', includes: 'core.*,*.dmp')
                 ])
 
