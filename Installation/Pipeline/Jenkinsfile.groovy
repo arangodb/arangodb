@@ -890,8 +890,7 @@ def runEdition(os, edition) {
             if (os == "linux") {
                 stage("jslint-${edition}") {
                     echo "Running jslint for ${edition}"
-                        jslint()
-                    }
+                    jslint()
                 }
             }
         }
