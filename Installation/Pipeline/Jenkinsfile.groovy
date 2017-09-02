@@ -394,6 +394,64 @@ def jslint() {
 // --SECTION--                                                     SCRIPTS TESTS
 // -----------------------------------------------------------------------------
 
+def checkEnabledOS(os, text) {
+    if (os == 'linux' && ! useLinux) {
+        echo "Not ${text} ${os} ${mode} because ${os} is not enabled"
+        return false
+    }
+
+    if (os == 'mac' && ! useMac) {
+        echo "Not ${text} ${os} ${mode} because ${os} is not enabled"
+        return false
+    }
+
+    if (os == 'windows' && ! useWindows) {
+        echo "Not ${text} ${os} ${mode} because ${os} is not enabled"
+        return false
+    }
+
+    return true
+}
+
+def checkEnabledEdition(edition, text) {
+    if (edition == 'enterprise' && ! useEnterprise) {
+        echo "Not ${text} ${os} ${mode} because ${os} is not enabled"
+        return false
+    }
+
+    if (edition == 'community' && ! useCommunity) {
+        echo "Not ${text} ${os} ${mode} because ${os} is not enabled"
+        return false
+    }
+
+    return true
+}
+
+def checkCores(os, arch) {
+    if (os == 'windows') {
+        def files = findFiles(glob: '*.dmp')
+
+        for (file in files) {
+            powershell "move-item -Force -ErrorAction Ignore ${file} ${arch}"
+        }
+
+        if (files.length > 0) {
+            error("found dmp file")
+        }
+    }
+    else {
+        def files = findFiles(glob: 'core*')
+
+        for (file in files) {
+            sh "mv ${file} ${arch}"
+        }
+
+        if (files.length > 0) {
+            error("found core file")
+        }
+    }
+}
+
 def getStartPort(os) {
     if (os == "windows") {
         return powershell (returnStdout: true, script: "Installation/Pipeline/port.ps1")
@@ -502,12 +560,7 @@ def executeTests(os, edition, mode, engine, port) {
             command += testArgs
 
             lock("test-${env.NODE_NAME}-${env.JOB_NAME}-${env.BUILD_ID}-${edition}-${engine}-${lockIndex}") {
-                def arch = "02_test_${os}_${edition}_${mode}_${engine}/${name}"
-
-                fileOperations([
-                    folderDeleteOperation(arch),
-                    folderCreateOperation(arch)
-                ])
+                def arch = "02_test_${os}_${edition}_${mode}_${engine}"
 
                 try {
                     timeout(30) {
@@ -516,12 +569,14 @@ def executeTests(os, edition, mode, engine, port) {
 
                             withEnv(["TMPDIR=${tmpDir}", "TEMPDIR=${tmpDir}", "TMP=${tmpDir}"]) {
                                 if (os == "windows") {
-                                    powershell command + ' | Add-Content -PassThru ..\\' + arch + '\\test.log'
+                                    powershell command + ' | Add-Content -PassThru ..\\' + arch + '\\' + name + '.log'
                                 }
                                 else {
-                                    sh command + ' 2>&1 | tee ' + arch + '/test.log'
+                                    sh command + ' 2>&1 | tee ' + arch + '/' + name + '.log'
                                 }
                             }
+
+                            checkCores(os, arch)
                         }
                         catch (exc) {
                             throw exc
@@ -530,7 +585,7 @@ def executeTests(os, edition, mode, engine, port) {
                 }
                 finally {
                     archiveArtifacts allowEmptyArchive: true,
-                        artifacts: "${arch}/**, ${arch}_FAILED/**",
+                        artifacts: "${arch}/**",
                         defaultExcludes: false
                 }
             }
@@ -541,46 +596,19 @@ def executeTests(os, edition, mode, engine, port) {
     }
 
     parallel testSteps
-
-    if (os == 'windows') {
-        if (findFiles(glob: '*.dmp').length > 0) {
-            error("found dmp file")
-        }
-    } else {
-        if (findFiles(glob: 'core*').length > 0) {
-            error("found core file")
-        }
-    }
 }
 
 def testCheck(os, edition, mode, engine) {
+    if (! checkEnabledOS(os, 'testing')) {
+       return false
+    }
+
+    if (! checkEnabledEdition(edition, 'testing')) {
+       return false
+    }
+
     if (! runTests) {
         echo "Not testing ${os} ${mode} because testing is not enabled"
-        return false
-    }
-
-    if (os == 'linux' && ! useLinux) {
-        echo "Not testing ${os} ${mode} because testing on ${os} is not enabled"
-        return false
-    }
-
-    if (os == 'mac' && ! useMac) {
-        echo "Not testing ${os} ${mode} because testing on ${os} is not enabled"
-        return false
-    }
-
-    if (os == 'windows' && ! useWindows) {
-        echo "Not testing ${os} ${mode} because testing on ${os} is not enabled"
-        return false
-    }
-
-    if (edition == 'enterprise' && ! useEnterprise) {
-        echo "Not testing ${os} ${mode} ${edition} because testing ${edition} is not enabled"
-        return false
-    }
-
-    if (edition == 'community' && ! useCommunity) {
-        echo "Not testing ${os} ${mode} ${edition} because testing ${edition} is not enabled"
         return false
     }
 
@@ -596,12 +624,14 @@ def testStep(os, edition, mode, engine) {
         node(testJenkins[os]) {
             def buildName = "${os}-${edition}"
             def name = "${os}-${edition}-${mode}-${engine}"
+
             stage("test-${name}") {
                 fileOperations([
                     folderDeleteOperation('tmp'),
                     folderDeleteOperation('build/bin'),
                     folderDeleteOperation('js'),
                     folderDeleteOperation('out'),
+                    folderDeleteOperation("02_test_${os}_${edition}_${mode}_${engine}"),
                     folderCreateOperation('tmp'),
                     fileDeleteOperation(excludes: '', includes: 'core.*,*.dmp')
                 ])
@@ -651,6 +681,13 @@ def testStep(os, edition, mode, engine) {
                         // archiveArtifacts allowEmptyArchive: true,
                         //     artifacts: "${arch}/**, FAILED_*",
                         //     defaultExcludes: false
+
+                        if (os == 'linux' || os == 'mac') {
+                            sh "Installation/Pipeline/port.sh --clean ${port}"
+                        }
+                        else if (os == 'windows') {
+                            powershell "remove-item -Force -ErrorAction Ignore C:\\ports\\${port}"
+                        }
                     }
                 }
             }
@@ -840,35 +877,22 @@ def buildEdition(os, edition) {
     }
     finally {
         archiveArtifacts allowEmptyArchive: true,
-            artifacts: "${arch}/**, ${arch}_FAILED/**",
+            artifacts: "${arch}/**",
             defaultExcludes: false
 
         fileOperations([
-            folderDeleteOperation(arch),
-            folderDeleteOperation("${arch}_FAILED")
+            folderDeleteOperation(arch)
         ])
     }
 }
 
 def buildStepCheck(os, edition) {
-    if (os == 'linux' && ! useLinux) {
-        return false
+    if (! checkEnabledOS(os, 'building')) {
+       return false
     }
 
-    if (os == 'mac' && ! useMac) {
-        return false
-    }
-
-    if (os == 'windows' && ! useWindows) {
-        return false
-    }
-
-    if (edition == 'enterprise' && ! useEnterprise) {
-        return false
-    }
-
-    if (edition == 'community' && ! useCommunity) {
-        return false
+    if (! checkEnabledEdition(edition, 'testing')) {
+       return false
     }
 
     if (restrictions && !restrictions["build-${edition}-${os}"]) {
