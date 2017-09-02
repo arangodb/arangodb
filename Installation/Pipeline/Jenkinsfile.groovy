@@ -468,17 +468,6 @@ def getTests(os, edition, mode, engine) {
 }
 
 def executeTests(os, edition, mode, engine, port) {
-    def arch = "LOG_test_${os}_${edition}_${mode}_${engine}"
-
-    if (os == 'linux' || os == 'mac') {
-       sh "rm -rf ${arch}"
-       sh "mkdir -p ${arch}"
-    }
-    else if (os == 'windows') {
-        bat "del /F /Q ${arch}"
-        powershell "New-Item -ItemType Directory -Force -Path ${arch}"
-    }
-
     def parallelity = 4
     def testIndex = 0
     def tests = getTests(os, edition, mode, engine)
