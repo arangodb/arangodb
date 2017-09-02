@@ -500,7 +500,7 @@ def executeTests(os, edition, mode, engine, port) {
                 def archfull = "${arch}/${name}"
 
                 fileOperations([
-                    folderDeleteOperation(archfull),
+                    folderDeleteOperation(arch),
                     folderCreateOperation(archfull)
                 ])
 
