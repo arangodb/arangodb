@@ -613,7 +613,7 @@ def executeTests(os, edition, mode, engine, port, archLogs, archFailed, archCore
                             else {
                                 command = "(cd " + runDir + "; " + command + ")"
                                 echo "executing ${command}"
-                                sh "command + ' 2>&1 | tee ' + logFile
+                                sh command + ' 2>&1 | tee ' + logFile
                             }
                         }
 
