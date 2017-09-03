@@ -551,7 +551,7 @@ def setupTestEnvironment(runDir) {
       error "TODO"
     }
     else {
-        for (file in ["build", "etc", "js", "UnitTests"]) {
+        for (file in ['build', 'etc', 'js', 'UnitTests']) {
             sh "ln -s ${file} ${runDir}/${file}"
         }
     }
@@ -565,6 +565,7 @@ def executeTests(os, edition, mode, engine, port, archLogs, archFailed, archCore
     // this is an `Array.reduce()` in groovy :S
     def testSteps = tests.inject([:]) { testMap, testStruct ->
         def lockIndex = testIndex % parallelity
+        def currentIndex = testIndex
         testIndex++
 
         def name = testStruct[0]
@@ -587,7 +588,7 @@ def executeTests(os, edition, mode, engine, port, archLogs, archFailed, archCore
         testMap["test-${os}-${edition}-${mode}-${engine}-${name}"] = {
             def logFile = "${archLogs}/${name}.log"
             def logFileFailed = "${archFailed}/${name}.log"
-            def runDir = "run.${testIndex}"
+            def runDir = "run.${currentIndex}"
 
             testArgs += " --minPort " + port
             testArgs += " --maxPort " + (port + portInterval - 1)
