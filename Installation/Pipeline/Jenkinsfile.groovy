@@ -97,7 +97,6 @@ restrictions = [:]
 // --SECTION--                                             CONSTANTS AND HELPERS
 // -----------------------------------------------------------------------------
 
-
 // github proxy repositiory
 proxyRepo = 'http://c1:8088/github.com/arangodb/arangodb'
 
@@ -125,7 +124,6 @@ if (sourceBranchLabel == ~/devel$/) {
     useWindows = true
     useMac = true
 }
-
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       SCRIPTS SCM
@@ -394,6 +392,15 @@ def jslint() {
 // --SECTION--                                                     SCRIPTS TESTS
 // -----------------------------------------------------------------------------
 
+def moveFile(src, dst) {
+    if (os == "windows") {
+        powershell "move-item -Force -ErrorAction Ignore '${src}' '${dst}'"
+    }
+    else {
+        sh "mv '${src}' '${dst}'"
+    }
+}
+
 def checkEnabledOS(os, text) {
     if (os == 'linux' && ! useLinux) {
         echo "Not ${text} ${os} because ${os} is not enabled"
@@ -576,29 +583,35 @@ def executeTests(os, edition, mode, engine, port) {
         }
 
         testMap["test-${os}-${edition}-${mode}-${engine}-${name}"] = {
+            def arch = "02_test_${os}_${edition}_${mode}_${engine}"
+
             testArgs += " --minPort " + port
             testArgs += " --maxPort " + (port + portInterval - 1)
 
             def command = "build/bin/arangosh --log.level warning --javascript.execute UnitTests/unittest.js ${test} -- "
             command += testArgs
 
-            lock("test-${env.NODE_NAME}-${env.JOB_NAME}-${env.BUILD_ID}-${edition}-${engine}-${lockIndex}") {
-                def arch = "02_test_${os}_${edition}_${mode}_${engine}"
+            try {
+                lock("test-${env.NODE_NAME}-${env.JOB_NAME}-${env.BUILD_ID}-${edition}-${engine}-${lockIndex}") {
+                    timeout(30) {
+                        def tmpDir = pwd() + "/tmp"
 
-                timeout(30) {
-                    def tmpDir = pwd() + "/tmp"
+                        withEnv(["TMPDIR=${tmpDir}", "TEMPDIR=${tmpDir}", "TMP=${tmpDir}"]) {
+                            if (os == "windows") {
+                                powershell command + ' | Add-Content -PassThru ' + arch + '\\' + name + '.log'
+                            }
+                            else {
+                                sh command + ' 2>&1 | tee ' + arch + '/' + name + '.log'
+                            }
+                        }
 
-                    withEnv(["TMPDIR=${tmpDir}", "TEMPDIR=${tmpDir}", "TMP=${tmpDir}"]) {
-                        if (os == "windows") {
-                            powershell command + ' | Add-Content -PassThru ..\\' + arch + '\\' + name + '.log'
-                        }
-                        else {
-                            sh command + ' 2>&1 | tee ' + arch + '/' + name + '.log'
-                        }
+                        checkCores(os, arch)
                     }
-
-                    checkCores(os, arch)
                 }
+            }
+            catch (exc) {
+                moveFile(arch + '/' + name + '.log', arch + '_FAILED/' + name + '.log')
+                throw exc
             }
         }
 
@@ -636,6 +649,7 @@ def testStep(os, edition, mode, engine) {
             def buildName = "${os}-${edition}"
             def name = "${os}-${edition}-${mode}-${engine}"
             def arch = "02_test_${os}_${edition}_${mode}_${engine}"
+            def archFailed = "02_test_${os}_${edition}_${mode}_${engine}_FAILED"
             def archLogs = "62_test_${os}_${edition}_${mode}_${engine}"
             def archCore = "82_test_${os}_${edition}_${mode}_${engine}"
 
@@ -648,6 +662,8 @@ def testStep(os, edition, mode, engine) {
                     folderDeleteOperation('out'),
                     folderDeleteOperation(arch),
                     folderCreateOperation(arch),
+                    folderDeleteOperation(archFailed),
+                    folderCreateOperation(archFailed),
                     folderDeleteOperation(archLogs),
                     folderCreateOperation(archLogs),
                     folderDeleteOperation(archCore),
@@ -699,7 +715,7 @@ def testStep(os, edition, mode, engine) {
 
                         // archive all artifacts
                         archiveArtifacts allowEmptyArchive: true,
-                            artifacts: "${arch}/**, ${archLogs}/**, ${archCore}/**",
+                            artifacts: "${arch}/**, ${archFailed}/**, ${archLogs}/**, ${archCore}/**",
                             defaultExcludes: false
                     }
                 }
@@ -720,6 +736,7 @@ def testStepParallel(os, edition, modeList) {
             }
         }
     }
+
     parallel branches
 }
 
@@ -860,42 +877,33 @@ def buildEdition(os, edition) {
     ])
 
     try {
-        try {
-            if (os == 'linux') {
-                sh "./Installation/Pipeline/linux/build_${os}_${edition}.sh 64 ${arch}"
-            }
-            else if (os == 'mac') {
-                sh "./Installation/Pipeline/mac/build_${os}_${edition}.sh 16 ${arch}"
-            }
-            else if (os == 'windows') {
-                // I concede...we need a lock for windows...I could not get it to run concurrently...
-                // v8 would not build multiple times at the same time on the same machine:
-                // PDB API call failed, error code '24': ' etc etc
-                // in theory it should be possible to parallelize it by setting an environment variable
-                // (see the build script) but for v8 it won't work :(
-                // feel free to recheck if there is time somewhen...this thing here really should not be possible but
-                // ensure that there are 2 concurrent builds on the SAME node building v8 at the same time to properly
-                // test it. I just don't want any more "yeah that might randomly fail. just restart" sentences any more.
-
-                def hostname = powershell(returnStdout: true, script: "hostname")
-
-                lock('build-${hostname}') {
-                    powershell ". .\\Installation\\Pipeline\\windows\\build_${os}_${edition}.ps1"
-                }
-            }
+        if (os == 'linux') {
+            sh "./Installation/Pipeline/linux/build_${os}_${edition}.sh 64 ${arch}"
         }
-        catch (exc) {
-            throw exc
+        else if (os == 'mac') {
+            sh "./Installation/Pipeline/mac/build_${os}_${edition}.sh 16 ${arch}"
+        }
+        else if (os == 'windows') {
+            // I concede...we need a lock for windows...I could not get it to run concurrently...
+            // v8 would not build multiple times at the same time on the same machine:
+            // PDB API call failed, error code '24': ' etc etc
+            // in theory it should be possible to parallelize it by setting an environment variable
+            // (see the build script) but for v8 it won't work :(
+            // feel free to recheck if there is time somewhen...this thing here really should not be possible but
+            // ensure that there are 2 concurrent builds on the SAME node building v8 at the same time to properly
+            // test it. I just don't want any more "yeah that might randomly fail. just restart" sentences any more.
+
+            def hostname = powershell(returnStdout: true, script: "hostname")
+
+            lock('build-${hostname}') {
+                powershell ". .\\Installation\\Pipeline\\windows\\build_${os}_${edition}.ps1"
+            }
         }
     }
     finally {
         archiveArtifacts allowEmptyArchive: true,
             artifacts: "${arch}/**",
             defaultExcludes: false
-
-        fileOperations([
-            folderDeleteOperation(arch)
-        ])
     }
 }
 
@@ -918,9 +926,7 @@ def buildStepCheck(os, edition) {
 def runEdition(os, edition) {
     return {
         node(buildJenkins[os]) {
-            def name = "${os}-${edition}"
-
-            stage("build-${name}") {
+            stage("build-${os}-${edition}") {
                 timeout(30) {
                     checkoutCommunity()
                     checkCommitMessages()
@@ -966,7 +972,7 @@ def runOperatingSystems(osList) {
 }
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                                          PIPELINE
+// --SECTION--                                                              MAIN
 // -----------------------------------------------------------------------------
 
 runOperatingSystems(['linux', 'mac', 'windows'])
