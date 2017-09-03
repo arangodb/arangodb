@@ -202,7 +202,7 @@ def checkCoresAndSave(os, runDir, name, archRuns, archCores) {
         }
     }
     else {
-        sh "for i in logs out tmp; do test -e \"${runDir}/\$i\" && mv \"${runDir}/\$i\" ${archRuns}/${name}.\$i || true; done"
+        sh "for i in logs out tmp; do test -e \"${runDir}/\$i\" && mv \"${runDir}/\$i\" \"${archRuns}/${name}.\$i\" || true; done"
 
         def files = findFiles(glob: '${runDir}/core*')
 
@@ -625,6 +625,7 @@ def executeTests(os, edition, mode, engine, port, arch, archRuns, archFailed, ar
                 }
                 catch (exc) {
                     echo "caught error, copying log to ${logFileFailed}"
+                    echo exc.toString()
                     copyFile(logFile, logFileFailed)
                     throw exc
                 }
