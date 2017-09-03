@@ -552,7 +552,7 @@ def setupTestEnvironment(os, runDir) {
     }
     else {
         for (file in ['build', 'etc', 'js', 'UnitTests']) {
-            sh "ln -s ${file} ${runDir}/${file}"
+            sh "ln -s ../${file} ${runDir}/${file}"
         }
     }
 }
