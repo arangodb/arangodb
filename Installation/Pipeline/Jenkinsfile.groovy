@@ -183,11 +183,11 @@ def checkEnabledEdition(edition, text) {
     return true
 }
 
-def checkCoresAndSave(os, runDir, name, archLogs, archCores) {
+def checkCoresAndSave(os, runDir, name, archRuns, archCores) {
     if (os == 'windows') {
-        powershell "move-item -Force -ErrorAction Ignore ${runDir}/logs ${archLogs}/${name}.logs"
-        powershell "move-item -Force -ErrorAction Ignore ${runDir}/out ${archLogs}/${name}.logs"
-        powershell "move-item -Force -ErrorAction Ignore ${runDir}/tmp ${archLogs}/${name}.tmp"
+        powershell "move-item -Force -ErrorAction Ignore ${runDir}/logs ${archRuns}/${name}.logs"
+        powershell "move-item -Force -ErrorAction Ignore ${runDir}/out ${archRuns}/${name}.logs"
+        powershell "move-item -Force -ErrorAction Ignore ${runDir}/tmp ${archRuns}/${name}.tmp"
 
         def files = findFiles(glob: "${runDir}/*.dmp")
         
@@ -202,7 +202,7 @@ def checkCoresAndSave(os, runDir, name, archLogs, archCores) {
         }
     }
     else {
-        sh "for i in logs out tmp; do test -e \"${runDir}/\$i\" && mv \"${runDir}/\$i\" ${archLogs}/${name}.\$i || true; done"
+        sh "for i in logs out tmp; do test -e \"${runDir}/\$i\" && mv \"${runDir}/\$i\" ${archRuns}/${name}.\$i || true; done"
 
         def files = findFiles(glob: '${runDir}/core*')
 
@@ -558,7 +558,7 @@ def setupTestEnvironment(os, runDir) {
     }
 }
 
-def executeTests(os, edition, mode, engine, port, archLogs, archFailed, archCore) {
+def executeTests(os, edition, mode, engine, port, arch, archRuns, archFailed, archCore) {
     def parallelity = 4
     def testIndex = 0
     def tests = getTests(os, edition, mode, engine)
@@ -588,7 +588,7 @@ def executeTests(os, edition, mode, engine, port, archLogs, archFailed, archCore
         }
 
         testMap["test-${os}-${edition}-${mode}-${engine}-${name}"] = {
-            def logFile = "${archLogs}/${name}.log"
+            def logFile = "${arch}/${name}.log"
             def logFileFailed = "${archFailed}/${name}.log"
             def runDir = "run.${currentIndex}"
 
@@ -620,7 +620,7 @@ def executeTests(os, edition, mode, engine, port, archLogs, archFailed, archCore
                             }
                         }
 
-                        checkCoresAndSave(os, runDir, name, archLogs, archCores)
+                        checkCoresAndSave(os, runDir, name, archRuns, archCores)
                     }
                 }
                 catch (exc) {
@@ -665,7 +665,7 @@ def testStep(os, edition, mode, engine, testName) {
             stage(testName) {
                 def arch = pwd() + "/" + "02_test_${os}_${edition}_${mode}_${engine}"
                 def archFailed = "${arch}_FAILED"
-                def archLogs = "${arch}_LOGS"
+                def archRuns = "${arch}_RUN"
                 def archCore = "${arch}_CORES"
 
                 // clean the current workspace completely
@@ -675,7 +675,7 @@ def testStep(os, edition, mode, engine, testName) {
                 fileOperations([
                     folderCreateOperation(arch),
                     folderCreateOperation(archFailed),
-                    folderCreateOperation(archLogs),
+                    folderCreateOperation(archRuns),
                     folderCreateOperation(archCore)
                 ])
 
@@ -693,7 +693,7 @@ def testStep(os, edition, mode, engine, testName) {
 
                 timeout(60) {
                     try {
-                        executeTests(os, edition, mode, engine, port, arch, archLogs, archCore)
+                        executeTests(os, edition, mode, engine, port, arch, archRuns, archFailed, archCore)
                     }
                     finally {
                         // step([$class: 'XUnitBuilder',
@@ -710,7 +710,7 @@ def testStep(os, edition, mode, engine, testName) {
 
                         // archive all artifacts
                         archiveArtifacts allowEmptyArchive: true,
-                            artifacts: "${arch}/**, ${archFailed}/**, ${archLogs}/**, ${archCore}/**",
+                            artifacts: "${arch}/**, ${archFailed}/**, ${archRuns}/**, ${archCore}/**",
                             defaultExcludes: false
                     }
                 }
