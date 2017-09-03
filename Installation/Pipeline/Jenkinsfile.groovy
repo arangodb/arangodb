@@ -542,7 +542,7 @@ def getTests(os, edition, mode, engine) {
     }
 }
 
-def setupTestEnvironment(runDir) {
+def setupTestEnvironment(os, runDir) {
     fileOperations([
         folderCreateOperation("${runDir}/tmp")
     ])
@@ -566,6 +566,7 @@ def executeTests(os, edition, mode, engine, port, archLogs, archFailed, archCore
     def testSteps = tests.inject([:]) { testMap, testStruct ->
         def lockIndex = testIndex % parallelity
         def currentIndex = testIndex
+
         testIndex++
 
         def name = testStruct[0]
@@ -600,7 +601,7 @@ def executeTests(os, edition, mode, engine, port, archLogs, archFailed, archCore
                           testArgs
 
             lock("test-${env.NODE_NAME}-${env.JOB_NAME}-${env.BUILD_ID}-${edition}-${engine}-${lockIndex}") {
-                setupTestEnvironment(runDir)
+                setupTestEnvironment(os, runDir)
 
                 try {
                     timeout(30) {
