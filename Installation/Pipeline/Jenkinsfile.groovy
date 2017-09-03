@@ -11,6 +11,10 @@ properties(
     ]]
 )
 
+// -----------------------------------------------------------------------------
+// --SECTION--                                             SELECTABLE PARAMETERS
+// -----------------------------------------------------------------------------
+
 def defaultLinux = true
 def defaultMac = false
 def defaultWindows = false
@@ -123,6 +127,111 @@ if (env.BRANCH_NAME =~ /^PR-/) {
 if (sourceBranchLabel == ~/devel$/) {
     useWindows = true
     useMac = true
+}
+
+buildJenkins = [
+    "linux": "linux && build",
+    "mac" : "mac",
+    "windows": "windows"
+]
+
+testJenkins = [
+    "linux": "linux && tests",
+    "mac" : "mac",
+    "windows": "windows"
+]
+
+def copyFile(src, dst) {
+    if (os == "windows") {
+        powershell "copy-item -Force -ErrorAction Ignore '${src}' '${dst}'"
+    }
+    else {
+        sh "cp '${src}' '${dst}'"
+    }
+}
+
+def checkEnabledOS(os, text) {
+    if (os == 'linux' && ! useLinux) {
+        echo "Not ${text} ${os} because ${os} is not enabled"
+        return false
+    }
+
+    if (os == 'mac' && ! useMac) {
+        echo "Not ${text} ${os} because ${os} is not enabled"
+        return false
+    }
+
+    if (os == 'windows' && ! useWindows) {
+        echo "Not ${text} ${os} because ${os} is not enabled"
+        return false
+    }
+
+    return true
+}
+
+def checkEnabledEdition(edition, text) {
+    if (edition == 'enterprise' && ! useEnterprise) {
+        echo "Not ${text} ${edition} because ${edition} is not enabled"
+        return false
+    }
+
+    if (edition == 'community' && ! useCommunity) {
+        echo "Not ${text} ${edition} because ${edition} is not enabled"
+        return false
+    }
+
+    return true
+}
+
+def checkCoreAndSave(os, runDir, archLogs, archCores) {
+    if (os == 'windows') {
+        powershell "move-item -Force -ErrorAction Ignore ${runDir}/logs ${archLogs}"
+        powershell "move-item -Force -ErrorAction Ignore ${runDir}/tmp ${archLogs}"
+
+        def files = findFiles(glob: "${runDir}/*.dmp")
+        
+        if (files.length > 0) {
+            for (file in files) {
+                powershell "move-item -Force -ErrorAction Ignore ${file} ${archCores}"
+            }
+
+            powershell "copy-item .\\build\\bin\\* -Include *.exe,*.pdb,*.ilk ${archCores}"
+
+            error("found dmp file")
+        }
+    }
+    else {
+        sh "for i in logs tmp; do test -e \"${runDir}/\$i\" && mv \"${runDir}/\$i\" ${archLogs} || true; done"
+
+        def files = findFiles(glob: '${runDir}/core*')
+
+        if (files.length > 0) {
+            for (file in files) {
+                sh "mv ${file} ${archCores}"
+            }
+
+            sh "cp -a build/bin/* ${archCores}"
+
+            error("found core file")
+        }
+    }
+}
+
+def getStartPort(os) {
+    if (os == "windows") {
+        return powershell (returnStdout: true, script: "Installation/Pipeline/port.ps1")
+    }
+    else {
+        return sh (returnStdout: true, script: "Installation/Pipeline/port.sh")
+    }
+}
+
+def rspecify(os, test) {
+    if (os == "windows") {
+        return [test, test, "--rspec C:\\tools\\ruby23\\bin\\rspec.bat"]
+    } else {
+        return [test, test, ""]
+    }
 }
 
 // -----------------------------------------------------------------------------
@@ -357,28 +466,13 @@ def unstashBinaries(os, edition) {
     if (os == "windows") {
         powershell "echo 'y' | pscp -i C:\\Users\\Jenkins\\.ssh\\putty-jenkins.ppk jenkins@c1:/vol/cache/binaries-${env.BUILD_TAG}-${os}-${edition}.zip stash.zip"
         powershell "Expand-Archive -Path stash.zip -Force -DestinationPath ."
+        powershell "copy build\\bin\\RelWithDebInfo\\* build\\bin"
     }
     else {
         sh "scp c1:/vol/cache/binaries-${env.BUILD_TAG}-${os}-${edition}.tar.gz stash.tar.gz"
         sh "tar xpzf stash.tar.gz"
     }
 }
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                         VARIABLES
-// -----------------------------------------------------------------------------
-
-buildJenkins = [
-    "linux": "linux && build",
-    "mac" : "mac",
-    "windows": "windows"
-]
-
-testJenkins = [
-    "linux": "linux && tests",
-    "mac" : "mac",
-    "windows": "windows"
-]
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                    SCRIPTS JSLINT
@@ -391,113 +485,6 @@ def jslint() {
 // -----------------------------------------------------------------------------
 // --SECTION--                                                     SCRIPTS TESTS
 // -----------------------------------------------------------------------------
-
-def moveFile(src, dst) {
-    if (os == "windows") {
-        powershell "move-item -Force -ErrorAction Ignore '${src}' '${dst}'"
-    }
-    else {
-        sh "mv '${src}' '${dst}'"
-    }
-}
-
-def checkEnabledOS(os, text) {
-    if (os == 'linux' && ! useLinux) {
-        echo "Not ${text} ${os} because ${os} is not enabled"
-        return false
-    }
-
-    if (os == 'mac' && ! useMac) {
-        echo "Not ${text} ${os} because ${os} is not enabled"
-        return false
-    }
-
-    if (os == 'windows' && ! useWindows) {
-        echo "Not ${text} ${os} because ${os} is not enabled"
-        return false
-    }
-
-    return true
-}
-
-def checkEnabledEdition(edition, text) {
-    if (edition == 'enterprise' && ! useEnterprise) {
-        echo "Not ${text} ${edition} because ${edition} is not enabled"
-        return false
-    }
-
-    if (edition == 'community' && ! useCommunity) {
-        echo "Not ${text} ${edition} because ${edition} is not enabled"
-        return false
-    }
-
-    return true
-}
-
-def checkCores(os, arch) {
-    if (os == 'windows') {
-        if (findFiles(glob: '*.dmp').length > 0) {
-            error("found dmp file")
-        }
-    }
-    else {
-        if (findFiles(glob: 'core*').length > 0) {
-            error("found core file")
-        }
-    }
-}
-
-def saveCores(os, arch) {
-    if (os == 'windows') {
-        def files = findFiles(glob: '*.dmp')
-
-        if (files.length > 0) {
-            fileOperations([
-                folderDeleteOperation(arch),
-                folderCreateOperation(arch)
-            ])
-
-            for (file in files) {
-                powershell "move-item -Force -ErrorAction Ignore ${file} ${arch}"
-            }
-
-            powershell "Copy-Item .\\build\\bin\\* -Include *.exe,*.pdb,*.ilk ${arch}"
-        }
-    }
-    else {
-        def files = findFiles(glob: 'core*')
-
-        if (files.length > 0) {
-            fileOperations([
-                folderDeleteOperation(arch),
-                folderCreateOperation(arch)
-            ])
-
-            for (file in files) {
-                sh "mv ${file} ${arch}"
-            }
-
-            sh "cp -a build/bin/* ${arch}"
-        }
-    }
-}
-
-def getStartPort(os) {
-    if (os == "windows") {
-        return powershell (returnStdout: true, script: "Installation/Pipeline/port.ps1")
-    }
-    else {
-        return sh (returnStdout: true, script: "Installation/Pipeline/port.sh")
-    }
-}
-
-def rspecify(os, test) {
-    if (os == "windows") {
-        return [test, test, "--rspec C:\\tools\\ruby23\\bin\\rspec.bat"]
-    } else {
-        return [test, test, ""]
-    }
-}
 
 def getTests(os, edition, mode, engine) {
     if (mode == "singleserver") {
@@ -552,10 +539,25 @@ def getTests(os, edition, mode, engine) {
             rspecify(os, "ssl_server"),
             ["upgrade", "upgrade" , ""]
         ]
-  }
+    }
 }
 
-def executeTests(os, edition, mode, engine, port) {
+def setupTestEnvironment(runDir) {
+    fileOperations([
+        folderCreateOperation("${runDir}/tmp")
+    ])
+
+    if (os == "windows") {
+      error "TODO"
+    }
+    else {
+        for (file in []) {
+            sh "ln -s ${file} ${runDir}/${file}"
+        }
+    }
+}
+
+def executeTests(os, edition, mode, engine, port, archLogs, archFailed, archCore) {
     def parallelity = 4
     def testIndex = 0
     def tests = getTests(os, edition, mode, engine)
@@ -583,35 +585,45 @@ def executeTests(os, edition, mode, engine, port) {
         }
 
         testMap["test-${os}-${edition}-${mode}-${engine}-${name}"] = {
-            def arch = "02_test_${os}_${edition}_${mode}_${engine}"
+            def logFile = "${archLogs}/${name}.log"
+            def logFileFailed = "${archFailed}/${name}.log"
+            def runDir = "run.${testIndex}"
 
             testArgs += " --minPort " + port
             testArgs += " --maxPort " + (port + portInterval - 1)
 
-            def command = "build/bin/arangosh --log.level warning --javascript.execute UnitTests/unittest.js ${test} -- "
-            command += testArgs
+            def command = "build/bin/arangosh " +
+                          "--log.level warning " +
+                          "--javascript.execute UnitTests/unittest.js " +
+                          " ${test} -- " +
+                          testArgs
 
-            try {
-                lock("test-${env.NODE_NAME}-${env.JOB_NAME}-${env.BUILD_ID}-${edition}-${engine}-${lockIndex}") {
+            setupTestEnvironment(runDir)
+
+            lock("test-${env.NODE_NAME}-${env.JOB_NAME}-${env.BUILD_ID}-${edition}-${engine}-${lockIndex}") {
+                try {
                     timeout(30) {
-                        def tmpDir = pwd() + "/tmp"
+                        def tmpDir = pwd() + "/" + runDir + "/tmp"
 
                         withEnv(["TMPDIR=${tmpDir}", "TEMPDIR=${tmpDir}", "TMP=${tmpDir}"]) {
                             if (os == "windows") {
-                                powershell command + ' | Add-Content -PassThru ' + arch + '\\' + name + '.log'
+                                error "TODO CD"
+                                powershell command + ' | Add-Content -PassThru ' + logFile
                             }
                             else {
-                                sh command + ' 2>&1 | tee ' + arch + '/' + name + '.log'
+                                command = "(cd " + runDir + "; " + command + ")"
+                                echo "executing ${command}"
+                                sh "command + ' 2>&1 | tee ' + logFile
                             }
                         }
 
-                        checkCores(os, arch)
+                        checkCoresAndSave(os, runDir, archLogs, archCores)
                     }
                 }
-            }
-            catch (exc) {
-                moveFile(arch + '/' + name + '.log', arch + '_FAILED/' + name + '.log')
-                throw exc
+                catch (exc) {
+                    copyFile(logFile, logFileFailed)
+                    throw exc
+                }
             }
         }
 
@@ -643,42 +655,32 @@ def testCheck(os, edition, mode, engine) {
     return true
 }
 
-def testStep(os, edition, mode, engine) {
+def testStep(os, edition, mode, engine, testName) {
     return {
         node(testJenkins[os]) {
-            def buildName = "${os}-${edition}"
-            def name = "${os}-${edition}-${mode}-${engine}"
-            def arch = "02_test_${os}_${edition}_${mode}_${engine}"
-            def archFailed = "02_test_${os}_${edition}_${mode}_${engine}_FAILED"
-            def archLogs = "62_test_${os}_${edition}_${mode}_${engine}"
-            def archCore = "82_test_${os}_${edition}_${mode}_${engine}"
+            stage(testName) {
+                def arch = pwd() + "/" + "02_test_${os}_${edition}_${mode}_${engine}"
+                def archFailed = "${arch}_FAILED"
+                def archLogs = "${arch}_LOGS"
+                def archCore = "${arch}_CORES"
 
-            stage("test-${name}") {
+                // clean the current workspace completely
+                deleteDir()
+
+                // create directories for the artifacts
                 fileOperations([
-                    folderDeleteOperation('tmp'),
-                    folderCreateOperation('tmp'),
-                    folderDeleteOperation('build/bin'),
-                    folderDeleteOperation('js'),
-                    folderDeleteOperation('out'),
-                    folderDeleteOperation(arch),
                     folderCreateOperation(arch),
-                    folderDeleteOperation(archFailed),
                     folderCreateOperation(archFailed),
-                    folderDeleteOperation(archLogs),
                     folderCreateOperation(archLogs),
-                    folderDeleteOperation(archCore),
-                    fileDeleteOperation(excludes: '', includes: 'core.*,*.dmp')
+                    folderCreateOperation(archCore)
                 ])
 
+                // unstash binaries
                 unstashBinaries(os, edition)
 
-                def port = 0
-                port = getStartPort(os) as Integer
+                // find a suitable port
+                def port = (getStartPort(os) as Integer)
                 echo "Using start port: ${port}"
-
-                if (os == "windows") {
-                    powershell "copy build\\bin\\RelWithDebInfo\\* build\\bin"
-                }
 
                 // seriously...60 minutes is the super absolute max max max.
                 // even in the worst situations ArangoDB MUST be able to finish within 60 minutes
@@ -687,23 +689,12 @@ def testStep(os, edition, mode, engine) {
 
                 timeout(60) {
                     try {
-                        executeTests(os, edition, mode, engine, port)
+                        executeTests(os, edition, mode, engine, port, arch, archLogs, archCore)
                     }
                     finally {
                         // step([$class: 'XUnitBuilder',
                         //     thresholds: [[$class: 'FailedThreshold', unstableThreshold: '1']],
                         //     tools: [[$class: 'JUnitType', failIfNotNew: false, pattern: 'out/*.xml']]])
-
-                        if (os == 'linux' || os == 'mac') {
-                            sh "for i in logs tmp; do test -e \"\$i\" && mv \"\$i\" ${archLogs} || true; done"
-                        }
-                        else if (os == 'windows') {
-                            powershell "move-item -Force -ErrorAction Ignore logs ${archLogs}"
-                            powershell "move-item -Force -ErrorAction Ignore tmp ${archLogs}"
-                        }
-                        
-                        // if core files exists move them into the archive and copy binaries as well
-                        saveCores(os, archCore)
 
                         // release the port reservation
                         if (os == 'linux' || os == 'mac') {
@@ -732,7 +723,7 @@ def testStepParallel(os, edition, modeList) {
             if (testCheck(os, edition, mode, engine)) {
                 def name = "test-${os}-${edition}-${mode}-${engine}";
 
-                branches[name] = testStep(os, edition, mode, engine)
+                branches[name] = testStep(os, edition, mode, engine, name)
             }
         }
     }
@@ -957,6 +948,10 @@ def runEdition(os, edition) {
     }
 }
 
+// -----------------------------------------------------------------------------
+// --SECTION--                                                              MAIN
+// -----------------------------------------------------------------------------
+
 def runOperatingSystems(osList) {
     def branches = [:]
 
@@ -970,9 +965,5 @@ def runOperatingSystems(osList) {
 
     parallel branches
 }
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                              MAIN
-// -----------------------------------------------------------------------------
 
 runOperatingSystems(['linux', 'mac', 'windows'])
