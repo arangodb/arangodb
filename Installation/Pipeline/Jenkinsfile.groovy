@@ -429,25 +429,48 @@ def checkEnabledEdition(edition, text) {
 
 def checkCores(os, arch) {
     if (os == 'windows') {
+        if (findFiles(glob: '*.dmp').length > 0) {
+            error("found dmp file")
+        }
+    }
+    else {
+        if (findFiles(glob: 'core*').length > 0) {
+            error("found core file")
+        }
+    }
+}
+
+def saveCores(os, arch) {
+    if (os == 'windows') {
         def files = findFiles(glob: '*.dmp')
 
-        for (file in files) {
-            powershell "move-item -Force -ErrorAction Ignore ${file} ${arch}"
-        }
-
         if (files.length > 0) {
-            error("found dmp file")
+            fileOperations([
+                folderDeleteOperation(arch),
+                folderCreateOperation(arch)
+            ])
+
+            for (file in files) {
+                powershell "move-item -Force -ErrorAction Ignore ${file} ${arch}"
+            }
+
+            powershell "Copy-Item .\\build\\bin\\* -Include *.exe,*.pdb,*.ilk ${arch}"
         }
     }
     else {
         def files = findFiles(glob: 'core*')
 
-        for (file in files) {
-            sh "mv ${file} ${arch}"
-        }
-
         if (files.length > 0) {
-            error("found core file")
+            fileOperations([
+                folderDeleteOperation(arch),
+                folderCreateOperation(arch)
+            ])
+
+            for (file in files) {
+                sh "mv ${file} ${arch}"
+            }
+
+            sh "cp -a build/bin/* ${arch}"
         }
     }
 }
@@ -562,31 +585,19 @@ def executeTests(os, edition, mode, engine, port) {
             lock("test-${env.NODE_NAME}-${env.JOB_NAME}-${env.BUILD_ID}-${edition}-${engine}-${lockIndex}") {
                 def arch = "02_test_${os}_${edition}_${mode}_${engine}"
 
-                try {
-                    timeout(30) {
-                        try {
-                            def tmpDir = pwd() + "/tmp"
+                timeout(30) {
+                    def tmpDir = pwd() + "/tmp"
 
-                            withEnv(["TMPDIR=${tmpDir}", "TEMPDIR=${tmpDir}", "TMP=${tmpDir}"]) {
-                                if (os == "windows") {
-                                    powershell command + ' | Add-Content -PassThru ..\\' + arch + '\\' + name + '.log'
-                                }
-                                else {
-                                    sh command + ' 2>&1 | tee ' + arch + '/' + name + '.log'
-                                }
-                            }
-
-                            checkCores(os, arch)
+                    withEnv(["TMPDIR=${tmpDir}", "TEMPDIR=${tmpDir}", "TMP=${tmpDir}"]) {
+                        if (os == "windows") {
+                            powershell command + ' | Add-Content -PassThru ..\\' + arch + '\\' + name + '.log'
                         }
-                        catch (exc) {
-                            throw exc
+                        else {
+                            sh command + ' 2>&1 | tee ' + arch + '/' + name + '.log'
                         }
                     }
-                }
-                finally {
-                    archiveArtifacts allowEmptyArchive: true,
-                        artifacts: "${arch}/**",
-                        defaultExcludes: false
+
+                    checkCores(os, arch)
                 }
             }
         }
@@ -624,6 +635,9 @@ def testStep(os, edition, mode, engine) {
         node(testJenkins[os]) {
             def buildName = "${os}-${edition}"
             def name = "${os}-${edition}-${mode}-${engine}"
+            def arch = "02_test_${os}_${edition}_${mode}_${engine}"
+            def archCore = "82_test_${os}_${edition}_${mode}_${engine}"
+            def archLogs = "62_test_${os}_${edition}_${mode}_${engine}"
 
             stage("test-${name}") {
                 fileOperations([
@@ -632,8 +646,11 @@ def testStep(os, edition, mode, engine) {
                     folderDeleteOperation('build/bin'),
                     folderDeleteOperation('js'),
                     folderDeleteOperation('out'),
-                    folderDeleteOperation("02_test_${os}_${edition}_${mode}_${engine}"),
-                    folderCreateOperation("02_test_${os}_${edition}_${mode}_${engine}"),
+                    folderDeleteOperation(arch),
+                    folderCreateOperation(arch),
+                    folderDeleteOperation(archLogs),
+                    folderCreateOperation(archLogs),
+                    folderDeleteOperation(archCore),
                     fileDeleteOperation(excludes: '', includes: 'core.*,*.dmp')
                 ])
 
@@ -657,38 +674,32 @@ def testStep(os, edition, mode, engine) {
                         executeTests(os, edition, mode, engine, port)
                     }
                     finally {
-                        def arch = "LOG_test_${os}_${edition}_${mode}_${engine}"
                         // step([$class: 'XUnitBuilder',
                         //     thresholds: [[$class: 'FailedThreshold', unstableThreshold: '1']],
                         //     tools: [[$class: 'JUnitType', failIfNotNew: false, pattern: 'out/*.xml']]])
 
-                        // if (os == 'linux' || os == 'mac') {
-                        //     sh "find log-output -name 'FAILED_*' -exec cp '{}' . ';'"
-                        //     sh "for i in logs log-output; do test -e \"\$i\" && mv \"\$i\" ${arch} || true; done"
-                        //     sh "for i in core* tmp; do test -e \"\$i\" && mv \"\$i\" ${arch} || true; done"
-                        //     sh "cp -a build/bin/* ${arch}"
-                        //     if (port > 0) {
-                        //         sh "Installation/Pipeline/port.sh --clean ${port}"
-                        //     }
-                        // }
-                        // else if (os == 'windows') {
-                        //     powershell "move-item -Force -ErrorAction Ignore logs ${arch}"
-                        //     powershell "move-item -Force -ErrorAction Ignore log-output ${arch}"
-                        //     powershell "move-item -Force -ErrorAction Ignore .\\build\\bin\\*.dmp ${arch}"
-                        //     powershell "move-item -Force -ErrorAction Ignore .\\build\\tests\\*.dmp ${arch}"
-                        //     powershell "Copy-Item .\\build\\bin\\* -Include *.exe,*.pdb,*.ilk ${arch}"
-                        // }
+                        if (os == 'linux' || os == 'mac') {
+                            sh "for i in logs tmp; do test -e \"\$i\" && mv \"\$i\" ${archLogs} || true; done"
+                        }
+                        else if (os == 'windows') {
+                            powershell "move-item -Force -ErrorAction Ignore logs ${archLogs}"
+                        }
                         
-                        // archiveArtifacts allowEmptyArchive: true,
-                        //     artifacts: "${arch}/**, FAILED_*",
-                        //     defaultExcludes: false
+                        // if core files exists move them into the archive and copy binaries as well
+                        saveCores(os, arch)
 
+                        // release the port reservation
                         if (os == 'linux' || os == 'mac') {
                             sh "Installation/Pipeline/port.sh --clean ${port}"
                         }
                         else if (os == 'windows') {
                             powershell "remove-item -Force -ErrorAction Ignore C:\\ports\\${port}"
                         }
+
+                        // archive all artifacts
+                        archiveArtifacts allowEmptyArchive: true,
+                            artifacts: "${arch}/**",
+                            defaultExcludes: false
                     }
                 }
             }
