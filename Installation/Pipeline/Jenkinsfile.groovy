@@ -636,8 +636,8 @@ def testStep(os, edition, mode, engine) {
             def buildName = "${os}-${edition}"
             def name = "${os}-${edition}-${mode}-${engine}"
             def arch = "02_test_${os}_${edition}_${mode}_${engine}"
-            def archCore = "82_test_${os}_${edition}_${mode}_${engine}"
             def archLogs = "62_test_${os}_${edition}_${mode}_${engine}"
+            def archCore = "82_test_${os}_${edition}_${mode}_${engine}"
 
             stage("test-${name}") {
                 fileOperations([
@@ -683,10 +683,11 @@ def testStep(os, edition, mode, engine) {
                         }
                         else if (os == 'windows') {
                             powershell "move-item -Force -ErrorAction Ignore logs ${archLogs}"
+                            powershell "move-item -Force -ErrorAction Ignore tmp ${archLogs}"
                         }
                         
                         // if core files exists move them into the archive and copy binaries as well
-                        saveCores(os, arch)
+                        saveCores(os, archCore)
 
                         // release the port reservation
                         if (os == 'linux' || os == 'mac') {
@@ -698,7 +699,7 @@ def testStep(os, edition, mode, engine) {
 
                         // archive all artifacts
                         archiveArtifacts allowEmptyArchive: true,
-                            artifacts: "${arch}/**",
+                            artifacts: "${arch}/**, ${archLogs}/**, ${archCore}/**",
                             defaultExcludes: false
                     }
                 }
