@@ -183,10 +183,11 @@ def checkEnabledEdition(edition, text) {
     return true
 }
 
-def checkCoreAndSave(os, runDir, archLogs, archCores) {
+def checkCoresAndSave(os, runDir, name, archLogs, archCores) {
     if (os == 'windows') {
-        powershell "move-item -Force -ErrorAction Ignore ${runDir}/logs ${archLogs}"
-        powershell "move-item -Force -ErrorAction Ignore ${runDir}/tmp ${archLogs}"
+        powershell "move-item -Force -ErrorAction Ignore ${runDir}/logs ${archLogs}/${name}.logs"
+        powershell "move-item -Force -ErrorAction Ignore ${runDir}/out ${archLogs}/${name}.logs"
+        powershell "move-item -Force -ErrorAction Ignore ${runDir}/tmp ${archLogs}/${name}.tmp"
 
         def files = findFiles(glob: "${runDir}/*.dmp")
         
@@ -201,7 +202,7 @@ def checkCoreAndSave(os, runDir, archLogs, archCores) {
         }
     }
     else {
-        sh "for i in logs tmp; do test -e \"${runDir}/\$i\" && mv \"${runDir}/\$i\" ${archLogs} || true; done"
+        sh "for i in logs out tmp; do test -e \"${runDir}/\$i\" && mv \"${runDir}/\$i\" ${archLogs}/${name}.\$i || true; done"
 
         def files = findFiles(glob: '${runDir}/core*')
 
@@ -594,7 +595,7 @@ def executeTests(os, edition, mode, engine, port, archLogs, archFailed, archCore
             testArgs += " --minPort " + port
             testArgs += " --maxPort " + (port + portInterval - 1)
 
-            def command = "build/bin/arangosh " +
+            def command = "./build/bin/arangosh " +
                           "--log.level warning " +
                           "--javascript.execute UnitTests/unittest.js " +
                           " ${test} -- " +
@@ -619,10 +620,11 @@ def executeTests(os, edition, mode, engine, port, archLogs, archFailed, archCore
                             }
                         }
 
-                        checkCoresAndSave(os, runDir, archLogs, archCores)
+                        checkCoresAndSave(os, runDir, name, archLogs, archCores)
                     }
                 }
                 catch (exc) {
+                    echo "caught error, copying log to ${logFileFailed}"
                     copyFile(logFile, logFileFailed)
                     throw exc
                 }
