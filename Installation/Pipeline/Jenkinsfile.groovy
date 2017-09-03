@@ -558,7 +558,7 @@ def setupTestEnvironment(os, runDir) {
     }
 }
 
-def executeTests(os, edition, mode, engine, port, arch, archRuns, archFailed, archCore) {
+def executeTests(os, edition, mode, engine, port, arch, archRuns, archFailed, archCores) {
     def parallelity = 4
     def testIndex = 0
     def tests = getTests(os, edition, mode, engine)
@@ -667,7 +667,7 @@ def testStep(os, edition, mode, engine, testName) {
                 def arch = pwd() + "/" + "02_test_${os}_${edition}_${mode}_${engine}"
                 def archFailed = "${arch}_FAILED"
                 def archRuns = "${arch}_RUN"
-                def archCore = "${arch}_CORES"
+                def archCores = "${arch}_CORES"
 
                 // clean the current workspace completely
                 deleteDir()
@@ -677,7 +677,7 @@ def testStep(os, edition, mode, engine, testName) {
                     folderCreateOperation(arch),
                     folderCreateOperation(archFailed),
                     folderCreateOperation(archRuns),
-                    folderCreateOperation(archCore)
+                    folderCreateOperation(archCores)
                 ])
 
                 // unstash binaries
@@ -694,7 +694,7 @@ def testStep(os, edition, mode, engine, testName) {
 
                 timeout(60) {
                     try {
-                        executeTests(os, edition, mode, engine, port, arch, archRuns, archFailed, archCore)
+                        executeTests(os, edition, mode, engine, port, arch, archRuns, archFailed, archCores)
                     }
                     finally {
                         // step([$class: 'XUnitBuilder',
@@ -711,7 +711,7 @@ def testStep(os, edition, mode, engine, testName) {
 
                         // archive all artifacts
                         archiveArtifacts allowEmptyArchive: true,
-                            artifacts: "${arch}/**, ${archFailed}/**, ${archRuns}/**, ${archCore}/**",
+                            artifacts: "${arch}/**, ${archFailed}/**, ${archRuns}/**, ${archCores}/**",
                             defaultExcludes: false
                     }
                 }
