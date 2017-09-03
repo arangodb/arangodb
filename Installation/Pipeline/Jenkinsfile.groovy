@@ -551,7 +551,7 @@ def setupTestEnvironment(runDir) {
       error "TODO"
     }
     else {
-        for (file in []) {
+        for (file in ["build", "etc", "js", "UnitTests"]) {
             sh "ln -s ${file} ${runDir}/${file}"
         }
     }
@@ -598,9 +598,9 @@ def executeTests(os, edition, mode, engine, port, archLogs, archFailed, archCore
                           " ${test} -- " +
                           testArgs
 
-            setupTestEnvironment(runDir)
-
             lock("test-${env.NODE_NAME}-${env.JOB_NAME}-${env.BUILD_ID}-${edition}-${engine}-${lockIndex}") {
+                setupTestEnvironment(runDir)
+
                 try {
                     timeout(30) {
                         def tmpDir = pwd() + "/" + runDir + "/tmp"
