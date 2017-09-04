@@ -1,6 +1,8 @@
 v3.2.3 (2017-XX-XX)
 -------------------
 
+* fixed wrong selection of the database inside the internal cluster js api
+
 * fixed wrong ui cluster health information
 
 
