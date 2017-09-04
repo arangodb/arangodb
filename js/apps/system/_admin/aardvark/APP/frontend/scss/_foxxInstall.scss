@@ -24,3 +24,15 @@
     font-weight: 400;
   }
 }
+  
+#foxxFilters {
+  font-weight: 500 !important;
+  opacity: .7;
+  text-align: right;
+
+  i {
+    font-size: 11pt;
+    margin-right: 5px;
+    top: 0;
+  }
+}

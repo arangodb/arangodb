@@ -18,6 +18,9 @@
     },
 
     events: {
+      'click #categorySelection': 'renderCategories',
+      'click #foxxFilters': 'resetFilters',
+      'keyup #foxxSearch': 'search'
     },
 
     initialize: function (options) {
@@ -29,6 +32,25 @@
       window.setTimeout(function () {
         self.render();
       }, 200);
+    },
+
+    search: function () {
+      this._installedSubViews[Object.keys(this._installedSubViews)[0]].applyFilter();
+
+      var text = $('#foxxSearch').val();
+      if (text) {
+        _.each(this._installedSubViews, function (view) {
+          if (view.model.get('name').includes(text)) {
+            if ($(view.el).attr('shown') === 'true') {
+              $(view.el).show();
+            }
+          } else {
+            $(view.el).hide();
+          }
+        });
+      } else {
+        this._installedSubViews[Object.keys(this._installedSubViews)[0]].applyFilter();
+      }
     },
 
     createSubViews: function () {
@@ -43,6 +65,15 @@
         });
         self._installedSubViews[foxx.get('name')] = subView;
       });
+    },
+
+    renderCategories: function (e) {
+      this._installedSubViews[Object.keys(this._installedSubViews)[0]].renderCategories(e);
+    },
+
+    resetFilters: function () {
+      $('#foxxSearch').val('');
+      this._installedSubViews[Object.keys(this._installedSubViews)[0]].resetFilters();
     },
 
     render: function () {
