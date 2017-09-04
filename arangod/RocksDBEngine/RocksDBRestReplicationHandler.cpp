@@ -459,6 +459,7 @@ void RocksDBRestReplicationHandler::handleCommandBatch() {
     VPackBuilder b;
     b.add(VPackValue(VPackValueType::Object));
     b.add("id", VPackValue(std::to_string(ctx->id())));  // id always string
+    b.add("lastTick", VPackValue(std::to_string(ctx->lastTick())));
     b.close();
 
     // add client
