@@ -408,6 +408,8 @@ SECTION("BinaryIn") {
 
   // not a value in array
   assertFilterFail("FOR d IN collection FILTER d.a in ['1',['2'],'3'] RETURN d");
+  // not a value in array
+  assertFilterFail("FOR d IN collection FILTER d.a in ['1', {\"abc\": \"def\"},'3'] RETURN d");
   // not a constant in array
   assertFilterFail("FOR d IN collection FILTER d.a in ['1', d, '3'] RETURN d");
 
