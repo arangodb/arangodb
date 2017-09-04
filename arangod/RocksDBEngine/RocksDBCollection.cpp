@@ -1604,7 +1604,7 @@ arangodb::Result RocksDBCollection::lookupRevisionVPack(
           value->data(), static_cast<uint64_t>(value->size()));
       if (entry) {
         Result status = _cache->insert(entry);
-        if (status.fail() && status.errorNumber() == TRI_ERROR_LOCK_TIMEOUT) {
+        if (status.errorNumber() == TRI_ERROR_LOCK_TIMEOUT) {
           // the writeLock uses cpu_relax internally, so we can try yield
           std::this_thread::yield();
           status = _cache->insert(entry);
@@ -1666,7 +1666,7 @@ arangodb::Result RocksDBCollection::lookupRevisionVPack(
           value.data(), static_cast<uint64_t>(value.size()));
       if (entry) {
         auto status = _cache->insert(entry);
-        if (status.fail() && status.errorNumber() == TRI_ERROR_LOCK_TIMEOUT) {
+        if (status.errorNumber() == TRI_ERROR_LOCK_TIMEOUT) {
           // the writeLock uses cpu_relax internally, so we can try yield
           std::this_thread::yield();
           status = _cache->insert(entry);
