@@ -147,12 +147,12 @@ RestStatus RestUsersHandler::getRequest(AuthInfo* authInfo) {
     } else if (suffixes[1] == "config") {
       //_api/user/<user>//config
       VPackBuilder data = authInfo->getConfigData(user);
+      VPackSlice resp = data.slice();
       if (suffixes.size() == 3) {
-        generateSuccess(ResponseCode::OK, data.slice().get(suffixes[2]));
-      } else {
-        generateSuccess(ResponseCode::OK, data.slice());
+        resp = data.slice().get(suffixes[2]);
       }
-
+      generateSuccess(ResponseCode::OK,
+                      resp.isNone() ? VPackSlice::nullSlice() : resp);
     } else {
       generateError(ResponseCode::BAD, TRI_ERROR_BAD_PARAMETER);
     }
