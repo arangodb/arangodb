@@ -201,8 +201,8 @@ void BaseEngine::getVertexData(VPackSlice vertex, VPackBuilder& builder) {
     auto shards = _vertexShards.find(shardName);
     if (shards == _vertexShards.end()) {
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_QUERY_COLLECTION_LOCK_FAILED,
-                                     "Collection not known to Traversal " +
-                                     shardName + " please add 'WITH " + shardName +
+                                     "collection not known to traversal: '" +
+                                     shardName + "'. please add 'WITH " + shardName +
                                      "' as the first line in your AQL");
       // The collection is not known here!
       // Maybe handle differently
@@ -210,11 +210,11 @@ void BaseEngine::getVertexData(VPackSlice vertex, VPackBuilder& builder) {
     
     StringRef vertex = id.substr(pos+1);
     for (std::string const& shard : shards->second) {
-      Result res = _trx->documentFastPathLocal(shard, vertex, mmdr);
+      Result res = _trx->documentFastPathLocal(shard, vertex, mmdr, false);
       if (res.ok()) {
         // FOUND short circuit.
         builder.add(v);
-        mmdr.addToBuilder(builder, true);
+        mmdr.addToBuilder(builder, false);
         break;
       } else if (res.isNot(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND)) {
         // We are in a very bad condition here...
@@ -317,8 +317,8 @@ void BaseTraverserEngine::getVertexData(VPackSlice vertex, size_t depth,
     auto shards = _vertexShards.find(shardName);
     if (shards == _vertexShards.end()) {
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_QUERY_COLLECTION_LOCK_FAILED,
-                                     "Collection not known to Traversal " +
-                                     shardName + " please add 'WITH " + shardName +
+                                     "collection not known to traversal: '" +
+                                     shardName + "'. please add 'WITH " + shardName +
                                      "' as the first line in your AQL");
       // The collection is not known here!
       // Maybe handle differently
@@ -326,12 +326,12 @@ void BaseTraverserEngine::getVertexData(VPackSlice vertex, size_t depth,
     
     StringRef vertex = id.substr(pos+1);
     for (std::string const& shard : shards->second) {
-      Result res = _trx->documentFastPathLocal(shard, vertex, mmdr);
+      Result res = _trx->documentFastPathLocal(shard, vertex, mmdr, false);
       if (res.ok()) {
         // FOUND short circuit.
         read++;
         builder.add(v);
-        mmdr.addToBuilder(builder, true);
+        mmdr.addToBuilder(builder, false);
         break;
       } else if (res.isNot(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND)) {
         // We are in a very bad condition here...
