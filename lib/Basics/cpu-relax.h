@@ -1,4 +1,4 @@
-////////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
 /// Copyright 2014-2017 ArangoDB GmbH, Cologne, Germany
@@ -38,7 +38,7 @@ inline void cpu_relax() {
 // TODO use <boost/fiber/detail/cpu_relax.hpp> when available (>1.65.0?)
 #if defined(__i386) || defined(_M_IX86) || defined(__x86_64__) || \
     defined(_M_X64)
-#if defined __WIN32__
+#if defined _WIN32
   YieldProcessor();
 #else
   asm volatile("pause" ::: "memory");

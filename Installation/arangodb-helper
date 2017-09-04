@@ -69,7 +69,7 @@ ar_exitcode_num_to_string(){
     local found=false
     if [ -f "$file" ]; then
         while IFS=',' read code num _ ; do
-            if [ "$in" == "$num" ]; then
+            if [ "$in" = "$num" ]; then
                 echo $code
                 found=true
                 break
@@ -86,14 +86,14 @@ ar_exitcode_num_to_string(){
 
 ar_exitcode_num_to_message(){
     local in="$1"
-    if [[ $in == "0" ]]; then
+    if [ $in = "0" ]; then
         return
     fi
     local file="$ARANGO_ERROR_CODES_DAT"
     local found=false
     if [ -f $file ]; then
         while IFS=',' read code num message long_message; do
-            if [ "$in" == "$num" ]; then
+            if [ "$in" = "$num" ]; then
                 echo "$message"
                 found=true
                 break
@@ -114,7 +114,7 @@ ar_exitcode_string_to_num(){
     if [ -f $file ]; then
         in="$1"
         while IFS=',' read code num _ ; do
-            if [ "$in" == "$code" ]; then
+            if [ "$in" = "$code" ]; then
                 echo $num
                 found=true
                 break
@@ -131,9 +131,9 @@ ar_exitcode_string_to_num(){
 
 ar_exit_by_num(){
     local code="$1"
-    local str="$(ar_exitcode_num_to_string $code)"
-    local msg="$(ar_exitcode_num_to_message $code)"
     if [ $code -ne 0 ]; then
+        local str="$(ar_exitcode_num_to_string $code)"
+        local msg="$(ar_exitcode_num_to_message $code)"
         echo "FATAL ERROR: $str - $msg" 1>&2
         exit "$code"
     fi

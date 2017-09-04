@@ -2,6 +2,7 @@
 set -e
 
 action="$1"
+old_version="$2"
 
 ARANGODB="/usr/sbin/arangod"
 
@@ -9,7 +10,6 @@ ARANGODB="/usr/sbin/arangod"
 . /usr/share/debconf/confmodule
 . /usr/share/arangodb3/arangodb-helper
 
-set +x
 db_get @CPACK_PACKAGE_NAME@/storage_engine
 STORAGE_ENGINE=$RET
 export GLIBCXX_FORCE_NEW=1
@@ -19,10 +19,20 @@ if test -d /var/lib/arangodb3 -a ! -f /usr/sbin/arangod; then
 else
     NEW_INSTALL_EXISTING_DIR=false
 fi
-
 #fill in correct storage engine into arangod.conf
 sed -i /etc/arangodb3/arangod.conf -e "s;storage-engine = auto;storage-engine = $STORAGE_ENGINE;"
 
+if test "@CPACK_SYSTEMD_FOUND@" -eq 1 ; then
+    if deb-systemd-invoke is-active @CPACK_PACKAGE_NAME@.service 2>&1 >/dev/null ; then
+        deb-systemd-invoke stop @CPACK_PACKAGE_NAME@.service >/dev/null \
+            || ar_err "failed to stop arangodb3 service" $?
+    fi
+else
+    if [ -x "/etc/init.d/arangodb3" ]; then
+	    invoke-rc.d arangodb3 stop \
+            || ar_err "failed to stop arangodb3 service" $?
+    fi
+fi
 
 if test "$action" = "configure" -a \
         -z "$2" -a \
@@ -56,7 +66,7 @@ set -e
 if [ $exit_status -eq "$(ar_exitcode_string_to_num EXIT_UPGRADE_REQUIRED)" ]; then
     UPGRADE=true
 else
-    ar_ferr $exit_status
+    ar_exit_by_num $exit_status
 fi
 
 

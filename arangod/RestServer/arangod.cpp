@@ -34,6 +34,7 @@
 #include "ApplicationFeatures/GreetingsFeature.h"
 #include "ApplicationFeatures/JemallocFeature.h"
 #include "ApplicationFeatures/LanguageFeature.h"
+#include "ApplicationFeatures/MaxMapCountFeature.h"
 #include "ApplicationFeatures/NonceFeature.h"
 #include "ApplicationFeatures/PageSizeFeature.h"
 #include "ApplicationFeatures/RocksDBOptionFeature.h"
@@ -158,6 +159,7 @@ static int runServer(int argc, char** argv, ArangoGlobalContext &context) {
     server.addFeature(new LockfileFeature(&server));
     server.addFeature(new LoggerBufferFeature(&server));
     server.addFeature(new LoggerFeature(&server, true));
+    server.addFeature(new MaxMapCountFeature(&server));
     server.addFeature(new NonceFeature(&server));
     server.addFeature(new PageSizeFeature(&server));
     server.addFeature(new pregel::PregelFeature(&server));
