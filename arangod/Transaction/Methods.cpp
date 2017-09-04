@@ -1028,7 +1028,7 @@ Result transaction::Methods::documentFastPath(std::string const& collectionName,
 ///        Must only be called on a local server, not in cluster case!
 Result transaction::Methods::documentFastPathLocal(
     std::string const& collectionName, StringRef const& key,
-    ManagedDocumentResult& result) {
+    ManagedDocumentResult& result, bool shouldLock) {
   TRI_ASSERT(_state->status() == transaction::Status::RUNNING);
 
   TRI_voc_cid_t cid = addCollectionAtRuntime(collectionName);
@@ -1043,7 +1043,7 @@ Result transaction::Methods::documentFastPathLocal(
 
   bool isLocked = trxColl->isLocked(AccessMode::Type::READ,
                                     _state->nestingLevel());
-  Result res = collection->read(this, key, result, !isLocked);
+  Result res = collection->read(this, key, result, shouldLock && !isLocked);
   TRI_ASSERT(res.fail() || isPinned(cid));
   return res;
 }

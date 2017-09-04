@@ -407,7 +407,7 @@ Result RocksDBFulltextIndex::executeQuery(transaction::Methods* trx,
   while (maxResults > 0 && it != resultSet.cend()) {
     RocksDBToken token(*it);
     if (token.revisionId() && physical->readDocument(trx, token, mmdr)) {
-      mmdr.addToBuilder(builder, true);
+      mmdr.addToBuilder(builder, false);
       maxResults--;
     }
     ++it;
