@@ -665,9 +665,9 @@ def testStep(os, edition, mode, engine, testName) {
         node(testJenkins[os]) {
             stage(testName) {
                 def archRel = "02_test_${os}_${edition}_${mode}_${engine}"
-                def archFailedRel = "${arch}_FAILED"
-                def archRunsRel = "${arch}_RUN"
-                def archCoresRel = "${arch}_CORES"
+                def archFailedRel = "${archRel}_FAILED"
+                def archRunsRel = "${archRel}_RUN"
+                def archCoresRel = "${archRel}_CORES"
 
                 def arch = pwd() + "/" + "02_test_${os}_${edition}_${mode}_${engine}"
                 def archFailed = "${arch}_FAILED"
