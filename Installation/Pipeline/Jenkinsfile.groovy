@@ -549,7 +549,9 @@ def setupTestEnvironment(os, runDir) {
     ])
 
     if (os == "windows") {
-      error "TODO"
+        for (file in ['build', 'etc', 'js', 'UnitTests']) {
+            powershell "cd ${runDir} ; New-Item -Path ${file} -ItemType SymbolicLink -Value ..\\${file}"
+        }
     }
     else {
         for (file in ['build', 'etc', 'js', 'UnitTests']) {
@@ -610,8 +612,8 @@ def executeTests(os, edition, mode, engine, port, arch, archRuns, archFailed, ar
 
                         withEnv(["TMPDIR=${tmpDir}", "TEMPDIR=${tmpDir}", "TMP=${tmpDir}"]) {
                             if (os == "windows") {
-                                error "TODO CD"
-                                powershell command + ' | Add-Content -PassThru ' + logFile
+                                echo "executing ${command}"
+                                powershell "cd ${runDir} ; ${command} | Add-Content -PassThru ${logFile}"
                             }
                             else {
                                 command = "(cd " + runDir + "; " + command + ")"
