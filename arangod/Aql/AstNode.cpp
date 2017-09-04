@@ -29,6 +29,7 @@
 #include "Aql/Scopes.h"
 #include "Aql/V8Executor.h"
 #include "Aql/types.h"
+#include "Basics/FloatingPoint.h"
 #include "Basics/StringBuffer.h"
 #include "Basics/Utf8Helper.h"
 #include "Basics/VelocyPackHelper.h"
@@ -47,26 +48,6 @@
 #include <array>
 
 using namespace arangodb::aql;
-
-/// @brief quick translation array from an AST node value type to a VPack type
-static std::array<VPackValueType, 5> const ValueTypes{{
-    VPackValueType::Null,    //    VALUE_TYPE_NULL   = 0,
-    VPackValueType::Bool,    //    VALUE_TYPE_BOOL   = 1,
-    VPackValueType::Int,     //    VALUE_TYPE_INT    = 2,
-    VPackValueType::Double,  //    VALUE_TYPE_DOUBLE = 3,
-    VPackValueType::String   //    VALUE_TYPE_STRING = 4
-}};
-
-static_assert(AstNodeValueType::VALUE_TYPE_NULL == 0,
-              "incorrect ast node value types");
-static_assert(AstNodeValueType::VALUE_TYPE_BOOL == 1,
-              "incorrect ast node value types");
-static_assert(AstNodeValueType::VALUE_TYPE_INT == 2,
-              "incorrect ast node value types");
-static_assert(AstNodeValueType::VALUE_TYPE_DOUBLE == 3,
-              "incorrect ast node value types");
-static_assert(AstNodeValueType::VALUE_TYPE_STRING == 4,
-              "incorrect ast node value types");
 
 std::unordered_map<int, std::string const> const AstNode::Operators{
     {static_cast<int>(NODE_TYPE_OPERATOR_UNARY_NOT), "!"},
@@ -187,12 +168,33 @@ std::unordered_map<int, std::string const> const AstNode::ValueTypeNames{
 
 namespace {
 
+/// @brief quick translation array from an AST node value type to a VPack type
+static std::array<VPackValueType, 5> const valueTypes{{
+    VPackValueType::Null,    //    VALUE_TYPE_NULL   = 0,
+    VPackValueType::Bool,    //    VALUE_TYPE_BOOL   = 1,
+    VPackValueType::Int,     //    VALUE_TYPE_INT    = 2,
+    VPackValueType::Double,  //    VALUE_TYPE_DOUBLE = 3,
+    VPackValueType::String   //    VALUE_TYPE_STRING = 4
+}};
+
+static_assert(AstNodeValueType::VALUE_TYPE_NULL == 0,
+              "incorrect ast node value types");
+static_assert(AstNodeValueType::VALUE_TYPE_BOOL == 1,
+              "incorrect ast node value types");
+static_assert(AstNodeValueType::VALUE_TYPE_INT == 2,
+              "incorrect ast node value types");
+static_assert(AstNodeValueType::VALUE_TYPE_DOUBLE == 3,
+              "incorrect ast node value types");
+static_assert(AstNodeValueType::VALUE_TYPE_STRING == 4,
+              "incorrect ast node value types");
+
+
 /// @brief get the node type for inter-node comparisons
-static VPackValueType GetNodeCompareType(AstNode const* node) {
+static VPackValueType getNodeCompareType(AstNode const* node) {
   TRI_ASSERT(node != nullptr);
 
   if (node->type == NODE_TYPE_VALUE) {
-    return ValueTypes[node->value.type];
+    return valueTypes[node->value.type];
   }
   if (node->type == NODE_TYPE_ARRAY) {
     return VPackValueType::Array;
@@ -207,6 +209,18 @@ static VPackValueType GetNodeCompareType(AstNode const* node) {
   // return null in case assertions are turned off
   return VPackValueType::Null;
 }
+
+static inline int compareDoubleValues(double lhs, double rhs) {
+  if (arangodb::almostEquals(lhs, rhs)) {
+    return 0;
+  }
+  double diff = lhs - rhs;
+  if (diff != 0.0) {
+    return (diff < 0.0) ? -1 : 1;
+  }
+  return 0;
+}
+
 }
 
 /// @brief compare two nodes
@@ -226,18 +240,23 @@ int arangodb::aql::CompareAstNodes(AstNode const* lhs, AstNode const* rhs,
     rhs = Ast::resolveConstAttributeAccess(rhs);
   }
 
-  auto lType = GetNodeCompareType(lhs);
-  auto rType = GetNodeCompareType(rhs);
+  auto lType = getNodeCompareType(lhs);
+  auto rType = getNodeCompareType(rhs);
 
   if (lType != rType) {
+    if (lType == VPackValueType::Int && rType == VPackValueType::Double) {
+      // upcast int to double
+      return compareDoubleValues(static_cast<double>(lhs->getIntValue()), rhs->getDoubleValue());
+    } else if (lType == VPackValueType::Double && rType == VPackValueType::Int) {
+      // upcast int to double
+      return compareDoubleValues(lhs->getDoubleValue(), static_cast<double>(rhs->getIntValue()));
+    }
+
     int diff = static_cast<int>(lType) - static_cast<int>(rType);
 
     TRI_ASSERT(diff != 0);
 
-    if (diff < 0) {
-      return -1;
-    }
-    return 1;
+    return (diff < 0) ? -1 : 1;
   }
 
   switch (lType) {
@@ -249,23 +268,25 @@ int arangodb::aql::CompareAstNodes(AstNode const* lhs, AstNode const* rhs,
       int diff = static_cast<int>(lhs->getIntValue() - rhs->getIntValue());
 
       if (diff != 0) {
-        if (diff < 0) {
-          return -1;
-        }
-        return 1;
+        return (diff < 0) ? -1 : 1;
       }
       return 0;
     }
 
-    case VPackValueType::Int:
+    case VPackValueType::Int: {
+      int64_t l = lhs->getIntValue();
+      int64_t r = rhs->getIntValue();
+
+      if (l != r) {
+        return (l < r) ? -1 : 1;
+      }
+      return 0;
+    }
+
     case VPackValueType::Double: {
-      // TODO
-      double d = lhs->getDoubleValue() - rhs->getDoubleValue();
-      if (d != 0.0) {
-        if (d < 0.0) {
-          return -1;
-        }
-        return 1;
+      double diff = lhs->getDoubleValue() - rhs->getDoubleValue();
+      if (diff != 0.0) {
+        return (diff < 0.0) ? -1 : 1;
       }
       return 0;
     }
