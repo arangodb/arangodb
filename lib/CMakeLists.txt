@@ -114,6 +114,7 @@ add_library(${LIB_ARANGO} STATIC
   ApplicationFeatures/GreetingsFeature.cpp
   ApplicationFeatures/JemallocFeature.cpp
   ApplicationFeatures/LanguageFeature.cpp
+  ApplicationFeatures/MaxMapCountFeature.cpp
   ApplicationFeatures/NonceFeature.cpp
   ApplicationFeatures/PageSizeFeature.cpp
   ApplicationFeatures/PrivilegeFeature.cpp
