@@ -508,7 +508,7 @@ GeoIdx* GeoIndex_new(uint64_t objectId, int numPots, int numSlots) {
   if (gix == nullptr) {
     return (GeoIdx*)gix;
   }
-  // need to set these to null
+  // need to set this ptr to null
   gix->rocksMethods = nullptr;
 
   /* set up the fixed points structure  */
@@ -630,22 +630,35 @@ GeoIdx* GeoIndex_new(uint64_t objectId, int numPots, int numSlots) {
   if (numPots == 0 || numSlots == 0) {  // first run
     gix->nextFreePot = 2;
     gix->nextFreeSlot = 1;
-
-    GeoPot gp;
-    gp.LorLeaf = 0;    // leaf pot
-    gp.RorPoints = 0;  // with no points in it!
-    gp.middle = 0ll;
-    gp.start = 0ll;
-    gp.end = 0x1FFFFFFFFFFFFFll;
-    gp.level = 1;
-    for (i = 0; i < GeoIndexFIXEDPOINTS; i++) gp.maxdist[i] = 0;
-    PotWrite(gix, 1, &gp);  // pot 1 is root
+    GeoIndex_reset(gix);
   } else {
     gix->nextFreePot = numPots + 1;
     gix->nextFreeSlot = numSlots + 1;
   }
   return (GeoIdx*)gix;
 }
+/* =================================================== */
+/*               GeoIndex_reset routine                */
+/* reset the datastructure as if it was just created   */
+/* for the first time                                  */
+/* =================================================== */
+void GeoIndex_reset(GeoIdx* gi) {
+  GeoIx* gix = (GeoIx*)gi;
+  TRI_ASSERT(gi != nullptr);
+  TRI_ASSERT(gix->nextFreePot >= 2);
+  TRI_ASSERT(gix->nextFreeSlot >= 1);
+  
+  GeoPot gp;
+  gp.LorLeaf = 0;    // leaf pot
+  gp.RorPoints = 0;  // with no points in it!
+  gp.middle = 0ll;
+  gp.start = 0ll;
+  gp.end = 0x1FFFFFFFFFFFFFll;
+  gp.level = 1;
+  for (int i = 0; i < GeoIndexFIXEDPOINTS; i++) gp.maxdist[i] = 0;
+  PotWrite(gix, 1, &gp);  // pot 1 is root
+}
+  
 /* =================================================== */
 /*               GeoIndex_free routine                 */
 /* Destroys the GeoIndex, and frees all the memory that*/

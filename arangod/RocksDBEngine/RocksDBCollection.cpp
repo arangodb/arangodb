@@ -749,7 +749,7 @@ void RocksDBCollection::truncate(transaction::Methods* trx,
     rindex->truncate(trx);
   }
   _needToPersistIndexEstimates = true;
-
+  
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   // check if documents have been deleted
   if (mthd->countInBounds(documentBounds, true)) {
@@ -757,16 +757,6 @@ void RocksDBCollection::truncate(transaction::Methods* trx,
                                    "deletion check in collection truncate "
                                    "failed - not all documents have been "
                                    "deleted");
-  }
-
-  for (std::shared_ptr<Index> const& index : _indexes) {
-    RocksDBIndex* rindex = static_cast<RocksDBIndex*>(index.get());
-    if (mthd->countInBounds(rindex->getBounds(), true)) {
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
-                                     "deletion check in collection truncate "
-                                     "failed - not all documents in an index "
-                                     "have been deleted");
-    }
   }
 #endif
 }
