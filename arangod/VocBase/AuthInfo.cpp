@@ -625,7 +625,7 @@ Result AuthInfo::removeAllUsers() {
 VPackBuilder AuthInfo::getConfigData(std::string const& username) {
   loadFromDB();
   VPackBuilder bb = QueryUser(_queryRegistry, username);
-  return VPackBuilder(bb.slice().get("configData"));
+  return bb.isEmpty() ? bb : VPackBuilder(bb.slice().get("configData"));
 }
 
 Result AuthInfo::setConfigData(std::string const& user,
