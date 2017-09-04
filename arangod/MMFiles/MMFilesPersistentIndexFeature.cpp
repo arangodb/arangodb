@@ -134,7 +134,11 @@ void MMFilesPersistentIndexFeature::start() {
   rocksdb::Status status = rocksdb::OptimisticTransactionDB::Open(_options, _path, &_db);
 
   if (! status.ok()) {
-    LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << "unable to initialize RocksDB engine for persistent indexes: " << status.ToString();
+    std::string error;
+    if (status.IsIOError()) {
+      error = "; Maybe your filesystem doesn't provide required features? (Cifs? NFS?)";
+    }
+    LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << "unable to initialize RocksDB engine for persistent indexes: " << status.ToString() << error;
     FATAL_ERROR_EXIT();
   }
 }
