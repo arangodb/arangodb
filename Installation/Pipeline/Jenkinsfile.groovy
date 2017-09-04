@@ -141,7 +141,7 @@ testJenkins = [
     "windows": "windows"
 ]
 
-def copyFile(src, dst) {
+def copyFile(os, src, dst) {
     if (os == "windows") {
         powershell "copy-item -Force -ErrorAction Ignore '${src}' '${dst}'"
     }
@@ -626,7 +626,7 @@ def executeTests(os, edition, mode, engine, port, arch, archRuns, archFailed, ar
                 catch (exc) {
                     echo "caught error, copying log to ${logFileFailed}"
                     echo exc.toString()
-                    copyFile(logFile, logFileFailed)
+                    copyFile(os, logFile, logFileFailed)
                     throw exc
                 }
             }
