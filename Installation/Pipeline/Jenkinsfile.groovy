@@ -664,6 +664,11 @@ def testStep(os, edition, mode, engine, testName) {
     return {
         node(testJenkins[os]) {
             stage(testName) {
+                def archRel = "02_test_${os}_${edition}_${mode}_${engine}"
+                def archFailedRel = "${arch}_FAILED"
+                def archRunsRel = "${arch}_RUN"
+                def archCoresRel = "${arch}_CORES"
+
                 def arch = pwd() + "/" + "02_test_${os}_${edition}_${mode}_${engine}"
                 def archFailed = "${arch}_FAILED"
                 def archRuns = "${arch}_RUN"
@@ -711,7 +716,7 @@ def testStep(os, edition, mode, engine, testName) {
 
                         // archive all artifacts
                         archiveArtifacts allowEmptyArchive: true,
-                            artifacts: "${arch}/**, ${archFailed}/**, ${archRuns}/**, ${archCores}/**",
+                            artifacts: "${archRel}/**, ${archFailedRel}/**, ${archRunsRel}/**, ${archCoresRel}/**",
                             defaultExcludes: false
                     }
                 }
