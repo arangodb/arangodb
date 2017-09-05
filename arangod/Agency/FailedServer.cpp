@@ -136,7 +136,6 @@ bool FailedServer::start() {
     } // <--------- Preconditions
   }
 
-  
   // Transact to agency
   write_ret_t res = singleWriteTransaction(_agent, pending);
 
@@ -236,10 +235,10 @@ bool FailedServer::create(std::shared_ptr<VPackBuilder> envelope) {
 
     //Preconditions
     { VPackObjectBuilder health(_jb.get());
-      // Status should still be BAD
+      // Status should still not have gone back to good
       _jb->add(VPackValue(healthPrefix + _server + "/Status"));
       { VPackObjectBuilder old(_jb.get());
-        _jb->add("old", VPackValue("BAD")); }
+        _jb->add("oldNot", VPackValue("GOOD")); }
       // Target/FailedServers does not already include _server
       _jb->add(VPackValue(failedServersPrefix + "/" + _server));
       { VPackObjectBuilder old(_jb.get());
