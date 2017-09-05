@@ -88,12 +88,6 @@ class IRESEARCH_API by_phrase : public filter {
   iterator begin() { return phrase_.begin(); }
   iterator end() { return phrase_.end(); }
 
-  boost::boost_t phrase_boost() const { return phrase_boost_; }
-  by_phrase& phrase_boost(boost::boost_t phrase_boost) {
-    phrase_boost_ = phrase_boost;
-    return *this;
-  }
-
   using filter::prepare;
 
   virtual filter::prepared::ptr prepare(
@@ -118,7 +112,6 @@ class IRESEARCH_API by_phrase : public filter {
   IRESEARCH_API_PRIVATE_VARIABLES_BEGIN
   std::string fld_;
   terms_t phrase_;
-  boost::boost_t phrase_boost_;
   IRESEARCH_API_PRIVATE_VARIABLES_END
 }; // by_phrase
 

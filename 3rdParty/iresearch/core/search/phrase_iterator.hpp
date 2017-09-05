@@ -36,27 +36,14 @@ class phrase_iterator final : public Conjunction {
 
   phrase_iterator(
       typename conjunction_t::doc_iterators_t&& itrs,
-      const order::prepared& ord, 
-      positions_t&& pos, 
-      boost::boost_t phrase_boost = boost::no_boost())
-    : conjunction_t(std::move(itrs), ord), 
-      pos_(std::move(pos)),
-      phrase_boost_(phrase_boost) {
+      const order::prepared& ord,
+      positions_t&& pos
+  ): conjunction_t(std::move(itrs), ord),
+     pos_(std::move(pos)) {
     assert(!pos_.empty());
 
     // add phrase frequency
-    conjunction_t::attrs_.template emplace(phrase_freq_);
-  }
-
-  virtual void score_impl(byte_type* lhs) override {
-    conjunction_t::score_impl(lhs);
-
-    // TODO: it's dangeorus to pass byte_type* here because scorers have no
-    // assumptions about the the of the boost. Perhaps we should introduce
-    // operation with fixed type or cast operation for scorer.
-    // Refactor this piece of code when score API will be defined
-    const boost::boost_t phrase_boost = phrase_boost_*phrase_freq_.value;
-    conjunction_t::ord_->add(lhs, reinterpret_cast<const byte_type*>(&phrase_boost));
+    conjunction_t::attrs_.emplace(phrase_freq_);
   }
 
   virtual bool next() override {
@@ -109,9 +96,11 @@ class phrase_iterator final : public Conjunction {
     return freq;
   }
 
-  positions_t pos_;
+  // a value representing the freqency of the phrase in the document
+  // FIXME TODO: should be used to modify scoring by supporting scorers
   frequency phrase_freq_;
-  boost::boost_t phrase_boost_;
+
+  positions_t pos_;
 }; // phrase_iterator
 
 NS_END // ROOT

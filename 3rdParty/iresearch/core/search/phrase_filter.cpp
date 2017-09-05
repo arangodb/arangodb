@@ -75,13 +75,9 @@ class phrase_query : public filter::prepared {
 
   DECLARE_SPTR(phrase_query);
 
-  phrase_query(
-      states_t&& states, 
-      phrase_stats_t&& stats, 
-      boost::boost_t phrase_boost)
-    : states_(std::move(states)), 
-      stats_(std::move(stats)),
-      phrase_boost_(phrase_boost) {
+  phrase_query(states_t&& states, phrase_stats_t&& stats)
+    : states_(std::move(states)),
+      stats_(std::move(stats)) {
   }
 
   using filter::prepared::execute;
@@ -145,14 +141,13 @@ class phrase_query : public filter::prepared {
     }
 
     return detail::make_conjunction<phrase_iterator_t>(
-      std::move(itrs), ord, std::move(positions), phrase_boost_
+      std::move(itrs), ord, std::move(positions)
     );
   }
 
  private:
   states_t states_;
   phrase_stats_t stats_;
-  boost::boost_t phrase_boost_;
 }; // phrase_query
 
 // -----------------------------------------------------------------------------
@@ -167,8 +162,7 @@ class phrase_query : public filter::prepared {
 DEFINE_FILTER_TYPE(by_phrase);
 DEFINE_FACTORY_DEFAULT(by_phrase);
 
-by_phrase::by_phrase() 
-  : filter(by_phrase::type()), phrase_boost_(boost::no_boost()) {
+by_phrase::by_phrase(): filter(by_phrase::type()) {
 }
 
 bool by_phrase::equals(const filter& rhs) const {
@@ -292,9 +286,8 @@ filter::prepared::ptr by_phrase::prepare(
   }
 
   auto q = memory::make_unique<phrase_query>(
-    std::move(phrase_states), 
-    std::move(stats),
-    phrase_boost_
+    std::move(phrase_states),
+    std::move(stats)
   );
 
   // apply boost
