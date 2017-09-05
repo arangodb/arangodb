@@ -216,6 +216,7 @@ int RocksDBIndex::drop() {
   size_t numDocs = rocksutils::countKeyRange(rocksutils::globalRocksDB(),
                                              this->getBounds(), prefix_same_as_start);
   if (numDocs > 0) {
+    
     std::string errorMsg("deletion check in index drop failed - not all documents in the index have been deleted. remaining: ");
     errorMsg.append(std::to_string(numDocs));
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, errorMsg);
@@ -270,6 +271,18 @@ void RocksDBIndex::truncate(transaction::Methods* trx) {
 
     iter->Next();
   }
+  
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  //check if index entries have been deleted
+  if (type() != TRI_IDX_TYPE_GEO1_INDEX && type() != TRI_IDX_TYPE_GEO2_INDEX) {
+    if (mthds->countInBounds(getBounds(), true)) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
+                                     "deletion check in collection truncate "
+                                     "failed - not all documents in an index "
+                                     "have been deleted");
+    }
+  }
+#endif
 }
 
 /// @brief return the memory usage of the index

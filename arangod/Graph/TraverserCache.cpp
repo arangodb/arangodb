@@ -64,7 +64,7 @@ VPackSlice TraverserCache::lookupInCollection(StringRef id) {
     return basics::VelocyPackHelper::NullValue();
   }
   Result res = _trx->documentFastPathLocal(id.substr(0, pos).toString(),
-                                           id.substr(pos + 1), *_mmdr);
+                                           id.substr(pos + 1), *_mmdr, true);
   if (res.ok()) {
     ++_insertedDocuments;
     return VPackSlice(_mmdr->vpack());

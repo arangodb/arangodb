@@ -182,7 +182,15 @@ function optimizerRuleUseIndexRangeTester () {
 
     testImpossibleRangesAreDetected : function () {
       var queries = [ 
-        "FOR i IN UTUseIndexRangeSkipInd FILTER i.a < 2 && i.a > 3 RETURN i"
+        "FOR i IN UTUseIndexRangeSkipInd FILTER i.a < 2 && i.a > 3 RETURN i",
+        "FOR i IN UTUseIndexRangeSkipInd FILTER i.a == 7 && i.a != 7 RETURN i",
+        "FOR i IN UTUseIndexRangeSkipInd FILTER i.a == 7 && i.a != 7.0 RETURN i",
+        "FOR i IN UTUseIndexRangeSkipInd FILTER i.a == 7.0 && i.a != 7.0 RETURN i",
+        "FOR i IN UTUseIndexRangeSkipInd FILTER i.a == 7.0 && i.a != 7 RETURN i",
+        "FOR i IN UTUseIndexRangeSkipInd FILTER i.a > 7 && i.a < 7 RETURN i",
+        "FOR i IN UTUseIndexRangeSkipInd FILTER i.a > 7 && i.a < 7.0 RETURN i",
+        "FOR i IN UTUseIndexRangeSkipInd FILTER i.a > 7.0 && i.a < 7.0 RETURN i",
+        "FOR i IN UTUseIndexRangeSkipInd FILTER i.a > 7.0 && i.a < 7 RETURN i"
       ];
 
       queries.forEach(function(query) {

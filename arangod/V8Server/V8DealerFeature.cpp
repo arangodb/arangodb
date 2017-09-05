@@ -27,6 +27,7 @@
 #include "3rdParty/valgrind/valgrind.h"
 
 #include "Actions/actions.h"
+#include "ApplicationFeatures/MaxMapCountFeature.h"
 #include "ApplicationFeatures/V8PlatformFeature.h"
 #include "Basics/ArangoGlobalContext.h"
 #include "Basics/ConditionLocker.h"
@@ -750,7 +751,9 @@ V8Context* V8DealerFeature::enterContext(TRI_vocbase_t* vocbase,
       }
 
       if (_contexts.size() + _nrInflightContexts < _nrMaxContexts &&
-          _contextsModificationBlockers == 0) {
+          _contextsModificationBlockers == 0 && 
+          !MaxMapCountFeature::isNearMaxMappings()) {
+  
         ++_nrInflightContexts;
 
         TRI_ASSERT(guard.isLocked());

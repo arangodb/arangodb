@@ -105,9 +105,11 @@ void ManagedDocumentResult::reset() noexcept {
 
 void ManagedDocumentResult::addToBuilder(velocypack::Builder& builder, bool allowExternals) const {
   TRI_ASSERT(!empty());
+  auto slice = velocypack::Slice(_vpack);
+  TRI_ASSERT(!slice.isExternal());
   if (allowExternals && canUseInExternal()) {
-    builder.add(velocypack::Slice(_vpack));
+    builder.addExternal(slice.begin());
   } else {
-    builder.add(velocypack::Slice(_vpack));
+    builder.add(slice);
   }
 }
