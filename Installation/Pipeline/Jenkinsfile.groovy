@@ -550,7 +550,7 @@ def setupTestEnvironment(os, runDir) {
 
     if (os == "windows") {
         for (file in ['build', 'etc', 'js', 'UnitTests']) {
-            powershell "cd ${runDir} ; New-Item -Path ${file} -ItemType SymbolicLink -Value ..\\${file}"
+            powershell "cd ${runDir} ; New-Item -Path ${file} -ItemType SymbolicLink -Value ..\\${file} | Out-Null"
         }
     }
     else {
@@ -616,7 +616,7 @@ def executeTests(os, edition, mode, engine, port, arch, archRuns, archFailed, ar
                                 powershell "cd ${runDir} ; ${command} | Add-Content -PassThru ${logFile}"
                             }
                             else {
-                                command = "(cd " + runDir + "; " + command + ")"
+                                command = "set -o pipefail ; (cd " + runDir + "; " + command + ")"
                                 echo "executing ${command}"
                                 sh command + ' 2>&1 | tee ' + logFile
                             }
