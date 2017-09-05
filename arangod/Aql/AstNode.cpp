@@ -1428,7 +1428,8 @@ bool AstNode::isSimple() const {
   }
 
   if (type == NODE_TYPE_REFERENCE || type == NODE_TYPE_VALUE ||
-      type == NODE_TYPE_VARIABLE || type == NODE_TYPE_NOP) {
+      type == NODE_TYPE_VARIABLE || type == NODE_TYPE_NOP ||
+      type == NODE_TYPE_QUANTIFIER) {
     setFlag(DETERMINED_SIMPLE, VALUE_SIMPLE);
     return true;
   }
@@ -1437,7 +1438,41 @@ bool AstNode::isSimple() const {
       type == NODE_TYPE_EXPANSION || type == NODE_TYPE_ITERATOR ||
       type == NODE_TYPE_ARRAY_LIMIT ||
       type == NODE_TYPE_CALCULATED_OBJECT_ELEMENT ||
-      type == NODE_TYPE_OPERATOR_TERNARY) {
+      type == NODE_TYPE_OPERATOR_TERNARY ||
+      type == NODE_TYPE_OPERATOR_NARY_AND ||
+      type == NODE_TYPE_OPERATOR_NARY_OR ||
+      type == NODE_TYPE_OPERATOR_BINARY_PLUS ||
+      type == NODE_TYPE_OPERATOR_BINARY_MINUS ||
+      type == NODE_TYPE_OPERATOR_BINARY_TIMES ||
+      type == NODE_TYPE_OPERATOR_BINARY_DIV ||
+      type == NODE_TYPE_OPERATOR_BINARY_MOD ||
+      type == NODE_TYPE_OPERATOR_BINARY_AND ||
+      type == NODE_TYPE_OPERATOR_BINARY_OR ||
+      type == NODE_TYPE_OPERATOR_BINARY_EQ ||
+      type == NODE_TYPE_OPERATOR_BINARY_NE ||
+      type == NODE_TYPE_OPERATOR_BINARY_LT ||
+      type == NODE_TYPE_OPERATOR_BINARY_LE ||
+      type == NODE_TYPE_OPERATOR_BINARY_GT ||
+      type == NODE_TYPE_OPERATOR_BINARY_GE ||
+      type == NODE_TYPE_OPERATOR_BINARY_IN ||
+      type == NODE_TYPE_OPERATOR_BINARY_NIN ||
+      type == NODE_TYPE_OPERATOR_BINARY_ARRAY_EQ ||
+      type == NODE_TYPE_OPERATOR_BINARY_ARRAY_NE ||
+      type == NODE_TYPE_OPERATOR_BINARY_ARRAY_LT ||
+      type == NODE_TYPE_OPERATOR_BINARY_ARRAY_LE ||
+      type == NODE_TYPE_OPERATOR_BINARY_ARRAY_GT ||
+      type == NODE_TYPE_OPERATOR_BINARY_ARRAY_GE ||
+      type == NODE_TYPE_OPERATOR_BINARY_ARRAY_IN ||
+      type == NODE_TYPE_OPERATOR_BINARY_ARRAY_NIN || 
+      type == NODE_TYPE_RANGE ||
+      type == NODE_TYPE_INDEXED_ACCESS || 
+      type == NODE_TYPE_PASSTHRU ||
+      type == NODE_TYPE_OBJECT_ELEMENT || 
+      type == NODE_TYPE_ATTRIBUTE_ACCESS ||
+      type == NODE_TYPE_BOUND_ATTRIBUTE_ACCESS ||
+      type == NODE_TYPE_OPERATOR_UNARY_NOT ||
+      type == NODE_TYPE_OPERATOR_UNARY_PLUS ||
+      type == NODE_TYPE_OPERATOR_UNARY_MINUS) {
     size_t const n = numMembers();
 
     for (size_t i = 0; i < n; ++i) {
@@ -1447,31 +1482,6 @@ bool AstNode::isSimple() const {
         setFlag(DETERMINED_SIMPLE);
         return false;
       }
-    }
-
-    setFlag(DETERMINED_SIMPLE, VALUE_SIMPLE);
-    return true;
-  }
-
-  if (type == NODE_TYPE_OBJECT_ELEMENT || type == NODE_TYPE_ATTRIBUTE_ACCESS ||
-      type == NODE_TYPE_OPERATOR_UNARY_NOT ||
-      type == NODE_TYPE_OPERATOR_UNARY_PLUS ||
-      type == NODE_TYPE_OPERATOR_UNARY_MINUS) {
-    TRI_ASSERT(numMembers() == 1);
-
-    if (!getMember(0)->isSimple()) {
-      setFlag(DETERMINED_SIMPLE);
-      return false;
-    }
-
-    setFlag(DETERMINED_SIMPLE, VALUE_SIMPLE);
-    return true;
-  }
-
-  if (type == NODE_TYPE_BOUND_ATTRIBUTE_ACCESS) {
-    if (!getMember(0)->isSimple()) {
-      setFlag(DETERMINED_SIMPLE);
-      return false;
     }
 
     setFlag(DETERMINED_SIMPLE, VALUE_SIMPLE);
@@ -1523,63 +1533,6 @@ bool AstNode::isSimple() const {
       }
     }
 
-    setFlag(DETERMINED_SIMPLE, VALUE_SIMPLE);
-    return true;
-  }
-
-  if (type == NODE_TYPE_OPERATOR_BINARY_PLUS ||
-      type == NODE_TYPE_OPERATOR_BINARY_MINUS ||
-      type == NODE_TYPE_OPERATOR_BINARY_TIMES ||
-      type == NODE_TYPE_OPERATOR_BINARY_DIV ||
-      type == NODE_TYPE_OPERATOR_BINARY_MOD) {
-    if (!getMember(0)->isSimple() || !getMember(1)->isSimple()) {
-      setFlag(DETERMINED_SIMPLE);
-      return false;
-    }
-    setFlag(DETERMINED_SIMPLE, VALUE_SIMPLE);
-    return true;
-  }
-
-  if (type == NODE_TYPE_OPERATOR_BINARY_AND ||
-      type == NODE_TYPE_OPERATOR_BINARY_OR ||
-      type == NODE_TYPE_OPERATOR_BINARY_EQ ||
-      type == NODE_TYPE_OPERATOR_BINARY_NE ||
-      type == NODE_TYPE_OPERATOR_BINARY_LT ||
-      type == NODE_TYPE_OPERATOR_BINARY_LE ||
-      type == NODE_TYPE_OPERATOR_BINARY_GT ||
-      type == NODE_TYPE_OPERATOR_BINARY_GE ||
-      type == NODE_TYPE_OPERATOR_BINARY_IN ||
-      type == NODE_TYPE_OPERATOR_BINARY_NIN ||
-      type == NODE_TYPE_OPERATOR_BINARY_ARRAY_EQ ||
-      type == NODE_TYPE_OPERATOR_BINARY_ARRAY_NE ||
-      type == NODE_TYPE_OPERATOR_BINARY_ARRAY_LT ||
-      type == NODE_TYPE_OPERATOR_BINARY_ARRAY_LE ||
-      type == NODE_TYPE_OPERATOR_BINARY_ARRAY_GT ||
-      type == NODE_TYPE_OPERATOR_BINARY_ARRAY_GE ||
-      type == NODE_TYPE_OPERATOR_BINARY_ARRAY_IN ||
-      type == NODE_TYPE_OPERATOR_BINARY_ARRAY_NIN || type == NODE_TYPE_RANGE ||
-      type == NODE_TYPE_INDEXED_ACCESS || type == NODE_TYPE_PASSTHRU) {
-    // a logical operator is simple if its operands are simple
-    // a comparison operator is simple if both bounds are simple
-    // a range is simple if both bounds are simple
-    if (!getMember(0)->isSimple() || !getMember(1)->isSimple()) {
-      setFlag(DETERMINED_SIMPLE);
-      return false;
-    }
-
-    setFlag(DETERMINED_SIMPLE, VALUE_SIMPLE);
-    return true;
-  }
-
-  if (type == NODE_TYPE_OPERATOR_NARY_AND ||
-      type == NODE_TYPE_OPERATOR_NARY_OR) {
-    // a logical operator is simple if all its operands are simple
-    for (auto const& it : members) {
-      if (!it->isSimple()) {
-        setFlag(DETERMINED_SIMPLE);
-        return false;
-      }
-    }
     setFlag(DETERMINED_SIMPLE, VALUE_SIMPLE);
     return true;
   }
