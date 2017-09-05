@@ -1027,6 +1027,7 @@ Result transaction::Methods::documentFastPath(std::string const& collectionName,
 Result transaction::Methods::documentFastPathLocal(
     std::string const& collectionName, StringRef const& key,
     ManagedDocumentResult& result, bool shouldLock) {
+  TRI_ASSERT(!ServerState::instance()->isCoordinator());
   TRI_ASSERT(_state->status() == transaction::Status::RUNNING);
 
   TRI_voc_cid_t cid = addCollectionAtRuntime(collectionName);

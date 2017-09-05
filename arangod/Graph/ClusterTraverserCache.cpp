@@ -51,11 +51,7 @@ aql::AqlValue ClusterTraverserCache::fetchEdgeAqlResult(EdgeDocumentToken const&
   // FIXME: the ClusterTraverserCache lifetime is shorter then the query lifetime
   // therefore we cannot get away here without copying the result
   //return aql::AqlValue(aql::AqlValueHintNoCopy(token.vpack()));
-  VPackSlice doc(token.vpack());
-  if (doc.isExternal()) {
-    doc = doc.resolveExternals();
-  }
-  return aql::AqlValue(doc); // will copy slice
+  return aql::AqlValue(VPackSlice(token.vpack())); // will copy slice
 }
 
 
@@ -78,11 +74,7 @@ aql::AqlValue ClusterTraverserCache::fetchVertexAqlResult(StringRef id) {
 void ClusterTraverserCache::insertEdgeIntoResult(EdgeDocumentToken const& token,
                                                  VPackBuilder& result) {
   TRI_ASSERT(ServerState::instance()->isCoordinator());
-  VPackSlice doc(token.vpack());
-  if (doc.isExternal()) {
-    doc = doc.resolveExternals();
-  }
-  result.add(doc);
+  result.add(VPackSlice(token.vpack()));
 }
 
 void ClusterTraverserCache::insertVertexIntoResult(StringRef id,

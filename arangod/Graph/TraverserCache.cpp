@@ -76,7 +76,7 @@ VPackSlice TraverserCache::lookupInCollection(StringRef id) {
   if (res.ok()) {
     ++_insertedDocuments;
     return VPackSlice(_mmdr->vpack());
-  } else if (res.errorNumber() == TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND) {
+  } else if (res.is(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND)) {
     ++_insertedDocuments;
     // This is expected, we may have dangling edges. Interpret as NULL
     return basics::VelocyPackHelper::NullValue();
