@@ -546,7 +546,6 @@ def getTests(os, edition, mode, engine) {
 def setupTestEnvironment(os, logFile, runDir) {
     fileOperations([
         folderCreateOperation("${runDir}/tmp"),
-        fileCreateOperation(logFile,'test start')
     ])
 
     if (os == "windows") {
@@ -558,6 +557,8 @@ def setupTestEnvironment(os, logFile, runDir) {
         for (file in ['build', 'etc', 'js', 'UnitTests']) {
             sh "ln -s ../${file} ${runDir}/${file}"
         }
+
+        sh "echo `date` > ${logFile}"
     }
 }
 
