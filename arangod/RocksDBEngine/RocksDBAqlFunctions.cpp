@@ -259,7 +259,7 @@ static AqlValue buildGeoResult(transaction::Methods* trx,
   } else {
     for (auto& it : distances) {
       if (collection->readDocument(trx, it._token, mmdr)) {
-        mmdr.addToBuilder(*builder.get(), true);
+        mmdr.addToBuilder(*builder.get(), false);
       }
     }
   }

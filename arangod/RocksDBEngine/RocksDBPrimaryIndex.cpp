@@ -197,17 +197,13 @@ RocksDBToken RocksDBPrimaryIndex::lookupKey(transaction::Methods* trx,
         value.buffer()->data(), static_cast<uint64_t>(value.buffer()->size()));
     if (entry) {
       Result status = _cache->insert(entry);
-      if (status.fail() && status.errorNumber() == TRI_ERROR_LOCK_TIMEOUT) {
+      if (status.errorNumber() == TRI_ERROR_LOCK_TIMEOUT) {
         //the writeLock uses cpu_relax internally, so we can try yield
         std::this_thread::yield();
         status = _cache->insert(entry);
       }
       if (status.fail()) {
         delete entry;
-        auto status = _cache->insert(entry);
-        if (status.fail()) {
-          delete entry;
-        }
       }
     }
   }

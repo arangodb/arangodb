@@ -255,7 +255,8 @@ class Methods {
   ///        Must only be called on a local server, not in cluster case!
   ENTERPRISE_VIRT Result documentFastPathLocal(std::string const& collectionName,
                                StringRef const& key,
-                               ManagedDocumentResult& result);
+                               ManagedDocumentResult& result,
+                               bool shouldLock);
 
   /// @brief return one or multiple documents from a collection
   ENTERPRISE_VIRT OperationResult document(std::string const& collectionName,
