@@ -605,35 +605,40 @@ def executeTests(os, edition, mode, engine, port, arch, archRuns, archFailed, ar
                           " ${test} -- " +
                           testArgs
 
-            lock("test-${env.NODE_NAME}-${env.JOB_NAME}-${env.BUILD_ID}-${edition}-${engine}-${lockIndex}") {
-                setupTestEnvironment(os, logFile, runDir)
+            try {
+                lock("test-${env.NODE_NAME}-${env.JOB_NAME}-${env.BUILD_ID}-${edition}-${engine}-${lockIndex}") {
+                    setupTestEnvironment(os, logFile, runDir)
 
-                try {
-                    timeout(30) {
-                        def tmpDir = pwd() + "/" + runDir + "/tmp"
+                    try {
+                        timeout(30) {
+                            def tmpDir = pwd() + "/" + runDir + "/tmp"
 
-                        withEnv(["TMPDIR=${tmpDir}", "TEMPDIR=${tmpDir}", "TMP=${tmpDir}"]) {
-                            if (os == "windows") {
-                                echo "executing ${command}"
-                                powershell "cd ${runDir} ; ${command} | Add-Content -PassThru ${logFile}"
+                            withEnv(["TMPDIR=${tmpDir}", "TEMPDIR=${tmpDir}", "TMP=${tmpDir}"]) {
+                                if (os == "windows") {
+                                    echo "executing ${command}"
+                                    powershell "cd ${runDir} ; ${command} | Add-Content -PassThru ${logFile}"
+                                }
+                                else {
+                                    command = "(cd ${runDir} ; echo 1 > result ; ${command} ; echo \$? > result) 2>&1 | " +
+                                              "tee ${logFile} ; exit `cat ${runDir}/result`"
+                                    echo "executing ${command}"
+                                    sh command
+                                }
                             }
-                            else {
-                                command = "(cd ${runDir} ; echo 1 > result ; ${command} ; echo \$? > result) 2>&1 | " +
-                                          "tee ${logFile} ; exit `cat ${runDir}/result`"
-                                echo "executing ${command}"
-                                sh command
-                            }
+
+                            checkCoresAndSave(os, runDir, name, archRuns, archCores)
                         }
-
-                        checkCoresAndSave(os, runDir, name, archRuns, archCores)
+                    }
+                    catch (exc) {
+                        echo "caught error, copying log to ${logFileFailed}"
+                        echo exc.toString()
+                        copyFile(os, logFile, logFileFailed)
+                        throw exc
                     }
                 }
-                catch (exc) {
-                    echo "caught error, copying log to ${logFileFailed}"
-                    echo exc.toString()
-                    copyFile(os, logFile, logFileFailed)
-                    throw exc
-                }
+            }
+            catch (exc) {
+                error "test ${name} failed"
             }
         }
 
