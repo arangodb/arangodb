@@ -543,9 +543,10 @@ def getTests(os, edition, mode, engine) {
     }
 }
 
-def setupTestEnvironment(os, runDir) {
+def setupTestEnvironment(os, logFile, runDir) {
     fileOperations([
-        folderCreateOperation("${runDir}/tmp")
+        folderCreateOperation("${runDir}/tmp"),
+        fileCreateOperation(logFile,'test start')
     ])
 
     if (os == "windows") {
@@ -604,7 +605,7 @@ def executeTests(os, edition, mode, engine, port, arch, archRuns, archFailed, ar
                           testArgs
 
             lock("test-${env.NODE_NAME}-${env.JOB_NAME}-${env.BUILD_ID}-${edition}-${engine}-${lockIndex}") {
-                setupTestEnvironment(os, runDir)
+                setupTestEnvironment(os, logFile, runDir)
 
                 try {
                     timeout(30) {
