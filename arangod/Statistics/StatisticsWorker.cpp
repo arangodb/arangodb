@@ -145,34 +145,45 @@ void StatisticsWorker::historianAverage() {
   }
 }
 
-VPackSlice StatisticsWorker::_lastEntry(std::string const& collection, uint64_t start, uint64_t clusterId) {
-  /*
-  var filter = '';
-  var bindVars = { start: start, '@collection': collection };
+VPackSlice StatisticsWorker::_lastEntry(std::string const& collectionName, uint64_t start, uint64_t clusterId) {
+  std::string filter = "";
+
+  auto queryRegistryFeature =
+  application_features::ApplicationServer::getFeature<
+      QueryRegistryFeature>("QueryRegistry");
+  auto _queryRegistry = queryRegistryFeature->queryRegistry();
+
+  TRI_vocbase_t* vocbase = DatabaseFeature::DATABASE->systemDatabase();
+
+  auto bindVars = std::make_shared<VPackBuilder>();
+  bindVars->openObject();
+  bindVars->add("@collection", VPackValue(collectionName));
+  bindVars->add("start", VPackValue(start));
 
   if (clusterId) {
-    filter = ' FILTER s.clusterId == @clusterId ';
-    bindVars.clusterId = clusterId;
+    filter = "FILTER s.clusterId == @clusterId";
+    bindVars->add("clusterId", VPackValue(clusterId));
   }
 
-  var values = db._query(
-    'FOR s in @@collection '
-    + 'FILTER s.time >= @start '
-    + filter
-    + 'SORT s.time desc '
-    + 'LIMIT 1 '
-    + 'RETURN s', bindVars);
+  bindVars->close();
 
-  if (values.hasNext()) {
-    return values.next();
+  std::string const aql("FOR s in @@collection FILTER s.time >= @start " + filter + " SORT s.time DESC RETURN s");
+  arangodb::aql::Query query(false, vocbase, arangodb::aql::QueryString(aql),
+                          bindVars, nullptr, arangodb::aql::PART_MAIN);
+
+  auto queryResult = query.execute(_queryRegistry);
+  if (queryResult.code != TRI_ERROR_NO_ERROR) {
+  THROW_ARANGO_EXCEPTION_MESSAGE(queryResult.code, queryResult.details);
   }
-  */
-  arangodb::basics::VelocyPackHelper::NullValue();
+
+  VPackSlice result = queryResult.result->slice();
+
+  if (result.isArray() && result.length()) {
+    // return first slice
+  }
+
+  return arangodb::basics::VelocyPackHelper::NullValue();
 }
-
-
-
-
 
 
 
