@@ -616,9 +616,10 @@ def executeTests(os, edition, mode, engine, port, arch, archRuns, archFailed, ar
                                 powershell "cd ${runDir} ; ${command} | Add-Content -PassThru ${logFile}"
                             }
                             else {
-                                command = "set -o pipefail ; (cd " + runDir + "; " + command + ")"
+                                command = "(cd " + runDir + "; " + command + "; echo $? > result)"
+                                command += ' 2>&1 | tee ' + logFile + "; exit `cat ${runDir/result}`"
                                 echo "executing ${command}"
-                                sh command + ' 2>&1 | tee ' + logFile
+                                sh command
                             }
                         }
 
