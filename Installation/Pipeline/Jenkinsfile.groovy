@@ -562,10 +562,13 @@ def setupTestEnvironment(os, logFile, runDir) {
     }
 }
 
-def executeTests(os, edition, mode, engine, port, arch, archRuns, archFailed, archCores) {
+def executeTests(os, edition, mode, engine, portInit, arch, archRuns, archFailed, archCores) {
     def parallelity = 4
     def testIndex = 0
     def tests = getTests(os, edition, mode, engine)
+
+    def portInterval = (mode == "cluster") ? 40 : 10
+    def port = portInit
 
     // this is an `Array.reduce()` in groovy :S
     def testSteps = tests.inject([:]) { testMap, testStruct ->
@@ -584,10 +587,7 @@ def executeTests(os, edition, mode, engine, port, arch, archRuns, archFailed, ar
                        "--storageEngine ${engine} " +
                        testStruct[2]
 
-        def portInterval = 10
-
         if (mode == "cluster") {
-            portInterval = 40
             testArgs += " --cluster true"
         }
 
