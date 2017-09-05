@@ -100,8 +100,7 @@ void MaxMapCountFeature::prepare() {
     mapsFilename.clear();
   } else {
     try {
-      std::string value =
-          basics::FileUtils::slurp(mapsFilename.c_str());
+      basics::FileUtils::slurp(mapsFilename.c_str());
     } catch (...) {
       // maps file not readable
       mapsFilename.clear();

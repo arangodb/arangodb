@@ -395,6 +395,7 @@ void RocksDBEngine::start() {
       // check if we have found the database directory or not
       Result res = rocksutils::convertStatus(status);
       if (res.errorNumber() != TRI_ERROR_ARANGO_IO_ERROR) {
+
         // not an I/O error. so we better report the error and abort here
         LOG_TOPIC(FATAL, arangodb::Logger::STARTUP)
             << "unable to initialize RocksDB engine: " << status.ToString();
@@ -448,8 +449,13 @@ void RocksDBEngine::start() {
       _options, transactionOptions, _path, cfFamilies, &cfHandles, &_db);
 
   if (!status.ok()) {
+    std::string error;
+    if (status.IsIOError()) {
+      error = "; Maybe your filesystem doesn't provide required features? (Cifs? NFS?)";
+    }
+
     LOG_TOPIC(FATAL, arangodb::Logger::STARTUP)
-        << "unable to initialize RocksDB engine: " << status.ToString();
+        << "unable to initialize RocksDB engine: " << status.ToString() << error;
     FATAL_ERROR_EXIT();
   }
   if (cfFamilies.size() != cfHandles.size()) {
