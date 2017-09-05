@@ -328,7 +328,7 @@ std::vector<check_t> Supervision::check(std::string const& type) {
     }
 
     // Any status change is reported to replicated log
-    bool persistReport = newHealth.statusDiff(oldTransient);
+    bool persistReport = newHealth.statusDiff(oldPersistent);
 
     // Start creating new health report
     auto report = std::make_shared<Builder>();
