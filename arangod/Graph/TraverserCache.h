@@ -47,6 +47,11 @@ namespace graph {
 
 struct EdgeDocumentToken;
 
+/// Small wrapper around the actual datastore in
+/// which edges and vertices are stored. The cluster can overwrite this
+/// with an implementation which caches entire documents,
+/// the single server / db server can just work with raw
+/// document tokens and retrieve documents as needed
 class TraverserCache {
 
   public:

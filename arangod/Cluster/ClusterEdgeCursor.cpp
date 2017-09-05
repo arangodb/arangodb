@@ -53,7 +53,7 @@ ClusterEdgeCursor::ClusterEdgeCursor(StringRef vertexId, uint64_t depth,
                         VPackValueType::String));
 
   fetchEdgesFromEngines(trx->databaseName(), _cache->engines(), b->slice(),
-                        depth, _cache->edges(), _edgeList, _cache->datalake(),
+                        depth, _cache->cache(), _edgeList, _cache->datalake(),
                         *(leased.get()), _cache->filteredDocuments(),
                         _cache->insertedDocuments());
 }
@@ -73,7 +73,7 @@ ClusterEdgeCursor::ClusterEdgeCursor(StringRef vertexId, bool backward,
   b->add(VPackValuePair(vertexId.data(), vertexId.length(),
                         VPackValueType::String));
   fetchEdgesFromEngines(trx->databaseName(), _cache->engines(), b->slice(),
-                        backward, _cache->edges(), _edgeList,
+                        backward, _cache->cache(), _edgeList,
                         _cache->datalake(), *(leased.get()),
                         _cache->insertedDocuments());
 }

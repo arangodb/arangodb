@@ -58,12 +58,13 @@ aql::AqlValue ClusterTraverserCache::fetchEdgeAqlResult(EdgeDocumentToken const&
   return aql::AqlValue(doc); // will copy slice
 }
 
+
 aql::AqlValue ClusterTraverserCache::fetchVertexAqlResult(StringRef id) {
   // FIXME: this is only used for ShortestPath, where the shortestpath stuff
   // uses _edges to store its vertices
   TRI_ASSERT(ServerState::instance()->isCoordinator());
-  auto it = _edges.find(id);
-  if (it == _edges.end()) {
+  auto it = _cache.find(id);
+  if (it == _cache.end()) {
     LOG_TOPIC(ERR, Logger::GRAPHS) << __FUNCTION__ << " vertex not found";
     // Document not found return NULL
     return aql::AqlValue(VelocyPackHelper::NullValue());
@@ -71,11 +72,7 @@ aql::AqlValue ClusterTraverserCache::fetchVertexAqlResult(StringRef id) {
   // FIXME: the ClusterTraverserCache lifetime is shorter then the query lifetime
   // therefore we cannot get away here without copying the result
   //return aql::AqlValue(aql::AqlValueHintNoCopy(it->second.begin()));
-  VPackSlice doc = it->second;
-  if (doc.isExternal()) {
-    doc = doc.resolveExternals();
-  }
-  return aql::AqlValue(doc); // will copy slice
+  return aql::AqlValue(it->second); // will copy slice
 }
 
 void ClusterTraverserCache::insertEdgeIntoResult(EdgeDocumentToken const& token,
@@ -90,37 +87,13 @@ void ClusterTraverserCache::insertEdgeIntoResult(EdgeDocumentToken const& token,
 
 void ClusterTraverserCache::insertVertexIntoResult(StringRef id,
                                                    VPackBuilder& result) {
-  // FIXME: this is only used for ShortestPath, where the shortestpath stuff
-  // uses _edges to store its vertices
-  auto it = _edges.find(id);
-  if (it == _edges.end()) {
+  auto it = _cache.find(id);
+  if (it == _cache.end()) {
     LOG_TOPIC(ERR, Logger::GRAPHS) << __FUNCTION__ << " vertex not found";
     // Document not found append NULL
     result.add(VelocyPackHelper::NullValue());
   } else {
-    result.add(_edges[id]);
+    // FIXME: fix TraverserCache lifetime and use addExternal
+    result.add(it->second);
   }
-}
-
-std::unordered_map<StringRef, arangodb::velocypack::Slice>&
-ClusterTraverserCache::edges() {
-  return _edges;
-}
-
-std::vector<std::shared_ptr<arangodb::velocypack::Builder>>&
-ClusterTraverserCache::datalake() {
-  return _datalake;
-}
-
-std::unordered_map<ServerID, traverser::TraverserEngineID> const*
-ClusterTraverserCache::engines() {
-  return _engines;
-}
-
-size_t& ClusterTraverserCache::insertedDocuments() {
-  return _insertedDocuments;
-}
-
-size_t& ClusterTraverserCache::filteredDocuments() {
-  return _filteredDocuments;
 }
