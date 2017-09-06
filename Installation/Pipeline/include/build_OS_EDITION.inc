@@ -1,6 +1,7 @@
 concurrency=$1
 edition=$2
 os=$3
+logdir=$4
 
 ENTERPRISE=""
 type="build"
@@ -33,9 +34,13 @@ echo "PWD: `pwd`"
 
 mkdir -p build
 
-rm -rf log-output
-mkdir -p log-output
-touch log-output/build.log
+if [ -z "$logdir" ]; then
+  logdir=log-output
+  rm -rf $logdir
+  mkdir -p $logdir
+fi
+
+touch $logdir/build.log
 
 (
     set -eo pipefail
@@ -50,10 +55,10 @@ touch log-output/build.log
             -DUSE_FAILURE_TESTS=On \
             -DDEBUG_SYNC_REPLICATION=On \
             $ENTERPRISE \
-            ..  2>&1 | tee ../log-output/build.log
+            ..  2>&1 | tee ../$logdir/build.log
 
     echo "`date +%T` building..."
-    make -j $concurrency -l $load 2>&1 | tee -a ../log-output/build.log
+    make -j $concurrency -l $load 2>&1 | tee -a ../$logdir/build.log
 ) || exit 1
 
 echo "`date +%T` done..."
