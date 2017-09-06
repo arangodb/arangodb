@@ -40,17 +40,13 @@
 
 using namespace arangodb::aql;
 
-/// @brief minimum number of array members / object attributes for considering
-/// an array / object literal "big" and pulling it out of the expression
-size_t const V8Executor::DefaultLiteralSizeThreshold = 32;
-
 /// @brief creates an executor
 V8Executor::V8Executor(int64_t literalSizeThreshold)
     : _buffer(nullptr),
       _constantRegisters(),
       _literalSizeThreshold(literalSizeThreshold >= 0
                                 ? static_cast<size_t>(literalSizeThreshold)
-                                : DefaultLiteralSizeThreshold) {}
+                                : defaultLiteralSizeThreshold) {}
 
 /// @brief destroys an executor
 V8Executor::~V8Executor() { delete _buffer; }
@@ -127,7 +123,6 @@ int V8Executor::executeExpression(Query* query, AstNode const* node,
   v8::HandleScope scope(isolate);
   v8::TryCatch tryCatch;
 
-
   TRI_ASSERT(_buffer != nullptr);
 
   v8::Handle<v8::Script> compiled = v8::Script::Compile(
@@ -177,12 +172,6 @@ int V8Executor::executeExpression(Query* query, AstNode const* node,
     // well we're almost sure we never reach this since the above call should throw:
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "unable to compile AQL script code");
   }
-}
-
-/// @brief returns a reference to a built-in function
-Function const* V8Executor::getFunctionByName(std::string const& name) {
-  auto functions = AqlFunctionFeature::AQLFUNCTIONS;
-  return functions->byName(name);
 }
 
 /// @brief traverse the expression and note all user-defined functions
@@ -247,7 +236,7 @@ void V8Executor::detectConstantValues(AstNode const* node, AstNodeType previous)
   }
 }
 
-/// @brief convert an AST node to a V8 object
+/// @brief convert an AST value node to a V8 object
 v8::Handle<v8::Value> V8Executor::toV8(v8::Isolate* isolate,
                                      AstNode const* node) const {
   if (node->type == NODE_TYPE_ARRAY) {
@@ -730,12 +719,12 @@ void V8Executor::generateCodeFunctionCall(AstNode const* node) {
   TRI_ASSERT(args != nullptr);
   TRI_ASSERT(args->type == NODE_TYPE_ARRAY);
 
-  if (func->externalName != "V8") {
+  if (func->name != "V8") {
     // special case for the V8 function... this is actually not a function 
     // call at all, but a wrapper to ensure that the following expression
     // is executed using V8
     _buffer->appendText(TRI_CHAR_LENGTH_PAIR("_AQL."));
-    _buffer->appendText(func->internalName);
+    _buffer->appendText(func->v8FunctionName());
   }
   _buffer->appendChar('(');
 
@@ -765,7 +754,7 @@ void V8Executor::generateCodeFunctionCall(AstNode const* node) {
       // the parameter at the position is not a collection name... fail
       THROW_ARANGO_EXCEPTION_PARAMS(
           TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH,
-          func->externalName.c_str());
+          func->name.c_str());
     } else {
       generateCodeNode(args->getMember(i));
     }

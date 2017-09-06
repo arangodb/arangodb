@@ -207,7 +207,7 @@ Query::~Query() {
   }
   cleanupPlanAndEngine(TRI_ERROR_INTERNAL);  // abort the transaction
 
-  _executor.reset();
+  _v8Executor.reset();
 
   exitContext();
 
@@ -1052,14 +1052,14 @@ void Query::engine(ExecutionEngine* engine) {
 }
 
 /// @brief get v8 executor
-V8Executor* Query::executor() {
-  if (_executor == nullptr) {
+V8Executor* Query::v8Executor() {
+  if (_v8Executor == nullptr) {
     // the executor is a singleton per query
-    _executor.reset(new V8Executor(_queryOptions.literalSizeThreshold));
+    _v8Executor.reset(new V8Executor(_queryOptions.literalSizeThreshold));
   }
 
-  TRI_ASSERT(_executor != nullptr);
-  return _executor.get();
+  TRI_ASSERT(_v8Executor != nullptr);
+  return _v8Executor.get();
 }
 
 /// @brief enter a V8 context

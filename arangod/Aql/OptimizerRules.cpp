@@ -141,7 +141,7 @@ void arangodb::aql::sortInValuesRule(Optimizer* opt,
       AstNode const* testNode = originalNode;
 
       if (originalNode->type == NODE_TYPE_FCALL &&
-          static_cast<Function const*>(originalNode->getData())->externalName ==
+          static_cast<Function const*>(originalNode->getData())->name ==
               "NOOPT") {
         // bypass NOOPT(...)
         TRI_ASSERT(originalNode->numMembers() == 1);
@@ -4167,7 +4167,7 @@ GeoIndexInfo isDistanceFunction(AstNode* distanceNode,
 
   // we're looking for "DISTANCE()", which is a function call
   // with an empty parameters array
-  if (func->externalName != "DISTANCE" || distanceNode->numMembers() != 1) {
+  if (func->name != "DISTANCE" || distanceNode->numMembers() != 1) {
     return rv;
   }
   rv.distanceNode = distanceNode;

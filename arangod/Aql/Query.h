@@ -194,7 +194,7 @@ class Query {
   QueryResult explain();
 
   /// @brief get v8 executor
-  V8Executor* executor();
+  V8Executor* v8Executor();
   
   /// @brief cache for regular expressions constructed by the query
   RegexCache* regexCache() { return &_regexCache; }
@@ -293,7 +293,7 @@ class Query {
   TRI_vocbase_t* _vocbase;
 
   /// @brief V8 code executor
-  std::unique_ptr<V8Executor> _executor;
+  std::unique_ptr<V8Executor> _v8Executor;
 
   /// @brief the currently used V8 context
   V8Context* _context;
