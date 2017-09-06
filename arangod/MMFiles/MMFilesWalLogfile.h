@@ -145,7 +145,7 @@ class MMFilesWalLogfile {
 
   /// @brief whether or not the logfile can be collected
   inline bool canBeCollected(TRI_voc_tick_t releasedTick) const {
-    if (releasedTick > df()->maxTick()) {
+    if (releasedTick <= df()->maxTick()) {
       return false;
     }
 

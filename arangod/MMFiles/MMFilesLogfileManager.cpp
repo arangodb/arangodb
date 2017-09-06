@@ -868,12 +868,13 @@ int MMFilesLogfileManager::flush(bool waitForSync, bool waitForCollector,
 
     if (res == TRI_ERROR_NO_ERROR) {
       // we need to wait for the collector...
-      // LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "entering waitForCollector with lastOpenLogfileId " << lastOpenLogfileId;
+      LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "entering waitForCollector with lastOpenLogfileId " << lastOpenLogfileId;
       res = this->waitForCollector(lastOpenLogfileId, maxWaitTime);
 
       if (res == TRI_ERROR_LOCK_TIMEOUT) {
         LOG_TOPIC(DEBUG, arangodb::Logger::FIXME) << "got lock timeout when waiting for WAL flush. lastOpenLogfileId: " << lastOpenLogfileId;
       }
+      LOG_TOPIC(TRACE, Logger::FIXME) << "waitForCollector returned with res = " << res;
     } else if (res == TRI_ERROR_ARANGO_DATAFILE_EMPTY) {
       // current logfile is empty and cannot be collected
       // we need to wait for the collector to collect the previously sealed
@@ -885,6 +886,7 @@ int MMFilesLogfileManager::flush(bool waitForSync, bool waitForCollector,
         if (res == TRI_ERROR_LOCK_TIMEOUT) {
           LOG_TOPIC(DEBUG, arangodb::Logger::FIXME) << "got lock timeout when waiting for WAL flush. lastSealedLogfileId: " << lastSealedLogfileId;
         }
+        LOG_TOPIC(TRACE, Logger::FIXME) << "waitForCollector returned with res = " << res;
       }
     }
   }
@@ -1872,6 +1874,12 @@ int MMFilesLogfileManager::readShutdownInfo() {
     lastSealedId = lastCollectedId;
   }
 
+  // read last tick released to persistent external storage (maybe 0)
+  uint64_t released =
+      arangodb::basics::VelocyPackHelper::stringUInt64(slice.get("releasedTick"));
+  StorageEngine* engine = EngineSelectorFeature::ENGINE;
+  engine->releaseTick(released);
+
   std::string const shutdownTime =
       arangodb::basics::VelocyPackHelper::getStringValue(slice, "shutdownTime",
                                                          "");
@@ -1916,10 +1924,14 @@ int MMFilesLogfileManager::writeShutdownInfo(bool writeShutdownTime) {
       lastSealedId = _lastSealedId;
     }
 
+    StorageEngine* engine = EngineSelectorFeature::ENGINE;
+    TRI_voc_tick_t released = engine->releasedTick();
+
     builder.add("tick", VPackValue(basics::StringUtils::itoa(TRI_CurrentTickServer())));
     builder.add("hlc", VPackValue(basics::StringUtils::itoa(TRI_HybridLogicalClock())));
     builder.add("lastCollected", VPackValue(basics::StringUtils::itoa(lastCollectedId)));
     builder.add("lastSealed", VPackValue(basics::StringUtils::itoa(lastSealedId)));
+    builder.add("releasedTick", VPackValue(basics::StringUtils::itoa(released)));
 
     if (writeShutdownTime) {
       std::string const t(utilities::timeString());

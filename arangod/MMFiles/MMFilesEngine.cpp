@@ -3499,5 +3499,7 @@ TRI_voc_tick_t MMFilesEngine::releasedTick() const {
 
 void MMFilesEngine::releaseTick(TRI_voc_tick_t tick) {
   WRITE_LOCKER(lock, _releaseLock);
-  _releasedTick = tick;
+  if (tick > _releasedTick) {
+    _releasedTick = tick;
+  }
 }
