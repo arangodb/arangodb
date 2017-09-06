@@ -1435,6 +1435,8 @@ void RocksDBRestReplicationHandler::handleCommandApplierSetConfig() {
       body, "ignoreErrors", config._ignoreErrors);
   config._maxConnectRetries = VelocyPackHelper::getNumericValue<uint64_t>(
       body, "maxConnectRetries", config._maxConnectRetries);
+  config._lockTimeoutRetries = VelocyPackHelper::getNumericValue<uint64_t>(
+      body, "lockTimeoutRetries", config._lockTimeoutRetries);
   config._sslProtocol = VelocyPackHelper::getNumericValue<uint32_t>(
       body, "sslProtocol", config._sslProtocol);
   config._chunkSize = VelocyPackHelper::getNumericValue<uint64_t>(

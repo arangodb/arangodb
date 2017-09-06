@@ -142,6 +142,12 @@ static int LoadConfiguration(TRI_vocbase_t* vocbase,
   if (value.isNumber()) {
     config->_maxConnectRetries = value.getNumber<int64_t>();
   }
+  
+  value = slice.get("lockTimeoutRetries");
+
+  if (value.isNumber()) {
+    config->_lockTimeoutRetries = value.getNumber<int64_t>();
+  }
 
   value = slice.get("sslProtocol");
 
@@ -436,6 +442,7 @@ TRI_replication_applier_configuration_t::
       _connectTimeout(10.0),
       _ignoreErrors(0),
       _maxConnectRetries(100),
+      _lockTimeoutRetries(0),
       _chunkSize(0),
       _connectionRetryWaitTime(15 * 1000 * 1000),
       _idleMinWaitTime(1000 * 1000),
@@ -494,6 +501,7 @@ void TRI_replication_applier_configuration_t::toVelocyPack(
   builder.add("connectTimeout", VPackValue(_connectTimeout));
   builder.add("ignoreErrors", VPackValue(_ignoreErrors));
   builder.add("maxConnectRetries", VPackValue(_maxConnectRetries));
+  builder.add("lockTimeoutRetries", VPackValue(_lockTimeoutRetries));
   builder.add("sslProtocol", VPackValue(_sslProtocol));
   builder.add("chunkSize", VPackValue(_chunkSize));
   builder.add("autoStart", VPackValue(_autoStart));
@@ -788,6 +796,7 @@ void TRI_replication_applier_configuration_t::update(
   _connectTimeout = src->_connectTimeout;
   _ignoreErrors = src->_ignoreErrors;
   _maxConnectRetries = src->_maxConnectRetries;
+  _lockTimeoutRetries = src->_lockTimeoutRetries;
   _sslProtocol = src->_sslProtocol;
   _chunkSize = src->_chunkSize;
   _autoStart = src->_autoStart;

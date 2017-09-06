@@ -1,4 +1,4 @@
-/* global ArangoServerState, ArangoClusterInfo */
+/* global ArangoServerState, ArangoClusterInfo, REPLICATION_SYNCHRONIZE_FINALIZE */
 'use strict';
 
 // /////////////////////////////////////////////////////////////////////////////
@@ -598,6 +598,23 @@ function synchronizeOneShard (database, shard, planId, leader) {
                 throw err4;
               }
             }
+
+/*
+            var sy2 = REPLICATION_SYNCHRONIZE_FINALIZE({ 
+              endpoint: ep, 
+              database, 
+              collection: shard, 
+              leaderId: leader, 
+              from: sy.lastLogTick
+            });
+             
+            try {
+              ok = addShardFollower(ep, database, shard, lockJobId);
+            } catch (err4) {
+              db._drop(shard);
+              throw err4;
+            }
+*/
           } catch (err3) {
             console.topic('heartbeat=error', 'synchronizeOneshard: exception in',
               'syncCollectionFinalize:', err3);

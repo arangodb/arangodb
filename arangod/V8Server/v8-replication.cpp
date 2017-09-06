@@ -24,6 +24,7 @@
 #include "Basics/ReadLocker.h"
 #include "Cluster/ClusterComm.h"
 #include "Cluster/ClusterFeature.h"
+#include "Replication/ContinuousSyncer.h"
 #include "Replication/InitialSyncer.h"
 #include "Rest/Version.h"
 #include "RestServer/ServerIdFeature.h"
@@ -191,6 +192,46 @@ static void addReplicationAuthentication(v8::Isolate* isolate,
   }
 }
 
+static void addConnectionSettings(v8::Isolate* isolate,
+    v8::Handle<v8::Object> object,
+    TRI_replication_applier_configuration_t &config) {
+
+  if (object->Has(TRI_V8_ASCII_STRING("sslProtocol"))) {
+    if (object->Get(TRI_V8_ASCII_STRING("sslProtocol"))->IsNumber()) {
+      config._sslProtocol = static_cast<uint32_t>(TRI_ObjectToUInt64(
+          object->Get(TRI_V8_ASCII_STRING("sslProtocol")), false));
+    }
+  }
+    
+  if (object->Has(TRI_V8_ASCII_STRING("requestTimeout"))) {
+    if (object->Get(TRI_V8_ASCII_STRING("requestTimeout"))->IsNumber()) {
+      config._requestTimeout = TRI_ObjectToDouble(
+          object->Get(TRI_V8_ASCII_STRING("requestTimeout")));
+    }
+  }
+
+  if (object->Has(TRI_V8_ASCII_STRING("connectTimeout"))) {
+    if (object->Get(TRI_V8_ASCII_STRING("connectTimeout"))->IsNumber()) {
+      config._connectTimeout = TRI_ObjectToDouble(
+          object->Get(TRI_V8_ASCII_STRING("connectTimeout")));
+    }
+  }
+
+  if (object->Has(TRI_V8_ASCII_STRING("chunkSize"))) {
+    if (object->Get(TRI_V8_ASCII_STRING("chunkSize"))->IsNumber()) {
+      config._chunkSize = TRI_ObjectToUInt64(
+          object->Get(TRI_V8_ASCII_STRING("chunkSize")), true);
+    }
+  }
+
+  if (object->Has(TRI_V8_ASCII_STRING("maxConnectRetries"))) {
+    if (object->Get(TRI_V8_ASCII_STRING("maxConnectRetries"))->IsNumber()) {
+      config._maxConnectRetries = TRI_ObjectToUInt64(
+          object->Get(TRI_V8_ASCII_STRING("maxConnectRetries")), false);
+    }
+  }
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief sync data from a remote master
 ////////////////////////////////////////////////////////////////////////////////
@@ -258,7 +299,7 @@ static void JS_SynchronizeReplication(
   if (object->Has(TRI_V8_ASCII_STRING("skipCreateDrop"))) {
     skipCreateDrop = TRI_ObjectToBoolean(object->Get(TRI_V8_ASCII_STRING("skipCreateDrop")));
   }
-
+    
   if (endpoint.empty()) {
     TRI_V8_THROW_EXCEPTION_PARAMETER("<endpoint> must be a valid endpoint");
   }
@@ -276,13 +317,7 @@ static void JS_SynchronizeReplication(
   config._database = database;
 
   addReplicationAuthentication(isolate, object, config);
-
-  if (object->Has(TRI_V8_ASCII_STRING("chunkSize"))) {
-    if (object->Get(TRI_V8_ASCII_STRING("chunkSize"))->IsNumber()) {
-      config._chunkSize = TRI_ObjectToUInt64(
-          object->Get(TRI_V8_ASCII_STRING("chunkSize")), true);
-    }
-  }
+  addConnectionSettings(isolate, object, config);
 
   if (object->Has(TRI_V8_ASCII_STRING("includeSystem"))) {
     if (object->Get(TRI_V8_ASCII_STRING("includeSystem"))->IsBoolean()) {
@@ -393,6 +428,124 @@ static void JS_SynchronizeReplication(
   TRI_V8_TRY_CATCH_END
 }
 
+/// @brief finalize the synchronization of a collection by tailing the WAL
+/// and filtering on the collection name until no more data is available
+static void JS_SynchronizeReplicationFinalize(
+    v8::FunctionCallbackInfo<v8::Value> const& args) {
+  TRI_V8_TRY_CATCH_BEGIN(isolate);
+  v8::HandleScope scope(isolate);
+
+  if (args.Length() != 1 || !args[0]->IsObject()) {
+    TRI_V8_THROW_EXCEPTION_USAGE("REPLICATION_SYNCHRONIZE_FINALIZE(<config>)");
+  }
+
+  TRI_vocbase_t* vocbase = GetContextVocBase(isolate);
+
+  if (vocbase == nullptr) {
+    TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
+  }
+
+  // treat the argument as an object from now on
+  v8::Handle<v8::Object> object = v8::Handle<v8::Object>::Cast(args[0]);
+
+  std::string endpoint;
+  if (object->Has(TRI_V8_ASCII_STRING("endpoint"))) {
+    endpoint = TRI_ObjectToString(object->Get(TRI_V8_ASCII_STRING("endpoint")));
+  }
+  
+  if (endpoint.empty()) {
+    TRI_V8_THROW_EXCEPTION_PARAMETER("<endpoint> must be a valid endpoint");
+  }
+
+  std::string database;
+  if (object->Has(TRI_V8_ASCII_STRING("database"))) {
+    database = TRI_ObjectToString(object->Get(TRI_V8_ASCII_STRING("database")));
+  } else {
+    database = vocbase->name();
+  }
+  
+  std::string collection;
+  if (object->Has(TRI_V8_ASCII_STRING("collection"))) {
+    collection = TRI_ObjectToString(object->Get(TRI_V8_ASCII_STRING("collection")));
+  }
+  if (collection.empty()) {
+    TRI_V8_THROW_EXCEPTION_PARAMETER("<collection> must be a valid collection name");
+  }
+  
+  TRI_voc_tick_t fromTick = 0;  
+  if (object->Has(TRI_V8_ASCII_STRING("from"))) {
+    fromTick = TRI_ObjectToUInt64(object->Get(TRI_V8_ASCII_STRING("from")), true);
+  }
+  if (fromTick == 0) {
+    TRI_V8_THROW_EXCEPTION_PARAMETER("<from> must be a valid start tick");
+  }
+
+  TRI_replication_applier_configuration_t config;
+  config._endpoint = endpoint;
+  config._database = database;
+
+  addReplicationAuthentication(isolate, object, config);
+  addConnectionSettings(isolate, object, config);
+
+  if (object->Has(TRI_V8_ASCII_STRING("requireFromPresent"))) {
+    if (object->Get(TRI_V8_ASCII_STRING("requireFromPresent"))->IsBoolean()) {
+      config._requireFromPresent = TRI_ObjectToBoolean(
+          object->Get(TRI_V8_ASCII_STRING("requireFromPresent")));
+    }
+  }
+  
+  if (object->Has(TRI_V8_ASCII_STRING("verbose"))) {
+    config._verbose = TRI_ObjectToBoolean(object->Get(TRI_V8_ASCII_STRING("verbose")));
+  }
+
+ 
+  std::string leaderId;
+  if (object->Has(TRI_V8_ASCII_STRING("leaderId"))) {
+    leaderId = TRI_ObjectToString(object->Get(TRI_V8_ASCII_STRING("leaderId")));
+  }
+
+  std::string errorMsg = "";
+// TODO: barrierID?
+  ContinuousSyncer syncer(vocbase, &config, 0, false, 0);
+  
+  if (!leaderId.empty()) {
+    syncer.setLeaderId(leaderId);
+  }
+
+  int res = TRI_ERROR_NO_ERROR;
+  v8::Handle<v8::Object> result = v8::Object::New(isolate);
+
+  try {
+    res = syncer.syncCollectionFinalize(errorMsg, collection, fromTick);
+  } catch (arangodb::basics::Exception const& ex) {
+    res = ex.code();
+    if (errorMsg.empty()) {
+      errorMsg = std::string("caught exception: ") + ex.what();
+    }
+  } catch (std::exception const& ex) {
+    res = TRI_ERROR_INTERNAL;
+    if (errorMsg.empty()) {
+      errorMsg = std::string("caught exception: ") + ex.what();
+    }
+  } catch (...) {
+    res = TRI_ERROR_INTERNAL;
+    if (errorMsg.empty()) {
+      errorMsg = "caught unknown exception";
+    }
+  }
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    if (errorMsg.empty()) {
+      TRI_V8_THROW_EXCEPTION_MESSAGE(res, std::string("cannot sync data for shard '") + collection + "' from remote endpoint");
+    } else {
+      TRI_V8_THROW_EXCEPTION_MESSAGE(res, std::string("cannot sync data for shard '") + collection + "' from remote endpoint: " + errorMsg);
+    }
+  }
+
+  TRI_V8_RETURN(result);
+  TRI_V8_TRY_CATCH_END
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief return the server's id
 ////////////////////////////////////////////////////////////////////////////////
@@ -480,21 +633,9 @@ static void JS_ConfigureApplierReplication(
         config._database = vocbase->name();
       }
     }
+
     addReplicationAuthentication(isolate, object, config);
-
-    if (object->Has(TRI_V8_ASCII_STRING("requestTimeout"))) {
-      if (object->Get(TRI_V8_ASCII_STRING("requestTimeout"))->IsNumber()) {
-        config._requestTimeout = TRI_ObjectToDouble(
-            object->Get(TRI_V8_ASCII_STRING("requestTimeout")));
-      }
-    }
-
-    if (object->Has(TRI_V8_ASCII_STRING("connectTimeout"))) {
-      if (object->Get(TRI_V8_ASCII_STRING("connectTimeout"))->IsNumber()) {
-        config._connectTimeout = TRI_ObjectToDouble(
-            object->Get(TRI_V8_ASCII_STRING("connectTimeout")));
-      }
-    }
+    addConnectionSettings(isolate, object, config);
 
     if (object->Has(TRI_V8_ASCII_STRING("ignoreErrors"))) {
       if (object->Get(TRI_V8_ASCII_STRING("ignoreErrors"))->IsNumber()) {
@@ -503,24 +644,10 @@ static void JS_ConfigureApplierReplication(
       }
     }
 
-    if (object->Has(TRI_V8_ASCII_STRING("maxConnectRetries"))) {
-      if (object->Get(TRI_V8_ASCII_STRING("maxConnectRetries"))->IsNumber()) {
-        config._maxConnectRetries = TRI_ObjectToUInt64(
-            object->Get(TRI_V8_ASCII_STRING("maxConnectRetries")), false);
-      }
-    }
-
-    if (object->Has(TRI_V8_ASCII_STRING("sslProtocol"))) {
-      if (object->Get(TRI_V8_ASCII_STRING("sslProtocol"))->IsNumber()) {
-        config._sslProtocol = (uint32_t)TRI_ObjectToUInt64(
-            object->Get(TRI_V8_ASCII_STRING("sslProtocol")), false);
-      }
-    }
-
-    if (object->Has(TRI_V8_ASCII_STRING("chunkSize"))) {
-      if (object->Get(TRI_V8_ASCII_STRING("chunkSize"))->IsNumber()) {
-        config._chunkSize = TRI_ObjectToUInt64(
-            object->Get(TRI_V8_ASCII_STRING("chunkSize")), true);
+    if (object->Has(TRI_V8_ASCII_STRING("lockTimeoutRetries"))) {
+      if (object->Get(TRI_V8_ASCII_STRING("lockTimeoutRetries"))->IsNumber()) {
+        config._lockTimeoutRetries = TRI_ObjectToUInt64(
+            object->Get(TRI_V8_ASCII_STRING("lockTimeoutRetries")), false);
       }
     }
 
@@ -840,6 +967,9 @@ void TRI_InitV8Replication(v8::Isolate* isolate,
   TRI_AddGlobalFunctionVocbase(isolate,
                                TRI_V8_ASCII_STRING("REPLICATION_SYNCHRONIZE"),
                                JS_SynchronizeReplication, true);
+  TRI_AddGlobalFunctionVocbase(isolate,
+                               TRI_V8_ASCII_STRING("REPLICATION_SYNCHRONIZE_FINALIZE"),
+                               JS_SynchronizeReplicationFinalize, true);
   TRI_AddGlobalFunctionVocbase(isolate,
                                TRI_V8_ASCII_STRING("REPLICATION_SERVER_ID"),
                                JS_ServerIdReplication, true);
