@@ -568,7 +568,6 @@ def executeTests(os, edition, mode, engine, portInit, arch, archRuns, archFailed
     def tests = getTests(os, edition, mode, engine)
 
     def portInterval = (mode == "cluster") ? 40 : 10
-    def port = portInit
 
     // this is an `Array.reduce()` in groovy :S
     def testSteps = tests.inject([:]) { testMap, testStruct ->
@@ -595,6 +594,7 @@ def executeTests(os, edition, mode, engine, portInit, arch, archRuns, archFailed
             def logFile = "${arch}/${name}.log"
             def logFileFailed = "${archFailed}/${name}.log"
             def runDir = "run.${currentIndex}"
+            def port = portInit + currentIndex * portInterval
 
             testArgs += " --minPort " + port
             testArgs += " --maxPort " + (port + portInterval - 1)
@@ -642,7 +642,6 @@ def executeTests(os, edition, mode, engine, portInit, arch, archRuns, archFailed
             }
         }
 
-        port += portInterval
         testMap
     }
 
