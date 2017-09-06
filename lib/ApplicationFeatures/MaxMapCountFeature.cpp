@@ -186,8 +186,8 @@ bool MaxMapCountFeature::isNearMaxMappingsInternal(double& suggestedCacheTime) n
     
     size_t const nmaps = std::count(value.begin(), value.end(), '\n');
     if (nmaps + 1024 < maxMappings) {
-      if (nmaps >= maxMappings * 0.95) {
-        // 95 % or more of the max mappings are in use. don't cache for too long
+      if (nmaps > maxMappings * 0.90) {
+        // more than 90% of the max mappings are in use. don't cache for too long
         suggestedCacheTime = 0.001;
       } else if (nmaps >= maxMappings / 2.0) {
         // we're above half of the max mappings. reduce cache time a bit
