@@ -143,10 +143,10 @@ testJenkins = [
 
 def copyFile(os, src, dst) {
     if (os == "windows") {
-        powershell "copy-item -Force -ErrorAction Ignore '${src}' '${dst}'"
+        powershell "copy-item -Force -ErrorAction Ignore ${src} ${dst}"
     }
     else {
-        sh "cp '${src}' '${dst}'"
+        sh "cp ${src} ${dst}"
     }
 }
 
