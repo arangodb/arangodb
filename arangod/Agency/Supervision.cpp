@@ -327,16 +327,13 @@ std::vector<check_t> Supervision::check(std::string const& type) {
       newHealth.status = Supervision::HEALTH_STATUS_FAILED;
     }
 
-    // Any status change is reported to replicated log
-    bool persistReport = newHealth.statusDiff(oldPersistent);
-
     // Start creating new health report
     auto report = std::make_shared<Builder>();
     
     { VPackArrayBuilder transaction(report.get());        // Transaction
 
       std::shared_ptr<VPackBuilder> envelope;
-      { VPackObjectBuilder operation(report.get());       // Operation
+      { VPackObjectBuilder operation(report.get()); // Operation
 
         report->add(VPackValue(healthPrefix + serverID)); // Supervision/Health
         { VPackObjectBuilder oo(report.get());
@@ -361,9 +358,10 @@ std::vector<check_t> Supervision::check(std::string const& type) {
       
     } // Transaction
 
-    // Actually report 
     if (!this->isStopping()) {
-      if (persistReport) { // Replicate special event and only then transient store
+
+      // Replicate special event and only then transient store
+      if (newHealth.statusDiff(oldPersistent)) { 
         write_ret_t res = singleWriteTransaction(_agent, *report);
         if (res.accepted && res.indices.front() != 0) {
           ++_jobId; // Job was booked 
